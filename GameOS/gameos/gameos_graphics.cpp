@@ -1243,7 +1243,7 @@ class gosRenderer {
             terrain_camera_pos_ = vec4(x, y, z, 1.0f);
         }
 
-        void terrainExtraReset() { terrain_extra_count_ = 0; }
+        void terrainExtraReset() { terrain_extra_count_ = 0; terrain_extra_draw_offset_ = 0; }
         void terrainExtraAdd(const gos_TERRAIN_EXTRA* data, int count) {
             if (terrain_extra_count_ + count <= terrain_extra_capacity_) {
                 memcpy(terrain_extra_data_ + terrain_extra_count_, data, sizeof(gos_TERRAIN_EXTRA) * count);
@@ -1364,6 +1364,7 @@ class gosRenderer {
         gos_TERRAIN_EXTRA* terrain_extra_data_ = nullptr;
         int terrain_extra_count_ = 0;
         int terrain_extra_capacity_ = 0;
+        int terrain_extra_draw_offset_ = 0;  // consumed offset for per-batch alignment
 
         // Terrain tessellation MVP (world-to-NDC)
         mat4 terrain_mvp_;
@@ -1966,19 +1967,24 @@ void gosRenderer::terrainDrawIndexedPatches(gosRenderMaterial* material, gosMesh
     material->applyVertexDeclaration();
 
     // Bind extra VBO for world pos + normal (locations 4-5)
+    // Use draw offset to align with the per-batch main VBO vertices
+    size_t extraByteOffset = terrain_extra_draw_offset_ * sizeof(gos_TERRAIN_EXTRA);
     glBindBuffer(GL_ARRAY_BUFFER, terrain_extra_vb_);
     GLint worldPosLoc = glGetAttribLocation(material->getShader()->shp_, "worldPos");
     GLint worldNormLoc = glGetAttribLocation(material->getShader()->shp_, "worldNorm");
     if (worldPosLoc >= 0) {
         glEnableVertexAttribArray(worldPosLoc);
         glVertexAttribPointer(worldPosLoc, 3, GL_FLOAT, GL_FALSE,
-            sizeof(gos_TERRAIN_EXTRA), (void*)0);
+            sizeof(gos_TERRAIN_EXTRA), (void*)extraByteOffset);
     }
     if (worldNormLoc >= 0) {
         glEnableVertexAttribArray(worldNormLoc);
         glVertexAttribPointer(worldNormLoc, 3, GL_FLOAT, GL_FALSE,
-            sizeof(gos_TERRAIN_EXTRA), (void*)(3 * sizeof(float)));
+            sizeof(gos_TERRAIN_EXTRA), (void*)(extraByteOffset + 3 * sizeof(float)));
     }
+
+    // Advance offset by number of vertices drawn in this batch
+    terrain_extra_draw_offset_ += nv;
 
     // Wireframe overlay
     if (terrain_wireframe_) {
@@ -1987,8 +1993,17 @@ void gosRenderer::terrainDrawIndexedPatches(gosRenderMaterial* material, gosMesh
 
     // Set patch vertices and draw
     glPatchParameteri(GL_PATCH_VERTICES, 3);
-    glDrawElements(GL_PATCHES, ni,
-        mesh->getIndexSizeBytes() == 2 ? GL_UNSIGNED_SHORT : GL_UNSIGNED_INT, NULL);
+    {
+        GLenum err = glGetError(); // clear any pending
+        glDrawElements(GL_PATCHES, ni,
+            mesh->getIndexSizeBytes() == 2 ? GL_UNSIGNED_SHORT : GL_UNSIGNED_INT, NULL);
+        err = glGetError();
+        static int gl_err_count = 0;
+        if (err != GL_NO_ERROR && gl_err_count++ < 5) {
+            printf("[TESS] GL ERROR after glDrawElements(GL_PATCHES): 0x%x ni=%d nv=%d\n", err, ni, nv);
+            fflush(stdout);
+        }
+    }
 
     // Cleanup
     if (worldPosLoc >= 0) glDisableVertexAttribArray(worldPosLoc);
