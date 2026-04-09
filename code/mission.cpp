@@ -384,10 +384,49 @@ long Mission::update (void)
 				missionLineChanged = turn;
 			}
 
-			if (userInput->getKeyDown(KEY_C) && userInput->ctrl() && userInput->alt() && userInput->shift()) 
+			if (userInput->getKeyDown(KEY_C) && userInput->ctrl() && userInput->alt() && userInput->shift())
 			{
 				neverEndingStory = true;
 				missionLineChanged = turn;
+			}
+
+			// Tessellation debug keys (Ctrl+Shift+number)
+			{
+				static float g_tessLevel = 4.0f;
+				static float g_tessDistNear = 200.0f;
+				static float g_tessDistFar = 2000.0f;
+				static float g_phongAlpha = 0.5f;
+				static float g_displaceScale = 0.0f;
+				static bool g_tessWireframe = false;
+
+				if (userInput->getKeyDown(KEY_1) && userInput->ctrl() && userInput->shift() && !userInput->alt()) {
+					g_tessLevel = min(g_tessLevel + 1.0f, 64.0f);
+					gos_SetTerrainTessParams(g_tessLevel, g_tessDistNear, g_tessDistFar);
+				}
+				if (userInput->getKeyDown(KEY_2) && userInput->ctrl() && userInput->shift() && !userInput->alt()) {
+					g_tessLevel = max(g_tessLevel - 1.0f, 1.0f);
+					gos_SetTerrainTessParams(g_tessLevel, g_tessDistNear, g_tessDistFar);
+				}
+				if (userInput->getKeyDown(KEY_3) && userInput->ctrl() && userInput->shift() && !userInput->alt()) {
+					g_phongAlpha = min(g_phongAlpha + 0.1f, 1.0f);
+					gos_SetTerrainPhongAlpha(g_phongAlpha);
+				}
+				if (userInput->getKeyDown(KEY_4) && userInput->ctrl() && userInput->shift() && !userInput->alt()) {
+					g_phongAlpha = max(g_phongAlpha - 0.1f, 0.0f);
+					gos_SetTerrainPhongAlpha(g_phongAlpha);
+				}
+				if (userInput->getKeyDown(KEY_5) && userInput->ctrl() && userInput->shift() && !userInput->alt()) {
+					g_displaceScale += 0.5f;
+					gos_SetTerrainDisplaceScale(g_displaceScale);
+				}
+				if (userInput->getKeyDown(KEY_6) && userInput->ctrl() && userInput->shift() && !userInput->alt()) {
+					g_displaceScale = max(g_displaceScale - 0.5f, 0.0f);
+					gos_SetTerrainDisplaceScale(g_displaceScale);
+				}
+				if (userInput->getKeyDown(KEY_7) && userInput->ctrl() && userInput->shift() && !userInput->alt()) {
+					g_tessWireframe = !g_tessWireframe;
+					gos_SetTerrainWireframe(g_tessWireframe);
+				}
 			}
 			#endif
 		}
