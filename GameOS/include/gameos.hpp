@@ -2261,6 +2261,7 @@ void __stdcall gos_SetTerrainWireframe(bool w);
 void __stdcall gos_TerrainExtraReset();
 void __stdcall gos_TerrainExtraAdd(const gos_TERRAIN_EXTRA* data, int count);
 void __stdcall gos_SetTerrainMVP(const float* matrix16);
+void __stdcall gos_SetTerrainCameraPos(float x, float y, float z);
 
 //
 // Set a renderstate

@@ -1238,6 +1238,9 @@ class gosRenderer {
             memcpy(&terrain_mvp_, m, 16 * sizeof(float));
             terrain_mvp_valid_ = true;
         }
+        void setTerrainCameraPos(float x, float y, float z) {
+            terrain_camera_pos_ = vec4(x, y, z, 1.0f);
+        }
 
         void terrainExtraReset() { terrain_extra_count_ = 0; }
         void terrainExtraAdd(const gos_TERRAIN_EXTRA* data, int count) {
@@ -1364,6 +1367,7 @@ class gosRenderer {
         // Terrain tessellation MVP (world-to-NDC)
         mat4 terrain_mvp_;
         bool terrain_mvp_valid_ = false;
+        vec4 terrain_camera_pos_;  // MC2 world space camera position for TCS LOD
 
         // Terrain tessellation material
         gosRenderMaterial* terrain_material_ = nullptr;
@@ -1949,6 +1953,7 @@ void gosRenderer::terrainDrawIndexedPatches(gosRenderMaterial* material, gosMesh
     material->getShader()->setFloat4("tessDistanceRange", tessDist);
     float tessDisp[4] = { terrain_phong_alpha_, terrain_displace_scale_, 0.0f, 0.0f };
     material->getShader()->setFloat4("tessDisplace", tessDisp);
+    material->getShader()->setFloat4("cameraPos", (const float*)&terrain_camera_pos_);
 
     // Bind main VBO and set standard vertex attribs
     glBindBuffer(GL_ARRAY_BUFFER, mesh->getVB());
@@ -3049,6 +3054,9 @@ void __stdcall gos_TerrainExtraAdd(const gos_TERRAIN_EXTRA* data, int count) {
 }
 void __stdcall gos_SetTerrainMVP(const float* matrix16) {
     if (g_gos_renderer) g_gos_renderer->setTerrainMVP(matrix16);
+}
+void __stdcall gos_SetTerrainCameraPos(float x, float y, float z) {
+    if (g_gos_renderer) g_gos_renderer->setTerrainCameraPos(x, y, z);
 }
 
 #include "gameos_graphics_debug.cpp"

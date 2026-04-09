@@ -59,9 +59,6 @@ void main()
     }
 
     // --- Projection ---
-    // Passthrough: interpolate the already-projected gl_Position from VS
-    // Task 7 will replace this with: gl_Position = terrainMVP * vec4(worldPos, 1.0);
-    gl_Position = bary.x * gl_in[0].gl_Position
-                + bary.y * gl_in[1].gl_Position
-                + bary.z * gl_in[2].gl_Position;
+    // Use composed terrainMVP: MC2 world coords -> OpenGL NDC
+    gl_Position = terrainMVP * vec4(worldPos, 1.0);
 }
