@@ -1178,6 +1178,7 @@ class gosRenderer {
 		void drawIndexedTris(HGOSBUFFER ib, HGOSBUFFER vb, HGOSVERTEXDECLARATION vdecl, const float* mvp);
 		void drawIndexedTris(HGOSBUFFER ib, HGOSBUFFER vb, HGOSVERTEXDECLARATION vdecl);
         void drawText(const char* text);
+        void terrainDrawIndexedPatches(gosRenderMaterial* material, gosMesh* mesh);
 
         void beginFrame();
         void endFrame();
@@ -1902,6 +1903,73 @@ void gosRenderer::drawTris(gos_VERTEX* vertices, int count) {
     afterDrawCall();
 }
 
+void gosRenderer::terrainDrawIndexedPatches(gosRenderMaterial* material, gosMesh* mesh) {
+    int nv = mesh->getNumVertices();
+    int ni = mesh->getNumIndices();
+    if (nv == 0) return;
+
+    // Upload main VBO + IBO
+    mesh->uploadBuffers();
+
+    // Upload terrain extra VBO
+    updateBuffer(terrain_extra_vb_, GL_ARRAY_BUFFER,
+        terrain_extra_data_, terrain_extra_count_ * sizeof(gos_TERRAIN_EXTRA), GL_DYNAMIC_DRAW);
+
+    material->apply();
+    material->setSamplerUnit(gosMesh::s_tex1, 0);
+
+    // Set tessellation uniforms
+    float tessParams[4] = { terrain_tess_level_, terrain_tess_level_, 0.0f, 0.0f };
+    material->getShader()->setFloat4("tessLevel", tessParams);
+    float tessDist[4] = { terrain_tess_dist_near_, terrain_tess_dist_far_, 0.0f, 0.0f };
+    material->getShader()->setFloat4("tessDistanceRange", tessDist);
+    float tessDisp[4] = { terrain_phong_alpha_, terrain_displace_scale_, 0.0f, 0.0f };
+    material->getShader()->setFloat4("tessDisplace", tessDisp);
+
+    // Bind main VBO and set standard vertex attribs
+    glBindBuffer(GL_ARRAY_BUFFER, mesh->getVB());
+    glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, mesh->getIB());
+    material->applyVertexDeclaration();
+
+    // Bind extra VBO for world pos + normal (locations 4-5)
+    glBindBuffer(GL_ARRAY_BUFFER, terrain_extra_vb_);
+    GLint worldPosLoc = glGetAttribLocation(material->getShader()->shp_, "worldPos");
+    GLint worldNormLoc = glGetAttribLocation(material->getShader()->shp_, "worldNorm");
+    if (worldPosLoc >= 0) {
+        glEnableVertexAttribArray(worldPosLoc);
+        glVertexAttribPointer(worldPosLoc, 3, GL_FLOAT, GL_FALSE,
+            sizeof(gos_TERRAIN_EXTRA), (void*)0);
+    }
+    if (worldNormLoc >= 0) {
+        glEnableVertexAttribArray(worldNormLoc);
+        glVertexAttribPointer(worldNormLoc, 3, GL_FLOAT, GL_FALSE,
+            sizeof(gos_TERRAIN_EXTRA), (void*)(3 * sizeof(float)));
+    }
+
+    // Wireframe overlay
+    if (terrain_wireframe_) {
+        glPolygonMode(GL_FRONT_AND_BACK, GL_LINE);
+    }
+
+    // Set patch vertices and draw
+    glPatchParameteri(GL_PATCH_VERTICES, 3);
+    glDrawElements(GL_PATCHES, ni,
+        mesh->getIndexSizeBytes() == 2 ? GL_UNSIGNED_SHORT : GL_UNSIGNED_INT, NULL);
+
+    // Cleanup
+    if (worldPosLoc >= 0) glDisableVertexAttribArray(worldPosLoc);
+    if (worldNormLoc >= 0) glDisableVertexAttribArray(worldNormLoc);
+
+    material->endVertexDeclaration();
+    material->end();
+    glBindBuffer(GL_ARRAY_BUFFER, 0);
+    glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, 0);
+
+    if (terrain_wireframe_) {
+        glPolygonMode(GL_FRONT_AND_BACK, GL_FILL);
+    }
+}
+
 void gosRenderer::drawIndexedTris(gos_VERTEX* vertices, int num_vertices, WORD* indices, int num_indices) {
     gosASSERT(vertices && indices);
 
@@ -1921,7 +1989,7 @@ void gosRenderer::drawIndexedTris(gos_VERTEX* vertices, int num_vertices, WORD* 
 		mat->setFogColor(fog_color_);
         indexed_tris_->drawIndexed(mat);
         indexed_tris_->rewind();
-    } 
+    }
 
     gosASSERT(indexed_tris_->getNumVertices() + num_vertices <= indexed_tris_->getVertexCapacity());
     gosASSERT(indexed_tris_->getNumIndices() + num_indices <= indexed_tris_->getIndexCapacity());
@@ -1931,13 +1999,25 @@ void gosRenderer::drawIndexedTris(gos_VERTEX* vertices, int num_vertices, WORD* 
     // for now draw anyway because no render state saved for draw calls
     applyRenderStates();
 
-    gosRenderMaterial* mat = selectBasicRenderMaterial(curStates_);
-    gosASSERT(mat);
+    // Terrain tessellation path: use terrain shader + GL_PATCHES
+    if (curStates_[gos_State_Terrain] && terrain_material_ && terrain_extra_count_ > 0) {
+        gosRenderMaterial* tmat = terrain_material_;
+        tmat->setTransform(projection_);
+        tmat->setFogColor(fog_color_);
+        if (terrain_mvp_valid_) {
+            tmat->getShader()->setMat4("terrainMVP", terrain_mvp_);
+        }
+        terrainDrawIndexedPatches(tmat, indexed_tris_);
+        indexed_tris_->rewind();
+    } else {
+        gosRenderMaterial* mat = selectBasicRenderMaterial(curStates_);
+        gosASSERT(mat);
 
-    mat->setTransform(projection_);
-    mat->setFogColor(fog_color_);
-    indexed_tris_->drawIndexed(mat);
-    indexed_tris_->rewind();
+        mat->setTransform(projection_);
+        mat->setFogColor(fog_color_);
+        indexed_tris_->drawIndexed(mat);
+        indexed_tris_->rewind();
+    }
 
     afterDrawCall();
 }
