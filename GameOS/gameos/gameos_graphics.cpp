@@ -2048,8 +2048,15 @@ void gosRenderer::drawIndexedTris(gos_VERTEX* vertices, int num_vertices, WORD* 
     // for now draw anyway because no render state saved for draw calls
     applyRenderStates();
 
-    // Terrain tessellation path: use terrain shader + GL_PATCHES
+    // Terrain tessellation path
     static int tess_trace_count_ = 0;
+    static bool tess_init_trace_ = false;
+    if (curStates_[gos_State_Terrain] && !tess_init_trace_) {
+        tess_init_trace_ = true;
+        printf("[TESS] INIT CHECK: terrain_material_=%p extra_count=%d mvp_valid=%d\n",
+            (void*)terrain_material_, terrain_extra_count_, terrain_mvp_valid_ ? 1 : 0);
+        fflush(stdout);
+    }
     if (curStates_[gos_State_Terrain] && terrain_material_ && terrain_extra_count_ > 0) {
         if (tess_trace_count_++ < 5) {
             printf("[TESS] DRAW: verts=%d idx=%d extra=%d mvp_valid=%d\n",

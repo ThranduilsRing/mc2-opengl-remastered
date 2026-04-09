@@ -72,8 +72,11 @@ bool get_shader_error_status(GLuint shader, GLenum status_type)
         buf = new char[len];
 
         glGetShaderInfoLog(shader, len, &len2, buf);
-        if(len2!=0)
+        if(len2!=0) {
             log_error("CompileShader: %s\n", buf);
+            printf("[SHADER ERROR] CompileShader: %s\n", buf);
+            fflush(stdout);
+        }
 		delete[] buf;
 
         return true;
@@ -95,9 +98,11 @@ bool get_program_error_status(GLuint program, GLenum status_type)
         buf = new char[len];
 
         glGetProgramInfoLog(program, len, &len2, buf);
-        if(len2!=0)
-            log_error("CompileShader: %s\n", buf);
-
+        if(len2!=0) {
+            log_error("LinkProgram: %s\n", buf);
+            printf("[SHADER ERROR] LinkProgram: %s\n", buf);
+            fflush(stdout);
+        }
 		delete[] buf;
         return true;
     }
