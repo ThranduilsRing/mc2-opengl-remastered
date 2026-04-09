@@ -1472,6 +1472,7 @@ void gosRenderer::init() {
 
     // Load terrain tessellation material (TCS/TES shaders)
     {
+        printf("[TESS] About to load terrain shader...\n"); fflush(stdout);
         gosMaterialVariation mvar;
         terrain_material_ = gosRenderMaterial::load("gos_terrain", mvar);
         if (terrain_material_) {
@@ -1480,6 +1481,7 @@ void gosRenderer::init() {
         } else {
             printf("[TESS] WARNING: Terrain material failed to load — tessellation disabled\n");
         }
+        fflush(stdout);
     }
 }
 
