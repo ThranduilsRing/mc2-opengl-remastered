@@ -1949,17 +1949,39 @@ void gosRenderer::terrainDrawIndexedPatches(gosRenderMaterial* material, gosMesh
     updateBuffer(terrain_extra_vb_, GL_ARRAY_BUFFER,
         terrain_extra_data_, terrain_extra_count_ * sizeof(gos_TERRAIN_EXTRA), GL_DYNAMIC_DRAW);
 
-    // Set tessellation uniforms BEFORE apply() — apply uploads all dirty uniforms
-    float tessParams[4] = { terrain_tess_level_, terrain_tess_level_, 0.0f, 0.0f };
-    material->getShader()->setFloat4("tessLevel", tessParams);
-    float tessDist[4] = { terrain_tess_dist_near_, terrain_tess_dist_far_, 0.0f, 0.0f };
-    material->getShader()->setFloat4("tessDistanceRange", tessDist);
-    float tessDisp[4] = { terrain_phong_alpha_, terrain_displace_scale_, 0.0f, 0.0f };
-    material->getShader()->setFloat4("tessDisplace", tessDisp);
-    material->getShader()->setFloat4("cameraPos", (const float*)&terrain_camera_pos_);
-
+    // Apply shader first (glUseProgram + upload cached uniforms)
     material->apply();
     material->setSamplerUnit(gosMesh::s_tex1, 0);
+
+    // Set tessellation uniforms via direct GL calls (bypass uniform cache)
+    GLuint shp = material->getShader()->shp_;
+    float tessParams[4] = { terrain_tess_level_, terrain_tess_level_, 0.0f, 0.0f };
+    float tessDist[4] = { terrain_tess_dist_near_, terrain_tess_dist_far_, 0.0f, 0.0f };
+    float tessDisp[4] = { terrain_phong_alpha_, terrain_displace_scale_, 0.0f, 0.0f };
+
+    GLint loc;
+    loc = glGetUniformLocation(shp, "tessLevel");
+    if (loc >= 0) glUniform4fv(loc, 1, tessParams);
+    loc = glGetUniformLocation(shp, "tessDistanceRange");
+    if (loc >= 0) glUniform4fv(loc, 1, tessDist);
+    loc = glGetUniformLocation(shp, "tessDisplace");
+    if (loc >= 0) glUniform4fv(loc, 1, tessDisp);
+    loc = glGetUniformLocation(shp, "cameraPos");
+    if (loc >= 0) glUniform4fv(loc, 1, (const float*)&terrain_camera_pos_);
+
+    static bool tess_uniform_trace_ = false;
+    if (!tess_uniform_trace_) {
+        tess_uniform_trace_ = true;
+        printf("[TESS] Uniform locations: tessLevel=%d tessDistRange=%d tessDisp=%d camPos=%d\n",
+            glGetUniformLocation(shp, "tessLevel"),
+            glGetUniformLocation(shp, "tessDistanceRange"),
+            glGetUniformLocation(shp, "tessDisplace"),
+            glGetUniformLocation(shp, "cameraPos"));
+        printf("[TESS] Values: tessLevel=%.1f distNear=%.0f distFar=%.0f phong=%.2f camPos=%.0f,%.0f,%.0f\n",
+            terrain_tess_level_, terrain_tess_dist_near_, terrain_tess_dist_far_,
+            terrain_phong_alpha_, terrain_camera_pos_.x, terrain_camera_pos_.y, terrain_camera_pos_.z);
+        fflush(stdout);
+    }
 
     // Bind main VBO and set standard vertex attribs
     glBindBuffer(GL_ARRAY_BUFFER, mesh->getVB());

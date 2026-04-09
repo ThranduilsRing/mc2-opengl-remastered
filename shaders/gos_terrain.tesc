@@ -46,21 +46,11 @@ void main()
         float d20 = distance(cameraPos.xyz, mid20);
         float dc  = distance(cameraPos.xyz, center);
 
-        float dNear = tessDistanceRange.x;
-        float dFar  = tessDistanceRange.y;
+        // Use tessLevel uniform directly — distance LOD disabled until extra VBO alignment is fixed
         float tLevel = max(tessLevel.x, 1.0);
-
-        // If cameraPos is zero (not set), default to tess level 1
-        if (length(cameraPos.xyz) < 0.001) {
-            gl_TessLevelOuter[0] = 1.0;
-            gl_TessLevelOuter[1] = 1.0;
-            gl_TessLevelOuter[2] = 1.0;
-            gl_TessLevelInner[0] = 1.0;
-        } else {
-            gl_TessLevelOuter[0] = mix(tLevel, 1.0, smoothstep(dNear, dFar, d12));
-            gl_TessLevelOuter[1] = mix(tLevel, 1.0, smoothstep(dNear, dFar, d20));
-            gl_TessLevelOuter[2] = mix(tLevel, 1.0, smoothstep(dNear, dFar, d01));
-            gl_TessLevelInner[0] = mix(tLevel, 1.0, smoothstep(dNear, dFar, dc));
-        }
+        gl_TessLevelOuter[0] = tLevel;
+        gl_TessLevelOuter[1] = tLevel;
+        gl_TessLevelOuter[2] = tLevel;
+        gl_TessLevelInner[0] = tLevel;
     }
 }
