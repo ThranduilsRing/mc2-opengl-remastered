@@ -227,13 +227,25 @@ class gosRenderMaterial {
             std::string sh_name = shader;
             sh_name.append(mvar.getUniqueSuffix());
 
-            pmat->program_ = glsl_program::makeProgram(sh_name.c_str(), vs, ps, mvar.getDefinesString());
+            // Terrain gets TCS/TES for tessellation
+            if (strcmp(shader, "gos_terrain") == 0) {
+                char tcs[256], tes[256];
+                StringFormat(tcs, 255, "shaders/%s.tesc", shader);
+                StringFormat(tes, 255, "shaders/%s.tese", shader);
+                printf("[TESS] Loading terrain shader with TCS=%s TES=%s\n", tcs, tes);
+                pmat->program_ = glsl_program::makeProgram2(sh_name.c_str(),
+                    vs, tcs, tes, nullptr, ps, 0, nullptr, mvar.getDefinesString());
+            } else {
+                pmat->program_ = glsl_program::makeProgram(sh_name.c_str(), vs, ps, mvar.getDefinesString());
+            }
+
             if(!pmat->program_) {
                 SPEW(("SHADERS", "Failed to create %s material\n", shader));
+                printf("[TESS] FAILED to create shader: %s\n", shader);
                 delete pmat;
                 return NULL;
             }
-            
+
             pmat->name_ = new char[strlen(shader) + 1];
             strcpy(pmat->name_, shader);
 
@@ -1453,6 +1465,18 @@ void gosRenderer::init() {
     terrain_extra_vb_ = makeBuffer(GL_ARRAY_BUFFER, 0,
         sizeof(gos_TERRAIN_EXTRA) * terrain_extra_capacity_, GL_DYNAMIC_DRAW);
     printf("[TESS] Extra VBO created: capacity=%d vb=%u\n", terrain_extra_capacity_, terrain_extra_vb_);
+
+    // Load terrain tessellation material (TCS/TES shaders)
+    {
+        gosMaterialVariation mvar;
+        terrain_material_ = gosRenderMaterial::load("gos_terrain", mvar);
+        if (terrain_material_) {
+            materialList_.push_back(terrain_material_);
+            printf("[TESS] Terrain material loaded successfully\n");
+        } else {
+            printf("[TESS] WARNING: Terrain material failed to load — tessellation disabled\n");
+        }
+    }
 }
 
 void gosRenderer::destroy() {
