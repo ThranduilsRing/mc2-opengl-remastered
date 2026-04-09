@@ -131,6 +131,10 @@ PREC vec2 parallaxMapping(PREC vec2 uv, PREC vec3 viewDirTS, PREC float scale, P
 
 void main(void)
 {
+    // DEBUG: solid magenta to test if geometry is visible
+    FragColor = vec4(1.0, 0.0, 1.0, 1.0);
+    return;
+
     PREC vec4 texColor = texture(tex1, Texcoord);
 
 #ifdef ALPHA_TEST

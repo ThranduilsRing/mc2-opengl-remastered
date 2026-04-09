@@ -143,10 +143,60 @@ void GameCamera::render (void)
 	{
 		//----------------------------------------------------------
 		// Turn stuff on line by line until perspective is working.
-		
+
+		// Compose terrainMVP: MC2 world coords -> OpenGL NDC
+		// Chain: axisSwap -> worldToClip -> orthoViewport -> projection_
+		{
+			const float* W = (const float*)&worldToClip;
+			#define WTC(r,c) W[(c)*4+(r)]
+
+			// Axis swap: (-x, z, y) per projectZ()
+			float AW[4][4];
+			for (int j = 0; j < 4; j++) {
+				AW[0][j] = -WTC(0,j);
+				AW[1][j] =  WTC(2,j);
+				AW[2][j] =  WTC(1,j);
+				AW[3][j] =  WTC(3,j);
+			}
+
+			// Viewport+projection for ortho:
+			// ndc.x = -2*vmx/w * clip.x + (2*(vmx+vax)/w - 1)
+			// ndc.y =  2*vmy/h * clip.y + (1 - 2*(vmy+vay)/h)
+			// ndc.z = clip.z, ndc.w = 1
+			float w = (float)Environment.screenWidth;
+			float h = (float)Environment.screenHeight;
+			float vmx = viewMulX, vmy = viewMulY, vax = viewAddX, vay = viewAddY;
+
+			float VP[4][4] = {
+				{-2.0f*vmx/w, 0.0f,        0.0f, 0.0f},
+				{0.0f,        2.0f*vmy/h,   0.0f, 0.0f},
+				{0.0f,        0.0f,         1.0f, 0.0f},
+				{2.0f*(vmx+vax)/w - 1.0f, 1.0f - 2.0f*(vmy+vay)/h, 0.0f, 1.0f}
+			};
+
+			// terrainMVP = AW * VP (row-major, for GLSL M*v after GL_TRUE transpose)
+			float M[16];
+			for (int i = 0; i < 4; i++) {
+				for (int jj = 0; jj < 4; jj++) {
+					float sum = 0.0f;
+					for (int k = 0; k < 4; k++)
+						sum += AW[i][k] * VP[k][jj];
+					M[i*4+jj] = sum;
+				}
+			}
+
+			gos_SetTerrainMVP(M);
+
+			// Camera position in MC2 world space for TCS distance LOD
+			Stuff::Vector3D camOrig = getCameraOrigin();
+			gos_SetTerrainCameraPos(camOrig.x, camOrig.y, camOrig.z);
+
+			#undef WTC
+		}
+
 		if (Environment.Renderer != 3)
 			theSky->render(1);
-		
+
 		land->render();								//render the Terrain
 
 		if (Environment.Renderer != 3)

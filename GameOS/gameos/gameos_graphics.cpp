@@ -2034,7 +2034,14 @@ void gosRenderer::drawIndexedTris(gos_VERTEX* vertices, int num_vertices, WORD* 
     applyRenderStates();
 
     // Terrain tessellation path: use terrain shader + GL_PATCHES
+    static int tess_trace_count_ = 0;
     if (curStates_[gos_State_Terrain] && terrain_material_ && terrain_extra_count_ > 0) {
+        if (tess_trace_count_++ < 5) {
+            printf("[TESS] DRAW: verts=%d idx=%d extra=%d mvp_valid=%d\n",
+                indexed_tris_->getNumVertices(), indexed_tris_->getNumIndices(),
+                terrain_extra_count_, terrain_mvp_valid_ ? 1 : 0);
+            fflush(stdout);
+        }
         gosRenderMaterial* tmat = terrain_material_;
         tmat->setTransform(projection_);
         tmat->setFogColor(fog_color_);
@@ -2044,6 +2051,12 @@ void gosRenderer::drawIndexedTris(gos_VERTEX* vertices, int num_vertices, WORD* 
         terrainDrawIndexedPatches(tmat, indexed_tris_);
         indexed_tris_->rewind();
     } else {
+        static int basic_trace_count_ = 0;
+        if (curStates_[gos_State_Terrain] && basic_trace_count_++ < 5) {
+            printf("[TESS] FALLBACK: terrain=%d mat=%p extra=%d\n",
+                (int)curStates_[gos_State_Terrain], (void*)terrain_material_, terrain_extra_count_);
+            fflush(stdout);
+        }
         gosRenderMaterial* mat = selectBasicRenderMaterial(curStates_);
         gosASSERT(mat);
 
