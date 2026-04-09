@@ -46,14 +46,9 @@ void main()
         float d20 = distance(cameraPos.xyz, mid20);
         float dc  = distance(cameraPos.xyz, center);
 
-        float near = tessDistanceRange.x;
-        float far  = tessDistanceRange.y;
-        float maxTess = tessLevel.x;
-
-        // Distance-based LOD with fallback for missing cameraPos
         float dNear = tessDistanceRange.x;
         float dFar  = tessDistanceRange.y;
-        float maxTess = max(tessLevel.x, 1.0);
+        float tLevel = max(tessLevel.x, 1.0);
 
         // If cameraPos is zero (not set), default to tess level 1
         if (length(cameraPos.xyz) < 0.001) {
@@ -62,12 +57,10 @@ void main()
             gl_TessLevelOuter[2] = 1.0;
             gl_TessLevelInner[0] = 1.0;
         } else {
-            // Outer edges — computed per-edge for crack-free adjacency
-            gl_TessLevelOuter[0] = mix(maxTess, 1.0, smoothstep(dNear, dFar, d12));
-            gl_TessLevelOuter[1] = mix(maxTess, 1.0, smoothstep(dNear, dFar, d20));
-            gl_TessLevelOuter[2] = mix(maxTess, 1.0, smoothstep(dNear, dFar, d01));
-            // Inner level from center distance
-            gl_TessLevelInner[0] = mix(maxTess, 1.0, smoothstep(dNear, dFar, dc));
+            gl_TessLevelOuter[0] = mix(tLevel, 1.0, smoothstep(dNear, dFar, d12));
+            gl_TessLevelOuter[1] = mix(tLevel, 1.0, smoothstep(dNear, dFar, d20));
+            gl_TessLevelOuter[2] = mix(tLevel, 1.0, smoothstep(dNear, dFar, d01));
+            gl_TessLevelInner[0] = mix(tLevel, 1.0, smoothstep(dNear, dFar, dc));
         }
     }
 }
