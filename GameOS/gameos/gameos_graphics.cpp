@@ -453,6 +453,20 @@ class gosMesh {
 
         int getIndexSizeBytes() const { return sizeof(INDEX_TYPE); }
 
+        GLuint getVB() const { return vb_; }
+        GLuint getIB() const { return ib_; }
+
+        void uploadBuffers() {
+            if (num_vertices_ > 0) {
+                updateBuffer(vb_, GL_ARRAY_BUFFER, pvertex_data_,
+                    num_vertices_ * sizeof(gos_VERTEX), GL_DYNAMIC_DRAW);
+            }
+            if (num_indices_ > 0) {
+                updateBuffer(ib_, GL_ELEMENT_ARRAY_BUFFER, pindex_data_,
+                    num_indices_ * sizeof(INDEX_TYPE), GL_DYNAMIC_DRAW);
+            }
+        }
+
         void rewind() { num_vertices_ = 0; num_indices_ = 0; }
 
         void draw(gosRenderMaterial* material) const;
@@ -1188,6 +1202,50 @@ class gosRenderer {
 
 		void handleEvents();
 
+        // Terrain tessellation
+        void setTerrainTessParams(float level, float near_dist, float far_dist) {
+            terrain_tess_level_ = level;
+            terrain_tess_dist_near_ = near_dist;
+            terrain_tess_dist_far_ = far_dist;
+            printf("[TESS] level=%.1f distNear=%.0f distFar=%.0f\n", level, near_dist, far_dist);
+        }
+        void setTerrainPhongAlpha(float a) {
+            terrain_phong_alpha_ = a;
+            printf("[TESS] phongAlpha=%.2f\n", a);
+        }
+        void setTerrainDisplaceScale(float s) {
+            terrain_displace_scale_ = s;
+            printf("[TESS] displaceScale=%.3f\n", s);
+        }
+        void setTerrainWireframe(bool w) {
+            terrain_wireframe_ = w;
+            printf("[TESS] wireframe=%s\n", w ? "ON" : "OFF");
+        }
+        void setTerrainMVP(const float* m) {
+            memcpy(&terrain_mvp_, m, 16 * sizeof(float));
+            terrain_mvp_valid_ = true;
+        }
+
+        void terrainExtraReset() { terrain_extra_count_ = 0; }
+        void terrainExtraAdd(const gos_TERRAIN_EXTRA* data, int count) {
+            if (terrain_extra_count_ + count <= terrain_extra_capacity_) {
+                memcpy(terrain_extra_data_ + terrain_extra_count_, data, sizeof(gos_TERRAIN_EXTRA) * count);
+                terrain_extra_count_ += count;
+            }
+        }
+        int getTerrainExtraCount() const { return terrain_extra_count_; }
+        float getTerrainTessLevel() const { return terrain_tess_level_; }
+        float getTerrainTessDistNear() const { return terrain_tess_dist_near_; }
+        float getTerrainTessDistFar() const { return terrain_tess_dist_far_; }
+        float getTerrainPhongAlpha() const { return terrain_phong_alpha_; }
+        float getTerrainDisplaceScale() const { return terrain_displace_scale_; }
+        bool getTerrainWireframe() const { return terrain_wireframe_; }
+        GLuint getTerrainExtraVB() const { return terrain_extra_vb_; }
+        gos_TERRAIN_EXTRA* getTerrainExtraData() const { return terrain_extra_data_; }
+        bool isTerrainMVPValid() const { return terrain_mvp_valid_; }
+        const mat4& getTerrainMVP() const { return terrain_mvp_; }
+        gosRenderMaterial* getTerrainMaterial() const { return terrain_material_; }
+
     private:
 
         bool beforeDrawCall();
@@ -1276,6 +1334,26 @@ class gosRenderer {
         bool break_on_draw_call_;
         uint32_t break_draw_call_num_;
 
+        // Tessellation
+        float terrain_tess_level_ = 4.0f;          // base inner/outer tessellation factor
+        float terrain_tess_dist_near_ = 200.0f;    // full tess below this distance
+        float terrain_tess_dist_far_ = 2000.0f;    // tess=1 beyond this distance
+        float terrain_phong_alpha_ = 0.5f;         // Phong smoothing strength
+        float terrain_displace_scale_ = 0.0f;      // displacement amplitude (start at 0 = off)
+        bool terrain_wireframe_ = false;            // wireframe overlay toggle
+
+        // Terrain extra VBO for world pos + normal
+        GLuint terrain_extra_vb_ = 0;
+        gos_TERRAIN_EXTRA* terrain_extra_data_ = nullptr;
+        int terrain_extra_count_ = 0;
+        int terrain_extra_capacity_ = 0;
+
+        // Terrain tessellation MVP (world-to-NDC)
+        mat4 terrain_mvp_;
+        bool terrain_mvp_valid_ = false;
+
+        // Terrain tessellation material
+        gosRenderMaterial* terrain_material_ = nullptr;
 };
 
 const std::string gosRenderer::s_Foreground = std::string("Foreground");
@@ -1367,6 +1445,13 @@ void gosRenderer::init() {
     gosASSERT(tex_id == INVALID_TEXTURE_ID);
 
 	fog_color_ = vec4(1.0f, 1.0f, 1.0f, 1.0f);
+
+    // Terrain tessellation extra VBO
+    terrain_extra_capacity_ = 1024 * 30;  // match indexed_tris capacity
+    terrain_extra_data_ = new gos_TERRAIN_EXTRA[terrain_extra_capacity_];
+    terrain_extra_vb_ = makeBuffer(GL_ARRAY_BUFFER, 0,
+        sizeof(gos_TERRAIN_EXTRA) * terrain_extra_capacity_, GL_DYNAMIC_DRAW);
+    printf("[TESS] Extra VBO created: capacity=%d vb=%u\n", terrain_extra_capacity_, terrain_extra_vb_);
 }
 
 void gosRenderer::destroy() {
@@ -1393,6 +1478,12 @@ void gosRenderer::destroy() {
         delete textureList_[i];
     }
     textureList_.clear();
+
+    // Terrain tessellation cleanup
+    delete[] terrain_extra_data_;
+    terrain_extra_data_ = nullptr;
+    if (terrain_extra_vb_) { glDeleteBuffers(1, &terrain_extra_vb_); terrain_extra_vb_ = 0; }
+    if (terrain_material_) { gosRenderMaterial::destroy(terrain_material_); terrain_material_ = nullptr; }
 
     glDeleteVertexArrays(1, &gVAO);
 
@@ -1578,6 +1669,11 @@ void gosRenderer::applyRenderStates() {
        }
        curStates_[tex_states[i]] = gosTextureHandle;
    }
+
+   ////////////////////////////////////////////////////////////////////////////////
+   // Terrain tessellation flag — copy then auto-reset to prevent bleed to non-terrain draws
+   curStates_[gos_State_Terrain] = renderStates_[gos_State_Terrain];
+   renderStates_[gos_State_Terrain] = 0;
 
 }
 
@@ -2827,5 +2923,28 @@ void __stdcall gos_SetCommonMaterialParameters(HGOSRENDERMATERIAL material)
 	gos_SetRenderMaterialParameterFloat4(material, "vp", vp);
 }
 
+
+// Terrain tessellation API
+void __stdcall gos_SetTerrainTessParams(float level, float near_dist, float far_dist) {
+    if (g_gos_renderer) g_gos_renderer->setTerrainTessParams(level, near_dist, far_dist);
+}
+void __stdcall gos_SetTerrainPhongAlpha(float a) {
+    if (g_gos_renderer) g_gos_renderer->setTerrainPhongAlpha(a);
+}
+void __stdcall gos_SetTerrainDisplaceScale(float s) {
+    if (g_gos_renderer) g_gos_renderer->setTerrainDisplaceScale(s);
+}
+void __stdcall gos_SetTerrainWireframe(bool w) {
+    if (g_gos_renderer) g_gos_renderer->setTerrainWireframe(w);
+}
+void __stdcall gos_TerrainExtraReset() {
+    if (g_gos_renderer) g_gos_renderer->terrainExtraReset();
+}
+void __stdcall gos_TerrainExtraAdd(const gos_TERRAIN_EXTRA* data, int count) {
+    if (g_gos_renderer) g_gos_renderer->terrainExtraAdd(data, count);
+}
+void __stdcall gos_SetTerrainMVP(const float* matrix16) {
+    if (g_gos_renderer) g_gos_renderer->setTerrainMVP(matrix16);
+}
 
 #include "gameos_graphics_debug.cpp"

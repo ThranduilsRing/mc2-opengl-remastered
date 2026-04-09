@@ -2106,6 +2106,8 @@ enum gos_RenderState
 
 	gos_State_VertexBlend,		// Default: 0						Number of blend weights in each vertex to blend (Only 0 or 1 valid currently)
 
+	gos_State_Terrain,			// Default: 0						true/false - terrain draw with tessellation shader
+
 	gos_MaxState				// Marker for last render state
 };
 
@@ -2130,6 +2132,13 @@ typedef struct
 	float u,v;					// Texture coordinates
 
 } gos_VERTEX;
+
+// Extra per-vertex terrain data for tessellation (world pos + normal)
+// Stored in a separate VBO, bound alongside gos_VERTEX at draw time
+typedef struct {
+    float wx, wy, wz;    // world-space position (from Vertex::vx, vy, elevation)
+    float nx, ny, nz;    // vertex normal (from PostcompVertex::vertexNormal)
+} gos_TERRAIN_EXTRA;
 
 //
 // This vertex type is used for rendering with 2 textures at once, it is identical to the normal vertex structure, but with 2 u,v's
@@ -2243,6 +2252,15 @@ void __stdcall gos_RenderIndexedArray(HGOSBUFFER ib, HGOSBUFFER vb, HGOSVERTEXDE
 
 void __stdcall gos_SetRenderViewport(float x, float y, float w, float h);
 void __stdcall gos_GetRenderViewport(float* x, float* y, float* w, float* h); //sebi
+
+// Terrain tessellation API
+void __stdcall gos_SetTerrainTessParams(float level, float near_dist, float far_dist);
+void __stdcall gos_SetTerrainPhongAlpha(float a);
+void __stdcall gos_SetTerrainDisplaceScale(float s);
+void __stdcall gos_SetTerrainWireframe(bool w);
+void __stdcall gos_TerrainExtraReset();
+void __stdcall gos_TerrainExtraAdd(const gos_TERRAIN_EXTRA* data, int count);
+void __stdcall gos_SetTerrainMVP(const float* matrix16);
 
 //
 // Set a renderstate
