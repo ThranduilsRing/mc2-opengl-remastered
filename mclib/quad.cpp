@@ -49,6 +49,18 @@ DWORD TerrainQuad::blownTextureHandle = 0xffffffff;
 
 extern bool drawTerrainGrid;
 extern bool drawLOSGrid;
+
+// Fill terrain extra data for tessellation — called after each solid terrain addVertices
+static void fillTerrainExtra(VertexPtr v0, VertexPtr v1, VertexPtr v2) {
+    gos_TERRAIN_EXTRA textra[3];
+    textra[0].wx = v0->vx; textra[0].wy = v0->vy; textra[0].wz = v0->pVertex->elevation;
+    textra[0].nx = v0->pVertex->vertexNormal.x; textra[0].ny = v0->pVertex->vertexNormal.y; textra[0].nz = v0->pVertex->vertexNormal.z;
+    textra[1].wx = v1->vx; textra[1].wy = v1->vy; textra[1].wz = v1->pVertex->elevation;
+    textra[1].nx = v1->pVertex->vertexNormal.x; textra[1].ny = v1->pVertex->vertexNormal.y; textra[1].nz = v1->pVertex->vertexNormal.z;
+    textra[2].wx = v2->vx; textra[2].wy = v2->vy; textra[2].wz = v2->pVertex->elevation;
+    textra[2].nx = v2->pVertex->vertexNormal.x; textra[2].ny = v2->pVertex->vertexNormal.y; textra[2].nz = v2->pVertex->vertexNormal.z;
+    gos_TerrainExtraAdd(textra, 3);
+}
 //---------------------------------------------------------------------------
 //---------------------------------------------------------------------------
 // Class TerrainQuad
@@ -1503,13 +1515,16 @@ void TerrainQuad::draw (void)
 				{
 					// sebi: beware this will be drawn with alpha blending, so need to make sure that alpha is not zero, because this is a base terrain layer!
 					DWORD flags = isAlpha ? MC2_DRAWALPHA : 0;
-					if ((terrainDetailHandle == 0xffffffff) && (overlayHandle == 0xffffffff) && isCement)
+					if ((terrainDetailHandle == 0xffffffff) && (overlayHandle == 0xffffffff) && isCement) {
 						mcTextureManager->addVertices(terrainHandle,gVertex,MC2_ISTERRAIN | flags | MC2_ISCRATERS);
-					else {
-						if(terrainHandle!=0)
+						fillTerrainExtra(vertices[0], vertices[1], vertices[2]);
+					} else {
+						if(terrainHandle!=0) {
 							mcTextureManager->addVertices(terrainHandle,gVertex,MC2_ISTERRAIN | MC2_DRAWSOLID);
+							fillTerrainExtra(vertices[0], vertices[1], vertices[2]);
+						}
 					}
-																										 
+
 					//--------------------------------------------------------------
 					// Draw the Overlay Texture if it exists.
 					if (useOverlayTexture && (overlayHandle != 0xffffffff))
@@ -1630,13 +1645,16 @@ void TerrainQuad::draw (void)
 			{
 				{
 					DWORD flags = isAlpha ? MC2_DRAWALPHA : 0;
-					if ((terrainDetailHandle == 0xffffffff) && (overlayHandle == 0xffffffff) && isCement)
+					if ((terrainDetailHandle == 0xffffffff) && (overlayHandle == 0xffffffff) && isCement) {
 						mcTextureManager->addVertices(terrainHandle,gVertex,MC2_ISTERRAIN | flags | MC2_ISCRATERS);
-					else {
-						if(terrainHandle!=0)		
+						fillTerrainExtra(vertices[0], vertices[2], vertices[3]);
+					} else {
+						if(terrainHandle!=0) {
 							mcTextureManager->addVertices(terrainHandle,gVertex,MC2_ISTERRAIN | MC2_DRAWSOLID);
+							fillTerrainExtra(vertices[0], vertices[2], vertices[3]);
+						}
 					}
- 
+
 					//--------------------------------------------------------------
 					// Draw the Overlay Texture if it exists.
 					if (useOverlayTexture && (overlayHandle != 0xffffffff))
@@ -1772,26 +1790,29 @@ void TerrainQuad::draw (void)
 			{
 				{
 					DWORD flags = isAlpha ? MC2_DRAWALPHA : 0;
-					if ((terrainDetailHandle == 0xffffffff) && (overlayHandle == 0xffffffff) && isCement)
+					if ((terrainDetailHandle == 0xffffffff) && (overlayHandle == 0xffffffff) && isCement) {
 						mcTextureManager->addVertices(terrainHandle,gVertex,MC2_ISTERRAIN | flags | MC2_ISCRATERS);
-					else {
-						if(terrainHandle!=0)
+						fillTerrainExtra(vertices[0], vertices[1], vertices[3]);
+					} else {
+						if(terrainHandle!=0) {
 							mcTextureManager->addVertices(terrainHandle,gVertex,MC2_ISTERRAIN | MC2_DRAWSOLID);
+							fillTerrainExtra(vertices[0], vertices[1], vertices[3]);
+						}
 					}
- 
+
 					//----------------------------------------------------
 					// Draw the detail Texture
 					if (useWaterInterestTexture && (terrainDetailHandle != 0xffffffff))
 					{
 						gos_VERTEX sVertex[3];
 						memcpy(sVertex,gVertex,sizeof(gos_VERTEX)*3);
-		
+
 						float tilingFactor = Terrain::terrainTextures->getDetailTilingFactor(1);
 						if (Terrain::terrainTextures2)
 							tilingFactor = Terrain::terrainTextures2->getDetailTilingFactor();
-							
+
  						float oneOverTF		= tilingFactor / Terrain::worldUnitsMapSide;
-						
+
 						sVertex[0].u		= (vertices[0]->vx - Terrain::mapTopLeft3d.x) * oneOverTF;
 						sVertex[0].v		= (Terrain::mapTopLeft3d.y - vertices[0]->vy) * oneOverTF;
 		
@@ -1897,26 +1918,29 @@ void TerrainQuad::draw (void)
 			{
 				{
 					DWORD flags = isAlpha ? MC2_DRAWALPHA : 0;
-					if ((terrainDetailHandle == 0xffffffff) && (overlayHandle == 0xffffffff) && isCement)
+					if ((terrainDetailHandle == 0xffffffff) && (overlayHandle == 0xffffffff) && isCement) {
 						mcTextureManager->addVertices(terrainHandle,gVertex,MC2_ISTERRAIN | flags | MC2_ISCRATERS);
-					else {
-						if(terrainHandle!=0)
+						fillTerrainExtra(vertices[1], vertices[2], vertices[3]);
+					} else {
+						if(terrainHandle!=0) {
 							mcTextureManager->addVertices(terrainHandle,gVertex,MC2_ISTERRAIN | MC2_DRAWSOLID);
+							fillTerrainExtra(vertices[1], vertices[2], vertices[3]);
+						}
 					}
- 
+
 					//----------------------------------------------------
 					// Draw the detail Texture
 					if (useWaterInterestTexture && (terrainDetailHandle != 0xffffffff))
 					{
 						gos_VERTEX sVertex[3];
 						memcpy(sVertex,gVertex,sizeof(gos_VERTEX)*3);
-		
+
 						float tilingFactor = Terrain::terrainTextures->getDetailTilingFactor(1);
 						if (Terrain::terrainTextures2)
 							tilingFactor = Terrain::terrainTextures2->getDetailTilingFactor();
-							
+
  						float oneOverTf		= tilingFactor / Terrain::worldUnitsMapSide;
-						
+
 						sVertex[0].u		= (vertices[1]->vx - Terrain::mapTopLeft3d.x) * oneOverTf;
 						sVertex[0].v		= (Terrain::mapTopLeft3d.y - vertices[1]->vy) * oneOverTf;
 		

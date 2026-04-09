@@ -1048,10 +1048,13 @@ void MC_TextureManager::renderLists (void)
 		if ((masterVertexNodes[i].flags & MC2_DRAWSOLID) &&
 			(masterVertexNodes[i].vertices))
 		{
-			if (masterVertexNodes[i].flags & MC2_ISTERRAIN)
+			if (masterVertexNodes[i].flags & MC2_ISTERRAIN) {
 				gos_SetRenderState( gos_State_TextureAddress, gos_TextureClamp );
-			else
+				gos_SetRenderState( gos_State_Terrain, 1 );
+			} else {
 				gos_SetRenderState( gos_State_TextureAddress, gos_TextureWrap );
+				gos_SetRenderState( gos_State_Terrain, 0 );
+			}
 
 			DWORD totalVertices = masterVertexNodes[i].numVertices;
 			if (masterVertexNodes[i].currentVertex != (masterVertexNodes[i].vertices + masterVertexNodes[i].numVertices))
@@ -1661,6 +1664,9 @@ void MC_TextureManager::renderLists (void)
 
 	//Must turn zCompare back on for FXs
 	gos_SetRenderState( gos_State_ZCompare, 1 );
+
+	// Reset terrain extra buffer after rendering — will be re-filled during next frame's TerrainQuad::draw() calls
+	gos_TerrainExtraReset();
 }
 
 //----------------------------------------------------------------------
