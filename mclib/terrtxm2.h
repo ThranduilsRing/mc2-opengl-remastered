@@ -76,6 +76,13 @@ class TerrainColorMap
 		float					waterDetailFrameRate;
 		float					waterDetailTilingFactor;
 
+		// Normal map for terrain lighting
+		ColorMapTextures		*normalMapTextures;
+		DWORD					numNormalMapTextures;
+		DWORD					detailNormalNodeIndex;
+		bool					hasNormalMap;
+		long					lastResultTexture; // tile index from last getTextureHandle call
+
 		static DWORD			terrainTypeIDs[ TOTAL_COLORMAP_TYPES ];
 		
 	public:
@@ -110,6 +117,22 @@ class TerrainColorMap
 		void getColorMapData (MemoryPtr ourRAM, long index, long width);
 				
 		DWORD getTextureHandle (VertexPtr vMin, VertexPtr vMax, TerrainUVData *uvData);
+
+		DWORD getNormalMapHandle (long resultTexture) {
+			if (hasNormalMap && normalMapTextures && resultTexture >= 0 && resultTexture < (long)numNormalMapTextures) {
+				mcTextureManager->get_gosTextureHandle(normalMapTextures[resultTexture].mcTextureNodeIndex);
+				return normalMapTextures[resultTexture].mcTextureNodeIndex;
+			}
+			return 0xffffffff;
+		}
+
+		DWORD getDetailNormalHandle (void) {
+			if (detailNormalNodeIndex != 0xffffffff)
+				mcTextureManager->get_gosTextureHandle(detailNormalNodeIndex);
+			return detailNormalNodeIndex;
+		}
+
+		bool getHasNormalMap (void) { return hasNormalMap; }
 
 		DWORD getDetailHandle (void)
 		{

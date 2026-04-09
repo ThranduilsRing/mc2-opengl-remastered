@@ -1062,6 +1062,16 @@ void MC_TextureManager::renderLists (void)
 				totalVertices = masterVertexNodes[i].currentVertex - masterVertexNodes[i].vertices;
 			}
 
+			// Set per-node terrain extras for tessellation VBO alignment
+			if ((masterVertexNodes[i].flags & MC2_ISTERRAIN) && masterVertexNodes[i].extras) {
+				int extraCount = masterVertexNodes[i].currentExtra
+					? (int)(masterVertexNodes[i].currentExtra - masterVertexNodes[i].extras)
+					: 0;
+				gos_SetTerrainBatchExtras(masterVertexNodes[i].extras, extraCount);
+			} else {
+				gos_SetTerrainBatchExtras(NULL, 0);
+			}
+
 			if (totalVertices && (totalVertices < MAX_SENDDOWN))
 			{
 				gos_SetRenderState( gos_State_Texture, masterTextureNodes[masterVertexNodes[i].textureIndex].get_gosTextureHandle());
@@ -1070,7 +1080,7 @@ void MC_TextureManager::renderLists (void)
 			else if (totalVertices > MAX_SENDDOWN)
 			{
 				gos_SetRenderState( gos_State_Texture, masterTextureNodes[masterVertexNodes[i].textureIndex].get_gosTextureHandle());
-				
+
 				//Must divide up vertices into batches of 10,000 each to send down.
 				// Somewhere around 20000 to 30000 it really gets screwy!!!
 				long currentVertices = 0;
@@ -1080,9 +1090,9 @@ void MC_TextureManager::renderLists (void)
 					long tVertices = totalVertices - currentVertices;
 					if (tVertices > MAX_SENDDOWN)
 						tVertices = MAX_SENDDOWN;
-					
+
 					gos_RenderIndexedArray(v, tVertices, indexArray, tVertices );
-					
+
 					currentVertices += tVertices;
 				}
 			}
@@ -1148,7 +1158,7 @@ void MC_TextureManager::renderLists (void)
                     }
                 }
 
-                //Reset the list to zero length to avoid drawing more then once!			
+                //Reset the list to zero length to avoid drawing more then once!
                 //Also comes in handy if gameLogic is not called.
                 masterVertexNodes[i].currentVertex = masterVertexNodes[i].vertices;
             }
@@ -1169,7 +1179,7 @@ void MC_TextureManager::renderLists (void)
 	{
 		if ((masterVertexNodes[i].flags & MC2_ISTERRAIN) &&
 			!(masterVertexNodes[i].flags & MC2_DRAWALPHA) &&
-			(masterVertexNodes[i].flags & MC2_ISCRATERS) && 
+			(masterVertexNodes[i].flags & MC2_ISCRATERS) &&
 			(masterVertexNodes[i].vertices))
 		{
 			DWORD totalVertices = masterVertexNodes[i].numVertices;
@@ -1233,10 +1243,12 @@ void MC_TextureManager::renderLists (void)
         {
             if ((masterVertexNodes[i].flags & MC2_ISTERRAIN) &&
                     (masterVertexNodes[i].flags & MC2_DRAWALPHA) &&
-                    (masterVertexNodes[i].flags & MC2_ISCRATERS) && 
+                    (masterVertexNodes[i].flags & MC2_ISCRATERS) &&
                     (masterVertexNodes[i].flags & MC2_ALPHATEST)==states*MC2_ALPHATEST &&
                     (masterVertexNodes[i].vertices))
             {
+
+
                 DWORD totalVertices = masterVertexNodes[i].numVertices;
                 if (masterVertexNodes[i].currentVertex != (masterVertexNodes[i].vertices + masterVertexNodes[i].numVertices))
                 {

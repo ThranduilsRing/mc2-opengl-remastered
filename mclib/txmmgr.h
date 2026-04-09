@@ -76,6 +76,8 @@ typedef struct _MC_VertexArrayNode
 		long				numVertices;				//Number of vertices this texture will be used to draw this frame.
 		gos_VERTEX			*currentVertex;				//CurrentVertex data being added.
 		gos_VERTEX			*vertices;					//Pointer into the vertex Pool for this texture to draw.
+		gos_TERRAIN_EXTRA	*extras;					//Per-node terrain extra data (world pos + normal)
+		gos_TERRAIN_EXTRA	*currentExtra;				//Write pointer for terrain extra data
 
 	void init (void)
 	{
@@ -84,9 +86,13 @@ typedef struct _MC_VertexArrayNode
 		currentVertex = 0;
 		vertices = NULL;
 		textureIndex = 0;
+		extras = NULL;
+		currentExtra = NULL;
 	}
 
-	void destroy(void) {};							//Frees all blocks, free GOS_TextureHandle, blank all data.
+	void destroy(void) {
+		if (extras) { free(extras); extras = NULL; currentExtra = NULL; }
+	}
 
 } MC_VertexArrayNode;
 
@@ -1021,6 +1027,33 @@ class MC_TextureManager
 			}
 		}
 
+		// Add terrain extra data (world pos + normal) to the same node slot as addVertices
+		void addTerrainExtra (DWORD nodeId, const gos_TERRAIN_EXTRA *data, DWORD flags)
+		{
+			if (nodeId >= MC_MAXTEXTURES) return;
+			MC_VertexArrayNode *node = NULL;
+			if (masterTextureNodes[nodeId].vertexData &&
+				masterTextureNodes[nodeId].vertexData->flags == flags)
+				node = masterTextureNodes[nodeId].vertexData;
+			else if (masterTextureNodes[nodeId].vertexData2 &&
+					 masterTextureNodes[nodeId].vertexData2->flags == flags)
+				node = masterTextureNodes[nodeId].vertexData2;
+			else if (masterTextureNodes[nodeId].vertexData3 &&
+					 masterTextureNodes[nodeId].vertexData3->flags == flags)
+				node = masterTextureNodes[nodeId].vertexData3;
+			if (!node) return;
+
+			// Lazy-allocate extra block sized to match vertex capacity
+			if (!node->extras) {
+				node->extras = (gos_TERRAIN_EXTRA*)malloc(node->numVertices * sizeof(gos_TERRAIN_EXTRA));
+				node->currentExtra = node->extras;
+			}
+			if (node->currentExtra && node->currentExtra < (node->extras + node->numVertices)) {
+				memcpy(node->currentExtra, data, sizeof(gos_TERRAIN_EXTRA) * 3);
+				node->currentExtra += 3;
+			}
+		}
+
 		void addRenderShape(DWORD nodeId, TG_RenderShape* render_shape, DWORD flags);
 
         // returns index at which this light structure was added
@@ -1029,6 +1062,14 @@ class MC_TextureManager
 
 		void clearArrays (void)
 		{
+			// Free per-node terrain extra allocations before zeroing
+			for (long j=0;j<nextAvailableVertexNode;j++)
+			{
+				if (masterVertexNodes[j].extras) {
+					free(masterVertexNodes[j].extras);
+				}
+			}
+
 			for (long i=0;i<MC_MAXTEXTURES;i++)
 			{
 				masterTextureNodes[i].vertexData = NULL;
@@ -1042,7 +1083,7 @@ class MC_TextureManager
 
 			vertexData = vertexData2 = vertexData3 = vertexData4 = vertexData5 = NULL;
 			hardwareVertexData = hardwareVertexData2 = hardwareVertexData3 = hardwareVertexData4 = hardwareVertexData5 = NULL;
-			
+
 			memset(masterVertexNodes,0,sizeof(MC_VertexArrayNode)*MC_MAXTEXTURES);
 			memset(masterHardwareVertexNodes,0,sizeof(MC_HardwareVertexArrayNode)*MC_MAXTEXTURES);
 			

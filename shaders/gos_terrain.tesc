@@ -46,11 +46,16 @@ void main()
         float d20 = distance(cameraPos.xyz, mid20);
         float dc  = distance(cameraPos.xyz, center);
 
-        // Use tessLevel uniform directly — distance LOD disabled until extra VBO alignment is fixed
-        float tLevel = max(tessLevel.x, 1.0);
-        gl_TessLevelOuter[0] = tLevel;
-        gl_TessLevelOuter[1] = tLevel;
-        gl_TessLevelOuter[2] = tLevel;
-        gl_TessLevelInner[0] = tLevel;
+        float near = tessDistanceRange.x;
+        float far  = tessDistanceRange.y;
+        float maxTess = max(tessLevel.x, 1.0);
+
+        // Outer edges — computed per-edge from endpoint midpoints for crack-free seams
+        // Adjacent triangles sharing an edge compute the same tess level for that edge
+        gl_TessLevelOuter[0] = mix(maxTess, 1.0, smoothstep(near, far, d12));
+        gl_TessLevelOuter[1] = mix(maxTess, 1.0, smoothstep(near, far, d20));
+        gl_TessLevelOuter[2] = mix(maxTess, 1.0, smoothstep(near, far, d01));
+        // Inner level from center distance
+        gl_TessLevelInner[0] = mix(maxTess, 1.0, smoothstep(near, far, dc));
     }
 }

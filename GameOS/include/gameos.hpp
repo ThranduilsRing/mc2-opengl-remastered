@@ -2260,8 +2260,24 @@ void __stdcall gos_SetTerrainDisplaceScale(float s);
 void __stdcall gos_SetTerrainWireframe(bool w);
 void __stdcall gos_TerrainExtraReset();
 void __stdcall gos_TerrainExtraAdd(const gos_TERRAIN_EXTRA* data, int count);
+void __stdcall gos_SetTerrainBatchExtras(const gos_TERRAIN_EXTRA* extras, int count);
+void __stdcall gos_SetTerrainDebugMode(float mode);
+bool __stdcall gos_IsTerrainTessellationActive();
 void __stdcall gos_SetTerrainMVP(const float* matrix16);
+void __stdcall gos_SetTerrainViewport(float vmx, float vmy, float vax, float vay);
 void __stdcall gos_SetTerrainCameraPos(float x, float y, float z);
+
+// Terrain splatting API (material textures, lighting)
+void gos_SetTerrainLightDir(float x, float y, float z);
+void gos_SetTerrainDetailParams(float tiling, float strength);
+void gos_SetTerrainMaterialNormal(int index, unsigned int glTexId);
+void gos_SetTerrainWorldScale(float scale);
+void gos_SetTerrainCellBombParams(float scale, float jitter, float rotation);
+void gos_SetTerrainPOMParams(float scale, float minLayers, float maxLayers);
+unsigned int gos_CreateTerrainNormalTexture(const unsigned char* rgbaData, int width);
+void gos_SetTerrainDetailNormalTexture(unsigned int glTexId);
+void gos_SetTerrainDisplacementTexture(unsigned int glTexId);
+void gos_SetTerrainViewDir(float x, float y, float z);
 
 //
 // Set a renderstate

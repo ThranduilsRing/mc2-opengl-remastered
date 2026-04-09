@@ -49,8 +49,8 @@
 #include"platform_io.h"
 #include<sys/stat.h>
 
-#define COLOR_MAP_HEAP_SIZE				20480000
-#define COLOR_TXM_HEAP_SIZE				4096
+#define COLOR_MAP_HEAP_SIZE				419430400
+#define COLOR_TXM_HEAP_SIZE				16384
 #define COLOR_MAP_TEXTURE_SIZE			256
 #define COLOR_MAP_RES					float(COLOR_MAP_TEXTURE_SIZE)
 
@@ -103,6 +103,12 @@ void TerrainColorMap::init (void)
 	
 	hGauss = 5.0f;
 	roughDistance = -1.0f;
+
+	normalMapTextures = NULL;
+	numNormalMapTextures = 0;
+	detailNormalNodeIndex = 0xffffffff;
+	hasNormalMap = false;
+	lastResultTexture = -1;
 }
 
 void TerrainColorMap::destroy (void)
@@ -152,13 +158,13 @@ void TerrainColorMap::getColorMapData (MemoryPtr ourRAM, long index, long width)
 	long numWide = width / COLOR_MAP_TEXTURE_SIZE;
 
 	long startCol = ((index % numWide) * COLOR_MAP_TEXTURE_SIZE);
-
-	if (startCol > 0)
-		startCol-= (index % numWide);
-		
 	long startRow = ((index / numWide) * width * COLOR_MAP_TEXTURE_SIZE);
+
+	// 1px overlap into neighbor tile to hide seams (constant, not cumulative)
+	if (startCol > 0)
+		startCol -= 1;
 	if (startRow > 0)
-		startRow -= (index / numWide) * width;
+		startRow -= width;
 	
 	MemoryPtr ourColor = ColorMap + (startCol + startRow) * sizeof(DWORD);
 	
@@ -986,7 +992,11 @@ inline bool textureIsOKFormat (const char *fileName)
 			((tgaHeader.width == 32) ||
 			(tgaHeader.width == 64) ||
 			(tgaHeader.width == 128) ||
-			(tgaHeader.width == 256)))
+			(tgaHeader.width == 256) ||
+			(tgaHeader.width == 512) ||
+			(tgaHeader.width == 1024) ||
+			(tgaHeader.width == 2048) ||
+			(tgaHeader.width == 4096)))
 			return true;
 
 		tgaFile.close();
@@ -1649,7 +1659,7 @@ long TerrainColorMap::init (char *fileName)
 
 		colorMapHeap = new UserHeap;
 		colorMapHeap->init(COLOR_TXM_HEAP_SIZE,"ColorTXM");
-		
+
 		colorMapRAMHeap = new UserHeap;
 		colorMapRAMHeap->init(COLOR_MAP_HEAP_SIZE,"ColorMap");
 		
@@ -1682,7 +1692,7 @@ long TerrainColorMap::init (char *fileName)
 
 			ColorMap = (MemoryPtr)DecodeJPG(burnInJpg, jpgData, fileSize, &jpgColorMapWidth, &jpgColorMapHeight, false, NULL);
 
-			DWORD numTextures = jpgColorMapWidth / COLOR_MAP_TEXTURE_SIZE;
+			numTextures = jpgColorMapWidth / COLOR_MAP_TEXTURE_SIZE;
 			numTexturesAcross = numTextures;
 			fractionPerTexture = 1.0f / numTextures;
 			
@@ -1746,7 +1756,8 @@ long TerrainColorMap::init (char *fileName)
 
 				//-----------------------------------------------------------------
 				// Check if 24 or 32 bit.  If 24, do the necessary stuff to it.
-				ColorMap = (MemoryPtr)colorMapRAMHeap->Malloc(colorMapInfo.width * colorMapInfo.width * sizeof(DWORD));
+				long cmapBytes = (long)colorMapInfo.width * (long)colorMapInfo.width * (long)sizeof(DWORD);
+				ColorMap = (MemoryPtr)colorMapRAMHeap->Malloc(cmapBytes);
 				gosASSERT(ColorMap != NULL);
 
 				if (colorMapInfo.pixel_depth == 24)
@@ -1781,7 +1792,7 @@ long TerrainColorMap::init (char *fileName)
 				free(tgaFileImage);
 				tgaFileImage = NULL;
 
-				DWORD numTextures = colorMapInfo.width / COLOR_MAP_TEXTURE_SIZE;
+				numTextures = colorMapInfo.width / COLOR_MAP_TEXTURE_SIZE;
 				numTexturesAcross = numTextures;
 				fractionPerTexture = 1.0f / numTextures;
 
@@ -1824,6 +1835,9 @@ long TerrainColorMap::init (char *fileName)
 					getColorMapData(txmRAM[i].ourRAM,i, colorMapInfo.width);
 
 					textures[i].mcTextureNodeIndex = mcTextureManager->textureFromMemory((DWORD *)txmRAM[i].ourRAM,gos_Texture_Solid,gosHint_DontShrink,COLOR_MAP_TEXTURE_SIZE);
+					if (i % 50 == 0)
+					{
+					}
 				}
 			}
 
@@ -1858,6 +1872,286 @@ long TerrainColorMap::init (char *fileName)
 		delete colorMapRAMHeap;
 		colorMapRAMHeap = NULL;
 	}
+
+	//----------------------------------------------------------------------
+	// Load normal map if it exists (for terrain normal-mapped lighting)
+	{
+		char *nmFileName = Terrain::colorMapName ? Terrain::colorMapName : Terrain::terrainName;
+		if (!nmFileName) nmFileName = fileName;
+		char nmName[1024];
+		sprintf(nmName, "%s.normalmap", nmFileName);
+		FullPathFileName normalMapPath;
+		normalMapPath.init(texturePath, nmName, ".tga");
+
+		if (fileExists(normalMapPath))
+		{
+			File nmFile;
+			if (nmFile.open(normalMapPath) == NO_ERR)
+			{
+				MemoryPtr nmData = (MemoryPtr)malloc(nmFile.fileSize());
+				nmFile.read(nmData, nmFile.fileSize());
+
+				TGAFileHeader nmInfo;
+				memcpy(&nmInfo, nmData, sizeof(TGAFileHeader));
+
+			if (nmInfo.image_type == UNC_TRUE && nmInfo.width == nmInfo.height)
+				{
+					DWORD nmTilesAcross = nmInfo.width / COLOR_MAP_TEXTURE_SIZE;
+					numNormalMapTextures = nmTilesAcross * nmTilesAcross;
+
+					long nmHeapSize = (long)nmInfo.width * (long)nmInfo.width * (long)sizeof(DWORD);
+					MemoryPtr nmColorMap = (MemoryPtr)malloc(nmHeapSize);
+
+					// Load pixel data (24 or 32 bit)
+					MemoryPtr loadBuf = nmData + sizeof(TGAFileHeader);
+					if (nmInfo.pixel_depth == 24)
+					{
+						MemoryPtr cMap = nmColorMap;
+						MemoryPtr lMap = loadBuf;
+						for (long i = 0; i < (long)nmInfo.width * (long)nmInfo.width; i++)
+						{
+							*cMap++ = *lMap++; *cMap++ = *lMap++; *cMap++ = *lMap++; *cMap++ = 0xff;
+						}
+					}
+					else
+					{
+						memcpy(nmColorMap, loadBuf, (long)nmInfo.width * (long)nmInfo.width * sizeof(DWORD));
+					}
+
+					// Check if we need to flip
+					bool top = (nmInfo.image_descriptor & 32) != 0;
+					if (!top)
+						flipTopToBottom(nmColorMap, 32, nmInfo.width, nmInfo.height);
+
+
+					// Allocate texture handles (use malloc, not colorMapHeap which is freed)
+					normalMapTextures = (ColorMapTextures *)malloc(sizeof(ColorMapTextures) * numNormalMapTextures);
+
+					// Slice and upload tiles (same grid as colormap)
+					MemoryPtr tileRAM = (MemoryPtr)malloc(sizeof(DWORD) * COLOR_MAP_TEXTURE_SIZE * COLOR_MAP_TEXTURE_SIZE);
+					for (DWORD i = 0; i < numNormalMapTextures; i++)
+					{
+						// Use same tile extraction as colormap
+						long numWide = nmInfo.width / COLOR_MAP_TEXTURE_SIZE;
+						long startCol = ((i % numWide) * COLOR_MAP_TEXTURE_SIZE);
+						long startRow = ((i / numWide) * nmInfo.width * COLOR_MAP_TEXTURE_SIZE);
+						if (startCol > 0) startCol -= 1;
+						if (startRow > 0) startRow -= nmInfo.width;
+
+						MemoryPtr src = nmColorMap + (startCol + startRow) * sizeof(DWORD);
+						MemoryPtr dst = tileRAM;
+						for (long row = 0; row < COLOR_MAP_TEXTURE_SIZE; row++)
+						{
+							memcpy(dst, src, COLOR_MAP_TEXTURE_SIZE * sizeof(DWORD));
+							dst += COLOR_MAP_TEXTURE_SIZE * sizeof(DWORD);
+							src += nmInfo.width * sizeof(DWORD);
+						}
+
+						normalMapTextures[i].mcTextureNodeIndex = mcTextureManager->textureFromMemory(
+							(DWORD *)tileRAM, gos_Texture_Solid, gosHint_DontShrink, COLOR_MAP_TEXTURE_SIZE);
+					}
+
+					hasNormalMap = true;
+					free(tileRAM);
+					free(nmColorMap);
+				}
+				free(nmData);
+			}
+		}
+
+		// Load detail normal map (shared tiling texture)
+		FullPathFileName detailNmPath;
+		detailNmPath.init(texturePath, "detail_normal", ".tga");
+		if (fileExists(detailNmPath))
+		{
+			// Load detail normal manually via textureFromMemory (loadTexture crashes during terrain init)
+			File detNmFile;
+			if (detNmFile.open(detailNmPath) == NO_ERR)
+			{
+				MemoryPtr detData = (MemoryPtr)malloc(detNmFile.fileSize());
+				detNmFile.read(detData, detNmFile.fileSize());
+				TGAFileHeader detInfo;
+				memcpy(&detInfo, detData, sizeof(TGAFileHeader));
+				if (detInfo.image_type == UNC_TRUE && detInfo.width == detInfo.height)
+				{
+					long detPixels = (long)detInfo.width * (long)detInfo.width;
+					DWORD *detRGBA = (DWORD*)malloc(detPixels * sizeof(DWORD));
+					MemoryPtr loadBuf = detData + sizeof(TGAFileHeader);
+					if (detInfo.pixel_depth == 24)
+					{
+						MemoryPtr cMap = (MemoryPtr)detRGBA;
+						MemoryPtr lMap = loadBuf;
+						for (long i = 0; i < detPixels; i++)
+						{
+							*cMap++ = *lMap++; *cMap++ = *lMap++; *cMap++ = *lMap++; *cMap++ = 0xff;
+						}
+					}
+					else
+					{
+						memcpy(detRGBA, loadBuf, detPixels * sizeof(DWORD));
+					}
+					bool top = (detInfo.image_descriptor & 32) != 0;
+					if (!top)
+						flipTopToBottom((MemoryPtr)detRGBA, 32, detInfo.width, detInfo.height);
+
+					// Create GL texture directly (bypasses MC2 texture manager to avoid handle issues)
+					unsigned int glTexId = gos_CreateTerrainNormalTexture((const unsigned char*)detRGBA, detInfo.width);
+					gos_SetTerrainDetailNormalTexture(glTexId);
+					free(detRGBA);
+				}
+				free(detData);
+			}
+		}
+	}
+
+	// Load detail displacement map (for POM - same tiling as detail normal)
+	FullPathFileName detailDispPath;
+	detailDispPath.init(texturePath, "detail_displacement", ".tga");
+	if (fileExists(detailDispPath))
+	{
+		File detDispFile;
+		if (detDispFile.open(detailDispPath) == NO_ERR)
+		{
+			MemoryPtr dispData = (MemoryPtr)malloc(detDispFile.fileSize());
+			detDispFile.read(dispData, detDispFile.fileSize());
+			TGAFileHeader dispInfo;
+			memcpy(&dispInfo, dispData, sizeof(TGAFileHeader));
+			if (dispInfo.image_type == UNC_TRUE && dispInfo.width == dispInfo.height)
+			{
+				long dispPixels = (long)dispInfo.width * (long)dispInfo.width;
+				DWORD *dispRGBA = (DWORD*)malloc(dispPixels * sizeof(DWORD));
+				MemoryPtr loadBuf = dispData + sizeof(TGAFileHeader);
+				if (dispInfo.pixel_depth == 24)
+				{
+					MemoryPtr cMap = (MemoryPtr)dispRGBA;
+					MemoryPtr lMap = loadBuf;
+					for (long i = 0; i < dispPixels; i++)
+					{
+						*cMap++ = *lMap++; *cMap++ = *lMap++; *cMap++ = *lMap++; *cMap++ = 0xff;
+					}
+				}
+				else
+				{
+					memcpy(dispRGBA, loadBuf, dispPixels * sizeof(DWORD));
+				}
+				bool top = (dispInfo.image_descriptor & 32) != 0;
+				if (!top)
+					flipTopToBottom((MemoryPtr)dispRGBA, 32, dispInfo.width, dispInfo.height);
+
+				unsigned int glTexId = gos_CreateTerrainNormalTexture((const unsigned char*)dispRGBA, dispInfo.width);
+				gos_SetTerrainDisplacementTexture(glTexId);
+				free(dispRGBA);
+			}
+			free(dispData);
+		}
+	}
+
+	// Load terrain material texture arrays (4 PBR material sets)
+	printf("[SPLATTING] starting material array load\n");
+	{
+		const char* normalNames[4] = {
+			"mat0_normal", "mat1_normal", "mat2_normal", "mat3_normal"
+		};
+		const char* dispNames[4] = {
+			"mat0_displacement", "mat1_displacement", "mat2_displacement", "mat3_displacement"
+		};
+		const unsigned char* normalLayers[4] = {NULL, NULL, NULL, NULL};
+		const unsigned char* dispLayers[4] = {NULL, NULL, NULL, NULL};
+		int arrayWidth = 0;
+		bool allLoaded = true;
+
+		for (int mat = 0; mat < 4; mat++)
+		{
+			FullPathFileName nmPath;
+			nmPath.init(texturePath, normalNames[mat], ".tga");
+			printf("[SPLATTING] checking: %s\n", (const char*)nmPath);
+			if (!fileExists(nmPath)) { printf("[SPLATTING] NOT FOUND: %s\n", (const char*)nmPath); allLoaded = false; break; }
+
+			File nmFile;
+			if (nmFile.open(nmPath) != NO_ERR) { allLoaded = false; break; }
+			MemoryPtr nmData = (MemoryPtr)malloc(nmFile.fileSize());
+			nmFile.read(nmData, nmFile.fileSize());
+			TGAFileHeader nmInfo;
+			memcpy(&nmInfo, nmData, sizeof(TGAFileHeader));
+
+			if (nmInfo.image_type != UNC_TRUE || nmInfo.width != nmInfo.height)
+			{ free(nmData); allLoaded = false; break; }
+
+			if (arrayWidth == 0) arrayWidth = nmInfo.width;
+			else if (nmInfo.width != arrayWidth)
+			{ free(nmData); allLoaded = false; break; }
+
+			long pixels = (long)nmInfo.width * (long)nmInfo.width;
+			DWORD* rgba = (DWORD*)malloc(pixels * sizeof(DWORD));
+			MemoryPtr loadBuf = nmData + sizeof(TGAFileHeader);
+			if (nmInfo.pixel_depth == 24) {
+				MemoryPtr cMap = (MemoryPtr)rgba;
+				MemoryPtr lMap = loadBuf;
+				for (long i = 0; i < pixels; i++)
+				{ *cMap++ = *lMap++; *cMap++ = *lMap++; *cMap++ = *lMap++; *cMap++ = 0xff; }
+			} else {
+				memcpy(rgba, loadBuf, pixels * sizeof(DWORD));
+			}
+			bool top = (nmInfo.image_descriptor & 32) != 0;
+			if (!top) flipTopToBottom((MemoryPtr)rgba, 32, nmInfo.width, nmInfo.height);
+			normalLayers[mat] = (const unsigned char*)rgba;
+			free(nmData);
+		}
+
+		// Load displacement layers (same pattern)
+		if (allLoaded) {
+			for (int mat = 0; mat < 4; mat++)
+			{
+				FullPathFileName dispPath;
+				dispPath.init(texturePath, dispNames[mat], ".tga");
+				if (!fileExists(dispPath)) { allLoaded = false; break; }
+
+				File dispFile;
+				if (dispFile.open(dispPath) != NO_ERR) { allLoaded = false; break; }
+				MemoryPtr dispData = (MemoryPtr)malloc(dispFile.fileSize());
+				dispFile.read(dispData, dispFile.fileSize());
+				TGAFileHeader dispInfo;
+				memcpy(&dispInfo, dispData, sizeof(TGAFileHeader));
+
+				if (dispInfo.image_type != UNC_TRUE || dispInfo.width != arrayWidth)
+				{ free(dispData); allLoaded = false; break; }
+
+				long pixels = (long)dispInfo.width * (long)dispInfo.width;
+				DWORD* rgba = (DWORD*)malloc(pixels * sizeof(DWORD));
+				MemoryPtr loadBuf = dispData + sizeof(TGAFileHeader);
+				if (dispInfo.pixel_depth == 24) {
+					MemoryPtr cMap = (MemoryPtr)rgba;
+					MemoryPtr lMap = loadBuf;
+					for (long i = 0; i < pixels; i++)
+					{ *cMap++ = *lMap++; *cMap++ = *lMap++; *cMap++ = *lMap++; *cMap++ = 0xff; }
+				} else {
+					memcpy(rgba, loadBuf, pixels * sizeof(DWORD));
+				}
+				bool top = (dispInfo.image_descriptor & 32) != 0;
+				if (!top) flipTopToBottom((MemoryPtr)rgba, 32, dispInfo.width, dispInfo.height);
+				dispLayers[mat] = (const unsigned char*)rgba;
+				free(dispData);
+			}
+		}
+
+		if (allLoaded) {
+			printf("[SPLATTING] all loaded OK, width=%d, creating individual textures\n", arrayWidth);
+			for (int i = 0; i < 4; i++) {
+				unsigned int nmId = gos_CreateTerrainNormalTexture(normalLayers[i], arrayWidth);
+				printf("[SPLATTING] matNormal%d GL id=%u\n", i, nmId);
+				gos_SetTerrainMaterialNormal(i, nmId);
+			}
+		} else {
+			printf("[SPLATTING] FAILED to load all material textures\n");
+		}
+
+		for (int i = 0; i < 4; i++) {
+			if (normalLayers[i]) free((void*)normalLayers[i]);
+			if (dispLayers[i]) free((void*)dispLayers[i]);
+		}
+	}
+
+	// TODO: noise and random textures for cell bombing (add back after splatting works)
 
 	return 0;
 }
@@ -1957,10 +2251,23 @@ DWORD TerrainColorMap::getTextureHandle (VertexPtr vMin, VertexPtr vMax, Terrain
 			STOP(("UvData our of range in maxV %f",uvData->maxV));
 #endif
 	
-		mcTextureManager->get_gosTextureHandle(textures[resultTexture].mcTextureNodeIndex);		
+		{
+			long maxTex = (long)(numTexturesAcross * numTexturesAcross);
+			if (resultTexture < 0 || resultTexture >= maxTex)
+			{
+				fprintf(stderr, "[TERRAIN] OOB! resultTexture=%ld max=%ld posX=%f posY=%f txmX=%ld txmY=%ld\n",
+					resultTexture, maxTex, posX, posY, txmNumX, txmNumY);
+				fflush(stderr);
+				uvData->minU = uvData->minV = uvData->maxU = uvData->maxV = 0.0f;
+				return 0;
+			}
+		}
+		lastResultTexture = resultTexture;
+		mcTextureManager->get_gosTextureHandle(textures[resultTexture].mcTextureNodeIndex);
 		return textures[resultTexture].mcTextureNodeIndex;
 	}
-	
+
+	lastResultTexture = -1;
 	uvData->minU = uvData->minV = uvData->maxU = uvData->maxV = 0.0f;
 	return 0;
 }

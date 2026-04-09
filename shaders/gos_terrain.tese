@@ -13,9 +13,22 @@ out vec4 Color;
 out float FogValue;
 out vec2 Texcoord;
 out float TerrainType;
+out vec3 WorldNorm;
 
-uniform vec4 tessDisplace;  // x=phongAlpha, y=displaceScale
-uniform mat4 terrainMVP;    // MC2 world coords -> OpenGL NDC (Task 7 wires this up)
+uniform vec4 tessDisplace;      // x=phongAlpha, y=displaceScale
+uniform mat4 terrainMVP;        // axisSwap * worldToClip (clip-space transform)
+uniform vec4 terrainViewport;   // (vmx, vmy, vax, vay) for perspective projection
+uniform mat4 mvp;               // projection_ : screen pixels -> NDC
+
+// Textures for displacement sampling (shared with fragment shader)
+uniform sampler2D tex1;         // colormap (for material classification)
+uniform sampler2D matNormal0;   // rock normal+disp
+uniform sampler2D matNormal1;   // grass normal+disp
+uniform sampler2D matNormal2;   // dirt normal+disp
+uniform sampler2D matNormal3;   // concrete normal+disp
+uniform vec4 detailNormalTiling; // .x = base tiling multiplier
+
+#include <include/terrain_common.hglsl>
 
 void main()
 {
@@ -58,10 +71,45 @@ void main()
         worldPos = mix(worldPos, phongPos, alpha);
     }
 
-    // --- Projection ---
-    // Passthrough: interpolate screen-space positions from VS
-    // TODO: switch to terrainMVP * vec4(worldPos, 1.0) once matrix is verified
-    gl_Position = bary.x * gl_in[0].gl_Position
-                + bary.y * gl_in[1].gl_Position
-                + bary.z * gl_in[2].gl_Position;
+    // --- Texture-based displacement along normal ---
+    float displaceScale = tessDisplace.y;
+    if (displaceScale > 0.0) {
+        // Classify material from colormap (same HSV logic as fragment shader)
+        vec3 colSample = texture(tex1, Texcoord).rgb;
+        vec4 matWeights = tc_getColorWeights(colSample);
+
+        // Compute blended tiling from per-material rates
+        float baseTiling = detailNormalTiling.x;
+        float blendedTiling = dot(TC_MAT_TILING, matWeights);
+        vec2 dispUV = Texcoord * baseTiling * blendedTiling;
+
+        // Sample weighted displacement from material normal alphas
+        float disp = tc_sampleDisplacement(dispUV, matWeights,
+            matNormal0, matNormal1, matNormal2, matNormal3);
+
+        // Center displacement around 0.5 so it pushes both up and down
+        worldPos += worldNorm * (disp - 0.5) * displaceScale;
+    }
+
+    WorldNorm = worldNorm;
+
+    // --- Projection: replicate CPU projectZ pipeline on GPU ---
+    // Step 1: world -> clip coords (axisSwap * worldToClip)
+    vec4 clip = terrainMVP * vec4(worldPos, 1.0);
+
+    // Step 2: perspective divide -> screen coords
+    // MC2 can produce negative clip.w; CPU uses fabs(rhw), we must match
+    float rhw = 1.0 / clip.w;  // may be negative, like CPU
+    vec3 screen;
+    screen.x = clip.x * rhw * terrainViewport.x + terrainViewport.z;
+    screen.y = clip.y * rhw * terrainViewport.y + terrainViewport.w;
+    screen.z = clip.z * rhw;
+
+    // Step 3: screen -> NDC via projection_ (same as VS: mvp * pos / pos.w)
+    vec4 ndc = mvp * vec4(screen, 1.0);
+
+    // Step 4: scale by abs(clip.w) so GPU perspective divide recovers NDC
+    // Must use abs() because GPU clips negative w
+    float absW = abs(clip.w);
+    gl_Position = vec4(ndc.xyz * absW, absW);
 }

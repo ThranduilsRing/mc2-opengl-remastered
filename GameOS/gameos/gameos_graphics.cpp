@@ -1235,6 +1235,9 @@ class gosRenderer {
             terrain_wireframe_ = w;
             printf("[TESS] wireframe=%s\n", w ? "ON" : "OFF");
         }
+        void setTerrainDebugMode(float mode) {
+            terrain_debug_mode_ = mode;
+        }
         void setTerrainMVP(const float* m) {
             memcpy(&terrain_mvp_, m, 16 * sizeof(float));
             terrain_mvp_valid_ = true;
@@ -1242,13 +1245,20 @@ class gosRenderer {
         void setTerrainCameraPos(float x, float y, float z) {
             terrain_camera_pos_ = vec4(x, y, z, 1.0f);
         }
+        void setTerrainViewport(float vmx, float vmy, float vax, float vay) {
+            terrain_viewport_ = vec4(vmx, vmy, vax, vay);
+        }
 
-        void terrainExtraReset() { terrain_extra_count_ = 0; terrain_extra_draw_offset_ = 0; }
+        void terrainExtraReset() { terrain_extra_count_ = 0; terrain_extra_draw_offset_ = 0; terrain_batch_extras_ = nullptr; terrain_batch_extras_count_ = 0; }
         void terrainExtraAdd(const gos_TERRAIN_EXTRA* data, int count) {
             if (terrain_extra_count_ + count <= terrain_extra_capacity_) {
                 memcpy(terrain_extra_data_ + terrain_extra_count_, data, sizeof(gos_TERRAIN_EXTRA) * count);
                 terrain_extra_count_ += count;
             }
+        }
+        void setTerrainBatchExtras(const gos_TERRAIN_EXTRA* extras, int count) {
+            terrain_batch_extras_ = extras;
+            terrain_batch_extras_count_ = count;
         }
         int getTerrainExtraCount() const { return terrain_extra_count_; }
         float getTerrainTessLevel() const { return terrain_tess_level_; }
@@ -1262,6 +1272,14 @@ class gosRenderer {
         bool isTerrainMVPValid() const { return terrain_mvp_valid_; }
         const mat4& getTerrainMVP() const { return terrain_mvp_; }
         gosRenderMaterial* getTerrainMaterial() const { return terrain_material_; }
+
+        // Terrain splatting setters
+        void setTerrainLightDir(float x, float y, float z) { terrain_light_dir_ = vec4(x, y, z, 0.0f); }
+        void setTerrainDetailParams(float tiling, float strength) { terrain_detail_tiling_ = tiling; terrain_detail_strength_ = strength; }
+        void setTerrainMaterialNormal(int idx, GLuint texId) { if (idx >= 0 && idx < 4) terrain_mat_normal_[idx] = texId; }
+        void setTerrainCellBombParams(float s, float j, float r) { terrain_cell_scale_ = s; terrain_cell_jitter_ = j; terrain_cell_rotation_ = r; }
+        void setTerrainPOMParams(float scale, float, float) { terrain_pom_scale_ = scale; }
+        void setTerrainWorldScale(float scale) { terrain_world_scale_ = scale; }
 
     private:
 
@@ -1358,21 +1376,38 @@ class gosRenderer {
         float terrain_phong_alpha_ = 0.5f;         // Phong smoothing strength
         float terrain_displace_scale_ = 0.0f;      // displacement amplitude (start at 0 = off)
         bool terrain_wireframe_ = false;            // wireframe overlay toggle
+        float terrain_debug_mode_ = 0.0f;          // 0=off, 1=normals, 2=worldPos
 
         // Terrain extra VBO for world pos + normal
         GLuint terrain_extra_vb_ = 0;
         gos_TERRAIN_EXTRA* terrain_extra_data_ = nullptr;
         int terrain_extra_count_ = 0;
         int terrain_extra_capacity_ = 0;
-        int terrain_extra_draw_offset_ = 0;  // consumed offset for per-batch alignment
+        int terrain_extra_draw_offset_ = 0;  // consumed offset for per-batch alignment (legacy)
+
+        // Per-batch extras from texture manager (replaces global offset)
+        const gos_TERRAIN_EXTRA* terrain_batch_extras_ = nullptr;
+        int terrain_batch_extras_count_ = 0;
 
         // Terrain tessellation MVP (world-to-NDC)
         mat4 terrain_mvp_;
         bool terrain_mvp_valid_ = false;
         vec4 terrain_camera_pos_;  // MC2 world space camera position for TCS LOD
+        vec4 terrain_viewport_;    // (vmx, vmy, vax, vay) for TES perspective project
 
         // Terrain tessellation material
         gosRenderMaterial* terrain_material_ = nullptr;
+
+        // Terrain splatting textures (from main source, needed for material normal maps)
+        vec4 terrain_light_dir_;
+        float terrain_detail_tiling_ = 1.0f;
+        float terrain_detail_strength_ = 4.0f;
+        GLuint terrain_mat_normal_[4] = {0, 0, 0, 0};
+        float terrain_cell_scale_ = 8.0f;
+        float terrain_cell_jitter_ = 0.8f;
+        float terrain_cell_rotation_ = 1.0f;
+        float terrain_pom_scale_ = 0.02f;
+        float terrain_world_scale_ = 15360.0f;
 };
 
 const std::string gosRenderer::s_Foreground = std::string("Foreground");
@@ -1945,10 +1980,6 @@ void gosRenderer::terrainDrawIndexedPatches(gosRenderMaterial* material, gosMesh
     // Upload main VBO + IBO
     mesh->uploadBuffers();
 
-    // Upload terrain extra VBO
-    updateBuffer(terrain_extra_vb_, GL_ARRAY_BUFFER,
-        terrain_extra_data_, terrain_extra_count_ * sizeof(gos_TERRAIN_EXTRA), GL_DYNAMIC_DRAW);
-
     // Apply shader first (glUseProgram + upload cached uniforms)
     material->apply();
     material->setSamplerUnit(gosMesh::s_tex1, 0);
@@ -1968,18 +1999,85 @@ void gosRenderer::terrainDrawIndexedPatches(gosRenderMaterial* material, gosMesh
     if (loc >= 0) glUniform4fv(loc, 1, tessDisp);
     loc = glGetUniformLocation(shp, "cameraPos");
     if (loc >= 0) glUniform4fv(loc, 1, (const float*)&terrain_camera_pos_);
+    float tessDebugVec[4] = { terrain_debug_mode_, 0.0f, 0.0f, 0.0f };
+    loc = glGetUniformLocation(shp, "tessDebug");
+    if (loc >= 0) glUniform4fv(loc, 1, tessDebugVec);
+
+    // Upload viewport params for TES perspective projection
+    loc = glGetUniformLocation(shp, "terrainViewport");
+    if (loc >= 0) glUniform4fv(loc, 1, (const float*)&terrain_viewport_);
+
+    // Upload terrainMVP (axisSwap*worldToClip) via direct GL
+    if (terrain_mvp_valid_) {
+        loc = glGetUniformLocation(shp, "terrainMVP");
+        if (loc >= 0) {
+            glUniformMatrix4fv(loc, 1, GL_FALSE, (const float*)&terrain_mvp_);
+            static bool mvp_trace = false;
+            if (!mvp_trace) {
+                mvp_trace = true;
+                const float* m = (const float*)&terrain_mvp_;
+                printf("[TESS] terrainMVP row0: %.6f %.6f %.6f %.6f\n", m[0], m[1], m[2], m[3]);
+                printf("[TESS] terrainMVP row1: %.6f %.6f %.6f %.6f\n", m[4], m[5], m[6], m[7]);
+                printf("[TESS] terrainMVP row2: %.6f %.6f %.6f %.6f\n", m[8], m[9], m[10], m[11]);
+                printf("[TESS] terrainMVP row3: %.6f %.6f %.6f %.6f\n", m[12], m[13], m[14], m[15]);
+                fflush(stdout);
+            }
+        }
+    }
+
+    // Bind terrain splatting uniforms (light, tiling, POM, cell bomb)
+    loc = glGetUniformLocation(shp, "terrainLightDir");
+    if (loc >= 0) glUniform4fv(loc, 1, (const float*)&terrain_light_dir_);
+    float tiling[4] = { terrain_detail_tiling_, 0.0f, 0.0f, 0.0f };
+    loc = glGetUniformLocation(shp, "detailNormalTiling");
+    if (loc >= 0) glUniform4fv(loc, 1, tiling);
+    float strength[4] = { terrain_detail_strength_, 0.0f, 0.0f, 0.0f };
+    loc = glGetUniformLocation(shp, "detailNormalStrength");
+    if (loc >= 0) glUniform4fv(loc, 1, strength);
+    float pomP[4] = { terrain_pom_scale_, 8.0f, 32.0f, 0.0f };
+    loc = glGetUniformLocation(shp, "pomParams");
+    if (loc >= 0) glUniform4fv(loc, 1, pomP);
+    float worldScaleV[4] = { terrain_world_scale_, 0.0f, 0.0f, 0.0f };
+    loc = glGetUniformLocation(shp, "terrainWorldScale");
+    if (loc >= 0) glUniform4fv(loc, 1, worldScaleV);
+    float cellP[4] = { terrain_cell_scale_, terrain_cell_jitter_, terrain_cell_rotation_, 0.0f };
+    loc = glGetUniformLocation(shp, "cellBombParams");
+    if (loc >= 0) glUniform4fv(loc, 1, cellP);
+
+    // Bind per-material normal maps (units 5-8)
+    {
+        const char* matNames[4] = {"matNormal0", "matNormal1", "matNormal2", "matNormal3"};
+        static bool mat_trace = false;
+        for (int i = 0; i < 4; i++) {
+            if (terrain_mat_normal_[i] != 0) {
+                GLint mloc = glGetUniformLocation(shp, matNames[i]);
+                if (mloc >= 0) {
+                    glUniform1i(mloc, 5 + i);
+                    glActiveTexture(GL_TEXTURE5 + i);
+                    glBindTexture(GL_TEXTURE_2D, terrain_mat_normal_[i]);
+                    if (!mat_trace) printf("[TESS] Bound %s unit=%d glId=%u\n", matNames[i], 5+i, terrain_mat_normal_[i]);
+                }
+            }
+        }
+        if (!mat_trace) { mat_trace = true; fflush(stdout); }
+        glActiveTexture(GL_TEXTURE0);
+    }
 
     static bool tess_uniform_trace_ = false;
     if (!tess_uniform_trace_) {
         tess_uniform_trace_ = true;
-        printf("[TESS] Uniform locations: tessLevel=%d tessDistRange=%d tessDisp=%d camPos=%d\n",
+        printf("[TESS] Uniform locations: tessLevel=%d tessDistRange=%d tessDisp=%d camPos=%d tessDebug=%d terrainMVP=%d\n",
             glGetUniformLocation(shp, "tessLevel"),
             glGetUniformLocation(shp, "tessDistanceRange"),
             glGetUniformLocation(shp, "tessDisplace"),
-            glGetUniformLocation(shp, "cameraPos"));
-        printf("[TESS] Values: tessLevel=%.1f distNear=%.0f distFar=%.0f phong=%.2f camPos=%.0f,%.0f,%.0f\n",
-            terrain_tess_level_, terrain_tess_dist_near_, terrain_tess_dist_far_,
-            terrain_phong_alpha_, terrain_camera_pos_.x, terrain_camera_pos_.y, terrain_camera_pos_.z);
+            glGetUniformLocation(shp, "cameraPos"),
+            glGetUniformLocation(shp, "tessDebug"),
+            glGetUniformLocation(shp, "terrainMVP"));
+        printf("[TESS] Frag uniforms: tex1=%d fog_color=%d terrainLightDir=%d\n",
+            glGetUniformLocation(shp, "tex1"),
+            glGetUniformLocation(shp, "fog_color"),
+            glGetUniformLocation(shp, "terrainLightDir"));
+        printf("[TESS] shader program=%u debugMode=%.1f\n", shp, terrain_debug_mode_);
         fflush(stdout);
     }
 
@@ -1989,24 +2087,26 @@ void gosRenderer::terrainDrawIndexedPatches(gosRenderMaterial* material, gosMesh
     material->applyVertexDeclaration();
 
     // Bind extra VBO for world pos + normal (locations 4-5)
-    // Use draw offset to align with the per-batch main VBO vertices
-    size_t extraByteOffset = terrain_extra_draw_offset_ * sizeof(gos_TERRAIN_EXTRA);
+    // Use per-batch extras from texture manager (aligned with main VBO by construction)
+    const gos_TERRAIN_EXTRA* batchExtras = terrain_batch_extras_;
+    int batchExtrasCount = terrain_batch_extras_count_;
+    if (batchExtras && batchExtrasCount > 0) {
+        updateBuffer(terrain_extra_vb_, GL_ARRAY_BUFFER,
+            batchExtras, batchExtrasCount * sizeof(gos_TERRAIN_EXTRA), GL_DYNAMIC_DRAW);
+    }
     glBindBuffer(GL_ARRAY_BUFFER, terrain_extra_vb_);
     GLint worldPosLoc = glGetAttribLocation(material->getShader()->shp_, "worldPos");
     GLint worldNormLoc = glGetAttribLocation(material->getShader()->shp_, "worldNorm");
     if (worldPosLoc >= 0) {
         glEnableVertexAttribArray(worldPosLoc);
         glVertexAttribPointer(worldPosLoc, 3, GL_FLOAT, GL_FALSE,
-            sizeof(gos_TERRAIN_EXTRA), (void*)extraByteOffset);
+            sizeof(gos_TERRAIN_EXTRA), (void*)0);
     }
     if (worldNormLoc >= 0) {
         glEnableVertexAttribArray(worldNormLoc);
         glVertexAttribPointer(worldNormLoc, 3, GL_FLOAT, GL_FALSE,
-            sizeof(gos_TERRAIN_EXTRA), (void*)(extraByteOffset + 3 * sizeof(float)));
+            sizeof(gos_TERRAIN_EXTRA), (void*)(3 * sizeof(float)));
     }
-
-    // Advance offset by number of vertices drawn in this batch
-    terrain_extra_draw_offset_ += nv;
 
     // Wireframe overlay
     if (terrain_wireframe_) {
@@ -2075,39 +2175,38 @@ void gosRenderer::drawIndexedTris(gos_VERTEX* vertices, int num_vertices, WORD* 
     static bool tess_init_trace_ = false;
     if (curStates_[gos_State_Terrain] && !tess_init_trace_) {
         tess_init_trace_ = true;
-        printf("[TESS] INIT CHECK: terrain_material_=%p extra_count=%d mvp_valid=%d\n",
-            (void*)terrain_material_, terrain_extra_count_, terrain_mvp_valid_ ? 1 : 0);
+        printf("[TESS] INIT CHECK: terrain_material_=%p batch_extras=%d mvp_valid=%d\n",
+            (void*)terrain_material_, terrain_batch_extras_count_, terrain_mvp_valid_ ? 1 : 0);
         fflush(stdout);
     }
-    if (curStates_[gos_State_Terrain] && terrain_material_ && terrain_extra_count_ > 0) {
+    if (curStates_[gos_State_Terrain] && terrain_material_ && terrain_batch_extras_count_ > 0) {
         if (tess_trace_count_++ < 5) {
-            printf("[TESS] DRAW: verts=%d idx=%d extra=%d mvp_valid=%d\n",
+            printf("[TESS] DRAW: verts=%d idx=%d batch_extras=%d mvp_valid=%d\n",
                 indexed_tris_->getNumVertices(), indexed_tris_->getNumIndices(),
-                terrain_extra_count_, terrain_mvp_valid_ ? 1 : 0);
+                terrain_batch_extras_count_, terrain_mvp_valid_ ? 1 : 0);
             fflush(stdout);
         }
         gosRenderMaterial* tmat = terrain_material_;
         tmat->setTransform(projection_);
         tmat->setFogColor(fog_color_);
-        if (terrain_mvp_valid_) {
-            tmat->getShader()->setMat4("terrainMVP", terrain_mvp_);
-        }
+        // terrainMVP uploaded via direct GL in terrainDrawIndexedPatches
         terrainDrawIndexedPatches(tmat, indexed_tris_);
         indexed_tris_->rewind();
     } else {
-        static int basic_trace_count_ = 0;
-        if (curStates_[gos_State_Terrain] && basic_trace_count_++ < 5) {
-            printf("[TESS] FALLBACK: terrain=%d mat=%p extra=%d\n",
-                (int)curStates_[gos_State_Terrain], (void*)terrain_material_, terrain_extra_count_);
-            fflush(stdout);
-        }
-        gosRenderMaterial* mat = selectBasicRenderMaterial(curStates_);
-        gosASSERT(mat);
+        // When tessellation is active, skip ALL fallback terrain draws
+        // The tessellation path handles terrain completely (splatting shader does materials)
+        // Fallback draws are overlay/detail/alpha passes that would double-render
+        if (curStates_[gos_State_Terrain] && terrain_material_) {
+            indexed_tris_->rewind();
+        } else {
+            gosRenderMaterial* mat = selectBasicRenderMaterial(curStates_);
+            gosASSERT(mat);
 
-        mat->setTransform(projection_);
-        mat->setFogColor(fog_color_);
-        indexed_tris_->drawIndexed(mat);
-        indexed_tris_->rewind();
+            mat->setTransform(projection_);
+            mat->setFogColor(fog_color_);
+            indexed_tris_->drawIndexed(mat);
+            indexed_tris_->rewind();
+        }
     }
 
     afterDrawCall();
@@ -3108,17 +3207,69 @@ void __stdcall gos_SetTerrainDisplaceScale(float s) {
 void __stdcall gos_SetTerrainWireframe(bool w) {
     if (g_gos_renderer) g_gos_renderer->setTerrainWireframe(w);
 }
+void __stdcall gos_SetTerrainDebugMode(float mode) {
+    if (g_gos_renderer) g_gos_renderer->setTerrainDebugMode(mode);
+}
 void __stdcall gos_TerrainExtraReset() {
     if (g_gos_renderer) g_gos_renderer->terrainExtraReset();
 }
 void __stdcall gos_TerrainExtraAdd(const gos_TERRAIN_EXTRA* data, int count) {
     if (g_gos_renderer) g_gos_renderer->terrainExtraAdd(data, count);
 }
+void __stdcall gos_SetTerrainBatchExtras(const gos_TERRAIN_EXTRA* extras, int count) {
+    if (g_gos_renderer) g_gos_renderer->setTerrainBatchExtras(extras, count);
+}
+bool __stdcall gos_IsTerrainTessellationActive() {
+    return g_gos_renderer && g_gos_renderer->getTerrainMaterial() != nullptr;
+}
 void __stdcall gos_SetTerrainMVP(const float* matrix16) {
     if (g_gos_renderer) g_gos_renderer->setTerrainMVP(matrix16);
 }
+void __stdcall gos_SetTerrainViewport(float vmx, float vmy, float vax, float vay) {
+    if (g_gos_renderer) g_gos_renderer->setTerrainViewport(vmx, vmy, vax, vay);
+}
 void __stdcall gos_SetTerrainCameraPos(float x, float y, float z) {
     if (g_gos_renderer) g_gos_renderer->setTerrainCameraPos(x, y, z);
+}
+void gos_SetTerrainLightDir(float x, float y, float z) {
+    if (g_gos_renderer) g_gos_renderer->setTerrainLightDir(x, y, z);
+}
+void gos_SetTerrainDetailParams(float tiling, float strength) {
+    if (g_gos_renderer) g_gos_renderer->setTerrainDetailParams(tiling, strength);
+}
+void gos_SetTerrainMaterialNormal(int index, unsigned int glTexId) {
+    if (g_gos_renderer) g_gos_renderer->setTerrainMaterialNormal(index, glTexId);
+}
+void gos_SetTerrainWorldScale(float scale) {
+    if (g_gos_renderer) g_gos_renderer->setTerrainWorldScale(scale);
+}
+void gos_SetTerrainCellBombParams(float scale, float jitter, float rotation) {
+    if (g_gos_renderer) g_gos_renderer->setTerrainCellBombParams(scale, jitter, rotation);
+}
+void gos_SetTerrainPOMParams(float scale, float minLayers, float maxLayers) {
+    if (g_gos_renderer) g_gos_renderer->setTerrainPOMParams(scale, minLayers, maxLayers);
+}
+void gos_SetTerrainDetailNormalTexture(unsigned int glTexId) {
+    // Legacy single-texture path — not used with per-material splatting, but terrtxm2 still calls it
+}
+void gos_SetTerrainDisplacementTexture(unsigned int glTexId) {
+    // Legacy single displacement — not used with per-material splatting
+}
+void gos_SetTerrainViewDir(float x, float y, float z) {
+    // View direction for POM — stored but not critical for tessellation path
+}
+unsigned int gos_CreateTerrainNormalTexture(const unsigned char* rgbaData, int width) {
+    GLuint texId = 0;
+    glGenTextures(1, &texId);
+    glBindTexture(GL_TEXTURE_2D, texId);
+    glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA8, width, width, 0, GL_RGBA, GL_UNSIGNED_BYTE, rgbaData);
+    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
+    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
+    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_REPEAT);
+    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_REPEAT);
+    glBindTexture(GL_TEXTURE_2D, 0);
+    printf("[TESS] Created terrain normal texture: id=%u size=%d\n", texId, width);
+    return texId;
 }
 
 #include "gameos_graphics_debug.cpp"

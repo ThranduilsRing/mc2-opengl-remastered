@@ -776,6 +776,25 @@ long Terrain::update (void)
 	Terrain::mapData->update();
 	Terrain::mapData->makeLists(vertexList,numberVertices,quadList,numberQuads);
 
+	// Set terrain light direction for normal map shader
+	if (eye)
+	{
+		gos_SetTerrainLightDir(eye->lightDirection.x, eye->lightDirection.y, eye->lightDirection.z);
+
+		// Pass camera world position for POM view direction
+		// MC2 -> OpenGL coordinate swizzle: (-x, z, y)
+		Stuff::Vector3D camOrigin = eye->getCameraOrigin();
+		gos_SetTerrainCameraPos(-camOrigin.x, camOrigin.z, camOrigin.y);
+
+		// Pass camera look direction for POM (direction camera looks toward terrain)
+		Stuff::Vector3D lookDir = eye->getLookVector();
+		// Swizzle same as camera pos, then normalize
+		float lx = -lookDir.x, ly = lookDir.z, lz = lookDir.y;
+		float len = sqrtf(lx*lx + ly*ly + lz*lz);
+		if (len > 0.001f) { lx /= len; ly /= len; lz /= len; }
+		gos_SetTerrainViewDir(lx, ly, lz);
+	}
+
 	return TRUE;
 }
 

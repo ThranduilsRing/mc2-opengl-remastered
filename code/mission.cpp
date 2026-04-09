@@ -390,7 +390,9 @@ long Mission::update (void)
 				missionLineChanged = turn;
 			}
 
-			// Tessellation debug keys (Ctrl+Shift+number)
+			// Tessellation debug keys (F-keys, no modifiers needed)
+			// F6/F7 = tess level, F8/F9 = phong, F10/F11 = displacement, F12 = wireframe
+			// Note: F5 = camera preset, F9 = objectives (already bound) — skip those
 			{
 				static float g_tessLevel = 4.0f;
 				static float g_tessDistNear = 200.0f;
@@ -399,31 +401,35 @@ long Mission::update (void)
 				static float g_displaceScale = 0.0f;
 				static bool g_tessWireframe = false;
 
-				if (userInput->getKeyDown(KEY_1) && userInput->ctrl() && userInput->shift() && !userInput->alt()) {
+				if (userInput->getKeyDown(KEY_F6)) {
 					g_tessLevel = min(g_tessLevel + 1.0f, 64.0f);
 					gos_SetTerrainTessParams(g_tessLevel, g_tessDistNear, g_tessDistFar);
+					printf("[TESS-KEY] F6: level=%.0f\n", g_tessLevel); fflush(stdout);
 				}
-				if (userInput->getKeyDown(KEY_2) && userInput->ctrl() && userInput->shift() && !userInput->alt()) {
+				if (userInput->getKeyDown(KEY_F7)) {
 					g_tessLevel = max(g_tessLevel - 1.0f, 1.0f);
 					gos_SetTerrainTessParams(g_tessLevel, g_tessDistNear, g_tessDistFar);
+					printf("[TESS-KEY] F7: level=%.0f\n", g_tessLevel); fflush(stdout);
 				}
-				if (userInput->getKeyDown(KEY_3) && userInput->ctrl() && userInput->shift() && !userInput->alt()) {
+				if (userInput->getKeyDown(KEY_F8)) {
 					g_phongAlpha = min(g_phongAlpha + 0.1f, 1.0f);
 					gos_SetTerrainPhongAlpha(g_phongAlpha);
+					printf("[TESS-KEY] F8: phong=%.1f\n", g_phongAlpha); fflush(stdout);
 				}
-				if (userInput->getKeyDown(KEY_4) && userInput->ctrl() && userInput->shift() && !userInput->alt()) {
+				if (userInput->getKeyDown(KEY_F10)) {
 					g_phongAlpha = max(g_phongAlpha - 0.1f, 0.0f);
 					gos_SetTerrainPhongAlpha(g_phongAlpha);
+					printf("[TESS-KEY] F10: phong=%.1f\n", g_phongAlpha); fflush(stdout);
 				}
-				if (userInput->getKeyDown(KEY_5) && userInput->ctrl() && userInput->shift() && !userInput->alt()) {
+				if (userInput->getKeyDown(KEY_F11)) {
 					g_displaceScale += 0.5f;
 					gos_SetTerrainDisplaceScale(g_displaceScale);
 				}
-				if (userInput->getKeyDown(KEY_6) && userInput->ctrl() && userInput->shift() && !userInput->alt()) {
+				if (userInput->getKeyDown(KEY_F12)) {
 					g_displaceScale = max(g_displaceScale - 0.5f, 0.0f);
 					gos_SetTerrainDisplaceScale(g_displaceScale);
 				}
-				if (userInput->getKeyDown(KEY_7) && userInput->ctrl() && userInput->shift() && !userInput->alt()) {
+				if (gos_GetKeyStatus(KEY_GRAVE) == KEY_PRESSED) {
 					g_tessWireframe = !g_tessWireframe;
 					gos_SetTerrainWireframe(g_tessWireframe);
 				}

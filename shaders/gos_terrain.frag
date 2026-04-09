@@ -6,6 +6,7 @@ in PREC vec4 Color;
 in PREC vec2 Texcoord;
 in PREC float FogValue;
 in PREC float TerrainType;
+in PREC vec3 WorldNorm;
 
 layout (location=0) out PREC vec4 FragColor;
 
@@ -28,6 +29,7 @@ uniform PREC vec4 pomParams;
 uniform PREC vec4 cameraPos;
 uniform PREC vec4 terrainWorldScale;
 uniform PREC vec4 terrainViewDir;
+uniform PREC vec4 tessDebug;  // x=mode: 0=off, 1=normals, 2=worldPos
 
 // --- Hash / noise for cell bombing ---
 
@@ -131,9 +133,11 @@ PREC vec2 parallaxMapping(PREC vec2 uv, PREC vec3 viewDirTS, PREC float scale, P
 
 void main(void)
 {
-    // DEBUG: solid magenta to test if geometry is visible
-    FragColor = vec4(1.0, 0.0, 1.0, 1.0);
-    return;
+    // Debug visualizations for tessellation data
+    if (tessDebug.x > 0.5) {
+        FragColor = vec4(1.0, 0.0, 0.0, 1.0);  // SOLID RED = tess frag running
+        return;
+    }
 
     PREC vec4 texColor = texture(tex1, Texcoord);
 

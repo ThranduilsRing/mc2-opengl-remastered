@@ -41,6 +41,29 @@
 #define SELECTION_COLOR 0xffff7fff
 #define HIGHLIGHT_COLOR	0xff00ff00
 
+// Map MC2 terrain type enum (0-20) to PBR material index (0-3)
+// 0=Rock, 1=Grass, 2=Dirt, 3=Concrete
+static BYTE terrainTypeToMaterial(DWORD terrainType)
+{
+    switch (terrainType)
+    {
+        case 3:  // Moss
+        case 8:  // ForestFloor
+        case 9:  // Grass
+        case 12: // Slimy
+            return 1; // Grass
+        case 2:  // Mud
+        case 4:  // Dirt
+            return 2; // Dirt
+        case 10: // Concrete
+        case 13: case 14: case 15: case 16: // Cement 2-5
+        case 17: case 18: case 19:          // Cement 6-8
+            return 3; // Concrete
+        default:
+            return 0; // Rock (Mountain, Cliff, Ash, Tundra, Water, None)
+    }
+}
+
 //---------------------------------------------------------------------------
 float TerrainQuad::rainLightLevel = 1.0f;
 DWORD TerrainQuad::lighteningLevel = 0;
@@ -50,8 +73,8 @@ DWORD TerrainQuad::blownTextureHandle = 0xffffffff;
 extern bool drawTerrainGrid;
 extern bool drawLOSGrid;
 
-// Fill terrain extra data for tessellation — called after each solid terrain addVertices
-static void fillTerrainExtra(VertexPtr v0, VertexPtr v1, VertexPtr v2) {
+// Fill terrain extra data for tessellation — routed to per-node storage via texture manager
+static void fillTerrainExtra(DWORD texHandle, DWORD flags, VertexPtr v0, VertexPtr v1, VertexPtr v2) {
     gos_TERRAIN_EXTRA textra[3];
     textra[0].wx = v0->vx; textra[0].wy = v0->vy; textra[0].wz = v0->pVertex->elevation;
     textra[0].nx = v0->pVertex->vertexNormal.x; textra[0].ny = v0->pVertex->vertexNormal.y; textra[0].nz = v0->pVertex->vertexNormal.z;
@@ -59,7 +82,7 @@ static void fillTerrainExtra(VertexPtr v0, VertexPtr v1, VertexPtr v2) {
     textra[1].nx = v1->pVertex->vertexNormal.x; textra[1].ny = v1->pVertex->vertexNormal.y; textra[1].nz = v1->pVertex->vertexNormal.z;
     textra[2].wx = v2->vx; textra[2].wy = v2->vy; textra[2].wz = v2->pVertex->elevation;
     textra[2].nx = v2->pVertex->vertexNormal.x; textra[2].ny = v2->pVertex->vertexNormal.y; textra[2].nz = v2->pVertex->vertexNormal.z;
-    gos_TerrainExtraAdd(textra, 3);
+    mcTextureManager->addTerrainExtra(texHandle, textra, flags);
 }
 //---------------------------------------------------------------------------
 //---------------------------------------------------------------------------
@@ -1486,6 +1509,7 @@ void TerrainQuad::draw (void)
 			gVertex[0].v		= minV;
 			gVertex[0].argb		= lightRGB0;
 			gVertex[0].frgb		= vertices[0]->fogRGB;
+			gVertex[0].frgb		= (gVertex[0].frgb & 0xFFFFFF00) | terrainTypeToMaterial(vertices[0]->pVertex->terrainType);
 
 			gVertex[1].x		= vertices[1]->px;
 			gVertex[1].y		= vertices[1]->py;
@@ -1495,6 +1519,7 @@ void TerrainQuad::draw (void)
 			gVertex[1].v		= minV;
 			gVertex[1].argb		= lightRGB1;
 			gVertex[1].frgb		= vertices[1]->fogRGB;
+			gVertex[1].frgb		= (gVertex[1].frgb & 0xFFFFFF00) | terrainTypeToMaterial(vertices[1]->pVertex->terrainType);
 
 			gVertex[2].x		= vertices[2]->px;
 			gVertex[2].y		= vertices[2]->py;
@@ -1504,12 +1529,13 @@ void TerrainQuad::draw (void)
 			gVertex[2].v		= maxV;
 			gVertex[2].argb		= lightRGB2;
 			gVertex[2].frgb		= vertices[2]->fogRGB;
-			
+			gVertex[2].frgb		= (gVertex[2].frgb & 0xFFFFFF00) | terrainTypeToMaterial(vertices[2]->pVertex->terrainType);
+
 			if ((gVertex[0].z >= 0.0f) &&
 				(gVertex[0].z < 1.0f) &&
-				(gVertex[1].z >= 0.0f) &&  
-				(gVertex[1].z < 1.0f) && 
-				(gVertex[2].z >= 0.0f) &&  
+				(gVertex[1].z >= 0.0f) &&
+				(gVertex[1].z < 1.0f) &&
+				(gVertex[2].z >= 0.0f) &&
 				(gVertex[2].z < 1.0f))
 			{
 				{
@@ -1517,11 +1543,11 @@ void TerrainQuad::draw (void)
 					DWORD flags = isAlpha ? MC2_DRAWALPHA : 0;
 					if ((terrainDetailHandle == 0xffffffff) && (overlayHandle == 0xffffffff) && isCement) {
 						mcTextureManager->addVertices(terrainHandle,gVertex,MC2_ISTERRAIN | flags | MC2_ISCRATERS);
-						fillTerrainExtra(vertices[0], vertices[1], vertices[2]);
+						fillTerrainExtra(terrainHandle, MC2_ISTERRAIN | flags | MC2_ISCRATERS, vertices[0], vertices[1], vertices[2]);
 					} else {
 						if(terrainHandle!=0) {
 							mcTextureManager->addVertices(terrainHandle,gVertex,MC2_ISTERRAIN | MC2_DRAWSOLID);
-							fillTerrainExtra(vertices[0], vertices[1], vertices[2]);
+							fillTerrainExtra(terrainHandle, MC2_ISTERRAIN | MC2_DRAWSOLID, vertices[0], vertices[1], vertices[2]);
 						}
 					}
 
@@ -1544,10 +1570,10 @@ void TerrainQuad::draw (void)
 						oVertex[0].argb		= vertices[0]->lightRGB;
 						oVertex[1].argb		= vertices[1]->lightRGB;
 						oVertex[2].argb		= vertices[2]->lightRGB;
-						
+
 						mcTextureManager->addVertices(overlayHandle,oVertex,MC2_ISTERRAIN | MC2_DRAWALPHA | MC2_ISCRATERS);
 					}
-					
+
 					//----------------------------------------------------
 					// Draw the detail Texture
 					if (useWaterInterestTexture && (terrainDetailHandle != 0xffffffff))
@@ -1635,23 +1661,24 @@ void TerrainQuad::draw (void)
 			gVertex[2].v		= maxV;
 			gVertex[2].argb		= lightRGB3;
 			gVertex[2].frgb		= vertices[3]->fogRGB;
-			
+			gVertex[2].frgb		= (gVertex[2].frgb & 0xFFFFFF00) | terrainTypeToMaterial(vertices[3]->pVertex->terrainType);
+
 			if ((gVertex[0].z >= 0.0f) &&
 				(gVertex[0].z < 1.0f) &&
-				(gVertex[1].z >= 0.0f) &&  
-				(gVertex[1].z < 1.0f) && 
-				(gVertex[2].z >= 0.0f) &&  
+				(gVertex[1].z >= 0.0f) &&
+				(gVertex[1].z < 1.0f) &&
+				(gVertex[2].z >= 0.0f) &&
 				(gVertex[2].z < 1.0f))
 			{
 				{
 					DWORD flags = isAlpha ? MC2_DRAWALPHA : 0;
 					if ((terrainDetailHandle == 0xffffffff) && (overlayHandle == 0xffffffff) && isCement) {
 						mcTextureManager->addVertices(terrainHandle,gVertex,MC2_ISTERRAIN | flags | MC2_ISCRATERS);
-						fillTerrainExtra(vertices[0], vertices[2], vertices[3]);
+						fillTerrainExtra(terrainHandle, MC2_ISTERRAIN | flags | MC2_ISCRATERS, vertices[0], vertices[2], vertices[3]);
 					} else {
 						if(terrainHandle!=0) {
 							mcTextureManager->addVertices(terrainHandle,gVertex,MC2_ISTERRAIN | MC2_DRAWSOLID);
-							fillTerrainExtra(vertices[0], vertices[2], vertices[3]);
+							fillTerrainExtra(terrainHandle, MC2_ISTERRAIN | MC2_DRAWSOLID, vertices[0], vertices[2], vertices[3]);
 						}
 					}
 
@@ -1762,7 +1789,8 @@ void TerrainQuad::draw (void)
 			gVertex[0].v		= minV;
 			gVertex[0].argb		= lightRGB0;
 			gVertex[0].frgb		= vertices[0]->fogRGB;
-		
+			gVertex[0].frgb		= (gVertex[0].frgb & 0xFFFFFF00) | terrainTypeToMaterial(vertices[0]->pVertex->terrainType);
+
 			gVertex[1].x		= vertices[1]->px;
 			gVertex[1].y		= vertices[1]->py;
 			gVertex[1].z		= vertices[1]->pz + TERRAIN_DEPTH_FUDGE;
@@ -1771,7 +1799,8 @@ void TerrainQuad::draw (void)
 			gVertex[1].v		= minV;
 			gVertex[1].argb		= lightRGB1;
 			gVertex[1].frgb		= vertices[1]->fogRGB;
-			
+			gVertex[1].frgb		= (gVertex[1].frgb & 0xFFFFFF00) | terrainTypeToMaterial(vertices[1]->pVertex->terrainType);
+
 			gVertex[2].x		= vertices[3]->px;
 			gVertex[2].y		= vertices[3]->py;
 			gVertex[2].z		= vertices[3]->pz + TERRAIN_DEPTH_FUDGE;
@@ -1780,23 +1809,24 @@ void TerrainQuad::draw (void)
 			gVertex[2].v		= maxV;
 			gVertex[2].argb		= lightRGB3;
 			gVertex[2].frgb		= vertices[3]->fogRGB;
-			
+			gVertex[2].frgb		= (gVertex[2].frgb & 0xFFFFFF00) | terrainTypeToMaterial(vertices[3]->pVertex->terrainType);
+
 			if ((gVertex[0].z >= 0.0f) &&
 				(gVertex[0].z < 1.0f) &&
-				(gVertex[1].z >= 0.0f) &&  
-				(gVertex[1].z < 1.0f) && 
-				(gVertex[2].z >= 0.0f) &&  
+				(gVertex[1].z >= 0.0f) &&
+				(gVertex[1].z < 1.0f) &&
+				(gVertex[2].z >= 0.0f) &&
 				(gVertex[2].z < 1.0f))
 			{
 				{
 					DWORD flags = isAlpha ? MC2_DRAWALPHA : 0;
 					if ((terrainDetailHandle == 0xffffffff) && (overlayHandle == 0xffffffff) && isCement) {
 						mcTextureManager->addVertices(terrainHandle,gVertex,MC2_ISTERRAIN | flags | MC2_ISCRATERS);
-						fillTerrainExtra(vertices[0], vertices[1], vertices[3]);
+						fillTerrainExtra(terrainHandle, MC2_ISTERRAIN | flags | MC2_ISCRATERS, vertices[0], vertices[1], vertices[3]);
 					} else {
 						if(terrainHandle!=0) {
 							mcTextureManager->addVertices(terrainHandle,gVertex,MC2_ISTERRAIN | MC2_DRAWSOLID);
-							fillTerrainExtra(vertices[0], vertices[1], vertices[3]);
+							fillTerrainExtra(terrainHandle, MC2_ISTERRAIN | MC2_DRAWSOLID, vertices[0], vertices[1], vertices[3]);
 						}
 					}
 
@@ -1806,13 +1836,13 @@ void TerrainQuad::draw (void)
 					{
 						gos_VERTEX sVertex[3];
 						memcpy(sVertex,gVertex,sizeof(gos_VERTEX)*3);
-
+		
 						float tilingFactor = Terrain::terrainTextures->getDetailTilingFactor(1);
 						if (Terrain::terrainTextures2)
 							tilingFactor = Terrain::terrainTextures2->getDetailTilingFactor();
-
+							
  						float oneOverTF		= tilingFactor / Terrain::worldUnitsMapSide;
-
+						
 						sVertex[0].u		= (vertices[0]->vx - Terrain::mapTopLeft3d.x) * oneOverTF;
 						sVertex[0].v		= (Terrain::mapTopLeft3d.y - vertices[0]->vy) * oneOverTF;
 		
@@ -1908,39 +1938,40 @@ void TerrainQuad::draw (void)
 			gVertex[1].v		= maxV;
 			gVertex[1].argb		= lightRGB2;
 			gVertex[1].frgb		= vertices[2]->fogRGB;
-		
+			gVertex[1].frgb		= (gVertex[1].frgb & 0xFFFFFF00) | terrainTypeToMaterial(vertices[2]->pVertex->terrainType);
+
 			if ((gVertex[0].z >= 0.0f) &&
 				(gVertex[0].z < 1.0f) &&
-				(gVertex[1].z >= 0.0f) &&  
-				(gVertex[1].z < 1.0f) && 
-				(gVertex[2].z >= 0.0f) &&  
+				(gVertex[1].z >= 0.0f) &&
+				(gVertex[1].z < 1.0f) &&
+				(gVertex[2].z >= 0.0f) &&
 				(gVertex[2].z < 1.0f))
 			{
 				{
 					DWORD flags = isAlpha ? MC2_DRAWALPHA : 0;
 					if ((terrainDetailHandle == 0xffffffff) && (overlayHandle == 0xffffffff) && isCement) {
 						mcTextureManager->addVertices(terrainHandle,gVertex,MC2_ISTERRAIN | flags | MC2_ISCRATERS);
-						fillTerrainExtra(vertices[1], vertices[2], vertices[3]);
+						fillTerrainExtra(terrainHandle, MC2_ISTERRAIN | flags | MC2_ISCRATERS, vertices[1], vertices[2], vertices[3]);
 					} else {
 						if(terrainHandle!=0) {
 							mcTextureManager->addVertices(terrainHandle,gVertex,MC2_ISTERRAIN | MC2_DRAWSOLID);
-							fillTerrainExtra(vertices[1], vertices[2], vertices[3]);
+							fillTerrainExtra(terrainHandle, MC2_ISTERRAIN | MC2_DRAWSOLID, vertices[1], vertices[2], vertices[3]);
 						}
 					}
-
+ 
 					//----------------------------------------------------
 					// Draw the detail Texture
 					if (useWaterInterestTexture && (terrainDetailHandle != 0xffffffff))
 					{
 						gos_VERTEX sVertex[3];
 						memcpy(sVertex,gVertex,sizeof(gos_VERTEX)*3);
-
+		
 						float tilingFactor = Terrain::terrainTextures->getDetailTilingFactor(1);
 						if (Terrain::terrainTextures2)
 							tilingFactor = Terrain::terrainTextures2->getDetailTilingFactor();
-
+							
  						float oneOverTf		= tilingFactor / Terrain::worldUnitsMapSide;
-
+						
 						sVertex[0].u		= (vertices[1]->vx - Terrain::mapTopLeft3d.x) * oneOverTf;
 						sVertex[0].v		= (Terrain::mapTopLeft3d.y - vertices[1]->vy) * oneOverTf;
 		
@@ -2084,6 +2115,7 @@ void TerrainQuad::drawWater (void)
 			gVertex[0].v		= minV + cloudOffsetY;
 			gVertex[0].argb		= vertices[0]->pVertex->selected ? SELECTION_COLOR : vertices[0]->lightRGB;
 			gVertex[0].frgb		= vertices[0]->fogRGB;
+			gVertex[0].frgb		= (gVertex[0].frgb & 0xFFFFFF00) | terrainTypeToMaterial(vertices[0]->pVertex->terrainType);
 
 			gVertex[1].x		= vertices[1]->wx;
 			gVertex[1].y		= vertices[1]->wy;
@@ -2093,6 +2125,7 @@ void TerrainQuad::drawWater (void)
 			gVertex[1].v		= minV + cloudOffsetY;
 			gVertex[1].argb		= vertices[1]->pVertex->selected ? SELECTION_COLOR : vertices[1]->lightRGB;
 			gVertex[1].frgb		= vertices[1]->fogRGB;
+			gVertex[1].frgb		= (gVertex[1].frgb & 0xFFFFFF00) | terrainTypeToMaterial(vertices[1]->pVertex->terrainType);
 
 			gVertex[2].x		= vertices[2]->wx;
 			gVertex[2].y		= vertices[2]->wy;
@@ -2102,6 +2135,7 @@ void TerrainQuad::drawWater (void)
 			gVertex[2].v		= maxV + cloudOffsetY;
 			gVertex[2].argb		= vertices[2]->pVertex->selected ? SELECTION_COLOR : vertices[2]->lightRGB;
 			gVertex[2].frgb		= vertices[2]->fogRGB;
+			gVertex[2].frgb		= (gVertex[2].frgb & 0xFFFFFF00) | terrainTypeToMaterial(vertices[2]->pVertex->terrainType);
 
 			gVertex[0].u = (vertices[0]->vx - Terrain::mapTopLeft3d.x) * oneOverTF + cloudOffsetX;
 			gVertex[0].v = (Terrain::mapTopLeft3d.y - vertices[0]->vy) * oneOverTF + cloudOffsetY; 
@@ -2240,15 +2274,16 @@ void TerrainQuad::drawWater (void)
 			gVertex[2].v		= maxV + cloudOffsetY;
 			gVertex[2].argb		= vertices[3]->pVertex->selected ? SELECTION_COLOR : vertices[3]->lightRGB;
 			gVertex[2].frgb		= vertices[3]->fogRGB;
-			
+			gVertex[2].frgb		= (gVertex[2].frgb & 0xFFFFFF00) | terrainTypeToMaterial(vertices[3]->pVertex->terrainType);
+
 			gVertex[0].u = (vertices[0]->vx - Terrain::mapTopLeft3d.x) * oneOverTF + cloudOffsetX;
-			gVertex[0].v = (Terrain::mapTopLeft3d.y - vertices[0]->vy) * oneOverTF + cloudOffsetY; 
-																   
-			gVertex[1].u = (vertices[2]->vx - Terrain::mapTopLeft3d.x) * oneOverTF + cloudOffsetX; 
-			gVertex[1].v = (Terrain::mapTopLeft3d.y - vertices[2]->vy) * oneOverTF + cloudOffsetY; 
-																   
-			gVertex[2].u = (vertices[3]->vx - Terrain::mapTopLeft3d.x) * oneOverTF + cloudOffsetX; 
-			gVertex[2].v = (Terrain::mapTopLeft3d.y - vertices[3]->vy) * oneOverTF + cloudOffsetY; 
+			gVertex[0].v = (Terrain::mapTopLeft3d.y - vertices[0]->vy) * oneOverTF + cloudOffsetY;
+
+			gVertex[1].u = (vertices[2]->vx - Terrain::mapTopLeft3d.x) * oneOverTF + cloudOffsetX;
+			gVertex[1].v = (Terrain::mapTopLeft3d.y - vertices[2]->vy) * oneOverTF + cloudOffsetY;
+
+			gVertex[2].u = (vertices[3]->vx - Terrain::mapTopLeft3d.x) * oneOverTF + cloudOffsetX;
+			gVertex[2].v = (Terrain::mapTopLeft3d.y - vertices[3]->vy) * oneOverTF + cloudOffsetY;
 
 			if ((gVertex[0].z >= 0.0f) &&
 				(gVertex[0].z < 1.0f) &&
@@ -2368,7 +2403,8 @@ void TerrainQuad::drawWater (void)
 			gVertex[0].v		= minV + cloudOffsetY;;
 			gVertex[0].argb		= vertices[0]->pVertex->selected ? SELECTION_COLOR : vertices[0]->lightRGB;
 			gVertex[0].frgb		= vertices[0]->fogRGB;
-		
+			gVertex[0].frgb		= (gVertex[0].frgb & 0xFFFFFF00) | terrainTypeToMaterial(vertices[0]->pVertex->terrainType);
+
 			gVertex[1].x		= vertices[1]->wx;
 			gVertex[1].y		= vertices[1]->wy;
 			gVertex[1].z		= vertices[1]->wz + TERRAIN_DEPTH_FUDGE;
@@ -2377,7 +2413,8 @@ void TerrainQuad::drawWater (void)
 			gVertex[1].v		= minV + cloudOffsetY;;
 			gVertex[1].argb		= vertices[1]->pVertex->selected ? SELECTION_COLOR : vertices[1]->lightRGB;
 			gVertex[1].frgb		= vertices[1]->fogRGB;
-			
+			gVertex[1].frgb		= (gVertex[1].frgb & 0xFFFFFF00) | terrainTypeToMaterial(vertices[1]->pVertex->terrainType);
+
 			gVertex[2].x		= vertices[3]->wx;
 			gVertex[2].y		= vertices[3]->wy;
 			gVertex[2].z		= vertices[3]->wz + TERRAIN_DEPTH_FUDGE;
@@ -2386,9 +2423,10 @@ void TerrainQuad::drawWater (void)
 			gVertex[2].v		= maxV + cloudOffsetY;;
 			gVertex[2].argb		= vertices[3]->pVertex->selected ? SELECTION_COLOR : vertices[3]->lightRGB;
 			gVertex[2].frgb		= vertices[3]->fogRGB;
-			
+			gVertex[2].frgb		= (gVertex[2].frgb & 0xFFFFFF00) | terrainTypeToMaterial(vertices[3]->pVertex->terrainType);
+
 			gVertex[0].u = (vertices[0]->vx - Terrain::mapTopLeft3d.x) * oneOverTF + cloudOffsetX;
-			gVertex[0].v = (Terrain::mapTopLeft3d.y - vertices[0]->vy) * oneOverTF + cloudOffsetY; 
+			gVertex[0].v = (Terrain::mapTopLeft3d.y - vertices[0]->vy) * oneOverTF + cloudOffsetY;
 																   
 			gVertex[1].u = (vertices[1]->vx - Terrain::mapTopLeft3d.x) * oneOverTF + cloudOffsetX; 
 			gVertex[1].v = (Terrain::mapTopLeft3d.y - vertices[1]->vy) * oneOverTF + cloudOffsetY; 
@@ -2524,9 +2562,10 @@ void TerrainQuad::drawWater (void)
 			gVertex[1].v		= maxV + cloudOffsetY;;
 			gVertex[1].argb		= vertices[2]->pVertex->selected ? SELECTION_COLOR : vertices[2]->lightRGB;
 			gVertex[1].frgb		= vertices[2]->fogRGB;
-		
+			gVertex[1].frgb		= (gVertex[1].frgb & 0xFFFFFF00) | terrainTypeToMaterial(vertices[2]->pVertex->terrainType);
+
 			gVertex[0].u = (vertices[1]->vx - Terrain::mapTopLeft3d.x) * oneOverTF + cloudOffsetX;
-			gVertex[0].v = (Terrain::mapTopLeft3d.y - vertices[1]->vy) * oneOverTF + cloudOffsetY; 
+			gVertex[0].v = (Terrain::mapTopLeft3d.y - vertices[1]->vy) * oneOverTF + cloudOffsetY;
 																   
 			gVertex[1].u = (vertices[2]->vx - Terrain::mapTopLeft3d.x) * oneOverTF + cloudOffsetX; 
 			gVertex[1].v = (Terrain::mapTopLeft3d.y - vertices[2]->vy) * oneOverTF + cloudOffsetY; 
@@ -3489,7 +3528,12 @@ void TerrainQuad::drawMine (void)
 					gVertex[0].v        = sVertex[0].v		= 0.0f;
 					gVertex[0].argb     = sVertex[0].argb	= vertices[0]->lightRGB;
 					gVertex[0].frgb     = sVertex[0].frgb	= vertices[0]->fogRGB;
-		
+					{
+						BYTE matIdx = terrainTypeToMaterial(vertices[0]->pVertex->terrainType);
+						gVertex[0].frgb = (gVertex[0].frgb & 0xFFFFFF00) | matIdx;
+						sVertex[0].frgb = (sVertex[0].frgb & 0xFFFFFF00) | matIdx;
+					}
+
 					gVertex[1].x		= pos2.x;
 					gVertex[1].y		= pos2.y;
 					gVertex[1].z		= pos2.z;
@@ -3498,7 +3542,8 @@ void TerrainQuad::drawMine (void)
 					gVertex[1].v		= 0.0f;
 					gVertex[1].argb		= vertices[1]->lightRGB;
 					gVertex[1].frgb		= vertices[1]->fogRGB;
-		
+					gVertex[1].frgb		= (gVertex[1].frgb & 0xFFFFFF00) | terrainTypeToMaterial(vertices[1]->pVertex->terrainType);
+
 					gVertex[2].x        = sVertex[1].x		= pos3.x;
 					gVertex[2].y        = sVertex[1].y		= pos3.y;
 					gVertex[2].z        = sVertex[1].z		= pos3.z;
@@ -3507,7 +3552,12 @@ void TerrainQuad::drawMine (void)
 					gVertex[2].v        = sVertex[1].v		= 0.999999999f;
 					gVertex[2].argb     = sVertex[1].argb	= vertices[2]->lightRGB;
 					gVertex[2].frgb     = sVertex[1].frgb	= vertices[2]->fogRGB;
-		
+					{
+						BYTE matIdx = terrainTypeToMaterial(vertices[2]->pVertex->terrainType);
+						gVertex[2].frgb = (gVertex[2].frgb & 0xFFFFFF00) | matIdx;
+						sVertex[1].frgb = (sVertex[1].frgb & 0xFFFFFF00) | matIdx;
+					}
+
 					sVertex[2].x		= pos4.x;
 					sVertex[2].y		= pos4.y;
 					sVertex[2].z		= pos4.z;
@@ -3516,6 +3566,7 @@ void TerrainQuad::drawMine (void)
 					sVertex[2].v		= 0.999999999f;
 					sVertex[2].argb		= vertices[3]->lightRGB;
 					sVertex[2].frgb		= vertices[3]->fogRGB;
+					sVertex[2].frgb		= (sVertex[2].frgb & 0xFFFFFF00) | terrainTypeToMaterial(vertices[3]->pVertex->terrainType);
 		
 					if ((gVertex[0].z >= 0.0f) &&
 						(gVertex[0].z < 1.0f) &&

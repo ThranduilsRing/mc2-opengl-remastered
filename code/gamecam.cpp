@@ -144,8 +144,7 @@ void GameCamera::render (void)
 		//----------------------------------------------------------
 		// Turn stuff on line by line until perspective is working.
 
-		// Compose terrainMVP: MC2 world coords -> OpenGL NDC
-		// Chain: axisSwap -> worldToClip -> orthoViewport -> projection_
+		// Compose terrainMVP: MC2 world coords -> GL clip coords
 		{
 			const float* W = (const float*)&worldToClip;
 			#define WTC(r,c) W[(c)*4+(r)]
@@ -159,33 +158,18 @@ void GameCamera::render (void)
 				AW[3][j] =  WTC(3,j);
 			}
 
-			// Viewport+projection for ortho:
-			// ndc.x = -2*vmx/w * clip.x + (2*(vmx+vax)/w - 1)
-			// ndc.y =  2*vmy/h * clip.y + (1 - 2*(vmy+vay)/h)
-			// ndc.z = clip.z, ndc.w = 1
-			float w = (float)Environment.screenWidth;
-			float h = (float)Environment.screenHeight;
-			float vmx = viewMulX, vmy = viewMulY, vax = viewAddX, vay = viewAddY;
-
-			float VP[4][4] = {
-				{-2.0f*vmx/w, 0.0f,        0.0f, 0.0f},
-				{0.0f,        2.0f*vmy/h,   0.0f, 0.0f},
-				{0.0f,        0.0f,         1.0f, 0.0f},
-				{2.0f*(vmx+vax)/w - 1.0f, 1.0f - 2.0f*(vmy+vay)/h, 0.0f, 1.0f}
-			};
-
-			// terrainMVP = AW * VP (row-major, for GLSL M*v after GL_TRUE transpose)
+			// Upload raw AW matrix (axisSwap * worldToClip)
+			// TES does perspective divide + viewport in shader (non-linear, can't be matrix)
+			// AW stored row-major, uploaded with GL_TRUE → GLSL gets correct column-vector form
 			float M[16];
-			for (int i = 0; i < 4; i++) {
-				for (int jj = 0; jj < 4; jj++) {
-					float sum = 0.0f;
-					for (int k = 0; k < 4; k++)
-						sum += AW[i][k] * VP[k][jj];
-					M[i*4+jj] = sum;
-				}
-			}
+			for (int i = 0; i < 4; i++)
+				for (int j = 0; j < 4; j++)
+					M[i*4+j] = AW[i][j];
 
 			gos_SetTerrainMVP(M);
+
+			// Viewport params for TES: (vmx, vmy, vax, vay)
+			gos_SetTerrainViewport(viewMulX, viewMulY, viewAddX, viewAddY);
 
 			// Camera position in MC2 world space for TCS distance LOD
 			Stuff::Vector3D camOrig = getCameraOrigin();
