@@ -225,7 +225,8 @@ class gosRenderMaterial {
             StringFormat(ps, 255, "shaders/%s.frag", shader);
 
             std::string sh_name = shader;
-            sh_name.append(mvar.getUniqueSuffix());
+            if (mvar.getUniqueSuffix())
+                sh_name.append(mvar.getUniqueSuffix());
 
             // Terrain gets TCS/TES for tessellation
             if (strcmp(shader, "gos_terrain") == 0) {
@@ -1473,7 +1474,9 @@ void gosRenderer::init() {
     // Load terrain tessellation material (TCS/TES shaders)
     {
         printf("[TESS] About to load terrain shader...\n"); fflush(stdout);
+        gosMaterialVariationHelper terrainHelper;
         gosMaterialVariation mvar;
+        terrainHelper.getMaterialVariation(mvar);
         terrain_material_ = gosRenderMaterial::load("gos_terrain", mvar);
         if (terrain_material_) {
             materialList_.push_back(terrain_material_);

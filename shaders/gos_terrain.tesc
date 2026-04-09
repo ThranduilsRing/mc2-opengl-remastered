@@ -1,4 +1,4 @@
-#version 400
+//#version 400 (version provided by material prefix)
 
 layout(vertices = 3) out;
 
