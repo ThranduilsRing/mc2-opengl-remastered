@@ -59,6 +59,9 @@ void main()
     }
 
     // --- Projection ---
-    // Use composed terrainMVP: MC2 world coords -> OpenGL NDC
-    gl_Position = terrainMVP * vec4(worldPos, 1.0);
+    // Passthrough: interpolate screen-space positions from VS
+    // TODO: switch to terrainMVP * vec4(worldPos, 1.0) once matrix is verified
+    gl_Position = bary.x * gl_in[0].gl_Position
+                + bary.y * gl_in[1].gl_Position
+                + bary.z * gl_in[2].gl_Position;
 }
