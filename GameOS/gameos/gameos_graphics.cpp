@@ -1949,10 +1949,7 @@ void gosRenderer::terrainDrawIndexedPatches(gosRenderMaterial* material, gosMesh
     updateBuffer(terrain_extra_vb_, GL_ARRAY_BUFFER,
         terrain_extra_data_, terrain_extra_count_ * sizeof(gos_TERRAIN_EXTRA), GL_DYNAMIC_DRAW);
 
-    material->apply();
-    material->setSamplerUnit(gosMesh::s_tex1, 0);
-
-    // Set tessellation uniforms
+    // Set tessellation uniforms BEFORE apply() — apply uploads all dirty uniforms
     float tessParams[4] = { terrain_tess_level_, terrain_tess_level_, 0.0f, 0.0f };
     material->getShader()->setFloat4("tessLevel", tessParams);
     float tessDist[4] = { terrain_tess_dist_near_, terrain_tess_dist_far_, 0.0f, 0.0f };
@@ -1960,6 +1957,9 @@ void gosRenderer::terrainDrawIndexedPatches(gosRenderMaterial* material, gosMesh
     float tessDisp[4] = { terrain_phong_alpha_, terrain_displace_scale_, 0.0f, 0.0f };
     material->getShader()->setFloat4("tessDisplace", tessDisp);
     material->getShader()->setFloat4("cameraPos", (const float*)&terrain_camera_pos_);
+
+    material->apply();
+    material->setSamplerUnit(gosMesh::s_tex1, 0);
 
     // Bind main VBO and set standard vertex attribs
     glBindBuffer(GL_ARRAY_BUFFER, mesh->getVB());
