@@ -64,6 +64,8 @@ base directory: `A:\Games\mc2-opengl-src\.claude\skills\`
 - `shaders/shadow_terrain.tese` — shadow TES (displacement + lightSpaceMatrix projection)
 - `shaders/shadow_terrain.frag` — explicit gl_FragDepth write (AMD requirement)
 - `shaders/include/shadow.hglsl` — calcShadow() with PCF, bias, NdotL back-face guard
+- `shaders/include/noise.hglsl` — simplex 2D noise (Ashima Arts) + FBM, reusable utility
+- `shaders/gos_tex_vertex.frag` — generic textured vertex shader, also handles water (isWater uniform)
 
 ## Known Issues
 - Post-processing effects (bloom, FXAA) apply to HUD — needs scene/HUD render split
@@ -77,6 +79,7 @@ base directory: `A:\Games\mc2-opengl-src\.claude\skills\`
 - **Per-node VBO alignment:** Terrain extras stored in texture manager nodes, filled per-node by quad.cpp, drawn per-batch by txmmgr.cpp renderLists().
 - **Post-process pipeline:** Scene renders to RGBA16F FBO, composited via fullscreen quad. Bloom at half-res with ping-pong FBOs. All fullscreen draws disable GL_CULL_FACE.
 - **Shadow pipeline (tessellated two-pass):** Shadow pre-pass in `renderLists()` (txmmgr.cpp) draws ALL terrain nodes to 2048x2048 shadow FBO as GL_PATCHES via `drawShadowBatchTessellated` (same TCS/TES pipeline as main terrain). Light matrix built in `draw_screen()` from `gos_GetShadowCenter` (raw MC2 camera pos) and negated `gos_GetTerrainLightDir` (scene→sun direction, negated to light→scene for matrix). Shadow radius 8000 units. Terrain frag samples via sampler2DShadow + 3x3 PCF with NdotL back-face guard.
+- **Water pipeline:** Water is NOT part of the terrain splatting shader (`gos_terrain.frag`). It's a separate alpha-blended overlay drawn AFTER terrain via `TerrainQuad::drawWater()` (quad.cpp), using the generic `gos_tex_vertex` shader. Two layers: base water (`waterHandle`, `MC2_ISWATER`) and detail/spray (`waterDetailHandle`, `MC2_ISWATERDETAIL`). Both batched through texture manager `renderLists()` DRAWALPHA pass. `gos_State_Water` render state routes `isWater`/`time` uniforms via the deferred uniform system (`setInt`/`setFloat` before `apply()`). UVs are world-derived but per-quad wrapped by integer amounts in `drawWater()` — use `sin(UV * 2π * N)` with integer N for seamless tiling across wrapping boundaries (simplex noise breaks at these seams).
 - **Coordinate spaces:** worldPos in extras VBO is raw MC2 (x, y, elevation=Z). `terrainLightDir` stored in raw MC2 space (Z=up, matching fragment tangent-space normals). Shadow `lightSpaceMatrix` built in raw MC2 space via `gos_GetShadowCenter`. The swizzled GL space (-x, z, y) is used only by `gos_SetTerrainCameraPos` for the main TCS distance LOD.
 
 ## AMD Driver Rules (RX 7900 XTX, driver 26.3.1)
@@ -86,3 +89,4 @@ These were discovered through extensive debugging and MUST be followed:
 - **Dummy color attachment on depth-only FBOs** — AMD may not rasterize into FBOs with only a depth attachment. Add a small R8 color texture.
 - **No texture feedback loops** — unbind shadow texture from sampler unit 9 before rendering to shadow FBO (same texture as depth attachment). Re-bind after.
 - **Matrix transpose: GL_FALSE for direct upload** — the deferred uniform system (`setMat4`/`apply()`) uses `GL_TRUE` transpose. Shadow shader uses direct `glUniformMatrix4fv(..., GL_FALSE, ...)` to avoid double-transpose. Never mix deferred and direct for the same uniform.
+- **Deferred vs direct uniforms** — Use `setFloat`/`setInt` BEFORE `apply()` for uniforms that should be flushed during `apply()`. Direct `glUniform*` calls must happen AFTER `apply()` (which calls `glUseProgram`). `drawIndexed()` calls `apply()` internally — so deferred uniforms set before `drawIndexed()` get flushed correctly, but direct GL calls before it get overwritten.
