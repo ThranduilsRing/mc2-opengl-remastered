@@ -1273,6 +1273,7 @@ class gosRenderer {
         bool isTerrainMVPValid() const { return terrain_mvp_valid_; }
         const mat4& getTerrainMVP() const { return terrain_mvp_; }
         gosRenderMaterial* getTerrainMaterial() const { return terrain_material_; }
+        const vec4& getTerrainCameraPos() const { return terrain_camera_pos_; }
 
         // Shadow mode
         void setShadowMode(bool enabled) { shadow_mode_ = enabled; }
@@ -2150,6 +2151,66 @@ void gosRenderer::terrainDrawIndexedPatches(gosRenderMaterial* material, gosMesh
             sizeof(gos_TERRAIN_EXTRA), (void*)(3 * sizeof(float)));
     }
 
+    // Shadow depth pass — BEFORE tessellation to avoid AMD post-tess state issues
+    {
+        gosPostProcess* spp = getGosPostProcess();
+        if (spp && spp->shadowsEnabled_ && shadow_terrain_material_) {
+            GLint prevFBO;
+            GLint prevViewport[4];
+            glGetIntegerv(GL_FRAMEBUFFER_BINDING, &prevFBO);
+            glGetIntegerv(GL_VIEWPORT, prevViewport);
+
+            // Unbind shadow texture from unit 9 (prevent feedback loop)
+            glActiveTexture(GL_TEXTURE9);
+            glBindTexture(GL_TEXTURE_2D, 0);
+            glActiveTexture(GL_TEXTURE0);
+
+            // Switch to shadow FBO — disable comparison mode for rendering
+            glBindTexture(GL_TEXTURE_2D, spp->getShadowTexture());
+            glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_COMPARE_MODE, GL_NONE);
+            glBindTexture(GL_TEXTURE_2D, 0);
+
+            glBindFramebuffer(GL_FRAMEBUFFER, spp->getShadowFBO());
+            glViewport(0, 0, 2048, 2048);
+            glEnable(GL_DEPTH_TEST);
+            glDepthFunc(GL_LESS);
+            glDepthMask(GL_TRUE);
+            glDisable(GL_CULL_FACE);
+
+            // Bind shadow shader — use DIRECT GL for matrix (deferred system transposes!)
+            shadow_terrain_material_->apply();
+            GLint lsmLoc = glGetUniformLocation(
+                shadow_terrain_material_->getShader()->shp_, "lightSpaceMatrix");
+            if (lsmLoc >= 0)
+                glUniformMatrix4fv(lsmLoc, 1, GL_FALSE, spp->getLightSpaceMatrix());
+
+            // Draw as triangles (attribs 4-5 already bound above)
+            glDrawArrays(GL_TRIANGLES, 0, ni);
+
+            // Restore comparison mode for sampling
+            glBindTexture(GL_TEXTURE_2D, spp->getShadowTexture());
+            glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_COMPARE_MODE, GL_COMPARE_REF_TO_TEXTURE);
+            glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_COMPARE_FUNC, GL_LEQUAL);
+            glBindTexture(GL_TEXTURE_2D, 0);
+
+            glBindFramebuffer(GL_FRAMEBUFFER, prevFBO);
+            glViewport(prevViewport[0], prevViewport[1], prevViewport[2], prevViewport[3]);
+
+            // Re-apply terrain material and re-bind shadow texture for sampling
+            material->apply();
+
+            // Re-bind shadow texture to unit 9 (was unbound for feedback loop prevention)
+            GLuint shp_main = material->getShader()->shp_;
+            GLint shadowLoc = glGetUniformLocation(shp_main, "shadowMap");
+            if (shadowLoc >= 0) {
+                glUniform1i(shadowLoc, 9);
+                glActiveTexture(GL_TEXTURE9);
+                glBindTexture(GL_TEXTURE_2D, spp->getShadowTexture());
+                glActiveTexture(GL_TEXTURE0);
+            }
+        }
+    }
+
     // Wireframe overlay
     if (terrain_wireframe_) {
         glPolygonMode(GL_FRONT_AND_BACK, GL_LINE);
@@ -2211,45 +2272,6 @@ void gosRenderer::drawIndexedTris(gos_VERTEX* vertices, int num_vertices, WORD* 
 
     // for now draw anyway because no render state saved for draw calls
     applyRenderStates();
-
-    // Shadow depth pass — draw terrain as GL_TRIANGLES using worldPos from extras VBO
-    if (shadow_mode_ && shadow_terrain_material_ && terrain_batch_extras_count_ > 0) {
-        gosPostProcess* pp = getGosPostProcess();
-        shadow_terrain_material_->getShader()->setMat4("lightSpaceMatrix",
-            pp->getLightSpaceMatrix());
-        shadow_terrain_material_->apply();
-
-        // Upload extras VBO (worldPos at location 4)
-        const gos_TERRAIN_EXTRA* batchExtras = terrain_batch_extras_;
-        int batchExtrasCount = terrain_batch_extras_count_;
-        if (batchExtras && batchExtrasCount > 0) {
-            updateBuffer(terrain_extra_vb_, GL_ARRAY_BUFFER,
-                batchExtras, batchExtrasCount * sizeof(gos_TERRAIN_EXTRA), GL_DYNAMIC_DRAW);
-        }
-        glBindBuffer(GL_ARRAY_BUFFER, terrain_extra_vb_);
-        glEnableVertexAttribArray(4);
-        glVertexAttribPointer(4, 3, GL_FLOAT, GL_FALSE,
-            sizeof(gos_TERRAIN_EXTRA), (void*)0);
-
-        // Upload main IBO and draw as triangles
-        indexed_tris_->uploadBuffers();
-        glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, indexed_tris_->getIB());
-        int ni = indexed_tris_->getNumIndices();
-        glDrawElements(GL_TRIANGLES, ni,
-            indexed_tris_->getIndexSizeBytes() == 2 ? GL_UNSIGNED_SHORT : GL_UNSIGNED_INT, NULL);
-
-        glDisableVertexAttribArray(4);
-        glBindBuffer(GL_ARRAY_BUFFER, 0);
-        glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, 0);
-        indexed_tris_->rewind();
-
-        if (curStates_[gos_State_Terrain]) {
-            curStates_[gos_State_Terrain] = 0;
-            renderStates_[gos_State_Terrain] = 0;
-        }
-        afterDrawCall();
-        return;
-    }
 
     // Terrain tessellation path
     static int tess_trace_count_ = 0;
@@ -3312,6 +3334,15 @@ bool __stdcall gos_IsTerrainTessellationActive() {
 
 void gos_SetShadowMode(bool enable) {
     if (g_gos_renderer) g_gos_renderer->setShadowMode(enable);
+}
+
+void gos_GetTerrainCameraPos(float* x, float* y, float* z) {
+    if (g_gos_renderer) {
+        const vec4& cp = g_gos_renderer->getTerrainCameraPos();
+        if (x) *x = cp.x;
+        if (y) *y = cp.y;
+        if (z) *z = cp.z;
+    }
 }
 void __stdcall gos_SetTerrainMVP(const float* matrix16) {
     if (g_gos_renderer) g_gos_renderer->setTerrainMVP(matrix16);

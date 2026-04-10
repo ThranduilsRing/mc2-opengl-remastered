@@ -48,6 +48,7 @@ gosPostProcess::gosPostProcess()
     , initialized_(false)
     , shadowFBO_(0)
     , shadowDepthTex_(0)
+    , shadowDummyColorTex_(0)
     , shadowDepthProg_(nullptr)
     , shadowMapSize_(2048)
     , shadowsEnabled_(true)
@@ -436,7 +437,15 @@ void gosPostProcess::initShadows()
     glTexParameterfv(GL_TEXTURE_2D, GL_TEXTURE_BORDER_COLOR, borderColor);
     glFramebufferTexture2D(GL_FRAMEBUFFER, GL_DEPTH_ATTACHMENT, GL_TEXTURE_2D, shadowDepthTex_, 0);
 
-    glDrawBuffer(GL_NONE);
+    // Dummy color attachment — AMD drivers skip rasterization on depth-only FBOs
+    glGenTextures(1, &shadowDummyColorTex_);
+    glBindTexture(GL_TEXTURE_2D, shadowDummyColorTex_);
+    glTexImage2D(GL_TEXTURE_2D, 0, GL_R8,
+        shadowMapSize_, shadowMapSize_, 0, GL_RED, GL_UNSIGNED_BYTE, nullptr);
+    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_NEAREST);
+    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_NEAREST);
+    glFramebufferTexture2D(GL_FRAMEBUFFER, GL_COLOR_ATTACHMENT0, GL_TEXTURE_2D, shadowDummyColorTex_, 0);
+    glDrawBuffer(GL_COLOR_ATTACHMENT0);
     glReadBuffer(GL_NONE);
 
     if (glCheckFramebufferStatus(GL_FRAMEBUFFER) != GL_FRAMEBUFFER_COMPLETE)
@@ -463,12 +472,20 @@ void gosPostProcess::beginShadowPass()
     glViewport(0, 0, shadowMapSize_, shadowMapSize_);
     glClear(GL_DEPTH_BUFFER_BIT);
 
+    // Force depth test and writing ON
+    glEnable(GL_DEPTH_TEST);
+    glDepthFunc(GL_LESS);
+    glDepthMask(GL_TRUE);
+
     // Polygon offset to reduce shadow acne
     glEnable(GL_POLYGON_OFFSET_FILL);
     glPolygonOffset(2.0f, 4.0f);
 
     // Only need depth — disable color writes
     glColorMask(GL_FALSE, GL_FALSE, GL_FALSE, GL_FALSE);
+
+    // Disable culling so both faces write depth
+    glDisable(GL_CULL_FACE);
 }
 
 void gosPostProcess::endShadowPass()
@@ -485,6 +502,7 @@ void gosPostProcess::destroyShadows()
 {
     if (shadowFBO_) { glDeleteFramebuffers(1, &shadowFBO_); shadowFBO_ = 0; }
     if (shadowDepthTex_) { glDeleteTextures(1, &shadowDepthTex_); shadowDepthTex_ = 0; }
+    if (shadowDummyColorTex_) { glDeleteTextures(1, &shadowDummyColorTex_); shadowDummyColorTex_ = 0; }
     if (shadowDepthProg_) {
         glsl_program::deleteProgram("shadow_depth");
         shadowDepthProg_ = nullptr;
@@ -496,47 +514,47 @@ void gosPostProcess::updateLightMatrix(float sunDirX, float sunDirY, float sunDi
 {
     if (!shadowsEnabled_) return;
 
-    // Normalize light direction (pointing toward light)
-    float lx = -sunDirX, ly = -sunDirY, lz = -sunDirZ;
-    float len = sqrtf(lx*lx + ly*ly + lz*lz);
+    // Normalize sun direction
+    float len = sqrtf(sunDirX*sunDirX + sunDirY*sunDirY + sunDirZ*sunDirZ);
     if (len < 0.001f) return;
-    lx /= len; ly /= len; lz /= len;
+    // Forward = from light toward scene (= sunDir direction)
+    float fx = sunDirX/len, fy = sunDirY/len, fz = sunDirZ/len;
 
-    // Light "position" behind the scene
-    float lightPosX = camX - lx * radius;
-    float lightPosY = camY - ly * radius;
-    float lightPosZ = camZ - lz * radius;
-
+    // Light "position" behind the scene (along -forward from camera)
     float r = radius;
+    float lightPosX = camX - fx * r;
+    float lightPosY = camY - fy * r;
+    float lightPosZ = camZ - fz * r;
 
-    // Right = forward x up_hint
-    float ux = 0, uy = 1, uz = 0;
-    if (fabsf(ly) > 0.9f) { ux = 1; uy = 0; uz = 0; }
+    // Right = cross(forward, up_hint)
+    float ux = 0, uy = 0, uz = 1;  // Z-up for MC2 world coordinates
+    if (fabsf(fz) > 0.9f) { ux = 0; uy = 1; uz = 0; }
 
-    float rx = ly * uz - lz * uy;
-    float ry = lz * ux - lx * uz;
-    float rz = lx * uy - ly * ux;
+    float rx = fy * uz - fz * uy;
+    float ry = fz * ux - fx * uz;
+    float rz = fx * uy - fy * ux;
     len = sqrtf(rx*rx + ry*ry + rz*rz);
     rx /= len; ry /= len; rz /= len;
 
-    // True up
-    ux = ry * lz - rz * ly;
-    uy = rz * lx - rx * lz;
-    uz = rx * ly - ry * lx;
+    // True up = cross(right, forward)
+    ux = ry * fz - rz * fy;
+    uy = rz * fx - rx * fz;
+    uz = rx * fy - ry * fx;
 
-    // View matrix (column-major for OpenGL)
+    // Standard OpenGL lookAt view matrix (column-major)
+    // Camera looks down -Z, so Z-row = -forward
     float view[16] = {
-        rx, ux, lx, 0,
-        ry, uy, ly, 0,
-        rz, uz, lz, 0,
+         rx,  ux, -fx, 0,
+         ry,  uy, -fy, 0,
+         rz,  uz, -fz, 0,
         -(rx*lightPosX + ry*lightPosY + rz*lightPosZ),
         -(ux*lightPosX + uy*lightPosY + uz*lightPosZ),
-        -(lx*lightPosX + ly*lightPosY + lz*lightPosZ),
+         (fx*lightPosX + fy*lightPosY + fz*lightPosZ),
         1
     };
 
-    // Ortho projection
-    float nearP = 0.0f, farP = 2.0f * r;
+    // Ortho projection: maps eye-space z ∈ [-farP, -nearP] to NDC [-1, 1]
+    float nearP = 1.0f, farP = 2.0f * r;
     float ortho[16] = {
         1.0f/r, 0, 0, 0,
         0, 1.0f/r, 0, 0,

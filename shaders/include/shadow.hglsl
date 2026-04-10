@@ -15,7 +15,10 @@ float calcShadow(vec3 worldPos, vec3 normal, vec3 lightDir)
     vec3 projCoords = lsPos.xyz / lsPos.w;
     projCoords = projCoords * 0.5 + 0.5;
 
-    if (projCoords.z > 1.0) return 1.0;
+    // Outside shadow map coverage — fully lit
+    if (projCoords.z > 1.0 || projCoords.z < 0.0) return 1.0;
+    if (projCoords.x < 0.0 || projCoords.x > 1.0 ||
+        projCoords.y < 0.0 || projCoords.y > 1.0) return 1.0;
 
     // Slope-scaled bias to prevent shadow acne
     float bias = max(0.005 * (1.0 - dot(normal, lightDir)), 0.001);

@@ -2,5 +2,6 @@
 
 void main()
 {
-    // Depth written automatically by GL
+    // Explicit depth write — prevents AMD "empty shader" optimization
+    gl_FragDepth = gl_FragCoord.z;
 }

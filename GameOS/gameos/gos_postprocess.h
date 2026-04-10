@@ -82,6 +82,7 @@ private:
     // Shadow map
     GLuint shadowFBO_;
     GLuint shadowDepthTex_;
+    GLuint shadowDummyColorTex_;  // AMD needs a color attachment for rasterization
     glsl_program* shadowDepthProg_;
     int shadowMapSize_;
     float lightSpaceMatrix_[16];
