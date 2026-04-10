@@ -2,11 +2,14 @@
 
 #define PREC highp
 
+#include <include/shadow.hglsl>
+
 in PREC vec4 Color;
 in PREC vec2 Texcoord;
 in PREC float FogValue;
 in PREC float TerrainType;
 in PREC vec3 WorldNorm;
+in PREC vec3 WorldPos;
 
 layout (location=0) out PREC vec4 FragColor;
 
@@ -264,6 +267,10 @@ void main(void)
     // Normal map lighting — moderate range for visible detail without black crush
     PREC float normalLight = mix(0.55, 1.15, diffuse);
     c.rgb *= normalLight;
+
+    // Shadow
+    float shadow = calcShadow(WorldPos, N, terrainLightDir.xyz);
+    c.rgb *= shadow;
 
     if(fog_color.x>0.0 || fog_color.y>0.0 || fog_color.z>0.0 || fog_color.w>0.0)
         c.rgb = mix(fog_color.rgb, c.rgb, FogValue);

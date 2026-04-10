@@ -48,6 +48,7 @@
 #include<mlr/mlr.hpp>
 #include<gosfx/gosfxheaders.hpp>
 #include <utils/gl_utils.h>
+#include "gos_postprocess.h"
 
 //---------------------------------------------------------------------------
 // static globals
@@ -1041,6 +1042,58 @@ void MC_TextureManager::renderLists (void)
 
 	// restore viewport
 	gos_SetRenderViewport(0, 0, Environment.drawableWidth, Environment.drawableHeight);
+
+	// ── Shadow depth pass: render terrain to shadow FBO ──
+	{
+		gosPostProcess* pp = getGosPostProcess();
+		if (pp && pp->shadowsEnabled_) {
+			pp->beginShadowPass();
+			gos_SetShadowMode(true);
+
+			for (long si = 0; si < nextAvailableVertexNode; si++) {
+				if ((masterVertexNodes[si].flags & MC2_DRAWSOLID) &&
+					(masterVertexNodes[si].flags & MC2_ISTERRAIN) &&
+					(masterVertexNodes[si].vertices))
+				{
+					// Set per-node terrain extras for shadow VBO
+					if (masterVertexNodes[si].extras) {
+						int extraCount = masterVertexNodes[si].currentExtra
+							? (int)(masterVertexNodes[si].currentExtra - masterVertexNodes[si].extras)
+							: 0;
+						gos_SetTerrainBatchExtras(masterVertexNodes[si].extras, extraCount);
+					} else {
+						gos_SetTerrainBatchExtras(NULL, 0);
+					}
+
+					DWORD totalVertices = masterVertexNodes[si].numVertices;
+					if (masterVertexNodes[si].currentVertex != (masterVertexNodes[si].vertices + masterVertexNodes[si].numVertices)) {
+						totalVertices = masterVertexNodes[si].currentVertex - masterVertexNodes[si].vertices;
+					}
+
+					if (totalVertices && (totalVertices < MAX_SENDDOWN)) {
+						gos_SetRenderState(gos_State_Terrain, 1);
+						gos_SetRenderState(gos_State_Texture, masterTextureNodes[masterVertexNodes[si].textureIndex].get_gosTextureHandle());
+						gos_RenderIndexedArray(masterVertexNodes[si].vertices, totalVertices, indexArray, totalVertices);
+					} else if (totalVertices > MAX_SENDDOWN) {
+						gos_SetRenderState(gos_State_Terrain, 1);
+						gos_SetRenderState(gos_State_Texture, masterTextureNodes[masterVertexNodes[si].textureIndex].get_gosTextureHandle());
+						long currentVertices = 0;
+						while (currentVertices < (long)totalVertices) {
+							gos_VERTEX *v = masterVertexNodes[si].vertices + currentVertices;
+							long tVertices = totalVertices - currentVertices;
+							if (tVertices > MAX_SENDDOWN) tVertices = MAX_SENDDOWN;
+							gos_RenderIndexedArray(v, tVertices, indexArray, tVertices);
+							currentVertices += tVertices;
+						}
+					}
+					// Do NOT reset currentVertex — main loop does that
+				}
+			}
+
+			gos_SetShadowMode(false);
+			pp->endShadowPass();
+		}
+	}
 
 	bool bSkip_DRAWSOLID = false;
 	for (long i=0;i<nextAvailableVertexNode && !bSkip_DRAWSOLID;i++)

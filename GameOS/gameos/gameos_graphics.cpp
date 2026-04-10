@@ -1274,6 +1274,11 @@ class gosRenderer {
         const mat4& getTerrainMVP() const { return terrain_mvp_; }
         gosRenderMaterial* getTerrainMaterial() const { return terrain_material_; }
 
+        // Shadow mode
+        void setShadowMode(bool enabled) { shadow_mode_ = enabled; }
+        bool getShadowMode() const { return shadow_mode_; }
+        gosRenderMaterial* getShadowTerrainMaterial() const { return shadow_terrain_material_; }
+
         // Terrain splatting setters
         void setTerrainLightDir(float x, float y, float z) { terrain_light_dir_ = vec4(x, y, z, 0.0f); }
         void setTerrainDetailParams(float tiling, float strength) { terrain_detail_tiling_ = tiling; terrain_detail_strength_ = strength; }
@@ -1399,6 +1404,10 @@ class gosRenderer {
         // Terrain tessellation material
         gosRenderMaterial* terrain_material_ = nullptr;
 
+        // Shadow mode
+        gosRenderMaterial* shadow_terrain_material_ = nullptr;
+        bool shadow_mode_ = false;
+
         // Terrain splatting textures (from main source, needed for material normal maps)
         vec4 terrain_light_dir_;
         float terrain_detail_tiling_ = 1.0f;
@@ -1522,6 +1531,17 @@ void gosRenderer::init() {
             printf("[TESS] WARNING: Terrain material failed to load — tessellation disabled\n");
         }
         fflush(stdout);
+    }
+
+    // Load shadow terrain material (VS+FS only, no tessellation)
+    {
+        gosMaterialVariationHelper helper;
+        gosMaterialVariation mvar;
+        helper.getMaterialVariation(mvar);
+        shadow_terrain_material_ = gosRenderMaterial::load("shadow_terrain", mvar);
+        if (shadow_terrain_material_) {
+            materialList_.push_back(shadow_terrain_material_);
+        }
     }
 }
 
@@ -2064,6 +2084,27 @@ void gosRenderer::terrainDrawIndexedPatches(gosRenderMaterial* material, gosMesh
         glActiveTexture(GL_TEXTURE0);
     }
 
+    // Shadow map binding (unit 9)
+    {
+        gosPostProcess* pp = getGosPostProcess();
+        if (pp && pp->shadowsEnabled_) {
+            loc = glGetUniformLocation(shp, "lightSpaceMatrix");
+            if (loc >= 0) glUniformMatrix4fv(loc, 1, GL_FALSE, pp->getLightSpaceMatrix());
+            loc = glGetUniformLocation(shp, "enableShadows");
+            if (loc >= 0) glUniform1i(loc, 1);
+            loc = glGetUniformLocation(shp, "shadowMap");
+            if (loc >= 0) {
+                glUniform1i(loc, 9);
+                glActiveTexture(GL_TEXTURE9);
+                glBindTexture(GL_TEXTURE_2D, pp->getShadowTexture());
+                glActiveTexture(GL_TEXTURE0);
+            }
+        } else {
+            loc = glGetUniformLocation(shp, "enableShadows");
+            if (loc >= 0) glUniform1i(loc, 0);
+        }
+    }
+
     static bool tess_uniform_trace_ = false;
     if (!tess_uniform_trace_) {
         tess_uniform_trace_ = true;
@@ -2170,6 +2211,45 @@ void gosRenderer::drawIndexedTris(gos_VERTEX* vertices, int num_vertices, WORD* 
 
     // for now draw anyway because no render state saved for draw calls
     applyRenderStates();
+
+    // Shadow depth pass — draw terrain as GL_TRIANGLES using worldPos from extras VBO
+    if (shadow_mode_ && shadow_terrain_material_ && terrain_batch_extras_count_ > 0) {
+        gosPostProcess* pp = getGosPostProcess();
+        shadow_terrain_material_->getShader()->setMat4("lightSpaceMatrix",
+            pp->getLightSpaceMatrix());
+        shadow_terrain_material_->apply();
+
+        // Upload extras VBO (worldPos at location 4)
+        const gos_TERRAIN_EXTRA* batchExtras = terrain_batch_extras_;
+        int batchExtrasCount = terrain_batch_extras_count_;
+        if (batchExtras && batchExtrasCount > 0) {
+            updateBuffer(terrain_extra_vb_, GL_ARRAY_BUFFER,
+                batchExtras, batchExtrasCount * sizeof(gos_TERRAIN_EXTRA), GL_DYNAMIC_DRAW);
+        }
+        glBindBuffer(GL_ARRAY_BUFFER, terrain_extra_vb_);
+        glEnableVertexAttribArray(4);
+        glVertexAttribPointer(4, 3, GL_FLOAT, GL_FALSE,
+            sizeof(gos_TERRAIN_EXTRA), (void*)0);
+
+        // Upload main IBO and draw as triangles
+        indexed_tris_->uploadBuffers();
+        glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, indexed_tris_->getIB());
+        int ni = indexed_tris_->getNumIndices();
+        glDrawElements(GL_TRIANGLES, ni,
+            indexed_tris_->getIndexSizeBytes() == 2 ? GL_UNSIGNED_SHORT : GL_UNSIGNED_INT, NULL);
+
+        glDisableVertexAttribArray(4);
+        glBindBuffer(GL_ARRAY_BUFFER, 0);
+        glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, 0);
+        indexed_tris_->rewind();
+
+        if (curStates_[gos_State_Terrain]) {
+            curStates_[gos_State_Terrain] = 0;
+            renderStates_[gos_State_Terrain] = 0;
+        }
+        afterDrawCall();
+        return;
+    }
 
     // Terrain tessellation path
     static int tess_trace_count_ = 0;
@@ -3228,6 +3308,10 @@ void __stdcall gos_SetTerrainBatchExtras(const gos_TERRAIN_EXTRA* extras, int co
 }
 bool __stdcall gos_IsTerrainTessellationActive() {
     return g_gos_renderer && g_gos_renderer->getTerrainMaterial() != nullptr;
+}
+
+void gos_SetShadowMode(bool enable) {
+    if (g_gos_renderer) g_gos_renderer->setShadowMode(enable);
 }
 void __stdcall gos_SetTerrainMVP(const float* matrix16) {
     if (g_gos_renderer) g_gos_renderer->setTerrainMVP(matrix16);

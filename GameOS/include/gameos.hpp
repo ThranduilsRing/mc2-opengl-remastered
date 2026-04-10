@@ -2279,6 +2279,9 @@ void gos_SetTerrainDetailNormalTexture(unsigned int glTexId);
 void gos_SetTerrainDisplacementTexture(unsigned int glTexId);
 void gos_SetTerrainViewDir(float x, float y, float z);
 
+// Shadow mode — render terrain depth to shadow FBO
+void gos_SetShadowMode(bool enable);
+
 //
 // Set a renderstate
 //
