@@ -14,6 +14,7 @@ out float FogValue;
 out vec2 Texcoord;
 out float TerrainType;
 out vec3 WorldNorm;
+out vec3 WorldPos;
 
 uniform vec4 tessDisplace;      // x=phongAlpha, y=displaceScale
 uniform mat4 terrainMVP;        // axisSwap * worldToClip (clip-space transform)
@@ -91,6 +92,7 @@ void main()
     }
 
     WorldNorm = worldNorm;
+    WorldPos = worldPos;
 
     // --- Projection: replicate CPU projectZ pipeline on GPU ---
     // Step 1: world -> clip coords (axisSwap * worldToClip)

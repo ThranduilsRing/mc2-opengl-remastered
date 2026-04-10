@@ -55,6 +55,7 @@ gosPostProcess::gosPostProcess()
     bloomFBO_[0] = bloomFBO_[1] = 0;
     bloomColorTex_[0] = bloomColorTex_[1] = 0;
     memset(lightSpaceMatrix_, 0, sizeof(lightSpaceMatrix_));
+    memset(savedViewport_, 0, sizeof(savedViewport_));
 }
 
 gosPostProcess::~gosPostProcess()
@@ -451,6 +452,33 @@ void gosPostProcess::initShadows()
     glBindFramebuffer(GL_FRAMEBUFFER, shadowFBO_);
     glClear(GL_DEPTH_BUFFER_BIT);
     glBindFramebuffer(GL_FRAMEBUFFER, 0);
+}
+
+void gosPostProcess::beginShadowPass()
+{
+    if (!shadowsEnabled_ || !shadowFBO_) return;
+
+    glGetIntegerv(GL_VIEWPORT, savedViewport_);
+    glBindFramebuffer(GL_FRAMEBUFFER, shadowFBO_);
+    glViewport(0, 0, shadowMapSize_, shadowMapSize_);
+    glClear(GL_DEPTH_BUFFER_BIT);
+
+    // Polygon offset to reduce shadow acne
+    glEnable(GL_POLYGON_OFFSET_FILL);
+    glPolygonOffset(2.0f, 4.0f);
+
+    // Only need depth — disable color writes
+    glColorMask(GL_FALSE, GL_FALSE, GL_FALSE, GL_FALSE);
+}
+
+void gosPostProcess::endShadowPass()
+{
+    if (!shadowsEnabled_ || !shadowFBO_) return;
+
+    glDisable(GL_POLYGON_OFFSET_FILL);
+    glColorMask(GL_TRUE, GL_TRUE, GL_TRUE, GL_TRUE);
+    glBindFramebuffer(GL_FRAMEBUFFER, sceneFBO_); // restore to scene FBO
+    glViewport(savedViewport_[0], savedViewport_[1], savedViewport_[2], savedViewport_[3]);
 }
 
 void gosPostProcess::destroyShadows()

@@ -31,6 +31,9 @@ public:
                            float camX, float camY, float camZ, float radius);
     GLuint getShadowTexture() const { return shadowDepthTex_; }
     const float* getLightSpaceMatrix() const { return lightSpaceMatrix_; }
+    GLuint getShadowFBO() const { return shadowFBO_; }
+    void beginShadowPass();
+    void endShadowPass();
     bool shadowsEnabled_;
 
     // Toggles and parameters
@@ -82,6 +85,7 @@ private:
     glsl_program* shadowDepthProg_;
     int shadowMapSize_;
     float lightSpaceMatrix_[16];
+    int savedViewport_[4];
 };
 
 gosPostProcess* getGosPostProcess();
