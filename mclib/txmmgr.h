@@ -60,6 +60,8 @@ enum MC_TextureKey
 #define MC2_ISSPOTLGT				256
 #define MC2_ISHUDLMNT				512
 #define MC2_ALPHATEST				1024
+#define MC2_ISWATER					2048
+#define MC2_ISWATERDETAIL			4096
 
 //----------------------------------------------------------------------
 // No More MC_BlockInfos.  gosTextureHandle is protected to enforce caching.

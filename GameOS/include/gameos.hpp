@@ -2108,6 +2108,8 @@ enum gos_RenderState
 
 	gos_State_Terrain,			// Default: 0						true/false - terrain draw with tessellation shader
 
+	gos_State_Water,			// Default: 0						true/false - water draw with animated noise
+
 	gos_MaxState				// Marker for last render state
 };
 

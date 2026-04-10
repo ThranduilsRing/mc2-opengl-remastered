@@ -1783,6 +1783,8 @@ void gosRenderer::applyRenderStates() {
    // Terrain tessellation flag — copy then auto-reset to prevent bleed to non-terrain draws
    curStates_[gos_State_Terrain] = renderStates_[gos_State_Terrain];
    renderStates_[gos_State_Terrain] = 0;
+   curStates_[gos_State_Water] = renderStates_[gos_State_Water];
+   renderStates_[gos_State_Water] = 0;
 
 }
 
@@ -2442,6 +2444,20 @@ void gosRenderer::drawIndexedTris(gos_VERTEX* vertices, int num_vertices, WORD* 
 
             mat->setTransform(projection_);
             mat->setFogColor(fog_color_);
+
+            // Water uniforms: set via deferred system before apply() flushes them
+            {
+                glsl_program* prog = mat->getShader();
+                if (curStates_[gos_State_Water]) {
+                    prog->setInt("isWater", 1);
+                    static uint64_t water_start = timing::get_wall_time_ms();
+                    float elapsed = (float)(timing::get_wall_time_ms() - water_start) / 1000.0f;
+                    prog->setFloat("time", elapsed);
+                } else {
+                    prog->setInt("isWater", 0);
+                }
+            }
+
             indexed_tris_->drawIndexed(mat);
             indexed_tris_->rewind();
         }
