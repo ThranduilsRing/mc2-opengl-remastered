@@ -175,9 +175,10 @@ void GameCamera::render (void)
 			Stuff::Vector3D camOrig = getCameraOrigin();
 			gos_SetTerrainCameraPos(camOrig.x, camOrig.y, camOrig.z);
 
-			// Light direction in MC2 world space -> swizzled GL space (-x, z, y)
-			// Same swizzle applied to camera pos in terrain.cpp:787
-			gos_SetTerrainLightDir(-lightDirection.x, lightDirection.z, lightDirection.y);
+			// Light direction in raw MC2 world space (x, y, elevation)
+			// NOT swizzled — fragment shader normals are in tangent space where Z = up,
+			// which matches raw MC2 coords (Z = elevation).
+			gos_SetTerrainLightDir(lightDirection.x, lightDirection.y, lightDirection.z);
 
 			#undef WTC
 		}

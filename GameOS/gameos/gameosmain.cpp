@@ -155,20 +155,20 @@ static void draw_screen( void )
 
     // Resize post-process FBOs if window size changed
     if (pp) {
-        // Use camera position for shadow map centering
-        // NOTE: gos_GetTerrainCameraPos returns swizzled coords (-mc2x, mc2z, mc2y),
-        // which is the same space the old working shadow code used.
-        // TODO: reconcile coordinate spaces once shadow direction is tuned
+        // Shadow light matrix: raw MC2 world space (x, y, elevation = Z-up)
+        // matching worldPos in extras VBO and updateLightMatrix's Z-up hint
         {
             float cx = 0.0f, cy = 0.0f, cz = 0.0f;
-            gos_GetTerrainCameraPos(&cx, &cy, &cz);
-            // Use game light direction (set from gamecam.cpp with MC2->GL swizzle)
+            gos_GetShadowCenter(&cx, &cy, &cz);  // raw MC2 camera pos
+
             float lx = 0.0f, ly = 0.0f, lz = 0.0f;
-            gos_GetTerrainLightDir(&lx, &ly, &lz);
-            // Fallback to hardcoded direction if light dir not yet set
+            gos_GetTerrainLightDir(&lx, &ly, &lz);  // raw MC2 light dir (scene→sun)
             float len2 = lx*lx + ly*ly + lz*lz;
-            if (len2 < 0.001f) { lx = 0.3f; ly = 0.7f; lz = 0.2f; }
-            pp->updateLightMatrix(lx, ly, lz, cx, cy, cz, 1500.0f);
+            if (len2 < 0.001f) { lx = 0.5f; ly = 0.5f; lz = 0.7f; }
+
+            // Negate: lightDir points scene→sun, but updateLightMatrix
+            // expects light→scene for light position calculation
+            pp->updateLightMatrix(-lx, -ly, -lz, cx, cy, cz, 8000.0f);
         }
         pp->resize(viewport_w, viewport_h);
         pp->beginScene();

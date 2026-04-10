@@ -20,9 +20,13 @@ float calcShadow(vec3 worldPos, vec3 normal, vec3 lightDir)
     if (projCoords.x < 0.0 || projCoords.x > 1.0 ||
         projCoords.y < 0.0 || projCoords.y > 1.0) return 1.0;
 
-    // Depth bias: shadow written from flat geometry, read from tessellated positions.
+    // Back-face: surface facing away from light can't be in cast shadow,
+    // only in self-shadow (which we don't want). Skip shadow lookup.
     float NdotL = max(dot(normal, lightDir), 0.0);
-    float bias = max(0.004 * (1.0 - NdotL), 0.001);
+    if (NdotL < 0.15) return 1.0;
+
+    // Depth bias — scale with NdotL for slope-dependent bias
+    float bias = max(0.008 * (1.0 - NdotL), 0.003);
     float currentDepth = projCoords.z - bias;
 
     // PCF 3x3 for soft shadow edges
@@ -35,10 +39,9 @@ float calcShadow(vec3 worldPos, vec3 normal, vec3 lightDir)
     }
     shadow /= 9.0;
 
-    // High ambient — shadow is multiplicative on already-dark terrain materials.
-    // 0.85 keeps shadows very subtle (15% darkening) to minimize artifacts from
-    // flat-vs-tessellated geometry mismatch. Tune down once light direction is fixed.
-    return mix(0.85, 1.0, shadow);
+    // Shadow ambient — lower value = darker shadows.
+    // Tessellated shadow pass now matches shaded geometry, so we can use lower ambient.
+    return mix(0.4, 1.0, shadow);
 }
 
 #endif // __SHADOW_HGLSL__
