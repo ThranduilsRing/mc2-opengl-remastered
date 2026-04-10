@@ -1043,16 +1043,31 @@ void MC_TextureManager::renderLists (void)
 	// restore viewport
 	gos_SetRenderViewport(0, 0, Environment.drawableWidth, Environment.drawableHeight);
 
-	// Clear shadow map once per frame (shadow depth writes happen per-batch in terrainDrawIndexedPatches)
-	{
-		gosPostProcess* pp = getGosPostProcess();
-		if (pp && pp->shadowsEnabled_) {
-			GLint prevFBO;
-			glGetIntegerv(GL_FRAMEBUFFER_BINDING, &prevFBO);
-			glBindFramebuffer(GL_FRAMEBUFFER, pp->getShadowFBO());
-			glClear(GL_DEPTH_BUFFER_BIT);
-			glBindFramebuffer(GL_FRAMEBUFFER, prevFBO);
+	// Shadow pre-pass: render ALL terrain batches to shadow map before any shading.
+	// This eliminates per-batch seams where early batches missed later batches' shadows.
+	if (gos_IsTerrainTessellationActive()) {
+		gos_BeginShadowPrePass();  // clears shadow map, binds shadow FBO + shader
+		for (long si = 0; si < nextAvailableVertexNode; si++) {
+			if ((masterVertexNodes[si].flags & MC2_DRAWSOLID) &&
+				(masterVertexNodes[si].flags & MC2_ISTERRAIN) &&
+				masterVertexNodes[si].vertices &&
+				masterVertexNodes[si].extras) {
+
+				DWORD totalVerts = masterVertexNodes[si].numVertices;
+				if (masterVertexNodes[si].currentVertex !=
+					(masterVertexNodes[si].vertices + masterVertexNodes[si].numVertices)) {
+					totalVerts = masterVertexNodes[si].currentVertex - masterVertexNodes[si].vertices;
+				}
+
+				int extraCount = masterVertexNodes[si].currentExtra
+					? (int)(masterVertexNodes[si].currentExtra - masterVertexNodes[si].extras)
+					: 0;
+
+				if (totalVerts > 0 && extraCount > 0)
+					gos_DrawShadowBatch(masterVertexNodes[si].extras, extraCount);
+			}
 		}
+		gos_EndShadowPrePass();  // restores scene FBO, re-enables comparison mode
 	}
 
 	bool bSkip_DRAWSOLID = false;

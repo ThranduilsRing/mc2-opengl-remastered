@@ -1280,8 +1280,18 @@ class gosRenderer {
         bool getShadowMode() const { return shadow_mode_; }
         gosRenderMaterial* getShadowTerrainMaterial() const { return shadow_terrain_material_; }
 
+        // Shadow center — raw MC2 coordinates (not swizzled like terrain camera pos)
+        void setShadowCenter(float x, float y, float z) { shadow_center_ = vec4(x, y, z, 0.0f); }
+        const vec4& getShadowCenter() const { return shadow_center_; }
+
+        // Shadow pre-pass (separate pass over all terrain batches before shading)
+        void beginShadowPrePass();
+        void drawShadowBatch(const gos_TERRAIN_EXTRA* extras, int count);
+        void endShadowPrePass();
+
         // Terrain splatting setters
         void setTerrainLightDir(float x, float y, float z) { terrain_light_dir_ = vec4(x, y, z, 0.0f); }
+        const vec4& getTerrainLightDir() const { return terrain_light_dir_; }
         void setTerrainDetailParams(float tiling, float strength) { terrain_detail_tiling_ = tiling; terrain_detail_strength_ = strength; }
         void setTerrainMaterialNormal(int idx, GLuint texId) { if (idx >= 0 && idx < 4) terrain_mat_normal_[idx] = texId; }
         void setTerrainCellBombParams(float s, float j, float r) { terrain_cell_scale_ = s; terrain_cell_jitter_ = j; terrain_cell_rotation_ = r; }
@@ -1408,6 +1418,10 @@ class gosRenderer {
         // Shadow mode
         gosRenderMaterial* shadow_terrain_material_ = nullptr;
         bool shadow_mode_ = false;
+        bool shadow_prepass_active_ = false;
+        vec4 shadow_center_;  // raw MC2 camera pos (not swizzled)
+        GLint shadow_prepass_prev_fbo_ = 0;
+        GLint shadow_prepass_prev_viewport_[4] = {0};
 
         // Terrain splatting textures (from main source, needed for material normal maps)
         vec4 terrain_light_dir_;
@@ -1994,6 +2008,89 @@ void gosRenderer::drawTris(gos_VERTEX* vertices, int count) {
     afterDrawCall();
 }
 
+// --- Shadow pre-pass: renders ALL terrain batches to shadow map before any shading ---
+// This eliminates per-batch seams where early batches couldn't see later batches' shadows.
+
+void gosRenderer::beginShadowPrePass() {
+    gosPostProcess* pp = getGosPostProcess();
+    if (!pp || !pp->shadowsEnabled_ || !shadow_terrain_material_) return;
+
+    // Save current FBO and viewport
+    glGetIntegerv(GL_FRAMEBUFFER_BINDING, &shadow_prepass_prev_fbo_);
+    glGetIntegerv(GL_VIEWPORT, shadow_prepass_prev_viewport_);
+
+    // Unbind shadow texture from unit 9 (prevent feedback loop — AMD requirement)
+    glActiveTexture(GL_TEXTURE9);
+    glBindTexture(GL_TEXTURE_2D, 0);
+    glActiveTexture(GL_TEXTURE0);
+
+    // Disable comparison mode for writing (AMD requirement)
+    glBindTexture(GL_TEXTURE_2D, pp->getShadowTexture());
+    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_COMPARE_MODE, GL_NONE);
+    glBindTexture(GL_TEXTURE_2D, 0);
+
+    // Bind shadow FBO, clear depth, and configure state
+    glBindFramebuffer(GL_FRAMEBUFFER, pp->getShadowFBO());
+    glViewport(0, 0, 2048, 2048);
+    glDepthMask(GL_TRUE);  // MUST be before glClear — glClear respects glDepthMask
+    glClear(GL_DEPTH_BUFFER_BIT);
+    glEnable(GL_DEPTH_TEST);
+    glDepthFunc(GL_LESS);
+    glDisable(GL_CULL_FACE);
+
+    // Bind shadow shader and upload lightSpaceMatrix
+    shadow_terrain_material_->apply();
+    GLint lsmLoc = glGetUniformLocation(
+        shadow_terrain_material_->getShader()->shp_, "lightSpaceMatrix");
+    if (lsmLoc >= 0)
+        glUniformMatrix4fv(lsmLoc, 1, GL_FALSE, pp->getLightSpaceMatrix());
+
+    shadow_prepass_active_ = true;
+}
+
+void gosRenderer::drawShadowBatch(const gos_TERRAIN_EXTRA* extras, int count) {
+    if (!shadow_prepass_active_ || count <= 0) return;
+
+    // Upload extras to terrain_extra_vb_
+    updateBuffer(terrain_extra_vb_, GL_ARRAY_BUFFER,
+        extras, count * sizeof(gos_TERRAIN_EXTRA), GL_DYNAMIC_DRAW);
+
+    glBindBuffer(GL_ARRAY_BUFFER, terrain_extra_vb_);
+
+    // Bind attrib 0 (dummyPos — AMD requires attrib 0 active, value unused)
+    // Reuse extras buffer: worldPos data is fine for the dead read
+    glEnableVertexAttribArray(0);
+    glVertexAttribPointer(0, 3, GL_FLOAT, GL_FALSE, sizeof(gos_TERRAIN_EXTRA), (void*)0);
+
+    // Bind attrib 4 (worldPos — the actual data the shadow shader uses)
+    glEnableVertexAttribArray(4);
+    glVertexAttribPointer(4, 3, GL_FLOAT, GL_FALSE, sizeof(gos_TERRAIN_EXTRA), (void*)0);
+
+    glDrawArrays(GL_TRIANGLES, 0, count);
+
+    glDisableVertexAttribArray(0);
+    glDisableVertexAttribArray(4);
+    glBindBuffer(GL_ARRAY_BUFFER, 0);
+}
+
+void gosRenderer::endShadowPrePass() {
+    if (!shadow_prepass_active_) return;
+    gosPostProcess* pp = getGosPostProcess();
+
+    // Restore comparison mode for sampling
+    glBindTexture(GL_TEXTURE_2D, pp->getShadowTexture());
+    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_COMPARE_MODE, GL_COMPARE_REF_TO_TEXTURE);
+    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_COMPARE_FUNC, GL_LEQUAL);
+    glBindTexture(GL_TEXTURE_2D, 0);
+
+    // Restore previous FBO and viewport
+    glBindFramebuffer(GL_FRAMEBUFFER, shadow_prepass_prev_fbo_);
+    glViewport(shadow_prepass_prev_viewport_[0], shadow_prepass_prev_viewport_[1],
+               shadow_prepass_prev_viewport_[2], shadow_prepass_prev_viewport_[3]);
+
+    shadow_prepass_active_ = false;
+}
+
 void gosRenderer::terrainDrawIndexedPatches(gosRenderMaterial* material, gosMesh* mesh) {
     int nv = mesh->getNumVertices();
     int ni = mesh->getNumIndices();
@@ -2151,65 +2248,8 @@ void gosRenderer::terrainDrawIndexedPatches(gosRenderMaterial* material, gosMesh
             sizeof(gos_TERRAIN_EXTRA), (void*)(3 * sizeof(float)));
     }
 
-    // Shadow depth pass — BEFORE tessellation to avoid AMD post-tess state issues
-    {
-        gosPostProcess* spp = getGosPostProcess();
-        if (spp && spp->shadowsEnabled_ && shadow_terrain_material_) {
-            GLint prevFBO;
-            GLint prevViewport[4];
-            glGetIntegerv(GL_FRAMEBUFFER_BINDING, &prevFBO);
-            glGetIntegerv(GL_VIEWPORT, prevViewport);
-
-            // Unbind shadow texture from unit 9 (prevent feedback loop)
-            glActiveTexture(GL_TEXTURE9);
-            glBindTexture(GL_TEXTURE_2D, 0);
-            glActiveTexture(GL_TEXTURE0);
-
-            // Switch to shadow FBO — disable comparison mode for rendering
-            glBindTexture(GL_TEXTURE_2D, spp->getShadowTexture());
-            glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_COMPARE_MODE, GL_NONE);
-            glBindTexture(GL_TEXTURE_2D, 0);
-
-            glBindFramebuffer(GL_FRAMEBUFFER, spp->getShadowFBO());
-            glViewport(0, 0, 2048, 2048);
-            glEnable(GL_DEPTH_TEST);
-            glDepthFunc(GL_LESS);
-            glDepthMask(GL_TRUE);
-            glDisable(GL_CULL_FACE);
-
-            // Bind shadow shader — use DIRECT GL for matrix (deferred system transposes!)
-            shadow_terrain_material_->apply();
-            GLint lsmLoc = glGetUniformLocation(
-                shadow_terrain_material_->getShader()->shp_, "lightSpaceMatrix");
-            if (lsmLoc >= 0)
-                glUniformMatrix4fv(lsmLoc, 1, GL_FALSE, spp->getLightSpaceMatrix());
-
-            // Draw as triangles (attribs 4-5 already bound above)
-            glDrawArrays(GL_TRIANGLES, 0, ni);
-
-            // Restore comparison mode for sampling
-            glBindTexture(GL_TEXTURE_2D, spp->getShadowTexture());
-            glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_COMPARE_MODE, GL_COMPARE_REF_TO_TEXTURE);
-            glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_COMPARE_FUNC, GL_LEQUAL);
-            glBindTexture(GL_TEXTURE_2D, 0);
-
-            glBindFramebuffer(GL_FRAMEBUFFER, prevFBO);
-            glViewport(prevViewport[0], prevViewport[1], prevViewport[2], prevViewport[3]);
-
-            // Re-apply terrain material and re-bind shadow texture for sampling
-            material->apply();
-
-            // Re-bind shadow texture to unit 9 (was unbound for feedback loop prevention)
-            GLuint shp_main = material->getShader()->shp_;
-            GLint shadowLoc = glGetUniformLocation(shp_main, "shadowMap");
-            if (shadowLoc >= 0) {
-                glUniform1i(shadowLoc, 9);
-                glActiveTexture(GL_TEXTURE9);
-                glBindTexture(GL_TEXTURE_2D, spp->getShadowTexture());
-                glActiveTexture(GL_TEXTURE0);
-            }
-        }
-    }
+    // Shadow depth is now written in a separate pre-pass (beginShadowPrePass/drawShadowBatch/endShadowPrePass)
+    // called from renderLists() before the shading loop — no per-batch shadow work here.
 
     // Wireframe overlay
     if (terrain_wireframe_) {
@@ -3352,6 +3392,38 @@ void __stdcall gos_SetTerrainViewport(float vmx, float vmy, float vax, float vay
 }
 void __stdcall gos_SetTerrainCameraPos(float x, float y, float z) {
     if (g_gos_renderer) g_gos_renderer->setTerrainCameraPos(x, y, z);
+}
+// Shadow center API (raw MC2 coordinates for shadow matrix)
+void gos_SetShadowCenter(float x, float y, float z) {
+    if (g_gos_renderer) g_gos_renderer->setShadowCenter(x, y, z);
+}
+void gos_GetShadowCenter(float* x, float* y, float* z) {
+    if (g_gos_renderer) {
+        const vec4& sc = g_gos_renderer->getShadowCenter();
+        if (x) *x = sc.x;
+        if (y) *y = sc.y;
+        if (z) *z = sc.z;
+    }
+}
+
+// Shadow pre-pass API (called from renderLists in txmmgr.cpp)
+void gos_BeginShadowPrePass() {
+    if (g_gos_renderer) g_gos_renderer->beginShadowPrePass();
+}
+void gos_DrawShadowBatch(const gos_TERRAIN_EXTRA* extras, int count) {
+    if (g_gos_renderer) g_gos_renderer->drawShadowBatch(extras, count);
+}
+void gos_EndShadowPrePass() {
+    if (g_gos_renderer) g_gos_renderer->endShadowPrePass();
+}
+
+void gos_GetTerrainLightDir(float* x, float* y, float* z) {
+    if (g_gos_renderer) {
+        const vec4& ld = g_gos_renderer->getTerrainLightDir();
+        if (x) *x = ld.x;
+        if (y) *y = ld.y;
+        if (z) *z = ld.z;
+    }
 }
 void gos_SetTerrainLightDir(float x, float y, float z) {
     if (g_gos_renderer) g_gos_renderer->setTerrainLightDir(x, y, z);
