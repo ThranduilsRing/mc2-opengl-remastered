@@ -1,0 +1,38 @@
+#ifndef __SHADOW_HGLSL__
+#define __SHADOW_HGLSL__
+
+// Shadow mapping uniforms — set these as regular uniforms in C++ code
+// shadowMap should be bound to texture unit 9
+uniform sampler2DShadow shadowMap;
+uniform mat4 lightSpaceMatrix;
+uniform int enableShadows;
+
+float calcShadow(vec3 worldPos, vec3 normal, vec3 lightDir)
+{
+    if (enableShadows == 0) return 1.0;
+
+    vec4 lsPos = lightSpaceMatrix * vec4(worldPos, 1.0);
+    vec3 projCoords = lsPos.xyz / lsPos.w;
+    projCoords = projCoords * 0.5 + 0.5;
+
+    if (projCoords.z > 1.0) return 1.0;
+
+    // Slope-scaled bias to prevent shadow acne
+    float bias = max(0.005 * (1.0 - dot(normal, lightDir)), 0.001);
+    float currentDepth = projCoords.z - bias;
+
+    // PCF 3x3 for soft shadow edges
+    float shadow = 0.0;
+    vec2 texelSize = 1.0 / vec2(textureSize(shadowMap, 0));
+    for (int x = -1; x <= 1; ++x) {
+        for (int y = -1; y <= 1; ++y) {
+            shadow += texture(shadowMap, vec3(projCoords.xy + vec2(x, y) * texelSize, currentDepth));
+        }
+    }
+    shadow /= 9.0;
+
+    // 0.3 ambient in shadow, 1.0 fully lit
+    return mix(0.3, 1.0, shadow);
+}
+
+#endif // __SHADOW_HGLSL__

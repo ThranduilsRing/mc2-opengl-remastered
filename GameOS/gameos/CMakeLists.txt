@@ -10,6 +10,7 @@ set(SOURCES ${SOURCES}
     gameos_debugging.cpp
     gameos_sound.cpp
     gos_render.cpp
+    gos_postprocess.cpp
     gos_font.cpp
     gos_input.cpp
 

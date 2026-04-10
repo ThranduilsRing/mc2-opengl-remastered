@@ -10,6 +10,7 @@
 #include "utils/shader_builder.h"
 #include "utils/gl_utils.h"
 #include "utils/timing.h"
+#include "gos_postprocess.h"
 
 #include <signal.h>
 
@@ -42,6 +43,42 @@ static void handle_key_down( SDL_Keysym* keysym ) {
         case 'd':
             if(keysym->mod & KMOD_RALT)
                 gos_RenderEnableDebugDrawCalls();
+            break;
+        case SDLK_F1:
+            if (keysym->mod & KMOD_RALT) {
+                gosPostProcess* pp = getGosPostProcess();
+                if (pp) {
+                    pp->bloomEnabled_ = !pp->bloomEnabled_;
+                    fprintf(stderr, "Bloom: %s\n", pp->bloomEnabled_ ? "ON" : "OFF");
+                }
+            }
+            break;
+        case SDLK_F2:
+            if (keysym->mod & KMOD_RALT) {
+                gosPostProcess* pp = getGosPostProcess();
+                if (pp) {
+                    pp->tonemapEnabled_ = !pp->tonemapEnabled_;
+                    fprintf(stderr, "Tonemapping: %s\n", pp->tonemapEnabled_ ? "ON" : "OFF");
+                }
+            }
+            break;
+        case SDLK_F3:
+            if (keysym->mod & KMOD_RALT) {
+                gosPostProcess* pp = getGosPostProcess();
+                if (pp) {
+                    pp->shadowsEnabled_ = !pp->shadowsEnabled_;
+                    fprintf(stderr, "Shadows: %s\n", pp->shadowsEnabled_ ? "ON" : "OFF");
+                }
+            }
+            break;
+        case SDLK_F5:
+            if (keysym->mod & KMOD_RALT) {
+                gosPostProcess* pp = getGosPostProcess();
+                if (pp) {
+                    pp->fxaaEnabled_ = !pp->fxaaEnabled_;
+                    fprintf(stderr, "FXAA: %s\n", pp->fxaaEnabled_ ? "ON" : "OFF");
+                }
+            }
             break;
     }
 }
@@ -104,13 +141,23 @@ extern bool g_disable_quads;
 static void draw_screen( void )
 {
     g_disable_quads = false;
-    glClear( GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT );
+
+    gosPostProcess* pp = getGosPostProcess();
+
     glCullFace(GL_FRONT);
-    //CHECK_GL_ERROR;
-    
+
 	const int viewport_w = Environment.drawableWidth;
 	const int viewport_h = Environment.drawableHeight;
+
+    // Resize post-process FBOs if window size changed
+    if (pp) {
+        pp->updateLightMatrix(0.3f, 0.7f, 0.2f, 0.0f, 100.0f, 0.0f, 500.0f);
+        pp->resize(viewport_w, viewport_h);
+        pp->beginScene();
+    }
+
     glViewport(0, 0, viewport_w, viewport_h);
+    glClear( GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT );
 #if 0
     mat4 proj;
     g_camera.get_projection(&proj);
@@ -148,13 +195,23 @@ static void draw_screen( void )
 
     // TODO: reset all states to sane defaults!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
     glDepthMask(GL_TRUE);
+    // Clear to fog-matching blue-grey so sky behind terrain isn't black
+    glClearColor(0.55f, 0.62f, 0.72f, 1.0f);
     glClear( GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT );
+
+    // Skybox disabled — terrain fog provides atmosphere, bright sky looked jarring
+    // if (pp) pp->renderSkybox(0.3f, 0.7f, 0.2f);
 
     gos_RendererBeginFrame();
     Environment.UpdateRenderers();
     gos_RendererEndFrame();
 
     glUseProgram(0);
+
+    // Composite post-processed scene to default framebuffer
+    if (pp) {
+        pp->endScene();
+    }
     //CHECK_GL_ERROR;
 }
 

@@ -21,6 +21,7 @@
 #include "utils/string_utils.h"
 #include "utils/timing.h"
 #include "gos_render.h"
+#include "gos_postprocess.h"
 
 class gosRenderer;
 class gosFont;
@@ -2513,9 +2514,15 @@ void gos_CreateRenderer(graphics::RenderContextHandle ctx_h, graphics::RenderWin
 
     g_gos_renderer = new gosRenderer(ctx_h, win_h, w, h);
     g_gos_renderer->init();
+
+    gosPostProcess* pp = new gosPostProcess();
+    pp->init(w, h);
 }
 
 void gos_DestroyRenderer() {
+
+    gosPostProcess* pp = getGosPostProcess();
+    if (pp) { pp->destroy(); delete pp; }
 
     g_gos_renderer->destroy();
     delete g_gos_renderer;
