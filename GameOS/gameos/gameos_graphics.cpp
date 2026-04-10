@@ -1375,7 +1375,7 @@ class gosRenderer {
         float terrain_tess_dist_near_ = 200.0f;    // full tess below this distance
         float terrain_tess_dist_far_ = 2000.0f;    // tess=1 beyond this distance
         float terrain_phong_alpha_ = 0.5f;         // Phong smoothing strength
-        float terrain_displace_scale_ = 0.0f;      // displacement amplitude (start at 0 = off)
+        float terrain_displace_scale_ = 2.0f;      // displacement amplitude (dirt-only in TES)
         bool terrain_wireframe_ = false;            // wireframe overlay toggle
         float terrain_debug_mode_ = 0.0f;          // 0=off, 1=normals, 2=worldPos
 

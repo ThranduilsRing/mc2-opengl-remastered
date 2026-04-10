@@ -96,7 +96,7 @@ PREC vec4 getColorWeights(PREC vec3 color) {
 
 // --- Per-material displacement sampling ---
 
-const PREC vec4 pomScaleMat = vec4(0.5, 1.0, 1.5, 1.0);
+const PREC vec4 pomScaleMat = vec4(0.5, 1.0, 2.5, 1.0);
 
 PREC float sampleDisplacement(PREC vec2 uv, PREC vec4 weights) {
     PREC float d = 0.0;
@@ -148,15 +148,24 @@ void main(void)
 
     PREC vec4 c = Color.bgra;
 
-    // Smooth colormap classification — 5-tap box filter for coherent zones
-    // Larger radius = bigger material zones, less noisy splotching
-    const PREC float blurRadius = 0.02;
+    // Smooth colormap classification — 9-tap disc filter for coherent zones
+    // Clamp samples to [margin, 1-margin] so edge pixels don't wrap via GL_REPEAT
+    // (each terrain node has its own colormap with UVs in [0,1])
+    const PREC float blurRadius = 0.11;
+    PREC float r2 = blurRadius * 0.707;  // diagonal at sqrt(2)/2
+    const PREC float uvMargin = 0.005;
+    PREC vec2 uvMin = vec2(uvMargin);
+    PREC vec2 uvMax = vec2(1.0 - uvMargin);
     PREC vec3 colAvg = texColor.rgb;
-    colAvg += texture(tex1, Texcoord + vec2( blurRadius, 0.0)).rgb;
-    colAvg += texture(tex1, Texcoord + vec2(-blurRadius, 0.0)).rgb;
-    colAvg += texture(tex1, Texcoord + vec2(0.0,  blurRadius)).rgb;
-    colAvg += texture(tex1, Texcoord + vec2(0.0, -blurRadius)).rgb;
-    colAvg *= 0.2;
+    colAvg += texture(tex1, clamp(Texcoord + vec2( blurRadius, 0.0), uvMin, uvMax)).rgb;
+    colAvg += texture(tex1, clamp(Texcoord + vec2(-blurRadius, 0.0), uvMin, uvMax)).rgb;
+    colAvg += texture(tex1, clamp(Texcoord + vec2(0.0,  blurRadius), uvMin, uvMax)).rgb;
+    colAvg += texture(tex1, clamp(Texcoord + vec2(0.0, -blurRadius), uvMin, uvMax)).rgb;
+    colAvg += texture(tex1, clamp(Texcoord + vec2( r2,  r2), uvMin, uvMax)).rgb;
+    colAvg += texture(tex1, clamp(Texcoord + vec2(-r2,  r2), uvMin, uvMax)).rgb;
+    colAvg += texture(tex1, clamp(Texcoord + vec2( r2, -r2), uvMin, uvMax)).rgb;
+    colAvg += texture(tex1, clamp(Texcoord + vec2(-r2, -r2), uvMin, uvMax)).rgb;
+    colAvg /= 9.0;
     PREC vec4 matWeights = getColorWeights(colAvg);
 
 #ifdef DEBUG_MATERIALS
@@ -164,8 +173,8 @@ void main(void)
     return;
 #endif
 
-    // Per-material tiling (rock, grass, dirt/pebbles, concrete)
-    const PREC vec4 matTiling = vec4(8.0, 12.0, 24.0, 6.0);
+    // Per-material tiling (rock, grass, dirt/riverbed, concrete)
+    const PREC vec4 matTiling = vec4(1.0, 12.0, 1.0, 6.0);
     PREC float baseTiling = detailNormalTiling.x;
 
     // Compute per-material UVs (straight tiling, anti-tiling done at sample time)
@@ -189,8 +198,8 @@ void main(void)
 
     // Per-material normal strength
     // Effective strength = normalBoost * detailNormalStrength.x (4.0 from C++)
-    // std: rock=21, grass(new)=35, dirt(pebbles)=50, concrete=11
-    const PREC vec4 normalBoost = vec4(2.0, 1.2, 0.6, 2.5);
+    // std: rock=21, grass=35, dirt(aerial)=6, concrete=11
+    const PREC vec4 normalBoost = vec4(0.6, 1.2, 0.8, 2.5);
 
     // Screen-space derivative AA — fade normals when detail goes sub-pixel
     PREC float fwRock     = clamp(1.0 - (length(fwidth(uvRock))     - 0.5) * 2.0, 0.0, 1.0);
@@ -198,27 +207,30 @@ void main(void)
     PREC float fwDirt     = clamp(1.0 - (length(fwidth(uvDirt))     - 0.5) * 2.0, 0.0, 1.0);
     PREC float fwConcrete = clamp(1.0 - (length(fwidth(uvConcrete)) - 0.5) * 2.0, 0.0, 1.0);
 
-    // Anti-tile scale — how large the blend regions are (in tiled UV units)
-    // Larger = more pattern breakup, smaller = more coherent but more repetition
-    const PREC float antiTileScale = 3.0;
+    // Anti-tile scale — proportional to tiling so low-tiling materials skip it
+    // At tiling >= 4, full anti-tiling (3.0); at tiling <= 1, plain sampling
+    PREC float atsRock     = mix(0.0, 3.0, clamp((matTiling.x - 1.0) / 3.0, 0.0, 1.0));
+    PREC float atsGrass    = mix(0.0, 3.0, clamp((matTiling.y - 1.0) / 3.0, 0.0, 1.0));
+    PREC float atsDirt     = mix(0.0, 3.0, clamp((matTiling.z - 1.0) / 3.0, 0.0, 1.0));
+    PREC float atsConcrete = mix(0.0, 3.0, clamp((matTiling.w - 1.0) / 3.0, 0.0, 1.0));
 
-    // Sample each material with anti-tiling blend
+    // Sample each material — plain texture() when anti-tile scale is 0
     PREC vec3 detailN = vec3(0.0);
     PREC vec4 matSample;
     if (matWeights.x > 0.01) {
-        matSample = sampleAntiTile(matNormal0, uvRock, antiTileScale);
+        matSample = (atsRock > 0.01) ? sampleAntiTile(matNormal0, uvRock, atsRock) : texture(matNormal0, uvRock);
         detailN += matWeights.x * normalBoost.x * fwRock * (matSample.rgb * 2.0 - 1.0);
     }
     if (matWeights.y > 0.01) {
-        matSample = sampleAntiTile(matNormal1, uvGrass, antiTileScale);
+        matSample = (atsGrass > 0.01) ? sampleAntiTile(matNormal1, uvGrass, atsGrass) : texture(matNormal1, uvGrass);
         detailN += matWeights.y * normalBoost.y * fwGrass * (matSample.rgb * 2.0 - 1.0);
     }
     if (matWeights.z > 0.01) {
-        matSample = sampleAntiTile(matNormal2, uvDirt, antiTileScale);
+        matSample = (atsDirt > 0.01) ? sampleAntiTile(matNormal2, uvDirt, atsDirt) : texture(matNormal2, uvDirt);
         detailN += matWeights.z * normalBoost.z * fwDirt * (matSample.rgb * 2.0 - 1.0);
     }
     if (matWeights.w > 0.01) {
-        matSample = sampleAntiTile(matNormal3, uvConcrete, antiTileScale);
+        matSample = (atsConcrete > 0.01) ? sampleAntiTile(matNormal3, uvConcrete, atsConcrete) : texture(matNormal3, uvConcrete);
         detailN += matWeights.w * normalBoost.w * fwConcrete * (matSample.rgb * 2.0 - 1.0);
     }
 
@@ -234,9 +246,9 @@ void main(void)
     PREC float diffuse = clamp(NdotL, 0.1, 1.0);
 
     // --- Material color tinting ---
-    const PREC vec3 tintRock     = vec3(0.40, 0.38, 0.35);
+    const PREC vec3 tintRock     = vec3(0.36, 0.37, 0.40);
     const PREC vec3 tintGrass    = vec3(0.35, 0.42, 0.25);
-    const PREC vec3 tintDirt     = vec3(0.45, 0.38, 0.28);
+    const PREC vec3 tintDirt     = vec3(0.48, 0.42, 0.33);
     const PREC vec3 tintConcrete = vec3(0.55, 0.53, 0.50);
 
     PREC vec3 materialTint = tintRock * matWeights.x
@@ -244,7 +256,7 @@ void main(void)
                            + tintDirt * matWeights.z
                            + tintConcrete * matWeights.w;
 
-    const PREC float tintStrength = 0.35;
+    const PREC float tintStrength = 0.70;
     PREC vec3 baseColor = mix(texColor.rgb, materialTint, tintStrength);
 
     c.rgb *= baseColor;
