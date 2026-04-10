@@ -59,25 +59,25 @@ base directory: `A:\Games\mc2-opengl-src\.claude\skills\`
 - `shaders/gos_terrain.tesc` — TCS (Phong smoothing, distance LOD)
 - `shaders/gos_terrain.tese` — TES (terrainMVP projection, displacement, outputs WorldPos)
 - `shaders/gos_terrain.frag` — HSV splatting, POM, anti-tiling, normal mapping, shadow sampling
-- `shaders/shadow_terrain.vert` — shadow depth pass (reads worldPos at location 4, projects by lightSpaceMatrix)
+- `shaders/shadow_terrain.vert` — shadow depth VS (pos, texcoord, worldPos, worldNorm → TCS)
+- `shaders/shadow_terrain.tesc` — shadow TCS (same distance LOD as main terrain)
+- `shaders/shadow_terrain.tese` — shadow TES (displacement + lightSpaceMatrix projection)
 - `shaders/shadow_terrain.frag` — explicit gl_FragDepth write (AMD requirement)
-- `shaders/include/shadow.hglsl` — calcShadow() with PCF, bias, out-of-range guards
+- `shaders/include/shadow.hglsl` — calcShadow() with PCF, bias, NdotL back-face guard
 
 ## Known Issues
 - Post-processing effects (bloom, FXAA) apply to HUD — needs scene/HUD render split
 - Units float above tessellation-displaced terrain — CPU heightmap doesn't match GPU displacement
 - Skybox disabled (terrain fog provides atmosphere; 2D skybox looked jarring)
 - Tonemapping (ACES) designed for linear HDR, pipeline is sRGB — off by default
-- Shadow wave pattern on flat terrain — shadow depth written from flat (non-tessellated) geometry, but fragment shader reads at tessellated+displaced positions. Fix: tessellated shadow pass (GL_PATCHES with TCS/TES in shadow pipeline)
-- Shadow direction hardcoded (0.3, 0.7, 0.2) — `terrainLightDir` uniform is (0,0,0) because `gos_SetTerrainLightDir` in terrain.cpp is in a dead code path; actual camera pos set in `gamecam.cpp:176`. Need to find where game light dir is set in the active code path
-- Shadow self-shadow on hillsides — flat shadow geometry doesn't match tessellated slopes, steep faces falsely appear in shadow. Tessellated shadow pass would fix this too
-- Shadow ambient (0.85) intentionally high to mask artifacts; lower once tessellated shadow pass is implemented
+- Shadow banding shifts with camera rotation — MC2 generates view-dependent terrain geometry (LOD changes per camera angle). Shadow pass draws the same view-dependent triangles from the light's perspective, so shadow depth shifts when camera rotates. Fix requires generating camera-independent terrain for shadow pass (major architectural change).
 
 ## Architecture Notes
 - **terrainMVP:** MC2's DX6/7-era projection is non-linear (explicit perspective divide, negative clip.w for visible vertices). TES does a 3-step pipeline: clip→perspDiv→screen→NDC. Cannot be folded into single matrix.
 - **Per-node VBO alignment:** Terrain extras stored in texture manager nodes, filled per-node by quad.cpp, drawn per-batch by txmmgr.cpp renderLists().
 - **Post-process pipeline:** Scene renders to RGBA16F FBO, composited via fullscreen quad. Bloom at half-res with ping-pong FBOs. All fullscreen draws disable GL_CULL_FACE.
-- **Shadow pipeline (two-pass):** Separate shadow pre-pass in `renderLists()` (txmmgr.cpp) iterates ALL terrain nodes and draws to 2048x2048 shadow FBO via `gos_BeginShadowPrePass/DrawShadowBatch/EndShadowPrePass`. Uses flat GL_TRIANGLES (not tessellated). Then the normal shading loop reads the complete shadow map. Shadow depth shader reads worldPos from extras VBO (location 4), projects through lightSpaceMatrix. Terrain frag samples via sampler2DShadow + 3x3 PCF. Light matrix built in `draw_screen()` (gameosmain.cpp) using camera pos from `gamecam.cpp` and hardcoded sun direction.
+- **Shadow pipeline (tessellated two-pass):** Shadow pre-pass in `renderLists()` (txmmgr.cpp) draws ALL terrain nodes to 2048x2048 shadow FBO as GL_PATCHES via `drawShadowBatchTessellated` (same TCS/TES pipeline as main terrain). Light matrix built in `draw_screen()` from `gos_GetShadowCenter` (raw MC2 camera pos) and negated `gos_GetTerrainLightDir` (scene→sun direction, negated to light→scene for matrix). Shadow radius 8000 units. Terrain frag samples via sampler2DShadow + 3x3 PCF with NdotL back-face guard.
+- **Coordinate spaces:** worldPos in extras VBO is raw MC2 (x, y, elevation=Z). `terrainLightDir` stored in raw MC2 space (Z=up, matching fragment tangent-space normals). Shadow `lightSpaceMatrix` built in raw MC2 space via `gos_GetShadowCenter`. The swizzled GL space (-x, z, y) is used only by `gos_SetTerrainCameraPos` for the main TCS distance LOD.
 
 ## AMD Driver Rules (RX 7900 XTX, driver 26.3.1)
 These were discovered through extensive debugging and MUST be followed:
