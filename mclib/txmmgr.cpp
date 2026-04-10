@@ -1063,8 +1063,15 @@ void MC_TextureManager::renderLists (void)
 					? (int)(masterVertexNodes[si].currentExtra - masterVertexNodes[si].extras)
 					: 0;
 
-				if (totalVerts > 0 && extraCount > 0)
-					gos_DrawShadowBatch(masterVertexNodes[si].extras, extraCount);
+				if (totalVerts > 0 && extraCount > 0) {
+					// Bind this node's colormap texture (unit 0) for TES displacement sampling
+					gos_SetRenderState(gos_State_Texture, masterTextureNodes[masterVertexNodes[si].textureIndex].get_gosTextureHandle());
+
+					gos_DrawShadowBatchTessellated(
+						masterVertexNodes[si].vertices, totalVerts,
+						indexArray, totalVerts,
+						masterVertexNodes[si].extras, extraCount);
+				}
 			}
 		}
 		gos_EndShadowPrePass();  // restores scene FBO, re-enables comparison mode
