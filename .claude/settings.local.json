@@ -1,0 +1,11 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(cmake:*)",
+      "Bash(cp -f:*)",
+      "Bash(diff:*)",
+      "Bash(ls:*)",
+      "Bash(cd:*)"
+    ]
+  }
+}
