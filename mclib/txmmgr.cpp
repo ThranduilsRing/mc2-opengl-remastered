@@ -1162,6 +1162,13 @@ void MC_TextureManager::renderLists (void)
                     (masterVertexNodes[i].flags & MC2_ALPHATEST)==states*MC2_ALPHATEST &&
                     (masterVertexNodes[i].vertices))
             {
+                {
+                    int waterMode = 0;
+                    if (masterVertexNodes[i].flags & MC2_ISWATER) waterMode = 1;
+                    else if (masterVertexNodes[i].flags & MC2_ISWATERDETAIL) waterMode = 2;
+                    gos_SetRenderState(gos_State_Water, waterMode);
+                }
+
                 DWORD totalVertices = masterVertexNodes[i].numVertices;
                 if (masterVertexNodes[i].currentVertex != (masterVertexNodes[i].vertices + masterVertexNodes[i].numVertices))
                 {
