@@ -2433,9 +2433,9 @@ void gosRenderer::drawIndexedTris(gos_VERTEX* vertices, int num_vertices, WORD* 
         terrainDrawIndexedPatches(tmat, indexed_tris_);
         indexed_tris_->rewind();
     } else {
-        // When tessellation is active, skip ALL fallback terrain draws
-        // The tessellation path handles terrain completely (splatting shader does materials)
-        // Fallback draws are overlay/detail/alpha passes that would double-render
+        // When tessellation is active, skip SOLID fallback terrain draws (tessellation
+        // already rendered base terrain). Overlay/detail draws don't set gos_State_Terrain
+        // (it auto-resets after each draw), so they fall through to the basic renderer.
         if (curStates_[gos_State_Terrain] && terrain_material_) {
             indexed_tris_->rewind();
         } else {

@@ -782,10 +782,9 @@ long Terrain::update (void)
 		// Light direction now set from gamecam.cpp with proper MC2->GL swizzle
 		// gos_SetTerrainLightDir(eye->lightDirection.x, eye->lightDirection.y, eye->lightDirection.z);
 
-		// Pass camera world position for POM view direction
-		// MC2 -> OpenGL coordinate swizzle: (-x, z, y)
+		// Pass camera world position in raw MC2 space (matching vs_WorldPos for TCS distance LOD)
 		Stuff::Vector3D camOrigin = eye->getCameraOrigin();
-		gos_SetTerrainCameraPos(-camOrigin.x, camOrigin.z, camOrigin.y);
+		gos_SetTerrainCameraPos(camOrigin.x, camOrigin.y, camOrigin.z);
 
 		// Pass raw MC2 camera position for shadow centering (must match worldPos space)
 		gos_SetShadowCenter(camOrigin.x, camOrigin.y, camOrigin.z);
