@@ -15,6 +15,8 @@
 #include <signal.h>
 
 extern void gos_GetTerrainCameraPos(float* x, float* y, float* z);
+extern void gos_GetTerrainLightDir(float* x, float* y, float* z);
+extern void gos_GetShadowCenter(float* x, float* y, float* z);
 
 extern void gos_CreateRenderer(graphics::RenderContextHandle ctx_h, graphics::RenderWindowHandle win_h, int w, int h);
 extern void gos_DestroyRenderer();
@@ -153,11 +155,16 @@ static void draw_screen( void )
 
     // Resize post-process FBOs if window size changed
     if (pp) {
-        // Use actual camera position for shadow map centering
+        // Use camera position for shadow map centering
+        // NOTE: gos_GetTerrainCameraPos returns swizzled coords (-mc2x, mc2z, mc2y),
+        // which is the same space the old working shadow code used.
+        // TODO: reconcile coordinate spaces once shadow direction is tuned
         {
             float cx = 0.0f, cy = 0.0f, cz = 0.0f;
             gos_GetTerrainCameraPos(&cx, &cy, &cz);
-            pp->updateLightMatrix(0.3f, 0.7f, 0.2f, cx, cy, cz, 1500.0f);
+            // Hardcoded sun direction — known to produce visible shadows in swizzled space
+            float lx = 0.3f, ly = 0.7f, lz = 0.2f;
+            pp->updateLightMatrix(lx, ly, lz, cx, cy, cz, 1500.0f);
         }
         pp->resize(viewport_w, viewport_h);
         pp->beginScene();

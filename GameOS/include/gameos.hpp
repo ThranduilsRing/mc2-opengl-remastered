@@ -2263,6 +2263,16 @@ void __stdcall gos_TerrainExtraAdd(const gos_TERRAIN_EXTRA* data, int count);
 void __stdcall gos_SetTerrainBatchExtras(const gos_TERRAIN_EXTRA* extras, int count);
 void __stdcall gos_SetTerrainDebugMode(float mode);
 bool __stdcall gos_IsTerrainTessellationActive();
+
+// Shadow coordinate API (raw MC2 coordinates for shadow matrix)
+void gos_SetShadowCenter(float x, float y, float z);
+void gos_GetShadowCenter(float* x, float* y, float* z);
+void gos_GetTerrainLightDir(float* x, float* y, float* z);
+
+// Shadow pre-pass API (renders all terrain to shadow map before shading)
+void gos_BeginShadowPrePass();
+void gos_DrawShadowBatch(const gos_TERRAIN_EXTRA* extras, int count);
+void gos_EndShadowPrePass();
 void __stdcall gos_SetTerrainMVP(const float* matrix16);
 void __stdcall gos_SetTerrainViewport(float vmx, float vmy, float vax, float vay);
 void __stdcall gos_SetTerrainCameraPos(float x, float y, float z);

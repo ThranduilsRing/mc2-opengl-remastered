@@ -786,6 +786,9 @@ long Terrain::update (void)
 		Stuff::Vector3D camOrigin = eye->getCameraOrigin();
 		gos_SetTerrainCameraPos(-camOrigin.x, camOrigin.z, camOrigin.y);
 
+		// Pass raw MC2 camera position for shadow centering (must match worldPos space)
+		gos_SetShadowCenter(camOrigin.x, camOrigin.y, camOrigin.z);
+
 		// Pass camera look direction for POM (direction camera looks toward terrain)
 		Stuff::Vector3D lookDir = eye->getLookVector();
 		// Swizzle same as camera pos, then normalize
