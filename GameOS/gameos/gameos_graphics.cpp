@@ -2088,9 +2088,21 @@ void gosRenderer::drawShadowBatchTessellated(gos_VERTEX* vertices, int numVerts,
     indexed_tris_->addIndices(indices, numIndices);
     indexed_tris_->uploadBuffers();
 
-    // Shadow material already applied in beginShadowPrePass (shader + lightSpaceMatrix)
-    // Upload tessellation uniforms via direct GL (same pattern as terrainDrawIndexedPatches)
+    // Re-activate shadow shader (end() from previous batch deactivates program)
+    shadow_terrain_material_->apply();
     GLuint shp = shadow_terrain_material_->getShader()->shp_;
+
+    // Upload lightSpaceMatrix (must re-upload per-batch since apply() resets state)
+    {
+        gosPostProcess* pp = getGosPostProcess();
+        if (pp) {
+            GLint lsmLoc = glGetUniformLocation(shp, "lightSpaceMatrix");
+            if (lsmLoc >= 0)
+                glUniformMatrix4fv(lsmLoc, 1, GL_FALSE, pp->getLightSpaceMatrix());
+        }
+    }
+
+    // Upload tessellation uniforms via direct GL (same pattern as terrainDrawIndexedPatches)
     GLint loc;
 
     float tessParams[4] = { terrain_tess_level_, terrain_tess_level_, 0.0f, 0.0f };
