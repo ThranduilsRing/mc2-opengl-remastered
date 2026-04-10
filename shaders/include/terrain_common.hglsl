@@ -35,8 +35,8 @@ vec4 tc_getColorWeights(vec3 color) {
     return w;
 }
 
-// Per-material tiling rates (rock, grass, dirt/pebbles, concrete)
-const vec4 TC_MAT_TILING = vec4(8.0, 12.0, 24.0, 6.0);
+// Per-material tiling rates (rock, grass, dirt/riverbed, concrete)
+const vec4 TC_MAT_TILING = vec4(1.0, 12.0, 1.0, 6.0);
 
 // Sample weighted displacement from material normal map alphas
 float tc_sampleDisplacement(vec2 uv, vec4 weights,

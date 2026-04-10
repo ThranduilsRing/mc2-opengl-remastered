@@ -398,7 +398,7 @@ long Mission::update (void)
 				static float g_tessDistNear = 200.0f;
 				static float g_tessDistFar = 2000.0f;
 				static float g_phongAlpha = 0.5f;
-				static float g_displaceScale = 0.0f;
+				static float g_displaceScale = 2.0f;
 				static bool g_tessWireframe = false;
 
 				if (userInput->getKeyDown(KEY_F6)) {

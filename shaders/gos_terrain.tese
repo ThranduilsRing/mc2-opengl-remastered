@@ -71,24 +71,23 @@ void main()
         worldPos = mix(worldPos, phongPos, alpha);
     }
 
-    // --- Texture-based displacement along normal ---
+    // --- Texture-based displacement along normal (dirt only) ---
     float displaceScale = tessDisplace.y;
     if (displaceScale > 0.0) {
         // Classify material from colormap (same HSV logic as fragment shader)
         vec3 colSample = texture(tex1, Texcoord).rgb;
         vec4 matWeights = tc_getColorWeights(colSample);
 
-        // Compute blended tiling from per-material rates
-        float baseTiling = detailNormalTiling.x;
-        float blendedTiling = dot(TC_MAT_TILING, matWeights);
-        vec2 dispUV = Texcoord * baseTiling * blendedTiling;
+        // Only displace in dirt (mat2) areas — other materials stay flat
+        float dirtWeight = matWeights.z;
+        if (dirtWeight > 0.01) {
+            float baseTiling = detailNormalTiling.x;
+            vec2 dispUV = Texcoord * baseTiling * TC_MAT_TILING.z;
+            float disp = 1.0 - texture(matNormal2, dispUV).a;
 
-        // Sample weighted displacement from material normal alphas
-        float disp = tc_sampleDisplacement(dispUV, matWeights,
-            matNormal0, matNormal1, matNormal2, matNormal3);
-
-        // Center displacement around 0.5 so it pushes both up and down
-        worldPos += worldNorm * (disp - 0.5) * displaceScale;
+            // Center around 0.5; fade with dirtWeight for smooth boundaries
+            worldPos += worldNorm * (disp - 0.5) * displaceScale * dirtWeight;
+        }
     }
 
     WorldNorm = worldNorm;
