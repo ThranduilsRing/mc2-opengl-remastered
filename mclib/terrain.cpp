@@ -779,7 +779,8 @@ long Terrain::update (void)
 	// Set terrain light direction for normal map shader
 	if (eye)
 	{
-		gos_SetTerrainLightDir(eye->lightDirection.x, eye->lightDirection.y, eye->lightDirection.z);
+		// Light direction now set from gamecam.cpp with proper MC2->GL swizzle
+		// gos_SetTerrainLightDir(eye->lightDirection.x, eye->lightDirection.y, eye->lightDirection.z);
 
 		// Pass camera world position for POM view direction
 		// MC2 -> OpenGL coordinate swizzle: (-x, z, y)
