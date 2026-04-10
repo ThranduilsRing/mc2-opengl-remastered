@@ -230,7 +230,7 @@ class gosRenderMaterial {
                 sh_name.append(mvar.getUniqueSuffix());
 
             // Terrain gets TCS/TES for tessellation
-            if (strcmp(shader, "gos_terrain") == 0) {
+            if (strcmp(shader, "gos_terrain") == 0 || strcmp(shader, "shadow_terrain") == 0) {
                 char tcs[256], tes[256];
                 StringFormat(tcs, 255, "shaders/%s.tesc", shader);
                 StringFormat(tes, 255, "shaders/%s.tese", shader);
@@ -1287,6 +1287,9 @@ class gosRenderer {
         // Shadow pre-pass (separate pass over all terrain batches before shading)
         void beginShadowPrePass();
         void drawShadowBatch(const gos_TERRAIN_EXTRA* extras, int count);
+        void drawShadowBatchTessellated(gos_VERTEX* vertices, int numVerts,
+            WORD* indices, int numIndices,
+            const gos_TERRAIN_EXTRA* extras, int extraCount);
         void endShadowPrePass();
 
         // Terrain splatting setters
@@ -2071,6 +2074,86 @@ void gosRenderer::drawShadowBatch(const gos_TERRAIN_EXTRA* extras, int count) {
     glDisableVertexAttribArray(0);
     glDisableVertexAttribArray(4);
     glBindBuffer(GL_ARRAY_BUFFER, 0);
+}
+
+void gosRenderer::drawShadowBatchTessellated(gos_VERTEX* vertices, int numVerts,
+    WORD* indices, int numIndices,
+    const gos_TERRAIN_EXTRA* extras, int extraCount)
+{
+    if (!shadow_prepass_active_ || numVerts <= 0 || extraCount <= 0) return;
+
+    // Upload vertices + indices to indexed_tris_ (same mesh used by normal terrain draw)
+    indexed_tris_->rewind();
+    indexed_tris_->addVertices(vertices, numVerts);
+    indexed_tris_->addIndices(indices, numIndices);
+    indexed_tris_->uploadBuffers();
+
+    // Shadow material already applied in beginShadowPrePass (shader + lightSpaceMatrix)
+    // Upload tessellation uniforms via direct GL (same pattern as terrainDrawIndexedPatches)
+    GLuint shp = shadow_terrain_material_->getShader()->shp_;
+    GLint loc;
+
+    float tessParams[4] = { terrain_tess_level_, terrain_tess_level_, 0.0f, 0.0f };
+    float tessDist[4] = { terrain_tess_dist_near_, terrain_tess_dist_far_, 0.0f, 0.0f };
+    float tessDisp[4] = { 0.0f, terrain_displace_scale_, 0.0f, 0.0f };  // no Phong in shadow
+
+    loc = glGetUniformLocation(shp, "tessLevel");
+    if (loc >= 0) glUniform4fv(loc, 1, tessParams);
+    loc = glGetUniformLocation(shp, "tessDistanceRange");
+    if (loc >= 0) glUniform4fv(loc, 1, tessDist);
+    loc = glGetUniformLocation(shp, "tessDisplace");
+    if (loc >= 0) glUniform4fv(loc, 1, tessDisp);
+    loc = glGetUniformLocation(shp, "cameraPos");
+    if (loc >= 0) glUniform4fv(loc, 1, (const float*)&terrain_camera_pos_);
+
+    // projection_ needed by shadow vert shader (TES overrides gl_Position, but VS needs it for gl_Position passthrough)
+    loc = glGetUniformLocation(shp, "mvp");
+    if (loc >= 0) glUniformMatrix4fv(loc, 1, GL_TRUE, (const float*)&projection_);
+
+    // Displacement textures: dirt normal on unit 7
+    loc = glGetUniformLocation(shp, "matNormal2");
+    if (loc >= 0) {
+        glUniform1i(loc, 7);
+        glActiveTexture(GL_TEXTURE7);
+        glBindTexture(GL_TEXTURE_2D, terrain_mat_normal_[2]);  // dirt normal map
+        glActiveTexture(GL_TEXTURE0);
+    }
+
+    float tiling[4] = { terrain_detail_tiling_, 0.0f, 0.0f, 0.0f };
+    loc = glGetUniformLocation(shp, "detailNormalTiling");
+    if (loc >= 0) glUniform4fv(loc, 1, tiling);
+
+    // tex1 (colormap) sampler — bound to unit 0 by the gos_SetRenderState texture call
+    loc = glGetUniformLocation(shp, "tex1");
+    if (loc >= 0) glUniform1i(loc, 0);
+
+    // Bind main VBO (pos, color, fog, texcoord at locations 0-3)
+    glBindBuffer(GL_ARRAY_BUFFER, indexed_tris_->getVB());
+    glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, indexed_tris_->getIB());
+    shadow_terrain_material_->applyVertexDeclaration();
+
+    // Bind extras VBO for worldPos (location 4) and worldNorm (location 5)
+    updateBuffer(terrain_extra_vb_, GL_ARRAY_BUFFER,
+        extras, extraCount * sizeof(gos_TERRAIN_EXTRA), GL_DYNAMIC_DRAW);
+    glBindBuffer(GL_ARRAY_BUFFER, terrain_extra_vb_);
+
+    glEnableVertexAttribArray(4);  // worldPos
+    glVertexAttribPointer(4, 3, GL_FLOAT, GL_FALSE, sizeof(gos_TERRAIN_EXTRA), (void*)0);
+    glEnableVertexAttribArray(5);  // worldNorm
+    glVertexAttribPointer(5, 3, GL_FLOAT, GL_FALSE, sizeof(gos_TERRAIN_EXTRA), (void*)(3 * sizeof(float)));
+
+    // Draw tessellated patches
+    glPatchParameteri(GL_PATCH_VERTICES, 3);
+    glDrawElements(GL_PATCHES, numIndices,
+        indexed_tris_->getIndexSizeBytes() == 2 ? GL_UNSIGNED_SHORT : GL_UNSIGNED_INT, NULL);
+
+    // Cleanup
+    glDisableVertexAttribArray(4);
+    glDisableVertexAttribArray(5);
+    shadow_terrain_material_->endVertexDeclaration();
+    shadow_terrain_material_->end();
+    glBindBuffer(GL_ARRAY_BUFFER, 0);
+    glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, 0);
 }
 
 void gosRenderer::endShadowPrePass() {
@@ -3415,6 +3498,12 @@ void gos_DrawShadowBatch(const gos_TERRAIN_EXTRA* extras, int count) {
 }
 void gos_EndShadowPrePass() {
     if (g_gos_renderer) g_gos_renderer->endShadowPrePass();
+}
+void gos_DrawShadowBatchTessellated(gos_VERTEX* vertices, int numVerts,
+    WORD* indices, int numIndices,
+    const gos_TERRAIN_EXTRA* extras, int extraCount) {
+    if (g_gos_renderer) g_gos_renderer->drawShadowBatchTessellated(
+        vertices, numVerts, indices, numIndices, extras, extraCount);
 }
 
 void gos_GetTerrainLightDir(float* x, float* y, float* z) {

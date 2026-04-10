@@ -2272,6 +2272,9 @@ void gos_GetTerrainLightDir(float* x, float* y, float* z);
 // Shadow pre-pass API (renders all terrain to shadow map before shading)
 void gos_BeginShadowPrePass();
 void gos_DrawShadowBatch(const gos_TERRAIN_EXTRA* extras, int count);
+void gos_DrawShadowBatchTessellated(gos_VERTEX* vertices, int numVerts,
+    WORD* indices, int numIndices,
+    const gos_TERRAIN_EXTRA* extras, int extraCount);
 void gos_EndShadowPrePass();
 void __stdcall gos_SetTerrainMVP(const float* matrix16);
 void __stdcall gos_SetTerrainViewport(float vmx, float vmy, float vax, float vay);
