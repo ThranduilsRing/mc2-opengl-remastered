@@ -162,8 +162,12 @@ static void draw_screen( void )
         {
             float cx = 0.0f, cy = 0.0f, cz = 0.0f;
             gos_GetTerrainCameraPos(&cx, &cy, &cz);
-            // Hardcoded sun direction — known to produce visible shadows in swizzled space
-            float lx = 0.3f, ly = 0.7f, lz = 0.2f;
+            // Use game light direction (set from gamecam.cpp with MC2->GL swizzle)
+            float lx = 0.0f, ly = 0.0f, lz = 0.0f;
+            gos_GetTerrainLightDir(&lx, &ly, &lz);
+            // Fallback to hardcoded direction if light dir not yet set
+            float len2 = lx*lx + ly*ly + lz*lz;
+            if (len2 < 0.001f) { lx = 0.3f; ly = 0.7f; lz = 0.2f; }
             pp->updateLightMatrix(lx, ly, lz, cx, cy, cz, 1500.0f);
         }
         pp->resize(viewport_w, viewport_h);
