@@ -63,6 +63,30 @@ bool MLRVertexLimitReached = false;
 extern bool useFog;
 extern DWORD BaseVertexColor;
 
+// --- Shadow shape collection (file-scope global, no struct layout impact) ---
+struct ShadowShapeEntry {
+	HGOSBUFFER vb;
+	HGOSBUFFER ib;
+	HGOSVERTEXDECLARATION vdecl;
+	float worldMatrix[16];
+};
+static const int MAX_SHADOW_SHAPES = 512;
+static ShadowShapeEntry g_shadowShapes[MAX_SHADOW_SHAPES];
+static int g_numShadowShapes = 0;
+
+void addShadowShape(HGOSBUFFER vb, HGOSBUFFER ib, HGOSVERTEXDECLARATION vdecl, const float* worldEntries16) {
+	if (g_numShadowShapes >= MAX_SHADOW_SHAPES) return;
+	ShadowShapeEntry& ss = g_shadowShapes[g_numShadowShapes++];
+	ss.vb = vb;
+	ss.ib = ib;
+	ss.vdecl = vdecl;
+	memcpy(ss.worldMatrix, worldEntries16, 16 * sizeof(float));
+}
+
+void clearShadowShapes() {
+	g_numShadowShapes = 0;
+}
+
 DWORD actualTextureSize = 0;
 DWORD compressedTextureSize = 0;
 
@@ -1074,28 +1098,19 @@ void MC_TextureManager::renderLists (void)
 				}
 			}
 		}
-		// Object shadow pass: render mech/object shapes into shadow map
-		for (size_t si = 0; si < nextAvailableHardwareVertexNode; si++)
+		// Object shadow pass: render shapes collected during TG_Shape::Render()
+		// Re-assert all critical GL state after terrain shadow pass
+		glDisable(GL_CULL_FACE);
+		glEnable(GL_DEPTH_TEST);
+		glDepthFunc(GL_LESS);
+		glDepthMask(GL_TRUE);
+		glColorMask(GL_TRUE, GL_TRUE, GL_TRUE, GL_TRUE);
+		for (int si = 0; si < g_numShadowShapes; si++)
 		{
-			if (!(masterHardwareVertexNodes[si].flags & MC2_DRAWSOLID)) continue;
-			if (masterHardwareVertexNodes[si].flags & MC2_ISTERRAIN) continue;
-			if (!masterHardwareVertexNodes[si].shapes) continue;
-
-			uint32_t totalShapes = masterHardwareVertexNodes[si].numShapes;
-			if (masterHardwareVertexNodes[si].currentShape !=
-				(masterHardwareVertexNodes[si].shapes + masterHardwareVertexNodes[si].numShapes)) {
-				totalShapes = masterHardwareVertexNodes[si].currentShape - masterHardwareVertexNodes[si].shapes;
-			}
-
-			for (uint32_t sh = 0; sh < totalShapes; ++sh)
-			{
-				TG_RenderShape* rs = masterHardwareVertexNodes[si].shapes + sh;
-				if (!rs->vb_ || !rs->ib_) continue;
-
-				mat4 world_mat = gos2my(rs->mw_);
-				gos_DrawShadowObjectBatch(rs->vb_, rs->ib_, rs->vdecl_, (const float*)&world_mat);
-			}
+			gos_DrawShadowObjectBatch(g_shadowShapes[si].vb, g_shadowShapes[si].ib,
+				g_shadowShapes[si].vdecl, g_shadowShapes[si].worldMatrix);
 		}
+		g_numShadowShapes = 0; // consumed, reset for next frame
 
 		gos_EndShadowPrePass();  // restores scene FBO, re-enables comparison mode
 	}

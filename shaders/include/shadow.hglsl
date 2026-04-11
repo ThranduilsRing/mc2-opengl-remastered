@@ -39,12 +39,12 @@ float calcShadow(vec3 worldPos, vec3 normal, vec3 lightDir)
     if (projCoords.x < 0.0 || projCoords.x > 1.0 ||
         projCoords.y < 0.0 || projCoords.y > 1.0) return 1.0;
 
-    // Back-face guard
+    // Back-face guard — only skip shadow for surfaces strongly facing away from light
     float NdotL = max(dot(normal, lightDir), 0.0);
-    if (NdotL < 0.15) return 1.0;
+    if (NdotL < 0.05) return 1.0;
 
-    // Slope-dependent depth bias
-    float bias = max(0.008 * (1.0 - NdotL), 0.003);
+    // Slope-dependent depth bias — slightly larger to avoid z-fighting with object shadows
+    float bias = max(0.012 * (1.0 - NdotL), 0.005);
     float currentDepth = projCoords.z - bias;
 
     // Per-pixel rotation to break banding (stratified sampling)
