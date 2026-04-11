@@ -1267,6 +1267,7 @@ class gosRenderer {
         float getTerrainTessDistFar() const { return terrain_tess_dist_far_; }
         float getTerrainPhongAlpha() const { return terrain_phong_alpha_; }
         float getTerrainDisplaceScale() const { return terrain_displace_scale_; }
+        float getTerrainDetailTiling() const { return terrain_detail_tiling_; }
         bool getTerrainWireframe() const { return terrain_wireframe_; }
         GLuint getTerrainExtraVB() const { return terrain_extra_vb_; }
         gos_TERRAIN_EXTRA* getTerrainExtraData() const { return terrain_extra_data_; }
@@ -3478,6 +3479,15 @@ void __stdcall gos_SetTerrainPhongAlpha(float a) {
 }
 void __stdcall gos_SetTerrainDisplaceScale(float s) {
     if (g_gos_renderer) g_gos_renderer->setTerrainDisplaceScale(s);
+}
+float gos_GetTerrainPhongAlpha() {
+    return g_gos_renderer ? g_gos_renderer->getTerrainPhongAlpha() : 0.0f;
+}
+float gos_GetTerrainDisplaceScale() {
+    return g_gos_renderer ? g_gos_renderer->getTerrainDisplaceScale() : 0.0f;
+}
+float gos_GetTerrainDetailTiling() {
+    return g_gos_renderer ? g_gos_renderer->getTerrainDetailTiling() : 1.0f;
 }
 void __stdcall gos_SetTerrainWireframe(bool w) {
     if (g_gos_renderer) g_gos_renderer->setTerrainWireframe(w);
