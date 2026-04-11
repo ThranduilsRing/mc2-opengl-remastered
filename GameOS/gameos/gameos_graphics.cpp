@@ -2220,6 +2220,12 @@ void gosRenderer::drawShadowObjectBatch(HGOSBUFFER vb, HGOSBUFFER ib,
 
     const float* M = worldMatrix4x4; // row-major Stuff::Matrix4D
 
+    // Offset all object vertices toward the light to push shadows closer to feet
+    // terrainLightDir is scene→sun in raw MC2 space — shift toward sun
+    float ofsX = terrain_light_dir_.x * 30.0f;
+    float ofsY = terrain_light_dir_.y * 30.0f;
+    float ofsZ = terrain_light_dir_.z * 30.0f;
+
     // Build flat vertex arrays for drawShadowBatchTessellated
     gos_TERRAIN_EXTRA* extras = (gos_TERRAIN_EXTRA*)alloca(numIndices * sizeof(gos_TERRAIN_EXTRA));
     gos_VERTEX* dummyVerts = (gos_VERTEX*)alloca(numIndices * sizeof(gos_VERTEX));
@@ -2239,9 +2245,10 @@ void gosRenderer::drawShadowObjectBatch(HGOSBUFFER vb, HGOSBUFFER ib,
         float sz = M[8]*pos[0] + M[9]*pos[1] + M[10]*pos[2] + M[11];
 
         // Axis swap Stuff→MC2: MC2.x = -Stuff.x, MC2.y = Stuff.z, MC2.z = Stuff.y
-        extras[i].wx = -sx;
-        extras[i].wy = sz;
-        extras[i].wz = sy;  // elevation
+        // Plus light-direction offset to push shadow depth closer to light
+        extras[i].wx = -sx + ofsX;
+        extras[i].wy = sz + ofsY;
+        extras[i].wz = sy + ofsZ;
         extras[i].nx = 0.0f;
         extras[i].ny = 0.0f;
         extras[i].nz = 1.0f;
