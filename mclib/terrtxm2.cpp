@@ -1405,8 +1405,10 @@ void TerrainColorMap::resetBaseTexture (const char *fileName)
 
 	// Retain CPU copy of colormap for terrain displacement HSV classification
 	{
+		if (cpuColorMap) { free(cpuColorMap); cpuColorMap = NULL; }
 		long pixels = (long)colorMapInfo.width * (long)colorMapInfo.width;
 		cpuColorMap = (unsigned char*)malloc(pixels * 4);
+		gosASSERT(cpuColorMap != NULL);
 		cpuColorMapSize = colorMapInfo.width;
 		memcpy(cpuColorMap, ColorMap, pixels * 4);
 		printf("[COLORMAP] retained colormap on CPU (%dx%d)\n", colorMapInfo.width, colorMapInfo.width);
@@ -2165,8 +2167,10 @@ long TerrainColorMap::init (char *fileName)
 
 		// Retain CPU copy of matNormal2 alpha for terrain elevation displacement
 		if (normalLayers[2]) {
+			if (cpuDispAlpha) { free(cpuDispAlpha); cpuDispAlpha = NULL; }
 			long pixels = (long)arrayWidth * (long)arrayWidth;
 			cpuDispAlpha = (unsigned char*)malloc(pixels);
+			gosASSERT(cpuDispAlpha != NULL);
 			cpuDispAlphaSize = arrayWidth;
 			const unsigned char* src = normalLayers[2];
 			for (long i = 0; i < pixels; i++) {
