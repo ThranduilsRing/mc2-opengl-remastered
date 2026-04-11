@@ -37,6 +37,12 @@ If skills aren't found by the Skill tool, they're also at `A:/Games/mc2-opengl-s
 - `shaders/gos_terrain.frag` -- terrain splatting, POM, shadow sampling, distance LOD
 - `shaders/include/shadow.hglsl` -- calcShadow() with variable-tap Poisson PCF
 
+## Profiling
+- **Tracy Profiler** always compiled in (`TRACY_ENABLE`). Connect Tracy GUI to see real-time flame charts.
+- **GPU zones** on shadow passes, terrain draw, 3D objects, post-process. Uses GL timer queries.
+- **AMD RGP** works externally via Radeon Developer Panel for shader-level analysis.
+- Include `gos_profiler.h` to add new zones. Use `ZoneScopedN("Name")` for CPU, add `TracyGpuZone("Name")` for GPU-heavy code.
+
 ## Known Issues
 - Post-processing (bloom, FXAA) applies to HUD -- needs scene/HUD split
 - Shadow re-render stutter when camera moves >500 units. Fix: static world-fixed shadow map (design doc ready)
