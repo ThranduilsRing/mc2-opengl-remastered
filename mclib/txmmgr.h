@@ -1139,5 +1139,8 @@ void GatherLightsParameters(TG_HWLightsData* lights);
 //----------------------------------------------------------------------
 extern MC_TextureManager *mcTextureManager;
 
+// Shadow shape collection — populated during TG_Shape::Render(), consumed in renderLists()
+void addShadowShape(HGOSBUFFER vb, HGOSBUFFER ib, HGOSVERTEXDECLARATION vdecl, const float* worldEntries16);
+
 //----------------------------------------------------------------------
 #endif

@@ -2194,44 +2194,76 @@ void gosRenderer::drawShadowBatchTessellated(gos_VERTEX* vertices, int numVerts,
 void gosRenderer::drawShadowObjectBatch(HGOSBUFFER vb, HGOSBUFFER ib,
     HGOSVERTEXDECLARATION vdecl, const float* worldMatrix4x4)
 {
-    if (!shadow_prepass_active_ || !shadow_object_material_) return;
+    if (!shadow_prepass_active_) return;
     if (!vb || !ib || ib->count_ == 0) return;
 
-    shadow_object_material_->apply();
-    GLuint shp = shadow_object_material_->getShader()->shp_;
+    // Read model-space vertices from VBO, transform to MC2 world space,
+    // and pipe through the PROVEN terrain shadow pipeline (tessLevel=1, no displacement)
 
-    // Compute shadowMVP = lightSpaceMatrix * worldMatrix
-    gosPostProcess* pp = getGosPostProcess();
-    if (!pp) return;
+    int numIndices = ib->count_;
+    int indexSize = ib->element_size_;
 
-    const float* lsm = pp->getLightSpaceMatrix();
-    float shadowMVP[16];
-    for (int row = 0; row < 4; row++) {
-        for (int col = 0; col < 4; col++) {
-            shadowMVP[row * 4 + col] =
-                lsm[row * 4 + 0] * worldMatrix4x4[0 * 4 + col] +
-                lsm[row * 4 + 1] * worldMatrix4x4[1 * 4 + col] +
-                lsm[row * 4 + 2] * worldMatrix4x4[2 * 4 + col] +
-                lsm[row * 4 + 3] * worldMatrix4x4[3 * 4 + col];
-        }
-    }
-
-    GLint loc = glGetUniformLocation(shp, "shadowMVP");
-    if (loc >= 0) glUniformMatrix4fv(loc, 1, GL_FALSE, shadowMVP);
-
-    // Bind buffers and draw
-    int index_size = ib->element_size_;
-    glBindBuffer(GL_ARRAY_BUFFER, vb->buffer_);
+    // Read index data from GPU
     glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, ib->buffer_);
+    int ibBytes = numIndices * indexSize;
+    unsigned char* indexData = (unsigned char*)alloca(ibBytes);
+    glGetBufferSubData(GL_ELEMENT_ARRAY_BUFFER, 0, ibBytes, indexData);
 
-    vdecl->apply();
-    glDrawElements(GL_TRIANGLES, ib->count_,
-        index_size == 2 ? GL_UNSIGNED_SHORT : GL_UNSIGNED_INT, NULL);
-    vdecl->end();
-
-    shadow_object_material_->end();
+    // Read vertex data from GPU (TG_HWTypeVertex = 36 bytes)
+    glBindBuffer(GL_ARRAY_BUFFER, vb->buffer_);
+    GLint vbSize = 0;
+    glGetBufferParameteriv(GL_ARRAY_BUFFER, GL_BUFFER_SIZE, &vbSize);
+    unsigned char* vertData = (unsigned char*)alloca(vbSize);
+    glGetBufferSubData(GL_ARRAY_BUFFER, 0, vbSize, vertData);
     glBindBuffer(GL_ARRAY_BUFFER, 0);
     glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, 0);
+
+    const float* M = worldMatrix4x4; // row-major Stuff::Matrix4D
+
+    // Build flat vertex arrays for drawShadowBatchTessellated
+    gos_TERRAIN_EXTRA* extras = (gos_TERRAIN_EXTRA*)alloca(numIndices * sizeof(gos_TERRAIN_EXTRA));
+    gos_VERTEX* dummyVerts = (gos_VERTEX*)alloca(numIndices * sizeof(gos_VERTEX));
+    WORD* flatIndices = (WORD*)alloca(numIndices * sizeof(WORD));
+
+    for (int i = 0; i < numIndices; i++) {
+        int idx = (indexSize == 2) ?
+            ((unsigned short*)indexData)[i] :
+            ((unsigned int*)indexData)[i];
+
+        // TG_HWTypeVertex: position(3f) at offset 0
+        float* pos = (float*)(vertData + idx * 36);
+
+        // Transform through world matrix (row-major): result = M * pos
+        float sx = M[0]*pos[0] + M[1]*pos[1] + M[2]*pos[2]  + M[3];
+        float sy = M[4]*pos[0] + M[5]*pos[1] + M[6]*pos[2]  + M[7];
+        float sz = M[8]*pos[0] + M[9]*pos[1] + M[10]*pos[2] + M[11];
+
+        // Axis swap Stuff→MC2: MC2.x = -Stuff.x, MC2.y = Stuff.z, MC2.z = Stuff.y
+        extras[i].wx = -sx;
+        extras[i].wy = sz;
+        extras[i].wz = sy;  // elevation
+        extras[i].nx = 0.0f;
+        extras[i].ny = 0.0f;
+        extras[i].nz = 1.0f;
+
+        memset(&dummyVerts[i], 0, sizeof(gos_VERTEX));
+        flatIndices[i] = (WORD)i;
+    }
+
+    // Save and override tessellation params — objects need tess=1, no displacement
+    float savedTessLevel = terrain_tess_level_;
+    float savedDispScale = terrain_displace_scale_;
+    float savedPhongAlpha = terrain_phong_alpha_;
+    terrain_tess_level_ = 1.0f;
+    terrain_displace_scale_ = 0.0f;
+    terrain_phong_alpha_ = 0.0f;
+
+    drawShadowBatchTessellated(dummyVerts, numIndices, flatIndices, numIndices,
+        extras, numIndices);
+
+    terrain_tess_level_ = savedTessLevel;
+    terrain_displace_scale_ = savedDispScale;
+    terrain_phong_alpha_ = savedPhongAlpha;
 }
 
 void gosRenderer::endShadowPrePass() {

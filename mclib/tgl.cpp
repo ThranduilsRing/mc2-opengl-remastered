@@ -2715,7 +2715,12 @@ void TG_Shape::Render (float forceZ, bool isHudElement, BYTE alphaValue, bool is
 
 		if (theShape->ib_ && theShape->vb_) {
 
-			// FIXME: this is not correct if model has more than 1 texture! 
+			// Collect shape for shadow map rendering
+			if (!isHudElement && !isClamped && shapeToWorld) {
+				addShadowShape(theShape->vb_, theShape->ib_, theShape->vdecl_, shapeToWorld->entries);
+			}
+
+			// FIXME: this is not correct if model has more than 1 texture!
 			// TODO: split on per texture batches basis
 			TG_TypeTriangle triType = theShape->listOfTypeTriangles[0];
 
