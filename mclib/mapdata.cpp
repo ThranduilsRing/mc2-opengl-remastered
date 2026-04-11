@@ -26,6 +26,9 @@
 #include"timing.h"
 #endif
 
+#include<gameos.hpp>
+#include"terrtxm2.h"
+
 //---------------------------------------------------------------------------
 // c'tors for postCompVertex
 PostcompVertex& PostcompVertex::operator=( const PostcompVertex& src )
@@ -1580,6 +1583,90 @@ Stuff::Vector3D MapData::terrainNormal (const Stuff::Vector3D& position)
 	return (perpendicularVec);
 }
 
+//--- CPU-side terrain displacement helpers (match GPU TES) ---
+
+// HSV conversion matching terrain_common.hglsl tc_rgb2hsv
+static void cpu_rgb2hsv(float r, float g, float b, float& h, float& s, float& v) {
+    float maxC = (r > g) ? ((r > b) ? r : b) : ((g > b) ? g : b);
+    float minC = (r < g) ? ((r < b) ? r : b) : ((g < b) ? g : b);
+    float d = maxC - minC;
+    v = maxC;
+    s = (maxC > 1e-10f) ? (d / maxC) : 0.0f;
+    if (d < 1e-10f) { h = 0.0f; return; }
+    if (maxC == r) h = (g - b) / d + (g < b ? 6.0f : 0.0f);
+    else if (maxC == g) h = (b - r) / d + 2.0f;
+    else h = (r - g) / d + 4.0f;
+    h /= 6.0f;
+}
+
+// smoothstep matching GLSL
+static float cpu_smoothstep(float edge0, float edge1, float x) {
+    float t = (x - edge0) / (edge1 - edge0);
+    if (t < 0.0f) t = 0.0f;
+    if (t > 1.0f) t = 1.0f;
+    return t * t * (3.0f - 2.0f * t);
+}
+
+// Material weight classification matching terrain_common.hglsl tc_getColorWeights
+// Returns dirt weight (w.z component) only, since that's all we need for TES displacement
+static float cpu_getDirtWeight(float r, float g, float b) {
+    float h, s, v;
+    cpu_rgb2hsv(r, g, b, h, s, v);
+
+    float grassW = cpu_smoothstep(0.14f, 0.17f, h) * cpu_smoothstep(0.15f, 0.28f, s);
+    float dirtW = cpu_smoothstep(0.155f, 0.13f, h) * cpu_smoothstep(0.15f, 0.28f, s);
+    float concreteW = cpu_smoothstep(0.18f, 0.10f, s) * cpu_smoothstep(0.50f, 0.62f, v);
+    float rockW = cpu_smoothstep(0.18f, 0.10f, s) * cpu_smoothstep(0.45f, 0.30f, v);
+    rockW += cpu_smoothstep(0.38f, 0.28f, v) * cpu_smoothstep(0.15f, 0.25f, s);
+
+    float isWater = cpu_smoothstep(0.35f, 0.45f, h);
+    rockW += isWater;
+    grassW *= (1.0f - isWater);
+    dirtW *= (1.0f - isWater);
+
+    float total = rockW + grassW + dirtW + concreteW;
+    if (total < 0.01f) return 1.0f; // default to dirt if unclassified
+    return dirtW / total;
+}
+
+// Bilinear sample from unsigned char texture (wrapping)
+static float cpu_sampleAlpha(const unsigned char* data, int size, float u, float v) {
+    u = u - floorf(u);
+    v = v - floorf(v);
+    float fx = u * (float)size - 0.5f;
+    float fy = v * (float)size - 0.5f;
+    int x0 = (int)floorf(fx);
+    int y0 = (int)floorf(fy);
+    float dx = fx - (float)x0;
+    float dy = fy - (float)y0;
+    x0 = ((x0 % size) + size) % size;
+    y0 = ((y0 % size) + size) % size;
+    int x1 = (x0 + 1) % size;
+    int y1 = (y0 + 1) % size;
+    float s00 = data[y0 * size + x0] / 255.0f;
+    float s10 = data[y0 * size + x1] / 255.0f;
+    float s01 = data[y1 * size + x0] / 255.0f;
+    float s11 = data[y1 * size + x1] / 255.0f;
+    return (s00 * (1.0f-dx) + s10 * dx) * (1.0f-dy) +
+           (s01 * (1.0f-dx) + s11 * dx) * dy;
+}
+
+// Sample colormap RGBA at UV (nearest neighbor)
+// TGA layout is BGRA in memory
+static void cpu_sampleColormap(const unsigned char* data, int size, float u, float v,
+                               float& r, float& g, float& b) {
+    u = u - floorf(u);
+    v = v - floorf(v);
+    int x = (int)(u * (float)size);
+    int y = (int)(v * (float)size);
+    if (x >= size) x = size - 1;
+    if (y >= size) y = size - 1;
+    int idx = (y * size + x) * 4;
+    b = data[idx + 0] / 255.0f;
+    g = data[idx + 1] / 255.0f;
+    r = data[idx + 2] / 255.0f;
+}
+
 //---------------------------------------------------------------------------
 float MapData::terrainElevation (const Stuff::Vector3D &position)
 {
@@ -1800,6 +1887,99 @@ float MapData::terrainElevation (const Stuff::Vector3D &position)
 		result = -result;
 	
 		result += triVert[0].z;
+	}
+
+	// --- CPU-side terrain displacement (matching GPU TES) ---
+	if (Terrain::terrainTextures2) {
+		TerrainColorMap* tcm = Terrain::terrainTextures2;
+		float phongAlpha = gos_GetTerrainPhongAlpha();
+		float displaceScale = gos_GetTerrainDisplaceScale();
+		float detailTiling = gos_GetTerrainDetailTiling();
+
+		// Compute colormap UV from world position
+		// Matches quad.cpp: u = (wx - mapTopLeft3d.x) / worldUnitsMapSide
+		float cmapU = (position.x - Terrain::mapTopLeft3d.x) * Terrain::oneOverWorldUnitsMapSide;
+		float cmapV = (Terrain::mapTopLeft3d.y - position.y) * Terrain::oneOverWorldUnitsMapSide;
+
+		// Identify which PostcompVertices form our triangle (for normals)
+		PostcompVertexPtr triPV[3];
+		if (uvMode == BOTTOMRIGHT) {
+			if (deltaX > deltaY) {
+				triPV[0] = pVertex1; triPV[1] = pVertex2; triPV[2] = pVertex3;
+			} else {
+				triPV[0] = pVertex1; triPV[1] = pVertex3; triPV[2] = pVertex4;
+			}
+		} else { // BOTTOMLEFT
+			if ((-deltaX) > deltaY) { // deltaX was negated for BOTTOMLEFT
+				triPV[0] = pVertex2; triPV[1] = pVertex1; triPV[2] = pVertex4;
+			} else {
+				triPV[0] = pVertex2; triPV[1] = pVertex4; triPV[2] = pVertex3;
+			}
+		}
+
+		// Compute barycentric coordinates
+		float x0 = triVert[0].x, y0 = triVert[0].y;
+		float x1 = triVert[1].x, y1 = triVert[1].y;
+		float x2 = triVert[2].x, y2 = triVert[2].y;
+		float det = (y1 - y2) * (x0 - x2) + (x2 - x1) * (y0 - y2);
+		float bary0 = 0.333f, bary1 = 0.333f, bary2 = 0.333f;
+		if (fabsf(det) > 1e-6f) {
+			bary0 = ((y1 - y2) * (position.x - x2) + (x2 - x1) * (position.y - y2)) / det;
+			bary1 = ((y2 - y0) * (position.x - x2) + (x0 - x2) * (position.y - y2)) / det;
+			bary2 = 1.0f - bary0 - bary1;
+		}
+
+		// --- Phong smoothing (matching TES lines 77-84) ---
+		if (phongAlpha > 0.0f) {
+			// Phong projection: project interpolated pos onto tangent plane of each vertex
+			// proj_i = pos - dot(pos - v_i, n_i) * n_i
+			// We only need the Z component
+			float px = position.x, py = position.y, pz = result;
+			float projZ0, projZ1, projZ2;
+			{
+				Stuff::Vector3D& n = triPV[0]->vertexNormal;
+				float dx2 = px - triVert[0].x, dy2 = py - triVert[0].y, dz2 = pz - triVert[0].z;
+				float dot = dx2 * n.x + dy2 * n.y + dz2 * n.z;
+				projZ0 = pz - dot * n.z;
+			}
+			{
+				Stuff::Vector3D& n = triPV[1]->vertexNormal;
+				float dx2 = px - triVert[1].x, dy2 = py - triVert[1].y, dz2 = pz - triVert[1].z;
+				float dot = dx2 * n.x + dy2 * n.y + dz2 * n.z;
+				projZ1 = pz - dot * n.z;
+			}
+			{
+				Stuff::Vector3D& n = triPV[2]->vertexNormal;
+				float dx2 = px - triVert[2].x, dy2 = py - triVert[2].y, dz2 = pz - triVert[2].z;
+				float dot = dx2 * n.x + dy2 * n.y + dz2 * n.z;
+				projZ2 = pz - dot * n.z;
+			}
+
+			float phongZ = bary0 * projZ0 + bary1 * projZ1 + bary2 * projZ2;
+			result = result + phongAlpha * (phongZ - result);
+		}
+
+		// --- Dirt texture displacement (matching TES lines 87-99) ---
+		if (displaceScale > 0.0f && tcm->cpuColorMap && tcm->cpuDispAlpha) {
+			float cr, cg, cb;
+			cpu_sampleColormap(tcm->cpuColorMap, tcm->cpuColorMapSize, cmapU, cmapV, cr, cg, cb);
+			float dirtWeight = cpu_getDirtWeight(cr, cg, cb);
+
+			if (dirtWeight > 0.01f) {
+				// TC_MAT_TILING.z = 1.0 for dirt
+				float dispU = cmapU * detailTiling * 1.0f;
+				float dispV = cmapV * detailTiling * 1.0f;
+				float disp = 1.0f - cpu_sampleAlpha(tcm->cpuDispAlpha, tcm->cpuDispAlphaSize, dispU, dispV);
+
+				// Use face normal Z for displacement direction
+				float len = sqrtf(perpendicularVec.x*perpendicularVec.x +
+				                 perpendicularVec.y*perpendicularVec.y +
+				                 perpendicularVec.z*perpendicularVec.z);
+				float nz = (len > 1e-6f) ? fabsf(perpendicularVec.z) / len : 1.0f;
+
+				result += nz * (disp - 0.5f) * displaceScale * dirtWeight;
+			}
+		}
 	}
 
 	return (result);
