@@ -10,6 +10,7 @@ in PREC float FogValue;
 in PREC float TerrainType;
 in PREC vec3 WorldNorm;
 in PREC vec3 WorldPos;
+in PREC float UndisplacedDepth;
 
 layout (location=0) out PREC vec4 FragColor;
 
@@ -277,4 +278,9 @@ void main(void)
     //     c.rgb = mix(fog_color.rgb, c.rgb, FogValue);
 
     FragColor = c;
+
+    // Write un-displaced depth so overlays and objects (at original surface height)
+    // pass GL_LEQUAL depth test against this terrain fragment.
+    // Small positive bias ensures overlays always pass despite float precision differences.
+    gl_FragDepth = clamp(UndisplacedDepth + 0.0005, 0.0, 1.0);
 }

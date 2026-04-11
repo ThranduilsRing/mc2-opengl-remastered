@@ -190,7 +190,7 @@ void GameCamera::render (void)
 
 		if (Environment.Renderer != 3)
 			craterManager->render();					//render the craters and footprints
-		
+
 		ObjectManager->render(true, true, true);	//render all other objects
 
 		land->renderWater();						//Draw Water Last!
@@ -200,13 +200,13 @@ void GameCamera::render (void)
 
 		if (mission && mission->missionInterface)
 			mission->missionInterface->drawVTOL();
-			
+
 		if (!drawOldWay && !inMovieMode)
 		{
 			if (compass && (turn > 3) && drawCompass)
 				compass->render(-1);		//Force this to zBuffer in front of everything
 		}
-	
+
 		if (!drawOldWay)
 			mcTextureManager->renderLists();			//This sends triangles down to the card.  All "rendering" to this point has been setting up tri lists
 

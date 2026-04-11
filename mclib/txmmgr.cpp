@@ -1077,6 +1077,8 @@ void MC_TextureManager::renderLists (void)
 		gos_EndShadowPrePass();  // restores scene FBO, re-enables comparison mode
 	}
 
+	// No special depth state for DRAWSOLID terrain
+
 	bool bSkip_DRAWSOLID = false;
 	for (long i=0;i<nextAvailableVertexNode && !bSkip_DRAWSOLID;i++)
 	{
@@ -1138,6 +1140,8 @@ void MC_TextureManager::renderLists (void)
 		}
 	}
 	
+	// DRAWSOLID done
+
 	if (Environment.Renderer == 3)
 	{
 		//Do NOT draw the water as transparent in software
@@ -1274,10 +1278,9 @@ void MC_TextureManager::renderLists (void)
 		gos_SetRenderState( gos_State_ShadeMode, gos_ShadeGouraud);
 		// sebi: do not draw in depth for terrain overlays, otherwise other overlay data, like craters, start to flicker
 		gos_SetRenderState(	gos_State_ZWrite, 0);
-		// Overlays use basic shader (no tessellation displacement), so they're behind
-		// displaced terrain in the depth buffer. GL_ALWAYS lets them render on top.
-		// Safe because overlays render before objects/buildings (which will overwrite via GL_LEQUAL).
-		gos_SetRenderState( gos_State_ZCompare, 0);
+		// Normal GL_LEQUAL depth test — terrain depth buffer has un-displaced depth
+		// (written by gl_FragDepth in terrain frag shader), so overlays at original
+		// surface depth pass the test naturally.
 	}
 
     // sebi: split in 2 parts, first draw objects which have alpha test off, then with alpha test on
@@ -1339,8 +1342,8 @@ void MC_TextureManager::renderLists (void)
 
 	gos_SetRenderState( gos_State_TextureAddress, gos_TextureClamp );
 	gos_SetRenderState(	gos_State_ZWrite, 0);
-	gos_SetRenderState( gos_State_ZCompare, 0);  // GL_ALWAYS for craters on displaced terrain too
 	gos_SetRenderState( gos_State_ShadeMode, gos_ShadeFlat);
+	// Craters also need to render on displaced terrain (gl_FragDepth handles depth matching)
 
  	//Draw the Craters after the detail textures on the terrain.  There should never be anything here in the OLD universe.
 	// DO NOT draw craters or footprints in software
@@ -1390,6 +1393,8 @@ void MC_TextureManager::renderLists (void)
 			}
 		}
 	}
+
+	// No special restore needed — overlays use normal GL_LEQUAL
 
 	if (Environment.Renderer == 3)
 	{
