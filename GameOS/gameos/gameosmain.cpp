@@ -13,10 +13,9 @@
 #include "gos_postprocess.h"
 
 #include <signal.h>
+#include "gos_profiler.h"
 
 extern void gos_GetTerrainCameraPos(float* x, float* y, float* z);
-extern void gos_GetTerrainLightDir(float* x, float* y, float* z);
-extern void gos_GetShadowCenter(float* x, float* y, float* z);
 
 extern void gos_CreateRenderer(graphics::RenderContextHandle ctx_h, graphics::RenderWindowHandle win_h, int w, int h);
 extern void gos_DestroyRenderer();
@@ -71,7 +70,6 @@ static void handle_key_down( SDL_Keysym* keysym ) {
                 gosPostProcess* pp = getGosPostProcess();
                 if (pp) {
                     pp->shadowsEnabled_ = !pp->shadowsEnabled_;
-                    pp->shadowCacheDirty_ = true;  // force re-render on re-enable
                     fprintf(stderr, "Shadows: %s\n", pp->shadowsEnabled_ ? "ON" : "OFF");
                 }
             }
@@ -154,23 +152,7 @@ static void draw_screen( void )
 	const int viewport_w = Environment.drawableWidth;
 	const int viewport_h = Environment.drawableHeight;
 
-    // Resize post-process FBOs if window size changed
     if (pp) {
-        // Shadow light matrix: raw MC2 world space (x, y, elevation = Z-up)
-        // matching worldPos in extras VBO and updateLightMatrix's Z-up hint
-        {
-            float cx = 0.0f, cy = 0.0f, cz = 0.0f;
-            gos_GetShadowCenter(&cx, &cy, &cz);  // raw MC2 camera pos
-
-            float lx = 0.0f, ly = 0.0f, lz = 0.0f;
-            gos_GetTerrainLightDir(&lx, &ly, &lz);  // raw MC2 light dir (scene→sun)
-            float len2 = lx*lx + ly*ly + lz*lz;
-            if (len2 < 0.001f) { lx = 0.5f; ly = 0.5f; lz = 0.7f; }
-
-            // Negate: lightDir points scene→sun, but updateLightMatrix
-            // expects light→scene for light position calculation
-            pp->updateLightMatrix(-lx, -ly, -lz, cx, cy, cz, 8000.0f);
-        }
         pp->resize(viewport_w, viewport_h);
         pp->beginScene();
     }
@@ -221,9 +203,12 @@ static void draw_screen( void )
     // Skybox disabled — terrain fog provides atmosphere, bright sky looked jarring
     // if (pp) pp->renderSkybox(0.3f, 0.7f, 0.2f);
 
-    gos_RendererBeginFrame();
-    Environment.UpdateRenderers();
-    gos_RendererEndFrame();
+    {
+        ZoneScopedN("Camera.UpdateRenderers");
+        gos_RendererBeginFrame();
+        Environment.UpdateRenderers();
+        gos_RendererEndFrame();
+    }
 
     glUseProgram(0);
 
@@ -395,25 +380,39 @@ int main(int argc, char** argv)
 #endif
 
 	timing::init();
+    TracyGpuContext;
 
     while( !g_exit ) {
 
 		uint64_t start_tick = timing::gettickcount();
 		timing::sleep(10*1000000);
 
-        if(gos_RenderGetEnableDebugDrawCalls()) {
-            gos_RenderUpdateDebugInput();
-        } else {
-            Environment.DoGameLogic();
+        {
+            ZoneScopedN("GameLogic");
+            if(gos_RenderGetEnableDebugDrawCalls()) {
+                gos_RenderUpdateDebugInput();
+            } else {
+                Environment.DoGameLogic();
+            }
         }
 
         process_events();
 
 		gos_RendererHandleEvents();
 
-        graphics::make_current_context(ctx);
-        draw_screen();
-        graphics::swap_window(win);
+        {
+            ZoneScopedN("DrawScreen");
+            graphics::make_current_context(ctx);
+            draw_screen();
+        }
+
+        {
+            ZoneScopedN("SwapWindow");
+            graphics::swap_window(win);
+        }
+
+        TracyGpuCollect;
+        FrameMark;
 
         g_exit |= gosExitGameOS();
 
