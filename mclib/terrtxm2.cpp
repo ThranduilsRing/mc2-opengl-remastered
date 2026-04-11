@@ -109,6 +109,10 @@ void TerrainColorMap::init (void)
 	detailNormalNodeIndex = 0xffffffff;
 	hasNormalMap = false;
 	lastResultTexture = -1;
+	cpuDispAlpha = NULL;
+	cpuDispAlphaSize = 0;
+	cpuColorMap = NULL;
+	cpuColorMapSize = 0;
 }
 
 void TerrainColorMap::destroy (void)
@@ -150,6 +154,11 @@ void TerrainColorMap::destroy (void)
 	}
 	
  	numTextures = 0;
+
+	if (cpuDispAlpha) { free(cpuDispAlpha); cpuDispAlpha = NULL; }
+	cpuDispAlphaSize = 0;
+	if (cpuColorMap) { free(cpuColorMap); cpuColorMap = NULL; }
+	cpuColorMapSize = 0;
 }
 
 //---------------------------------------------------------------------------
@@ -1393,7 +1402,16 @@ void TerrainColorMap::resetBaseTexture (const char *fileName)
 			textures[i].mcTextureNodeIndex = mcTextureManager->textureFromMemory((DWORD *)txmRAM[i].ourRAM,gos_Texture_Solid,gosHint_DontShrink,COLOR_MAP_TEXTURE_SIZE);
 		}
 	}
-	
+
+	// Retain CPU copy of colormap for terrain displacement HSV classification
+	{
+		long pixels = (long)colorMapInfo.width * (long)colorMapInfo.width;
+		cpuColorMap = (unsigned char*)malloc(pixels * 4);
+		cpuColorMapSize = colorMapInfo.width;
+		memcpy(cpuColorMap, ColorMap, pixels * 4);
+		printf("[COLORMAP] retained colormap on CPU (%dx%d)\n", colorMapInfo.width, colorMapInfo.width);
+	}
+
 	//At this point, the color Map DATA should be freeable!!
 	// All of the textures have been passed to the mcTextureManager!
 	for (int i=0;i<numTextures;i++)
@@ -2143,6 +2161,18 @@ long TerrainColorMap::init (char *fileName)
 			}
 		} else {
 			printf("[SPLATTING] FAILED to load all material textures\n");
+		}
+
+		// Retain CPU copy of matNormal2 alpha for terrain elevation displacement
+		if (normalLayers[2]) {
+			long pixels = (long)arrayWidth * (long)arrayWidth;
+			cpuDispAlpha = (unsigned char*)malloc(pixels);
+			cpuDispAlphaSize = arrayWidth;
+			const unsigned char* src = normalLayers[2];
+			for (long i = 0; i < pixels; i++) {
+				cpuDispAlpha[i] = src[i * 4 + 3]; // alpha channel (RGBA layout)
+			}
+			printf("[SPLATTING] retained matNormal2 alpha on CPU (%dx%d)\n", arrayWidth, arrayWidth);
 		}
 
 		for (int i = 0; i < 4; i++) {

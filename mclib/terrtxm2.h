@@ -83,6 +83,12 @@ class TerrainColorMap
 		bool					hasNormalMap;
 		long					lastResultTexture; // tile index from last getTextureHandle call
 
+		// CPU-side displacement data for terrain elevation correction
+		unsigned char*  cpuDispAlpha;       // matNormal2 alpha channel (dirt displacement)
+		int             cpuDispAlphaSize;   // width=height of the square texture
+		unsigned char*  cpuColorMap;        // full colormap RGBA for HSV classification
+		int             cpuColorMapSize;    // width=height of the full colormap
+
 		static DWORD			terrainTypeIDs[ TOTAL_COLORMAP_TYPES ];
 		
 	public:
