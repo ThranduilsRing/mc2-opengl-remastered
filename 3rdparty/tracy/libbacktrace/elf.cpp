@@ -170,10 +170,10 @@ dl_iterate_phdr (int (*callback) (struct dl_phdr_info *,
 #undef EI_CLASS
 #undef EI_DATA
 #undef EI_VERSION
-#undef ELFMAG0
-#undef ELFMAG1
-#undef ELFMAG2
-#undef ELFMAG3
+#undef ELF_MAG0
+#undef ELF_MAG1
+#undef ELF_MAG2
+#undef ELF_MAG3
 #undef ELFCLASS32
 #undef ELFCLASS64
 #undef ELFDATA2LSB
@@ -1165,10 +1165,7 @@ elf_fetch_bits (const unsigned char **ppin, const unsigned char *pinend,
   next = __builtin_bswap32 (next);
 #endif
 #else
-  next = ((uint32_t)pin[0]
-	  | ((uint32_t)pin[1] << 8)
-	  | ((uint32_t)pin[2] << 16)
-	  | ((uint32_t)pin[3] << 24));
+  next = pin[0] | (pin[1] << 8) | (pin[2] << 16) | (pin[3] << 24);
 #endif
 
   val |= (uint64_t)next << bits;
@@ -1219,10 +1216,7 @@ elf_fetch_bits_backward (const unsigned char **ppin,
   next = __builtin_bswap32 (next);
 #endif
 #else
-  next = ((uint32_t)pin[0]
-	  | ((uint32_t)pin[1] << 8)
-	  | ((uint32_t)pin[2] << 16)
-	  | ((uint32_t)pin[3] << 24));
+  next = pin[0] | (pin[1] << 8) | (pin[2] << 16) | (pin[3] << 24);
 #endif
 
   val <<= 32;
@@ -5896,10 +5890,10 @@ elf_uncompress_lzma_block (const unsigned char *compressed,
 	  /* The byte at compressed[off] is ignored for some
 	     reason.  */
 
-	  code = (((uint32_t)compressed[off + 1] << 24)
-		  + ((uint32_t)compressed[off + 2] << 16)
-		  + ((uint32_t)compressed[off + 3] << 8)
-		  + (uint32_t)compressed[off + 4]);
+	  code = ((compressed[off + 1] << 24)
+		  + (compressed[off + 2] << 16)
+		  + (compressed[off + 3] << 8)
+		  + compressed[off + 4]);
 	  off += 5;
 
 	  /* This is the main LZMA decode loop.  */
@@ -6360,10 +6354,10 @@ elf_uncompress_lzma (struct backtrace_state *state,
 
   /* Before that is the size of the index field, which precedes the
      footer.  */
-  index_size = ((size_t)compressed[offset - 4]
-		| ((size_t)compressed[offset - 3] << 8)
-		| ((size_t)compressed[offset - 2] << 16)
-		| ((size_t)compressed[offset - 1] << 24));
+  index_size = (compressed[offset - 4]
+		| (compressed[offset - 3] << 8)
+		| (compressed[offset - 2] << 16)
+		| (compressed[offset - 1] << 24));
   index_size = (index_size + 1) * 4;
   offset -= 4;
 
@@ -7556,38 +7550,23 @@ backtrace_initialize (struct backtrace_state *state, const char *filename,
       struct libbacktrace_base_address zero_base_address;
 
       memset (&zero_base_address, 0, sizeof zero_base_address);
-
-      /* For external files (not loaded in the current process), pass
-	 exe=0 so that elf_add does not bail out for ET_DYN files.
-	 This allows DWARF data and symbol tables to be loaded directly
-	 from PIE executables and shared libraries with base_address=0,
-	 letting the caller convert runtime addresses to ELF virtual
-	 addresses before lookup.  */
-      int exe = state->external_file ? 0 : 1;
-
       ret = elf_add (state, filename, descriptor, NULL, 0, zero_base_address,
 		     NULL, error_callback, data, &elf_fileline_fn, &found_sym,
-		     &found_dwarf, NULL, exe, 0, NULL, 0);
+		     &found_dwarf, NULL, 1, 0, NULL, 0);
       if (!ret)
 	return 0;
     }
 
-  /* For external files, skip dl_iterate_phdr -- the file is not loaded
-     in the current process, so enumerating the current process's shared
-     libraries would only add noise.  */
-  if (!state->external_file)
-    {
-      pd.state = state;
-      pd.error_callback = error_callback;
-      pd.data = data;
-      pd.fileline_fn = &elf_fileline_fn;
-      pd.found_sym = &found_sym;
-      pd.found_dwarf = &found_dwarf;
-      pd.exe_filename = filename;
-      pd.exe_descriptor = ret < 0 ? descriptor : -1;
+  pd.state = state;
+  pd.error_callback = error_callback;
+  pd.data = data;
+  pd.fileline_fn = &elf_fileline_fn;
+  pd.found_sym = &found_sym;
+  pd.found_dwarf = &found_dwarf;
+  pd.exe_filename = filename;
+  pd.exe_descriptor = ret < 0 ? descriptor : -1;
 
-      elf_iterate_phdr_and_add_new_files(&pd);
-    }
+  elf_iterate_phdr_and_add_new_files(&pd);
 
   if (!state->threaded)
     {
