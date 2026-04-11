@@ -1415,11 +1415,13 @@ void __stdcall InitializeGameEngine()
 					
 				result = prefsFile->readIdLong("GameVisibleVertices",GameVisibleVertices);
 				if (result != NO_ERR)
-					GameVisibleVertices = 30;
-					
+					GameVisibleVertices = 200;
+				GameVisibleVertices = 200;  // Override config — full visibility
+
 				result = prefsFile->readIdFloat("MaxClipDistance",Camera::MaxClipDistance);
 				if (result != NO_ERR)
-					Camera::MaxClipDistance	= 3000.0f;
+					Camera::MaxClipDistance	= 50000.0f;
+				Camera::MaxClipDistance = 50000.0f;  // Override config
 					
 				result = prefsFile->readIdFloat("MinHazeDistance",Camera::MinHazeDistance);
 				if (result != NO_ERR)

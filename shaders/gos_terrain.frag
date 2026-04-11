@@ -272,8 +272,9 @@ void main(void)
     float shadow = calcShadow(WorldPos, N, terrainLightDir.xyz);
     c.rgb *= shadow;
 
-    if(fog_color.x>0.0 || fog_color.y>0.0 || fog_color.z>0.0 || fog_color.w>0.0)
-        c.rgb = mix(fog_color.rgb, c.rgb, FogValue);
+    // Fog disabled — full Wolfman mode (see across the map)
+    // if(fog_color.x>0.0 || fog_color.y>0.0 || fog_color.z>0.0 || fog_color.w>0.0)
+    //     c.rgb = mix(fog_color.rgb, c.rgb, FogValue);
 
     FragColor = c;
 }

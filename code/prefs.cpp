@@ -411,10 +411,11 @@ int CPrefs::applyPrefs(bool applyRes) {
 
 	//Play with the fog distance.
 	float fogPercent = float(fogPos) / 100.0f;
-	Camera::MaxClipDistance = 3000.0f + (2000.0f * fogPercent);
-	Camera::MinHazeDistance	= 2000.0f + (2000.0f * fogPercent);
+	// Override: full visibility, no distance culling
+	Camera::MaxClipDistance = 50000.0f;
+	Camera::MinHazeDistance = 50000.0f;
 
-	::GameVisibleVertices = 30 + (30 * fogPercent);
+	::GameVisibleVertices = 200;
 
 	if (land)
 	{
