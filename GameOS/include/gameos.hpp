@@ -2280,6 +2280,8 @@ void gos_DrawShadowBatchTessellated(gos_VERTEX* vertices, int numVerts,
     WORD* indices, int numIndices,
     const gos_TERRAIN_EXTRA* extras, int extraCount);
 void gos_EndShadowPrePass();
+void gos_DrawShadowObjectBatch(HGOSBUFFER vb, HGOSBUFFER ib,
+    HGOSVERTEXDECLARATION vdecl, const float* worldMatrix4x4);
 void __stdcall gos_SetTerrainMVP(const float* matrix16);
 void __stdcall gos_SetTerrainViewport(float vmx, float vmy, float vax, float vay);
 void __stdcall gos_SetTerrainCameraPos(float x, float y, float z);

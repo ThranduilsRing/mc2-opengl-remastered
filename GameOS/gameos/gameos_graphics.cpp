@@ -1295,6 +1295,8 @@ class gosRenderer {
         void drawShadowBatchTessellated(gos_VERTEX* vertices, int numVerts,
             WORD* indices, int numIndices,
             const gos_TERRAIN_EXTRA* extras, int extraCount);
+        void drawShadowObjectBatch(HGOSBUFFER vb, HGOSBUFFER ib,
+            HGOSVERTEXDECLARATION vdecl, const float* worldMatrix4x4);
         void endShadowPrePass();
 
         // Terrain splatting setters
@@ -1425,6 +1427,7 @@ class gosRenderer {
 
         // Shadow mode
         gosRenderMaterial* shadow_terrain_material_ = nullptr;
+        gosRenderMaterial* shadow_object_material_ = nullptr;
         bool shadow_mode_ = false;
         bool shadow_prepass_active_ = false;
         vec4 shadow_center_;  // raw MC2 camera pos (not swizzled)
@@ -1565,6 +1568,17 @@ void gosRenderer::init() {
         shadow_terrain_material_ = gosRenderMaterial::load("shadow_terrain", mvar);
         if (shadow_terrain_material_) {
             materialList_.push_back(shadow_terrain_material_);
+        }
+    }
+
+    // Load shadow object material (VS+FS only, no tessellation)
+    {
+        gosMaterialVariationHelper helper;
+        gosMaterialVariation mvar;
+        helper.getMaterialVariation(mvar);
+        shadow_object_material_ = gosRenderMaterial::load("shadow_object", mvar);
+        if (shadow_object_material_) {
+            materialList_.push_back(shadow_object_material_);
         }
     }
 }
@@ -2173,6 +2187,49 @@ void gosRenderer::drawShadowBatchTessellated(gos_VERTEX* vertices, int numVerts,
     glDisableVertexAttribArray(5);
     shadow_terrain_material_->endVertexDeclaration();
     shadow_terrain_material_->end();
+    glBindBuffer(GL_ARRAY_BUFFER, 0);
+    glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, 0);
+}
+
+void gosRenderer::drawShadowObjectBatch(HGOSBUFFER vb, HGOSBUFFER ib,
+    HGOSVERTEXDECLARATION vdecl, const float* worldMatrix4x4)
+{
+    if (!shadow_prepass_active_ || !shadow_object_material_) return;
+    if (!vb || !ib || ib->count_ == 0) return;
+
+    shadow_object_material_->apply();
+    GLuint shp = shadow_object_material_->getShader()->shp_;
+
+    // Compute shadowMVP = lightSpaceMatrix * worldMatrix
+    gosPostProcess* pp = getGosPostProcess();
+    if (!pp) return;
+
+    const float* lsm = pp->getLightSpaceMatrix();
+    float shadowMVP[16];
+    for (int row = 0; row < 4; row++) {
+        for (int col = 0; col < 4; col++) {
+            shadowMVP[row * 4 + col] =
+                lsm[row * 4 + 0] * worldMatrix4x4[0 * 4 + col] +
+                lsm[row * 4 + 1] * worldMatrix4x4[1 * 4 + col] +
+                lsm[row * 4 + 2] * worldMatrix4x4[2 * 4 + col] +
+                lsm[row * 4 + 3] * worldMatrix4x4[3 * 4 + col];
+        }
+    }
+
+    GLint loc = glGetUniformLocation(shp, "shadowMVP");
+    if (loc >= 0) glUniformMatrix4fv(loc, 1, GL_FALSE, shadowMVP);
+
+    // Bind buffers and draw
+    int index_size = ib->element_size_;
+    glBindBuffer(GL_ARRAY_BUFFER, vb->buffer_);
+    glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, ib->buffer_);
+
+    vdecl->apply();
+    glDrawElements(GL_TRIANGLES, ib->count_,
+        index_size == 2 ? GL_UNSIGNED_SHORT : GL_UNSIGNED_INT, NULL);
+    vdecl->end();
+
+    shadow_object_material_->end();
     glBindBuffer(GL_ARRAY_BUFFER, 0);
     glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, 0);
 }
@@ -3564,6 +3621,10 @@ void gos_DrawShadowBatchTessellated(gos_VERTEX* vertices, int numVerts,
     const gos_TERRAIN_EXTRA* extras, int extraCount) {
     if (g_gos_renderer) g_gos_renderer->drawShadowBatchTessellated(
         vertices, numVerts, indices, numIndices, extras, extraCount);
+}
+void gos_DrawShadowObjectBatch(HGOSBUFFER vb, HGOSBUFFER ib,
+    HGOSVERTEXDECLARATION vdecl, const float* worldMatrix4x4) {
+    if (g_gos_renderer) g_gos_renderer->drawShadowObjectBatch(vb, ib, vdecl, worldMatrix4x4);
 }
 
 void gos_GetTerrainLightDir(float* x, float* y, float* z) {

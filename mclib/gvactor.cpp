@@ -2002,6 +2002,10 @@ Stuff::Vector3D GVAppearance::getNodeIdPosition (long nodeId)
 //-----------------------------------------------------------------------------
 long GVAppearance::renderShadows (void)
 {
+	// Skip legacy blob shadows when shadow maps are active
+	if (gos_IsTerrainTessellationActive())
+		return NO_ERR;
+
 	gvShape->SetTextureHandle(0,localTextureHandle);
 	
 	if (inView && visible)

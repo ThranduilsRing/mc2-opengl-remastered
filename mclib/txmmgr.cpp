@@ -1074,6 +1074,29 @@ void MC_TextureManager::renderLists (void)
 				}
 			}
 		}
+		// Object shadow pass: render mech/object shapes into shadow map
+		for (size_t si = 0; si < nextAvailableHardwareVertexNode; si++)
+		{
+			if (!(masterHardwareVertexNodes[si].flags & MC2_DRAWSOLID)) continue;
+			if (masterHardwareVertexNodes[si].flags & MC2_ISTERRAIN) continue;
+			if (!masterHardwareVertexNodes[si].shapes) continue;
+
+			uint32_t totalShapes = masterHardwareVertexNodes[si].numShapes;
+			if (masterHardwareVertexNodes[si].currentShape !=
+				(masterHardwareVertexNodes[si].shapes + masterHardwareVertexNodes[si].numShapes)) {
+				totalShapes = masterHardwareVertexNodes[si].currentShape - masterHardwareVertexNodes[si].shapes;
+			}
+
+			for (uint32_t sh = 0; sh < totalShapes; ++sh)
+			{
+				TG_RenderShape* rs = masterHardwareVertexNodes[si].shapes + sh;
+				if (!rs->vb_ || !rs->ib_) continue;
+
+				mat4 world_mat = gos2my(rs->mw_);
+				gos_DrawShadowObjectBatch(rs->vb_, rs->ib_, rs->vdecl_, (const float*)&world_mat);
+			}
+		}
+
 		gos_EndShadowPrePass();  // restores scene FBO, re-enables comparison mode
 	}
 

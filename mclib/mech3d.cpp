@@ -2843,6 +2843,10 @@ long Mech3DAppearance::render (long depthFixup)
 //-----------------------------------------------------------------------------
 long Mech3DAppearance::renderShadows (void)
 {
+	// Skip legacy blob shadows when shadow maps are active
+	if (gos_IsTerrainTessellationActive())
+		return NO_ERR;
+
 	mechShape->SetTextureHandle(0,localTextureHandle);
 
 	if (inView && visible)
