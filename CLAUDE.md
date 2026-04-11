@@ -26,6 +26,8 @@ base directory: `A:\Games\mc2-opengl-src\.claude\skills\`
 - **Shadow coordinate space:** lightSpaceMatrix must be in raw MC2 space (Z=up). Use `gos_GetShadowCenter` (raw MC2) for camera pos, NOT `gos_GetTerrainCameraPos` (swizzled GL). `terrainLightDir` must also be raw MC2 (matching tangent-space normals where Z=up).
 - **Config overrides:** Camera limits (zoom, altitude, clip distance, visible vertices) are set in 3-4 places. Hardcoded defaults get overwritten by config file reads and prefs.cpp. Override AFTER config reads, not before.
 - **Buffer scaling:** Increasing `GameVisibleVertices` requires scaling: vertex pool (`startVertices` in mission2.cpp), `MC_MAXFACES` (txmmgr.h), `indexed_tris_` capacity, and `terrain_extra_capacity_` (gameos_graphics.cpp). Missing any one causes crash.
+- **Shader hot-reload fails silently:** If a shader compile error occurs during hot-reload (e.g. bad `#include`), the old shader stays active with no visual indication. The terrain goes on rendering normally. Always check console output for compile errors when shader changes appear to have no effect. Hot-reload checks every 500ms in `endFrame()` and also monitors include file timestamps.
+- **`gos_tex_vertex` is the shared basic material:** Water, HUD elements, detail textures, and all non-terrain/non-lighted batched draws use `gos_tex_vertex.frag`. Adding uniforms or branching here (like `isWater`) must reset state for non-water draws to avoid bleed — the material instance is shared.
 - **Uniform API:** Call `setFloat`/`setInt` BEFORE `apply()`, not after. `apply()` flushes dirty uniforms.
 - **GL_FALSE for terrainMVP:** Direct-uploaded row-major matrices use `GL_FALSE`. Material cache uses `GL_TRUE` (engine convention).
 
