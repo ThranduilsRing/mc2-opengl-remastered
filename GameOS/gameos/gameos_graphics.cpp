@@ -1445,6 +1445,65 @@ class gosRenderer {
         float terrain_cell_rotation_ = 1.0f;
         float terrain_pom_scale_ = 0.02f;
         float terrain_world_scale_ = 15360.0f;
+
+        // Cached uniform locations for terrain shader (avoid per-draw glGetUniformLocation)
+        struct TerrainUniformLocs {
+            GLint tessLevel = -1, tessDistanceRange = -1, tessDisplace = -1;
+            GLint cameraPos = -1, tessDebug = -1, terrainViewport = -1, terrainMVP = -1;
+            GLint terrainLightDir = -1, detailNormalTiling = -1, detailNormalStrength = -1;
+            GLint pomParams = -1, terrainWorldScale = -1, cellBombParams = -1;
+            GLint matNormal[4] = {-1, -1, -1, -1};
+            GLint lightSpaceMatrix = -1, enableShadows = -1, shadowSoftness = -1, shadowMap = -1;
+            GLuint program = 0;
+        } terrainLocs_;
+
+        // Cached uniform locations for shadow terrain shader
+        struct ShadowUniformLocs {
+            GLint lightSpaceMatrix = -1, tessLevel = -1, tessDistanceRange = -1;
+            GLint tessDisplace = -1, cameraPos = -1, mvp = -1;
+            GLint matNormal2 = -1, detailNormalTiling = -1, tex1 = -1;
+            GLuint program = 0;
+        } shadowLocs_;
+
+        void cacheTerrainUniformLocations(GLuint shp) {
+            if (terrainLocs_.program == shp) return;  // already cached
+            terrainLocs_.program = shp;
+            terrainLocs_.tessLevel = glGetUniformLocation(shp, "tessLevel");
+            terrainLocs_.tessDistanceRange = glGetUniformLocation(shp, "tessDistanceRange");
+            terrainLocs_.tessDisplace = glGetUniformLocation(shp, "tessDisplace");
+            terrainLocs_.cameraPos = glGetUniformLocation(shp, "cameraPos");
+            terrainLocs_.tessDebug = glGetUniformLocation(shp, "tessDebug");
+            terrainLocs_.terrainViewport = glGetUniformLocation(shp, "terrainViewport");
+            terrainLocs_.terrainMVP = glGetUniformLocation(shp, "terrainMVP");
+            terrainLocs_.terrainLightDir = glGetUniformLocation(shp, "terrainLightDir");
+            terrainLocs_.detailNormalTiling = glGetUniformLocation(shp, "detailNormalTiling");
+            terrainLocs_.detailNormalStrength = glGetUniformLocation(shp, "detailNormalStrength");
+            terrainLocs_.pomParams = glGetUniformLocation(shp, "pomParams");
+            terrainLocs_.terrainWorldScale = glGetUniformLocation(shp, "terrainWorldScale");
+            terrainLocs_.cellBombParams = glGetUniformLocation(shp, "cellBombParams");
+            terrainLocs_.matNormal[0] = glGetUniformLocation(shp, "matNormal0");
+            terrainLocs_.matNormal[1] = glGetUniformLocation(shp, "matNormal1");
+            terrainLocs_.matNormal[2] = glGetUniformLocation(shp, "matNormal2");
+            terrainLocs_.matNormal[3] = glGetUniformLocation(shp, "matNormal3");
+            terrainLocs_.lightSpaceMatrix = glGetUniformLocation(shp, "lightSpaceMatrix");
+            terrainLocs_.enableShadows = glGetUniformLocation(shp, "enableShadows");
+            terrainLocs_.shadowSoftness = glGetUniformLocation(shp, "shadowSoftness");
+            terrainLocs_.shadowMap = glGetUniformLocation(shp, "shadowMap");
+        }
+
+        void cacheShadowUniformLocations(GLuint shp) {
+            if (shadowLocs_.program == shp) return;
+            shadowLocs_.program = shp;
+            shadowLocs_.lightSpaceMatrix = glGetUniformLocation(shp, "lightSpaceMatrix");
+            shadowLocs_.tessLevel = glGetUniformLocation(shp, "tessLevel");
+            shadowLocs_.tessDistanceRange = glGetUniformLocation(shp, "tessDistanceRange");
+            shadowLocs_.tessDisplace = glGetUniformLocation(shp, "tessDisplace");
+            shadowLocs_.cameraPos = glGetUniformLocation(shp, "cameraPos");
+            shadowLocs_.mvp = glGetUniformLocation(shp, "mvp");
+            shadowLocs_.matNormal2 = glGetUniformLocation(shp, "matNormal2");
+            shadowLocs_.detailNormalTiling = glGetUniformLocation(shp, "detailNormalTiling");
+            shadowLocs_.tex1 = glGetUniformLocation(shp, "tex1");
+        }
 };
 
 const std::string gosRenderer::s_Foreground = std::string("Foreground");
@@ -2114,53 +2173,42 @@ void gosRenderer::drawShadowBatchTessellated(gos_VERTEX* vertices, int numVerts,
     // Re-activate shadow shader (end() from previous batch deactivates program)
     shadow_terrain_material_->apply();
     GLuint shp = shadow_terrain_material_->getShader()->shp_;
+    cacheShadowUniformLocations(shp);
+    const auto& sl = shadowLocs_;
 
     // Upload lightSpaceMatrix (must re-upload per-batch since apply() resets state)
     {
         gosPostProcess* pp = getGosPostProcess();
-        if (pp) {
-            GLint lsmLoc = glGetUniformLocation(shp, "lightSpaceMatrix");
-            if (lsmLoc >= 0)
-                glUniformMatrix4fv(lsmLoc, 1, GL_FALSE, pp->getLightSpaceMatrix());
-        }
+        if (pp && sl.lightSpaceMatrix >= 0)
+            glUniformMatrix4fv(sl.lightSpaceMatrix, 1, GL_FALSE, pp->getLightSpaceMatrix());
     }
 
     // Upload tessellation uniforms via direct GL (same pattern as terrainDrawIndexedPatches)
-    GLint loc;
-
     float tessParams[4] = { terrain_tess_level_, terrain_tess_level_, 0.0f, 0.0f };
     float tessDist[4] = { terrain_tess_dist_near_, terrain_tess_dist_far_, 0.0f, 0.0f };
     float tessDisp[4] = { 0.0f, terrain_displace_scale_, 0.0f, 0.0f };  // no Phong in shadow
 
-    loc = glGetUniformLocation(shp, "tessLevel");
-    if (loc >= 0) glUniform4fv(loc, 1, tessParams);
-    loc = glGetUniformLocation(shp, "tessDistanceRange");
-    if (loc >= 0) glUniform4fv(loc, 1, tessDist);
-    loc = glGetUniformLocation(shp, "tessDisplace");
-    if (loc >= 0) glUniform4fv(loc, 1, tessDisp);
-    loc = glGetUniformLocation(shp, "cameraPos");
-    if (loc >= 0) glUniform4fv(loc, 1, (const float*)&terrain_camera_pos_);
+    if (sl.tessLevel >= 0) glUniform4fv(sl.tessLevel, 1, tessParams);
+    if (sl.tessDistanceRange >= 0) glUniform4fv(sl.tessDistanceRange, 1, tessDist);
+    if (sl.tessDisplace >= 0) glUniform4fv(sl.tessDisplace, 1, tessDisp);
+    if (sl.cameraPos >= 0) glUniform4fv(sl.cameraPos, 1, (const float*)&terrain_camera_pos_);
 
     // projection_ needed by shadow vert shader (TES overrides gl_Position, but VS needs it for gl_Position passthrough)
-    loc = glGetUniformLocation(shp, "mvp");
-    if (loc >= 0) glUniformMatrix4fv(loc, 1, GL_TRUE, (const float*)&projection_);
+    if (sl.mvp >= 0) glUniformMatrix4fv(sl.mvp, 1, GL_TRUE, (const float*)&projection_);
 
     // Displacement textures: dirt normal on unit 7
-    loc = glGetUniformLocation(shp, "matNormal2");
-    if (loc >= 0) {
-        glUniform1i(loc, 7);
+    if (sl.matNormal2 >= 0) {
+        glUniform1i(sl.matNormal2, 7);
         glActiveTexture(GL_TEXTURE7);
         glBindTexture(GL_TEXTURE_2D, terrain_mat_normal_[2]);  // dirt normal map
         glActiveTexture(GL_TEXTURE0);
     }
 
     float tiling[4] = { terrain_detail_tiling_, 0.0f, 0.0f, 0.0f };
-    loc = glGetUniformLocation(shp, "detailNormalTiling");
-    if (loc >= 0) glUniform4fv(loc, 1, tiling);
+    if (sl.detailNormalTiling >= 0) glUniform4fv(sl.detailNormalTiling, 1, tiling);
 
     // tex1 (colormap) sampler — bound to unit 0 by the gos_SetRenderState texture call
-    loc = glGetUniformLocation(shp, "tex1");
-    if (loc >= 0) glUniform1i(loc, 0);
+    if (sl.tex1 >= 0) glUniform1i(sl.tex1, 0);
 
     // Bind main VBO (pos, color, fog, texcoord at locations 0-3)
     glBindBuffer(GL_ARRAY_BUFFER, indexed_tris_->getVB());
@@ -2305,32 +2353,27 @@ void gosRenderer::terrainDrawIndexedPatches(gosRenderMaterial* material, gosMesh
 
     // Set tessellation uniforms via direct GL calls (bypass uniform cache)
     GLuint shp = material->getShader()->shp_;
+    cacheTerrainUniformLocations(shp);
+    const auto& tl = terrainLocs_;
+
     float tessParams[4] = { terrain_tess_level_, terrain_tess_level_, 0.0f, 0.0f };
     float tessDist[4] = { terrain_tess_dist_near_, terrain_tess_dist_far_, 0.0f, 0.0f };
     float tessDisp[4] = { terrain_phong_alpha_, terrain_displace_scale_, 0.0f, 0.0f };
 
-    GLint loc;
-    loc = glGetUniformLocation(shp, "tessLevel");
-    if (loc >= 0) glUniform4fv(loc, 1, tessParams);
-    loc = glGetUniformLocation(shp, "tessDistanceRange");
-    if (loc >= 0) glUniform4fv(loc, 1, tessDist);
-    loc = glGetUniformLocation(shp, "tessDisplace");
-    if (loc >= 0) glUniform4fv(loc, 1, tessDisp);
-    loc = glGetUniformLocation(shp, "cameraPos");
-    if (loc >= 0) glUniform4fv(loc, 1, (const float*)&terrain_camera_pos_);
+    if (tl.tessLevel >= 0) glUniform4fv(tl.tessLevel, 1, tessParams);
+    if (tl.tessDistanceRange >= 0) glUniform4fv(tl.tessDistanceRange, 1, tessDist);
+    if (tl.tessDisplace >= 0) glUniform4fv(tl.tessDisplace, 1, tessDisp);
+    if (tl.cameraPos >= 0) glUniform4fv(tl.cameraPos, 1, (const float*)&terrain_camera_pos_);
     float tessDebugVec[4] = { terrain_debug_mode_, 0.0f, 0.0f, 0.0f };
-    loc = glGetUniformLocation(shp, "tessDebug");
-    if (loc >= 0) glUniform4fv(loc, 1, tessDebugVec);
+    if (tl.tessDebug >= 0) glUniform4fv(tl.tessDebug, 1, tessDebugVec);
 
     // Upload viewport params for TES perspective projection
-    loc = glGetUniformLocation(shp, "terrainViewport");
-    if (loc >= 0) glUniform4fv(loc, 1, (const float*)&terrain_viewport_);
+    if (tl.terrainViewport >= 0) glUniform4fv(tl.terrainViewport, 1, (const float*)&terrain_viewport_);
 
     // Upload terrainMVP (axisSwap*worldToClip) via direct GL
     if (terrain_mvp_valid_) {
-        loc = glGetUniformLocation(shp, "terrainMVP");
-        if (loc >= 0) {
-            glUniformMatrix4fv(loc, 1, GL_FALSE, (const float*)&terrain_mvp_);
+        if (tl.terrainMVP >= 0) {
+            glUniformMatrix4fv(tl.terrainMVP, 1, GL_FALSE, (const float*)&terrain_mvp_);
             static bool mvp_trace = false;
             if (!mvp_trace) {
                 mvp_trace = true;
@@ -2345,37 +2388,27 @@ void gosRenderer::terrainDrawIndexedPatches(gosRenderMaterial* material, gosMesh
     }
 
     // Bind terrain splatting uniforms (light, tiling, POM, cell bomb)
-    loc = glGetUniformLocation(shp, "terrainLightDir");
-    if (loc >= 0) glUniform4fv(loc, 1, (const float*)&terrain_light_dir_);
+    if (tl.terrainLightDir >= 0) glUniform4fv(tl.terrainLightDir, 1, (const float*)&terrain_light_dir_);
     float tiling[4] = { terrain_detail_tiling_, 0.0f, 0.0f, 0.0f };
-    loc = glGetUniformLocation(shp, "detailNormalTiling");
-    if (loc >= 0) glUniform4fv(loc, 1, tiling);
+    if (tl.detailNormalTiling >= 0) glUniform4fv(tl.detailNormalTiling, 1, tiling);
     float strength[4] = { terrain_detail_strength_, 0.0f, 0.0f, 0.0f };
-    loc = glGetUniformLocation(shp, "detailNormalStrength");
-    if (loc >= 0) glUniform4fv(loc, 1, strength);
+    if (tl.detailNormalStrength >= 0) glUniform4fv(tl.detailNormalStrength, 1, strength);
     float pomP[4] = { terrain_pom_scale_, 8.0f, 32.0f, 0.0f };
-    loc = glGetUniformLocation(shp, "pomParams");
-    if (loc >= 0) glUniform4fv(loc, 1, pomP);
+    if (tl.pomParams >= 0) glUniform4fv(tl.pomParams, 1, pomP);
     float worldScaleV[4] = { terrain_world_scale_, 0.0f, 0.0f, 0.0f };
-    loc = glGetUniformLocation(shp, "terrainWorldScale");
-    if (loc >= 0) glUniform4fv(loc, 1, worldScaleV);
+    if (tl.terrainWorldScale >= 0) glUniform4fv(tl.terrainWorldScale, 1, worldScaleV);
     float cellP[4] = { terrain_cell_scale_, terrain_cell_jitter_, terrain_cell_rotation_, 0.0f };
-    loc = glGetUniformLocation(shp, "cellBombParams");
-    if (loc >= 0) glUniform4fv(loc, 1, cellP);
+    if (tl.cellBombParams >= 0) glUniform4fv(tl.cellBombParams, 1, cellP);
 
     // Bind per-material normal maps (units 5-8)
     {
-        const char* matNames[4] = {"matNormal0", "matNormal1", "matNormal2", "matNormal3"};
         static bool mat_trace = false;
         for (int i = 0; i < 4; i++) {
-            if (terrain_mat_normal_[i] != 0) {
-                GLint mloc = glGetUniformLocation(shp, matNames[i]);
-                if (mloc >= 0) {
-                    glUniform1i(mloc, 5 + i);
-                    glActiveTexture(GL_TEXTURE5 + i);
-                    glBindTexture(GL_TEXTURE_2D, terrain_mat_normal_[i]);
-                    if (!mat_trace) printf("[TESS] Bound %s unit=%d glId=%u\n", matNames[i], 5+i, terrain_mat_normal_[i]);
-                }
+            if (terrain_mat_normal_[i] != 0 && tl.matNormal[i] >= 0) {
+                glUniform1i(tl.matNormal[i], 5 + i);
+                glActiveTexture(GL_TEXTURE5 + i);
+                glBindTexture(GL_TEXTURE_2D, terrain_mat_normal_[i]);
+                if (!mat_trace) printf("[TESS] Bound matNormal%d unit=%d glId=%u\n", i, 5+i, terrain_mat_normal_[i]);
             }
         }
         if (!mat_trace) { mat_trace = true; fflush(stdout); }
@@ -2386,22 +2419,17 @@ void gosRenderer::terrainDrawIndexedPatches(gosRenderMaterial* material, gosMesh
     {
         gosPostProcess* pp = getGosPostProcess();
         if (pp && pp->shadowsEnabled_) {
-            loc = glGetUniformLocation(shp, "lightSpaceMatrix");
-            if (loc >= 0) glUniformMatrix4fv(loc, 1, GL_FALSE, pp->getLightSpaceMatrix());
-            loc = glGetUniformLocation(shp, "enableShadows");
-            if (loc >= 0) glUniform1i(loc, 1);
-            loc = glGetUniformLocation(shp, "shadowSoftness");
-            if (loc >= 0) glUniform1f(loc, terrain_shadow_softness_);
-            loc = glGetUniformLocation(shp, "shadowMap");
-            if (loc >= 0) {
-                glUniform1i(loc, 9);
+            if (tl.lightSpaceMatrix >= 0) glUniformMatrix4fv(tl.lightSpaceMatrix, 1, GL_FALSE, pp->getLightSpaceMatrix());
+            if (tl.enableShadows >= 0) glUniform1i(tl.enableShadows, 1);
+            if (tl.shadowSoftness >= 0) glUniform1f(tl.shadowSoftness, terrain_shadow_softness_);
+            if (tl.shadowMap >= 0) {
+                glUniform1i(tl.shadowMap, 9);
                 glActiveTexture(GL_TEXTURE9);
                 glBindTexture(GL_TEXTURE_2D, pp->getShadowTexture());
                 glActiveTexture(GL_TEXTURE0);
             }
         } else {
-            loc = glGetUniformLocation(shp, "enableShadows");
-            if (loc >= 0) glUniform1i(loc, 0);
+            if (tl.enableShadows >= 0) glUniform1i(tl.enableShadows, 0);
         }
     }
 
