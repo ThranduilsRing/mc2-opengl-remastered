@@ -1856,6 +1856,10 @@ long BldgAppearance::render (long depthFixup)
 //-----------------------------------------------------------------------------
 long BldgAppearance::renderShadows (void)
 {
+	// Skip legacy blob shadows when shadow maps are active
+	if (gos_IsTerrainTessellationActive())
+		return NO_ERR;
+
 	if (inView && visible && !appearType->spinMe)
 	{
 		//---------------------------------------------
@@ -4055,6 +4059,10 @@ long TreeAppearance::render (long depthFixup)
 //-----------------------------------------------------------------------------
 long TreeAppearance::renderShadows (void)
 {
+	// Skip legacy blob shadows when shadow maps are active
+	if (gos_IsTerrainTessellationActive())
+		return NO_ERR;
+
 	if (inView && visible)
 	{
 		//---------------------------------------------
