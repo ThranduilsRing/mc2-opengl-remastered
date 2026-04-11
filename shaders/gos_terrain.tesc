@@ -35,27 +35,11 @@ void main()
 
     // Only invocation 0 sets tessellation levels
     if (gl_InvocationID == 0) {
-        // Distance-based LOD: compute from edge midpoints for crack-free seams
-        vec3 mid01 = 0.5 * (vs_WorldPos[0] + vs_WorldPos[1]);
-        vec3 mid12 = 0.5 * (vs_WorldPos[1] + vs_WorldPos[2]);
-        vec3 mid20 = 0.5 * (vs_WorldPos[2] + vs_WorldPos[0]);
-        vec3 center = (vs_WorldPos[0] + vs_WorldPos[1] + vs_WorldPos[2]) / 3.0;
-
-        float d01 = distance(cameraPos.xyz, mid01);
-        float d12 = distance(cameraPos.xyz, mid12);
-        float d20 = distance(cameraPos.xyz, mid20);
-        float dc  = distance(cameraPos.xyz, center);
-
-        float near = tessDistanceRange.x;
-        float far  = tessDistanceRange.y;
-        float maxTess = max(tessLevel.x, 1.0);
-
-        // Outer edges — computed per-edge from endpoint midpoints for crack-free seams
-        // Adjacent triangles sharing an edge compute the same tess level for that edge
-        gl_TessLevelOuter[0] = mix(maxTess, 1.0, smoothstep(near, far, d12));
-        gl_TessLevelOuter[1] = mix(maxTess, 1.0, smoothstep(near, far, d20));
-        gl_TessLevelOuter[2] = mix(maxTess, 1.0, smoothstep(near, far, d01));
-        // Inner level from center distance
-        gl_TessLevelInner[0] = mix(maxTess, 1.0, smoothstep(near, far, dc));
+        // Uniform level — no distance LOD (MC2 terrain is low-poly enough to always tessellate)
+        float level = max(tessLevel.x, 1.0);
+        gl_TessLevelOuter[0] = level;
+        gl_TessLevelOuter[1] = level;
+        gl_TessLevelOuter[2] = level;
+        gl_TessLevelInner[0] = level;
     }
 }

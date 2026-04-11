@@ -1984,6 +1984,7 @@ void gosRenderer::drawTris(gos_VERTEX* vertices, int count) {
 
     if(beforeDrawCall()) return;
 
+
     if(tris_->getNumVertices() + count > tris_->getVertexCapacity()) {
         applyRenderStates();
 
@@ -3455,33 +3456,17 @@ void __stdcall gos_SetCommonMaterialParameters(HGOSRENDERMATERIAL material)
 
 
 void __stdcall gos_ForceApplyRenderStates() {
-    if (g_gos_renderer) g_gos_renderer->applyRenderStates();
-}
-void __stdcall gos_BeginStencilObjectMask() {
-    // Clear stencil to 0, then write stencil=1 where objects pass depth test.
-    // Call before ObjectManager->render(). Objects mark themselves in stencil.
-    glEnable(GL_STENCIL_TEST);
-    glStencilMask(0xFF);
-    glClearStencil(0);
-    glClear(GL_STENCIL_BUFFER_BIT);
-    glStencilFunc(GL_ALWAYS, 1, 0xFF);
-    glStencilOp(GL_KEEP, GL_KEEP, GL_REPLACE);  // write 1 on depth pass
-}
-void __stdcall gos_EndStencilObjectMask() {
-    // Stop writing stencil after objects are done
-    glDisable(GL_STENCIL_TEST);
-    glStencilMask(0xFF);
-}
-void __stdcall gos_EnableStencilSkipObjects() {
-    // Only draw where stencil=0 (no objects) — skip object pixels (stencil=1)
-    glEnable(GL_STENCIL_TEST);
-    glStencilFunc(GL_NOTEQUAL, 1, 0xFF);
-    glStencilOp(GL_KEEP, GL_KEEP, GL_KEEP);
-    glStencilMask(0x00);
-}
-void __stdcall gos_DisableStencil() {
-    glDisable(GL_STENCIL_TEST);
-    glStencilMask(0xFF);
+    // Force-apply by directly setting GL state to match the requested render states.
+    // applyRenderStates() may skip if curStates_ == renderStates_, so bypass it.
+    if (!g_gos_renderer) return;
+    // Just set GL directly for the critical states that renderLists() dirties
+    glDepthFunc(GL_LEQUAL);
+    glDepthMask(GL_TRUE);
+    glEnable(GL_DEPTH_TEST);
+    glDisable(GL_BLEND);
+    glBlendFunc(GL_ONE, GL_ZERO);
+    // Then sync applyRenderStates tracking
+    g_gos_renderer->applyRenderStates();
 }
 
 // Terrain tessellation API

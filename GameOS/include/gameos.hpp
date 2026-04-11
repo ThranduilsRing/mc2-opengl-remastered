@@ -2255,6 +2255,8 @@ void __stdcall gos_RenderIndexedArray(HGOSBUFFER ib, HGOSBUFFER vb, HGOSVERTEXDE
 void __stdcall gos_SetRenderViewport(float x, float y, float w, float h);
 void __stdcall gos_GetRenderViewport(float* x, float* y, float* w, float* h); //sebi
 
+void __stdcall gos_ForceApplyRenderStates();
+
 // Terrain tessellation API
 void __stdcall gos_SetTerrainTessParams(float level, float near_dist, float far_dist);
 void __stdcall gos_SetTerrainPhongAlpha(float a);
