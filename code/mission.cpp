@@ -296,7 +296,7 @@ extern __int64 x;
 #define ProfileTime(x,y)	y;
 #endif
 
-long GameVisibleVertices		= 60;
+long GameVisibleVertices		= 200;
 float BaseHeadShotElevation		= 1.0f;
 
 bool DisplayCameraAngle = false;

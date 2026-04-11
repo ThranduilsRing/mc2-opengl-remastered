@@ -112,20 +112,20 @@ float Camera::MAX_ORTHO		  =			88.0f;
 
 #define NORM_PERSPECTIVE		35.0f
 
-float zoomMax = 1.0;
-float zoomMin = 0.3f;
+float zoomMax = 2.0;
+float zoomMin = 0.1f;
 float FOVMax = 75.0f;
 float FOVMin = 20.0f;
 float Camera::AltitudeMinimum = 560.0f;
-float Camera::AltitudeMaximumLo = 1500.0f;
-float Camera::AltitudeMaximumHi = 1600.0f;
+float Camera::AltitudeMaximumLo = 6000.0f;
+float Camera::AltitudeMaximumHi = 6400.0f;
 float Camera::AltitudeDefault = 1200.0f;
 float Camera::AltitudeTight = 800.0f;
 
 float Camera::globalScaleFactor = 1.0;
 
-float Camera::MaxClipDistance	= 4000.0f;
-float Camera::MinHazeDistance	= 3000.0f;
+float Camera::MaxClipDistance	= 50000.0f;
+float Camera::MinHazeDistance	= 50000.0f;
 float Camera::HazeFactor	 	= 0.0f;
 float Camera::DistanceFactor	= 1.0f / (MaxClipDistance - MinHazeDistance);
 float Camera::NearPlaneDistance = -400.0f;
@@ -373,18 +373,27 @@ long Camera::init (FitIniFilePtr cameraFile )
 	
 	result = cameraFile->readIdFloat("ZoomMax",zoomMax);
 	gosASSERT(result == NO_ERR);
-	
+
 	result = cameraFile->readIdFloat("ZoomMin",zoomMin);
 	gosASSERT(result == NO_ERR);
 
 	FOVMax = 90.0f;
 	result = cameraFile->readIdFloat("FOVMax",FOVMax);
 //	gosASSERT(result == NO_ERR);
-	
+
 	FOVMin = 20.0f;
 	result = cameraFile->readIdFloat("FOVMin",FOVMin);
 //	gosASSERT(result == NO_ERR);
-	
+
+	// Override config limits — full zoom out / no distance culling
+	zoomMax = 2.0f;
+	zoomMin = 0.1f;
+	AltitudeMaximumLo = 6000.0f;
+	AltitudeMaximumHi = 6400.0f;
+	MaxClipDistance = 50000.0f;
+	MinHazeDistance = 50000.0f;
+	DistanceFactor = 1.0f / (MaxClipDistance - MinHazeDistance + 1.0f);
+
  	setClass(BASE_CAMERA);
 	
 	//Replace with TGL

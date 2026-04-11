@@ -1463,7 +1463,7 @@ void gosRenderer::init() {
     gosASSERT(quads_);
     tris_ = gosMesh::makeMesh(PRIMITIVE_TRIANGLELIST, 1024*10);
     gosASSERT(tris_);
-    indexed_tris_ = gosMesh::makeMesh(PRIMITIVE_TRIANGLELIST, 1024*10, 1024*10);
+    indexed_tris_ = gosMesh::makeMesh(PRIMITIVE_TRIANGLELIST, 1024*60, 1024*60);
     gosASSERT(indexed_tris_);
     lines_ = gosMesh::makeMesh(PRIMITIVE_LINELIST, 1024*10);
     gosASSERT(lines_);
@@ -1529,7 +1529,7 @@ void gosRenderer::init() {
 	fog_color_ = vec4(1.0f, 1.0f, 1.0f, 1.0f);
 
     // Terrain tessellation extra VBO
-    terrain_extra_capacity_ = 1024 * 30;  // match indexed_tris capacity
+    terrain_extra_capacity_ = 1024 * 120;  // large buffer for extended view distance
     terrain_extra_data_ = new gos_TERRAIN_EXTRA[terrain_extra_capacity_];
     terrain_extra_vb_ = makeBuffer(GL_ARRAY_BUFFER, 0,
         sizeof(gos_TERRAIN_EXTRA) * terrain_extra_capacity_, GL_DYNAMIC_DRAW);
@@ -3453,6 +3453,36 @@ void __stdcall gos_SetCommonMaterialParameters(HGOSRENDERMATERIAL material)
 	gos_SetRenderMaterialParameterFloat4(material, "vp", vp);
 }
 
+
+void __stdcall gos_ForceApplyRenderStates() {
+    if (g_gos_renderer) g_gos_renderer->applyRenderStates();
+}
+void __stdcall gos_BeginStencilObjectMask() {
+    // Clear stencil to 0, then write stencil=1 where objects pass depth test.
+    // Call before ObjectManager->render(). Objects mark themselves in stencil.
+    glEnable(GL_STENCIL_TEST);
+    glStencilMask(0xFF);
+    glClearStencil(0);
+    glClear(GL_STENCIL_BUFFER_BIT);
+    glStencilFunc(GL_ALWAYS, 1, 0xFF);
+    glStencilOp(GL_KEEP, GL_KEEP, GL_REPLACE);  // write 1 on depth pass
+}
+void __stdcall gos_EndStencilObjectMask() {
+    // Stop writing stencil after objects are done
+    glDisable(GL_STENCIL_TEST);
+    glStencilMask(0xFF);
+}
+void __stdcall gos_EnableStencilSkipObjects() {
+    // Only draw where stencil=0 (no objects) — skip object pixels (stencil=1)
+    glEnable(GL_STENCIL_TEST);
+    glStencilFunc(GL_NOTEQUAL, 1, 0xFF);
+    glStencilOp(GL_KEEP, GL_KEEP, GL_KEEP);
+    glStencilMask(0x00);
+}
+void __stdcall gos_DisableStencil() {
+    glDisable(GL_STENCIL_TEST);
+    glStencilMask(0xFF);
+}
 
 // Terrain tessellation API
 void __stdcall gos_SetTerrainTessParams(float level, float near_dist, float far_dist) {

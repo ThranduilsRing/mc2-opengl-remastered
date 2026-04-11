@@ -46,7 +46,7 @@ enum MC_TextureKey
 #define MAX_MC2_GOS_TEXTURES		750
 #define TEXTURE_CACHE_SIZE			(40*1024*1024)	//Extra space here to facilitate editting
 #define MAX_CACHE_SIZE				(40*1024*1024)	//Actual amount map must run in!
-#define MC_MAXFACES					50000
+#define MC_MAXFACES					200000
 #define MAX_LZ_BUFFER_SIZE			((256*256*4) + 1024)
 
 #define MC2_ISTERRAIN				1
