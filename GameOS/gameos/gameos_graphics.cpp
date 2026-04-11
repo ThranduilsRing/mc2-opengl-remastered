@@ -3646,6 +3646,11 @@ void gos_GetShadowCenter(float* x, float* y, float* z) {
 }
 
 // Shadow pre-pass API (called from renderLists in txmmgr.cpp)
+bool gos_ShouldRenderShadows() {
+    gosPostProcess* pp = getGosPostProcess();
+    if (!pp) return false;
+    return pp->shouldRenderShadows();
+}
 void gos_BeginShadowPrePass() {
     if (g_gos_renderer) g_gos_renderer->beginShadowPrePass();
 }

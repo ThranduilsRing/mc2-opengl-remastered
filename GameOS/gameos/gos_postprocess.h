@@ -30,11 +30,15 @@ public:
     void updateLightMatrix(float sunDirX, float sunDirY, float sunDirZ,
                            float camX, float camY, float camZ, float radius);
     GLuint getShadowTexture() const { return shadowDepthTex_; }
-    const float* getLightSpaceMatrix() const { return lightSpaceMatrix_; }
+    const float* getLightSpaceMatrix() const { return cachedLightSpaceMatrix_; }
     GLuint getShadowFBO() const { return shadowFBO_; }
     void beginShadowPass();
     void endShadowPass();
     bool shadowsEnabled_;
+    bool shouldRenderShadows();
+    const float* getCachedLightSpaceMatrix() const { return cachedLightSpaceMatrix_; }
+    float shadowCacheMoveThreshold_;   // re-render when camera moves this far
+    bool shadowCacheDirty_;            // force render on first frame or toggle
 
     // Toggles and parameters
     float exposure_;
@@ -87,6 +91,9 @@ private:
     int shadowMapSize_;
     float lightSpaceMatrix_[16];
     int savedViewport_[4];
+    float cachedLightSpaceMatrix_[16]; // matrix matching cached shadow content
+    float cachedShadowCenterX_, cachedShadowCenterY_, cachedShadowCenterZ_;
+    float shadowCenterX_, shadowCenterY_, shadowCenterZ_;  // current frame shadow center
 };
 
 gosPostProcess* getGosPostProcess();

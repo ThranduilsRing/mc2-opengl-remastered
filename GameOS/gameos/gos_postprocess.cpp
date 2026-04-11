@@ -52,10 +52,19 @@ gosPostProcess::gosPostProcess()
     , shadowDepthProg_(nullptr)
     , shadowMapSize_(2048)
     , shadowsEnabled_(true)
+    , shadowCacheMoveThreshold_(200.0f)
+    , shadowCacheDirty_(true)
+    , cachedShadowCenterX_(0.0f)
+    , cachedShadowCenterY_(0.0f)
+    , cachedShadowCenterZ_(0.0f)
+    , shadowCenterX_(0.0f)
+    , shadowCenterY_(0.0f)
+    , shadowCenterZ_(0.0f)
 {
     bloomFBO_[0] = bloomFBO_[1] = 0;
     bloomColorTex_[0] = bloomColorTex_[1] = 0;
     memset(lightSpaceMatrix_, 0, sizeof(lightSpaceMatrix_));
+    memset(cachedLightSpaceMatrix_, 0, sizeof(cachedLightSpaceMatrix_));
     memset(savedViewport_, 0, sizeof(savedViewport_));
 }
 
@@ -141,6 +150,31 @@ void gosPostProcess::destroy()
 
     s_postProcess = nullptr;
     initialized_ = false;
+}
+
+bool gosPostProcess::shouldRenderShadows()
+{
+    if (!shadowsEnabled_) return false;
+    if (shadowCacheDirty_) {
+        shadowCacheDirty_ = false;
+        cachedShadowCenterX_ = shadowCenterX_;
+        cachedShadowCenterY_ = shadowCenterY_;
+        cachedShadowCenterZ_ = shadowCenterZ_;
+        memcpy(cachedLightSpaceMatrix_, lightSpaceMatrix_, sizeof(lightSpaceMatrix_));
+        return true;
+    }
+    float dx = shadowCenterX_ - cachedShadowCenterX_;
+    float dy = shadowCenterY_ - cachedShadowCenterY_;
+    float dz = shadowCenterZ_ - cachedShadowCenterZ_;
+    float dist2 = dx*dx + dy*dy + dz*dz;
+    if (dist2 > shadowCacheMoveThreshold_ * shadowCacheMoveThreshold_) {
+        cachedShadowCenterX_ = shadowCenterX_;
+        cachedShadowCenterY_ = shadowCenterY_;
+        cachedShadowCenterZ_ = shadowCenterZ_;
+        memcpy(cachedLightSpaceMatrix_, lightSpaceMatrix_, sizeof(lightSpaceMatrix_));
+        return true;
+    }
+    return false;
 }
 
 void gosPostProcess::resize(int w, int h)
@@ -513,6 +547,11 @@ void gosPostProcess::updateLightMatrix(float sunDirX, float sunDirY, float sunDi
                                         float camX, float camY, float camZ, float radius)
 {
     if (!shadowsEnabled_) return;
+
+    // Save current frame shadow center for shouldRenderShadows()
+    shadowCenterX_ = camX;
+    shadowCenterY_ = camY;
+    shadowCenterZ_ = camZ;
 
     // Normalize sun direction
     float len = sqrtf(sunDirX*sunDirX + sunDirY*sunDirY + sunDirZ*sunDirZ);
