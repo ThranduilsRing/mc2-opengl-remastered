@@ -80,6 +80,22 @@ base directory: `A:\Games\mc2-opengl-src\.claude\skills\`
 - Shadow banding shifts with camera rotation — MC2 generates view-dependent terrain geometry (LOD changes per camera angle). Shadow pass draws the same view-dependent triangles from the light's perspective, so shadow depth shifts when camera rotates. Fix requires generating camera-independent terrain for shadow pass (major architectural change).
 - Shadow re-render stutter — cached shadow map re-renders all ~200 terrain nodes in one frame when camera moves >500 units. Causes single-frame dip to ~21 FPS. Fix: two-layer shadow maps (static terrain + dynamic objects).
 
+## Map Dimensions
+- **worldUnitsPerVertex:** 128.0 (terrain.cpp:76)
+- **Map sizes vary per mission:** 60, 80, 100, or 120 vertices per side (terrain.cpp:296-303, read from pak)
+- **Coordinate range:** `±(halfVerticesMapSide * 128)`, centered at origin
+- **World extents by map size:**
+
+| Vertices/side | Half | World range | Total extent |
+|--------------|------|-------------|--------------|
+| 60 | 30 | ±3840 | 7680 |
+| 80 | 40 | ±5120 | 10240 |
+| 100 | 50 | ±6400 | 12800 |
+| 120 | 60 | ±7680 | 15360 |
+
+- **Formula (mapdata.cpp:803-804):** `vx = (col - half) * 128`, `vy = (half - row) * 128` (Y inverted from row index)
+- **Runtime access:** `Terrain::realVerticesMapSide`, `Terrain::halfVerticesMapSide` (set during `Terrain::init()`)
+
 ## Architecture Notes
 - **terrainMVP:** MC2's DX6/7-era projection is non-linear (explicit perspective divide, negative clip.w for visible vertices). TES does a 3-step pipeline: clip→perspDiv→screen→NDC. Cannot be folded into single matrix.
 - **Per-node VBO alignment:** Terrain extras stored in texture manager nodes, filled per-node by quad.cpp, drawn per-batch by txmmgr.cpp renderLists().
