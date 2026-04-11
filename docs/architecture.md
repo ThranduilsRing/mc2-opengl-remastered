@@ -34,6 +34,9 @@ NOT part of terrain splatting. Separate alpha-blended overlay via gos_tex_vertex
 ## Overlay/Decal Depth
 TES computes UndisplacedDepth matching basic shader projection. Frag writes gl_FragDepth = clamp(UndisplacedDepth + 0.0005, 0, 1). Overlays pass GL_LEQUAL naturally.
 
+## Profiling (Tracy)
+18 zones instrument the frame: GameLogic, DrawScreen, SwapWindow, Camera.BuildMVP, Camera.UpdateRenderers, Camera.SceneDataUpload, Shadow.StaticBuild, Shadow.StaticPrePass, Shadow.StaticBatch, Shadow.StaticEnd, Shadow.DynMatrixBuild, Shadow.DynPass, Shadow.DynObjectBatch, Render.3DObjects, Render.TerrainSolid, Render.Overlays, Render.PostProcess. GPU zones (TracyGpuZone) on: StaticBatch, StaticBuild, DynPass, DynObjectBatch, 3DObjects, TerrainSolid, PostProcess. TracyGpuContext initialized after GL context creation. TracyGpuCollect called after swap_window each frame.
+
 ## Performance Notes
 - **CPU-bound, not GPU-bound.** GPU util 11-15% at Wolfman zoom. Fragment shader LOD (branching) has zero effect on AMD -- wavefronts don't skip texture reads.
 - Shadow caching: 19->50 FPS. Uniform location caching: +3-5 FPS.
