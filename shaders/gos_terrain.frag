@@ -35,6 +35,13 @@ uniform PREC vec4 terrainWorldScale;
 uniform PREC vec4 terrainViewDir;
 uniform PREC vec4 tessDebug;  // x=mode: 0=off, 1=normals, 2=worldPos
 
+// --- Distance LOD thresholds (tunable, in MC2 world units) ---
+// 1 terrain tile ≈ 128 world units
+const float LOD_NEAR       = 10240.0;  // ~80 tiles: full quality
+const float LOD_NEAR_FADE  = 11520.0;  // transition band end
+const float LOD_MID        = 17920.0;  // ~140 tiles: mid quality
+const float LOD_MID_FADE   = 19200.0;  // ~150 tiles: far quality begins
+
 // --- Hash / noise for cell bombing ---
 
 PREC vec2 hash22(PREC vec2 p) {
@@ -143,6 +150,11 @@ void main(void)
         return;
     }
 
+    // Distance-based LOD factors (1.0 = full quality, 0.0 = cheapest)
+    float camDist = distance(WorldPos.xy, cameraPos.xy);
+    float lodNear = 1.0 - smoothstep(LOD_NEAR, LOD_NEAR_FADE, camDist);
+    float lodMid  = 1.0 - smoothstep(LOD_MID,  LOD_MID_FADE,  camDist);
+
     PREC vec4 texColor = texture(tex1, Texcoord);
 
 #ifdef ALPHA_TEST
@@ -152,25 +164,49 @@ void main(void)
 
     PREC vec4 c = Color.bgra;
 
-    // Smooth colormap classification — 9-tap disc filter for coherent zones
-    // Clamp samples to [margin, 1-margin] so edge pixels don't wrap via GL_REPEAT
-    // (each terrain node has its own colormap with UVs in [0,1])
+    // Smooth colormap classification — tiered by distance
+    // Near: 9-tap disc, Mid: 5-tap cross, Far: 1-tap (no blur)
     const PREC float blurRadius = 0.11;
-    PREC float r2 = blurRadius * 0.707;  // diagonal at sqrt(2)/2
+    PREC float r2 = blurRadius * 0.707;
     const PREC float uvMargin = 0.005;
     PREC vec2 uvMin = vec2(uvMargin);
     PREC vec2 uvMax = vec2(1.0 - uvMargin);
-    PREC vec3 colAvg = texColor.rgb;
-    colAvg += texture(tex1, clamp(Texcoord + vec2( blurRadius, 0.0), uvMin, uvMax)).rgb;
-    colAvg += texture(tex1, clamp(Texcoord + vec2(-blurRadius, 0.0), uvMin, uvMax)).rgb;
-    colAvg += texture(tex1, clamp(Texcoord + vec2(0.0,  blurRadius), uvMin, uvMax)).rgb;
-    colAvg += texture(tex1, clamp(Texcoord + vec2(0.0, -blurRadius), uvMin, uvMax)).rgb;
-    colAvg += texture(tex1, clamp(Texcoord + vec2( r2,  r2), uvMin, uvMax)).rgb;
-    colAvg += texture(tex1, clamp(Texcoord + vec2(-r2,  r2), uvMin, uvMax)).rgb;
-    colAvg += texture(tex1, clamp(Texcoord + vec2( r2, -r2), uvMin, uvMax)).rgb;
-    colAvg += texture(tex1, clamp(Texcoord + vec2(-r2, -r2), uvMin, uvMax)).rgb;
-    colAvg /= 9.0;
+
+    PREC vec3 colAvg;
+    if (lodMid < 0.01) {
+        // Far: no blur — single sample
+        colAvg = texColor.rgb;
+    } else if (lodNear < 0.01) {
+        // Mid: 5-tap cross only (skip diagonals)
+        colAvg = texColor.rgb;
+        colAvg += texture(tex1, clamp(Texcoord + vec2( blurRadius, 0.0), uvMin, uvMax)).rgb;
+        colAvg += texture(tex1, clamp(Texcoord + vec2(-blurRadius, 0.0), uvMin, uvMax)).rgb;
+        colAvg += texture(tex1, clamp(Texcoord + vec2(0.0,  blurRadius), uvMin, uvMax)).rgb;
+        colAvg += texture(tex1, clamp(Texcoord + vec2(0.0, -blurRadius), uvMin, uvMax)).rgb;
+        colAvg /= 5.0;
+    } else {
+        // Near: full 9-tap disc
+        colAvg = texColor.rgb;
+        colAvg += texture(tex1, clamp(Texcoord + vec2( blurRadius, 0.0), uvMin, uvMax)).rgb;
+        colAvg += texture(tex1, clamp(Texcoord + vec2(-blurRadius, 0.0), uvMin, uvMax)).rgb;
+        colAvg += texture(tex1, clamp(Texcoord + vec2(0.0,  blurRadius), uvMin, uvMax)).rgb;
+        colAvg += texture(tex1, clamp(Texcoord + vec2(0.0, -blurRadius), uvMin, uvMax)).rgb;
+        colAvg += texture(tex1, clamp(Texcoord + vec2( r2,  r2), uvMin, uvMax)).rgb;
+        colAvg += texture(tex1, clamp(Texcoord + vec2(-r2,  r2), uvMin, uvMax)).rgb;
+        colAvg += texture(tex1, clamp(Texcoord + vec2( r2, -r2), uvMin, uvMax)).rgb;
+        colAvg += texture(tex1, clamp(Texcoord + vec2(-r2, -r2), uvMin, uvMax)).rgb;
+        colAvg /= 9.0;
+    }
     PREC vec4 matWeights = getColorWeights(colAvg);
+
+    // Far tier: keep only 2 strongest materials to halve normal map samples
+    if (lodMid < 0.01) {
+        float maxW = max(max(matWeights.x, matWeights.y), max(matWeights.z, matWeights.w));
+        vec4 mask = step(maxW * 0.5, matWeights);
+        matWeights *= mask;
+        float total = matWeights.x + matWeights.y + matWeights.z + matWeights.w;
+        if (total > 0.01) matWeights /= total;
+    }
 
 #ifdef DEBUG_MATERIALS
     FragColor = vec4(matWeights.x, matWeights.y, matWeights.z, 1.0);
@@ -187,13 +223,15 @@ void main(void)
     PREC vec2 uvDirt     = Texcoord * baseTiling * matTiling.z;
     PREC vec2 uvConcrete = Texcoord * baseTiling * matTiling.w;
 
-    // POM
-    if (pomParams.x > 0.0) {
+    // POM — full at near, off at far (lodNear fades 1→0)
+    if (pomParams.x > 0.0 && lodNear > 0.01) {
         PREC float effectivePomScale = pomParams.x * dot(pomScaleMat, matWeights);
         PREC vec3 viewDir = normalize(vec3(0.15, 0.85, 0.15));
         PREC float pomTiling = dot(matTiling, matWeights);
         PREC vec2 pomUV = Texcoord * baseTiling * pomTiling;
-        PREC vec2 pomOffset = parallaxMapping(pomUV, viewDir, effectivePomScale, matWeights) - pomUV;
+        PREC vec2 pomOffset = parallaxMapping(pomUV, viewDir, effectivePomScale * lodNear, matWeights) - pomUV;
+        // Fade POM offset to zero at distance boundary (prevents popping)
+        pomOffset *= lodNear;
         uvRock += pomOffset;
         uvGrass += pomOffset;
         uvDirt += pomOffset;
@@ -218,23 +256,25 @@ void main(void)
     PREC float atsDirt     = mix(0.0, 3.0, clamp((matTiling.z - 1.0) / 3.0, 0.0, 1.0));
     PREC float atsConcrete = mix(0.0, 3.0, clamp((matTiling.w - 1.0) / 3.0, 0.0, 1.0));
 
-    // Sample each material — plain texture() when anti-tile scale is 0
+    // Sample each material — anti-tiled when near, plain texture when far
     PREC vec3 detailN = vec3(0.0);
     PREC vec4 matSample;
+    bool useAntiTile = (lodNear > 0.01);
+
     if (matWeights.x > 0.01) {
-        matSample = (atsRock > 0.01) ? sampleAntiTile(matNormal0, uvRock, atsRock) : texture(matNormal0, uvRock);
+        matSample = (useAntiTile && atsRock > 0.01) ? sampleAntiTile(matNormal0, uvRock, atsRock) : texture(matNormal0, uvRock);
         detailN += matWeights.x * normalBoost.x * fwRock * (matSample.rgb * 2.0 - 1.0);
     }
     if (matWeights.y > 0.01) {
-        matSample = (atsGrass > 0.01) ? sampleAntiTile(matNormal1, uvGrass, atsGrass) : texture(matNormal1, uvGrass);
+        matSample = (useAntiTile && atsGrass > 0.01) ? sampleAntiTile(matNormal1, uvGrass, atsGrass) : texture(matNormal1, uvGrass);
         detailN += matWeights.y * normalBoost.y * fwGrass * (matSample.rgb * 2.0 - 1.0);
     }
     if (matWeights.z > 0.01) {
-        matSample = (atsDirt > 0.01) ? sampleAntiTile(matNormal2, uvDirt, atsDirt) : texture(matNormal2, uvDirt);
+        matSample = (useAntiTile && atsDirt > 0.01) ? sampleAntiTile(matNormal2, uvDirt, atsDirt) : texture(matNormal2, uvDirt);
         detailN += matWeights.z * normalBoost.z * fwDirt * (matSample.rgb * 2.0 - 1.0);
     }
     if (matWeights.w > 0.01) {
-        matSample = (atsConcrete > 0.01) ? sampleAntiTile(matNormal3, uvConcrete, atsConcrete) : texture(matNormal3, uvConcrete);
+        matSample = (useAntiTile && atsConcrete > 0.01) ? sampleAntiTile(matNormal3, uvConcrete, atsConcrete) : texture(matNormal3, uvConcrete);
         detailN += matWeights.w * normalBoost.w * fwConcrete * (matSample.rgb * 2.0 - 1.0);
     }
 
@@ -269,8 +309,9 @@ void main(void)
     PREC float normalLight = mix(0.55, 1.15, diffuse);
     c.rgb *= normalLight;
 
-    // Shadow
-    float shadow = calcShadow(WorldPos, N, terrainLightDir.xyz);
+    // Shadow — variable PCF taps by distance
+    int shadowTaps = (lodNear > 0.5) ? 16 : (lodMid > 0.5) ? 8 : 4;
+    float shadow = calcShadow(WorldPos, N, terrainLightDir.xyz, shadowTaps);
     c.rgb *= shadow;
 
     // Fog disabled — full Wolfman mode (see across the map)
