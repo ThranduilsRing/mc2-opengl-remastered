@@ -22,6 +22,7 @@
 #include "utils/timing.h"
 #include "gos_render.h"
 #include "gos_postprocess.h"
+#include "gos_profiler.h"
 
 class gosRenderer;
 class gosFont;
@@ -1285,19 +1286,18 @@ class gosRenderer {
         void setTerrainShadowSoftness(float s) { terrain_shadow_softness_ = s; }
         float getTerrainShadowSoftness() const { return terrain_shadow_softness_; }
 
-        // Shadow center — raw MC2 coordinates (not swizzled like terrain camera pos)
-        void setShadowCenter(float x, float y, float z) { shadow_center_ = vec4(x, y, z, 0.0f); }
-        const vec4& getShadowCenter() const { return shadow_center_; }
-
         // Shadow pre-pass (separate pass over all terrain batches before shading)
         void beginShadowPrePass();
-        void drawShadowBatch(const gos_TERRAIN_EXTRA* extras, int count);
         void drawShadowBatchTessellated(gos_VERTEX* vertices, int numVerts,
             WORD* indices, int numIndices,
             const gos_TERRAIN_EXTRA* extras, int extraCount);
         void drawShadowObjectBatch(HGOSBUFFER vb, HGOSBUFFER ib,
             HGOSVERTEXDECLARATION vdecl, const float* worldMatrix4x4);
         void endShadowPrePass();
+
+        // Dynamic object shadow pass (camera-centered, per-frame)
+        void beginDynamicShadowPass();
+        void endDynamicShadowPass();
 
         // Terrain splatting setters
         void setTerrainLightDir(float x, float y, float z) { terrain_light_dir_ = vec4(x, y, z, 0.0f); }
@@ -1430,10 +1430,10 @@ class gosRenderer {
         gosRenderMaterial* shadow_object_material_ = nullptr;
         bool shadow_mode_ = false;
         bool shadow_prepass_active_ = false;
-        vec4 shadow_center_;  // raw MC2 camera pos (not swizzled)
         float terrain_shadow_softness_ = 2.5f;
         GLint shadow_prepass_prev_fbo_ = 0;
         GLint shadow_prepass_prev_viewport_[4] = {0};
+        const float* active_light_space_matrix_ = nullptr;  // routes static or dynamic LSM
 
         // Terrain splatting textures (from main source, needed for material normal maps)
         vec4 terrain_light_dir_;
@@ -1454,6 +1454,7 @@ class gosRenderer {
             GLint pomParams = -1, terrainWorldScale = -1, cellBombParams = -1;
             GLint matNormal[4] = {-1, -1, -1, -1};
             GLint lightSpaceMatrix = -1, enableShadows = -1, shadowSoftness = -1, shadowMap = -1;
+            GLint dynamicLightSpaceMatrix = -1, enableDynamicShadows = -1, dynamicShadowMap = -1;
             GLuint program = 0;
         } terrainLocs_;
 
@@ -1489,6 +1490,9 @@ class gosRenderer {
             terrainLocs_.enableShadows = glGetUniformLocation(shp, "enableShadows");
             terrainLocs_.shadowSoftness = glGetUniformLocation(shp, "shadowSoftness");
             terrainLocs_.shadowMap = glGetUniformLocation(shp, "shadowMap");
+            terrainLocs_.dynamicLightSpaceMatrix = glGetUniformLocation(shp, "dynamicLightSpaceMatrix");
+            terrainLocs_.enableDynamicShadows = glGetUniformLocation(shp, "enableDynamicShadows");
+            terrainLocs_.dynamicShadowMap = glGetUniformLocation(shp, "dynamicShadowMap");
         }
 
         void cacheShadowUniformLocations(GLuint shp) {
@@ -2100,6 +2104,9 @@ void gosRenderer::beginShadowPrePass() {
     gosPostProcess* pp = getGosPostProcess();
     if (!pp || !pp->shadowsEnabled_ || !shadow_terrain_material_) return;
 
+    ZoneScopedN("Shadow.StaticPrePass");
+    TracyGpuZone("Shadow.StaticPrePass");
+
     // Save current FBO and viewport
     glGetIntegerv(GL_FRAMEBUFFER_BINDING, &shadow_prepass_prev_fbo_);
     glGetIntegerv(GL_VIEWPORT, shadow_prepass_prev_viewport_);
@@ -2116,7 +2123,7 @@ void gosRenderer::beginShadowPrePass() {
 
     // Bind shadow FBO, clear depth, and configure state
     glBindFramebuffer(GL_FRAMEBUFFER, pp->getShadowFBO());
-    glViewport(0, 0, 4096, 4096);
+    glViewport(0, 0, 2048, 2048);
     glDepthMask(GL_TRUE);  // MUST be before glClear — glClear respects glDepthMask
     glClear(GL_DEPTH_BUFFER_BIT);
     glEnable(GL_DEPTH_TEST);
@@ -2130,32 +2137,8 @@ void gosRenderer::beginShadowPrePass() {
     if (lsmLoc >= 0)
         glUniformMatrix4fv(lsmLoc, 1, GL_FALSE, pp->getLightSpaceMatrix());
 
+    active_light_space_matrix_ = pp->getLightSpaceMatrix();
     shadow_prepass_active_ = true;
-}
-
-void gosRenderer::drawShadowBatch(const gos_TERRAIN_EXTRA* extras, int count) {
-    if (!shadow_prepass_active_ || count <= 0) return;
-
-    // Upload extras to terrain_extra_vb_
-    updateBuffer(terrain_extra_vb_, GL_ARRAY_BUFFER,
-        extras, count * sizeof(gos_TERRAIN_EXTRA), GL_DYNAMIC_DRAW);
-
-    glBindBuffer(GL_ARRAY_BUFFER, terrain_extra_vb_);
-
-    // Bind attrib 0 (dummyPos — AMD requires attrib 0 active, value unused)
-    // Reuse extras buffer: worldPos data is fine for the dead read
-    glEnableVertexAttribArray(0);
-    glVertexAttribPointer(0, 3, GL_FLOAT, GL_FALSE, sizeof(gos_TERRAIN_EXTRA), (void*)0);
-
-    // Bind attrib 4 (worldPos — the actual data the shadow shader uses)
-    glEnableVertexAttribArray(4);
-    glVertexAttribPointer(4, 3, GL_FLOAT, GL_FALSE, sizeof(gos_TERRAIN_EXTRA), (void*)0);
-
-    glDrawArrays(GL_TRIANGLES, 0, count);
-
-    glDisableVertexAttribArray(0);
-    glDisableVertexAttribArray(4);
-    glBindBuffer(GL_ARRAY_BUFFER, 0);
 }
 
 void gosRenderer::drawShadowBatchTessellated(gos_VERTEX* vertices, int numVerts,
@@ -2163,6 +2146,9 @@ void gosRenderer::drawShadowBatchTessellated(gos_VERTEX* vertices, int numVerts,
     const gos_TERRAIN_EXTRA* extras, int extraCount)
 {
     if (!shadow_prepass_active_ || numVerts <= 0 || extraCount <= 0) return;
+
+    ZoneScopedN("Shadow.StaticBatch");
+    TracyGpuZone("Shadow.StaticBatch");
 
     // Upload vertices + indices to indexed_tris_ (same mesh used by normal terrain draw)
     indexed_tris_->rewind();
@@ -2178,9 +2164,13 @@ void gosRenderer::drawShadowBatchTessellated(gos_VERTEX* vertices, int numVerts,
 
     // Upload lightSpaceMatrix (must re-upload per-batch since apply() resets state)
     {
-        gosPostProcess* pp = getGosPostProcess();
-        if (pp && sl.lightSpaceMatrix >= 0)
-            glUniformMatrix4fv(sl.lightSpaceMatrix, 1, GL_FALSE, pp->getLightSpaceMatrix());
+        const float* lsm = active_light_space_matrix_;
+        if (!lsm) {
+            gosPostProcess* pp = getGosPostProcess();
+            if (pp) lsm = pp->getLightSpaceMatrix();
+        }
+        if (lsm && sl.lightSpaceMatrix >= 0)
+            glUniformMatrix4fv(sl.lightSpaceMatrix, 1, GL_FALSE, lsm);
     }
 
     // Upload tessellation uniforms via direct GL (same pattern as terrainDrawIndexedPatches)
@@ -2242,11 +2232,10 @@ void gosRenderer::drawShadowBatchTessellated(gos_VERTEX* vertices, int numVerts,
 void gosRenderer::drawShadowObjectBatch(HGOSBUFFER vb, HGOSBUFFER ib,
     HGOSVERTEXDECLARATION vdecl, const float* worldMatrix4x4)
 {
-    if (!shadow_prepass_active_) return;
-    if (!vb || !ib || ib->count_ == 0) return;
+    if (!shadow_prepass_active_ || !vb || !ib || ib->count_ == 0) return;
 
-    // Read model-space vertices from VBO, transform to MC2 world space,
-    // and pipe through the PROVEN terrain shadow pipeline (tessLevel=1, no displacement)
+    ZoneScopedN("Shadow.DynObjectBatch");
+    TracyGpuZone("Shadow.DynObjectBatch");
 
     int numIndices = ib->count_;
     int indexSize = ib->element_size_;
@@ -2266,15 +2255,12 @@ void gosRenderer::drawShadowObjectBatch(HGOSBUFFER vb, HGOSBUFFER ib,
     glBindBuffer(GL_ARRAY_BUFFER, 0);
     glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, 0);
 
-    const float* M = worldMatrix4x4; // row-major Stuff::Matrix4D
+    const float* M = worldMatrix4x4;
 
-    // Offset all object vertices toward the light to push shadows closer to feet
-    // terrainLightDir is scene→sun in raw MC2 space — shift toward sun
     float ofsX = terrain_light_dir_.x * 30.0f;
     float ofsY = terrain_light_dir_.y * 30.0f;
     float ofsZ = terrain_light_dir_.z * 30.0f;
 
-    // Build flat vertex arrays for drawShadowBatchTessellated
     gos_TERRAIN_EXTRA* extras = (gos_TERRAIN_EXTRA*)alloca(numIndices * sizeof(gos_TERRAIN_EXTRA));
     gos_VERTEX* dummyVerts = (gos_VERTEX*)alloca(numIndices * sizeof(gos_VERTEX));
     WORD* flatIndices = (WORD*)alloca(numIndices * sizeof(WORD));
@@ -2284,16 +2270,12 @@ void gosRenderer::drawShadowObjectBatch(HGOSBUFFER vb, HGOSBUFFER ib,
             ((unsigned short*)indexData)[i] :
             ((unsigned int*)indexData)[i];
 
-        // TG_HWTypeVertex: position(3f) at offset 0
         float* pos = (float*)(vertData + idx * 36);
 
-        // Transform through world matrix (row-major): result = M * pos
         float sx = M[0]*pos[0] + M[1]*pos[1] + M[2]*pos[2]  + M[3];
         float sy = M[4]*pos[0] + M[5]*pos[1] + M[6]*pos[2]  + M[7];
         float sz = M[8]*pos[0] + M[9]*pos[1] + M[10]*pos[2] + M[11];
 
-        // Axis swap Stuff→MC2: MC2.x = -Stuff.x, MC2.y = Stuff.z, MC2.z = Stuff.y
-        // Plus light-direction offset to push shadow depth closer to light
         extras[i].wx = -sx + ofsX;
         extras[i].wy = sz + ofsY;
         extras[i].wz = sy + ofsZ;
@@ -2305,7 +2287,6 @@ void gosRenderer::drawShadowObjectBatch(HGOSBUFFER vb, HGOSBUFFER ib,
         flatIndices[i] = (WORD)i;
     }
 
-    // Save and override tessellation params — objects need tess=1, no displacement
     float savedTessLevel = terrain_tess_level_;
     float savedDispScale = terrain_displace_scale_;
     float savedPhongAlpha = terrain_phong_alpha_;
@@ -2323,6 +2304,9 @@ void gosRenderer::drawShadowObjectBatch(HGOSBUFFER vb, HGOSBUFFER ib,
 
 void gosRenderer::endShadowPrePass() {
     if (!shadow_prepass_active_) return;
+
+    ZoneScopedN("Shadow.StaticEnd");
+
     gosPostProcess* pp = getGosPostProcess();
 
     // Restore comparison mode for sampling
@@ -2336,6 +2320,60 @@ void gosRenderer::endShadowPrePass() {
     glViewport(shadow_prepass_prev_viewport_[0], shadow_prepass_prev_viewport_[1],
                shadow_prepass_prev_viewport_[2], shadow_prepass_prev_viewport_[3]);
 
+    active_light_space_matrix_ = nullptr;
+    shadow_prepass_active_ = false;
+}
+
+void gosRenderer::beginDynamicShadowPass() {
+    gosPostProcess* pp = getGosPostProcess();
+    if (!pp || !pp->shadowsEnabled_ || !shadow_terrain_material_ || !pp->getDynamicShadowFBO()) return;
+
+    glGetIntegerv(GL_FRAMEBUFFER_BINDING, &shadow_prepass_prev_fbo_);
+    glGetIntegerv(GL_VIEWPORT, shadow_prepass_prev_viewport_);
+
+    // Unbind dynamic shadow texture from unit 10 (AMD feedback loop prevention)
+    glActiveTexture(GL_TEXTURE10);
+    glBindTexture(GL_TEXTURE_2D, 0);
+    glActiveTexture(GL_TEXTURE0);
+
+    // Disable comparison mode for writing
+    glBindTexture(GL_TEXTURE_2D, pp->getDynamicShadowTexture());
+    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_COMPARE_MODE, GL_NONE);
+    glBindTexture(GL_TEXTURE_2D, 0);
+
+    glBindFramebuffer(GL_FRAMEBUFFER, pp->getDynamicShadowFBO());
+    glViewport(0, 0, pp->getDynamicShadowMapSize(), pp->getDynamicShadowMapSize());
+    glDepthMask(GL_TRUE);
+    glClear(GL_DEPTH_BUFFER_BIT);
+    glEnable(GL_DEPTH_TEST);
+    glDepthFunc(GL_LESS);
+    glDisable(GL_CULL_FACE);
+
+    shadow_terrain_material_->apply();
+    GLint lsmLoc = glGetUniformLocation(
+        shadow_terrain_material_->getShader()->shp_, "lightSpaceMatrix");
+    if (lsmLoc >= 0)
+        glUniformMatrix4fv(lsmLoc, 1, GL_FALSE, pp->getDynamicLightSpaceMatrix());
+
+    active_light_space_matrix_ = pp->getDynamicLightSpaceMatrix();
+    shadow_prepass_active_ = true;
+}
+
+void gosRenderer::endDynamicShadowPass() {
+    if (!shadow_prepass_active_) return;
+    gosPostProcess* pp = getGosPostProcess();
+
+    // Restore comparison mode on dynamic shadow texture
+    glBindTexture(GL_TEXTURE_2D, pp->getDynamicShadowTexture());
+    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_COMPARE_MODE, GL_COMPARE_REF_TO_TEXTURE);
+    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_COMPARE_FUNC, GL_LEQUAL);
+    glBindTexture(GL_TEXTURE_2D, 0);
+
+    glBindFramebuffer(GL_FRAMEBUFFER, shadow_prepass_prev_fbo_);
+    glViewport(shadow_prepass_prev_viewport_[0], shadow_prepass_prev_viewport_[1],
+               shadow_prepass_prev_viewport_[2], shadow_prepass_prev_viewport_[3]);
+
+    active_light_space_matrix_ = nullptr;
     shadow_prepass_active_ = false;
 }
 
@@ -2415,7 +2453,7 @@ void gosRenderer::terrainDrawIndexedPatches(gosRenderMaterial* material, gosMesh
         glActiveTexture(GL_TEXTURE0);
     }
 
-    // Shadow map binding (unit 9)
+    // Shadow map binding (unit 9 = static, unit 10 = dynamic)
     {
         gosPostProcess* pp = getGosPostProcess();
         if (pp && pp->shadowsEnabled_) {
@@ -2428,8 +2466,23 @@ void gosRenderer::terrainDrawIndexedPatches(gosRenderMaterial* material, gosMesh
                 glBindTexture(GL_TEXTURE_2D, pp->getShadowTexture());
                 glActiveTexture(GL_TEXTURE0);
             }
+            // Dynamic object shadow map (unit 10)
+            if (pp->getDynamicShadowFBO()) {
+                if (tl.dynamicLightSpaceMatrix >= 0)
+                    glUniformMatrix4fv(tl.dynamicLightSpaceMatrix, 1, GL_FALSE, pp->getDynamicLightSpaceMatrix());
+                if (tl.enableDynamicShadows >= 0) glUniform1i(tl.enableDynamicShadows, 1);
+                if (tl.dynamicShadowMap >= 0) {
+                    glUniform1i(tl.dynamicShadowMap, 10);
+                    glActiveTexture(GL_TEXTURE10);
+                    glBindTexture(GL_TEXTURE_2D, pp->getDynamicShadowTexture());
+                    glActiveTexture(GL_TEXTURE0);
+                }
+            } else {
+                if (tl.enableDynamicShadows >= 0) glUniform1i(tl.enableDynamicShadows, 0);
+            }
         } else {
             if (tl.enableShadows >= 0) glUniform1i(tl.enableShadows, 0);
+            if (tl.enableDynamicShadows >= 0) glUniform1i(tl.enableDynamicShadows, 0);
         }
     }
 
@@ -3660,30 +3713,29 @@ void __stdcall gos_SetTerrainViewport(float vmx, float vmy, float vax, float vay
 void __stdcall gos_SetTerrainCameraPos(float x, float y, float z) {
     if (g_gos_renderer) g_gos_renderer->setTerrainCameraPos(x, y, z);
 }
-// Shadow center API (raw MC2 coordinates for shadow matrix)
-void gos_SetShadowCenter(float x, float y, float z) {
-    if (g_gos_renderer) g_gos_renderer->setShadowCenter(x, y, z);
-}
-void gos_GetShadowCenter(float* x, float* y, float* z) {
-    if (g_gos_renderer) {
-        const vec4& sc = g_gos_renderer->getShadowCenter();
-        if (x) *x = sc.x;
-        if (y) *y = sc.y;
-        if (z) *z = sc.z;
-    }
-}
-
-// Shadow pre-pass API (called from renderLists in txmmgr.cpp)
-bool gos_ShouldRenderShadows() {
+// Static shadow API — world-fixed shadow map rendered once at map load
+void gos_SetMapHalfExtent(float halfExtent) {
     gosPostProcess* pp = getGosPostProcess();
-    if (!pp) return false;
-    return pp->shouldRenderShadows();
+    if (pp) pp->setMapHalfExtent(halfExtent);
+}
+bool gos_StaticShadowsRendered() {
+    gosPostProcess* pp = getGosPostProcess();
+    return pp && pp->staticShadowsRendered();
+}
+void gos_RenderStaticShadows() {
+    gosPostProcess* pp = getGosPostProcess();
+    if (!pp || !pp->shadowsEnabled_) return;
+    float lx = 0, ly = 0, lz = 0;
+    gos_GetTerrainLightDir(&lx, &ly, &lz);
+    // Negate: lightDir points scene→sun, but matrix needs light→scene
+    pp->buildStaticLightMatrix(-lx, -ly, -lz, pp->getMapHalfExtent());
+}
+void gos_MarkStaticShadowsRendered() {
+    gosPostProcess* pp = getGosPostProcess();
+    if (pp) pp->markStaticShadowsRendered();
 }
 void gos_BeginShadowPrePass() {
     if (g_gos_renderer) g_gos_renderer->beginShadowPrePass();
-}
-void gos_DrawShadowBatch(const gos_TERRAIN_EXTRA* extras, int count) {
-    if (g_gos_renderer) g_gos_renderer->drawShadowBatch(extras, count);
 }
 void gos_EndShadowPrePass() {
     if (g_gos_renderer) g_gos_renderer->endShadowPrePass();
@@ -3697,6 +3749,19 @@ void gos_DrawShadowBatchTessellated(gos_VERTEX* vertices, int numVerts,
 void gos_DrawShadowObjectBatch(HGOSBUFFER vb, HGOSBUFFER ib,
     HGOSVERTEXDECLARATION vdecl, const float* worldMatrix4x4) {
     if (g_gos_renderer) g_gos_renderer->drawShadowObjectBatch(vb, ib, vdecl, worldMatrix4x4);
+}
+
+// Dynamic object shadow pass API
+void gos_BeginDynamicShadowPass() {
+    if (g_gos_renderer) g_gos_renderer->beginDynamicShadowPass();
+}
+void gos_EndDynamicShadowPass() {
+    if (g_gos_renderer) g_gos_renderer->endDynamicShadowPass();
+}
+void gos_BuildDynamicLightMatrix(float sx, float sy, float sz,
+                                  float cx, float cy, float cz) {
+    gosPostProcess* pp = getGosPostProcess();
+    if (pp) pp->buildDynamicLightMatrix(sx, sy, sz, cx, cy, cz);
 }
 
 void gos_GetTerrainLightDir(float* x, float* y, float* z) {
