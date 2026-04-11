@@ -49,6 +49,7 @@
 #include<gosfx/gosfxheaders.hpp>
 #include <utils/gl_utils.h>
 #include "gos_postprocess.h"
+#include "gos_profiler.h"
 
 //---------------------------------------------------------------------------
 // static globals
@@ -983,26 +984,32 @@ void MC_TextureManager::renderLists (void)
     //
     
     // update scene data uniform buffer
-    sceneData_->fog_start = eye->fogStart;
-    sceneData_->fog_end = eye->fogFull;
-    sceneData_->min_haze_dist = Camera::MinHazeDistance;
-    sceneData_->dist_factor = Camera::DistanceFactor;
     Stuff::Vector3D cp = eye->getCameraOrigin();
-    sceneData_->cam_pos[0] = cp.x;
-    sceneData_->cam_pos[1] = cp.y;
-    sceneData_->cam_pos[2] = cp.z;
-    sceneData_->cam_pos[3] = 1.0f;
-	vec4 fc = uint32_to_vec4(eye->fogColor);
-    sceneData_->fog_color[0] = fc.z;
-    sceneData_->fog_color[1] = fc.y;
-    sceneData_->fog_color[2] = fc.x;
-    sceneData_->fog_color[3] = fc.w;
-    sceneData_->baseVertexColor = uint32_to_vec4(BaseVertexColor).zyxw();
-    gos_UpdateBuffer(sceneDataBuffer_, sceneData_, 0, sizeof(TG_HWSceneData));
+    {
+        ZoneScopedN("Camera.SceneDataUpload");
+        sceneData_->fog_start = eye->fogStart;
+        sceneData_->fog_end = eye->fogFull;
+        sceneData_->min_haze_dist = Camera::MinHazeDistance;
+        sceneData_->dist_factor = Camera::DistanceFactor;
+        sceneData_->cam_pos[0] = cp.x;
+        sceneData_->cam_pos[1] = cp.y;
+        sceneData_->cam_pos[2] = cp.z;
+        sceneData_->cam_pos[3] = 1.0f;
+        vec4 fc = uint32_to_vec4(eye->fogColor);
+        sceneData_->fog_color[0] = fc.z;
+        sceneData_->fog_color[1] = fc.y;
+        sceneData_->fog_color[2] = fc.x;
+        sceneData_->fog_color[3] = fc.w;
+        sceneData_->baseVertexColor = uint32_to_vec4(BaseVertexColor).zyxw();
+        gos_UpdateBuffer(sceneDataBuffer_, sceneData_, 0, sizeof(TG_HWSceneData));
+    }
     //gos_BindBufferBase(lightDataBuffer_, LIGHT_DATA_ATTACHMENT_SLOT);
     
     
 
+	{
+		ZoneScopedN("Render.3DObjects");
+		TracyGpuZone("Render.3DObjects");
 	for (size_t i = 0; i<nextAvailableHardwareVertexNode; i++)
 	{
 		if ((masterHardwareVertexNodes[i].flags & MC2_DRAWSOLID) &&
@@ -1060,6 +1067,7 @@ void MC_TextureManager::renderLists (void)
 			//masterHardwareVertexNodes[i].numShapes = 0;
 		}
 	}
+	} // end Render.3DObjects zone
 
 	// restore state as all old-style geometry is culled on CPU and all vertices are already pretransformed
 	gos_SetRenderState(gos_State_Culling, gos_Cull_None);
@@ -1067,11 +1075,13 @@ void MC_TextureManager::renderLists (void)
 	// restore viewport
 	gos_SetRenderViewport(0, 0, Environment.drawableWidth, Environment.drawableHeight);
 
-	// Shadow pre-pass: render ALL terrain batches to shadow map before any shading.
-	// This eliminates per-batch seams where early batches missed later batches' shadows.
-	// Cache: skip re-render when camera hasn't moved beyond threshold.
-	if (gos_IsTerrainTessellationActive() && gos_ShouldRenderShadows()) {
-		gos_BeginShadowPrePass();  // clears shadow map, binds shadow FBO + shader
+	// Static shadow pass: render ALL terrain to shadow map once at map load.
+	// World-fixed ortho projection covers entire map — never re-rendered.
+	if (gos_IsTerrainTessellationActive() && !gos_StaticShadowsRendered()) {
+		ZoneScopedN("Shadow.StaticBuild");
+		TracyGpuZone("Shadow.StaticBuild");
+		gos_RenderStaticShadows();  // builds world-fixed light matrix
+		gos_BeginShadowPrePass();   // clears shadow map, binds shadow FBO + shader
 		for (long si = 0; si < nextAvailableVertexNode; si++) {
 			if ((masterVertexNodes[si].flags & MC2_DRAWSOLID) &&
 				(masterVertexNodes[si].flags & MC2_ISTERRAIN) &&
@@ -1089,7 +1099,6 @@ void MC_TextureManager::renderLists (void)
 					: 0;
 
 				if (totalVerts > 0 && extraCount > 0) {
-					// Bind this node's colormap texture (unit 0) for TES displacement sampling
 					gos_SetRenderState(gos_State_Texture, masterTextureNodes[masterVertexNodes[si].textureIndex].get_gosTextureHandle());
 
 					gos_DrawShadowBatchTessellated(
@@ -1099,25 +1108,32 @@ void MC_TextureManager::renderLists (void)
 				}
 			}
 		}
-		// Object shadow pass: render shapes collected during TG_Shape::Render()
-		// Re-assert all critical GL state after terrain shadow pass
-		glDisable(GL_CULL_FACE);
-		glEnable(GL_DEPTH_TEST);
-		glDepthFunc(GL_LESS);
-		glDepthMask(GL_TRUE);
-		glColorMask(GL_TRUE, GL_TRUE, GL_TRUE, GL_TRUE);
+		gos_EndShadowPrePass();             // restores scene FBO, re-enables comparison mode
+		gos_MarkStaticShadowsRendered();    // never render again
+	}
+	// Dynamic object shadow pass: render g_shadowShapes[] every frame
+	if (gos_IsTerrainTessellationActive() && g_numShadowShapes > 0) {
+		ZoneScopedN("Shadow.DynPass");
+		TracyGpuZone("Shadow.DynPass");
+		float lx = 0, ly = 0, lz = 0;
+		gos_GetTerrainLightDir(&lx, &ly, &lz);
+		// Use camera LOOK-AT point (ground focus), not eye position.
+		// Eye is ~2800 units behind/above scene in isometric view — would miss all mechs.
+		// Ground focus: drop camera elevation, keep XY. Stuff→MC2 swizzle.
+		gos_BuildDynamicLightMatrix(-lx, -ly, -lz, -cp.x, cp.z, 0.0f);
+		gos_BeginDynamicShadowPass();
 		for (int si = 0; si < g_numShadowShapes; si++)
-		{
 			gos_DrawShadowObjectBatch(g_shadowShapes[si].vb, g_shadowShapes[si].ib,
 				g_shadowShapes[si].vdecl, g_shadowShapes[si].worldMatrix);
-		}
-
-		gos_EndShadowPrePass();  // restores scene FBO, re-enables comparison mode
+		gos_EndDynamicShadowPass();
 	}
-	g_numShadowShapes = 0; // always reset, even when shadow pass skipped
+	g_numShadowShapes = 0;
 
 	// No special depth state for DRAWSOLID terrain
 
+	{
+		ZoneScopedN("Render.TerrainSolid");
+		TracyGpuZone("Render.TerrainSolid");
 	bool bSkip_DRAWSOLID = false;
 	for (long i=0;i<nextAvailableVertexNode && !bSkip_DRAWSOLID;i++)
 	{
@@ -1178,9 +1194,12 @@ void MC_TextureManager::renderLists (void)
 			masterVertexNodes[i].currentVertex = masterVertexNodes[i].vertices;
 		}
 	}
-	
+	} // end Render.TerrainSolid zone
+
 	// DRAWSOLID done
 
+	{
+		ZoneScopedN("Render.Overlays");
 	if (Environment.Renderer == 3)
 	{
 		//Do NOT draw the water as transparent in software
@@ -1770,6 +1789,7 @@ void MC_TextureManager::renderLists (void)
 
 	// Reset terrain extra buffer after rendering — will be re-filled during next frame's TerrainQuad::draw() calls
 	gos_TerrainExtraReset();
+	} // end Render.Overlays zone
 }
 
 //----------------------------------------------------------------------

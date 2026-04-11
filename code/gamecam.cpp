@@ -39,6 +39,7 @@
 #endif
 
 #include<mlr/mlr.hpp>
+#include <tracy/Tracy.hpp>
 
 //---------------------------------------------------------------------------
 CameraPtr eye = NULL;
@@ -146,6 +147,7 @@ void GameCamera::render (void)
 
 		// Compose terrainMVP: MC2 world coords -> GL clip coords
 		{
+			ZoneScopedN("Camera.BuildMVP");
 			const float* W = (const float*)&worldToClip;
 			#define WTC(r,c) W[(c)*4+(r)]
 
