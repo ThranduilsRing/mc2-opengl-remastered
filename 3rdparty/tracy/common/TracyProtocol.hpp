@@ -2,7 +2,6 @@
 #define __TRACYPROTOCOL_HPP__
 
 #include <limits>
-#include <stddef.h>
 #include <stdint.h>
 
 namespace tracy
@@ -10,17 +9,17 @@ namespace tracy
 
 constexpr unsigned Lz4CompressBound( unsigned isize ) { return isize + ( isize / 255 ) + 16; }
 
-constexpr uint32_t ProtocolVersion = 77;
-constexpr uint16_t BroadcastVersion = 3;
+enum : uint32_t { ProtocolVersion = 76 };
+enum : uint16_t { BroadcastVersion = 3 };
 
 using lz4sz_t = uint32_t;
 
-constexpr unsigned TargetFrameSize = 256 * 1024;
-constexpr unsigned LZ4Size = Lz4CompressBound( TargetFrameSize );
+enum { TargetFrameSize = 256 * 1024 };
+enum { LZ4Size = Lz4CompressBound( TargetFrameSize ) };
 static_assert( LZ4Size <= (std::numeric_limits<lz4sz_t>::max)(), "LZ4Size greater than lz4sz_t" );
 static_assert( TargetFrameSize * 2 >= 64 * 1024, "Not enough space for LZ4 stream buffer" );
 
-constexpr size_t HandshakeShibbolethSize = 8;
+enum { HandshakeShibbolethSize = 8 };
 static const char HandshakeShibboleth[HandshakeShibbolethSize] = { 'T', 'r', 'a', 'c', 'y', 'P', 'r', 'f' };
 
 enum HandshakeStatus : uint8_t
@@ -32,8 +31,8 @@ enum HandshakeStatus : uint8_t
     HandshakeDropped
 };
 
-constexpr size_t WelcomeMessageHostInfoSize = 1024;
-constexpr size_t WelcomeMessageProgramNameSize = 64;
+enum { WelcomeMessageProgramNameSize = 64 };
+enum { WelcomeMessageHostInfoSize = 1024 };
 
 #pragma pack( push, 1 )
 
@@ -66,7 +65,7 @@ struct ServerQueryPacket
     uint32_t extra;
 };
 
-constexpr size_t ServerQueryPacketSize = sizeof( ServerQueryPacket );
+enum { ServerQueryPacketSize = sizeof( ServerQueryPacket ) };
 
 
 enum CpuArchitecture : uint8_t
@@ -109,12 +108,16 @@ struct WelcomeMessage
     char hostInfo[WelcomeMessageHostInfoSize];
 };
 
+enum { WelcomeMessageSize = sizeof( WelcomeMessage ) };
+
 
 struct OnDemandPayloadMessage
 {
     uint64_t frames;
     uint64_t currentTime;
 };
+
+enum { OnDemandPayloadMessageSize = sizeof( OnDemandPayloadMessage ) };
 
 
 struct BroadcastMessage
@@ -152,6 +155,11 @@ struct BroadcastMessage_v0
     uint32_t activeTime;
     char programName[WelcomeMessageProgramNameSize];
 };
+
+enum { BroadcastMessageSize = sizeof( BroadcastMessage ) };
+enum { BroadcastMessageSize_v2 = sizeof( BroadcastMessage_v2 ) };
+enum { BroadcastMessageSize_v1 = sizeof( BroadcastMessage_v1 ) };
+enum { BroadcastMessageSize_v0 = sizeof( BroadcastMessage_v0 ) };
 
 #pragma pack( pop )
 
