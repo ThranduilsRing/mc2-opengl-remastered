@@ -22,6 +22,10 @@ base directory: `A:\Games\mc2-opengl-src\.claude\skills\`
 - **Git:** NEVER push to alariq/mc2 origin. All work is local.
 - **sampler2DArray:** NEVER use — crashes AMD drivers. Use individual sampler2D on units 5-8.
 - **Shader #version:** Never put `#version` in shader files. Pass `"#version 420\n"` as prefix to `makeProgram()`.
+- **Shadow light direction:** `lightDirection` points scene→sun. `updateLightMatrix` expects light→scene. MUST negate: `pp->updateLightMatrix(-lx, -ly, -lz, ...)`. Getting this wrong puts light underground.
+- **Shadow coordinate space:** lightSpaceMatrix must be in raw MC2 space (Z=up). Use `gos_GetShadowCenter` (raw MC2) for camera pos, NOT `gos_GetTerrainCameraPos` (swizzled GL). `terrainLightDir` must also be raw MC2 (matching tangent-space normals where Z=up).
+- **Config overrides:** Camera limits (zoom, altitude, clip distance, visible vertices) are set in 3-4 places. Hardcoded defaults get overwritten by config file reads and prefs.cpp. Override AFTER config reads, not before.
+- **Buffer scaling:** Increasing `GameVisibleVertices` requires scaling: vertex pool (`startVertices` in mission2.cpp), `MC_MAXFACES` (txmmgr.h), `indexed_tris_` capacity, and `terrain_extra_capacity_` (gameos_graphics.cpp). Missing any one causes crash.
 - **Uniform API:** Call `setFloat`/`setInt` BEFORE `apply()`, not after. `apply()` flushes dirty uniforms.
 - **GL_FALSE for terrainMVP:** Direct-uploaded row-major matrices use `GL_FALSE`. Material cache uses `GL_TRUE` (engine convention).
 
