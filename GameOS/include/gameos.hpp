@@ -2296,6 +2296,11 @@ void gos_SetTerrainDetailNormalTexture(unsigned int glTexId);
 void gos_SetTerrainDisplacementTexture(unsigned int glTexId);
 void gos_SetTerrainViewDir(float x, float y, float z);
 
+// CPU displacement query API
+float gos_GetTerrainPhongAlpha();
+float gos_GetTerrainDisplaceScale();
+float gos_GetTerrainDetailTiling();
+
 // Shadow mode — render terrain depth to shadow FBO
 void gos_SetShadowMode(bool enable);
 
