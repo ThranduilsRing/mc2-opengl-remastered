@@ -24,6 +24,7 @@ set(SOURCES ${SOURCES}
     utils/matrix.cpp
     utils/vec.cpp
     utils/timing.cpp
+    ${CMAKE_SOURCE_DIR}/3rdparty/tracy/TracyClient.cpp
     utils/string_utils.cpp
     utils/file_utils.cpp
     )
