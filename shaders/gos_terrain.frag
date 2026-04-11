@@ -37,10 +37,10 @@ uniform PREC vec4 tessDebug;  // x=mode: 0=off, 1=normals, 2=worldPos
 
 // --- Distance LOD thresholds (tunable, in MC2 world units) ---
 // 1 terrain tile ≈ 128 world units
-const float LOD_NEAR       = 10240.0;  // ~80 tiles: full quality
-const float LOD_NEAR_FADE  = 11520.0;  // transition band end
-const float LOD_MID        = 17920.0;  // ~140 tiles: mid quality
-const float LOD_MID_FADE   = 19200.0;  // ~150 tiles: far quality begins
+const float LOD_NEAR       = 4000.0;   // full quality (covers stock zoom)
+const float LOD_NEAR_FADE  = 4500.0;   // transition band end
+const float LOD_MID        = 5500.0;   // mid quality
+const float LOD_MID_FADE   = 6500.0;   // far quality begins
 
 // --- Hash / noise for cell bombing ---
 
@@ -145,15 +145,21 @@ PREC vec2 parallaxMapping(PREC vec2 uv, PREC vec3 viewDirTS, PREC float scale, P
 void main(void)
 {
     // Debug visualizations for tessellation data
+    // Distance-based LOD factors (1.0 = full quality, 0.0 = cheapest)
+    // cameraPos is in Stuff/MLR space: .x=left/right, .y=elevation, .z=forward
+    // WorldPos is in raw MC2 space: .x=east, .y=north, .z=elevation
+    // LOD center: camera ground position with altitude boost for zoom-out
+    vec2 camGround = vec2(-cameraPos.x, cameraPos.z);
+    float hDist = distance(WorldPos.xy, camGround);
+    float altBoost = max(cameraPos.y - WorldPos.z, 0.0) * 0.7;
+    float camDist = hDist + altBoost;
+    float lodNear = 1.0 - smoothstep(LOD_NEAR, LOD_NEAR_FADE, camDist);
+    float lodMid  = 1.0 - smoothstep(LOD_MID,  LOD_MID_FADE,  camDist);
+
     if (tessDebug.x > 0.5) {
         FragColor = vec4(1.0, 0.0, 0.0, 1.0);  // SOLID RED = tess frag running
         return;
     }
-
-    // Distance-based LOD factors (1.0 = full quality, 0.0 = cheapest)
-    float camDist = distance(WorldPos.xy, cameraPos.xy);
-    float lodNear = 1.0 - smoothstep(LOD_NEAR, LOD_NEAR_FADE, camDist);
-    float lodMid  = 1.0 - smoothstep(LOD_MID,  LOD_MID_FADE,  camDist);
 
     PREC vec4 texColor = texture(tex1, Texcoord);
 
