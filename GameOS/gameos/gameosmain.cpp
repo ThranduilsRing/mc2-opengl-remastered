@@ -71,6 +71,7 @@ static void handle_key_down( SDL_Keysym* keysym ) {
                 gosPostProcess* pp = getGosPostProcess();
                 if (pp) {
                     pp->shadowsEnabled_ = !pp->shadowsEnabled_;
+                    pp->shadowCacheDirty_ = true;  // force re-render on re-enable
                     fprintf(stderr, "Shadows: %s\n", pp->shadowsEnabled_ ? "ON" : "OFF");
                 }
             }

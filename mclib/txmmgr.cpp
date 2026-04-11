@@ -1069,7 +1069,8 @@ void MC_TextureManager::renderLists (void)
 
 	// Shadow pre-pass: render ALL terrain batches to shadow map before any shading.
 	// This eliminates per-batch seams where early batches missed later batches' shadows.
-	if (gos_IsTerrainTessellationActive()) {
+	// Cache: skip re-render when camera hasn't moved beyond threshold.
+	if (gos_IsTerrainTessellationActive() && gos_ShouldRenderShadows()) {
 		gos_BeginShadowPrePass();  // clears shadow map, binds shadow FBO + shader
 		for (long si = 0; si < nextAvailableVertexNode; si++) {
 			if ((masterVertexNodes[si].flags & MC2_DRAWSOLID) &&
@@ -1110,10 +1111,10 @@ void MC_TextureManager::renderLists (void)
 			gos_DrawShadowObjectBatch(g_shadowShapes[si].vb, g_shadowShapes[si].ib,
 				g_shadowShapes[si].vdecl, g_shadowShapes[si].worldMatrix);
 		}
-		g_numShadowShapes = 0; // consumed, reset for next frame
 
 		gos_EndShadowPrePass();  // restores scene FBO, re-enables comparison mode
 	}
+	g_numShadowShapes = 0; // always reset, even when shadow pass skipped
 
 	// No special depth state for DRAWSOLID terrain
 
