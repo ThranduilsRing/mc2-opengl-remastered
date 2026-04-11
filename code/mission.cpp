@@ -433,6 +433,18 @@ long Mission::update (void)
 					g_tessWireframe = !g_tessWireframe;
 					gos_SetTerrainWireframe(g_tessWireframe);
 				}
+
+				// Shadow softness (Poisson disk radius)
+				if (userInput->getKeyDown(KEY_LBRACKET)) {
+					float s = max(gos_GetTerrainShadowSoftness() - 0.5f, 0.5f);
+					gos_SetTerrainShadowSoftness(s);
+					printf("[SHADOW-KEY] [: softness=%.1f\n", s); fflush(stdout);
+				}
+				if (userInput->getKeyDown(KEY_RBRACKET)) {
+					float s = min(gos_GetTerrainShadowSoftness() + 0.5f, 10.0f);
+					gos_SetTerrainShadowSoftness(s);
+					printf("[SHADOW-KEY] ]: softness=%.1f\n", s); fflush(stdout);
+				}
 			}
 			#endif
 		}

@@ -1281,6 +1281,10 @@ class gosRenderer {
         bool getShadowMode() const { return shadow_mode_; }
         gosRenderMaterial* getShadowTerrainMaterial() const { return shadow_terrain_material_; }
 
+        // Shadow softness (penumbra radius in texels)
+        void setTerrainShadowSoftness(float s) { terrain_shadow_softness_ = s; }
+        float getTerrainShadowSoftness() const { return terrain_shadow_softness_; }
+
         // Shadow center — raw MC2 coordinates (not swizzled like terrain camera pos)
         void setShadowCenter(float x, float y, float z) { shadow_center_ = vec4(x, y, z, 0.0f); }
         const vec4& getShadowCenter() const { return shadow_center_; }
@@ -1424,6 +1428,7 @@ class gosRenderer {
         bool shadow_mode_ = false;
         bool shadow_prepass_active_ = false;
         vec4 shadow_center_;  // raw MC2 camera pos (not swizzled)
+        float terrain_shadow_softness_ = 2.5f;
         GLint shadow_prepass_prev_fbo_ = 0;
         GLint shadow_prepass_prev_viewport_[4] = {0};
 
@@ -2289,6 +2294,8 @@ void gosRenderer::terrainDrawIndexedPatches(gosRenderMaterial* material, gosMesh
             if (loc >= 0) glUniformMatrix4fv(loc, 1, GL_FALSE, pp->getLightSpaceMatrix());
             loc = glGetUniformLocation(shp, "enableShadows");
             if (loc >= 0) glUniform1i(loc, 1);
+            loc = glGetUniformLocation(shp, "shadowSoftness");
+            if (loc >= 0) glUniform1f(loc, terrain_shadow_softness_);
             loc = glGetUniformLocation(shp, "shadowMap");
             if (loc >= 0) {
                 glUniform1i(loc, 9);
@@ -3606,6 +3613,13 @@ unsigned int gos_CreateTerrainNormalTexture(const unsigned char* rgbaData, int w
     glBindTexture(GL_TEXTURE_2D, 0);
     printf("[TESS] Created terrain normal texture: id=%u size=%d\n", texId, width);
     return texId;
+}
+
+void gos_SetTerrainShadowSoftness(float s) {
+    if (g_gos_renderer) g_gos_renderer->setTerrainShadowSoftness(s);
+}
+float gos_GetTerrainShadowSoftness() {
+    return g_gos_renderer ? g_gos_renderer->getTerrainShadowSoftness() : 2.5f;
 }
 
 #include "gameos_graphics_debug.cpp"

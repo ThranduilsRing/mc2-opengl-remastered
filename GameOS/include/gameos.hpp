@@ -2301,6 +2301,10 @@ float gos_GetTerrainPhongAlpha();
 float gos_GetTerrainDisplaceScale();
 float gos_GetTerrainDetailTiling();
 
+// Shadow softness (penumbra radius in texels for Poisson disk sampling)
+void gos_SetTerrainShadowSoftness(float s);
+float gos_GetTerrainShadowSoftness();
+
 // Shadow mode — render terrain depth to shadow FBO
 void gos_SetShadowMode(bool enable);
 
