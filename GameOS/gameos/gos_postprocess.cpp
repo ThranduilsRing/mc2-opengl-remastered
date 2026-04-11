@@ -414,7 +414,7 @@ void gosPostProcess::renderSkybox(float sunDirX, float sunDirY, float sunDirZ)
 
 void gosPostProcess::initShadows()
 {
-    shadowMapSize_ = 2048;
+    shadowMapSize_ = 4096;
 
     static const char* kShaderPrefix = "#version 420\n";
     shadowDepthProg_ = glsl_program::makeProgram("shadow_depth",

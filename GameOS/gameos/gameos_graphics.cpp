@@ -2057,7 +2057,7 @@ void gosRenderer::beginShadowPrePass() {
 
     // Bind shadow FBO, clear depth, and configure state
     glBindFramebuffer(GL_FRAMEBUFFER, pp->getShadowFBO());
-    glViewport(0, 0, 2048, 2048);
+    glViewport(0, 0, 4096, 4096);
     glDepthMask(GL_TRUE);  // MUST be before glClear — glClear respects glDepthMask
     glClear(GL_DEPTH_BUFFER_BIT);
     glEnable(GL_DEPTH_TEST);
