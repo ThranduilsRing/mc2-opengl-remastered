@@ -51,6 +51,10 @@ endif()
 
 add_definitions(-DUSE_ASSEMBLER_CODE=0)
 add_definitions(-DLINUX_BUILD)
+# Tracy profiler (always-on, ~1ns overhead when not connected)
+add_definitions(-DTRACY_ENABLE)
+# Disable ETW kernel sampling (requires elevated privileges, not needed for zone profiling)
+add_definitions(-DTRACY_NO_SYSTEM_TRACING)
 
 find_package(SDL2 REQUIRED CONFIG REQUIRED COMPONENTS SDL2)
 find_package(SDL2 REQUIRED CONFIG REQUIRED COMPONENTS SDL2main)
@@ -76,6 +80,8 @@ get_filename_component(COM_PATH2 "./GameOS/gameos" ABSOLUTE)
 
 set(COMMON_INCLUDE_DIRS  ${COM_PATH1} ${COM_PATH2})
 set(THIRDPARTY_INCLUDE_DIRS "${CMAKE_PREFIX_PATH}/include")
+# Tracy headers resolve as <tracy/Tracy.hpp>
+list(APPEND THIRDPARTY_INCLUDE_DIRS "${CMAKE_CURRENT_SOURCE_DIR}/3rdparty/tracy")
 
 add_subdirectory("./mclib/" "./out/mclib")
 add_subdirectory("./mclib/mlr" "./out/mclib/mlr")
@@ -187,7 +193,7 @@ if(NOT WIN32)
 	message("Not win32 system")
 else()
 	# winmm for timeGetTime, maybe switch to GetTickCount to remove this dependency
-	set(ADDITIONAL_LIBS winmm)
+	set(ADDITIONAL_LIBS winmm ws2_32 dbghelp)
 endif()
 
 
