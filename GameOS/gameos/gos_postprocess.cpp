@@ -1,6 +1,7 @@
 #include "gos_postprocess.h"
 #include "utils/shader_builder.h"
 #include "utils/gl_utils.h"
+#include "gos_profiler.h"
 
 #include <cassert>
 #include <cstdio>
@@ -52,19 +53,17 @@ gosPostProcess::gosPostProcess()
     , shadowDepthProg_(nullptr)
     , shadowMapSize_(2048)
     , shadowsEnabled_(true)
-    , shadowCacheMoveThreshold_(500.0f)
-    , shadowCacheDirty_(true)
-    , cachedShadowCenterX_(0.0f)
-    , cachedShadowCenterY_(0.0f)
-    , cachedShadowCenterZ_(0.0f)
-    , shadowCenterX_(0.0f)
-    , shadowCenterY_(0.0f)
-    , shadowCenterZ_(0.0f)
+    , staticShadowsRendered_(false)
+    , mapHalfExtent_(0.0f)
+    , dynShadowFBO_(0)
+    , dynShadowDepthTex_(0)
+    , dynShadowDummyColorTex_(0)
+    , dynShadowMapSize_(1024)
 {
     bloomFBO_[0] = bloomFBO_[1] = 0;
     bloomColorTex_[0] = bloomColorTex_[1] = 0;
-    memset(lightSpaceMatrix_, 0, sizeof(lightSpaceMatrix_));
-    memset(cachedLightSpaceMatrix_, 0, sizeof(cachedLightSpaceMatrix_));
+    memset(staticLightSpaceMatrix_, 0, sizeof(staticLightSpaceMatrix_));
+    memset(dynamicLightSpaceMatrix_, 0, sizeof(dynamicLightSpaceMatrix_));
     memset(savedViewport_, 0, sizeof(savedViewport_));
 }
 
@@ -114,6 +113,7 @@ void gosPostProcess::init(int w, int h)
         fprintf(stderr, "gosPostProcess: failed to compile bloom_blur shader\n");
 
     initShadows();
+    initDynamicShadows();
 
     s_postProcess = this;
     initialized_ = true;
@@ -147,35 +147,12 @@ void gosPostProcess::destroy()
     }
 
     destroyShadows();
+    destroyDynamicShadows();
 
     s_postProcess = nullptr;
     initialized_ = false;
 }
 
-bool gosPostProcess::shouldRenderShadows()
-{
-    if (!shadowsEnabled_) return false;
-    if (shadowCacheDirty_) {
-        shadowCacheDirty_ = false;
-        cachedShadowCenterX_ = shadowCenterX_;
-        cachedShadowCenterY_ = shadowCenterY_;
-        cachedShadowCenterZ_ = shadowCenterZ_;
-        memcpy(cachedLightSpaceMatrix_, lightSpaceMatrix_, sizeof(lightSpaceMatrix_));
-        return true;
-    }
-    float dx = shadowCenterX_ - cachedShadowCenterX_;
-    float dy = shadowCenterY_ - cachedShadowCenterY_;
-    float dz = shadowCenterZ_ - cachedShadowCenterZ_;
-    float dist2 = dx*dx + dy*dy + dz*dz;
-    if (dist2 > shadowCacheMoveThreshold_ * shadowCacheMoveThreshold_) {
-        cachedShadowCenterX_ = shadowCenterX_;
-        cachedShadowCenterY_ = shadowCenterY_;
-        cachedShadowCenterZ_ = shadowCenterZ_;
-        memcpy(cachedLightSpaceMatrix_, lightSpaceMatrix_, sizeof(lightSpaceMatrix_));
-        return true;
-    }
-    return false;
-}
 
 void gosPostProcess::resize(int w, int h)
 {
@@ -368,6 +345,9 @@ void gosPostProcess::runBloom()
 
 void gosPostProcess::endScene()
 {
+    ZoneScopedN("Render.PostProcess");
+    TracyGpuZone("Render.PostProcess");
+
     if (!initialized_)
         return;
 
@@ -448,7 +428,7 @@ void gosPostProcess::renderSkybox(float sunDirX, float sunDirY, float sunDirZ)
 
 void gosPostProcess::initShadows()
 {
-    shadowMapSize_ = 4096;
+    shadowMapSize_ = 2048;
 
     static const char* kShaderPrefix = "#version 420\n";
     shadowDepthProg_ = glsl_program::makeProgram("shadow_depth",
@@ -488,8 +468,9 @@ void gosPostProcess::initShadows()
     glBindFramebuffer(GL_FRAMEBUFFER, 0);
 
     // Initialize with identity so shadow map reads white (no shadow)
-    memset(lightSpaceMatrix_, 0, sizeof(lightSpaceMatrix_));
-    lightSpaceMatrix_[0] = lightSpaceMatrix_[5] = lightSpaceMatrix_[10] = lightSpaceMatrix_[15] = 1.0f;
+    memset(staticLightSpaceMatrix_, 0, sizeof(staticLightSpaceMatrix_));
+    staticLightSpaceMatrix_[0] = staticLightSpaceMatrix_[5] = staticLightSpaceMatrix_[10] = staticLightSpaceMatrix_[15] = 1.0f;
+    staticShadowsRendered_ = false;
 
     // Clear shadow map to max depth (1.0) so everything is "lit"
     glBindFramebuffer(GL_FRAMEBUFFER, shadowFBO_);
@@ -543,30 +524,26 @@ void gosPostProcess::destroyShadows()
     }
 }
 
-void gosPostProcess::updateLightMatrix(float sunDirX, float sunDirY, float sunDirZ,
-                                        float camX, float camY, float camZ, float radius)
+void gosPostProcess::buildStaticLightMatrix(float sunDirX, float sunDirY, float sunDirZ,
+                                             float mapHalfExtent)
 {
-    if (!shadowsEnabled_) return;
+    if (!shadowsEnabled_ || !shadowFBO_) return;
+    if (staticShadowsRendered_) return;
 
-    // Save current frame shadow center for shouldRenderShadows()
-    shadowCenterX_ = camX;
-    shadowCenterY_ = camY;
-    shadowCenterZ_ = camZ;
-
-    // Normalize sun direction
+    // Build world-fixed orthographic light-space matrix centered at map origin
+    // sunDir points light→scene (already negated by caller)
     float len = sqrtf(sunDirX*sunDirX + sunDirY*sunDirY + sunDirZ*sunDirZ);
     if (len < 0.001f) return;
-    // Forward = from light toward scene (= sunDir direction)
     float fx = sunDirX/len, fy = sunDirY/len, fz = sunDirZ/len;
 
-    // Light "position" behind the scene (along -forward from camera)
-    float r = radius;
-    float lightPosX = camX - fx * r;
-    float lightPosY = camY - fy * r;
-    float lightPosZ = camZ - fz * r;
+    // Map center is origin (0,0,0) in MC2 world space
+    float r = mapHalfExtent * sqrtf(2.0f) * 1.05f;  // covers full map diagonal at any sun angle
+    float lightPosX = -fx * r;
+    float lightPosY = -fy * r;
+    float lightPosZ = -fz * r;
 
-    // Right = cross(forward, up_hint)
-    float ux = 0, uy = 0, uz = 1;  // Z-up for MC2 world coordinates
+    // Right = cross(forward, up_hint); Z-up for MC2
+    float ux = 0, uy = 0, uz = 1;
     if (fabsf(fz) > 0.9f) { ux = 0; uy = 1; uz = 0; }
 
     float rx = fy * uz - fz * uy;
@@ -575,13 +552,10 @@ void gosPostProcess::updateLightMatrix(float sunDirX, float sunDirY, float sunDi
     len = sqrtf(rx*rx + ry*ry + rz*rz);
     rx /= len; ry /= len; rz /= len;
 
-    // True up = cross(right, forward)
     ux = ry * fz - rz * fy;
     uy = rz * fx - rx * fz;
     uz = rx * fy - ry * fx;
 
-    // Standard OpenGL lookAt view matrix (column-major)
-    // Camera looks down -Z, so Z-row = -forward
     float view[16] = {
          rx,  ux, -fx, 0,
          ry,  uy, -fy, 0,
@@ -592,7 +566,7 @@ void gosPostProcess::updateLightMatrix(float sunDirX, float sunDirY, float sunDi
         1
     };
 
-    // Ortho projection: maps eye-space z ∈ [-farP, -nearP] to NDC [-1, 1]
+    // Ortho covers full map; near/far envelope the full elevation range
     float nearP = 1.0f, farP = 2.0f * r;
     float ortho[16] = {
         1.0f/r, 0, 0, 0,
@@ -601,13 +575,133 @@ void gosPostProcess::updateLightMatrix(float sunDirX, float sunDirY, float sunDi
         0, 0, -(farP + nearP)/(farP - nearP), 1
     };
 
-    // lightSpaceMatrix = ortho * view
     for (int col = 0; col < 4; col++) {
         for (int row = 0; row < 4; row++) {
             float sum = 0;
             for (int k = 0; k < 4; k++)
                 sum += ortho[k * 4 + row] * view[col * 4 + k];
-            lightSpaceMatrix_[col * 4 + row] = sum;
+            staticLightSpaceMatrix_[col * 4 + row] = sum;
+        }
+    }
+
+    fprintf(stderr, "gosPostProcess: rendering static shadows (map half-extent=%.0f)\n", mapHalfExtent);
+}
+
+void gosPostProcess::initDynamicShadows()
+{
+    dynShadowMapSize_ = 2048;
+
+    glGenFramebuffers(1, &dynShadowFBO_);
+    glBindFramebuffer(GL_FRAMEBUFFER, dynShadowFBO_);
+
+    glGenTextures(1, &dynShadowDepthTex_);
+    glBindTexture(GL_TEXTURE_2D, dynShadowDepthTex_);
+    glTexImage2D(GL_TEXTURE_2D, 0, GL_DEPTH_COMPONENT24,
+        dynShadowMapSize_, dynShadowMapSize_, 0, GL_DEPTH_COMPONENT, GL_FLOAT, nullptr);
+    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
+    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
+    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_CLAMP_TO_BORDER);
+    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_CLAMP_TO_BORDER);
+    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_COMPARE_MODE, GL_COMPARE_REF_TO_TEXTURE);
+    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_COMPARE_FUNC, GL_LEQUAL);
+    float borderColor[] = {1.0f, 1.0f, 1.0f, 1.0f};
+    glTexParameterfv(GL_TEXTURE_2D, GL_TEXTURE_BORDER_COLOR, borderColor);
+    glFramebufferTexture2D(GL_FRAMEBUFFER, GL_DEPTH_ATTACHMENT, GL_TEXTURE_2D, dynShadowDepthTex_, 0);
+
+    // AMD dummy color attachment
+    glGenTextures(1, &dynShadowDummyColorTex_);
+    glBindTexture(GL_TEXTURE_2D, dynShadowDummyColorTex_);
+    glTexImage2D(GL_TEXTURE_2D, 0, GL_R8,
+        dynShadowMapSize_, dynShadowMapSize_, 0, GL_RED, GL_UNSIGNED_BYTE, nullptr);
+    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_NEAREST);
+    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_NEAREST);
+    glFramebufferTexture2D(GL_FRAMEBUFFER, GL_COLOR_ATTACHMENT0, GL_TEXTURE_2D, dynShadowDummyColorTex_, 0);
+    glDrawBuffer(GL_COLOR_ATTACHMENT0);
+    glReadBuffer(GL_NONE);
+
+    if (glCheckFramebufferStatus(GL_FRAMEBUFFER) != GL_FRAMEBUFFER_COMPLETE)
+        fprintf(stderr, "gosPostProcess: dynamic shadow FBO incomplete\n");
+
+    glBindFramebuffer(GL_FRAMEBUFFER, 0);
+
+    memset(dynamicLightSpaceMatrix_, 0, sizeof(dynamicLightSpaceMatrix_));
+    dynamicLightSpaceMatrix_[0] = dynamicLightSpaceMatrix_[5] = dynamicLightSpaceMatrix_[10] = dynamicLightSpaceMatrix_[15] = 1.0f;
+
+    // Clear to max depth (fully lit)
+    glBindFramebuffer(GL_FRAMEBUFFER, dynShadowFBO_);
+    glDepthMask(GL_TRUE);
+    glClear(GL_DEPTH_BUFFER_BIT);
+    glBindFramebuffer(GL_FRAMEBUFFER, 0);
+}
+
+void gosPostProcess::destroyDynamicShadows()
+{
+    if (dynShadowFBO_) { glDeleteFramebuffers(1, &dynShadowFBO_); dynShadowFBO_ = 0; }
+    if (dynShadowDepthTex_) { glDeleteTextures(1, &dynShadowDepthTex_); dynShadowDepthTex_ = 0; }
+    if (dynShadowDummyColorTex_) { glDeleteTextures(1, &dynShadowDummyColorTex_); dynShadowDummyColorTex_ = 0; }
+}
+
+void gosPostProcess::buildDynamicLightMatrix(float sunDirX, float sunDirY, float sunDirZ,
+                                              float camX, float camY, float camZ)
+{
+    if (!shadowsEnabled_ || !dynShadowFBO_) return;
+
+    ZoneScopedN("Shadow.DynMatrixBuild");
+
+    float len = sqrtf(sunDirX*sunDirX + sunDirY*sunDirY + sunDirZ*sunDirZ);
+    if (len < 0.001f) return;
+    float fx = sunDirX/len, fy = sunDirY/len, fz = sunDirZ/len;
+
+    float xyRadius = 2000.0f * sqrtf(2.0f);  // covers camera-to-lookat offset in isometric view
+    float depthDist = 5000.0f;              // large depth to envelope all elevations
+
+    // Texel snapping: quantize camera position to shadow texel grid
+    float worldUnitsPerTexel = (2.0f * xyRadius) / (float)dynShadowMapSize_;
+    camX = floorf(camX / worldUnitsPerTexel) * worldUnitsPerTexel;
+    camY = floorf(camY / worldUnitsPerTexel) * worldUnitsPerTexel;
+    // Don't clamp Z — keep true camera elevation for depth centering
+
+    float lightPosX = camX - fx * depthDist;
+    float lightPosY = camY - fy * depthDist;
+    float lightPosZ = camZ - fz * depthDist;
+
+    float ux = 0, uy = 0, uz = 1;
+    if (fabsf(fz) > 0.9f) { ux = 0; uy = 1; uz = 0; }
+
+    float rx = fy * uz - fz * uy;
+    float ry = fz * ux - fx * uz;
+    float rz = fx * uy - fy * ux;
+    len = sqrtf(rx*rx + ry*ry + rz*rz);
+    rx /= len; ry /= len; rz /= len;
+
+    ux = ry * fz - rz * fy;
+    uy = rz * fx - rx * fz;
+    uz = rx * fy - ry * fx;
+
+    float view[16] = {
+         rx,  ux, -fx, 0,
+         ry,  uy, -fy, 0,
+         rz,  uz, -fz, 0,
+        -(rx*lightPosX + ry*lightPosY + rz*lightPosZ),
+        -(ux*lightPosX + uy*lightPosY + uz*lightPosZ),
+         (fx*lightPosX + fy*lightPosY + fz*lightPosZ),
+        1
+    };
+
+    float nearP = 1.0f, farP = 2.0f * depthDist;
+    float ortho[16] = {
+        1.0f/xyRadius, 0, 0, 0,
+        0, 1.0f/xyRadius, 0, 0,
+        0, 0, -2.0f/(farP - nearP), 0,
+        0, 0, -(farP + nearP)/(farP - nearP), 1
+    };
+
+    for (int col = 0; col < 4; col++) {
+        for (int row = 0; row < 4; row++) {
+            float sum = 0;
+            for (int k = 0; k < 4; k++)
+                sum += ortho[k * 4 + row] * view[col * 4 + k];
+            dynamicLightSpaceMatrix_[col * 4 + row] = sum;
         }
     }
 }
