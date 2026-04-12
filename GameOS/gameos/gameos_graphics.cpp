@@ -1286,6 +1286,10 @@ class gosRenderer {
         void setTerrainShadowSoftness(float s) { terrain_shadow_softness_ = s; }
         float getTerrainShadowSoftness() const { return terrain_shadow_softness_; }
 
+        // Terrain draw killswitch
+        void setTerrainDrawEnabled(bool e) { terrain_draw_enabled_ = e; }
+        bool getTerrainDrawEnabled() const { return terrain_draw_enabled_; }
+
         // Shadow pre-pass (separate pass over all terrain batches before shading)
         void beginShadowPrePass();
         void drawShadowBatchTessellated(gos_VERTEX* vertices, int numVerts,
@@ -1431,6 +1435,7 @@ class gosRenderer {
         bool shadow_mode_ = false;
         bool shadow_prepass_active_ = false;
         float terrain_shadow_softness_ = 2.5f;
+        bool terrain_draw_enabled_ = true;
         GLint shadow_prepass_prev_fbo_ = 0;
         GLint shadow_prepass_prev_viewport_[4] = {0};
         const float* active_light_space_matrix_ = nullptr;  // routes static or dynamic LSM
@@ -2147,8 +2152,8 @@ void gosRenderer::drawShadowBatchTessellated(gos_VERTEX* vertices, int numVerts,
 {
     if (!shadow_prepass_active_ || numVerts <= 0 || extraCount <= 0) return;
 
-    ZoneScopedN("Shadow.StaticBatch");
-    TracyGpuZone("Shadow.StaticBatch");
+    ZoneScopedN("Shadow.TessBatch");
+    TracyGpuZone("Shadow.TessBatch");
 
     // Upload vertices + indices to indexed_tris_ (same mesh used by normal terrain draw)
     indexed_tris_->rewind();
@@ -2235,56 +2240,66 @@ void gosRenderer::drawShadowObjectBatch(HGOSBUFFER vb, HGOSBUFFER ib,
     if (!shadow_prepass_active_ || !vb || !ib || ib->count_ == 0) return;
 
     ZoneScopedN("Shadow.DynObjectBatch");
-    TracyGpuZone("Shadow.DynObjectBatch");
 
     int numIndices = ib->count_;
     int indexSize = ib->element_size_;
 
-    // Read index data from GPU
-    glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, ib->buffer_);
-    int ibBytes = numIndices * indexSize;
-    unsigned char* indexData = (unsigned char*)alloca(ibBytes);
-    glGetBufferSubData(GL_ELEMENT_ARRAY_BUFFER, 0, ibBytes, indexData);
+    unsigned char* indexData;
+    unsigned char* vertData;
+    {
+        ZoneScopedN("Shadow.DynObj.GPUReadback");
+        // Read index data from GPU
+        glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, ib->buffer_);
+        int ibBytes = numIndices * indexSize;
+        indexData = (unsigned char*)alloca(ibBytes);
+        glGetBufferSubData(GL_ELEMENT_ARRAY_BUFFER, 0, ibBytes, indexData);
 
-    // Read vertex data from GPU (TG_HWTypeVertex = 36 bytes)
-    glBindBuffer(GL_ARRAY_BUFFER, vb->buffer_);
-    GLint vbSize = 0;
-    glGetBufferParameteriv(GL_ARRAY_BUFFER, GL_BUFFER_SIZE, &vbSize);
-    unsigned char* vertData = (unsigned char*)alloca(vbSize);
-    glGetBufferSubData(GL_ARRAY_BUFFER, 0, vbSize, vertData);
-    glBindBuffer(GL_ARRAY_BUFFER, 0);
-    glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, 0);
+        // Read vertex data from GPU (TG_HWTypeVertex = 36 bytes)
+        glBindBuffer(GL_ARRAY_BUFFER, vb->buffer_);
+        GLint vbSize = 0;
+        glGetBufferParameteriv(GL_ARRAY_BUFFER, GL_BUFFER_SIZE, &vbSize);
+        vertData = (unsigned char*)alloca(vbSize);
+        glGetBufferSubData(GL_ARRAY_BUFFER, 0, vbSize, vertData);
+        glBindBuffer(GL_ARRAY_BUFFER, 0);
+        glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, 0);
+    }
 
-    const float* M = worldMatrix4x4;
+    gos_TERRAIN_EXTRA* extras;
+    gos_VERTEX* dummyVerts;
+    WORD* flatIndices;
+    {
+        ZoneScopedN("Shadow.DynObj.CPUTransform");
+        const float* M = worldMatrix4x4;
 
-    float ofsX = terrain_light_dir_.x * 30.0f;
-    float ofsY = terrain_light_dir_.y * 30.0f;
-    float ofsZ = terrain_light_dir_.z * 30.0f;
+        float ofsX = terrain_light_dir_.x * 30.0f;
+        float ofsY = terrain_light_dir_.y * 30.0f;
+        float ofsZ = terrain_light_dir_.z * 30.0f;
 
-    gos_TERRAIN_EXTRA* extras = (gos_TERRAIN_EXTRA*)alloca(numIndices * sizeof(gos_TERRAIN_EXTRA));
-    gos_VERTEX* dummyVerts = (gos_VERTEX*)alloca(numIndices * sizeof(gos_VERTEX));
-    WORD* flatIndices = (WORD*)alloca(numIndices * sizeof(WORD));
+        extras = (gos_TERRAIN_EXTRA*)alloca(numIndices * sizeof(gos_TERRAIN_EXTRA));
+        dummyVerts = (gos_VERTEX*)alloca(numIndices * sizeof(gos_VERTEX));
+        flatIndices = (WORD*)alloca(numIndices * sizeof(WORD));
 
-    for (int i = 0; i < numIndices; i++) {
-        int idx = (indexSize == 2) ?
-            ((unsigned short*)indexData)[i] :
-            ((unsigned int*)indexData)[i];
+        for (int i = 0; i < numIndices; i++) {
+            int idx = (indexSize == 2) ?
+                ((unsigned short*)indexData)[i] :
+                ((unsigned int*)indexData)[i];
 
-        float* pos = (float*)(vertData + idx * 36);
+            float* pos = (float*)(vertData + idx * 36);
 
-        float sx = M[0]*pos[0] + M[1]*pos[1] + M[2]*pos[2]  + M[3];
-        float sy = M[4]*pos[0] + M[5]*pos[1] + M[6]*pos[2]  + M[7];
-        float sz = M[8]*pos[0] + M[9]*pos[1] + M[10]*pos[2] + M[11];
+            float sx = M[0]*pos[0] + M[1]*pos[1] + M[2]*pos[2]  + M[3];
+            float sy = M[4]*pos[0] + M[5]*pos[1] + M[6]*pos[2]  + M[7];
+            float sz = M[8]*pos[0] + M[9]*pos[1] + M[10]*pos[2] + M[11];
 
-        extras[i].wx = -sx + ofsX;
-        extras[i].wy = sz + ofsY;
-        extras[i].wz = sy + ofsZ;
-        extras[i].nx = 0.0f;
-        extras[i].ny = 0.0f;
-        extras[i].nz = 1.0f;
+            extras[i].wx = -sx + ofsX;
+            extras[i].wy = sz + ofsY;
+            extras[i].wz = sy + ofsZ;
+            extras[i].nx = 0.0f;
+            extras[i].ny = 0.0f;
+            extras[i].nz = 1.0f;
 
-        memset(&dummyVerts[i], 0, sizeof(gos_VERTEX));
-        flatIndices[i] = (WORD)i;
+            memset(&dummyVerts[i], 0, sizeof(gos_VERTEX));
+            flatIndices[i] = (WORD)i;
+        }
     }
 
     float savedTessLevel = terrain_tess_level_;
@@ -2305,7 +2320,7 @@ void gosRenderer::drawShadowObjectBatch(HGOSBUFFER vb, HGOSBUFFER ib,
 void gosRenderer::endShadowPrePass() {
     if (!shadow_prepass_active_) return;
 
-    ZoneScopedN("Shadow.StaticEnd");
+    ZoneScopedN("Shadow.PrePassEnd");
 
     gosPostProcess* pp = getGosPostProcess();
 
@@ -2327,6 +2342,8 @@ void gosRenderer::endShadowPrePass() {
 void gosRenderer::beginDynamicShadowPass() {
     gosPostProcess* pp = getGosPostProcess();
     if (!pp || !pp->shadowsEnabled_ || !shadow_terrain_material_ || !pp->getDynamicShadowFBO()) return;
+
+    ZoneScopedN("Shadow.DynBegin");
 
     glGetIntegerv(GL_FRAMEBUFFER_BINDING, &shadow_prepass_prev_fbo_);
     glGetIntegerv(GL_VIEWPORT, shadow_prepass_prev_viewport_);
@@ -2361,6 +2378,9 @@ void gosRenderer::beginDynamicShadowPass() {
 
 void gosRenderer::endDynamicShadowPass() {
     if (!shadow_prepass_active_) return;
+
+    ZoneScopedN("Shadow.DynEnd");
+
     gosPostProcess* pp = getGosPostProcess();
 
     // Restore comparison mode on dynamic shadow texture
@@ -2605,7 +2625,7 @@ void gosRenderer::drawIndexedTris(gos_VERTEX* vertices, int num_vertices, WORD* 
             (void*)terrain_material_, terrain_batch_extras_count_, terrain_mvp_valid_ ? 1 : 0);
         fflush(stdout);
     }
-    if (curStates_[gos_State_Terrain] && terrain_material_ && terrain_batch_extras_count_ > 0) {
+    if (curStates_[gos_State_Terrain] && terrain_material_ && terrain_batch_extras_count_ > 0 && terrain_draw_enabled_) {
         if (tess_trace_count_++ < 5) {
             printf("[TESS] DRAW: verts=%d idx=%d batch_extras=%d mvp_valid=%d\n",
                 indexed_tris_->getNumVertices(), indexed_tris_->getNumIndices(),
@@ -3818,6 +3838,13 @@ void gos_SetTerrainShadowSoftness(float s) {
 }
 float gos_GetTerrainShadowSoftness() {
     return g_gos_renderer ? g_gos_renderer->getTerrainShadowSoftness() : 2.5f;
+}
+
+void gos_SetTerrainDrawEnabled(bool e) {
+    if (g_gos_renderer) g_gos_renderer->setTerrainDrawEnabled(e);
+}
+bool gos_GetTerrainDrawEnabled() {
+    return g_gos_renderer ? g_gos_renderer->getTerrainDrawEnabled() : true;
 }
 
 #include "gameos_graphics_debug.cpp"
