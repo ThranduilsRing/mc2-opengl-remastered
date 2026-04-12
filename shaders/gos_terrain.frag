@@ -317,7 +317,10 @@ void main(void)
 
     // Shadow — variable PCF taps by distance
     int shadowTaps = (lodNear > 0.5) ? 16 : (lodMid > 0.5) ? 8 : 4;
-    float shadow = calcShadow(WorldPos, N, terrainLightDir.xyz, shadowTaps);
+    float staticShadow = calcShadow(WorldPos, N, terrainLightDir.xyz, shadowTaps);
+    int dynTaps = (lodNear > 0.5) ? 8 : 4;
+    float dynShadow = calcDynamicShadow(WorldPos, N, terrainLightDir.xyz, dynTaps);
+    float shadow = staticShadow * dynShadow;
     c.rgb *= shadow;
 
     // Fog disabled — full Wolfman mode (see across the map)

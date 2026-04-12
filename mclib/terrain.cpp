@@ -373,6 +373,9 @@ long Terrain::init( unsigned long verticesPerMapSide, PacketFile* pakFile, unsig
 	else
 		oneOverWorldUnitsMapSide = 0.0f;
 
+	// Tell GameOS the map extent for static shadow projection
+	gos_SetMapHalfExtent(worldUnitsMapSide * 0.5f);
+
 	Terrain::numObjBlocks = blocksMapSide * blocksMapSide;
 	visibleVerticesPerSide = visibleVertices;
 	terrainHeapSize = MAX_TERRAIN_HEAP_SIZE;
@@ -785,9 +788,6 @@ long Terrain::update (void)
 		// Pass camera world position in raw MC2 space (matching vs_WorldPos for TCS distance LOD)
 		Stuff::Vector3D camOrigin = eye->getCameraOrigin();
 		gos_SetTerrainCameraPos(camOrigin.x, camOrigin.y, camOrigin.z);
-
-		// Pass raw MC2 camera position for shadow centering (must match worldPos space)
-		gos_SetShadowCenter(camOrigin.x, camOrigin.y, camOrigin.z);
 
 		// Pass camera look direction for POM (direction camera looks toward terrain)
 		Stuff::Vector3D lookDir = eye->getLookVector();
