@@ -1144,6 +1144,9 @@ void MC_TextureManager::renderLists (void)
 		float focusX, focusZ;  // MC2 space: x=east, y=north
 		if (fabsf(lv.y) > 0.001f) {
 			float t = -cp.y / lv.y;
+			// Pull center 20% back toward camera so bottom-of-screen mechs
+			// aren't clipped. t=1.0 = exact screen center, t=0.0 = camera feet.
+			t *= 0.80f;
 			// Stuff hit point → MC2: MC2.x = -Stuff.x, MC2.y = Stuff.z
 			focusX = -(cp.x + t * lv.x);
 			focusZ = cp.z + t * lv.z;
