@@ -508,6 +508,9 @@ mat4 perspectiveMatrixY(const float fov, const int width, const int height, cons
 /** Creates a perspective-correct projection matrix */
 mat4 frustumProjMatrix(const float left, const float right, const float bottom, const float top, const float near, const float far);
 
+/** Computes the inverse of a 4x4 matrix; returns identity if singular */
+mat4 inverseMat4(const mat4& m);
+
 /** Creates a shadow projection matrix */
 mat4 shadowMatrix(const vec3 &planeNormal, const float planeOffset, const vec3 &lightPos);
 

@@ -27,6 +27,9 @@ public:
     // Shadow mapping
     void initShadows();
     void destroyShadows();
+    GLuint getSceneNormalTexture() const { return sceneNormalTex_; }
+    GLuint getSceneDepthTexture() const { return sceneDepthTex_; }
+    GLuint getSceneColorTexture() const { return sceneColorTex_; }
     GLuint getShadowTexture() const { return shadowDepthTex_; }
     const float* getLightSpaceMatrix() const { return staticLightSpaceMatrix_; }
     GLuint getShadowFBO() const { return shadowFBO_; }
@@ -67,6 +70,12 @@ public:
     float bloomIntensity_;
     float bloomThreshold_;
 
+    void runScreenShadow();
+    bool screenShadowEnabled_;
+
+    void setInverseViewProj(const float* m) { memcpy(inverseViewProj_, m, 16 * sizeof(float)); }
+    const float* getInverseViewProj() const { return inverseViewProj_; }
+
 private:
     void createFBOs(int w, int h);
     void destroyFBOs();
@@ -76,7 +85,8 @@ private:
     // Scene FBO (full resolution, HDR)
     GLuint sceneFBO_;
     GLuint sceneColorTex_;
-    GLuint sceneDepthRBO_;
+    GLuint sceneDepthTex_;
+    GLuint sceneNormalTex_;
 
     // Bloom ping-pong FBOs (half resolution)
     GLuint bloomFBO_[2];
@@ -120,6 +130,10 @@ private:
     int dynShadowMapSize_;
     float dynamicLightSpaceMatrix_[16];
     glsl_program* shadowDebugProg_;
+
+    // Post-process screen shadow
+    glsl_program* screenShadowProg_;
+    float inverseViewProj_[16];
 };
 
 gosPostProcess* getGosPostProcess();

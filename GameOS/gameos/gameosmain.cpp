@@ -83,6 +83,15 @@ static void handle_key_down( SDL_Keysym* keysym ) {
                 }
             }
             break;
+        case SDLK_F4:
+            if (keysym->mod & KMOD_RALT) {
+                gosPostProcess* pp = getGosPostProcess();
+                if (pp) {
+                    pp->screenShadowEnabled_ = !pp->screenShadowEnabled_;
+                    fprintf(stderr, "Screen Shadows: %s\n", pp->screenShadowEnabled_ ? "ON" : "OFF");
+                }
+            }
+            break;
         case SDLK_F5:
             if (keysym->mod & KMOD_RALT) {
                 bool cur = gos_GetTerrainDrawEnabled();

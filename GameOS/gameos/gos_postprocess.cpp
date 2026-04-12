@@ -37,7 +37,8 @@ gosPostProcess::gosPostProcess()
     , bloomThreshold_(0.6f)
     , sceneFBO_(0)
     , sceneColorTex_(0)
-    , sceneDepthRBO_(0)
+    , sceneDepthTex_(0)
+    , sceneNormalTex_(0)
     , quadVAO_(0)
     , quadVBO_(0)
     , compositeProg_(nullptr)
@@ -60,12 +61,15 @@ gosPostProcess::gosPostProcess()
     , dynShadowDummyColorTex_(0)
     , dynShadowMapSize_(2048)
     , shadowDebugProg_(nullptr)
+    , screenShadowProg_(nullptr)
+    , screenShadowEnabled_(true)
 {
     bloomFBO_[0] = bloomFBO_[1] = 0;
     bloomColorTex_[0] = bloomColorTex_[1] = 0;
     memset(staticLightSpaceMatrix_, 0, sizeof(staticLightSpaceMatrix_));
     memset(dynamicLightSpaceMatrix_, 0, sizeof(dynamicLightSpaceMatrix_));
     memset(savedViewport_, 0, sizeof(savedViewport_));
+    memset(inverseViewProj_, 0, sizeof(inverseViewProj_));
     showShadowDebug_ = false;
     shadowDebugMode_ = 0;
 }
@@ -120,6 +124,11 @@ void gosPostProcess::init(int w, int h)
     if (!shadowDebugProg_ || !shadowDebugProg_->is_valid())
         fprintf(stderr, "gosPostProcess: failed to compile shadow_debug shader\n");
 
+    screenShadowProg_ = glsl_program::makeProgram("shadow_screen",
+        "shaders/postprocess.vert", "shaders/shadow_screen.frag", kShaderPrefix);
+    if (!screenShadowProg_ || !screenShadowProg_->is_valid())
+        fprintf(stderr, "gosPostProcess: failed to compile shadow_screen shader\n");
+
     initShadows();
     initDynamicShadows();
 
@@ -159,6 +168,11 @@ void gosPostProcess::destroy()
         shadowDebugProg_ = nullptr;
     }
 
+    if (screenShadowProg_) {
+        glsl_program::deleteProgram("shadow_screen");
+        screenShadowProg_ = nullptr;
+    }
+
     destroyShadows();
     destroyDynamicShadows();
 
@@ -195,11 +209,31 @@ void gosPostProcess::createFBOs(int w, int h)
     glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_CLAMP_TO_EDGE);
     glFramebufferTexture2D(GL_FRAMEBUFFER, GL_COLOR_ATTACHMENT0, GL_TEXTURE_2D, sceneColorTex_, 0);
 
-    // Depth/stencil renderbuffer
-    glGenRenderbuffers(1, &sceneDepthRBO_);
-    glBindRenderbuffer(GL_RENDERBUFFER, sceneDepthRBO_);
-    glRenderbufferStorage(GL_RENDERBUFFER, GL_DEPTH24_STENCIL8, w, h);
-    glFramebufferRenderbuffer(GL_FRAMEBUFFER, GL_DEPTH_STENCIL_ATTACHMENT, GL_RENDERBUFFER, sceneDepthRBO_);
+    // Depth/stencil texture (sampleable for post-process depth reconstruction)
+    glGenTextures(1, &sceneDepthTex_);
+    glBindTexture(GL_TEXTURE_2D, sceneDepthTex_);
+    glTexImage2D(GL_TEXTURE_2D, 0, GL_DEPTH24_STENCIL8, w, h, 0,
+                 GL_DEPTH_STENCIL, GL_UNSIGNED_INT_24_8, nullptr);
+    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_NEAREST);
+    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_NEAREST);
+    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_CLAMP_TO_EDGE);
+    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_CLAMP_TO_EDGE);
+    glFramebufferTexture2D(GL_FRAMEBUFFER, GL_DEPTH_STENCIL_ATTACHMENT,
+                           GL_TEXTURE_2D, sceneDepthTex_, 0);
+
+    // Normal buffer: MRT attachment 1 (rgb=world normal encoded, a=shadow skip flag)
+    glGenTextures(1, &sceneNormalTex_);
+    glBindTexture(GL_TEXTURE_2D, sceneNormalTex_);
+    glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA16F, w, h, 0, GL_RGBA, GL_FLOAT, nullptr);
+    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_NEAREST);
+    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_NEAREST);
+    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_CLAMP_TO_EDGE);
+    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_CLAMP_TO_EDGE);
+    glFramebufferTexture2D(GL_FRAMEBUFFER, GL_COLOR_ATTACHMENT1, GL_TEXTURE_2D, sceneNormalTex_, 0);
+
+    // MRT: draw to both color attachments
+    GLenum drawBuffers[2] = { GL_COLOR_ATTACHMENT0, GL_COLOR_ATTACHMENT1 };
+    glDrawBuffers(2, drawBuffers);
 
     GLenum status = glCheckFramebufferStatus(GL_FRAMEBUFFER);
     if (status != GL_FRAMEBUFFER_COMPLETE) {
@@ -244,9 +278,13 @@ void gosPostProcess::destroyFBOs()
         glDeleteTextures(1, &sceneColorTex_);
         sceneColorTex_ = 0;
     }
-    if (sceneDepthRBO_) {
-        glDeleteRenderbuffers(1, &sceneDepthRBO_);
-        sceneDepthRBO_ = 0;
+    if (sceneDepthTex_) {
+        glDeleteTextures(1, &sceneDepthTex_);
+        sceneDepthTex_ = 0;
+    }
+    if (sceneNormalTex_) {
+        glDeleteTextures(1, &sceneNormalTex_);
+        sceneNormalTex_ = 0;
     }
     for (int i = 0; i < 2; ++i) {
         if (bloomFBO_[i]) {
@@ -299,6 +337,9 @@ void gosPostProcess::beginScene()
         return;
 
     glBindFramebuffer(GL_FRAMEBUFFER, sceneFBO_);
+    // Ensure MRT is active (shadow passes may have changed glDrawBuffers)
+    GLenum drawBuffers[2] = { GL_COLOR_ATTACHMENT0, GL_COLOR_ATTACHMENT1 };
+    glDrawBuffers(2, drawBuffers);
     glViewport(0, 0, width_, height_);
 }
 
@@ -356,6 +397,72 @@ void gosPostProcess::runBloom()
     glEnable(GL_DEPTH_TEST);
 }
 
+void gosPostProcess::runScreenShadow()
+{
+    ZoneScopedN("Render.ScreenShadow");
+    TracyGpuZone("Render.ScreenShadow");
+
+    if (!screenShadowEnabled_) return;
+    if (!screenShadowProg_ || !screenShadowProg_->is_valid()) return;
+    if (!shadowsEnabled_) return;
+
+    // Render to sceneFBO_ color-only (no normal write) with multiplicative blending
+    glBindFramebuffer(GL_FRAMEBUFFER, sceneFBO_);
+    GLenum singleBuf = GL_COLOR_ATTACHMENT0;
+    glDrawBuffers(1, &singleBuf);
+    glViewport(0, 0, width_, height_);
+
+    glDisable(GL_DEPTH_TEST);
+    glDisable(GL_CULL_FACE);
+    glDepthMask(GL_FALSE);
+
+    // Multiplicative blending: dst * src (shadow darkening)
+    glEnable(GL_BLEND);
+    glBlendFunc(GL_DST_COLOR, GL_ZERO);
+
+    // Set uniforms BEFORE apply()
+    screenShadowProg_->setInt("sceneDepthTex", 0);
+    screenShadowProg_->setInt("sceneNormalTex", 1);
+    screenShadowProg_->setInt("shadowMap", 2);
+    screenShadowProg_->setInt("dynamicShadowMap", 3);
+    screenShadowProg_->setInt("enableShadows", shadowsEnabled_ ? 1 : 0);
+    screenShadowProg_->setInt("enableDynamicShadows", (dynShadowDepthTex_ != 0) ? 1 : 0);
+    screenShadowProg_->setFloat("shadowSoftness", 2.5f);
+    float screenSz[2] = { (float)width_, (float)height_ };
+    screenShadowProg_->setFloat2("screenSize", screenSz);
+    screenShadowProg_->apply();
+
+    // Upload matrices via direct GL (after apply binds the program)
+    GLint loc;
+    loc = glGetUniformLocation(screenShadowProg_->shp_, "inverseViewProj");
+    if (loc >= 0) glUniformMatrix4fv(loc, 1, GL_FALSE, inverseViewProj_);
+    loc = glGetUniformLocation(screenShadowProg_->shp_, "lightSpaceMatrix");
+    if (loc >= 0) glUniformMatrix4fv(loc, 1, GL_FALSE, staticLightSpaceMatrix_);
+    loc = glGetUniformLocation(screenShadowProg_->shp_, "dynamicLightSpaceMatrix");
+    if (loc >= 0) glUniformMatrix4fv(loc, 1, GL_FALSE, dynamicLightSpaceMatrix_);
+
+    // Bind textures
+    glActiveTexture(GL_TEXTURE0);
+    glBindTexture(GL_TEXTURE_2D, sceneDepthTex_);
+    glActiveTexture(GL_TEXTURE1);
+    glBindTexture(GL_TEXTURE_2D, sceneNormalTex_);
+    glActiveTexture(GL_TEXTURE2);
+    glBindTexture(GL_TEXTURE_2D, shadowDepthTex_);
+    glActiveTexture(GL_TEXTURE3);
+    glBindTexture(GL_TEXTURE_2D, dynShadowDepthTex_);
+
+    // Draw fullscreen quad
+    glBindVertexArray(quadVAO_);
+    glDrawArrays(GL_TRIANGLES, 0, 6);
+    glBindVertexArray(0);
+
+    // Restore state
+    glDisable(GL_BLEND);
+    glDepthMask(GL_TRUE);
+    glEnable(GL_DEPTH_TEST);
+    glActiveTexture(GL_TEXTURE0);
+}
+
 void gosPostProcess::endScene()
 {
     ZoneScopedN("Render.PostProcess");
@@ -363,6 +470,9 @@ void gosPostProcess::endScene()
 
     if (!initialized_)
         return;
+
+    // Post-process shadow pass (darkens non-terrain geometry)
+    runScreenShadow();
 
     runBloom();
 

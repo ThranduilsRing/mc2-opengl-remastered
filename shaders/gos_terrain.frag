@@ -13,6 +13,7 @@ in PREC vec3 WorldPos;
 in PREC float UndisplacedDepth;
 
 layout (location=0) out PREC vec4 FragColor;
+layout (location=1) out PREC vec4 GBuffer1;
 
 uniform sampler2D tex1;  // colormap
 uniform sampler2D tex2;  // detail normal (engine default, fallback)
@@ -158,6 +159,7 @@ void main(void)
 
     if (tessDebug.x > 0.5) {
         FragColor = vec4(1.0, 0.0, 0.0, 1.0);  // SOLID RED = tess frag running
+        GBuffer1 = vec4(0.5, 0.5, 1.0, 1.0);
         return;
     }
 
@@ -216,6 +218,7 @@ void main(void)
 
 #ifdef DEBUG_MATERIALS
     FragColor = vec4(matWeights.x, matWeights.y, matWeights.z, 1.0);
+    GBuffer1 = vec4(0.5, 0.5, 1.0, 1.0);
     return;
 #endif
 
@@ -328,6 +331,8 @@ void main(void)
     //     c.rgb = mix(fog_color.rgb, c.rgb, FogValue);
 
     FragColor = c;
+
+    GBuffer1 = vec4(N * 0.5 + 0.5, 1.0);
 
     // Write un-displaced depth so overlays and objects (at original surface height)
     // pass GL_LEQUAL depth test against this terrain fragment.
