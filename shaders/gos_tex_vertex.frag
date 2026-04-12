@@ -63,12 +63,6 @@ void main(void)
 
 	if(fog_color.x>0.0 || fog_color.y>0.0 || fog_color.z>0.0 || fog_color.w>0.0)
     	c.rgb = mix(fog_color.rgb, c.rgb, FogValue);
-
-    // Let terrain shadows bleed through non-water overlays (cement, roads, etc.)
-    if (isWater == 0) {
-        c.a *= 0.85;
-    }
-
 	FragColor = c;
 }
 
