@@ -1246,7 +1246,10 @@ class gosRenderer {
             // Compute inverse VP for post-process depth reconstruction
             mat4 invVP = inverseMat4(terrain_mvp_);
             gosPostProcess* pp = getGosPostProcess();
-            if (pp) pp->setInverseViewProj((const float*)&invVP);
+            if (pp) {
+                pp->setInverseViewProj((const float*)&invVP);
+                pp->setViewProj(m);
+            }
         }
         void setTerrainCameraPos(float x, float y, float z) {
             terrain_camera_pos_ = vec4(x, y, z, 1.0f);

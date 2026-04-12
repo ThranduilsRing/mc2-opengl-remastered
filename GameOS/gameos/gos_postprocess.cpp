@@ -63,6 +63,18 @@ gosPostProcess::gosPostProcess()
     , shadowDebugProg_(nullptr)
     , screenShadowProg_(nullptr)
     , screenShadowEnabled_(true)
+    , ssaoProg_(nullptr)
+    , ssaoBlurProg_(nullptr)
+    , ssaoApplyProg_(nullptr)
+    , ssaoFBO_(0)
+    , ssaoColorTex_(0)
+    , ssaoBlurFBO_(0)
+    , ssaoBlurTex_(0)
+    , ssaoNoiseTex_(0)
+    , ssaoEnabled_(true)
+    , ssaoRadius_(200.0f)
+    , ssaoBias_(25.0f)
+    , ssaoPower_(1.5f)
 {
     bloomFBO_[0] = bloomFBO_[1] = 0;
     bloomColorTex_[0] = bloomColorTex_[1] = 0;
@@ -70,6 +82,7 @@ gosPostProcess::gosPostProcess()
     memset(dynamicLightSpaceMatrix_, 0, sizeof(dynamicLightSpaceMatrix_));
     memset(savedViewport_, 0, sizeof(savedViewport_));
     memset(inverseViewProj_, 0, sizeof(inverseViewProj_));
+    memset(viewProj_, 0, sizeof(viewProj_));
     showShadowDebug_ = false;
     shadowDebugMode_ = 0;
 }
@@ -129,6 +142,21 @@ void gosPostProcess::init(int w, int h)
     if (!screenShadowProg_ || !screenShadowProg_->is_valid())
         fprintf(stderr, "gosPostProcess: failed to compile shadow_screen shader\n");
 
+    ssaoProg_ = glsl_program::makeProgram("ssao",
+        "shaders/postprocess.vert", "shaders/ssao.frag", kShaderPrefix);
+    if (!ssaoProg_ || !ssaoProg_->is_valid())
+        fprintf(stderr, "gosPostProcess: failed to compile ssao shader\n");
+
+    ssaoBlurProg_ = glsl_program::makeProgram("ssao_blur",
+        "shaders/postprocess.vert", "shaders/ssao_blur.frag", kShaderPrefix);
+    if (!ssaoBlurProg_ || !ssaoBlurProg_->is_valid())
+        fprintf(stderr, "gosPostProcess: failed to compile ssao_blur shader\n");
+
+    ssaoApplyProg_ = glsl_program::makeProgram("ssao_apply",
+        "shaders/postprocess.vert", "shaders/ssao_apply.frag", kShaderPrefix);
+    if (!ssaoApplyProg_ || !ssaoApplyProg_->is_valid())
+        fprintf(stderr, "gosPostProcess: failed to compile ssao_apply shader\n");
+
     initShadows();
     initDynamicShadows();
 
@@ -171,6 +199,19 @@ void gosPostProcess::destroy()
     if (screenShadowProg_) {
         glsl_program::deleteProgram("shadow_screen");
         screenShadowProg_ = nullptr;
+    }
+
+    if (ssaoProg_) {
+        glsl_program::deleteProgram("ssao");
+        ssaoProg_ = nullptr;
+    }
+    if (ssaoBlurProg_) {
+        glsl_program::deleteProgram("ssao_blur");
+        ssaoBlurProg_ = nullptr;
+    }
+    if (ssaoApplyProg_) {
+        glsl_program::deleteProgram("ssao_apply");
+        ssaoApplyProg_ = nullptr;
     }
 
     destroyShadows();
@@ -265,6 +306,68 @@ void gosPostProcess::createFBOs(int w, int h)
         }
     }
 
+    // --- SSAO FBOs (half resolution, single channel) ---
+    {
+        // SSAO raw output
+        glGenFramebuffers(1, &ssaoFBO_);
+        glBindFramebuffer(GL_FRAMEBUFFER, ssaoFBO_);
+
+        glGenTextures(1, &ssaoColorTex_);
+        glBindTexture(GL_TEXTURE_2D, ssaoColorTex_);
+        glTexImage2D(GL_TEXTURE_2D, 0, GL_R16F, halfW, halfH, 0, GL_RED, GL_FLOAT, nullptr);
+        glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
+        glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
+        glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_CLAMP_TO_EDGE);
+        glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_CLAMP_TO_EDGE);
+        glFramebufferTexture2D(GL_FRAMEBUFFER, GL_COLOR_ATTACHMENT0, GL_TEXTURE_2D, ssaoColorTex_, 0);
+
+        status = glCheckFramebufferStatus(GL_FRAMEBUFFER);
+        if (status != GL_FRAMEBUFFER_COMPLETE)
+            fprintf(stderr, "gosPostProcess: SSAO FBO incomplete (0x%x)\n", status);
+
+        // SSAO blur target
+        glGenFramebuffers(1, &ssaoBlurFBO_);
+        glBindFramebuffer(GL_FRAMEBUFFER, ssaoBlurFBO_);
+
+        glGenTextures(1, &ssaoBlurTex_);
+        glBindTexture(GL_TEXTURE_2D, ssaoBlurTex_);
+        glTexImage2D(GL_TEXTURE_2D, 0, GL_R16F, halfW, halfH, 0, GL_RED, GL_FLOAT, nullptr);
+        glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
+        glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
+        glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_CLAMP_TO_EDGE);
+        glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_CLAMP_TO_EDGE);
+        glFramebufferTexture2D(GL_FRAMEBUFFER, GL_COLOR_ATTACHMENT0, GL_TEXTURE_2D, ssaoBlurTex_, 0);
+
+        status = glCheckFramebufferStatus(GL_FRAMEBUFFER);
+        if (status != GL_FRAMEBUFFER_COMPLETE)
+            fprintf(stderr, "gosPostProcess: SSAO blur FBO incomplete (0x%x)\n", status);
+    }
+
+    // --- 4x4 SSAO noise texture ---
+    {
+        // Random tangent-space rotation vectors
+        float noiseData[4 * 4 * 3];
+        // Deterministic noise pattern (reproducible)
+        unsigned int seed = 42;
+        for (int i = 0; i < 16; i++) {
+            seed = seed * 1103515245 + 12345;
+            float x = ((seed >> 16) & 0x7FFF) / 16383.5f - 1.0f;
+            seed = seed * 1103515245 + 12345;
+            float y = ((seed >> 16) & 0x7FFF) / 16383.5f - 1.0f;
+            // Encode as [0,1] for RGB texture
+            noiseData[i * 3 + 0] = x * 0.5f + 0.5f;
+            noiseData[i * 3 + 1] = y * 0.5f + 0.5f;
+            noiseData[i * 3 + 2] = 0.5f;
+        }
+        glGenTextures(1, &ssaoNoiseTex_);
+        glBindTexture(GL_TEXTURE_2D, ssaoNoiseTex_);
+        glTexImage2D(GL_TEXTURE_2D, 0, GL_RGB16F, 4, 4, 0, GL_RGB, GL_FLOAT, noiseData);
+        glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_NEAREST);
+        glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_NEAREST);
+        glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_REPEAT);
+        glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_REPEAT);
+    }
+
     glBindFramebuffer(GL_FRAMEBUFFER, 0);
 }
 
@@ -296,6 +399,11 @@ void gosPostProcess::destroyFBOs()
             bloomColorTex_[i] = 0;
         }
     }
+    if (ssaoFBO_) { glDeleteFramebuffers(1, &ssaoFBO_); ssaoFBO_ = 0; }
+    if (ssaoColorTex_) { glDeleteTextures(1, &ssaoColorTex_); ssaoColorTex_ = 0; }
+    if (ssaoBlurFBO_) { glDeleteFramebuffers(1, &ssaoBlurFBO_); ssaoBlurFBO_ = 0; }
+    if (ssaoBlurTex_) { glDeleteTextures(1, &ssaoBlurTex_); ssaoBlurTex_ = 0; }
+    if (ssaoNoiseTex_) { glDeleteTextures(1, &ssaoNoiseTex_); ssaoNoiseTex_ = 0; }
 }
 
 void gosPostProcess::createFullscreenQuad()
@@ -463,6 +571,104 @@ void gosPostProcess::runScreenShadow()
     glActiveTexture(GL_TEXTURE0);
 }
 
+void gosPostProcess::runSSAO()
+{
+    ZoneScopedN("Render.SSAO");
+    TracyGpuZone("Render.SSAO");
+
+    if (!ssaoEnabled_) return;
+    if (!ssaoProg_ || !ssaoProg_->is_valid()) return;
+    if (!ssaoBlurProg_ || !ssaoBlurProg_->is_valid()) return;
+
+    int hw = width_ / 2, hh = height_ / 2;
+    if (hw < 1) hw = 1;
+    if (hh < 1) hh = 1;
+
+    glDisable(GL_DEPTH_TEST);
+    glDisable(GL_CULL_FACE);
+    glDepthMask(GL_FALSE);
+    glDisable(GL_BLEND);
+
+    // Pass 1: SSAO sampling at half resolution
+    glBindFramebuffer(GL_FRAMEBUFFER, ssaoFBO_);
+    glViewport(0, 0, hw, hh);
+    glClear(GL_COLOR_BUFFER_BIT);
+
+    ssaoProg_->setInt("sceneDepthTex", 0);
+    ssaoProg_->setInt("sceneNormalTex", 1);
+    ssaoProg_->setInt("noiseTex", 2);
+    ssaoProg_->setFloat("ssaoRadius", ssaoRadius_);
+    ssaoProg_->setFloat("ssaoBias", ssaoBias_);
+    ssaoProg_->setFloat("ssaoPower", ssaoPower_);
+    float screenSz[2] = { (float)width_, (float)height_ };
+    ssaoProg_->setFloat2("screenSize", screenSz);
+    ssaoProg_->apply();
+
+    // Upload matrices via direct GL
+    GLint loc;
+    loc = glGetUniformLocation(ssaoProg_->shp_, "viewProj");
+    if (loc >= 0) glUniformMatrix4fv(loc, 1, GL_FALSE, viewProj_);
+    loc = glGetUniformLocation(ssaoProg_->shp_, "inverseViewProj");
+    if (loc >= 0) glUniformMatrix4fv(loc, 1, GL_FALSE, inverseViewProj_);
+
+    glActiveTexture(GL_TEXTURE0);
+    glBindTexture(GL_TEXTURE_2D, sceneDepthTex_);
+    glActiveTexture(GL_TEXTURE1);
+    glBindTexture(GL_TEXTURE_2D, sceneNormalTex_);
+    glActiveTexture(GL_TEXTURE2);
+    glBindTexture(GL_TEXTURE_2D, ssaoNoiseTex_);
+
+    glBindVertexArray(quadVAO_);
+    glDrawArrays(GL_TRIANGLES, 0, 6);
+
+    // Pass 2: Bilateral blur — horizontal
+    float texelSz[2] = { 1.0f / (float)hw, 1.0f / (float)hh };
+
+    glBindFramebuffer(GL_FRAMEBUFFER, ssaoBlurFBO_);
+    ssaoBlurProg_->setInt("ssaoTex", 0);
+    ssaoBlurProg_->setInt("sceneDepthTex", 1);
+    ssaoBlurProg_->setFloat2("texelSize", texelSz);
+    ssaoBlurProg_->setInt("blurHorizontal", 1);
+    ssaoBlurProg_->apply();
+
+    glActiveTexture(GL_TEXTURE0);
+    glBindTexture(GL_TEXTURE_2D, ssaoColorTex_);
+    glActiveTexture(GL_TEXTURE1);
+    glBindTexture(GL_TEXTURE_2D, sceneDepthTex_);
+    glDrawArrays(GL_TRIANGLES, 0, 6);
+
+    // Pass 3: Bilateral blur — vertical (back into ssaoColorTex_)
+    glBindFramebuffer(GL_FRAMEBUFFER, ssaoFBO_);
+    ssaoBlurProg_->setInt("blurHorizontal", 0);
+    ssaoBlurProg_->apply();
+
+    glActiveTexture(GL_TEXTURE0);
+    glBindTexture(GL_TEXTURE_2D, ssaoBlurTex_);
+    glDrawArrays(GL_TRIANGLES, 0, 6);
+
+    // Result is in ssaoColorTex_ — apply to scene via multiplicative blending
+    glBindFramebuffer(GL_FRAMEBUFFER, sceneFBO_);
+    GLenum singleBuf = GL_COLOR_ATTACHMENT0;
+    glDrawBuffers(1, &singleBuf);
+    glViewport(0, 0, width_, height_);
+
+    glEnable(GL_BLEND);
+    glBlendFunc(GL_DST_COLOR, GL_ZERO);
+
+    ssaoApplyProg_->setInt("ssaoTex", 0);
+    ssaoApplyProg_->apply();
+
+    glActiveTexture(GL_TEXTURE0);
+    glBindTexture(GL_TEXTURE_2D, ssaoColorTex_);
+    glDrawArrays(GL_TRIANGLES, 0, 6);
+
+    glBindVertexArray(0);
+    glDisable(GL_BLEND);
+    glDepthMask(GL_TRUE);
+    glEnable(GL_DEPTH_TEST);
+    glActiveTexture(GL_TEXTURE0);
+}
+
 void gosPostProcess::endScene()
 {
     ZoneScopedN("Render.PostProcess");
@@ -473,6 +679,9 @@ void gosPostProcess::endScene()
 
     // Post-process shadow pass (darkens non-terrain geometry)
     runScreenShadow();
+
+    // SSAO pass (half-res, bilateral blurred, multiplicative)
+    runSSAO();
 
     runBloom();
 
