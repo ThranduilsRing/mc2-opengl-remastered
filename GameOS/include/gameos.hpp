@@ -2269,20 +2269,26 @@ void __stdcall gos_SetTerrainDebugMode(float mode);
 bool __stdcall gos_IsTerrainTessellationActive();
 
 // Shadow coordinate API (raw MC2 coordinates for shadow matrix)
-void gos_SetShadowCenter(float x, float y, float z);
-void gos_GetShadowCenter(float* x, float* y, float* z);
 void gos_GetTerrainLightDir(float* x, float* y, float* z);
 
-// Shadow pre-pass API (renders all terrain to shadow map before shading)
-bool gos_ShouldRenderShadows();
+// Static shadow API: world-fixed shadow map rendered once at map load
+void gos_SetMapHalfExtent(float halfExtent);
+bool gos_StaticShadowsRendered();
+void gos_RenderStaticShadows();  // builds matrix, called from renderLists gate
+void gos_MarkStaticShadowsRendered();
 void gos_BeginShadowPrePass();
-void gos_DrawShadowBatch(const gos_TERRAIN_EXTRA* extras, int count);
 void gos_DrawShadowBatchTessellated(gos_VERTEX* vertices, int numVerts,
     WORD* indices, int numIndices,
     const gos_TERRAIN_EXTRA* extras, int extraCount);
 void gos_EndShadowPrePass();
 void gos_DrawShadowObjectBatch(HGOSBUFFER vb, HGOSBUFFER ib,
     HGOSVERTEXDECLARATION vdecl, const float* worldMatrix4x4);
+
+// Dynamic object shadow pass (camera-centered, per-frame)
+void gos_BeginDynamicShadowPass();
+void gos_EndDynamicShadowPass();
+void gos_BuildDynamicLightMatrix(float sunDirX, float sunDirY, float sunDirZ,
+                                  float camX, float camY, float camZ);
 void __stdcall gos_SetTerrainMVP(const float* matrix16);
 void __stdcall gos_SetTerrainViewport(float vmx, float vmy, float vax, float vay);
 void __stdcall gos_SetTerrainCameraPos(float x, float y, float z);
@@ -2307,6 +2313,10 @@ float gos_GetTerrainDetailTiling();
 // Shadow softness (penumbra radius in texels for Poisson disk sampling)
 void gos_SetTerrainShadowSoftness(float s);
 float gos_GetTerrainShadowSoftness();
+
+// Terrain draw killswitch
+void gos_SetTerrainDrawEnabled(bool e);
+bool gos_GetTerrainDrawEnabled();
 
 // Shadow mode — render terrain depth to shadow FBO
 void gos_SetShadowMode(bool enable);
