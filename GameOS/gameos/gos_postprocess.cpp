@@ -653,6 +653,21 @@ void gosPostProcess::runSSAO()
     glBindTexture(GL_TEXTURE_2D, ssaoBlurTex_);
     glDrawArrays(GL_TRIANGLES, 0, 6);
 
+    // Pass 4+5: Second blur iteration for smoother result
+    glBindFramebuffer(GL_FRAMEBUFFER, ssaoBlurFBO_);
+    ssaoBlurProg_->setInt("blurHorizontal", 1);
+    ssaoBlurProg_->apply();
+    glActiveTexture(GL_TEXTURE0);
+    glBindTexture(GL_TEXTURE_2D, ssaoColorTex_);
+    glDrawArrays(GL_TRIANGLES, 0, 6);
+
+    glBindFramebuffer(GL_FRAMEBUFFER, ssaoFBO_);
+    ssaoBlurProg_->setInt("blurHorizontal", 0);
+    ssaoBlurProg_->apply();
+    glActiveTexture(GL_TEXTURE0);
+    glBindTexture(GL_TEXTURE_2D, ssaoBlurTex_);
+    glDrawArrays(GL_TRIANGLES, 0, 6);
+
     // Result is in ssaoColorTex_ — apply to scene via multiplicative blending
     glBindFramebuffer(GL_FRAMEBUFFER, sceneFBO_);
     GLenum singleBuf = GL_COLOR_ATTACHMENT0;
