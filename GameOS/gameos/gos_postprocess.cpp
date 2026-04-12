@@ -732,7 +732,7 @@ void gosPostProcess::buildDynamicLightMatrix(float sunDirX, float sunDirY, float
     if (len < 0.001f) return;
     float fx = sunDirX/len, fy = sunDirY/len, fz = sunDirZ/len;
 
-    float xyRadius = 800.0f;  // tight frustum around mechs — static map covers terrain
+    float xyRadius = 1200.0f;  // covers battle area around camera look-at point
     float depthDist = 5000.0f;              // large depth to envelope all elevations
 
     // Texel snapping: quantize camera position to shadow texel grid
