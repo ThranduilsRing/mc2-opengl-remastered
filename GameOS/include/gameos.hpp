@@ -2271,12 +2271,12 @@ bool __stdcall gos_IsTerrainTessellationActive();
 // Shadow coordinate API (raw MC2 coordinates for shadow matrix)
 void gos_GetTerrainLightDir(float* x, float* y, float* z);
 
-// Static shadow API: world-fixed shadow map rendered once at map load
+// Static shadow API: world-fixed shadow map, accumulates over multiple frames
 void gos_SetMapHalfExtent(float halfExtent);
-bool gos_StaticShadowsRendered();
-void gos_RenderStaticShadows();  // builds matrix, called from renderLists gate
-void gos_MarkStaticShadowsRendered();
-void gos_BeginShadowPrePass();
+bool gos_StaticLightMatrixBuilt();
+void gos_BuildStaticLightMatrix();  // builds matrix once (idempotent)
+void gos_MarkStaticLightMatrixBuilt();
+void gos_BeginShadowPrePass(bool clearDepth = true);
 void gos_DrawShadowBatchTessellated(gos_VERTEX* vertices, int numVerts,
     WORD* indices, int numIndices,
     const gos_TERRAIN_EXTRA* extras, int extraCount);
