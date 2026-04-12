@@ -1291,7 +1291,7 @@ class gosRenderer {
         bool getTerrainDrawEnabled() const { return terrain_draw_enabled_; }
 
         // Shadow pre-pass (separate pass over all terrain batches before shading)
-        void beginShadowPrePass();
+        void beginShadowPrePass(bool clearDepth = true);
         void drawShadowBatchTessellated(gos_VERTEX* vertices, int numVerts,
             WORD* indices, int numIndices,
             const gos_TERRAIN_EXTRA* extras, int extraCount);
@@ -2105,7 +2105,7 @@ void gosRenderer::drawTris(gos_VERTEX* vertices, int count) {
 // --- Shadow pre-pass: renders ALL terrain batches to shadow map before any shading ---
 // This eliminates per-batch seams where early batches couldn't see later batches' shadows.
 
-void gosRenderer::beginShadowPrePass() {
+void gosRenderer::beginShadowPrePass(bool clearDepth) {
     gosPostProcess* pp = getGosPostProcess();
     if (!pp || !pp->shadowsEnabled_ || !shadow_terrain_material_) return;
 
@@ -2126,11 +2126,11 @@ void gosRenderer::beginShadowPrePass() {
     glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_COMPARE_MODE, GL_NONE);
     glBindTexture(GL_TEXTURE_2D, 0);
 
-    // Bind shadow FBO, clear depth, and configure state
+    // Bind shadow FBO, optionally clear depth, and configure state
     glBindFramebuffer(GL_FRAMEBUFFER, pp->getShadowFBO());
     glViewport(0, 0, 2048, 2048);
-    glDepthMask(GL_TRUE);  // MUST be before glClear — glClear respects glDepthMask
-    glClear(GL_DEPTH_BUFFER_BIT);
+    glDepthMask(GL_TRUE);
+    if (clearDepth) glClear(GL_DEPTH_BUFFER_BIT);
     glEnable(GL_DEPTH_TEST);
     glDepthFunc(GL_LESS);
     glDisable(GL_CULL_FACE);
@@ -3738,11 +3738,11 @@ void gos_SetMapHalfExtent(float halfExtent) {
     gosPostProcess* pp = getGosPostProcess();
     if (pp) pp->setMapHalfExtent(halfExtent);
 }
-bool gos_StaticShadowsRendered() {
+bool gos_StaticLightMatrixBuilt() {
     gosPostProcess* pp = getGosPostProcess();
-    return pp && pp->staticShadowsRendered();
+    return pp && pp->staticLightMatrixBuilt();
 }
-void gos_RenderStaticShadows() {
+void gos_BuildStaticLightMatrix() {
     gosPostProcess* pp = getGosPostProcess();
     if (!pp || !pp->shadowsEnabled_) return;
     float lx = 0, ly = 0, lz = 0;
@@ -3750,12 +3750,12 @@ void gos_RenderStaticShadows() {
     // Negate: lightDir points scene→sun, but matrix needs light→scene
     pp->buildStaticLightMatrix(-lx, -ly, -lz, pp->getMapHalfExtent());
 }
-void gos_MarkStaticShadowsRendered() {
+void gos_MarkStaticLightMatrixBuilt() {
     gosPostProcess* pp = getGosPostProcess();
-    if (pp) pp->markStaticShadowsRendered();
+    if (pp) pp->markStaticLightMatrixBuilt();
 }
-void gos_BeginShadowPrePass() {
-    if (g_gos_renderer) g_gos_renderer->beginShadowPrePass();
+void gos_BeginShadowPrePass(bool clearDepth) {
+    if (g_gos_renderer) g_gos_renderer->beginShadowPrePass(clearDepth);
 }
 void gos_EndShadowPrePass() {
     if (g_gos_renderer) g_gos_renderer->endShadowPrePass();

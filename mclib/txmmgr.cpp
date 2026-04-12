@@ -1075,13 +1075,31 @@ void MC_TextureManager::renderLists (void)
 	// restore viewport
 	gos_SetRenderViewport(0, 0, Environment.drawableWidth, Environment.drawableHeight);
 
-	// Static shadow pass: render ALL terrain to shadow map once at map load.
-	// World-fixed ortho projection covers entire map — never re-rendered.
-	if (gos_IsTerrainTessellationActive() && !gos_StaticShadowsRendered()) {
-		ZoneScopedN("Shadow.StaticBuild");
-		TracyGpuZone("Shadow.StaticBuild");
-		gos_RenderStaticShadows();  // builds world-fixed light matrix
-		gos_BeginShadowPrePass();   // clears shadow map, binds shadow FBO + shader
+	// Static shadow pass: accumulate terrain into shadow map over multiple frames.
+	// World-fixed ortho projection covers entire map. First frame clears + builds matrix,
+	// subsequent frames accumulate new terrain as camera reveals new areas.
+	// Skip re-render when camera hasn't moved (same terrain already in shadow map).
+	{
+		static float lastShadowCamX = 1e9f, lastShadowCamY = 1e9f, lastShadowCamZ = 1e9f;
+		float sdx = cp.x - lastShadowCamX;
+		float sdy = cp.y - lastShadowCamY;
+		float sdz = cp.z - lastShadowCamZ;
+		float shadowCamDist = sdx*sdx + sdy*sdy + sdz*sdz;
+		float shadowCacheThreshold = 100.0f;  // re-render when camera moves >100 units
+
+	if (gos_IsTerrainTessellationActive() && shadowCamDist > shadowCacheThreshold * shadowCacheThreshold) {
+		ZoneScopedN("Shadow.StaticAccum");
+		TracyGpuZone("Shadow.StaticAccum");
+
+		lastShadowCamX = cp.x; lastShadowCamY = cp.y; lastShadowCamZ = cp.z;
+
+		bool firstFrame = !gos_StaticLightMatrixBuilt();
+		if (firstFrame) {
+			gos_BuildStaticLightMatrix();  // builds world-fixed light matrix (once)
+			gos_MarkStaticLightMatrixBuilt();
+		}
+
+		gos_BeginShadowPrePass(firstFrame);  // clear only on first frame
 		for (long si = 0; si < nextAvailableVertexNode; si++) {
 			if ((masterVertexNodes[si].flags & MC2_DRAWSOLID) &&
 				(masterVertexNodes[si].flags & MC2_ISTERRAIN) &&
@@ -1108,9 +1126,9 @@ void MC_TextureManager::renderLists (void)
 				}
 			}
 		}
-		gos_EndShadowPrePass();             // restores scene FBO, re-enables comparison mode
-		gos_MarkStaticShadowsRendered();    // never render again
+		gos_EndShadowPrePass();
 	}
+	} // end shadow cache scope
 	// Dynamic object shadow pass: render g_shadowShapes[] every frame
 	if (gos_IsTerrainTessellationActive() && g_numShadowShapes > 0) {
 		ZoneScopedN("Shadow.DynPass");

@@ -31,6 +31,7 @@ public:
     const float* getLightSpaceMatrix() const { return staticLightSpaceMatrix_; }
     GLuint getShadowFBO() const { return shadowFBO_; }
     void beginShadowPass();
+    void beginShadowPassNoClear();  // accumulate into existing shadow map
     void endShadowPass();
     bool shadowsEnabled_;
 
@@ -39,11 +40,11 @@ public:
     int shadowDebugMode_;         // 0=static, 1=dynamic
     void drawShadowDebugOverlay();
 
-    // Static world-fixed shadows: render once at map load
+    // Static world-fixed shadows: accumulate over multiple frames
     void buildStaticLightMatrix(float sunDirX, float sunDirY, float sunDirZ,
                                 float mapHalfExtent);
-    bool staticShadowsRendered() const { return staticShadowsRendered_; }
-    void markStaticShadowsRendered() { staticShadowsRendered_ = true; }
+    bool staticLightMatrixBuilt() const { return staticLightMatrixBuilt_; }
+    void markStaticLightMatrixBuilt() { staticLightMatrixBuilt_ = true; }
     void setMapHalfExtent(float extent) { mapHalfExtent_ = extent; }
     float getMapHalfExtent() const { return mapHalfExtent_; }
 
@@ -108,7 +109,7 @@ private:
     int shadowMapSize_;
     int savedViewport_[4];
     float staticLightSpaceMatrix_[16]; // world-fixed ortho, built once at map load
-    bool staticShadowsRendered_;       // true after first (and only) shadow render
+    bool staticLightMatrixBuilt_;      // true after light matrix is built (first frame)
     float mapHalfExtent_;              // half the map size in world units
 
     // Dynamic object shadow FBO (1024x1024, camera-centered, per-frame)

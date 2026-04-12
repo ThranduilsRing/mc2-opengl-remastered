@@ -53,7 +53,7 @@ gosPostProcess::gosPostProcess()
     , shadowDepthProg_(nullptr)
     , shadowMapSize_(2048)
     , shadowsEnabled_(true)
-    , staticShadowsRendered_(false)
+    , staticLightMatrixBuilt_(false)
     , mapHalfExtent_(0.0f)
     , dynShadowFBO_(0)
     , dynShadowDepthTex_(0)
@@ -530,7 +530,7 @@ void gosPostProcess::initShadows()
     // Initialize with identity so shadow map reads white (no shadow)
     memset(staticLightSpaceMatrix_, 0, sizeof(staticLightSpaceMatrix_));
     staticLightSpaceMatrix_[0] = staticLightSpaceMatrix_[5] = staticLightSpaceMatrix_[10] = staticLightSpaceMatrix_[15] = 1.0f;
-    staticShadowsRendered_ = false;
+    staticLightMatrixBuilt_ = false;
 
     // Clear shadow map to max depth (1.0) so everything is "lit"
     glBindFramebuffer(GL_FRAMEBUFFER, shadowFBO_);
@@ -563,6 +563,26 @@ void gosPostProcess::beginShadowPass()
     glDisable(GL_CULL_FACE);
 }
 
+void gosPostProcess::beginShadowPassNoClear()
+{
+    if (!shadowsEnabled_ || !shadowFBO_) return;
+
+    glGetIntegerv(GL_VIEWPORT, savedViewport_);
+    glBindFramebuffer(GL_FRAMEBUFFER, shadowFBO_);
+    glViewport(0, 0, shadowMapSize_, shadowMapSize_);
+    // NO glClear — accumulate depth from previous frames
+
+    glEnable(GL_DEPTH_TEST);
+    glDepthFunc(GL_LESS);
+    glDepthMask(GL_TRUE);
+
+    glEnable(GL_POLYGON_OFFSET_FILL);
+    glPolygonOffset(2.0f, 4.0f);
+
+    glColorMask(GL_FALSE, GL_FALSE, GL_FALSE, GL_FALSE);
+    glDisable(GL_CULL_FACE);
+}
+
 void gosPostProcess::endShadowPass()
 {
     if (!shadowsEnabled_ || !shadowFBO_) return;
@@ -588,7 +608,7 @@ void gosPostProcess::buildStaticLightMatrix(float sunDirX, float sunDirY, float 
                                              float mapHalfExtent)
 {
     if (!shadowsEnabled_ || !shadowFBO_) return;
-    if (staticShadowsRendered_) return;
+    if (staticLightMatrixBuilt_) return;
 
     // Build world-fixed orthographic light-space matrix centered at map origin
     // sunDir points light→scene (already negated by caller)
