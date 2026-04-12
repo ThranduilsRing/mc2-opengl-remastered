@@ -59,12 +59,15 @@ gosPostProcess::gosPostProcess()
     , dynShadowDepthTex_(0)
     , dynShadowDummyColorTex_(0)
     , dynShadowMapSize_(1024)
+    , shadowDebugProg_(nullptr)
 {
     bloomFBO_[0] = bloomFBO_[1] = 0;
     bloomColorTex_[0] = bloomColorTex_[1] = 0;
     memset(staticLightSpaceMatrix_, 0, sizeof(staticLightSpaceMatrix_));
     memset(dynamicLightSpaceMatrix_, 0, sizeof(dynamicLightSpaceMatrix_));
     memset(savedViewport_, 0, sizeof(savedViewport_));
+    showShadowDebug_ = false;
+    shadowDebugMode_ = 0;
 }
 
 gosPostProcess::~gosPostProcess()
@@ -112,6 +115,11 @@ void gosPostProcess::init(int w, int h)
     if (!bloomBlurProg_ || !bloomBlurProg_->is_valid())
         fprintf(stderr, "gosPostProcess: failed to compile bloom_blur shader\n");
 
+    shadowDebugProg_ = glsl_program::makeProgram("shadow_debug",
+        "shaders/postprocess.vert", "shaders/shadow_debug.frag", kShaderPrefix);
+    if (!shadowDebugProg_ || !shadowDebugProg_->is_valid())
+        fprintf(stderr, "gosPostProcess: failed to compile shadow_debug shader\n");
+
     initShadows();
     initDynamicShadows();
 
@@ -144,6 +152,11 @@ void gosPostProcess::destroy()
     if (bloomBlurProg_) {
         glsl_program::deleteProgram("bloom_blur");
         bloomBlurProg_ = nullptr;
+    }
+
+    if (shadowDebugProg_) {
+        glsl_program::deleteProgram("shadow_debug");
+        shadowDebugProg_ = nullptr;
     }
 
     destroyShadows();
@@ -393,7 +406,54 @@ void gosPostProcess::endScene()
         glActiveTexture(GL_TEXTURE0);
     }
 
+    // Shadow debug overlay (draws on top of composite)
+    drawShadowDebugOverlay();
+
     // Re-enable depth test
+    glDepthMask(GL_TRUE);
+    glEnable(GL_DEPTH_TEST);
+}
+
+void gosPostProcess::drawShadowDebugOverlay()
+{
+    if (!showShadowDebug_ || !shadowDebugProg_ || !shadowDebugProg_->is_valid())
+        return;
+    if (!initialized_)
+        return;
+
+    GLuint tex = (shadowDebugMode_ == 0) ? shadowDepthTex_ : dynShadowDepthTex_;
+    if (!tex)
+        return;
+
+    GLint prevViewport[4];
+    glGetIntegerv(GL_VIEWPORT, prevViewport);
+
+    int quadSize = 256;
+    int margin = 16;
+    glViewport(margin, height_ - quadSize - margin, quadSize, quadSize);
+
+    glDisable(GL_DEPTH_TEST);
+    glDepthMask(GL_FALSE);
+
+    // Temporarily switch shadow texture from comparison mode to raw depth read
+    glBindTexture(GL_TEXTURE_2D, tex);
+    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_COMPARE_MODE, GL_NONE);
+
+    shadowDebugProg_->setInt("shadowDebugMap", 0);
+    shadowDebugProg_->apply();
+
+    glActiveTexture(GL_TEXTURE0);
+    glBindTexture(GL_TEXTURE_2D, tex);
+
+    glBindVertexArray(quadVAO_);
+    glDrawArrays(GL_TRIANGLES, 0, 6);
+    glBindVertexArray(0);
+
+    // CRITICAL: restore comparison mode so PCF sampling works next frame
+    glBindTexture(GL_TEXTURE_2D, tex);
+    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_COMPARE_MODE, GL_COMPARE_REF_TO_TEXTURE);
+
+    glViewport(prevViewport[0], prevViewport[1], prevViewport[2], prevViewport[3]);
     glDepthMask(GL_TRUE);
     glEnable(GL_DEPTH_TEST);
 }
