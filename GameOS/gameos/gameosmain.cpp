@@ -60,8 +60,17 @@ static void handle_key_down( SDL_Keysym* keysym ) {
             if (keysym->mod & KMOD_RALT) {
                 gosPostProcess* pp = getGosPostProcess();
                 if (pp) {
-                    pp->tonemapEnabled_ = !pp->tonemapEnabled_;
-                    fprintf(stderr, "Tonemapping: %s\n", pp->tonemapEnabled_ ? "ON" : "OFF");
+                    if (!pp->showShadowDebug_) {
+                        pp->showShadowDebug_ = true;
+                        pp->shadowDebugMode_ = 0;
+                        fprintf(stderr, "Shadow Debug: STATIC map\n");
+                    } else if (pp->shadowDebugMode_ == 0) {
+                        pp->shadowDebugMode_ = 1;
+                        fprintf(stderr, "Shadow Debug: DYNAMIC map\n");
+                    } else {
+                        pp->showShadowDebug_ = false;
+                        fprintf(stderr, "Shadow Debug: OFF\n");
+                    }
                 }
             }
             break;
@@ -76,11 +85,9 @@ static void handle_key_down( SDL_Keysym* keysym ) {
             break;
         case SDLK_F5:
             if (keysym->mod & KMOD_RALT) {
-                gosPostProcess* pp = getGosPostProcess();
-                if (pp) {
-                    pp->fxaaEnabled_ = !pp->fxaaEnabled_;
-                    fprintf(stderr, "FXAA: %s\n", pp->fxaaEnabled_ ? "ON" : "OFF");
-                }
+                bool cur = gos_GetTerrainDrawEnabled();
+                gos_SetTerrainDrawEnabled(!cur);
+                fprintf(stderr, "Terrain Draw: %s\n", !cur ? "ON" : "OFF");
             }
             break;
     }
