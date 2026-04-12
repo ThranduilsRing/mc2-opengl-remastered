@@ -27,18 +27,35 @@ public:
     // Shadow mapping
     void initShadows();
     void destroyShadows();
-    void updateLightMatrix(float sunDirX, float sunDirY, float sunDirZ,
-                           float camX, float camY, float camZ, float radius);
     GLuint getShadowTexture() const { return shadowDepthTex_; }
-    const float* getLightSpaceMatrix() const { return cachedLightSpaceMatrix_; }
+    const float* getLightSpaceMatrix() const { return staticLightSpaceMatrix_; }
     GLuint getShadowFBO() const { return shadowFBO_; }
     void beginShadowPass();
     void endShadowPass();
     bool shadowsEnabled_;
-    bool shouldRenderShadows();
-    const float* getCachedLightSpaceMatrix() const { return cachedLightSpaceMatrix_; }
-    float shadowCacheMoveThreshold_;   // re-render when camera moves this far
-    bool shadowCacheDirty_;            // force render on first frame or toggle
+
+    // Shadow debug overlay
+    bool showShadowDebug_;        // master toggle for debug overlay
+    int shadowDebugMode_;         // 0=static, 1=dynamic
+    void drawShadowDebugOverlay();
+
+    // Static world-fixed shadows: render once at map load
+    void buildStaticLightMatrix(float sunDirX, float sunDirY, float sunDirZ,
+                                float mapHalfExtent);
+    bool staticShadowsRendered() const { return staticShadowsRendered_; }
+    void markStaticShadowsRendered() { staticShadowsRendered_ = true; }
+    void setMapHalfExtent(float extent) { mapHalfExtent_ = extent; }
+    float getMapHalfExtent() const { return mapHalfExtent_; }
+
+    // Dynamic object shadows: camera-centered, re-rendered every frame
+    void initDynamicShadows();
+    void destroyDynamicShadows();
+    void buildDynamicLightMatrix(float sunDirX, float sunDirY, float sunDirZ,
+                                 float camX, float camY, float camZ);
+    GLuint getDynamicShadowTexture() const { return dynShadowDepthTex_; }
+    GLuint getDynamicShadowFBO() const { return dynShadowFBO_; }
+    const float* getDynamicLightSpaceMatrix() const { return dynamicLightSpaceMatrix_; }
+    int getDynamicShadowMapSize() const { return dynShadowMapSize_; }
 
     // Toggles and parameters
     float exposure_;
@@ -89,11 +106,18 @@ private:
     GLuint shadowDummyColorTex_;  // AMD needs a color attachment for rasterization
     glsl_program* shadowDepthProg_;
     int shadowMapSize_;
-    float lightSpaceMatrix_[16];
     int savedViewport_[4];
-    float cachedLightSpaceMatrix_[16]; // matrix matching cached shadow content
-    float cachedShadowCenterX_, cachedShadowCenterY_, cachedShadowCenterZ_;
-    float shadowCenterX_, shadowCenterY_, shadowCenterZ_;  // current frame shadow center
+    float staticLightSpaceMatrix_[16]; // world-fixed ortho, built once at map load
+    bool staticShadowsRendered_;       // true after first (and only) shadow render
+    float mapHalfExtent_;              // half the map size in world units
+
+    // Dynamic object shadow FBO (1024x1024, camera-centered, per-frame)
+    GLuint dynShadowFBO_;
+    GLuint dynShadowDepthTex_;
+    GLuint dynShadowDummyColorTex_;
+    int dynShadowMapSize_;
+    float dynamicLightSpaceMatrix_[16];
+    glsl_program* shadowDebugProg_;
 };
 
 gosPostProcess* getGosPostProcess();
