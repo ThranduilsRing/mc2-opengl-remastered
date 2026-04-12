@@ -315,16 +315,16 @@ void main(void)
     PREC vec3 baseColor = mix(texColor.rgb, materialTint, tintStrength);
 
     // --- Phase 4C: Triplanar cliff mapping ---
-    // On steep slopes, blend rock texture using world XY projection to prevent stretching
+    // On steep slopes, darken and shift toward rock color to simulate exposed rock faces
     {
         PREC float slopeZ = abs(WorldNorm.z);
         // Start blending at ~30° slope (0.85), full at ~55° (0.55)
         PREC float cliffBlend = smoothstep(0.85, 0.55, slopeZ);
         if (cliffBlend > 0.01) {
-            PREC vec2 cliffUV = WorldPos.xy * 0.004;
-            PREC vec4 cliffSample = texture(matNormal0, cliffUV);
-            PREC vec3 cliffColor = cliffSample.rgb * tintRock;
-            baseColor = mix(baseColor, cliffColor, cliffBlend * 0.8);
+            // Desaturate and darken toward rock tint on cliff faces
+            PREC float luma = dot(baseColor, vec3(0.299, 0.587, 0.114));
+            PREC vec3 cliffColor = mix(vec3(luma), tintRock, 0.6) * 0.8;
+            baseColor = mix(baseColor, cliffColor, cliffBlend * 0.7);
         }
     }
 
