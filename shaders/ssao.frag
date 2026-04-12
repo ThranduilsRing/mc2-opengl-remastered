@@ -53,12 +53,20 @@ void main()
         return;
     }
 
-    vec3 worldPos = reconstructWorldPos(TexCoord, depth);
-    vec3 normal = normalize(texture(sceneNormalTex, TexCoord).rgb * 2.0 - 1.0);
+    // Only compute SSAO for terrain pixels (alpha=1 in normal buffer)
+    // Non-terrain pixels (objects, overlays) at RTS zoom create halo artifacts
+    vec4 normalData = texture(sceneNormalTex, TexCoord);
+    if (normalData.a < 0.5) {
+        FragColor = 1.0;
+        return;
+    }
 
-    // Random rotation from 4x4 noise texture
-    vec2 noiseScale = screenSize / 4.0;
-    vec3 randomVec = normalize(texture(noiseTex, TexCoord * noiseScale).rgb * 2.0 - 1.0);
+    vec3 worldPos = reconstructWorldPos(TexCoord, depth);
+    vec3 normal = normalize(normalData.rgb * 2.0 - 1.0);
+
+    // Per-pixel random rotation via hash (no tiling artifacts unlike noise texture)
+    float angle = 6.2831853 * fract(sin(dot(gl_FragCoord.xy, vec2(12.9898, 78.233))) * 43758.5453);
+    vec3 randomVec = normalize(vec3(cos(angle), sin(angle), 0.0));
 
     // Gram-Schmidt: build TBN from normal + random vector
     vec3 tangent = normalize(randomVec - normal * dot(randomVec, normal));
