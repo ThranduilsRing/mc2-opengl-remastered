@@ -318,12 +318,13 @@ void main(void)
     // On steep slopes, blend rock texture using world XY projection to prevent stretching
     {
         PREC float slopeZ = abs(WorldNorm.z);
-        PREC float cliffBlend = smoothstep(0.7, 0.4, slopeZ);  // 1.0 on cliffs, 0.0 on flat
+        // Start blending at ~30° slope (0.85), full at ~55° (0.55)
+        PREC float cliffBlend = smoothstep(0.85, 0.55, slopeZ);
         if (cliffBlend > 0.01) {
-            PREC vec2 cliffUV = WorldPos.xy * 0.003;  // world-space projection
-            PREC vec4 cliffSample = texture(matNormal0, cliffUV);  // reuse rock normal map
+            PREC vec2 cliffUV = WorldPos.xy * 0.004;
+            PREC vec4 cliffSample = texture(matNormal0, cliffUV);
             PREC vec3 cliffColor = cliffSample.rgb * tintRock;
-            baseColor = mix(baseColor, cliffColor, cliffBlend * 0.6);
+            baseColor = mix(baseColor, cliffColor, cliffBlend * 0.8);
         }
     }
 
@@ -344,27 +345,25 @@ void main(void)
     // --- Phase 4A: Procedural cloud shadows ---
     // Animated FBM noise creates drifting cloud shadow patterns
     {
-        PREC vec2 cloudUV = WorldPos.xy * 0.00015 + vec2(time * 0.008, time * 0.003);
-        PREC float cloudNoise = fbm(cloudUV, 3) * 0.5 + 0.5;  // [0,1]
-        PREC float cloudShadow = smoothstep(0.35, 0.65, cloudNoise);
-        // Subtle darkening: 85% in shadow, 100% in light
-        c.rgb *= mix(0.85, 1.0, cloudShadow);
+        // Smaller scale = smaller clouds, more visible pattern
+        PREC vec2 cloudUV = WorldPos.xy * 0.0006 + vec2(time * 0.012, time * 0.005);
+        PREC float cloudNoise = fbm(cloudUV, 4) * 0.5 + 0.5;  // [0,1]
+        PREC float cloudShadow = smoothstep(0.3, 0.7, cloudNoise);
+        // Visible darkening: 70% in shadow, 100% in light
+        c.rgb *= mix(0.70, 1.0, cloudShadow);
     }
 
     // --- Phase 4B: Height-based exponential fog ---
     // Atmospheric perspective: thicker in valleys, thinner at altitude
     {
         PREC float camDist2D = distance(WorldPos.xy, cameraPos.xy);
-        // Use absolute terrain elevation for fog density (not relative to camera)
-        // Low terrain (z near 0) = thick fog, high terrain (z > 500) = thin fog
         PREC float terrainHeight = WorldPos.z;
-        PREC float fogDensity = 0.00003;
-        // Height-based density reduction: fog is thicker in valleys
+        // Higher density = visible at shorter distances
+        PREC float fogDensity = 0.00015;
         PREC float heightScale = exp(-max(terrainHeight, 0.0) * 0.002);
         PREC float fogAmount = 1.0 - exp(-camDist2D * fogDensity * heightScale);
-        fogAmount = clamp(fogAmount, 0.0, 0.65);
-        // Atmospheric blue-gray tint
-        PREC vec3 fogCol = vec3(0.55, 0.62, 0.72);
+        fogAmount = clamp(fogAmount, 0.0, 0.70);
+        PREC vec3 fogCol = vec3(0.58, 0.65, 0.75);
         c.rgb = mix(c.rgb, fogCol, fogAmount);
     }
 
