@@ -1135,10 +1135,24 @@ void MC_TextureManager::renderLists (void)
 		TracyGpuZone("Shadow.DynPass");
 		float lx = 0, ly = 0, lz = 0;
 		gos_GetTerrainLightDir(&lx, &ly, &lz);
-		// Use camera LOOK-AT point (ground focus), not eye position.
-		// Eye is ~2800 units behind/above scene in isometric view — would miss all mechs.
-		// Ground focus: drop camera elevation, keep XY. Stuff→MC2 swizzle.
-		gos_BuildDynamicLightMatrix(-lx, -ly, -lz, -cp.x, cp.z, 0.0f);
+
+		// Ray-ground intersection to find where camera is actually looking.
+		// Camera is in Stuff space (x=left, y=elevation, z=forward).
+		// Ground plane is y=0 in Stuff space (z=0 in MC2 space).
+		// Ray: P = cp + t * lookVector. Solve for cp.y + t * lv.y = 0.
+		Stuff::Vector3D lv = eye->getLookVector();
+		float focusX, focusZ;  // MC2 space: x=east, y=north
+		if (fabsf(lv.y) > 0.001f) {
+			float t = -cp.y / lv.y;
+			// Stuff hit point → MC2: MC2.x = -Stuff.x, MC2.y = Stuff.z
+			focusX = -(cp.x + t * lv.x);
+			focusZ = cp.z + t * lv.z;
+		} else {
+			// Camera looking horizontally — fall back to ground projection
+			focusX = -cp.x;
+			focusZ = cp.z;
+		}
+		gos_BuildDynamicLightMatrix(-lx, -ly, -lz, focusX, focusZ, 0.0f);
 		gos_BeginDynamicShadowPass();
 		for (int si = 0; si < g_numShadowShapes; si++)
 			gos_DrawShadowObjectBatch(g_shadowShapes[si].vb, g_shadowShapes[si].ib,
