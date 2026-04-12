@@ -63,6 +63,7 @@ gosPostProcess::gosPostProcess()
     , shadowDebugProg_(nullptr)
     , screenShadowProg_(nullptr)
     , screenShadowEnabled_(true)
+    , screenShadowDebug_(0)
     , ssaoProg_(nullptr)
     , ssaoBlurProg_(nullptr)
     , ssaoApplyProg_(nullptr)
@@ -525,8 +526,13 @@ void gosPostProcess::runScreenShadow()
     glDepthMask(GL_FALSE);
 
     // Multiplicative blending: dst * src (shadow darkening)
-    glEnable(GL_BLEND);
-    glBlendFunc(GL_DST_COLOR, GL_ZERO);
+    // In debug mode, overwrite scene color entirely
+    if (screenShadowDebug_ == 0) {
+        glEnable(GL_BLEND);
+        glBlendFunc(GL_DST_COLOR, GL_ZERO);
+    } else {
+        glDisable(GL_BLEND);
+    }
 
     // Set uniforms BEFORE apply()
     screenShadowProg_->setInt("sceneDepthTex", 0);
@@ -536,6 +542,7 @@ void gosPostProcess::runScreenShadow()
     screenShadowProg_->setInt("enableShadows", shadowsEnabled_ ? 1 : 0);
     screenShadowProg_->setInt("enableDynamicShadows", (dynShadowDepthTex_ != 0) ? 1 : 0);
     screenShadowProg_->setFloat("shadowSoftness", 2.5f);
+    screenShadowProg_->setInt("debugMode", screenShadowDebug_);
     float screenSz[2] = { (float)width_, (float)height_ };
     screenShadowProg_->setFloat2("screenSize", screenSz);
     screenShadowProg_->apply();

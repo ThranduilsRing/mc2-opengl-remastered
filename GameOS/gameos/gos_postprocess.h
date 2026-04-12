@@ -72,6 +72,7 @@ public:
 
     void runScreenShadow();
     bool screenShadowEnabled_;
+    int screenShadowDebug_;  // 0=normal, 1=visualize
 
     void runSSAO();
     bool ssaoEnabled_;
