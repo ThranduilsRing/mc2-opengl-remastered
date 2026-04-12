@@ -82,11 +82,15 @@ void main()
         // Standard SSAO comparison:
         // If buffer depth < sample projected depth → geometry is CLOSER than sample
         // → sample is inside/behind geometry → pixel is occluded
-        // Range check prevents far-away geometry from contributing
         float depthDiff = sampleProjDepth - bufferDepth;
-        float rangeCheck = smoothstep(0.0, 1.0, ssaoRadius / (abs(depthDiff) * 1000.0 + 0.001));
 
-        if (depthDiff > ssaoBias * 0.001) {
+        // Range check: reject depth discontinuities (object edges vs terrain behind)
+        // Only count occlusion when depth difference is small (actual nearby geometry)
+        // Large depth jumps = different surfaces, not real occlusion
+        float maxDepthRange = 0.005;  // ~0.5% of depth range
+        float rangeCheck = 1.0 - smoothstep(0.0, maxDepthRange, abs(depthDiff));
+
+        if (depthDiff > ssaoBias * 0.0001 && depthDiff < maxDepthRange) {
             occlusion += rangeCheck;
         }
     }

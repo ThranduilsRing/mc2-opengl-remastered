@@ -16,6 +16,7 @@ uniform vec2 screenSize;
 uniform int enableShadows;
 uniform int enableDynamicShadows;
 uniform float shadowSoftness;
+uniform int debugMode;  // 0=normal, 1=visualize classification
 
 const vec2 poissonDisk[8] = vec2[](
     vec2(-0.94201624, -0.39906216),
@@ -61,6 +62,36 @@ float sampleShadowMap(sampler2DShadow smap, vec3 worldPos, mat4 lsMatrix, int nu
 void main()
 {
     PREC vec4 normalData = texture(sceneNormalTex, TexCoord);
+
+    // Debug mode: visualize what the shader classifies each pixel as
+    if (debugMode == 1) {
+        float depth = texture(sceneDepthTex, TexCoord).r;
+        if (depth >= 1.0) {
+            FragColor = vec4(0.0, 0.0, 0.0, 1.0);  // black = sky/no depth
+        } else if (normalData.a > 0.5) {
+            FragColor = vec4(0.5, 0.0, 0.0, 1.0);  // dark red = terrain (skipped)
+        } else {
+            // Non-terrain: reconstruct and show shadow result
+            vec2 ndc_xy = TexCoord * 2.0 - 1.0;
+            float ndc_z = depth * 2.0 - 1.0;
+            vec4 worldPos4 = inverseViewProj * vec4(ndc_xy, ndc_z, 1.0);
+            vec3 worldPos = worldPos4.xyz / worldPos4.w;
+
+            float shadow = 1.0;
+            if (enableShadows == 1)
+                shadow = min(shadow, sampleShadowMap(shadowMap, worldPos, lightSpaceMatrix, 8));
+            if (enableDynamicShadows == 1)
+                shadow = min(shadow, sampleShadowMap(dynamicShadowMap, worldPos, dynamicLightSpaceMatrix, 4));
+
+            if (shadow < 0.99) {
+                FragColor = vec4(0.0, 0.0, shadow, 1.0);  // blue = shadowed
+            } else {
+                FragColor = vec4(0.0, 0.3, 0.0, 1.0);  // dark green = lit
+            }
+        }
+        return;
+    }
+
     if (normalData.a > 0.5) {
         FragColor = vec4(1.0);
         return;

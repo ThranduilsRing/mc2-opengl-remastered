@@ -94,8 +94,18 @@ static void handle_key_down( SDL_Keysym* keysym ) {
             if (keysym->mod & KMOD_RALT) {
                 gosPostProcess* pp = getGosPostProcess();
                 if (pp) {
-                    pp->screenShadowEnabled_ = !pp->screenShadowEnabled_;
-                    fprintf(stderr, "Screen Shadows: %s\n", pp->screenShadowEnabled_ ? "ON" : "OFF");
+                    if (!pp->screenShadowEnabled_) {
+                        pp->screenShadowEnabled_ = true;
+                        pp->screenShadowDebug_ = 0;
+                        fprintf(stderr, "Screen Shadows: ON\n");
+                    } else if (pp->screenShadowDebug_ == 0) {
+                        pp->screenShadowDebug_ = 1;
+                        fprintf(stderr, "Screen Shadows: DEBUG (red=terrain, green=lit, blue=shadowed, black=sky)\n");
+                    } else {
+                        pp->screenShadowEnabled_ = false;
+                        pp->screenShadowDebug_ = 0;
+                        fprintf(stderr, "Screen Shadows: OFF\n");
+                    }
                 }
             }
             break;
