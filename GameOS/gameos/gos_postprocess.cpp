@@ -58,7 +58,7 @@ gosPostProcess::gosPostProcess()
     , dynShadowFBO_(0)
     , dynShadowDepthTex_(0)
     , dynShadowDummyColorTex_(0)
-    , dynShadowMapSize_(1024)
+    , dynShadowMapSize_(2048)
     , shadowDebugProg_(nullptr)
 {
     bloomFBO_[0] = bloomFBO_[1] = 0;
@@ -712,7 +712,7 @@ void gosPostProcess::buildDynamicLightMatrix(float sunDirX, float sunDirY, float
     if (len < 0.001f) return;
     float fx = sunDirX/len, fy = sunDirY/len, fz = sunDirZ/len;
 
-    float xyRadius = 2000.0f * sqrtf(2.0f);  // covers camera-to-lookat offset in isometric view
+    float xyRadius = 800.0f;  // tight frustum around mechs — static map covers terrain
     float depthDist = 5000.0f;              // large depth to envelope all elevations
 
     // Texel snapping: quantize camera position to shadow texel grid
