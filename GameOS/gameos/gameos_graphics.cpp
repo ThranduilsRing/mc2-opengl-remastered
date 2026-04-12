@@ -2238,83 +2238,53 @@ void gosRenderer::drawShadowObjectBatch(HGOSBUFFER vb, HGOSBUFFER ib,
     HGOSVERTEXDECLARATION vdecl, const float* worldMatrix4x4)
 {
     if (!shadow_prepass_active_ || !vb || !ib || ib->count_ == 0) return;
+    if (!shadow_object_material_ || !shadow_object_material_->getShader()) return;
 
-    ZoneScopedN("Shadow.DynObjectBatch");
+    ZoneScopedN("Shadow.DynObjectDirect");
+    TracyGpuZone("Shadow.DynObjectDirect");
 
-    int numIndices = ib->count_;
-    int indexSize = ib->element_size_;
+    // Direct GPU draw: bypass material system, use shadow_object shader directly.
+    // This avoids the glGetBufferSubData readback that was 26% of frame time.
+    GLuint shp = shadow_object_material_->getShader()->shp_;
+    glUseProgram(shp);
 
-    unsigned char* indexData;
-    unsigned char* vertData;
-    {
-        ZoneScopedN("Shadow.DynObj.GPUReadback");
-        // Read index data from GPU
-        glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, ib->buffer_);
-        int ibBytes = numIndices * indexSize;
-        indexData = (unsigned char*)alloca(ibBytes);
-        glGetBufferSubData(GL_ELEMENT_ARRAY_BUFFER, 0, ibBytes, indexData);
+    // Upload uniforms
+    GLint lsmLoc = glGetUniformLocation(shp, "lightSpaceMatrix");
+    GLint wmLoc = glGetUniformLocation(shp, "worldMatrix");
+    GLint loLoc = glGetUniformLocation(shp, "lightOffset");
 
-        // Read vertex data from GPU (TG_HWTypeVertex = 36 bytes)
-        glBindBuffer(GL_ARRAY_BUFFER, vb->buffer_);
-        GLint vbSize = 0;
-        glGetBufferParameteriv(GL_ARRAY_BUFFER, GL_BUFFER_SIZE, &vbSize);
-        vertData = (unsigned char*)alloca(vbSize);
-        glGetBufferSubData(GL_ARRAY_BUFFER, 0, vbSize, vertData);
-        glBindBuffer(GL_ARRAY_BUFFER, 0);
-        glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, 0);
+    if (lsmLoc >= 0)
+        glUniformMatrix4fv(lsmLoc, 1, GL_FALSE, active_light_space_matrix_);
+    if (wmLoc >= 0)
+        glUniformMatrix4fv(wmLoc, 1, GL_TRUE, worldMatrix4x4);  // row-major Stuff matrix
+    if (loLoc >= 0) {
+        float lo[3] = {
+            terrain_light_dir_.x * 30.0f,
+            terrain_light_dir_.y * 30.0f,
+            terrain_light_dir_.z * 30.0f
+        };
+        glUniform3fv(loLoc, 1, lo);
     }
 
-    gos_TERRAIN_EXTRA* extras;
-    gos_VERTEX* dummyVerts;
-    WORD* flatIndices;
-    {
-        ZoneScopedN("Shadow.DynObj.CPUTransform");
-        const float* M = worldMatrix4x4;
+    // Force depth write ON — this is the key fix. applyRenderStates would disable it.
+    glDepthMask(GL_TRUE);
+    glEnable(GL_DEPTH_TEST);
+    glDepthFunc(GL_LESS);
 
-        float ofsX = terrain_light_dir_.x * 30.0f;
-        float ofsY = terrain_light_dir_.y * 30.0f;
-        float ofsZ = terrain_light_dir_.z * 30.0f;
+    // Bind VB with position attribute at location 0 (TG_HWTypeVertex: pos at offset 0, stride 36)
+    glBindBuffer(GL_ARRAY_BUFFER, vb->buffer_);
+    glEnableVertexAttribArray(0);
+    glVertexAttribPointer(0, 3, GL_FLOAT, GL_FALSE, 36, (void*)0);
 
-        extras = (gos_TERRAIN_EXTRA*)alloca(numIndices * sizeof(gos_TERRAIN_EXTRA));
-        dummyVerts = (gos_VERTEX*)alloca(numIndices * sizeof(gos_VERTEX));
-        flatIndices = (WORD*)alloca(numIndices * sizeof(WORD));
+    // Bind IB and draw
+    glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, ib->buffer_);
+    GLenum indexType = (ib->element_size_ == 2) ? GL_UNSIGNED_SHORT : GL_UNSIGNED_INT;
+    glDrawElements(GL_TRIANGLES, ib->count_, indexType, (void*)0);
 
-        for (int i = 0; i < numIndices; i++) {
-            int idx = (indexSize == 2) ?
-                ((unsigned short*)indexData)[i] :
-                ((unsigned int*)indexData)[i];
-
-            float* pos = (float*)(vertData + idx * 36);
-
-            float sx = M[0]*pos[0] + M[1]*pos[1] + M[2]*pos[2]  + M[3];
-            float sy = M[4]*pos[0] + M[5]*pos[1] + M[6]*pos[2]  + M[7];
-            float sz = M[8]*pos[0] + M[9]*pos[1] + M[10]*pos[2] + M[11];
-
-            extras[i].wx = -sx + ofsX;
-            extras[i].wy = sz + ofsY;
-            extras[i].wz = sy + ofsZ;
-            extras[i].nx = 0.0f;
-            extras[i].ny = 0.0f;
-            extras[i].nz = 1.0f;
-
-            memset(&dummyVerts[i], 0, sizeof(gos_VERTEX));
-            flatIndices[i] = (WORD)i;
-        }
-    }
-
-    float savedTessLevel = terrain_tess_level_;
-    float savedDispScale = terrain_displace_scale_;
-    float savedPhongAlpha = terrain_phong_alpha_;
-    terrain_tess_level_ = 1.0f;
-    terrain_displace_scale_ = 0.0f;
-    terrain_phong_alpha_ = 0.0f;
-
-    drawShadowBatchTessellated(dummyVerts, numIndices, flatIndices, numIndices,
-        extras, numIndices);
-
-    terrain_tess_level_ = savedTessLevel;
-    terrain_displace_scale_ = savedDispScale;
-    terrain_phong_alpha_ = savedPhongAlpha;
+    // Cleanup — disable the attribute we enabled
+    glDisableVertexAttribArray(0);
+    glBindBuffer(GL_ARRAY_BUFFER, 0);
+    glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, 0);
 }
 
 void gosRenderer::endShadowPrePass() {
