@@ -371,7 +371,10 @@ void main(void)
     FragColor = c;
 
 #ifdef MRT_ENABLED
-    GBuffer1 = vec4(N * 0.5 + 0.5, 1.0);
+    // alpha: 1.0 = terrain, 0.25 = water (for shoreline detection)
+    PREC float waterFlag = smoothstep(0.35, 0.45, rgb2hsv(texColor.rgb).x);
+    PREC float materialAlpha = mix(1.0, 0.25, waterFlag);
+    GBuffer1 = vec4(N * 0.5 + 0.5, materialAlpha);
 #endif
 
     // Write un-displaced depth so overlays and objects (at original surface height)

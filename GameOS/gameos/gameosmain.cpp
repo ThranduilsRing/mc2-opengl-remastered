@@ -118,6 +118,33 @@ static void handle_key_down( SDL_Keysym* keysym ) {
                 }
             }
             break;
+        case SDLK_5:
+            if (keysym->mod & KMOD_RALT) {
+                gosPostProcess* pp = getGosPostProcess();
+                if (pp) {
+                    pp->grassEnabled_ = !pp->grassEnabled_;
+                    fprintf(stderr, "Grass: %s\n", pp->grassEnabled_ ? "ON" : "OFF");
+                }
+            }
+            break;
+        case SDLK_6:
+            if (keysym->mod & KMOD_RALT) {
+                gosPostProcess* pp = getGosPostProcess();
+                if (pp) {
+                    pp->godrayEnabled_ = !pp->godrayEnabled_;
+                    fprintf(stderr, "God Rays: %s\n", pp->godrayEnabled_ ? "ON" : "OFF");
+                }
+            }
+            break;
+        case SDLK_7:
+            if (keysym->mod & KMOD_RALT) {
+                gosPostProcess* pp = getGosPostProcess();
+                if (pp) {
+                    pp->shorelineEnabled_ = !pp->shorelineEnabled_;
+                    fprintf(stderr, "Shorelines: %s\n", pp->shorelineEnabled_ ? "ON" : "OFF");
+                }
+            }
+            break;
     }
 }
 
@@ -231,8 +258,15 @@ static void draw_screen( void )
 
     // TODO: reset all states to sane defaults!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
     glDepthMask(GL_TRUE);
-    // Clear to fog-matching blue-grey so sky behind terrain isn't black
-    glClearColor(0.55f, 0.62f, 0.72f, 1.0f);
+    // Blue-grey sky during gameplay, black for menus/loading/mech bay
+    // Uses previous frame's terrain flag (set during rendering, cleared in beginScene)
+    {
+        gosPostProcess* ppClear = getGosPostProcess();
+        if (ppClear && ppClear->prevFrameHadTerrain_)
+            glClearColor(0.55f, 0.62f, 0.72f, 1.0f);
+        else
+            glClearColor(0.0f, 0.0f, 0.0f, 1.0f);
+    }
     glClear( GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT );
 
     // Skybox disabled — terrain fog provides atmosphere, bright sky looked jarring

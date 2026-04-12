@@ -30,6 +30,8 @@ public:
     GLuint getSceneNormalTexture() const { return sceneNormalTex_; }
     GLuint getSceneDepthTexture() const { return sceneDepthTex_; }
     GLuint getSceneColorTexture() const { return sceneColorTex_; }
+    void enableMRT();   // call before terrain draws
+    void disableMRT();  // call after terrain draws
     GLuint getShadowTexture() const { return shadowDepthTex_; }
     const float* getLightSpaceMatrix() const { return staticLightSpaceMatrix_; }
     GLuint getShadowFBO() const { return shadowFBO_; }
@@ -79,6 +81,24 @@ public:
     float ssaoRadius_;
     float ssaoBias_;
     float ssaoPower_;
+
+    // Scene state — set by terrain draw, cleared each frame in beginScene()
+    bool sceneHasTerrain_;
+    bool prevFrameHadTerrain_;  // for clear color: blue-grey in gameplay, black in menus
+    void markTerrainDrawn() { sceneHasTerrain_ = true; }
+
+    // God rays
+    bool godrayEnabled_;
+    void runGodRays();
+    void setSunScreenPos(float x, float y) { sunScreenPos_[0] = x; sunScreenPos_[1] = y; }
+
+    // Shoreline
+    bool shorelineEnabled_;
+    void runShoreline();
+
+    // Grass rendering
+    bool grassEnabled_;
+    glsl_program* getGrassProgram() const { return grassProg_; }
 
     void setInverseViewProj(const float* m) { memcpy(inverseViewProj_, m, 16 * sizeof(float)); }
     void setViewProj(const float* m) { memcpy(viewProj_, m, 16 * sizeof(float)); }
@@ -154,6 +174,18 @@ private:
     GLuint ssaoBlurFBO_;       // half-res blur target
     GLuint ssaoBlurTex_;       // R16F
     GLuint ssaoNoiseTex_;      // 4x4 RGB noise
+
+    // Grass shader program
+    glsl_program* grassProg_;
+
+    // God ray
+    glsl_program* godrayProg_;
+    GLuint godrayFBO_;
+    GLuint godrayColorTex_;  // half-res
+    float sunScreenPos_[2];
+
+    // Shoreline
+    glsl_program* shorelineProg_;
 };
 
 gosPostProcess* getGosPostProcess();
