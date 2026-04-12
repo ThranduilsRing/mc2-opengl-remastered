@@ -3,6 +3,7 @@
 #define PREC highp
 
 #include <include/shadow.hglsl>
+#include <include/noise.hglsl>
 
 in PREC vec4 Color;
 in PREC vec2 Texcoord;
@@ -35,6 +36,7 @@ uniform PREC vec4 cameraPos;
 uniform PREC vec4 terrainWorldScale;
 uniform PREC vec4 terrainViewDir;
 uniform PREC vec4 tessDebug;  // x=mode: 0=off, 1=normals, 2=worldPos
+uniform float time;           // elapsed seconds (for cloud shadow animation)
 
 // --- Distance LOD thresholds (tunable, in MC2 world units) ---
 // 1 terrain tile ≈ 128 world units
@@ -312,6 +314,19 @@ void main(void)
     const PREC float tintStrength = 0.70;
     PREC vec3 baseColor = mix(texColor.rgb, materialTint, tintStrength);
 
+    // --- Phase 4C: Triplanar cliff mapping ---
+    // On steep slopes, blend rock texture using world XY projection to prevent stretching
+    {
+        PREC float slopeZ = abs(WorldNorm.z);
+        PREC float cliffBlend = smoothstep(0.7, 0.4, slopeZ);  // 1.0 on cliffs, 0.0 on flat
+        if (cliffBlend > 0.01) {
+            PREC vec2 cliffUV = WorldPos.xy * 0.003;  // world-space projection
+            PREC vec4 cliffSample = texture(matNormal0, cliffUV);  // reuse rock normal map
+            PREC vec3 cliffColor = cliffSample.rgb * tintRock;
+            baseColor = mix(baseColor, cliffColor, cliffBlend * 0.6);
+        }
+    }
+
     c.rgb *= baseColor;
 
     // Normal map lighting — moderate range for visible detail without black crush
@@ -326,9 +341,30 @@ void main(void)
     float shadow = staticShadow * dynShadow;
     c.rgb *= shadow;
 
-    // Fog disabled — full Wolfman mode (see across the map)
-    // if(fog_color.x>0.0 || fog_color.y>0.0 || fog_color.z>0.0 || fog_color.w>0.0)
-    //     c.rgb = mix(fog_color.rgb, c.rgb, FogValue);
+    // --- Phase 4A: Procedural cloud shadows ---
+    // Animated FBM noise creates drifting cloud shadow patterns
+    {
+        PREC vec2 cloudUV = WorldPos.xy * 0.00015 + vec2(time * 0.008, time * 0.003);
+        PREC float cloudNoise = fbm(cloudUV, 3) * 0.5 + 0.5;  // [0,1]
+        PREC float cloudShadow = smoothstep(0.35, 0.65, cloudNoise);
+        // Subtle darkening: 85% in shadow, 100% in light
+        c.rgb *= mix(0.85, 1.0, cloudShadow);
+    }
+
+    // --- Phase 4B: Height-based exponential fog ---
+    // Atmospheric perspective: thicker in valleys, thinner on peaks
+    {
+        PREC float camDist2D = distance(WorldPos.xy, cameraPos.xy);
+        PREC float heightDiff = WorldPos.z - cameraPos.z;
+        // Density decreases with height (valleys are foggier)
+        PREC float fogDensity = 0.00004;
+        PREC float heightFalloff = 0.003;
+        PREC float fogAmount = 1.0 - exp(-camDist2D * fogDensity * exp(-heightDiff * heightFalloff));
+        fogAmount = clamp(fogAmount, 0.0, 0.85);
+        // Atmospheric blue-gray tint
+        PREC vec3 fogCol = vec3(0.55, 0.62, 0.72);
+        c.rgb = mix(c.rgb, fogCol, fogAmount);
+    }
 
     FragColor = c;
 
