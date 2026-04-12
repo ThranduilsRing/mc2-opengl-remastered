@@ -67,28 +67,26 @@ void main()
 
     float occlusion = 0.0;
     for (int i = 0; i < KERNEL_SIZE; i++) {
-        // Sample position in world space (hemisphere around surface)
+        // Sample position in world space (hemisphere above surface)
         vec3 samplePos = worldPos + TBN * ssaoKernel[i] * ssaoRadius;
 
-        // Project sample to screen UV
+        // Project sample to screen space
         vec4 sampleClip = viewProj * vec4(samplePos, 1.0);
-        vec2 sampleUV = (sampleClip.xy / sampleClip.w) * 0.5 + 0.5;
+        vec3 sampleNDC = sampleClip.xyz / sampleClip.w;
+        vec2 sampleUV = sampleNDC.xy * 0.5 + 0.5;
+        float sampleProjDepth = sampleNDC.z * 0.5 + 0.5;  // sample's depth if unoccluded
 
-        // Read actual depth at that screen position
-        float sampleDepth = texture(sceneDepthTex, sampleUV).r;
-        vec3 actualPos = reconstructWorldPos(sampleUV, sampleDepth);
+        // Read actual depth at that screen position from buffer
+        float bufferDepth = texture(sceneDepthTex, sampleUV).r;
 
-        // Compare: is the actual surface closer to camera than our sample?
-        // Use distance along normal as the comparison metric
-        float actualDist = dot(actualPos - worldPos, normal);
-        float sampleDist = dot(samplePos - worldPos, normal);
+        // Standard SSAO comparison:
+        // If buffer depth < sample projected depth → geometry is CLOSER than sample
+        // → sample is inside/behind geometry → pixel is occluded
+        // Range check prevents far-away geometry from contributing
+        float depthDiff = sampleProjDepth - bufferDepth;
+        float rangeCheck = smoothstep(0.0, 1.0, ssaoRadius / (abs(depthDiff) * 1000.0 + 0.001));
 
-        // Range check: ignore samples too far away (avoids halo artifacts)
-        float rangeCheck = smoothstep(0.0, 1.0, ssaoRadius / max(abs(actualDist - sampleDist), 0.001));
-
-        // Occluded if actual surface is above the sample (closer to light/camera along normal)
-        // and the actual surface is below our sample hemisphere
-        if (actualDist < sampleDist - ssaoBias) {
+        if (depthDiff > ssaoBias * 0.001) {
             occlusion += rangeCheck;
         }
     }

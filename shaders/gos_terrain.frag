@@ -352,15 +352,17 @@ void main(void)
     }
 
     // --- Phase 4B: Height-based exponential fog ---
-    // Atmospheric perspective: thicker in valleys, thinner on peaks
+    // Atmospheric perspective: thicker in valleys, thinner at altitude
     {
         PREC float camDist2D = distance(WorldPos.xy, cameraPos.xy);
-        PREC float heightDiff = WorldPos.z - cameraPos.z;
-        // Density decreases with height (valleys are foggier)
-        PREC float fogDensity = 0.00004;
-        PREC float heightFalloff = 0.003;
-        PREC float fogAmount = 1.0 - exp(-camDist2D * fogDensity * exp(-heightDiff * heightFalloff));
-        fogAmount = clamp(fogAmount, 0.0, 0.85);
+        // Use absolute terrain elevation for fog density (not relative to camera)
+        // Low terrain (z near 0) = thick fog, high terrain (z > 500) = thin fog
+        PREC float terrainHeight = WorldPos.z;
+        PREC float fogDensity = 0.00003;
+        // Height-based density reduction: fog is thicker in valleys
+        PREC float heightScale = exp(-max(terrainHeight, 0.0) * 0.002);
+        PREC float fogAmount = 1.0 - exp(-camDist2D * fogDensity * heightScale);
+        fogAmount = clamp(fogAmount, 0.0, 0.65);
         // Atmospheric blue-gray tint
         PREC vec3 fogCol = vec3(0.55, 0.62, 0.72);
         c.rgb = mix(c.rgb, fogCol, fogAmount);
