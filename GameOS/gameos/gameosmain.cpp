@@ -83,7 +83,7 @@ static void handle_key_down( SDL_Keysym* keysym ) {
                 }
             }
             break;
-        case SDLK_F4:
+        case SDLK_F8:
             if (keysym->mod & KMOD_RALT) {
                 gosPostProcess* pp = getGosPostProcess();
                 if (pp) {

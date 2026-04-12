@@ -72,8 +72,8 @@ gosPostProcess::gosPostProcess()
     , ssaoBlurTex_(0)
     , ssaoNoiseTex_(0)
     , ssaoEnabled_(true)
-    , ssaoRadius_(200.0f)
-    , ssaoBias_(25.0f)
+    , ssaoRadius_(40.0f)
+    , ssaoBias_(1.0f)
     , ssaoPower_(1.5f)
 {
     bloomFBO_[0] = bloomFBO_[1] = 0;
