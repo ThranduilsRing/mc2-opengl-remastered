@@ -17,7 +17,6 @@ in PREC vec3 WorldPos;
 in PREC vec3 CameraPos;
 
 layout (location=0) out PREC vec4 FragColor;
-layout (location=1) out PREC vec4 GBuffer1;
 
 uniform sampler2D tex1;
 uniform PREC vec4 fog_color;
@@ -48,6 +47,5 @@ void main(void)
     c.xyz = apply_fog(c.xyz, WorldPos.xyz, CameraPos);
 
 	FragColor = vec4(c.xyz, c.a);
-    GBuffer1 = vec4(0.5, 0.5, 1.0, 0.0);
 }
 

@@ -446,9 +446,10 @@ void gosPostProcess::beginScene()
         return;
 
     glBindFramebuffer(GL_FRAMEBUFFER, sceneFBO_);
-    // Ensure MRT is active (shadow passes may have changed glDrawBuffers)
-    GLenum drawBuffers[2] = { GL_COLOR_ATTACHMENT0, GL_COLOR_ATTACHMENT1 };
-    glDrawBuffers(2, drawBuffers);
+    if (sceneNormalTex_) {
+        GLenum drawBuffers[2] = { GL_COLOR_ATTACHMENT0, GL_COLOR_ATTACHMENT1 };
+        glDrawBuffers(2, drawBuffers);
+    }
     glViewport(0, 0, width_, height_);
 }
 

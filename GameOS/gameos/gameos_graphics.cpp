@@ -179,6 +179,14 @@ class gosMaterialVariationHelper {
                 unique_suffix_str.append(d);
                 unique_suffix_str.append("#");
             }
+            // Add MRT_ENABLED when normal buffer is attached (AMD requires
+            // GBuffer1 to only be declared when the FBO actually has attachment 1)
+            {
+                gosPostProcess* pp = getGosPostProcess();
+                if (pp && pp->getSceneNormalTexture()) {
+                    defines_str.append("#define MRT_ENABLED 1\n");
+                }
+            }
             defines_str.append("\n");
 
             if(variation.defines_)

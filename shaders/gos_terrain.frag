@@ -14,7 +14,9 @@ in PREC vec3 WorldPos;
 in PREC float UndisplacedDepth;
 
 layout (location=0) out PREC vec4 FragColor;
+#ifdef MRT_ENABLED
 layout (location=1) out PREC vec4 GBuffer1;
+#endif
 
 uniform sampler2D tex1;  // colormap
 uniform sampler2D tex2;  // detail normal (engine default, fallback)
@@ -161,7 +163,9 @@ void main(void)
 
     if (tessDebug.x > 0.5) {
         FragColor = vec4(1.0, 0.0, 0.0, 1.0);  // SOLID RED = tess frag running
+#ifdef MRT_ENABLED
         GBuffer1 = vec4(0.5, 0.5, 1.0, 1.0);
+#endif
         return;
     }
 
@@ -220,7 +224,9 @@ void main(void)
 
 #ifdef DEBUG_MATERIALS
     FragColor = vec4(matWeights.x, matWeights.y, matWeights.z, 1.0);
+#ifdef MRT_ENABLED
     GBuffer1 = vec4(0.5, 0.5, 1.0, 1.0);
+#endif
     return;
 #endif
 
@@ -329,7 +335,6 @@ void main(void)
     }
 
     c.rgb *= baseColor;
-
     // Normal map lighting — moderate range for visible detail without black crush
     PREC float normalLight = mix(0.55, 1.15, diffuse);
     c.rgb *= normalLight;
@@ -343,23 +348,18 @@ void main(void)
     c.rgb *= shadow;
 
     // --- Phase 4A: Procedural cloud shadows ---
-    // Animated FBM noise creates drifting cloud shadow patterns
     {
-        // Smaller scale = smaller clouds, more visible pattern
         PREC vec2 cloudUV = WorldPos.xy * 0.0006 + vec2(time * 0.012, time * 0.005);
-        PREC float cloudNoise = fbm(cloudUV, 4) * 0.5 + 0.5;  // [0,1]
+        PREC float cloudNoise = fbm(cloudUV, 4) * 0.5 + 0.5;
         PREC float cloudShadow = smoothstep(0.3, 0.7, cloudNoise);
-        // Visible darkening: 70% in shadow, 100% in light
         c.rgb *= mix(0.70, 1.0, cloudShadow);
     }
 
     // --- Phase 4B: Height-based exponential fog ---
-    // Atmospheric perspective: thicker in valleys, thinner at altitude
     {
         PREC float camDist2D = distance(WorldPos.xy, cameraPos.xy);
         PREC float terrainHeight = WorldPos.z;
-        // Higher density = visible at shorter distances
-        PREC float fogDensity = 0.00015;
+        PREC float fogDensity = 0.00006;
         PREC float heightScale = exp(-max(terrainHeight, 0.0) * 0.002);
         PREC float fogAmount = 1.0 - exp(-camDist2D * fogDensity * heightScale);
         fogAmount = clamp(fogAmount, 0.0, 0.70);
@@ -367,9 +367,12 @@ void main(void)
         c.rgb = mix(c.rgb, fogCol, fogAmount);
     }
 
+    c.a = 1.0;
     FragColor = c;
 
+#ifdef MRT_ENABLED
     GBuffer1 = vec4(N * 0.5 + 0.5, 1.0);
+#endif
 
     // Write un-displaced depth so overlays and objects (at original surface height)
     // pass GL_LEQUAL depth test against this terrain fragment.
