@@ -99,6 +99,15 @@ static void handle_key_down( SDL_Keysym* keysym ) {
                 fprintf(stderr, "Terrain Draw: %s\n", !cur ? "ON" : "OFF");
             }
             break;
+        case SDLK_F9:
+            if (keysym->mod & KMOD_RALT) {
+                gosPostProcess* pp = getGosPostProcess();
+                if (pp) {
+                    pp->ssaoEnabled_ = !pp->ssaoEnabled_;
+                    fprintf(stderr, "SSAO: %s\n", pp->ssaoEnabled_ ? "ON" : "OFF");
+                }
+            }
+            break;
     }
 }
 

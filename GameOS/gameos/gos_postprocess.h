@@ -73,8 +73,16 @@ public:
     void runScreenShadow();
     bool screenShadowEnabled_;
 
+    void runSSAO();
+    bool ssaoEnabled_;
+    float ssaoRadius_;
+    float ssaoBias_;
+    float ssaoPower_;
+
     void setInverseViewProj(const float* m) { memcpy(inverseViewProj_, m, 16 * sizeof(float)); }
+    void setViewProj(const float* m) { memcpy(viewProj_, m, 16 * sizeof(float)); }
     const float* getInverseViewProj() const { return inverseViewProj_; }
+    const float* getViewProj() const { return viewProj_; }
 
 private:
     void createFBOs(int w, int h);
@@ -134,6 +142,17 @@ private:
     // Post-process screen shadow
     glsl_program* screenShadowProg_;
     float inverseViewProj_[16];
+    float viewProj_[16];
+
+    // SSAO
+    glsl_program* ssaoProg_;
+    glsl_program* ssaoBlurProg_;
+    glsl_program* ssaoApplyProg_;
+    GLuint ssaoFBO_;           // half-res, single-channel AO
+    GLuint ssaoColorTex_;      // R16F
+    GLuint ssaoBlurFBO_;       // half-res blur target
+    GLuint ssaoBlurTex_;       // R16F
+    GLuint ssaoNoiseTex_;      // 4x4 RGB noise
 };
 
 gosPostProcess* getGosPostProcess();
