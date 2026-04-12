@@ -83,7 +83,14 @@ static void handle_key_down( SDL_Keysym* keysym ) {
                 }
             }
             break;
-        case SDLK_F8:
+        case SDLK_F5:
+            if (keysym->mod & KMOD_RALT) {
+                bool cur = gos_GetTerrainDrawEnabled();
+                gos_SetTerrainDrawEnabled(!cur);
+                fprintf(stderr, "Terrain Draw: %s\n", !cur ? "ON" : "OFF");
+            }
+            break;
+        case SDLK_4:
             if (keysym->mod & KMOD_RALT) {
                 gosPostProcess* pp = getGosPostProcess();
                 if (pp) {
@@ -92,14 +99,7 @@ static void handle_key_down( SDL_Keysym* keysym ) {
                 }
             }
             break;
-        case SDLK_F5:
-            if (keysym->mod & KMOD_RALT) {
-                bool cur = gos_GetTerrainDrawEnabled();
-                gos_SetTerrainDrawEnabled(!cur);
-                fprintf(stderr, "Terrain Draw: %s\n", !cur ? "ON" : "OFF");
-            }
-            break;
-        case SDLK_F9:
+        case SDLK_9:
             if (keysym->mod & KMOD_RALT) {
                 gosPostProcess* pp = getGosPostProcess();
                 if (pp) {
