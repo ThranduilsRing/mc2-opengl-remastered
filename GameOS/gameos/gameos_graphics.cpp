@@ -1467,6 +1467,7 @@ class gosRenderer {
             GLint matNormal[4] = {-1, -1, -1, -1};
             GLint lightSpaceMatrix = -1, enableShadows = -1, shadowSoftness = -1, shadowMap = -1;
             GLint dynamicLightSpaceMatrix = -1, enableDynamicShadows = -1, dynamicShadowMap = -1;
+            GLint time = -1;
             GLuint program = 0;
         } terrainLocs_;
 
@@ -1505,6 +1506,7 @@ class gosRenderer {
             terrainLocs_.dynamicLightSpaceMatrix = glGetUniformLocation(shp, "dynamicLightSpaceMatrix");
             terrainLocs_.enableDynamicShadows = glGetUniformLocation(shp, "enableDynamicShadows");
             terrainLocs_.dynamicShadowMap = glGetUniformLocation(shp, "dynamicShadowMap");
+            terrainLocs_.time = glGetUniformLocation(shp, "time");
         }
 
         void cacheShadowUniformLocations(GLuint shp) {
@@ -2435,6 +2437,11 @@ void gosRenderer::terrainDrawIndexedPatches(gosRenderMaterial* material, gosMesh
     if (tl.terrainWorldScale >= 0) glUniform4fv(tl.terrainWorldScale, 1, worldScaleV);
     float cellP[4] = { terrain_cell_scale_, terrain_cell_jitter_, terrain_cell_rotation_, 0.0f };
     if (tl.cellBombParams >= 0) glUniform4fv(tl.cellBombParams, 1, cellP);
+    if (tl.time >= 0) {
+        static uint64_t terrain_time_start = timing::get_wall_time_ms();
+        float elapsed = (float)(timing::get_wall_time_ms() - terrain_time_start) / 1000.0f;
+        glUniform1f(tl.time, elapsed);
+    }
 
     // Bind per-material normal maps (units 5-8)
     {
