@@ -11,6 +11,7 @@
 #include "utils/gl_utils.h"
 #include "utils/timing.h"
 #include "gos_postprocess.h"
+#include "gos_validate.h"
 
 #include <signal.h>
 #include "gos_profiler.h"
@@ -209,6 +210,14 @@ static void draw_screen( void )
 
     gosPostProcess* pp = getGosPostProcess();
 
+    // Apply validation mode feature overrides
+    if (pp && getValidateConfig().enabled) {
+        ValidateConfig& vc = getValidateConfig();
+        if (vc.bloomOverride >= 0) pp->bloomEnabled_ = vc.bloomOverride;
+        if (vc.shadowsOverride >= 0) pp->shadowsEnabled_ = vc.shadowsOverride;
+        if (vc.fxaaOverride >= 0) pp->fxaaEnabled_ = vc.fxaaOverride;
+    }
+
     glCullFace(GL_FRONT);
 
 	const int viewport_w = Environment.drawableWidth;
@@ -373,6 +382,9 @@ int main(int argc, char** argv)
     }
     cmdline[cmdline_len] = '\0';
 
+    // Parse validation args before GameOS consumes the command line
+    validateParseArgs(argc, argv);
+
     // fills in Environment structure
     GetGameOSEnvironment(cmdline);
 
@@ -488,8 +500,22 @@ int main(int argc, char** argv)
 		uint64_t end_tick = timing::gettickcount();
 		uint64_t dt = timing::ticks2ms(end_tick - start_tick);
 		frameRate = 1000.0f / (float)dt;
+
+        // Validation mode: record frame and check exit condition
+        if (getValidateConfig().enabled) {
+            validateRecordFrame((float)dt);
+            if (validateShouldExit()) {
+                validateWriteResults(Environment.drawableWidth, Environment.drawableHeight);
+                break;
+            }
+        }
     }
-    
+
+    // Write validation results if game exited before frame limit
+    if (getValidateConfig().enabled) {
+        validateWriteResults(Environment.drawableWidth, Environment.drawableHeight);
+    }
+
     Environment.TerminateGameEngine();
 
     gos_DestroyRenderer();
@@ -498,6 +524,10 @@ int main(int argc, char** argv)
     graphics::destroy_window(win);
 
     gos_DestroyAudio();
+
+    // Return validation exit code if in validate mode
+    if (getValidateConfig().enabled)
+        return getValidateTelemetry().exitCode;
 
     return 0;
 }

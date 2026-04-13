@@ -11,6 +11,7 @@ set(SOURCES ${SOURCES}
     gameos_sound.cpp
     gos_render.cpp
     gos_postprocess.cpp
+    gos_validate.cpp
     gos_font.cpp
     gos_input.cpp
 

@@ -7,6 +7,7 @@
 #include <cstring>
 #include <string>
 
+#include "gos_validate.h"
 #include "utils/stream.h"
 #include "utils/logging.h"
 #include "utils/gl_utils.h"
@@ -76,6 +77,7 @@ bool get_shader_error_status(GLuint shader, GLenum status_type)
             log_error("CompileShader: %s\n", buf);
             printf("[SHADER ERROR] CompileShader: %s\n", buf);
             fflush(stdout);
+            validateRecordShaderError(buf);
         }
 		delete[] buf;
 
@@ -102,6 +104,7 @@ bool get_program_error_status(GLuint program, GLenum status_type)
             log_error("LinkProgram: %s\n", buf);
             printf("[SHADER ERROR] LinkProgram: %s\n", buf);
             fflush(stdout);
+            validateRecordShaderError(buf);
         }
 		delete[] buf;
         return true;
