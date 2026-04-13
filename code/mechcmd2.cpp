@@ -75,6 +75,7 @@ extern CPrefs prefs;
 #include<gosfx/gosfxheaders.hpp>
 
 #include "platform_str.h"
+#include "gos_validate.h"
 
 //------------------------------------------------------------------------------------------------------------
 // MechCmdr2 Global Instances of Things
@@ -2643,6 +2644,15 @@ bool notFirstTime = false;
 void __stdcall GetGameOSEnvironment(const char* CommandLine )
 {
 	ParseCommandLine(CommandLine);
+
+	// Validate mode: auto-start mission and disable sound
+	if (getValidateConfig().enabled) {
+		if (!justStartMission) {
+			justStartMission = true;
+			strcpy(missionName, "mis0101");
+		}
+		useSound = false;
+	}
 
 	Environment.applicationName			= "MechCommander2\\1.0"; // MP012001";
 

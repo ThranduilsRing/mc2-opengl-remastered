@@ -73,3 +73,18 @@ CMakeToolsMeta.in.txt
 CMakeToolsMeta.txt
 compile_commands.json
 
+# Claude worktrees and cache
+.claude/worktrees/
+__pycache__/
+
+# AI upscaling models and tools (large binaries)
+esrgan_models/
+realesrgan-ncnn-vulkan/
+
+# Upscaled texture output
+mc2srcdata/
+
+# Validation output
+validate.json
+validate*.tga
+
