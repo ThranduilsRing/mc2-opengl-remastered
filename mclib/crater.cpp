@@ -282,14 +282,12 @@ long CraterManager::update (void)
 			if (currentCrater->craterShapeId > TURKINA_FOOTPRINT)	//We are standard crater.
 			{
 				craterTextureHandles[0] = mcTextureManager->get_gosTextureHandle(craterTextureIndices[0]);
-				mcTextureManager->addTriangle(craterTextureIndices[0],MC2_ISCRATERS | MC2_DRAWALPHA | MC2_ISTERRAIN);
-				mcTextureManager->addTriangle(craterTextureIndices[0],MC2_ISCRATERS | MC2_DRAWALPHA | MC2_ISTERRAIN);
+				// addTriangle reservations removed — now using gos_PushDecal typed batch
 			}
 			else		//We are a footprint.
 			{
 				craterTextureHandles[1] = mcTextureManager->get_gosTextureHandle(craterTextureIndices[1]);
-				mcTextureManager->addTriangle(craterTextureIndices[1],MC2_ISCRATERS | MC2_DRAWALPHA);
-				mcTextureManager->addTriangle(craterTextureIndices[1],MC2_ISCRATERS | MC2_DRAWALPHA);
+				// addTriangle reservations removed — now using gos_PushDecal typed batch
 			}
 		}
 	}
@@ -540,15 +538,30 @@ void CraterManager::render (void)
 					sVertex[2].argb		= lightRGB;
 					sVertex[2].frgb		= fogRGB;
  				
-					if (currCrater->craterShapeId > TURKINA_FOOTPRINT)	//We are standard crater.
+					// Both craters and footprints now use the typed world-space decal batch.
+					// UVs and argb come from the proven gVertex/sVertex layout; world
+					// position comes from currCrater->position[] (MC2 world space: x=east, y=north, z=elev).
 					{
-						mcTextureManager->addVertices(craterTextureIndices[handleOffset],gVertex,MC2_ISCRATERS | MC2_DRAWALPHA | MC2_ISTERRAIN);
-						mcTextureManager->addVertices(craterTextureIndices[handleOffset],sVertex,MC2_ISCRATERS | MC2_DRAWALPHA | MC2_ISTERRAIN);
-					}
-					else		//We are a footprint
-					{
-						mcTextureManager->addVertices(craterTextureIndices[handleOffset],gVertex,MC2_ISCRATERS | MC2_DRAWALPHA);
-						mcTextureManager->addVertices(craterTextureIndices[handleOffset],sVertex,MC2_ISCRATERS | MC2_DRAWALPHA);
+						float fogFloat = (float)((fogRGB >> 24) & 0xFF) / 255.0f;
+						DWORD texIdx = craterTextureIndices[handleOffset];
+
+						WorldOverlayVert gWov[3];
+						gWov[0] = { currCrater->position[0].x, currCrater->position[0].y, currCrater->position[0].z,
+						            gVertex[0].u, gVertex[0].v, fogFloat, gVertex[0].argb };
+						gWov[1] = { currCrater->position[1].x, currCrater->position[1].y, currCrater->position[1].z,
+						            gVertex[1].u, gVertex[1].v, fogFloat, gVertex[1].argb };
+						gWov[2] = { currCrater->position[2].x, currCrater->position[2].y, currCrater->position[2].z,
+						            gVertex[2].u, gVertex[2].v, fogFloat, gVertex[2].argb };
+						gos_PushDecal(gWov, texIdx);
+
+						WorldOverlayVert sWov[3];
+						sWov[0] = { currCrater->position[0].x, currCrater->position[0].y, currCrater->position[0].z,
+						            sVertex[0].u, sVertex[0].v, fogFloat, sVertex[0].argb };
+						sWov[1] = { currCrater->position[2].x, currCrater->position[2].y, currCrater->position[2].z,
+						            sVertex[1].u, sVertex[1].v, fogFloat, sVertex[1].argb };
+						sWov[2] = { currCrater->position[3].x, currCrater->position[3].y, currCrater->position[3].z,
+						            sVertex[2].u, sVertex[2].v, fogFloat, sVertex[2].argb };
+						gos_PushDecal(sWov, texIdx);
 					}
 				}
 			}

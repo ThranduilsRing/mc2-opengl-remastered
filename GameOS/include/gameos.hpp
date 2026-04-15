@@ -2110,6 +2110,8 @@ enum gos_RenderState
 
 	gos_State_Water,			// Default: 0						true/false - water draw with animated noise
 
+	gos_State_Overlay,			// Default: 0						true/false - overlay with GPU projection + shadow sampling
+
 	gos_MaxState				// Marker for last render state
 };
 
@@ -2292,6 +2294,37 @@ void gos_BuildDynamicLightMatrix(float sunDirX, float sunDirY, float sunDirZ,
 void __stdcall gos_SetTerrainMVP(const float* matrix16);
 void __stdcall gos_SetTerrainViewport(float vmx, float vmy, float vax, float vay);
 void __stdcall gos_SetTerrainCameraPos(float x, float y, float z);
+
+// World-space overlay batch API ─────────────────────────────────────────────
+// Accumulate world-space quads during land->render() / craterManager->render().
+// gos_DrawTerrainOverlays / gos_DrawDecals are called from txmmgr::renderLists()
+// at the correct phase (after terrain DRAWALPHA detail, before 3D objects).
+//
+// WorldOverlayVert layout (28 bytes):
+//   wx,wy,wz  — MC2 world space: x=east, y=north, z=elev
+//   u,v       — texture coordinates
+//   fog       — fog factor [0,1]: 1=clear (nearby), 0=fully fogged
+//   argb      — BGRA packed byte color (same as gos_VERTEX.argb)
+struct WorldOverlayVert {
+    float wx, wy, wz;
+    float u, v;
+    float fog;
+    unsigned int argb;
+};
+
+// Push one triangle (3 verts) to the terrain overlay batch.
+// Used for alpha cement perimeter/transition tiles.  texHandle = cement texture atlas.
+void __stdcall gos_PushTerrainOverlay(const WorldOverlayVert* verts3, unsigned int texHandle);
+
+// Push one triangle (3 verts) to the decal batch.
+// Used for bomb craters and mech footprints.  texHandle identifies the decal atlas.
+void __stdcall gos_PushDecal(const WorldOverlayVert* verts3, unsigned int texHandle);
+
+// Flush batches to GPU — call from renderLists() after terrain DRAWALPHA detail.
+// Each function clears its batch vector after drawing (ready for next frame).
+void __stdcall gos_DrawTerrainOverlays();
+void __stdcall gos_DrawDecals();
+// ─────────────────────────────────────────────────────────────────────────────
 
 // Terrain splatting API (material textures, lighting)
 void gos_SetTerrainLightDir(float x, float y, float z);
@@ -2608,8 +2641,11 @@ HGOSRENDERMATERIAL __stdcall gos_getRenderMaterial(const char* material);
 void __stdcall gos_ApplyRenderMaterial(HGOSRENDERMATERIAL material);
 void __stdcall gos_SetRenderMaterialParameterFloat4(HGOSRENDERMATERIAL material, const char* name, const float* v);
 void __stdcall gos_SetRenderMaterialParameterMat4(HGOSRENDERMATERIAL material, const char* name, const float* m);
+void __stdcall gos_SetRenderMaterialParameterInt(HGOSRENDERMATERIAL material, const char* name, int v);
 void __stdcall gos_SetRenderMaterialUniformBlockBindingPoint(HGOSRENDERMATERIAL material, const char* name, uint32_t slot);
 void __stdcall gos_SetCommonMaterialParameters(HGOSRENDERMATERIAL material);
+// Bind shadow map textures + uniforms to an already-applied material (for GPU-projected objects)
+void __stdcall gos_SetupObjectShadows(HGOSRENDERMATERIAL material);
 
 
 

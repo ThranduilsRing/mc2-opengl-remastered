@@ -47,6 +47,8 @@
 #include<gameos.hpp>
 #include<mlr/mlr.hpp>
 #include<gosfx/gosfxheaders.hpp>
+#include <cstdlib>
+#include <cstring>
 #include <utils/gl_utils.h>
 #include "gos_postprocess.h"
 #include "gos_profiler.h"
@@ -74,6 +76,20 @@ struct ShadowShapeEntry {
 static const int MAX_SHADOW_SHAPES = 512;
 static ShadowShapeEntry g_shadowShapes[MAX_SHADOW_SHAPES];
 static int g_numShadowShapes = 0;
+
+static bool isAllConcreteTerrainBatch(const gos_VERTEX* vertices, DWORD totalVertices)
+{
+	if (!vertices || totalVertices == 0)
+		return false;
+
+	for (DWORD vi = 0; vi < totalVertices; ++vi)
+	{
+		if ((vertices[vi].frgb & 0x000000ff) != 3)
+			return false;
+	}
+
+	return true;
+}
 
 void addShadowShape(HGOSBUFFER vb, HGOSBUFFER ib, HGOSVERTEXDECLARATION vdecl, const float* worldEntries16) {
 	if (g_numShadowShapes >= MAX_SHADOW_SHAPES) return;
@@ -814,7 +830,7 @@ public:
 		lights_data_ = lights_data;
 	}
 
-	void render(HGOSBUFFER vb, HGOSBUFFER ib, HGOSVERTEXDECLARATION vdecl, DWORD texture_id, int light_index)
+	void render(HGOSBUFFER vb, HGOSBUFFER ib, HGOSVERTEXDECLARATION vdecl, DWORD texture_id, int light_index, bool isHudElement = false)
 	{
 		gos_SetRenderState(gos_State_Texture, texture_id);
 		gos_SetRenderViewport(viewport_[2], viewport_[3], viewport_[0], viewport_[1]);
@@ -828,13 +844,18 @@ public:
         float ld[4] = { (float)light_index, 0.0f, 0.0f, 0.0f};
 		gos_SetRenderMaterialParameterFloat4(mat, "light_offset_", ld);
 
+		// GPU projection via terrainMVP (skip for HUD elements which need legacy viewport projection)
+		gos_SetRenderMaterialParameterInt(mat, "gpuProjection", isHudElement ? 0 : 1);
+
 		gos_SetRenderMaterialUniformBlockBindingPoint(mat, "LightsData", LIGHT_DATA_ATTACHMENT_SLOT);
 		gos_SetRenderMaterialUniformBlockBindingPoint(mat, "SceneData", SCENE_DATA_ATTACHMENT_SLOT);
 
 		gos_ApplyRenderMaterial(mat);
 
-		// TODO: either use this or setMat4("wvp_", ...);
-		//mat->setTransform(*wvp_);
+		// Bind shadow maps + terrainMVP after apply() (requires active program)
+		if (!isHudElement) {
+			gos_SetupObjectShadows(mat);
+		}
 
 		gos_RenderIndexedArray(ib, vb, vdecl);
 
@@ -1049,14 +1070,14 @@ void MC_TextureManager::renderLists (void)
 					DWORD texture = masterTextureNodes[textureIndex].get_gosTextureHandle();
 					TG_RenderShape* rs = masterHardwareVertexNodes[i].shapes + sh;
 
-					
+
 					mat4 view_mat = gos2my(TG_Shape::s_worldToCamera);
 					mat4 world_mat = gos2my(rs->mw_);
 					mat4 wvp_mat = gos2my(rs->mvp_);
 
 					ShapeRenderer shape_renderer;
 					shape_renderer.setup(&world_mat, &view_mat, &wvp_mat, rs->viewport_);
-					shape_renderer.render(rs->vb_, rs->ib_, rs->vdecl_, texture, rs->light_data_buffer_index_);
+					shape_renderer.render(rs->vb_, rs->ib_, rs->vdecl_, texture, rs->light_data_buffer_index_, rs->isHudElement_);
 				}
 
 			}
@@ -1100,6 +1121,7 @@ void MC_TextureManager::renderLists (void)
 		}
 
 		gos_BeginShadowPrePass(firstFrame);  // clear only on first frame
+		static int concrete_shadow_trace_count = 0;
 		for (long si = 0; si < nextAvailableVertexNode; si++) {
 			if ((masterVertexNodes[si].flags & MC2_DRAWSOLID) &&
 				(masterVertexNodes[si].flags & MC2_ISTERRAIN) &&
@@ -1115,6 +1137,22 @@ void MC_TextureManager::renderLists (void)
 				int extraCount = masterVertexNodes[si].currentExtra
 					? (int)(masterVertexNodes[si].currentExtra - masterVertexNodes[si].extras)
 					: 0;
+
+				if (concrete_shadow_trace_count < 8 &&
+					isAllConcreteTerrainBatch(masterVertexNodes[si].vertices, totalVerts)) {
+					const gos_TERRAIN_EXTRA* e0 = extraCount > 0 ? masterVertexNodes[si].extras : nullptr;
+					printf("[CEMENT][ShadowPre] node=%ld tex=%u flags=0x%X verts=%u extras=%d firstExtra=(%.3f, %.3f, %.3f)\n",
+						si,
+						masterVertexNodes[si].textureIndex,
+						masterVertexNodes[si].flags,
+						totalVerts,
+						extraCount,
+						e0 ? e0->wx : 0.0f,
+						e0 ? e0->wy : 0.0f,
+						e0 ? e0->wz : 0.0f);
+					fflush(stdout);
+					++concrete_shadow_trace_count;
+				}
 
 				if (totalVerts > 0 && extraCount > 0) {
 					gos_SetRenderState(gos_State_Texture, masterTextureNodes[masterVertexNodes[si].textureIndex].get_gosTextureHandle());
@@ -1170,6 +1208,7 @@ void MC_TextureManager::renderLists (void)
 		ZoneScopedN("Render.TerrainSolid");
 		TracyGpuZone("Render.TerrainSolid");
 	bool bSkip_DRAWSOLID = false;
+	static int concrete_solid_trace_count = 0;
 	for (long i=0;i<nextAvailableVertexNode && !bSkip_DRAWSOLID;i++)
 	{
 		if ((masterVertexNodes[i].flags & MC2_DRAWSOLID) &&
@@ -1195,7 +1234,34 @@ void MC_TextureManager::renderLists (void)
 					? (int)(masterVertexNodes[i].currentExtra - masterVertexNodes[i].extras)
 					: 0;
 				gos_SetTerrainBatchExtras(masterVertexNodes[i].extras, extraCount);
+				if (concrete_solid_trace_count < 12 &&
+					isAllConcreteTerrainBatch(masterVertexNodes[i].vertices, totalVertices)) {
+					const gos_TERRAIN_EXTRA* e0 = extraCount > 0 ? masterVertexNodes[i].extras : nullptr;
+					printf("[CEMENT][TerrainSolid] node=%ld tex=%u flags=0x%X totalVerts=%u extraCount=%d terrainState=%d firstExtra=(%.3f, %.3f, %.3f)\n",
+						i,
+						masterVertexNodes[i].textureIndex,
+						masterVertexNodes[i].flags,
+						totalVertices,
+						extraCount,
+						(masterVertexNodes[i].flags & MC2_ISTERRAIN) ? 1 : 0,
+						e0 ? e0->wx : 0.0f,
+						e0 ? e0->wy : 0.0f,
+						e0 ? e0->wz : 0.0f);
+					fflush(stdout);
+					++concrete_solid_trace_count;
+				}
 			} else {
+				if (concrete_solid_trace_count < 12 &&
+					isAllConcreteTerrainBatch(masterVertexNodes[i].vertices, totalVertices)) {
+					printf("[CEMENT][TerrainSolid] node=%ld tex=%u flags=0x%X totalVerts=%u extraCount=0 terrainState=%d extras=null\n",
+						i,
+						masterVertexNodes[i].textureIndex,
+						masterVertexNodes[i].flags,
+						totalVertices,
+						(masterVertexNodes[i].flags & MC2_ISTERRAIN) ? 1 : 0);
+					fflush(stdout);
+					++concrete_solid_trace_count;
+				}
 				gos_SetTerrainBatchExtras(NULL, 0);
 			}
 
@@ -1223,8 +1289,7 @@ void MC_TextureManager::renderLists (void)
 					currentVertices += tVertices;
 				}
 			}
-
-			//Reset the list to zero length to avoid drawing more then once!
+			//Reset the list to zero length to avoid drawing more then once!			
 			//Also comes in handy if gameLogic is not called.
 			masterVertexNodes[i].currentVertex = masterVertexNodes[i].vertices;
 		}
@@ -1233,8 +1298,25 @@ void MC_TextureManager::renderLists (void)
 
 	// DRAWSOLID done
 
+	// ── New world-space overlay batches ──────────────────────────────────────
+	// These draw calls flush batches accumulated during land->render() and
+	// craterManager->render().  They set their own GL state and restore it.
+	// Render order matches design: terrain → cement overlays → decals → (old overlays).
+	{
+		ZoneScopedN("Render.TerrainOverlays");
+		TracyGpuZone("Render.TerrainOverlays");
+		gos_DrawTerrainOverlays();
+	}
+	{
+		ZoneScopedN("Render.Decals");
+		TracyGpuZone("Render.Decals");
+		gos_DrawDecals();
+	}
+	// ── End new world-space overlay batches ───────────────────────────────────
+
 	{
 		ZoneScopedN("Render.Overlays");
+		TracyGpuZone("Render.Overlays");
 	if (Environment.Renderer == 3)
 	{
 		//Do NOT draw the water as transparent in software
@@ -1308,6 +1390,8 @@ void MC_TextureManager::renderLists (void)
 
 
 	//<< sebi: added this section to draw objects which do not have terrain underlayer (those are added in quad.cpp, see (*) there )
+	{ ZoneScopedN("Render.NoUnderlayer");
+	  TracyGpuZone("Render.NoUnderlayer");
 	if (Environment.Renderer != 3)
 	{
 		gos_SetRenderState( gos_State_ShadeMode, gos_ShadeGouraud);
@@ -1318,7 +1402,7 @@ void MC_TextureManager::renderLists (void)
 	{
 		if ((masterVertexNodes[i].flags & MC2_ISTERRAIN) &&
 			!(masterVertexNodes[i].flags & MC2_DRAWALPHA) &&
-			(masterVertexNodes[i].flags & MC2_ISCRATERS) &&
+			(masterVertexNodes[i].flags & MC2_GPUOVERLAY) &&
 			(masterVertexNodes[i].vertices))
 		{
 			DWORD totalVertices = masterVertexNodes[i].numVertices;
@@ -1327,6 +1411,18 @@ void MC_TextureManager::renderLists (void)
 				totalVertices = masterVertexNodes[i].currentVertex - masterVertexNodes[i].vertices;
 			}
 	
+			gos_SetRenderState( gos_State_AlphaMode, gos_Alpha_OneZero);
+			gos_SetRenderState( gos_State_ZCompare, 0);
+			gos_SetRenderState(gos_State_Overlay, 1);
+			static bool gpuOverlayDiagPrinted = false;
+			if (!gpuOverlayDiagPrinted) {
+				gpuOverlayDiagPrinted = true;
+				const gos_VERTEX& v = masterVertexNodes[i].vertices[0];
+				printf("Render.NoUnderlayer GPUOVERLAY: tex=%u flags=0x%X v0=(%.3f, %.3f, %.3f, %.3f)\n",
+					masterVertexNodes[i].textureIndex, masterVertexNodes[i].flags,
+					v.x, v.y, v.z, v.rhw);
+				fflush(stdout);
+			}
 			if (totalVertices && (totalVertices < MAX_SENDDOWN))
 			{
 				gos_SetRenderState( gos_State_Texture, masterTextureNodes[masterVertexNodes[i].textureIndex].get_gosTextureHandle());
@@ -1351,143 +1447,21 @@ void MC_TextureManager::renderLists (void)
 					currentVertices += tVertices;
 				}
 			}
+			gos_SetRenderState(gos_State_Overlay, 0);
+			gos_SetRenderState( gos_State_ZCompare, 1);
+			gos_SetRenderState( gos_State_AlphaMode, gos_Alpha_AlphaInvAlpha);
 			
 			//Reset the list to zero length to avoid drawing more then once!			
 			//Also comes in handy if gameLogic is not called.
 			masterVertexNodes[i].currentVertex = masterVertexNodes[i].vertices;
 		}
 	}
+	} // end ZoneScopedN("Render.NoUnderlayer")
 	//<< sebi: end of added block
 
-	if (Environment.Renderer == 3)
-	{
-		gos_SetRenderState( gos_State_AlphaMode, gos_Alpha_AlphaInvAlpha);
-		gos_SetRenderState( gos_State_ShadeMode, gos_ShadeFlat);
-	}
-
-	// now begins block which draws quads that have underlayers, so we do not draw in Z-buffer
-	if (Environment.Renderer != 3)
-	{
-		gos_SetRenderState( gos_State_ShadeMode, gos_ShadeGouraud);
-		// sebi: do not draw in depth for terrain overlays, otherwise other overlay data, like craters, start to flicker
-		gos_SetRenderState(	gos_State_ZWrite, 0);
-		// Normal GL_LEQUAL depth test — terrain depth buffer has un-displaced depth
-		// (written by gl_FragDepth in terrain frag shader), so overlays at original
-		// surface depth pass the test naturally.
-	}
-
-    // sebi: split in 2 parts, first draw objects which have alpha test off, then with alpha test on
-    for(int states = 0; states < 2; ++states) 
-    {   
-        gos_SetRenderState( gos_State_AlphaTest, states);
-        //Draw the Overlays after the detail textures on the terrain.  There should never be anything here in the OLD universe.
-        for (int i=0;i<nextAvailableVertexNode;i++)
-        {
-            if ((masterVertexNodes[i].flags & MC2_ISTERRAIN) &&
-                    (masterVertexNodes[i].flags & MC2_DRAWALPHA) &&
-                    (masterVertexNodes[i].flags & MC2_ISCRATERS) &&
-                    (masterVertexNodes[i].flags & MC2_ALPHATEST)==states*MC2_ALPHATEST &&
-                    (masterVertexNodes[i].vertices))
-            {
-
-
-                DWORD totalVertices = masterVertexNodes[i].numVertices;
-                if (masterVertexNodes[i].currentVertex != (masterVertexNodes[i].vertices + masterVertexNodes[i].numVertices))
-                {
-                    totalVertices = masterVertexNodes[i].currentVertex - masterVertexNodes[i].vertices;
-                }
-
-                if (totalVertices && (totalVertices < MAX_SENDDOWN))
-                {
-                    gos_SetRenderState( gos_State_Texture, masterTextureNodes[masterVertexNodes[i].textureIndex].get_gosTextureHandle());
-                    gos_RenderIndexedArray( masterVertexNodes[i].vertices, totalVertices, indexArray, totalVertices );
-                }
-                else if (totalVertices > MAX_SENDDOWN)
-                {
-                    gos_SetRenderState( gos_State_Texture, masterTextureNodes[masterVertexNodes[i].textureIndex].get_gosTextureHandle());
-
-                    //Must divide up vertices into batches of 10,000 each to send down.
-                    // Somewhere around 20000 to 30000 it really gets screwy!!!
-                    long currentVertices = 0;
-                    while (currentVertices < totalVertices)
-                    {
-                        gos_VERTEX *v = masterVertexNodes[i].vertices + currentVertices;
-                        long tVertices = totalVertices - currentVertices;
-                        if (tVertices > MAX_SENDDOWN)
-                            tVertices = MAX_SENDDOWN;
-
-                        gos_RenderIndexedArray(v, tVertices, indexArray, tVertices );
-
-                        currentVertices += tVertices;
-                    }
-                }
-
-                //Reset the list to zero length to avoid drawing more then once!			
-                //Also comes in handy if gameLogic is not called.
-                masterVertexNodes[i].currentVertex = masterVertexNodes[i].vertices;
-            }
-        }
-    }
-    // reset alpha test at the end
-    gos_SetRenderState( gos_State_AlphaTest, 0);
-
-
-
-	gos_SetRenderState( gos_State_TextureAddress, gos_TextureClamp );
-	gos_SetRenderState(	gos_State_ZWrite, 0);
-	gos_SetRenderState( gos_State_ShadeMode, gos_ShadeFlat);
-	// Craters also need to render on displaced terrain (gl_FragDepth handles depth matching)
-
- 	//Draw the Craters after the detail textures on the terrain.  There should never be anything here in the OLD universe.
-	// DO NOT draw craters or footprints in software
-	if (Environment.Renderer != 3)
-	{
-		for (int i=0;i<nextAvailableVertexNode;i++)
-		{
-			if (!(masterVertexNodes[i].flags & MC2_ISTERRAIN) &&
-				(masterVertexNodes[i].flags & MC2_DRAWALPHA) &&
-				(masterVertexNodes[i].flags & MC2_ISCRATERS) && 
-				(masterVertexNodes[i].vertices))
-			{
-				DWORD totalVertices = masterVertexNodes[i].numVertices;
-				if (masterVertexNodes[i].currentVertex != (masterVertexNodes[i].vertices + masterVertexNodes[i].numVertices))
-				{
-					totalVertices = masterVertexNodes[i].currentVertex - masterVertexNodes[i].vertices;
-				}
-		
-				if (totalVertices && (totalVertices < MAX_SENDDOWN))
-				{
-					gos_SetRenderState( gos_State_Texture, masterTextureNodes[masterVertexNodes[i].textureIndex].get_gosTextureHandle());
-					gos_RenderIndexedArray( masterVertexNodes[i].vertices, totalVertices, indexArray, totalVertices );
-				}
-				else if (totalVertices > MAX_SENDDOWN)
-				{
-					gos_SetRenderState( gos_State_Texture, masterTextureNodes[masterVertexNodes[i].textureIndex].get_gosTextureHandle());
-					
-					//Must divide up vertices into batches of 10,000 each to send down.
-					// Somewhere around 20000 to 30000 it really gets screwy!!!
-					long currentVertices = 0;
-					while (currentVertices < totalVertices)
-					{
-						gos_VERTEX *v = masterVertexNodes[i].vertices + currentVertices;
-						long tVertices = totalVertices - currentVertices;
-						if (tVertices > MAX_SENDDOWN)
-							tVertices = MAX_SENDDOWN;
-						
-						gos_RenderIndexedArray(v, tVertices, indexArray, tVertices );
-						
-						currentVertices += tVertices;
-					}
-				}
-				
-				//Reset the list to zero length to avoid drawing more then once!			
-				//Also comes in handy if gameLogic is not called.
-				masterVertexNodes[i].currentVertex = masterVertexNodes[i].vertices;
-			}
-		}
-	}
-
-	// No special restore needed — overlays use normal GL_LEQUAL
+	// Cement overlays (MC2_ISCRATERS|MC2_ISTERRAIN) and decals (!MC2_ISTERRAIN|MC2_ISCRATERS)
+	// are now drawn by gos_DrawTerrainOverlays() and gos_DrawDecals() before Render.Overlays.
+	// The old Render.CraterOverlays and non-terrain crater loops are removed.
 
 	if (Environment.Renderer == 3)
 	{
@@ -2033,7 +2007,10 @@ DWORD MC_TextureManager::loadTexture (const char *textureFullPathName, gos_Textu
 #endif
 		textureFile.open(textureFullPathName);
 	gosASSERT(textureFileOpenResult == NO_ERR);
-	
+
+	if (textureFile.isLoadedFromDisk())
+		masterTextureNodes[i].uvScale = 4;
+
 	long txmSize = textureFile.fileSize();
 	
 	if (!lzBuffer1)

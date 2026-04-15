@@ -326,21 +326,17 @@ void TerrainQuad::setupTextures (void)
 							mcTextureManager->addTriangle(terrainDetailHandle,MC2_ISTERRAIN | MC2_DRAWALPHA);
 						}
 						
-						if(overlayHandle!=0) {
-							mcTextureManager->addTriangle(overlayHandle,MC2_ISTERRAIN | MC2_DRAWALPHA | MC2_ISCRATERS);
-							mcTextureManager->addTriangle(overlayHandle,MC2_ISTERRAIN | MC2_DRAWALPHA | MC2_ISCRATERS);
-						}
+						// overlayHandle now goes to gos_PushTerrainOverlay (no old-style pool reservation needed)
 					}
 					else	//Otherwise, its solid cement.  Save some draw cycles!!
 					{
 						terrainHandle = Terrain::terrainTextures->getTextureHandle(vertices[0]->pVertex->textureData & 0x0000ffff);
 						terrainDetailHandle = 0xffffffff;		//Cement has NO detail!!
 						overlayHandle = 0xffffffff;
-						
-						// sebi (*) make it solid, soother objects will not draw-through, special section added in txmmgr.cpp
-						if(terrainHandle!=0) {		// consider adding this check in add vertices as well!
-							mcTextureManager->addTriangle(terrainHandle,MC2_ISTERRAIN/* | MC2_DRAWALPHA*/ | MC2_ISCRATERS);
-							mcTextureManager->addTriangle(terrainHandle,MC2_ISTERRAIN/* | MC2_DRAWALPHA*/ | MC2_ISCRATERS);
+
+						if(terrainHandle!=0) {
+							mcTextureManager->addTriangle(terrainHandle,MC2_ISTERRAIN | MC2_DRAWSOLID);
+							mcTextureManager->addTriangle(terrainHandle,MC2_ISTERRAIN | MC2_DRAWSOLID);
 						}
 					}
 				}
@@ -432,10 +428,7 @@ void TerrainQuad::setupTextures (void)
 						mcTextureManager->addTriangle(terrainDetailHandle,MC2_ISTERRAIN | MC2_DRAWALPHA);
 						mcTextureManager->addTriangle(terrainDetailHandle,MC2_ISTERRAIN | MC2_DRAWALPHA);
 						}
-						if(overlayHandle!=0) {
-						mcTextureManager->addTriangle(overlayHandle,MC2_ISTERRAIN | MC2_DRAWALPHA | MC2_ISCRATERS);
-						mcTextureManager->addTriangle(overlayHandle,MC2_ISTERRAIN | MC2_DRAWALPHA | MC2_ISCRATERS);
-						}
+						// overlayHandle now goes to gos_PushTerrainOverlay (no old-style pool reservation needed)
 					}
 					else	//Otherwise, its solid cement.  Save some draw cycles!!
 					{
@@ -443,10 +436,9 @@ void TerrainQuad::setupTextures (void)
 						terrainDetailHandle = 0xffffffff;		//Cement has NO detail!!
 						overlayHandle = 0xffffffff;
 							
-						// sebi: (*) make it solid, soother objects will not draw-through, special section added in txmmgr.cpp
-						if(terrainHandle!=0) {	// consider adding this check to addVertices as well!
-							mcTextureManager->addTriangle(terrainHandle,MC2_ISTERRAIN /*| MC2_DRAWALPHA*/ | MC2_ISCRATERS);
-							mcTextureManager->addTriangle(terrainHandle,MC2_ISTERRAIN /*| MC2_DRAWALPHA*/ | MC2_ISCRATERS);
+						if(terrainHandle!=0) {
+							mcTextureManager->addTriangle(terrainHandle,MC2_ISTERRAIN | MC2_DRAWSOLID);
+							mcTextureManager->addTriangle(terrainHandle,MC2_ISTERRAIN | MC2_DRAWSOLID);
 						}
 					}
 				}
@@ -1448,6 +1440,16 @@ void TerrainQuad::setupTextures (void)
 }
 
 #define TERRAIN_DEPTH_FUDGE		0.001f
+#define OVERLAY_ELEV_OFFSET		0.15f
+
+// GPU projection: pack MC2 world coords into overlay vertex instead of screen-space
+static inline void setOverlayWorldCoords(gos_VERTEX& v, const VertexPtr src) {
+	v.x = src->vx;
+	v.y = src->vy;
+	v.z = src->pVertex->elevation + OVERLAY_ELEV_OFFSET;
+	v.rhw = 1.0f;
+}
+
 //---------------------------------------------------------------------------
 void TerrainQuad::draw (void)
 {
@@ -1540,15 +1542,9 @@ void TerrainQuad::draw (void)
 			{
 				{
 					// sebi: beware this will be drawn with alpha blending, so need to make sure that alpha is not zero, because this is a base terrain layer!
-					DWORD flags = isAlpha ? MC2_DRAWALPHA : 0;
-					if ((terrainDetailHandle == 0xffffffff) && (overlayHandle == 0xffffffff) && isCement) {
-						mcTextureManager->addVertices(terrainHandle,gVertex,MC2_ISTERRAIN | flags | MC2_ISCRATERS);
-						fillTerrainExtra(terrainHandle, MC2_ISTERRAIN | flags | MC2_ISCRATERS, vertices[0], vertices[1], vertices[2]);
-					} else {
-						if(terrainHandle!=0) {
-							mcTextureManager->addVertices(terrainHandle,gVertex,MC2_ISTERRAIN | MC2_DRAWSOLID);
-							fillTerrainExtra(terrainHandle, MC2_ISTERRAIN | MC2_DRAWSOLID, vertices[0], vertices[1], vertices[2]);
-						}
+					if(terrainHandle!=0) {
+						mcTextureManager->addVertices(terrainHandle,gVertex,MC2_ISTERRAIN | MC2_DRAWSOLID);
+						fillTerrainExtra(terrainHandle, MC2_ISTERRAIN | MC2_DRAWSOLID, vertices[0], vertices[1], vertices[2]);
 					}
 
 					//--------------------------------------------------------------
@@ -1571,7 +1567,24 @@ void TerrainQuad::draw (void)
 						oVertex[1].argb		= vertices[1]->lightRGB;
 						oVertex[2].argb		= vertices[2]->lightRGB;
 
-						mcTextureManager->addVertices(overlayHandle,oVertex,MC2_ISTERRAIN | MC2_DRAWALPHA | MC2_ISCRATERS);
+						// GPU projection: MC2 world coords into new typed batch
+						setOverlayWorldCoords(oVertex[0], vertices[0]);
+						setOverlayWorldCoords(oVertex[1], vertices[1]);
+						setOverlayWorldCoords(oVertex[2], vertices[2]);
+
+						{
+							WorldOverlayVert wov[3];
+							for (int _k = 0; _k < 3; ++_k) {
+								wov[_k].wx   = oVertex[_k].x;
+								wov[_k].wy   = oVertex[_k].y;
+								wov[_k].wz   = oVertex[_k].z;
+								wov[_k].u    = oVertex[_k].u;
+								wov[_k].v    = oVertex[_k].v;
+								wov[_k].fog  = (float)((oVertex[_k].frgb >> 24) & 0xFF) / 255.0f;
+								wov[_k].argb = oVertex[_k].argb;
+							}
+							gos_PushTerrainOverlay(wov, overlayHandle);
+						}
 					}
 
 					//----------------------------------------------------
@@ -1580,11 +1593,11 @@ void TerrainQuad::draw (void)
 					{
 						gos_VERTEX sVertex[3];
 						memcpy(sVertex,gVertex,sizeof(gos_VERTEX)*3);
-		
+
 						float tilingFactor = Terrain::terrainTextures->getDetailTilingFactor(1);
 						if (Terrain::terrainTextures2)
 							tilingFactor = Terrain::terrainTextures2->getDetailTilingFactor();
-							
+
 						float oneOverTf		= tilingFactor / Terrain::worldUnitsMapSide;
 						
 						sVertex[0].u		= (vertices[0]->vx - Terrain::mapTopLeft3d.x) * oneOverTf;
@@ -1671,23 +1684,15 @@ void TerrainQuad::draw (void)
 				(gVertex[2].z < 1.0f))
 			{
 				{
-					DWORD flags = isAlpha ? MC2_DRAWALPHA : 0;
-					if ((terrainDetailHandle == 0xffffffff) && (overlayHandle == 0xffffffff) && isCement) {
-						mcTextureManager->addVertices(terrainHandle,gVertex,MC2_ISTERRAIN | flags | MC2_ISCRATERS);
-						fillTerrainExtra(terrainHandle, MC2_ISTERRAIN | flags | MC2_ISCRATERS, vertices[0], vertices[2], vertices[3]);
-					} else {
-						if(terrainHandle!=0) {
-							mcTextureManager->addVertices(terrainHandle,gVertex,MC2_ISTERRAIN | MC2_DRAWSOLID);
-							fillTerrainExtra(terrainHandle, MC2_ISTERRAIN | MC2_DRAWSOLID, vertices[0], vertices[2], vertices[3]);
-						}
+					if(terrainHandle!=0) {
+						mcTextureManager->addVertices(terrainHandle,gVertex,MC2_ISTERRAIN | MC2_DRAWSOLID);
+						fillTerrainExtra(terrainHandle, MC2_ISTERRAIN | MC2_DRAWSOLID, vertices[0], vertices[2], vertices[3]);
 					}
 
 					//--------------------------------------------------------------
 					// Draw the Overlay Texture if it exists.
 					if (useOverlayTexture && (overlayHandle != 0xffffffff))
 					{
-						//Uses EXACT same coords as the above normal texture.
-						// Just replace the UVs and the texture handle!!
 						//Uses EXACT same coords as the above normal texture.
 						// Just replace the UVs and the texture handle!!
 						gos_VERTEX oVertex[3];
@@ -1698,26 +1703,43 @@ void TerrainQuad::draw (void)
 						oVertex[1].v		= oldmaxV;
 						oVertex[2].u		= oldminU;
 						oVertex[2].v		= oldmaxV;
-						
+
 						//Light the overlays!!
 						oVertex[0].argb		= vertices[0]->lightRGB;
 						oVertex[1].argb		= vertices[2]->lightRGB;
 						oVertex[2].argb		= vertices[3]->lightRGB;
 
-						mcTextureManager->addVertices(overlayHandle,oVertex,MC2_ISTERRAIN | MC2_DRAWALPHA | MC2_ISCRATERS);
+						// GPU projection: MC2 world coords into new typed batch
+						setOverlayWorldCoords(oVertex[0], vertices[0]);
+						setOverlayWorldCoords(oVertex[1], vertices[2]);
+						setOverlayWorldCoords(oVertex[2], vertices[3]);
+
+						{
+							WorldOverlayVert wov[3];
+							for (int _k = 0; _k < 3; ++_k) {
+								wov[_k].wx   = oVertex[_k].x;
+								wov[_k].wy   = oVertex[_k].y;
+								wov[_k].wz   = oVertex[_k].z;
+								wov[_k].u    = oVertex[_k].u;
+								wov[_k].v    = oVertex[_k].v;
+								wov[_k].fog  = (float)((oVertex[_k].frgb >> 24) & 0xFF) / 255.0f;
+								wov[_k].argb = oVertex[_k].argb;
+							}
+							gos_PushTerrainOverlay(wov, overlayHandle);
+						}
 					}
-					
+
 					//----------------------------------------------------
 					// Draw the detail Texture
 					if (useWaterInterestTexture && (terrainDetailHandle != 0xffffffff))
 					{
 						gos_VERTEX sVertex[3];
 						memcpy(sVertex,gVertex,sizeof(gos_VERTEX)*3);
-		
+
 						float tilingFactor = Terrain::terrainTextures->getDetailTilingFactor(1);
 						if (Terrain::terrainTextures2)
 							tilingFactor = Terrain::terrainTextures2->getDetailTilingFactor();
-							
+
  						float oneOverTF		= tilingFactor / Terrain::worldUnitsMapSide;
 						
 						sVertex[0].u		= (vertices[0]->vx - Terrain::mapTopLeft3d.x) * oneOverTF;
@@ -1819,15 +1841,9 @@ void TerrainQuad::draw (void)
 				(gVertex[2].z < 1.0f))
 			{
 				{
-					DWORD flags = isAlpha ? MC2_DRAWALPHA : 0;
-					if ((terrainDetailHandle == 0xffffffff) && (overlayHandle == 0xffffffff) && isCement) {
-						mcTextureManager->addVertices(terrainHandle,gVertex,MC2_ISTERRAIN | flags | MC2_ISCRATERS);
-						fillTerrainExtra(terrainHandle, MC2_ISTERRAIN | flags | MC2_ISCRATERS, vertices[0], vertices[1], vertices[3]);
-					} else {
-						if(terrainHandle!=0) {
-							mcTextureManager->addVertices(terrainHandle,gVertex,MC2_ISTERRAIN | MC2_DRAWSOLID);
-							fillTerrainExtra(terrainHandle, MC2_ISTERRAIN | MC2_DRAWSOLID, vertices[0], vertices[1], vertices[3]);
-						}
+					if(terrainHandle!=0) {
+						mcTextureManager->addVertices(terrainHandle,gVertex,MC2_ISTERRAIN | MC2_DRAWSOLID);
+						fillTerrainExtra(terrainHandle, MC2_ISTERRAIN | MC2_DRAWSOLID, vertices[0], vertices[1], vertices[3]);
 					}
 
 					//----------------------------------------------------
@@ -1899,13 +1915,30 @@ void TerrainQuad::draw (void)
 						oVertex[1].v		= oldminV;
 						oVertex[2].u		= oldminU;
 						oVertex[2].v		= oldmaxV;
-						
+
 						//Light the overlays!!
 						oVertex[0].argb		= vertices[0]->lightRGB;
 						oVertex[1].argb		= vertices[1]->lightRGB;
 						oVertex[2].argb		= vertices[3]->lightRGB;
 
-						mcTextureManager->addVertices(overlayHandle,oVertex,MC2_ISTERRAIN | MC2_DRAWALPHA | MC2_ISCRATERS);
+						// GPU projection: MC2 world coords into new typed batch
+						setOverlayWorldCoords(oVertex[0], vertices[0]);
+						setOverlayWorldCoords(oVertex[1], vertices[1]);
+						setOverlayWorldCoords(oVertex[2], vertices[3]);
+
+						{
+							WorldOverlayVert wov[3];
+							for (int _k = 0; _k < 3; ++_k) {
+								wov[_k].wx   = oVertex[_k].x;
+								wov[_k].wy   = oVertex[_k].y;
+								wov[_k].wz   = oVertex[_k].z;
+								wov[_k].u    = oVertex[_k].u;
+								wov[_k].v    = oVertex[_k].v;
+								wov[_k].fog  = (float)((oVertex[_k].frgb >> 24) & 0xFF) / 255.0f;
+								wov[_k].argb = oVertex[_k].argb;
+							}
+							gos_PushTerrainOverlay(wov, overlayHandle);
+						}
 					}
 				}
 			}
@@ -1948,15 +1981,9 @@ void TerrainQuad::draw (void)
 				(gVertex[2].z < 1.0f))
 			{
 				{
-					DWORD flags = isAlpha ? MC2_DRAWALPHA : 0;
-					if ((terrainDetailHandle == 0xffffffff) && (overlayHandle == 0xffffffff) && isCement) {
-						mcTextureManager->addVertices(terrainHandle,gVertex,MC2_ISTERRAIN | flags | MC2_ISCRATERS);
-						fillTerrainExtra(terrainHandle, MC2_ISTERRAIN | flags | MC2_ISCRATERS, vertices[1], vertices[2], vertices[3]);
-					} else {
-						if(terrainHandle!=0) {
-							mcTextureManager->addVertices(terrainHandle,gVertex,MC2_ISTERRAIN | MC2_DRAWSOLID);
-							fillTerrainExtra(terrainHandle, MC2_ISTERRAIN | MC2_DRAWSOLID, vertices[1], vertices[2], vertices[3]);
-						}
+					if(terrainHandle!=0) {
+						mcTextureManager->addVertices(terrainHandle,gVertex,MC2_ISTERRAIN | MC2_DRAWSOLID);
+						fillTerrainExtra(terrainHandle, MC2_ISTERRAIN | MC2_DRAWSOLID, vertices[1], vertices[2], vertices[3]);
 					}
  
 					//----------------------------------------------------
@@ -2028,13 +2055,30 @@ void TerrainQuad::draw (void)
 						oVertex[1].v		= oldmaxV;
 						oVertex[2].u		= oldminU;
 						oVertex[2].v		= oldmaxV;
-						
+
 						//Light the overlays!!
 						oVertex[0].argb		= vertices[1]->lightRGB;
 						oVertex[1].argb		= vertices[2]->lightRGB;
 						oVertex[2].argb		= vertices[3]->lightRGB;
 
-						mcTextureManager->addVertices(overlayHandle,oVertex,MC2_ISTERRAIN | MC2_DRAWALPHA | MC2_ISCRATERS);
+						// GPU projection: MC2 world coords into new typed batch
+						setOverlayWorldCoords(oVertex[0], vertices[1]);
+						setOverlayWorldCoords(oVertex[1], vertices[2]);
+						setOverlayWorldCoords(oVertex[2], vertices[3]);
+
+						{
+							WorldOverlayVert wov[3];
+							for (int _k = 0; _k < 3; ++_k) {
+								wov[_k].wx   = oVertex[_k].x;
+								wov[_k].wy   = oVertex[_k].y;
+								wov[_k].wz   = oVertex[_k].z;
+								wov[_k].u    = oVertex[_k].u;
+								wov[_k].v    = oVertex[_k].v;
+								wov[_k].fog  = (float)((oVertex[_k].frgb >> 24) & 0xFF) / 255.0f;
+								wov[_k].argb = oVertex[_k].argb;
+							}
+							gos_PushTerrainOverlay(wov, overlayHandle);
+						}
 					}
 				}
 			}

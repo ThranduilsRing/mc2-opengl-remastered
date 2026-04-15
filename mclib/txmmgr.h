@@ -47,7 +47,7 @@ enum MC_TextureKey
 #define TEXTURE_CACHE_SIZE			(40*1024*1024)	//Extra space here to facilitate editting
 #define MAX_CACHE_SIZE				(40*1024*1024)	//Actual amount map must run in!
 #define MC_MAXFACES					200000
-#define MAX_LZ_BUFFER_SIZE			((256*256*4) + 1024)
+#define MAX_LZ_BUFFER_SIZE			((1024*1024*8) + 1024)
 
 #define MC2_ISTERRAIN				1
 #define MC2_DRAWSOLID				2
@@ -62,6 +62,7 @@ enum MC_TextureKey
 #define MC2_ALPHATEST				1024
 #define MC2_ISWATER					2048
 #define MC2_ISWATERDETAIL			4096
+#define MC2_GPUOVERLAY				8192
 
 //----------------------------------------------------------------------
 // No More MC_BlockInfos.  gosTextureHandle is protected to enforce caching.
@@ -141,6 +142,7 @@ struct MC_TextureNode
 		DWORD 				hints;						//Used to recreate texture if cached out.
 		DWORD				width;						//Used to recreate texture if cached out.
 		DWORD				lzCompSize;					//Size of Compressed version.
+		DWORD				uvScale;					//UV scale factor (4 for 4x upscaled overrides, 1 otherwise)
 		long				lastUsed;					//Last Game turn texture was used.  Used to cache textures.
 		DWORD 				*textureData;				//Raw texture data.  Texture is stored here in system RAM 
 														//if we overrun the max number of GOS HAndles.
@@ -177,6 +179,7 @@ struct MC_TextureNode
 		vertexData2 = NULL;
 		vertexData3 = NULL;
 		lzCompSize = 0xffffffff;
+		uvScale = 1;
 
 		hardwareVertexData = NULL;
 		hardwareVertexData2 = NULL;
@@ -431,6 +434,12 @@ class MC_TextureManager
 		void destroy (void);
 
 		~MC_TextureManager (void);
+
+		DWORD getUVScale(DWORD nodeId) {
+			if (nodeId < MC_MAXTEXTURES)
+				return masterTextureNodes[nodeId].uvScale;
+			return 1;
+		}
 
 		void start (void);					// This function creates the Blank Nodes from an MC Heap.
 
