@@ -63,6 +63,7 @@ gosPostProcess::gosPostProcess()
     , dynShadowMapSize_(2048)
     , shadowDebugProg_(nullptr)
     , screenShadowProg_(nullptr)
+    , overlayAlphaClearProg_(nullptr)
     , screenShadowEnabled_(true)
     , screenShadowDebug_(0)
     , ssaoProg_(nullptr)
@@ -156,6 +157,11 @@ void gosPostProcess::init(int w, int h)
     if (!screenShadowProg_ || !screenShadowProg_->is_valid())
         fprintf(stderr, "gosPostProcess: failed to compile shadow_screen shader\n");
 
+    overlayAlphaClearProg_ = glsl_program::makeProgram("overlay_alpha_clear",
+        "shaders/postprocess.vert", "shaders/overlay_alpha_clear.frag", kShaderPrefix);
+    if (!overlayAlphaClearProg_ || !overlayAlphaClearProg_->is_valid())
+        fprintf(stderr, "gosPostProcess: failed to compile overlay_alpha_clear shader\n");
+
     ssaoProg_ = glsl_program::makeProgram("ssao",
         "shaders/postprocess.vert", "shaders/ssao.frag", kShaderPrefix);
     if (!ssaoProg_ || !ssaoProg_->is_valid())
@@ -236,6 +242,11 @@ void gosPostProcess::destroy()
         screenShadowProg_ = nullptr;
     }
 
+    if (overlayAlphaClearProg_) {
+        glsl_program::deleteProgram("overlay_alpha_clear");
+        overlayAlphaClearProg_ = nullptr;
+    }
+
     if (ssaoProg_) {
         glsl_program::deleteProgram("ssao");
         ssaoProg_ = nullptr;
@@ -300,8 +311,7 @@ void gosPostProcess::createFBOs(int w, int h)
     // Depth/stencil texture (sampleable for post-process depth reconstruction)
     glGenTextures(1, &sceneDepthTex_);
     glBindTexture(GL_TEXTURE_2D, sceneDepthTex_);
-    glTexImage2D(GL_TEXTURE_2D, 0, GL_DEPTH24_STENCIL8, w, h, 0,
-                 GL_DEPTH_STENCIL, GL_UNSIGNED_INT_24_8, nullptr);
+    glTexStorage2D(GL_TEXTURE_2D, 1, GL_DEPTH24_STENCIL8, w, h);
     glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_NEAREST);
     glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_NEAREST);
     glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_CLAMP_TO_EDGE);
@@ -598,6 +608,40 @@ void gosPostProcess::disableMRT()
     glDrawBuffers(1, &singleBuf);
 }
 
+void gosPostProcess::clearOverlayAlpha()
+{
+    if (!sceneFBO_ || !sceneNormalTex_ || !overlayAlphaClearProg_ || !overlayAlphaClearProg_->is_valid())
+        return;
+
+    glBindFramebuffer(GL_FRAMEBUFFER, sceneFBO_);
+    GLenum normalBuf = GL_COLOR_ATTACHMENT1;
+    glDrawBuffers(1, &normalBuf);
+    glViewport(0, 0, width_, height_);
+
+    glEnable(GL_STENCIL_TEST);
+    glStencilMask(0x00);
+    glStencilFunc(GL_EQUAL, 1, 0xFF);
+    glStencilOp(GL_KEEP, GL_KEEP, GL_KEEP);
+
+    glDisable(GL_DEPTH_TEST);
+    glDisable(GL_CULL_FACE);
+    glDepthMask(GL_FALSE);
+    glDisable(GL_BLEND);
+
+    overlayAlphaClearProg_->apply();
+    glBindVertexArray(quadVAO_);
+    glDrawArrays(GL_TRIANGLES, 0, 6);
+    glBindVertexArray(0);
+
+    glStencilMask(0xFF);
+    glDisable(GL_STENCIL_TEST);
+    glDepthMask(GL_TRUE);
+    glEnable(GL_DEPTH_TEST);
+
+    GLenum colorBuf = GL_COLOR_ATTACHMENT0;
+    glDrawBuffers(1, &colorBuf);
+}
+
 void gosPostProcess::runScreenShadow()
 {
     ZoneScopedN("Render.ScreenShadow");
@@ -631,12 +675,14 @@ void gosPostProcess::runScreenShadow()
     screenShadowProg_->setInt("sceneNormalTex", 1);
     screenShadowProg_->setInt("shadowMap", 2);
     screenShadowProg_->setInt("dynamicShadowMap", 3);
+    screenShadowProg_->setInt("overlayPass", 0);
     screenShadowProg_->setInt("enableShadows", shadowsEnabled_ ? 1 : 0);
     screenShadowProg_->setInt("enableDynamicShadows", (dynShadowDepthTex_ != 0) ? 1 : 0);
     screenShadowProg_->setFloat("shadowSoftness", 2.5f);
     screenShadowProg_->setInt("debugMode", screenShadowDebug_);
     float screenSz[2] = { (float)width_, (float)height_ };
     screenShadowProg_->setFloat2("screenSize", screenSz);
+    screenShadowProg_->setFloat("time", (float)SDL_GetTicks() * 0.001f);
     screenShadowProg_->apply();
 
     // Upload matrices via direct GL (after apply binds the program)
@@ -658,9 +704,11 @@ void gosPostProcess::runScreenShadow()
     glActiveTexture(GL_TEXTURE3);
     glBindTexture(GL_TEXTURE_2D, dynShadowDepthTex_);
 
-    // Draw fullscreen quad
+    // Draw fullscreen quad — pass 1: normal (skip terrain)
+    // Draw fullscreen quad - single pass for terrain, objects, and overlays.
     glBindVertexArray(quadVAO_);
     glDrawArrays(GL_TRIANGLES, 0, 6);
+
     glBindVertexArray(0);
 
     // Restore state
@@ -909,7 +957,10 @@ void gosPostProcess::endScene()
     if (!initialized_)
         return;
 
-    // Post-process shadow pass (darkens non-terrain geometry)
+    clearOverlayAlpha();
+
+    // Post-process shadow pass: covers terrain, objects, and overlays in one
+    // pass, with reduced terrain darkening to avoid obvious double-shadowing.
     runScreenShadow();
 
     // Shoreline foam pass (brightens water pixels adjacent to terrain)

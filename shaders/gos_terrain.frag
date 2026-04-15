@@ -212,6 +212,24 @@ void main(void)
         colAvg /= 9.0;
     }
     PREC vec4 matWeights = getColorWeights(colAvg);
+    // TerrainType: discrete 0/1/2/3 at vertices, interpolated by TES.
+    // Boundary patches (cement+terrain vertex mix) have fragments with TerrainType in (2,3).
+    // Pure terrain tiles never exceed TerrainType=2, so smoothstep(2.0,3.0) only activates
+    // for fragments near cement vertices — blending concrete material into edge patches
+    // without touching distant terrain tiles.
+    PREC float pureConcrete = smoothstep(2.0, 3.0, TerrainType);
+    // Use a stronger curve for color than for material/normal blending so boundary tiles
+    // keep the smooth transition shape but visually track the pure cement tone more closely.
+    PREC float concreteColorBlend = sqrt(clamp(pureConcrete, 0.0, 1.0));
+
+    matWeights = mix(matWeights, vec4(0.0, 0.0, 0.0, 1.0), pureConcrete);
+
+    PREC float totalWeights = matWeights.x + matWeights.y + matWeights.z + matWeights.w;
+    if (totalWeights > 0.01) {
+        matWeights /= totalWeights;
+    } else {
+        matWeights = vec4(1.0, 0.0, 0.0, 0.0);
+    }
 
     // Far tier: keep only 2 strongest materials to halve normal map samples
     if (lodMid < 0.01) {
@@ -294,6 +312,7 @@ void main(void)
         matSample = (useAntiTile && atsConcrete > 0.01) ? sampleAntiTile(matNormal3, uvConcrete, atsConcrete) : texture(matNormal3, uvConcrete);
         detailN += matWeights.w * normalBoost.w * fwConcrete * (matSample.rgb * 2.0 - 1.0);
     }
+    detailN *= (1.0 - pureConcrete);
 
     PREC vec3 N;
     N.xy = detailN.xy * detailNormalStrength.x;
@@ -319,6 +338,14 @@ void main(void)
 
     const PREC float tintStrength = 0.70;
     PREC vec3 baseColor = mix(texColor.rgb, materialTint, tintStrength);
+    {
+        // Preserve the authored colormap tone for runway/cement.
+        // Full concrete definitely comes through this shader path. Use the authored
+        // runway/apron colormap directly for solid cement instead of routing it back
+        // toward the generic concrete material tint.
+        PREC vec3 concreteColor = texColor.rgb;
+        baseColor = mix(baseColor, concreteColor, concreteColorBlend);
+    }
 
     // --- Phase 4C: Triplanar cliff mapping ---
     // On steep slopes, darken and shift toward rock color to simulate exposed rock faces
@@ -337,6 +364,7 @@ void main(void)
     c.rgb *= baseColor;
     // Normal map lighting — moderate range for visible detail without black crush
     PREC float normalLight = mix(0.55, 1.15, diffuse);
+    normalLight = mix(normalLight, 1.0, pureConcrete * 0.85);
     c.rgb *= normalLight;
 
     // Shadow — variable PCF taps by distance
@@ -348,6 +376,8 @@ void main(void)
     c.rgb *= shadow;
 
     // --- Phase 4A: Procedural cloud shadows ---
+    // Applied inline so cloud UV uses the actual tessellated WorldPos (stable world-space).
+    // Overlay tiles receive matching cloud shadow via shadow_screen.frag (non-terrain path).
     {
         PREC vec2 cloudUV = WorldPos.xy * 0.0006 + vec2(time * 0.012, time * 0.005);
         PREC float cloudNoise = fbm(cloudUV, 4) * 0.5 + 0.5;

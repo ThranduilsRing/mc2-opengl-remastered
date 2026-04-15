@@ -1,7 +1,10 @@
 #include <vector>
 #include <map>
 #include <algorithm>
+#include <cstdint>
 #include <string>
+#include <cstdlib>
+#include <cstring>
 
 #include "gameos.hpp"
 #include "font3d.hpp"
@@ -30,6 +33,113 @@ class gosFont;
 static const DWORD INVALID_TEXTURE_ID = 0;
 
 static gosRenderer* g_gos_renderer = NULL;
+
+static bool debugEnvEnabled(const char* name) {
+    const char* value = std::getenv(name);
+    return value && value[0] != '\0' && std::strcmp(value, "0") != 0;
+}
+
+static bool isAllConcreteTerrainBatch(const gos_VERTEX* vertices, int count) {
+    if (!vertices || count <= 0)
+        return false;
+
+    for (int i = 0; i < count; ++i) {
+        if ((vertices[i].frgb & 0x000000ffu) != 3u)
+            return false;
+    }
+
+    return true;
+}
+
+static void dumpOverlayBatchOnce(const gos_VERTEX* vertices, int num_vertices,
+    const WORD* indices, int num_indices, DWORD texture_handle)
+{
+    static bool dumped = false;
+    if (dumped || !vertices || !indices || num_vertices <= 0 || num_indices <= 0)
+        return;
+
+    dumped = true;
+    printf("[OVERLAY] BatchDump tex=%u verts=%d idx=%d\n",
+        texture_handle, num_vertices, num_indices);
+
+    const int vertex_dump_count = std::min(num_vertices, 6);
+    for (int i = 0; i < vertex_dump_count; ++i) {
+        const gos_VERTEX& v = vertices[i];
+        printf("[OVERLAY]   v[%d] pos=(%.3f, %.3f, %.3f, %.3f) argb=0x%08X frgb=0x%08X uv=(%.3f, %.3f)\n",
+            i, v.x, v.y, v.z, v.rhw, v.argb, v.frgb, v.u, v.v);
+    }
+
+    const int index_dump_count = std::min(num_indices, 12);
+    for (int i = 0; i < index_dump_count; i += 3) {
+        const int remaining = index_dump_count - i;
+        if (remaining >= 3) {
+            printf("[OVERLAY]   tri[%d] = (%u, %u, %u)\n",
+                i / 3, (unsigned)indices[i], (unsigned)indices[i + 1], (unsigned)indices[i + 2]);
+        } else {
+            printf("[OVERLAY]   idx[%d] = %u\n", i, (unsigned)indices[i]);
+        }
+    }
+    fflush(stdout);
+}
+
+static void dumpOverlayProjectedBatchOnce(const gos_VERTEX* vertices, int num_vertices,
+    const mat4& terrain_mvp)
+{
+    static bool dumped = false;
+    if (dumped || !vertices || num_vertices <= 0)
+        return;
+
+    dumped = true;
+    const mat4 terrain_mvp_t = transpose(terrain_mvp);
+    const int vertex_dump_count = std::min(num_vertices, 6);
+    for (int i = 0; i < vertex_dump_count; ++i) {
+        const gos_VERTEX& v = vertices[i];
+        const vec4 world(v.x, v.y, v.z, 1.0f);
+        const vec4 clip_row = terrain_mvp * world;
+        const vec4 clip_col = terrain_mvp_t * world;
+        const vec3 ndc_row = fabsf(clip_row.w) > 1.0e-6f
+            ? vec3(clip_row.x / clip_row.w, clip_row.y / clip_row.w, clip_row.z / clip_row.w)
+            : vec3(99999.0f);
+        const vec3 ndc_col = fabsf(clip_col.w) > 1.0e-6f
+            ? vec3(clip_col.x / clip_col.w, clip_col.y / clip_col.w, clip_col.z / clip_col.w)
+            : vec3(99999.0f);
+        printf("[OVERLAY]   proj[%d] row_clip=(%.3f, %.3f, %.3f, %.3f) row_ndc=(%.3f, %.3f, %.3f)"
+               " col_clip=(%.3f, %.3f, %.3f, %.3f) col_ndc=(%.3f, %.3f, %.3f)\n",
+            i,
+            clip_row.x, clip_row.y, clip_row.z, clip_row.w,
+            ndc_row.x, ndc_row.y, ndc_row.z,
+            clip_col.x, clip_col.y, clip_col.z, clip_col.w,
+            ndc_col.x, ndc_col.y, ndc_col.z);
+    }
+    fflush(stdout);
+}
+
+static void fillForcedOverlayDebugQuad(gos_VERTEX* vertices, WORD* indices)
+{
+    gosASSERT(vertices && indices);
+    memset(vertices, 0, sizeof(gos_VERTEX) * 6);
+
+    const float uv[6][2] = {
+        {0.0f, 0.0f},
+        {1.0f, 0.0f},
+        {1.0f, 1.0f},
+        {0.0f, 0.0f},
+        {1.0f, 1.0f},
+        {0.0f, 1.0f},
+    };
+
+    for (int i = 0; i < 6; ++i) {
+        vertices[i].x = 0.0f;
+        vertices[i].y = 0.0f;
+        vertices[i].z = 0.0f;
+        vertices[i].rhw = 1.0f;
+        vertices[i].argb = 0xFFFFFFFF;
+        vertices[i].frgb = 0x000000FF;
+        vertices[i].u = uv[i][0];
+        vertices[i].v = uv[i][1];
+        indices[i] = (WORD)i;
+    }
+}
 
 gosRenderer* getGosRenderer() {
     return g_gos_renderer;
@@ -209,15 +319,16 @@ class gosMaterialVariationHelper {
 
 enum class gosGLOBAL_SHADER_FLAGS : unsigned int
 {
-    ALPHA_TEST = 0
-    // etc.
+    ALPHA_TEST = 0,
+    IS_OVERLAY = 1
 };
 
 #define SHADER_FLAG_INDEX_TO_MASK(x) (1 << ((uint32_t)x))
 #define SHADER_FLAG_MASK_TO_INDEX(x) (ffs(x)-1) // use __popcnt etc for windows, and move to platform_*.h
 
 static const char* const g_shader_flags[] = {
-    "ALPHA_TEST"
+    "ALPHA_TEST",
+    "IS_OVERLAY"
 };
 
 
@@ -1572,7 +1683,12 @@ void gosRenderer::init() {
     gosRenderMaterial** shader_ptr_list[] = { &basic_material_, &basic_tex_material_, &text_material_, &basic_lighted_material_, &basic_tex_lighted_material_};
 
     static_assert(COUNTOF(shader_list) == COUNTOF(shader_ptr_list), "Arrays myst have same size");
-    uint32_t combinations[] = {0, SHADER_FLAG_INDEX_TO_MASK(gosGLOBAL_SHADER_FLAGS::ALPHA_TEST)};
+    uint32_t combinations[] = {
+        0,
+        SHADER_FLAG_INDEX_TO_MASK(gosGLOBAL_SHADER_FLAGS::ALPHA_TEST),
+        SHADER_FLAG_INDEX_TO_MASK(gosGLOBAL_SHADER_FLAGS::IS_OVERLAY),
+        SHADER_FLAG_INDEX_TO_MASK(gosGLOBAL_SHADER_FLAGS::ALPHA_TEST) | SHADER_FLAG_INDEX_TO_MASK(gosGLOBAL_SHADER_FLAGS::IS_OVERLAY)
+    };
 
     for(size_t i=0; i<COUNTOF(combinations); ++i)
     {
@@ -1607,7 +1723,6 @@ void gosRenderer::init() {
 
 
     glGenVertexArrays(1, &gVAO);
-
 
     pendingRequest = false;
 
@@ -1767,6 +1882,7 @@ void gosRenderer::popRenderStates()
 }
 
 void gosRenderer::applyRenderStates() {
+    ZoneScopedN("ApplyRenderStates");
 
 	////////////////////////////////////////////////////////////////////////////////
 	switch (renderStates_[gos_State_Culling]) {
@@ -1891,6 +2007,8 @@ void gosRenderer::applyRenderStates() {
    renderStates_[gos_State_Terrain] = 0;
    curStates_[gos_State_Water] = renderStates_[gos_State_Water];
    renderStates_[gos_State_Water] = 0;
+   // Overlay GPU projection — copy, no auto-reset (managed by renderLists loop)
+   curStates_[gos_State_Overlay] = renderStates_[gos_State_Overlay];
 
 }
 
@@ -1956,12 +2074,15 @@ void gosRenderer::afterDrawCall()
 {
 }
 
-gosRenderMaterial* gosRenderer::selectBasicRenderMaterial(const RenderState& rs) const 
+gosRenderMaterial* gosRenderer::selectBasicRenderMaterial(const RenderState& rs) const
 {
+	ZoneScopedN("SelectBasicMaterial");
 	const auto& sh_var = rs[gos_State_Texture]!=0 ?
 		materialDB_.find("gos_tex_vertex")->second :
 		materialDB_.find("gos_vertex")->second;
     uint32_t flags = rs[gos_State_AlphaTest] ? SHADER_FLAG_INDEX_TO_MASK(gosGLOBAL_SHADER_FLAGS::ALPHA_TEST) : 0;
+    if (rs[gos_State_Overlay])
+        flags |= SHADER_FLAG_INDEX_TO_MASK(gosGLOBAL_SHADER_FLAGS::IS_OVERLAY);
 
     if(sh_var.count(flags))
         return sh_var.at(flags);
@@ -1989,6 +2110,7 @@ gosRenderMaterial* gosRenderer::selectLightedRenderMaterial(const RenderState& r
 }
 
 void gosRenderer::drawQuads(gos_VERTEX* vertices, int count) {
+    ZoneScopedN("DrawQuads");
     gosASSERT(vertices);
 
     if(beforeDrawCall()) return;
@@ -2034,6 +2156,7 @@ void gosRenderer::drawQuads(gos_VERTEX* vertices, int count) {
 }
 
 void gosRenderer::drawLines(gos_VERTEX* vertices, int count) {
+    ZoneScopedN("DrawLines");
     gosASSERT(vertices);
 
     if(beforeDrawCall()) return;
@@ -2060,6 +2183,7 @@ void gosRenderer::drawLines(gos_VERTEX* vertices, int count) {
 }
 
 void gosRenderer::drawPoints(gos_VERTEX* vertices, int count) {
+    ZoneScopedN("DrawPoints");
     gosASSERT(vertices);
 
     if(beforeDrawCall()) return;
@@ -2084,6 +2208,7 @@ void gosRenderer::drawPoints(gos_VERTEX* vertices, int count) {
 }
 
 void gosRenderer::drawTris(gos_VERTEX* vertices, int count) {
+    ZoneScopedN("DrawTris");
     gosASSERT(vertices);
 
     gosASSERT((count % 3) == 0);
@@ -2387,6 +2512,8 @@ void gosRenderer::endDynamicShadowPass() {
 }
 
 void gosRenderer::terrainDrawIndexedPatches(gosRenderMaterial* material, gosMesh* mesh) {
+    ZoneScopedN("Terrain.DrawPatches");
+    TracyGpuZone("Terrain.DrawPatches");
     int nv = mesh->getNumVertices();
     int ni = mesh->getNumIndices();
     if (nv == 0) return;
@@ -2582,6 +2709,8 @@ void gosRenderer::terrainDrawIndexedPatches(gosRenderMaterial* material, gosMesh
 }
 
 void gosRenderer::drawGrassPass(gosMesh* mesh) {
+    ZoneScopedN("Grass.Draw");
+    TracyGpuZone("Grass.Draw");
     gosPostProcess* pp = getGosPostProcess();
     if (!pp || !pp->grassEnabled_) return;
 
@@ -2689,6 +2818,7 @@ void gosRenderer::drawGrassPass(gosMesh* mesh) {
 }
 
 void gosRenderer::drawIndexedTris(gos_VERTEX* vertices, int num_vertices, WORD* indices, int num_indices) {
+    ZoneScopedN("DrawIndexedTris.Basic");
     gosASSERT(vertices && indices);
 
     gosASSERT((num_indices % 3) == 0);
@@ -2720,13 +2850,32 @@ void gosRenderer::drawIndexedTris(gos_VERTEX* vertices, int num_vertices, WORD* 
     // Terrain tessellation path
     static int tess_trace_count_ = 0;
     static bool tess_init_trace_ = false;
+    static int concrete_tess_trace_count_ = 0;
     if (curStates_[gos_State_Terrain] && !tess_init_trace_) {
         tess_init_trace_ = true;
         printf("[TESS] INIT CHECK: terrain_material_=%p batch_extras=%d mvp_valid=%d\n",
             (void*)terrain_material_, terrain_batch_extras_count_, terrain_mvp_valid_ ? 1 : 0);
         fflush(stdout);
     }
-    if (curStates_[gos_State_Terrain] && terrain_material_ && terrain_batch_extras_count_ > 0 && terrain_draw_enabled_) {
+    if (curStates_[gos_State_Terrain] && !curStates_[gos_State_Overlay] && terrain_material_ && terrain_batch_extras_count_ > 0 && terrain_draw_enabled_) {
+        ZoneScopedN("Terrain.TessDraw");
+        TracyGpuZone("Terrain.TessDraw");
+        if (concrete_tess_trace_count_ < 12 &&
+            isAllConcreteTerrainBatch(indexed_tris_->getVertices(), indexed_tris_->getNumVertices())) {
+            const gos_TERRAIN_EXTRA* e0 = terrain_batch_extras_count_ > 0 ? terrain_batch_extras_ : nullptr;
+            printf("[CEMENT][TessGate] pass=draw verts=%d idx=%d batch_extras=%d terrain=%d overlay=%d drawEnabled=%d tex=%d firstExtra=(%.3f, %.3f, %.3f)\n",
+                indexed_tris_->getNumVertices(), indexed_tris_->getNumIndices(),
+                terrain_batch_extras_count_,
+                curStates_[gos_State_Terrain],
+                curStates_[gos_State_Overlay],
+                terrain_draw_enabled_ ? 1 : 0,
+                curStates_[gos_State_Texture],
+                e0 ? e0->wx : 0.0f,
+                e0 ? e0->wy : 0.0f,
+                e0 ? e0->wz : 0.0f);
+            fflush(stdout);
+            ++concrete_tess_trace_count_;
+        }
         if (tess_trace_count_++ < 5) {
             printf("[TESS] DRAW: verts=%d idx=%d batch_extras=%d mvp_valid=%d\n",
                 indexed_tris_->getNumVertices(), indexed_tris_->getNumIndices(),
@@ -2744,6 +2893,20 @@ void gosRenderer::drawIndexedTris(gos_VERTEX* vertices, int num_vertices, WORD* 
         drawGrassPass(indexed_tris_);
         indexed_tris_->rewind();
     } else {
+        if (concrete_tess_trace_count_ < 12 &&
+            curStates_[gos_State_Terrain] &&
+            isAllConcreteTerrainBatch(indexed_tris_->getVertices(), indexed_tris_->getNumVertices())) {
+            printf("[CEMENT][TessGate] pass=skip verts=%d idx=%d batch_extras=%d terrain=%d overlay=%d drawEnabled=%d hasTerrainMat=%d tex=%d\n",
+                indexed_tris_->getNumVertices(), indexed_tris_->getNumIndices(),
+                terrain_batch_extras_count_,
+                curStates_[gos_State_Terrain],
+                curStates_[gos_State_Overlay],
+                terrain_draw_enabled_ ? 1 : 0,
+                terrain_material_ ? 1 : 0,
+                curStates_[gos_State_Texture]);
+            fflush(stdout);
+            ++concrete_tess_trace_count_;
+        }
         // When tessellation is active, skip SOLID fallback terrain draws (tessellation
         // already rendered base terrain). Overlay/detail draws don't set gos_State_Terrain
         // (it auto-resets after each draw), so they fall through to the basic renderer.
@@ -2757,7 +2920,7 @@ void gosRenderer::drawIndexedTris(gos_VERTEX* vertices, int num_vertices, WORD* 
             mat->setFogColor(fog_color_);
 
             // Water uniforms: set via deferred system before apply() flushes them
-            {
+            if (!curStates_[gos_State_Overlay]) {
                 glsl_program* prog = mat->getShader();
                 if (curStates_[gos_State_Water]) {
                     prog->setInt("isWater", 1);
@@ -2769,7 +2932,112 @@ void gosRenderer::drawIndexedTris(gos_VERTEX* vertices, int num_vertices, WORD* 
                 }
             }
 
-            indexed_tris_->drawIndexed(mat);
+            if (curStates_[gos_State_Overlay] && terrain_mvp_valid_) {
+                ZoneScopedN("Overlay.SplitDraw");
+                TracyGpuZone("Overlay.SplitDraw");
+                static bool overlay_split_trace_ = false;
+                dumpOverlayBatchOnce(indexed_tris_->getVertices(), indexed_tris_->getNumVertices(),
+                    indexed_tris_->getIndices(), indexed_tris_->getNumIndices(),
+                    curStates_[gos_State_Texture]);
+                dumpOverlayProjectedBatchOnce(indexed_tris_->getVertices(), indexed_tris_->getNumVertices(),
+                    terrain_mvp_);
+                if (!overlay_split_trace_) {
+                    overlay_split_trace_ = true;
+                    printf("[OVERLAY] SplitDraw active: verts=%d idx=%d mvp_valid=1 tex=%u\n",
+                        indexed_tris_->getNumVertices(), indexed_tris_->getNumIndices(),
+                        curStates_[gos_State_Texture]);
+                    fflush(stdout);
+                }
+
+                if (debugEnvEnabled("MC2_DEBUG_OVERLAY_FORCE_QUAD")) {
+                    static bool force_quad_trace_ = false;
+                    gos_VERTEX debugVertices[6];
+                    WORD debugIndices[6];
+                    fillForcedOverlayDebugQuad(debugVertices, debugIndices);
+                    indexed_tris_->rewind();
+                    indexed_tris_->addVertices(debugVertices, 6);
+                    indexed_tris_->addIndices(debugIndices, 6);
+                    if (!force_quad_trace_) {
+                        force_quad_trace_ = true;
+                        printf("[OVERLAY] ForceQuad enabled: replacing submitted overlay batch with a known 2-triangle screen quad\n");
+                        fflush(stdout);
+                    }
+                }
+
+                // Overlay path: IS_OVERLAY variant selected by selectBasicRenderMaterial.
+                // Split apply/draw to inject terrainMVP + shadow uniforms via direct GL.
+                indexed_tris_->uploadBuffers();
+                mat->apply();
+                mat->setSamplerUnit(gosMesh::s_tex1, 0);
+
+                GLuint shp = mat->getShader()->shp_;
+
+                // Upload terrainMVP + terrainViewport for vertex shader projection
+                // terrainMVP outputs screen-pixel-space coords; terrainViewport converts to NDC via mvp
+                GLint loc = glGetUniformLocation(shp, "terrainMVP");
+                if (loc >= 0)
+                    glUniformMatrix4fv(loc, 1, GL_FALSE, (const float*)&terrain_mvp_);
+                GLint vpLoc = glGetUniformLocation(shp, "terrainViewport");
+                if (vpLoc >= 0)
+                    glUniform4fv(vpLoc, 1, (const float*)&terrain_viewport_);
+
+                // Upload shadow map uniforms
+                gos_SetupObjectShadows(mat);
+
+                // Inject time for cloud shadow animation (IS_OVERLAY path uses inline fbm)
+                {
+                    static uint64_t overlay_time_start = timing::get_wall_time_ms();
+                    float elapsed = (float)(timing::get_wall_time_ms() - overlay_time_start) / 1000.0f;
+                    GLint timeLoc = glGetUniformLocation(shp, "time");
+                    if (timeLoc >= 0)
+                        glUniform1f(timeLoc, elapsed);
+                }
+
+                // Keep overlay color writes out of the depth buffer, but still depth-test
+                // against terrain/objects so roads and cement edges do not draw over mechs.
+                // Mark covered pixels in stencil so post-process can clear the terrain flag
+                // there and let deferred shadows affect the overlay itself.
+                glEnable(GL_STENCIL_TEST);
+                glStencilMask(0xFF);
+                glStencilFunc(GL_ALWAYS, 1, 0xFF);
+                glStencilOp(GL_KEEP, GL_KEEP, GL_REPLACE);
+                glEnable(GL_DEPTH_TEST);
+                glDepthMask(GL_FALSE);
+                glColorMask(GL_TRUE, GL_TRUE, GL_TRUE, GL_TRUE);
+                glDisable(GL_CULL_FACE);
+                glEnable(GL_POLYGON_OFFSET_FILL);
+                glPolygonOffset(-1.0f, -1.0f);
+
+                glBindBuffer(GL_ARRAY_BUFFER, indexed_tris_->getVB());
+                glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, indexed_tris_->getIB());
+                mat->applyVertexDeclaration();
+
+                glDrawElements(GL_TRIANGLES, indexed_tris_->getNumIndices(),
+                    indexed_tris_->getIndexSizeBytes() == 2 ? GL_UNSIGNED_SHORT : GL_UNSIGNED_INT, NULL);
+
+                mat->endVertexDeclaration();
+                mat->end();
+                glBindBuffer(GL_ARRAY_BUFFER, 0);
+                glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, 0);
+                glDisable(GL_POLYGON_OFFSET_FILL);
+                glStencilMask(0x00);
+                glDisable(GL_STENCIL_TEST);
+                glDepthMask(GL_TRUE);
+                glEnable(GL_CULL_FACE);
+            } else {
+                if (curStates_[gos_State_Overlay]) {
+                    static bool overlay_fallback_trace_ = false;
+                    if (!overlay_fallback_trace_) {
+                        overlay_fallback_trace_ = true;
+                        printf("[OVERLAY] Fallback basic draw: verts=%d idx=%d mvp_valid=%d tex=%u\n",
+                            indexed_tris_->getNumVertices(), indexed_tris_->getNumIndices(),
+                            terrain_mvp_valid_ ? 1 : 0, curStates_[gos_State_Texture]);
+                        fflush(stdout);
+                    }
+                }
+                ZoneScopedN("BasicDraw.Indexed");
+                indexed_tris_->drawIndexed(mat);
+            }
             indexed_tris_->rewind();
         }
     }
@@ -2779,6 +3047,8 @@ void gosRenderer::drawIndexedTris(gos_VERTEX* vertices, int num_vertices, WORD* 
 
 void gosRenderer::drawIndexedTris(HGOSBUFFER ib, HGOSBUFFER vb, HGOSVERTEXDECLARATION vdecl, const float* mvp)
 {
+    ZoneScopedN("DrawIndexedTris.Lighted");
+    TracyGpuZone("DrawIndexedTris.Lighted");
     gosASSERT(ib && vb && mvp);
     gosASSERT((ib->count_ % 3) == 0);
 
@@ -2809,6 +3079,8 @@ void gosRenderer::drawIndexedTris(HGOSBUFFER ib, HGOSBUFFER vb, HGOSVERTEXDECLAR
 
 void gosRenderer::drawIndexedTris(HGOSBUFFER ib, HGOSBUFFER vb, HGOSVERTEXDECLARATION vdecl)
 {
+    ZoneScopedN("DrawIndexedTris.Unlighted");
+    TracyGpuZone("DrawIndexedTris.Unlighted");
     gosASSERT(ib && vb);
     gosASSERT((ib->count_ % 3) == 0);
 
@@ -2942,6 +3214,7 @@ void addCharacter(gosMesh* text_, const float u, const float v, const float u2, 
 }
 
 void gosRenderer::drawText(const char* text) {
+    ZoneScopedN("DrawText");
     gosASSERT(text);
 
     if(beforeDrawCall()) return;
@@ -3745,10 +4018,90 @@ void __stdcall gos_SetRenderMaterialParameterMat4(HGOSRENDERMATERIAL material, c
 	material->getShader()->setMat4(name, m);
 }
 
+void __stdcall gos_SetRenderMaterialParameterInt(HGOSRENDERMATERIAL material, const char* name, int v)
+{
+	gosASSERT(material);
+	material->getShader()->setInt(name, v);
+}
+
 void __stdcall gos_SetRenderMaterialUniformBlockBindingPoint(HGOSRENDERMATERIAL material, const char* name, uint32_t slot)
 {
 	gosASSERT(material && name);
 	material->setUniformBlock(name, slot);
+}
+
+void __stdcall gos_SetupObjectShadows(HGOSRENDERMATERIAL material)
+{
+	ZoneScopedN("SetupObjectShadows");
+	gosASSERT(material);
+	gosASSERT(g_gos_renderer);
+
+	gosPostProcess* pp = getGosPostProcess();
+	if (!pp) return;
+
+	GLuint shp = material->getShader()->shp_;
+
+	// Upload terrainMVP for GPU projection (MC2 world → clip space)
+	if (g_gos_renderer->isTerrainMVPValid()) {
+		GLint mvpLoc = glGetUniformLocation(shp, "terrainMVP");
+		if (mvpLoc >= 0) {
+			const mat4& mvp = g_gos_renderer->getTerrainMVP();
+			glUniformMatrix4fv(mvpLoc, 1, GL_FALSE, (const float*)&mvp);
+		}
+	}
+
+	// Terrain light direction (needed for shadow bias calculations)
+	GLint loc = glGetUniformLocation(shp, "terrainLightDir");
+	if (loc >= 0)
+		glUniform4fv(loc, 1, (const float*)&g_gos_renderer->getTerrainLightDir());
+
+	if (!pp->shadowsEnabled_) {
+		loc = glGetUniformLocation(shp, "enableShadows");
+		if (loc >= 0) glUniform1i(loc, 0);
+		loc = glGetUniformLocation(shp, "enableDynamicShadows");
+		if (loc >= 0) glUniform1i(loc, 0);
+		return;
+	}
+
+	// Static shadow map (texture unit 9)
+	loc = glGetUniformLocation(shp, "lightSpaceMatrix");
+	if (loc >= 0)
+		glUniformMatrix4fv(loc, 1, GL_FALSE, pp->getLightSpaceMatrix());
+
+	loc = glGetUniformLocation(shp, "enableShadows");
+	if (loc >= 0) glUniform1i(loc, 1);
+
+	loc = glGetUniformLocation(shp, "shadowSoftness");
+	if (loc >= 0) glUniform1f(loc, g_gos_renderer->getTerrainShadowSoftness());
+
+	loc = glGetUniformLocation(shp, "shadowMap");
+	if (loc >= 0) {
+		glUniform1i(loc, 9);
+		glActiveTexture(GL_TEXTURE9);
+		glBindTexture(GL_TEXTURE_2D, pp->getShadowTexture());
+	}
+
+	// Dynamic shadow map (texture unit 10)
+	if (pp->getDynamicShadowFBO()) {
+		loc = glGetUniformLocation(shp, "enableDynamicShadows");
+		if (loc >= 0) glUniform1i(loc, 1);
+
+		loc = glGetUniformLocation(shp, "dynamicLightSpaceMatrix");
+		if (loc >= 0)
+			glUniformMatrix4fv(loc, 1, GL_FALSE, pp->getDynamicLightSpaceMatrix());
+
+		loc = glGetUniformLocation(shp, "dynamicShadowMap");
+		if (loc >= 0) {
+			glUniform1i(loc, 10);
+			glActiveTexture(GL_TEXTURE10);
+			glBindTexture(GL_TEXTURE_2D, pp->getDynamicShadowTexture());
+		}
+	} else {
+		loc = glGetUniformLocation(shp, "enableDynamicShadows");
+		if (loc >= 0) glUniform1i(loc, 0);
+	}
+
+	glActiveTexture(GL_TEXTURE0);
 }
 
 void __stdcall gos_SetCommonMaterialParameters(HGOSRENDERMATERIAL material)
