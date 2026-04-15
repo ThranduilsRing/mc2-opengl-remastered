@@ -30,6 +30,7 @@ public:
     GLuint getSceneNormalTexture() const { return sceneNormalTex_; }
     GLuint getSceneDepthTexture() const { return sceneDepthTex_; }
     GLuint getSceneColorTexture() const { return sceneColorTex_; }
+    GLuint getSceneFBO() const { return sceneFBO_; }
     void enableMRT();   // call before terrain draws
     void disableMRT();  // call after terrain draws
     GLuint getShadowTexture() const { return shadowDepthTex_; }
@@ -73,6 +74,7 @@ public:
     float bloomThreshold_;
 
     void runScreenShadow();
+    void clearOverlayAlpha();  // clear terrain flag on overlay pixels before shadow pass
     bool screenShadowEnabled_;
     int screenShadowDebug_;  // 0=normal, 1=visualize
 
@@ -162,6 +164,7 @@ private:
 
     // Post-process screen shadow
     glsl_program* screenShadowProg_;
+    glsl_program* overlayAlphaClearProg_;
     float inverseViewProj_[16];
     float viewProj_[16];
 
