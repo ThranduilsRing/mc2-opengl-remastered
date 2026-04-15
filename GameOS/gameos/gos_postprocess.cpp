@@ -63,7 +63,6 @@ gosPostProcess::gosPostProcess()
     , dynShadowMapSize_(2048)
     , shadowDebugProg_(nullptr)
     , screenShadowProg_(nullptr)
-    , overlayAlphaClearProg_(nullptr)
     , screenShadowEnabled_(true)
     , screenShadowDebug_(0)
     , ssaoProg_(nullptr)
@@ -157,11 +156,6 @@ void gosPostProcess::init(int w, int h)
     if (!screenShadowProg_ || !screenShadowProg_->is_valid())
         fprintf(stderr, "gosPostProcess: failed to compile shadow_screen shader\n");
 
-    overlayAlphaClearProg_ = glsl_program::makeProgram("overlay_alpha_clear",
-        "shaders/postprocess.vert", "shaders/overlay_alpha_clear.frag", kShaderPrefix);
-    if (!overlayAlphaClearProg_ || !overlayAlphaClearProg_->is_valid())
-        fprintf(stderr, "gosPostProcess: failed to compile overlay_alpha_clear shader\n");
-
     ssaoProg_ = glsl_program::makeProgram("ssao",
         "shaders/postprocess.vert", "shaders/ssao.frag", kShaderPrefix);
     if (!ssaoProg_ || !ssaoProg_->is_valid())
@@ -240,11 +234,6 @@ void gosPostProcess::destroy()
     if (screenShadowProg_) {
         glsl_program::deleteProgram("shadow_screen");
         screenShadowProg_ = nullptr;
-    }
-
-    if (overlayAlphaClearProg_) {
-        glsl_program::deleteProgram("overlay_alpha_clear");
-        overlayAlphaClearProg_ = nullptr;
     }
 
     if (ssaoProg_) {
@@ -608,39 +597,6 @@ void gosPostProcess::disableMRT()
     glDrawBuffers(1, &singleBuf);
 }
 
-void gosPostProcess::clearOverlayAlpha()
-{
-    if (!sceneFBO_ || !sceneNormalTex_ || !overlayAlphaClearProg_ || !overlayAlphaClearProg_->is_valid())
-        return;
-
-    glBindFramebuffer(GL_FRAMEBUFFER, sceneFBO_);
-    GLenum normalBuf = GL_COLOR_ATTACHMENT1;
-    glDrawBuffers(1, &normalBuf);
-    glViewport(0, 0, width_, height_);
-
-    glEnable(GL_STENCIL_TEST);
-    glStencilMask(0x00);
-    glStencilFunc(GL_EQUAL, 1, 0xFF);
-    glStencilOp(GL_KEEP, GL_KEEP, GL_KEEP);
-
-    glDisable(GL_DEPTH_TEST);
-    glDisable(GL_CULL_FACE);
-    glDepthMask(GL_FALSE);
-    glDisable(GL_BLEND);
-
-    overlayAlphaClearProg_->apply();
-    glBindVertexArray(quadVAO_);
-    glDrawArrays(GL_TRIANGLES, 0, 6);
-    glBindVertexArray(0);
-
-    glStencilMask(0xFF);
-    glDisable(GL_STENCIL_TEST);
-    glDepthMask(GL_TRUE);
-    glEnable(GL_DEPTH_TEST);
-
-    GLenum colorBuf = GL_COLOR_ATTACHMENT0;
-    glDrawBuffers(1, &colorBuf);
-}
 
 void gosPostProcess::runScreenShadow()
 {
@@ -956,8 +912,6 @@ void gosPostProcess::endScene()
 
     if (!initialized_)
         return;
-
-    clearOverlayAlpha();
 
     // Post-process shadow pass: covers terrain, objects, and overlays in one
     // pass, with reduced terrain darkening to avoid obvious double-shadowing.

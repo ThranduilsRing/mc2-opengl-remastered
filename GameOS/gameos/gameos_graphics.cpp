@@ -1281,6 +1281,7 @@ class gosRenderer {
 		vec4 getRenderViewport() { return render_viewport_; }
 
 		const mat4& getProj2Screen() { return projection_; }
+        const vec4& getFogColor() const { return fog_color_; }
 
         void setRenderState(gos_RenderState RenderState, int Value) {
             renderStates_[RenderState] = Value;
@@ -1401,6 +1402,7 @@ class gosRenderer {
         gos_TERRAIN_EXTRA* getTerrainExtraData() const { return terrain_extra_data_; }
         bool isTerrainMVPValid() const { return terrain_mvp_valid_; }
         const mat4& getTerrainMVP() const { return terrain_mvp_; }
+        const vec4& getTerrainViewport() const { return terrain_viewport_; }
         gosRenderMaterial* getTerrainMaterial() const { return terrain_material_; }
         const vec4& getTerrainCameraPos() const { return terrain_camera_pos_; }
 
@@ -1438,6 +1440,12 @@ class gosRenderer {
         void setTerrainCellBombParams(float s, float j, float r) { terrain_cell_scale_ = s; terrain_cell_jitter_ = j; terrain_cell_rotation_ = r; }
         void setTerrainPOMParams(float scale, float, float) { terrain_pom_scale_ = scale; }
         void setTerrainWorldScale(float scale) { terrain_world_scale_ = scale; }
+
+        // World-space overlay batch API (thin public surface — internals are private)
+        void pushTerrainOverlayTri(const WorldOverlayVert* verts3, unsigned int texHandle);
+        void pushDecalTri(const WorldOverlayVert* verts3, unsigned int texHandle);
+        void drawTerrainOverlays();
+        void drawDecals();
 
     private:
 
@@ -1642,6 +1650,46 @@ class gosRenderer {
             shadowLocs_.detailNormalTiling = glGetUniformLocation(shp, "detailNormalTiling");
             shadowLocs_.tex1 = glGetUniformLocation(shp, "tex1");
         }
+
+        // ── World-space overlay batches ────────────────────────────────────────
+        // Both terrain overlays (cement perimeter) and decals (craters, footprints)
+        // use the same vertex layout (WorldOverlayVert, 28 bytes) and VAO setup.
+        // Per-draw texture grouping: multiple addTriangle calls within a frame with
+        // different texHandle values are batched into separate draw entries.
+        struct OverlayBatchEntry_ {
+            unsigned int texHandle;
+            unsigned int firstVert;    // index into verts vector
+            unsigned int vertCount;
+        };
+        struct OverlayBatch_ {
+            GLuint vbo = 0, vao = 0;
+            std::vector<WorldOverlayVert> verts;
+            std::vector<OverlayBatchEntry_> draws;
+        };
+
+        OverlayBatch_ terrainOverlayBatch_;
+        OverlayBatch_ decalBatch_;
+
+        glsl_program* overlayProg_ = nullptr;  // terrain_overlay.vert + terrain_overlay.frag
+        glsl_program* decalProg_   = nullptr;  // terrain_overlay.vert + decal.frag
+
+        struct OverlayUniformLocs_ {
+            GLint terrainMVP     = -1;
+            GLint terrainVP      = -1;
+            GLint mvp            = -1;
+            GLint tex1           = -1;
+            GLint fog_color      = -1;
+            GLint time           = -1;
+            GLint terrainLightDir = -1;
+        };
+        OverlayUniformLocs_ overlayLocs_;
+        OverlayUniformLocs_ decalLocs_;
+        uint64_t overlayTimeStart_ = 0;
+
+        // private helpers
+        void pushToOverlayBatch_(OverlayBatch_& b, const WorldOverlayVert* v3, unsigned int texHandle);
+        void uploadOverlayUniforms_(GLuint shp, const OverlayUniformLocs_& L, float elapsed);
+        // ── End world-space overlay batch members ──────────────────────────────
 };
 
 const std::string gosRenderer::s_Foreground = std::string("Foreground");
@@ -1782,6 +1830,62 @@ void gosRenderer::init() {
             materialList_.push_back(shadow_object_material_);
         }
     }
+
+    // Load world-space overlay shaders and create VAOs/VBOs.
+    // Both batches share terrain_overlay.vert; decal uses a different frag.
+    // Use glsl_program::makeProgram directly (not gosRenderMaterial::load) because
+    // the material loader always pairs [name].vert + [name].frag from the same name.
+    overlayProg_ = glsl_program::makeProgram("terrain_overlay",
+        "shaders/terrain_overlay.vert", "shaders/terrain_overlay.frag");
+    decalProg_ = glsl_program::makeProgram("decal",
+        "shaders/terrain_overlay.vert", "shaders/decal.frag");
+
+    if (!overlayProg_)
+        fprintf(stderr, "[OverlayBatch] Failed to compile terrain_overlay shader\n");
+    if (!decalProg_)
+        fprintf(stderr, "[OverlayBatch] Failed to compile decal shader\n");
+
+    // Cache uniform locations for both shaders
+    auto cacheOverlayLocs = [](glsl_program* prog, OverlayUniformLocs_& locs) {
+        if (!prog) return;
+        GLuint shp = prog->shp_;
+        locs.terrainMVP      = glGetUniformLocation(shp, "terrainMVP");
+        locs.terrainVP       = glGetUniformLocation(shp, "terrainViewport");
+        locs.mvp             = glGetUniformLocation(shp, "mvp");
+        locs.tex1            = glGetUniformLocation(shp, "tex1");
+        locs.fog_color       = glGetUniformLocation(shp, "fog_color");
+        locs.time            = glGetUniformLocation(shp, "time");
+        locs.terrainLightDir = glGetUniformLocation(shp, "terrainLightDir");
+    };
+    cacheOverlayLocs(overlayProg_, overlayLocs_);
+    cacheOverlayLocs(decalProg_, decalLocs_);
+    overlayTimeStart_ = timing::get_wall_time_ms();
+
+    // Create VBO/VAO for each batch.
+    // WorldOverlayVert layout (stride 28 bytes):
+    //   offset  0: vec3 worldPos    → attrib location 0
+    //   offset 12: vec2 texcoord    → attrib location 1
+    //   offset 20: float fog        → attrib location 2
+    //   offset 24: uint8[4] argb    → attrib location 3, GL_UNSIGNED_BYTE, normalized
+    auto makeOverlayVAO = [](OverlayBatch_& batch) {
+        constexpr int kStride = 28;  // sizeof(WorldOverlayVert)
+        glGenBuffers(1, &batch.vbo);
+        glGenVertexArrays(1, &batch.vao);
+        glBindVertexArray(batch.vao);
+        glBindBuffer(GL_ARRAY_BUFFER, batch.vbo);
+        glVertexAttribPointer(0, 3, GL_FLOAT,         GL_FALSE, kStride, (void*)0);
+        glVertexAttribPointer(1, 2, GL_FLOAT,         GL_FALSE, kStride, (void*)12);
+        glVertexAttribPointer(2, 1, GL_FLOAT,         GL_FALSE, kStride, (void*)20);
+        glVertexAttribPointer(3, 4, GL_UNSIGNED_BYTE, GL_TRUE,  kStride, (void*)24);
+        glEnableVertexAttribArray(0);
+        glEnableVertexAttribArray(1);
+        glEnableVertexAttribArray(2);
+        glEnableVertexAttribArray(3);
+        glBindVertexArray(0);
+        glBindBuffer(GL_ARRAY_BUFFER, 0);
+    };
+    makeOverlayVAO(terrainOverlayBatch_);
+    makeOverlayVAO(decalBatch_);
 }
 
 void gosRenderer::destroy() {
@@ -2920,7 +3024,7 @@ void gosRenderer::drawIndexedTris(gos_VERTEX* vertices, int num_vertices, WORD* 
             mat->setFogColor(fog_color_);
 
             // Water uniforms: set via deferred system before apply() flushes them
-            if (!curStates_[gos_State_Overlay]) {
+            {
                 glsl_program* prog = mat->getShader();
                 if (curStates_[gos_State_Water]) {
                     prog->setInt("isWater", 1);
@@ -2932,109 +3036,9 @@ void gosRenderer::drawIndexedTris(gos_VERTEX* vertices, int num_vertices, WORD* 
                 }
             }
 
-            if (curStates_[gos_State_Overlay] && terrain_mvp_valid_) {
-                ZoneScopedN("Overlay.SplitDraw");
-                TracyGpuZone("Overlay.SplitDraw");
-                static bool overlay_split_trace_ = false;
-                dumpOverlayBatchOnce(indexed_tris_->getVertices(), indexed_tris_->getNumVertices(),
-                    indexed_tris_->getIndices(), indexed_tris_->getNumIndices(),
-                    curStates_[gos_State_Texture]);
-                dumpOverlayProjectedBatchOnce(indexed_tris_->getVertices(), indexed_tris_->getNumVertices(),
-                    terrain_mvp_);
-                if (!overlay_split_trace_) {
-                    overlay_split_trace_ = true;
-                    printf("[OVERLAY] SplitDraw active: verts=%d idx=%d mvp_valid=1 tex=%u\n",
-                        indexed_tris_->getNumVertices(), indexed_tris_->getNumIndices(),
-                        curStates_[gos_State_Texture]);
-                    fflush(stdout);
-                }
-
-                if (debugEnvEnabled("MC2_DEBUG_OVERLAY_FORCE_QUAD")) {
-                    static bool force_quad_trace_ = false;
-                    gos_VERTEX debugVertices[6];
-                    WORD debugIndices[6];
-                    fillForcedOverlayDebugQuad(debugVertices, debugIndices);
-                    indexed_tris_->rewind();
-                    indexed_tris_->addVertices(debugVertices, 6);
-                    indexed_tris_->addIndices(debugIndices, 6);
-                    if (!force_quad_trace_) {
-                        force_quad_trace_ = true;
-                        printf("[OVERLAY] ForceQuad enabled: replacing submitted overlay batch with a known 2-triangle screen quad\n");
-                        fflush(stdout);
-                    }
-                }
-
-                // Overlay path: IS_OVERLAY variant selected by selectBasicRenderMaterial.
-                // Split apply/draw to inject terrainMVP + shadow uniforms via direct GL.
-                indexed_tris_->uploadBuffers();
-                mat->apply();
-                mat->setSamplerUnit(gosMesh::s_tex1, 0);
-
-                GLuint shp = mat->getShader()->shp_;
-
-                // Upload terrainMVP + terrainViewport for vertex shader projection
-                // terrainMVP outputs screen-pixel-space coords; terrainViewport converts to NDC via mvp
-                GLint loc = glGetUniformLocation(shp, "terrainMVP");
-                if (loc >= 0)
-                    glUniformMatrix4fv(loc, 1, GL_FALSE, (const float*)&terrain_mvp_);
-                GLint vpLoc = glGetUniformLocation(shp, "terrainViewport");
-                if (vpLoc >= 0)
-                    glUniform4fv(vpLoc, 1, (const float*)&terrain_viewport_);
-
-                // Upload shadow map uniforms
-                gos_SetupObjectShadows(mat);
-
-                // Inject time for cloud shadow animation (IS_OVERLAY path uses inline fbm)
-                {
-                    static uint64_t overlay_time_start = timing::get_wall_time_ms();
-                    float elapsed = (float)(timing::get_wall_time_ms() - overlay_time_start) / 1000.0f;
-                    GLint timeLoc = glGetUniformLocation(shp, "time");
-                    if (timeLoc >= 0)
-                        glUniform1f(timeLoc, elapsed);
-                }
-
-                // Keep overlay color writes out of the depth buffer, but still depth-test
-                // against terrain/objects so roads and cement edges do not draw over mechs.
-                // Mark covered pixels in stencil so post-process can clear the terrain flag
-                // there and let deferred shadows affect the overlay itself.
-                glEnable(GL_STENCIL_TEST);
-                glStencilMask(0xFF);
-                glStencilFunc(GL_ALWAYS, 1, 0xFF);
-                glStencilOp(GL_KEEP, GL_KEEP, GL_REPLACE);
-                glEnable(GL_DEPTH_TEST);
-                glDepthMask(GL_FALSE);
-                glColorMask(GL_TRUE, GL_TRUE, GL_TRUE, GL_TRUE);
-                glDisable(GL_CULL_FACE);
-                glEnable(GL_POLYGON_OFFSET_FILL);
-                glPolygonOffset(-1.0f, -1.0f);
-
-                glBindBuffer(GL_ARRAY_BUFFER, indexed_tris_->getVB());
-                glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, indexed_tris_->getIB());
-                mat->applyVertexDeclaration();
-
-                glDrawElements(GL_TRIANGLES, indexed_tris_->getNumIndices(),
-                    indexed_tris_->getIndexSizeBytes() == 2 ? GL_UNSIGNED_SHORT : GL_UNSIGNED_INT, NULL);
-
-                mat->endVertexDeclaration();
-                mat->end();
-                glBindBuffer(GL_ARRAY_BUFFER, 0);
-                glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, 0);
-                glDisable(GL_POLYGON_OFFSET_FILL);
-                glStencilMask(0x00);
-                glDisable(GL_STENCIL_TEST);
-                glDepthMask(GL_TRUE);
-                glEnable(GL_CULL_FACE);
-            } else {
-                if (curStates_[gos_State_Overlay]) {
-                    static bool overlay_fallback_trace_ = false;
-                    if (!overlay_fallback_trace_) {
-                        overlay_fallback_trace_ = true;
-                        printf("[OVERLAY] Fallback basic draw: verts=%d idx=%d mvp_valid=%d tex=%u\n",
-                            indexed_tris_->getNumVertices(), indexed_tris_->getNumIndices(),
-                            terrain_mvp_valid_ ? 1 : 0, curStates_[gos_State_Texture]);
-                        fflush(stdout);
-                    }
-                }
+            // Overlay.SplitDraw removed — alpha cement and decals now go through
+            // gos_DrawTerrainOverlays() / gos_DrawDecals() typed world-space batches.
+            {
                 ZoneScopedN("BasicDraw.Indexed");
                 indexed_tris_->drawIndexed(mat);
             }
@@ -4304,5 +4308,228 @@ void gos_SetTerrainDrawEnabled(bool e) {
 bool gos_GetTerrainDrawEnabled() {
     return g_gos_renderer ? g_gos_renderer->getTerrainDrawEnabled() : true;
 }
+
+// ── World-space overlay batch API ────────────────────────────────────────────
+
+// Private helper: push one triangle into a batch, grouping consecutive same-texture
+// calls into a single draw entry.  Batches are cleared at the END of the draw
+// functions (called exactly once per frame from renderLists), not on push.
+void gosRenderer::pushToOverlayBatch_(OverlayBatch_& b,
+                                      const WorldOverlayVert* v3,
+                                      unsigned int texHandle)
+{
+    if (!b.draws.empty() && b.draws.back().texHandle == texHandle) {
+        b.draws.back().vertCount += 3;
+    } else {
+        OverlayBatchEntry_ entry;
+        entry.texHandle = texHandle;
+        entry.firstVert = (unsigned int)b.verts.size();
+        entry.vertCount = 3;
+        b.draws.push_back(entry);
+    }
+    b.verts.push_back(v3[0]);
+    b.verts.push_back(v3[1]);
+    b.verts.push_back(v3[2]);
+}
+
+void gosRenderer::pushTerrainOverlayTri(const WorldOverlayVert* verts3, unsigned int texHandle)
+{
+    pushToOverlayBatch_(terrainOverlayBatch_, verts3, texHandle);
+}
+
+void gosRenderer::pushDecalTri(const WorldOverlayVert* verts3, unsigned int texHandle)
+{
+    pushToOverlayBatch_(decalBatch_, verts3, texHandle);
+}
+
+// Upload shadow uniforms for a standalone shader program.
+// Kept as a static helper because it only touches public getters — no private types.
+static void setupOverlayShadowsForShp(GLuint shp)
+{
+    gosPostProcess* pp = getGosPostProcess();
+    if (!pp) return;
+
+    GLint loc;
+    loc = glGetUniformLocation(shp, "terrainLightDir");
+    if (loc >= 0) glUniform4fv(loc, 1, (const float*)&g_gos_renderer->getTerrainLightDir());
+
+    if (!pp->shadowsEnabled_) {
+        loc = glGetUniformLocation(shp, "enableShadows");
+        if (loc >= 0) glUniform1i(loc, 0);
+        loc = glGetUniformLocation(shp, "enableDynamicShadows");
+        if (loc >= 0) glUniform1i(loc, 0);
+        return;
+    }
+
+    loc = glGetUniformLocation(shp, "lightSpaceMatrix");
+    if (loc >= 0) glUniformMatrix4fv(loc, 1, GL_FALSE, pp->getLightSpaceMatrix());
+    loc = glGetUniformLocation(shp, "enableShadows");
+    if (loc >= 0) glUniform1i(loc, 1);
+    loc = glGetUniformLocation(shp, "shadowSoftness");
+    if (loc >= 0) glUniform1f(loc, g_gos_renderer->getTerrainShadowSoftness());
+    loc = glGetUniformLocation(shp, "shadowMap");
+    if (loc >= 0) {
+        glUniform1i(loc, 9);
+        glActiveTexture(GL_TEXTURE9);
+        glBindTexture(GL_TEXTURE_2D, pp->getShadowTexture());
+    }
+
+    if (pp->getDynamicShadowFBO()) {
+        loc = glGetUniformLocation(shp, "enableDynamicShadows");
+        if (loc >= 0) glUniform1i(loc, 1);
+        loc = glGetUniformLocation(shp, "dynamicLightSpaceMatrix");
+        if (loc >= 0) glUniformMatrix4fv(loc, 1, GL_FALSE, pp->getDynamicLightSpaceMatrix());
+        loc = glGetUniformLocation(shp, "dynamicShadowMap");
+        if (loc >= 0) {
+            glUniform1i(loc, 10);
+            glActiveTexture(GL_TEXTURE10);
+            glBindTexture(GL_TEXTURE_2D, pp->getDynamicShadowTexture());
+        }
+    } else {
+        loc = glGetUniformLocation(shp, "enableDynamicShadows");
+        if (loc >= 0) glUniform1i(loc, 0);
+    }
+
+    glActiveTexture(GL_TEXTURE0);
+}
+
+// Private member: common uniform upload for both draw paths.
+void gosRenderer::uploadOverlayUniforms_(GLuint shp, const OverlayUniformLocs_& L, float elapsed)
+{
+    if (L.terrainMVP >= 0)
+        glUniformMatrix4fv(L.terrainMVP, 1, GL_FALSE, (const float*)&getTerrainMVP());
+    if (L.terrainVP >= 0)
+        glUniform4fv(L.terrainVP, 1, (const float*)&getTerrainViewport());
+    // projection_: row-major Stuff matrix — upload GL_TRUE (column-major interpretation)
+    if (L.mvp >= 0)
+        glUniformMatrix4fv(L.mvp, 1, GL_TRUE, (const float*)&getProj2Screen());
+    if (L.fog_color >= 0)
+        glUniform4fv(L.fog_color, 1, (const float*)&getFogColor());
+    if (L.time >= 0)
+        glUniform1f(L.time, elapsed);
+
+    setupOverlayShadowsForShp(shp);
+}
+
+// Draw the terrain overlay batch (alpha cement perimeter tiles).
+// Render state: opaque, depth-write ON, depth-test LEQUAL (same as solid terrain).
+// MRT: terrain_overlay.frag writes GBuffer1.alpha=1 → shadow_screen skips these pixels.
+// Batch cleared after draw.
+void gosRenderer::drawTerrainOverlays()
+{
+    if (terrainOverlayBatch_.draws.empty() || !overlayProg_) {
+        terrainOverlayBatch_.verts.clear();
+        terrainOverlayBatch_.draws.clear();
+        return;
+    }
+
+    glBindBuffer(GL_ARRAY_BUFFER, terrainOverlayBatch_.vbo);
+    glBufferData(GL_ARRAY_BUFFER,
+        (GLsizeiptr)(terrainOverlayBatch_.verts.size() * sizeof(WorldOverlayVert)),
+        terrainOverlayBatch_.verts.data(), GL_STREAM_DRAW);
+    glBindBuffer(GL_ARRAY_BUFFER, 0);
+
+    glEnable(GL_DEPTH_TEST);
+    glDepthMask(GL_TRUE);
+    glDepthFunc(GL_LEQUAL);
+    glDisable(GL_BLEND);
+    glDisable(GL_CULL_FACE);
+    glEnable(GL_POLYGON_OFFSET_FILL);
+    glPolygonOffset(-1.0f, -1.0f);
+
+    glUseProgram(overlayProg_->shp_);
+    float elapsed = (float)(timing::get_wall_time_ms() - overlayTimeStart_) / 1000.0f;
+    uploadOverlayUniforms_(overlayProg_->shp_, overlayLocs_, elapsed);
+
+    glBindVertexArray(terrainOverlayBatch_.vao);
+    for (const auto& entry : terrainOverlayBatch_.draws) {
+        if (overlayLocs_.tex1 >= 0)
+            glUniform1i(overlayLocs_.tex1, 0);
+        glActiveTexture(GL_TEXTURE0);
+        glBindTexture(GL_TEXTURE_2D, entry.texHandle);
+        glDrawArrays(GL_TRIANGLES, (GLint)entry.firstVert, (GLsizei)entry.vertCount);
+    }
+    glBindVertexArray(0);
+
+    glDepthFunc(GL_LESS);
+    glDisable(GL_POLYGON_OFFSET_FILL);
+    glEnable(GL_CULL_FACE);
+    glDepthMask(GL_TRUE);
+    glUseProgram(0);
+
+    terrainOverlayBatch_.verts.clear();
+    terrainOverlayBatch_.draws.clear();
+}
+
+// Draw the decal batch (bomb craters + mech footprints).
+// Render state: alpha blend, depth-write OFF, depth-test LEQUAL.
+// Batch cleared after draw.
+void gosRenderer::drawDecals()
+{
+    if (decalBatch_.draws.empty() || !decalProg_) {
+        decalBatch_.verts.clear();
+        decalBatch_.draws.clear();
+        return;
+    }
+
+    glBindBuffer(GL_ARRAY_BUFFER, decalBatch_.vbo);
+    glBufferData(GL_ARRAY_BUFFER,
+        (GLsizeiptr)(decalBatch_.verts.size() * sizeof(WorldOverlayVert)),
+        decalBatch_.verts.data(), GL_STREAM_DRAW);
+    glBindBuffer(GL_ARRAY_BUFFER, 0);
+
+    glEnable(GL_DEPTH_TEST);
+    glDepthMask(GL_FALSE);
+    glDepthFunc(GL_LEQUAL);
+    glEnable(GL_BLEND);
+    glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
+    glDisable(GL_CULL_FACE);
+    glEnable(GL_POLYGON_OFFSET_FILL);
+    glPolygonOffset(-1.0f, -1.0f);
+
+    glUseProgram(decalProg_->shp_);
+    float elapsed = (float)(timing::get_wall_time_ms() - overlayTimeStart_) / 1000.0f;
+    uploadOverlayUniforms_(decalProg_->shp_, decalLocs_, elapsed);
+
+    glBindVertexArray(decalBatch_.vao);
+    for (const auto& entry : decalBatch_.draws) {
+        if (decalLocs_.tex1 >= 0)
+            glUniform1i(decalLocs_.tex1, 0);
+        glActiveTexture(GL_TEXTURE0);
+        glBindTexture(GL_TEXTURE_2D, entry.texHandle);
+        glDrawArrays(GL_TRIANGLES, (GLint)entry.firstVert, (GLsizei)entry.vertCount);
+    }
+    glBindVertexArray(0);
+
+    glDepthFunc(GL_LESS);
+    glDisable(GL_BLEND);
+    glDisable(GL_POLYGON_OFFSET_FILL);
+    glEnable(GL_CULL_FACE);
+    glDepthMask(GL_TRUE);
+    glUseProgram(0);
+
+    decalBatch_.verts.clear();
+    decalBatch_.draws.clear();
+}
+
+// ── Thin exported wrappers ────────────────────────────────────────────────────
+
+void __stdcall gos_PushTerrainOverlay(const WorldOverlayVert* verts3, unsigned int texHandle) {
+    if (g_gos_renderer && verts3) g_gos_renderer->pushTerrainOverlayTri(verts3, texHandle);
+}
+
+void __stdcall gos_PushDecal(const WorldOverlayVert* verts3, unsigned int texHandle) {
+    if (g_gos_renderer && verts3) g_gos_renderer->pushDecalTri(verts3, texHandle);
+}
+
+void __stdcall gos_DrawTerrainOverlays() {
+    if (g_gos_renderer) g_gos_renderer->drawTerrainOverlays();
+}
+
+void __stdcall gos_DrawDecals() {
+    if (g_gos_renderer) g_gos_renderer->drawDecals();
+}
+
+// ── End world-space overlay batch API ─────────────────────────────────────────
 
 #include "gameos_graphics_debug.cpp"

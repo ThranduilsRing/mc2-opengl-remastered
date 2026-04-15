@@ -74,7 +74,6 @@ public:
     float bloomThreshold_;
 
     void runScreenShadow();
-    void clearOverlayAlpha();  // clear terrain flag on overlay pixels before shadow pass
     bool screenShadowEnabled_;
     int screenShadowDebug_;  // 0=normal, 1=visualize
 
@@ -164,7 +163,6 @@ private:
 
     // Post-process screen shadow
     glsl_program* screenShadowProg_;
-    glsl_program* overlayAlphaClearProg_;
     float inverseViewProj_[16];
     float viewProj_[16];
 
