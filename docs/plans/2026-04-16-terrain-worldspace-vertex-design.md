@@ -59,7 +59,7 @@ With:
 
 **Why this works:** `terrainMVP` is built from the same camera matrices `projectZ()` uses, so the depth values are mathematically equivalent. The `pos.w` divide in the VS has always been `1/rhw` which cancels — the two paths produce identical depths in the absence of floating-point divergence.
 
-**Debug hook (Step 1):** Add a uniform `int undisplacedDepthMode` (default 0 = new world-space path, 1 = old screen-space path). Gate the two blocks on this uniform for the first build. Toggle via a new RAlt+key hotkey (e.g. RAlt+8, currently unused). If any overlay z-fighting appears that differs between modes, it will be immediately visible on road/cement edges.
+**Debug hook (Step 1):** Add a uniform `int undisplacedDepthMode` (default 0 = new world-space path, 1 = old screen-space path). Gate the two blocks on this uniform for the first build. Toggle via **RAlt+9** hotkey (currently assigned to SSAO — repurpose it temporarily since SSAO is disabled by default and this debug is short-lived; restore SSAO binding after validation). If any overlay z-fighting appears that differs between modes, it will be immediately visible on road/cement edges.
 
 ```glsl
 // Temporary — remove after validation
@@ -120,7 +120,7 @@ gVertex[0].z   = v0->pVertex->elevation;
 gVertex[0].rhw = 1.0f;
 ```
 
-Applies to: solid terrain, alpha terrain (cement overlays, craters), and water/water-detail paths. The extras VBO (`fillTerrainExtra`) is already using `vx/vy/elevation` and is unchanged.
+Applies to: solid terrain and alpha terrain (cement overlays, craters) paths — specifically `gVertex` built from `v->px/py/pz/pw`. **Water is excluded:** water vertices use a separate field set (`wx/wy/wz/ww`) written by their own `projectZ()` calls inside `quad.cpp` (with wave-height offsets), and water `gos_VERTEX` is assembled from those fields, not from `px/py/pz/pw`. The extras VBO (`fillTerrainExtra`) is already using `vx/vy/elevation` and is unchanged.
 
 `projectZ()` is still called at this step (results written to `px/py/pz/pw` but no longer consumed). This confirms the vertex builder and shader pipeline are correct before removing the call.
 
@@ -160,7 +160,17 @@ currentVertex->pw = screenPos.w;
 
 Keep: the frustum visibility test (angular dot-product check), the `hazeFactor` fog computation, and the `clipInfo` flag — all still needed to skip building triangles for invisible tiles.
 
-`inView` was used for tracking `leastZ/mostZ` (depth range stats). Audit whether those are still needed after this change. If only used for legacy debug stats, they can be removed too.
+**`inView` / `leastZ/mostZ` dependency — must resolve before Step 4:**
+
+`inView` is the return value of `projectZ()`. After the call is removed it no longer exists. Its outputs are consumed in two ways:
+
+1. **`leastZ/mostZ/leastW/mostW/leastWY/mostWY` → `setInverseProject()`:** These track the linear range of screen-space z/w across all visible vertices and are passed to `eye->setInverseProject()` which stores `startZInverse, zPerPixel, startWInverse, wPerPixel`. Those parameters feed `Camera::inverseProjectZ()`, a CPU depth-estimation helper.
+
+2. **`v->pz` in `Camera::inverseProject()` (camera.cpp:~790):** The mouse picking function reads `closestTiles[i]->vertices[j]->pz` directly to find the closest tile under the cursor. If `projectZ()` is removed, `pz` goes stale and picking breaks.
+
+Both `inverseProject()` and `inverseProjectZ()` are legacy CPU mouse-picking helpers that estimate world position from a screen coordinate. With the tessellated renderer these should be replaced by a proper raycast against the terrain elevation grid (already available via `Terrain::getTerrainElevation()`), but that is a separate task.
+
+**For Step 4 specifically:** either (a) replace `inverseProject`/`inverseProjectZ` with an elevation-grid raycast before removing `projectZ()`, or (b) keep a minimal `projectZ()` call only for the picking path (separate from the rendering path). Option (a) is cleaner and is already the right direction for GPU projection; option (b) is safe and reversible. Document the chosen approach in the implementation plan.
 
 **Validation:** Tracy profiler should show `Camera.UpdateRenderers` dropping by the per-vertex `projectZ()` cost across all visible terrain vertices (typically 500K+ per frame in Wolfman mode). Expect 1–3ms reduction in the 6ms budget.
 
@@ -170,9 +180,10 @@ Keep: the frustum visibility test (angular dot-product check), the `hazeFactor` 
 
 1. Road/cement overlays have no new z-fighting vs. terrain after each step
 2. Mission markers still sit correctly on terrain surface
-3. Water surface depth is correct (water verts go through a separate `projectZ` path in `quad.cpp` — verify those are handled)
-4. Tracy shows `Camera.UpdateRenderers` reduction after Step 4
-5. RAlt+8 toggle (Step 1 debug) shows no visible difference between old and new `UndisplacedDepth` modes
+3. Water surface renders correctly (has its own `projectZ()` path in `quad.cpp` using `wx/wy/wz/ww`, unaffected by this change)
+4. Mouse terrain picking still works (blocked on `inView` resolution in Step 4)
+5. Tracy shows `Camera.UpdateRenderers` reduction after Step 4
+6. RAlt+9 toggle (Step 1 debug) shows no visible difference between old and new `UndisplacedDepth` modes
 
 ## Files Changed
 
@@ -182,11 +193,12 @@ Keep: the frustum visibility test (angular dot-product check), the `hazeFactor` 
 | `shaders/gos_terrain.vert` | Step 2: `gl_Position = vec4(pos.xyz, 1.0)` |
 | `mclib/quad.cpp` | Step 3: world coords in `gVertex.x/y/z/rhw` for all terrain paths |
 | `mclib/terrain.cpp` | Step 4: remove `projectZ()` + `px/py/pz/pw` writes from vertex loop |
-| `GameOS/gameos/gameos_graphics.cpp` | Step 1: add `RAlt+8` hotkey for `undisplacedDepthMode` toggle |
+| `GameOS/gameos/gameos_graphics.cpp` | Step 1: add `RAlt+9` hotkey for `undisplacedDepthMode` toggle (temporarily repurposes SSAO key; restore after validation) |
 
 ## Out of Scope
 
-- Water `projectZ()` calls in `quad.cpp` (separate path, separate ticket)
+- Water `projectZ()` calls in `quad.cpp` — water vertices use separate `wx/wy/wz/ww` fields from wave-animated `projectZ()` calls; the terrain.cpp removal does not affect them
+- Mouse picking (`Camera::inverseProject`) — depends on `v->pz`; must be replaced with elevation-grid raycast before Step 4 fully lands, tracked as a separate task
 - Old-style `gos_DrawTriangles` screen-space paths (particles, HUD)
 - Frustum culling — stays on CPU (Option B/C are separate)
 - GPU terrain chunk streaming (Option B is separate)
