@@ -59,7 +59,7 @@ With:
 
 **Why this works:** `terrainMVP` is built from the same camera matrices `projectZ()` uses, so the depth values are mathematically equivalent. The `pos.w` divide in the VS has always been `1/rhw` which cancels — the two paths produce identical depths in the absence of floating-point divergence.
 
-**Debug hook (Step 1):** Add a uniform `int undisplacedDepthMode` (default 0 = new world-space path, 1 = old screen-space path). Gate the two blocks on this uniform for the first build. Toggle via **RAlt+9** hotkey (currently assigned to SSAO — repurpose it temporarily since SSAO is disabled by default and this debug is short-lived; restore SSAO binding after validation). If any overlay z-fighting appears that differs between modes, it will be immediately visible on road/cement edges.
+**Debug hook (Step 1):** Add a uniform `int undisplacedDepthMode` (default 0 = new world-space path, 1 = old screen-space path). Gate the two blocks on this uniform for the first build. Toggle via **RAlt+8** hotkey (currently assigned to SSAO — repurpose it temporarily since SSAO is disabled by default and this debug is short-lived; restore SSAO binding after validation). If any overlay z-fighting appears that differs between modes, it will be immediately visible on road/cement edges.
 
 ```glsl
 // Temporary — remove after validation
@@ -183,7 +183,7 @@ Both `inverseProject()` and `inverseProjectZ()` are legacy CPU mouse-picking hel
 3. Water surface renders correctly (has its own `projectZ()` path in `quad.cpp` using `wx/wy/wz/ww`, unaffected by this change)
 4. Mouse terrain picking still works (blocked on `inView` resolution in Step 4)
 5. Tracy shows `Camera.UpdateRenderers` reduction after Step 4
-6. RAlt+9 toggle (Step 1 debug) shows no visible difference between old and new `UndisplacedDepth` modes
+6. RAlt+8 toggle (Step 1 debug) shows no visible difference between old and new `UndisplacedDepth` modes
 
 ## Files Changed
 
@@ -193,7 +193,7 @@ Both `inverseProject()` and `inverseProjectZ()` are legacy CPU mouse-picking hel
 | `shaders/gos_terrain.vert` | Step 2: `gl_Position = vec4(pos.xyz, 1.0)` |
 | `mclib/quad.cpp` | Step 3: world coords in `gVertex.x/y/z/rhw` for all terrain paths |
 | `mclib/terrain.cpp` | Step 4: remove `projectZ()` + `px/py/pz/pw` writes from vertex loop |
-| `GameOS/gameos/gameos_graphics.cpp` | Step 1: add `RAlt+9` hotkey for `undisplacedDepthMode` toggle (temporarily repurposes SSAO key; restore after validation) |
+| `GameOS/gameos/gameos_graphics.cpp` | Step 1: add `RAlt+8` hotkey for `undisplacedDepthMode` toggle (temporarily repurposes SSAO key; restore after validation) |
 
 ## Out of Scope
 
