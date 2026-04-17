@@ -51,7 +51,6 @@ static bool isAllConcreteTerrainBatch(const gos_VERTEX* vertices, int count) {
     return true;
 }
 
-
 gosRenderer* getGosRenderer() {
     return g_gos_renderer;
 }
@@ -980,6 +979,25 @@ bool gosTexture::createHardwareTexture() {
         return tex_.isValid();
     }
 
+}
+
+static gosTexture* lookupBatchTextureOrWarn(const std::vector<gosTexture*>& textureList,
+                                            DWORD textureId,
+                                            const char* batchName) {
+    if (textureId == INVALID_TEXTURE_ID)
+        return nullptr;
+
+    if (textureId >= textureList.size() || textureList[textureId] == nullptr) {
+        static unsigned int warnCount = 0;
+        if (warnCount < 16) {
+            printf("%s: dropping invalid texture handle %u (texture count=%zu)\n",
+                   batchName, textureId, textureList.size());
+            ++warnCount;
+        }
+        return nullptr;
+    }
+
+    return textureList[textureId];
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -4282,7 +4300,7 @@ void gosRenderer::drawTerrainOverlays()
         if (overlayLocs_.tex1 >= 0)
             glUniform1i(overlayLocs_.tex1, 0);
         glActiveTexture(GL_TEXTURE0);
-        gosTexture* t = (entry.texHandle != INVALID_TEXTURE_ID) ? getTexture(entry.texHandle) : nullptr;
+        gosTexture* t = lookupBatchTextureOrWarn(textureList_, entry.texHandle, "terrainOverlayBatch");
         glBindTexture(GL_TEXTURE_2D, t ? t->getTextureId() : 0);
         glDrawArrays(GL_TRIANGLES, (GLint)entry.firstVert, (GLsizei)entry.vertCount);
     }
@@ -4335,7 +4353,7 @@ void gosRenderer::drawDecals()
         if (decalLocs_.tex1 >= 0)
             glUniform1i(decalLocs_.tex1, 0);
         glActiveTexture(GL_TEXTURE0);
-        gosTexture* t = (entry.texHandle != INVALID_TEXTURE_ID) ? getTexture(entry.texHandle) : nullptr;
+        gosTexture* t = lookupBatchTextureOrWarn(textureList_, entry.texHandle, "decalBatch");
         glBindTexture(GL_TEXTURE_2D, t ? t->getTextureId() : 0);
         glDrawArrays(GL_TRIANGLES, (GLint)entry.firstVert, (GLsizei)entry.vertCount);
     }
