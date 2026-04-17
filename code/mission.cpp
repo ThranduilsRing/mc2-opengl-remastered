@@ -457,7 +457,7 @@ long Mission::update (void)
 
 		{ ZoneScopedN("GameLogic.Mission.Camera"); eye->update(); }
 
-		missionInterface->updateVTol();
+		{ ZoneScopedN("GameLogic.Mission.VTol"); missionInterface->updateVTol(); }
 
 		{ ZoneScopedN("GameLogic.Mission.Terrain"); land->update(); }
 
@@ -465,7 +465,7 @@ long Mission::update (void)
 		if (useNonWeaponEffects)
 			{ ZoneScopedN("GameLogic.Mission.Weather"); weather->update(); }		//Should the rain fall during a pause?
 		
-		missionInterface->updateWaypoints();
+		{ ZoneScopedN("GameLogic.Mission.Waypoints"); missionInterface->updateWaypoints(); }
 
 #ifdef USE_PATH_COST_TABLE
 		GlobalMoveMap[0]->resetPathCostTable();
@@ -480,8 +480,8 @@ long Mission::update (void)
 		// Lastly, process the terrain geometry which loads textures
 		// Must do this to keep from Locking during the updateRenders phase
 		// Also reset the object flags because we recalc those during geometry!
-		land->clearObjBlocksActive();
-		land->clearObjVerticesActive();
+		{ ZoneScopedN("Mission::update clearObjBlocksActive"); land->clearObjBlocksActive(); }
+		{ ZoneScopedN("Mission::update clearObjVerticesActive"); land->clearObjVerticesActive(); }
 		{ ZoneScopedN("Mission::update terrainTextures->update"); land->terrainTextures->update(); }
 
 		{ ZoneScopedN("GameLogic.Mission.TerrainGeometry"); land->geometry(); }

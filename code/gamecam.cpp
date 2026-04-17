@@ -142,6 +142,7 @@ void GameCamera::render (void)
 
 	if (active && turn > 1)
 	{
+		ZoneScopedN("GameCamera::render activeScene");
 		//----------------------------------------------------------
 		// Turn stuff on line by line until perspective is working.
 
@@ -188,31 +189,58 @@ void GameCamera::render (void)
 		}
 
 		if (Environment.Renderer != 3)
+		{
+			ZoneScopedN("GameCamera::render sky");
 			theSky->render(1);
+		}
 
-		land->render();								//render the Terrain
+		{
+			ZoneScopedN("GameCamera::render terrain");
+			land->render();								//render the Terrain
+		}
 
 		if (Environment.Renderer != 3)
+		{
+			ZoneScopedN("GameCamera::render craters");
 			craterManager->render();					//render the craters and footprints
+		}
 
-		ObjectManager->render(true, true, true);	//render all other objects
+		{
+			ZoneScopedN("GameCamera::render objects");
+			ObjectManager->render(true, true, true);	//render all other objects
+		}
 
-		land->renderWater();						//Draw Water Last!
+		{
+			ZoneScopedN("GameCamera::render water");
+			land->renderWater();						//Draw Water Last!
+		}
 
 		if (useShadows && Environment.Renderer != 3)
+		{
+			ZoneScopedN("GameCamera::render shadows");
 			ObjectManager->renderShadows(true, true, true);
+		}
 
 		if (mission && mission->missionInterface)
+		{
+			ZoneScopedN("GameCamera::render drawVTOL");
 			mission->missionInterface->drawVTOL();
+		}
 
 		if (!drawOldWay && !inMovieMode)
 		{
 			if (compass && (turn > 3) && drawCompass)
+			{
+				ZoneScopedN("GameCamera::render compass");
 				compass->render(-1);		//Force this to zBuffer in front of everything
+			}
 		}
 
 		if (!drawOldWay)
+		{
+			ZoneScopedN("GameCamera::render textureManagerRenderLists");
 			mcTextureManager->renderLists();			//This sends triangles down to the card.  All "rendering" to this point has been setting up tri lists
+		}
 
 		if (drawOldWay)
 		{
@@ -221,11 +249,17 @@ void GameCamera::render (void)
 			gos_SetRenderState( gos_State_ShadeMode, gos_ShadeGouraud);
 		}
 
-		theClipper->RenderNow();		//Draw the FX
+		{
+			ZoneScopedN("GameCamera::render clipperRenderNow");
+			theClipper->RenderNow();		//Draw the FX
+		}
 
 
 		if (useNonWeaponEffects)
+		{
+			ZoneScopedN("GameCamera::render weather");
 			weather->render();				//Draw the weather
+		}
 	}
 
 	if (drawOldWay && !inMovieMode)

@@ -2870,8 +2870,6 @@ void gosRenderer::drawIndexedTris(gos_VERTEX* vertices, int num_vertices, WORD* 
         terrainDrawIndexedPatches(tmat, indexed_tris_);
         // Mark terrain drawn so post-process effects know to run (god rays, shorelines)
         { gosPostProcess* pp = getGosPostProcess(); if (pp) pp->markTerrainDrawn(); }
-        // GPU grass pass: geometry shader emits grass quads on grassy terrain
-        drawGrassPass(indexed_tris_);
         indexed_tris_->rewind();
     } else {
         // When tessellation is active, skip SOLID fallback terrain draws (tessellation

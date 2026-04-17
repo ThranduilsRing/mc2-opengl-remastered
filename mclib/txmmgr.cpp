@@ -111,6 +111,7 @@ DWORD compressedTextureSize = 0;
 
 static const DWORD MC_TEXCACHE_FILE_LZ = 0xF0000000;
 static const DWORD MC_TEXCACHE_FILE_RAW = 0xE0000000;
+static const DWORD MC_TEXCACHE_MEM_RAW = 0xD0000000;
 static const DWORD MC_TEXCACHE_SIZE_MASK = 0x0FFFFFFF;
 static const long MC_TEXCACHE_RAW_THRESHOLD = 256 * 1024;
 
@@ -1795,10 +1796,13 @@ void MC_TextureManager::renderLists (void)
 //----------------------------------------------------------------------
 DWORD MC_TextureManager::update (void)
 {
+	ZoneScopedN("MC_TextureManager::update");
 	DWORD numTexturesFreed = 0;
 	currentUsedTextures = 0;
 	
-	for (long i=0;i<MC_MAXTEXTURES;i++)
+	{
+		ZoneScopedN("MC_TextureManager::update scanNodes");
+		for (long i=0;i<MC_MAXTEXTURES;i++)
 	{
 		if ((masterTextureNodes[i].gosTextureHandle != CACHED_OUT_HANDLE) &&
 			(masterTextureNodes[i].gosTextureHandle != 0xffffffff))
@@ -1810,8 +1814,11 @@ DWORD MC_TextureManager::update (void)
 				{
 					//----------------------------------------------------------------
 					// Cache this badboy out.  Textures don't change.  Just Destroy!
-					if (masterTextureNodes[i].gosTextureHandle)
-						gos_DestroyTexture(masterTextureNodes[i].gosTextureHandle);
+					{
+						ZoneScopedN("MC_TextureManager::update cacheOut");
+						if (masterTextureNodes[i].gosTextureHandle)
+							gos_DestroyTexture(masterTextureNodes[i].gosTextureHandle);
+					}
 
 					masterTextureNodes[i].gosTextureHandle = CACHED_OUT_HANDLE;
 					numTexturesFreed++;
@@ -1822,6 +1829,7 @@ DWORD MC_TextureManager::update (void)
 			// ALSO can't count on turn being right.  Logistics does not update unless simple Camera is up!!
 			if (masterTextureNodes[i].gosTextureHandle != CACHED_OUT_HANDLE)
 				currentUsedTextures++;
+		}
 		}
 	}
 	
@@ -2091,6 +2099,56 @@ DWORD MC_TextureManager::loadTexture (const char *textureFullPathName, gos_Textu
 }
 
 //----------------------------------------------------------------------
+DWORD MC_TextureManager::textureFromMemoryRaw (DWORD *data, gos_TextureFormat key, DWORD hints, DWORD width, DWORD bitDepth)
+{
+	ZoneScopedN("MC_TextureManager::textureFromMemoryRaw");
+	long i=0;
+
+	{
+		ZoneScopedN("MC_TextureManager::textureFromMemoryRaw findSlot");
+		for (i=0;i<MC_MAXTEXTURES;i++)
+		{
+			if (masterTextureNodes[i].gosTextureHandle == 0xffffffff)
+			{
+				break;
+			}
+		}
+	}
+
+	if (i == MC_MAXTEXTURES)
+		STOP(("TOO Many textures in game.  We have exceeded 4096 game handles"));
+
+	masterTextureNodes[i].gosTextureHandle = CACHED_OUT_HANDLE;
+	masterTextureNodes[i].nodeName = NULL;
+	masterTextureNodes[i].numUsers = 1;
+	masterTextureNodes[i].key = key;
+	masterTextureNodes[i].hints = hints;
+	masterTextureNodes[i].logicalWidth = width;
+	masterTextureNodes[i].logicalHeight = width;
+
+	const DWORD txmSize = width * width * bitDepth;
+	masterTextureNodes[i].width = MC_TEXCACHE_MEM_RAW + txmSize;
+	masterTextureNodes[i].lzCompSize = txmSize;
+	actualTextureSize += txmSize;
+	compressedTextureSize += txmSize;
+
+	{
+		ZoneScopedN("MC_TextureManager::textureFromMemoryRaw cacheAlloc");
+		masterTextureNodes[i].textureData = (DWORD *)textureCacheHeap->Malloc(txmSize);
+	}
+
+	if (masterTextureNodes[i].textureData == NULL)
+		masterTextureNodes[i].gosTextureHandle = 0;
+	else
+	{
+		ZoneScopedN("MC_TextureManager::textureFromMemoryRaw cacheCopy");
+		memcpy(masterTextureNodes[i].textureData, data, txmSize);
+	}
+
+	return(i);
+}
+
+//----------------------------------------------------------------------
 long MC_TextureManager::saveTexture (DWORD textureIndex, const char *textureFullPathName)
 {
 	if ((MC_MAXTEXTURES <= textureIndex) || (NULL == masterTextureNodes[textureIndex].textureData))
@@ -2116,7 +2174,7 @@ long MC_TextureManager::saveTexture (DWORD textureIndex, const char *textureFull
 			//------------------------------------------
 			const DWORD cacheFormat = masterTextureNodes[textureIndex].width & 0xF0000000;
 			const DWORD originalSize = masterTextureNodes[textureIndex].width & MC_TEXCACHE_SIZE_MASK;
-			if (cacheFormat == MC_TEXCACHE_FILE_RAW)
+			if (cacheFormat == MC_TEXCACHE_FILE_RAW || cacheFormat == MC_TEXCACHE_MEM_RAW)
 			{
 				textureFile.write((MemoryPtr)masterTextureNodes[textureIndex].textureData, originalSize);
 			}
@@ -2194,7 +2252,7 @@ DWORD MC_TextureNode::get_gosTextureHandle (void)	//If texture is not in VidRAM,
 		}
 
 		const DWORD cacheFormat = width & 0xF0000000;
-		if ((cacheFormat == MC_TEXCACHE_FILE_LZ) || (cacheFormat == MC_TEXCACHE_FILE_RAW))
+		if ((cacheFormat == MC_TEXCACHE_FILE_LZ) || (cacheFormat == MC_TEXCACHE_FILE_RAW) || (cacheFormat == MC_TEXCACHE_MEM_RAW))
 		{
 			const DWORD originalSize = width & MC_TEXCACHE_SIZE_MASK;
 			BYTE* textureBytes = (BYTE*)textureData;
@@ -2216,11 +2274,38 @@ DWORD MC_TextureNode::get_gosTextureHandle (void)	//If texture is not in VidRAM,
 						STOP(("Texture TOO large: %s",nodeName));
 					textureBytes = (BYTE*)MC_TextureManager::lzBuffer2;
 				}
+				else if (cacheFormat == MC_TEXCACHE_MEM_RAW)
+				{
+					textureBytes = (BYTE*)textureData;
+				}
 			}
-			
+
+			if (cacheFormat == MC_TEXCACHE_MEM_RAW)
 			{
-				ZoneScopedN("MC_TextureNode::get_gosTextureHandle gos_NewTextureFromMemory");
-				gosTextureHandle = gos_NewTextureFromMemory(key,nodeName,textureBytes,originalSize,hints);
+				{
+					ZoneScopedN("MC_TextureNode::get_gosTextureHandle gos_NewEmptyTexture");
+					gosTextureHandle = gos_NewEmptyTexture(key,nodeName,logicalWidth ? logicalWidth : width,hints);
+				}
+				TEXTUREPTR pTextureData;
+				{
+					ZoneScopedN("MC_TextureNode::get_gosTextureHandle gos_LockTexture");
+					gos_LockTexture(gosTextureHandle, 0, 0, &pTextureData);
+				}
+				{
+					ZoneScopedN("MC_TextureNode::get_gosTextureHandle textureMemcpy");
+					memcpy(pTextureData.pTexture, textureBytes, originalSize);
+				}
+				{
+					ZoneScopedN("MC_TextureNode::get_gosTextureHandle gos_UnLockTexture");
+					gos_UnLockTexture(gosTextureHandle);
+				}
+			}
+			else
+			{
+				{
+					ZoneScopedN("MC_TextureNode::get_gosTextureHandle gos_NewTextureFromMemory");
+					gosTextureHandle = gos_NewTextureFromMemory(key,nodeName,textureBytes,originalSize,hints);
+				}
 			}
 			mcTextureManager->currentUsedTextures++;
 			lastUsed = turn;
@@ -2259,7 +2344,10 @@ DWORD MC_TextureNode::get_gosTextureHandle (void)	//If texture is not in VidRAM,
 			 
 			//------------------------
 			// Unlock the texture
-			gos_UnLockTexture(gosTextureHandle);
+			{
+				ZoneScopedN("MC_TextureNode::get_gosTextureHandle gos_UnLockTexture");
+				gos_UnLockTexture(gosTextureHandle);
+			}
 			 
 			lastUsed = turn;
 			return gosTextureHandle;
