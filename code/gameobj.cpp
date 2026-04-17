@@ -66,6 +66,7 @@
 
 #ifndef GAMELOG_H
 #include"gamelog.h"
+#include"gos_profiler.h"
 #endif
 
 #ifndef COMNDR_H
@@ -1839,21 +1840,14 @@ bool GameObject::lineOfSight (Stuff::Vector3D point, bool checkVisibleBits) {
 
 //---------------------------------------------------------------------------
 
-#ifdef LAB_ONLY
-extern __int64 MCTimeLOSUpdate;
-#endif
-
-inline bool GameObject::lineOfSight (GameObjectPtr target, float startExtRad, bool checkVisibleBits) 
+inline bool GameObject::lineOfSight (GameObjectPtr target, float startExtRad, bool checkVisibleBits)
 {
-	__int64 timeStart = GetCycles(); 
+	ZoneScopedN("GameLogic.LOS.Update"); 
 
 	//If we call this without a target, we have no LOS!!
 	// Keeps it from crashing, too.
 	// Not sure where all of the calls Glenn makes to this are, but I'm looking!
 	if (!target) {
-#ifdef LAB_ONLY
-		MCTimeLOSUpdate += (GetCycles() - timeStart);
-#endif
 		return false;
 	}
 
@@ -1892,9 +1886,6 @@ inline bool GameObject::lineOfSight (GameObjectPtr target, float startExtRad, bo
 
 	if (dist > (radius * 25.0f * worldUnitsPerMeter))
 	{
-#ifdef LAB_ONLY
-		MCTimeLOSUpdate += (GetCycles() - timeStart);
-#endif
 		return false;
 	}
 		
@@ -1927,32 +1918,20 @@ inline bool GameObject::lineOfSight (GameObjectPtr target, float startExtRad, bo
 			
 			if (ObjectManager->moverLineOfSightTable[index])
 			{
-#ifdef LAB_ONLY
-			MCTimeLOSUpdate += (GetCycles() - timeStart);
-#endif
 				return true;
 			}
 			else
 			{
-#ifdef LAB_ONLY
-			MCTimeLOSUpdate += (GetCycles() - timeStart);
-#endif
 				return false;
 			}
 		}
 		
 		if (Team::lineOfSight(getLOSPosition(), target->getLOSPosition(), getTeamId(), target->getAppearRadius(), startExtRad, checkVisibleBits))
 		{
-#ifdef LAB_ONLY
-		MCTimeLOSUpdate += (GetCycles() - timeStart);
-#endif
 			return(true);
 		}
 		else
 		{
-#ifdef LAB_ONLY
-		MCTimeLOSUpdate += (GetCycles() - timeStart);
-#endif
 			return(false);
 		}
 	}
@@ -1971,19 +1950,13 @@ inline bool GameObject::lineOfSight (GameObjectPtr target, float startExtRad, bo
 
 			Stuff::Vector3D targetPosition = target->getLOSPosition();
 		
-			if (Team::lineOfSight(getLOSPosition(), target->getLOSPosition(), getTeamId(), target->getAppearRadius(), startExtRad, checkVisibleBits)) 
+			if (Team::lineOfSight(getLOSPosition(), target->getLOSPosition(), getTeamId(), target->getAppearRadius(), startExtRad, checkVisibleBits))
 			{
-#ifdef LAB_ONLY
-				MCTimeLOSUpdate += (GetCycles() - timeStart);
-#endif
 				return(true);
 			}
 //		}
 //	}
 
-#ifdef LAB_ONLY
-	MCTimeLOSUpdate += (GetCycles() - timeStart);
-#endif
 	return(false);
 }
 
