@@ -63,7 +63,7 @@ gosPostProcess::gosPostProcess()
     , dynShadowMapSize_(2048)
     , shadowDebugProg_(nullptr)
     , screenShadowProg_(nullptr)
-    , screenShadowEnabled_(true)
+    , screenShadowEnabled_(false)
     , screenShadowDebug_(0)
     , ssaoProg_(nullptr)
     , ssaoBlurProg_(nullptr)
@@ -604,6 +604,7 @@ void gosPostProcess::runScreenShadow()
     TracyGpuZone("Render.ScreenShadow");
 
     if (!screenShadowEnabled_) return;
+    if (!sceneHasTerrain_) return;
     if (!screenShadowProg_ || !screenShadowProg_->is_valid()) return;
     if (!shadowsEnabled_) return;
 

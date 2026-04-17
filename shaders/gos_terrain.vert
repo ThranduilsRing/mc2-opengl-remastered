@@ -28,7 +28,6 @@ void main(void)
     // Unpack material index from fog R byte (normalized 0-1 -> 0-255)
     vs_TerrainType = floor(fog.x * 255.0 + 0.5);
 
-    // Screen-space position (fallback, TES overrides gl_Position)
-    vec4 p = mvp * vec4(pos.xyz, 1);
-    gl_Position = p / pos.w;
+    // TES owns final projection; keep VS output simple.
+    gl_Position = mvp * vec4(pos.xyz, 1.0);
 }

@@ -62,17 +62,12 @@ void main()
                 + bary.y * tcs_TerrainType[1]
                 + bary.z * tcs_TerrainType[2];
 
-    // --- Compute un-displaced depth using the BASIC SHADER's projection ---
-    // Overlays use the basic shader which does: gl_Position = mvp * vec4(screenPos, 1.0)
-    // We must match that EXACTLY so overlays pass GL_LEQUAL against this depth.
-    // gl_in[].gl_Position = vec4(screenPos, 1.0) from the VS (pre-TES)
-    {
-        vec4 interpScreenPos = bary.x * gl_in[0].gl_Position
-                             + bary.y * gl_in[1].gl_Position
-                             + bary.z * gl_in[2].gl_Position;
-        vec4 ndcBasic = mvp * interpScreenPos;
-        UndisplacedDepth = (ndcBasic.z / ndcBasic.w) * 0.5 + 0.5;
-    }
+    // Match overlay depth against the same world-space terrain surface that TES displaces.
+    vec3 undisplacedWorldPos = bary.x * tcs_WorldPos[0]
+                             + bary.y * tcs_WorldPos[1]
+                             + bary.z * tcs_WorldPos[2];
+    vec4 uclip = terrainMVP * vec4(undisplacedWorldPos, 1.0);
+    UndisplacedDepth = (uclip.z / uclip.w) * 0.5 + 0.5;
 
     // --- Phong tessellation smoothing ---
     float alpha = tessDisplace.x;  // phongAlpha

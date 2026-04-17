@@ -1121,7 +1121,6 @@ void MC_TextureManager::renderLists (void)
 		}
 
 		gos_BeginShadowPrePass(firstFrame);  // clear only on first frame
-		static int concrete_shadow_trace_count = 0;
 		for (long si = 0; si < nextAvailableVertexNode; si++) {
 			if ((masterVertexNodes[si].flags & MC2_DRAWSOLID) &&
 				(masterVertexNodes[si].flags & MC2_ISTERRAIN) &&
@@ -1137,22 +1136,6 @@ void MC_TextureManager::renderLists (void)
 				int extraCount = masterVertexNodes[si].currentExtra
 					? (int)(masterVertexNodes[si].currentExtra - masterVertexNodes[si].extras)
 					: 0;
-
-				if (concrete_shadow_trace_count < 8 &&
-					isAllConcreteTerrainBatch(masterVertexNodes[si].vertices, totalVerts)) {
-					const gos_TERRAIN_EXTRA* e0 = extraCount > 0 ? masterVertexNodes[si].extras : nullptr;
-					printf("[CEMENT][ShadowPre] node=%ld tex=%u flags=0x%X verts=%u extras=%d firstExtra=(%.3f, %.3f, %.3f)\n",
-						si,
-						masterVertexNodes[si].textureIndex,
-						masterVertexNodes[si].flags,
-						totalVerts,
-						extraCount,
-						e0 ? e0->wx : 0.0f,
-						e0 ? e0->wy : 0.0f,
-						e0 ? e0->wz : 0.0f);
-					fflush(stdout);
-					++concrete_shadow_trace_count;
-				}
 
 				if (totalVerts > 0 && extraCount > 0) {
 					gos_SetRenderState(gos_State_Texture, masterTextureNodes[masterVertexNodes[si].textureIndex].get_gosTextureHandle());
@@ -1208,7 +1191,6 @@ void MC_TextureManager::renderLists (void)
 		ZoneScopedN("Render.TerrainSolid");
 		TracyGpuZone("Render.TerrainSolid");
 	bool bSkip_DRAWSOLID = false;
-	static int concrete_solid_trace_count = 0;
 	for (long i=0;i<nextAvailableVertexNode && !bSkip_DRAWSOLID;i++)
 	{
 		if ((masterVertexNodes[i].flags & MC2_DRAWSOLID) &&
@@ -1234,34 +1216,7 @@ void MC_TextureManager::renderLists (void)
 					? (int)(masterVertexNodes[i].currentExtra - masterVertexNodes[i].extras)
 					: 0;
 				gos_SetTerrainBatchExtras(masterVertexNodes[i].extras, extraCount);
-				if (concrete_solid_trace_count < 12 &&
-					isAllConcreteTerrainBatch(masterVertexNodes[i].vertices, totalVertices)) {
-					const gos_TERRAIN_EXTRA* e0 = extraCount > 0 ? masterVertexNodes[i].extras : nullptr;
-					printf("[CEMENT][TerrainSolid] node=%ld tex=%u flags=0x%X totalVerts=%u extraCount=%d terrainState=%d firstExtra=(%.3f, %.3f, %.3f)\n",
-						i,
-						masterVertexNodes[i].textureIndex,
-						masterVertexNodes[i].flags,
-						totalVertices,
-						extraCount,
-						(masterVertexNodes[i].flags & MC2_ISTERRAIN) ? 1 : 0,
-						e0 ? e0->wx : 0.0f,
-						e0 ? e0->wy : 0.0f,
-						e0 ? e0->wz : 0.0f);
-					fflush(stdout);
-					++concrete_solid_trace_count;
-				}
 			} else {
-				if (concrete_solid_trace_count < 12 &&
-					isAllConcreteTerrainBatch(masterVertexNodes[i].vertices, totalVertices)) {
-					printf("[CEMENT][TerrainSolid] node=%ld tex=%u flags=0x%X totalVerts=%u extraCount=0 terrainState=%d extras=null\n",
-						i,
-						masterVertexNodes[i].textureIndex,
-						masterVertexNodes[i].flags,
-						totalVertices,
-						(masterVertexNodes[i].flags & MC2_ISTERRAIN) ? 1 : 0);
-					fflush(stdout);
-					++concrete_solid_trace_count;
-				}
 				gos_SetTerrainBatchExtras(NULL, 0);
 			}
 
@@ -1341,6 +1296,15 @@ void MC_TextureManager::renderLists (void)
                     (masterVertexNodes[i].flags & MC2_ALPHATEST)==states*MC2_ALPHATEST &&
                     (masterVertexNodes[i].vertices))
             {
+                // The legacy non-water terrain alpha/detail layer sits on the original
+                // flat terrain plane and shows through displaced tess terrain as the
+                // dark striped under-pattern. Keep water passes, but drop this layer.
+                if (!(masterVertexNodes[i].flags & MC2_ISWATER) &&
+                    !(masterVertexNodes[i].flags & MC2_ISWATERDETAIL)) {
+                    masterVertexNodes[i].currentVertex = masterVertexNodes[i].vertices;
+                    continue;
+                }
+
                 {
                     int waterMode = 0;
                     if (masterVertexNodes[i].flags & MC2_ISWATER) waterMode = 1;
@@ -1414,15 +1378,6 @@ void MC_TextureManager::renderLists (void)
 			gos_SetRenderState( gos_State_AlphaMode, gos_Alpha_OneZero);
 			gos_SetRenderState( gos_State_ZCompare, 0);
 			gos_SetRenderState(gos_State_Overlay, 1);
-			static bool gpuOverlayDiagPrinted = false;
-			if (!gpuOverlayDiagPrinted) {
-				gpuOverlayDiagPrinted = true;
-				const gos_VERTEX& v = masterVertexNodes[i].vertices[0];
-				printf("Render.NoUnderlayer GPUOVERLAY: tex=%u flags=0x%X v0=(%.3f, %.3f, %.3f, %.3f)\n",
-					masterVertexNodes[i].textureIndex, masterVertexNodes[i].flags,
-					v.x, v.y, v.z, v.rhw);
-				fflush(stdout);
-			}
 			if (totalVertices && (totalVertices < MAX_SENDDOWN))
 			{
 				gos_SetRenderState( gos_State_Texture, masterTextureNodes[masterVertexNodes[i].textureIndex].get_gosTextureHandle());
