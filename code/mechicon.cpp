@@ -1559,7 +1559,7 @@ PilotIcon::PilotIcon()
 		int gosID = mcTextureManager->get_gosTextureHandle( s_pilotTextureHandle );
 		TEXTUREPTR textureData;
 		gos_LockTexture( gosID, 0, 0, 	&textureData );
-		s_pilotTextureWidth = textureData.Width;
+		s_pilotTextureWidth = textureData.Width / mcTextureManager->getUVScale(s_pilotTextureHandle);
 		gos_UnLockTexture( gosID );
 	}
 
@@ -1641,7 +1641,7 @@ void PilotIcon::swapResolutions( bool bForce)
 		int gosID = mcTextureManager->get_gosTextureHandle( s_pilotTextureHandle );
 		TEXTUREPTR textureData;
 		gos_LockTexture( gosID, 0, 0, 	&textureData );
-		s_pilotTextureWidth = textureData.Width;
+		s_pilotTextureWidth = textureData.Width / mcTextureManager->getUVScale(s_pilotTextureHandle);
 		gos_UnLockTexture( gosID );
 	}
 

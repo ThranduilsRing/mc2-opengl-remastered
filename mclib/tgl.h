@@ -906,6 +906,7 @@ public:
 	Stuff::Matrix4D mw_; // model -> world
 	float viewport_[4];
     uint32_t light_data_buffer_index_;
+    bool isHudElement_;
 };
 ////////////////////////////////////////////////////////////////////////////////
 

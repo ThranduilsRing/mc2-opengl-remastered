@@ -126,7 +126,7 @@ void aObject::init(FitIniFile* file, const char* blockName, DWORD neverFlush)
 			unsigned long gosID = mcTextureManager->get_gosTextureHandle( ID );
 			TEXTUREPTR textureData;
 			gos_LockTexture( gosID, 0, 0, 	&textureData );
-			fileWidth = textureData.Width;
+			fileWidth = textureData.Width / mcTextureManager->getUVScale(ID);
 			gos_UnLockTexture( gosID );
 		}
 	}
@@ -456,7 +456,7 @@ void	aObject::setTexture( const char* fileName )
 	{
 		TEXTUREPTR textureData;
 		gos_LockTexture( gosID, 0, 0, 	&textureData );
-		fileWidth = textureData.Width;
+		fileWidth = textureData.Width / mcTextureManager->getUVScale(textureHandle);
 		gos_UnLockTexture( gosID );
 	}
 	else
@@ -482,11 +482,11 @@ void	aObject::setTexture(unsigned long newHandle )
 		int gosID = mcTextureManager->get_gosTextureHandle( newHandle );
 		TEXTUREPTR textureData;
 		gos_LockTexture( gosID, 0, 0, 	&textureData );
-		fileWidth = textureData.Width;
+		fileWidth = textureData.Width / mcTextureManager->getUVScale(newHandle);
 		gos_UnLockTexture( gosID );
 	}
 
-	
+
 
 }
 

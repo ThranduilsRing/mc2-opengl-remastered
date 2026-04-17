@@ -34,6 +34,8 @@
 
 #include "platform_str.h"
 #include <stddef.h> // linux offsetof()
+#include <cstdlib>
+#include <cstring>
 #include <new> // for placement new
 
 //-------------------------------------------------------------------------------
@@ -2694,6 +2696,20 @@ void TG_Shape::Render (float forceZ, bool isHudElement, BYTE alphaValue, bool is
 	}
 
 
+	if (theShape->ib_ && theShape->vb_) {
+		// Collect shape for the dynamic shadow-map pass even when the renderable shape mixes
+		// textured and alpha-marked materials. The shadow object pass is depth-only and does not
+		// depend on the first material slot being fully opaque.
+		const bool firstTextureAlpha =
+			theShape->listOfTextures[theShape->listOfTypeTriangles[0].localTextureHandle].textureAlpha;
+		const bool eligibleForDynamicShadow =
+			!isSpotlight && !isWindow && !isHudElement && !isClamped &&
+			!theShape->alphaTestOn && (alphaValue == 0xff) && shapeToWorld;
+		if (eligibleForDynamicShadow) {
+			addShadowShape(theShape->vb_, theShape->ib_, theShape->vdecl_, shapeToWorld->entries);
+		}
+	}
+
 	// FIXME: this (listOfTypeTriangles[0]) is not correct if model has more than 1 texture! 
 	if (!isSpotlight && !isWindow && !theShape->listOfTextures[theShape->listOfTypeTriangles[0].localTextureHandle].textureAlpha && (alphaValue == 0xff))
 	{
@@ -2714,11 +2730,6 @@ void TG_Shape::Render (float forceZ, bool isHudElement, BYTE alphaValue, bool is
 		}
 
 		if (theShape->ib_ && theShape->vb_) {
-
-			// Collect shape for shadow map rendering
-			if (!isHudElement && !isClamped && shapeToWorld) {
-				addShadowShape(theShape->vb_, theShape->ib_, theShape->vdecl_, shapeToWorld->entries);
-			}
 
 			// FIXME: this is not correct if model has more than 1 texture!
 			// TODO: split on per texture batches basis
@@ -2745,6 +2756,7 @@ void TG_Shape::Render (float forceZ, bool isHudElement, BYTE alphaValue, bool is
 			rs.mw_ = *shapeToWorld;
 			memcpy(rs.viewport_, cur_viewport, 4 * sizeof(float));
             rs.light_data_buffer_index_ = mcTextureManager->addLightDataStructure(&lightData_);
+            rs.isHudElement_ = isHudElement;
 
 			mcTextureManager->addRenderShape(
 				theShape->listOfTextures[triType.localTextureHandle].mcTextureNodeIndex,

@@ -2321,7 +2321,7 @@ void ControlButton::initButtons( FitIniFile& buttonFile, long buttonCount, Contr
 			gos_UnLockTexture( gosID );
 
 			Buttons[i].data->textureHandle = ID;
-			Buttons[i].data->fileWidth = textureData.Width;
+			Buttons[i].data->fileWidth = textureData.Width / mcTextureManager->getUVScale(ID);
 			Buttons[i].data->fileHeight = Buttons[i].data->fileWidth;
 		}
 

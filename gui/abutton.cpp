@@ -370,7 +370,7 @@ void aButton::init( FitIniFile& buttonFile, const char* str, HGOSFONT3D font )
 		gos_UnLockTexture( gosID );
 
 		textureHandle = ID;
-		data.fileWidth = textureData.Width;
+		data.fileWidth = textureData.Width / mcTextureManager->getUVScale(ID);
 		data.fileHeight = data.fileWidth;
 	}
 
