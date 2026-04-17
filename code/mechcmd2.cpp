@@ -76,6 +76,7 @@ extern CPrefs prefs;
 
 #include "platform_str.h"
 #include "gos_validate.h"
+#include "gos_profiler.h"
 
 //------------------------------------------------------------------------------------------------------------
 // MechCmdr2 Global Instances of Things
@@ -245,15 +246,7 @@ Stuff::Vector3D pos[36] =
 	Stuff::Vector3D(-2500.0f,2900.0f,-1.0f)
 };
 
-#ifdef LAB_ONLY
-long currentLineElement = 0;
-LineElement *debugLines[10000];
-
-#define ProfileTime(x,y)	x=GetCycles();y;x=GetCycles()-x;
-extern __int64 MCTimeMultiplayerUpdate;
-#else
 #define ProfileTime(x,y)	y;
-#endif
 
 #define	MAX_KILL_AT_START	100
 
