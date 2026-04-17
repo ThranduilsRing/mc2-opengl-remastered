@@ -7,6 +7,7 @@
 #include"mclib.h"
 #include"platform_windows.h"
 #include"soundsys.h"
+#include "../GameOS/gameos/gos_profiler.h"
 
 extern SoundSystem *sndSystem;
 
@@ -290,6 +291,7 @@ void aButton::makeUVs( gos_VERTEX* vertices, int State, aButton::aButtonData& da
 
 void aButton::init( FitIniFile& buttonFile, const char* str, HGOSFONT3D font )
 {
+	ZoneScopedN("aButton::init");
 	textureHandle = 0;
 
 	long result = buttonFile.seekBlock( str );
@@ -301,41 +303,44 @@ void aButton::init( FitIniFile& buttonFile, const char* str, HGOSFONT3D font )
 		return;
 	}
 
-
-	buttonFile.readIdLong( "ID", data.ID );
-	buttonFile.readIdString("FileName", data.fileName, 32 );
-
-	buttonFile.readIdLong( "HelpCaption", helpHeader );
-	buttonFile.readIdLong( "HelpDesc", helpID );
-	buttonFile.readIdLong( "TextID", data.textID );
-	buttonFile.readIdLong( "TextNormal", data.textColors[0] );
-	buttonFile.readIdLong( "TextPressed", data.textColors[1] );
-	buttonFile.readIdLong( "TextDisabled", data.textColors[2] );
-	buttonFile.readIdBoolean( "Toggle", toggleButton );
-	buttonFile.readIdBoolean( "outline", data.outline );
+	{
+		ZoneScopedN("aButton::init metadata");
+		buttonFile.readIdLong( "ID", data.ID );
+		buttonFile.readIdString("FileName", data.fileName, 32 );
+		buttonFile.readIdLong( "HelpCaption", helpHeader );
+		buttonFile.readIdLong( "HelpDesc", helpID );
+		buttonFile.readIdLong( "TextID", data.textID );
+		buttonFile.readIdLong( "TextNormal", data.textColors[0] );
+		buttonFile.readIdLong( "TextPressed", data.textColors[1] );
+		buttonFile.readIdLong( "TextDisabled", data.textColors[2] );
+		buttonFile.readIdBoolean( "Toggle", toggleButton );
+		buttonFile.readIdBoolean( "outline", data.outline );
+	}
 	long fontID;
-	buttonFile.readIdLong( "Font", fontID );
-	if ( fontID )
-		data.textFont = aFont::loadFont( fontID, data.textSize );
-	else
-		data.textFont = 0;
+	{
+		ZoneScopedN("aButton::init font");
+		buttonFile.readIdLong( "Font", fontID );
+		if ( fontID )
+			data.textFont = aFont::loadFont( fontID, data.textSize );
+		else
+			data.textFont = 0;
+	}
 
 
 	long x, y, width, height;
 
-	buttonFile.readIdLong( "XLocation", x );
-	buttonFile.readIdLong( "YLocation", y );
-		
-	buttonFile.readIdLong( "Width", width );
-	buttonFile.readIdLong( "Height", height );
-
-	buttonFile.readIdLong( "HelpCaption", helpHeader );
-	buttonFile.readIdLong( "HelpDesc", helpID );
-
-	buttonFile.readIdBoolean( "texturesRotated", data.textureRotated );
-
-	if ( NO_ERR != buttonFile.readIdLong( "Alignment", data.textAlign ) )
-		data.textAlign = 2;
+	{
+		ZoneScopedN("aButton::init layout");
+		buttonFile.readIdLong( "XLocation", x );
+		buttonFile.readIdLong( "YLocation", y );
+		buttonFile.readIdLong( "Width", width );
+		buttonFile.readIdLong( "Height", height );
+		buttonFile.readIdLong( "HelpCaption", helpHeader );
+		buttonFile.readIdLong( "HelpDesc", helpID );
+		buttonFile.readIdBoolean( "texturesRotated", data.textureRotated );
+		if ( NO_ERR != buttonFile.readIdLong( "Alignment", data.textAlign ) )
+			data.textAlign = 2;
+	}
 	
 	location[0].x = location[1].x = x;
 	location[0].y = location[3].y = y;
@@ -356,6 +361,7 @@ void aButton::init( FitIniFile& buttonFile, const char* str, HGOSFONT3D font )
 	//if ( 0 == textureHandle && data.fileName && strlen( data.fileName ) )
 	if ( 0 == textureHandle && strlen( data.fileName ) )
 	{
+		ZoneScopedN("aButton::init texture");
 		char file[256];
 		strcpy( file, artPath );
 		strcat( file, data.fileName );
@@ -364,56 +370,63 @@ void aButton::init( FitIniFile& buttonFile, const char* str, HGOSFONT3D font )
 			strcat( file, ".tga" );
 		
 		int ID = mcTextureManager->loadTexture( file, gos_Texture_Alpha, 0, 0, 0x2 );
-		int gosID = mcTextureManager->get_gosTextureHandle( ID );
-		TEXTUREPTR textureData;
-		gos_LockTexture( gosID, 0, 0, 	&textureData );
-		gos_UnLockTexture( gosID );
-
 		textureHandle = ID;
-		data.fileWidth = textureData.Width / mcTextureManager->getUVScale(ID);
-		data.fileHeight = data.fileWidth;
+		DWORD logicalWidth = 0;
+		DWORD logicalHeight = 0;
+		if ( mcTextureManager->tryGetTextureLogicalSize( ID, logicalWidth, logicalHeight ) )
+		{
+			data.fileWidth = logicalWidth;
+			data.fileHeight = logicalHeight;
+		}
+		else
+		{
+			int gosID = mcTextureManager->get_gosTextureHandle( ID );
+			TEXTUREPTR textureData;
+			{
+				ZoneScopedN("aButton::init gos_LockTexture");
+				gos_LockTexture( gosID, 0, 0, 	&textureData );
+			}
+			{
+				ZoneScopedN("aButton::init gos_UnLockTexture");
+				gos_UnLockTexture( gosID );
+			}
+
+			data.fileWidth = textureData.Width / mcTextureManager->getUVScale(ID);
+			data.fileHeight = data.fileWidth;
+		}
 	}
 
-	if ( NO_ERR != buttonFile.readIdLong( "UNormal", data.stateCoords[0][0] ) )
-		data.stateCoords[0][0] = -1.f;
-
-	if ( NO_ERR != buttonFile.readIdLong( "VNormal", data.stateCoords[0][1] ) )
-		data.stateCoords[0][1] = -1.f;
-
-
-	if ( NO_ERR != buttonFile.readIdLong( "UPressed", data.stateCoords[1][0] ) )
-		data.stateCoords[1][0] = -1.f;
-
-	if ( NO_ERR != buttonFile.readIdLong( "VPressed", data.stateCoords[1][1] ) )
-		data.stateCoords[1][1] = -1.f;
-
-	if ( NO_ERR != buttonFile.readIdLong( "UDisabled", data.stateCoords[2][0] ) )
-		data.stateCoords[2][0] = -1.f;
-
-	if ( NO_ERR != buttonFile.readIdLong( "VDisabled", data.stateCoords[2][1] ) )
-		data.stateCoords[2][1] = -1.f;
-
-	if ( NO_ERR != buttonFile.readIdLong( "UAmbiguous", data.stateCoords[3][0] ) )
-		data.stateCoords[3][0] = -1.f;
-
-	if ( NO_ERR != buttonFile.readIdLong( "VAmbiguous", data.stateCoords[3][1] ) )
-		data.stateCoords[3][1] = -1.f;
-
-	if ( NO_ERR != buttonFile.readIdLong( "UHighlight", data.stateCoords[4][0] ) )
 	{
-		data.stateCoords[4][0] = data.stateCoords[0][0];
+		ZoneScopedN("aButton::init uv metadata");
+		if ( NO_ERR != buttonFile.readIdLong( "UNormal", data.stateCoords[0][0] ) )
+			data.stateCoords[0][0] = -1.f;
+		if ( NO_ERR != buttonFile.readIdLong( "VNormal", data.stateCoords[0][1] ) )
+			data.stateCoords[0][1] = -1.f;
+		if ( NO_ERR != buttonFile.readIdLong( "UPressed", data.stateCoords[1][0] ) )
+			data.stateCoords[1][0] = -1.f;
+		if ( NO_ERR != buttonFile.readIdLong( "VPressed", data.stateCoords[1][1] ) )
+			data.stateCoords[1][1] = -1.f;
+		if ( NO_ERR != buttonFile.readIdLong( "UDisabled", data.stateCoords[2][0] ) )
+			data.stateCoords[2][0] = -1.f;
+		if ( NO_ERR != buttonFile.readIdLong( "VDisabled", data.stateCoords[2][1] ) )
+			data.stateCoords[2][1] = -1.f;
+		if ( NO_ERR != buttonFile.readIdLong( "UAmbiguous", data.stateCoords[3][0] ) )
+			data.stateCoords[3][0] = -1.f;
+		if ( NO_ERR != buttonFile.readIdLong( "VAmbiguous", data.stateCoords[3][1] ) )
+			data.stateCoords[3][1] = -1.f;
+		if ( NO_ERR != buttonFile.readIdLong( "UHighlight", data.stateCoords[4][0] ) )
+		{
+			data.stateCoords[4][0] = data.stateCoords[0][0];
+		}
+		if ( NO_ERR != buttonFile.readIdLong( "VHighlight", data.stateCoords[4][1] ) )
+		{
+			data.stateCoords[4][1] = data.stateCoords[0][1];
+		}
+		buttonFile.readIdLong( "UWidth", data.textureWidth );
+		buttonFile.readIdLong( "VHeight", data.textureHeight );
+		if ( data.textID )
+			buttonFile.readIdBoolean( "TextOutline", data.outlineText );
 	}
-
-	if ( NO_ERR != buttonFile.readIdLong( "VHighlight", data.stateCoords[4][1] ) )
-	{
-		data.stateCoords[4][1] = data.stateCoords[0][1];
-	}
-
-	buttonFile.readIdLong( "UWidth", data.textureWidth );
-	buttonFile.readIdLong( "VHeight", data.textureHeight );
-
-	if ( data.textID )
-		buttonFile.readIdBoolean( "TextOutline", data.outlineText );
 
 
 	if ( NO_ERR == buttonFile.readIdLong( "XTextLocation", data.textRect.left ) )
@@ -440,6 +453,7 @@ void aButton::init( FitIniFile& buttonFile, const char* str, HGOSFONT3D font )
 	int counter = 0;
 	while(true)
 	{
+		ZoneScopedN("aButton::init childBmp");
 		sprintf( finalName, "%s%ld", bmpName, counter );
 		if ( NO_ERR != buttonFile.seekBlock( finalName) )
 			break;
@@ -507,6 +521,7 @@ void aAnimButton::destroy()
 
 void aAnimButton::init( FitIniFile& file, const char* headerName, HGOSFONT3D font )
 {
+	ZoneScopedN("aAnimButton::init");
 	if ( NO_ERR != file.seekBlock( headerName ) )
 	{
 		char errorStr[256];
@@ -517,11 +532,14 @@ void aAnimButton::init( FitIniFile& file, const char* headerName, HGOSFONT3D fon
 		return;
 	}
 	aButton::init( file, headerName, font );
+	{
+		ZoneScopedN("aAnimButton::init animData");
 	normalData.init( &file, "Normal" );
 	pressedData.init( &file, "Pressed" );
 	highlightData.init( &file, "Highlight" );
 	disabledData.init( &file, "Disabled" );
 	normalData.begin();
+	}
 
 	if ( NO_ERR != file.readIdBoolean( "AnimateBmp", animateBmp ) )
 		animateBmp = 1;

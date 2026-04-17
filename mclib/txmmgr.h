@@ -143,6 +143,8 @@ struct MC_TextureNode
 		DWORD				width;						//Used to recreate texture if cached out.
 		DWORD				lzCompSize;					//Size of Compressed version.
 		DWORD				uvScale;					//UV scale factor (4 for 4x upscaled overrides, 1 otherwise)
+		DWORD				logicalWidth;				//Post-uvScale width for callers that only need metadata.
+		DWORD				logicalHeight;				//Post-uvScale height for callers that only need metadata.
 		long				lastUsed;					//Last Game turn texture was used.  Used to cache textures.
 		DWORD 				*textureData;				//Raw texture data.  Texture is stored here in system RAM 
 														//if we overrun the max number of GOS HAndles.
@@ -180,6 +182,8 @@ struct MC_TextureNode
 		vertexData3 = NULL;
 		lzCompSize = 0xffffffff;
 		uvScale = 1;
+		logicalWidth = 0;
+		logicalHeight = 0;
 
 		hardwareVertexData = NULL;
 		hardwareVertexData2 = NULL;
@@ -439,6 +443,24 @@ class MC_TextureManager
 			if (nodeId < MC_MAXTEXTURES)
 				return masterTextureNodes[nodeId].uvScale;
 			return 1;
+		}
+
+		bool tryGetTextureLogicalSize(DWORD nodeId, DWORD& logicalWidth, DWORD& logicalHeight) const
+		{
+			if (nodeId < MC_MAXTEXTURES)
+			{
+				const MC_TextureNode& node = masterTextureNodes[nodeId];
+				if (node.logicalWidth && node.logicalHeight)
+				{
+					logicalWidth = node.logicalWidth;
+					logicalHeight = node.logicalHeight;
+					return true;
+				}
+			}
+
+			logicalWidth = 0;
+			logicalHeight = 0;
+			return false;
 		}
 
 		void start (void);					// This function creates the Blank Nodes from an MC Heap.

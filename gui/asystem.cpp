@@ -8,6 +8,7 @@
 #include"afont.h"
 #include"paths.h"
 #include"userinput.h"
+#include "../GameOS/gameos/gos_profiler.h"
 
 
 long helpTextID = 0;
@@ -82,6 +83,7 @@ long aObject::init(long xPos, long yPos,long w, long h)
 
 void aObject::init(FitIniFile* file, const char* blockName, DWORD neverFlush)
 {
+	ZoneScopedN("aObject::init fit");
 	memset( location, 0, sizeof( location ) );
 	char fileName[256];
 	textureHandle = 0;
@@ -96,18 +98,20 @@ void aObject::init(FitIniFile* file, const char* blockName, DWORD neverFlush)
 	}
 
 	long x, y, width, height;
-	file->readIdLong( "XLocation", x );
-	file->readIdLong( "YLocation", y );
-
-	file->readIdLong( "Width", width );
-	file->readIdLong( "Height", height );
-
-	file->readIdLong( "HelpCaption", helpHeader );
-	file->readIdLong( "HelpDesc", helpID );
+	{
+		ZoneScopedN("aObject::init fit metadata");
+		file->readIdLong( "XLocation", x );
+		file->readIdLong( "YLocation", y );
+		file->readIdLong( "Width", width );
+		file->readIdLong( "Height", height );
+		file->readIdLong( "HelpCaption", helpHeader );
+		file->readIdLong( "HelpDesc", helpID );
+	}
 	
 
 	if ( NO_ERR == file->readIdString( "fileName", fileName, 32 ) )
 	{
+		ZoneScopedN("aObject::init fit texture");
 
 		bool bAlpha = 0;
 		file->readIdBoolean( "Alpha", bAlpha );
@@ -123,57 +127,76 @@ void aObject::init(FitIniFile* file, const char* blockName, DWORD neverFlush)
 				strcat( buffer, ".tga" );
 			int ID = mcTextureManager->loadTexture( buffer, bAlpha ? gos_Texture_Alpha : gos_Texture_Keyed, 0, 0, 0x2);
 			textureHandle = ID;
-			unsigned long gosID = mcTextureManager->get_gosTextureHandle( ID );
-			TEXTUREPTR textureData;
-			gos_LockTexture( gosID, 0, 0, 	&textureData );
-			fileWidth = textureData.Width / mcTextureManager->getUVScale(ID);
-			gos_UnLockTexture( gosID );
+			DWORD logicalWidth = 0;
+			DWORD logicalHeight = 0;
+			if ( mcTextureManager->tryGetTextureLogicalSize( ID, logicalWidth, logicalHeight ) )
+				fileWidth = logicalWidth;
+			else
+			{
+				unsigned long gosID = mcTextureManager->get_gosTextureHandle( ID );
+				TEXTUREPTR textureData;
+				{
+					ZoneScopedN("aObject::init fit gos_LockTexture");
+					gos_LockTexture( gosID, 0, 0, 	&textureData );
+				}
+				fileWidth = textureData.Width / mcTextureManager->getUVScale(ID);
+				{
+					ZoneScopedN("aObject::init fit gos_UnLockTexture");
+					gos_UnLockTexture( gosID );
+				}
+			}
 		}
 	}
 
 	long u, v, uWidth, vHeight;
 	bool bRotated = 0;
 
-	file->readIdLong( "UNormal", u );
-	file->readIdLong( "VNormal", v );
-	file->readIdLong( "UWidth", uWidth );
-	file->readIdLong( "VHeight", vHeight );
-	file->readIdBoolean( "texturesRotated", bRotated );
-
-	for ( int k = 0; k < 4; k++ )
 	{
-		location[k].argb = 0xffffffff;
-		location[k].frgb = 0;
-		location[k].x = x;
-		location[k].y = y;
-		location[k].z = 0.f;
-		location[k].rhw = .5;
-		if ( fileWidth )
-			location[k].u = (float)u/(float)fileWidth + (.1f / (float)fileWidth);
-		if ( fileWidth )
-			location[k].v = (float)v/(float)fileWidth + (.1f / (float)fileWidth);
+		ZoneScopedN("aObject::init fit uv metadata");
+		file->readIdLong( "UNormal", u );
+		file->readIdLong( "VNormal", v );
+		file->readIdLong( "UWidth", uWidth );
+		file->readIdLong( "VHeight", vHeight );
+		file->readIdBoolean( "texturesRotated", bRotated );
 	}
 
-	location[3].x = location[2].x = x + width;
-	location[2].y = location[1].y = y + height;
-
-	if ( fileWidth )
-		location[2].u = location[3].u = ((float)(u + uWidth))/((float)fileWidth) + (.1f / (float)fileWidth);
-	if ( fileWidth )
-	location[1].v = location[2].v = ((float)(v + vHeight))/((float)fileWidth) + (.1f / (float)fileWidth);
-
-	if ( bRotated )
 	{
+		ZoneScopedN("aObject::init fit setupVertices");
+		for ( int k = 0; k < 4; k++ )
+		{
+			location[k].argb = 0xffffffff;
+			location[k].frgb = 0;
+			location[k].x = x;
+			location[k].y = y;
+			location[k].z = 0.f;
+			location[k].rhw = .5;
+			if ( fileWidth )
+				location[k].u = (float)u/(float)fileWidth + (.1f / (float)fileWidth);
+			if ( fileWidth )
+				location[k].v = (float)v/(float)fileWidth + (.1f / (float)fileWidth);
+		}
 
-		location[0].u = (u + uWidth)/(float)fileWidth + (.1f / (float)fileWidth);;
-		location[1].u = u/(float)fileWidth + (.1f / (float)fileWidth);;
-		location[2].u = u/(float)fileWidth + (.1f / (float)fileWidth);
-		location[3].u = (u + uWidth)/(float)fileWidth + (.1f / (float)fileWidth);
+		location[3].x = location[2].x = x + width;
+		location[2].y = location[1].y = y + height;
 
-		location[0].v = v/(float)fileWidth + (.1f / (float)fileWidth);;
-		location[1].v = v/(float)fileWidth + (.1f / (float)fileWidth);;
-		location[2].v = (v + vHeight)/(float)fileWidth + (.1f / (float)fileWidth);;
-		location[3].v = (v + vHeight)/(float)fileWidth + (.1f / (float)fileWidth);;
+		if ( fileWidth )
+			location[2].u = location[3].u = ((float)(u + uWidth))/((float)fileWidth) + (.1f / (float)fileWidth);
+		if ( fileWidth )
+			location[1].v = location[2].v = ((float)(v + vHeight))/((float)fileWidth) + (.1f / (float)fileWidth);
+
+		if ( bRotated )
+		{
+
+			location[0].u = (u + uWidth)/(float)fileWidth + (.1f / (float)fileWidth);;
+			location[1].u = u/(float)fileWidth + (.1f / (float)fileWidth);;
+			location[2].u = u/(float)fileWidth + (.1f / (float)fileWidth);
+			location[3].u = (u + uWidth)/(float)fileWidth + (.1f / (float)fileWidth);
+
+			location[0].v = v/(float)fileWidth + (.1f / (float)fileWidth);;
+			location[1].v = v/(float)fileWidth + (.1f / (float)fileWidth);;
+			location[2].v = (v + vHeight)/(float)fileWidth + (.1f / (float)fileWidth);;
+			location[3].v = (v + vHeight)/(float)fileWidth + (.1f / (float)fileWidth);;
+		}
 	}
 
 }
@@ -266,6 +289,7 @@ long aObject::numberOfChildren() const
 
 void aObject::addChild(aObject* c)
 {
+	ZoneScopedN("aObject::addChild");
 	Assert (pNumberOfChildren < MAX_CHILDREN, pNumberOfChildren+1, "Too many children!");
 	Assert(c->getParent() == NULL || c->getParent() == this, 0, " Adding child that's someone else's ");
 	if (!c)
@@ -451,16 +475,23 @@ void	aObject::setTexture( const char* fileName )
 			mcTextureManager->removeTexture( gosID );
 	}
 	textureHandle = mcTextureManager->loadTexture( fileName, gos_Texture_Keyed, 0, 0, 0x2);
-	int gosID = mcTextureManager->get_gosTextureHandle( textureHandle );
-	if ( gosID )
-	{
-		TEXTUREPTR textureData;
-		gos_LockTexture( gosID, 0, 0, 	&textureData );
-		fileWidth = textureData.Width / mcTextureManager->getUVScale(textureHandle);
-		gos_UnLockTexture( gosID );
-	}
+	DWORD logicalWidth = 0;
+	DWORD logicalHeight = 0;
+	if ( mcTextureManager->tryGetTextureLogicalSize( textureHandle, logicalWidth, logicalHeight ) )
+		fileWidth = logicalWidth;
 	else
-		fileWidth = 256; // guess
+	{
+		int gosID = mcTextureManager->get_gosTextureHandle( textureHandle );
+		if ( gosID )
+		{
+			TEXTUREPTR textureData;
+			gos_LockTexture( gosID, 0, 0, 	&textureData );
+			fileWidth = textureData.Width / mcTextureManager->getUVScale(textureHandle);
+			gos_UnLockTexture( gosID );
+		}
+		else
+			fileWidth = 256; // guess
+	}
 
 }
 
@@ -479,11 +510,18 @@ void	aObject::setTexture(unsigned long newHandle )
 	
 	if ( newHandle )
 	{
-		int gosID = mcTextureManager->get_gosTextureHandle( newHandle );
-		TEXTUREPTR textureData;
-		gos_LockTexture( gosID, 0, 0, 	&textureData );
-		fileWidth = textureData.Width / mcTextureManager->getUVScale(newHandle);
-		gos_UnLockTexture( gosID );
+		DWORD logicalWidth = 0;
+		DWORD logicalHeight = 0;
+		if ( mcTextureManager->tryGetTextureLogicalSize( newHandle, logicalWidth, logicalHeight ) )
+			fileWidth = logicalWidth;
+		else
+		{
+			int gosID = mcTextureManager->get_gosTextureHandle( newHandle );
+			TEXTUREPTR textureData;
+			gos_LockTexture( gosID, 0, 0, 	&textureData );
+			fileWidth = textureData.Width / mcTextureManager->getUVScale(newHandle);
+			gos_UnLockTexture( gosID );
+		}
 	}
 
 
@@ -678,6 +716,7 @@ aText::~aText()
 
 void aText::init( FitIniFile* file, const char* header )
 {
+	ZoneScopedN("aText::init");
 	int result = file->seekBlock( header );
 	
 	if ( result != NO_ERR )
@@ -689,15 +728,21 @@ void aText::init( FitIniFile* file, const char* header )
 	}
 
 	long lfont;
-	file->readIdLong( "Font", lfont );
-	font.init( lfont );
+	{
+		ZoneScopedN("aText::init font");
+		file->readIdLong( "Font", lfont );
+		font.init( lfont );
+	}
 
 	long left, top, width, height; 
 
-	file->readIdLong( "XLocation", left );
-	file->readIdLong( "YLocation", top );
-	file->readIdLong( "Width", width );
-	file->readIdLong( "Height", height );
+	{
+		ZoneScopedN("aText::init layout");
+		file->readIdLong( "XLocation", left );
+		file->readIdLong( "YLocation", top );
+		file->readIdLong( "Width", width );
+		file->readIdLong( "Height", height );
+	}
 	
 	aObject::init( left, top, width, height );
 	
@@ -713,6 +758,7 @@ void aText::init( FitIniFile* file, const char* header )
 	long textID;
 	if ( NO_ERR == file->readIdLong( "TextID", textID ) )
 	{
+		ZoneScopedN("aText::init cLoadString");
 		//WAY too small.  Good crash.  Only crashes in profile.
 		// cLoadString now checks buffer length and keeps game from crashing!!
 		// -fs
