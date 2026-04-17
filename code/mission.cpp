@@ -222,79 +222,7 @@ unsigned long Mission::terminationResult = mis_PLAYING;
 extern float OneOverProcessorSpeed;
 extern PriorityQueuePtr	openList;
 
-//
-// Macro used for statistic timing of main functions
-//
-#ifdef LAB_ONLY
-#define ProfileTime(x,y)	x=GetCycles();y;x=GetCycles()-x;
-extern __int64 MCTimeTerrainUpdate 	;
-extern __int64 MCTimeCameraUpdate 		;
-extern __int64 MCTimeWeatherUpdate 	;
-extern __int64 MCTimePathManagerUpdate ; 
-extern __int64 MCTimeRunBrainUpdate ;
-extern __int64 MCTimePath1Update ;
-extern __int64 MCTimePath2Update ;
-extern __int64 MCTimePath3Update ;
-extern __int64 MCTimePath4Update ;
-extern __int64 MCTimePath5Update ;
-extern __int64 MCTimeCalcGoal1Update ;
-extern __int64 MCTimeCalcPath1Update;
-extern __int64 MCTimeCalcPath2Update;
-extern __int64 MCTimeCalcPath3Update;
-extern __int64 MCTimeCalcPath4Update;
-extern __int64 MCTimeCalcPath5Update;
-extern __int64 MCTimeCalcGoal2Update ;
-extern __int64 MCTimeCalcGoal3Update ;
-extern __int64 MCTimeCalcGoal4Update ;
-extern __int64 MCTimeCalcGoal5Update ;
-extern __int64 MCTimeCalcGoal6Update ;
-extern __int64 MCTimeTerrainGeometry 	; 
-extern __int64 MCTimeCraterUpdate 		; 
-extern __int64 MCTimeTXMManagerUpdate 	; 
-extern __int64 MCTimeSensorUpdate 		; 
-extern __int64 MCTimeLOSUpdate			; 
-extern __int64 MCTimeCollisionUpdate 	; 
-extern __int64 MCTimeMissionScript 	; 
-extern __int64 MCTimeInterfaceUpdate 	; 
-extern __int64 MCTimeMissionTotal; 
-
-extern __int64 MCTimeLOSCalc;
-extern __int64 MCTimeTerrainObjectsUpdate;
-extern __int64 MCTimeMechsUpdate;
-extern __int64 MCTimeVehiclesUpdate;
-extern __int64 MCTimeTurretsUpdate;
-
-extern __int64 MCTimeTerrainObjectsTL;
-extern __int64 MCTimeMechsTL;
-extern __int64 MCTimeVehiclesTL;
-extern __int64 MCTimeTurretsTL;
-
-extern __int64 MCTimeAllElseUpdate;
-
-extern __int64 MCTimeAnimationCalc;
-
-extern __int64 MCTimeABLLoad 			;
-extern __int64 MCTimeMiscToTeamLoad 	; 
-extern __int64 MCTimeTeamLoad 			; 
-extern __int64 MCTimeObjectLoad 		; 
-extern __int64 MCTimeTerrainLoad 		; 
-extern __int64 MCTimeMoveLoad 			; 
-extern __int64 MCTimeMissionABLLoad 	; 
-extern __int64 MCTimeWarriorLoad 		; 
-extern __int64 MCTimeMoverPartsLoad	; 
-extern __int64 MCTimeObjectiveLoad 	; 
-extern __int64 MCTimeCommanderLoad 	; 
-extern __int64 MCTimeMiscLoad 			; 
-extern __int64 MCTimeGUILoad 			; 
-
-extern __int64 x1;
-
-extern __int64 x;
-
-
-#else
-#define ProfileTime(x,y)	y;
-#endif
+#include "gos_profiler.h"
 
 long GameVisibleVertices		= 200;
 float BaseHeadShotElevation		= 1.0f;
@@ -520,27 +448,28 @@ long Mission::update (void)
 		}
 #endif
 
+		ZoneScopedN("GameLogic.Mission.Update");
 		mcTextureManager->clearArrays();
-		
+
 		if (missionInterface)
-			ProfileTime(MCTimeInterfaceUpdate,missionInterface->update());
-		
-		ProfileTime(MCTimeCameraUpdate,eye->update());
-		
+			{ ZoneScopedN("GameLogic.Mission.Interface"); missionInterface->update(); }
+
+		{ ZoneScopedN("GameLogic.Mission.Camera"); eye->update(); }
+
 		missionInterface->updateVTol();
-		
-		ProfileTime(MCTimeTerrainUpdate,land->update());
+
+		{ ZoneScopedN("GameLogic.Mission.Terrain"); land->update(); }
 
 		//ALWAYS update weather AFTER the camera.  May change the lights!
 		if (useNonWeaponEffects)
-			ProfileTime(MCTimeWeatherUpdate,weather->update());		//Should the rain fall during a pause?
+			{ ZoneScopedN("GameLogic.Mission.Weather"); weather->update(); }		//Should the rain fall during a pause?
 		
 		missionInterface->updateWaypoints();
 
 #ifdef USE_PATH_COST_TABLE
 		GlobalMoveMap[0]->resetPathCostTable();
 #endif
-		ProfileTime(MCTimePathManagerUpdate,PathManager->update());
+		{ ZoneScopedN("GameLogic.PathManager"); PathManager->update(); }
 
 		if (KillAmbientLight) {
 	//		ambientRed<<16)+(ambientGreen<<8)+ambientBlue;
@@ -554,34 +483,33 @@ long Mission::update (void)
 		land->clearObjVerticesActive();
 		land->terrainTextures->update();
 
-
-		ProfileTime(MCTimeTerrainGeometry,land->geometry());
+		{ ZoneScopedN("GameLogic.Mission.TerrainGeometry"); land->geometry(); }
 
 		if ( missionInterface->isPaused() && !MPlayer )
 			ObjectManager->updateAppearancesOnly( true, true, true );
 		else
 			ObjectManager->update(true, true, true);
 
-		ProfileTime(MCTimeCraterUpdate,craterManager->update());
+		{ ZoneScopedN("GameLogic.Mission.Craters"); craterManager->update(); }
 		
-		//Do not UPDATE the textures during a pause.  
+		//Do not UPDATE the textures during a pause.
 		//This uncaches things which only objectManager->update can cache back in!!!!!
 		if ( !missionInterface->isPaused() || MPlayer )
-			ProfileTime(MCTimeTXMManagerUpdate,mcTextureManager->update());
+			{ ZoneScopedN("GameLogic.Mission.TextureManager"); mcTextureManager->update(); }
 
 		//--------------------------------------
 		// update sensor and contact managers...
 		if (useSensors && ( !missionInterface->isPaused() || MPlayer ) )
-			ProfileTime(MCTimeSensorUpdate, SensorManager->update());
+			{ ZoneScopedN("GameLogic.Mission.Sensors"); SensorManager->update(); }
 
 		if (useCollisions && ( !missionInterface->isPaused() || MPlayer ) )
-			ProfileTime(MCTimeCollisionUpdate,ObjectManager->updateCollisions());
+			{ ZoneScopedN("GameLogic.Mission.Collisions"); ObjectManager->updateCollisions(); }
 
 		if (missionBrain)
 		{
 			if ( !missionInterface->isPaused() || MPlayer )
 			{
-				ProfileTime(MCTimeMissionScript,missionBrain->execute());
+				{ ZoneScopedN("GameLogic.AI.BrainExecute"); missionBrain->execute(); }
 				long missionResult = missionBrain->getInteger();
 				if (missionResult == 9999)
 					return(terminationResult = 9999);
