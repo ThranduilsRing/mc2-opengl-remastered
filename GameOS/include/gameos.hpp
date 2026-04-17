@@ -2268,6 +2268,7 @@ void __stdcall gos_TerrainExtraReset();
 void __stdcall gos_TerrainExtraAdd(const gos_TERRAIN_EXTRA* data, int count);
 void __stdcall gos_SetTerrainBatchExtras(const gos_TERRAIN_EXTRA* extras, int count);
 void __stdcall gos_SetTerrainDebugMode(float mode);
+float __stdcall gos_GetTerrainDebugMode();
 bool __stdcall gos_IsTerrainTessellationActive();
 
 // Shadow coordinate API (raw MC2 coordinates for shadow matrix)
