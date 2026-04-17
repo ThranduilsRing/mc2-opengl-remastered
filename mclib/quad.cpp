@@ -1583,7 +1583,9 @@ void TerrainQuad::draw (void)
 								wov[_k].fog  = (float)((oVertex[_k].frgb >> 24) & 0xFF) / 255.0f;
 								wov[_k].argb = oVertex[_k].argb;
 							}
-							gos_PushTerrainOverlay(wov, overlayHandle);
+							const DWORD overlayTexId = mcTextureManager->get_gosTextureHandle(overlayHandle);
+							if (overlayTexId != 0)
+								gos_PushTerrainOverlay(wov, overlayTexId);
 						}
 					}
 
@@ -1725,7 +1727,9 @@ void TerrainQuad::draw (void)
 								wov[_k].fog  = (float)((oVertex[_k].frgb >> 24) & 0xFF) / 255.0f;
 								wov[_k].argb = oVertex[_k].argb;
 							}
-							gos_PushTerrainOverlay(wov, overlayHandle);
+							const DWORD overlayTexId = mcTextureManager->get_gosTextureHandle(overlayHandle);
+							if (overlayTexId != 0)
+								gos_PushTerrainOverlay(wov, overlayTexId);
 						}
 					}
 
@@ -1937,7 +1941,9 @@ void TerrainQuad::draw (void)
 								wov[_k].fog  = (float)((oVertex[_k].frgb >> 24) & 0xFF) / 255.0f;
 								wov[_k].argb = oVertex[_k].argb;
 							}
-							gos_PushTerrainOverlay(wov, overlayHandle);
+							const DWORD overlayTexId = mcTextureManager->get_gosTextureHandle(overlayHandle);
+							if (overlayTexId != 0)
+								gos_PushTerrainOverlay(wov, overlayTexId);
 						}
 					}
 				}
@@ -2077,7 +2083,9 @@ void TerrainQuad::draw (void)
 								wov[_k].fog  = (float)((oVertex[_k].frgb >> 24) & 0xFF) / 255.0f;
 								wov[_k].argb = oVertex[_k].argb;
 							}
-							gos_PushTerrainOverlay(wov, overlayHandle);
+							const DWORD overlayTexId = mcTextureManager->get_gosTextureHandle(overlayHandle);
+							if (overlayTexId != 0)
+								gos_PushTerrainOverlay(wov, overlayTexId);
 						}
 					}
 				}
