@@ -33,25 +33,7 @@ __int64 MCTimeMultiplayerUpdate = 0;
 __int64 MCTimeTerrainUpdate 	= 0;
 __int64 MCTimeCameraUpdate 		= 0;
 __int64 MCTimeWeatherUpdate 	= 0;
-__int64 MCTimePathManagerUpdate = 0; 
-__int64 MCTimeRunBrainUpdate = 0;
-__int64 MCTimePath1Update = 0;
-__int64 MCTimePath2Update = 0;
-__int64 MCTimePath3Update = 0;
-__int64 MCTimePath4Update = 0;
-__int64 MCTimePath5Update = 0;
-
- __int64 MCTimeCalcGoal1Update = 0;
- extern __int64 MCTimeCalcPath1Update;
- extern __int64 MCTimeCalcPath2Update;
- extern __int64 MCTimeCalcPath3Update;
- extern __int64 MCTimeCalcPath4Update;
- extern __int64 MCTimeCalcPath5Update;
- __int64 MCTimeCalcGoal2Update = 0;
- __int64 MCTimeCalcGoal3Update = 0;
- __int64 MCTimeCalcGoal4Update = 0;
- __int64 MCTimeCalcGoal5Update = 0;
- __int64 MCTimeCalcGoal6Update = 0;
+__int64 MCTimePathManagerUpdate = 0;
 
 __int64 MCTimeTerrainGeometry 	= 0; 
 __int64 MCTimeCraterUpdate 		= 0; 
@@ -86,18 +68,6 @@ extern __int64 MCTimeInterfaceUpdate 	;
 extern __int64 MCTimeMissionTotal; 
 
 extern __int64 MCTimeLOSCalc;
-extern __int64 MCTimeTerrainObjectsUpdate;
-extern __int64 MCTimeMechsUpdate;
-extern __int64 MCTimeVehiclesUpdate;
-extern __int64 MCTimeTurretsUpdate;
-extern __int64 MCTimeAllElseUpdate;
-
-extern __int64 MCTimeTerrainObjectsTL;
-extern __int64 MCTimeMechsTL;
-extern __int64 MCTimeVehiclesTL;
-extern __int64 MCTimeTurretsTL;
-
-extern __int64 MCTimeAnimationCalc;
 
 extern __int64 x;
 
@@ -172,26 +142,9 @@ void Mission::initializeStatistics()
 	StatisticFormat( "" );
 
 	AddStatistic( "Terrain Update",					"%", gos_timedata, (void*)&MCTimeTerrainUpdate		,		0 );
-	AddStatistic( "Camera Update",					"%", gos_timedata, (void*)&MCTimeCameraUpdate       ,       0 ); 
-	AddStatistic( "Weather Update",					"%", gos_timedata, (void*)&MCTimeWeatherUpdate      ,       0 ); 
-	AddStatistic( "RunBrain Path Update",			"%", gos_timedata, (void*)&MCTimeRunBrainUpdate  ,		    0 ); 
+	AddStatistic( "Camera Update",					"%", gos_timedata, (void*)&MCTimeCameraUpdate       ,       0 );
+	AddStatistic( "Weather Update",					"%", gos_timedata, (void*)&MCTimeWeatherUpdate      ,       0 );
 	AddStatistic( "PathManager Update",				"%", gos_timedata, (void*)&MCTimePathManagerUpdate  ,       0 ); 
-	AddStatistic( "   Path1 Update",				"%", gos_timedata, (void*)&MCTimePath1Update  ,				0 ); 
-	AddStatistic( "   Path2 Update",				"%", gos_timedata, (void*)&MCTimePath2Update  ,				0 ); 
-	AddStatistic( "   Path3 Update",				"%", gos_timedata, (void*)&MCTimePath3Update  ,				0 ); 
-	AddStatistic( "   Path4 Update",				"%", gos_timedata, (void*)&MCTimePath4Update  ,				0 ); 
-	AddStatistic( "   Path5 Update",				"%", gos_timedata, (void*)&MCTimePath5Update  ,				0 ); 
-	AddStatistic( "   CalcPath1 Update",			"%", gos_timedata, (void*)&MCTimeCalcPath1Update  ,			0 ); 
-	AddStatistic( "   CalcPath2 Update",			"%", gos_timedata, (void*)&MCTimeCalcPath2Update  ,			0 ); 
-	AddStatistic( "   CalcPath3 Update",			"%", gos_timedata, (void*)&MCTimeCalcPath3Update  ,			0 ); 
-	AddStatistic( "   CalcPath4 Update",			"%", gos_timedata, (void*)&MCTimeCalcPath4Update  ,			0 ); 
-	AddStatistic( "   CalcPath5 Update",			"%", gos_timedata, (void*)&MCTimeCalcPath5Update  ,			0 ); 
-	AddStatistic( "   CalcGoal1 Update",			"%", gos_timedata, (void*)&MCTimeCalcGoal1Update  ,			0 ); 
-	AddStatistic( "   CalcGoal2 Update",			"%", gos_timedata, (void*)&MCTimeCalcGoal2Update  ,			0 ); 
-	AddStatistic( "   CalcGoal3 Update",			"%", gos_timedata, (void*)&MCTimeCalcGoal3Update  ,			0 ); 
-	AddStatistic( "   CalcGoal4 Update",			"%", gos_timedata, (void*)&MCTimeCalcGoal4Update  ,			0 ); 
-	AddStatistic( "   CalcGoal5 Update",			"%", gos_timedata, (void*)&MCTimeCalcGoal5Update  ,			0 ); 
-	AddStatistic( "   CalcGoal6 Update",			"%", gos_timedata, (void*)&MCTimeCalcGoal6Update  ,			0 ); 
 	AddStatistic( "Terrain Geometry",				"%", gos_timedata, (void*)&MCTimeTerrainGeometry    ,       0 ); 
 	AddStatistic( "Interface Update",				"%", gos_timedata, (void*)&MCTimeInterfaceUpdate    ,       0 ); 
 	AddStatistic( "Crater Update",					"%", gos_timedata, (void*)&MCTimeCraterUpdate       ,       0 ); 
@@ -200,23 +153,11 @@ void Mission::initializeStatistics()
 	AddStatistic( "LOS Update",						"%", gos_timedata, (void*)&MCTimeLOSUpdate			,       0 );
 	AddStatistic( "Collision Update",				"%", gos_timedata, (void*)&MCTimeCollisionUpdate    ,       0 ); 
 	AddStatistic( "Mission Script",					"%", gos_timedata, (void*)&MCTimeMissionScript      ,       0 ); 
-	AddStatistic( "Multiplayer Update",				"%", gos_timedata, (void*)&MCTimeMultiplayerUpdate  ,       0 ); 
+	AddStatistic( "Multiplayer Update",				"%", gos_timedata, (void*)&MCTimeMultiplayerUpdate  ,       0 );
 	StatisticFormat( "=========================" );
-	AddStatistic( "TerrainObject Update",           "%", gos_timedata, (void*)&MCTimeTerrainObjectsUpdate,       0 );  
-	AddStatistic( "TerrainObject T&L",              "%", gos_timedata, (void*)&MCTimeTerrainObjectsTL,           0 );  
-	AddStatistic( "Mech Update",                    "%", gos_timedata, (void*)&MCTimeMechsUpdate         ,       0 );  
-	AddStatistic( "Mech T&L",                       "%", gos_timedata, (void*)&MCTimeMechsTL             ,       0 );  
-	AddStatistic( "Vehicle Update",                 "%", gos_timedata, (void*)&MCTimeVehiclesUpdate      ,       0 );  
-	AddStatistic( "Vehicle T&L",                    "%", gos_timedata, (void*)&MCTimeVehiclesTL          ,       0 );  
-	AddStatistic( "Turret Update",                  "%", gos_timedata, (void*)&MCTimeTurretsUpdate       ,       0 );  
-	AddStatistic( "Turret T&L",                     "%", gos_timedata, (void*)&MCTimeTurretsTL           ,       0 );  
-	AddStatistic( "Everything else Update",         "%", gos_timedata, (void*)&MCTimeAllElseUpdate       ,       0 );  
-	StatisticFormat( "=========================" );
-	AddStatistic( "Total Mission Time", 			"%", gos_timedata, (void*)&MCTimeMissionTotal		,       0 ); 
+	AddStatistic( "Total Mission Time", 			"%", gos_timedata, (void*)&MCTimeMissionTotal		,       0 );
 	StatisticFormat( "=========================" );
 	AddStatistic( "Total LOS Calc Time", 			"%", gos_timedata, (void*)&MCTimeLOSCalc    		,       0 ); 
-	StatisticFormat( "=========================" );
-	AddStatistic( "Total Anim Calc Time", 			"%", gos_timedata, (void*)&MCTimeAnimationCalc    	,       0 ); 
 
 	statisticsInitialized = true;
 

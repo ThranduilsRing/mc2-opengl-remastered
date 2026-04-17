@@ -78,6 +78,10 @@
 #include"gvactor.h"
 #endif
 
+#ifndef GOS_PROFILER_H
+#include"gos_profiler.h"
+#endif
+
 //-------------------------------------------------------------------------------
 // Static Globals
 extern float worldUnitsPerMeter;
@@ -2866,10 +2870,6 @@ long Mech3DAppearance::renderShadows (void)
 }
 
 bool oneMechPlease = false;
-#ifdef LAB_ONLY
-__int64 MCTimeAnimationCalc = 0;
-__int64 x;
-#endif
 
 //-----------------------------------------------------------------------------
 void Mech3DAppearance::setObjStatus (long oStatus)
@@ -2974,9 +2974,7 @@ void Mech3DAppearance::setObjStatus (long oStatus)
 //-----------------------------------------------------------------------------
 void Mech3DAppearance::updateGeometry (void)
 {
-	#ifdef LAB_ONLY
-	x=GetCycles();
-	#endif
+	ZoneScopedN("GameLogic.Mech3D.UpdateGeometry");
 	//Always override with our local instance.
 	mechShape->SetTextureHandle(0,localTextureHandle);
 	
@@ -3652,10 +3650,6 @@ void Mech3DAppearance::updateGeometry (void)
 		}
 	}
 	 
-	#ifdef LAB_ONLY
-	x=GetCycles()-x;
-	MCTimeAnimationCalc += x;
-	#endif
 }	
 
 #ifdef _DEBUG

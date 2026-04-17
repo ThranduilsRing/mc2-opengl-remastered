@@ -867,10 +867,6 @@ bool Team::teamLineOfSight (Stuff::Vector3D tPos, float extRad)
 	return false;
 }
 
-#ifdef LAB_ONLY
-extern __int64 MCTimeLOSCalc;
-#endif
-
 //#define USE_OLD_LOS
 
 #ifdef USE_OLD_LOS
@@ -929,10 +925,6 @@ bool Team::lineOfSight (float startLocal, long mCellRow, long mCellCol, long tCe
 
 		if (!losResult)
 		{
-	#ifdef LAB_ONLY
-	x=GetCycles()-x;
-	MCTimeLOSCalc += x;
-	#endif
 			return losResult;
 		}
 	}
@@ -1014,10 +1006,6 @@ bool Team::lineOfSight (float startLocal, long mCellRow, long mCellCol, long tCe
 				
 				if (startHeight+startLocal < currentPos.z)
 				{
-	#ifdef LAB_ONLY
-	x=GetCycles()-x;
-	MCTimeLOSCalc += x;
-	#endif
 #ifdef LAB_ONLY
 		if (drawTerrainGrid)
 		{
@@ -1055,10 +1043,6 @@ bool Team::lineOfSight (float startLocal, long mCellRow, long mCellCol, long tCe
 #endif
 	}
 	
-	#ifdef LAB_ONLY
-	x=GetCycles()-x;
-	MCTimeLOSCalc += x;
-	#endif
 	
 	return true;
 }
@@ -1122,10 +1106,6 @@ bool Team::lineOfSight (float startLocal, long mCellRow, long mCellCol, float en
 
 		if (!losResult)
 		{
-	#ifdef LAB_ONLY
-	x=GetCycles()-x;
-	MCTimeLOSCalc += x;
-	#endif
 			return losResult;
 		}
 	}
@@ -1216,10 +1196,6 @@ bool Team::lineOfSight (float startLocal, long mCellRow, long mCellCol, float en
 
 					if (!isTree || (maxTrees >= MaxTreeLOSCellBlock))
 					{
-#ifdef LAB_ONLY
-						x=GetCycles()-x;
-						MCTimeLOSCalc += x;
-#endif
 		
 #ifdef LAB_ONLY
 						if (drawTerrainGrid)
@@ -1255,10 +1231,6 @@ bool Team::lineOfSight (float startLocal, long mCellRow, long mCellCol, float en
 #endif
 	}
 	
-	#ifdef LAB_ONLY
-	x=GetCycles()-x;
-	MCTimeLOSCalc += x;
-	#endif
 	
 	return true;
 }

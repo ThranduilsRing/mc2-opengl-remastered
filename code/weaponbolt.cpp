@@ -38,6 +38,10 @@
 #include"mission.h"
 #endif
 
+#ifndef GOS_PROFILER_H
+#include"gos_profiler.h"
+#endif
+
 #include<gameos.hpp>
 
 //---------------------------------------------------------------------------
@@ -375,6 +379,8 @@ bool WeaponBolt::isVisible (void)
 //---------------------------------------------------------------------------
 long WeaponBolt::update (void)
 {
+	ZoneScopedN("GameLogic.Projectile.Update");
+
 	Stuff::Vector3D laserDirection;
 	
 	bool moveThisFrame = true;
