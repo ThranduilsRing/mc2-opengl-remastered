@@ -109,6 +109,7 @@ gosPostProcess::~gosPostProcess()
 
 void gosPostProcess::init(int w, int h)
 {
+    ZoneScopedN("gosPostProcess::init");
     assert(!initialized_);
 
     width_ = w;

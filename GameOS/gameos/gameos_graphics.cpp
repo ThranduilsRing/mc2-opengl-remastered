@@ -3178,6 +3178,7 @@ void gosRenderer::flush()
 }
 
 void gos_CreateRenderer(graphics::RenderContextHandle ctx_h, graphics::RenderWindowHandle win_h, int w, int h) {
+    ZoneScopedN("gos_CreateRenderer");
 
     g_gos_renderer = new gosRenderer(ctx_h, win_h, w, h);
     g_gos_renderer->init();

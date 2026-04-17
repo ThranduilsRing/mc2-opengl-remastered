@@ -245,6 +245,7 @@ extern bool 			invulnerableON;		//Used for tutorials so mechs can take damage, b
 // class Mission
 long Mission::update (void)
 {
+	ZoneScopedN("Mission::update");
 	if (active)
 	{
 		turn++;
@@ -481,7 +482,7 @@ long Mission::update (void)
 		// Also reset the object flags because we recalc those during geometry!
 		land->clearObjBlocksActive();
 		land->clearObjVerticesActive();
-		land->terrainTextures->update();
+		{ ZoneScopedN("Mission::update terrainTextures->update"); land->terrainTextures->update(); }
 
 		{ ZoneScopedN("GameLogic.Mission.TerrainGeometry"); land->geometry(); }
 
@@ -1616,6 +1617,7 @@ bool IsGateOpen (int objectWID) {
 //----------------------------------------------------------------------------
 void Mission::init (const char *missionName, long loadType, long dropZoneID, Stuff::Vector3D* dropZoneList, char commandersToLoad[8][3], long numMoversPerCommander)
 {
+	ZoneScopedN("Mission::init");
 	neverEndingStory = false;
 	invulnerableON = false;
 
@@ -2167,7 +2169,11 @@ void Mission::init (const char *missionName, long loadType, long dropZoneID, Stu
 	MCTimeObjectLoad=x-x1;
 #endif
 
-	long terrainInitResult = land->init(&pakFile, 0, GameVisibleVertices, loadProgress, 20.0 );
+	long terrainInitResult;
+	{
+		ZoneScopedN("Mission::init land->init");
+		terrainInitResult = land->init(&pakFile, 0, GameVisibleVertices, loadProgress, 20.0 );
+	}
 
 	if (terrainInitResult != NO_ERR)
 	{
@@ -2181,7 +2187,7 @@ void Mission::init (const char *missionName, long loadType, long dropZoneID, Stu
 	MCTimeTerrainLoad=x1-x;
 #endif
 
-	land->load( missionFile );
+	{ ZoneScopedN("Mission::init land->load"); land->load( missionFile ); }
 
 	loadProgress = 36.0f;
 
@@ -2765,7 +2771,7 @@ void Mission::init (const char *missionName, long loadType, long dropZoneID, Stu
 
 	loadProgress = 68.0f;
 
-	ObjectManager->loadTerrainObjects(&pakFile, loadProgress, 30);
+	{ ZoneScopedN("Mission::init ObjectManager::loadTerrainObjects"); ObjectManager->loadTerrainObjects(&pakFile, loadProgress, 30); }
 
 	loadProgress = 98.0f;
 

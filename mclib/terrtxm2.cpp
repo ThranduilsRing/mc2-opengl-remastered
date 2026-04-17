@@ -40,6 +40,8 @@
 #include"terrain.h"
 #endif
 
+#include"../GameOS/gameos/gos_profiler.h"
+
 #ifndef CAMERA_H
 #include"camera.h"
 #endif
@@ -1588,9 +1590,11 @@ static long sReadIdFloat(FitIniFile* missionFile, const char *varName, float &va
 //---------------------------------------------------------------------------
 long TerrainColorMap::init (char *fileName)
 {
+	ZoneScopedN("TerrainColorMap::init");
 	bool usedJPG = false;
 	if (!colorMapStarted)
 	{
+		ZoneScopedN("TerrainColorMap::init cold");
 		//Load up the detail texture first.
 		// Detail texture is named same as colormap with .detail in name.
 		// if no file exists, no texture drawn.
@@ -1608,7 +1612,10 @@ long TerrainColorMap::init (char *fileName)
 			detailFile.init(texturePath,dName,".tga");
 		}
 		if (fileExists(detailFile))		//Otherwise, its already 0xffffffff!!
+		{
+			ZoneScopedN("TerrainColorMap::init detailTexture");
 			detailTextureNodeIndex = mcTextureManager->loadTexture(detailFile,gos_Texture_Alpha,gosHint_DontShrink);
+		}
 		else
 			gosASSERT(false);
 		
@@ -1628,7 +1635,10 @@ long TerrainColorMap::init (char *fileName)
 			waterFile.init(texturePath,dName,".tga");
 		}
 		if (fileExists(waterFile))
+		{
+			ZoneScopedN("TerrainColorMap::init waterTexture");
 			waterTextureNodeIndex = mcTextureManager->loadTexture(waterFile,gos_Texture_Solid,0);
+		}
 		else
 			gosASSERT(false);
 
@@ -1655,7 +1665,7 @@ long TerrainColorMap::init (char *fileName)
 		}
 		sprintf(dName,"%s%04d",waterDetailBaseName,0);
 		waterFile.init(texturePath,dName,".tga");
-		resetWaterDetailTextures((const char *)waterFile);
+		{ ZoneScopedN("TerrainColorMap::init waterDetailTextures"); resetWaterDetailTextures((const char *)waterFile); }
 
 		{
 			detailTextureTilingFactor = 30.0f;
@@ -1840,7 +1850,7 @@ long TerrainColorMap::init (char *fileName)
 				//Apply shadow map.  calc every time for now.  Save as in editor, eventually.
 				if (!burnedIn)
 				{
-					burnInShadows(true,fileName);
+					{ ZoneScopedN("TerrainColorMap::init burnInShadows"); burnInShadows(true,fileName); }
 					saveTGAFile(ColorMap,fileName,colorMapInfo.width);
 				}
 
@@ -1854,7 +1864,7 @@ long TerrainColorMap::init (char *fileName)
 
 					getColorMapData(txmRAM[i].ourRAM,i, colorMapInfo.width);
 
-					textures[i].mcTextureNodeIndex = mcTextureManager->textureFromMemory((DWORD *)txmRAM[i].ourRAM,gos_Texture_Solid,gosHint_DontShrink,COLOR_MAP_TEXTURE_SIZE);
+					{ ZoneScopedN("TerrainColorMap::init colorMapTiles"); textures[i].mcTextureNodeIndex = mcTextureManager->textureFromMemory((DWORD *)txmRAM[i].ourRAM,gos_Texture_Solid,gosHint_DontShrink,COLOR_MAP_TEXTURE_SIZE); }
 					if (i % 50 == 0)
 					{
 					}
@@ -1905,6 +1915,7 @@ long TerrainColorMap::init (char *fileName)
 
 		if (fileExists(normalMapPath))
 		{
+			ZoneScopedN("TerrainColorMap::init normalMap");
 			File nmFile;
 			if (nmFile.open(normalMapPath) == NO_ERR)
 			{
@@ -1967,8 +1978,8 @@ long TerrainColorMap::init (char *fileName)
 							src += nmInfo.width * sizeof(DWORD);
 						}
 
-						normalMapTextures[i].mcTextureNodeIndex = mcTextureManager->textureFromMemory(
-							(DWORD *)tileRAM, gos_Texture_Solid, gosHint_DontShrink, COLOR_MAP_TEXTURE_SIZE);
+						{ ZoneScopedN("TerrainColorMap::init normalMapTiles"); normalMapTextures[i].mcTextureNodeIndex = mcTextureManager->textureFromMemory(
+							(DWORD *)tileRAM, gos_Texture_Solid, gosHint_DontShrink, COLOR_MAP_TEXTURE_SIZE); }
 					}
 
 					hasNormalMap = true;
@@ -2069,6 +2080,7 @@ long TerrainColorMap::init (char *fileName)
 	// Load terrain material texture arrays (4 PBR material sets)
 	printf("[SPLATTING] starting material array load\n");
 	{
+		ZoneScopedN("TerrainColorMap::init materialArrays");
 		const char* normalNames[4] = {
 			"mat0_normal", "mat1_normal", "mat2_normal", "mat3_normal"
 		};

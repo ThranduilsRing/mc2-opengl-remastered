@@ -28,6 +28,8 @@
 #include"inifile.h"
 #endif
 
+#include"../GameOS/gameos/gos_profiler.h"
+
 #ifndef TGAINFO_H
 #include"tgainfo.h"
 #endif
@@ -1467,6 +1469,7 @@ long TerrainTextures::setDetail (DWORD typeInfo, DWORD frameNum)
 //---------------------------------------------------------------------------
 void TerrainTextures::update (void)
 {
+	ZoneScopedN("TerrainTextures::update");
 	if (tileRAMHeap)
 	{
 		//We can now safely purge all transitions cause the MC2 texture manager has them all!!
