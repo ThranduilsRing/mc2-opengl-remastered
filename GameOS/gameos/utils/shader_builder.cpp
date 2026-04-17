@@ -287,6 +287,7 @@ bool load_shader(const char* fname, std::string& shader_source, std::vector<std:
 
 bool compile_shader(GLenum shader, const char** strings, size_t count)
 {
+    ZoneScopedN("Shader.Compile");
     glShaderSource(shader, count, strings, 0);
     glCompileShader(shader);
 
@@ -303,13 +304,17 @@ bool compile_shader(GLenum shader, const char** strings, size_t count)
 
 glsl_shader* glsl_shader::makeShader(Shader_t stype, const char* fname, const char* prefix/* = nullptr*/)
 {
+    ZoneScopedN("Shader.MakeShader");
     std::string shader_source;
     std::vector<std::string> shader_includes;
 
+    {
+    ZoneScopedN("Shader.LoadSource");
     if(!load_shader(fname, shader_source, shader_includes))
     {
 		log_error("Shader filename: %s, failed to load shader\n", fname);
         return nullptr;
+    }
     }
 
     log_info("Loading shader: %s\n", fname);
@@ -548,7 +553,8 @@ glsl_program* glsl_program::makeProgram2(const char* name, const char* vp, const
         return 0;
     }
 
-    glsl_shader* vsh = glsl_shader::makeShader(glsl_shader::VERTEX, vp, prefix);
+    glsl_shader* vsh;
+    { ZoneScopedN("Shader.Stage.Vertex"); vsh = glsl_shader::makeShader(glsl_shader::VERTEX, vp, prefix); }
 	if(!vsh)
 		return 0;
 
@@ -556,28 +562,28 @@ glsl_program* glsl_program::makeProgram2(const char* name, const char* vp, const
 	
 	if(fp)
 	{
-		fsh = glsl_shader::makeShader(glsl_shader::FRAGMENT, fp, prefix);
+		{ ZoneScopedN("Shader.Stage.Fragment"); fsh = glsl_shader::makeShader(glsl_shader::FRAGMENT, fp, prefix); }
 		if(!fsh)
 			return 0;
 	}
     	
 	if(hp)
 	{
-		hsh = glsl_shader::makeShader(glsl_shader::HULL, hp, prefix);
+		{ ZoneScopedN("Shader.Stage.Hull"); hsh = glsl_shader::makeShader(glsl_shader::HULL, hp, prefix); }
 		if(!hsh)
 			return 0;
 	}
 
 	if(dp)
 	{
-		dsh = glsl_shader::makeShader(glsl_shader::DOMAINE, dp, prefix);
+		{ ZoneScopedN("Shader.Stage.Domain"); dsh = glsl_shader::makeShader(glsl_shader::DOMAINE, dp, prefix); }
 		if(!dsh)
 			return 0;
 	}
 
 	if(gp)
 	{
-		gsh = glsl_shader::makeShader(glsl_shader::GEOMERTY, gp, prefix);
+		{ ZoneScopedN("Shader.Stage.Geometry"); gsh = glsl_shader::makeShader(glsl_shader::GEOMERTY, gp, prefix); }
 		if(!gsh)
 			return 0;
 	}
@@ -587,6 +593,8 @@ glsl_program* glsl_program::makeProgram2(const char* name, const char* vp, const
     GLuint shp = glCreateProgram();
 
 	GLuint last_not_null = 0;
+	{
+	ZoneScopedN("Shader.AttachStages");
 	for(size_t i=0; i< sizeof(pipeline)/sizeof(pipeline[0]); ++i)
 	{
 		if(!pipeline[i]) continue;
@@ -599,6 +607,7 @@ glsl_program* glsl_program::makeProgram2(const char* name, const char* vp, const
 			log_error("glAttachShader: error during attaching %s\n", pipeline[i]->fname_.c_str());
 			return 0;
 		}
+	}
 	}
 
 	GLenum err = glGetError();
@@ -620,7 +629,7 @@ glsl_program* glsl_program::makeProgram2(const char* name, const char* vp, const
 		log_error("OpenGL Error: %s\n", ogl_get_error_code_str(err));
 	}
 
-    glLinkProgram(shp);
+    { ZoneScopedN("Shader.LinkProgram"); glLinkProgram(shp); }
 
 	err = glGetError();
 	if(err != GL_NO_ERROR)
@@ -658,8 +667,7 @@ glsl_program* glsl_program::makeProgram2(const char* name, const char* vp, const
 		glDetachShader(shp, pipeline[i]->shader_);
 	}
 
-    parse_uniforms(shp, &pprogram->uniforms_, &pprogram->samplers_);
-    parse_uniform_blocks(shp, &pprogram->uniform_blocks_);
+    { ZoneScopedN("Shader.ParseUniforms"); parse_uniforms(shp, &pprogram->uniforms_, &pprogram->samplers_); parse_uniform_blocks(shp, &pprogram->uniform_blocks_); }
 
     pprogram->last_load_time_ = timing::get_wall_time_ms();
 

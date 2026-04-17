@@ -1619,6 +1619,7 @@ const std::string gosRenderer::s_Foreground = std::string("Foreground");
 static GLuint gVAO = 0;
 
 void gosRenderer::init() {
+    ZoneScopedN("gosRenderer::init");
     initRenderStates();
 
     // x = 1/w; x =2*x - 1;
@@ -1635,18 +1636,21 @@ void gosRenderer::init() {
     // setup viewport
     setupViewport(true, 1.0f, true, 0, 0.0f, 0.0f, 1.0f, 1.0f);
 
-    quads_ = gosMesh::makeMesh(PRIMITIVE_TRIANGLELIST, 1024*10);
-    gosASSERT(quads_);
-    tris_ = gosMesh::makeMesh(PRIMITIVE_TRIANGLELIST, 1024*10);
-    gosASSERT(tris_);
-    indexed_tris_ = gosMesh::makeMesh(PRIMITIVE_TRIANGLELIST, 1024*60, 1024*60);
-    gosASSERT(indexed_tris_);
-    lines_ = gosMesh::makeMesh(PRIMITIVE_LINELIST, 1024*10);
-    gosASSERT(lines_);
-    points_= gosMesh::makeMesh(PRIMITIVE_POINTLIST, 1024*10);
-    gosASSERT(points_);
-    text_ = gosMesh::makeMesh(PRIMITIVE_TRIANGLELIST, 4024 * 6);
-    gosASSERT(text_);
+    {
+        ZoneScopedN("gosRenderer::init meshes");
+        quads_ = gosMesh::makeMesh(PRIMITIVE_TRIANGLELIST, 1024*10);
+        gosASSERT(quads_);
+        tris_ = gosMesh::makeMesh(PRIMITIVE_TRIANGLELIST, 1024*10);
+        gosASSERT(tris_);
+        indexed_tris_ = gosMesh::makeMesh(PRIMITIVE_TRIANGLELIST, 1024*60, 1024*60);
+        gosASSERT(indexed_tris_);
+        lines_ = gosMesh::makeMesh(PRIMITIVE_LINELIST, 1024*10);
+        gosASSERT(lines_);
+        points_= gosMesh::makeMesh(PRIMITIVE_POINTLIST, 1024*10);
+        gosASSERT(points_);
+        text_ = gosMesh::makeMesh(PRIMITIVE_TRIANGLELIST, 4024 * 6);
+        gosASSERT(text_);
+    }
 
 
     const char* shader_list[] = {"gos_vertex", "gos_tex_vertex", "gos_text", "gos_vertex_lighted", "gos_tex_vertex_lighted"};
@@ -1660,6 +1664,8 @@ void gosRenderer::init() {
         SHADER_FLAG_INDEX_TO_MASK(gosGLOBAL_SHADER_FLAGS::ALPHA_TEST) | SHADER_FLAG_INDEX_TO_MASK(gosGLOBAL_SHADER_FLAGS::IS_OVERLAY)
     };
 
+    {
+    ZoneScopedN("gosRenderer::init baseMaterials");
     for(size_t i=0; i<COUNTOF(combinations); ++i)
     {
         std::vector<std::string> defines;
@@ -1690,9 +1696,10 @@ void gosRenderer::init() {
             *shader_ptr_list[sh_idx] = pmat;
         }
     }
+    }
 
 
-    glGenVertexArrays(1, &gVAO);
+    { ZoneScopedN("gosRenderer::init vao"); glGenVertexArrays(1, &gVAO); }
 
     pendingRequest = false;
 
@@ -1702,7 +1709,8 @@ void gosRenderer::init() {
     break_draw_call_num_ = 0;
 
     // add fake texture so that no one will get 0 index, as it is invalid in this game
-    DWORD tex_id = gos_NewEmptyTexture( gos_Texture_Solid, "DEBUG_this_is_not_a_real_texture_debug_it!", 1);
+    DWORD tex_id;
+    { ZoneScopedN("gosRenderer::init dummyTexture"); tex_id = gos_NewEmptyTexture( gos_Texture_Solid, "DEBUG_this_is_not_a_real_texture_debug_it!", 1); }
     (void)tex_id;
     gosASSERT(tex_id == INVALID_TEXTURE_ID);
 
@@ -1710,13 +1718,17 @@ void gosRenderer::init() {
 
     // Terrain tessellation extra VBO
     terrain_extra_capacity_ = 1024 * 120;  // large buffer for extended view distance
-    terrain_extra_data_ = new gos_TERRAIN_EXTRA[terrain_extra_capacity_];
-    terrain_extra_vb_ = makeBuffer(GL_ARRAY_BUFFER, 0,
-        sizeof(gos_TERRAIN_EXTRA) * terrain_extra_capacity_, GL_DYNAMIC_DRAW);
+    {
+        ZoneScopedN("gosRenderer::init terrainExtra");
+        terrain_extra_data_ = new gos_TERRAIN_EXTRA[terrain_extra_capacity_];
+        terrain_extra_vb_ = makeBuffer(GL_ARRAY_BUFFER, 0,
+            sizeof(gos_TERRAIN_EXTRA) * terrain_extra_capacity_, GL_DYNAMIC_DRAW);
+    }
     printf("[TESS] Extra VBO created: capacity=%d vb=%u\n", terrain_extra_capacity_, terrain_extra_vb_);
 
     // Load terrain tessellation material (TCS/TES shaders)
     {
+        ZoneScopedN("gosRenderer::init terrainMaterial");
         printf("[TESS] About to load terrain shader...\n"); fflush(stdout);
         gosMaterialVariationHelper terrainHelper;
         gosMaterialVariation mvar;
@@ -1733,6 +1745,7 @@ void gosRenderer::init() {
 
     // Load shadow terrain material (VS+FS only, no tessellation)
     {
+        ZoneScopedN("gosRenderer::init shadowTerrainMaterial");
         gosMaterialVariationHelper helper;
         gosMaterialVariation mvar;
         helper.getMaterialVariation(mvar);
@@ -1744,6 +1757,7 @@ void gosRenderer::init() {
 
     // Load shadow object material (VS+FS only, no tessellation)
     {
+        ZoneScopedN("gosRenderer::init shadowObjectMaterial");
         gosMaterialVariationHelper helper;
         gosMaterialVariation mvar;
         helper.getMaterialVariation(mvar);
@@ -1757,10 +1771,13 @@ void gosRenderer::init() {
     // Both batches share terrain_overlay.vert; decal uses a different frag.
     // Use glsl_program::makeProgram directly (not gosRenderMaterial::load) because
     // the material loader always pairs [name].vert + [name].frag from the same name.
-    overlayProg_ = glsl_program::makeProgram("terrain_overlay",
-        "shaders/terrain_overlay.vert", "shaders/terrain_overlay.frag");
-    decalProg_ = glsl_program::makeProgram("decal",
-        "shaders/terrain_overlay.vert", "shaders/decal.frag");
+    {
+        ZoneScopedN("gosRenderer::init overlayPrograms");
+        overlayProg_ = glsl_program::makeProgram("terrain_overlay",
+            "shaders/terrain_overlay.vert", "shaders/terrain_overlay.frag");
+        decalProg_ = glsl_program::makeProgram("decal",
+            "shaders/terrain_overlay.vert", "shaders/decal.frag");
+    }
 
     if (!overlayProg_)
         fprintf(stderr, "[OverlayBatch] Failed to compile terrain_overlay shader\n");
@@ -1781,8 +1798,7 @@ void gosRenderer::init() {
         locs.surfaceDebugMode = glGetUniformLocation(shp, "surfaceDebugMode");
         locs.terrainLightDir = glGetUniformLocation(shp, "terrainLightDir");
     };
-    cacheOverlayLocs(overlayProg_, overlayLocs_);
-    cacheOverlayLocs(decalProg_, decalLocs_);
+    { ZoneScopedN("gosRenderer::init overlayUniforms"); cacheOverlayLocs(overlayProg_, overlayLocs_); cacheOverlayLocs(decalProg_, decalLocs_); }
     timeStart_ = timing::get_wall_time_ms();
 
     // Create VBO/VAO for each batch.
@@ -1808,8 +1824,7 @@ void gosRenderer::init() {
         glBindVertexArray(0);
         glBindBuffer(GL_ARRAY_BUFFER, 0);
     };
-    makeOverlayVAO(terrainOverlayBatch_);
-    makeOverlayVAO(decalBatch_);
+    { ZoneScopedN("gosRenderer::init overlayVAOs"); makeOverlayVAO(terrainOverlayBatch_); makeOverlayVAO(decalBatch_); }
 }
 
 void gosRenderer::destroy() {
@@ -2062,6 +2077,7 @@ void gosRenderer::endFrame()
 void gosRenderer::handleEvents()
 {
     if(pendingRequest) {
+        ZoneScopedN("gosRenderer::handleEvents pendingRequest");
 
         width_ = reqWidth;
         height_ = reqHeight;
@@ -2074,15 +2090,18 @@ void gosRenderer::handleEvents()
                 0, 0, 1.0f, 0.0f,
                 0, 0, 0.0f, 1.0f);
 
+        {
+        ZoneScopedN("gosRenderer::handleEvents resizeWindow");
         if(graphics::resize_window(win_h_, width_, height_))
 		{
-            graphics::set_window_fullscreen(win_h_, reqGotoFullscreen);
+            { ZoneScopedN("gosRenderer::handleEvents fullscreen"); graphics::set_window_fullscreen(win_h_, reqGotoFullscreen); }
 
             Environment.screenWidth = width_;
             Environment.screenHeight = height_;
 
-			graphics::get_drawable_size(win_h_, &Environment.drawableWidth, &Environment.drawableHeight);
+			{ ZoneScopedN("gosRenderer::handleEvents drawableSize"); graphics::get_drawable_size(win_h_, &Environment.drawableWidth, &Environment.drawableHeight); }
 
+        }
         }
         pendingRequest = false;
     }
@@ -3511,6 +3530,7 @@ void __stdcall gos_SetRenderState( gos_RenderState RenderState, int Value )
 
 void __stdcall gos_SetScreenMode( DWORD Width, DWORD Height, DWORD bitDepth/*=16*/, DWORD Device/*=0*/, bool disableZBuffer/*=0*/, bool AntiAlias/*=0*/, bool RenderToVram/*=0*/, bool GotoFullScreen/*=0*/, int DirtyRectangle/*=0*/, bool GotoWindowMode/*=0*/, bool EnableStencil/*=0*/, DWORD Renderer/*=0*/)
 {
+    ZoneScopedN("gos_SetScreenMode");
     gosASSERT(g_gos_renderer);
     gosASSERT((GotoFullScreen && !GotoWindowMode) || (!GotoFullScreen&&GotoWindowMode) || (!GotoFullScreen&&!GotoWindowMode));
 
