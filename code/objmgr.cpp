@@ -38,6 +38,8 @@
 #include"unitdesg.h"
 #endif
 
+#include"gos_profiler.h"
+
 #ifndef ARTLRY_H
 #include"artlry.h"
 #endif
@@ -931,6 +933,7 @@ long GameObjectManager::getSpecificObjects (long objClass, long objSubType, Game
 void GameObjectManager::loadTerrainObjects (PacketFile* terrainFile,
 											volatile float& progress, float progressRange ) 
 {
+	ZoneScopedN("GameObjectManager::loadTerrainObjects");
 	long curTerrainObjectIndex = 0;
 	long curBuildingIndex = 0;
 	long curTurretIndex = 0;
@@ -950,16 +953,19 @@ void GameObjectManager::loadTerrainObjects (PacketFile* terrainFile,
 	float increment = 0.0f;
 	if (totalObjCount)
 		increment = progressRange/totalObjCount;
-	for (int i = 0; i < totalObjCount; ++i )
 	{
-		addObject( data, 
-			curTerrainObjectIndex, curBuildingIndex, 
-			curTurretIndex, curGateIndex, handles[2 * data->blockNumber], 
-			handles[(2 * data->blockNumber) + 1] 
-			);
+		ZoneScopedN("GameObjectManager::loadTerrainObjects addObjectLoop");
+		for (int i = 0; i < totalObjCount; ++i )
+		{
+			addObject( data, 
+				curTerrainObjectIndex, curBuildingIndex, 
+				curTurretIndex, curGateIndex, handles[2 * data->blockNumber], 
+				handles[(2 * data->blockNumber) + 1] 
+				);
 
-		data++;
-		progress += increment;
+			data++;
+			progress += increment;
+		}
 	}
 
 	delete[] handles;
@@ -971,6 +977,7 @@ void GameObjectManager::loadTerrainObjects (PacketFile* terrainFile,
 
 	//---------------------------------------------------
 	// Finally, let's build the control building lists...
+	{ ZoneScopedN("GameObjectManager::loadTerrainObjects turretLinks");
 	for (int i = 0; i < numTurrets; i++) 
 	{
 		if ((turrets[i]->parentId != 0xffffffff) && (turrets[i]->parentId != 0)) 
@@ -993,7 +1000,9 @@ void GameObjectManager::loadTerrainObjects (PacketFile* terrainFile,
 			}
 		}
 	}
+	}
 
+	{ ZoneScopedN("GameObjectManager::loadTerrainObjects gateLinks");
 	for (int i = 0; i < numGates; i++) 
 	{
 		if ((gates[i]->parentId != 0xffffffff) && (gates[i]->parentId != 0))
@@ -1012,12 +1021,14 @@ void GameObjectManager::loadTerrainObjects (PacketFile* terrainFile,
 	   		}
 		}
 	}
+	}
 
 	//-----------------------------------------------------------------------------------
 	// Create list of special buildings.  These buildings will be updated at least once
 	// every frame regardless of where they are on the terrain and what is visible.
 	// This is because perimeter alarms and lookout buildings and ????? must work even
 	// if the player is NOT looking at them!!
+	{ ZoneScopedN("GameObjectManager::loadTerrainObjects specialBuildings");
 	for (int i=0;i<numBuildings;i++)
 	{
 		if (buildings[i]->isSpecialBuilding())
@@ -1025,15 +1036,18 @@ void GameObjectManager::loadTerrainObjects (PacketFile* terrainFile,
 			specialBuildings[numSpecialBuildings++] = buildings[i];
 		}
 	}
+	}
 	
  	//--------------------------------------------------------------------
 	//Now, lets point every lit building to at least one power generator.
+	{ ZoneScopedN("GameObjectManager::loadTerrainObjects powerGenerators");
 	for (int i=0;i<numBuildings;i++)
 	{
 		if (buildings[i]->isPowerSource())
 		{
 			powerGenerators[numPowerGenerators++] = buildings[i];
 		}
+	}
 	}
 	
 	if (numPowerGenerators)

@@ -40,6 +40,8 @@
 #include"cident.h"
 #endif
 
+#include"../GameOS/gameos/gos_profiler.h"
+
 #ifndef PATHS_H
 #include"paths.h"
 #endif
@@ -157,6 +159,7 @@ void MC_TextureManager::startShapes(uint32_t maxShapes)
 // Class MC_TextureManager
 void MC_TextureManager::start (void)
 {
+	ZoneScopedN("MC_TextureManager::start");
 	init();
 
 	//------------------------------------------
@@ -1795,17 +1798,21 @@ DWORD MC_TextureManager::update (void)
 //----------------------------------------------------------------------
 DWORD MC_TextureManager::textureFromMemory (DWORD *data, gos_TextureFormat key, DWORD hints, DWORD width, DWORD bitDepth)
 {
+	ZoneScopedN("MC_TextureManager::textureFromMemory");
 	long i=0;
 
 	//--------------------------------------------------------
 	// If we called this, we KNOW the texture is NOT loaded!
 	//
 	// Find first empty NODE
-	for (i=0;i<MC_MAXTEXTURES;i++)
 	{
-		if (masterTextureNodes[i].gosTextureHandle == 0xffffffff)
+		ZoneScopedN("MC_TextureManager::textureFromMemory findSlot");
+		for (i=0;i<MC_MAXTEXTURES;i++)
 		{
-			break;
+			if (masterTextureNodes[i].gosTextureHandle == 0xffffffff)
+			{
+				break;
+			}
 		}
 	}
 
@@ -1829,6 +1836,7 @@ DWORD MC_TextureManager::textureFromMemory (DWORD *data, gos_TextureFormat key, 
 	
 	if (!lzBuffer1)
 	{
+		ZoneScopedN("MC_TextureManager::textureFromMemory lzBuffers");
 		lzBuffer1 = (MemoryPtr)textureCacheHeap->Malloc(MAX_LZ_BUFFER_SIZE);
 		gosASSERT(lzBuffer1 != NULL);
 		
@@ -1837,19 +1845,27 @@ DWORD MC_TextureManager::textureFromMemory (DWORD *data, gos_TextureFormat key, 
 	}
 	
 	actualTextureSize += txmSize;
-	DWORD txmCompressSize = LZCompress(lzBuffer2,(MemoryPtr)data,txmSize);
+	DWORD txmCompressSize;
+	{
+		ZoneScopedN("MC_TextureManager::textureFromMemory LZCompress");
+		txmCompressSize = LZCompress(lzBuffer2,(MemoryPtr)data,txmSize);
+	}
 	compressedTextureSize += txmCompressSize;
 	
  	//-------------------------------------------------------
 	// Create a block of cache memory to hold this texture.
 	if (!masterTextureNodes[i].textureData )
+	{
+		ZoneScopedN("MC_TextureManager::textureFromMemory cacheAlloc");
 		masterTextureNodes[i].textureData = (DWORD *)textureCacheHeap->Malloc(txmCompressSize);
+	}
 	
 	//No More RAM.  Do not display this texture anymore.
 	if (masterTextureNodes[i].textureData == NULL)
 		masterTextureNodes[i].gosTextureHandle = 0;
 	else
 	{
+		ZoneScopedN("MC_TextureManager::textureFromMemory cacheCopy");
 		memcpy(masterTextureNodes[i].textureData,lzBuffer2,txmCompressSize);
 		masterTextureNodes[i].lzCompSize = txmCompressSize;
 	}

@@ -822,6 +822,7 @@ void __stdcall InitializeGameEngine()
 	//__asm push esi;
 
 	// gotta have this no matter what
+	{ ZoneScopedN("InitializeGameEngine resourceDLL");
 #ifdef PLATFORM_WINDOWS
 	#ifdef _WIN64
 		gosResourceHandle = gos_OpenResourceDLL("mc2res_64.dll", NULL, 0);
@@ -831,6 +832,7 @@ void __stdcall InitializeGameEngine()
 #else
 	gosResourceHandle = gos_OpenResourceDLL("./libmc2res.so", NULL, 0);
 #endif
+	}
 
 	if(!gosResourceHandle) {
         fprintf(stderr, "Error loading ResourseDLL (mc2res)\n");
@@ -950,6 +952,7 @@ void __stdcall InitializeGameEngine()
 
 	if (!SnifferMode)
 	{
+		ZoneScopedN("InitializeGameEngine normalStartup");
 		//---------------------------------------------------------------------
 
 		float doubleClickThreshold = 0.2f;
@@ -978,16 +981,19 @@ void __stdcall InitializeGameEngine()
 
 		//--------------------------------------------------------------
 		// Start the SystemHeap and globalHeapList
-		globalHeapList = new HeapList;
-		gosASSERT(globalHeapList != NULL);
-	
-		globalHeapList->init();
-		globalHeapList->update();		//Run Instrumentation into GOS Debugger Screen
-	
-		systemHeap = new UserHeap;
-		gosASSERT(systemHeap != NULL);
-	
-		systemHeap->init(systemHeapSize,"SYSTEM");
+		{
+			ZoneScopedN("InitializeGameEngine heaps");
+			globalHeapList = new HeapList;
+			gosASSERT(globalHeapList != NULL);
+		
+			globalHeapList->init();
+			globalHeapList->update();		//Run Instrumentation into GOS Debugger Screen
+		
+			systemHeap = new UserHeap;
+			gosASSERT(systemHeap != NULL);
+		
+			systemHeap->init(systemHeapSize,"SYSTEM");
+		}
 	
 		//Start finding the Leaks
 //		systemHeap->startHeapMallocLog();
@@ -1008,6 +1014,7 @@ void __stdcall InitializeGameEngine()
 
 		//--------------------------------------------------------------
 		// Read in System.CFG
+		{ ZoneScopedN("InitializeGameEngine system.cfg");
 		FitIniFilePtr systemFile = new FitIniFile;
 	
 	#ifdef _DEBUG
@@ -1214,6 +1221,7 @@ void __stdcall InitializeGameEngine()
 		systemFile->close();
 		delete systemFile;
 		systemFile = NULL;
+		}
 	
 		if (initGameLogs) {
 			GameLog::setup();
@@ -1248,6 +1256,7 @@ void __stdcall InitializeGameEngine()
 	
 		//--------------------------------------------------------------
 		// Read in Prefs.cfg
+		{ ZoneScopedN("InitializeGameEngine prefs.cfg");
 		bool fullScreen = false;
 		FitIniFilePtr prefsFile = new FitIniFile;
 		FitIniFilePtr optsFile = new FitIniFile;
@@ -1510,19 +1519,21 @@ void __stdcall InitializeGameEngine()
 		*/
 	
 		/* load and apply options from "options.cfg" */
-		prefs.load();
-		prefs.applyPrefs();
+		{ ZoneScopedN("InitializeGameEngine prefs.applyPrefs"); prefs.load(); prefs.applyPrefs(); }
+		}
 	
 	
 		//--------------------------------------------------
 		// Setup Mouse Parameters from Prefs.CFG
+		{ ZoneScopedN("InitializeGameEngine input");
 		userInput = new UserInput;
 		userInput->init();
 		userInput->setMouseDoubleClickThreshold(doubleClickThreshold);
 		userInput->setMouseDragThreshold(dragThreshold);
+		}
 		//--------------------------------------------------
 	
-		
+		{ ZoneScopedN("InitializeGameEngine font");
 		char temp[256];
 		cLoadString( IDS_FLOAT_HELP_FONT, temp, 255 );
 		char* pStr = strstr( temp, "," );
@@ -1539,6 +1550,7 @@ void __stdcall InitializeGameEngine()
 		FontHandle = gosFontHandle;
 	
 		globalFloatHelp = new FloatHelp(MAX_FLOAT_HELPS);
+		}
 	
 		//
 		//----------------------------------
@@ -1552,10 +1564,13 @@ void __stdcall InitializeGameEngine()
 		//		DEBUG_STREAM << thing_you_want_to_output
 		//
 		// IMPORTANT NOTE:
+		{ ZoneScopedN("InitializeGameEngine renderClasses");
 		Stuff::InitializeClasses();
 		MidLevelRenderer::InitializeClasses(8192*4,8192,0,0,true);
 		gosFX::InitializeClasses();
+		}
 		
+		{ ZoneScopedN("InitializeGameEngine MLR");
 		gos_PushCurrentHeap(MidLevelRenderer::Heap);
 	
 		MidLevelRenderer::TGAFilePool *pool = new MidLevelRenderer::TGAFilePool("data" PATH_SEPARATOR "tgl" PATH_SEPARATOR "128" PATH_SEPARATOR);
@@ -1565,9 +1580,11 @@ void __stdcall InitializeGameEngine()
 		theClipper = new MidLevelRenderer::MLRClipper(0, cameraSorter);
 		
 		gos_PopCurrentHeap();
+		}
 	
 		//------------------------------------------------------
 		// Start the GOS FX.
+		{ ZoneScopedN("InitializeGameEngine gosFX");
 		gos_PushCurrentHeap(gosFX::Heap);
 		
 		gosFX::EffectLibrary::Instance = new gosFX::EffectLibrary();
@@ -1594,32 +1611,41 @@ void __stdcall InitializeGameEngine()
 		gos_PopCurrentHeap();
 	
 		systemHeap->Free(effectsData);
+		}
 		
 	
 		//--------------------------------------------------------------
 		// Start the GUI Heap.
+		{ ZoneScopedN("InitializeGameEngine guiHeap");
 		guiHeap = new UserHeap;
 		gosASSERT(guiHeap != NULL);
 		
 		guiHeap->init(guiHeapSize,"GUI");
+		}
 		
 		//------------------------------------------------
 		// Fire up the MC Texture Manager.
+		{ ZoneScopedN("InitializeGameEngine textureManager");
 		mcTextureManager = new MC_TextureManager;
 		mcTextureManager->start();
+		}
 	
 		//--------------------------------------------------------------
 		// Load up the mouse cursors
+		{ ZoneScopedN("InitializeGameEngine cursors");
 		userInput->initMouseCursors("cursors");
 		userInput->mouseOff();
 		userInput->setMouseCursor(mState_NORMAL);
+		}
 	
 		//------------------------------------------------
 		// Give the Sound System a Whirl!
+		{ ZoneScopedN("InitializeGameEngine sound");
 		soundSystem = new GameSoundSystem;
 		soundSystem->init();
 		((SoundSystem *)soundSystem)->init("sound");
 		sndSystem = soundSystem; // for things in the lib that use sound
+		}
 		
 		//-----------------------------------------------
 		// Only used by camera to retrieve screen coords.

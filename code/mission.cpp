@@ -1684,9 +1684,9 @@ void Mission::init (const char *missionName, long loadType, long dropZoneID, Stu
 	MCTimeABLLoad=x1-x;
 #endif
 
-	initBareMinimum();
+	{ ZoneScopedN("Mission::init initBareMinimum"); initBareMinimum(); }
 	loadProgress = 4.0f;
-	initTGLForMission();
+	{ ZoneScopedN("Mission::init initTGLForMission"); initTGLForMission(); }
 	
 	//--------------------------------------------------------------
 	// Start the Mission Heap
@@ -3018,10 +3018,12 @@ void Mission::start (void)
 //----------------------------------------------------------------------------------
 void Mission::initTGLForMission()
 {
+	ZoneScopedN("Mission::initTGLForMission");
 	//---------------------------------------------------------
 	// End the Tiny Geometry Layer Heap for Logistics
 	if (TG_Shape::tglHeap)
 	{
+		ZoneScopedN("Mission::initTGLForMission shutdown");
 		//Shut down the TGL RAM pools.
 		if (colorPool)
 		{
@@ -3070,6 +3072,7 @@ void Mission::initTGLForMission()
 	// Start the Tiny Geometry Layer Heap for the Mission.
 	if ( !TG_Shape::tglHeap )
 	{
+		ZoneScopedN("Mission::initTGLForMission startup");
 		//---------------------------------------------------------
 		unsigned long tglHeapSize = 40 * 1024 * 1024;
 

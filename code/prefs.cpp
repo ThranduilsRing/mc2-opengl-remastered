@@ -7,6 +7,7 @@
 #include"prefs.h"
 #include"gamesound.h"
 #include"missiongui.h"
+#include"gos_profiler.h"
 
 #include"soundsys.h"
 #include"../resource.h"
@@ -373,7 +374,9 @@ int CPrefs::save() {
 }
 
 int CPrefs::applyPrefs(bool applyRes) {
+	ZoneScopedN("CPrefs::applyPrefs");
 	if (soundSystem) {
+		ZoneScopedN("CPrefs::applyPrefs soundSystem");
 		/*soundSystem doesn't seem to do anything*/
 		soundSystem->setDigitalMasterVolume(this->DigitalMasterVolume);
 		soundSystem->setSFXVolume(this->sfxVolume);
@@ -383,6 +386,7 @@ int CPrefs::applyPrefs(bool applyRes) {
 	}
 
 	if (sndSystem) {
+		ZoneScopedN("CPrefs::applyPrefs sndSystem");
 		sndSystem->setDigitalMasterVolume(this->DigitalMasterVolume);
 		sndSystem->setSFXVolume(this->sfxVolume);
 		sndSystem->setRadioVolume(this->RadioVolume);
@@ -419,12 +423,14 @@ int CPrefs::applyPrefs(bool applyRes) {
 
 	if (land)
 	{
+		ZoneScopedN("CPrefs::applyPrefs terrainVisibility");
 		land->resetVisibleVertices(::GameVisibleVertices);
 		land->update();
 	}
 
 	if ( applyRes )
 	{
+		ZoneScopedN("CPrefs::applyPrefs resolution");
 		long localRenderer = renderer;
 		if ((renderer != 0) && (renderer != 3))
 			localRenderer = 0;
@@ -434,11 +440,13 @@ int CPrefs::applyPrefs(bool applyRes) {
 		if (Environment.fullScreen && fullScreen)
 			localFullScreen = false;
 
-
-        if (renderer == 3)
-            gos_SetScreenMode(this->resolutionX, this->resolutionY, bitDepth,0,0,0,true,localFullScreen,0,localWindow,0,localRenderer);
-        else
-            gos_SetScreenMode(this->resolutionX, this->resolutionY, bitDepth,renderer,0,0,0,localFullScreen,0,localWindow,0,localRenderer);
+        {
+            ZoneScopedN("CPrefs::applyPrefs gos_SetScreenMode");
+            if (renderer == 3)
+                gos_SetScreenMode(this->resolutionX, this->resolutionY, bitDepth,0,0,0,true,localFullScreen,0,localWindow,0,localRenderer);
+            else
+                gos_SetScreenMode(this->resolutionX, this->resolutionY, bitDepth,renderer,0,0,0,localFullScreen,0,localWindow,0,localRenderer);
+        }
 
         /*
 		switch (resolution)
