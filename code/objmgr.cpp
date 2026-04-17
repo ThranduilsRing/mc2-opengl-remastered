@@ -104,6 +104,10 @@
 #include"mission.h"
 #endif
 
+#ifndef GOS_PROFILER_H
+#include"gos_profiler.h"
+#endif
+
 #define BRIDGE_OBJTYPE				448
 #define MINE1						60
 #define MINE2						251
@@ -1629,71 +1633,30 @@ void GameObjectManager::renderShadows (bool terrain, bool movers, bool other) {
 }
 
 //---------------------------------------------------------------------------
-#ifdef LAB_ONLY
-extern __int64 MCTimeTerrainObjectsUpdate;
-extern __int64 MCTimeMechsUpdate;
-extern __int64 MCTimeVehiclesUpdate;
-extern __int64 MCTimeTurretsUpdate;
 
-extern __int64 MCTimeTerrainObjectsTL;
-extern __int64 MCTimeMechsTL;
-extern __int64 MCTimeVehiclesTL;
-extern __int64 MCTimeTurretsTL;
-
-extern __int64 MCTimeAllElseUpdate;
-__int64 MCTimeCaptureListUpdate		= 0;
-extern __int64 MCTimeTransformandLight;
-extern __int64 MCTimeAnimationandMatrix;
-extern __int64 MCTimePerShapeTransform;
-
-unsigned long bldgCount = 0;
-#endif
-
-void GameObjectManager::update (bool terrain, bool movers, bool other) 
+void GameObjectManager::update (bool terrain, bool movers, bool other)
 {
 	//----------------------------
 	// Now, update game objects...
-	#ifdef LAB_ONLY
-	__int64 x;
-	x=GetCycles();
-	#endif
-	
+
 	updateCaptureList();
 	
-	#ifdef LAB_ONLY
-	x=GetCycles()-x;
-	MCTimeCaptureListUpdate = x;
-	
-	x=GetCycles(); 
-	#endif
-	
- 	if (terrain && renderObjects) 
+ 	if (terrain && renderObjects)
 	{
-		#ifdef LAB_ONLY
-		bldgCount = 0;
-		#endif
-		
+		ZoneScopedN("GameLogic.Units.TerrainObjects");
+
 		//First Update all of the Special Buildings.
 		// They will mark themselves updated and not re-update below.
 		for (long spBuilding = 0; spBuilding < numSpecialBuildings;spBuilding++)
 		{
-			if (specialBuildings[spBuilding] && specialBuildings[spBuilding]->getExists()) 
+			if (specialBuildings[spBuilding] && specialBuildings[spBuilding]->getExists())
 			{
-			#ifdef LAB_ONLY
-				bldgCount++;
-				MCTimeAnimationandMatrix =
-				MCTimePerShapeTransform =
-				MCTimeTransformandLight = 0;
-			#endif
-				if (!specialBuildings[spBuilding]->update()) 
+				if (!specialBuildings[spBuilding]->update())
 				{
 					//-----------------------------------------
 					// Update failed, so it no longer exists...
 					specialBuildings[spBuilding]->setExists(false);
 				}
-			#ifdef LAB_ONLY
-				MCTimeTerrainObjectsTL += MCTimeTransformandLight;
-			#endif
 			}
 		}
 
@@ -1702,133 +1665,77 @@ void GameObjectManager::update (bool terrain, bool movers, bool other)
 		// MUST update every frame or they don't open!!
 		for (long nGates = 0;nGates < numGates;nGates++)
 		{
-			if (gates[nGates] && gates[nGates]->getExists()) 
+			if (gates[nGates] && gates[nGates]->getExists())
 			{
-			#ifdef LAB_ONLY
-				bldgCount++;
-				MCTimeAnimationandMatrix =
-				MCTimePerShapeTransform =
-				MCTimeTransformandLight = 0;
-			#endif
-				if (!gates[nGates]->update()) 
+				if (!gates[nGates]->update())
 				{
 					//-----------------------------------------
 					// Update failed, so it no longer exists...
 					gates[nGates]->setExists(false);
 				}
-			#ifdef LAB_ONLY
-				MCTimeTerrainObjectsTL += MCTimeTransformandLight;
-			#endif
 			}
 		}
-		
-		for (long terrainBlock = 0; terrainBlock < Terrain::numObjBlocks; terrainBlock++) 
+
+		for (long terrainBlock = 0; terrainBlock < Terrain::numObjBlocks; terrainBlock++)
 		{
-			if (Terrain::objBlockInfo[terrainBlock].active || (turn < 3)) 
+			if (Terrain::objBlockInfo[terrainBlock].active || (turn < 3))
 			{
 				long numObjs = Terrain::objBlockInfo[terrainBlock].numObjects;
 				long objIndex = Terrain::objBlockInfo[terrainBlock].firstHandle;
-				for (long terrainObj = 0; terrainObj < numObjs; terrainObj++,objIndex++) 
+				for (long terrainObj = 0; terrainObj < numObjs; terrainObj++,objIndex++)
 				{
-					if (objList[objIndex] && 
-						(Terrain::objVertexActive[objList[objIndex]->getVertexNum()] || (turn < 3)) && 
+					if (objList[objIndex] &&
+						(Terrain::objVertexActive[objList[objIndex]->getVertexNum()] || (turn < 3)) &&
 						objList[objIndex]->getExists())
 					{
-			#ifdef LAB_ONLY
-				bldgCount++;
-				
-				MCTimeAnimationandMatrix =
-				MCTimePerShapeTransform =
-				MCTimeTransformandLight = 0;
-			#endif
-						
-						if (!objList[objIndex]->update()) 
+						if (!objList[objIndex]->update())
 						{
 							//-----------------------------------------
 							// Update failed, so it no longer exists...
 							objList[objIndex]->setExists(false);
 						}
-						
-			#ifdef LAB_ONLY
-				MCTimeTerrainObjectsTL += MCTimeTransformandLight;
-			#endif
 					}
 				}
 			}
 		}
 	}
-
-	#ifdef LAB_ONLY
-	x=GetCycles()-x;
-	MCTimeTerrainObjectsUpdate = x;
-	#endif
 	
  	if (movers) {
 		static MoverPtr removeList[MAX_MOVERS];
 		long numRemoved = 0;
-		
-		#ifdef LAB_ONLY
-		x=GetCycles();
-		#endif
-		
+
 		if (mechs)
 		{
-			for (long i = 0; i < numMechs; i++) 
+			ZoneScopedN("GameLogic.Units.Mechs");
+			for (long i = 0; i < numMechs; i++)
 			{
 				MoverPtr mover = mechs[i];
-				if (mover && mover->getExists()) 
+				if (mover && mover->getExists())
 				{
-			#ifdef LAB_ONLY
-				MCTimeAnimationandMatrix =
-				MCTimePerShapeTransform =
-				MCTimeTransformandLight = 0;
-			#endif
 					if (!mover->update())
 						mover->setExists(false);
-			#ifdef LAB_ONLY
-				MCTimeMechsTL += MCTimeTransformandLight;
-			#endif
 					if (mover->getFlag(OBJECT_FLAG_REMOVED))
 						removeList[numRemoved++] = mover;
 				}
 			}
 		}
 
-		#ifdef LAB_ONLY
-		x=GetCycles()-x;
-		MCTimeMechsUpdate = x;
-		
-		x=GetCycles(); 
-		#endif
-	
 		if (vehicles)
 		{
-			for (long i = 0; i < maxVehicles; i++) 
+			ZoneScopedN("GameLogic.Units.Vehicles");
+			for (long i = 0; i < maxVehicles; i++)
 			{
 				MoverPtr mover = vehicles[i];
-				if (mover && mover->getExists()) 
+				if (mover && mover->getExists())
 				{
-			#ifdef LAB_ONLY
-				MCTimeAnimationandMatrix =
-				MCTimePerShapeTransform =
-				MCTimeTransformandLight = 0;
-			#endif
 					if (!mover->update())
 						mover->setExists(false);
-			#ifdef LAB_ONLY
-				MCTimeVehiclesTL += MCTimeTransformandLight;
-			#endif
 					if (mover->getFlag(OBJECT_FLAG_REMOVED))
 						removeList[numRemoved++] = mover;
 				}
 			}
 		}
-			
-		#ifdef LAB_ONLY
-		x=GetCycles()-x;
-		MCTimeVehiclesUpdate = x;
-		#endif
-		
+
 		for (long i = 0; i < numRemoved; i++)
 			mission->removeMover(removeList[i]);
 	}
@@ -1836,38 +1743,20 @@ void GameObjectManager::update (bool terrain, bool movers, bool other)
 	if (other) {
 		//---------------------------------------
 		// All other objects should be updated...
-		#ifdef LAB_ONLY
-		__int64 x;
-		x=GetCycles();
-		#endif
-	
-		if (turrets) 
+
+		if (turrets)
 		{
-			for (long i=0;i<numTurrets;i++) 
+			ZoneScopedN("GameLogic.Units.Turrets");
+			for (long i=0;i<numTurrets;i++)
 			{
-				if (turrets[i] && turrets[i]->getExists()) 
+				if (turrets[i] && turrets[i]->getExists())
 				{
-			#ifdef LAB_ONLY
-				MCTimeAnimationandMatrix =
-				MCTimePerShapeTransform =
-				MCTimeTransformandLight = 0;
-			#endif
 					if (!turrets[i]->update())
 						turrets[i]->setExists(false);
-			#ifdef LAB_ONLY
-				MCTimeTurretsTL += MCTimeTransformandLight;
-			#endif
 				}
 			}
 		}
-		
-		#ifdef LAB_ONLY
-		x=GetCycles()-x;
-		MCTimeTurretsUpdate = x;
-		
-		x=GetCycles(); 
-		#endif
-		
+
 		if (weapons) {
 			for (long i=0;i<numWeapons;i++) {
 				if (weapons[i] && weapons[i]->getExists()) {
@@ -1903,11 +1792,6 @@ void GameObjectManager::update (bool terrain, bool movers, bool other)
 				}
 			}
 		}
-		
-		#ifdef LAB_ONLY
-		x=GetCycles()-x;
-		MCTimeAllElseUpdate = x;
-		#endif
 	}
 }
 
