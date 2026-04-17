@@ -1041,9 +1041,9 @@ void TerrainColorMap::resetDetailTexture (const char *fileName)
 	detailFile.init(texturePath,dName,".tga");
 
 	if (fileExists(detailFile))		//Otherwise, its already 0xffffffff!!
-		detailTextureNodeIndex = mcTextureManager->loadTexture(detailFile,gos_Texture_Alpha,gosHint_DontShrink);
+		detailTextureNodeIndex = mcTextureManager->loadTexture(detailFile,gos_Texture_Alpha,gosHint_DontShrink, 0, 0x1);
 #else
-	detailTextureNodeIndex = mcTextureManager->loadTexture(fileName,gos_Texture_Alpha,gosHint_DontShrink);
+	detailTextureNodeIndex = mcTextureManager->loadTexture(fileName,gos_Texture_Alpha,gosHint_DontShrink, 0, 0x1);
 #endif
 }
 
@@ -1072,9 +1072,9 @@ void TerrainColorMap::resetWaterTexture (const char *fileName)
 	waterFile.init(texturePath,dName,".tga");
 	
 	if (fileExists(waterFile))    //Otherwise, its already 0xffffffff!! 
-		waterTextureNodeIndex = mcTextureManager->loadTexture(waterFile,gos_Texture_Solid,0);
+		waterTextureNodeIndex = mcTextureManager->loadTexture(waterFile,gos_Texture_Solid,0, 0, 0x1);
 #else
-	waterTextureNodeIndex = mcTextureManager->loadTexture(fileName,gos_Texture_Solid,0);
+	waterTextureNodeIndex = mcTextureManager->loadTexture(fileName,gos_Texture_Solid,0, 0, 0x1);
 #endif
 }
 
@@ -1121,7 +1121,7 @@ void TerrainColorMap::resetWaterDetailTextures (const char *fileName)
 				numWaterDetailFrames = 0;
 			}
 
-			waterDetailNodeIndex[i] = mcTextureManager->loadTexture(waterFile,gos_Texture_Alpha,gosHint_DontShrink);
+			waterDetailNodeIndex[i] = mcTextureManager->loadTexture(waterFile,gos_Texture_Alpha,gosHint_DontShrink, 0, 0x1);
 			numWaterDetailFrames++;
 		}
 		else
@@ -1615,7 +1615,7 @@ long TerrainColorMap::init (char *fileName)
 		if (fileExists(detailFile))		//Otherwise, its already 0xffffffff!!
 		{
 			ZoneScopedN("TerrainColorMap::init detailTexture");
-			detailTextureNodeIndex = mcTextureManager->loadTexture(detailFile,gos_Texture_Alpha,gosHint_DontShrink);
+			detailTextureNodeIndex = mcTextureManager->loadTexture(detailFile,gos_Texture_Alpha,gosHint_DontShrink, 0, 0x1);
 		}
 		else
 			gosASSERT(false);
@@ -1638,7 +1638,7 @@ long TerrainColorMap::init (char *fileName)
 		if (fileExists(waterFile))
 		{
 			ZoneScopedN("TerrainColorMap::init waterTexture");
-			waterTextureNodeIndex = mcTextureManager->loadTexture(waterFile,gos_Texture_Solid,0);
+			waterTextureNodeIndex = mcTextureManager->loadTexture(waterFile,gos_Texture_Solid,0, 0, 0x1);
 		}
 		else
 			gosASSERT(false);
@@ -1751,12 +1751,20 @@ long TerrainColorMap::init (char *fileName)
 				ZoneScopedN("TerrainColorMap::init jpgColorMap tileLoop");
 				for (unsigned long i=0;i<numTextures;i++)
 				{
-					txmRAM[i].ourRAM = (MemoryPtr)colorMapRAMHeap->Malloc(sizeof(DWORD) * COLOR_MAP_TEXTURE_SIZE * COLOR_MAP_TEXTURE_SIZE);
-					gosASSERT(txmRAM[i].ourRAM != NULL);
-					
-					getColorMapData(txmRAM[i].ourRAM,i, jpgColorMapWidth);
-					
-					textures[i].mcTextureNodeIndex = mcTextureManager->textureFromMemory((DWORD *)txmRAM[i].ourRAM,gos_Texture_Solid,gosHint_DontShrink,COLOR_MAP_TEXTURE_SIZE);
+					{
+						ZoneScopedN("TerrainColorMap::init jpgColorMap tileAlloc");
+						txmRAM[i].ourRAM = (MemoryPtr)colorMapRAMHeap->Malloc(sizeof(DWORD) * COLOR_MAP_TEXTURE_SIZE * COLOR_MAP_TEXTURE_SIZE);
+						gosASSERT(txmRAM[i].ourRAM != NULL);
+					}
+					{
+						ZoneScopedN("TerrainColorMap::init jpgColorMap tileExtract");
+						getColorMapData(txmRAM[i].ourRAM,i, jpgColorMapWidth);
+					}
+					{
+						ZoneScopedN("TerrainColorMap::init jpgColorMap tileCache");
+						textures[i].mcTextureNodeIndex = mcTextureManager->textureFromMemoryRaw((DWORD *)txmRAM[i].ourRAM,gos_Texture_Solid,gosHint_DontShrink,COLOR_MAP_TEXTURE_SIZE);
+						mcTextureManager->setTextureNeverFlush(textures[i].mcTextureNodeIndex, 0x1);
+					}
 				}
 			}
 		
@@ -1877,12 +1885,20 @@ long TerrainColorMap::init (char *fileName)
 					ZoneScopedN("TerrainColorMap::init colorMap tileLoop");
 					for (unsigned long i=0;i<numTextures;i++)
 					{
-						txmRAM[i].ourRAM = (MemoryPtr)colorMapRAMHeap->Malloc(sizeof(DWORD) * COLOR_MAP_TEXTURE_SIZE * COLOR_MAP_TEXTURE_SIZE);
-						gosASSERT(txmRAM[i].ourRAM != NULL);
-
-						getColorMapData(txmRAM[i].ourRAM,i, colorMapInfo.width);
-
-						{ ZoneScopedN("TerrainColorMap::init colorMapTiles"); textures[i].mcTextureNodeIndex = mcTextureManager->textureFromMemory((DWORD *)txmRAM[i].ourRAM,gos_Texture_Solid,gosHint_DontShrink,COLOR_MAP_TEXTURE_SIZE); }
+						{
+							ZoneScopedN("TerrainColorMap::init colorMap tileAlloc");
+							txmRAM[i].ourRAM = (MemoryPtr)colorMapRAMHeap->Malloc(sizeof(DWORD) * COLOR_MAP_TEXTURE_SIZE * COLOR_MAP_TEXTURE_SIZE);
+							gosASSERT(txmRAM[i].ourRAM != NULL);
+						}
+						{
+							ZoneScopedN("TerrainColorMap::init colorMap tileExtract");
+							getColorMapData(txmRAM[i].ourRAM,i, colorMapInfo.width);
+						}
+						{
+							ZoneScopedN("TerrainColorMap::init colorMap tileCache");
+							textures[i].mcTextureNodeIndex = mcTextureManager->textureFromMemoryRaw((DWORD *)txmRAM[i].ourRAM,gos_Texture_Solid,gosHint_DontShrink,COLOR_MAP_TEXTURE_SIZE);
+							mcTextureManager->setTextureNeverFlush(textures[i].mcTextureNodeIndex, 0x1);
+						}
 						if (i % 50 == 0)
 						{
 						}
@@ -1985,10 +2001,17 @@ long TerrainColorMap::init (char *fileName)
 
 
 					// Allocate texture handles (use malloc, not colorMapHeap which is freed)
-					normalMapTextures = (ColorMapTextures *)malloc(sizeof(ColorMapTextures) * numNormalMapTextures);
+					{
+						ZoneScopedN("TerrainColorMap::init normalMap allocHandles");
+						normalMapTextures = (ColorMapTextures *)malloc(sizeof(ColorMapTextures) * numNormalMapTextures);
+					}
 
 					// Slice and upload tiles (same grid as colormap)
-					MemoryPtr tileRAM = (MemoryPtr)malloc(sizeof(DWORD) * COLOR_MAP_TEXTURE_SIZE * COLOR_MAP_TEXTURE_SIZE);
+					MemoryPtr tileRAM = NULL;
+					{
+						ZoneScopedN("TerrainColorMap::init normalMap allocTileBuffer");
+						tileRAM = (MemoryPtr)malloc(sizeof(DWORD) * COLOR_MAP_TEXTURE_SIZE * COLOR_MAP_TEXTURE_SIZE);
+					}
 					{ ZoneScopedN("TerrainColorMap::init normalMap tileLoop");
 					for (DWORD i = 0; i < numNormalMapTextures; i++)
 					{
@@ -1999,17 +2022,24 @@ long TerrainColorMap::init (char *fileName)
 						if (startCol > 0) startCol -= 1;
 						if (startRow > 0) startRow -= nmInfo.width;
 
-						MemoryPtr src = nmColorMap + (startCol + startRow) * sizeof(DWORD);
-						MemoryPtr dst = tileRAM;
-						for (long row = 0; row < COLOR_MAP_TEXTURE_SIZE; row++)
 						{
-							memcpy(dst, src, COLOR_MAP_TEXTURE_SIZE * sizeof(DWORD));
-							dst += COLOR_MAP_TEXTURE_SIZE * sizeof(DWORD);
-							src += nmInfo.width * sizeof(DWORD);
+							ZoneScopedN("TerrainColorMap::init normalMap tileExtract");
+							MemoryPtr src = nmColorMap + (startCol + startRow) * sizeof(DWORD);
+							MemoryPtr dst = tileRAM;
+							for (long row = 0; row < COLOR_MAP_TEXTURE_SIZE; row++)
+							{
+								memcpy(dst, src, COLOR_MAP_TEXTURE_SIZE * sizeof(DWORD));
+								dst += COLOR_MAP_TEXTURE_SIZE * sizeof(DWORD);
+								src += nmInfo.width * sizeof(DWORD);
+							}
 						}
 
-						{ ZoneScopedN("TerrainColorMap::init normalMapTiles"); normalMapTextures[i].mcTextureNodeIndex = mcTextureManager->textureFromMemory(
-							(DWORD *)tileRAM, gos_Texture_Solid, gosHint_DontShrink, COLOR_MAP_TEXTURE_SIZE); }
+						{
+							ZoneScopedN("TerrainColorMap::init normalMap tileCache");
+							normalMapTextures[i].mcTextureNodeIndex = mcTextureManager->textureFromMemoryRaw(
+								(DWORD *)tileRAM, gos_Texture_Solid, gosHint_DontShrink, COLOR_MAP_TEXTURE_SIZE);
+							mcTextureManager->setTextureNeverFlush(normalMapTextures[i].mcTextureNodeIndex, 0x1);
+						}
 					}
 					}
 
@@ -2340,7 +2370,10 @@ DWORD TerrainColorMap::getTextureHandle (VertexPtr vMin, VertexPtr vMax, Terrain
 			}
 		}
 		lastResultTexture = resultTexture;
-		mcTextureManager->get_gosTextureHandle(textures[resultTexture].mcTextureNodeIndex);
+		{
+			ZoneScopedN("TerrainColorMap::getTextureHandle realizeTexture");
+			mcTextureManager->get_gosTextureHandle(textures[resultTexture].mcTextureNodeIndex);
+		}
 		return textures[resultTexture].mcTextureNodeIndex;
 	}
 

@@ -125,7 +125,7 @@ void aObject::init(FitIniFile* file, const char* blockName, DWORD neverFlush)
 			S_strlwr( buffer );
 			if ( !strstr( buffer, ".tga" ) )
 				strcat( buffer, ".tga" );
-			int ID = mcTextureManager->loadTexture( buffer, bAlpha ? gos_Texture_Alpha : gos_Texture_Keyed, 0, 0, 0x2);
+			int ID = mcTextureManager->loadTexture( buffer, bAlpha ? gos_Texture_Alpha : gos_Texture_Keyed, 0, 0, neverFlush);
 			textureHandle = ID;
 			DWORD logicalWidth = 0;
 			DWORD logicalHeight = 0;

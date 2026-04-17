@@ -13,6 +13,7 @@ LogisticsScreen.cpp			: Implementation of the LogisticsScreen component.
 #include"aedit.h"
 #include"err.h"
 #include"aanimobject.h"
+#include "../GameOS/gameos/gos_profiler.h"
 
 extern long helpTextID;
 extern long helpTextHeaderID;
@@ -93,6 +94,7 @@ void	LogisticsScreen::clear()
 void LogisticsScreen::init( FitIniFile& file, const char* staticName, const char* textName, const char* rectName,
 					  const char* buttonName, const char* editName, const char* animObjectName, DWORD neverFlush )
 {
+	ZoneScopedN("LogisticsScreen::init");
 	clear();
 	
 	char blockName[256];
@@ -100,6 +102,7 @@ void LogisticsScreen::init( FitIniFile& file, const char* staticName, const char
 	// init statics
 	if ( staticName )
 	{
+		ZoneScopedN("LogisticsScreen::init statics");
 		sprintf( blockName, "%s%c", staticName, 's' );
 		if ( NO_ERR == file.seekBlock( blockName ) )
 		{
@@ -107,11 +110,15 @@ void LogisticsScreen::init( FitIniFile& file, const char* staticName, const char
 
 			if ( staticCount )
 			{
-				statics = new aObject[staticCount];
+				{
+					ZoneScopedN("LogisticsScreen::init statics alloc");
+					statics = new aObject[staticCount];
+				}
 
 				char blockName[128];
 				for ( int i = 0; i < staticCount; i++ )
 				{
+					ZoneScopedN("LogisticsScreen::init static");
 					sprintf( blockName, "%s%d", staticName, i );
 					statics[i].init( &file, blockName );			
 				}
@@ -122,6 +129,7 @@ void LogisticsScreen::init( FitIniFile& file, const char* staticName, const char
 
 	if ( rectName )
 	{
+		ZoneScopedN("LogisticsScreen::init rects");
 		// init rects
 		sprintf( blockName, "%s%c", rectName, 's' );
 		if ( NO_ERR == file.seekBlock( blockName ) )
@@ -129,11 +137,15 @@ void LogisticsScreen::init( FitIniFile& file, const char* staticName, const char
 			file.readIdLong( "rectCount", rectCount );
 			if ( rectCount )
 			{
-				rects = new aRect[rectCount];
+				{
+					ZoneScopedN("LogisticsScreen::init rects alloc");
+					rects = new aRect[rectCount];
+				}
 
 				char blockName[128];
 				for ( int i = 0; i < rectCount; i++ )
 				{
+					ZoneScopedN("LogisticsScreen::init rect");
 					sprintf( blockName, "%s%d", rectName, i );
 					rects[i].init( &file, blockName );
 				}
@@ -145,6 +157,7 @@ void LogisticsScreen::init( FitIniFile& file, const char* staticName, const char
 	// init buttons
 	if ( buttonName )
 	{
+		ZoneScopedN("LogisticsScreen::init buttons");
 		sprintf( blockName, "%s%c", buttonName, 's' );
 		if ( NO_ERR == file.seekBlock( blockName ) )
 		{
@@ -153,9 +166,13 @@ void LogisticsScreen::init( FitIniFile& file, const char* staticName, const char
 			if ( buttonCount )
 			{
 				char blockName[128];
-				buttons = new aAnimButton[buttonCount];
+				{
+					ZoneScopedN("LogisticsScreen::init buttons alloc");
+					buttons = new aAnimButton[buttonCount];
+				}
 				for ( int i = 0; i < buttonCount; i++ )
 				{
+					ZoneScopedN("LogisticsScreen::init button");
 					sprintf( blockName,"%s%d", buttonName, i );
 					buttons[i].init( file, blockName );
 					addChild( &buttons[i] );
@@ -168,6 +185,7 @@ void LogisticsScreen::init( FitIniFile& file, const char* staticName, const char
 	// init texts
 	if ( textName )
 	{
+		ZoneScopedN("LogisticsScreen::init texts");
 		sprintf( blockName, "%s%c", textName, 's' );
 		if ( NO_ERR == file.seekBlock( blockName ) )
 		{
@@ -176,10 +194,14 @@ void LogisticsScreen::init( FitIniFile& file, const char* staticName, const char
 
 			if ( textCount )
 			{
-				textObjects = new aText[textCount];
+				{
+					ZoneScopedN("LogisticsScreen::init texts alloc");
+					textObjects = new aText[textCount];
+				}
 				char blockName[64];
 				for ( int i = 0; i < textCount; i++ )
 				{
+					ZoneScopedN("LogisticsScreen::init text");
 					sprintf( blockName, "%s%d", textName, i );
 					textObjects[i].init( &file, blockName );
 				}
@@ -190,6 +212,7 @@ void LogisticsScreen::init( FitIniFile& file, const char* staticName, const char
 
 	if ( editName )
 	{
+		ZoneScopedN("LogisticsScreen::init edits");
 		sprintf( blockName, "%s%c", editName, 's' );
 		if ( NO_ERR == file.seekBlock( blockName ) )
 		{
@@ -198,10 +221,14 @@ void LogisticsScreen::init( FitIniFile& file, const char* staticName, const char
 
 			if ( editCount )
 			{
-				edits = new aEdit[editCount];
+				{
+					ZoneScopedN("LogisticsScreen::init edits alloc");
+					edits = new aEdit[editCount];
+				}
 				char blockName[64];
 				for ( int i = 0; i < editCount; i++ )
 				{
+					ZoneScopedN("LogisticsScreen::init edit");
 					sprintf( blockName, "%s%d", editName, i );
 					edits[i].init( &file, blockName );
 				}
@@ -212,6 +239,7 @@ void LogisticsScreen::init( FitIniFile& file, const char* staticName, const char
 
 	if ( animObjectName )
 	{
+		ZoneScopedN("LogisticsScreen::init animObjects");
 		sprintf( blockName, "%s%c", animObjectName, 's' );
 		if ( NO_ERR == file.seekBlock( blockName ) )
 		{
@@ -219,10 +247,14 @@ void LogisticsScreen::init( FitIniFile& file, const char* staticName, const char
 
 			if ( animObjectsCount )
 			{
-				animObjects = new aAnimObject[animObjectsCount];
+				{
+					ZoneScopedN("LogisticsScreen::init animObjects alloc");
+					animObjects = new aAnimObject[animObjectsCount];
+				}
 				char blockName[64];
 				for ( int i = 0; i < animObjectsCount; i++ )
 				{
+					ZoneScopedN("LogisticsScreen::init animObject");
 					sprintf( blockName, "%s%d", animObjectName, i );
 					animObjects[i].init( &file, blockName, neverFlush );
 				}

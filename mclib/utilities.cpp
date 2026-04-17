@@ -293,7 +293,7 @@ void StaticInfo::init( FitIniFile& file, const char* blockName, long hiResOffset
 		int ID;
 		{
 			ZoneScopedN("StaticInfo::init loadTexture");
-			ID = mcTextureManager->loadTexture( fullPath, gos_Texture_Alpha, 0, 0, 0x2 );
+			ID = mcTextureManager->loadTexture( fullPath, gos_Texture_Alpha, 0, 0, neverFlush );
 		}
 		textureHandle = ID;
 		DWORD logicalWidth = 0;

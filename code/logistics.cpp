@@ -71,6 +71,7 @@ extern CPrefs prefs;
 
 #include"missionresults.h"
 #include"paths.h"
+#include"../GameOS/gameos/gos_profiler.h"
 
 extern bool quitGame;
 extern bool justStartMission;
@@ -103,6 +104,7 @@ void Logistics::destroy (void)
 //----------------------------------------------------------------------------------
 void Logistics::start (long startMode)
 {
+	ZoneScopedN("Logistics::start");
 	bMissionLoaded  = 0;
 	userInput->setMouseCursor( mState_LOGISTICS );
 //	userInput->mouseOn();
@@ -197,7 +199,9 @@ void Logistics::start (long startMode)
 				}
 			}
 			
+			{ ZoneScopedN("Logistics::start initializeLogData");
 			initializeLogData();
+			}
 			
 			bool bTestScript = false;
 			if ( bTestScript )
@@ -216,6 +220,7 @@ void Logistics::start (long startMode)
 
 			if ( !missionBegin )
 			{
+				ZoneScopedN("Logistics::start missionBeginInit");
 				missionBegin = new MissionBegin;
 				missionBegin->beginSplash();
 				missionBegin->init();
@@ -226,9 +231,12 @@ void Logistics::start (long startMode)
 
 		case log_ZONE:
 		{
+			{ ZoneScopedN("Logistics::start logisticsData.init");
 			logisticsData.init();
+			}
 			if ( !missionBegin )
 			{
+				ZoneScopedN("Logistics::start missionBeginInit");
 				missionBegin = new MissionBegin;
 				missionBegin->init();
 			}
@@ -849,9 +857,12 @@ if (!MPlayer) {
 
 void Logistics::initializeLogData()
 {
+	ZoneScopedN("Logistics::initializeLogData");
 	LogisticsData::instance->removeMechsInForceGroup();
 
+	{ ZoneScopedN("Logistics::initializeLogData LogisticsData::init");
 	LogisticsData::instance->init();
+	}
 	Team* pTeam = Team::home;
 
 	if ( pTeam )

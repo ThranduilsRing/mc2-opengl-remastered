@@ -79,7 +79,7 @@ gosPostProcess::gosPostProcess()
     , ssaoPower_(1.5f)
     , sceneHasTerrain_(false)
     , prevFrameHadTerrain_(false)
-    , grassEnabled_(true)
+    , grassEnabled_(false)
     , grassProg_(nullptr)
     , godrayEnabled_(false)  // disabled: no visible sky at RTS zoom. RAlt+6 to test.
     , godrayProg_(nullptr)
@@ -172,16 +172,8 @@ void gosPostProcess::init(int w, int h)
     if (!ssaoApplyProg_ || !ssaoApplyProg_->is_valid())
         fprintf(stderr, "gosPostProcess: failed to compile ssao_apply shader\n");
 
-    // Grass geometry shader program — full tessellation pipeline + geometry expansion
-    grassProg_ = glsl_program::makeProgram2("grass",
-        "shaders/gos_terrain.vert",
-        "shaders/gos_terrain.tesc",
-        "shaders/gos_terrain.tese",
-        "shaders/gos_grass.geom",
-        "shaders/gos_grass.frag",
-        0, nullptr, kShaderPrefix);
-    if (!grassProg_ || !grassProg_->is_valid())
-        fprintf(stderr, "gosPostProcess: failed to compile grass shader\n");
+    // Grass is deprecated; keep the path disabled and skip shader setup entirely.
+    grassProg_ = nullptr;
 
     godrayProg_ = glsl_program::makeProgram("godray",
         "shaders/postprocess.vert", "shaders/godray.frag", kShaderPrefix);

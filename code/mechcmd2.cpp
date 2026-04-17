@@ -352,45 +352,62 @@ void DEBUGWINS_destroy (void) {
 
 void initDialogs()
 {
+	ZoneScopedN("initDialogs");
 	FullPathFileName path;
 	path.init( artPath, "mcl_dialog", ".fit" );
 
 	FitIniFile file;
-	if ( NO_ERR != file.open( path ) )
 	{
-		char error[256];
-		sprintf( error, "couldn't open file %s", (const char*)path );
-		Assert( 0, 0, error );
-		return;
+		ZoneScopedN("initDialogs mcl_dialog open");
+		if ( NO_ERR != file.open( path ) )
+		{
+			char error[256];
+			sprintf( error, "couldn't open file %s", (const char*)path );
+			Assert( 0, 0, error );
+			return;
+		}
 	}
-
-	LogisticsOKDialog::init( file );
+	{
+		ZoneScopedN("initDialogs LogisticsOKDialog::init");
+		LogisticsOKDialog::init( file );
+	}
 	file.close();
 
 	path.init( artPath, "mcl_sm", ".fit" );
 
-	if ( NO_ERR != file.open( path ) )
 	{
-		char error[256];
-		sprintf( error, "couldn't open file %s", (const char*)path );
-		Assert( 0, 0, error );
-		return;
+		ZoneScopedN("initDialogs mcl_sm open");
+		if ( NO_ERR != file.open( path ) )
+		{
+			char error[256];
+			sprintf( error, "couldn't open file %s", (const char*)path );
+			Assert( 0, 0, error );
+			return;
+		}
 	}
 
-	LogisticsSaveDialog::init( file );
+	{
+		ZoneScopedN("initDialogs LogisticsSaveDialog::init");
+		LogisticsSaveDialog::init( file );
+	}
 	file.close();
 
 	path.init( artPath, "mcl_dialog_onebutton", ".fit" );
-	if ( NO_ERR != file.open( path ) )
 	{
-		char error[256];
-		sprintf( error, "couldn't open file %s", (const char*)path );
-		Assert( 0, 0, error );
-		return;
+		ZoneScopedN("initDialogs mcl_dialog_onebutton open");
+		if ( NO_ERR != file.open( path ) )
+		{
+			char error[256];
+			sprintf( error, "couldn't open file %s", (const char*)path );
+			Assert( 0, 0, error );
+			return;
+		}
 	}
 
-	LogisticsOneButtonDialog::init( file );
-
+	{
+		ZoneScopedN("initDialogs LogisticsOneButtonDialog::init");
+		LogisticsOneButtonDialog::init( file );
+	}
 }
 
 void endDialogs()
@@ -668,6 +685,7 @@ DWORD endTime;
 //---------------------------------------------------------------------------
 void __stdcall UpdateRenderers()
 {
+	ZoneScopedN("UpdateRenderers");
 	if (!SnifferMode)
 	{
 		hasGuardBand = true;
@@ -683,27 +701,34 @@ void __stdcall UpdateRenderers()
 		if (eye && mission->isActive())
 			bColor = eye->fogColor;
 
-		gos_SetupViewport(1,1.0,1,bColor, 0.0, 0.0, 1.0, 1.0 );		//ALWAYS FULL SCREEN for now
-		gos_SetRenderState( gos_State_Filter, gos_FilterBiLinear );
+		{
+			ZoneScopedN("UpdateRenderers setupStates");
+			gos_SetupViewport(1,1.0,1,bColor, 0.0, 0.0, 1.0, 1.0 );		//ALWAYS FULL SCREEN for now
+			gos_SetRenderState( gos_State_Filter, gos_FilterBiLinear );
 
-		gos_SetRenderState( gos_State_AlphaMode, gos_Alpha_AlphaInvAlpha );
+			gos_SetRenderState( gos_State_AlphaMode, gos_Alpha_AlphaInvAlpha );
 
-		gos_SetRenderState( gos_State_AlphaTest, TRUE );
+			gos_SetRenderState( gos_State_AlphaTest, TRUE );
 
-		gos_SetRenderState( gos_State_Clipping, TRUE);
+			gos_SetRenderState( gos_State_Clipping, TRUE);
 
-		gos_SetRenderState( gos_State_TextureAddress, gos_TextureClamp );
+			gos_SetRenderState( gos_State_TextureAddress, gos_TextureClamp );
 
-		gos_SetRenderState( gos_State_Dither, 1);
+			gos_SetRenderState( gos_State_Dither, 1);
+		}
 
 
 		//---------------------------------------------------------------------------------------
 		// Tell the mission to render, the operation to render and the logistics to render here.
 		if (mission && (!optionsScreenWrapper || optionsScreenWrapper->isDone() ) )
+		{
+			ZoneScopedN("UpdateRenderers missionRender");
 			mission->render();
+		}
 
 		if (logistics)
 		{
+			ZoneScopedN("UpdateRenderers logisticsRender");
 			float viewMulX, viewMulY, viewAddX, viewAddY;
 			gos_GetViewport(&viewMulX, &viewMulY, &viewAddX, &viewAddY);
 			userInput->setViewport(viewMulX,viewMulY,viewAddX,viewAddY);
@@ -713,6 +738,7 @@ void __stdcall UpdateRenderers()
 
 		if (optionsScreenWrapper && !optionsScreenWrapper->isDone() )
 		{
+			ZoneScopedN("UpdateRenderers optionsRender");
 			float viewMulX, viewMulY, viewAddX, viewAddY;
 			gos_GetViewport(&viewMulX, &viewMulY, &viewAddX, &viewAddY);
 			userInput->setViewport(viewMulX,viewMulY,viewAddX,viewAddY);
@@ -721,10 +747,16 @@ void __stdcall UpdateRenderers()
 		}
 
 		//------------------------------------------------------------
-		gos_SetRenderState( gos_State_Filter, gos_FilterNone );
-		userInput->render();
+		{
+			ZoneScopedN("UpdateRenderers uiRender");
+			gos_SetRenderState( gos_State_Filter, gos_FilterNone );
+			userInput->render();
+		}
 
-		DEBUGWINS_render();
+		{
+			ZoneScopedN("UpdateRenderers debugWindows");
+			DEBUGWINS_render();
+		}
 
 		#ifdef LAB_ONLY
 		if (currentLineElement)
@@ -1649,6 +1681,7 @@ void __stdcall InitializeGameEngine()
 		
 		//-----------------------------------------------
 		// Only used by camera to retrieve screen coords.
+		{ ZoneScopedN("InitializeGameEngine paneWindow");
 		globalPane = new PANE;
 		globalWindow = new WINDOW;
 	
@@ -1663,27 +1696,38 @@ void __stdcall InitializeGameEngine()
 		globalWindow->stencil = NULL;
 		globalWindow->x_max = globalPane->x1 - globalPane->x0 - 1;
 		globalWindow->y_max = globalPane->y1 - globalPane->y0 - 1;
+		}
 	
 		//---------------------------------------------------------
 		// Start the Timers
+		{ ZoneScopedN("InitializeGameEngine timers");
 		timerManager = new TimerManager;
 		timerManager->init();
+		}
 	
 		//---------------------------------------------------------
 		// Start the Color table code
+		{ ZoneScopedN("InitializeGameEngine colorTables");
 		initColorTables();
+		}
 				
 		//---------------------------------------------------------
 		// Start the Mission, Scenario and Logistics classes here
+		{ ZoneScopedN("InitializeGameEngine missionLogistics");
 		mission = new Mission;
 		
 		logistics = new Logistics;
+		}
 	
+		{ ZoneScopedN("InitializeGameEngine debugWindow");
         const char* dbgfont = "assets" PATH_SEPARATOR "graphics" PATH_SEPARATOR "arial8.tga";
 		GameDebugWindow::setFont(dbgfont);
 		DEBUGWINS_init();
+		}
 	
+		{ ZoneScopedN("InitializeGameEngine networking");
 		StartupNetworking();
+		}
 
 #ifdef USE_movie
 		movieSoundUseDirectSound(0);
@@ -1703,18 +1747,31 @@ void __stdcall InitializeGameEngine()
 			int param = log_SPLASH;
 			if ( MPlayer && MPlayer->launchedFromLobby )
 				param = log_ZONE;
+			{ ZoneScopedN("InitializeGameEngine logistics.start");
 			logistics->start( param);				//Always start with logistics in Splash Screen Mode
+			}
+			{ ZoneScopedN("InitializeGameEngine Mission::initBareMinimum");
 			Mission::initBareMinimum();
+			}
 		}
 	
+		{ ZoneScopedN("InitializeGameEngine initDialogs");
 		initDialogs();
+		}
 	
+		{ ZoneScopedN("InitializeGameEngine loseFocusBehavior");
 		gos_EnableSetting(gos_Set_LoseFocusBehavior, 2 );
+		}
 	
-		DWORD numJoysticks = gosJoystick_CountJoysticks();
+		DWORD numJoysticks;
+		{ ZoneScopedN("InitializeGameEngine joystickCount");
+		numJoysticks = gosJoystick_CountJoysticks();
+		}
 	
+		{ ZoneScopedN("InitializeGameEngine joystickInit");
 		for (long i=0;i<numJoysticks;i++)
 		{
+			ZoneScopedN("InitializeGameEngine joystickProbe");
 			gosJoystick_Info joyInfo;
 			gosJoystick_GetInfo(i, &joyInfo);
 			
@@ -1727,6 +1784,7 @@ void __stdcall InitializeGameEngine()
 				userInput->addAttila(i);
 				gosJoystick_SetPolling(i, true, 0.1f);
 			}
+		}
 		}
 	
 		//Time BOMB goes here.

@@ -37,6 +37,8 @@
 #include"txmmgr.h"
 #endif
 
+#include"../GameOS/gameos/gos_profiler.h"
+
 #include"platform_windows.h"
 
 #include<stuff/stuff.hpp>
@@ -54,6 +56,7 @@ void MouseTimerKill();
 //---------------------------------------------------------------------------
 void MouseCursorData::initCursors (const char *cursorFileName)
 {
+	ZoneScopedN("MouseCursorData::initCursors");
 	//New
 	// add an "a" to the end of the cursorFileName IF we are running in 800x600 or less.
 	// Loads different sized cursors.
@@ -66,13 +69,23 @@ void MouseCursorData::initCursors (const char *cursorFileName)
 	cursorName.init(artPath,realHackName,".fit");
 	
 	FitIniFile cursorFile;
-	long result = cursorFile.open(cursorName);
+	long result;
+	{
+		ZoneScopedN("MouseCursorData::initCursors openFit");
+		result = cursorFile.open(cursorName);
+	}
 	gosASSERT(result == NO_ERR);
 	
-	result = cursorFile.seekBlock("Main");
+	{
+		ZoneScopedN("MouseCursorData::initCursors mainBlock");
+		result = cursorFile.seekBlock("Main");
+	}
 	gosASSERT(result == NO_ERR);
 
-	result = cursorFile.readIdLong("NumCursors",numCursors);
+	{
+		ZoneScopedN("MouseCursorData::initCursors numCursors");
+		result = cursorFile.readIdLong("NumCursors",numCursors);
+	}
 	gosASSERT(result == NO_ERR);
 
 	gosASSERT( numCursors < MAX_MOUSE_STATES );
@@ -86,12 +99,19 @@ void MouseCursorData::initCursors (const char *cursorFileName)
 	char blockName[32];
 	for (long i=0;i<numCursors;i++)
 	{
+		ZoneScopedN("MouseCursorData::initCursors cursor");
 		sprintf( blockName, "Cursor%ld", i );
-		cursorInfos[i].init( cursorFile, blockName,0,0,0x1);
-		cursorFile.readIdChar( "HotSpotX", mouseHS[i][0] );
-		cursorFile.readIdChar( "HotSpotY", mouseHS[i][1] );
-		cursorFile.readIdULong( "NumFrames", numFrames[i] );
-		cursorFile.readIdFloat( "FrameLength", frameLengths[i] );
+		{
+			ZoneScopedN("MouseCursorData::initCursors staticInfo");
+			cursorInfos[i].init( cursorFile, blockName,0,0,0x1);
+		}
+		{
+			ZoneScopedN("MouseCursorData::initCursors metadata");
+			cursorFile.readIdChar( "HotSpotX", mouseHS[i][0] );
+			cursorFile.readIdChar( "HotSpotY", mouseHS[i][1] );
+			cursorFile.readIdULong( "NumFrames", numFrames[i] );
+			cursorFile.readIdFloat( "FrameLength", frameLengths[i] );
+		}
 
 	}
 	
@@ -429,17 +449,25 @@ void UserInput::update (void)
 //---------------------------------------------------------------------------
 void UserInput::initMouseCursors (const char *mouseFile)
 {
+	ZoneScopedN("UserInput::initMouseCursors");
 	if (cursors)
 	{
+		ZoneScopedN("UserInput::initMouseCursors destroyOld");
 		cursors->destroy();
 		delete cursors;
 		cursors = NULL;
 	}
 
-	cursors = new MouseCursorData;
+	{
+		ZoneScopedN("UserInput::initMouseCursors alloc");
+		cursors = new MouseCursorData;
+	}
 	gosASSERT(cursors != NULL);
 	
-	cursors->initCursors(mouseFile);
+	{
+		ZoneScopedN("UserInput::initMouseCursors initCursors");
+		cursors->initCursors(mouseFile);
+	}
 
 	mouseFrame = 0;
 }

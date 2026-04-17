@@ -485,6 +485,7 @@ class MC_TextureManager
 		//-----------------------------------------------------------------------------
 		// Returns the TextureNode Id based on what you asked for.
 		DWORD textureFromMemory (DWORD *data, gos_TextureFormat key, DWORD hints, DWORD width, DWORD bitDepth = 4);
+		DWORD textureFromMemoryRaw (DWORD *data, gos_TextureFormat key, DWORD hints, DWORD width, DWORD bitDepth = 4);
 
 		// increments the ref count
 		DWORD copyTexture( DWORD texNodeID );
@@ -528,6 +529,12 @@ class MC_TextureManager
 				return masterTextureNodes[nodeId].get_gosTextureHandle();
 			else
 				return nodeId;
+		}
+
+		void setTextureNeverFlush (DWORD nodeId, DWORD nFlush)
+		{
+			if (nodeId < MC_MAXTEXTURES)
+				masterTextureNodes[nodeId].neverFLUSH = nFlush;
 		}
 
 		void addRenderShape(DWORD nodeId, DWORD flags)

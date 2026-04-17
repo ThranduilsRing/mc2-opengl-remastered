@@ -747,10 +747,12 @@ extern float textureOffset;
 //---------------------------------------------------------------------------
 long Terrain::update (void)
 {
+	ZoneScopedN("Terrain::update");
 	//-----------------------------------------------------------------
 	// Startup the Terrain Color Map
 	if ( terrainTextures2  && !(terrainTextures2->colorMapStarted))
 	{
+		ZoneScopedN("Terrain::update startColorMap");
 		if (colorMapName)
 			terrainTextures2->init(colorMapName);
 		else
@@ -768,6 +770,7 @@ long Terrain::update (void)
 
 	if (turn > terrainLineChanged+10)
 	{
+		ZoneScopedN("Terrain::update debugHotkeys");
 		if (userInput->getKeyDown(KEY_UP) && userInput->ctrl() && userInput->alt() && !userInput->shift())
 		{
 			textureOffset += 0.1f;;
@@ -782,12 +785,19 @@ long Terrain::update (void)
 	}
 	
  	//---------------------------------------------------------------------
-	Terrain::mapData->update();
-	Terrain::mapData->makeLists(vertexList,numberVertices,quadList,numberQuads);
+	{
+		ZoneScopedN("Terrain::update mapDataUpdate");
+		Terrain::mapData->update();
+	}
+	{
+		ZoneScopedN("Terrain::update makeLists");
+		Terrain::mapData->makeLists(vertexList,numberVertices,quadList,numberQuads);
+	}
 
 	// Set terrain light direction for normal map shader
 	if (eye)
 	{
+		ZoneScopedN("Terrain::update cameraParams");
 		// Light direction now set from gamecam.cpp with proper MC2->GL swizzle
 		// gos_SetTerrainLightDir(eye->lightDirection.x, eye->lightDirection.y, eye->lightDirection.z);
 
@@ -951,6 +961,7 @@ extern bool InEditor;
 //---------------------------------------------------------------------------
 void Terrain::geometry (void)
 {
+	ZoneScopedN("Terrain::geometry");
 	//---------------------------------------------------------------------
 	leastZ = 1.0f;leastW = 1.0f;
 	mostZ = -1.0f; mostW = -1.0;
@@ -968,8 +979,10 @@ void Terrain::geometry (void)
 	float vClipConstant = eye->verticalSphereClipConstant;
 	float hClipConstant = eye->horizontalSphereClipConstant; 
 	
- 	long i=0;
-	for (i=0;i<numberVertices;i++)
+	long i=0;
+	{
+		ZoneScopedN("Terrain::geometry vertexProjectLoop");
+		for (i=0;i<numberVertices;i++)
 	{
 		//----------------------------------------------------------------------------------------
 		// Figure out if we are in front of camera or not.  Should be faster then actual project!
@@ -1124,17 +1137,21 @@ void Terrain::geometry (void)
 			}
 		}
 
-		currentVertex++;
+			currentVertex++;
+		}
 	}
 	
 	//-----------------------------------
 	// setup terrain quad textures
 	// Also sets up mine data.
 	TerrainQuadPtr currentQuad = quadList;
-	for (i=0;i<numberQuads;i++)
 	{
-		currentQuad->setupTextures();
-		currentQuad++;
+		ZoneScopedN("Terrain::geometry quadSetupTextures");
+		for (i=0;i<numberQuads;i++)
+		{
+			currentQuad->setupTextures();
+			currentQuad++;
+		}
 	}
 
 	float ywRange = 0.0f, yzRange = 0.0f;
@@ -1149,7 +1166,10 @@ void Terrain::geometry (void)
 	//-----------------------------------
 	// update the cloud layer
 	if (Terrain::cloudLayer)
+	{
+		ZoneScopedN("Terrain::geometry cloudUpdate");
 		Terrain::cloudLayer->update();
+	}
 }
 
 //---------------------------------------------------------------------------

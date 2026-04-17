@@ -29,6 +29,7 @@ MissionBegin.cpp			: Implementation of the MissionBegin component.
 #include"mpprefs.h"
 #include"chatwindow.h"
 #include"logisticsmechicon.h"
+#include"../GameOS/gameos/gos_profiler.h"
 
 #include"prefs.h"
 extern CPrefs prefs;
@@ -114,8 +115,11 @@ bool MissionBegin::startAnimation (long bId, bool isButton, float scrollTime, lo
 
 void MissionBegin::begin()
 {
+	ZoneScopedN("MissionBegin::begin");
 	bReadyToLoad = 0;
+	{ ZoneScopedN("MissionBegin::begin initABL");
 	initABL();
+	}
 
 	//-----------------------------------------------
 	// Tutorial Data
@@ -135,6 +139,7 @@ void MissionBegin::begin()
 	
 	if (brainfile && fileExists(brainFileName))
 	{
+		ZoneScopedN("MissionBegin::begin tutorialBrain");
 		long numErrors, numLinesProcessed;
 		logisticsScriptHandle = ABLi_preProcess(brainFileName, &numErrors, &numLinesProcessed);
 		gosASSERT(logisticsScriptHandle >= 0);
@@ -175,6 +180,7 @@ void MissionBegin::begin()
 
 	if ( mainMenu ) // already initialized
 	{
+		ZoneScopedN("MissionBegin::begin reuseExistingScreens");
 		curScreenX = 0;
 		curScreenY = 1;
 
@@ -218,14 +224,16 @@ void MissionBegin::begin()
 
 	bDone = 0;
 
+	char path[256];
+	FitIniFile file;
+
 	// initialize the main menu
+	{ ZoneScopedN("MissionBegin::begin mainMenu");
 	mainMenu = new MainMenu;
 
-	char path[256];
 	strcpy( path, artPath );
 	strcat( path, "mcl_mm.fit" );
 
-	FitIniFile file;
 	if ( NO_ERR != file.open( path ) )
 	{
 		char error[256];
@@ -238,9 +246,11 @@ void MissionBegin::begin()
 	mainMenu->setDrawBackground( true );
 	mainMenu->begin();
 	file.close();
+	}
 
 	
 	// initialize mission selection
+	{ ZoneScopedN("MissionBegin::begin missionSelection");
 	pMissionSelectionScreen = new MissionSelectionScreen();
 	strcpy( path, artPath );
 	strcat( path, "mcl_cm_layout.fit" );
@@ -255,8 +265,10 @@ void MissionBegin::begin()
 	
 	pMissionSelectionScreen->init( &file );	
 	file.close();
+	}
 
 	// initialize mission briefing
+	{ ZoneScopedN("MissionBegin::begin missionBriefing");
 	pBriefingScreen = new MissionBriefingScreen();
 	strcpy( path, artPath );
 	strcat( path, "mcl_mn.fit" );
@@ -270,8 +282,10 @@ void MissionBegin::begin()
 	}
 	pBriefingScreen->init( &file );	
 	file.close();
+	}
 
 	// initialize mech bay
+	{ ZoneScopedN("MissionBegin::begin mechBay");
 	strcpy( path, artPath );
 	strcat( path, "mcl_mb_layout.fit" );
 	
@@ -295,9 +309,11 @@ void MissionBegin::begin()
 	file.seekBlock( "BackAnim" );
 	rightAnim.init( &file, "" );
 	file.close();
+	}
 
 
 	// initialize pilot ready
+	{ ZoneScopedN("MissionBegin::begin pilotReady");
 	strcpy( path, artPath );
 	strcat( path, "mcl_pr_layout.fit" );
 	if ( NO_ERR != file.open( path ) )
@@ -315,9 +331,11 @@ void MissionBegin::begin()
 	pPilotSelectionScreen->init( &file );
 
 	file.close();
+	}
 
 
 	// initalize purchase pilot
+	{ ZoneScopedN("MissionBegin::begin mechPurchase");
 	pPurchaseMechScreen = new MechPurchaseScreen;
 
 	strcpy( path, artPath );
@@ -333,8 +351,10 @@ void MissionBegin::begin()
 
 	pPurchaseMechScreen->init( file );
 	file.close();
+	}
 
 	// initialize mech lab
+	{ ZoneScopedN("MissionBegin::begin mechLab");
 	pMechLabScreen = new MechLabScreen;
 
 	strcpy( path, artPath );
@@ -349,8 +369,10 @@ void MissionBegin::begin()
 
 	pMechLabScreen->init( file );
 	file.close();
+	}
 
 	// initialize mech lab
+	{ ZoneScopedN("MissionBegin::begin loadScreen");
 	pLoadScreen = new LoadScreenWrapper;
 
 	strcpy( path, artPath );
@@ -365,6 +387,7 @@ void MissionBegin::begin()
 
 	pLoadScreen->init( file );
 	file.close();
+	}
 
 	singlePlayerScreens[0][1] = pMissionSelectionScreen;
 	singlePlayerScreens[1][1] = pBriefingScreen;

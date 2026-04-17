@@ -16,6 +16,7 @@ aEdit.cpp			: Implementation of the aEdit component of the GUI library.
 //#include<winnls.h>
 #include"soundsys.h"
 #include "../resource.h"
+#include "../GameOS/gameos/gos_profiler.h"
 
 #define ENTRY_MAX_CHARS 1000
 #define ENTRY_MARGIN 4.f
@@ -761,6 +762,7 @@ int		aEdit::findChar(int nXPos)
 
 void aEdit::init( FitIniFile* file, const char* header )
 {
+	ZoneScopedN("aEdit::init");
 	int result = file->seekBlock( header );
 	
 	if ( result != NO_ERR )
@@ -773,18 +775,24 @@ void aEdit::init( FitIniFile* file, const char* header )
 
 	long left, top, width, height; 
 
-	file->readIdLong( "XLocation", left );
-	file->readIdLong( "YLocation", top );
-	file->readIdLong( "Width", width );
-	file->readIdLong( "Height", height );
+	{
+		ZoneScopedN("aEdit::init layout");
+		file->readIdLong( "XLocation", left );
+		file->readIdLong( "YLocation", top );
+		file->readIdLong( "Width", width );
+		file->readIdLong( "Height", height );
+	}
 
 	aObject::init( left, top, width, height );
 	
 	file->readIdLong( "Color", textColor );
 
 	long lfont;
-	file->readIdLong( "Font", lfont );
-	font.init( lfont );
+	{
+		ZoneScopedN("aEdit::init font");
+		file->readIdLong( "Font", lfont );
+		font.init( lfont );
+	}
 
 	file->readIdLong( "CursorColor", cursorColor );
 	file->readIdLong( "HighlightColor", highlightColor );

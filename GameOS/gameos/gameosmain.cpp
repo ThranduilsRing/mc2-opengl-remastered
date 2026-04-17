@@ -138,11 +138,7 @@ static void handle_key_down( SDL_Keysym* keysym ) {
             break;
         case SDLK_5:
             if (alt_debug) {
-                gosPostProcess* pp = getGosPostProcess();
-                if (pp) {
-                    pp->grassEnabled_ = !pp->grassEnabled_;
-                    fprintf(stderr, "Grass: %s\n", pp->grassEnabled_ ? "ON" : "OFF");
-                }
+                fprintf(stderr, "Grass: DISABLED (deprecated)\n");
             }
             break;
         case SDLK_6:
@@ -481,9 +477,14 @@ int main(int argc, char** argv)
     TracyGpuContext;
 
     while( !g_exit ) {
+        ZoneScopedN("Frame");
 
 		uint64_t start_tick = timing::gettickcount();
-		timing::sleep(10*1000000);
+
+        if (g_focus_lost) {
+            ZoneScopedN("Frame.BackgroundThrottle");
+            timing::sleep(10 * 1000000);
+        }
 
         {
             ZoneScopedN("GameLogic");
@@ -494,9 +495,15 @@ int main(int argc, char** argv)
             }
         }
 
-        process_events();
+        {
+            ZoneScopedN("Frame.ProcessEvents");
+            process_events();
+        }
 
-		gos_RendererHandleEvents();
+        {
+            ZoneScopedN("Frame.RendererHandleEvents");
+		    gos_RendererHandleEvents();
+        }
 
         {
             ZoneScopedN("DrawScreen");
@@ -509,14 +516,20 @@ int main(int argc, char** argv)
             graphics::swap_window(win);
         }
 
-        TracyGpuCollect;
+        {
+            ZoneScopedN("Frame.TracyGpuCollect");
+            TracyGpuCollect;
+        }
         FrameMark;
 
-        g_exit |= gosExitGameOS();
+        {
+            ZoneScopedN("Frame.ExitCheck");
+            g_exit |= gosExitGameOS();
+        }
 
 		uint64_t end_tick = timing::gettickcount();
 		uint64_t dt = timing::ticks2ms(end_tick - start_tick);
-		frameRate = 1000.0f / (float)dt;
+		frameRate = dt ? (1000.0f / (float)dt) : 0.0f;
 
         // Validation mode: record frame and check exit condition
         if (getValidateConfig().enabled) {

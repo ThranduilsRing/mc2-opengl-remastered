@@ -123,14 +123,14 @@ void TerrainQuad::setupTextures (void)
 	{
 		FullPathFileName mineTextureName;
 		mineTextureName.init(texturePath,"defaults" PATH_SEPARATOR "mine_00",".tga");
-		mineTextureHandle = mcTextureManager->loadTexture(mineTextureName,gos_Texture_Alpha,gosHint_DisableMipmap | gosHint_DontShrink);
+		mineTextureHandle = mcTextureManager->loadTexture(mineTextureName,gos_Texture_Alpha,gosHint_DisableMipmap | gosHint_DontShrink, 0, 0x1);
 	}
 	
 	if (blownTextureHandle == 0xffffffff)
 	{
 		FullPathFileName mineTextureName;
 		mineTextureName.init(texturePath,"defaults" PATH_SEPARATOR "minescorch_00",".tga");
-		blownTextureHandle = mcTextureManager->loadTexture(mineTextureName,gos_Texture_Alpha,gosHint_DisableMipmap | gosHint_DontShrink);
+		blownTextureHandle = mcTextureManager->loadTexture(mineTextureName,gos_Texture_Alpha,gosHint_DisableMipmap | gosHint_DontShrink, 0, 0x1);
 	}
 	
  	if (!Terrain::terrainTextures2)

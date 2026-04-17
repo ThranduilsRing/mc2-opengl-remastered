@@ -14,6 +14,8 @@
 #include"mapdata.h"
 #endif
 
+#include"../GameOS/gameos/gos_profiler.h"
+
 #ifndef TERRAIN_H
 #include"terrain.h"
 #endif
@@ -640,6 +642,7 @@ long MapData::update (void)
 
 	if (!blankVertex)
 	{
+		ZoneScopedN("MapData::update initBlankVertex");
 		blankVertex = new PostcompVertex;
 		blankVertex->elevation = 33.0f;
 		blankVertex->textureData = (41<<16) + 41;
@@ -661,39 +664,49 @@ long MapData::update (void)
 	// Calculate the topLeftVertex from Camera.
 	// This is the closest vertex to the Physical topLeft
 	// coordinate of the visible terrain blocks.
-	topLeftVertex.x = (position.x - Terrain::mapTopLeft3d.x) * Terrain::oneOverWorldUnitsPerVertex;
-	topLeftVertex.y = (Terrain::mapTopLeft3d.y - position.y) * Terrain::oneOverWorldUnitsPerVertex;
-	
-	long PVx = float2long(topLeftVertex.x+0.5f);
-	long PVy = float2long(topLeftVertex.y+0.5f);
-
-	float fTLVx = float(PVx) - (Terrain::visibleVerticesPerSide>>1);
-	float fTLVy = float(PVy) - (Terrain::visibleVerticesPerSide>>1);
-	
-	long TLVx = float2long(fTLVx);
-	long TLVy = float2long(fTLVy);
-	
-	topLeftVertex.x = TLVx;		//REAL ABS vertex now.  No longer sub classified to block.  OK if its out of range.  makeLists will handle.
-	topLeftVertex.y = TLVy;
-
-	ScrollUV1 += SCROLL_RATE;
-	ScrollUV2 -= SCROLL_RATE;
-	
-	if (ScrollUV1 > 0.5)
 	{
-		SCROLL_RATE = -SCROLL_RATE;
+		ZoneScopedN("MapData::update cameraWindow");
+		topLeftVertex.x = (position.x - Terrain::mapTopLeft3d.x) * Terrain::oneOverWorldUnitsPerVertex;
+		topLeftVertex.y = (Terrain::mapTopLeft3d.y - position.y) * Terrain::oneOverWorldUnitsPerVertex;
+		
+		long PVx = float2long(topLeftVertex.x+0.5f);
+		long PVy = float2long(topLeftVertex.y+0.5f);
+
+		float fTLVx = float(PVx) - (Terrain::visibleVerticesPerSide>>1);
+		float fTLVy = float(PVy) - (Terrain::visibleVerticesPerSide>>1);
+		
+		long TLVx = float2long(fTLVx);
+		long TLVy = float2long(fTLVy);
+		
+		topLeftVertex.x = TLVx;		//REAL ABS vertex now.  No longer sub classified to block.  OK if its out of range.  makeLists will handle.
+		topLeftVertex.y = TLVy;
 	}
-	
-	if (ScrollUV1 < 0.02)
+
 	{
-		SCROLL_RATE = -SCROLL_RATE;
+		ZoneScopedN("MapData::update scrollUV");
+		ScrollUV1 += SCROLL_RATE;
+		ScrollUV2 -= SCROLL_RATE;
+		
+		if (ScrollUV1 > 0.5)
+		{
+			SCROLL_RATE = -SCROLL_RATE;
+		}
+		
+		if (ScrollUV1 < 0.02)
+		{
+			SCROLL_RATE = -SCROLL_RATE;
+		}
 	}
 
 	if (Terrain::recalcLight && eye)
+	{
+		ZoneScopedN("MapData::update calcLight");
 		calcLight();
+	}
 
 	//Used to scroll the water texture.
 	{
+		ZoneScopedN("MapData::update waterScroll");
 		cloudScrollX += frameLength * cloudScrollSpeedX;
 		if (cloudScrollX > 1.0f)
 			cloudScrollX = 0.0f;
@@ -703,53 +716,59 @@ long MapData::update (void)
 			cloudScrollY = 0.0f;
 	}
 
-	Terrain::frameAngle += Terrain::waterFreq * frameLength;
-	if (Terrain::frameAngle >= 360.0f)
-		Terrain::frameAngle = 0.0f;
-
-	Terrain::frameCosAlpha = cos(Terrain::frameAngle * DEGREES_TO_RADS);
-	Terrain::frameCos = Terrain::frameCosAlpha * Terrain::waterAmplitude;
-
-	SprayTextureNum += frameLength;
-	if (!Terrain::terrainTextures2)
 	{
-		if ((0.0 != Terrain::terrainTextures->getDetailFrameRate(0))
-			&& (SprayTextureNum > (1.0 / Terrain::terrainTextures->getDetailFrameRate(0))))
-		{
-			sprayFrame += sprayAdd;
-			SprayTextureNum = 0.0f;
-			if (sprayFrame == 31)
-			{
-				sprayAdd = -1;
-	  		}
-			else if (sprayFrame == 0)
-			{
-				sprayAdd = 1;
-			}
-		}
+		ZoneScopedN("MapData::update waterPhase");
+		Terrain::frameAngle += Terrain::waterFreq * frameLength;
+		if (Terrain::frameAngle >= 360.0f)
+			Terrain::frameAngle = 0.0f;
+
+		Terrain::frameCosAlpha = cos(Terrain::frameAngle * DEGREES_TO_RADS);
+		Terrain::frameCos = Terrain::frameCosAlpha * Terrain::waterAmplitude;
 	}
-	else
+
 	{
-		if (Terrain::terrainTextures2->getWaterDetailNumFrames() > 1)
+		ZoneScopedN("MapData::update sprayFrame");
+		SprayTextureNum += frameLength;
+		if (!Terrain::terrainTextures2)
 		{
-			if ((0.0 != Terrain::terrainTextures2->getWaterDetailFrameRate())
-				&& (SprayTextureNum > (1.0 / Terrain::terrainTextures2->getWaterDetailFrameRate())))
+			if ((0.0 != Terrain::terrainTextures->getDetailFrameRate(0))
+				&& (SprayTextureNum > (1.0 / Terrain::terrainTextures->getDetailFrameRate(0))))
 			{
 				sprayFrame += sprayAdd;
 				SprayTextureNum = 0.0f;
-				if (((int)(sprayFrame + sprayAdd)) >= (int)Terrain::terrainTextures2->getWaterDetailNumFrames())/*carefull of the signed/unsigned mismatch*/
+				if (sprayFrame == 31)
 				{
 					sprayAdd = -1;
 	  			}
-				else if (sprayFrame <= 0)
+				else if (sprayFrame == 0)
 				{
 					sprayAdd = 1;
 				}
 			}
 		}
-		else if (1 == Terrain::terrainTextures2->getWaterDetailNumFrames())
+		else
 		{
-			sprayFrame = 0;
+			if (Terrain::terrainTextures2->getWaterDetailNumFrames() > 1)
+			{
+				if ((0.0 != Terrain::terrainTextures2->getWaterDetailFrameRate())
+					&& (SprayTextureNum > (1.0 / Terrain::terrainTextures2->getWaterDetailFrameRate())))
+				{
+					sprayFrame += sprayAdd;
+					SprayTextureNum = 0.0f;
+					if (((int)(sprayFrame + sprayAdd)) >= (int)Terrain::terrainTextures2->getWaterDetailNumFrames())/*carefull of the signed/unsigned mismatch*/
+					{
+						sprayAdd = -1;
+	  				}
+					else if (sprayFrame <= 0)
+					{
+						sprayAdd = 1;
+					}
+				}
+			}
+			else if (1 == Terrain::terrainTextures2->getWaterDetailNumFrames())
+			{
+				sprayFrame = 0;
+			}
 		}
 	}
 
@@ -759,14 +778,22 @@ long MapData::update (void)
 //---------------------------------------------------------------------------
 void MapData::makeLists (VertexPtr vertexList, long &numVerts, TerrainQuadPtr quadList, long &numQuads)
 {
-	long topLeftX = float2long(topLeftVertex.x);
-	long topLeftY = float2long(topLeftVertex.y);
+	ZoneScopedN("MapData::makeLists");
+	long topLeftX = 0;
+	long topLeftY = 0;
+	{
+		ZoneScopedN("MapData::makeLists topLeft");
+		topLeftX = float2long(topLeftVertex.x);
+		topLeftY = float2long(topLeftVertex.y);
+	}
 
 	PostcompVertexPtr Pvertex = NULL;
 	VertexPtr currentVertex = vertexList;
 	numVerts = 0;
 
-	for (int y=0;y<Terrain::visibleVerticesPerSide;y++)
+	{
+		ZoneScopedN("MapData::makeLists vertices");
+		for (int y=0;y<Terrain::visibleVerticesPerSide;y++)
 	{
 		for (int x=0;x<Terrain::visibleVerticesPerSide;x++)
 		{
@@ -820,6 +847,7 @@ void MapData::makeLists (VertexPtr vertexList, long &numVerts, TerrainQuadPtr qu
 
 		topLeftX = float2long(topLeftVertex.x);
 		topLeftY++;
+		}
 	}
 
 	//---------------------------------------------------------------
@@ -830,7 +858,10 @@ void MapData::makeLists (VertexPtr vertexList, long &numVerts, TerrainQuadPtr qu
 	TerrainQuadPtr currentQuad = quadList;
 	numQuads = 0;
 
-	topLeftY = float2long(topLeftVertex.y);
+	{
+		ZoneScopedN("MapData::makeLists quadSetup");
+		topLeftY = float2long(topLeftVertex.y);
+	}
 	//------------------------------------------------------------------
 	// The last row and last vertex in each row are only used to create
 	// the previous tile.  They do not have a tile associated with the,
@@ -838,7 +869,9 @@ void MapData::makeLists (VertexPtr vertexList, long &numVerts, TerrainQuadPtr qu
 	long maxX,maxY;
 	maxX = maxY = Terrain::visibleVerticesPerSide-1;
 
-	for (long y=0;y<maxY;y++)
+	{
+		ZoneScopedN("MapData::makeLists quads");
+		for (long y=0;y<maxY;y++)
 	{
 		for (long x=0;x<maxX;x++)
 		{
@@ -905,6 +938,7 @@ void MapData::makeLists (VertexPtr vertexList, long &numVerts, TerrainQuadPtr qu
 		// We are pointing to the last vertex in the row.  Increment again
 		// to point to first vertex in next row.
 		currentVertex++;
+		}
 	}
 }
 
