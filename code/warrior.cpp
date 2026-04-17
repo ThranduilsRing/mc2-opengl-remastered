@@ -48,6 +48,10 @@
 #include"movemgr.h"
 #endif
 
+#ifndef GOS_PROFILER_H
+#include"gos_profiler.h"
+#endif
+
 #ifdef USE_MECHS
 #ifndef MECH_H
 #include"mech.h"
@@ -2116,9 +2120,10 @@ long MechWarrior::setBrain (long brainHandle) {
 }
 
 //---------------------------------------------------------------------------
-extern __int64 MCTimeRunBrainUpdate;
 
 long MechWarrior::runBrain (void) {
+
+	ZoneScopedN("GameLogic.AI.BrainRun");
 
 //	if (teamId  > -1)
 //		if (teamId != Team::home->getId())
@@ -2130,7 +2135,7 @@ long MechWarrior::runBrain (void) {
 	//----------------------------------
 	// Param 1 is the ID of this mech...
 	//ABLi_setIntegerParam(brainParams, 0, ((BattleMechPtr)owner)->ID);
-		
+
 	//-------------------------------------
 	// Param 2 is the current game clock...
 	//ABLi_setRealParam(brainParams, 1, scenarioTime);
@@ -2153,9 +2158,6 @@ long MechWarrior::runBrain (void) {
 	brain->getInfo(&moduleInfo);
 
 	brain->execute();
-#ifdef LAB_ONLY
-	__int64 startTime = GetCycles();
-#endif
 	//--------------------------------------------------------------
 	// Well, we'll just set it every frame so it doesn't screw up :)
 	setUseGoalPlan(!MPlayer && (getCommander() != Commander::home));
@@ -2176,9 +2178,6 @@ long MechWarrior::runBrain (void) {
 			clearCurTacOrder();
 		}
 	}
-#ifdef LAB_ONLY
-	MCTimeRunBrainUpdate += (GetCycles() - startTime);
-#endif
 
 	CurGroup = NULL;
 	CurObject = NULL;
@@ -2744,14 +2743,11 @@ void MechWarrior::requestMovePath (long selectionIndex, unsigned long moveParams
 }
 
 //---------------------------------------------------------------------------
-#ifdef LAB_ONLY
-extern __int64 MCTimePath1Update;
-extern __int64 MCTimePath2Update;
-extern __int64 MCTimePath3Update;
-extern __int64 MCTimePath4Update;
-extern __int64 MCTimePath5Update;
-#endif
+
 long MechWarrior::calcMovePath (long selectionIndex, unsigned long moveParams) {
+
+	ZoneScopedN("GameLogic.Warrior.Path");
+
 
  	MoverPtr myVehicle = getVehicle();
 	bool flying = (myVehicle->getMoveLevel() > 0);
@@ -2869,14 +2865,10 @@ long MechWarrior::calcMovePath (long selectionIndex, unsigned long moveParams) {
 			long result = NO_ERR;
 			if ((myVehicle->getCommander() == Commander::home) && (curTacOrder.code != TACTICAL_ORDER_NONE) && (curTacOrder.origin == ORDER_ORIGIN_PLAYER))
 				moveParams |= MOVEPARAM_PLAYER;
-			startTime = GetCycles();
 			if (myVehicle->moveRadius > 0.0)
 				result = myVehicle->calcMoveGoal(target, myVehicle->moveCenter, myVehicle->moveRadius, goal, selectionIndex, goal, lastGoalPathSize, lastGoalPath, moveParams);
 			else
 				result = myVehicle->calcMoveGoal(target, goal, -1.0, goal, selectionIndex, goal, lastGoalPathSize, lastGoalPath, moveParams);
-#ifdef LAB_ONLY
-			MCTimePath1Update += (GetCycles() - startTime);
-#endif
 			if (result != NO_ERR) {
 				LastMoveCalcErr = MOVEPATH_ERR_NO_VALID_GOAL;
 				triggerAlarm(PILOT_ALARM_NO_MOVEPATH, LastMoveCalcErr);
@@ -2990,11 +2982,7 @@ long MechWarrior::calcMovePath (long selectionIndex, unsigned long moveParams) {
 				((MoverPtr)ramObject)->updatePathLock(false);
 			if (myVehicle->getObjectClass() != ELEMENTAL)
 				moveParams |= MOVEPARAM_AVOID_PATHLOCKS;
-			startTime = GetCycles();
 			long numSteps = myVehicle->calcMovePath(moveOrders.path[pathNum], MOVEPATH_SIMPLE, start, goal, NULL, moveParams | MOVEPARAM_STATIONARY_MOVERS);
-#ifdef LAB_ONLY
-			MCTimePath2Update += (GetCycles() - startTime);
-#endif
 			if (ramObject && ramObject->isMover())
 				((MoverPtr)ramObject)->updatePathLock(true);
 			myVehicle->updatePathLock(true);
@@ -3082,9 +3070,6 @@ long MechWarrior::calcMovePath (long selectionIndex, unsigned long moveParams) {
 																			  posCellC,
 																			  goalCellR,
 																			  goalCellC);
-#ifdef LAB_ONLY
-				MCTimePath3Update += (GetCycles() - startTime);
-#endif
 				GlobalMoveMap[myVehicle->getMoveLevel()]->useClosedAreas = false;
 			}
 			if (numSteps == -1) {
@@ -3197,9 +3182,6 @@ long MechWarrior::calcMovePath (long selectionIndex, unsigned long moveParams) {
 			}
 			numSteps = myVehicle->calcMovePath(
                     moveOrders.path[pathNum], start, thruArea, goalDoor, moveOrders.globalGoalLocation, &goal, globalStep->goalCell, moveParams | MOVEPARAM_STATIONARY_MOVERS);
-#ifdef LAB_ONLY
-			MCTimePath4Update += (GetCycles() - startTime);
-#endif
 			if (ramObject && ramObject->isMover())
 				((MoverPtr)ramObject)->updatePathLock(true);
 			myVehicle->updatePathLock(true);
@@ -3218,11 +3200,7 @@ long MechWarrior::calcMovePath (long selectionIndex, unsigned long moveParams) {
 				((MoverPtr)ramObject)->updatePathLock(false);
 			if (myVehicle->getObjectClass() != ELEMENTAL)
 				moveParams |= MOVEPARAM_AVOID_PATHLOCKS;
-			startTime = GetCycles();
 			numSteps = myVehicle->calcMovePath(moveOrders.path[pathNum], MOVEPATH_COMPLEX, start, goal, globalStep->goalCell, moveParams | MOVEPARAM_STATIONARY_MOVERS);
-#ifdef LAB_ONLY
-			MCTimePath5Update += (GetCycles() - startTime);
-#endif
 			if (ramObject && ramObject->isMover())
 				((MoverPtr)ramObject)->updatePathLock(true);
 			myVehicle->updatePathLock(true);
