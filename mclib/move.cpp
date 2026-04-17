@@ -24,6 +24,8 @@
 #endif
 #endif
 
+#include"gos_profiler.h"
+
 //***************************************************************************
 
 #define	USE_SEPARATE_WATER_MAPS	FALSE
@@ -322,14 +324,6 @@ MoveMapPtr PathFindMap[2] = {NULL, NULL};
 float MoveMap::distanceFloat[DISTANCE_TABLE_DIM][DISTANCE_TABLE_DIM];
 int MoveMap::distanceInt[DISTANCE_TABLE_DIM][DISTANCE_TABLE_DIM];
 int MoveMap::forestCost = 50;
-
-#ifdef LAB_ONLY
-__int64 MCTimeCalcPath1Update = 0;
-__int64 MCTimeCalcPath2Update = 0;
-__int64 MCTimeCalcPath3Update = 0;
-__int64 MCTimeCalcPath4Update = 0;
-__int64 MCTimeCalcPath5Update = 0;
-#endif
 
 static const char* typeString[] = {
     "normal area",
@@ -4370,6 +4364,8 @@ long MoveMap::setUp (long mapULr,
 					 long offsets,
 					 unsigned long params) {
 
+	ZoneScopedN("GameLogic.PathManager.CalcPath1");
+
 	//-----------------------------------------------------------------------------
 	// If the map has not been allocated yet, then the tile height and width passed
 	// is used as both the max and current dimensions. Otherwise, they are only
@@ -4518,15 +4514,9 @@ long MoveMap::setUp (long mapULr,
 	else
 		map[goalR * maxWidth + goalC].setFlag(MOVEFLAG_GOAL);
 
-	__int64 startTime = GetCycles();
-
 	if (params & MOVEPARAM_STATIONARY_MOVERS)
 		if (placeStationaryMoversCallback)
 			(*placeStationaryMoversCallback)(this);
-
-#ifdef LAB_ONLY
-	MCTimeCalcPath1Update += (GetCycles() - startTime);
-#endif
 
 	return(NO_ERR);
 }
@@ -4545,7 +4535,7 @@ long MoveMap::setUp (long level,
 					 long offsets,
 					 unsigned long params) {
 
-	__int64 startTime = GetCycles();
+	ZoneScopedN("GameLogic.PathManager.CalcPath2");
 
 	//-----------------------------------------------------------------------------
 	// If the map has not been allocated yet, then the tile height and width passed
@@ -4743,9 +4733,6 @@ long MoveMap::setUp (long level,
 		if (placeStationaryMoversCallback)
 			(*placeStationaryMoversCallback)(this);
 
-#ifdef LAB_ONLY
-	MCTimeCalcPath2Update += (GetCycles() - startTime);
-#endif
 	return(NO_ERR);
 }
 
@@ -4805,20 +4792,17 @@ inline bool MoveMap::adjacentCellOpenJUMP (long r, long c, long dir) {
 //---------------------------------------------------------------------------
 
 inline int MoveMap::calcHPrime (int r, int c) {
-	__int64 startTime = GetCycles();
+	ZoneScopedN("GameLogic.PathManager.CalcPath3");
 	long sum = 0;
 	if (r > goalR)
 		sum += (r - goalR);
 	else
 		sum += (goalR - r);
-		
+
 	if (c > goalC)
 		sum += (c - goalC);
 	else
 		sum += (goalC - c);
-#ifdef LAB_ONLY
-	MCTimeCalcPath3Update += (GetCycles() - startTime);		
-#endif
 	return(sum);
 }
 
