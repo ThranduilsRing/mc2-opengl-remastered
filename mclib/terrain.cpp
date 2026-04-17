@@ -30,6 +30,8 @@
 #include"dbasegui.h"
 #endif
 
+#include"../GameOS/gameos/gos_profiler.h"
+
 #ifndef CIDENT_H
 #include"cident.h"
 #endif
@@ -359,6 +361,7 @@ long Terrain::init( unsigned long verticesPerMapSide, PacketFile* pakFile, unsig
 				   volatile float& percent,
 					float percentRange)
 {
+	ZoneScopedN("Terrain::init");
 	//Did we pass in the hi-res colormap?
 	// If so, convert back to old verticesPerMapSide!
 	if (verticesPerMapSide > 300)
@@ -384,6 +387,7 @@ long Terrain::init( unsigned long verticesPerMapSide, PacketFile* pakFile, unsig
 	// Startup to Terrain Heap
 	if( !terrainHeap )
 	{
+		ZoneScopedN("Terrain::init terrainHeap");
 		terrainHeap = new UserHeap;
 		gosASSERT(terrainHeap != NULL);
 		terrainHeap->init(terrainHeapSize,"TERRAIN");
@@ -394,6 +398,7 @@ long Terrain::init( unsigned long verticesPerMapSide, PacketFile* pakFile, unsig
 	// Startup the Terrain Texture Maps
 	if ( !terrainTextures )
 	{
+		ZoneScopedN("Terrain::init terrainTextures");
 		char baseName[256];
 		if (pakFile)
 		{
@@ -418,6 +423,7 @@ long Terrain::init( unsigned long verticesPerMapSide, PacketFile* pakFile, unsig
 	// Startup the Terrain Color Map
 	if ( !terrainTextures2 && pakFile)
 	{
+		ZoneScopedN("Terrain::init terrainColorMap");
 		char name[1024];
 
 		_splitpath(pakFile->getFilename(),NULL,NULL,name,NULL);

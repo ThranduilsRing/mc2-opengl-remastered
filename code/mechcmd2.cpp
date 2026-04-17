@@ -817,6 +817,7 @@ extern MidLevelRenderer::MLRClipper * theClipper;
 bool gameStarted = false;
 void __stdcall InitializeGameEngine()
 {
+	ZoneScopedN("InitializeGameEngine");
     // sebi WTF? do we ned to do it for InitDW?
 	//__asm push esi;
 

@@ -7,6 +7,7 @@ mission2.cpp			: The parts of mission.cpp that we need for the mech viewer
 \*************************************************************************************************/
 
 #include"mission.h"
+#include"gos_profiler.h"
 
 bool Mission::statisticsInitialized = 0;
 
@@ -77,6 +78,7 @@ extern float OneOverProcessorSpeed;
 
 void Mission::initBareMinimum()
 {
+	ZoneScopedN("Mission::initBareMinimum");
 
 	long result = 0;
 
