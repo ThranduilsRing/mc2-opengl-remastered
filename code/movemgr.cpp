@@ -21,6 +21,7 @@
 #endif
 
 #include"gameos.hpp"
+#include"gos_profiler.h"
 
 
 long MovePathManager::numPaths = 0;
@@ -195,35 +196,9 @@ void MovePathManager::calcPath (void) {
 
 //----------------------------------------------------------------------------------
 void DEBUGWINS_print (char* s, long window);
-#ifdef LAB_ONLY
-extern __int64 MCTimePath1Update;
-extern __int64 MCTimePath2Update;
-extern __int64 MCTimePath3Update;
-extern __int64 MCTimePath4Update;
-extern __int64 MCTimePath5Update;
-extern __int64 MCTimeCalcGoal1Update;
-extern __int64 MCTimeCalcGoal2Update;
-extern __int64 MCTimeCalcGoal3Update;
-extern __int64 MCTimeCalcGoal4Update;
-extern __int64 MCTimeCalcGoal5Update;
-extern __int64 MCTimeCalcGoal6Update;
-#endif
 void MovePathManager::update (void) {
 
-	#ifdef LAB_ONLY
-	MCTimePath1Update = 0;
-	MCTimePath2Update = 0;
-	MCTimePath3Update = 0;
-	MCTimePath4Update = 0;
-	MCTimePath5Update = 0;
-
-	MCTimeCalcGoal1Update = 0;
-	MCTimeCalcGoal2Update = 0;
-	MCTimeCalcGoal3Update = 0;
-	MCTimeCalcGoal4Update = 0;
-	MCTimeCalcGoal5Update = 0;
-	MCTimeCalcGoal6Update = 0;
-#endif
+	ZoneScopedN("GameLogic.PathManager.Update");
 
 	#ifdef MC_PROFILE
 	QueryPerformanceCounter(startCk);
