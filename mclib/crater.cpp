@@ -543,7 +543,7 @@ void CraterManager::render (void)
 					// position comes from currCrater->position[] (MC2 world space: x=east, y=north, z=elev).
 					{
 						float fogFloat = (float)((fogRGB >> 24) & 0xFF) / 255.0f;
-						DWORD texIdx = craterTextureIndices[handleOffset];
+						DWORD texIdx = mcTextureManager->get_gosTextureHandle(craterTextureIndices[handleOffset]);
 
 						WorldOverlayVert gWov[3];
 						gWov[0] = { currCrater->position[0].x, currCrater->position[0].y, currCrater->position[0].z,

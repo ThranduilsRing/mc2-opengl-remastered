@@ -1,54 +1,72 @@
 # Overlay Projection Fix — Design Doc
 **Date:** 2026-04-14  
-**Status:** Approved (Approach A)
+**Status:** Implemented (Fragment Fog Fix)
 
 ## Problem
 
 Partial cement tiles and road overlays are invisible in-game. These tiles are submitted via `setOverlayWorldCoords()` → `MC2_ISTERRAIN | MC2_DRAWALPHA | MC2_ISCRATERS` → Overlay.SplitDraw → `gos_tex_vertex.vert` (IS_OVERLAY variant).
 
-## Root Cause
+## Root Cause (confirmed by deep analysis)
 
-In `shaders/gos_tex_vertex.vert`, the IS_OVERLAY world-position branch applies a manual axis swap before multiplying by `terrainMVP`:
-
-```glsl
-vec3 projectedWorldPos = vec3(-MC2WorldPos.x, MC2WorldPos.z, MC2WorldPos.y);
-gl_Position = terrainMVP * vec4(projectedWorldPos, 1.0);
-```
-
-`terrainMVP = axisSwap * worldToClip` already bakes in the `(-x, z, y)` conversion from MC2 coords to the rendering coordinate space. The manual swap applies that same conversion a second time, producing vertices in the wrong position — outside the frustum → invisible.
-
-The trigger: `setOverlayWorldCoords()` sets `v.rhw = 1.0f`, which signals the shader to take the world-position GPU-projection branch. Only partial cement and road overlay tiles call this function (solid cement tiles were rerouted to the tessellated terrain path and already work).
-
-## Why the Mission Marker Is Visible
-
-The green mission marker crosshair uses CPU-projected vertices (`rhw = 1/w ≠ 1.0`) and takes the standard `mvp * pos / pos.w` branch, bypassing the broken world-pos path entirely.
-
-## Approved Fix: Approach A (one-line shader change)
-
-Remove the manual axis swap. Pass MC2 world coordinates directly to `terrainMVP`:
+**Fragment shader:** `shaders/gos_tex_vertex.frag` IS_OVERLAY world-pos path used fog blend with reversed parameters:
 
 ```glsl
-// Before (broken — double-applies the axis swap):
-vec3 projectedWorldPos = vec3(-MC2WorldPos.x, MC2WorldPos.z, MC2WorldPos.y);
-gl_Position = terrainMVP * vec4(projectedWorldPos, 1.0);
-
-// After (correct — terrainMVP owns the swap):
-gl_Position = terrainMVP * vec4(MC2WorldPos, 1.0);
+// Wrong: FogValue=1.0 → fog_color → invisible when fog is disabled
+FragColor = mix(c, fog_color, FogValue);
 ```
 
-**File:** `shaders/gos_tex_vertex.vert` only. No C++ changes needed.
+`FogValue = fog.w = fogResult/255`. For nearby terrain (hazeFactor≈0, no distance fog): `fogResult=255 → FogValue≈1.0`. With fog disabled, `fog_color=(0,0,0,0)` → `mix(c,(0,0,0,0),1.0)=(0,0,0,0)` → transparent → **invisible**.
 
-**Precedent:** `shaders/gos_tex_vertex_lighted.vert` gpuProjection path already does exactly this:
+The non-overlay path correctly uses `mix(fog_color.rgb, c.rgb, FogValue)` where FogValue=1 means clear (no fog).
+
+## Previous Analysis (Approaches A and B)
+
+**Approach A** (`gl_Position = terrainMVP * MC2WorldPos`) was initially "approved" based on wrong assumptions:
+- The lighted shader "precedent" for GPU projection is dead code — AMD driver bug makes `gpuProjection` uniform always read 0.
+- Approach A puts D3D clip space values directly in `gl_Position`. After OpenGL perspective divide: x/w, y/w ∈ [0,1] → renders to upper-right screen quadrant only. **Wrong.**
+
+**Approach B** (full TES viewport chain in overlay vertex shader) is mathematically correct:
+```
+terrainMVP * MC2WorldPos = AW^T * (vx,vy,elev,1) = projectZ(vx,vy,elev)
+```
+Because: C++ `mat4` row-major, uploaded `GL_FALSE` → GLSL column c = C++ row c → `terrainMVP*v = AW^T*v`. And `AW^T * (vx,vy,elev,1)` is exactly `projectZ(vx,vy,elev)` (Stuff row-vector convention). The full TES chain → correct OpenGL NDC.
+
+The current vertex shader (`gos_tex_vertex.vert` IS_OVERLAY) already has the correct Approach B implementation.
+
+## Implemented Fix
+
+In `shaders/gos_tex_vertex.frag`, fixed fog blend in the IS_OVERLAY world-pos path:
+
 ```glsl
-MC2WorldPos = vec3(-WorldPos.x, WorldPos.z, WorldPos.y);  // Stuff → MC2
-gl_Position = terrainMVP * vec4(MC2WorldPos, 1.0);        // terrainMVP adds swap internally
-```
-And mission markers appear at the correct world position.
+// Before (wrong — double-reversed, invisible with fog disabled):
+if (OverlayUsesWorldPos > 0.5) {
+    FragColor = mix(c, fog_color, FogValue);
+    return;
+}
 
-**Depth precision:** Overlay.SplitDraw uses `glDisable(GL_DEPTH_TEST)`, so Z precision is irrelevant. The full TES projection chain (Approach B) is unnecessary.
+// After (correct — matches non-overlay convention: FogValue=1 → clear):
+if (OverlayUsesWorldPos > 0.5) {
+    if(fog_color.x>0.0 || fog_color.y>0.0 || fog_color.z>0.0 || fog_color.w>0.0)
+        c.rgb = mix(fog_color.rgb, c.rgb, FogValue);
+    FragColor = c;
+    return;
+}
+```
+
+**File changed:** `shaders/gos_tex_vertex.frag` only. No C++ changes needed.
+
+## Key Invariants (do not change)
+
+- `terrainMVP` uploaded with `GL_FALSE` in `gameos_graphics.cpp` — this is intentional and correct.
+- `gos_tex_vertex.vert` IS_OVERLAY world-pos branch uses full TES viewport chain — this is correct.
+- Comment in `code/gamecam.cpp` line ~165 previously said "uploaded with GL_TRUE" — **corrected** to GL_FALSE.
 
 ## Scope
 
-- Fixes: partial cement boundary tiles, roads (all `MC2_ISCRATERS` overlays with `rhw=1.0`)
-- Does not change: solid cement tiles (already on tessellated path), mission marker shadow (deferred)
-- Deploy: shader-only, no exe rebuild needed
+- Fixes: partial cement boundary tiles (isAlpha=true), roads (all `MC2_ISCRATERS` overlays with `rhw=1.0`)
+- Does not change: solid cement tiles (already on tessellated path), vertex shader projection
+
+## Also Explains
+
+- "Pink stripes at top" previously observed: with fog enabled and non-zero fog_color, `mix(c, fog_color, 1.0) = fog_color` → tiles rendered in fog color at correct positions.
+- "No change" with Approach A: tiles projected to upper-right quadrant (out of typical camera view), and also invisible due to the fragment fog bug.

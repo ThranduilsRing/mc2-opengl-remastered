@@ -46,6 +46,7 @@ const float LOD_NEAR       = 4000.0;   // full quality (covers stock zoom)
 const float LOD_NEAR_FADE  = 4500.0;   // transition band end
 const float LOD_MID        = 5500.0;   // mid quality
 const float LOD_MID_FADE   = 6500.0;   // far quality begins
+const PREC vec3 kLumaWeights = vec3(0.299, 0.587, 0.114);
 
 // --- Hash / noise for cell bombing ---
 
@@ -118,7 +119,7 @@ PREC float sampleDisplacement(PREC vec2 uv, PREC vec4 weights) {
     PREC float d = 0.0;
     if (weights.x > 0.01) d += weights.x * texture(matNormal0, uv).a;
     if (weights.y > 0.01) d += weights.y * texture(matNormal1, uv).a;
-    if (weights.z > 0.01) d += weights.z * texture(matNormal2, uv).a;
+    if (weights.z > 0.01) d += weights.z * 1.0;  // dirt: blank alpha (no POM shift)
     if (weights.w > 0.01) d += weights.w * texture(matNormal3, uv).a;
     return 1.0 - d;
 }
@@ -161,7 +162,9 @@ void main(void)
     float lodNear = 1.0 - smoothstep(LOD_NEAR, LOD_NEAR_FADE, camDist);
     float lodMid  = 1.0 - smoothstep(LOD_MID,  LOD_MID_FADE,  camDist);
 
-    if (tessDebug.x > 0.5) {
+    // Legacy probe: reserve negative values for an unconditional "tess frag is running"
+    // visual. Positive values are surface debug modes and must flow through normally.
+    if (tessDebug.x < -0.5) {
         FragColor = vec4(1.0, 0.0, 0.0, 1.0);  // SOLID RED = tess frag running
 #ifdef MRT_ENABLED
         GBuffer1 = vec4(0.5, 0.5, 1.0, 1.0);
@@ -170,13 +173,42 @@ void main(void)
     }
 
     PREC vec4 texColor = texture(tex1, Texcoord);
+    PREC float waterFlag = smoothstep(0.35, 0.45, rgb2hsv(texColor.rgb).x);
+    PREC float materialAlpha = mix(1.0, 0.25, waterFlag);
 
 #ifdef ALPHA_TEST
     if(texColor.a < 0.5)
         discard;
 #endif
 
+    int surfaceDebugMode = int(floor(tessDebug.x + 0.5));
     PREC vec4 c = Color.bgra;
+    PREC float vertexLum = dot(c.rgb, kLumaWeights);
+
+    // Debug mode 1: depth diagnostic — R=actual rasterized, G=UndisplacedDepth
+    // Toggle RAlt+0 to compare old screen-space vs new world-space path.
+    // Green > Red = UndisplacedDepth is deeper (correct). Red > Green = potential z-fighting.
+    if (surfaceDebugMode == 1) {
+        float actual = gl_FragCoord.z;
+        float undis  = UndisplacedDepth;
+        // Amplify to [0,1] range (terrain depth typically near 1.0, differences small)
+        float lo = 0.85;
+        float hi = 1.0;
+        float r = clamp((actual - lo) / (hi - lo), 0.0, 1.0);
+        float g = clamp((undis  - lo) / (hi - lo), 0.0, 1.0);
+        FragColor = vec4(r, g, 0.0, 1.0);
+        gl_FragDepth = actual;  // don't override depth in diagnostic mode
+        return;
+    }
+
+    // Debug mode 2: show raw terrain colormap everywhere.
+    if (surfaceDebugMode == 2) {
+        FragColor = vec4(texColor.rgb, 1.0);
+#ifdef MRT_ENABLED
+        GBuffer1 = vec4(0.5, 0.5, 1.0, 1.0);
+#endif
+        return;
+    }
 
     // Smooth colormap classification — tiered by distance
     // Near: 9-tap disc, Mid: 5-tap cross, Far: 1-tap (no blur)
@@ -211,6 +243,13 @@ void main(void)
         colAvg += texture(tex1, clamp(Texcoord + vec2(-r2, -r2), uvMin, uvMax)).rgb;
         colAvg /= 9.0;
     }
+    if (surfaceDebugMode == 3) {
+        FragColor = vec4(colAvg, 1.0);
+#ifdef MRT_ENABLED
+        GBuffer1 = vec4(0.5, 0.5, 1.0, 1.0);
+#endif
+        return;
+    }
     PREC vec4 matWeights = getColorWeights(colAvg);
     // TerrainType: discrete 0/1/2/3 at vertices, interpolated by TES.
     // Boundary patches (cement+terrain vertex mix) have fragments with TerrainType in (2,3).
@@ -240,13 +279,13 @@ void main(void)
         if (total > 0.01) matWeights /= total;
     }
 
-#ifdef DEBUG_MATERIALS
-    FragColor = vec4(matWeights.x, matWeights.y, matWeights.z, 1.0);
+    if (surfaceDebugMode == 4) {
+        FragColor = vec4(matWeights.x, matWeights.y, matWeights.z, 1.0);
 #ifdef MRT_ENABLED
-    GBuffer1 = vec4(0.5, 0.5, 1.0, 1.0);
+        GBuffer1 = vec4(0.5, 0.5, 1.0, 1.0);
 #endif
-    return;
-#endif
+        return;
+    }
 
     // Per-material tiling (rock, grass, dirt/riverbed, concrete)
     const PREC vec4 matTiling = vec4(1.0, 12.0, 1.0, 6.0);
@@ -367,6 +406,14 @@ void main(void)
     normalLight = mix(normalLight, 1.0, pureConcrete * 0.85);
     c.rgb *= normalLight;
 
+    if (surfaceDebugMode == 5) {
+        FragColor = vec4(vec3(normalLight), 1.0);
+#ifdef MRT_ENABLED
+        GBuffer1 = vec4(N * 0.5 + 0.5, 1.0);
+#endif
+        return;
+    }
+
     // Shadow — variable PCF taps by distance
     int shadowTaps = (lodNear > 0.5) ? 16 : (lodMid > 0.5) ? 8 : 4;
     float staticShadow = calcShadow(WorldPos, N, terrainLightDir.xyz, shadowTaps);
@@ -377,12 +424,27 @@ void main(void)
 
     // --- Phase 4A: Procedural cloud shadows ---
     // Applied inline so cloud UV uses the actual tessellated WorldPos (stable world-space).
-    // Overlay tiles receive matching cloud shadow via shadow_screen.frag (non-terrain path).
+    // Terrain overlays use the same cloud expression in terrain_overlay.frag.
     {
         PREC vec2 cloudUV = WorldPos.xy * 0.0006 + vec2(time * 0.012, time * 0.005);
         PREC float cloudNoise = fbm(cloudUV, 4) * 0.5 + 0.5;
         PREC float cloudShadow = smoothstep(0.3, 0.7, cloudNoise);
+        if (surfaceDebugMode == 7) {
+            FragColor = vec4(vec3(mix(0.70, 1.0, cloudShadow)), 1.0);
+#ifdef MRT_ENABLED
+            GBuffer1 = vec4(N * 0.5 + 0.5, materialAlpha);
+#endif
+            return;
+        }
         c.rgb *= mix(0.70, 1.0, cloudShadow);
+    }
+
+    if (surfaceDebugMode == 6) {
+        FragColor = vec4(vec3(shadow), 1.0);
+#ifdef MRT_ENABLED
+        GBuffer1 = vec4(N * 0.5 + 0.5, materialAlpha);
+#endif
+        return;
     }
 
     // --- Phase 4B: Height-based exponential fog ---
@@ -401,14 +463,13 @@ void main(void)
     FragColor = c;
 
 #ifdef MRT_ENABLED
-    // alpha: 1.0 = terrain, 0.25 = water (for shoreline detection)
-    PREC float waterFlag = smoothstep(0.35, 0.45, rgb2hsv(texColor.rgb).x);
-    PREC float materialAlpha = mix(1.0, 0.25, waterFlag);
     GBuffer1 = vec4(N * 0.5 + 0.5, materialAlpha);
 #endif
 
-    // Write un-displaced depth so overlays and objects (at original surface height)
-    // pass GL_LEQUAL depth test against this terrain fragment.
-    // Small positive bias ensures overlays always pass despite float precision differences.
-    gl_FragDepth = clamp(UndisplacedDepth + 0.0005, 0.0, 1.0);
+    // Write depth for overlay/object depth testing.
+    // Use max(UndisplacedDepth, gl_FragCoord.z) so:
+    //  - Upward-displaced terrain: writes UndisplacedDepth (deeper = original surface), overlays pass.
+    //  - Downward-displaced terrain: writes actual rasterized depth (deeper = no self-occlusion dark patches).
+    // Overlays at the undisplaced surface are always shallower than max(), so they always pass GL_LEQUAL.
+    gl_FragDepth = clamp(max(UndisplacedDepth, gl_FragCoord.z) + 0.0005, 0.0, 1.0);
 }

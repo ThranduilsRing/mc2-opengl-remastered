@@ -246,7 +246,6 @@ Stuff::Vector3D pos[36] =
 	Stuff::Vector3D(-2500.0f,2900.0f,-1.0f)
 };
 
-#define ProfileTime(x,y)	y;
 
 #define	MAX_KILL_AT_START	100
 
@@ -2019,6 +2018,7 @@ long enoughCount = 0;
 bool DoneSniffing = false;
 void __stdcall DoGameLogic()
 {
+	ZoneScopedN("GameLogic");
 	if (!SnifferMode)
 	{
 	#ifdef LAB_ONLY		//Used for debugging LOS
@@ -2026,7 +2026,7 @@ void __stdcall DoGameLogic()
 	#endif
 	
 		if (MPlayer) {
-			ProfileTime(MCTimeMultiplayerUpdate,MPlayer->update());
+			{ ZoneScopedN("GameLogic.Multiplayer"); MPlayer->update(); }
 			if (MPlayer->waitingToStartMission) 
 			{
 				if (MPlayer->startMission)

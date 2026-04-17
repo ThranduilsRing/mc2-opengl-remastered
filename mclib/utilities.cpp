@@ -287,7 +287,7 @@ void StaticInfo::init( FitIniFile& file, const char* blockName, long hiResOffset
 		unsigned long gosID = mcTextureManager->get_gosTextureHandle( ID );
 		TEXTUREPTR textureData;
 		gos_LockTexture( gosID, 0, 0, 	&textureData );
-		textureWidth = textureData.Width;
+		textureWidth = textureData.Width / mcTextureManager->getUVScale(ID);
 		gos_UnLockTexture( gosID );
 	}
 

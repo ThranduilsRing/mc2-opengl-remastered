@@ -5,7 +5,34 @@
       "Bash(cp -f:*)",
       "Bash(diff:*)",
       "Bash(ls:*)",
-      "Bash(cd:*)"
+      "Bash(cd:*)",
+      "Bash(python3:*)",
+      "Bash(tasklist:*)"
+    ]
+  },
+  "hooks": {
+    "PostToolUse": [
+      {
+        "matcher": "Edit|Write",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "python3 \"A:/Games/mc2-opengl-src/.claude/worktrees/nifty-mendeleev/.claude/hooks/shader_deploy.py\"",
+            "statusMessage": "Deploying shader..."
+          }
+        ]
+      }
+    ],
+    "PreToolUse": [
+      {
+        "matcher": "Bash",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "python3 \"A:/Games/mc2-opengl-src/.claude/worktrees/nifty-mendeleev/.claude/hooks/check_game_running.py\""
+          }
+        ]
+      }
     ]
   }
 }

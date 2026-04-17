@@ -12,7 +12,7 @@ in vec3 WorldPos[];
 in float UndisplacedDepth[];
 
 // Outputs to grass fragment shader
-layout(triangle_strip, max_vertices = 12) out;
+layout(triangle_strip, max_vertices = 256) out;
 out vec2 GrassUV;
 out vec3 GrassWorldPos;
 out vec3 GrassBaseColor;
@@ -67,9 +67,8 @@ void emitGrassVertex(vec3 pos, vec2 uv, vec3 baseColor, float alpha) {
 }
 
 void main() {
-    // Compute triangle triCenter in world space
+    // Compute triangle centroid in world space
     vec3 triCenter = (WorldPos[0] + WorldPos[1] + WorldPos[2]) / 3.0;
-    vec2 triCenterTexcoord = (Texcoord[0] + Texcoord[1] + Texcoord[2]) / 3.0;
 
     // Sample colormap at each vertex and average
     vec3 col0 = texture(tex1, Texcoord[0]).rgb;
@@ -91,72 +90,71 @@ void main() {
     if (grassWeight < 0.3) return;
 
     // Distance fade from camera
-    // cameraPos: Stuff/MLR space x=left, y=elev, z=forward
-    // WorldPos: MC2 x=east, y=north, z=elevation
     vec2 camGround = vec2(-cameraPos.x, cameraPos.z);
     float hDist = distance(triCenter.xy, camGround);
     float altBoost = max(cameraPos.y - triCenter.z, 0.0) * 0.7;
     float camDist = hDist + altBoost;
 
-    // Nothing beyond 5000
     if (camDist > 5000.0) return;
 
-    // Density fade 3000→5000
+    // Density fade: reduce blade count at distance
     float densityFade = 1.0 - smoothstep(3000.0, 5000.0, camDist);
-    // Use hash to thin out at distance
-    float rng = hash21(triCenter.xy * 0.01);
-    if (rng > densityFade) return;
 
-    // Randomize dimensions via position hash
-    float h1 = hash21(triCenter.xy);
-    float h2 = hash21(triCenter.xy + vec2(17.3, 5.7));
-    float h3 = hash21(triCenter.xy + vec2(3.1, 22.9));
-
-    float bladeHeight = mix(15.0, 25.0, h1);
-    float bladeWidth  = mix(8.0, 14.0, h2);
-
-    // Camera direction vector (MC2 world space)
-    // camera is at (-cameraPos.x, cameraPos.z) in XY, so direction toward camera
+    // Camera direction for billboard facing
     vec2 toCam2D = camGround - triCenter.xy;
     float toCamLen = length(toCam2D);
     if (toCamLen < 0.001) toCam2D = vec2(1.0, 0.0);
     else toCam2D /= toCamLen;
 
-    // Grass blade right vector: perpendicular to camera direction, in XY plane
-    // In MC2 coords, "up" is +Z; the blade stands along Z
-    // right = rotate toCam2D by 90 degrees in XY
     vec2 right2D = vec2(-toCam2D.y, toCam2D.x);
     vec3 right = vec3(right2D.x, right2D.y, 0.0);
     vec3 up    = vec3(0.0, 0.0, 1.0);
 
-    // Wind displacement on top vertices (sinusoidal along X-axis)
-    float windFreq = 0.05;
-    float windAmp  = 3.0;
-    float windPhase = time + triCenter.x * windFreq;
-    float windOffset = sin(windPhase) * windAmp;
-    vec3 windVec = right * windOffset;
+    // Triangle edge vectors for barycentric placement
+    vec3 edge1 = WorldPos[1] - WorldPos[0];
+    vec3 edge2 = WorldPos[2] - WorldPos[0];
 
-    // Base terrain color from colormap average
-    vec3 baseColor = colAvg;
+    // Emit up to 20 blades scattered across the triangle
+    int maxBlades = int(64.0 * densityFade);
+    maxBlades = clamp(maxBlades, 1, 64);
 
-    // 4 vertices of a quad:
-    //   BL = base - halfWidth*right
-    //   BR = base + halfWidth*right
-    //   TL = base - halfWidth*right + height*up + wind
-    //   TR = base + halfWidth*right + height*up + wind
-    vec3 basePos = triCenter;
-    vec3 BL = basePos - (bladeWidth * 0.5) * right;
-    vec3 BR = basePos + (bladeWidth * 0.5) * right;
-    vec3 TL = basePos - (bladeWidth * 0.5) * right + bladeHeight * up + windVec;
-    vec3 TR = basePos + (bladeWidth * 0.5) * right + bladeHeight * up + windVec;
+    for (int b = 0; b < maxBlades; b++) {
+        // Deterministic random placement within triangle using barycentric coords
+        float seed = float(b);
+        float u = fract(seed * 0.618034 + hash21(triCenter.xy));
+        float v = fract(seed * 0.324719 + hash21(triCenter.xy + vec2(7.13, 3.77)));
+        // Fold into triangle (reflect if u+v > 1)
+        if (u + v > 1.0) { u = 1.0 - u; v = 1.0 - v; }
 
-    // Alpha: full at base, fade at distance
-    float alpha = grassWeight * densityFade;
+        vec3 bladePos = WorldPos[0] + u * edge1 + v * edge2;
 
-    // Emit triangle strip: BL, BR, TL, TR
-    emitGrassVertex(BL, vec2(0.0, 0.0), baseColor, alpha);
-    emitGrassVertex(BR, vec2(1.0, 0.0), baseColor, alpha);
-    emitGrassVertex(TL, vec2(0.0, 1.0), baseColor, alpha);
-    emitGrassVertex(TR, vec2(1.0, 1.0), baseColor, alpha);
-    EndPrimitive();
+        // Per-blade randomization
+        float rh = hash21(bladePos.xy);
+        float rw = hash21(bladePos.xy + vec2(17.3, 5.7));
+
+        // Thin out at distance using per-blade hash
+        float rng = hash21(bladePos.xy * 0.01 + vec2(seed));
+        if (rng > densityFade) continue;
+
+        float bladeHeight = mix(1.0, 1.7, rh);
+        float bladeWidth  = mix(0.5, 0.9, rw);
+
+        // Wind — varies per blade position
+        float windPhase = time * 2.0 + bladePos.x * 0.3 + bladePos.y * 0.2;
+        float windOffset = sin(windPhase) * 0.2;
+        vec3 windVec = right * windOffset;
+
+        float alpha = grassWeight * densityFade;
+
+        vec3 BL = bladePos - (bladeWidth * 0.5) * right;
+        vec3 BR = bladePos + (bladeWidth * 0.5) * right;
+        vec3 TL = bladePos - (bladeWidth * 0.5) * right + bladeHeight * up + windVec;
+        vec3 TR = bladePos + (bladeWidth * 0.5) * right + bladeHeight * up + windVec;
+
+        emitGrassVertex(BL, vec2(0.0, 0.0), colAvg, alpha);
+        emitGrassVertex(BR, vec2(1.0, 0.0), colAvg, alpha);
+        emitGrassVertex(TL, vec2(0.0, 1.0), colAvg, alpha);
+        emitGrassVertex(TR, vec2(1.0, 1.0), colAvg, alpha);
+        EndPrimitive();
+    }
 }

@@ -116,6 +116,7 @@ extern float mostW;
 extern float leastWY; 
 extern float mostWY;
 
+
 //---------------------------------------------------------------------------
 void TerrainQuad::setupTextures (void)
 {
@@ -504,7 +505,6 @@ void TerrainQuad::setupTextures (void)
 	{
 		Stuff::Vector3D vertex3D(vertices[0]->vx,vertices[0]->vy,Terrain::waterElevation);
 		Stuff::Vector4D screenPos;
-
 		long clipped1 = vertices[0]->clipInfo + vertices[1]->clipInfo + vertices[2]->clipInfo;
 		long clipped2 = vertices[0]->clipInfo + vertices[2]->clipInfo + vertices[3]->clipInfo;
 
@@ -532,9 +532,7 @@ void TerrainQuad::setupTextures (void)
 				}
 	
 				vertex3D.z = ourCos + Terrain::waterElevation;
-			
-				bool clipData = false;
-				clipData = eye->projectZ(vertex3D,screenPos); 
+				bool clipData = eye->projectZ(vertex3D,screenPos); 
 				bool isVisible = Terrain::IsGameSelectTerrainPosition(vertex3D) || drawTerrainGrid;
 				if (!isVisible)
 				{
@@ -553,31 +551,6 @@ void TerrainQuad::setupTextures (void)
 				vertices[0]->ww = screenPos.w;
 	
 				vertices[0]->calcThisFrame |= 2;
-
-				if (clipData)
-				{
-					if (screenPos.z < leastZ)
-					{
-						leastZ = screenPos.z;
-					}
-
-					if (screenPos.z > mostZ)
-					{
-						mostZ = screenPos.z;
-					}
-
-					if (screenPos.w < leastW)
-					{
-						leastW = screenPos.w;
-						leastWY = screenPos.y;
-					}
-
-					if (screenPos.w > mostW)
-					{
-						mostW = screenPos.w;
-						mostWY = screenPos.y;
-					}
-				}
 			}
 		}
 		
@@ -599,9 +572,7 @@ void TerrainQuad::setupTextures (void)
 				vertex3D.z = ourCos + Terrain::waterElevation;
 				vertex3D.x = vertices[1]->vx;
 				vertex3D.y = vertices[1]->vy;
-				
-				bool clipData = false;
-				clipData = eye->projectZ(vertex3D,screenPos); 
+				bool clipData = eye->projectZ(vertex3D,screenPos); 
 				bool isVisible = Terrain::IsGameSelectTerrainPosition(vertex3D) || drawTerrainGrid;
 				if (!isVisible)
 				{
@@ -620,31 +591,6 @@ void TerrainQuad::setupTextures (void)
 				vertices[1]->ww = screenPos.w;
 	
 				vertices[1]->calcThisFrame |= 2;
-
-				if (clipData)
-				{
-					if (screenPos.z < leastZ)
-					{
-						leastZ = screenPos.z;
-					}
-
-					if (screenPos.z > mostZ)
-					{
-						mostZ = screenPos.z;
-					}
-
-					if (screenPos.w < leastW)
-					{
-						leastW = screenPos.w;
-						leastWY = screenPos.y;
-					}
-
-					if (screenPos.w > mostW)
-					{
-						mostW = screenPos.w;
-						mostWY = screenPos.y;
-					}
-				}
 			}
 		}
 
@@ -666,9 +612,7 @@ void TerrainQuad::setupTextures (void)
 				vertex3D.z = ourCos + Terrain::waterElevation;
 				vertex3D.x = vertices[2]->vx;
 				vertex3D.y = vertices[2]->vy;
-			
-				bool clipData = false;
-				clipData = eye->projectZ(vertex3D,screenPos); 
+				bool clipData = eye->projectZ(vertex3D,screenPos); 
 				bool isVisible = Terrain::IsGameSelectTerrainPosition(vertex3D) || drawTerrainGrid;
 				if (!isVisible)
 				{
@@ -687,31 +631,6 @@ void TerrainQuad::setupTextures (void)
 				vertices[2]->ww = screenPos.w;
 	
 				vertices[2]->calcThisFrame |= 2;
-
-				if (clipData)
-				{
-					if (screenPos.z < leastZ)
-					{
-						leastZ = screenPos.z;
-					}
-
-					if (screenPos.z > mostZ)
-					{
-						mostZ = screenPos.z;
-					}
-
-					if (screenPos.w < leastW)
-					{
-						leastW = screenPos.w;
-						leastWY = screenPos.y;
-					}
-
-					if (screenPos.w > mostW)
-					{
-						mostW = screenPos.w;
-						mostWY = screenPos.y;
-					}
-				}
 			}
 		}
 
@@ -733,9 +652,7 @@ void TerrainQuad::setupTextures (void)
 				vertex3D.z = ourCos + Terrain::waterElevation;
 				vertex3D.x = vertices[3]->vx;
 				vertex3D.y = vertices[3]->vy;
-				
-				bool clipData = false;
-				clipData = eye->projectZ(vertex3D,screenPos); 
+				bool clipData = eye->projectZ(vertex3D,screenPos); 
 				bool isVisible = Terrain::IsGameSelectTerrainPosition(vertex3D) || drawTerrainGrid;
 				if (!isVisible)
 				{
@@ -754,31 +671,6 @@ void TerrainQuad::setupTextures (void)
 				vertices[3]->ww = screenPos.w;
 	
 				vertices[3]->calcThisFrame |= 2;
-
-				if (clipData)
-				{
-					if (screenPos.z < leastZ)
-					{
-						leastZ = screenPos.z;
-					}
-
-					if (screenPos.z > mostZ)
-					{
-						mostZ = screenPos.z;
-					}
-
-					if (screenPos.w < leastW)
-					{
-						leastW = screenPos.w;
-						leastWY = screenPos.y;
-					}
-
-					if (screenPos.w > mostW)
-					{
-						mostW = screenPos.w;
-						mostWY = screenPos.y;
-					}
-				}
 			}
 		}
 
@@ -1450,6 +1342,26 @@ static inline void setOverlayWorldCoords(gos_VERTEX& v, const VertexPtr src) {
 	v.rhw = 1.0f;
 }
 
+static inline void setTerrainWorldVertex(
+	gos_VERTEX& v, const VertexPtr src, float u, float vcoord, DWORD argb)
+{
+	v.x = src->vx;
+	v.y = src->vy;
+	v.z = src->pVertex->elevation + TERRAIN_DEPTH_FUDGE;
+	v.rhw = 1.0f;
+	v.u = u;
+	v.v = vcoord;
+	v.argb = argb;
+	v.frgb = src->fogRGB;
+	v.frgb = (v.frgb & 0xFFFFFF00) | terrainTypeToMaterial(src->pVertex->terrainType);
+}
+
+static inline bool terrainTriVisible(const VertexPtr a, const VertexPtr b, const VertexPtr c)
+{
+	return (a->clipInfo + b->clipInfo + c->clipInfo) != 0;
+}
+
+
 //---------------------------------------------------------------------------
 void TerrainQuad::draw (void)
 {
@@ -1503,42 +1415,11 @@ void TerrainQuad::draw (void)
 			lightRGB1 = vertices[1]->pVertex->selected ? SELECTION_COLOR : lightRGB1;
 			lightRGB2 = vertices[2]->pVertex->selected ? SELECTION_COLOR : lightRGB2;
 
-			gVertex[0].x		= vertices[0]->px;
-			gVertex[0].y		= vertices[0]->py;
-			gVertex[0].z		= vertices[0]->pz + TERRAIN_DEPTH_FUDGE;
-			gVertex[0].rhw		= vertices[0]->pw;
-			gVertex[0].u		= minU;
-			gVertex[0].v		= minV;
-			gVertex[0].argb		= lightRGB0;
-			gVertex[0].frgb		= vertices[0]->fogRGB;
-			gVertex[0].frgb		= (gVertex[0].frgb & 0xFFFFFF00) | terrainTypeToMaterial(vertices[0]->pVertex->terrainType);
+			setTerrainWorldVertex(gVertex[0], vertices[0], minU, minV, lightRGB0);
+			setTerrainWorldVertex(gVertex[1], vertices[1], maxU, minV, lightRGB1);
+			setTerrainWorldVertex(gVertex[2], vertices[2], maxU, maxV, lightRGB2);
 
-			gVertex[1].x		= vertices[1]->px;
-			gVertex[1].y		= vertices[1]->py;
-			gVertex[1].z		= vertices[1]->pz + TERRAIN_DEPTH_FUDGE;
-			gVertex[1].rhw		= vertices[1]->pw;
-			gVertex[1].u		= maxU;
-			gVertex[1].v		= minV;
-			gVertex[1].argb		= lightRGB1;
-			gVertex[1].frgb		= vertices[1]->fogRGB;
-			gVertex[1].frgb		= (gVertex[1].frgb & 0xFFFFFF00) | terrainTypeToMaterial(vertices[1]->pVertex->terrainType);
-
-			gVertex[2].x		= vertices[2]->px;
-			gVertex[2].y		= vertices[2]->py;
-			gVertex[2].z		= vertices[2]->pz + TERRAIN_DEPTH_FUDGE;
-			gVertex[2].rhw		= vertices[2]->pw;
-			gVertex[2].u		= maxU;
-			gVertex[2].v		= maxV;
-			gVertex[2].argb		= lightRGB2;
-			gVertex[2].frgb		= vertices[2]->fogRGB;
-			gVertex[2].frgb		= (gVertex[2].frgb & 0xFFFFFF00) | terrainTypeToMaterial(vertices[2]->pVertex->terrainType);
-
-			if ((gVertex[0].z >= 0.0f) &&
-				(gVertex[0].z < 1.0f) &&
-				(gVertex[1].z >= 0.0f) &&
-				(gVertex[1].z < 1.0f) &&
-				(gVertex[2].z >= 0.0f) &&
-				(gVertex[2].z < 1.0f))
+			if (terrainTriVisible(vertices[0], vertices[1], vertices[2]))
 			{
 				{
 					// sebi: beware this will be drawn with alpha blending, so need to make sure that alpha is not zero, because this is a base terrain layer!
@@ -1562,10 +1443,11 @@ void TerrainQuad::draw (void)
 						oVertex[2].u		= oldmaxU;
 						oVertex[2].v		= oldmaxV;
 
-						//Light the overlays!!
-						oVertex[0].argb		= vertices[0]->lightRGB;
-						oVertex[1].argb		= vertices[1]->lightRGB;
-						oVertex[2].argb		= vertices[2]->lightRGB;
+						// Force white: match the base terrain's lightRGB override for alpha cement.
+						// This eliminates AO contamination from adjacent non-cement vertices.
+						oVertex[0].argb		= 0xffffffff;
+						oVertex[1].argb		= 0xffffffff;
+						oVertex[2].argb		= 0xffffffff;
 
 						// GPU projection: MC2 world coords into new typed batch
 						setOverlayWorldCoords(oVertex[0], vertices[0]);
@@ -1583,7 +1465,7 @@ void TerrainQuad::draw (void)
 								wov[_k].fog  = (float)((oVertex[_k].frgb >> 24) & 0xFF) / 255.0f;
 								wov[_k].argb = oVertex[_k].argb;
 							}
-							gos_PushTerrainOverlay(wov, overlayHandle);
+							gos_PushTerrainOverlay(wov, mcTextureManager->get_gosTextureHandle(overlayHandle));
 						}
 					}
 
@@ -1666,22 +1548,9 @@ void TerrainQuad::draw (void)
 			gVertex[1].argb		= gVertex[2].argb;
 			gVertex[1].frgb		= gVertex[2].frgb;
 
-			gVertex[2].x		= vertices[3]->px;
-			gVertex[2].y		= vertices[3]->py;
-			gVertex[2].z		= vertices[3]->pz + TERRAIN_DEPTH_FUDGE;
-			gVertex[2].rhw		= vertices[3]->pw;
-			gVertex[2].u		= minU;
-			gVertex[2].v		= maxV;
-			gVertex[2].argb		= lightRGB3;
-			gVertex[2].frgb		= vertices[3]->fogRGB;
-			gVertex[2].frgb		= (gVertex[2].frgb & 0xFFFFFF00) | terrainTypeToMaterial(vertices[3]->pVertex->terrainType);
+			setTerrainWorldVertex(gVertex[2], vertices[3], minU, maxV, lightRGB3);
 
-			if ((gVertex[0].z >= 0.0f) &&
-				(gVertex[0].z < 1.0f) &&
-				(gVertex[1].z >= 0.0f) &&
-				(gVertex[1].z < 1.0f) &&
-				(gVertex[2].z >= 0.0f) &&
-				(gVertex[2].z < 1.0f))
+			if (terrainTriVisible(vertices[0], vertices[2], vertices[3]))
 			{
 				{
 					if(terrainHandle!=0) {
@@ -1704,10 +1573,10 @@ void TerrainQuad::draw (void)
 						oVertex[2].u		= oldminU;
 						oVertex[2].v		= oldmaxV;
 
-						//Light the overlays!!
-						oVertex[0].argb		= vertices[0]->lightRGB;
-						oVertex[1].argb		= vertices[2]->lightRGB;
-						oVertex[2].argb		= vertices[3]->lightRGB;
+						// Force white: match the base terrain's lightRGB override for alpha cement.
+						oVertex[0].argb		= 0xffffffff;
+						oVertex[1].argb		= 0xffffffff;
+						oVertex[2].argb		= 0xffffffff;
 
 						// GPU projection: MC2 world coords into new typed batch
 						setOverlayWorldCoords(oVertex[0], vertices[0]);
@@ -1725,7 +1594,7 @@ void TerrainQuad::draw (void)
 								wov[_k].fog  = (float)((oVertex[_k].frgb >> 24) & 0xFF) / 255.0f;
 								wov[_k].argb = oVertex[_k].argb;
 							}
-							gos_PushTerrainOverlay(wov, overlayHandle);
+							gos_PushTerrainOverlay(wov, mcTextureManager->get_gosTextureHandle(overlayHandle));
 						}
 					}
 
@@ -1803,42 +1672,11 @@ void TerrainQuad::draw (void)
 			lightRGB1 = vertices[1]->pVertex->selected ? SELECTION_COLOR : lightRGB1;
 			lightRGB3 = vertices[3]->pVertex->selected ? SELECTION_COLOR : lightRGB3;
 
-			gVertex[0].x		= vertices[0]->px;
-			gVertex[0].y		= vertices[0]->py;
-			gVertex[0].z		= vertices[0]->pz + TERRAIN_DEPTH_FUDGE;
-			gVertex[0].rhw		= vertices[0]->pw;
-			gVertex[0].u		= minU;
-			gVertex[0].v		= minV;
-			gVertex[0].argb		= lightRGB0;
-			gVertex[0].frgb		= vertices[0]->fogRGB;
-			gVertex[0].frgb		= (gVertex[0].frgb & 0xFFFFFF00) | terrainTypeToMaterial(vertices[0]->pVertex->terrainType);
+			setTerrainWorldVertex(gVertex[0], vertices[0], minU, minV, lightRGB0);
+			setTerrainWorldVertex(gVertex[1], vertices[1], maxU, minV, lightRGB1);
+			setTerrainWorldVertex(gVertex[2], vertices[3], minU, maxV, lightRGB3);
 
-			gVertex[1].x		= vertices[1]->px;
-			gVertex[1].y		= vertices[1]->py;
-			gVertex[1].z		= vertices[1]->pz + TERRAIN_DEPTH_FUDGE;
-			gVertex[1].rhw		= vertices[1]->pw;
-			gVertex[1].u		= maxU;
-			gVertex[1].v		= minV;
-			gVertex[1].argb		= lightRGB1;
-			gVertex[1].frgb		= vertices[1]->fogRGB;
-			gVertex[1].frgb		= (gVertex[1].frgb & 0xFFFFFF00) | terrainTypeToMaterial(vertices[1]->pVertex->terrainType);
-
-			gVertex[2].x		= vertices[3]->px;
-			gVertex[2].y		= vertices[3]->py;
-			gVertex[2].z		= vertices[3]->pz + TERRAIN_DEPTH_FUDGE;
-			gVertex[2].rhw		= vertices[3]->pw;
-			gVertex[2].u		= minU;
-			gVertex[2].v		= maxV;
-			gVertex[2].argb		= lightRGB3;
-			gVertex[2].frgb		= vertices[3]->fogRGB;
-			gVertex[2].frgb		= (gVertex[2].frgb & 0xFFFFFF00) | terrainTypeToMaterial(vertices[3]->pVertex->terrainType);
-
-			if ((gVertex[0].z >= 0.0f) &&
-				(gVertex[0].z < 1.0f) &&
-				(gVertex[1].z >= 0.0f) &&
-				(gVertex[1].z < 1.0f) &&
-				(gVertex[2].z >= 0.0f) &&
-				(gVertex[2].z < 1.0f))
+			if (terrainTriVisible(vertices[0], vertices[1], vertices[3]))
 			{
 				{
 					if(terrainHandle!=0) {
@@ -1916,10 +1754,10 @@ void TerrainQuad::draw (void)
 						oVertex[2].u		= oldminU;
 						oVertex[2].v		= oldmaxV;
 
-						//Light the overlays!!
-						oVertex[0].argb		= vertices[0]->lightRGB;
-						oVertex[1].argb		= vertices[1]->lightRGB;
-						oVertex[2].argb		= vertices[3]->lightRGB;
+						// Force white: match the base terrain's lightRGB override for alpha cement.
+						oVertex[0].argb		= 0xffffffff;
+						oVertex[1].argb		= 0xffffffff;
+						oVertex[2].argb		= 0xffffffff;
 
 						// GPU projection: MC2 world coords into new typed batch
 						setOverlayWorldCoords(oVertex[0], vertices[0]);
@@ -1937,7 +1775,7 @@ void TerrainQuad::draw (void)
 								wov[_k].fog  = (float)((oVertex[_k].frgb >> 24) & 0xFF) / 255.0f;
 								wov[_k].argb = oVertex[_k].argb;
 							}
-							gos_PushTerrainOverlay(wov, overlayHandle);
+							gos_PushTerrainOverlay(wov, mcTextureManager->get_gosTextureHandle(overlayHandle));
 						}
 					}
 				}
@@ -1963,22 +1801,9 @@ void TerrainQuad::draw (void)
 			gVertex[0].argb		= gVertex[1].argb;
 			gVertex[0].frgb		= gVertex[1].frgb;
 
-			gVertex[1].x		= vertices[2]->px;
-			gVertex[1].y		= vertices[2]->py;
-			gVertex[1].z		= vertices[2]->pz + TERRAIN_DEPTH_FUDGE;
-			gVertex[1].rhw		= vertices[2]->pw;
-			gVertex[1].u		= maxU;
-			gVertex[1].v		= maxV;
-			gVertex[1].argb		= lightRGB2;
-			gVertex[1].frgb		= vertices[2]->fogRGB;
-			gVertex[1].frgb		= (gVertex[1].frgb & 0xFFFFFF00) | terrainTypeToMaterial(vertices[2]->pVertex->terrainType);
+			setTerrainWorldVertex(gVertex[1], vertices[2], maxU, maxV, lightRGB2);
 
-			if ((gVertex[0].z >= 0.0f) &&
-				(gVertex[0].z < 1.0f) &&
-				(gVertex[1].z >= 0.0f) &&
-				(gVertex[1].z < 1.0f) &&
-				(gVertex[2].z >= 0.0f) &&
-				(gVertex[2].z < 1.0f))
+			if (terrainTriVisible(vertices[1], vertices[2], vertices[3]))
 			{
 				{
 					if(terrainHandle!=0) {
@@ -2056,10 +1881,10 @@ void TerrainQuad::draw (void)
 						oVertex[2].u		= oldminU;
 						oVertex[2].v		= oldmaxV;
 
-						//Light the overlays!!
-						oVertex[0].argb		= vertices[1]->lightRGB;
-						oVertex[1].argb		= vertices[2]->lightRGB;
-						oVertex[2].argb		= vertices[3]->lightRGB;
+						// Force white: match the base terrain's lightRGB override for alpha cement.
+						oVertex[0].argb		= 0xffffffff;
+						oVertex[1].argb		= 0xffffffff;
+						oVertex[2].argb		= 0xffffffff;
 
 						// GPU projection: MC2 world coords into new typed batch
 						setOverlayWorldCoords(oVertex[0], vertices[1]);
@@ -2077,7 +1902,7 @@ void TerrainQuad::draw (void)
 								wov[_k].fog  = (float)((oVertex[_k].frgb >> 24) & 0xFF) / 255.0f;
 								wov[_k].argb = oVertex[_k].argb;
 							}
-							gos_PushTerrainOverlay(wov, overlayHandle);
+							gos_PushTerrainOverlay(wov, mcTextureManager->get_gosTextureHandle(overlayHandle));
 						}
 					}
 				}
@@ -2190,12 +2015,7 @@ void TerrainQuad::drawWater (void)
 			gVertex[2].u = (vertices[2]->vx - Terrain::mapTopLeft3d.x) * oneOverTF + cloudOffsetX; 
 			gVertex[2].v = (Terrain::mapTopLeft3d.y - vertices[2]->vy) * oneOverTF + cloudOffsetY; 
 
-			if ((gVertex[0].z >= 0.0f) &&
-				(gVertex[0].z < 1.0f) &&
-				(gVertex[1].z >= 0.0f) &&  
-				(gVertex[1].z < 1.0f) && 
-				(gVertex[2].z >= 0.0f) &&  
-				(gVertex[2].z < 1.0f))
+			if (terrainTriVisible(vertices[0], vertices[1], vertices[2]))
 			{
 				{
 					//-----------------------------------------------------------------------------
@@ -2329,12 +2149,7 @@ void TerrainQuad::drawWater (void)
 			gVertex[2].u = (vertices[3]->vx - Terrain::mapTopLeft3d.x) * oneOverTF + cloudOffsetX;
 			gVertex[2].v = (Terrain::mapTopLeft3d.y - vertices[3]->vy) * oneOverTF + cloudOffsetY;
 
-			if ((gVertex[0].z >= 0.0f) &&
-				(gVertex[0].z < 1.0f) &&
-				(gVertex[1].z >= 0.0f) &&  
-				(gVertex[1].z < 1.0f) && 
-				(gVertex[2].z >= 0.0f) &&  
-				(gVertex[2].z < 1.0f))
+			if (terrainTriVisible(vertices[0], vertices[2], vertices[3]))
 			{
 				{
 					//-----------------------------------------------------------------------------
@@ -2478,12 +2293,7 @@ void TerrainQuad::drawWater (void)
 			gVertex[2].u = (vertices[3]->vx - Terrain::mapTopLeft3d.x) * oneOverTF + cloudOffsetX; 
 			gVertex[2].v = (Terrain::mapTopLeft3d.y - vertices[3]->vy) * oneOverTF + cloudOffsetY; 
 
-			if ((gVertex[0].z >= 0.0f) &&
-				(gVertex[0].z < 1.0f) &&
-				(gVertex[1].z >= 0.0f) &&  
-				(gVertex[1].z < 1.0f) && 
-				(gVertex[2].z >= 0.0f) &&  
-				(gVertex[2].z < 1.0f))
+			if (terrainTriVisible(vertices[0], vertices[1], vertices[3]))
 			{
 				{
 					//-----------------------------------------------------------------------------
@@ -2617,12 +2427,7 @@ void TerrainQuad::drawWater (void)
 			gVertex[2].u = (vertices[3]->vx - Terrain::mapTopLeft3d.x) * oneOverTF + cloudOffsetX; 
 			gVertex[2].v = (Terrain::mapTopLeft3d.y - vertices[3]->vy) * oneOverTF + cloudOffsetY; 
 																   
-			if ((gVertex[0].z >= 0.0f) &&
-				(gVertex[0].z < 1.0f) &&
-				(gVertex[1].z >= 0.0f) &&  
-				(gVertex[1].z < 1.0f) && 
-				(gVertex[2].z >= 0.0f) &&  
-				(gVertex[2].z < 1.0f))
+			if (terrainTriVisible(vertices[1], vertices[2], vertices[3]))
 			{
 				{
 					//-----------------------------------------------------------------------------

@@ -5,8 +5,11 @@
 #define PREC highp
 
 #include <include/lighting.hglsl>
+#include <include/shadow.hglsl>
 
 uniform vec4 light_offset_;
+uniform int gpuProjection;
+uniform vec4 terrainLightDir;
 
 in PREC vec3 Normal;
 //in PREC float FogValue;
@@ -15,6 +18,7 @@ in PREC vec4 VertexColor;
 in PREC vec3 VertexLight;
 in PREC vec3 WorldPos;
 in PREC vec3 CameraPos;
+in PREC vec3 MC2WorldPos;
 
 layout (location=0) out PREC vec4 FragColor;
 
@@ -26,14 +30,11 @@ void main(void)
     PREC vec4 c = vec4(1,1,1,1);//Color.bgra;
     PREC vec4 tex_color = texture(tex1, Texcoord);
     c *= tex_color;
-    
+
 #ifdef ALPHA_TEST
     if(tex_color.a == 0.5)
         discard;
 #endif
-
-	//if(fog_color.x>0.0 || fog_color.y>0.0 || fog_color.z>0.0 || fog_color.w>0.0)
-    //	c.rgb = mix(fog_color.rgb, c.rgb, FogValue);
 
 #if ENABLE_VERTEX_LIGHTING
 	PREC vec3 lighting = VertexLight;
@@ -42,10 +43,12 @@ void main(void)
     PREC vec3 lighting = calc_light(lights_index, Normal, VertexLight);
 #endif
 
+    // GPU projection path: projected ground overlays (mission markers, nav beacons) are
+    // 2D UI elements and should not receive world shadows — skip shadow sampling entirely.
+
     c.xyz = c.xyz * lighting;
 
     c.xyz = apply_fog(c.xyz, WorldPos.xyz, CameraPos);
 
 	FragColor = vec4(c.xyz, c.a);
 }
-

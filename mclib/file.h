@@ -160,6 +160,8 @@ class File
 
 			virtual long open (File *_parent, unsigned long fileSize, long numChildren = 50);
 			
+			bool isLoadedFromDisk(void) const { return (handle != -1) && (fastFile == NULL); }
+
 			void deleteFile (void);
 
 			long seek (long pos, long from = SEEK_SET);

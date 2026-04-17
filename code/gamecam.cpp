@@ -162,7 +162,9 @@ void GameCamera::render (void)
 
 			// Upload raw AW matrix (axisSwap * worldToClip)
 			// TES does perspective divide + viewport in shader (non-linear, can't be matrix)
-			// AW stored row-major, uploaded with GL_TRUE → GLSL gets correct column-vector form
+			// AW stored row-major in M[], uploaded with GL_FALSE in gameos_graphics.cpp.
+			// GL_FALSE → OpenGL reads each C++ row as a GLSL column → GLSL sees AW^T.
+			// AW^T * (vx,vy,elev,1) = projectZ(vx,vy,elev) exactly (Stuff row-vector convention).
 			float M[16];
 			for (int i = 0; i < 4; i++)
 				for (int j = 0; j < 4; j++)

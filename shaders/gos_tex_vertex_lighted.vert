@@ -10,7 +10,7 @@ layout(location = 2) in vec4 aRGBLight;
 layout(location = 3) in vec2 texcoord;
 
 layout (binding = 1, std140) uniform mesh_data
-{ 
+{
   vec4 ambient;
   vec4 diffuse;
 };
@@ -29,6 +29,10 @@ uniform vec4 vp; //viewport
 
 uniform float forceZ; // baked in a wvp matrix
 
+// GPU projection: when enabled, use terrainMVP with MC2 world coords
+uniform int gpuProjection;
+uniform mat4 terrainMVP;  // MC2 world space -> clip space (direct GL, GL_FALSE)
+
 out vec3 Normal;
 out float FogValue;
 out vec2 Texcoord;
@@ -36,30 +40,34 @@ out vec4 VertexColor;
 out vec3 VertexLight;
 out vec3 WorldPos;
 out vec3 CameraPos;
+out vec3 MC2WorldPos;
 
 void main(void)
 {
-    vec4 p = wvp_ * vec4(pos.xyz, 1);
-    float rhw = 1 / p.w;
-
-    p.x = (p.x * rhw) * vp.z + vp.x + 100.0;
-    p.y = (p.y * rhw) * vp.w + vp.y;
-    p.z = p.z * rhw;
-    p.w = abs(rhw);
-
+    // World-space position in Stuff coordinates (x=left, y=up, z=forward)
     WorldPos = (world_ * vec4(pos.xyz, 1.0)).xyz;
 
-    // something is wrong with this: check later
-    //CameraPos = (inverse(view_) * vec4(0,0,0,1)).xyz;
+    // MC2 world coordinates (x=east, y=north, z=elev) for shadow sampling
+    MC2WorldPos = vec3(-WorldPos.x, WorldPos.z, WorldPos.y);
 
-    vec4 p2 = projection_ * vec4(p.xyz,1);
+    if (gpuProjection != 0) {
+        // GPU projection: transform to MC2 world space, then to clip via terrainMVP
+        gl_Position = terrainMVP * vec4(MC2WorldPos, 1.0);
+    } else {
+        // Legacy CPU-assist projection: manual perspective divide + viewport mapping
+        vec4 p = wvp_ * vec4(pos.xyz, 1);
+        float rhw = 1 / p.w;
 
-    //mat4 norm_view_mat = inverse(view_);
+        p.x = (p.x * rhw) * vp.z + vp.x + 100.0;
+        p.y = (p.y * rhw) * vp.w + vp.y;
+        p.z = p.z * rhw;
+        p.w = abs(rhw);
 
-    gl_Position = p2 / p.w;
-    //Normal = ((world_ * view_) * vec4(normal, 0)).xyz;
+        vec4 p2 = projection_ * vec4(p.xyz,1);
+        gl_Position = p2 / p.w;
+    }
+
     Normal = (world_ * vec4(normal, 0)).xyz;
-    //FogValue = fog.w;
     Texcoord = texcoord;
 
     // base light can be only calculated in VS because relies on exact vertex colors

@@ -1,0 +1,147 @@
+diff --git "a/A:\\Games\\mc2-opengl-src\\.claude\\worktrees\\nifty-mendeleev\\.codex_tmp_isolate\\quad_head.cpp" "b/A:\\Games\\mc2-opengl-src\\.claude\\worktrees\\nifty-mendeleev\\.codex_tmp_isolate\\quad_desired.cpp"
+index e1e13ae..6f4261d 100644
+--- "a/A:\\Games\\mc2-opengl-src\\.claude\\worktrees\\nifty-mendeleev\\.codex_tmp_isolate\\quad_head.cpp"
++++ "b/A:\\Games\\mc2-opengl-src\\.claude\\worktrees\\nifty-mendeleev\\.codex_tmp_isolate\\quad_desired.cpp"
+@@ -1447,6 +1447,26 @@ static inline void setOverlayWorldCoords(gos_VERTEX& v, const VertexPtr src) {
+ 	v.x = src->vx;
+ 	v.y = src->vy;
+ 	v.z = src->pVertex->elevation + OVERLAY_ELEV_OFFSET;
++static inline void setTerrainWorldVertex(
++`tgos_VERTEX& v, const VertexPtr src, float u, float vcoord, DWORD argb)
++{
++`tv.x = src->vx;
++`tv.y = src->vy;
++`tv.z = src->pVertex->elevation + TERRAIN_DEPTH_FUDGE;
++`tv.rhw = 1.0f;
++`tv.u = u;
++`tv.v = vcoord;
++`tv.argb = argb;
++`tv.frgb = src->fogRGB;
++`tv.frgb = (v.frgb & 0xFFFFFF00) | terrainTypeToMaterial(src->pVertex->terrainType);
++}
++
++static inline bool terrainTriVisible(const VertexPtr a, const VertexPtr b, const VertexPtr c)
++{
++`treturn (a->clipInfo + b->clipInfo + c->clipInfo) != 0;
++}
++
++
+ 	v.rhw = 1.0f;
+ }
+ 
+@@ -1509,34 +1529,9 @@ void TerrainQuad::draw (void)
+ 			gVertex[0].rhw		= vertices[0]->pw;
+ 			gVertex[0].u		= minU;
+ 			gVertex[0].v		= minV;
+-			gVertex[0].argb		= lightRGB0;
+-			gVertex[0].frgb		= vertices[0]->fogRGB;
+-			gVertex[0].frgb		= (gVertex[0].frgb & 0xFFFFFF00) | terrainTypeToMaterial(vertices[0]->pVertex->terrainType);
+-
+-			gVertex[1].x		= vertices[1]->px;
+-			gVertex[1].y		= vertices[1]->py;
+-			gVertex[1].z		= vertices[1]->pz + TERRAIN_DEPTH_FUDGE;
+-			gVertex[1].rhw		= vertices[1]->pw;
+-			gVertex[1].u		= maxU;
+-			gVertex[1].v		= minV;
+-			gVertex[1].argb		= lightRGB1;
+-			gVertex[1].frgb		= vertices[1]->fogRGB;
+-			gVertex[1].frgb		= (gVertex[1].frgb & 0xFFFFFF00) | terrainTypeToMaterial(vertices[1]->pVertex->terrainType);
+-
+-			gVertex[2].x		= vertices[2]->px;
+-			gVertex[2].y		= vertices[2]->py;
+-			gVertex[2].z		= vertices[2]->pz + TERRAIN_DEPTH_FUDGE;
+-			gVertex[2].rhw		= vertices[2]->pw;
+-			gVertex[2].u		= maxU;
+-			gVertex[2].v		= maxV;
+-			gVertex[2].argb		= lightRGB2;
+-			gVertex[2].frgb		= vertices[2]->fogRGB;
+-			gVertex[2].frgb		= (gVertex[2].frgb & 0xFFFFFF00) | terrainTypeToMaterial(vertices[2]->pVertex->terrainType);
+-
+-			if ((gVertex[0].z >= 0.0f) &&
+-				(gVertex[0].z < 1.0f) &&
+-				(gVertex[1].z >= 0.0f) &&
+-				(gVertex[1].z < 1.0f) &&
++`t`t`tsetTerrainWorldVertex(gVertex[0], vertices[0], minU, minV, lightRGB0);
++`t`t`tsetTerrainWorldVertex(gVertex[1], vertices[1], maxU, minV, lightRGB1);
++`t`t`tsetTerrainWorldVertex(gVertex[2], vertices[2], maxU, maxV, lightRGB2);
+ 				(gVertex[2].z >= 0.0f) &&
+ 				(gVertex[2].z < 1.0f))
+ 			{
+@@ -1665,18 +1660,7 @@ void TerrainQuad::draw (void)
+ 			gVertex[1].v		= gVertex[2].v;	
+ 			gVertex[1].argb		= gVertex[2].argb;
+ 			gVertex[1].frgb		= gVertex[2].frgb;
+-
+-			gVertex[2].x		= vertices[3]->px;
+-			gVertex[2].y		= vertices[3]->py;
+-			gVertex[2].z		= vertices[3]->pz + TERRAIN_DEPTH_FUDGE;
+-			gVertex[2].rhw		= vertices[3]->pw;
+-			gVertex[2].u		= minU;
+-			gVertex[2].v		= maxV;
+-			gVertex[2].argb		= lightRGB3;
+-			gVertex[2].frgb		= vertices[3]->fogRGB;
+-			gVertex[2].frgb		= (gVertex[2].frgb & 0xFFFFFF00) | terrainTypeToMaterial(vertices[3]->pVertex->terrainType);
+-
+-			if ((gVertex[0].z >= 0.0f) &&
++`t`t`tsetTerrainWorldVertex(gVertex[2], vertices[3], minU, maxV, lightRGB3);
+ 				(gVertex[0].z < 1.0f) &&
+ 				(gVertex[1].z >= 0.0f) &&
+ 				(gVertex[1].z < 1.0f) &&
+@@ -1803,34 +1787,9 @@ void TerrainQuad::draw (void)
+ 			lightRGB1 = vertices[1]->pVertex->selected ? SELECTION_COLOR : lightRGB1;
+ 			lightRGB3 = vertices[3]->pVertex->selected ? SELECTION_COLOR : lightRGB3;
+ 
+-			gVertex[0].x		= vertices[0]->px;
+-			gVertex[0].y		= vertices[0]->py;
+-			gVertex[0].z		= vertices[0]->pz + TERRAIN_DEPTH_FUDGE;
+-			gVertex[0].rhw		= vertices[0]->pw;
+-			gVertex[0].u		= minU;
+-			gVertex[0].v		= minV;
+-			gVertex[0].argb		= lightRGB0;
+-			gVertex[0].frgb		= vertices[0]->fogRGB;
+-			gVertex[0].frgb		= (gVertex[0].frgb & 0xFFFFFF00) | terrainTypeToMaterial(vertices[0]->pVertex->terrainType);
+-
+-			gVertex[1].x		= vertices[1]->px;
+-			gVertex[1].y		= vertices[1]->py;
+-			gVertex[1].z		= vertices[1]->pz + TERRAIN_DEPTH_FUDGE;
+-			gVertex[1].rhw		= vertices[1]->pw;
+-			gVertex[1].u		= maxU;
+-			gVertex[1].v		= minV;
+-			gVertex[1].argb		= lightRGB1;
+-			gVertex[1].frgb		= vertices[1]->fogRGB;
+-			gVertex[1].frgb		= (gVertex[1].frgb & 0xFFFFFF00) | terrainTypeToMaterial(vertices[1]->pVertex->terrainType);
+-
+-			gVertex[2].x		= vertices[3]->px;
+-			gVertex[2].y		= vertices[3]->py;
+-			gVertex[2].z		= vertices[3]->pz + TERRAIN_DEPTH_FUDGE;
+-			gVertex[2].rhw		= vertices[3]->pw;
+-			gVertex[2].u		= minU;
+-			gVertex[2].v		= maxV;
+-			gVertex[2].argb		= lightRGB3;
+-			gVertex[2].frgb		= vertices[3]->fogRGB;
++`t`t`tsetTerrainWorldVertex(gVertex[0], vertices[0], minU, minV, lightRGB0);
++`t`t`tsetTerrainWorldVertex(gVertex[1], vertices[1], maxU, minV, lightRGB1);
++`t`t`tsetTerrainWorldVertex(gVertex[2], vertices[3], minU, maxV, lightRGB3);
+ 			gVertex[2].frgb		= (gVertex[2].frgb & 0xFFFFFF00) | terrainTypeToMaterial(vertices[3]->pVertex->terrainType);
+ 
+ 			if ((gVertex[0].z >= 0.0f) &&
+@@ -1963,18 +1922,7 @@ void TerrainQuad::draw (void)
+ 			gVertex[0].argb		= gVertex[1].argb;
+ 			gVertex[0].frgb		= gVertex[1].frgb;
+ 
+-			gVertex[1].x		= vertices[2]->px;
+-			gVertex[1].y		= vertices[2]->py;
+-			gVertex[1].z		= vertices[2]->pz + TERRAIN_DEPTH_FUDGE;
+-			gVertex[1].rhw		= vertices[2]->pw;
+-			gVertex[1].u		= maxU;
+-			gVertex[1].v		= maxV;
+-			gVertex[1].argb		= lightRGB2;
+-			gVertex[1].frgb		= vertices[2]->fogRGB;
+-			gVertex[1].frgb		= (gVertex[1].frgb & 0xFFFFFF00) | terrainTypeToMaterial(vertices[2]->pVertex->terrainType);
+-
+-			if ((gVertex[0].z >= 0.0f) &&
+-				(gVertex[0].z < 1.0f) &&
++`t`t`tsetTerrainWorldVertex(gVertex[1], vertices[2], maxU, maxV, lightRGB2);
+ 				(gVertex[1].z >= 0.0f) &&
+ 				(gVertex[1].z < 1.0f) &&
+ 				(gVertex[2].z >= 0.0f) &&

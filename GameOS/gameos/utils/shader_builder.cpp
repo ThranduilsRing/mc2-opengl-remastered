@@ -14,6 +14,7 @@
 #include "utils/shader_builder.h"
 #include "utils/timing.h"
 #include "utils/file_utils.h"
+#include "gos_profiler.h"
 
 
 std::map<std::string, glsl_shader*> glsl_shader::s_shaders[glsl_shader::NUM_SHADER_TYPES];
@@ -533,6 +534,7 @@ void parse_uniform_blocks(GLuint pprogram, glsl_program::UniBlockArr_t* puniform
 
 glsl_program* glsl_program::makeProgram2(const char* name, const char* vp, const char* hp, const char* dp, const char* gp, const char* fp, int count/* = 0*/, const char** xfb_variables/* = 0*/, const char* prefix/*=nullptr*/)
 {
+	ZoneScopedN("Shader.MakeProgram");
 	if(!uniformFuncs[0])
         init_func_ptrs(uniformFuncs);
 
@@ -698,6 +700,7 @@ glsl_program::~glsl_program()
 
 void glsl_program::apply()
 {
+    ZoneScopedN("Shader.Apply");
     glUseProgram(shp_);
 
     UniArr_t::iterator it = uniforms_.begin(); 
@@ -721,6 +724,7 @@ void glsl_program::apply()
 
 bool glsl_program::reload()
 {
+    ZoneScopedN("Shader.Reload");
     is_valid_ = false;
 
 	//glDetachShader(shp_, vsh_->shader_);
