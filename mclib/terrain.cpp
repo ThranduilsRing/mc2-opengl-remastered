@@ -1084,11 +1084,9 @@ void Terrain::geometry (void)
 		}	
 		
 		//------------------------------------------------------------
-		// clipInfo is the coarse terrain visibility gate that quad.cpp uses when
-		// submitting world-space terrain vertices to the tessellation path.
-		// Keep projectZ() for projected coords and inverse-project statistics, but
-		// do not let its depth-range result drive the terrain visibility contract.
-		if (eye->usePerspective)
+		// Fix clip.  Vertices can all be off screen and triangle
+		// still needs to be drawn!
+		if (eye->usePerspective && Environment.Renderer != 3)
 		{
 			currentVertex->clipInfo = onScreen;
 		}
