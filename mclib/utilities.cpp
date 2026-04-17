@@ -10,6 +10,7 @@ Utilities.cpp			: Implementation of the Utilities component.
 #include"txmmgr.h"
 #include"inifile.h"
 #include"mclib.h"
+#include"../GameOS/gameos/gos_profiler.h"
 
 
 #pragma warning(disable:4514)
@@ -252,53 +253,86 @@ void StaticInfo::getData(unsigned char * buffer)
 
 void StaticInfo::init( FitIniFile& file, const char* blockName, long hiResOffsetX, long hiResOffsetY, DWORD neverFlush )
 {
+	ZoneScopedN("StaticInfo::init");
 	memset( location, 0, sizeof( location ) );
 	char fileName[256];
 	textureHandle = 0;
 	textureWidth = 0; 
 	
-	if ( NO_ERR != file.seekBlock( blockName ) )
 	{
-		char errBuffer[256];
-		sprintf( errBuffer, "couldn't find static block %s", blockName );
-		Assert( 0, 0, errBuffer );
-		return;
+		ZoneScopedN("StaticInfo::init seekBlock");
+		if ( NO_ERR != file.seekBlock( blockName ) )
+		{
+			char errBuffer[256];
+			sprintf( errBuffer, "couldn't find static block %s", blockName );
+			Assert( 0, 0, errBuffer );
+			return;
+		}
 	}
 
 	long x, y, width, height;
-	file.readIdLong( "XLocation", x );
-	file.readIdLong( "YLocation", y );
+	{
+		ZoneScopedN("StaticInfo::init layoutRead");
+		file.readIdLong( "XLocation", x );
+		file.readIdLong( "YLocation", y );
 
-	x += hiResOffsetX;
-	y += hiResOffsetY;
+		x += hiResOffsetX;
+		y += hiResOffsetY;
 
-	file.readIdLong( "Width", width );
-	file.readIdLong( "Height", height );
+		file.readIdLong( "Width", width );
+		file.readIdLong( "Height", height );
 
-	file.readIdString( "FileName", fileName, 32 );
+		file.readIdString( "FileName", fileName, 32 );
+	}
 
 	if ( !textureHandle )
 	{
 		FullPathFileName fullPath;
 		S_strlwr( fileName );
 		fullPath.init( artPath, fileName, ".tga" );
-		int ID = mcTextureManager->loadTexture( fullPath, gos_Texture_Alpha, 0, 0, 0x2 );
+		int ID;
+		{
+			ZoneScopedN("StaticInfo::init loadTexture");
+			ID = mcTextureManager->loadTexture( fullPath, gos_Texture_Alpha, 0, 0, 0x2 );
+		}
 		textureHandle = ID;
-		unsigned long gosID = mcTextureManager->get_gosTextureHandle( ID );
-		TEXTUREPTR textureData;
-		gos_LockTexture( gosID, 0, 0, 	&textureData );
-		textureWidth = textureData.Width / mcTextureManager->getUVScale(ID);
-		gos_UnLockTexture( gosID );
+		DWORD logicalWidth = 0;
+		DWORD logicalHeight = 0;
+		if ( mcTextureManager->tryGetTextureLogicalSize( ID, logicalWidth, logicalHeight ) )
+			textureWidth = logicalWidth;
+		else
+		{
+			unsigned long gosID;
+			{
+				ZoneScopedN("StaticInfo::init get_gosTextureHandle");
+				gosID = mcTextureManager->get_gosTextureHandle( ID );
+			}
+			TEXTUREPTR textureData;
+			{
+				ZoneScopedN("StaticInfo::init gos_LockTexture");
+				gos_LockTexture( gosID, 0, 0, 	&textureData );
+			}
+			textureWidth = textureData.Width / mcTextureManager->getUVScale(ID);
+			{
+				ZoneScopedN("StaticInfo::init gos_UnLockTexture");
+				gos_UnLockTexture( gosID );
+			}
+		}
 	}
 
 	bool bRotated = 0;
 
-	file.readIdLong( "UNormal", u );
-	file.readIdLong( "VNormal", v );
-	file.readIdLong( "UWidth", uWidth );
-	file.readIdLong( "VHeight", vHeight );
-	file.readIdBoolean( "texturesRotated", bRotated );
+	{
+		ZoneScopedN("StaticInfo::init uvRead");
+		file.readIdLong( "UNormal", u );
+		file.readIdLong( "VNormal", v );
+		file.readIdLong( "UWidth", uWidth );
+		file.readIdLong( "VHeight", vHeight );
+		file.readIdBoolean( "texturesRotated", bRotated );
+	}
 
+	{
+		ZoneScopedN("StaticInfo::init setupVertices");
 	for ( int k = 0; k < 4; k++ )
 	{
 		location[k].argb = 0xffffffff;
@@ -329,6 +363,7 @@ void StaticInfo::init( FitIniFile& file, const char* blockName, long hiResOffset
 		location[1].v = v/(float)textureWidth + (.1f / (float)textureWidth);;
 		location[2].v = (v + vHeight)/(float)textureWidth + (.1f / (float)textureWidth);;
 		location[3].v = (v + vHeight)/(float)textureWidth + (.1f / (float)textureWidth);;
+	}
 	}
 
 }

@@ -37,6 +37,7 @@ controlGui.cpp			: Implementation of the controlGui component.
 #include"malloc.h"
 
 #include"chatwindow.h"
+#include"../GameOS/gameos/gos_profiler.h"
 
 
 
@@ -2241,13 +2242,19 @@ bool ControlGui::getVehicleCommand( )
 
 void ControlButton::initButtons( FitIniFile& buttonFile, long buttonCount, ControlButton* Buttons, ButtonData* Data, const char* str, aFont* font )
 {
+	ZoneScopedN("ControlButton::initButtons");
 	char path[256];
 	for ( int i = 0; i < buttonCount; ++i )
 	{
+		ZoneScopedN("ControlButton::initButtons button");
 		sprintf( path, "%s%ld", str, i );
 		Data[i].textureHandle = 0;
 
-		long result = buttonFile.seekBlock( path );
+		long result;
+		{
+			ZoneScopedN("ControlButton::initButtons seekBlock");
+			result = buttonFile.seekBlock( path );
+		}
 		if ( result != NO_ERR )
 		{
 			char errorStr[256];
@@ -2256,34 +2263,40 @@ void ControlButton::initButtons( FitIniFile& buttonFile, long buttonCount, Contr
 			continue;
 		}
 
-		buttonFile.readIdLong( "ID", Buttons[i].ID );
-		buttonFile.readIdString("FileName", Data[i].fileName, 32 );
+		{
+			ZoneScopedN("ControlButton::initButtons metadata");
+			buttonFile.readIdLong( "ID", Buttons[i].ID );
+			buttonFile.readIdString("FileName", Data[i].fileName, 32 );
 
-		buttonFile.readIdLong( "HelpCaption", Data[i].helpTextHeader );
-		buttonFile.readIdLong( "HelpDesc", Data[i].helpTextID );
-		buttonFile.readIdLong( "TextID", Data[i].textID );
-		buttonFile.readIdLong( "TextNormal", Data[i].textColors[0] );
-		buttonFile.readIdLong( "TextPressed", Data[i].textColors[1] );
-		buttonFile.readIdLong( "TextDisabled", Data[i].textColors[2] );
-		buttonFile.readIdLong( "TextHighlight", Data[i].textColors[3] );
+			buttonFile.readIdLong( "HelpCaption", Data[i].helpTextHeader );
+			buttonFile.readIdLong( "HelpDesc", Data[i].helpTextID );
+			buttonFile.readIdLong( "TextID", Data[i].textID );
+			buttonFile.readIdLong( "TextNormal", Data[i].textColors[0] );
+			buttonFile.readIdLong( "TextPressed", Data[i].textColors[1] );
+			buttonFile.readIdLong( "TextDisabled", Data[i].textColors[2] );
+			buttonFile.readIdLong( "TextHighlight", Data[i].textColors[3] );
+		}
 		if ( font )
 			Data[i].textFont = *font;
 
 		long x, y, width, height;
 
-		buttonFile.readIdLong( "XLocation", x );
-		buttonFile.readIdLong( "YLocation", y );
-		
-		x += ControlGui::hiResOffsetX;
-		y += ControlGui::hiResOffsetY;
-		
-		buttonFile.readIdLong( "Width", width );
-		buttonFile.readIdLong( "Height", height );
+		{
+			ZoneScopedN("ControlButton::initButtons layout");
+			buttonFile.readIdLong( "XLocation", x );
+			buttonFile.readIdLong( "YLocation", y );
+			
+			x += ControlGui::hiResOffsetX;
+			y += ControlGui::hiResOffsetY;
+			
+			buttonFile.readIdLong( "Width", width );
+			buttonFile.readIdLong( "Height", height );
 
-		buttonFile.readIdLong( "HelpCaption", Data[i].helpTextHeader );
-		buttonFile.readIdLong( "HelpDesc", Data[i].helpTextID );
+			buttonFile.readIdLong( "HelpCaption", Data[i].helpTextHeader );
+			buttonFile.readIdLong( "HelpDesc", Data[i].helpTextID );
 
-		buttonFile.readIdBoolean( "texturesRotated", Data[i].textureRotated );
+			buttonFile.readIdBoolean( "texturesRotated", Data[i].textureRotated );
+		}
 
 
 		Buttons[i].data = &Data[i];
@@ -2291,6 +2304,8 @@ void ControlButton::initButtons( FitIniFile& buttonFile, long buttonCount, Contr
         // sebi: initialize state so it is not garbage
 		Buttons[i].state = ENABLED;
 		
+		{
+			ZoneScopedN("ControlButton::initButtons setupVertices");
 		Buttons[i].location[0].x = Buttons[i].location[1].x = x;
 		Buttons[i].location[0].y = Buttons[i].location[3].y = y;
 		Buttons[i].location[2].x = Buttons[i].location[3].x = x + width;
@@ -2305,62 +2320,86 @@ void ControlButton::initButtons( FitIniFile& buttonFile, long buttonCount, Contr
 			Buttons[i].location[j].v = 0.f;
 			Buttons[i].location[j].z = 0.f;
 		}
+		}
 			
 		
 		if ( 0 == Buttons[i].data->textureHandle )
 		{
+			ZoneScopedN("ControlGui::initButtons loadButtonTexture");
 			char file[256];
 			strcpy( file, artPath );
 			strcat( file, Buttons[i].data->fileName );
 			strcat( file, ".tga" );
 			S_strlwr( file );
 			int ID = mcTextureManager->loadTexture( file, gos_Texture_Alpha, 0, 0, 0x2 );
-			int gosID = mcTextureManager->get_gosTextureHandle( ID );
-			TEXTUREPTR textureData;
-			gos_LockTexture( gosID, 0, 0, 	&textureData );
-			gos_UnLockTexture( gosID );
-
 			Buttons[i].data->textureHandle = ID;
-			Buttons[i].data->fileWidth = textureData.Width / mcTextureManager->getUVScale(ID);
-			Buttons[i].data->fileHeight = Buttons[i].data->fileWidth;
+			DWORD logicalWidth = 0;
+			DWORD logicalHeight = 0;
+			if ( mcTextureManager->tryGetTextureLogicalSize( ID, logicalWidth, logicalHeight ) )
+			{
+				Buttons[i].data->fileWidth = logicalWidth;
+				Buttons[i].data->fileHeight = logicalHeight;
+			}
+			else
+			{
+				int gosID = mcTextureManager->get_gosTextureHandle( ID );
+				TEXTUREPTR textureData;
+				{
+					ZoneScopedN("ControlGui::initButtons gos_LockTexture");
+					gos_LockTexture( gosID, 0, 0, 	&textureData );
+				}
+				{
+					ZoneScopedN("ControlGui::initButtons gos_UnLockTexture");
+					gos_UnLockTexture( gosID );
+				}
+
+				Buttons[i].data->fileWidth = textureData.Width / mcTextureManager->getUVScale(ID);
+				Buttons[i].data->fileHeight = Buttons[i].data->fileWidth;
+			}
 		}
 
-		if ( NO_ERR != buttonFile.readIdLong( "UNormal", Buttons[i].data->stateCoords[0][0] ) )
-			Buttons[i].data->stateCoords[0][0] = -1.f;
-
-		if ( NO_ERR != buttonFile.readIdLong( "VNormal", Buttons[i].data->stateCoords[0][1] ) )
-			Buttons[i].data->stateCoords[0][1] = -1.f;
-
-
-		if ( NO_ERR != buttonFile.readIdLong( "UPressed", Buttons[i].data->stateCoords[1][0] ) )
-			Buttons[i].data->stateCoords[1][0] = -1.f;
-
-		if ( NO_ERR != buttonFile.readIdLong( "VPressed", Buttons[i].data->stateCoords[1][1] ) )
-			Buttons[i].data->stateCoords[1][1] = -1.f;
-
-		if ( NO_ERR != buttonFile.readIdLong( "UDisabled", Buttons[i].data->stateCoords[2][0] ) )
-			Buttons[i].data->stateCoords[2][0] = -1.f;
-
-		if ( NO_ERR != buttonFile.readIdLong( "VDisabled", Buttons[i].data->stateCoords[2][1] ) )
-			Buttons[i].data->stateCoords[2][1] = -1.f;
-
-		if ( NO_ERR != buttonFile.readIdLong( "UAmbiguous", Buttons[i].data->stateCoords[3][0] ) )
 		{
-			if ( NO_ERR != buttonFile.readIdLong( "UHighlight", Buttons[i].data->stateCoords[3][0] ) )
-				Buttons[i].data->stateCoords[3][0] = -1.f;
+			ZoneScopedN("ControlButton::initButtons uvRead");
+			if ( NO_ERR != buttonFile.readIdLong( "UNormal", Buttons[i].data->stateCoords[0][0] ) )
+				Buttons[i].data->stateCoords[0][0] = -1.f;
+
+			if ( NO_ERR != buttonFile.readIdLong( "VNormal", Buttons[i].data->stateCoords[0][1] ) )
+				Buttons[i].data->stateCoords[0][1] = -1.f;
+
+
+			if ( NO_ERR != buttonFile.readIdLong( "UPressed", Buttons[i].data->stateCoords[1][0] ) )
+				Buttons[i].data->stateCoords[1][0] = -1.f;
+
+			if ( NO_ERR != buttonFile.readIdLong( "VPressed", Buttons[i].data->stateCoords[1][1] ) )
+				Buttons[i].data->stateCoords[1][1] = -1.f;
+
+			if ( NO_ERR != buttonFile.readIdLong( "UDisabled", Buttons[i].data->stateCoords[2][0] ) )
+				Buttons[i].data->stateCoords[2][0] = -1.f;
+
+			if ( NO_ERR != buttonFile.readIdLong( "VDisabled", Buttons[i].data->stateCoords[2][1] ) )
+				Buttons[i].data->stateCoords[2][1] = -1.f;
+
+			if ( NO_ERR != buttonFile.readIdLong( "UAmbiguous", Buttons[i].data->stateCoords[3][0] ) )
+			{
+				if ( NO_ERR != buttonFile.readIdLong( "UHighlight", Buttons[i].data->stateCoords[3][0] ) )
+					Buttons[i].data->stateCoords[3][0] = -1.f;
+			}
+
+			if ( NO_ERR != buttonFile.readIdLong( "VAmbiguous", Buttons[i].data->stateCoords[3][1] ) )
+			{
+				if ( NO_ERR != buttonFile.readIdLong( "VHighlight", Buttons[i].data->stateCoords[3][1] ) )
+					Buttons[i].data->stateCoords[3][1] = -1.f;
+			}
+
+			buttonFile.readIdLong( "UWidth", Buttons[i].data->textureWidth );
+			buttonFile.readIdLong( "VHeight", Buttons[i].data->textureHeight );
 		}
 
-		if ( NO_ERR != buttonFile.readIdLong( "VAmbiguous", Buttons[i].data->stateCoords[3][1] ) )
 		{
-			if ( NO_ERR != buttonFile.readIdLong( "VHighlight", Buttons[i].data->stateCoords[3][1] ) )
-				Buttons[i].data->stateCoords[3][1] = -1.f;
-		}
-
-		buttonFile.readIdLong( "UWidth", Buttons[i].data->textureWidth );
-		buttonFile.readIdLong( "VHeight", Buttons[i].data->textureHeight );
-
+			ZoneScopedN("ControlButton::initButtons stateSetup");
 		Buttons[i].disable( 0 );
 		Buttons[i].press( 0 );
+		}
 	}
 
 }
@@ -2368,6 +2407,7 @@ void ControlButton::initButtons( FitIniFile& buttonFile, long buttonCount, Contr
 
 void ControlGui::initStatics( FitIniFile& file )
 {
+	ZoneScopedN("ControlGui::initStatics");
 
 	if ( infoWnd )
 		infoWnd->setUnit( 0 );
@@ -2398,8 +2438,11 @@ void ControlGui::initStatics( FitIniFile& file )
 
 	staticCount = 0;
 
-	file.seekBlock( "Statics" );
-	file.readIdLong( "staticCount", staticCount );	
+	{
+		ZoneScopedN("ControlGui::initStatics staticsHeader");
+		file.seekBlock( "Statics" );
+		file.readIdLong( "staticCount", staticCount );	
+	}
 	if ( !staticCount )
 		return;
 
@@ -2407,6 +2450,7 @@ void ControlGui::initStatics( FitIniFile& file )
 
 	for ( int i = 0; i < staticCount; i++ )
 	{
+		ZoneScopedN("ControlGui::initStatics static");
 		char buffer[32];
 		sprintf( buffer, "Static%ld", i );
 
@@ -2416,6 +2460,8 @@ void ControlGui::initStatics( FitIniFile& file )
 	if ( staticCount > 20 )
 		staticInfos[20].showGUIWindow( 0 );
 
+	{
+		ZoneScopedN("ControlGui::initStatics helpText");
 	if ( NO_ERR != file.seekBlock( "HelpText" ) )
 	{
 		Assert( 0, 0, "couldn't find the help text block in the layout file" );
@@ -2426,7 +2472,10 @@ void ControlGui::initStatics( FitIniFile& file )
 	
 	HELPAREA_LEFT		+= hiResOffsetX;
 	HELPAREA_BOTTOM		+= hiResOffsetY;
+	}
 
+	{
+		ZoneScopedN("ControlGui::initStatics resourcePoints");
 	if ( NO_ERR != file.seekBlock( "ResourcePoints" ) )
 	{
 		Assert( 0, 0, "couldn't find the help text block in the layout file" );
@@ -2443,7 +2492,13 @@ void ControlGui::initStatics( FitIniFile& file )
 	rpCallout.rect.right = RPLEFT;
 	rpCallout.rect.top = RPTOP;
 	rpCallout.rect.bottom = RPTOP;
+	}
 
+	char blockName[64];
+	int i = 0;
+
+	{
+		ZoneScopedN("ControlGui::initStatics objectives");
 	if ( NO_ERR != file.seekBlock( "Objectives" ) )
 	{
 		Assert( 0, 0, "couldn't find the objective block in the button layout file" );
@@ -2461,9 +2516,7 @@ void ControlGui::initStatics( FitIniFile& file )
 	file.readIdLong( "HeaderTop", 	OBJECTIVESTOP );
 
 	objectiveInfos = new StaticInfo[objectiveInfoCount + 3];
-
-	char blockName[64];
-    int i = 0;
+	i = 0;
 	for (; i < objectiveInfoCount; i++ )
 	{
 		sprintf( blockName, "ObjStatic%ld", i );
@@ -2477,7 +2530,10 @@ void ControlGui::initStatics( FitIniFile& file )
 	objectiveInfos[i++].init( file, "PrimaryObjX" );
 
 	objectiveInfoCount = i;
+	}
 
+	{
+		ZoneScopedN("ControlGui::initStatics video");
 	if ( NO_ERR != file.seekBlock( "VideoWindow" ) )
 	{
 		Assert( 0, 0, "couldn't find th videoWindow block in the button layout file" );
@@ -2508,87 +2564,93 @@ void ControlGui::initStatics( FitIniFile& file )
 			videoInfos[i].init( file, blockName );
 		}
 	}
+	}
 
-	file.seekBlock( "MissionTimer" );
-	file.readIdLong( "left", 	timerRect.rect.left );
-	file.readIdLong( "top", 	timerRect.rect.top );
-	file.readIdLong( "color", timerRect.color );
-	file.readIdLong( "TimerStaticCount", timerInfoCount );
-	timerRect.rect.left += hiResOffsetX;
-	timerRect.rect.right += hiResOffsetX;
-	timerRect.rect.top += hiResOffsetY;
-	timerRect.rect.bottom += hiResOffsetY;
-
-	if ( timerInfoCount )
 	{
-		timerInfos = new StaticInfo[timerInfoCount];
-		for ( i = 0; i < timerInfoCount; i++ )
+		ZoneScopedN("ControlGui::initStatics missionTimer");
+		file.seekBlock( "MissionTimer" );
+		file.readIdLong( "left", 	timerRect.rect.left );
+		file.readIdLong( "top", 	timerRect.rect.top );
+		file.readIdLong( "color", timerRect.color );
+		file.readIdLong( "TimerStaticCount", timerInfoCount );
+		timerRect.rect.left += hiResOffsetX;
+		timerRect.rect.right += hiResOffsetX;
+		timerRect.rect.top += hiResOffsetY;
+		timerRect.rect.bottom += hiResOffsetY;
+
+		if ( timerInfoCount )
 		{
-			sprintf( blockName, "TimerStatic%ld", i ); 
-			timerInfos[i].init( file, blockName, hiResOffsetX, hiResOffsetY );
+			timerInfos = new StaticInfo[timerInfoCount];
+			for ( i = 0; i < timerInfoCount; i++ )
+			{
+				sprintf( blockName, "TimerStatic%ld", i ); 
+				timerInfos[i].init( file, blockName, hiResOffsetX, hiResOffsetY );
+			}
 		}
 	}
 
-	file.seekBlock( "MissionResults" );
-	file.readIdLong( "ResultsStaticCount", missionStatusInfoCount );
-	if ( missionStatusInfoCount )
 	{
-		missionStatusInfos = new StaticInfo[missionStatusInfoCount ];
-		for ( i = 0; i < missionStatusInfoCount; i++ )
+		ZoneScopedN("ControlGui::initStatics missionResults");
+		file.seekBlock( "MissionResults" );
+		file.readIdLong( "ResultsStaticCount", missionStatusInfoCount );
+		if ( missionStatusInfoCount )
 		{
-			sprintf( blockName, "ResultsStatic%ld", i );
-			missionStatusInfos[i].init( file, blockName );
+			missionStatusInfos = new StaticInfo[missionStatusInfoCount ];
+			for ( i = 0; i < missionStatusInfoCount; i++ )
+			{
+				sprintf( blockName, "ResultsStatic%ld", i );
+				missionStatusInfos[i].init( file, blockName );
 
+			}
 		}
+
+		file.seekBlock( "ResultsTextBox" );
+		file.readIdLong( "left", missionStatusRect.rect.left );	
+		file.readIdLong( "right", missionStatusRect.rect.right );	
+		file.readIdLong( "top", missionStatusRect.rect.top );	
+		file.readIdLong( "bottom", missionStatusRect.rect.bottom );	
+		file.readIdLong( "ResultsTextColor", missionStatusRect.color );	
 	}
 
-	file.seekBlock( "ResultsTextBox" );
-	file.readIdLong( "left", missionStatusRect.rect.left );	
-	file.readIdLong( "right", missionStatusRect.rect.right );	
-	file.readIdLong( "top", missionStatusRect.rect.top );	
-	file.readIdLong( "bottom", missionStatusRect.rect.bottom );	
-	file.readIdLong( "ResultsTextColor", missionStatusRect.color );	
+	{
+		ZoneScopedN("ControlGui::initStatics chatWidgets");
+		file.seekBlock( "ChatPlayerNameRect" );
+		long left, top, width, height;
+		file.readIdLong( "xlocation", left );
+		file.readIdLong( "yLocation", top );
+		file.readIdLong( "Width", width );
+		file.readIdLong( "Height", height );
 
-	file.seekBlock( "ChatPlayerNameRect" );
-	long left, top, width, height;
-	file.readIdLong( "xlocation", left );
-	file.readIdLong( "yLocation", top );
-	file.readIdLong( "Width", width );
-	file.readIdLong( "Height", height );
+		((aObject*)&playerNameEdit)->init( left+2, top, width, height );
+		playerNameEdit.setFont( IDS_CHAT_PLAYERNAME_FONT );
+		timerFont.init( IDS_OUTLINE_CHAT_FONT );
+		int fontHeight = playerNameEdit.getFontObject()->height();
+		playerNameEdit.resize( playerNameEdit.width(), fontHeight );
+		playerNameEdit.setTextColor( 0xffffffff );
 
-	((aObject*)&playerNameEdit)->init( left+2, top, width, height );
-	playerNameEdit.setFont( IDS_CHAT_PLAYERNAME_FONT );
-	timerFont.init( IDS_OUTLINE_CHAT_FONT );
-	int fontHeight = playerNameEdit.getFontObject()->height();
-	playerNameEdit.resize( playerNameEdit.width(), fontHeight );
-	playerNameEdit.setTextColor( 0xffffffff );
+		file.seekBlock( "ChatTextRect" );
+		file.readIdLong( "xlocation", left );
+		file.readIdLong( "yLocation", top );
+		file.readIdLong( "Width", width );
+		file.readIdLong( "Height", height );
 
-	file.seekBlock( "ChatTextRect" );
-	file.readIdLong( "xlocation", left );
-	file.readIdLong( "yLocation", top );
-	file.readIdLong( "Width", width );
-	file.readIdLong( "Height", height );
+		((aObject*)&chatEdit)->init( left, top, width, height ); 
+		chatEdit.font.init( IDS_OUTLINE_CHAT_FONT );
+		chatEdit.setColor( 0xffffffff );
+		chatEdit.resize( chatEdit.width(), fontHeight );
 
-	((aObject*)&chatEdit)->init( left, top, width, height ); 
-	chatEdit.font.init( IDS_OUTLINE_CHAT_FONT );
-	chatEdit.setColor( 0xffffffff );
-	chatEdit.resize( chatEdit.width(), fontHeight );
+		((aObject*)&personalEdit)->init( left, top, width, height );
+		personalEdit.setFont( IDS_OUTLINE_CHAT_FONT );
+		personalEdit.setTextColor( 0xffffffff );
+		personalEdit.resize( personalEdit.width(), fontHeight );
 
-	((aObject*)&personalEdit)->init( left, top, width, height );
-	personalEdit.setFont( IDS_OUTLINE_CHAT_FONT );
-	personalEdit.setTextColor( 0xffffffff );
-	personalEdit.resize( personalEdit.width(), fontHeight );
-
-	personalEdit.setColor( 0 );// make tranparent
-
-
-
-
-
+		personalEdit.setColor( 0 );// make tranparent
+	}
 }
 
 void ControlGui::initRects( FitIniFile& file )
 {
+	ZoneScopedN("ControlGui::initRects");
 	if ( rectInfos )
 		delete[] rectInfos;
 
@@ -2598,7 +2660,10 @@ void ControlGui::initRects( FitIniFile& file )
 	if ( NO_ERR != file.seekBlock( "Rects" ) )
 		return;
 
-	file.readIdLong( "rectCount", rectCount );
+	{
+		ZoneScopedN("ControlGui::initRects header");
+		file.readIdLong( "rectCount", rectCount );
+	}
 
 	if ( rectCount )
 	{
@@ -2606,6 +2671,7 @@ void ControlGui::initRects( FitIniFile& file )
 		char buffer[32];
 		for ( int i = 0; i < rectCount; i++ )
 		{
+			ZoneScopedN("ControlGui::initRects rect");
 			sprintf( buffer, "Rect%ld", i );
 			if ( NO_ERR != file.seekBlock( buffer ) )
 			{

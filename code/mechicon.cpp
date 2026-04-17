@@ -1555,12 +1555,19 @@ PilotIcon::PilotIcon()
 
 		s_pilotTextureHandle = mcTextureManager->loadTexture( path, gos_Texture_Alpha, 0, 0, 0x2);
 
-		// find its width and store it for future reference.
-		int gosID = mcTextureManager->get_gosTextureHandle( s_pilotTextureHandle );
-		TEXTUREPTR textureData;
-		gos_LockTexture( gosID, 0, 0, 	&textureData );
-		s_pilotTextureWidth = textureData.Width / mcTextureManager->getUVScale(s_pilotTextureHandle);
-		gos_UnLockTexture( gosID );
+		// Find its logical width without forcing texture realization when metadata is available.
+		DWORD logicalWidth = 0;
+		DWORD logicalHeight = 0;
+		if ( mcTextureManager->tryGetTextureLogicalSize( s_pilotTextureHandle, logicalWidth, logicalHeight ) )
+			s_pilotTextureWidth = logicalWidth;
+		else
+		{
+			int gosID = mcTextureManager->get_gosTextureHandle( s_pilotTextureHandle );
+			TEXTUREPTR textureData;
+			gos_LockTexture( gosID, 0, 0, 	&textureData );
+			s_pilotTextureWidth = textureData.Width / mcTextureManager->getUVScale(s_pilotTextureHandle);
+			gos_UnLockTexture( gosID );
+		}
 	}
 
 }
@@ -1637,12 +1644,19 @@ void PilotIcon::swapResolutions( bool bForce)
 
 		s_pilotTextureHandle = mcTextureManager->loadTexture( path, gos_Texture_Alpha, 0, 0, 0x2);
 
-		// find its width and store it for future reference.
-		int gosID = mcTextureManager->get_gosTextureHandle( s_pilotTextureHandle );
-		TEXTUREPTR textureData;
-		gos_LockTexture( gosID, 0, 0, 	&textureData );
-		s_pilotTextureWidth = textureData.Width / mcTextureManager->getUVScale(s_pilotTextureHandle);
-		gos_UnLockTexture( gosID );
+		// Find its logical width without forcing texture realization when metadata is available.
+		DWORD logicalWidth = 0;
+		DWORD logicalHeight = 0;
+		if ( mcTextureManager->tryGetTextureLogicalSize( s_pilotTextureHandle, logicalWidth, logicalHeight ) )
+			s_pilotTextureWidth = logicalWidth;
+		else
+		{
+			int gosID = mcTextureManager->get_gosTextureHandle( s_pilotTextureHandle );
+			TEXTUREPTR textureData;
+			gos_LockTexture( gosID, 0, 0, 	&textureData );
+			s_pilotTextureWidth = textureData.Width / mcTextureManager->getUVScale(s_pilotTextureHandle);
+			gos_UnLockTexture( gosID );
+		}
 	}
 
 }
