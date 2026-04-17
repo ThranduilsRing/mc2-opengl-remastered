@@ -39,17 +39,18 @@ static camera g_camera;
 #endif
 
 static void handle_key_down( SDL_Keysym* keysym ) {
+    const bool alt_debug = (keysym->mod & KMOD_ALT) != 0;
     switch( keysym->sym ) {
         case SDLK_ESCAPE:
-            if(keysym->mod & KMOD_RALT)
+            if(alt_debug)
                 g_exit = true;
             break;
         case 'd':
-            if(keysym->mod & KMOD_RALT)
+            if(alt_debug)
                 gos_RenderEnableDebugDrawCalls();
             break;
         case SDLK_F1:
-            if (keysym->mod & KMOD_RALT) {
+            if (alt_debug) {
                 gosPostProcess* pp = getGosPostProcess();
                 if (pp) {
                     pp->bloomEnabled_ = !pp->bloomEnabled_;
@@ -58,7 +59,7 @@ static void handle_key_down( SDL_Keysym* keysym ) {
             }
             break;
         case SDLK_F2:
-            if (keysym->mod & KMOD_RALT) {
+            if (alt_debug) {
                 gosPostProcess* pp = getGosPostProcess();
                 if (pp) {
                     if (!pp->showShadowDebug_) {
@@ -76,7 +77,7 @@ static void handle_key_down( SDL_Keysym* keysym ) {
             }
             break;
         case SDLK_F3:
-            if (keysym->mod & KMOD_RALT) {
+            if (alt_debug) {
                 gosPostProcess* pp = getGosPostProcess();
                 if (pp) {
                     pp->shadowsEnabled_ = !pp->shadowsEnabled_;
@@ -85,14 +86,14 @@ static void handle_key_down( SDL_Keysym* keysym ) {
             }
             break;
         case SDLK_F5:
-            if (keysym->mod & KMOD_RALT) {
+            if (alt_debug) {
                 bool cur = gos_GetTerrainDrawEnabled();
                 gos_SetTerrainDrawEnabled(!cur);
                 fprintf(stderr, "Terrain Draw: %s\n", !cur ? "ON" : "OFF");
             }
             break;
         case SDLK_4:
-            if (keysym->mod & KMOD_RALT) {
+            if (alt_debug) {
                 gosPostProcess* pp = getGosPostProcess();
                 if (pp) {
                     if (!pp->screenShadowEnabled_) {
@@ -110,8 +111,24 @@ static void handle_key_down( SDL_Keysym* keysym ) {
                 }
             }
             break;
+        case SDLK_8:
+            if (alt_debug) {
+                int mode = ((int)gos_GetTerrainDebugMode() + 1) % 8;
+                gos_SetTerrainDebugMode((float)mode);
+                switch (mode) {
+                    case 0: fprintf(stderr, "Surface Debug: OFF\n"); break;
+                    case 1: fprintf(stderr, "Surface Debug: DEPTH (R=actual G=undisplaced)\n"); break;
+                    case 2: fprintf(stderr, "Surface Debug: RAW colormap (all terrain)\n"); break;
+                    case 3: fprintf(stderr, "Surface Debug: BLURRED colormap\n"); break;
+                    case 4: fprintf(stderr, "Surface Debug: MATERIAL weights (RGB=rock/grass/dirt)\n"); break;
+                    case 5: fprintf(stderr, "Surface Debug: NORMAL lighting\n"); break;
+                    case 6: fprintf(stderr, "Surface Debug: TERRAIN shadow factor\n"); break;
+                    case 7: fprintf(stderr, "Surface Debug: CLOUD factor\n"); break;
+                }
+            }
+            break;
         case SDLK_9:
-            if (keysym->mod & KMOD_RALT) {
+            if (alt_debug) {
                 gosPostProcess* pp = getGosPostProcess();
                 if (pp) {
                     pp->ssaoEnabled_ = !pp->ssaoEnabled_;
@@ -120,7 +137,7 @@ static void handle_key_down( SDL_Keysym* keysym ) {
             }
             break;
         case SDLK_5:
-            if (keysym->mod & KMOD_RALT) {
+            if (alt_debug) {
                 gosPostProcess* pp = getGosPostProcess();
                 if (pp) {
                     pp->grassEnabled_ = !pp->grassEnabled_;
@@ -129,7 +146,7 @@ static void handle_key_down( SDL_Keysym* keysym ) {
             }
             break;
         case SDLK_6:
-            if (keysym->mod & KMOD_RALT) {
+            if (alt_debug) {
                 gosPostProcess* pp = getGosPostProcess();
                 if (pp) {
                     pp->godrayEnabled_ = !pp->godrayEnabled_;
@@ -138,7 +155,7 @@ static void handle_key_down( SDL_Keysym* keysym ) {
             }
             break;
         case SDLK_7:
-            if (keysym->mod & KMOD_RALT) {
+            if (alt_debug) {
                 gosPostProcess* pp = getGosPostProcess();
                 if (pp) {
                     pp->shorelineEnabled_ = !pp->shorelineEnabled_;
@@ -276,7 +293,7 @@ static void draw_screen( void )
         else
             glClearColor(0.0f, 0.0f, 0.0f, 1.0f);
     }
-    glClear( GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT );
+    glClear( GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT | GL_STENCIL_BUFFER_BIT );
 
     // Skybox disabled — terrain fog provides atmosphere, bright sky looked jarring
     // if (pp) pp->renderSkybox(0.3f, 0.7f, 0.2f);

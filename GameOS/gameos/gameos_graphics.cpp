@@ -51,95 +51,6 @@ static bool isAllConcreteTerrainBatch(const gos_VERTEX* vertices, int count) {
     return true;
 }
 
-static void dumpOverlayBatchOnce(const gos_VERTEX* vertices, int num_vertices,
-    const WORD* indices, int num_indices, DWORD texture_handle)
-{
-    static bool dumped = false;
-    if (dumped || !vertices || !indices || num_vertices <= 0 || num_indices <= 0)
-        return;
-
-    dumped = true;
-    printf("[OVERLAY] BatchDump tex=%u verts=%d idx=%d\n",
-        texture_handle, num_vertices, num_indices);
-
-    const int vertex_dump_count = std::min(num_vertices, 6);
-    for (int i = 0; i < vertex_dump_count; ++i) {
-        const gos_VERTEX& v = vertices[i];
-        printf("[OVERLAY]   v[%d] pos=(%.3f, %.3f, %.3f, %.3f) argb=0x%08X frgb=0x%08X uv=(%.3f, %.3f)\n",
-            i, v.x, v.y, v.z, v.rhw, v.argb, v.frgb, v.u, v.v);
-    }
-
-    const int index_dump_count = std::min(num_indices, 12);
-    for (int i = 0; i < index_dump_count; i += 3) {
-        const int remaining = index_dump_count - i;
-        if (remaining >= 3) {
-            printf("[OVERLAY]   tri[%d] = (%u, %u, %u)\n",
-                i / 3, (unsigned)indices[i], (unsigned)indices[i + 1], (unsigned)indices[i + 2]);
-        } else {
-            printf("[OVERLAY]   idx[%d] = %u\n", i, (unsigned)indices[i]);
-        }
-    }
-    fflush(stdout);
-}
-
-static void dumpOverlayProjectedBatchOnce(const gos_VERTEX* vertices, int num_vertices,
-    const mat4& terrain_mvp)
-{
-    static bool dumped = false;
-    if (dumped || !vertices || num_vertices <= 0)
-        return;
-
-    dumped = true;
-    const mat4 terrain_mvp_t = transpose(terrain_mvp);
-    const int vertex_dump_count = std::min(num_vertices, 6);
-    for (int i = 0; i < vertex_dump_count; ++i) {
-        const gos_VERTEX& v = vertices[i];
-        const vec4 world(v.x, v.y, v.z, 1.0f);
-        const vec4 clip_row = terrain_mvp * world;
-        const vec4 clip_col = terrain_mvp_t * world;
-        const vec3 ndc_row = fabsf(clip_row.w) > 1.0e-6f
-            ? vec3(clip_row.x / clip_row.w, clip_row.y / clip_row.w, clip_row.z / clip_row.w)
-            : vec3(99999.0f);
-        const vec3 ndc_col = fabsf(clip_col.w) > 1.0e-6f
-            ? vec3(clip_col.x / clip_col.w, clip_col.y / clip_col.w, clip_col.z / clip_col.w)
-            : vec3(99999.0f);
-        printf("[OVERLAY]   proj[%d] row_clip=(%.3f, %.3f, %.3f, %.3f) row_ndc=(%.3f, %.3f, %.3f)"
-               " col_clip=(%.3f, %.3f, %.3f, %.3f) col_ndc=(%.3f, %.3f, %.3f)\n",
-            i,
-            clip_row.x, clip_row.y, clip_row.z, clip_row.w,
-            ndc_row.x, ndc_row.y, ndc_row.z,
-            clip_col.x, clip_col.y, clip_col.z, clip_col.w,
-            ndc_col.x, ndc_col.y, ndc_col.z);
-    }
-    fflush(stdout);
-}
-
-static void fillForcedOverlayDebugQuad(gos_VERTEX* vertices, WORD* indices)
-{
-    gosASSERT(vertices && indices);
-    memset(vertices, 0, sizeof(gos_VERTEX) * 6);
-
-    const float uv[6][2] = {
-        {0.0f, 0.0f},
-        {1.0f, 0.0f},
-        {1.0f, 1.0f},
-        {0.0f, 0.0f},
-        {1.0f, 1.0f},
-        {0.0f, 1.0f},
-    };
-
-    for (int i = 0; i < 6; ++i) {
-        vertices[i].x = 0.0f;
-        vertices[i].y = 0.0f;
-        vertices[i].z = 0.0f;
-        vertices[i].rhw = 1.0f;
-        vertices[i].argb = 0xFFFFFFFF;
-        vertices[i].frgb = 0x000000FF;
-        vertices[i].u = uv[i][0];
-        vertices[i].v = uv[i][1];
-        indices[i] = (WORD)i;
-    }
-}
 
 gosRenderer* getGosRenderer() {
     return g_gos_renderer;
@@ -1344,20 +1255,10 @@ class gosRenderer {
             terrain_tess_level_ = level;
             terrain_tess_dist_near_ = near_dist;
             terrain_tess_dist_far_ = far_dist;
-            printf("[TESS] level=%.1f distNear=%.0f distFar=%.0f\n", level, near_dist, far_dist);
         }
-        void setTerrainPhongAlpha(float a) {
-            terrain_phong_alpha_ = a;
-            printf("[TESS] phongAlpha=%.2f\n", a);
-        }
-        void setTerrainDisplaceScale(float s) {
-            terrain_displace_scale_ = s;
-            printf("[TESS] displaceScale=%.3f\n", s);
-        }
-        void setTerrainWireframe(bool w) {
-            terrain_wireframe_ = w;
-            printf("[TESS] wireframe=%s\n", w ? "ON" : "OFF");
-        }
+        void setTerrainPhongAlpha(float a) { terrain_phong_alpha_ = a; }
+        void setTerrainDisplaceScale(float s) { terrain_displace_scale_ = s; }
+        void setTerrainWireframe(bool w) { terrain_wireframe_ = w; }
         void setTerrainDebugMode(float mode) {
             terrain_debug_mode_ = mode;
         }
@@ -1418,6 +1319,7 @@ class gosRenderer {
         // Terrain draw killswitch
         void setTerrainDrawEnabled(bool e) { terrain_draw_enabled_ = e; }
         bool getTerrainDrawEnabled() const { return terrain_draw_enabled_; }
+        float getTerrainDebugMode() const { return terrain_debug_mode_; }
 
         // Shadow pre-pass (separate pass over all terrain batches before shading)
         void beginShadowPrePass(bool clearDepth = true);
@@ -1680,11 +1582,13 @@ class gosRenderer {
             GLint tex1           = -1;
             GLint fog_color      = -1;
             GLint time           = -1;
+            GLint cameraPos      = -1;
+            GLint surfaceDebugMode = -1;
             GLint terrainLightDir = -1;
         };
         OverlayUniformLocs_ overlayLocs_;
         OverlayUniformLocs_ decalLocs_;
-        uint64_t overlayTimeStart_ = 0;
+        uint64_t timeStart_ = 0;          // shared epoch for all time-animated shaders
 
         // private helpers
         void pushToOverlayBatch_(OverlayBatch_& b, const WorldOverlayVert* v3, unsigned int texHandle);
@@ -1855,11 +1759,13 @@ void gosRenderer::init() {
         locs.tex1            = glGetUniformLocation(shp, "tex1");
         locs.fog_color       = glGetUniformLocation(shp, "fog_color");
         locs.time            = glGetUniformLocation(shp, "time");
+        locs.cameraPos       = glGetUniformLocation(shp, "cameraPos");
+        locs.surfaceDebugMode = glGetUniformLocation(shp, "surfaceDebugMode");
         locs.terrainLightDir = glGetUniformLocation(shp, "terrainLightDir");
     };
     cacheOverlayLocs(overlayProg_, overlayLocs_);
     cacheOverlayLocs(decalProg_, decalLocs_);
-    overlayTimeStart_ = timing::get_wall_time_ms();
+    timeStart_ = timing::get_wall_time_ms();
 
     // Create VBO/VAO for each batch.
     // WorldOverlayVert layout (stride 28 bytes):
@@ -2650,19 +2556,8 @@ void gosRenderer::terrainDrawIndexedPatches(gosRenderMaterial* material, gosMesh
 
     // Upload terrainMVP (axisSwap*worldToClip) via direct GL
     if (terrain_mvp_valid_) {
-        if (tl.terrainMVP >= 0) {
+        if (tl.terrainMVP >= 0)
             glUniformMatrix4fv(tl.terrainMVP, 1, GL_FALSE, (const float*)&terrain_mvp_);
-            static bool mvp_trace = false;
-            if (!mvp_trace) {
-                mvp_trace = true;
-                const float* m = (const float*)&terrain_mvp_;
-                printf("[TESS] terrainMVP row0: %.6f %.6f %.6f %.6f\n", m[0], m[1], m[2], m[3]);
-                printf("[TESS] terrainMVP row1: %.6f %.6f %.6f %.6f\n", m[4], m[5], m[6], m[7]);
-                printf("[TESS] terrainMVP row2: %.6f %.6f %.6f %.6f\n", m[8], m[9], m[10], m[11]);
-                printf("[TESS] terrainMVP row3: %.6f %.6f %.6f %.6f\n", m[12], m[13], m[14], m[15]);
-                fflush(stdout);
-            }
-        }
     }
 
     // Bind terrain splatting uniforms (light, tiling, POM, cell bomb)
@@ -2678,25 +2573,19 @@ void gosRenderer::terrainDrawIndexedPatches(gosRenderMaterial* material, gosMesh
     float cellP[4] = { terrain_cell_scale_, terrain_cell_jitter_, terrain_cell_rotation_, 0.0f };
     if (tl.cellBombParams >= 0) glUniform4fv(tl.cellBombParams, 1, cellP);
     if (tl.time >= 0) {
-        static uint64_t terrain_time_start = timing::get_wall_time_ms();
-        float elapsed = (float)(timing::get_wall_time_ms() - terrain_time_start) / 1000.0f;
+        float elapsed = (float)(timing::get_wall_time_ms() - timeStart_) / 1000.0f;
         glUniform1f(tl.time, elapsed);
     }
 
     // Bind per-material normal maps (units 5-8)
-    {
-        static bool mat_trace = false;
-        for (int i = 0; i < 4; i++) {
-            if (terrain_mat_normal_[i] != 0 && tl.matNormal[i] >= 0) {
-                glUniform1i(tl.matNormal[i], 5 + i);
-                glActiveTexture(GL_TEXTURE5 + i);
-                glBindTexture(GL_TEXTURE_2D, terrain_mat_normal_[i]);
-                if (!mat_trace) printf("[TESS] Bound matNormal%d unit=%d glId=%u\n", i, 5+i, terrain_mat_normal_[i]);
-            }
+    for (int i = 0; i < 4; i++) {
+        if (terrain_mat_normal_[i] != 0 && tl.matNormal[i] >= 0) {
+            glUniform1i(tl.matNormal[i], 5 + i);
+            glActiveTexture(GL_TEXTURE5 + i);
+            glBindTexture(GL_TEXTURE_2D, terrain_mat_normal_[i]);
         }
-        if (!mat_trace) { mat_trace = true; fflush(stdout); }
-        glActiveTexture(GL_TEXTURE0);
     }
+    glActiveTexture(GL_TEXTURE0);
 
     // Shadow map binding (unit 9 = static, unit 10 = dynamic)
     {
@@ -2729,24 +2618,6 @@ void gosRenderer::terrainDrawIndexedPatches(gosRenderMaterial* material, gosMesh
             if (tl.enableShadows >= 0) glUniform1i(tl.enableShadows, 0);
             if (tl.enableDynamicShadows >= 0) glUniform1i(tl.enableDynamicShadows, 0);
         }
-    }
-
-    static bool tess_uniform_trace_ = false;
-    if (!tess_uniform_trace_) {
-        tess_uniform_trace_ = true;
-        printf("[TESS] Uniform locations: tessLevel=%d tessDistRange=%d tessDisp=%d camPos=%d tessDebug=%d terrainMVP=%d\n",
-            glGetUniformLocation(shp, "tessLevel"),
-            glGetUniformLocation(shp, "tessDistanceRange"),
-            glGetUniformLocation(shp, "tessDisplace"),
-            glGetUniformLocation(shp, "cameraPos"),
-            glGetUniformLocation(shp, "tessDebug"),
-            glGetUniformLocation(shp, "terrainMVP"));
-        printf("[TESS] Frag uniforms: tex1=%d fog_color=%d terrainLightDir=%d\n",
-            glGetUniformLocation(shp, "tex1"),
-            glGetUniformLocation(shp, "fog_color"),
-            glGetUniformLocation(shp, "terrainLightDir"));
-        printf("[TESS] shader program=%u debugMode=%.1f\n", shp, terrain_debug_mode_);
-        fflush(stdout);
     }
 
     // Bind main VBO and set standard vertex attribs
@@ -2952,40 +2823,9 @@ void gosRenderer::drawIndexedTris(gos_VERTEX* vertices, int num_vertices, WORD* 
     applyRenderStates();
 
     // Terrain tessellation path
-    static int tess_trace_count_ = 0;
-    static bool tess_init_trace_ = false;
-    static int concrete_tess_trace_count_ = 0;
-    if (curStates_[gos_State_Terrain] && !tess_init_trace_) {
-        tess_init_trace_ = true;
-        printf("[TESS] INIT CHECK: terrain_material_=%p batch_extras=%d mvp_valid=%d\n",
-            (void*)terrain_material_, terrain_batch_extras_count_, terrain_mvp_valid_ ? 1 : 0);
-        fflush(stdout);
-    }
     if (curStates_[gos_State_Terrain] && !curStates_[gos_State_Overlay] && terrain_material_ && terrain_batch_extras_count_ > 0 && terrain_draw_enabled_) {
         ZoneScopedN("Terrain.TessDraw");
         TracyGpuZone("Terrain.TessDraw");
-        if (concrete_tess_trace_count_ < 12 &&
-            isAllConcreteTerrainBatch(indexed_tris_->getVertices(), indexed_tris_->getNumVertices())) {
-            const gos_TERRAIN_EXTRA* e0 = terrain_batch_extras_count_ > 0 ? terrain_batch_extras_ : nullptr;
-            printf("[CEMENT][TessGate] pass=draw verts=%d idx=%d batch_extras=%d terrain=%d overlay=%d drawEnabled=%d tex=%d firstExtra=(%.3f, %.3f, %.3f)\n",
-                indexed_tris_->getNumVertices(), indexed_tris_->getNumIndices(),
-                terrain_batch_extras_count_,
-                curStates_[gos_State_Terrain],
-                curStates_[gos_State_Overlay],
-                terrain_draw_enabled_ ? 1 : 0,
-                curStates_[gos_State_Texture],
-                e0 ? e0->wx : 0.0f,
-                e0 ? e0->wy : 0.0f,
-                e0 ? e0->wz : 0.0f);
-            fflush(stdout);
-            ++concrete_tess_trace_count_;
-        }
-        if (tess_trace_count_++ < 5) {
-            printf("[TESS] DRAW: verts=%d idx=%d batch_extras=%d mvp_valid=%d\n",
-                indexed_tris_->getNumVertices(), indexed_tris_->getNumIndices(),
-                terrain_batch_extras_count_, terrain_mvp_valid_ ? 1 : 0);
-            fflush(stdout);
-        }
         gosRenderMaterial* tmat = terrain_material_;
         tmat->setTransform(projection_);
         tmat->setFogColor(fog_color_);
@@ -2997,20 +2837,6 @@ void gosRenderer::drawIndexedTris(gos_VERTEX* vertices, int num_vertices, WORD* 
         drawGrassPass(indexed_tris_);
         indexed_tris_->rewind();
     } else {
-        if (concrete_tess_trace_count_ < 12 &&
-            curStates_[gos_State_Terrain] &&
-            isAllConcreteTerrainBatch(indexed_tris_->getVertices(), indexed_tris_->getNumVertices())) {
-            printf("[CEMENT][TessGate] pass=skip verts=%d idx=%d batch_extras=%d terrain=%d overlay=%d drawEnabled=%d hasTerrainMat=%d tex=%d\n",
-                indexed_tris_->getNumVertices(), indexed_tris_->getNumIndices(),
-                terrain_batch_extras_count_,
-                curStates_[gos_State_Terrain],
-                curStates_[gos_State_Overlay],
-                terrain_draw_enabled_ ? 1 : 0,
-                terrain_material_ ? 1 : 0,
-                curStates_[gos_State_Texture]);
-            fflush(stdout);
-            ++concrete_tess_trace_count_;
-        }
         // When tessellation is active, skip SOLID fallback terrain draws (tessellation
         // already rendered base terrain). Overlay/detail draws don't set gos_State_Terrain
         // (it auto-resets after each draw), so they fall through to the basic renderer.
@@ -4161,6 +3987,9 @@ void __stdcall gos_SetTerrainWireframe(bool w) {
 void __stdcall gos_SetTerrainDebugMode(float mode) {
     if (g_gos_renderer) g_gos_renderer->setTerrainDebugMode(mode);
 }
+float __stdcall gos_GetTerrainDebugMode() {
+    return g_gos_renderer ? g_gos_renderer->getTerrainDebugMode() : 0.0f;
+}
 void __stdcall gos_TerrainExtraReset() {
     if (g_gos_renderer) g_gos_renderer->terrainExtraReset();
 }
@@ -4407,6 +4236,10 @@ void gosRenderer::uploadOverlayUniforms_(GLuint shp, const OverlayUniformLocs_& 
         glUniform4fv(L.fog_color, 1, (const float*)&getFogColor());
     if (L.time >= 0)
         glUniform1f(L.time, elapsed);
+    if (L.cameraPos >= 0)
+        glUniform4fv(L.cameraPos, 1, (const float*)&getTerrainCameraPos());
+    if (L.surfaceDebugMode >= 0)
+        glUniform1i(L.surfaceDebugMode, (GLint)terrain_debug_mode_);
 
     setupOverlayShadowsForShp(shp);
 }
@@ -4438,18 +4271,21 @@ void gosRenderer::drawTerrainOverlays()
     glPolygonOffset(-1.0f, -1.0f);
 
     glUseProgram(overlayProg_->shp_);
-    float elapsed = (float)(timing::get_wall_time_ms() - overlayTimeStart_) / 1000.0f;
+    float elapsed = (float)(timing::get_wall_time_ms() - timeStart_) / 1000.0f;
     uploadOverlayUniforms_(overlayProg_->shp_, overlayLocs_, elapsed);
 
+    GLint prevVao = 0;
+    glGetIntegerv(GL_VERTEX_ARRAY_BINDING, &prevVao);
     glBindVertexArray(terrainOverlayBatch_.vao);
     for (const auto& entry : terrainOverlayBatch_.draws) {
         if (overlayLocs_.tex1 >= 0)
             glUniform1i(overlayLocs_.tex1, 0);
         glActiveTexture(GL_TEXTURE0);
-        glBindTexture(GL_TEXTURE_2D, entry.texHandle);
+        gosTexture* t = (entry.texHandle != INVALID_TEXTURE_ID) ? getTexture(entry.texHandle) : nullptr;
+        glBindTexture(GL_TEXTURE_2D, t ? t->getTextureId() : 0);
         glDrawArrays(GL_TRIANGLES, (GLint)entry.firstVert, (GLsizei)entry.vertCount);
     }
-    glBindVertexArray(0);
+    glBindVertexArray((GLuint)prevVao);
 
     glDepthFunc(GL_LESS);
     glDisable(GL_POLYGON_OFFSET_FILL);
@@ -4488,18 +4324,21 @@ void gosRenderer::drawDecals()
     glPolygonOffset(-1.0f, -1.0f);
 
     glUseProgram(decalProg_->shp_);
-    float elapsed = (float)(timing::get_wall_time_ms() - overlayTimeStart_) / 1000.0f;
+    float elapsed = (float)(timing::get_wall_time_ms() - timeStart_) / 1000.0f;
     uploadOverlayUniforms_(decalProg_->shp_, decalLocs_, elapsed);
 
+    GLint prevVao = 0;
+    glGetIntegerv(GL_VERTEX_ARRAY_BINDING, &prevVao);
     glBindVertexArray(decalBatch_.vao);
     for (const auto& entry : decalBatch_.draws) {
         if (decalLocs_.tex1 >= 0)
             glUniform1i(decalLocs_.tex1, 0);
         glActiveTexture(GL_TEXTURE0);
-        glBindTexture(GL_TEXTURE_2D, entry.texHandle);
+        gosTexture* t = (entry.texHandle != INVALID_TEXTURE_ID) ? getTexture(entry.texHandle) : nullptr;
+        glBindTexture(GL_TEXTURE_2D, t ? t->getTextureId() : 0);
         glDrawArrays(GL_TRIANGLES, (GLint)entry.firstVert, (GLsizei)entry.vertCount);
     }
-    glBindVertexArray(0);
+    glBindVertexArray((GLuint)prevVao);
 
     glDepthFunc(GL_LESS);
     glDisable(GL_BLEND);
