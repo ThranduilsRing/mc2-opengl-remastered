@@ -48,6 +48,10 @@
 #include"warrior.h"
 #endif
 
+#ifndef GOS_PROFILER_H
+#include"gos_profiler.h"
+#endif
+
 #ifdef USE_DEBRIS
 #ifndef DEBRIS_H
 #include"debris.h"
@@ -1734,6 +1738,8 @@ void MoverControl::brake (void) {
 //---------------------------------------------------------------------------
 
 void MoverControl::update (MoverPtr mover) {
+
+	ZoneScopedN("GameLogic.Mover.Update");
 
 	switch (type) {
 		case CONTROL_AI:
@@ -4370,15 +4376,6 @@ bool Mover::canMoveHere (Stuff::Vector3D worldPos) {
 
 //-----------------------------------------------------------------------------
 
-#ifdef LAB_ONLY
-extern __int64 MCTimeCalcGoal1Update;
-extern __int64 MCTimeCalcGoal2Update;
-extern __int64 MCTimeCalcGoal3Update;
-extern __int64 MCTimeCalcGoal4Update;
-extern __int64 MCTimeCalcGoal5Update;
-extern __int64 MCTimeCalcGoal6Update;
-#endif
-
 long Mover::calcMoveGoal (GameObjectPtr target,
 						  Stuff::Vector3D moveCenter,
 						  float moveRadius,
@@ -4531,9 +4528,6 @@ long Mover::calcMoveGoal (GameObjectPtr target,
 					goalMap[goalMapRowStart[r] + c] -= 5000;
 			}
 		}
-#ifdef LAB_ONLY
-		MCTimeCalcGoal2Update += (GetCycles() - startTime);
-#endif
 		//---------------------------------------------------------------------------
 		// If the pilot has a set fire range, let's use it in determining how far out
 		// we would consider attacking. If we're ramming, fireCellrange will stay at
@@ -4774,10 +4768,6 @@ long Mover::calcMoveGoal (GameObjectPtr target,
 		}
 	}
 
-#ifdef LAB_ONLY
-	MCTimeCalcGoal3Update += (GetCycles() - startTime);
-#endif
-
 	//----------------------------------------------------------------------
 	// If we're attacking this target, let's use a selectionIndex based upon
 	// the number of people in my unit attacking this target...
@@ -4853,14 +4843,8 @@ long Mover::calcMoveGoal (GameObjectPtr target,
 					else
 						noLOF = !lineOfSight(moveGoal, false);
 				}
-#ifdef LAB_ONLY
-				MCTimeCalcGoal4Update += (GetCycles() - lstartTime);
-#endif
 			}
 		}
-#ifdef LAB_ONLY
-		MCTimeCalcGoal5Update += (GetCycles() - startTime);
-#endif
 		ObjectManager->useMoverLineOfSightTable = true;
 		position = curMoverPosition;
 		cellPositionRow = curMoverRow;
@@ -4955,10 +4939,7 @@ long Mover::calcMoveGoal (GameObjectPtr target,
 			}
 		}
 	}
-	GameMap->setCellDebug(curGoalCell[0], curGoalCell[1], 3, 2);			
-#ifdef LAB_ONLY
-	MCTimeCalcGoal6Update += (GetCycles() - startTime);
-#endif	
+	GameMap->setCellDebug(curGoalCell[0], curGoalCell[1], 3, 2);	
 	//--------------------------------------------
 	// Let's calc the woorld coord of this cell...
 	land->cellToWorld(curGoalCell[0], curGoalCell[1], newGoal);
