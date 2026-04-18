@@ -195,6 +195,8 @@ class TerrainObject : public GameObject {
 		
 		virtual void destroy (void);
 		
+		void primeAppearanceForMissionLoad (void);
+
 		virtual long update (void);
 
 		virtual void render (void);

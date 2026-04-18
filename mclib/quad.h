@@ -126,7 +126,6 @@ class TerrainQuad
 		}
 
 		long init (VertexPtr v0, VertexPtr v1, VertexPtr v2, VertexPtr v3);
-
 		void setupTextures (void);
 
 		void draw (void);

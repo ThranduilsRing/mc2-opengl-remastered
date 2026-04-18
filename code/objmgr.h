@@ -415,6 +415,7 @@ class GameObjectManager {
 		void countTerrainObjects (PacketFile* pFile, long firstHandle);
 
 		void loadTerrainObjects ( PacketFile* pFile, volatile float& progress, float progressRange );
+		void primeTerrainObjectsForMissionLoad (volatile float& progress, float progressRange);
 
 		long getSpecificObjects (long objClass, long objSubType, GameObjectPtr* objects, long maxObjects);
 

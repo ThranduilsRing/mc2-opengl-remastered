@@ -30,6 +30,8 @@
 
 #include<gameos.hpp>
 #include"terrtxm2.h"
+#include<vector>
+#include<algorithm>
 
 //---------------------------------------------------------------------------
 // c'tors for postCompVertex
@@ -86,6 +88,37 @@ float					cloudScrollSpeedY = 0.002f;
 
 float					cloudScrollX = 0.0f;
 float					cloudScrollY = 0.0f;
+static int				gTerrainTilesRealizedDuringLoad = 0;
+static int				gTerrainTilesFirstRealizedDuringGameplay = 0;
+
+static long worldQuadCacheWidth (void)
+{
+	return Terrain::realVerticesMapSide - 1;
+}
+
+static long worldQuadCacheIndex (long tileR, long tileC)
+{
+	return tileC + tileR * worldQuadCacheWidth();
+}
+
+static long worldQuadUVMode (long tileR, long tileC)
+{
+	return ((tileR & 1) == (tileC & 1)) ? BOTTOMRIGHT : BOTTOMLEFT;
+}
+
+static bool isTextureNodeResidentLocal (DWORD nodeId)
+{
+	return mcTextureManager->isTextureNodeResident(nodeId);
+}
+
+static void fillWorldCacheVertex (Vertex& vertex, PostcompVertexPtr pVertex, long tileR, long tileC)
+{
+	vertex.init();
+	vertex.pVertex = pVertex;
+	vertex.vx = float(tileC - Terrain::halfVerticesMapSide) * Terrain::worldUnitsPerVertex;
+	vertex.vy = float(Terrain::halfVerticesMapSide - tileR) * Terrain::worldUnitsPerVertex;
+	vertex.posTile = (tileR << 16) + (tileC & 0x0000ffff);
+}
 
 void *MapData::operator new (size_t mySize)
 {
@@ -103,6 +136,8 @@ void MapData::operator delete (void *us)
 void MapData::destroy (void)
 {
 	HeapManager::destroy();
+
+	invalidateTerrainFaceCache();
 
 	if (blankVertex)
 	{
@@ -144,6 +179,7 @@ void MapData::newInit (long numVertices)
 	Terrain::recalcLight = true;
 	Terrain::recalcShadows = false;
 	
+	invalidateTerrainFaceCache();
 	calcTransitions();
 }
 
@@ -162,6 +198,207 @@ long MapData::save( PacketFile* file, int whichPacket )
 {
 	return file->writePacket( whichPacket, (unsigned char*)blocks, 
 		Terrain::realVerticesMapSide * Terrain::realVerticesMapSide *sizeof(PostcompVertex ) );
+}
+
+//---------------------------------------------------------------------------
+void MapData::invalidateTerrainFaceCache (void)
+{
+	if (terrainFaceCache)
+	{
+		Terrain::terrainHeap->Free(terrainFaceCache);
+		terrainFaceCache = NULL;
+	}
+}
+
+//---------------------------------------------------------------------------
+const MapData::WorldQuadTerrainCacheEntry* MapData::getTerrainFaceCacheEntry (long tileR, long tileC) const
+{
+	if (!terrainFaceCache)
+		return NULL;
+
+	const long maxTile = Terrain::realVerticesMapSide - 1;
+	if ((tileR < 0) || (tileC < 0) || (tileR >= maxTile) || (tileC >= maxTile))
+		return NULL;
+
+	return &terrainFaceCache[worldQuadCacheIndex(tileR, tileC)];
+}
+
+//---------------------------------------------------------------------------
+void MapData::buildTerrainFaceCache (volatile float* progress, float progressRange)
+{
+	ZoneScopedN("MapData::buildTerrainFaceCache");
+	if (!blocks || !Terrain::terrainTextures2 || !Terrain::terrainTextures)
+		return;
+
+	const long cacheWidth = worldQuadCacheWidth();
+	const long cacheCount = cacheWidth * cacheWidth;
+	if (!terrainFaceCache)
+	{
+		terrainFaceCache = (WorldQuadTerrainCacheEntry*)Terrain::terrainHeap->Malloc(sizeof(WorldQuadTerrainCacheEntry) * cacheCount);
+		gosASSERT(terrainFaceCache != NULL);
+	}
+
+	for (long i = 0; i < cacheCount; ++i)
+		terrainFaceCache[i].init();
+
+	Vertex worldVertices[4];
+	for (long tileR = 0; tileR < cacheWidth; ++tileR)
+	{
+		for (long tileC = 0; tileC < cacheWidth; ++tileC)
+		{
+			const long index = tileC + tileR * Terrain::realVerticesMapSide;
+			PostcompVertexPtr pVertex1 = &blocks[index];
+			PostcompVertexPtr pVertex2 = pVertex1 + 1;
+			PostcompVertexPtr pVertex3 = pVertex1 + Terrain::realVerticesMapSide + 1;
+			PostcompVertexPtr pVertex4 = pVertex1 + Terrain::realVerticesMapSide;
+
+			fillWorldCacheVertex(worldVertices[0], pVertex1, tileR, tileC);
+			fillWorldCacheVertex(worldVertices[1], pVertex2, tileR, tileC + 1);
+			fillWorldCacheVertex(worldVertices[2], pVertex3, tileR + 1, tileC + 1);
+			fillWorldCacheVertex(worldVertices[3], pVertex4, tileR + 1, tileC);
+
+			WorldQuadTerrainCacheEntry& entry = terrainFaceCache[worldQuadCacheIndex(tileR, tileC)];
+			const DWORD baseTexture = pVertex1->textureData & 0x0000ffff;
+			const bool isCement = Terrain::terrainTextures->isCement(baseTexture);
+			const bool isAlpha = Terrain::terrainTextures->isAlpha(baseTexture);
+
+			if (isCement)
+				entry.flags |= TERRAIN_CACHE_CEMENT;
+			if (isAlpha)
+				entry.flags |= TERRAIN_CACHE_ALPHA;
+
+			if (!isCement)
+			{
+				const long uvMode = worldQuadUVMode(tileR, tileC);
+				VertexPtr vMin = (uvMode == BOTTOMRIGHT) ? &worldVertices[0] : &worldVertices[1];
+				VertexPtr vMax = (uvMode == BOTTOMRIGHT) ? &worldVertices[2] : &worldVertices[3];
+				entry.terrainHandle = Terrain::terrainTextures2->resolveTextureHandle(vMin, vMax, &entry.uvData, NULL, false);
+				entry.terrainDetailHandle = Terrain::terrainTextures2->peekDetailHandle();
+				entry.flags |= TERRAIN_CACHE_COLORMAP;
+			}
+			else if (isAlpha)
+			{
+				entry.overlayHandle = Terrain::terrainTextures->peekTextureHandle(baseTexture);
+				entry.terrainHandle = Terrain::terrainTextures2->resolveTextureHandle(&worldVertices[1], &worldVertices[3], &entry.uvData, NULL, false);
+				entry.terrainDetailHandle = Terrain::terrainTextures2->peekDetailHandle();
+				entry.flags |= TERRAIN_CACHE_COLORMAP;
+			}
+			else
+			{
+				entry.terrainHandle = Terrain::terrainTextures->peekTextureHandle(baseTexture);
+			}
+
+			entry.flags |= TERRAIN_CACHE_VALID;
+		}
+
+		if (progress && (cacheWidth > 0))
+			*progress += progressRange / float(cacheWidth);
+	}
+}
+
+//---------------------------------------------------------------------------
+bool MapData::ensureTerrainFaceCacheEntryResident (const WorldQuadTerrainCacheEntry& entry, bool duringMissionLoad) const
+{
+	bool realizedColorMapTile = false;
+
+	if (entry.usesColorMap() && !isTextureNodeResidentLocal(entry.terrainHandle))
+	{
+		mcTextureManager->get_gosTextureHandle(entry.terrainHandle);
+		realizedColorMapTile = true;
+	}
+
+	if (!isTextureNodeResidentLocal(entry.terrainDetailHandle))
+		mcTextureManager->get_gosTextureHandle(entry.terrainDetailHandle);
+
+	if (!isTextureNodeResidentLocal(entry.overlayHandle))
+		mcTextureManager->get_gosTextureHandle(entry.overlayHandle);
+
+	if (!entry.usesColorMap() && !isTextureNodeResidentLocal(entry.terrainHandle))
+		mcTextureManager->get_gosTextureHandle(entry.terrainHandle);
+
+	if (realizedColorMapTile)
+	{
+		if (duringMissionLoad)
+		{
+			++gTerrainTilesRealizedDuringLoad;
+			TracyPlot("Terrain tiles realized during mission load", int64_t(gTerrainTilesRealizedDuringLoad));
+		}
+		else
+		{
+			++gTerrainTilesFirstRealizedDuringGameplay;
+			TracyPlot("Terrain tiles first realized during gameplay", int64_t(gTerrainTilesFirstRealizedDuringGameplay));
+		}
+	}
+
+	return realizedColorMapTile;
+}
+
+//---------------------------------------------------------------------------
+void MapData::warmTerrainFaceCacheResidency (volatile float* progress, float progressRange)
+{
+	ZoneScopedN("MapData::warmTerrainFaceCacheResidency");
+	if (!terrainFaceCache)
+		return;
+
+	gTerrainTilesRealizedDuringLoad = 0;
+	gTerrainTilesFirstRealizedDuringGameplay = 0;
+	TracyPlot("Terrain tiles realized during mission load", int64_t(gTerrainTilesRealizedDuringLoad));
+	TracyPlot("Terrain tiles first realized during gameplay", int64_t(gTerrainTilesFirstRealizedDuringGameplay));
+
+	const long cacheWidth = worldQuadCacheWidth();
+	std::vector<DWORD> handlesToWarm;
+	handlesToWarm.reserve(cacheWidth * cacheWidth);
+
+	for (long tileR = 0; tileR < cacheWidth; ++tileR)
+	{
+		for (long tileC = 0; tileC < cacheWidth; ++tileC)
+		{
+			const WorldQuadTerrainCacheEntry& entry = terrainFaceCache[worldQuadCacheIndex(tileR, tileC)];
+			if (!entry.isValid())
+				continue;
+
+			if (entry.usesColorMap() && entry.terrainHandle != 0xffffffff && entry.terrainHandle != 0)
+				handlesToWarm.push_back(entry.terrainHandle);
+			if (entry.terrainDetailHandle != 0xffffffff && entry.terrainDetailHandle != 0)
+				handlesToWarm.push_back(entry.terrainDetailHandle);
+			if (entry.overlayHandle != 0xffffffff && entry.overlayHandle != 0)
+				handlesToWarm.push_back(entry.overlayHandle);
+			if (!entry.usesColorMap() && entry.terrainHandle != 0xffffffff && entry.terrainHandle != 0)
+				handlesToWarm.push_back(entry.terrainHandle);
+		}
+	}
+
+	std::sort(handlesToWarm.begin(), handlesToWarm.end());
+	handlesToWarm.erase(std::unique(handlesToWarm.begin(), handlesToWarm.end()), handlesToWarm.end());
+
+	const size_t totalHandles = handlesToWarm.size();
+	for (size_t i = 0; i < totalHandles; ++i)
+	{
+		const DWORD handle = handlesToWarm[i];
+		const bool residentBefore = isTextureNodeResidentLocal(handle);
+		mcTextureManager->get_gosTextureHandle(handle);
+		if (!residentBefore)
+		{
+			bool counted = false;
+			for (long tileR = 0; tileR < cacheWidth && !counted; ++tileR)
+			{
+				for (long tileC = 0; tileC < cacheWidth; ++tileC)
+				{
+					const WorldQuadTerrainCacheEntry& entry = terrainFaceCache[worldQuadCacheIndex(tileR, tileC)];
+					if (entry.usesColorMap() && entry.terrainHandle == handle)
+					{
+						++gTerrainTilesRealizedDuringLoad;
+						TracyPlot("Terrain tiles realized during mission load", int64_t(gTerrainTilesRealizedDuringLoad));
+						counted = true;
+						break;
+					}
+				}
+			}
+		}
+
+		if (progress && totalHandles)
+			*progress += progressRange / float(totalHandles);
+	}
 }
 
 //---------------------------------------------------------------------------

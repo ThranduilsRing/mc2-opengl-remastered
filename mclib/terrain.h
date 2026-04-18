@@ -222,6 +222,7 @@ class Terrain
 		void renderWater (void);
 		
 		void geometry (void);
+		void primeMissionTerrainCache (volatile float& progress, float progressRange);
 
 		void drawTopView (void);
 

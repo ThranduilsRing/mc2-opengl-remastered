@@ -65,12 +65,62 @@ class MapData : public HeapManager
 {
 	//Data Members
 	//-------------
+	public:
+		struct WorldQuadTerrainCacheEntry;
+
 	protected:
 		PostcompVertexPtr			blocks;
 		PostcompVertexPtr			blankVertex;
+		struct WorldQuadTerrainCacheEntry* terrainFaceCache;
 		int							hasSelection;
 									
 	public:
+		enum TerrainFaceCacheFlags
+		{
+			TERRAIN_CACHE_VALID = 0x01,
+			TERRAIN_CACHE_CEMENT = 0x02,
+			TERRAIN_CACHE_ALPHA = 0x04,
+			TERRAIN_CACHE_COLORMAP = 0x08
+		};
+
+		struct WorldQuadTerrainCacheEntry
+		{
+			DWORD terrainHandle;
+			DWORD terrainDetailHandle;
+			DWORD overlayHandle;
+			TerrainUVData uvData;
+			BYTE flags;
+
+			void init (void)
+			{
+				terrainHandle = 0xffffffff;
+				terrainDetailHandle = 0xffffffff;
+				overlayHandle = 0xffffffff;
+				uvData.minU = uvData.minV = uvData.maxU = uvData.maxV = 0.0f;
+				flags = 0;
+			}
+
+			bool isValid (void) const
+			{
+				return (flags & TERRAIN_CACHE_VALID) != 0;
+			}
+
+			bool isCement (void) const
+			{
+				return (flags & TERRAIN_CACHE_CEMENT) != 0;
+			}
+
+			bool isAlpha (void) const
+			{
+				return (flags & TERRAIN_CACHE_ALPHA) != 0;
+			}
+
+			bool usesColorMap (void) const
+			{
+				return (flags & TERRAIN_CACHE_COLORMAP) != 0;
+			}
+		};
+
 		Stuff::Vector2DOf<float>	topLeftVertex;
 
 		static float				shallowDepth;
@@ -92,6 +142,7 @@ class MapData : public HeapManager
 			topLeftVertex.Zero();			
 
 			blocks = NULL;
+			terrainFaceCache = NULL;
 
 			blankVertex = NULL;
 
@@ -160,6 +211,11 @@ class MapData : public HeapManager
 		}
 
 		unsigned long getTexture( long tileR, long tileC );
+		void invalidateTerrainFaceCache (void);
+		void buildTerrainFaceCache (volatile float* progress = NULL, float progressRange = 0.0f);
+		void warmTerrainFaceCacheResidency (volatile float* progress = NULL, float progressRange = 0.0f);
+		const WorldQuadTerrainCacheEntry* getTerrainFaceCacheEntry (long tileR, long tileC) const;
+		bool ensureTerrainFaceCacheEntryResident (const WorldQuadTerrainCacheEntry& entry, bool duringMissionLoad) const;
 
 		long save( PacketFile* file, int whichPacket);
 
