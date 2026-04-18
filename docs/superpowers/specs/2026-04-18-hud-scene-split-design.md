@@ -50,17 +50,18 @@ set, the draw is a scene draw.
 ### Frame loop (draw_screen in gameosmain.cpp)
 
 ```
-gos_RendererBeginFrame()          — gosRenderer::beginFrame(): clear hudBatch_, bind VAO
 pp->beginScene()                  — bind sceneFBO, clear (unchanged)
+gos_RendererBeginFrame()          — gosRenderer::beginFrame(): clear hudBatch_, bind VAO
 Environment.UpdateRenderers()     — HUD draws buffer; scene draws submit immediately
 pp->endScene()                    — screen-shadow, bloom, composite scene → FB 0 (unchanged)
 renderer->flushHUDBatch()         — replay buffered HUD to FB 0
 swap_window()
 ```
 
-`beginScene()` and `endScene()` are unchanged at the FBO/postprocess level.
-`hudBatch_` is cleared in `gosRenderer::beginFrame()` — before any scene or HUD draws
-— so the batch lifetime is exactly one frame from beginFrame onward. Clearing inside
+This matches the actual call order in `draw_screen()`. `beginScene()` and `endScene()`
+are unchanged at the FBO/postprocess level. `hudBatch_` is cleared in
+`gosRenderer::beginFrame()`, which runs immediately after `beginScene()` and before
+`UpdateRenderers()`, so the batch lifetime is exactly one frame. Clearing inside
 `flushHUDBatch()` is explicitly disallowed: it would hide early-return bugs by either
 replaying stale entries or silently discarding evidence.
 
@@ -118,9 +119,12 @@ state active before flush began), not a hardcoded GL baseline.
 
 ### Late submission
 
-Any draw with `gos_State_IsHUD=1` received after `flushHUDBatch()` returns is buffered
-with a diagnostic warning and replayed next frame. This is defined behavior, not a
-crash or silent drop.
+Any draw with `gos_State_IsHUD=1` received after `flushHUDBatch()` returns is
+**discarded with a diagnostic warning**. It is not buffered for next frame.
+`hudBatch_` is cleared each frame in `beginFrame()`, so a carry-over queue would be
+required to survive to the next frame — and a one-frame-late HUD element is a worse
+outcome than a clear diagnostic. Late submissions are a bug signal, not a valid use
+case. Warn + discard surfaces the bug; silent deferral hides it.
 
 ## Game-Side Callsites (First-Pass Scope)
 
@@ -192,7 +196,8 @@ framework in `gos_validate.cpp` is the correct tool for all correctness checks.
 
 | File | Change |
 |---|---|
-| `GameOS/gameos/gameos_graphics.cpp` | `gos_State_IsHUD` enum value; `gosRenderer` HUD batch fields, `drawQuads`/`drawLines` buffering, `flushHUDBatch`, internal submit path |
+| `GameOS/include/gameos.hpp` | `gos_State_IsHUD` added to `gos_RenderState` enum |
+| `GameOS/gameos/gameos_graphics.cpp` | `gosRenderer` HUD batch fields, `drawQuads`/`drawLines` buffering, `flushHUDBatch`, internal submit path |
 | `GameOS/gameos/gos_postprocess.h/.cpp` | No changes — `beginScene()`/`endScene()` are unchanged |
 | `GameOS/gameos/gameosmain.cpp` | One `renderer->flushHUDBatch()` call after `pp->endScene()` |
 | `code/mechcmd2.cpp` | `IsHUD` wrapping for debug windows, status bar, text draws |
