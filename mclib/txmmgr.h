@@ -531,6 +531,16 @@ class MC_TextureManager
 				return nodeId;
 		}
 
+		bool isTextureNodeResident (DWORD nodeId) const
+		{
+			if ((nodeId == 0xffffffff) || (nodeId == 0))
+				return true;
+
+			return masterTextureNodes[nodeId].gosTextureHandle != CACHED_OUT_HANDLE &&
+				masterTextureNodes[nodeId].gosTextureHandle != 0xffffffff &&
+				masterTextureNodes[nodeId].gosTextureHandle != 0;
+		}
+
 		void setTextureNeverFlush (DWORD nodeId, DWORD nFlush)
 		{
 			if (nodeId < MC_MAXTEXTURES)

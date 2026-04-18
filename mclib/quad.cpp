@@ -38,6 +38,8 @@
 #include"move.h"
 #endif
 
+#include"../GameOS/gameos/gos_profiler.h"
+
 #define SELECTION_COLOR 0xffff7fff
 #define HIGHLIGHT_COLOR	0xff00ff00
 
@@ -84,6 +86,76 @@ static void fillTerrainExtra(DWORD texHandle, DWORD flags, VertexPtr v0, VertexP
     textra[2].nx = v2->pVertex->vertexNormal.x; textra[2].ny = v2->pVertex->vertexNormal.y; textra[2].nz = v2->pVertex->vertexNormal.z;
     mcTextureManager->addTerrainExtra(texHandle, textra, flags);
 }
+
+static bool isTerrainQuadVisible(const TerrainQuad& quad)
+{
+	if (quad.uvMode == BOTTOMRIGHT)
+	{
+		long clipped1 = quad.vertices[0]->clipInfo + quad.vertices[1]->clipInfo + quad.vertices[2]->clipInfo;
+		long clipped2 = quad.vertices[0]->clipInfo + quad.vertices[2]->clipInfo + quad.vertices[3]->clipInfo;
+		return (clipped1 || clipped2) != 0;
+	}
+
+	long clipped1 = quad.vertices[0]->clipInfo + quad.vertices[1]->clipInfo + quad.vertices[3]->clipInfo;
+	long clipped2 = quad.vertices[1]->clipInfo + quad.vertices[2]->clipInfo + quad.vertices[3]->clipInfo;
+	return (clipped1 || clipped2) != 0;
+}
+
+static void enqueueTerrainMineState(TerrainQuad& quad)
+{
+	long rowCol = quad.vertices[0]->posTile;
+	long tileR = rowCol>>16;
+	long tileC = rowCol & 0x0000ffff;
+			
+	if (GameMap)
+	{
+		long cellPos = 0;
+		quad.mineResult.init();
+		for (long cellR = 0; cellR < MAPCELL_DIM; cellR++)
+		{
+			for (long cellC = 0; cellC < MAPCELL_DIM; cellC++,cellPos++) 
+			{
+				long actualCellRow = tileR * MAPCELL_DIM + cellR;
+				long actualCellCol = tileC * MAPCELL_DIM + cellC;
+				
+				DWORD localResult = 0;
+				if (GameMap->inBounds(actualCellRow, actualCellCol))
+					localResult = GameMap->getMine(actualCellRow, actualCellCol);
+					
+				if (localResult == 1)
+				{
+					mcTextureManager->get_gosTextureHandle(TerrainQuad::mineTextureHandle);
+					mcTextureManager->addTriangle(TerrainQuad::mineTextureHandle,MC2_DRAWALPHA);
+					mcTextureManager->addTriangle(TerrainQuad::mineTextureHandle,MC2_DRAWALPHA);
+					
+					quad.mineResult.setMine(cellPos,localResult);
+				}
+				else if (localResult == 2)
+				{
+					mcTextureManager->get_gosTextureHandle(TerrainQuad::blownTextureHandle);
+					mcTextureManager->addTriangle(TerrainQuad::blownTextureHandle,MC2_DRAWALPHA);
+					mcTextureManager->addTriangle(TerrainQuad::blownTextureHandle,MC2_DRAWALPHA);
+					
+					quad.mineResult.setMine(cellPos,localResult);
+				}
+			}
+		}
+	}
+}
+
+static void enqueueCachedTerrainTriangles(const MapData::WorldQuadTerrainCacheEntry& entry)
+{
+	if(entry.terrainHandle!=0 && entry.terrainHandle != 0xffffffff) {
+		mcTextureManager->addTriangle(entry.terrainHandle,MC2_ISTERRAIN | MC2_DRAWSOLID);
+		mcTextureManager->addTriangle(entry.terrainHandle,MC2_ISTERRAIN | MC2_DRAWSOLID);
+		if (entry.terrainDetailHandle != 0xffffffff && (!entry.isCement() || entry.isAlpha()))
+		{
+			mcTextureManager->addTriangle(entry.terrainDetailHandle,MC2_ISTERRAIN | MC2_DRAWALPHA);
+			mcTextureManager->addTriangle(entry.terrainDetailHandle,MC2_ISTERRAIN | MC2_DRAWALPHA);
+		}
+	}
+}
+
 //---------------------------------------------------------------------------
 //---------------------------------------------------------------------------
 // Class TerrainQuad
@@ -282,216 +354,131 @@ void TerrainQuad::setupTextures (void)
 	}
 	else		//New single bitmap on the terrain.
 	{
-		if (uvMode == BOTTOMRIGHT)
+		if (!isTerrainQuadVisible(*this))
 		{
-			long clipped1 = vertices[0]->clipInfo + vertices[1]->clipInfo + vertices[2]->clipInfo;
-			long clipped2 = vertices[0]->clipInfo + vertices[2]->clipInfo + vertices[3]->clipInfo;
-						
-			if (clipped1 || clipped2)
-			{
-				isCement = Terrain::terrainTextures->isCement(vertices[0]->pVertex->textureData & 0x0000ffff);
-				bool isAlpha = Terrain::terrainTextures->isAlpha(vertices[0]->pVertex->textureData & 0x0000ffff); 
-				if (!isCement)
-				{
-					terrainHandle = Terrain::terrainTextures2->getTextureHandle(vertices[0],vertices[2],&uvData); 
-					terrainDetailHandle = Terrain::terrainTextures2->getDetailHandle();
-					overlayHandle = 0xffffffff;
-						
-					if(terrainHandle!=0) {
-						mcTextureManager->addTriangle(terrainHandle,MC2_ISTERRAIN | MC2_DRAWSOLID);
-						mcTextureManager->addTriangle(terrainHandle,MC2_ISTERRAIN | MC2_DRAWSOLID);
-						if (terrainDetailHandle != 0xffffffff)
-						{
-							mcTextureManager->addTriangle(terrainDetailHandle,MC2_ISTERRAIN | MC2_DRAWALPHA);
-							mcTextureManager->addTriangle(terrainDetailHandle,MC2_ISTERRAIN | MC2_DRAWALPHA);
-						}
-					}
-				}
-				else		//This cement in the old Universe, pull the old texture and display it
-				{
-					if (isAlpha)		//This should be treated as an overlay.  Do so.  Draw overlay AFTER new terrain in same square!!
-					{
-						overlayHandle = Terrain::terrainTextures->getTextureHandle(vertices[0]->pVertex->textureData & 0x0000ffff);
-						terrainHandle = Terrain::terrainTextures2->getTextureHandle(vertices[1],vertices[3],&uvData);
-						terrainDetailHandle = Terrain::terrainTextures2->getDetailHandle();
-						
-						if(terrainHandle!=0) {
-							mcTextureManager->addTriangle(terrainHandle,MC2_ISTERRAIN | MC2_DRAWSOLID);
-							mcTextureManager->addTriangle(terrainHandle,MC2_ISTERRAIN | MC2_DRAWSOLID);
-						}
-						
-						if (terrainDetailHandle != 0xffffffff)
-						{
-							mcTextureManager->addTriangle(terrainDetailHandle,MC2_ISTERRAIN | MC2_DRAWALPHA);
-							mcTextureManager->addTriangle(terrainDetailHandle,MC2_ISTERRAIN | MC2_DRAWALPHA);
-						}
-						
-						// overlayHandle now goes to gos_PushTerrainOverlay (no old-style pool reservation needed)
-					}
-					else	//Otherwise, its solid cement.  Save some draw cycles!!
-					{
-						terrainHandle = Terrain::terrainTextures->getTextureHandle(vertices[0]->pVertex->textureData & 0x0000ffff);
-						terrainDetailHandle = 0xffffffff;		//Cement has NO detail!!
-						overlayHandle = 0xffffffff;
-
-						if(terrainHandle!=0) {
-							mcTextureManager->addTriangle(terrainHandle,MC2_ISTERRAIN | MC2_DRAWSOLID);
-							mcTextureManager->addTriangle(terrainHandle,MC2_ISTERRAIN | MC2_DRAWSOLID);
-						}
-					}
-				}
-				
-				//--------------------------------------------------------------------
-				//Mine Information
-				long rowCol = vertices[0]->posTile;
-				long tileR = rowCol>>16;
-				long tileC = rowCol & 0x0000ffff;
-						
-				if (GameMap)
-				{
-					long cellPos = 0;
-					mineResult.init();
-					for (long cellR = 0; cellR < MAPCELL_DIM; cellR++)
-					{
-						for (long cellC = 0; cellC < MAPCELL_DIM; cellC++,cellPos++) 
-						{
-							long actualCellRow = tileR * MAPCELL_DIM + cellR;
-							long actualCellCol = tileC * MAPCELL_DIM + cellC;
-							
-							DWORD localResult = 0;
-							if (GameMap->inBounds(actualCellRow, actualCellCol))
-								localResult = GameMap->getMine(actualCellRow, actualCellCol);
-								
-							if (localResult == 1)
-							{
-								mcTextureManager->get_gosTextureHandle(mineTextureHandle);
-								mcTextureManager->addTriangle(mineTextureHandle,MC2_DRAWALPHA);
-								mcTextureManager->addTriangle(mineTextureHandle,MC2_DRAWALPHA);
-								
-								mineResult.setMine(cellPos,localResult);
-							}
-							else if (localResult == 2)
-							{
-								mcTextureManager->get_gosTextureHandle(blownTextureHandle);
-								mcTextureManager->addTriangle(blownTextureHandle,MC2_DRAWALPHA);
-								mcTextureManager->addTriangle(blownTextureHandle,MC2_DRAWALPHA);
-								
-								mineResult.setMine(cellPos,localResult);
-							}
-						}
-					}
-				}
-			}
-			else
-			{
-				overlayHandle = 0xffffffff;
-				terrainHandle = 0xffffffff; 
-				waterHandle = 0xffffffff; 
-				waterDetailHandle = 0xffffffff;
-				terrainDetailHandle = 0xffffffff;
-			}
+			overlayHandle = 0xffffffff;
+			terrainHandle = 0xffffffff; 
+			waterHandle = 0xffffffff; 
+			waterDetailHandle = 0xffffffff;
+			terrainDetailHandle = 0xffffffff;
 		}
 		else
 		{
-			long clipped1 = vertices[0]->clipInfo + vertices[1]->clipInfo + vertices[3]->clipInfo;
-			long clipped2 = vertices[1]->clipInfo + vertices[2]->clipInfo + vertices[3]->clipInfo;
-						
-			if (clipped1 || clipped2)
+			long rowCol = vertices[0]->posTile;
+			long tileR = rowCol >> 16;
+			long tileC = rowCol & 0x0000ffff;
+			const MapData::WorldQuadTerrainCacheEntry* cachedEntry = Terrain::mapData ? Terrain::mapData->getTerrainFaceCacheEntry(tileR, tileC) : NULL;
+			if (cachedEntry && cachedEntry->isValid())
 			{
-				isCement = Terrain::terrainTextures->isCement(vertices[0]->pVertex->textureData & 0x0000ffff);
-				bool isAlpha = Terrain::terrainTextures->isAlpha(vertices[0]->pVertex->textureData & 0x0000ffff); 
-				if (!isCement)
+				ZoneScopedN("TerrainQuad::setupTextures cachedVisibleSubmission");
+				Terrain::mapData->ensureTerrainFaceCacheEntryResident(*cachedEntry, false);
+			}
+
+			{
+				ZoneScopedN("TerrainQuad::setupTextures resolveFallback");
+				if (uvMode == BOTTOMRIGHT)
 				{
-					terrainHandle = Terrain::terrainTextures2->getTextureHandle(vertices[1],vertices[3],&uvData); 
-					terrainDetailHandle = Terrain::terrainTextures2->getDetailHandle();
-					overlayHandle = 0xffffffff;
-					if(terrainHandle!=0) {
-					mcTextureManager->addTriangle(terrainHandle,MC2_ISTERRAIN | MC2_DRAWSOLID);
-					mcTextureManager->addTriangle(terrainHandle,MC2_ISTERRAIN | MC2_DRAWSOLID);
-					mcTextureManager->addTriangle(terrainDetailHandle,MC2_ISTERRAIN | MC2_DRAWALPHA);
-					mcTextureManager->addTriangle(terrainDetailHandle,MC2_ISTERRAIN | MC2_DRAWALPHA);
+					isCement = Terrain::terrainTextures->isCement(vertices[0]->pVertex->textureData & 0x0000ffff);
+					bool isAlpha = Terrain::terrainTextures->isAlpha(vertices[0]->pVertex->textureData & 0x0000ffff); 
+					if (!isCement)
+					{
+						terrainHandle = Terrain::terrainTextures2->getTextureHandle(vertices[0],vertices[2],&uvData); 
+						terrainDetailHandle = Terrain::terrainTextures2->getDetailHandle();
+						overlayHandle = 0xffffffff;
+						
+						if(terrainHandle!=0) {
+							mcTextureManager->addTriangle(terrainHandle,MC2_ISTERRAIN | MC2_DRAWSOLID);
+							mcTextureManager->addTriangle(terrainHandle,MC2_ISTERRAIN | MC2_DRAWSOLID);
+							if (terrainDetailHandle != 0xffffffff)
+							{
+								mcTextureManager->addTriangle(terrainDetailHandle,MC2_ISTERRAIN | MC2_DRAWALPHA);
+								mcTextureManager->addTriangle(terrainDetailHandle,MC2_ISTERRAIN | MC2_DRAWALPHA);
+							}
+						}
+					}
+					else
+					{
+						if (isAlpha)
+						{
+							overlayHandle = Terrain::terrainTextures->getTextureHandle(vertices[0]->pVertex->textureData & 0x0000ffff);
+							terrainHandle = Terrain::terrainTextures2->getTextureHandle(vertices[1],vertices[3],&uvData);
+							terrainDetailHandle = Terrain::terrainTextures2->getDetailHandle();
+							
+							if(terrainHandle!=0) {
+								mcTextureManager->addTriangle(terrainHandle,MC2_ISTERRAIN | MC2_DRAWSOLID);
+								mcTextureManager->addTriangle(terrainHandle,MC2_ISTERRAIN | MC2_DRAWSOLID);
+							}
+							
+							if (terrainDetailHandle != 0xffffffff)
+							{
+								mcTextureManager->addTriangle(terrainDetailHandle,MC2_ISTERRAIN | MC2_DRAWALPHA);
+								mcTextureManager->addTriangle(terrainDetailHandle,MC2_ISTERRAIN | MC2_DRAWALPHA);
+							}
+						}
+						else
+						{
+							terrainHandle = Terrain::terrainTextures->getTextureHandle(vertices[0]->pVertex->textureData & 0x0000ffff);
+							terrainDetailHandle = 0xffffffff;
+							overlayHandle = 0xffffffff;
+
+							if(terrainHandle!=0) {
+								mcTextureManager->addTriangle(terrainHandle,MC2_ISTERRAIN | MC2_DRAWSOLID);
+								mcTextureManager->addTriangle(terrainHandle,MC2_ISTERRAIN | MC2_DRAWSOLID);
+							}
+						}
 					}
 				}
-				else		//This cement in the old Universe, pull the old texture and display it
+				else
 				{
-					if (isAlpha)		//This should be treated as an overlay.  Do so.  Draw overlay AFTER new terrain in same square!!
+					isCement = Terrain::terrainTextures->isCement(vertices[0]->pVertex->textureData & 0x0000ffff);
+					bool isAlpha = Terrain::terrainTextures->isAlpha(vertices[0]->pVertex->textureData & 0x0000ffff); 
+					if (!isCement)
 					{
-						overlayHandle = Terrain::terrainTextures->getTextureHandle(vertices[0]->pVertex->textureData & 0x0000ffff);
 						terrainHandle = Terrain::terrainTextures2->getTextureHandle(vertices[1],vertices[3],&uvData);
 						terrainDetailHandle = Terrain::terrainTextures2->getDetailHandle();
-						
-						if(terrainHandle!=0) {
-						mcTextureManager->addTriangle(terrainHandle,MC2_ISTERRAIN | MC2_DRAWSOLID);
-						mcTextureManager->addTriangle(terrainHandle,MC2_ISTERRAIN | MC2_DRAWSOLID);
-						}
-						if(terrainDetailHandle!=0) {
-						mcTextureManager->addTriangle(terrainDetailHandle,MC2_ISTERRAIN | MC2_DRAWALPHA);
-						mcTextureManager->addTriangle(terrainDetailHandle,MC2_ISTERRAIN | MC2_DRAWALPHA);
-						}
-						// overlayHandle now goes to gos_PushTerrainOverlay (no old-style pool reservation needed)
-					}
-					else	//Otherwise, its solid cement.  Save some draw cycles!!
-					{
-						terrainHandle = Terrain::terrainTextures->getTextureHandle(vertices[0]->pVertex->textureData & 0x0000ffff);
-						terrainDetailHandle = 0xffffffff;		//Cement has NO detail!!
 						overlayHandle = 0xffffffff;
-							
 						if(terrainHandle!=0) {
 							mcTextureManager->addTriangle(terrainHandle,MC2_ISTERRAIN | MC2_DRAWSOLID);
 							mcTextureManager->addTriangle(terrainHandle,MC2_ISTERRAIN | MC2_DRAWSOLID);
+							if(terrainDetailHandle!=0xffffffff) {
+								mcTextureManager->addTriangle(terrainDetailHandle,MC2_ISTERRAIN | MC2_DRAWALPHA);
+								mcTextureManager->addTriangle(terrainDetailHandle,MC2_ISTERRAIN | MC2_DRAWALPHA);
+							}
 						}
 					}
-				}
-				
-				//--------------------------------------------------------------------
-				//Mine Information
-				long rowCol = vertices[0]->posTile;
-				long tileR = rowCol>>16;
-				long tileC = rowCol & 0x0000ffff;
-						
-				if (GameMap)
-				{
-					long cellPos = 0;
-					mineResult.init();
-					for (long cellR = 0; cellR < MAPCELL_DIM; cellR++)
+					else
 					{
-						for (long cellC = 0; cellC < MAPCELL_DIM; cellC++,cellPos++) 
+						if (isAlpha)
 						{
-							long actualCellRow = tileR * MAPCELL_DIM + cellR;
-							long actualCellCol = tileC * MAPCELL_DIM + cellC;
+							overlayHandle = Terrain::terrainTextures->getTextureHandle(vertices[0]->pVertex->textureData & 0x0000ffff);
+							terrainHandle = Terrain::terrainTextures2->getTextureHandle(vertices[1],vertices[3],&uvData);
+							terrainDetailHandle = Terrain::terrainTextures2->getDetailHandle();
 							
-							DWORD localResult = 0;
-							if (GameMap->inBounds(actualCellRow, actualCellCol))
-								localResult = GameMap->getMine(actualCellRow, actualCellCol);
-								
-							if (localResult == 1)
-							{
-								mcTextureManager->get_gosTextureHandle(mineTextureHandle);
-								mcTextureManager->addTriangle(mineTextureHandle,MC2_DRAWALPHA);
-								mcTextureManager->addTriangle(mineTextureHandle,MC2_DRAWALPHA);
-								
-								mineResult.setMine(cellPos,localResult);
+							if(terrainHandle!=0) {
+								mcTextureManager->addTriangle(terrainHandle,MC2_ISTERRAIN | MC2_DRAWSOLID);
+								mcTextureManager->addTriangle(terrainHandle,MC2_ISTERRAIN | MC2_DRAWSOLID);
 							}
-							else if (localResult == 2)
-							{
-								mcTextureManager->get_gosTextureHandle(blownTextureHandle);
-								mcTextureManager->addTriangle(blownTextureHandle,MC2_DRAWALPHA);
-								mcTextureManager->addTriangle(blownTextureHandle,MC2_DRAWALPHA);
+							if(terrainDetailHandle!=0xffffffff) {
+								mcTextureManager->addTriangle(terrainDetailHandle,MC2_ISTERRAIN | MC2_DRAWALPHA);
+								mcTextureManager->addTriangle(terrainDetailHandle,MC2_ISTERRAIN | MC2_DRAWALPHA);
+							}
+						}
+						else
+						{
+							terrainHandle = Terrain::terrainTextures->getTextureHandle(vertices[0]->pVertex->textureData & 0x0000ffff);
+							terrainDetailHandle = 0xffffffff;
+							overlayHandle = 0xffffffff;
 								
-								mineResult.setMine(cellPos,localResult);
+							if(terrainHandle!=0) {
+								mcTextureManager->addTriangle(terrainHandle,MC2_ISTERRAIN | MC2_DRAWSOLID);
+								mcTextureManager->addTriangle(terrainHandle,MC2_ISTERRAIN | MC2_DRAWSOLID);
 							}
 						}
 					}
 				}
 			}
-			else
-			{
-				terrainHandle = 0xffffffff; 
-				waterHandle = 0xffffffff; 
-				waterDetailHandle = 0xffffffff;
-				terrainDetailHandle = 0xffffffff;
-				overlayHandle = 0xffffffff;
-			}
+
+			enqueueTerrainMineState(*this);
 		}
 	}
 

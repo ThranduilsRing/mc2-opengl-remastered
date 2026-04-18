@@ -559,6 +559,24 @@ void Terrain::resetVisibleVertices (long maxVisibleVertices)
 }
 
 //---------------------------------------------------------------------------
+void Terrain::primeMissionTerrainCache (volatile float& progress, float progressRange)
+{
+	if (!mapData || !terrainTextures2)
+		return;
+
+	const float buildRange = progressRange * 0.5f;
+	const float warmRange = progressRange - buildRange;
+	{
+		ZoneScopedN("Terrain::primeMissionTerrainCache build");
+		mapData->buildTerrainFaceCache(&progress, buildRange);
+	}
+	{
+		ZoneScopedN("Terrain::primeMissionTerrainCache warm");
+		mapData->warmTerrainFaceCacheResidency(&progress, warmRange);
+	}
+}
+
+//---------------------------------------------------------------------------
 bool Terrain::IsValidTerrainPosition (const Stuff::Vector3D pos)
 {
 	float metersCheck = (Terrain::worldUnitsMapSide / 2.0f);

@@ -1098,6 +1098,30 @@ void GameObjectManager::loadTerrainObjects (PacketFile* terrainFile,
 	}
 }
 
+//---------------------------------------------------------------------------
+void GameObjectManager::primeTerrainObjectsForMissionLoad (volatile float& progress, float progressRange)
+{
+	ZoneScopedN("GameObjectManager::primeTerrainObjectsForMissionLoad");
+	if (numTerrainObjects <= 0)
+		return;
+
+	long warmedAppearances = 0;
+	const float increment = progressRange / float(numTerrainObjects);
+	for (long i = 0; i < numTerrainObjects; ++i)
+	{
+		TerrainObjectPtr obj = terrainObjects[i];
+		if (obj && obj->getExists())
+		{
+			obj->primeAppearanceForMissionLoad();
+			++warmedAppearances;
+		}
+
+		progress += increment;
+	}
+
+	TracyPlot("Terrain object appearances warmed during mission load", int64_t(warmedAppearances));
+}
+
 extern GameObjectFootPrint* tempSpecialAreaFootPrints;
 extern long tempNumSpecialAreas;
 
@@ -1655,9 +1679,13 @@ void GameObjectManager::update (bool terrain, bool movers, bool other)
 
 	updateCaptureList();
 	
- 	if (terrain && renderObjects)
+	if (terrain && renderObjects)
 	{
 		ZoneScopedN("GameLogic.Units.TerrainObjects");
+		long specialBuildingsUpdated = 0;
+		long gatesUpdated = 0;
+		long activeBlocksVisited = 0;
+		long terrainObjectsUpdated = 0;
 
 		//First Update all of the Special Buildings.
 		// They will mark themselves updated and not re-update below.
@@ -1670,6 +1698,10 @@ void GameObjectManager::update (bool terrain, bool movers, bool other)
 					//-----------------------------------------
 					// Update failed, so it no longer exists...
 					specialBuildings[spBuilding]->setExists(false);
+				}
+				else
+				{
+					specialBuildingsUpdated++;
 				}
 			}
 		}
@@ -1687,19 +1719,24 @@ void GameObjectManager::update (bool terrain, bool movers, bool other)
 					// Update failed, so it no longer exists...
 					gates[nGates]->setExists(false);
 				}
+				else
+				{
+					gatesUpdated++;
+				}
 			}
 		}
 
 		for (long terrainBlock = 0; terrainBlock < Terrain::numObjBlocks; terrainBlock++)
 		{
-			if (Terrain::objBlockInfo[terrainBlock].active || (turn < 3))
+			if (Terrain::objBlockInfo[terrainBlock].active)
 			{
+				activeBlocksVisited++;
 				long numObjs = Terrain::objBlockInfo[terrainBlock].numObjects;
 				long objIndex = Terrain::objBlockInfo[terrainBlock].firstHandle;
 				for (long terrainObj = 0; terrainObj < numObjs; terrainObj++,objIndex++)
 				{
 					if (objList[objIndex] &&
-						(Terrain::objVertexActive[objList[objIndex]->getVertexNum()] || (turn < 3)) &&
+						Terrain::objVertexActive[objList[objIndex]->getVertexNum()] &&
 						objList[objIndex]->getExists())
 					{
 						if (!objList[objIndex]->update())
@@ -1708,10 +1745,19 @@ void GameObjectManager::update (bool terrain, bool movers, bool other)
 							// Update failed, so it no longer exists...
 							objList[objIndex]->setExists(false);
 						}
+						else
+						{
+							terrainObjectsUpdated++;
+						}
 					}
 				}
 			}
 		}
+
+		TracyPlot("TerrainObjects specialBuildings updated", int64_t(specialBuildingsUpdated));
+		TracyPlot("TerrainObjects gates updated", int64_t(gatesUpdated));
+		TracyPlot("TerrainObjects active blocks", int64_t(activeBlocksVisited));
+		TracyPlot("TerrainObjects visible objects updated", int64_t(terrainObjectsUpdated));
 	}
 	
  	if (movers) {
@@ -2684,7 +2730,7 @@ void GameObjectManager::updateAppearancesOnly( bool terrain, bool movers, bool o
 				for (long terrainObj = 0; terrainObj < numObjs; terrainObj++, objIndex++) 
 				{
 					if (objList[objIndex] && 
-						(Terrain::objVertexActive[objList[objIndex]->getVertexNum()] || (turn < 3)) && 
+						Terrain::objVertexActive[objList[objIndex]->getVertexNum()] && 
 						objList[objIndex]->getExists())
 					{
 						if (objList[objIndex]->getAppearance()->recalcBounds()) 

@@ -2190,6 +2190,8 @@ void Mission::init (const char *missionName, long loadType, long dropZoneID, Stu
 	{ ZoneScopedN("Mission::init land->load"); land->load( missionFile ); }
 
 	loadProgress = 36.0f;
+	{ ZoneScopedN("Mission::init land->primeMissionTerrainCache"); land->primeMissionTerrainCache(loadProgress, 4.0f); }
+	loadProgress = 40.0f;
 
 //	land->recalcWater();		//Should have already been done in the editor
 
@@ -2223,8 +2225,6 @@ void Mission::init (const char *missionName, long loadType, long dropZoneID, Stu
 	PathFindMap[SIMPLE_PATHMAP]->forestCost = forestMoveCost;
 	PathManager = new MovePathManager;
 
-
-	loadProgress = 40.0f;
 
 #ifdef LAB_ONLY
 	x=GetCycles();
@@ -2772,6 +2772,7 @@ void Mission::init (const char *missionName, long loadType, long dropZoneID, Stu
 	loadProgress = 68.0f;
 
 	{ ZoneScopedN("Mission::init ObjectManager::loadTerrainObjects"); ObjectManager->loadTerrainObjects(&pakFile, loadProgress, 30); }
+	{ ZoneScopedN("Mission::init ObjectManager::primeTerrainObjectsForMissionLoad"); ObjectManager->primeTerrainObjectsForMissionLoad(loadProgress, 2.0f); }
 
 	loadProgress = 98.0f;
 

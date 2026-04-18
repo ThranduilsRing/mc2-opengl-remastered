@@ -121,7 +121,13 @@ class TerrainColorMap
 
 		void getColorMapData (MemoryPtr ourRAM, long index, long width);
 				
+		DWORD resolveTextureHandle (VertexPtr vMin, VertexPtr vMax, TerrainUVData *uvData, long* resultTexture, bool realizeTexture);
 		DWORD getTextureHandle (VertexPtr vMin, VertexPtr vMax, TerrainUVData *uvData);
+
+		DWORD peekDetailHandle (void) const
+		{
+			return detailTextureNodeIndex;
+		}
 
 		DWORD getNormalMapHandle (long resultTexture) {
 			if (hasNormalMap && normalMapTextures && resultTexture >= 0 && resultTexture < (long)numNormalMapTextures) {

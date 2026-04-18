@@ -54,7 +54,7 @@ class LogisticsScreen : public aObject
 
 	void init(FitIniFile& file, const char* staticName, const char* textName, const char* rectName,
 					  const char* buttonName, const char* editName = "Edit",
-					  const char* animObjectName = "AnimObject", DWORD neverFlush = 0 );
+					  const char* animObjectName = "AnimObject", DWORD neverFlush = 0x2 );
 
 	virtual void update();
 	virtual void render();

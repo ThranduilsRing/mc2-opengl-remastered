@@ -60,7 +60,7 @@ class LoadScreen: public LogisticsScreen
 		LoadScreen();
 		virtual ~LoadScreen();
 
-		void init( FitIniFile& file, DWORD neverFlush = 0 );
+		void init( FitIniFile& file, DWORD neverFlush = 0x2 );
 		virtual void update();
 		virtual void render( int xOffset, int yOffset );
 

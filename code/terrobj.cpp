@@ -55,6 +55,10 @@
 #include"dobjnum.h"
 #endif
 
+#ifndef GOS_PROFILER_H
+#include"gos_profiler.h"
+#endif
+
 #include"objectappearance.h"
 
 extern unsigned long NextIdNumber;
@@ -442,10 +446,20 @@ float TerrainObject::getStatusRating (void) {
 
 #define BRIDGE_OFFSET		60
 
-long TerrainObject::update (void) {
+static long terrainObjectHomeRelation (long teamId)
+{
+	if (!Team::home)
+		return 0;
 
+	return Team::getRelation(teamId, Team::home->getId());
+}
+
+void TerrainObject::primeAppearanceForMissionLoad (void)
+{
+	ZoneScopedN("TerrainObject::primeAppearanceForMissionLoad");
 	if (getFlag(OBJECT_FLAG_JUSTCREATED)) 
 	{
+		ZoneScopedN("TerrainObject::primeAppearanceForMissionLoad justCreated");
 		setFlag(OBJECT_FLAG_JUSTCREATED, false);
 		setFlag(OBJECT_FLAG_TILECHANGED, false);
 
@@ -480,8 +494,76 @@ long TerrainObject::update (void) {
 
 	//-------------------------------------------
 	// Handle power out.
-	if (powerSupply && (ObjectManager->getByWatchID(powerSupply)->getStatus() == OBJECT_STATUS_DESTROYED))
-		appearance->setLightsOut(true);
+	if (appearance && powerSupply)
+	{
+		GameObjectPtr powerObject = ObjectManager->getByWatchID(powerSupply);
+		if (powerObject && (powerObject->getStatus() == OBJECT_STATUS_DESTROYED))
+			appearance->setLightsOut(true);
+	}
+
+	if (!appearance)
+		return;
+
+	{
+		ZoneScopedN("TerrainObject::primeAppearanceForMissionLoad appearanceSetup");
+		appearance->setObjectParameters(position,rotation,FALSE,getTeamId(),terrainObjectHomeRelation(getTeamId()));
+		appearance->setMoverParameters(pitchAngle);
+	}
+
+	bool inView = false;
+	{
+		ZoneScopedN("TerrainObject::primeAppearanceForMissionLoad recalcBounds");
+		inView = appearance->recalcBounds();
+	}
+	appearance->setInView(inView);
+}
+
+long TerrainObject::update (void) {
+
+	ZoneScopedN("TerrainObject::update");
+	if (getFlag(OBJECT_FLAG_JUSTCREATED)) 
+	{
+		ZoneScopedN("TerrainObject::update justCreated");
+		setFlag(OBJECT_FLAG_JUSTCREATED, false);
+		setFlag(OBJECT_FLAG_TILECHANGED, false);
+
+		TerrainObjectTypePtr type = (TerrainObjectTypePtr)ObjectManager->getObjectType(typeHandle);
+
+		switch (type->subType) {
+			case TERROBJ_NONE:
+			case TERROBJ_TREE: 
+			{
+				setTangible(true);
+			}
+			break;
+			
+			case TERROBJ_BRIDGE:
+				if (!GameMap->getPassable(cellPositionRow, cellPositionCol)) {
+					damage = type->getDamageLevel();
+					setStatus(OBJECT_STATUS_DESTROYED);
+				}
+				break;
+			case TERROBJ_FOREST:
+			case TERROBJ_WALL_HEAVY:
+			case TERROBJ_WALL_MEDIUM:
+			case TERROBJ_WALL_LIGHT:
+				if (GameMap->getPassable(cellPositionRow, cellPositionCol)) {
+					damage = type->getDamageLevel();
+					setStatus(OBJECT_STATUS_DESTROYED);
+				}
+				break;
+		}
+
+	}
+
+	//-------------------------------------------
+	// Handle power out.
+	if (appearance && powerSupply)
+	{
+		GameObjectPtr powerObject = ObjectManager->getByWatchID(powerSupply);
+		if (powerObject && (powerObject->getStatus() == OBJECT_STATUS_DESTROYED))
+			appearance->setLightsOut(true);
+	}
 		
  	if (appearance)
 	{
@@ -504,18 +586,29 @@ long TerrainObject::update (void) {
 				setFlag(OBJECT_FLAG_FALLING,false);
 			}
 		}
-		
-		appearance->setObjectParameters(position,rotation,FALSE,getTeamId(),Team::getRelation(getTeamId(), Team::home->getId()));
-		appearance->setMoverParameters(pitchAngle);
-		bool inView = appearance->recalcBounds();
+
+		{
+			ZoneScopedN("TerrainObject::update appearanceSetup");
+			appearance->setObjectParameters(position,rotation,FALSE,getTeamId(),terrainObjectHomeRelation(getTeamId()));
+			appearance->setMoverParameters(pitchAngle);
+		}
+		bool inView = false;
+		{
+			ZoneScopedN("TerrainObject::update recalcBounds");
+			inView = appearance->recalcBounds();
+		}
 
 		if (inView)
 		{
 			windowsVisible = turn;
-			appearance->update();
+			{
+				ZoneScopedN("TerrainObject::update appearanceUpdate");
+				appearance->update();
+			}
 
 			if (bldgDustPoofEffect && bldgDustPoofEffect->IsExecuted())
 			{
+				ZoneScopedN("TerrainObject::update dustEffect");
 				Stuff::Point3D			actualPosition;
 				Stuff::LinearMatrix4D 	shapeOrigin;
 				Stuff::LinearMatrix4D 	localToWorld;

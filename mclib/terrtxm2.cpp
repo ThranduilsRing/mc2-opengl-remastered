@@ -2265,7 +2265,7 @@ long TerrainColorMap::init (char *fileName)
 
 float textureOffset = 0.4f;
 //---------------------------------------------------------------------------
-DWORD TerrainColorMap::getTextureHandle (VertexPtr vMin, VertexPtr vMax, TerrainUVData *uvData)
+DWORD TerrainColorMap::resolveTextureHandle (VertexPtr vMin, VertexPtr vMax, TerrainUVData *uvData, long* resultTextureOut, bool realizeTexture)
 {
 	float posX = 0.0f, posY = 0.0f, maxX = 0.0f, maxY = 0.0f;
 	
@@ -2370,6 +2370,9 @@ DWORD TerrainColorMap::getTextureHandle (VertexPtr vMin, VertexPtr vMax, Terrain
 			}
 		}
 		lastResultTexture = resultTexture;
+		if (resultTextureOut)
+			*resultTextureOut = resultTexture;
+		if (realizeTexture)
 		{
 			ZoneScopedN("TerrainColorMap::getTextureHandle realizeTexture");
 			mcTextureManager->get_gosTextureHandle(textures[resultTexture].mcTextureNodeIndex);
@@ -2378,8 +2381,16 @@ DWORD TerrainColorMap::getTextureHandle (VertexPtr vMin, VertexPtr vMax, Terrain
 	}
 
 	lastResultTexture = -1;
+	if (resultTextureOut)
+		*resultTextureOut = -1;
 	uvData->minU = uvData->minV = uvData->maxU = uvData->maxV = 0.0f;
 	return 0;
+}
+
+//---------------------------------------------------------------------------
+DWORD TerrainColorMap::getTextureHandle (VertexPtr vMin, VertexPtr vMax, TerrainUVData *uvData)
+{
+	return resolveTextureHandle(vMin, vMax, uvData, NULL, true);
 }
 
 long TerrainColorMap::saveDetailTexture(const char *fileName)

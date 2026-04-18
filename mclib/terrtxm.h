@@ -286,6 +286,14 @@ class TerrainTextures
 			return (textures[texture].mcTextureNodeIndex);
 		}
 
+		DWORD peekTextureHandle (DWORD texture) const
+		{
+			if ((long)texture >= nextAvailable)
+				return 0xffffffff;
+
+			return textures[texture].mcTextureNodeIndex;
+		}
+
 		DWORD getDetail (DWORD dTexture)
 		{
 			if ((long)dTexture >= nextAvailable) 
@@ -304,6 +312,14 @@ class TerrainTextures
 
 			mcTextureManager->get_gosTextureHandle(textures[dTexture].mcTextureNodeIndex);
 			return (textures[dTexture].mcTextureNodeIndex);
+		}
+
+		DWORD peekDetailHandle (DWORD dTexture) const
+		{
+			if ((long)dTexture >= nextAvailable)
+				return 0xffffffff;
+
+			return textures[dTexture].mcTextureNodeIndex;
 		}
 
 		void setMipLevel (long mipLevel)
