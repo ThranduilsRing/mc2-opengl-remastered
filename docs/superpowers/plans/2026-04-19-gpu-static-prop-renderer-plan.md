@@ -4,7 +4,7 @@
 
 **Goal:** Replace MC2's CPU-side static-prop submission pipeline (`TG_Shape::Render` → `mcTextureManager` → MLR) with a GPU-residency batcher that submits every static prop every frame and lets the GPU clip naturally. Eliminates the MLR `uint16` vertex-index ceiling and the broken `recalcBounds` angular cull responsible for objects disappearing at wolfman zoom.
 
-**Architecture:** Per-map immutable shared VBO/IBO containing every static-prop type and damage variant; per-frame persistent-mapped ring buffers holding instance SSBO + CPU-baked vertex-color stream; new `static_prop` and `static_prop_shadow` shader programs. Submission is scatter (append instance at `*Appearance::render()` time), draw is gather (one `glDrawElementsInstancedBaseVertex` per packet at flush time). Old CPU path stays behind a killswitch (RAlt+0) for side-by-side validation.
+**Architecture:** Per-map immutable shared VBO/IBO containing every static-prop type and damage variant; per-frame persistent-mapped ring buffers holding instance SSBO + CPU-baked vertex-color stream; new `static_prop` and `static_prop_shadow` shader programs. Submission is scatter — `*Appearance::render()` appends the instance into its type's bucket. Draw is gather — flush repacks each type into a contiguous SSBO slice, binds that slice via `glBindBufferRange`, and issues one `glDrawElementsInstancedBaseVertex(..., instanceCount, ...)` per packet. `gl_InstanceID` in the shader indexes the bound range directly (no dependence on `gl_BaseInstance`). Old CPU path stays behind a killswitch (RAlt+0) for side-by-side validation.
 
 **Tech Stack:** OpenGL 4.6 core (persistent coherent mapped buffers, `ARB_buffer_storage`), GLSL 420 via `makeProgram()`, CMake/MSBuild (MSVC 2022), Tracy profiler. Target GPU: AMD Radeon RX 7900 XTX (driver invariants enforced per `docs/amd-driver-rules.md`).
 
@@ -97,14 +97,16 @@ struct alignas(16) GpuStaticPropInstance {
     float    fogRGB[4];
 };
 
-static_assert(sizeof(GpuStaticPropInstance) == 96,
+// Layout: 64 (mat4) + 16 (4 x uint32) + 16 (vec4) + 16 (vec4) = 112 bytes.
+static_assert(sizeof(GpuStaticPropInstance) == 112,
               "GpuStaticPropInstance size must match std430 GLSL struct");
 static_assert(offsetof(GpuStaticPropInstance, modelMatrix)      ==  0, "modelMatrix offset");
 static_assert(offsetof(GpuStaticPropInstance, typeID)           == 64, "typeID offset");
 static_assert(offsetof(GpuStaticPropInstance, firstColorOffset) == 68, "firstColorOffset offset");
 static_assert(offsetof(GpuStaticPropInstance, flags)            == 72, "flags offset");
+static_assert(offsetof(GpuStaticPropInstance, _pad0)            == 76, "_pad0 offset");
 static_assert(offsetof(GpuStaticPropInstance, aRGBHighlight)    == 80, "aRGBHighlight offset");
-static_assert(offsetof(GpuStaticPropInstance, fogRGB)           == 96 - 16, "fogRGB offset");
+static_assert(offsetof(GpuStaticPropInstance, fogRGB)           == 96, "fogRGB offset");
 
 // Packet descriptor (CPU-side only — not uploaded as an SSBO).
 struct GpuStaticPropPacket {
@@ -144,11 +146,14 @@ public:
 
     // Per-frame submission. shape->listOfColors must be fresh (set by
     // TransformMultiShape earlier in the frame).
-    void submit(TG_Shape* shape,
-                const Stuff::Matrix4D& shapeToWorld,
-                uint32_t highlightARGB,
-                uint32_t fogARGB,
-                uint32_t flags);
+    // Returns true if the instance was accepted. Returns false (Layer B
+    // safety net) when the type was never registered; in that case the
+    // caller MUST render the shape via the old CPU path this frame.
+    [[nodiscard]] bool submit(TG_Shape* shape,
+                              const Stuff::Matrix4D& shapeToWorld,
+                              uint32_t highlightARGB,
+                              uint32_t fogARGB,
+                              uint32_t flags);
 
     // Per-frame dispatch.
     void flush();         // main color pass
@@ -225,9 +230,26 @@ GLsync   s_fence[RING_FRAMES] = {0};
 uint32_t s_frameSlot = 0;
 
 // CPU staging for the current frame.
-std::vector<GpuStaticPropInstance>     s_stagingInstances;
-std::vector<uint32_t>                  s_stagingColors;
-std::unordered_map<uint32_t, std::vector<uint32_t>> s_instancesByType; // typeID -> instance indices
+// Instances are staged in per-type buckets (not a flat list) so that
+// flush() can write each type's instances into a contiguous SSBO region.
+// Binding that region via glBindBufferRange means gl_InstanceID in the
+// shader is 0..N-1 within the bucket — NOT dependent on gl_BaseInstance
+// and NOT requiring any extension.
+struct PerTypeBucket {
+    std::vector<GpuStaticPropInstance> instances;
+    std::vector<uint32_t>              colors;  // concatenated per-instance color blocks
+};
+std::unordered_map<uint32_t, PerTypeBucket> s_bucketsByType;
+
+// Populated at flush time: per-type contiguous byte offset into the
+// ring-slot SSBO (instance + color), used to bind exactly that range.
+struct TypeRangeSsbo {
+    size_t instanceByteOffset;
+    size_t instanceByteSize;
+    size_t colorByteOffset;
+    size_t colorByteSize;
+    uint32_t instanceCount;
+};
 
 // Geometry table (immutable after finalizeGeometry).
 std::vector<GpuStaticPropPacket>                   s_packets;
@@ -279,19 +301,18 @@ void GpuStaticPropBatcher::finalizeGeometry() {
     s_geometryFinalized = true;
 }
 
-void GpuStaticPropBatcher::submit(TG_Shape* /*shape*/,
+bool GpuStaticPropBatcher::submit(TG_Shape* /*shape*/,
                                   const Stuff::Matrix4D& /*shapeToWorld*/,
                                   uint32_t /*highlightARGB*/,
                                   uint32_t /*fogARGB*/,
                                   uint32_t /*flags*/) {
     // Filled in Task 8.
+    return false;
 }
 
 void GpuStaticPropBatcher::flush() {
     // Filled in Task 10.
-    s_stagingInstances.clear();
-    s_stagingColors.clear();
-    s_instancesByType.clear();
+    s_bucketsByType.clear();
 }
 
 void GpuStaticPropBatcher::flushShadow() {
@@ -755,37 +776,39 @@ void ensureRingCapacity(size_t neededInstances, size_t neededColorEntries) {
 Replace the stub:
 
 ```cpp
-void GpuStaticPropBatcher::submit(TG_Shape* shape,
+bool GpuStaticPropBatcher::submit(TG_Shape* shape,
                                   const Stuff::Matrix4D& shapeToWorld,
                                   uint32_t highlightARGB,
                                   uint32_t fogARGB,
                                   uint32_t flags) {
-    if (!shape || s_fatalRegistrationFailure) return;
+    if (!shape || s_fatalRegistrationFailure) return false;
     TG_TypeShape* typeShape = shape->GetTypeShape();   // grep for the real accessor name in tgl.h
     auto it = s_typeIndex.find(typeShape);
     if (it == s_typeIndex.end()) {
-        // Layer B: fall back to old CPU path for this actor by not submitting.
-        // Caller is expected to check whether submit succeeded? — simpler:
-        // log once and let the old path run next frame (caller already
-        // branches on g_useGpuStaticProps globally; a single missed actor
-        // simply renders nothing this frame, which is preferable to a crash).
         if (!s_failedTypes[typeShape]) {
-            std::fprintf(stderr, "[GPUPROPS] unregistered type %p for shape %p\n",
-                         (void*)typeShape, (void*)shape);
+            std::fprintf(stderr, "[GPUPROPS] unregistered type %p for shape %p — "
+                         "caller must CPU-fallback\n", (void*)typeShape, (void*)shape);
             s_failedTypes[typeShape] = true;
         }
-        return;
+        return false;  // Layer B: caller calls shape->Render() on false.
     }
 
-    const GpuStaticPropType& type = s_types[it->second];
-    const uint32_t instanceIndex = static_cast<uint32_t>(s_stagingInstances.size());
-    const uint32_t colorOffset   = static_cast<uint32_t>(s_stagingColors.size());
+    const uint32_t typeID = it->second;
+    const GpuStaticPropType& type = s_types[typeID];
+    PerTypeBucket& bucket = s_bucketsByType[typeID];
+
+    // firstColorOffset is the byte-offset-free index into the bucket's
+    // color array: instance K reads colors starting at K * type.vertexCount.
+    // (The shader binds the bucket's color range; firstColorOffset
+    // becomes an index within that range.)
+    const uint32_t firstColorOffset =
+        static_cast<uint32_t>(bucket.colors.size());
 
     GpuStaticPropInstance inst{};
     // Matrix4D is row-major 4x4. Copy in row-major (shader uploads GL_FALSE).
     std::memcpy(inst.modelMatrix, &shapeToWorld, 16 * sizeof(float));
-    inst.typeID           = it->second;
-    inst.firstColorOffset = colorOffset;
+    inst.typeID           = typeID;
+    inst.firstColorOffset = firstColorOffset;
     inst.flags            = flags;
     inst.aRGBHighlight[0] = ((highlightARGB >> 16) & 0xFF) / 255.0f;
     inst.aRGBHighlight[1] = ((highlightARGB >>  8) & 0xFF) / 255.0f;
@@ -795,17 +818,15 @@ void GpuStaticPropBatcher::submit(TG_Shape* shape,
     inst.fogRGB[1] = ((fogARGB >>  8) & 0xFF) / 255.0f;
     inst.fogRGB[2] = ((fogARGB >>  0) & 0xFF) / 255.0f;
     inst.fogRGB[3] = ((fogARGB >> 24) & 0xFF) / 255.0f;
+    bucket.instances.push_back(inst);
 
-    s_stagingInstances.push_back(inst);
-
-    // Copy the CPU-baked vertex color stream (shape->listOfColors, one
-    // uint32 ARGB per vertex, N entries where N = type.vertexCount).
+    // Append this instance's vertex-color block.
     const uint32_t numColors = type.vertexCount;
-    s_stagingColors.insert(s_stagingColors.end(),
+    bucket.colors.insert(bucket.colors.end(),
         reinterpret_cast<const uint32_t*>(shape->listOfColors),
         reinterpret_cast<const uint32_t*>(shape->listOfColors) + numColors);
 
-    s_instancesByType[it->second].push_back(instanceIndex);
+    return true;
 }
 ```
 
@@ -905,7 +926,10 @@ uniform sampler2D u_tex;
 uniform uint  u_materialFlags;   // bit 0: ALPHA_TEST
 uniform float u_fogValue;        // 1.0 = clear, 0.0 = fully fogged
 uniform int   u_debugAddrMode;   // 0 normal, 1 gradient, 2 hash
-uniform uint  u_maxLocalVertexID;
+uniform uint  u_maxLocalVertexID;// uploaded per type: the current type's
+                                 // vertexCount, so debug gradient is
+                                 // normalized per shape (not against a
+                                 // global max across all types)
 uniform uint  u_packetID;        // uploaded per-draw for mode 2
 
 layout(location = 0) out vec4 FragColor;
@@ -1008,24 +1032,28 @@ git commit -m "feat(props): static_prop main shader pair + program loader"
 Replace the stub:
 
 ```cpp
-void GpuStaticPropBatcher::flush() {
-    ZoneScopedN("GpuStaticProps.Flush");
-    if (s_stagingInstances.empty()) {
-        s_stagingColors.clear();
-        s_instancesByType.clear();
-        return;
+// Per-frame upload state shared between flushShadow() (runs first) and
+// flush() (runs later in the frame). flushShadow() owns the upload; flush()
+// skips the upload if s_lastUploadedSlot == s_frameSlot.
+namespace {
+std::unordered_map<uint32_t, TypeRangeSsbo> s_typeRanges;
+uint32_t s_lastUploadedSlot = 0xFFFFFFFFu;
+
+bool uploadAllBucketsIfNeeded() {
+    if (s_lastUploadedSlot == s_frameSlot) return true;
+
+    // Compute total sizes and per-type ranges.
+    size_t totalInstances = 0;
+    size_t totalColors    = 0;
+    for (auto& [typeID, b] : s_bucketsByType) {
+        totalInstances += b.instances.size();
+        totalColors    += b.colors.size();
     }
-    if (!s_geometryFinalized || s_fatalRegistrationFailure) {
-        s_stagingInstances.clear();
-        s_stagingColors.clear();
-        s_instancesByType.clear();
-        return;
-    }
+    if (totalInstances == 0) return false;
 
     loadProgramsIfNeeded();
-    ensureRingCapacity(s_stagingInstances.size(), s_stagingColors.size());
+    ensureRingCapacity(totalInstances, totalColors);
 
-    // Advance ring slot and gate on the fence for that slot.
     s_frameSlot = (s_frameSlot + 1) % RING_FRAMES;
     if (s_fence[s_frameSlot]) {
         glClientWaitSync(s_fence[s_frameSlot], GL_SYNC_FLUSH_COMMANDS_BIT, GL_TIMEOUT_IGNORED);
@@ -1033,71 +1061,82 @@ void GpuStaticPropBatcher::flush() {
         s_fence[s_frameSlot] = 0;
     }
 
-    const size_t instOffset  = s_frameSlot * s_instanceCapacity;
-    const size_t colOffset   = s_frameSlot * s_colorCapacity;
-    auto* instBase = static_cast<GpuStaticPropInstance*>(s_instanceMap) + instOffset;
-    auto* colBase  = static_cast<uint32_t*>(s_colorMap) + colOffset;
+    const size_t slotInstByteBase = s_frameSlot * s_instanceCapacity * sizeof(GpuStaticPropInstance);
+    const size_t slotColByteBase  = s_frameSlot * s_colorCapacity    * sizeof(uint32_t);
+    auto* instMapBase = static_cast<uint8_t*>(s_instanceMap) + slotInstByteBase;
+    auto* colMapBase  = static_cast<uint8_t*>(s_colorMap)    + slotColByteBase;
 
-    std::memcpy(instBase, s_stagingInstances.data(),
-                s_stagingInstances.size() * sizeof(GpuStaticPropInstance));
-    std::memcpy(colBase, s_stagingColors.data(),
-                s_stagingColors.size() * sizeof(uint32_t));
+    s_typeRanges.clear();
+    size_t instCursor = 0;  // byte cursor within the slot
+    size_t colCursor  = 0;
+    for (auto& [typeID, b] : s_bucketsByType) {
+        TypeRangeSsbo r{};
+        r.instanceByteOffset = slotInstByteBase + instCursor;
+        r.instanceByteSize   = b.instances.size() * sizeof(GpuStaticPropInstance);
+        r.colorByteOffset    = slotColByteBase  + colCursor;
+        r.colorByteSize      = b.colors.size() * sizeof(uint32_t);
+        r.instanceCount      = static_cast<uint32_t>(b.instances.size());
 
-    // Bind program + VAO + SSBO ranges (AMD invariant 5: every batch re-binds).
+        std::memcpy(instMapBase + instCursor, b.instances.data(), r.instanceByteSize);
+        std::memcpy(colMapBase  + colCursor,  b.colors.data(),    r.colorByteSize);
+
+        instCursor += r.instanceByteSize;
+        colCursor  += r.colorByteSize;
+        s_typeRanges[typeID] = r;
+    }
+
+    s_lastUploadedSlot = s_frameSlot;
+    return true;
+}
+} // namespace
+
+void GpuStaticPropBatcher::flush() {
+    ZoneScopedN("GpuStaticProps.Flush");
+    if (!s_geometryFinalized || s_fatalRegistrationFailure) {
+        s_bucketsByType.clear();
+        return;
+    }
+    if (!uploadAllBucketsIfNeeded()) {
+        s_bucketsByType.clear();
+        return;
+    }
+
     glUseProgram(s_staticPropProgram);
     glBindVertexArray(s_sharedVao);
-    glBindBufferRange(GL_SHADER_STORAGE_BUFFER, 0, s_instanceSsbo,
-                      static_cast<GLintptr>(instOffset * sizeof(GpuStaticPropInstance)),
-                      static_cast<GLsizeiptr>(s_stagingInstances.size() * sizeof(GpuStaticPropInstance)));
-    glBindBufferRange(GL_SHADER_STORAGE_BUFFER, 1, s_colorSsbo,
-                      static_cast<GLintptr>(colOffset * sizeof(uint32_t)),
-                      static_cast<GLsizeiptr>(s_stagingColors.size() * sizeof(uint32_t)));
 
     // Direct uniforms (AMD invariant 6: direct, GL_FALSE transpose).
-    extern const float* getWorldToClipMatrix();   // stand-in; use the project's actual getter
+    // These getters return the project's current-frame matrix/fog — see
+    // the terrain draw path in gameos_graphics.cpp for the existing source.
+    extern const float* getWorldToClipMatrix();
+    extern float getCurrentFogValue();
     glUniformMatrix4fv(glGetUniformLocation(s_staticPropProgram, "u_worldToClip"),
                        1, GL_FALSE, getWorldToClipMatrix());
-    glUniform1i (glGetUniformLocation(s_staticPropProgram, "u_tex"),              0);
-    glUniform1i (glGetUniformLocation(s_staticPropProgram, "u_debugAddrMode"),    debugAddrMode_);
-    // Use the max vertex count across all registered types for mode-1 normalization.
-    static uint32_t s_maxVerts = 0;
-    if (s_maxVerts == 0) {
-        for (const auto& t : s_types) s_maxVerts = std::max(s_maxVerts, t.vertexCount);
-    }
-    glUniform1ui(glGetUniformLocation(s_staticPropProgram, "u_maxLocalVertexID"), s_maxVerts);
+    glUniform1i (glGetUniformLocation(s_staticPropProgram, "u_tex"),           0);
+    glUniform1i (glGetUniformLocation(s_staticPropProgram, "u_debugAddrMode"), debugAddrMode_);
+    glUniform1f (glGetUniformLocation(s_staticPropProgram, "u_fogValue"),      getCurrentFogValue());
 
-    // Fog value from the project's current frame state — see the existing
-    // fog uniform upload in gameos_graphics.cpp (the terrain path uploads
-    // the same value; reuse that source).
-    extern float getCurrentFogValue();
-    glUniform1f(glGetUniformLocation(s_staticPropProgram, "u_fogValue"),
-                getCurrentFogValue());
-
-    // Per-packet draws. Outer loop over packets so texture state changes
-    // group naturally; inner instancing draws every instance of the
-    // owning type. Traversal is author-order (matches TG_MultiShape::Render).
-    uint32_t packetCounter = 0;
+    // Per-type drawing. For each type we:
+    //   - bind the per-type instance SSBO range (so gl_InstanceID is 0..N-1)
+    //   - bind the per-type color SSBO range
+    //   - upload the type's vertexCount for debug mode normalization
+    //   - issue one instanced draw per packet
     for (uint32_t typeID = 0; typeID < s_types.size(); ++typeID) {
-        auto it = s_instancesByType.find(typeID);
-        if (it == s_instancesByType.end()) { packetCounter += s_types[typeID].packetCount; continue; }
-        const uint32_t instCount = static_cast<uint32_t>(it->second.size());
-
-        // Each type draws a contiguous [firstInstance, firstInstance+instCount) range
-        // of the SSBO. To support non-contiguous submission order, repack them
-        // contiguously first: build a scratch subrange, upload positions stable.
-        // For this initial implementation, the instances-of-this-type are
-        // already contiguous in s_stagingInstances ONLY if they were submitted
-        // contiguously. They may not be. Handle correctly: gather them into
-        // scratch and upload gathered block right now, then bind-range for it.
-        // --- Simpler approach: keep our existing flat buffer but issue
-        //     glDrawElementsInstancedBaseInstance per type, using
-        //     ARB_base_instance to pick up the right SSBO rows:
-        // glDrawElementsInstancedBaseVertexBaseInstance is available in GL 4.2 core.
-
+        auto rit = s_typeRanges.find(typeID);
+        if (rit == s_typeRanges.end()) continue;
+        const TypeRangeSsbo& r = rit->second;
         const GpuStaticPropType& type = s_types[typeID];
+
+        glBindBufferRange(GL_SHADER_STORAGE_BUFFER, 0, s_instanceSsbo,
+                          static_cast<GLintptr>(r.instanceByteOffset),
+                          static_cast<GLsizeiptr>(r.instanceByteSize));
+        glBindBufferRange(GL_SHADER_STORAGE_BUFFER, 1, s_colorSsbo,
+                          static_cast<GLintptr>(r.colorByteOffset),
+                          static_cast<GLsizeiptr>(r.colorByteSize));
+        glUniform1ui(glGetUniformLocation(s_staticPropProgram, "u_maxLocalVertexID"),
+                     type.vertexCount);
+
         for (uint32_t p = 0; p < type.packetCount; ++p) {
             const GpuStaticPropPacket& pkt = s_packets[type.firstPacket + p];
-
             glActiveTexture(GL_TEXTURE0);
             glBindTexture(GL_TEXTURE_2D, pkt.textureHandle);
             glUniform1ui(glGetUniformLocation(s_staticPropProgram, "u_materialFlags"),
@@ -1105,23 +1144,14 @@ void GpuStaticPropBatcher::flush() {
             glUniform1ui(glGetUniformLocation(s_staticPropProgram, "u_packetID"),
                          type.firstPacket + p);
 
-            // We have a list of instance indices in it->second; walk them
-            // issuing one draw per instance contiguously. For better perf
-            // when instances of a type are already contiguous this could be
-            // a single baseInstance draw; for correctness first, per-instance
-            // loop is fine.
-            for (uint32_t inst : it->second) {
-                glDrawElementsInstancedBaseVertexBaseInstance(
-                    GL_TRIANGLES,
-                    pkt.indexCount,
-                    GL_UNSIGNED_INT,
-                    reinterpret_cast<void*>(pkt.firstIndex * sizeof(uint32_t)),
-                    1,
-                    pkt.baseVertex,
-                    inst);
-            }
+            glDrawElementsInstancedBaseVertex(
+                GL_TRIANGLES,
+                pkt.indexCount,
+                GL_UNSIGNED_INT,
+                reinterpret_cast<void*>(pkt.firstIndex * sizeof(uint32_t)),
+                r.instanceCount,
+                pkt.baseVertex);
         }
-        packetCounter += type.packetCount;
     }
 
     s_fence[s_frameSlot] = glFenceSync(GL_SYNC_GPU_COMMANDS_COMPLETE, 0);
@@ -1129,9 +1159,8 @@ void GpuStaticPropBatcher::flush() {
     glBindBuffer(GL_SHADER_STORAGE_BUFFER, 0);
     glBindVertexArray(0);
 
-    s_stagingInstances.clear();
-    s_stagingColors.clear();
-    s_instancesByType.clear();
+    s_bucketsByType.clear();
+    s_lastUploadedSlot = 0xFFFFFFFFu;  // reset for next frame
 }
 ```
 
@@ -1194,18 +1223,39 @@ Right before the `bldgShape->Render(...)` call, add:
 if (g_useGpuStaticProps) {
     // Bypass the old inView gate on this path — see spec section
     // "Culling — C2 (render everything)".
-    uint32_t flags = 0;
-    // TG_Shape flags: lightsOut/isWindow/isSpotlight live on the shape.
-    // Match the bit assignments in gos_static_prop_batcher.h.
-    if (bldgShape->IsLightsOut())   flags |= (1u << 0);
-    if (bldgShape->IsWindow())      flags |= (1u << 1);
-    if (bldgShape->IsSpotlight())   flags |= (1u << 2);
+    // bldgShape is a TG_MultiShape*; iterate its child TG_Shapes so each
+    // authored sub-shape (matching numNodes order) is submitted individually.
+    // This preserves packet traversal semantics of the old
+    // TG_MultiShape::Render() path.
+    bool anyFallback = false;
+    const int numChildren = bldgShape->getNumShapes();   // grep real accessor
+    for (int i = 0; i < numChildren; ++i) {
+        TG_Shape* child = bldgShape->getShape(i);        // grep real accessor
+        if (!child) continue;
 
-    const uint32_t highlight = bldgShape->GetHighlightARGB();  // grep for real getter
-    const uint32_t fog       = bldgShape->GetFogARGB();        // grep for real getter
+        uint32_t flags = 0;
+        if (child->IsLightsOut()) flags |= (1u << 0);
+        if (child->IsWindow())    flags |= (1u << 1);
+        if (child->IsSpotlight()) flags |= (1u << 2);
 
-    GpuStaticPropBatcher::instance().submit(
-        bldgShape, shapeToWorld, highlight, fog, flags);
+        const uint32_t highlight = child->GetHighlightARGB();  // or read field directly
+        const uint32_t fog       = child->GetFogARGB();
+
+        // Layer B: if submit() returns false the type wasn't registered;
+        // fall back to the CPU path for this one child this frame.
+        if (!GpuStaticPropBatcher::instance().submit(
+                child, shapeToWorld, highlight, fog, flags)) {
+            anyFallback = true;
+        }
+    }
+    if (anyFallback) {
+        // At least one child failed registration — fall the WHOLE multishape
+        // back to the CPU path this frame, so that the visual is
+        // self-consistent rather than mixed. Next frame the batcher may
+        // have more types registered (unlikely — registration is at map
+        // load — but keeps the behavior predictable).
+        bldgShape->Render(/*existing args*/);
+    }
     return /*existing return value*/ 0;
 }
 // else: old path continues below unchanged
@@ -1393,102 +1443,70 @@ Replace the stub:
 ```cpp
 void GpuStaticPropBatcher::flushShadow() {
     ZoneScopedN("GpuStaticProps.Shadow");
-    if (s_stagingInstances.empty() || s_fatalRegistrationFailure) return;
-
-    // The main color flush() already uploaded instances to the current ring
-    // slot; shadow pass reads the same SSBO range. Call order: shadow pass
-    // runs inside Shadow.DynPass, BEFORE flush(). We therefore need to
-    // upload here if flush() hasn't run yet this frame. Simple rule:
-    // flushShadow() is called FIRST in the frame; flush() reuses the same
-    // ring slot data.
-    //
-    // Implementation: do the staging-to-mapped upload here if it hasn't
-    // happened yet, and have flush() skip the upload if flushShadow()
-    // already did it. Track via a per-frame flag.
-
-    static uint32_t s_lastUploadedSlot = 0xFFFFFFFFu;
-    if (s_lastUploadedSlot != s_frameSlot || s_lastUploadedSlot == 0xFFFFFFFFu) {
-        // Advance slot + upload now (flush() will skip upload).
-        loadProgramsIfNeeded();
-        ensureRingCapacity(s_stagingInstances.size(), s_stagingColors.size());
-        s_frameSlot = (s_frameSlot + 1) % RING_FRAMES;
-        if (s_fence[s_frameSlot]) {
-            glClientWaitSync(s_fence[s_frameSlot], GL_SYNC_FLUSH_COMMANDS_BIT, GL_TIMEOUT_IGNORED);
-            glDeleteSync(s_fence[s_frameSlot]);
-            s_fence[s_frameSlot] = 0;
-        }
-        const size_t instOffset = s_frameSlot * s_instanceCapacity;
-        const size_t colOffset  = s_frameSlot * s_colorCapacity;
-        std::memcpy(static_cast<GpuStaticPropInstance*>(s_instanceMap) + instOffset,
-                    s_stagingInstances.data(),
-                    s_stagingInstances.size() * sizeof(GpuStaticPropInstance));
-        std::memcpy(static_cast<uint32_t*>(s_colorMap) + colOffset,
-                    s_stagingColors.data(),
-                    s_stagingColors.size() * sizeof(uint32_t));
-        s_lastUploadedSlot = s_frameSlot;
-    }
+    if (s_fatalRegistrationFailure) return;
+    if (!uploadAllBucketsIfNeeded()) return;  // shares upload with flush()
 
     // --- AMD invariants around shadow draw ---
-    // Invariant 4: unbind shadow map from sampler unit 9.
-    GLint prevTex9 = 0;
+    // Invariant 4: unbind shadow map from sampler unit 9 before rendering
+    // INTO the shadow FBO. Engine-owned: the shadow map is managed by
+    // gosPostProcess; we ask it to rebind after we're done rather than
+    // query/save/restore.
     glActiveTexture(GL_TEXTURE9);
-    glGetIntegerv(GL_TEXTURE_BINDING_2D, &prevTex9);
     glBindTexture(GL_TEXTURE_2D, 0);
 
     glUseProgram(s_staticPropShadowProgram);
     glBindVertexArray(s_sharedVao);
-    const size_t instOffset = s_frameSlot * s_instanceCapacity;
-    glBindBufferRange(GL_SHADER_STORAGE_BUFFER, 0, s_instanceSsbo,
-                      static_cast<GLintptr>(instOffset * sizeof(GpuStaticPropInstance)),
-                      static_cast<GLsizeiptr>(s_stagingInstances.size() * sizeof(GpuStaticPropInstance)));
 
-    // Engine-owned state (no save/query/restore dance).
+    // Engine-owned state (AMD invariants, no save/query/restore).
     glDepthMask(GL_TRUE);
     glEnable(GL_DEPTH_TEST);
     glDisable(GL_BLEND);
     glEnable(GL_CULL_FACE);
     glCullFace(GL_BACK);
 
-    // lightSpaceMVP — read from the same global the existing object shadow
-    // collector reads (grep gos_DrawShadowObjectBatch for the matrix source).
+    // lightSpaceMVP — read from the same frame-snapshot global the existing
+    // object-shadow collector uses (grep gos_DrawShadowObjectBatch in
+    // gameos_graphics.cpp for the matrix source).
     extern const float* getDynamicShadowLightSpaceMatrix();
     glUniformMatrix4fv(glGetUniformLocation(s_staticPropShadowProgram, "u_lightSpaceMVP"),
                        1, GL_FALSE, getDynamicShadowLightSpaceMatrix());
 
-    // Draws — identical per-packet pattern as flush(), but skipping
-    // alpha-test packets would leak depth from leaves; honor alpha-test
-    // by skipping the packet when ALPHA_TEST_BIT is set (buildings are
-    // opaque-only anyway; trees handle leaves via a separate future pass).
-    // For M1 step 1 (buildings only), this is correct. M1 step 2 (trees)
-    // will add alpha-test depth-discard in the shadow shader.
     for (uint32_t typeID = 0; typeID < s_types.size(); ++typeID) {
-        auto it = s_instancesByType.find(typeID);
-        if (it == s_instancesByType.end()) continue;
-
+        auto rit = s_typeRanges.find(typeID);
+        if (rit == s_typeRanges.end()) continue;
+        const TypeRangeSsbo& r = rit->second;
         const GpuStaticPropType& type = s_types[typeID];
+
+        glBindBufferRange(GL_SHADER_STORAGE_BUFFER, 0, s_instanceSsbo,
+                          static_cast<GLintptr>(r.instanceByteOffset),
+                          static_cast<GLsizeiptr>(r.instanceByteSize));
+
         for (uint32_t p = 0; p < type.packetCount; ++p) {
             const GpuStaticPropPacket& pkt = s_packets[type.firstPacket + p];
+            // M1 step 1 (buildings only): skip alpha-test packets — they
+            // leak depth from leaves/windows. Task 16 (trees) replaces this
+            // skip with a texture-sampled discard in the shadow shader.
             if (pkt.materialFlags & STATIC_PROP_FLAG_ALPHA_TEST) continue;
 
-            for (uint32_t inst : it->second) {
-                glDrawElementsInstancedBaseVertexBaseInstance(
-                    GL_TRIANGLES,
-                    pkt.indexCount,
-                    GL_UNSIGNED_INT,
-                    reinterpret_cast<void*>(pkt.firstIndex * sizeof(uint32_t)),
-                    1,
-                    pkt.baseVertex,
-                    inst);
-            }
+            glDrawElementsInstancedBaseVertex(
+                GL_TRIANGLES,
+                pkt.indexCount,
+                GL_UNSIGNED_INT,
+                reinterpret_cast<void*>(pkt.firstIndex * sizeof(uint32_t)),
+                r.instanceCount,
+                pkt.baseVertex);
         }
     }
 
     glBindVertexArray(0);
     glBindBuffer(GL_SHADER_STORAGE_BUFFER, 0);
 
-    // Invariant 4: rebind shadow map.
-    glActiveTexture(GL_TEXTURE9);
-    glBindTexture(GL_TEXTURE_2D, static_cast<GLuint>(prevTex9));
+    // Invariant 4: ask the shadow map owner to rebind unit 9. The binding
+    // will also be re-established by the next terrain/object draw that
+    // samples the shadow map via its own uniform setup, but doing it here
+    // keeps the invariant's scope local to this function.
+    extern void gosPostProcessRebindShadowSampler();  // implement in gos_postprocess.cpp
+    gosPostProcessRebindShadowSampler();
     glActiveTexture(GL_TEXTURE0);
 }
 ```
@@ -1710,14 +1728,25 @@ git commit -m "feat(props): wire TreeAppearance with alpha-test shadow discard"
 Each site follows the Task 11 pattern exactly:
 
 ```cpp
+// Use the same child-iteration + Layer B fallback pattern as Task 11.
+// myShape is a TG_MultiShape*; iterate its child TG_Shapes.
 if (g_useGpuStaticProps) {
-    uint32_t flags = 0;
-    if (myShape->IsLightsOut())  flags |= (1u << 0);
-    if (myShape->IsWindow())     flags |= (1u << 1);
-    if (myShape->IsSpotlight())  flags |= (1u << 2);
-    GpuStaticPropBatcher::instance().submit(
-        myShape, shapeToWorld,
-        myShape->GetHighlightARGB(), myShape->GetFogARGB(), flags);
+    bool anyFallback = false;
+    const int numChildren = myShape->getNumShapes();
+    for (int i = 0; i < numChildren; ++i) {
+        TG_Shape* child = myShape->getShape(i);
+        if (!child) continue;
+        uint32_t flags = 0;
+        if (child->IsLightsOut()) flags |= (1u << 0);
+        if (child->IsWindow())    flags |= (1u << 1);
+        if (child->IsSpotlight()) flags |= (1u << 2);
+        if (!GpuStaticPropBatcher::instance().submit(
+                child, shapeToWorld,
+                child->GetHighlightARGB(), child->GetFogARGB(), flags)) {
+            anyFallback = true;
+        }
+    }
+    if (anyFallback) myShape->Render(/*existing args*/);
     return 0;
 }
 ```
