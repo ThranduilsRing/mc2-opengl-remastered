@@ -2186,6 +2186,22 @@ void gosRenderer::drawQuads(gos_VERTEX* vertices, int count) {
     ZoneScopedN("DrawQuads");
     gosASSERT(vertices);
 
+    if (renderStates_[gos_State_IsHUD]) {
+        if (hudFlushed_) {
+            SPEW(("GRAPHICS", "[HUD] Late drawQuads discarded (after flushHUDBatch)\n"));
+            return;
+        }
+        HudDrawCall call;
+        call.kind = kHudQuadBatch;
+        call.vertices.assign(vertices, vertices + count);
+        memcpy(call.stateSnapshot, renderStates_, sizeof(call.stateSnapshot));
+        call.projection = projection_;
+        call.fontTexId = 0;
+        call.foregroundColor = 0;
+        hudBatch_.push_back(std::move(call));
+        return;
+    }
+
     if(beforeDrawCall()) return;
 
     int num_quads = count / 4;
@@ -2231,6 +2247,22 @@ void gosRenderer::drawQuads(gos_VERTEX* vertices, int count) {
 void gosRenderer::drawLines(gos_VERTEX* vertices, int count) {
     ZoneScopedN("DrawLines");
     gosASSERT(vertices);
+
+    if (renderStates_[gos_State_IsHUD]) {
+        if (hudFlushed_) {
+            SPEW(("GRAPHICS", "[HUD] Late drawLines discarded (after flushHUDBatch)\n"));
+            return;
+        }
+        HudDrawCall call;
+        call.kind = kHudLineBatch;
+        call.vertices.assign(vertices, vertices + count);
+        memcpy(call.stateSnapshot, renderStates_, sizeof(call.stateSnapshot));
+        call.projection = projection_;
+        call.fontTexId = 0;
+        call.foregroundColor = 0;
+        hudBatch_.push_back(std::move(call));
+        return;
+    }
 
     if(beforeDrawCall()) return;
 
