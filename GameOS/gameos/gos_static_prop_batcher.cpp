@@ -99,15 +99,20 @@ bool s_programLoadFailed = false;
 
 void loadProgramsIfNeeded() {
     if (s_programLoadTried) return;
+    std::fprintf(stderr, "[GPUPROPS-DIAG] loadProgramsIfNeeded ENTER\n");
+    // Log GL / GLSL version so we know what this driver/context supports.
+    const char* glv   = (const char*)glGetString(GL_VERSION);
+    const char* glslv = (const char*)glGetString(GL_SHADING_LANGUAGE_VERSION);
+    std::fprintf(stderr, "[GPUPROPS-DIAG] GL_VERSION=%s\n", glv ? glv : "(null)");
+    std::fprintf(stderr, "[GPUPROPS-DIAG] GL_SHADING_LANGUAGE_VERSION=%s\n",
+                 glslv ? glslv : "(null)");
     s_programLoadTried = true;
 
     // makeProgram() is the project's shader loader (see gos_postprocess.cpp
     // for existing usage). Pass the "#version 430\n" prefix explicitly — the
     // shader files must NOT contain a #version directive.
-    // GLSL 430 is required for core SSBO (shader storage buffer) and std430
-    // layout support, which the static_prop shaders use for instance and
-    // color data. 420 + ARB_shader_storage_buffer_object extension would
-    // also work, but 430 is cleaner and AMD RX 7900 XTX supports it fine.
+    // GLSL 430 required for std430 SSBO. gos_render.cpp now requests a GL
+    // 4.3 core context (bumped from 4.0) to match.
     static const char* kShaderPrefix = "#version 430\n";
     s_staticPropProgramObj = glsl_program::makeProgram(
         "static_prop",
@@ -125,6 +130,8 @@ void loadProgramsIfNeeded() {
         return;
     }
     s_staticPropProgram = s_staticPropProgramObj->shp_;
+    std::fprintf(stderr, "[GPUPROPS-DIAG] loadProgramsIfNeeded OK prog=%u\n",
+                 s_staticPropProgram);
 }
 
 // Layer B fallback: types we failed to register (logged once, fall back to CPU path).
@@ -347,6 +354,14 @@ void GpuStaticPropBatcher::registerMultiShape(TG_TypeMultiShape* multiShape) {
 void GpuStaticPropBatcher::finalizeGeometry() {
     if (s_geometryFinalized) return;
 
+    // Compile shader programs NOW, at map-load time, while we're on the
+    // same code path that compiles every other engine shader. Doing it
+    // from inside a mid-render submit() triggers a crash somewhere inside
+    // shader_builder — possibly related to the shadow_screen compile
+    // failure also seen at map load. Mid-render compile is not a pattern
+    // this engine is tested for, so we hoist it here.
+    loadProgramsIfNeeded();
+
     glGenVertexArrays(1, &s_sharedVao);
     glBindVertexArray(s_sharedVao);
 
@@ -392,10 +407,6 @@ bool GpuStaticPropBatcher::submit(TG_Shape* shape,
                                   uint32_t fogARGB,
                                   uint32_t flags) {
     if (!shape || s_fatalRegistrationFailure) return false;
-
-    // Same latch protection as submitMultiShape — if the shader failed to
-    // compile, refuse every submission so the caller CPU-fallbacks.
-    loadProgramsIfNeeded();
     if (s_programLoadFailed) return false;
 
     // TG_Shape::myType is a TG_TypeNodePtr; for SHAPE_NODE leaves it's a TG_TypeShape.
@@ -457,36 +468,54 @@ bool GpuStaticPropBatcher::submit(TG_Shape* shape,
 
 bool GpuStaticPropBatcher::submitMultiShape(TG_MultiShape* multi) {
     if (!multi || s_fatalRegistrationFailure) return false;
-
-    // Trigger the shader load on first submission of the session. If it
-    // fails, the latch stays set and we return false forever, so every
-    // caller CPU-fallbacks cleanly.
-    loadProgramsIfNeeded();
-    if (s_programLoadFailed) return false;
+    if (s_programLoadFailed || s_staticPropProgram == 0) return false;
 
     const int n = multi->numTG_Shapes;
     if (n <= 0 || !multi->listOfShapes) return false;
 
-    // Two-pass: first pass verifies every child's type is registered, second
-    // pass actually submits. That way we avoid partially populating the
-    // bucket and then needing to rewind when a later child fails.
+    // Track "first failure per reason" diagnostics so the stderr isn't
+    // spammed. Bisection found these conditions in real data:
+    //   - some children have node type != SHAPE_NODE (bone/helper nodes)
+    //   - some have null listOfColors (late-spawn, lighting not yet baked)
+    //   - late-registered types (seen in Phase 2 logs)
+    // Any of these: bail and CPU-fallback the whole multishape this frame.
+    static bool s_warned_badNodeType = false;
+    static bool s_warned_nullColors  = false;
+
+    // Two-pass: verify every child is submittable, then push instances.
     for (int i = 0; i < n; ++i) {
-        TG_ShapeRec& rec = multi->listOfShapes[i];
+        const TG_ShapeRec& rec = multi->listOfShapes[i];
         if (!rec.processMe || !rec.node) continue;
-        TG_TypeShape* ts = static_cast<TG_TypeShape*>(rec.node->myType);
-        if (!ts) return false;
-        if (s_typeIndex.find(ts) == s_typeIndex.end()) {
-            if (!s_failedTypes[ts]) {
+        const TG_Shape* child = rec.node;
+        if (!child->myType) return false;
+        if (child->myType->GetNodeType() != SHAPE_NODE) {
+            if (!s_warned_badNodeType) {
                 std::fprintf(stderr,
-                    "[GPUPROPS] multishape %p child %d has unregistered "
-                    "type %p -- falling back whole multishape\n",
-                    (void*)multi, i, (void*)ts);
-                s_failedTypes[ts] = true;
+                    "[GPUPROPS] multi=%p child %d: non-SHAPE node (type=%d) -- "
+                    "CPU-fallback\n",
+                    (void*)multi, i, (int)child->myType->GetNodeType());
+                s_warned_badNodeType = true;
+            }
+            return false;
+        }
+        const TG_TypeShape* ts = static_cast<const TG_TypeShape*>(child->myType);
+        auto it = s_typeIndex.find(ts);
+        if (it == s_typeIndex.end()) return false;  // unregistered type
+        const GpuStaticPropType& type = s_types[it->second];
+        if (type.vertexCount == 0) return false;
+        if (!child->listOfColors) {
+            if (!s_warned_nullColors) {
+                std::fprintf(stderr,
+                    "[GPUPROPS] multi=%p child %d: null listOfColors -- "
+                    "CPU-fallback\n",
+                    (void*)multi, i);
+                s_warned_nullColors = true;
             }
             return false;
         }
     }
 
+    // Second pass: actually submit.
     for (int i = 0; i < n; ++i) {
         TG_ShapeRec& rec = multi->listOfShapes[i];
         if (!rec.processMe || !rec.node) continue;
@@ -497,13 +526,12 @@ bool GpuStaticPropBatcher::submitMultiShape(TG_MultiShape* multi) {
         if (child->isWindow)    flags |= (1u << 1);
         if (child->isSpotlight) flags |= (1u << 2);
 
-        // rec.shapeToWorld is LinearMatrix4D. submit() expects a Matrix4D
-        // (same row-major 4x4 float layout for its model-matrix memcpy).
+        // rec.shapeToWorld is LinearMatrix4D; convert to Matrix4D for submit().
         Stuff::Matrix4D xform(rec.shapeToWorld);
         if (!submit(child, xform,
                     child->aRGBHighlight, child->fogRGB, flags)) {
-            // Should not reach here because the verification pass above
-            // already confirmed every type is registered. Treat as fallback.
+            // Pre-pass verified all children; reaching here means submit()
+            // itself rejected (buffers full, etc.). Fall back for this frame.
             return false;
         }
     }
@@ -608,6 +636,7 @@ bool uploadAllBucketsIfNeeded() {
 
 void GpuStaticPropBatcher::flush() {
     ZoneScopedN("GpuStaticProps.Flush");
+
     if (!s_geometryFinalized || s_fatalRegistrationFailure) {
         s_bucketsByType.clear();
         return;
@@ -674,8 +703,11 @@ void GpuStaticPropBatcher::flush() {
 
         // SEMANTIC: max VALID local vertex index, not count. Lets the
         // gradient debug mode hit t=1.0 at the last vertex.
-        const uint32_t maxID = (type.vertexCount > 0u) ? (type.vertexCount - 1u) : 0u;
-        glUniform1ui(glGetUniformLocation(s_staticPropProgram, "u_maxLocalVertexID"), maxID);
+        // NOTE: shader declares u_* ints (uniform uint crashes this engine's
+        // shader compile); values are always positive and < 2^31, so
+        // signed int is lossless here. Upload via glUniform1i.
+        const int maxID = (type.vertexCount > 0u) ? (int)(type.vertexCount - 1u) : 0;
+        glUniform1i(glGetUniformLocation(s_staticPropProgram, "u_maxLocalVertexID"), maxID);
 
         for (uint32_t p = 0; p < type.packetCount; ++p) {
             const GpuStaticPropPacket& pkt = s_packets[type.firstPacket + p];
@@ -685,10 +717,10 @@ void GpuStaticPropBatcher::flush() {
             const uint32_t glTexId = gos_GetGLTextureId(pkt.textureHandle);
             glActiveTexture(GL_TEXTURE0);
             glBindTexture(GL_TEXTURE_2D, glTexId);
-            glUniform1ui(glGetUniformLocation(s_staticPropProgram, "u_materialFlags"),
-                         pkt.materialFlags);
-            glUniform1ui(glGetUniformLocation(s_staticPropProgram, "u_packetID"),
-                         type.firstPacket + p);
+            glUniform1i(glGetUniformLocation(s_staticPropProgram, "u_materialFlags"),
+                        (int)pkt.materialFlags);
+            glUniform1i(glGetUniformLocation(s_staticPropProgram, "u_packetID"),
+                        (int)(type.firstPacket + p));
 
             glDrawElementsInstancedBaseVertex(
                 GL_TRIANGLES,
