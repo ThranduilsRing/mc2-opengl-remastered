@@ -3321,11 +3321,12 @@ void gosRenderer::flushHUDBatch()
         return;
     }
 
-    // Ensure we draw to the default framebuffer at full screen resolution.
-    // pp->endScene() should leave us here, but post-process viewport changes
-    // (half-res bloom, etc.) are not tracked in renderStates_.
+    // Ensure we draw to the default framebuffer at full screen resolution,
+    // and rebind our VAO — pp->endScene() leaves VAO 0 bound, which makes
+    // glVertexAttribPointer fail with GL_INVALID_OPERATION.
     glBindFramebuffer(GL_FRAMEBUFFER, 0);
     glViewport(0, 0, (GLsizei)width_, (GLsizei)height_);
+    glBindVertexArray(gVAO);
 
     // Save pre-flush render state and projection
     uint32_t priorState[gos_MaxState];
