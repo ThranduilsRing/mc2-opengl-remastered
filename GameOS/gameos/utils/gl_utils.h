@@ -13,7 +13,7 @@ uint32_t vec4_to_uint32(const vec4& v);
 vec4 uint32_to_vec4(uint32_t v);
 
 struct Texture {
-	Texture():id(0), w(0), h(0), depth(1), fmt_(TF_NONE) {}
+	Texture():id(0), w(0), h(0), depth(1), fmt_(TF_NONE), has_mipmaps(false) {}
     bool isValid() { return id > 0; }
 
 	GLuint id;
@@ -21,6 +21,7 @@ struct Texture {
 	int w, h, depth;
     TexFormat fmt_;
     TexType type_;
+    bool has_mipmaps;
 
 };
 
@@ -79,7 +80,7 @@ static int ogl_check_val(T input, T reference, const char* message)
     }
 }
 
-Texture create2DTexture(int w, int h, TexFormat fmt, const uint8_t* texdata);
+Texture create2DTexture(int w, int h, TexFormat fmt, const uint8_t* texdata, bool wantMipmaps = false);
 Texture createDynamicTexture(int w, int h, TexFormat fmt);
 Texture create3DTextureF(int w, int h, int depth);
 
