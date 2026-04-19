@@ -463,7 +463,7 @@ Attempt 6 (projectZ cull in `recalcBounds`) without the cascading failure mode
 
 Global `bool g_useGpuStaticProps` defined in `code/mechcmd2.cpp`, default
 `false` initially. Debug hotkey RAlt+0 (free in `gameosmain.cpp` alt_debug
-switch — RAlt+0 is taken by terrain debug mode) toggles live.
+switch — RAlt+8 is taken by terrain debug mode) toggles live.
 
 Each of the five `*Appearance::render()` sites gets a one-line branch:
 
