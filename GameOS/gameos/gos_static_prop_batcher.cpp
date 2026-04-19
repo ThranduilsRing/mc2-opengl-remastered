@@ -89,8 +89,18 @@ bool s_fatalRegistrationFailure = false;
 glsl_program* s_staticPropProgramObj = nullptr;
 GLuint        s_staticPropProgram    = 0;
 
+// Latched once a compile/link attempt has failed. We never retry inside a
+// session because shader source can only change between runs. With this
+// latched true, submit() returns false (so callers CPU-fallback), and
+// flush()/flushShadow() short-circuit immediately. The user can keep the
+// killswitch ON or OFF with no behavioral difference until the next build.
+bool s_programLoadTried  = false;
+bool s_programLoadFailed = false;
+
 void loadProgramsIfNeeded() {
-    if (s_staticPropProgram) return;
+    if (s_programLoadTried) return;
+    s_programLoadTried = true;
+
     // makeProgram() is the project's shader loader (see gos_postprocess.cpp
     // for existing usage). Pass the "#version 430\n" prefix explicitly — the
     // shader files must NOT contain a #version directive.
@@ -106,9 +116,12 @@ void loadProgramsIfNeeded() {
         kShaderPrefix);
     if (!s_staticPropProgramObj || !s_staticPropProgramObj->is_valid()) {
         std::fprintf(stderr,
-            "[GPUPROPS] failed to compile/link static_prop shader pair\n");
+            "[GPUPROPS] failed to compile/link static_prop shader pair — "
+            "GPU path disabled for this session; all static props will "
+            "CPU-fallback via submit()==false\n");
         s_staticPropProgramObj = nullptr;
         s_staticPropProgram    = 0;
+        s_programLoadFailed    = true;
         return;
     }
     s_staticPropProgram = s_staticPropProgramObj->shp_;
@@ -380,6 +393,11 @@ bool GpuStaticPropBatcher::submit(TG_Shape* shape,
                                   uint32_t flags) {
     if (!shape || s_fatalRegistrationFailure) return false;
 
+    // Same latch protection as submitMultiShape — if the shader failed to
+    // compile, refuse every submission so the caller CPU-fallbacks.
+    loadProgramsIfNeeded();
+    if (s_programLoadFailed) return false;
+
     // TG_Shape::myType is a TG_TypeNodePtr; for SHAPE_NODE leaves it's a TG_TypeShape.
     TG_TypeShape* typeShape = static_cast<TG_TypeShape*>(shape->myType);
     if (!typeShape) return false;
@@ -439,6 +457,12 @@ bool GpuStaticPropBatcher::submit(TG_Shape* shape,
 
 bool GpuStaticPropBatcher::submitMultiShape(TG_MultiShape* multi) {
     if (!multi || s_fatalRegistrationFailure) return false;
+
+    // Trigger the shader load on first submission of the session. If it
+    // fails, the latch stays set and we return false forever, so every
+    // caller CPU-fallbacks cleanly.
+    loadProgramsIfNeeded();
+    if (s_programLoadFailed) return false;
 
     const int n = multi->numTG_Shapes;
     if (n <= 0 || !multi->listOfShapes) return false;
@@ -570,9 +594,10 @@ void GpuStaticPropBatcher::flush() {
         s_bucketsByType.clear();
         return;
     }
-    // If program compile/link failed, s_staticPropProgram is 0.
-    // Bail cleanly instead of pumping uniform calls against a null program.
-    if (s_staticPropProgram == 0) {
+    // Program compile/link latch. submitMultiShape already gates submissions
+    // on this, so reaching here with an empty program is a logic bug — but
+    // guard anyway so we never pump uniform calls against a null program.
+    if (s_programLoadFailed || s_staticPropProgram == 0) {
         s_bucketsByType.clear();
         s_lastUploadedSlot = 0xFFFFFFFFu;
         return;
