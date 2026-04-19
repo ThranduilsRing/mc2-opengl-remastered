@@ -2112,6 +2112,8 @@ enum gos_RenderState
 
 	gos_State_Overlay,			// Default: 0						true/false - overlay with GPU projection + shadow sampling
 
+	gos_State_IsHUD,			// Default: 0						true/false - buffer draw for post-postprocess HUD replay
+
 	gos_MaxState				// Marker for last render state
 };
 
