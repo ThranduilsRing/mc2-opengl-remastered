@@ -3227,8 +3227,27 @@ void gosRenderer::drawText(const char* text) {
         y += font_height;
         pos += num_chars;
     }
+    // T2: if HUD buffering is active, capture pre-expanded glyph geometry and defer
+    if (renderStates_[gos_State_IsHUD]) {
+        const int n = text_->getNumVertices();
+        if (n > 0 && !hudFlushed_) {
+            HudDrawCall call;
+            call.kind = kHudTextQuadBatch;
+            call.vertices.assign(text_->getVertices(), text_->getVertices() + n);
+            memcpy(call.stateSnapshot, renderStates_, sizeof(call.stateSnapshot));
+            call.projection = projection_;
+            call.fontTexId = tex_id;
+            call.foregroundColor = ta.Foreground;
+            hudBatch_.push_back(std::move(call));
+        } else if (hudFlushed_) {
+            SPEW(("GRAPHICS", "[HUD] Late drawText discarded (after flushHUDBatch)\n"));
+        }
+        text_->rewind();
+        return;
+    }
+
     // FIXME: save states before messing with it, because user code can set its ow and does not know that something was changed by us
-    
+
     int prev_texture = getRenderState(gos_State_Texture);
     
     // All states are set by client code
