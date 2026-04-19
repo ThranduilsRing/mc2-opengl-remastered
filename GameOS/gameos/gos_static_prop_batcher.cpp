@@ -549,6 +549,22 @@ bool uploadAllBucketsIfNeeded() {
     auto* instMapBase = static_cast<uint8_t*>(s_instanceMap) + slotInstByteBase;
     auto* colMapBase  = static_cast<uint8_t*>(s_colorMap)    + slotColByteBase;
 
+    // SSBO offset alignment. Per the GL spec,
+    //   glBindBufferRange(GL_SHADER_STORAGE_BUFFER, ..., offset, size)
+    // requires `offset % GL_SHADER_STORAGE_BUFFER_OFFSET_ALIGNMENT == 0`.
+    // That value is implementation-defined with minimum 256 bytes. Query once.
+    // Unaligned offsets fail silently on AMD and the subsequent draw reads
+    // from garbage memory -> hard crash. Round every per-type offset up to
+    // this alignment.
+    static GLint s_ssboAlignment = 0;
+    if (s_ssboAlignment == 0) {
+        glGetIntegerv(GL_SHADER_STORAGE_BUFFER_OFFSET_ALIGNMENT, &s_ssboAlignment);
+        if (s_ssboAlignment < 16) s_ssboAlignment = 256;  // sane fallback
+    }
+    auto alignUp = [](size_t v, size_t a) {
+        return (v + (a - 1)) & ~(a - 1);
+    };
+
     // Deterministic ascending typeID iteration — makes Tracy / RenderDoc
     // diffs stable and shader-debug repro repeatable across runs.
     std::vector<uint32_t> sortedTypeIDs;
@@ -561,6 +577,12 @@ bool uploadAllBucketsIfNeeded() {
     size_t colCursor  = 0;
     for (uint32_t typeID : sortedTypeIDs) {
         PerTypeBucket& b = s_bucketsByType[typeID];
+
+        // Align the start of each per-type region to the SSBO alignment
+        // requirement before writing.
+        instCursor = alignUp(instCursor, static_cast<size_t>(s_ssboAlignment));
+        colCursor  = alignUp(colCursor,  static_cast<size_t>(s_ssboAlignment));
+
         TypeRangeSsbo r{};
         r.instanceByteOffset = slotInstByteBase + instCursor;
         r.instanceByteSize   = b.instances.size() * sizeof(GpuStaticPropInstance);
