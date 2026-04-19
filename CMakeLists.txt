@@ -53,6 +53,10 @@ add_definitions(-DUSE_ASSEMBLER_CODE=0)
 add_definitions(-DLINUX_BUILD)
 # Tracy profiler (always-on, ~1ns overhead when not connected)
 add_definitions(-DTRACY_ENABLE)
+# On-demand mode: only enqueue events while a profiler is actively connected.
+# Without this, the client's in-process event queue grows unbounded until a profiler
+# attaches, which looks like a memory leak that "stops" when Tracy is launched.
+add_definitions(-DTRACY_ON_DEMAND)
 # Disable ETW kernel sampling (requires elevated privileges, not needed for zone profiling)
 add_definitions(-DTRACY_NO_SYSTEM_TRACING)
 
