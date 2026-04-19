@@ -5,6 +5,7 @@
 #include <unordered_map>
 #include "Stuff/Stuff.hpp"
 #include "tgl.h"
+#include "msl.h"
 
 // Per-instance shader-visible struct.
 // Layout mirror of the GLSL std430 struct in shaders/static_prop.vert.
@@ -62,6 +63,10 @@ public:
     // and appends geometry to the in-progress VBO/IBO staging.
     // Called during onMapLoad for every static-prop type + its damage variants.
     void registerType(TG_TypeShape* typeShape);
+
+    // Convenience wrapper: iterate a multishape's listOfTypeShapes and call
+    // registerType on each SHAPE_NODE leaf. Safe to call with NULL (no-op).
+    void registerMultiShape(TG_TypeMultiShape* multiShape);
 
     // Called at end of registration to upload the immutable VBO/IBO.
     void finalizeGeometry();

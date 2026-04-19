@@ -161,6 +161,15 @@ class TG_TypeMultiShape
 			return numTG_TypeShapes;
 		}
 
+		// Public accessor for the GPU static-prop batcher registration walk.
+		// Returns NULL if shapeNum is out of range or listOfTypeShapes is NULL.
+		TG_TypeNodePtr GetTypeNode (long shapeNum)
+		{
+			if (listOfTypeShapes && shapeNum >= 0 && shapeNum < numTG_TypeShapes)
+				return listOfTypeShapes[shapeNum];
+			return NULL;
+		}
+
 		long GetNumTextures (void)
 		{
 			return numTextures;

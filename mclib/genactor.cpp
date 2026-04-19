@@ -60,6 +60,8 @@
 #include"move.h"
 #endif
 
+#include "gos_static_prop_batcher.h"
+
 //******************************************************************************************
 extern float	worldUnitsPerMeter;
 extern bool 	drawTerrainGrid;
@@ -373,6 +375,10 @@ void GenericAppearance::init (AppearanceTypePtr tree, GameObjectPtr obj)
 			appearType->typeUpperLeft = genShape->GetMinBox();
 			appearType->typeLowerRight = genShape->GetMaxBox();
 		}
+
+		// GPU static-prop batcher: register this generic prop's type shape.
+		GpuStaticPropBatcher::instance().registerMultiShape(appearType->genShape);
+		GpuStaticPropBatcher::instance().registerMultiShape(appearType->genDmgShape);
 	}
 }
 

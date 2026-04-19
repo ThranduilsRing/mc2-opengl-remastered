@@ -11,6 +11,7 @@ set(SOURCES ${SOURCES}
     gameos_sound.cpp
     gos_render.cpp
     gos_postprocess.cpp
+    gos_static_prop_batcher.cpp
     gos_validate.cpp
     gos_font.cpp
     gos_input.cpp
@@ -37,6 +38,8 @@ set(MAIN_SRC gameosmain.cpp)
 
 include_directories("../include"  ".")
 include_directories(${THIRDPARTY_INCLUDE_DIRS})
+# gos_static_prop_batcher.cpp pulls tgl.h / msl.h / Stuff from mclib.
+include_directories("${CMAKE_SOURCE_DIR}/mclib" "${CMAKE_SOURCE_DIR}/mclib/stuff")
 
 add_library(gameos ${SOURCES})
 add_library(gameos_main ${MAIN_SRC})
