@@ -78,16 +78,41 @@ authoritative)** entry.
 
 A new subsystem, `GpuStaticPropBatcher`, owns three GL objects.
 
-### 1. Shared type VBO/IBO (persistent per map)
+### 1. Shared type VBO/IBO (persistent per map, truly immutable)
 
-Built once at map load. For every `TG_TypeShape` referenced by any static-prop
-actor on the current map, interleave its authored `gos_VERTEX` stream and
-triangle indices into a single global VBO/IBO pair.
+Built once at map load and **never modified afterwards**. The VBO/IBO must be
+immutable for the map's lifetime — runtime reallocation is explicitly
+prohibited by the design, not merely avoided.
+
+For every static-prop actor spawned into the current map, the registration
+pass walks its `TG_TypeMultiShape` AND every `TG_TypeMultiShape*` it can
+mutate into during the match:
+
+- undamaged variant
+- damaged variant (buildings)
+- destroyed variant (buildings)
+- wreck variant (GVAppearance)
+- any alternate mesh declared in the actor's type data
+
+All variants are appended to the shared VBO/IBO in one pass. In MC2, these
+variants are declared at spawn time from the actor's type data; they are not
+discovered at runtime. The registration enumeration is the single source of
+truth.
 
 - **Indices:** `uint32_t`. Breaks the MLR 65K ceiling permanently.
 - **Per-type descriptor:** `{firstIndex, indexCount, baseVertex, textureSet[]}`.
+- **Buffer storage:** `glBufferStorage` with flags `0` (fully immutable,
+  GPU-only). Explicitly rejects late writes.
 - **Expected size:** ≤500k vertices × 40B ≈ 20 MB VBO + a few MB IBO. Well
   under our headroom (1.3 GB VRAM used of available 24 GB on RX 7900 XTX).
+
+**Layer B safety net.** If `submit()` is ever called with a `TG_TypeShape*`
+not present in the registration table, that single actor falls back to the
+old CPU path (`shape->Render(...)`) for that frame, and the batcher logs a
+single `[GPUPROPS] unregistered type <name>` warning per unique unseen type.
+No mid-frame reallocation. If the safety net fires in practice, it is a bug
+in the Layer A enumeration — the fix is to correct the enumeration, not to
+grow the buffer.
 
 ### 2. Per-instance SSBO (rewritten per frame)
 
@@ -106,9 +131,27 @@ struct GpuStaticPropInstance {
 };
 ```
 
-Expected size: ~100 B × ~3000 instances ≈ 300 KB per frame. Upload via
-`glBufferSubData` on a ring of 3 buffers (one per in-flight frame) to avoid
-sync stalls.
+Expected size: ~100 B × ~3000 instances ≈ 300 KB per frame.
+
+**Upload path.** Persistent coherent mapped ring of 3 buffers, one per
+in-flight frame:
+
+```
+glBufferStorage(GL_SHADER_STORAGE_BUFFER, 3 * sizePerFrame, nullptr,
+                GL_MAP_WRITE_BIT | GL_MAP_PERSISTENT_BIT | GL_MAP_COHERENT_BIT);
+void* mapped = glMapBufferRange(..., 0, 3 * sizePerFrame,
+                GL_MAP_WRITE_BIT | GL_MAP_PERSISTENT_BIT | GL_MAP_COHERENT_BIT);
+```
+
+The CPU writes into frame N's slice while the GPU reads frame N-1 / N-2.
+A fence (`glFenceSync`) per frame gates reuse of the slot on wrap-around.
+This eliminates the `glBufferSubData` driver-synchronization cost entirely.
+
+**Fallback.** If persistent mapping returns `NULL` on an unexpected driver,
+fall back to `glMapBufferRange(GL_MAP_WRITE_BIT |
+GL_MAP_UNSYNCHRONIZED_BIT | GL_MAP_INVALIDATE_RANGE_BIT)` per frame with the
+same ring buffer. `ARB_buffer_storage` is guaranteed on RX 7900 XTX so this
+fallback is defensive, not expected.
 
 ### 3. Per-instance vertex-color stream (rewritten per frame)
 
@@ -121,7 +164,9 @@ into a tightly packed per-instance color buffer.
   `uint32_t` ARGB.
 - **Indexed in the vertex shader** by `gl_VertexID + firstColorOffset[instID]`
   (stored in the SSBO entry).
-- **Expected size:** avg 200 verts × 4B × 3000 instances ≈ 2.4 MB per frame.
+- **Expected size:** avg 200 verts × 4B × 3000 instances ≈ 2.4 MB per frame
+  (~144 MB/s at 60 FPS — negligible on PCIe 4.0 x16).
+- **Upload path:** same persistent coherent mapped ring as the instance SSBO.
 
 ## Data flow per frame
 
@@ -185,6 +230,23 @@ Two new programs.
 - Depth-only, writes to the existing dynamic shadow FBO.
 - Replaces the `g_shadowShapes` CPU collector for static props only; mech
   shadows continue to use the old collector path.
+
+### Shadow-flush GL state contract
+
+`batcher.flushShadow()` must save, set, and restore the following GL state
+explicitly to avoid cross-talk with the existing mech-shadow collector that
+runs in the same `Shadow.DynPass`:
+
+- `GL_DEPTH_WRITEMASK` — force `GL_TRUE` after shader bind (works around the
+  `gosRenderMaterial::apply()` override documented in memory).
+- `GL_CULL_FACE_MODE` — match the existing object-shadow shader's convention
+  (back-face cull).
+- `GL_DEPTH_TEST` — enabled.
+- `GL_BLEND` — disabled for depth-only.
+
+Save with `glGetIntegerv` before the draw; restore after. Do not assume
+the incoming state — mech-shadow draws run immediately before/after and
+may have set any of these.
 
 ### Standard MC2 shader conventions
 
@@ -291,18 +353,26 @@ Reference docs that should be read alongside this spec:
    batcher path depends on it explicitly. Document the invariant in the
    batcher header.
 2. **Paint / damage mesh swap.** When a building is destroyed, `BldgAppearance`
-   swaps to a different `TG_MultiShape`. The batcher must resolve `typeID`
-   per frame from the shape pointer (cheap — pointer lookup in a hash map),
-   and must lazily register any `TG_TypeShape` encountered at runtime that
-   wasn't seen at map load.
-3. **Alpha-tested trees.** First real test of the new fragment shader's
-   alpha handling. Expected to work via `flags & 1`, but authored alpha
-   references may differ from what the existing path does. Validate in
-   M1 step 2.
-4. **`Shadow.DynPass` FBO ordering.** The batcher's shadow flush must run
-   inside the same FBO + GL state the existing collector draws into.
-   Specifically, must force `glDepthMask(GL_TRUE)` after shader bind to
-   work around the `applyRenderStates` override documented in memory.
+   swaps to a different `TG_MultiShape`. The batcher resolves `typeID` per
+   frame from the shape pointer (pointer lookup in a flat hash). Mid-game
+   VBO reallocation is prohibited by design — see "Layer B safety net" in
+   the shared VBO section. Correctness depends on the map-load registration
+   pass enumerating every variant mesh any actor can swap into.
+3. **Alpha testing vs. alpha blending.** The new fragment shader handles
+   alpha-test via `discard` when `flags & 1`, which is correct for unordered
+   instanced draws. However, true alpha *blending* (translucent materials)
+   produces severe order artifacts without back-to-front sorting — which the
+   C2 "render everything, any order" design does not provide. **M1 gate:**
+   before enabling a given appearance type on the new path, audit its
+   `TG_Shape` materials for `GL_BLEND` usage. If any are found, that type
+   stays on the CPU path and a separate sorted transparent batch is
+   designed in a follow-up spec. Expected outcome: static props use only
+   alpha-test (tree leaves, building windows); true blending is reserved
+   for gosFX and water, both out of scope.
+4. **`Shadow.DynPass` FBO ordering.** The batcher's shadow flush runs inside
+   the existing dynamic shadow FBO, interleaved with mech-shadow draws. GL
+   state hazards are handled by the explicit save/restore contract in the
+   "Shadow-flush GL state contract" section, not implicitly.
 5. **Per-frame buffer sizing.** 3000 instances is an observed figure, not a
    guaranteed cap. Batcher should use a grow-only ring buffer and re-allocate
    if a frame exceeds capacity (once, logged, never shrinks).
