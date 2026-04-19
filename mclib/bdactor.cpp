@@ -12,6 +12,9 @@
 #include"bdactor.h"
 #endif
 
+#include "gos_static_prop_killswitch.h"
+#include "gos_static_prop_batcher.h"
+
 #ifndef CAMERA_H
 #include"camera.h"
 #endif
@@ -1544,14 +1547,25 @@ long BldgAppearance::render (long depthFixup)
 		
 		//---------------------------------------------
 		// Call Multi-shape render stuff here.
-		if (appearType->spinMe)
-			bldgShape->Render(false,0.00001f);
-		else if (!depthFixup)
-			bldgShape->Render();
-		else if (depthFixup > 0)
-			bldgShape->Render(false,0.9999999f);
-		else if (depthFixup < 0)
-			bldgShape->Render(false,0.00001f);
+		bool submittedToGpu = false;
+		if (g_useGpuStaticProps && bldgShape)
+		{
+			// Layer B: if any child type was never registered, submitMultiShape
+			// returns false and we fall the WHOLE multishape back to the CPU
+			// path for this frame so the visual stays self-consistent.
+			submittedToGpu = GpuStaticPropBatcher::instance().submitMultiShape(bldgShape);
+		}
+		if (!submittedToGpu)
+		{
+			if (appearType->spinMe)
+				bldgShape->Render(false,0.00001f);
+			else if (!depthFixup)
+				bldgShape->Render();
+			else if (depthFixup > 0)
+				bldgShape->Render(false,0.9999999f);
+			else if (depthFixup < 0)
+				bldgShape->Render(false,0.00001f);
+		}
 
 		if (selected & DRAW_BARS)
 		{
@@ -1966,17 +1980,20 @@ long BldgAppearance::update (bool animate)
 		drawFlash = false;
 	}
 
-	if (inView)
+	// Under the GPU static-prop path, compute xlatPosition/rot + fog/light
+	// for every building so the later TransformMultiShape (also gated on
+	// g_useGpuStaticProps) has valid inputs.
+	if (inView || g_useGpuStaticProps)
 	{
 		if (appearType->spinMe)
 			rotation += SPINRATE * frameLength;
-		
+
  		if (rotation > 180)
 			rotation -= 360;
-	
+
 		if (rotation < -180)
 			rotation += 360;
-	
+
 		//-------------------------------------------
 		// Does math necessary to draw Tree
 		float yaw = rotation * DEGREES_TO_RADS;
@@ -2109,14 +2126,17 @@ long BldgAppearance::update (bool animate)
 		bldgShape->SetFrameNum(currentFrame);
 	}
 
-	if (inView)
+	// Under the GPU static-prop path we need listOfColors / shapeToWorld
+	// fresh every frame regardless of inView so the batcher can safely
+	// memcpy from shape->listOfColors during submit().
+	if (inView || g_useGpuStaticProps)
 	{
 		bool checkShadows = ((!beenInView) || (appearType->spinMe) || (eye->forceShadowRecalc) || (currentFrame != oldFrame));
 		if (bldgShadowShape)
 			bldgShape->SetUseShadow(false);
 		else
 			bldgShape->SetRecalcShadows(checkShadows);
-			
+
 		bldgShape->SetLightList(eye->getWorldLights(),eye->getNumLights());
 		bldgShape->TransformMultiShape (&xlatPosition,&rot);
 		

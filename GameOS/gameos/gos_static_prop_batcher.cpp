@@ -432,6 +432,55 @@ bool GpuStaticPropBatcher::submit(TG_Shape* shape,
     return true;
 }
 
+bool GpuStaticPropBatcher::submitMultiShape(TG_MultiShape* multi) {
+    if (!multi || s_fatalRegistrationFailure) return false;
+
+    const int n = multi->numTG_Shapes;
+    if (n <= 0 || !multi->listOfShapes) return false;
+
+    // Two-pass: first pass verifies every child's type is registered, second
+    // pass actually submits. That way we avoid partially populating the
+    // bucket and then needing to rewind when a later child fails.
+    for (int i = 0; i < n; ++i) {
+        TG_ShapeRec& rec = multi->listOfShapes[i];
+        if (!rec.processMe || !rec.node) continue;
+        TG_TypeShape* ts = static_cast<TG_TypeShape*>(rec.node->myType);
+        if (!ts) return false;
+        if (s_typeIndex.find(ts) == s_typeIndex.end()) {
+            if (!s_failedTypes[ts]) {
+                std::fprintf(stderr,
+                    "[GPUPROPS] multishape %p child %d has unregistered "
+                    "type %p -- falling back whole multishape\n",
+                    (void*)multi, i, (void*)ts);
+                s_failedTypes[ts] = true;
+            }
+            return false;
+        }
+    }
+
+    for (int i = 0; i < n; ++i) {
+        TG_ShapeRec& rec = multi->listOfShapes[i];
+        if (!rec.processMe || !rec.node) continue;
+        TG_Shape* child = rec.node;
+
+        uint32_t flags = 0;
+        if (child->lightsOut)   flags |= (1u << 0);
+        if (child->isWindow)    flags |= (1u << 1);
+        if (child->isSpotlight) flags |= (1u << 2);
+
+        // rec.shapeToWorld is LinearMatrix4D. submit() expects a Matrix4D
+        // (same row-major 4x4 float layout for its model-matrix memcpy).
+        Stuff::Matrix4D xform(rec.shapeToWorld);
+        if (!submit(child, xform,
+                    child->aRGBHighlight, child->fogRGB, flags)) {
+            // Should not reach here because the verification pass above
+            // already confirmed every type is registered. Treat as fallback.
+            return false;
+        }
+    }
+    return true;
+}
+
 // ---------------------------------------------------------------------------
 // Task 10: flush() — per-packet instanced draw
 // ---------------------------------------------------------------------------
