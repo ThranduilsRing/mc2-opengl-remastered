@@ -1544,6 +1544,7 @@ class gosRenderer {
             GLint lightSpaceMatrix = -1, enableShadows = -1, shadowSoftness = -1, shadowMap = -1;
             GLint dynamicLightSpaceMatrix = -1, enableDynamicShadows = -1, dynamicShadowMap = -1;
             GLint time = -1;
+            GLint mapHalfExtent = -1;
             GLuint program = 0;
         } terrainLocs_;
 
@@ -1583,6 +1584,7 @@ class gosRenderer {
             terrainLocs_.enableDynamicShadows = glGetUniformLocation(shp, "enableDynamicShadows");
             terrainLocs_.dynamicShadowMap = glGetUniformLocation(shp, "dynamicShadowMap");
             terrainLocs_.time = glGetUniformLocation(shp, "time");
+            terrainLocs_.mapHalfExtent = glGetUniformLocation(shp, "mapHalfExtent");
         }
 
         void cacheShadowUniformLocations(GLuint shp) {
@@ -1631,6 +1633,7 @@ class gosRenderer {
             GLint cameraPos      = -1;
             GLint surfaceDebugMode = -1;
             GLint terrainLightDir = -1;
+            GLint mapHalfExtent  = -1;
         };
         OverlayUniformLocs_ overlayLocs_;
         OverlayUniformLocs_ decalLocs_;
@@ -1825,6 +1828,7 @@ void gosRenderer::init() {
         locs.cameraPos       = glGetUniformLocation(shp, "cameraPos");
         locs.surfaceDebugMode = glGetUniformLocation(shp, "surfaceDebugMode");
         locs.terrainLightDir = glGetUniformLocation(shp, "terrainLightDir");
+        locs.mapHalfExtent   = glGetUniformLocation(shp, "mapHalfExtent");
     };
     { ZoneScopedN("gosRenderer::init overlayUniforms"); cacheOverlayLocs(overlayProg_, overlayLocs_); cacheOverlayLocs(decalProg_, decalLocs_); }
     timeStart_ = timing::get_wall_time_ms();
@@ -2671,6 +2675,13 @@ void gosRenderer::terrainDrawIndexedPatches(gosRenderMaterial* material, gosMesh
     if (tl.cameraPos >= 0) glUniform4fv(tl.cameraPos, 1, (const float*)&terrain_camera_pos_);
     float tessDebugVec[4] = { terrain_debug_mode_, 0.0f, 0.0f, 0.0f };
     if (tl.tessDebug >= 0) glUniform4fv(tl.tessDebug, 1, tessDebugVec);
+
+    // Map half-extent for off-map edge haze (fades meta-ring terrain to sky).
+    if (tl.mapHalfExtent >= 0) {
+        gosPostProcess* pp = getGosPostProcess();
+        float halfExt = pp ? pp->getMapHalfExtent() : 0.0f;
+        glUniform1f(tl.mapHalfExtent, halfExt);
+    }
 
     // Upload viewport params for TES perspective projection
     if (tl.terrainViewport >= 0) glUniform4fv(tl.terrainViewport, 1, (const float*)&terrain_viewport_);
@@ -4467,6 +4478,11 @@ void gosRenderer::uploadOverlayUniforms_(GLuint shp, const OverlayUniformLocs_& 
         glUniform4fv(L.cameraPos, 1, (const float*)&getTerrainCameraPos());
     if (L.surfaceDebugMode >= 0)
         glUniform1i(L.surfaceDebugMode, (GLint)terrain_debug_mode_);
+    if (L.mapHalfExtent >= 0) {
+        gosPostProcess* pp = getGosPostProcess();
+        float halfExt = pp ? pp->getMapHalfExtent() : 0.0f;
+        glUniform1f(L.mapHalfExtent, halfExt);
+    }
 
     setupOverlayShadowsForShp(shp);
 }

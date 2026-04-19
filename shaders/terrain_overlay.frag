@@ -30,6 +30,7 @@ uniform PREC float time;
 uniform PREC vec4 cameraPos;
 uniform vec4 terrainLightDir;
 uniform int surfaceDebugMode;
+uniform PREC float mapHalfExtent;  // half side length of playable map (0 = disabled)
 
 void main()
 {
@@ -105,6 +106,20 @@ void main()
     }
     PREC vec3 fogCol = vec3(0.58, 0.65, 0.75);
     c.rgb = mix(c.rgb, fogCol, fogAmount);
+
+    // Map-edge haze: same ramp as gos_terrain.frag. Alpha cement overlay tiles
+    // are emitted well past the playable boundary on some missions and sample
+    // magenta "no-data" colormap pixels. Fade them to sky across the last
+    // ~one-tile band so they match the main terrain's edge behaviour.
+    if (mapHalfExtent > 0.0) {
+        PREC vec3 edgeSkyCol = vec3(0.58, 0.65, 0.75);
+        PREC float chebDist  = max(abs(WorldPos.x), abs(WorldPos.y));
+        PREC float edgeStart = mapHalfExtent - 256.0;
+        PREC float edgeEnd   = mapHalfExtent - 32.0;
+        PREC float edgeHaze  = smoothstep(edgeStart, edgeEnd, chebDist);
+        c.rgb = mix(c.rgb, edgeSkyCol, edgeHaze);
+    }
+
     FragColor = c;
 
 #ifdef MRT_ENABLED
