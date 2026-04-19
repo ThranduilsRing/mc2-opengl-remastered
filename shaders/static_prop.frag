@@ -14,10 +14,13 @@ uniform sampler2D u_tex;
 uniform uint  u_materialFlags;   // bit 0: ALPHA_TEST
 uniform float u_fogValue;        // 1.0 = clear, 0.0 = fully fogged
 uniform int   u_debugAddrMode;   // 0 normal, 1 gradient, 2 hash
-uniform uint  u_maxLocalVertexID;// uploaded per type: the current type's
-                                 // vertexCount, so debug gradient is
-                                 // normalized per shape (not against a
-                                 // global max across all types)
+uniform uint  u_maxLocalVertexID;// uploaded per type. SEMANTIC: this is the
+                                 // MAX VALID local vertex index for this type,
+                                 // i.e. numTypeVertices - 1 (NOT the count).
+                                 // C++ side must upload (type.vertexCount - 1).
+                                 // This lets the gradient mode reach t=1.0 at
+                                 // the last vertex rather than being capped
+                                 // at (count-1)/count.
 uniform uint  u_packetID;        // uploaded per-draw for mode 2
 
 layout(location = 0) out vec4 FragColor;
