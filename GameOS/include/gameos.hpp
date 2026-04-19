@@ -2284,6 +2284,14 @@ void gos_DrawShadowBatchTessellated(gos_VERTEX* vertices, int numVerts,
     WORD* indices, int numIndices,
     const gos_TERRAIN_EXTRA* extras, int extraCount);
 void gos_EndShadowPrePass();
+
+// Phase 4a: force the static terrain shadow pass to run on the next
+// renderLists() call regardless of camera movement. Latched automatically
+// inside renderLists() on the first frame that submits real terrain
+// geometry; can also be called externally if needed.
+void gos_RequestFullShadowRebuild();
+bool gos_ShadowRebuildPending();
+void gos_ClearShadowRebuildPending();
 void gos_DrawShadowObjectBatch(HGOSBUFFER vb, HGOSBUFFER ib,
     HGOSVERTEXDECLARATION vdecl, const float* worldMatrix4x4);
 

@@ -1148,6 +1148,26 @@ void MC_TextureManager::renderLists (void)
 	// restore viewport
 	gos_SetRenderViewport(0, 0, Environment.drawableWidth, Environment.drawableHeight);
 
+	// Phase 4a: on the first frame that submits real terrain into
+	// masterVertexNodes[], force one static shadow pass regardless of camera
+	// position history. This guarantees the initial camera view is shadowed
+	// from frame 1 instead of waiting for a >100-unit camera move.
+	{
+		static bool s_terrainShadowPrimed = false;
+		if (!s_terrainShadowPrimed) {
+			for (long si = 0; si < nextAvailableVertexNode; si++) {
+				if ((masterVertexNodes[si].flags & MC2_DRAWSOLID) &&
+					(masterVertexNodes[si].flags & MC2_ISTERRAIN) &&
+					masterVertexNodes[si].vertices &&
+					masterVertexNodes[si].currentVertex != masterVertexNodes[si].vertices) {
+					gos_RequestFullShadowRebuild();
+					s_terrainShadowPrimed = true;
+					break;
+				}
+			}
+		}
+	}
+
 	// Static shadow pass: accumulate terrain into shadow map over multiple frames.
 	// World-fixed ortho projection covers entire map. First frame clears + builds matrix,
 	// subsequent frames accumulate new terrain as camera reveals new areas.
@@ -1160,11 +1180,17 @@ void MC_TextureManager::renderLists (void)
 		float shadowCamDist = sdx*sdx + sdy*sdy + sdz*sdz;
 		float shadowCacheThreshold = 100.0f;  // re-render when camera moves >100 units
 
-	if (gos_IsTerrainTessellationActive() && shadowCamDist > shadowCacheThreshold * shadowCacheThreshold) {
+	bool shadowRebuildForced = gos_ShadowRebuildPending();
+	if (gos_IsTerrainTessellationActive() &&
+		(shadowRebuildForced || shadowCamDist > shadowCacheThreshold * shadowCacheThreshold)) {
 		ZoneScopedN("Shadow.StaticAccum");
 		TracyGpuZone("Shadow.StaticAccum");
 
-		lastShadowCamX = cp.x; lastShadowCamY = cp.y; lastShadowCamZ = cp.z;
+		// Forced passes must NOT advance the camera tracker — a subsequent
+		// genuine >100-unit move must still trigger a normal accumulation update.
+		if (!shadowRebuildForced) {
+			lastShadowCamX = cp.x; lastShadowCamY = cp.y; lastShadowCamZ = cp.z;
+		}
 
 		bool firstFrame = !gos_StaticLightMatrixBuilt();
 		if (firstFrame) {
@@ -1200,6 +1226,10 @@ void MC_TextureManager::renderLists (void)
 			}
 		}
 		gos_EndShadowPrePass();
+
+		if (shadowRebuildForced) {
+			gos_ClearShadowRebuildPending();
+		}
 	}
 	} // end shadow cache scope
 	// Dynamic object shadow pass: render g_shadowShapes[] every frame
