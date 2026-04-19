@@ -1,6 +1,7 @@
 #include "gos_static_prop_batcher.h"
 #include "gos_profiler.h"
 #include "gameos.hpp"
+#include "utils/shader_builder.h"
 #include <GL/glew.h>
 #include <algorithm>
 #include <cstdio>
@@ -73,6 +74,33 @@ std::vector<uint32_t> s_stagingIbo;
 
 bool s_geometryFinalized = false;
 bool s_fatalRegistrationFailure = false;
+
+// Main static-prop program (Task 9). Lazy-loaded on first flush()/flushShadow().
+// We keep a glsl_program* around for any future uniform-introspection needs,
+// but most call sites will read the raw GL handle via s_staticPropProgram.
+glsl_program* s_staticPropProgramObj = nullptr;
+GLuint        s_staticPropProgram    = 0;
+
+void loadProgramsIfNeeded() {
+    if (s_staticPropProgram) return;
+    // makeProgram() is the project's shader loader (see gos_postprocess.cpp
+    // for existing usage). Pass the "#version 420\n" prefix explicitly — the
+    // shader files must NOT contain a #version directive.
+    static const char* kShaderPrefix = "#version 420\n";
+    s_staticPropProgramObj = glsl_program::makeProgram(
+        "static_prop",
+        "shaders/static_prop.vert",
+        "shaders/static_prop.frag",
+        kShaderPrefix);
+    if (!s_staticPropProgramObj || !s_staticPropProgramObj->is_valid()) {
+        std::fprintf(stderr,
+            "[GPUPROPS] failed to compile/link static_prop shader pair\n");
+        s_staticPropProgramObj = nullptr;
+        s_staticPropProgram    = 0;
+        return;
+    }
+    s_staticPropProgram = s_staticPropProgramObj->shp_;
+}
 
 // Layer B fallback: types we failed to register (logged once, fall back to CPU path).
 std::unordered_map<const TG_TypeShape*, bool> s_failedTypes;
