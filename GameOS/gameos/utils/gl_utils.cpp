@@ -162,7 +162,7 @@ void destroyTexture(Texture* tex)
 }
 
 
-Texture create2DTexture(int w, int h, TexFormat fmt, const uint8_t* texdata)
+Texture create2DTexture(int w, int h, TexFormat fmt, const uint8_t* texdata, bool wantMipmaps)
 {
 	GLuint texID;
 	glGenTextures(1, &texID);
@@ -170,13 +170,23 @@ Texture create2DTexture(int w, int h, TexFormat fmt, const uint8_t* texdata)
 
 	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_REPEAT);
 	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_REPEAT);
-	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_NEAREST);
-	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_NEAREST);
-	glTexImage2D(GL_TEXTURE_2D, 0, textureInternalFormats[fmt], 
+
+	if (wantMipmaps) {
+		glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
+		glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR_MIPMAP_LINEAR);
+	} else {
+		glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_NEAREST);
+		glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_NEAREST);
+	}
+
+	glTexImage2D(GL_TEXTURE_2D, 0, textureInternalFormats[fmt],
             w, h, 0, textureFormats[fmt], textureFormatChannelType[fmt], texdata);
     CHECK_GL_ERROR
 
-	//glGenerateMipmap(GL_TEXTURE_2D);
+	if (wantMipmaps) {
+		glGenerateMipmap(GL_TEXTURE_2D);
+		CHECK_GL_ERROR
+	}
 
 	Texture t;
 	t.id = texID;
@@ -185,6 +195,7 @@ Texture create2DTexture(int w, int h, TexFormat fmt, const uint8_t* texdata)
 	t.fmt_ = fmt;
     t.type_ = TT_2D;
     t.format = (GLenum)-1;
+    t.has_mipmaps = wantMipmaps;
 
 	return t;
 }
@@ -269,7 +280,10 @@ void updateTexture(const Texture& t, void* pdata, TexFormat pdata_format/*= TF_C
 	    //glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA, t.w, t.h, 0, GL_RGBA, GL_UNSIGNED_BYTE, pdata);
         glTexSubImage2D(GL_TEXTURE_2D, 0, 0, 0, t.w, t.h, fmt, ch_type, pdata);
 		CHECK_GL_ERROR
-		//glGenerateMipmap(GL_TEXTURE_2D);
+		if (t.has_mipmaps) {
+			glGenerateMipmap(GL_TEXTURE_2D);
+			CHECK_GL_ERROR
+		}
     } else {
         // deprecated
 	    glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA, t.w, t.h, 0, t.format, GL_UNSIGNED_BYTE, pdata);
