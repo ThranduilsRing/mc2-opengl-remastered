@@ -86,7 +86,16 @@ set(SOURCES ${SOURCES}
 include_directories(${COMMON_INCLUDE_DIRS} "./mclib" "../Editor" "../DirectX8/include" "./")
 include_directories(${THIRDPARTY_INCLUDE_DIRS})
 
-add_definitions(-DBGR)
+# BGR was a DX-era holdover: setPaintScheme ran bgrTorgb on every color
+# DWORD, assuming callers passed BGR-encoded values. In this port all
+# callers pass RGB-encoded colors (mission file, prefs, MPlayer->colors,
+# moverSpec), so the swap actively miscolored mechs (yellow prefs turned
+# into cyan paint) and flipped psRed byte-order on every cache-hit
+# resetPaintScheme call, causing the Razorback/Bushwacker LOD color bug.
+# Removing the define is the correct minimal fix; it affects only
+# mech3d.cpp and mclib/gvactor.cpp, both of which have #if defined(BGR)
+# blocks around the same bgrTorgb swaps.
+#add_definitions(-DBGR)
 add_library(mclib ${SOURCES})
 
 # cat MCLib.vcproj | grep ".cpp" | perl -pe 's/.+\"(\w+\.cpp)\".+/\1/g' >> CMakeLists.txt

@@ -1778,7 +1778,7 @@ void Mech3DAppearance::resetPaintScheme (DWORD red, DWORD green, DWORD blue)
 {
 	//---------------------------------------------------------------------------------
 	// Simple really.  Toss the current texture, reload the RGB and reapply the colors
-	
+
 	DWORD gosHandle = mcTextureManager->get_gosTextureHandle(localTextureHandle);
 	mcTextureManager->removeTexture(gosHandle);
 	
@@ -1862,7 +1862,7 @@ void Mech3DAppearance::resetPaintScheme (DWORD red, DWORD green, DWORD blue)
 	}
 	
 	setPaintScheme(red,green,blue);
-}	
+}
 
 //-----------------------------------------------------------------------------
 void Mech3DAppearance::setObjectParameters (const Stuff::Vector3D &pos, float Rot, long sel, long team, long homeRelations)
