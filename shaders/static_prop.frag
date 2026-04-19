@@ -1,6 +1,13 @@
 // shaders/static_prop.frag
 // GPU static prop renderer — main fragment shader (Task 9).
-// NOTE: no #version directive here — makeProgram() prepends "#version 420\n".
+// NOTE: no #version directive here — makeProgram() prepends "#version 430\n".
+//
+// IMPORTANT: This project's shader_builder / AMD driver combination crashes
+// the compiler when you declare `uniform uint X`. Same shader with the
+// uniform typed as `int` compiles fine. So ALL formerly-uint uniforms are
+// declared `int` here and cast in code. The C++ side uploads via
+// glUniform1i accordingly. SSBO / vertex-attr uints work; only `uniform uint`
+// is affected.
 
 in vec3  v_normal;
 in vec2  v_uv;
@@ -11,22 +18,16 @@ in vec4  v_argb;
 flat in uint v_localVertexID;
 
 uniform sampler2D u_tex;
-uniform uint  u_materialFlags;   // bit 0: ALPHA_TEST
+uniform int   u_materialFlags;   // bit 0: ALPHA_TEST (int, not uint — see note above)
 uniform float u_fogValue;        // 1.0 = clear, 0.0 = fully fogged
 uniform int   u_debugAddrMode;   // 0 normal, 1 gradient, 2 hash
-uniform uint  u_maxLocalVertexID;// uploaded per type. SEMANTIC: this is the
-                                 // MAX VALID local vertex index for this type,
-                                 // i.e. numTypeVertices - 1 (NOT the count).
-                                 // C++ side must upload (type.vertexCount - 1).
-                                 // This lets the gradient mode reach t=1.0 at
-                                 // the last vertex rather than being capped
-                                 // at (count-1)/count.
-uniform uint  u_packetID;        // uploaded per-draw for mode 2
+uniform int   u_maxLocalVertexID;// max valid local vertex index (count - 1)
+uniform int   u_packetID;        // uploaded per-draw for mode 2
 
 layout(location = 0) out vec4 FragColor;
 layout(location = 1) out vec4 GBuffer1;  // scene normal buffer, alpha=0 for non-terrain
 
-const uint ALPHA_TEST_BIT = 1u;
+const int ALPHA_TEST_BIT = 1;
 
 uint hash_u(uint x) {
     x ^= x >> 16; x *= 0x7feb352du;
@@ -38,11 +39,10 @@ uint hash_u(uint x) {
 void main() {
     vec4 tex_color = texture(u_tex, v_uv);
 
-    if ((u_materialFlags & ALPHA_TEST_BIT) != 0u && tex_color.a < 0.5) {
+    if ((u_materialFlags & ALPHA_TEST_BIT) != 0 && tex_color.a < 0.5) {
         discard;
     }
 
-    // Debug address modes — validate the gl_VertexID-free indexing math.
     if (u_debugAddrMode == 1) {
         float t = float(v_localVertexID) / max(float(u_maxLocalVertexID), 1.0);
         FragColor = vec4(t, t, t, 1.0);
@@ -50,7 +50,7 @@ void main() {
         return;
     }
     if (u_debugAddrMode == 2) {
-        uint h = hash_u(u_packetID * 2654435761u + v_localVertexID);
+        uint h = hash_u(uint(u_packetID) * 2654435761u + v_localVertexID);
         FragColor = vec4(
             float((h >>  0) & 0xFFu) / 255.0,
             float((h >>  8) & 0xFFu) / 255.0,

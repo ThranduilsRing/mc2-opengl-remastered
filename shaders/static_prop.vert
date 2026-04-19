@@ -1,6 +1,6 @@
 // shaders/static_prop.vert
 // GPU static prop renderer — main vertex shader (Task 9).
-// NOTE: no #version directive here — makeProgram() prepends "#version 420\n".
+// NOTE: no #version directive here — makeProgram() prepends "#version 430\n".
 
 layout(location = 0) in vec3  a_position;
 layout(location = 1) in vec3  a_normal;
