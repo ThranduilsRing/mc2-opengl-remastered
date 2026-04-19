@@ -39,6 +39,7 @@ uniform PREC vec4 terrainWorldScale;
 uniform PREC vec4 terrainViewDir;
 uniform PREC vec4 tessDebug;  // x=mode: 0=off, 1=normals, 2=worldPos
 uniform float time;           // elapsed seconds (for cloud shadow animation)
+uniform PREC float mapHalfExtent;  // half side length of playable map (0 = disabled)
 
 // --- Distance LOD thresholds (tunable, in MC2 world units) ---
 // 1 terrain tile ≈ 128 world units
@@ -457,6 +458,21 @@ void main(void)
         fogAmount = clamp(fogAmount, 0.0, 0.70);
         PREC vec3 fogCol = vec3(0.58, 0.65, 0.75);
         c.rgb = mix(c.rgb, fogCol, fogAmount);
+    }
+
+    // --- Map-edge haze ---
+    // Vanilla MC2 emitted a ring of terrain beyond the playable area and hid it with
+    // haze-to-sky. With global fog disabled, those meta-ring tiles (which sample magenta
+    // "no-data" texels from the colormap interior) become visible. Apply a short-range
+    // haze-to-sky fade across the last ~one-tile band to reproduce the vanilla result
+    // without bringing back global distance fog.
+    if (mapHalfExtent > 0.0) {
+        PREC vec3 edgeSkyCol = vec3(0.58, 0.65, 0.75);
+        PREC float chebDist  = max(abs(WorldPos.x), abs(WorldPos.y));
+        PREC float edgeStart = mapHalfExtent - 256.0;
+        PREC float edgeEnd   = mapHalfExtent - 32.0;
+        PREC float edgeHaze  = smoothstep(edgeStart, edgeEnd, chebDist);
+        c.rgb = mix(c.rgb, edgeSkyCol, edgeHaze);
     }
 
     c.a = 1.0;
