@@ -2,10 +2,17 @@
 #include "gos_profiler.h"
 #include "gameos.hpp"
 #include "utils/shader_builder.h"
+#include "tgl.h"  // TG_Shape::s_worldToClip
 #include <GL/glew.h>
 #include <algorithm>
 #include <cstdio>
 #include <cstring>
+#include <vector>
+
+// Global runtime toggle for the GPU static-prop renderer. Defined here
+// (in the gameos lib) so every consumer — mc2.exe, aseconv, other data
+// tools that link mclib — resolves the symbol.
+bool g_useGpuStaticProps = false;
 
 namespace {
 
@@ -425,9 +432,160 @@ bool GpuStaticPropBatcher::submit(TG_Shape* shape,
     return true;
 }
 
+// ---------------------------------------------------------------------------
+// Task 10: flush() — per-packet instanced draw
+// ---------------------------------------------------------------------------
+namespace {
+
+// Per-frame upload state shared between flushShadow() (Task 13) and flush().
+// Whichever runs first this frame owns the upload; the other skips it when
+// s_lastUploadedSlot == s_frameSlot.
+std::unordered_map<uint32_t, TypeRangeSsbo> s_typeRanges;
+uint32_t s_lastUploadedSlot = 0xFFFFFFFFu;
+
+bool uploadAllBucketsIfNeeded() {
+    if (s_lastUploadedSlot == s_frameSlot) return true;
+
+    size_t totalInstances = 0;
+    size_t totalColors    = 0;
+    for (auto& kv : s_bucketsByType) {
+        totalInstances += kv.second.instances.size();
+        totalColors    += kv.second.colors.size();
+    }
+    if (totalInstances == 0) return false;
+
+    loadProgramsIfNeeded();
+    if (s_fatalRegistrationFailure) return false;
+    ensureRingCapacity(totalInstances, totalColors);
+    if (s_fatalRegistrationFailure) return false;
+
+    s_frameSlot = (s_frameSlot + 1) % RING_FRAMES;
+    if (s_fence[s_frameSlot]) {
+        glClientWaitSync(s_fence[s_frameSlot], GL_SYNC_FLUSH_COMMANDS_BIT, GL_TIMEOUT_IGNORED);
+        glDeleteSync(s_fence[s_frameSlot]);
+        s_fence[s_frameSlot] = 0;
+    }
+
+    const size_t slotInstByteBase = s_frameSlot * s_instanceCapacity * sizeof(GpuStaticPropInstance);
+    const size_t slotColByteBase  = s_frameSlot * s_colorCapacity    * sizeof(uint32_t);
+    auto* instMapBase = static_cast<uint8_t*>(s_instanceMap) + slotInstByteBase;
+    auto* colMapBase  = static_cast<uint8_t*>(s_colorMap)    + slotColByteBase;
+
+    // Deterministic ascending typeID iteration — makes Tracy / RenderDoc
+    // diffs stable and shader-debug repro repeatable across runs.
+    std::vector<uint32_t> sortedTypeIDs;
+    sortedTypeIDs.reserve(s_bucketsByType.size());
+    for (auto& kv : s_bucketsByType) sortedTypeIDs.push_back(kv.first);
+    std::sort(sortedTypeIDs.begin(), sortedTypeIDs.end());
+
+    s_typeRanges.clear();
+    size_t instCursor = 0;
+    size_t colCursor  = 0;
+    for (uint32_t typeID : sortedTypeIDs) {
+        PerTypeBucket& b = s_bucketsByType[typeID];
+        TypeRangeSsbo r{};
+        r.instanceByteOffset = slotInstByteBase + instCursor;
+        r.instanceByteSize   = b.instances.size() * sizeof(GpuStaticPropInstance);
+        r.colorByteOffset    = slotColByteBase  + colCursor;
+        r.colorByteSize      = b.colors.size() * sizeof(uint32_t);
+        r.instanceCount      = static_cast<uint32_t>(b.instances.size());
+
+        if (r.instanceByteSize)
+            std::memcpy(instMapBase + instCursor, b.instances.data(), r.instanceByteSize);
+        if (r.colorByteSize)
+            std::memcpy(colMapBase  + colCursor,  b.colors.data(),    r.colorByteSize);
+
+        instCursor += r.instanceByteSize;
+        colCursor  += r.colorByteSize;
+        s_typeRanges[typeID] = r;
+    }
+
+    s_lastUploadedSlot = s_frameSlot;
+    return true;
+}
+
+} // namespace
+
 void GpuStaticPropBatcher::flush() {
-    // Filled in Task 10.
+    ZoneScopedN("GpuStaticProps.Flush");
+    if (!s_geometryFinalized || s_fatalRegistrationFailure) {
+        s_bucketsByType.clear();
+        return;
+    }
+    if (!uploadAllBucketsIfNeeded()) {
+        s_bucketsByType.clear();
+        return;
+    }
+
+    glUseProgram(s_staticPropProgram);
+    glBindVertexArray(s_sharedVao);
+
+    // Direct uniforms (AMD invariant: direct, GL_FALSE transpose).
+    // worldToClip: TG_Shape::s_worldToClip is set by camera each frame in
+    // mclib/tgl.cpp:1558. Matrix4D is row-major (Stuff layout); upload with
+    // GL_FALSE just like the terrain MVP path.
+    const GLint locWTC = glGetUniformLocation(s_staticPropProgram, "u_worldToClip");
+    if (locWTC >= 0) {
+        glUniformMatrix4fv(locWTC, 1, GL_FALSE,
+                           (const float*)&TG_Shape::s_worldToClip.entries[0]);
+    }
+    glUniform1i(glGetUniformLocation(s_staticPropProgram, "u_tex"),           0);
+    glUniform1i(glGetUniformLocation(s_staticPropProgram, "u_debugAddrMode"), debugAddrMode_);
+    // FIXME(task-10): no clean per-scene global fog scalar source available
+    // for static props; per-instance fog color is already on v_fog. 1.0 ==
+    // "clear" per shader convention (matches gos_tex_vertex.frag non-overlay
+    // convention). Revisit if distance fog needs to attenuate props.
+    glUniform1f(glGetUniformLocation(s_staticPropProgram, "u_fogValue"),      1.0f);
+
+    // Per-type drawing: bind per-type instance & color SSBO ranges, then
+    // issue one instanced draw per packet. gl_InstanceID in the shader
+    // addresses 0..N-1 within the bound range (no gl_BaseInstance needed).
+    for (uint32_t typeID = 0; typeID < s_types.size(); ++typeID) {
+        auto rit = s_typeRanges.find(typeID);
+        if (rit == s_typeRanges.end()) continue;
+        const TypeRangeSsbo& r = rit->second;
+        const GpuStaticPropType& type = s_types[typeID];
+        if (r.instanceCount == 0 || type.packetCount == 0) continue;
+
+        glBindBufferRange(GL_SHADER_STORAGE_BUFFER, 0, s_instanceSsbo,
+                          static_cast<GLintptr>(r.instanceByteOffset),
+                          static_cast<GLsizeiptr>(r.instanceByteSize));
+        glBindBufferRange(GL_SHADER_STORAGE_BUFFER, 1, s_colorSsbo,
+                          static_cast<GLintptr>(r.colorByteOffset),
+                          static_cast<GLsizeiptr>(r.colorByteSize));
+
+        // SEMANTIC: max VALID local vertex index, not count. Lets the
+        // gradient debug mode hit t=1.0 at the last vertex.
+        const uint32_t maxID = (type.vertexCount > 0u) ? (type.vertexCount - 1u) : 0u;
+        glUniform1ui(glGetUniformLocation(s_staticPropProgram, "u_maxLocalVertexID"), maxID);
+
+        for (uint32_t p = 0; p < type.packetCount; ++p) {
+            const GpuStaticPropPacket& pkt = s_packets[type.firstPacket + p];
+            glActiveTexture(GL_TEXTURE0);
+            glBindTexture(GL_TEXTURE_2D, pkt.textureHandle);
+            glUniform1ui(glGetUniformLocation(s_staticPropProgram, "u_materialFlags"),
+                         pkt.materialFlags);
+            glUniform1ui(glGetUniformLocation(s_staticPropProgram, "u_packetID"),
+                         type.firstPacket + p);
+
+            glDrawElementsInstancedBaseVertex(
+                GL_TRIANGLES,
+                pkt.indexCount,
+                GL_UNSIGNED_INT,
+                reinterpret_cast<void*>(static_cast<uintptr_t>(pkt.firstIndex) * sizeof(uint32_t)),
+                r.instanceCount,
+                pkt.baseVertex);
+        }
+    }
+
+    s_fence[s_frameSlot] = glFenceSync(GL_SYNC_GPU_COMMANDS_COMPLETE, 0);
+
+    glBindBuffer(GL_SHADER_STORAGE_BUFFER, 0);
+    glBindVertexArray(0);
+    glUseProgram(0);
+
     s_bucketsByType.clear();
+    s_lastUploadedSlot = 0xFFFFFFFFu;  // reset for next frame
 }
 
 void GpuStaticPropBatcher::flushShadow() {

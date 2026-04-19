@@ -38,9 +38,10 @@ static bool g_exit = false;
 static bool g_focus_lost = false;
 
 // Global runtime toggle for the GPU static-prop renderer.
-// Default false - old CPU path is active until validated.
-// Toggled at runtime via RAlt+0 (see handle_key_down).
-bool g_useGpuStaticProps = false;
+// Definition lives in gos_static_prop_batcher.cpp (in the gameos lib) so
+// data-tool executables that link mclib but not gameos_main still resolve
+// the symbol. Toggled at runtime via RAlt+0 (see handle_key_down).
+extern bool g_useGpuStaticProps;
 #if 0
 static camera g_camera;
 #endif

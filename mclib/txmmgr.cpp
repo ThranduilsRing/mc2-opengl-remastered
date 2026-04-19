@@ -54,6 +54,7 @@
 #include <utils/gl_utils.h>
 #include "gos_postprocess.h"
 #include "gos_profiler.h"
+#include "../GameOS/gameos/gos_static_prop_batcher.h"
 
 //---------------------------------------------------------------------------
 // static globals
@@ -1141,6 +1142,19 @@ void MC_TextureManager::renderLists (void)
 		}
 	}
 	} // end Render.3DObjects zone
+
+	// Task 10: GPU static-prop batcher flush. Runs after mech / 3D-object
+	// submission so props render with/after mechs, before overlays and
+	// post-process. Empty bucket map is a no-op (expected until Task 11
+	// wires submit() into BldgAppearance::render).
+	{
+		ZoneScopedN("Render.GpuStaticProps");
+		TracyGpuZone("Render.GpuStaticProps");
+		extern bool g_useGpuStaticProps;
+		if (g_useGpuStaticProps) {
+			GpuStaticPropBatcher::instance().flush();
+		}
+	}
 
 	// restore state as all old-style geometry is culled on CPU and all vertices are already pretransformed
 	gos_SetRenderState(gos_State_Culling, gos_Cull_None);
