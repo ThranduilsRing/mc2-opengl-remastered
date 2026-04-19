@@ -12,6 +12,7 @@
 #include "utils/timing.h"
 #include "gos_postprocess.h"
 #include "gos_validate.h"
+#include "gos_static_prop_killswitch.h"
 
 #include <signal.h>
 #include "gos_profiler.h"
@@ -35,6 +36,11 @@ extern void gos_DestroyAudio();
 
 static bool g_exit = false;
 static bool g_focus_lost = false;
+
+// Global runtime toggle for the GPU static-prop renderer.
+// Default false - old CPU path is active until validated.
+// Toggled at runtime via RAlt+0 (see handle_key_down).
+bool g_useGpuStaticProps = false;
 #if 0
 static camera g_camera;
 #endif
@@ -158,6 +164,13 @@ static void handle_key_down( SDL_Keysym* keysym ) {
                     pp->shorelineEnabled_ = !pp->shorelineEnabled_;
                     fprintf(stderr, "Shorelines: %s\n", pp->shorelineEnabled_ ? "ON" : "OFF");
                 }
+            }
+            break;
+        case SDLK_0:
+            if (alt_debug) {
+                g_useGpuStaticProps = !g_useGpuStaticProps;
+                fprintf(stderr, "GPU Static Props: %s\n",
+                        g_useGpuStaticProps ? "ON" : "OFF");
             }
             break;
     }

@@ -60,6 +60,8 @@
 #include"logisticsdialog.h"
 #endif
 
+#include "gos_static_prop_killswitch.h"
+
 #ifndef PREFS_H
 #include"prefs.h"
 #endif
