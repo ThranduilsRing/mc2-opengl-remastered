@@ -223,6 +223,7 @@ extern float OneOverProcessorSpeed;
 extern PriorityQueuePtr	openList;
 
 #include "gos_profiler.h"
+#include "gos_static_prop_batcher.h"
 
 long GameVisibleVertices		= 200;
 float BaseHeadShotElevation		= 1.0f;
@@ -1618,6 +1619,11 @@ bool IsGateOpen (int objectWID) {
 void Mission::init (const char *missionName, long loadType, long dropZoneID, Stuff::Vector3D* dropZoneList, char commandersToLoad[8][3], long numMoversPerCommander)
 {
 	ZoneScopedN("Mission::init");
+
+	// Reset GPU static-prop batcher state at every map boundary, before any
+	// actor registerType() calls happen during actor spawn (Task 6).
+	GpuStaticPropBatcher::instance().onMapLoad();
+
 	neverEndingStory = false;
 	invulnerableON = false;
 
@@ -3109,6 +3115,10 @@ void Mission::initTGLForMission()
 //----------------------------------------------------------------------------------
 void Mission::destroy (bool initLogistics)
 {
+	// Release GPU static-prop batcher resources (VBO/IBO/VAO) at mission
+	// shutdown. Safe to call when nothing was registered.
+	GpuStaticPropBatcher::instance().onMapUnload();
+
 	//---------------------------------------------------------------
 	// Shutdown the Mission Interface
 	if (missionInterface)
