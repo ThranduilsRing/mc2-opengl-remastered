@@ -3321,11 +3321,8 @@ void gosRenderer::flushHUDBatch()
         return;
     }
 
-    // Ensure we draw to the default framebuffer at full screen resolution,
-    // and rebind our VAO — pp->endScene() leaves VAO 0 bound, which makes
-    // glVertexAttribPointer fail with GL_INVALID_OPERATION.
-    glBindFramebuffer(GL_FRAMEBUFFER, 0);
-    glViewport(0, 0, (GLsizei)width_, (GLsizei)height_);
+    // pp->endScene() binds FB 0 and sets the full-screen viewport for us,
+    // but leaves VAO 0 bound — rebind our VAO so glVertexAttribPointer works.
     glBindVertexArray(gVAO);
 
     // Save pre-flush render state and projection
