@@ -92,9 +92,13 @@ GLuint        s_staticPropProgram    = 0;
 void loadProgramsIfNeeded() {
     if (s_staticPropProgram) return;
     // makeProgram() is the project's shader loader (see gos_postprocess.cpp
-    // for existing usage). Pass the "#version 420\n" prefix explicitly — the
+    // for existing usage). Pass the "#version 430\n" prefix explicitly — the
     // shader files must NOT contain a #version directive.
-    static const char* kShaderPrefix = "#version 420\n";
+    // GLSL 430 is required for core SSBO (shader storage buffer) and std430
+    // layout support, which the static_prop shaders use for instance and
+    // color data. 420 + ARB_shader_storage_buffer_object extension would
+    // also work, but 430 is cleaner and AMD RX 7900 XTX supports it fine.
+    static const char* kShaderPrefix = "#version 430\n";
     s_staticPropProgramObj = glsl_program::makeProgram(
         "static_prop",
         "shaders/static_prop.vert",
@@ -564,6 +568,13 @@ void GpuStaticPropBatcher::flush() {
     }
     if (!uploadAllBucketsIfNeeded()) {
         s_bucketsByType.clear();
+        return;
+    }
+    // If program compile/link failed, s_staticPropProgram is 0.
+    // Bail cleanly instead of pumping uniform calls against a null program.
+    if (s_staticPropProgram == 0) {
+        s_bucketsByType.clear();
+        s_lastUploadedSlot = 0xFFFFFFFFu;
         return;
     }
 
