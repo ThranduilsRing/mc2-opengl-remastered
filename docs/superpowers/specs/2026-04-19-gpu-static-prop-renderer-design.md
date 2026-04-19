@@ -141,12 +141,24 @@ MUST be location 0 per AMD invariant 1):
 layout(location = 0) in vec3  a_position;       // local-space position
 layout(location = 1) in vec3  a_normal;
 layout(location = 2) in vec2  a_uv;
-layout(location = 3) in uint  a_localVertexID;  // 0..N-1 within this type
+layout(location = 3) in uint  a_localVertexID;  // shape-scope: 0..N-1
+                                                // across the owning type's
+                                                // full vertex block
+                                                // (NOT packet-scope)
 ```
 
-`a_localVertexID` is written at registration time so the fragment/vertex
-shader can index per-instance color streams without relying on `gl_VertexID`
-(which includes the base-vertex offset under
+`a_localVertexID` is numbered **per owning type**, not per packet. For a
+type with N vertices split across three packets, the first packet's
+vertices carry `a_localVertexID` values in the subrange it occupies, the
+second packet's in the next subrange, and so on — all values are unique
+within `[0, N)` across the type. This is deliberate: the per-instance
+color block is baked at TG_Shape granularity with N entries, so every
+packet of that type reads the same shared color block via
+`instance.firstColorOffset + a_localVertexID`.
+
+Written at registration time so the fragment/vertex shader can index
+per-instance color streams without relying on `gl_VertexID` (which
+includes the base-vertex offset under
 `glDrawElementsInstancedBaseVertex` and would produce driver-dependent
 garbage). ~4 B × 500k vertices = 2 MB extra, which is noise.
 
@@ -323,6 +335,14 @@ render phase
               packet.firstIndex,
               instanceCountForOwningType,
               packet.baseVertex)
+       — Invariant: every packet belonging to a given type is drawn against
+         the SAME contiguous slice of instance SSBO entries, in the SAME
+         order. The batcher writes each type's instance block once and
+         reuses the same `[firstInstance, instanceCount)` range across all
+         of that type's packets. This is a core correctness assumption:
+         it mirrors the old `TG_MultiShape::Render()` inner loop (outer:
+         instance, inner: node/packet) and makes packet traversal match
+         the `numNodes` order pixel-for-pixel.
 
 shadow phase
   └─ batcher.flushShadow()  ← same buffers, depth-only shader,
@@ -345,7 +365,7 @@ Two new programs.
 - Reads `modelMatrix`, flags, highlight, fog from SSBO indexed by
   `gl_InstanceID`.
 - Reads baked ARGB from the per-instance color buffer indexed by
-  `gl_VertexID + firstColorOffset`.
+  `instance.firstColorOffset + a_localVertexID`. Does not use `gl_VertexID`.
 - Computes `gl_Position = worldToClip * modelMatrix * vec4(pos, 1)`.
 - Fragment: samples packet's texture, multiplies by baked ARGB, adds
   `aRGBHighlight`, applies fog using the same formula as the non-overlay path
@@ -449,7 +469,11 @@ Each of the five `*Appearance::render()` sites gets a one-line branch:
 ```cpp
 if (g_useGpuStaticProps) {
     GpuStaticPropBatcher::instance().submit(
-        bldgShape, shapeToWorld, alphaTest, highlight, fog);
+        bldgShape, shapeToWorld, highlight, fog);
+    // Alpha-test, two-sidedness, and other material state live on the
+    // packet table (resolved at registration time from TG_TypeShape), not
+    // on the submit call. The submit contract carries only per-instance
+    // state that can vary frame-to-frame.
 } else {
     bldgShape->Render(forceZ, false, alphaValue, false,
                       &shapeToClip, &shapeToWorld);
@@ -528,7 +552,8 @@ Reference docs that should be read alongside this spec:
    the shared VBO section. Correctness depends on the map-load registration
    pass enumerating every variant mesh any actor can swap into.
 3. **Alpha testing vs. alpha blending.** The new fragment shader handles
-   alpha-test via `discard` when `flags & 1`, which is correct for unordered
+   alpha-test via `discard` gated by `packet.materialFlags & ALPHA_TEST_BIT`
+   (packet/material state, not per-instance), which is correct for unordered
    instanced draws. However, true alpha *blending* (translucent materials)
    produces severe order artifacts without back-to-front sorting — which the
    C2 "render everything, any order" design does not provide. **M1 gate:**
