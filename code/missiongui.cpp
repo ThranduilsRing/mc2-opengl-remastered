@@ -2958,18 +2958,20 @@ void MissionInterfaceManager::render (void)
 			vertices[4].v		= 0.0;
 			vertices[4].argb	= color;
 			
+			gos_SetRenderState( gos_State_IsHUD, 1 );
 			gos_DrawQuads(vertices,4);
-			
+
 			vertices[0].argb	= SB_BLACK;
 			vertices[1].argb	= SB_BLACK;
 			vertices[2].argb	= SB_BLACK;
 			vertices[3].argb	= SB_BLACK;
 			vertices[4].argb	= SB_BLACK;
-			
+
 			gos_DrawLines(&vertices[0],2);
 			gos_DrawLines(&vertices[1],2);
 			gos_DrawLines(&vertices[2],2);
 			gos_DrawLines(&vertices[3],2);
+			gos_SetRenderState( gos_State_IsHUD, 0 );
 		}
 
 		if ( userInput->getKeyDown( WAYPOINT_KEY ) || controlGui.getMines() )
@@ -3056,7 +3058,9 @@ void MissionInterfaceManager::render (void)
 		}
 	}
 
+	gos_SetRenderState( gos_State_IsHUD, 1 );
 	controlGui.render( isPaused() && !isPausedWithoutMenu() );
+	gos_SetRenderState( gos_State_IsHUD, 0 );
 
   /* 	if ( scenarioTime  < 7.0 )
    	{
