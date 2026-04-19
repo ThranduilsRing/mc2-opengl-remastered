@@ -2075,6 +2075,14 @@ void gosRenderer::applyRenderStates() {
 
 void gosRenderer::beginFrame()
 {
+    // Frame-boundary hygiene: IsHUD must be cleared by every callsite before the frame ends.
+    // If it is still set here, a callsite leaked the bit across the frame boundary.
+    if (renderStates_[gos_State_IsHUD] != 0) {
+        SPEW(("GRAPHICS", "[HUD] gos_State_IsHUD still set at frame start -- callsite leak\n"));
+        renderStates_[gos_State_IsHUD] = 0;
+    }
+    hudBatch_.clear();
+    hudFlushed_ = false;
     glBindVertexArray(gVAO);
     num_draw_calls_ = 0;
 }
