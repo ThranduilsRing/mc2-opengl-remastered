@@ -1811,9 +1811,15 @@ void Mech3DAppearance::resetPaintScheme (DWORD red, DWORD green, DWORD blue)
 	
 	if (fileExists(textureName))
 	{
-		DWORD textureInstanceAlreadyExists = mcTextureManager->textureInstanceExists(textureName,gos_Texture_Solid,gosHint_DisableMipmap | gosHint_DontShrink,paintInstance);
+		// gosHint_MipmapFilter0: opt this texture into GL mipmap+trilinear
+		// via gosTexture::createHardwareTexture. Full mip chain is
+		// regenerated after the paint-scheme edit in setPaintScheme() so
+		// minified mechs at zoom-out no longer alias through the unpainted
+		// mask-boundary pixels that fix A already resolved at mip 0.
+		const DWORD mechHints = gosHint_MipmapFilter0 | gosHint_DontShrink;
+		DWORD textureInstanceAlreadyExists = mcTextureManager->textureInstanceExists(textureName,gos_Texture_Solid,mechHints,paintInstance);
 		if (!textureInstanceAlreadyExists)
-			localTextureHandle = mcTextureManager->loadTexture(textureName,gos_Texture_Solid,gosHint_DisableMipmap | gosHint_DontShrink,paintInstance);
+			localTextureHandle = mcTextureManager->loadTexture(textureName,gos_Texture_Solid,mechHints,paintInstance);
 		else
 			localTextureHandle = textureInstanceAlreadyExists;
 			

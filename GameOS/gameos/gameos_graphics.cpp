@@ -922,6 +922,16 @@ static gos_TextureFormat convertIfNecessary(Image& img, gos_TextureFormat gos_fo
 
 bool gosTexture::createHardwareTexture() {
 
+    // Opt-in to mipmaps via gosHint_MipmapFilter0. MC2's original convention
+    // was "absence of DisableMipmap means mipmaps on," but in this port many
+    // HUD/GUI/tacmap loads pass hints=0 without DisableMipmap and must stay
+    // non-mipmapped for pixel-perfect sampling. We use MipmapFilter0 as a
+    // positive opt-in instead -- no existing code sets this bit, so only
+    // explicitly-updated load sites enable mipmaps. DisableMipmap wins if
+    // both are set (defensive).
+    const bool wantMipmaps = (hints_ & gosHint_MipmapFilter0) != 0
+                          && (hints_ & gosHint_DisableMipmap) == 0;
+
     if(!is_from_memory_) {
 
         gosASSERT(filename_);
@@ -942,7 +952,7 @@ bool gosTexture::createHardwareTexture() {
 
         format_ = convertIfNecessary(img, format_);
 
-        tex_ = create2DTexture(img.getWidth(), img.getHeight(), tf, img.getPixels());
+        tex_ = create2DTexture(img.getWidth(), img.getHeight(), tf, img.getPixels(), wantMipmaps);
         return tex_.isValid();
 
     } else if(pcompdata_ && size_ > 0) {
@@ -965,7 +975,7 @@ bool gosTexture::createHardwareTexture() {
 
         format_ = convertIfNecessary(img, format_);
 
-        tex_ = create2DTexture(img.getWidth(), img.getHeight(), tf, img.getPixels());
+        tex_ = create2DTexture(img.getWidth(), img.getHeight(), tf, img.getPixels(), wantMipmaps);
         return tex_.isValid();
     } else {
         gosASSERT(tex_.w >0 && tex_.h > 0);
@@ -974,7 +984,7 @@ bool gosTexture::createHardwareTexture() {
         DWORD* pdata = new DWORD[tex_.w*tex_.h];
         for(int i=0;i<tex_.w*tex_.h;++i)
             pdata[i] = 0xFF00FFFF;
-        tex_ = create2DTexture(tex_.w, tex_.h, tf, (const uint8_t*)pdata);
+        tex_ = create2DTexture(tex_.w, tex_.h, tf, (const uint8_t*)pdata, wantMipmaps);
         delete[] pdata;
         return tex_.isValid();
     }
