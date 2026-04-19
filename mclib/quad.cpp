@@ -1520,12 +1520,15 @@ void TerrainQuad::draw (void)
 			gVertex[2].frgb		= vertices[2]->fogRGB;
 			gVertex[2].frgb		= (gVertex[2].frgb & 0xFFFFFF00) | terrainTypeToMaterial(vertices[2]->pVertex->terrainType);
 
-			if ((gVertex[0].z >= 0.0f) &&
-				(gVertex[0].z < 1.0f) &&
-				(gVertex[1].z >= 0.0f) &&
-				(gVertex[1].z < 1.0f) &&
-				(gVertex[2].z >= 0.0f) &&
-				(gVertex[2].z < 1.0f))
+			// D1a: GPU owns depth clipping for tessellated terrain; the CPU pz gate
+			// is redundant and risks silent triangle drops when projectZ() and TES
+			// disagree. Legacy sw-renderer retains the gate. clipInfo is NOT a
+			// clean alternative — it derives from the same projected/camera
+			// contract (D1b, still open).
+			if (gos_IsTerrainTessellationActive() ||
+				((gVertex[0].z >= 0.0f) && (gVertex[0].z < 1.0f) &&
+				 (gVertex[1].z >= 0.0f) && (gVertex[1].z < 1.0f) &&
+				 (gVertex[2].z >= 0.0f) && (gVertex[2].z < 1.0f)))
 			{
 				{
 					// sebi: beware this will be drawn with alpha blending, so need to make sure that alpha is not zero, because this is a base terrain layer!
@@ -1665,12 +1668,15 @@ void TerrainQuad::draw (void)
 			gVertex[2].frgb		= vertices[3]->fogRGB;
 			gVertex[2].frgb		= (gVertex[2].frgb & 0xFFFFFF00) | terrainTypeToMaterial(vertices[3]->pVertex->terrainType);
 
-			if ((gVertex[0].z >= 0.0f) &&
-				(gVertex[0].z < 1.0f) &&
-				(gVertex[1].z >= 0.0f) &&
-				(gVertex[1].z < 1.0f) &&
-				(gVertex[2].z >= 0.0f) &&
-				(gVertex[2].z < 1.0f))
+			// D1a: GPU owns depth clipping for tessellated terrain; the CPU pz gate
+			// is redundant and risks silent triangle drops when projectZ() and TES
+			// disagree. Legacy sw-renderer retains the gate. clipInfo is NOT a
+			// clean alternative — it derives from the same projected/camera
+			// contract (D1b, still open).
+			if (gos_IsTerrainTessellationActive() ||
+				((gVertex[0].z >= 0.0f) && (gVertex[0].z < 1.0f) &&
+				 (gVertex[1].z >= 0.0f) && (gVertex[1].z < 1.0f) &&
+				 (gVertex[2].z >= 0.0f) && (gVertex[2].z < 1.0f)))
 			{
 				{
 					if(terrainHandle!=0) {
@@ -1824,12 +1830,15 @@ void TerrainQuad::draw (void)
 			gVertex[2].frgb		= vertices[3]->fogRGB;
 			gVertex[2].frgb		= (gVertex[2].frgb & 0xFFFFFF00) | terrainTypeToMaterial(vertices[3]->pVertex->terrainType);
 
-			if ((gVertex[0].z >= 0.0f) &&
-				(gVertex[0].z < 1.0f) &&
-				(gVertex[1].z >= 0.0f) &&
-				(gVertex[1].z < 1.0f) &&
-				(gVertex[2].z >= 0.0f) &&
-				(gVertex[2].z < 1.0f))
+			// D1a: GPU owns depth clipping for tessellated terrain; the CPU pz gate
+			// is redundant and risks silent triangle drops when projectZ() and TES
+			// disagree. Legacy sw-renderer retains the gate. clipInfo is NOT a
+			// clean alternative — it derives from the same projected/camera
+			// contract (D1b, still open).
+			if (gos_IsTerrainTessellationActive() ||
+				((gVertex[0].z >= 0.0f) && (gVertex[0].z < 1.0f) &&
+				 (gVertex[1].z >= 0.0f) && (gVertex[1].z < 1.0f) &&
+				 (gVertex[2].z >= 0.0f) && (gVertex[2].z < 1.0f)))
 			{
 				{
 					if(terrainHandle!=0) {
@@ -1966,12 +1975,15 @@ void TerrainQuad::draw (void)
 			gVertex[1].frgb		= vertices[2]->fogRGB;
 			gVertex[1].frgb		= (gVertex[1].frgb & 0xFFFFFF00) | terrainTypeToMaterial(vertices[2]->pVertex->terrainType);
 
-			if ((gVertex[0].z >= 0.0f) &&
-				(gVertex[0].z < 1.0f) &&
-				(gVertex[1].z >= 0.0f) &&
-				(gVertex[1].z < 1.0f) &&
-				(gVertex[2].z >= 0.0f) &&
-				(gVertex[2].z < 1.0f))
+			// D1a: GPU owns depth clipping for tessellated terrain; the CPU pz gate
+			// is redundant and risks silent triangle drops when projectZ() and TES
+			// disagree. Legacy sw-renderer retains the gate. clipInfo is NOT a
+			// clean alternative — it derives from the same projected/camera
+			// contract (D1b, still open).
+			if (gos_IsTerrainTessellationActive() ||
+				((gVertex[0].z >= 0.0f) && (gVertex[0].z < 1.0f) &&
+				 (gVertex[1].z >= 0.0f) && (gVertex[1].z < 1.0f) &&
+				 (gVertex[2].z >= 0.0f) && (gVertex[2].z < 1.0f)))
 			{
 				{
 					if(terrainHandle!=0) {
