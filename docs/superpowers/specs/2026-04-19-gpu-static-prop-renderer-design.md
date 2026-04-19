@@ -74,11 +74,49 @@ authoritative)** entry.
   appearance types, delete the old branch and retire `mcTextureManager`
   usage for static props.
 
+## AMD invariants (hard requirements)
+
+Per `docs/amd-driver-rules.md` and project scar tissue, the RX 7900 XTX driver
+silently drops draws or rasterizes incorrectly if any of these are violated.
+The batcher and both shader programs must respect all of them.
+
+1. **Attribute 0 enabled on every VAO.** Position lives at
+   `layout(location = 0)` in both `static_prop.vert` and
+   `static_prop_shadow.vert`, and the VAO enables that attribute. A VAO with
+   no attribute 0 bound may cause AMD to skip draws entirely.
+2. **`gl_FragDepth` explicitly written in the shadow fragment shader.**
+   `static_prop_shadow.frag` contains `gl_FragDepth = gl_FragCoord.z;`.
+   Depth-only fragment shaders without this write are a known AMD failure
+   mode.
+3. **Dummy color attachment on the shadow FBO during static-prop draws.**
+   Depth-only FBOs with no color attachment are unreliable on AMD. The
+   existing `Shadow.DynPass` FBO must have a (potentially 1×1 or reused)
+   color attachment bound for the static-prop shadow draw, even though no
+   color is written.
+4. **Unbind shadow texture from sampler unit 9 before rendering into the
+   shadow FBO.** The shadow map is sampled at unit 9 by the main terrain
+   and object shaders. If it remains bound for sampling while the shadow
+   FBO is being rendered into, AMD may refuse to rasterize (feedback-loop
+   hazard). Batcher unbinds unit 9 before `flushShadow()` and rebinds after.
+5. **Per-batch program/material re-apply and direct-uniform re-upload.**
+   Any engine helper may call `material->end()` or `apply()` internally.
+   The batcher treats every draw batch as requiring: bind program → set
+   deferred uniforms → `apply()` → set direct uniforms → draw. No cross-batch
+   state is assumed.
+6. **Matrix transpose discipline, no mixing within a program.** For this
+   design, all matrix uploads on both programs are **direct**
+   (`glUniformMatrix4fv` post-`apply()`), all use `GL_FALSE` transpose
+   (row-major source data uploaded directly). The deferred path with
+   `GL_TRUE` is not used by either program — mixing the two on the same
+   program is banned by the rules doc and avoided here by construction.
+7. **No `sampler2DArray`.** Textures bind to individual `sampler2D` units.
+   This is consistent with T1 batching (per-packet texture bind).
+
 ## Architecture
 
 A new subsystem, `GpuStaticPropBatcher`, owns three GL objects.
 
-### 1. Shared type VBO/IBO (persistent per map, truly immutable)
+### 1. Shared geometry VBO/IBO (persistent per map, truly immutable)
 
 Built once at map load and **never modified afterwards**. The VBO/IBO must be
 immutable for the map's lifetime — runtime reallocation is explicitly
@@ -94,17 +132,69 @@ mutate into during the match:
 - wreck variant (GVAppearance)
 - any alternate mesh declared in the actor's type data
 
-All variants are appended to the shared VBO/IBO in one pass. In MC2, these
-variants are declared at spawn time from the actor's type data; they are not
-discovered at runtime. The registration enumeration is the single source of
-truth.
+All variants are appended to the shared VBO/IBO in one pass.
+
+**Vertex layout on the shared VBO** (all attributes required, position
+MUST be location 0 per AMD invariant 1):
+
+```
+layout(location = 0) in vec3  a_position;       // local-space position
+layout(location = 1) in vec3  a_normal;
+layout(location = 2) in vec2  a_uv;
+layout(location = 3) in uint  a_localVertexID;  // 0..N-1 within this type
+```
+
+`a_localVertexID` is written at registration time so the fragment/vertex
+shader can index per-instance color streams without relying on `gl_VertexID`
+(which includes the base-vertex offset under
+`glDrawElementsInstancedBaseVertex` and would produce driver-dependent
+garbage). ~4 B × 500k vertices = 2 MB extra, which is noise.
+
+**Geometry table layout — draw packets, not types.**
+
+A single `TG_TypeMultiShape` typically contains multiple sub-shapes with
+different texture bindings and possibly mixed opaque/alpha-test ranges. The
+old path iterates these as `numNodes` and binds per-node. The new path
+mirrors that granularity.
+
+The immutable geometry table stores **draw packets**:
+
+```
+struct GpuStaticPropPacket {
+    uint32_t firstIndex;     // into shared IBO
+    uint32_t indexCount;
+    int32_t  baseVertex;     // into shared VBO
+    uint32_t textureHandle;  // mcTextureManager GL handle
+    uint32_t materialFlags;  // bit 0: alphaTest, bit 1: twoSided, ...
+};
+```
+
+A `typeID` resolves to a contiguous range of packet IDs
+(`{firstPacket, packetCount}`). Instancing happens **per packet**, not per
+type: for each packet, the batcher groups all instances of its owning type
+and issues one `glDrawElementsInstancedBaseVertex`.
+
+**Packet enumeration order is deterministic and matches the old path.**
+Packets within a type are written in the same order as
+`TG_TypeMultiShape::listOfNodes[0..numNodes-1]`. This is required, not
+incidental:
+
+- z-ties between sub-shapes of a type render in the same order as the old
+  `TG_MultiShape::Render()` loop.
+- alpha-test edges fall on the same triangles.
+- any latent state dependency in the old path (texture bind sequence,
+  per-node state leakage) reproduces identically.
+
+Making packet order match `numNodes` order collapses a whole class of
+"looks slightly different after the port" debugging into equality checks.
 
 - **Indices:** `uint32_t`. Breaks the MLR 65K ceiling permanently.
-- **Per-type descriptor:** `{firstIndex, indexCount, baseVertex, textureSet[]}`.
+- **Per-type descriptor:** `{firstPacket, packetCount}` + model-matrix ownership.
 - **Buffer storage:** `glBufferStorage` with flags `0` (fully immutable,
   GPU-only). Explicitly rejects late writes.
-- **Expected size:** ≤500k vertices × 40B ≈ 20 MB VBO + a few MB IBO. Well
-  under our headroom (1.3 GB VRAM used of available 24 GB on RX 7900 XTX).
+- **Expected size:** ≤500k vertices × 44B ≈ 22 MB VBO + a few MB IBO +
+  ~20 KB packet table. Well under our headroom (1.3 GB VRAM used of
+  available 24 GB on RX 7900 XTX).
 
 **Layer B safety net.** If `submit()` is ever called with a `TG_TypeShape*`
 not present in the registration table, that single actor falls back to the
@@ -118,18 +208,43 @@ grow the buffer.
 
 One entry per submitted static-prop actor:
 
-```
+```glsl
+// GLSL, std430
+layout(std430, binding = 0) readonly buffer Instances {
+    GpuStaticPropInstance instances[];
+};
 struct GpuStaticPropInstance {
-    mat4  modelMatrix;       // shape-to-world
+    mat4  modelMatrix;       // shape-to-world, row-major source
     uint  typeID;            // index into type descriptor table
     uint  firstColorOffset;  // into per-instance color buffer (see 3)
-    uint  flags;             // bit 0: alphaTest, bit 1: lightsOut,
-                             //   bit 2: isWindow, bit 3: isSpotlight
-    uint  pad;
+    uint  flags;             // bit 0: lightsOut, bit 1: isWindow,
+                             //   bit 2: isSpotlight
+                             // alphaTest lives on the packet, not the instance.
+    uint  _pad0;
     vec4  aRGBHighlight;     // additive highlight (damage, selection, etc.)
     vec4  fogRGB;            // per-instance fog override
 };
 ```
+
+**CPU/GPU layout contract.** Applies to every shader-visible struct — the
+instance SSBO entry AND the packet descriptor table (if exposed to the GPU
+as an SSBO rather than consumed only CPU-side).
+
+Required on the C++ side:
+
+- explicit `alignas(16)` on any struct used in an `std430` buffer
+- fixed-width types (`uint32_t`, `int32_t`, `float`, `glm::vec4`,
+  `glm::mat4`) — no `size_t`, no `int`, no `bool`
+- `static_assert(sizeof(...))` against the expected GLSL size
+- `static_assert(offsetof(...))` against the expected GLSL offset for
+  **every** shader-visible field
+- shader programs declare the matching struct with explicit `layout(std430)`
+  on the buffer, never `std140`
+
+These asserts live in `gos_static_prop_batcher.h` and fail the build on
+mismatch. Prevents the "someone refactors the struct six months later and
+only AMD explodes" failure mode, and also catches alignment drift from
+packing changes on the GLSL side.
 
 Expected size: ~100 B × ~3000 instances ≈ 300 KB per frame.
 
@@ -162,8 +277,12 @@ into a tightly packed per-instance color buffer.
 
 - **Layout:** `[instance0_verts][instance1_verts]...`, each entry a
   `uint32_t` ARGB.
-- **Indexed in the vertex shader** by `gl_VertexID + firstColorOffset[instID]`
-  (stored in the SSBO entry).
+- **Indexed in the vertex shader** by
+  `colorBuffer[instance.firstColorOffset + a_localVertexID]`. Does NOT use
+  `gl_VertexID` — that value includes `baseVertex` under
+  `glDrawElementsInstancedBaseVertex` and its exact behavior varies by
+  driver/shader version. The explicit `a_localVertexID` attribute is the
+  stable address.
 - **Expected size:** avg 200 verts × 4B × 3000 instances ≈ 2.4 MB per frame
   (~144 MB/s at 60 FPS — negligible on PCIe 4.0 x16).
 - **Upload path:** same persistent coherent mapped ring as the instance SSBO.
@@ -189,22 +308,32 @@ render phase
 
 (after all static-prop render() calls)
   └─ batcher.flush()
-       ├─ glBufferSubData instance SSBO (ring buffer)
-       ├─ glBufferSubData color buffer  (ring buffer)
-       └─ for each (typeID, textureSet) group:
-            bind textures (T1 — via existing mcTextureManager handles)
+       ├─ advance ring-buffer slot N (fence-gated)
+       ├─ memcpy staged instances → persistent-mapped instance SSBO slot N
+       ├─ memcpy staged colors    → persistent-mapped color SSBO slot N
+       │   (coherent map; no glBufferSubData anywhere)
+       ├─ bind VAO, bind program, set deferred uniforms, apply(),
+       │   set direct uniforms
+       └─ for each packet in per-packet work list:
+            bind packet.textureHandle on the packet's sampler unit
             glDrawElementsInstancedBaseVertex(
               GL_TRIANGLES,
-              type.indexCount,
+              packet.indexCount,
               GL_UNSIGNED_INT,
-              type.firstIndex,
-              instanceCount,
-              type.baseVertex)
+              packet.firstIndex,
+              instanceCountForOwningType,
+              packet.baseVertex)
 
 shadow phase
   └─ batcher.flushShadow()  ← same buffers, depth-only shader,
                               into dynamic shadow FBO
+                              (see "Shadow-flush GL state contract")
 ```
+
+Per AMD invariant 5, the bind/apply/direct-uniforms sequence is re-run at the
+start of `flush()` and again at the start of `flushShadow()`. It is **not**
+assumed to survive across an intervening engine helper that may call
+`material->end()`.
 
 ## Shaders
 
@@ -218,11 +347,15 @@ Two new programs.
 - Reads baked ARGB from the per-instance color buffer indexed by
   `gl_VertexID + firstColorOffset`.
 - Computes `gl_Position = worldToClip * modelMatrix * vec4(pos, 1)`.
-- Fragment: samples type's texture set, multiplies by baked ARGB, adds
+- Fragment: samples packet's texture, multiplies by baked ARGB, adds
   `aRGBHighlight`, applies fog using the same formula as the non-overlay path
   in `gos_tex_vertex.frag` (`mix(fog_color.rgb, c.rgb, FogValue)`) — avoids
   the reversed-parameter trap documented in the 2026-04-14 CLAUDE.md note.
-- Optional alpha test when `flags & 1`.
+- Alpha test: when `packet.materialFlags & ALPHA_TEST_BIT`, `discard` when
+  `tex_color.a < 0.5`. This matches the primary static-prop convention in
+  `gos_tex_vertex.frag`. The `== 0.5` convention in
+  `gos_tex_vertex_lighted.frag` is specific to the projected-overlay branch
+  and is not used here.
 
 ### `static_prop_shadow.vert` / `static_prop_shadow.frag`
 
@@ -233,26 +366,62 @@ Two new programs.
 
 ### Shadow-flush GL state contract
 
-`batcher.flushShadow()` must save, set, and restore the following GL state
-explicitly to avoid cross-talk with the existing mech-shadow collector that
-runs in the same `Shadow.DynPass`:
+`batcher.flushShadow()` **owns** the GL state it needs — no `glGet*` query,
+no save/restore dance. State is set explicitly every call; the next pass
+(mech shadow collector, terrain draw, etc.) is responsible for resetting
+what it needs. This matches how `gameos_graphics.cpp` already manages
+state for terrain and shadow draws.
 
-- `GL_DEPTH_WRITEMASK` — force `GL_TRUE` after shader bind (works around the
-  `gosRenderMaterial::apply()` override documented in memory).
-- `GL_CULL_FACE_MODE` — match the existing object-shadow shader's convention
-  (back-face cull).
-- `GL_DEPTH_TEST` — enabled.
-- `GL_BLEND` — disabled for depth-only.
+Explicit state before each shadow draw:
 
-Save with `glGetIntegerv` before the draw; restore after. Do not assume
-the incoming state — mech-shadow draws run immediately before/after and
-may have set any of these.
+- `glDepthMask(GL_TRUE)` — forced after shader bind (works around the
+  `gosRenderMaterial::apply()` `glDepthMask` override documented in memory).
+- `glCullFace(GL_BACK)` — matches the existing object-shadow shader convention.
+- `glEnable(GL_DEPTH_TEST)`.
+- `glDisable(GL_BLEND)`.
+- Unbind sampler unit 9 (`glActiveTexture(GL_TEXTURE9); glBindTexture(GL_TEXTURE_2D, 0);`)
+  per AMD invariant 4 — the shadow map cannot be bound for sampling while
+  the shadow FBO is being rendered into. Rebind after the flush.
+- Confirm the `Shadow.DynPass` FBO has a color attachment bound per AMD
+  invariant 3. If the existing FBO is depth-only, the batcher attaches a
+  reused 1×1 color renderbuffer before its first draw and detaches after.
+
+Shader requirements:
+
+- Position at `layout(location = 0)` (AMD invariant 1).
+- `gl_FragDepth = gl_FragCoord.z;` written in `static_prop_shadow.frag`
+  (AMD invariant 2).
+
+### Shadow matrix timing
+
+The batcher's shadow pass must read `lightSpaceMVP` (and any other shadow
+camera matrices) from the same per-frame snapshot the existing object-shadow
+collector uses. The rules doc notes that `draw_screen()` runs before
+`gamecam.cpp` sets camera/light values each frame, and the first ~240 frames
+after load may see zero camera position.
+
+To avoid introducing a timing divergence with the old path:
+
+- `batcher.flushShadow()` reads matrices from the same globals
+  (`Camera::s_lightToWorld`, etc.) that the collector reads, at the same
+  point in the frame (inside `Shadow.DynPass`).
+- First-frame and post-toggle behavior must match the old path — if the old
+  path has bogus shadows for frame 0, the new path should too. Any divergence
+  is a bug.
+- Validated at M1 step 1 by visual diff on the first 5 frames after map
+  load with the killswitch toggled both directions.
 
 ### Standard MC2 shader conventions
 
 - No `#version` in the shader files; passed as prefix to `makeProgram()`.
-- `apply()` discipline on any deferred uniforms. Direct-uploaded matrices
-  use `GL_FALSE` transpose.
+- All matrix uploads on both programs are **direct** (`glUniformMatrix4fv`
+  post-`apply()`) and use `GL_FALSE` transpose (row-major source uploaded
+  directly). The deferred `GL_TRUE` path is not used on either program.
+  Mixing direct and deferred matrix uploads on the same program is banned
+  by the rules doc and avoided here by construction (AMD invariant 6).
+- Per AMD invariant 5: every draw batch issues bind program → set deferred
+  uniforms → `apply()` → set direct uniforms → draw. No direct uniform
+  is assumed to survive across an intervening engine helper.
 
 ## Culling — C2 (render everything)
 
@@ -370,23 +539,55 @@ Reference docs that should be read alongside this spec:
    alpha-test (tree leaves, building windows); true blending is reserved
    for gosFX and water, both out of scope.
 4. **`Shadow.DynPass` FBO ordering.** The batcher's shadow flush runs inside
-   the existing dynamic shadow FBO, interleaved with mech-shadow draws. GL
-   state hazards are handled by the explicit save/restore contract in the
-   "Shadow-flush GL state contract" section, not implicitly.
-5. **Per-frame buffer sizing.** 3000 instances is an observed figure, not a
-   guaranteed cap. Batcher should use a grow-only ring buffer and re-allocate
-   if a frame exceeds capacity (once, logged, never shrinks).
-6. **Textures per type.** The T1 batch granularity is `(typeID, textureSet)`.
-   Some `TG_TypeShape`s have multiple textures across different sub-shapes.
-   Assume worst case ~3 draws per type × ~100 types = 300 draws per frame;
-   if profiling shows this matters, texture-handle array + draw-indirect is
-   a future optimization (not part of this spec).
+   the existing dynamic shadow FBO, interleaved with mech-shadow draws.
+   All GL state and AMD-specific hazards (sampler unit 9 unbind, dummy color
+   attachment, `gl_FragDepth` write, position at location 0) are covered by
+   the "Shadow-flush GL state contract" and "AMD invariants" sections.
+5. **Shadow matrix timing.** The batcher must consume shadow matrices from
+   the same frame-snapshot globals the existing collector reads, at the same
+   point in the frame. Addressed in "Shadow matrix timing" section;
+   verification is an M1 step 1 test-plan item.
+6. **Per-frame buffer sizing.** 3000 instances is an observed figure, not a
+   guaranteed cap. Per-frame rings (instance SSBO, color buffer) grow-on-demand
+   between frames (re-allocate ring outside any frame, log once, never shrink).
+   Map-lifetime geometry buffers do not grow, per the Layer A/B contract.
+7. **Packets per type.** The batch granularity is per packet. Expect roughly
+   one packet per sub-shape of each `TG_TypeMultiShape`. A worst-case ~3
+   packets × ~100 types = 300 draws per frame; negligible. If profiling ever
+   shows this matters, texture-handle array + draw-indirect is a future
+   optimization (not part of this spec).
 
 ## Test plan
 
 - Build `--config RelWithDebInfo` via `/mc2-build`.
 - Deploy via `/mc2-deploy` with per-file `diff -q` verification.
-- In-game validation (both killswitch states, toggle via RAlt+8):
+
+### Color-address validation scene (required before visual validation)
+
+Before trusting any visual output from the new path, validate the
+`localVertexID` / `firstColorOffset` indexing with a debug render mode.
+When `MC2_DEBUG_STATIC_PROP_ADDR=1`, `static_prop.frag` replaces its final
+color with a debug value driven by the lookup path:
+
+- Mode A: `out_color = vec3(float(a_localVertexID) / float(maxLocalVertexID));`
+  — any shape that renders a smooth 0→1 gradient along its vertex order
+  has a correct local index. Any shape that renders discontinuously
+  (random bands, wraparound) has a broken address.
+- Mode B: `out_color = hash3(uvec2(packetID, a_localVertexID));` —
+  each packet renders a unique per-vertex hash pattern. If two packets
+  share the same pattern, their packet-address derivation collided. If a
+  single packet's pattern shifts frame-to-frame, the address is reading
+  stale or racing data.
+
+The whole class of `gl_VertexID` / `baseVertex` / packet-table-indexing
+bugs is visible in minutes in this mode; without it, the same class of
+bug typically takes days to isolate because it presents as "some shapes
+look wrong, some look fine" mixed with other visual drift.
+
+Required M1 gate: color-address validation passes before any appearance
+type is declared shipped on the new path.
+
+### In-game validation (both killswitch states, toggle via RAlt+8):
   1. Standard RTS zoom, pan around a building-heavy map. No disappearances.
   2. Wolfman zoom (altitude 6000, `GameVisibleVertices=200`). No
      disappearances in the ~200-tile visible radius.
