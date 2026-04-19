@@ -49,9 +49,16 @@ If skills aren't found by the Skill tool, they're also at `A:/Games/mc2-opengl-s
 - Include `gos_profiler.h` to add new zones. Use `ZoneScopedN("Name")` for CPU, add `TracyGpuZone("Name")` for GPU-heavy code.
 
 ## Known Issues
-- Post-processing (bloom, FXAA) applies to HUD -- needs scene/HUD split
+- Post-processing (bloom, FXAA) applies to HUD -- FIXED (gos_State_IsHUD buffering, Apr 2026)
 - Shadow re-render stutter when camera moves >500 units. Fix: static world-fixed shadow map (design doc ready)
 - Shadow banding shifts with camera rotation (view-dependent terrain geometry)
+
+## Do Not Upscale These Art Assets
+`code/mechicon.cpp` hardcodes `unitIconX/Y` (32/38) and computes source-pixel offsets directly against `s_MechTextures->width`. If the source TGA is 4x-upscaled via loose-file override in `data/art/`, `MechIcon::init` reads scrambled sub-rectangles and the mech damage schematic renders as garbage (alpha test then discards or shows noise). **Keep these files at their original FST-archive resolution** (do not deploy the `*_4x_gpu/` upscales for them):
+- `data/art/mcui_high7.tga` (in-mission mech schematic, high-res)
+- `data/art/mcui_med4.tga` (med-res)
+- `data/art/mcui_low4.tga` (low-res)
+Mechbay/logistics callsites already scale correctly; only the in-mission HUD path is affected.
 
 ## 2026-04-14 Shadow Collection Debug Note
 - What was proven:
