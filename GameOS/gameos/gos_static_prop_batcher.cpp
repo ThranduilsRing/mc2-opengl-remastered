@@ -1,4 +1,5 @@
 #include "gos_static_prop_batcher.h"
+#include "gos_static_prop_killswitch.h"  // gos_GetGLTextureId
 #include "gos_profiler.h"
 #include "gameos.hpp"
 #include "utils/shader_builder.h"
@@ -569,6 +570,16 @@ void GpuStaticPropBatcher::flush() {
     glUseProgram(s_staticPropProgram);
     glBindVertexArray(s_sharedVao);
 
+    // Explicit, engine-owned GL state. Do NOT inherit from the previous
+    // pass — MLR/HUD paths may leave depth test off or blend on, which
+    // would make our draws paint over the whole screen.
+    glEnable(GL_DEPTH_TEST);
+    glDepthMask(GL_TRUE);
+    glDepthFunc(GL_LEQUAL);
+    glDisable(GL_BLEND);
+    glEnable(GL_CULL_FACE);
+    glCullFace(GL_BACK);
+
     // Direct uniforms (AMD invariant: direct, GL_FALSE transpose).
     // worldToClip: TG_Shape::s_worldToClip is set by camera each frame in
     // mclib/tgl.cpp:1558. Matrix4D is row-major (Stuff layout); upload with
@@ -610,8 +621,12 @@ void GpuStaticPropBatcher::flush() {
 
         for (uint32_t p = 0; p < type.packetCount; ++p) {
             const GpuStaticPropPacket& pkt = s_packets[type.firstPacket + p];
+            // pkt.textureHandle is a gosTextureHandle (MC2 opaque ID), NOT a
+            // raw GL texture name. Convert via gos_GetGLTextureId which walks
+            // the gosRenderer's texture table.
+            const uint32_t glTexId = gos_GetGLTextureId(pkt.textureHandle);
             glActiveTexture(GL_TEXTURE0);
-            glBindTexture(GL_TEXTURE_2D, pkt.textureHandle);
+            glBindTexture(GL_TEXTURE_2D, glTexId);
             glUniform1ui(glGetUniformLocation(s_staticPropProgram, "u_materialFlags"),
                          pkt.materialFlags);
             glUniform1ui(glGetUniformLocation(s_staticPropProgram, "u_packetID"),
@@ -629,8 +644,15 @@ void GpuStaticPropBatcher::flush() {
 
     s_fence[s_frameSlot] = glFenceSync(GL_SYNC_GPU_COMMANDS_COMPLETE, 0);
 
-    glBindBuffer(GL_SHADER_STORAGE_BUFFER, 0);
+    // Defensive cleanup so our state doesn't bleed into overlays / post-process.
+    // Unbind our program, VAO, SSBO slots, and the last packet's texture on
+    // unit 0. The next pass is expected to set its own state, but leaving
+    // our program/VAO bound has caused silent state-leak bugs before.
+    glBindBufferBase(GL_SHADER_STORAGE_BUFFER, 0, 0);
+    glBindBufferBase(GL_SHADER_STORAGE_BUFFER, 1, 0);
     glBindVertexArray(0);
+    glActiveTexture(GL_TEXTURE0);
+    glBindTexture(GL_TEXTURE_2D, 0);
     glUseProgram(0);
 
     s_bucketsByType.clear();
