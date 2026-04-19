@@ -462,7 +462,8 @@ Attempt 6 (projectZ cull in `recalcBounds`) without the cascading failure mode
 ## Killswitch — K1
 
 Global `bool g_useGpuStaticProps` defined in `code/mechcmd2.cpp`, default
-`false` initially. Debug hotkey (proposed RAlt+8) toggles live.
+`false` initially. Debug hotkey RAlt+0 (free in `gameosmain.cpp` alt_debug
+switch — RAlt+0 is taken by terrain debug mode) toggles live.
 
 Each of the five `*Appearance::render()` sites gets a one-line branch:
 
@@ -525,7 +526,7 @@ shadow flush runs inside `Shadow.DynPass` instead.
   object render phase; own batcher lifetime.
 - `GameOS/gameos/gameosmain.cpp` — construct/destroy batcher around map
   load/unload.
-- `code/mechcmd2.cpp` — `g_useGpuStaticProps` definition, RAlt+8 debug
+- `code/mechcmd2.cpp` — `g_useGpuStaticProps` definition, RAlt+0 debug
   hotkey binding.
 - `GameOS/gameos/CMakeLists.txt` — new source files.
 
@@ -612,7 +613,7 @@ look wrong, some look fine" mixed with other visual drift.
 Required M1 gate: color-address validation passes before any appearance
 type is declared shipped on the new path.
 
-### In-game validation (both killswitch states, toggle via RAlt+8):
+### In-game validation (both killswitch states, toggle via RAlt+0):
   1. Standard RTS zoom, pan around a building-heavy map. No disappearances.
   2. Wolfman zoom (altitude 6000, `GameVisibleVertices=200`). No
      disappearances in the ~200-tile visible radius.
