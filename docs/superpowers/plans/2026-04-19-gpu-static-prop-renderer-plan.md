@@ -466,14 +466,19 @@ git commit -m "feat(props): add g_useGpuStaticProps killswitch + RAlt+0 hotkey"
 **Files:**
 - Modify: `GameOS/gameos/gos_static_prop_batcher.cpp`
 
-- [ ] **Step 1: Read context**
+- [ ] **Step 1: Read context — and resolve the packet-level invariant before coding**
 
 Read these sections before writing:
 - `mclib/tgl.h:522-676` — `TG_TypeShape` fields (`numTypeVertices`, `listOfTypeVertices`, `listOfTypeTriangles`, `listOfTextures`, `numTextures`, `alphaTestOn`).
 - `mclib/msl.h:232-300` — `TG_TypeMultiShape` and `listOfNodes` traversal pattern.
-- Existing old-path vertex submission in `TG_Shape::Render` (`mclib/tgl.cpp:2528`) — note the node loop order and how it binds each sub-node's texture before `addTriangle`.
+- Existing old-path submission in `TG_Shape::Render` (`mclib/tgl.cpp:2528`) — note whether the shader iterates over sub-node groupings within a single `TG_TypeShape` or just walks the flat `listOfTypeTriangles`.
 
-The packet enumeration order must match this old-path node traversal order exactly.
+**The design's packet-order invariant is: "packets within a type are written in the same order as `TG_TypeMultiShape::listOfNodes[0..numNodes-1]`".** Verify before coding that this maps cleanly onto the per-`TG_TypeShape` registration below:
+
+- **Expected case (this fork):** each node in a `TG_TypeMultiShape::listOfNodes` is itself a `TG_TypeShape` leaf. The outer numNodes order is preserved by the caller registering each node in listOfNodes order (Step 3 below). Within one `TG_TypeShape`, the flat `listOfTypeTriangles` is the authored order — grouping contiguous-texture runs within it is equivalent to the old path's behavior.
+- **If a single `TG_TypeShape` in this fork actually wraps multiple authored sub-nodes internally** (i.e., MC2 has "compound" TypeShapes) — packet enumeration by texture-run is **not** equivalent to numNodes order. Derive packets from the real sub-node traversal instead.
+
+Read `TG_Shape::Render` (line 2528) carefully: look for whether it loops over sub-node groups or straight over `listOfVisibleFaces`. If the former, adjust packet enumeration in Step 2 to mirror that loop; if the latter, the texture-run grouping below is correct.
 
 - [ ] **Step 2: Implement `registerType`**
 
@@ -1042,7 +1047,7 @@ uint32_t s_lastUploadedSlot = 0xFFFFFFFFu;
 bool uploadAllBucketsIfNeeded() {
     if (s_lastUploadedSlot == s_frameSlot) return true;
 
-    // Compute total sizes and per-type ranges.
+    // Compute total sizes (order-independent).
     size_t totalInstances = 0;
     size_t totalColors    = 0;
     for (auto& [typeID, b] : s_bucketsByType) {
@@ -1066,10 +1071,19 @@ bool uploadAllBucketsIfNeeded() {
     auto* instMapBase = static_cast<uint8_t*>(s_instanceMap) + slotInstByteBase;
     auto* colMapBase  = static_cast<uint8_t*>(s_colorMap)    + slotColByteBase;
 
+    // Layout buckets in ascending typeID order (NOT unordered_map iteration
+    // order) so SSBO packing is deterministic across runs. This makes Tracy
+    // captures, RenderDoc diffs, and shader-debug repro work much cleaner.
+    std::vector<uint32_t> sortedTypeIDs;
+    sortedTypeIDs.reserve(s_bucketsByType.size());
+    for (auto& kv : s_bucketsByType) sortedTypeIDs.push_back(kv.first);
+    std::sort(sortedTypeIDs.begin(), sortedTypeIDs.end());
+
     s_typeRanges.clear();
     size_t instCursor = 0;  // byte cursor within the slot
     size_t colCursor  = 0;
-    for (auto& [typeID, b] : s_bucketsByType) {
+    for (uint32_t typeID : sortedTypeIDs) {
+        PerTypeBucket& b = s_bucketsByType[typeID];
         TypeRangeSsbo r{};
         r.instanceByteOffset = slotInstByteBase + instCursor;
         r.instanceByteSize   = b.instances.size() * sizeof(GpuStaticPropInstance);
@@ -1164,7 +1178,7 @@ void GpuStaticPropBatcher::flush() {
 }
 ```
 
-**Note on the per-instance inner loop.** This is deliberately unoptimized — one draw per instance per packet, using the `baseInstance` slot to index into the SSBO. For realistic counts (~3000 instances × ~3 packets/type ≈ 9000 draws) this is still well within AMD's submission bandwidth. Batching multiple instances per call via `baseInstance` + contiguous SSBO regions is a follow-up optimization tracked in the spec's risk section — **do not do it here**; correctness first.
+**Note on draw strategy.** One `glDrawElementsInstancedBaseVertex` per packet, with `instanceCount = type.instanceCount`. The per-type contiguous SSBO binding (via `glBindBufferRange`) is why `gl_InstanceID` in the shader maps directly to the correct instance row without any dependence on `gl_BaseInstance`. Expected draw count: ~packets-per-type × types-active-this-frame ≈ a few hundred draws, not thousands.
 
 - [ ] **Step 2: Call `flush()` at the right slot in the render order**
 
@@ -1203,12 +1217,20 @@ git commit -m "feat(props): flush() per-packet instanced draw path"
 **Files:**
 - Modify: `mclib/bdactor.cpp` (at `BldgAppearance::render`, line 1506)
 
-- [ ] **Step 1: Read the existing render function**
+- [ ] **Step 1: Read the existing render function and resolve the per-child transform question**
 
 Read `mclib/bdactor.cpp:1506..` — the full `BldgAppearance::render` body. Note:
 - what the current `bldgShape->Render(...)` call looks like (argument list, return value)
 - where `shapeToWorld` and the highlight/fog state are available in the function's scope
 - whether there's an early-out (e.g., `if (!inView) return;`) that would prevent `submit()` from being called at all — if so, we need to **bypass** that gate on the GPU path (the whole point is not to cull CPU-side)
+
+**Per-child transform check (critical).** The submit loop below passes the parent's `shapeToWorld` to every child `TG_Shape`. This is only correct if child shapes do not carry their own local-to-parent transform inside `TG_MultiShape::Render()`. Verify:
+
+- Read `TG_MultiShape::Render()` (grep `TG_MultiShape::Render` in `mclib/tgl.cpp`). Does it apply a per-child matrix (e.g., `child->localTransform`, `listOfNodes[i]->relativeTransform`, or similar) before calling each `child->Render`?
+- If yes, the submit loop must compose: `childWorldMat = shapeToWorld * child->localTransform`. Otherwise all children will render stacked at the parent origin.
+- If no (parent transform is shared verbatim), the loop below is correct as written.
+
+Apply whichever case the code shows — **do not assume**.
 
 - [ ] **Step 2: Add the killswitch branch**
 
