@@ -691,7 +691,8 @@ class TG_Shape
 	friend class TG_TypeShape;
 	friend class TG_TypeNode;
 	friend class TG_TypeMultiShape;
-	
+	friend class GpuStaticPropBatcher;
+
 	//-------------
 	//Data Members
 	protected:

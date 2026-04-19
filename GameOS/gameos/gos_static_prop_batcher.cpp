@@ -2,6 +2,7 @@
 #include "gos_profiler.h"
 #include "gameos.hpp"
 #include <GL/glew.h>
+#include <algorithm>
 #include <cstdio>
 #include <cstring>
 
@@ -32,6 +33,12 @@ void*    s_instanceMap  = nullptr;
 void*    s_colorMap     = nullptr;
 GLsync   s_fence[RING_FRAMES] = {0};
 uint32_t s_frameSlot = 0;
+size_t   s_instanceCapacity = 0;
+size_t   s_colorCapacity    = 0;
+
+// Forward decl -- body appears after state block below, so it can reference
+// s_fatalRegistrationFailure which is declared further down in this namespace.
+void ensureRingCapacity(size_t neededInstances, size_t neededColorEntries);
 
 // CPU staging for the current frame.
 // Instances are staged in per-type buckets (not a flat list) so that
@@ -69,6 +76,58 @@ bool s_fatalRegistrationFailure = false;
 
 // Layer B fallback: types we failed to register (logged once, fall back to CPU path).
 std::unordered_map<const TG_TypeShape*, bool> s_failedTypes;
+
+void ensureRingCapacity(size_t neededInstances, size_t neededColorEntries) {
+    const bool needGrow =
+        s_instanceSsbo == 0 ||
+        neededInstances > s_instanceCapacity ||
+        neededColorEntries > s_colorCapacity;
+    if (!needGrow) return;
+
+    // Wait for all in-flight frames before resizing.
+    for (uint32_t i = 0; i < RING_FRAMES; ++i) {
+        if (s_fence[i]) {
+            glClientWaitSync(s_fence[i], GL_SYNC_FLUSH_COMMANDS_BIT, GL_TIMEOUT_IGNORED);
+            glDeleteSync(s_fence[i]);
+            s_fence[i] = 0;
+        }
+    }
+    if (s_instanceSsbo) { glDeleteBuffers(1, &s_instanceSsbo); s_instanceSsbo = 0; s_instanceMap = nullptr; }
+    if (s_colorSsbo)    { glDeleteBuffers(1, &s_colorSsbo);    s_colorSsbo    = 0; s_colorMap    = nullptr; }
+
+    s_instanceCapacity = std::max(neededInstances,
+        s_instanceCapacity ? s_instanceCapacity * 2 : INITIAL_INSTANCES_PER_FRAME);
+    s_colorCapacity    = std::max(neededColorEntries,
+        s_colorCapacity    ? s_colorCapacity    * 2 : INITIAL_COLORS_PER_FRAME);
+
+    const GLbitfield storageFlags = GL_MAP_WRITE_BIT | GL_MAP_PERSISTENT_BIT | GL_MAP_COHERENT_BIT;
+    const GLbitfield mapFlags     = storageFlags;
+
+    glGenBuffers(1, &s_instanceSsbo);
+    glBindBuffer(GL_SHADER_STORAGE_BUFFER, s_instanceSsbo);
+    glBufferStorage(GL_SHADER_STORAGE_BUFFER,
+                    static_cast<GLsizeiptr>(RING_FRAMES * s_instanceCapacity * sizeof(GpuStaticPropInstance)),
+                    nullptr, storageFlags);
+    s_instanceMap = glMapBufferRange(GL_SHADER_STORAGE_BUFFER, 0,
+                    static_cast<GLsizeiptr>(RING_FRAMES * s_instanceCapacity * sizeof(GpuStaticPropInstance)),
+                    mapFlags);
+
+    glGenBuffers(1, &s_colorSsbo);
+    glBindBuffer(GL_SHADER_STORAGE_BUFFER, s_colorSsbo);
+    glBufferStorage(GL_SHADER_STORAGE_BUFFER,
+                    static_cast<GLsizeiptr>(RING_FRAMES * s_colorCapacity * sizeof(uint32_t)),
+                    nullptr, storageFlags);
+    s_colorMap = glMapBufferRange(GL_SHADER_STORAGE_BUFFER, 0,
+                    static_cast<GLsizeiptr>(RING_FRAMES * s_colorCapacity * sizeof(uint32_t)),
+                    mapFlags);
+
+    glBindBuffer(GL_SHADER_STORAGE_BUFFER, 0);
+
+    if (!s_instanceMap || !s_colorMap) {
+        std::fprintf(stderr, "[GPUPROPS] persistent map failed; disabling GPU path\n");
+        s_fatalRegistrationFailure = true;
+    }
+}
 
 } // namespace
 
@@ -274,13 +333,68 @@ void GpuStaticPropBatcher::finalizeGeometry() {
     s_geometryFinalized = true;
 }
 
-bool GpuStaticPropBatcher::submit(TG_Shape* /*shape*/,
-                                  const Stuff::Matrix4D& /*shapeToWorld*/,
-                                  uint32_t /*highlightARGB*/,
-                                  uint32_t /*fogARGB*/,
-                                  uint32_t /*flags*/) {
-    // Filled in Task 8.
-    return false;
+bool GpuStaticPropBatcher::submit(TG_Shape* shape,
+                                  const Stuff::Matrix4D& shapeToWorld,
+                                  uint32_t highlightARGB,
+                                  uint32_t fogARGB,
+                                  uint32_t flags) {
+    if (!shape || s_fatalRegistrationFailure) return false;
+
+    // TG_Shape::myType is a TG_TypeNodePtr; for SHAPE_NODE leaves it's a TG_TypeShape.
+    TG_TypeShape* typeShape = static_cast<TG_TypeShape*>(shape->myType);
+    if (!typeShape) return false;
+
+    auto it = s_typeIndex.find(typeShape);
+    if (it == s_typeIndex.end()) {
+        if (!s_failedTypes[typeShape]) {
+            std::fprintf(stderr, "[GPUPROPS] unregistered type %p for shape %p -- "
+                         "caller must CPU-fallback\n", (void*)typeShape, (void*)shape);
+            s_failedTypes[typeShape] = true;
+        }
+        return false;  // Layer B: caller calls shape->Render() on false.
+    }
+
+    const uint32_t typeID = it->second;
+    const GpuStaticPropType& type = s_types[typeID];
+    PerTypeBucket& bucket = s_bucketsByType[typeID];
+
+    // firstColorOffset is the index into the bucket's color array:
+    // instance K's colors start at K * type.vertexCount (= bucket.colors.size()
+    // BEFORE this push). The shader binds the bucket's color range, so this
+    // becomes an index relative to the bound range.
+    const uint32_t firstColorOffset =
+        static_cast<uint32_t>(bucket.colors.size());
+
+    GpuStaticPropInstance inst{};
+    // Matrix4D is a plain row-major Scalar[16] (see stuff/matrix.hpp). Copy
+    // as-is; shader uploads the worldToClip uniform with GL_FALSE.
+    std::memcpy(inst.modelMatrix, &shapeToWorld, 16 * sizeof(float));
+    inst.typeID           = typeID;
+    inst.firstColorOffset = firstColorOffset;
+    inst.flags            = flags;
+    inst.aRGBHighlight[0] = ((highlightARGB >> 16) & 0xFF) / 255.0f;
+    inst.aRGBHighlight[1] = ((highlightARGB >>  8) & 0xFF) / 255.0f;
+    inst.aRGBHighlight[2] = ((highlightARGB >>  0) & 0xFF) / 255.0f;
+    inst.aRGBHighlight[3] = ((highlightARGB >> 24) & 0xFF) / 255.0f;
+    inst.fogRGB[0] = ((fogARGB >> 16) & 0xFF) / 255.0f;
+    inst.fogRGB[1] = ((fogARGB >>  8) & 0xFF) / 255.0f;
+    inst.fogRGB[2] = ((fogARGB >>  0) & 0xFF) / 255.0f;
+    inst.fogRGB[3] = ((fogARGB >> 24) & 0xFF) / 255.0f;
+    bucket.instances.push_back(inst);
+
+    // Append this instance's vertex-color block. listOfColors is a TG_Vertex*
+    // (4-byte {fog, redSpec, greenSpec, blueSpec}); reinterpret as packed uint32.
+    const uint32_t numColors = type.vertexCount;
+    if (numColors > 0 && shape->listOfColors) {
+        const uint32_t* src = reinterpret_cast<const uint32_t*>(shape->listOfColors);
+        bucket.colors.insert(bucket.colors.end(), src, src + numColors);
+    } else {
+        // No source colors -- pad with zeros so the color block still matches
+        // the type's vertexCount and indexing math stays valid.
+        bucket.colors.insert(bucket.colors.end(), numColors, 0u);
+    }
+
+    return true;
 }
 
 void GpuStaticPropBatcher::flush() {
