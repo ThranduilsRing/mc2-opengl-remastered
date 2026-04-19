@@ -3285,6 +3285,79 @@ void gosRenderer::drawText(const char* text) {
     afterDrawCall();
 }
 
+void gosRenderer::replayTextQuads(const HudDrawCall& call)
+{
+    if (call.vertices.empty()) return;
+
+    text_->addVertices(const_cast<gos_VERTEX*>(call.vertices.data()),
+                       (int)call.vertices.size());
+
+    int prev_texture = getRenderState(gos_State_Texture);
+    setRenderState(gos_State_Texture, call.fontTexId);
+    setRenderState(gos_State_Filter, gos_FilterNone);
+
+    applyRenderStates();
+    gosRenderMaterial* mat = text_material_;
+
+    vec4 fg;
+    fg.x = (float)((call.foregroundColor & 0xFF0000) >> 16) / 255.0f;
+    fg.y = (float)((call.foregroundColor & 0xFF00)   >>  8) / 255.0f;
+    fg.z = (float)( call.foregroundColor & 0xFF)            / 255.0f;
+    fg.w = 1.0f;
+    mat->getShader()->setFloat4(s_Foreground, fg);
+
+    mat->setTransform(projection_);
+    mat->setFogColor(fog_color_);
+    text_->draw(mat);
+    text_->rewind();
+
+    setRenderState(gos_State_Texture, prev_texture);
+}
+
+void gosRenderer::flushHUDBatch()
+{
+    if (hudBatch_.empty()) {
+        hudFlushed_ = true;
+        return;
+    }
+
+    // Ensure we draw to the default framebuffer at full screen resolution.
+    // pp->endScene() should leave us here, but post-process viewport changes
+    // (half-res bloom, etc.) are not tracked in renderStates_.
+    glBindFramebuffer(GL_FRAMEBUFFER, 0);
+    glViewport(0, 0, (GLsizei)width_, (GLsizei)height_);
+
+    // Save pre-flush render state and projection
+    uint32_t priorState[gos_MaxState];
+    memcpy(priorState, renderStates_, sizeof(priorState));
+    mat4 priorProjection = projection_;
+
+    for (const HudDrawCall& call : hudBatch_) {
+        memcpy(renderStates_, call.stateSnapshot, sizeof(renderStates_));
+        renderStates_[gos_State_IsHUD] = 0;   // clear to prevent re-buffering on replay
+        projection_ = call.projection;
+
+        switch (call.kind) {
+            case kHudQuadBatch:
+                drawQuads(const_cast<gos_VERTEX*>(call.vertices.data()),
+                          (int)call.vertices.size());
+                break;
+            case kHudLineBatch:
+                drawLines(const_cast<gos_VERTEX*>(call.vertices.data()),
+                          (int)call.vertices.size());
+                break;
+            case kHudTextQuadBatch:
+                replayTextQuads(call);
+                break;
+        }
+    }
+
+    // Restore pre-flush render state and projection
+    memcpy(renderStates_, priorState, sizeof(priorState));
+    projection_ = priorProjection;
+    hudFlushed_ = true;
+}
+
 void gosRenderer::flush()
 {
 }
@@ -3316,6 +3389,11 @@ void gos_RendererBeginFrame() {
 void gos_RendererEndFrame() {
     gosASSERT(g_gos_renderer);
     g_gos_renderer->endFrame();
+}
+
+void gos_RendererFlushHUDBatch() {
+    gosASSERT(g_gos_renderer);
+    g_gos_renderer->flushHUDBatch();
 }
 
 void gos_RendererHandleEvents() {
