@@ -1037,7 +1037,7 @@ class gosFont {
 };
 
 
-enum HudDrawKind { kHudQuadBatch, kHudLineBatch, kHudTextQuadBatch };
+enum HudDrawKind { kHudQuadBatch, kHudLineBatch, kHudTriBatch, kHudTextQuadBatch };
 
 struct HudDrawCall {
     HudDrawKind              kind;
@@ -2318,6 +2318,22 @@ void gosRenderer::drawTris(gos_VERTEX* vertices, int count) {
 
     gosASSERT((count % 3) == 0);
 
+    if (renderStates_[gos_State_IsHUD]) {
+        if (hudFlushed_) {
+            SPEW(("GRAPHICS", "[HUD] Late drawTris discarded (after flushHUDBatch)\n"));
+            return;
+        }
+        HudDrawCall call;
+        call.kind = kHudTriBatch;
+        call.vertices.assign(vertices, vertices + count);
+        memcpy(call.stateSnapshot, renderStates_, sizeof(call.stateSnapshot));
+        call.projection = projection_;
+        call.fontTexId = 0;
+        call.foregroundColor = 0;
+        hudBatch_.push_back(std::move(call));
+        return;
+    }
+
     if(beforeDrawCall()) return;
 
 
@@ -3343,6 +3359,10 @@ void gosRenderer::flushHUDBatch()
             case kHudLineBatch:
                 drawLines(const_cast<gos_VERTEX*>(call.vertices.data()),
                           (int)call.vertices.size());
+                break;
+            case kHudTriBatch:
+                drawTris(const_cast<gos_VERTEX*>(call.vertices.data()),
+                         (int)call.vertices.size());
                 break;
             case kHudTextQuadBatch:
                 replayTextQuads(call);
