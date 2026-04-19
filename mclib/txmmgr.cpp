@@ -108,6 +108,7 @@ void clearShadowShapes() {
 
 DWORD actualTextureSize = 0;
 DWORD compressedTextureSize = 0;
+static int64_t gTxmRealizedTotal = 0;
 
 static const DWORD MC_TEXCACHE_FILE_LZ = 0xF0000000;
 static const DWORD MC_TEXCACHE_FILE_RAW = 0xE0000000;
@@ -509,7 +510,10 @@ bool MC_TextureManager::flushCache (void)
 	bool cacheNotFull = false;
 	totalCacheMisses++;
 	currentUsedTextures = 0;
-	
+	int poolPinned = 0;
+	int poolUnique = 0;
+	int poolFlushableIdle = 0;
+
 	//Count ACTUAL number of textures being used.
 	// ALSO can't count on turn being right.  Logistics does not update unless simple Camera is up!!
 	for (long i=0;i<MC_MAXTEXTURES;i++)
@@ -518,8 +522,19 @@ bool MC_TextureManager::flushCache (void)
 			(masterTextureNodes[i].gosTextureHandle != 0xffffffff))
 		{
 			currentUsedTextures++;
+			const bool pinned = (masterTextureNodes[i].neverFLUSH & 1) != 0;
+			const bool unique = masterTextureNodes[i].uniqueInstance != 0;
+			if (pinned) poolPinned++;
+			if (unique) poolUnique++;
+			if (!pinned && !unique && masterTextureNodes[i].lastUsed <= (turn - cache_Threshold))
+				poolFlushableIdle++;
 		}
 	}
+
+	TracyPlot("Txm pool used", int64_t(currentUsedTextures));
+	TracyPlot("Txm pool pinned", int64_t(poolPinned));
+	TracyPlot("Txm pool unique", int64_t(poolUnique));
+	TracyPlot("Txm pool flushable idle", int64_t(poolFlushableIdle));
 
 	//If we are now below the magic number, return that the cache is NOT full.
 	if (currentUsedTextures < MAX_MC2_GOS_TEXTURES)
@@ -2236,6 +2251,7 @@ DWORD MC_TextureNode::get_gosTextureHandle (void)	//If texture is not in VidRAM,
 		if ((mcTextureManager->currentUsedTextures >= MAX_MC2_GOS_TEXTURES) && !mcTextureManager->flushCache())
 		{
 			PAUSE(("txmmgr: Out of texture handles!"));
+			TracyMessageL("txmmgr: Out of texture handles!");
 			return 0x0;		//No texture!
 		}
 	   
@@ -2308,8 +2324,10 @@ DWORD MC_TextureNode::get_gosTextureHandle (void)	//If texture is not in VidRAM,
 				}
 			}
 			mcTextureManager->currentUsedTextures++;
+			++gTxmRealizedTotal;
+			TracyPlot("Txm realized total", gTxmRealizedTotal);
 			lastUsed = turn;
-			
+
 			return gosTextureHandle;
 		}
 		else
@@ -2319,6 +2337,8 @@ DWORD MC_TextureNode::get_gosTextureHandle (void)	//If texture is not in VidRAM,
 				gosTextureHandle = gos_NewEmptyTexture(key,nodeName,width,hints);
 			}
 			mcTextureManager->currentUsedTextures++;
+			++gTxmRealizedTotal;
+			TracyPlot("Txm realized total", gTxmRealizedTotal);
 			
 			//------------------------------------------
 			// Cache this badboy IN.
