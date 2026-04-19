@@ -43,7 +43,7 @@ enum MC_TextureKey
 //Can store up to 1024 8x8 textures in 1 256x256.
 #define MC_MAXTEXTURES				4096
 #define CACHED_OUT_HANDLE			0xFFFFFACE		//If this value is in gosTextureHandle, texture is cached out and must be cached in.
-#define MAX_MC2_GOS_TEXTURES		750
+#define MAX_MC2_GOS_TEXTURES		3000
 #define TEXTURE_CACHE_SIZE			(40*1024*1024)	//Extra space here to facilitate editting
 #define MAX_CACHE_SIZE				(40*1024*1024)	//Actual amount map must run in!
 #define MC_MAXFACES					200000

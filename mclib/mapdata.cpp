@@ -90,6 +90,14 @@ float					cloudScrollX = 0.0f;
 float					cloudScrollY = 0.0f;
 static int				gTerrainTilesRealizedDuringLoad = 0;
 static int				gTerrainTilesFirstRealizedDuringGameplay = 0;
+static int				gTerrainColormapRealizedLoad = 0;
+static int				gTerrainColormapRealizedGameplay = 0;
+static int				gTerrainDetailRealizedLoad = 0;
+static int				gTerrainDetailRealizedGameplay = 0;
+static int				gTerrainOverlayRealizedLoad = 0;
+static int				gTerrainOverlayRealizedGameplay = 0;
+static int				gTerrainBaseRealizedLoad = 0;
+static int				gTerrainBaseRealizedGameplay = 0;
 
 static long worldQuadCacheWidth (void)
 {
@@ -300,6 +308,9 @@ void MapData::buildTerrainFaceCache (volatile float* progress, float progressRan
 bool MapData::ensureTerrainFaceCacheEntryResident (const WorldQuadTerrainCacheEntry& entry, bool duringMissionLoad) const
 {
 	bool realizedColorMapTile = false;
+	bool realizedDetail = false;
+	bool realizedOverlay = false;
+	bool realizedBase = false;
 
 	if (entry.usesColorMap() && !isTextureNodeResidentLocal(entry.terrainHandle))
 	{
@@ -308,13 +319,22 @@ bool MapData::ensureTerrainFaceCacheEntryResident (const WorldQuadTerrainCacheEn
 	}
 
 	if (!isTextureNodeResidentLocal(entry.terrainDetailHandle))
+	{
 		mcTextureManager->get_gosTextureHandle(entry.terrainDetailHandle);
+		realizedDetail = true;
+	}
 
 	if (!isTextureNodeResidentLocal(entry.overlayHandle))
+	{
 		mcTextureManager->get_gosTextureHandle(entry.overlayHandle);
+		realizedOverlay = true;
+	}
 
 	if (!entry.usesColorMap() && !isTextureNodeResidentLocal(entry.terrainHandle))
+	{
 		mcTextureManager->get_gosTextureHandle(entry.terrainHandle);
+		realizedBase = true;
+	}
 
 	if (realizedColorMapTile)
 	{
@@ -322,12 +342,31 @@ bool MapData::ensureTerrainFaceCacheEntryResident (const WorldQuadTerrainCacheEn
 		{
 			++gTerrainTilesRealizedDuringLoad;
 			TracyPlot("Terrain tiles realized during mission load", int64_t(gTerrainTilesRealizedDuringLoad));
+			++gTerrainColormapRealizedLoad;
+			TracyPlot("Terrain colormap realized load", int64_t(gTerrainColormapRealizedLoad));
 		}
 		else
 		{
 			++gTerrainTilesFirstRealizedDuringGameplay;
 			TracyPlot("Terrain tiles first realized during gameplay", int64_t(gTerrainTilesFirstRealizedDuringGameplay));
+			++gTerrainColormapRealizedGameplay;
+			TracyPlot("Terrain colormap realized gameplay", int64_t(gTerrainColormapRealizedGameplay));
 		}
+	}
+	if (realizedDetail)
+	{
+		if (duringMissionLoad) { ++gTerrainDetailRealizedLoad; TracyPlot("Terrain detail realized load", int64_t(gTerrainDetailRealizedLoad)); }
+		else                   { ++gTerrainDetailRealizedGameplay; TracyPlot("Terrain detail realized gameplay", int64_t(gTerrainDetailRealizedGameplay)); }
+	}
+	if (realizedOverlay)
+	{
+		if (duringMissionLoad) { ++gTerrainOverlayRealizedLoad; TracyPlot("Terrain overlay realized load", int64_t(gTerrainOverlayRealizedLoad)); }
+		else                   { ++gTerrainOverlayRealizedGameplay; TracyPlot("Terrain overlay realized gameplay", int64_t(gTerrainOverlayRealizedGameplay)); }
+	}
+	if (realizedBase)
+	{
+		if (duringMissionLoad) { ++gTerrainBaseRealizedLoad; TracyPlot("Terrain base realized load", int64_t(gTerrainBaseRealizedLoad)); }
+		else                   { ++gTerrainBaseRealizedGameplay; TracyPlot("Terrain base realized gameplay", int64_t(gTerrainBaseRealizedGameplay)); }
 	}
 
 	return realizedColorMapTile;
@@ -342,8 +381,24 @@ void MapData::warmTerrainFaceCacheResidency (volatile float* progress, float pro
 
 	gTerrainTilesRealizedDuringLoad = 0;
 	gTerrainTilesFirstRealizedDuringGameplay = 0;
+	gTerrainColormapRealizedLoad = 0;
+	gTerrainColormapRealizedGameplay = 0;
+	gTerrainDetailRealizedLoad = 0;
+	gTerrainDetailRealizedGameplay = 0;
+	gTerrainOverlayRealizedLoad = 0;
+	gTerrainOverlayRealizedGameplay = 0;
+	gTerrainBaseRealizedLoad = 0;
+	gTerrainBaseRealizedGameplay = 0;
 	TracyPlot("Terrain tiles realized during mission load", int64_t(gTerrainTilesRealizedDuringLoad));
 	TracyPlot("Terrain tiles first realized during gameplay", int64_t(gTerrainTilesFirstRealizedDuringGameplay));
+	TracyPlot("Terrain colormap realized load", int64_t(0));
+	TracyPlot("Terrain colormap realized gameplay", int64_t(0));
+	TracyPlot("Terrain detail realized load", int64_t(0));
+	TracyPlot("Terrain detail realized gameplay", int64_t(0));
+	TracyPlot("Terrain overlay realized load", int64_t(0));
+	TracyPlot("Terrain overlay realized gameplay", int64_t(0));
+	TracyPlot("Terrain base realized load", int64_t(0));
+	TracyPlot("Terrain base realized gameplay", int64_t(0));
 
 	const long cacheWidth = worldQuadCacheWidth();
 	std::vector<DWORD> handlesToWarm;
