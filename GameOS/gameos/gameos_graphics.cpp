@@ -4088,6 +4088,13 @@ void gos_BeginShadowPrePass(bool clearDepth) {
 void gos_EndShadowPrePass() {
     if (g_gos_renderer) g_gos_renderer->endShadowPrePass();
 }
+// Phase 4a: file-static one-shot flag. Set when external code (or the
+// txmmgr.cpp first-terrain-frame latch) wants to force the static shadow
+// pass to run regardless of the camera-motion cache threshold.
+static bool s_shadowRebuildPending = false;
+void gos_RequestFullShadowRebuild() { s_shadowRebuildPending = true; }
+bool gos_ShadowRebuildPending() { return s_shadowRebuildPending; }
+void gos_ClearShadowRebuildPending() { s_shadowRebuildPending = false; }
 void gos_DrawShadowBatchTessellated(gos_VERTEX* vertices, int numVerts,
     WORD* indices, int numIndices,
     const gos_TERRAIN_EXTRA* extras, int extraCount) {
