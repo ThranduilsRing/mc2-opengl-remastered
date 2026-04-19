@@ -1520,7 +1520,11 @@ bool BldgAppearance::playDestruction (void)
 //-----------------------------------------------------------------------------
 long BldgAppearance::render (long depthFixup)
 {
-	if (inView)
+	// GPU-batcher path bypasses inView here — the whole point of C2 is
+	// letting the GPU clipper decide visibility. The legacy angular-cull
+	// recalcBounds has a ~87% false-negative rate at wolfman zoom; under
+	// the GPU path we render every actor and trust the GPU.
+	if (inView || g_useGpuStaticProps)
 	{
 		uint32_t color = SD_BLUE;
 		uint32_t highLight = 0x007f7f7f;
