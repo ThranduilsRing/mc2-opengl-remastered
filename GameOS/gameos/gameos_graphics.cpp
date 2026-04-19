@@ -55,6 +55,12 @@ gosRenderer* getGosRenderer() {
     return g_gos_renderer;
 }
 
+// Public helper for consumers outside this TU (e.g. gos_static_prop_batcher)
+// that need to turn a gosTextureHandle into a raw GL texture name. Declared
+// here so local code can reference it; defined at end of this file after
+// the gosRenderer / gosTexture class bodies are in scope.
+uint32_t gos_GetGLTextureId(uint32_t gosHandle);
+
 struct gosTextureInfo {
     int width_;
     int height_;
@@ -4613,5 +4619,14 @@ void __stdcall gos_DrawDecals() {
 }
 
 // ── End world-space overlay batch API ─────────────────────────────────────────
+
+// Resolve a gosTextureHandle to the underlying raw GL texture name for
+// consumers outside this TU (gos_static_prop_batcher). Returns 0 on
+// invalid handle — caller should treat 0 as "unbind / default white".
+uint32_t gos_GetGLTextureId(uint32_t gosHandle) {
+    if (gosHandle == INVALID_TEXTURE_ID || !g_gos_renderer) return 0;
+    gosTexture* tex = g_gos_renderer->getTexture(gosHandle);
+    return tex ? tex->getTextureId() : 0;
+}
 
 #include "gameos_graphics_debug.cpp"
