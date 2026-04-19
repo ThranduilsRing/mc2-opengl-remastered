@@ -22,6 +22,7 @@ extern void gos_CreateRenderer(graphics::RenderContextHandle ctx_h, graphics::Re
 extern void gos_DestroyRenderer();
 extern void gos_RendererBeginFrame();
 extern void gos_RendererEndFrame();
+extern void gos_RendererFlushHUDBatch();
 extern void gos_RendererHandleEvents();
 extern void gos_RenderUpdateDebugInput();
 extern void gos_RenderEnableDebugDrawCalls();
@@ -307,6 +308,9 @@ static void draw_screen( void )
     if (pp) {
         pp->endScene();
     }
+
+    // Replay buffered HUD draws to FB 0 (after post-process)
+    gos_RendererFlushHUDBatch();
     //CHECK_GL_ERROR;
 }
 
