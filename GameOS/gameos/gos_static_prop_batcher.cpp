@@ -233,7 +233,44 @@ void GpuStaticPropBatcher::registerMultiShape(TG_TypeMultiShape* multiShape) {
 }
 
 void GpuStaticPropBatcher::finalizeGeometry() {
-    // Filled in Task 7.
+    if (s_geometryFinalized) return;
+
+    glGenVertexArrays(1, &s_sharedVao);
+    glBindVertexArray(s_sharedVao);
+
+    glGenBuffers(1, &s_sharedVbo);
+    glBindBuffer(GL_ARRAY_BUFFER, s_sharedVbo);
+    glBufferStorage(GL_ARRAY_BUFFER,
+                    static_cast<GLsizeiptr>(s_stagingVbo.size()),
+                    s_stagingVbo.data(),
+                    0);  // flags=0 -> fully immutable, GPU-only (AMD-safe)
+
+    glGenBuffers(1, &s_sharedIbo);
+    glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, s_sharedIbo);
+    glBufferStorage(GL_ELEMENT_ARRAY_BUFFER,
+                    static_cast<GLsizeiptr>(s_stagingIbo.size() * sizeof(uint32_t)),
+                    s_stagingIbo.data(),
+                    0);
+
+    // Vertex attribute layout -- position MUST be location 0 (AMD invariant 1).
+    glEnableVertexAttribArray(0);
+    glVertexAttribPointer(0, 3, GL_FLOAT,    GL_FALSE, kVertexStride, (void*) 0);
+    glEnableVertexAttribArray(1);
+    glVertexAttribPointer(1, 3, GL_FLOAT,    GL_FALSE, kVertexStride, (void*)12);
+    glEnableVertexAttribArray(2);
+    glVertexAttribPointer(2, 2, GL_FLOAT,    GL_FALSE, kVertexStride, (void*)24);
+    glEnableVertexAttribArray(3);
+    glVertexAttribIPointer(3, 1, GL_UNSIGNED_INT,      kVertexStride, (void*)32);
+
+    glBindVertexArray(0);
+
+    // Free CPU staging.
+    s_stagingVbo.clear(); s_stagingVbo.shrink_to_fit();
+    s_stagingIbo.clear(); s_stagingIbo.shrink_to_fit();
+
+    std::fprintf(stderr, "[GPUPROPS] finalize: %zu types, %zu packets\n",
+                 s_types.size(), s_packets.size());
+
     s_geometryFinalized = true;
 }
 

@@ -3006,6 +3006,13 @@ void Mission::init (const char *missionName, long loadType, long dropZoneID, Stu
 	missionFile->close();
 	delete missionFile;
 	missionFile = NULL;
+
+	// All actors have been spawned and have called registerType() into the
+	// GPU static-prop batcher. Upload the shared VBO/IBO/VAO now so that
+	// submit()/flush() can reference immutable geometry for the rest of the
+	// mission. Safe here: GL context is live (textures/shadow FBOs already
+	// exist by this point) and this is the unconditional tail of map-load.
+	GpuStaticPropBatcher::instance().finalizeGeometry();
 }
 
 //----------------------------------------------------------------------------------
