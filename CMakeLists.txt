@@ -186,6 +186,7 @@ set(SOURCES
     "code/mpstats.cpp"
     "code/multplyr.cpp"
     "code/mc2movie.cpp"
+    "GameOS/gameos/gos_static_prop_batcher.cpp"
     )
 
 
