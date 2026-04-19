@@ -1037,6 +1037,17 @@ class gosFont {
 };
 
 
+enum HudDrawKind { kHudQuadBatch, kHudLineBatch, kHudTextQuadBatch };
+
+struct HudDrawCall {
+    HudDrawKind              kind;
+    std::vector<gos_VERTEX>  vertices;
+    uint32_t                 stateSnapshot[gos_MaxState];
+    mat4                     projection;
+    DWORD                    fontTexId;       // kHudTextQuadBatch only
+    DWORD                    foregroundColor; // kHudTextQuadBatch only
+};
+
 ////////////////////////////////////////////////////////////////////////////////
 class gosRenderer {
 
@@ -1051,6 +1062,7 @@ class gosRenderer {
             height_ = h;
             ctx_h_ = ctx_h;
             win_h_ = win_h;
+            hudFlushed_ = false;
         }
 
         uint32_t addTexture(gosTexture* texture) {
@@ -1236,6 +1248,8 @@ class gosRenderer {
 
         void drawQuads(gos_VERTEX* vertices, int count);
         void drawLines(gos_VERTEX* vertices, int count);
+        void flushHUDBatch();
+        void replayTextQuads(const HudDrawCall& call);
         void drawPoints(gos_VERTEX* vertices, int count);
         void drawTris(gos_VERTEX* vertices, int count);
         void drawIndexedTris(gos_VERTEX* vertices, int num_vertices, WORD* indices, int num_indices);
@@ -1454,6 +1468,10 @@ class gosRenderer {
         uint32_t num_draw_calls_to_draw_;
         bool break_on_draw_call_;
         uint32_t break_draw_call_num_;
+
+        // HUD command buffer
+        std::vector<HudDrawCall> hudBatch_;
+        bool                     hudFlushed_;
 
         // Tessellation
         float terrain_tess_level_ = 4.0f;          // base inner/outer tessellation factor
