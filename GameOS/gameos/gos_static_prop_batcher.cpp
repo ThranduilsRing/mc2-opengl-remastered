@@ -7,6 +7,15 @@
 
 namespace {
 
+// Per-vertex stride in the shared VBO. Layout:
+//   vec3  a_position         (0..11)
+//   vec3  a_normal           (12..23)
+//   vec2  a_uv               (24..31)
+//   uint  a_localVertexID    (32..35)
+//   float _pad               (36..39)
+// Kept in sync with shaders/static_prop.vert (Task 9).
+constexpr size_t kVertexStride = 40;
+
 constexpr uint32_t RING_FRAMES = 3;
 constexpr size_t   INITIAL_INSTANCES_PER_FRAME = 4096;
 constexpr size_t   INITIAL_COLORS_PER_FRAME    = 1'000'000;  // uint32 ARGB entries
@@ -87,8 +96,140 @@ void GpuStaticPropBatcher::onMapUnload() {
     // Ring buffers are kept across maps (sized to map's worst case -- grow on demand).
 }
 
-void GpuStaticPropBatcher::registerType(TG_TypeShape* /*typeShape*/) {
-    // Filled in Task 6.
+// ---------------------------------------------------------------------------
+// Task 6: Type registration.
+//
+// Packet enumeration: TG_TypeMultiShape::listOfTypeShapes[] nodes are leaves
+// (each is either a TG_TypeShape with geometry or a SHAPE_NODE-less bone).
+// Callers iterate listOfTypeShapes in author order and call registerType() on
+// each SHAPE_NODE leaf, so per-type packet order within this function only
+// needs to preserve the flat listOfTypeTriangles author order.
+//
+// Vertex layout note: in this fork TG_TypeVertex has no UVs; UVs live on
+// TG_TypeTriangle::uvdata as per-corner u0/v0/u1/v1/u2/v2. The same vertex can
+// carry different UVs on different triangles, so we cannot emit one shared
+// vertex per TG_TypeVertex and share it across triangles with an index buffer.
+// We expand each triangle to 3 fresh vertices (triangle-soup) and emit a
+// trivial 0..N*3-1 index buffer. baseVertex points at the start of this
+// type's vertex run in the shared VBO. Packet indexCount = runTris * 3.
+// ---------------------------------------------------------------------------
+void GpuStaticPropBatcher::registerType(TG_TypeShape* typeShape) {
+    if (!typeShape) return;
+    if (s_typeIndex.count(typeShape)) return;  // idempotent
+    if (s_geometryFinalized) {
+        // Layer B: register-after-finalize is a bug in the map-load walk.
+        if (!s_failedTypes[typeShape]) {
+            std::fprintf(stderr, "[GPUPROPS] late registerType for %p -- "
+                         "CPU-fallback for this type\n", (void*)typeShape);
+            s_failedTypes[typeShape] = true;
+        }
+        return;
+    }
+
+    const uint32_t numTris = typeShape->numTypeTriangles;
+    if (numTris == 0 || !typeShape->listOfTypeTriangles ||
+        !typeShape->listOfTypeVertices) {
+        // Empty / helper node -- register with zero packets so duplicate
+        // calls remain idempotent.
+        GpuStaticPropType emptyType{};
+        emptyType.firstPacket = static_cast<uint32_t>(s_packets.size());
+        emptyType.packetCount = 0;
+        emptyType.vertexCount = 0;
+        emptyType.source      = typeShape;
+        s_typeIndex[typeShape] = static_cast<uint32_t>(s_types.size());
+        s_types.push_back(emptyType);
+        return;
+    }
+
+    const uint32_t baseVertex = static_cast<uint32_t>(s_stagingVbo.size() / kVertexStride);
+    const uint32_t newTypeID  = static_cast<uint32_t>(s_types.size());
+
+    // Group triangles with the same localTextureHandle into contiguous packets,
+    // preserving authored listOfTypeTriangles order. Each packet emits 3
+    // vertices per triangle into s_stagingVbo and 3 consecutive indices into
+    // s_stagingIbo (triangle-soup -- see vertex layout note above).
+    uint32_t runStart = 0;
+    uint32_t packetCountForThisType = 0;
+    while (runStart < numTris) {
+        const DWORD runTextureIdx =
+            typeShape->listOfTypeTriangles[runStart].localTextureHandle;
+        uint32_t runEnd = runStart;
+        while (runEnd < numTris &&
+               typeShape->listOfTypeTriangles[runEnd].localTextureHandle == runTextureIdx) {
+            ++runEnd;
+        }
+
+        const uint32_t packetFirstIndex = static_cast<uint32_t>(s_stagingIbo.size());
+
+        for (uint32_t t = runStart; t < runEnd; ++t) {
+            const TG_TypeTriangle& tri = typeShape->listOfTypeTriangles[t];
+
+            const float cornerU[3] = { tri.uvdata.u0, tri.uvdata.u1, tri.uvdata.u2 };
+            const float cornerV[3] = { tri.uvdata.v0, tri.uvdata.v1, tri.uvdata.v2 };
+
+            for (int c = 0; c < 3; ++c) {
+                const uint32_t localVertIdx = tri.Vertices[c];
+                // localVertIdx is an index into listOfTypeVertices for the
+                // source TG_TypeVertex; we still pass it through to the shader
+                // as a_localVertexID for per-instance color indexing.
+                const TG_TypeVertex& src = typeShape->listOfTypeVertices[localVertIdx];
+
+                uint8_t vert[kVertexStride] = {};
+                std::memcpy(vert +  0, &src.position.x, 4);
+                std::memcpy(vert +  4, &src.position.y, 4);
+                std::memcpy(vert +  8, &src.position.z, 4);
+                std::memcpy(vert + 12, &src.normal.x,   4);
+                std::memcpy(vert + 16, &src.normal.y,   4);
+                std::memcpy(vert + 20, &src.normal.z,   4);
+                std::memcpy(vert + 24, &cornerU[c],     4);
+                std::memcpy(vert + 28, &cornerV[c],     4);
+                std::memcpy(vert + 32, &localVertIdx,   4);
+                // bytes 36..39 zero-filled
+                s_stagingVbo.insert(s_stagingVbo.end(), vert, vert + kVertexStride);
+
+                const uint32_t expandedIdx =
+                    static_cast<uint32_t>((s_stagingVbo.size() / kVertexStride) -
+                                          1 - baseVertex);
+                s_stagingIbo.push_back(expandedIdx);
+            }
+        }
+
+        GpuStaticPropPacket pkt{};
+        pkt.firstIndex    = packetFirstIndex;
+        pkt.indexCount    = (runEnd - runStart) * 3;
+        pkt.baseVertex    = static_cast<int32_t>(baseVertex);
+        pkt.textureHandle = (typeShape->listOfTextures && runTextureIdx < typeShape->numTextures)
+                              ? typeShape->listOfTextures[runTextureIdx].gosTextureHandle
+                              : 0;
+        pkt.materialFlags = typeShape->alphaTestOn ? STATIC_PROP_FLAG_ALPHA_TEST : 0;
+        pkt.owningTypeID  = newTypeID;
+        s_packets.push_back(pkt);
+        ++packetCountForThisType;
+
+        runStart = runEnd;
+    }
+
+    const uint32_t numVerts = typeShape->numTypeVertices;
+
+    GpuStaticPropType type{};
+    type.firstPacket = static_cast<uint32_t>(s_packets.size()) - packetCountForThisType;
+    type.packetCount = packetCountForThisType;
+    type.vertexCount = numVerts;
+    type.source      = typeShape;
+
+    s_typeIndex[typeShape] = newTypeID;
+    s_types.push_back(type);
+}
+
+void GpuStaticPropBatcher::registerMultiShape(TG_TypeMultiShape* multiShape) {
+    if (!multiShape) return;
+    const long n = multiShape->GetNumShapes();
+    for (long i = 0; i < n; ++i) {
+        TG_TypeNodePtr node = multiShape->GetTypeNode(i);
+        if (node && node->GetNodeType() == SHAPE_NODE) {
+            registerType(static_cast<TG_TypeShape*>(node));
+        }
+    }
 }
 
 void GpuStaticPropBatcher::finalizeGeometry() {

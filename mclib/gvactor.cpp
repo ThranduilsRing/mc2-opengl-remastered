@@ -68,6 +68,8 @@
 #include"move.h"
 #endif
 
+#include "gos_static_prop_batcher.h"
+
 //******************************************************************************************
 extern float	worldUnitsPerMeter;
 extern bool 	drawTerrainGrid;
@@ -1010,12 +1012,18 @@ void GVAppearance::init (AppearanceTypePtr tree, GameObjectPtr obj)
 					{
 						dustCloud = gosFX::EffectLibrary::Instance->MakeEffect(gosEffectSpec->m_effectID, flags);
 						gosASSERT(dustCloud != NULL);
-						
+
 						MidLevelRenderer::MLRTexturePool::Instance->LoadImages();
 					}
 				}
 			}
 		}
+
+		// GPU static-prop batcher: register this GV's type shapes + variants.
+		for (int i = 0; i < MAX_LODS; ++i)
+			GpuStaticPropBatcher::instance().registerMultiShape(appearType->gvShape[i]);
+		GpuStaticPropBatcher::instance().registerMultiShape(appearType->gvShadowShape);
+		GpuStaticPropBatcher::instance().registerMultiShape(appearType->gvDmgShape);
 	}
 }
 

@@ -61,6 +61,7 @@
 #endif
 
 #include "../code/unitdesg.h" /* just for definition of MIN_TERRAIN_PART_ID and MAX_MAP_CELL_WIDTH */
+#include "gos_static_prop_batcher.h"
 //******************************************************************************************
 extern float	worldUnitsPerMeter;
 extern bool 	drawTerrainGrid;
@@ -752,6 +753,17 @@ void BldgAppearance::init (AppearanceTypePtr tree, GameObjectPtr obj)
 			for (long i=0;i<appearType->numWeaponNodes;i++)
 				nodeRecycle[i] = 0.0f;
 		}
+
+		// Register this building's TG_TypeShape variants with the GPU static
+		// prop batcher. Idempotent -- duplicate calls across instances are
+		// cheap. Covers all LOD base shapes plus destroyed/damaged variants
+		// and their shadow proxies. Registration happens after texture
+		// handles are resolved so packets capture the correct GL handle.
+		for (int i = 0; i < MAX_LODS; ++i)
+			GpuStaticPropBatcher::instance().registerMultiShape(appearType->bldgShape[i]);
+		GpuStaticPropBatcher::instance().registerMultiShape(appearType->bldgShadowShape);
+		GpuStaticPropBatcher::instance().registerMultiShape(appearType->bldgDmgShape);
+		GpuStaticPropBatcher::instance().registerMultiShape(appearType->bldgDmgShadowShape);
 	}
 }
 
@@ -3400,8 +3412,15 @@ void TreeAppearance::init (AppearanceTypePtr tree, GameObjectPtr obj)
 			appearType->typeUpperLeft = treeShape->GetMinBox();
 			appearType->typeLowerRight = treeShape->GetMaxBox();
 		}
+
+		// GPU static-prop batcher: register this tree's type shapes + variants.
+		for (int i = 0; i < MAX_LODS; ++i)
+			GpuStaticPropBatcher::instance().registerMultiShape(appearType->treeShape[i]);
+		GpuStaticPropBatcher::instance().registerMultiShape(appearType->treeShadowShape);
+		GpuStaticPropBatcher::instance().registerMultiShape(appearType->treeDmgShape);
+		GpuStaticPropBatcher::instance().registerMultiShape(appearType->treeDmgShadowShape);
 	}
-	
+
 	pitch = yaw = 0.0f;
 }
 
