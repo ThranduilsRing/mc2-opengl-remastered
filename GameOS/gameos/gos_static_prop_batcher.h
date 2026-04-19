@@ -82,6 +82,13 @@ public:
                               uint32_t fogARGB,
                               uint32_t flags);
 
+    // Iterate a multishape's children and submit each SHAPE_NODE leaf using
+    // the child's own listOfShapes[i].shapeToWorld. Per-child highlight/fog/
+    // flags are pulled from the TG_Shape node itself. Returns false if ANY
+    // child fails registration — caller MUST CPU-fallback the whole
+    // multishape for this frame to keep the visual self-consistent.
+    [[nodiscard]] bool submitMultiShape(TG_MultiShape* multi);
+
     // Per-frame dispatch.
     void flush();         // main color pass
     void flushShadow();   // depth-only into dynamic shadow FBO
