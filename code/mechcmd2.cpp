@@ -733,7 +733,9 @@ void __stdcall UpdateRenderers()
 			gos_GetViewport(&viewMulX, &viewMulY, &viewAddX, &viewAddY);
 			userInput->setViewport(viewMulX,viewMulY,viewAddX,viewAddY);
 
+			gos_SetRenderState( gos_State_IsHUD, 1 );
 			logistics->render();
+			gos_SetRenderState( gos_State_IsHUD, 0 );
 		}
 
 		if (optionsScreenWrapper && !optionsScreenWrapper->isDone() )
@@ -743,19 +745,25 @@ void __stdcall UpdateRenderers()
 			gos_GetViewport(&viewMulX, &viewMulY, &viewAddX, &viewAddY);
 			userInput->setViewport(viewMulX,viewMulY,viewAddX,viewAddY);
 
+			gos_SetRenderState( gos_State_IsHUD, 1 );
 			optionsScreenWrapper->render();
+			gos_SetRenderState( gos_State_IsHUD, 0 );
 		}
 
 		//------------------------------------------------------------
 		{
 			ZoneScopedN("UpdateRenderers uiRender");
 			gos_SetRenderState( gos_State_Filter, gos_FilterNone );
+			gos_SetRenderState( gos_State_IsHUD, 1 );
 			userInput->render();
+			gos_SetRenderState( gos_State_IsHUD, 0 );
 		}
 
 		{
 			ZoneScopedN("UpdateRenderers debugWindows");
+			gos_SetRenderState( gos_State_IsHUD, 1 );
 			DEBUGWINS_render();
+			gos_SetRenderState( gos_State_IsHUD, 0 );
 		}
 
 		#ifdef LAB_ONLY
