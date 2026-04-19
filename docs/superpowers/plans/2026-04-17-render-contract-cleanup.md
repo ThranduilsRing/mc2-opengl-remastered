@@ -2,20 +2,25 @@
 
 ## Outcome (added 2026-04-18, post-execution)
 
-- **Task 1 (D1a — remove pz gate):** ATTEMPTED then REVERTED.
-  - Commit: `ddc173f` (D1a removal), `6c6e872` (revert).
-  - In-game result: giant triangles + atrocious framerate the moment the gate was bypassed under tessellation.
-  - **The plan's premise was empirically falsified.** "GPU owns depth clipping for tessellated geometry; the CPU pz gate is redundant" is wrong — the gate is load-bearing in some way the design analysis missed. Suspected mechanisms (unconfirmed): `gVertex.xyz` flowing into the vertex shader as `gl_Position` even when the TES recomputes geometry from the extras VBO; or the TES using `gl_in[i].gl_Position` for tessellation-level decisions, producing tessellation explosions on garbage screen-space input.
-  - D1a is **NOT resolved.** It needs an investigation pass before any second attempt: what does the vertex/TES actually consume from `gVertex.xyz`, and what does it do with the values from rejected (off-screen / behind-near-plane) terrain corners?
-  - Fallback A (per-vertex `clipInfo > 0` gate) was not tried — the regression severity argued for revert + investigate, not narrow-and-retry blind.
+- **Task 1 (D1a — remove pz gate):** ATTEMPTED MULTIPLE WAYS then REVERTED.
+  - Commits: `ddc173f` (first D1a removal), `6c6e872` (revert).
+  - Subsequent investigation tried three TES-side fixes to make the GPU clipper reject behind-camera verts on its own. All produced regressions:
+    1. Signed `clip.w` packaging: terrain entirely transparent → MC2's matrix has visible verts with `clip.w < 0`.
+    2. Negated packaging (`gl_Position = vec4(-ndc.xyz * clip.w, -clip.w)`): worked from most camera angles, produced giant garbage tris from specific NE-quadrant angles → MC2's matrix does NOT have a uniform `clip.w` sign across all visible verts (some `cw>0`, some `cw<0`).
+    3. Direct linear clip-space transform (skipping the explicit `1/clip.w` divide): produced *more* artifacts in *more* camera positions. The explicit chain's `1/cw` blowing up to ±Inf was implicitly NaN-rejecting bad verts; the linear version produces finite "garbage" gl_Position that the GPU rasterizes as terrain at distance (visible as gradient wedges with valid Z that real terrain renders in front of).
+  - **Deeper conclusion than the original post-mortem:** the pz gate is genuinely required — not a "DX7 leftover." There is no homogeneous clip-space test the GPU can do to distinguish "valid visible vert" from "behind-camera vert that produces finite garbage clip values." Both reach rasterization with positive packaged w and NDC inside [-1, 1]. The pz gate is the only upstream signal that distinguishes them.
+  - The legacy CPU `Camera::projectZ()` (camera.h:409) also uses `fabs(rhw)` — the original DX7 author hit the same matrix-sign issue and used the same workaround. The TES inherited the pattern.
+  - D1a closure requires either (a) rebuilding `terrainMVP` as a clean GL projection matrix where `clip.w` is monotonic in eye-z so standard homogeneous clipping rejects behind-camera verts, or (b) accepting the gate as load-bearing CPU-producer behavior and renaming D1a accordingly. Both are bigger than this plan scoped for.
+  - Full math + falsification trail saved in user memory file `terrain_tes_projection.md`.
 - **Task 2 (Phase 4a — forced initial shadow pass):** SHIPPED.
   - Commit: `f28a1f5`.
   - In-game result: works. Plan deviation noted in commit (API in `gameos.hpp` + `gameos_graphics.cpp` instead of `gos_postprocess.h/.cpp`; file-static instead of class member; matches the existing `gos_StaticLightMatrixBuilt`/etc pattern).
-- **Task 3 (docs update):** NOT DONE in the form the plan specified. The plan assumed both code tasks would land cleanly — D1a being reverted means `render-contract.md` should NOT mark D1a resolved. Phase 4a-only doc updates are a smaller, separate change.
+- **Task 3 (docs update):** NOT DONE in the form the plan specified. D1a being unresolvable without deeper matrix work means `render-contract.md` should re-classify D1a as "load-bearing CPU producer, not debt" rather than "resolved." Phase 4a-only doc updates are a smaller, separate change.
 
 **Lessons for future render-contract changes:**
-- Removing CPU-side gates in this codebase needs an empirical safety check, not just architectural reasoning. The gates were written for DX7 software rasterization, but the OpenGL/tessellation pipeline still consumes the same `gVertex` struct. A gate that "should be redundant" may be feeding load-bearing geometry data downstream.
-- Plan-time premise checks ("GPU clips this naturally") should include a one-shot diagnostic build that *logs* what the GPU sees with the gate bypassed (e.g., count triangles submitted with `pz < 0`), before the gate is actually removed.
+- Removing CPU-side gates in this codebase needs an empirical safety check, not just architectural reasoning. The gates were written for DX7 software rasterization, but the OpenGL/tessellation pipeline inherited the matrix's sign-convention quirks. "GPU clips this naturally" is wrong when the matrix doesn't have a clean clip-space convention.
+- Plan-time premise checks should include instrumentation that logs the actual `clip.w` distribution before designing a "clip-space clean" fix. We assumed clip.w had a uniform sign convention; testing showed it doesn't.
+- The `fabs(rhw)` in `Camera::projectZ()` is a load-bearing comment. If the legacy CPU code uses `fabs` on a value, the GPU port using `abs()` on the analogous value is probably load-bearing too.
 
 ---
 
