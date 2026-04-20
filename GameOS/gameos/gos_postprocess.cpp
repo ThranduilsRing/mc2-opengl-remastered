@@ -628,7 +628,7 @@ void gosPostProcess::runScreenShadow()
     screenShadowProg_->setInt("overlayPass", 0);
     screenShadowProg_->setInt("enableShadows", shadowsEnabled_ ? 1 : 0);
     screenShadowProg_->setInt("enableDynamicShadows", (dynShadowDepthTex_ != 0) ? 1 : 0);
-    screenShadowProg_->setFloat("shadowSoftness", 2.5f);
+    screenShadowProg_->setFloat("shadowSoftness", 0.9f);  // match terrain default
     screenShadowProg_->setInt("debugMode", screenShadowDebug_);
     float screenSz[2] = { (float)width_, (float)height_ };
     screenShadowProg_->setFloat2("screenSize", screenSz);
