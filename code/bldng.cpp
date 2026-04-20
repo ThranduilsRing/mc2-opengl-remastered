@@ -81,6 +81,7 @@
 #endif
 
 #include "../resource.h"
+#include "gos_static_prop_killswitch.h"  // g_useGpuStaticProps
 
 #define BLIP_FRAME_RATE		0.067
 //extern unsigned long NextIdNumber;
@@ -1062,7 +1063,12 @@ void Building::render (void) {
 		setFlag(OBJECT_FLAG_ONFIRE, false);
 	}
 
-	if (appearance->canBeSeen())
+	// GPU static-prop path bypasses canBeSeen() (returns inView) because the
+	// legacy angular cull has a ~87% false-negative rate at wolfman zoom.
+	// Under the killswitch, let the GPU clipper + per-actor submit logic
+	// decide visibility. See docs/superpowers/plans/progress/
+	// 2026-04-19-static-prop-handoff.md.
+	if (appearance->canBeSeen() || g_useGpuStaticProps)
 	{
 		//--------------------------------------
 		if (getDrawBars())

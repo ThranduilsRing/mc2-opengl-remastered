@@ -19,6 +19,8 @@
 #include"terrobj.h"
 #endif
 
+#include "gos_static_prop_killswitch.h"  // g_useGpuStaticProps
+
 #ifndef GAMESOUND_H
 #include"gamesound.h"
 #endif
@@ -645,7 +647,9 @@ void TerrainObject::render (void) {
 	{
 	}
 
-	if (appearance->canBeSeen())
+	// GPU static-prop path bypasses canBeSeen() for the same reason as
+	// Building::render — the legacy angular cull is too aggressive.
+	if (appearance->canBeSeen() || g_useGpuStaticProps)
 	{
 		if (getSelected())
 		{
