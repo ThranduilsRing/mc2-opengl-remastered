@@ -26,6 +26,10 @@ const vec2 poissonDisk[16] = vec2[](
     vec2( 0.14383161, -0.14100790)
 );
 
+// Gradient-adaptive PCF (poor-man's PCSS).
+// fwidth(projCoords.z) measures how fast receiver depth changes in shadow space.
+// Cliffs facing the light have high gradient (stair-step risk) → use tight PCF.
+// Flat terrain has low gradient → can afford wide PCF for soft penumbra without banding.
 float calcShadow(vec3 worldPos, vec3 normal, vec3 lightDir, int numTaps)
 {
     if (enableShadows == 0) return 1.0;
@@ -52,9 +56,16 @@ float calcShadow(vec3 worldPos, vec3 normal, vec3 lightDir, int numTaps)
     float ca = cos(angle), sa = sin(angle);
     mat2 rot = mat2(ca, sa, -sa, ca);
 
+    // Adaptive PCF radius based on light-space depth gradient.
+    // High gradient (cliff/ridge facing light) → tighten radius to hide stair-stepping.
+    // Low gradient (flat terrain) → widen radius for soft penumbra without banding.
+    float depthGradient = length(vec2(dFdx(projCoords.z), dFdy(projCoords.z)));
+    float hardness = clamp(depthGradient * 180.0, 0.0, 1.0);
+    float adaptiveScale = mix(3.2, 0.8, hardness);
+
     // Poisson disk sampling with variable tap count
     vec2 texelSize = 1.0 / vec2(textureSize(shadowMap, 0));
-    float radius = max(shadowSoftness, 0.5);
+    float radius = max(shadowSoftness, 0.5) * adaptiveScale;
     float shadow = 0.0;
     int taps = clamp(numTaps, 1, 16);
     for (int i = 0; i < taps; i++) {
@@ -99,8 +110,13 @@ float calcDynamicShadow(vec3 worldPos, vec3 normal, vec3 lightDir, int numTaps)
     float ca = cos(angle), sa = sin(angle);
     mat2 rot = mat2(ca, sa, -sa, ca);
 
+    // Same gradient-adaptive PCF as static shadow (see calcShadow above).
+    float depthGradient = length(vec2(dFdx(projCoords.z), dFdy(projCoords.z)));
+    float hardness = clamp(depthGradient * 180.0, 0.0, 1.0);
+    float adaptiveScale = mix(3.2, 0.8, hardness);
+
     vec2 texelSize = 1.0 / vec2(textureSize(dynamicShadowMap, 0));
-    float radius = max(shadowSoftness, 0.5);
+    float radius = max(shadowSoftness, 0.5) * adaptiveScale;
     float shadow = 0.0;
     int taps = clamp(numTaps, 1, 16);
     for (int i = 0; i < taps; i++) {
