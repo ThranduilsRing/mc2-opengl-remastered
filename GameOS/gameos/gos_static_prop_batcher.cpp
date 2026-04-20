@@ -473,53 +473,58 @@ bool GpuStaticPropBatcher::submitMultiShape(TG_MultiShape* multi) {
     const int n = multi->numTG_Shapes;
     if (n <= 0 || !multi->listOfShapes) return false;
 
-    // Track "first failure per reason" diagnostics so the stderr isn't
-    // spammed. Bisection found these conditions in real data:
-    //   - some children have node type != SHAPE_NODE (bone/helper nodes)
-    //   - some have null listOfColors (late-spawn, lighting not yet baked)
-    //   - late-registered types (seen in Phase 2 logs)
-    // Any of these: bail and CPU-fallback the whole multishape this frame.
-    static bool s_warned_badNodeType = false;
-    static bool s_warned_nullColors  = false;
+    // Skip-child-not-fail-multishape policy. The CPU path (TG_Shape::Render
+    // in tgl.cpp ~2530) silently returns for any of:
+    //   - helper/bone node (numVertices == 0; GetNodeType() != SHAPE_NODE)
+    //   - listOfVertices == NULL (TransformShape early-out for
+    //       isSpotlight && !isNight, tgl.cpp ~1657)
+    //   - listOfColors == NULL (shape not yet transformed this frame)
+    //   - lastTurnTransformed != turn (stale)
+    // Previously we failed the entire multishape on any of these, which
+    // cascaded one helper/spotlight child into a full CPU fallback of every
+    // building. Now we skip only the ineligible children and submit the
+    // rest. Only fail the whole multishape if a SHAPE_NODE child has an
+    // unregistered type — that's a plumbing problem that invalidates
+    // self-consistency.
+    static bool s_warned_unregistered = false;
 
-    // Two-pass: verify every child is submittable, then push instances.
+    // First pass: check for unregistered SHAPE_NODE types (fatal for this
+    // multishape). All other ineligibility is handled in the submit pass.
     for (int i = 0; i < n; ++i) {
         const TG_ShapeRec& rec = multi->listOfShapes[i];
         if (!rec.processMe || !rec.node) continue;
         const TG_Shape* child = rec.node;
-        if (!child->myType) return false;
-        if (child->myType->GetNodeType() != SHAPE_NODE) {
-            if (!s_warned_badNodeType) {
-                std::fprintf(stderr,
-                    "[GPUPROPS] multi=%p child %d: non-SHAPE node (type=%d) -- "
-                    "CPU-fallback\n",
-                    (void*)multi, i, (int)child->myType->GetNodeType());
-                s_warned_badNodeType = true;
-            }
-            return false;
-        }
+        if (!child->myType) continue;
+        if (child->myType->GetNodeType() != SHAPE_NODE) continue;  // skip helpers
         const TG_TypeShape* ts = static_cast<const TG_TypeShape*>(child->myType);
-        auto it = s_typeIndex.find(ts);
-        if (it == s_typeIndex.end()) return false;  // unregistered type
-        const GpuStaticPropType& type = s_types[it->second];
-        if (type.vertexCount == 0) return false;
-        if (!child->listOfColors) {
-            if (!s_warned_nullColors) {
+        if (s_typeIndex.find(ts) == s_typeIndex.end()) {
+            if (!s_warned_unregistered) {
                 std::fprintf(stderr,
-                    "[GPUPROPS] multi=%p child %d: null listOfColors -- "
-                    "CPU-fallback\n",
-                    (void*)multi, i);
-                s_warned_nullColors = true;
+                    "[GPUPROPS] multi=%p child %d: unregistered type %p -- "
+                    "CPU-fallback whole multishape\n",
+                    (void*)multi, i, (void*)ts);
+                s_warned_unregistered = true;
             }
             return false;
         }
     }
 
-    // Second pass: actually submit.
+    // Second pass: submit each eligible child, silently skipping those the
+    // CPU path would also skip (helpers, untransformed, daytime spotlights).
     for (int i = 0; i < n; ++i) {
         TG_ShapeRec& rec = multi->listOfShapes[i];
         if (!rec.processMe || !rec.node) continue;
         TG_Shape* child = rec.node;
+        if (!child->myType) continue;
+        // Helper/bone nodes (non-SHAPE). CPU Render silently returns because
+        // numVertices == 0. Do the same — no instance to emit.
+        if (child->myType->GetNodeType() != SHAPE_NODE) continue;
+        // Spotlights during day + other early-outs in TransformShape leave
+        // listOfVertices NULL. CPU Render early-outs on the same condition.
+        // Also listOfColors NULL: CPU also early-outs. Submit's zero-pad
+        // path would render this child black, which is the bug we're
+        // avoiding — so skip here.
+        if (!child->listOfVertices || !child->listOfColors) continue;
 
         uint32_t flags = 0;
         if (child->lightsOut)   flags |= (1u << 0);
@@ -530,8 +535,9 @@ bool GpuStaticPropBatcher::submitMultiShape(TG_MultiShape* multi) {
         Stuff::Matrix4D xform(rec.shapeToWorld);
         if (!submit(child, xform,
                     child->aRGBHighlight, child->fogRGB, flags)) {
-            // Pre-pass verified all children; reaching here means submit()
-            // itself rejected (buffers full, etc.). Fall back for this frame.
+            // submit() rejected after we passed the registration gate —
+            // typically a buffer-full condition. Fall back for this frame
+            // to keep the visual self-consistent.
             return false;
         }
     }
