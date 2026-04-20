@@ -1143,18 +1143,10 @@ void MC_TextureManager::renderLists (void)
 	}
 	} // end Render.3DObjects zone
 
-	// Task 10: GPU static-prop batcher flush. Runs after mech / 3D-object
-	// submission so props render with/after mechs, before overlays and
-	// post-process. Empty bucket map is a no-op (expected until Task 11
-	// wires submit() into BldgAppearance::render).
-	{
-		ZoneScopedN("Render.GpuStaticProps");
-		TracyGpuZone("Render.GpuStaticProps");
-		extern bool g_useGpuStaticProps;
-		if (g_useGpuStaticProps) {
-			GpuStaticPropBatcher::instance().flush();
-		}
-	}
+	// [Moved in Phase 4 debug] flush() was originally here (after
+	// Render.3DObjects). But Render.TerrainSolid runs AFTER us on line
+	// ~1287, so terrain was overwriting our building pixels. Flush is
+	// now relocated further down, after Render.TerrainSolid completes.
 
 	// restore state as all old-style geometry is culled on CPU and all vertices are already pretransformed
 	gos_SetRenderState(gos_State_Culling, gos_Cull_None);
@@ -1346,6 +1338,20 @@ void MC_TextureManager::renderLists (void)
 		}
 	}
 	} // end Render.TerrainSolid zone
+
+	// Task 10 flush() — moved here from after Render.3DObjects because
+	// terrain renders AFTER 3D objects in this codebase; placing our
+	// flush earlier meant terrain overwrote our pixels. Running after
+	// terrain but before overlays gives buildings the right layering:
+	// on top of terrain, below decals/roads.
+	{
+		ZoneScopedN("Render.GpuStaticProps");
+		TracyGpuZone("Render.GpuStaticProps");
+		extern bool g_useGpuStaticProps;
+		if (g_useGpuStaticProps) {
+			GpuStaticPropBatcher::instance().flush();
+		}
+	}
 
 	// DRAWSOLID done
 

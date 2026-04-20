@@ -552,17 +552,46 @@ uint32_t s_lastUploadedSlot = 0xFFFFFFFFu;
 bool uploadAllBucketsIfNeeded() {
     if (s_lastUploadedSlot == s_frameSlot) return true;
 
-    size_t totalInstances = 0;
-    size_t totalColors    = 0;
-    for (auto& kv : s_bucketsByType) {
-        totalInstances += kv.second.instances.size();
-        totalColors    += kv.second.colors.size();
-    }
-    if (totalInstances == 0) return false;
+    if (s_bucketsByType.empty()) return false;
 
     loadProgramsIfNeeded();
     if (s_fatalRegistrationFailure) return false;
-    ensureRingCapacity(totalInstances, totalColors);
+
+    // SSBO offset alignment must be queried to size the ring correctly.
+    // glBindBufferRange(GL_SHADER_STORAGE_BUFFER, ..., offset, size) requires
+    // offset % GL_SHADER_STORAGE_BUFFER_OFFSET_ALIGNMENT == 0 (minimum 256).
+    // Each per-type range starts at an aligned offset, which wastes up to
+    // (alignment - 1) bytes per bucket. The CAPACITY request must include
+    // that slack or we overrun the mapped buffer on zoom-out (more buckets
+    // active -> more padding overhead).
+    static GLint s_ssboAlignment = 0;
+    if (s_ssboAlignment == 0) {
+        glGetIntegerv(GL_SHADER_STORAGE_BUFFER_OFFSET_ALIGNMENT, &s_ssboAlignment);
+        if (s_ssboAlignment < 16) s_ssboAlignment = 256;  // sane fallback
+    }
+    auto alignUp = [](size_t v, size_t a) {
+        return (v + (a - 1)) & ~(a - 1);
+    };
+
+    // Compute EXACT total byte usage with per-bucket alignment padding.
+    size_t instBytesNeeded = 0;
+    size_t colBytesNeeded  = 0;
+    for (auto& kv : s_bucketsByType) {
+        instBytesNeeded = alignUp(instBytesNeeded, (size_t)s_ssboAlignment);
+        colBytesNeeded  = alignUp(colBytesNeeded,  (size_t)s_ssboAlignment);
+        instBytesNeeded += kv.second.instances.size() * sizeof(GpuStaticPropInstance);
+        colBytesNeeded  += kv.second.colors.size() * sizeof(uint32_t);
+    }
+    if (instBytesNeeded == 0) return false;
+
+    // Convert back to element counts (ceil) for ensureRingCapacity, which is
+    // element-based. Round up so subsequent ring-indexing in bytes fits.
+    const size_t instCountNeeded =
+        (instBytesNeeded + sizeof(GpuStaticPropInstance) - 1) / sizeof(GpuStaticPropInstance);
+    const size_t colCountNeeded =
+        (colBytesNeeded + sizeof(uint32_t) - 1) / sizeof(uint32_t);
+
+    ensureRingCapacity(instCountNeeded, colCountNeeded);
     if (s_fatalRegistrationFailure) return false;
 
     s_frameSlot = (s_frameSlot + 1) % RING_FRAMES;
@@ -576,22 +605,6 @@ bool uploadAllBucketsIfNeeded() {
     const size_t slotColByteBase  = s_frameSlot * s_colorCapacity    * sizeof(uint32_t);
     auto* instMapBase = static_cast<uint8_t*>(s_instanceMap) + slotInstByteBase;
     auto* colMapBase  = static_cast<uint8_t*>(s_colorMap)    + slotColByteBase;
-
-    // SSBO offset alignment. Per the GL spec,
-    //   glBindBufferRange(GL_SHADER_STORAGE_BUFFER, ..., offset, size)
-    // requires `offset % GL_SHADER_STORAGE_BUFFER_OFFSET_ALIGNMENT == 0`.
-    // That value is implementation-defined with minimum 256 bytes. Query once.
-    // Unaligned offsets fail silently on AMD and the subsequent draw reads
-    // from garbage memory -> hard crash. Round every per-type offset up to
-    // this alignment.
-    static GLint s_ssboAlignment = 0;
-    if (s_ssboAlignment == 0) {
-        glGetIntegerv(GL_SHADER_STORAGE_BUFFER_OFFSET_ALIGNMENT, &s_ssboAlignment);
-        if (s_ssboAlignment < 16) s_ssboAlignment = 256;  // sane fallback
-    }
-    auto alignUp = [](size_t v, size_t a) {
-        return (v + (a - 1)) & ~(a - 1);
-    };
 
     // Deterministic ascending typeID iteration — makes Tracy / RenderDoc
     // diffs stable and shader-debug repro repeatable across runs.
@@ -654,12 +667,36 @@ void GpuStaticPropBatcher::flush() {
         return;
     }
 
+    // Save ALL GL state we'll mutate so we can restore it at the end.
+    // This is the defensive-save approach — the engine's MLR/HUD paths
+    // under 4.3 core are fragile about inherited bindings, so we behave
+    // as if every caller expects state unchanged.
+    GLint prevProgram=0, prevVao=0, prevArrayBuf=0, prevElemBuf=0;
+    GLint prevActiveTex=0, prevTexUnit0=0;
+    GLint prevSsbo0=0, prevSsbo1=0;
+    GLboolean prevDepthTest=GL_FALSE, prevDepthMask=GL_FALSE;
+    GLboolean prevCullFace=GL_FALSE, prevBlend=GL_FALSE;
+    GLint prevDepthFunc=GL_LESS, prevCullMode=GL_BACK;
+    glGetIntegerv(GL_CURRENT_PROGRAM, &prevProgram);
+    glGetIntegerv(GL_VERTEX_ARRAY_BINDING, &prevVao);
+    glGetIntegerv(GL_ARRAY_BUFFER_BINDING, &prevArrayBuf);
+    glGetIntegerv(GL_ELEMENT_ARRAY_BUFFER_BINDING, &prevElemBuf);
+    glGetIntegerv(GL_ACTIVE_TEXTURE, &prevActiveTex);
+    glActiveTexture(GL_TEXTURE0);
+    glGetIntegerv(GL_TEXTURE_BINDING_2D, &prevTexUnit0);
+    glGetIntegeri_v(GL_SHADER_STORAGE_BUFFER_BINDING, 0, &prevSsbo0);
+    glGetIntegeri_v(GL_SHADER_STORAGE_BUFFER_BINDING, 1, &prevSsbo1);
+    prevDepthTest = glIsEnabled(GL_DEPTH_TEST);
+    glGetBooleanv(GL_DEPTH_WRITEMASK, &prevDepthMask);
+    glGetIntegerv(GL_DEPTH_FUNC, &prevDepthFunc);
+    prevCullFace = glIsEnabled(GL_CULL_FACE);
+    glGetIntegerv(GL_CULL_FACE_MODE, &prevCullMode);
+    prevBlend = glIsEnabled(GL_BLEND);
+
     glUseProgram(s_staticPropProgram);
     glBindVertexArray(s_sharedVao);
 
-    // Explicit, engine-owned GL state. Do NOT inherit from the previous
-    // pass — MLR/HUD paths may leave depth test off or blend on, which
-    // would make our draws paint over the whole screen.
+    // Explicit state for our pass.
     glEnable(GL_DEPTH_TEST);
     glDepthMask(GL_TRUE);
     glDepthFunc(GL_LEQUAL);
@@ -672,10 +709,25 @@ void GpuStaticPropBatcher::flush() {
     // mclib/tgl.cpp:1558. Matrix4D is row-major (Stuff layout); upload with
     // GL_FALSE just like the terrain MVP path.
     const GLint locWTC = glGetUniformLocation(s_staticPropProgram, "u_worldToClip");
-    if (locWTC >= 0) {
-        glUniformMatrix4fv(locWTC, 1, GL_FALSE,
-                           (const float*)&TG_Shape::s_worldToClip.entries[0]);
-    }
+    const float* wtc = (const float*)&TG_Shape::s_worldToClip.entries[0];
+    // Stuff::Matrix4D is stored column-major with row-vec convention (per
+    // entries[col*4+row]). GL_FALSE treats data as column-major, so GLSL
+    // would see the same matrix — and `M * v` (col-vec math) would
+    // miss the translation in row 3. GL_TRUE transposes on upload: GLSL
+    // then sees the matrix swapped, and `M * v` becomes row-vec math =
+    // correct. This matches what terrain does by explicitly writing its
+    // matrix to memory row-major before upload (gamecam.cpp:169).
+    if (locWTC >= 0) glUniformMatrix4fv(locWTC, 1, GL_TRUE, wtc);
+    // Terrain projection chain — matches shaders/terrain_overlay.vert usage.
+    // TG_Shape outputs are in Stuff/camera world coords; u_worldToClip gives
+    // MC2 D3D-style screen-pixel homogeneous, and we then do divide +
+    // viewport + pixel->NDC with abs(w).
+    const GLint locVP  = glGetUniformLocation(s_staticPropProgram, "u_terrainViewport");
+    const float* vp = gos_GetTerrainViewportVec4();
+    if (locVP >= 0 && vp) glUniform4fv(locVP, 1, vp);
+    const GLint locMVP = glGetUniformLocation(s_staticPropProgram, "u_mvp");
+    const float* mm = gos_GetProj2ScreenMat4();
+    if (locMVP >= 0 && mm) glUniformMatrix4fv(locMVP, 1, GL_TRUE, mm);
     glUniform1i(glGetUniformLocation(s_staticPropProgram, "u_tex"),           0);
     glUniform1i(glGetUniformLocation(s_staticPropProgram, "u_debugAddrMode"), debugAddrMode_);
     // FIXME(task-10): no clean per-scene global fog scalar source available
@@ -721,7 +773,8 @@ void GpuStaticPropBatcher::flush() {
                         (int)pkt.materialFlags);
             glUniform1i(glGetUniformLocation(s_staticPropProgram, "u_packetID"),
                         (int)(type.firstPacket + p));
-
+            // Drain any stale GL error first so our check is clean.
+            while (glGetError() != GL_NO_ERROR) {}
             glDrawElementsInstancedBaseVertex(
                 GL_TRIANGLES,
                 pkt.indexCount,
@@ -734,16 +787,26 @@ void GpuStaticPropBatcher::flush() {
 
     s_fence[s_frameSlot] = glFenceSync(GL_SYNC_GPU_COMMANDS_COMPLETE, 0);
 
-    // Defensive cleanup so our state doesn't bleed into overlays / post-process.
-    // Unbind our program, VAO, SSBO slots, and the last packet's texture on
-    // unit 0. The next pass is expected to set its own state, but leaving
-    // our program/VAO bound has caused silent state-leak bugs before.
-    glBindBufferBase(GL_SHADER_STORAGE_BUFFER, 0, 0);
-    glBindBufferBase(GL_SHADER_STORAGE_BUFFER, 1, 0);
-    glBindVertexArray(0);
+    // Restore GL state to EXACTLY what it was at flush start.
+    // SSBOs
+    glBindBufferBase(GL_SHADER_STORAGE_BUFFER, 0, (GLuint)prevSsbo0);
+    glBindBufferBase(GL_SHADER_STORAGE_BUFFER, 1, (GLuint)prevSsbo1);
+    // Texture binding on unit 0
     glActiveTexture(GL_TEXTURE0);
-    glBindTexture(GL_TEXTURE_2D, 0);
-    glUseProgram(0);
+    glBindTexture(GL_TEXTURE_2D, (GLuint)prevTexUnit0);
+    glActiveTexture((GLenum)prevActiveTex);
+    // Program / VAO / buffer bindings
+    glBindVertexArray((GLuint)prevVao);
+    glBindBuffer(GL_ARRAY_BUFFER, (GLuint)prevArrayBuf);
+    glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, (GLuint)prevElemBuf);
+    glUseProgram((GLuint)prevProgram);
+    // Pipeline state
+    if (prevDepthTest) glEnable(GL_DEPTH_TEST); else glDisable(GL_DEPTH_TEST);
+    glDepthMask(prevDepthMask);
+    glDepthFunc((GLenum)prevDepthFunc);
+    if (prevCullFace) glEnable(GL_CULL_FACE); else glDisable(GL_CULL_FACE);
+    glCullFace((GLenum)prevCullMode);
+    if (prevBlend) glEnable(GL_BLEND); else glDisable(GL_BLEND);
 
     s_bucketsByType.clear();
     s_lastUploadedSlot = 0xFFFFFFFFu;  // reset for next frame

@@ -12,3 +12,11 @@ extern bool g_useGpuStaticProps;
 // underlying gosTexture is gone. Implemented in gameos_graphics.cpp where
 // the gosRenderer class is visible.
 uint32_t gos_GetGLTextureId(uint32_t gosHandle);
+
+// Accessors for the terrain projection chain uniforms used by the static
+// prop shader. These replicate the terrain/overlay projection pattern
+// (see shaders/terrain_overlay.vert). Pointers into a float16 / float4
+// buffer; the batcher uploads them unchanged each flush.
+const float* gos_GetTerrainViewportVec4();   // (vmx, vmy, vax, vay)
+const float* gos_GetProj2ScreenMat4();       // screen-pixel -> NDC (upload GL_TRUE)
+const float* gos_GetTerrainMVPMat4();        // axisSwap * worldToClip (upload GL_FALSE)
