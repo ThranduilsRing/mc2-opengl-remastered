@@ -150,6 +150,8 @@ static void handle_key_down( SDL_Keysym* keysym ) {
                     case 3: name = "WHITE"; break;
                     case 4: name = "ARGB-only"; break;
                     case 5: name = "TEX-only"; break;
+                    case 6: name = "HIGHLIGHT-only"; break;
+                    case 7: name = "TEX+HIGHLIGHT"; break;
                 }
                 fprintf(stderr, "GPU Props Debug: %d (%s)\n", m, name);
             }
