@@ -49,6 +49,20 @@ void main() {
     float absW = abs(clip4.w);
     gl_Position = vec4(ndc.xyz * absW, absW);
 
+    // Behind-camera guard. The D3D-style manual perspective divide
+    // (rhw = 1/clip.w, then px = clip.xy/w, then remap) produces
+    // degenerate positions when clip.w <= 0 (vertex at or behind the
+    // camera plane). Symptom: a triangle where one vertex is behind
+    // the camera projects to spans-the-whole-screen stretched
+    // artifacts at certain camera angles. The CPU path never sees
+    // this because CPU pre-culls out-of-view objects; the GPU path
+    // under the killswitch submits everything, so we have to clip
+    // degenerate vertices here. Push them outside the clip volume so
+    // OpenGL's standard triangle clipping handles it.
+    if (clip4.w < 0.1) {
+        gl_Position = vec4(2.0, 2.0, 2.0, 1.0);
+    }
+
     uint argbPacked = colors_.c[inst.firstColorOffset + a_localVertexID];
     vec4 argb;
     argb.a = float((argbPacked >> 24) & 0xFFu) / 255.0;
