@@ -3952,7 +3952,10 @@ bool TreeAppearance::recalcBounds (void)
 //-----------------------------------------------------------------------------
 long TreeAppearance::render (long depthFixup)
 {
-	if (inView)
+	// Mirror BldgAppearance::render: bypass inView under GPU path — the
+	// GPU clipper decides visibility, and the legacy angular cull has a
+	// ~87% false-negative rate at wolfman zoom.
+	if (inView || g_useGpuStaticProps)
 	{
 		long color = SD_BLUE;
 		//unsigned long highLight = 0x007f7f7f;
@@ -3964,7 +3967,13 @@ long TreeAppearance::render (long depthFixup)
 		}
 		//---------------------------------------------
 		// Call Multi-shape render stuff here.
-		treeShape->Render();
+		bool submittedToGpu = false;
+		if (g_useGpuStaticProps && treeShape)
+		{
+			submittedToGpu = GpuStaticPropBatcher::instance().submitMultiShape(treeShape);
+		}
+		if (!submittedToGpu)
+			treeShape->Render();
 
 		if (selected & DRAW_BARS)
 		{
@@ -4201,15 +4210,18 @@ long TreeAppearance::update (bool animate)
 	if (forceLightsOut)
 		treeShape->SetLightsOut(true);
 
-	if (inView)
+	// Under the GPU static-prop path we need listOfColors / shapeToWorld
+	// fresh every frame regardless of inView so submitMultiShape can safely
+	// read shape->listOfVertices during submit().
+	if (inView || g_useGpuStaticProps)
 	{
 		bool checkShadows = ((!beenInView) || (eye->forceShadowRecalc));
-		
+
 		if (treeShadowShape)
 			treeShape->SetUseShadow(false);
 		else
 			treeShape->SetRecalcShadows(checkShadows);
-			
+
 		TG_LightPtr light = eye->getWorldLight(0);
 		light->active = false;
 
