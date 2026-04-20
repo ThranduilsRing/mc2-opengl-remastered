@@ -25,6 +25,35 @@ If skills aren't found by the Skill tool, they're also at `A:/Games/mc2-opengl-s
 - **GL_FALSE for terrainMVP:** Direct-uploaded row-major matrices use `GL_FALSE`. Material cache uses `GL_TRUE`.
 - **Shader hot-reload fails silently:** Bad compile = old shader stays active. Check console for errors.
 
+## ⚠️ Load-Bearing Cull Infrastructure — READ BEFORE TOUCHING
+
+MC2's `inView`/`canBeSeen`/`objBlockInfo.active`/`objVertexActive` chain
+is NOT just a visibility filter. It ALSO gates:
+- Per-object `update()` calls (objmgr.cpp iterates only active blocks)
+- TGL vertex pool allocation budget (shapes silently vanish when pool
+  exhausted — `getVerticesFromPool` returns NULL → `TG_Shape::Render`
+  silent early-out)
+- Object lifecycle (`update()` false return → `setExists(false)` →
+  permanent destruction)
+- `updateGeometry()` which runs `TransformMultiShape`
+  (Mech3DAppearance at mech3d.cpp:4170, GVAppearance at gvactor.cpp:2702)
+
+"Just bypass the broken cull" **cascades** into streak artifacts (stale
+matrices), destroyed objects (update returning false on stale state),
+or silent shape drop-outs (pool exhaustion — mechs are the canary
+because they iterate last).
+
+**See:** `memory/cull_gates_are_load_bearing.md`,
+`memory/tgl_pool_exhaustion_is_silent.md`,
+`docs/gpu-static-prop-cull-lessons.md`, and the handoffs at
+`docs/superpowers/plans/progress/2026-04-20-static-prop-handoff*.md`.
+
+**Current state (2026-04-20):** The RAlt+0 killswitch (`g_useGpuStaticProps`)
+enables partial bypasses that effectively make GPU-mode a
+"static-props-off toggle" rather than a working alternate path. CPU mode
+(killswitch OFF, default) is the supported path. Don't treat the GPU
+path as working without re-reading the above references first.
+
 ## Model Routing
 - haiku: lookups, summaries, simple edits, renaming, formatting
 - sonnet: standard implementation, debugging, code review. always diff changes from haiku

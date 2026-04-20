@@ -47,6 +47,8 @@ All rendering features added to the MechCommander 2 OpenGL port, grouped by cate
 - **Loose file overrides** -- `data/art/`, `data/tgl/`, `data/objects/` override FST archive contents
 - **Tracy profiler** -- always-on with 18 CPU+GPU zones for real-time performance analysis
 - **Debug hotkeys** -- RAlt+F1-F5 and RAlt+4-9 for toggling every visual feature live
+- **RAlt+0 GPU static-prop killswitch** -- experimental GPU-driven prop rendering (buildings, trees, generics). Partially wired: enabling it currently acts as a "hide all static props" toggle, useful for screenshotting terrain without clutter. CPU path (default, killswitch off) is the supported rendering path. See `docs/gpu-static-prop-cull-lessons.md` for why the GPU path is incomplete.
+- **RAlt+9 GPU frag debug-mode cycle** -- when the static-prop killswitch is on, cycles the fragment shader through 8 isolation modes (normal / addr-gradient / addr-hash / WHITE / ARGB-only / TEX-only / HIGHLIGHT-only / TEX+HIGHLIGHT) for per-component visual bisection. Replaces the old SSAO toggle hotkey; SSAO infrastructure is preserved in code but unbound.
 - **Shader hot-reload** -- modified shaders take effect on next frame (bad compiles silently keep old shader)
 - **Wolfman mode** -- extended zoom (altitude 6000), removed LOD culling, removed fog, scaled vertex buffers
 
