@@ -2362,6 +2362,20 @@ float gos_GetTerrainShadowSoftness();
 void gos_SetTerrainDrawEnabled(bool e);
 bool gos_GetTerrainDrawEnabled();
 
+// HUD scale factor. 1.0 = unchanged. < 1.0 shrinks in-game HUD.
+// Scale is applied in flushHUDBatch() only when gos_SetHudScaleActive(true)
+// has been called (i.e. mission is running). Menus/logistics are untouched.
+// Mouse-input hit-testing is inverse-transformed via gos_HudInverseMousePoint().
+void  gos_SetHudScale(float s);
+float gos_GetHudScale();
+void  gos_SetHudScaleActive(bool on);
+bool  gos_GetHudScaleActive();
+
+// Inverse of the 9-slice HUD transform. Given a screen-pixel point the user
+// clicked on, returns the "authored" pixel coord where the game logic placed
+// the HUD element. No-op when scale == 1.0. Safe to call every frame.
+void  gos_HudInverseMousePoint(float& x, float& y);
+
 // Shadow mode — render terrain depth to shadow FBO
 void gos_SetShadowMode(bool enable);
 

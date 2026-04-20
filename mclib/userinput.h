@@ -398,22 +398,34 @@ class UserInput
 
 		long getMouseX (void)
 		{
-			return float2long(mouseXPosition * viewMulX);
+			float x = mouseXPosition * viewMulX;
+			float y = mouseYPosition * viewMulY;
+			gos_HudInverseMousePoint(x, y);
+			return float2long(x);
 		}
 
 		long getMouseY (void)
 		{
-			return float2long(mouseYPosition * viewMulY);
+			float x = mouseXPosition * viewMulX;
+			float y = mouseYPosition * viewMulY;
+			gos_HudInverseMousePoint(x, y);
+			return float2long(y);
 		}
 
 		float realMouseX (void)
 		{
-			return (mouseXPosition * viewMulX);
+			float x = mouseXPosition * viewMulX;
+			float y = mouseYPosition * viewMulY;
+			gos_HudInverseMousePoint(x, y);
+			return x;
 		}
-		
+
 		float realMouseY (void)
 		{
-			return (mouseYPosition * viewMulY);
+			float x = mouseXPosition * viewMulX;
+			float y = mouseYPosition * viewMulY;
+			gos_HudInverseMousePoint(x, y);
+			return y;
 		}
 		
 		void setMousePos (float x, float y)
