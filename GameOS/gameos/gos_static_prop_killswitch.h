@@ -20,3 +20,9 @@ uint32_t gos_GetGLTextureId(uint32_t gosHandle);
 const float* gos_GetTerrainViewportVec4();   // (vmx, vmy, vax, vay)
 const float* gos_GetProj2ScreenMat4();       // screen-pixel -> NDC (upload GL_TRUE)
 const float* gos_GetTerrainMVPMat4();        // axisSwap * worldToClip (upload GL_FALSE)
+
+// Debug-mode cycle for the GPU static prop fragment shader (RAlt+9).
+// Modes: 0=normal, 1=addr-gradient, 2=addr-hash, 3=white, 4=argb-only, 5=tex-only.
+// Implemented in gos_static_prop_batcher.cpp.
+void gos_GpuPropsCycleDebugMode();
+int  gos_GpuPropsGetDebugMode();

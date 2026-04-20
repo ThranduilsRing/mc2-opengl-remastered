@@ -137,11 +137,21 @@ static void handle_key_down( SDL_Keysym* keysym ) {
             break;
         case SDLK_9:
             if (alt_debug) {
-                gosPostProcess* pp = getGosPostProcess();
-                if (pp) {
-                    pp->ssaoEnabled_ = !pp->ssaoEnabled_;
-                    fprintf(stderr, "SSAO: %s\n", pp->ssaoEnabled_ ? "ON" : "OFF");
+                // Repurposed from SSAO toggle to GPU static prop frag debug
+                // cycle. SSAO infrastructure is preserved in code; rebind
+                // elsewhere if needed.
+                gos_GpuPropsCycleDebugMode();
+                int m = gos_GpuPropsGetDebugMode();
+                const char* name = "?";
+                switch (m) {
+                    case 0: name = "normal"; break;
+                    case 1: name = "addr-gradient"; break;
+                    case 2: name = "addr-hash"; break;
+                    case 3: name = "WHITE"; break;
+                    case 4: name = "ARGB-only"; break;
+                    case 5: name = "TEX-only"; break;
                 }
+                fprintf(stderr, "GPU Props Debug: %d (%s)\n", m, name);
             }
             break;
         case SDLK_5:

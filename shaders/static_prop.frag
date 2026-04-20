@@ -15,7 +15,7 @@ flat in uint v_localVertexID;
 uniform sampler2D u_tex;
 uniform int   u_materialFlags;   // bit 0: ALPHA_TEST
 uniform float u_fogValue;        // 1.0 = clear, 0.0 = fully fogged
-uniform int   u_debugAddrMode;   // 0 normal, 1 gradient, 2 hash
+uniform int   u_debugAddrMode;   // 0 normal, 1 gradient, 2 hash, 3 white, 4 argb-only, 5 tex-only
 uniform int   u_maxLocalVertexID;
 uniform int   u_packetID;
 
@@ -54,6 +54,10 @@ void main() {
         GBuffer1  = vec4(0.0, 0.0, 1.0, 0.0);
         return;
     }
+    // Black-buildings bisection (RAlt+9 cycles 0..5).
+    if (u_debugAddrMode == 3) { FragColor = vec4(1.0); GBuffer1 = vec4(0.0,0.0,1.0,0.0); return; }
+    if (u_debugAddrMode == 4) { FragColor = vec4(v_argb.rgb,    1.0); GBuffer1 = vec4(0.0,0.0,1.0,0.0); return; }
+    if (u_debugAddrMode == 5) { FragColor = vec4(tex_color.rgb, 1.0); GBuffer1 = vec4(0.0,0.0,1.0,0.0); return; }
 
     vec4 c = tex_color * v_argb;
     c.rgb += v_highlight.rgb * v_highlight.a;
