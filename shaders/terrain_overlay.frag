@@ -89,7 +89,7 @@ void main()
         return;
     }
 
-    c.rgb *= mix(0.98, 1.0, cloudMask);
+    c.rgb *= mix(0.85, 1.0, cloudMask);
     c.rgb *= shadow;
     PREC float camDist2D = distance(WorldPos.xy, cameraPos.xy);
     PREC float terrainHeight = WorldPos.z;

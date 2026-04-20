@@ -433,14 +433,13 @@ void main(void)
     }
 
     // World-space break-up noise for non-snow terrain. Two-octave — low frequency
-    // for large patches, higher frequency for surface-texture feel. Uniform grey
-    // biomes have no authored colormap variation, so this carries the visual load
-    // that the normal map alone can't.
+    // for large patches, higher frequency for surface-texture feel. Dialed back ~10%
+    // from the debug-time range now that the lighting range fix carries its own weight.
     {
         PREC float lowFreq  = fbm(WorldPos.xy * 0.0035, 3) * 0.5 + 0.5;
         PREC float highFreq = fbm(WorldPos.xy * 0.018,  2) * 0.5 + 0.5;
         PREC float breakupNoise = mix(lowFreq, highFreq, 0.55);
-        PREC float breakupMod = mix(0.75, 1.20, breakupNoise);
+        PREC float breakupMod = mix(0.78, 1.18, breakupNoise);
         PREC float breakupAmount = (1.0 - snowWeight);  // no noise under snow
         baseColor *= mix(1.0, breakupMod, breakupAmount);
     }
@@ -504,7 +503,18 @@ void main(void)
 #endif
             return;
         }
-        c.rgb *= mix(0.98, 1.0, cloudShadow);
+        // Cloud shadow: 15% amplitude on non-snow terrain, tapering to 3% on snow so
+        // the blowing-snow particles below aren't competing with bulk darkening.
+        PREC float cloudLo = mix(0.85, 0.97, snowWeight);
+        c.rgb *= mix(cloudLo, 1.0, cloudShadow);
+
+        // Blowing snow: near snow edges the animated FBM drives a subtle additive
+        // white glow that reads as windblown particles drifting across the boundary.
+        // Peaks at ~mid snowWeight (transition zones); fades out on pure rock or pure snow.
+        PREC float snowEdge = smoothstep(0.02, 0.35, snowWeight) *
+                              (1.0 - smoothstep(0.75, 1.0, snowWeight));
+        PREC vec3  snowParticleTint = vec3(0.98, 0.99, 1.02);
+        c.rgb += snowParticleTint * cloudShadow * snowEdge * 0.09 * shadow;
     }
 
     if (surfaceDebugMode == 6) {

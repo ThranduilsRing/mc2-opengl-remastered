@@ -1058,7 +1058,10 @@ void gosPostProcess::renderSkybox(float sunDirX, float sunDirY, float sunDirZ)
 
 void gosPostProcess::initShadows()
 {
-    shadowMapSize_ = 2048;
+    // Static shadow map covers the whole playable map in one ortho frustum, so
+    // texel density is shadowMapSize²/(mapHalfExtent*2)². 4096² = 16M texels vs 2048² = 4M;
+    // quadruples per-texel density, directly reduces stair-step banding on cliffs.
+    shadowMapSize_ = 4096;
 
     static const char* kShaderPrefix = "#version 420\n";
     shadowDepthProg_ = glsl_program::makeProgram("shadow_depth",
@@ -1239,7 +1242,10 @@ void gosPostProcess::buildStaticLightMatrix(float sunDirX, float sunDirY, float 
 
 void gosPostProcess::initDynamicShadows()
 {
-    dynShadowMapSize_ = 2048;
+    // Dynamic shadow covers radius=1200 around frustum center, so at 2048²
+    // each texel ≈ 1.17 world units — much bigger than a mech foot, hence blocky
+    // mech shadow edges. 4096² → ~0.59 world units/texel (half the step).
+    dynShadowMapSize_ = 4096;
 
     glGenFramebuffers(1, &dynShadowFBO_);
     glBindFramebuffer(GL_FRAMEBUFFER, dynShadowFBO_);
