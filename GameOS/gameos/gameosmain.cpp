@@ -158,7 +158,14 @@ static void handle_key_down( SDL_Keysym* keysym ) {
             break;
         case SDLK_5:
             if (alt_debug) {
-                fprintf(stderr, "Grass: DISABLED (deprecated)\n");
+                // Cycle HUD scale: 1.0 -> 0.90 -> 0.85 -> 0.80 -> 1.0
+                float s = gos_GetHudScale();
+                if      (s > 0.99f) s = 0.90f;
+                else if (s > 0.88f) s = 0.85f;
+                else if (s > 0.83f) s = 0.80f;
+                else                s = 1.00f;
+                gos_SetHudScale(s);
+                fprintf(stderr, "HUD Scale: %.2f\n", s);
             }
             break;
         case SDLK_6:

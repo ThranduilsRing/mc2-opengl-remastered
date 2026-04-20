@@ -3026,6 +3026,7 @@ extern long NumGameObjectsToDisplay;
 void Mission::start (void)
 {
 	active = true;
+	gos_SetHudScaleActive(true);  // enable HUD shrink only during mission
 	for (long i = 0; i < NumGameObjectsToDisplay; i++)
 		DEBUGWINS_setGameObject(-1, ObjectManager->getByWatchID(parts[GameObjectWindowList[i]].objectWID));
 }
@@ -3135,6 +3136,8 @@ void Mission::initTGLForMission()
 //----------------------------------------------------------------------------------
 void Mission::destroy (bool initLogistics)
 {
+	gos_SetHudScaleActive(false);  // back to 100% for menus/logistics
+
 	// Release GPU static-prop batcher resources (VBO/IBO/VAO) at mission
 	// shutdown. Safe to call when nothing was registered.
 	GpuStaticPropBatcher::instance().onMapUnload();

@@ -1243,6 +1243,8 @@ class gosRenderer {
 		vec4 getRenderViewport() { return render_viewport_; }
 
 		const mat4& getProj2Screen() { return projection_; }
+		int getWidth()  const { return width_; }
+		int getHeight() const { return height_; }
         const vec4& getFogColor() const { return fog_color_; }
 
         void setRenderState(gos_RenderState RenderState, int Value) {
@@ -1660,6 +1662,8 @@ class gosRenderer {
 const std::string gosRenderer::s_Foreground = std::string("Foreground");
 
 static GLuint gVAO = 0;
+static float  s_hud_scale = 0.85f;  // default while iterating; RAlt+5 cycles
+static bool   s_hud_scale_active = false;  // gated: only shrink during mission
 
 void gosRenderer::init() {
     ZoneScopedN("gosRenderer::init");
@@ -3370,6 +3374,34 @@ void gosRenderer::flushHUDBatch()
         return;
     }
 
+    // HUD scale — shrink only in-game HUD (gated by gos_SetHudScaleActive, set
+    // to true by mission->start() and false by mission->destroy()). Menus and
+    // logistics screens run through the same HUD buffer but stay at 100%.
+    // Anchored to bottom edge with 3-column L/C/R anchoring.
+    const float scale = s_hud_scale;
+    if (s_hud_scale_active && scale < 0.999f) {
+        const float sw = (float)width_;
+        const float sh = (float)height_;
+        const float bottomBand = sh * 0.60f;  // only classify as HUD if centroid below 60%
+        const float thirdX = sw / 3.0f;
+        for (HudDrawCall& call : hudBatch_) {
+            if (call.vertices.empty()) continue;
+            float cx = 0.0f, cy = 0.0f;
+            for (const gos_VERTEX& v : call.vertices) { cx += v.x; cy += v.y; }
+            cx /= (float)call.vertices.size();
+            cy /= (float)call.vertices.size();
+            if (cy < bottomBand) continue;  // menus/dialogs untouched
+            const float ax = (cx <  thirdX)        ? 0.0f
+                          :  (cx >= 2.0f * thirdX) ? sw
+                          :                           sw * 0.5f;
+            const float ay = sh;  // bottom anchor
+            for (gos_VERTEX& v : call.vertices) {
+                v.x = ax + (v.x - ax) * scale;
+                v.y = ay + (v.y - ay) * scale;
+            }
+        }
+    }
+
     // pp->endScene() binds FB 0 and sets the full-screen viewport for us,
     // but leaves VAO 0 bound — rebind our VAO so glVertexAttribPointer works.
     glBindVertexArray(gVAO);
@@ -4386,6 +4418,42 @@ void gos_SetTerrainDrawEnabled(bool e) {
 }
 bool gos_GetTerrainDrawEnabled() {
     return g_gos_renderer ? g_gos_renderer->getTerrainDrawEnabled() : true;
+}
+
+// HUD scale — clamped to [0.5, 1.0]. 1.0 disables the transform entirely.
+// s_hud_scale itself is defined near the top of this file so flushHUDBatch()
+// can reference it directly without a forward declaration dance.
+void gos_SetHudScale(float s) {
+    if (s < 0.5f) s = 0.5f;
+    if (s > 1.0f) s = 1.0f;
+    s_hud_scale = s;
+}
+float gos_GetHudScale() { return s_hud_scale; }
+
+void gos_SetHudScaleActive(bool on) { s_hud_scale_active = on; }
+bool gos_GetHudScaleActive()        { return s_hud_scale_active; }
+
+void gos_HudInverseMousePoint(float& x, float& y) {
+    // Inverse of the bottom-band HUD transform. Must stay in sync with
+    // gosRenderer::flushHUDBatch() above.
+    const float scale = s_hud_scale;
+    if (!s_hud_scale_active || scale > 0.999f || !g_gos_renderer) return;
+    const float sw = (float)g_gos_renderer->getWidth();
+    const float sh = (float)g_gos_renderer->getHeight();
+    // Below-band anchor is y = sh. Rendered y' = sh + (y - sh) * scale.
+    // We don't know here whether the pixel (x, y) came from a scaled HUD draw
+    // or from an untouched menu draw. Heuristic: if y >= sh - ((sh - bottomBand) * scale)
+    // i.e. inside the rendered bottom band, apply inverse; otherwise pass-through.
+    const float bottomBand = sh * 0.60f;
+    const float renderedBandTop = sh + (bottomBand - sh) * scale;  // top edge of shrunken band in screen space
+    if (y < renderedBandTop) return;
+    const float thirdX = sw / 3.0f;
+    const float ax = (x <  thirdX)        ? 0.0f
+                  :  (x >= 2.0f * thirdX) ? sw
+                  :                          sw * 0.5f;
+    const float ay = sh;
+    x = ax + (x - ax) / scale;
+    y = ay + (y - ay) / scale;
 }
 
 // ── World-space overlay batch API ────────────────────────────────────────────
