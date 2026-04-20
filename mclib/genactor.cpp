@@ -61,6 +61,7 @@
 #endif
 
 #include "gos_static_prop_batcher.h"
+#include "gos_static_prop_killswitch.h"
 
 //******************************************************************************************
 extern float	worldUnitsPerMeter;
@@ -767,7 +768,7 @@ bool GenericAppearance::recalcBounds (void)
 //-----------------------------------------------------------------------------
 long GenericAppearance::render (long depthFixup)
 {
-	if (inView)
+	if (inView || g_useGpuStaticProps)
 	{
 		uint32_t color = SD_BLUE;
 		unsigned long highLight = 0x007f7f7f;
@@ -790,12 +791,21 @@ long GenericAppearance::render (long depthFixup)
 		// Call Multi-shape render stuff here.
 		if (visible)
 		{
-			if (depthFixup)
+			// GPU path: skip depthFixup (sky/background push-back). Those
+			// cases use a non-standard z override that doesn't fit the
+			// per-packet instanced draw. Fall back to CPU for depthFixup.
+			bool submittedToGpu = false;
+			if (g_useGpuStaticProps && genShape && !depthFixup)
 			{
-				genShape->Render(false,0.99999f);	//Sky or something like it.  Push to back!
+				submittedToGpu = GpuStaticPropBatcher::instance().submitMultiShape(genShape);
 			}
-			else
-				genShape->Render();
+			if (!submittedToGpu)
+			{
+				if (depthFixup)
+					genShape->Render(false,0.99999f);	//Sky or something like it.  Push to back!
+				else
+					genShape->Render();
+			}
 		}
 		else
 		{
@@ -1142,13 +1152,15 @@ long GenericAppearance::update (bool animate)
 		genShape->SetFrameNum(currentFrame);
 	}
 
-	if (inView)
+	// Under the GPU static-prop path we transform regardless of inView so
+	// listOfVertices is fresh when submitMultiShape runs.
+	if (inView || g_useGpuStaticProps)
 	{
 		genShape->SetIsClamped(true);
 		genShape->SetLightList(NULL,0);
 		genShape->TransformMultiShape (&xlatPosition,&rot);
 	}
-	
+
 	return TRUE;
 }
 
