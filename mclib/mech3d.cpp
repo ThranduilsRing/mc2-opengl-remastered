@@ -14,6 +14,8 @@
 #include"mech3d.h"
 #endif
 
+#include "gos_static_prop_killswitch.h"  // g_useGpuStaticProps
+
 #ifndef CAMERA_H
 #include"camera.h"
 #endif
@@ -2367,7 +2369,7 @@ long Mech3DAppearance::render (long depthFixup)
 	if (leftArm)
 		leftArm->SetTextureHandle(0,localTextureHandle);
 
-	if (inView)
+	if (inView || g_useGpuStaticProps)
 	{
 		if (visible)
 		{
@@ -4167,7 +4169,12 @@ long Mech3DAppearance::update (bool animate)
 	}
 #endif
 
-	if ((turn < 3) || inView || (currentGestureId == GestureJump))		//Gotta get the weapon nodes working!!
+	// Under the GPU static-prop killswitch always run updateGeometry so
+	// mechShape->TransformMultiShape runs every frame, even when the
+	// broken cull (inView) thinks the mech is off-screen. Without this,
+	// TG_Shape::Render silently returns on stale listOfVertices and the
+	// mech geometry disappears (health bar still drawn via screenPos).
+	if ((turn < 3) || inView || (currentGestureId == GestureJump) || g_useGpuStaticProps)
 		updateGeometry();
 
 	//----------------------------------------------------------------------
