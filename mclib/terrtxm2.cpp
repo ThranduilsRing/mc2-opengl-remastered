@@ -2142,26 +2142,31 @@ long TerrainColorMap::init (char *fileName)
 	printf("[SPLATTING] starting material array load\n");
 	{
 		ZoneScopedN("TerrainColorMap::init materialArrays");
-		const char* normalNames[4] = {
-			"mat0_normal", "mat1_normal", "mat2_normal", "mat3_normal"
+		const char* normalNames[5] = {
+			"mat0_normal", "mat1_normal", "mat2_normal", "mat3_normal", "mat4_normal"
 		};
-		const char* dispNames[4] = {
-			"mat0_displacement", "mat1_displacement", "mat2_displacement", "mat3_displacement"
+		const char* dispNames[5] = {
+			"mat0_displacement", "mat1_displacement", "mat2_displacement", "mat3_displacement", "mat4_displacement"
 		};
-		const unsigned char* normalLayers[4] = {NULL, NULL, NULL, NULL};
-		const unsigned char* dispLayers[4] = {NULL, NULL, NULL, NULL};
+		const unsigned char* normalLayers[5] = {NULL, NULL, NULL, NULL, NULL};
+		const unsigned char* dispLayers[5] = {NULL, NULL, NULL, NULL, NULL};
 		int arrayWidth = 0;
 		bool allLoaded = true;
 
-		for (int mat = 0; mat < 4; mat++)
+		for (int mat = 0; mat < 5; mat++)
 		{
 			FullPathFileName nmPath;
 			nmPath.init(texturePath, normalNames[mat], ".tga");
 			printf("[SPLATTING] checking: %s\n", (const char*)nmPath);
-			if (!fileExists(nmPath)) { printf("[SPLATTING] NOT FOUND: %s\n", (const char*)nmPath); allLoaded = false; break; }
+			if (!fileExists(nmPath)) {
+				printf("[SPLATTING] NOT FOUND: %s%s\n", (const char*)nmPath, mat >= 4 ? " (optional slot skipped)" : "");
+				// mat4+ are optional — missing file leaves the slot empty but doesn't fail the load.
+				if (mat >= 4) continue;
+				allLoaded = false; break;
+			}
 
 			File nmFile;
-			if (nmFile.open(nmPath) != NO_ERR) { allLoaded = false; break; }
+			if (nmFile.open(nmPath) != NO_ERR) { if (mat >= 4) continue; allLoaded = false; break; }
 			MemoryPtr nmData = (MemoryPtr)malloc(nmFile.fileSize());
 			nmFile.read(nmData, nmFile.fileSize());
 			TGAFileHeader nmInfo;
@@ -2191,16 +2196,16 @@ long TerrainColorMap::init (char *fileName)
 			free(nmData);
 		}
 
-		// Load displacement layers (same pattern)
+		// Load displacement layers (same pattern) — slot 4+ optional.
 		if (allLoaded) {
-			for (int mat = 0; mat < 4; mat++)
+			for (int mat = 0; mat < 5; mat++)
 			{
 				FullPathFileName dispPath;
 				dispPath.init(texturePath, dispNames[mat], ".tga");
-				if (!fileExists(dispPath)) { allLoaded = false; break; }
+				if (!fileExists(dispPath)) { if (mat >= 4) continue; allLoaded = false; break; }
 
 				File dispFile;
-				if (dispFile.open(dispPath) != NO_ERR) { allLoaded = false; break; }
+				if (dispFile.open(dispPath) != NO_ERR) { if (mat >= 4) continue; allLoaded = false; break; }
 				MemoryPtr dispData = (MemoryPtr)malloc(dispFile.fileSize());
 				dispFile.read(dispData, dispFile.fileSize());
 				TGAFileHeader dispInfo;
@@ -2229,7 +2234,8 @@ long TerrainColorMap::init (char *fileName)
 
 		if (allLoaded) {
 			printf("[SPLATTING] all loaded OK, width=%d, creating individual textures\n", arrayWidth);
-			for (int i = 0; i < 4; i++) {
+			for (int i = 0; i < 5; i++) {
+				if (!normalLayers[i]) continue;  // optional slot absent
 				unsigned int nmId = gos_CreateTerrainNormalTexture(normalLayers[i], arrayWidth);
 				printf("[SPLATTING] matNormal%d GL id=%u\n", i, nmId);
 				gos_SetTerrainMaterialNormal(i, nmId);
@@ -2252,7 +2258,7 @@ long TerrainColorMap::init (char *fileName)
 			printf("[SPLATTING] retained matNormal2 alpha on CPU (%dx%d)\n", arrayWidth, arrayWidth);
 		}
 
-		for (int i = 0; i < 4; i++) {
+		for (int i = 0; i < 5; i++) {
 			if (normalLayers[i]) free((void*)normalLayers[i]);
 			if (dispLayers[i]) free((void*)dispLayers[i]);
 		}

@@ -1391,7 +1391,7 @@ class gosRenderer {
         void setTerrainLightDir(float x, float y, float z) { terrain_light_dir_ = vec4(x, y, z, 0.0f); }
         const vec4& getTerrainLightDir() const { return terrain_light_dir_; }
         void setTerrainDetailParams(float tiling, float strength) { terrain_detail_tiling_ = tiling; terrain_detail_strength_ = strength; }
-        void setTerrainMaterialNormal(int idx, GLuint texId) { if (idx >= 0 && idx < 4) terrain_mat_normal_[idx] = texId; }
+        void setTerrainMaterialNormal(int idx, GLuint texId) { if (idx >= 0 && idx < 5) terrain_mat_normal_[idx] = texId; }
         void setTerrainCellBombParams(float s, float j, float r) { terrain_cell_scale_ = s; terrain_cell_jitter_ = j; terrain_cell_rotation_ = r; }
         void setTerrainPOMParams(float scale, float, float) { terrain_pom_scale_ = scale; }
         void setTerrainWorldScale(float scale) { terrain_world_scale_ = scale; }
@@ -1538,7 +1538,7 @@ class gosRenderer {
         vec4 terrain_light_dir_;
         float terrain_detail_tiling_ = 1.0f;
         float terrain_detail_strength_ = 4.0f;
-        GLuint terrain_mat_normal_[4] = {0, 0, 0, 0};
+        GLuint terrain_mat_normal_[5] = {0, 0, 0, 0, 0};
         float terrain_cell_scale_ = 8.0f;
         float terrain_cell_jitter_ = 0.8f;
         float terrain_cell_rotation_ = 1.0f;
@@ -1551,7 +1551,7 @@ class gosRenderer {
             GLint cameraPos = -1, tessDebug = -1, terrainViewport = -1, terrainMVP = -1;
             GLint terrainLightDir = -1, detailNormalTiling = -1, detailNormalStrength = -1;
             GLint pomParams = -1, terrainWorldScale = -1, cellBombParams = -1;
-            GLint matNormal[4] = {-1, -1, -1, -1};
+            GLint matNormal[5] = {-1, -1, -1, -1, -1};
             GLint lightSpaceMatrix = -1, enableShadows = -1, shadowSoftness = -1, shadowMap = -1;
             GLint dynamicLightSpaceMatrix = -1, enableDynamicShadows = -1, dynamicShadowMap = -1;
             GLint time = -1;
@@ -1587,6 +1587,7 @@ class gosRenderer {
             terrainLocs_.matNormal[1] = glGetUniformLocation(shp, "matNormal1");
             terrainLocs_.matNormal[2] = glGetUniformLocation(shp, "matNormal2");
             terrainLocs_.matNormal[3] = glGetUniformLocation(shp, "matNormal3");
+            terrainLocs_.matNormal[4] = glGetUniformLocation(shp, "matNormal4");
             terrainLocs_.lightSpaceMatrix = glGetUniformLocation(shp, "lightSpaceMatrix");
             terrainLocs_.enableShadows = glGetUniformLocation(shp, "enableShadows");
             terrainLocs_.shadowSoftness = glGetUniformLocation(shp, "shadowSoftness");
@@ -2721,7 +2722,7 @@ void gosRenderer::terrainDrawIndexedPatches(gosRenderMaterial* material, gosMesh
     }
 
     // Bind per-material normal maps (units 5-8)
-    for (int i = 0; i < 4; i++) {
+    for (int i = 0; i < 5; i++) {
         if (terrain_mat_normal_[i] != 0 && tl.matNormal[i] >= 0) {
             glUniform1i(tl.matNormal[i], 5 + i);
             glActiveTexture(GL_TEXTURE5 + i);

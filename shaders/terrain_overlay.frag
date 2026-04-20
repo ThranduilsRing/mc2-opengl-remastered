@@ -62,7 +62,7 @@ void main()
     PREC float cloudNoise = fbm(cloudUV, 4) * 0.5 + 0.5;
     PREC float cloudMask  = smoothstep(0.3, 0.7, cloudNoise); // 0=shadow, 1=clear
     if (surfaceDebugMode == 1) {
-        FragColor = vec4(vec3(mix(0.70, 1.0, cloudMask)), 1.0);
+        FragColor = vec4(vec3(mix(0.92, 1.0, cloudMask)), 1.0);
 #ifdef MRT_ENABLED
         GBuffer1 = vec4(0.5, 0.5, 1.0, 1.0);
 #endif
@@ -89,7 +89,7 @@ void main()
         return;
     }
 
-    c.rgb *= mix(0.70, 1.0, cloudMask);
+    c.rgb *= mix(0.98, 1.0, cloudMask);
     c.rgb *= shadow;
     PREC float camDist2D = distance(WorldPos.xy, cameraPos.xy);
     PREC float terrainHeight = WorldPos.z;
