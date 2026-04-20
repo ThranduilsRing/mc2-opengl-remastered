@@ -3088,26 +3088,38 @@ void Mission::initTGLForMission()
 	{
 		ZoneScopedN("Mission::initTGLForMission startup");
 		//---------------------------------------------------------
-		unsigned long tglHeapSize = 40 * 1024 * 1024;
+		// Bumped from 40MB to 128MB to accommodate the scaled-up TGL
+		// pools below (500K vertex/color/shadow, 200K face/triangle).
+		// Total pool footprint is ~60MB; headroom for per-shape
+		// allocations via tglHeap->Malloc.
+		unsigned long tglHeapSize = 128 * 1024 * 1024;
 
 		TG_Shape::tglHeap = new UserHeap;
 		TG_Shape::tglHeap->init(tglHeapSize,"TinyGeom");
 		
 		//Start up the TGL RAM pools.
+		// Sizes scaled up from the original 30K/40K to support the GPU
+		// static-prop path (RAlt+0) which forces all buildings/trees/
+		// generics in active blocks to TransformShape regardless of
+		// inView. At wolfman zoom on large maps the original 30K vertex
+		// pool exhausted before mechs allocated, silently dropping every
+		// shape whose getVerticesFromPool hit NULL (tgl.h:1022). That
+		// manifested as "half the mechs don't render" because mechs
+		// iterate AFTER buildings and got the empty pool.
 		colorPool 		= new TG_VertexPool;
-		colorPool->init(30000);
-		
+		colorPool->init(500000);
+
 		vertexPool 		= new TG_GOSVertexPool;
-		vertexPool->init(30000);
-		
+		vertexPool->init(500000);
+
 		facePool 		= new TG_DWORDPool;
-		facePool->init(40000);
-		
+		facePool->init(200000);
+
 		shadowPool 		= new TG_ShadowPool;
-		shadowPool->init(30000);
-		
+		shadowPool->init(500000);
+
 		trianglePool 	= new TG_TrianglePool;
-		trianglePool->init(20000);
+		trianglePool->init(200000);
 	}
 
 	loadProgress += 4.0f;
