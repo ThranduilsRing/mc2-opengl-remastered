@@ -69,6 +69,7 @@
 #endif
 
 #include "gos_static_prop_batcher.h"
+#include "gos_static_prop_killswitch.h"  // g_useGpuStaticProps
 
 //******************************************************************************************
 extern float	worldUnitsPerMeter;
@@ -2033,7 +2034,7 @@ long GVAppearance::render (long depthFixup)
 {
 	gvShape->SetTextureHandle(0,localTextureHandle);
 
-	if (inView)
+	if (inView || g_useGpuStaticProps)
 	{
 		uint32_t color = SD_BLUE;
 		uint32_t highLight = 0x007f7f7f;
@@ -2699,7 +2700,13 @@ long GVAppearance::update (bool animate)
 		gvShape->SetFrameNum(currentFrame);
 	}
 
-	if ((turn < 3) || inView)
+	// Mirror the mech fix: under the GPU static-prop killswitch always
+	// run updateGeometry so gvShape->TransformMultiShape runs every
+	// frame, even when the broken cull thinks the vehicle is off-
+	// screen. Without this, TG_Shape::Render silently returns on
+	// stale listOfVertices and the vehicle geometry disappears while
+	// its bar/UI keeps drawing.
+	if ((turn < 3) || inView || g_useGpuStaticProps)
 		updateGeometry();
 		
 	return TRUE;

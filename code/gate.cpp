@@ -14,6 +14,8 @@
 #include"gate.h"
 #endif
 
+#include "gos_static_prop_killswitch.h"  // g_useGpuStaticProps
+
 #ifndef MCLIB_H
 #include"mclib.h"
 #endif
@@ -590,7 +592,10 @@ void Gate::lightOnFire (float timeToBurn)
 //---------------------------------------------------------------------------
 void Gate::render (void)
 {
-	if (appearance->canBeSeen())
+	// Mirror Building::render: bypass canBeSeen() cull when the GPU
+	// static-prop path is on — the legacy angular cull has a huge
+	// false-negative rate at wolfman zoom.
+	if (appearance->canBeSeen() || g_useGpuStaticProps)
 	{
 		//--------------------------------------
 		if (getDrawBars())
