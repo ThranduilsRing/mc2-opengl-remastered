@@ -28,6 +28,7 @@ uniform sampler2D matNormal0;  // rock
 uniform sampler2D matNormal1;  // grass
 uniform sampler2D matNormal2;  // dirt
 uniform sampler2D matNormal3;  // concrete
+uniform sampler2D matNormal4;  // snow (optional — 5th slot)
 
 uniform PREC vec4 terrainLightDir;
 uniform PREC vec4 detailNormalTiling;
@@ -96,11 +97,13 @@ PREC vec4 getColorWeights(PREC vec3 color) {
 
     PREC vec4 w = vec4(0.0);
 
-    w.y = smoothstep(0.14, 0.17, h) * smoothstep(0.15, 0.28, s);
-    w.z = smoothstep(0.155, 0.13, h) * smoothstep(0.15, 0.28, s);
-    w.w = smoothstep(0.18, 0.10, s) * smoothstep(0.50, 0.62, v);
-    w.x = smoothstep(0.18, 0.10, s) * smoothstep(0.45, 0.30, v);
-    w.x += smoothstep(0.38, 0.28, v) * smoothstep(0.15, 0.25, s);
+    // Green → grass, brown → dirt, everything else → rock.
+    // Concrete weight comes only from TerrainType (cement vertices) later in main();
+    // never from colormap, so snow/overlay-whitened tiles fall through to rock.
+    w.y = smoothstep(0.10, 0.20, h) * smoothstep(0.10, 0.32, s);   // green
+    w.z = smoothstep(0.17, 0.11, h) * smoothstep(0.10, 0.32, s);   // brown
+    w.x = 1.0 - max(w.y, w.z);                                     // everything else → rock
+    w.w = 0.0;
 
     PREC float isWater = smoothstep(0.35, 0.45, h);
     w.x += isWater;
@@ -108,13 +111,13 @@ PREC vec4 getColorWeights(PREC vec3 color) {
     w.z *= (1.0 - isWater);
 
     PREC float total = w.x + w.y + w.z + w.w;
-    w = (total < 0.01) ? vec4(0.0, 0.0, 1.0, 0.0) : w / total;
+    w = (total < 0.01) ? vec4(1.0, 0.0, 0.0, 0.0) : w / total;
     return w;
 }
 
 // --- Per-material displacement sampling ---
 
-const PREC vec4 pomScaleMat = vec4(0.5, 1.0, 2.5, 1.0);
+const PREC vec4 pomScaleMat = vec4(1.0, 1.0, 2.5, 1.0);  // rock doubled 0.5→1.0 for stronger displacement
 
 PREC float sampleDisplacement(PREC vec2 uv, PREC vec4 weights) {
     PREC float d = 0.0;
@@ -213,7 +216,7 @@ void main(void)
 
     // Smooth colormap classification — tiered by distance
     // Near: 9-tap disc, Mid: 5-tap cross, Far: 1-tap (no blur)
-    const PREC float blurRadius = 0.11;
+    const PREC float blurRadius = 0.18;
     PREC float r2 = blurRadius * 0.707;
     const PREC float uvMargin = 0.005;
     PREC vec2 uvMin = vec2(uvMargin);
@@ -252,6 +255,13 @@ void main(void)
         return;
     }
     PREC vec4 matWeights = getColorWeights(colAvg);
+
+    // Snow weight: low-sat, mid-to-high-value colormap pixels (white-ish).
+    // Wider raw gate catches blur-softened snow edges; sharpen step pushes decisive
+    // snow pixels to full strength so snow areas don't fade through a grey no-mans-land.
+    PREC vec3 hsvAvg = rgb2hsv(colAvg);
+    PREC float snowRaw = smoothstep(0.15, 0.03, hsvAvg.y) * smoothstep(0.42, 0.62, hsvAvg.z);
+    PREC float snowWeight = smoothstep(0.25, 0.55, snowRaw);
     // TerrainType: discrete 0/1/2/3 at vertices, interpolated by TES.
     // Boundary patches (cement+terrain vertex mix) have fragments with TerrainType in (2,3).
     // Pure terrain tiles never exceed TerrainType=2, so smoothstep(2.0,3.0) only activates
@@ -263,6 +273,10 @@ void main(void)
     PREC float concreteColorBlend = sqrt(clamp(pureConcrete, 0.0, 1.0));
 
     matWeights = mix(matWeights, vec4(0.0, 0.0, 0.0, 1.0), pureConcrete);
+    // Snow is suppressed on cement tiles (pureConcrete dominates there).
+    snowWeight *= (1.0 - pureConcrete);
+    // Snow steals from the other weights proportionally so the total across all 5 = 1.
+    matWeights *= (1.0 - snowWeight);
 
     PREC float totalWeights = matWeights.x + matWeights.y + matWeights.z + matWeights.w;
     if (totalWeights > 0.01) {
@@ -288,8 +302,11 @@ void main(void)
         return;
     }
 
-    // Per-material tiling (rock, grass, dirt/riverbed, concrete)
-    const PREC vec4 matTiling = vec4(1.0, 12.0, 1.0, 6.0);
+    // Per-material tiling (rock, grass, dirt/riverbed, concrete).
+    // Rock bumped from 1.0→3.0: at 1 texture per terrain tile, rock normal detail
+    // was too stretched to read at RTS zoom on biomes without authored colormap variation.
+    const PREC vec4 matTiling = vec4(3.0, 12.0, 1.0, 6.0);
+    const PREC float matTilingSnow = 1.0;  // same broad tiling as rock/dirt
     PREC float baseTiling = detailNormalTiling.x;
 
     // Compute per-material UVs (straight tiling, anti-tiling done at sample time)
@@ -297,6 +314,7 @@ void main(void)
     PREC vec2 uvGrass    = Texcoord * baseTiling * matTiling.y;
     PREC vec2 uvDirt     = Texcoord * baseTiling * matTiling.z;
     PREC vec2 uvConcrete = Texcoord * baseTiling * matTiling.w;
+    PREC vec2 uvSnow     = Texcoord * baseTiling * matTilingSnow;
 
     // POM — full at near, off at far (lodNear fades 1→0)
     if (pomParams.x > 0.0 && lodNear > 0.01) {
@@ -316,7 +334,10 @@ void main(void)
     // Per-material normal strength
     // Effective strength = normalBoost * detailNormalStrength.x (4.0 from C++)
     // std: rock=21, grass=35, dirt(aerial)=6, concrete=11
-    const PREC vec4 normalBoost = vec4(0.6, 1.2, 0.8, 2.5);
+    // Per-material normal strengths. Rock/grass bumped over original (0.6/1.2/0.8)
+    // so detail reads. Clamp widened to ±0.75 below to give this level of boost
+    // headroom before saturating.
+    const PREC vec4 normalBoost = vec4(1.3, 1.5, 1.1, 2.5);
 
     // Screen-space derivative AA — fade normals when detail goes sub-pixel
     PREC float fwRock     = clamp(1.0 - (length(fwidth(uvRock))     - 0.5) * 2.0, 0.0, 1.0);
@@ -352,31 +373,41 @@ void main(void)
         matSample = (useAntiTile && atsConcrete > 0.01) ? sampleAntiTile(matNormal3, uvConcrete, atsConcrete) : texture(matNormal3, uvConcrete);
         detailN += matWeights.w * normalBoost.w * fwConcrete * (matSample.rgb * 2.0 - 1.0);
     }
+    // Snow normal contribution (broad tiling, moderate strength).
+    if (snowWeight > 0.01) {
+        PREC vec4 snowSample = texture(matNormal4, uvSnow);
+        detailN += snowWeight * 0.9 * (snowSample.rgb * 2.0 - 1.0);
+    }
     detailN *= (1.0 - pureConcrete);
 
     PREC vec3 N;
     N.xy = detailN.xy * detailNormalStrength.x;
     // Clamp normal deflection to prevent extreme angles that cause black snow
     // Max deflection of 0.7 means the normal can tilt ~35 degrees max
-    N.xy = clamp(N.xy, -0.7, 0.7);
+    N.xy = clamp(N.xy, -0.75, 0.75);
     N.z = 1.0;
     N = normalize(N);
 
     PREC float NdotL = dot(N, terrainLightDir.xyz);
-    PREC float diffuse = clamp(NdotL, 0.1, 1.0);
+    // Floor lowered 0.1→0.02 so shadow-facing bumps can actually read as dark.
+    PREC float diffuse = clamp(NdotL, 0.02, 1.0);
 
     // --- Material color tinting ---
     const PREC vec3 tintRock     = vec3(0.36, 0.37, 0.40);
     const PREC vec3 tintGrass    = vec3(0.35, 0.42, 0.25);
     const PREC vec3 tintDirt     = vec3(0.48, 0.42, 0.33);
     const PREC vec3 tintConcrete = vec3(0.55, 0.53, 0.50);
+    const PREC vec3 tintSnow     = vec3(0.75, 0.78, 0.84);  // dimmed cool grey-white
 
     PREC vec3 materialTint = tintRock * matWeights.x
                            + tintGrass * matWeights.y
                            + tintDirt * matWeights.z
-                           + tintConcrete * matWeights.w;
+                           + tintConcrete * matWeights.w
+                           + tintSnow * snowWeight;
 
-    const PREC float tintStrength = 0.70;
+    // Tint strength lowered so authored colormap breaks up the material tint's flat-blob
+    // look. Snow pixels get full tint so the cool white reads cleanly.
+    PREC float tintStrength = mix(0.45, 0.85, snowWeight);
     PREC vec3 baseColor = mix(texColor.rgb, materialTint, tintStrength);
     {
         // Preserve the authored colormap tone for runway/cement.
@@ -401,9 +432,23 @@ void main(void)
         }
     }
 
+    // World-space break-up noise for non-snow terrain. Two-octave — low frequency
+    // for large patches, higher frequency for surface-texture feel. Uniform grey
+    // biomes have no authored colormap variation, so this carries the visual load
+    // that the normal map alone can't.
+    {
+        PREC float lowFreq  = fbm(WorldPos.xy * 0.0035, 3) * 0.5 + 0.5;
+        PREC float highFreq = fbm(WorldPos.xy * 0.018,  2) * 0.5 + 0.5;
+        PREC float breakupNoise = mix(lowFreq, highFreq, 0.55);
+        PREC float breakupMod = mix(0.75, 1.20, breakupNoise);
+        PREC float breakupAmount = (1.0 - snowWeight);  // no noise under snow
+        baseColor *= mix(1.0, breakupMod, breakupAmount);
+    }
+
     c.rgb *= baseColor;
-    // Normal map lighting — moderate range for visible detail without black crush
-    PREC float normalLight = mix(0.55, 1.15, diffuse);
+    // Normal map lighting — widened range from (0.55,1.15) to (0.35,1.20)
+    // so dark sides of bumps read noticeably darker, creating actual bump contrast.
+    PREC float normalLight = mix(0.35, 1.20, diffuse);
     normalLight = mix(normalLight, 1.0, pureConcrete * 0.85);
     c.rgb *= normalLight;
 
@@ -415,13 +460,35 @@ void main(void)
         return;
     }
 
-    // Shadow — variable PCF taps by distance
+    // Shadow — variable PCF taps by distance.
+    // Pass flat up-normal (not detail-perturbed N) so slope-scale bias stays consistent
+    // pixel-to-pixel. Using N here caused sprinkle/inverted-shadow patterns on bumpy
+    // terrain — bias flipped across neighboring detail-normal deflections, letting
+    // some pixels escape shadow while neighbors received it. Overlays already pass
+    // vec3(0,0,1) for the same reason.
+    const PREC vec3 shadowN = vec3(0.0, 0.0, 1.0);
     int shadowTaps = (lodNear > 0.5) ? 16 : (lodMid > 0.5) ? 8 : 4;
-    float staticShadow = calcShadow(WorldPos, N, terrainLightDir.xyz, shadowTaps);
+    float staticShadow = calcShadow(WorldPos, shadowN, terrainLightDir.xyz, shadowTaps);
     int dynTaps = (lodNear > 0.5) ? 8 : 4;
-    float dynShadow = calcDynamicShadow(WorldPos, N, terrainLightDir.xyz, dynTaps);
+    float dynShadow = calcDynamicShadow(WorldPos, shadowN, terrainLightDir.xyz, dynTaps);
     float shadow = staticShadow * dynShadow;
     c.rgb *= shadow;
+
+    // --- Snow sparkle ---
+    // High-frequency hashed micro-glints gated by snow weight, light direction, and shadow.
+    // Keeps perfectly still when camera is still (hash on world position), matches sun direction.
+    if (snowWeight > 0.05) {
+        PREC vec2 glintUV = WorldPos.xy * 0.75;
+        PREC vec2 gc = floor(glintUV);
+        PREC float hash = fract(sin(dot(gc, vec2(12.9898, 78.233))) * 43758.5453);
+        PREC float glint = step(0.985, hash);
+        // Specular-ish: hot only when normal roughly faces the sun (half-angle cheap approx)
+        PREC vec3 viewApprox = normalize(vec3(0.0, 0.0, 1.0));
+        PREC vec3 H = normalize(terrainLightDir.xyz + viewApprox);
+        PREC float specMask = pow(clamp(dot(N, H), 0.0, 1.0), 48.0);
+        PREC float sparkle = glint * specMask * snowWeight * shadow * 0.45;
+        c.rgb += vec3(sparkle);
+    }
 
     // --- Phase 4A: Procedural cloud shadows ---
     // Applied inline so cloud UV uses the actual tessellated WorldPos (stable world-space).
@@ -431,13 +498,13 @@ void main(void)
         PREC float cloudNoise = fbm(cloudUV, 4) * 0.5 + 0.5;
         PREC float cloudShadow = smoothstep(0.3, 0.7, cloudNoise);
         if (surfaceDebugMode == 7) {
-            FragColor = vec4(vec3(mix(0.70, 1.0, cloudShadow)), 1.0);
+            FragColor = vec4(vec3(mix(0.92, 1.0, cloudShadow)), 1.0);
 #ifdef MRT_ENABLED
             GBuffer1 = vec4(N * 0.5 + 0.5, materialAlpha);
 #endif
             return;
         }
-        c.rgb *= mix(0.70, 1.0, cloudShadow);
+        c.rgb *= mix(0.98, 1.0, cloudShadow);
     }
 
     if (surfaceDebugMode == 6) {
