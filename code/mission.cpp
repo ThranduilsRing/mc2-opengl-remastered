@@ -224,6 +224,7 @@ extern PriorityQueuePtr	openList;
 
 #include "gos_profiler.h"
 #include "gos_static_prop_batcher.h"
+#include "gos_static_prop_killswitch.h"  // g_useGpuStaticProps
 
 long GameVisibleVertices		= 200;
 float BaseHeadShotElevation		= 1.0f;
@@ -486,6 +487,30 @@ long Mission::update (void)
 		{ ZoneScopedN("Mission::update terrainTextures->update"); land->terrainTextures->update(); }
 
 		{ ZoneScopedN("GameLogic.Mission.TerrainGeometry"); land->geometry(); }
+
+		// GPU static-prop killswitch: land->geometry() cleared everything
+		// and then set blocks/vertices active only for terrain vertices
+		// that passed the angular cull. That cull has a huge false-
+		// negative rate at wolfman zoom, so many blocks stay inactive
+		// and the objects in them never get their update() called
+		// (objmgr iterates only active blocks for both update and
+		// render — see GameObjectManager::update and ::render). Their
+		// per-frame state goes stale, which then produces render
+		// artifacts if we try to render them anyway. Force every block
+		// and vertex active before the update pass so all objects get
+		// fresh state; the GPU clipper + per-actor submit/fallback
+		// decide the actual visibility.
+		if (g_useGpuStaticProps && land)
+		{
+			for (long b = 0; b < Terrain::numObjBlocks; ++b)
+				land->setObjBlockActive(b, true);
+			// There's no setAll helper for objVertexActive; it's a
+			// bool array of size realVerticesMapSide^2 on the Terrain
+			// singleton. Iterate via its size accessor.
+			const long totalVerts = Terrain::realVerticesMapSide * Terrain::realVerticesMapSide;
+			for (long v = 0; v < totalVerts; ++v)
+				land->setObjVertexActive(v, true);
+		}
 
 		if ( missionInterface->isPaused() && !MPlayer )
 			ObjectManager->updateAppearancesOnly( true, true, true );
