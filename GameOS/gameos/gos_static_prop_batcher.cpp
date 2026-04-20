@@ -317,9 +317,10 @@ void GpuStaticPropBatcher::registerType(TG_TypeShape* typeShape) {
         pkt.firstIndex    = packetFirstIndex;
         pkt.indexCount    = (runEnd - runStart) * 3;
         pkt.baseVertex    = static_cast<int32_t>(baseVertex);
-        pkt.textureHandle = (typeShape->listOfTextures && runTextureIdx < typeShape->numTextures)
-                              ? typeShape->listOfTextures[runTextureIdx].gosTextureHandle
-                              : 0;
+        // Store the texture slot index, not the handle. MC2 updates the
+        // handle each frame via SetTextureHandle; resolving it at draw
+        // time picks up the current value instead of a stale snapshot.
+        pkt.textureSlot   = runTextureIdx;
         pkt.materialFlags = typeShape->alphaTestOn ? STATIC_PROP_FLAG_ALPHA_TEST : 0;
         pkt.owningTypeID  = newTypeID;
         s_packets.push_back(pkt);
@@ -451,15 +452,22 @@ bool GpuStaticPropBatcher::submit(TG_Shape* shape,
     inst.fogRGB[3] = ((fogARGB >> 24) & 0xFF) / 255.0f;
     bucket.instances.push_back(inst);
 
-    // Append this instance's vertex-color block. listOfColors is a TG_Vertex*
-    // (4-byte {fog, redSpec, greenSpec, blueSpec}); reinterpret as packed uint32.
+    // Append this instance's per-vertex ARGB block.
+    // IMPORTANT: listOfColors (TG_Vertex: fog+redSpec+greenSpec+blueSpec) is
+    // specular-only and is zero for most buildings — reading it produces
+    // black. The real per-vertex lit ARGB is computed by TransformShape
+    // into `listOfVertices[j].argb` (mclib/tgl.cpp:2119). gos_VERTEX is
+    // 32 bytes with `argb` at offset 16.
     const uint32_t numColors = type.vertexCount;
-    if (numColors > 0 && shape->listOfColors) {
-        const uint32_t* src = reinterpret_cast<const uint32_t*>(shape->listOfColors);
-        bucket.colors.insert(bucket.colors.end(), src, src + numColors);
+    if (numColors > 0 && shape->listOfVertices) {
+        bucket.colors.reserve(bucket.colors.size() + numColors);
+        const gos_VERTEX* src = shape->listOfVertices;
+        for (uint32_t v = 0; v < numColors; ++v) {
+            bucket.colors.push_back(src[v].argb);
+        }
     } else {
-        // No source colors -- pad with zeros so the color block still matches
-        // the type's vertexCount and indexing math stays valid.
+        // No source vertices -- pad with zeros so the color block still
+        // matches type.vertexCount and indexing math stays valid.
         bucket.colors.insert(bucket.colors.end(), numColors, 0u);
     }
 
@@ -769,10 +777,17 @@ void GpuStaticPropBatcher::flush() {
 
         for (uint32_t p = 0; p < type.packetCount; ++p) {
             const GpuStaticPropPacket& pkt = s_packets[type.firstPacket + p];
-            // pkt.textureHandle is a gosTextureHandle (MC2 opaque ID), NOT a
-            // raw GL texture name. Convert via gos_GetGLTextureId which walks
-            // the gosRenderer's texture table.
-            const uint32_t glTexId = gos_GetGLTextureId(pkt.textureHandle);
+            // Resolve the texture handle at draw time. MC2 mutates
+            // TG_TypeShape::listOfTextures[slot].gosTextureHandle each frame
+            // in TransformMultiShape (msl.cpp:1321 via SetTextureHandle),
+            // so capturing the handle at registration time gives stale
+            // (usually zero) reads.
+            uint32_t gosHandle = 0;
+            const TG_TypeShape* src = type.source;
+            if (src && src->listOfTextures && pkt.textureSlot < src->numTextures) {
+                gosHandle = src->listOfTextures[pkt.textureSlot].gosTextureHandle;
+            }
+            const uint32_t glTexId = gos_GetGLTextureId(gosHandle);
             glActiveTexture(GL_TEXTURE0);
             glBindTexture(GL_TEXTURE_2D, glTexId);
             glUniform1i(glGetUniformLocation(s_staticPropProgram, "u_materialFlags"),

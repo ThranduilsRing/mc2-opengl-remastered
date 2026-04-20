@@ -36,7 +36,10 @@ struct GpuStaticPropPacket {
     uint32_t firstIndex;     // into shared IBO
     uint32_t indexCount;
     int32_t  baseVertex;     // into shared VBO
-    uint32_t textureHandle;  // mcTextureManager GL handle
+    uint32_t textureSlot;    // index into owning TG_TypeShape::listOfTextures.
+                             // Resolved at draw time because MC2 mutates the
+                             // handle each frame via SetTextureHandle (see
+                             // msl.cpp:1321 TransformMultiShape).
     uint32_t materialFlags;  // bit 0: ALPHA_TEST_BIT
     uint32_t owningTypeID;
 };
