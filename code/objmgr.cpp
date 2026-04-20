@@ -18,6 +18,8 @@
 #include"dobjmgr.h"
 #endif
 
+#include "gos_static_prop_killswitch.h"  // g_useGpuStaticProps
+
 #ifndef OBJMGR_H
 #include"objmgr.h"
 #endif
@@ -1481,21 +1483,30 @@ void GameObjectManager::render (bool terrain, bool movers, bool other) {
 		}
 	}
 
-	if (terrain && renderObjects) 
+	if (terrain && renderObjects)
 	{
-		for (long terrainBlock = 0; terrainBlock < Terrain::numObjBlocks; terrainBlock++) 
+		// Under the GPU static-prop killswitch, iterate ALL terrain-object
+		// blocks regardless of the active/vertex-active flags. Those flags
+		// are driven by terrain-vertex visibility (mclib/terrain.cpp:1127),
+		// which has the ~87% false-negative rate at wolfman zoom — it was
+		// the upstream gate hiding most props and mechs. The GPU path
+		// trusts the GPU clipper (and per-actor submit logic) to do the
+		// final visibility cut.
+		const bool bypassBlockCull = g_useGpuStaticProps;
+		for (long terrainBlock = 0; terrainBlock < Terrain::numObjBlocks; terrainBlock++)
 		{
-			if (Terrain::objBlockInfo[terrainBlock].active) 
+			if (bypassBlockCull || Terrain::objBlockInfo[terrainBlock].active)
 			{
 				long numObjs = Terrain::objBlockInfo[terrainBlock].numObjects;
 				long objIndex = Terrain::objBlockInfo[terrainBlock].firstHandle;
-				for (long terrainObj = 0; terrainObj < numObjs; terrainObj++, objIndex++) 
+				for (long terrainObj = 0; terrainObj < numObjs; terrainObj++, objIndex++)
 				{
 					if (objList[objIndex] &&
-						Terrain::objVertexActive[objList[objIndex]->getVertexNum()])
+						(bypassBlockCull ||
+						 Terrain::objVertexActive[objList[objIndex]->getVertexNum()]))
 					{
 						objList[objIndex]->render();
-						if (MaxObjectsDrawn) 
+						if (MaxObjectsDrawn)
 						{
 							//-----------------------------------------
 							// No more element groups, so stop drawing.
