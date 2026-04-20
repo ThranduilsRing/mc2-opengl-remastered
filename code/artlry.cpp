@@ -16,6 +16,8 @@
 #include"artlry.h"
 #endif
 
+#include "gos_static_prop_killswitch.h"  // g_useGpuStaticProps
+
 #ifndef TEAM_H
 #include"team.h"
 #endif
@@ -1321,9 +1323,13 @@ void Artillery::drawSelectBox (unsigned char color)
 }
 	
 //---------------------------------------------------------------------------
-void Artillery::render (void) 
+void Artillery::render (void)
 {
-	if (inView)
+	// Bypass inView cull under the GPU static-prop killswitch. Artillery
+	// (aerial bombers, etc.) can be spawned mid-mission and their
+	// inView flag has the same wolfman-zoom false-negative problem as
+	// every other actor class.
+	if (inView || g_useGpuStaticProps)
 	{
 		if (hitEffect )
 		{
