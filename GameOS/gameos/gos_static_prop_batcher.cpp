@@ -817,3 +817,12 @@ void GpuStaticPropBatcher::flushShadow() {
 }
 
 void GpuStaticPropBatcher::setDebugAddrMode(int mode) { debugAddrMode_ = mode; }
+
+void gos_GpuPropsCycleDebugMode() {
+    auto& b = GpuStaticPropBatcher::instance();
+    int next = (b.getDebugAddrMode() + 1) % 6;
+    b.setDebugAddrMode(next);
+}
+int gos_GpuPropsGetDebugMode() {
+    return GpuStaticPropBatcher::instance().getDebugAddrMode();
+}
