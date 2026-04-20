@@ -6,6 +6,8 @@ Read that first for context, then this.
 ## Session commits (on top of the earlier handoff)
 
 ```
+e23746c fix(props): extend inView/canBeSeen bypass to GV, Gate, Artillery
+e466426 docs: handoff part 2 (this file's initial version)
 ea96c13 fix(props): guard behind-camera vertices to prevent screen-spanning streaks
 4888084 fix(props): bump TGL pools (30K->500K) to prevent mech drop-outs
 27a1434 Revert "fix(props): force all objBlocks/objVertices active..."
@@ -28,6 +30,10 @@ Net-effective changes on top of the earlier handoff:
   raised 40MB → 128MB
 - `shaders/static_prop.vert` — behind-camera guard: if clip4.w < 0.1,
   push gl_Position outside clip volume
+- `mclib/gvactor.cpp` — GVAppearance::update updateGeometry and
+  ::render inView gates OR'd with killswitch (mirrors mech fix)
+- `code/gate.cpp` — Gate::render canBeSeen bypass
+- `code/artlry.cpp` — Artillery::render inView bypass
 
 ## Problem discovery chain this session
 
