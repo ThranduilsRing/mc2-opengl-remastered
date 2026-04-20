@@ -1180,6 +1180,11 @@ class gosRenderer {
             return textureList_[texture_id];
         }
 
+        // Bound-check helper for gos_GetGLTextureId. Avoids the hard
+        // assert in getTexture() for bogus handle values seen on
+        // TG_TinyTexture entries that were never loaded (e.g. 0xFFFFFFFF).
+        size_t getTextureListSize() const { return textureList_.size(); }
+
         void deleteTexture(DWORD texture_id) {
             // FIXME: bad use object list, with stable ids
             // to not waste space
@@ -4625,8 +4630,28 @@ void __stdcall gos_DrawDecals() {
 // invalid handle — caller should treat 0 as "unbind / default white".
 uint32_t gos_GetGLTextureId(uint32_t gosHandle) {
     if (gosHandle == INVALID_TEXTURE_ID || !g_gos_renderer) return 0;
+    // Reject uninitialized / sentinel handles (seen in the wild on
+    // TG_TinyTexture entries that were never loaded: 0xFFFFFFFF).
+    // Bound by the current texture list size to avoid the hard assert
+    // inside gosRenderer::getTexture(texture_id >= list size).
+    if (gosHandle >= g_gos_renderer->getTextureListSize()) return 0;
     gosTexture* tex = g_gos_renderer->getTexture(gosHandle);
     return tex ? tex->getTextureId() : 0;
+}
+
+const float* gos_GetTerrainViewportVec4() {
+    if (!g_gos_renderer) return nullptr;
+    return (const float*)&g_gos_renderer->getTerrainViewport();
+}
+
+const float* gos_GetProj2ScreenMat4() {
+    if (!g_gos_renderer) return nullptr;
+    return (const float*)&g_gos_renderer->getProj2Screen();
+}
+
+const float* gos_GetTerrainMVPMat4() {
+    if (!g_gos_renderer || !g_gos_renderer->isTerrainMVPValid()) return nullptr;
+    return (const float*)&g_gos_renderer->getTerrainMVP();
 }
 
 #include "gameos_graphics_debug.cpp"
