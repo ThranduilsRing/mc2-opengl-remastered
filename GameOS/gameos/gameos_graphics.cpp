@@ -1528,7 +1528,7 @@ class gosRenderer {
         gosRenderMaterial* shadow_object_material_ = nullptr;
         bool shadow_mode_ = false;
         bool shadow_prepass_active_ = false;
-        float terrain_shadow_softness_ = 2.5f;
+        float terrain_shadow_softness_ = 0.9f;  // tuned for gradient-adaptive PCF + 4096² maps
         bool terrain_draw_enabled_ = true;
         GLint shadow_prepass_prev_fbo_ = 0;
         GLint shadow_prepass_prev_viewport_[4] = {0};
