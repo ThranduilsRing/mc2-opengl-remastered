@@ -4,14 +4,14 @@
 
 A visual remaster of MechCommander 2, built on top of [alariq's OpenGL port](https://github.com/alariq/mc2). Rebuilds the rendering pipeline around PBR terrain splatting, real-time shadows, tessellation, and modern post-processing -- while leaving the original gameplay, missions, and systems alone.
 
-**▶ [Download the latest release](https://github.com/ThranduilsRing/mc2-opengl-remastered/releases/latest)** — a self-contained 1.2 GB install across four zips.
+**▶ [Download the latest release](https://github.com/ThranduilsRing/mc2-opengl-remastered/releases/latest)** — a self-contained 1.4 GB install across four zips.
 
 ### Install (from release)
 
 Download all four zips and extract each into the **same folder** (contents merge without overwriting):
 
 1. **`mc2-remastered-engine.zip`** (5 MB) — engine, shaders, runtime DLLs, asset tools
-2. **`mc2-gamedata.zip`** (542 MB) — `.fst` archives + `data/sound`, `data/movies`, `data/objects`, `data/textures`
+2. **`mc2-gamedata.zip`** (683 MB) — `.fst` archives + `data/sound`, `data/movies`, `data/objects`, `data/textures` (includes per-mission lightmaps)
 3. **`mc2-art.zip`** (362 MB) — upscaled PBR art overrides (`data/art/`)
 4. **`mc2-tgl.zip`** (336 MB) — upscaled PBR terrain overrides (`data/tgl/`)
 
