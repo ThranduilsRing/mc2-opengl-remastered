@@ -3376,25 +3376,28 @@ void gosRenderer::flushHUDBatch()
 
     // HUD scale — shrink only in-game HUD (gated by gos_SetHudScaleActive, set
     // to true by mission->start() and false by mission->destroy()). Menus and
-    // logistics screens run through the same HUD buffer but stay at 100%.
-    // Anchored to bottom edge with 3-column L/C/R anchoring.
+    // modal dialogs run through the same HUD buffer but stay at 100%; we skip
+    // any call whose centroid is above 60% of the screen height.
+    //
+    // Anchor is SINGLE — bottom-center (sw/2, sh). Every bottom-band primitive
+    // shrinks toward that one point. Previously we used 9-slice L/C/R anchoring
+    // which pulled the tacmap/command clusters apart rather than compressing
+    // the HUD strip as a coherent whole. Single-anchor keeps the strip
+    // contiguous: tacmap drifts slightly inward-right, force-group stays put,
+    // command panel drifts slightly inward-left, all without visible gaps.
     const float scale = s_hud_scale;
     if (s_hud_scale_active && scale < 0.999f) {
         const float sw = (float)width_;
         const float sh = (float)height_;
-        const float bottomBand = sh * 0.60f;  // only classify as HUD if centroid below 60%
-        const float thirdX = sw / 3.0f;
+        const float bottomBand = sh * 0.60f;
+        const float ax = sw * 0.5f;
+        const float ay = sh;
         for (HudDrawCall& call : hudBatch_) {
             if (call.vertices.empty()) continue;
-            float cx = 0.0f, cy = 0.0f;
-            for (const gos_VERTEX& v : call.vertices) { cx += v.x; cy += v.y; }
-            cx /= (float)call.vertices.size();
+            float cy = 0.0f;
+            for (const gos_VERTEX& v : call.vertices) cy += v.y;
             cy /= (float)call.vertices.size();
             if (cy < bottomBand) continue;  // menus/dialogs untouched
-            const float ax = (cx <  thirdX)        ? 0.0f
-                          :  (cx >= 2.0f * thirdX) ? sw
-                          :                           sw * 0.5f;
-            const float ay = sh;  // bottom anchor
             for (gos_VERTEX& v : call.vertices) {
                 v.x = ax + (v.x - ax) * scale;
                 v.y = ay + (v.y - ay) * scale;
@@ -4434,23 +4437,18 @@ void gos_SetHudScaleActive(bool on) { s_hud_scale_active = on; }
 bool gos_GetHudScaleActive()        { return s_hud_scale_active; }
 
 void gos_HudInverseMousePoint(float& x, float& y) {
-    // Inverse of the bottom-band HUD transform. Must stay in sync with
-    // gosRenderer::flushHUDBatch() above.
+    // Inverse of the single-anchor bottom-center HUD transform. Must stay in
+    // sync with gosRenderer::flushHUDBatch() above.
     const float scale = s_hud_scale;
     if (!s_hud_scale_active || scale > 0.999f || !g_gos_renderer) return;
     const float sw = (float)g_gos_renderer->getWidth();
     const float sh = (float)g_gos_renderer->getHeight();
-    // Below-band anchor is y = sh. Rendered y' = sh + (y - sh) * scale.
-    // We don't know here whether the pixel (x, y) came from a scaled HUD draw
-    // or from an untouched menu draw. Heuristic: if y >= sh - ((sh - bottomBand) * scale)
-    // i.e. inside the rendered bottom band, apply inverse; otherwise pass-through.
     const float bottomBand = sh * 0.60f;
-    const float renderedBandTop = sh + (bottomBand - sh) * scale;  // top edge of shrunken band in screen space
+    // Any pixel inside the rendered bottom band (y >= sh + (bottomBand - sh)*scale)
+    // is assumed to have been scaled; otherwise pass-through.
+    const float renderedBandTop = sh + (bottomBand - sh) * scale;
     if (y < renderedBandTop) return;
-    const float thirdX = sw / 3.0f;
-    const float ax = (x <  thirdX)        ? 0.0f
-                  :  (x >= 2.0f * thirdX) ? sw
-                  :                          sw * 0.5f;
+    const float ax = sw * 0.5f;
     const float ay = sh;
     x = ax + (x - ax) / scale;
     y = ay + (y - ay) / scale;
