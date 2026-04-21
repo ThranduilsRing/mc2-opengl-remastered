@@ -1,4 +1,5 @@
 .ccls-cache/
+.claude/settings.local.json
 tags
 CMakeCache.txt
 out/
