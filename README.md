@@ -67,6 +67,23 @@ mc2.exe --validate --frames 60 --log validate.json
 
 Returns exit code 0 on success, 1 on shader compile errors or GL errors. See the [Modding Guide](docs/modding-guide.md) for the full autonomous development workflow.
 
+## Improvements over vanilla
+
+### Bug fixes
+- Fixed per-frame sleep timer that was capping framerate
+- Fixed intermittent color flickering
+
+### Performance
+- Moved significant rendering work from CPU to GPU (terrain, static props, tessellation)
+- Runs at **4K with 30+ FPS zoomed out, ~90 FPS zoomed in** on mid-range hardware
+
+(Plus alariq's extensive upstream bug fixes over the original engine.)
+
+## Known Issues
+
+- **Terrain tile overlap seams** visible at certain zooms and biome transitions
+- **Pink color bleed** onto GUI elements from the post-process pipeline
+
 ## Documentation
 
 - **[Modding Guide](docs/modding-guide.md)** -- rendering pipeline, shader editing, texture upscaling, debug hotkeys, autonomous development
