@@ -914,10 +914,21 @@ void ForceGroupIcon::render()
 	for (int i = 0; i < strlen( buffer ); i++ )
 		CharUpper( buffer );
 
-	// Constrain the text region to the pilot-name slot so overlong names
-	// (e.g. PALERIDEPSYCHO) get clipped at the slot boundary instead of
-	// bleeding into the next force-group panel.
+	// Truncate overlong pilot names (e.g. PALERIDEPSYCHO) to fit the slot.
+	// gos_TextSetRegion doesn't hard-clip — findTextBreak will return the
+	// whole word even if it overflows — so we measure and chop in code.
 	const int slotW = textArea[locationIndex].right - textArea[locationIndex].left - 2;
+	{
+		gos_TextSetAttributes( gosFontHandle->getTempHandle(), 0xffffffff,
+		                       (float)gosFontHandle->getSize(),
+		                       true, true, false, false, 0 );
+		DWORD tw = 0, th = 0;
+		gos_TextStringLength( &tw, &th, buffer );
+		while ( (int)tw > slotW && strlen(buffer) > 1 ) {
+			buffer[strlen(buffer) - 1] = '\0';
+			gos_TextStringLength( &tw, &th, buffer );
+		}
+	}
 	gosFontHandle->render( buffer, textArea[locationIndex].left + 1, pilotTextTop[locationIndex], slotW, 0, 0xffffffff, 0, 0 );
 
 	// draw the health bar
