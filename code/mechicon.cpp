@@ -914,22 +914,37 @@ void ForceGroupIcon::render()
 	for (int i = 0; i < strlen( buffer ); i++ )
 		CharUpper( buffer );
 
-	// Truncate overlong pilot names (e.g. PALERIDEPSYCHO) to fit the slot.
-	// gos_TextSetRegion doesn't hard-clip — findTextBreak will return the
-	// whole word even if it overflows — so we measure and chop in code.
+	// Auto-shrink font size (rather than chop characters) when the pilot name
+	// is too wide for the slot. PALERIDEPSYCHO etc. render in full but at a
+	// smaller size. MC2 uses NEGATIVE sizes to mean "pixel height", so we
+	// scale by shrinking magnitude toward zero; clamp to a legible floor.
 	const int slotW = textArea[locationIndex].right - textArea[locationIndex].left - 2;
+	const float origSize = (float)gosFontHandle->getSize();
+	float useSize = origSize;
 	{
-		gos_TextSetAttributes( gosFontHandle->getTempHandle(), 0xffffffff,
-		                       (float)gosFontHandle->getSize(),
+		gos_TextSetAttributes( gosFontHandle->getTempHandle(), 0xffffffff, useSize,
 		                       true, true, false, false, 0 );
 		DWORD tw = 0, th = 0;
 		gos_TextStringLength( &tw, &th, buffer );
-		while ( (int)tw > slotW && strlen(buffer) > 1 ) {
-			buffer[strlen(buffer) - 1] = '\0';
+		const float minMagnitude = 8.0f;
+		while ( (int)tw > slotW && fabsf(useSize) > minMagnitude ) {
+			useSize *= 0.9f;
+			gos_TextSetAttributes( gosFontHandle->getTempHandle(), 0xffffffff, useSize,
+			                       true, true, false, false, 0 );
 			gos_TextStringLength( &tw, &th, buffer );
 		}
 	}
-	gosFontHandle->render( buffer, textArea[locationIndex].left + 1, pilotTextTop[locationIndex], slotW, 0, 0xffffffff, 0, 0 );
+
+	// Draw with the chosen (possibly shrunken) size.
+	gos_TextSetAttributes( gosFontHandle->getTempHandle(), 0xffffffff, useSize,
+	                       true, true, false, false, 0 );
+	gos_TextSetRegion( textArea[locationIndex].left + 1,
+	                   pilotTextTop[locationIndex],
+	                   textArea[locationIndex].left + 1 + slotW,
+	                   pilotTextTop[locationIndex] + 64 );
+	gos_TextSetPosition( textArea[locationIndex].left + 1,
+	                     pilotTextTop[locationIndex] );
+	gos_TextDraw( buffer );
 
 	// draw the health bar
 	drawBar( health );
