@@ -1,5 +1,35 @@
-Preparing 3rdparties:
-====================
+Building from source on Windows
+===============================
+
+**Just want to play?** You don't need this file. Grab the four zips from the [latest release](https://github.com/ThranduilsRing/mc2-opengl-remastered/releases/latest), extract them into the same folder, and run `mc2.exe`. This document is for developers building the engine from source.
+
+Quick build (using the vendored `3rdparty.zip`)
+-----------------------------------------------
+
+This is the fast path — verified end-to-end from a fresh clone.
+
+1. Install **Visual Studio 2022 Build Tools** with the **MSVC v143** workload.
+2. Clone the repo. Git LFS will pull `3rdparty.zip` automatically.
+3. Extract `3rdparty.zip` at the repo root (creates `3rdparty/{cmake,include,lib,tracy}`).
+4. Configure and build with an **absolute** path to the `3rdparty/` folder:
+
+```bash
+cmake -G "Visual Studio 17 2022" -DCMAKE_PREFIX_PATH=C:/absolute/path/to/repo/3rdparty -DCMAKE_LIBRARY_ARCHITECTURE=x64 -B build64
+cmake --build build64 --config RelWithDebInfo --target mc2
+```
+
+Output is `build64/RelWithDebInfo/mc2.exe`.
+
+**Always use `RelWithDebInfo`** — `Release` builds crash on GL debug callback registration.
+
+Why the absolute path? The root `CMakeLists.txt` uses `${CMAKE_PREFIX_PATH}/include` literally when setting include directories; relative paths don't resolve correctly from the build directory and the headers silently fail to be found at compile time.
+
+The rest of this document describes the longer manual path (building each 3rdparty from source) plus building the game data archives. Skip down to the relevant section.
+
+---
+
+Preparing 3rdparties (manual):
+==============================
 
 One can also use 3rdparty.zip package in the repo for simpler setup, it contains all needed 3rdparty libraries
 If you select to do it then skip directly to **Compiling mc2**
