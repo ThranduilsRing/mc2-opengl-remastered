@@ -79,5 +79,5 @@ Returns exit code 0 on success, 1 on shader compile errors or GL errors. See the
 
 - **Original game**: Microsoft / FASA Interactive (2001)
 - **OpenGL port, Linux support, and engine bug fixes**: [alariq/mc2](https://github.com/alariq/mc2) -- without this there is no remaster; all engine-level work is his
-- **Visual remaster**: Joe Mathews (this repo)
+- **Visual remaster**: ThranduilsRing (this repo)
 - **Development**: [Claude Code](https://claude.ai/code) (Anthropic)
