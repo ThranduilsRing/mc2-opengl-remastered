@@ -41,12 +41,23 @@ The post-process pipeline is built and running but most effects are **off by def
 
 ## Building
 
-Requires Visual Studio 2022 Build Tools with MSVC v143. All third-party dependencies (SDL2, GLEW, zlib) are included in `3rdparty/`.
+Requires Visual Studio 2022 Build Tools with MSVC v143. All third-party dependencies (SDL2, GLEW, zlib) are vendored as `3rdparty.zip` at the repo root (Git LFS). **Extract it before configuring:**
 
 ```bash
-cmake -G "Visual Studio 17 2022" -DCMAKE_PREFIX_PATH=./3rdparty/3rdparty -DCMAKE_LIBRARY_ARCHITECTURE=x64 -B build64
+# one-time setup: extract vendored dependencies
+cd <repo-root>
+unzip 3rdparty.zip                # or right-click -> Extract Here
+# you should now see 3rdparty/{cmake,include,lib,tracy}
+```
+
+Configure and build (note the **absolute** path to the 3rdparty folder -- relative paths won't resolve correctly at compile time):
+
+```bash
+cmake -G "Visual Studio 17 2022" -DCMAKE_PREFIX_PATH=C:/absolute/path/to/repo/3rdparty -DCMAKE_LIBRARY_ARCHITECTURE=x64 -B build64
 cmake --build build64 --config RelWithDebInfo --target mc2
 ```
+
+Output lands at `build64/RelWithDebInfo/mc2.exe`.
 
 **Always use `RelWithDebInfo`**. Release builds crash due to GL debug callback registration.
 
