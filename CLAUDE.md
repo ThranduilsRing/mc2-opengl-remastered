@@ -99,3 +99,23 @@ Rules for keeping this file and memory healthy:
 3. **Superseded facts → update or delete the memory, don't append.** Memory files are point-in-time and decay fast. If the "Post-processing applies to HUD" issue gets fixed, update the Known Issues line here AND the relevant memory — don't leave both stale.
 4. **Before writing a new memory, search existing ones.** `grep -i <keyword> memory/*.md`. Duplicates fragment knowledge.
 5. **CLAUDE.md stays under ~250 lines.** If it grows past that, the signal-to-noise is probably off — extract sections into memory files and link from here.
+
+## Debug Instrumentation Rule (for reworks)
+
+Any rework touching **object lifecycle, cull/visibility gates, render path, resource lifetime, or cross-system control flow** must land in the same commit as env-gated `[SUBSYSTEM]` lifecycle prints — and, for shader changes, a debug-visualization mode branch. Instrumentation stays in the tree **gated off by default**; do not delete it after the bug is fixed, demote it to silent.
+
+**Canonical CPU macro** (matches existing `MC2_DEBUG_SHADOW_COLLECT` pattern — env-gated because this project never builds `_DEBUG`):
+
+```cpp
+static const bool s_wsTrace = (getenv("MC2_WALL_SHADOW_TRACE") != nullptr);
+#define WS_TRACE(fmt, ...) \
+    do { if (s_wsTrace) { printf("[WALL_SHADOW] " fmt "\n", ##__VA_ARGS__); fflush(stdout); } } while (0)
+```
+
+**Log at lifecycle boundaries only** (init, register, first-use, teardown, fallback) — never per-frame at 50-60 FPS. Line format: `[SUBSYS] event=<name> owner=<id> state=<enum> ...` — grep-friendly one-liner.
+
+**Shader side:** add a debug-mode uniform branch that outputs intermediate values as color (precedent: `RAlt+9` GPU static-prop frag debug-mode 0..7).
+
+**Keep until** the feature survives: (a) full mission load from main menu, (b) camera pan into previously-unseen terrain, (c) mission restart without quitting. Then demote — leave gated, silent.
+
+Full rationale, triggers, naming conventions, and anti-patterns: `memory/debug_instrumentation_rule.md`.
