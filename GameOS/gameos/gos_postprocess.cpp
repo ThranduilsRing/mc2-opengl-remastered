@@ -1308,7 +1308,10 @@ void gosPostProcess::buildDynamicLightMatrix(float sunDirX, float sunDirY, float
     if (len < 0.001f) return;
     float fx = sunDirX/len, fy = sunDirY/len, fz = sunDirZ/len;
 
-    float xyRadius = 1200.0f;  // covers battle area around camera look-at point
+    float xyRadius = 2400.0f;  // half-extent of the dynamic shadow ortho. Covers the
+                                // zoomed-out camera view plus enough margin for
+                                // off-screen casters. At 4096² map, texel density is
+                                // (2*xyRadius)/4096 units/texel. 2400 → ~1.17 u/tex.
     float depthDist = 5000.0f;              // large depth to envelope all elevations
 
     // Texel snapping: quantize camera position to shadow texel grid
