@@ -834,54 +834,66 @@ bool glsl_program::is_valid()
 }
 
 //=====================================================================================================================================
+// Helper: uniforms that are declared in the shader but unused get optimized
+// out by the GLSL compiler and never show up in the uniforms_ table. Callers
+// often don't know which uniforms survived optimization, so a missing name
+// is NOT a bug — only a found-but-wrong-type is worth logging.
 bool glsl_program::setFloat(const char* name, const float v)
 {
     UniArr_t::iterator it = uniforms_.find(name);
-    if(it!=uniforms_.end() && it->second->type_ == CONSTANT_FLOAT)
+    if(it == uniforms_.end())
+        return false; // optimized out, silent
+    if(it->second->type_ != CONSTANT_FLOAT)
     {
-        memcpy(it->second->data_, &v, constantSizes[it->second->type_] * it->second->num_el_);
-        it->second->is_dirty_ = true;
-        return true;
+        log_error("Type mismatch: %s\n", name);
+        return false;
     }
-	log_error("Type mismatch: %s\n", name);
-    return false;
+    memcpy(it->second->data_, &v, constantSizes[it->second->type_] * it->second->num_el_);
+    it->second->is_dirty_ = true;
+    return true;
 }
 bool glsl_program::setFloat2(const char* name, const float v[2])
 {
     UniArr_t::iterator it = uniforms_.find(name);
-    if(it!=uniforms_.end() && it->second->type_ == CONSTANT_VEC2)
+    if(it == uniforms_.end())
+        return false;
+    if(it->second->type_ != CONSTANT_VEC2)
     {
-        memcpy(it->second->data_, v, constantSizes[it->second->type_] * it->second->num_el_);
-        it->second->is_dirty_ = true;
-        return true;
+        log_error("Type mismatch: %s\n", name);
+        return false;
     }
-	log_error("Type mismatch: %s\n", name);
-    return false;
+    memcpy(it->second->data_, v, constantSizes[it->second->type_] * it->second->num_el_);
+    it->second->is_dirty_ = true;
+    return true;
 }
 bool glsl_program::setFloat3(const char* name, const float v[3])
 {
     UniArr_t::iterator it = uniforms_.find(name);
-    if(it!=uniforms_.end() && it->second->type_ == CONSTANT_VEC3)
+    if(it == uniforms_.end())
+        return false;
+    if(it->second->type_ != CONSTANT_VEC3)
     {
-        memcpy(it->second->data_, v, constantSizes[it->second->type_] * it->second->num_el_);
-        it->second->is_dirty_ = true;
-        return true;
+        log_error("Type mismatch: %s\n", name);
+        return false;
     }
-	log_error("Type mismatch: %s\n", name);
-    return false;
+    memcpy(it->second->data_, v, constantSizes[it->second->type_] * it->second->num_el_);
+    it->second->is_dirty_ = true;
+    return true;
 }
 
 bool glsl_program::setFloat4(const std::string& name, const float v[4])
 {
     UniArr_t::iterator it = uniforms_.find(name);
-    if(it!=uniforms_.end() && it->second->type_ == CONSTANT_VEC4)
+    if(it == uniforms_.end())
+        return false;
+    if(it->second->type_ != CONSTANT_VEC4)
     {
-        memcpy(it->second->data_, v, constantSizes[it->second->type_] * it->second->num_el_);
-        it->second->is_dirty_ = true;
-        return true;
+        log_error("Type mismatch: %s\n", name.c_str());
+        return false;
     }
-	log_error("Type mismatch: %s\n", name.c_str());
-    return false;
+    memcpy(it->second->data_, v, constantSizes[it->second->type_] * it->second->num_el_);
+    it->second->is_dirty_ = true;
+    return true;
 }
 
 // TODO: need to change interface so that float* instead of float[4] is passed
@@ -893,100 +905,127 @@ bool glsl_program::setFloat4(const char* name, const float v[4])
 bool glsl_program::setInt(const char* name, const int v)
 {
     UniArr_t::iterator it = uniforms_.find(name);
-    if(it!=uniforms_.end() && it->second->type_ == CONSTANT_INT)
+    if(it != uniforms_.end())
     {
+        if(it->second->type_ != CONSTANT_INT)
+        {
+            log_error("Type mismatch: %s\n", name);
+            return false;
+        }
         memcpy(it->second->data_, &v, constantSizes[it->second->type_] * it->second->num_el_);
         it->second->is_dirty_ = true;
         return true;
     }
-	log_error("Type mismatch: %s\n", name);
+    // Samplers live in a separate table. Binding them is just an int
+    // (texture unit), so setInt("samplerName", unit) is the natural caller API.
+    SamplerArr_t::iterator sit = samplers_.find(name);
+    if(sit != samplers_.end())
+    {
+        glUniform1i(sit->second->index_, v);
+        return true;
+    }
+    // Not found in either table — uniform was optimized out; silent.
     return false;
 }
 bool glsl_program::setInt2(const char* name, const int v[2])
 {
     UniArr_t::iterator it = uniforms_.find(name);
-    if(it!=uniforms_.end() && it->second->type_ == CONSTANT_IVEC2)
+    if(it == uniforms_.end())
+        return false;
+    if(it->second->type_ != CONSTANT_IVEC2)
     {
-        memcpy(it->second->data_, v, constantSizes[it->second->type_] * it->second->num_el_);
-        it->second->is_dirty_ = true;
-        return true;
+        log_error("Type mismatch: %s\n", name);
+        return false;
     }
-	log_error("Type mismatch: %s\n", name);
-    return false;
+    memcpy(it->second->data_, v, constantSizes[it->second->type_] * it->second->num_el_);
+    it->second->is_dirty_ = true;
+    return true;
 }
 bool glsl_program::setInt3(const char* name, const int v[3])
 {
     UniArr_t::iterator it = uniforms_.find(name);
-    if(it!=uniforms_.end() && it->second->type_ == CONSTANT_IVEC3)
+    if(it == uniforms_.end())
+        return false;
+    if(it->second->type_ != CONSTANT_IVEC3)
     {
-        memcpy(it->second->data_, v, constantSizes[it->second->type_] * it->second->num_el_);
-        it->second->is_dirty_ = true;
-        return true;
+        log_error("Type mismatch: %s\n", name);
+        return false;
     }
-	log_error("Type mismatch: %s\n", name);
-    return false;
+    memcpy(it->second->data_, v, constantSizes[it->second->type_] * it->second->num_el_);
+    it->second->is_dirty_ = true;
+    return true;
 }
 bool glsl_program::setInt4(const char* name, const int v[4])
 {
     UniArr_t::iterator it = uniforms_.find(name);
-    if(it!=uniforms_.end() && it->second->type_ == CONSTANT_IVEC4)
+    if(it == uniforms_.end())
+        return false;
+    if(it->second->type_ != CONSTANT_IVEC4)
     {
-        memcpy(it->second->data_, v, constantSizes[it->second->type_] * it->second->num_el_);
-        it->second->is_dirty_ = true;
-        return true;
+        log_error("Type mismatch: %s\n", name);
+        return false;
     }
-	log_error("Type mismatch: %s\n", name);
-    return false;
+    memcpy(it->second->data_, v, constantSizes[it->second->type_] * it->second->num_el_);
+    it->second->is_dirty_ = true;
+    return true;
 }
 
 bool glsl_program::setMat2(const char* name, const float v[4])
 {
     UniArr_t::iterator it = uniforms_.find(name);
-    if(it!=uniforms_.end() && it->second->type_ == CONSTANT_MAT2)
+    if(it == uniforms_.end())
+        return false;
+    if(it->second->type_ != CONSTANT_MAT2)
     {
-        memcpy(it->second->data_, v, constantSizes[it->second->type_] * it->second->num_el_);
-        it->second->is_dirty_ = true;
-        return true;
+        log_error("Type mismatch: %s\n", name);
+        return false;
     }
-	log_error("Type mismatch: %s\n", name);
-    return false;
+    memcpy(it->second->data_, v, constantSizes[it->second->type_] * it->second->num_el_);
+    it->second->is_dirty_ = true;
+    return true;
 }
 bool glsl_program::setMat3(const char* name, const float v[9])
 {
     UniArr_t::iterator it = uniforms_.find(name);
-    if(it!=uniforms_.end() && it->second->type_ == CONSTANT_MAT3)
+    if(it == uniforms_.end())
+        return false;
+    if(it->second->type_ != CONSTANT_MAT3)
     {
-        memcpy(it->second->data_, v, constantSizes[it->second->type_] * it->second->num_el_);
-        it->second->is_dirty_ = true;
-        return true;
+        log_error("Type mismatch: %s\n", name);
+        return false;
     }
-	log_error("Type mismatch: %s\n", name);
-    return false;
+    memcpy(it->second->data_, v, constantSizes[it->second->type_] * it->second->num_el_);
+    it->second->is_dirty_ = true;
+    return true;
 }
 bool glsl_program::setMat4(const char* name, const float v[16])
 {
     UniArr_t::iterator it = uniforms_.find(name);
-    if(it!=uniforms_.end() && it->second->type_ == CONSTANT_MAT4)
+    if(it == uniforms_.end())
+        return false;
+    if(it->second->type_ != CONSTANT_MAT4)
     {
-        memcpy(it->second->data_, v, constantSizes[it->second->type_] * it->second->num_el_);
-        it->second->is_dirty_ = true;
-        return true;
+        log_error("Type mismatch: %s\n", name);
+        return false;
     }
-	log_error("Type mismatch: %s\n", name);
-    return false;
+    memcpy(it->second->data_, v, constantSizes[it->second->type_] * it->second->num_el_);
+    it->second->is_dirty_ = true;
+    return true;
 }
 
 bool glsl_program::setMat4(const std::string& name , const float v[16])
 {
     UniArr_t::iterator it = uniforms_.find(name);
-    if(it!=uniforms_.end() && it->second->type_ == CONSTANT_MAT4)
+    if(it == uniforms_.end())
+        return false;
+    if(it->second->type_ != CONSTANT_MAT4)
     {
-        memcpy(it->second->data_, v, constantSizes[it->second->type_] * it->second->num_el_);
-        it->second->is_dirty_ = true;
-        return true;
+        log_error("Type mismatch: %s\n", name.c_str());
+        return false;
     }
-	log_error("Type mismatch: %s\n", name.c_str());
-    return false;
+    memcpy(it->second->data_, v, constantSizes[it->second->type_] * it->second->num_el_);
+    it->second->is_dirty_ = true;
+    return true;
 }
 
 GLint glsl_program::getAttribLocation(const char* pattrib)
