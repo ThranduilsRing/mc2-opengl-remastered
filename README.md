@@ -4,7 +4,15 @@
 
 A visual remaster of MechCommander 2, built on top of [alariq's OpenGL port](https://github.com/alariq/mc2). Rebuilds the rendering pipeline around PBR terrain splatting, real-time shadows, tessellation, and modern post-processing -- while leaving the original gameplay, missions, and systems alone.
 
-**▶ [Download the latest release](https://github.com/ThranduilsRing/mc2-opengl-remastered/releases/latest)** — prebuilt engine + optional 4x upscaled textures.
+**▶ [Download the latest release](https://github.com/ThranduilsRing/mc2-opengl-remastered/releases/latest)** — prebuilt engine, terrain materials, and optional 4x upscaled textures.
+
+### Install (from release)
+
+1. Download **`mc2-remastered-engine.zip`**, extract into an empty folder.
+2. Download **[alariq/mc2srcdata](https://github.com/alariq/mc2srcdata)** (clone or download zip). Its top-level folders (`art/`, `tgl/`, `missions/`, etc.) are the game data. **Rename the cloned/extracted folder to `data`** and place it next to `mc2.exe`.
+3. Download **`terrain_materials.zip`** and extract into `data/textures/` (required for PBR terrain).
+4. (Optional) Download **`art_4x_gpu.zip`** and extract into `data/art/`, and **`tgl_4x_gpu.zip`** into `data/tgl/`.
+5. Run `mc2.exe`.
 
 MechCommander 2 was released by Microsoft/FASA Interactive in 2001 and its source code was later made public. alariq did the heavy lifting of getting that source running on modern Windows and Linux over OpenGL. This project picks up from there and focuses on the visuals.
 
