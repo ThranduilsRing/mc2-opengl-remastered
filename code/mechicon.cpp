@@ -914,7 +914,11 @@ void ForceGroupIcon::render()
 	for (int i = 0; i < strlen( buffer ); i++ )
 		CharUpper( buffer );
 
-	gosFontHandle->render( buffer, textArea[locationIndex].left + 1, pilotTextTop[locationIndex], 0, 0, 0xffffffff, 0, 0 );
+	// Constrain the text region to the pilot-name slot so overlong names
+	// (e.g. PALERIDEPSYCHO) get clipped at the slot boundary instead of
+	// bleeding into the next force-group panel.
+	const int slotW = textArea[locationIndex].right - textArea[locationIndex].left - 2;
+	gosFontHandle->render( buffer, textArea[locationIndex].left + 1, pilotTextTop[locationIndex], slotW, 0, 0xffffffff, 0, 0 );
 
 	// draw the health bar
 	drawBar( health );
