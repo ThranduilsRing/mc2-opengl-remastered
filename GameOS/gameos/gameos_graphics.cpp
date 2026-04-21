@@ -3389,20 +3389,24 @@ void gosRenderer::flushHUDBatch()
     if (s_hud_scale_active && scale < 0.999f) {
         const float sw = (float)width_;
         const float sh = (float)height_;
-        const float bottomBand = sh * 0.75f;
+        const float bottomTouch  = sh * 0.95f;  // bottom-of-bbox must reach here
+        const float maxHeight    = sh * 0.50f;  // bbox must be shorter than half the screen
         const float ax = sw * 0.5f;
         const float ay = sh;
         for (HudDrawCall& call : hudBatch_) {
             if (call.vertices.empty()) continue;
-            // Use a min-Y test instead of centroid: a draw call is a HUD
-            // element only if ALL its vertices are inside the bottom band.
-            // This rejects modal dialogs with tall backdrop panels that span
-            // half the screen — their TOP vertex is far above bottomBand.
-            float minY = 1e9f;
+            // Qualify as "in-game HUD" when the draw REACHES the bottom edge
+            // AND isn't absurdly tall. This catches the tacmap, force-group
+            // strip, and command cluster (all touch the bottom, all < 50%
+            // screen-height) while rejecting modal dialogs that don't reach
+            // bottom and full-screen backdrop panels that span top-to-bottom.
+            float minY = 1e9f, maxY = -1e9f;
             for (const gos_VERTEX& v : call.vertices) {
                 if (v.y < minY) minY = v.y;
+                if (v.y > maxY) maxY = v.y;
             }
-            if (minY < bottomBand) continue;
+            if (maxY < bottomTouch) continue;
+            if ((maxY - minY) > maxHeight) continue;
             for (gos_VERTEX& v : call.vertices) {
                 v.x = ax + (v.x - ax) * scale;
                 v.y = ay + (v.y - ay) * scale;
