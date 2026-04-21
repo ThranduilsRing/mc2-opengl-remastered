@@ -3385,31 +3385,36 @@ void gosRenderer::flushHUDBatch()
     // the HUD strip as a coherent whole. Single-anchor keeps the strip
     // contiguous: tacmap drifts slightly inward-right, force-group stays put,
     // command panel drifts slightly inward-left, all without visible gaps.
+    // Shrink-in-place: every qualifying HUD draw call scales around its OWN
+    // centroid rather than being translated toward a shared anchor. Each
+    // element stays in its natural corner (tacmap BL, UNIT INFO L, force
+    // group BC, command cluster BR) and simply gets smaller. Side effect:
+    // mouse hit-testing works without an inverse transform because element
+    // centers are preserved — visible shrunken buttons are subset of the
+    // game's original hit rects, so clicks on visible area always land.
+    //
+    // Gate: draw qualifies if its bottom edge reaches the lower 15% of the
+    // screen (maxY >= 0.85*sh). Modal dialogs that float centered don't
+    // reach that far and pass through untouched.
     const float scale = s_hud_scale;
     if (s_hud_scale_active && scale < 0.999f) {
-        const float sw = (float)width_;
         const float sh = (float)height_;
-        const float bottomTouch  = sh * 0.95f;  // bottom-of-bbox must reach here
-        const float maxHeight    = sh * 0.50f;  // bbox must be shorter than half the screen
-        const float ax = sw * 0.5f;
-        const float ay = sh;
+        const float bottomTouch = sh * 0.85f;
         for (HudDrawCall& call : hudBatch_) {
             if (call.vertices.empty()) continue;
-            // Qualify as "in-game HUD" when the draw REACHES the bottom edge
-            // AND isn't absurdly tall. This catches the tacmap, force-group
-            // strip, and command cluster (all touch the bottom, all < 50%
-            // screen-height) while rejecting modal dialogs that don't reach
-            // bottom and full-screen backdrop panels that span top-to-bottom.
-            float minY = 1e9f, maxY = -1e9f;
+            float maxY = -1e9f;
             for (const gos_VERTEX& v : call.vertices) {
-                if (v.y < minY) minY = v.y;
                 if (v.y > maxY) maxY = v.y;
             }
             if (maxY < bottomTouch) continue;
-            if ((maxY - minY) > maxHeight) continue;
+            // Centroid of this draw call
+            float cx = 0.0f, cy = 0.0f;
+            for (const gos_VERTEX& v : call.vertices) { cx += v.x; cy += v.y; }
+            cx /= (float)call.vertices.size();
+            cy /= (float)call.vertices.size();
             for (gos_VERTEX& v : call.vertices) {
-                v.x = ax + (v.x - ax) * scale;
-                v.y = ay + (v.y - ay) * scale;
+                v.x = cx + (v.x - cx) * scale;
+                v.y = cy + (v.y - cy) * scale;
             }
         }
     }
@@ -4445,22 +4450,12 @@ float gos_GetHudScale() { return s_hud_scale; }
 void gos_SetHudScaleActive(bool on) { s_hud_scale_active = on; }
 bool gos_GetHudScaleActive()        { return s_hud_scale_active; }
 
-void gos_HudInverseMousePoint(float& x, float& y) {
-    // Inverse of the single-anchor bottom-center HUD transform. Must stay in
-    // sync with gosRenderer::flushHUDBatch() above.
-    const float scale = s_hud_scale;
-    if (!s_hud_scale_active || scale > 0.999f || !g_gos_renderer) return;
-    const float sw = (float)g_gos_renderer->getWidth();
-    const float sh = (float)g_gos_renderer->getHeight();
-    const float bottomBand = sh * 0.75f;
-    // Any pixel inside the rendered bottom band (y >= sh + (bottomBand - sh)*scale)
-    // is assumed to have been scaled; otherwise pass-through.
-    const float renderedBandTop = sh + (bottomBand - sh) * scale;
-    if (y < renderedBandTop) return;
-    const float ax = sw * 0.5f;
-    const float ay = sh;
-    x = ax + (x - ax) / scale;
-    y = ay + (y - ay) / scale;
+void gos_HudInverseMousePoint(float& /*x*/, float& /*y*/) {
+    // Shrink-in-place: every HUD draw call shrinks around its own centroid,
+    // so element CENTERS are preserved. The game's hit-test rects are a
+    // superset of the visible shrunken rects. Clicks on visible HUD always
+    // land within the game's expected hit area — no inverse needed.
+    // (Kept as a callable for API stability; body intentionally empty.)
 }
 
 // ── World-space overlay batch API ────────────────────────────────────────────
