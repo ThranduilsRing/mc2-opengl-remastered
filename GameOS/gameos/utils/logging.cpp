@@ -42,6 +42,12 @@ void logmsg(eLogCategory lc, const char* file, int line, const char* fmt, ...)
 
 #ifdef PLATFORM_WINDOWS
 	OutputDebugString(text);
+	// Errors and warnings also need to reach attached consoles / redirected
+	// stderr — OutputDebugString only speaks to an attached debugger.
+	if (lc == LC_ERROR || lc == LC_WARNING) {
+		fputs(text, stderr);
+		fflush(stderr);
+	}
 #else
 	puts(text);
 #endif

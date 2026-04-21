@@ -79,6 +79,9 @@ bool get_shader_error_status(GLuint shader, GLenum status_type)
             printf("[SHADER ERROR] CompileShader: %s\n", buf);
             fflush(stdout);
             validateRecordShaderError(buf);
+        } else {
+            printf("[SHADER ERROR] CompileShader: driver reported FAIL with empty info log (GL id=%u)\n", shader);
+            fflush(stdout);
         }
 		delete[] buf;
 
@@ -221,6 +224,41 @@ void append_line_directive(std::string& code, size_t line, const char* fname)
     code.append(buf);
 }
 
+// Find next "#include" occurrence in 'p' that is NOT inside a // line
+// comment or /* ... */ block comment or a "..." / '...' string literal.
+// Naive strstr() would match the token inside prose like "no #include,"
+// and derail the include parser.
+static const char* find_next_include_directive(const char* p)
+{
+    static const char* INCLUDE = "#include";
+    while (*p)
+    {
+        if (p[0] == '/' && p[1] == '/') {
+            while (*p && *p != '\n') ++p;
+        }
+        else if (p[0] == '/' && p[1] == '*') {
+            p += 2;
+            while (*p && !(p[0] == '*' && p[1] == '/')) ++p;
+            if (*p) p += 2;
+        }
+        else if (*p == '"' || *p == '\'') {
+            char q = *p++;
+            while (*p && *p != q) {
+                if (*p == '\\' && p[1]) p += 2;
+                else ++p;
+            }
+            if (*p) ++p;
+        }
+        else if (p[0] == '#' && strncmp(p, INCLUDE, 8) == 0) {
+            return p;
+        }
+        else {
+            ++p;
+        }
+    }
+    return nullptr;
+}
+
 bool parse_includes(const char* fname, const char* psource, std::vector<std::string>& include_list, std::string& parsed_source)
 {
     size_t current_line = 1;
@@ -230,7 +268,7 @@ bool parse_includes(const char* fname, const char* psource, std::vector<std::str
     static const char* INCLUDE = "#include";
     const char* token = psource;
     const char* start = psource;
-    while((token = strstr(start, INCLUDE)))
+    while((token = find_next_include_directive(start)))
     {
         std::string code = std::string(start, token - start);
 
@@ -288,6 +326,11 @@ bool load_shader(const char* fname, std::string& shader_source, std::vector<std:
 bool compile_shader(GLenum shader, const char** strings, size_t count)
 {
     ZoneScopedN("Shader.Compile");
+    // Drain any leftover GL errors from prior calls — an uncleared
+    // GL_INVALID_ENUM (e.g. from debug output probes) would otherwise
+    // poison this compile's return value even if compile itself succeeds.
+    while(glGetError() != GL_NO_ERROR) { /* discard */ }
+
     glShaderSource(shader, count, strings, 0);
     glCompileShader(shader);
 

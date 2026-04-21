@@ -2,8 +2,9 @@
 
 #define PREC highp
 
-// fbm inlined — no #include, because get_path() uses backslash separator on Windows
-// but shader paths use forward slashes, causing include resolution to fail silently.
+// fbm is inlined here on purpose: the shader include machinery uses a
+// backslash path separator on Windows while shader references use forward
+// slashes, so pulling in an external fbm helper resolves to nothing silently.
 PREC vec3 mod289_3(PREC vec3 x) { return x - floor(x * (1.0 / 289.0)) * 289.0; }
 PREC vec2 mod289_2(PREC vec2 x) { return x - floor(x * (1.0 / 289.0)) * 289.0; }
 PREC vec3 permute(PREC vec3 x) { return mod289_3(((x * 34.0) + 1.0) * x); }
