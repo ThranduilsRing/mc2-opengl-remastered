@@ -1,8 +1,8 @@
-# MechCommander 2 -- OpenGL Renderer
+# MechCommander 2 -- OpenGL Remastered
 
-A modernized OpenGL 4.2 renderer for MechCommander 2, replacing the original DirectX 7 pipeline with PBR terrain, real-time shadows, post-processing, and tessellation.
+A visual remaster of MechCommander 2, built on top of [alariq's OpenGL port](https://github.com/alariq/mc2). Rebuilds the rendering pipeline around PBR terrain splatting, real-time shadows, tessellation, and modern post-processing -- while leaving the original gameplay, missions, and systems alone.
 
-MechCommander 2 was released by Microsoft/FASA Interactive in 2001 and its source code was later released publicly. This fork modernizes the rendering pipeline while preserving the original gameplay.
+MechCommander 2 was released by Microsoft/FASA Interactive in 2001 and its source code was later made public. alariq did the heavy lifting of getting that source running on modern Windows and Linux over OpenGL. This project picks up from there and focuses on the visuals.
 
 ## Features
 
@@ -78,5 +78,6 @@ Returns exit code 0 on success, 1 on shader compile errors or GL errors. See the
 ## Credits
 
 - **Original game**: Microsoft / FASA Interactive (2001)
-- **OpenGL port and Linux support**: [alariq/mc2](https://github.com/alariq/mc2)
-- **Rendering modernization**: Built with [Claude Code](https://claude.ai/code) (Anthropic)
+- **OpenGL port, Linux support, and engine bug fixes**: [alariq/mc2](https://github.com/alariq/mc2) -- without this there is no remaster; all engine-level work is his
+- **Visual remaster**: Joe Mathews (this repo)
+- **Development**: [Claude Code](https://claude.ai/code) (Anthropic)
