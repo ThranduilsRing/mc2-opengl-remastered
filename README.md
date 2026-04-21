@@ -17,6 +17,8 @@ Download all four zips and extract each into the **same folder** (contents merge
 
 Run `mc2.exe`. No original MC2 install required.
 
+**Optional:** **`mc2-load-points.zip`** (53 KB) — 24 pre-built save games, one per campaign mission, each with a full pilot roster and 1,000,000 CBills. Extract into `%USERPROFILE%\.mechcommander2\savegame\` (create the folder if it doesn't exist). Then pick one from the **Load Game** menu to jump straight to any mission.
+
 MechCommander 2 was released by Microsoft/FASA Interactive in 2001 and its source code was later made public. alariq did the heavy lifting of getting that source running on modern Windows and Linux over OpenGL. This project picks up from there and focuses on the visuals.
 
 ## Features
