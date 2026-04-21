@@ -9,13 +9,13 @@ All rendering features added to the MechCommander 2 OpenGL port, grouped by cate
 - **Hardware tessellation** -- TCS/TES pipeline for smooth terrain geometry with distance-based LOD
 - **Triplanar cliff mapping** -- automatic rock texture on steep slopes based on surface normal
 - **Cloud shadows** -- animated FBM noise pattern moving across terrain
-- **Height-based exponential fog** -- thicker in valleys, fades with altitude
+- **Height-based exponential fog** -- off by default; may need tuning before re-enabling
 - **Anti-tiling** -- noise-based UV perturbation to break texture repetition at distance
 
 ## Lighting and Shadows
 
-- **Static terrain shadow map** -- 4096x4096 world-fixed orthographic projection with multi-frame accumulation (fills as camera pans, re-renders on large camera moves)
-- **Dynamic mech shadows** -- 2048x2048 with ray-ground intersection frustum centering and camera bias
+- **Static terrain shadow map** -- 8192x8192 world-fixed orthographic projection, rendered once on the first frame (not dynamically re-baked)
+- **Dynamic mech shadows** -- 4096x4096 with ray-ground intersection frustum centering and camera bias
 - **Poisson disk PCF** -- 16-sample stratified sampling with per-pixel rotation to break banding, adjustable softness via `[`/`]` keys
 - **Post-process shadow pass** -- fullscreen depth-reconstruction pass that shadows all geometry (terrain, overlays, buildings, mechs) via multiplicative blending
 - **Object shadow casting** -- mechs and buildings cast into shadow map via direct GPU draw (bypasses material system)
@@ -26,19 +26,21 @@ All rendering features added to the MechCommander 2 OpenGL port, grouped by cate
 - **Sampleable depth texture** -- converted from renderbuffer for world-position reconstruction
 - **Inverse view-projection uniform** -- enables depth-to-world-position reconstruction in post-process
 
-## Post-Processing
+## Post-Processing (infrastructure)
 
-- **Bloom** -- threshold extraction + two-pass Gaussian blur + additive composite
-- **FXAA** -- post-process anti-aliasing
-- **ACES Filmic tonemapping** -- with configurable exposure and gamma correction
-- **Procedural skybox** -- gradient sky with sun disc, context-aware (blue-grey in gameplay, black in menus)
+Post-process pipeline is built and running; most effects are **off by default**. The goal is to have the plumbing in place so effects can be tuned in later without re-wiring the renderer.
+
+- **Procedural skybox** -- gradient sky with sun disc, context-aware (blue-grey in gameplay, black in menus) -- **on by default**
+- **Bloom** (off) -- threshold extraction + two-pass Gaussian blur + additive composite
+- **FXAA** (off) -- post-process anti-aliasing
+- **ACES Filmic tonemapping** (off) -- configurable exposure and gamma correction
 
 ## Effects (Infrastructure)
 
-- **GPU grass** -- geometry shader emitting axis-aligned billboard quads on grass-classified terrain with wind animation and distance fadeout (toggle RAlt+5)
 - **God rays** -- radial light scattering infrastructure, disabled by default (toggle RAlt+6)
-- **Shoreline foam** -- water edge detection infrastructure (toggle RAlt+7)
+- **Shoreline foam** -- water edge detection infrastructure, currently non-functional (toggle RAlt+7)
 - **SSAO** -- half-resolution 16-sample hemisphere ambient occlusion, disabled by default (toggle RAlt+9)
+- **GPU grass** -- deprecated; geometry-shader grass billboard path removed from default build
 
 ## Tools and Infrastructure
 
@@ -48,9 +50,10 @@ All rendering features added to the MechCommander 2 OpenGL port, grouped by cate
 - **Tracy profiler** -- always-on with 18 CPU+GPU zones for real-time performance analysis
 - **Debug hotkeys** -- RAlt+F1-F5 and RAlt+4-9 for toggling every visual feature live
 - **RAlt+0 GPU static-prop killswitch** -- experimental GPU-driven prop rendering (buildings, trees, generics). Partially wired: enabling it currently acts as a "hide all static props" toggle, useful for screenshotting terrain without clutter. CPU path (default, killswitch off) is the supported rendering path. See `docs/gpu-static-prop-cull-lessons.md` for why the GPU path is incomplete.
+- **RAlt+8 surface debug mode** -- visualize terrain surface classification / material IDs
 - **RAlt+9 GPU frag debug-mode cycle** -- when the static-prop killswitch is on, cycles the fragment shader through 8 isolation modes (normal / addr-gradient / addr-hash / WHITE / ARGB-only / TEX-only / HIGHLIGHT-only / TEX+HIGHLIGHT) for per-component visual bisection. Replaces the old SSAO toggle hotkey; SSAO infrastructure is preserved in code but unbound.
 - **Shader hot-reload** -- modified shaders take effect on next frame (bad compiles silently keep old shader)
-- **Wolfman mode** -- extended zoom (altitude 6000), removed LOD culling, removed fog, scaled vertex buffers
+- **Extra zoom mode** -- pulled-back camera (altitude 6000), removed LOD culling, removed fog, scaled vertex buffers
 
 ## Performance Optimizations
 
@@ -61,6 +64,8 @@ All rendering features added to the MechCommander 2 OpenGL port, grouped by cate
 
 ## Bug Fixes
 
+- **Removed per-frame 10ms sleep** -- was a hardcoded `Sleep(10)` in the frame loop (not vsync, not adaptive pacing); removing it uncapped framerate
 - **CPU displacement for units** -- mechs/vehicles no longer float above tessellated terrain
 - **Skybox color context** -- blue-grey sky in gameplay, black in menus/loading/mech bay
 - **Decompression buffer** -- increased MAX_LZ_BUFFER_SIZE from 263KB to 8MB for upscaled textures
+- **Color flickering** -- resolved intermittent frame-to-frame color shifts

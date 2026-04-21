@@ -15,19 +15,22 @@ MechCommander 2 was released by Microsoft/FASA Interactive in 2001 and its sourc
 - **Hardware tessellation** for smooth terrain geometry
 - **Triplanar cliff mapping** -- rock texture on steep slopes
 - **Cloud shadows** -- animated FBM noise
-- **Height-based fog** -- thicker in valleys
+- **Height-based fog** (off by default; may need tuning)
 
 ### Lighting and Shadows
-- **Static terrain shadow map** (4096x4096) with multi-frame accumulation
-- **Dynamic mech shadows** (2048x2048) with Poisson disk PCF (16-sample)
+- **Static terrain shadow map** (8192x8192), rendered once on the first frame
+- **Dynamic mech shadows** (4096x4096) with Poisson disk PCF (16-sample)
 - **Post-process shadow pass** -- shadows on all geometry via depth reconstruction
 - **G-buffer MRT** -- normal buffer for deferred shadow/lighting decisions
 
-### Post-Processing
-- **Bloom** with threshold extraction and two-pass Gaussian blur
-- **FXAA** anti-aliasing
-- **ACES Filmic tonemapping** with gamma correction
-- **Procedural skybox** with sun disc
+### Post-Processing (infrastructure)
+
+The post-process pipeline is built and running but most effects are **off by default** — the intent is to have the plumbing in place so effects can be dialed in later without re-wiring the renderer.
+
+- **Procedural skybox** with sun disc (on by default)
+- **Bloom** (off by default) -- threshold extraction and two-pass Gaussian blur
+- **FXAA** (off by default) -- anti-aliasing
+- **ACES Filmic tonemapping** (off by default) -- tonemap and gamma correction
 
 ### Tools
 - **Validation mode** (`--validate`) for autonomous build-test iteration
