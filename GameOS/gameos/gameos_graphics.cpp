@@ -3389,15 +3389,20 @@ void gosRenderer::flushHUDBatch()
     if (s_hud_scale_active && scale < 0.999f) {
         const float sw = (float)width_;
         const float sh = (float)height_;
-        const float bottomBand = sh * 0.60f;
+        const float bottomBand = sh * 0.75f;
         const float ax = sw * 0.5f;
         const float ay = sh;
         for (HudDrawCall& call : hudBatch_) {
             if (call.vertices.empty()) continue;
-            float cy = 0.0f;
-            for (const gos_VERTEX& v : call.vertices) cy += v.y;
-            cy /= (float)call.vertices.size();
-            if (cy < bottomBand) continue;  // menus/dialogs untouched
+            // Use a min-Y test instead of centroid: a draw call is a HUD
+            // element only if ALL its vertices are inside the bottom band.
+            // This rejects modal dialogs with tall backdrop panels that span
+            // half the screen — their TOP vertex is far above bottomBand.
+            float minY = 1e9f;
+            for (const gos_VERTEX& v : call.vertices) {
+                if (v.y < minY) minY = v.y;
+            }
+            if (minY < bottomBand) continue;
             for (gos_VERTEX& v : call.vertices) {
                 v.x = ax + (v.x - ax) * scale;
                 v.y = ay + (v.y - ay) * scale;
@@ -4443,7 +4448,7 @@ void gos_HudInverseMousePoint(float& x, float& y) {
     if (!s_hud_scale_active || scale > 0.999f || !g_gos_renderer) return;
     const float sw = (float)g_gos_renderer->getWidth();
     const float sh = (float)g_gos_renderer->getHeight();
-    const float bottomBand = sh * 0.60f;
+    const float bottomBand = sh * 0.75f;
     // Any pixel inside the rendered bottom band (y >= sh + (bottomBand - sh)*scale)
     // is assumed to have been scaled; otherwise pass-through.
     const float renderedBandTop = sh + (bottomBand - sh) * scale;
