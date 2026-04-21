@@ -41,7 +41,6 @@ The post-process pipeline is built and running but most effects are **off by def
 - **ACES Filmic tonemapping** (off by default) -- tonemap and gamma correction
 
 ### Tools
-- **Validation mode** (`--validate`) for autonomous build-test iteration
 - **AI texture upscaling** pipeline (4x via realesrgan-ncnn-vulkan)
 - **Tracy profiler** integration (18 CPU+GPU zones, always-on)
 - **Debug hotkeys** for toggling every visual feature live
@@ -74,20 +73,9 @@ For detailed build and dependency information, see [BUILD-WIN.md](BUILD-WIN.md).
 ## Running
 
 ```bash
-mc2.exe                                    # normal gameplay
-mc2.exe -mission mis0101                   # skip menus, load directly
-mc2.exe --validate --frames 60 --log out.json --screenshot out.tga  # validation mode
+mc2.exe                     # normal gameplay
+mc2.exe -mission mis0101    # skip menus, load directly into a mission
 ```
-
-## Validation Mode
-
-For autonomous development iteration. Loads a mission, renders N frames, writes telemetry JSON + optional screenshot, exits with status code.
-
-```bash
-mc2.exe --validate --frames 60 --log validate.json
-```
-
-Returns exit code 0 on success, 1 on shader compile errors or GL errors. See the [Modding Guide](docs/modding-guide.md) for the full autonomous development workflow.
 
 ## Improvements over vanilla
 

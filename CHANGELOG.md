@@ -44,7 +44,6 @@ Post-process pipeline is built and running; most effects are **off by default**.
 
 ## Tools and Infrastructure
 
-- **Validation mode** -- `--validate` flag for autonomous build-test iteration: auto-loads mission, renders N frames, writes telemetry JSON + screenshot, exits with status code
 - **AI texture upscaling** -- Python pipeline using realesrgan-ncnn-vulkan for 4x upscaling of art and TGL textures
 - **Loose file overrides** -- `data/art/`, `data/tgl/`, `data/objects/` override FST archive contents
 - **Tracy profiler** -- always-on with 18 CPU+GPU zones for real-time performance analysis
