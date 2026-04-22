@@ -2307,6 +2307,9 @@ DWORD MC_TextureNode::get_gosTextureHandle (void)	//If texture is not in VidRAM,
 	   
 		if (width == 0)
 		{
+			printf("[TXM] zero-width texture node: nodeName=%s handle=%u lzCompSize=%u\n",
+				nodeName ? nodeName : "<null>",
+				(unsigned)gosTextureHandle, (unsigned)lzCompSize); fflush(stdout);
 			PAUSE(("txmmgr: Textur has zero width!"));
 			return 0;		//These faces have no texture!!
 		}

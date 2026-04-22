@@ -33,7 +33,14 @@
 
 #define MOUSE_WIDTH			32
 
-#define MAX_MOUSE_STATES			256
+// sebi 2026-04-21: was 256. Wolfman MC2X `cursors.fit` declares 262.
+// Fixed-size arrays `mouseHS`/`numFrames`/`frameLengths` in MouseCursorData
+// silently overran index 256+ when loading his cursor file → heap corruption →
+// delayed crash in the readIdChar/readIdULong metadata loop. gosASSERT at
+// userinput.cpp:91 is print-and-continue in release, so it never halted.
+// `mState_NUMMOUSESTATES` (243) is the code-addressable state ceiling;
+// this just gives the load-time arrays headroom for modded content.
+#define MAX_MOUSE_STATES			512
 
 #define mState_MOVE					0
 #define mState_MOVE_LOS				1

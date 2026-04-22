@@ -527,15 +527,32 @@ void TG_TypeShape::LoadBinaryCopy (File &binFile)
 		uint16_t* ib = new uint16_t[num_indices];
 		TG_HWTypeVertex* vb = new TG_HWTypeVertex[num_vertices];
 
+		// sebi 2026-04-22: bounds-check triangle vertex indices. Wolfman
+		// MC2X mech .tgl binaries sometimes have out-of-range Vertices[j]
+		// (likely from a slightly different struct layout in his MakeASE);
+		// previously we'd index `listOfTypeVertices[<out_of_range>]` and
+		// crash with a mid-heap read violation. Now we fall back to vertex 0
+		// and keep loading — the mesh will look wrong but the mech won't
+		// crash the mechbay on open.
+		static unsigned int s_mslBoundsWarnings = 0;
 		for (uint32_t i = 0; i < numTypeTriangles; i++)
 		{
 			TG_TypeTriangle triType = listOfTypeTriangles[i];
 
 			for (uint32_t j = 0; j < 3; ++j)
 			{
-				vb[3 * i + j].aRGBLight = listOfTypeVertices[triType.Vertices[j]].aRGBLight;
-				vb[3 * i + j].normal = listOfTypeVertices[triType.Vertices[j]].normal;
-				vb[3 * i + j].position = listOfTypeVertices[triType.Vertices[j]].position;
+				int vidx = triType.Vertices[j];
+				if (vidx < 0 || vidx >= numTypeVertices) {
+					if (s_mslBoundsWarnings++ < 8) {
+						printf("[MSL] triangle %u vertex %u index %d out of range [0,%d)\n",
+							i, j, vidx, (int)numTypeVertices); fflush(stdout);
+					}
+					vidx = 0;
+				}
+
+				vb[3 * i + j].aRGBLight = listOfTypeVertices[vidx].aRGBLight;
+				vb[3 * i + j].normal = listOfTypeVertices[vidx].normal;
+				vb[3 * i + j].position = listOfTypeVertices[vidx].position;
 
 				ib[3 * i + j] = 3 * i + j;
 			}

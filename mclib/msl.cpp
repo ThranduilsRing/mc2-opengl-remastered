@@ -211,34 +211,76 @@ long TG_TypeMultiShape::LoadBinaryCopy (const char *fileName)
 	
 		memset(listOfTypeShapes,0,sizeof(TG_TypeNodePtr) * numTG_TypeShapes);
 	
+		bool aborted = false;
+		long loadedShapes = 0;
 		for (long i=0;i<numTG_TypeShapes;i++)
 		{
 			int nodeType = binFile.readInt();
-			
+
 			if (nodeType == SHAPE_NODE)
 			{
 				listOfTypeShapes[i] = new TG_TypeShape;
 				listOfTypeShapes[i]->init();
 				listOfTypeShapes[i]->LoadBinaryCopy(binFile);
+				loadedShapes++;
 			}
 			else if (nodeType == TYPE_NODE)
 			{
 				listOfTypeShapes[i] = new TG_TypeNode;
 				listOfTypeShapes[i]->init();
 				listOfTypeShapes[i]->LoadBinaryCopy(binFile);
+				loadedShapes++;
+			}
+			else
+			{
+				// sebi 2026-04-22: Wolfman MC2X mech .tgl binaries contain
+				// node types beyond the stock SHAPE_NODE/TYPE_NODE enum
+				// (we've seen e.g. 41, 50 show up). We don't know the
+				// payload length for unknown types, so we can't skip past
+				// them — continuing would read garbage for the next
+				// nodeType (confirmed: subsequent reads produce random
+				// 32-bit ints and wildly-out-of-range vertex indices).
+				//
+				// Abort the whole shape load cleanly: mark as aborted,
+				// break the loop, and return -1 below. Caller
+				// (Mech3DAppearanceType::init) will see failure and leave
+				// the mech without an appearance rather than crashing the
+				// mechbay.
+				printf("[MSL] unknown nodeType=%d at index %ld/%ld — aborting load of this shape\n",
+					nodeType, i, (long)numTG_TypeShapes); fflush(stdout);
+				aborted = true;
+				break;
 			}
 		}
-	
+
+		if (aborted)
+		{
+			// Clear any partially-constructed shapes so the MultiShape is
+			// cleanly empty. Caller treats -1 as unsupported.
+			for (long i = 0; i < loadedShapes; ++i) {
+				if (listOfTypeShapes[i]) {
+					delete listOfTypeShapes[i];
+					listOfTypeShapes[i] = NULL;
+				}
+			}
+			numTG_TypeShapes = 0;
+			return -1;
+		}
+
 		//Setup Heirarchy again because pointers are not valid!
 		for (int i=0;i<numTG_TypeShapes;i++)
 		{
+			// Guard against NULL slots (unknown nodeType above or allocation failure).
+			if (!listOfTypeShapes[i])
+				continue;
+
 			//----------------------------------------------------------------------------
 			// Do NOT need to reset nodeCenters as they are correct for each node copied!
-			
+
 			//--------------------------------------------------------
 			//ONLY use nodes which are not spotlight or _PAB or LOS_
 			if ((S_strnicmp(listOfTypeShapes[i]->getNodeId(),"_PAB",4) != 0) &&
-				(S_strnicmp(listOfTypeShapes[i]->getNodeId(),"LOS_",4) != 0) && 
+				(S_strnicmp(listOfTypeShapes[i]->getNodeId(),"LOS_",4) != 0) &&
 				(S_strnicmp(listOfTypeShapes[i]->getNodeId(),"SpotLight",9) != 0))
 			{
 				//------------------------------------------------------------------

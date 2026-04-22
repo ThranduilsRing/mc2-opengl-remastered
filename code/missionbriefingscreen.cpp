@@ -301,18 +301,40 @@ long	MissionBriefingScreen::getMissionTGA( const char* missionName )
 	{
 		if ( file.getNumPackets() > 3 )
 		{
-	
+
 			file.seekPacket(3);
 			long size = file.getPacketSize( );
+
+			// sebi 2026-04-21: Wolfman MC2X mission .pak files store something
+			// other than a TGA in packet 3 (often ~8 bytes of metadata). Guard
+			// against too-small packets before treating the buffer as a header
+			// — previously the width/height read overran and we invoked
+			// textureFromMemory with width=0, crashing at the next get_gosTextureHandle.
+			if (size < (long)sizeof(TGAFileHeader))
+			{
+				printf("[MissionBriefing] skipping thumbnail for '%s': packet3 size=%ld < TGA header\n",
+					missionName, size); fflush(stdout);
+				return 0;
+			}
+
 			BYTE* mem = new BYTE[size];
 
 			file.readPacket( 3, mem );
-			
+
 			TGAFileHeader* pHeader = (TGAFileHeader*)mem;
 			long bmpWidth = pHeader->width;
 			long bmpHeight = pHeader->height;
+
+			if (bmpWidth <= 0 || bmpHeight <= 0)
+			{
+				printf("[MissionBriefing] skipping thumbnail for '%s': invalid dims %ldx%ld\n",
+					missionName, bmpWidth, bmpHeight); fflush(stdout);
+				delete[] mem;
+				return 0;
+			}
+
 			flipTopToBottom( (BYTE*)(pHeader + 1), pHeader->pixel_depth, bmpWidth, bmpHeight );
-			
+
 			// set up the texture
 			long tmpMapTextureHandle = mcTextureManager->textureFromMemory( (DWORD*)(pHeader+1), gos_Texture_Solid, 0, bmpWidth );
 
