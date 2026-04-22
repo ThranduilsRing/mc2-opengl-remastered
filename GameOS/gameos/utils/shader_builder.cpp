@@ -738,15 +738,13 @@ glsl_program::~glsl_program()
 {
     if(shp_)
     {
-		glsl_shader* pipeline[] = { vsh_, hsh_, dsh_, gsh_, fsh_ };
-		for(uint32_t i=0; i< sizeof(pipeline)/sizeof(pipeline[0]); ++i)
-		{
-			if(!pipeline[i]) continue;
-
-			glDetachShader(shp_, pipeline[i]->shader_);
-		}
+        // Shaders were detached after link in makeProgram2 / reload()
+        // (standard GL pattern so shader objects can outlive the program).
+        // Re-detaching here returns GL_INVALID_OPERATION and spams the
+        // debug callback. glDeleteProgram handles cleanup of any shaders
+        // still attached automatically.
         glDeleteProgram(shp_);
-	}
+    }
 }
 
 void glsl_program::apply()
@@ -918,10 +916,12 @@ bool glsl_program::setInt(const char* name, const int v)
     }
     // Samplers live in a separate table. Binding them is just an int
     // (texture unit), so setInt("samplerName", unit) is the natural caller API.
+    // Use glProgramUniform1i (GL 4.1+) so we don't require this program to be
+    // the active one — callers set samplers at init time before any draw.
     SamplerArr_t::iterator sit = samplers_.find(name);
     if(sit != samplers_.end())
     {
-        glUniform1i(sit->second->index_, v);
+        glProgramUniform1i(shp_, sit->second->index_, v);
         return true;
     }
     // Not found in either table — uniform was optimized out; silent.
