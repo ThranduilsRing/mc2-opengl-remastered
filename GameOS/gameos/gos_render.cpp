@@ -285,6 +285,47 @@ RenderContextHandle init_render_context(RenderWindowHandle render_window)
            vsync_env ? vsync_env : "(unset, default 0)",
            vsync_on ? "ON" : "OFF");
 
+    // Print GPU identity unconditionally with a distinctive prefix so it is
+    // impossible to miss when a user pastes their console log for triage.
+    // On hybrid-graphics laptops this line is the single most valuable
+    // diagnostic: it says which GPU OpenGL actually selected.
+    printf("[GPU] Vendor   : %s\n", glGetString(GL_VENDOR));
+    printf("[GPU] Renderer : %s\n", glGetString(GL_RENDERER));
+    printf("[GPU] Version  : %s\n", glGetString(GL_VERSION));
+
+    // GL capability limits -- useful to rule out SSBO / texture-size / unit
+    // ceilings when a user reports rendering issues on unusual hardware.
+    {
+        GLint maxTex = 0, maxSSBO = 0, maxTexUnits = 0;
+        glGetIntegerv(GL_MAX_TEXTURE_SIZE, &maxTex);
+        glGetIntegerv(GL_MAX_SHADER_STORAGE_BLOCK_SIZE, &maxSSBO);
+        glGetIntegerv(GL_MAX_COMBINED_TEXTURE_IMAGE_UNITS, &maxTexUnits);
+        printf("[GL] max_texture_size=%d max_ssbo_block=%d max_combined_texture_units=%d\n",
+               maxTex, maxSSBO, maxTexUnits);
+    }
+
+    // Drawable (physical, post-HiDPI) vs logical (window coords) size.
+    // Divergence indicates the backbuffer is larger than the window, which
+    // multiplies fragment cost.
+    {
+        int draw_w = 0, draw_h = 0, logical_w = 0, logical_h = 0;
+        SDL_GL_GetDrawableSize(rw->window_, &draw_w, &draw_h);
+        SDL_GetWindowSize(rw->window_, &logical_w, &logical_h);
+        printf("[WINDOW] drawable=%dx%d logical=%dx%d%s\n",
+               draw_w, draw_h, logical_w, logical_h,
+               (draw_w != logical_w || draw_h != logical_h) ? " (HiDPI)" : "");
+    }
+
+    // Single-line summary of effective runtime mode. Anchor for log pastes:
+    // grep [MODE] and you see every toggle state at a glance.
+    // NB: gl_debug is set on the attribute in create_window()'s scope; we
+    // re-read the env here because that local doesn't carry across functions.
+    const bool gl_debug_mode = (getenv("MC2_GL_DEBUG") != nullptr);
+    printf("[MODE] gl_debug=%d vsync=%d tracy=on-demand\n",
+           gl_debug_mode ? 1 : 0,
+           vsync_on ? 1 : 0);
+    printf("[TRACY] on-demand mode -- profiler listening on TCP 8086, no capture until a GUI attaches.\n");
+
     if(VERBOSE_RENDER) {
         SDL_DisplayMode mode;
         SDL_GetCurrentDisplayMode(0, &mode);
