@@ -17,6 +17,18 @@
 #include <signal.h>
 #include "gos_profiler.h"
 
+// Force discrete GPU selection on hybrid-graphics laptops (NVIDIA Optimus,
+// AMD PowerXpress). Without these exports, an unknown OpenGL executable is
+// routed to the Intel integrated GPU by default, which is catastrophic for
+// our terrain/shadow/post-process workload. These symbols are looked up by
+// the driver by exported name; they do not need to be referenced from code.
+#if defined(_WIN32)
+extern "C" {
+    __declspec(dllexport) unsigned long NvOptimusEnablement = 0x00000001;
+    __declspec(dllexport) int AmdPowerXpressRequestHighPerformance = 1;
+}
+#endif
+
 extern void gos_GetTerrainCameraPos(float* x, float* y, float* z);
 
 extern void gos_CreateRenderer(graphics::RenderContextHandle ctx_h, graphics::RenderWindowHandle win_h, int w, int h);
@@ -415,6 +427,12 @@ void GLAPIENTRY OpenGLDebugLog(GLenum source, GLenum type, GLuint id, GLenum sev
 int main(int argc, char** argv)
 {
     //signal(SIGTRAP, SIG_IGN);
+
+    // Make stdout line-buffered (was fully buffered on Windows when redirected, hiding
+    // output past the last explicit fflush before a crash). Harmless for interactive
+    // runs; invaluable for diagnosing startup crashes when stdout is piped to a file.
+    setvbuf(stdout, NULL, _IONBF, 0);
+    setvbuf(stderr, NULL, _IONBF, 0);
 
     // gather command line
 	size_t cmdline_len = 0;
