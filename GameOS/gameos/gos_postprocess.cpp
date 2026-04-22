@@ -787,11 +787,6 @@ void gosPostProcess::runGodRays()
     TracyGpuZone("Render.GodRays");
 
     if (!godrayEnabled_ || !sceneHasTerrain_ || !godrayProg_ || !godrayProg_->is_valid()) {
-        static int gr_skip = 0;
-        if (gr_skip++ < 3)
-            fprintf(stderr, "GodRays SKIP: enabled=%d terrain=%d prog=%p valid=%d\n",
-                godrayEnabled_, sceneHasTerrain_, (void*)godrayProg_,
-                godrayProg_ ? godrayProg_->is_valid() : 0);
         return;
     }
     static int gr_run = 0;
