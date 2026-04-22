@@ -521,19 +521,34 @@ long FastFile::readFast (DWORD fastFileHandle, void *bfr, DWORD size)
 				}
 
 				//--------------------------------------------------------
-				//USED to LZ Compress here.  It is NOW zLib Compression.
-				//  We should not try to use old fastfiles becuase version check above should fail when trying to open!!
+				// sebi 2026-04-21: per-entry raw/compressed split.
+				// Stock MC2 tools always wrote zlib (FASTFILE_VERSION) or LZSS (FASTFILE_VERSION_LZ).
+				// Wolfman's FST tool writes entries raw when compression saves nothing — detectable
+				// by pfe->size == pfe->realSize. Previous code force-decompressed raw entries,
+				// producing silent zero-filled output when zlib rejected the stream.
 				unsigned long decompLength = 0;
-				if (useLZCompress)
+				static const bool s_ffTrace = (getenv("MC2_FF_TRACE") != nullptr);
+				if (files[fastFileHandle].pfe->size == files[fastFileHandle].pfe->realSize)
 				{
+					// Raw-stored entry: copy verbatim.
+					if (s_ffTrace) { printf("[FF] RAW %s size=%u real=%u\n", files[fastFileHandle].pfe->name, files[fastFileHandle].pfe->size, files[fastFileHandle].pfe->realSize); fflush(stdout); }
+					memcpy(bfr, LZPacketBuffer, files[fastFileHandle].pfe->size);
+					decompLength = files[fastFileHandle].pfe->realSize;
+				}
+				else if (useLZCompress)
+				{
+					if (s_ffTrace) { printf("[FF] LZSS %s size=%u real=%u\n", files[fastFileHandle].pfe->name, files[fastFileHandle].pfe->size, files[fastFileHandle].pfe->realSize); fflush(stdout); }
 					decompLength = LZDecomp((MemoryPtr)bfr,LZPacketBuffer,files[fastFileHandle].pfe->size);
 				}
 				else
 				{
+					if (s_ffTrace) { printf("[FF] ZLIB %s size=%u real=%u firstbytes=%02x%02x%02x%02x\n", files[fastFileHandle].pfe->name, files[fastFileHandle].pfe->size, files[fastFileHandle].pfe->realSize, (unsigned char)LZPacketBuffer[0], (unsigned char)LZPacketBuffer[1], (unsigned char)LZPacketBuffer[2], (unsigned char)LZPacketBuffer[3]); fflush(stdout); }
 					decompLength = files[fastFileHandle].pfe->realSize;
 					long error = uncompress((MemoryPtr)bfr,&decompLength,LZPacketBuffer,files[fastFileHandle].pfe->size);
-					if (error != Z_OK)
+					if (error != Z_OK) {
+						if (s_ffTrace) { printf("[FF] ZLIB FAILED error=%ld %s\n", error, files[fastFileHandle].pfe->name); fflush(stdout); }
 						STOP(("Error %d UnCompressing File %s from FastFile %s",error,files[fastFileHandle].pfe->name,fileName));
+					}
 				}
 
 				if ((long)decompLength != files[fastFileHandle].pfe->realSize)
