@@ -6640,25 +6640,28 @@ void ablEndlessStateCallback (UserFile* log) {
 
 void initABL (void) {
 
+	// Heaps bumped 8x for mod content (Omnitech/Carver5O ABL scripts are far
+	// larger than stock). Previously 768KB/512KB/300KB — too tight, exhaustion
+	// produced silent allocation failures that downstream code NULL-deref'd.
 	AblSymbolHeap = new UserHeap;
-	long heapErr = AblSymbolHeap->init(767999);
+	long heapErr = AblSymbolHeap->init(6143999);  // was 767999
 	if (heapErr != NO_ERR)
 		ABL_Fatal(0, "ABLi_init: unable to create ABL symbol table heap");
 
 	AblStackHeap = new UserHeap;
-	heapErr = AblStackHeap->init(511999);
+	heapErr = AblStackHeap->init(4095999);  // was 511999
 	if (heapErr != NO_ERR)
 		ABL_Fatal(0, "ABLi_init: unable to create ABL stack heap");
 
 	AblCodeHeap = new UserHeap;
-	heapErr = AblCodeHeap->init(307199);
+	heapErr = AblCodeHeap->init(2457599);  // was 307199
 	if (heapErr != NO_ERR)
 		ABL_Fatal(0, "ABLi_init: unable to create ABL code heap");
 
-	ABLi_init(20479, //AblRunTimeStackSize,
-			  102400, //AblMaxCodeBlockSize,
-			  200, //AblMaxRegisteredModules,
-			  100, //AblMaxStaticVariables,
+	ABLi_init(65535, //AblRunTimeStackSize, was 20479
+			  1048576, //AblMaxCodeBlockSize, was 102400 (1MB now — mod scripts larger)
+			  1024, //AblMaxRegisteredModules, was 200
+			  512, //AblMaxStaticVariables, was 100
 			  ablSystemMallocCallback,
 			  ablStackMallocCallback,
 			  ablCodeMallocCallback,
