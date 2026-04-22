@@ -36,11 +36,9 @@ void __stdcall AddDebuggerMenuItem(char const*, bool (__stdcall *)(), void (__st
 
 void __stdcall AddStatistic( const char* Name, const char* TypeName, gosType Type, void* Value, DWORD Flags )
 {
-    printf("STATISTICS: [%s : %s]\n", Name, TypeName);
 }
 void __stdcall StatisticFormat(char const* s)
 {
-    printf("STATISTICS: [%s]\n", s);
 }
 ////////////////////////////////////////////////////////////////////////////////
 

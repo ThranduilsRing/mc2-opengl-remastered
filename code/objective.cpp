@@ -444,7 +444,6 @@ bool CSpecificEnemyUnitObjectiveCondition::Read( FitIniFile* missionFile )
 				if (pMover && /*(pMover->getTeamId() != Alignment()) &&*/ close_x && close_y) {
 					break;
 				}
-				printf("i=%d\n", i);
 			}
 			if (!(i < numMovers)) { assert(false); return false; }
 		}

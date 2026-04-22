@@ -540,7 +540,6 @@ void __stdcall gosAudio_SetChannelPlayMode( int Channel, enum gosAudio_PlayMode 
             if(audio) {
                 int loops = ci->ePlayMode == gosAudio_Loop  ? -1 : 0;
                 Mix_PlayChannel(Channel, &audio->mix_chunk_, loops);
-                printf("Mix_PlayChannel(%d)\n", Channel);
             }
             break;
         }
