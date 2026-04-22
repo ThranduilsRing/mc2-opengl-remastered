@@ -4,6 +4,7 @@
 #include <windows.h>
 #endif
 #include <stdio.h>
+#include <stdlib.h>
 #include <assert.h>
 #include <SDL2/SDL.h>
 #include <GL/glew.h>
@@ -15,10 +16,10 @@ SDL_Window* g_sdl_window = NULL;
 
 namespace graphics {
 
-static bool VERBOSE_VIDEO = true;
-static bool VERBOSE_RENDER = true;
-static bool VERBOSE_MODES = true;
-static bool ENABLE_VSYNC = true;
+static bool VERBOSE_VIDEO = true;   // unchanged (keep current behavior)
+static bool VERBOSE_RENDER = false; // mode/driver/extensions dump silenced; GPU identity prints unconditionally
+static bool VERBOSE_MODES = false;  // display-mode enumeration silenced
+static bool ENABLE_VSYNC = false;  // default off; overridden by MC2_VSYNC env var in init_render_context
 
 struct RenderWindow {
     SDL_Window* window_;
@@ -114,8 +115,18 @@ RenderWindow* create_window(const char* pwinname, int width, int height)
     // 4.6 core; 4.3 is the minimum feature level we need.
     SDL_GL_SetAttribute(SDL_GL_CONTEXT_MINOR_VERSION, 3);
 
-    SDL_GL_SetAttribute(SDL_GL_CONTEXT_FLAGS, SDL_GL_CONTEXT_DEBUG_FLAG);
-	//SDL_GL_SetAttribute(SDL_GL_CONTEXT_FLAGS, GL_CONTEXT_FLAG_DEBUG_BIT);
+    // MC2_GL_DEBUG=1 enables the OpenGL debug context AND the debug-message
+    // callback (installed in gameosmain.cpp). Debug contexts run driver-side
+    // validation on every GL call and can cost 10-30% perf, especially on
+    // NVIDIA; the callback also floods stdout with harmless AMD-driver
+    // warnings in our workload. Off by default in shipped builds;
+    // env-gated rather than NDEBUG-gated so it can be flipped on a
+    // deployed binary without rebuilding.
+    const bool gl_debug = (getenv("MC2_GL_DEBUG") != nullptr);
+    if (gl_debug) {
+        SDL_GL_SetAttribute(SDL_GL_CONTEXT_FLAGS, SDL_GL_CONTEXT_DEBUG_FLAG);
+        printf("[GL_DEBUG] MC2_GL_DEBUG=1 -- GL debug context active. This reduces performance.\n");
+    }
 
     if (VERBOSE_MODES) {
         SDL_DisplayMode mode;
@@ -264,11 +275,56 @@ RenderContextHandle init_render_context(RenderWindowHandle render_window)
         return NULL;
     } 
 
-    if (ENABLE_VSYNC) {
-        SDL_GL_SetSwapInterval(1);
-    } else {
-        SDL_GL_SetSwapInterval(0);
+    // MC2_VSYNC: "1" forces vsync on, "0" or unset leaves it off.
+    // Off by default so a GPU that misses 60 Hz is not rounded down
+    // to 30/20/15 FPS.
+    const char* vsync_env = getenv("MC2_VSYNC");
+    const bool vsync_on = (vsync_env && vsync_env[0] == '1');
+    SDL_GL_SetSwapInterval(vsync_on ? 1 : 0);
+    printf("[VSYNC] MC2_VSYNC=%s -- vsync %s.\n",
+           vsync_env ? vsync_env : "(unset, default 0)",
+           vsync_on ? "ON" : "OFF");
+
+    // Print GPU identity unconditionally with a distinctive prefix so it is
+    // impossible to miss when a user pastes their console log for triage.
+    // On hybrid-graphics laptops this line is the single most valuable
+    // diagnostic: it says which GPU OpenGL actually selected.
+    printf("[GPU] Vendor   : %s\n", glGetString(GL_VENDOR));
+    printf("[GPU] Renderer : %s\n", glGetString(GL_RENDERER));
+    printf("[GPU] Version  : %s\n", glGetString(GL_VERSION));
+
+    // GL capability limits -- useful to rule out SSBO / texture-size / unit
+    // ceilings when a user reports rendering issues on unusual hardware.
+    {
+        GLint maxTex = 0, maxSSBO = 0, maxTexUnits = 0;
+        glGetIntegerv(GL_MAX_TEXTURE_SIZE, &maxTex);
+        glGetIntegerv(GL_MAX_SHADER_STORAGE_BLOCK_SIZE, &maxSSBO);
+        glGetIntegerv(GL_MAX_COMBINED_TEXTURE_IMAGE_UNITS, &maxTexUnits);
+        printf("[GL] max_texture_size=%d max_ssbo_block=%d max_combined_texture_units=%d\n",
+               maxTex, maxSSBO, maxTexUnits);
     }
+
+    // Drawable (physical, post-HiDPI) vs logical (window coords) size.
+    // Divergence indicates the backbuffer is larger than the window, which
+    // multiplies fragment cost.
+    {
+        int draw_w = 0, draw_h = 0, logical_w = 0, logical_h = 0;
+        SDL_GL_GetDrawableSize(rw->window_, &draw_w, &draw_h);
+        SDL_GetWindowSize(rw->window_, &logical_w, &logical_h);
+        printf("[WINDOW] drawable=%dx%d logical=%dx%d%s\n",
+               draw_w, draw_h, logical_w, logical_h,
+               (draw_w != logical_w || draw_h != logical_h) ? " (HiDPI)" : "");
+    }
+
+    // Single-line summary of effective runtime mode. Anchor for log pastes:
+    // grep [MODE] and you see every toggle state at a glance.
+    // NB: gl_debug is set on the attribute in create_window()'s scope; we
+    // re-read the env here because that local doesn't carry across functions.
+    const bool gl_debug_mode = (getenv("MC2_GL_DEBUG") != nullptr);
+    printf("[MODE] gl_debug=%d vsync=%d tracy=on-demand\n",
+           gl_debug_mode ? 1 : 0,
+           vsync_on ? 1 : 0);
+    printf("[TRACY] on-demand mode -- profiler listening on TCP 8086, no capture until a GUI attaches.\n");
 
     if(VERBOSE_RENDER) {
         SDL_DisplayMode mode;

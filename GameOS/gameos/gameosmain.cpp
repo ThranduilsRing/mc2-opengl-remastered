@@ -1,6 +1,7 @@
 #include "gameos.hpp"
 #include "gos_render.h"
 #include <stdio.h>
+#include <stdlib.h>
 #include <time.h>
 
 // sebi 2026-04-22: unhandled-exception filter that symbolizes the stack via
@@ -103,6 +104,18 @@ static LONG WINAPI mc2_unhandled_exception_filter(EXCEPTION_POINTERS* ep)
 
 #include <signal.h>
 #include "gos_profiler.h"
+
+// Force discrete GPU selection on hybrid-graphics laptops (NVIDIA Optimus,
+// AMD PowerXpress). Without these exports, an unknown OpenGL executable is
+// routed to the Intel integrated GPU by default, which is catastrophic for
+// our terrain/shadow/post-process workload. These symbols are looked up by
+// the driver by exported name; they do not need to be referenced from code.
+#if defined(_WIN32)
+extern "C" {
+    __declspec(dllexport) unsigned long NvOptimusEnablement = 0x00000001;
+    __declspec(dllexport) int AmdPowerXpressRequestHighPerformance = 1;
+}
+#endif
 
 extern void gos_GetTerrainCameraPos(float* x, float* y, float* z);
 
@@ -479,6 +492,41 @@ const char* getStringForSeverity(GLenum type)
 	default: return "(undefined)";
 	}
 }
+namespace {
+    // Startup phase timing. Anchor at the top of main(). Cheap printfs --
+    // total cost is microseconds, but the signal for triage is high.
+    static Uint64 g_startup_t0 = 0;
+    static double startup_elapsed() {
+        const Uint64 now = SDL_GetPerformanceCounter();
+        const double freq = (double)SDL_GetPerformanceFrequency();
+        return (double)(now - g_startup_t0) / freq;
+    }
+    static void startup_phase(const char* name) {
+        printf("[TIME] t=%6.2fs  phase=%s\n", startup_elapsed(), name);
+    }
+}
+
+// Mission-load phase timing. Exposed (file-scope linkage, not namespaced)
+// so code/mission.cpp can declare these by forward-decl and call into them
+// without a new header. Pattern mirrors the startup timing above.
+static Uint64 g_mission_t0 = 0;
+
+extern "C" void mission_phase_begin()
+{
+    g_mission_t0 = SDL_GetPerformanceCounter();
+    const double freq = (double)SDL_GetPerformanceFrequency();
+    (void)freq; // suppress unused-var if compiler gets clever
+    printf("[MISSION] t=  0.00s  phase=mission_load_start\n");
+}
+
+extern "C" void mission_phase_mark(const char* name)
+{
+    const Uint64 now = SDL_GetPerformanceCounter();
+    const double freq = (double)SDL_GetPerformanceFrequency();
+    const double elapsed = (double)(now - g_mission_t0) / freq;
+    printf("[MISSION] t=%6.2fs  phase=%s\n", elapsed, name);
+}
+
 //typedef void (GLAPIENTRY *GLDEBUGPROCARB)(GLenum source, GLenum type, GLuint id, GLenum severity, GLsizei length, const GLchar* message, const void* userParam);
 #ifdef PLATFORM_WINDOWS
 void GLAPIENTRY OpenGLDebugLog(GLenum source, GLenum type, GLuint id, GLenum severity, GLsizei length, const GLchar* message, const void* userParam)
@@ -512,6 +560,8 @@ int main(int argc, char** argv)
 #ifdef _WIN32
     SetUnhandledExceptionFilter(mc2_unhandled_exception_filter);
 #endif
+    g_startup_t0 = SDL_GetPerformanceCounter();
+    startup_phase("process_start");
 
     // gather command line
 	size_t cmdline_len = 0;
@@ -545,6 +595,8 @@ int main(int argc, char** argv)
     if(!win)
         return 1;
 
+    startup_phase("window_created");
+
     graphics::RenderContextHandle ctx = graphics::init_render_context(win);
     if(!ctx)
         return 1;
@@ -558,11 +610,16 @@ int main(int argc, char** argv)
         return 1;
     }
 
-	glEnable(GL_DEBUG_OUTPUT);
-	glEnable(GL_DEBUG_OUTPUT_SYNCHRONOUS);
-	//glPushDebugGroup(GL_DEBUG_SOURCE_APPLICATION, 76, 1, "My debug group");
-	glDebugMessageControlARB(GL_DONT_CARE, GL_DONT_CARE, GL_DONT_CARE, 0, NULL, GL_TRUE);
-	glDebugMessageCallbackARB((GLDEBUGPROC)&OpenGLDebugLog, NULL);
+	// Install GL debug callback only when MC2_GL_DEBUG is set. In shipping
+	// builds this keeps stdout free of harmless driver warnings (esp. the
+	// AMD ~glsl_program double-detach chatter) and saves the sync-debug
+	// overhead. Paired with the context-flag gate in gos_render.cpp.
+	if (getenv("MC2_GL_DEBUG") != nullptr) {
+		glEnable(GL_DEBUG_OUTPUT);
+		glEnable(GL_DEBUG_OUTPUT_SYNCHRONOUS);
+		glDebugMessageControlARB(GL_DONT_CARE, GL_DONT_CARE, GL_DONT_CARE, 0, NULL, GL_TRUE);
+		glDebugMessageCallbackARB((GLDEBUGPROC)&OpenGLDebugLog, NULL);
+	}
 
 
     SPEW(("GRAPHICS", "Status: Using GLEW %s\n", glewGetString(GLEW_VERSION)));
@@ -592,13 +649,17 @@ int main(int argc, char** argv)
     snprintf(version, sizeof(version), "%d%d", glsl_maj, glsl_min);
     SPEW(("GRAPHICS", "Using %s shader version\n", version));
 
+    startup_phase("gl_context_ready");
+
     gos_CreateRenderer(ctx, win, w, h);
+    startup_phase("renderer_created");
     if(!gos_CreateAudio())
     {   // not an error
         SPEW(("AUDIO", "Failed to create audio\n"));
     }
 
     Environment.InitializeGameEngine();
+    startup_phase("engine_init_done");
 
 #if 0
 	float aspect = (float)w/(float)h;
@@ -648,6 +709,11 @@ int main(int argc, char** argv)
         {
             ZoneScopedN("SwapWindow");
             graphics::swap_window(win);
+            static bool s_first_frame_logged = false;
+            if (!s_first_frame_logged) {
+                s_first_frame_logged = true;
+                startup_phase("first_frame_presented");
+            }
         }
 
         {

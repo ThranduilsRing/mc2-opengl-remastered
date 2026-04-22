@@ -225,6 +225,10 @@ extern PriorityQueuePtr	openList;
 #include "gos_profiler.h"
 #include "gos_static_prop_batcher.h"
 
+// Phase-timing hooks implemented in GameOS/gameos/gameosmain.cpp.
+extern "C" void mission_phase_begin();
+extern "C" void mission_phase_mark(const char* name);
+
 long GameVisibleVertices		= 200;
 float BaseHeadShotElevation		= 1.0f;
 
@@ -1620,6 +1624,7 @@ bool IsGateOpen (int objectWID) {
 void Mission::init (const char *missionName, long loadType, long dropZoneID, Stuff::Vector3D* dropZoneList, char commandersToLoad[8][3], long numMoversPerCommander)
 {
 	ZoneScopedN("Mission::init");
+	mission_phase_begin();
 
 	// Reset GPU static-prop batcher state at every map boundary, before any
 	// actor registerType() calls happen during actor spawn (Task 6).
@@ -3029,6 +3034,7 @@ extern long NumGameObjectsToDisplay;
 void Mission::start (void)
 {
 	active = true;
+	mission_phase_mark("mission_ready");
 	gos_SetHudScaleActive(true);  // enable HUD shrink only during mission
 	for (long i = 0; i < NumGameObjectsToDisplay; i++)
 		DEBUGWINS_setGameObject(-1, ObjectManager->getByWatchID(parts[GameObjectWindowList[i]].objectWID));

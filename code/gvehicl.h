@@ -537,7 +537,6 @@ class GroundVehicle : public Mover {
 
 		virtual void setOnGUI (bool onGui)
 		{
-            printf("setOnGUI\n");
 			isOnGui = onGui;
 		}
 };

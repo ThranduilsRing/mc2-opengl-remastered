@@ -738,15 +738,13 @@ glsl_program::~glsl_program()
 {
     if(shp_)
     {
-		glsl_shader* pipeline[] = { vsh_, hsh_, dsh_, gsh_, fsh_ };
-		for(uint32_t i=0; i< sizeof(pipeline)/sizeof(pipeline[0]); ++i)
-		{
-			if(!pipeline[i]) continue;
-
-			glDetachShader(shp_, pipeline[i]->shader_);
-		}
+        // Shaders were detached after link in makeProgram2 / reload()
+        // (standard GL pattern so shader objects can outlive the program).
+        // Re-detaching here returns GL_INVALID_OPERATION and spams the
+        // debug callback. glDeleteProgram handles cleanup of any shaders
+        // still attached automatically.
         glDeleteProgram(shp_);
-	}
+    }
 }
 
 void glsl_program::apply()
