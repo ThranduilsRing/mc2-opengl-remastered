@@ -471,6 +471,16 @@ ObjectTypePtr ObjectTypeManager::load (ObjectTypeNumber objTypeNum, bool noCache
 			//Fatal(OBJECT_TYPE_NUMBER_UNDEFINED, " ObjectTypeManager.load: undefined objType ");
 	}
 
+	// Mod-tolerance: the CRAPPY_OBJECT arm above breaks without assigning
+	// objType (its Fatal() is soft in Release), and mod paks can deliver
+	// ObjectClass.ObjectTypeNum = CRAPPY_OBJECT or some other case arm whose
+	// new-allocation was never reached. Bail cleanly instead of deref'ing
+	// NULL at makeLovable().
+	if (!objType) {
+		PAUSE((" ObjectTypeManager.load: objType NULL post-switch for objTypeNum %d — mod content; returning NULL ", (int)objTypeNum));
+		return NULL;
+	}
+
 	if (noCacheOut)	{
 		//---------------------------------------------------
 		// Do NOT EVER cache this object type out.  FXs, etc.
@@ -479,7 +489,7 @@ ObjectTypePtr ObjectTypeManager::load (ObjectTypeNumber objTypeNum, bool noCache
 		if (objType->getExplosionObject() > 0)
 			load(objType->getExplosionObject());
 	}
-		
+
 	table[objTypeNum] = objType;
 
 	return(objType);

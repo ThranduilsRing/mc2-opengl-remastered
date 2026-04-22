@@ -220,7 +220,11 @@ class ObjectTypeManager {
 			init();
 		}
 
-		long init (const char* objectFileName, long objectTypeCacheSize, long objectCacheSize, long maxObjectTypes = 1024);
+		// Cap raised 1024→4096 for mod content (Omnitech ships objTypeNums up
+		// to ~2100). Costs 8*(4096-1024)=24KB on the table[] allocation. When
+		// objTypeNum is valid-in-range but pak has no such packet, load() falls
+		// through cleanly via seekPacket failure → switch default → return NULL.
+		long init (const char* objectFileName, long objectTypeCacheSize, long objectCacheSize, long maxObjectTypes = 4096);
 			
 		void destroy (void);
 							
