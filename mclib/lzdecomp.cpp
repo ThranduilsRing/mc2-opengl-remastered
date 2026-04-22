@@ -268,7 +268,10 @@ eof:
 //-------------------------------------------------------------------------------
 // zlib-inflate path (used by OUR writer since the LINUX_BUILD LZCompress is zlib deflate).
 // Returns 0 on any failure so caller can fall back to classic-LZW.
-static size_t LZDecompZlib_(MemoryPtr dest, MemoryPtr src, size_t srcLen)
+// destMax bounds the total bytes written to dest; if the stream would exceed it,
+// the function returns 0 (treated as failure so the 3-arg caller falls back to
+// classic-LZW, and the 4-arg caller surfaces the truncation to its own caller).
+static size_t LZDecompZlib_(MemoryPtr dest, MemoryPtr src, size_t srcLen, size_t destMax)
 {
     const int CHUNK = 16384;
     int ret;
@@ -316,6 +319,7 @@ static size_t LZDecompZlib_(MemoryPtr dest, MemoryPtr src, size_t srcLen)
             }
 
             have = CHUNK - strm.avail_out;
+            if (out_size + have > destMax) { inflateEnd(&strm); return 0; }
             memcpy(dest, out, have);
             dest += have;
             out_size += have;
@@ -457,20 +461,20 @@ size_t LZDecomp (MemoryPtr dest, MemoryPtr src, size_t srcLen)
     bool looksZlib = (srcLen >= 2)
                      && ((src[0] & 0x0F) == 0x08)
                      && (((unsigned int)src[0] * 256u + (unsigned int)src[1]) % 31u == 0u);
+    // No true dest bound known in the 3-arg overload — fall back to the same
+    // 8x expansion heuristic used by the classic-LZW path. Callers that know
+    // the real allocated dest size should use the 4-arg overload below.
+    size_t destGuess = srcLen * 16 + 4096;
     if (looksZlib) {
-        size_t n = LZDecompZlib_(dest, src, srcLen);
+        size_t n = LZDecompZlib_(dest, src, srcLen, destGuess);
         if (n > 0) return n;
     }
 
-    // Fallback: classic Microsoft-era variable-width LZW.
-    // No dest bound known here — callers using this overload assume 8x expansion cap
-    // (LZW's practical max on typical input). Callers that know the true dest size
-    // should use the 4-arg overload below.
-    return LZDecompClassicLZW_(dest, src, srcLen, srcLen * 16 + 4096);
+    return LZDecompClassicLZW_(dest, src, srcLen, destGuess);
 }
 
 // 4-arg overload — prefer this when the caller knows the allocated dest size; prevents
-// heap overflow when classic-LZW decoded output would otherwise run past dest.
+// heap overflow on both the zlib fast-path and the classic-LZW fallback.
 size_t LZDecomp (MemoryPtr dest, MemoryPtr src, size_t srcLen, size_t destMax)
 {
     if (!dest || !src || srcLen == 0) return 0;
@@ -479,7 +483,7 @@ size_t LZDecomp (MemoryPtr dest, MemoryPtr src, size_t srcLen, size_t destMax)
                      && ((src[0] & 0x0F) == 0x08)
                      && (((unsigned int)src[0] * 256u + (unsigned int)src[1]) % 31u == 0u);
     if (looksZlib) {
-        size_t n = LZDecompZlib_(dest, src, srcLen);
+        size_t n = LZDecompZlib_(dest, src, srcLen, destMax);
         if (n > 0) return n;
     }
 
