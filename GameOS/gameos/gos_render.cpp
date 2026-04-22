@@ -19,7 +19,7 @@ namespace graphics {
 static bool VERBOSE_VIDEO = true;
 static bool VERBOSE_RENDER = true;
 static bool VERBOSE_MODES = true;
-static bool ENABLE_VSYNC = true;
+static bool ENABLE_VSYNC = false;  // default off; overridden by MC2_VSYNC env var in init_render_context
 
 struct RenderWindow {
     SDL_Window* window_;
@@ -275,11 +275,15 @@ RenderContextHandle init_render_context(RenderWindowHandle render_window)
         return NULL;
     } 
 
-    if (ENABLE_VSYNC) {
-        SDL_GL_SetSwapInterval(1);
-    } else {
-        SDL_GL_SetSwapInterval(0);
-    }
+    // MC2_VSYNC: "1" forces vsync on, "0" or unset leaves it off.
+    // Off by default so a GPU that misses 60 Hz is not rounded down
+    // to 30/20/15 FPS.
+    const char* vsync_env = getenv("MC2_VSYNC");
+    const bool vsync_on = (vsync_env && vsync_env[0] == '1');
+    SDL_GL_SetSwapInterval(vsync_on ? 1 : 0);
+    printf("[VSYNC] MC2_VSYNC=%s -- vsync %s.\n",
+           vsync_env ? vsync_env : "(unset, default 0)",
+           vsync_on ? "ON" : "OFF");
 
     if(VERBOSE_RENDER) {
         SDL_DisplayMode mode;
