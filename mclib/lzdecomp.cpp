@@ -334,7 +334,7 @@ static size_t LZDecompZlib_(MemoryPtr dest, MemoryPtr src, size_t srcLen)
 // Needed because Wolfman's (and presumably other legacy) FSTs were packed with the
 // original asm LZW compressor, NOT with our LINUX_BUILD zlib deflate.
 // On detection: we try zlib first; if it returns 0, we fall back to this.
-static size_t LZDecompClassicLZW_(MemoryPtr dest, MemoryPtr src, size_t srcLen)
+static size_t LZDecompClassicLZW_(MemoryPtr dest, MemoryPtr src, size_t srcLen, size_t destMax)
 {
     // sebi 2026-04-21
     enum { HASH_CLEAR_C = 256, HASH_EOF_C = 257, HASH_FREE_C = 258 };
@@ -415,8 +415,12 @@ static size_t LZDecompClassicLZW_(MemoryPtr dest, MemoryPtr src, size_t srcLen)
             return 0;
         }
 
-        // Emit in reverse (stack top-down)
+        // Emit in reverse (stack top-down) — bounds-checked against destMax to prevent
+        // heap overflow when input is slightly corrupt or size-of-dest under-allocated.
         while (sp > 0) {
+            if ((size_t)(dest - destStart) >= destMax) {
+                return (size_t)(dest - destStart);  // truncate on overflow, don't corrupt heap
+            }
             *dest++ = stk[--sp];
         }
 
@@ -459,6 +463,26 @@ size_t LZDecomp (MemoryPtr dest, MemoryPtr src, size_t srcLen)
     }
 
     // Fallback: classic Microsoft-era variable-width LZW.
-    return LZDecompClassicLZW_(dest, src, srcLen);
+    // No dest bound known here — callers using this overload assume 8x expansion cap
+    // (LZW's practical max on typical input). Callers that know the true dest size
+    // should use the 4-arg overload below.
+    return LZDecompClassicLZW_(dest, src, srcLen, srcLen * 16 + 4096);
+}
+
+// 4-arg overload — prefer this when the caller knows the allocated dest size; prevents
+// heap overflow when classic-LZW decoded output would otherwise run past dest.
+size_t LZDecomp (MemoryPtr dest, MemoryPtr src, size_t srcLen, size_t destMax)
+{
+    if (!dest || !src || srcLen == 0) return 0;
+
+    bool looksZlib = (srcLen >= 2)
+                     && ((src[0] & 0x0F) == 0x08)
+                     && (((unsigned int)src[0] * 256u + (unsigned int)src[1]) % 31u == 0u);
+    if (looksZlib) {
+        size_t n = LZDecompZlib_(dest, src, srcLen);
+        if (n > 0) return n;
+    }
+
+    return LZDecompClassicLZW_(dest, src, srcLen, destMax);
 }
 #endif // LINUX_BUILD

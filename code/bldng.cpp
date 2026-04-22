@@ -852,8 +852,8 @@ long Building::update (void)
    				else
    					openSubAreas();
 
-   				GlobalMoveMap[0]->clearPathExistsTable();
-   				GlobalMoveMap[1]->clearPathExistsTable();
+   				if (GlobalMoveMap[0]) GlobalMoveMap[0]->clearPathExistsTable();
+   				if (GlobalMoveMap[1]) GlobalMoveMap[1]->clearPathExistsTable();
    			}
 		}
 	}

@@ -2917,6 +2917,8 @@ void GlobalMap::calcPathCostTable (void) {
 
 void GlobalMap::clearPathExistsTable (void) {
 
+	if (!pathExistsTable)
+		return;
 	long tableSize = numAreas * (numAreas / 4 + 1);
 	memset(pathExistsTable, GLOBALPATH_EXISTS_UNKNOWN, tableSize);
 }

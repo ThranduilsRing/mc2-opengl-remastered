@@ -542,7 +542,7 @@ long FastFile::readFast (DWORD fastFileHandle, void *bfr, DWORD size)
 				else if (useLZCompress)
 				{
 					if (s_ffTrace) { printf("[FF] LZSS %s size=%u real=%u\n", files[fastFileHandle].pfe->name, files[fastFileHandle].pfe->size, files[fastFileHandle].pfe->realSize); fflush(stdout); }
-					decompLength = LZDecomp((MemoryPtr)bfr,LZPacketBuffer,files[fastFileHandle].pfe->size);
+					decompLength = LZDecomp((MemoryPtr)bfr,LZPacketBuffer,files[fastFileHandle].pfe->size,files[fastFileHandle].pfe->realSize);
 				}
 				else
 				{
@@ -618,7 +618,7 @@ long FastFile::writeFast (const char* fastFileName, void* buffer, int nbytes)
 		gosASSERT(LZPacketBuffer);
 
 		size_t compressedSize = LZCompress(LZPacketBuffer, (Bytef*)buffer, nbytes);
-		size_t uncompressedSize = LZDecomp((Bytef*)buffer, LZPacketBuffer, compressedSize);
+		size_t uncompressedSize = LZDecomp((Bytef*)buffer, LZPacketBuffer, compressedSize, nbytes);
 		if (nbytes != uncompressedSize)
 			STOP(("fast File size changed after compression.  Was %d is now %d", nbytes, uncompressedSize));
 
@@ -645,7 +645,7 @@ long FastFile::writeFast (const char* fastFileName, void* buffer, int nbytes)
 
 			gosASSERT(memcmp(LZPacketBuffer, fbc, compressedSize) == 0);
 
-			size_t uncompressedSize = LZDecomp((Bytef*)fb, (Bytef*)fbc, compressedSize);
+			size_t uncompressedSize = LZDecomp((Bytef*)fb, (Bytef*)fbc, compressedSize, nbytes);
 			gosASSERT(nbytes == uncompressedSize);
 		}
 	}
