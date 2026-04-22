@@ -773,9 +773,9 @@ void MissionInterfaceManager::update (void)
 	sprintf(DebugStatusBarString, "TIME: %06d, MOUSE: [%d, %d] %d,%d,%d (%.2f, %.2f, %.2f), PATHMGR: %02d(%02d)",
 		(long)scenarioTime,
 		row, col,
-		GlobalMoveMap[0]->calcArea(row, col),
-		GlobalMoveMap[1]->calcArea(row, col),
-		GlobalMoveMap[2]->calcArea(row, col),
+		GlobalMoveMap[0] ? GlobalMoveMap[0]->calcArea(row, col) : -1,
+		GlobalMoveMap[1] ? GlobalMoveMap[1]->calcArea(row, col) : -1,
+		GlobalMoveMap[2] ? GlobalMoveMap[2]->calcArea(row, col) : -1,
 		wPos.x, wPos.y, wPos.z,
 		PathManager->numPaths, PathManager->peakPaths);
 	if (MPlayer) {

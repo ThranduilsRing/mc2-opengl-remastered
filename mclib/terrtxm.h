@@ -335,11 +335,15 @@ class TerrainTextures
 		
 		bool isCement (DWORD typeInfo)
 		{
+			if ((long)typeInfo >= nextAvailable)
+				return false;
 			return (textures[typeInfo].flags & MC2_TERRAIN_CEMENT_FLAG) == MC2_TERRAIN_CEMENT_FLAG;
 		}
-		
+
 		bool isAlpha (DWORD typeInfo)
 		{
+			if ((long)typeInfo >= nextAvailable)
+				return false;
 			return (textures[typeInfo].flags & MC2_TERRAIN_ALPHA_FLAG) == MC2_TERRAIN_ALPHA_FLAG;
 		}
 

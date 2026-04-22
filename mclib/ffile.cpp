@@ -155,6 +155,8 @@ long FastFile::open (const char* fName)
 		handle = fopen(actualPath,"r");
 		if (handle == NULL)
 		{
+			if (!Environment.checkCDForFiles)
+				return (2);  // disk install; FastFile not present anywhere, fail quietly
 			//OPEN Error.  Maybe the CD is missing?
 			bool openFailed = false;
 			bool alreadyFullScreen = (Environment.fullScreen != 0);
@@ -494,6 +496,8 @@ long FastFile::readFast (DWORD fastFileHandle, void *bfr, DWORD size)
 				//sebi: second condition to handle zero-length files
 				if (result != files[fastFileHandle].pfe->size && files[fastFileHandle].pfe->size>0)
 				{
+					if (!Environment.checkCDForFiles)
+						return 0;  // disk install; short read, fail quietly
 					//READ Error.  Maybe the CD is missing?
 					bool openFailed = false;
 					bool alreadyFullScreen = (Environment.fullScreen != 0);
@@ -501,7 +505,7 @@ long FastFile::readFast (DWORD fastFileHandle, void *bfr, DWORD size)
 					{
 						openFailed = true;
 						EnterWindowMode();
-		
+
 						char data[2048];
 						sprintf(data,FileMissingString,fileName,CDMissingString);
 						DWORD result1 = MessageBox(NULL,data,MissingTitleString,MB_OKCANCEL | MB_ICONWARNING);
@@ -510,7 +514,7 @@ long FastFile::readFast (DWORD fastFileHandle, void *bfr, DWORD size)
 							ExitGameOS();
 							return (2);		//File not found.  Never returns though!
 						}
-		
+
 						logicalPosition = fseek(handle,files[fastFileHandle].pos + files[fastFileHandle].pfe->offset,SEEK_SET);
 						result = fread(LZPacketBuffer,1,files[fastFileHandle].pfe->size,handle);
 						logicalPosition += files[fastFileHandle].pfe->size;
@@ -686,6 +690,8 @@ long FastFile::readFastRAW (DWORD fastFileHandle, void *bfr, DWORD size)
 
 		if (result != files[fastFileHandle].pfe->size)
 		{
+			if (!Environment.checkCDForFiles)
+				return 0;  // disk install; short read, fail quietly
 			//READ Error.  Maybe the CD is missing?
 			bool openFailed = false;
 			bool alreadyFullScreen = (Environment.fullScreen != 0);

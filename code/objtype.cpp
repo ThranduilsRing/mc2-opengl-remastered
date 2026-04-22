@@ -318,9 +318,11 @@ ObjectTypePtr ObjectTypeManager::load (ObjectTypeNumber objTypeNum, bool noCache
 	// frame length knows to force itself into load mode.
 	dynamicFrameTiming = false;
 
-	if ((objTypeNum < 0) || (objTypeNum >= numObjectTypes))
-		Fatal(objTypeNum, " ObjectTypeManager.load: bad objTypeNum ");
-	
+	if ((objTypeNum < 0) || (objTypeNum >= numObjectTypes)) {
+		PAUSE((" ObjectTypeManager.load: bad objTypeNum %d (max %d) — mod content; returning NULL ", (int)objTypeNum, (int)numObjectTypes));
+		return NULL;
+	}
+
 	if (objTypeNum == 0)		//First Object always NULL!
 		return NULL;
 
@@ -510,8 +512,10 @@ void ObjectTypeManager::remove (ObjectTypePtr objTypePtr) {
 
 ObjectTypePtr ObjectTypeManager::get (ObjectTypeNumber objTypeNum, bool loadIt) {
 
-	if ((objTypeNum < 0) || (objTypeNum >= numObjectTypes))
-		Fatal(objTypeNum, " ObjectTypeManager.find: bad objTypeNum ");
+	if ((objTypeNum < 0) || (objTypeNum >= numObjectTypes)) {
+		PAUSE((" ObjectTypeManager.find: bad objTypeNum %d (max %d) — mod content; returning NULL ", (int)objTypeNum, (int)numObjectTypes));
+		return NULL;
+	}
 
 	//---------------------------
 	// If not, cache it in now...

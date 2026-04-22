@@ -2211,15 +2211,18 @@ void Mission::init (const char *missionName, long loadType, long dropZoneID, Stu
 		if (pakFile.getPacketSize() != 0)
 		{
 			MOVE_readData(&pakFile, 4);
-			if (GlobalMoveMap[0]->badLoad)
-				Fatal(0, " Mission.init: old version of move data (re-save map) ");
-			GameMap->placeMoversCallback = PlaceMovers;
-			GlobalMoveMap[0]->isGateDisabledCallback = IsGateDisabled;
-			GlobalMoveMap[1]->isGateDisabledCallback = IsGateDisabled;
-			GlobalMoveMap[2]->isGateDisabledCallback = IsGateDisabled;
-			GlobalMoveMap[0]->isGateOpenCallback = IsGateOpen;
-			GlobalMoveMap[1]->isGateOpenCallback = IsGateOpen;
-			GlobalMoveMap[2]->isGateOpenCallback = IsGateOpen;
+			if (GlobalMoveMap[0]->badLoad) {
+				PAUSE((" Mission.init: bad/old move data — skipping gate callback wiring; pathfinding degraded "));
+				GameMap->placeMoversCallback = PlaceMovers;
+			} else {
+				GameMap->placeMoversCallback = PlaceMovers;
+				GlobalMoveMap[0]->isGateDisabledCallback = IsGateDisabled;
+				GlobalMoveMap[1]->isGateDisabledCallback = IsGateDisabled;
+				GlobalMoveMap[2]->isGateDisabledCallback = IsGateDisabled;
+				GlobalMoveMap[0]->isGateOpenCallback = IsGateOpen;
+				GlobalMoveMap[1]->isGateOpenCallback = IsGateOpen;
+				GlobalMoveMap[2]->isGateOpenCallback = IsGateOpen;
+			}
 		}
 		else
 			STOP(("Mission has not movement Data.  QuickSaved Map?"));

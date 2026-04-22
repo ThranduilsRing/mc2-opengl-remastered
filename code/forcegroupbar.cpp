@@ -485,6 +485,9 @@ bool ForceGroupBar::setPilotVideo( const char* pVideo, MechWarrior* pPilot )
 						if (fileThere)
 							ForceGroupIcon::pilotVideoTexture = gos_NewTextureFromFile( gos_Texture_Solid, actualPath, 0 );
 
+						if (!fileThere && !Environment.checkCDForFiles)
+							return 0;  // missing pilot video — skip quietly (disk install)
+
 						bool openFailed = false;
 						while (!fileThere)
 						{

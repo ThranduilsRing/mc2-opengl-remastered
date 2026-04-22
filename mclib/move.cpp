@@ -1567,6 +1567,16 @@ long GlobalMap::init (PacketFilePtr packetFile, long whichPacket) {
 			curDoorInfo += areas[i].numDoors;
 		}
 	Assert(numDoorInfos == curDoorInfo, 0, " GlobalMap.init: bad doorInfo count ");
+	if (numDoorInfos != curDoorInfo) {
+		PAUSE(("GlobalMap.init: doorInfo count mismatch (mod content) — bailing as bad load"));
+		badLoad = true;
+#ifdef USE_PATH_COST_TABLE
+		pathCostTable = NULL;
+		return(14 + numDoorInfos + (numDoors + NUM_DOOR_OFFSETS) * 2);
+#else
+		return(13 + numDoorInfos + (numDoors + NUM_DOOR_OFFSETS) * 2);
+#endif
+	}
 
 	//------------------------------------------------------------
 	// Set up the areas so they point to the correct door infos...
@@ -1607,6 +1617,16 @@ long GlobalMap::init (PacketFilePtr packetFile, long whichPacket) {
 		numLinksRead += numLinks;
 	}
 	Assert(numLinksRead == numDoorLinks, 0, " GlobalMap.init: Incorrect Links count ");
+	if (numLinksRead != numDoorLinks) {
+		PAUSE(("GlobalMap.init: link count mismatch (mod content) — bailing as bad load"));
+		badLoad = true;
+#ifdef USE_PATH_COST_TABLE
+		pathCostTable = NULL;
+		return(14 + numDoorInfos + (numDoors + NUM_DOOR_OFFSETS) * 2);
+#else
+		return(13 + numDoorInfos + (numDoors + NUM_DOOR_OFFSETS) * 2);
+#endif
+	}
 
 	numOffMapAreas = 0;
 	for (int i = 0; i < numAreas; i++)
