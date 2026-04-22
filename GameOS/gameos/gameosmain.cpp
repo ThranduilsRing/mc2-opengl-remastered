@@ -419,6 +419,27 @@ namespace {
     }
 }
 
+// Mission-load phase timing. Exposed (file-scope linkage, not namespaced)
+// so code/mission.cpp can declare these by forward-decl and call into them
+// without a new header. Pattern mirrors the startup timing above.
+static Uint64 g_mission_t0 = 0;
+
+extern "C" void mission_phase_begin()
+{
+    g_mission_t0 = SDL_GetPerformanceCounter();
+    const double freq = (double)SDL_GetPerformanceFrequency();
+    (void)freq; // suppress unused-var if compiler gets clever
+    printf("[MISSION] t=  0.00s  phase=mission_load_start\n");
+}
+
+extern "C" void mission_phase_mark(const char* name)
+{
+    const Uint64 now = SDL_GetPerformanceCounter();
+    const double freq = (double)SDL_GetPerformanceFrequency();
+    const double elapsed = (double)(now - g_mission_t0) / freq;
+    printf("[MISSION] t=%6.2fs  phase=%s\n", elapsed, name);
+}
+
 //typedef void (GLAPIENTRY *GLDEBUGPROCARB)(GLenum source, GLenum type, GLuint id, GLenum severity, GLsizei length, const GLchar* message, const void* userParam);
 #ifdef PLATFORM_WINDOWS
 void GLAPIENTRY OpenGLDebugLog(GLenum source, GLenum type, GLuint id, GLenum severity, GLsizei length, const GLchar* message, const void* userParam)
