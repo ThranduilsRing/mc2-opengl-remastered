@@ -4,6 +4,7 @@
 #include <windows.h>
 #endif
 #include <stdio.h>
+#include <stdlib.h>
 #include <assert.h>
 #include <SDL2/SDL.h>
 #include <GL/glew.h>
@@ -114,8 +115,18 @@ RenderWindow* create_window(const char* pwinname, int width, int height)
     // 4.6 core; 4.3 is the minimum feature level we need.
     SDL_GL_SetAttribute(SDL_GL_CONTEXT_MINOR_VERSION, 3);
 
-    SDL_GL_SetAttribute(SDL_GL_CONTEXT_FLAGS, SDL_GL_CONTEXT_DEBUG_FLAG);
-	//SDL_GL_SetAttribute(SDL_GL_CONTEXT_FLAGS, GL_CONTEXT_FLAG_DEBUG_BIT);
+    // MC2_GL_DEBUG=1 enables the OpenGL debug context AND the debug-message
+    // callback (installed in gameosmain.cpp). Debug contexts run driver-side
+    // validation on every GL call and can cost 10-30% perf, especially on
+    // NVIDIA; the callback also floods stdout with harmless AMD-driver
+    // warnings in our workload. Off by default in shipped builds;
+    // env-gated rather than NDEBUG-gated so it can be flipped on a
+    // deployed binary without rebuilding.
+    const bool gl_debug = (getenv("MC2_GL_DEBUG") != nullptr);
+    if (gl_debug) {
+        SDL_GL_SetAttribute(SDL_GL_CONTEXT_FLAGS, SDL_GL_CONTEXT_DEBUG_FLAG);
+        printf("[GL_DEBUG] MC2_GL_DEBUG=1 -- GL debug context active. This reduces performance.\n");
+    }
 
     if (VERBOSE_MODES) {
         SDL_DisplayMode mode;

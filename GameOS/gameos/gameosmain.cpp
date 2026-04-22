@@ -1,6 +1,7 @@
 #include "gameos.hpp"
 #include "gos_render.h"
 #include <stdio.h>
+#include <stdlib.h>
 #include <time.h>
 
 #include <SDL2/SDL.h>
@@ -479,11 +480,16 @@ int main(int argc, char** argv)
         return 1;
     }
 
-	glEnable(GL_DEBUG_OUTPUT);
-	glEnable(GL_DEBUG_OUTPUT_SYNCHRONOUS);
-	//glPushDebugGroup(GL_DEBUG_SOURCE_APPLICATION, 76, 1, "My debug group");
-	glDebugMessageControlARB(GL_DONT_CARE, GL_DONT_CARE, GL_DONT_CARE, 0, NULL, GL_TRUE);
-	glDebugMessageCallbackARB((GLDEBUGPROC)&OpenGLDebugLog, NULL);
+	// Install GL debug callback only when MC2_GL_DEBUG is set. In shipping
+	// builds this keeps stdout free of harmless driver warnings (esp. the
+	// AMD ~glsl_program double-detach chatter) and saves the sync-debug
+	// overhead. Paired with the context-flag gate in gos_render.cpp.
+	if (getenv("MC2_GL_DEBUG") != nullptr) {
+		glEnable(GL_DEBUG_OUTPUT);
+		glEnable(GL_DEBUG_OUTPUT_SYNCHRONOUS);
+		glDebugMessageControlARB(GL_DONT_CARE, GL_DONT_CARE, GL_DONT_CARE, 0, NULL, GL_TRUE);
+		glDebugMessageCallbackARB((GLDEBUGPROC)&OpenGLDebugLog, NULL);
+	}
 
 
     SPEW(("GRAPHICS", "Status: Using GLEW %s\n", glewGetString(GLEW_VERSION)));
