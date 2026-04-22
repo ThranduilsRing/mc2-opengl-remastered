@@ -139,7 +139,7 @@ All post-processing is managed by `gosPostProcess` in `gos_postprocess.cpp/.h`.
 
 **No `#version` in shader files.** The version directive is passed as a prefix string to `makeProgram()`:
 ```cpp
-glsl_program::makeProgram("terrain", "gos_terrain.vert", "gos_terrain.frag", "#version 420\n");
+glsl_program::makeProgram("terrain", "gos_terrain.vert", "gos_terrain.frag", "#version 430\n");
 ```
 
 Putting `#version` directly in the file causes compile errors because the prefix is prepended first.

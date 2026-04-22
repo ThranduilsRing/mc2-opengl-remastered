@@ -23,7 +23,7 @@ Read `docs/amd-driver-rules.md` for the canonical list, then check each shader a
 
 5. **Matrix transpose consistency** — direct `glUniformMatrix4fv` uploads use `GL_FALSE` (row-major as-is). Shaders receiving matrices via the deferred system use `GL_TRUE`. Do not mix these in the same shader without clear documentation.
 
-6. **No `#version` directive** — MC2 shaders must NOT have `#version` at the top. The version string `"#version 420\n"` is prepended by `makeProgram()`. A shader with its own `#version` will cause a duplicate-version compile error.
+6. **No `#version` directive** — MC2 shaders must NOT have `#version` at the top. The version string `"#version 430\n"` is prepended by `makeProgram()` (matches the 4.3 context we require for SSBO / std430). A shader with its own `#version` will cause a duplicate-version compile error.
 
 ## Workflow
 

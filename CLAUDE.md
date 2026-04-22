@@ -20,7 +20,7 @@ If skills aren't found by the Skill tool, they're also at `A:/Games/mc2-opengl-s
 - **Build:** ALWAYS `--config RelWithDebInfo`. Release crashes with GL_INVALID_ENUM.
 - **Deploy:** NEVER `cp -r`. ALWAYS `cp -f` per file + `diff -q`. `cp -r` silently fails on Windows/MSYS2.
 - **Git:** NEVER push to alariq/mc2 origin. All work is local.
-- **Shader #version:** Never in shader files. Pass `"#version 420\n"` as prefix to `makeProgram()`.
+- **Shader #version:** Never in shader files. Pass `"#version 430\n"` as prefix to `makeProgram()` (matches the 4.3 context we require for SSBO / std430).
 - **Uniform API:** `setFloat`/`setInt` BEFORE `apply()`, not after. `apply()` flushes dirty uniforms.
 - **GL_FALSE for terrainMVP:** Direct-uploaded row-major matrices use `GL_FALSE`. Material cache uses `GL_TRUE`.
 - **Shader hot-reload fails silently:** Bad compile = old shader stays active. Check console for errors.

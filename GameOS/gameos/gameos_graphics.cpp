@@ -194,7 +194,7 @@ class gosMaterialVariationHelper {
 
         void getMaterialVariation(gosMaterialVariation& variation)
         {
-            std::string defines_str = "#version 420\n";
+            std::string defines_str = "#version 430\n";
             std::string unique_suffix_str = "#";
             for(auto d : defines)
             {
@@ -1824,7 +1824,7 @@ void gosRenderer::init() {
         // layout(location=...) and in/out attribute qualifiers, breaking
         // these programs at init on NVIDIA drivers. AMD accepts the same
         // source by silently promoting to a newer GLSL version.
-        static const char* kShaderPrefix = "#version 420\n";
+        static const char* kShaderPrefix = "#version 430\n";
         overlayProg_ = glsl_program::makeProgram("terrain_overlay",
             "shaders/terrain_overlay.vert", "shaders/terrain_overlay.frag",
             kShaderPrefix);

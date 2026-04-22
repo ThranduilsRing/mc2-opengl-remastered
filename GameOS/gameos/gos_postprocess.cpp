@@ -118,8 +118,11 @@ void gosPostProcess::init(int w, int h)
     createFBOs(w, h);
     createFullscreenQuad();
 
-    // Load shaders — version provided via prefix (shader files must NOT have #version)
-    static const char* kShaderPrefix = "#version 420\n";
+    // Load shaders — version provided via prefix (shader files must NOT have #version).
+    // 4.3 matches the GL context requirement (SSBO + std430 used by the static-prop
+    // renderer); using a lower version here worked on AMD but broke on NVIDIA which
+    // defaults to GLSL 1.10 when the context/shader versions disagree at the boundary.
+    static const char* kShaderPrefix = "#version 430\n";
 
     compositeProg_ = glsl_program::makeProgram(
         "postprocess",
@@ -1058,7 +1061,7 @@ void gosPostProcess::initShadows()
     // quadruples per-texel density, directly reduces stair-step banding on cliffs.
     shadowMapSize_ = 4096;
 
-    static const char* kShaderPrefix = "#version 420\n";
+    static const char* kShaderPrefix = "#version 430\n";
     shadowDepthProg_ = glsl_program::makeProgram("shadow_depth",
         "shaders/shadow_depth.vert", "shaders/shadow_depth.frag", kShaderPrefix);
 
