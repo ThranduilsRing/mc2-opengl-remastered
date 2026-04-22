@@ -1820,10 +1820,17 @@ void gosRenderer::init() {
     // the material loader always pairs [name].vert + [name].frag from the same name.
     {
         ZoneScopedN("gosRenderer::init overlayPrograms");
+        // Without a #version prefix NVIDIA defaults to GLSL 1.10 and rejects
+        // layout(location=...) and in/out attribute qualifiers, breaking
+        // these programs at init on NVIDIA drivers. AMD accepts the same
+        // source by silently promoting to a newer GLSL version.
+        static const char* kShaderPrefix = "#version 420\n";
         overlayProg_ = glsl_program::makeProgram("terrain_overlay",
-            "shaders/terrain_overlay.vert", "shaders/terrain_overlay.frag");
+            "shaders/terrain_overlay.vert", "shaders/terrain_overlay.frag",
+            kShaderPrefix);
         decalProg_ = glsl_program::makeProgram("decal",
-            "shaders/terrain_overlay.vert", "shaders/decal.frag");
+            "shaders/terrain_overlay.vert", "shaders/decal.frag",
+            kShaderPrefix);
     }
 
     if (!overlayProg_)
