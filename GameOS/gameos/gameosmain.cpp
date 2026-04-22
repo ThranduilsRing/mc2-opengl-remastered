@@ -405,6 +405,20 @@ const char* getStringForSeverity(GLenum type)
 	default: return "(undefined)";
 	}
 }
+namespace {
+    // Startup phase timing. Anchor at the top of main(). Cheap printfs --
+    // total cost is microseconds, but the signal for triage is high.
+    static Uint64 g_startup_t0 = 0;
+    static double startup_elapsed() {
+        const Uint64 now = SDL_GetPerformanceCounter();
+        const double freq = (double)SDL_GetPerformanceFrequency();
+        return (double)(now - g_startup_t0) / freq;
+    }
+    static void startup_phase(const char* name) {
+        printf("[TIME] t=%6.2fs  phase=%s\n", startup_elapsed(), name);
+    }
+}
+
 //typedef void (GLAPIENTRY *GLDEBUGPROCARB)(GLenum source, GLenum type, GLuint id, GLenum severity, GLsizei length, const GLchar* message, const void* userParam);
 #ifdef PLATFORM_WINDOWS
 void GLAPIENTRY OpenGLDebugLog(GLenum source, GLenum type, GLuint id, GLenum severity, GLsizei length, const GLchar* message, const void* userParam)
@@ -434,6 +448,9 @@ int main(int argc, char** argv)
     // runs; invaluable for diagnosing startup crashes when stdout is piped to a file.
     setvbuf(stdout, NULL, _IONBF, 0);
     setvbuf(stderr, NULL, _IONBF, 0);
+
+    g_startup_t0 = SDL_GetPerformanceCounter();
+    startup_phase("process_start");
 
     // gather command line
 	size_t cmdline_len = 0;
@@ -466,6 +483,8 @@ int main(int argc, char** argv)
     graphics::RenderWindowHandle win = graphics::create_window("mc2", w, h);
     if(!win)
         return 1;
+
+    startup_phase("window_created");
 
     graphics::RenderContextHandle ctx = graphics::init_render_context(win);
     if(!ctx)
@@ -519,13 +538,17 @@ int main(int argc, char** argv)
     snprintf(version, sizeof(version), "%d%d", glsl_maj, glsl_min);
     SPEW(("GRAPHICS", "Using %s shader version\n", version));
 
+    startup_phase("gl_context_ready");
+
     gos_CreateRenderer(ctx, win, w, h);
+    startup_phase("renderer_created");
     if(!gos_CreateAudio())
     {   // not an error
         SPEW(("AUDIO", "Failed to create audio\n"));
     }
 
     Environment.InitializeGameEngine();
+    startup_phase("engine_init_done");
 
 #if 0
 	float aspect = (float)w/(float)h;
@@ -575,6 +598,11 @@ int main(int argc, char** argv)
         {
             ZoneScopedN("SwapWindow");
             graphics::swap_window(win);
+            static bool s_first_frame_logged = false;
+            if (!s_first_frame_logged) {
+                s_first_frame_logged = true;
+                startup_phase("first_frame_presented");
+            }
         }
 
         {
