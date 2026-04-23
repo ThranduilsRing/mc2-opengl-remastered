@@ -158,7 +158,12 @@ typedef enum {
 	NUM_RETURN_TYPES
 } FunctionReturnType;
 
-#define	MAX_STANDARD_FUNCTIONS	256
+// Raised 256 -> 512 for Omnitech ABL stubs. Baseline MC2 needs ~256; our
+// 40+11 Omnitech tier-1/2 extensions push registrations to ~313. Overflowing
+// the old 256 cap OOB-wrote adjacent BSS (symptom: FunctionCallbackTable[47]
+// upper 32 bits zeroed between registration and dispatch, crash with
+// `...690B` low-word pattern).
+#define	MAX_STANDARD_FUNCTIONS	512
 #define	MAX_FUNCTION_PARAMS		20
 
 typedef struct {
