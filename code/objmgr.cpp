@@ -1283,16 +1283,17 @@ void GameObjectManager::addObject (ObjDataLoader *objData, long& curTerrainObjec
 								break;
 							}
 					((GatePtr)obj)->openSubAreas();
+					// NULL guards — GlobalMoveMap[1] NULL on bail'd mod content.
 					for (int i = 0; i < ((GatePtr)obj)->numSubAreas0; i++) {
-						GlobalMoveMap[0]->setAreaOwnerWID(((GatePtr)obj)->subAreas0[i], ((GatePtr)obj)->getWatchID());
-						GlobalMoveMap[1]->setAreaOwnerWID(((GatePtr)obj)->subAreas1[i], ((GatePtr)obj)->getWatchID());
+						if (GlobalMoveMap[0]) GlobalMoveMap[0]->setAreaOwnerWID(((GatePtr)obj)->subAreas0[i], ((GatePtr)obj)->getWatchID());
+						if (GlobalMoveMap[1]) GlobalMoveMap[1]->setAreaOwnerWID(((GatePtr)obj)->subAreas1[i], ((GatePtr)obj)->getWatchID());
 						if (((GatePtr)obj)->status == OBJECT_STATUS_DESTROYED) {
-							GlobalMoveMap[0]->setAreaTeamID(((GatePtr)obj)->subAreas0[i], -1);
-							GlobalMoveMap[1]->setAreaTeamID(((GatePtr)obj)->subAreas1[i], -1);
+							if (GlobalMoveMap[0]) GlobalMoveMap[0]->setAreaTeamID(((GatePtr)obj)->subAreas0[i], -1);
+							if (GlobalMoveMap[1]) GlobalMoveMap[1]->setAreaTeamID(((GatePtr)obj)->subAreas1[i], -1);
 							}
 						else {
-							GlobalMoveMap[0]->setAreaTeamID(((GatePtr)obj)->subAreas0[i], ((GatePtr)obj)->teamId);
-							GlobalMoveMap[1]->setAreaTeamID(((GatePtr)obj)->subAreas1[i], -1);
+							if (GlobalMoveMap[0]) GlobalMoveMap[0]->setAreaTeamID(((GatePtr)obj)->subAreas0[i], ((GatePtr)obj)->teamId);
+							if (GlobalMoveMap[1]) GlobalMoveMap[1]->setAreaTeamID(((GatePtr)obj)->subAreas1[i], -1);
 						}
 					}
 					((GatePtr)obj)->setTeamId(obj->getTeamId(), true);

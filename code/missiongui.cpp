@@ -3118,10 +3118,14 @@ void MissionInterfaceManager::printDebugInfo()
 		int row, col;
 		land->worldToCell(wPos, row, col);
 		char debugString[256];
+		// Same NULL guard as the prior session's fix at ~line 776 — GlobalMoveMap[1]
+		// is NULL when GlobalMap::init bailed out with badLoad on mod content.
+		int ga0 = GlobalMoveMap[0] ? GlobalMoveMap[0]->calcArea(row, col) : -1;
+		int ga1 = GlobalMoveMap[1] ? GlobalMoveMap[1]->calcArea(row, col) : -1;
 		if (target)
-			sprintf(debugString, "POS = %s(%c) %d,%d [%d, %d] (%.4f, %.4f, %.4f) OBJ = %s\n", terrainStr[GameMap->getTerrain(row, col)], GameMap->getPassable(row, col) ? 'T' : 'F', GlobalMoveMap[0]->calcArea(row, col), GlobalMoveMap[1]->calcArea(row, col), row, col, wPos.x, wPos.y, wPos.z, target->getName());
+			sprintf(debugString, "POS = %s(%c) %d,%d [%d, %d] (%.4f, %.4f, %.4f) OBJ = %s\n", terrainStr[GameMap->getTerrain(row, col)], GameMap->getPassable(row, col) ? 'T' : 'F', ga0, ga1, row, col, wPos.x, wPos.y, wPos.z, target->getName());
 		else
-			sprintf(debugString, "POS = %s(%c) %d,%d [%d, %d] (%.4f, %.4f, %.4f)\n", terrainStr[GameMap->getTerrain(row, col)], GameMap->getPassable(row, col) ? 'T' : 'F', GlobalMoveMap[0]->calcArea(row, col), GlobalMoveMap[1]->calcArea(row, col), row, col, wPos.x, wPos.y, wPos.z);
+			sprintf(debugString, "POS = %s(%c) %d,%d [%d, %d] (%.4f, %.4f, %.4f)\n", terrainStr[GameMap->getTerrain(row, col)], GameMap->getPassable(row, col) ? 'T' : 'F', ga0, ga1, row, col, wPos.x, wPos.y, wPos.z);
 		DEBUGWINS_print(debugString);
 	}
 
@@ -4761,12 +4765,16 @@ int MissionInterfaceManager::quickDebugInfo() {
 		int row, col;
 		land->worldToCell(wPos, row, col);
 		char debugString[256];
+		// NULL guards for bail'd-out GlobalMoveMap[] (mod content).
+		int infoML = target ? target->getMoveLevel() : 0;
+		int infoArea = (GlobalMoveMap[infoML]) ? GlobalMoveMap[infoML]->calcArea(row, col) : -1;
+		int infoArea0 = (GlobalMoveMap[0]) ? GlobalMoveMap[0]->calcArea(row, col) : -1;
 		if (target)
 			sprintf(debugString, "INFO = %s(%c%c) %d(W%d) [%d, %d] (%.4f, %.4f, %.4f) #Pth=%d(%d) OBJ = %s\n",
 				terrainStr[GameMap->getTerrain(row, col)],
 				GameMap->getPassable(row, col) ? 'T' : 'F',
 				GameMap->getForest(row, col) ? 'T' : 'F',
-				GlobalMoveMap[target->getMoveLevel()]->calcArea(row, col),
+				infoArea,
 				GameMap->getShallowWater(row, col) ? 1 : (GameMap->getDeepWater(row, col) ? 2 : 0),
 				row, col,
 				wPos.x, wPos.y, wPos.z,
@@ -4776,7 +4784,7 @@ int MissionInterfaceManager::quickDebugInfo() {
 				terrainStr[GameMap->getTerrain(row, col)],
 				GameMap->getPassable(row, col) ? 'T' : 'F',
 				GameMap->getForest(row, col) ? 'T' : 'F',
-				GlobalMoveMap[0]->calcArea(row, col),
+				infoArea0,
 				GameMap->getShallowWater(row, col) ? 1 : (GameMap->getDeepWater(row, col) ? 2 : 0),
 				row, col,
 				wPos.x, wPos.y, wPos.z,
