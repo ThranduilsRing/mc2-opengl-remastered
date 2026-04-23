@@ -342,7 +342,135 @@ void video_close(VideoSession* s)
     delete s;
 }
 
-bool video_update(VideoSession* /*s*/) { return true; /* Task 10 */ }
+//-----------------------------------------------------------------------------
+// Master-clock helpers
+//-----------------------------------------------------------------------------
+static double nowSeconds()
+{
+    return (double)av_gettime() / 1000000.0;
+}
+
+// Placeholder for Task 13. For now: wall-clock only. Task 13 will
+// replace this with audio-master clock when audio is available.
+static double videoMasterClock(const VideoSession* s)
+{
+    return nowSeconds() - s->clockStart;
+}
+
+//-----------------------------------------------------------------------------
+// Decode-one-frame helper
+// Pulls packets and decodes until one video frame is produced in
+// s->vFrame, or EOF. Returns: 1 = frame produced, -1 = EOF/error.
+// Audio packets are discarded until Task 12 adds handling.
+//-----------------------------------------------------------------------------
+static int decodeNextVideoFrame(VideoSession* s)
+{
+    for (;;) {
+        int ret = avcodec_receive_frame(s->vCodec, s->vFrame);
+        if (ret == 0) return 1;
+        if (ret != AVERROR(EAGAIN) && ret != AVERROR_EOF) return -1;
+
+        // Need more input
+        ret = av_read_frame(s->fmt, s->pkt);
+        if (ret == AVERROR_EOF) {
+            avcodec_send_packet(s->vCodec, nullptr);  // flush
+            ret = avcodec_receive_frame(s->vCodec, s->vFrame);
+            return (ret == 0) ? 1 : -1;
+        }
+        if (ret < 0) return -1;
+
+        if (s->pkt->stream_index == s->vStream) {
+            avcodec_send_packet(s->vCodec, s->pkt);
+        }
+        // audio packets handled in Task 12; for now discard
+        av_packet_unref(s->pkt);
+    }
+}
+
+//-----------------------------------------------------------------------------
+// Upload helper — Path GL-A (gos_LockTexture, BGRA)
+// sws_scale directly into the locked buffer. Linesize is in bytes;
+// for a DWORD* BGRA buffer, bytes per row = Width * 4.
+// NOTE: Pitch is in DWORDs — do NOT use for sws stride.
+//-----------------------------------------------------------------------------
+static void uploadFrameToTexture(VideoSession* s)
+{
+    if (s->texHandle == 0) return;
+
+    TEXTUREPTR td = {};
+    gos_LockTexture(s->texHandle, /*MipMapSize*/0, /*ReadOnly*/false, &td);
+    if (!td.pTexture) {
+        VIDEO_LOG("gos_LockTexture returned null pTexture");
+        return;
+    }
+
+    // sws_scale directly into the locked buffer.
+    // For a DWORD* BGRA buffer, bytes per row = Width * 4.
+    uint8_t* dst[4]     = { (uint8_t*)td.pTexture, nullptr, nullptr, nullptr };
+    int      dstLine[4] = { (int)(td.Width * 4), 0, 0, 0 };
+    sws_scale(s->sws,
+              s->vFrame->data, s->vFrame->linesize,
+              0, s->srcH,
+              dst, dstLine);
+
+    gos_UnLockTexture(s->texHandle);
+    s->frameReady = true;
+}
+
+//-----------------------------------------------------------------------------
+// video_update — decode loop with frame-hold for future PTS + late-frame drop
+//-----------------------------------------------------------------------------
+bool video_update(VideoSession* s)
+{
+    if (!s || s->eof) return true;
+    if (s->paused) return false;
+
+    const double masterNow = videoMasterClock(s);
+
+    // Step A: if we have a pending frame, check whether it is now due.
+    if (s->pendingFrameValid) {
+        if (s->pendingFramePTS > masterNow) {
+            // Still in the future — hold, do not upload, do not present.
+            return false;
+        }
+        // Due. Promote to the display texture.
+        uploadFrameToTexture(s);
+        s->presentedPTS = s->pendingFramePTS;
+        s->pendingFrameValid = false;
+    }
+
+    // Step B: pull frames from the decoder. Future frames park in the
+    // pending slot. Severely-late frames drop silently without upload.
+    // On-time frames upload and we keep looking for a future frame
+    // to park before returning.
+    for (;;) {
+        int r = decodeNextVideoFrame(s);
+        if (r < 0) { s->eof = true; return true; }
+
+        double pts = (s->vFrame->pts == AV_NOPTS_VALUE)
+                     ? (s->presentedPTS + 1.0 / s->fps)
+                     : s->vFrame->pts * s->timeBase;
+
+        if (pts > masterNow) {
+            // Future frame — park and return. Do NOT upload yet.
+            s->pendingFrameValid = true;
+            s->pendingFramePTS   = pts;
+            return false;
+        }
+
+        // Frame is due or late. If more than ~2 frames behind, drop
+        // without upload and keep pulling; else upload and continue.
+        const double lateThreshold = 2.0 / (s->fps > 0 ? s->fps : 30.0);
+        if (masterNow - pts > lateThreshold) {
+            continue;  // drop silently; vFrame gets overwritten next iter
+        }
+
+        uploadFrameToTexture(s);
+        s->presentedPTS = pts;
+        // loop; next iteration parks a future frame or continues catching up
+    }
+}
+
 void video_render(VideoSession* /*s*/) { /* Task 11 */ }
 void video_pause(VideoSession* /*s*/, bool /*paused*/) { /* Task 15 */ }
 void video_stop(VideoSession* /*s*/) { /* Task 15 */ }
