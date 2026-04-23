@@ -304,7 +304,7 @@ long Logistics::update (void)
 				movieRect.top = 0;
 				movieRect.left = 0;
 				movieRect.right = Environment.screenWidth;
-				movieRect.bottom = 600;
+				movieRect.bottom = Environment.screenHeight;
 
 				bMovie = new MC2Movie;
 				bMovie->init(path,movieRect,true);
