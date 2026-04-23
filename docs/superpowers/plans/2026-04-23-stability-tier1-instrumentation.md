@@ -30,7 +30,7 @@
 **Commit 2 (destroy wrapper, no conversions yet):**
 - `code/gameobj.h` — new members `framesSinceActive` (uint8_t), `lastUpdateRet` (int32_t, default -1); `destroy(const char*, const char*, int)` method declaration; `MC2_DESTROY(obj, reason)` macro; reasons taxonomy comment block (filled by commit 3).
 - `code/gameobj.cpp` — `GameObject::destroy` implementation with early field snapshot, double-destroy handling, env-gated log print; `getObjectClassName(ObjectClass)` switch-table helper.
-- `code/objmgr.cpp` — single composite-active-decision snippet that updates `framesSinceActive` each frame (location TBD by implementer — look for the per-object sweep loop).
+- `code/objmgr.cpp` — single composite-active-decision snippet that updates `framesSinceActive` each frame, placed in `GameObjectManager::update()` (the per-object sweep loop).
 - `code/*.cpp` (subset) — sites where `update()` is called and its return value observed: cache into `obj->lastUpdateRet` immediately. Identified by grep during task.
 
 **Commit 3 (34 conversions + dedup + taxonomy):**
@@ -49,7 +49,7 @@
 - `GameOS/gameos/gameos_graphics.cpp` — insert drain calls after the four render-pass functions (`shadow_static`, `shadow_dynamic`, `terrain`, `objects_3d` — exact locations by grep during task).
 - `mclib/txmmgr.cpp` — insert drain call in the object render list flush.
 - `GameOS/gameos/gos_postprocess.cpp` — insert drain call after post-process composite (`post_process`).
-- `GameOS/gameos/gameos.cpp` — insert drain calls for `hud` and `frame` in the frame-end path; insert `[INSTR v1]` startup banner in the logger/process init (search for the earliest `printf`/`fprintf` to `stdout` after `main`).
+- `GameOS/gameos/gameosmain.cpp` — insert drain calls for `hud` and `frame` in the frame-end path (alongside `drainTglPoolStats()` from Task 5); insert `[INSTR v1]` startup banner as the first statement inside `main()` (line 463).
 - `scripts/check-destroy-invariant.sh` — new file.
 - `CLAUDE.md` — append env vars, invariant check, schema-version grep pattern to the existing "Debug Instrumentation Rule" block.
 
@@ -280,12 +280,28 @@ Expected: no results (all six moved, no other callers).
 
 If unexpected results appear: convert each remaining site to the appropriate macro.
 
-### Task 5: Frame-end drain + monotonic summary
+### Task 5: Frame-end drain + monotonic summary + canonical frame counter
 
 **Files:**
-- Modify: `mclib/tgl.cpp` — add `drainTglPoolStats()` and the monotonic summary emission at the bottom of the file
-- Modify: `mclib/tgl.h` — expose `drainTglPoolStats()` as a free function or static method
-- Modify: `GameOS/gameos/gameos.cpp` (or equivalent frame-end site) — one call to `drainTglPoolStats()` just before buffer swap
+- Modify: `GameOS/gameos/gameosmain.cpp` — define the canonical `g_mc2FrameCounter` at TU scope; increment it in the frame-end path.
+- Modify: `mclib/tgl.cpp` — add `drainTglPoolStats()` and the monotonic summary emission at the bottom of the file. Declares `extern uint32_t g_mc2FrameCounter` at the top.
+- Modify: `mclib/tgl.h` — expose `drainTglPoolStats()` as a free function.
+- Modify: `GameOS/gameos/gameosmain.cpp` — one call to `drainTglPoolStats()` at the frame-end site (identified below).
+
+**Canonical frame counter decision (locked in here for reuse by Tasks 12, 21):**
+
+One global `uint32_t g_mc2FrameCounter`, defined in `GameOS/gameos/gameosmain.cpp` at file scope, `extern`'d from every other TU that needs it. Incremented exactly once per frame at the frame-end site, just before `drainTglPoolStats()`. This is the single source of truth for the `frame=` field in all three `[SUBSYS vN]` log lines.
+
+- [ ] **Step 0: Define the canonical frame counter.**
+
+In `GameOS/gameos/gameosmain.cpp` near the top (file-scope, outside any namespace):
+
+```cpp
+// Tier-1 instrumentation (stability spec §5.1): single source of truth for
+// the frame=... field used by TGL, DESTROY, and GL_ERROR log lines.
+// Declared extern from mclib/tgl.cpp, code/gameobj.cpp, GameOS/gameos/gos_validate.cpp.
+uint32_t g_mc2FrameCounter = 0;
+```
 
 - [ ] **Step 1: Implement `drainTglPoolStats()` in `mclib/tgl.cpp`.**
 
@@ -295,7 +311,7 @@ If unexpected results appear: convert each remaining site to the appropriate mac
 #include <stdio.h>   // printf, fflush
 
 static const bool s_tglPoolTrace = (getenv("MC2_TGL_POOL_TRACE") != nullptr);
-static uint32_t   s_tglFrameCounter = 0;
+extern uint32_t   g_mc2FrameCounter;  // defined in GameOS/gameos/gameosmain.cpp (Task 5 step 0)
 
 static const char* poolName(int idx) {
     switch (idx) {
@@ -309,7 +325,8 @@ static const char* poolName(int idx) {
 }
 
 void drainTglPoolStats() {
-    s_tglFrameCounter++;
+    // Frame counter is incremented at the call site in gameosmain.cpp,
+    // immediately before drainTglPoolStats(). Do NOT increment here.
 
     // Assumes external pointers to the five pools exist — replace with the
     // actual pool accessors / globals used by mission.cpp init.
@@ -326,7 +343,7 @@ void drainTglPoolStats() {
             TG_Pool* p = pools[i];
             if (!p || p->nullCountThisFrame == 0) continue;
             printf("[TGL_POOL v1] frame=%u pool=%s nulls=%u first_caller=%s shape=%p req=%u high_water=%u/%u mono_total=%llu\n",
-                s_tglFrameCounter,
+                (unsigned)g_mc2FrameCounter,
                 poolName(i),
                 (unsigned)p->nullCountThisFrame,
                 p->firstNullSnapshot.caller ? p->firstNullSnapshot.caller : "?",
@@ -340,7 +357,7 @@ void drainTglPoolStats() {
     }
 
     // Monotonic summary every 600 frames (always, not env-gated).
-    if ((s_tglFrameCounter % 600) == 0) {
+    if ((g_mc2FrameCounter > 0) && ((g_mc2FrameCounter % 600) == 0)) {
         printf("[TGL_POOL v1] summary mono_total={vertex:%llu, color:%llu, face:%llu, shadow:%llu, triangle:%llu} since=process_start\n",
             (unsigned long long)(pools[0] ? pools[0]->nullCountMonotonic : 0),
             (unsigned long long)(pools[1] ? pools[1]->nullCountMonotonic : 0),
@@ -382,21 +399,23 @@ void drainTglPoolStats();
 void drainTglPoolStatsOnShutdown();
 ```
 
-- [ ] **Step 3: Wire up the frame-end call.**
+- [ ] **Step 3: Wire up the frame-end call in `GameOS/gameos/gameosmain.cpp`.**
 
-Find the frame-end path. Candidates (grep in order, first hit wins):
+Open `GameOS/gameos/gameosmain.cpp`. The `main()` function starts at line 463. Find the per-frame loop inside it — there is exactly one. Look for the place where the engine signals end-of-frame (typically a call to `SwapBuffers`, `SDL_GL_SwapWindow`, `wglSwapBuffers`, or a function named `gos_RenderDoneFrame`/equivalent). If unsure, grep:
 
 ```bash
-grep -rn 'SwapBuffers\|gos_RenderIndexedArray.*swap\|wglSwapBuffers\|glSwapBuffers\|end.*of.*frame' GameOS/gameos/*.cpp | head -20
+grep -n 'SwapBuffers\|SwapWindow\|RenderDone\|gos_DrawQuad\|buffer.*swap' GameOS/gameos/gameosmain.cpp | head -10
 ```
 
-In the frame-end site (typically in `GameOS/gameos/gameos.cpp` near the main render loop), insert:
+Immediately before that swap call, insert:
 
 ```cpp
-#include "tgl.h"  // if not already
-// ... existing frame-end code (render complete, before swap) ...
-drainTglPoolStats();
-// ... existing SwapBuffers / equivalent ...
+#include "tgl.h"  // at top of file if not already included
+
+// ... inside the per-frame loop, just before the buffer-swap call ...
+g_mc2FrameCounter++;     // canonical frame counter (Step 0 defined the global)
+drainTglPoolStats();     // emits per-frame and monotonic log lines, then resets per-frame counters
+// ... existing SwapBuffers/SwapWindow call follows ...
 ```
 
 - [ ] **Step 4: Wire up the shutdown call.**
@@ -458,7 +477,7 @@ Expected: changes to `mclib/tgl.h`, `mclib/tgl.cpp`, and one `GameOS/gameos/*.cp
 - [ ] **Step 2: Commit.**
 
 ```bash
-git add mclib/tgl.h mclib/tgl.cpp GameOS/gameos/gameos.cpp  # adjust last path to match the actual frame-end file
+git add mclib/tgl.h mclib/tgl.cpp GameOS/gameos/gameosmain.cpp
 git commit -m "$(cat <<'EOF'
 feat(instr): TGL pool exhaustion trace + monotonic summary
 
@@ -503,7 +522,57 @@ int32_t  lastUpdateRet     = -1;  // spec said int8_t; corrected: update() retur
 
 Run `/mc2-build`. Expected: clean compile. If the implicit member initializers hit an issue with MSVC's ancient constructor-list pattern, move the defaults into the constructor/init method instead.
 
-### Task 9: Single-site `framesSinceActive` update in the per-frame sweep
+### Task 9: Add three virtual accessors on `GameObject` for log/sweep consumption
+
+**Context — why this task exists.** Verification during plan-writing showed:
+
+- `inView` is declared on subclasses only (e.g. `Actor`, `Artillery`), **not** on `GameObject` base.
+- `canBeSeen()` is a method on `Appearance`, reached via `obj->appearance->canBeSeen()`.
+- `objBlockInfo` is a static array on `Terrain` (`Terrain::objBlockInfo[blockNumber].active`), not a per-object pointer.
+
+The destroy log and the frame-active sweep both need one uniform "active-this-frame" answer per object. Plan commits to **three virtual getters on `GameObject` base with safe defaults**; subclasses override where they have a direct field. This is the only cross-subsystem interface change in the whole plan, and it's small.
+
+**Files:**
+- Modify: `code/gameobj.h` — add three `virtual bool` methods with defaults on `GameObject`.
+- Modify: `code/actor.h` (or wherever `Actor` lives) and similarly for any subclass with a direct `inView` field — override `inView_instr()` to return the field.
+
+- [ ] **Step 1: Add the three virtual accessors to `GameObject` in `code/gameobj.h`.**
+
+Inside the `GameObject` class body, near `setExists` (line 898 area):
+
+```cpp
+// -- Tier-1 instrumentation accessors (stability spec §3.3-3.4) --
+// Three composite-active-decision getters. Safe defaults: appearance-based
+// visibility for can_be_seen, false for the rest. Subclasses override where
+// they have a direct field.
+virtual bool inView_instr() const { return false; }
+virtual bool canBeSeen_instr() const {
+    return appearance ? appearance->canBeSeen() : false;
+}
+virtual bool blockActive_instr() const { return false; }
+```
+
+(Names have an `_instr` suffix so they're grep-distinguishable from any existing `canBeSeen`/`inView` accessors, and so renaming or removing them in a future spec is surgical.)
+
+- [ ] **Step 2: Override `inView_instr()` in subclasses that have a direct `inView` field.**
+
+From the grep in plan-writing, these subclasses have `inView` as a direct member:
+- `Actor` (code/actor.h)
+- `Artillery` (code/artlry.h:187, 212)
+
+In each header, inside the class body, add:
+
+```cpp
+bool inView_instr() const override { return inView != 0; }
+```
+
+Other subclasses (`Mech`, `GroundVehicle`, `Building`, `Gate`, etc.) fall through to the base default, which returns `false`. That's acceptable — the log field will read `in_view=0` for objects that don't own that notion, which is correct information.
+
+- [ ] **Step 3: (Deliberately left out — no `blockActive_instr()` override.)**
+
+Computing `Terrain::objBlockInfo[obj->block_number].active` correctly requires an obj→block lookup that is not a one-line accessor on every subclass. The default `false` is accepted; if follow-up specs want this signal, a dedicated pass can thread block-number access through the subclasses. For this spec, `block_active=0` across the board is consistent, honest, and cheap.
+
+### Task 9b: Single-site `framesSinceActive` update in the per-frame sweep
 
 **Files:**
 - Modify: `code/objmgr.cpp` — one snippet in the per-frame object sweep
@@ -518,17 +587,15 @@ Look for the single loop that iterates every `GameObject*` once per frame. In MC
 
 - [ ] **Step 2: Insert the composite-active-decision snippet.**
 
-Inside the loop body, after any existing `inView` / `canBeSeen` / `objBlockInfo.active` evaluation for the object but before any cull-driven early-continue:
+Inside the loop body, before any cull-driven early-continue:
 
 ```cpp
 // Tier-1 instrumentation (stability spec §3.3): single source of truth for
-// framesSinceActive. Must run unconditionally for every object every frame.
+// framesSinceActive. Uses the three virtual accessors added in Task 9.
 bool activeThisFrame_instr =
-       obj->inView
-    || obj->canBeSeen
-    || (obj->objBlockInfo ? obj->objBlockInfo->active : false);
-// Adjust to actual field access — inView/canBeSeen may be methods or flag bits.
-// Check code/gameobj.h around the object class for the exact accessor.
+       obj->inView_instr()
+    || obj->canBeSeen_instr()
+    || obj->blockActive_instr();
 if (activeThisFrame_instr) {
     obj->framesSinceActive = 0;
 } else if (obj->framesSinceActive < 255) {
@@ -536,9 +603,16 @@ if (activeThisFrame_instr) {
 }
 ```
 
-**Implementation note:** `inView` and `canBeSeen` may be stored on subclasses (`Mover`, `BuildingPtr`, etc.) rather than `GameObject` base. If so, either (a) add virtual accessors `bool isActiveThisFrame()` to `GameObject` with the default `{ return false; }` and override in each subclass, or (b) do the update in the subclass-specific sweep if one exists. Lightweight preference: accessor on base + overrides in the ~5 subclasses. Document the choice in the commit message.
+No further adaptation needed — the accessors encapsulate subclass-specific access.
 
 ### Task 10: Cache `lastUpdateRet` at update() return sites
+
+**Scope callout (explicit — this is the largest edit-surface in the plan):**
+
+`lastUpdateRet` is a spec-required field (§3.4) that needs writes at every site where `GameObject::update()` or its subclass overrides are called and observed. This grows the commit's edit surface beyond `code/gameobj.{h,cpp}` + `objmgr.cpp`: expect 3-10 additional files touched. The alternative (don't cache; leave `last_update_ret=-1` always) was rejected during spec review because it removes the log field's diagnostic value for exactly the "stale update" bug class this instrumentation targets.
+
+Each site gets a one-line addition (`obj->lastUpdateRet = (int32_t)obj->update();`). No surrounding code is restructured. The "no behavior changes" premise holds because the cache is a write-only field read only by the log path.
+
 
 **Files:**
 - Modify: sites where `obj->update()` is called and the return value observed
@@ -658,28 +732,25 @@ Near other `GameObject` method definitions:
 
 static const bool s_destroyTrace = (getenv("MC2_DESTROY_TRACE") != nullptr);
 
-extern uint32_t s_mc2FrameCounter;  // defined by TGL drain (Task 5) or a shared frame counter.
+extern uint32_t g_mc2FrameCounter;  // defined by TGL drain (Task 5) or a shared frame counter.
 // If no shared counter exists, declare one locally in this file and increment
 // alongside the TGL drain — cheap, and this instrumentation needs a frame tag.
 
 void GameObject::destroy(const char* reason, const char* file, int line) {
     // 1. Snapshot all log fields FIRST, before any other logic runs (spec §3.2).
-    const int        snap_exists_was       = getExists() ? 1 : 0;
+    const int         snap_exists_was      = getExists() ? 1 : 0;
     const ObjectClass snap_kind            = objectClass;
-    // inView / canBeSeen / objBlockInfo access — must match the accessor
-    // pattern chosen in Task 9. Example assumes direct members on the
-    // subclass; if they're on subclasses, use virtual getters.
-    const int        snap_in_view          = /*this->inView ? 1 : 0*/ 0;
-    const int        snap_can_be_seen      = /*this->canBeSeen ? 1 : 0*/ 0;
-    const int        snap_block_active     = /*(this->objBlockInfo && this->objBlockInfo->active) ? 1 : 0*/ 0;
-    const int        snap_frames_inactive  = (int)framesSinceActive;
-    const int32_t    snap_last_update_ret  = lastUpdateRet;
+    const int         snap_in_view         = inView_instr()     ? 1 : 0;
+    const int         snap_can_be_seen     = canBeSeen_instr()  ? 1 : 0;
+    const int         snap_block_active    = blockActive_instr()? 1 : 0;
+    const int         snap_frames_inactive = (int)framesSinceActive;
+    const int32_t     snap_last_update_ret = lastUpdateRet;
 
     // 2. Double-destroy: log-and-return without re-calling setExists.
     if (snap_exists_was == 0) {
         if (s_destroyTrace) {
             printf("[DESTROY v1] frame=%u obj=%p kind=%s reason=%s file=%s line=%d exists_was=0 in_view=%d can_be_seen=%d block_active=%d frames_since_active=%d last_update_ret=%d\n",
-                s_mc2FrameCounter, (void*)this, getObjectClassName(snap_kind), reason,
+                g_mc2FrameCounter, (void*)this, getObjectClassName(snap_kind), reason,
                 file, line, snap_in_view, snap_can_be_seen, snap_block_active,
                 snap_frames_inactive, (int)snap_last_update_ret);
             fflush(stdout);
@@ -693,7 +764,7 @@ void GameObject::destroy(const char* reason, const char* file, int line) {
     // 4. Env-gated log line.
     if (s_destroyTrace) {
         printf("[DESTROY v1] frame=%u obj=%p kind=%s reason=%s file=%s line=%d exists_was=1 in_view=%d can_be_seen=%d block_active=%d frames_since_active=%d last_update_ret=%d\n",
-            s_mc2FrameCounter, (void*)this, getObjectClassName(snap_kind), reason,
+            g_mc2FrameCounter, (void*)this, getObjectClassName(snap_kind), reason,
             file, line, snap_in_view, snap_can_be_seen, snap_block_active,
             snap_frames_inactive, (int)snap_last_update_ret);
         fflush(stdout);
@@ -701,10 +772,10 @@ void GameObject::destroy(const char* reason, const char* file, int line) {
 }
 ```
 
-**Three implementer decisions locked in by the placeholders above:**
-- Replace `/*this->inView ? 1 : 0*/ 0` etc. with the actual accessor chosen in Task 9.
-- Ensure `s_mc2FrameCounter` is accessible. If Task 5 declared it `static` inside `tgl.cpp`, either move it to an external `uint32_t g_mc2FrameCounter` visible from both TUs, or declare a local counter in `gameobj.cpp` and increment it alongside the TGL drain (not ideal — best to share).
-- Resolve `ObjectClass` visibility — make sure `code/gameobj.cpp` includes whatever header defines `ObjectClass` (usually `gameobj.h` itself).
+**Concrete bindings (no placeholders):**
+- The three accessors (`inView_instr`, `canBeSeen_instr`, `blockActive_instr`) are the virtual getters added in Task 9 — method calls are defined, defaults are safe, subclass overrides live in Actor/Artillery.
+- `g_mc2FrameCounter` is the canonical global defined in Task 5 (`GameOS/gameos/gameosmain.cpp`, `extern uint32_t g_mc2FrameCounter`). Declared in `code/gameobj.cpp` with `extern "C" uint32_t g_mc2FrameCounter;` near the top.
+- `ObjectClass` is defined in `code/gameobj.h`, so `#include "gameobj.h"` at the top of `code/gameobj.cpp` (already included) covers visibility.
 
 ### Task 13: Build, deploy, verify wrapper compiles + is silent
 
@@ -712,7 +783,7 @@ void GameObject::destroy(const char* reason, const char* file, int line) {
 
 Run `/mc2-build`. Expected: clean compile.
 
-Most likely failure: the placeholder accessors for `inView` / `canBeSeen` / `objBlockInfo` are wrong. Implementer adjusts by reading `code/gameobj.h` for the actual field/method names, or introduces virtual getters if the fields live on subclasses.
+Most likely failure: a subclass override of one of the three `*_instr()` accessors added in Task 9 has a typo or a wrong field name. Fix per compiler message; the accessors themselves have safe defaults, so base-class build is always green.
 
 - [ ] **Step 2: Deploy + launch.**
 
@@ -729,7 +800,7 @@ Play 2 minutes of mission gameplay (kill a mech, watch buildings destroyed, let 
 ### Task 14: Commit 2
 
 ```bash
-git add code/gameobj.h code/gameobj.cpp code/objmgr.cpp  # + any update-call-site files from Task 10
+git add code/gameobj.h code/gameobj.cpp code/objmgr.cpp code/actor.h code/artlry.h  # + any update-call-site files from Task 10
 git commit -m "$(cat <<'EOF'
 feat(instr): GameObject::destroy wrapper + helper + frames-active counter
 
@@ -1057,7 +1128,7 @@ static GlPassState s_glPassState[GLP_COUNT] = {
     {"frame",          0, 0, 0, false},
 };
 
-extern uint32_t s_mc2FrameCounter;  // shared with TGL drain (Task 5)
+extern uint32_t g_mc2FrameCounter;  // defined in GameOS/gameos/gameosmain.cpp (Task 5 step 0)
 
 static int passIndex(const char* name) {
     for (int i = 0; i < GLP_COUNT; i++) {
@@ -1098,14 +1169,14 @@ void drainGLErrors(const char* pass) {
         bool shouldPrint =
                !s_glErrorDrainSilent
             && errorsThisFrame == 1
-            && (s_mc2FrameCounter - st.lastPrintFrame) >= 30;
+            && (g_mc2FrameCounter - st.lastPrintFrame) >= 30;
 
         if (shouldPrint) {
             // If we're exiting a suppression window, emit a summary line first.
             if (st.inSuppression && st.suppressedCount > 0) {
                 printf("[GL_ERROR v1] pass=%s suppressed frames=%u count_in_window=%u\n",
                     st.name,
-                    (unsigned)(s_mc2FrameCounter - st.lastPrintFrame),
+                    (unsigned)(g_mc2FrameCounter - st.lastPrintFrame),
                     (unsigned)st.suppressedCount);
                 fflush(stdout);
             }
@@ -1113,10 +1184,10 @@ void drainGLErrors(const char* pass) {
             st.suppressedCount = 0;
 
             printf("[GL_ERROR v1] frame=%u pass=%s code=%s(0x%04X) mono_count=%llu\n",
-                s_mc2FrameCounter, st.name, glErrorName(err), (unsigned)err,
+                g_mc2FrameCounter, st.name, glErrorName(err), (unsigned)err,
                 (unsigned long long)st.monoCount);
             fflush(stdout);
-            st.lastPrintFrame = s_mc2FrameCounter;
+            st.lastPrintFrame = g_mc2FrameCounter;
         } else if (!s_glErrorDrainSilent && errorsThisFrame == 1) {
             // First error this frame, but still in suppression window.
             st.inSuppression = true;
@@ -1127,7 +1198,7 @@ void drainGLErrors(const char* pass) {
 ```
 
 **Implementation notes:**
-- The `extern uint32_t s_mc2FrameCounter` dependency resolves to the shared counter set up by Task 5. If Task 5 kept the counter `static` in `tgl.cpp`, move it to a non-static `g_mc2FrameCounter` before this task compiles (or add a getter).
+- `g_mc2FrameCounter` is defined once in `GameOS/gameos/gameosmain.cpp` (Task 5 step 0); this TU uses `extern`.
 - If `GL_CONTEXT_LOST` isn't defined (pre-GL 4.5 headers), the `#ifdef` guard keeps compile clean.
 - `unknown pass name` silent-drop is deliberate: a misspelled pass name at a call site should not crash the renderer.
 
@@ -1186,17 +1257,17 @@ Expected: exactly 7 hits, one per pass name.
 ### Task 23: Startup banner at process/logger init
 
 **Files:**
-- Modify: the earliest process-init file (typically `GameOS/gameos/gameos.cpp` near `main` or `WinMain`)
+- Modify: `GameOS/gameos/gameosmain.cpp` — `main()` starts at line 463 per plan-writing grep. Insert the banner as the **first printf** inside `main()`, before any other engine init.
 
-- [ ] **Step 1: Locate the earliest stdout-capable init.**
+- [ ] **Step 1: Open `GameOS/gameos/gameosmain.cpp` and find `main()`.**
 
 ```bash
-grep -n 'int main\|WinMain\|LogFile\|stdout\|log_init\|fopen.*log' GameOS/gameos/*.cpp | head -20
+grep -n 'int main' GameOS/gameos/gameosmain.cpp
 ```
 
-Target: the very first point after stdout/log-file redirection is set up, but before any mission/engine init.
+Expected: one hit at or near line 463.
 
-- [ ] **Step 2: Insert the banner.**
+- [ ] **Step 2: Insert the banner as the first statement inside `main()`.**
 
 ```cpp
 // Tier-1 instrumentation: one-line banner so every log file is
@@ -1231,12 +1302,18 @@ Target: the very first point after stdout/log-file redirection is set up, but be
 # scripts/check-destroy-invariant.sh
 # Enforces: all setExists(false) call sites outside GameObject::destroy
 # are violations (stability spec §3.8).
+#
+# Portability notes:
+#  - Uses `grep -E` (POSIX extended regex) with `[[:space:]]*` instead of
+#    `\s`. Plain `grep` / BRE does NOT interpret `\s` as whitespace.
+#  - Tested against GNU grep (MSYS2/Git-Bash on Windows) and POSIX grep.
+
 set -e
 violations=0
 
 # Literal: setExists(false) must only appear inside GameObject::destroy
 # (code/gameobj.cpp).
-lits=$(grep -rn 'setExists\s*(\s*false' code/ mclib/ GameOS/ \
+lits=$(grep -rEn 'setExists[[:space:]]*\([[:space:]]*false' code/ mclib/ GameOS/ \
     --include='*.cpp' --include='*.h' \
     | grep -v 'code/gameobj.cpp' || true)
 if [ -n "$lits" ]; then
@@ -1247,10 +1324,9 @@ fi
 
 # Non-literal: setExists(<expr>) where expr is not true/false literal —
 # flag for manual review. Does not fail the check by itself.
-nonlit=$(grep -rn 'setExists\s*(' code/ mclib/ GameOS/ \
+nonlit=$(grep -rEn 'setExists[[:space:]]*\(' code/ mclib/ GameOS/ \
     --include='*.cpp' --include='*.h' \
-    | grep -v '(\s*true'  \
-    | grep -v '(\s*false' \
+    | grep -Ev 'setExists[[:space:]]*\([[:space:]]*(true|false)' \
     | grep -v 'code/gameobj.cpp' || true)
 if [ -n "$nonlit" ]; then
     echo "[INVARIANT] non-literal setExists(<expr>) — manual review required:"
@@ -1263,11 +1339,25 @@ fi
 exit $violations
 ```
 
-- [ ] **Step 2: Make executable.**
+**Test the script before committing** (new sub-step below).
+
+- [ ] **Step 2: Make executable + test with a synthetic violation.**
 
 ```bash
 chmod +x scripts/check-destroy-invariant.sh
 ```
+
+Quick self-test (to confirm the regex actually catches violations):
+
+```bash
+# Create a synthetic violation in a scratch location, confirm script flags it.
+echo 'obj->setExists( false );' > /tmp/bogus.cpp  # MSYS2: use C:/temp/bogus.cpp
+# Run the script against a temp tree that includes the file.
+# Expected: exit 1, violation printed.
+# Clean up afterwards.
+```
+
+If the script does NOT flag the synthetic violation, the regex is broken — fix before committing.
 
 - [ ] **Step 3: Run against the current tree.**
 
@@ -1316,7 +1406,7 @@ Exit 0 = no literal `setExists(false)` outside `GameObject::destroy`. Non-litera
 
 - [ ] **Step 1: Build.**
 
-Run `/mc2-build`. Expected: clean compile. Most likely failure is `s_mc2FrameCounter` visibility — resolve by exposing it (see Task 21 note).
+Run `/mc2-build`. Expected: clean compile. Most likely failure is `g_mc2FrameCounter` visibility — resolve by exposing it (see Task 21 note).
 
 - [ ] **Step 2: Deploy + launch with default env (drain default-on).**
 
@@ -1457,11 +1547,14 @@ Expected: `[INSTR v1] enabled: tgl_pool=1 destroy=1 gl_error_print=1 build=<hash
 - [ ] **Step 5: Grep-friendly format check.**
 
 ```bash
-grep -E '^\[SUBSYS' mc2-full-trace.log  # this should return nothing (SUBSYS is a placeholder)
+# Every instrumentation line must start with [NAME vN].
 grep -cE '^\[(TGL_POOL|DESTROY|GL_ERROR|INSTR) v[0-9]+\]' mc2-full-trace.log
+# And no multi-line / wrapped trace entries slipped in — every line that
+# starts with '[' must parse as a tagged line.
+grep -E '^\[' mc2-full-trace.log | grep -vE '^\[(TGL_POOL|DESTROY|GL_ERROR|INSTR) v[0-9]+\]'
 ```
 
-Expected: the second count is non-zero; the first returns no lines. Every instrumentation line starts with `[<NAME> v<N>]`.
+Expected: first command returns a non-zero count. Second command returns nothing (no unrecognized `[...]`-prefixed lines).
 
 - [ ] **Step 6: Perf criteria met.**
 
@@ -1509,10 +1602,10 @@ If the break is in **commit 4 (GL drain)**, the pass-boundary call might be in t
 
 ## Key Handoff Notes
 
-- **Shared frame counter.** Tasks 5 (TGL drain), 12 (destroy log), and 21 (GL drain) all reference a `s_mc2FrameCounter` / `g_mc2FrameCounter`. Decide the canonical location during Task 5 — recommend a `uint32_t` in `gameos.cpp` that's `extern`'d from the other TUs. Incremented once per frame in the frame-end path.
-- **Pool accessors.** Task 5's `extern TG_VertexPool* vertexPool` etc. assumes globals; adjust to match MC2's actual pool ownership (globals vs. `Mission*` members). Confirmed by reading `code/mission.cpp` near line 3097 where pools are init'd.
-- **inView/canBeSeen/objBlockInfo access.** These fields live on subclasses, not `GameObject` base. Task 9 and Task 12 must either use virtual getters (cleanest, one-time add) or cast to subclass types. Decide during Task 9; Task 12 must follow the same pattern.
-- **update() callers.** Task 10 depends on grepping `->update()` across `code/`. Expected 3-10 sites; if the count is wildly off, there's a vtable or template layer hiding callers — investigate before converting.
+- **Shared frame counter — decided.** Canonical location is `GameOS/gameos/gameosmain.cpp`: `uint32_t g_mc2FrameCounter = 0;` at file scope. Incremented once per frame immediately before `drainTglPoolStats()` in the frame-end path. Every other TU that needs it (`mclib/tgl.cpp`, `code/gameobj.cpp`, `GameOS/gameos/gos_validate.cpp`) uses `extern uint32_t g_mc2FrameCounter;`. Locked in Task 5 step 0 — no later task re-invents this.
+- **Pool accessors — verify at Task 5 step 1.** `drainTglPoolStats()` uses `extern TG_VertexPool* vertexPool` etc. If MC2 actually owns the pools as `Mission*` members (read `code/mission.cpp` near line 3097), change the `extern` lines to `mission->vertexPool` and accept a `Mission*` parameter. A wrong pool-access pattern breaks at link time, not silently.
+- **Accessor strategy — decided.** `inView_instr()`, `canBeSeen_instr()`, `blockActive_instr()` — three virtual getters added to `GameObject` in Task 9 with safe defaults. Subclass overrides in `code/actor.h` and `code/artlry.h`. No mid-implementation interface decision remains.
+- **update() callers — grep-driven.** Task 10 depends on grepping `->update()` across `code/`. Expected 3-10 sites. Task 10's explicit scope callout documents this as the largest edit-surface in the plan.
 - **Never push to origin.** Per `CLAUDE.md`: all work is local. `claude/stability-tier1` stays on the local repo.
 
 ---

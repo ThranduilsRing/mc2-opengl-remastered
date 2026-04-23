@@ -123,7 +123,7 @@ This is the "did this ever happen" signal. At 200fps that's a 3-second cadence �
 
 ### 3.1 API
 
-Add to `mclib/gameobj.h`:
+Add to `code/gameobj.h`:
 
 ```cpp
 // public method on GameObject
@@ -140,7 +140,7 @@ Rationale for macro over `std::source_location`: MC2 is C++17-era MSVC with mixe
 
 ### 3.2 Implementation
 
-`GameObject::destroy` in `mclib/gameobj.cpp`:
+`GameObject::destroy` in `code/gameobj.cpp`:
 
 1. **Snapshot all log fields first**, before any other logic runs. `kind`, `cull`, `block_active`, `update_ret`, `exists_was`, `framesSinceActive` are read in the first three lines of the function into locals. Prevents teardown logic anywhere in the call chain from stomping a field the log later reports. The snapshot locals — not the live fields — are what the log emits.
 2. **Double-destroy semantics.** If `exists_was` is already `false`, emit the log line (with `exists_was=0`, which §3.4 already renders) and return *without* calling `setExists(false)` a second time. Legitimate case: mission cleanup sweeping objects that combat already killed. Explicitly **not** an assert — an assert here would turn a latent bug into a crash during an instrumentation-only change, violating the "no behavior changes" premise of this spec.
@@ -171,7 +171,7 @@ if (activeThisFrame) {
 
 Implementer identifies the exact function in `objmgr.cpp` that's the canonical per-frame sweep and inserts this snippet there. No other sites touch `framesSinceActive`.
 
-Padding audit: `GameObject` is declared in `mclib/dappear.h` (forward) / `mclib/gameobj.h` (full). During implementation, inspect the layout — if existing 1-byte padding is available, steal into it; otherwise accept an 8-byte bump after alignment. Either is fine for the purpose.
+Padding audit: `GameObject` is declared in `code/gameobj.h` (class body at line 307). During implementation, inspect the layout — if existing 1-byte padding is available, steal into it; otherwise accept an 8-byte bump after alignment. Either is fine for the purpose.
 
 ### 3.4 Log format
 
@@ -200,7 +200,7 @@ Fields (all fixed, no post-hoc taxonomy):
 
 ### 3.5 `getObjectClassName` helper
 
-Add to `mclib/gameobj.cpp`:
+Add to `code/gameobj.cpp`:
 
 ```cpp
 const char* getObjectClassName(ObjectClass kind);
@@ -256,8 +256,9 @@ Collapse near-duplicates (`update_false` / `update_returned_false` / `bad_update
 set -e
 violations=0
 
-# Literal: setExists(false) must only appear inside GameObject::destroy (mclib/gameobj.cpp).
-lits=$(grep -rn 'setExists\s*(\s*false' code/ mclib/ GameOS/ --include='*.cpp' --include='*.h' | grep -v 'mclib/gameobj.cpp' || true)
+# Literal: setExists(false) must only appear inside GameObject::destroy (code/gameobj.cpp).
+# Uses grep -E with POSIX [[:space:]]* — plain grep / BRE does NOT interpret \s.
+lits=$(grep -rEn 'setExists[[:space:]]*\([[:space:]]*false' code/ mclib/ GameOS/ --include='*.cpp' --include='*.h' | grep -v 'code/gameobj.cpp' || true)
 if [ -n "$lits" ]; then
   echo "[INVARIANT] literal setExists(false) outside GameObject::destroy:"
   echo "$lits"
@@ -266,8 +267,8 @@ fi
 
 # Non-literal: setExists(<expr>) where expr is not true/false literal — must be manually
 # vetted. This script flags them for review; does not fail the check by itself.
-nonlit=$(grep -rn 'setExists\s*(' code/ mclib/ GameOS/ --include='*.cpp' --include='*.h' \
-  | grep -v '(\s*true' | grep -v '(\s*false' | grep -v 'mclib/gameobj.cpp' || true)
+nonlit=$(grep -rEn 'setExists[[:space:]]*\(' code/ mclib/ GameOS/ --include='*.cpp' --include='*.h' \
+  | grep -Ev 'setExists[[:space:]]*\([[:space:]]*(true|false)' | grep -v 'code/gameobj.cpp' || true)
 if [ -n "$nonlit" ]; then
   echo "[INVARIANT] non-literal setExists(<expr>) — manual review required:"
   echo "$nonlit"
