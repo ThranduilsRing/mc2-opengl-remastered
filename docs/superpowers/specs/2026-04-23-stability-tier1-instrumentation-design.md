@@ -317,7 +317,7 @@ Behavior:
 - If `MC2_GL_ERROR_DRAIN_SILENT` is **not** set AND this is the first error for (pass, frame), emit one log line (format §4.4).
 - Subsequent errors in same (pass, frame) bump the count silently — AMD drivers can spray thousands.
 
-**Cross-pass/cross-frame rate limit (default-on print still needs a budget cap).** If a pass has already emitted a print in *any* of the last 30 frames, suppress further first-error prints for that pass for the next 30 frames; the count continues to accumulate silently and a single summary line emits at suppression end: `[GL_ERROR v1] pass=shadow_static suppressed frames=30 count_in_window=842`. Preserves signal (you see the problem), bounds volume (one persistently broken pass can't blow the 10MB budget in 30 seconds). Window is fixed 30 frames — no backoff escalation; this is instrumentation, not a reconnect strategy.
+**Cross-pass/cross-frame rate limit (default-on print still needs a budget cap).** If a pass has already emitted a print in *any* of the last 30 frames, suppress further first-error prints for that pass for the next 30 frames; the count continues to accumulate silently and a single summary line emits at suppression end: `[GL_ERROR v1] pass=shadow_static suppressed elapsed_frames=30 count_in_window=842`. Preserves signal (you see the problem), bounds volume (one persistently broken pass can't blow the 10MB budget in 30 seconds). Window is fixed 30 frames — no backoff escalation; this is instrumentation, not a reconnect strategy.
 
 **Semantic ownership of `glGetError()`.** These drains **consume** the GL error queue. Any downstream code that calls `glGetError()` after a drain sees `GL_NO_ERROR` for errors that occurred before the drain. Existing callers audited at spec time:
 

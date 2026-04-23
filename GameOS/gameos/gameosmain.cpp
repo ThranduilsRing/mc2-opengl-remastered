@@ -471,6 +471,12 @@ void GLAPIENTRY OpenGLDebugLog(GLenum source, GLenum type, GLuint id, GLenum sev
 #ifndef DISABLE_GAMEOS_MAIN
 int main(int argc, char** argv)
 {
+    // Make stdout line-buffered (was fully buffered on Windows when redirected, hiding
+    // output past the last explicit fflush before a crash). Harmless for interactive
+    // runs; invaluable for diagnosing startup crashes when stdout is piped to a file.
+    setvbuf(stdout, NULL, _IONBF, 0);
+    setvbuf(stderr, NULL, _IONBF, 0);
+
     // Tier-1 instrumentation: one-line banner so every log file is
     // self-describing about which traces are enabled.
     {
@@ -487,16 +493,9 @@ int main(int argc, char** argv)
             ;
         printf("[INSTR v1] enabled: tgl_pool=%d destroy=%d gl_error_print=%d build=%s\n",
             tgl ? 1 : 0, destr ? 1 : 0, glprint ? 1 : 0, build);
-        fflush(stdout);
     }
 
     //signal(SIGTRAP, SIG_IGN);
-
-    // Make stdout line-buffered (was fully buffered on Windows when redirected, hiding
-    // output past the last explicit fflush before a crash). Harmless for interactive
-    // runs; invaluable for diagnosing startup crashes when stdout is piped to a file.
-    setvbuf(stdout, NULL, _IONBF, 0);
-    setvbuf(stderr, NULL, _IONBF, 0);
 
     g_startup_t0 = SDL_GetPerformanceCounter();
     startup_phase("process_start");

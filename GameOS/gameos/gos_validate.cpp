@@ -197,7 +197,7 @@ static GlPassState s_glPassState[GLP_COUNT] = {
     {"frame",          0, 0, 0, false},
 };
 
-extern uint32_t g_mc2FrameCounter;  // defined in GameOS/gameos/gameosmain.cpp (Task 5 step 0)
+extern uint32_t g_mc2FrameCounter;  // defined in mclib/tgl.cpp; incremented by gameosmain.cpp frame-end.
 
 static int passIndex(const char* name) {
     for (int i = 0; i < GLP_COUNT; i++) {
@@ -243,7 +243,7 @@ void drainGLErrors(const char* pass) {
         if (shouldPrint) {
             // If we're exiting a suppression window, emit a summary line first.
             if (st.inSuppression && st.suppressedCount > 0) {
-                printf("[GL_ERROR v1] pass=%s suppressed frames=%u count_in_window=%u\n",
+                printf("[GL_ERROR v1] pass=%s suppressed elapsed_frames=%u count_in_window=%u\n",
                     st.name,
                     (unsigned)(g_mc2FrameCounter - st.lastPrintFrame),
                     (unsigned)st.suppressedCount);
