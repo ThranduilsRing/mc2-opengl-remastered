@@ -7029,17 +7029,20 @@ void execMagicAttack (void) {
 //*****************************************************************************
 
 void execMagicPatrol (void) {
-	// args: RR (PatrolState, PatrolPath — both real[]). No return.
-	ABLi_popRealPtr();
-	ABLi_popRealPtr();
+	// args: ** (PatrolState, PatrolPath — MCO-fork custom types, PatrolPath is 2D).
+	// Pop as Anything to avoid assumptions about array shape. No return.
+	ABLStackItem dummy;
+	ABLi_popAnything(&dummy);
+	ABLi_popAnything(&dummy);
 	if (getenv("MC2_ABL_TRACE")) DEBUGWINS_print("[ABL] magicPatrol stub", 0);
 }
 
 //*****************************************************************************
 
 void execMagicGuard (void) {
-	// args: Ri (position, stateHandle). No return.
-	ABLi_popRealPtr();
+	// args: *i (custom position type, stateHandle). No return.
+	ABLStackItem dummy;
+	ABLi_popAnything(&dummy);
 	ABLi_popInteger();
 	if (getenv("MC2_ABL_TRACE")) DEBUGWINS_print("[ABL] magicGuard stub", 0);
 }
@@ -7079,8 +7082,9 @@ void execCoreWaitOmni (void) {
 //*****************************************************************************
 
 void execCoreGuardOmni (void) {
-	// args: Ri (position, stateHandle). No return.
-	ABLi_popRealPtr();
+	// args: *i (custom position type, stateHandle). No return.
+	ABLStackItem dummy;
+	ABLi_popAnything(&dummy);
 	ABLi_popInteger();
 	if (getenv("MC2_ABL_TRACE")) DEBUGWINS_print("[ABL] coreGuard stub", 0);
 }
@@ -7088,9 +7092,10 @@ void execCoreGuardOmni (void) {
 //*****************************************************************************
 
 void execCorePatrolOmni (void) {
-	// args: RR. No return.
-	ABLi_popRealPtr();
-	ABLi_popRealPtr();
+	// args: ** (PatrolState, PatrolPath). No return.
+	ABLStackItem dummy;
+	ABLi_popAnything(&dummy);
+	ABLi_popAnything(&dummy);
 	if (getenv("MC2_ABL_TRACE")) DEBUGWINS_print("[ABL] corePatrol stub", 0);
 }
 
@@ -7973,15 +7978,20 @@ void initABL (void) {
 	ABLi_addFunction("freezegui", false, "b", NULL, execFreezeGUI);
 
 	// --- Omnitech ABL extensions, tier-2 (FSM primitives observed in Carver5O/MCO .abl) ---
+	// Note: PatrolState and PatrolPath are MCO-fork custom types (PatrolPath is 2D:
+	// `startBase1PatrolPath[i, j]`). The baseline ABL type checker rejects them
+	// against `R` (1D real*), so we accept them as `*` (any) — stubs don't inspect
+	// shape. Same for WorldPosition in the guard signatures: some scripts pass
+	// custom types distinct from bare real[3], so `*` is the safe sig here too.
 	ABLi_addFunction("magicattack",          false, "i",   NULL, execMagicAttack);
-	ABLi_addFunction("magicpatrol",          false, "RR",  NULL, execMagicPatrol);
-	ABLi_addFunction("magicguard",           false, "Ri",  NULL, execMagicGuard);
+	ABLi_addFunction("magicpatrol",          false, "**",  NULL, execMagicPatrol);
+	ABLi_addFunction("magicguard",           false, "*i",  NULL, execMagicGuard);
 	ABLi_addFunction("magicescort",          false, "i",   NULL, execMagicEscort);
 	ABLi_addFunction("setwillrequesthelp",   false, "b",   NULL, execSetWillRequestHelp);
 	ABLi_addFunction("tdebugstring",         false, "C",   NULL, execTDebugString);
 	ABLi_addFunction("corewait",             false, "r",   NULL, execCoreWaitOmni);
-	ABLi_addFunction("coreguard",            false, "Ri",  NULL, execCoreGuardOmni);
-	ABLi_addFunction("corepatrol",           false, "RR",  NULL, execCorePatrolOmni);
+	ABLi_addFunction("coreguard",            false, "*i",  NULL, execCoreGuardOmni);
+	ABLi_addFunction("corepatrol",           false, "**",  NULL, execCorePatrolOmni);
 	ABLi_addFunction("isdeadorfled",         false, "i",   "b",  execIsDeadOrFled);
 	ABLi_addFunction("printteamstatus",      false, "i",   NULL, execPrintTeamStatus);
 
