@@ -1684,7 +1684,7 @@ void GameObjectManager::update (bool terrain, bool movers, bool other)
 	// manager owns. Uses the three virtual accessors added on GameObject base.
 	{
 		const long maxObjs = getMaxObjects();
-		for (long i = 0; i <= maxObjs; i++) {
+		for (long i = 1; i <= maxObjs; i++) {
 			GameObjectPtr obj = objList[i];
 			if (!obj) continue;
 			bool activeThisFrame_instr =

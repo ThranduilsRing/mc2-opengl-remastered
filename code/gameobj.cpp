@@ -73,6 +73,10 @@
 #include"comndr.h"
 #endif
 
+#include <stdlib.h>  // getenv
+#include <stdio.h>   // printf, fflush
+#include <stdint.h>
+
 //---------------------------------------------------------------------------
 extern GameLog* CombatLog;
 
@@ -93,10 +97,6 @@ bool GameObject::initialize = false;
 //---------------------------------------------------------------------------
 // Tier-1 instrumentation (stability spec §3.1-3.4)
 //---------------------------------------------------------------------------
-#include <stdlib.h>  // getenv
-#include <stdio.h>   // printf, fflush
-#include <stdint.h>
-
 // Defined at file scope in GameOS/gameos/gameosmain.cpp:26 (Commit 1).
 extern uint32_t g_mc2FrameCounter;
 
