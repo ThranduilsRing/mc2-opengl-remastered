@@ -29,7 +29,7 @@
 
 **Commit 2 (destroy wrapper, no conversions yet):**
 - `code/gameobj.h` — new members `framesSinceActive` (uint8_t), `lastUpdateRet` (int32_t, default -1); `destroy(const char*, const char*, int)` method declaration; `MC2_DESTROY(obj, reason)` macro; reasons taxonomy comment block (filled by commit 3).
-- `code/gameobj.cpp` — `GameObject::destroy` implementation with early field snapshot, double-destroy handling, env-gated log print; `getObjectClassName(ObjectClass)` switch-table helper.
+- `code/gameobj.cpp` — `GameObject::destroy_instr` implementation with early field snapshot, double-destroy handling, env-gated log print; `getObjectClassName(ObjectClass)` switch-table helper.
 - `code/objmgr.cpp` — single composite-active-decision snippet that updates `framesSinceActive` each frame, placed in `GameObjectManager::update()` (the per-object sweep loop).
 - `code/*.cpp` (subset) — sites where `update()` is called and its return value observed: cache into `obj->lastUpdateRet` immediately. Identified by grep during task.
 
@@ -496,7 +496,7 @@ EOF
 
 ---
 
-## Commit 2: GameObject::destroy Wrapper + Helper + Counter (no site conversions)
+## Commit 2: GameObject::destroy_instr Wrapper + Helper + Counter (no site conversions)
 
 ### Task 8: Add `framesSinceActive` + `lastUpdateRet` fields to `GameObject`
 
@@ -694,7 +694,7 @@ const char* getObjectClassName(ObjectClass kind) {
 
 Implementer: open the `ObjectClass` enum and ensure every case is covered. If an enumerator name differs from the above (common in older codebases — e.g., `MECH` vs `BATTLEMECH`), use the actual enum spelling.
 
-### Task 12: Add `GameObject::destroy` + `MC2_DESTROY` macro
+### Task 12: Add `GameObject::destroy_instr` + `MC2_DESTROY` macro
 
 **Files:**
 - Modify: `code/gameobj.h` (method declaration, macro, taxonomy comment placeholder)
@@ -736,7 +736,7 @@ extern uint32_t g_mc2FrameCounter;  // defined by TGL drain (Task 5) or a shared
 // If no shared counter exists, declare one locally in this file and increment
 // alongside the TGL drain — cheap, and this instrumentation needs a frame tag.
 
-void GameObject::destroy(const char* reason, const char* file, int line) {
+void GameObject::destroy_instr(const char* reason, const char* file, int line) {
     // 1. Snapshot all log fields FIRST, before any other logic runs (spec §3.2).
     const int         snap_exists_was      = getExists() ? 1 : 0;
     const ObjectClass snap_kind            = objectClass;
@@ -802,9 +802,9 @@ Play 2 minutes of mission gameplay (kill a mech, watch buildings destroyed, let 
 ```bash
 git add code/gameobj.h code/gameobj.cpp code/objmgr.cpp code/actor.h code/artlry.h  # + any update-call-site files from Task 10
 git commit -m "$(cat <<'EOF'
-feat(instr): GameObject::destroy wrapper + helper + frames-active counter
+feat(instr): GameObject::destroy_instr wrapper + helper + frames-active counter
 
-Adds GameObject::destroy(reason, file, line), MC2_DESTROY macro,
+Adds GameObject::destroy_instr(reason, file, line), MC2_DESTROY macro,
 getObjectClassName helper, framesSinceActive counter (single-site update
 in objmgr sweep), and lastUpdateRet cache. Zero call-site conversions
 in this commit — dormant until commit 3 converts the 34 literal
@@ -910,7 +910,7 @@ Likely reasons by file (implementer confirms):
 grep -rn 'setExists\s*(\s*false' code/ mclib/ GameOS/ --include='*.cpp' --include='*.h'
 ```
 
-Expected: exactly one result — `code/gameobj.cpp:<linenum>: setExists(false);` (the internal call inside `GameObject::destroy`). Zero elsewhere.
+Expected: exactly one result — `code/gameobj.cpp:<linenum>: setExists(false);` (the internal call inside `GameObject::destroy_instr`). Zero elsewhere.
 
 ### Task 17: Review 4 non-literal `setExists(<expr>)` sites
 
@@ -1049,7 +1049,7 @@ Expected: a burst of lines at mission end with `reason=mission_cleanup` / `missi
 grep -rn 'setExists\s*(\s*false' code/ mclib/ GameOS/ --include='*.cpp' --include='*.h'
 ```
 
-Expected: exactly one line — the internal call inside `GameObject::destroy`.
+Expected: exactly one line — the internal call inside `GameObject::destroy_instr`.
 
 ### Task 20: Commit 3
 
@@ -1064,7 +1064,7 @@ reason), reviews 4 non-literal setExists(<expr>) sites, dedupes the
 reason strings, and commits the canonical taxonomy as a comment block
 above destroy() in code/gameobj.h.
 
-Invariant: grep for setExists(false) outside GameObject::destroy now
+Invariant: grep for setExists(false) outside GameObject::destroy_instr now
 returns zero hits.
 
 Part 3 of 4 for stability tier-1 instrumentation. See
@@ -1300,7 +1300,7 @@ Expected: one hit at or near line 463.
 ```bash
 #!/bin/sh
 # scripts/check-destroy-invariant.sh
-# Enforces: all setExists(false) call sites outside GameObject::destroy
+# Enforces: all setExists(false) call sites outside GameObject::destroy_instr
 # are violations (stability spec §3.8).
 #
 # Portability notes:
@@ -1311,13 +1311,13 @@ Expected: one hit at or near line 463.
 set -e
 violations=0
 
-# Literal: setExists(false) must only appear inside GameObject::destroy
+# Literal: setExists(false) must only appear inside GameObject::destroy_instr
 # (code/gameobj.cpp).
 lits=$(grep -rEn 'setExists[[:space:]]*\([[:space:]]*false' code/ mclib/ GameOS/ \
     --include='*.cpp' --include='*.h' \
     | grep -v 'code/gameobj.cpp' || true)
 if [ -n "$lits" ]; then
-    echo "[INVARIANT] literal setExists(false) outside GameObject::destroy:"
+    echo "[INVARIANT] literal setExists(false) outside GameObject::destroy_instr:"
     echo "$lits"
     violations=1
 fi
@@ -1399,7 +1399,7 @@ Before any commit that touches object lifecycle:
 sh scripts/check-destroy-invariant.sh
 ```
 
-Exit 0 = no literal `setExists(false)` outside `GameObject::destroy`. Non-literal sites are flagged for manual review; the script does not fail on them.
+Exit 0 = no literal `setExists(false)` outside `GameObject::destroy_instr`. Non-literal sites are flagged for manual review; the script does not fail on them.
 ```
 
 ### Task 26: Build, deploy, verify GL errors captured

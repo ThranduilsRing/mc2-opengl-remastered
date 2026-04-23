@@ -11,7 +11,7 @@ Land the **instrumentation** layer for three known silent-failure modes in MC2. 
 
 ### In scope
 1. **TGL pool exhaustion** — one-line-per-broken-frame log + monotonic total, so "shapes just vanished" stops being a mystery.
-2. **Object destruction visibility** — `GameObject::destroy(reason, file, line)` wrapper with cull/lifecycle snapshot; convert every literal `setExists(false)` call site.
+2. **Object destruction visibility** — `GameObject::destroy_instr(reason, file, line)` wrapper with cull/lifecycle snapshot; convert every literal `setExists(false)` call site.
 3. **OpenGL error drain** — `drainGLErrors("<pass>")` at seven named pass boundaries; print-by-default so a Release-crash triager sees errors without setting an env var.
 
 ### Explicitly deferred
@@ -22,7 +22,7 @@ Land the **instrumentation** layer for three known silent-failure modes in MC2. 
 - CI grep gate for the destruction-wrapper invariant (needs CI infra).
 
 ### Success criteria
-- **All 34 literal `setExists(false)` sites** plus the **4 non-literal `setExists(<expr>)` sites** converted or reviewed. After implementation, `grep -rn 'setExists\s*(' code/ mclib/ GameOS/ --include='*.cpp' --include='*.h'` returns only `(true)` calls and the single internal call inside `GameObject::destroy`.
+- **All 34 literal `setExists(false)` sites** plus the **4 non-literal `setExists(<expr>)` sites** converted or reviewed. After implementation, `grep -rn 'setExists\s*(' code/ mclib/ GameOS/ --include='*.cpp' --include='*.h'` returns only `(true)` calls and the single internal call inside `GameObject::destroy_instr`.
 - **Baseline perf:** Mission `mis0101` loaded from main menu, camera at spawn position, 30-second Tracy capture. With all three gates OFF:
   - Median frame time within 2% of pre-change baseline.
   - P99 frame time within 5% of baseline.
@@ -126,28 +126,34 @@ This is the "did this ever happen" signal. At 200fps that's a 3-second cadence �
 Add to `code/gameobj.h`:
 
 ```cpp
-// public method on GameObject
-void destroy(const char* reason, const char* file, int line);
+// public method on GameObject.
+// Name is destroy_instr (not destroy) because GameObject already has
+// a virtual void destroy(void) in its destructor chain; a same-named
+// overload would be hidden in every derived class via C++ name-hiding
+// rules, and call sites like MC2_DESTROY(mech, "x") would fail to
+// compile against the new base overload. destroy_instr keeps the
+// contract surgical and searchable.
+void destroy_instr(const char* reason, const char* file, int line);
 ```
 
 And a macro for call sites:
 
 ```cpp
-#define MC2_DESTROY(obj, reason) (obj)->destroy((reason), __FILE__, __LINE__)
+#define MC2_DESTROY(obj, reason) (obj)->destroy_instr((reason), __FILE__, __LINE__)
 ```
 
 Rationale for macro over `std::source_location`: MC2 is C++17-era MSVC with mixed conventions; `__FILE__ __LINE__` macros match the existing codebase style. `std::source_location` would be a singleton style change for this one API.
 
 ### 3.2 Implementation
 
-`GameObject::destroy` in `code/gameobj.cpp`:
+`GameObject::destroy_instr` in `code/gameobj.cpp`:
 
 1. **Snapshot all log fields first**, before any other logic runs. `kind`, `cull`, `block_active`, `update_ret`, `exists_was`, `framesSinceActive` are read in the first three lines of the function into locals. Prevents teardown logic anywhere in the call chain from stomping a field the log later reports. The snapshot locals — not the live fields — are what the log emits.
 2. **Double-destroy semantics.** If `exists_was` is already `false`, emit the log line (with `exists_was=0`, which §3.4 already renders) and return *without* calling `setExists(false)` a second time. Legitimate case: mission cleanup sweeping objects that combat already killed. Explicitly **not** an assert — an assert here would turn a latent bug into a crash during an instrumentation-only change, violating the "no behavior changes" premise of this spec.
 3. If `exists_was` was `true`, call `setExists(false)` (unchanged existing behavior).
 4. If `MC2_DESTROY_TRACE` env var is set, emit one log line (format §3.4).
 
-**Null-pointer contract.** `MC2_DESTROY(obj, reason)` expands to `obj->destroy(...)` — same null-dereference contract as every current direct `setExists(false)` call site. The wrapper does **not** null-check. Callers responsible for ensuring `obj != nullptr`, same as today. Adding a null-check here would be a behavior change (convert a would-be crash into a silent no-op) and is out of scope for this spec.
+**Null-pointer contract.** `MC2_DESTROY(obj, reason)` expands to `obj->destroy_instr(...)` — same null-dereference contract as every current direct `setExists(false)` call site. The wrapper does **not** null-check. Callers responsible for ensuring `obj != nullptr`, same as today. Adding a null-check here would be a behavior change (convert a would-be crash into a silent no-op) and is out of scope for this spec.
 
 ### 3.3 `framesSinceActive` counter
 
@@ -234,7 +240,7 @@ After the 34-site conversion pass, run:
 grep -rh 'MC2_DESTROY' code/ mclib/ GameOS/ --include='*.cpp' | grep -oP '"\K[^"]+' | sort -u
 ```
 
-Collapse near-duplicates (`update_false` / `update_returned_false` / `bad_update` → single canonical `update_false`). Commit the final taxonomy as a comment block above `destroy()` in `gameobj.h`:
+Collapse near-duplicates (`update_false` / `update_returned_false` / `bad_update` → single canonical `update_false`). Commit the final taxonomy as a comment block above `destroy_instr()` in `gameobj.h`:
 ```cpp
 // Canonical destruction reasons (keep in sync with MC2_DESTROY call sites):
 //   update_false        — update() returned false
@@ -245,7 +251,7 @@ Collapse near-duplicates (`update_false` / `update_returned_false` / `bad_update
 
 ### 3.8 Invariant
 
-> All `setExists(false)` call sites outside `GameObject::destroy` are violations. `GameObject::destroy` is the only legitimate caller of `setExists(false)`.
+> All `setExists(false)` call sites outside `GameObject::destroy_instr` are violations. `GameObject::destroy_instr` is the only legitimate caller of `setExists(false)`.
 
 **Enforcement (this spec):**
 - Checked-in script `scripts/check-destroy-invariant.sh` (committed in commit 4). Runs the literal + non-literal greps described below, prints violations (or `OK` if clean), and exits non-zero if violations exist:
@@ -256,11 +262,11 @@ Collapse near-duplicates (`update_false` / `update_returned_false` / `bad_update
 set -e
 violations=0
 
-# Literal: setExists(false) must only appear inside GameObject::destroy (code/gameobj.cpp).
+# Literal: setExists(false) must only appear inside GameObject::destroy_instr (code/gameobj.cpp).
 # Uses grep -E with POSIX [[:space:]]* — plain grep / BRE does NOT interpret \s.
 lits=$(grep -rEn 'setExists[[:space:]]*\([[:space:]]*false' code/ mclib/ GameOS/ --include='*.cpp' --include='*.h' | grep -v 'code/gameobj.cpp' || true)
 if [ -n "$lits" ]; then
-  echo "[INVARIANT] literal setExists(false) outside GameObject::destroy:"
+  echo "[INVARIANT] literal setExists(false) outside GameObject::destroy_instr:"
   echo "$lits"
   violations=1
 fi
@@ -381,8 +387,8 @@ Four commits on `claude/stability-tier1` (destruction wrapper split to keep bise
 
 1. `feat(instr): TGL pool exhaustion trace + monotonic summary`
    - Pool method signatures, macros, `recordNull`, frame-end drain, log formats.
-2. `feat(instr): GameObject::destroy wrapper + helper + frames-active counter`
-   - `GameObject::destroy` method, `MC2_DESTROY` macro, `getObjectClassName` helper, `framesSinceActive` field + single-site update, log formatter. **Zero call-site conversions** — the old `setExists(false)` sites are untouched.
+2. `feat(instr): GameObject::destroy_instr wrapper + helper + frames-active counter`
+   - `GameObject::destroy_instr` method, `MC2_DESTROY` macro, `getObjectClassName` helper, `framesSinceActive` field + single-site update, log formatter. **Zero call-site conversions** — the old `setExists(false)` sites are untouched.
 3. `feat(instr): convert 34 setExists(false) sites to MC2_DESTROY + dedup taxonomy`
    - All literal-site conversions, 4 non-literal-site manual reviews, reason-string dedup pass, taxonomy comment block in `gameobj.h`.
 4. `feat(instr): GL error drain at 7 pass boundaries + startup banner`

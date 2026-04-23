@@ -137,4 +137,4 @@ Before any commit that touches object lifecycle:
 sh scripts/check-destroy-invariant.sh
 ```
 
-Exit 0 = no literal `setExists(false)` outside `GameObject::destroy`. Non-literal sites are flagged for manual review; the script does not fail on them.
+Exit 0 = no literal `setExists(false)` outside `GameObject::destroy_instr`. Non-literal sites are flagged for manual review; the script does not fail on them.

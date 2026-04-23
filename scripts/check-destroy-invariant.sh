@@ -1,6 +1,6 @@
 #!/bin/sh
 # scripts/check-destroy-invariant.sh
-# Enforces: all setExists(false) call sites outside GameObject::destroy
+# Enforces: all setExists(false) call sites outside GameObject::destroy_instr
 # are violations (stability spec §3.8).
 #
 # Portability notes:
@@ -11,7 +11,7 @@
 set -e
 violations=0
 
-# Literal: setExists(false) must only appear inside GameObject::destroy
+# Literal: setExists(false) must only appear inside GameObject::destroy_instr
 # (code/gameobj.cpp). Comment lines (//) are skipped — wrapper docs in
 # code/gameobj.h reference the symbol literally without calling it.
 lits=$(grep -rEn 'setExists[[:space:]]*\([[:space:]]*false' code/ mclib/ GameOS/ \
@@ -19,7 +19,7 @@ lits=$(grep -rEn 'setExists[[:space:]]*\([[:space:]]*false' code/ mclib/ GameOS/
     | grep -v 'code/gameobj.cpp' \
     | grep -Ev ':[[:space:]]*//' || true)
 if [ -n "$lits" ]; then
-    echo "[INVARIANT] literal setExists(false) outside GameObject::destroy:"
+    echo "[INVARIANT] literal setExists(false) outside GameObject::destroy_instr:"
     echo "$lits"
     violations=1
 fi
