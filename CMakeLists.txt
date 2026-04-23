@@ -191,6 +191,7 @@ set(SOURCES
     "code/mpstats.cpp"
     "code/multplyr.cpp"
     "code/mc2movie.cpp"
+    "code/mc2video.cpp"
     )
 
 

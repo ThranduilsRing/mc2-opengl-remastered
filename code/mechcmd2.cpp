@@ -61,6 +61,7 @@
 #endif
 
 #include "gos_static_prop_killswitch.h"
+#include "mc2video.h"
 
 #ifndef PREFS_H
 #include"prefs.h"
@@ -1058,9 +1059,9 @@ void __stdcall InitializeGameEngine()
 		// Read in System.CFG
 		{ ZoneScopedN("InitializeGameEngine system.cfg");
 		FitIniFilePtr systemFile = new FitIniFile;
-	
+
 	#ifdef _DEBUG
-		long systemOpenResult = 
+		long systemOpenResult =
 	#endif
 			systemFile->open("system.cfg");
 			   
@@ -1561,7 +1562,7 @@ void __stdcall InitializeGameEngine()
 		*/
 	
 		/* load and apply options from "options.cfg" */
-		{ ZoneScopedN("InitializeGameEngine prefs.applyPrefs"); prefs.load(); prefs.applyPrefs(); }
+		{ ZoneScopedN("InitializeGameEngine prefs.applyPrefs"); prefs.load(); prefs.applyPrefs(); ffmpegProbeAvailability(); }
 		}
 	
 	
