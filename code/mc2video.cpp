@@ -220,6 +220,83 @@ struct VideoSession {
     bool             eof    = false;
 };
 
+//-----------------------------------------------------------------------------
+// Audio-source helpers (Task 14)
+//-----------------------------------------------------------------------------
+
+// Returns true if a WAV sidecar was successfully started via
+// SoundSystem::playDigitalStream. Treats return value 0 (== NO_ERR in
+// all MC2 headers) as success; any other value means the stream
+// could not be started (file not found, mixer busy, etc.).
+static bool tryStartSidecarWAV(const char* waveShortName)
+{
+    if (!soundSystem || !waveShortName || !waveShortName[0]) return false;
+    long r = reinterpret_cast<SoundSystem*>(soundSystem)->playDigitalStream(waveShortName);
+    return (r == 0L);  // 0 == NO_ERR (project-wide constant)
+}
+
+// Returns true iff: an embedded audio stream was found, its decoder
+// opened, SwrContext was initialised, and beginVideoPCMStream succeeded.
+// On any failure, partial state (aCodec/swr) is torn down cleanly and
+// s->aStream is reset to -1.
+static bool tryOpenEmbeddedAudio(VideoSession* s)
+{
+    if (!s->fmt) return false;
+    s->aStream = av_find_best_stream(s->fmt, AVMEDIA_TYPE_AUDIO, -1, -1, nullptr, 0);
+    if (s->aStream < 0) return false;
+
+    AVStream* ast = s->fmt->streams[s->aStream];
+    const AVCodec* ac = avcodec_find_decoder(ast->codecpar->codec_id);
+    if (!ac) { s->aStream = -1; return false; }
+
+    s->aCodec = avcodec_alloc_context3(ac);
+    avcodec_parameters_to_context(s->aCodec, ast->codecpar);
+
+    SoundSystem* snd = reinterpret_cast<SoundSystem*>(soundSystem);
+    if (avcodec_open2(s->aCodec, ac, nullptr) != 0 ||
+        !snd ||
+        !snd->queryNativeFormat(&s->aOutRate, &s->aOutChannels))
+    {
+        if (s->aCodec) { avcodec_free_context(&s->aCodec); s->aCodec = nullptr; }
+        s->aStream = -1;
+        return false;
+    }
+
+    // Build SwrContext.
+    AVChannelLayout inLayout;
+    av_channel_layout_copy(&inLayout, &s->aCodec->ch_layout);
+    AVChannelLayout outLayout;
+    av_channel_layout_default(&outLayout, s->aOutChannels);
+
+    s->swr = nullptr;
+    int swrRet = swr_alloc_set_opts2(&s->swr,
+        &outLayout, AV_SAMPLE_FMT_S16, s->aOutRate,
+        &inLayout,  s->aCodec->sample_fmt, s->aCodec->sample_rate,
+        0, nullptr);
+    av_channel_layout_uninit(&inLayout);
+    av_channel_layout_uninit(&outLayout);
+
+    if (swrRet < 0 || !s->swr || swr_init(s->swr) < 0) {
+        if (s->swr)    { swr_free(&s->swr); }
+        if (s->aCodec) { avcodec_free_context(&s->aCodec); s->aCodec = nullptr; }
+        s->aStream = -1;
+        return false;
+    }
+
+    if (!snd->beginVideoPCMStream(s->aOutRate, s->aOutChannels)) {
+        swr_free(&s->swr);
+        avcodec_free_context(&s->aCodec);
+        s->aCodec = nullptr;
+        s->aStream = -1;
+        return false;
+    }
+
+    s->audioStreamStarted = true;
+    VIDEO_TRACE("audio: embedded stream opened, rate=%d ch=%d",
+                s->aOutRate, s->aOutChannels);
+    return true;
+}
+
 static void computeLetterboxQuad(int srcW, int srcH, double sar,
                                  int rectX, int rectY, int rectW, int rectH,
                                  float& x0, float& y0, float& x1, float& y1)
@@ -310,50 +387,32 @@ VideoSession* video_open(const VideoOpenParams& p, VideoOpenResult* out)
                          s->rectX, s->rectY, s->rectW, s->rectH,
                          s->quadX0, s->quadY0, s->quadX1, s->quadY1);
 
-    // 6. Audio stream — detect, then open decoder + resample chain (Task 12)
-    s->aStream = av_find_best_stream(s->fmt, AVMEDIA_TYPE_AUDIO, -1, -1, nullptr, 0);
-
-    if (s->aStream >= 0 && !p.useWaveFile) {
-        AVStream* ast = s->fmt->streams[s->aStream];
-        const AVCodec* ac = avcodec_find_decoder(ast->codecpar->codec_id);
-        if (ac) {
-            s->aCodec = avcodec_alloc_context3(ac);
-            avcodec_parameters_to_context(s->aCodec, ast->codecpar);
-            SoundSystem* snd = reinterpret_cast<SoundSystem*>(soundSystem);
-            if (avcodec_open2(s->aCodec, ac, nullptr) == 0 &&
-                snd &&
-                snd->queryNativeFormat(&s->aOutRate, &s->aOutChannels))
-            {
-                s->swr = swr_alloc();
-                AVChannelLayout inLayout;
-                av_channel_layout_copy(&inLayout, &s->aCodec->ch_layout);
-                AVChannelLayout outLayout;
-                av_channel_layout_default(&outLayout, s->aOutChannels);
-
-                swr_alloc_set_opts2(&s->swr,
-                    &outLayout, AV_SAMPLE_FMT_S16, s->aOutRate,
-                    &inLayout,  s->aCodec->sample_fmt, s->aCodec->sample_rate,
-                    0, nullptr);
-                swr_init(s->swr);
-                av_channel_layout_uninit(&inLayout);
-                av_channel_layout_uninit(&outLayout);
-
-                if (snd->beginVideoPCMStream(s->aOutRate, s->aOutChannels)) {
-                    s->audioStreamStarted = true;
-                    VIDEO_TRACE("audio: embedded stream opened, rate=%d ch=%d",
-                                s->aOutRate, s->aOutChannels);
-                } else {
-                    // beginVideoPCMStream failed (e.g. mixer not S16) — silent video
-                    swr_free(&s->swr);
-                    avcodec_free_context(&s->aCodec);
-                    s->aCodec = nullptr;
-                    s->aStream = -1;
-                    VIDEO_LOG("audio: beginVideoPCMStream failed, silent video");
+    // 6. Audio — precedence ladder (Task 14, spec §Audio-source precedence):
+    //   1. useWaveFile=true  → prefer sidecar WAV
+    //   2. useWaveFile=false → prefer embedded audio
+    //   3. if preferred fails, fall back to the other source
+    //   4. if both fail, play silent video
+    // Note: tryOpenEmbeddedAudio owns av_find_best_stream + decoder open.
+    //       s->aStream >= 0 iff embeddedOK. Wall-clock master kicks in
+    //       automatically when audioStreamStarted stays false.
+    {
+        bool sidecarOK  = false;
+        bool embeddedOK = false;
+        if (p.useWaveFile) {
+            sidecarOK = tryStartSidecarWAV(p.waveFileShortName);
+            if (!sidecarOK) {
+                embeddedOK = tryOpenEmbeddedAudio(s);
+                if (!embeddedOK) {
+                    VIDEO_LOG("audio: sidecar and embedded both unavailable; silent video");
                 }
-            } else {
-                if (s->aCodec) { avcodec_free_context(&s->aCodec); s->aCodec = nullptr; }
-                s->aStream = -1;
-                VIDEO_LOG("audio: decoder open or mixer query failed, silent video");
+            }
+        } else {
+            embeddedOK = tryOpenEmbeddedAudio(s);
+            if (!embeddedOK) {
+                sidecarOK = tryStartSidecarWAV(p.waveFileShortName);
+                if (!sidecarOK) {
+                    VIDEO_LOG("audio: embedded and sidecar both unavailable; silent video");
+                }
             }
         }
     }
