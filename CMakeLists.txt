@@ -230,6 +230,15 @@ if(MSVC)
     target_link_libraries(mc2 delayimp.lib)
 endif()
 
+# FFmpeg runtime DLLs — must sit next to mc2.exe (delay-load pattern
+# does not support subdirectories without SetDllDirectory calls).
+foreach(_dll ${FFmpegLGPL_RUNTIME_DLLS})
+    add_custom_command(TARGET mc2 POST_BUILD
+        COMMAND ${CMAKE_COMMAND} -E copy_if_different
+                "${_dll}" "$<TARGET_FILE_DIR:mc2>")
+endforeach()
+install(FILES ${FFmpegLGPL_RUNTIME_DLLS} DESTINATION ".")
+
 add_subdirectory("./res" "./out/res")
 add_subdirectory("./data_tools" "./out/data_tools")
 add_subdirectory("./text_tool" "./out/text_tool")
