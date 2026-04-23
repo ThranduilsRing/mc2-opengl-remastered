@@ -2543,20 +2543,19 @@ void ControlGui::initStatics( FitIniFile& file )
 	file.readIdLong( "right", 	videoRect.right );
 	file.readIdLong( "top", 	videoRect.top );
 	file.readIdLong( "bottom", 	videoRect.bottom );
-	videoRect.left += hiResOffsetX;
-	videoRect.right += hiResOffsetX;
-	videoRect.top += hiResOffsetY;
-	videoRect.bottom += hiResOffsetY;
+	// NOTE: videoRect is stored in layout-file-native (800x600-era)
+	// coordinates. hiResOffsetX/Y are NOT added here because
+	// initStatics runs before swapResolutions — at this point both
+	// offsets are still 0. The real offset is applied lazily at
+	// playMovie() time, when swapResolutions has already finalised
+	// hiResOffsetX/Y with the +x_correction/+y_correction adjustment.
 
 	file.seekBlock( "VideoTextBox" );
 	file.readIdLong( "left", 	videoTextRect.left );
 	file.readIdLong( "right", 	videoTextRect.right );
 	file.readIdLong( "top", 	videoTextRect.top );
 	file.readIdLong( "bottom", 	videoTextRect.bottom );
-	videoTextRect.left += hiResOffsetX;
-	videoTextRect.right += hiResOffsetX;
-	videoTextRect.top += hiResOffsetY;
-	videoTextRect.bottom += hiResOffsetY;
+	// Same timing issue as videoRect above: apply hiResOffset at use site.
 
 
 	if ( videoInfoCount )
@@ -2920,11 +2919,15 @@ void ControlGui::playMovie( const char* fileName )
 	if (moviePlaying)
 		return;
 
+	// Apply hiResOffsetX/Y at use time — they were still 0 when
+	// initStatics read videoRect from the layout file (swapResolutions
+	// runs later and mutates them). See the note at the VideoWindow
+	// block read for the full story.
 	RECT vRect;
-	vRect.left = videoRect.left;
-	vRect.right = videoRect.right;
-	vRect.top = videoRect.top;
-	vRect.bottom = videoRect.bottom;
+	vRect.left   = videoRect.left   + hiResOffsetX;
+	vRect.right  = videoRect.right  + hiResOffsetX;
+	vRect.top    = videoRect.top    + hiResOffsetY;
+	vRect.bottom = videoRect.bottom + hiResOffsetY;
 
 	//Chop everything but the actual name.
 	// Assume extension is BIK.

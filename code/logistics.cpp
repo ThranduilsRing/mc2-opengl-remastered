@@ -896,11 +896,17 @@ void Logistics::playFullScreenVideo( const char* fileName )
 	FullPathFileName path;
 	path.init( moviePath, fileName, ".bik" );
 
+	// Fossil 800x600 pixel strip removed (was top=100 bottom=500, a
+	// 400-px band that made "Houses Divided" / CNB News campaign
+	// cutscenes float at the top of high-res displays with large
+	// black padding below). Use the full window; letterbox math in
+	// mc2video.cpp keeps source aspect correct regardless of output
+	// resolution.
 	RECT movieRect;
-	movieRect.top = 100;
-	movieRect.left = 0;
-	movieRect.right = Environment.screenWidth;
-	movieRect.bottom = 500;
+	movieRect.top    = 0;
+	movieRect.left   = 0;
+	movieRect.right  = Environment.screenWidth;
+	movieRect.bottom = Environment.screenHeight;
 
 	bMovie = new MC2Movie;
 	bMovie->init(path,movieRect,true);
