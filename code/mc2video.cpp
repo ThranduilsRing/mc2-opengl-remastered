@@ -6,8 +6,10 @@
 #include <cstdio>
 #include <cstring>
 #include <cstdlib>
+#include <algorithm>   // std::min
 
 #include "file.h"   // fileExists
+#include "gameos.hpp"  // gos_NewEmptyTexture, gos_DestroyTexture, gos_Texture_Alpha, RECT_TEX, gosHint_DisableMipmap, DWORD
 extern char moviePath[80];  // defined in mclib/paths.cpp
 
 #if defined(_WIN32)
@@ -20,6 +22,7 @@ extern "C" {
 #include <libavcodec/avcodec.h>
 #include <libavutil/avutil.h>
 #include <libavutil/imgutils.h>
+#include <libavutil/time.h>
 #include <libswscale/swscale.h>
 #include <libswresample/swresample.h>
 }
@@ -154,17 +157,178 @@ bool resolveVideoCandidate(const char* shortName, bool preferUpscaled,
 // Session open/close/update/render — implemented in Tasks 9-15
 //-----------------------------------------------------------------------------
 struct VideoSession {
-    bool dummy;   // fields added incrementally by later tasks
+    // Demuxer / video decoder
+    AVFormatContext* fmt       = nullptr;
+    int              vStream   = -1;
+    AVCodecContext*  vCodec    = nullptr;
+    SwsContext*      sws       = nullptr;
+    AVFrame*         vFrame    = nullptr;
+    AVPacket*        pkt       = nullptr;
+    int              srcW = 0, srcH = 0;
+    double           sar = 1.0;
+    double           fps = 30.0;
+    double           timeBase = 0.0;   // seconds per PTS unit
+
+    // gos texture (Path GL-A)
+    DWORD            texHandle = 0;   // 0 == INVALID_TEXTURE_ID (caller must treat as invalid)
+
+    // Draw geometry (screen-space, computed once)
+    float            quadX0 = 0, quadY0 = 0, quadX1 = 0, quadY1 = 0;
+    int              rectX = 0, rectY = 0, rectW = 0, rectH = 0;
+    bool             frameReady = false;
+
+    // Playback clock (audio-master replaces wall clock in Task 13)
+    double           clockStart   = 0.0;
+    double           presentedPTS = -1.0;
+
+    // Decoded-but-not-yet-due frame (Task 10 uses these)
+    bool             pendingFrameValid = false;
+    double           pendingFramePTS   = 0.0;
+
+    // Audio — Task 12 fills these in (keep forward-compatible struct shape)
+    int              aStream   = -1;
+    AVCodecContext*  aCodec    = nullptr;
+    SwrContext*      swr       = nullptr;
+
+    // Lifecycle
+    bool             paused = false;
+    bool             eof    = false;
 };
 
-VideoSession* video_open(const VideoOpenParams& /*p*/, VideoOpenResult* out)
+static void computeLetterboxQuad(int srcW, int srcH, double sar,
+                                 int rectX, int rectY, int rectW, int rectH,
+                                 float& x0, float& y0, float& x1, float& y1)
 {
-    if (!g_ffmpegAvailable) return nullptr;
-    if (out) memset(out, 0, sizeof(*out));
-    return nullptr;  // Task 9
+    if (rectW <= 0 || rectH <= 0 || srcW <= 0 || srcH <= 0) {
+        x0 = (float)rectX; y0 = (float)rectY;
+        x1 = (float)(rectX + rectW); y1 = (float)(rectY + rectH);
+        return;
+    }
+    double srcAspectW = (double)srcW * sar;
+    double scale = std::min((double)rectW / srcAspectW, (double)rectH / srcH);
+    double quadW = srcAspectW * scale;
+    double quadH = srcH * scale;
+    double cx = rectX + rectW * 0.5;
+    double cy = rectY + rectH * 0.5;
+    x0 = (float)(cx - quadW * 0.5);
+    y0 = (float)(cy - quadH * 0.5);
+    x1 = (float)(cx + quadW * 0.5);
+    y1 = (float)(cy + quadH * 0.5);
 }
 
-void video_close(VideoSession* /*s*/) { /* Task 9 */ }
+VideoSession* video_open(const VideoOpenParams& p, VideoOpenResult* out)
+{
+    if (out) memset(out, 0, sizeof(*out));
+    if (!g_ffmpegAvailable || !p.resolvedPath) return nullptr;
+
+    VideoSession* s = new VideoSession();
+
+    // 1. Demux
+    if (avformat_open_input(&s->fmt, p.resolvedPath, nullptr, nullptr) < 0) {
+        VIDEO_LOG("avformat_open_input failed for '%s'", p.resolvedPath);
+        video_close(s); return nullptr;
+    }
+    if (avformat_find_stream_info(s->fmt, nullptr) < 0) {
+        VIDEO_LOG("avformat_find_stream_info failed for '%s'", p.resolvedPath);
+        video_close(s); return nullptr;
+    }
+
+    // 2. Video stream
+    s->vStream = av_find_best_stream(s->fmt, AVMEDIA_TYPE_VIDEO, -1, -1, nullptr, 0);
+    if (s->vStream < 0) {
+        VIDEO_LOG("no video stream in '%s'", p.resolvedPath);
+        video_close(s); return nullptr;
+    }
+    AVStream* vst = s->fmt->streams[s->vStream];
+    const AVCodec* vcodec = avcodec_find_decoder(vst->codecpar->codec_id);
+    if (!vcodec) { video_close(s); return nullptr; }
+    s->vCodec = avcodec_alloc_context3(vcodec);
+    avcodec_parameters_to_context(s->vCodec, vst->codecpar);
+    if (avcodec_open2(s->vCodec, vcodec, nullptr) < 0) {
+        VIDEO_LOG("video decoder open failed");
+        video_close(s); return nullptr;
+    }
+
+    s->srcW = s->vCodec->width;
+    s->srcH = s->vCodec->height;
+    s->sar  = (vst->sample_aspect_ratio.num && vst->sample_aspect_ratio.den)
+              ? av_q2d(vst->sample_aspect_ratio) : 1.0;
+    s->fps  = (vst->avg_frame_rate.num && vst->avg_frame_rate.den)
+              ? av_q2d(vst->avg_frame_rate) : 30.0;
+    s->timeBase = av_q2d(vst->time_base);
+
+    // 3. Swscale — target BGRA (matches gos_LockTexture pixel layout)
+    s->sws = sws_getContext(s->srcW, s->srcH, s->vCodec->pix_fmt,
+                             s->srcW, s->srcH, AV_PIX_FMT_BGRA,
+                             SWS_BILINEAR, nullptr, nullptr, nullptr);
+    if (!s->sws) { video_close(s); return nullptr; }
+
+    s->vFrame = av_frame_alloc();
+    s->pkt    = av_packet_alloc();
+
+    // 4. gos texture (Path GL-A) — sized to source, gos_Texture_Alpha = BGRA8.
+    //    RECT_TEX(w,h) packs non-square dims into one DWORD.
+    s->texHandle = gos_NewEmptyTexture(gos_Texture_Alpha,
+                                        "mc2video",
+                                        RECT_TEX((DWORD)s->srcW, (DWORD)s->srcH),
+                                        gosHint_DisableMipmap);
+    if (s->texHandle == 0) {
+        VIDEO_LOG("gos_NewEmptyTexture failed %dx%d", s->srcW, s->srcH);
+        video_close(s); return nullptr;
+    }
+
+    // 5. Quad geometry
+    s->rectX = 0; s->rectY = 0;
+    s->rectW = p.destRectW;
+    s->rectH = p.destRectH;
+    computeLetterboxQuad(s->srcW, s->srcH, s->sar,
+                         s->rectX, s->rectY, s->rectW, s->rectH,
+                         s->quadX0, s->quadY0, s->quadX1, s->quadY1);
+
+    // 6. Audio stream detection (Task 12 opens the decoder)
+    s->aStream = av_find_best_stream(s->fmt, AVMEDIA_TYPE_AUDIO, -1, -1, nullptr, 0);
+
+    // 7. Fill out
+    if (out) {
+        out->srcW = s->srcW; out->srcH = s->srcH;
+        out->sar  = s->sar;  out->fps  = s->fps;
+        out->hasAudio = (s->aStream >= 0);
+        out->hasAlpha = (s->vCodec->pix_fmt == AV_PIX_FMT_YUVA420P ||
+                         s->vCodec->pix_fmt == AV_PIX_FMT_ARGB ||
+                         s->vCodec->pix_fmt == AV_PIX_FMT_RGBA ||
+                         s->vCodec->pix_fmt == AV_PIX_FMT_BGRA);
+        out->glTextureId = 0;             // Path GL-A: we don't expose GL id
+        out->quadX0 = s->quadX0; out->quadY0 = s->quadY0;
+        out->quadX1 = s->quadX1; out->quadY1 = s->quadY1;
+    }
+
+    VIDEO_LOG("init: opened '%s' (%dx%d, sar=%.3f, fps=%.2f, audio=%d)",
+              p.resolvedPath, s->srcW, s->srcH, s->sar, s->fps, (int)(s->aStream >= 0));
+
+    // 8. Clock
+    s->clockStart   = (double)av_gettime() / 1000000.0;
+    s->presentedPTS = -1.0;
+
+    return s;
+}
+
+void video_close(VideoSession* s)
+{
+    if (!s) return;
+    if (s->texHandle != 0) {
+        gos_DestroyTexture(s->texHandle);
+        s->texHandle = 0;
+    }
+    if (s->vFrame)  { av_frame_free(&s->vFrame); }
+    if (s->pkt)     { av_packet_free(&s->pkt); }
+    if (s->sws)     { sws_freeContext(s->sws); s->sws = nullptr; }
+    if (s->vCodec)  { avcodec_free_context(&s->vCodec); }
+    if (s->aCodec)  { avcodec_free_context(&s->aCodec); }
+    if (s->swr)     { swr_free(&s->swr); }
+    if (s->fmt)     { avformat_close_input(&s->fmt); }
+    delete s;
+}
+
 bool video_update(VideoSession* /*s*/) { return true; /* Task 10 */ }
 void video_render(VideoSession* /*s*/) { /* Task 11 */ }
 void video_pause(VideoSession* /*s*/, bool /*paused*/) { /* Task 15 */ }
