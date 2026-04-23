@@ -3,7 +3,15 @@
 **Date:** 2026-04-23
 **Branch:** `claude/stability-tier1` (based on `claude/nifty-mendeleev`)
 **Worktree:** `A:/Games/mc2-opengl-src/.claude/worktrees/stability-tier1`
-**Status:** Approved for implementation planning.
+**Status:** Implemented. See commits on `claude/stability-tier1`:
+  - e5c30983 / 09b7071  — TGL pool trace + style
+  - a7995ee / 753755d   — destroy_instr wrapper + style
+  - 2b81865 / 40e7342   — 34 conversions + setOwner ordering
+  - d4ca562 / 0edadd6   — GL drain + banner + script + banner/setvbuf fix
+  - e03e108             — g_mc2FrameCounter owner moved to mclib (aseconv fix)
+  - 17b9ab0             — docs alignment with destroy_instr
+  - Task 0 (pre) + Task 27 (post) perf baselines: pending user capture.
+  - In-game verification per Task 6/13/19/26: pending user.
 
 ## 1. Goal and Scope
 
