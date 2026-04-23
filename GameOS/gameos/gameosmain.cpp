@@ -17,6 +17,14 @@
 
 #include <signal.h>
 #include "gos_profiler.h"
+#include "tgl.h"   // drainTglPoolStats / drainTglPoolStatsOnShutdown (Tier-1 instr)
+
+// Tier-1 instrumentation (stability spec §5.1): single source of truth for
+// the frame=... field used by TGL_POOL, DESTROY, and GL_ERROR log lines.
+// Definition lives in mclib/tgl.cpp so data tools (aseconv, pak, makefst,
+// makersp) that link mclib without gameosmain still resolve the symbol.
+// This TU owns the per-frame increment; everyone else is a read-only extern.
+extern uint32_t g_mc2FrameCounter;
 
 // Force discrete GPU selection on hybrid-graphics laptops (NVIDIA Optimus,
 // AMD PowerXpress). Without these exports, an unknown OpenGL executable is
@@ -357,6 +365,7 @@ static void draw_screen( void )
 
     // Replay buffered HUD draws to FB 0 (after post-process)
     gos_RendererFlushHUDBatch();
+    drainGLErrors("hud");
     //CHECK_GL_ERROR;
 }
 
@@ -462,13 +471,31 @@ void GLAPIENTRY OpenGLDebugLog(GLenum source, GLenum type, GLuint id, GLenum sev
 #ifndef DISABLE_GAMEOS_MAIN
 int main(int argc, char** argv)
 {
-    //signal(SIGTRAP, SIG_IGN);
-
     // Make stdout line-buffered (was fully buffered on Windows when redirected, hiding
     // output past the last explicit fflush before a crash). Harmless for interactive
     // runs; invaluable for diagnosing startup crashes when stdout is piped to a file.
     setvbuf(stdout, NULL, _IONBF, 0);
     setvbuf(stderr, NULL, _IONBF, 0);
+
+    // Tier-1 instrumentation: one-line banner so every log file is
+    // self-describing about which traces are enabled.
+    {
+        const bool tgl     = (getenv("MC2_TGL_POOL_TRACE")       != nullptr);
+        const bool destr   = (getenv("MC2_DESTROY_TRACE")        != nullptr);
+        // GL_ERROR is default-on; the env var suppresses it.
+        const bool glprint = (getenv("MC2_GL_ERROR_DRAIN_SILENT") == nullptr);
+        const char* build  =
+#ifdef MC2_BUILD_HASH
+            MC2_BUILD_HASH
+#else
+            "UNKNOWN"
+#endif
+            ;
+        printf("[INSTR v1] enabled: tgl_pool=%d destroy=%d gl_error_print=%d build=%s\n",
+            tgl ? 1 : 0, destr ? 1 : 0, glprint ? 1 : 0, build);
+    }
+
+    //signal(SIGTRAP, SIG_IGN);
 
     g_startup_t0 = SDL_GetPerformanceCounter();
     startup_phase("process_start");
@@ -617,6 +644,16 @@ int main(int argc, char** argv)
         }
 
         {
+            // Tier-1 instrumentation (stability spec §2.3): bump canonical
+            // frame counter, then drain TGL pool null counters. Per-frame
+            // line is env-gated; monotonic summary every 600 frames is not.
+            ZoneScopedN("Frame.DrainTglPoolStats");
+            g_mc2FrameCounter++;
+            drainTglPoolStats();
+            drainGLErrors("frame");
+        }
+
+        {
             ZoneScopedN("SwapWindow");
             graphics::swap_window(win);
             static bool s_first_frame_logged = false;
@@ -655,6 +692,10 @@ int main(int argc, char** argv)
     if (getValidateConfig().enabled) {
         validateWriteResults(Environment.drawableWidth, Environment.drawableHeight);
     }
+
+    // Tier-1 instrumentation (stability spec §2.5): final monotonic summary
+    // before tearing down render/audio. Always emitted regardless of env gate.
+    drainTglPoolStatsOnShutdown();
 
     Environment.TerminateGameEngine();
 

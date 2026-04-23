@@ -33,3 +33,8 @@ void validateRecordShaderError(const char* msg);
 void validateRecordFrame(float frameMs);
 bool validateShouldExit();
 void validateWriteResults(int viewportW, int viewportH);
+
+// Tier-1 instrumentation: drain the GL error queue at a render-pass
+// boundary. Consumes pending errors (see spec §4.3). Always safe to call
+// — if there are no errors, it's a single glGetError() returning GL_NO_ERROR.
+void drainGLErrors(const char* pass);

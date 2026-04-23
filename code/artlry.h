@@ -211,6 +211,9 @@ class Artillery : public GameObject
 		
 		bool				inView;
 
+		// Tier-1 instrumentation (stability spec §3.3): Artillery has direct inView field.
+		bool inView_instr (void) const override { return inView != 0; }
+
 		Stuff::Vector3D		iFacePosition;
 		
 		

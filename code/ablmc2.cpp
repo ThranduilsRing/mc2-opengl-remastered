@@ -2192,12 +2192,12 @@ void execObjectSuicide (void) {
 		// Run through all objects fitting the group.
 		long numObjects = getMovers(objectId, moverList);
 		for (long i = 0; i < numObjects; i++)
-			moverList[i]->setExists(false);
+			MC2_DESTROY(moverList[i], "abl_explicit_destroy");
 		}
 	else {
 		object1 = getObject(objectId);
 		if (object1)
-			object1->setExists(false);
+			MC2_DESTROY(object1, "abl_explicit_destroy");
 	}
 }
 			

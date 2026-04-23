@@ -34,6 +34,8 @@
 
 #include "platform_str.h"
 #include <stddef.h> // linux offsetof()
+#include <stdlib.h>
+#include <stdio.h>
 #include <cstdlib>
 #include <cstring>
 #include <new> // for placement new
@@ -1664,15 +1666,15 @@ long TG_Shape::MultiTransformShape (Stuff::Matrix4D *shapeToClip, Stuff::Point3D
 	
 	//At this point, we know we are going to process this shape,
 	// Get memory for its components from the pools!
-	listOfVertices = vertexPool->getVerticesFromPool(numVertices);
-	listOfColors = colorPool->getColorsFromPool(numVertices);
-	
-	listOfShadowTVertices = shadowPool->getShadowsFromPool(numVertices);
+	listOfVertices       = MC2_TGL_GET_VERTS_FOR_SHAPE(vertexPool, numVertices, this);
+	listOfColors         = MC2_TGL_GET_COLORS(colorPool, numVertices);
 
-	listOfTriangles = trianglePool->getTrianglesFromPool(numTriangles);
+	listOfShadowTVertices = MC2_TGL_GET_SHADOW(shadowPool, numVertices);
 
-	listOfVisibleFaces = facePool->getFacesFromPool(numTriangles);
-	listOfVisibleShadows = facePool->getFacesFromPool(numTriangles);
+	listOfTriangles      = MC2_TGL_GET_TRIANGLES(trianglePool, numTriangles);
+
+	listOfVisibleFaces   = MC2_TGL_GET_FACES(facePool, numTriangles);
+	listOfVisibleShadows = MC2_TGL_GET_FACES(facePool, numTriangles);
 
 	if (!listOfVertices ||
 		!listOfColors ||
@@ -3358,6 +3360,98 @@ long TG_Shape::RenderShadows (long startFace)
 	gos_SetRenderState( gos_State_Fog, 0);
 
 	return(startFace + numVisibleShadows);
+}
+
+//-------------------------------------------------------------------------------
+// Tier-1 instrumentation (stability spec §2.3-§2.5)
+//
+// Per-frame line is gated on MC2_TGL_POOL_TRACE; monotonic summary every 600
+// frames is unconditional. Pools are file-scope globals (see tgl.h:1306+ and
+// code/mission.cpp:3117). All calls happen on the render thread inside the
+// frame-end window — no locks needed.
+//-------------------------------------------------------------------------------
+static const bool s_tglPoolTrace = (getenv("MC2_TGL_POOL_TRACE") != nullptr);
+
+// Tier-1 instrumentation canonical frame counter. Defined here (in mclib)
+// rather than GameOS/gameos/gameosmain.cpp so data-tool targets (aseconv,
+// pak, makefst, makersp) that link mclib but NOT gameosmain still resolve
+// the symbol. The per-frame increment still lives in gameosmain.cpp's frame
+// loop; data tools never increment it and see a harmless zero.
+uint32_t g_mc2FrameCounter = 0;
+
+namespace {
+	// Emit one [TGL_POOL] line per pool with nulls this frame.
+	template<typename PoolT>
+	inline void emitPerFrameLine (PoolT* p, const char* poolLabel)
+	{
+		if (!p || p->nullCountThisFrame == 0) return;
+		printf("[TGL_POOL v1] frame=%u pool=%s nulls=%u first_caller=%s shape=%p req=%u high_water=%u/%u mono_total=%llu\n",
+			(unsigned)g_mc2FrameCounter,
+			poolLabel,
+			(unsigned)p->nullCountThisFrame,
+			p->firstNullSnapshot.caller ? p->firstNullSnapshot.caller : "?",
+			p->firstNullSnapshot.shape,
+			(unsigned)p->firstNullSnapshot.numRequested,
+			(unsigned)p->firstNullSnapshot.numUsed_at_failure,
+			(unsigned)p->firstNullSnapshot.totalCapacity,
+			(unsigned long long)p->nullCountMonotonic);
+	}
+	template<typename PoolT>
+	inline unsigned long long monoOf (PoolT* p) { return p ? (unsigned long long)p->nullCountMonotonic : 0ULL; }
+	template<typename PoolT>
+	inline void resetOf (PoolT* p) { if (p) p->resetFrameCounters(); }
+}
+
+void drainTglPoolStats (void)
+{
+	// Frame counter is incremented at the call site in gameosmain.cpp,
+	// immediately before drainTglPoolStats(). Do NOT increment here.
+
+	if (s_tglPoolTrace) {
+		emitPerFrameLine(vertexPool,   "vertex");
+		emitPerFrameLine(colorPool,    "color");
+		emitPerFrameLine(facePool,     "face");
+		emitPerFrameLine(shadowPool,   "shadow");
+		emitPerFrameLine(trianglePool, "triangle");
+		fflush(stdout);
+	}
+
+	// Monotonic summary every 600 frames. Always emit on shutdown (see
+	// drainTglPoolStatsOnShutdown). During the run, skip the periodic summary
+	// when every pool is still at zero — an all-zeros line provides no new
+	// diagnostic information and just adds noise at ~3s intervals on a clean
+	// run. First non-zero count triggers emission; shutdown still gets the
+	// final "did this ever happen" line regardless.
+	if ((g_mc2FrameCounter > 0) && ((g_mc2FrameCounter % 600) == 0)) {
+		const unsigned long long vM = monoOf(vertexPool);
+		const unsigned long long cM = monoOf(colorPool);
+		const unsigned long long fM = monoOf(facePool);
+		const unsigned long long sM = monoOf(shadowPool);
+		const unsigned long long tM = monoOf(trianglePool);
+		if ((vM | cM | fM | sM | tM) != 0ULL) {
+			printf("[TGL_POOL v1] summary mono_total={vertex:%llu, color:%llu, face:%llu, shadow:%llu, triangle:%llu} since=process_start\n",
+				vM, cM, fM, sM, tM);
+			fflush(stdout);
+		}
+	}
+
+	// Reset per-frame counters on all five pools.
+	resetOf(vertexPool);
+	resetOf(colorPool);
+	resetOf(facePool);
+	resetOf(shadowPool);
+	resetOf(trianglePool);
+}
+
+void drainTglPoolStatsOnShutdown (void)
+{
+	printf("[TGL_POOL v1] summary mono_total={vertex:%llu, color:%llu, face:%llu, shadow:%llu, triangle:%llu} since=process_start (shutdown)\n",
+		monoOf(vertexPool),
+		monoOf(colorPool),
+		monoOf(facePool),
+		monoOf(shadowPool),
+		monoOf(trianglePool));
+	fflush(stdout);
 }
 
 //-------------------------------------------------------------------------------

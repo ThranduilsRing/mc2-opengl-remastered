@@ -3,6 +3,7 @@
 #include <cstdio>
 #include <cstring>
 #include <cstdlib>
+#include <cstdint>
 #include <GL/glew.h>
 
 static ValidateConfig s_config = {};
@@ -167,4 +168,99 @@ void validateWriteResults(int viewportW, int viewportH) {
 
     fprintf(stderr, "VALIDATE: Results written to %s (exit_code=%d, %d frames, %.1fms avg)\n",
             s_config.logPath, s_telemetry.exitCode, s_telemetry.framesRendered, avgMs);
+}
+
+// -- Tier-1 instrumentation: GL error drain (stability spec §4) -------------
+
+#include <string.h>
+
+static const bool s_glErrorDrainSilent = (getenv("MC2_GL_ERROR_DRAIN_SILENT") != nullptr);
+
+// Seven known pass names (spec §4.1). Keep in the same order as the pass table.
+enum GlDrainPass { GLP_SHADOW_STATIC = 0, GLP_SHADOW_DYNAMIC, GLP_TERRAIN, GLP_OBJECTS_3D, GLP_POST_PROCESS, GLP_HUD, GLP_FRAME, GLP_COUNT };
+
+struct GlPassState {
+    const char*  name;
+    uint64_t     monoCount;         // monotonic total since process start
+    uint32_t     lastPrintFrame;    // frame of most recent first-error print
+    uint32_t     suppressedCount;   // errors accumulated during suppression window
+    bool         inSuppression;
+};
+
+static GlPassState s_glPassState[GLP_COUNT] = {
+    {"shadow_static",  0, 0, 0, false},
+    {"shadow_dynamic", 0, 0, 0, false},
+    {"terrain",        0, 0, 0, false},
+    {"objects_3d",     0, 0, 0, false},
+    {"post_process",   0, 0, 0, false},
+    {"hud",            0, 0, 0, false},
+    {"frame",          0, 0, 0, false},
+};
+
+extern uint32_t g_mc2FrameCounter;  // defined in mclib/tgl.cpp; incremented by gameosmain.cpp frame-end.
+
+static int passIndex(const char* name) {
+    for (int i = 0; i < GLP_COUNT; i++) {
+        if (strcmp(name, s_glPassState[i].name) == 0) return i;
+    }
+    return -1;
+}
+
+static const char* glErrorName(GLenum e) {
+    switch (e) {
+        case GL_INVALID_ENUM:                  return "GL_INVALID_ENUM";
+        case GL_INVALID_VALUE:                 return "GL_INVALID_VALUE";
+        case GL_INVALID_OPERATION:             return "GL_INVALID_OPERATION";
+        case GL_STACK_OVERFLOW:                return "GL_STACK_OVERFLOW";
+        case GL_STACK_UNDERFLOW:               return "GL_STACK_UNDERFLOW";
+        case GL_OUT_OF_MEMORY:                 return "GL_OUT_OF_MEMORY";
+        case GL_INVALID_FRAMEBUFFER_OPERATION: return "GL_INVALID_FRAMEBUFFER_OPERATION";
+#ifdef GL_CONTEXT_LOST
+        case GL_CONTEXT_LOST:                  return "GL_CONTEXT_LOST";
+#endif
+        default:                               return "UNKNOWN";
+    }
+}
+
+void drainGLErrors(const char* pass) {
+    int pi = passIndex(pass);
+    if (pi < 0) return;  // unknown pass name — drop silently rather than crash
+    GlPassState& st = s_glPassState[pi];
+
+    uint32_t errorsThisFrame = 0;
+    GLenum err;
+    while ((err = glGetError()) != GL_NO_ERROR) {
+        errorsThisFrame++;
+        st.monoCount++;
+
+        // Print only the first error per (pass, frame), and only outside
+        // the 30-frame suppression window.
+        bool shouldPrint =
+               !s_glErrorDrainSilent
+            && errorsThisFrame == 1
+            && (g_mc2FrameCounter - st.lastPrintFrame) >= 30;
+
+        if (shouldPrint) {
+            // If we're exiting a suppression window, emit a summary line first.
+            if (st.inSuppression && st.suppressedCount > 0) {
+                printf("[GL_ERROR v1] pass=%s suppressed elapsed_frames=%u count_in_window=%u\n",
+                    st.name,
+                    (unsigned)(g_mc2FrameCounter - st.lastPrintFrame),
+                    (unsigned)st.suppressedCount);
+                fflush(stdout);
+            }
+            st.inSuppression   = false;
+            st.suppressedCount = 0;
+
+            printf("[GL_ERROR v1] frame=%u pass=%s code=%s(0x%04X) mono_count=%llu\n",
+                g_mc2FrameCounter, st.name, glErrorName(err), (unsigned)err,
+                (unsigned long long)st.monoCount);
+            fflush(stdout);
+            st.lastPrintFrame = g_mc2FrameCounter;
+        } else if (!s_glErrorDrainSilent && errorsThisFrame == 1) {
+            // First error this frame, but still in suppression window.
+            st.inSuppression = true;
+            st.suppressedCount++;
+        }
+    }
 }

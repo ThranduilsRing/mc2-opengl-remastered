@@ -366,7 +366,7 @@ void GameObjectManager::setNumObjects (long nMechs,
 			objList[curHandle++] = mechs[i];
 		}
 		for (i = numMechs; i < maxMechs; i++)
-			mechs[i]->setExists(false);
+			MC2_DESTROY(mechs[i], "pool_unused");
 	}
 
 	//--------------------------------------------------------------
@@ -382,7 +382,7 @@ void GameObjectManager::setNumObjects (long nMechs,
 			objList[curHandle++] = vehicles[i];
 		}
 		for (i = numVehicles; i < maxVehicles; i++)
-			vehicles[i]->setExists(false);
+			MC2_DESTROY(vehicles[i], "pool_unused");
 	}
 
 	//--------------------------------------------------------------
@@ -607,7 +607,7 @@ void GameObjectManager::freeMover (MoverPtr mover) {
 	bool foundIt = modifyMoverLists(mover, MOVERLIST_DELETE);
 	if (foundIt) {
 		mover->release();
-		mover->setExists(false);
+		MC2_DESTROY(mover, "mover_freed");
 		mover->setFlag(OBJECT_FLAG_REMOVED, true);
 		mover->setPartId(0);
 		watchList[mover->watchID] = NULL;
@@ -732,8 +732,8 @@ CarnagePtr GameObjectManager::getCarnage (CarnageEnumType carnageType) {
 
 void GameObjectManager::releaseCarnage (CarnagePtr obj) {
 
-	obj->setExists(false);
 	obj->setOwner(NULL);
+	MC2_DESTROY(obj, "pool_released");
 }
 
 //---------------------------------------------------------------------------
@@ -756,7 +756,7 @@ LightPtr GameObjectManager::getLight (void) {
 
 void GameObjectManager::releaseLight (LightPtr obj) {
 
-	obj->setExists(false);
+	MC2_DESTROY(obj, "pool_released");
 //	obj->setOwner(NULL);
 }
 
@@ -1679,6 +1679,26 @@ void GameObjectManager::update (bool terrain, bool movers, bool other)
 	//----------------------------
 	// Now, update game objects...
 
+	// Tier-1 instrumentation (stability spec §3.3): single source of truth for
+	// framesSinceActive. One sweep over objList covers every GameObject this
+	// manager owns. Uses the three virtual accessors added on GameObject base.
+	{
+		const long maxObjs = getMaxObjects();
+		for (long i = 1; i <= maxObjs; i++) {
+			GameObjectPtr obj = objList[i];
+			if (!obj) continue;
+			bool activeThisFrame_instr =
+			       obj->inView_instr()
+			    || obj->canBeSeen_instr()
+			    || obj->blockActive_instr();
+			if (activeThisFrame_instr) {
+				obj->framesSinceActive = 0;
+			} else if (obj->framesSinceActive < 255) {
+				obj->framesSinceActive++;
+			}
+		}
+	}
+
 	updateCaptureList();
 	
 	if (terrain && renderObjects)
@@ -1695,11 +1715,13 @@ void GameObjectManager::update (bool terrain, bool movers, bool other)
 		{
 			if (specialBuildings[spBuilding] && specialBuildings[spBuilding]->getExists())
 			{
-				if (!specialBuildings[spBuilding]->update())
+				long updateRet_instr = specialBuildings[spBuilding]->update();
+				specialBuildings[spBuilding]->lastUpdateRet = (int32_t)updateRet_instr;
+				if (!updateRet_instr)
 				{
 					//-----------------------------------------
 					// Update failed, so it no longer exists...
-					specialBuildings[spBuilding]->setExists(false);
+					MC2_DESTROY(specialBuildings[spBuilding], "update_false");
 				}
 				else
 				{
@@ -1715,11 +1737,13 @@ void GameObjectManager::update (bool terrain, bool movers, bool other)
 		{
 			if (gates[nGates] && gates[nGates]->getExists())
 			{
-				if (!gates[nGates]->update())
+				long updateRet_instr = gates[nGates]->update();
+				gates[nGates]->lastUpdateRet = (int32_t)updateRet_instr;
+				if (!updateRet_instr)
 				{
 					//-----------------------------------------
 					// Update failed, so it no longer exists...
-					gates[nGates]->setExists(false);
+					MC2_DESTROY(gates[nGates], "update_false");
 				}
 				else
 				{
@@ -1741,11 +1765,13 @@ void GameObjectManager::update (bool terrain, bool movers, bool other)
 						Terrain::objVertexActive[objList[objIndex]->getVertexNum()] &&
 						objList[objIndex]->getExists())
 					{
-						if (!objList[objIndex]->update())
+						long updateRet_instr = objList[objIndex]->update();
+						objList[objIndex]->lastUpdateRet = (int32_t)updateRet_instr;
+						if (!updateRet_instr)
 						{
 							//-----------------------------------------
 							// Update failed, so it no longer exists...
-							objList[objIndex]->setExists(false);
+							MC2_DESTROY(objList[objIndex], "update_false");
 						}
 						else
 						{
@@ -1774,8 +1800,10 @@ void GameObjectManager::update (bool terrain, bool movers, bool other)
 				MoverPtr mover = mechs[i];
 				if (mover && mover->getExists())
 				{
-					if (!mover->update())
-						mover->setExists(false);
+					long updateRet_instr = mover->update();
+					mover->lastUpdateRet = (int32_t)updateRet_instr;
+					if (!updateRet_instr)
+						MC2_DESTROY(mover, "update_false");
 					if (mover->getFlag(OBJECT_FLAG_REMOVED))
 						removeList[numRemoved++] = mover;
 				}
@@ -1790,8 +1818,10 @@ void GameObjectManager::update (bool terrain, bool movers, bool other)
 				MoverPtr mover = vehicles[i];
 				if (mover && mover->getExists())
 				{
-					if (!mover->update())
-						mover->setExists(false);
+					long updateRet_instr = mover->update();
+					mover->lastUpdateRet = (int32_t)updateRet_instr;
+					if (!updateRet_instr)
+						MC2_DESTROY(mover, "update_false");
 					if (mover->getFlag(OBJECT_FLAG_REMOVED))
 						removeList[numRemoved++] = mover;
 				}
@@ -1813,8 +1843,10 @@ void GameObjectManager::update (bool terrain, bool movers, bool other)
 			{
 				if (turrets[i] && turrets[i]->getExists())
 				{
-					if (!turrets[i]->update())
-						turrets[i]->setExists(false);
+					long updateRet_instr = turrets[i]->update();
+					turrets[i]->lastUpdateRet = (int32_t)updateRet_instr;
+					if (!updateRet_instr)
+						MC2_DESTROY(turrets[i], "update_false");
 				}
 			}
 		}
@@ -1822,8 +1854,10 @@ void GameObjectManager::update (bool terrain, bool movers, bool other)
 		if (weapons) {
 			for (long i=0;i<numWeapons;i++) {
 				if (weapons[i] && weapons[i]->getExists()) {
-					if (!weapons[i]->update())
-						weapons[i]->setExists(false);
+					long updateRet_instr = weapons[i]->update();
+					weapons[i]->lastUpdateRet = (int32_t)updateRet_instr;
+					if (!updateRet_instr)
+						MC2_DESTROY(weapons[i], "update_false");
 				}
 			}
 		}
@@ -1831,8 +1865,10 @@ void GameObjectManager::update (bool terrain, bool movers, bool other)
 		if (carnage) {
 			for (long i = 0; i < numCarnage; i++) {
 				if (carnage[i] && carnage[i]->getExists()) {
-					if (!carnage[i]->update())
-						carnage[i]->setExists(false);
+					long updateRet_instr = carnage[i]->update();
+					carnage[i]->lastUpdateRet = (int32_t)updateRet_instr;
+					if (!updateRet_instr)
+						MC2_DESTROY(carnage[i], "update_false");
 				}
 			}
 		}
@@ -1840,8 +1876,10 @@ void GameObjectManager::update (bool terrain, bool movers, bool other)
 		if (lights) {
 			for (long i = 0; i < numLights; i++) {
 				if (lights[i] && lights[i]->getExists()) {
-					if (!lights[i]->update())
-						lights[i]->setExists(false);
+					long updateRet_instr = lights[i]->update();
+					lights[i]->lastUpdateRet = (int32_t)updateRet_instr;
+					if (!updateRet_instr)
+						MC2_DESTROY(lights[i], "update_false");
 				}
 			}
 		}
@@ -1849,8 +1887,10 @@ void GameObjectManager::update (bool terrain, bool movers, bool other)
 		if (artillery) {
 			for (long i = 0; i < numArtillery; i++) {
 				if (artillery[i] && artillery[i]->getExists()) {
-					if (!artillery[i]->update())
-						artillery[i]->setExists(false);
+					long updateRet_instr = artillery[i]->update();
+					artillery[i]->lastUpdateRet = (int32_t)updateRet_instr;
+					if (!updateRet_instr)
+						MC2_DESTROY(artillery[i], "update_false");
 				}
 			}
 		}
@@ -2834,7 +2874,7 @@ void GameObjectManager::updateAppearancesOnly( bool terrain, bool movers, bool o
 			for (long i=0;i<numWeapons;i++) {
 				if (weapons[i] && weapons[i]->getExists()) {
 					if (!weapons[i]->update())
-						weapons[i]->setExists(false);
+						MC2_DESTROY(weapons[i], "update_false");
 				}
 			}
 		}*/
@@ -2843,7 +2883,7 @@ void GameObjectManager::updateAppearancesOnly( bool terrain, bool movers, bool o
 			for (long i = 0; i < numCarnage; i++) {
 				if (carnage[i] && carnage[i]->getExists()) {
 					if (!carnage[i]->update())
-						carnage[i]->setExists(false);
+						MC2_DESTROY(carnage[i], "update_false");
 				}
 			}
 		}*/
@@ -3146,7 +3186,7 @@ long GameObjectManager::Load (PacketFilePtr file, long packetNum)
 			}
 			else
 			{
-				obj->setExists(false);
+				MC2_DESTROY(obj, "load_empty_slot");
 			}
 
 			curTerrObjNum++;
@@ -3192,7 +3232,7 @@ long GameObjectManager::Load (PacketFilePtr file, long packetNum)
 			}
 			else
 			{
-				obj->setExists(false);
+				MC2_DESTROY(obj, "load_empty_slot");
 			}
 			curBuildingNum++;
 		}
@@ -3230,7 +3270,7 @@ long GameObjectManager::Load (PacketFilePtr file, long packetNum)
 			}
 			else
 			{
-				obj->setExists(false);
+				MC2_DESTROY(obj, "load_empty_slot");
 			}
 			curTurretNum++;
 		}
@@ -3268,7 +3308,7 @@ long GameObjectManager::Load (PacketFilePtr file, long packetNum)
 			}
 			else
 			{
-				obj->setExists(false);
+				MC2_DESTROY(obj, "load_empty_slot");
 			}
 			curGateNum++;
 		}
@@ -3295,7 +3335,7 @@ long GameObjectManager::Load (PacketFilePtr file, long packetNum)
 			}
 			else
 			{
-				obj->setExists(false);
+				MC2_DESTROY(obj, "load_empty_slot");
 			}
 			curArtilleryNum++;
 		}
@@ -3322,7 +3362,7 @@ long GameObjectManager::Load (PacketFilePtr file, long packetNum)
 			}
 			else
 			{
-				obj->setExists(false);
+				MC2_DESTROY(obj, "load_empty_slot");
 			}
 			curCarnageNum++;
 		}
@@ -3349,7 +3389,7 @@ long GameObjectManager::Load (PacketFilePtr file, long packetNum)
 			}
 			else
 			{
-				obj->setExists(false);
+				MC2_DESTROY(obj, "load_empty_slot");
 			}
 			curMechNum++;
 		}
@@ -3376,7 +3416,7 @@ long GameObjectManager::Load (PacketFilePtr file, long packetNum)
 			}
 			else
 			{
-				obj->setExists(false);
+				MC2_DESTROY(obj, "load_empty_slot");
 			}
 			curVehicleNum++;
 		}
@@ -3403,7 +3443,7 @@ long GameObjectManager::Load (PacketFilePtr file, long packetNum)
 			}
 			else
 			{
-				obj->setExists(false);
+				MC2_DESTROY(obj, "load_empty_slot");
 			}
 			curBoltNum++;
 		}

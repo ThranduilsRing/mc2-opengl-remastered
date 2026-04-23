@@ -2,6 +2,7 @@
 #include "utils/shader_builder.h"
 #include "utils/gl_utils.h"
 #include "gos_profiler.h"
+#include "gos_validate.h"  // drainGLErrors (Tier-1 instr §4)
 
 #include <cassert>
 #include <cstdio>
@@ -966,6 +967,8 @@ void gosPostProcess::endScene()
     // Re-enable depth test
     glDepthMask(GL_TRUE);
     glEnable(GL_DEPTH_TEST);
+
+    drainGLErrors("post_process");
 }
 
 void gosPostProcess::drawShadowDebugOverlay()

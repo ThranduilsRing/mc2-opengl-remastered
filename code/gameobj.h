@@ -340,6 +340,15 @@ class GameObject {
 
 		int32_t                     drawFlags;			// bars, text, brackets, and highlight colors
 
+		// -- Tier-1 instrumentation: destruction visibility (stability spec §3.3-3.4) --
+		// framesSinceActive: zero if the composite active decision (inView ||
+		// canBeSeen || objBlockInfo.active) held this frame, saturating-increment
+		// otherwise. Updated from one site in GameObjectManager::update — see §3.3.
+		// lastUpdateRet: cache of most recent update() return value, -1 sentinel if
+		// update() has never been called. Cached at update() return sites — see §3.4.
+		uint8_t  framesSinceActive = 0;
+		int32_t  lastUpdateRet     = -1;  // spec said int8_t; corrected: update() returns long
+
 		static unsigned long		spanMask;			//Used to preserve tile's LOS
 		static float				blockCaptureRange;
 		static bool					initialize;
@@ -902,6 +911,38 @@ class GameObject {
 				flags &= (OBJECT_FLAG_EXISTS ^ 0xFFFFFFFF);
 		}
 
+		// -- Tier-1 instrumentation accessors (stability spec §3.3-3.4) --
+		// Three composite-active-decision getters. Safe defaults: appearance-based
+		// visibility for can_be_seen, false for the rest. Subclasses override where
+		// they have a direct field. The `_instr` suffix keeps these grep-distinct
+		// from any existing inView/canBeSeen accessors.
+		virtual bool inView_instr (void) const { return false; }
+		virtual bool canBeSeen_instr (void) const;  // out-of-line: needs full Appearance type
+		virtual bool blockActive_instr (void) const { return false; }
+
+		// -- Tier-1 instrumentation: destruction wrapper (stability spec §3.1-3.2) --
+		// Canonical destruction reasons (keep in sync with MC2_DESTROY call sites):
+		//   abl_explicit_destroy    — ABL script explicitly requested object removal
+		//   bolt_impact             — weapon bolt hit target / area-of-effect detonated
+		//   collision_destroyed     — collision resolution flagged the object for removal
+		//   load_empty_slot         — save-game packet had no objectTypeNum (empty slot)
+		//   mission_load_inactive   — mission/multiplayer roster marked the part as not-existing
+		//   mover_freed             — GameObjectManager::freeMover released the mover
+		//   pool_released           — fixed-size pool slot returned (carnage / light)
+		//   pool_unused             — pool slot above the active count (initialization)
+		//   update_false            — object's update() returned 0 / failure
+		//   vehicle_pilot_offscreen — vehicle pilot whacked once it left view
+		//
+		// Null-pointer contract: caller must pass non-null obj; same contract as
+		// direct setExists(false) today. Wrapper does not null-check.
+		//
+		// NOTE: this is intentionally NOT named `destroy` — `GameObject::destroy()`
+		// is a pre-existing virtual method (called by ~GameObject) overridden by
+		// many subclasses. Adding a new overload would trigger C++ name-hiding in
+		// every derived class, breaking MC2_DESTROY at most call sites. Use the
+		// `_instr` suffix to keep this surface fully distinct.
+		void destroy_instr (const char* reason, const char* file, int line);
+
 		virtual bool getExists(void) {
 			return ((flags & OBJECT_FLAG_EXISTS) != 0);
 		}
@@ -1155,6 +1196,16 @@ class GameObject {
 		{
 		}
 };
+
+//---------------------------------------------------------------------------
+// Tier-1 instrumentation: destruction wrapper macro + helper (stability spec §3.1)
+// Use this macro at every site that currently calls setExists(false).
+// Wrapper is active; set MC2_DESTROY_TRACE=1 to enable the printf.
+#define MC2_DESTROY(obj, reason) (obj)->destroy_instr((reason), __FILE__, __LINE__)
+
+// Stringify an ObjectClass enumerator for log output. Returns a static
+// string; never NULL. Unknown enum -> "UNKNOWN".
+const char* getObjectClassName (ObjectClass kind);
 
 //---------------------------------------------------------------------------
 

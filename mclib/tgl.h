@@ -22,6 +22,7 @@
 
 #include<stuff/stuff.hpp>
 #include<gameos.hpp>
+#include <cstdint>  // uint64_t (Tier-1 instrumentation, stability spec §2)
 
 //-------------------------------------------------------------------------------
 // Structs used by layer.
@@ -915,16 +916,52 @@ public:
 
 //Pools are defined here.
 
+// -- Tier-1 instrumentation (stability spec §2) -----------------------------
+// First-NULL snapshot captured per pool per frame. Render-thread only; no
+// locks. Defined here so all five independent pool classes can embed it.
+struct TGL_NullSnapshot {
+	const char* caller;                  // __FUNCTION__ of first NULL caller this frame
+	const void* shape;                   // optional shape pointer if passed via shape-aware macro
+	DWORD       numRequested;            // request count at first NULL
+	DWORD       numUsed_at_failure;      // pool high-water at first NULL
+	DWORD       totalCapacity;           // pool capacity
+};
+
 class TG_VertexPool
 {
 	protected:
 		TG_Vertex 	*tgVertexPool;
 		TG_Vertex 	*nextVertex;
-		
+
 		DWORD		totalVertices;
 		DWORD		numVertices;
-		
+
 	public:
+		// Tier-1 instrumentation. All accessed only from the render thread.
+		DWORD            nullCountThisFrame = 0;
+		uint64_t         nullCountMonotonic = 0;
+		TGL_NullSnapshot firstNullSnapshot  = {};
+
+		void recordNull (const char* caller, DWORD numRequested, const void* shape)
+		{
+			if (nullCountThisFrame == 0)
+			{
+				firstNullSnapshot.caller             = caller;
+				firstNullSnapshot.shape              = shape;
+				firstNullSnapshot.numRequested       = numRequested;
+				firstNullSnapshot.numUsed_at_failure = numVertices;
+				firstNullSnapshot.totalCapacity      = totalVertices;
+			}
+			nullCountThisFrame++;
+			nullCountMonotonic++;
+		}
+		void resetFrameCounters (void)
+		{
+			nullCountThisFrame = 0;
+			firstNullSnapshot  = {};
+			// nullCountMonotonic intentionally NOT reset
+		}
+
 		TG_VertexPool (void)
 		{
 			tgVertexPool = nextVertex = NULL;
@@ -960,7 +997,7 @@ class TG_VertexPool
 			numVertices = 0;
 		}
 		
-		TG_VertexPtr getColorsFromPool (DWORD numRequested)
+		TG_VertexPtr getColorsFromPool (DWORD numRequested, const char* caller = "?", const void* shape = nullptr)
 		{
 			TG_VertexPtr result = NULL;
 			numVertices += numRequested;
@@ -969,7 +1006,7 @@ class TG_VertexPool
 				result = nextVertex;
 				nextVertex += numRequested;
 			}
-			
+			if (!result) recordNull(caller, numRequested, shape);
 			return result;
 		}
 };
@@ -979,11 +1016,36 @@ class TG_GOSVertexPool
 	protected:
 		gos_VERTEX 	*gVertexPool;
 		gos_VERTEX 	*nextVertex;
-		
+
 		DWORD		totalVertices;
 		DWORD		numVertices;
-		
+
 	public:
+		// Tier-1 instrumentation (stability spec §2).
+		DWORD            nullCountThisFrame = 0;
+		uint64_t         nullCountMonotonic = 0;
+		TGL_NullSnapshot firstNullSnapshot  = {};
+
+		void recordNull (const char* caller, DWORD numRequested, const void* shape)
+		{
+			if (nullCountThisFrame == 0)
+			{
+				firstNullSnapshot.caller             = caller;
+				firstNullSnapshot.shape              = shape;
+				firstNullSnapshot.numRequested       = numRequested;
+				firstNullSnapshot.numUsed_at_failure = numVertices;
+				firstNullSnapshot.totalCapacity      = totalVertices;
+			}
+			nullCountThisFrame++;
+			nullCountMonotonic++;
+		}
+		void resetFrameCounters (void)
+		{
+			nullCountThisFrame = 0;
+			firstNullSnapshot  = {};
+			// nullCountMonotonic intentionally NOT reset
+		}
+
 		TG_GOSVertexPool (void)
 		{
 			gVertexPool = nextVertex = NULL;
@@ -1019,7 +1081,7 @@ class TG_GOSVertexPool
 			numVertices = 0;
 		}
 		
-		gos_VERTEX * getVerticesFromPool (DWORD numRequested)
+		gos_VERTEX * getVerticesFromPool (DWORD numRequested, const char* caller = "?", const void* shape = nullptr)
 		{
 			gos_VERTEX* result = NULL;
 			numVertices += numRequested;
@@ -1028,7 +1090,7 @@ class TG_GOSVertexPool
 				result = nextVertex;
 				nextVertex += numRequested;
 			}
-			
+			if (!result) recordNull(caller, numRequested, shape);
 			return result;
 		}
 };
@@ -1038,11 +1100,36 @@ class TG_TrianglePool
 	protected:
 		TG_Triangle *trianglePool;
 		TG_Triangle	*nextTriangle;
-		
+
 		DWORD		totalTriangles;
 		DWORD		numTriangles;
-		
+
 	public:
+		// Tier-1 instrumentation (stability spec §2).
+		DWORD            nullCountThisFrame = 0;
+		uint64_t         nullCountMonotonic = 0;
+		TGL_NullSnapshot firstNullSnapshot  = {};
+
+		void recordNull (const char* caller, DWORD numRequested, const void* shape)
+		{
+			if (nullCountThisFrame == 0)
+			{
+				firstNullSnapshot.caller             = caller;
+				firstNullSnapshot.shape              = shape;
+				firstNullSnapshot.numRequested       = numRequested;
+				firstNullSnapshot.numUsed_at_failure = numTriangles;
+				firstNullSnapshot.totalCapacity      = totalTriangles;
+			}
+			nullCountThisFrame++;
+			nullCountMonotonic++;
+		}
+		void resetFrameCounters (void)
+		{
+			nullCountThisFrame = 0;
+			firstNullSnapshot  = {};
+			// nullCountMonotonic intentionally NOT reset
+		}
+
 		TG_TrianglePool (void)
 		{
 			trianglePool = nextTriangle = NULL;
@@ -1078,7 +1165,7 @@ class TG_TrianglePool
 			numTriangles = 0;
 		}
 		
-		TG_Triangle * getTrianglesFromPool (DWORD numRequested)
+		TG_Triangle * getTrianglesFromPool (DWORD numRequested, const char* caller = "?", const void* shape = nullptr)
 		{
 			TG_Triangle* result = NULL;
 			numTriangles += numRequested;
@@ -1087,7 +1174,7 @@ class TG_TrianglePool
 				result = nextTriangle;
 				nextTriangle += numRequested;
 			}
-			
+			if (!result) recordNull(caller, numRequested, shape);
 			return result;
 		}
 };
@@ -1097,11 +1184,36 @@ class TG_ShadowPool
 	protected:
 		TG_ShadowVertexTemp 	*tVertexPool;
 		TG_ShadowVertexTemp 	*nextVertex;
-		
+
 		DWORD					totalVertices;
 		DWORD					numVertices;
-		
+
 	public:
+		// Tier-1 instrumentation (stability spec §2).
+		DWORD            nullCountThisFrame = 0;
+		uint64_t         nullCountMonotonic = 0;
+		TGL_NullSnapshot firstNullSnapshot  = {};
+
+		void recordNull (const char* caller, DWORD numRequested, const void* shape)
+		{
+			if (nullCountThisFrame == 0)
+			{
+				firstNullSnapshot.caller             = caller;
+				firstNullSnapshot.shape              = shape;
+				firstNullSnapshot.numRequested       = numRequested;
+				firstNullSnapshot.numUsed_at_failure = numVertices;
+				firstNullSnapshot.totalCapacity      = totalVertices;
+			}
+			nullCountThisFrame++;
+			nullCountMonotonic++;
+		}
+		void resetFrameCounters (void)
+		{
+			nullCountThisFrame = 0;
+			firstNullSnapshot  = {};
+			// nullCountMonotonic intentionally NOT reset
+		}
+
 		TG_ShadowPool (void)
 		{
 			tVertexPool = nextVertex = NULL;
@@ -1137,7 +1249,7 @@ class TG_ShadowPool
 			numVertices = 0;
 		}
 		
-		TG_ShadowVertexTempPtr getShadowsFromPool (DWORD numRequested)
+		TG_ShadowVertexTempPtr getShadowsFromPool (DWORD numRequested, const char* caller = "?", const void* shape = nullptr)
 		{
 			TG_ShadowVertexTempPtr result = NULL;
 			numVertices += numRequested;
@@ -1146,7 +1258,7 @@ class TG_ShadowPool
 				result = nextVertex;
 				nextVertex += numRequested;
 			}
-			
+			if (!result) recordNull(caller, numRequested, shape);
 			return result;
 		}
 };
@@ -1156,11 +1268,36 @@ class TG_DWORDPool
 	protected:
 		DWORD 	*triPool;
 		DWORD	*nextTri;
-		
+
 		DWORD	totalTriangles;
 		DWORD	numTriangles;
-		
+
 	public:
+		// Tier-1 instrumentation (stability spec §2).
+		DWORD            nullCountThisFrame = 0;
+		uint64_t         nullCountMonotonic = 0;
+		TGL_NullSnapshot firstNullSnapshot  = {};
+
+		void recordNull (const char* caller, DWORD numRequested, const void* shape)
+		{
+			if (nullCountThisFrame == 0)
+			{
+				firstNullSnapshot.caller             = caller;
+				firstNullSnapshot.shape              = shape;
+				firstNullSnapshot.numRequested       = numRequested;
+				firstNullSnapshot.numUsed_at_failure = numTriangles;
+				firstNullSnapshot.totalCapacity      = totalTriangles;
+			}
+			nullCountThisFrame++;
+			nullCountMonotonic++;
+		}
+		void resetFrameCounters (void)
+		{
+			nullCountThisFrame = 0;
+			firstNullSnapshot  = {};
+			// nullCountMonotonic intentionally NOT reset
+		}
+
 		TG_DWORDPool (void)
 		{
 			triPool = nextTri = NULL;
@@ -1196,7 +1333,7 @@ class TG_DWORDPool
 			numTriangles = 0;
 		}
 		
-		DWORD * getFacesFromPool (DWORD numRequested)
+		DWORD * getFacesFromPool (DWORD numRequested, const char* caller = "?", const void* shape = nullptr)
 		{
 			DWORD* result = NULL;
 			numTriangles += numRequested;
@@ -1205,7 +1342,7 @@ class TG_DWORDPool
 				result = nextTri;
 				nextTri += numRequested;
 			}
-			
+			if (!result) recordNull(caller, numRequested, shape);
 			return result;
 		}
 };
@@ -1216,6 +1353,21 @@ extern TG_GOSVertexPool 	*vertexPool;
 extern TG_DWORDPool			*facePool;
 extern TG_ShadowPool		*shadowPool;
 extern TG_TrianglePool		*trianglePool;
+
+// -- Tier-1 instrumentation macros (stability spec §2.1) --------------------
+// Wrap every TGL pool get-call so __FUNCTION__ is captured automatically.
+// Shape-aware variant additionally records the calling shape pointer.
+#define MC2_TGL_GET_VERTS(pool, n)                  (pool)->getVerticesFromPool((n), __FUNCTION__)
+#define MC2_TGL_GET_COLORS(pool, n)                 (pool)->getColorsFromPool((n),  __FUNCTION__)
+#define MC2_TGL_GET_FACES(pool, n)                  (pool)->getFacesFromPool((n),   __FUNCTION__)
+#define MC2_TGL_GET_SHADOW(pool, n)                 (pool)->getShadowsFromPool((n), __FUNCTION__)
+#define MC2_TGL_GET_TRIANGLES(pool, n)              (pool)->getTrianglesFromPool((n), __FUNCTION__)
+#define MC2_TGL_GET_VERTS_FOR_SHAPE(pool, n, shape) (pool)->getVerticesFromPool((n), __FUNCTION__, (shape))
+
+// Frame-end drain (env-gated per-frame line + always-on monotonic summary).
+// Called from GameOS/gameos/gameosmain.cpp just before swap_window().
+void drainTglPoolStats (void);
+void drainTglPoolStatsOnShutdown (void);
 
 //-------------------------------------------------------------------------------
 // ASE File Parse String Macros

@@ -1093,12 +1093,12 @@ void Mission::createPartObject (long partIndex, MoverPtr mover) {
 				MPlayer->addToLocalMovers((MoverPtr)ObjectManager->getByWatchID(parts[partIndex].objectWID));
 		}
 
-		if (parts[partIndex].exists) 
+		if (parts[partIndex].exists)
 		{
 			mover->setExists(true);
 		}
 		else
-			mover->setExists(false);
+			MC2_DESTROY(mover, "mission_load_inactive");
 
 		if (parts[partIndex].destroyed) 
 		{
@@ -1315,7 +1315,7 @@ typedef struct _MoverInitData {
 			if (moverSpec->exists)
 				mover->setExists(true);
 			else
-				mover->setExists(false);
+				MC2_DESTROY(mover, "mission_load_inactive");
 
 			//---------------------------------------------------------------------------------
 			// If we're not playing multiplayer, make sure all home commander movers have their
