@@ -1200,7 +1200,7 @@ class GameObject {
 //---------------------------------------------------------------------------
 // Tier-1 instrumentation: destruction wrapper macro + helper (stability spec §3.1)
 // Use this macro at every site that currently calls setExists(false).
-// Commit 3 converts the literal sites (this commit leaves the wrapper dormant).
+// Wrapper is active; set MC2_DESTROY_TRACE=1 to enable the printf.
 #define MC2_DESTROY(obj, reason) (obj)->destroy_instr((reason), __FILE__, __LINE__)
 
 // Stringify an ObjectClass enumerator for log output. Returns a static

@@ -732,8 +732,8 @@ CarnagePtr GameObjectManager::getCarnage (CarnageEnumType carnageType) {
 
 void GameObjectManager::releaseCarnage (CarnagePtr obj) {
 
-	MC2_DESTROY(obj, "pool_released");
 	obj->setOwner(NULL);
+	MC2_DESTROY(obj, "pool_released");
 }
 
 //---------------------------------------------------------------------------
