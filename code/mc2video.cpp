@@ -7,6 +7,9 @@
 #include <cstring>
 #include <cstdlib>
 
+#include "file.h"   // fileExists
+extern char moviePath[80];  // defined in mclib/paths.cpp
+
 #if defined(_WIN32)
 #  include <windows.h>
 #  include <delayimp.h>
@@ -94,13 +97,57 @@ void ffmpegProbeAvailability() { /* non-Windows: link-loaded, always avail */ }
 #endif
 
 //-----------------------------------------------------------------------------
-// Resolver — implemented in Task 6
+// Resolver — viable-index enumeration over the loose-file override chain
 //-----------------------------------------------------------------------------
-bool resolveVideoCandidate(const char* /*shortName*/, bool /*preferUpscaled*/,
-                           int /*index*/,
-                           char* /*outPath*/, unsigned /*outPathSize*/)
+bool resolveVideoCandidate(const char* shortName, bool preferUpscaled,
+                           int index, char* outPath, unsigned outPathSize)
 {
-    return false;  // Task 6
+    if (!shortName || !outPath || outPathSize < 2 || index < 0) return false;
+
+    // The raw chain, in priority order.  Each entry is (extension,
+    // requiresLooseFile).  The last entry (FST .bik) has
+    // requiresLooseFile=false: it is always considered viable because
+    // File::open consults the FST archive if the loose path is missing.
+    struct Slot { const char* ext; bool looseRequired; };
+    static constexpr Slot kUpscaleSlots[] = {
+        { ".mp4",  true  },
+        { ".mkv",  true  },
+        { ".webm", true  },
+    };
+    static constexpr Slot kOriginalSlots[] = {
+        { ".bik",  true  },   // loose .bik
+        { ".bik",  false },   // FST-fallback .bik (always viable)
+    };
+
+    // Walk the raw chain in order, skipping loose slots whose file is absent.
+    // The caller's index selects the Nth *viable* slot.
+    int viableSoFar = 0;
+    auto tryEmit = [&](const Slot& s) -> bool {
+        char tmp[1024];
+        snprintf(tmp, sizeof(tmp), "%s%s%s", moviePath, shortName, s.ext);
+        if (s.looseRequired && !fileExists(tmp)) return false;
+        if (viableSoFar == index) {
+            snprintf(outPath, outPathSize, "%s", tmp);
+            VIDEO_TRACE("resolver: viable idx=%d ext=%s path=%s%s",
+                        index, s.ext,
+                        s.looseRequired ? "" : "(FST) ", outPath);
+            return true;
+        }
+        ++viableSoFar;
+        return false;
+    };
+
+    if (preferUpscaled) {
+        for (const Slot& s : kUpscaleSlots) {
+            if (tryEmit(s)) return true;
+        }
+    }
+    for (const Slot& s : kOriginalSlots) {
+        if (tryEmit(s)) return true;
+    }
+
+    // Chain exhausted without reaching the requested viable index.
+    return false;
 }
 
 //-----------------------------------------------------------------------------
