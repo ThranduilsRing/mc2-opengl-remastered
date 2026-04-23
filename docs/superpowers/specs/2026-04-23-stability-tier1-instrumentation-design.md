@@ -23,7 +23,11 @@ Land the **instrumentation** layer for three known silent-failure modes in MC2. 
 
 ### Success criteria
 - **All 34 literal `setExists(false)` sites** plus the **4 non-literal `setExists(<expr>)` sites** converted or reviewed. After implementation, `grep -rn 'setExists\s*(' code/ mclib/ GameOS/ --include='*.cpp' --include='*.h'` returns only `(true)` calls and the single internal call inside `GameObject::destroy`.
-- **Baseline perf:** Mission `mis0101` loaded from main menu, camera at spawn position, 30-second Tracy capture. Median frame time with all three gates OFF within 2% of pre-change baseline on the same scene, same camera position, same hardware session. Implementer captures the pre-change baseline *before* starting code changes, commits the Tracy trace (or its key numbers) to the branch, then re-captures after the three instrumentation commits land. Do not swap the scene mid-measurement — if `mis0101` is somehow unavailable, halt and escalate before picking another.
+- **Baseline perf:** Mission `mis0101` loaded from main menu, camera at spawn position, 30-second Tracy capture. With all three gates OFF:
+  - Median frame time within 2% of pre-change baseline.
+  - P99 frame time within 5% of baseline.
+  - P99.9 frame time within 10% of baseline.
+  Tail latency matters for a stability spec — a regression that adds a 5ms hitch every 100 frames passes a median check and breaks the game. Same scene, same camera position, same hardware session. Implementer captures the pre-change baseline *before* starting code changes, commits the Tracy trace (or its key numbers) to the branch, then re-captures after the three instrumentation commits land. Do not swap the scene mid-measurement — if `mis0101` is somehow unavailable, halt and escalate before picking another.
 - **Gates ON produces clean logs:** Same 30-second capture with all three gates ON produces a log under 10MB total. Every log line starts with `[SUBSYS vN]` — no wrapped multi-line traces. Exceeding 10MB is a signal, not a threshold to relax: file it as a discovered Tier 1 bug.
 - **Startup banner (Section 5) appears in every log file** produced during verification. If it's missing, instrumentation wiring is incomplete.
 - **Zero leaks from trace infrastructure.** All trace state is static/global `int`/`char[]`; no heap allocations introduced.
@@ -47,16 +51,16 @@ Every call site wraps via macros:
 
 ```cpp
 // mclib/tgl.h
-#define TGL_GET_VERTS(pool, n)             (pool)->getVerticesFromPool((n), __FUNCTION__)
-#define TGL_GET_COLORS(pool, n)            (pool)->getColorsFromPool((n), __FUNCTION__)
-#define TGL_GET_FACES(pool, n)             (pool)->getFacesFromPool((n), __FUNCTION__)
-#define TGL_GET_SHADOW(pool, n)            (pool)->getShadowsFromPool((n), __FUNCTION__)
-#define TGL_GET_TRIANGLES(pool, n)         (pool)->getTrianglesFromPool((n), __FUNCTION__)
+#define MC2_TGL_GET_VERTS(pool, n)             (pool)->getVerticesFromPool((n), __FUNCTION__)
+#define MC2_TGL_GET_COLORS(pool, n)            (pool)->getColorsFromPool((n), __FUNCTION__)
+#define MC2_TGL_GET_FACES(pool, n)             (pool)->getFacesFromPool((n), __FUNCTION__)
+#define MC2_TGL_GET_SHADOW(pool, n)            (pool)->getShadowsFromPool((n), __FUNCTION__)
+#define MC2_TGL_GET_TRIANGLES(pool, n)         (pool)->getTrianglesFromPool((n), __FUNCTION__)
 
 // Variant that also passes the calling shape pointer for first-null snapshot.
 // Use at the TG_Shape::TransformShape call site (mclib/tgl.cpp:1667) and anywhere
 // else the caller naturally holds the shape pointer.
-#define TGL_GET_VERTS_FOR_SHAPE(pool, n, shape)  (pool)->getVerticesFromPool((n), __FUNCTION__, (shape))
+#define MC2_TGL_GET_VERTS_FOR_SHAPE(pool, n, shape)  (pool)->getVerticesFromPool((n), __FUNCTION__, (shape))
 ```
 
 The pool method picks up one overload that takes a shape pointer (defaulted to `nullptr`), so the two macro forms share the same entry point. Every existing direct call is converted to the appropriate macro. Mechanical grep-and-replace across the handful of call sites (TransformShape, MultiShape variants, etc.).
@@ -74,7 +78,7 @@ this->recordNull(caller, numRequested);
 - `nullCountMonotonic` — since process start.
 - First-null-per-frame snapshot: `{ caller, shape_ptr, requested, numVertices_at_failure, totalVertices }`. Only captured when `nullCountThisFrame` transitions 0→1.
 
-`shape_ptr` is not directly available inside the pool — the caller's `__FUNCTION__` identifies the function but not the shape instance. The snapshot stores shape pointer only when the caller can pass it cheaply. Practical answer: extend the macro for `TransformShape`'s call site to `TGL_GET_VERTS_FOR_SHAPE(pool, n, shape)` — a separate macro that passes `this` so the shape pointer reaches `recordNull`. Other call sites pass `nullptr` for shape.
+`shape_ptr` is not directly available inside the pool — the caller's `__FUNCTION__` identifies the function but not the shape instance. The snapshot stores shape pointer only when the caller can pass it cheaply. Practical answer: extend the macro for `TransformShape`'s call site to `MC2_TGL_GET_VERTS_FOR_SHAPE(pool, n, shape)` — a separate macro that passes `this` so the shape pointer reaches `recordNull`. Other call sites pass `nullptr` for shape.
 
 ### 2.3 Frame-end drain
 
@@ -82,7 +86,7 @@ Add `drainTglPoolStats()` called from `GameOS/gameos/gameos.cpp` frame-end path 
 
 ### 2.4 Log format
 
-Env gate: `MC2_TGL_POOL_TRACE=1` enables per-frame print.
+Env gate: `MC2_TGL_POOL_TRACE=1` enables per-frame print. Default-off (inverted from GL_ERROR's default-on) because the per-frame line is for active debugging — the monotonic summary (§2.5) already surfaces "did this ever happen" without any env var. An operator who doesn't know about the trace still sees the summary every 600 frames and on shutdown, which is enough to flag the failure mode; turning on the per-frame stream is a deliberate next step once they're investigating.
 
 ```
 [TGL_POOL v1] frame=1234 pool=vertex nulls=37 first_caller=TransformShape shape=0x2a3f1800 req=512 high_water=499842/500000 mono_total=1841
@@ -131,9 +135,13 @@ Rationale for macro over `std::source_location`: MC2 is C++17-era MSVC with mixe
 ### 3.2 Implementation
 
 `GameObject::destroy` in `mclib/gameobj.cpp`:
-1. Snapshots the pre-destruction state (cull flags, exists flag, `framesSinceActive`, most-recent update return value).
-2. Calls `setExists(false)` (unchanged existing behavior).
-3. If `MC2_DESTROY_TRACE` env var is set, emits one log line (format §3.4).
+
+1. **Snapshot all log fields first**, before any other logic runs. `kind`, `cull`, `block_active`, `update_ret`, `exists_was`, `framesSinceActive` are read in the first three lines of the function into locals. Prevents teardown logic anywhere in the call chain from stomping a field the log later reports. The snapshot locals — not the live fields — are what the log emits.
+2. **Double-destroy semantics.** If `exists_was` is already `false`, emit the log line (with `exists_was=0`, which §3.4 already renders) and return *without* calling `setExists(false)` a second time. Legitimate case: mission cleanup sweeping objects that combat already killed. Explicitly **not** an assert — an assert here would turn a latent bug into a crash during an instrumentation-only change, violating the "no behavior changes" premise of this spec.
+3. If `exists_was` was `true`, call `setExists(false)` (unchanged existing behavior).
+4. If `MC2_DESTROY_TRACE` env var is set, emit one log line (format §3.4).
+
+**Null-pointer contract.** `MC2_DESTROY(obj, reason)` expands to `obj->destroy(...)` — same null-dereference contract as every current direct `setExists(false)` call site. The wrapper does **not** null-check. Callers responsible for ensuring `obj != nullptr`, same as today. Adding a null-check here would be a behavior change (convert a would-be crash into a silent no-op) and is out of scope for this spec.
 
 ### 3.3 `framesSinceActive` counter
 
@@ -142,9 +150,20 @@ New member on `GameObject`:
 uint8_t framesSinceActive;  // saturating at 255
 ```
 
-Semantics: zero when cull path sees the object active this frame; incremented (saturating at 255) each frame the cull path skips it. Anything over ~4 seconds of inactivity at 60fps is pathological; the exact count beyond 255 doesn't matter.
+Semantics: zero when the object is considered active this frame (any of the three cull gates `inView` / `canBeSeen` / `objBlockInfo.active` says "keep alive"); incremented (saturating at 255) otherwise. Anything over ~4 seconds of inactivity at 60fps is pathological; the exact count beyond 255 doesn't matter.
 
-Update point: the existing cull-chain entry in `objmgr.cpp` — reset to 0 on active-path, saturating-increment on inactive-path. One-line edit each place.
+**Single update site, not distributed.** Instrumenting every gate transition is fragile — any future gate added without updating the counter silently breaks the log field. Instead: one update site in `GameObjectManager::update` (or equivalent per-frame object sweep in `code/objmgr.cpp`) where the composite "considered active this frame" decision is final:
+
+```cpp
+bool activeThisFrame = obj->inView || obj->canBeSeen || obj->objBlockInfo.active;
+if (activeThisFrame) {
+    obj->framesSinceActive = 0;
+} else if (obj->framesSinceActive < 255) {
+    obj->framesSinceActive++;
+}
+```
+
+Implementer identifies the exact function in `objmgr.cpp` that's the canonical per-frame sweep and inserts this snippet there. No other sites touch `framesSinceActive`.
 
 Padding audit: `GameObject` is declared in `mclib/dappear.h` (forward) / `mclib/gameobj.h` (full). During implementation, inspect the layout — if existing 1-byte padding is available, steal into it; otherwise accept an 8-byte bump after alignment. Either is fine for the purpose.
 
@@ -285,6 +304,8 @@ All three loggers stamp `v1` in their prefix: `[TGL_POOL v1]`, `[DESTROY v1]`, `
 
 Grep patterns (documented in CLAUDE.md) match `\[SUBSYS v[0-9]+\]` so v1→v2 transitions don't break tooling.
 
+**Migration policy:** none. Downstream log parsers re-adapt to new versions when they encounter them. This is a three-format logger in a small project — designing a field-compat or rename-shim layer would be overkill. The version prefix exists so parsers can *detect* incompat, not reconcile it.
+
 ### 5.2 Startup banner (unconditional, one line per run)
 
 At mission init, emit:
@@ -292,7 +313,7 @@ At mission init, emit:
 [INSTR v1] enabled: tgl_pool=<0|1> destroy=<0|1> gl_error_print=<0|1> build=<short-hash>
 ```
 
-Values derived from env vars at init time. Build hash comes from the existing build-stamp mechanism if present; otherwise `UNKNOWN` is acceptable.
+Values derived from env vars at init time. Build hash comes from the existing build-stamp mechanism if present; otherwise literal string `UNKNOWN` is emitted. Adding a new build-stamp mechanism to CMake is explicitly out of scope for this spec — if the implementer finds an existing mechanism they use it; if not, `UNKNOWN` ships. A follow-up spec can add `git rev-parse --short HEAD` to CMake when there's a reason to prioritize it.
 
 Success criterion: this line appears in every log file produced during verification. A missing banner = instrumentation not wired up.
 
@@ -304,20 +325,22 @@ Success criterion: this line appears in every log file produced during verificat
 
 ### 5.4 Commit structure
 
-Three commits on `claude/stability-tier1`:
+Four commits on `claude/stability-tier1` (destruction wrapper split to keep bisection targeted):
 
 1. `feat(instr): TGL pool exhaustion trace + monotonic summary`
    - Pool method signatures, macros, `recordNull`, frame-end drain, log formats.
-2. `feat(instr): destroyObject wrapper + 34 setExists(false) conversions + 4 non-literal reviews`
-   - `GameObject::destroy`, `MC2_DESTROY` macro, `getObjectClassName`, `framesSinceActive`, taxonomy comment block, all call-site conversions.
-3. `feat(instr): GL error drain at 7 pass boundaries + startup banner`
-   - `drainGLErrors`, call-site insertions, banner emission, schema version documentation.
+2. `feat(instr): GameObject::destroy wrapper + helper + frames-active counter`
+   - `GameObject::destroy` method, `MC2_DESTROY` macro, `getObjectClassName` helper, `framesSinceActive` field + single-site update, log formatter. **Zero call-site conversions** — the old `setExists(false)` sites are untouched.
+3. `feat(instr): convert 34 setExists(false) sites to MC2_DESTROY + dedup taxonomy`
+   - All literal-site conversions, 4 non-literal-site manual reviews, reason-string dedup pass, taxonomy comment block in `gameobj.h`.
+4. `feat(instr): GL error drain at 7 pass boundaries + startup banner`
+   - `drainGLErrors`, call-site insertions, banner emission, CLAUDE.md updates (invariant, env vars, schema-version grep pattern).
 
-Each commit builds, deploys, and is bisectable standalone. No cross-dependencies.
+Each commit builds, deploys, and is bisectable standalone. If a regression shows up mid-bisect, the split between commit 2 (the wrapper itself, which runs on zero objects) and commit 3 (the conversion sweep, which activates it across 34 sites) pinpoints whether the break is in the wrapper implementation or in a specific conversion's reason-string / missing guard.
 
 ### 5.5 CLAUDE.md updates
 
-One commit (bundled with commit 3 above or separate):
+Bundled with commit 4 (GL error drain + banner):
 - Document the `setExists(false)` invariant and the manual grep check.
 - Document the three env vars: `MC2_TGL_POOL_TRACE`, `MC2_DESTROY_TRACE`, `MC2_GL_ERROR_DRAIN_SILENT`.
 - Document the schema-version grep pattern `\[SUBSYS v[0-9]+\]`.
