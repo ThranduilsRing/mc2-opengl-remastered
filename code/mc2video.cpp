@@ -216,8 +216,9 @@ struct VideoSession {
     bool             audioStallLogged = false;
 
     // Lifecycle
-    bool             paused = false;
-    bool             eof    = false;
+    bool             paused   = false;
+    bool             eof      = false;
+    double           pausedAt = 0.0;
 };
 
 //-----------------------------------------------------------------------------
@@ -700,8 +701,80 @@ void video_render(VideoSession* s)
     fillQ(vq[3], s->quadX0, s->quadY1, 0.0f, 1.0f);
     gos_DrawQuads(vq, 4);
 }
-void video_pause(VideoSession* /*s*/, bool /*paused*/) { /* Task 15 */ }
-void video_stop(VideoSession* /*s*/) { /* Task 15 */ }
-void video_restart(VideoSession* /*s*/) { /* Task 15 */ }
-void video_setRect(VideoSession* /*s*/, int /*x0*/, int /*y0*/,
-                   int /*w*/, int /*h*/) { /* Task 15 */ }
+void video_pause(VideoSession* s, bool paused)
+{
+    if (!s || s->paused == paused) return;
+    s->paused = paused;
+    if (paused) {
+        s->pausedAt = nowSeconds();
+        // Pause the audio stream (Path B: end/begin is not symmetric; there
+        // is no "pause" on Mix_HookMusic — we leave the callback installed
+        // but stop pushing new frames, which drains the ring to silence
+        // after ~2 seconds. That's acceptable for pause/resume UX. If a
+        // cleaner pause is ever needed, we'd add a paused flag inside
+        // the SoundSystem adapter.)
+    } else {
+        // Resume: shift clock origin forward by pause duration so the
+        // wall-clock fallback path doesn't think we lost time during pause.
+        double delta = nowSeconds() - s->pausedAt;
+        s->clockStart += delta;
+        // Spec: up to one video frame of catch-up permitted — which falls
+        // out naturally from the pending-frame hold in video_update.
+    }
+}
+
+void video_stop(VideoSession* s)
+{
+    if (!s) return;
+    s->eof = true;
+    // End the audio stream if we started one. Texture is retained
+    // until video_close (destructor) so a render() after stop still
+    // shows the last frame harmlessly.
+    if (s->audioStreamStarted && soundSystem) {
+        reinterpret_cast<SoundSystem*>(soundSystem)->endVideoPCMStream();
+        s->audioStreamStarted = false;
+    }
+}
+
+void video_restart(VideoSession* s)
+{
+    if (!s) return;
+    if (s->fmt) {
+        av_seek_frame(s->fmt, -1, 0, AVSEEK_FLAG_BACKWARD);
+    }
+    if (s->vCodec) avcodec_flush_buffers(s->vCodec);
+    if (s->aCodec) avcodec_flush_buffers(s->aCodec);
+    s->eof = false;
+    s->paused = false;
+    s->frameReady = false;
+    s->pendingFrameValid = false;
+    s->presentedPTS = -1.0;
+    s->audioStallLogged = false;
+    s->clockStart = nowSeconds();
+    // Re-arm audio push: end the existing stream (if any) and start
+    // a fresh one to reset the consumed-frame counter.
+    if (s->audioStreamStarted && soundSystem) {
+        reinterpret_cast<SoundSystem*>(soundSystem)->endVideoPCMStream();
+        s->audioStreamStarted = false;
+    }
+    if (s->aCodec && soundSystem &&
+        reinterpret_cast<SoundSystem*>(soundSystem)->beginVideoPCMStream(s->aOutRate, s->aOutChannels)) {
+        s->audioStreamStarted = true;
+    }
+}
+
+void video_setRect(VideoSession* s, int x0, int y0, int w, int h)
+{
+    if (!s) return;
+    if (w <= 0 || h <= 0) {
+        VIDEO_LOG("setRect: degenerate rect ignored (w=%d h=%d)", w, h);
+        return;
+    }
+    s->rectX = x0;
+    s->rectY = y0;
+    s->rectW = w;
+    s->rectH = h;
+    computeLetterboxQuad(s->srcW, s->srcH, s->sar,
+                         s->rectX, s->rectY, s->rectW, s->rectH,
+                         s->quadX0, s->quadY0, s->quadX1, s->quadY1);
+}
