@@ -7979,19 +7979,20 @@ void initABL (void) {
 
 	// --- Omnitech ABL extensions, tier-2 (FSM primitives observed in Carver5O/MCO .abl) ---
 	// Note: PatrolState and PatrolPath are MCO-fork custom types (PatrolPath is 2D:
-	// `startBase1PatrolPath[i, j]`). The baseline ABL type checker rejects them
-	// against `R` (1D real*), so we accept them as `*` (any) — stubs don't inspect
-	// shape. Same for WorldPosition in the guard signatures: some scripts pass
-	// custom types distinct from bare real[3], so `*` is the safe sig here too.
+	// `startBase1PatrolPath[i, j]`). WorldPosition is also distinct from bare real[].
+	// The ABL signature char `*` means PARAM_TYPE_INTEGER_REAL (scalar numeric) —
+	// NOT a wildcard. The real wildcard is `?` = PARAM_TYPE_ANYTHING (ablstd.cpp
+	// short-circuits the check). Using `?` for every arg that may bind a custom
+	// compound type.
 	ABLi_addFunction("magicattack",          false, "i",   NULL, execMagicAttack);
-	ABLi_addFunction("magicpatrol",          false, "**",  NULL, execMagicPatrol);
-	ABLi_addFunction("magicguard",           false, "*i",  NULL, execMagicGuard);
+	ABLi_addFunction("magicpatrol",          false, "??",  NULL, execMagicPatrol);
+	ABLi_addFunction("magicguard",           false, "?i",  NULL, execMagicGuard);
 	ABLi_addFunction("magicescort",          false, "i",   NULL, execMagicEscort);
 	ABLi_addFunction("setwillrequesthelp",   false, "b",   NULL, execSetWillRequestHelp);
 	ABLi_addFunction("tdebugstring",         false, "C",   NULL, execTDebugString);
 	ABLi_addFunction("corewait",             false, "r",   NULL, execCoreWaitOmni);
-	ABLi_addFunction("coreguard",            false, "*i",  NULL, execCoreGuardOmni);
-	ABLi_addFunction("corepatrol",           false, "**",  NULL, execCorePatrolOmni);
+	ABLi_addFunction("coreguard",            false, "?i",  NULL, execCoreGuardOmni);
+	ABLi_addFunction("corepatrol",           false, "??",  NULL, execCorePatrolOmni);
 	ABLi_addFunction("isdeadorfled",         false, "i",   "b",  execIsDeadOrFled);
 	ABLi_addFunction("printteamstatus",      false, "i",   NULL, execPrintTeamStatus);
 
