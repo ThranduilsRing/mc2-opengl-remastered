@@ -212,6 +212,9 @@ struct VideoSession {
     int              aOutChannels = 0;
     bool             audioStreamStarted = false;
 
+    // Audio-master clock — Task 13
+    bool             audioStallLogged = false;
+
     // Lifecycle
     bool             paused = false;
     bool             eof    = false;
@@ -408,10 +411,36 @@ static double nowSeconds()
     return (double)av_gettime() / 1000000.0;
 }
 
-// Placeholder for Task 13. For now: wall-clock only. Task 13 will
-// replace this with audio-master clock when audio is available.
+// Path B: consumed-frame counter is a monotonic sample-count in
+// the mixer's output rate. Dividing by sample rate yields seconds.
+static double audioMasterClock(const VideoSession* s)
+{
+    if (!soundSystem) return 0.0;
+    int frames = reinterpret_cast<SoundSystem*>(soundSystem)->videoPCMSamplesConsumed();
+    int rate   = s->aOutRate > 0 ? s->aOutRate : 44100;
+    return (double)frames / (double)rate;
+}
+
+// Anchor the wall-clock baseline at the current audio PTS so
+// wall-clock continues from there — NO backward correction.
+static void markAudioStalled(VideoSession* s, const char* reason)
+{
+    if (!s->audioStallLogged) {
+        double lastAudioSec = audioMasterClock(s);
+        s->clockStart = nowSeconds() - lastAudioSec;
+        s->audioStallLogged = true;
+        VIDEO_LOG("audio stalled (%s); master clock fallback to wall-clock", reason);
+    }
+}
+
+// Prefer audio-master clock when available and not stalled.
+// On audio stall: re-anchor wall-clock to the last good audio position
+// (one-shot, no recovery, no backward correction).
 static double videoMasterClock(const VideoSession* s)
 {
+    if (s->aCodec && s->aStream >= 0 && s->audioStreamStarted && !s->audioStallLogged) {
+        return audioMasterClock(s);
+    }
     return nowSeconds() - s->clockStart;
 }
 
@@ -440,9 +469,14 @@ static int decodeNextVideoFrame(VideoSession* s)
         if (s->pkt->stream_index == s->vStream) {
             avcodec_send_packet(s->vCodec, s->pkt);
         } else if (s->pkt->stream_index == s->aStream && s->aCodec && s->swr) {
-            avcodec_send_packet(s->aCodec, s->pkt);
+            int sendRet = avcodec_send_packet(s->aCodec, s->pkt);
+            if (sendRet < 0 && sendRet != AVERROR_INVALIDDATA) {
+                // Unrecoverable send failure — stall the audio clock.
+                markAudioStalled(s, "avcodec_send_packet error");
+            }
             AVFrame* af = av_frame_alloc();
-            while (avcodec_receive_frame(s->aCodec, af) == 0) {
+            int recvRet;
+            while ((recvRet = avcodec_receive_frame(s->aCodec, af)) == 0) {
                 int outSamplesMax = (int)av_rescale_rnd(
                     swr_get_delay(s->swr, s->aCodec->sample_rate) + af->nb_samples,
                     s->aOutRate, s->aCodec->sample_rate, AV_ROUND_UP);
@@ -452,12 +486,19 @@ static int decodeNextVideoFrame(VideoSession* s)
                 uint8_t* outPtr = outBuf;
                 int outSamples = swr_convert(s->swr, &outPtr, outSamplesMax,
                                              (const uint8_t**)af->data, af->nb_samples);
+                if (outSamples < 0) {
+                    // swr_convert failure — stall the audio clock.
+                    av_free(outBuf);
+                    markAudioStalled(s, "swr_convert error");
+                    break;
+                }
                 if (outSamples > 0 && soundSystem) {
                     reinterpret_cast<SoundSystem*>(soundSystem)->pushVideoPCMSamples(
                         (const int16_t*)outBuf, outSamples);
                 }
                 av_free(outBuf);
             }
+            // EAGAIN is normal backpressure; EOF is end-of-stream — neither is a stall.
             av_frame_free(&af);
         }
         av_packet_unref(s->pkt);
