@@ -996,17 +996,34 @@ TypePtr execStandardRoutineCall (SymTableNodePtr routineIdPtr, bool skipOrder) {
 			if (FunctionInfoTable[key].numParams > 0)
 				getCodeToken();
 			SkipOrder = skipOrder;
-			// Sibling session is landing proper stub registrations for the
-			// Omnitech-extended ABL calls; once those land, FunctionCallbackTable
-			// will be populated for every key. We keep the original NULL check
-			// as a belt-and-suspenders guard.
-			if (FunctionCallbackTable[key])
-				(*FunctionCallbackTable[key])();
-			else
+			// Guard: FunctionCallbackTable slots can hold non-NULL uninitialized
+			// garbage (e.g. 0x00000000DDFD690B — low 16 bits repeat across runs,
+			// upper bits are heap noise). NULL check alone is insufficient. Valid
+			// code pointers on 64-bit Windows live in the high 2^47 range
+			// (0x00007F...); anything below 0x0000_7F00_0000_0000 is bogus. On
+			// bogus, skip the call, log key+module+line, synthesize a default
+			// return so ABL stack stays balanced and FSM execution continues.
 			{
-				char err[255];
-				sprintf(err, " ABL: Undefined ABL RoutineKey %d in %s:%d", key, CurModule->getName(), execLineNumber);
-				ABL_Fatal(key,err);
+				void (*cb)(void) = FunctionCallbackTable[key];
+				uintptr_t cbVal = (uintptr_t)cb;
+				if (cbVal != 0 && cbVal < (uintptr_t)0x00007F0000000000ULL) {
+					char err[255];
+					sprintf(err, "[ABL_BAD_CB] key=%d val=%p module=%s line=%d",
+						key, cb, CurModule->getName(), execLineNumber);
+					printf("%s\n", err); fflush(stdout);
+					switch (FunctionInfoTable[key].returnType) {
+						case RETURN_TYPE_INTEGER: pushInteger(0); break;
+						case RETURN_TYPE_REAL:    pushReal(0.0f); break;
+						case RETURN_TYPE_BOOLEAN: pushBoolean(false); break;
+						default: break;
+					}
+				} else if (cb) {
+					(*cb)();
+				} else {
+					char err[255];
+					sprintf(err, " ABL: Undefined ABL RoutineKey %d in %s:%d", key, CurModule->getName(), execLineNumber);
+					ABL_Fatal(key, err);
+				}
 			}
 
 			getCodeToken();
