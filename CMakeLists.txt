@@ -69,6 +69,11 @@ find_package(GLEW REQUIRED)
 find_package(OpenGL REQUIRED)
 find_package(ZLIB REQUIRED)
 
+list(APPEND CMAKE_MODULE_PATH "${CMAKE_SOURCE_DIR}/cmake")
+find_package(FFmpegLGPL REQUIRED)
+# Exposes MC2_VIDEO_DLL_LIST (C string array) in ${CMAKE_BINARY_DIR}/generated/mc2video_dlls.h
+include_directories("${CMAKE_BINARY_DIR}/generated")
+
 message("Found SDL2 package ${SDL2_LIBRARIES}" )
 message("SDL2 prefix: ${SDL2_PREFIX}")
 message("OPENGL library found in ${OPENGL}")
@@ -203,6 +208,26 @@ endif()
 
 add_executable(mc2 ${SOURCES} ${MAIN_SRC})
 target_link_libraries(mc2 mclib gosfx mlr stuff gui gameos gameos_main windows ZLIB::ZLIB ${SDL2_LIBRARIES} GLEW::GLEW SDL2_mixer::SDL2_mixer ${ADDITIONAL_LIBS} OpenGL::GL)
+
+target_link_libraries(mc2
+    FFmpegLGPL::avformat
+    FFmpegLGPL::avcodec
+    FFmpegLGPL::avutil
+    FFmpegLGPL::swscale
+    FFmpegLGPL::swresample)
+
+# Delay-load all five FFmpeg DLLs so mc2.exe launches even when the
+# DLLs are missing (the game gracefully skips video playback). The
+# delay-load failure hook lives in code/mc2video.cpp.
+if(MSVC)
+    target_link_options(mc2 PRIVATE
+        "/DELAYLOAD:${FFmpegLGPL_avcodec_DLL_NAME}"
+        "/DELAYLOAD:${FFmpegLGPL_avformat_DLL_NAME}"
+        "/DELAYLOAD:${FFmpegLGPL_avutil_DLL_NAME}"
+        "/DELAYLOAD:${FFmpegLGPL_swscale_DLL_NAME}"
+        "/DELAYLOAD:${FFmpegLGPL_swresample_DLL_NAME}")
+    target_link_libraries(mc2 delayimp.lib)
+endif()
 
 add_subdirectory("./res" "./out/res")
 add_subdirectory("./data_tools" "./out/data_tools")
