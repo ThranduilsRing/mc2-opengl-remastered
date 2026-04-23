@@ -1561,10 +1561,22 @@ long GlobalMap::init (PacketFilePtr packetFile, long whichPacket) {
 #endif
 	}
 
-	areaMap = (short*)systemHeap->Malloc(sizeof(short) * height * width);
-	gosASSERT(areaMap != NULL);
-	result = safeReadPacket(packetFile, whichPacket++, (unsigned char*)areaMap,
-	                        sizeof(short) * height * width, "areaMap");
+	// Mod-tolerance: Carver5O pak contains an areaMap packet of 360000 bytes
+	// where vanilla schema expects 180000 (sizeof(short)*height*width for
+	// baseline map dims). The mod engine may use int per cell instead of
+	// short, or a different dim encoding. Rather than bail, allocate to
+	// whichever is larger so the packet fits; downstream indexing uses
+	// baseline (width/height) so the "extra" bytes are safe scratch.
+	{
+		packetFile->seekPacket(whichPacket);
+		size_t packetSize = (size_t)packetFile->getPacketSize();
+		size_t expected = sizeof(short) * (size_t)height * (size_t)width;
+		size_t allocSize = (packetSize > expected) ? packetSize : expected;
+		areaMap = (short*)systemHeap->Malloc(allocSize);
+		gosASSERT(areaMap != NULL);
+		result = safeReadPacket(packetFile, whichPacket++, (unsigned char*)areaMap,
+		                        allocSize, "areaMap");
+	}
 	if (result < 0) {
 		badLoad = true;
 #ifdef USE_PATH_COST_TABLE
@@ -1577,14 +1589,22 @@ long GlobalMap::init (PacketFilePtr packetFile, long whichPacket) {
 	if (result == 0)
 		Fatal(result, " GlobalMap.init: unable to read areaMap packet ");
 
-	areas = (GlobalMapAreaPtr)systemHeap->Malloc(sizeof(GlobalMapArea) * numAreas);
-	areas_cellsCovered = (short**)systemHeap->Malloc(sizeof(short*) * numAreas);
-	areas_doors = (DoorInfoPtr*)systemHeap->Malloc(sizeof(DoorInfoPtr) * numAreas);
-	gosASSERT(areas != NULL);
-	gosASSERT(areas_cellsCovered != NULL);
-	gosASSERT(areas_doors != NULL);
-	result = safeReadPacket(packetFile, whichPacket++, (unsigned char*)areas,
-	                        sizeof(GlobalMapArea) * numAreas, "areas");
+	// Same mod-tolerance pattern for areas packet. Carver5O may also have
+	// a larger areas struct size per entry (extended mod schema).
+	{
+		packetFile->seekPacket(whichPacket);
+		size_t packetSize = (size_t)packetFile->getPacketSize();
+		size_t expected = sizeof(GlobalMapArea) * (size_t)numAreas;
+		size_t allocSize = (packetSize > expected) ? packetSize : expected;
+		areas = (GlobalMapAreaPtr)systemHeap->Malloc(allocSize);
+		areas_cellsCovered = (short**)systemHeap->Malloc(sizeof(short*) * numAreas);
+		areas_doors = (DoorInfoPtr*)systemHeap->Malloc(sizeof(DoorInfoPtr) * numAreas);
+		gosASSERT(areas != NULL);
+		gosASSERT(areas_cellsCovered != NULL);
+		gosASSERT(areas_doors != NULL);
+		result = safeReadPacket(packetFile, whichPacket++, (unsigned char*)areas,
+		                        allocSize, "areas");
+	}
 	if (result < 0) {
 		badLoad = true;
 #ifdef USE_PATH_COST_TABLE
@@ -1597,20 +1617,33 @@ long GlobalMap::init (PacketFilePtr packetFile, long whichPacket) {
 	if (result == 0)
 		Fatal(result, " GlobalMap.init: unable to read areas packet ");
 
-	doorInfos = (DoorInfoPtr)systemHeap->Malloc(sizeof(DoorInfo) * numDoorInfos);
+	// Mod-tolerance: sum up areas[i].numDoors first so we can allocate
+	// doorInfos[] to cover the actual need. Baseline's numDoorInfos header
+	// field is sometimes smaller than the per-area-door sum in mod content
+	// (Carver5O: header=200, sum=257), causing the previous overflow bail
+	// and downstream heap corruption in Building::update/clearPathExistsTable.
+	// Grow the allocation; store the grown count into numDoorInfos so later
+	// reads/writes that reference numDoorInfos match the allocated buffer.
+	long actualDoorInfoSum = 0;
+	for (long i = 0; i < numAreas; i++)
+		actualDoorInfoSum += areas[i].numDoors;
+	long doorInfoAllocCount = (actualDoorInfoSum > numDoorInfos) ? actualDoorInfoSum : numDoorInfos;
+	if (actualDoorInfoSum > numDoorInfos) {
+		PAUSE(("GlobalMap.init: doorInfo sum %d exceeds header numDoorInfos %d — growing buffer to %d",
+			(int)actualDoorInfoSum, (int)numDoorInfos, (int)doorInfoAllocCount));
+		numDoorInfos = doorInfoAllocCount;
+	}
+	doorInfos = (DoorInfoPtr)systemHeap->Malloc(sizeof(DoorInfo) * doorInfoAllocCount);
 	gosASSERT(doorInfos != NULL);
 	long curDoorInfo = 0;
 	bool doorInfoOverflow = false;
 	for (long i = 0; i < numAreas; i++)
 		if (areas[i].numDoors) {
-			// Bail BEFORE writing past doorInfos[]. On mod content the sum of
-			// areas[i].numDoors can exceed numDoorInfos and the post-loop
-			// Assert fires after the heap is already trashed — which is
-			// exactly the intermittent ntdll heap-corruption signature we
-			// see in ABLi_loadLibrary later.
-			if (curDoorInfo + areas[i].numDoors > numDoorInfos) {
-				PAUSE(("GlobalMap.init: doorInfo overflow at area %d (have %d, would need %d) — bailing pre-corruption",
-					(int)i, (int)numDoorInfos, (int)(curDoorInfo + areas[i].numDoors)));
+			// Belt-and-suspenders: still bail if somehow curDoorInfo would
+			// walk past the grown allocation.
+			if (curDoorInfo + areas[i].numDoors > doorInfoAllocCount) {
+				PAUSE(("GlobalMap.init: doorInfo overflow at area %d (have %d alloc, would need %d) — bailing pre-corruption",
+					(int)i, (int)doorInfoAllocCount, (int)(curDoorInfo + areas[i].numDoors)));
 				doorInfoOverflow = true;
 				break;
 			}
@@ -1654,11 +1687,19 @@ long GlobalMap::init (PacketFilePtr packetFile, long whichPacket) {
 		curDoorInfo += areas[curArea].numDoors;
 	}
 
-	doors = (GlobalMapDoorPtr)systemHeap->Malloc(sizeof(GlobalMapDoor) * (numDoors + NUM_DOOR_OFFSETS));
-	doors_links = (DoorInfoLinksPtr*)systemHeap->Malloc(sizeof(DoorInfoLinksPtr) * (numDoors + NUM_DOOR_OFFSETS));
-	gosASSERT(doors != NULL);
-	result = safeReadPacket(packetFile, whichPacket++, (unsigned char*)doors,
-	                        sizeof(GlobalMapDoor) * (numDoors + NUM_DOOR_OFFSETS), "doors");
+	// Mod-tolerance: grow doors allocation to packet size if the pak uses a
+	// larger door struct than baseline.
+	{
+		packetFile->seekPacket(whichPacket);
+		size_t packetSize = (size_t)packetFile->getPacketSize();
+		size_t expected = sizeof(GlobalMapDoor) * (size_t)(numDoors + NUM_DOOR_OFFSETS);
+		size_t allocSize = (packetSize > expected) ? packetSize : expected;
+		doors = (GlobalMapDoorPtr)systemHeap->Malloc(allocSize);
+		doors_links = (DoorInfoLinksPtr*)systemHeap->Malloc(sizeof(DoorInfoLinksPtr) * (numDoors + NUM_DOOR_OFFSETS));
+		gosASSERT(doors != NULL);
+		result = safeReadPacket(packetFile, whichPacket++, (unsigned char*)doors,
+		                        allocSize, "doors");
+	}
 	if (result < 0) {
 		badLoad = true;
 #ifdef USE_PATH_COST_TABLE
