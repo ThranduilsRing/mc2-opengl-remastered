@@ -22,19 +22,15 @@
 #include"prefs.h"
 #endif
 
+#include"mc2video.h"
+
 #include "../resource.h"
 #include"gameos.hpp"
 
-//-----------------------------------------------------------------------
-const DWORD MAX_TEXTURE_WIDTH 	= 256;
-const DWORD MAX_TEXTURE_HEIGHT 	= 256;
-const DWORD MAX_MOVIE_WIDTH 	= 640;
-const DWORD MAX_MOVIE_HEIGHT 	= 480;
-const float TEXTURE_ADJUST_MIN	= (0.4f / MAX_TEXTURE_WIDTH);
-const float TEXTURE_ADJUST_MAX	= (1.0f - TEXTURE_ADJUST_MIN);
-
+// Frame-rate averaging globals referenced by mechcmd2.cpp.
+// Defined here to keep them co-located with the movie subsystem.
 float averageFrameRate = 0.0f;
-long currentFrameNum = 0;
+long  currentFrameNum  = 0;
 float last30Frames[30] = {
 	0.0f, 0.0f, 0.0f, 0.0f, 0.0f,
 	0.0f, 0.0f, 0.0f, 0.0f, 0.0f,
@@ -44,102 +40,151 @@ float last30Frames[30] = {
 	0.0f, 0.0f, 0.0f, 0.0f, 0.0f
 };
 
-extern char CDInstallPath[];
-void EnterWindowMode();
-void EnterFullScreenMode();
-void __stdcall ExitGameOS();
+//-----------------------------------------------------------------------
+MC2Movie::~MC2Movie (void)
+{
+    if (m_session) {
+        video_close(m_session);
+        m_session = nullptr;
+    }
+    if (waveName)  { delete[] waveName;  waveName  = nullptr; }
+    if (m_MC2Name) { delete[] m_MC2Name; m_MC2Name = nullptr; }
+}
 
 //-----------------------------------------------------------------------
 // Class MC2Movie
 void MC2Movie::init (const char *MC2Name, RECT mRect, bool useWaveFile)
 {
-		char MOVIEName[1024];
-		_splitpath(MC2Name,NULL,NULL,MOVIEName,NULL);
+    // Copy the short-name from the full path.
+    char shortName[1024];
+    _splitpath(MC2Name, NULL, NULL, shortName, NULL);
 
-		m_MC2Name = new char [strlen(MOVIEName)+1];
-		memset(m_MC2Name,0,strlen(MOVIEName)+1);
-		strcpy(m_MC2Name,MOVIEName);
+    m_MC2Name = new char[strlen(shortName) + 1];
+    strcpy(m_MC2Name, shortName);
 
-	//Set the volume based on master system volume.
-	// ONLY if we want silence!!!
-	if (useWaveFile && (prefs.DigitalMasterVolume != 0.0f))
-	{
-		separateWAVE = true;
-		soundStarted = false;
-		char MOVIEName[1024];
-		_splitpath(MC2Name,NULL,NULL,MOVIEName,NULL);
+    MC2Rect       = mRect;
+    forceStop     = false;
+    stillPlaying  = false;
+    m_session     = nullptr;
+    m_sessionDone = false;
 
-		waveName = new char [strlen(MOVIEName)+1];
-		memset(waveName,0,strlen(MOVIEName)+1);
-		strcpy(waveName,MOVIEName);
-	}
+    separateWAVE = useWaveFile && (prefs.DigitalMasterVolume != 0.0f);
+    if (separateWAVE) {
+        waveName = new char[strlen(shortName) + 1];
+        strcpy(waveName, shortName);
+    } else {
+        waveName = nullptr;
+    }
 
-				numHigh = 1;
+    if (!g_ffmpegAvailable) {
+        printf("[VIDEO] init: FFmpeg unavailable, skipping movie '%s'\n", shortName);
+        stillPlaying  = false;
+        m_sessionDone = true;
+        return;
+    }
 
-			totalTexturesUsed = numWide * numHigh;
+    // Enumerate every candidate in the resolver's chain until one
+    // opens successfully. Each failure fully tears down the failed
+    // decoder state before the next attempt.
+    const bool preferUpscaled = prefs.UseUpscaledVideos;
+    for (int candidateIndex = 0; ; ++candidateIndex) {
+        char resolvedPath[1024];
+        if (!resolveVideoCandidate(shortName, preferUpscaled, candidateIndex,
+                                   resolvedPath, sizeof(resolvedPath))) {
+            break;  // chain exhausted
+        }
+
+        VideoOpenParams p = {};
+        p.resolvedPath      = resolvedPath;
+        p.destRectW         = MC2Rect.right  - MC2Rect.left;
+        p.destRectH         = MC2Rect.bottom - MC2Rect.top;
+        p.useWaveFile       = separateWAVE;
+        p.waveFileShortName = waveName;
+
+        VideoOpenResult r = {};
+        m_session = video_open(p, &r);
+        if (m_session) {
+            stillPlaying = true;
+            printf("[VIDEO] init: opened %s (%dx%d, fps=%.2f, audio=%d)\n",
+                   resolvedPath, r.srcW, r.srcH, r.fps, (int)r.hasAudio);
+            return;
+        }
+
+        printf("[VIDEO] init: open failed for '%s' (idx=%d), trying next candidate\n",
+               resolvedPath, candidateIndex);
+    }
+
+    // All candidates exhausted.
+    printf("[VIDEO] init: no playable candidate for '%s'\n", shortName);
+    stillPlaying  = false;
+    m_sessionDone = true;
 }
 
 //-----------------------------------------------------------------------
-//Changes rect.  If resize, calls malloc which will be QUITE painful during a MC2 playback
-// If just move, its awfully fast.
+//Changes rect.
 void MC2Movie::setRect (RECT vRect)
 {
-	if (((vRect.right - vRect.left) != (MC2Rect.right - MC2Rect.left)) ||
-		((vRect.bottom - vRect.top) != (MC2Rect.bottom - MC2Rect.top)))
-	{
-		//Size changed.  STOP for now to tell people this is bad!
-		// May be impossible to do when MC2 is running because MC2 counts on previous frame's contents not changing
-		STOP(("Tried to change MC2 Movie Rect size to different one from starting value"));
-	}
-	else
-	{
-		//Otherwise, just update the MC2Rect.
-		MC2Rect = vRect;
-	}
+    MC2Rect = vRect;
+    if (m_session) {
+        video_setRect(m_session,
+                      vRect.left, vRect.top,
+                      vRect.right  - vRect.left,
+                      vRect.bottom - vRect.top);
+    }
+}
+
+//-----------------------------------------------------------------------
+//Pause video playback.
+void MC2Movie::pause (bool pauseState)
+{
+    if (m_session) video_pause(m_session, pauseState);
+}
+
+//-----------------------------------------------------------------------
+//Immediately stops playback of MC2.
+void MC2Movie::stop (void)
+{
+    forceStop = true;
+    if (m_session) video_stop(m_session);
+}
+
+//-----------------------------------------------------------------------
+//Restarts MC2 from beginning.  Can be called anytime.
+void MC2Movie::restart (void)
+{
+    if (m_session) video_restart(m_session);
+    forceStop     = false;
+    stillPlaying  = true;
+    m_sessionDone = false;
 }
 
 //-----------------------------------------------------------------------
 //Handles tickling MC2 to make sure we keep playing back
 bool MC2Movie::update (void)
 {
-	if (!soundStarted && separateWAVE)
-	{
-		soundStarted = true;
-		soundSystem->playDigitalStream(waveName);
-	}
+    if (!stillPlaying || m_sessionDone) {
+        return true;
+    }
 
-	if (
-		stillPlaying)
-	{
-		if (forceStop)
-		{
-			stillPlaying = false;
+    if (forceStop) {
+        if (m_session) video_stop(m_session);
+        stillPlaying  = false;
+        m_sessionDone = true;
+        return true;
+    }
 
-			if (separateWAVE)
-				soundSystem->stopSupportSample();
+    if (m_session && video_update(m_session)) {
+        stillPlaying  = false;
+        m_sessionDone = true;
+        return true;
+    }
 
-			return true;
-		}
-	
-		return false;
-	}
-
-	return true;
-}
-
-//-----------------------------------------------------------------------
-//Actually moves frame data from MC2 to surface and/or texture(s) 
-void MC2Movie::BltMovieFrame (void)
-{
+    return false;
 }
 
 //-----------------------------------------------------------------------
 //Actually draws the MC2 texture using gos_DrawTriangle.
 void MC2Movie::render (void)
 {
-	if (!stillPlaying)
-		return;
-
+    if (m_session) video_render(m_session);
 }
-
-//--
