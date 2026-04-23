@@ -168,6 +168,15 @@ void SensorSystem::disable (void) {
 
 void SensorSystem::setShutdown (bool setting) {
 
+	// Mod-tolerance: stub-substituted BattleMech instances may never have
+	// gotten a sensorSystem allocated (no COMPONENT_FORM_SENSOR in their
+	// inventory). Callers throughout mech.cpp call sensorSystem->setShutdown
+	// unconditionally; guard here instead of sprinkling checks across all
+	// 7 call sites. Same rationale for broken/numContacts accessors below.
+	// MSVC accepts comparing `this` to a cast NULL; formally UB under strict
+	// C++ but de-facto portable on this target.
+	if ((void*)this == nullptr) return;
+
 	if (setting) {
 		if (notShutdown) {
 			long i = 0;
