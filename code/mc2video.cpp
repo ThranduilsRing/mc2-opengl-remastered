@@ -215,6 +215,10 @@ struct VideoSession {
     // Audio-master clock — Task 13
     bool             audioStallLogged = false;
 
+    // Failure-handling log-once flags — Task 16
+    bool             loggedDegenerateRect     = false;
+    bool             loggedVideoDecodeError   = false;
+
     // Lifecycle
     bool             paused   = false;
     bool             eof      = false;
@@ -505,6 +509,20 @@ static double videoMasterClock(const VideoSession* s)
 }
 
 //-----------------------------------------------------------------------------
+// Decode-one-frame helper — log-once error wrapper
+//-----------------------------------------------------------------------------
+static int logOnceDecodeError(VideoSession* s, const char* where, int ret)
+{
+    if (!s->loggedVideoDecodeError) {
+        char errbuf[128] = {0};
+        av_strerror(ret, errbuf, sizeof(errbuf));
+        VIDEO_LOG("decode error at %s: %s (ret=%d)", where, errbuf, ret);
+        s->loggedVideoDecodeError = true;
+    }
+    return -1;
+}
+
+//-----------------------------------------------------------------------------
 // Decode-one-frame helper
 // Pulls packets and decodes until one video frame is produced in
 // s->vFrame, or EOF. Returns: 1 = frame produced, -1 = EOF/error.
@@ -515,16 +533,19 @@ static int decodeNextVideoFrame(VideoSession* s)
     for (;;) {
         int ret = avcodec_receive_frame(s->vCodec, s->vFrame);
         if (ret == 0) return 1;
-        if (ret != AVERROR(EAGAIN) && ret != AVERROR_EOF) return -1;
+        if (ret != AVERROR(EAGAIN) && ret != AVERROR_EOF) return logOnceDecodeError(s, "avcodec_receive_frame", ret);
 
         // Need more input
         ret = av_read_frame(s->fmt, s->pkt);
         if (ret == AVERROR_EOF) {
             avcodec_send_packet(s->vCodec, nullptr);  // flush
             ret = avcodec_receive_frame(s->vCodec, s->vFrame);
-            return (ret == 0) ? 1 : -1;
+            if (ret == 0) return 1;
+            if (ret != AVERROR(EAGAIN) && ret != AVERROR_EOF)
+                return logOnceDecodeError(s, "avcodec_receive_frame(flush)", ret);
+            return -1;
         }
-        if (ret < 0) return -1;
+        if (ret < 0) return logOnceDecodeError(s, "av_read_frame", ret);
 
         if (s->pkt->stream_index == s->vStream) {
             avcodec_send_packet(s->vCodec, s->pkt);
@@ -750,6 +771,8 @@ void video_restart(VideoSession* s)
     s->pendingFrameValid = false;
     s->presentedPTS = -1.0;
     s->audioStallLogged = false;
+    s->loggedDegenerateRect = false;
+    s->loggedVideoDecodeError = false;
     s->clockStart = nowSeconds();
     // Re-arm audio push: end the existing stream (if any) and start
     // a fresh one to reset the consumed-frame counter.
@@ -767,7 +790,10 @@ void video_setRect(VideoSession* s, int x0, int y0, int w, int h)
 {
     if (!s) return;
     if (w <= 0 || h <= 0) {
-        VIDEO_LOG("setRect: degenerate rect ignored (w=%d h=%d)", w, h);
+        if (!s->loggedDegenerateRect) {
+            VIDEO_LOG("setRect: degenerate rect ignored (w=%d h=%d)", w, h);
+            s->loggedDegenerateRect = true;
+        }
         return;
     }
     s->rectX = x0;
