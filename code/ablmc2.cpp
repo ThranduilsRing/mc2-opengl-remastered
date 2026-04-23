@@ -7012,6 +7012,113 @@ void execClearMoveOrdersOmni (void) {
 }
 
 //*****************************************************************************
+// --- Omnitech ABL extensions, tier-2 ---
+// Names referenced by Carver5O / Omnitech warriorbrain FSMs that cascaded
+// ABL preprocessor errors (Undefined identifier) into uninit FunctionCallbackTable
+// slots. Safe stubs: pop all args, push default on non-void returns, log under
+// MC2_ABL_TRACE. No real semantics — keeps ABL parser and stack balanced so
+// the warriorbrain FSM can execute through these calls.
+//*****************************************************************************
+
+void execMagicAttack (void) {
+	// args: i (target/range param). No return.
+	ABLi_popInteger();
+	if (getenv("MC2_ABL_TRACE")) DEBUGWINS_print("[ABL] magicAttack stub", 0);
+}
+
+//*****************************************************************************
+
+void execMagicPatrol (void) {
+	// args: RR (PatrolState, PatrolPath — both real[]). No return.
+	ABLi_popRealPtr();
+	ABLi_popRealPtr();
+	if (getenv("MC2_ABL_TRACE")) DEBUGWINS_print("[ABL] magicPatrol stub", 0);
+}
+
+//*****************************************************************************
+
+void execMagicGuard (void) {
+	// args: Ri (position, stateHandle). No return.
+	ABLi_popRealPtr();
+	ABLi_popInteger();
+	if (getenv("MC2_ABL_TRACE")) DEBUGWINS_print("[ABL] magicGuard stub", 0);
+}
+
+//*****************************************************************************
+
+void execMagicEscort (void) {
+	// args: i (target partID). No return.
+	ABLi_popInteger();
+	if (getenv("MC2_ABL_TRACE")) DEBUGWINS_print("[ABL] magicEscort stub", 0);
+}
+
+//*****************************************************************************
+
+void execSetWillRequestHelp (void) {
+	// args: b. No return. Pilot-level help-request flag; stubbed.
+	ABLi_popBoolean();
+	if (getenv("MC2_ABL_TRACE")) DEBUGWINS_print("[ABL] setWillRequestHelp stub", 0);
+}
+
+//*****************************************************************************
+
+void execTDebugString (void) {
+	// args: C (string). No return. Debug print; route to debug window.
+	char* s = ABLi_popCharPtr();
+	if (s) DEBUGWINS_print(s, 0);
+}
+
+//*****************************************************************************
+
+void execCoreWaitOmni (void) {
+	// args: r (seconds). No return. Tac-order style wait; stubbed.
+	ABLi_popReal();
+	if (getenv("MC2_ABL_TRACE")) DEBUGWINS_print("[ABL] coreWait stub", 0);
+}
+
+//*****************************************************************************
+
+void execCoreGuardOmni (void) {
+	// args: Ri (position, stateHandle). No return.
+	ABLi_popRealPtr();
+	ABLi_popInteger();
+	if (getenv("MC2_ABL_TRACE")) DEBUGWINS_print("[ABL] coreGuard stub", 0);
+}
+
+//*****************************************************************************
+
+void execCorePatrolOmni (void) {
+	// args: RR. No return.
+	ABLi_popRealPtr();
+	ABLi_popRealPtr();
+	if (getenv("MC2_ABL_TRACE")) DEBUGWINS_print("[ABL] corePatrol stub", 0);
+}
+
+//*****************************************************************************
+
+void execIsDeadOrFled (void) {
+	// args: i (partID). Returns: b. Conservative: return false (still in play)
+	// unless we can clearly see the object is gone/destroyed.
+	long partId = ABLi_popInteger();
+	bool deadOrFled = false;
+	GameObjectPtr obj = getObject(partId);
+	if (!obj) {
+		deadOrFled = true;
+	} else if (obj->isDestroyed() || obj->isDisabled()) {
+		deadOrFled = true;
+	}
+	ABLi_pushBoolean(deadOrFled);
+}
+
+//*****************************************************************************
+
+void execPrintTeamStatus (void) {
+	// args: i (teamID). No return. Diagnostic; stub.
+	ABLi_popInteger();
+	if (getenv("MC2_ABL_TRACE")) DEBUGWINS_print("[ABL] printTeamStatus stub", 0);
+}
+
+//*****************************************************************************
 
 void execMCPrint (void) {
 
@@ -7864,7 +7971,20 @@ void initABL (void) {
 	ABLi_addFunction("incallout", false, NULL, "b", execInCallout);
 	ABLi_addFunction("setinvulnerable", false, "b", NULL, execSetInvulnerable);
 	ABLi_addFunction("freezegui", false, "b", NULL, execFreezeGUI);
-	
+
+	// --- Omnitech ABL extensions, tier-2 (FSM primitives observed in Carver5O/MCO .abl) ---
+	ABLi_addFunction("magicattack",          false, "i",   NULL, execMagicAttack);
+	ABLi_addFunction("magicpatrol",          false, "RR",  NULL, execMagicPatrol);
+	ABLi_addFunction("magicguard",           false, "Ri",  NULL, execMagicGuard);
+	ABLi_addFunction("magicescort",          false, "i",   NULL, execMagicEscort);
+	ABLi_addFunction("setwillrequesthelp",   false, "b",   NULL, execSetWillRequestHelp);
+	ABLi_addFunction("tdebugstring",         false, "C",   NULL, execTDebugString);
+	ABLi_addFunction("corewait",             false, "r",   NULL, execCoreWaitOmni);
+	ABLi_addFunction("coreguard",            false, "Ri",  NULL, execCoreGuardOmni);
+	ABLi_addFunction("corepatrol",           false, "RR",  NULL, execCorePatrolOmni);
+	ABLi_addFunction("isdeadorfled",         false, "i",   "b",  execIsDeadOrFled);
+	ABLi_addFunction("printteamstatus",      false, "i",   NULL, execPrintTeamStatus);
+
 	// --- Omnitech ABL extensions ---
 	// Mission / messaging / economy
 	ABLi_addFunction("settextmsg",           false, "i*i", NULL, execSetTextMsg);
