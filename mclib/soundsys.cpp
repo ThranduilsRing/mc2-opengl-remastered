@@ -21,6 +21,10 @@
 
 #include "platform_stdlib.h" // _splitpath
 
+#include <SDL2/SDL_mixer.h>
+#include <SDL2/SDL_atomic.h>
+#include <vector>
+
 //---------------------------------------------------------------------------
 // static globals
 bool useSound = TRUE;
@@ -42,8 +46,47 @@ float		SoundSystem::bettyVolume = 0.7f;
 long		SoundSystem::largestSensorContact = -1;
 
 #define FALLOFF_DISTANCE			(1500.0f)
+
 //---------------------------------------------------------------------------
-// class SoundSystem 
+// Video PCM push adapter — file-scope state + Mix_HookMusic callback
+//---------------------------------------------------------------------------
+namespace {
+    struct VideoAudioState {
+        std::vector<int16_t>  ring;
+        size_t                cap = 0;
+        SDL_SpinLock          lock = 0;
+        size_t                head = 0;   // producer index
+        size_t                tail = 0;   // consumer index
+        SDL_atomic_t          consumedFrames;
+        int                   rate = 0;
+        int                   channels = 0;
+        bool                  active = false;
+    };
+    VideoAudioState g_va;
+
+    void videoMixHook(void* /*udata*/, Uint8* stream, int len)
+    {
+        int16_t* out = (int16_t*)stream;
+        int outSamples = len / (int)sizeof(int16_t);
+        SDL_AtomicLock(&g_va.lock);
+        for (int i = 0; i < outSamples; ++i) {
+            if (g_va.tail == g_va.head) {
+                out[i] = 0;   // underrun = silence
+            } else {
+                out[i] = g_va.ring[g_va.tail];
+                g_va.tail = (g_va.tail + 1) % g_va.cap;
+            }
+        }
+        SDL_AtomicUnlock(&g_va.lock);
+        int framesWritten = (g_va.channels > 0)
+                             ? (outSamples / g_va.channels)
+                             : outSamples;
+        SDL_AtomicAdd(&g_va.consumedFrames, framesWritten);
+    }
+} // namespace
+
+//---------------------------------------------------------------------------
+// class SoundSystem
 //---------------------------------------------------------------------------
 void SoundSystem::destroy (void)
 {
@@ -1273,6 +1316,61 @@ void SoundSystem::playABLDigitalMusic (long musicId)
 {
 //	PAUSE(("Switching to Tune %d.  Playing Tune %d.",musicId,currentMusicId));
 	playDigitalMusic(musicId);
-}	
+}
 
 //---------------------------------------------------------------------------
+// Video PCM adapter methods
+//---------------------------------------------------------------------------
+bool SoundSystem::queryNativeFormat(int* rate, int* channels) const
+{
+    Uint16 fmt; int ch; int r;
+    if (Mix_QuerySpec(&r, &fmt, &ch) == 0) return false;
+    if (rate)     *rate     = r;
+    if (channels) *channels = ch;
+    return true;
+}
+
+bool SoundSystem::beginVideoPCMStream(int rate, int channels)
+{
+    if (g_va.active) return false;
+    Uint16 mixFmt = 0; int mixRate = 0, mixCh = 0;
+    if (Mix_QuerySpec(&mixRate, &mixFmt, &mixCh) == 0) return false;
+    if (mixFmt != AUDIO_S16SYS) return false;
+    if (rate != mixRate || channels != mixCh) return false;
+
+    g_va.rate = rate; g_va.channels = channels;
+    g_va.cap  = (size_t)rate * channels * 2;  // 2 s ring buffer
+    g_va.ring.assign(g_va.cap, 0);
+    g_va.head = g_va.tail = 0;
+    SDL_AtomicSet(&g_va.consumedFrames, 0);
+    Mix_HookMusic(videoMixHook, nullptr);
+    g_va.active = true;
+    return true;
+}
+
+void SoundSystem::pushVideoPCMSamples(const int16_t* samples, int frameCount)
+{
+    if (!g_va.active || !samples || frameCount <= 0) return;
+    int interleaved = frameCount * g_va.channels;
+    SDL_AtomicLock(&g_va.lock);
+    for (int i = 0; i < interleaved; ++i) {
+        size_t next = (g_va.head + 1) % g_va.cap;
+        if (next == g_va.tail) break;   // full — drop
+        g_va.ring[g_va.head] = samples[i];
+        g_va.head = next;
+    }
+    SDL_AtomicUnlock(&g_va.lock);
+}
+
+void SoundSystem::endVideoPCMStream()
+{
+    if (!g_va.active) return;
+    Mix_HookMusic(nullptr, nullptr);
+    g_va.active = false;
+    g_va.ring.clear();
+}
+
+int SoundSystem::videoPCMSamplesConsumed() const
+{
+    return SDL_AtomicGet((SDL_atomic_t*)&g_va.consumedFrames);
+}

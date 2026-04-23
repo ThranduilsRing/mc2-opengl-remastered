@@ -10,7 +10,13 @@
 
 #include "file.h"   // fileExists
 #include "gameos.hpp"  // gos_NewEmptyTexture, gos_DestroyTexture, gos_Texture_Alpha, RECT_TEX, gosHint_DisableMipmap, DWORD
+#include "soundsys.h"  // SoundSystem — PCM push adapter (Task 12)
 extern char moviePath[80];  // defined in mclib/paths.cpp
+// soundSystem is the global GameSoundSystem* declared in code/gamesound.cpp.
+// Forward-declare the subclass so the extern type matches the definition;
+// SoundSystem methods are callable via the subclass pointer.
+class GameSoundSystem;
+extern GameSoundSystem* soundSystem;
 
 #if defined(_WIN32)
 #  include <windows.h>
@@ -198,10 +204,13 @@ struct VideoSession {
     bool             pendingFrameValid = false;
     double           pendingFramePTS   = 0.0;
 
-    // Audio — Task 12 fills these in (keep forward-compatible struct shape)
+    // Audio — Task 12
     int              aStream   = -1;
     AVCodecContext*  aCodec    = nullptr;
     SwrContext*      swr       = nullptr;
+    int              aOutRate     = 0;
+    int              aOutChannels = 0;
+    bool             audioStreamStarted = false;
 
     // Lifecycle
     bool             paused = false;
@@ -298,8 +307,53 @@ VideoSession* video_open(const VideoOpenParams& p, VideoOpenResult* out)
                          s->rectX, s->rectY, s->rectW, s->rectH,
                          s->quadX0, s->quadY0, s->quadX1, s->quadY1);
 
-    // 6. Audio stream detection (Task 12 opens the decoder)
+    // 6. Audio stream — detect, then open decoder + resample chain (Task 12)
     s->aStream = av_find_best_stream(s->fmt, AVMEDIA_TYPE_AUDIO, -1, -1, nullptr, 0);
+
+    if (s->aStream >= 0 && !p.useWaveFile) {
+        AVStream* ast = s->fmt->streams[s->aStream];
+        const AVCodec* ac = avcodec_find_decoder(ast->codecpar->codec_id);
+        if (ac) {
+            s->aCodec = avcodec_alloc_context3(ac);
+            avcodec_parameters_to_context(s->aCodec, ast->codecpar);
+            SoundSystem* snd = reinterpret_cast<SoundSystem*>(soundSystem);
+            if (avcodec_open2(s->aCodec, ac, nullptr) == 0 &&
+                snd &&
+                snd->queryNativeFormat(&s->aOutRate, &s->aOutChannels))
+            {
+                s->swr = swr_alloc();
+                AVChannelLayout inLayout;
+                av_channel_layout_copy(&inLayout, &s->aCodec->ch_layout);
+                AVChannelLayout outLayout;
+                av_channel_layout_default(&outLayout, s->aOutChannels);
+
+                swr_alloc_set_opts2(&s->swr,
+                    &outLayout, AV_SAMPLE_FMT_S16, s->aOutRate,
+                    &inLayout,  s->aCodec->sample_fmt, s->aCodec->sample_rate,
+                    0, nullptr);
+                swr_init(s->swr);
+                av_channel_layout_uninit(&inLayout);
+                av_channel_layout_uninit(&outLayout);
+
+                if (snd->beginVideoPCMStream(s->aOutRate, s->aOutChannels)) {
+                    s->audioStreamStarted = true;
+                    VIDEO_TRACE("audio: embedded stream opened, rate=%d ch=%d",
+                                s->aOutRate, s->aOutChannels);
+                } else {
+                    // beginVideoPCMStream failed (e.g. mixer not S16) — silent video
+                    swr_free(&s->swr);
+                    avcodec_free_context(&s->aCodec);
+                    s->aCodec = nullptr;
+                    s->aStream = -1;
+                    VIDEO_LOG("audio: beginVideoPCMStream failed, silent video");
+                }
+            } else {
+                if (s->aCodec) { avcodec_free_context(&s->aCodec); s->aCodec = nullptr; }
+                s->aStream = -1;
+                VIDEO_LOG("audio: decoder open or mixer query failed, silent video");
+            }
+        }
+    }
 
     // 7. Fill out
     if (out) {
@@ -328,6 +382,10 @@ VideoSession* video_open(const VideoOpenParams& p, VideoOpenResult* out)
 void video_close(VideoSession* s)
 {
     if (!s) return;
+    if (s->audioStreamStarted && soundSystem) {
+        reinterpret_cast<SoundSystem*>(soundSystem)->endVideoPCMStream();
+        s->audioStreamStarted = false;
+    }
     if (s->texHandle != 0) {
         gos_DestroyTexture(s->texHandle);
         s->texHandle = 0;
@@ -381,8 +439,27 @@ static int decodeNextVideoFrame(VideoSession* s)
 
         if (s->pkt->stream_index == s->vStream) {
             avcodec_send_packet(s->vCodec, s->pkt);
+        } else if (s->pkt->stream_index == s->aStream && s->aCodec && s->swr) {
+            avcodec_send_packet(s->aCodec, s->pkt);
+            AVFrame* af = av_frame_alloc();
+            while (avcodec_receive_frame(s->aCodec, af) == 0) {
+                int outSamplesMax = (int)av_rescale_rnd(
+                    swr_get_delay(s->swr, s->aCodec->sample_rate) + af->nb_samples,
+                    s->aOutRate, s->aCodec->sample_rate, AV_ROUND_UP);
+                int outBytes = av_samples_get_buffer_size(
+                    nullptr, s->aOutChannels, outSamplesMax, AV_SAMPLE_FMT_S16, 1);
+                uint8_t* outBuf = (uint8_t*)av_malloc(outBytes);
+                uint8_t* outPtr = outBuf;
+                int outSamples = swr_convert(s->swr, &outPtr, outSamplesMax,
+                                             (const uint8_t**)af->data, af->nb_samples);
+                if (outSamples > 0 && soundSystem) {
+                    reinterpret_cast<SoundSystem*>(soundSystem)->pushVideoPCMSamples(
+                        (const int16_t*)outBuf, outSamples);
+                }
+                av_free(outBuf);
+            }
+            av_frame_free(&af);
         }
-        // audio packets handled in Task 12; for now discard
         av_packet_unref(s->pkt);
     }
 }

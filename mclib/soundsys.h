@@ -40,6 +40,7 @@
 #endif
 
 #include<math.h>
+#include<cstdint>
 #include<gameos.hpp>
 #include<stuff/stuff.hpp>
 //---------------------------------------------------------------------------
@@ -288,16 +289,28 @@ class SoundSystem
 		{
 			isRaining = rainLevel;
 		}
-		
+
 		void setIsPaused (void)
 		{
 			gamePaused = true;
 		}
-		
+
 		void clearIsPaused (void)
 		{
 			gamePaused = false;
 		}
+
+		// Video-cutscene PCM push adapter. Exclusive with background
+		// music while active. rate/channels match the mixer's native
+		// format (see queryNativeFormat). Only S16 little-endian samples
+		// accepted -- if the mixer's native format is not AUDIO_S16SYS,
+		// beginVideoPCMStream fails and the caller falls back to silent
+		// video.
+		bool queryNativeFormat(int* rate, int* channels) const;
+		bool beginVideoPCMStream(int rate, int channels);
+		void pushVideoPCMSamples(const int16_t* samples, int frameCount);
+		void endVideoPCMStream();
+		int  videoPCMSamplesConsumed() const;  // monotonic frame-count for A/V sync
 };
 
 //---------------------------------------------------------------------------
