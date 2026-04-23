@@ -1679,6 +1679,26 @@ void GameObjectManager::update (bool terrain, bool movers, bool other)
 	//----------------------------
 	// Now, update game objects...
 
+	// Tier-1 instrumentation (stability spec §3.3): single source of truth for
+	// framesSinceActive. One sweep over objList covers every GameObject this
+	// manager owns. Uses the three virtual accessors added on GameObject base.
+	{
+		const long maxObjs = getMaxObjects();
+		for (long i = 0; i <= maxObjs; i++) {
+			GameObjectPtr obj = objList[i];
+			if (!obj) continue;
+			bool activeThisFrame_instr =
+			       obj->inView_instr()
+			    || obj->canBeSeen_instr()
+			    || obj->blockActive_instr();
+			if (activeThisFrame_instr) {
+				obj->framesSinceActive = 0;
+			} else if (obj->framesSinceActive < 255) {
+				obj->framesSinceActive++;
+			}
+		}
+	}
+
 	updateCaptureList();
 	
 	if (terrain && renderObjects)
@@ -1695,7 +1715,9 @@ void GameObjectManager::update (bool terrain, bool movers, bool other)
 		{
 			if (specialBuildings[spBuilding] && specialBuildings[spBuilding]->getExists())
 			{
-				if (!specialBuildings[spBuilding]->update())
+				long updateRet_instr = specialBuildings[spBuilding]->update();
+				specialBuildings[spBuilding]->lastUpdateRet = (int32_t)updateRet_instr;
+				if (!updateRet_instr)
 				{
 					//-----------------------------------------
 					// Update failed, so it no longer exists...
@@ -1715,7 +1737,9 @@ void GameObjectManager::update (bool terrain, bool movers, bool other)
 		{
 			if (gates[nGates] && gates[nGates]->getExists())
 			{
-				if (!gates[nGates]->update())
+				long updateRet_instr = gates[nGates]->update();
+				gates[nGates]->lastUpdateRet = (int32_t)updateRet_instr;
+				if (!updateRet_instr)
 				{
 					//-----------------------------------------
 					// Update failed, so it no longer exists...
@@ -1741,7 +1765,9 @@ void GameObjectManager::update (bool terrain, bool movers, bool other)
 						Terrain::objVertexActive[objList[objIndex]->getVertexNum()] &&
 						objList[objIndex]->getExists())
 					{
-						if (!objList[objIndex]->update())
+						long updateRet_instr = objList[objIndex]->update();
+						objList[objIndex]->lastUpdateRet = (int32_t)updateRet_instr;
+						if (!updateRet_instr)
 						{
 							//-----------------------------------------
 							// Update failed, so it no longer exists...
@@ -1774,7 +1800,9 @@ void GameObjectManager::update (bool terrain, bool movers, bool other)
 				MoverPtr mover = mechs[i];
 				if (mover && mover->getExists())
 				{
-					if (!mover->update())
+					long updateRet_instr = mover->update();
+					mover->lastUpdateRet = (int32_t)updateRet_instr;
+					if (!updateRet_instr)
 						mover->setExists(false);
 					if (mover->getFlag(OBJECT_FLAG_REMOVED))
 						removeList[numRemoved++] = mover;
@@ -1790,7 +1818,9 @@ void GameObjectManager::update (bool terrain, bool movers, bool other)
 				MoverPtr mover = vehicles[i];
 				if (mover && mover->getExists())
 				{
-					if (!mover->update())
+					long updateRet_instr = mover->update();
+					mover->lastUpdateRet = (int32_t)updateRet_instr;
+					if (!updateRet_instr)
 						mover->setExists(false);
 					if (mover->getFlag(OBJECT_FLAG_REMOVED))
 						removeList[numRemoved++] = mover;
@@ -1813,7 +1843,9 @@ void GameObjectManager::update (bool terrain, bool movers, bool other)
 			{
 				if (turrets[i] && turrets[i]->getExists())
 				{
-					if (!turrets[i]->update())
+					long updateRet_instr = turrets[i]->update();
+					turrets[i]->lastUpdateRet = (int32_t)updateRet_instr;
+					if (!updateRet_instr)
 						turrets[i]->setExists(false);
 				}
 			}
@@ -1822,7 +1854,9 @@ void GameObjectManager::update (bool terrain, bool movers, bool other)
 		if (weapons) {
 			for (long i=0;i<numWeapons;i++) {
 				if (weapons[i] && weapons[i]->getExists()) {
-					if (!weapons[i]->update())
+					long updateRet_instr = weapons[i]->update();
+					weapons[i]->lastUpdateRet = (int32_t)updateRet_instr;
+					if (!updateRet_instr)
 						weapons[i]->setExists(false);
 				}
 			}
@@ -1831,7 +1865,9 @@ void GameObjectManager::update (bool terrain, bool movers, bool other)
 		if (carnage) {
 			for (long i = 0; i < numCarnage; i++) {
 				if (carnage[i] && carnage[i]->getExists()) {
-					if (!carnage[i]->update())
+					long updateRet_instr = carnage[i]->update();
+					carnage[i]->lastUpdateRet = (int32_t)updateRet_instr;
+					if (!updateRet_instr)
 						carnage[i]->setExists(false);
 				}
 			}
@@ -1840,7 +1876,9 @@ void GameObjectManager::update (bool terrain, bool movers, bool other)
 		if (lights) {
 			for (long i = 0; i < numLights; i++) {
 				if (lights[i] && lights[i]->getExists()) {
-					if (!lights[i]->update())
+					long updateRet_instr = lights[i]->update();
+					lights[i]->lastUpdateRet = (int32_t)updateRet_instr;
+					if (!updateRet_instr)
 						lights[i]->setExists(false);
 				}
 			}
@@ -1849,7 +1887,9 @@ void GameObjectManager::update (bool terrain, bool movers, bool other)
 		if (artillery) {
 			for (long i = 0; i < numArtillery; i++) {
 				if (artillery[i] && artillery[i]->getExists()) {
-					if (!artillery[i]->update())
+					long updateRet_instr = artillery[i]->update();
+					artillery[i]->lastUpdateRet = (int32_t)updateRet_instr;
+					if (!updateRet_instr)
 						artillery[i]->setExists(false);
 				}
 			}

@@ -340,6 +340,15 @@ class GameObject {
 
 		int32_t                     drawFlags;			// bars, text, brackets, and highlight colors
 
+		// -- Tier-1 instrumentation: destruction visibility (stability spec §3.3-3.4) --
+		// framesSinceActive: zero if the composite active decision (inView ||
+		// canBeSeen || objBlockInfo.active) held this frame, saturating-increment
+		// otherwise. Updated from one site in GameObjectManager::update — see §3.3.
+		// lastUpdateRet: cache of most recent update() return value, -1 sentinel if
+		// update() has never been called. Cached at update() return sites — see §3.4.
+		uint8_t  framesSinceActive = 0;
+		int32_t  lastUpdateRet     = -1;  // spec said int8_t; corrected: update() returns long
+
 		static unsigned long		spanMask;			//Used to preserve tile's LOS
 		static float				blockCaptureRange;
 		static bool					initialize;
@@ -902,6 +911,29 @@ class GameObject {
 				flags &= (OBJECT_FLAG_EXISTS ^ 0xFFFFFFFF);
 		}
 
+		// -- Tier-1 instrumentation accessors (stability spec §3.3-3.4) --
+		// Three composite-active-decision getters. Safe defaults: appearance-based
+		// visibility for can_be_seen, false for the rest. Subclasses override where
+		// they have a direct field. The `_instr` suffix keeps these grep-distinct
+		// from any existing inView/canBeSeen accessors.
+		virtual bool inView_instr (void) const { return false; }
+		virtual bool canBeSeen_instr (void) const;  // out-of-line: needs full Appearance type
+		virtual bool blockActive_instr (void) const { return false; }
+
+		// -- Tier-1 instrumentation: destruction wrapper (stability spec §3.1-3.2) --
+		// Canonical destruction reasons (keep in sync with MC2_DESTROY call sites):
+		//   <placeholder — filled in commit 3 after reason-string dedup>
+		//
+		// Null-pointer contract: caller must pass non-null obj; same contract as
+		// direct setExists(false) today. Wrapper does not null-check.
+		//
+		// NOTE: this is intentionally NOT named `destroy` — `GameObject::destroy()`
+		// is a pre-existing virtual method (called by ~GameObject) overridden by
+		// many subclasses. Adding a new overload would trigger C++ name-hiding in
+		// every derived class, breaking MC2_DESTROY at most call sites. Use the
+		// `_instr` suffix to keep this surface fully distinct.
+		void destroy_instr (const char* reason, const char* file, int line);
+
 		virtual bool getExists(void) {
 			return ((flags & OBJECT_FLAG_EXISTS) != 0);
 		}
@@ -1155,6 +1187,16 @@ class GameObject {
 		{
 		}
 };
+
+//---------------------------------------------------------------------------
+// Tier-1 instrumentation: destruction wrapper macro + helper (stability spec §3.1)
+// Use this macro at every site that currently calls setExists(false).
+// Commit 3 converts the literal sites (this commit leaves the wrapper dormant).
+#define MC2_DESTROY(obj, reason) (obj)->destroy_instr((reason), __FILE__, __LINE__)
+
+// Stringify an ObjectClass enumerator for log output. Returns a static
+// string; never NULL. Unknown enum -> "UNKNOWN".
+const char* getObjectClassName (ObjectClass kind);
 
 //---------------------------------------------------------------------------
 

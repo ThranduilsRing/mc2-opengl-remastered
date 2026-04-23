@@ -90,6 +90,99 @@ unsigned long GameObject::spanMask = 0;
 float GameObject::blockCaptureRange = 0.0;
 bool GameObject::initialize = false;
 
+//---------------------------------------------------------------------------
+// Tier-1 instrumentation (stability spec §3.1-3.4)
+//---------------------------------------------------------------------------
+#include <stdlib.h>  // getenv
+#include <stdio.h>   // printf, fflush
+#include <stdint.h>
+
+// Defined at file scope in GameOS/gameos/gameosmain.cpp:26 (Commit 1).
+extern uint32_t g_mc2FrameCounter;
+
+static const bool s_destroyTrace = (getenv("MC2_DESTROY_TRACE") != nullptr);
+
+// Out-of-line because canBeSeen() needs the full Appearance type.
+bool GameObject::canBeSeen_instr (void) const {
+	return appearance ? appearance->canBeSeen() : false;
+}
+
+const char* getObjectClassName (ObjectClass kind) {
+	switch (kind) {
+		case INVALID:       return "INVALID";
+		case BASEOBJECT:    return "BaseObject";
+		case TERRN:         return "Terrn";
+		case BATTLEMECH:    return "BattleMech";
+		case GROUNDVEHICLE: return "GroundVehicle";
+		case ELEMENTAL:     return "Elemental";
+		case EXPLOSION:     return "Explosion";
+		case FIRE:          return "Fire";
+		case ARTILLERY:     return "Artillery";
+		case MOVER:         return "Mover";
+		case GAMEOBJECT:    return "GameObject";
+		case BIGGAMEOBJECT: return "BigGameObject";
+		case COMPONENT:     return "Component";
+		case WEAPON:        return "Weapon";
+		case PROJECTILE:    return "Projectile";
+		case LASERWEAPON:   return "LaserWeapon";
+		case PPC:           return "PPC";
+		case BUILDING:      return "Building";
+		case SMOKE:         return "Smoke";
+		case BULLET:        return "Bullet";
+		case DEBRIS:        return "Debris";
+		case MAP_ICON:      return "MapIcon";
+		case TREE:          return "Tree";
+		case TERRAINOBJECT: return "TerrainObject";
+		case MINE:          return "Mine";
+		case BRIDGE:        return "Bridge";
+		case JET:           return "Jet";
+		case PROJLASER:     return "ProjLaser";
+		case TREEBUILDING:  return "TreeBuilding";
+		case CAMERADRONE:   return "CameraDrone";
+		case TRAINCAR:      return "TrainCar";
+		case TURRET:        return "Turret";
+		case GATE:          return "Gate";
+		case KLIEG_LIGHT:   return "KliegLight";
+		case WEAPONBOLT:    return "WeaponBolt";
+		default:            return "UNKNOWN";
+	}
+}
+
+void GameObject::destroy_instr (const char* reason, const char* file, int line) {
+	// 1. Snapshot all log fields FIRST, before any other logic runs (spec §3.2).
+	const int         snap_exists_was      = getExists() ? 1 : 0;
+	const ObjectClass snap_kind            = objectClass;
+	const int         snap_in_view         = inView_instr()      ? 1 : 0;
+	const int         snap_can_be_seen     = canBeSeen_instr()   ? 1 : 0;
+	const int         snap_block_active    = blockActive_instr() ? 1 : 0;
+	const int         snap_frames_inactive = (int)framesSinceActive;
+	const int32_t     snap_last_update_ret = lastUpdateRet;
+
+	// 2. Double-destroy: log-and-return without re-calling setExists.
+	if (snap_exists_was == 0) {
+		if (s_destroyTrace) {
+			printf("[DESTROY v1] frame=%u obj=%p kind=%s reason=%s file=%s line=%d exists_was=0 in_view=%d can_be_seen=%d block_active=%d frames_since_active=%d last_update_ret=%d\n",
+				g_mc2FrameCounter, (void*)this, getObjectClassName(snap_kind), reason,
+				file, line, snap_in_view, snap_can_be_seen, snap_block_active,
+				snap_frames_inactive, (int)snap_last_update_ret);
+			fflush(stdout);
+		}
+		return;
+	}
+
+	// 3. Real destruction — unchanged existing behavior.
+	setExists(false);
+
+	// 4. Env-gated log line.
+	if (s_destroyTrace) {
+		printf("[DESTROY v1] frame=%u obj=%p kind=%s reason=%s file=%s line=%d exists_was=1 in_view=%d can_be_seen=%d block_active=%d frames_since_active=%d last_update_ret=%d\n",
+			g_mc2FrameCounter, (void*)this, getObjectClassName(snap_kind), reason,
+			file, line, snap_in_view, snap_can_be_seen, snap_block_active,
+			snap_frames_inactive, (int)snap_last_update_ret);
+		fflush(stdout);
+	}
+}
+
 extern float maxVisualRange;
 extern long	visualRangeTable[];
 
