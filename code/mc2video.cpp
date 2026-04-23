@@ -65,13 +65,26 @@ static FARPROC WINAPI Mc2VideoDelayLoadFailureHook(unsigned dliNotify,
 
 extern "C" const PfnDliHook __pfnDliFailureHook2 = Mc2VideoDelayLoadFailureHook;
 
-static HRESULT tryLoadOne(const char* dllName)
+// Plain LoadLibraryA probe. Catches the only case that matters for the
+// startup gate: "DLL is not present / cannot be found on disk". We do
+// NOT use __HrLoadAllImportsForDll here because it additionally
+// resolves every delay-loaded symbol against the DLL, which is
+// over-strict — a single symbol mismatch (e.g., cross-build symbol
+// churn) would falsely disable playback even though the DLL is
+// functional for our real call set. If any symbol genuinely cannot be
+// resolved at first use, the delay-load failure hook above still
+// catches it and flips g_ffmpegAvailable then.
+static bool tryLoadOne(const char* dllName)
 {
     __try {
-        return __HrLoadAllImportsForDll(dllName);
+        HMODULE h = LoadLibraryA(dllName);
+        if (!h) return false;
+        // Keep the DLL loaded for the process lifetime. Not calling
+        // FreeLibrary avoids a reload churn when real call sites hit.
+        return true;
     }
     __except (EXCEPTION_EXECUTE_HANDLER) {
-        return E_FAIL;
+        return false;
     }
 }
 
@@ -85,10 +98,10 @@ void ffmpegProbeAvailability()
     // Bumping FFmpeg updates one place (the vendored tree); CMake
     // regenerates this header automatically.
     for (const char* d : MC2_VIDEO_DLL_LIST) {
-        HRESULT hr = tryLoadOne(d);
-        if (FAILED(hr)) {
-            VIDEO_LOG("FFmpeg unavailable: probe of %s failed (hr=0x%08lx). "
-                      "Video playback disabled for this session.", d, (long)hr);
+        if (!tryLoadOne(d)) {
+            DWORD err = GetLastError();
+            VIDEO_LOG("FFmpeg unavailable: LoadLibraryA(%s) failed (err=%lu). "
+                      "Video playback disabled for this session.", d, err);
             g_ffmpegAvailable = false;
             return;
         }
