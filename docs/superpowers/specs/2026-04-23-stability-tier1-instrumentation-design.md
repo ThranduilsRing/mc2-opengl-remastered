@@ -38,13 +38,15 @@ Land the **instrumentation** layer for three known silent-failure modes in MC2. 
 
 ### 2.1 Caller-capture mechanism
 
-`TG_VertexPool::getVerticesFromPool(DWORD numRequested)` and its four siblings (color, face, shadow, triangle pools) gain a second parameter:
+**Single canonical signature** for each pool's get function. One defaulted parameter for the shape pointer — no overload zoo:
 
 ```cpp
-// mclib/tgl.h
-gos_VERTEX *   getVerticesFromPool(DWORD numRequested, const char* caller);
-gos_VERTEX *   getColorsFromPool  (DWORD numRequested, const char* caller);
-// ...etc.
+// mclib/tgl.h (return types match existing methods — this spec does not change those)
+gos_VERTEX *  getVerticesFromPool (DWORD numRequested, const char* caller, const void* shape = nullptr);
+gos_LIGHT  *  getColorsFromPool   (DWORD numRequested, const char* caller, const void* shape = nullptr);
+gos_FACE   *  getFacesFromPool    (DWORD numRequested, const char* caller, const void* shape = nullptr);
+gos_SHADOW *  getShadowsFromPool  (DWORD numRequested, const char* caller, const void* shape = nullptr);
+gos_TRI    *  getTrianglesFromPool(DWORD numRequested, const char* caller, const void* shape = nullptr);
 ```
 
 Every call site wraps via macros:
@@ -63,22 +65,26 @@ Every call site wraps via macros:
 #define MC2_TGL_GET_VERTS_FOR_SHAPE(pool, n, shape)  (pool)->getVerticesFromPool((n), __FUNCTION__, (shape))
 ```
 
-The pool method picks up one overload that takes a shape pointer (defaulted to `nullptr`), so the two macro forms share the same entry point. Every existing direct call is converted to the appropriate macro. Mechanical grep-and-replace across the handful of call sites (TransformShape, MultiShape variants, etc.).
+The basic and shape-aware macros both call the same entry point — the defaulted `shape=nullptr` parameter handles the difference. Every existing direct call is converted to the appropriate macro. Mechanical grep-and-replace across the handful of call sites (TransformShape, MultiShape variants, etc.).
 
 ### 2.2 Record on NULL
 
 Inside each pool's get function, on the NULL branch (before returning):
 
 ```cpp
-this->recordNull(caller, numRequested);
+this->recordNull(caller, numRequested, shape);
 ```
 
-`TG_Pool::recordNull(caller, n)` updates:
+Signature on the pool base class:
+
+```cpp
+void TG_Pool::recordNull(const char* caller, DWORD numRequested, const void* shape);
+```
+
+Behavior:
 - `nullCountThisFrame` — per-frame counter (resets at frame begin).
 - `nullCountMonotonic` — since process start.
-- First-null-per-frame snapshot: `{ caller, shape_ptr, requested, numVertices_at_failure, totalVertices }`. Only captured when `nullCountThisFrame` transitions 0→1.
-
-`shape_ptr` is not directly available inside the pool — the caller's `__FUNCTION__` identifies the function but not the shape instance. The snapshot stores shape pointer only when the caller can pass it cheaply. Practical answer: extend the macro for `TransformShape`'s call site to `MC2_TGL_GET_VERTS_FOR_SHAPE(pool, n, shape)` — a separate macro that passes `this` so the shape pointer reaches `recordNull`. Other call sites pass `nullptr` for shape.
+- First-null-per-frame snapshot captured when `nullCountThisFrame` transitions 0→1. Snapshot stores: `{ caller, shape, numRequested, numVertices_at_failure, totalVertices }`. `shape` is `nullptr` when the call site used the basic macro, non-null when it used `MC2_TGL_GET_VERTS_FOR_SHAPE`.
 
 ### 2.3 Frame-end drain
 
@@ -172,20 +178,25 @@ Padding audit: `GameObject` is declared in `mclib/dappear.h` (forward) / `mclib/
 Env gate: `MC2_DESTROY_TRACE=1`.
 
 ```
-[DESTROY v1] frame=1234 obj=0x2a3f1800 kind=BattleMech reason=update_false file=objmgr.cpp line=1421 exists_was=1 cull=INVIEW block_active=1 frames_since_active=0 update_ret=0
+[DESTROY v1] frame=1234 obj=0x2a3f1800 kind=BattleMech reason=update_false file=objmgr.cpp line=1421 exists_was=1 in_view=1 can_be_seen=1 block_active=1 frames_since_active=0 last_update_ret=0
 ```
 
-Fields:
+Fields (all fixed, no post-hoc taxonomy):
 - `frame` — engine frame counter
-- `obj` — `GameObject*`
-- `kind` — stringified `ObjectClass` via new helper (§3.5)
+- `obj` — `GameObject*` (hex pointer)
+- `kind` — stringified `ObjectClass` via helper (§3.5)
 - `reason` — literal string passed by caller
 - `file`/`line` — source location of the `MC2_DESTROY` call
-- `exists_was` — `exists` flag immediately before `setExists(false)`
-- `cull` — composed enum string from `inView` / `canBeSeen` / `objBlockInfo.active` (one of: `INVIEW`, `CANBESEEN`, `BLOCK_ACTIVE`, `BLOCK_INACTIVE`, `OUTOFVIEW`, `NEVER_SEEN` — taxonomy finalized during implementation by reading the cull chain)
-- `block_active` — `objBlockInfo.active` flag
-- `frames_since_active` — counter from §3.3
-- `update_ret` — most recent `update()` return value, or `-1` if the destruction path didn't come through update
+- `exists_was` — `exists` flag snapshot immediately before `setExists(false)` (`0` or `1`)
+- `in_view` — raw `inView` flag snapshot (`0` or `1`)
+- `can_be_seen` — raw `canBeSeen` flag snapshot (`0` or `1`)
+- `block_active` — raw `objBlockInfo.active` flag snapshot (`0` or `1`)
+- `frames_since_active` — counter from §3.3 (`0`-`255`)
+- `last_update_ret` — most recent `update()` return value cached on the object; `-1` sentinel if no update has ever been called or the destruction path did not come through update
+
+**Rationale for raw booleans over a composed `cull=<enum>`:** a composed enum requires a taxonomy that doesn't yet exist and couples the log schema to cull-chain internals. Raw booleans are dumb, stable, and preserve all the information; any consumer can compose them into a state string later without the log format committing to one. Also makes v1→v2 unnecessary when someone inevitably reshapes the cull chain — the field names stay valid.
+
+**Cached `last_update_ret`:** add `int8_t lastUpdateRet = -1` to `GameObject`. Every existing `update()` call site that writes the return value updates the cache. There are few enough update-return-checked sites that this is a one-afternoon grep-and-set; implementer identifies them from the same cull-chain sweep that places the `framesSinceActive` update.
 
 ### 3.5 `getObjectClassName` helper
 
@@ -237,10 +248,37 @@ Collapse near-duplicates (`update_false` / `update_returned_false` / `bad_update
 > All `setExists(false)` call sites outside `GameObject::destroy` are violations. `GameObject::destroy` is the only legitimate caller of `setExists(false)`.
 
 **Enforcement (this spec):**
-- Literal: `grep -rn 'setExists\s*(\s*false' code/ mclib/ GameOS/ --include='*.cpp' --include='*.h'` must return only the single call inside `GameObject::destroy`.
-- Non-literal: `grep -rn 'setExists\s*(' code/ mclib/ GameOS/ --include='*.cpp' --include='*.h' | grep -v '(\s*true' | grep -v '(\s*false'` must be manually inspected — each site either routes through `MC2_DESTROY` or has a documented reason it cannot.
-- Documented in `CLAUDE.md` as a pre-commit manual check.
-- CI grep gate is future work (separate spec).
+- Checked-in script `scripts/check-destroy-invariant.sh` (committed in commit 4). Runs the literal + non-literal greps described below, prints violations (or `OK` if clean), and exits non-zero if violations exist:
+
+```bash
+#!/bin/sh
+# scripts/check-destroy-invariant.sh
+set -e
+violations=0
+
+# Literal: setExists(false) must only appear inside GameObject::destroy (mclib/gameobj.cpp).
+lits=$(grep -rn 'setExists\s*(\s*false' code/ mclib/ GameOS/ --include='*.cpp' --include='*.h' | grep -v 'mclib/gameobj.cpp' || true)
+if [ -n "$lits" ]; then
+  echo "[INVARIANT] literal setExists(false) outside GameObject::destroy:"
+  echo "$lits"
+  violations=1
+fi
+
+# Non-literal: setExists(<expr>) where expr is not true/false literal — must be manually
+# vetted. This script flags them for review; does not fail the check by itself.
+nonlit=$(grep -rn 'setExists\s*(' code/ mclib/ GameOS/ --include='*.cpp' --include='*.h' \
+  | grep -v '(\s*true' | grep -v '(\s*false' | grep -v 'mclib/gameobj.cpp' || true)
+if [ -n "$nonlit" ]; then
+  echo "[INVARIANT] non-literal setExists(<expr>) — manual review required:"
+  echo "$nonlit"
+fi
+
+[ $violations -eq 0 ] && echo "OK"
+exit $violations
+```
+
+- `CLAUDE.md` documents: "run `sh scripts/check-destroy-invariant.sh` before any commit that touches object lifecycle; exit 0 = clean."
+- CI grep gate is future work (separate spec). The checked-in script is one step from CI integration — add it to whatever hook or workflow file when CI exists.
 
 ---
 
@@ -271,6 +309,18 @@ Behavior:
 - Increment monotonic per-pass counter.
 - If `MC2_GL_ERROR_DRAIN_SILENT` is **not** set AND this is the first error for (pass, frame), emit one log line (format §4.4).
 - Subsequent errors in same (pass, frame) bump the count silently — AMD drivers can spray thousands.
+
+**Cross-pass/cross-frame rate limit (default-on print still needs a budget cap).** If a pass has already emitted a print in *any* of the last 30 frames, suppress further first-error prints for that pass for the next 30 frames; the count continues to accumulate silently and a single summary line emits at suppression end: `[GL_ERROR v1] pass=shadow_static suppressed frames=30 count_in_window=842`. Preserves signal (you see the problem), bounds volume (one persistently broken pass can't blow the 10MB budget in 30 seconds). Window is fixed 30 frames — no backoff escalation; this is instrumentation, not a reconnect strategy.
+
+**Semantic ownership of `glGetError()`.** These drains **consume** the GL error queue. Any downstream code that calls `glGetError()` after a drain sees `GL_NO_ERROR` for errors that occurred before the drain. Existing callers audited at spec time:
+
+- `GameOS/gameos/utils/shader_builder.cpp` (7 sites) — runs at shader compile / init, separate phase from per-frame render passes. Not affected.
+- `GameOS/gameos/utils/gl_utils.h` (2 sites in a macro) — localized pre-drain pattern; self-contained, not affected.
+- `GameOS/gameos/gos_static_prop_batcher.cpp:798` — self-contained pre-drain pattern. Not affected.
+- `GameOS/gameos/gos_validate.cpp:123` — this IS the existing drain we extend. Subsumed.
+- `GameOS/gameos/gameos_graphics.cpp:2816-2819` — local clear-then-check pattern in a render-adjacent location. **Needs review during implementation** to confirm it isn't on a drain boundary.
+
+Implementer runs a fresh `grep -rn 'glGetError\s*(' code/ mclib/ GameOS/ --include='*.cpp' --include='*.h'` during the drain commit, walks every new site that's been added since this spec, and confirms no cross-pass dependency. Document any audit outliers in the commit message.
 
 ### 4.3 Default ON
 
@@ -308,14 +358,15 @@ Grep patterns (documented in CLAUDE.md) match `\[SUBSYS v[0-9]+\]` so v1→v2 tr
 
 ### 5.2 Startup banner (unconditional, one line per run)
 
-At mission init, emit:
+**Emitted at process/logger init, not mission init.** The first call from the engine into the logging subsystem — whichever of MC2's init paths initializes `stdout`/log-file redirection — is where the banner goes. A mission-init banner would fail the "appears in every log file" success criterion whenever logging captured output before mission init (e.g., crash during asset load, config errors on startup, the shader-compile phase that runs `glGetError` all by itself).
+
 ```
 [INSTR v1] enabled: tgl_pool=<0|1> destroy=<0|1> gl_error_print=<0|1> build=<short-hash>
 ```
 
-Values derived from env vars at init time. Build hash comes from the existing build-stamp mechanism if present; otherwise literal string `UNKNOWN` is emitted. Adding a new build-stamp mechanism to CMake is explicitly out of scope for this spec — if the implementer finds an existing mechanism they use it; if not, `UNKNOWN` ships. A follow-up spec can add `git rev-parse --short HEAD` to CMake when there's a reason to prioritize it.
+Values derived from env vars at banner-emission time. Build hash comes from the existing build-stamp mechanism if present; otherwise literal string `UNKNOWN` is emitted. Adding a new build-stamp mechanism to CMake is explicitly out of scope for this spec — if the implementer finds an existing mechanism they use it; if not, `UNKNOWN` ships. A follow-up spec can add `git rev-parse --short HEAD` to CMake when there's a reason to prioritize it.
 
-Success criterion: this line appears in every log file produced during verification. A missing banner = instrumentation not wired up.
+Success criterion: this line appears in every log file produced during verification — including logs where the process crashed before reaching mission init. A missing banner = instrumentation not wired up (or wired too late).
 
 ### 5.3 Thread safety
 
