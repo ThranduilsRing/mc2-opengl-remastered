@@ -76,6 +76,7 @@ struct Part
 	unsigned long		controlType;		//How am I controlled?
 	unsigned long		controlDataType;	//What data do you need to control me?
 	char				profileName[9];		//Name of Object Profile file.
+	char				csvFile[50];		//Mod-tolerance: CSVFile from mission .fit — used to back-fill stub ObjectType::appearName when pak lookup fails.
 	unsigned long		pilot;				//Name of Pilot File.
 	bool				captureable;		//Is this a capturable "enemy" mech?
 	DWORD				variantNum;			//Variant number of the Part.

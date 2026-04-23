@@ -118,10 +118,15 @@ class ObjectType {
 			return(objTypeNum);
 		}
 
-		char * getAppearanceTypeName (void) 
+		char * getAppearanceTypeName (void)
 		{
 			return(appearName);
 		}
+
+		// Mod-tolerance: back-fill appearance name for stub ObjectTypes created
+		// when a mission-referenced ObjectNumber doesn't exist in the pak.
+		// Allocates from objectTypeCache like the normal init path.
+		void setAppearanceTypeName (const char* name);
 			
 		bool getPotentialContact (void) {
 			return(potentialContact);

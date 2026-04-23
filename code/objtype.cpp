@@ -214,6 +214,16 @@ bool ObjectType::handleDestruction (GameObjectPtr collidee, GameObjectPtr collid
 	return(true);
 }
 
+void ObjectType::setAppearanceTypeName (const char* name)
+{
+	if (!name) return;
+	size_t n = strlen(name);
+	appearName = (char*)ObjectTypeManager::objectTypeCache->Malloc(n + 1);
+	if (appearName) {
+		strcpy(appearName, name);
+	}
+}
+
 //***************************************************************************
 //* GAMEOBJECT TYPE MANAGER class
 //***************************************************************************
@@ -467,18 +477,23 @@ ObjectTypePtr ObjectTypeManager::load (ObjectTypeNumber objTypeNum, bool noCache
 			break;
 
 		default:
-			return(NULL);
+			// Fall through with objType=NULL — the post-switch stub-substitution
+			// will create a BattleMechType so the mission still spawns a mover.
+			// Actual chassis comes from CSV via BattleMech::init(variantNum).
+			break;
 			//Fatal(OBJECT_TYPE_NUMBER_UNDEFINED, " ObjectTypeManager.load: undefined objType ");
 	}
 
 	// Mod-tolerance: the CRAPPY_OBJECT arm above breaks without assigning
 	// objType (its Fatal() is soft in Release), and mod paks can deliver
 	// ObjectClass.ObjectTypeNum = CRAPPY_OBJECT or some other case arm whose
-	// new-allocation was never reached. Bail cleanly instead of deref'ing
-	// NULL at makeLovable().
+	// new-allocation was never reached. Fall back to a stub BattleMechType
+	// so the mission can still spawn player mechs — their actual chassis
+	// comes from the CSV via BattleMech::init(variantNum), not the pak entry.
 	if (!objType) {
-		PAUSE((" ObjectTypeManager.load: objType NULL post-switch for objTypeNum %d — mod content; returning NULL ", (int)objTypeNum));
-		return NULL;
+		objType = new BattleMechType;
+		objType->setObjTypeNum(objTypeNum);
+		PAUSE((" ObjectTypeManager.load: objType NULL post-switch for objTypeNum %d — substituting stub BattleMechType ", (int)objTypeNum));
 	}
 
 	if (noCacheOut)	{
