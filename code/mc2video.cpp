@@ -471,7 +471,58 @@ bool video_update(VideoSession* s)
     }
 }
 
-void video_render(VideoSession* /*s*/) { /* Task 11 */ }
+void video_render(VideoSession* s)
+{
+    if (!s || !s->frameReady || s->texHandle == 0) {
+        return;
+    }
+
+    // Set render states explicitly each call (mirrors mechicon.cpp / gametacmap.cpp pattern).
+    gos_SetRenderState( gos_State_AlphaMode,  gos_Alpha_OneZero );
+    gos_SetRenderState( gos_State_Specular,   FALSE );
+    gos_SetRenderState( gos_State_AlphaTest,  FALSE );
+    gos_SetRenderState( gos_State_Filter,     gos_FilterBiLinear );
+    gos_SetRenderState( gos_State_ZWrite,     0 );
+    gos_SetRenderState( gos_State_ZCompare,   0 );
+    gos_SetRenderState( gos_State_Clipping,   1 );
+
+    // Letterbox/pillarbox fill — draw a black background rect if the
+    // video quad does not fully cover MC2Rect.
+    const bool needsLetterbox = (s->quadX0 > (float)s->rectX)
+                             || (s->quadY0 > (float)s->rectY)
+                             || (s->quadX1 < (float)(s->rectX + s->rectW))
+                             || (s->quadY1 < (float)(s->rectY + s->rectH));
+    if (needsLetterbox) {
+        gos_SetRenderState( gos_State_Texture, 0 );   // untextured
+        gos_VERTEX bg[4];
+        auto fillBg = [](gos_VERTEX& v, float x, float y) {
+            v.x = x; v.y = y; v.z = 0.0f; v.rhw = 1.0f;
+            v.argb = 0xFF000000;   // opaque black
+            v.frgb = 0;
+            v.u = 0.0f; v.v = 0.0f;
+        };
+        fillBg(bg[0], (float)s->rectX,                      (float)s->rectY);
+        fillBg(bg[1], (float)(s->rectX + s->rectW),         (float)s->rectY);
+        fillBg(bg[2], (float)(s->rectX + s->rectW),         (float)(s->rectY + s->rectH));
+        fillBg(bg[3], (float)s->rectX,                      (float)(s->rectY + s->rectH));
+        gos_DrawQuads(bg, 4);
+    }
+
+    // Textured video quad — full-bright, no modulation.
+    gos_SetRenderState( gos_State_Texture, s->texHandle );
+    gos_VERTEX vq[4];
+    auto fillQ = [](gos_VERTEX& v, float x, float y, float u, float vv) {
+        v.x = x; v.y = y; v.z = 0.0f; v.rhw = 1.0f;
+        v.argb = 0xFFFFFFFF;
+        v.frgb = 0;
+        v.u = u; v.v = vv;
+    };
+    fillQ(vq[0], s->quadX0, s->quadY0, 0.0f, 0.0f);
+    fillQ(vq[1], s->quadX1, s->quadY0, 1.0f, 0.0f);
+    fillQ(vq[2], s->quadX1, s->quadY1, 1.0f, 1.0f);
+    fillQ(vq[3], s->quadX0, s->quadY1, 0.0f, 1.0f);
+    gos_DrawQuads(vq, 4);
+}
 void video_pause(VideoSession* /*s*/, bool /*paused*/) { /* Task 15 */ }
 void video_stop(VideoSession* /*s*/) { /* Task 15 */ }
 void video_restart(VideoSession* /*s*/) { /* Task 15 */ }
