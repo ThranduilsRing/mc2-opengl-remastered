@@ -52,6 +52,7 @@ public:
 	char ipAddresses[10][24];
 
 	bool	pilotVideos;
+	bool	UseUpscaledVideos;
 	bool	useNonWeaponEffects;
 	bool	useLocalShadows;
 	bool	asyncMouse;

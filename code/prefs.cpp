@@ -76,6 +76,8 @@ CPrefs::CPrefs() {
 	for (int i = 0; i < 10; i++ )
 		unitName[i][0] = 0;
 
+	UseUpscaledVideos = true;
+
 #if 0
 	FilterState = gos_FilterNone;
 	TERRAIN_TXM_SIZE = 64;
@@ -237,6 +239,11 @@ int CPrefs::load( const char* pFileName ) {
 			{
 				pilotVideos = true;
 			}
+			{
+				long tmp = UseUpscaledVideos ? 1 : 0;
+				prefsFile->readIdLong("UseUpscaledVideos", tmp);
+				UseUpscaledVideos = (tmp != 0);
+			}
 			result = prefsFile->readIdBoolean( "UseLocalShadows",	useLocalShadows );
 			if ( result != NO_ERR )
 			{
@@ -350,6 +357,7 @@ int CPrefs::save() {
 			result = prefsFile->writeIdString( "InsigniaFile", insigniaFile );
 
 			result = prefsFile->writeIdBoolean( "PilotVideos",	pilotVideos );
+			prefsFile->writeIdLong("UseUpscaledVideos", UseUpscaledVideos ? 1 : 0);
 			result = prefsFile->writeIdBoolean( "UseLocalShadows",	useLocalShadows );
 			result = prefsFile->writeIdBoolean( "UseNonWeaponEffects",	useNonWeaponEffects );
 			result = prefsFile->writeIdBoolean( "AsyncMouse",	asyncMouse );
