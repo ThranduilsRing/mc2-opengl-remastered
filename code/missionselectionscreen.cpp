@@ -235,9 +235,16 @@ void MissionSelectionScreen::begin()
 
 		if (fileExists(videoName) || fileExistsOnCD(videoName))
 		{
+			// VIDEO_RECT is stored in operationScreen-local coordinates
+			// (the screen was moveTo()'d to MAP_RECT.left()/top()). The
+			// old commented-out draw path at line ~97 translated local
+			// coords to screen space by adding xOffset/yOffset from the
+			// parent render. The new MC2Movie path renders in screen
+			// space directly, so we must bake the container offset into
+			// the rect here.
 			RECT movieRect;
-			movieRect.left = rects[VIDEO_RECT].left()+1;
-			movieRect.top = rects[VIDEO_RECT].top()+1;
+			movieRect.left = rects[MAP_RECT].left() + rects[VIDEO_RECT].left()+1;
+			movieRect.top = rects[MAP_RECT].top() + rects[VIDEO_RECT].top()+1;
 			movieRect.right = movieRect.left + rects[VIDEO_RECT].width()-2;
 			movieRect.bottom = movieRect.top + rects[VIDEO_RECT].height()-2;
 		

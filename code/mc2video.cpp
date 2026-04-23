@@ -229,13 +229,20 @@ struct VideoSession {
 // Audio-source helpers (Task 14)
 //-----------------------------------------------------------------------------
 
-// Returns true if a WAV sidecar was successfully started via
-// SoundSystem::playDigitalStream. Treats return value 0 (== NO_ERR in
-// all MC2 headers) as success; any other value means the stream
-// could not be started (file not found, mixer busy, etc.).
+// Returns true iff a WAV sidecar was successfully started. We must
+// check the file exists on disk first: SoundSystem::playDigitalStream
+// returns NO_ERR (0) even when the sidecar .wav is absent (the file
+// check inside playDigitalStream silently succeeds on file-missing).
+// Without this explicit fileExists gate, the precedence ladder would
+// never fall back to embedded audio for videos whose sidecar WAV is
+// not shipped (e.g. cinema*.bik have embedded audio, no sidecar).
+extern char soundPath[80];   // mclib/paths.cpp
 static bool tryStartSidecarWAV(const char* waveShortName)
 {
     if (!soundSystem || !waveShortName || !waveShortName[0]) return false;
+    char wavPath[1024];
+    snprintf(wavPath, sizeof(wavPath), "%s%s.wav", soundPath, waveShortName);
+    if (!fileExists(wavPath)) return false;
     long r = reinterpret_cast<SoundSystem*>(soundSystem)->playDigitalStream(waveShortName);
     return (r == 0L);  // 0 == NO_ERR (project-wide constant)
 }

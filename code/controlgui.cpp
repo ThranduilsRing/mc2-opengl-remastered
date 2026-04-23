@@ -2545,6 +2545,8 @@ void ControlGui::initStatics( FitIniFile& file )
 	file.readIdLong( "bottom", 	videoRect.bottom );
 	videoRect.left += hiResOffsetX;
 	videoRect.right += hiResOffsetX;
+	videoRect.top += hiResOffsetY;
+	videoRect.bottom += hiResOffsetY;
 
 	file.seekBlock( "VideoTextBox" );
 	file.readIdLong( "left", 	videoTextRect.left );
@@ -2553,6 +2555,8 @@ void ControlGui::initStatics( FitIniFile& file )
 	file.readIdLong( "bottom", 	videoTextRect.bottom );
 	videoTextRect.left += hiResOffsetX;
 	videoTextRect.right += hiResOffsetX;
+	videoTextRect.top += hiResOffsetY;
+	videoTextRect.bottom += hiResOffsetY;
 
 
 	if ( videoInfoCount )
