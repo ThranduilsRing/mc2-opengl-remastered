@@ -3416,15 +3416,23 @@ void drainTglPoolStats (void)
 		fflush(stdout);
 	}
 
-	// Monotonic summary every 600 frames (always, not env-gated).
+	// Monotonic summary every 600 frames. Always emit on shutdown (see
+	// drainTglPoolStatsOnShutdown). During the run, skip the periodic summary
+	// when every pool is still at zero — an all-zeros line provides no new
+	// diagnostic information and just adds noise at ~3s intervals on a clean
+	// run. First non-zero count triggers emission; shutdown still gets the
+	// final "did this ever happen" line regardless.
 	if ((g_mc2FrameCounter > 0) && ((g_mc2FrameCounter % 600) == 0)) {
-		printf("[TGL_POOL v1] summary mono_total={vertex:%llu, color:%llu, face:%llu, shadow:%llu, triangle:%llu} since=process_start\n",
-			monoOf(vertexPool),
-			monoOf(colorPool),
-			monoOf(facePool),
-			monoOf(shadowPool),
-			monoOf(trianglePool));
-		fflush(stdout);
+		const unsigned long long vM = monoOf(vertexPool);
+		const unsigned long long cM = monoOf(colorPool);
+		const unsigned long long fM = monoOf(facePool);
+		const unsigned long long sM = monoOf(shadowPool);
+		const unsigned long long tM = monoOf(trianglePool);
+		if ((vM | cM | fM | sM | tM) != 0ULL) {
+			printf("[TGL_POOL v1] summary mono_total={vertex:%llu, color:%llu, face:%llu, shadow:%llu, triangle:%llu} since=process_start\n",
+				vM, cM, fM, sM, tM);
+			fflush(stdout);
+		}
 	}
 
 	// Reset per-frame counters on all five pools.

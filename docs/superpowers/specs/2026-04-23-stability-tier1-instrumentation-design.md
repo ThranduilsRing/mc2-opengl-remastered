@@ -118,7 +118,10 @@ Fields:
 
 ### 2.5 Monotonic summary (unconditional — not env-gated)
 
-Every 600 frames and on shutdown, emit one line even with `MC2_TGL_POOL_TRACE` unset:
+**Shutdown:** always emit the summary line at process/mission shutdown, regardless of whether any pool has recorded a NULL. Line has a `(shutdown)` suffix.
+
+**Periodic (every 600 frames):** emit only when at least one pool's `nullCountMonotonic` is non-zero. Suppresses the all-zeros noise on a clean run; first exhaustion triggers emission and the periodic line fires every 3s (at 200fps) thereafter so progression is visible in real time.
+
 ```
 [TGL_POOL v1] summary mono_total={vertex:1841, color:0, face:221, shadow:0, triangle:0} since=process_start
 ```
