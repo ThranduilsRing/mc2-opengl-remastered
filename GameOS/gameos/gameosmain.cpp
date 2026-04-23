@@ -17,6 +17,13 @@
 
 #include <signal.h>
 #include "gos_profiler.h"
+#include "tgl.h"   // drainTglPoolStats / drainTglPoolStatsOnShutdown (Tier-1 instr)
+
+// Tier-1 instrumentation (stability spec §5.1): single source of truth for
+// the frame=... field used by TGL_POOL, DESTROY, and GL_ERROR log lines.
+// Declared extern from mclib/tgl.cpp (and Commits 2-4 from code/gameobj.cpp,
+// GameOS/gameos/gos_validate.cpp).
+uint32_t g_mc2FrameCounter = 0;
 
 // Force discrete GPU selection on hybrid-graphics laptops (NVIDIA Optimus,
 // AMD PowerXpress). Without these exports, an unknown OpenGL executable is
@@ -617,6 +624,15 @@ int main(int argc, char** argv)
         }
 
         {
+            // Tier-1 instrumentation (stability spec §2.3): bump canonical
+            // frame counter, then drain TGL pool null counters. Per-frame
+            // line is env-gated; monotonic summary every 600 frames is not.
+            ZoneScopedN("Frame.DrainTglPoolStats");
+            g_mc2FrameCounter++;
+            drainTglPoolStats();
+        }
+
+        {
             ZoneScopedN("SwapWindow");
             graphics::swap_window(win);
             static bool s_first_frame_logged = false;
@@ -655,6 +671,10 @@ int main(int argc, char** argv)
     if (getValidateConfig().enabled) {
         validateWriteResults(Environment.drawableWidth, Environment.drawableHeight);
     }
+
+    // Tier-1 instrumentation (stability spec §2.5): final monotonic summary
+    // before tearing down render/audio. Always emitted regardless of env gate.
+    drainTglPoolStatsOnShutdown();
 
     Environment.TerminateGameEngine();
 

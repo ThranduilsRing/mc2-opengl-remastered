@@ -1664,15 +1664,15 @@ long TG_Shape::MultiTransformShape (Stuff::Matrix4D *shapeToClip, Stuff::Point3D
 	
 	//At this point, we know we are going to process this shape,
 	// Get memory for its components from the pools!
-	listOfVertices = vertexPool->getVerticesFromPool(numVertices);
-	listOfColors = colorPool->getColorsFromPool(numVertices);
-	
-	listOfShadowTVertices = shadowPool->getShadowsFromPool(numVertices);
+	listOfVertices       = MC2_TGL_GET_VERTS_FOR_SHAPE(vertexPool, numVertices, this);
+	listOfColors         = MC2_TGL_GET_COLORS(colorPool, numVertices);
 
-	listOfTriangles = trianglePool->getTrianglesFromPool(numTriangles);
+	listOfShadowTVertices = MC2_TGL_GET_SHADOW(shadowPool, numVertices);
 
-	listOfVisibleFaces = facePool->getFacesFromPool(numTriangles);
-	listOfVisibleShadows = facePool->getFacesFromPool(numTriangles);
+	listOfTriangles      = MC2_TGL_GET_TRIANGLES(trianglePool, numTriangles);
+
+	listOfVisibleFaces   = MC2_TGL_GET_FACES(facePool, numTriangles);
+	listOfVisibleShadows = MC2_TGL_GET_FACES(facePool, numTriangles);
 
 	if (!listOfVertices ||
 		!listOfColors ||
@@ -3358,6 +3358,87 @@ long TG_Shape::RenderShadows (long startFace)
 	gos_SetRenderState( gos_State_Fog, 0);
 
 	return(startFace + numVisibleShadows);
+}
+
+//-------------------------------------------------------------------------------
+// Tier-1 instrumentation (stability spec §2.3-§2.5)
+//
+// Per-frame line is gated on MC2_TGL_POOL_TRACE; monotonic summary every 600
+// frames is unconditional. Pools are file-scope globals (see tgl.h:1306+ and
+// code/mission.cpp:3117). All calls happen on the render thread inside the
+// frame-end window — no locks needed.
+//-------------------------------------------------------------------------------
+#include <stdlib.h>
+#include <stdio.h>
+
+static const bool s_tglPoolTrace = (getenv("MC2_TGL_POOL_TRACE") != nullptr);
+extern uint32_t   g_mc2FrameCounter;  // defined in GameOS/gameos/gameosmain.cpp
+
+namespace {
+	// Emit one [TGL_POOL] line per pool with nulls this frame.
+	template<typename PoolT>
+	inline void emitPerFrameLine (PoolT* p, const char* poolLabel)
+	{
+		if (!p || p->nullCountThisFrame == 0) return;
+		printf("[TGL_POOL v1] frame=%u pool=%s nulls=%u first_caller=%s shape=%p req=%u high_water=%u/%u mono_total=%llu\n",
+			(unsigned)g_mc2FrameCounter,
+			poolLabel,
+			(unsigned)p->nullCountThisFrame,
+			p->firstNullSnapshot.caller ? p->firstNullSnapshot.caller : "?",
+			p->firstNullSnapshot.shape,
+			(unsigned)p->firstNullSnapshot.numRequested,
+			(unsigned)p->firstNullSnapshot.numUsed_at_failure,
+			(unsigned)p->firstNullSnapshot.totalCapacity,
+			(unsigned long long)p->nullCountMonotonic);
+	}
+	template<typename PoolT>
+	inline unsigned long long monoOf (PoolT* p) { return p ? (unsigned long long)p->nullCountMonotonic : 0ULL; }
+	template<typename PoolT>
+	inline void resetOf (PoolT* p) { if (p) p->resetFrameCounters(); }
+}
+
+void drainTglPoolStats (void)
+{
+	// Frame counter is incremented at the call site in gameosmain.cpp,
+	// immediately before drainTglPoolStats(). Do NOT increment here.
+
+	if (s_tglPoolTrace) {
+		emitPerFrameLine(vertexPool,   "vertex");
+		emitPerFrameLine(colorPool,    "color");
+		emitPerFrameLine(facePool,     "face");
+		emitPerFrameLine(shadowPool,   "shadow");
+		emitPerFrameLine(trianglePool, "triangle");
+		fflush(stdout);
+	}
+
+	// Monotonic summary every 600 frames (always, not env-gated).
+	if ((g_mc2FrameCounter > 0) && ((g_mc2FrameCounter % 600) == 0)) {
+		printf("[TGL_POOL v1] summary mono_total={vertex:%llu, color:%llu, face:%llu, shadow:%llu, triangle:%llu} since=process_start\n",
+			monoOf(vertexPool),
+			monoOf(colorPool),
+			monoOf(facePool),
+			monoOf(shadowPool),
+			monoOf(trianglePool));
+		fflush(stdout);
+	}
+
+	// Reset per-frame counters on all five pools.
+	resetOf(vertexPool);
+	resetOf(colorPool);
+	resetOf(facePool);
+	resetOf(shadowPool);
+	resetOf(trianglePool);
+}
+
+void drainTglPoolStatsOnShutdown (void)
+{
+	printf("[TGL_POOL v1] summary mono_total={vertex:%llu, color:%llu, face:%llu, shadow:%llu, triangle:%llu} since=process_start (shutdown)\n",
+		monoOf(vertexPool),
+		monoOf(colorPool),
+		monoOf(facePool),
+		monoOf(shadowPool),
+		monoOf(trianglePool));
+	fflush(stdout);
 }
 
 //-------------------------------------------------------------------------------
