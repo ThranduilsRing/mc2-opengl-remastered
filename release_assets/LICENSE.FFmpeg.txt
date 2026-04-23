@@ -1,0 +1,20 @@
+This distribution uses FFmpeg LGPL-licensed shared libraries
+(avcodec, avformat, avutil, swscale, swresample) for video playback.
+
+Version pinned in 3rdparty/ffmpeg-lgpl-win64/VERSION.txt of the
+source distribution.
+
+FFmpeg is free software licensed under the GNU Lesser General Public
+License v2.1 or (at your option) any later version. The full license
+text accompanies the FFmpeg source distribution available at:
+
+    https://github.com/FFmpeg/FFmpeg
+
+LGPL replacement mechanism: the FFmpeg DLLs shipped alongside mc2.exe
+(avcodec-*.dll, avformat-*.dll, avutil-*.dll, swscale-*.dll,
+swresample-*.dll) may be replaced with any API-compatible build of
+the same major versions. No rebuild of mc2.exe is required. See
+3rdparty/ffmpeg-lgpl-win64/VERSION.txt for the expected filenames.
+
+Source for the exact binary build shipped here:
+https://github.com/BtbN/FFmpeg-Builds
