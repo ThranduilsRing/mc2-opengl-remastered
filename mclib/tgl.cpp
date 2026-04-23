@@ -3371,7 +3371,13 @@ long TG_Shape::RenderShadows (long startFace)
 // frame-end window — no locks needed.
 //-------------------------------------------------------------------------------
 static const bool s_tglPoolTrace = (getenv("MC2_TGL_POOL_TRACE") != nullptr);
-extern uint32_t   g_mc2FrameCounter;  // defined in GameOS/gameos/gameosmain.cpp
+
+// Tier-1 instrumentation canonical frame counter. Defined here (in mclib)
+// rather than GameOS/gameos/gameosmain.cpp so data-tool targets (aseconv,
+// pak, makefst, makersp) that link mclib but NOT gameosmain still resolve
+// the symbol. The per-frame increment still lives in gameosmain.cpp's frame
+// loop; data tools never increment it and see a harmless zero.
+uint32_t g_mc2FrameCounter = 0;
 
 namespace {
 	// Emit one [TGL_POOL] line per pool with nulls this frame.

@@ -21,9 +21,10 @@
 
 // Tier-1 instrumentation (stability spec §5.1): single source of truth for
 // the frame=... field used by TGL_POOL, DESTROY, and GL_ERROR log lines.
-// Declared extern from mclib/tgl.cpp (and Commits 2-4 from code/gameobj.cpp,
-// GameOS/gameos/gos_validate.cpp).
-uint32_t g_mc2FrameCounter = 0;
+// Definition lives in mclib/tgl.cpp so data tools (aseconv, pak, makefst,
+// makersp) that link mclib without gameosmain still resolve the symbol.
+// This TU owns the per-frame increment; everyone else is a read-only extern.
+extern uint32_t g_mc2FrameCounter;
 
 // Force discrete GPU selection on hybrid-graphics laptops (NVIDIA Optimus,
 // AMD PowerXpress). Without these exports, an unknown OpenGL executable is
