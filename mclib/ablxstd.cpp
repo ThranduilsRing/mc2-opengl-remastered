@@ -1006,6 +1006,11 @@ TypePtr execStandardRoutineCall (SymTableNodePtr routineIdPtr, bool skipOrder) {
 			{
 				void (*cb)(void) = FunctionCallbackTable[key];
 				uintptr_t cbVal = (uintptr_t)cb;
+				// Belt-and-suspenders: root cause was MAX_STANDARD_FUNCTIONS=256
+				// overflow (fixed in 2cfad76). This guard stays in place to catch
+				// any future bogus-pointer case rather than dispatching into
+				// garbage. Log is unconditional because it fires rarely; when it
+				// does, we want the data in o.log automatically.
 				if (cbVal != 0 && cbVal < (uintptr_t)0x00007F0000000000ULL) {
 					char err[255];
 					sprintf(err, "[ABL_BAD_CB] key=%d val=%p module=%s line=%d",
