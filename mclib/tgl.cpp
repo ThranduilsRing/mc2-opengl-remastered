@@ -34,6 +34,8 @@
 
 #include "platform_str.h"
 #include <stddef.h> // linux offsetof()
+#include <stdlib.h>
+#include <stdio.h>
 #include <cstdlib>
 #include <cstring>
 #include <new> // for placement new
@@ -3368,9 +3370,6 @@ long TG_Shape::RenderShadows (long startFace)
 // code/mission.cpp:3117). All calls happen on the render thread inside the
 // frame-end window — no locks needed.
 //-------------------------------------------------------------------------------
-#include <stdlib.h>
-#include <stdio.h>
-
 static const bool s_tglPoolTrace = (getenv("MC2_TGL_POOL_TRACE") != nullptr);
 extern uint32_t   g_mc2FrameCounter;  // defined in GameOS/gameos/gameosmain.cpp
 

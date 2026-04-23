@@ -1043,6 +1043,7 @@ class TG_GOSVertexPool
 		{
 			nullCountThisFrame = 0;
 			firstNullSnapshot  = {};
+			// nullCountMonotonic intentionally NOT reset
 		}
 
 		TG_GOSVertexPool (void)
@@ -1126,6 +1127,7 @@ class TG_TrianglePool
 		{
 			nullCountThisFrame = 0;
 			firstNullSnapshot  = {};
+			// nullCountMonotonic intentionally NOT reset
 		}
 
 		TG_TrianglePool (void)
@@ -1209,6 +1211,7 @@ class TG_ShadowPool
 		{
 			nullCountThisFrame = 0;
 			firstNullSnapshot  = {};
+			// nullCountMonotonic intentionally NOT reset
 		}
 
 		TG_ShadowPool (void)
@@ -1292,6 +1295,7 @@ class TG_DWORDPool
 		{
 			nullCountThisFrame = 0;
 			firstNullSnapshot  = {};
+			// nullCountMonotonic intentionally NOT reset
 		}
 
 		TG_DWORDPool (void)
