@@ -26,6 +26,7 @@
 #include "gos_render.h"
 #include "gos_postprocess.h"
 #include "gos_profiler.h"
+#include "gos_validate.h"  // drainGLErrors (Tier-1 instr §4)
 
 class gosRenderer;
 class gosFont;
@@ -2609,6 +2610,8 @@ void gosRenderer::endShadowPrePass() {
 
     active_light_space_matrix_ = nullptr;
     shadow_prepass_active_ = false;
+
+    drainGLErrors("shadow_static");
 }
 
 void gosRenderer::beginDynamicShadowPass() {
@@ -2667,6 +2670,8 @@ void gosRenderer::endDynamicShadowPass() {
 
     active_light_space_matrix_ = nullptr;
     shadow_prepass_active_ = false;
+
+    drainGLErrors("shadow_dynamic");
 }
 
 void gosRenderer::terrainDrawIndexedPatches(gosRenderMaterial* material, gosMesh* mesh) {

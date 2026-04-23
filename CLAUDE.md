@@ -119,3 +119,22 @@ static const bool s_wsTrace = (getenv("MC2_WALL_SHADOW_TRACE") != nullptr);
 **Keep until** the feature survives: (a) full mission load from main menu, (b) camera pan into previously-unseen terrain, (c) mission restart without quitting. Then demote — leave gated, silent.
 
 Full rationale, triggers, naming conventions, and anti-patterns: `memory/debug_instrumentation_rule.md`.
+
+## Tier-1 Instrumentation Env Vars
+
+Three env-gated loggers, one always-on summary, one checked-in invariant script.
+
+- `MC2_TGL_POOL_TRACE=1` — per-frame `[TGL_POOL v1]` print when any pool returns NULL. Default off; the monotonic `[TGL_POOL v1] summary` line emits every 600 frames + on shutdown regardless.
+- `MC2_DESTROY_TRACE=1` — per-destruction `[DESTROY v1]` line with cull/lifecycle snapshot. Default off.
+- `MC2_GL_ERROR_DRAIN_SILENT=1` — suppresses `[GL_ERROR v1]` first-error prints. **Default is PRINT-ON** — a fresh operator sees GL errors with no setup. Drain loop always runs; only the print is gated.
+
+Startup banner `[INSTR v1] enabled: ...` appears at the very start of every log file. If it's missing, instrumentation wasn't wired up (or was wired too late).
+
+Schema-version grep pattern: `\[SUBSYS v[0-9]+\]`. Future format changes bump the version; no backward-compat shims.
+
+Before any commit that touches object lifecycle:
+```bash
+sh scripts/check-destroy-invariant.sh
+```
+
+Exit 0 = no literal `setExists(false)` outside `GameObject::destroy`. Non-literal sites are flagged for manual review; the script does not fail on them.

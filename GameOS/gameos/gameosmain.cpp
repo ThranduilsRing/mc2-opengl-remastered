@@ -364,6 +364,7 @@ static void draw_screen( void )
 
     // Replay buffered HUD draws to FB 0 (after post-process)
     gos_RendererFlushHUDBatch();
+    drainGLErrors("hud");
     //CHECK_GL_ERROR;
 }
 
@@ -469,6 +470,25 @@ void GLAPIENTRY OpenGLDebugLog(GLenum source, GLenum type, GLuint id, GLenum sev
 #ifndef DISABLE_GAMEOS_MAIN
 int main(int argc, char** argv)
 {
+    // Tier-1 instrumentation: one-line banner so every log file is
+    // self-describing about which traces are enabled.
+    {
+        const bool tgl     = (getenv("MC2_TGL_POOL_TRACE")       != nullptr);
+        const bool destr   = (getenv("MC2_DESTROY_TRACE")        != nullptr);
+        // GL_ERROR is default-on; the env var suppresses it.
+        const bool glprint = (getenv("MC2_GL_ERROR_DRAIN_SILENT") == nullptr);
+        const char* build  =
+#ifdef MC2_BUILD_HASH
+            MC2_BUILD_HASH
+#else
+            "UNKNOWN"
+#endif
+            ;
+        printf("[INSTR v1] enabled: tgl_pool=%d destroy=%d gl_error_print=%d build=%s\n",
+            tgl ? 1 : 0, destr ? 1 : 0, glprint ? 1 : 0, build);
+        fflush(stdout);
+    }
+
     //signal(SIGTRAP, SIG_IGN);
 
     // Make stdout line-buffered (was fully buffered on Windows when redirected, hiding
@@ -630,6 +650,7 @@ int main(int argc, char** argv)
             ZoneScopedN("Frame.DrainTglPoolStats");
             g_mc2FrameCounter++;
             drainTglPoolStats();
+            drainGLErrors("frame");
         }
 
         {

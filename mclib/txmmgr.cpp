@@ -55,6 +55,7 @@
 #include "gos_postprocess.h"
 #include "gos_profiler.h"
 #include "../GameOS/gameos/gos_static_prop_batcher.h"
+#include "../GameOS/gameos/gos_validate.h"  // drainGLErrors (Tier-1 instr §4)
 
 //---------------------------------------------------------------------------
 // static globals
@@ -1142,6 +1143,7 @@ void MC_TextureManager::renderLists (void)
 		}
 	}
 	} // end Render.3DObjects zone
+	drainGLErrors("objects_3d");
 
 	// [Moved in Phase 4 debug] flush() was originally here (after
 	// Render.3DObjects). But Render.TerrainSolid runs AFTER us on line
@@ -1338,6 +1340,7 @@ void MC_TextureManager::renderLists (void)
 		}
 	}
 	} // end Render.TerrainSolid zone
+	drainGLErrors("terrain");
 
 	// Task 10 flush() — moved here from after Render.3DObjects because
 	// terrain renders AFTER 3D objects in this codebase; placing our
