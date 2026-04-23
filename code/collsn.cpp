@@ -684,7 +684,7 @@ void CollisionSystem::checkExtents (GameObjectPtr obj1, GameObjectPtr obj2, floa
 		// while as it destroys itself over the next several frames.
 		if (removeObject1)
 		{
-			obj1->setExists(false);
+			MC2_DESTROY(obj1, "collision_destroyed");
 		}
 	}
 	
@@ -699,7 +699,7 @@ void CollisionSystem::checkExtents (GameObjectPtr obj1, GameObjectPtr obj2, floa
 		// while as it destroys itself over the next several frames.
 		if (removeObject2)
 		{
-			obj2->setExists(false);
+			MC2_DESTROY(obj2, "collision_destroyed");
 		}
 	}
 }

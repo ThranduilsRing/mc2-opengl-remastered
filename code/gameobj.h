@@ -922,7 +922,16 @@ class GameObject {
 
 		// -- Tier-1 instrumentation: destruction wrapper (stability spec §3.1-3.2) --
 		// Canonical destruction reasons (keep in sync with MC2_DESTROY call sites):
-		//   <placeholder — filled in commit 3 after reason-string dedup>
+		//   abl_explicit_destroy    — ABL script explicitly requested object removal
+		//   bolt_impact             — weapon bolt hit target / area-of-effect detonated
+		//   collision_destroyed     — collision resolution flagged the object for removal
+		//   load_empty_slot         — save-game packet had no objectTypeNum (empty slot)
+		//   mission_load_inactive   — mission/multiplayer roster marked the part as not-existing
+		//   mover_freed             — GameObjectManager::freeMover released the mover
+		//   pool_released           — fixed-size pool slot returned (carnage / light)
+		//   pool_unused             — pool slot above the active count (initialization)
+		//   update_false            — object's update() returned 0 / failure
+		//   vehicle_pilot_offscreen — vehicle pilot whacked once it left view
 		//
 		// Null-pointer contract: caller must pass non-null obj; same contract as
 		// direct setExists(false) today. Wrapper does not null-check.

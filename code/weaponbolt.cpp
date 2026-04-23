@@ -2689,7 +2689,7 @@ void WeaponBolt::finishNow (void)
 											((WeaponBoltTypePtr)getObjectType())->areaEffectRad);
 		}
 
-		setExists(false);
+		MC2_DESTROY(this, "bolt_impact");
 	}
 }
 

@@ -366,7 +366,7 @@ void GameObjectManager::setNumObjects (long nMechs,
 			objList[curHandle++] = mechs[i];
 		}
 		for (i = numMechs; i < maxMechs; i++)
-			mechs[i]->setExists(false);
+			MC2_DESTROY(mechs[i], "pool_unused");
 	}
 
 	//--------------------------------------------------------------
@@ -382,7 +382,7 @@ void GameObjectManager::setNumObjects (long nMechs,
 			objList[curHandle++] = vehicles[i];
 		}
 		for (i = numVehicles; i < maxVehicles; i++)
-			vehicles[i]->setExists(false);
+			MC2_DESTROY(vehicles[i], "pool_unused");
 	}
 
 	//--------------------------------------------------------------
@@ -607,7 +607,7 @@ void GameObjectManager::freeMover (MoverPtr mover) {
 	bool foundIt = modifyMoverLists(mover, MOVERLIST_DELETE);
 	if (foundIt) {
 		mover->release();
-		mover->setExists(false);
+		MC2_DESTROY(mover, "mover_freed");
 		mover->setFlag(OBJECT_FLAG_REMOVED, true);
 		mover->setPartId(0);
 		watchList[mover->watchID] = NULL;
@@ -732,7 +732,7 @@ CarnagePtr GameObjectManager::getCarnage (CarnageEnumType carnageType) {
 
 void GameObjectManager::releaseCarnage (CarnagePtr obj) {
 
-	obj->setExists(false);
+	MC2_DESTROY(obj, "pool_released");
 	obj->setOwner(NULL);
 }
 
@@ -756,7 +756,7 @@ LightPtr GameObjectManager::getLight (void) {
 
 void GameObjectManager::releaseLight (LightPtr obj) {
 
-	obj->setExists(false);
+	MC2_DESTROY(obj, "pool_released");
 //	obj->setOwner(NULL);
 }
 
@@ -1721,7 +1721,7 @@ void GameObjectManager::update (bool terrain, bool movers, bool other)
 				{
 					//-----------------------------------------
 					// Update failed, so it no longer exists...
-					specialBuildings[spBuilding]->setExists(false);
+					MC2_DESTROY(specialBuildings[spBuilding], "update_false");
 				}
 				else
 				{
@@ -1743,7 +1743,7 @@ void GameObjectManager::update (bool terrain, bool movers, bool other)
 				{
 					//-----------------------------------------
 					// Update failed, so it no longer exists...
-					gates[nGates]->setExists(false);
+					MC2_DESTROY(gates[nGates], "update_false");
 				}
 				else
 				{
@@ -1771,7 +1771,7 @@ void GameObjectManager::update (bool terrain, bool movers, bool other)
 						{
 							//-----------------------------------------
 							// Update failed, so it no longer exists...
-							objList[objIndex]->setExists(false);
+							MC2_DESTROY(objList[objIndex], "update_false");
 						}
 						else
 						{
@@ -1803,7 +1803,7 @@ void GameObjectManager::update (bool terrain, bool movers, bool other)
 					long updateRet_instr = mover->update();
 					mover->lastUpdateRet = (int32_t)updateRet_instr;
 					if (!updateRet_instr)
-						mover->setExists(false);
+						MC2_DESTROY(mover, "update_false");
 					if (mover->getFlag(OBJECT_FLAG_REMOVED))
 						removeList[numRemoved++] = mover;
 				}
@@ -1821,7 +1821,7 @@ void GameObjectManager::update (bool terrain, bool movers, bool other)
 					long updateRet_instr = mover->update();
 					mover->lastUpdateRet = (int32_t)updateRet_instr;
 					if (!updateRet_instr)
-						mover->setExists(false);
+						MC2_DESTROY(mover, "update_false");
 					if (mover->getFlag(OBJECT_FLAG_REMOVED))
 						removeList[numRemoved++] = mover;
 				}
@@ -1846,7 +1846,7 @@ void GameObjectManager::update (bool terrain, bool movers, bool other)
 					long updateRet_instr = turrets[i]->update();
 					turrets[i]->lastUpdateRet = (int32_t)updateRet_instr;
 					if (!updateRet_instr)
-						turrets[i]->setExists(false);
+						MC2_DESTROY(turrets[i], "update_false");
 				}
 			}
 		}
@@ -1857,7 +1857,7 @@ void GameObjectManager::update (bool terrain, bool movers, bool other)
 					long updateRet_instr = weapons[i]->update();
 					weapons[i]->lastUpdateRet = (int32_t)updateRet_instr;
 					if (!updateRet_instr)
-						weapons[i]->setExists(false);
+						MC2_DESTROY(weapons[i], "update_false");
 				}
 			}
 		}
@@ -1868,7 +1868,7 @@ void GameObjectManager::update (bool terrain, bool movers, bool other)
 					long updateRet_instr = carnage[i]->update();
 					carnage[i]->lastUpdateRet = (int32_t)updateRet_instr;
 					if (!updateRet_instr)
-						carnage[i]->setExists(false);
+						MC2_DESTROY(carnage[i], "update_false");
 				}
 			}
 		}
@@ -1879,7 +1879,7 @@ void GameObjectManager::update (bool terrain, bool movers, bool other)
 					long updateRet_instr = lights[i]->update();
 					lights[i]->lastUpdateRet = (int32_t)updateRet_instr;
 					if (!updateRet_instr)
-						lights[i]->setExists(false);
+						MC2_DESTROY(lights[i], "update_false");
 				}
 			}
 		}
@@ -1890,7 +1890,7 @@ void GameObjectManager::update (bool terrain, bool movers, bool other)
 					long updateRet_instr = artillery[i]->update();
 					artillery[i]->lastUpdateRet = (int32_t)updateRet_instr;
 					if (!updateRet_instr)
-						artillery[i]->setExists(false);
+						MC2_DESTROY(artillery[i], "update_false");
 				}
 			}
 		}
@@ -2874,7 +2874,7 @@ void GameObjectManager::updateAppearancesOnly( bool terrain, bool movers, bool o
 			for (long i=0;i<numWeapons;i++) {
 				if (weapons[i] && weapons[i]->getExists()) {
 					if (!weapons[i]->update())
-						weapons[i]->setExists(false);
+						MC2_DESTROY(weapons[i], "update_false");
 				}
 			}
 		}*/
@@ -2883,7 +2883,7 @@ void GameObjectManager::updateAppearancesOnly( bool terrain, bool movers, bool o
 			for (long i = 0; i < numCarnage; i++) {
 				if (carnage[i] && carnage[i]->getExists()) {
 					if (!carnage[i]->update())
-						carnage[i]->setExists(false);
+						MC2_DESTROY(carnage[i], "update_false");
 				}
 			}
 		}*/
@@ -3186,7 +3186,7 @@ long GameObjectManager::Load (PacketFilePtr file, long packetNum)
 			}
 			else
 			{
-				obj->setExists(false);
+				MC2_DESTROY(obj, "load_empty_slot");
 			}
 
 			curTerrObjNum++;
@@ -3232,7 +3232,7 @@ long GameObjectManager::Load (PacketFilePtr file, long packetNum)
 			}
 			else
 			{
-				obj->setExists(false);
+				MC2_DESTROY(obj, "load_empty_slot");
 			}
 			curBuildingNum++;
 		}
@@ -3270,7 +3270,7 @@ long GameObjectManager::Load (PacketFilePtr file, long packetNum)
 			}
 			else
 			{
-				obj->setExists(false);
+				MC2_DESTROY(obj, "load_empty_slot");
 			}
 			curTurretNum++;
 		}
@@ -3308,7 +3308,7 @@ long GameObjectManager::Load (PacketFilePtr file, long packetNum)
 			}
 			else
 			{
-				obj->setExists(false);
+				MC2_DESTROY(obj, "load_empty_slot");
 			}
 			curGateNum++;
 		}
@@ -3335,7 +3335,7 @@ long GameObjectManager::Load (PacketFilePtr file, long packetNum)
 			}
 			else
 			{
-				obj->setExists(false);
+				MC2_DESTROY(obj, "load_empty_slot");
 			}
 			curArtilleryNum++;
 		}
@@ -3362,7 +3362,7 @@ long GameObjectManager::Load (PacketFilePtr file, long packetNum)
 			}
 			else
 			{
-				obj->setExists(false);
+				MC2_DESTROY(obj, "load_empty_slot");
 			}
 			curCarnageNum++;
 		}
@@ -3389,7 +3389,7 @@ long GameObjectManager::Load (PacketFilePtr file, long packetNum)
 			}
 			else
 			{
-				obj->setExists(false);
+				MC2_DESTROY(obj, "load_empty_slot");
 			}
 			curMechNum++;
 		}
@@ -3416,7 +3416,7 @@ long GameObjectManager::Load (PacketFilePtr file, long packetNum)
 			}
 			else
 			{
-				obj->setExists(false);
+				MC2_DESTROY(obj, "load_empty_slot");
 			}
 			curVehicleNum++;
 		}
@@ -3443,7 +3443,7 @@ long GameObjectManager::Load (PacketFilePtr file, long packetNum)
 			}
 			else
 			{
-				obj->setExists(false);
+				MC2_DESTROY(obj, "load_empty_slot");
 			}
 			curBoltNum++;
 		}

@@ -3475,7 +3475,7 @@ long GroundVehicle::update (void)
 
 	//We are a vehicle pilot.  Whack us when we are no longer in view.
 	if (isVehiclePilot && !inView)
-		setExists(false);
+		MC2_DESTROY(this, "vehicle_pilot_offscreen");
 
 	//We are a Vehicle Pilot. Check If I have nothing to do.  If not, move 'em out!
 	if (isVehiclePilot && (pilot->getCurTacOrder()->code == TACTICAL_ORDER_NONE) )
