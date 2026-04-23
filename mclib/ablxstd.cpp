@@ -982,14 +982,24 @@ TypePtr execStandardRoutineCall (SymTableNodePtr routineIdPtr, bool skipOrder) {
 		case RTN_CONCAT:
 			return(execStdConcat());
 		default: {
-			if (key >= NumStandardFunctions) {
+			if (key < 0 || key >= NumStandardFunctions) {
+				// Mod-tolerance: ABL script called an unregistered routine key
+				// (common with Omnitech-extended scripts running on our base
+				// engine). ABL_Fatal is soft in Release so we'd OOB-read both
+				// FunctionInfoTable[key] and FunctionCallbackTable[key] and
+				// then call through a garbage pointer. Hard-bail here.
 				char err[255];
-				sprintf(err, " ABL: Undefined ABL RoutineKey in %s:%d", CurModule->getName(), execLineNumber);
+				sprintf(err, " ABL: Undefined ABL RoutineKey %d in %s:%d (>= %d) — bailing", key, CurModule->getName(), execLineNumber, NumStandardFunctions);
 				ABL_Fatal(0, err);
+				return NULL;
 			}
 			if (FunctionInfoTable[key].numParams > 0)
 				getCodeToken();
 			SkipOrder = skipOrder;
+			// Sibling session is landing proper stub registrations for the
+			// Omnitech-extended ABL calls; once those land, FunctionCallbackTable
+			// will be populated for every key. We keep the original NULL check
+			// as a belt-and-suspenders guard.
 			if (FunctionCallbackTable[key])
 				(*FunctionCallbackTable[key])();
 			else
