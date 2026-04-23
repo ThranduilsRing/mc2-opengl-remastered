@@ -523,6 +523,14 @@ void enterStandardRoutine (const char* name, long routineKey, bool isOrder, cons
 			ABL_Fatal(0, " ABL.enterStandardRoutine: Too Many Standard Functions ");
 		tableIndex = NumStandardFunctions++;
 	}
+	// Registration trace: dump name -> key -> callback so we can correlate
+	// key numbers in [ABL_BAD_CB] crash logs back to function names.
+	printf("[ABL_REG] key=%3ld name=%-28s params=%-8s ret=%s cb=%p\n",
+		tableIndex, name ? name : "(null)",
+		paramList ? paramList : "",
+		returnType ? returnType : "",
+		(void*)callback);
+	fflush(stdout);
 
 	SymTableNodePtr routineIdPtr;
 	enterNameLocalSymTable(routineIdPtr, name);
