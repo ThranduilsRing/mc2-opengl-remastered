@@ -31,6 +31,13 @@ bool resolveVideoCandidate(const char* shortName, bool preferUpscaled,
 
 struct VideoOpenParams {
     const char* resolvedPath;
+    // Destination rect in the game's screen-space coordinate system.
+    // video_open preserves the origin (X,Y), not just the size —
+    // callers that pass a non-zero origin (mission-briefing VIDCOM,
+    // in-mission pilot cam, pop-up cinemas) need the quad to land at
+    // that position, not at (0,0) with only the size honoured.
+    int   destRectX;
+    int   destRectY;
     int   destRectW;
     int   destRectH;
     bool  useWaveFile;

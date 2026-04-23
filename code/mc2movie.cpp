@@ -96,6 +96,8 @@ void MC2Movie::init (const char *MC2Name, RECT mRect, bool useWaveFile)
 
         VideoOpenParams p = {};
         p.resolvedPath      = resolvedPath;
+        p.destRectX         = MC2Rect.left;
+        p.destRectY         = MC2Rect.top;
         p.destRectW         = MC2Rect.right  - MC2Rect.left;
         p.destRectH         = MC2Rect.bottom - MC2Rect.top;
         p.useWaveFile       = separateWAVE;

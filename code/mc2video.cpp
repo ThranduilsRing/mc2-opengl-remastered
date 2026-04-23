@@ -391,8 +391,14 @@ VideoSession* video_open(const VideoOpenParams& p, VideoOpenResult* out)
         video_close(s); return nullptr;
     }
 
-    // 5. Quad geometry
-    s->rectX = 0; s->rectY = 0;
+    // 5. Quad geometry — preserve the caller's origin (X,Y), not just
+    //    the width/height. Callers with non-zero origins (mission
+    //    briefing VIDCOM at ~(667,5), pilot-cam slots in the force
+    //    group bar, in-mission pop-up cinemas) depend on the video
+    //    landing at MC2Rect.left/top. Fullscreen callers pass (0,0)
+    //    and see no behavioural change.
+    s->rectX = p.destRectX;
+    s->rectY = p.destRectY;
     s->rectW = p.destRectW;
     s->rectH = p.destRectH;
     computeLetterboxQuad(s->srcW, s->srcH, s->sar,
