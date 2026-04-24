@@ -172,3 +172,81 @@ missing UCRT somehow (possibly via static CRT in Release), but
 
 Deploy rule for any ASan target install: copy the FFmpeg DLLs alongside
 `mc2-asan.exe`, or install UCRT system-wide via the VC++ Redistributable.
+
+---
+
+## 3. `getCodeToken` deref of corrupted `codeSegmentPtr` on Exodus
+
+**Status:** bug confirmed, fix deferred.
+**First caught:** 2026-04-24, `mc2-asan.exe --mission mc2_01` on a fresh
+`A:/Games/MC2-Exodus/` install (base `mc2-win64-v0.1.1` clone +
+`mc2_patch` + `exodus_campaign_11`).
+ASan log: `A:/Games/MC2-Exodus/asan-exodus-mc2_01.4884`.
+
+### Crash signature
+
+ASan fires at `codeToken = (TokenCodeType)*codeSegmentPtr;` where
+`codeSegmentPtr == 0x127f00000001` — an address that looks like a 32-bit
+integer extended into a 64-bit pointer field.
+
+Backtrace:
+
+```
+getCodeToken                    mclib/ablexec.cpp:361
+execDeclaredRoutineCall         mclib/ablxstmt.cpp:400
+execRoutineCall                 mclib/ablxstmt.cpp:297
+execute                         mclib/ablexec.cpp:646
+ABLModule::execute              mclib/ablenv.cpp:920
+MechWarrior::runBrain           code/warrior.cpp:2160
+MechWarrior::mainDecisionTree   code/warrior.cpp:4975
+GroundVehicle::updateAIControl  code/gvehicl.cpp:2798
+```
+
+### Root cause
+
+The Exodus campaign scripts use ABL keywords the stock parser does not
+recognize. Compile produces SYNTAX ERROR + `"Way too many syntax errors.
+ABL aborted"`, but mission init does **not** abort on compile failure.
+Execution proceeds with partial/garbage bytecode; the VM's internal
+function-call tables trust the bytecode without sanity checks;
+`codeSegmentPtr` eventually points at garbage; `getCodeToken` dereferences.
+
+Representative compile errors from stderr:
+
+```
+SYNTAX ERROR data/missions/warriors/mc2_01_infantry_ambush.abl [line 246] - (type 55) Missing comma "startposition"
+SYNTAX ERROR data/missions/warriors/mc2_01_infantry_ambush2.abl [line 188] - (type 55) Missing comma "startbase1patrolpath"
+SYNTAX ERROR data/missions/warriors/mc2_01_urbies.abl [line 234] - (type 55) Missing comma "startbase1patrolpath"
+Way too many syntax errors. ABL aborted.
+```
+
+This is the same bug family the Omnitech memory documents as "uninit
+FunctionCallbackTable" — the stock ABL VM trusts its own tables with
+no null / sanity / bounds check. On the normal build the garbage address
+often happens to land in valid VA space and doesn't AV immediately;
+under ASan's shadow-mapped VA the garbage lands in unmapped space and
+crashes on first deref.
+
+### Proposed fix (deferred)
+
+Preferred: `ABLModule::compile` return value must be checked by mission
+init; any compile error aborts mission load (hard fail). Matches the
+tier-1 instrumentation ethos of "fail loud rather than continue
+degraded."
+
+Alternative (defensive, keeps partial playability): sanity-check
+`codeSegmentPtr` against the compiled module's code-segment range in
+the VM hot loop. Cheaper, but hides future corruption bugs.
+
+Orthogonal work: extend the ABL parser to recognize `startposition`,
+`startbase1patrolpath`, and other Magic's patch vocabulary so the
+Exodus scripts compile cleanly. That removes the trigger but does not
+fix the underlying "VM trusts corrupt state" bug — it only means
+*these specific* scripts stop triggering it.
+
+### Why this is valuable
+
+Same class as finding #2 (GlobalMap partial-init): a content-format
+mismatch leaves corrupt state that the engine dereferences later in a
+completely different subsystem. This is exactly the "paper-over fixes
+hide real bugs" pattern the ASan MVP was built to expose.
