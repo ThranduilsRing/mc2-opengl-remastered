@@ -243,10 +243,9 @@ bool shouldQuit() {
 }
 
 void markMissionReady() {
-    if (!g_state.enabled) return;
     if (!g_missionReadyT) {
         g_missionReadyT = SDL_GetPerformanceCounter();
-        emitTiming("mission_ready");
+        if (g_state.enabled) emitTiming("mission_ready");
     }
 }
 

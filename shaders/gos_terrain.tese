@@ -97,15 +97,18 @@ void main()
     // rasterization gaps at patch boundaries. edgeMask limits expansion to edge/corner
     // bary coords (interior tessellated points are undisturbed). Safe at tessLevel=1
     // (concrete) — all verts are edges. Expands only XY; Z (elevation) unchanged.
+    // Scaled by flatness so steep cliff faces get no expansion — XY-only expansion
+    // creates bright streaks on near-vertical surfaces.
     {
         float edgeDist = min(min(bary.x, bary.y), bary.z);
         float edgeMask = 1.0 - smoothstep(0.0, 0.08, edgeDist);
-        if (edgeMask > 0.001) {
+        float flatness = smoothstep(0.4, 0.7, worldNorm.z);
+        if (edgeMask * flatness > 0.001) {
             vec2 patchCentXY = (tcs_WorldPos[0].xy + tcs_WorldPos[1].xy + tcs_WorldPos[2].xy) / 3.0;
             vec2 seamDir = worldPos.xy - patchCentXY;
             float seamLen = length(seamDir);
             if (seamLen > 0.01)
-                worldPos.xy += (seamDir / seamLen) * 1.5 * edgeMask;
+                worldPos.xy += (seamDir / seamLen) * 1.5 * edgeMask * flatness;
         }
     }
 
