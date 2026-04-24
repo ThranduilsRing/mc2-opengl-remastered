@@ -147,10 +147,14 @@ void aObject::init(FitIniFile* file, const char* blockName, DWORD neverFlush)
 				}
 			}
 
-			// AssetScale: remember if this asset is in the manifest. Used
-			// below to apply a 1-pixel destination-rect overlap so adjacent
-			// chrome widgets hide upscaler-softened edges at their seams.
-			assetKey = AssetScale::key(buffer);
+			// AssetScale nominal-size override: if the on-disk asset is a
+			// loose-file upscale, tryGetTextureLogicalSize returns the
+			// upscaled size (wrong for authored pixel UVs). The manifest
+			// tells us the nominal authored width, so override directly.
+			// One hashmap lookup at load; no per-frame cost.
+			AssetScale::AssetKey ak = AssetScale::key(buffer);
+			AssetScale::Vec2 f = AssetScale::factorFor(ak, (uint32_t)fileWidth, (uint32_t)fileWidth, "aobject.init");
+			if (f.x > 1.0f) fileWidth = fileWidth / f.x;
 		}
 	}
 
@@ -189,18 +193,6 @@ void aObject::init(FitIniFile* file, const char* blockName, DWORD neverFlush)
 			location[2].u = location[3].u = ((float)(u + uWidth))/((float)fileWidth) + (.1f / (float)fileWidth);
 		if ( fileWidth )
 			location[1].v = location[2].v = ((float)(v + vHeight))/((float)fileWidth) + (.1f / (float)fileWidth);
-
-		// Manifest-known assets get a 1-pixel destination-rect overlap on
-		// each edge so upscaler-softened edges between adjacent chrome
-		// pieces are covered by a small amount of neighbor overdraw.
-		// Geometric only — UVs unchanged. Non-chrome widgets (no manifest
-		// entry) are left untouched.
-		if ( !assetKey.empty() ) {
-			location[0].x -= 1.f;  location[1].x -= 1.f;
-			location[2].x += 1.f;  location[3].x += 1.f;
-			location[0].y -= 1.f;  location[3].y -= 1.f;
-			location[1].y += 1.f;  location[2].y += 1.f;
-		}
 
 		if ( bRotated )
 		{
