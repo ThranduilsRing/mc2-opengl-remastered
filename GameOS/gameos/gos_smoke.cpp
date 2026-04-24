@@ -8,6 +8,9 @@
 #include <string>
 
 #include <sys/stat.h>
+#ifndef S_ISREG
+#define S_ISREG(x) ((_S_IFREG & (x)) != 0)
+#endif
 
 #include <SDL2/SDL.h>
 
@@ -134,7 +137,7 @@ bool resolveMissionPaths() {
     std::string loose = "data/missions/" + g_state.mission + ".fit";
     struct stat st{};
     const char* source = "fst_assumed";
-    if (stat(loose.c_str(), &st) == 0 && (st.st_mode & _S_IFREG)) {
+    if (stat(loose.c_str(), &st) == 0 && S_ISREG(st.st_mode)) {
         source = "loose";
     }
 
