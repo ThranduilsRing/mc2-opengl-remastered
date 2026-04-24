@@ -147,14 +147,9 @@ void aObject::init(FitIniFile* file, const char* blockName, DWORD neverFlush)
 				}
 			}
 
-			// AssetScale nominal-size override: if the on-disk asset is a
-			// loose-file upscale, tryGetTextureLogicalSize returns the
-			// upscaled size (wrong for authored pixel UVs). The manifest
-			// tells us the nominal authored width, so override directly.
-			// One hashmap lookup at load; no per-frame cost.
-			AssetScale::AssetKey ak = AssetScale::key(buffer);
-			AssetScale::Vec2 f = AssetScale::factorFor(ak, (uint32_t)fileWidth, (uint32_t)fileWidth, "aobject.init");
-			if (f.x > 1.0f) fileWidth = fileWidth / f.x;
+			// Remember canonical asset key so vertex setup below can query
+			// AssetScale::isChromeAsset() for the 1-pixel chrome overlap.
+			assetKey = AssetScale::key(buffer);
 		}
 	}
 
@@ -193,6 +188,19 @@ void aObject::init(FitIniFile* file, const char* blockName, DWORD neverFlush)
 			location[2].u = location[3].u = ((float)(u + uWidth))/((float)fileWidth) + (.1f / (float)fileWidth);
 		if ( fileWidth )
 			location[1].v = location[2].v = ((float)(v + vHeight))/((float)fileWidth) + (.1f / (float)fileWidth);
+
+		// Opt-in 1-pixel destination-rect overlap for chrome widgets so
+		// upscaler-softened edges between adjacent panels blend into each
+		// other instead of leaving a visible seam. Only assets that are
+		// manifest-tagged as "chrome" qualify — icon atlases must not, since
+		// the expansion cascades into ForceGroupIcon/PilotIcon child
+		// positioning and shifts them by half a cell width.
+		if ( AssetScale::isChromeAsset(assetKey) ) {
+			location[0].x -= 1.f;  location[1].x -= 1.f;
+			location[2].x += 1.f;  location[3].x += 1.f;
+			location[0].y -= 1.f;  location[3].y -= 1.f;
+			location[1].y += 1.f;  location[2].y += 1.f;
+		}
 
 		if ( bRotated )
 		{

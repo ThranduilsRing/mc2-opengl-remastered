@@ -69,6 +69,13 @@ IRect nominalToActualRect(const AssetKey& k,
                           float nx, float ny, float nw, float nh,
                           const char* callerTag);
 
+// True if this asset is manifest-tagged as chrome (CSV 4th field == "chrome").
+// Chrome assets opt into the 1-pixel destination overlap in aObject::init to
+// cover upscaler-softened seams between adjacent widgets. Icon atlases
+// (mcui_*, pilot) MUST NOT be tagged chrome — the overlap cascades into
+// child-widget positioning and shifts ForceGroupIcon rendering by half-width.
+bool isChromeAsset(const AssetKey& k);
+
 // Debug hotkey output (counters always accumulate, even when trace is off).
 void  dumpCountersTo(FILE*);
 

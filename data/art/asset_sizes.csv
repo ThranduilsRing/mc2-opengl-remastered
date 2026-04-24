@@ -2,7 +2,12 @@
 # Asset-scale nominal dimensions for loose-file upscale awareness.
 # Spec: docs/superpowers/specs/2026-04-23-asset-scale-aware-rendering-design.md
 #
-# Format: asset_path,nominal_width,nominal_height
+# Format: asset_path,nominal_width,nominal_height[,flags]
+# Flags (optional 4th field, space-separated): "chrome" opts a widget into the
+#   1-pixel destination-rect overlap in aObject::init — covers upscaler-softened
+#   seams between adjacent UI panels. ONLY use for standalone chrome pieces:
+#   icon atlases (mcui_high*/med*/low*) must NOT be tagged chrome because the
+#   overlap cascades into ForceGroupIcon child positioning.
 # Canonical key rules: lowercase, forward slashes, no leading "./", no leading "data/".
 # Loader strips "data/" so input may include it.
 #
@@ -20,7 +25,8 @@ art/mcui_high8.tga,1000,48
 art/mcui_med5.tga,800,38
 art/mcui_low5.tga,625,30
 
-# Pilot icon atlases
+# Pilot icon atlases (NOT chrome — chrome flag would cascade into ForceGroupIcon
+# child positioning and shift icons by half-width).
 art/mcui_high2.tga,256,256
 art/mcui_med2.tga,256,256
 art/mcui_low2.tga,256,256
@@ -28,24 +34,24 @@ art/mcui_low2.tga,256,256
 # Menu chrome — discovered per-screen during chrome adoption tasks (15/16/17)
 
 # Main menu chrome (mcl_mm.fit)
-art/mcl_mm_1.tga,256,256
-art/mcl_mm_2.tga,256,256
-art/mcl_mm_3.tga,256,256
-art/mcl_mm_5.tga,256,256
-art/mcl_mm_12.tga,256,256
+art/mcl_mm_1.tga,256,256,chrome
+art/mcl_mm_2.tga,256,256,chrome
+art/mcl_mm_3.tga,256,256,chrome
+art/mcl_mm_5.tga,256,256,chrome
+art/mcl_mm_12.tga,256,256,chrome
 
 # Main menu splashscreen/background (mcl_sp.fit)
-art/mcl_splashscreen_stars_1.tga,256,256
-art/mcl_splashscreen_stars_2.tga,256,256
-art/mcl_splashscreen_stars_3.tga,256,256
-art/mcl_splashscreen_stars_4.tga,256,256
-art/mcl_splashscreen_stars_5.tga,256,256
-art/mcl_splashscreen_stars_6.tga,256,256
-art/mcl_splashscreen_stars_7.tga,256,256
-art/mcl_splashscreen_frame_1.tga,256,256
-art/mcl_splashscreen_frame_2.tga,256,256
-art/mcl_splashscreen_moon.tga,256,256
-art/mcl_splashscreen_planet_1.tga,256,256
-art/mcl_splashscreen_planet_2.tga,256,256
-art/mcl_splashscreen_planet_3.tga,256,256
-art/mcl_splashscreen_planet_4.tga,256,256
+art/mcl_splashscreen_stars_1.tga,256,256,chrome
+art/mcl_splashscreen_stars_2.tga,256,256,chrome
+art/mcl_splashscreen_stars_3.tga,256,256,chrome
+art/mcl_splashscreen_stars_4.tga,256,256,chrome
+art/mcl_splashscreen_stars_5.tga,256,256,chrome
+art/mcl_splashscreen_stars_6.tga,256,256,chrome
+art/mcl_splashscreen_stars_7.tga,256,256,chrome
+art/mcl_splashscreen_frame_1.tga,256,256,chrome
+art/mcl_splashscreen_frame_2.tga,256,256,chrome
+art/mcl_splashscreen_moon.tga,256,256,chrome
+art/mcl_splashscreen_planet_1.tga,256,256,chrome
+art/mcl_splashscreen_planet_2.tga,256,256,chrome
+art/mcl_splashscreen_planet_3.tga,256,256,chrome
+art/mcl_splashscreen_planet_4.tga,256,256,chrome

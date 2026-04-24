@@ -16,7 +16,7 @@ namespace AssetScale {
 
 namespace {
 
-struct NominalDims { uint32_t w; uint32_t h; };
+struct NominalDims { uint32_t w; uint32_t h; bool chrome; };
 
 struct State {
     std::unordered_map<std::string, NominalDims> manifest;
@@ -76,7 +76,7 @@ std::string trim(const std::string& s) {
 
 // Parse one CSV line "path,w,h". Returns true on success.
 bool parseLine(const std::string& raw, std::string& path,
-               uint32_t& w, uint32_t& h) {
+               uint32_t& w, uint32_t& h, bool& chrome) {
     // Skip comments and blank.
     std::string s = trim(raw);
     if (s.empty() || s[0] == '#') return false;
@@ -85,10 +85,16 @@ bool parseLine(const std::string& raw, std::string& path,
     if (c1 == std::string::npos) return false;
     auto c2 = s.find(',', c1 + 1);
     if (c2 == std::string::npos) return false;
+    auto c3 = s.find(',', c2 + 1);  // optional 4th field
 
-    std::string p = trim(s.substr(0, c1));
+    std::string p  = trim(s.substr(0, c1));
     std::string ws = trim(s.substr(c1 + 1, c2 - c1 - 1));
-    std::string hs = trim(s.substr(c2 + 1));
+    std::string hs = (c3 == std::string::npos)
+                     ? trim(s.substr(c2 + 1))
+                     : trim(s.substr(c2 + 1, c3 - c2 - 1));
+    std::string flags = (c3 == std::string::npos)
+                        ? std::string()
+                        : trim(s.substr(c3 + 1));
 
     if (p.empty() || ws.empty() || hs.empty()) return false;
 
@@ -101,6 +107,14 @@ bool parseLine(const std::string& raw, std::string& path,
     path = canonicalize(p.c_str());
     w = (uint32_t)wl;
     h = (uint32_t)hl;
+    // Tokenize flags on whitespace/comma; accept "chrome" as the one defined flag.
+    chrome = false;
+    {
+        std::string f = flags;
+        std::transform(f.begin(), f.end(), f.begin(),
+                       [](unsigned char c){ return (char)std::tolower(c); });
+        if (f.find("chrome") != std::string::npos) chrome = true;
+    }
     return true;
 }
 
@@ -128,11 +142,11 @@ void loadManifest(const char* manifestPath) {
         // Strip CR for CRLF files.
         if (!line.empty() && line.back() == '\r') line.pop_back();
         ++lineno;
-        std::string path; uint32_t w = 0, h = 0;
+        std::string path; uint32_t w = 0, h = 0; bool chrome = false;
         std::string trimmed = trim(line);
         if (!trimmed.empty() && trimmed[0] != '#') {
-            if (parseLine(line, path, w, h)) {
-                auto ins = st.manifest.emplace(std::move(path), NominalDims{w, h});
+            if (parseLine(line, path, w, h, chrome)) {
+                auto ins = st.manifest.emplace(std::move(path), NominalDims{w, h, chrome});
                 if (!ins.second) ++st.cManifestDupes;
                 else             ++st.cManifestEntries;
             } else {
@@ -193,7 +207,7 @@ bool runOneScale(uint32_t nominalSize, uint32_t actualSize, const char* tag,
     // Inject a synthetic manifest entry without going through CSV.
     State& st = state();
     const std::string testKey = std::string("test/") + tag + ".tga";
-    st.manifest[testKey] = NominalDims{ nominalSize, nominalSize };
+    st.manifest[testKey] = NominalDims{ nominalSize, nominalSize, false };
 
     AssetKey k = key(testKey.c_str());
 
@@ -358,6 +372,13 @@ IRect nominalToActualRect(const AssetKey& k,
         }
     }
     return { cx, cy, cw, ch };
+}
+
+bool isChromeAsset(const AssetKey& k) {
+    if (k.empty()) return false;
+    State& st = state();
+    auto it = st.manifest.find(k.str());
+    return it != st.manifest.end() && it->second.chrome;
 }
 
 } // namespace AssetScale
