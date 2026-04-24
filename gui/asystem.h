@@ -15,6 +15,7 @@ class InterfaceObject;
 
 #include"estring.h"
 #include"afont.h"
+#include "asset_scale.h"
 
 #define MAX_CHILDREN 64
 
@@ -159,7 +160,7 @@ public:
 
 	void			setHelpID( int newID ) { helpID = newID; }
 	int				getHelpID() const { return helpID; }
-	
+
 
 	float		left()
 	{
@@ -173,14 +174,23 @@ public:
 	{
 		return x() + width();
 	}
-	
+
 	float		bottom()
 	{
 		return y() + height();
 	}
 
+	enum class SrcRectSpace { ActualPixels, NominalPixels };
 
-	
+	void setAssetScale( const AssetScale::AssetKey& k,
+	                    SrcRectSpace space = SrcRectSpace::NominalPixels )
+	{
+		assetKey     = k;
+		srcRectSpace = space;
+	}
+
+
+
 protected:
 
 	gos_VERTEX		location[4];
@@ -188,6 +198,9 @@ protected:
 	unsigned long	textureHandle;
 	float		fileWidth;
 	bool		showWindow;
+
+	AssetScale::AssetKey	assetKey;
+	SrcRectSpace			srcRectSpace = SrcRectSpace::ActualPixels;
 
 	
 	aObject*	pChildren[MAX_CHILDREN];
