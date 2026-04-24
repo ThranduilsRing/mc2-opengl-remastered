@@ -8,6 +8,7 @@ import subprocess
 import threading
 import time
 from dataclasses import dataclass
+from pathlib import Path
 from typing import List, Optional
 
 from .gates import GateConfig, Verdict, evaluate
@@ -82,11 +83,16 @@ def run_one(cfg: RunConfig) -> RunResult:
     env.update(cfg.env_extra)
 
     cap = cfg.duration + cfg.grace_s
+    # Spawn in the directory that contains the executable so that MC2's
+    # CWD-relative file lookups (options.cfg, minprefs.cfg, etc.) resolve
+    # against the install directory rather than the runner's working directory.
+    # Matches the cwd=GAME_DIR precedent in scripts/game_auto.py.
+    exe_dir = str(Path(cfg.exe[0]).resolve().parent)
     # t0 must be captured BEFORE spawning the reader thread so both the reader
     # and the main loop share the same monotonic reference point.
     t0 = time.monotonic()
     proc = subprocess.Popen(argv, stdout=subprocess.PIPE, stderr=subprocess.STDOUT,
-                            env=env, text=True, bufsize=1)
+                            env=env, text=True, bufsize=1, cwd=exe_dir)
 
     # Stream lines and record per-line wallclock so freeze detection can use
     # runner walltime rather than engine-emitted elapsed_ms (which is mission-
