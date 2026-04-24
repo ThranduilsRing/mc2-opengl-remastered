@@ -55,6 +55,7 @@ private:
 
 	static unsigned long	s_pilotTextureHandle;
 	static unsigned long	s_pilotTextureWidth;
+	static AssetScale::AssetKey s_pilotTexturesKey;
 
 	friend class ForceGroupIcon;
 	friend class MechIcon;

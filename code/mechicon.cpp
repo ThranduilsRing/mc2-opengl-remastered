@@ -50,6 +50,7 @@ const long		PilotIcon::DEAD_PILOT_INDEX = 27;
 
 unsigned long	PilotIcon::s_pilotTextureHandle = 0;
 unsigned long	PilotIcon::s_pilotTextureWidth = 0;
+AssetScale::AssetKey PilotIcon::s_pilotTexturesKey;
 long			ForceGroupIcon::pilotTextTop[17] = {0};
 
 
@@ -1610,6 +1611,7 @@ PilotIcon::PilotIcon()
 			strcat( path, "mcui_high2.tga" );
 		}
 
+		s_pilotTexturesKey = AssetScale::key(path);
 		s_pilotTextureHandle = mcTextureManager->loadTexture( path, gos_Texture_Alpha, 0, 0, 0x2);
 
 		// Find its logical width without forcing texture realization when metadata is available.
@@ -1699,6 +1701,7 @@ void PilotIcon::swapResolutions( bool bForce)
 			strcat( path, "mcui_high2.tga" );
 		}
 
+		s_pilotTexturesKey = AssetScale::key(path);
 		s_pilotTextureHandle = mcTextureManager->loadTexture( path, gos_Texture_Alpha, 0, 0, 0x2);
 
 		// Find its logical width without forcing texture realization when metadata is available.
