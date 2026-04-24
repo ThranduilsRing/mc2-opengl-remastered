@@ -264,12 +264,23 @@ void crunchOffset (Address address) {
 char* createCodeSegment (long& codeSegmentSize) {
 
 	codeSegmentSize = codeBufferPtr - codeBuffer + 1;
-	char* codeSegment = (char*)ABLCodeMallocCallback(codeSegmentSize);
+	// The ABL VM's getCodeToken / execute loop reads exactly one byte past
+	// the last valid opcode before the end-of-segment check fires. On
+	// normal MSVC builds this overread is hidden by heap-allocator slack
+	// (requests rounded up to a 16-byte granule); ASan's red zones
+	// eliminate that slack and report a 1-byte heap-buffer-overflow.
+	// Allocate one extra byte and write a 0 sentinel so the trailing
+	// read decodes as end-of-routine regardless of how the VM gets
+	// there. Caller-visible codeSegmentSize stays the actual bytecode
+	// length; no consumer needs updating.
+	// See docs/asan-follow-ups.md findings #5 / #6.
+	char* codeSegment = (char*)ABLCodeMallocCallback(codeSegmentSize + 1);
 	if (!codeSegment)
 		ABL_Fatal(0, " ABL: Unable to AblCodeHeap->malloc code segment ");
 
 	for (long i = 0; i < codeSegmentSize; i++)
 		codeSegment[i] = codeBuffer[i];
+	codeSegment[codeSegmentSize] = 0;  // VM end-of-segment sentinel
 
 	codeBufferPtr = codeBuffer;
 	return(codeSegment);
