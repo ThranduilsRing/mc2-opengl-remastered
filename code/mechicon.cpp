@@ -1066,18 +1066,11 @@ void ForceGroupIcon::renderUnitIcon( float left, float top, float right, float b
 	}
 	int xIndex = damageIconIndex % iconsPerLine;
 	
-	const uint32_t actualW = (uint32_t)s_textureMemory->width;
-	const uint32_t actualH = (uint32_t)s_textureMemory->height;
-	const AssetScale::Vec2 f = AssetScale::factorFor(
-		MechIcon::s_MechTexturesKey, actualW, actualH, "mechicon.uv");
+	float u = xIndex * unitIconX/s_textureMemory->width + (.1f / 256.f);
+	float v = yIndex * unitIconY/s_textureMemory->height+ (.1f / 256.f);
 
-	const float actualCellW = unitIconX * f.x;   // nominal cell scaled to actual atlas
-	const float actualCellH = unitIconY * f.y;
-
-	float u      = xIndex * actualCellW / actualW + (.1f / 256.f);
-	float v      = yIndex * actualCellH / actualH + (.1f / 256.f);
-	float uDelta = actualCellW / actualW + (.1f / 256.f);
-	float vDelta = actualCellH / actualH + (.1f / 256.f);
+	float uDelta = unitIconX/s_textureMemory->width + (.1f / 256.f );
+	float vDelta = unitIconY/s_textureMemory->height + (.1f / 256.f);
 
 	gos_SetRenderState( gos_State_Texture, s_textureHandle[texIndex] );
 	gos_SetRenderState( gos_State_AlphaMode, gos_Alpha_AlphaInvAlpha);
@@ -1108,18 +1101,11 @@ void ForceGroupIcon::renderUnitIconBack( float left, float top, float right, flo
 	int yIndex = backDamageIndex / iconsPerLine;
 	int xIndex = backDamageIndex % iconsPerLine;
 	
-	const uint32_t actualW = (uint32_t)s_textureMemory->width;
-	const uint32_t actualH = (uint32_t)s_textureMemory->height;
-	const AssetScale::Vec2 f = AssetScale::factorFor(
-		MechIcon::s_MechTexturesKey, actualW, actualH, "mechicon.uv");
+	float u = xIndex * unitIconX/s_textureMemory->width+ (.1f / (float)256.f);
+	float v = yIndex * unitIconY/s_textureMemory->height+ (.1f / (float)256.f);
 
-	const float actualCellW = unitIconX * f.x;   // nominal cell scaled to actual atlas
-	const float actualCellH = unitIconY * f.y;
-
-	float u      = xIndex * actualCellW / actualW + (.1f / 256.f);
-	float v      = yIndex * actualCellH / actualH + (.1f / 256.f);
-	float uDelta = actualCellW / actualW + (.1f / 256.f);
-	float vDelta = actualCellH / actualH + (.1f / 256.f);
+	float uDelta = unitIconX/s_textureMemory->width + (.1f / (float)256.f );
+	float vDelta = unitIconY/s_textureMemory->height + (.1f / (float)256.f);
 
 	gos_SetRenderState( gos_State_Texture, s_textureHandle[0] );
 	gos_SetRenderState( gos_State_AlphaMode, gos_Alpha_AlphaInvAlpha);
