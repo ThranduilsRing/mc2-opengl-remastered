@@ -139,12 +139,17 @@ Schema-version grep pattern matches the project's existing `\[SUBSYS v[0-9]+\]` 
 
 ### 2.1 Atlas UV / blit callsites (icons)
 
+> **IMPORTANT — architectural clarification (2026-04-23, post-implementation):**
+> The UV draw paths in `ForceGroupIcon::renderUnitIcon*` at mechicon.cpp:~1056 and ~1105 sample `s_textureMemory` — a **fixed 256×256 destination GPU atlas** that cells are blitted INTO during `init`. That destination is immune to source-asset upscale. The actual upscale-corruption bug lives entirely in the **CPU blit** path, which reads from the upscaled source `s_MechTextures` at hardcoded nominal `unitIconX/Y` offsets. Once the blit is scale-aware (downsampling nearest-neighbor into the nominal 256×256 dest), the existing UV math renders correctly without modification.
+>
+> An earlier version of this spec listed the UV paths as fix targets. A Task-9 attempt confirmed this was a false-positive: applying `factorFor` with the source-asset key against a 256-pixel destination produced `factor=0.194` and `u = xIndex * 0.024` instead of `0.125`, a ~5× shrink regression. Reverted.
+
 | Callsite | File | Lines | Type | Fix |
 |---|---|---|---|---|
-| `MechIcon` UV draw | `code/mechicon.cpp` | 1057–1106 | UV math | wrap `unitIcon{X,Y} / texture->width` via `factorFor` |
-| `MechIcon` CPU blit (×3) | `code/mechicon.cpp` | 318–393, 501–546, 795–847 | sub-rect blit | `nominalToActualRect(key, actualW, actualH, col*32, row*38, 32, 38, "mechicon.blit")` |
-| `VehicleIcon` mirror | `code/mechicon.cpp` | uses `s_VehicleTextures` | mirror of MechIcon | same template; **single short follow-up commit** per user direction |
-| `PilotIcon` | `code/mechicon.cpp` | uses `s_pilotTextureHandle/Width`, `pilotIcon{X,Y}=25/36` | atlas UV | same template |
+| `MechIcon` UV draw | `code/mechicon.cpp` | ~1056, ~1105 | UV math targeting fixed 256×256 `s_textureMemory` | **No change.** Not scale-affected. |
+| `MechIcon` CPU blit (×3) | `code/mechicon.cpp` | ~348, ~534, ~817 | sub-rect blit from upscaled `s_MechTextures` into 256×256 dest | `nominalToActualRect(key, actualW, actualH, col*32, row*38, 32, 38, "mechicon.blit")` + nearest-neighbor sample per-pixel at `srcRect.xy + (i,j)*f` |
+| `VehicleIcon` CPU blit | `code/mechicon.cpp` | ~1230 | sub-rect blit from `s_VehicleTextures` | same template; `s_VehicleTexturesKey`, caller tag `"vehicleicon.blit"` |
+| `PilotIcon` CPU blit | `code/mechicon.cpp` | uses `s_pilotTextureHandle/Width`, `pilotIcon{X,Y}=25/36` | sub-rect blit | same template; `s_pilotTexturesKey`, caller tag `"piloticon.blit"`. **No UV refactor** — UV draws from fixed destination atlas like MechIcon. |
 
 **Source-path retention (load time, prevents tier mix-up):**
 

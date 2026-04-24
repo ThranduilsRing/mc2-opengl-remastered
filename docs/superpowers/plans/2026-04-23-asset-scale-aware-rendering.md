@@ -910,7 +910,19 @@ git commit -m "feat(asset-scale): fill nominal dims for mcui_high7/med4/low4"
 
 ---
 
-### Task 9: Refactor `MechIcon` UV draw paths
+### Task 9: ~~Refactor `MechIcon` UV draw paths~~ — DELETE / NO-OP
+
+> **DO NOT IMPLEMENT.** This task was attempted (commit 702d7fe) and reverted (a59b258).
+>
+> The UV draw paths in `ForceGroupIcon::renderUnitIcon*` (mechicon.cpp:~1056, ~1105) sample `s_textureMemory`, a **fixed 256×256 destination GPU atlas** populated during `init` by the CPU blit. That destination is immune to source-asset upscale. Applying `factorFor` here uses the source-asset's nominal-vs-actual factor (e.g. 256/1320 = 0.194) against a 256-pixel destination, producing a ~5× UV shrink regression.
+>
+> The actual upscale bug lives entirely in Task 10 (CPU blit). Once the blit correctly downsamples upscaled source into nominal-sized dest cells, the existing UV math renders correctly without modification.
+>
+> Skip to Task 10.
+
+**Original Task 9 content below (do not implement, kept for history):**
+
+### Task 9 (original, NOT TO IMPLEMENT): Refactor `MechIcon` UV draw paths
 
 **Files:**
 - Modify: `code/mechicon.cpp:1057-1075` (first UV draw block)
@@ -1166,6 +1178,17 @@ Mirror of Phase 2; spec calls for "single short follow-up commit per user direct
 
 ### Task 12: Mirror `MechIcon` changes to `VehicleIcon`
 
+> **STATUS: PARTIALLY DONE BY TASK 10** (commit 6c468fd). The Task 10 implementer noticed a third blit in the file belonging to `VehicleIcon::init(Mover*)` and applied the scale-aware refactor there too, including adding `s_VehicleTexturesKey` (header field, definition, populate-at-load).
+>
+> **Remaining work for Task 12:**
+> - Verify the manifest entries `art/mcui_high8.tga,1000,48` etc. match what `VehicleIcon::initTextures` actually loads (spot-check the path string built in the resolution-tier `if/else` chain).
+> - **Do NOT touch any UV draw code.** UV math draws from the fixed `s_textureMemory` dest, not the upscaled source. (See Task 9 for full architectural note.)
+> - In-game smoke check: post-mission salvage screen, vehicles in player force.
+>
+> If verification passes, this task is effectively complete — close it with no new commit.
+
+**Original Task 12 content below (mostly already done; reference for verification only):**
+
 **Files:**
 - Modify: `code/mechicon.h` (add `static AssetScale::AssetKey s_VehicleTexturesKey;`)
 - Modify: `code/mechicon.cpp:28` (define the static)
@@ -1274,7 +1297,13 @@ git commit -m "feat(vehicleicon): mirror MechIcon scale-aware UV/blit (fixes pos
 
 ## Phase 4 — `PilotIcon` adoption
 
-### Task 13: Mirror to `PilotIcon`
+### Task 13: Mirror to `PilotIcon` (CPU blit only — NOT UV)
+
+> **Scope clarified post-Task-9-revert:** Apply the Task-10 template (CPU blit refactor) only. Do NOT touch any UV draw code in PilotIcon. PilotIcon's UV math, like MechIcon's, draws from the fixed-size destination atlas, not the upscaled source. (See Task 9 for full note.)
+>
+> Steps reduce to: add `s_pilotTexturesKey`, populate at load, refactor any CPU blit in PilotIcon's path with caller tag `"piloticon.blit"`. **No UV changes.**
+
+**Original Task 13 content below (treat the UV step as N/A):**
 
 **Files:**
 - Modify: `code/mechicon.h` (add `static AssetScale::AssetKey s_pilotTexturesKey;` to `PilotIcon`)
