@@ -11,6 +11,7 @@
 #ifdef _WIN32
 #include <windows.h>
 #include <dbghelp.h>
+#include <timeapi.h>
 #pragma comment(lib, "dbghelp.lib")
 
 static LONG WINAPI mc2_unhandled_exception_filter(EXCEPTION_POINTERS* ep)
@@ -732,6 +733,20 @@ int main(int argc, char** argv)
 	timing::init();
     TracyGpuContext;
 
+    // MC2_FPS_CAP: max frames per second (default 165). Set to 0 to uncap.
+    // timeBeginPeriod(1) brings Windows Sleep() down to 1ms resolution so the
+    // cap is accurate. Without it, Sleep(4) may oversleep to ~15ms.
+    static const int s_fps_cap = [] {
+        const char* e = getenv("MC2_FPS_CAP");
+        return e ? atoi(e) : 165;
+    }();
+    static const uint64_t s_frame_cap_ms = (s_fps_cap > 0) ? (1000u / (uint64_t)s_fps_cap) : 0;
+    printf("[FRAMECAP] MC2_FPS_CAP=%d -- cap %s (target %llu ms/frame)\n",
+           s_fps_cap, s_fps_cap > 0 ? "ON" : "OFF", (unsigned long long)s_frame_cap_ms);
+#ifdef _WIN32
+    timeBeginPeriod(1);
+#endif
+
     while( !g_exit ) {
         ZoneScopedN("Frame");
 
@@ -820,6 +835,17 @@ int main(int argc, char** argv)
             }
         }
 
+        // Frame cap: sleep to hold target frame time and reduce GPU thrashing.
+        // Runs after SwapWindow so the sleep comes at the natural end of the frame.
+        if (s_frame_cap_ms > 0) {
+            ZoneScopedN("Frame.FrameCap");
+            uint64_t now = timing::gettickcount();
+            uint64_t elapsed_ms = timing::ticks2ms(now - start_tick);
+            if (elapsed_ms < s_frame_cap_ms) {
+                timing::sleep((unsigned int)((s_frame_cap_ms - elapsed_ms) * 1000000u));
+            }
+        }
+
         {
             ZoneScopedN("Frame.TracyGpuCollect");
             TracyGpuCollect;
@@ -852,6 +878,10 @@ int main(int argc, char** argv)
             break;
         }
     }
+
+#ifdef _WIN32
+    timeEndPeriod(1);
+#endif
 
     // Write validation results if game exited before frame limit
     if (getValidateConfig().enabled) {
