@@ -206,6 +206,7 @@ public:
 	virtual bool			init( Mover* pMover );
 
 	static TGAFileHeader* s_VehicleTextures;
+	static AssetScale::AssetKey s_VehicleTexturesKey;
 
 private:
 

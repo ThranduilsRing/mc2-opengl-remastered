@@ -27,6 +27,7 @@ MechIcon.cpp			: Implementation of the MechIcon component.
 TGAFileHeader *MechIcon::s_MechTextures = NULL;
 AssetScale::AssetKey MechIcon::s_MechTexturesKey;
 TGAFileHeader *VehicleIcon::s_VehicleTextures = NULL;
+AssetScale::AssetKey VehicleIcon::s_VehicleTexturesKey;
 TGAFileHeader* ForceGroupIcon::s_textureMemory = 0;
 
 StaticInfo*		ForceGroupIcon::jumpJetIcon = NULL;
@@ -346,53 +347,61 @@ void MechIcon::setDrawBack( bool bSet)
 
 	DWORD* pDestData, *pDestRow = textureData.pTexture + offsetY * textureData.Width + offsetX;
 	char* pTmp = (char*)s_MechTextures + sizeof ( TGAFileHeader );
-	DWORD* pSrcRow = (DWORD*)pTmp;
 
 	long whichMech = unit->getIconPictureIndex();
 
 	offsetY = unitIconY;
 	offsetX = whichMech  * unitIconX;
 
-	long tmpOffset = ((s_MechTextures->width) * (offsetY ) + offsetX);
-
-	pSrcRow += tmpOffset;
-
-	DWORD* pSrcData = pSrcRow;
-
-	for( int j = 0; j < unitIconY; ++j )
 	{
-		pDestData = pDestRow;
-		pSrcData = pSrcRow;
-		for ( int i = 0; i < unitIconX; ++i ) // do four icons per row
-		{	
-			bool bDraw = 0;
-			// compare colors, only draw back ones which are 4, 5, 6, and 7
-			for ( int i = 0; i < 3; i++ )
+		const uint32_t actualW = (uint32_t)s_MechTextures->width;
+		const uint32_t actualH = (uint32_t)s_MechTextures->height;
+		const AssetScale::Vec2 f = AssetScale::factorFor(
+			MechIcon::s_MechTexturesKey, actualW, actualH, "mechicon.blit");
+		const AssetScale::IRect srcRect = AssetScale::nominalToActualRect(
+			MechIcon::s_MechTexturesKey, actualW, actualH,
+			(float)offsetX, (float)offsetY,
+			(float)unitIconX, (float)unitIconY,
+			"mechicon.blit");
+
+		for( int j = 0; j < unitIconY; ++j )
+		{
+			int srcY = srcRect.y + (int)(j * f.y);
+			if (srcY >= (int)actualH) srcY = (int)actualH - 1;
+			DWORD* pSrcRow = (DWORD*)pTmp + (long)srcY * (long)actualW;
+			pDestData = pDestRow;
+			for ( int i = 0; i < unitIconX; ++i ) // do four icons per row
 			{
-				long compColor =  damageColors[0][i];
-				long srcColor = *pSrcData;
+				int srcX = srcRect.x + (int)(i * f.x);
+				if (srcX >= (int)actualW) srcX = (int)actualW - 1;
+				DWORD srcPixel = pSrcRow[srcX];
 
-				long compMin = compColor >> 16;
-				compMin += 4;
-				long compMax = compMin + 3;
-
-				if ( srcColor >> 16 >= compMin && srcColor >> 16 <= compMax )
+				bool bDraw = 0;
+				// compare colors, only draw back ones which are 4, 5, 6, and 7
+				for ( int ci = 0; ci < 3; ci++ )
 				{
-					bDraw = 1;
+					long compColor =  damageColors[0][ci];
+					long srcColor = srcPixel;
+
+					long compMin = compColor >> 16;
+					compMin += 4;
+					long compMax = compMin + 3;
+
+					if ( srcColor >> 16 >= compMin && srcColor >> 16 <= compMax )
+					{
+						bDraw = 1;
+					}
 				}
+				if ( srcPixel == 0xff505050 )
+					bDraw = 1;
+
+				if ( bDraw )
+					*pDestData++ = srcPixel;
+				else
+					*pDestData++ = 0;
 			}
-			if (  *pSrcData == 0xff505050 )
-				bDraw = 1;
-
-			if ( bDraw )
-				*pDestData++ = *pSrcData;
-			else
-				*pDestData++ = 0;
-
-			pSrcData++;
+			pDestRow += textureData.Width;
 		}
-		pSrcRow += s_MechTextures->width;
-		pDestRow += textureData.Width;
 	}
 
 
@@ -525,28 +534,35 @@ bool MechIcon::init( long whichIndex )
 
 	DWORD* pDestData, *pDestRow = textureData.pTexture + offsetY * textureData.Width + offsetX;
 	char* pTmp = (char*)s_MechTextures + sizeof ( TGAFileHeader );
-	DWORD* pSrcRow = (DWORD*)pTmp;
-
 
 	offsetY = 0;
 	offsetX = whichIndex * unitIconX;
 
-	long tmpOffset = ((s_MechTextures->width) * (offsetY ) + offsetX);
-
-	pSrcRow += tmpOffset;
-
-	DWORD* pSrcData = pSrcRow;
-
-	for( int j = 0; j < unitIconY; ++j )
 	{
-		pDestData = pDestRow;
-		pSrcData = pSrcRow;
-		for ( int i = 0; i < unitIconX; ++i ) // do four icons per row
-		{	
-			*pDestData++ = *pSrcData++;
+		const uint32_t actualW = (uint32_t)s_MechTextures->width;
+		const uint32_t actualH = (uint32_t)s_MechTextures->height;
+		const AssetScale::Vec2 f = AssetScale::factorFor(
+			MechIcon::s_MechTexturesKey, actualW, actualH, "mechicon.blit");
+		const AssetScale::IRect srcRect = AssetScale::nominalToActualRect(
+			MechIcon::s_MechTexturesKey, actualW, actualH,
+			(float)offsetX, (float)offsetY,
+			(float)unitIconX, (float)unitIconY,
+			"mechicon.blit");
+
+		for( int j = 0; j < unitIconY; ++j )
+		{
+			int srcY = srcRect.y + (int)(j * f.y);
+			if (srcY >= (int)actualH) srcY = (int)actualH - 1;
+			DWORD* pSrcRow = (DWORD*)pTmp + (long)srcY * (long)actualW;
+			pDestData = pDestRow;
+			for ( int i = 0; i < unitIconX; ++i ) // do four icons per row
+			{
+				int srcX = srcRect.x + (int)(i * f.x);
+				if (srcX >= (int)actualW) srcX = (int)actualW - 1;
+				*pDestData++ = pSrcRow[srcX];
+			}
+			pDestRow += textureData.Width;
 		}
-		pSrcRow += s_MechTextures->width;
-		pDestRow += textureData.Width;
 	}
 
 
@@ -1168,9 +1184,10 @@ bool VehicleIcon::init( Mover* pMover )
 
 		int size = file.getLength();
 
+		s_VehicleTexturesKey = AssetScale::key(path);
 		s_VehicleTextures = (TGAFileHeader*)new char[size];
 		file.read( (BYTE*)s_VehicleTextures, size );
-		BYTE* pTmp = (BYTE*)(s_VehicleTextures + 1); 
+		BYTE* pTmp = (BYTE*)(s_VehicleTextures + 1);
 
 		flipTopToBottom (pTmp, s_VehicleTextures->pixel_depth, s_VehicleTextures->width, s_VehicleTextures->height );
 
@@ -1217,29 +1234,37 @@ bool VehicleIcon::init( Mover* pMover )
 	
 	DWORD* pDestData, *pDestRow = textureData.pTexture + offsetY * textureData.Width + offsetX;
 	char* pTmp = (char*)s_VehicleTextures + sizeof ( TGAFileHeader );
-	DWORD* pSrcRow = (DWORD*)pTmp;
 
 	long whichMech = pMover->getIconPictureIndex();
 
 	offsetY = 0;
 	offsetX = whichMech * unitIconX;
 
-	long tmpOffset = ((s_VehicleTextures->width) * (offsetY ) + offsetX);
-
-	pSrcRow += tmpOffset;
-
-	DWORD* pSrcData = pSrcRow;
-
-	for( int j = 0; j < unitIconY; ++j )
 	{
-		pDestData = pDestRow;
-		pSrcData = pSrcRow;
-		for ( int i = 0; i < unitIconX; ++i ) // do four icons per row
-		{	
-			*pDestData++ = *pSrcData++;
+		const uint32_t actualW = (uint32_t)s_VehicleTextures->width;
+		const uint32_t actualH = (uint32_t)s_VehicleTextures->height;
+		const AssetScale::Vec2 f = AssetScale::factorFor(
+			VehicleIcon::s_VehicleTexturesKey, actualW, actualH, "mechicon.blit");
+		const AssetScale::IRect srcRect = AssetScale::nominalToActualRect(
+			VehicleIcon::s_VehicleTexturesKey, actualW, actualH,
+			(float)offsetX, (float)offsetY,
+			(float)unitIconX, (float)unitIconY,
+			"mechicon.blit");
+
+		for( int j = 0; j < unitIconY; ++j )
+		{
+			int srcY = srcRect.y + (int)(j * f.y);
+			if (srcY >= (int)actualH) srcY = (int)actualH - 1;
+			DWORD* pSrcRow = (DWORD*)pTmp + (long)srcY * (long)actualW;
+			pDestData = pDestRow;
+			for ( int i = 0; i < unitIconX; ++i ) // do four icons per row
+			{
+				int srcX = srcRect.x + (int)(i * f.x);
+				if (srcX >= (int)actualW) srcX = (int)actualW - 1;
+				*pDestData++ = pSrcRow[srcX];
+			}
+			pDestRow += textureData.Width;
 		}
-		pSrcRow += s_VehicleTextures->width;
-		pDestRow += textureData.Width;
 	}
 
 
