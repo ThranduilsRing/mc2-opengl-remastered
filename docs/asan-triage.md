@@ -18,7 +18,8 @@ Source of truth for "what was run where and when":
 |---|------------|-----------|
 | 4 | `933d716 fix(gameplay): guard neutral turret enable lookup` | **code correct, untested against a neutral-turret scenario in base game.** The tier1 mc2_03 failure that originally caught it was running Magic-vocabulary ABL scripts (see below); on truly-clean base game mc2_03 does not currently reach a path where `teamId == -1` is observed. Leave the fix in place as defense-in-depth. |
 | 5,6 | `e7d68c0 fix(abl): add code-segment sentinel byte` | **VERIFIED as a real P0 fix.** The 1-byte heap-buffer-overflow at `ablexec.cpp:361` is gone on all five tier1 missions under ASan. Stock base game now passes clean end-to-end. |
-| 3 | _(parallel session's `FunctionCallbackTable` stub registration work is the right fix)_ | **severity reverts to P1 (mod-content only).** Not a stock-game bug. |
+| 3 | _(parallel session's `FunctionCallbackTable` stub registration work is the right fix)_ | **severity reverts to P1 (mod-content only).** Not a stock-game bug. Verified 2026-04-24: existing 3-arg stubs at `ablmc2.cpp:7993/8000/8001` do NOT clear the Magic-contaminated case (Magic scripts call `coreGuard(pos,-1)` with 2 args, stubs expect `?ii`). The mod profile launcher design's per-profile stub registration is the correct long-term fix. |
+| 2 | `89c99cf fix(pathfinding): zero-init GlobalMap pathExistsTable in no-arg ctor path` | **VERIFIED** — Carver5-feasibility mc2_01 under ASan: `result=pass`, 2118 frames, 47 FPS, zero ASan reports. One-line addition (`pathExistsTable = NULL` in the inline no-arg `init()`) fully resolves the finding. No deeper bug surfaced behind it. |
 
 ### The pre-contamination discovery
 
