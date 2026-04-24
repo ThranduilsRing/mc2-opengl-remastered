@@ -102,6 +102,7 @@ static LONG WINAPI mc2_unhandled_exception_filter(EXCEPTION_POINTERS* ep)
 #include "gos_validate.h"
 #include "gos_static_prop_killswitch.h"
 #include "asset_scale.h"
+#include "gos_crashbundle.h"
 
 #include <signal.h>
 #include "gos_profiler.h"
@@ -300,6 +301,14 @@ static void handle_key_down( SDL_Keysym* keysym ) {
                 g_useGpuStaticProps = !g_useGpuStaticProps;
                 fprintf(stderr, "GPU Static Props: %s\n",
                         g_useGpuStaticProps ? "ON" : "OFF");
+            }
+            break;
+        case 'c':
+            // RAlt+Shift+C: deliberate crash-bundle smoke test.
+            // Must be gated with both ALT and SHIFT to avoid colliding with
+            // normal gameplay 'c' bindings.
+            if (alt_debug && (keysym->mod & KMOD_SHIFT) != 0) {
+                crashbundle_trigger_test_crash();
             }
             break;
     }
@@ -586,7 +595,12 @@ int main(int argc, char** argv)
     //signal(SIGTRAP, SIG_IGN);
 
 #ifdef _WIN32
-    SetUnhandledExceptionFilter(mc2_unhandled_exception_filter);
+    // crashbundle_init installs the richer SEH filter (crash bundle +
+    // diagnostic dialog). It supersedes the legacy mc2_unhandled_exception_filter
+    // above; the old function is retained in this TU for reference but is
+    // no longer the registered filter.
+    crashbundle_init();
+    (void)&mc2_unhandled_exception_filter; // silence "unused" warning
 #endif
     g_startup_t0 = SDL_GetPerformanceCounter();
     startup_phase("process_start");

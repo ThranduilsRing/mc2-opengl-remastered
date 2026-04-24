@@ -203,7 +203,7 @@ if(NOT WIN32)
 	message("Not win32 system")
 else()
 	# winmm for timeGetTime, maybe switch to GetTickCount to remove this dependency
-	set(ADDITIONAL_LIBS winmm ws2_32 dbghelp psapi)
+	set(ADDITIONAL_LIBS winmm ws2_32 dbghelp psapi user32 shell32)
 endif()
 
 
