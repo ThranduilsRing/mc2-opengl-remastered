@@ -144,7 +144,17 @@ shadow_screen → shoreline → [TAA resolve] → fog → outline blend → bloo
 
 TAA runs after shadow_screen and shoreline (so shadows and shoreline foam are temporally stable) and before bloom (so bloom applies to the stable image, not to jitter noise).
 
-After TAA, all subsequent passes read from `taaHistoryTex_[currIdx]` instead of `sceneColorTex_`. The final composite reads `taaHistoryTex_[currIdx]` as its primary input.
+After TAA, the **working scene texture** (`workingSceneTex`) is `taaHistoryTex_[currIdx]`. Each subsequent pass that produces a new color buffer advances `workingSceneTex` to its output:
+
+| After pass | `workingSceneTex` |
+|------------|------------------|
+| Scene render | `sceneColorTex_` |
+| TAA resolve (enabled) | `taaHistoryTex_[currIdx]` |
+| Fog pass (enabled) | `fogOutputTex_` |
+| (fog disabled, TAA enabled) | `taaHistoryTex_[currIdx]` |
+| (both disabled) | `sceneColorTex_` |
+
+The final composite always reads `workingSceneTex` — whatever texture last held the fully-processed scene color. Bloom threshold reads the same `workingSceneTex` so bloom is always extracted from the post-fog image, not the pre-fog image. In `endScene()`, `workingSceneTex` is a `GLuint` local that starts as `sceneColorTex_` and gets reassigned as passes execute.
 
 ### SMAA T2x Fallback Note
 
@@ -565,7 +575,7 @@ POST-PROCESS CHAIN  (all fullscreen quads on quadVAO_)
                        writes: fogOutputTex_  ← working buffer from here forward
 12. Outline resolve    reads: classTex_
                        writes: outlineTex_ (RGBA8, full-res)
-13. Bloom threshold    reads: taaHistoryTex_[curr]              → bloomFBO_[0]
+13. Bloom threshold    reads: fogOutputTex_ (workingSceneTex)   → bloomFBO_[0]
 14. Bloom blur         ping-pong bloomFBO_[0↔1]
 15. Composite (→ screen):
     reads: fogOutputTex_ (scene), outlineTex_, bloomColorTex_[0], lutTex_
