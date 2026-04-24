@@ -785,6 +785,15 @@ int main(int argc, char** argv)
                 s_first_frame_logged = true;
                 startup_phase("first_frame_presented");
             }
+            // Smoke mode: per-frame perf sample.
+            {
+                static uint64_t s_lastFrameT = SDL_GetPerformanceCounter();
+                uint64_t now = SDL_GetPerformanceCounter();
+                double ms = 1000.0 * (double)(now - s_lastFrameT) /
+                            (double)SDL_GetPerformanceFrequency();
+                s_lastFrameT = now;
+                SmokeMode::samplePerf(ms);
+            }
             // Heartbeat: every ~1s emit a frame-count marker so we can tell
             // whether the render loop is alive or frozen. Gated behind
             // MC2_HEARTBEAT so the default log is quiet — invaluable for
@@ -833,6 +842,14 @@ int main(int argc, char** argv)
                 validateWriteResults(Environment.drawableWidth, Environment.drawableHeight);
                 break;
             }
+        }
+
+        // Smoke mode: timed auto-quit after durationSec seconds past mission_ready.
+        if (SmokeMode::shouldQuit()) {
+            SmokeMode::emitTiming("mission_quit");
+            SmokeMode::emitCleanSummary();
+            g_exit = true;
+            break;
         }
     }
 

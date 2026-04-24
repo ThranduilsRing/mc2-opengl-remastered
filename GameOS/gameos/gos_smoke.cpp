@@ -1,11 +1,13 @@
 // GameOS/gameos/gos_smoke.cpp
 #include "gos_smoke.h"
 
+#include <algorithm>
 #include <atomic>
 #include <cstdio>
 #include <cstdlib>
 #include <cstring>
 #include <string>
+#include <vector>
 
 #include <sys/stat.h>
 #ifndef S_ISREG
@@ -21,6 +23,12 @@ uint64_t g_freq = 0;
 uint64_t g_missionReadyT = 0;
 std::atomic<bool> g_atexitInstalled{false};
 std::atomic<bool> g_summaryEmitted{false};
+
+std::vector<double> g_frameMs;          // ring buffer, size = cap
+size_t              g_frameIdx = 0;
+size_t              g_frameCount = 0;   // monotonic
+size_t              g_frameMsCap = 8192;
+bool                g_firstFrameSeen = false;
 
 double elapsedMsSince(uint64_t t0) {
     if (!t0 || !g_freq) return 0.0;
@@ -126,12 +134,71 @@ void emitTiming(const char* eventName) {
     std::fflush(stdout);
 }
 
-void samplePerf(double) {
-    // Filled in Task 7.
+void samplePerf(double frameMs) {
+    if (!g_state.enabled) return;
+    if (!g_firstFrameSeen) {
+        g_firstFrameSeen = true;
+        // NOTE: first_frame fires BEFORE mission_ready. Runner must not treat
+        // this as a gameplay-ready signal — mission_ready is authoritative.
+        emitTiming("first_frame");
+        if (const char* capEnv = std::getenv("MC2_SMOKE_PERF_SAMPLES")) {
+            int v = std::atoi(capEnv);
+            if (v > 0 && v < 1000000) g_frameMsCap = (size_t)v;
+        }
+        g_frameMs.assign(g_frameMsCap, 0.0);
+    }
+    if (!g_missionReadyT) return; // don't count loading-phase frames
+    g_frameMs[g_frameIdx] = frameMs;
+    g_frameIdx = (g_frameIdx + 1) % g_frameMsCap;
+    g_frameCount++;
 }
 
 void emitCleanSummary() {
-    // Filled in Task 7.
+    if (!g_state.enabled) return;
+    if (g_summaryEmitted.exchange(true)) return;
+
+    // Ring-buffer-aware snapshot. Pre-wrap: valid slots are [0..count).
+    // Post-wrap: whole ring is valid; copy in chronological order
+    // [idx..cap) then [0..idx) for debugging clarity (sort ignores order).
+    size_t used = std::min(g_frameCount, g_frameMsCap);
+    std::vector<double> samples;
+    samples.reserve(used);
+    if (g_frameCount < g_frameMsCap) {
+        samples.assign(g_frameMs.begin(), g_frameMs.begin() + used);
+    } else {
+        samples.assign(g_frameMs.begin() + g_frameIdx, g_frameMs.end());
+        samples.insert(samples.end(), g_frameMs.begin(),
+                       g_frameMs.begin() + g_frameIdx);
+    }
+    std::sort(samples.begin(), samples.end());
+
+    auto pct = [&](double p) -> double {
+        if (samples.empty()) return 0.0;
+        size_t idx = (size_t)((p / 100.0) * (samples.size() - 1));
+        return samples[idx];
+    };
+    double p50 = pct(50.0);
+    double p99 = pct(99.0);
+    double peak = samples.empty() ? 0.0 : samples.back();
+    double sum = 0.0;
+    for (double v : samples) sum += v;
+    double avgMs = samples.empty() ? 0.0 : sum / (double)samples.size();
+    double avgFps = (avgMs > 0.0) ? 1000.0 / avgMs : 0.0;
+    double p1LowFps = (pct(99.0) > 0.0) ? 1000.0 / pct(99.0) : 0.0;
+
+    std::fprintf(stdout,
+        "[PERF v1] avg_fps=%.1f p50_ms=%.2f p99_ms=%.2f p1low_fps=%.1f peak_ms=%.2f samples=%zu\n",
+        avgFps, p50, p99, p1LowFps, peak, samples.size());
+
+    double actualMs = elapsedMsSince(g_missionReadyT ? g_missionReadyT : g_startupT0);
+    // Fault counters OMITTED intentionally — the runner is the authoritative
+    // source; it counts [GL_ERROR v1]/[TGL_POOL v1]/[ASSET_SCALE v1]/[DESTROY v1]
+    // lines from the stream. Embedding engine-side counts would create a
+    // second source of truth with drift potential.
+    std::fprintf(stdout,
+        "[SMOKE v1] event=summary result=pass duration_actual_ms=%.1f frames=%zu\n",
+        actualMs, g_frameCount);
+    std::fflush(stdout);
 }
 
 void emitFailSummary(const char* reason, const char* stage) {
@@ -169,7 +236,10 @@ bool resolveMissionPaths() {
 }
 
 bool shouldQuit() {
-    return false; // Filled in Task 8.
+    if (!g_state.enabled) return false;
+    if (!g_missionReadyT) return false;
+    double ms = elapsedMsSince(g_missionReadyT);
+    return ms >= (double)g_state.durationSec * 1000.0;
 }
 
 void markMissionReady() {
