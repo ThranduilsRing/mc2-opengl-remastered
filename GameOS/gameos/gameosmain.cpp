@@ -14,6 +14,7 @@
 #include "gos_postprocess.h"
 #include "gos_validate.h"
 #include "gos_static_prop_killswitch.h"
+#include "asset_scale.h"
 
 #include <signal.h>
 #include "gos_profiler.h"
@@ -596,6 +597,7 @@ int main(int argc, char** argv)
     }
 
     Environment.InitializeGameEngine();
+    AssetScale::init("data/art/asset_sizes.csv");
     startup_phase("engine_init_done");
 
 #if 0
@@ -698,6 +700,7 @@ int main(int argc, char** argv)
     drainTglPoolStatsOnShutdown();
 
     Environment.TerminateGameEngine();
+    AssetScale::shutdown();
 
     gos_DestroyRenderer();
 
