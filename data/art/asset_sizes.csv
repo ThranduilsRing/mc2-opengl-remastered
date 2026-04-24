@@ -6,22 +6,23 @@
 # Canonical key rules: lowercase, forward slashes, no leading "./", no leading "data/".
 # Loader strips "data/" so input may include it.
 #
-# Fill <TBD> values by inspecting the un-upscaled FST-archive copy of the asset.
-# Until filled, the runtime treats the asset as unknown (factor=1.0, no transform).
+# Convention: loose files in data/art/ are upscaled overrides; absent loose
+# file = original served from FST. Nominal dims here = original (FST) dims,
+# discovered from mc2srcdata/art/ on 2026-04-23.
 
-# Mech damage schematic atlases (CLAUDE.md blocklist)
-# art/mcui_high7.tga,<TBD>,<TBD>
-# art/mcui_med4.tga,<TBD>,<TBD>
-# art/mcui_low4.tga,<TBD>,<TBD>
+# Mech damage schematic atlases
+art/mcui_high7.tga,1320,96
+art/mcui_med4.tga,1056,76
+art/mcui_low4.tga,825,60
 
 # Vehicle icon atlases
-# art/mcui_high8.tga,<TBD>,<TBD>
-# art/mcui_med5.tga,<TBD>,<TBD>
-# art/mcui_low5.tga,<TBD>,<TBD>
+art/mcui_high8.tga,1000,48
+art/mcui_med5.tga,800,38
+art/mcui_low5.tga,625,30
 
-# Pilot icon atlases (verify file numbering at impl time)
-# art/mcui_high2.tga,<TBD>,<TBD>
-# art/mcui_med2.tga,<TBD>,<TBD>
-# art/mcui_low2.tga,<TBD>,<TBD>
+# Pilot icon atlases
+art/mcui_high2.tga,256,256
+art/mcui_med2.tga,256,256
+art/mcui_low2.tga,256,256
 
 # Menu chrome — discovered per-screen during chrome adoption tasks (15/16/17)
