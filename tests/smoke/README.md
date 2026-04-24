@@ -22,23 +22,26 @@ Artifacts land in `tests/smoke/artifacts/<timestamp>/`.
 
 ## Tier ladder
 
-- `tier1`: pre-push confidence gate. **Rolling 3 worst-case missions** identified by the most recent tier2 baseline run (rotates after every tier2 reshuffle). See `tests/smoke/smoke_missions.txt` for the current set.
-- `tier2`: pre-PR campaign sweep. Hand-maintained authoritative list of `mc2_01` through `mc2_24`.
+- `tier1`: pre-push confidence gate. Stable hand-picked 5 missions covering different biomes/content classes. Run isolated (one mission per process, between gate runs).
+- `tier2`: pre-PR / major-feature campaign sweep. Hand-maintained authoritative list of `mc2_01` through `mc2_24`. Runs back-to-back over ~30 minutes of sustained engine load.
 - `tier3`: reserved for broader curated content after tier2 is stable.
 
-### Tier1 reshuffle (after each tier2 baseline run)
+## Measurement semantics (important)
 
-Tier1 is **derived data** — regenerated from the latest tier2 perf numbers, not hand-curated. The intent is for the daily gate to keep tracking whatever is currently painful, so a fix to one stress mission causes tier1 to rotate to the next worst.
+**Tier1 perf numbers and tier2 perf numbers are not directly comparable, even for the same mission at the same duration.** They measure different things:
 
-Process after each `--tier tier2 --baseline-update` run:
+- **Tier1 baselines** = isolated single-mission perf. Each gate run starts from a clean OS state (cold GPU, untouched file cache, no driver retained state). These numbers reflect what an end-user actually experiences when launching one mission. **Use tier1 baselines as the regression-detection reference.**
+- **Tier2 baselines** = sequenced stress perf. Captured during 24 back-to-back missions; the same mission late in the run sees GPU thermal load, evicted file caches, and AMD driver retained state from earlier missions. Useful as a long-session stress indicator and for surfacing intrinsically-heavy missions, but not as a per-mission perf reference.
 
-1. Sort tier2 baselines by p1low (lowest = worst sustained framerate).
-2. Pick the 3 stems with the worst p1low (or one each from worst-p1low / worst-peak_ms / bad-on-both — see existing `reason=` fields for precedent).
-3. Replace the `tier1 ...` lines in `tests/smoke/smoke_missions.txt`. Keep the leading comment block referencing the source notes file.
-4. Re-baseline tier1 at the canonical duration: `python scripts/run_smoke.py --tier tier1 --duration 60 --baseline-update --kill-existing`.
-5. Commit manifest + baselines together with a one-line `chore(smoke)` summary.
+Empirical example (mc2_21 at duration=60):
+- tier1 isolated: avg 172.9 fps, p1low 152.3, peak 8.8 ms
+- tier2 sequenced: avg 82.8 fps, p1low 26.8, peak 270.8 ms
 
-Note: tier1 baselines are necessarily transient — they only stay valid until the next reshuffle. That's intentional; the gate compares against this-cycle's worst cases, not historical ones.
+Same mission, same engine, same duration — but ~5.7× sustained-fps difference and 33× peak-frame difference. Both numbers are real; they just answer different questions.
+
+**Tier2's primary signal is pass/fail and crash detection, not perf delta.** Treat tier2 perf numbers as trend indicators, not gate thresholds.
+
+**Tier1 reshuffle?** Previously considered: rolling tier1 from "worst from tier2." Abandoned because tier2 perf data is environmentally biased (see above). Tier1 stays hand-curated for stability.
 
 Examples:
 
