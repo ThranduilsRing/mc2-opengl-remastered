@@ -1,0 +1,11 @@
+# tests/smoke/smoke_missions.txt
+# Format: <tier> <stem> [key=value]... [reason="..."]
+# Keys: duration, heartbeat_timeout_load, heartbeat_timeout_play, profile, active
+# Tiers: tier1, tier2, tier3, skip
+
+tier1 mc2_01 reason="baseline grass/desert combat"
+tier1 mc2_03 reason="salvage + heavier combat"
+tier1 mc2_10 reason="urban/complex objects"
+
+skip ai_glenn reason="dev leftover"
+skip gamesys reason="systems stub, not a real mission"
