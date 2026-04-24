@@ -129,6 +129,7 @@ Three env-gated loggers, one always-on summary, one checked-in invariant script.
 - `MC2_GL_ERROR_DRAIN_SILENT=1` — suppresses `[GL_ERROR v1]` first-error prints. **Default is PRINT-ON** — a fresh operator sees GL errors with no setup. Drain loop always runs; only the print is gated.
 - `MC2_ASSET_SCALE_TRACE=1` — per-key `[ASSET_SCALE v1]` runtime lookup events (`unknown_asset`, subsequent `oob_blit`, 600-frame summary). Default off; startup banner, `manifest_missing`/`manifest_bad_line`, and **first** `oob_blit` per `(path, callerTag)` are always-on regardless. Counters surface via `AssetScale::dumpCountersTo(stdout)`. Spec: [docs/superpowers/specs/2026-04-23-asset-scale-aware-rendering-design.md](docs/superpowers/specs/2026-04-23-asset-scale-aware-rendering-design.md).
 - `MC2_ASSET_SCALE_SELFTEST=1` — runs synthetic 2×/4×/8×/1.5× golden tests at startup; prints `[ASSET_SCALE v1] event=selftest_pass|fail` per case, then continues normally. Default off.
+- `MC2_HEARTBEAT=1` — stderr `[HEARTBEAT] frames=N elapsed_ms=N fps=F` once per second. Default off. Useful for detecting freezes (renderer alive vs frozen) during mod-content loading or abort paths.
 
 Startup banner `[INSTR v1] enabled: ...` appears at the very start of every log file. If it's missing, instrumentation wasn't wired up (or was wired too late).
 
