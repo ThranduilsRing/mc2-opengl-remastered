@@ -1141,82 +1141,79 @@ void GVAppearance::setPaintScheme (void)
 		gos_LockTexture(gosHandle, 0, 0, &textureData);
 
 		//-------------------------------------------------------
+		// Dominant-channel paint classifier. A pixel belongs to a paint slot
+		// iff its R/G/B dominates the other two by at least kRatio. Boundary
+		// (antialiased) pixels blend tint vs original proportional to how
+		// cleanly they dominate -- the original strict-zero check missed every
+		// antialiased mask edge and every upscaled gradient pixel.
+		// Bug fixed: inner loop was j < textureData.Height (should be Width).
 		DWORD *textureMemory = textureData.pTexture;
 		for (long i=0;i<textureData.Height;i++)
 		{
-			for (long j=0;j<textureData.Height;j++)
+			for (long j=0;j<textureData.Width;j++)
 			{
-				//---------------------------------------------
-				// Make Color from PaintScheme.
-				DWORD baseColor = *textureMemory;
-				BYTE baseColorAlpha = ((baseColor & 0xff000000)>>24);
-				float baseColorRed = float((baseColor & 0x00ff0000)>>16);
-				float baseColorGreen = float((baseColor & 0x0000ff00)>>8);
-				float baseColorBlue = float(baseColor & 0x000000ff);
+				DWORD srcColor = *textureMemory;
+				DWORD srcA = (srcColor & 0xff000000);
+				int   srcR = (int)((srcColor >> 16) & 0xff);
+				int   srcG = (int)((srcColor >>  8) & 0xff);
+				int   srcB = (int)( srcColor        & 0xff);
 
-				DWORD newColor = *textureMemory;	//Black by default.
-				if ((!baseColorGreen) && (!baseColorBlue))
+				int   slot       = -1;
+				DWORD slotColor  = 0;
+				float shade      = 0.0f;
+				float mixFactor  = 0.0f;
+				const int   kMinDom      = 16;
+				const float kRatio       = 3.0f;
+				const float kRatioMargin = 1.5f;
+
+				int domChan = 0, maxOther = 0;
+				if (srcR >= kMinDom && (float)srcR >= kRatio * (float)srcG && (float)srcR >= kRatio * (float)srcB)
 				{
-					baseColorRed *= 0.00390625f;		//Divide by 256;
-					baseColorRed = 1.0 - baseColorRed;
-					baseColorRed *= baseColorRed;	//Log colors
-					baseColorRed = 1.0 - baseColorRed;
-
-					float newColorRed = float((psRed & 0x00ff0000)>>16);
-					newColorRed  *= baseColorRed;
-					unsigned char red = (unsigned char)newColorRed;
-
-					float newColorGreen = float((psRed & 0x0000ff00)>>8);
-					newColorGreen  *= baseColorRed;
-					unsigned char green = (unsigned char)newColorGreen;
-
-					float newColorBlue = float(psRed & 0x000000ff);
-					newColorBlue  *= baseColorRed;
-					unsigned char blue = (unsigned char)newColorBlue;
-
-					newColor = (baseColorAlpha<<24) + (red<<16) + (green<<8) + (blue);
+					slot = 0; slotColor = psRed;
+					domChan = srcR;
+					maxOther = srcG > srcB ? srcG : srcB;
 				}
-				else if ((!baseColorRed) && (!baseColorBlue))
+				else if (srcG >= kMinDom && (float)srcG >= kRatio * (float)srcR && (float)srcG >= kRatio * (float)srcB)
 				{
-					baseColorGreen *= 0.00390625f;		//Divide by 256;
-					baseColorGreen = 1.0 - baseColorGreen;
-					baseColorGreen *= baseColorGreen;	//Log colors
-					baseColorGreen = 1.0 - baseColorGreen;
-
-					float newColorRed = float((psGreen & 0x00ff0000)>>16);
-					newColorRed  *= baseColorGreen;
-					unsigned char red = (unsigned char)newColorRed;
-
-					float newColorGreen = float((psGreen & 0x0000ff00)>>8);
-					newColorGreen  *= baseColorGreen;
-					unsigned char green = (unsigned char)newColorGreen;
-
-					float newColorBlue = float(psGreen & 0x000000ff);
-					newColorBlue  *= baseColorGreen;
-					unsigned char blue = (unsigned char)newColorBlue;
-
-					newColor = (baseColorAlpha<<24) + (red<<16) + (green<<8) + (blue);
+					slot = 1; slotColor = psGreen;
+					domChan = srcG;
+					maxOther = srcR > srcB ? srcR : srcB;
 				}
-				else if ((!baseColorRed) && (!baseColorGreen))
+				else if (srcB >= kMinDom && (float)srcB >= kRatio * (float)srcR && (float)srcB >= kRatio * (float)srcG)
 				{
-					baseColorBlue *= 0.00390625f;		//Divide by 256;
-					baseColorBlue = 1.0 - baseColorBlue;
-					baseColorBlue *= baseColorBlue;		//Log colors
-					baseColorBlue = 1.0 - baseColorBlue;
+					slot = 2; slotColor = psBlue;
+					domChan = srcB;
+					maxOther = srcR > srcG ? srcR : srcG;
+				}
 
-					float newColorRed = float((psBlue & 0x00ff0000)>>16);
-					newColorRed  *= baseColorBlue;
-					unsigned char red = (unsigned char)newColorRed;
+				if (slot != -1)
+				{
+					float d = (float)domChan / 255.0f;
+					shade = 1.0f - (1.0f - d) * (1.0f - d);
 
-					float newColorGreen = float((psBlue & 0x0000ff00)>>8);
-					newColorGreen  *= baseColorBlue;
-					unsigned char green = (unsigned char)newColorGreen;
+					float ratio = (float)domChan / (float)(maxOther + 1);
+					float margin = (ratio - kRatio) / (kRatio * (kRatioMargin - 1.0f));
+					if (margin > 1.0f) margin = 1.0f;
+					if (margin < 0.0f) margin = 0.0f;
+					mixFactor = margin;
+				}
 
-					float newColorBlue = float(psBlue & 0x000000ff);
-					newColorBlue  *= baseColorBlue;
-					unsigned char blue = (unsigned char)newColorBlue;
+				DWORD newColor = srcColor;
+				if (slot != -1 && mixFactor > 0.0f)
+				{
+					float tintR = (float)((slotColor >> 16) & 0xff) * shade;
+					float tintG = (float)((slotColor >>  8) & 0xff) * shade;
+					float tintB = (float)( slotColor        & 0xff) * shade;
 
-					newColor = (baseColorAlpha<<24) + (red<<16) + (green<<8) + (blue);
+					float outR = tintR * mixFactor + (float)srcR * (1.0f - mixFactor);
+					float outG = tintG * mixFactor + (float)srcG * (1.0f - mixFactor);
+					float outB = tintB * mixFactor + (float)srcB * (1.0f - mixFactor);
+
+					unsigned char r = (unsigned char)(outR < 0.0f ? 0.0f : outR > 255.0f ? 255.0f : outR);
+					unsigned char g = (unsigned char)(outG < 0.0f ? 0.0f : outG > 255.0f ? 255.0f : outG);
+					unsigned char b = (unsigned char)(outB < 0.0f ? 0.0f : outB > 255.0f ? 255.0f : outB);
+
+					newColor = srcA | ((DWORD)r << 16) | ((DWORD)g << 8) | (DWORD)b;
 				}
 
 				*textureMemory = newColor;
