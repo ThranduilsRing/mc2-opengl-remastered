@@ -596,8 +596,11 @@ int main(int argc, char** argv)
         SPEW(("AUDIO", "Failed to create audio\n"));
     }
 
-    Environment.InitializeGameEngine();
+    // AssetScale must load BEFORE InitializeGameEngine — that call creates
+    // main-menu widgets via aObject::init which queries the manifest for
+    // the chrome-flag opt-in. Late init = manifest empty at widget load.
     AssetScale::init("data/art/asset_sizes.csv");
+    Environment.InitializeGameEngine();
     startup_phase("engine_init_done");
 
 #if 0
