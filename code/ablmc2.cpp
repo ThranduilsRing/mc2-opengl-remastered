@@ -7626,7 +7626,38 @@ void ablSeedRandom (unsigned long seed) {
 
 void ablFatalCallback (long code, const char* s) {
 
-	STOP((s));
+	// Rate-limit per-message spam (e.g. unimplemented ABL extensions firing
+	// on every script tick). Fixed C array -- no heap, no STL.
+	static const int kSlots    = 16;
+	static const int kMaxPrints = 5;
+	struct AblMsgSlot { unsigned int hash; int count; };
+	static AblMsgSlot slots[kSlots];
+	static int  slotCount = 0;
+	static bool tableFull = false;
+
+	// djb2-lite over first 64 chars.
+	unsigned int h = 5381u;
+	const char* p = s ? s : "";
+	for (int i = 0; *p && i < 64; ++p, ++i)
+		h = h * 33u ^ (unsigned char)*p;
+
+	for (int i = 0; i < slotCount; ++i) {
+		if (slots[i].hash == h) {
+			if (++slots[i].count <= kMaxPrints)
+				STOP((s));
+			else if (slots[i].count == kMaxPrints + 1)
+				STOP(("[ABL] suppressing further identical errors (hash %08x): %s", h, s));
+			return;
+		}
+	}
+
+	if (slotCount < kSlots) {
+		slots[slotCount++] = { h, 1 };
+		STOP((s));
+	} else if (!tableFull) {
+		tableFull = true;
+		STOP(("[ABL] fatal callback: %d unique errors tracked; further distinct messages suppressed", kSlots));
+	}
 }
 
 //*****************************************************************************
