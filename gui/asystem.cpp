@@ -4,6 +4,7 @@
 
 #include"mclib.h"
 #include"asystem.h"
+#include "../GameOS/gameos/asset_scale.h"
 #include"packet.h"
 #include"afont.h"
 #include"paths.h"
@@ -439,22 +440,68 @@ void aObject::resize(long w, long h)
 
 void aObject::render()
 {
-	if ( showWindow )
+	if ( !showWindow ) return;
+
+	// Snapshot UVs in case we transform them.
+	gos_VERTEX saved[4];
+	bool transformed = false;
+
+	if ( !assetKey.empty() && srcRectSpace == SrcRectSpace::NominalPixels )
 	{
-		unsigned long gosID = mcTextureManager->get_gosTextureHandle( textureHandle );	
-		gos_SetRenderState( gos_State_Texture, gosID );
-		gos_SetRenderState(gos_State_Filter, gos_FilterNone);
-		gos_SetRenderState( gos_State_AlphaMode, gos_Alpha_AlphaInvAlpha );
-		gos_SetRenderState( gos_State_ZCompare, 0 );
-		gos_SetRenderState( gos_State_ZWrite, 0 );
-
-
-		gos_DrawQuads( location, 4 );
-
-		for ( int i = 0; i < pNumberOfChildren; i++ )
+		unsigned long gosID = mcTextureManager->get_gosTextureHandle( textureHandle );
+		if ( gosID )
 		{
-			pChildren[i]->render();
+			TEXTUREPTR td;
+			gos_LockTexture( gosID, 0, 0, &td );
+			const uint32_t aw = (uint32_t)td.Width;
+			const uint32_t ah = (uint32_t)td.Height;
+			gos_UnLockTexture( gosID );
+
+			// Existing UVs are stored as fractions of the texture in NOMINAL
+			// space (since fileWidth divides them in setUVs). Convert to
+			// nominal pixel coords, then through AssetScale to actual UVs.
+			const float u0 = location[0].u, u1 = location[2].u;
+			const float v0 = location[0].v, v1 = location[1].v;
+
+			const float nx = u0 * fileWidth;
+			const float ny = v0 * fileWidth;
+			const float nw = (u1 - u0) * fileWidth;
+			const float nh = (v1 - v0) * fileWidth;
+
+			const AssetScale::IRect r = AssetScale::nominalToActualRect(
+				assetKey, aw, ah, nx, ny, nw, nh, "aobject.render");
+
+			const float au0 = (float)r.x / (float)aw;
+			const float av0 = (float)r.y / (float)ah;
+			const float au1 = (float)(r.x + r.w) / (float)aw;
+			const float av1 = (float)(r.y + r.h) / (float)ah;
+
+			for (int i = 0; i < 4; ++i) saved[i] = location[i];
+			location[0].u = location[1].u = au0;
+			location[2].u = location[3].u = au1;
+			location[0].v = location[3].v = av0;
+			location[1].v = location[2].v = av1;
+			transformed = true;
 		}
+	}
+
+	unsigned long gosID = mcTextureManager->get_gosTextureHandle( textureHandle );
+	gos_SetRenderState( gos_State_Texture, gosID );
+	gos_SetRenderState(gos_State_Filter, gos_FilterNone);
+	gos_SetRenderState( gos_State_AlphaMode, gos_Alpha_AlphaInvAlpha );
+	gos_SetRenderState( gos_State_ZCompare, 0 );
+	gos_SetRenderState( gos_State_ZWrite, 0 );
+
+	gos_DrawQuads( location, 4 );
+
+	if (transformed)
+	{
+		for (int i = 0; i < 4; ++i) location[i] = saved[i];
+	}
+
+	for ( int i = 0; i < pNumberOfChildren; i++ )
+	{
+		pChildren[i]->render();
 	}
 }
 
