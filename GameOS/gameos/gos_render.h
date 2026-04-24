@@ -16,6 +16,8 @@ bool                resize_window           (RenderWindowHandle rw_handle, int w
 void                get_window_size         (RenderWindowHandle rw_handle, int* width, int* height);
 // may be different than window size (e.g. when switching to fullscreen)
 void                get_drawable_size       (RenderWindowHandle rw_handle, int* width, int* height);
+void                set_mouse_grab          (bool grabbed);
+void                refresh_mouse_grab      ();
 void                swap_window             (RenderWindowHandle h);
 void                destroy_window          (RenderWindowHandle rw_handle);
 bool                set_window_fullscreen   (RenderWindowHandle rw_handle, bool fullscreen);

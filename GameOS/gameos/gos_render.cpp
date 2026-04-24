@@ -2,6 +2,7 @@
 
 #ifdef PLATFORM_WINDOWS
 #include <windows.h>
+#include <SDL2/SDL_syswm.h>
 #endif
 #include <stdio.h>
 #include <stdlib.h>
@@ -13,6 +14,7 @@
 
 // FIXME: think how to make it better when different parts need window
 SDL_Window* g_sdl_window = NULL;
+static bool g_mouse_grabbed = false;
 
 namespace graphics {
 
@@ -31,6 +33,76 @@ struct RenderContext {
    SDL_GLContext glcontext_;
    RenderWindow* render_window_;
 };
+
+static void apply_mouse_grab(SDL_Window* window, bool grabbed)
+{
+#ifdef PLATFORM_WINDOWS
+    if (!grabbed) {
+        if (!ClipCursor(NULL)) {
+            log_error("ClipCursor release failed: %lu\n", (unsigned long)GetLastError());
+        }
+    }
+#endif
+
+    if (!window) {
+        return;
+    }
+
+    SDL_SetWindowMouseGrab(window, grabbed ? SDL_TRUE : SDL_FALSE);
+
+#ifdef PLATFORM_WINDOWS
+    SDL_SysWMinfo wm_info;
+    SDL_VERSION(&wm_info.version);
+    if (SDL_GetWindowWMInfo(window, &wm_info) != SDL_TRUE) {
+        log_error("SDL_GetWindowWMInfo: %s\n", SDL_GetError());
+        return;
+    }
+
+    if (wm_info.subsystem != SDL_SYSWM_WINDOWS || !wm_info.info.win.window) {
+        return;
+    }
+
+    if (!grabbed) {
+        return;
+    }
+
+    RECT client_rect;
+    if (!GetClientRect(wm_info.info.win.window, &client_rect)) {
+        log_error("GetClientRect failed: %lu\n", (unsigned long)GetLastError());
+        return;
+    }
+
+    POINT top_left = { client_rect.left, client_rect.top };
+    POINT bottom_right = { client_rect.right, client_rect.bottom };
+    if (!ClientToScreen(wm_info.info.win.window, &top_left) ||
+        !ClientToScreen(wm_info.info.win.window, &bottom_right)) {
+        log_error("ClientToScreen failed: %lu\n", (unsigned long)GetLastError());
+        return;
+    }
+
+    RECT clip_rect = {
+        top_left.x,
+        top_left.y,
+        bottom_right.x,
+        bottom_right.y,
+    };
+
+    if (!ClipCursor(&clip_rect)) {
+        log_error("ClipCursor apply failed: %lu\n", (unsigned long)GetLastError());
+    }
+#endif
+}
+
+void set_mouse_grab(bool grabbed)
+{
+    g_mouse_grabbed = grabbed;
+    apply_mouse_grab(g_sdl_window, grabbed);
+}
+
+void refresh_mouse_grab()
+{
+    apply_mouse_grab(g_sdl_window, g_mouse_grabbed);
+}
 
 static void PrintRenderer(SDL_RendererInfo * info);
 
@@ -242,13 +314,6 @@ RenderWindow* create_window(const char* pwinname, int width, int height)
         // Hide the OS cursor. MC2 renders its own in-game cursor sprite, so
         // the default arrow would otherwise double up on top of it.
         SDL_ShowCursor(SDL_DISABLE);
-
-        // Confine the mouse to the window. Without this, on multi-monitor
-        // setups the cursor can escape the borderless window horizontally
-        // (especially easy with 3-monitor layouts), briefly leaving the
-        // game feeling "windowed even though it isn't." SDL scopes the
-        // mouse-grab to window focus, so Alt-Tab still behaves naturally.
-        SDL_SetWindowMouseGrab(window, SDL_TRUE);
     }
 
     RenderWindow* rw = new RenderWindow();
@@ -257,7 +322,7 @@ RenderWindow* create_window(const char* pwinname, int width, int height)
     rw->height_ = height;
 
     g_sdl_window = window;
-    SDL_ShowCursor(SDL_DISABLE);
+    set_mouse_grab(true);
 
     return rw;
 }
@@ -459,6 +524,9 @@ bool resize_window(RenderWindowHandle rw_handle, int width, int height)
     SDL_SetWindowSize(rw->window_, width, height);
     rw->width_ = width;
     rw->height_ = height;
+    if (rw->window_ == g_sdl_window) {
+        refresh_mouse_grab();
+    }
 
     return true;
 }
@@ -474,6 +542,10 @@ bool set_window_fullscreen(RenderWindowHandle rw_handle, bool fullscreen)
     if(0 != SDL_SetWindowFullscreen(rw->window_, flags)) {
         log_error("SDL_SetWindowFullscreen: %s\n", SDL_GetError());
         return false;
+    }
+
+    if (rw->window_ == g_sdl_window) {
+        refresh_mouse_grab();
     }
 
     return true;
@@ -582,6 +654,9 @@ void get_drawable_size(RenderWindowHandle rw_handle, int* width, int* height)
 void destroy_window(RenderWindowHandle rw_handle)
 {
     RenderWindow* rw = (RenderWindow*)rw_handle;
+    if (rw->window_ == g_sdl_window) {
+        set_mouse_grab(false);
+    }
     SDL_ShowCursor(SDL_ENABLE);
     SDL_DestroyWindow(rw->window_);
     delete rw;
