@@ -15,6 +15,7 @@ set(SOURCES ${SOURCES}
     gos_validate.cpp
     gos_font.cpp
     gos_input.cpp
+    asset_scale.cpp
 
     utils/stream.cpp
     utils/camera.cpp
