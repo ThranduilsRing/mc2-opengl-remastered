@@ -2015,7 +2015,7 @@ void decryptFile (char *inputFile, char *outputFile)
 		dataFile.read(LZData,lzSize);
 	
 		unsigned long testSize = fileSize;
-		size_t test2Size = LZDecomp(zlibData, LZData, lzSize);
+		size_t test2Size = LZDecomp(zlibData, LZData, lzSize, zlibSize);
 		if (test2Size != zlibSize) 
 			STOP(("Didn't Decompress to same size as started with!!"));
 	

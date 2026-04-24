@@ -155,6 +155,8 @@ long FastFile::open (const char* fName)
 		handle = fopen(actualPath,"r");
 		if (handle == NULL)
 		{
+			if (!Environment.checkCDForFiles)
+				return (2);  // disk install; FastFile not present anywhere, fail quietly
 			//OPEN Error.  Maybe the CD is missing?
 			bool openFailed = false;
 			bool alreadyFullScreen = (Environment.fullScreen != 0);
@@ -494,6 +496,8 @@ long FastFile::readFast (DWORD fastFileHandle, void *bfr, DWORD size)
 				//sebi: second condition to handle zero-length files
 				if (result != files[fastFileHandle].pfe->size && files[fastFileHandle].pfe->size>0)
 				{
+					if (!Environment.checkCDForFiles)
+						return 0;  // disk install; short read, fail quietly
 					//READ Error.  Maybe the CD is missing?
 					bool openFailed = false;
 					bool alreadyFullScreen = (Environment.fullScreen != 0);
@@ -501,7 +505,7 @@ long FastFile::readFast (DWORD fastFileHandle, void *bfr, DWORD size)
 					{
 						openFailed = true;
 						EnterWindowMode();
-		
+
 						char data[2048];
 						sprintf(data,FileMissingString,fileName,CDMissingString);
 						DWORD result1 = MessageBox(NULL,data,MissingTitleString,MB_OKCANCEL | MB_ICONWARNING);
@@ -510,7 +514,7 @@ long FastFile::readFast (DWORD fastFileHandle, void *bfr, DWORD size)
 							ExitGameOS();
 							return (2);		//File not found.  Never returns though!
 						}
-		
+
 						logicalPosition = fseek(handle,files[fastFileHandle].pos + files[fastFileHandle].pfe->offset,SEEK_SET);
 						result = fread(LZPacketBuffer,1,files[fastFileHandle].pfe->size,handle);
 						logicalPosition += files[fastFileHandle].pfe->size;
@@ -521,19 +525,34 @@ long FastFile::readFast (DWORD fastFileHandle, void *bfr, DWORD size)
 				}
 
 				//--------------------------------------------------------
-				//USED to LZ Compress here.  It is NOW zLib Compression.
-				//  We should not try to use old fastfiles becuase version check above should fail when trying to open!!
+				// sebi 2026-04-21: per-entry raw/compressed split.
+				// Stock MC2 tools always wrote zlib (FASTFILE_VERSION) or LZSS (FASTFILE_VERSION_LZ).
+				// Wolfman's FST tool writes entries raw when compression saves nothing — detectable
+				// by pfe->size == pfe->realSize. Previous code force-decompressed raw entries,
+				// producing silent zero-filled output when zlib rejected the stream.
 				unsigned long decompLength = 0;
-				if (useLZCompress)
+				static const bool s_ffTrace = (getenv("MC2_FF_TRACE") != nullptr);
+				if (files[fastFileHandle].pfe->size == files[fastFileHandle].pfe->realSize)
 				{
-					decompLength = LZDecomp((MemoryPtr)bfr,LZPacketBuffer,files[fastFileHandle].pfe->size);
+					// Raw-stored entry: copy verbatim.
+					if (s_ffTrace) { printf("[FF] RAW %s size=%u real=%u\n", files[fastFileHandle].pfe->name, files[fastFileHandle].pfe->size, files[fastFileHandle].pfe->realSize); fflush(stdout); }
+					memcpy(bfr, LZPacketBuffer, files[fastFileHandle].pfe->size);
+					decompLength = files[fastFileHandle].pfe->realSize;
+				}
+				else if (useLZCompress)
+				{
+					if (s_ffTrace) { printf("[FF] LZSS %s size=%u real=%u\n", files[fastFileHandle].pfe->name, files[fastFileHandle].pfe->size, files[fastFileHandle].pfe->realSize); fflush(stdout); }
+					decompLength = LZDecomp((MemoryPtr)bfr,LZPacketBuffer,files[fastFileHandle].pfe->size,files[fastFileHandle].pfe->realSize);
 				}
 				else
 				{
+					if (s_ffTrace) { printf("[FF] ZLIB %s size=%u real=%u firstbytes=%02x%02x%02x%02x\n", files[fastFileHandle].pfe->name, files[fastFileHandle].pfe->size, files[fastFileHandle].pfe->realSize, (unsigned char)LZPacketBuffer[0], (unsigned char)LZPacketBuffer[1], (unsigned char)LZPacketBuffer[2], (unsigned char)LZPacketBuffer[3]); fflush(stdout); }
 					decompLength = files[fastFileHandle].pfe->realSize;
 					long error = uncompress((MemoryPtr)bfr,&decompLength,LZPacketBuffer,files[fastFileHandle].pfe->size);
-					if (error != Z_OK)
+					if (error != Z_OK) {
+						if (s_ffTrace) { printf("[FF] ZLIB FAILED error=%ld %s\n", error, files[fastFileHandle].pfe->name); fflush(stdout); }
 						STOP(("Error %d UnCompressing File %s from FastFile %s",error,files[fastFileHandle].pfe->name,fileName));
+					}
 				}
 
 				if ((long)decompLength != files[fastFileHandle].pfe->realSize)
@@ -599,7 +618,7 @@ long FastFile::writeFast (const char* fastFileName, void* buffer, int nbytes)
 		gosASSERT(LZPacketBuffer);
 
 		size_t compressedSize = LZCompress(LZPacketBuffer, (Bytef*)buffer, nbytes);
-		size_t uncompressedSize = LZDecomp((Bytef*)buffer, LZPacketBuffer, compressedSize);
+		size_t uncompressedSize = LZDecomp((Bytef*)buffer, LZPacketBuffer, compressedSize, nbytes);
 		if (nbytes != uncompressedSize)
 			STOP(("fast File size changed after compression.  Was %d is now %d", nbytes, uncompressedSize));
 
@@ -626,7 +645,7 @@ long FastFile::writeFast (const char* fastFileName, void* buffer, int nbytes)
 
 			gosASSERT(memcmp(LZPacketBuffer, fbc, compressedSize) == 0);
 
-			size_t uncompressedSize = LZDecomp((Bytef*)fb, (Bytef*)fbc, compressedSize);
+			size_t uncompressedSize = LZDecomp((Bytef*)fb, (Bytef*)fbc, compressedSize, nbytes);
 			gosASSERT(nbytes == uncompressedSize);
 		}
 	}
@@ -671,6 +690,8 @@ long FastFile::readFastRAW (DWORD fastFileHandle, void *bfr, DWORD size)
 
 		if (result != files[fastFileHandle].pfe->size)
 		{
+			if (!Environment.checkCDForFiles)
+				return 0;  // disk install; short read, fail quietly
 			//READ Error.  Maybe the CD is missing?
 			bool openFailed = false;
 			bool alreadyFullScreen = (Environment.fullScreen != 0);

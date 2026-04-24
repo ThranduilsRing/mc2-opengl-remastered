@@ -2249,7 +2249,7 @@ long MC_TextureManager::saveTexture (DWORD textureIndex, const char *textureFull
 			else
 			{
 				// Badboys are now LZ Compressed in texture cache.
-				long origSize = LZDecomp(MC_TextureManager::lzBuffer2,(MemoryPtr)masterTextureNodes[textureIndex].textureData,masterTextureNodes[textureIndex].lzCompSize);
+				long origSize = LZDecomp(MC_TextureManager::lzBuffer2,(MemoryPtr)masterTextureNodes[textureIndex].textureData,masterTextureNodes[textureIndex].lzCompSize,MAX_LZ_BUFFER_SIZE);
 				if (origSize != originalSize)
 					STOP(("Decompressed to different size from original!  Txm:%s  Width:%d  DecompSize:%d",masterTextureNodes[textureIndex].nodeName,originalSize,origSize));
 
@@ -2310,6 +2310,9 @@ DWORD MC_TextureNode::get_gosTextureHandle (void)	//If texture is not in VidRAM,
 	   
 		if (width == 0)
 		{
+			printf("[TXM] zero-width texture node: nodeName=%s handle=%u lzCompSize=%u\n",
+				nodeName ? nodeName : "<null>",
+				(unsigned)gosTextureHandle, (unsigned)lzCompSize); fflush(stdout);
 			PAUSE(("txmmgr: Textur has zero width!"));
 			return 0;		//These faces have no texture!!
 		}
@@ -2334,7 +2337,7 @@ DWORD MC_TextureNode::get_gosTextureHandle (void)	//If texture is not in VidRAM,
 					long origSize;
 					{
 						ZoneScopedN("MC_TextureNode::get_gosTextureHandle LZDecomp");
-						origSize = LZDecomp(MC_TextureManager::lzBuffer2,(MemoryPtr)textureData,lzCompSize);
+						origSize = LZDecomp(MC_TextureManager::lzBuffer2,(MemoryPtr)textureData,lzCompSize,MAX_LZ_BUFFER_SIZE);
 					}
 					if (origSize != originalSize)
 						STOP(("Decompressed to different size from original!  Txm:%s  Width:%d  DecompSize:%d",nodeName,originalSize,origSize));
@@ -2408,7 +2411,7 @@ DWORD MC_TextureNode::get_gosTextureHandle (void)	//If texture is not in VidRAM,
 			
 			{
 				ZoneScopedN("MC_TextureNode::get_gosTextureHandle LZDecomp");
-				LZDecomp(MC_TextureManager::lzBuffer2,(MemoryPtr)textureData,lzCompSize);
+				LZDecomp(MC_TextureManager::lzBuffer2,(MemoryPtr)textureData,lzCompSize,MAX_LZ_BUFFER_SIZE);
 			}
 			{
 				ZoneScopedN("MC_TextureNode::get_gosTextureHandle textureMemcpy");

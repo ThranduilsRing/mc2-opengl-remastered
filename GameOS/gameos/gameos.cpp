@@ -62,8 +62,54 @@ void EnterWindowMode(void)
 
 static bool g_gos_exit_game_os = false;
 
+// sebi 2026-04-22: when ExitGameOS/gos_TerminateApplication fires, the game
+// quietly stops at the top of the next frame with no visible error. This
+// shim logs the caller's stack so silent exits are debuggable. Gated on
+// env var MC2_TRACE_EXIT so release builds stay quiet by default.
+#ifdef _WIN32
+#include <windows.h>
+#include <dbghelp.h>
+static void mc2_log_exit_caller(const char* fn)
+{
+    static const bool s_trace = (getenv("MC2_TRACE_EXIT") != nullptr);
+    static bool s_once = false;
+    if (!s_trace && s_once) return;   // always log first; repeats only if env set
+    s_once = true;
+
+    fprintf(stderr, "[EXIT] %s called. Stack:\n", fn);
+    HANDLE proc = GetCurrentProcess();
+    SymSetOptions(SYMOPT_LOAD_LINES | SYMOPT_DEFERRED_LOADS | SYMOPT_UNDNAME);
+    static bool s_sym_initialized = false;
+    if (!s_sym_initialized) { SymInitialize(proc, NULL, TRUE); s_sym_initialized = true; }
+
+    void* frames[32];
+    USHORT n = CaptureStackBackTrace(1, 32, frames, NULL);
+    for (USHORT i = 0; i < n; ++i) {
+        char symBuf[sizeof(SYMBOL_INFO) + 512];
+        SYMBOL_INFO* sym = (SYMBOL_INFO*)symBuf;
+        sym->SizeOfStruct = sizeof(SYMBOL_INFO);
+        sym->MaxNameLen = 512;
+        DWORD64 disp64 = 0;
+        const char* symName = "?";
+        IMAGEHLP_LINE64 line{}; line.SizeOfStruct = sizeof(IMAGEHLP_LINE64);
+        DWORD dispL = 0;
+        const char* fileName = "?"; DWORD lineNum = 0;
+        if (SymFromAddr(proc, (DWORD64)frames[i], &disp64, sym))
+            symName = sym->Name;
+        if (SymGetLineFromAddr64(proc, (DWORD64)frames[i], &dispL, &line)) {
+            fileName = line.FileName; lineNum = line.LineNumber;
+        }
+        fprintf(stderr, "  #%02d  %s  (%s:%u)\n", i, symName, fileName, lineNum);
+    }
+    fflush(stderr);
+}
+#else
+static void mc2_log_exit_caller(const char*) {}
+#endif
+
 void __stdcall ExitGameOS()
 {
+    mc2_log_exit_caller("ExitGameOS");
     g_gos_exit_game_os = true;
 }
 
@@ -383,6 +429,7 @@ char* __stdcall gos_GetFormattedTime( WORD Hour/*=-1*/, WORD Minute/*=-1*/, WORD
 
 void __stdcall gos_TerminateApplication()
 {
+    mc2_log_exit_caller("gos_TerminateApplication");
     g_gos_exit_game_os = true;
 }
 

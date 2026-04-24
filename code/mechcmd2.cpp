@@ -2760,7 +2760,7 @@ void __stdcall GetGameOSEnvironment(const char* CommandLine )
 	Environment.allowMultipleApps = false;
 	Environment.dontClearRegistry = true;
 
-    Environment.checkCDForFiles = true;
+    Environment.checkCDForFiles = false;  // 2001 CD DRM; always disk-installed now
 	
 	if (useSound)
 	{

@@ -4,6 +4,93 @@
 #include <stdlib.h>
 #include <time.h>
 
+// sebi 2026-04-22: unhandled-exception filter that symbolizes the stack via
+// DbgHelp (PDB-based). Needed because release/RelWithDebInfo builds otherwise
+// die silently with "read violation at 0xNN" and no frames — Tracy only resolves
+// the top CRT frame, and the real null-deref callsite is invisible.
+#ifdef _WIN32
+#include <windows.h>
+#include <dbghelp.h>
+#pragma comment(lib, "dbghelp.lib")
+
+static LONG WINAPI mc2_unhandled_exception_filter(EXCEPTION_POINTERS* ep)
+{
+    fprintf(stderr, "\n========================================\n");
+    fprintf(stderr, "[CRASH] code=0x%08lX flags=0x%08lX addr=%p\n",
+        ep->ExceptionRecord->ExceptionCode,
+        ep->ExceptionRecord->ExceptionFlags,
+        ep->ExceptionRecord->ExceptionAddress);
+    if (ep->ExceptionRecord->ExceptionCode == EXCEPTION_ACCESS_VIOLATION &&
+        ep->ExceptionRecord->NumberParameters >= 2) {
+        fprintf(stderr, "[CRASH] %s violation at 0x%p\n",
+            ep->ExceptionRecord->ExceptionInformation[0] == 0 ? "READ" :
+            ep->ExceptionRecord->ExceptionInformation[0] == 1 ? "WRITE" : "EXEC",
+            (void*)ep->ExceptionRecord->ExceptionInformation[1]);
+    }
+
+    HANDLE proc = GetCurrentProcess();
+    SymSetOptions(SYMOPT_LOAD_LINES | SYMOPT_DEFERRED_LOADS | SYMOPT_UNDNAME);
+    SymInitialize(proc, NULL, TRUE);
+
+    // Walk back from the faulting context rather than capturing current stack —
+    // CaptureStackBackTrace would start from this filter function and miss the
+    // pre-exception frames we actually care about.
+    CONTEXT ctx = *ep->ContextRecord;
+    STACKFRAME64 frame{};
+#if defined(_M_X64) || defined(_M_AMD64)
+    frame.AddrPC.Offset = ctx.Rip;
+    frame.AddrFrame.Offset = ctx.Rbp;
+    frame.AddrStack.Offset = ctx.Rsp;
+    DWORD machine = IMAGE_FILE_MACHINE_AMD64;
+#else
+    frame.AddrPC.Offset = ctx.Eip;
+    frame.AddrFrame.Offset = ctx.Ebp;
+    frame.AddrStack.Offset = ctx.Esp;
+    DWORD machine = IMAGE_FILE_MACHINE_I386;
+#endif
+    frame.AddrPC.Mode = AddrModeFlat;
+    frame.AddrFrame.Mode = AddrModeFlat;
+    frame.AddrStack.Mode = AddrModeFlat;
+
+    fprintf(stderr, "[CRASH] stack:\n");
+    for (int i = 0; i < 32; ++i) {
+        if (!StackWalk64(machine, proc, GetCurrentThread(), &frame, &ctx,
+                          NULL, SymFunctionTableAccess64, SymGetModuleBase64, NULL))
+            break;
+        if (frame.AddrPC.Offset == 0) break;
+
+        char symBuf[sizeof(SYMBOL_INFO) + 512];
+        SYMBOL_INFO* sym = (SYMBOL_INFO*)symBuf;
+        sym->SizeOfStruct = sizeof(SYMBOL_INFO);
+        sym->MaxNameLen = 512;
+        DWORD64 disp64 = 0;
+        IMAGEHLP_LINE64 line{};
+        line.SizeOfStruct = sizeof(IMAGEHLP_LINE64);
+        DWORD dispL = 0;
+
+        const char* symName = "?";
+        const char* fileName = "?";
+        DWORD lineNum = 0;
+        if (SymFromAddr(proc, frame.AddrPC.Offset, &disp64, sym))
+            symName = sym->Name;
+        if (SymGetLineFromAddr64(proc, frame.AddrPC.Offset, &dispL, &line)) {
+            fileName = line.FileName;
+            lineNum = line.LineNumber;
+        }
+        fprintf(stderr, "  #%02d 0x%016llX  %s  (%s:%u)\n",
+            i, (unsigned long long)frame.AddrPC.Offset, symName, fileName, lineNum);
+    }
+    fflush(stderr);
+    SymCleanup(proc);
+
+    // EXCEPTION_EXECUTE_HANDLER would swallow the crash; we want to keep the
+    // debugger-catch / crash-dialog behavior. Returning EXCEPTION_CONTINUE_SEARCH
+    // lets the OS do whatever it would have (watson, just-in-time debugger, etc.)
+    // after we've printed our trace.
+    return EXCEPTION_CONTINUE_SEARCH;
+}
+#endif
+
 #include <SDL2/SDL.h>
 #include "gos_input.h"
 
@@ -498,6 +585,9 @@ int main(int argc, char** argv)
 
     //signal(SIGTRAP, SIG_IGN);
 
+#ifdef _WIN32
+    SetUnhandledExceptionFilter(mc2_unhandled_exception_filter);
+#endif
     g_startup_t0 = SDL_GetPerformanceCounter();
     startup_phase("process_start");
 
@@ -665,6 +755,23 @@ int main(int argc, char** argv)
             if (!s_first_frame_logged) {
                 s_first_frame_logged = true;
                 startup_phase("first_frame_presented");
+            }
+            // Heartbeat: every ~1s emit a frame-count marker so we can tell
+            // whether the render loop is alive or frozen. Always on — near-zero
+            // overhead (one fprintf per second) and invaluable for diagnosing
+            // freezes on content-faulting mod loads.
+            static int s_hb_frame = 0;
+            static uint64_t s_hb_last_ms = 0;
+            s_hb_frame++;
+            uint64_t now_ms = (uint64_t)(SDL_GetTicks64());
+            if (s_hb_last_ms == 0) s_hb_last_ms = now_ms;
+            if (now_ms - s_hb_last_ms >= 1000) {
+                fprintf(stderr, "[HEARTBEAT] frames=%d elapsed_ms=%llu fps=%.1f\n",
+                        s_hb_frame, (unsigned long long)(now_ms - s_hb_last_ms),
+                        (double)s_hb_frame * 1000.0 / (double)(now_ms - s_hb_last_ms));
+                fflush(stderr);
+                s_hb_frame = 0;
+                s_hb_last_ms = now_ms;
             }
         }
 

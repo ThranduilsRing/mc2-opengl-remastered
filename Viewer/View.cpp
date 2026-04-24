@@ -712,7 +712,7 @@ void __stdcall GetGameOSEnvironment( const char* CommandLine )
 	Environment.DoGameLogic				= DoGameLogic;
 	Environment.TerminateGameEngine		= TerminateGameEngine;
 
-    Environment.checkCDForFiles         = true;
+    Environment.checkCDForFiles         = false;  // 2001 CD DRM; always disk-installed now
 	
 	if (useSound)
 	{

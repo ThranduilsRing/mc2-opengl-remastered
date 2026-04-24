@@ -519,9 +519,30 @@ void enterStandardRoutine (const char* name, long routineKey, bool isOrder, cons
 
 	long tableIndex = routineKey;
 	if (tableIndex == -1) {
-		if (NumStandardFunctions == MAX_STANDARD_FUNCTIONS)
-			ABL_Fatal(0, " ABL.enterStandardRoutine: Too Many Standard Functions ");
+		if (NumStandardFunctions >= MAX_STANDARD_FUNCTIONS) {
+			// Hard-bail: ABL_Fatal is soft in release so the original code
+			// would continue and OOB-write FunctionCallbackTable[256..],
+			// corrupting adjacent BSS and wrecking earlier slots.
+			printf("[ABL_REG] FULL: cannot register '%s' (table size=%d). Skipping.\n",
+				name ? name : "(null)", MAX_STANDARD_FUNCTIONS);
+			fflush(stdout);
+			return;
+		}
 		tableIndex = NumStandardFunctions++;
+	}
+	// Registration trace (env-gated): dump name -> key -> callback so we can
+	// correlate key numbers in [ABL_BAD_CB] crash logs back to function names.
+	// Kept in tree per the Debug Instrumentation Rule — silent unless
+	// MC2_ABL_REG_TRACE is set. Reactivate when adding new ABL extensions
+	// or investigating dispatch issues.
+	static const bool s_ablRegTrace = (getenv("MC2_ABL_REG_TRACE") != NULL);
+	if (s_ablRegTrace) {
+		printf("[ABL_REG] key=%3ld name=%-28s params=%-8s ret=%s cb=%p\n",
+			tableIndex, name ? name : "(null)",
+			paramList ? paramList : "",
+			returnType ? returnType : "",
+			(void*)callback);
+		fflush(stdout);
 	}
 
 	SymTableNodePtr routineIdPtr;

@@ -214,6 +214,16 @@ bool ObjectType::handleDestruction (GameObjectPtr collidee, GameObjectPtr collid
 	return(true);
 }
 
+void ObjectType::setAppearanceTypeName (const char* name)
+{
+	if (!name) return;
+	size_t n = strlen(name);
+	appearName = (char*)ObjectTypeManager::objectTypeCache->Malloc(n + 1);
+	if (appearName) {
+		strcpy(appearName, name);
+	}
+}
+
 //***************************************************************************
 //* GAMEOBJECT TYPE MANAGER class
 //***************************************************************************
@@ -318,9 +328,11 @@ ObjectTypePtr ObjectTypeManager::load (ObjectTypeNumber objTypeNum, bool noCache
 	// frame length knows to force itself into load mode.
 	dynamicFrameTiming = false;
 
-	if ((objTypeNum < 0) || (objTypeNum >= numObjectTypes))
-		Fatal(objTypeNum, " ObjectTypeManager.load: bad objTypeNum ");
-	
+	if ((objTypeNum < 0) || (objTypeNum >= numObjectTypes)) {
+		PAUSE((" ObjectTypeManager.load: bad objTypeNum %d (max %d) — mod content; returning NULL ", (int)objTypeNum, (int)numObjectTypes));
+		return NULL;
+	}
+
 	if (objTypeNum == 0)		//First Object always NULL!
 		return NULL;
 
@@ -465,8 +477,23 @@ ObjectTypePtr ObjectTypeManager::load (ObjectTypeNumber objTypeNum, bool noCache
 			break;
 
 		default:
-			return(NULL);
+			// Fall through with objType=NULL — the post-switch stub-substitution
+			// will create a BattleMechType so the mission still spawns a mover.
+			// Actual chassis comes from CSV via BattleMech::init(variantNum).
+			break;
 			//Fatal(OBJECT_TYPE_NUMBER_UNDEFINED, " ObjectTypeManager.load: undefined objType ");
+	}
+
+	// Mod-tolerance: the CRAPPY_OBJECT arm above breaks without assigning
+	// objType (its Fatal() is soft in Release), and mod paks can deliver
+	// ObjectClass.ObjectTypeNum = CRAPPY_OBJECT or some other case arm whose
+	// new-allocation was never reached. Fall back to a stub BattleMechType
+	// so the mission can still spawn player mechs — their actual chassis
+	// comes from the CSV via BattleMech::init(variantNum), not the pak entry.
+	if (!objType) {
+		objType = new BattleMechType;
+		objType->setObjTypeNum(objTypeNum);
+		PAUSE((" ObjectTypeManager.load: objType NULL post-switch for objTypeNum %d — substituting stub BattleMechType ", (int)objTypeNum));
 	}
 
 	if (noCacheOut)	{
@@ -477,7 +504,7 @@ ObjectTypePtr ObjectTypeManager::load (ObjectTypeNumber objTypeNum, bool noCache
 		if (objType->getExplosionObject() > 0)
 			load(objType->getExplosionObject());
 	}
-		
+
 	table[objTypeNum] = objType;
 
 	return(objType);
@@ -510,8 +537,10 @@ void ObjectTypeManager::remove (ObjectTypePtr objTypePtr) {
 
 ObjectTypePtr ObjectTypeManager::get (ObjectTypeNumber objTypeNum, bool loadIt) {
 
-	if ((objTypeNum < 0) || (objTypeNum >= numObjectTypes))
-		Fatal(objTypeNum, " ObjectTypeManager.find: bad objTypeNum ");
+	if ((objTypeNum < 0) || (objTypeNum >= numObjectTypes)) {
+		PAUSE((" ObjectTypeManager.find: bad objTypeNum %d (max %d) — mod content; returning NULL ", (int)objTypeNum, (int)numObjectTypes));
+		return NULL;
+	}
 
 	//---------------------------
 	// If not, cache it in now...

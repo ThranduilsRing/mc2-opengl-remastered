@@ -3309,6 +3309,22 @@ long BattleMech::init (FitIniFile* mechFile) {
 	// Calc mech's chassis class...
 	chassisClass = getMechClass();
 
+	// Mod-tolerance: mod mechs from stub-substituted BattleMechType paths
+	// may not contain a COMPONENT_FORM_SENSOR in their inventory, so the
+	// sensor-allocating branch in the inventory loop above never fires
+	// and sensorSystem stays NULL. Every downstream caller
+	// (setShutdown/broken/numContacts/etc) then crashes with a READ at 0x29.
+	// Fallback: allocate a default sensor here for any mech still missing one.
+	if (!sensorSystem && SensorManager) {
+		sensorSystem = SensorManager->newSensor();
+		if (sensorSystem) {
+			sensorSystem->setOwner(this);
+			sensorSystem->setRange(100.0f);
+			if (teamId >= 0 && teamId < MAX_TEAMS)
+				SensorManager->addTeamSensor(teamId, sensorSystem);
+		}
+	}
+
 	return(NO_ERR);
 }
 

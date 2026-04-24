@@ -1135,7 +1135,7 @@ long TerrainTextures::createTransition (DWORD typeInfo, DWORD overlayInfo)
 					STOP(("Read Error with Texture %s",(const char*)testPath));
 
 				MemoryPtr lzBuffer = (MemoryPtr)malloc(mipSize * mipSize * sizeof(DWORD));
-				long bufferSize = LZDecomp(lzBuffer,fileRAM,fileSize);
+				long bufferSize = LZDecomp(lzBuffer,fileRAM,fileSize,mipSize * mipSize * sizeof(DWORD));
 				if (bufferSize != (mipSize * mipSize * sizeof(DWORD)))
 					STOP(("Texture not correct size!"));
 

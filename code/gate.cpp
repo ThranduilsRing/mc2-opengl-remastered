@@ -270,16 +270,17 @@ long Gate::update (void)
 		}
 	}
 	
+	// NULL guards — mod content with bail'd GlobalMap[1] would crash here.
 	for (long i = 0; i < numSubAreas0; i++) {
-		GlobalMoveMap[0]->setAreaOwnerWID(subAreas0[i], getWatchID());
-		GlobalMoveMap[1]->setAreaOwnerWID(subAreas1[i], getWatchID());
+		if (GlobalMoveMap[0]) GlobalMoveMap[0]->setAreaOwnerWID(subAreas0[i], getWatchID());
+		if (GlobalMoveMap[1]) GlobalMoveMap[1]->setAreaOwnerWID(subAreas1[i], getWatchID());
 		if (status == OBJECT_STATUS_DESTROYED) {
-			GlobalMoveMap[0]->setAreaTeamID(subAreas0[i], -1);
-			GlobalMoveMap[1]->setAreaTeamID(subAreas1[i], -1);
+			if (GlobalMoveMap[0]) GlobalMoveMap[0]->setAreaTeamID(subAreas0[i], -1);
+			if (GlobalMoveMap[1]) GlobalMoveMap[1]->setAreaTeamID(subAreas1[i], -1);
 			}
 		else {
-			GlobalMoveMap[0]->setAreaTeamID(subAreas0[i], teamId);
-			GlobalMoveMap[1]->setAreaTeamID(subAreas1[i], teamId);
+			if (GlobalMoveMap[0]) GlobalMoveMap[0]->setAreaTeamID(subAreas0[i], teamId);
+			if (GlobalMoveMap[1]) GlobalMoveMap[1]->setAreaTeamID(subAreas1[i], teamId);
 		}
 	}
 
@@ -762,8 +763,8 @@ void Gate::destroyGate(void)
 		// First, mark every occupied cell PASSABLE for original shape.
 		// then, load the destroyed shape and use it to mark impassable!
 		markMoveMap(true);
-		GlobalMoveMap[0]->clearPathExistsTable();
-		GlobalMoveMap[1]->clearPathExistsTable();
+		if (GlobalMoveMap[0]) GlobalMoveMap[0]->clearPathExistsTable();
+		if (GlobalMoveMap[1]) GlobalMoveMap[1]->clearPathExistsTable();
 		//----------------------------------------------------------
 		// Unmark these cells as gate cells, so it'll be passable...
 		short* curCoord = cellsCovered;

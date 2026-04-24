@@ -2752,6 +2752,20 @@ long MechWarrior::calcMovePath (long selectionIndex, unsigned long moveParams) {
  	MoverPtr myVehicle = getVehicle();
 	bool flying = (myVehicle->getMoveLevel() > 0);
 
+	// Mod-tolerance: GlobalMap::init may have bailed (badLoad) when mod pak
+	// contained oversized move-data packets (see mclib/move.cpp GlobalMap
+	// bail + per-packet bounds in ae20c72). In that state, GlobalMoveMap[N]
+	// exists as a partially-constructed object where areas/doors arrays are
+	// NULL. Pathfinding can't run without that data — attempting it reads
+	// at `0x14` (areas[startArea].open offset against NULL areas pointer).
+	// Bail early with 0 steps so the mover stays put but the game keeps
+	// running instead of crashing at warrior.cpp:2970 on player click.
+	long moveLevel = myVehicle->getMoveLevel();
+	if (!GlobalMoveMap[moveLevel] || GlobalMoveMap[moveLevel]->badLoad
+			|| !GlobalMoveMap[moveLevel]->areas) {
+		return 0;
+	}
+
 	Stuff::Vector3D jumpGoal;
 	bool jumping = isJumping(&jumpGoal);
 

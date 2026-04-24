@@ -982,21 +982,53 @@ TypePtr execStandardRoutineCall (SymTableNodePtr routineIdPtr, bool skipOrder) {
 		case RTN_CONCAT:
 			return(execStdConcat());
 		default: {
-			if (key >= NumStandardFunctions) {
+			if (key < 0 || key >= NumStandardFunctions) {
+				// Mod-tolerance: ABL script called an unregistered routine key
+				// (common with Omnitech-extended scripts running on our base
+				// engine). ABL_Fatal is soft in Release so we'd OOB-read both
+				// FunctionInfoTable[key] and FunctionCallbackTable[key] and
+				// then call through a garbage pointer. Hard-bail here.
 				char err[255];
-				sprintf(err, " ABL: Undefined ABL RoutineKey in %s:%d", CurModule->getName(), execLineNumber);
+				sprintf(err, " ABL: Undefined ABL RoutineKey %d in %s:%d (>= %d) — bailing", key, CurModule->getName(), execLineNumber, NumStandardFunctions);
 				ABL_Fatal(0, err);
+				return NULL;
 			}
 			if (FunctionInfoTable[key].numParams > 0)
 				getCodeToken();
 			SkipOrder = skipOrder;
-			if (FunctionCallbackTable[key])
-				(*FunctionCallbackTable[key])();
-			else
+			// Guard: FunctionCallbackTable slots can hold non-NULL uninitialized
+			// garbage (e.g. 0x00000000DDFD690B — low 16 bits repeat across runs,
+			// upper bits are heap noise). NULL check alone is insufficient. Valid
+			// code pointers on 64-bit Windows live in the high 2^47 range
+			// (0x00007F...); anything below 0x0000_7F00_0000_0000 is bogus. On
+			// bogus, skip the call, log key+module+line, synthesize a default
+			// return so ABL stack stays balanced and FSM execution continues.
 			{
-				char err[255];
-				sprintf(err, " ABL: Undefined ABL RoutineKey %d in %s:%d", key, CurModule->getName(), execLineNumber);
-				ABL_Fatal(key,err);
+				void (*cb)(void) = FunctionCallbackTable[key];
+				uintptr_t cbVal = (uintptr_t)cb;
+				// Belt-and-suspenders: root cause was MAX_STANDARD_FUNCTIONS=256
+				// overflow (fixed in 2cfad76). This guard stays in place to catch
+				// any future bogus-pointer case rather than dispatching into
+				// garbage. Log is unconditional because it fires rarely; when it
+				// does, we want the data in o.log automatically.
+				if (cbVal != 0 && cbVal < (uintptr_t)0x00007F0000000000ULL) {
+					char err[255];
+					sprintf(err, "[ABL_BAD_CB] key=%d val=%p module=%s line=%d",
+						key, cb, CurModule->getName(), execLineNumber);
+					printf("%s\n", err); fflush(stdout);
+					switch (FunctionInfoTable[key].returnType) {
+						case RETURN_TYPE_INTEGER: pushInteger(0); break;
+						case RETURN_TYPE_REAL:    pushReal(0.0f); break;
+						case RETURN_TYPE_BOOLEAN: pushBoolean(false); break;
+						default: break;
+					}
+				} else if (cb) {
+					(*cb)();
+				} else {
+					char err[255];
+					sprintf(err, " ABL: Undefined ABL RoutineKey %d in %s:%d", key, CurModule->getName(), execLineNumber);
+					ABL_Fatal(key, err);
+				}
 			}
 
 			getCodeToken();

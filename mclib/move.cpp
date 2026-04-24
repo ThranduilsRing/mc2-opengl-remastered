@@ -26,6 +26,27 @@
 
 #include"gos_profiler.h"
 
+//---------------------------------------------------------------------------
+// Bounded readPacket helper for GlobalMap::init — refuses to read a packet
+// whose unpacked size exceeds the caller's buffer. Fixes silent heap
+// corruption on mod content where the pak's move-data packet layout is
+// larger than the schema vanilla MC2 assumes. Returns -1 on bound failure,
+// otherwise passes through the underlying readPacket result (0 = fail,
+// >0 = bytes read).
+static int safeReadPacket(PacketFilePtr packetFile, int packetNum,
+                          unsigned char* buffer, size_t maxBytes, const char* label)
+{
+    if (packetFile->seekPacket(packetNum) != NO_ERR)
+        return 0;
+    size_t unpacked = (size_t)packetFile->getPacketSize();
+    if (unpacked > maxBytes) {
+        PAUSE(("GlobalMap.init: %s packet %d unpack-size %u > buffer %u — bailing pre-corruption",
+               label, packetNum, (unsigned)unpacked, (unsigned)maxBytes));
+        return -1;
+    }
+    return packetFile->readPacket(packetNum, buffer);
+}
+
 //***************************************************************************
 
 #define	USE_SEPARATE_WATER_MAPS	FALSE
@@ -1540,33 +1561,122 @@ long GlobalMap::init (PacketFilePtr packetFile, long whichPacket) {
 #endif
 	}
 
-	areaMap = (short*)systemHeap->Malloc(sizeof(short) * height * width);
-	gosASSERT(areaMap != NULL);
-	result = packetFile->readPacket(whichPacket++, (unsigned char*)areaMap);
+	// Mod-tolerance: Carver5O pak contains an areaMap packet of 360000 bytes
+	// where vanilla schema expects 180000 (sizeof(short)*height*width for
+	// baseline map dims). The mod engine may use int per cell instead of
+	// short, or a different dim encoding. Rather than bail, allocate to
+	// whichever is larger so the packet fits; downstream indexing uses
+	// baseline (width/height) so the "extra" bytes are safe scratch.
+	{
+		packetFile->seekPacket(whichPacket);
+		size_t packetSize = (size_t)packetFile->getPacketSize();
+		size_t expected = sizeof(short) * (size_t)height * (size_t)width;
+		size_t allocSize = (packetSize > expected) ? packetSize : expected;
+		areaMap = (short*)systemHeap->Malloc(allocSize);
+		gosASSERT(areaMap != NULL);
+		result = safeReadPacket(packetFile, whichPacket++, (unsigned char*)areaMap,
+		                        allocSize, "areaMap");
+	}
+	if (result < 0) {
+		badLoad = true;
+#ifdef USE_PATH_COST_TABLE
+		pathCostTable = NULL;
+		return(14 + numDoorInfos + (numDoors + NUM_DOOR_OFFSETS) * 2);
+#else
+		return(13 + numDoorInfos + (numDoors + NUM_DOOR_OFFSETS) * 2);
+#endif
+	}
 	if (result == 0)
 		Fatal(result, " GlobalMap.init: unable to read areaMap packet ");
 
-	areas = (GlobalMapAreaPtr)systemHeap->Malloc(sizeof(GlobalMapArea) * numAreas);
-	areas_cellsCovered = (short**)systemHeap->Malloc(sizeof(short*) * numAreas);
-	areas_doors = (DoorInfoPtr*)systemHeap->Malloc(sizeof(DoorInfoPtr) * numAreas);
-	gosASSERT(areas != NULL);
-	gosASSERT(areas_cellsCovered != NULL);
-	gosASSERT(areas_doors != NULL);
-	result = packetFile->readPacket(whichPacket++, (unsigned char*)areas);
+	// Same mod-tolerance pattern for areas packet. Carver5O may also have
+	// a larger areas struct size per entry (extended mod schema).
+	{
+		packetFile->seekPacket(whichPacket);
+		size_t packetSize = (size_t)packetFile->getPacketSize();
+		size_t expected = sizeof(GlobalMapArea) * (size_t)numAreas;
+		size_t allocSize = (packetSize > expected) ? packetSize : expected;
+		areas = (GlobalMapAreaPtr)systemHeap->Malloc(allocSize);
+		areas_cellsCovered = (short**)systemHeap->Malloc(sizeof(short*) * numAreas);
+		areas_doors = (DoorInfoPtr*)systemHeap->Malloc(sizeof(DoorInfoPtr) * numAreas);
+		gosASSERT(areas != NULL);
+		gosASSERT(areas_cellsCovered != NULL);
+		gosASSERT(areas_doors != NULL);
+		result = safeReadPacket(packetFile, whichPacket++, (unsigned char*)areas,
+		                        allocSize, "areas");
+	}
+	if (result < 0) {
+		badLoad = true;
+#ifdef USE_PATH_COST_TABLE
+		pathCostTable = NULL;
+		return(14 + numDoorInfos + (numDoors + NUM_DOOR_OFFSETS) * 2);
+#else
+		return(13 + numDoorInfos + (numDoors + NUM_DOOR_OFFSETS) * 2);
+#endif
+	}
 	if (result == 0)
 		Fatal(result, " GlobalMap.init: unable to read areas packet ");
 
-	doorInfos = (DoorInfoPtr)systemHeap->Malloc(sizeof(DoorInfo) * numDoorInfos);
+	// Mod-tolerance: sum up areas[i].numDoors first so we can allocate
+	// doorInfos[] to cover the actual need. Baseline's numDoorInfos header
+	// field is sometimes smaller than the per-area-door sum in mod content
+	// (Carver5O: header=200, sum=257), causing the previous overflow bail
+	// and downstream heap corruption in Building::update/clearPathExistsTable.
+	// Grow the allocation; store the grown count into numDoorInfos so later
+	// reads/writes that reference numDoorInfos match the allocated buffer.
+	long actualDoorInfoSum = 0;
+	for (long i = 0; i < numAreas; i++)
+		actualDoorInfoSum += areas[i].numDoors;
+	long doorInfoAllocCount = (actualDoorInfoSum > numDoorInfos) ? actualDoorInfoSum : numDoorInfos;
+	if (actualDoorInfoSum > numDoorInfos) {
+		PAUSE(("GlobalMap.init: doorInfo sum %d exceeds header numDoorInfos %d — growing buffer to %d",
+			(int)actualDoorInfoSum, (int)numDoorInfos, (int)doorInfoAllocCount));
+		numDoorInfos = doorInfoAllocCount;
+	}
+	doorInfos = (DoorInfoPtr)systemHeap->Malloc(sizeof(DoorInfo) * doorInfoAllocCount);
 	gosASSERT(doorInfos != NULL);
 	long curDoorInfo = 0;
+	bool doorInfoOverflow = false;
 	for (long i = 0; i < numAreas; i++)
 		if (areas[i].numDoors) {
-			result = packetFile->readPacket(whichPacket++, (unsigned char*)&doorInfos[curDoorInfo]);
+			// Belt-and-suspenders: still bail if somehow curDoorInfo would
+			// walk past the grown allocation.
+			if (curDoorInfo + areas[i].numDoors > doorInfoAllocCount) {
+				PAUSE(("GlobalMap.init: doorInfo overflow at area %d (have %d alloc, would need %d) — bailing pre-corruption",
+					(int)i, (int)doorInfoAllocCount, (int)(curDoorInfo + areas[i].numDoors)));
+				doorInfoOverflow = true;
+				break;
+			}
+			result = safeReadPacket(packetFile, whichPacket++, (unsigned char*)&doorInfos[curDoorInfo],
+			                        sizeof(DoorInfo) * areas[i].numDoors, "doorInfos[i]");
+			if (result < 0) {
+				doorInfoOverflow = true;
+				break;
+			}
 			if (result == 0)
 				Fatal(result, " GlobalMap.init: unable to read doorInfos packet ");
 			curDoorInfo += areas[i].numDoors;
 		}
+	if (doorInfoOverflow) {
+		badLoad = true;
+#ifdef USE_PATH_COST_TABLE
+		pathCostTable = NULL;
+		return(14 + numDoorInfos + (numDoors + NUM_DOOR_OFFSETS) * 2);
+#else
+		return(13 + numDoorInfos + (numDoors + NUM_DOOR_OFFSETS) * 2);
+#endif
+	}
 	Assert(numDoorInfos == curDoorInfo, 0, " GlobalMap.init: bad doorInfo count ");
+	if (numDoorInfos != curDoorInfo) {
+		PAUSE(("GlobalMap.init: doorInfo count mismatch (mod content) — bailing as bad load"));
+		badLoad = true;
+#ifdef USE_PATH_COST_TABLE
+		pathCostTable = NULL;
+		return(14 + numDoorInfos + (numDoors + NUM_DOOR_OFFSETS) * 2);
+#else
+		return(13 + numDoorInfos + (numDoors + NUM_DOOR_OFFSETS) * 2);
+#endif
+	}
 
 	//------------------------------------------------------------
 	// Set up the areas so they point to the correct door infos...
@@ -1577,10 +1687,28 @@ long GlobalMap::init (PacketFilePtr packetFile, long whichPacket) {
 		curDoorInfo += areas[curArea].numDoors;
 	}
 
-	doors = (GlobalMapDoorPtr)systemHeap->Malloc(sizeof(GlobalMapDoor) * (numDoors + NUM_DOOR_OFFSETS));
-	doors_links = (DoorInfoLinksPtr*)systemHeap->Malloc(sizeof(DoorInfoLinksPtr) * (numDoors + NUM_DOOR_OFFSETS));
-	gosASSERT(doors != NULL);
-	result = packetFile->readPacket(whichPacket++, (unsigned char*)doors);
+	// Mod-tolerance: grow doors allocation to packet size if the pak uses a
+	// larger door struct than baseline.
+	{
+		packetFile->seekPacket(whichPacket);
+		size_t packetSize = (size_t)packetFile->getPacketSize();
+		size_t expected = sizeof(GlobalMapDoor) * (size_t)(numDoors + NUM_DOOR_OFFSETS);
+		size_t allocSize = (packetSize > expected) ? packetSize : expected;
+		doors = (GlobalMapDoorPtr)systemHeap->Malloc(allocSize);
+		doors_links = (DoorInfoLinksPtr*)systemHeap->Malloc(sizeof(DoorInfoLinksPtr) * (numDoors + NUM_DOOR_OFFSETS));
+		gosASSERT(doors != NULL);
+		result = safeReadPacket(packetFile, whichPacket++, (unsigned char*)doors,
+		                        allocSize, "doors");
+	}
+	if (result < 0) {
+		badLoad = true;
+#ifdef USE_PATH_COST_TABLE
+		pathCostTable = NULL;
+		return(14 + numDoorInfos + (numDoors + NUM_DOOR_OFFSETS) * 2);
+#else
+		return(13 + numDoorInfos + (numDoors + NUM_DOOR_OFFSETS) * 2);
+#endif
+	}
 	if (result == 0)
 		Fatal(result, " GlobalMap.init: unable to read doors packet ");
 
@@ -1589,10 +1717,21 @@ long GlobalMap::init (PacketFilePtr packetFile, long whichPacket) {
 	doorLinks = (DoorLinkPtr)systemHeap->Malloc(sizeof(DoorLink) * numDoorLinks);
 	gosASSERT(doorLinks != NULL);
 	long numLinksRead = 0;
+	bool doorLinkOverflow = false;
 	for (int i = 0; i < (numDoors + NUM_DOOR_OFFSETS); i++) {
 		long numLinks = doors[i].numLinks[0] + NUM_EXTRA_DOOR_LINKS;
 		gosASSERT(numLinks >= 2);
-		result = packetFile->readPacket(whichPacket++, (unsigned char*)&doorLinks[numLinksRead]);
+		// Pre-write bounds check: doors[i].numLinks comes from file, mod
+		// content can make it sum past numDoorLinks and trash the heap.
+		if (numLinksRead + numLinks > numDoorLinks) {
+			PAUSE(("GlobalMap.init: doorLinks overflow at door %d/0 (have %d, would need %d) — bailing pre-corruption",
+				i, (int)numDoorLinks, (int)(numLinksRead + numLinks)));
+			doorLinkOverflow = true;
+			break;
+		}
+		result = safeReadPacket(packetFile, whichPacket++, (unsigned char*)&doorLinks[numLinksRead],
+		                        sizeof(DoorLink) * numLinks, "doorLinks[i][0]");
+		if (result < 0) { doorLinkOverflow = true; break; }
 		if (result <= 0)
 			Fatal(result, " GlobalMap.init: Unable to write doorLinks packet ");
 		doors_links[i][0] = &doorLinks[numLinksRead];
@@ -1600,13 +1739,40 @@ long GlobalMap::init (PacketFilePtr packetFile, long whichPacket) {
 
 		numLinks = doors[i].numLinks[1] + NUM_EXTRA_DOOR_LINKS;
 		gosASSERT(numLinks >= 2);
-		result = packetFile->readPacket(whichPacket++, (unsigned char*)&doorLinks[numLinksRead]);
+		if (numLinksRead + numLinks > numDoorLinks) {
+			PAUSE(("GlobalMap.init: doorLinks overflow at door %d/1 (have %d, would need %d) — bailing pre-corruption",
+				i, (int)numDoorLinks, (int)(numLinksRead + numLinks)));
+			doorLinkOverflow = true;
+			break;
+		}
+		result = safeReadPacket(packetFile, whichPacket++, (unsigned char*)&doorLinks[numLinksRead],
+		                        sizeof(DoorLink) * numLinks, "doorLinks[i][1]");
+		if (result < 0) { doorLinkOverflow = true; break; }
 		if (result <= 0)
 			Fatal(result, " GlobalMap.init: Unable to write doorLinks packet ");
 		doors_links[i][1] = &doorLinks[numLinksRead];
 		numLinksRead += numLinks;
 	}
+	if (doorLinkOverflow) {
+		badLoad = true;
+#ifdef USE_PATH_COST_TABLE
+		pathCostTable = NULL;
+		return(14 + numDoorInfos + (numDoors + NUM_DOOR_OFFSETS) * 2);
+#else
+		return(13 + numDoorInfos + (numDoors + NUM_DOOR_OFFSETS) * 2);
+#endif
+	}
 	Assert(numLinksRead == numDoorLinks, 0, " GlobalMap.init: Incorrect Links count ");
+	if (numLinksRead != numDoorLinks) {
+		PAUSE(("GlobalMap.init: link count mismatch (mod content) — bailing as bad load"));
+		badLoad = true;
+#ifdef USE_PATH_COST_TABLE
+		pathCostTable = NULL;
+		return(14 + numDoorInfos + (numDoors + NUM_DOOR_OFFSETS) * 2);
+#else
+		return(13 + numDoorInfos + (numDoors + NUM_DOOR_OFFSETS) * 2);
+#endif
+	}
 
 	numOffMapAreas = 0;
 	for (int i = 0; i < numAreas; i++)
@@ -2897,6 +3063,8 @@ void GlobalMap::calcPathCostTable (void) {
 
 void GlobalMap::clearPathExistsTable (void) {
 
+	if (!pathExistsTable)
+		return;
 	long tableSize = numAreas * (numAreas / 4 + 1);
 	memset(pathExistsTable, GLOBALPATH_EXISTS_UNKNOWN, tableSize);
 }

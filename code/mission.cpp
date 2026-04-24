@@ -967,10 +967,17 @@ void Mission::createPartObject (long partIndex, MoverPtr mover) {
 	// If the mech is not on OUR team, you can recover it during the mission.
 	// If the mech IS on our team, it starts shutdown and NOT added to Heidi's interface.
 	// When we get close enough to it, it adds itself to Heidi's world and we can command it!
-	if (parts[partIndex].objectWID == 0) 
+	if (parts[partIndex].objectWID == 0)
 	{
 		ObjectTypePtr objType = ObjectManager->getObjectType(parts[partIndex].objNumber);
 		Assert(objType != NULL, partIndex, " Mission.createPartObject: unable to get objType ");
+		// Mod-tolerance: if objType is a stub (no appearance name) but the
+		// mission provided a CSVFile, back-fill it so BattleMech::init can
+		// open the chassis .csv. Without this, stub-only mechs crash at
+		// strlen(NULL) inside FullPathFileName::init(csvName).
+		if (objType && !objType->getAppearanceTypeName() && parts[partIndex].csvFile[0]) {
+			objType->setAppearanceTypeName(parts[partIndex].csvFile);
+		}
 		parts[partIndex].objectWID = mover->getWatchID();
 		mover->init(true, objType);
 		mover->setAwake(parts[partIndex].active ? true : false);
@@ -2216,15 +2223,18 @@ void Mission::init (const char *missionName, long loadType, long dropZoneID, Stu
 		if (pakFile.getPacketSize() != 0)
 		{
 			MOVE_readData(&pakFile, 4);
-			if (GlobalMoveMap[0]->badLoad)
-				Fatal(0, " Mission.init: old version of move data (re-save map) ");
-			GameMap->placeMoversCallback = PlaceMovers;
-			GlobalMoveMap[0]->isGateDisabledCallback = IsGateDisabled;
-			GlobalMoveMap[1]->isGateDisabledCallback = IsGateDisabled;
-			GlobalMoveMap[2]->isGateDisabledCallback = IsGateDisabled;
-			GlobalMoveMap[0]->isGateOpenCallback = IsGateOpen;
-			GlobalMoveMap[1]->isGateOpenCallback = IsGateOpen;
-			GlobalMoveMap[2]->isGateOpenCallback = IsGateOpen;
+			if (GlobalMoveMap[0]->badLoad) {
+				PAUSE((" Mission.init: bad/old move data — skipping gate callback wiring; pathfinding degraded "));
+				GameMap->placeMoversCallback = PlaceMovers;
+			} else {
+				GameMap->placeMoversCallback = PlaceMovers;
+				GlobalMoveMap[0]->isGateDisabledCallback = IsGateDisabled;
+				GlobalMoveMap[1]->isGateDisabledCallback = IsGateDisabled;
+				GlobalMoveMap[2]->isGateDisabledCallback = IsGateDisabled;
+				GlobalMoveMap[0]->isGateOpenCallback = IsGateOpen;
+				GlobalMoveMap[1]->isGateOpenCallback = IsGateOpen;
+				GlobalMoveMap[2]->isGateOpenCallback = IsGateOpen;
+			}
 		}
 		else
 			STOP(("Mission has not movement Data.  QuickSaved Map?"));
@@ -2572,7 +2582,12 @@ void Mission::init (const char *missionName, long loadType, long dropZoneID, Stu
 
 			result = missionFile->readIdString("ObjectProfile", parts[i].profileName, 9);
 			gosASSERT(result == NO_ERR);
-				
+
+			// Mod-tolerance: read CSVFile so we can back-fill the ObjectType
+			// appearance name when the pak lookup fails for a high ObjectNumber.
+			parts[i].csvFile[0] = 0;
+			missionFile->readIdString("CSVFile", parts[i].csvFile, sizeof(parts[i].csvFile) - 1);
+
 			result = missionFile->readIdULong("VariantNumber", parts[i].variantNum);
 			if (result != NO_ERR)
 				parts[i].variantNum = 0;		//FOR NOW!!!!!!!!!!!!!!!!

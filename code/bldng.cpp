@@ -852,8 +852,8 @@ long Building::update (void)
    				else
    					openSubAreas();
 
-   				GlobalMoveMap[0]->clearPathExistsTable();
-   				GlobalMoveMap[1]->clearPathExistsTable();
+   				if (GlobalMoveMap[0]) GlobalMoveMap[0]->clearPathExistsTable();
+   				if (GlobalMoveMap[1]) GlobalMoveMap[1]->clearPathExistsTable();
    			}
 		}
 	}
@@ -1512,8 +1512,9 @@ long Building::handleWeaponHit (WeaponShotInfoPtr shotInfo, bool addMultiplayChu
 						closeSubAreas();
 					else
 						openSubAreas();
-					GlobalMoveMap[0]->clearPathExistsTable();
-					GlobalMoveMap[1]->clearPathExistsTable();
+					// NULL guards — GlobalMoveMap[1] is NULL when GlobalMap::init bailed on mod content.
+					if (GlobalMoveMap[0]) GlobalMoveMap[0]->clearPathExistsTable();
+					if (GlobalMoveMap[1]) GlobalMoveMap[1]->clearPathExistsTable();
 				}
 #if 0
 				else	//We want the buildings remaining shape to correctly calc LOS and Impassability
