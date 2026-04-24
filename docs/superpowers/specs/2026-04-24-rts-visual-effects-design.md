@@ -154,7 +154,31 @@ After TAA, the **working scene texture** (`workingSceneTex`) is `taaHistoryTex_[
 | (fog disabled, TAA enabled) | `taaHistoryTex_[currIdx]` |
 | (both disabled) | `sceneColorTex_` |
 
-The final composite always reads `workingSceneTex` — whatever texture last held the fully-processed scene color. Bloom threshold reads the same `workingSceneTex` so bloom is always extracted from the post-fog image, not the pre-fog image. In `endScene()`, `workingSceneTex` is a `GLuint` local that starts as `sceneColorTex_` and gets reassigned as passes execute.
+The final composite always reads `workingSceneTex` — whatever texture last held the fully-processed scene color. Bloom threshold reads the same `workingSceneTex` so bloom is always extracted from the post-fog image, not the pre-fog image.
+
+**`endScene()` skeleton — required ownership pattern:**
+
+```cpp
+// The current post-process color source. Each pass may replace this
+// with a newly written texture; no pass may read and write the same texture.
+GLuint workingSceneTex = sceneColorTex_;
+
+if (taaEnabled_) {
+    runTAA(workingSceneTex, taaHistoryTex_[prev], depthTex_, taaFBO_[curr]);
+    workingSceneTex = taaHistoryTex_[curr];
+}
+
+if (fogEnabled_) {
+    runFog(workingSceneTex, depthTex_, fogFBO_);
+    workingSceneTex = fogOutputTex_;
+}
+
+runBloom(workingSceneTex);        // reads workingSceneTex, writes bloomFBO_
+runOutline(classTex_, outlineFBO_);
+runComposite(workingSceneTex, outlineTex_, bloomColorTex_[0], lutTex_);
+```
+
+The ownership comment is load-bearing. Any future pass that attempts to read and write the same texture is a feedback loop — the pattern catches it at code-review time rather than as a visual artifact.
 
 ### SMAA T2x Fallback Note
 
