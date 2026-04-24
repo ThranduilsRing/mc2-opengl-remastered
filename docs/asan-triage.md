@@ -8,6 +8,16 @@ Source of truth for the longer write-ups: `docs/asan-follow-ups.md`.
 Source of truth for "what was run where and when":
 `docs/asan-autonomous-run-log.md`.
 
+## Verification status (2026-04-24 after fix pass)
+
+| # | Fix commit | Verified? |
+|---|------------|-----------|
+| 4 | `933d716 fix(gameplay): guard neutral turret enable lookup` | **code correct, not directly exercised** — mc2_03 ABL crashes before any turret tick; will verify itself once finding #3 is fixed and tier1 reaches play phase |
+| 5,6 | `e7d68c0 fix(abl): add code-segment sentinel byte` | **verified** — the 1-byte heap-buffer-overflow at `ablexec.cpp:361` is gone on all three tier1 re-runs (mc2_03, mc2_10, mc2_24). The crash line is now `ablexec.cpp:372` (same `getCodeToken`, renumbered by the fix's added lines) with a *different* bug class (AV on corrupt pointer `0xNN00000001`) — this is finding #3's signature |
+| 3 | _(not fixed yet)_ | **severity upgraded to P0** — base-game `mc2_03_turretguard2.abl`, `mc2_03_dred.abl`, etc. use the same `startpatrolpath` / `startposition` parser-gap vocabulary. Finding #3 was masked by #5/#6 in the crash ordering; with #5/#6 fixed it surfaces on stock tier1 |
+
+Re-run detail: `tests/smoke/artifacts/2026-04-24T14-24-*/` (one directory per mission, `mc2_03.log` / `mc2_10.log` / `mc2_24.log`).
+
 ## Severity scale
 
 - **P0** — hard crash, reproducible on base-game content (affects
@@ -23,7 +33,7 @@ Source of truth for "what was run where and when":
 | 5,6 | **P0** | `ablexec.cpp:361 getCodeToken` (heap-buffer-overflow, 1 byte past end) | mc2_10, mc2_24 (base game tier1) | Off-by-one in ABL code-segment emission/execution | **S** (1-2 line fix) | Either add explicit terminator byte in `createCodeSegment` and emit end-of-segment check in executor, OR size allocation as `codeSegmentSize + 1` so the 1-byte overread hits slack. |
 | 4 | **P0** | `turret.cpp:588 Turret::update` (global-buffer-overflow) | mc2_03 (base game tier1) | Negative `teamId` (neutral turret) indexes `turretsEnabled[-1]` | **XS** (1 line) | `if (getTeamId() < 0 || !turretsEnabled[getTeamId()])` — guard the index. |
 | 2 | P1 | `move.cpp:3069 GlobalMap::clearPathExistsTable` (AV, `0xBE`-pattern pointer) | Carver5O mc2_01 | Partial-init of `GlobalMap` skips `pathExistsTable = NULL` assignment; non-zero garbage passes null-guard | **S** | Initialize `pathExistsTable` (and sibling pointer fields) in `GlobalMap` constructor instead of relying on `init()`. |
-| 3 | P1 | `ablexec.cpp:361 getCodeToken` (AV, `0xNN00000001`-pattern pointer) | Exodus mc2_01, Magic Expansion mc2_01 | ABL compile fails with SYNTAX ERROR but mission init continues with corrupt bytecode; VM derefs garbage `codeSegmentPtr` | **M** | Preferred: `ABLModule::compile` failure aborts mission load (hard fail). Alternative: sanity-check `codeSegmentPtr` against module's segment range in VM hot loop. |
+| 3 | **P0** _(upgraded)_ | `ablexec.cpp:372 getCodeToken` (AV, `0xNN00000001`-pattern pointer) | mc2_03, mc2_10, mc2_24 (base game, after #5/#6 fix); Exodus mc2_01, Magic Expansion mc2_01 | ABL compile fails with SYNTAX ERROR but mission init continues with corrupt bytecode; VM derefs garbage `codeSegmentPtr` in `execDeclaredRoutineCall` path | **M** | Preferred: `ABLModule::compile` failure aborts mission load (hard fail). Alternative: sanity-check `codeSegmentPtr` against module's segment range in VM hot loop. Base-game trigger vocabulary: `startpatrolpath`, `startposition` — narrow audit set, likely same class as the 3-name `magicAttack`/`corePatrol`/`coreGuard` collision the parallel session identified. |
 | 1 | P2 | `gos_postprocess.cpp` FBO/post-process (hypothesized) | All ASan runs (visual) | Uninit FBO attachment handle or stale `glClear` mask surfaced by ASan's memory-layout change | **M** (investigation needed first) | Add `glGetError()` drains around FBO binds + log FBO handles at init + log `glClear` bitmasks. See follow-ups doc §1 for diagnostic toggles (F5 / RAlt+4 / F3). |
 
 ## P0 fixes deserve urgency
