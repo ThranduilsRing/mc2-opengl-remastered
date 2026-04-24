@@ -8,15 +8,50 @@ Source of truth for the longer write-ups: `docs/asan-follow-ups.md`.
 Source of truth for "what was run where and when":
 `docs/asan-autonomous-run-log.md`.
 
-## Verification status (2026-04-24 after fix pass)
+## Verification status (2026-04-24 after fix pass + pre-contamination discovery)
+
+**Headline: tier1 PASSES 5/5 under ASan on truly-clean base game.**
+
+### Final state
 
 | # | Fix commit | Verified? |
 |---|------------|-----------|
-| 4 | `933d716 fix(gameplay): guard neutral turret enable lookup` | **code correct, not directly exercised** — mc2_03 ABL crashes before any turret tick; will verify itself once finding #3 is fixed and tier1 reaches play phase |
-| 5,6 | `e7d68c0 fix(abl): add code-segment sentinel byte` | **verified** — the 1-byte heap-buffer-overflow at `ablexec.cpp:361` is gone on all three tier1 re-runs (mc2_03, mc2_10, mc2_24). The crash line is now `ablexec.cpp:372` (same `getCodeToken`, renumbered by the fix's added lines) with a *different* bug class (AV on corrupt pointer `0xNN00000001`) — this is finding #3's signature |
-| 3 | _(not fixed yet)_ | **severity upgraded to P0** — base-game `mc2_03_turretguard2.abl`, `mc2_03_dred.abl`, etc. use the same `startpatrolpath` / `startposition` parser-gap vocabulary. Finding #3 was masked by #5/#6 in the crash ordering; with #5/#6 fixed it surfaces on stock tier1 |
+| 4 | `933d716 fix(gameplay): guard neutral turret enable lookup` | **code correct, untested against a neutral-turret scenario in base game.** The tier1 mc2_03 failure that originally caught it was running Magic-vocabulary ABL scripts (see below); on truly-clean base game mc2_03 does not currently reach a path where `teamId == -1` is observed. Leave the fix in place as defense-in-depth. |
+| 5,6 | `e7d68c0 fix(abl): add code-segment sentinel byte` | **VERIFIED as a real P0 fix.** The 1-byte heap-buffer-overflow at `ablexec.cpp:361` is gone on all five tier1 missions under ASan. Stock base game now passes clean end-to-end. |
+| 3 | _(parallel session's `FunctionCallbackTable` stub registration work is the right fix)_ | **severity reverts to P1 (mod-content only).** Not a stock-game bug. |
 
-Re-run detail: `tests/smoke/artifacts/2026-04-24T14-24-*/` (one directory per mission, `mc2_03.log` / `mc2_10.log` / `mc2_24.log`).
+### The pre-contamination discovery
+
+Earlier analysis promoted finding #3 to P0 based on tier1 mc2_03 / mc2_10 / mc2_24 failing with `getCodeToken` AV after fix #5/#6. Investigation revealed the `data/missions/warriors/` directory in the `mc2-win64-v0.1.1` install had been pre-populated by an earlier session with Magic-Expansion-era ABL files (timestamp 2002, byte-identical to the Sarna.net Magic Expansion archive copies). Those files call Magic's brain-library extension functions (`coreGuard`, `magicAttack`, `corePatrol`) which our stock parser does not recognize — the parser errors cascade into corrupt bytecode and the VM dereferences garbage.
+
+With the contaminated `warriors/` directory moved aside, tier1 passes 5/5 on the same ASan build:
+
+```
+# Smoke run 2026-04-24T14-31-47  tier=tier1  profile=stock  result=PASS (5/5 passed)
+mc2_01 PASS  1531 frames  51 FPS
+mc2_03 PASS  1658 frames  55 FPS
+mc2_10 PASS   871 frames  29 FPS
+mc2_17 PASS  1120 frames  37 FPS
+mc2_24 PASS  1477 frames  49 FPS
+```
+
+Zero ASan reports. The contaminated scripts are preserved at
+`A:/Games/_asan_warriors_backup/warriors_backup_*/` for future mod-content work.
+
+### Correct next fix for finding #3 (P1)
+
+Per the parallel session's 3-name audit (`magicAttack`, `corePatrol`,
+`coreGuard`): register these in the stock ABL function table as stubs
+that return sensible defaults. The parser will then resolve the names,
+bytecode compiles clean, and VM execution has real (if no-op) function
+pointers. No VM-side change needed; no "abort on compile fail"
+behavior change needed.
+
+FixABL is the opposite of what's needed — its purpose is to convert
+stock-game scripts to *use* Magic's brain library, on systems that
+already have the library loaded. Skip it.
+
+Re-run artifacts: `tests/smoke/artifacts/2026-04-24T14-24-*/` (failing runs before wipe), `tests/smoke/artifacts/2026-04-24T14-31-47/` (clean pass after wipe).
 
 ## Severity scale
 
