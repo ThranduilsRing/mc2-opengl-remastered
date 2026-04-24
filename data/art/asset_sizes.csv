@@ -1,0 +1,27 @@
+# data/art/asset_sizes.csv
+# Asset-scale nominal dimensions for loose-file upscale awareness.
+# Spec: docs/superpowers/specs/2026-04-23-asset-scale-aware-rendering-design.md
+#
+# Format: asset_path,nominal_width,nominal_height
+# Canonical key rules: lowercase, forward slashes, no leading "./", no leading "data/".
+# Loader strips "data/" so input may include it.
+#
+# Fill <TBD> values by inspecting the un-upscaled FST-archive copy of the asset.
+# Until filled, the runtime treats the asset as unknown (factor=1.0, no transform).
+
+# Mech damage schematic atlases (CLAUDE.md blocklist)
+# art/mcui_high7.tga,<TBD>,<TBD>
+# art/mcui_med4.tga,<TBD>,<TBD>
+# art/mcui_low4.tga,<TBD>,<TBD>
+
+# Vehicle icon atlases
+# art/mcui_high8.tga,<TBD>,<TBD>
+# art/mcui_med5.tga,<TBD>,<TBD>
+# art/mcui_low5.tga,<TBD>,<TBD>
+
+# Pilot icon atlases (verify file numbering at impl time)
+# art/mcui_high2.tga,<TBD>,<TBD>
+# art/mcui_med2.tga,<TBD>,<TBD>
+# art/mcui_low2.tga,<TBD>,<TBD>
+
+# Menu chrome — discovered per-screen during chrome adoption tasks (15/16/17)
