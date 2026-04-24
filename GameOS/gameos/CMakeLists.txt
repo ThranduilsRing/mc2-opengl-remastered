@@ -14,6 +14,7 @@ set(SOURCES ${SOURCES}
     gos_static_prop_batcher.cpp
     gos_validate.cpp
     gos_crashbundle.cpp
+    gos_smoke.cpp
     gos_font.cpp
     gos_input.cpp
     asset_scale.cpp
