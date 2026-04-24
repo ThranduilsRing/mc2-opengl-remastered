@@ -83,11 +83,21 @@ path as working without re-reading the above references first.
 - Shadow banding shifts with camera rotation (view-dependent terrain geometry)
 
 ## Do Not Upscale These Art Assets
-`code/mechicon.cpp` hardcodes `unitIconX/Y` (32/38) and computes source-pixel offsets directly against `s_MechTextures->width`. If the source TGA is 4x-upscaled via loose-file override in `data/art/`, `MechIcon::init` reads scrambled sub-rectangles and the mech damage schematic renders as garbage (alpha test then discards or shows noise). **Keep these files at their original FST-archive resolution** (do not deploy the `*_4x_gpu/` upscales for them):
-- `data/art/mcui_high7.tga` (in-mission mech schematic, high-res)
-- `data/art/mcui_med4.tga` (med-res)
-- `data/art/mcui_low4.tga` (low-res)
-Mechbay/logistics callsites already scale correctly; only the in-mission HUD path is affected.
+`code/mechicon.cpp` hardcodes `unitIconX/Y` (32/38) and computes source-pixel offsets directly against `s_MechTextures->width` / `s_pilotTextures->width`. If a source TGA is larger than nominal (via either a `*_4x_gpu/` upscaler pass or a mod overlay that ships pre-enlarged copies — Magic's Unofficial Expansion is a known offender, its 2003-dated TGAs are already oversized), the init code reads scrambled sub-rectangles and the atlas tiles the whole image into every icon slot instead of a cropped per-mech/per-pilot view.
+
+**Keep all nine icon atlases at original FST-archive resolution**, across three kinds × three resolution tiers:
+
+| Kind | high | med | low |
+|------|------|-----|-----|
+| Mech damage schematic | `mcui_high7.tga` | `mcui_med4.tga` | `mcui_low4.tga` |
+| Pilot face panel | `mcui_high8.tga` | `mcui_med5.tga` | `mcui_low5.tga` |
+| Hardpoint icons | `mcui_high2.tga` | `mcui_med2.tga` | `mcui_low2.tga` |
+
+Also keep `mcl_pr_pilotskillicons.tga` at native (same math, pilot-review widget).
+
+Mechbay/logistics callsites already scale correctly; only in-mission HUD, force-group bar, and pilot-review widget paths are affected.
+
+Mod-overlay pitfall: overlaying `A:/Games/Magic_MC2_archive/Sarna.net/magicsunofficialexpansion/data/` (or its campaign siblings) onto a stock install via `robocopy /E` will deploy Magic's oversized versions of these 10 files and scramble every icon. Either exclude them explicitly or move them aside after overlay (see `A:/Games/_asan_icon_backup/` for a session-level example).
 
 ## Memory & CLAUDE.md Discipline
 
