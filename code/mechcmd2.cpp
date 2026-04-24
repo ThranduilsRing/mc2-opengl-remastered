@@ -970,6 +970,21 @@ void __stdcall InitializeGameEngine()
 	// Bring up a sniffer warning dialog, sniff, bring up sniffer end dialog and end.
 	if (!fileExists("options.cfg"))
 	{
+		// Smoke-mode guard: the sniffer branch would pop a blocking MessageBox
+		// ("will now check your computer's hardware") that deadlocks any
+		// unattended subprocess. If MC2_SMOKE_MODE is set, the caller almost
+		// certainly spawned us from the wrong CWD — fail fast with a useful
+		// summary line so the runner can bucket it rather than hang.
+		if (SmokeMode::state().enabled) {
+			SmokeMode::emitFailSummary("sniffer_would_run",
+				"init_pre_sniffer");
+			fprintf(stderr,
+				"[SMOKE v1] sniffer branch reached; options.cfg not found at CWD. "
+				"Is the runner spawning from the install directory?\n");
+			fflush(stderr);
+			std::exit(5);
+		}
+
 		//Must also check for a RIVA TNT card with driver 4.10.1.0131
 		// If this card is in the machine with this driver, do NOT allow sniffer to run.
 		// Just copy minprefs.cfg to options.cfg and move on.
