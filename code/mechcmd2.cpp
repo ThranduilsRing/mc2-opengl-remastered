@@ -80,6 +80,7 @@ extern CPrefs prefs;
 #include "platform_str.h"
 #include "gos_validate.h"
 #include "gos_profiler.h"
+#include "../GameOS/gameos/gos_smoke.h"
 
 //------------------------------------------------------------------------------------------------------------
 // MechCmdr2 Global Instances of Things
@@ -2215,6 +2216,18 @@ void __stdcall DoGameLogic()
 			if (mission && (!optionsScreenWrapper || optionsScreenWrapper->isDone() ) )
 			{
 				long result = mission->update();
+
+				// Smoke-mode gameplay-ready marker (Task 6b). Fires exactly once
+				// per process when Mission::active becomes true (set in Mission::start()).
+				{
+					static bool s_missionReadyMarked = false;
+					if (SmokeMode::state().enabled && !s_missionReadyMarked &&
+						mission && mission->isActive()) {
+						SmokeMode::markMissionReady();
+						s_missionReadyMarked = true;
+					}
+				}
+
 				if (result == 9999) {
 					mission->destroy();
 					//delete mission;

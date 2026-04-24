@@ -72,6 +72,7 @@ extern CPrefs prefs;
 #include"missionresults.h"
 #include"paths.h"
 #include"../GameOS/gameos/gos_profiler.h"
+#include"../GameOS/gameos/gos_smoke.h"
 
 extern bool quitGame;
 extern bool justStartMission;
@@ -106,6 +107,17 @@ void Logistics::start (long startMode)
 {
 	ZoneScopedN("Logistics::start");
 	bMissionLoaded  = 0;
+
+	// Smoke-mode profile_ready emit (Task 6b). Fires once when the Logistics
+	// subsystem first starts, which is the closest available proxy for
+	// "profile/campaign state loaded and ready."
+	if (SmokeMode::state().enabled) {
+		static bool s_profileReadyEmitted = false;
+		if (!s_profileReadyEmitted) {
+			s_profileReadyEmitted = true;
+			SmokeMode::emitTiming("profile_ready");
+		}
+	}
 	userInput->setMouseCursor( mState_LOGISTICS );
 //	userInput->mouseOn();
 
@@ -270,6 +282,32 @@ void Logistics::stop (void)
 //----------------------------------------------------------------------------------
 long Logistics::update (void)
 {
+	// Smoke-mode auto-launch (Task 6b). Bypasses the normal Logistics UI
+	// by setting the mission via setSingleMission() + setSkipLogistics(true),
+	// then invokes beginMission directly on the same path the Launch button
+	// polling would eventually reach. One-shot guard prevents re-entry.
+	{
+		static bool s_smokeEntered = false;
+		if (SmokeMode::state().enabled && !s_smokeEntered) {
+			s_smokeEntered = true;
+			SmokeMode::emitTiming("logistics_ready");
+			SmokeMode::resolveMissionPaths();
+
+			LogisticsData::instance->setSingleMission(
+				SmokeMode::state().mission.c_str());
+			LogisticsData::instance->setSkipLogistics(true);
+
+			SmokeMode::emitTiming("mission_load_start");
+			// beginMission returns 1 on success, 0 on failure (see end of function).
+			// The normal call site uses: if (!beginMission(0,0,0)) → error path.
+			int rc = Logistics::beginMission(nullptr, 0, nullptr);
+			if (!rc) {
+				SmokeMode::emitFailSummary("mission_begin_failed", "logistics");
+				exit(3);
+			}
+		}
+	}
+
 	//MUST do this every frame.  The movie movies will play wrong, otherwise!!
 
 	if ( bMovie )

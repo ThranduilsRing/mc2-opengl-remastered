@@ -84,6 +84,7 @@ class LogisticsMissionInfo
 		void				addBonusPurchaseFile( const char* fileName ); // extra bonus
 
 		bool				skipLogistics();
+		void				setSkipLogistics(bool skip);
 		bool				showChooseMission();
 
 		bool				skipPilotReview();

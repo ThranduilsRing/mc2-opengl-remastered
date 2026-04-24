@@ -20,6 +20,7 @@ uint64_t g_startupT0 = 0;   // SDL_GetPerformanceCounter at parseArgs entry
 uint64_t g_freq = 0;
 uint64_t g_missionReadyT = 0;
 std::atomic<bool> g_atexitInstalled{false};
+std::atomic<bool> g_summaryEmitted{false};
 
 double elapsedMsSince(uint64_t t0) {
     if (!t0 || !g_freq) return 0.0;
@@ -105,7 +106,16 @@ void parseArgs(int argc, char** argv) {
 }
 
 void installAtexitSummary() {
-    // Filled in Task 6b.
+    if (g_atexitInstalled.exchange(true)) return;
+    std::atexit([]{
+        if (!g_state.enabled) return;
+        if (g_summaryEmitted.load()) return;
+        // Best-effort: if we reach atexit without an explicit summary, we
+        // assume something failed after parseArgs but before emitCleanSummary.
+        std::fprintf(stdout,
+            "[SMOKE v1] event=summary result=fail reason=early_exit stage=atexit\n");
+        std::fflush(stdout);
+    });
 }
 
 void emitTiming(const char* eventName) {
@@ -124,8 +134,14 @@ void emitCleanSummary() {
     // Filled in Task 7.
 }
 
-void emitFailSummary(const char*, const char*) {
-    // Filled in Task 6b.
+void emitFailSummary(const char* reason, const char* stage) {
+    if (!g_state.enabled) return;
+    if (g_summaryEmitted.exchange(true)) return;
+    std::fprintf(stdout,
+        "[SMOKE v1] event=summary result=fail reason=%s stage=%s\n",
+        reason ? reason : "unknown",
+        stage  ? stage  : "unknown");
+    std::fflush(stdout);
 }
 
 bool resolveMissionPaths() {

@@ -1101,9 +1101,19 @@ bool	LogisticsMissionInfo::skipLogistics()
 	if (currentStage >= groupCount)
 		return false;
 
-	MissionGroup* pGroup = &groups[currentStage]; 
+	MissionGroup* pGroup = &groups[currentStage];
 	return !pGroup->infos[currentMission]->playLogistics;
 
+}
+
+void LogisticsMissionInfo::setSkipLogistics(bool skip)
+{
+	// Smoke-mode helper. Bypasses the .fit-file-derived PlayLogistics flag
+	// on the currently-selected mission info. Safe to call only after
+	// setSingleMission() / setNextMission() has populated groups[currentStage].
+	if (currentStage < groupCount && !groups[currentStage].infos.IsEmpty()) {
+		groups[currentStage].infos[currentMission]->playLogistics = !skip;
+	}
 }
 bool	LogisticsMissionInfo::skipPilotReview()
 {

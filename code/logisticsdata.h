@@ -183,6 +183,7 @@ public:
 	void				appendAvailability(const char* pFileName, bool* availableArray );
 
 	bool				skipLogistics();
+	void				setSkipLogistics(bool skip);
 	bool				showChooseMission();
 	bool				skipPilotReview();
 	bool				skipSalvageScreen();

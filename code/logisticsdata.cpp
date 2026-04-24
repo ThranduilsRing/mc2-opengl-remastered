@@ -2768,5 +2768,12 @@ long LogisticsData::getCurrentMissionNum (void)
 	return missionInfo->getCurrentMissionNumber();
 }
 
+void LogisticsData::setSkipLogistics(bool skip)
+{
+	if (missionInfo) {
+		missionInfo->setSkipLogistics(skip);
+	}
+}
+
 //*************************************************************************************************
 // end of file ( LogisticsData.cpp )
