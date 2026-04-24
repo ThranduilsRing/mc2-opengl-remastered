@@ -131,7 +131,9 @@ git commit -m "feat(asset-scale): add header with API surface"
 #include "asset_scale.h"
 
 #include <algorithm>
+#include <cctype>
 #include <cmath>
+#include <cstdarg>
 #include <cstdio>
 #include <cstdlib>
 #include <cstring>
