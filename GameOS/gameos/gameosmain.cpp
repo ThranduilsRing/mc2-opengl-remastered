@@ -536,6 +536,7 @@ namespace {
 // without a new header. Pattern mirrors the startup timing above.
 static Uint64 g_mission_t0 = 0;
 
+
 extern "C" void mission_phase_begin()
 {
     g_mission_t0 = SDL_GetPerformanceCounter();
@@ -733,16 +734,21 @@ int main(int argc, char** argv)
 	timing::init();
     TracyGpuContext;
 
-    // MC2_FPS_CAP: max frames per second (default 165). Set to 0 to uncap.
-    // timeBeginPeriod(1) brings Windows Sleep() down to 1ms resolution so the
-    // cap is accurate. Without it, Sleep(4) may oversleep to ~15ms.
-    static const int s_fps_cap = [] {
-        const char* e = getenv("MC2_FPS_CAP");
-        return e ? atoi(e) : 165;
-    }();
-    static const uint64_t s_frame_cap_ms = (s_fps_cap > 0) ? (1000u / (uint64_t)s_fps_cap) : 0;
-    printf("[FRAMECAP] MC2_FPS_CAP=%d -- cap %s (target %llu ms/frame)\n",
-           s_fps_cap, s_fps_cap > 0 ? "ON" : "OFF", (unsigned long long)s_frame_cap_ms);
+    // MC2_FPS_CAP: max FPS override. Applies to both menu and mission.
+    //   unset → menu=90, mission=165 (defaults)
+    //   0     → uncapped
+    //   N     → N FPS in both states
+    // timeBeginPeriod(1) brings Windows Sleep() to 1ms resolution.
+    // Cap is skipped entirely when vsync is active (SDL_GL_GetSwapInterval()==1).
+    const char* fpsCapEnv = getenv("MC2_FPS_CAP");
+    static const int s_fps_cap_menu    = fpsCapEnv ? atoi(fpsCapEnv) : 90;
+    static const int s_fps_cap_mission = fpsCapEnv ? atoi(fpsCapEnv) : 165;
+    const bool s_vsync_active = (SDL_GL_GetSwapInterval() == 1);
+    printf("[FRAMECAP] MC2_FPS_CAP=%s vsync=%s -- menu=%d FPS mission=%d FPS%s\n",
+           fpsCapEnv ? fpsCapEnv : "(unset)",
+           s_vsync_active ? "ON" : "OFF",
+           s_fps_cap_menu, s_fps_cap_mission,
+           s_vsync_active ? " (cap inactive, vsync owns pacing)" : "");
 #ifdef _WIN32
     timeBeginPeriod(1);
 #endif
@@ -836,13 +842,18 @@ int main(int argc, char** argv)
         }
 
         // Frame cap: sleep to hold target frame time and reduce GPU thrashing.
-        // Runs after SwapWindow so the sleep comes at the natural end of the frame.
-        if (s_frame_cap_ms > 0) {
-            ZoneScopedN("Frame.FrameCap");
-            uint64_t now = timing::gettickcount();
-            uint64_t elapsed_ms = timing::ticks2ms(now - start_tick);
-            if (elapsed_ms < s_frame_cap_ms) {
-                timing::sleep((unsigned int)((s_frame_cap_ms - elapsed_ms) * 1000000u));
+        // Skipped when vsync is active (vsync already owns pacing).
+        // Uses mission-state-aware cap: 90 FPS in menus, 165 FPS in missions.
+        if (!s_vsync_active) {
+            int cap = SmokeMode::missionHasStarted() ? s_fps_cap_mission : s_fps_cap_menu;
+            if (cap > 0) {
+                ZoneScopedN("Frame.FrameCap");
+                uint64_t target_ms = 1000u / (uint64_t)cap;
+                uint64_t now = timing::gettickcount();
+                uint64_t elapsed_ms = timing::ticks2ms(now - start_tick);
+                if (elapsed_ms < target_ms) {
+                    timing::sleep((unsigned int)((target_ms - elapsed_ms) * 1000000u));
+                }
             }
         }
 

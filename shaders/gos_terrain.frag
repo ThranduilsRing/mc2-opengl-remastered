@@ -183,6 +183,7 @@ void main(void)
     // Legacy probe: reserve negative values for an unconditional "tess frag is running"
     // visual. Positive values are surface debug modes and must flow through normally.
     if (tessDebug.x < -0.5) {
+        gl_FragDepth = gl_FragCoord.z;
         FragColor = vec4(1.0, 0.0, 0.0, 1.0);  // SOLID RED = tess frag running
 #ifdef MRT_ENABLED
         GBuffer1 = vec4(0.5, 0.5, 1.0, 1.0);
@@ -221,6 +222,7 @@ void main(void)
 
     // Debug mode 2: show raw terrain colormap everywhere.
     if (surfaceDebugMode == 2) {
+        gl_FragDepth = gl_FragCoord.z;
         FragColor = vec4(texColor.rgb, 1.0);
 #ifdef MRT_ENABLED
         GBuffer1 = vec4(0.5, 0.5, 1.0, 1.0);
@@ -262,6 +264,7 @@ void main(void)
         colAvg /= 9.0;
     }
     if (surfaceDebugMode == 3) {
+        gl_FragDepth = gl_FragCoord.z;
         FragColor = vec4(colAvg, 1.0);
 #ifdef MRT_ENABLED
         GBuffer1 = vec4(0.5, 0.5, 1.0, 1.0);
@@ -309,6 +312,7 @@ void main(void)
     }
 
     if (surfaceDebugMode == 4) {
+        gl_FragDepth = gl_FragCoord.z;
         FragColor = vec4(matWeights.x, matWeights.y, matWeights.z, 1.0);
 #ifdef MRT_ENABLED
         GBuffer1 = vec4(0.5, 0.5, 1.0, 1.0);
@@ -473,6 +477,7 @@ void main(void)
     c.rgb *= normalLight;
 
     if (surfaceDebugMode == 5) {
+        gl_FragDepth = gl_FragCoord.z;
         FragColor = vec4(vec3(normalLight), 1.0);
 #ifdef MRT_ENABLED
         GBuffer1 = vec4(N * 0.5 + 0.5, 1.0);
@@ -518,6 +523,7 @@ void main(void)
         PREC float cloudNoise = fbm(cloudUV, 4) * 0.5 + 0.5;
         PREC float cloudShadow = smoothstep(0.3, 0.7, cloudNoise);
         if (surfaceDebugMode == 7) {
+            gl_FragDepth = gl_FragCoord.z;
             FragColor = vec4(vec3(mix(0.92, 1.0, cloudShadow)), 1.0);
 #ifdef MRT_ENABLED
             GBuffer1 = vec4(N * 0.5 + 0.5, materialAlpha);
@@ -539,6 +545,7 @@ void main(void)
     }
 
     if (surfaceDebugMode == 6) {
+        gl_FragDepth = gl_FragCoord.z;
         FragColor = vec4(vec3(shadow), 1.0);
 #ifdef MRT_ENABLED
         GBuffer1 = vec4(N * 0.5 + 0.5, materialAlpha);

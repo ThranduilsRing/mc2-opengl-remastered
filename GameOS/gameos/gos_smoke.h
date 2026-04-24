@@ -53,6 +53,10 @@ bool resolveMissionPaths();
 // True once --duration has elapsed past mission_ready.
 bool shouldQuit();
 
+// True once markMissionReady() has been called (mission is active / was active).
+// Used by the frame-cap logic to apply a lower cap during menus vs gameplay.
+bool missionHasStarted();
+
 // Called once when the mission is ready to play. Starts the duration timer.
 void markMissionReady();
 

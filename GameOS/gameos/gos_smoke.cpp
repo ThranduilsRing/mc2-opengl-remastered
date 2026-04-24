@@ -250,4 +250,8 @@ void markMissionReady() {
     }
 }
 
+bool missionHasStarted() {
+    return g_missionReadyT != 0;
+}
+
 } // namespace SmokeMode

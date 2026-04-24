@@ -774,56 +774,76 @@ void glsl_program::apply()
 bool glsl_program::reload()
 {
     ZoneScopedN("Shader.Reload");
-    is_valid_ = false;
+    // DO NOT clear is_valid_ here.
+    // The old shp_ remains live and usable until a new program fully compiles
+    // and links. A failed reload must not mutate live render state — it should
+    // leave terrain rendering the old shader rather than going blank.
 
-	//glDetachShader(shp_, vsh_->shader_);
-	//glDetachShader(shp_, fsh_->shader_);
+    glsl_shader* const pipeline[] = { vsh_, hsh_, dsh_, gsh_, fsh_ };
 
-	bool rv = true;
-
-	glsl_shader* const pipeline[] = { vsh_, hsh_, dsh_, gsh_, fsh_ };
-	for(size_t i=0; i< sizeof(pipeline)/sizeof(pipeline[0]); ++i)
-	{
-		if(!pipeline[i]) continue;
-		rv &= pipeline[i]->reload(prefix_);
-	}
-    if(!rv) return false;
-	
-	for(size_t i=0; i< sizeof(pipeline)/sizeof(pipeline[0]); ++i)
-	{
-		if(!pipeline[i]) continue;
-		glAttachShader(shp_, pipeline[i]->shader_);
-	}
-
-    glLinkProgram(shp_);
-    if(get_program_error_status(shp_, GL_LINK_STATUS))
-    {
+    // Pass 1: compile each stage into a fresh temporary GL shader object.
+    // We never touch the existing pipeline[i]->shader_ until the new program
+    // successfully links (so glUseProgram(shp_) stays valid throughout).
+    GLuint newShaders[5] = {};
+    std::vector<std::string> newIncludes[5];
+    bool compileOk = true;
+    for (size_t i = 0; i < 5; ++i) {
+        if (!pipeline[i]) continue;
+        std::string src;
+        if (!load_shader(pipeline[i]->fname_.c_str(), src, newIncludes[i])) {
+            log_error("Shader reload: failed to load %s\n", pipeline[i]->fname_.c_str());
+            compileOk = false;
+            break;
+        }
+        newShaders[i] = glCreateShader(pipeline[i]->type_);
+        const char* strings[] = { prefix_ ? prefix_ : "", src.c_str() };
+        if (!compile_shader(newShaders[i], strings, 2)) {
+            compileOk = false;
+            break;
+        }
+    }
+    if (!compileOk) {
+        for (int i = 0; i < 5; ++i) if (newShaders[i]) glDeleteShader(newShaders[i]);
+        printf("[SHADER] reload failed (compile); keeping previous program\n");
         return false;
     }
 
-	for(size_t i=0; i< sizeof(pipeline)/sizeof(pipeline[0]); ++i)
-	{
-		if(!pipeline[i]) continue;
-		glDetachShader(shp_, pipeline[i]->shader_);
-	}
+    // Pass 2: create a new candidate program, attach, link.
+    GLuint newProg = glCreateProgram();
+    for (size_t i = 0; i < 5; ++i)
+        if (newShaders[i]) glAttachShader(newProg, newShaders[i]);
+    glLinkProgram(newProg);
+    for (size_t i = 0; i < 5; ++i) {
+        if (!newShaders[i]) continue;
+        glDetachShader(newProg, newShaders[i]);
+        glDeleteShader(newShaders[i]);
+    }
+    if (get_program_error_status(newProg, GL_LINK_STATUS)) {
+        glDeleteProgram(newProg);
+        printf("[SHADER] reload failed (link); keeping previous program\n");
+        return false;
+    }
 
-    std::map< std::string, glsl_uniform*>::iterator it = uniforms_.begin(); 
-    std::map< std::string, glsl_uniform*>::iterator end = uniforms_.end(); 
-    for(;it!=end;++it)
-        delete it->second;
+    // New program is fully valid. Swap in atomically.
+    GLuint oldProg = shp_;
+    shp_ = newProg;
+    if (oldProg) glDeleteProgram(oldProg);
+
+    // Update per-stage includes so needsReload() correctly tracks timestamps.
+    for (size_t i = 0; i < 5; ++i)
+        if (pipeline[i]) pipeline[i]->includes_ = newIncludes[i];
+
+    // Rebuild the uniform cache for the new program.
+    for (auto& kv : uniforms_) delete kv.second;
     uniforms_.clear();
-
     samplers_.clear();
     uniform_blocks_.clear();
-
     parse_uniforms(shp_, &uniforms_, &samplers_);
     parse_uniform_blocks(shp_, &uniform_blocks_);
-    
-    last_load_time_ = timing::get_wall_time_ms();
 
+    last_load_time_ = timing::get_wall_time_ms();
     is_valid_ = true;
     return true;
-
 }
 
 bool glsl_program::is_valid()
