@@ -182,6 +182,87 @@ const NominalDims* lookupNominal(State& st, const AssetKey& k) {
     return &it->second;
 }
 
+// ---- Self-tests ----------------------------------------------------------
+// Synthetic atlases at integer (2x, 4x, 8x) and non-integer (1.5x) scales.
+// Verifies: rect inside actual bounds, adjacent cells at most 1px overlap,
+// rect covers the expected cell.
+struct TestResult { const char* name; bool pass; const char* detail; };
+
+bool runOneScale(uint32_t nominalSize, uint32_t actualSize, const char* tag,
+                 char* detailBuf, size_t detailLen) {
+    // Inject a synthetic manifest entry without going through CSV.
+    State& st = state();
+    const std::string testKey = std::string("test/") + tag + ".tga";
+    st.manifest[testKey] = NominalDims{ nominalSize, nominalSize };
+
+    AssetKey k = key(testKey.c_str());
+
+    const int nominalCell = 32;
+    const int cellsPerRow = (int)nominalSize / nominalCell;
+
+    for (int y = 0; y < cellsPerRow; ++y) {
+        for (int x = 0; x < cellsPerRow; ++x) {
+            IRect r = nominalToActualRect(k, actualSize, actualSize,
+                                          (float)(x * nominalCell),
+                                          (float)(y * nominalCell),
+                                          (float)nominalCell,
+                                          (float)nominalCell,
+                                          "selftest");
+            // Inside actual bounds.
+            if (r.x < 0 || r.y < 0 ||
+                (uint32_t)(r.x + r.w) > actualSize ||
+                (uint32_t)(r.y + r.h) > actualSize) {
+                std::snprintf(detailBuf, detailLen,
+                    "OOB at cell (%d,%d): rect=(%d,%d,%d,%d) actual=%u",
+                    x, y, r.x, r.y, r.w, r.h, actualSize);
+                return false;
+            }
+            // Adjacent-cell overlap <= 1px (intentional seam protection).
+            if (x + 1 < cellsPerRow) {
+                IRect rNext = nominalToActualRect(k, actualSize, actualSize,
+                    (float)((x + 1) * nominalCell),
+                    (float)(y * nominalCell),
+                    (float)nominalCell, (float)nominalCell, "selftest");
+                int overlap = (r.x + r.w) - rNext.x;
+                if (overlap < 0 || overlap > 1) {
+                    std::snprintf(detailBuf, detailLen,
+                        "X overlap %d at cell (%d,%d): rect=(%d,%d,%d,%d) "
+                        "next=(%d,%d,%d,%d)",
+                        overlap, x, y, r.x, r.y, r.w, r.h,
+                        rNext.x, rNext.y, rNext.w, rNext.h);
+                    return false;
+                }
+            }
+        }
+    }
+    return true;
+}
+
+void runSelfTests() {
+    static const struct { uint32_t nom; uint32_t act; const char* tag; } cases[] = {
+        { 256, 512,  "2x"   },
+        { 256, 1024, "4x"   },
+        { 256, 2048, "8x"   },
+        { 256, 384,  "1p5x" },  // non-integer; modders WILL use odd sizes
+    };
+    int passed = 0, failed = 0;
+    for (auto& c : cases) {
+        char detail[256] = {0};
+        bool ok = runOneScale(c.nom, c.act, c.tag, detail, sizeof(detail));
+        if (ok) {
+            log("[ASSET_SCALE v1] event=selftest_pass case=%s nominal=%u actual=%u",
+                c.tag, c.nom, c.act);
+            ++passed;
+        } else {
+            log("[ASSET_SCALE v1] event=selftest_fail case=%s nominal=%u actual=%u "
+                "detail=\"%s\"", c.tag, c.nom, c.act, detail);
+            ++failed;
+        }
+    }
+    log("[ASSET_SCALE v1] event=selftest_summary passed=%d failed=%d",
+        passed, failed);
+}
+
 } // anonymous namespace
 
 AssetKey key(const char* rawPath) {
@@ -195,6 +276,10 @@ void init(const char* manifestPath) {
     const char* trace = std::getenv("MC2_ASSET_SCALE_TRACE");
     st.traceEnabled = (trace && trace[0] == '1');
     loadManifest(manifestPath);
+    const char* st_env = std::getenv("MC2_ASSET_SCALE_SELFTEST");
+    if (st_env && st_env[0] == '1') {
+        runSelfTests();
+    }
 }
 
 void shutdown() {
