@@ -30,6 +30,7 @@ MissionBegin.cpp			: Implementation of the MissionBegin component.
 #include"chatwindow.h"
 #include"logisticsmechicon.h"
 #include"../GameOS/gameos/gos_profiler.h"
+#include <cstdlib>
 
 #include"prefs.h"
 extern CPrefs prefs;
@@ -245,6 +246,12 @@ void MissionBegin::begin()
 	mainMenu->init( file );
 	mainMenu->setDrawBackground( true );
 	mainMenu->begin();
+	const char* menuCanarySkipIntro = std::getenv("MC2_MENU_CANARY_SKIP_INTRO");
+	if ( menuCanarySkipIntro && menuCanarySkipIntro[0] && menuCanarySkipIntro[0] != '0' )
+	{
+		mainMenu->skipIntro();
+		printf("[MENU_CANARY] skip_intro=1\n");
+	}
 	file.close();
 	}
 

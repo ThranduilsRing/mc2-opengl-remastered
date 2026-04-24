@@ -4,9 +4,11 @@
 
 Examples:
   python scripts/run_smoke.py --tier tier1 --fail-fast
+  python scripts/run_smoke.py --tier tier1 --with-menu-canary
   python scripts/run_smoke.py --tier tier2
   python scripts/run_smoke.py --tier tier3 --kill-existing
   python scripts/run_smoke.py --mission mc2_01 --mission mc2_03
+  python scripts/run_smoke.py --menu-canary
 """
 from __future__ import annotations
 
@@ -16,6 +18,7 @@ import json
 import os
 import subprocess
 import sys
+import time
 from pathlib import Path
 
 ROOT = Path(__file__).resolve().parents[1]
@@ -28,6 +31,8 @@ DEFAULT_EXE = Path(r"A:/Games/mc2-opengl/mc2-win64-v0.1.1/mc2.exe")
 ARTIFACT_ROOT = ROOT / "tests" / "smoke" / "artifacts"
 MANIFEST_PATH = ROOT / "tests" / "smoke" / "smoke_missions.txt"
 BASELINE_PATH = ROOT / "tests" / "smoke" / "baselines.json"
+DEFAULT_MENU_SCRIPT = ROOT / "tests" / "smoke" / "menu_canary_first_mission.txt"
+GAME_AUTO = ROOT / "scripts" / "game_auto.py"
 
 
 def _running_mc2() -> list[int]:
@@ -51,10 +56,99 @@ def _taskkill_mc2():
                    stderr=subprocess.DEVNULL, stdout=subprocess.DEVNULL)
 
 
+def _run_menu_canary(exe: Path, script_path: Path, artifact_dir: Path,
+                     keep_logs: bool, settle_s: int) -> int:
+    env = os.environ.copy()
+    for var in ["MC2_SMOKE_MODE", "MC2_HEARTBEAT", "MC2_SMOKE_SEED"]:
+        env.pop(var, None)
+    env["MC2_MENU_CANARY_SKIP_INTRO"] = "1"
+    exe_dir = str(exe.resolve().parent)
+    proc = subprocess.Popen(
+        [str(exe)],
+        stdout=subprocess.PIPE,
+        stderr=subprocess.STDOUT,
+        text=True,
+        bufsize=1,
+        cwd=exe_dir,
+        env=env,
+    )
+
+    start_wall = time.monotonic()
+    time.sleep(1.0)
+    exited_before_replay = proc.poll() is not None
+    auto = subprocess.run(
+        [sys.executable, str(GAME_AUTO), "script", str(script_path)],
+        text=True,
+        capture_output=True,
+        cwd=str(ROOT),
+    )
+    replay_elapsed_s = time.monotonic() - start_wall
+    time.sleep(max(0, settle_s))
+
+    game_alive = proc.poll() is None
+    if game_alive:
+        proc.wait(timeout=max(1, settle_s))
+    try:
+        stdout, _ = proc.communicate(timeout=5)
+    except subprocess.TimeoutExpired:
+        proc.kill()
+        stdout, _ = proc.communicate(timeout=2)
+    exit_code = proc.returncode
+    lowered = (stdout or "").lower()
+    clean_exit = "[exit] gos_terminateapplication called" in lowered
+    crashy = any(token in lowered for token in [
+        "unhandled exception",
+        "fatal error",
+        "access violation",
+        "stack overflow",
+        "abort",
+        "assert",
+    ])
+    early_exit = exit_code == 0 and replay_elapsed_s > 0 and not game_alive and exited_before_replay
+    passed = (
+        auto.returncode == 0
+        and clean_exit
+        and not crashy
+        and exit_code == 0
+        and not early_exit
+    )
+
+    md = [
+        "# Menu Canary",
+        "",
+        f"- script: `{script_path.name}`",
+        f"- replay_exit: `{auto.returncode}`",
+        f"- replay_elapsed_s: `{replay_elapsed_s:.2f}`",
+        f"- exited_before_replay: `{str(exited_before_replay).lower()}`",
+        f"- game_alive_after_replay: `{str(game_alive).lower()}`",
+        f"- game_exit_code: `{exit_code}`",
+        f"- clean_exit_marker: `{str(clean_exit).lower()}`",
+        f"- crash_signature: `{str(crashy).lower()}`",
+        f"- early_exit: `{str(early_exit).lower()}`",
+        f"- result: `{'PASS' if passed else 'FAIL'}`",
+    ]
+    report_text = "\n".join(md) + "\n"
+    (artifact_dir / "menu_canary_report.md").write_text(report_text, encoding="utf-8")
+    if keep_logs or not passed:
+        (artifact_dir / "menu_canary_game.log").write_text(stdout or "", encoding="utf-8", errors="replace")
+        (artifact_dir / "menu_canary_replay.log").write_text(
+            (auto.stdout or "") + ("\n" if auto.stdout and auto.stderr else "") + (auto.stderr or ""),
+            encoding="utf-8",
+            errors="replace",
+        )
+    sys.stdout.buffer.write(report_text.encode("utf-8"))
+    sys.stdout.buffer.flush()
+    return 0 if passed else 1
+
+
 def main():
     ap = argparse.ArgumentParser()
     ap.add_argument("--tier", choices=["tier1", "tier2", "tier3"])
     ap.add_argument("--mission", action="append", default=[])
+    ap.add_argument("--menu-canary", action="store_true")
+    ap.add_argument("--with-menu-canary", action="store_true")
+    ap.add_argument("--menu-script", default=str(DEFAULT_MENU_SCRIPT))
+    ap.add_argument("--menu-settle", type=int, default=5)
     ap.add_argument("--fail-fast", action="store_true")
     ap.add_argument("--continue", dest="cont", action="store_true", default=True)
     ap.add_argument("--keep-logs", action="store_true")
@@ -76,9 +170,25 @@ def main():
                   f"pass --kill-existing to override.", file=sys.stderr)
             sys.exit(4)
 
+    if args.menu_canary:
+        if args.tier or args.mission:
+            ap.error("--menu-canary cannot be combined with --tier/--mission")
+        timestamp = dt.datetime.now().strftime("%Y-%m-%dT%H-%M-%S")
+        artifact_dir = ARTIFACT_ROOT / timestamp
+        artifact_dir.mkdir(parents=True, exist_ok=True)
+        sys.exit(_run_menu_canary(Path(args.exe), Path(args.menu_script),
+                                  artifact_dir, args.keep_logs, args.menu_settle))
+
     entries = manifest.parse_manifest(MANIFEST_PATH)
     if args.mission:
-        selected = [e for e in entries if e.stem in args.mission and e.tier != "skip"]
+        wanted = set(args.mission)
+        selected = []
+        seen = set()
+        for e in entries:
+            if e.tier == "skip" or e.stem not in wanted or e.stem in seen:
+                continue
+            selected.append(e)
+            seen.add(e.stem)
     elif args.tier:
         selected = [e for e in entries if e.tier == args.tier]
     else:
@@ -92,6 +202,15 @@ def main():
     timestamp = dt.datetime.now().strftime("%Y-%m-%dT%H-%M-%S")
     artifact_dir = ARTIFACT_ROOT / timestamp
     artifact_dir.mkdir(parents=True, exist_ok=True)
+
+    menu_canary_rc = None
+    if args.with_menu_canary:
+        print("[runner] running menu canary", file=sys.stderr)
+        menu_canary_rc = _run_menu_canary(Path(args.exe), Path(args.menu_script),
+                                          artifact_dir, args.keep_logs, args.menu_settle)
+        if menu_canary_rc != 0 and args.fail_fast:
+            print("[runner] --fail-fast: stopping after menu canary failure", file=sys.stderr)
+            sys.exit(menu_canary_rc)
 
     rows: list[report.Row] = []
     for e in selected:
@@ -118,7 +237,7 @@ def main():
                                summary=result.summary, destroys_delta=delta or 0))
 
         if not result.verdict.passed or args.keep_logs:
-            (artifact_dir / f"{e.stem}.log").write_text(result.stdout_text)
+            (artifact_dir / f"{e.stem}.log").write_text(result.stdout_text, encoding="utf-8", errors="replace")
         if args.baseline_update and result.verdict.passed:
             baseline_data.setdefault(key, {})["destroys"] = {
                 "mean": result.summary.destroys, "stddev": 0, "samples": 1,
@@ -139,17 +258,19 @@ def main():
 
     md = report.render_markdown(rows, tier=args.tier or "adhoc",
                                  profile=args.profile, timestamp=timestamp)
-    (artifact_dir / "report.md").write_text(md)
+    (artifact_dir / "report.md").write_text(md, encoding="utf-8")
     (artifact_dir / "report.json").write_text(
         json.dumps(report.render_json(rows, tier=args.tier or "adhoc",
                                       profile=args.profile, timestamp=timestamp),
-                   indent=2))
+                   indent=2), encoding="utf-8")
 
     if args.baseline_update:
         baselines.save(BASELINE_PATH, baseline_data)
 
-    print(md)
-    passed = all(r.verdict.passed for r in rows)
+    sys.stdout.buffer.write(md.encode("utf-8"))
+    sys.stdout.buffer.write(b"\n")
+    sys.stdout.buffer.flush()
+    passed = all(r.verdict.passed for r in rows) and (menu_canary_rc in (None, 0))
     sys.exit(0 if passed else 1)
 
 

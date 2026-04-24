@@ -1,0 +1,44 @@
+wait 8.00
+click 0 0
+wait 0.50
+click 0 0
+wait 0.50
+key escape 200
+wait 1.00
+key escape 200
+wait 2.00
+key escape 200
+wait 1.00
+key escape 200
+wait 2.00
+click 1443 1123
+wait 0.84
+click 1449 1116
+wait 0.85
+click 1449 1116
+wait 0.78
+click 1399 1109
+wait 2.89
+click 1894 653
+wait 3.85
+click 2558 1554
+wait 3.94
+click 3386 2027
+wait 1.38
+click 3385 2027
+wait 2.12
+click 3070 1029
+wait 4.90
+click 516 2035
+wait 1.68
+click 2658 1763
+wait 1.80
+click 460 2005
+wait 1.17
+click 3297 2031
+wait 4.59
+click 3120 93
+wait 1.73
+click 1983 1693
+wait 1.42
+click 2293 1443
