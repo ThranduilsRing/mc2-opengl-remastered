@@ -7082,9 +7082,12 @@ void execCoreWaitOmni (void) {
 //*****************************************************************************
 
 void execCoreGuardOmni (void) {
-	// args: *i (custom position type, stateHandle). No return.
+	// args: ?ii (position-custom-type, guardDistance, stateHandle). No return.
+	// Stock MC2 mission scripts universally call this with 3 args; the
+	// previous 2-arg signature failed to parse stock data/missions/warriors/*.abl.
 	ABLStackItem dummy;
 	ABLi_popAnything(&dummy);
+	ABLi_popInteger();
 	ABLi_popInteger();
 	if (getenv("MC2_ABL_TRACE")) DEBUGWINS_print("[ABL] coreGuard stub", 0);
 }
@@ -7092,10 +7095,13 @@ void execCoreGuardOmni (void) {
 //*****************************************************************************
 
 void execCorePatrolOmni (void) {
-	// args: ** (PatrolState, PatrolPath). No return.
+	// args: ??i (PatrolState, PatrolPath, stateHandle). No return.
+	// Stock MC2 mission scripts universally call this with 3 args; the
+	// previous 2-arg signature failed to parse stock data/missions/warriors/*.abl.
 	ABLStackItem dummy;
 	ABLi_popAnything(&dummy);
 	ABLi_popAnything(&dummy);
+	ABLi_popInteger();
 	if (getenv("MC2_ABL_TRACE")) DEBUGWINS_print("[ABL] corePatrol stub", 0);
 }
 
@@ -7991,8 +7997,8 @@ void initABL (void) {
 	ABLi_addFunction("setwillrequesthelp",   false, "b",   NULL, execSetWillRequestHelp);
 	ABLi_addFunction("tdebugstring",         false, "C",   NULL, execTDebugString);
 	ABLi_addFunction("corewait",             false, "r",   NULL, execCoreWaitOmni);
-	ABLi_addFunction("coreguard",            false, "?i",  NULL, execCoreGuardOmni);
-	ABLi_addFunction("corepatrol",           false, "??",  NULL, execCorePatrolOmni);
+	ABLi_addFunction("coreguard",            false, "?ii", NULL, execCoreGuardOmni);
+	ABLi_addFunction("corepatrol",           false, "??i", NULL, execCorePatrolOmni);
 	ABLi_addFunction("isdeadorfled",         false, "i",   "b",  execIsDeadOrFled);
 	ABLi_addFunction("printteamstatus",      false, "i",   NULL, execPrintTeamStatus);
 

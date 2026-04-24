@@ -8,6 +8,7 @@
 //***************************************************************************
 
 #include<stdio.h>
+#include<stdlib.h>
 #include<string.h>
 
 #ifndef ABLGEN_H
@@ -112,6 +113,19 @@ void execStatement (void) {
 		case TKN_IDENTIFIER: {
 			SymTableNodePtr idPtr = getCodeSymTableNodePtr();
 			ABL_Assert(idPtr != NULL, 0, " oops ");
+			// Tier-1 crash guard: ABL_Assert is print-and-continue in release.
+			// If the parser bailed on a syntax error earlier, the symbol table
+			// may have a NULL slot here; executing its .defn.key dereferences
+			// a NULL pointer and crashes. Treat a NULL idPtr as a no-op
+			// statement so the rest of the module (and the game) can proceed.
+			if (!idPtr) {
+				static const bool s_ablTrace = (getenv("MC2_ABL_TRACE") != nullptr);
+				if (s_ablTrace) {
+					printf("[ABL_EXEC] NULL idPtr at TKN_IDENTIFIER; skipping statement\n");
+					fflush(stdout);
+				}
+				break;
+			}
 			if (idPtr->defn.key == DFN_FUNCTION) {
 				bool skipOrder = false;
 				unsigned char orderDWord = 0;
