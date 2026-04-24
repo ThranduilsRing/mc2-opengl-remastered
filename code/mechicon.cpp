@@ -359,7 +359,11 @@ void MechIcon::setDrawBack( bool bSet)
 		const uint32_t actualH = (uint32_t)s_MechTextures->height;
 		const AssetScale::Vec2 f = AssetScale::factorFor(
 			MechIcon::s_MechTexturesKey, actualW, actualH, "mechicon.blit");
-		const AssetScale::IRect srcRect = AssetScale::nominalToActualRect(
+		// Direct-index path: match original pSrcRow += width / pSrcData++
+		// semantics so out-of-bounds indices wrap exactly like before.
+		// OOB is NOT clamped here — original relied on the wrap behavior
+		// for high whichMech indices (e.g. MC2X mod mechs beyond slot 33).
+		(void)AssetScale::nominalToActualRect(
 			MechIcon::s_MechTexturesKey, actualW, actualH,
 			(float)offsetX, (float)offsetY,
 			(float)unitIconX, (float)unitIconY,
@@ -367,14 +371,12 @@ void MechIcon::setDrawBack( bool bSet)
 
 		for( int j = 0; j < unitIconY; ++j )
 		{
-			int srcY = srcRect.y + (int)(j * f.y);
-			if (srcY >= (int)actualH) srcY = (int)actualH - 1;
+			int srcY = (int)(offsetY * f.y) + (int)(j * f.y);
 			DWORD* pSrcRow = (DWORD*)pTmp + (long)srcY * (long)actualW;
 			pDestData = pDestRow;
 			for ( int i = 0; i < unitIconX; ++i ) // do four icons per row
 			{
-				int srcX = srcRect.x + (int)(i * f.x);
-				if (srcX >= (int)actualW) srcX = (int)actualW - 1;
+				int srcX = (int)(offsetX * f.x) + (int)(i * f.x);
 				DWORD srcPixel = pSrcRow[srcX];
 
 				bool bDraw = 0;
@@ -544,7 +546,8 @@ bool MechIcon::init( long whichIndex )
 		const uint32_t actualH = (uint32_t)s_MechTextures->height;
 		const AssetScale::Vec2 f = AssetScale::factorFor(
 			MechIcon::s_MechTexturesKey, actualW, actualH, "mechicon.blit");
-		const AssetScale::IRect srcRect = AssetScale::nominalToActualRect(
+		// Direct-index path (see note in blit 1 above). No OOB clamp.
+		(void)AssetScale::nominalToActualRect(
 			MechIcon::s_MechTexturesKey, actualW, actualH,
 			(float)offsetX, (float)offsetY,
 			(float)unitIconX, (float)unitIconY,
@@ -552,14 +555,12 @@ bool MechIcon::init( long whichIndex )
 
 		for( int j = 0; j < unitIconY; ++j )
 		{
-			int srcY = srcRect.y + (int)(j * f.y);
-			if (srcY >= (int)actualH) srcY = (int)actualH - 1;
+			int srcY = (int)(offsetY * f.y) + (int)(j * f.y);
 			DWORD* pSrcRow = (DWORD*)pTmp + (long)srcY * (long)actualW;
 			pDestData = pDestRow;
 			for ( int i = 0; i < unitIconX; ++i ) // do four icons per row
 			{
-				int srcX = srcRect.x + (int)(i * f.x);
-				if (srcX >= (int)actualW) srcX = (int)actualW - 1;
+				int srcX = (int)(offsetX * f.x) + (int)(i * f.x);
 				*pDestData++ = pSrcRow[srcX];
 			}
 			pDestRow += textureData.Width;
@@ -1246,7 +1247,8 @@ bool VehicleIcon::init( Mover* pMover )
 		const uint32_t actualH = (uint32_t)s_VehicleTextures->height;
 		const AssetScale::Vec2 f = AssetScale::factorFor(
 			VehicleIcon::s_VehicleTexturesKey, actualW, actualH, "mechicon.blit");
-		const AssetScale::IRect srcRect = AssetScale::nominalToActualRect(
+		// Direct-index path (see note in mechicon.blit above). No OOB clamp.
+		(void)AssetScale::nominalToActualRect(
 			VehicleIcon::s_VehicleTexturesKey, actualW, actualH,
 			(float)offsetX, (float)offsetY,
 			(float)unitIconX, (float)unitIconY,
@@ -1254,14 +1256,12 @@ bool VehicleIcon::init( Mover* pMover )
 
 		for( int j = 0; j < unitIconY; ++j )
 		{
-			int srcY = srcRect.y + (int)(j * f.y);
-			if (srcY >= (int)actualH) srcY = (int)actualH - 1;
+			int srcY = (int)(offsetY * f.y) + (int)(j * f.y);
 			DWORD* pSrcRow = (DWORD*)pTmp + (long)srcY * (long)actualW;
 			pDestData = pDestRow;
 			for ( int i = 0; i < unitIconX; ++i ) // do four icons per row
 			{
-				int srcX = srcRect.x + (int)(i * f.x);
-				if (srcX >= (int)actualW) srcX = (int)actualW - 1;
+				int srcX = (int)(offsetX * f.x) + (int)(i * f.x);
 				*pDestData++ = pSrcRow[srcX];
 			}
 			pDestRow += textureData.Width;
