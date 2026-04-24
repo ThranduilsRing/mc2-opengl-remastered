@@ -149,6 +149,8 @@ extern bool gosExitGameOS();
 extern bool gos_CreateAudio();
 extern void gos_DestroyAudio();
 
+extern SDL_Window* g_sdl_window;
+
 static bool g_exit = false;
 static bool g_focus_lost = false;
 
@@ -332,14 +334,15 @@ static void process_events( void ) {
     input::beginUpdateMouseState();
 
     SDL_Event event;
-    while( SDL_PollEvent( &event ) ) {
-
-        if(g_focus_lost) {
-            if(event.type != SDL_WINDOWEVENT_FOCUS_GAINED) {
-                continue;
-            } else {
-                g_focus_lost = false;
-            }
+    while (SDL_PollEvent(&event)) {
+        // While unfocused, drop input events but let window events through
+        // so FOCUS_GAINED can propagate to the switch below and clear the
+        // flag. The prior form compared event.type against a subevent value
+        // (SDL_WINDOWEVENT_FOCUS_GAINED, always .window.event never .type),
+        // which could never match and would have jammed this loop if the
+        // FOCUS_LOST handler had ever actually fired.
+        if (g_focus_lost && event.type != SDL_WINDOWEVENT) {
+            continue;
         }
 
         switch( event.type ) {
@@ -352,16 +355,38 @@ static void process_events( void ) {
         case SDL_QUIT:
             g_exit = true;
             break;
-		case SDL_WINDOWEVENT_RESIZED:
-			{
-				float w = (float)event.window.data1;
-				float h = (float)event.window.data2;
-				glViewport(0, 0, (GLsizei)w, (GLsizei)h);
+        case SDL_WINDOWEVENT:
+            // Window subevents live in event.window.event, not event.type.
+            // The prior top-level cases `SDL_WINDOWEVENT_RESIZED` (enum
+            // value 5) and `SDL_WINDOWEVENT_FOCUS_LOST` (value 13) never
+            // actually fired because event.type for any window-related
+            // event is SDL_WINDOWEVENT (0x200). Fixed to dispatch properly.
+            switch (event.window.event) {
+            case SDL_WINDOWEVENT_RESIZED: {
+                float w = (float)event.window.data1;
+                float h = (float)event.window.data2;
+                glViewport(0, 0, (GLsizei)w, (GLsizei)h);
                 SPEW(("INPUT", "resize event: w: %f h:%f\n", w, h));
-			}
-			break;
-        case SDL_WINDOWEVENT_FOCUS_LOST:
-            g_focus_lost = true;
+                break;
+            }
+            case SDL_WINDOWEVENT_FOCUS_GAINED:
+                // Re-assert the mouse grab on focus regain. The initial
+                // grab at window-creation can be only partially applied on
+                // multi-monitor setups (symptom: cursor escapes to the
+                // leftmost column of the adjacent monitor without losing
+                // focus). Re-asserting once focus is actually confirmed
+                // makes the clamp stick.
+                if (g_sdl_window)
+                    SDL_SetWindowMouseGrab(g_sdl_window, SDL_TRUE);
+                g_focus_lost = false;
+                break;
+            case SDL_WINDOWEVENT_FOCUS_LOST:
+                // Release grab so Alt-Tab and other windows behave cleanly.
+                if (g_sdl_window)
+                    SDL_SetWindowMouseGrab(g_sdl_window, SDL_FALSE);
+                g_focus_lost = true;
+                break;
+            }
             break;
         case SDL_MOUSEMOTION:
             input::handleMouseMotion(&event); 
