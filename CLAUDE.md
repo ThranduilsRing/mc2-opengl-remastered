@@ -148,3 +148,29 @@ sh scripts/check-asset-scale-callers.sh
 ```
 
 Exit 0 = no raw source-atlas width arithmetic (blit stride) outside `AssetScale`. Prevents reintroducing the pattern that scrambles upscaled mech/vehicle icon rendering.
+
+## Smoke Gate ("Did I Break It")
+
+Default regression gate for changes touching render/init/cull/asset paths:
+
+```bash
+py -3 A:\Games\mc2-opengl-src\.claude\worktrees\nifty-mendeleev\scripts\run_smoke.py --tier tier1 --with-menu-canary --kill-existing
+```
+
+What it covers:
+- `tier1` direct-start passive smoke on `mc2_01`, `mc2_03`, `mc2_10`, `mc2_17`, `mc2_24`
+- one separate menu canary (`boot -> main menu/logistics path -> clean exit`)
+
+Interpretation:
+- exit `0` = menu canary clean + all tier1 smoke missions passed
+- exit nonzero = inspect `tests/smoke/artifacts/<timestamp>/`
+
+Useful variants:
+- fast local loop: add `--duration 8 --fail-fast`
+- matrix only: drop `--with-menu-canary`
+- menu canary only: `--menu-canary`
+
+Important limitation:
+- the menu canary is desktop-bound and screen-coordinate-bound to the recording environment; do not treat it as headless/CI-safe or display-independent.
+
+See `tests/smoke/README.md` for tiers, fail buckets, baseline update rules, and canary limitations.

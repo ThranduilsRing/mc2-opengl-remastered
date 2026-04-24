@@ -89,3 +89,6 @@ mc2srcdata/
 validate.json
 validate*.tga
 
+# Smoke test runtime artifacts
+tests/smoke/artifacts/
+
