@@ -23,6 +23,7 @@
 #endif
 
 #include"mc2video.h"
+#include "../GameOS/gameos/gos_smoke.h"
 
 #include "../resource.h"
 #include"gameos.hpp"
@@ -74,6 +75,13 @@ void MC2Movie::init (const char *MC2Name, RECT mRect, bool useWaveFile)
         strcpy(waveName, shortName);
     } else {
         waveName = nullptr;
+    }
+
+    if (SmokeMode::state().enabled) {
+        printf("[VIDEO] init: smoke mode active, skipping movie '%s'\n", shortName);
+        stillPlaying  = false;
+        m_sessionDone = true;
+        return;
     }
 
     if (!g_ffmpegAvailable) {

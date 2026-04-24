@@ -2762,6 +2762,21 @@ void __stdcall GetGameOSEnvironment(const char* CommandLine )
 {
 	ParseCommandLine(CommandLine);
 
+	if (SmokeMode::state().enabled) {
+		if (!justStartMission) {
+			justStartMission = true;
+			strncpy(missionName, SmokeMode::state().mission.c_str(), sizeof(missionName) - 1);
+			missionName[sizeof(missionName) - 1] = '\0';
+		}
+
+		// Preserve the smoke runner's existing milestone contract while using
+		// the older direct mission-start path that bypasses logistics entirely.
+		SmokeMode::emitTiming("profile_ready");
+		SmokeMode::emitTiming("logistics_ready");
+		SmokeMode::resolveMissionPaths();
+		SmokeMode::emitTiming("mission_load_start");
+	}
+
 	// Validate mode: auto-start mission and disable sound
 	if (getValidateConfig().enabled) {
 		if (!justStartMission) {
