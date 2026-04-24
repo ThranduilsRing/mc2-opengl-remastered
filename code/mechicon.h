@@ -19,6 +19,8 @@ MechIcon.h			: Interface for the MechIcon component.
 #include"mc2movie.h"
 #endif
 
+#include "asset_scale.h"
+
 //*************************************************************************************************
 class Mover;
 class MechWarrior;
@@ -173,6 +175,7 @@ class MechIcon : public ForceGroupIcon
 		virtual void			update();
 
 		static TGAFileHeader* s_MechTextures;
+		static AssetScale::AssetKey s_MechTexturesKey;
 
 		void doDraw( char* newDamage, char* oldDamage, unsigned long handle, unsigned long where);
 		virtual void setDrawBack( bool bSet);

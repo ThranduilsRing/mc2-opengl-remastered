@@ -25,6 +25,7 @@ MechIcon.cpp			: Implementation of the MechIcon component.
 #endif
 
 TGAFileHeader *MechIcon::s_MechTextures = NULL;
+AssetScale::AssetKey MechIcon::s_MechTexturesKey;
 TGAFileHeader *VehicleIcon::s_VehicleTextures = NULL;
 TGAFileHeader* ForceGroupIcon::s_textureMemory = 0;
 
@@ -447,6 +448,7 @@ bool MechIcon::initTextures()
 			strcat( path, "mcui_high7.tga" );
 
 		S_strlwr( path );
+		s_MechTexturesKey = AssetScale::key(path);
 
 		if ( NO_ERR != file.open( path ) ) 
 		{
