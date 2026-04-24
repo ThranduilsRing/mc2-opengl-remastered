@@ -250,3 +250,209 @@ Same class as finding #2 (GlobalMap partial-init): a content-format
 mismatch leaves corrupt state that the engine dereferences later in a
 completely different subsystem. This is exactly the "paper-over fixes
 hide real bugs" pattern the ASan MVP was built to expose.
+
+### Confirmed duplicates of this finding
+
+Magic's Unofficial Expansion triggers the same bug in two
+configurations, with the same `getCodeToken` backtrace and the same
+`0xNN00000001` pointer pattern:
+
+- `MC2-MagicExpansion/` (fresh base-game clone + Expansion `data/`
+  overlay), `--mission mc2_01` — ASan log
+  `asan-magicexp-mc2_01.15908`. Pointer `0x12d900000001`.
+- `mc2-win64-v0.1.1/` + Expansion `data/` overlay, `--mission mc2_01` —
+  ASan log `asan-exp-overlay-mc2_01.10484`. Pointer `0x11c600000001`.
+
+This is a content-triggered bug, not install-specific.
+
+---
+
+## 4. `Turret::update` global-buffer-overflow on `turretsEnabled[-1]`
+
+**Status:** bug confirmed, fix straightforward.
+**First caught:** 2026-04-24, tier1 matrix run, mission `mc2_03` on
+`mc2-win64-v0.1.1` (base game). ASan log:
+`tests/smoke/artifacts/2026-04-24T14-14-43/mc2_03.log`.
+
+### Crash signature
+
+ASan fires at `if (!turretsEnabled[getTeamId()])` (turret.cpp:588) —
+READ of size 1 at address 1 byte before the global array.
+
+```
+==19868==ERROR: AddressSanitizer: global-buffer-overflow
+READ of size 1 at 0x7ff6cb96f17f
+  Turret::update                 code/turret.cpp:588
+  GameObjectManager::update      code/objmgr.cpp:1847
+  Mission::update                code/mission.cpp:504
+  DoGameLogic                    code/mechcmd2.cpp:2233
+
+0x7ff6cb96f17f is located 1 byte before global variable
+  'Turret::turretsEnabled' defined in 'turret.cpp:96:13' (size 8)
+```
+
+### Code
+
+```cpp
+// code/turret.cpp:588
+if (!turretsEnabled[getTeamId()]) {
+    targetWID = 0;
+}
+```
+
+### Root cause
+
+`getTeamId()` returns a signed `long`. Neutral / environmental turrets
+have `teamId == -1`. The index `turretsEnabled[-1]` reads 1 byte
+before the array.
+
+On the normal RelWithDebInfo build the adjacent memory just happens to
+hold another scalar (probably the preceding `Team::relations` 64-byte
+array) and the read "works" — neutral turrets end up disabled or
+enabled based on unrelated state. Player-facing symptom: neutral
+turrets occasionally fail to engage appropriately. Has been in MC2
+since 1.0.
+
+### Proposed fix
+
+One-line guard:
+
+```cpp
+const long tid = getTeamId();
+if (tid < 0 || !turretsEnabled[tid]) {
+    targetWID = 0;
+}
+```
+
+Safer against further team-table changes than the raw index.
+
+---
+
+## 5. ABL `getCodeToken` heap-buffer-overflow (1 byte past code-segment end)
+
+**Status:** bug confirmed, fix straightforward.
+**First caught:** 2026-04-24, tier1 run, mission `mc2_10` on
+`mc2-win64-v0.1.1` (base game). ASan log:
+`tests/smoke/artifacts/2026-04-24T14-14-43/mc2_10.log`.
+**Also fires:** mission `mc2_24` same run (finding #6 below — same
+root cause, different call-chain and allocation size).
+
+### Crash signature
+
+ASan fires at `codeToken = (TokenCodeType)*codeSegmentPtr;`
+(ablexec.cpp:361) — READ of size 1 at exactly 1 byte past the end of
+a heap allocation made via the ABL code-segment allocator.
+
+```
+==980==ERROR: AddressSanitizer: heap-buffer-overflow
+READ of size 1 at 0x12b031b5f5df
+  getCodeToken                    mclib/ablexec.cpp:361
+  execStatement                   mclib/ablxstmt.cpp:218
+  execute                         mclib/ablexec.cpp:657
+  execDeclaredRoutineCall         mclib/ablxstmt.cpp:382
+  execRoutineCall                 mclib/ablxstmt.cpp:297
+  executeChild                    mclib/ablexec.cpp:700
+  ABLModule::execute              mclib/ablenv.cpp:1057
+  MechWarrior::checkAlarms        code/warrior.cpp:4838
+  ...
+
+0x12b031b5f5df is located 0 bytes after 31-byte region
+  [0x12b031b5f5c0,0x12b031b5f5df)
+allocated by thread T0:
+  gos_Malloc                     GameOS/gameos/gameos.cpp:268
+  UserHeap::Malloc               mclib/heap.cpp:698
+  ablCodeMallocCallback          code/ablmc2.cpp:7432
+  createCodeSegment              mclib/ablexec.cpp:267
+  routine                        mclib/ablrtn.cpp:1319
+```
+
+### Code
+
+```cpp
+// mclib/ablexec.cpp:264-276
+char* createCodeSegment (long& codeSegmentSize) {
+    codeSegmentSize = codeBufferPtr - codeBuffer + 1;           // ← final byte count
+    char* codeSegment = (char*)ABLCodeMallocCallback(codeSegmentSize);
+    if (!codeSegment)
+        ABL_Fatal(0, " ABL: Unable to AblCodeHeap->malloc code segment ");
+    for (long i = 0; i < codeSegmentSize; i++)
+        codeSegment[i] = codeBuffer[i];
+    codeBufferPtr = codeBuffer;
+    return(codeSegment);
+}
+
+// mclib/ablexec.cpp:359-363
+void getCodeToken (void) {
+    codeToken = (TokenCodeType)*codeSegmentPtr;  // ← read 1 byte past
+    codeSegmentPtr++;                             //    the allocated end
+}
+```
+
+### Root cause
+
+The allocation holds exactly `codeSegmentSize` bytes. The VM's
+`getCodeToken` / `execute` loop reads one byte past the end when it
+processes the final statement of a routine — the `++codeSegmentPtr`
+advances past the last valid opcode, then something reads the next
+byte before the end-of-segment check fires.
+
+On the normal build this is invisible: MSVC's default heap rounds
+small allocations to a 16-byte granule, so a 31-byte request gets
+32 bytes actual, and the 1-byte overread lands in slack. ASan's red
+zones after each allocation eliminate the slack, exposing the bug.
+
+Present in stock MC2 1.0 — has been latent since release.
+
+### Proposed fix
+
+Smallest: allocate `codeSegmentSize + 1` and write a sentinel (e.g.
+`HALT_OPCODE` or `0`) at the last byte:
+
+```cpp
+char* createCodeSegment (long& codeSegmentSize) {
+    codeSegmentSize = codeBufferPtr - codeBuffer + 1;
+    char* codeSegment = (char*)ABLCodeMallocCallback(codeSegmentSize + 1);  // +1 for sentinel
+    ...
+    codeSegment[codeSegmentSize] = 0;  // sentinel; decodes as end-of-routine
+    return(codeSegment);
+}
+```
+
+This keeps `codeSegmentSize` semantically "bytes of actual bytecode" (no
+caller needs updating) while the allocation is a byte longer so the
+VM's 1-byte overread never AVs.
+
+Alternative: audit `getCodeToken` call sites to find the one reading
+past the last valid opcode and add an explicit bounds check. Cleaner
+but more invasive.
+
+### Why this is valuable
+
+This is a bug in the base-game ABL VM that has been shipping in MC2
+since 2001. It has no visible symptom on normal builds because
+allocator slack absorbs the overread. ASan's red zones made it
+immediately reproducible on stock tier1 content.
+
+---
+
+## 6. Duplicate of finding #5 on `mc2_24` (same root cause, different trigger path)
+
+**Status:** bug confirmed, same fix as finding #5.
+**First caught:** 2026-04-24, tier1 run, mission `mc2_24`. ASan log:
+`tests/smoke/artifacts/2026-04-24T14-14-43/mc2_24.log`.
+
+### Differences from finding #5
+
+- Allocation size: **1533 bytes** (vs 31 bytes on mc2_10).
+- Call chain top: `MechWarrior::runBrain` (warrior.cpp:2160) rather
+  than `MechWarrior::checkAlarms`.
+- Same backtrace from `getCodeToken` down; same 1-byte-past-end pattern.
+
+Documented as a separate finding only because it's a separate mission
+/ allocation site; the fix is the same.
+
+### Implication
+
+The ABL code-segment off-by-one is not specific to any one module
+size or any one call site. The `+1` allocation-size fix at
+`createCodeSegment` addresses both in one change.
