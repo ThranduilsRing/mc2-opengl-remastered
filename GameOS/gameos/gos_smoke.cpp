@@ -7,6 +7,8 @@
 #include <cstring>
 #include <string>
 
+#include <sys/stat.h>
+
 #include <SDL2/SDL.h>
 
 namespace {
@@ -120,8 +122,27 @@ void emitFailSummary(const char*, const char*) {
 }
 
 bool resolveMissionPaths() {
-    // Filled in Task 4.
-    return false;
+    if (!g_state.enabled || g_state.mission.empty()) return false;
+
+    // Loose override path: data/missions/<stem>.fit
+    // We can only *confirm* the loose path by statting it. We cannot confirm
+    // FST membership without opening the FST index, so if the loose file is
+    // absent we emit source=fst_assumed. If the mission is truly missing,
+    // the downstream File::open path will fail and the runner will bucket
+    // it under missing_file / engine_reported_fail -- not our problem to
+    // pre-detect here.
+    std::string loose = "data/missions/" + g_state.mission + ".fit";
+    struct stat st{};
+    const char* source = "fst_assumed";
+    if (stat(loose.c_str(), &st) == 0 && (st.st_mode & _S_IFREG)) {
+        source = "loose";
+    }
+
+    std::fprintf(stdout,
+        "[SMOKE v1] event=mission_resolve stem=%s source=%s\n",
+        g_state.mission.c_str(), source);
+    std::fflush(stdout);
+    return true;
 }
 
 bool shouldQuit() {
