@@ -127,6 +127,8 @@ Three env-gated loggers, one always-on summary, one checked-in invariant script.
 - `MC2_TGL_POOL_TRACE=1` — per-frame `[TGL_POOL v1]` print when any pool returns NULL. Default off; the monotonic `[TGL_POOL v1] summary` line emits every 600 frames + on shutdown regardless.
 - `MC2_DESTROY_TRACE=1` — per-destruction `[DESTROY v1]` line with cull/lifecycle snapshot. Default off.
 - `MC2_GL_ERROR_DRAIN_SILENT=1` — suppresses `[GL_ERROR v1]` first-error prints. **Default is PRINT-ON** — a fresh operator sees GL errors with no setup. Drain loop always runs; only the print is gated.
+- `MC2_ASSET_SCALE_TRACE=1` — per-key `[ASSET_SCALE v1]` runtime lookup events (`unknown_asset`, subsequent `oob_blit`, 600-frame summary). Default off; startup banner, `manifest_missing`/`manifest_bad_line`, and **first** `oob_blit` per `(path, callerTag)` are always-on regardless. Counters surface via `AssetScale::dumpCountersTo(stdout)`. Spec: [docs/superpowers/specs/2026-04-23-asset-scale-aware-rendering-design.md](docs/superpowers/specs/2026-04-23-asset-scale-aware-rendering-design.md).
+- `MC2_ASSET_SCALE_SELFTEST=1` — runs synthetic 2×/4×/8×/1.5× golden tests at startup; prints `[ASSET_SCALE v1] event=selftest_pass|fail` per case, then continues normally. Default off.
 
 Startup banner `[INSTR v1] enabled: ...` appears at the very start of every log file. If it's missing, instrumentation wasn't wired up (or was wired too late).
 
@@ -138,3 +140,10 @@ sh scripts/check-destroy-invariant.sh
 ```
 
 Exit 0 = no literal `setExists(false)` outside `GameObject::destroy_instr`. Non-literal sites are flagged for manual review; the script does not fail on them.
+
+Before any commit that touches `code/mechicon.cpp` or UI icon atlas code:
+```bash
+sh scripts/check-asset-scale-callers.sh
+```
+
+Exit 0 = no raw source-atlas width arithmetic (blit stride) outside `AssetScale`. Prevents reintroducing the pattern that scrambles upscaled mech/vehicle icon rendering.
