@@ -93,13 +93,10 @@ void main()
         }
     }
 
-    // --- EXPERIMENT A: terrain seam expansion (NOT ACTIVE — uncomment to test) ---
-    // Restores the D3D7-era 1-2px vertex overlap that prevented rasterization seams.
-    // edgeMask limits expansion to edge/corner bary coords so interior tessellated
-    // points are not disturbed. Safe at tessLevel=1 (concrete) — all verts are edges.
-    // Risk: z-fighting or texture swim. Validate on concrete, rock, dirt before committing.
-    // To enable: remove the /* ... */ block markers below.
-    /*
+    // Terrain seam expansion: restores D3D7-era 1-2px vertex overlap that prevents
+    // rasterization gaps at patch boundaries. edgeMask limits expansion to edge/corner
+    // bary coords (interior tessellated points are undisturbed). Safe at tessLevel=1
+    // (concrete) — all verts are edges. Expands only XY; Z (elevation) unchanged.
     {
         float edgeDist = min(min(bary.x, bary.y), bary.z);
         float edgeMask = 1.0 - smoothstep(0.0, 0.08, edgeDist);
@@ -111,7 +108,6 @@ void main()
                 worldPos.xy += (seamDir / seamLen) * 1.5 * edgeMask;
         }
     }
-    */
 
     WorldNorm = worldNorm;
     WorldPos = worldPos;
