@@ -333,11 +333,10 @@ void main(void)
 
     // Per-material normal strength
     // Effective strength = normalBoost * detailNormalStrength.x (4.0 from C++)
-    // std: rock=21, grass=35, dirt(aerial)=6, concrete=11
-    // Per-material normal strengths. Rock/grass bumped over original (0.6/1.2/0.8)
-    // so detail reads. Clamp widened to ±0.75 below to give this level of boost
-    // headroom before saturating.
-    const PREC vec4 normalBoost = vec4(1.3, 1.5, 1.1, 2.5);
+    // Rock 1.3→0.9, grass 1.5→1.1: over-boost was producing grain-like noise at RTS zoom.
+    // Dirt 1.1 is the "looks fantastic" reference — do not change it.
+    // Concrete 2.5 unchanged — flat surfaces benefit from strong normal definition.
+    const PREC vec4 normalBoost = vec4(0.9, 1.1, 1.1, 2.5);
 
     // Screen-space derivative AA — fade normals when detail goes sub-pixel
     PREC float fwRock     = clamp(1.0 - (length(fwidth(uvRock))     - 0.5) * 2.0, 0.0, 1.0);
@@ -405,9 +404,11 @@ void main(void)
                            + tintConcrete * matWeights.w
                            + tintSnow * snowWeight;
 
-    // Tint strength lowered so authored colormap breaks up the material tint's flat-blob
-    // look. Snow pixels get full tint so the cool white reads cleanly.
-    PREC float tintStrength = mix(0.45, 0.85, snowWeight);
+    // Luminance-adaptive tint: dark colormap pixels get far less tint pull so they
+    // don't lift to mid-grey. Snow always gets full tint (cool white must pop).
+    PREC float colLum = dot(texColor.rgb, kLumaWeights);
+    PREC float tintBase = mix(0.18, 0.50, smoothstep(0.1, 0.6, colLum));
+    PREC float tintStrength = mix(tintBase, 0.85, snowWeight);
     PREC vec3 baseColor = mix(texColor.rgb, materialTint, tintStrength);
     {
         // Preserve the authored colormap tone for runway/cement.
