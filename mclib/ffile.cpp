@@ -10,6 +10,14 @@
 // Include files
 #ifndef FFILE_H
 #include"ffile.h"
+#include "gos_crashbundle.h"
+// Format, print, and feed the crash-bundle ring in one call.
+#define CB_PRINTF(fmt, ...) do { \
+    char _cbbuf[512]; \
+    snprintf(_cbbuf, sizeof(_cbbuf), fmt, ##__VA_ARGS__); \
+    puts(_cbbuf); fflush(stdout); \
+    crashbundle_append(_cbbuf); \
+} while(0)
 #endif
 
 #ifndef FASTFILE_H
@@ -535,22 +543,22 @@ long FastFile::readFast (DWORD fastFileHandle, void *bfr, DWORD size)
 				if (files[fastFileHandle].pfe->size == files[fastFileHandle].pfe->realSize)
 				{
 					// Raw-stored entry: copy verbatim.
-					if (s_ffTrace) { printf("[FF] RAW %s size=%u real=%u\n", files[fastFileHandle].pfe->name, files[fastFileHandle].pfe->size, files[fastFileHandle].pfe->realSize); fflush(stdout); }
+					if (s_ffTrace) { CB_PRINTF("[FF] RAW %s size=%u real=%u", files[fastFileHandle].pfe->name, files[fastFileHandle].pfe->size, files[fastFileHandle].pfe->realSize); }
 					memcpy(bfr, LZPacketBuffer, files[fastFileHandle].pfe->size);
 					decompLength = files[fastFileHandle].pfe->realSize;
 				}
 				else if (useLZCompress)
 				{
-					if (s_ffTrace) { printf("[FF] LZSS %s size=%u real=%u\n", files[fastFileHandle].pfe->name, files[fastFileHandle].pfe->size, files[fastFileHandle].pfe->realSize); fflush(stdout); }
+					if (s_ffTrace) { CB_PRINTF("[FF] LZSS %s size=%u real=%u", files[fastFileHandle].pfe->name, files[fastFileHandle].pfe->size, files[fastFileHandle].pfe->realSize); }
 					decompLength = LZDecomp((MemoryPtr)bfr,LZPacketBuffer,files[fastFileHandle].pfe->size,files[fastFileHandle].pfe->realSize);
 				}
 				else
 				{
-					if (s_ffTrace) { printf("[FF] ZLIB %s size=%u real=%u firstbytes=%02x%02x%02x%02x\n", files[fastFileHandle].pfe->name, files[fastFileHandle].pfe->size, files[fastFileHandle].pfe->realSize, (unsigned char)LZPacketBuffer[0], (unsigned char)LZPacketBuffer[1], (unsigned char)LZPacketBuffer[2], (unsigned char)LZPacketBuffer[3]); fflush(stdout); }
+					if (s_ffTrace) { CB_PRINTF("[FF] ZLIB %s size=%u real=%u firstbytes=%02x%02x%02x%02x", files[fastFileHandle].pfe->name, files[fastFileHandle].pfe->size, files[fastFileHandle].pfe->realSize, (unsigned char)LZPacketBuffer[0], (unsigned char)LZPacketBuffer[1], (unsigned char)LZPacketBuffer[2], (unsigned char)LZPacketBuffer[3]); }
 					decompLength = files[fastFileHandle].pfe->realSize;
 					long error = uncompress((MemoryPtr)bfr,&decompLength,LZPacketBuffer,files[fastFileHandle].pfe->size);
 					if (error != Z_OK) {
-						if (s_ffTrace) { printf("[FF] ZLIB FAILED error=%ld %s\n", error, files[fastFileHandle].pfe->name); fflush(stdout); }
+						if (s_ffTrace) { CB_PRINTF("[FF] ZLIB FAILED error=%ld %s", error, files[fastFileHandle].pfe->name); }
 						STOP(("Error %d UnCompressing File %s from FastFile %s",error,files[fastFileHandle].pfe->name,fileName));
 					}
 				}

@@ -10,6 +10,7 @@
 
 #ifndef MCLIB_H
 #include"mclib.h"
+#include "gos_crashbundle.h"
 #endif
 
 #ifndef GAMEOBJ_H
@@ -161,10 +162,14 @@ void GameObject::destroy_instr (const char* reason, const char* file, int line) 
 	// 2. Double-destroy: log-and-return without re-calling setExists.
 	if (snap_exists_was == 0) {
 		if (s_destroyTrace) {
-			printf("[DESTROY v1] frame=%u obj=%p kind=%s reason=%s file=%s line=%d exists_was=0 in_view=%d can_be_seen=%d block_active=%d frames_since_active=%d last_update_ret=%d\n",
+			char _cbbuf[512];
+			snprintf(_cbbuf, sizeof(_cbbuf),
+				"[DESTROY v1] frame=%u obj=%p kind=%s reason=%s file=%s line=%d exists_was=0 in_view=%d can_be_seen=%d block_active=%d frames_since_active=%d last_update_ret=%d",
 				g_mc2FrameCounter, (void*)this, getObjectClassName(snap_kind), reason,
 				file, line, snap_in_view, snap_can_be_seen, snap_block_active,
 				snap_frames_inactive, (int)snap_last_update_ret);
+			puts(_cbbuf);
+			crashbundle_append(_cbbuf);
 			fflush(stdout);
 		}
 		return;
@@ -175,10 +180,14 @@ void GameObject::destroy_instr (const char* reason, const char* file, int line) 
 
 	// 4. Env-gated log line.
 	if (s_destroyTrace) {
-		printf("[DESTROY v1] frame=%u obj=%p kind=%s reason=%s file=%s line=%d exists_was=1 in_view=%d can_be_seen=%d block_active=%d frames_since_active=%d last_update_ret=%d\n",
+		char _cbbuf[512];
+		snprintf(_cbbuf, sizeof(_cbbuf),
+			"[DESTROY v1] frame=%u obj=%p kind=%s reason=%s file=%s line=%d exists_was=1 in_view=%d can_be_seen=%d block_active=%d frames_since_active=%d last_update_ret=%d",
 			g_mc2FrameCounter, (void*)this, getObjectClassName(snap_kind), reason,
 			file, line, snap_in_view, snap_can_be_seen, snap_block_active,
 			snap_frames_inactive, (int)snap_last_update_ret);
+		puts(_cbbuf);
+		crashbundle_append(_cbbuf);
 		fflush(stdout);
 	}
 }

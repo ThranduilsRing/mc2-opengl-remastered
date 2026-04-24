@@ -10,6 +10,7 @@
 
 #ifndef TGL_H
 #include"tgl.h"
+#include "gos_crashbundle.h"
 #endif
 
 #ifndef CLIP_H
@@ -3402,7 +3403,9 @@ namespace {
 	inline void emitPerFrameLine (PoolT* p, const char* poolLabel)
 	{
 		if (!p || p->nullCountThisFrame == 0) return;
-		printf("[TGL_POOL v1] frame=%u pool=%s nulls=%u first_caller=%s shape=%p req=%u high_water=%u/%u mono_total=%llu\n",
+		char _cbbuf[512];
+		snprintf(_cbbuf, sizeof(_cbbuf),
+			"[TGL_POOL v1] frame=%u pool=%s nulls=%u first_caller=%s shape=%p req=%u high_water=%u/%u mono_total=%llu",
 			(unsigned)g_mc2FrameCounter,
 			poolLabel,
 			(unsigned)p->nullCountThisFrame,
@@ -3412,6 +3415,8 @@ namespace {
 			(unsigned)p->firstNullSnapshot.numUsed_at_failure,
 			(unsigned)p->firstNullSnapshot.totalCapacity,
 			(unsigned long long)p->nullCountMonotonic);
+		puts(_cbbuf);
+		crashbundle_append(_cbbuf);
 	}
 	template<typename PoolT>
 	inline unsigned long long monoOf (PoolT* p) { return p ? (unsigned long long)p->nullCountMonotonic : 0ULL; }
@@ -3446,8 +3451,12 @@ void drainTglPoolStats (void)
 		const unsigned long long sM = monoOf(shadowPool);
 		const unsigned long long tM = monoOf(trianglePool);
 		if ((vM | cM | fM | sM | tM) != 0ULL) {
-			printf("[TGL_POOL v1] summary mono_total={vertex:%llu, color:%llu, face:%llu, shadow:%llu, triangle:%llu} since=process_start\n",
+			char _cbbuf[384];
+			snprintf(_cbbuf, sizeof(_cbbuf),
+				"[TGL_POOL v1] summary mono_total={vertex:%llu, color:%llu, face:%llu, shadow:%llu, triangle:%llu} since=process_start",
 				vM, cM, fM, sM, tM);
+			puts(_cbbuf);
+			crashbundle_append(_cbbuf);
 			fflush(stdout);
 		}
 	}
@@ -3462,12 +3471,18 @@ void drainTglPoolStats (void)
 
 void drainTglPoolStatsOnShutdown (void)
 {
-	printf("[TGL_POOL v1] summary mono_total={vertex:%llu, color:%llu, face:%llu, shadow:%llu, triangle:%llu} since=process_start (shutdown)\n",
-		monoOf(vertexPool),
-		monoOf(colorPool),
-		monoOf(facePool),
-		monoOf(shadowPool),
-		monoOf(trianglePool));
+	{
+		char _cbbuf[384];
+		snprintf(_cbbuf, sizeof(_cbbuf),
+			"[TGL_POOL v1] summary mono_total={vertex:%llu, color:%llu, face:%llu, shadow:%llu, triangle:%llu} since=process_start (shutdown)",
+			monoOf(vertexPool),
+			monoOf(colorPool),
+			monoOf(facePool),
+			monoOf(shadowPool),
+			monoOf(trianglePool));
+		puts(_cbbuf);
+		crashbundle_append(_cbbuf);
+	}
 	fflush(stdout);
 }
 

@@ -2,6 +2,7 @@
 // FFmpeg-backed video decoder — sole translation unit with FFmpeg symbols.
 //=============================================================================
 #include "mc2video.h"
+#include "gos_crashbundle.h"
 
 #include <cstdio>
 #include <cstring>
@@ -40,11 +41,17 @@ bool g_ffmpegAvailable = true;
 
 static const bool s_videoTrace = (getenv("MC2_DEBUG_VIDEO") != nullptr);
 #define VIDEO_TRACE(fmt, ...) do { \
-    if (s_videoTrace) { printf("[VIDEO] " fmt "\n", ##__VA_ARGS__); fflush(stdout); } \
+    if (s_videoTrace) { \
+        char _cbbuf[512]; \
+        snprintf(_cbbuf, sizeof(_cbbuf), "[VIDEO] " fmt, ##__VA_ARGS__); \
+        puts(_cbbuf); fflush(stdout); crashbundle_append(_cbbuf); \
+    } \
 } while (0)
 
 #define VIDEO_LOG(fmt, ...) do { \
-    printf("[VIDEO] " fmt "\n", ##__VA_ARGS__); fflush(stdout); \
+    char _cbbuf[512]; \
+    snprintf(_cbbuf, sizeof(_cbbuf), "[VIDEO] " fmt, ##__VA_ARGS__); \
+    puts(_cbbuf); fflush(stdout); crashbundle_append(_cbbuf); \
 } while (0)
 
 #if defined(_WIN32)

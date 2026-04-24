@@ -4,6 +4,7 @@
 //===========================================================================//
 
 #include"missionbriefingscreen.h"
+#include "gos_crashbundle.h"
 #include"mechbayscreen.h"
 #include"logisticsdata.h"
 #include"inifile.h"
@@ -312,8 +313,13 @@ long	MissionBriefingScreen::getMissionTGA( const char* missionName )
 			// textureFromMemory with width=0, crashing at the next get_gosTextureHandle.
 			if (size < (long)sizeof(TGAFileHeader))
 			{
-				printf("[MissionBriefing] skipping thumbnail for '%s': packet3 size=%ld < TGA header\n",
-					missionName, size); fflush(stdout);
+				{
+					char _cbbuf[256];
+					snprintf(_cbbuf, sizeof(_cbbuf),
+						"[MISSION] skipping thumbnail for '%s': packet3 size=%ld < TGA header",
+						missionName, size);
+					puts(_cbbuf); fflush(stdout); crashbundle_append(_cbbuf);
+				}
 				return 0;
 			}
 
@@ -327,8 +333,13 @@ long	MissionBriefingScreen::getMissionTGA( const char* missionName )
 
 			if (bmpWidth <= 0 || bmpHeight <= 0)
 			{
-				printf("[MissionBriefing] skipping thumbnail for '%s': invalid dims %ldx%ld\n",
-					missionName, bmpWidth, bmpHeight); fflush(stdout);
+				{
+					char _cbbuf[256];
+					snprintf(_cbbuf, sizeof(_cbbuf),
+						"[MISSION] skipping thumbnail for '%s': invalid dims %ldx%ld",
+						missionName, bmpWidth, bmpHeight);
+					puts(_cbbuf); fflush(stdout); crashbundle_append(_cbbuf);
+				}
 				delete[] mem;
 				return 0;
 			}

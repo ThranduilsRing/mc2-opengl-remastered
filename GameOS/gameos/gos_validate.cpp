@@ -1,5 +1,6 @@
 // gos_validate.cpp - Validation mode: auto-run, telemetry, screenshot, JSON log
 #include "gos_validate.h"
+#include "gos_crashbundle.h"
 #include <cstdio>
 #include <cstring>
 #include <cstdlib>
@@ -243,18 +244,28 @@ void drainGLErrors(const char* pass) {
         if (shouldPrint) {
             // If we're exiting a suppression window, emit a summary line first.
             if (st.inSuppression && st.suppressedCount > 0) {
-                printf("[GL_ERROR v1] pass=%s suppressed elapsed_frames=%u count_in_window=%u\n",
+                char _cbbuf[256];
+                snprintf(_cbbuf, sizeof(_cbbuf),
+                    "[GL_ERROR v1] pass=%s suppressed elapsed_frames=%u count_in_window=%u",
                     st.name,
                     (unsigned)(g_mc2FrameCounter - st.lastPrintFrame),
                     (unsigned)st.suppressedCount);
+                puts(_cbbuf);
+                crashbundle_append(_cbbuf);
                 fflush(stdout);
             }
             st.inSuppression   = false;
             st.suppressedCount = 0;
 
-            printf("[GL_ERROR v1] frame=%u pass=%s code=%s(0x%04X) mono_count=%llu\n",
-                g_mc2FrameCounter, st.name, glErrorName(err), (unsigned)err,
-                (unsigned long long)st.monoCount);
+            {
+                char _cbbuf[256];
+                snprintf(_cbbuf, sizeof(_cbbuf),
+                    "[GL_ERROR v1] frame=%u pass=%s code=%s(0x%04X) mono_count=%llu",
+                    g_mc2FrameCounter, st.name, glErrorName(err), (unsigned)err,
+                    (unsigned long long)st.monoCount);
+                puts(_cbbuf);
+                crashbundle_append(_cbbuf);
+            }
             fflush(stdout);
             st.lastPrintFrame = g_mc2FrameCounter;
         } else if (!s_glErrorDrainSilent && errorsThisFrame == 1) {

@@ -13,6 +13,7 @@
 
 #ifndef ABLGEN_H
 #include"ablgen.h"
+#include "gos_crashbundle.h"
 #endif
 
 #ifndef ABLERR_H
@@ -121,8 +122,9 @@ void execStatement (void) {
 			if (!idPtr) {
 				static const bool s_ablTrace = (getenv("MC2_ABL_TRACE") != nullptr);
 				if (s_ablTrace) {
-					printf("[ABL_EXEC] NULL idPtr at TKN_IDENTIFIER; skipping statement\n");
-					fflush(stdout);
+					const char* _cbmsg = "[ABL_EXEC] NULL idPtr at TKN_IDENTIFIER; skipping statement";
+					puts(_cbmsg); fflush(stdout);
+					crashbundle_append(_cbmsg);
 				}
 				break;
 			}

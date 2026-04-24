@@ -12,6 +12,12 @@
 // Include Files
 #ifndef MCLIB_H
 #include"mclib.h"
+#include "gos_crashbundle.h"
+#define CB_PRINTF(fmt, ...) do { \
+    char _cbbuf[256]; \
+    snprintf(_cbbuf, sizeof(_cbbuf), fmt, ##__VA_ARGS__); \
+    puts(_cbbuf); fflush(stdout); crashbundle_append(_cbbuf); \
+} while (0)
 #endif
 
 #ifndef MISSION_H
@@ -338,22 +344,22 @@ long Mission::update (void)
 				if (userInput->getKeyDown(KEY_F6)) {
 					g_tessLevel = min(g_tessLevel + 1.0f, 64.0f);
 					gos_SetTerrainTessParams(g_tessLevel, g_tessDistNear, g_tessDistFar);
-					printf("[TESS-KEY] F6: level=%.0f\n", g_tessLevel); fflush(stdout);
+					CB_PRINTF("[TESS-KEY] F6: level=%.0f", g_tessLevel);
 				}
 				if (userInput->getKeyDown(KEY_F7)) {
 					g_tessLevel = max(g_tessLevel - 1.0f, 1.0f);
 					gos_SetTerrainTessParams(g_tessLevel, g_tessDistNear, g_tessDistFar);
-					printf("[TESS-KEY] F7: level=%.0f\n", g_tessLevel); fflush(stdout);
+					CB_PRINTF("[TESS-KEY] F7: level=%.0f", g_tessLevel);
 				}
 				if (userInput->getKeyDown(KEY_F8)) {
 					g_phongAlpha = min(g_phongAlpha + 0.1f, 1.0f);
 					gos_SetTerrainPhongAlpha(g_phongAlpha);
-					printf("[TESS-KEY] F8: phong=%.1f\n", g_phongAlpha); fflush(stdout);
+					CB_PRINTF("[TESS-KEY] F8: phong=%.1f", g_phongAlpha);
 				}
 				if (userInput->getKeyDown(KEY_F10)) {
 					g_phongAlpha = max(g_phongAlpha - 0.1f, 0.0f);
 					gos_SetTerrainPhongAlpha(g_phongAlpha);
-					printf("[TESS-KEY] F10: phong=%.1f\n", g_phongAlpha); fflush(stdout);
+					CB_PRINTF("[TESS-KEY] F10: phong=%.1f", g_phongAlpha);
 				}
 				if (userInput->getKeyDown(KEY_F11)) {
 					g_displaceScale += 0.5f;
@@ -373,12 +379,12 @@ long Mission::update (void)
 				if (gos_GetKeyStatus(KEY_LBRACKET) == KEY_PRESSED) {
 					float s = max(gos_GetTerrainShadowSoftness() - 0.1f, 0.1f);
 					gos_SetTerrainShadowSoftness(s);
-					printf("[SHADOW-KEY] [: softness=%.1f\n", s); fflush(stdout);
+					CB_PRINTF("[SHADOW-KEY] [: softness=%.1f", s);
 				}
 				if (gos_GetKeyStatus(KEY_RBRACKET) == KEY_PRESSED) {
 					float s = min(gos_GetTerrainShadowSoftness() + 0.1f, 10.0f);
 					gos_SetTerrainShadowSoftness(s);
-					printf("[SHADOW-KEY] ]: softness=%.1f\n", s); fflush(stdout);
+					CB_PRINTF("[SHADOW-KEY] ]: softness=%.1f", s);
 				}
 			}
 			#endif

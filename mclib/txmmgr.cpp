@@ -14,6 +14,7 @@
 
 #ifndef TXMMGR_H
 #include"txmmgr.h"
+#include "gos_crashbundle.h"
 #endif
 
 #ifndef TGAINFO_H
@@ -2310,9 +2311,14 @@ DWORD MC_TextureNode::get_gosTextureHandle (void)	//If texture is not in VidRAM,
 	   
 		if (width == 0)
 		{
-			printf("[TXM] zero-width texture node: nodeName=%s handle=%u lzCompSize=%u\n",
-				nodeName ? nodeName : "<null>",
-				(unsigned)gosTextureHandle, (unsigned)lzCompSize); fflush(stdout);
+			{
+				char _cbbuf[256];
+				snprintf(_cbbuf, sizeof(_cbbuf),
+					"[TXM] zero-width texture node: nodeName=%s handle=%u lzCompSize=%u",
+					nodeName ? nodeName : "<null>",
+					(unsigned)gosTextureHandle, (unsigned)lzCompSize);
+				puts(_cbbuf); fflush(stdout); crashbundle_append(_cbbuf);
+			}
 			PAUSE(("txmmgr: Textur has zero width!"));
 			return 0;		//These faces have no texture!!
 		}

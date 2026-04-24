@@ -588,8 +588,12 @@ int main(int argc, char** argv)
             "UNKNOWN"
 #endif
             ;
-        printf("[INSTR v1] enabled: tgl_pool=%d destroy=%d gl_error_print=%d build=%s\n",
+        char _cbbuf[256];
+        snprintf(_cbbuf, sizeof(_cbbuf),
+            "[INSTR v1] enabled: tgl_pool=%d destroy=%d gl_error_print=%d build=%s",
             tgl ? 1 : 0, destr ? 1 : 0, glprint ? 1 : 0, build);
+        puts(_cbbuf);
+        crashbundle_append(_cbbuf);
     }
 
     //signal(SIGTRAP, SIG_IGN);
@@ -782,9 +786,13 @@ int main(int argc, char** argv)
                 uint64_t now_ms = (uint64_t)(SDL_GetTicks64());
                 if (s_hb_last_ms == 0) s_hb_last_ms = now_ms;
                 if (now_ms - s_hb_last_ms >= 1000) {
-                    fprintf(stderr, "[HEARTBEAT] frames=%d elapsed_ms=%llu fps=%.1f\n",
-                            s_hb_frame, (unsigned long long)(now_ms - s_hb_last_ms),
-                            (double)s_hb_frame * 1000.0 / (double)(now_ms - s_hb_last_ms));
+                    char _cbbuf[192];
+                    snprintf(_cbbuf, sizeof(_cbbuf),
+                        "[HEARTBEAT] frames=%d elapsed_ms=%llu fps=%.1f",
+                        s_hb_frame, (unsigned long long)(now_ms - s_hb_last_ms),
+                        (double)s_hb_frame * 1000.0 / (double)(now_ms - s_hb_last_ms));
+                    fprintf(stderr, "%s\n", _cbbuf);
+                    crashbundle_append(_cbbuf);
                     fflush(stderr);
                     s_hb_frame = 0;
                     s_hb_last_ms = now_ms;
