@@ -30,7 +30,7 @@ const State& state();
 void installAtexitSummary();
 
 // Lifecycle milestones -- emit [TIMING v1] event=<name> elapsed_ms=<n>.
-// elapsed measured from SmokeMode state().startupT0 (set in parseArgs).
+// elapsed measured from the performance counter captured in parseArgs.
 void emitTiming(const char* eventName);
 
 // Per-frame sampler. Call once per rendered frame with frame duration in ms.
