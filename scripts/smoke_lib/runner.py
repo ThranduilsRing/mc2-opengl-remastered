@@ -7,15 +7,19 @@ import queue
 import subprocess
 import threading
 import time
-from dataclasses import dataclass, field
+from dataclasses import dataclass
 from typing import List, Optional
 
 from .gates import GateConfig, Verdict, evaluate
 from .logparse import LogSummary, parse_log
 
 
-def _reader_thread(stream, q: "queue.Queue[str | None]") -> None:
-    """Read lines from stream and push to queue; sentinel None on EOF.
+def _reader_thread(stream, q: "queue.Queue[tuple[str, float] | tuple[None, float]]",
+                   t0: float) -> None:
+    """Read lines from stream and push (line, stamp) tuples to queue; sentinel (None, 0.0) on EOF.
+
+    Stamping at read time rather than dequeue time eliminates the wallclock
+    bias introduced by queue backpressure (up to 100ms per line under load).
 
     Runs in a daemon thread so readline() blocking on Windows pipes does not
     hold up the main timeout loop. The OS will clean up the thread when the
@@ -23,9 +27,9 @@ def _reader_thread(stream, q: "queue.Queue[str | None]") -> None:
     """
     try:
         for line in stream:
-            q.put(line)
+            q.put((line.rstrip("\n"), time.monotonic() - t0))
     finally:
-        q.put(None)  # EOF sentinel
+        q.put((None, 0.0))  # EOF sentinel
 
 
 @dataclass
@@ -59,8 +63,15 @@ def _build_argv(base_exe: List[str], cfg: RunConfig) -> List[str]:
 
 
 def run_one(cfg: RunConfig) -> RunResult:
-    # If exe already contains `--mission` (fake engines may embed it), don't re-append.
-    argv = cfg.exe if any("--mission" in a for a in cfg.exe) else _build_argv(cfg.exe, cfg)
+    # Test fixtures (fake_mc2_*.py) don't parse argv; if the caller already
+    # embedded ANY smoke flag, assume they've embedded all of them and pass
+    # cfg.exe through verbatim. Production callers (the runner CLI) always
+    # use _build_argv which appends all three.
+    has_embedded = any(
+        a.startswith("--mission") or a.startswith("--profile") or a.startswith("--duration")
+        for a in cfg.exe
+    )
+    argv = list(cfg.exe) if has_embedded else _build_argv(cfg.exe, cfg)
 
     env = os.environ.copy()
     env["MC2_SMOKE_MODE"] = "1"
@@ -71,6 +82,8 @@ def run_one(cfg: RunConfig) -> RunResult:
     env.update(cfg.env_extra)
 
     cap = cfg.duration + cfg.grace_s
+    # t0 must be captured BEFORE spawning the reader thread so both the reader
+    # and the main loop share the same monotonic reference point.
     t0 = time.monotonic()
     proc = subprocess.Popen(argv, stdout=subprocess.PIPE, stderr=subprocess.STDOUT,
                             env=env, text=True, bufsize=1)
@@ -79,6 +92,10 @@ def run_one(cfg: RunConfig) -> RunResult:
     # runner walltime rather than engine-emitted elapsed_ms (which is mission-
     # relative and drifts during load pauses).
     #
+    # The reader thread stamps each line at read time so per-line wallclocks
+    # reflect when the line was received, not when the main loop dequeued it.
+    # This eliminates up to 100ms of bias per line under queue backpressure.
+    #
     # On Windows, readline() on a pipe blocks until data arrives even after the
     # process is killed — the pipe handle stays open until the OS cleans it up.
     # To allow the walltime cap to fire promptly we push reads onto a background
@@ -86,9 +103,9 @@ def run_one(cfg: RunConfig) -> RunResult:
     lines: list[str] = []
     line_wallclocks: list[float] = []
     killed = False
-    line_q: queue.Queue[str | None] = queue.Queue()
+    line_q: queue.Queue[tuple] = queue.Queue()
     reader = threading.Thread(target=_reader_thread,
-                              args=(proc.stdout, line_q), daemon=True)
+                              args=(proc.stdout, line_q, t0), daemon=True)
     reader.start()
     try:
         while True:
@@ -97,16 +114,15 @@ def run_one(cfg: RunConfig) -> RunResult:
                 killed = True
                 break
             try:
-                item = line_q.get(timeout=0.1)
+                item, stamp = line_q.get(timeout=0.1)
             except queue.Empty:
                 # No data yet; loop back to re-check the walltime cap.
                 continue
             if item is None:
                 # EOF sentinel from reader thread — process has exited.
                 break
-            line = item
-            lines.append(line.rstrip("\n"))
-            line_wallclocks.append(time.monotonic() - t0)
+            lines.append(item)
+            line_wallclocks.append(stamp)
     finally:
         try:
             proc.wait(timeout=5)
