@@ -238,6 +238,17 @@ RenderWindow* create_window(const char* pwinname, int width, int height)
         }
 
         SDL_ShowWindow(window);
+
+        // Hide the OS cursor. MC2 renders its own in-game cursor sprite, so
+        // the default arrow would otherwise double up on top of it.
+        SDL_ShowCursor(SDL_DISABLE);
+
+        // Confine the mouse to the window. Without this, on multi-monitor
+        // setups the cursor can escape the borderless window horizontally
+        // (especially easy with 3-monitor layouts), briefly leaving the
+        // game feeling "windowed even though it isn't." SDL scopes the
+        // mouse-grab to window focus, so Alt-Tab still behaves naturally.
+        SDL_SetWindowMouseGrab(window, SDL_TRUE);
     }
 
     RenderWindow* rw = new RenderWindow();
