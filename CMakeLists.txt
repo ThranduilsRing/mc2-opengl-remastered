@@ -48,17 +48,78 @@ if(MSVC)
     #set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} /MP -DWINDOWS_IGNORE_PACKING_MISMATCH")
 endif()
 
+# ---------------------------------------------------------------------------
+# MC2_ASAN: parallel dev build with MSVC AddressSanitizer.
+#
+# Usage:
+#   cmake -S . -B build64-asan -A x64 -DMC2_ASAN=ON
+#   cmake --build build64-asan --config RelWithDebInfo
+#
+# What this does:
+#   * Adds /fsanitize=address and disables flags that are incompatible with
+#     ASan: /RTC1 (runtime checks), /INCREMENTAL (incremental link), and
+#     /MP (parallel compile, known to tickle ASan linker state on 17.x).
+#   * Disables Tracy. Tracy's allocator hooks race with ASan's interceptors
+#     and you cannot profile with ASan anyway.
+#   * Copies clang_rt.asan_dynamic-x86_64.dll next to mc2.exe at POST_BUILD.
+#     The exe will not launch without it.
+#
+# Run with:
+#   set ASAN_OPTIONS=detect_leaks=0:abort_on_error=1:halt_on_error=0:print_stacktrace=1:symbolize=1
+#   mc2.exe -mission mc2_01
+#
+# Notes:
+#   * gos_Malloc/gos_Free are already plain malloc/free (see GameOS/gameos/
+#     gameos.cpp:245). So ASan sees every new/delete with zero bypass work.
+#   * The only custom slab remaining is TG_GOSVertexPool (mclib/tgl.cpp).
+#     Left alone for MVP; annotate with __asan_poison_memory_region later
+#     if ASan stays quiet but pool-exhaustion events keep firing.
+# ---------------------------------------------------------------------------
+option(MC2_ASAN "Build with MSVC AddressSanitizer (parallel dev build)" OFF)
+
+if(MC2_ASAN)
+    if(NOT MSVC)
+        message(FATAL_ERROR "MC2_ASAN is only wired for MSVC. Use -fsanitize=address manually on other toolchains.")
+    endif()
+    message(STATUS "MC2_ASAN=ON -- building with /fsanitize=address; Tracy disabled")
+    add_definitions(-DMC2_ASAN)
+
+    # Strip /MP from the global CXX flags (incompatible with ASan on some 17.x).
+    string(REPLACE "/MP" "" CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS}")
+    string(REPLACE "/MP" "" CMAKE_C_FLAGS   "${CMAKE_C_FLAGS}")
+    string(REPLACE "/MP" "" CMAKE_CXX_FLAGS_DEBUG "${CMAKE_CXX_FLAGS_DEBUG}")
+
+    # Strip /RTC1 from the default Debug flag sets (ASan refuses to link with it).
+    foreach(_cfg CXX_FLAGS_DEBUG C_FLAGS_DEBUG CXX_FLAGS_RELWITHDEBINFO C_FLAGS_RELWITHDEBINFO)
+        string(REGEX REPLACE "/RTC[1csu]+" "" CMAKE_${_cfg} "${CMAKE_${_cfg}}")
+    endforeach()
+
+    # Add the sanitizer flag globally.
+    set(CMAKE_C_FLAGS   "${CMAKE_C_FLAGS}   /fsanitize=address")
+    set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} /fsanitize=address")
+
+    # Disable incremental linking for all exe/shared targets.
+    foreach(_cfg "" "_DEBUG" "_RELWITHDEBINFO" "_RELEASE" "_MINSIZEREL")
+        string(REPLACE "/INCREMENTAL" "/INCREMENTAL:NO"
+               CMAKE_EXE_LINKER_FLAGS${_cfg} "${CMAKE_EXE_LINKER_FLAGS${_cfg}}")
+        string(REPLACE "/INCREMENTAL" "/INCREMENTAL:NO"
+               CMAKE_SHARED_LINKER_FLAGS${_cfg} "${CMAKE_SHARED_LINKER_FLAGS${_cfg}}")
+    endforeach()
+endif()
 
 add_definitions(-DUSE_ASSEMBLER_CODE=0)
 add_definitions(-DLINUX_BUILD)
-# Tracy profiler (always-on, ~1ns overhead when not connected)
-add_definitions(-DTRACY_ENABLE)
-# On-demand mode: only enqueue events while a profiler is actively connected.
-# Without this, the client's in-process event queue grows unbounded until a profiler
-# attaches, which looks like a memory leak that "stops" when Tracy is launched.
-add_definitions(-DTRACY_ON_DEMAND)
-# Disable ETW kernel sampling (requires elevated privileges, not needed for zone profiling)
-add_definitions(-DTRACY_NO_SYSTEM_TRACING)
+
+if(NOT MC2_ASAN)
+    # Tracy profiler (always-on, ~1ns overhead when not connected)
+    add_definitions(-DTRACY_ENABLE)
+    # On-demand mode: only enqueue events while a profiler is actively connected.
+    # Without this, the client's in-process event queue grows unbounded until a profiler
+    # attaches, which looks like a memory leak that "stops" when Tracy is launched.
+    add_definitions(-DTRACY_ON_DEMAND)
+    # Disable ETW kernel sampling (requires elevated privileges, not needed for zone profiling)
+    add_definitions(-DTRACY_NO_SYSTEM_TRACING)
+endif()
 
 find_package(SDL2 REQUIRED CONFIG REQUIRED COMPONENTS SDL2)
 find_package(SDL2 REQUIRED CONFIG REQUIRED COMPONENTS SDL2main)
@@ -238,6 +299,59 @@ foreach(_dll ${FFmpegLGPL_RUNTIME_DLLS})
                 "${_dll}" "$<TARGET_FILE_DIR:mc2>")
 endforeach()
 install(FILES ${FFmpegLGPL_RUNTIME_DLLS} DESTINATION ".")
+
+# ASan runtime DLL must sit next to mc2.exe. Without it the exe fails to
+# launch with status 0xC0000139 (entry point not found). The DLL ships with
+# the MSVC toolset, so we resolve it relative to the selected compiler
+# rather than hardcoding a path.
+#
+# Resolution strategy:
+#   1. Arch suffix from CMAKE_SIZEOF_VOID_P (x86_64 / i386). No ARM support
+#      — this project is x64-only per the top-level 64-bit check.
+#   2. Primary location: same directory as cl.exe (Hostx64/x64 for a 64-bit
+#      VS generator). This is where current MSVC puts the ASan runtime.
+#   3. Fallback: walk up to the VCToolsInstallDir and try the Redist tree,
+#      which is where older installers stage the runtime.
+#   4. FATAL_ERROR with the attempted paths if neither exists.
+if(MC2_ASAN)
+    if(CMAKE_SIZEOF_VOID_P EQUAL 8)
+        set(_asan_arch "x86_64")
+    elseif(CMAKE_SIZEOF_VOID_P EQUAL 4)
+        set(_asan_arch "i386")
+    else()
+        message(FATAL_ERROR "MC2_ASAN: unsupported pointer size ${CMAKE_SIZEOF_VOID_P}")
+    endif()
+    set(_asan_dll_name "clang_rt.asan_dynamic-${_asan_arch}.dll")
+
+    get_filename_component(_msvc_bindir "${CMAKE_CXX_COMPILER}" DIRECTORY)
+    set(_asan_candidates
+        "${_msvc_bindir}/${_asan_dll_name}"
+    )
+    # Walk up from .../Tools/MSVC/<ver>/bin/Hostx64/x64 to the MSVC install
+    # root and probe the Redist subtree used by older toolsets.
+    get_filename_component(_msvc_tools_ver_dir "${_msvc_bindir}/../../.."   ABSOLUTE)
+    if(EXISTS "${_msvc_tools_ver_dir}/bin/Hostx64/x64/${_asan_dll_name}")
+        list(APPEND _asan_candidates
+             "${_msvc_tools_ver_dir}/bin/Hostx64/x64/${_asan_dll_name}")
+    endif()
+
+    set(_asan_dll "")
+    foreach(_c ${_asan_candidates})
+        if(EXISTS "${_c}")
+            set(_asan_dll "${_c}")
+            break()
+        endif()
+    endforeach()
+    if(NOT _asan_dll)
+        string(REPLACE ";" "\n  " _asan_tried "${_asan_candidates}")
+        message(FATAL_ERROR
+            "MC2_ASAN=ON but ${_asan_dll_name} not found. Tried:\n  ${_asan_tried}")
+    endif()
+    message(STATUS "MC2_ASAN: copying ${_asan_dll} to output dir at POST_BUILD")
+    add_custom_command(TARGET mc2 POST_BUILD
+        COMMAND ${CMAKE_COMMAND} -E copy_if_different
+                "${_asan_dll}" "$<TARGET_FILE_DIR:mc2>")
+endif()
 
 add_subdirectory("./res" "./out/res")
 add_subdirectory("./data_tools" "./out/data_tools")
