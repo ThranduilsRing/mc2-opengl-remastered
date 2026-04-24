@@ -108,8 +108,12 @@ void installAtexitSummary() {
     // Filled in Task 6b.
 }
 
-void emitTiming(const char*) {
-    // Filled in Task 5.
+void emitTiming(const char* eventName) {
+    if (!g_state.enabled) return;
+    double ms = elapsedMsSince(g_startupT0);
+    std::fprintf(stdout,
+        "[TIMING v1] event=%s elapsed_ms=%.1f\n", eventName, ms);
+    std::fflush(stdout);
 }
 
 void samplePerf(double) {
@@ -153,7 +157,11 @@ bool shouldQuit() {
 }
 
 void markMissionReady() {
-    // Filled in Task 5.
+    if (!g_state.enabled) return;
+    if (!g_missionReadyT) {
+        g_missionReadyT = SDL_GetPerformanceCounter();
+        emitTiming("mission_ready");
+    }
 }
 
 } // namespace SmokeMode

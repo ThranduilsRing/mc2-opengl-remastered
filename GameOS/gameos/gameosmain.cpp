@@ -523,6 +523,10 @@ namespace {
     }
     static void startup_phase(const char* name) {
         printf("[TIME] t=%6.2fs  phase=%s\n", startup_elapsed(), name);
+        if (SmokeMode::state().enabled) {
+            // Emit canonical smoke-line for the same milestone.
+            SmokeMode::emitTiming(name);
+        }
     }
 }
 
