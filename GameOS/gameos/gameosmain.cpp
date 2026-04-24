@@ -103,6 +103,7 @@ static LONG WINAPI mc2_unhandled_exception_filter(EXCEPTION_POINTERS* ep)
 #include "gos_static_prop_killswitch.h"
 #include "asset_scale.h"
 #include "gos_crashbundle.h"
+#include "gos_smoke.h"
 
 #include <signal.h>
 #include "gos_profiler.h"
@@ -581,6 +582,7 @@ int main(int argc, char** argv)
         const bool destr   = (getenv("MC2_DESTROY_TRACE")        != nullptr);
         // GL_ERROR is default-on; the env var suppresses it.
         const bool glprint = (getenv("MC2_GL_ERROR_DRAIN_SILENT") == nullptr);
+        const bool smoke   = (getenv("MC2_SMOKE_MODE")           != nullptr);
         const char* build  =
 #ifdef MC2_BUILD_HASH
             MC2_BUILD_HASH
@@ -588,10 +590,10 @@ int main(int argc, char** argv)
             "UNKNOWN"
 #endif
             ;
-        char _cbbuf[256];
+        char _cbbuf[320];
         snprintf(_cbbuf, sizeof(_cbbuf),
-            "[INSTR v1] enabled: tgl_pool=%d destroy=%d gl_error_print=%d build=%s",
-            tgl ? 1 : 0, destr ? 1 : 0, glprint ? 1 : 0, build);
+            "[INSTR v1] enabled: tgl_pool=%d destroy=%d gl_error_print=%d smoke=%d build=%s",
+            tgl ? 1 : 0, destr ? 1 : 0, glprint ? 1 : 0, smoke ? 1 : 0, build);
         puts(_cbbuf);
         crashbundle_append(_cbbuf);
     }
@@ -627,6 +629,11 @@ int main(int argc, char** argv)
 
     // Parse validation args before GameOS consumes the command line
     validateParseArgs(argc, argv);
+    // Smoke-mode args must be parsed before GetGameOSEnvironment so any exit
+    // on bad argv happens with no GL context held. The parser emits the
+    // banner line when MC2_SMOKE_MODE=1.
+    SmokeMode::parseArgs(argc, argv);
+    SmokeMode::installAtexitSummary();
 
     // fills in Environment structure
     GetGameOSEnvironment(cmdline);
