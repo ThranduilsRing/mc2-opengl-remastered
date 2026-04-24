@@ -68,11 +68,23 @@ AssetKey key(const char* rawPath);  // applies canonicalization rule
 void init(const char* manifestPath);     // call once at startup
 void shutdown();
 
+// All transform/lookup APIs take actualW/actualH — the manifest stores
+// only nominal; the caller must supply the actual texture dimensions
+// (already in hand from the GL upload / TGA header) so the subsystem
+// can compute scale and clamp against bounds.
 vec2  factorFor(AssetKey, uint32_t actualW, uint32_t actualH, const char* callerTag);
-int   nominalToActualAxis(AssetKey, int n, Axis, const char* callerTag);
-ivec2 nominalToActual(AssetKey, int nx, int ny, const char* callerTag);
-IRect nominalToActualRect(AssetKey, float nx, float ny, float nw, float nh,
-                          const char* callerTag);  // primary surface; centralizes rounding + clamp
+
+int   nominalToActualAxis(AssetKey, int n, Axis,
+                          uint32_t actualW, uint32_t actualH, const char* callerTag);
+
+ivec2 nominalToActual(AssetKey, int nx, int ny,
+                      uint32_t actualW, uint32_t actualH, const char* callerTag);
+
+// Primary surface: centralizes rounding policy and OOB clamp.
+IRect nominalToActualRect(AssetKey,
+                          uint32_t actualW, uint32_t actualH,
+                          float nx, float ny, float nw, float nh,
+                          const char* callerTag);
 
 void  dumpCountersTo(FILE*);   // for debug hotkey
 }
@@ -104,11 +116,17 @@ Rationale: floor-origin + ceil-extent guarantees adjacent pieces with shared edg
 
 ### Telemetry gating
 
-- `MC2_ASSET_SCALE_TRACE=0` (default): silent. Counters live in module-static atomics; `AssetScale::dumpCountersTo(stdout)` callable from a debug hotkey. No log spam in release.
-- `MC2_ASSET_SCALE_TRACE=1`: detailed once-per-key lines, plus a 600-frame summary listing accumulated counts.
-- **One exception:** `event=oob_blit` always logs the first occurrence per `(path, callerTag)` regardless of env, because OOB means the upscaled asset is being misread *now* and would otherwise present as silent visual garbage. Subsequent OOBs are suppressed unless trace is on.
+Two scopes with different rules — startup is always-on; runtime lookup is gated.
 
-Banner at startup: `[ASSET_SCALE v1] event=manifest_loaded entries=<N> dupes=<M> bad_lines=<K>`.
+**Always-on (regardless of `MC2_ASSET_SCALE_TRACE`):**
+- Startup banner: `[ASSET_SCALE v1] event=manifest_loaded entries=<N> dupes=<M> bad_lines=<K>`.
+- Manifest-missing warning: `[ASSET_SCALE v1] event=manifest_missing path=<...>`.
+- Per-line malformed warning: `[ASSET_SCALE v1] event=manifest_bad_line lineno=<N> raw=<...>`.
+- **First** `event=oob_blit` per `(path, callerTag)` — OOB means the upscaled asset is being misread *now* and would otherwise present as silent visual garbage.
+
+**Gated by `MC2_ASSET_SCALE_TRACE`:**
+- `=0` (default): runtime lookup events silent. Counters live in module-static atomics; `AssetScale::dumpCountersTo(stdout)` callable from a debug hotkey. No per-frame or per-asset log spam in release.
+- `=1`: detailed once-per-key `unknown_asset` lines, all `oob_blit` lines (not just first), and a 600-frame summary listing accumulated counts.
 
 OOB log line schema:
 ```
@@ -124,7 +142,7 @@ Schema-version grep pattern matches the project's existing `\[SUBSYS v[0-9]+\]` 
 | Callsite | File | Lines | Type | Fix |
 |---|---|---|---|---|
 | `MechIcon` UV draw | `code/mechicon.cpp` | 1057–1106 | UV math | wrap `unitIcon{X,Y} / texture->width` via `factorFor` |
-| `MechIcon` CPU blit (×3) | `code/mechicon.cpp` | 318–393, 501–546, 795–847 | sub-rect blit | `nominalToActualRect(key, col*32, row*38, 32, 38, "mechicon.blit")` |
+| `MechIcon` CPU blit (×3) | `code/mechicon.cpp` | 318–393, 501–546, 795–847 | sub-rect blit | `nominalToActualRect(key, actualW, actualH, col*32, row*38, 32, 38, "mechicon.blit")` |
 | `VehicleIcon` mirror | `code/mechicon.cpp` | uses `s_VehicleTextures` | mirror of MechIcon | same template; **single short follow-up commit** per user direction |
 | `PilotIcon` | `code/mechicon.cpp` | uses `s_pilotTextureHandle/Width`, `pilotIcon{X,Y}=25/36` | atlas UV | same template |
 
@@ -219,7 +237,7 @@ art/mcui_low2.tga,  <TBD>, <TBD>
 3. UV computed as shown in 2.1.
 
 **Per-icon CPU blit:**
-1. `IRect r = AssetScale::nominalToActualRect(key, whichMech * 32, 38, 32, 38, "mechicon.blit")`.
+1. `IRect r = AssetScale::nominalToActualRect(key, actualW, actualH, whichMech * 32, 38, 32, 38, "mechicon.blit")`.
 2. Source pointer arithmetic uses `r.x, r.y, r.w, r.h`. Floor-origin/ceil-extent built in. OOB clamp emits the loud log on first hit per `(key, "mechicon.blit")`.
 
 **Per-screen chrome render (opt-in widgets):**
@@ -246,7 +264,7 @@ No exceptions, no asserts that fire in release. Subsystem degrades visibly to le
 Build a synthetic upscaled fake atlas in-memory, exercise each scale factor:
 
 - **Setup:** nominal atlas 256×256, actual 512×512 (2×). Manifest entry registers nominal=256×256.
-- **For every** `(xIndex, yIndex)` pair across the cell grid, assert `nominalToActualRect(key, xIndex*nominalCellW, yIndex*nominalCellH, nominalCellW, nominalCellH, "test")` returns a rect that:
+- **For every** `(xIndex, yIndex)` pair across the cell grid, assert `nominalToActualRect(key, actualW, actualH, xIndex*nominalCellW, yIndex*nominalCellH, nominalCellW, nominalCellH, "test")` returns a rect that:
   1. Covers exactly one cell in the actual texture, modulo floor/ceil rounding.
   2. Overlaps the next cell by **≤1 px** (intentional seam protection from the rounding policy; not a bug).
   3. Does not exceed actual bounds.
