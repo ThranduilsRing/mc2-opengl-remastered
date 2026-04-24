@@ -246,6 +246,7 @@ RenderWindow* create_window(const char* pwinname, int width, int height)
     rw->height_ = height;
 
     g_sdl_window = window;
+    SDL_ShowCursor(SDL_DISABLE);
 
     return rw;
 }
@@ -570,6 +571,7 @@ void get_drawable_size(RenderWindowHandle rw_handle, int* width, int* height)
 void destroy_window(RenderWindowHandle rw_handle)
 {
     RenderWindow* rw = (RenderWindow*)rw_handle;
+    SDL_ShowCursor(SDL_ENABLE);
     SDL_DestroyWindow(rw->window_);
     delete rw;
 

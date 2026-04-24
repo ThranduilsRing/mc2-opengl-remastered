@@ -62,6 +62,12 @@ public:
 	bool	saveTranscripts;
 	bool	tutorials;
 
+	// TODO(options-screen): expose these as sliders in the Options screen.
+	// Range suggestion: 0.5x–4.0x. Hook up to the Camera Speed / Zoom Speed
+	// sliders once UI controls are added in the CPrefs options panel.
+	float	scrollSpeedMult;  // camera pan speed multiplier (edge scroll + arrow keys)
+	float	zoomSpeedMult;    // zoom in/out speed multiplier (scroll wheel + +/-)
+
 #if 0
 	long FilterState;
 	long TERRAIN_TXM_SIZE;

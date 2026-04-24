@@ -403,37 +403,16 @@ class UserInput
 			mouseDragThreshold = distance;
 		}
 
-		long getMouseX (void)
-		{
-			float x = mouseXPosition * viewMulX;
-			float y = mouseYPosition * viewMulY;
-			gos_HudInverseMousePoint(x, y);
-			return float2long(x);
-		}
-
-		long getMouseY (void)
-		{
-			float x = mouseXPosition * viewMulX;
-			float y = mouseYPosition * viewMulY;
-			gos_HudInverseMousePoint(x, y);
-			return float2long(y);
-		}
-
-		float realMouseX (void)
-		{
-			float x = mouseXPosition * viewMulX;
-			float y = mouseYPosition * viewMulY;
-			gos_HudInverseMousePoint(x, y);
-			return x;
-		}
-
-		float realMouseY (void)
-		{
-			float x = mouseXPosition * viewMulX;
-			float y = mouseYPosition * viewMulY;
-			gos_HudInverseMousePoint(x, y);
-			return y;
-		}
+		// All mouse position accessors return raw physical screen pixels.
+		// gos_HudInverseMousePoint is intentionally NOT applied here: widget
+		// bounds are stored in physical pixel coords, so raw coords are correct
+		// for both hit-testing and cursor rendering.
+		long getMouseX (void)    { return float2long(mouseXPosition * viewMulX); }
+		long getMouseY (void)    { return float2long(mouseYPosition * viewMulY); }
+		long getRawMouseX (void) { return float2long(mouseXPosition * viewMulX); }
+		long getRawMouseY (void) { return float2long(mouseYPosition * viewMulY); }
+		float realMouseX (void)  { return mouseXPosition * viewMulX; }
+		float realMouseY (void)  { return mouseYPosition * viewMulY; }
 		
 		void setMousePos (float x, float y)
 		{

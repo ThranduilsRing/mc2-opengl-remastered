@@ -2762,13 +2762,15 @@ void MissionInterfaceManager::init (FitIniFilePtr loader)
 	
 	result = loader->readIdFloat("ScrollIncrement",scrollInc);
 	gosASSERT(result == NO_ERR);
-	
+	scrollInc *= prefs.scrollSpeedMult;
+
 	result = loader->readIdFloat("RotationIncrement",rotationInc);
 	gosASSERT(result == NO_ERR);
 	
 	result = loader->readIdFloat("ZoomIncrement",zoomInc);
 	gosASSERT(result == NO_ERR);
-		
+	zoomInc *= prefs.zoomSpeedMult;
+
 	result = loader->readIdFloat("ScrollLeft",screenScrollLeft);
 	gosASSERT(result == NO_ERR);
 		
@@ -3575,14 +3577,14 @@ void MissionInterfaceManager::doDrag(bool bGui)
 		&& (dragStart.x != wPos.x && dragStart.y != wPos.y ) ) )
 	{
 		isDragging = TRUE;
-		dragEnd.x = mouseX;
-		dragEnd.y = mouseY;
+		dragEnd.x = userInput->getRawMouseX();
+		dragEnd.y = userInput->getRawMouseY();
 	}
-	
+
 	else if (isDragging)
 	{
-		dragEnd.x = mouseX;
-		dragEnd.y = mouseY;
+		dragEnd.x = userInput->getRawMouseX();
+		dragEnd.y = userInput->getRawMouseY();
 	
 		if ( (gos_GetKeyStatus( KEY_LMOUSE ) == KEY_RELEASED
 			|| gos_GetKeyStatus( KEY_LMOUSE ) == KEY_FREE) && isDragging)

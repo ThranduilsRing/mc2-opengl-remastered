@@ -874,9 +874,10 @@ void UserInput::render (void)						//Last thing rendered.  Draws Mouse.
 	{
 		if (drawMouse && mouseState != -1)
 		{
-			// figure out where to put the thing
-			long mouseX = getMouseX();
-			long mouseY = getMouseY();
+			// Cursor renders at raw physical pixel position, not HUD-logical coords.
+			// HUD-inverse transform belongs only on the click-reception side.
+			long mouseX = getRawMouseX();
+			long mouseY = getRawMouseY();
 	
 			mouseX -= cursors->getMouseHSX( mouseState );
 			mouseY -= cursors->getMouseHSY( mouseState );

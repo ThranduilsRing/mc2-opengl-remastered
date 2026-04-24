@@ -78,6 +78,9 @@ CPrefs::CPrefs() {
 
 	UseUpscaledVideos = true;
 
+	scrollSpeedMult = 2.0f;
+	zoomSpeedMult   = 2.0f;
+
 #if 0
 	FilterState = gos_FilterNone;
 	TERRAIN_TXM_SIZE = 64;
@@ -275,6 +278,13 @@ int CPrefs::load( const char* pFileName ) {
 			if ( result != NO_ERR )
 				tutorials = true;
 
+			result = prefsFile->readIdFloat( "ScrollSpeedMult", scrollSpeedMult );
+			if ( result != NO_ERR )
+				scrollSpeedMult = 2.0f;
+			result = prefsFile->readIdFloat( "ZoomSpeedMult", zoomSpeedMult );
+			if ( result != NO_ERR )
+				zoomSpeedMult = 2.0f;
+
 		}
 
 	}
@@ -366,6 +376,9 @@ int CPrefs::save() {
 
 			result = prefsFile->writeIdBoolean( "SaveTranscripts", saveTranscripts );
 			result = prefsFile->writeIdBoolean( "Tutorials", tutorials );
+
+			result = prefsFile->writeIdFloat( "ScrollSpeedMult", scrollSpeedMult );
+			result = prefsFile->writeIdFloat( "ZoomSpeedMult",   zoomSpeedMult );
 
 		}
 	}
