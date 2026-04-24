@@ -294,7 +294,8 @@ void __stdcall gosAudio_CreateResource( HGOSAUDIO* hgosaudio, enum gosAudio_Reso
     } else {
         gosASSERT(res_type == gosAudio_UserMemory);
         src_freq = ga_wf->nSamplesPerSec;
-        src_fmt = ga_wf->wBitsPerSample==8 ? AUDIO_S8 : AUDIO_S16LSB;
+        // WAV spec: 8-bit PCM is UNSIGNED (silence=128), 16-bit PCM is signed.
+        src_fmt = ga_wf->wBitsPerSample==8 ? AUDIO_U8 : AUDIO_S16LSB;
         src_channels = ga_wf->nChannels;
         databuf = (uint8_t*)data;
         src_datasize = size;
