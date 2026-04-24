@@ -147,6 +147,41 @@ void loadManifest(const char* manifestPath) {
         st.cManifestEntries, st.cManifestDupes, st.cManifestBadLines);
 }
 
+void firstUnknownWarning(State& st, const std::string& canon) {
+    if (st.seenUnknown.insert(canon).second) {
+        ++st.cUnknownAsset;
+        if (st.traceEnabled) {
+            log("[ASSET_SCALE v1] event=unknown_asset path=%s", canon.c_str());
+        }
+    }
+}
+
+void firstOobWarning(State& st, const std::string& canon, const char* tag,
+                     uint32_t aw, uint32_t ah, uint32_t nw, uint32_t nh,
+                     int sx, int sy, int sw, int sh,
+                     int cx, int cy, int cw, int ch) {
+    std::string k = canon + "|" + (tag ? tag : "?");
+    bool first = st.seenOobFirst.insert(k).second;
+    ++st.cOobBlit;
+    // First occurrence is always-on. Subsequent only with trace.
+    if (first || st.traceEnabled) {
+        log("[ASSET_SCALE v1] event=oob_blit path=%s actual=%ux%u nominal=%ux%u "
+            "src=(%d,%d,%d,%d) clamped=(%d,%d,%d,%d) caller=%s",
+            canon.c_str(), aw, ah, nw, nh, sx, sy, sw, sh, cx, cy, cw, ch,
+            tag ? tag : "?");
+    }
+}
+
+const NominalDims* lookupNominal(State& st, const AssetKey& k) {
+    if (k.empty()) return nullptr;
+    auto it = st.manifest.find(k.str());
+    if (it == st.manifest.end()) {
+        firstUnknownWarning(st, k.str());
+        return nullptr;
+    }
+    return &it->second;
+}
+
 } // anonymous namespace
 
 AssetKey key(const char* rawPath) {
@@ -177,16 +212,67 @@ void dumpCountersTo(FILE* out) {
         st.traceEnabled ? 1 : 0);
 }
 
-// Transform APIs filled in Task 3.
-Vec2 factorFor(const AssetKey&, uint32_t, uint32_t, const char*)
-    { return {1.f, 1.f}; }
-int  nominalToActualAxis(const AssetKey&, int n, Axis, uint32_t, uint32_t, const char*)
-    { return n; }
-IVec2 nominalToActual(const AssetKey&, int nx, int ny, uint32_t, uint32_t, const char*)
-    { return {nx, ny}; }
-IRect nominalToActualRect(const AssetKey&, uint32_t, uint32_t,
-                          float nx, float ny, float nw, float nh, const char*)
-    { return { (int)std::floor(nx), (int)std::floor(ny),
-               (int)std::ceil(nw),  (int)std::ceil(nh) }; }
+Vec2 factorFor(const AssetKey& k, uint32_t actualW, uint32_t actualH,
+               const char* /*callerTag*/) {
+    State& st = state();
+    ++st.cFactorLookups;
+    const NominalDims* nd = lookupNominal(st, k);
+    if (!nd || nd->w == 0 || nd->h == 0) return {1.f, 1.f};
+    return { (float)actualW / (float)nd->w, (float)actualH / (float)nd->h };
+}
+
+int nominalToActualAxis(const AssetKey& k, int n, Axis axis,
+                        uint32_t actualW, uint32_t actualH,
+                        const char* callerTag) {
+    Vec2 f = factorFor(k, actualW, actualH, callerTag);
+    float scaled = (axis == Axis::X) ? n * f.x : n * f.y;
+    return (int)std::floor(scaled);
+}
+
+IVec2 nominalToActual(const AssetKey& k, int nx, int ny,
+                      uint32_t actualW, uint32_t actualH,
+                      const char* callerTag) {
+    Vec2 f = factorFor(k, actualW, actualH, callerTag);
+    return { (int)std::floor(nx * f.x), (int)std::floor(ny * f.y) };
+}
+
+IRect nominalToActualRect(const AssetKey& k,
+                          uint32_t actualW, uint32_t actualH,
+                          float nx, float ny, float nw, float nh,
+                          const char* callerTag) {
+    State& st = state();
+    Vec2 f = factorFor(k, actualW, actualH, callerTag);
+
+    // Rounding policy: floor-origin, ceil-extent.
+    int sx = (int)std::floor(nx * f.x);
+    int sy = (int)std::floor(ny * f.y);
+    int sw = (int)std::ceil (nw * f.x);
+    int sh = (int)std::ceil (nh * f.y);
+
+    // OOB clamp.
+    int cx = sx, cy = sy, cw = sw, ch = sh;
+    bool clamped = false;
+    if (cx < 0)                                  { cw += cx; cx = 0; clamped = true; }
+    if (cy < 0)                                  { ch += cy; cy = 0; clamped = true; }
+    if ((uint32_t)cx > actualW)                  { cx = (int)actualW; cw = 0; clamped = true; }
+    if ((uint32_t)cy > actualH)                  { cy = (int)actualH; ch = 0; clamped = true; }
+    if ((uint32_t)(cx + cw) > actualW)           { cw = (int)actualW - cx; clamped = true; }
+    if ((uint32_t)(cy + ch) > actualH)           { ch = (int)actualH - cy; clamped = true; }
+    if (cw < 0) { cw = 0; clamped = true; }
+    if (ch < 0) { ch = 0; clamped = true; }
+
+    if (clamped) {
+        ++st.cClampedRects;
+        if (!k.empty()) {
+            const NominalDims* nd = lookupNominal(st, k);
+            uint32_t nWidth  = nd ? nd->w : 0;
+            uint32_t nHeight = nd ? nd->h : 0;
+            firstOobWarning(state(), k.str(), callerTag,
+                            actualW, actualH, nWidth, nHeight,
+                            sx, sy, sw, sh, cx, cy, cw, ch);
+        }
+    }
+    return { cx, cy, cw, ch };
+}
 
 } // namespace AssetScale
