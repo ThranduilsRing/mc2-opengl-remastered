@@ -166,6 +166,20 @@ void main(void)
     float lodNear = 1.0 - smoothstep(LOD_NEAR, LOD_NEAR_FADE, camDist);
     float lodMid  = 1.0 - smoothstep(LOD_MID,  LOD_MID_FADE,  camDist);
 
+    // Screen-space world-unit footprint of one pixel on the terrain plane.
+    // Computed here — outside all conditional branches — so fwidth() evaluates
+    // uniformly across the 2x2 derivative quad on all GPU implementations.
+    // WorldPos is MC2 space (.x=east, .y=north, .z=elev); terrain lies in XY.
+    PREC float worldPixelSize = length(fwidth(WorldPos.xy));
+
+    // FBM breakup fade: scale 0.018 ≈ 1 cycle / 56 WU.
+    // Grain appears when projected frequency reaches ~0.3 cy/px.
+    PREC float breakupFade = 1.0 - smoothstep(0.3, 0.8, worldPixelSize * 0.018);
+
+    // Grass normal fade: matTiling.y=12 over ~128 WU basis → 12/128 ≈ 0.094 cy/WU.
+    // High tiling means grass grains out much earlier than the FBM breakup.
+    PREC float grassNormalFade = 1.0 - smoothstep(0.3, 0.8, worldPixelSize * 0.094);
+
     // Legacy probe: reserve negative values for an unconditional "tess frag is running"
     // visual. Positive values are surface debug modes and must flow through normally.
     if (tessDebug.x < -0.5) {
@@ -336,13 +350,19 @@ void main(void)
     // Rock 1.3→0.9, grass 1.5→1.1: over-boost was producing grain-like noise at RTS zoom.
     // Dirt 1.1 is the "looks fantastic" reference — do not change it.
     // Concrete 2.5 unchanged — flat surfaces benefit from strong normal definition.
-    const PREC vec4 normalBoost = vec4(0.9, 1.1, 1.1, 2.5);
+    // Non-const: normalBoost.y is scaled below by the combined grass fade.
+    PREC vec4 normalBoost = vec4(0.9, 1.1, 1.1, 2.5);
 
     // Screen-space derivative AA — fade normals when detail goes sub-pixel
     PREC float fwRock     = clamp(1.0 - (length(fwidth(uvRock))     - 0.5) * 2.0, 0.0, 1.0);
     PREC float fwGrass    = clamp(1.0 - (length(fwidth(uvGrass))    - 0.5) * 2.0, 0.0, 1.0);
     PREC float fwDirt     = clamp(1.0 - (length(fwidth(uvDirt))     - 0.5) * 2.0, 0.0, 1.0);
     PREC float fwConcrete = clamp(1.0 - (length(fwidth(uvConcrete)) - 0.5) * 2.0, 0.0, 1.0);
+
+    // Combine UV-derivative AA with world-space frequency fade for grass.
+    // fwGrass catches sub-pixel UV aliasing; grassNormalFade catches projected
+    // frequency grain at grazing angles regardless of zoom or LOD tier.
+    normalBoost.y *= fwGrass * grassNormalFade;
 
     // Anti-tile scale — proportional to tiling so low-tiling materials skip it
     // At tiling >= 4, full anti-tiling (3.0); at tiling <= 1, plain sampling
@@ -362,7 +382,7 @@ void main(void)
     }
     if (matWeights.y > 0.01) {
         matSample = (useAntiTile && atsGrass > 0.01) ? sampleAntiTile(matNormal1, uvGrass, atsGrass) : texture(matNormal1, uvGrass);
-        detailN += matWeights.y * normalBoost.y * fwGrass * (matSample.rgb * 2.0 - 1.0);
+        detailN += matWeights.y * normalBoost.y * (matSample.rgb * 2.0 - 1.0);
     }
     if (matWeights.z > 0.01) {
         matSample = (useAntiTile && atsDirt > 0.01) ? sampleAntiTile(matNormal2, uvDirt, atsDirt) : texture(matNormal2, uvDirt);
@@ -441,7 +461,7 @@ void main(void)
         PREC float highFreq = fbm(WorldPos.xy * 0.018,  2) * 0.5 + 0.5;
         PREC float breakupNoise = mix(lowFreq, highFreq, 0.55);
         PREC float breakupMod = mix(0.78, 1.18, breakupNoise);
-        PREC float breakupAmount = (1.0 - snowWeight);  // no noise under snow
+        PREC float breakupAmount = (1.0 - snowWeight) * breakupFade;
         baseColor *= mix(1.0, breakupMod, breakupAmount);
     }
 
