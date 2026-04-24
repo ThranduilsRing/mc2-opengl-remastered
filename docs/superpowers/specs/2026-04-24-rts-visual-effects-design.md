@@ -87,16 +87,20 @@ Tessellated terrain generates subpixel geometric detail that moves each frame as
 **New uniform on postprocess object:**
 - `prevViewProj_[16]`: previous frame's un-jittered VP matrix, swapped each frame
 - `taaEnabled_`: bool toggle (RAlt key TBD)
-- `taaAlpha_`: float, default 0.10 (history weight = 0.90, current = 0.10)
-- `taaJitterIdx_`: int, cycles 0–7 (Halton sequence)
+- `taaAlpha_`: float, default 0.15 (history weight = 0.85, current = 0.15; tune down to 0.10 if ghosting is acceptable)
+- `taaJitterIdx_`: int, cycles 1–8 (Halton sequence; **starts at 1, not 0** — Halton(2,3) at index 0 returns (0,0), which produces a no-jitter frame that contaminates the history with an unjittered sample)
 
 ### Jitter Injection
 
-Halton(2,3) sub-pixel offsets, 8-frame sequence. Applied in `setTerrainMVP()`:
+Halton(2,3) sub-pixel offsets, 8-frame sequence (indices 1–8). Applied in `setTerrainMVP()`:
 
 ```
 // Conceptual — not implementation code
-vec2 jitter = halton(taaJitterIdx_) * 2.0 / vec2(screenW, screenH);
+// halton(n) returns values in [0,1]. Subtract 0.5 to center on zero,
+// then scale to ±1 NDC pixel. Without the -0.5, offsets are always
+// positive and produce a persistent sub-pixel image shift rather than
+// symmetric dithering.
+vec2 jitter = (halton(taaJitterIdx_) - 0.5) * 2.0 / vec2(screenW, screenH);
 mat4 jitteredProj = applyJitterToProjection(cleanVP, jitter);
 // upload jitteredProj to GPU (this is what terrain sees)
 // store cleanVP as currViewProj_ for TAA reprojection math
@@ -133,6 +137,8 @@ Per pixel:
 ```
 
 YCoCg neighborhood clamp is more robust than RGB AABB for temporal stability. The clamp is the ghost-rejection mechanism — fast-moving edges in the current frame update the history AABB, forcing history samples outside the local color envelope to be pulled in before blending.
+
+**Jitter/depth approximation note:** The depth buffer is rasterized by the *jittered* projection, but `currViewProjInv` is the inverse of the *clean* (unjittered) projection. The reconstructed `worldP` is therefore slightly off by the current frame's subpixel jitter. Similarly, `prevViewProj` is the clean previous-frame VP, but history was accumulated under the previous frame's jitter. The net error is sub-pixel and is absorbed by the neighborhood AABB clamp. This is the same approximation most shipping TAA implementations use. If future debugging reveals residual shimmer on static geometry, the fix is to store and subtract the per-frame jitter offset in the history sample UV: `prevUV -= prevJitter / screenSize`.
 
 **Disocclusion handling:** If `prevUV` lands outside [0,1], the history sample is invalid (camera moved far). Use `taaAlpha = 1.0` for that pixel (accept current frame directly with no history blend). This avoids ghosting at edges of large camera pans.
 
@@ -179,6 +185,12 @@ runComposite(workingSceneTex, outlineTex_, bloomColorTex_[0], lutTex_);
 ```
 
 The ownership comment is load-bearing. Any future pass that attempts to read and write the same texture is a feedback loop — the pattern catches it at code-review time rather than as a visual artifact.
+
+### Alpha Tuning and Fast-Moving Units
+
+Default `taaAlpha_ = 0.15` (85% history). At 60fps, ghosting tails decay to ~10% after ~14 frames (~230ms). Fast-turning mechs will smear if alpha is too low (history too dominant). Tune upward from 0.15, not downward from 0.10.
+
+**Velocity-weighted alpha (Phase 2 addition):** When the neighborhood AABB clamp has to pull the history sample a large distance (clamped a lot), that's a cheap proxy for disocclusion or fast motion. In those pixels, raise `taaAlpha` toward 1.0 to weight the current frame more heavily. This reduces ghosting on moving units without changing the static-geometry stability. Requires only one extra `length(H_clamped - H)` comparison in the resolve shader.
 
 ### SMAA T2x Fallback Note
 
@@ -260,7 +272,12 @@ uniform float vignetteInner;    // default 0.25
 uniform float vignetteOuter;    // default 0.65
 
 // LUT lookup (replaces ACES + sunset filter)
-vec3 gradedColor = texture(lutTex, clamp(color * exposure, 0.0, 1.0)).rgb;
+// Texel-center correction: color=0 maps to edge (0.0), not center (0.5/N).
+// Without this, the LUT squashes ~3% of dynamic range at each extreme,
+// making in-engine output look slightly off from Resolve/Photoshop preview.
+const float N = 33.0;
+vec3 lutUVW = clamp(color * exposure, 0.0, 1.0) * ((N - 1.0) / N) + 0.5 / N;
+vec3 gradedColor = texture(lutTex, lutUVW).rgb;
 
 // Clean vignette (separate from grade)
 vec2 vc = TexCoord - 0.5;
@@ -270,6 +287,8 @@ gradedColor *= mix(1.0 - vignetteStrength, 1.0, vignette);
 ```
 
 The LUT samples the scene color (post-exposure, pre-bloom-add) for the grade, then bloom is added after. This keeps bloom from being double-graded through the LUT.
+
+**LUT is SDR-only:** Input is clamped to [0,1] before the lookup. Any HDR content above 1.0 (emissive muzzle flashes, weapon bolts, bright particle effects) is hard-clipped before the grade. This is correct for our SDR-authored pipeline. Any future HDR emissive contributors must add their contribution *after* the LUT lookup in the composite shader — same as bloom does today — not before it.
 
 ### Bloom Demotion
 
@@ -312,6 +331,10 @@ albedo = mix(albedo, aerialColor, aerialFactor * aerialTintStr);
 ### Also in `gos_tex_vertex.frag`
 
 The same term should be added to the world-overlay branch (cement, roads) so overlay tiles don't visually pop out against the aerial-haze terrain. Same uniforms, same formula, triggered only in the overlay branch where `worldPos` is available.
+
+### Aerial Perspective on Units and Buildings — Intentional Omission
+
+The aerial term is added to terrain and overlays only, not to the mech/building object shaders (`gos_tex_vertex_lighted.frag`, `static_prop.frag`). This is an intentional gameplay decision: distant enemies and buildings should remain visually distinct against the haze rather than fading into it. Unit readability at range is more important than physical accuracy. The post-process fog pass (§7) provides a consistent depth veil over *everything* including objects, which covers the coarser version of the atmospheric effect. If future playtesting shows buildings pop unacceptably against highly hazy terrain, add the aerial term to `static_prop.frag` first (buildings are large and benefit most), then evaluate mechs.
 
 ### Per-Mission Values
 
@@ -368,8 +391,14 @@ Both passes run before the main lit scene render (classification) and after TAA 
 ### Classification Pass
 
 **New texture:** `classTex_` — `GL_R8`, full-res, `GL_NEAREST` filtering (no interpolation of class IDs)  
-**New FBO:** `classFBO_` — single color attachment `classTex_`  
-**Clear value:** 0 (background)
+**New FBO:** `classFBO_` — color attachment `classTex_` **plus a D24 depth renderbuffer**  
+**Clear value:** color=0, depth=1.0
+
+**Why a depth attachment is required:** Without a depth attachment, `glEnable(GL_DEPTH_TEST)` is a no-op (depth testing requires a depth buffer in the bound FBO). Without depth testing, every fragment that touches a pixel writes its class ID regardless of occlusion order, so a mech's back-face and a building's interior fragments all write over each other. The depth attachment ensures only the frontmost surface per pixel survives — which is what makes the "only frontmost surface gets classified" claim in this spec true.
+
+**Depth attachment options (choose one):**
+- *(Preferred)* Allocate a dedicated D24 renderbuffer for `classFBO_`. ~Same size as a full-res depth texture. No sharing concerns.
+- *(Alternative)* Render the classify pass *after* main scene depth is established, then blit `sceneDepthTex_` as a read-only depth source. More complex (requires `GL_DEPTH_ATTACHMENT` from an external texture on an FBO), skip for Phase 1.
 
 **Faction encoding (0–5 in GL_R8 normalized storage):**
 
@@ -419,6 +448,10 @@ This is called once per object batch immediately before the normal lit draw call
 **Position attribute only:** The classify shader reads only position. If the existing vertex declaration includes position at location 0 (confirmed by `docs/vertex-formats.md`), no new VBO or vertex format is needed.
 
 **Depth testing during classification:** Enabled (same near/far as main scene). Only the frontmost surface per pixel gets classified — correct behavior for outline edge detection.
+
+**Occlusion intent — outlines through terrain/buildings:** The classify pass renders *only* mech/unit geometry. Terrain and buildings are not drawn into `classFBO_`. This means an enemy mech behind a building is classified at its visible silhouette but the building surface is written as depth=0 (sky). Specifically: the building would not occlude the mech's classification because the building was never drawn into classFBO_'s depth buffer. The outline resolve will therefore draw outlines on occluded mechs — an X-ray effect.
+
+**This is an intentional Phase 1 decision:** tactical readability at RTS zoom outweighs physical occlusion for unit outlines. SC2 does not outline through terrain; CoH3 does. Either can be correct. To get SC2-style occlusion-aware outlines in Phase 2: draw terrain/buildings with `classValue=0` into `classFBO_` (just their depth, no color write needed) so their depth blocks mech classification behind them. Alternatively, depth-test the outline resolve against `sceneDepthTex_` and discard outline pixels where scene depth is closer than the classify sample.
 
 ### Outline Resolve Pass
 
@@ -475,7 +508,31 @@ void main() {
 }
 ```
 
-**Selection glow extension:** For selected units (class 4), a second sub-pass in the same shader samples at 2-pixel radius and writes at `alpha=0.40` where the 2px samples detect class but the 1px do not. This creates a soft inner glow without a separate FBO. Implemented as: sample 8 neighbors at 2px offset, test class, output at reduced alpha if outer-ring-only hit.
+**Selection glow extension:** The same shader (single draw, no second sub-pass) adds 8 more taps at 2-pixel radius for selected units. A pixel that has no 1px neighbor edge but has a 2px neighbor with `cls >= 3.5` (selected class) outputs at reduced alpha — the outer glow ring. Total 12 taps per pixel for selected-unit pixels, 4 taps otherwise.
+
+```glsl
+// After the main 4-tap edge test (only reached when onEdge is false or cls < 3.5):
+// Check 2px ring for selection glow
+float cls2 = 0.0;
+cls2 = max(cls2, round(texture(classTex, TexCoord + vec2(0,    2.0*w) * invScreenSize).r * 255.0));
+cls2 = max(cls2, round(texture(classTex, TexCoord + vec2(0,   -2.0*w) * invScreenSize).r * 255.0));
+cls2 = max(cls2, round(texture(classTex, TexCoord + vec2( 2.0*w, 0)   * invScreenSize).r * 255.0));
+cls2 = max(cls2, round(texture(classTex, TexCoord + vec2(-2.0*w, 0)   * invScreenSize).r * 255.0));
+cls2 = max(cls2, round(texture(classTex, TexCoord + vec2( w,  w) * invScreenSize).r * 255.0));
+cls2 = max(cls2, round(texture(classTex, TexCoord + vec2(-w,  w) * invScreenSize).r * 255.0));
+cls2 = max(cls2, round(texture(classTex, TexCoord + vec2( w, -w) * invScreenSize).r * 255.0));
+cls2 = max(cls2, round(texture(classTex, TexCoord + vec2(-w, -w) * invScreenSize).r * 255.0));
+
+if (cls2 > 3.5 && c < 0.5) {
+    // Outer glow ring: 2px neighbor is selected, current pixel is background
+    fragColor = vec4(classToColor(cls2), 0.40);
+    return;
+}
+
+fragColor = vec4(0.0);  // no outline, no glow
+```
+
+The 8 diagonal taps use `vec2(w, w)` etc. (not `vec2(2w, 0)`), producing a smooth octagonal glow ring rather than a cross-shaped artifact. 12 taps total per pixel is cheap on any modern GPU.
 
 ### Composite Blend
 
@@ -551,7 +608,7 @@ This reuses `inverseViewProj_` already computed and stored on `gosPostProcess`. 
 
 **HUD exclusion:** By the time fog runs in the post-process chain, the HUD is not yet composited (it renders to the default framebuffer in a separate pass). No issue.
 
-**Feedback loop prevention:** The fog pass cannot read from and write to `taaHistoryTex_[curr]` simultaneously — that is a GL feedback loop. It either ping-pongs between a small intermediate RGBA16F texture, or writes to a `fogOutputTex_` (full-res RGBA16F) that becomes the new working buffer. The `fogOutputTex_` allocation recycles the memory freed by removing the SSAO and god ray textures, so net GPU cost is neutral.
+**Feedback loop prevention:** The fog pass cannot read from and write to `taaHistoryTex_[curr]` simultaneously — that is a GL feedback loop. It writes to `fogOutputTex_` (full-res RGBA16F), which becomes the new working buffer. The SSAO and god ray FBO textures freed in Phase 0 are half-resolution; `fogOutputTex_` is full-resolution, so this is not a memory-neutral trade — it is a net increase. VRAM headroom at the target spec (RX 7900 XTX, 1.4 GB observed in-game at 4K) makes this a non-issue.
 
 ### Pipeline Position
 
@@ -790,7 +847,7 @@ Do this before adding any new FBOs. The resource story is cleaner: new passes al
 - `ssao.frag`, `ssao_blur.frag`, `ssao_apply.frag`, `godray.frag`: deleted from `shaders/`
 - All `ssaoEnabled_`, `godrayEnabled_` flags and their hotkey bindings
 
-**GPU memory recovered:** ~8 MB (ssao pair + godray at half-res), available for `fogOutputTex_` and `classTex_` + `outlineTex_`.
+**GPU memory freed:** ~8 MB (ssao pair + godray at half-res). New full-res allocations (`taaHistoryTex_[2]`, `fogOutputTex_`, `outlineTex_`, `classTex_`) are a net increase of ~50+ MB at 4K. At the target spec (RX 7900 XTX, 24 GB VRAM, 1.4 GB observed usage) this is well within budget.
 
 ---
 
@@ -928,6 +985,29 @@ These are explicitly out of scope per the design brief and this spec:
 - **Bloom tuning** — the bloom infrastructure stays but is nearly-off; it is not the RTS visual upgrade path
 - **Per-object velocity buffer** — Phase 1 TAA uses camera-only reprojection; object velocity is Phase 2 if TAA ghosting on fast mechs proves problematic at real zoom levels
 - **God rays** — removed; wrong camera and invisible at RTS zoom (see Section 13)
+
+---
+
+## 17. Implementation Notes
+
+### Performance Budget
+
+No formal frame-time target is set in this spec — the target hardware (RX 7900 XTX) has enough headroom that micro-optimization is premature. Rough back-of-envelope for Phase 1–3 new passes at 4K 60fps: TAA resolve (~0.3ms), fog (~0.2ms), classification prepass (~0.1ms mech-only geometry), outline resolve (~0.2ms). Total new post-process cost estimated <1ms on the 7900 XTX. Verify with Tracy GPU zones after each phase ships; add `TracyGpuZone` annotations to each new `run*()` function. On lower-spec AMD hardware (RX 580, Vega), the full-res RGBA16F passes (TAA, fog) are the most likely pressure points — TAA can be disabled via `RAlt+T` and fog via its toggle independently.
+
+### Resolution Change and Window Resize
+
+All new full-res textures (`taaHistoryTex_[2]`, `fogOutputTex_`, `classTex_`, `outlineTex_`) are allocated at construction time in `gosPostProcess::init()` using `width_` and `height_`. If the game supports runtime resolution changes (windowed resize, dynamic resolution), these textures need a reallocation path:
+
+1. On resize: call a new `gosPostProcess::resize(int w, int h)` method
+2. `resize()` deletes and reallocates all full-res textures at the new dimensions
+3. The TAA history is invalidated on resize — force `taaAlpha_ = 1.0` for one frame (or `taaJitterIdx_ = 0` reset) to avoid blending stale history at the wrong resolution
+4. `classFBO_` depth renderbuffer also needs resize
+
+MC2 does not currently support runtime resolution changes (windowed mode is fixed-size). This is a gap to acknowledge but not implement in Phase 1.
+
+### Phase Ordering Rationale — TAA Last
+
+TAA is intentionally last (Phase 5). Phases 1–4 ship and are tunable without temporal stability. This is the correct order for two reasons: (a) TAA is the highest-risk effect — a jitter implementation bug causes obvious full-frame shimmering that makes every other effect look broken, making debugging harder; (b) outline, LUT, and biome tuning are best evaluated without TAA so artists can see the unfiltered image. Once those effects are locked, TAA is added as the final stability layer. Expect Phase 1–4 screenshots and playtests to show more aliasing than the shipped result — this is expected, not a regression.
 
 ---
 
