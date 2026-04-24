@@ -78,7 +78,19 @@ extern SDL_Window* g_sdl_window;
 void __stdcall gos_SetMousePosition( float XPosition, float YPosition )
 {
     if(g_sdl_window) {
-        SDL_WarpMouseInWindow(g_sdl_window, (int)XPosition, (int)YPosition);
+        // XPosition/YPosition arrive as normalized 0..1 coordinates — the
+        // write side of the contract established by gos_GetMouseInfo, which
+        // stores the cursor as physical_pixel / drawable_size. Callers reach
+        // this via UserInput::setMousePos, which divides pixel-space targets
+        // by viewMulX/viewMulY to normalize. SDL_WarpMouseInWindow wants
+        // window pixels, so multiply back out before handing over. Without
+        // this, a 0.5-ish normalized value casts to (int)0 and the cursor
+        // lands near the origin on every recenter.
+        const float w = (float)Environment.drawableWidth;
+        const float h = (float)Environment.drawableHeight;
+        SDL_WarpMouseInWindow(g_sdl_window,
+                              (int)(XPosition * w),
+                              (int)(YPosition * h));
     }
 }
 
