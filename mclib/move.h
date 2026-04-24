@@ -1206,6 +1206,19 @@ class GlobalMap {
 			opens = false;
 			numOffMapAreas = 0;
 
+			// Path tables -- must be zero-initialised here, not only inside
+			// init(long,long). Carver5O-style content-format mismatch during
+			// mission load can reach clearPathExistsTable() / setPathExists()
+			// without ever running the sized init path; without this line the
+			// field holds whatever the allocator returned (ASan reports the
+			// MSVC /fsanitize=address `0xBE` stack/heap poison pattern) and
+			// the null-guard in those methods passes because the garbage is
+			// non-zero. See docs/asan-follow-ups.md finding #2.
+			pathExistsTable = NULL;
+#ifdef USE_PATH_COST_TABLE
+			pathCostTable = NULL;
+#endif
+
 			log = NULL;
 			logEnabled = false;
 

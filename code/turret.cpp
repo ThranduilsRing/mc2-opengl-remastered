@@ -585,7 +585,13 @@ long Turret::update (void)
 		return(true);	//NEVER RETURN ANYTHING BUT TRUE!!!!!!!!!!!!!!!!
 	}
 
-	if (!turretsEnabled[getTeamId()]) {
+	// Neutral / environmental turrets have teamId == -1 which would index
+	// turretsEnabled[-1] (global-buffer-overflow on ASan; reads whatever
+	// the adjacent global holds on normal builds -- observable as neutral
+	// turrets occasionally failing to engage). Guard with an explicit
+	// non-negative check. Caught by finding #4 in docs/asan-follow-ups.md.
+	const long tid = getTeamId();
+	if (tid < 0 || !turretsEnabled[tid]) {
 		targetWID = 0;
 	}
 
