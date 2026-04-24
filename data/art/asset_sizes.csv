@@ -26,3 +26,26 @@ art/mcui_med2.tga,256,256
 art/mcui_low2.tga,256,256
 
 # Menu chrome — discovered per-screen during chrome adoption tasks (15/16/17)
+
+# Main menu chrome (mcl_mm.fit)
+art/mcl_mm_1.tga,256,256
+art/mcl_mm_2.tga,256,256
+art/mcl_mm_3.tga,256,256
+art/mcl_mm_5.tga,256,256
+art/mcl_mm_12.tga,256,256
+
+# Main menu splashscreen/background (mcl_sp.fit)
+art/mcl_splashscreen_stars_1.tga,256,256
+art/mcl_splashscreen_stars_2.tga,256,256
+art/mcl_splashscreen_stars_3.tga,256,256
+art/mcl_splashscreen_stars_4.tga,256,256
+art/mcl_splashscreen_stars_5.tga,256,256
+art/mcl_splashscreen_stars_6.tga,256,256
+art/mcl_splashscreen_stars_7.tga,256,256
+art/mcl_splashscreen_frame_1.tga,256,256
+art/mcl_splashscreen_frame_2.tga,256,256
+art/mcl_splashscreen_moon.tga,256,256
+art/mcl_splashscreen_planet_1.tga,256,256
+art/mcl_splashscreen_planet_2.tga,256,256
+art/mcl_splashscreen_planet_3.tga,256,256
+art/mcl_splashscreen_planet_4.tga,256,256
