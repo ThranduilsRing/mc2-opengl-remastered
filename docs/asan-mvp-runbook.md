@@ -1,26 +1,30 @@
 # ASan MVP Runbook — `asan-mvp` worktree
 
-Parallel AddressSanitizer dev build. Does not deploy to the normal install dir — runs in-place from `build64-asan/RelWithDebInfo/`.
+Parallel AddressSanitizer dev build. Deploys **alongside** the normal
+`mc2.exe`, not on top of it. The ASan binary lives at
+`A:/Games/mc2-opengl/mc2-win64-v0.1.1/mc2-asan.exe` so it can find the
+deployed data tree (FST archives, `shaders/`, `data/`) via the usual
+CWD-relative lookup.
 
-> ## ⛔ DO NOT DEPLOY this build
+> ## ⛔ DO NOT overwrite / deploy as `mc2.exe`
 >
-> The ASan `mc2.exe` is intentionally confined to
-> `A:/Games/mc2-opengl-src/.claude/worktrees/asan-mvp/build64-asan/RelWithDebInfo/`.
+> The ASan binary must be installed as **`mc2-asan.exe`** — never as
+> `mc2.exe`. The two exes coexist in `A:/Games/mc2-opengl/mc2-win64-v0.1.1/`.
 >
-> **Never** `cp` / `rsync` / `Copy-Item` it into `A:/Games/mc2-opengl/mc2-win64-v0.1.1/`
-> or any other user-facing install. Reasons:
+> Reasons the ASan binary can't be the default `mc2.exe`:
 >
 > - 2–3× slower and multi-GB memory footprint; useless for anyone not
 >   hunting a heap bug.
-> - Requires `clang_rt.asan_dynamic-x86_64.dll` sitting next to the exe;
->   a stray deploy overwrites the shippable binary with a dev-only one
->   that won't launch on a clean install.
-> - `MC2_ASAN` is defined, Tracy is disabled, so Tracy captures against
->   this exe silently do nothing — a confusing perf-regression trap.
+> - Requires the `clang_rt.asan_dynamic-x86_64.dll` sidecar (also deployed
+>   into this directory; net-new, doesn't shadow anything).
+> - `MC2_ASAN` is defined, Tracy is disabled — Tracy captures against this
+>   exe silently do nothing, which is a confusing perf-regression trap.
 >
-> **`/mc2-deploy` must not target this build.** If you need to reproduce
-> an ASan finding against the deployed tree, run it in place and copy the
-> log, not the binary.
+> **`/mc2-deploy` must not target this build.** That skill writes `mc2.exe`
+> and would clobber the production binary. Use the explicit copy command
+> in the Deploy section below. If someone later runs `/mc2-deploy` from a
+> normal worktree it will overwrite `mc2.exe` as expected and leave the
+> stale `mc2-asan.exe` sibling untouched — that's fine.
 
 ## Why this build exists
 
@@ -60,6 +64,45 @@ cd A:/Games/mc2-opengl-src/.claude/worktrees/asan-mvp
 
 Output: `build64-asan/RelWithDebInfo/mc2.exe` plus `clang_rt.asan_dynamic-x86_64.dll` copied alongside.
 
+## Deploy (to `mc2-asan.exe`, never `mc2.exe`)
+
+```bash
+SRC=A:/Games/mc2-opengl-src/.claude/worktrees/asan-mvp/build64-asan/RelWithDebInfo
+DST=A:/Games/mc2-opengl/mc2-win64-v0.1.1        # or any other install dir
+
+cp -f "$SRC/mc2.exe"                              "$DST/mc2-asan.exe"
+cp -f "$SRC/clang_rt.asan_dynamic-x86_64.dll"     "$DST/clang_rt.asan_dynamic-x86_64.dll"
+diff -q "$SRC/mc2.exe"                            "$DST/mc2-asan.exe"
+diff -q "$SRC/clang_rt.asan_dynamic-x86_64.dll"   "$DST/clang_rt.asan_dynamic-x86_64.dll"
+```
+
+Per project rules: `cp -f` per file + `diff -q`, never `cp -r` (silently
+fails on MSYS2). `mc2.exe` itself is not touched.
+
+> ### ⚠️ FFmpeg DLLs are required for the ASan build
+>
+> MSVC `/fsanitize=address` forces dynamic UCRT/VCRUNTIME binding even
+> when the rest of the binary links `/MT`. If the target install lacks
+> these DLLs, `mc2-asan.exe` fails to launch with
+> `STATUS_DLL_NOT_FOUND (0xC0000135)` and stderr reports
+> `api-ms-win-crt-locale-l1-1-0.dll: cannot open shared object file`
+> (misleading — the real issue is the VC++ SxS activation context).
+>
+> The FFmpeg DLLs shipped with the mc2-win64-v0.1.1 install happen to
+> carry SxS manifests that satisfy this dependency. Mirror them into any
+> install you deploy `mc2-asan.exe` to:
+>
+> ```bash
+> for f in avcodec-61.dll avformat-61.dll avutil-59.dll \
+>          swresample-5.dll swscale-8.dll ; do
+>     cp -f "A:/Games/mc2-opengl/mc2-win64-v0.1.1/$f" "$DST/$f"
+> done
+> ```
+>
+> Alternative: install the Microsoft Visual C++ Redistributable system-wide.
+> Symptom: `mc2.exe` (non-ASan) launches fine, `mc2-asan.exe` does not.
+> See `docs/asan-follow-ups.md` → "FFmpeg DLL deploy gotcha".
+
 ## CMake changes vs. nifty
 
 All inside `if(MC2_ASAN)` in the root `CMakeLists.txt`:
@@ -78,14 +121,21 @@ All inside `if(MC2_ASAN)` in the root `CMakeLists.txt`:
 ## Run: standalone mission smoke
 
 MSVC ASan runtime honors `ASAN_OPTIONS`. Use a non-halting config so a single
-session surfaces multiple bugs:
+session surfaces multiple bugs. The exe must run from the deploy directory
+so MC2 finds its FST archives, shaders, and data tree via CWD:
 
 ```bash
 export ASAN_OPTIONS="detect_leaks=0:abort_on_error=1:halt_on_error=0:print_stacktrace=1:symbolize=1"
 
-cd build64-asan/RelWithDebInfo
-./mc2.exe -mission mc2_01 2>&1 | tee asan-mc2_01.log
+cd A:/Games/mc2-opengl/mc2-win64-v0.1.1
+./mc2-asan.exe -mission mc2_01 2>&1 | tee asan-mc2_01.log
 ```
+
+Why CWD matters: MC2 resolves `data/`, `shaders/`, and FST archive paths
+relative to the current working directory, not the exe directory. The ASan
+sidecar DLL is resolved relative to the *exe* directory (Windows loader
+default), so putting both `mc2-asan.exe` and `clang_rt.asan_dynamic-x86_64.dll`
+in the deploy dir satisfies both lookups.
 
 Flag meanings:
 - `detect_leaks=0` — the engine leaks by design at shutdown; noise we can't

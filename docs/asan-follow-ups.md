@@ -87,3 +87,88 @@ Optional fallback experiment: rebuild the ASan build with Tracy
 re-enabled (`-DTRACY_ENABLE` added manually alongside `MC2_ASAN=ON`).
 Low-prior based on the grep analysis above, but it's a 10-minute
 empirical check if other evidence later points at Tracy.
+
+---
+
+## 2. `GlobalMap::clearPathExistsTable` uninit-pointer AV on Carver5O
+
+**Status:** bug confirmed, fix deferred.
+**First caught:** 2026-04-24, `mc2-asan.exe --mission mc2_01` on the
+Carver5-feasibility install (mc2x-import content merged into nifty).
+ASan log: `A:/Games/Carver5-feasibility/asan-carver5-mc2_01.18080`.
+
+### Crash signature
+
+ASan fires at `memset(pathExistsTable, ..., tableSize)` where
+`pathExistsTable == 0xBEBEBEBEBEBEBEBE` — MSVC `/fsanitize=address`
+uninitialized-stack/heap poison pattern.
+
+Backtrace:
+
+```
+_asan_memset
+GlobalMap::clearPathExistsTable   mclib/move.cpp:3069
+Building::update                   code/bldng.cpp:855
+GameObjectManager::update          code/objmgr.cpp:1769
+Mission::update                    code/mission.cpp:504
+DoGameLogic                        code/mechcmd2.cpp:2233
+```
+
+### Root cause (hypothesis)
+
+The content load path for Carver5O hits partial-init of `GlobalMap`:
+
+```
+[PAUSE] GlobalMap.init: doorInfo sum 9498 exceeds header numDoorInfos 200 — growing buffer to 9498
+[PAUSE] Mission.init: bad/old move data — skipping gate callback wiring; pathfinding degraded
+```
+
+Under partial init the `pathExistsTable = NULL` assignment at
+`mclib/move.cpp:1500` appears to be skipped, leaving the field holding
+whatever the allocator returned (under ASan: `0xBE`-filled poison). The
+`clearPathExistsTable` null-guard on line 3066 passes (non-zero pointer)
+and the `memset` dereferences garbage.
+
+### Code
+
+```cpp
+// mclib/move.cpp:3064-3070
+void GlobalMap::clearPathExistsTable (void) {
+    if (!pathExistsTable)                          // non-zero garbage passes
+        return;
+    long tableSize = numAreas * (numAreas / 4 + 1);
+    memset(pathExistsTable, GLOBALPATH_EXISTS_UNKNOWN, tableSize);   // AV here
+}
+```
+
+### Proposed fix (deferred)
+
+Force `pathExistsTable = NULL` (and any peer fields) in the `GlobalMap`
+constructor, not only inside `init()` — so partial-init objects are
+always safe to call member methods on. Independently, audit all
+`if (!ptr) return;` pattern sites in `move.cpp` — the null-guard
+convention only works if the pointer is explicitly zeroed on construction.
+
+### Why this is valuable
+
+This is exactly the class of bug the ASan MVP was built for: mod-content
+format mismatch leaves partial-init state that the engine then
+dereferences during the mission update loop. The normal build produces
+some other garbage value that happens not to AV on this specific
+Carver5O data — ASan's memory-layout change guarantees a poison pattern
+that does AV, surfacing the latent bug.
+
+### FFmpeg DLL deploy gotcha (sibling finding)
+
+The Carver5-feasibility install originally lacked the FFmpeg runtime
+DLLs (`avcodec-61.dll`, `avformat-61.dll`, `avutil-59.dll`,
+`swresample-5.dll`, `swscale-8.dll`). Without them, `mc2-asan.exe` fails
+to load with `STATUS_DLL_NOT_FOUND (0xC0000135)` — the loader reports
+`api-ms-win-crt-locale-l1-1-0.dll` missing. This is misleading: the
+actual blocker is the UCRT/VCRUNTIME SxS activation context, which the
+FFmpeg DLLs transitively provide. The normal `mc2.exe` build tolerates
+missing UCRT somehow (possibly via static CRT in Release), but
+`/fsanitize=address` forces dynamic UCRT binding regardless of `/MT`.
+
+Deploy rule for any ASan target install: copy the FFmpeg DLLs alongside
+`mc2-asan.exe`, or install UCRT system-wide via the VC++ Redistributable.
