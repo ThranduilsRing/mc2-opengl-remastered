@@ -19,7 +19,7 @@ This renderer serves a fixed-overhead RTS camera. The standard AAA post-FX catal
 
 **What this spec explicitly removes:**
 - SSAO (wrong for RTS camera; disabled but still consuming init cost)
-- God rays (disabled and invisible at RTS zoom — same reason)
+- God rays (removed — wrong camera, invisible at RTS zoom)
 - ACES filmic tonemapper (designed for HDR scene-referred input; our pipeline is sRGB-authored)
 - Hardcoded sunset filter in `postprocess.frag` (lines 99–121 — replaced by LUT)
 - FXAA (replaced by TAA)
@@ -562,13 +562,13 @@ POST-PROCESS CHAIN  (all fullscreen quads on quadVAO_)
 10. TAA resolve        reads: sceneColorTex_, historyTex[prev], depthTex
                        writes: taaHistoryTex_[curr]  ← working buffer from here forward
 11. Fog pass           reads: taaHistoryTex_[curr], depthTex
-                       writes: taaHistoryTex_[curr] (in-place; or ping-pong if needed)
+                       writes: fogOutputTex_  ← working buffer from here forward
 12. Outline resolve    reads: classTex_
                        writes: outlineTex_ (RGBA8, full-res)
 13. Bloom threshold    reads: taaHistoryTex_[curr]              → bloomFBO_[0]
 14. Bloom blur         ping-pong bloomFBO_[0↔1]
 15. Composite (→ screen):
-    reads: taaHistoryTex_[curr] (scene), outlineTex_, bloomColorTex_[0], lutTex_
+    reads: fogOutputTex_ (scene), outlineTex_, bloomColorTex_[0], lutTex_
     ─ bloom add (very low intensity)
     ─ LUT lookup (replaces ACES + sunset filter)
     ─ outline alpha-blend over scene
@@ -582,41 +582,34 @@ POST-PROCESS CHAIN  (all fullscreen quads on quadVAO_)
 
 ### New Resources
 
-| Resource | Format | Size | Purpose |
-|----------|--------|------|---------|
-| `taaHistoryTex_[2]` | RGBA16F | 2 × W×H×8 B | TAA history ping-pong |
-| `taaFBO_[2]` | — | — | TAA resolve targets |
-| `classTex_` | R8 | W×H×1 B | Classification (faction IDs) |
-| `classFBO_` | — | — | Classification render target |
-| `outlineTex_` | RGBA8 | W×H×4 B | Sparse outline output |
-| `outlineFBO_` | — | — | Outline resolve target |
-| `lutTex_` | RGB8 (3D) | 33³×3 B = 108 KB | 3D LUT (negligible) |
+| Resource | Format | Purpose |
+|----------|--------|---------|
+| `taaHistoryTex_[2]` | RGBA16F full-res | TAA history ping-pong |
+| `taaFBO_[2]` | — | TAA resolve targets |
+| `fogOutputTex_` | RGBA16F full-res | Fog pass output (avoids feedback loop with TAA history) |
+| `fogFBO_` | — | Fog render target |
+| `classTex_` | R8 full-res | Classification (faction IDs per pixel) |
+| `classFBO_` | — | Classification render target |
+| `outlineTex_` | RGBA8 full-res | Sparse outline output |
+| `outlineFBO_` | — | Outline resolve target |
+| `lutTex_` | RGB8 (3D, 33³) | 3D LUT (~108 KB, negligible) |
 
-**At 1920×1080:**
-- `taaHistoryTex_[2]`: 2 × 1920×1080×8 = ~31.6 MB
-- `classTex_`: 1920×1080×1 = ~2 MB
-- `outlineTex_`: 1920×1080×4 = ~8 MB
-- Total new: **~42 MB**
+### Reclaimable Resources (removed passes)
 
-### Reclaimable Resources (disabled passes)
-
-| Resource | Size | Freed by |
-|----------|------|----------|
-| `ssaoColorTex_` | R16F half-res ~2 MB | Remove SSAO init |
-| `ssaoBlurTex_` | R16F half-res ~2 MB | Remove SSAO init |
-| `ssaoNoiseTex_` | RGB16F 4×4 negligible | Remove SSAO init |
-| `godrayColorTex_` | RGBA16F half-res ~4 MB | Remove god ray init |
-
-**Net GPU memory cost: ~34 MB after reclaiming disabled passes.**
+| Resource | Freed by |
+|----------|----------|
+| `ssaoColorTex_`, `ssaoBlurTex_`, `ssaoNoiseTex_` | Phase 0: SSAO removal |
+| `ssaoFBO_`, `ssaoBlurFBO_` | Phase 0: SSAO removal |
+| `godrayColorTex_`, `godrayFBO_` | Phase 0: god ray removal |
 
 ### Texture Unit Usage in New Passes
 
 | Pass | Unit 0 | Unit 1 | Unit 2 | Unit 3 |
 |------|--------|--------|--------|--------|
 | TAA resolve | sceneTex | historyTex | depthTex | — |
-| Fog | sceneTex (TAA out) | depthTex | — | — |
+| Fog | taaHistoryTex_[curr] | depthTex | — | — |
 | Outline | classTex | — | — | — |
-| Composite | sceneTex (TAA out) | bloomTex | lutTex (3D) | outlineTex |
+| Composite | fogOutputTex_ | bloomTex | lutTex (3D) | outlineTex |
 
 No conflicts with existing shadow_screen (units 0–3) since these passes run sequentially.
 
@@ -670,7 +663,20 @@ All new passes follow the rules from `docs/amd-driver-rules.md`:
 
 ## 12. Implementation Priority
 
-**Recommended implementation order** (aligned with user guidance: outline first):
+**Recommended implementation order.** SSAO + god ray removal comes first: it clarifies resource ownership before new FBO allocations begin, and it means new allocations are clearly using fresh budget rather than implicitly relying on "recovered" memory that hasn't been freed yet.
+
+### Phase 0: SSAO + God Ray Removal
+
+Do this before adding any new FBOs. The resource story is cleaner: new passes allocate into freed budget rather than into memory that will theoretically be freed later.
+
+1. Delete `runSSAO()`, `runGodRays()` call sites from `endScene()`
+2. Delete function bodies from `gos_postprocess.cpp`
+3. Delete texture allocations: `ssaoColorTex_`, `ssaoBlurTex_`, `ssaoNoiseTex_`, `godrayColorTex_`
+4. Delete FBO allocations: `ssaoFBO_`, `ssaoBlurFBO_`, `godrayFBO_`
+5. Delete shader programs: `ssaoProg_`, `ssaoBlurProg_`, `ssaoApplyProg_`, `godrayProg_`
+6. Delete shader files: `ssao.frag`, `ssao_blur.frag`, `ssao_apply.frag`, `godray.frag`
+7. Remove all `ssaoEnabled_`, `godrayEnabled_` flags and hotkey bindings
+8. Build and smoke-test — verify no regressions, confirm freed memory
 
 ### Phase 1: Outline Pass (~1 day)
 
@@ -680,7 +686,7 @@ All new passes follow the rules from `docs/amd-driver-rules.md`:
 4. Wire call site in `txmmgr.cpp:renderLists()` with team/faction ID
 5. Write `outline.frag`
 6. Add `outlineFBO_` + `outlineTex_` to post-process
-7. Add `runOutline()` call in `endScene()` after TAA
+7. Add `runOutline()` call in `endScene()` (after TAA slot, before bloom)
 8. Blend `outlineTex_` in composite shader
 9. Add `RAlt+8` toggle
 
@@ -696,12 +702,23 @@ All new passes follow the rules from `docs/amd-driver-rules.md`:
 
 1. Add aerial uniforms to `gos_terrain.frag` and `gos_tex_vertex.frag`
 2. Add aerial perspective term in both shaders after PBR/surface computation
-3. Write `fog.frag`
-4. Add `fogFBO_` (reuse ping-pong slot) + `runFog()` in `endScene()`
-5. Add per-mission `setFogParams()` API
-6. Add per-mission `setAerialParams()` API
+3. Write `fog.frag`; allocate `fogOutputTex_` + `fogFBO_`
+4. Add `runFog()` in `endScene()` after TAA, writing to `fogOutputTex_`
+5. Update composite to read `fogOutputTex_` as primary scene input
+6. Add per-mission `setFogParams()` and `setAerialParams()` APIs
 
-### Phase 4: TAA (~1 day)
+### Phase 4: Biome Config System (~half day)
+
+1. Write `BiomePreset` struct and `BiomeConfig` parser in `gos_postprocess.cpp`
+2. Parse `data/biomes.cfg` at startup; load preset files from `data/biomes/`
+3. Implement `loadBiome(missionName)` and `applyBiome(preset)`
+4. Connect to mission startup call site
+5. Ship base biome presets: `default`, `desert`, `arctic`, `urban`, `night`, `forest`
+6. Ship base LUT files in `data/luts/`
+7. Add `RAlt+B` biome cycle for runtime debugging
+8. Replace individual per-mission manual setter calls with `loadBiome()`
+
+### Phase 5: TAA (~1 day)
 
 1. Add Halton jitter computation to `gos_postprocess.cpp`
 2. Modify `setTerrainMVP()` in `gameos_graphics.cpp` to inject jitter before upload
@@ -709,35 +726,13 @@ All new passes follow the rules from `docs/amd-driver-rules.md`:
 4. Write `taa_resolve.frag` with neighborhood AABB clamp
 5. Add `prevViewProj_` matrix management (swap at frame boundary)
 6. Add `runTAA()` call in `endScene()` after shoreline
-7. Update bloom + fog + outline + composite to read `taaHistoryTex_[curr]` instead of `sceneColorTex_`
+7. Update fog + outline + composite to read `taaHistoryTex_[curr]` as their source
 8. Add `RAlt+T` toggle
 9. Remove `enableFXAA` path from composite (FXAA replaced)
 
-### Phase 5: SSAO + God Ray Removal
+### Phase 6: Composite Cleanup
 
-1. Delete `runSSAO()`, `runGodRays()` call sites from `endScene()`
-2. Delete function bodies from `gos_postprocess.cpp`
-3. Delete texture allocations: `ssaoColorTex_`, `ssaoBlurTex_`, `ssaoNoiseTex_`, `godrayColorTex_`
-4. Delete FBO allocations: `ssaoFBO_`, `ssaoBlurFBO_`, `godrayFBO_`
-5. Delete shader programs: `ssaoProg_`, `ssaoBlurProg_`, `ssaoApplyProg_`, `godrayProg_`
-6. Delete shader files: `ssao.frag`, `ssao_blur.frag`, `ssao_apply.frag`, `godray.frag`
-7. Remove all `ssaoEnabled_`, `godrayEnabled_` flags and hotkey bindings
-8. Allocate recovered memory to `fogOutputTex_`, `classTex_`, `outlineTex_`
-
-### Phase 6: Biome Config System
-
-1. Write `BiomePreset` struct and `BiomeConfig` parser in `gos_postprocess.cpp`
-2. Parse `data/biomes.cfg` at startup; load preset files from `data/biomes/`
-3. Implement `loadBiome(missionName)` and `applyBiome(preset)`
-4. Connect to mission startup call site (same site where other per-mission state is reset)
-5. Ship base biome presets: `default`, `desert`, `arctic`, `urban`, `night`, `forest`
-6. Ship base LUT files in `data/luts/`
-7. Add `RAlt+B` biome cycle for runtime debugging
-8. Remove all individual per-mission manual setters from C++ mission code (replaced by biome lookup)
-
-### Phase 7: Composite Cleanup
-
-1. Remove `enableBloom`, `enableTonemap`, `enableFXAA` uniforms and code paths from composite shader (all replaced)
+1. Remove `enableBloom`, `enableTonemap`, `enableFXAA` uniforms and code paths from composite shader
 2. Update debug hotkey documentation
 3. Update `docs/architecture.md` with new pipeline order
 
@@ -898,7 +893,7 @@ These are explicitly out of scope per the design brief and this spec:
 - **SSAO in any form** — wrong for top-down; baked vertex AO in static props is the correct approach if AO is needed later
 - **Bloom tuning** — the bloom infrastructure stays but is nearly-off; it is not the RTS visual upgrade path
 - **Per-object velocity buffer** — Phase 1 TAA uses camera-only reprojection; object velocity is Phase 2 if TAA ghosting on fast mechs proves problematic at real zoom levels
-- **God rays** — disabled and invisible at RTS zoom; infrastructure retained
+- **God rays** — removed; wrong camera and invisible at RTS zoom (see Section 13)
 
 ---
 
