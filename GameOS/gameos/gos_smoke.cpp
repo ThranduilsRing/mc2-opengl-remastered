@@ -39,13 +39,17 @@ void parseArgs(int argc, char** argv) {
         if (end != seedEnv) g_state.seed = static_cast<uint32_t>(v);
     }
 
-    auto failMissingValue = [](const char* flag) {
-        std::fprintf(stdout,
-            "[SMOKE v1] event=summary result=fail reason=argv_error "
-            "stage=parseArgs detail=\"%s requires value\"\n", flag);
-        std::fflush(stdout);
-        std::exit(2);
+    // [[noreturn]] on lambdas requires C++23; use a local static function instead.
+    struct ParseArgsFail {
+        [[noreturn]] static void missingValue(const char* flag) {
+            std::fprintf(stdout,
+                "[SMOKE v1] event=summary result=fail reason=argv_error "
+                "stage=parseArgs detail=\"%s requires value\"\n", flag);
+            std::fflush(stdout);
+            std::exit(2);
+        }
     };
+    const auto failMissingValue = ParseArgsFail::missingValue;
 
     for (int i = 1; i < argc; ++i) {
         const char* a = argv[i];
@@ -57,7 +61,13 @@ void parseArgs(int argc, char** argv) {
             g_state.profile = argv[++i];
         } else if (std::strcmp(a, "--duration") == 0) {
             if (i + 1 >= argc) failMissingValue("--duration");
-            g_state.durationSec = std::atoi(argv[++i]);
+            const char* s = argv[++i];
+            char* end = nullptr;
+            long v = std::strtol(s, &end, 10);
+            if (end == s || *end != '\0' || v <= 0 || v > 86400) {
+                failMissingValue("--duration (must be integer 1..86400)");
+            }
+            g_state.durationSec = static_cast<int>(v);
         } else if (std::strcmp(a, "--smoke-active") == 0) {
             g_state.active = true;
         }
@@ -67,7 +77,7 @@ void parseArgs(int argc, char** argv) {
     if (g_state.enabled && g_state.mission.empty()) {
         std::fprintf(stdout,
             "[SMOKE v1] event=summary result=fail reason=argv_error "
-            "stage=parseArgs detail=\"--mission required when MC2_SMOKE_MODE=1\"\n");
+            "stage=parseArgs detail=\"--mission required when MC2_SMOKE_MODE is set\"\n");
         std::fflush(stdout);
         std::exit(2);
     }
@@ -75,12 +85,10 @@ void parseArgs(int argc, char** argv) {
         // Smoke args without env -- refuse.
         std::fprintf(stdout,
             "[SMOKE v1] event=summary result=fail reason=argv_error "
-            "stage=parseArgs detail=\"--mission requires MC2_SMOKE_MODE=1\"\n");
+            "stage=parseArgs detail=\"--mission requires MC2_SMOKE_MODE to be set\"\n");
         std::fflush(stdout);
         std::exit(2);
     }
-    if (g_state.durationSec <= 0) g_state.durationSec = 120;
-
     if (g_state.enabled) {
         std::fprintf(stdout,
             "[SMOKE v1] event=banner mode=%s mission=%s profile=%s duration=%d seed=0x%x\n",
