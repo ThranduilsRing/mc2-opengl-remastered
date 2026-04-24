@@ -12,6 +12,32 @@
       "peak_ms": 77.82
     }
   },
+  "stock@mc2_01@tier2@60": {
+    "destroys": {
+      "mean": 0,
+      "samples": 1,
+      "stddev": 0,
+      "updated": "2026-04-24T11-53-15"
+    },
+    "perf": {
+      "avg_fps": 175.2,
+      "p1low_fps": 141.6,
+      "peak_ms": 150.04
+    }
+  },
+  "stock@mc2_02@tier2@60": {
+    "destroys": {
+      "mean": 0,
+      "samples": 1,
+      "stddev": 0,
+      "updated": "2026-04-24T11-53-15"
+    },
+    "perf": {
+      "avg_fps": 120.2,
+      "p1low_fps": 70.9,
+      "peak_ms": 161.0
+    }
+  },
   "stock@mc2_03@tier1@8": {
     "destroys": {
       "mean": 0,
@@ -23,6 +49,97 @@
       "avg_fps": 144.0,
       "p1low_fps": 110.7,
       "peak_ms": 240.08
+    }
+  },
+  "stock@mc2_03@tier2@60": {
+    "destroys": {
+      "mean": 0,
+      "samples": 1,
+      "stddev": 0,
+      "updated": "2026-04-24T11-53-15"
+    },
+    "perf": {
+      "avg_fps": 134.8,
+      "p1low_fps": 87.5,
+      "peak_ms": 239.13
+    }
+  },
+  "stock@mc2_04@tier2@60": {
+    "destroys": {
+      "mean": 0,
+      "samples": 1,
+      "stddev": 0,
+      "updated": "2026-04-24T11-53-15"
+    },
+    "perf": {
+      "avg_fps": 186.0,
+      "p1low_fps": 82.9,
+      "peak_ms": 167.84
+    }
+  },
+  "stock@mc2_05@tier2@60": {
+    "destroys": {
+      "mean": 0,
+      "samples": 1,
+      "stddev": 0,
+      "updated": "2026-04-24T11-53-15"
+    },
+    "perf": {
+      "avg_fps": 108.5,
+      "p1low_fps": 85.7,
+      "peak_ms": 197.02
+    }
+  },
+  "stock@mc2_06@tier2@60": {
+    "destroys": {
+      "mean": 0,
+      "samples": 1,
+      "stddev": 0,
+      "updated": "2026-04-24T11-53-15"
+    },
+    "perf": {
+      "avg_fps": 124.4,
+      "p1low_fps": 57.9,
+      "peak_ms": 231.62
+    }
+  },
+  "stock@mc2_07@tier2@60": {
+    "destroys": {
+      "mean": 0,
+      "samples": 1,
+      "stddev": 0,
+      "updated": "2026-04-24T11-53-15"
+    },
+    "perf": {
+      "avg_fps": 138.7,
+      "p1low_fps": 70.6,
+      "peak_ms": 140.35
+    }
+  },
+  "stock@mc2_08@tier2@60": {
+    "destroys": {
+      "mean": 0,
+      "samples": 1,
+      "stddev": 0,
+      "updated": "2026-04-24T11-53-15"
+    },
+    "perf": {
+      "avg_fps": 141.5,
+      "p1low_fps": 70.2,
+      "peak_ms": 18.04
+    }
+  },
+  "stock@mc2_09@tier2@60": {
+    "destroys": {
+      "mean": 0,
+      "samples": 1,
+      "stddev": 0,
+      "updated": "2026-04-24T11-53-15"
+    },
+    "perf": {
+      "avg_fps": 220.1,
+      "p1low_fps": 140.9,
+      "peak_ms": 10.66
     }
   },
   "stock@mc2_10@tier1@8": {
@@ -38,6 +155,97 @@
       "peak_ms": 66.14
     }
   },
+  "stock@mc2_10@tier2@60": {
+    "destroys": {
+      "mean": 0,
+      "samples": 1,
+      "stddev": 0,
+      "updated": "2026-04-24T11-53-15"
+    },
+    "perf": {
+      "avg_fps": 143.2,
+      "p1low_fps": 68.5,
+      "peak_ms": 45.02
+    }
+  },
+  "stock@mc2_11@tier2@60": {
+    "destroys": {
+      "mean": 0,
+      "samples": 1,
+      "stddev": 0,
+      "updated": "2026-04-24T11-53-15"
+    },
+    "perf": {
+      "avg_fps": 154.7,
+      "p1low_fps": 73.0,
+      "peak_ms": 140.91
+    }
+  },
+  "stock@mc2_12@tier2@60": {
+    "destroys": {
+      "mean": 0,
+      "samples": 1,
+      "stddev": 0,
+      "updated": "2026-04-24T11-53-15"
+    },
+    "perf": {
+      "avg_fps": 85.8,
+      "p1low_fps": 45.2,
+      "peak_ms": 231.63
+    }
+  },
+  "stock@mc2_13@tier2@60": {
+    "destroys": {
+      "mean": 0,
+      "samples": 1,
+      "stddev": 0,
+      "updated": "2026-04-24T11-53-15"
+    },
+    "perf": {
+      "avg_fps": 146.0,
+      "p1low_fps": 90.9,
+      "peak_ms": 73.99
+    }
+  },
+  "stock@mc2_14@tier2@60": {
+    "destroys": {
+      "mean": 0,
+      "samples": 1,
+      "stddev": 0,
+      "updated": "2026-04-24T11-53-15"
+    },
+    "perf": {
+      "avg_fps": 116.3,
+      "p1low_fps": 50.3,
+      "peak_ms": 215.35
+    }
+  },
+  "stock@mc2_15@tier2@60": {
+    "destroys": {
+      "mean": 0,
+      "samples": 1,
+      "stddev": 0,
+      "updated": "2026-04-24T11-53-15"
+    },
+    "perf": {
+      "avg_fps": 163.9,
+      "p1low_fps": 88.0,
+      "peak_ms": 123.36
+    }
+  },
+  "stock@mc2_16@tier2@60": {
+    "destroys": {
+      "mean": 0,
+      "samples": 1,
+      "stddev": 0,
+      "updated": "2026-04-24T11-53-15"
+    },
+    "perf": {
+      "avg_fps": 105.9,
+      "p1low_fps": 42.5,
+      "peak_ms": 72.35
+    }
+  },
   "stock@mc2_17@tier1@8": {
     "destroys": {
       "mean": 0,
@@ -51,6 +259,84 @@
       "peak_ms": 271.1
     }
   },
+  "stock@mc2_17@tier2@60": {
+    "destroys": {
+      "mean": 0,
+      "samples": 1,
+      "stddev": 0,
+      "updated": "2026-04-24T11-53-15"
+    },
+    "perf": {
+      "avg_fps": 153.2,
+      "p1low_fps": 68.6,
+      "peak_ms": 102.67
+    }
+  },
+  "stock@mc2_18@tier2@60": {
+    "destroys": {
+      "mean": 0,
+      "samples": 1,
+      "stddev": 0,
+      "updated": "2026-04-24T11-53-15"
+    },
+    "perf": {
+      "avg_fps": 116.4,
+      "p1low_fps": 52.3,
+      "peak_ms": 151.17
+    }
+  },
+  "stock@mc2_19@tier2@60": {
+    "destroys": {
+      "mean": 0,
+      "samples": 1,
+      "stddev": 0,
+      "updated": "2026-04-24T11-53-15"
+    },
+    "perf": {
+      "avg_fps": 109.4,
+      "p1low_fps": 53.1,
+      "peak_ms": 226.38
+    }
+  },
+  "stock@mc2_21@tier2@60": {
+    "destroys": {
+      "mean": 0,
+      "samples": 1,
+      "stddev": 0,
+      "updated": "2026-04-24T11-53-15"
+    },
+    "perf": {
+      "avg_fps": 82.8,
+      "p1low_fps": 26.8,
+      "peak_ms": 270.79
+    }
+  },
+  "stock@mc2_22@tier2@60": {
+    "destroys": {
+      "mean": 0,
+      "samples": 1,
+      "stddev": 0,
+      "updated": "2026-04-24T11-53-15"
+    },
+    "perf": {
+      "avg_fps": 130.4,
+      "p1low_fps": 58.9,
+      "peak_ms": 178.28
+    }
+  },
+  "stock@mc2_23@tier2@60": {
+    "destroys": {
+      "mean": 0,
+      "samples": 1,
+      "stddev": 0,
+      "updated": "2026-04-24T11-53-15"
+    },
+    "perf": {
+      "avg_fps": 110.2,
+      "p1low_fps": 47.4,
+      "peak_ms": 284.39
+    }
+  },
   "stock@mc2_24@tier1@8": {
     "destroys": {
       "mean": 0,
@@ -62,6 +348,19 @@
       "avg_fps": 198.1,
       "p1low_fps": 126.8,
       "peak_ms": 65.44
+    }
+  },
+  "stock@mc2_24@tier2@60": {
+    "destroys": {
+      "mean": 0,
+      "samples": 1,
+      "stddev": 0,
+      "updated": "2026-04-24T11-53-15"
+    },
+    "perf": {
+      "avg_fps": 93.3,
+      "p1low_fps": 58.1,
+      "peak_ms": 157.54
     }
   }
 }
