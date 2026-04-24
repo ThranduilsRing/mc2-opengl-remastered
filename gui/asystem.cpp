@@ -128,15 +128,6 @@ void aObject::init(FitIniFile* file, const char* blockName, DWORD neverFlush)
 				strcat( buffer, ".tga" );
 			int ID = mcTextureManager->loadTexture( buffer, bAlpha ? gos_Texture_Alpha : gos_Texture_Keyed, 0, 0, neverFlush);
 			textureHandle = ID;
-
-			// Register this widget with AssetScale. UVs authored in the .fit
-			// are nominal-pixel; when the on-disk asset is a loose-file
-			// upscale, aObject::render() corrects via nominalToActualRect.
-			// Unknown assets round-trip to identity (factor=1.0), so this is
-			// safe for every FIT-loaded widget.
-			assetKey = AssetScale::key(buffer);
-			srcRectSpace = SrcRectSpace::NominalPixels;
-
 			DWORD logicalWidth = 0;
 			DWORD logicalHeight = 0;
 			if ( mcTextureManager->tryGetTextureLogicalSize( ID, logicalWidth, logicalHeight ) )
