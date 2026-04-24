@@ -22,9 +22,23 @@ Artifacts land in `tests/smoke/artifacts/<timestamp>/`.
 
 ## Tier ladder
 
-- `tier1`: pre-push confidence gate. Current missions: `mc2_01`, `mc2_03`, `mc2_10`, `mc2_17`, `mc2_24`.
-- `tier2`: pre-PR campaign sweep. Current missions: full `mc2_01` through `mc2_24`.
+- `tier1`: pre-push confidence gate. **Rolling 3 worst-case missions** identified by the most recent tier2 baseline run (rotates after every tier2 reshuffle). See `tests/smoke/smoke_missions.txt` for the current set.
+- `tier2`: pre-PR campaign sweep. Hand-maintained authoritative list of `mc2_01` through `mc2_24`.
 - `tier3`: reserved for broader curated content after tier2 is stable.
+
+### Tier1 reshuffle (after each tier2 baseline run)
+
+Tier1 is **derived data** — regenerated from the latest tier2 perf numbers, not hand-curated. The intent is for the daily gate to keep tracking whatever is currently painful, so a fix to one stress mission causes tier1 to rotate to the next worst.
+
+Process after each `--tier tier2 --baseline-update` run:
+
+1. Sort tier2 baselines by p1low (lowest = worst sustained framerate).
+2. Pick the 3 stems with the worst p1low (or one each from worst-p1low / worst-peak_ms / bad-on-both — see existing `reason=` fields for precedent).
+3. Replace the `tier1 ...` lines in `tests/smoke/smoke_missions.txt`. Keep the leading comment block referencing the source notes file.
+4. Re-baseline tier1 at the canonical duration: `python scripts/run_smoke.py --tier tier1 --duration 60 --baseline-update --kill-existing`.
+5. Commit manifest + baselines together with a one-line `chore(smoke)` summary.
+
+Note: tier1 baselines are necessarily transient — they only stay valid until the next reshuffle. That's intentional; the gate compares against this-cycle's worst cases, not historical ones.
 
 Examples:
 

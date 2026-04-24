@@ -158,7 +158,7 @@ py -3 A:\Games\mc2-opengl-src\.claude\worktrees\nifty-mendeleev\scripts\run_smok
 ```
 
 What it covers:
-- `tier1` direct-start passive smoke on `mc2_01`, `mc2_03`, `mc2_10`, `mc2_17`, `mc2_24`
+- `tier1` direct-start passive smoke on the **3 worst-case missions** from the most recent tier2 baseline run (rotates after each tier2 reshuffle; see `tests/smoke/smoke_missions.txt` for the current set and `tests/smoke/README.md` for the reshuffle process)
 - one separate menu canary (`boot -> main menu/logistics path -> clean exit`)
 
 Interpretation:

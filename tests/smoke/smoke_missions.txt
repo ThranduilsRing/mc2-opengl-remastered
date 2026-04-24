@@ -3,11 +3,13 @@
 # Keys: duration, heartbeat_timeout_load, heartbeat_timeout_play, profile, active
 # Tiers: tier1, tier2, tier3, skip
 
-tier1 mc2_01 reason="baseline grass/desert combat"
-tier1 mc2_03 reason="salvage + heavier combat"
-tier1 mc2_10 reason="urban/complex objects"
-tier1 mc2_17 reason="late-campaign combined-arms stress"
-tier1 mc2_24 reason="final campaign mission smoke"
+# Tier1 = rolling 3 worst-case missions identified by the most recent
+# tier2 baseline run. Reassessed after every tier2 --baseline-update.
+# Source: docs/superpowers/plans/progress/2026-04-24-tier2-baseline-notes.md
+# Reshuffle process: see "Tier1 reshuffle" section in tests/smoke/README.md.
+tier1 mc2_21 reason="tier2 worst p1low (26.8 fps, peak 270.8ms) -- object density"
+tier1 mc2_23 reason="tier2 worst peak_ms (284.4ms, p1low 47.4) -- late-campaign stalls"
+tier1 mc2_12 reason="tier2 bad-on-both (p1low 45.2, peak 231.6) -- mid-campaign stress"
 
 tier2 mc2_01 reason="campaign"
 tier2 mc2_02 reason="campaign"
