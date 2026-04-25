@@ -105,10 +105,11 @@ Mod-overlay pitfall: overlaying `A:/Games/Magic_MC2_archive/Sarna.net/magicsunof
 
 Rules for keeping this file and memory healthy:
 1. **No session narratives in CLAUDE.md.** Dated "what was proven / what was changed" logs belong in commit messages or a memory file, NOT here. Every line in CLAUDE.md is loaded on every session.
-2. **New durable finding → memory file + MEMORY.md index entry.** Writing a memory without updating the index makes it invisible. Group it under the right topic heading in MEMORY.md.
-3. **Superseded facts → update or delete the memory, don't append.** Memory files are point-in-time and decay fast. If the "Post-processing applies to HUD" issue gets fixed, update the Known Issues line here AND the relevant memory — don't leave both stale.
-4. **Before writing a new memory, search existing ones.** `grep -i <keyword> memory/*.md`. Duplicates fragment knowledge.
-5. **CLAUDE.md stays under ~250 lines.** If it grows past that, the signal-to-noise is probably off — extract sections into memory files and link from here.
+2. **Root CLAUDE.md is a thin pointer ONLY.** `A:/Games/mc2-opengl-src/CLAUDE.md` (the root repo's CLAUDE.md, distinct from THIS worktree CLAUDE.md) must never contain project rules, session narratives, smoke gate commands, or any substantive guidance. It is enforced by `scripts/check-claude-md-pointer.sh` (sentinel + line-cap check). Add content to THIS file (the worktree CLAUDE.md) instead. Drift in root CLAUDE.md has been observed to cause sessions to fall back to ad-hoc heuristics (wrong shader version, wrong smoke "test", missing release rules).
+3. **New durable finding → memory file + MEMORY.md index entry.** Writing a memory without updating the index makes it invisible. Group it under the right topic heading in MEMORY.md.
+4. **Superseded facts → update or delete the memory, don't append.** Memory files are point-in-time and decay fast. If the "Post-processing applies to HUD" issue gets fixed, update the Known Issues line here AND the relevant memory — don't leave both stale.
+5. **Before writing a new memory, search existing ones.** `grep -i <keyword> memory/*.md`. Duplicates fragment knowledge.
+6. **CLAUDE.md stays under ~250 lines.** If it grows past that, the signal-to-noise is probably off — extract sections into memory files and link from here.
 
 ## Debug Instrumentation Rule (for reworks)
 
