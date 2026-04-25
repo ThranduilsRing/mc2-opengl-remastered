@@ -12,7 +12,7 @@ Download all four zips and extract each into the **same folder** (contents merge
 
 1. **`mc2-remastered-engine.zip`** (5 MB) — engine, shaders, runtime DLLs, asset tools
 2. **`mc2-gamedata.zip`** (683 MB) — `.fst` archives + `data/sound`, `data/movies`, `data/objects`, `data/textures` (includes per-mission lightmaps)
-3. **`mc2-art.zip`** (362 MB) — upscaled PBR art overrides (`data/art/`)
+3. **`mc2-art.zip`** (360 MB) — upscaled PBR art overrides (`data/art/`)
 4. **`mc2-tgl.zip`** (336 MB) — upscaled PBR terrain overrides (`data/tgl/`)
 
 Run `mc2.exe`. No original MC2 install required.
@@ -25,10 +25,11 @@ MechCommander 2 was released by Microsoft/FASA Interactive in 2001 and its sourc
 
 ### Terrain Rendering
 - **PBR splatting** with per-material normal maps, parallax occlusion mapping, and roughness
-- **Hardware tessellation** for smooth terrain geometry
+- **Hardware tessellation** for smooth terrain geometry; seam expansion stitches cliff face discontinuities via tangent-plane projection
 - **Triplanar cliff mapping** -- rock texture on steep slopes
-- **Cloud shadows** -- animated FBM noise
+- **Cloud shadows** -- animated FBM noise, amplitude normalized per biome
 - **Height-based fog** (off by default; may need tuning)
+- **Terrain grain** fades by projected screen frequency (no grain noise at high zoom)
 
 ### Lighting and Shadows
 - **Static terrain shadow map** (8192x8192), rendered once on the first frame
@@ -87,17 +88,22 @@ mc2.exe -mission mis0101    # skip menus, load directly into a mission
 ### Bug fixes
 - Fixed per-frame sleep timer that was capping framerate
 - Fixed intermittent color flickering
+- Fixed bloom and FXAA contaminating the HUD (effects now apply to scene geometry only)
+- Fixed cliff face seam streaks at biome transitions
+- Fixed grass normal fade and excluded alpha-blended shapes from the dynamic shadow pass
+- Fixed base-game pathfinding crash (GlobalMap zero-init) and neutral turret lookup guard
 
 ### Performance
 - Moved significant rendering work from CPU to GPU (terrain, static props, tessellation)
+- Configurable FPS cap via `MC2_FPS_CAP` env var (default 165 in-mission, 90 in menus)
 - Runs at **4K with 30+ FPS zoomed out, ~90 FPS zoomed in** on mid-range hardware
 
 (Plus alariq's extensive upstream bug fixes over the original engine.)
 
 ## Known Issues
 
-- **Terrain tile overlap seams** visible at certain zooms and biome transitions
-- **Pink color bleed** onto GUI elements from the post-process pipeline
+- **Shadow map stutter** when the camera moves more than ~500 units; a world-fixed static shadow design is ready but not yet implemented
+- **Shadow banding** shifts with camera rotation due to view-dependent terrain geometry
 
 ## Documentation
 
