@@ -107,35 +107,11 @@ void main()
     float absW = abs(clip.w);
     gl_Position = vec4(ndc.xyz * absW, absW);
 
-    // Terrain seam expansion in clip space only — WorldPos is NOT modified.
-    // Expanding worldPos.xy shifted the surface gradient at edge triangles, changing
-    // interpolated normals and shadow coordinates, producing diamond outlines on flat
-    // concrete. Operating purely on gl_Position means the rasterizer sees overlap but
-    // the fragment shader gets pristine WorldPos: no shadow offset, no normal tilt.
-    // No reliefGate needed — screen-space expansion creates no 3D geometry warping.
-    {
-        float edgeDist = min(min(bary.x, bary.y), bary.z);
-        float edgeMask = 1.0 - smoothstep(0.0, 0.08, edgeDist);
-        if (edgeMask > 0.001) {
-            // Project patch centroid through the same chain as the vertex.
-            vec3 patchCent3D = (tcs_WorldPos[0] + tcs_WorldPos[1] + tcs_WorldPos[2]) / 3.0;
-            vec4 cClip = terrainMVP * vec4(patchCent3D, 1.0);
-            float cRhw = 1.0 / cClip.w;
-            vec3 cScreen;
-            cScreen.x = cClip.x * cRhw * terrainViewport.x + terrainViewport.z;
-            cScreen.y = cClip.y * cRhw * terrainViewport.y + terrainViewport.w;
-            cScreen.z = cClip.z * cRhw;
-            vec4 cNdc = mvp * vec4(cScreen, 1.0);
-            // NDC direction from centroid to this vertex; expand ~1 px outward.
-            // gl_Position is pre-divide clip; NDC = gl_Position.xy / gl_Position.w.
-            vec2 vertNDC = gl_Position.xy / absW;
-            vec2 centNDC = cNdc.xy / abs(cClip.w);
-            vec2 seamDir2D = vertNDC - centNDC;
-            float seamLen2D = length(seamDir2D);
-            if (seamLen2D > 0.0001) {
-                // 0.002 NDC ≈ 1 px at 1920 wide; scale back into clip space by absW.
-                gl_Position.xy += (seamDir2D / seamLen2D) * 0.002 * edgeMask * absW;
-            }
-        }
-    }
+    // Seam expansion removed. All worldPos.xy variants changed the surface gradient
+    // at edge triangles (shifting shadow coords, fwidth derivatives, fwConcrete AA),
+    // producing diamond outlines on flat concrete. Clip-space-only expansion changed
+    // triangle screen size, altering fwidth results in the fragment shader — same
+    // artifact class. Residual sub-pixel flat-terrain seams are acceptable given the
+    // trade-off; tessellated geometry already eliminates the majority of the original
+    // D3D7 gaps.
 }
