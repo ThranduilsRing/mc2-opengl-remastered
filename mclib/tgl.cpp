@@ -2717,14 +2717,18 @@ void TG_Shape::Render (float forceZ, bool isHudElement, BYTE alphaValue, bool is
 
 
 	if (theShape->ib_ && theShape->vb_) {
-		// Collect shape for the dynamic shadow-map pass.
-		// Exclude alpha-blended shapes (trees, glass, etc.) — the depth-only shadow pass has no
-		// alpha sampling, so they'd cast solid rectangular shadows instead of silhouette shadows.
-		const bool firstTextureAlpha =
-			theShape->listOfTextures[theShape->listOfTypeTriangles[0].localTextureHandle].textureAlpha;
+		// Collect shape for the dynamic shadow-map pass even when the renderable shape mixes
+		// textured and alpha-marked materials. The shadow object pass is depth-only and does not
+		// depend on the first material slot being fully opaque.
+		// NOTE: 743efd6 added a `!firstTextureAlpha` clause here intending to suppress trees that
+		// cast solid rectangular shadows. Trees are already excluded via `!alphaTestOn`
+		// (TreeAppearance calls SetAlphaTest(true)), so the clause did nothing for trees but
+		// suppressed every static prop whose first material is alpha-channel -- notably fences /
+		// gates with perforated lattice textures. Reverted; alpha-cutout caster shader is the
+		// proper long-term fix.
 		const bool eligibleForDynamicShadow =
 			!isSpotlight && !isWindow && !isHudElement && !isClamped &&
-			!theShape->alphaTestOn && !firstTextureAlpha && (alphaValue == 0xff) && shapeToWorld;
+			!theShape->alphaTestOn && (alphaValue == 0xff) && shapeToWorld;
 		if (eligibleForDynamicShadow) {
 			addShadowShape(theShape->vb_, theShape->ib_, theShape->vdecl_, shapeToWorld->entries);
 		}
