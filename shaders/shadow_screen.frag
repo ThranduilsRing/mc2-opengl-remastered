@@ -160,7 +160,7 @@ void main()
     {
         vec2 cloudUV = worldPos.xy * 0.0006 + vec2(time * 0.012, time * 0.005);
         float cloudNoise = fbm(cloudUV, 4) * 0.5 + 0.5;
-        cloudFactor = mix(0.70, 1.0, smoothstep(0.3, 0.7, cloudNoise));
+        cloudFactor = mix(0.85, 1.0, smoothstep(0.3, 0.7, cloudNoise));
     }
 
     float shadow = 1.0;
