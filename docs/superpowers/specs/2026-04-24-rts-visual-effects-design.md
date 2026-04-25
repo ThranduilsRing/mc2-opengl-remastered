@@ -7,6 +7,8 @@
 
 ## 0. Design Philosophy
 
+**Design target:** 4K (3840×2160) on a 42" OLED at RX 7900 XTX. 1080p on mid-range hardware is expected to work, not expected to be the reference point. When a tradeoff comes up (default sizes, quality vs cost, "affordable" threshold), bias toward what reads well at 4K on that display. Lower resolutions get a scaled-down version that is good enough, not the other way around.
+
 This renderer serves a fixed-overhead RTS camera. The standard AAA post-FX catalog is the wrong reference. The correct reference is what CoH3, AoE4, and SC2 Remastered actually ship: TAA + LUT + outline + subtle aerial perspective — nothing else from the catalog.
 
 **What this spec adds:**
@@ -96,11 +98,14 @@ Halton(2,3) sub-pixel offsets, 8-frame sequence (indices 1–8). Applied in `set
 
 ```
 // Conceptual — not implementation code
-// halton(n) returns values in [0,1]. Subtract 0.5 to center on zero,
-// then scale to ±1 NDC pixel. Without the -0.5, offsets are always
-// positive and produce a persistent sub-pixel image shift rather than
-// symmetric dithering.
-vec2 jitter = (halton(taaJitterIdx_) - 0.5) * 2.0 / vec2(screenW, screenH);
+// halton[] is a precomputed static table of 8 vec2 values (Halton base-2/base-3),
+// indexed 1–8 (index 0 is (0,0) — unused). Values are in [0,1].
+// Subtract 0.5 to center on zero, then scale to ±1 NDC pixel.
+// Without the -0.5, offsets are always positive and produce a persistent
+// sub-pixel image shift rather than symmetric dithering.
+static const vec2 halton[9] = { {0,0}, {0.5,0.333}, {0.25,0.667}, {0.75,0.111},
+    {0.125,0.444}, {0.625,0.778}, {0.375,0.222}, {0.875,0.556}, {0.0625,0.889} };
+vec2 jitter = (halton[taaJitterIdx_] - 0.5) * 2.0 / vec2(screenW, screenH);
 mat4 jitteredProj = applyJitterToProjection(cleanVP, jitter);
 // upload jitteredProj to GPU (this is what terrain sees)
 // store cleanVP as currViewProj_ for TAA reprojection math
@@ -117,15 +122,15 @@ Inputs:
   sampler2D sceneTex       // current jittered frame (unit 0)
   sampler2D historyTex     // previous accumulated frame (unit 1)
   sampler2D depthTex       // current depth, D24S8 (unit 2)
-  mat4 currViewProjInv     // clean current VP inverse
+  mat4 inverseViewProj     // clean current VP inverse (same name as in shadow_screen and fog passes)
   mat4 prevViewProj        // clean previous frame VP
-  float taaAlpha           // 0.10
+  float taaAlpha           // 0.15
 
 Per pixel:
   1. Sample current color C at UV
   2. Compute motion vector:
        ndcPos  = vec4(uv*2-1, sampleDepth(uv)*2-1, 1)
-       worldP  = (currViewProjInv * ndcPos).xyz/w
+       worldP  = (inverseViewProj * ndcPos).xyz/w
        prevNDC = prevViewProj * vec4(worldP, 1)
        prevUV  = prevNDC.xy / prevNDC.w * 0.5 + 0.5
   3. Sample history H at prevUV (bilinear; if out-of-bounds: use C, skip blend)
@@ -141,6 +146,8 @@ YCoCg neighborhood clamp is more robust than RGB AABB for temporal stability. Th
 **Jitter/depth approximation note:** The depth buffer is rasterized by the *jittered* projection, but `currViewProjInv` is the inverse of the *clean* (unjittered) projection. The reconstructed `worldP` is therefore slightly off by the current frame's subpixel jitter. Similarly, `prevViewProj` is the clean previous-frame VP, but history was accumulated under the previous frame's jitter. The net error is sub-pixel and is absorbed by the neighborhood AABB clamp. This is the same approximation most shipping TAA implementations use. If future debugging reveals residual shimmer on static geometry, the fix is to store and subtract the per-frame jitter offset in the history sample UV: `prevUV -= prevJitter / screenSize`.
 
 **Disocclusion handling:** If `prevUV` lands outside [0,1], the history sample is invalid (camera moved far). Use `taaAlpha = 1.0` for that pixel (accept current frame directly with no history blend). This avoids ghosting at edges of large camera pans.
+
+**Known failure mode — fast objects:** A fast-moving mech that crosses more than ~1 pixel per frame reveals terrain behind it within the same frame. The newly-revealed terrain pixel's `prevUV` lands inside [0,1] but points at mech-body color in the history. The neighborhood AABB clamp catches this when the mech's color doesn't match the local terrain color envelope — which it usually won't. This fails (produces a trailing smear) when the mech color is close to the background, which is rare at RTS zoom. Per-object velocity buffers (Phase 2) solve this correctly by providing an exact motion vector for each pixel rather than relying on camera reprojection.
 
 ### Pipeline Position
 
@@ -432,22 +439,46 @@ classify_object.frag:
 In `gameos_graphics.cpp`, alongside the existing `drawShadowObjectBatch()` pattern, add `drawClassifyBatch()`:
 
 ```
+// In gos_postprocess.cpp — called ONCE at the start of pipeline step 3:
+void gosPostProcess::beginClassifyPass() {
+    glBindFramebuffer(GL_FRAMEBUFFER, classFBO_);
+    glClearColor(0, 0, 0, 0);
+    glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
+    classifyProg_->apply();    // bind program once
+}
+
+// In gameos_graphics.cpp — called per-batch, classFBO_ already bound:
 void gosRenderer::drawClassifyBatch(HGOSBUFFER vb, HGOSBUFFER ib,
     HGOSVERTEXDECLARATION vdecl, const float* worldMatrix,
     int factionId)
 {
-    // bind classFBO_
-    // bind classifyProg_, set classValue = factionId/255.0
-    // draw geometry (position-only, no lighting)
-    // restore previous FBO
+    // classFBO_ already bound — just update factionId uniform and draw
+    glUniform1f(classValueLoc_, factionId / 255.0f);
+    glUniformMatrix4fv(mvpLoc_, 1, GL_FALSE, worldMatrix);
+    // draw position-only geometry
+}
+
+// In gos_postprocess.cpp — called ONCE after all batches:
+void gosPostProcess::endClassifyPass() {
+    glBindFramebuffer(GL_FRAMEBUFFER, sceneFBO_);  // restore
 }
 ```
 
-This is called once per object batch immediately before the normal lit draw call, at the same call site in `txmmgr.cpp:renderLists()` where the team/faction is known. The classification pre-pass runs before the main sceneFBO_ render.
+**Critical:** `classFBO_` is bound once for the entire classification block, not per-batch. With potentially hundreds of object batches per frame, per-batch FBO bind/unbind would add hundreds of driver state-change round-trips. The bind happens at pipeline step 3, all object batches render in sequence, then `sceneFBO_` is restored for the main scene pass.
 
 **Position attribute only:** The classify shader reads only position. If the existing vertex declaration includes position at location 0 (confirmed by `docs/vertex-formats.md`), no new VBO or vertex format is needed.
 
 **Depth testing during classification:** Enabled (same near/far as main scene). Only the frontmost surface per pixel gets classified — correct behavior for outline edge detection.
+
+**Known Phase 1 limitation — same-class adjacent units merge visually:**
+
+The edge test (`c != cN || ...`) fires only on class *value* changes. Two adjacent friendly mechs both write `class=1`; their shared border has `c == cN` on all sides — no edge detected, no outline between them. Units touching will read as a single silhouetted blob.
+
+**Phase 2 fix (choose one):**
+- *(Preferred — RG8 approach)* Expand `classTex_` to `GL_RG8`: R channel = faction class (0–5), G channel = per-unit object ID (1–255, 0=background). Edge test becomes `rClass != rNeighborClass || gID != gNeighborID`. 256 unique object IDs is sufficient for MC2 unit counts. No new FBO needed — update format and both shader sides.
+- *(Free — depth-discontinuity approach)* Add a second depth texture read from `classFBO_`'s own depth buffer in `outline.frag`. Where adjacent pixels have the same class but a significant depth gap, emit an outline. Requires binding classFBO_'s depth as a second sampler in the outline pass. Only catches 3D separation (units at different elevations), not coplanar units.
+
+Document Phase 1 limitation in release notes; ship Phase 2 before RTS multiplayer where unit pileups are common.
 
 **Occlusion intent — outlines through terrain/buildings:** The classify pass renders *only* mech/unit geometry. Terrain and buildings are not drawn into `classFBO_`. This means an enemy mech behind a building is classified at its visible silhouette but the building surface is written as depth=0 (sky). Specifically: the building would not occlude the mech's classification because the building was never drawn into classFBO_'s depth buffer. The outline resolve will therefore draw outlines on occluded mechs — an X-ray effect.
 
@@ -511,8 +542,11 @@ void main() {
 **Selection glow extension:** The same shader (single draw, no second sub-pass) adds 8 more taps at 2-pixel radius for selected units. A pixel that has no 1px neighbor edge but has a 2px neighbor with `cls >= 3.5` (selected class) outputs at reduced alpha — the outer glow ring. Total 12 taps per pixel for selected-unit pixels, 4 taps otherwise.
 
 ```glsl
-// After the main 4-tap edge test (only reached when onEdge is false or cls < 3.5):
-// Check 2px ring for selection glow
+// This code REPLACES the early-return body:
+//   if (!onEdge || maxClass < 0.5) { fragColor = vec4(0.0); return; }
+// becomes:
+if (!onEdge || maxClass < 0.5) {
+    // Check 2px ring for selection glow before giving up
 float cls2 = 0.0;
 cls2 = max(cls2, round(texture(classTex, TexCoord + vec2(0,    2.0*w) * invScreenSize).r * 255.0));
 cls2 = max(cls2, round(texture(classTex, TexCoord + vec2(0,   -2.0*w) * invScreenSize).r * 255.0));
@@ -523,13 +557,14 @@ cls2 = max(cls2, round(texture(classTex, TexCoord + vec2(-w,  w) * invScreenSize
 cls2 = max(cls2, round(texture(classTex, TexCoord + vec2( w, -w) * invScreenSize).r * 255.0));
 cls2 = max(cls2, round(texture(classTex, TexCoord + vec2(-w, -w) * invScreenSize).r * 255.0));
 
-if (cls2 > 3.5 && c < 0.5) {
-    // Outer glow ring: 2px neighbor is selected, current pixel is background
-    fragColor = vec4(classToColor(cls2), 0.40);
+    if (cls2 > 3.5 && c < 0.5) {
+        // Outer glow ring: 2px neighbor is selected, current pixel is background
+        fragColor = vec4(classToColor(cls2), 0.40);
+        return;
+    }
+    fragColor = vec4(0.0);  // no outline, no glow
     return;
 }
-
-fragColor = vec4(0.0);  // no outline, no glow
 ```
 
 The 8 diagonal taps use `vec2(w, w)` etc. (not `vec2(2w, 0)`), producing a smooth octagonal glow ring rather than a cross-shaped artifact. 12 taps total per pixel is cheap on any modern GPU.
@@ -584,7 +619,7 @@ Inputs:
   vec3  fogColor        // per-mission
   float fogNear         // distance at fog=0 (default 400 units)
   float fogFar          // distance at fog=fogDensity (default 1200 units)
-  float fogDensity      // max blend (default 0.12)
+  float fogDensity      // max blend (default 0.12 — used only when no biome is active; biomes always override)
 
 Per pixel:
   1. Sample depth d
@@ -597,7 +632,7 @@ Per pixel:
   5. result = mix(scene, fogColor, fogFactor)
 ```
 
-This reuses `inverseViewProj_` already computed and stored on `gosPostProcess`. No new matrix uploads.
+This reuses `inverseViewProj_` already computed and stored on `gosPostProcess` — the same matrix used by `shadow_screen` and SSAO. It is set via `pp->setInverseViewProj()` inside `setTerrainMVP()` in `gameos_graphics.cpp`, which runs before the scene render each frame. The fog pass runs during `endScene()`, well after that update — the matrix is always current. No new matrix uploads needed.
 
 **Per-mission fog colors:**
 - Desert: `(0.82, 0.76, 0.64)` — warm sandy haze
@@ -680,6 +715,7 @@ POST-PROCESS CHAIN  (all fullscreen quads on quadVAO_)
 | `fogOutputTex_` | RGBA16F full-res | Fog pass output (avoids feedback loop with TAA history) |
 | `fogFBO_` | — | Fog render target |
 | `classTex_` | R8 full-res | Classification (faction IDs per pixel) |
+| `classFBO_ depth RBO` | D24 renderbuffer full-res | Depth for classFBO_ (required for depth testing; see §6) |
 | `classFBO_` | — | Classification render target |
 | `outlineTex_` | RGBA8 full-res | Sparse outline output |
 | `outlineFBO_` | — | Outline resolve target |
@@ -728,9 +764,10 @@ All new passes follow the rules from `docs/amd-driver-rules.md`:
 
 **TAA:**
 - `float prevViewProj_[16]` — previous frame VP (clean, no jitter)
-- `int taaJitterIdx_` — Halton sequence index 0–7
+- `int taaJitterIdx_` — Halton sequence index **1–8** (never 0; see §2)
 - `bool taaEnabled_` — toggle
-- `float taaAlpha_` — history blend (default 0.10)
+- `float taaAlpha_` — history blend (default **0.15**; see §2)
+- *(Phase 2, deferred)* `vec2 currJitter_`, `prevJitter_` — per-frame jitter offsets for exact history UV correction (see §2 "store and subtract" note)
 
 **LUT:**
 - `GLuint lutTex_` — 3D texture handle
@@ -740,7 +777,7 @@ All new passes follow the rules from `docs/amd-driver-rules.md`:
 - `float fogColor_[3]`, `fogNear_`, `fogFar_`, `fogDensity_` — per-mission
 
 **Outline:**
-- `float outlineWidth_` — default 1.0
+- `float outlineWidth_` — default **2.0** (calibrated for 4K on a 42" OLED; see §0 design target). At 1080p this reads as slightly chunky, which is a forgiving failure mode — looks like a stylistic choice rather than a readability bug. If users report outlines too heavy at 1080p, expose as a settings option.
 
 **Composite:**
 - `float vignetteStrength_`, `vignetteInner_`, `vignetteOuter_` — replaces hardcoded values
