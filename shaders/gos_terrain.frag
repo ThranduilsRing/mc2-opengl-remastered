@@ -166,19 +166,23 @@ void main(void)
     float lodNear = 1.0 - smoothstep(LOD_NEAR, LOD_NEAR_FADE, camDist);
     float lodMid  = 1.0 - smoothstep(LOD_MID,  LOD_MID_FADE,  camDist);
 
-    // Screen-space world-unit footprint of one pixel on the terrain plane.
-    // Computed here — outside all conditional branches — so fwidth() evaluates
-    // uniformly across the 2x2 derivative quad on all GPU implementations.
-    // WorldPos is MC2 space (.x=east, .y=north, .z=elev); terrain lies in XY.
+    // Screen-space world-unit footprint of one pixel — fwidth-based.
+    // Per-triangle-constant (linear varying), so it creates step bands at
+    // tessellation LOD boundaries. Safe for FBM/rock (low tiling, subtle fade).
     PREC float worldPixelSize = length(fwidth(WorldPos.xy));
 
     // FBM breakup fade: scale 0.018 ≈ 1 cycle / 56 WU.
-    // Grain appears when projected frequency reaches ~0.3 cy/px.
     PREC float breakupFade = 1.0 - smoothstep(0.3, 0.8, worldPixelSize * 0.018);
 
-    // Grass normal fade: matTiling.y=12 over ~128 WU basis → 12/128 ≈ 0.094 cy/WU.
-    // High tiling means grass grains out much earlier than the FBM breakup.
-    PREC float grassNormalFade = 1.0 - smoothstep(0.3, 0.8, worldPixelSize * 0.094);
+    // Smooth camera-distance proxy for grass fade — avoids tessellation LOD
+    // chunk boundaries that fwidth(WorldPos) would expose at 12x tiling.
+    // grassPixelScale 0.0015: tune up to sharpen close grass, down for softer.
+    PREC float worldPixelSizeSmooth = camDist * 0.0015;
+    PREC float grassFreq = worldPixelSizeSmooth * 0.094;
+
+    // Wider fade band (0.20..1.20 vs 0.3..0.8) so the grass normal transition
+    // dissolves gradually rather than crossing the threshold in a tight visible band.
+    PREC float grassNormalFade = 1.0 - smoothstep(0.20, 1.20, grassFreq);
 
     // Legacy probe: reserve negative values for an unconditional "tess frag is running"
     // visual. Positive values are surface debug modes and must flow through normally.
