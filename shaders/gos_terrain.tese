@@ -112,7 +112,7 @@ void main()
                 vec2 seamDir = worldPos.xy - patchCentXY;
                 float seamLen = length(seamDir);
                 if (seamLen > 0.01)
-                    worldPos.xy += (seamDir / seamLen) * 1.5 * edgeMask * reliefGate;
+                    worldPos.xy += (seamDir / seamLen) * 0.5 * edgeMask * reliefGate;
             }
         }
     }
