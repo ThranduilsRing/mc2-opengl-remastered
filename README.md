@@ -85,13 +85,10 @@ mc2.exe -mission mis0101    # skip menus, load directly into a mission
 
 ## Improvements over vanilla
 
-### Bug fixes
-- Fixed per-frame sleep timer that was capping framerate
-- Fixed intermittent color flickering
-- Fixed bloom and FXAA contaminating the HUD (effects now apply to scene geometry only)
-- Fixed cliff face seam streaks at biome transitions
-- Fixed grass normal fade and excluded alpha-blended shapes from the dynamic shadow pass
-- Fixed base-game pathfinding crash (GlobalMap zero-init) and neutral turret lookup guard
+### Bug fixes (in upstream code)
+- Removed the 10 ms per-frame `nanosleep` in the main loop that capped framerate at ~100 FPS (alariq port, 2016)
+- Fixed a base-game pathfinding crash: `GlobalMap`'s no-arg ctor left `pathExistsTable` uninitialized, surfacing on mod content
+- Guarded `Turret::update` against `teamId == -1` (neutral/environmental turrets), an out-of-bounds read on `turretsEnabled[]`
 
 ### Performance
 - Moved significant rendering work from CPU to GPU (terrain, static props, tessellation)
