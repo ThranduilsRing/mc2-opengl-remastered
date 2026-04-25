@@ -16,10 +16,26 @@ OptionsArea.cpp			: Implementation of the OptionsArea component.
 #include"logisticsdialog.h"
 #include"gamesound.h"
 #include"loadscreen.h"
+#include "gos_crashbundle.h"
+#include <stdio.h>
+#include <stdlib.h>
 
 #ifndef GAMESOUND_H
 #include"gamesound.h"
 #endif
+
+// Env-gated lifecycle trace for the rebind-to-occupied-key crash. See
+// memory/feedback_deploy_path.md and CLAUDE.md "Debug Instrumentation Rule".
+// Default off; mirrors to crashbundle ring buffer so the last events survive
+// a crash even when stdout has been redirected.
+static const bool s_hkTrace = (getenv("MC2_HOTKEY_TRACE") != nullptr);
+#define HK_TRACE(fmt, ...) \
+    do { \
+        char _hkbuf[256]; \
+        snprintf(_hkbuf, sizeof(_hkbuf), "[HOTKEY v1] " fmt, ##__VA_ARGS__); \
+        if (s_hkTrace) { puts(_hkbuf); fflush(stdout); } \
+        crashbundle_append(_hkbuf); \
+    } while (0)
 
 static bool bShadows = true;
 static bool bDetailTexture = true;
@@ -1045,34 +1061,48 @@ void OptionsHotKeys::update()
 
 	if ( bShowDlg )
 	{
-		LogisticsOKDialog::instance()->update();
-		if ( LogisticsOKDialog::instance()->isDone() )
+		LogisticsOKDialog* dlg = LogisticsOKDialog::instance();
+		HK_TRACE("event=dlg_tick dlg=%p", (void*)dlg);
+		dlg->update();
+		if ( dlg->isDone() )
 		{
+			int status = dlg->getStatus();
+			HK_TRACE("event=dlg_done status=%d curHotKey=0x%08lx items=%ld sel=%ld",
+				status, (unsigned long)curHotKey,
+				(long)hotKeyList.GetItemCount(), (long)hotKeyList.GetSelectedItem());
 			bShowDlg = 0;
-			if ( LogisticsDialog::YES == LogisticsOKDialog::instance()->getStatus() )
+			if ( LogisticsDialog::YES == status )
 			{
+				HK_TRACE("event=swap_begin");
 				char keysString[256];
 				keysString[0] = 0;
 
 				makeKeyString( curHotKey, keysString );
 
-				
+
 				long index = hotKeyList.GetSelectedItem();
 				long oldKey = -1;
-				
+
 				if ( index > -1 )
 				{
 					HotKeyListItem* pItemToSet = (HotKeyListItem*)hotKeyList.GetItem( index );
+					HK_TRACE("event=swap_target index=%ld pItemToSet=%p", index, (void*)pItemToSet);
 					// now I've got to find the other one with th new key and set it to the old key
 					for ( int i = 0; i < hotKeyList.GetItemCount(); i++ )
 					{
 						HotKeyListItem* pTmpItem = (HotKeyListItem*)hotKeyList.GetItem( i );
+						HK_TRACE("event=swap_iter i=%d pTmpItem=%p hotKey=0x%08lx cmd=%ld",
+							i, (void*)pTmpItem,
+							pTmpItem ? (unsigned long)pTmpItem->getHotKey() : 0UL,
+							pTmpItem ? (long)pTmpItem->getCommand() : -1L);
 						if ( pTmpItem->getHotKey() == curHotKey  && pTmpItem != pItemToSet )
 						{
 
 							// first we've got to see if we can set to the default
 							long*	defaultKeys = MissionInterfaceManager::getOldKeys();
 							int defaultKey = defaultKeys[pTmpItem->getCommand()];
+							HK_TRACE("event=swap_conflict_match i=%d defaultKey=0x%08x defaultKeys=%p",
+								i, (unsigned)defaultKey, (void*)defaultKeys);
 							for ( int j = 0; j < hotKeyList.GetItemCount(); j++ )
 							{
 								HotKeyListItem* pCheckItem = (HotKeyListItem*)hotKeyList.GetItem( j );
@@ -1081,7 +1111,7 @@ void OptionsHotKeys::update()
 									defaultKey = -1;
 									break;
 								}
-							}			 			
+							}
 
 							if ( defaultKey != -1 )
 								oldKey = defaultKey;
@@ -1090,15 +1120,18 @@ void OptionsHotKeys::update()
 
 							char tmpKeyStr[256];
 							tmpKeyStr[0] = 0;
+							HK_TRACE("event=swap_assign oldKey=0x%08lx tgt=%p", (unsigned long)oldKey, (void*)pTmpItem);
 							makeKeyString( oldKey, tmpKeyStr );
 							pTmpItem->setHotKey( oldKey );
 							pTmpItem->setKey( tmpKeyStr );
 						}
 					}
+					HK_TRACE("event=swap_finalize pItemToSet=%p curHotKey=0x%08lx", (void*)pItemToSet, (unsigned long)curHotKey);
 					pItemToSet->setKey( keysString );
 					pItemToSet->setHotKey( curHotKey );
 					hotKeyList.SelectItem( -1 );
 				}
+				HK_TRACE("event=swap_end");
 
 
 
@@ -1132,24 +1165,40 @@ void OptionsHotKeys::update()
 					return;
 
 				curHotKey = tmpKey;
+				HK_TRACE("event=poll_input curHotKey=0x%08lx pItem=%p index=%d",
+					(unsigned long)curHotKey, (void*)pItem, index);
 				// check and see if anyone else is using this one...
 				for ( int i = 0; i < hotKeyList.GetItemCount(); i++ )
 				{
 					HotKeyListItem* pTmpItem = (HotKeyListItem*)hotKeyList.GetItem( i );
 					if ( pTmpItem->getHotKey() == curHotKey  && pTmpItem != pItem )
 					{
+						HK_TRACE("event=conflict_found i=%d pTmpItem=%p hotKey=0x%08lx bShowDlg_was=%d",
+							i, (void*)pTmpItem, (unsigned long)pTmpItem->getHotKey(), bShowDlg ? 1 : 0);
 						LogisticsOKDialog::instance()->setText( IDS_OPTIONS_HOTKEY_ERROR, IDS_DIALOG_NO, IDS_DIALOG_YES  );
 						LogisticsOKDialog::instance()->begin();
 						bShowDlg = true;
+						break;
 					}
 
 				}
-				
+
 				if ( !bShowDlg )
 				{
 					pItem->setHotKey( tmpKey );
 					pItem->setKey( hotKeyString );
 					hotKeyList.SelectItem( -1 );
+				}
+				else
+				{
+					// gos_GetKey() does not consume from the SDL keyboard
+					// state — it just reads first_pressed_ and returns. The
+					// drain loop here would otherwise re-fetch the same key,
+					// re-detect the same conflict, and re-call dialog begin()
+					// every iteration, hanging the frame. Bail out when the
+					// dialog has been raised; we'll resume after dismissal.
+					tmpKey = 0;
+					break;
 				}
 			}
 
@@ -1243,12 +1292,14 @@ int OptionsHotKeys::makeInputKeyString( long& tmpKey, char* hotKeyString )
 
 void OptionsHotKeys::begin()
 {
+	HK_TRACE("event=screen_begin items=%ld", (long)hotKeyList.GetItemCount());
 	helpTextArrayID = 2;
 	reset(0);
 
 }
 void OptionsHotKeys::end()
 {
+	HK_TRACE("event=screen_end_begin items=%ld bShowDlg=%d", (long)hotKeyList.GetItemCount(), bShowDlg ? 1 : 0);
 	for ( int i= 0; i < hotKeyList.GetItemCount(); i++ )
 	{
 		HotKeyListItem* pItem = (HotKeyListItem*)hotKeyList.GetItem( i );
@@ -1256,8 +1307,9 @@ void OptionsHotKeys::end()
 		{
 			int Command = pItem->getCommand();
 			int Key = pItem->getHotKey();
+			HK_TRACE("event=screen_end_setkey i=%d cmd=%d key=0x%08x", i, Command, (unsigned)Key);
 
-			MissionInterfaceManager::setHotKey( Command, (gosEnum_KeyIndex)(Key & 0x000ffff), 
+			MissionInterfaceManager::setHotKey( Command, (gosEnum_KeyIndex)(Key & 0x000ffff),
 				Key & SHIFT,Key & CTRL, Key & ALT );
 		}
 	}
@@ -1265,7 +1317,8 @@ void OptionsHotKeys::end()
 	bShowDlg= 0;
 
 	hotKeyList.removeAllItems( true );
-//	MissionInterfaceManager::setHotKey( 
+	HK_TRACE("event=screen_end_done");
+//	MissionInterfaceManager::setHotKey(
 }
 void OptionsHotKeys::reset( bool useOld )
 {
