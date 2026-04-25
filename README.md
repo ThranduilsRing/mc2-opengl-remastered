@@ -23,6 +23,9 @@ MechCommander 2 was released by Microsoft/FASA Interactive in 2001 and its sourc
 
 ## Features
 
+### Cinematics (new in v0.2)
+- **Full-motion video playback** via FFmpeg (LGPL) -- intros, mission briefings, and debriefs all play in-engine. Audio-mastered A/V clock with wall-clock fallback; letterboxed screen-space quad.
+
 ### Terrain Rendering
 - **PBR splatting** with per-material normal maps, parallax occlusion mapping, and roughness
 - **Hardware tessellation** for smooth terrain geometry; seam expansion stitches cliff face discontinuities via tangent-plane projection
