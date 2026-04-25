@@ -95,20 +95,21 @@ void main()
 
     // Terrain seam expansion: restores D3D7-era 1-2px vertex overlap that prevents
     // rasterization gaps at patch boundaries. edgeMask limits expansion to edge/corner
-    // bary coords (interior tessellated points are undisturbed). Safe at tessLevel=1
-    // (concrete) — all verts are edges. Expands only XY; Z (elevation) unchanged.
-    // Scaled by flatness so steep cliff faces get no expansion — XY-only expansion
-    // creates bright streaks on near-vertical surfaces.
+    // bary coords (interior tessellated points are undisturbed).
+    // Expands along the surface tangent plane (normal component removed) so the
+    // expansion is correct on both flat terrain and near-vertical cliff faces.
+    // The earlier XY-only + flatness-gate approach left cliff faces unexpanded.
     {
         float edgeDist = min(min(bary.x, bary.y), bary.z);
         float edgeMask = 1.0 - smoothstep(0.0, 0.08, edgeDist);
-        float flatness = smoothstep(0.4, 0.7, worldNorm.z);
-        if (edgeMask * flatness > 0.001) {
-            vec2 patchCentXY = (tcs_WorldPos[0].xy + tcs_WorldPos[1].xy + tcs_WorldPos[2].xy) / 3.0;
-            vec2 seamDir = worldPos.xy - patchCentXY;
-            float seamLen = length(seamDir);
+        if (edgeMask > 0.001) {
+            vec3 patchCent = (tcs_WorldPos[0] + tcs_WorldPos[1] + tcs_WorldPos[2]) / 3.0;
+            vec3 seamDir3D = worldPos - patchCent;
+            // Project onto the tangent plane — expand along the surface, not into it.
+            seamDir3D -= dot(seamDir3D, worldNorm) * worldNorm;
+            float seamLen = length(seamDir3D);
             if (seamLen > 0.01)
-                worldPos.xy += (seamDir / seamLen) * 1.5 * edgeMask * flatness;
+                worldPos += (seamDir3D / seamLen) * 1.5 * edgeMask;
         }
     }
 
