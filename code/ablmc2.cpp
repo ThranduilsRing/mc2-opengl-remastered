@@ -7020,11 +7020,18 @@ void execClearMoveOrdersOmni (void) {
 // the warriorbrain FSM can execute through these calls.
 //*****************************************************************************
 
+// magicAttack / coreWait / coreGuard / corePatrol stubs preserved (gated out)
+// for the mod profile launcher: stock corebrain.abx defines these as real
+// library routines, so a native registration shadows them and breaks AI.
+// Re-enable ONLY for content packs whose deployed corebrain.abx does not
+// contain these symbols. See docs/observations/2026-04-25-abl-library-shadow-rule.md
+#if 0
 void execMagicAttack (void) {
 	// args: i (target/range param). No return.
 	ABLi_popInteger();
 	if (getenv("MC2_ABL_TRACE")) DEBUGWINS_print("[ABL] magicAttack stub", 0);
 }
+#endif
 
 //*****************************************************************************
 
@@ -7073,6 +7080,8 @@ void execTDebugString (void) {
 
 //*****************************************************************************
 
+// See note above execMagicAttack — these three are gated for the same reason.
+#if 0
 void execCoreWaitOmni (void) {
 	// args: r (seconds). No return. Tac-order style wait; stubbed.
 	ABLi_popReal();
@@ -7104,6 +7113,7 @@ void execCorePatrolOmni (void) {
 	ABLi_popInteger();
 	if (getenv("MC2_ABL_TRACE")) DEBUGWINS_print("[ABL] corePatrol stub", 0);
 }
+#endif
 
 //*****************************************************************************
 
@@ -8021,15 +8031,21 @@ void initABL (void) {
 	// NOT a wildcard. The real wildcard is `?` = PARAM_TYPE_ANYTHING (ablstd.cpp
 	// short-circuits the check). Using `?` for every arg that may bind a custom
 	// compound type.
-	ABLi_addFunction("magicattack",          false, "i",   NULL, execMagicAttack);
+	// magicattack / coreguard / corepatrol / corewait are DELIBERATELY NOT
+	// registered here. They are defined as real ABL routines in the stock
+	// data/missions/corebrain.abx library (loaded at every mission start via
+	// ABLi_loadLibrary in mission.cpp). Registering native stubs with these
+	// names shadows the library implementation in the global symtable and
+	// silently breaks proactive AI in every stock mission (passive enemies,
+	// inert turrets, broken convoy chains). See:
+	// docs/observations/2026-04-25-abl-library-shadow-rule.md
+	// The future mod profile launcher must re-enable these only for content
+	// packs whose corebrain.abx does NOT define them (e.g. Omnitech/Carver5O).
 	ABLi_addFunction("magicpatrol",          false, "??",  NULL, execMagicPatrol);
 	ABLi_addFunction("magicguard",           false, "?i",  NULL, execMagicGuard);
 	ABLi_addFunction("magicescort",          false, "i",   NULL, execMagicEscort);
 	ABLi_addFunction("setwillrequesthelp",   false, "b",   NULL, execSetWillRequestHelp);
 	ABLi_addFunction("tdebugstring",         false, "C",   NULL, execTDebugString);
-	ABLi_addFunction("corewait",             false, "r",   NULL, execCoreWaitOmni);
-	ABLi_addFunction("coreguard",            false, "?ii", NULL, execCoreGuardOmni);
-	ABLi_addFunction("corepatrol",           false, "??i", NULL, execCorePatrolOmni);
 	ABLi_addFunction("isdeadorfled",         false, "i",   "b",  execIsDeadOrFled);
 	ABLi_addFunction("printteamstatus",      false, "i",   NULL, execPrintTeamStatus);
 
