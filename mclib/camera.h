@@ -66,6 +66,31 @@ enum Axes {
 #define F5_VIEW					3
 
 //---------------------------------------------------------------------------
+// LegacyProjectionResult
+//
+// Optional sidecar populated by Camera::projectZ() when a non-null
+// pointer is passed. Exposes the inputs the legacy admission test
+// destroys (rawClip, signedW) so future diagnostic and replacement-
+// candidate predicates can be evaluated alongside the legacy
+// screen-rect bool without changing what projectZ() returns or writes
+// to its `screen` out-parameter.
+//
+// Spec: docs/superpowers/specs/2026-04-25-projectz-containment-design.md
+// Field semantics match the current projectZ() body byte-for-byte:
+//   legacyRhw = 1.0f when signedW == 0, else 1.0f / signedW
+// Diagnostic-only `trueSignedRhw` (which can be +/-Inf) is intentionally
+// NOT added here; it lands in the instrumentation commit (commit 3).
+//---------------------------------------------------------------------------
+struct LegacyProjectionResult {
+	bool             acceptedByLegacyScreenRect;
+	Stuff::Vector4D  screen;
+	Stuff::Vector4D  rawClip;
+	float            signedW;
+	float            legacyRhw;
+	bool             usePerspective;
+};
+
+//---------------------------------------------------------------------------
 class Camera
 {
     //sebi
@@ -383,18 +408,31 @@ class Camera
 		float getCameraRotation (void);
 
 		//---------------------------------------------------------------------------
-		bool projectZ (Stuff::Vector3D &point, Stuff::Vector4D &screen)
+		// projectZ: legacy screen-rect admission test + screen-XY oracle.
+		//
+		// `optionalResult` is a sidecar for diagnostics and future
+		// replacement-candidate predicates. When nullptr (the default,
+		// which every existing caller relies on), the function body is
+		// byte-for-byte the legacy implementation -- the gated writes
+		// constant-fold away. When non-null, the same arithmetic also
+		// populates the result struct without altering operation order
+		// in either branch.
+		//
+		// Spec: docs/superpowers/specs/2026-04-25-projectz-containment-design.md
+		//---------------------------------------------------------------------------
+		bool projectZ (Stuff::Vector3D &point, Stuff::Vector4D &screen,
+		               LegacyProjectionResult* optionalResult = nullptr)
 		{
 			//--------------------------------------------------------------------
-			// Now run the NEW project code 
+			// Now run the NEW project code
 			Stuff::Vector4D xformCoords;
 			Stuff::Point3D coords;
 			coords.x = -point.x;
 			coords.y = point.z;
 			coords.z = point.y;
-		
+
 			xformCoords.Multiply(coords,worldToClip);
-		
+
 			if (usePerspective)
 			{
 				//---------------------------------------
@@ -402,7 +440,7 @@ class Camera
 				float rhw = 1.0f;
 				if (xformCoords.w != 0.0f)
 					rhw = 1.0f / xformCoords.w;
-				
+
 				screen.x = (xformCoords.x * rhw) * viewMulX + viewAddX;
 				screen.y = (xformCoords.y * rhw) * viewMulY + viewAddY;
 				screen.z = (xformCoords.z * rhw);
@@ -411,16 +449,37 @@ class Camera
 			else
 			{
 				//---------------------------------------
-				// Parallel Transform	
+				// Parallel Transform
 				screen.x = (1.0f - xformCoords.x) * viewMulX + viewAddX;
 				screen.y = (1.0f - xformCoords.y) * viewMulY + viewAddY;
 				screen.z = xformCoords.z;
 				screen.w = 0.000001f;
 			}
-		
+
 			if ((screen.x < 0) || (screen.y < 0) || (screen.x > screenResolution.x) || (screen.y > screenResolution.y))
+			{
+				if (optionalResult)
+				{
+					optionalResult->acceptedByLegacyScreenRect = false;
+					optionalResult->screen          = screen;
+					optionalResult->rawClip         = xformCoords;
+					optionalResult->signedW         = xformCoords.w;
+					optionalResult->legacyRhw       = (xformCoords.w != 0.0f) ? (1.0f / xformCoords.w) : 1.0f;
+					optionalResult->usePerspective  = usePerspective;
+				}
 				return FALSE;
-				
+			}
+
+			if (optionalResult)
+			{
+				optionalResult->acceptedByLegacyScreenRect = true;
+				optionalResult->screen          = screen;
+				optionalResult->rawClip         = xformCoords;
+				optionalResult->signedW         = xformCoords.w;
+				optionalResult->legacyRhw       = (xformCoords.w != 0.0f) ? (1.0f / xformCoords.w) : 1.0f;
+				optionalResult->usePerspective  = usePerspective;
+			}
+
 			return TRUE;
 		}
 				
