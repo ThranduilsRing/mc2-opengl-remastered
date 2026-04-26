@@ -585,7 +585,7 @@ void TerrainQuad::setupTextures (void)
 				bool clipData = false;
 				// [PROJECTZ:BoolAdmission id=terrain_quad_vert0_admit]
 				PROJECTZ_SITE("terrain_quad_vert0_admit", "BoolAdmission");
-				clipData = eye->projectZ(vertex3D,screenPos);
+				clipData = eye->projectForTerrainAdmission(vertex3D,screenPos);
 				pz_capture_vert_preds(0);
 				bool isVisible = Terrain::IsGameSelectTerrainPosition(vertex3D) || drawTerrainGrid;
 				if (!isVisible)
@@ -655,7 +655,7 @@ void TerrainQuad::setupTextures (void)
 				bool clipData = false;
 				// [PROJECTZ:BoolAdmission id=terrain_quad_vert1_admit]
 				PROJECTZ_SITE("terrain_quad_vert1_admit", "BoolAdmission");
-				clipData = eye->projectZ(vertex3D,screenPos);
+				clipData = eye->projectForTerrainAdmission(vertex3D,screenPos);
 				pz_capture_vert_preds(1);
 				bool isVisible = Terrain::IsGameSelectTerrainPosition(vertex3D) || drawTerrainGrid;
 				if (!isVisible)
@@ -725,7 +725,7 @@ void TerrainQuad::setupTextures (void)
 				bool clipData = false;
 				// [PROJECTZ:BoolAdmission id=terrain_quad_vert2_admit]
 				PROJECTZ_SITE("terrain_quad_vert2_admit", "BoolAdmission");
-				clipData = eye->projectZ(vertex3D,screenPos);
+				clipData = eye->projectForTerrainAdmission(vertex3D,screenPos);
 				pz_capture_vert_preds(2);
 				bool isVisible = Terrain::IsGameSelectTerrainPosition(vertex3D) || drawTerrainGrid;
 				if (!isVisible)
@@ -795,7 +795,7 @@ void TerrainQuad::setupTextures (void)
 				bool clipData = false;
 				// [PROJECTZ:BoolAdmission id=terrain_quad_vert3_admit]
 				PROJECTZ_SITE("terrain_quad_vert3_admit", "BoolAdmission");
-				clipData = eye->projectZ(vertex3D,screenPos);
+				clipData = eye->projectForTerrainAdmission(vertex3D,screenPos);
 				pz_capture_vert_preds(3);
 				bool isVisible = Terrain::IsGameSelectTerrainPosition(vertex3D) || drawTerrainGrid;
 				if (!isVisible)

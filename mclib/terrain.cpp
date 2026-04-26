@@ -1096,7 +1096,7 @@ void Terrain::geometry (void)
 			Stuff::Vector3D vertex3D(currentVertex->vx,currentVertex->vy,currentVertex->pVertex->elevation);
 			// [PROJECTZ:BoolAdmission id=terrain_cpu_vert_admit]
 			PROJECTZ_SITE("terrain_cpu_vert_admit", "BoolAdmission");
-			inView = eye->projectZ(vertex3D,screenPos);
+			inView = eye->projectForTerrainAdmission(vertex3D,screenPos);
 		
 			currentVertex->px = screenPos.x;
 			currentVertex->py = screenPos.y;
