@@ -3631,22 +3631,22 @@ void TerrainQuad::drawMine (void)
 					thePoint.y -= (cellR) * cellWidth;
 					thePoint.z = land->getTerrainElevation(thePoint);
 					// [PROJECTZ:ScreenXYOracle id=mine_cell_corner0]
-					eye->projectZ(thePoint,pos4);
+					eye->projectForScreenXY(thePoint,pos4);
 
 					thePoint.x += cellWidth;
 					thePoint.z = land->getTerrainElevation(thePoint);
 					// [PROJECTZ:ScreenXYOracle id=mine_cell_corner1]
-					eye->projectZ(thePoint,pos1);
+					eye->projectForScreenXY(thePoint,pos1);
 					
 					thePoint.y -= cellWidth;
 					thePoint.z = land->getTerrainElevation(thePoint);
 					// [PROJECTZ:ScreenXYOracle id=mine_cell_corner2]
-					eye->projectZ(thePoint,pos2);
+					eye->projectForScreenXY(thePoint,pos2);
 
 					thePoint.x -= cellWidth;
 					thePoint.z = land->getTerrainElevation(thePoint);
 					// [PROJECTZ:ScreenXYOracle id=mine_cell_corner3]
-					eye->projectZ(thePoint,pos3);
+					eye->projectForScreenXY(thePoint,pos3);
 
 					//------------------------------------
 					// Replace with New RIA code

@@ -1140,7 +1140,7 @@ bool BldgAppearance::recalcBounds (void)
 			//ALWAYS need to do this or select is YAYA
 			// But now inView is correct!!
 			// [PROJECTZ:ScreenXYOracle id=bdactor_screen_pos_a]
-			eye->projectZ(position,screenPos);
+			eye->projectForScreenXY(position,screenPos);
 
 			if (eye->usePerspective)
 			{
@@ -1282,7 +1282,7 @@ bool BldgAppearance::recalcBounds (void)
 				for (long i=0;i<8;i++)
 				{
 					// [PROJECTZ:ScreenXYOracle id=bdactor_box_rect_a]
-					eye->projectZ(boxCoords[i],bcsp[i]);
+					eye->projectForScreenXY(boxCoords[i],bcsp[i]);
 					if (!i)
 					{
 						maxX = minX = bcsp[i].x;
@@ -1818,7 +1818,7 @@ long BldgAppearance::render (long depthFixup)
 		for (long i=0;i<8;i++)
 		{
 			// [PROJECTZ:ScreenXYOracle id=bdactor_box_wire_a]
-			eye->projectZ(boxCoords[i],screenPos[i]);
+			eye->projectForScreenXY(boxCoords[i],screenPos[i]);
 		}
 
 		{
@@ -3696,7 +3696,7 @@ bool TreeAppearance::recalcBounds (void)
 			//ALWAYS need to do this or select is YAYA
 			// But now inView is correct.
 			// [PROJECTZ:ScreenXYOracle id=bdactor_screen_pos_b]
-			eye->projectZ(position,screenPos);
+			eye->projectForScreenXY(position,screenPos);
 		
 			if (eye->usePerspective)
 			{
@@ -3785,7 +3785,7 @@ bool TreeAppearance::recalcBounds (void)
 			for (long i=0;i<8;i++)
 			{
 				// [PROJECTZ:ScreenXYOracle id=bdactor_box_rect_b]
-				eye->projectZ(boxCoords[i],bcsp[i]);
+				eye->projectForScreenXY(boxCoords[i],bcsp[i]);
 				if (!i)
 				{
 					maxX = minX = bcsp[i].x;
@@ -4046,7 +4046,7 @@ long TreeAppearance::render (long depthFixup)
 		for (long i=0;i<8;i++)
 		{
 			// [PROJECTZ:ScreenXYOracle id=bdactor_box_wire_b]
-			eye->projectZ(boxCoords[i],screenPos[i]);
+			eye->projectForScreenXY(boxCoords[i],screenPos[i]);
 		}
 
 		{
