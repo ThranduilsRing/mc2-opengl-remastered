@@ -1,10 +1,11 @@
-# MC2 OpenGL -- Nifty-Mendeleev Worktree
+# MC2 OpenGL -- ProjectZ-Hunting Worktree
 
-MechCommander 2 OpenGL port with tessellated terrain, PBR splatting, shadow maps, and post-processing.
+Forked from nifty-mendeleev for projectZ containment + diagnostics work
+(see `docs/superpowers/specs/2026-04-25-projectz-containment-design.md`).
 
 ## Key Paths
-- **Source:** `A:/Games/mc2-opengl-src/.claude/worktrees/nifty-mendeleev/`
-- **Deploy:** `A:/Games/mc2-opengl/mc2-win64-v0.1.1/`
+- **Source:** `A:/Games/mc2-opengl-src/.claude/worktrees/projectz-hunting/`
+- **Deploy:** `A:/Games/mc2-opengl/mc2-projectz-hunting/`  (NOT the nifty deploy)
 - **CMake:** `C:/Program Files (x86)/Microsoft Visual Studio/2022/BuildTools/Common7/IDE/CommonExtensions/Microsoft/CMake/CMake/bin/cmake.exe`
 
 ## Skills (use these!)
