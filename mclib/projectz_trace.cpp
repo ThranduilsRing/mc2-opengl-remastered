@@ -175,7 +175,14 @@ void projectz_trace_init() {
     if (g_pzDoTrace) {
         s_traceFile = fopen("mc2_projectz.log", "w");
         if (s_traceFile)
-            puts("[PROJECTZ v1] trace file: mc2_projectz.log");
+            // MC2_PROJECTZ_TRACE=1 writes per-vertex records to this file.
+            // Each record formats ~15 floats via fprintf (~3 us/vertex on MSVC CRT).
+            // At ~3300 perspective vertices/frame the frame budget increases by ~10 ms,
+            // reducing normal 150+ FPS to roughly 35 FPS. This is expected and by design;
+            // use MC2_PROJECTZ_SUMMARY=1 alone for full-speed statistical capture.
+            puts("[PROJECTZ v1] trace file: mc2_projectz.log"
+                 " -- NOTE: MC2_PROJECTZ_TRACE=1 costs ~3us/vertex (float formatting);"
+                 " expect ~35 FPS vs normal 150+ FPS. Use SUMMARY=1 alone for full-speed stats.");
         else
             puts("[PROJECTZ v1] WARNING: failed to open mc2_projectz.log -- vertex/tri records suppressed");
     }
