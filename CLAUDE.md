@@ -4,7 +4,7 @@ MechCommander 2 OpenGL port with tessellated terrain, PBR splatting, shadow maps
 
 ## Key Paths
 - **Source:** `A:/Games/mc2-opengl-src/.claude/worktrees/nifty-mendeleev/`
-- **Deploy:** `A:/Games/mc2-opengl/mc2-win64-v0.1.1/`
+- **Deploy:** `A:/Games/mc2-opengl/mc2-win64-v0.2/`
 - **CMake:** `C:/Program Files (x86)/Microsoft Visual Studio/2022/BuildTools/Common7/IDE/CommonExtensions/Microsoft/CMake/CMake/bin/cmake.exe`
 
 ## Skills (use these!)

@@ -4,16 +4,17 @@
 
 A visual remaster of MechCommander 2, built on top of [alariq's OpenGL port](https://github.com/alariq/mc2). Rebuilds the rendering pipeline around PBR terrain splatting, real-time shadows, tessellation, and modern post-processing -- while leaving the original gameplay, missions, and systems alone.
 
-**▶ [Download the latest release](https://github.com/ThranduilsRing/mc2-opengl-remastered/releases/latest)** — a self-contained 1.4 GB install across four zips.
+**▶ [Download the latest release](https://github.com/ThranduilsRing/mc2-opengl-remastered/releases/latest)** — a self-contained install across five zips.
 
 ### Install (from release)
 
-Download all four zips and extract each into the **same folder** (contents merge without overwriting):
+Download all five zips and extract each into the **same folder** (contents merge without overwriting):
 
-1. **`mc2-remastered-engine.zip`** (5 MB) — engine, shaders, runtime DLLs, asset tools
-2. **`mc2-gamedata.zip`** (683 MB) — `.fst` archives + `data/sound`, `data/movies`, `data/objects`, `data/textures` (includes per-mission lightmaps)
-3. **`mc2-art.zip`** (360 MB) — upscaled PBR art overrides (`data/art/`)
-4. **`mc2-tgl.zip`** (336 MB) — upscaled PBR terrain overrides (`data/tgl/`)
+1. **`mc2-remastered-engine.zip`** — engine, shaders, runtime DLLs, asset tools
+2. **`mc2-gamedata.zip`** — `.fst` archives + `data/sound`, `data/movies`, `data/objects`, stock-resolution loose files
+3. **`mc2-burnins-4x.zip`** — 4× upscaled per-mission lightmaps (`data/textures/*.burnin.tga`); without this, terrain colormaps are blurry. The FST archives carry stock-resolution fallbacks, so the game runs without it but looks much worse.
+4. **`mc2-art.zip`** — 4× upscaled PBR art overrides (`data/art/`)
+5. **`mc2-tgl.zip`** — 4× upscaled PBR terrain model overrides (`data/tgl/`)
 
 Run `mc2.exe`. No original MC2 install required.
 
