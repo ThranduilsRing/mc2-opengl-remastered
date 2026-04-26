@@ -863,7 +863,7 @@ unsigned long Camera::inverseProject (Stuff::Vector2DOf<long> &screenPos, Stuff:
 				point.z = land->getTerrainElevation(point);
 				// [PROJECTZ:SelectionPicking id=picking_closest_cell_center]
 				PROJECTZ_SITE("picking_closest_cell_center", "SelectionPicking");
-				eye->projectZ(point,cellCenter);
+				projectForSelectionPicking(point,cellCenter);
 
 				dx = (tvx - float2long(cellCenter.x));
 				dy = (tvy - float2long(cellCenter.y));
@@ -935,7 +935,7 @@ unsigned long Camera::inverseProject (Stuff::Vector2DOf<long> &screenPos, Stuff:
 
 				// [PROJECTZ:SelectionPicking id=picking_closest_vertex_fallback]
 				PROJECTZ_SITE("picking_closest_vertex_fallback", "SelectionPicking");
-				projectZ( tmpWorld, tmpScreen );
+				projectForSelectionPicking( tmpWorld, tmpScreen );
 				
 				float tmpDis = (tmpScreen.x - screenPos.x) * (tmpScreen.x - screenPos.x ) + (tmpScreen.y - screenPos.y) * (tmpScreen.y - screenPos.y );
 				if ( tmpDis < dis )
@@ -1752,7 +1752,7 @@ void Camera::updateLights()
 				Stuff::Vector4D dummy;
 				// [PROJECTZ:LightingShadow id=light_terrain_active_test]
 				PROJECTZ_SITE("light_terrain_active_test", "LightingShadow");
-				light->active = projectZ(light->position,dummy);
+				light->active = projectForLightingShadow(light->position,dummy);
 				if (light->active)
 				{
 					if (terrainLightCalc)
@@ -1780,7 +1780,7 @@ void Camera::updateLights()
 				Stuff::Vector4D dummy;
 				// [PROJECTZ:LightingShadow id=light_spot_point_active_test]
 				PROJECTZ_SITE("light_spot_point_active_test", "LightingShadow");
-				light->active = projectZ(light->position,dummy);
+				light->active = projectForLightingShadow(light->position,dummy);
 				activeLights[numActiveLights++] = light;
 				terrainLights[numTerrainLights++] = light;
 			}

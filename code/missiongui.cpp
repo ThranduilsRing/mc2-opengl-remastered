@@ -3606,7 +3606,7 @@ void MissionInterfaceManager::doDrag(bool bGui)
 				Stuff::Vector4D screenPos;
 				// [PROJECTZ:SelectionPicking id=picking_drag_select_origin]
 				PROJECTZ_SITE("picking_drag_select_origin", "SelectionPicking");
-				eye->projectZ( dragStart, screenPos );
+				eye->projectForSelectionPicking( dragStart, screenPos );
 				screenStart.x = screenPos.x;
 				screenStart.y = screenPos.y;
 			   GameObjectPtr	mover = ObjectManager->getMover(i);
