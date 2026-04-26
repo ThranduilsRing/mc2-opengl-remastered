@@ -863,7 +863,7 @@ unsigned long Camera::inverseProject (Stuff::Vector2DOf<long> &screenPos, Stuff:
 				point.z = land->getTerrainElevation(point);
 				// [PROJECTZ:SelectionPicking id=picking_closest_cell_center]
 				PROJECTZ_SITE("picking_closest_cell_center", "SelectionPicking");
-				projectForSelectionPicking(point,cellCenter);
+				eye->projectForSelectionPicking(point,cellCenter);
 
 				dx = (tvx - float2long(cellCenter.x));
 				dy = (tvy - float2long(cellCenter.y));
