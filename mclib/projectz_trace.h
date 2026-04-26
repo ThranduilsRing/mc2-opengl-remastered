@@ -43,11 +43,17 @@ struct ProjectZTriVert {
 
 //--------------------------------------------------------------------
 // Probe state (read-only after projectz_trace_init()).
-extern bool g_pzTrace;      // ANY PROJECTZ env var is on — gates all diagnostic paths
+extern bool g_pzTrace;      // ANY PROJECTZ env var is on (or overlay enabled) — gates all diagnostic paths
 extern bool g_pzDoTrace;    // MC2_PROJECTZ_TRACE=1
 extern bool g_pzDoHeatmap;  // MC2_PROJECTZ_HEATMAP=1
 extern bool g_pzDoSummary;  // MC2_PROJECTZ_SUMMARY=1
 extern int  g_pzGuardPx;    // MC2_PROJECTZ_GUARD_PX (default 64)
+
+// Most-recent per-vertex predicate result. trace_dispatch overwrites this
+// after every projectZ call when g_pzTrace is set. The BoolAdmission caller
+// (single-threaded terrain submission) reads it immediately after the call
+// to capture per-vertex state for the overlay. Diagnostic-only.
+extern ProjectZPredicates g_pzLastPredicates;
 
 //--------------------------------------------------------------------
 // Per-call callsite globals.

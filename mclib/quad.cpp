@@ -40,6 +40,18 @@
 
 #include"../GameOS/gameos/gos_profiler.h"
 #include"projectz_trace.h"
+#include"projectz_overlay.h"
+
+// Per-quad scratch for the four BoolAdmission per-vertex projectZ calls in
+// TerrainQuad::setupTextures. After each `eye->projectZ()` call we copy
+// g_pzLastPredicates into the matching slot, so pz_emit_terrain_tris (called
+// later for the same quad) can hand both screen-state AND predicate-state to
+// the overlay without ever recomputing predicates. Single-threaded terrain
+// submission makes the file-static safe.
+static ProjectZPredicates s_pzVertPreds[4] = {};
+static inline void pz_capture_vert_preds(int slot) {
+    if (g_pzTrace) s_pzVertPreds[slot] = g_pzLastPredicates;
+}
 
 #define SELECTION_COLOR 0xffff7fff
 #define HIGHLIGHT_COLOR	0xff00ff00
@@ -112,16 +124,24 @@ static void pz_emit_terrain_tris(
         pzv[i].vy = verts[i]->vy;
         pzv[i].vz = verts[i]->pVertex->elevation;
     }
+    // `eye` is the global CameraPtr declared in camera.h — the same camera the
+    // BoolAdmission projectZ calls in setupTextures used.
+    float resX = eye ? eye->fgetScreenResX() : 1920.0f;
+    float resY = eye ? eye->fgetScreenResY() : 1080.0f;
     if (uvMode == BOTTOMRIGHT) {
         static const int c012[] = {0,1,2};
         static const int c023[] = {0,2,3};
         projectz_emit_tri(callsiteId, tileR, tileC, c012, pzv, true, file, line);
         projectz_emit_tri(callsiteId, tileR, tileC, c023, pzv, true, file, line);
+        projectz_overlay_record_tri(pzv, s_pzVertPreds, c012, resX, resY);
+        projectz_overlay_record_tri(pzv, s_pzVertPreds, c023, resX, resY);
     } else {
         static const int c013[] = {0,1,3};
         static const int c123[] = {1,2,3};
         projectz_emit_tri(callsiteId, tileR, tileC, c013, pzv, true, file, line);
         projectz_emit_tri(callsiteId, tileR, tileC, c123, pzv, true, file, line);
+        projectz_overlay_record_tri(pzv, s_pzVertPreds, c013, resX, resY);
+        projectz_overlay_record_tri(pzv, s_pzVertPreds, c123, resX, resY);
     }
 }
 
@@ -566,6 +586,7 @@ void TerrainQuad::setupTextures (void)
 				// [PROJECTZ:BoolAdmission id=terrain_quad_vert0_admit]
 				PROJECTZ_SITE("terrain_quad_vert0_admit", "BoolAdmission");
 				clipData = eye->projectZ(vertex3D,screenPos);
+				pz_capture_vert_preds(0);
 				bool isVisible = Terrain::IsGameSelectTerrainPosition(vertex3D) || drawTerrainGrid;
 				if (!isVisible)
 				{
@@ -635,6 +656,7 @@ void TerrainQuad::setupTextures (void)
 				// [PROJECTZ:BoolAdmission id=terrain_quad_vert1_admit]
 				PROJECTZ_SITE("terrain_quad_vert1_admit", "BoolAdmission");
 				clipData = eye->projectZ(vertex3D,screenPos);
+				pz_capture_vert_preds(1);
 				bool isVisible = Terrain::IsGameSelectTerrainPosition(vertex3D) || drawTerrainGrid;
 				if (!isVisible)
 				{
@@ -704,6 +726,7 @@ void TerrainQuad::setupTextures (void)
 				// [PROJECTZ:BoolAdmission id=terrain_quad_vert2_admit]
 				PROJECTZ_SITE("terrain_quad_vert2_admit", "BoolAdmission");
 				clipData = eye->projectZ(vertex3D,screenPos);
+				pz_capture_vert_preds(2);
 				bool isVisible = Terrain::IsGameSelectTerrainPosition(vertex3D) || drawTerrainGrid;
 				if (!isVisible)
 				{
@@ -773,6 +796,7 @@ void TerrainQuad::setupTextures (void)
 				// [PROJECTZ:BoolAdmission id=terrain_quad_vert3_admit]
 				PROJECTZ_SITE("terrain_quad_vert3_admit", "BoolAdmission");
 				clipData = eye->projectZ(vertex3D,screenPos);
+				pz_capture_vert_preds(3);
 				bool isVisible = Terrain::IsGameSelectTerrainPosition(vertex3D) || drawTerrainGrid;
 				if (!isVisible)
 				{

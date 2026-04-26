@@ -28,6 +28,7 @@ bool        g_pzDoSummary  = false;
 int         g_pzGuardPx    = 0;
 const char* g_projectz_site_id  = nullptr;
 const char* g_projectz_site_cat = nullptr;
+ProjectZPredicates g_pzLastPredicates = {};
 
 //--------------------------------------------------------------------
 // Internal statics
@@ -259,6 +260,11 @@ void projectz_trace_dispatch(
     ProjectZPredicates preds = compute_predicates(
         rawClip, screen, usePerspective, accepted,
         screenResX, screenResY, g_pzGuardPx);
+
+    // Publish so single-threaded BoolAdmission callers (e.g. quad.cpp) can
+    // grab the per-vertex predicate result for the overlay before the next
+    // projectZ call clobbers it. Observation-only.
+    g_pzLastPredicates = preds;
 
     // ── per-vertex trace record ──────────────────────────────────────────────
     if (g_pzDoTrace && s_traceFile) {

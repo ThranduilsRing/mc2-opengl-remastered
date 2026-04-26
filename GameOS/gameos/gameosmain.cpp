@@ -110,6 +110,7 @@ static LONG WINAPI mc2_unhandled_exception_filter(EXCEPTION_POINTERS* ep)
 #include "gos_profiler.h"
 #include "tgl.h"   // drainTglPoolStats / drainTglPoolStatsOnShutdown (Tier-1 instr)
 #include "projectz_trace.h"  // projectz_trace_init/frame_tick/shutdown (PROJECTZ v1)
+#include "projectz_overlay.h" // RAlt+P debug overlay (commit 4)
 
 // Tier-1 instrumentation (stability spec §5.1): single source of truth for
 // the frame=... field used by TGL_POOL, DESTROY, and GL_ERROR log lines.
@@ -306,6 +307,14 @@ static void handle_key_down( SDL_Keysym* keysym ) {
                         g_useGpuStaticProps ? "ON" : "OFF");
             }
             break;
+        case 'p':
+            // RAlt+P: cycle the projectZ debug overlay through candidate
+            // predicates (off -> legacyRectFinite -> homogClip -> rectSignedW
+            // -> rectNearFar -> rectGuard -> off ...). See projectz_overlay.h.
+            if (alt_debug) {
+                projectz_overlay_advance();
+            }
+            break;
         case 'c':
             // RAlt+Shift+C: deliberate crash-bundle smoke test.
             // Must be gated with both ALT and SHIFT to avoid colliding with
@@ -462,6 +471,11 @@ static void draw_screen( void )
     if (pp) {
         pp->endScene();
     }
+
+    // ProjectZ debug overlay (RAlt+P): drawn on the default framebuffer
+    // AFTER post-process composite and BEFORE HUD replay so it sits over the
+    // scene but below the HUD. No-op when overlay is off (default).
+    projectz_overlay_render(Environment.drawableWidth, Environment.drawableHeight);
 
     // Replay buffered HUD draws to FB 0 (after post-process)
     gos_RendererFlushHUDBatch();
@@ -805,6 +819,7 @@ int main(int argc, char** argv)
             g_mc2FrameCounter++;
             drainTglPoolStats();
             projectz_frame_tick();
+            projectz_overlay_begin_frame();
             drainGLErrors("frame");
         }
 
