@@ -33,6 +33,7 @@
 
 #include<stuff/stuff.hpp>
 #include<float.h>   // FLT_MAX for trueSignedRhw sentinel
+#include<cmath>     // isfinite for MC2_PROJECTZ_FINITE_CHECK invariant
 
 inline signed short int float2short(float _in)
 {
@@ -521,19 +522,40 @@ class Camera
 		// Terrain vertex admission — bool gates submission; per-vertex wedge-risk concentration.
 		inline bool projectForTerrainAdmission (Stuff::Vector3D& point,
 		                                        Stuff::Vector4D& screen) {
-			return projectZ(point, screen);
+			bool accepted = projectZ(point, screen);
+#if defined(MC2_PROJECTZ_FINITE_CHECK)
+			if (accepted) {
+				gosASSERT(isfinite(screen.x) && isfinite(screen.y) &&
+				          isfinite(screen.z) && isfinite(screen.w));
+			}
+#endif
+			return accepted;
 		}
 
 		// Object lifecycle admission — bool feeds windowsVisible → canBeSeen() cull chain.
 		inline bool projectForObjectAdmission (Stuff::Vector3D& point,
 		                                       Stuff::Vector4D& screen) {
-			return projectZ(point, screen);
+			bool accepted = projectZ(point, screen);
+#if defined(MC2_PROJECTZ_FINITE_CHECK)
+			if (accepted) {
+				gosASSERT(isfinite(screen.x) && isfinite(screen.y) &&
+				          isfinite(screen.z) && isfinite(screen.w));
+			}
+#endif
+			return accepted;
 		}
 
 		// Effect billboard admission — bool gates submission; same wedge-class hazard as terrain.
 		inline bool projectForEffectAdmission (Stuff::Vector3D& point,
 		                                       Stuff::Vector4D& screen) {
-			return projectZ(point, screen);
+			bool accepted = projectZ(point, screen);
+#if defined(MC2_PROJECTZ_FINITE_CHECK)
+			if (accepted) {
+				gosASSERT(isfinite(screen.x) && isfinite(screen.y) &&
+				          isfinite(screen.z) && isfinite(screen.w));
+			}
+#endif
+			return accepted;
 		}
 
 		// Lighting / shadow activation — bool gates light->active; screen discarded.
