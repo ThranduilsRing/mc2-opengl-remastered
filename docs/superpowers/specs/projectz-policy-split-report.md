@@ -79,7 +79,7 @@ The dispatch instruction for Task 4 said this site (in `Camera::inverseProject(.
 
 The original code deliberately used the global `eye` pointer (active camera projection state) rather than `this`. Even inside a `Camera::` member, `eye != this` is possible. Stripping `eye->` would change `eye->projectForSelectionPicking(...)` into `this->projectForSelectionPicking(...)` — a real behavior change.
 
-**Lesson:** the rule "single-token swap, preserve receiver expression" must be applied at the source level, not at the dispatch-instruction level. Inventory descriptions of receiver context are advisory.
+**Lesson:** source receiver expression is ground truth; dispatch instructions are advisory. The rule "single-token swap, preserve receiver expression" must be applied against what is actually in source, not against what the inventory description says about receiver context.
 
 ### 3. Code-review fixes between Task 1 and Task 2
 
