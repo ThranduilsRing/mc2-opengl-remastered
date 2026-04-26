@@ -586,6 +586,7 @@ bool GenericAppearance::recalcBounds (void)
 	if (eye)
 	{
 		//ALWAYS need to do this or select is YAYA
+		// [PROJECTZ:ScreenXYOracle id=genactor_screen_pos]
 		eye->projectZ(position,screenPos);
 		
  		//--------------------------------------------------
@@ -715,13 +716,14 @@ bool GenericAppearance::recalcBounds (void)
 
 				for (long i=0;i<8;i++)
 				{
+					// [PROJECTZ:ScreenXYOracle id=genactor_box_rect]
 					eye->projectZ(boxCoords[i],bcsp[i]);
 					if (!i)
 					{
 						maxX = minX = bcsp[i].x;
 						maxY = minY = bcsp[i].y;
 					}
-					
+
 					if (i)
 					{
 						if (bcsp[i].x > maxX)
@@ -936,13 +938,14 @@ long GenericAppearance::render (long depthFixup)
 			Rotate(addCoords,-rotation);
  		
 		boxCoords[7].Add(position,addCoords);
-		
+
 		Stuff::Vector4D screenPos[8];
 		for (long i=0;i<8;i++)
 		{
+			// [PROJECTZ:ScreenXYOracle id=genactor_box_wire]
 			eye->projectZ(boxCoords[i],screenPos[i]);
 		}
-		
+
 		{
 			LineElement newElement(screenPos[0],screenPos[1],XP_WHITE,NULL,-1);
 			newElement.draw();

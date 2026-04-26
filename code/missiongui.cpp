@@ -2917,8 +2917,8 @@ void MissionInterfaceManager::render (void)
 			gos_SetRenderState( gos_State_Filter, gos_FilterNone );
 
 			Stuff::Vector4D screenPos;
+			// [PROJECTZ:ScreenXYOracle id=gui_drag_box_origin]
 			eye->projectZ( dragStart, screenPos );
-				
 
 			vertices[0].x 		= screenPos.x;
 			vertices[0].y 		= screenPos.y;
@@ -3000,6 +3000,7 @@ void MissionInterfaceManager::render (void)
 		{
 #ifdef DRAW_CURSOR_CROSSHAIRS
 			Stuff::Vector4D cursorPos;
+			// [PROJECTZ:DebugOnly id=debug_cursor_crosshair]
 			eye->projectZ(wPos,cursorPos);
 
 			DWORD color = SB_WHITE;
@@ -3602,6 +3603,7 @@ void MissionInterfaceManager::doDrag(bool bGui)
 			{
 				Stuff::Vector3D screenStart;
 				Stuff::Vector4D screenPos;
+				// [PROJECTZ:SelectionPicking id=picking_drag_select_origin]
 				eye->projectZ( dragStart, screenPos );
 				screenStart.x = screenPos.x;
 				screenStart.y = screenPos.y;
@@ -5629,9 +5631,11 @@ long MissionInterfaceManager::calcRotation()
 	Stuff::Vector4D screenPosMover;
 	Stuff::Vector4D screenPosGoal;
 	actualPos.Add(camPos,actualPos);
+	// [PROJECTZ:ScreenXYOracle id=gui_mover_rotation_pos]
 	eye->projectZ( actualPos, screenPosMover );
 
 	// need to find second position
+	// [PROJECTZ:ScreenXYOracle id=gui_cam_rotation_goal]
 	eye->projectZ( camPos, screenPosGoal );
 	
 	//CRAZY ATAN code.  Out for now.

@@ -318,9 +318,13 @@ void CraterManager::render (void)
 				uvAdd = 0.50;
 			}
 				
+			// [PROJECTZ:Both id=crater_corner0]
 			bool onScreen1 = eye->projectZ(currCrater->position[0],currCrater->screenPos[0]);
+			// [PROJECTZ:Both id=crater_corner1]
 			bool onScreen2 = eye->projectZ(currCrater->position[1],currCrater->screenPos[1]);
+			// [PROJECTZ:Both id=crater_corner2]
 			bool onScreen3 = eye->projectZ(currCrater->position[2],currCrater->screenPos[2]);
+			// [PROJECTZ:Both id=crater_corner3]
 			bool onScreen4 = eye->projectZ(currCrater->position[3],currCrater->screenPos[3]);
 
 			//--------------------------------------------------

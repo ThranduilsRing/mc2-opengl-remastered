@@ -111,9 +111,11 @@ void Appearance::drawSelectBox (DWORD color)
 	AppearanceType *appearType = getAppearanceType();
 	if (appearType && appearType->typeBoundExists())
 	{		   
+		// [PROJECTZ:ScreenXYOracle id=appear_select_box_ul]
 		eye->projectZ(appearType->typeUpperLeft,ul);
 		ul.z = HUD_DEPTH;
 		
+		// [PROJECTZ:ScreenXYOracle id=appear_select_box_lr]
 		eye->projectZ(appearType->typeLowerRight,br);
 		br.z = HUD_DEPTH;
 	}

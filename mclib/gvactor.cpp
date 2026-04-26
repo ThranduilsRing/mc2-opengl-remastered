@@ -1556,6 +1556,7 @@ bool GVAppearance::recalcBounds (void)
 	if (eye)
 	{
 		//ALWAYS need to do this or select is YAYA
+		// [PROJECTZ:ScreenXYOracle id=gvactor_screen_pos]
 		eye->projectZ(position,screenPos);
 		
 		//--------------------------------------------------
@@ -1702,6 +1703,7 @@ bool GVAppearance::recalcBounds (void)
 
 				for (long i=0;i<8;i++)
 				{
+					// [PROJECTZ:ScreenXYOracle id=gvactor_box_rect]
 					eye->projectZ(boxCoords[i],bcsp[i]);
 					if (!i)
 					{

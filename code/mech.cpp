@@ -6516,11 +6516,13 @@ void BattleMech::render (void)
 					startPos.z = land->getTerrainElevation(startPos);
 					endPos.z = land->getTerrainElevation(endPos);
 					
+					// [PROJECTZ:ScreenXYOracle id=mech_path_step_start]
 					eye->projectZ(startPos,lineStart);
+					// [PROJECTZ:ScreenXYOracle id=mech_path_step_end]
 					eye->projectZ(endPos,lineEnd);
-					
+
 					lineStart.z = lineEnd.z = HUD_DEPTH;
-					
+
 					LineElement newElement(lineStart,lineEnd,SD_BLUE,NULL,-1);
 					newElement.draw();
 				}

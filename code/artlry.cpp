@@ -1217,8 +1217,10 @@ bool Artillery::recalcBounds (CameraPtr myEye)
 		
 		if (inView)
 		{
+			// [PROJECTZ:ScreenXYOracle id=artlry_position_screen]
 			eye->projectZ(position,screenPos);
 			Stuff::Vector4D iFaceScreen;
+			// [PROJECTZ:ScreenXYOracle id=artlry_iface_screen]
 			eye->projectZ(iFacePosition, iFaceScreen );
 	
 			if (((screenPos.x >= 0) && (screenPos.y >= 0) &&
@@ -1389,6 +1391,7 @@ void Artillery::render (void)
 			
 			DWORD width, height;
 			Stuff::Vector4D moveHere;
+			// [PROJECTZ:ScreenXYOracle id=artlry_iface_float_help]
 			eye->projectZ( iFacePosition, moveHere );
 
 			gos_TextSetAttributes (gosFontHandle, 0, gosFontScale, false, false, false, false);

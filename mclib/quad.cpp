@@ -519,9 +519,10 @@ void TerrainQuad::setupTextures (void)
 				}
 	
 				vertex3D.z = ourCos + Terrain::waterElevation;
-			
+
 				bool clipData = false;
-				clipData = eye->projectZ(vertex3D,screenPos); 
+				// [PROJECTZ:BoolAdmission id=terrain_quad_vert0_admit]
+				clipData = eye->projectZ(vertex3D,screenPos);
 				bool isVisible = Terrain::IsGameSelectTerrainPosition(vertex3D) || drawTerrainGrid;
 				if (!isVisible)
 				{
@@ -586,9 +587,10 @@ void TerrainQuad::setupTextures (void)
 				vertex3D.z = ourCos + Terrain::waterElevation;
 				vertex3D.x = vertices[1]->vx;
 				vertex3D.y = vertices[1]->vy;
-				
+
 				bool clipData = false;
-				clipData = eye->projectZ(vertex3D,screenPos); 
+				// [PROJECTZ:BoolAdmission id=terrain_quad_vert1_admit]
+				clipData = eye->projectZ(vertex3D,screenPos);
 				bool isVisible = Terrain::IsGameSelectTerrainPosition(vertex3D) || drawTerrainGrid;
 				if (!isVisible)
 				{
@@ -653,9 +655,10 @@ void TerrainQuad::setupTextures (void)
 				vertex3D.z = ourCos + Terrain::waterElevation;
 				vertex3D.x = vertices[2]->vx;
 				vertex3D.y = vertices[2]->vy;
-			
+
 				bool clipData = false;
-				clipData = eye->projectZ(vertex3D,screenPos); 
+				// [PROJECTZ:BoolAdmission id=terrain_quad_vert2_admit]
+				clipData = eye->projectZ(vertex3D,screenPos);
 				bool isVisible = Terrain::IsGameSelectTerrainPosition(vertex3D) || drawTerrainGrid;
 				if (!isVisible)
 				{
@@ -720,9 +723,10 @@ void TerrainQuad::setupTextures (void)
 				vertex3D.z = ourCos + Terrain::waterElevation;
 				vertex3D.x = vertices[3]->vx;
 				vertex3D.y = vertices[3]->vy;
-				
+
 				bool clipData = false;
-				clipData = eye->projectZ(vertex3D,screenPos); 
+				// [PROJECTZ:BoolAdmission id=terrain_quad_vert3_admit]
+				clipData = eye->projectZ(vertex3D,screenPos);
 				bool isVisible = Terrain::IsGameSelectTerrainPosition(vertex3D) || drawTerrainGrid;
 				if (!isVisible)
 				{
@@ -2937,20 +2941,24 @@ void TerrainQuad::drawLine (void)
 						thePoint.x += (cellC) * cellWidth;
 						thePoint.y -= (cellR) * cellWidth;
 						thePoint.z = land->getTerrainElevation(thePoint);
+						// [PROJECTZ:DebugOnly id=debug_cell_passability_0]
 						eye->projectZ(thePoint,pos4);
-						
+
 						thePoint.x += cellWidth;
 						thePoint.z = land->getTerrainElevation(thePoint);
+						// [PROJECTZ:DebugOnly id=debug_cell_passability_1]
 						eye->projectZ(thePoint,pos1);
-						
+
 						thePoint.y -= cellWidth;
 						thePoint.z = land->getTerrainElevation(thePoint);
+						// [PROJECTZ:DebugOnly id=debug_cell_passability_2]
 						eye->projectZ(thePoint,pos2);
 
 						thePoint.x -= cellWidth;
 						thePoint.z = land->getTerrainElevation(thePoint);
+						// [PROJECTZ:DebugOnly id=debug_cell_passability_3]
 						eye->projectZ(thePoint,pos3);
-						
+
 						pos1.z -= 0.002f;
 						pos2.z -= 0.002f;
 						pos3.z -= 0.002f;
@@ -3058,23 +3066,27 @@ void TerrainQuad::drawLine (void)
 				thePoint.y -= (GlobalMoveMap[0]->doors[currentDoor].row - cellR) * cellWidth;
 
 				thePoint.z = land->getTerrainElevation(thePoint);
+				// [PROJECTZ:DebugOnly id=debug_door_outline_0]
 				eye->projectZ(thePoint,pos4);
-				
+
 				thePoint.x += (xLength) * cellWidth;
 				thePoint.z = land->getTerrainElevation(thePoint);
+				// [PROJECTZ:DebugOnly id=debug_door_outline_1]
 				eye->projectZ(thePoint,pos1);
-				
+
 				thePoint.y -= (yLength) * cellWidth;
 				thePoint.z = land->getTerrainElevation(thePoint);
+				// [PROJECTZ:DebugOnly id=debug_door_outline_2]
 				eye->projectZ(thePoint,pos2);
 
 				thePoint.x -= (xLength) * cellWidth;
 				thePoint.z = land->getTerrainElevation(thePoint);
+				// [PROJECTZ:DebugOnly id=debug_door_outline_3]
 				eye->projectZ(thePoint,pos3);
 
-				pos1.z -= 0.002f; 
-				pos2.z -= 0.002f;  
-				pos3.z -= 0.002f;  
+				pos1.z -= 0.002f;
+				pos2.z -= 0.002f;
+				pos3.z -= 0.002f;
 				pos4.z -= 0.002f;
 				{
 					LineElement newElement(pos1,pos2,XP_GREEN,NULL);
@@ -3145,24 +3157,28 @@ void TerrainQuad::drawLOSLine (void)
 						Stuff::Vector4D pos2;
 						Stuff::Vector4D pos3;
 						Stuff::Vector4D pos4;
-						
+
 						Stuff::Vector3D thePoint(vertices[0]->vx,vertices[0]->vy,vertices[0]->pVertex->elevation);
-						
+
 						thePoint.x += (cellC) * cellWidth;
 						thePoint.y -= (cellR) * cellWidth;
 						thePoint.z = land->getTerrainElevation(thePoint);
+						// [PROJECTZ:DebugOnly id=debug_los_cell_height_0]
 						eye->projectZ(thePoint,pos4);
-						
+
 						thePoint.x += cellWidth;
 						thePoint.z = land->getTerrainElevation(thePoint);
+						// [PROJECTZ:DebugOnly id=debug_los_cell_height_1]
 						eye->projectZ(thePoint,pos1);
-						
+
 						thePoint.y -= cellWidth;
 						thePoint.z = land->getTerrainElevation(thePoint);
+						// [PROJECTZ:DebugOnly id=debug_los_cell_height_2]
 						eye->projectZ(thePoint,pos2);
 
 						thePoint.x -= cellWidth;
 						thePoint.z = land->getTerrainElevation(thePoint);
+						// [PROJECTZ:DebugOnly id=debug_los_cell_height_3]
 						eye->projectZ(thePoint,pos3);
 						
 						pos1.z -= 0.002f;
@@ -3418,26 +3434,30 @@ void TerrainQuad::drawDebugCellLine (void)
 						Stuff::Vector4D pos2;
 						Stuff::Vector4D pos3;
 						Stuff::Vector4D pos4;
-						
+
 						Stuff::Vector3D thePoint(vertices[0]->vx,vertices[0]->vy,vertices[0]->pVertex->elevation);
-						
+
 						thePoint.x += (cellC) * cellWidth;
 						thePoint.y -= (cellR) * cellWidth;
 						thePoint.z = land->getTerrainElevation(thePoint);
+						// [PROJECTZ:DebugOnly id=debug_cell_state_0]
 						eye->projectZ(thePoint,pos4);
-						
+
 						thePoint.x += cellWidth;
 						thePoint.z = land->getTerrainElevation(thePoint);
+						// [PROJECTZ:DebugOnly id=debug_cell_state_1]
 						eye->projectZ(thePoint,pos1);
-						
+
 						thePoint.y -= cellWidth;
 						thePoint.z = land->getTerrainElevation(thePoint);
+						// [PROJECTZ:DebugOnly id=debug_cell_state_2]
 						eye->projectZ(thePoint,pos2);
 
 						thePoint.x -= cellWidth;
 						thePoint.z = land->getTerrainElevation(thePoint);
+						// [PROJECTZ:DebugOnly id=debug_cell_state_3]
 						eye->projectZ(thePoint,pos3);
-						
+
 						pos1.z = pos2.z = pos3.z = pos4.z = HUD_DEPTH;
 
 						DWORD color = XP_RED;
@@ -3531,29 +3551,33 @@ void TerrainQuad::drawMine (void)
 					Stuff::Vector4D pos2;
 					Stuff::Vector4D pos3;
 					Stuff::Vector4D pos4;
-					
+
 					//------------------------------------------------------------------------------------
 					// Dig the actual Vertex information out of the projected vertices already done.
 					// In this way, the draw requires only interpolation and not Giant Matrix multiplies.
 					Stuff::Vector3D thePoint(vertices[0]->vx,vertices[0]->vy,vertices[0]->pVertex->elevation);
-					
+
 					thePoint.x += (cellC) * cellWidth;
 					thePoint.y -= (cellR) * cellWidth;
 					thePoint.z = land->getTerrainElevation(thePoint);
+					// [PROJECTZ:ScreenXYOracle id=mine_cell_corner0]
 					eye->projectZ(thePoint,pos4);
-					
+
 					thePoint.x += cellWidth;
 					thePoint.z = land->getTerrainElevation(thePoint);
+					// [PROJECTZ:ScreenXYOracle id=mine_cell_corner1]
 					eye->projectZ(thePoint,pos1);
 					
 					thePoint.y -= cellWidth;
 					thePoint.z = land->getTerrainElevation(thePoint);
+					// [PROJECTZ:ScreenXYOracle id=mine_cell_corner2]
 					eye->projectZ(thePoint,pos2);
-		
+
 					thePoint.x -= cellWidth;
 					thePoint.z = land->getTerrainElevation(thePoint);
+					// [PROJECTZ:ScreenXYOracle id=mine_cell_corner3]
 					eye->projectZ(thePoint,pos3);
-					
+
 					//------------------------------------
 					// Replace with New RIA code
 					gos_VERTEX gVertex[3];
