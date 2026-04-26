@@ -430,6 +430,8 @@ class Camera
 		//
 		// Spec: docs/superpowers/specs/2026-04-25-projectz-containment-design.md
 		//---------------------------------------------------------------------------
+		[[deprecated("Use an intent-specific projectFor*Admission/projectForScreenXY/etc. wrapper. "
+		             "See docs/superpowers/specs/2026-04-26-projectz-policy-split-design.md.")]]
 		bool projectZ (Stuff::Vector3D &point, Stuff::Vector4D &screen,
 		               LegacyProjectionResult* optionalResult = nullptr)
 		{
@@ -522,7 +524,10 @@ class Camera
 		// Terrain vertex admission — bool gates submission; per-vertex wedge-risk concentration.
 		inline bool projectForTerrainAdmission (Stuff::Vector3D& point,
 		                                        Stuff::Vector4D& screen) {
+#pragma warning(push)
+#pragma warning(disable: 4996)
 			bool accepted = projectZ(point, screen);
+#pragma warning(pop)
 #if defined(MC2_PROJECTZ_FINITE_CHECK)
 			if (accepted) {
 				gosASSERT(isfinite(screen.x) && isfinite(screen.y) &&
@@ -535,7 +540,10 @@ class Camera
 		// Object lifecycle admission — bool feeds windowsVisible → canBeSeen() cull chain.
 		inline bool projectForObjectAdmission (Stuff::Vector3D& point,
 		                                       Stuff::Vector4D& screen) {
+#pragma warning(push)
+#pragma warning(disable: 4996)
 			bool accepted = projectZ(point, screen);
+#pragma warning(pop)
 #if defined(MC2_PROJECTZ_FINITE_CHECK)
 			if (accepted) {
 				gosASSERT(isfinite(screen.x) && isfinite(screen.y) &&
@@ -548,7 +556,10 @@ class Camera
 		// Effect billboard admission — bool gates submission; same wedge-class hazard as terrain.
 		inline bool projectForEffectAdmission (Stuff::Vector3D& point,
 		                                       Stuff::Vector4D& screen) {
+#pragma warning(push)
+#pragma warning(disable: 4996)
 			bool accepted = projectZ(point, screen);
+#pragma warning(pop)
 #if defined(MC2_PROJECTZ_FINITE_CHECK)
 			if (accepted) {
 				gosASSERT(isfinite(screen.x) && isfinite(screen.y) &&
@@ -559,37 +570,54 @@ class Camera
 		}
 
 		// Lighting / shadow activation — bool gates light->active; screen discarded.
+#pragma warning(push)
+#pragma warning(disable: 4996)
 		inline bool projectForLightingShadow (Stuff::Vector3D& point,
 		                                      Stuff::Vector4D& screen) {
 			return projectZ(point, screen);
 		}
+#pragma warning(pop)
 
 		// Picking — bool discarded; screen.xy consumed for distance / rect tests.
+#pragma warning(push)
+#pragma warning(disable: 4996)
 		inline bool projectForSelectionPicking (Stuff::Vector3D& point,
 		                                        Stuff::Vector4D& screen) {
 			return projectZ(point, screen);
 		}
+#pragma warning(pop)
 
 		// Cosmetic screen-XY oracle — bool discarded; screen.xy consumed.
+#pragma warning(push)
+#pragma warning(disable: 4996)
 		inline bool projectForScreenXY (Stuff::Vector3D& point,
 		                                Stuff::Vector4D& screen) {
 			return projectZ(point, screen);
 		}
+#pragma warning(pop)
 
 		// Debug overlays — LAB_ONLY / drawTerrainGrid-gated draw paths.
+#pragma warning(push)
+#pragma warning(disable: 4996)
 		inline bool projectForDebugOverlay (Stuff::Vector3D& point,
 		                                    Stuff::Vector4D& screen) {
 			return projectZ(point, screen);
 		}
+#pragma warning(pop)
 
+		[[deprecated("Use inverseProjectForPicking. "
+		             "See docs/superpowers/specs/2026-04-26-projectz-policy-split-design.md.")]]
 		void inverseProjectZ (Stuff::Vector4D &screen, Stuff::Vector3D &point);
 
 		// Inverse projection for tactical-map viewport corner unprojection.
 		// Trivial alias for symmetry with the forward-direction split.
+#pragma warning(push)
+#pragma warning(disable: 4996)
 		inline void inverseProjectForPicking (Stuff::Vector4D& screen,
 		                                      Stuff::Vector3D& point) {
 			inverseProjectZ(screen, point);
 		}
+#pragma warning(pop)
 		
 		void projectCamera (Stuff::Vector3D &point);
 
