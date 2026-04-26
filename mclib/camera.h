@@ -510,8 +510,62 @@ class Camera
 			}
 			return TRUE;
 		}
-				
+
+		//---------------------------------------------------------------------------
+		// projectZ Policy Split — intent-specific wrappers.
+		// Spec: docs/superpowers/specs/2026-04-26-projectz-policy-split-design.md
+		// All seven delegate to projectZ() unchanged. Behavior must be byte-identical.
+		// Categories from projectz-callsite-inventory.md map 1:1 to wrappers.
+		//---------------------------------------------------------------------------
+
+		// Wedge-class admission — bool gates submission, screen consumed downstream.
+		inline bool projectForTerrainAdmission (Stuff::Vector3D& point,
+		                                        Stuff::Vector4D& screen) {
+		    return projectZ(point, screen);
+		}
+
+		inline bool projectForObjectAdmission (Stuff::Vector3D& point,
+		                                       Stuff::Vector4D& screen) {
+		    return projectZ(point, screen);
+		}
+
+		inline bool projectForEffectAdmission (Stuff::Vector3D& point,
+		                                       Stuff::Vector4D& screen) {
+		    return projectZ(point, screen);
+		}
+
+		// Lighting / shadow activation — bool gates light->active; screen discarded.
+		inline bool projectForLightingShadow (Stuff::Vector3D& point,
+		                                      Stuff::Vector4D& screen) {
+		    return projectZ(point, screen);
+		}
+
+		// Picking — bool discarded; screen.xy consumed for distance / rect tests.
+		inline bool projectForSelectionPicking (Stuff::Vector3D& point,
+		                                        Stuff::Vector4D& screen) {
+		    return projectZ(point, screen);
+		}
+
+		// Cosmetic screen-XY oracle — bool discarded; screen.xy consumed.
+		inline bool projectForScreenXY (Stuff::Vector3D& point,
+		                                Stuff::Vector4D& screen) {
+		    return projectZ(point, screen);
+		}
+
+		// Debug overlays — LAB_ONLY / drawTerrainGrid-gated draw paths.
+		inline bool projectForDebugOverlay (Stuff::Vector3D& point,
+		                                    Stuff::Vector4D& screen) {
+		    return projectZ(point, screen);
+		}
+
 		void inverseProjectZ (Stuff::Vector4D &screen, Stuff::Vector3D &point);
+
+		// Inverse projection for tactical-map viewport corner unprojection.
+		// Trivial alias for symmetry with the forward-direction split.
+		inline void inverseProjectForPicking (Stuff::Vector4D& screen,
+		                                      Stuff::Vector3D& world) {
+		    inverseProjectZ(screen, world);
+		}
 		
 		void projectCamera (Stuff::Vector3D &point);
 
