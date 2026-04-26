@@ -109,6 +109,7 @@ static LONG WINAPI mc2_unhandled_exception_filter(EXCEPTION_POINTERS* ep)
 #include <signal.h>
 #include "gos_profiler.h"
 #include "tgl.h"   // drainTglPoolStats / drainTglPoolStatsOnShutdown (Tier-1 instr)
+#include "projectz_trace.h"  // projectz_trace_init/frame_tick/shutdown (PROJECTZ v1)
 
 // Tier-1 instrumentation (stability spec §5.1): single source of truth for
 // the frame=... field used by TGL_POOL, DESTROY, and GL_ERROR log lines.
@@ -583,6 +584,7 @@ int main(int argc, char** argv)
 
     // Tier-1 instrumentation: one-line banner so every log file is
     // self-describing about which traces are enabled.
+    projectz_trace_init();
     {
         const bool tgl     = (getenv("MC2_TGL_POOL_TRACE")       != nullptr);
         const bool destr   = (getenv("MC2_DESTROY_TRACE")        != nullptr);
@@ -602,6 +604,13 @@ int main(int argc, char** argv)
             tgl ? 1 : 0, destr ? 1 : 0, glprint ? 1 : 0, smoke ? 1 : 0, build);
         puts(_cbbuf);
         crashbundle_append(_cbbuf);
+        if (g_pzTrace) {
+            char _pzbuf[256];
+            snprintf(_pzbuf, sizeof(_pzbuf),
+                "[PROJECTZ v1] enabled: trace=%d heatmap=%d summary=%d guard_px=%d",
+                g_pzDoTrace ? 1 : 0, g_pzDoHeatmap ? 1 : 0, g_pzDoSummary ? 1 : 0, g_pzGuardPx);
+            puts(_pzbuf);
+        }
     }
 
     //signal(SIGTRAP, SIG_IGN);
@@ -795,6 +804,7 @@ int main(int argc, char** argv)
             ZoneScopedN("Frame.DrainTglPoolStats");
             g_mc2FrameCounter++;
             drainTglPoolStats();
+            projectz_frame_tick();
             drainGLErrors("frame");
         }
 
@@ -902,6 +912,7 @@ int main(int argc, char** argv)
     // Tier-1 instrumentation (stability spec §2.5): final monotonic summary
     // before tearing down render/audio. Always emitted regardless of env gate.
     drainTglPoolStatsOnShutdown();
+    projectz_shutdown();
 
     Environment.TerminateGameEngine();
     AssetScale::shutdown();

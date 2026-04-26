@@ -2086,6 +2086,7 @@ bool GameObject::onScreen (void) {
 	if (eye) {
 		Stuff::Vector3D objPosition = position;
 		// [PROJECTZ:BoolAdmission id=gameobj_visibility_admit]
+		PROJECTZ_SITE("gameobj_visibility_admit", "BoolAdmission");
 		isVisible = eye->projectZ(objPosition, screenPos);
 	}
 

@@ -101,6 +101,7 @@
 #include"platform_windows.h"
 
 #include"gvehicl.h" // remove
+#include"projectz_trace.h"
 
 	static const char* terrainStr[NUM_TERRAIN_TYPES] = {
 			"Blue Water",	//MC_BLUEWATER_TYPE
@@ -3604,6 +3605,7 @@ void MissionInterfaceManager::doDrag(bool bGui)
 				Stuff::Vector3D screenStart;
 				Stuff::Vector4D screenPos;
 				// [PROJECTZ:SelectionPicking id=picking_drag_select_origin]
+				PROJECTZ_SITE("picking_drag_select_origin", "SelectionPicking");
 				eye->projectZ( dragStart, screenPos );
 				screenStart.x = screenPos.x;
 				screenStart.y = screenPos.y;

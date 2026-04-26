@@ -32,6 +32,7 @@
 #endif
 
 #include<stuff/stuff.hpp>
+#include<float.h>   // FLT_MAX for trueSignedRhw sentinel
 
 inline signed short int float2short(float _in)
 {
@@ -78,8 +79,10 @@ enum Axes {
 // Spec: docs/superpowers/specs/2026-04-25-projectz-containment-design.md
 // Field semantics match the current projectZ() body byte-for-byte:
 //   legacyRhw = 1.0f when signedW == 0, else 1.0f / signedW
-// Diagnostic-only `trueSignedRhw` (which can be +/-Inf) is intentionally
-// NOT added here; it lands in the instrumentation commit (commit 3).
+// trueSignedRhw is diagnostic-only (commit 3): 1.0f/signedW without the
+// zero-guard, so it is ±FLT_MAX (approx ±Inf) when signedW == 0. It
+// never matches legacyRhw when signedW is zero; useful for detecting
+// the behind-camera fabs(rhw) hazard in the capture report.
 //---------------------------------------------------------------------------
 struct LegacyProjectionResult {
 	bool             acceptedByLegacyScreenRect;
@@ -88,7 +91,13 @@ struct LegacyProjectionResult {
 	float            signedW;
 	float            legacyRhw;
 	bool             usePerspective;
+	float            trueSignedRhw;  // diagnostic-only (commit 3); ±FLT_MAX when signedW==0
 };
+
+// Diagnostic trace system include. Declares g_pzTrace, g_projectz_site_id,
+// g_projectz_site_cat, projectz_trace_dispatch(), and the PROJECTZ_SITE macro.
+// Must appear after LegacyProjectionResult (trace.h forward-declares it).
+#include "projectz_trace.h"
 
 //---------------------------------------------------------------------------
 class Camera
@@ -466,6 +475,17 @@ class Camera
 					optionalResult->signedW         = xformCoords.w;
 					optionalResult->legacyRhw       = (xformCoords.w != 0.0f) ? (1.0f / xformCoords.w) : 1.0f;
 					optionalResult->usePerspective  = usePerspective;
+					optionalResult->trueSignedRhw   = (xformCoords.w != 0.0f) ? (1.0f / xformCoords.w) : FLT_MAX;
+				}
+				if (g_pzTrace)
+				{
+					// Read-and-clear the callsite ID globals before dispatch so a
+					// missed PROJECTZ_SITE() at the next call produces <unknown>.
+					const char* sid  = g_projectz_site_id;   g_projectz_site_id  = nullptr;
+					const char* scat = g_projectz_site_cat;  g_projectz_site_cat = nullptr;
+					projectz_trace_dispatch(sid, scat, point, xformCoords, screen,
+					                        usePerspective, false,
+					                        screenResolution.x, screenResolution.y);
 				}
 				return FALSE;
 			}
@@ -478,8 +498,16 @@ class Camera
 				optionalResult->signedW         = xformCoords.w;
 				optionalResult->legacyRhw       = (xformCoords.w != 0.0f) ? (1.0f / xformCoords.w) : 1.0f;
 				optionalResult->usePerspective  = usePerspective;
+				optionalResult->trueSignedRhw   = (xformCoords.w != 0.0f) ? (1.0f / xformCoords.w) : FLT_MAX;
 			}
-
+			if (g_pzTrace)
+			{
+				const char* sid  = g_projectz_site_id;   g_projectz_site_id  = nullptr;
+				const char* scat = g_projectz_site_cat;  g_projectz_site_cat = nullptr;
+				projectz_trace_dispatch(sid, scat, point, xformCoords, screen,
+				                        usePerspective, true,
+				                        screenResolution.x, screenResolution.y);
+			}
 			return TRUE;
 		}
 				

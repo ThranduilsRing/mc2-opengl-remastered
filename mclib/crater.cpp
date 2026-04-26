@@ -319,12 +319,16 @@ void CraterManager::render (void)
 			}
 				
 			// [PROJECTZ:Both id=crater_corner0]
+			PROJECTZ_SITE("crater_corner0", "Both");
 			bool onScreen1 = eye->projectZ(currCrater->position[0],currCrater->screenPos[0]);
 			// [PROJECTZ:Both id=crater_corner1]
+			PROJECTZ_SITE("crater_corner1", "Both");
 			bool onScreen2 = eye->projectZ(currCrater->position[1],currCrater->screenPos[1]);
 			// [PROJECTZ:Both id=crater_corner2]
+			PROJECTZ_SITE("crater_corner2", "Both");
 			bool onScreen3 = eye->projectZ(currCrater->position[2],currCrater->screenPos[2]);
 			// [PROJECTZ:Both id=crater_corner3]
+			PROJECTZ_SITE("crater_corner3", "Both");
 			bool onScreen4 = eye->projectZ(currCrater->position[3],currCrater->screenPos[3]);
 
 			//--------------------------------------------------

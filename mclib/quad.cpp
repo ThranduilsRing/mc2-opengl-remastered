@@ -39,6 +39,7 @@
 #endif
 
 #include"../GameOS/gameos/gos_profiler.h"
+#include"projectz_trace.h"
 
 #define SELECTION_COLOR 0xffff7fff
 #define HIGHLIGHT_COLOR	0xff00ff00
@@ -85,6 +86,43 @@ static void fillTerrainExtra(DWORD texHandle, DWORD flags, VertexPtr v0, VertexP
     textra[2].wx = v2->vx; textra[2].wy = v2->vy; textra[2].wz = v2->pVertex->elevation;
     textra[2].nx = v2->pVertex->vertexNormal.x; textra[2].ny = v2->pVertex->vertexNormal.y; textra[2].nz = v2->pVertex->vertexNormal.z;
     mcTextureManager->addTerrainExtra(texHandle, textra, flags);
+}
+
+// Per-triangle diagnostic hook for terrain addTriangle sites.
+// Observation-only; must be called AFTER addTriangle so it cannot affect submission.
+// Active only when g_pzTrace is true (any PROJECTZ env var set).
+static void pz_emit_terrain_tris(
+    VertexPtr*  verts,     // array of 4
+    int         uvMode,
+    const char* callsiteId,
+    const char* file,
+    int         line)
+{
+    if (!g_pzTrace) return;
+    long rowCol = verts[0]->posTile;
+    int tileR = rowCol >> 16;
+    int tileC = rowCol & 0x0000ffff;
+    ProjectZTriVert pzv[4];
+    for (int i = 0; i < 4; i++) {
+        pzv[i].legacyAccepted = (verts[i]->clipInfo != 0);
+        pzv[i].wx = verts[i]->px;
+        pzv[i].wy = verts[i]->py;
+        pzv[i].wz = verts[i]->pz;
+        pzv[i].vx = verts[i]->vx;
+        pzv[i].vy = verts[i]->vy;
+        pzv[i].vz = verts[i]->pVertex->elevation;
+    }
+    if (uvMode == BOTTOMRIGHT) {
+        static const int c012[] = {0,1,2};
+        static const int c023[] = {0,2,3};
+        projectz_emit_tri(callsiteId, tileR, tileC, c012, pzv, true, file, line);
+        projectz_emit_tri(callsiteId, tileR, tileC, c023, pzv, true, file, line);
+    } else {
+        static const int c013[] = {0,1,3};
+        static const int c123[] = {1,2,3};
+        projectz_emit_tri(callsiteId, tileR, tileC, c013, pzv, true, file, line);
+        projectz_emit_tri(callsiteId, tileR, tileC, c123, pzv, true, file, line);
+    }
 }
 
 static bool isTerrainQuadVisible(const TerrainQuad& quad)
@@ -211,24 +249,25 @@ void TerrainQuad::setupTextures (void)
 		{
 			long clipped1 = vertices[0]->clipInfo + vertices[1]->clipInfo + vertices[2]->clipInfo;
 			long clipped2 = vertices[0]->clipInfo + vertices[2]->clipInfo + vertices[3]->clipInfo;
-						
+
 			if (clipped1 || clipped2)
 			{
 				{
-					terrainHandle = Terrain::terrainTextures->getTextureHandle((vertices[0]->pVertex->textureData & 0x0000ffff)); 
+					terrainHandle = Terrain::terrainTextures->getTextureHandle((vertices[0]->pVertex->textureData & 0x0000ffff));
 					DWORD terrainDetailData = Terrain::terrainTextures->setDetail(1,0);
 					if (terrainDetailData != 0xfffffff)
 						terrainDetailHandle = Terrain::terrainTextures->getTextureHandle(terrainDetailData);
 					else
 						terrainDetailHandle = 0xffffffff;
 					overlayHandle = 0xffffffff;
-						
+
 					mcTextureManager->addTriangle(terrainHandle,MC2_ISTERRAIN | MC2_DRAWSOLID);
 					mcTextureManager->addTriangle(terrainHandle,MC2_ISTERRAIN | MC2_DRAWSOLID);
 					mcTextureManager->addTriangle(terrainDetailHandle,MC2_ISTERRAIN | MC2_DRAWALPHA);
 					mcTextureManager->addTriangle(terrainDetailHandle,MC2_ISTERRAIN | MC2_DRAWALPHA);
+					pz_emit_terrain_tris(vertices, uvMode, "terrain_quad_cluster_a", __FILE__, __LINE__);
 				}
-				
+
 				//--------------------------------------------------------------------
 				//Mine Information
 				long rowCol = vertices[0]->posTile;
@@ -283,24 +322,25 @@ void TerrainQuad::setupTextures (void)
 		{
 			long clipped1 = vertices[0]->clipInfo + vertices[1]->clipInfo + vertices[3]->clipInfo;
 			long clipped2 = vertices[1]->clipInfo + vertices[2]->clipInfo + vertices[3]->clipInfo;
-						
+
 			if (clipped1 || clipped2)
 			{
 				{
-					terrainHandle = Terrain::terrainTextures->getTextureHandle((vertices[0]->pVertex->textureData & 0x0000ffff)); 
+					terrainHandle = Terrain::terrainTextures->getTextureHandle((vertices[0]->pVertex->textureData & 0x0000ffff));
 					DWORD terrainDetailData = Terrain::terrainTextures->setDetail(1,0);
 					if (terrainDetailData != 0xfffffff)
 						terrainDetailHandle = Terrain::terrainTextures->getTextureHandle(terrainDetailData);
 					else
 						terrainDetailHandle = 0xffffffff;
 					overlayHandle = 0xffffffff;
-						
+
 					mcTextureManager->addTriangle(terrainHandle,MC2_ISTERRAIN | MC2_DRAWSOLID);
 					mcTextureManager->addTriangle(terrainHandle,MC2_ISTERRAIN | MC2_DRAWSOLID);
 					mcTextureManager->addTriangle(terrainDetailHandle,MC2_ISTERRAIN | MC2_DRAWALPHA);
 					mcTextureManager->addTriangle(terrainDetailHandle,MC2_ISTERRAIN | MC2_DRAWALPHA);
+					pz_emit_terrain_tris(vertices, uvMode, "terrain_quad_cluster_c", __FILE__, __LINE__);
 				}
-				
+
 				//--------------------------------------------------------------------
 				//Mine Information
 				long rowCol = vertices[0]->posTile;
@@ -382,10 +422,10 @@ void TerrainQuad::setupTextures (void)
 					bool isAlpha = Terrain::terrainTextures->isAlpha(vertices[0]->pVertex->textureData & 0x0000ffff); 
 					if (!isCement)
 					{
-						terrainHandle = Terrain::terrainTextures2->getTextureHandle(vertices[0],vertices[2],&uvData); 
+						terrainHandle = Terrain::terrainTextures2->getTextureHandle(vertices[0],vertices[2],&uvData);
 						terrainDetailHandle = Terrain::terrainTextures2->getDetailHandle();
 						overlayHandle = 0xffffffff;
-						
+
 						if(terrainHandle!=0) {
 							mcTextureManager->addTriangle(terrainHandle,MC2_ISTERRAIN | MC2_DRAWSOLID);
 							mcTextureManager->addTriangle(terrainHandle,MC2_ISTERRAIN | MC2_DRAWSOLID);
@@ -394,6 +434,7 @@ void TerrainQuad::setupTextures (void)
 								mcTextureManager->addTriangle(terrainDetailHandle,MC2_ISTERRAIN | MC2_DRAWALPHA);
 								mcTextureManager->addTriangle(terrainDetailHandle,MC2_ISTERRAIN | MC2_DRAWALPHA);
 							}
+							pz_emit_terrain_tris(vertices, uvMode, "terrain_quad_cluster_a", __FILE__, __LINE__);
 						}
 					}
 					else
@@ -444,6 +485,7 @@ void TerrainQuad::setupTextures (void)
 								mcTextureManager->addTriangle(terrainDetailHandle,MC2_ISTERRAIN | MC2_DRAWALPHA);
 								mcTextureManager->addTriangle(terrainDetailHandle,MC2_ISTERRAIN | MC2_DRAWALPHA);
 							}
+							pz_emit_terrain_tris(vertices, uvMode, "terrain_quad_cluster_c", __FILE__, __LINE__);
 						}
 					}
 					else
@@ -522,6 +564,7 @@ void TerrainQuad::setupTextures (void)
 
 				bool clipData = false;
 				// [PROJECTZ:BoolAdmission id=terrain_quad_vert0_admit]
+				PROJECTZ_SITE("terrain_quad_vert0_admit", "BoolAdmission");
 				clipData = eye->projectZ(vertex3D,screenPos);
 				bool isVisible = Terrain::IsGameSelectTerrainPosition(vertex3D) || drawTerrainGrid;
 				if (!isVisible)
@@ -590,6 +633,7 @@ void TerrainQuad::setupTextures (void)
 
 				bool clipData = false;
 				// [PROJECTZ:BoolAdmission id=terrain_quad_vert1_admit]
+				PROJECTZ_SITE("terrain_quad_vert1_admit", "BoolAdmission");
 				clipData = eye->projectZ(vertex3D,screenPos);
 				bool isVisible = Terrain::IsGameSelectTerrainPosition(vertex3D) || drawTerrainGrid;
 				if (!isVisible)
@@ -658,6 +702,7 @@ void TerrainQuad::setupTextures (void)
 
 				bool clipData = false;
 				// [PROJECTZ:BoolAdmission id=terrain_quad_vert2_admit]
+				PROJECTZ_SITE("terrain_quad_vert2_admit", "BoolAdmission");
 				clipData = eye->projectZ(vertex3D,screenPos);
 				bool isVisible = Terrain::IsGameSelectTerrainPosition(vertex3D) || drawTerrainGrid;
 				if (!isVisible)
@@ -726,6 +771,7 @@ void TerrainQuad::setupTextures (void)
 
 				bool clipData = false;
 				// [PROJECTZ:BoolAdmission id=terrain_quad_vert3_admit]
+				PROJECTZ_SITE("terrain_quad_vert3_admit", "BoolAdmission");
 				clipData = eye->projectZ(vertex3D,screenPos);
 				bool isVisible = Terrain::IsGameSelectTerrainPosition(vertex3D) || drawTerrainGrid;
 				if (!isVisible)

@@ -208,6 +208,7 @@ void Clouds::update (void)
 			Stuff::Vector3D vertex3D(cloudVertices[i].vx,cloudVertices[i].vy,(CLOUD_ALTITUDE+eye->getCameraOrigin().y));
 			Stuff::Vector4D screenPos;
 			// [PROJECTZ:Both id=cloud_vertex_screen]
+			PROJECTZ_SITE("cloud_vertex_screen", "Both");
 			bool inView = eye->projectZ(vertex3D,screenPos);
 			
 			cloudVertices[i].px = screenPos.x;
