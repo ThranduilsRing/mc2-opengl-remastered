@@ -60,6 +60,8 @@ set(SOURCES ${SOURCES}
     ablxstd.cpp
     ablxstmt.cpp
     camera.cpp
+    projectz_trace.cpp
+    projectz_overlay.cpp
     clouds.cpp
     crater.cpp
     mapdata.cpp

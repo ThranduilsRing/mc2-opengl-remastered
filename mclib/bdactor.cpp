@@ -1139,8 +1139,9 @@ bool BldgAppearance::recalcBounds (void)
 		{
 			//ALWAYS need to do this or select is YAYA
 			// But now inView is correct!!
-			eye->projectZ(position,screenPos);
-			
+			// [PROJECTZ:ScreenXYOracle id=bdactor_screen_pos_a]
+			eye->projectForScreenXY(position,screenPos);
+
 			if (eye->usePerspective)
 			{
 				if (distanceToEye > Camera::MaxClipDistance)
@@ -1280,21 +1281,22 @@ bool BldgAppearance::recalcBounds (void)
 
 				for (long i=0;i<8;i++)
 				{
-					eye->projectZ(boxCoords[i],bcsp[i]);
+					// [PROJECTZ:ScreenXYOracle id=bdactor_box_rect_a]
+					eye->projectForScreenXY(boxCoords[i],bcsp[i]);
 					if (!i)
 					{
 						maxX = minX = bcsp[i].x;
 						maxY = minY = bcsp[i].y;
 					}
-					
+
 					if (i)
 					{
 						if (bcsp[i].x > maxX)
 							maxX = bcsp[i].x;
-						
+
 						if (bcsp[i].x < minX)
 							minX = bcsp[i].x;
-							
+
 						if (bcsp[i].y > maxY)
 							maxY = bcsp[i].y;
 						
@@ -1811,13 +1813,14 @@ long BldgAppearance::render (long depthFixup)
 			Rotate(addCoords,-rotation);
  		
 		boxCoords[7].Add(position,addCoords);
-		
+
 		Stuff::Vector4D screenPos[8];
 		for (long i=0;i<8;i++)
 		{
-			eye->projectZ(boxCoords[i],screenPos[i]);
+			// [PROJECTZ:ScreenXYOracle id=bdactor_box_wire_a]
+			eye->projectForScreenXY(boxCoords[i],screenPos[i]);
 		}
-		
+
 		{
 			LineElement newElement(screenPos[0],screenPos[1],XP_WHITE,NULL,-1);
 			newElement.draw();
@@ -3692,7 +3695,8 @@ bool TreeAppearance::recalcBounds (void)
 		{
 			//ALWAYS need to do this or select is YAYA
 			// But now inView is correct.
-			eye->projectZ(position,screenPos);
+			// [PROJECTZ:ScreenXYOracle id=bdactor_screen_pos_b]
+			eye->projectForScreenXY(position,screenPos);
 		
 			if (eye->usePerspective)
 			{
@@ -3780,7 +3784,8 @@ bool TreeAppearance::recalcBounds (void)
 
 			for (long i=0;i<8;i++)
 			{
-				eye->projectZ(boxCoords[i],bcsp[i]);
+				// [PROJECTZ:ScreenXYOracle id=bdactor_box_rect_b]
+				eye->projectForScreenXY(boxCoords[i],bcsp[i]);
 				if (!i)
 				{
 					maxX = minX = bcsp[i].x;
@@ -4036,13 +4041,14 @@ long TreeAppearance::render (long depthFixup)
 		boxCoords[7].x = position.x + treeShape->minBox.x + nodeCenter.x;
 		boxCoords[7].y = position.y + treeShape->maxBox.z + nodeCenter.z;
 		boxCoords[7].z = position.z + treeShape->minBox.y + nodeCenter.y;
-		
+
 		Stuff::Vector4D screenPos[8];
 		for (long i=0;i<8;i++)
 		{
-			eye->projectZ(boxCoords[i],screenPos[i]);
+			// [PROJECTZ:ScreenXYOracle id=bdactor_box_wire_b]
+			eye->projectForScreenXY(boxCoords[i],screenPos[i]);
 		}
-		
+
 		{
 			LineElement newElement(screenPos[0],screenPos[1],XP_WHITE,NULL,-1);
 			newElement.draw();

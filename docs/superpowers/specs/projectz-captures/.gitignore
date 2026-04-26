@@ -1,0 +1,7 @@
+# PROJECTZ trace logs are multi-GB raw streams. Per the design spec, the
+# committed CSV aggregates (`*.csv`, `*.tri.csv`) and the verbatim console
+# summary (`*.summary.txt`) are the reproducible artifacts; the raw
+# trace.log is a re-derivable input, not a stable artifact.
+#
+# Reproduce locally via Appendix B / C of the capture report.
+*.trace.log

@@ -861,7 +861,9 @@ unsigned long Camera::inverseProject (Stuff::Vector2DOf<long> &screenPos, Stuff:
 				point.x += (cellC) * cellWidth + halfCellWidth;
 				point.y -= (cellR) * cellWidth + halfCellWidth;
 				point.z = land->getTerrainElevation(point);
-				eye->projectZ(point,cellCenter);
+				// [PROJECTZ:SelectionPicking id=picking_closest_cell_center]
+				PROJECTZ_SITE("picking_closest_cell_center", "SelectionPicking");
+				eye->projectForSelectionPicking(point,cellCenter);
 
 				dx = (tvx - float2long(cellCenter.x));
 				dy = (tvy - float2long(cellCenter.y));
@@ -931,7 +933,9 @@ unsigned long Camera::inverseProject (Stuff::Vector2DOf<long> &screenPos, Stuff:
 				tmpWorld.y = land->tileRowToWorldCoord[row];
 				tmpWorld.z = land->getTerrainElevation( row, column );
 
-				projectZ( tmpWorld, tmpScreen );
+				// [PROJECTZ:SelectionPicking id=picking_closest_vertex_fallback]
+				PROJECTZ_SITE("picking_closest_vertex_fallback", "SelectionPicking");
+				projectForSelectionPicking( tmpWorld, tmpScreen );
 				
 				float tmpDis = (tmpScreen.x - screenPos.x) * (tmpScreen.x - screenPos.x ) + (tmpScreen.y - screenPos.y) * (tmpScreen.y - screenPos.y );
 				if ( tmpDis < dis )
@@ -1746,7 +1750,9 @@ void Camera::updateLights()
 			if (light->lightType == TG_LIGHT_TERRAIN)
 			{
 				Stuff::Vector4D dummy;
-				light->active = projectZ(light->position,dummy);
+				// [PROJECTZ:LightingShadow id=light_terrain_active_test]
+				PROJECTZ_SITE("light_terrain_active_test", "LightingShadow");
+				light->active = projectForLightingShadow(light->position,dummy);
 				if (light->active)
 				{
 					if (terrainLightCalc)
@@ -1772,7 +1778,9 @@ void Camera::updateLights()
 			if (light->lightType >= TG_LIGHT_POINT && light->lightType < TG_LIGHT_TERRAIN)
 			{
 				Stuff::Vector4D dummy;
-				light->active = projectZ(light->position,dummy);
+				// [PROJECTZ:LightingShadow id=light_spot_point_active_test]
+				PROJECTZ_SITE("light_spot_point_active_test", "LightingShadow");
+				light->active = projectForLightingShadow(light->position,dummy);
 				activeLights[numActiveLights++] = light;
 				terrainLights[numTerrainLights++] = light;
 			}

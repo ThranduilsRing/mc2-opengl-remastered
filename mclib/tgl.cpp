@@ -3014,9 +3014,10 @@ void TG_Shape::MultiTransformShadows (Stuff::Point3D *pos, Stuff::LinearMatrix4D
 								// from a common pool and save us SCADS of RAM!!
 								// Do this!!!!  I DID!
 								// -fs
-								eye->projectZ(listOfShadowVertices[index].position,listOfShadowTVertices[index].transformedPosition);
+								// [PROJECTZ:ScreenXYOracle id=tgl_shadow_vertex_a]
+								eye->projectForScreenXY(listOfShadowVertices[index].position,listOfShadowTVertices[index].transformedPosition);
 								shadowsVisible[shadowNum] = true;
-								
+
 								//eye->projectZ(listOfShadowVertices[index].position,listOfShadowTVertices[index].transformedPosition);
 		
 								DWORD fogRGB = 0xff000000;
@@ -3153,7 +3154,8 @@ void TG_Shape::MultiTransformShadows (Stuff::Point3D *pos, Stuff::LinearMatrix4D
 									// from a common pool and save us SCADS of RAM!!
 									// Do this!!!!  I DID!
 									// -fs
-									eye->projectZ(listOfShadowVertices[index].position,listOfShadowTVertices[index].transformedPosition);
+									// [PROJECTZ:ScreenXYOracle id=tgl_shadow_vertex_b]
+									eye->projectForScreenXY(listOfShadowVertices[index].position,listOfShadowTVertices[index].transformedPosition);
 									shadowsVisible[shadowNum] = true;
 	
 									DWORD fogRGB = 0xff000000;

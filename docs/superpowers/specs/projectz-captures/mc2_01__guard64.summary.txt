@@ -1,0 +1,19 @@
+[PROJECTZ v1] summary frames=3602
+  category=BoolAdmission          calls=32715787 parallel=0 rejected=21664332
+  category=SelectionPicking       calls=11485273 parallel=0 rejected=10755051
+  category=unknown                calls=6548094 parallel=0 rejected=1287048
+  perspective_calls=50749154
+  predicate=legacyRectFinite   agree=50749154 disagree_perm=0 disagree_restr=0 finite_viol=0 (0.00% of persp)
+  predicate=homogClip          agree=33706431 disagree_perm=0 disagree_restr=17042723 finite_viol=0 (33.58% of persp)
+  predicate=rectSignedW        agree=33708441 disagree_perm=0 disagree_restr=17040713 finite_viol=0 (33.58% of persp)
+  predicate=rectNearFar        agree=33706431 disagree_perm=0 disagree_restr=17042723 finite_viol=0 (33.58% of persp)
+  predicate=rectGuard          agree=48431295 disagree_perm=2317859 disagree_restr=0 finite_viol=0 (4.57% of persp)
+  outlier callsiteId=terrain_cpu_vert_admit         homogClip_dis=6424632 rectSignedW_dis=6424492 contains_rej_tri=0
+  outlier callsiteId=<unknown>                      homogClip_dis=5261046 rectSignedW_dis=5261046 contains_rej_tri=0
+  outlier callsiteId=terrain_quad_vert2_admit       homogClip_dis=4524507 rectSignedW_dis=4522688 contains_rej_tri=0
+  outlier callsiteId=picking_closest_vertex_fallback homogClip_dis=716390 rectSignedW_dis=716390 contains_rej_tri=0
+  outlier callsiteId=terrain_quad_vert3_admit       homogClip_dis=53911 rectSignedW_dis=53889 contains_rej_tri=0
+  outlier callsiteId=terrain_quad_vert1_admit       homogClip_dis=31136 rectSignedW_dis=31128 contains_rej_tri=0
+  outlier callsiteId=terrain_quad_vert0_admit       homogClip_dis=17269 rectSignedW_dis=17248 contains_rej_tri=0
+  outlier callsiteId=picking_closest_cell_center    homogClip_dis=13832 rectSignedW_dis=13832 contains_rej_tri=0
+  triangles total=9653720 red(contains_rejected)=4752497 purple(area_exceeded)=519926

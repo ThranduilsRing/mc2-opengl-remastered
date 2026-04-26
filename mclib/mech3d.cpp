@@ -2077,7 +2077,8 @@ bool Mech3DAppearance::recalcBounds (void)
 	if (eye)
 	{
 		//ALWAYS need to do this or select is YAYA
-		eye->projectZ(position,screenPos);
+		// [PROJECTZ:ScreenXYOracle id=mech3d_screen_pos]
+		eye->projectForScreenXY(position,screenPos);
 		
  		//--------------------------------------------------
 		// First, if we are using perspective, figure out
@@ -2230,7 +2231,8 @@ bool Mech3DAppearance::recalcBounds (void)
 
 				for (long i=0;i<8;i++)
 				{
-					eye->projectZ(boxCoords[i],bcsp[i]);
+					// [PROJECTZ:ScreenXYOracle id=mech3d_box_rect]
+					eye->projectForScreenXY(boxCoords[i],bcsp[i]);
 					if (!i)
 					{
 						maxX = minX = bcsp[i].x;
@@ -2696,9 +2698,10 @@ long Mech3DAppearance::render (long depthFixup)
  			Stuff::Vector4D screenPos[8];
 			for (long i=0;i<8;i++)
 			{
-				eye->projectZ(boxCoords[i],screenPos[i]);
+				// [PROJECTZ:ScreenXYOracle id=mech3d_box_wire]
+				eye->projectForScreenXY(boxCoords[i],screenPos[i]);
 			}
-			
+
 			{
 				LineElement newElement(screenPos[0],screenPos[1],XP_WHITE,NULL,-1);
 				newElement.draw();

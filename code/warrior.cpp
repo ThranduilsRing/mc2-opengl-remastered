@@ -7420,8 +7420,10 @@ void MechWarrior::drawWaypointPath()
 			{
 
 				pos.z = land->getTerrainElevation( pos );
-				eye->projectZ( tmpPos, screenPos1 );
-				eye->projectZ( pos, screenPos2 );
+				// [PROJECTZ:ScreenXYOracle id=warrior_tac_order_preview_start]
+				eye->projectForScreenXY( tmpPos, screenPos1 );
+				// [PROJECTZ:ScreenXYOracle id=warrior_tac_order_preview_end]
+				eye->projectForScreenXY( pos, screenPos2 );
 
 				Stuff::Vector4D vertices[2];
 				vertices[0].x = screenPos1.x;
@@ -7446,8 +7448,10 @@ void MechWarrior::drawWaypointPath()
 			Stuff::Vector4D screenPos1;
 			Stuff::Vector4D screenPos2;
 
-			eye->projectZ( tacOrderQueue[i].point, screenPos1 );
-			eye->projectZ( tmpPos, screenPos2 );
+			// [PROJECTZ:ScreenXYOracle id=warrior_tac_queue_segment_start]
+			eye->projectForScreenXY( tacOrderQueue[i].point, screenPos1 );
+			// [PROJECTZ:ScreenXYOracle id=warrior_tac_queue_segment_end]
+			eye->projectForScreenXY( tmpPos, screenPos2 );
 
    			Stuff::Vector4D vertices[2];
    			vertices[0].x = screenPos1.x;

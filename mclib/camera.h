@@ -32,6 +32,8 @@
 #endif
 
 #include<stuff/stuff.hpp>
+#include<float.h>   // FLT_MAX for trueSignedRhw sentinel
+#include<cmath>     // isfinite for MC2_PROJECTZ_FINITE_CHECK invariant
 
 inline signed short int float2short(float _in)
 {
@@ -64,6 +66,39 @@ enum Axes {
 #define F3_VIEW					1
 #define F4_VIEW					2
 #define F5_VIEW					3
+
+//---------------------------------------------------------------------------
+// LegacyProjectionResult
+//
+// Optional sidecar populated by Camera::projectZ() when a non-null
+// pointer is passed. Exposes the inputs the legacy admission test
+// destroys (rawClip, signedW) so future diagnostic and replacement-
+// candidate predicates can be evaluated alongside the legacy
+// screen-rect bool without changing what projectZ() returns or writes
+// to its `screen` out-parameter.
+//
+// Spec: docs/superpowers/specs/2026-04-25-projectz-containment-design.md
+// Field semantics match the current projectZ() body byte-for-byte:
+//   legacyRhw = 1.0f when signedW == 0, else 1.0f / signedW
+// trueSignedRhw is diagnostic-only (commit 3): 1.0f/signedW without the
+// zero-guard, so it is ±FLT_MAX (approx ±Inf) when signedW == 0. It
+// never matches legacyRhw when signedW is zero; useful for detecting
+// the behind-camera fabs(rhw) hazard in the capture report.
+//---------------------------------------------------------------------------
+struct LegacyProjectionResult {
+	bool             acceptedByLegacyScreenRect;
+	Stuff::Vector4D  screen;
+	Stuff::Vector4D  rawClip;
+	float            signedW;
+	float            legacyRhw;
+	bool             usePerspective;
+	float            trueSignedRhw;  // diagnostic-only (commit 3); ±FLT_MAX when signedW==0
+};
+
+// Diagnostic trace system include. Declares g_pzTrace, g_projectz_site_id,
+// g_projectz_site_cat, projectz_trace_dispatch(), and the PROJECTZ_SITE macro.
+// Must appear after LegacyProjectionResult (trace.h forward-declares it).
+#include "projectz_trace.h"
 
 //---------------------------------------------------------------------------
 class Camera
@@ -383,18 +418,33 @@ class Camera
 		float getCameraRotation (void);
 
 		//---------------------------------------------------------------------------
-		bool projectZ (Stuff::Vector3D &point, Stuff::Vector4D &screen)
+		// projectZ: legacy screen-rect admission test + screen-XY oracle.
+		//
+		// `optionalResult` is a sidecar for diagnostics and future
+		// replacement-candidate predicates. When nullptr (the default,
+		// which every existing caller relies on), the function body is
+		// byte-for-byte the legacy implementation -- the gated writes
+		// constant-fold away. When non-null, the same arithmetic also
+		// populates the result struct without altering operation order
+		// in either branch.
+		//
+		// Spec: docs/superpowers/specs/2026-04-25-projectz-containment-design.md
+		//---------------------------------------------------------------------------
+		[[deprecated("Use an intent-specific projectFor*Admission/projectForScreenXY/etc. wrapper. "
+		             "See docs/superpowers/specs/2026-04-26-projectz-policy-split-design.md.")]]
+		bool projectZ (Stuff::Vector3D &point, Stuff::Vector4D &screen,
+		               LegacyProjectionResult* optionalResult = nullptr)
 		{
 			//--------------------------------------------------------------------
-			// Now run the NEW project code 
+			// Now run the NEW project code
 			Stuff::Vector4D xformCoords;
 			Stuff::Point3D coords;
 			coords.x = -point.x;
 			coords.y = point.z;
 			coords.z = point.y;
-		
+
 			xformCoords.Multiply(coords,worldToClip);
-		
+
 			if (usePerspective)
 			{
 				//---------------------------------------
@@ -402,7 +452,7 @@ class Camera
 				float rhw = 1.0f;
 				if (xformCoords.w != 0.0f)
 					rhw = 1.0f / xformCoords.w;
-				
+
 				screen.x = (xformCoords.x * rhw) * viewMulX + viewAddX;
 				screen.y = (xformCoords.y * rhw) * viewMulY + viewAddY;
 				screen.z = (xformCoords.z * rhw);
@@ -411,20 +461,163 @@ class Camera
 			else
 			{
 				//---------------------------------------
-				// Parallel Transform	
+				// Parallel Transform
 				screen.x = (1.0f - xformCoords.x) * viewMulX + viewAddX;
 				screen.y = (1.0f - xformCoords.y) * viewMulY + viewAddY;
 				screen.z = xformCoords.z;
 				screen.w = 0.000001f;
 			}
-		
+
 			if ((screen.x < 0) || (screen.y < 0) || (screen.x > screenResolution.x) || (screen.y > screenResolution.y))
+			{
+				if (optionalResult)
+				{
+					optionalResult->acceptedByLegacyScreenRect = false;
+					optionalResult->screen          = screen;
+					optionalResult->rawClip         = xformCoords;
+					optionalResult->signedW         = xformCoords.w;
+					optionalResult->legacyRhw       = (xformCoords.w != 0.0f) ? (1.0f / xformCoords.w) : 1.0f;
+					optionalResult->usePerspective  = usePerspective;
+					optionalResult->trueSignedRhw   = (xformCoords.w != 0.0f) ? (1.0f / xformCoords.w) : FLT_MAX;
+				}
+				if (g_pzTrace)
+				{
+					// Read-and-clear the callsite ID globals before dispatch so a
+					// missed PROJECTZ_SITE() at the next call produces <unknown>.
+					const char* sid  = g_projectz_site_id;   g_projectz_site_id  = nullptr;
+					const char* scat = g_projectz_site_cat;  g_projectz_site_cat = nullptr;
+					projectz_trace_dispatch(sid, scat, point, xformCoords, screen,
+					                        usePerspective, false,
+					                        screenResolution.x, screenResolution.y);
+				}
 				return FALSE;
-				
+			}
+
+			if (optionalResult)
+			{
+				optionalResult->acceptedByLegacyScreenRect = true;
+				optionalResult->screen          = screen;
+				optionalResult->rawClip         = xformCoords;
+				optionalResult->signedW         = xformCoords.w;
+				optionalResult->legacyRhw       = (xformCoords.w != 0.0f) ? (1.0f / xformCoords.w) : 1.0f;
+				optionalResult->usePerspective  = usePerspective;
+				optionalResult->trueSignedRhw   = (xformCoords.w != 0.0f) ? (1.0f / xformCoords.w) : FLT_MAX;
+			}
+			if (g_pzTrace)
+			{
+				const char* sid  = g_projectz_site_id;   g_projectz_site_id  = nullptr;
+				const char* scat = g_projectz_site_cat;  g_projectz_site_cat = nullptr;
+				projectz_trace_dispatch(sid, scat, point, xformCoords, screen,
+				                        usePerspective, true,
+				                        screenResolution.x, screenResolution.y);
+			}
 			return TRUE;
 		}
-				
+
+		//---------------------------------------------------------------------------
+		// projectZ Policy Split — intent-specific wrappers.
+		// Spec: docs/superpowers/specs/2026-04-26-projectz-policy-split-design.md
+		// All seven delegate to projectZ() unchanged. Behavior must be byte-identical.
+		// Categories from projectz-callsite-inventory.md map 1:1 to wrappers.
+		//---------------------------------------------------------------------------
+
+		// Terrain vertex admission — bool gates submission; per-vertex wedge-risk concentration.
+		inline bool projectForTerrainAdmission (Stuff::Vector3D& point,
+		                                        Stuff::Vector4D& screen) {
+#pragma warning(push)
+#pragma warning(disable: 4996)
+			bool accepted = projectZ(point, screen);
+#pragma warning(pop)
+#if defined(MC2_PROJECTZ_FINITE_CHECK)
+			if (accepted) {
+				gosASSERT(isfinite(screen.x) && isfinite(screen.y) &&
+				          isfinite(screen.z) && isfinite(screen.w));
+			}
+#endif
+			return accepted;
+		}
+
+		// Object lifecycle admission — bool feeds windowsVisible → canBeSeen() cull chain.
+		inline bool projectForObjectAdmission (Stuff::Vector3D& point,
+		                                       Stuff::Vector4D& screen) {
+#pragma warning(push)
+#pragma warning(disable: 4996)
+			bool accepted = projectZ(point, screen);
+#pragma warning(pop)
+#if defined(MC2_PROJECTZ_FINITE_CHECK)
+			if (accepted) {
+				gosASSERT(isfinite(screen.x) && isfinite(screen.y) &&
+				          isfinite(screen.z) && isfinite(screen.w));
+			}
+#endif
+			return accepted;
+		}
+
+		// Effect billboard admission — bool gates submission; same wedge-class hazard as terrain.
+		inline bool projectForEffectAdmission (Stuff::Vector3D& point,
+		                                       Stuff::Vector4D& screen) {
+#pragma warning(push)
+#pragma warning(disable: 4996)
+			bool accepted = projectZ(point, screen);
+#pragma warning(pop)
+#if defined(MC2_PROJECTZ_FINITE_CHECK)
+			if (accepted) {
+				gosASSERT(isfinite(screen.x) && isfinite(screen.y) &&
+				          isfinite(screen.z) && isfinite(screen.w));
+			}
+#endif
+			return accepted;
+		}
+
+		// Lighting / shadow activation — bool gates light->active; screen discarded.
+#pragma warning(push)
+#pragma warning(disable: 4996)
+		inline bool projectForLightingShadow (Stuff::Vector3D& point,
+		                                      Stuff::Vector4D& screen) {
+			return projectZ(point, screen);
+		}
+#pragma warning(pop)
+
+		// Picking — bool discarded; screen.xy consumed for distance / rect tests.
+#pragma warning(push)
+#pragma warning(disable: 4996)
+		inline bool projectForSelectionPicking (Stuff::Vector3D& point,
+		                                        Stuff::Vector4D& screen) {
+			return projectZ(point, screen);
+		}
+#pragma warning(pop)
+
+		// Cosmetic screen-XY oracle — bool discarded; screen.xy consumed.
+#pragma warning(push)
+#pragma warning(disable: 4996)
+		inline bool projectForScreenXY (Stuff::Vector3D& point,
+		                                Stuff::Vector4D& screen) {
+			return projectZ(point, screen);
+		}
+#pragma warning(pop)
+
+		// Debug overlays — LAB_ONLY / drawTerrainGrid-gated draw paths.
+#pragma warning(push)
+#pragma warning(disable: 4996)
+		inline bool projectForDebugOverlay (Stuff::Vector3D& point,
+		                                    Stuff::Vector4D& screen) {
+			return projectZ(point, screen);
+		}
+#pragma warning(pop)
+
+		[[deprecated("Use inverseProjectForPicking. "
+		             "See docs/superpowers/specs/2026-04-26-projectz-policy-split-design.md.")]]
 		void inverseProjectZ (Stuff::Vector4D &screen, Stuff::Vector3D &point);
+
+		// Inverse projection for tactical-map viewport corner unprojection.
+		// Trivial alias for symmetry with the forward-direction split.
+#pragma warning(push)
+#pragma warning(disable: 4996)
+		inline void inverseProjectForPicking (Stuff::Vector4D& screen,
+		                                      Stuff::Vector3D& point) {
+			inverseProjectZ(screen, point);
+		}
+#pragma warning(pop)
 		
 		void projectCamera (Stuff::Vector3D &point);
 

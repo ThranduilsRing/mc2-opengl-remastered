@@ -39,6 +39,19 @@
 #endif
 
 #include"../GameOS/gameos/gos_profiler.h"
+#include"projectz_trace.h"
+#include"projectz_overlay.h"
+
+// Per-quad scratch for the four BoolAdmission per-vertex projectZ calls in
+// TerrainQuad::setupTextures. After each `eye->projectZ()` call we copy
+// g_pzLastPredicates into the matching slot, so pz_emit_terrain_tris (called
+// later for the same quad) can hand both screen-state AND predicate-state to
+// the overlay without ever recomputing predicates. Single-threaded terrain
+// submission makes the file-static safe.
+static ProjectZPredicates s_pzVertPreds[4] = {};
+static inline void pz_capture_vert_preds(int slot) {
+    if (g_pzTrace) s_pzVertPreds[slot] = g_pzLastPredicates;
+}
 
 #define SELECTION_COLOR 0xffff7fff
 #define HIGHLIGHT_COLOR	0xff00ff00
@@ -85,6 +98,51 @@ static void fillTerrainExtra(DWORD texHandle, DWORD flags, VertexPtr v0, VertexP
     textra[2].wx = v2->vx; textra[2].wy = v2->vy; textra[2].wz = v2->pVertex->elevation;
     textra[2].nx = v2->pVertex->vertexNormal.x; textra[2].ny = v2->pVertex->vertexNormal.y; textra[2].nz = v2->pVertex->vertexNormal.z;
     mcTextureManager->addTerrainExtra(texHandle, textra, flags);
+}
+
+// Per-triangle diagnostic hook for terrain addTriangle sites.
+// Observation-only; must be called AFTER addTriangle so it cannot affect submission.
+// Active only when g_pzTrace is true (any PROJECTZ env var set).
+static void pz_emit_terrain_tris(
+    VertexPtr*  verts,     // array of 4
+    int         uvMode,
+    const char* callsiteId,
+    const char* file,
+    int         line)
+{
+    if (!g_pzTrace) return;
+    long rowCol = verts[0]->posTile;
+    int tileR = rowCol >> 16;
+    int tileC = rowCol & 0x0000ffff;
+    ProjectZTriVert pzv[4];
+    for (int i = 0; i < 4; i++) {
+        pzv[i].legacyAccepted = (verts[i]->clipInfo != 0);
+        pzv[i].wx = verts[i]->px;
+        pzv[i].wy = verts[i]->py;
+        pzv[i].wz = verts[i]->pz;
+        pzv[i].vx = verts[i]->vx;
+        pzv[i].vy = verts[i]->vy;
+        pzv[i].vz = verts[i]->pVertex->elevation;
+    }
+    // `eye` is the global CameraPtr declared in camera.h — the same camera the
+    // BoolAdmission projectZ calls in setupTextures used.
+    float resX = eye ? eye->fgetScreenResX() : 1920.0f;
+    float resY = eye ? eye->fgetScreenResY() : 1080.0f;
+    if (uvMode == BOTTOMRIGHT) {
+        static const int c012[] = {0,1,2};
+        static const int c023[] = {0,2,3};
+        projectz_emit_tri(callsiteId, tileR, tileC, c012, pzv, true, file, line);
+        projectz_emit_tri(callsiteId, tileR, tileC, c023, pzv, true, file, line);
+        projectz_overlay_record_tri(pzv, s_pzVertPreds, c012, resX, resY);
+        projectz_overlay_record_tri(pzv, s_pzVertPreds, c023, resX, resY);
+    } else {
+        static const int c013[] = {0,1,3};
+        static const int c123[] = {1,2,3};
+        projectz_emit_tri(callsiteId, tileR, tileC, c013, pzv, true, file, line);
+        projectz_emit_tri(callsiteId, tileR, tileC, c123, pzv, true, file, line);
+        projectz_overlay_record_tri(pzv, s_pzVertPreds, c013, resX, resY);
+        projectz_overlay_record_tri(pzv, s_pzVertPreds, c123, resX, resY);
+    }
 }
 
 static bool isTerrainQuadVisible(const TerrainQuad& quad)
@@ -211,24 +269,25 @@ void TerrainQuad::setupTextures (void)
 		{
 			long clipped1 = vertices[0]->clipInfo + vertices[1]->clipInfo + vertices[2]->clipInfo;
 			long clipped2 = vertices[0]->clipInfo + vertices[2]->clipInfo + vertices[3]->clipInfo;
-						
+
 			if (clipped1 || clipped2)
 			{
 				{
-					terrainHandle = Terrain::terrainTextures->getTextureHandle((vertices[0]->pVertex->textureData & 0x0000ffff)); 
+					terrainHandle = Terrain::terrainTextures->getTextureHandle((vertices[0]->pVertex->textureData & 0x0000ffff));
 					DWORD terrainDetailData = Terrain::terrainTextures->setDetail(1,0);
 					if (terrainDetailData != 0xfffffff)
 						terrainDetailHandle = Terrain::terrainTextures->getTextureHandle(terrainDetailData);
 					else
 						terrainDetailHandle = 0xffffffff;
 					overlayHandle = 0xffffffff;
-						
+
 					mcTextureManager->addTriangle(terrainHandle,MC2_ISTERRAIN | MC2_DRAWSOLID);
 					mcTextureManager->addTriangle(terrainHandle,MC2_ISTERRAIN | MC2_DRAWSOLID);
 					mcTextureManager->addTriangle(terrainDetailHandle,MC2_ISTERRAIN | MC2_DRAWALPHA);
 					mcTextureManager->addTriangle(terrainDetailHandle,MC2_ISTERRAIN | MC2_DRAWALPHA);
+					pz_emit_terrain_tris(vertices, uvMode, "terrain_quad_cluster_a", __FILE__, __LINE__);
 				}
-				
+
 				//--------------------------------------------------------------------
 				//Mine Information
 				long rowCol = vertices[0]->posTile;
@@ -283,24 +342,25 @@ void TerrainQuad::setupTextures (void)
 		{
 			long clipped1 = vertices[0]->clipInfo + vertices[1]->clipInfo + vertices[3]->clipInfo;
 			long clipped2 = vertices[1]->clipInfo + vertices[2]->clipInfo + vertices[3]->clipInfo;
-						
+
 			if (clipped1 || clipped2)
 			{
 				{
-					terrainHandle = Terrain::terrainTextures->getTextureHandle((vertices[0]->pVertex->textureData & 0x0000ffff)); 
+					terrainHandle = Terrain::terrainTextures->getTextureHandle((vertices[0]->pVertex->textureData & 0x0000ffff));
 					DWORD terrainDetailData = Terrain::terrainTextures->setDetail(1,0);
 					if (terrainDetailData != 0xfffffff)
 						terrainDetailHandle = Terrain::terrainTextures->getTextureHandle(terrainDetailData);
 					else
 						terrainDetailHandle = 0xffffffff;
 					overlayHandle = 0xffffffff;
-						
+
 					mcTextureManager->addTriangle(terrainHandle,MC2_ISTERRAIN | MC2_DRAWSOLID);
 					mcTextureManager->addTriangle(terrainHandle,MC2_ISTERRAIN | MC2_DRAWSOLID);
 					mcTextureManager->addTriangle(terrainDetailHandle,MC2_ISTERRAIN | MC2_DRAWALPHA);
 					mcTextureManager->addTriangle(terrainDetailHandle,MC2_ISTERRAIN | MC2_DRAWALPHA);
+					pz_emit_terrain_tris(vertices, uvMode, "terrain_quad_cluster_c", __FILE__, __LINE__);
 				}
-				
+
 				//--------------------------------------------------------------------
 				//Mine Information
 				long rowCol = vertices[0]->posTile;
@@ -382,10 +442,10 @@ void TerrainQuad::setupTextures (void)
 					bool isAlpha = Terrain::terrainTextures->isAlpha(vertices[0]->pVertex->textureData & 0x0000ffff); 
 					if (!isCement)
 					{
-						terrainHandle = Terrain::terrainTextures2->getTextureHandle(vertices[0],vertices[2],&uvData); 
+						terrainHandle = Terrain::terrainTextures2->getTextureHandle(vertices[0],vertices[2],&uvData);
 						terrainDetailHandle = Terrain::terrainTextures2->getDetailHandle();
 						overlayHandle = 0xffffffff;
-						
+
 						if(terrainHandle!=0) {
 							mcTextureManager->addTriangle(terrainHandle,MC2_ISTERRAIN | MC2_DRAWSOLID);
 							mcTextureManager->addTriangle(terrainHandle,MC2_ISTERRAIN | MC2_DRAWSOLID);
@@ -394,6 +454,7 @@ void TerrainQuad::setupTextures (void)
 								mcTextureManager->addTriangle(terrainDetailHandle,MC2_ISTERRAIN | MC2_DRAWALPHA);
 								mcTextureManager->addTriangle(terrainDetailHandle,MC2_ISTERRAIN | MC2_DRAWALPHA);
 							}
+							pz_emit_terrain_tris(vertices, uvMode, "terrain_quad_cluster_a", __FILE__, __LINE__);
 						}
 					}
 					else
@@ -444,6 +505,7 @@ void TerrainQuad::setupTextures (void)
 								mcTextureManager->addTriangle(terrainDetailHandle,MC2_ISTERRAIN | MC2_DRAWALPHA);
 								mcTextureManager->addTriangle(terrainDetailHandle,MC2_ISTERRAIN | MC2_DRAWALPHA);
 							}
+							pz_emit_terrain_tris(vertices, uvMode, "terrain_quad_cluster_c", __FILE__, __LINE__);
 						}
 					}
 					else
@@ -519,9 +581,12 @@ void TerrainQuad::setupTextures (void)
 				}
 	
 				vertex3D.z = ourCos + Terrain::waterElevation;
-			
+
 				bool clipData = false;
-				clipData = eye->projectZ(vertex3D,screenPos); 
+				// [PROJECTZ:BoolAdmission id=terrain_quad_vert0_admit]
+				PROJECTZ_SITE("terrain_quad_vert0_admit", "BoolAdmission");
+				clipData = eye->projectForTerrainAdmission(vertex3D,screenPos);
+				pz_capture_vert_preds(0);
 				bool isVisible = Terrain::IsGameSelectTerrainPosition(vertex3D) || drawTerrainGrid;
 				if (!isVisible)
 				{
@@ -586,9 +651,12 @@ void TerrainQuad::setupTextures (void)
 				vertex3D.z = ourCos + Terrain::waterElevation;
 				vertex3D.x = vertices[1]->vx;
 				vertex3D.y = vertices[1]->vy;
-				
+
 				bool clipData = false;
-				clipData = eye->projectZ(vertex3D,screenPos); 
+				// [PROJECTZ:BoolAdmission id=terrain_quad_vert1_admit]
+				PROJECTZ_SITE("terrain_quad_vert1_admit", "BoolAdmission");
+				clipData = eye->projectForTerrainAdmission(vertex3D,screenPos);
+				pz_capture_vert_preds(1);
 				bool isVisible = Terrain::IsGameSelectTerrainPosition(vertex3D) || drawTerrainGrid;
 				if (!isVisible)
 				{
@@ -653,9 +721,12 @@ void TerrainQuad::setupTextures (void)
 				vertex3D.z = ourCos + Terrain::waterElevation;
 				vertex3D.x = vertices[2]->vx;
 				vertex3D.y = vertices[2]->vy;
-			
+
 				bool clipData = false;
-				clipData = eye->projectZ(vertex3D,screenPos); 
+				// [PROJECTZ:BoolAdmission id=terrain_quad_vert2_admit]
+				PROJECTZ_SITE("terrain_quad_vert2_admit", "BoolAdmission");
+				clipData = eye->projectForTerrainAdmission(vertex3D,screenPos);
+				pz_capture_vert_preds(2);
 				bool isVisible = Terrain::IsGameSelectTerrainPosition(vertex3D) || drawTerrainGrid;
 				if (!isVisible)
 				{
@@ -720,9 +791,12 @@ void TerrainQuad::setupTextures (void)
 				vertex3D.z = ourCos + Terrain::waterElevation;
 				vertex3D.x = vertices[3]->vx;
 				vertex3D.y = vertices[3]->vy;
-				
+
 				bool clipData = false;
-				clipData = eye->projectZ(vertex3D,screenPos); 
+				// [PROJECTZ:BoolAdmission id=terrain_quad_vert3_admit]
+				PROJECTZ_SITE("terrain_quad_vert3_admit", "BoolAdmission");
+				clipData = eye->projectForTerrainAdmission(vertex3D,screenPos);
+				pz_capture_vert_preds(3);
 				bool isVisible = Terrain::IsGameSelectTerrainPosition(vertex3D) || drawTerrainGrid;
 				if (!isVisible)
 				{
@@ -2937,20 +3011,24 @@ void TerrainQuad::drawLine (void)
 						thePoint.x += (cellC) * cellWidth;
 						thePoint.y -= (cellR) * cellWidth;
 						thePoint.z = land->getTerrainElevation(thePoint);
-						eye->projectZ(thePoint,pos4);
-						
+						// [PROJECTZ:DebugOnly id=debug_cell_passability_0]
+						eye->projectForDebugOverlay(thePoint,pos4);
+
 						thePoint.x += cellWidth;
 						thePoint.z = land->getTerrainElevation(thePoint);
-						eye->projectZ(thePoint,pos1);
-						
+						// [PROJECTZ:DebugOnly id=debug_cell_passability_1]
+						eye->projectForDebugOverlay(thePoint,pos1);
+
 						thePoint.y -= cellWidth;
 						thePoint.z = land->getTerrainElevation(thePoint);
-						eye->projectZ(thePoint,pos2);
+						// [PROJECTZ:DebugOnly id=debug_cell_passability_2]
+						eye->projectForDebugOverlay(thePoint,pos2);
 
 						thePoint.x -= cellWidth;
 						thePoint.z = land->getTerrainElevation(thePoint);
-						eye->projectZ(thePoint,pos3);
-						
+						// [PROJECTZ:DebugOnly id=debug_cell_passability_3]
+						eye->projectForDebugOverlay(thePoint,pos3);
+
 						pos1.z -= 0.002f;
 						pos2.z -= 0.002f;
 						pos3.z -= 0.002f;
@@ -3058,23 +3136,27 @@ void TerrainQuad::drawLine (void)
 				thePoint.y -= (GlobalMoveMap[0]->doors[currentDoor].row - cellR) * cellWidth;
 
 				thePoint.z = land->getTerrainElevation(thePoint);
-				eye->projectZ(thePoint,pos4);
-				
+				// [PROJECTZ:DebugOnly id=debug_door_outline_0]
+				eye->projectForDebugOverlay(thePoint,pos4);
+
 				thePoint.x += (xLength) * cellWidth;
 				thePoint.z = land->getTerrainElevation(thePoint);
-				eye->projectZ(thePoint,pos1);
-				
+				// [PROJECTZ:DebugOnly id=debug_door_outline_1]
+				eye->projectForDebugOverlay(thePoint,pos1);
+
 				thePoint.y -= (yLength) * cellWidth;
 				thePoint.z = land->getTerrainElevation(thePoint);
-				eye->projectZ(thePoint,pos2);
+				// [PROJECTZ:DebugOnly id=debug_door_outline_2]
+				eye->projectForDebugOverlay(thePoint,pos2);
 
 				thePoint.x -= (xLength) * cellWidth;
 				thePoint.z = land->getTerrainElevation(thePoint);
-				eye->projectZ(thePoint,pos3);
+				// [PROJECTZ:DebugOnly id=debug_door_outline_3]
+				eye->projectForDebugOverlay(thePoint,pos3);
 
-				pos1.z -= 0.002f; 
-				pos2.z -= 0.002f;  
-				pos3.z -= 0.002f;  
+				pos1.z -= 0.002f;
+				pos2.z -= 0.002f;
+				pos3.z -= 0.002f;
 				pos4.z -= 0.002f;
 				{
 					LineElement newElement(pos1,pos2,XP_GREEN,NULL);
@@ -3145,25 +3227,29 @@ void TerrainQuad::drawLOSLine (void)
 						Stuff::Vector4D pos2;
 						Stuff::Vector4D pos3;
 						Stuff::Vector4D pos4;
-						
+
 						Stuff::Vector3D thePoint(vertices[0]->vx,vertices[0]->vy,vertices[0]->pVertex->elevation);
-						
+
 						thePoint.x += (cellC) * cellWidth;
 						thePoint.y -= (cellR) * cellWidth;
 						thePoint.z = land->getTerrainElevation(thePoint);
-						eye->projectZ(thePoint,pos4);
-						
+						// [PROJECTZ:DebugOnly id=debug_los_cell_height_0]
+						eye->projectForDebugOverlay(thePoint,pos4);
+
 						thePoint.x += cellWidth;
 						thePoint.z = land->getTerrainElevation(thePoint);
-						eye->projectZ(thePoint,pos1);
-						
+						// [PROJECTZ:DebugOnly id=debug_los_cell_height_1]
+						eye->projectForDebugOverlay(thePoint,pos1);
+
 						thePoint.y -= cellWidth;
 						thePoint.z = land->getTerrainElevation(thePoint);
-						eye->projectZ(thePoint,pos2);
+						// [PROJECTZ:DebugOnly id=debug_los_cell_height_2]
+						eye->projectForDebugOverlay(thePoint,pos2);
 
 						thePoint.x -= cellWidth;
 						thePoint.z = land->getTerrainElevation(thePoint);
-						eye->projectZ(thePoint,pos3);
+						// [PROJECTZ:DebugOnly id=debug_los_cell_height_3]
+						eye->projectForDebugOverlay(thePoint,pos3);
 						
 						pos1.z -= 0.002f;
 						pos2.z -= 0.002f;
@@ -3418,26 +3504,30 @@ void TerrainQuad::drawDebugCellLine (void)
 						Stuff::Vector4D pos2;
 						Stuff::Vector4D pos3;
 						Stuff::Vector4D pos4;
-						
+
 						Stuff::Vector3D thePoint(vertices[0]->vx,vertices[0]->vy,vertices[0]->pVertex->elevation);
-						
+
 						thePoint.x += (cellC) * cellWidth;
 						thePoint.y -= (cellR) * cellWidth;
 						thePoint.z = land->getTerrainElevation(thePoint);
-						eye->projectZ(thePoint,pos4);
-						
+						// [PROJECTZ:DebugOnly id=debug_cell_state_0]
+						eye->projectForDebugOverlay(thePoint,pos4);
+
 						thePoint.x += cellWidth;
 						thePoint.z = land->getTerrainElevation(thePoint);
-						eye->projectZ(thePoint,pos1);
-						
+						// [PROJECTZ:DebugOnly id=debug_cell_state_1]
+						eye->projectForDebugOverlay(thePoint,pos1);
+
 						thePoint.y -= cellWidth;
 						thePoint.z = land->getTerrainElevation(thePoint);
-						eye->projectZ(thePoint,pos2);
+						// [PROJECTZ:DebugOnly id=debug_cell_state_2]
+						eye->projectForDebugOverlay(thePoint,pos2);
 
 						thePoint.x -= cellWidth;
 						thePoint.z = land->getTerrainElevation(thePoint);
-						eye->projectZ(thePoint,pos3);
-						
+						// [PROJECTZ:DebugOnly id=debug_cell_state_3]
+						eye->projectForDebugOverlay(thePoint,pos3);
+
 						pos1.z = pos2.z = pos3.z = pos4.z = HUD_DEPTH;
 
 						DWORD color = XP_RED;
@@ -3531,29 +3621,33 @@ void TerrainQuad::drawMine (void)
 					Stuff::Vector4D pos2;
 					Stuff::Vector4D pos3;
 					Stuff::Vector4D pos4;
-					
+
 					//------------------------------------------------------------------------------------
 					// Dig the actual Vertex information out of the projected vertices already done.
 					// In this way, the draw requires only interpolation and not Giant Matrix multiplies.
 					Stuff::Vector3D thePoint(vertices[0]->vx,vertices[0]->vy,vertices[0]->pVertex->elevation);
-					
+
 					thePoint.x += (cellC) * cellWidth;
 					thePoint.y -= (cellR) * cellWidth;
 					thePoint.z = land->getTerrainElevation(thePoint);
-					eye->projectZ(thePoint,pos4);
-					
+					// [PROJECTZ:ScreenXYOracle id=mine_cell_corner0]
+					eye->projectForScreenXY(thePoint,pos4);
+
 					thePoint.x += cellWidth;
 					thePoint.z = land->getTerrainElevation(thePoint);
-					eye->projectZ(thePoint,pos1);
+					// [PROJECTZ:ScreenXYOracle id=mine_cell_corner1]
+					eye->projectForScreenXY(thePoint,pos1);
 					
 					thePoint.y -= cellWidth;
 					thePoint.z = land->getTerrainElevation(thePoint);
-					eye->projectZ(thePoint,pos2);
-		
+					// [PROJECTZ:ScreenXYOracle id=mine_cell_corner2]
+					eye->projectForScreenXY(thePoint,pos2);
+
 					thePoint.x -= cellWidth;
 					thePoint.z = land->getTerrainElevation(thePoint);
-					eye->projectZ(thePoint,pos3);
-					
+					// [PROJECTZ:ScreenXYOracle id=mine_cell_corner3]
+					eye->projectForScreenXY(thePoint,pos3);
+
 					//------------------------------------
 					// Replace with New RIA code
 					gos_VERTEX gVertex[3];

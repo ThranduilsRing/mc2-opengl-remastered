@@ -287,10 +287,12 @@ bool VFXAppearance::recalcBounds (void)
 		Stuff::Vector3D topPosition(position);
 		topPosition.z += appearType->actorStateData[currentShapeTypeId].textureSize;
 
-		eye->projectZ(topPosition,tempPos);
+		// [PROJECTZ:ScreenXYOracle id=actor_vfx_top_depth]
+		eye->projectForScreenXY(topPosition,tempPos);
 		topZ = tempPos.z;
 
-		eye->projectZ(position,screenPos);
+		// [PROJECTZ:ScreenXYOracle id=actor_vfx_screen_pos]
+		eye->projectForScreenXY(position,screenPos);
 		tempPos = screenPos;
 		
 		float scale = eye->getScaleFactor();

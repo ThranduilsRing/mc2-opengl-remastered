@@ -484,13 +484,17 @@ void Weather::render (void)
 		for (long i=0;i<currentRainDrops;i++)
 		{
 			Stuff::Vector4D screen1, screen2;
-			bool onScreen = eye->projectZ(rainDrops[i].position,screen1);
+			// [PROJECTZ:Both id=weather_raindrop_top]
+			PROJECTZ_SITE("weather_raindrop_top", "Both");
+			bool onScreen = eye->projectForEffectAdmission(rainDrops[i].position,screen1);
 			if (onScreen)
 			{
 				Stuff::Point3D  botPos = rainDrops[i].position;
 				botPos.z -= rainDrops[i].length;
-				
-				onScreen = eye->projectZ(botPos,screen2);
+
+				// [PROJECTZ:Both id=weather_raindrop_bot]
+				PROJECTZ_SITE("weather_raindrop_bot", "Both");
+			onScreen = eye->projectForEffectAdmission(botPos,screen2);
 				if (onScreen)
 				{
 					unsigned char amb = ambientFactor * (1.0f - screen1.z);

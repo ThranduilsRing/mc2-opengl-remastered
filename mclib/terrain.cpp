@@ -1094,7 +1094,9 @@ void Terrain::geometry (void)
 		if (onScreen)
 		{
 			Stuff::Vector3D vertex3D(currentVertex->vx,currentVertex->vy,currentVertex->pVertex->elevation);
-			inView = eye->projectZ(vertex3D,screenPos);
+			// [PROJECTZ:BoolAdmission id=terrain_cpu_vert_admit]
+			PROJECTZ_SITE("terrain_cpu_vert_admit", "BoolAdmission");
+			inView = eye->projectForTerrainAdmission(vertex3D,screenPos);
 		
 			currentVertex->px = screenPos.x;
 			currentVertex->py = screenPos.y;
@@ -1486,7 +1488,9 @@ void Terrain::selectVerticesInRect( const Stuff::Vector4D& topLeft, const Stuff:
 			worldPos.x = tileColToWorldCoord[i];
 			worldPos.z = mapData->terrainElevation( j, i );
 
-			eye->projectZ( worldPos, screenPos );
+			// [PROJECTZ:SelectionPicking id=picking_terrain_rect_select]
+			PROJECTZ_SITE("picking_terrain_rect_select", "SelectionPicking");
+			eye->projectForSelectionPicking( worldPos, screenPos );
 
 			if ( screenPos.x >= xMin && screenPos.x <= xMax &&
 				 screenPos.y >= yMin && screenPos.y <= yMax )

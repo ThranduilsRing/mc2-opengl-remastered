@@ -101,6 +101,7 @@
 #include"platform_windows.h"
 
 #include"gvehicl.h" // remove
+#include"projectz_trace.h"
 
 	static const char* terrainStr[NUM_TERRAIN_TYPES] = {
 			"Blue Water",	//MC_BLUEWATER_TYPE
@@ -2917,8 +2918,8 @@ void MissionInterfaceManager::render (void)
 			gos_SetRenderState( gos_State_Filter, gos_FilterNone );
 
 			Stuff::Vector4D screenPos;
-			eye->projectZ( dragStart, screenPos );
-				
+			// [PROJECTZ:ScreenXYOracle id=gui_drag_box_origin]
+			eye->projectForScreenXY( dragStart, screenPos );
 
 			vertices[0].x 		= screenPos.x;
 			vertices[0].y 		= screenPos.y;
@@ -3000,7 +3001,8 @@ void MissionInterfaceManager::render (void)
 		{
 #ifdef DRAW_CURSOR_CROSSHAIRS
 			Stuff::Vector4D cursorPos;
-			eye->projectZ(wPos,cursorPos);
+			// [PROJECTZ:DebugOnly id=debug_cursor_crosshair]
+			eye->projectForDebugOverlay(wPos,cursorPos);
 
 			DWORD color = SB_WHITE;
 			
@@ -3602,7 +3604,9 @@ void MissionInterfaceManager::doDrag(bool bGui)
 			{
 				Stuff::Vector3D screenStart;
 				Stuff::Vector4D screenPos;
-				eye->projectZ( dragStart, screenPos );
+				// [PROJECTZ:SelectionPicking id=picking_drag_select_origin]
+				PROJECTZ_SITE("picking_drag_select_origin", "SelectionPicking");
+				eye->projectForSelectionPicking( dragStart, screenPos );
 				screenStart.x = screenPos.x;
 				screenStart.y = screenPos.y;
 			   GameObjectPtr	mover = ObjectManager->getMover(i);
@@ -5629,10 +5633,12 @@ long MissionInterfaceManager::calcRotation()
 	Stuff::Vector4D screenPosMover;
 	Stuff::Vector4D screenPosGoal;
 	actualPos.Add(camPos,actualPos);
-	eye->projectZ( actualPos, screenPosMover );
+	// [PROJECTZ:ScreenXYOracle id=gui_mover_rotation_pos]
+	eye->projectForScreenXY( actualPos, screenPosMover );
 
 	// need to find second position
-	eye->projectZ( camPos, screenPosGoal );
+	// [PROJECTZ:ScreenXYOracle id=gui_cam_rotation_goal]
+	eye->projectForScreenXY( camPos, screenPosGoal );
 	
 	//CRAZY ATAN code.  Out for now.
 	// -fs

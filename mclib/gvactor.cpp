@@ -1556,7 +1556,8 @@ bool GVAppearance::recalcBounds (void)
 	if (eye)
 	{
 		//ALWAYS need to do this or select is YAYA
-		eye->projectZ(position,screenPos);
+		// [PROJECTZ:ScreenXYOracle id=gvactor_screen_pos]
+		eye->projectForScreenXY(position,screenPos);
 		
 		//--------------------------------------------------
 		// First, if we are using perspective, figure out
@@ -1702,7 +1703,8 @@ bool GVAppearance::recalcBounds (void)
 
 				for (long i=0;i<8;i++)
 				{
-					eye->projectZ(boxCoords[i],bcsp[i]);
+					// [PROJECTZ:ScreenXYOracle id=gvactor_box_rect]
+					eye->projectForScreenXY(boxCoords[i],bcsp[i]);
 					if (!i)
 					{
 						maxX = minX = bcsp[i].x;
