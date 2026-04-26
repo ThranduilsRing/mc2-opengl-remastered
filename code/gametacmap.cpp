@@ -222,28 +222,28 @@ void GameTacMap::render()
 	nScreen.z = nScreen.w = 0.0f;
 	
 	// [PROJECTZ:InverseProjectionPair id=tacmap_inverse_corner0]
-	eye->inverseProjectZ( nScreen, world );
+	eye->inverseProjectForPicking( nScreen, world );
 	worldToTacMap( world, corners[0] );
 
 	screen.y = Environment.screenHeight - 1;
 	nScreen.y = (Environment.screenHeight * 0.6667f) - 1;
 	nScreen.z = nScreen.w = 0.0f;
 	// [PROJECTZ:InverseProjectionPair id=tacmap_inverse_corner1]
-	eye->inverseProjectZ( nScreen, world );
+	eye->inverseProjectForPicking( nScreen, world );
 	worldToTacMap( world, corners[1] );
 
 	screen.x = Environment.screenWidth - 1;
 	nScreen.x = Environment.screenWidth - 1;
 	nScreen.z = nScreen.w = 0.0f;
 	// [PROJECTZ:InverseProjectionPair id=tacmap_inverse_corner2]
-	eye->inverseProjectZ( nScreen, world );
+	eye->inverseProjectForPicking( nScreen, world );
 	worldToTacMap( world, corners[2] );
 
 	screen.y = 1;
 	nScreen.y = 1;
 	nScreen.z = nScreen.w = 0.0f;
 	// [PROJECTZ:InverseProjectionPair id=tacmap_inverse_corner3]
-	eye->inverseProjectZ( nScreen, world );
+	eye->inverseProjectForPicking( nScreen, world );
 	worldToTacMap( world, corners[3] );
 
 	corners[0].argb = 0xffffffff;
