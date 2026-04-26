@@ -25,7 +25,7 @@ bool        g_pzTrace      = false;
 bool        g_pzDoTrace    = false;
 bool        g_pzDoHeatmap  = false;
 bool        g_pzDoSummary  = false;
-int         g_pzGuardPx    = 64;
+int         g_pzGuardPx    = 0;
 const char* g_projectz_site_id  = nullptr;
 const char* g_projectz_site_cat = nullptr;
 
@@ -35,6 +35,7 @@ const char* g_projectz_site_cat = nullptr;
 static bool     s_initialized  = false;
 static uint32_t s_frameCount   = 0;
 static uint32_t s_perspCalls   = 0;   // perspective-branch calls only
+static FILE*    s_traceFile    = nullptr;  // vertex/tri records; null when g_pzDoTrace=false
 
 // ── per-category counters ────────────────────────────────────────────────────
 static const int CAT_COUNT = 8;
@@ -171,6 +172,13 @@ void projectz_trace_init() {
     const char* gp = getenv("MC2_PROJECTZ_GUARD_PX");
     if (gp && atoi(gp) > 0) g_pzGuardPx = atoi(gp);
     g_pzTrace = g_pzDoTrace || g_pzDoHeatmap || g_pzDoSummary;
+    if (g_pzDoTrace) {
+        s_traceFile = fopen("mc2_projectz.log", "w");
+        if (s_traceFile)
+            puts("[PROJECTZ v1] trace file: mc2_projectz.log");
+        else
+            puts("[PROJECTZ v1] WARNING: failed to open mc2_projectz.log -- vertex/tri records suppressed");
+    }
 }
 
 static void emit_summary(uint32_t frames) {
@@ -246,9 +254,9 @@ void projectz_trace_dispatch(
         screenResX, screenResY, g_pzGuardPx);
 
     // ── per-vertex trace record ──────────────────────────────────────────────
-    if (g_pzDoTrace) {
+    if (g_pzDoTrace && s_traceFile) {
         float trueRhw = (rawClip.w != 0.0f) ? (1.0f / rawClip.w) : FLT_MAX;  // ±Inf-ish when 0
-        printf(
+        fprintf(s_traceFile,
             "[PROJECTZ v1] vertex callsiteId=%s\n"
             "  file=<inline> line=0 cat=%s branch=%s\n"
             "  point=(%.4f,%.4f,%.4f)\n"
@@ -275,7 +283,6 @@ void projectz_trace_dispatch(
             usePerspective ? (preds.rectNearFar ? "T" : "F") : "n/a",
             preds.rectGuard         ? "T" : "F",
             is_consumes_z(siteId)   ? "true" : "false");
-        fflush(stdout);
     }
 
     // ── summary + heatmap counters ───────────────────────────────────────────
@@ -347,8 +354,8 @@ void projectz_emit_tri(
     int  accepted_count = (int)v0.legacyAccepted + (int)v1.legacyAccepted + (int)v2.legacyAccepted;
     bool pol_maj = (accepted_count >= 2);
 
-    if (g_pzDoTrace) {
-        printf(
+    if (g_pzDoTrace && s_traceFile) {
+        fprintf(s_traceFile,
             "[PROJECTZ v1] tri callsiteId=%s\n"
             "  quad=(%d,%d) cluster=%d,%d,%d file=%s line=%d\n"
             "  v0.legacy=%s v1.legacy=%s v2.legacy=%s\n"
@@ -367,7 +374,6 @@ void projectz_emit_tri(
             currentSubmitted  ? "true" : "false",
             containsRejected  ? "true" : "false",
             area);
-        fflush(stdout);
     }
 
     if (g_pzDoSummary || g_pzDoHeatmap) {
@@ -396,11 +402,19 @@ void projectz_frame_tick() {
     if (g_pzDoSummary && (s_frameCount % 600 == 0)) {
         emit_summary(s_frameCount);
     }
+    if (s_traceFile && (s_frameCount % 60 == 0)) {
+        fflush(s_traceFile);
+    }
 }
 
 void projectz_shutdown() {
     if (!g_pzTrace) return;
     if (g_pzDoSummary) {
         emit_summary(s_frameCount);
+    }
+    if (s_traceFile) {
+        fflush(s_traceFile);
+        fclose(s_traceFile);
+        s_traceFile = nullptr;
     }
 }
