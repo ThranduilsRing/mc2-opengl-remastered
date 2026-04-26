@@ -1012,9 +1012,9 @@ bool Team::lineOfSight (float startLocal, long mCellRow, long mCellCol, long tCe
 			Stuff::Vector3D realStart = startPos;
 			Stuff::Vector4D lineStart, lineEnd;
 			// [PROJECTZ:DebugOnly id=debug_los_line_a0]
-			eye->projectZ(realStart,lineStart);
+			eye->projectForDebugOverlay(realStart,lineStart);
 			// [PROJECTZ:DebugOnly id=debug_los_line_a1]
-			eye->projectZ(endPos,lineEnd);
+			eye->projectForDebugOverlay(endPos,lineEnd);
 
 			debugLines[currentLineElement++] = new LineElement(lineStart,lineEnd,SD_RED,NULL,-1);
 		}
@@ -1038,9 +1038,9 @@ bool Team::lineOfSight (float startLocal, long mCellRow, long mCellCol, long tCe
 			Stuff::Vector3D realStart = startPos;
 			Stuff::Vector4D lineStart, lineEnd;
 			// [PROJECTZ:DebugOnly id=debug_los_line_b0]
-			eye->projectZ(realStart,lineStart);
+			eye->projectForDebugOverlay(realStart,lineStart);
 			// [PROJECTZ:DebugOnly id=debug_los_line_b1]
-			eye->projectZ(endPos,lineEnd);
+			eye->projectForDebugOverlay(endPos,lineEnd);
 
 			debugLines[currentLineElement++] = new LineElement(lineStart,lineEnd,SD_GREEN,NULL,-1);
 		}
@@ -1207,9 +1207,9 @@ bool Team::lineOfSight (float startLocal, long mCellRow, long mCellCol, float en
 							Stuff::Vector3D realStart = startPos;
 							Stuff::Vector4D lineStart, lineEnd;
 							// [PROJECTZ:DebugOnly id=debug_los_line_c0]
-							eye->projectZ(realStart,lineStart);
+							eye->projectForDebugOverlay(realStart,lineStart);
 							// [PROJECTZ:DebugOnly id=debug_los_line_c1]
-							eye->projectZ(endPos,lineEnd);
+							eye->projectForDebugOverlay(endPos,lineEnd);
 
 							debugLines[currentLineElement++] = new LineElement(lineStart,lineEnd,SD_RED,NULL,-1);
 						}
@@ -1230,9 +1230,9 @@ bool Team::lineOfSight (float startLocal, long mCellRow, long mCellCol, float en
 			Stuff::Vector3D realStart = startPos;
 			Stuff::Vector4D lineStart, lineEnd;
 			// [PROJECTZ:DebugOnly id=debug_los_line_d0]
-			eye->projectZ(realStart,lineStart);
+			eye->projectForDebugOverlay(realStart,lineStart);
 			// [PROJECTZ:DebugOnly id=debug_los_line_d1]
-			eye->projectZ(endPos,lineEnd);
+			eye->projectForDebugOverlay(endPos,lineEnd);
 
 			debugLines[currentLineElement++] = new LineElement(lineStart,lineEnd,SD_GREEN,NULL,-1);
 		}

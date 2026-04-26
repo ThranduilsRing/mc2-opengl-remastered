@@ -3002,7 +3002,7 @@ void MissionInterfaceManager::render (void)
 #ifdef DRAW_CURSOR_CROSSHAIRS
 			Stuff::Vector4D cursorPos;
 			// [PROJECTZ:DebugOnly id=debug_cursor_crosshair]
-			eye->projectZ(wPos,cursorPos);
+			eye->projectForDebugOverlay(wPos,cursorPos);
 
 			DWORD color = SB_WHITE;
 			

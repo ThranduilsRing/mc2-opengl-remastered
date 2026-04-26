@@ -3012,22 +3012,22 @@ void TerrainQuad::drawLine (void)
 						thePoint.y -= (cellR) * cellWidth;
 						thePoint.z = land->getTerrainElevation(thePoint);
 						// [PROJECTZ:DebugOnly id=debug_cell_passability_0]
-						eye->projectZ(thePoint,pos4);
+						eye->projectForDebugOverlay(thePoint,pos4);
 
 						thePoint.x += cellWidth;
 						thePoint.z = land->getTerrainElevation(thePoint);
 						// [PROJECTZ:DebugOnly id=debug_cell_passability_1]
-						eye->projectZ(thePoint,pos1);
+						eye->projectForDebugOverlay(thePoint,pos1);
 
 						thePoint.y -= cellWidth;
 						thePoint.z = land->getTerrainElevation(thePoint);
 						// [PROJECTZ:DebugOnly id=debug_cell_passability_2]
-						eye->projectZ(thePoint,pos2);
+						eye->projectForDebugOverlay(thePoint,pos2);
 
 						thePoint.x -= cellWidth;
 						thePoint.z = land->getTerrainElevation(thePoint);
 						// [PROJECTZ:DebugOnly id=debug_cell_passability_3]
-						eye->projectZ(thePoint,pos3);
+						eye->projectForDebugOverlay(thePoint,pos3);
 
 						pos1.z -= 0.002f;
 						pos2.z -= 0.002f;
@@ -3137,22 +3137,22 @@ void TerrainQuad::drawLine (void)
 
 				thePoint.z = land->getTerrainElevation(thePoint);
 				// [PROJECTZ:DebugOnly id=debug_door_outline_0]
-				eye->projectZ(thePoint,pos4);
+				eye->projectForDebugOverlay(thePoint,pos4);
 
 				thePoint.x += (xLength) * cellWidth;
 				thePoint.z = land->getTerrainElevation(thePoint);
 				// [PROJECTZ:DebugOnly id=debug_door_outline_1]
-				eye->projectZ(thePoint,pos1);
+				eye->projectForDebugOverlay(thePoint,pos1);
 
 				thePoint.y -= (yLength) * cellWidth;
 				thePoint.z = land->getTerrainElevation(thePoint);
 				// [PROJECTZ:DebugOnly id=debug_door_outline_2]
-				eye->projectZ(thePoint,pos2);
+				eye->projectForDebugOverlay(thePoint,pos2);
 
 				thePoint.x -= (xLength) * cellWidth;
 				thePoint.z = land->getTerrainElevation(thePoint);
 				// [PROJECTZ:DebugOnly id=debug_door_outline_3]
-				eye->projectZ(thePoint,pos3);
+				eye->projectForDebugOverlay(thePoint,pos3);
 
 				pos1.z -= 0.002f;
 				pos2.z -= 0.002f;
@@ -3234,22 +3234,22 @@ void TerrainQuad::drawLOSLine (void)
 						thePoint.y -= (cellR) * cellWidth;
 						thePoint.z = land->getTerrainElevation(thePoint);
 						// [PROJECTZ:DebugOnly id=debug_los_cell_height_0]
-						eye->projectZ(thePoint,pos4);
+						eye->projectForDebugOverlay(thePoint,pos4);
 
 						thePoint.x += cellWidth;
 						thePoint.z = land->getTerrainElevation(thePoint);
 						// [PROJECTZ:DebugOnly id=debug_los_cell_height_1]
-						eye->projectZ(thePoint,pos1);
+						eye->projectForDebugOverlay(thePoint,pos1);
 
 						thePoint.y -= cellWidth;
 						thePoint.z = land->getTerrainElevation(thePoint);
 						// [PROJECTZ:DebugOnly id=debug_los_cell_height_2]
-						eye->projectZ(thePoint,pos2);
+						eye->projectForDebugOverlay(thePoint,pos2);
 
 						thePoint.x -= cellWidth;
 						thePoint.z = land->getTerrainElevation(thePoint);
 						// [PROJECTZ:DebugOnly id=debug_los_cell_height_3]
-						eye->projectZ(thePoint,pos3);
+						eye->projectForDebugOverlay(thePoint,pos3);
 						
 						pos1.z -= 0.002f;
 						pos2.z -= 0.002f;
@@ -3511,22 +3511,22 @@ void TerrainQuad::drawDebugCellLine (void)
 						thePoint.y -= (cellR) * cellWidth;
 						thePoint.z = land->getTerrainElevation(thePoint);
 						// [PROJECTZ:DebugOnly id=debug_cell_state_0]
-						eye->projectZ(thePoint,pos4);
+						eye->projectForDebugOverlay(thePoint,pos4);
 
 						thePoint.x += cellWidth;
 						thePoint.z = land->getTerrainElevation(thePoint);
 						// [PROJECTZ:DebugOnly id=debug_cell_state_1]
-						eye->projectZ(thePoint,pos1);
+						eye->projectForDebugOverlay(thePoint,pos1);
 
 						thePoint.y -= cellWidth;
 						thePoint.z = land->getTerrainElevation(thePoint);
 						// [PROJECTZ:DebugOnly id=debug_cell_state_2]
-						eye->projectZ(thePoint,pos2);
+						eye->projectForDebugOverlay(thePoint,pos2);
 
 						thePoint.x -= cellWidth;
 						thePoint.z = land->getTerrainElevation(thePoint);
 						// [PROJECTZ:DebugOnly id=debug_cell_state_3]
-						eye->projectZ(thePoint,pos3);
+						eye->projectForDebugOverlay(thePoint,pos3);
 
 						pos1.z = pos2.z = pos3.z = pos4.z = HUD_DEPTH;
 
