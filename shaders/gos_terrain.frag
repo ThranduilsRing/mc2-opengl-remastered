@@ -4,6 +4,19 @@
 
 #include <include/shadow.hglsl>
 #include <include/noise.hglsl>
+#include <include/render_contract.hglsl>
+
+// [RENDER_CONTRACT]
+//   Pass:           TerrainBase
+//   Color0:         RGBA color, opaque (water/shoreline blends)
+//   GBuffer1:       rc_gbuffer1_shadowHandled / rc_gbuffer1_shadowHandled_flatUp
+//                   for opaque terrain; rc_gbuffer1_legacyTerrainMaterialAlpha
+//                   for water/shoreline (CONTRACT VIOLATION §3.1, F1)
+//   ShadowContract: castsStatic=true, castsDynamic=false,
+//                   skipsPostScreenShadow=true (binary-true for opaque;
+//                   ambiguous for water — see §3.1)
+//   StateContract:  depthTest=true, depthWrite=true, blend=Opaque,
+//                   requiresMRT=true
 
 in PREC vec4 Color;
 in PREC vec2 Texcoord;
@@ -190,7 +203,7 @@ void main(void)
         gl_FragDepth = gl_FragCoord.z;
         FragColor = vec4(1.0, 0.0, 0.0, 1.0);  // SOLID RED = tess frag running
 #ifdef MRT_ENABLED
-        GBuffer1 = vec4(0.5, 0.5, 1.0, 1.0);
+        GBuffer1 = rc_gbuffer1_shadowHandled_flatUp();
 #endif
         return;
     }
@@ -229,7 +242,7 @@ void main(void)
         gl_FragDepth = gl_FragCoord.z;
         FragColor = vec4(texColor.rgb, 1.0);
 #ifdef MRT_ENABLED
-        GBuffer1 = vec4(0.5, 0.5, 1.0, 1.0);
+        GBuffer1 = rc_gbuffer1_shadowHandled_flatUp();
 #endif
         return;
     }
@@ -271,7 +284,7 @@ void main(void)
         gl_FragDepth = gl_FragCoord.z;
         FragColor = vec4(colAvg, 1.0);
 #ifdef MRT_ENABLED
-        GBuffer1 = vec4(0.5, 0.5, 1.0, 1.0);
+        GBuffer1 = rc_gbuffer1_shadowHandled_flatUp();
 #endif
         return;
     }
@@ -319,7 +332,7 @@ void main(void)
         gl_FragDepth = gl_FragCoord.z;
         FragColor = vec4(matWeights.x, matWeights.y, matWeights.z, 1.0);
 #ifdef MRT_ENABLED
-        GBuffer1 = vec4(0.5, 0.5, 1.0, 1.0);
+        GBuffer1 = rc_gbuffer1_shadowHandled_flatUp();
 #endif
         return;
     }
@@ -484,7 +497,7 @@ void main(void)
         gl_FragDepth = gl_FragCoord.z;
         FragColor = vec4(vec3(normalLight), 1.0);
 #ifdef MRT_ENABLED
-        GBuffer1 = vec4(N * 0.5 + 0.5, 1.0);
+        GBuffer1 = rc_gbuffer1_shadowHandled(N);
 #endif
         return;
     }
@@ -530,7 +543,7 @@ void main(void)
             gl_FragDepth = gl_FragCoord.z;
             FragColor = vec4(vec3(mix(0.92, 1.0, cloudShadow)), 1.0);
 #ifdef MRT_ENABLED
-            GBuffer1 = vec4(N * 0.5 + 0.5, materialAlpha);
+            GBuffer1 = rc_gbuffer1_legacyTerrainMaterialAlpha(N, materialAlpha);
 #endif
             return;
         }
@@ -552,7 +565,7 @@ void main(void)
         gl_FragDepth = gl_FragCoord.z;
         FragColor = vec4(vec3(shadow), 1.0);
 #ifdef MRT_ENABLED
-        GBuffer1 = vec4(N * 0.5 + 0.5, materialAlpha);
+        GBuffer1 = rc_gbuffer1_legacyTerrainMaterialAlpha(N, materialAlpha);
 #endif
         return;
     }
@@ -588,7 +601,7 @@ void main(void)
     FragColor = c;
 
 #ifdef MRT_ENABLED
-    GBuffer1 = vec4(N * 0.5 + 0.5, materialAlpha);
+    GBuffer1 = rc_gbuffer1_legacyTerrainMaterialAlpha(N, materialAlpha);
 #endif
 
     // Write depth for overlay/object depth testing.
