@@ -2159,6 +2159,8 @@ void gosRenderer::beginFrame()
     hudFlushed_ = false;
     glBindVertexArray(gVAO);
     num_draw_calls_ = 0;
+
+    TerrainPatchStream::beginFrame();
 }
 
 void gosRenderer::endFrame()

@@ -8,6 +8,7 @@
 
 #include "gameos.hpp"   // gos_VERTEX, gos_TERRAIN_EXTRA, DWORD
 #include "gl/glew.h"    // OpenGL — same include the static-prop batcher uses
+#include "utils/timing.h"  // timing::get_wall_time_ms()
 
 namespace {
     bool s_killswitch = false;
@@ -229,7 +230,51 @@ void TerrainPatchStream::destroy()
 
 bool TerrainPatchStream::isReady()      { return s_killswitch && s_initOk; }
 bool TerrainPatchStream::isOverflowed() { return s_overflow; }
-void TerrainPatchStream::beginFrame()   { /* Task 4 */ }
+
+void TerrainPatchStream::beginFrame()
+{
+    if (!s_initOk || !s_killswitch) return;
+
+    s_slot = (s_slot + 1) % kPatchStreamRingFrames;
+
+    // Wait on the slot's fence (only the second time we visit a slot,
+    // when it has been signaled by an earlier flush). With 3 slots the
+    // GPU has typically finished with slot N by the time the CPU comes
+    // back around, so this is normally a near-instant signal check —
+    // but `GL_TIMEOUT_IGNORED` does mean an indefinite block if the GPU
+    // is genuinely behind. We accept the blocking wait for safety in M0b
+    // (better to stall the CPU than to write into a slot the GPU is
+    // still reading), and log when the wait actually takes nontrivial
+    // time so we can spot stalls in profiling.
+    if (s_fence[s_slot]) {
+        const uint64_t t0 = timing::get_wall_time_ms();
+        glClientWaitSync(s_fence[s_slot], GL_SYNC_FLUSH_COMMANDS_BIT,
+                         GL_TIMEOUT_IGNORED);
+        const uint64_t waitedMs = timing::get_wall_time_ms() - t0;
+        glDeleteSync(s_fence[s_slot]);
+        s_fence[s_slot] = nullptr;
+        if (waitedMs >= 1) {
+            fprintf(stderr,
+                "[PATCH_STREAM v1] event=fence_stall slot=%u waited_ms=%llu\n",
+                s_slot, (unsigned long long)waitedMs);
+            fflush(stderr);
+        }
+    }
+
+    // Reset per-frame state. Buckets are clear()ed (contents emptied)
+    // but their reserved capacity from init() is retained — no
+    // allocator churn after warmup. s_stagingCount goes to 0 so the
+    // linear-scan lookup in findOrCreateStagingBucket only walks
+    // currently-active buckets.
+    for (uint32_t i = 0; i < s_stagingCount; ++i) {
+        s_staging[i].color.clear();
+        s_staging[i].extras.clear();
+    }
+    s_stagingCount    = 0;
+    s_totalVerts      = 0;
+    s_drawBucketCount = 0;
+    s_overflow        = false;
+}
 
 void TerrainPatchStream::appendTriangle(DWORD textureIndex,
                                         const gos_VERTEX* vColor,
