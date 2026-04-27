@@ -587,20 +587,6 @@ void gosPostProcess::runBloom()
     glEnable(GL_DEPTH_TEST);
 }
 
-void gosPostProcess::enableMRT()
-{
-    if (sceneNormalTex_) {
-        GLenum drawBuffers[2] = { GL_COLOR_ATTACHMENT0, GL_COLOR_ATTACHMENT1 };
-        glDrawBuffers(2, drawBuffers);
-    }
-}
-
-void gosPostProcess::disableMRT()
-{
-    GLenum singleBuf = GL_COLOR_ATTACHMENT0;
-    glDrawBuffers(1, &singleBuf);
-}
-
 void gosPostProcess::clearGBuffer1()
 {
     if (!sceneNormalTex_) return;
