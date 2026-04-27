@@ -28,6 +28,35 @@ namespace {
 
     uint32_t s_slot = 0;  // index of the slot currently being written
 
+    // Per-texture CPU staging. Fixed-size array of buckets — capacity is
+    // retained across frames (clear() empties contents but keeps each
+    // bucket's std::vector backing storage). beginFrame() resets
+    // s_stagingCount and clear()s the live buckets only; the bucket
+    // vectors never get destroyed during normal operation.
+    //
+    // Linear scan lookup over s_stagingCount entries (count is small —
+    // ~5-40 distinct textures per frame), cheaper than unordered_map +
+    // zero per-frame heap churn after warmup.
+    struct PatchStagingBucket {
+        DWORD                          textureIndex = 0;
+        std::vector<gos_VERTEX>        color;
+        std::vector<gos_TERRAIN_EXTRA> extras;
+    };
+
+    PatchStagingBucket s_staging[kPatchStreamMaxBuckets];
+    uint32_t           s_stagingCount = 0;
+    uint32_t           s_totalVerts   = 0;
+    bool               s_overflow     = false;
+
+    // Filled at flush() time from the staging buckets — this is what
+    // issueDraws walks for per-bucket glDrawArrays. PatchStreamBucket
+    // is declared in the header.
+    PatchStreamBucket s_drawBuckets[kPatchStreamMaxBuckets];
+    uint32_t          s_drawBucketCount = 0;
+
+    // Telemetry
+    bool s_firstFlushSeen = false;
+
     // Drop GL state we touched, mirroring gos_static_prop_batcher's save/restore.
     struct SavedGLState {
         GLint  arrayBuf      = 0;
@@ -48,6 +77,27 @@ namespace {
         glBindVertexArray(s.vao);
         if (s.blend)     glEnable (GL_BLEND);     else glDisable(GL_BLEND);
         if (s.depthTest) glEnable (GL_DEPTH_TEST); else glDisable(GL_DEPTH_TEST);
+    }
+
+    // Linear-scan lookup over the active prefix of s_staging.
+    // Returns nullptr on overflow.
+    PatchStagingBucket* findOrCreateStagingBucket(DWORD textureIndex) {
+        for (uint32_t i = 0; i < s_stagingCount; ++i) {
+            if (s_staging[i].textureIndex == textureIndex) return &s_staging[i];
+        }
+        if (s_stagingCount >= kPatchStreamMaxBuckets) {
+            fprintf(stderr,
+                "[PATCH_STREAM v1] event=overflow slot=%u kind=bucket_count count=%u cap=%u\n",
+                s_slot, s_stagingCount, kPatchStreamMaxBuckets);
+            fflush(stderr);
+            s_overflow = true;
+            return nullptr;
+        }
+        PatchStagingBucket& nb = s_staging[s_stagingCount++];
+        nb.textureIndex = textureIndex;
+        // nb.color / nb.extras are cleared (size 0) but their reserved
+        // capacity from init() is intact. No allocation here.
+        return &nb;
     }
 }
 
@@ -129,6 +179,17 @@ bool TerrainPatchStream::init()
         return true;  // engine continues on legacy path
     }
 
+    // One-shot reserve so each bucket's std::vector never reallocates
+    // during steady-state frames. Total CPU staging RAM at full capacity:
+    //   kPatchStreamMaxBuckets * 32 K verts * (sizeof(gos_VERTEX) + sizeof(gos_TERRAIN_EXTRA))
+    //   = 64 * 32768 * (32 + 24) bytes ≈ 117 MB worst case if every
+    //   bucket maxes out. Typical Wolfman: ~10 active buckets × ~24 K
+    //   verts × 56 B ≈ 13 MB resident.
+    for (auto& b : s_staging) {
+        b.color.reserve(32 * 1024);
+        b.extras.reserve(32 * 1024);
+    }
+
     s_initOk = true;
     fprintf(stderr,
         "[PATCH_STREAM v1] event=init slots=%u colorBytes=%u extrasBytes=%u "
@@ -166,8 +227,38 @@ void TerrainPatchStream::destroy()
     s_initOk = false;
 }
 
-bool TerrainPatchStream::isReady()       { return s_killswitch && s_initOk; }
-bool TerrainPatchStream::isOverflowed()  { return false; }   // Task 3
-void TerrainPatchStream::beginFrame()    { /* Task 4 */ }
-void TerrainPatchStream::appendTriangle(DWORD, const gos_VERTEX*, const gos_TERRAIN_EXTRA*) { /* Task 3 */ }
-bool TerrainPatchStream::flush()         { return false; /* Task 6 */ }
+bool TerrainPatchStream::isReady()      { return s_killswitch && s_initOk; }
+bool TerrainPatchStream::isOverflowed() { return s_overflow; }
+void TerrainPatchStream::beginFrame()   { /* Task 4 */ }
+
+void TerrainPatchStream::appendTriangle(DWORD textureIndex,
+                                        const gos_VERTEX* vColor,
+                                        const gos_TERRAIN_EXTRA* vExtra)
+{
+    if (!s_initOk || !s_killswitch) return;
+    if (s_overflow) return;  // sticky for the whole frame
+
+    constexpr uint32_t vertsPerTri = 3;
+
+    // Per-slot capacity in *vertices* — same as how flush() will copy out.
+    const uint32_t maxVertsThisSlot =
+        kPatchStreamColorBytesPerSlot / (uint32_t)sizeof(gos_VERTEX);
+
+    if (s_totalVerts + vertsPerTri > maxVertsThisSlot) {
+        fprintf(stderr,
+            "[PATCH_STREAM v1] event=overflow slot=%u kind=byte_budget cursor=%u cap=%u\n",
+            s_slot, s_totalVerts, maxVertsThisSlot);
+        fflush(stderr);
+        s_overflow = true;
+        return;
+    }
+
+    PatchStagingBucket* bk = findOrCreateStagingBucket(textureIndex);
+    if (!bk) return;  // overflow already logged
+
+    bk->color.insert(bk->color.end(),  vColor, vColor + vertsPerTri);
+    bk->extras.insert(bk->extras.end(), vExtra, vExtra + vertsPerTri);
+    s_totalVerts += vertsPerTri;
+}
+
+bool TerrainPatchStream::flush()        { return false; /* Task 6 */ }
