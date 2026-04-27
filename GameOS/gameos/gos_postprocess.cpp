@@ -594,6 +594,20 @@ void gosPostProcess::disableMRT()
     glDrawBuffers(1, &singleBuf);
 }
 
+void gosPostProcess::clearGBuffer1()
+{
+    if (!sceneNormalTex_) return;
+    // Sentinel: flat-up encoded normal (0.5, 0.5, 1.0), alpha=0.0
+    // (post-shadow eligible). Matches rc_gbuffer1_screenShadowEligible(vec3(0,0,1))
+    // in shaders/include/render_contract.hglsl.
+    static const GLfloat sentinel[4] = { 0.5f, 0.5f, 1.0f, 0.0f };
+    // glClearBufferfv with buffer=GL_COLOR, drawbuffer=1 clears the
+    // SECOND draw buffer of the currently bound FBO. Because beginScene()
+    // calls glDrawBuffers(2, {COLOR0, COLOR1}), drawbuffer index 1 maps
+    // to GL_COLOR_ATTACHMENT1 here. Caller must ensure MRT is bound.
+    glClearBufferfv(GL_COLOR, 1, sentinel);
+}
+
 
 void gosPostProcess::runScreenShadow()
 {

@@ -455,6 +455,12 @@ static void draw_screen( void )
     }
     glClear( GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT | GL_STENCIL_BUFFER_BIT );
 
+    // F3: overwrite attachment 1 (GBuffer1) with the post-shadow-eligible sentinel.
+    // glClearColor sets alpha=1.0 in both gameplay and menu paths, which would
+    // otherwise leave non-overwritten pixels reading "shadow handled". This
+    // sentinel ensures defense-in-depth coherence per F3 design v2 §5A.
+    if (pp) pp->clearGBuffer1();
+
     // Skybox disabled — terrain fog provides atmosphere, bright sky looked jarring
     // if (pp) pp->renderSkybox(0.3f, 0.7f, 0.2f);
 

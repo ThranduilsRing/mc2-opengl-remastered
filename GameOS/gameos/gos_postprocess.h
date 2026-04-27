@@ -31,8 +31,15 @@ public:
     GLuint getSceneDepthTexture() const { return sceneDepthTex_; }
     GLuint getSceneColorTexture() const { return sceneColorTex_; }
     GLuint getSceneFBO() const { return sceneFBO_; }
-    void enableMRT();   // call before terrain draws
-    void disableMRT();  // call after terrain draws
+    void enableMRT();   // call before terrain draws (legacy; not used under F3 Option A)
+    void disableMRT();  // call after terrain draws (legacy; not used under F3 Option A)
+    // F3: explicit sentinel clear for GBuffer1 (attachment 1).
+    // Sets attachment 1 to (0.5, 0.5, 1.0, 0.0) — flat-up encoded normal,
+    // alpha = 0.0 (post-shadow eligible). Must be called while MRT is bound
+    // (i.e., after beginScene's glDrawBuffers(2)). Defense-in-depth: every
+    // visible pixel either gets overwritten by an explicit rc_gbuffer1_*
+    // writer or inherits this sentinel.
+    void clearGBuffer1();
     GLuint getShadowTexture() const { return shadowDepthTex_; }
     const float* getLightSpaceMatrix() const { return staticLightSpaceMatrix_; }
     GLuint getShadowFBO() const { return shadowFBO_; }
