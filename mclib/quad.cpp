@@ -39,6 +39,7 @@
 #endif
 
 #include"../GameOS/gameos/gos_profiler.h"
+#include"../GameOS/gameos/gos_terrain_patch_stream.h"
 #include"projectz_trace.h"
 #include"projectz_overlay.h"
 #include"tex_resolve_table.h"
@@ -99,6 +100,25 @@ static void fillTerrainExtra(DWORD texHandle, DWORD flags, VertexPtr v0, VertexP
     textra[2].wx = v2->vx; textra[2].wy = v2->vy; textra[2].wz = v2->pVertex->elevation;
     textra[2].nx = v2->pVertex->vertexNormal.x; textra[2].ny = v2->pVertex->vertexNormal.y; textra[2].nz = v2->pVertex->vertexNormal.z;
     mcTextureManager->addTerrainExtra(texHandle, textra, flags);
+}
+
+// Builds the same 3-element gos_TERRAIN_EXTRA[3] that fillTerrainExtra
+// would push to addTerrainExtra, but returns it by value so the modern
+// patch stream can mirror-write the bytes without re-reading the verts.
+// Keeping the math identical to fillTerrainExtra is the BR-byte-parity
+// guarantee for shadow / grass behavior.
+static inline void buildTerrainExtraTriple(VertexPtr v0, VertexPtr v1, VertexPtr v2,
+                                           gos_TERRAIN_EXTRA out[3])
+{
+    VertexPtr vs[3] = { v0, v1, v2 };
+    for (int k = 0; k < 3; ++k) {
+        out[k].wx = vs[k]->vx;
+        out[k].wy = vs[k]->vy;
+        out[k].wz = vs[k]->pVertex->elevation;
+        out[k].nx = vs[k]->pVertex->vertexNormal.x;
+        out[k].ny = vs[k]->pVertex->vertexNormal.y;
+        out[k].nz = vs[k]->pVertex->vertexNormal.z;
+    }
 }
 
 // Per-triangle diagnostic hook for terrain addTriangle sites.
@@ -1607,6 +1627,14 @@ void TerrainQuad::draw (void)
 					if(terrainHandle!=0) {
 						mcTextureManager->addVertices(terrainHandle,gVertex,MC2_ISTERRAIN | MC2_DRAWSOLID);
 						fillTerrainExtra(terrainHandle, MC2_ISTERRAIN | MC2_DRAWSOLID, vertices[0], vertices[1], vertices[2]);
+
+						// Modern mirror — gated by killswitch via TerrainPatchStream::isReady().
+						// INSIDE the pz gate brace by construction. BR4.
+						if (TerrainPatchStream::isReady() && !TerrainPatchStream::isOverflowed()) {
+							gos_TERRAIN_EXTRA tx3[3];
+							buildTerrainExtraTriple(vertices[0], vertices[1], vertices[2], tx3);
+							TerrainPatchStream::appendTriangle(terrainHandle, gVertex, tx3);
+						}
 					}
 
 					//--------------------------------------------------------------
@@ -1751,6 +1779,14 @@ void TerrainQuad::draw (void)
 					if(terrainHandle!=0) {
 						mcTextureManager->addVertices(terrainHandle,gVertex,MC2_ISTERRAIN | MC2_DRAWSOLID);
 						fillTerrainExtra(terrainHandle, MC2_ISTERRAIN | MC2_DRAWSOLID, vertices[0], vertices[2], vertices[3]);
+
+						// Modern mirror — gated by killswitch via TerrainPatchStream::isReady().
+						// INSIDE the pz gate brace by construction. BR4.
+						if (TerrainPatchStream::isReady() && !TerrainPatchStream::isOverflowed()) {
+							gos_TERRAIN_EXTRA tx3[3];
+							buildTerrainExtraTriple(vertices[0], vertices[2], vertices[3], tx3);
+							TerrainPatchStream::appendTriangle(terrainHandle, gVertex, tx3);
+						}
 					}
 
 					//--------------------------------------------------------------
@@ -1910,6 +1946,14 @@ void TerrainQuad::draw (void)
 					if(terrainHandle!=0) {
 						mcTextureManager->addVertices(terrainHandle,gVertex,MC2_ISTERRAIN | MC2_DRAWSOLID);
 						fillTerrainExtra(terrainHandle, MC2_ISTERRAIN | MC2_DRAWSOLID, vertices[0], vertices[1], vertices[3]);
+
+						// Modern mirror — gated by killswitch via TerrainPatchStream::isReady().
+						// INSIDE the pz gate brace by construction. BR4.
+						if (TerrainPatchStream::isReady() && !TerrainPatchStream::isOverflowed()) {
+							gos_TERRAIN_EXTRA tx3[3];
+							buildTerrainExtraTriple(vertices[0], vertices[1], vertices[3], tx3);
+							TerrainPatchStream::appendTriangle(terrainHandle, gVertex, tx3);
+						}
 					}
 
 					//----------------------------------------------------
@@ -2052,8 +2096,16 @@ void TerrainQuad::draw (void)
 					if(terrainHandle!=0) {
 						mcTextureManager->addVertices(terrainHandle,gVertex,MC2_ISTERRAIN | MC2_DRAWSOLID);
 						fillTerrainExtra(terrainHandle, MC2_ISTERRAIN | MC2_DRAWSOLID, vertices[1], vertices[2], vertices[3]);
+
+						// Modern mirror — gated by killswitch via TerrainPatchStream::isReady().
+						// INSIDE the pz gate brace by construction. BR4.
+						if (TerrainPatchStream::isReady() && !TerrainPatchStream::isOverflowed()) {
+							gos_TERRAIN_EXTRA tx3[3];
+							buildTerrainExtraTriple(vertices[1], vertices[2], vertices[3], tx3);
+							TerrainPatchStream::appendTriangle(terrainHandle, gVertex, tx3);
+						}
 					}
- 
+
 					//----------------------------------------------------
 					// Draw the detail Texture
 					if (useWaterInterestTexture && (terrainDetailHandle != 0xffffffff))
