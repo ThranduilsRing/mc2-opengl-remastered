@@ -27,6 +27,7 @@
 #include "gos_postprocess.h"
 #include "gos_profiler.h"
 #include "gos_validate.h"  // drainGLErrors (Tier-1 instr §4)
+#include "gos_terrain_bridge.h"
 
 class gosRenderer;
 class gosFont;
@@ -1281,6 +1282,7 @@ class gosRenderer {
 		void drawIndexedTris(HGOSBUFFER ib, HGOSBUFFER vb, HGOSVERTEXDECLARATION vdecl);
         void drawText(const char* text);
         void terrainDrawIndexedPatches(gosRenderMaterial* material, gosMesh* mesh);
+        void terrainBindUniformsForPatchStream(gosRenderMaterial* material);
         void drawGrassPass(gosMesh* mesh);
 
         void beginFrame();
@@ -1662,9 +1664,35 @@ class gosRenderer {
 
 const std::string gosRenderer::s_Foreground = std::string("Foreground");
 
+// ─── gos_terrain_bridge implementation ────────────────────────────────────
+// Defined here because the full gosRenderer type is visible in this TU.
+// Declarations live in gos_terrain_bridge.h.
+
+gosRenderMaterial* gos_terrain_bridge_getMaterial() {
+    return g_gos_renderer ? g_gos_renderer->getTerrainMaterial() : nullptr;
+}
+
+unsigned int gos_terrain_bridge_getExtraVB() {
+    return g_gos_renderer ? g_gos_renderer->getTerrainExtraVB() : 0;
+}
+
+unsigned int gos_terrain_bridge_getShaderProgram() {
+    if (!g_gos_renderer) return 0;
+    gosRenderMaterial* mat = g_gos_renderer->getTerrainMaterial();
+    if (!mat || !mat->getShader()) return 0;
+    return (unsigned int)mat->getShader()->shp_;
+}
+
+void gos_terrain_bridge_bindUniforms(gosRenderMaterial* material) {
+    if (g_gos_renderer && material)
+        g_gos_renderer->terrainBindUniformsForPatchStream(material);
+}
+// ──────────────────────────────────────────────────────────────────────────
+
 static GLuint gVAO = 0;
 static float  s_hud_scale = 0.85f;  // default while iterating; RAlt+5 cycles
 static bool   s_hud_scale_active = false;  // gated: only shrink during mission
+
 
 void gosRenderer::init() {
     ZoneScopedN("gosRenderer::init");
@@ -2672,6 +2700,10 @@ void gosRenderer::endDynamicShadowPass() {
     shadow_prepass_active_ = false;
 
     drainGLErrors("shadow_dynamic");
+}
+
+void gosRenderer::terrainBindUniformsForPatchStream(gosRenderMaterial* material) {
+    if (material) material->apply();   // Task 6 fills in the rest.
 }
 
 void gosRenderer::terrainDrawIndexedPatches(gosRenderMaterial* material, gosMesh* mesh) {
