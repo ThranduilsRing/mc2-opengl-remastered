@@ -1,0 +1,107 @@
+[INSTR v1] enabled: tgl_pool=0 destroy=0 gl_error_print=1 smoke=1 build=UNKNOWN
+[TIME] t=  0.00s  phase=process_start
+[SMOKE v1] event=banner mode=passive mission=mc2_21 profile=stock duration=30 seed=0xc0ffee
+[TIMING v1] event=profile_ready elapsed_ms=0.1
+[TIMING v1] event=logistics_ready elapsed_ms=0.1
+[SMOKE v1] event=mission_resolve stem=mc2_21 source=fst_assumed
+[TIMING v1] event=mission_load_start elapsed_ms=0.3
+Built-in video drivers: windows, dummy
+Video driver: windows
+SDL revision: 
+We compiled against SDL version 2.30.11 
+But we are linking against SDL version 2.30.11.
+[TIME] t=  0.23s  phase=window_created
+[TIMING v1] event=window_created elapsed_ms=229.1
+[VSYNC] MC2_VSYNC=(unset, default 0) -- vsync OFF.
+[GPU] Vendor   : ATI Technologies Inc.
+[GPU] Renderer : AMD Radeon RX 7900 XTX
+[GPU] Version  : 4.3.0 Core Profile Context 26.3.1.260309
+[GL] max_texture_size=16384 max_ssbo_block=2147483647 max_combined_texture_units=160
+[WINDOW] drawable=800x600 logical=800x600
+[MODE] gl_debug=0 vsync=0 tracy=on-demand
+[TRACY] on-demand mode -- profiler listening on TCP 8086, no capture until a GUI attaches.
+[TIME] t=  0.26s  phase=gl_context_ready
+[TIMING v1] event=gl_context_ready elapsed_ms=262.8
+[TESS] Extra VBO created: capacity=122880 vb=8
+[TESS] About to load terrain shader...
+[TESS] Loading terrain shader with TCS=shaders/gos_terrain.tesc TES=shaders/gos_terrain.tese
+[TESS] Terrain material loaded successfully
+[TESS] Loading terrain shader with TCS=shaders/shadow_terrain.tesc TES=shaders/shadow_terrain.tese
+[TIME] t=  0.41s  phase=renderer_created
+[TIMING v1] event=renderer_created elapsed_ms=410.7
+Opened audio at 22050 Hz 16 bit stereo (Little-Endian), 1024 bytes audio buffer
+[ASSET_SCALE v1] event=manifest_missing path=data/art/asset_sizes.csv
+[TEX_RESOLVE v1] event=startup mode=validate max_textures=4096
+[MISSION] t=  0.00s  phase=mission_load_start
+[TESS] Created terrain normal texture: id=17 size=2048
+[TESS] Created terrain normal texture: id=18 size=2048
+[SPLATTING] starting material array load
+[SPLATTING] checking: data/textures/mat0_normal.tga
+[SPLATTING] checking: data/textures/mat1_normal.tga
+[SPLATTING] checking: data/textures/mat2_normal.tga
+[SPLATTING] checking: data/textures/mat3_normal.tga
+[SPLATTING] checking: data/textures/mat4_normal.tga
+[SPLATTING] all loaded OK, width=2048, creating individual textures
+[TESS] Created terrain normal texture: id=19 size=2048
+[SPLATTING] matNormal0 GL id=19
+[TESS] Created terrain normal texture: id=20 size=2048
+[SPLATTING] matNormal1 GL id=20
+[TESS] Created terrain normal texture: id=21 size=2048
+[SPLATTING] matNormal2 GL id=21
+[TESS] Created terrain normal texture: id=22 size=2048
+[SPLATTING] matNormal3 GL id=22
+[TESS] Created terrain normal texture: id=23 size=2048
+[SPLATTING] matNormal4 GL id=23
+[SPLATTING] retained matNormal2 alpha on CPU (2048x2048)
+[GPUPROPS-DIAG] loadProgramsIfNeeded ENTER
+[GPUPROPS-DIAG] GL_VERSION=4.3.0 Core Profile Context 26.3.1.260309
+[GPUPROPS-DIAG] GL_SHADING_LANGUAGE_VERSION=4.60
+[GPUPROPS-DIAG] loadProgramsIfNeeded OK prog=118
+[GPUPROPS] finalize: 610 types, 752 packets
+[GPUPROPS] late registerType for 0000016C0F58CC80 -- CPU-fallback for this type
+[GPUPROPS] late registerType for 0000016C0F58E070 -- CPU-fallback for this type
+[MISSION] t=  4.37s  phase=mission_ready
+[TIME] t=  5.00s  phase=engine_init_done
+[TIMING v1] event=engine_init_done elapsed_ms=5001.0
+[FRAMECAP] MC2_FPS_CAP=(unset) vsync=OFF -- menu=90 FPS mission=165 FPS
+[TIMING v1] event=mission_ready elapsed_ms=5014.8
+[TIME] t=  5.05s  phase=first_frame_presented
+[TIMING v1] event=first_frame_presented elapsed_ms=5046.4
+[TIMING v1] event=first_frame elapsed_ms=5046.5
+gosPostProcess: rendering static shadows (map half-extent=7680)
+[HEARTBEAT] frames=104 elapsed_ms=1150 fps=90.4
+[HEARTBEAT] frames=143 elapsed_ms=1005 fps=142.3
+[HEARTBEAT] frames=137 elapsed_ms=1005 fps=136.3
+[HEARTBEAT] frames=146 elapsed_ms=1005 fps=145.3
+[HEARTBEAT] frames=63 elapsed_ms=1018 fps=61.9
+[TEX_RESOLVE v1] event=summary frames=600 resolved_per_frame_avg=91.8 mismatches=0 oob=0
+[HEARTBEAT] frames=71 elapsed_ms=1004 fps=70.7
+[HEARTBEAT] frames=94 elapsed_ms=1015 fps=92.6
+[HEARTBEAT] frames=40 elapsed_ms=1012 fps=39.5
+[HEARTBEAT] frames=39 elapsed_ms=1020 fps=38.2
+[HEARTBEAT] frames=43 elapsed_ms=1010 fps=42.6
+[HEARTBEAT] frames=46 elapsed_ms=1024 fps=44.9
+[HEARTBEAT] frames=42 elapsed_ms=1017 fps=41.3
+[HEARTBEAT] frames=43 elapsed_ms=1020 fps=42.2
+[HEARTBEAT] frames=40 elapsed_ms=1005 fps=39.8
+[HEARTBEAT] frames=35 elapsed_ms=1013 fps=34.6
+[HEARTBEAT] frames=35 elapsed_ms=1012 fps=34.6
+[HEARTBEAT] frames=41 elapsed_ms=1012 fps=40.5
+[TEX_RESOLVE v1] event=summary frames=1200 resolved_per_frame_avg=229.2 mismatches=0 oob=0
+[HEARTBEAT] frames=43 elapsed_ms=1014 fps=42.4
+[HEARTBEAT] frames=43 elapsed_ms=1009 fps=42.6
+[HEARTBEAT] frames=43 elapsed_ms=1002 fps=42.9
+[HEARTBEAT] frames=41 elapsed_ms=1009 fps=40.6
+[HEARTBEAT] frames=44 elapsed_ms=1016 fps=43.3
+[HEARTBEAT] frames=45 elapsed_ms=1017 fps=44.2
+[HEARTBEAT] frames=47 elapsed_ms=1007 fps=46.7
+[HEARTBEAT] frames=52 elapsed_ms=1015 fps=51.2
+[HEARTBEAT] frames=49 elapsed_ms=1000 fps=49.0
+[HEARTBEAT] frames=51 elapsed_ms=1008 fps=50.6
+[HEARTBEAT] frames=49 elapsed_ms=1013 fps=48.4
+[HEARTBEAT] frames=41 elapsed_ms=1001 fps=41.0
+[TIMING v1] event=mission_quit elapsed_ms=35018.8
+[PERF v1] avg_fps=57.9 p50_ms=19.71 p99_ms=33.10 p1low_fps=30.2 peak_ms=245.23 samples=1735
+[SMOKE v1] event=summary result=pass duration_actual_ms=30004.2 frames=1735
+[TGL_POOL v1] summary mono_total={vertex:0, color:0, face:0, shadow:0, triangle:0} since=process_start (shutdown)
+[TEX_RESOLVE v1] event=shutdown total_frames=1734 total_resolves=478707 mismatches=0 oob=0
