@@ -10,13 +10,25 @@
 //
 // MRT:
 //   location=0  FragColor       — blended scene colour
-//   location=1  GBuffer1.alpha  = 1.0  → shadow_screen.frag skips (terrain flag),
-//                                  preventing double-shadowing on crater pixels.
+//   location=1  GBuffer1.alpha  = 1.0  → shadow_screen.frag skips this pixel
+//                                  (decal handles its own shadow inline; opt out
+//                                  of post-shadow to avoid double-shadowing).
 
 #define PREC highp
 
 #include <include/noise.hglsl>
 #include <include/shadow.hglsl>
+#include <include/render_contract.hglsl>
+
+// [RENDER_CONTRACT]
+//   Pass:           TerrainDecal
+//   Color0:         RGBA, alpha-blended (SRC_ALPHA / ONE_MINUS_SRC_ALPHA)
+//   GBuffer1:       rc_gbuffer1_shadowHandled_flatUp
+//   ShadowContract: castsStatic=false, castsDynamic=false,
+//                   skipsPostScreenShadow=true
+//   StateContract:  depthTest=true (LEQUAL), depthWrite=false,
+//                   blend=AlphaBlend, requiresMRT=true,
+//                   polygon offset (-1,-1)
 
 in PREC vec3  WorldPos;
 in PREC vec2  Texcoord;
@@ -63,7 +75,8 @@ void main()
     FragColor = c;
 
 #ifdef MRT_ENABLED
-    // Mark as terrain to exclude from deferred shadow multiply.
-    GBuffer1 = vec4(0.5, 0.5, 1.0, 1.0);
+    // Decal handles its own shadow inline (cloud + static + dynamic above);
+    // opt out of post-process shadow multiply to avoid double-shadowing.
+    GBuffer1 = rc_gbuffer1_shadowHandled_flatUp();
 #endif
 }

@@ -13,6 +13,16 @@
 
 #include <include/noise.hglsl>
 #include <include/shadow.hglsl>
+#include <include/render_contract.hglsl>
+
+// [RENDER_CONTRACT]
+//   Pass:           TerrainOverlay
+//   Color0:         RGBA, alpha-blended (binary alpha; transparent pixels discarded)
+//   GBuffer1:       rc_gbuffer1_shadowHandled_flatUp
+//   ShadowContract: castsStatic=false, castsDynamic=false,
+//                   skipsPostScreenShadow=true (overlay handles shadow inline)
+//   StateContract:  depthTest=true, depthWrite=false, blend=AlphaBlend,
+//                   requiresMRT=true
 
 in PREC vec3  WorldPos;
 in PREC vec2  Texcoord;
@@ -52,7 +62,7 @@ void main()
     if (surfaceDebugMode == 6) {
         FragColor = vec4(tex_color.rgb, 1.0);
 #ifdef MRT_ENABLED
-        GBuffer1 = vec4(0.5, 0.5, 1.0, 1.0);
+        GBuffer1 = rc_gbuffer1_shadowHandled_flatUp();
 #endif
         return;
     }
@@ -64,7 +74,7 @@ void main()
     if (surfaceDebugMode == 1) {
         FragColor = vec4(vec3(mix(0.92, 1.0, cloudMask)), 1.0);
 #ifdef MRT_ENABLED
-        GBuffer1 = vec4(0.5, 0.5, 1.0, 1.0);
+        GBuffer1 = rc_gbuffer1_shadowHandled_flatUp();
 #endif
         return;
     }
@@ -72,7 +82,7 @@ void main()
     if (surfaceDebugMode == 3) {
         FragColor = vec4(c.rgb, 1.0);
 #ifdef MRT_ENABLED
-        GBuffer1 = vec4(0.5, 0.5, 1.0, 1.0);
+        GBuffer1 = rc_gbuffer1_shadowHandled_flatUp();
 #endif
         return;
     }
@@ -84,7 +94,7 @@ void main()
     if (surfaceDebugMode == 2) {
         FragColor = vec4(vec3(shadow), 1.0);
 #ifdef MRT_ENABLED
-        GBuffer1 = vec4(0.5, 0.5, 1.0, 1.0);
+        GBuffer1 = rc_gbuffer1_shadowHandled_flatUp();
 #endif
         return;
     }
@@ -100,7 +110,7 @@ void main()
     if (surfaceDebugMode == 4) {
         FragColor = vec4(vec3(1.0 - fogAmount), 1.0);
 #ifdef MRT_ENABLED
-        GBuffer1 = vec4(0.5, 0.5, 1.0, 1.0);
+        GBuffer1 = rc_gbuffer1_shadowHandled_flatUp();
 #endif
         return;
     }
@@ -123,8 +133,8 @@ void main()
     FragColor = c;
 
 #ifdef MRT_ENABLED
-    // Mark as terrain so deferred shadow_screen pass skips these pixels
-    // (same convention as gos_terrain.frag: alpha=1 = terrain flag).
-    GBuffer1 = vec4(0.5, 0.5, 1.0, 1.0);
+    // Overlay handles its own shadow inline (cloud + static + dynamic above);
+    // opt out of post-shadow to avoid double-shadowing.
+    GBuffer1 = rc_gbuffer1_shadowHandled_flatUp();
 #endif
 }

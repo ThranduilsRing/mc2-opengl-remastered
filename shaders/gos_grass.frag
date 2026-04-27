@@ -3,6 +3,16 @@
 #define PREC highp
 
 #include <include/shadow.hglsl>
+#include <include/render_contract.hglsl>
+
+// [RENDER_CONTRACT]
+//   Pass:           Grass
+//   Color0:         RGBA, alpha-tested grass blades
+//   GBuffer1:       rc_gbuffer1_shadowHandled (bladeNormal)
+//   ShadowContract: castsStatic=false, castsDynamic=false,
+//                   skipsPostScreenShadow=true (grass handles shadow inline)
+//   StateContract:  depthTest=true, depthWrite=true, blend=AlphaTest,
+//                   requiresMRT=true
 
 in PREC vec2 GrassUV;
 in PREC vec3 GrassWorldPos;
@@ -56,6 +66,6 @@ void main()
 
     FragColor = vec4(color, alpha);
 
-    // GBuffer1: write a grass-terrain flag (alpha=1.0 like terrain so shadows skip it)
-    GBuffer1 = vec4(bladeNormal * 0.5 + 0.5, 1.0);
+    // Grass handles its own shadow inline above; opt out of post-shadow.
+    GBuffer1 = rc_gbuffer1_shadowHandled(bladeNormal);
 }
