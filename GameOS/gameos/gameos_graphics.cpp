@@ -28,6 +28,7 @@
 #include "gos_profiler.h"
 #include "gos_validate.h"  // drainGLErrors (Tier-1 instr §4)
 #include "gos_terrain_bridge.h"
+#include "gos_terrain_patch_stream.h"
 
 class gosRenderer;
 class gosFont;
@@ -1909,9 +1910,16 @@ void gosRenderer::init() {
         glBindBuffer(GL_ARRAY_BUFFER, 0);
     };
     { ZoneScopedN("gosRenderer::init overlayVAOs"); makeOverlayVAO(terrainOverlayBatch_); makeOverlayVAO(decalBatch_); }
+
+    if (!TerrainPatchStream::init()) {
+        // init_fail path lives in Task 2; for now this is dead code.
+        fprintf(stderr, "[PATCH_STREAM v1] event=init_fail reason=task1_skeleton_returned_false\n");
+        fflush(stderr);
+    }
 }
 
 void gosRenderer::destroy() {
+    TerrainPatchStream::destroy();
 
     gosMesh::destroy(quads_);
     gosMesh::destroy(tris_);
