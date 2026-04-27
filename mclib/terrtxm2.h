@@ -19,6 +19,7 @@
 #ifndef TXMMGR_H
 #include"txmmgr.h"
 #endif
+#include"tex_resolve_table.h"
 
 #ifndef INIFILE_H
 #include"inifile.h"
@@ -131,7 +132,7 @@ class TerrainColorMap
 
 		DWORD getNormalMapHandle (long resultTexture) {
 			if (hasNormalMap && normalMapTextures && resultTexture >= 0 && resultTexture < (long)numNormalMapTextures) {
-				mcTextureManager->get_gosTextureHandle(normalMapTextures[resultTexture].mcTextureNodeIndex);
+				tex_resolve(normalMapTextures[resultTexture].mcTextureNodeIndex);
 				return normalMapTextures[resultTexture].mcTextureNodeIndex;
 			}
 			return 0xffffffff;
@@ -139,7 +140,7 @@ class TerrainColorMap
 
 		DWORD getDetailNormalHandle (void) {
 			if (detailNormalNodeIndex != 0xffffffff)
-				mcTextureManager->get_gosTextureHandle(detailNormalNodeIndex);
+				tex_resolve(detailNormalNodeIndex);
 			return detailNormalNodeIndex;
 		}
 
@@ -147,14 +148,14 @@ class TerrainColorMap
 
 		DWORD getDetailHandle (void)
 		{
-			mcTextureManager->get_gosTextureHandle(detailTextureNodeIndex);
+			tex_resolve(detailTextureNodeIndex);
 			return (detailTextureNodeIndex);
 		}
 		long saveDetailTexture(const char *fileName);
 
 		DWORD getWaterTextureHandle (void)
 		{
-			mcTextureManager->get_gosTextureHandle(waterTextureNodeIndex);
+			tex_resolve(waterTextureNodeIndex);
 			return waterTextureNodeIndex;
 		}
 		long saveWaterTexture(const char *fileName);
@@ -163,7 +164,7 @@ class TerrainColorMap
 		{
 			if ((frameNum >= 0) && (frameNum < (long)numWaterDetailFrames))
 			{
-				mcTextureManager->get_gosTextureHandle(waterDetailNodeIndex[frameNum]);
+				tex_resolve(waterDetailNodeIndex[frameNum]);
 				return waterDetailNodeIndex[frameNum];
 			}
 			else

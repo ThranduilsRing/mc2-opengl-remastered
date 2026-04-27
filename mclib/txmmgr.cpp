@@ -16,6 +16,7 @@
 #include"txmmgr.h"
 #include "gos_crashbundle.h"
 #endif
+#include"tex_resolve_table.h"
 
 #ifndef TGAINFO_H
 #include"tgainfo.h"
@@ -272,6 +273,8 @@ void MC_TextureManager::start (void)
     sceneData_ = new TG_HWSceneData;
 	sceneDataBuffer_ = gos_CreateBuffer(gosBUFFER_TYPE::UNIFORM, gosBUFFER_USAGE::STATIC_DRAW, sizeof(TG_HWSceneData), 1, NULL);
 	gos_BindBufferBase(sceneDataBuffer_, SCENE_DATA_ATTACHMENT_SLOT);
+
+	initTexResolveTable();
 }
 
 extern Stuff::MemoryStream *effectStream;
@@ -1313,12 +1316,12 @@ void MC_TextureManager::renderLists (void)
 
 			if (totalVertices && (totalVertices < MAX_SENDDOWN))
 			{
-				gos_SetRenderState( gos_State_Texture, masterTextureNodes[masterVertexNodes[i].textureIndex].get_gosTextureHandle());
+				gos_SetRenderState( gos_State_Texture, tex_resolve(masterVertexNodes[i].textureIndex));
 				gos_RenderIndexedArray( masterVertexNodes[i].vertices, totalVertices, indexArray, totalVertices );
 			}
 			else if (totalVertices > MAX_SENDDOWN)
 			{
-				gos_SetRenderState( gos_State_Texture, masterTextureNodes[masterVertexNodes[i].textureIndex].get_gosTextureHandle());
+				gos_SetRenderState( gos_State_Texture, tex_resolve(masterVertexNodes[i].textureIndex));
 
 				//Must divide up vertices into batches of 10,000 each to send down.
 				// Somewhere around 20000 to 30000 it really gets screwy!!!

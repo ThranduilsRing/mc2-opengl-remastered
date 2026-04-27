@@ -15,6 +15,7 @@
 #endif
 
 #include"../GameOS/gameos/gos_profiler.h"
+#include"tex_resolve_table.h"
 
 #ifndef TERRAIN_H
 #include"terrain.h"
@@ -314,25 +315,25 @@ bool MapData::ensureTerrainFaceCacheEntryResident (const WorldQuadTerrainCacheEn
 
 	if (entry.usesColorMap() && !isTextureNodeResidentLocal(entry.terrainHandle))
 	{
-		mcTextureManager->get_gosTextureHandle(entry.terrainHandle);
+		tex_resolve(entry.terrainHandle);
 		realizedColorMapTile = true;
 	}
 
 	if (!isTextureNodeResidentLocal(entry.terrainDetailHandle))
 	{
-		mcTextureManager->get_gosTextureHandle(entry.terrainDetailHandle);
+		tex_resolve(entry.terrainDetailHandle);
 		realizedDetail = true;
 	}
 
 	if (!isTextureNodeResidentLocal(entry.overlayHandle))
 	{
-		mcTextureManager->get_gosTextureHandle(entry.overlayHandle);
+		tex_resolve(entry.overlayHandle);
 		realizedOverlay = true;
 	}
 
 	if (!entry.usesColorMap() && !isTextureNodeResidentLocal(entry.terrainHandle))
 	{
-		mcTextureManager->get_gosTextureHandle(entry.terrainHandle);
+		tex_resolve(entry.terrainHandle);
 		realizedBase = true;
 	}
 
@@ -431,7 +432,7 @@ void MapData::warmTerrainFaceCacheResidency (volatile float* progress, float pro
 	{
 		const DWORD handle = handlesToWarm[i];
 		const bool residentBefore = isTextureNodeResidentLocal(handle);
-		mcTextureManager->get_gosTextureHandle(handle);
+		tex_resolve(handle);
 		if (!residentBefore)
 		{
 			bool counted = false;

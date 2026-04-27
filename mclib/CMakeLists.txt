@@ -25,6 +25,7 @@ set(SOURCES ${SOURCES}
     tgl.cpp
     timing.cpp
     txmmgr.cpp
+    tex_resolve_table.cpp
     userinput.cpp
     vport.cpp
     weaponfx.cpp

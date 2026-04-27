@@ -15,6 +15,7 @@
 #ifndef TERRTXM2_H
 #include"terrtxm2.h"
 #endif
+#include"tex_resolve_table.h"
 
 #ifndef PATHS_H
 #include"paths.h"
@@ -2381,7 +2382,7 @@ DWORD TerrainColorMap::resolveTextureHandle (VertexPtr vMin, VertexPtr vMax, Ter
 		if (realizeTexture)
 		{
 			ZoneScopedN("TerrainColorMap::getTextureHandle realizeTexture");
-			mcTextureManager->get_gosTextureHandle(textures[resultTexture].mcTextureNodeIndex);
+			tex_resolve(textures[resultTexture].mcTextureNodeIndex);
 		}
 		return textures[resultTexture].mcTextureNodeIndex;
 	}

@@ -21,6 +21,7 @@
 #ifndef TXMMGR_H
 #include"txmmgr.h"
 #endif
+#include"tex_resolve_table.h"
 
 //---------------------------------------------------------------------------
 // Macro Definitions
@@ -274,15 +275,15 @@ class TerrainTextures
 			if ( textures[texture].mcTextureNodeIndex == 0xffffffff )
 				return 0;
 
-			return (mcTextureManager->get_gosTextureHandle(textures[texture].mcTextureNodeIndex));
+			return (tex_resolve(textures[texture].mcTextureNodeIndex));
 		}
 
 		DWORD getTextureHandle (DWORD texture)
 		{
-			if ((long)texture >= nextAvailable) 
+			if ((long)texture >= nextAvailable)
 				return 0xffffffff;
 
-			mcTextureManager->get_gosTextureHandle(textures[texture].mcTextureNodeIndex);
+			tex_resolve(textures[texture].mcTextureNodeIndex);
 			return (textures[texture].mcTextureNodeIndex);
 		}
 
@@ -302,15 +303,15 @@ class TerrainTextures
 			if ( textures[dTexture].mcTextureNodeIndex == 0xffffffff )
 				return 0;
 
-			return (mcTextureManager->get_gosTextureHandle(textures[dTexture].mcTextureNodeIndex));
+			return (tex_resolve(textures[dTexture].mcTextureNodeIndex));
 		}
 
 		DWORD getDetailHandle (DWORD dTexture)
 		{
-			if ((long)dTexture >= nextAvailable) 
+			if ((long)dTexture >= nextAvailable)
 				return 0;
 
-			mcTextureManager->get_gosTextureHandle(textures[dTexture].mcTextureNodeIndex);
+			tex_resolve(textures[dTexture].mcTextureNodeIndex);
 			return (textures[dTexture].mcTextureNodeIndex);
 		}
 

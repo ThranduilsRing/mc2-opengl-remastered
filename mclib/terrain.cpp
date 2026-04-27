@@ -24,6 +24,7 @@
 
 #ifndef TERRTXM_H
 #include"terrtxm.h"
+#include"tex_resolve_table.h"
 #endif
 
 #ifndef DBASEGUI_H
@@ -980,6 +981,18 @@ extern bool InEditor;
 void Terrain::geometry (void)
 {
 	ZoneScopedN("Terrain::geometry");
+
+	// Shape A (M0a) — per-frame texture-handle memoization. Initialized at
+	// the EARLIEST terrain frame boundary because converted setup-time reads
+	// in TerrainQuad::setupTextures, ensureTerrainFaceCacheEntryResident, and
+	// terrtxm{,2}.h accessors fire during this function (mission-update phase),
+	// before GameCamera::render. See
+	// docs/superpowers/specs/2026-04-27-modern-terrain-tex-resolve-table-design.md.
+	{
+		static uint64_t s_texResolveFrameCounter = 0;
+		beginFrameTexResolve(++s_texResolveFrameCounter);
+	}
+
 	//---------------------------------------------------------------------
 	leastZ = 1.0f;leastW = 1.0f;
 	mostZ = -1.0f; mostW = -1.0;

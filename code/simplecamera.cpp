@@ -5,6 +5,7 @@ SimpleCamera.cpp	: Implementation of the SimpleCamera component.
 //===========================================================================//
 \*************************************************************************************************/
 #include"simplecamera.h"
+#include"tex_resolve_table.h"
 #include"appear.h"
 #include"mclib.h"
 #include"mech3d.h"
@@ -207,6 +208,7 @@ void SimpleCamera::render(long xOffset, long yOffset)
 			pObject->render();
 			if ( !drawOldWay )
 				mcTextureManager->renderLists();
+			endFrameTexResolve();              // defensive — see plan Task 2 Step 3a.
 			eye = oldCam;
 			gos_PopRenderStates();
 	}

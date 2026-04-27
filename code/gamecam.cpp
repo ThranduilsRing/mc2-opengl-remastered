@@ -12,6 +12,7 @@
 // Include Files
 #ifndef GAMECAM_H
 #include"gamecam.h"
+#include"tex_resolve_table.h"
 #endif
 
 #ifndef OBJMGR_H
@@ -240,6 +241,9 @@ void GameCamera::render (void)
 		{
 			ZoneScopedN("GameCamera::render textureManagerRenderLists");
 			mcTextureManager->renderLists();			//This sends triangles down to the card.  All "rendering" to this point has been setting up tri lists
+			endFrameTexResolve();              // close the per-frame window — clears frameActive,
+			                                   // accumulates resolved-count, emits 600-frame summary
+			                                   // when due. No-op when killswitch OFF or already inactive.
 		}
 
 		if (drawOldWay)

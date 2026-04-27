@@ -41,6 +41,7 @@
 #include"../GameOS/gameos/gos_profiler.h"
 #include"projectz_trace.h"
 #include"projectz_overlay.h"
+#include"tex_resolve_table.h"
 
 // Per-quad scratch for the four BoolAdmission per-vertex projectZ calls in
 // TerrainQuad::setupTextures. After each `eye->projectZ()` call we copy
@@ -182,7 +183,7 @@ static void enqueueTerrainMineState(TerrainQuad& quad)
 					
 				if (localResult == 1)
 				{
-					mcTextureManager->get_gosTextureHandle(TerrainQuad::mineTextureHandle);
+					tex_resolve(TerrainQuad::mineTextureHandle);
 					mcTextureManager->addTriangle(TerrainQuad::mineTextureHandle,MC2_DRAWALPHA);
 					mcTextureManager->addTriangle(TerrainQuad::mineTextureHandle,MC2_DRAWALPHA);
 					
@@ -190,7 +191,7 @@ static void enqueueTerrainMineState(TerrainQuad& quad)
 				}
 				else if (localResult == 2)
 				{
-					mcTextureManager->get_gosTextureHandle(TerrainQuad::blownTextureHandle);
+					tex_resolve(TerrainQuad::blownTextureHandle);
 					mcTextureManager->addTriangle(TerrainQuad::blownTextureHandle,MC2_DRAWALPHA);
 					mcTextureManager->addTriangle(TerrainQuad::blownTextureHandle,MC2_DRAWALPHA);
 					
@@ -311,7 +312,7 @@ void TerrainQuad::setupTextures (void)
 								
 							if (localResult == 1)
 							{
-								mcTextureManager->get_gosTextureHandle(mineTextureHandle);
+								tex_resolve(mineTextureHandle);
 								mcTextureManager->addTriangle(mineTextureHandle, MC2_DRAWALPHA);
 								mcTextureManager->addTriangle(mineTextureHandle, MC2_DRAWALPHA);
 								
@@ -319,7 +320,7 @@ void TerrainQuad::setupTextures (void)
 							}
 							else if (localResult == 2)
 							{
-								mcTextureManager->get_gosTextureHandle(blownTextureHandle);
+								tex_resolve(blownTextureHandle);
 								mcTextureManager->addTriangle(blownTextureHandle, MC2_DRAWALPHA);
 								mcTextureManager->addTriangle(blownTextureHandle, MC2_DRAWALPHA);
 								
@@ -384,7 +385,7 @@ void TerrainQuad::setupTextures (void)
 								
 							if (localResult == 1)
 							{
-								mcTextureManager->get_gosTextureHandle(mineTextureHandle);
+								tex_resolve(mineTextureHandle);
 								mcTextureManager->addTriangle(mineTextureHandle,MC2_DRAWALPHA);
 								mcTextureManager->addTriangle(mineTextureHandle,MC2_DRAWALPHA);
 								
@@ -392,7 +393,7 @@ void TerrainQuad::setupTextures (void)
 							}
 							else if (localResult == 2)
 							{
-								mcTextureManager->get_gosTextureHandle(blownTextureHandle);
+								tex_resolve(blownTextureHandle);
 								mcTextureManager->addTriangle(blownTextureHandle,MC2_DRAWALPHA);
 								mcTextureManager->addTriangle(blownTextureHandle,MC2_DRAWALPHA);
 								
@@ -1644,7 +1645,7 @@ void TerrainQuad::draw (void)
 								wov[_k].fog  = (float)((oVertex[_k].frgb >> 24) & 0xFF) / 255.0f;
 								wov[_k].argb = oVertex[_k].argb;
 							}
-							const DWORD overlayTexId = mcTextureManager->get_gosTextureHandle(overlayHandle);
+							const DWORD overlayTexId = tex_resolve(overlayHandle);
 							if (overlayTexId != 0)
 								gos_PushTerrainOverlay(wov, overlayTexId);
 						}
@@ -1788,7 +1789,7 @@ void TerrainQuad::draw (void)
 								wov[_k].fog  = (float)((oVertex[_k].frgb >> 24) & 0xFF) / 255.0f;
 								wov[_k].argb = oVertex[_k].argb;
 							}
-							const DWORD overlayTexId = mcTextureManager->get_gosTextureHandle(overlayHandle);
+							const DWORD overlayTexId = tex_resolve(overlayHandle);
 							if (overlayTexId != 0)
 								gos_PushTerrainOverlay(wov, overlayTexId);
 						}
@@ -2002,7 +2003,7 @@ void TerrainQuad::draw (void)
 								wov[_k].fog  = (float)((oVertex[_k].frgb >> 24) & 0xFF) / 255.0f;
 								wov[_k].argb = oVertex[_k].argb;
 							}
-							const DWORD overlayTexId = mcTextureManager->get_gosTextureHandle(overlayHandle);
+							const DWORD overlayTexId = tex_resolve(overlayHandle);
 							if (overlayTexId != 0)
 								gos_PushTerrainOverlay(wov, overlayTexId);
 						}
@@ -2144,7 +2145,7 @@ void TerrainQuad::draw (void)
 								wov[_k].fog  = (float)((oVertex[_k].frgb >> 24) & 0xFF) / 255.0f;
 								wov[_k].argb = oVertex[_k].argb;
 							}
-							const DWORD overlayTexId = mcTextureManager->get_gosTextureHandle(overlayHandle);
+							const DWORD overlayTexId = tex_resolve(overlayHandle);
 							if (overlayTexId != 0)
 								gos_PushTerrainOverlay(wov, overlayTexId);
 						}
