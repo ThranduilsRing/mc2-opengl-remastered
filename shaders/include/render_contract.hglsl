@@ -1,0 +1,79 @@
+// render_contract.hglsl — Render Contract Registry GLSL helpers (phase 1).
+//
+// GBuffer1 (color attachment 1) is RGBA16F.
+//   .rgb = normal-encoded (n * 0.5 + 0.5)
+//   .a   = post-process shadow mask:
+//          a > 0.5  → shadow_screen.frag skips this pixel (self-shadow handled)
+//          a <= 0.5 → shadow_screen.frag applies post-shadow normally
+//
+// Every fragment shader that writes attachment 1 must use one of these
+// helpers. No shader may write `GBuffer1 = vec4(...)` directly; a grep
+// census in scripts/check-render-contract-gbuffer1.sh enforces this.
+//
+// Spec: docs/superpowers/specs/2026-04-26-render-contract-registry-design.md
+
+#ifndef RENDER_CONTRACT_HGLSL
+#define RENDER_CONTRACT_HGLSL
+
+// Pixel handles its own shadow inside this shader. Used by terrain base,
+// grass, terrain overlays, terrain decals.
+PREC vec4 rc_gbuffer1_shadowHandled(PREC vec3 normal) {
+    return vec4(normal * 0.5 + 0.5, 1.0);
+}
+
+// Pixel is eligible for screen-space shadow application by shadow_screen.frag.
+// Used by static props and any future world-space object renderer with a
+// G-buffer write.
+PREC vec4 rc_gbuffer1_screenShadowEligible(PREC vec3 normal) {
+    return vec4(normal * 0.5 + 0.5, 0.0);
+}
+
+// PRE-ENCODED-NORMAL VARIANT — same semantic as rc_gbuffer1_shadowHandled,
+// but for callsites that emit a literal (0.5, 0.5, 1.0) without computing
+// a normal (early-out / debug paths in gos_terrain.frag and the four sites
+// in terrain_overlay.frag).
+PREC vec4 rc_gbuffer1_shadowHandled_flatUp() {
+    return vec4(0.5, 0.5, 1.0, 1.0);
+}
+
+// LEGACY DEBUG SENTINEL (intentionally legacy-named). Used only by the
+// static_prop.frag debug paths that emit a sentinel color/normal pair
+// without real lighting. Not a recommended pattern for new shaders;
+// preserved here so the debug paths route through the registry rather
+// than writing literals. The grep census enforces single-shader usage.
+PREC vec4 rc_gbuffer1_legacyDebugSentinelScreenShadowEligible() {
+    return vec4(0.0, 0.0, 1.0, 0.0);
+}
+
+// LEGACY ESCAPE HATCH (intentionally ugly name). Used only by the
+// gos_terrain.frag water/shoreline paths (lines 533, 555, 591) that
+// today write a CONTINUOUS materialAlpha into the post-shadow MASK
+// channel. The mask is supposed to be binary; a continuous value here
+// is an undocumented overload that flips shadow behavior based on water
+// depth / shoreline blend. See spec section 3.1 (CONTRACT VIOLATION).
+//
+// DO NOT use this helper in any other shader. New callsites must use
+// rc_gbuffer1_shadowHandled or rc_gbuffer1_screenShadowEligible. The
+// grep census enforces single-shader usage.
+//
+// This helper exists only to preserve byte-identical pixel output through
+// the inert phase. Resolution is follow-up F1 (split material alpha from
+// shadow mask, possibly via bit-packing or a dedicated channel).
+PREC vec4 rc_gbuffer1_legacyTerrainMaterialAlpha(PREC vec3 normal,
+                                                  PREC float materialAlpha) {
+    return vec4(normal * 0.5 + 0.5, materialAlpha);
+}
+
+// Reader side — used by shadow_screen.frag and any future post-process
+// pass that gates on the mask.
+//
+// CANONICAL THRESHOLD DEFINITION. After commit 6, shadow_screen.frag
+// must not directly threshold GBuffer1.a. This function is the sole
+// canonical definition of the post-shadow mask threshold; any future
+// change to the threshold value or storage encoding (e.g. follow-up F1
+// bit-packing) modifies this function and nothing else.
+bool rc_pixelHandlesOwnShadow(PREC vec4 gbuffer1) {
+    return gbuffer1.a > 0.5;
+}
+
+#endif // RENDER_CONTRACT_HGLSL
