@@ -65,7 +65,7 @@ Each frame renders in this order:
 2. **Terrain** -- tessellated PBR splatting (`gos_terrain.frag`, `.vert`, `.tcs`, `.tes`)
 3. **Overlays** -- roads, cement, decals (`gos_tex_vertex.frag`)
 4. **Water** -- separate overlay, not part of terrain splatting (`gos_tex_vertex.frag`)
-5. **3D Objects** -- mechs, buildings, trees (`object_tex.frag`, `gos_vertex_lighted.frag`)
+5. **3D Objects** -- mechs, buildings, vehicles (`gos_tex_vertex_lighted.frag`); static props (`static_prop.frag`)
 6. **Particles** -- gosFX effects (`gos_tex_vertex.frag`)
 7. **Post-processing** -- bloom, shadow pass, FXAA, tonemapping (`postprocess.frag`, etc.)
 8. **HUD/UI** -- 2D overlays (`gos_tex_vertex.frag`, `gos_text.frag`)
@@ -125,8 +125,7 @@ All post-processing is managed by `gosPostProcess` in `gos_postprocess.cpp/.h`.
 | `gos_tex_vertex_lighted.frag` | Lit textured vertices |
 | `gos_vertex.frag/vert` | Untextured colored vertices |
 | `gos_vertex_lighted.frag` | Lit untextured vertices |
-| `object_tex.frag` | 3D objects (mechs, buildings) |
-| `gos_text.frag` | Text rendering |
+| `gos_text.frag` | Text rendering (drawn to default FB after post-process composite) |
 | `skybox.frag/vert` | Procedural sky gradient + sun disc |
 | `bloom_threshold.frag` | Bright-pass extraction for bloom |
 | `bloom_blur.frag` | Gaussian blur (horizontal + vertical) |
