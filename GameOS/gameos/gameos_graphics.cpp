@@ -2843,6 +2843,7 @@ void gosRenderer::terrainDrawIndexedPatches(gosRenderMaterial* material, gosMesh
     }
 }
 
+// [RENDER_CONTRACT:Pass=Grass id=gosRenderer_drawGrassPass]
 void gosRenderer::drawGrassPass(gosMesh* mesh) {
     ZoneScopedN("Grass.Draw");
     TracyGpuZone("Grass.Draw");
@@ -2990,6 +2991,7 @@ void gosRenderer::drawIndexedTris(gos_VERTEX* vertices, int num_vertices, WORD* 
         tmat->setTransform(projection_);
         tmat->setFogColor(fog_color_);
         // terrainMVP uploaded via direct GL in terrainDrawIndexedPatches
+        // [RENDER_CONTRACT:Pass=TerrainBase id=gosRenderer_terrainDrawIndexedPatches]
         terrainDrawIndexedPatches(tmat, indexed_tris_);
         // Mark terrain drawn so post-process effects know to run (god rays, shorelines)
         { gosPostProcess* pp = getGosPostProcess(); if (pp) pp->markTerrainDrawn(); }
@@ -4597,6 +4599,7 @@ void gosRenderer::uploadOverlayUniforms_(GLuint shp, const OverlayUniformLocs_& 
 // Render state: opaque, depth-write ON, depth-test LEQUAL (same as solid terrain).
 // MRT: terrain_overlay.frag writes GBuffer1.alpha=1 → shadow_screen skips these pixels.
 // Batch cleared after draw.
+// [RENDER_CONTRACT:Pass=TerrainOverlay id=gosRenderer_drawTerrainOverlays]
 void gosRenderer::drawTerrainOverlays()
 {
     if (terrainOverlayBatch_.draws.empty() || !overlayProg_) {
@@ -4649,6 +4652,7 @@ void gosRenderer::drawTerrainOverlays()
 // Draw the decal batch (bomb craters + mech footprints).
 // Render state: alpha blend, depth-write OFF, depth-test LEQUAL.
 // Batch cleared after draw.
+// [RENDER_CONTRACT:Pass=TerrainDecal id=gosRenderer_drawDecals]
 void gosRenderer::drawDecals()
 {
     if (decalBatch_.draws.empty() || !decalProg_) {

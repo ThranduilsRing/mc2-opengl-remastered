@@ -661,6 +661,10 @@ bool uploadAllBucketsIfNeeded() {
 
 } // namespace
 
+// [RENDER_CONTRACT:Pass=StaticProp id=GpuStaticPropBatcher_flush]
+//   Routes through static_prop.frag which writes
+//   rc_gbuffer1_screenShadowEligible (production) or
+//   rc_gbuffer1_legacyDebugSentinelScreenShadowEligible (debug).
 void GpuStaticPropBatcher::flush() {
     ZoneScopedN("GpuStaticProps.Flush");
 

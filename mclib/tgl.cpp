@@ -2545,6 +2545,10 @@ long TG_Shape::MultiTransformShape (Stuff::Matrix4D *shapeToClip, Stuff::Point3D
 //-------------------------------------------------------------------------------
 //This function takes the current listOfVisibleFaces and draws them using
 //gos_DrawTriangle.
+// [RENDER_CONTRACT:Pass=OpaqueObject id=TG_Shape_Render]
+//   May also act as Pass=AlphaObject when material flags select alpha-test
+//   or alpha-blend; see ShadowContract::castsDynamicShadow conjunction at
+//   tgl.cpp:2700-2730. Phase 1 documents only; centralization is F4.
 void TG_Shape::Render (float forceZ, bool isHudElement, BYTE alphaValue, bool isClamped, const Stuff::Matrix4D* shapeToClip, const Stuff::Matrix4D* shapeToWorld)
 {
 	if (!renderTGLShapes)
