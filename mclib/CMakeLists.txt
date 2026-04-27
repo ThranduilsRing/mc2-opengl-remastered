@@ -62,6 +62,7 @@ set(SOURCES ${SOURCES}
     camera.cpp
     projectz_trace.cpp
     projectz_overlay.cpp
+    render_contract.cpp
     clouds.cpp
     crater.cpp
     mapdata.cpp
