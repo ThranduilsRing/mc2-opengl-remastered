@@ -43,6 +43,19 @@ PREC float fbm(PREC vec2 p, int octaves) {
     return value;
 }
 
+#include <include/render_contract.hglsl>
+
+// [RENDER_CONTRACT]
+//   Pass:           PostProcess
+//   Color0:         RGBA fullscreen result (multiplicative shadow factor)
+//   GBuffer1:       READ-ONLY consumer; rc_pixelHandlesOwnShadow is the
+//                   canonical threshold definition for the post-shadow mask.
+//   ShadowContract: castsStatic=false, castsDynamic=false,
+//                   skipsPostScreenShadow=false (this pass IS the
+//                   post-screen shadow application)
+//   StateContract:  depthTest=false, depthWrite=false, blend=Opaque,
+//                   requiresMRT=false (single-attachment fullscreen pass)
+
 in vec2 TexCoord;
 layout(location = 0) out PREC vec4 FragColor;
 
@@ -113,13 +126,13 @@ void main()
 {
     PREC vec4 normalData = texture(sceneNormalTex, TexCoord);
     float depth = texture(sceneDepthTex, TexCoord).r;
-    bool isTerrain = normalData.a > 0.5;
+    bool pixelHandlesOwnShadow = rc_pixelHandlesOwnShadow(normalData);
     // Debug mode: visualize what the shader classifies each pixel as
     if (debugMode == 1) {
         if (depth >= 1.0) {
             FragColor = vec4(0.0, 0.0, 0.0, 1.0);  // black = sky/no depth
-        } else if (isTerrain) {
-            FragColor = vec4(0.4, 0.2, 0.0, 1.0);  // brown = terrain (skipped by this pass)
+        } else if (pixelHandlesOwnShadow) {
+            FragColor = vec4(0.4, 0.2, 0.0, 1.0);  // brown = self-shadow-handled (skipped by this pass)
         } else {
             // Non-terrain: reconstruct and show shadow result
             vec3 worldPos = reconstructWorldPos(TexCoord, depth);
@@ -144,8 +157,9 @@ void main()
         return;
     }
 
-    // Terrain: inline calcShadow + cloud shadows in gos_terrain.frag handle everything.
-    if (isTerrain) {
+    // Self-shadow-handled pixels (terrain, grass, decals, overlays): the
+    // producing shader applied calcShadow + cloud shadows inline. Skip.
+    if (pixelHandlesOwnShadow) {
         FragColor = vec4(1.0);
         return;
     }
