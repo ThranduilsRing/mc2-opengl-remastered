@@ -31,3 +31,10 @@ unsigned int gos_terrain_bridge_getShaderProgram();
 // material->apply() (which calls glUseProgram), so direct glUniform*
 // calls inside it are AFTER apply() per AMD rule line 10.
 void gos_terrain_bridge_bindUniforms(gosRenderMaterial* material);
+
+// Material lifecycle helpers — needed because gosRenderMaterial is defined
+// inside gameos_graphics.cpp and is not visible from gos_terrain_patch_stream.cpp.
+// flush() calls these after issuing per-bucket glDrawArrays.
+void gos_terrain_bridge_applyVertexDeclaration(gosRenderMaterial* material);
+void gos_terrain_bridge_endVertexDeclaration(gosRenderMaterial* material);
+void gos_terrain_bridge_end(gosRenderMaterial* material);

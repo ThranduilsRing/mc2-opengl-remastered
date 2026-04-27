@@ -16,8 +16,14 @@ constexpr uint32_t kPatchStreamRingFrames        = 3;
 // is ~512 * 4K * (32 + 24) bytes = ~115 MB — same total budget as the
 // pre-fix 64 × 32K config, just more granular.
 constexpr uint32_t kPatchStreamMaxBuckets        = 512;
-constexpr uint32_t kPatchStreamColorBytesPerSlot  = 10u * 1024 * 1024;
-constexpr uint32_t kPatchStreamExtrasBytesPerSlot = 8u  * 1024 * 1024;
+// Color and extras must agree on per-slot vertex capacity because
+// flush()'s glDrawArrays uses ONE `first` argument shared across both
+// rings (see static_assert in gos_terrain_patch_stream.cpp). Both rings
+// hold 327,680 verts/slot:
+//   color  = 327,680 verts × 32 B = 10,485,760 B = 10.0 MB
+//   extras = 327,680 verts × 24 B =  7,864,320 B =  7.5 MB
+constexpr uint32_t kPatchStreamColorBytesPerSlot  = 327680u * 32u;  // 10.0 MB
+constexpr uint32_t kPatchStreamExtrasBytesPerSlot = 327680u * 24u;  //  7.5 MB
 
 struct PatchStreamBucket {
     DWORD textureIndex;  // terrain colormap handle, resolved at draw time

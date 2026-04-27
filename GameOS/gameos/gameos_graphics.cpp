@@ -1688,6 +1688,18 @@ void gos_terrain_bridge_bindUniforms(gosRenderMaterial* material) {
     if (g_gos_renderer && material)
         g_gos_renderer->terrainBindUniformsForPatchStream(material);
 }
+
+void gos_terrain_bridge_applyVertexDeclaration(gosRenderMaterial* material) {
+    if (material) material->applyVertexDeclaration();
+}
+
+void gos_terrain_bridge_endVertexDeclaration(gosRenderMaterial* material) {
+    if (material) material->endVertexDeclaration();
+}
+
+void gos_terrain_bridge_end(gosRenderMaterial* material) {
+    if (material) material->end();
+}
 // ──────────────────────────────────────────────────────────────────────────
 
 static GLuint gVAO = 0;
@@ -2712,8 +2724,89 @@ void gosRenderer::endDynamicShadowPass() {
     drainGLErrors("shadow_dynamic");
 }
 
-void gosRenderer::terrainBindUniformsForPatchStream(gosRenderMaterial* material) {
-    if (material) material->apply();   // Task 6 fills in the rest.
+void gosRenderer::terrainBindUniformsForPatchStream(gosRenderMaterial* material)
+{
+    if (!material) return;
+    material->apply();
+    material->setSamplerUnit(gosMesh::s_tex1, 0);
+
+    GLuint shp = material->getShader()->shp_;
+    cacheTerrainUniformLocations(shp);
+    const auto& tl = terrainLocs_;
+
+    float tessParams[4] = { terrain_tess_level_, terrain_tess_level_, 0.0f, 0.0f };
+    float tessDist[4]   = { terrain_tess_dist_near_, terrain_tess_dist_far_, 0.0f, 0.0f };
+    float tessDisp[4]   = { terrain_phong_alpha_, terrain_displace_scale_, 0.0f, 0.0f };
+    if (tl.tessLevel >= 0)         glUniform4fv(tl.tessLevel, 1, tessParams);
+    if (tl.tessDistanceRange >= 0) glUniform4fv(tl.tessDistanceRange, 1, tessDist);
+    if (tl.tessDisplace >= 0)      glUniform4fv(tl.tessDisplace, 1, tessDisp);
+    if (tl.cameraPos >= 0)         glUniform4fv(tl.cameraPos, 1, (const float*)&terrain_camera_pos_);
+    float tessDebugVec[4] = { terrain_debug_mode_, 0.0f, 0.0f, 0.0f };
+    if (tl.tessDebug >= 0)         glUniform4fv(tl.tessDebug, 1, tessDebugVec);
+
+    if (tl.mapHalfExtent >= 0) {
+        gosPostProcess* pp = getGosPostProcess();
+        float halfExt = pp ? pp->getMapHalfExtent() : 0.0f;
+        glUniform1f(tl.mapHalfExtent, halfExt);
+    }
+    if (tl.terrainViewport >= 0)
+        glUniform4fv(tl.terrainViewport, 1, (const float*)&terrain_viewport_);
+    if (terrain_mvp_valid_ && tl.terrainMVP >= 0)
+        glUniformMatrix4fv(tl.terrainMVP, 1, GL_FALSE, (const float*)&terrain_mvp_);
+
+    if (tl.terrainLightDir >= 0)        glUniform4fv(tl.terrainLightDir, 1, (const float*)&terrain_light_dir_);
+    float tiling[4]      = { terrain_detail_tiling_, 0.0f, 0.0f, 0.0f };
+    float strength[4]    = { terrain_detail_strength_, 0.0f, 0.0f, 0.0f };
+    float pomP[4]        = { terrain_pom_scale_, 8.0f, 32.0f, 0.0f };
+    float worldScaleV[4] = { terrain_world_scale_, 0.0f, 0.0f, 0.0f };
+    float cellP[4]       = { terrain_cell_scale_, terrain_cell_jitter_, terrain_cell_rotation_, 0.0f };
+    if (tl.detailNormalTiling >= 0)   glUniform4fv(tl.detailNormalTiling, 1, tiling);
+    if (tl.detailNormalStrength >= 0) glUniform4fv(tl.detailNormalStrength, 1, strength);
+    if (tl.pomParams >= 0)            glUniform4fv(tl.pomParams, 1, pomP);
+    if (tl.terrainWorldScale >= 0)    glUniform4fv(tl.terrainWorldScale, 1, worldScaleV);
+    if (tl.cellBombParams >= 0)       glUniform4fv(tl.cellBombParams, 1, cellP);
+    if (tl.time >= 0) {
+        float elapsed = (float)(timing::get_wall_time_ms() - timeStart_) / 1000.0f;
+        glUniform1f(tl.time, elapsed);
+    }
+
+    for (int i = 0; i < 5; i++) {
+        if (terrain_mat_normal_[i] != 0 && tl.matNormal[i] >= 0) {
+            glUniform1i(tl.matNormal[i], 5 + i);
+            glActiveTexture(GL_TEXTURE5 + i);
+            glBindTexture(GL_TEXTURE_2D, terrain_mat_normal_[i]);
+        }
+    }
+    glActiveTexture(GL_TEXTURE0);
+
+    gosPostProcess* pp = getGosPostProcess();
+    if (pp && pp->shadowsEnabled_) {
+        if (tl.lightSpaceMatrix >= 0) glUniformMatrix4fv(tl.lightSpaceMatrix, 1, GL_FALSE, pp->getLightSpaceMatrix());
+        if (tl.enableShadows >= 0)    glUniform1i(tl.enableShadows, 1);
+        if (tl.shadowSoftness >= 0)   glUniform1f(tl.shadowSoftness, terrain_shadow_softness_);
+        if (tl.shadowMap >= 0) {
+            glUniform1i(tl.shadowMap, 9);
+            glActiveTexture(GL_TEXTURE9);
+            glBindTexture(GL_TEXTURE_2D, pp->getShadowTexture());
+            glActiveTexture(GL_TEXTURE0);
+        }
+        if (pp->getDynamicShadowFBO()) {
+            if (tl.dynamicLightSpaceMatrix >= 0)
+                glUniformMatrix4fv(tl.dynamicLightSpaceMatrix, 1, GL_FALSE, pp->getDynamicLightSpaceMatrix());
+            if (tl.enableDynamicShadows >= 0) glUniform1i(tl.enableDynamicShadows, 1);
+            if (tl.dynamicShadowMap >= 0) {
+                glUniform1i(tl.dynamicShadowMap, 10);
+                glActiveTexture(GL_TEXTURE10);
+                glBindTexture(GL_TEXTURE_2D, pp->getDynamicShadowTexture());
+                glActiveTexture(GL_TEXTURE0);
+            }
+        } else {
+            if (tl.enableDynamicShadows >= 0) glUniform1i(tl.enableDynamicShadows, 0);
+        }
+    } else {
+        if (tl.enableShadows >= 0)        glUniform1i(tl.enableShadows, 0);
+        if (tl.enableDynamicShadows >= 0) glUniform1i(tl.enableDynamicShadows, 0);
+    }
 }
 
 void gosRenderer::terrainDrawIndexedPatches(gosRenderMaterial* material, gosMesh* mesh) {

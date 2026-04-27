@@ -1,14 +1,36 @@
 // GameOS/gameos/gos_terrain_patch_stream.cpp
 #include "gos_terrain_patch_stream.h"
+#include "gos_terrain_bridge.h"   // gos_terrain_bridge_* free functions (Task 0)
 
 #include <cstdio>
 #include <cstdlib>
 #include <cstring>
 #include <vector>
 
-#include "gameos.hpp"   // gos_VERTEX, gos_TERRAIN_EXTRA, DWORD
+#include "gameos.hpp"   // gos_VERTEX, gos_TERRAIN_EXTRA, DWORD, gos_SetRenderState, gos_State_*
 #include "gl/glew.h"    // OpenGL — same include the static-prop batcher uses
 #include "utils/timing.h"  // timing::get_wall_time_ms()
+
+// tex_resolve() — lazy per-frame memoization of terrain texture handles.
+// Defined in mclib but the inline is in the header; pull that header in.
+// tex_resolve_table.h includes txmmgr.h for mcTextureManager + MC_MAXTEXTURES.
+#include "../../mclib/tex_resolve_table.h"
+
+// Load-bearing invariant: flush() computes ONE slotFirstVert from the color
+// ring's vertex pitch and uses it to index BOTH the color VBO and the
+// extras VBO via glDrawArrays' `first` parameter (which applies uniformly
+// to all bound vertex attributes). This requires the two rings to have
+// identical per-slot vertex capacity. If the constants are ever tuned
+// independently, this assert fires at build time before silent
+// misalignment can corrupt extras data. Fix via either:
+//   (a) keep constants in lockstep so the math is identical, or
+//   (b) refactor flush() to use per-attrib base offsets instead of
+//       glDrawArrays' shared `first` (more invasive).
+static_assert(
+    kPatchStreamColorBytesPerSlot  / sizeof(gos_VERTEX) ==
+    kPatchStreamExtrasBytesPerSlot / sizeof(gos_TERRAIN_EXTRA),
+    "Color and extras rings must have equal per-slot vertex capacity; "
+    "slotFirstVert is shared between them via glDrawArrays' `first` arg");
 
 namespace {
     bool s_killswitch = false;
@@ -313,4 +335,151 @@ void TerrainPatchStream::appendTriangle(DWORD textureIndex,
     s_totalVerts += vertsPerTri;
 }
 
-bool TerrainPatchStream::flush()        { return false; /* Task 6 */ }
+bool TerrainPatchStream::flush()
+{
+    if (!s_initOk || !s_killswitch) return false;
+    if (s_overflow) {
+        // Caller falls through to legacy. No fence emitted — no draws
+        // were issued, so the slot is unchanged.
+        return false;
+    }
+    if (s_stagingCount == 0 || s_totalVerts == 0) {
+        // Nothing to draw — treat as success so caller skips legacy too.
+        return true;
+    }
+
+    SavedGLState saved;
+    saveGLState(saved);
+
+    // 1. Consolidate staging into the persistent ring at the active slot.
+    //    Walk staging buckets in deterministic order (insertion order =
+    //    first-append-per-texture order), copy each bucket's color +
+    //    extras into contiguous regions, record firstVertex / vertexCount
+    //    for per-bucket draws.
+    const uint32_t slotFirstVert =
+        s_slot * (kPatchStreamColorBytesPerSlot / (uint32_t)sizeof(gos_VERTEX));
+    gos_VERTEX*        colorSlot  = (gos_VERTEX*)s_colorMap  + slotFirstVert;
+    gos_TERRAIN_EXTRA* extrasSlot = (gos_TERRAIN_EXTRA*)s_extrasMap + slotFirstVert;
+
+    uint32_t cursor = 0;
+    s_drawBucketCount = 0;
+    for (uint32_t i = 0; i < s_stagingCount; ++i) {
+        const PatchStagingBucket& sb = s_staging[i];
+        if (sb.color.empty()) continue;
+        const uint32_t n = (uint32_t)sb.color.size();   // == sb.extras.size()
+
+        memcpy(colorSlot  + cursor, sb.color.data(),  n * sizeof(gos_VERTEX));
+        memcpy(extrasSlot + cursor, sb.extras.data(), n * sizeof(gos_TERRAIN_EXTRA));
+
+        PatchStreamBucket& db = s_drawBuckets[s_drawBucketCount++];
+        db.textureIndex = sb.textureIndex;
+        db.firstVertex  = cursor;
+        db.vertexCount  = n;
+        cursor += n;
+    }
+
+    // 2. Consolidated per-frame upload of terrain_extra_vb_ for grass + any
+    //    legacy reader (§7.5 Option A). ONE glBufferData call regardless of
+    //    bucket count, sourced from the contiguous extras region we just
+    //    wrote into the persistent slot.
+    const GLsizeiptr extrasBytes = (GLsizeiptr)cursor * sizeof(gos_TERRAIN_EXTRA);
+    GLuint legacyExtraVB = (GLuint)gos_terrain_bridge_getExtraVB();
+    if (legacyExtraVB && extrasBytes > 0) {
+        glBindBuffer(GL_ARRAY_BUFFER, legacyExtraVB);
+        glBufferData(GL_ARRAY_BUFFER, extrasBytes, extrasSlot, GL_DYNAMIC_DRAW);
+    }
+
+    // 3. Bind uniforms via the engine bridge — sets the program, samplers,
+    //    terrainMVP GL_FALSE, all tess + splatting + shadow uniforms.
+    //    apply() inside the bridge calls glUseProgram, after which the
+    //    direct glUniform* calls land on the right program (AMD rule).
+    gosRenderMaterial* mat = gos_terrain_bridge_getMaterial();
+    if (!mat) {
+        // No terrain material — abort modern path. Caller falls back to legacy.
+        restoreGLState(saved);
+        return false;
+    }
+    gos_terrain_bridge_bindUniforms(mat);
+
+    // 4. Bind our persistent color ring as GL_ARRAY_BUFFER and issue
+    //    applyVertexDeclaration so locations 0-3 read from it.
+    glBindBuffer(GL_ARRAY_BUFFER, s_colorBuf);
+    gos_terrain_bridge_applyVertexDeclaration(mat);
+
+    // 5. Bind our persistent extras ring at locations 4-5 (worldPos / worldNorm).
+    //    Cache attrib locations on first use to avoid per-draw glGetAttribLocation stall.
+    static GLint locWorldPos  = -1;
+    static GLint locWorldNorm = -1;
+    if (locWorldPos < 0 || locWorldNorm < 0) {
+        GLuint shp = (GLuint)gos_terrain_bridge_getShaderProgram();
+        if (shp) {
+            locWorldPos  = glGetAttribLocation(shp, "worldPos");
+            locWorldNorm = glGetAttribLocation(shp, "worldNorm");
+        }
+    }
+    glBindBuffer(GL_ARRAY_BUFFER, s_extrasBuf);
+    // CRITICAL: attribute pointer offset is 0 (just the field offset
+    // within gos_TERRAIN_EXTRA). The slot offset is applied EXACTLY ONCE
+    // via the `first` argument of glDrawArrays below. If we also baked
+    // it into the pointer offset, the GPU would read from
+    // (slotFirstVert + firstVertex) for color but
+    // (2*slotFirstVert + firstVertex) for extras — desyncing worldPos /
+    // worldNorm from screen-space color data.
+    if (locWorldPos >= 0) {
+        glEnableVertexAttribArray(locWorldPos);
+        glVertexAttribPointer(locWorldPos, 3, GL_FLOAT, GL_FALSE,
+            sizeof(gos_TERRAIN_EXTRA),
+            (void*)0);
+    }
+    if (locWorldNorm >= 0) {
+        glEnableVertexAttribArray(locWorldNorm);
+        glVertexAttribPointer(locWorldNorm, 3, GL_FLOAT, GL_FALSE,
+            sizeof(gos_TERRAIN_EXTRA),
+            (void*)(3 * sizeof(float)));
+    }
+
+    glPatchParameteri(GL_PATCH_VERTICES, 3);
+
+    // 6. Per-bucket draws. Each bucket = one texture change. The slot offset
+    //    is added to the `first` argument of glDrawArrays — this is the ONE
+    //    place the slot offset is applied, for both the color VBO and the
+    //    extras VBO simultaneously (since glDrawArrays' `first` is
+    //    passed to every bound vertex attribute, both rings advance in lockstep).
+    for (uint32_t b = 0; b < s_drawBucketCount; ++b) {
+        const PatchStreamBucket& bk = s_drawBuckets[b];
+        gos_SetRenderState(gos_State_TextureAddress, gos_TextureClamp);
+        gos_SetRenderState(gos_State_Terrain, 1);
+        gos_SetRenderState(gos_State_Texture, tex_resolve(bk.textureIndex));
+
+        glDrawArrays(GL_PATCHES,
+                     (GLint)(slotFirstVert + bk.firstVertex),
+                     (GLsizei)bk.vertexCount);
+    }
+
+    if (locWorldPos  >= 0) glDisableVertexAttribArray(locWorldPos);
+    if (locWorldNorm >= 0) glDisableVertexAttribArray(locWorldNorm);
+    gos_terrain_bridge_endVertexDeclaration(mat);
+    gos_terrain_bridge_end(mat);
+
+    // 7. Fence the slot.
+    if (s_fence[s_slot]) glDeleteSync(s_fence[s_slot]);
+    s_fence[s_slot] = glFenceSync(GL_SYNC_GPU_COMMANDS_COMPLETE, 0);
+
+    restoreGLState(saved);
+
+    if (!s_firstFlushSeen) {
+        s_firstFlushSeen = true;
+        fprintf(stderr,
+            "[PATCH_STREAM v1] event=first_flush slot=%u verts=%u buckets=%u\n",
+            s_slot, cursor, s_drawBucketCount);
+        fflush(stderr);
+    }
+    if (s_traceOn) {
+        fprintf(stderr,
+            "[PATCH_STREAM v1] event=draw_count slot=%u verts=%u buckets=%u\n",
+            s_slot, cursor, s_drawBucketCount);
+        fflush(stderr);
+    }
+
+    return true;
+}
