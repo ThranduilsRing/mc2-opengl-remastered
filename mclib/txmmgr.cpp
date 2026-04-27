@@ -58,6 +58,7 @@
 #include "gos_profiler.h"
 #include "../GameOS/gameos/gos_static_prop_batcher.h"
 #include "../GameOS/gameos/gos_validate.h"  // drainGLErrors (Tier-1 instr §4)
+#include "../GameOS/gameos/gos_terrain_patch_stream.h"
 
 //---------------------------------------------------------------------------
 // static globals
@@ -1296,66 +1297,97 @@ void MC_TextureManager::renderLists (void)
 	{
 		ZoneScopedN("Render.TerrainSolid");
 		TracyGpuZone("Render.TerrainSolid");
-	bool bSkip_DRAWSOLID = false;
-	for (long i=0;i<nextAvailableVertexNode && !bSkip_DRAWSOLID;i++)
-	{
-		if ((masterVertexNodes[i].flags & MC2_DRAWSOLID) &&
-			(masterVertexNodes[i].vertices))
-		{
-			if (masterVertexNodes[i].flags & MC2_ISTERRAIN) {
-				gos_SetRenderState( gos_State_TextureAddress, gos_TextureClamp );
-				gos_SetRenderState( gos_State_Terrain, 1 );
-			} else {
-				gos_SetRenderState( gos_State_TextureAddress, gos_TextureWrap );
-				gos_SetRenderState( gos_State_Terrain, 0 );
-			}
 
-			DWORD totalVertices = masterVertexNodes[i].numVertices;
-			if (masterVertexNodes[i].currentVertex != (masterVertexNodes[i].vertices + masterVertexNodes[i].numVertices))
+		// Modern path. flush() returns true on success and false on overflow
+		// / not-ready / not-killswitched. On false we fall through to the
+		// legacy loop for the WHOLE FRAME — never partial-frame. The legacy
+		// ring data has been kept in sync by addVertices/fillTerrainExtra
+		// running unconditionally in quad.cpp.
+		bool modernHandled = false;
+		if (TerrainPatchStream::isReady() && !TerrainPatchStream::isOverflowed()) {
+			modernHandled = TerrainPatchStream::flush();
+		}
+
+		bool bSkip_DRAWSOLID = false;
+		if (!modernHandled) {
+			// EXACT existing legacy loop body, preserved bit-for-bit.
+			for (long i=0;i<nextAvailableVertexNode && !bSkip_DRAWSOLID;i++)
 			{
-				totalVertices = masterVertexNodes[i].currentVertex - masterVertexNodes[i].vertices;
-			}
-
-			// Set per-node terrain extras for tessellation VBO alignment
-			if ((masterVertexNodes[i].flags & MC2_ISTERRAIN) && masterVertexNodes[i].extras) {
-				int extraCount = masterVertexNodes[i].currentExtra
-					? (int)(masterVertexNodes[i].currentExtra - masterVertexNodes[i].extras)
-					: 0;
-				gos_SetTerrainBatchExtras(masterVertexNodes[i].extras, extraCount);
-			} else {
-				gos_SetTerrainBatchExtras(NULL, 0);
-			}
-
-			if (totalVertices && (totalVertices < MAX_SENDDOWN))
-			{
-				gos_SetRenderState( gos_State_Texture, tex_resolve(masterVertexNodes[i].textureIndex));
-				gos_RenderIndexedArray( masterVertexNodes[i].vertices, totalVertices, indexArray, totalVertices );
-			}
-			else if (totalVertices > MAX_SENDDOWN)
-			{
-				gos_SetRenderState( gos_State_Texture, tex_resolve(masterVertexNodes[i].textureIndex));
-
-				//Must divide up vertices into batches of 10,000 each to send down.
-				// Somewhere around 20000 to 30000 it really gets screwy!!!
-				long currentVertices = 0;
-				while (currentVertices < totalVertices)
+				if ((masterVertexNodes[i].flags & MC2_DRAWSOLID) &&
+					(masterVertexNodes[i].vertices))
 				{
-					gos_VERTEX *v = masterVertexNodes[i].vertices + currentVertices;
-					long tVertices = totalVertices - currentVertices;
-					if (tVertices > MAX_SENDDOWN)
-						tVertices = MAX_SENDDOWN;
+					if (masterVertexNodes[i].flags & MC2_ISTERRAIN) {
+						gos_SetRenderState( gos_State_TextureAddress, gos_TextureClamp );
+						gos_SetRenderState( gos_State_Terrain, 1 );
+					} else {
+						gos_SetRenderState( gos_State_TextureAddress, gos_TextureWrap );
+						gos_SetRenderState( gos_State_Terrain, 0 );
+					}
 
-					gos_RenderIndexedArray(v, tVertices, indexArray, tVertices );
+					DWORD totalVertices = masterVertexNodes[i].numVertices;
+					if (masterVertexNodes[i].currentVertex != (masterVertexNodes[i].vertices + masterVertexNodes[i].numVertices))
+					{
+						totalVertices = masterVertexNodes[i].currentVertex - masterVertexNodes[i].vertices;
+					}
 
-					currentVertices += tVertices;
+					// Set per-node terrain extras for tessellation VBO alignment
+					if ((masterVertexNodes[i].flags & MC2_ISTERRAIN) && masterVertexNodes[i].extras) {
+						int extraCount = masterVertexNodes[i].currentExtra
+							? (int)(masterVertexNodes[i].currentExtra - masterVertexNodes[i].extras)
+							: 0;
+						gos_SetTerrainBatchExtras(masterVertexNodes[i].extras, extraCount);
+					} else {
+						gos_SetTerrainBatchExtras(NULL, 0);
+					}
+
+					if (totalVertices && (totalVertices < MAX_SENDDOWN))
+					{
+						gos_SetRenderState( gos_State_Texture, tex_resolve(masterVertexNodes[i].textureIndex));
+						gos_RenderIndexedArray( masterVertexNodes[i].vertices, totalVertices, indexArray, totalVertices );
+					}
+					else if (totalVertices > MAX_SENDDOWN)
+					{
+						gos_SetRenderState( gos_State_Texture, tex_resolve(masterVertexNodes[i].textureIndex));
+
+						//Must divide up vertices into batches of 10,000 each to send down.
+						// Somewhere around 20000 to 30000 it really gets screwy!!!
+						long currentVertices = 0;
+						while (currentVertices < totalVertices)
+						{
+							gos_VERTEX *v = masterVertexNodes[i].vertices + currentVertices;
+							long tVertices = totalVertices - currentVertices;
+							if (tVertices > MAX_SENDDOWN)
+								tVertices = MAX_SENDDOWN;
+
+							gos_RenderIndexedArray(v, tVertices, indexArray, tVertices );
+
+							currentVertices += tVertices;
+						}
+					}
+					//Reset the list to zero length to avoid drawing more then once!
+					//Also comes in handy if gameLogic is not called.
+					masterVertexNodes[i].currentVertex = masterVertexNodes[i].vertices;
 				}
 			}
-			//Reset the list to zero length to avoid drawing more then once!			
-			//Also comes in handy if gameLogic is not called.
-			masterVertexNodes[i].currentVertex = masterVertexNodes[i].vertices;
+		} else {
+			// Modern handled — still need to reset the legacy ring's
+			// currentVertex pointers so next frame's appends start fresh.
+			// This loop is the legacy reset that the if-branch did
+			// implicitly via the draw-then-reset pattern.
+			//
+			// CRITICAL: do NOT touch currentExtra. That pointer's lifecycle
+			// is owned by addTerrainExtra / clearArrays — frame-reset is
+			// via clearArrays() per spec §3. Adding a currentExtra reset
+			// here would be a double-reset bug.
+			for (long i = 0; i < nextAvailableVertexNode; i++) {
+				if ((masterVertexNodes[i].flags & MC2_DRAWSOLID) &&
+					(masterVertexNodes[i].vertices))
+				{
+					masterVertexNodes[i].currentVertex = masterVertexNodes[i].vertices;
+				}
+			}
 		}
-	}
-	} // end Render.TerrainSolid zone
+	}   // end Render.TerrainSolid zone
 	drainGLErrors("terrain");
 
 	// Task 10 flush() — moved here from after Render.3DObjects because
