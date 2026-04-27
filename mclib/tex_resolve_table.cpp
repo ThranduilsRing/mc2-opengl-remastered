@@ -44,12 +44,23 @@ void texResolveLogOOB(DWORD nodeId)
 
 void initTexResolveTable(void)
 {
-    // Validate implies enabled — otherwise setting only MC2_MODERN_TEX_RESOLVE_VALIDATE
-    // would print "validate" at startup but tex_resolve() would short-circuit on !enabled.
+    // Default ON with explicit opt-out. MC2_MODERN_TEX_RESOLVE=0|false|off disables.
+    // MC2_MODERN_TEX_RESOLVE_VALIDATE implies enabled regardless of the opt-out.
     g_texResolveTable.validate = (getenv("MC2_MODERN_TEX_RESOLVE_VALIDATE") != nullptr);
-    g_texResolveTable.enabled  = g_texResolveTable.validate
-                              || (getenv("MC2_MODERN_TEX_RESOLVE") != nullptr);
-    g_texResolveTable.trace    = (getenv("MC2_MODERN_TEX_RESOLVE_TRACE") != nullptr);
+    if (g_texResolveTable.validate) {
+        g_texResolveTable.enabled = true;
+    } else {
+        const char* env = getenv("MC2_MODERN_TEX_RESOLVE");
+        if (env != nullptr) {
+            g_texResolveTable.enabled =
+                strcmp(env, "0")     != 0 &&
+                _stricmp(env, "false") != 0 &&
+                _stricmp(env, "off")   != 0;
+        } else {
+            g_texResolveTable.enabled = true;  // promoted default
+        }
+    }
+    g_texResolveTable.trace = (getenv("MC2_MODERN_TEX_RESOLVE_TRACE") != nullptr);
 
     memset(g_texResolveTable.handles, 0xFF, sizeof(g_texResolveTable.handles));
     g_texResolveTable.buildGeneration   = 0;
@@ -58,7 +69,7 @@ void initTexResolveTable(void)
 
     const char* mode = "off";
     if (g_texResolveTable.validate)      mode = "validate";
-    else if (g_texResolveTable.enabled)  mode = "on";
+    else if (g_texResolveTable.enabled)  mode = "on (default)";
 
     printf("[TEX_RESOLVE v1] event=startup mode=%s max_textures=%d\n",
            mode, (int)MC_MAXTEXTURES);
