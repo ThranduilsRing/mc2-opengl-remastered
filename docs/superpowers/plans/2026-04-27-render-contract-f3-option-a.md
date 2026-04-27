@@ -190,7 +190,7 @@ echo "Exit: $?"
 
 Expected: exit 0, 5/5 PASS.
 
-**Visual A/B note:** Behavior should be byte-equivalent here. The sentinel only affects pixels not overwritten by terrain/overlay/decal/grass/static-prop/object passes. Today those pixels have alpha=1.0 from `glClearColor`, but they are also depth=1.0 (sky pixels) which `shadow_screen.frag` skips at line 132 (`if (depth >= 1.0) ...`). So no visible difference is expected. Spot-check mech post-shadow: still applies as before.
+**Visual A/B note:** No visible difference expected. The sentinel only affects pixels not overwritten by terrain/overlay/decal/grass/static-prop/object passes. Today those pixels have alpha=1.0 from `glClearColor`, but they are also depth=1.0 (sky pixels) which `shadow_screen.frag` skips at line 132 (`if (depth >= 1.0) ...`). Smoke + visual A/B should pass. Spot-check mech post-shadow: still applies as before.
 
 - [ ] **Step 1.8: Commit.**
 
@@ -207,10 +207,10 @@ The sentinel (0.5, 0.5, 1.0, 0.0) — flat-up encoded normal, alpha=0
 (post-shadow eligible) — gives every uncovered pixel a defined,
 post-shadow-eligible default.
 
-Today this is benign because uncovered pixels are sky (depth=1.0)
-which shadow_screen.frag skips. Setting the sentinel explicitly
-removes the dependence on the depth-skip side path so the registry's
-coherence guarantee stands without it.
+Today this is benign in practice because uncovered pixels are sky
+(depth=1.0) which shadow_screen.frag skips. Setting the sentinel
+explicitly removes the dependence on the depth-skip side path so the
+registry's coherence guarantee stands without it.
 
 clearGBuffer1 must be called while MRT is bound (after beginScene's
 glDrawBuffers(2)) — the call site in gameosmain.cpp post-line-456
@@ -219,8 +219,7 @@ satisfies that.
 enableMRT/disableMRT remain defined-but-unused under Option A.
 Removal is a post-F3 cleanup.
 
-Smoke tier1 5/5 PASS. Visual A/B byte-equivalent (no uncovered
-non-sky pixels exist in current rendering).
+Smoke tier1 5/5 PASS. No visible difference in A/B.
 
 Co-Authored-By: Claude Sonnet 4.6 <noreply@anthropic.com>
 EOF
@@ -236,28 +235,29 @@ EOF
 **Files:**
 - Modify: `shaders/gos_tex_vertex_lighted.frag` (cherry-picked from `claude/f3-amd-canary-temp` HEAD `0173a31`)
 
-- [ ] **Step 2.1: Cherry-pick.**
+- [ ] **Step 2.1: Cherry-pick changes into the working tree (no commit yet).**
 
 ```bash
 cd "A:/Games/mc2-opengl-src/.claude/worktrees/nifty-mendeleev"
-git cherry-pick 0173a31
+git cherry-pick --no-commit 0173a31
+git status
 ```
 
-Expected: clean cherry-pick onto `claude/nifty-mendeleev`. The commit message will be the canary's original message — that's OK, but we'll amend it to remove the "THROWAWAY" framing.
+Expected: `gos_tex_vertex_lighted.frag` modified and staged. No commit yet — preserves "commit after green" discipline.
 
-- [ ] **Step 2.2: Inspect the diff.**
+- [ ] **Step 2.2: Inspect the staged diff.**
 
 ```bash
-git show HEAD --stat
-git show HEAD -- shaders/gos_tex_vertex_lighted.frag
+git diff --cached -- shaders/gos_tex_vertex_lighted.frag
 ```
 
-Expected: 1 file changed, ~11 insertions. The shader gains `#include <include/render_contract.hglsl>`, `layout (location=1) out PREC vec4 GBuffer1;`, and `GBuffer1 = rc_gbuffer1_screenShadowEligible(normalize(Normal));`.
+Expected: ~11 insertions. The shader gains `#include <include/render_contract.hglsl>`, `layout (location=1) out PREC vec4 GBuffer1;`, and `GBuffer1 = rc_gbuffer1_screenShadowEligible(normalize(Normal));`.
 
-- [ ] **Step 2.3: Amend commit message to reflect F3 production context.**
+- [ ] **Step 2.3: (deferred to Step 2.7 — commit after smoke gate).**
 
-```bash
-git commit --amend -m "$(cat <<'EOF'
+Commit message template for Step 2.7:
+
+```
 render-contract: F3 Option A — explicit GBuffer1 in gos_tex_vertex_lighted.frag
 
 PRIMARY Group II-Opaque shader (TGL world objects: mechs, buildings,
@@ -284,8 +284,6 @@ Smoke tier1 5/5 PASS. Visual A/B vs. previous commit clean — mech
 post-shadow continues to apply identically.
 
 Co-Authored-By: Claude Sonnet 4.6 <noreply@anthropic.com>
-EOF
-)"
 ```
 
 - [ ] **Step 2.4: Build.**
@@ -311,13 +309,15 @@ Run smoke per Step 1.7. Then launch one mech-heavy mission (e.g., `mc2_10`) and 
 
 Expected: 5/5 PASS, visual A/B clean.
 
-(No new commit at this step — the cherry-pick already landed in 2.1+2.3.)
+- [ ] **Step 2.7: Commit (after smoke green).**
+
+Use the commit message template from Step 2.3 with `git commit -F-` or HEREDOC.
 
 ---
 
 ## Task 3: Migrate `gos_vertex_lighted.frag`
 
-**Goal:** Migrate the lit-untextured Group II-Opaque path. Same callsite as Task 2 (`drawIndexedTris.Lighted`), real per-vertex normal available.
+**Goal:** Migrate the lit-untextured Group II-Opaque path. Same callsite as Task 2 (`drawIndexedTris.Lighted`). Real per-vertex normal if the shader varies one in; flat-up fallback otherwise — Step 3.1 determines which branch to take. Audit §3.5 anticipated a real normal but Step 3.1 is the authoritative check.
 
 **Files:**
 - Modify: `shaders/gos_vertex_lighted.frag`
@@ -422,24 +422,111 @@ EOF
 
 ---
 
-## Task 4: Migrate `shaders/gos_tex_vertex.frag`
+## Task 4 (was Task 6): Verification — V1 (IS_OVERLAY depth-write) and V2 (gosFX depth-write)
 
-**Goal:** Migrate the textured non-lit shader. Used both for non-overlay textured world draws (Group II-Opaque) and the IS_OVERLAY bridge (Group II-Blend per §3.4.b — depth-write off, not load-bearing for coherence). Single shader file covers both variants via `#ifdef IS_OVERLAY`. The unconditional `GBuffer1` write is correct in both cases — overlay pixels with `glDepthMask(GL_FALSE)` get their `GBuffer1` write coalesced into the same pixel as the underlying terrain (terrain still owns depth), but `shadow_screen.frag` reads `GBuffer1` regardless of who owns depth, so an explicit write here is preferable to relying on the underlying surface's mask. Treat the entire shader as Group II-Opaque for F3 purposes.
+**Goal:** Resolve IS_OVERLAY and gosFX depth-write ownership BEFORE migrating `gos_tex_vertex.frag`. The advisor flagged that `shadow_screen.frag` reads `GBuffer1` regardless of who owns depth; an unconditional explicit write to `GBuffer1` from a depth-write-off draw could change post-shadow on pixels currently masked by the underlying surface. Decide migration semantics per actual depth-write state.
 
 **Files:**
-- Modify: `shaders/gos_tex_vertex.frag`
+- No code changes (verification-only)
+- Output: notes for inclusion in Task 6 (was Task 4) decision and Task 7 closing report
 
-- [ ] **Step 4.1: Read the current shader.**
+- [ ] **Step 4.1: Trace IS_OVERLAY depth-write state.**
+
+Find every callsite that sets `gos_State_Overlay`:
+
+```bash
+grep -rn "gos_State_Overlay" GameOS/ mclib/ code/ | head -40
+```
+
+For each callsite, identify whether `gos_State_ZWrite` is also set to 0 in the same context. Look for patterns like:
+
+```cpp
+gos_SetRenderState(gos_State_Overlay, 1);
+gos_SetRenderState(gos_State_ZWrite, 0);  // expected
+```
+
+Record findings:
+- Total IS_OVERLAY callsites: _N_
+- Callsites with confirmed `gos_State_ZWrite = 0`: _N_
+- Callsites NOT setting `gos_State_ZWrite = 0` (write depth on overlays): _N_
+
+- [ ] **Step 4.2: Trace gosFX particle depth-write state.**
+
+```bash
+grep -rn "gos_State_ZWrite\|glDepthMask" mclib/gosfx/ | head -30
+```
+
+For each gosFX submission path (`Card::Render`, `Tube::Render`, etc.), confirm `glDepthMask(GL_FALSE)` or `gos_State_ZWrite = 0` is set before draw.
+
+Record findings analogous to Step 4.1.
+
+- [ ] **Step 4.3: Decide Task 6's migration shape based on findings.**
+
+| Finding | Task 6 (gos_tex_vertex.frag) shape |
+|---|---|
+| All IS_OVERLAY callsites depth-write OFF, all gosFX paths depth-write OFF | **Conditional write via `#ifndef IS_OVERLAY` guard** OR leave shader unchanged. Prefer conditional guard so non-overlay world draws (Group II-Opaque) get explicit `GBuffer1` while overlay/particle paths leave the underlying surface's mask alone. |
+| Any IS_OVERLAY or gosFX path depth-write ON | **PAUSE.** Surface this finding to the operator. Migration shape depends on the specific path; may require per-path analysis. |
+| No production callsite uses non-overlay variant of gos_tex_vertex.frag (only IS_OVERLAY + gosFX) | **Leave shader unchanged.** Document in Task 7. |
+
+- [ ] **Step 4.4: Document findings in a notes file (DO NOT COMMIT).**
+
+```bash
+cat > /tmp/f3-v1-v2-notes.md <<'EOF'
+# F3 V1/V2 Verification Notes (2026-04-27)
+
+## V1 — IS_OVERLAY depth-write
+- Total callsites: <N>
+- Confirmed depth-write off: <N>
+- Depth-write on (Group II-Opaque): <N>
+- Specific callsites if depth-write on:
+  - <file:line>: <context>
+
+## V2 — gosFX particle depth-write
+- Total submission paths: <N>
+- Confirmed depth-write off: <N>
+- Depth-write on: <N>
+- Specific paths if depth-write on:
+  - <file:line>: <context>
+
+## V3 — gos_tex_vertex.frag non-overlay production usage
+- Production paths hitting non-overlay variant: <list or "none found">
+
+## Conclusion
+- Task 6 migration shape: <conditional guard | leave unchanged | per-path>
+EOF
+```
+
+This file is for use in Task 6 and Task 7's closing report; it is not committed to the repo.
+
+- [ ] **Step 4.5: No commit at this step.** Verification is information; conclusions land in Task 6's commit and Task 7's closing report.
+
+---
+
+## Task 5: (was Task 4 — note renumber) Migrate `shaders/gos_tex_vertex.frag`
+
+**Goal:** Migrate the textured non-lit shader, with shape determined by Task 4's V1/V2 findings.
+
+**Files:**
+- Modify: `shaders/gos_tex_vertex.frag` (modification specifics depend on Task 4 outcome)
+
+- [ ] **Step 5.1: Read the current shader and the V1/V2 notes.**
 
 ```bash
 cat shaders/gos_tex_vertex.frag
+cat /tmp/f3-v1-v2-notes.md
 ```
 
-Confirm: no `Normal` varying. **Flat-up case.** Listed in flat-up roster.
+Confirm: no `Normal` varying — flat-up case for any branch.
 
-- [ ] **Step 4.2: Apply the change.**
+- [ ] **Step 5.2: Apply the change per Task 4's decision matrix.**
 
-Edit `shaders/gos_tex_vertex.frag`. Add the include and declaration:
+**Branch A — all overlay/particle paths depth-write OFF (most likely outcome):**
+
+Use a `#ifndef IS_OVERLAY` guard so only non-overlay (Group II-Opaque world draws) write `GBuffer1`. The IS_OVERLAY variant continues to leave attachment 1 to the underlying surface's mask. **`layout(location=1) out` declaration is unconditional** (required for the shader program to be valid against the MRT FBO regardless of variant), but the **write** is guarded.
+
+Note on undefined-output-with-MRT-bound: declaring `location=1` and not writing it leaves attachment 1 with whatever the AMD driver writes to undeclared outputs (today's "lucky default" of `vec4(0,0,0,0)` per the canary-refuted comment, but already known to be `vec4(0,0,0,0)` from the F3 canary observation). However, for IS_OVERLAY/particle pixels with depth-write OFF, the underlying surface owned the prior `GBuffer1` write — so the only question is whether the un-declared (or un-written-when-declared) location=1 corrupts the underlying value. The canary verdict says it does NOT corrupt on AMD, and the `#ifndef` guard means the location=1 write simply doesn't happen for the variant — the GLSL compiler emits no write, so the existing buffer contents are preserved by the MRT driver behavior the canary validated.
+
+Edit `shaders/gos_tex_vertex.frag`:
 
 ```glsl
 //#version 300 es
@@ -453,13 +540,11 @@ in PREC vec2 Texcoord;
 in PREC float FogValue;
 
 layout (location=0) out PREC vec4 FragColor;
-// F3 Option A: post-shadow-eligible mask + flat-up normal (no Normal varying).
-// Covers both the non-overlay variant (Group II-Opaque) and the IS_OVERLAY
-// bridge (Group II-Blend per audit §3.4.b). Explicit write is correct in
-// both cases; overlay paths with depth-write off don't own depth, but
-// shadow_screen.frag reads GBuffer1 regardless of depth ownership, so an
-// explicit post-shadow-eligible value is the coherent answer.
-// Listed in flat-up roster of F3 closing report.
+// F3 Option A: declared unconditionally (program must be valid against the MRT
+// FBO for both variants), but only written for the non-overlay variant.
+// Overlay/particle paths run with glDepthMask(GL_FALSE) — they don't own the
+// pixel; the underlying surface's GBuffer1 mask is the correct read for
+// shadow_screen.frag at that pixel. See Task 4 V1/V2 notes.
 layout (location=1) out PREC vec4 GBuffer1;
 
 uniform sampler2D tex1;
@@ -475,58 +560,71 @@ Then at the end of `main`:
     	c.rgb = mix(fog_color.rgb, c.rgb, FogValue);
 	FragColor = c;
 
-	// F3 Option A: flat-up fallback (compatibility — no surface normal available).
+#ifndef IS_OVERLAY
+	// F3 Option A: non-overlay variant — Group II-Opaque (depth-writing
+	// textured non-lit world draws). Flat-up fallback (no Normal varying).
 	GBuffer1 = rc_gbuffer1_screenShadowEligible(vec3(0.0, 0.0, 1.0));
+#endif
 }
 ```
 
-- [ ] **Step 4.3: Build, deploy, smoke + visual A/B.**
+**Branch B — Task 4 found a depth-write-ON IS_OVERLAY or gosFX path:** PAUSE and surface to operator. Do not proceed without explicit decision.
 
-Build per Step 1.5; deploy per Step 3.4 (substitute `gos_tex_vertex.frag`); smoke per Step 1.7. Visual A/B: launch a mission with water (e.g., `mc2_24` if it has water; otherwise any mission with road overlays). Confirm:
+**Branch C — Task 4 found no production non-overlay use:** Leave shader unchanged; document in Task 7's closing report.
+
+- [ ] **Step 5.3: Build, deploy, smoke + visual A/B.**
+
+Build per Step 1.5; deploy per Step 3.4 (substitute `gos_tex_vertex.frag`); smoke per Step 1.7.
+
+Visual A/B critical here: launch a mission with water/road overlays AND gosFX particles (e.g., `mc2_10` for mech weapon-fire particles). Confirm:
 - Water appearance unchanged
 - Road overlays / decals appear as before
-- Particles still render correctly (gosFX uses this shader; verify per §3.4.c — depth-write off, no coherence break expected)
+- Particles render correctly (no over-darkening, no missing post-shadow on underlying terrain/object beneath particles)
+- Mech post-shadow on ground continues to apply
 
 Expected: 5/5 PASS, visual A/B clean.
 
-- [ ] **Step 4.4: Commit.**
+- [ ] **Step 5.4: Commit.**
 
-```bash
-git add shaders/gos_tex_vertex.frag
-git commit -m "$(cat <<'EOF'
-render-contract: F3 Option A — explicit GBuffer1 in gos_tex_vertex.frag
+Branch A commit message:
 
-Group II-Opaque (textured non-lit world draws) AND Group II-Blend
-(IS_OVERLAY bridge: water and road overlays; gosFX particle path).
-Per F3 pass audit §3.4, the same shader file serves multiple
-contexts. Single explicit GBuffer1 write covers all of them.
+```
+render-contract: F3 Option A — gos_tex_vertex.frag non-overlay variant
 
-For depth-writing callsites (non-overlay variant), the explicit
-write is the correct coherence answer.
-For depth-write-off callsites (IS_OVERLAY, particles), the
-write lands at the pixel but the underlying surface still owns
-depth; shadow_screen.frag reads GBuffer1 regardless. Explicit
-post-shadow-eligible value matches the surface's intent.
+Group II-Opaque (textured non-lit depth-writing world draws). Per F3
+pass audit §3.4 and V1/V2 verification (Task 4), the IS_OVERLAY
+variant and gosFX particle paths run with depth-write OFF — they do
+not own the pixel for shadow_screen.frag's GBuffer1 read. Migration
+guards the GBuffer1 write with #ifndef IS_OVERLAY so only the
+depth-owning non-overlay variant writes attachment 1. Overlay/particle
+paths leave the underlying surface's mask intact.
+
+layout(location=1) is declared unconditionally to keep the shader
+program valid against the MRT FBO for both variants. The unwritten
+attachment 1 in the IS_OVERLAY variant is preserved by AMD's
+post-canary-validated MRT undeclared-write behavior (matches
+behavior of the previous unmodified shader).
 
 No Normal varying — flat-up fallback. Listed in flat-up roster.
+
+V1 findings: <summary from /tmp/f3-v1-v2-notes.md>
+V2 findings: <summary from /tmp/f3-v1-v2-notes.md>
 
 Smoke tier1 5/5 PASS.
 
 Co-Authored-By: Claude Sonnet 4.6 <noreply@anthropic.com>
-EOF
-)"
 ```
 
 ---
 
-## Task 5: Migrate `shaders/gos_vertex.frag`
+## Task 6: (was Task 5) Migrate `shaders/gos_vertex.frag`
 
 **Goal:** Migrate the basic untextured shader (lines, points, basic colored verts). Debug-tier; smallest pixel coverage of any Group II-Opaque shader.
 
 **Files:**
 - Modify: `shaders/gos_vertex.frag`
 
-- [ ] **Step 5.1: Read.**
+- [ ] **Step 6.1: Read.**
 
 ```bash
 cat shaders/gos_vertex.frag
@@ -534,7 +632,7 @@ cat shaders/gos_vertex.frag
 
 Confirm: no `Normal` varying. Flat-up case.
 
-- [ ] **Step 5.2: Apply the change.**
+- [ ] **Step 6.2: Apply the change.**
 
 Edit `shaders/gos_vertex.frag`:
 
@@ -577,11 +675,11 @@ void main(void)
 }
 ```
 
-- [ ] **Step 5.3: Build, deploy, smoke + visual A/B.**
+- [ ] **Step 6.3: Build, deploy, smoke + visual A/B.**
 
-Per Steps 4.3. Watch for any in-scene-FBO debug visualization (e.g., navmesh debug if any). Expected: no visible difference for production content.
+Per Task 5 Step 5.3. Watch for any in-scene-FBO debug visualization (e.g., navmesh debug if any). Expected: no visible difference for production content.
 
-- [ ] **Step 5.4: Commit.**
+- [ ] **Step 6.4: Commit.**
 
 ```bash
 git add shaders/gos_vertex.frag
@@ -603,76 +701,6 @@ Co-Authored-By: Claude Sonnet 4.6 <noreply@anthropic.com>
 EOF
 )"
 ```
-
----
-
-## Task 6: Verification — V1 (IS_OVERLAY depth-write) and V2 (gosFX depth-write)
-
-**Goal:** Confirm the audit's V1 and V2 verification items so the closing report can record the final classification with evidence.
-
-**Files:**
-- No code changes (verification-only)
-- Output: notes for inclusion in closing report
-
-- [ ] **Step 6.1: Trace IS_OVERLAY depth-write state.**
-
-Find every callsite that sets `gos_State_Overlay`:
-
-```bash
-grep -rn "gos_State_Overlay" GameOS/ mclib/ code/ | head -40
-```
-
-For each callsite, identify whether `gos_State_ZWrite` is also set to 0 in the same context. Look for patterns like:
-
-```cpp
-gos_SetRenderState(gos_State_Overlay, 1);
-gos_SetRenderState(gos_State_ZWrite, 0);  // expected
-```
-
-Record findings:
-- Total IS_OVERLAY callsites: _N_
-- Callsites with confirmed `gos_State_ZWrite = 0`: _N_
-- Callsites NOT setting `gos_State_ZWrite = 0` (write depth on overlays): _N_ (expected: 0)
-
-Expected outcome: every IS_OVERLAY callsite has depth-write off. If any callsite writes depth on an overlay, that's a Group II-Opaque-confirmed-overdraw path; Task 4's explicit write covers it correctly under Option A, so this is informational only.
-
-- [ ] **Step 6.2: Trace gosFX particle depth-write state.**
-
-```bash
-grep -rn "gos_State_ZWrite\|glDepthMask" mclib/gosfx/ | head -30
-```
-
-For each gosFX submission path (`Card::Render`, `Tube::Render`, etc.), confirm `glDepthMask(GL_FALSE)` or `gos_State_ZWrite = 0` is set before draw and restored after.
-
-Record findings analogous to Step 6.1.
-
-- [ ] **Step 6.3: Document findings in a temporary notes file (DO NOT COMMIT).**
-
-```bash
-cat > /tmp/f3-v1-v2-notes.md <<'EOF'
-# F3 V1/V2 Verification Notes (2026-04-27)
-
-## V1 — IS_OVERLAY depth-write
-- Total callsites: <N>
-- Confirmed depth-write off: <N>
-- Depth-write on (Group II-Opaque): <N>
-- Specific callsites if depth-write on:
-  - <file:line>: <context>
-
-## V2 — gosFX particle depth-write
-- Total submission paths: <N>
-- Confirmed depth-write off: <N>
-- Depth-write on: <N>
-- Specific paths if depth-write on:
-  - <file:line>: <context>
-
-Conclusion: <summary>
-EOF
-```
-
-This file is for use in Task 7's closing report; it is not committed to the repo.
-
-- [ ] **Step 6.4: No commit at this step.** Verification is information; the conclusion lands in Task 7's closing report.
 
 ---
 
@@ -832,7 +860,9 @@ EOF
 
 ---
 
-## Task 8 (optional — defer if time-boxed): Cleanup commits
+## Task 8 (DEFERRED — do not execute in this run): Cleanup commits
+
+**Per advisor guidance 2026-04-27, Task 8 is deferred to a separate post-F3 PR.** Mixing cleanup with F3 coherence work increases review surface. Let F3 live for a bit before pruning dead code. The content below is preserved as a checklist for the future cleanup task.
 
 These are independent, low-risk follow-ups. They can land as part of F3 if convenient or as a separate post-F3 cleanup PR.
 
