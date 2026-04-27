@@ -6,6 +6,9 @@
 
 #include <include/lighting.hglsl>
 #include <include/shadow.hglsl>
+// F3 canary (claude/f3-amd-canary-temp): explicit GBuffer1 write to test
+// AMD location=1 corruption claim per render-contract f3 design §4.
+#include <include/render_contract.hglsl>
 
 uniform vec4 light_offset_;
 uniform int gpuProjection;
@@ -21,6 +24,10 @@ in PREC vec3 CameraPos;
 in PREC vec3 MC2WorldPos;
 
 layout (location=0) out PREC vec4 FragColor;
+// F3 canary: explicit post-shadow-eligible write with real per-vertex normal.
+// If AMD RX 7900 corrupts color output as the gos_postprocess.cpp:519-520
+// comment claims, this declaration will surface the failure mode.
+layout (location=1) out PREC vec4 GBuffer1;
 
 uniform sampler2D tex1;
 uniform PREC vec4 fog_color;
@@ -51,4 +58,8 @@ void main(void)
     c.xyz = apply_fog(c.xyz, WorldPos.xyz, CameraPos);
 
 	FragColor = vec4(c.xyz, c.a);
+
+	// F3 canary: post-shadow-eligible mask + real per-vertex normal.
+	// Replaces today's reliance on AMD's vec4(0,0,0,0) undeclared-output behavior.
+	GBuffer1 = rc_gbuffer1_screenShadowEligible(normalize(Normal));
 }
