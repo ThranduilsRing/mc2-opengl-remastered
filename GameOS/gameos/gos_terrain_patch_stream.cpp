@@ -182,13 +182,20 @@ bool TerrainPatchStream::init()
 
     // One-shot reserve so each bucket's std::vector never reallocates
     // during steady-state frames. Total CPU staging RAM at full capacity:
-    //   kPatchStreamMaxBuckets * 32 K verts * (sizeof(gos_VERTEX) + sizeof(gos_TERRAIN_EXTRA))
-    //   = 64 * 32768 * (32 + 24) bytes ≈ 117 MB worst case if every
-    //   bucket maxes out. Typical Wolfman: ~10 active buckets × ~24 K
-    //   verts × 56 B ≈ 13 MB resident.
+    //   kPatchStreamMaxBuckets * 4 K verts * (sizeof(gos_VERTEX) + sizeof(gos_TERRAIN_EXTRA))
+    //   = 512 * 4096 * (32 + 24) bytes ≈ 115 MB worst case if every
+    //   bucket maxes out. Typical mc2_01 standard zoom: ~64-128 active
+    //   buckets × ~600-1500 verts × 56 B ≈ 5-10 MB resident.
+    //
+    // The per-bucket reserve was lowered from 32K to 4K when the bucket
+    // cap was raised from 64 to 512 (post-Task-5 verification revealed
+    // raw terrainHandle counts of 64+ per frame on mc2_01, far exceeding
+    // the audit-derived 5-15 estimate which was the post-mcTextureManager
+    // node count, not the raw callsite count). Total memory budget
+    // unchanged; just redistributed across more, smaller buckets.
     for (auto& b : s_staging) {
-        b.color.reserve(32 * 1024);
-        b.extras.reserve(32 * 1024);
+        b.color.reserve(4 * 1024);
+        b.extras.reserve(4 * 1024);
     }
 
     s_initOk = true;
