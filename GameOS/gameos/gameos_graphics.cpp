@@ -3505,6 +3505,13 @@ void gos_RendererFlushHUDBatch() {
     g_gos_renderer->flushHUDBatch();
 }
 
+// pp->endScene() leaves VAO 0 bound. Any caller that needs to issue
+// gos_Draw* calls after endScene (e.g. projectz_overlay_render) must
+// rebind gVAO first, same as flushHUDBatch() does internally.
+void gos_RendererRebindVAO() {
+    glBindVertexArray(gVAO);
+}
+
 void gos_RendererHandleEvents() {
     gosASSERT(g_gos_renderer);
     g_gos_renderer->handleEvents();

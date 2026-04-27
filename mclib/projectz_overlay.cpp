@@ -11,6 +11,10 @@
 #include <gameos.hpp>
 #include "../GameOS/gameos/gos_profiler.h"
 
+// pp->endScene() leaves VAO 0 bound; rebind the renderer's VAO before any
+// gos_Draw* calls. Defined in GameOS/gameos/gameos_graphics.cpp.
+extern void gos_RendererRebindVAO();
+
 #include <stdio.h>
 #include <math.h>
 #include <float.h>
@@ -37,12 +41,16 @@ static uint32_t     s_dropped  = 0;
 static uint32_t     s_bucketCount[5] = {0, 0, 0, 0, 0};
 static const char*  s_bucketNames[5] = {"green", "yellow", "orange", "red", "purple"};
 
-// Distinct alpha-blended fills (40% alpha => 0x66 = 102/255).
-static const uint32_t COLOR_GREEN  = 0x6600FF00u;
-static const uint32_t COLOR_YELLOW = 0x66FFFF00u;
-static const uint32_t COLOR_ORANGE = 0x66FFA500u;
-static const uint32_t COLOR_RED    = 0x66FF0000u;
-static const uint32_t COLOR_PURPLE = 0x66B040FFu;
+// Colors in gos_VERTEX.argb format (0xAARRGGBB stored little-endian as BGRA).
+// glVertexAttribPointer reads GL_UNSIGNED_BYTE as RGBA (byte0=R,byte1=G,byte2=B,byte3=A),
+// so the bytes map: GL_R=MC2_B, GL_G=MC2_G, GL_B=MC2_R. R and B must be swapped
+// relative to the desired visual RGB to compensate.
+// 40% alpha => 0x66 = 102/255.
+static const uint32_t COLOR_GREEN  = 0x6600FF00u;  // visual (0,255,0)   — R=B=0, no swap needed
+static const uint32_t COLOR_YELLOW = 0x6600FFFFu;  // visual (255,255,0) — was 0x66FFFF00
+static const uint32_t COLOR_ORANGE = 0x6600A5FFu;  // visual (255,165,0) — was 0x66FFA500
+static const uint32_t COLOR_RED    = 0x660000FFu;  // visual (255,0,0)   — was 0x66FF0000
+static const uint32_t COLOR_PURPLE = 0x66FF40B0u;  // visual (176,64,255)— was 0x66B040FF
 
 //--------------------------------------------------------------------
 static const char* s_modeNames[PZ_OVERLAY_MODE_COUNT] = {
@@ -185,22 +193,45 @@ static inline void fill_vert(gos_VERTEX& v, float x, float y, uint32_t argb) {
     v.v    = 0.0f;
 }
 
+// Draw a solid-color quad as two triangles (gos_DrawQuads is globally disabled).
+static void draw_quad_as_tris(float x0, float y0, float x1, float y1, uint32_t argb) {
+    gos_VERTEX v[6];
+    fill_vert(v[0], x0, y0, argb);
+    fill_vert(v[1], x1, y0, argb);
+    fill_vert(v[2], x1, y1, argb);
+    fill_vert(v[3], x0, y0, argb);
+    fill_vert(v[4], x1, y1, argb);
+    fill_vert(v[5], x0, y1, argb);
+    gos_DrawTriangles(v, 6);
+}
+
 void projectz_overlay_render(int viewportW, int viewportH) {
     if (g_pzOverlayMode == PZ_OVERLAY_OFF) return;
-    if (s_triCount <= 0 && s_bucketCount[0] + s_bucketCount[1] + s_bucketCount[2] +
-                          s_bucketCount[3] + s_bucketCount[4] == 0) {
-        // Still draw the legend so the user can see overlay is enabled with no data.
-    }
     ZoneScopedN("projectz_overlay_render");
 
-    // Set up alpha-blended, no-depth-test, no-texture state.
+    // One-shot entry log: confirms render path is reached and shows how many
+    // triangles were recorded this frame. Expected on first RAlt+P press.
+    {
+        static bool s_firstEntry = true;
+        if (s_firstEntry) {
+            s_firstEntry = false;
+            fprintf(stderr, "[PROJECTZ overlay] first render entry: mode=%s triCount=%d\n",
+                    s_modeNames[g_pzOverlayMode], s_triCount);
+            fflush(stderr);
+        }
+    }
+
+    // pp->endScene() leaves VAO 0 bound; rebind so attribute 0 is active
+    // (AMD silently drops draws when attribute 0 is unbound).
+    gos_RendererRebindVAO();
+
+    // Alpha-blended, no-depth-test, no-texture state.
     gos_SetRenderState(gos_State_Texture,        0);
     gos_SetRenderState(gos_State_AlphaMode,      gos_Alpha_AlphaInvAlpha);
     gos_SetRenderState(gos_State_AlphaTest,      0);
     gos_SetRenderState(gos_State_ZCompare,       0);
     gos_SetRenderState(gos_State_ZWrite,         0);
     gos_SetRenderState(gos_State_Filter,         gos_FilterNone);
-    gos_SetRenderState(gos_State_MonoEnable,     1);
     gos_SetRenderState(gos_State_Clipping,       1);
     gos_SetRenderState(gos_State_ShadeMode,      gos_ShadeFlat);
     gos_SetRenderState(gos_State_Culling,        gos_Cull_None);
@@ -215,38 +246,31 @@ void projectz_overlay_render(int viewportW, int viewportH) {
         gos_DrawTriangles(v, 3);
     }
 
-    // Legend: a small color-bar + count strip across the top-left corner.
-    // Each of the five buckets gets a fixed-width swatch labeled by length
-    // proportional to its count. Total bar width = 300px.
+    // Legend: color-bar + count strip in the top-left corner.
+    // gos_DrawQuads is globally disabled, so we emit two triangles per quad.
     {
         const float barX = 10.0f, barY = 10.0f, barH = 14.0f;
         const float barW = 300.0f;
         uint32_t total = 0;
         for (int i = 0; i < 5; i++) total += s_bucketCount[i];
 
-        // Background swatch (semi-opaque black) so colors stand out on terrain.
-        uint32_t bg = 0x80000000u;
-        gos_VERTEX bgQuad[4];
-        fill_vert(bgQuad[0], barX - 2,           barY - 2,     bg);
-        fill_vert(bgQuad[1], barX + barW + 2,    barY - 2,     bg);
-        fill_vert(bgQuad[2], barX + barW + 2,    barY + barH + 2, bg);
-        fill_vert(bgQuad[3], barX - 2,           barY + barH + 2, bg);
-        gos_DrawQuads(bgQuad, 4);
+        // Semi-opaque black background so the color bar stands out on terrain.
+        draw_quad_as_tris(barX - 2, barY - 2, barX + barW + 2, barY + barH + 2, 0x80000000u);
 
         if (total > 0) {
+            // Same R↔B swap as the triangle constants above (GL_RGBA byte order).
             const uint32_t colors[5] = {
-                0xFF00FF00u, 0xFFFFFF00u, 0xFFFFA500u, 0xFFFF0000u, 0xFFB040FFu
+                0xFF00FF00u,  // green  (0,255,0)   — unchanged
+                0xFF00FFFFu,  // yellow (255,255,0) — was 0xFFFFFF00
+                0xFF00A5FFu,  // orange (255,165,0) — was 0xFFFFA500
+                0xFF0000FFu,  // red    (255,0,0)   — was 0xFFFF0000
+                0xFFFF40B0u,  // purple (176,64,255)— was 0xFFB040FF
             };
             float cursor = barX;
             for (int i = 0; i < 5; i++) {
                 if (s_bucketCount[i] == 0) continue;
                 float w = barW * (float)s_bucketCount[i] / (float)total;
-                gos_VERTEX q[4];
-                fill_vert(q[0], cursor,     barY,        colors[i]);
-                fill_vert(q[1], cursor + w, barY,        colors[i]);
-                fill_vert(q[2], cursor + w, barY + barH, colors[i]);
-                fill_vert(q[3], cursor,     barY + barH, colors[i]);
-                gos_DrawQuads(q, 4);
+                draw_quad_as_tris(cursor, barY, cursor + w, barY + barH, colors[i]);
                 cursor += w;
             }
         }
