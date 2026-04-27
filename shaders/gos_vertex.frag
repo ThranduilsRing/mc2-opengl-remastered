@@ -2,11 +2,16 @@
 
 #define PREC highp
 
+#include <include/render_contract.hglsl>
+
 in PREC vec4 Color;
 in PREC vec2 Texcoord;
 in PREC float FogValue;
 
 layout (location=0) out PREC vec4 FragColor;
+// F3 Option A: post-shadow-eligible mask + flat-up normal (debug-tier
+// content: lines, points, basic colored verts). Listed in flat-up roster.
+layout (location=1) out PREC vec4 GBuffer1;
 
 #ifdef ENABLE_TEXTURE1
 uniform sampler2D tex1;
@@ -25,5 +30,8 @@ void main(void)
 	if(fog_color.x>0.0 || fog_color.y>0.0 || fog_color.z>0.0 || fog_color.w>0.0)
 		c.rgb = mix(fog_color.rgb, c.rgb, FogValue);
     FragColor = c;
+
+    // F3 Option A: flat-up fallback (compatibility — no surface normal).
+    GBuffer1 = rc_gbuffer1_screenShadowEligible(vec3(0.0, 0.0, 1.0));
 }
 
