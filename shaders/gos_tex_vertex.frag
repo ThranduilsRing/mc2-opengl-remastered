@@ -2,11 +2,22 @@
 
 #define PREC highp
 
+#include <include/render_contract.hglsl>
+
 in PREC vec4 Color;
 in PREC vec2 Texcoord;
 in PREC float FogValue;
 
 layout (location=0) out PREC vec4 FragColor;
+// F3 Option A: post-shadow-eligible mask + flat-up normal (no Normal varying).
+// Covers non-overlay textured world draws (Group II-Opaque), gosFX particle
+// path (Group II-Blend, but byte-equivalent in alpha to AMD's lucky default
+// of vec4(0,0,0,0) for undeclared MRT outputs), and the dead IS_OVERLAY
+// shader-define variant (selectBasicRenderMaterial sets the define but no
+// shader code branches on it; MC2_GPUOVERLAY render path is never invoked
+// in nifty-mendeleev). See F3 pass audit V1/V2 verification.
+// Listed in flat-up roster of F3 closing report.
+layout (location=1) out PREC vec4 GBuffer1;
 
 uniform sampler2D tex1;
 uniform PREC vec4 fog_color;
@@ -61,4 +72,7 @@ void main(void)
 	if(fog_color.x>0.0 || fog_color.y>0.0 || fog_color.z>0.0 || fog_color.w>0.0)
     	c.rgb = mix(fog_color.rgb, c.rgb, FogValue);
 	FragColor = c;
+
+	// F3 Option A: flat-up fallback (compatibility — no surface normal available).
+	GBuffer1 = rc_gbuffer1_screenShadowEligible(vec3(0.0, 0.0, 1.0));
 }
