@@ -938,9 +938,12 @@ class TG_VertexPool
 
 	public:
 		// Tier-1 instrumentation. All accessed only from the render thread.
-		DWORD            nullCountThisFrame = 0;
-		uint64_t         nullCountMonotonic = 0;
-		TGL_NullSnapshot firstNullSnapshot  = {};
+		DWORD            nullCountThisFrame    = 0;
+		uint64_t         nullCountMonotonic    = 0;
+		TGL_NullSnapshot firstNullSnapshot     = {};
+		DWORD            peakUsedThisMission   = 0;
+
+		DWORD capacity (void) const { return totalVertices; }
 
 		void recordNull (const char* caller, DWORD numRequested, const void* shape)
 		{
@@ -1006,6 +1009,8 @@ class TG_VertexPool
 				result = nextVertex;
 				nextVertex += numRequested;
 			}
+			if (result && numVertices > peakUsedThisMission)
+				peakUsedThisMission = numVertices;
 			if (!result) recordNull(caller, numRequested, shape);
 			return result;
 		}
@@ -1022,9 +1027,12 @@ class TG_GOSVertexPool
 
 	public:
 		// Tier-1 instrumentation (stability spec §2).
-		DWORD            nullCountThisFrame = 0;
-		uint64_t         nullCountMonotonic = 0;
-		TGL_NullSnapshot firstNullSnapshot  = {};
+		DWORD            nullCountThisFrame    = 0;
+		uint64_t         nullCountMonotonic    = 0;
+		TGL_NullSnapshot firstNullSnapshot     = {};
+		DWORD            peakUsedThisMission   = 0;
+
+		DWORD capacity (void) const { return totalVertices; }
 
 		void recordNull (const char* caller, DWORD numRequested, const void* shape)
 		{
@@ -1090,6 +1098,8 @@ class TG_GOSVertexPool
 				result = nextVertex;
 				nextVertex += numRequested;
 			}
+			if (result && numVertices > peakUsedThisMission)
+				peakUsedThisMission = numVertices;
 			if (!result) recordNull(caller, numRequested, shape);
 			return result;
 		}
@@ -1106,9 +1116,12 @@ class TG_TrianglePool
 
 	public:
 		// Tier-1 instrumentation (stability spec §2).
-		DWORD            nullCountThisFrame = 0;
-		uint64_t         nullCountMonotonic = 0;
-		TGL_NullSnapshot firstNullSnapshot  = {};
+		DWORD            nullCountThisFrame    = 0;
+		uint64_t         nullCountMonotonic    = 0;
+		TGL_NullSnapshot firstNullSnapshot     = {};
+		DWORD            peakUsedThisMission   = 0;
+
+		DWORD capacity (void) const { return totalTriangles; }
 
 		void recordNull (const char* caller, DWORD numRequested, const void* shape)
 		{
@@ -1174,6 +1187,8 @@ class TG_TrianglePool
 				result = nextTriangle;
 				nextTriangle += numRequested;
 			}
+			if (result && numTriangles > peakUsedThisMission)
+				peakUsedThisMission = numTriangles;
 			if (!result) recordNull(caller, numRequested, shape);
 			return result;
 		}
@@ -1190,9 +1205,12 @@ class TG_ShadowPool
 
 	public:
 		// Tier-1 instrumentation (stability spec §2).
-		DWORD            nullCountThisFrame = 0;
-		uint64_t         nullCountMonotonic = 0;
-		TGL_NullSnapshot firstNullSnapshot  = {};
+		DWORD            nullCountThisFrame    = 0;
+		uint64_t         nullCountMonotonic    = 0;
+		TGL_NullSnapshot firstNullSnapshot     = {};
+		DWORD            peakUsedThisMission   = 0;
+
+		DWORD capacity (void) const { return totalVertices; }
 
 		void recordNull (const char* caller, DWORD numRequested, const void* shape)
 		{
@@ -1258,6 +1276,8 @@ class TG_ShadowPool
 				result = nextVertex;
 				nextVertex += numRequested;
 			}
+			if (result && numVertices > peakUsedThisMission)
+				peakUsedThisMission = numVertices;
 			if (!result) recordNull(caller, numRequested, shape);
 			return result;
 		}
@@ -1274,9 +1294,12 @@ class TG_DWORDPool
 
 	public:
 		// Tier-1 instrumentation (stability spec §2).
-		DWORD            nullCountThisFrame = 0;
-		uint64_t         nullCountMonotonic = 0;
-		TGL_NullSnapshot firstNullSnapshot  = {};
+		DWORD            nullCountThisFrame    = 0;
+		uint64_t         nullCountMonotonic    = 0;
+		TGL_NullSnapshot firstNullSnapshot     = {};
+		DWORD            peakUsedThisMission   = 0;
+
+		DWORD capacity (void) const { return totalTriangles; }
 
 		void recordNull (const char* caller, DWORD numRequested, const void* shape)
 		{
@@ -1342,6 +1365,8 @@ class TG_DWORDPool
 				result = nextTri;
 				nextTri += numRequested;
 			}
+			if (result && numTriangles > peakUsedThisMission)
+				peakUsedThisMission = numTriangles;
 			if (!result) recordNull(caller, numRequested, shape);
 			return result;
 		}
@@ -1368,6 +1393,11 @@ extern TG_TrianglePool		*trianglePool;
 // Called from GameOS/gameos/gameosmain.cpp just before swap_window().
 void drainTglPoolStats (void);
 void drainTglPoolStatsOnShutdown (void);
+
+// Emit unconditional per-mission peak lines for all live pools.
+// Call just BEFORE any pool destroy() block at mission teardown.
+// context is a short label (e.g. "mission_unload" or "next_mission_start").
+void logTglPoolPeaks (const char* context);
 
 //-------------------------------------------------------------------------------
 // ASE File Parse String Macros

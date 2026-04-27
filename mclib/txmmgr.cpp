@@ -374,6 +374,17 @@ void MC_TextureManager::flush (bool justTextures)
 {
 	if (masterTextureNodes)
 	{
+		{
+			char _cbbuf[128];
+			snprintf(_cbbuf, sizeof(_cbbuf),
+				"[TXM v1] event=mission_unload peak_textures=%ld/%d",
+				peakUsedTextures, MAX_MC2_GOS_TEXTURES);
+			puts(_cbbuf);
+			crashbundle_append(_cbbuf);
+			fflush(stdout);
+		}
+		peakUsedTextures = 0;
+
 		//-----------------------------------------------------
 		// Traverses list of texture nodes and frees each one.
 		long usedCount = 0;
@@ -528,6 +539,7 @@ bool MC_TextureManager::flushCache (void)
 			(masterTextureNodes[i].gosTextureHandle != 0xffffffff))
 		{
 			currentUsedTextures++;
+			if (currentUsedTextures > peakUsedTextures) peakUsedTextures = currentUsedTextures;
 			const bool pinned = (masterTextureNodes[i].neverFLUSH & 1) != 0;
 			const bool unique = masterTextureNodes[i].uniqueInstance != 0;
 			if (pinned) poolPinned++;
@@ -1900,7 +1912,10 @@ DWORD MC_TextureManager::update (void)
 			//Count ACTUAL number of textures being used.
 			// ALSO can't count on turn being right.  Logistics does not update unless simple Camera is up!!
 			if (masterTextureNodes[i].gosTextureHandle != CACHED_OUT_HANDLE)
+			{
 				currentUsedTextures++;
+				if (currentUsedTextures > peakUsedTextures) peakUsedTextures = currentUsedTextures;
+			}
 		}
 		}
 	}
@@ -2389,6 +2404,8 @@ DWORD MC_TextureNode::get_gosTextureHandle (void)	//If texture is not in VidRAM,
 				}
 			}
 			mcTextureManager->currentUsedTextures++;
+			if (mcTextureManager->currentUsedTextures > mcTextureManager->peakUsedTextures)
+				mcTextureManager->peakUsedTextures = mcTextureManager->currentUsedTextures;
 			++gTxmRealizedTotal;
 			TracyPlot("Txm realized total", gTxmRealizedTotal);
 			lastUsed = turn;
@@ -2402,6 +2419,8 @@ DWORD MC_TextureNode::get_gosTextureHandle (void)	//If texture is not in VidRAM,
 				gosTextureHandle = gos_NewEmptyTexture(key,nodeName,width,hints);
 			}
 			mcTextureManager->currentUsedTextures++;
+			if (mcTextureManager->currentUsedTextures > mcTextureManager->peakUsedTextures)
+				mcTextureManager->peakUsedTextures = mcTextureManager->currentUsedTextures;
 			++gTxmRealizedTotal;
 			TracyPlot("Txm realized total", gTxmRealizedTotal);
 			

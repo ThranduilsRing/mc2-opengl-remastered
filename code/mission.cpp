@@ -3067,6 +3067,7 @@ void Mission::initTGLForMission()
 	if (TG_Shape::tglHeap)
 	{
 		ZoneScopedN("Mission::initTGLForMission shutdown");
+		logTglPoolPeaks("mission_unload");
 		//Shut down the TGL RAM pools.
 		if (colorPool)
 		{
@@ -3359,6 +3360,7 @@ void Mission::destroy (bool initLogistics)
 		// End the Tiny Geometry Layer Heap for Logistics
 		if (TG_Shape::tglHeap)
 		{
+			logTglPoolPeaks("mission_unload");
 			//Shut down the TGL RAM pools.
 			if (colorPool)
 			{

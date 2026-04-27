@@ -704,6 +704,7 @@ void TeamSensorSystem::init (void) {
 	numContacts = 0;
 	numEnemyContacts = 0;
 	numSensors = 0;
+	capLoggedThisMission = false;
 	ecms = NULL;
 	jammers = NULL;
 }
@@ -731,7 +732,19 @@ void TeamSensorSystem::setTeam (TeamPtr newTeam) {
 void TeamSensorSystem::addSensor (SensorSystemPtr sensor) {
 
 	if (numSensors == MAX_SENSORS_PER_TEAM)
+	{
+		if (!capLoggedThisMission)
+		{
+			capLoggedThisMission = true;
+			char _cbbuf[128];
+			snprintf(_cbbuf, sizeof(_cbbuf),
+				"[CONTACT v1] event=sensor_cap_hit team=%ld numSensors=%ld max=%d",
+				(long)teamId, (long)numSensors, MAX_SENSORS_PER_TEAM);
+			puts(_cbbuf);
+			fflush(stdout);
+		}
 		Fatal(0, " TeamSensorSystem.addSensor: too many sensors ");
+	}
 
 	sensor->setMasterIndex(numSensors);
 	sensors[numSensors++] = sensor;

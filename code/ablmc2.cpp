@@ -12,6 +12,8 @@
 #include"mclib.h"
 #endif
 
+#include "gos_crashbundle.h"
+
 #ifndef MISSION_H
 #include"mission.h"
 #endif
@@ -7720,6 +7722,17 @@ void ablEndlessStateCallback (UserFile* log) {
 
 //*****************************************************************************
 
+static void logAblFunctionTableCapacity (void)
+{
+	char _cbbuf[128];
+	snprintf(_cbbuf, sizeof(_cbbuf),
+		"[ABL v1] event=functions_registered count=%ld/%d",
+		NumStandardFunctions, MAX_STANDARD_FUNCTIONS);
+	puts(_cbbuf);
+	crashbundle_append(_cbbuf);
+	fflush(stdout);
+}
+
 void initABL (void) {
 
 	// Heaps bumped 8x for mod content (Omnitech/Carver5O ABL scripts are far
@@ -8109,6 +8122,8 @@ void initABL (void) {
 	//static long GodzillaList[5] = {10, 20, 30, 40, 50};
 	//ABLi_registerInteger("godzilla", &Godzilla);
 	//ABLi_registerInteger("godzillalist", &GodzillaList, 5);
+
+	logAblFunctionTableCapacity();
 }
 
 //*****************************************************************************

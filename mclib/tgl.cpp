@@ -3481,6 +3481,21 @@ void drainTglPoolStats (void)
 
 void drainTglPoolStatsOnShutdown (void)
 {
+	// Emit per-pool peak lines while pools are still live (smoke mode never
+	// reaches mission_unload, so this is the only path that fires on process exit).
+	logTglPoolPeaks("process_exit");
+
+	// Texture manager peak (same reason: flush() won't fire in smoke mode).
+	if (mcTextureManager)
+	{
+		char _txmbuf[128];
+		snprintf(_txmbuf, sizeof(_txmbuf),
+			"[TXM v1] event=process_exit peak_textures=%ld/%d",
+			mcTextureManager->getPeakUsedTextures(), MAX_MC2_GOS_TEXTURES);
+		puts(_txmbuf);
+		crashbundle_append(_txmbuf);
+	}
+
 	{
 		char _cbbuf[384];
 		snprintf(_cbbuf, sizeof(_cbbuf),
@@ -3490,6 +3505,55 @@ void drainTglPoolStatsOnShutdown (void)
 			monoOf(facePool),
 			monoOf(shadowPool),
 			monoOf(trianglePool));
+		puts(_cbbuf);
+		crashbundle_append(_cbbuf);
+	}
+	fflush(stdout);
+}
+
+// Unconditional per-mission peak report. Called just before pool destroy()
+// at mission teardown so the counter is still live when we read it.
+void logTglPoolPeaks (const char* context)
+{
+	struct PoolDesc {
+		const char* name;
+		DWORD peak;
+		DWORD cap;
+	};
+
+	// Skip emit if all pools are NULL (first-ever init, nothing to report).
+	bool anyLive = vertexPool || colorPool || facePool || shadowPool || trianglePool;
+	if (!anyLive) return;
+
+	PoolDesc pools[] = {
+		{ "vertex",   vertexPool   ? vertexPool->peakUsedThisMission   : 0u,
+		               vertexPool   ? vertexPool->capacity()             : 0u },
+		{ "color",    colorPool    ? colorPool->peakUsedThisMission    : 0u,
+		               colorPool    ? colorPool->capacity()              : 0u },
+		{ "face",     facePool     ? facePool->peakUsedThisMission     : 0u,
+		               facePool     ? facePool->capacity()               : 0u },
+		{ "shadow",   shadowPool   ? shadowPool->peakUsedThisMission   : 0u,
+		               shadowPool   ? shadowPool->capacity()             : 0u },
+		{ "triangle", trianglePool ? trianglePool->peakUsedThisMission : 0u,
+		               trianglePool ? trianglePool->capacity()           : 0u },
+	};
+
+	for (const auto& p : pools)
+	{
+		char _cbbuf[256];
+		if (p.cap > 0)
+		{
+			unsigned pct = (unsigned)(((unsigned long long)p.peak * 100u) / p.cap);
+			snprintf(_cbbuf, sizeof(_cbbuf),
+				"[TGL_POOL v1] event=%s pool=%-8s peak=%u/%u pct=%u%%",
+				context, p.name, (unsigned)p.peak, (unsigned)p.cap, pct);
+		}
+		else
+		{
+			snprintf(_cbbuf, sizeof(_cbbuf),
+				"[TGL_POOL v1] event=%s pool=%-8s peak=%u/? pct=?%%",
+				context, p.name, (unsigned)p.peak);
+		}
 		puts(_cbbuf);
 		crashbundle_append(_cbbuf);
 	}

@@ -273,6 +273,7 @@ class TeamSensorSystem {
 		long				numEnemyContacts;
 		SensorSystemPtr		sensors[MAX_SENSORS_PER_TEAM];
 		long				numSensors;
+		bool				capLoggedThisMission;
 		SystemTrackerPtr	ecms;
 		long				numEcms;
 		SystemTrackerPtr	jammers;

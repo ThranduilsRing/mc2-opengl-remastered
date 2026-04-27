@@ -352,6 +352,7 @@ class MC_TextureManager
 
 		MC_TextureNode					*masterTextureNodes;		//Dynamically allocated from an MC Heap.
 		long							currentUsedTextures;		//Number of textures on video card.
+		long							peakUsedTextures;			//Mission high-water mark for currentUsedTextures.
 													
 		MC_VertexArrayNode 				*masterVertexNodes;			//Dynamically allocated from an MC Heap.
 		long							nextAvailableVertexNode;	//index to next available vertex Node
@@ -399,6 +400,8 @@ class MC_TextureManager
 	//-----------------
 	public:
 
+		long getPeakUsedTextures (void) const { return peakUsedTextures; }
+
 		void init (void)
 		{
 			masterTextureNodes = NULL;
@@ -408,6 +411,7 @@ class MC_TextureManager
 			textureManagerInstrumented = false;
 			totalCacheMisses = 0;
 			currentUsedTextures = 0;
+			peakUsedTextures = 0;
 			indexArray = NULL;
 			
 			masterVertexNodes = NULL;

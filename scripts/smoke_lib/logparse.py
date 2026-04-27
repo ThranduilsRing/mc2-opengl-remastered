@@ -127,7 +127,7 @@ def parse_log(text: str,
                     s.last_heartbeat_wall_s_load = line_wall
 
         if "[GL_ERROR v1]" in line:        s.gl_errors += 1
-        if "[TGL_POOL v1]" in line and "summary" not in line: s.pool_nulls += 1
+        if "[TGL_POOL v1]" in line and "nulls=" in line: s.pool_nulls += 1
         if "[ASSET_SCALE v1] event=oob_blit" in line: s.asset_oob += 1
         if "[DESTROY v1]" in line and "event=destroy" in line: s.destroys += 1
 
