@@ -1,8 +1,8 @@
 # Render Contract F3 — AMD Canary Report
 
-**Status:** ⏳ **PENDING OBSERVATION** — setup complete, awaiting operator verdict.
-**Date:** 2026-04-26 (setup); observation TBD
-**Branch:** `claude/f3-amd-canary-temp` (throwaway; do not merge)
+**Status:** ✅ **CLEAN** — canary refuted the AMD corruption claim. Option A unblocked.
+**Date:** 2026-04-26 (setup); 2026-04-27 (observation)
+**Branch:** `claude/f3-amd-canary-temp` (throwaway; preserve `0173a31` for cherry-pick into Option A's first migration commit, then delete)
 **Built and deployed from:** `claude/f3-amd-canary-temp` HEAD `0173a31`
 
 This report is committed in placeholder form by the F3 design v2 sequence. The "Verdict" section below is intentionally empty until the operator runs the test and observes the result. The morning-review handoff (§3) is the operator's first action when picking this work back up.
@@ -102,7 +102,23 @@ Fill in §3 below with one of three verdict templates and commit this file on th
 
 ---
 
-## 3. Verdict (TO BE FILLED)
+## 3. Verdict — CLEAN
+
+**Verdict: CLEAN.** Operator played 5–6 missions, completed one, with no issues attributable to the canary. AMD RX 7900 XTX writes `layout(location=1)` outputs from the modified `gos_tex_vertex_lighted.frag` without artifacts: no color-channel corruption, no framebuffer artifacts, no draw drops, post-shadow on mech pixels behaves identically to the mainline build.
+
+**Implication:** F3 implementation proceeds with **Option A**. The `gos_postprocess.cpp:519-520` comment is stale or mis-remembered. `docs/amd-driver-rules.md` is updated in a sibling commit to footnote the canary outcome.
+
+The canary commit (`0173a31`) is suitable to cherry-pick as the first shader migration commit on the F3 implementation plan.
+
+**Notes from observation:**
+- First-run-of-session black-terrain symptom appeared once, resolved by quit + reload. Operator: "*that sometimes happens and I don't think it is related to this.*" Pre-existing intermittent; not attributable to the canary. Not blocking.
+- Tested across 5–6 missions including one mission completion. Wide enough sample to call CLEAN with high confidence.
+
+**Hardware:** AMD RX 7900 XTX, driver 26.3.1 (per `amd-driver-rules.md` reference), Windows 10 Pro 19045.
+
+---
+
+## 3.X — Original verdict templates (preserved for reference)
 
 ### 3.A — If canary CLEAN (preferred outcome)
 
