@@ -17,6 +17,7 @@ Skills in `.claude/skills/` (copied from main repo):
 If skills aren't found by the Skill tool, they're also at `A:/Games/mc2-opengl-src/.claude/skills/`. Read the skill file and follow its instructions manually.
 
 ## Critical Rules
+- **Stock install must remain playable.** Architectural rule for ALL renderer modernization: any new renderer data must either be generated from stock assets at runtime/cache time or loaded as an optional sidecar. Missing modern data must degrade gracefully to stock-compatible generation, never fail. No stock campaign file is rewritten as part of modernization. No savegame depends on generated render caches. No modern visual sidecar is required for gameplay correctness. Full rationale and how-to-apply: `memory/stock_install_must_remain_playable.md`.
 - **Build:** ALWAYS `--config RelWithDebInfo`. Release crashes with GL_INVALID_ENUM.
 - **Deploy:** NEVER `cp -r`. ALWAYS `cp -f` per file + `diff -q`. `cp -r` silently fails on Windows/MSYS2.
 - **Git:** NEVER push to alariq/mc2 origin. All work is local.
@@ -81,6 +82,7 @@ path as working without re-reading the above references first.
 - Post-processing (bloom, FXAA) applies to HUD -- FIXED (gos_State_IsHUD buffering, Apr 2026)
 - Shadow re-render stutter when camera moves >500 units. Fix: static world-fixed shadow map (design doc ready)
 - Shadow banding shifts with camera rotation (view-dependent terrain geometry)
+- **TODO: first-launch black/no terrain intermittency** — tier1 first mission occasionally renders black terrain; second mission in the same run is normal. Suspected: GPU/shader state left dirty from previous mission teardown or first-frame render ordering. Reproduce with tier1 suite; bisect with `--fail-fast`.
 
 ## Do Not Upscale These Art Assets
 `code/mechicon.cpp` hardcodes `unitIconX/Y` (32/38) and computes source-pixel offsets directly against `s_MechTextures->width` / `s_pilotTextures->width`. If a source TGA is larger than nominal (via either a `*_4x_gpu/` upscaler pass or a mod overlay that ships pre-enlarged copies — Magic's Unofficial Expansion is a known offender, its 2003-dated TGAs are already oversized), the init code reads scrambled sub-rectangles and the atlas tiles the whole image into every icon slot instead of a cropped per-mech/per-pilot view.
