@@ -516,10 +516,17 @@ void gosPostProcess::beginScene()
     sceneHasTerrain_ = false;  // reset each frame; set by markTerrainDrawn()
 
     glBindFramebuffer(GL_FRAMEBUFFER, sceneFBO_);
-    // Start with single draw buffer — MRT only during terrain rendering
-    // (AMD RX 7900 corrupts color output if non-terrain shaders write location=1)
+    // Bind both draw buffers so the upcoming glClear in gameosmain.cpp clears
+    // both COLOR0 and COLOR1 (the GBuffer1 normal/post-shadow-mask attachment).
+    // After the clear, gameosmain.cpp calls pp->clearGBuffer1() to overwrite
+    // attachment 1 with the post-shadow-eligible sentinel (0.5, 0.5, 1.0, 0.0)
+    // before the scene renders. MRT remains bound for the entire scene draw;
+    // every Group I/II shader either writes GBuffer1 explicitly via the
+    // render-contract registry helpers or relies on the pre-cleared sentinel.
+    // See docs/superpowers/specs/render-contract-f3-report.md for the F3
+    // coherence guarantee. AMD location=1 corruption claim refuted 2026-04-27;
+    // see docs/amd-driver-rules.md "Tested-and-refuted claims".
     if (sceneNormalTex_) {
-        // Briefly enable both draw buffers so we can clear the normal buffer
         GLenum drawBuffers[2] = { GL_COLOR_ATTACHMENT0, GL_COLOR_ATTACHMENT1 };
         glDrawBuffers(2, drawBuffers);
     }
