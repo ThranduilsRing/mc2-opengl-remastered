@@ -102,10 +102,6 @@ public:
     bool shorelineEnabled_;
     void runShoreline();
 
-    // Grass rendering
-    bool grassEnabled_;
-    glsl_program* getGrassProgram() const { return grassProg_; }
-
     void setInverseViewProj(const float* m) { memcpy(inverseViewProj_, m, 16 * sizeof(float)); }
     void setViewProj(const float* m) { memcpy(viewProj_, m, 16 * sizeof(float)); }
     const float* getInverseViewProj() const { return inverseViewProj_; }
@@ -180,9 +176,6 @@ private:
     GLuint ssaoBlurFBO_;       // half-res blur target
     GLuint ssaoBlurTex_;       // R16F
     GLuint ssaoNoiseTex_;      // 4x4 RGB noise
-
-    // Grass shader program
-    glsl_program* grassProg_;
 
     // God ray
     glsl_program* godrayProg_;

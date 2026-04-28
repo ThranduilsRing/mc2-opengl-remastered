@@ -80,8 +80,6 @@ gosPostProcess::gosPostProcess()
     , ssaoPower_(1.5f)
     , sceneHasTerrain_(false)
     , prevFrameHadTerrain_(false)
-    , grassEnabled_(false)
-    , grassProg_(nullptr)
     , godrayEnabled_(false)  // disabled: no visible sky at RTS zoom. RAlt+6 to test.
     , godrayProg_(nullptr)
     , godrayFBO_(0)
@@ -176,9 +174,6 @@ void gosPostProcess::init(int w, int h)
     if (!ssaoApplyProg_ || !ssaoApplyProg_->is_valid())
         fprintf(stderr, "gosPostProcess: failed to compile ssao_apply shader\n");
 
-    // Grass is deprecated; keep the path disabled and skip shader setup entirely.
-    grassProg_ = nullptr;
-
     godrayProg_ = glsl_program::makeProgram("godray",
         "shaders/postprocess.vert", "shaders/godray.frag", kShaderPrefix);
     if (!godrayProg_ || !godrayProg_->is_valid())
@@ -245,8 +240,6 @@ void gosPostProcess::destroy()
         glsl_program::deleteProgram("ssao_apply");
         ssaoApplyProg_ = nullptr;
     }
-
-    grassProg_ = nullptr;
 
     if (godrayProg_) {
         glsl_program::deleteProgram("godray");

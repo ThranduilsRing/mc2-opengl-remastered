@@ -1284,7 +1284,6 @@ class gosRenderer {
         void drawText(const char* text);
         void terrainDrawIndexedPatches(gosRenderMaterial* material, gosMesh* mesh);
         void terrainBindUniformsForPatchStream(gosRenderMaterial* material);
-        void drawGrassPass(gosMesh* mesh);
 
         void beginFrame();
         void endFrame();
@@ -1358,7 +1357,6 @@ class gosRenderer {
         float getTerrainDisplaceScale() const { return terrain_displace_scale_; }
         float getTerrainDetailTiling() const { return terrain_detail_tiling_; }
         bool getTerrainWireframe() const { return terrain_wireframe_; }
-        GLuint getTerrainExtraVB() const { return terrain_extra_vb_; }
         gos_TERRAIN_EXTRA* getTerrainExtraData() const { return terrain_extra_data_; }
         bool isTerrainMVPValid() const { return terrain_mvp_valid_; }
         const mat4& getTerrainMVP() const { return terrain_mvp_; }
@@ -1671,10 +1669,6 @@ const std::string gosRenderer::s_Foreground = std::string("Foreground");
 
 gosRenderMaterial* gos_terrain_bridge_getMaterial() {
     return g_gos_renderer ? g_gos_renderer->getTerrainMaterial() : nullptr;
-}
-
-unsigned int gos_terrain_bridge_getExtraVB() {
-    return g_gos_renderer ? g_gos_renderer->getTerrainExtraVB() : 0;
 }
 
 unsigned int gos_terrain_bridge_getShaderProgram() {
@@ -3010,116 +3004,6 @@ void gosRenderer::terrainDrawIndexedPatches(gosRenderMaterial* material, gosMesh
     if (terrain_wireframe_) {
         glPolygonMode(GL_FRONT_AND_BACK, GL_FILL);
     }
-}
-
-// [RENDER_CONTRACT:Pass=Grass id=gosRenderer_drawGrassPass]
-void gosRenderer::drawGrassPass(gosMesh* mesh) {
-    ZoneScopedN("Grass.Draw");
-    TracyGpuZone("Grass.Draw");
-    gosPostProcess* pp = getGosPostProcess();
-    if (!pp || !pp->grassEnabled_) return;
-
-    glsl_program* prog = pp->getGrassProgram();
-    if (!prog || !prog->is_valid()) return;
-
-    int ni = mesh->getNumIndices();
-    if (ni == 0 || !terrain_mvp_valid_) return;
-
-    // Alpha blending, double-sided
-    glEnable(GL_BLEND);
-    glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
-    glDisable(GL_CULL_FACE);
-
-    GLuint shp = prog->shp_;
-    glUseProgram(shp);
-
-    // Helper for uniform lookup
-    auto L = [&](const char* name) -> GLint { return glGetUniformLocation(shp, name); };
-    GLint loc;
-
-    // Tessellation + transform uniforms (same values as terrain pass)
-    float tessParams[4] = { terrain_tess_level_, terrain_tess_level_, 0.0f, 0.0f };
-    float tessDist[4]   = { terrain_tess_dist_near_, terrain_tess_dist_far_, 0.0f, 0.0f };
-    float tessDisp[4]   = { terrain_phong_alpha_, terrain_displace_scale_, 0.0f, 0.0f };
-    float tiling[4]     = { terrain_detail_tiling_, 0.0f, 0.0f, 0.0f };
-
-    loc = L("tessLevel");         if (loc >= 0) glUniform4fv(loc, 1, tessParams);
-    loc = L("tessDistanceRange"); if (loc >= 0) glUniform4fv(loc, 1, tessDist);
-    loc = L("tessDisplace");      if (loc >= 0) glUniform4fv(loc, 1, tessDisp);
-    loc = L("cameraPos");         if (loc >= 0) glUniform4fv(loc, 1, (const float*)&terrain_camera_pos_);
-    loc = L("terrainViewport");   if (loc >= 0) glUniform4fv(loc, 1, (const float*)&terrain_viewport_);
-    loc = L("terrainLightDir");   if (loc >= 0) glUniform4fv(loc, 1, (const float*)&terrain_light_dir_);
-    loc = L("detailNormalTiling");if (loc >= 0) glUniform4fv(loc, 1, tiling);
-    loc = L("terrainMVP");        if (loc >= 0) glUniformMatrix4fv(loc, 1, GL_FALSE, (const float*)&terrain_mvp_);
-    loc = L("mvp");               if (loc >= 0) glUniformMatrix4fv(loc, 1, GL_TRUE, (const float*)&projection_);
-
-    // Time for wind animation
-    static uint64_t grass_start = timing::get_wall_time_ms();
-    float elapsed = (float)(timing::get_wall_time_ms() - grass_start) / 1000.0f;
-    loc = L("time"); if (loc >= 0) glUniform1f(loc, elapsed);
-
-    // Colormap (unit 0) — still bound from terrain pass
-    loc = L("tex1"); if (loc >= 0) glUniform1i(loc, 0);
-
-    // Material normals (units 5-8) for TES displacement
-    for (int i = 0; i < 4; i++) {
-        char name[16]; snprintf(name, sizeof(name), "matNormal%d", i);
-        loc = L(name);
-        if (loc >= 0 && terrain_mat_normal_[i] != 0) {
-            glUniform1i(loc, 5 + i);
-            glActiveTexture(GL_TEXTURE5 + i);
-            glBindTexture(GL_TEXTURE_2D, terrain_mat_normal_[i]);
-        }
-    }
-
-    // Shadow maps
-    if (pp->shadowsEnabled_) {
-        loc = L("enableShadows");  if (loc >= 0) glUniform1i(loc, 1);
-        loc = L("shadowSoftness"); if (loc >= 0) glUniform1f(loc, terrain_shadow_softness_);
-        loc = L("lightSpaceMatrix"); if (loc >= 0) glUniformMatrix4fv(loc, 1, GL_FALSE, pp->getLightSpaceMatrix());
-        loc = L("shadowMap"); if (loc >= 0) { glUniform1i(loc, 9); glActiveTexture(GL_TEXTURE9); glBindTexture(GL_TEXTURE_2D, pp->getShadowTexture()); }
-        if (pp->getDynamicShadowFBO()) {
-            loc = L("enableDynamicShadows"); if (loc >= 0) glUniform1i(loc, 1);
-            loc = L("dynamicLightSpaceMatrix"); if (loc >= 0) glUniformMatrix4fv(loc, 1, GL_FALSE, pp->getDynamicLightSpaceMatrix());
-            loc = L("dynamicShadowMap"); if (loc >= 0) { glUniform1i(loc, 10); glActiveTexture(GL_TEXTURE10); glBindTexture(GL_TEXTURE_2D, pp->getDynamicShadowTexture()); }
-        } else {
-            loc = L("enableDynamicShadows"); if (loc >= 0) glUniform1i(loc, 0);
-        }
-    } else {
-        loc = L("enableShadows"); if (loc >= 0) glUniform1i(loc, 0);
-        loc = L("enableDynamicShadows"); if (loc >= 0) glUniform1i(loc, 0);
-    }
-
-    glActiveTexture(GL_TEXTURE0);
-
-    // Rebind terrain mesh and draw
-    glBindBuffer(GL_ARRAY_BUFFER, mesh->getVB());
-    glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, mesh->getIB());
-    terrain_material_->applyVertexDeclaration();
-
-    if (terrain_batch_extras_ && terrain_batch_extras_count_ > 0) {
-        glBindBuffer(GL_ARRAY_BUFFER, terrain_extra_vb_);
-        GLint worldPosLoc  = glGetAttribLocation(shp, "worldPos");
-        GLint worldNormLoc = glGetAttribLocation(shp, "worldNorm");
-        if (worldPosLoc >= 0) { glEnableVertexAttribArray(worldPosLoc); glVertexAttribPointer(worldPosLoc, 3, GL_FLOAT, GL_FALSE, sizeof(gos_TERRAIN_EXTRA), (void*)0); }
-        if (worldNormLoc >= 0) { glEnableVertexAttribArray(worldNormLoc); glVertexAttribPointer(worldNormLoc, 3, GL_FLOAT, GL_FALSE, sizeof(gos_TERRAIN_EXTRA), (void*)(3 * sizeof(float))); }
-
-        glPatchParameteri(GL_PATCH_VERTICES, 3);
-        glDrawElements(GL_PATCHES, ni, mesh->getIndexSizeBytes() == 2 ? GL_UNSIGNED_SHORT : GL_UNSIGNED_INT, NULL);
-
-        if (worldPosLoc >= 0) glDisableVertexAttribArray(worldPosLoc);
-        if (worldNormLoc >= 0) glDisableVertexAttribArray(worldNormLoc);
-    }
-
-    terrain_material_->endVertexDeclaration();
-    glBindBuffer(GL_ARRAY_BUFFER, 0);
-    glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, 0);
-
-    // Restore state
-    glDisable(GL_BLEND);
-    glEnable(GL_CULL_FACE);
-    glUseProgram(0);
-    glActiveTexture(GL_TEXTURE0);
 }
 
 void gosRenderer::drawIndexedTris(gos_VERTEX* vertices, int num_vertices, WORD* indices, int num_indices) {

@@ -14,11 +14,6 @@ class gosRenderMaterial;
 // uses). Live pointer — do NOT cache across frames.
 gosRenderMaterial* gos_terrain_bridge_getMaterial();
 
-// Returns the legacy terrain_extra_vb_ GL buffer ID. Used by
-// TerrainPatchStream::flush() to issue the single consolidated per-frame
-// updateBuffer for grass + any legacy extras reader.
-unsigned int gos_terrain_bridge_getExtraVB();
-
 // Returns the GL program ID of the terrain material's currently-applied
 // shader. Used by flush() to look up worldPos / worldNorm attribute
 // locations once and cache them, avoiding the per-draw glGetAttribLocation
