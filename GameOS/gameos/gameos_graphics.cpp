@@ -1710,7 +1710,6 @@ void gos_terrain_bridge_drawPatchStreamBucket(
 {
     if (!g_gos_renderer || vertexCount == 0) return;
 
-    g_gos_renderer->setRenderState(gos_State_Culling, gos_Cull_None);
     g_gos_renderer->setRenderState(gos_State_ZCompare, 1);
     g_gos_renderer->setRenderState(gos_State_ZWrite, 1);
     g_gos_renderer->setRenderState(gos_State_AlphaMode, gos_Alpha_OneZero);
