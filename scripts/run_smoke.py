@@ -27,7 +27,7 @@ sys.path.insert(0, str(ROOT))
 from scripts.smoke_lib import baselines, manifest, report
 from scripts.smoke_lib.runner import RunConfig, run_one
 
-DEFAULT_EXE = Path(r"A:/Games/mc2-opengl/mc2-win64-v0.1.1/mc2.exe")
+DEFAULT_EXE = Path(r"A:/Games/mc2-opengl/mc2-win64-v0.2/mc2.exe")
 ARTIFACT_ROOT = ROOT / "tests" / "smoke" / "artifacts"
 MANIFEST_PATH = ROOT / "tests" / "smoke" / "smoke_missions.txt"
 BASELINE_PATH = ROOT / "tests" / "smoke" / "baselines.json"
@@ -224,7 +224,16 @@ def main():
             heartbeat_timeout_load_s=e.heartbeat_timeout_load or 60,
             heartbeat_timeout_play_s=e.heartbeat_timeout_play or 3,
             grace_s=60,
-            env_extra={"MC2_SMOKE_SEED": "0xC0FFEE"},
+            env_extra={
+                "MC2_SMOKE_SEED": "0xC0FFEE",
+                # Propagate PatchStream env vars from parent if set —
+                # subprocess.Popen's env arg replaces the inherited env
+                # entirely, so vars not explicitly listed get dropped.
+                **{k: v for k, v in os.environ.items()
+                   if k in ("MC2_MODERN_TERRAIN_SURFACE",
+                            "MC2_PATCH_STREAM_TRACE",
+                            "MC2_PATCH_STREAM_FORCE_INIT_FAIL")},
+            },
         )
         print(f"[runner] running {e.stem} (tier={tier} duration={duration})",
               file=sys.stderr)
