@@ -55,6 +55,10 @@ static inline void pz_capture_vert_preds(int slot) {
     if (g_pzTrace) s_pzVertPreds[slot] = g_pzLastPredicates;
 }
 static const bool s_shapeCParityCheck = (getenv("MC2_SHAPE_C_PARITY_CHECK") != nullptr);
+static const bool s_shapeCEnabled = ([] {
+	const char* env = getenv("MC2_MODERN_TERRAIN_PATCHES");
+	return (env != nullptr) && (env[0] == '1');
+})();
 
 #define SELECTION_COLOR 0xffff7fff
 #define HIGHLIGHT_COLOR	0xff00ff00
@@ -368,6 +372,22 @@ static void buildTerrainRecipeInline(VertexPtr* vertices, long uvMode, TerrainRe
 	}
 }
 
+// Fills recipe from cache when s_shapeCEnabled and entry is valid.
+// Returns false if cache unavailable; recipe is unmodified.
+static bool tryGetCachedTerrainRecipe(
+	const MapData::WorldQuadTerrainCacheEntry* entry, TerrainRecipe& r)
+{
+	if (!s_shapeCEnabled || !entry || !entry->isValid())
+		return false;
+	r.isCement            = entry->isCement();
+	r.isAlpha             = entry->isAlpha();
+	r.terrainHandle       = entry->terrainHandle;
+	r.terrainDetailHandle = entry->terrainDetailHandle;
+	r.overlayHandle       = entry->overlayHandle;
+	r.uvData              = entry->uvData;
+	return true;
+}
+
 // Calls mcTextureManager->addTriangle() for the recipe's handles.
 // Does NOT call pz_emit_terrain_tris -- that stays at the setupTextures() callsite
 // to preserve projectZ callsite identity.
@@ -606,8 +626,10 @@ void TerrainQuad::setupTextures (void)
 				if (s_shapeCParityCheck)
 					buildTerrainRecipeInline(vertices, uvMode, inlineRecipe);
 
-				buildTerrainRecipeInline(vertices, uvMode, recipe);  // will be replaced in Task 5
+				if (!tryGetCachedTerrainRecipe(cachedEntry, recipe))
+					buildTerrainRecipeInline(vertices, uvMode, recipe);
 
+				// Compare inline vs cache entry (not recipe -- recipe may now be cache-sourced).
 				if (s_shapeCParityCheck && cachedEntry && cachedEntry->isValid())
 					shapeC_checkParity(inlineRecipe, *cachedEntry, tileR, tileC, uvMode);
 
