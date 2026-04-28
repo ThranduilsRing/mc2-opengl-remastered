@@ -215,7 +215,7 @@ static GLuint allocPersistentBuffer(GLsizeiptr totalBytes, void** outMappedPtr) 
 bool TerrainPatchStream::init()
 {
     const char* env = getenv("MC2_MODERN_TERRAIN_SURFACE");
-    s_killswitch = (env != nullptr) && (env[0] == '1');
+    s_killswitch = (env == nullptr) || (env[0] != '0');
     s_traceOn    = (getenv("MC2_PATCH_STREAM_TRACE") != nullptr);
     s_censusOn   = (getenv("MC2_BUCKET_CENSUS") != nullptr);
 
