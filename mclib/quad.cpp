@@ -54,6 +54,7 @@ static ProjectZPredicates s_pzVertPreds[4] = {};
 static inline void pz_capture_vert_preds(int slot) {
     if (g_pzTrace) s_pzVertPreds[slot] = g_pzLastPredicates;
 }
+static const bool s_shapeCParityCheck = (getenv("MC2_SHAPE_C_PARITY_CHECK") != nullptr);
 
 #define SELECTION_COLOR 0xffff7fff
 #define HIGHLIGHT_COLOR	0xff00ff00
@@ -276,6 +277,68 @@ struct TerrainRecipe {
 	bool isCement             = false;
 	bool isAlpha              = false;
 };
+
+static void shapeC_checkParity(
+	const TerrainRecipe& inlineR,
+	const MapData::WorldQuadTerrainCacheEntry& e,
+	long tileR, long tileC, long uvMode)
+{
+	static int s_mismatches = 0;
+	static int s_checks     = 0;
+	++s_checks;
+
+	const char* siteTag =
+		!inlineR.isCement ? (uvMode == BOTTOMRIGHT ? "BR_no_cement" : "TL_no_cement")
+	  : inlineR.isAlpha   ? (uvMode == BOTTOMRIGHT ? "BR_alpha"     : "TL_alpha")
+						  : (uvMode == BOTTOMRIGHT ? "BR_cement"    : "TL_cement");
+
+	bool ok = true;
+
+#define SHAPE_C_CHECK_DWORD(field) \
+	if (inlineR.field != e.field) { \
+		if (s_mismatches < 10) \
+			printf("[SHAPE_C] MISMATCH " #field " site=%s tileR=%ld tileC=%ld" \
+				   " inline=%u cached=%u\n", \
+				   siteTag, tileR, tileC, inlineR.field, e.field); \
+		ok = false; ++s_mismatches; }
+
+#define SHAPE_C_CHECK_BOOL(method) \
+	if (inlineR.method != e.method()) { \
+		if (s_mismatches < 10) \
+			printf("[SHAPE_C] MISMATCH " #method " site=%s tileR=%ld tileC=%ld" \
+				   " inline=%d cached=%d\n", \
+				   siteTag, tileR, tileC, (int)inlineR.method, (int)e.method()); \
+		ok = false; ++s_mismatches; }
+
+	SHAPE_C_CHECK_DWORD(terrainHandle)
+	SHAPE_C_CHECK_DWORD(terrainDetailHandle)
+	SHAPE_C_CHECK_DWORD(overlayHandle)
+	SHAPE_C_CHECK_BOOL(isCement)
+	SHAPE_C_CHECK_BOOL(isAlpha)
+
+#undef SHAPE_C_CHECK_DWORD
+#undef SHAPE_C_CHECK_BOOL
+
+	if (fabsf(inlineR.uvData.minU - e.uvData.minU) > 1e-5f ||
+		fabsf(inlineR.uvData.minV - e.uvData.minV) > 1e-5f ||
+		fabsf(inlineR.uvData.maxU - e.uvData.maxU) > 1e-5f ||
+		fabsf(inlineR.uvData.maxV - e.uvData.maxV) > 1e-5f)
+	{
+		if (s_mismatches < 10)
+			printf("[SHAPE_C] MISMATCH uvData site=%s tileR=%ld tileC=%ld"
+				   " inline=(%.5f,%.5f,%.5f,%.5f) cached=(%.5f,%.5f,%.5f,%.5f)\n",
+				   siteTag, tileR, tileC,
+				   inlineR.uvData.minU, inlineR.uvData.minV,
+				   inlineR.uvData.maxU, inlineR.uvData.maxV,
+				   e.uvData.minU, e.uvData.minV, e.uvData.maxU, e.uvData.maxV);
+		ok = false; ++s_mismatches;
+	}
+
+	// Summary every 10000 checks and on first check of session.
+	if (s_checks == 1 || s_checks % 10000 == 0)
+		printf("[SHAPE_C] parity checks=%d mismatches=%d\n", s_checks, s_mismatches);
+	(void)ok;
+}
 
 // Fills recipe from inline getTextureHandle() calls. Always correct; never stale.
 static void buildTerrainRecipeInline(VertexPtr* vertices, long uvMode, TerrainRecipe& r)
@@ -536,7 +599,17 @@ void TerrainQuad::setupTextures (void)
 			{
 				ZoneScopedN("TerrainQuad::setupTextures resolveFallback");
 				TerrainRecipe recipe;
-				buildTerrainRecipeInline(vertices, uvMode, recipe);
+				TerrainRecipe inlineRecipe;
+
+				// Always build inline recipe when parity check is on -- keeps comparison
+				// meaningful even after the cache path is enabled in Task 5.
+				if (s_shapeCParityCheck)
+					buildTerrainRecipeInline(vertices, uvMode, inlineRecipe);
+
+				buildTerrainRecipeInline(vertices, uvMode, recipe);  // will be replaced in Task 5
+
+				if (s_shapeCParityCheck && cachedEntry && cachedEntry->isValid())
+					shapeC_checkParity(inlineRecipe, *cachedEntry, tileR, tileC, uvMode);
 
 				// Assign member vars inside the member function.
 				isCement            = recipe.isCement;
