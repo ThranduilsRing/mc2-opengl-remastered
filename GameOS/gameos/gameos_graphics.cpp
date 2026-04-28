@@ -2606,6 +2606,10 @@ void gosRenderer::drawShadowBatchTessellated(gos_VERTEX* vertices, int numVerts,
     shadow_terrain_material_->end();
     glBindBuffer(GL_ARRAY_BUFFER, 0);
     glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, 0);
+    // Leave indexed_tris_ clean so PatchStream (ks=1) non-terrain solid draws
+    // don't inherit stale shadow tile vertices. In ks=0 the first terrain
+    // drawIndexedTris call rewinds naturally; in ks=1 it never fires.
+    indexed_tris_->rewind();
 }
 
 void gosRenderer::drawShadowObjectBatch(HGOSBUFFER vb, HGOSBUFFER ib,
