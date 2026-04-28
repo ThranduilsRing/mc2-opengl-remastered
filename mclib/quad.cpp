@@ -268,6 +268,84 @@ extern float leastWY;
 extern float mostWY;
 
 //---------------------------------------------------------------------------
+struct TerrainRecipe {
+	DWORD terrainHandle       = 0xffffffff;
+	DWORD terrainDetailHandle = 0xffffffff;
+	DWORD overlayHandle       = 0xffffffff;
+	TerrainUVData uvData      = {};
+	bool isCement             = false;
+	bool isAlpha              = false;
+};
+
+// Fills recipe from inline getTextureHandle() calls. Always correct; never stale.
+static void buildTerrainRecipeInline(VertexPtr* vertices, long uvMode, TerrainRecipe& r)
+{
+	r.isCement = Terrain::terrainTextures->isCement(vertices[0]->pVertex->textureData & 0x0000ffff);
+	r.isAlpha  = Terrain::terrainTextures->isAlpha (vertices[0]->pVertex->textureData & 0x0000ffff);
+
+	if (!r.isCement)
+	{
+		VertexPtr vA = (uvMode == BOTTOMRIGHT) ? vertices[0] : vertices[1];
+		VertexPtr vB = (uvMode == BOTTOMRIGHT) ? vertices[2] : vertices[3];
+		r.terrainHandle       = Terrain::terrainTextures2->getTextureHandle(vA, vB, &r.uvData);
+		r.terrainDetailHandle = Terrain::terrainTextures2->getDetailHandle();
+		r.overlayHandle       = 0xffffffff;
+	}
+	else if (r.isAlpha)
+	{
+		r.overlayHandle       = Terrain::terrainTextures->getTextureHandle(vertices[0]->pVertex->textureData & 0x0000ffff);
+		r.terrainHandle       = Terrain::terrainTextures2->getTextureHandle(vertices[1], vertices[3], &r.uvData);
+		r.terrainDetailHandle = Terrain::terrainTextures2->getDetailHandle();
+	}
+	else // pure cement
+	{
+		r.terrainHandle       = Terrain::terrainTextures->getTextureHandle(vertices[0]->pVertex->textureData & 0x0000ffff);
+		r.terrainDetailHandle = 0xffffffff;
+		r.overlayHandle       = 0xffffffff;
+	}
+}
+
+// Calls mcTextureManager->addTriangle() for the recipe's handles.
+// Does NOT call pz_emit_terrain_tris -- that stays at the setupTextures() callsite
+// to preserve projectZ callsite identity.
+static void addTerrainTriangles(const TerrainRecipe& r)
+{
+	if (!r.isCement)
+	{
+		if (r.terrainHandle != 0)
+		{
+			mcTextureManager->addTriangle(r.terrainHandle, MC2_ISTERRAIN | MC2_DRAWSOLID);
+			mcTextureManager->addTriangle(r.terrainHandle, MC2_ISTERRAIN | MC2_DRAWSOLID);
+			if (r.terrainDetailHandle != 0xffffffff)
+			{
+				mcTextureManager->addTriangle(r.terrainDetailHandle, MC2_ISTERRAIN | MC2_DRAWALPHA);
+				mcTextureManager->addTriangle(r.terrainDetailHandle, MC2_ISTERRAIN | MC2_DRAWALPHA);
+			}
+		}
+	}
+	else if (r.isAlpha)
+	{
+		if (r.terrainHandle != 0)
+		{
+			mcTextureManager->addTriangle(r.terrainHandle, MC2_ISTERRAIN | MC2_DRAWSOLID);
+			mcTextureManager->addTriangle(r.terrainHandle, MC2_ISTERRAIN | MC2_DRAWSOLID);
+		}
+		if (r.terrainDetailHandle != 0xffffffff)
+		{
+			mcTextureManager->addTriangle(r.terrainDetailHandle, MC2_ISTERRAIN | MC2_DRAWALPHA);
+			mcTextureManager->addTriangle(r.terrainDetailHandle, MC2_ISTERRAIN | MC2_DRAWALPHA);
+		}
+	}
+	else // pure cement
+	{
+		if (r.terrainHandle != 0)
+		{
+			mcTextureManager->addTriangle(r.terrainHandle, MC2_ISTERRAIN | MC2_DRAWSOLID);
+			mcTextureManager->addTriangle(r.terrainHandle, MC2_ISTERRAIN | MC2_DRAWSOLID);
+		}
+	}
+}
+
 void TerrainQuad::setupTextures (void)
 {
 	if (mineTextureHandle == 0xffffffff)
@@ -457,108 +535,24 @@ void TerrainQuad::setupTextures (void)
 
 			{
 				ZoneScopedN("TerrainQuad::setupTextures resolveFallback");
-				if (uvMode == BOTTOMRIGHT)
-				{
-					isCement = Terrain::terrainTextures->isCement(vertices[0]->pVertex->textureData & 0x0000ffff);
-					bool isAlpha = Terrain::terrainTextures->isAlpha(vertices[0]->pVertex->textureData & 0x0000ffff); 
-					if (!isCement)
-					{
-						terrainHandle = Terrain::terrainTextures2->getTextureHandle(vertices[0],vertices[2],&uvData);
-						terrainDetailHandle = Terrain::terrainTextures2->getDetailHandle();
-						overlayHandle = 0xffffffff;
+				TerrainRecipe recipe;
+				buildTerrainRecipeInline(vertices, uvMode, recipe);
 
-						if(terrainHandle!=0) {
-							mcTextureManager->addTriangle(terrainHandle,MC2_ISTERRAIN | MC2_DRAWSOLID);
-							mcTextureManager->addTriangle(terrainHandle,MC2_ISTERRAIN | MC2_DRAWSOLID);
-							if (terrainDetailHandle != 0xffffffff)
-							{
-								mcTextureManager->addTriangle(terrainDetailHandle,MC2_ISTERRAIN | MC2_DRAWALPHA);
-								mcTextureManager->addTriangle(terrainDetailHandle,MC2_ISTERRAIN | MC2_DRAWALPHA);
-							}
-							pz_emit_terrain_tris(vertices, uvMode, "terrain_quad_cluster_a", __FILE__, __LINE__);
-						}
-					}
-					else
-					{
-						if (isAlpha)
-						{
-							overlayHandle = Terrain::terrainTextures->getTextureHandle(vertices[0]->pVertex->textureData & 0x0000ffff);
-							terrainHandle = Terrain::terrainTextures2->getTextureHandle(vertices[1],vertices[3],&uvData);
-							terrainDetailHandle = Terrain::terrainTextures2->getDetailHandle();
-							
-							if(terrainHandle!=0) {
-								mcTextureManager->addTriangle(terrainHandle,MC2_ISTERRAIN | MC2_DRAWSOLID);
-								mcTextureManager->addTriangle(terrainHandle,MC2_ISTERRAIN | MC2_DRAWSOLID);
-							}
-							
-							if (terrainDetailHandle != 0xffffffff)
-							{
-								mcTextureManager->addTriangle(terrainDetailHandle,MC2_ISTERRAIN | MC2_DRAWALPHA);
-								mcTextureManager->addTriangle(terrainDetailHandle,MC2_ISTERRAIN | MC2_DRAWALPHA);
-							}
-						}
-						else
-						{
-							terrainHandle = Terrain::terrainTextures->getTextureHandle(vertices[0]->pVertex->textureData & 0x0000ffff);
-							terrainDetailHandle = 0xffffffff;
-							overlayHandle = 0xffffffff;
+				// Assign member vars inside the member function.
+				isCement            = recipe.isCement;
+				terrainHandle       = recipe.terrainHandle;
+				terrainDetailHandle = recipe.terrainDetailHandle;
+				overlayHandle       = recipe.overlayHandle;
+				uvData              = recipe.uvData;
 
-							if(terrainHandle!=0) {
-								mcTextureManager->addTriangle(terrainHandle,MC2_ISTERRAIN | MC2_DRAWSOLID);
-								mcTextureManager->addTriangle(terrainHandle,MC2_ISTERRAIN | MC2_DRAWSOLID);
-							}
-						}
-					}
-				}
-				else
-				{
-					isCement = Terrain::terrainTextures->isCement(vertices[0]->pVertex->textureData & 0x0000ffff);
-					bool isAlpha = Terrain::terrainTextures->isAlpha(vertices[0]->pVertex->textureData & 0x0000ffff); 
-					if (!isCement)
-					{
-						terrainHandle = Terrain::terrainTextures2->getTextureHandle(vertices[1],vertices[3],&uvData);
-						terrainDetailHandle = Terrain::terrainTextures2->getDetailHandle();
-						overlayHandle = 0xffffffff;
-						if(terrainHandle!=0) {
-							mcTextureManager->addTriangle(terrainHandle,MC2_ISTERRAIN | MC2_DRAWSOLID);
-							mcTextureManager->addTriangle(terrainHandle,MC2_ISTERRAIN | MC2_DRAWSOLID);
-							if(terrainDetailHandle!=0xffffffff) {
-								mcTextureManager->addTriangle(terrainDetailHandle,MC2_ISTERRAIN | MC2_DRAWALPHA);
-								mcTextureManager->addTriangle(terrainDetailHandle,MC2_ISTERRAIN | MC2_DRAWALPHA);
-							}
-							pz_emit_terrain_tris(vertices, uvMode, "terrain_quad_cluster_c", __FILE__, __LINE__);
-						}
-					}
-					else
-					{
-						if (isAlpha)
-						{
-							overlayHandle = Terrain::terrainTextures->getTextureHandle(vertices[0]->pVertex->textureData & 0x0000ffff);
-							terrainHandle = Terrain::terrainTextures2->getTextureHandle(vertices[1],vertices[3],&uvData);
-							terrainDetailHandle = Terrain::terrainTextures2->getDetailHandle();
-							
-							if(terrainHandle!=0) {
-								mcTextureManager->addTriangle(terrainHandle,MC2_ISTERRAIN | MC2_DRAWSOLID);
-								mcTextureManager->addTriangle(terrainHandle,MC2_ISTERRAIN | MC2_DRAWSOLID);
-							}
-							if(terrainDetailHandle!=0xffffffff) {
-								mcTextureManager->addTriangle(terrainDetailHandle,MC2_ISTERRAIN | MC2_DRAWALPHA);
-								mcTextureManager->addTriangle(terrainDetailHandle,MC2_ISTERRAIN | MC2_DRAWALPHA);
-							}
-						}
-						else
-						{
-							terrainHandle = Terrain::terrainTextures->getTextureHandle(vertices[0]->pVertex->textureData & 0x0000ffff);
-							terrainDetailHandle = 0xffffffff;
-							overlayHandle = 0xffffffff;
-								
-							if(terrainHandle!=0) {
-								mcTextureManager->addTriangle(terrainHandle,MC2_ISTERRAIN | MC2_DRAWSOLID);
-								mcTextureManager->addTriangle(terrainHandle,MC2_ISTERRAIN | MC2_DRAWSOLID);
-							}
-						}
-					}
-				}
+				// Register triangle batches (no pz_emit here).
+				addTerrainTriangles(recipe);
+
+				// pz_emit stays at this callsite to preserve projectZ callsite identity.
+				if (!recipe.isCement && recipe.terrainHandle != 0)
+					pz_emit_terrain_tris(vertices, uvMode,
+						(uvMode == BOTTOMRIGHT) ? "terrain_quad_cluster_a" : "terrain_quad_cluster_c",
+						__FILE__, __LINE__);
 			}
 
 			enqueueTerrainMineState(*this);
