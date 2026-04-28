@@ -1303,19 +1303,45 @@ void MC_TextureManager::renderLists (void)
 		// legacy loop for the WHOLE FRAME — never partial-frame. The legacy
 		// ring data has been kept in sync by addVertices/fillTerrainExtra
 		// running unconditionally in quad.cpp.
+		// Bucket-census instrumentation (env-gated MC2_BUCKET_CENSUS=1).
+		// Count legacy-eligible nodes BEFORE flush() runs (both the legacy
+		// draw branch at ~1369 and the alternate reset branch at ~1382
+		// zero currentVertex per node, so end-of-zone undercounts). The
+		// filter mirrors the legacy DRAWSOLID|ISTERRAIN draw-emission
+		// predicate so it is apples-to-apples with PatchStream's modern
+		// scope.
+		static const bool s_bucketCensusOn =
+			(getenv("MC2_BUCKET_CENSUS") != NULL);
+		uint32_t legacyEligible = 0;
+		if (s_bucketCensusOn) {
+			for (long ci = 0; ci < nextAvailableVertexNode; ++ci) {
+				const DWORD cf = masterVertexNodes[ci].flags;
+				if ((cf & MC2_DRAWSOLID) && (cf & MC2_ISTERRAIN) &&
+				    masterVertexNodes[ci].vertices &&
+				    masterVertexNodes[ci].currentVertex !=
+				        masterVertexNodes[ci].vertices)
+				{
+					++legacyEligible;
+				}
+			}
+		}
+
 		bool modernHandled = false;
 		if (TerrainPatchStream::isReady() && !TerrainPatchStream::isOverflowed()) {
 			modernHandled = TerrainPatchStream::flush();
 		}
 
 		bool bSkip_DRAWSOLID = false;
-		if (!modernHandled) {
-			// EXACT existing legacy loop body, preserved bit-for-bit.
-			for (long i=0;i<nextAvailableVertexNode && !bSkip_DRAWSOLID;i++)
-			{
+		for (long i=0;i<nextAvailableVertexNode && !bSkip_DRAWSOLID;i++)
+		{
 				if ((masterVertexNodes[i].flags & MC2_DRAWSOLID) &&
 					(masterVertexNodes[i].vertices))
 				{
+					if (modernHandled && (masterVertexNodes[i].flags & MC2_ISTERRAIN)) {
+						masterVertexNodes[i].currentVertex = masterVertexNodes[i].vertices;
+						continue;
+					}
+
 					if (masterVertexNodes[i].flags & MC2_ISTERRAIN) {
 						gos_SetRenderState( gos_State_TextureAddress, gos_TextureClamp );
 						gos_SetRenderState( gos_State_Terrain, 1 );
@@ -1369,23 +1395,13 @@ void MC_TextureManager::renderLists (void)
 					masterVertexNodes[i].currentVertex = masterVertexNodes[i].vertices;
 				}
 			}
-		} else {
-			// Modern handled — still need to reset the legacy ring's
-			// currentVertex pointers so next frame's appends start fresh.
-			// This loop is the legacy reset that the if-branch did
-			// implicitly via the draw-then-reset pattern.
-			//
-			// CRITICAL: do NOT touch currentExtra. That pointer's lifecycle
-			// is owned by addTerrainExtra / clearArrays — frame-reset is
-			// via clearArrays() per spec §3. Adding a currentExtra reset
-			// here would be a double-reset bug.
-			for (long i = 0; i < nextAvailableVertexNode; i++) {
-				if ((masterVertexNodes[i].flags & MC2_DRAWSOLID) &&
-					(masterVertexNodes[i].vertices))
-				{
-					masterVertexNodes[i].currentVertex = masterVertexNodes[i].vertices;
-				}
-			}
+		// Emit one [BUCKET_CENSUS v1] line per frame (env-gated). Runs
+		// after flush() has populated the modern-side stats and after
+		// either branch has reset the legacy ring; legacy_eligible was
+		// captured pre-flush above. emitCensus() is a no-op when the
+		// env var is unset.
+		if (s_bucketCensusOn) {
+			TerrainPatchStream::emitCensus(legacyEligible);
 		}
 	}   // end Render.TerrainSolid zone
 	drainGLErrors("terrain");

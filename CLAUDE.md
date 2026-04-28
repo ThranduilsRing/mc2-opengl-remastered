@@ -62,7 +62,7 @@ path as working without re-reading the above references first.
 
 ## Reference Docs (read on demand)
 - `docs/architecture.md` -- render pipeline, coordinate spaces, map dimensions, render order, shadow pipeline, performance notes
-- `docs/amd-driver-rules.md` -- AMD RX 7900 XTX driver quirks (sampler2DArray crash, attribute 0, gl_FragDepth, feedback loops, etc.)
+- `docs/amd-driver-rules.md` -- AMD RX 7900 XTX driver quirks (sampler2DArray softened post Canary A, attribute 0, gl_FragDepth, feedback loops, etc.)
 - `docs/plans/` -- design docs for upcoming features
 
 ## Key Files

@@ -44,4 +44,12 @@ public:
 
     static bool flush();
     static void beginFrame();
+
+    // Bucket-census instrumentation. Env-gated (MC2_BUCKET_CENSUS=1).
+    // Called from txmmgr.cpp Render.TerrainSolid at end of zone, with the
+    // count of legacy `masterVertexNodes` that would have drawn this frame
+    // under the same eligibility filter as the legacy DRAWSOLID loop.
+    // Emits one [BUCKET_CENSUS v1] line per frame plus a 600-frame summary
+    // and a final summary at shutdown. No-op if env var unset.
+    static void emitCensus(uint32_t legacyEligible);
 };

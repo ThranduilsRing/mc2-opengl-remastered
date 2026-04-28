@@ -10,7 +10,7 @@ Discovered through extensive debugging. MUST be followed.
 - **Deferred vs direct uniforms** -- setFloat/setInt BEFORE apply(). Direct glUniform* AFTER apply() (which calls glUseProgram). drawIndexed() calls apply() internally.
 - **material->end() deactivates shader** -- In multi-batch loops, end() calls glUseProgram(0). Must re-apply() and re-upload all direct uniforms each batch.
 - **draw_screen() timing** -- Runs BEFORE gamecam.cpp sets camera/light values each frame. Shadow matrix uses previous frame's values. First ~240 frames have zero camera pos.
-- **sampler2DArray crashes** -- NEVER use. Use individual sampler2D on units 5-8 instead.
+- **sampler2DArray** -- Historical AMD caution. Synthetic RGBA8 `sampler2DArray` canary passed on RX 7900 XTX (driver 26.3.1) in both menu and mid-mission states (Canary A, see `docs/superpowers/explorations/2026-04-27-amd-sampler2darray-canary.md`). Do **not** use for production terrain colormaps until Canary B verifies real terrain texture / mip / sampler parity (real-tile-into-layer-0 visual A/B vs. legacy `sampler2D` path). Until that gate is cleared, keep individual `sampler2D` per material on units 5-8 for terrain. The original "NEVER use" wording is superseded by Canary A.
 
 ## Tested-and-refuted claims
 

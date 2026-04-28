@@ -9,7 +9,9 @@
 
 #include "gameos.hpp"   // gos_VERTEX, gos_TERRAIN_EXTRA, DWORD, gos_SetRenderState, gos_State_*
 #include "gl/glew.h"    // OpenGL — same include the static-prop batcher uses
+#include "gos_profiler.h"
 #include "utils/timing.h"  // timing::get_wall_time_ms()
+#include "gos_postprocess.h"
 
 // tex_resolve() — lazy per-frame memoization of terrain texture handles.
 // Defined in mclib but the inline is in the header; pull that header in.
@@ -79,6 +81,67 @@ namespace {
 
     // Telemetry
     bool s_firstFlushSeen = false;
+
+    // ------------------------------------------------------------------
+    // Bucket-census instrumentation (env-gated MC2_BUCKET_CENSUS=1).
+    //
+    // Computed once per flush() call, consumed by emitCensus() which runs
+    // from txmmgr.cpp Render.TerrainSolid after the legacy-eligible count
+    // is also known. Per-frame line is grep-friendly:
+    //
+    //   [BUCKET_CENSUS v1] frame=N raw=R unique=U sentinel=S canon=C legacy=L
+    //
+    // raw      — s_drawBucketCount (distinct raw `terrainHandle` values
+    //            with at least one appended triangle this frame)
+    // unique   — count of distinct tex_resolve(handle) values across
+    //            those buckets (i.e., the size of an Option-B post-
+    //            canonicalization bucket set)
+    // sentinel — count of buckets where tex_resolve returns 0xFFFFFFFFu
+    //            (unloaded / invalid texture nodes)
+    // canon    — count of merged ranges if buckets were sorted by
+    //            tex_resolve key and contiguous-same-key runs were
+    //            coalesced (i.e., what Option A's draw count would be).
+    //            For Option B (append-time resolve), this equals `unique`
+    //            because every same-key bucket merges. For Option A
+    //            applied to current append order, this can be HIGHER
+    //            than `unique` since spatial traversal may interleave keys.
+    // legacy   — number of masterVertexNodes that the legacy DRAWSOLID
+    //            loop would have drawn this frame (filter:
+    //            DRAWSOLID|ISTERRAIN flags, vertices != NULL,
+    //            currentVertex > vertices). Computed in txmmgr.cpp.
+    bool       s_censusOn         = false;
+    uint64_t   s_censusFrameId    = 0;
+
+    // Per-frame snapshot from flush(); read by emitCensus().
+    uint32_t   s_lastCensusRaw      = 0;
+    uint32_t   s_lastCensusUnique   = 0;
+    uint32_t   s_lastCensusSentinel = 0;
+    uint32_t   s_lastCensusCanon    = 0;
+
+    // 600-frame rolling summary state. min initialized lazily on first
+    // sample so it doesn't anchor at UINT32_MAX in the printout.
+    bool       s_summaryHasSample = false;
+    uint64_t   s_summaryFramesAcc = 0;       // frames in current window
+    uint64_t   s_summaryRawSum    = 0;
+    uint64_t   s_summaryUniqueSum = 0;
+    uint64_t   s_summaryCanonSum  = 0;
+    uint64_t   s_summaryLegacySum = 0;
+    uint64_t   s_summarySentSum   = 0;
+    uint32_t   s_summaryRawMin    = 0xFFFFFFFFu, s_summaryRawMax    = 0;
+    uint32_t   s_summaryUniqueMin = 0xFFFFFFFFu, s_summaryUniqueMax = 0;
+    uint32_t   s_summaryCanonMin  = 0xFFFFFFFFu, s_summaryCanonMax  = 0;
+    uint32_t   s_summaryLegacyMin = 0xFFFFFFFFu, s_summaryLegacyMax = 0;
+    // Cumulative (whole-run) stats for the shutdown summary.
+    uint64_t   s_runFramesAcc = 0;
+    uint64_t   s_runRawSum    = 0;
+    uint64_t   s_runUniqueSum = 0;
+    uint64_t   s_runCanonSum  = 0;
+    uint64_t   s_runLegacySum = 0;
+    uint64_t   s_runSentSum   = 0;
+    uint32_t   s_runRawMax    = 0;
+    uint32_t   s_runUniqueMax = 0;
+    uint32_t   s_runCanonMax  = 0;
+    uint32_t   s_runLegacyMax = 0;
 
     // Drop GL state we touched, mirroring gos_static_prop_batcher's save/restore.
     struct SavedGLState {
@@ -154,6 +217,14 @@ bool TerrainPatchStream::init()
     const char* env = getenv("MC2_MODERN_TERRAIN_SURFACE");
     s_killswitch = (env != nullptr) && (env[0] == '1');
     s_traceOn    = (getenv("MC2_PATCH_STREAM_TRACE") != nullptr);
+    s_censusOn   = (getenv("MC2_BUCKET_CENSUS") != nullptr);
+
+    if (s_censusOn) {
+        fprintf(stderr,
+            "[BUCKET_CENSUS v1] event=startup gated_on=MC2_BUCKET_CENSUS "
+            "killswitch=%d\n", (int)s_killswitch);
+        fflush(stderr);
+    }
 
     if (!s_killswitch) return true;
 
@@ -232,8 +303,113 @@ bool TerrainPatchStream::init()
     return true;
 }
 
+void TerrainPatchStream::emitCensus(uint32_t legacyEligible)
+{
+    if (!s_censusOn) return;
+
+    // When killswitch=0, flush() never runs, so modern stats are zero.
+    // We still print a line so legacy_eligible can be tracked across
+    // both killswitch states from the same instrumentation. Per-frame
+    // line is gated by the env var, not by killswitch, intentionally.
+    const uint32_t raw      = s_killswitch ? s_lastCensusRaw      : 0;
+    const uint32_t unique   = s_killswitch ? s_lastCensusUnique   : 0;
+    const uint32_t sentinel = s_killswitch ? s_lastCensusSentinel : 0;
+    const uint32_t canon    = s_killswitch ? s_lastCensusCanon    : 0;
+
+    fprintf(stderr,
+        "[BUCKET_CENSUS v1] frame=%llu raw=%u unique=%u sentinel=%u "
+        "canon_nosort=%u legacy=%u\n",
+        (unsigned long long)s_censusFrameId,
+        raw, unique, sentinel, canon, legacyEligible);
+    fflush(stderr);
+
+    // Update rolling 600-frame and run-cumulative stats.
+    if (!s_summaryHasSample) {
+        s_summaryHasSample = true;
+        s_summaryRawMin    = raw;
+        s_summaryUniqueMin = unique;
+        s_summaryCanonMin  = canon;
+        s_summaryLegacyMin = legacyEligible;
+    } else {
+        if (raw            < s_summaryRawMin)    s_summaryRawMin    = raw;
+        if (unique         < s_summaryUniqueMin) s_summaryUniqueMin = unique;
+        if (canon          < s_summaryCanonMin)  s_summaryCanonMin  = canon;
+        if (legacyEligible < s_summaryLegacyMin) s_summaryLegacyMin = legacyEligible;
+    }
+    if (raw            > s_summaryRawMax)    s_summaryRawMax    = raw;
+    if (unique         > s_summaryUniqueMax) s_summaryUniqueMax = unique;
+    if (canon          > s_summaryCanonMax)  s_summaryCanonMax  = canon;
+    if (legacyEligible > s_summaryLegacyMax) s_summaryLegacyMax = legacyEligible;
+
+    s_summaryRawSum    += raw;
+    s_summaryUniqueSum += unique;
+    s_summaryCanonSum  += canon;
+    s_summaryLegacySum += legacyEligible;
+    s_summarySentSum   += sentinel;
+    s_summaryFramesAcc += 1;
+
+    s_runFramesAcc += 1;
+    s_runRawSum    += raw;
+    s_runUniqueSum += unique;
+    s_runCanonSum  += canon;
+    s_runLegacySum += legacyEligible;
+    s_runSentSum   += sentinel;
+    if (raw            > s_runRawMax)    s_runRawMax    = raw;
+    if (unique         > s_runUniqueMax) s_runUniqueMax = unique;
+    if (canon          > s_runCanonMax)  s_runCanonMax  = canon;
+    if (legacyEligible > s_runLegacyMax) s_runLegacyMax = legacyEligible;
+
+    s_censusFrameId += 1;
+
+    // 600-frame rolling summary tick.
+    if (s_summaryFramesAcc >= 600u) {
+        const double inv = 1.0 / (double)s_summaryFramesAcc;
+        fprintf(stderr,
+            "[BUCKET_CENSUS v1] event=summary kind=window frames=%llu "
+            "raw_min=%u raw_avg=%.1f raw_max=%u "
+            "unique_min=%u unique_avg=%.1f unique_max=%u "
+            "canon_min=%u canon_avg=%.1f canon_max=%u "
+            "legacy_min=%u legacy_avg=%.1f legacy_max=%u "
+            "sentinel_avg=%.2f\n",
+            (unsigned long long)s_summaryFramesAcc,
+            s_summaryRawMin,    (double)s_summaryRawSum    * inv, s_summaryRawMax,
+            s_summaryUniqueMin, (double)s_summaryUniqueSum * inv, s_summaryUniqueMax,
+            s_summaryCanonMin,  (double)s_summaryCanonSum  * inv, s_summaryCanonMax,
+            s_summaryLegacyMin, (double)s_summaryLegacySum * inv, s_summaryLegacyMax,
+            (double)s_summarySentSum * inv);
+        fflush(stderr);
+        // Reset window counters but KEEP run-cumulative.
+        s_summaryHasSample = false;
+        s_summaryFramesAcc = 0;
+        s_summaryRawSum = s_summaryUniqueSum = s_summaryCanonSum = 0;
+        s_summaryLegacySum = s_summarySentSum = 0;
+        s_summaryRawMin = s_summaryUniqueMin = s_summaryCanonMin =
+            s_summaryLegacyMin = 0xFFFFFFFFu;
+        s_summaryRawMax = s_summaryUniqueMax = s_summaryCanonMax =
+            s_summaryLegacyMax = 0;
+    }
+}
+
 void TerrainPatchStream::destroy()
 {
+    if (s_censusOn && s_runFramesAcc > 0) {
+        const double inv = 1.0 / (double)s_runFramesAcc;
+        fprintf(stderr,
+            "[BUCKET_CENSUS v1] event=summary kind=run frames=%llu "
+            "raw_avg=%.1f raw_max=%u "
+            "unique_avg=%.1f unique_max=%u "
+            "canon_avg=%.1f canon_max=%u "
+            "legacy_avg=%.1f legacy_max=%u "
+            "sentinel_avg=%.2f\n",
+            (unsigned long long)s_runFramesAcc,
+            (double)s_runRawSum    * inv, s_runRawMax,
+            (double)s_runUniqueSum * inv, s_runUniqueMax,
+            (double)s_runCanonSum  * inv, s_runCanonMax,
+            (double)s_runLegacySum * inv, s_runLegacyMax,
+            (double)s_runSentSum   * inv);
+        fflush(stderr);
+    }
+
     if (!s_initOk) return;
     fprintf(stderr, "[PATCH_STREAM v1] event=shutdown\n");
     fflush(stderr);
@@ -337,6 +513,7 @@ void TerrainPatchStream::appendTriangle(DWORD textureIndex,
 
 bool TerrainPatchStream::flush()
 {
+    ZoneScopedN("PatchStream.Flush");
     if (!s_initOk || !s_killswitch) return false;
     if (s_overflow) {
         // Caller falls through to legacy. No fence emitted — no draws
@@ -363,6 +540,8 @@ bool TerrainPatchStream::flush()
 
     uint32_t cursor = 0;
     s_drawBucketCount = 0;
+    {
+    ZoneScopedN("PatchStream.Consolidate");
     for (uint32_t i = 0; i < s_stagingCount; ++i) {
         const PatchStagingBucket& sb = s_staging[i];
         if (sb.color.empty()) continue;
@@ -377,19 +556,70 @@ bool TerrainPatchStream::flush()
         db.vertexCount  = n;
         cursor += n;
     }
+    }
+    TracyPlot("PatchStream verts", (int64_t)cursor);
+    TracyPlot("PatchStream buckets", (int64_t)s_drawBucketCount);
 
-    // 2. Consolidated per-frame upload of terrain_extra_vb_ for grass + any
-    //    legacy reader (§7.5 Option A). ONE glBufferData call regardless of
-    //    bucket count, sourced from the contiguous extras region we just
-    //    wrote into the persistent slot.
-    const GLsizeiptr extrasBytes = (GLsizeiptr)cursor * sizeof(gos_TERRAIN_EXTRA);
-    GLuint legacyExtraVB = (GLuint)gos_terrain_bridge_getExtraVB();
-    if (legacyExtraVB && extrasBytes > 0) {
-        glBindBuffer(GL_ARRAY_BUFFER, legacyExtraVB);
-        glBufferData(GL_ARRAY_BUFFER, extrasBytes, extrasSlot, GL_DYNAMIC_DRAW);
+    {
+    ZoneScopedN("PatchStream.MemoryBarrier");
+    glMemoryBarrier(GL_CLIENT_MAPPED_BUFFER_BARRIER_BIT);
     }
 
-    // 3. Bind uniforms via the engine bridge — sets the program, samplers,
+    // 1.5. Bucket census (env-gated). Computed here, after s_drawBuckets is
+    //      finalized, so it accurately reflects what draws would be issued.
+    //      No-op when MC2_BUCKET_CENSUS is unset; cheap O(N²) merge for
+    //      "canon" since N ≤ kPatchStreamMaxBuckets and only runs in the
+    //      diagnostic build path.
+    if (s_censusOn) {
+        const uint32_t N = s_drawBucketCount;
+        // Resolve every bucket's canonical key once into a stack scratch
+        // array. This invokes tex_resolve() per bucket which is the same
+        // call the per-bucket draw loop will issue at line `gos_State_Texture`,
+        // so this adds at most one extra resolve per bucket per frame
+        // (memoized after first touch).
+        DWORD resolved[kPatchStreamMaxBuckets];
+        uint32_t sentinelCount = 0;
+        for (uint32_t b = 0; b < N; ++b) {
+            const DWORD r = tex_resolve(s_drawBuckets[b].textureIndex);
+            resolved[b] = r;
+            if (r == 0xFFFFFFFFu) ++sentinelCount;
+        }
+        // Unique-count: O(N²) over what we just resolved. Distinct count
+        // = how many bucket-keys Option B would produce.
+        uint32_t unique = 0;
+        for (uint32_t b = 0; b < N; ++b) {
+            bool seen = false;
+            for (uint32_t k = 0; k < b; ++k) {
+                if (resolved[k] == resolved[b]) { seen = true; break; }
+            }
+            if (!seen) ++unique;
+        }
+        // Canon-after-merge: stable-sort the resolved keys and count
+        // contiguous same-key runs. Equals `unique` if Option-B-equivalent
+        // (because sorting collapses everything). To approximate Option-A's
+        // worst case (no sort, just merge contiguous-as-appended), also
+        // compute a no-sort variant: walk in append order, count run
+        // changes.
+        uint32_t canonNoSort = (N > 0) ? 1u : 0u;
+        for (uint32_t b = 1; b < N; ++b) {
+            if (resolved[b] != resolved[b - 1]) ++canonNoSort;
+        }
+        // For "canon" we report the SORT-ED variant — this is the count
+        // an Option-A implementation that includes a sort step would
+        // achieve, and equals `unique` mathematically. We keep both in
+        // separate counters for the verdict but only print one (sorted).
+        // Rationale: append-order Option-A (canonNoSort) is bounded
+        // above by `unique` only if append order is texture-grouped; on
+        // spatial traversal it can equal raw N in pathological cases.
+        // So canonNoSort is the more pessimistic Option-A bound. We log
+        // it as `canon_nosort` to inform the verdict.
+        s_lastCensusRaw      = N;
+        s_lastCensusUnique   = unique;
+        s_lastCensusSentinel = sentinelCount;
+        s_lastCensusCanon    = canonNoSort;  // Option-A append-order bound
+    }
+
+    // 2. Bind uniforms via the engine bridge — sets the program, samplers,
     //    terrainMVP GL_FALSE, all tess + splatting + shadow uniforms.
     //    apply() inside the bridge calls glUseProgram, after which the
     //    direct glUniform* calls land on the right program (AMD rule).
@@ -399,7 +629,10 @@ bool TerrainPatchStream::flush()
         restoreGLState(saved);
         return false;
     }
+    {
+    ZoneScopedN("PatchStream.BindUniforms");
     gos_terrain_bridge_bindUniforms(mat);
+    }
 
     // 4. Bind our persistent color ring as GL_ARRAY_BUFFER and issue
     //    applyVertexDeclaration so locations 0-3 read from it.
@@ -445,27 +678,132 @@ bool TerrainPatchStream::flush()
     //    place the slot offset is applied, for both the color VBO and the
     //    extras VBO simultaneously (since glDrawArrays' `first` is
     //    passed to every bound vertex attribute, both rings advance in lockstep).
+    static int s_bucketErrFramesChecked = 0;
+    const bool checkBucketErrors = s_traceOn && s_bucketErrFramesChecked < 2;
+    {
+    ZoneScopedN("PatchStream.DrawBuckets");
     for (uint32_t b = 0; b < s_drawBucketCount; ++b) {
         const PatchStreamBucket& bk = s_drawBuckets[b];
-        gos_SetRenderState(gos_State_TextureAddress, gos_TextureClamp);
-        gos_SetRenderState(gos_State_Terrain, 1);
-        gos_SetRenderState(gos_State_Texture, tex_resolve(bk.textureIndex));
+        const DWORD gosHandle = tex_resolve(bk.textureIndex);
+        const GLuint glTex =
+            (GLuint)gos_terrain_bridge_glTextureForGosHandle((unsigned int)gosHandle);
 
-        glDrawArrays(GL_PATCHES,
-                     (GLint)(slotFirstVert + bk.firstVertex),
-                     (GLsizei)bk.vertexCount);
+        // One-shot pre-draw state dump so we can see what GL thinks the
+        // moment GL_INVALID_OPERATION fires. Fires once per process when
+        // MC2_PATCH_STREAM_TRACE=1.
+        static bool s_predrawOnce = false;
+        if (!s_predrawOnce && s_traceOn) {
+            s_predrawOnce = true;
+            GLint program = 0, vao = 0, arrayBuf = 0, elemBuf = 0;
+            GLint patchVerts = 0, maxPatchVerts = 0;
+            GLint activeTex = 0, tex0 = 0;
+            GLint drawFbo = 0, readFbo = 0;
+
+            glGetIntegerv(GL_CURRENT_PROGRAM,              &program);
+            glGetIntegerv(GL_VERTEX_ARRAY_BINDING,         &vao);
+            glGetIntegerv(GL_ARRAY_BUFFER_BINDING,         &arrayBuf);
+            glGetIntegerv(GL_ELEMENT_ARRAY_BUFFER_BINDING, &elemBuf);
+            glGetIntegerv(GL_PATCH_VERTICES,               &patchVerts);
+            glGetIntegerv(GL_MAX_PATCH_VERTICES,           &maxPatchVerts);
+            glGetIntegerv(GL_ACTIVE_TEXTURE,               &activeTex);
+            glActiveTexture(GL_TEXTURE0);
+            glGetIntegerv(GL_TEXTURE_BINDING_2D,           &tex0);
+            glActiveTexture((GLenum)activeTex);
+            glGetIntegerv(GL_DRAW_FRAMEBUFFER_BINDING,     &drawFbo);
+            glGetIntegerv(GL_READ_FRAMEBUFFER_BINDING,     &readFbo);
+
+            fprintf(stderr,
+                "[PATCH_STREAM v1] event=predraw_state prog=%d vao=%d "
+                "arrayBuf=%d elemBuf=%d patchVerts=%d maxPatchVerts=%d "
+                "activeTex=0x%X tex0=%d drawFbo=%d readFbo=%d "
+                "first=%d count=%d expected_colorBuf=%u expected_extrasBuf=%u\n",
+                program, vao, arrayBuf, elemBuf, patchVerts, maxPatchVerts,
+                (unsigned)activeTex, tex0, drawFbo, readFbo,
+                (int)(slotFirstVert + bk.firstVertex),
+                (int)bk.vertexCount,
+                (unsigned)s_colorBuf, (unsigned)s_extrasBuf);
+
+            // Per-attrib state for locs 0..5.
+            for (int a = 0; a < 6; ++a) {
+                GLint enabled = 0, size = 0, type = 0, stride = 0,
+                      normalized = 0, buffer = 0;
+                void* ptr = nullptr;
+                glGetVertexAttribiv(a, GL_VERTEX_ATTRIB_ARRAY_ENABLED, &enabled);
+                glGetVertexAttribiv(a, GL_VERTEX_ATTRIB_ARRAY_SIZE, &size);
+                glGetVertexAttribiv(a, GL_VERTEX_ATTRIB_ARRAY_TYPE, &type);
+                glGetVertexAttribiv(a, GL_VERTEX_ATTRIB_ARRAY_STRIDE, &stride);
+                glGetVertexAttribiv(a, GL_VERTEX_ATTRIB_ARRAY_NORMALIZED, &normalized);
+                glGetVertexAttribiv(a, GL_VERTEX_ATTRIB_ARRAY_BUFFER_BINDING, &buffer);
+                glGetVertexAttribPointerv(a, GL_VERTEX_ATTRIB_ARRAY_POINTER, &ptr);
+                fprintf(stderr,
+                    "[PATCH_STREAM v1] event=predraw_attrib loc=%d enabled=%d "
+                    "size=%d type=0x%X stride=%d norm=%d buf=%d offset=%lld\n",
+                    a, enabled, size, (unsigned)type, stride, normalized,
+                    buffer, (long long)(intptr_t)ptr);
+            }
+
+            // Drain any pending GL error so the next glDrawArrays gives us
+            // clean attribution.
+            GLenum preErr;
+            while ((preErr = glGetError()) != GL_NO_ERROR) {
+                fprintf(stderr,
+                    "[PATCH_STREAM v1] event=predraw_pending_err err=0x%X\n",
+                    (unsigned)preErr);
+            }
+            fflush(stderr);
+        }
+
+        gos_terrain_bridge_drawPatchStreamBucket(
+            (unsigned int)gosHandle,
+            slotFirstVert + bk.firstVertex,
+            bk.vertexCount);
+
+        // Per-bucket post-draw error capture. Rate-limited to first 8
+        // erroring buckets per process so we can attribute the bug.
+        if (checkBucketErrors) {
+            static int s_errLogged = 0;
+            if (s_errLogged < 8) {
+                GLenum drawErr = glGetError();
+                if (drawErr != GL_NO_ERROR) {
+                    s_errLogged++;
+                    GLint texBind = 0;
+                    glGetIntegerv(GL_TEXTURE_BINDING_2D, &texBind);
+                    fprintf(stderr,
+                        "[PATCH_STREAM v1] event=bucket_err err=0x%X "
+                        "bucket_idx=%u/%u textureIndex=%lu glTex=%u "
+                        "tex0_bound=%d firstVertex=%u vertexCount=%u\n",
+                        (unsigned)drawErr, b, s_drawBucketCount,
+                        (unsigned long)bk.textureIndex, (unsigned)glTex,
+                        texBind, bk.firstVertex, bk.vertexCount);
+                    fflush(stderr);
+                }
+            }
+        }
+    }
+    if (s_traceOn && s_bucketErrFramesChecked < 2) {
+        ++s_bucketErrFramesChecked;
+    }
     }
 
+    {
+    ZoneScopedN("PatchStream.Cleanup");
     if (locWorldPos  >= 0) glDisableVertexAttribArray(locWorldPos);
     if (locWorldNorm >= 0) glDisableVertexAttribArray(locWorldNorm);
     gos_terrain_bridge_endVertexDeclaration(mat);
     gos_terrain_bridge_end(mat);
+    }
+    if (gosPostProcess* pp = getGosPostProcess()) {
+        pp->markTerrainDrawn();
+    }
 
     // 7. Fence the slot.
+    {
+    ZoneScopedN("PatchStream.FenceRestore");
     if (s_fence[s_slot]) glDeleteSync(s_fence[s_slot]);
     s_fence[s_slot] = glFenceSync(GL_SYNC_GPU_COMMANDS_COMPLETE, 0);
 
     restoreGLState(saved);
+    }
 
     if (!s_firstFlushSeen) {
         s_firstFlushSeen = true;
@@ -475,10 +813,13 @@ bool TerrainPatchStream::flush()
         fflush(stderr);
     }
     if (s_traceOn) {
+        static int s_drawCountLogged = 0;
+        if (s_drawCountLogged++ < 16) {
         fprintf(stderr,
             "[PATCH_STREAM v1] event=draw_count slot=%u verts=%u buckets=%u\n",
             s_slot, cursor, s_drawBucketCount);
         fflush(stderr);
+        }
     }
 
     return true;

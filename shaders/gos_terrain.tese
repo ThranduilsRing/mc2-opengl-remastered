@@ -18,6 +18,7 @@ out vec3 WorldPos;
 out float UndisplacedDepth;
 
 uniform vec4 tessDisplace;      // x=phongAlpha, y=displaceScale
+uniform vec4 tessDebug;         // x debug mode; -2 = screen-space projection probe
 uniform mat4 terrainMVP;        // axisSwap * worldToClip (clip-space transform)
 uniform vec4 terrainViewport;   // (vmx, vmy, vax, vay) for perspective projection
 uniform mat4 mvp;               // projection_ : screen pixels -> NDC
@@ -35,6 +36,21 @@ uniform vec4 detailNormalTiling; // .x = base tiling multiplier
 void main()
 {
     vec3 bary = gl_TessCoord;
+
+    if (tessDebug.x < -2.5) {
+        Color = vec4(1.0);
+        FogValue = 0.0;
+        Texcoord = vec2(0.0);
+        TerrainType = 0.0;
+        WorldNorm = vec3(0.0, 0.0, 1.0);
+        WorldPos = vec3(0.0);
+        UndisplacedDepth = 0.0;
+        vec2 p = bary.x * vec2(-0.85, -0.85)
+               + bary.y * vec2( 0.85, -0.85)
+               + bary.z * vec2( 0.00,  0.85);
+        gl_Position = vec4(p, 0.0, 1.0);
+        return;
+    }
 
     // Barycentric interpolation of all attributes
     vec3 worldPos = bary.x * tcs_WorldPos[0]
@@ -61,6 +77,16 @@ void main()
     TerrainType = bary.x * tcs_TerrainType[0]
                 + bary.y * tcs_TerrainType[1]
                 + bary.z * tcs_TerrainType[2];
+
+    if (tessDebug.x < -1.5) {
+        WorldNorm = worldNorm;
+        WorldPos = worldPos;
+        UndisplacedDepth = 0.0;
+        gl_Position = bary.x * gl_in[0].gl_Position
+                    + bary.y * gl_in[1].gl_Position
+                    + bary.z * gl_in[2].gl_Position;
+        return;
+    }
 
     // Match overlay depth against the same world-space terrain surface that TES displaces.
     vec3 undisplacedWorldPos = bary.x * tcs_WorldPos[0]

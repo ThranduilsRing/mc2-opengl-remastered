@@ -38,3 +38,23 @@ void gos_terrain_bridge_bindUniforms(gosRenderMaterial* material);
 void gos_terrain_bridge_applyVertexDeclaration(gosRenderMaterial* material);
 void gos_terrain_bridge_endVertexDeclaration(gosRenderMaterial* material);
 void gos_terrain_bridge_end(gosRenderMaterial* material);
+
+// Translate engine gosTextureHandle → actual GL texture object name.
+//
+// CRITICAL: tex_resolve(textureIndex) returns the engine's gosTextureHandle
+// (e.g. 56), NOT the GL texture name. They are NOT the same number. The
+// engine's applyRenderStates() at gameos_graphics.cpp:2129–2135 always
+// converts gos→GL via getTexture(gosHandle)->getTextureId() before
+// glBindTexture. PatchStream must do the same.
+//
+// Returns 0 (the default no-texture) for INVALID_TEXTURE_ID, gosHandle==0,
+// or any case where the texture isn't resident.
+unsigned int gos_terrain_bridge_glTextureForGosHandle(unsigned int gosHandle);
+
+// Renderer-owned PatchStream bucket draw. This keeps texture state
+// application inside gameos_graphics.cpp, matching the legacy terrain path
+// more closely than open-coded glBindTexture/glDrawArrays from PatchStream.
+void gos_terrain_bridge_drawPatchStreamBucket(
+    unsigned int gosHandle,
+    unsigned int firstVertex,
+    unsigned int vertexCount);

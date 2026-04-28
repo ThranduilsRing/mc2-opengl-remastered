@@ -1700,6 +1700,34 @@ void gos_terrain_bridge_endVertexDeclaration(gosRenderMaterial* material) {
 void gos_terrain_bridge_end(gosRenderMaterial* material) {
     if (material) material->end();
 }
+
+unsigned int gos_terrain_bridge_glTextureForGosHandle(unsigned int gosHandle) {
+    if (!g_gos_renderer) return 0;
+    if (gosHandle == 0u || gosHandle == INVALID_TEXTURE_ID) return 0;
+    gosTexture* tex = g_gos_renderer->getTexture(gosHandle);
+    if (!tex) return 0;
+    return (unsigned int)tex->getTextureId();
+}
+
+void gos_terrain_bridge_drawPatchStreamBucket(
+    unsigned int gosHandle,
+    unsigned int firstVertex,
+    unsigned int vertexCount)
+{
+    if (!g_gos_renderer || vertexCount == 0) return;
+
+    g_gos_renderer->setRenderState(gos_State_Culling, gos_Cull_None);
+    g_gos_renderer->setRenderState(gos_State_ZCompare, 1);
+    g_gos_renderer->setRenderState(gos_State_ZWrite, 1);
+    g_gos_renderer->setRenderState(gos_State_AlphaMode, gos_Alpha_OneZero);
+    g_gos_renderer->setRenderState(gos_State_TextureAddress, gos_TextureClamp);
+    g_gos_renderer->setRenderState(gos_State_Terrain, 1);
+    g_gos_renderer->setRenderState(gos_State_Texture, (int)gosHandle);
+    g_gos_renderer->applyRenderStates();
+    glActiveTexture(GL_TEXTURE0);
+
+    glDrawArrays(GL_PATCHES, (GLint)firstVertex, (GLsizei)vertexCount);
+}
 // ──────────────────────────────────────────────────────────────────────────
 
 static GLuint gVAO = 0;
@@ -2727,6 +2755,8 @@ void gosRenderer::endDynamicShadowPass() {
 void gosRenderer::terrainBindUniformsForPatchStream(gosRenderMaterial* material)
 {
     if (!material) return;
+    material->setTransform(projection_);
+    material->setFogColor(fog_color_);
     material->apply();
     material->setSamplerUnit(gosMesh::s_tex1, 0);
 
@@ -2741,7 +2771,11 @@ void gosRenderer::terrainBindUniformsForPatchStream(gosRenderMaterial* material)
     if (tl.tessDistanceRange >= 0) glUniform4fv(tl.tessDistanceRange, 1, tessDist);
     if (tl.tessDisplace >= 0)      glUniform4fv(tl.tessDisplace, 1, tessDisp);
     if (tl.cameraPos >= 0)         glUniform4fv(tl.cameraPos, 1, (const float*)&terrain_camera_pos_);
-    float tessDebugVec[4] = { terrain_debug_mode_, 0.0f, 0.0f, 0.0f };
+    float debugMode = terrain_debug_mode_;
+    if (const char* envDebug = getenv("MC2_TERRAIN_DEBUG_MODE")) {
+        debugMode = (float)atof(envDebug);
+    }
+    float tessDebugVec[4] = { debugMode, 0.0f, 0.0f, 0.0f };
     if (tl.tessDebug >= 0)         glUniform4fv(tl.tessDebug, 1, tessDebugVec);
 
     if (tl.mapHalfExtent >= 0) {
