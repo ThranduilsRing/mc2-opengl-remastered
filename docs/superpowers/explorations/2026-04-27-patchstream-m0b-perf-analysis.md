@@ -265,12 +265,34 @@ The `terrain_extra_vb_` upload from `flush()` has been permanently removed (comm
 no longer happens in the modern path. The shadow terrain draw still binds
 `terrain_extra_vb_` for worldPos/worldNorm — that upload stays in `terrainDrawIndexedPatches`.
 
-### Current M0b status (corrected)
+### Corrected tier1 perf table (2026-04-27, post-fix)
+
+Both runs same machine (AMD RX 7900 XTX), same binary (commit `4214586`), 30s each:
+
+| Mission | ks=0 FPS | ks=1 FPS | Δ | ks=0 p1% | ks=1 p1% | Result |
+|---|---:|---:|---:|---:|---:|---|
+| mc2_01 | 142 | 143 | **+1** | 116 | 112 | PASS |
+| mc2_03 | 136 | 136 | **0**  | 115 | 116 | PASS |
+| mc2_10 | 123 | 122 | **-1** |  91 |  92 | PASS |
+| mc2_17 | 126 | 125 | **-1** |  81 |  87 | PASS |
+| mc2_24 | 142 | 142 | **0**  | 115 | 115 | PASS |
+
+All 5/5 PASS. **Δ FPS is ±1 across the board — within measurement noise.**
+
+The entire -26% regression documented in the original table above was the
+`PatchStream.LegacyExtraUpload` zone: a `glBufferData(terrain_extra_vb_,
+120K×gos_TERRAIN_EXTRA)` per frame that existed only to feed the dead grass pass.
+Removing it eliminated the stall and brought modern ≡ legacy.
+
+### Current M0b status (corrected, 2026-04-27)
 
 - Visual correctness: **CONFIRMED** — terrain renders normally at killswitch=1 (user verified)
-- Render.TerrainSolid (max zoom-out, killswitch=1): **<400µs** (vs ~45ms before grass removal)
-- Perf relative to legacy: **unknown** — the old numbers were measured against broken code;
-  re-run tier1 for corrected table
-- The two correctness bugs are fixed in commit `b4c2f9f`
-- Grass upload removed in commit `4214586`
-- Shape B' (canonicalization) is still the right next step for the bucket-count regression
+- Render.TerrainSolid (max zoom-out): **<400µs** at killswitch=1
+- Perf gate: **PASS** — ±1 FPS vs legacy across all 5 tier1 missions
+- Two correctness bugs fixed: commit `b4c2f9f`
+- Grass upload removed: commit `4214586`
+- Shape B' canonicalization: still a valid future optimization (reduces raw bucket
+  count 24–206 → 5–15 matching legacy node count), but no longer blocking — the
+  per-bucket overhead is dominated by GPU tessellation time, not CPU driver dispatch
+- **Killswitch can be flipped to default=1** once visual regression is confirmed clean
+  across a full tier1+tier2 run and the CLAUDE.md debug hotkey table is updated
