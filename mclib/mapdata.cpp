@@ -1351,6 +1351,12 @@ void MapData::setTerrain( long indexY, long indexX, int Type )
 		}
 	}
 
+	// Mutations to blocks[].textureData invalidate the terrain face cache. Shape C
+	// falls back to inline for ALL cache reads until buildTerrainFaceCache() is
+	// explicitly called again (at next primeMissionTerrainCache). In-gameplay
+	// setTerrain() calls (mines, scorch) leave cache NULL for the rest of that
+	// mission -- acceptable since these events are rare.
+	invalidateTerrainFaceCache();
 }
 
 //---------------------------------------------------------------------------
