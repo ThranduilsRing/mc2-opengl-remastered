@@ -213,3 +213,64 @@ This is the conservative path. M0b serves as the infrastructure foundation; Shap
 - All tier1 missions PASS at both killswitch states (5/5 each)
 - Default-off (`MC2_MODERN_TERRAIN_SURFACE` unset) gives bit-identical legacy behavior
 - M0b status: **infrastructure done, perf gate not met, fix path identified (Shape B' Option B)**
+
+---
+
+## ⚠️ CORRECTIONS — 2026-04-27 follow-up session
+
+### The killswitch=1 PASS claims were false
+
+The tier1 killswitch=1 results above (line "All 5 PASS") and the verification note at
+"Modern path verified active in every run (`event=init` + `event=first_flush`...)" were
+produced by the smoke runner which passes `MC2_MODERN_TERRAIN_SURFACE=1` via
+`subprocess.Popen(env=env)`. This works correctly for the smoke runner.
+
+However, the earlier "manual visual A/B" claim in the memory note ("user manually tested
+mc2_01 at killswitch=1 — shadows render correctly") was FALSE. That session used
+`set MC2_MODERN_TERRAIN_SURFACE = 1` (spaces around `=`) which creates an env var named
+`MC2_MODERN_TERRAIN_SURFACE ` (with trailing space). `getenv()` sees nothing; killswitch=0;
+legacy path ran. The visual report described correctly-rendering legacy terrain.
+
+**Consequence:** the modern path at killswitch=1 was never visually verified before this
+follow-up session. When actually run, it produced **black terrain + GL_INVALID_OPERATION**
+on every frame.
+
+### Two correctness bugs were present throughout
+
+1. **gos→GL handle confusion:** `tex_resolve(textureIndex)` returns a gosTextureHandle
+   (engine slot, e.g. 56). flush() passed that directly to `glBindTexture`, which bound
+   an unrelated GL object. GL_INVALID_OPERATION every frame. Fixed via
+   `gos_terrain_bridge_glTextureForGosHandle()` + routing bucket draws through
+   `gos_terrain_bridge_drawPatchStreamBucket()` which calls `applyRenderStates()`.
+
+2. **Missing material state before apply():** `terrainBindUniformsForPatchStream()` called
+   `material->apply()` without first calling `setTransform(projection_)` and
+   `setFogColor(fog_color_)`. Those mark uniforms dirty; without them the terrain material
+   had zero/stale MVP and fog. Fixed by adding both calls before `apply()`.
+
+### The perf numbers are stale and should NOT be used as baseline
+
+The killswitch=1 FPS numbers in the table above were measured against a broken
+implementation (black terrain, GL_INVALID_OPERATION every draw). They are meaningless
+as a performance baseline. After the correctness fix, **Render.TerrainSolid at max zoom-out
+dropped from ~45ms to <400µs** — the 44ms was `PatchStream.LegacyExtraUpload` (a
+`glBufferData` of 120K×`gos_TERRAIN_EXTRA` per frame that existed only to feed the grass
+pass, which was already dead). After removing that upload, the actual bucket-draw cost is
+the number to measure. Re-run tier1 at killswitch=1 for corrected perf numbers.
+
+### Grass pass removed
+
+The `terrain_extra_vb_` upload from `flush()` has been permanently removed (commit
+`4214586 chore(renderer): remove abandoned grass pass`). The consolidated extras upload
+no longer happens in the modern path. The shadow terrain draw still binds
+`terrain_extra_vb_` for worldPos/worldNorm — that upload stays in `terrainDrawIndexedPatches`.
+
+### Current M0b status (corrected)
+
+- Visual correctness: **CONFIRMED** — terrain renders normally at killswitch=1 (user verified)
+- Render.TerrainSolid (max zoom-out, killswitch=1): **<400µs** (vs ~45ms before grass removal)
+- Perf relative to legacy: **unknown** — the old numbers were measured against broken code;
+  re-run tier1 for corrected table
+- The two correctness bugs are fixed in commit `b4c2f9f`
+- Grass upload removed in commit `4214586`
+- Shape B' (canonicalization) is still the right next step for the bucket-count regression
