@@ -46,9 +46,9 @@ void gos_terrain_bridge_end(gosRenderMaterial* material);
 // or any case where the texture isn't resident.
 unsigned int gos_terrain_bridge_glTextureForGosHandle(unsigned int gosHandle);
 
-// Renderer-owned PatchStream bucket draw. This keeps texture state
-// application inside gameos_graphics.cpp, matching the legacy terrain path
-// more closely than open-coded glBindTexture/glDrawArrays from PatchStream.
+// Renderer-owned PatchStream bucket draw. Binds the colormap for gosHandle
+// on unit 0 and issues the draw. Does NOT touch the gosRenderer render-state
+// cache — terrain state was established once by gos_terrain_bridge_bindUniforms.
 void gos_terrain_bridge_drawPatchStreamBucket(
     unsigned int gosHandle,
     unsigned int firstVertex,
