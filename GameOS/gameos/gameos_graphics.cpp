@@ -1721,6 +1721,27 @@ void gos_terrain_bridge_drawPatchStreamBucket(
 
     glDrawArrays(GL_PATCHES, (GLint)firstVertex, (GLsizei)vertexCount);
 }
+
+void gos_terrain_bridge_beginBucketLoop() {
+    if (!g_gos_renderer) return;
+    g_gos_renderer->setRenderState(gos_State_ZCompare, 1);
+    g_gos_renderer->setRenderState(gos_State_ZWrite, 1);
+    g_gos_renderer->setRenderState(gos_State_AlphaMode, gos_Alpha_OneZero);
+    g_gos_renderer->setRenderState(gos_State_TextureAddress, gos_TextureClamp);
+    g_gos_renderer->setRenderState(gos_State_Terrain, 1);
+    glActiveTexture(GL_TEXTURE0);
+}
+
+void gos_terrain_bridge_drawSingleBucket(
+    unsigned int gosHandle,
+    unsigned int firstVertex,
+    unsigned int vertexCount)
+{
+    if (!g_gos_renderer || vertexCount == 0) return;
+    g_gos_renderer->setRenderState(gos_State_Texture, (int)gosHandle);
+    g_gos_renderer->applyRenderStates();
+    glDrawArrays(GL_PATCHES, (GLint)firstVertex, (GLsizei)vertexCount);
+}
 // ──────────────────────────────────────────────────────────────────────────
 
 static GLuint gVAO = 0;

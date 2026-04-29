@@ -53,3 +53,18 @@ void gos_terrain_bridge_drawPatchStreamBucket(
     unsigned int gosHandle,
     unsigned int firstVertex,
     unsigned int vertexCount);
+
+// Call once before the per-bucket draw loop to set render states that are
+// invariant across all buckets (ZCompare, ZWrite, AlphaMode, TextureAddress,
+// Terrain, active texture unit). Only gos_State_Texture changes per bucket.
+// Does NOT call applyRenderStates() — the first drawSingleBucket() flushes
+// all pending dirty flags including these invariants.
+void gos_terrain_bridge_beginBucketLoop();
+
+// Per-bucket draw call: sets gos_State_Texture for gosHandle, calls
+// applyRenderStates(), issues glDrawArrays(GL_PATCHES, firstVertex, count).
+// Call gos_terrain_bridge_beginBucketLoop() exactly once before the loop.
+void gos_terrain_bridge_drawSingleBucket(
+    unsigned int gosHandle,
+    unsigned int firstVertex,
+    unsigned int vertexCount);

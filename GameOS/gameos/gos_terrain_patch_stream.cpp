@@ -734,6 +734,7 @@ bool TerrainPatchStream::flush()
     const bool checkBucketErrors = s_traceOn && s_bucketErrFramesChecked < 2;
     {
     ZoneScopedN("PatchStream.DrawBuckets");
+    gos_terrain_bridge_beginBucketLoop();
     for (uint32_t b = 0; b < s_drawBucketCount; ++b) {
         const PatchStreamBucket& bk = s_drawBuckets[b];
         const DWORD gosHandle = bk.gosHandle;  // tex_resolve already applied at consolidate time
@@ -805,7 +806,7 @@ bool TerrainPatchStream::flush()
             fflush(stderr);
         }
 
-        gos_terrain_bridge_drawPatchStreamBucket(
+        gos_terrain_bridge_drawSingleBucket(
             (unsigned int)gosHandle,
             slotFirstVert + bk.firstVertex,
             bk.vertexCount);
