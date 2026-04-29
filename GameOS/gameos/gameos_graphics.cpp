@@ -1284,6 +1284,8 @@ class gosRenderer {
         void drawText(const char* text);
         void terrainDrawIndexedPatches(gosRenderMaterial* material, gosMesh* mesh);
         void terrainBindUniformsForPatchStream(gosRenderMaterial* material);
+        // Returns ssboRecordBase uniform location in the thin program, or -1.
+        int terrainBindThinUniformsForPatchStream();
 
         void beginFrame();
         void endFrame();
@@ -1526,6 +1528,7 @@ class gosRenderer {
 
         // Terrain tessellation material
         gosRenderMaterial* terrain_material_ = nullptr;
+        glsl_program* thin_terrain_prog_ = nullptr;  // gos_terrain_thin.vert + gos_terrain.frag
 
         // Shadow mode
         gosRenderMaterial* shadow_terrain_material_ = nullptr;
@@ -1562,6 +1565,20 @@ class gosRenderer {
             GLint mapHalfExtent = -1;
             GLuint program = 0;
         } terrainLocs_;
+
+        struct ThinTerrainUniformLocs {
+            GLint terrainMVP = -1, terrainViewport = -1, mvp = -1;
+            GLint cameraPos = -1, terrainLightDir = -1;
+            GLint detailNormalTiling = -1, detailNormalStrength = -1;
+            GLint pomParams = -1, terrainWorldScale = -1, cellBombParams = -1;
+            GLint matNormal[5] = {-1,-1,-1,-1,-1};
+            GLint tex1 = -1;
+            GLint lightSpaceMatrix = -1, enableShadows = -1, shadowSoftness = -1, shadowMap = -1;
+            GLint dynamicLightSpaceMatrix = -1, enableDynamicShadows = -1, dynamicShadowMap = -1;
+            GLint time = -1, mapHalfExtent = -1;
+            GLint ssboRecordBase = -1;
+            GLuint program = 0;
+        } thinTerrainLocs_;
 
         // Cached uniform locations for shadow terrain shader
         struct ShadowUniformLocs {
@@ -1601,6 +1618,37 @@ class gosRenderer {
             terrainLocs_.dynamicShadowMap = glGetUniformLocation(shp, "dynamicShadowMap");
             terrainLocs_.time = glGetUniformLocation(shp, "time");
             terrainLocs_.mapHalfExtent = glGetUniformLocation(shp, "mapHalfExtent");
+        }
+
+        void cacheThinTerrainUniformLocations(GLuint shp) {
+            if (thinTerrainLocs_.program == shp) return;
+            thinTerrainLocs_.program            = shp;
+            thinTerrainLocs_.terrainMVP         = glGetUniformLocation(shp, "terrainMVP");
+            thinTerrainLocs_.terrainViewport    = glGetUniformLocation(shp, "terrainViewport");
+            thinTerrainLocs_.mvp                = glGetUniformLocation(shp, "mvp");
+            thinTerrainLocs_.cameraPos          = glGetUniformLocation(shp, "cameraPos");
+            thinTerrainLocs_.terrainLightDir    = glGetUniformLocation(shp, "terrainLightDir");
+            thinTerrainLocs_.detailNormalTiling   = glGetUniformLocation(shp, "detailNormalTiling");
+            thinTerrainLocs_.detailNormalStrength = glGetUniformLocation(shp, "detailNormalStrength");
+            thinTerrainLocs_.pomParams          = glGetUniformLocation(shp, "pomParams");
+            thinTerrainLocs_.terrainWorldScale  = glGetUniformLocation(shp, "terrainWorldScale");
+            thinTerrainLocs_.cellBombParams     = glGetUniformLocation(shp, "cellBombParams");
+            thinTerrainLocs_.matNormal[0]       = glGetUniformLocation(shp, "matNormal0");
+            thinTerrainLocs_.matNormal[1]       = glGetUniformLocation(shp, "matNormal1");
+            thinTerrainLocs_.matNormal[2]       = glGetUniformLocation(shp, "matNormal2");
+            thinTerrainLocs_.matNormal[3]       = glGetUniformLocation(shp, "matNormal3");
+            thinTerrainLocs_.matNormal[4]       = glGetUniformLocation(shp, "matNormal4");
+            thinTerrainLocs_.tex1               = glGetUniformLocation(shp, "tex1");
+            thinTerrainLocs_.lightSpaceMatrix   = glGetUniformLocation(shp, "lightSpaceMatrix");
+            thinTerrainLocs_.enableShadows      = glGetUniformLocation(shp, "enableShadows");
+            thinTerrainLocs_.shadowSoftness     = glGetUniformLocation(shp, "shadowSoftness");
+            thinTerrainLocs_.shadowMap          = glGetUniformLocation(shp, "shadowMap");
+            thinTerrainLocs_.dynamicLightSpaceMatrix = glGetUniformLocation(shp, "dynamicLightSpaceMatrix");
+            thinTerrainLocs_.enableDynamicShadows    = glGetUniformLocation(shp, "enableDynamicShadows");
+            thinTerrainLocs_.dynamicShadowMap        = glGetUniformLocation(shp, "dynamicShadowMap");
+            thinTerrainLocs_.time               = glGetUniformLocation(shp, "time");
+            thinTerrainLocs_.mapHalfExtent      = glGetUniformLocation(shp, "mapHalfExtent");
+            thinTerrainLocs_.ssboRecordBase     = glGetUniformLocation(shp, "ssboRecordBase");
         }
 
         void cacheShadowUniformLocations(GLuint shp) {
@@ -1954,6 +2002,25 @@ void gosRenderer::init() {
         if (shadow_object_material_) {
             materialList_.push_back(shadow_object_material_);
         }
+    }
+
+    // Load thin-record terrain program (gos_terrain_thin.vert + gos_terrain.frag, no tess).
+    // Used by PatchStream M1g to draw thin records via GL_TRIANGLES, avoiding tessellation overhead.
+    {
+        ZoneScopedN("gosRenderer::init thinTerrainProg");
+        static const char* kThinPrefix = "#version 430\n";
+        thin_terrain_prog_ = glsl_program::makeProgram(
+            "gos_terrain_thin",
+            "shaders/gos_terrain_thin.vert",
+            "shaders/gos_terrain.frag",
+            kThinPrefix);
+        if (!thin_terrain_prog_ || !thin_terrain_prog_->shp_)
+            fprintf(stderr, "[THIN_TERRAIN] WARNING: failed to compile thin terrain shader"
+                            " — thin draw path disabled\n");
+        else
+            printf("[THIN_TERRAIN] Thin terrain shader loaded: prog=%u\n",
+                   (unsigned)thin_terrain_prog_->shp_);
+        fflush(stdout);
     }
 
     // Load world-space overlay shaders and create VAOs/VBOs.
@@ -2917,6 +2984,88 @@ void gosRenderer::terrainBindUniformsForPatchStream(gosRenderMaterial* material)
         if (tl.enableShadows >= 0)        glUniform1i(tl.enableShadows, 0);
         if (tl.enableDynamicShadows >= 0) glUniform1i(tl.enableDynamicShadows, 0);
     }
+}
+
+int gosRenderer::terrainBindThinUniformsForPatchStream()
+{
+    if (!thin_terrain_prog_ || !thin_terrain_prog_->shp_) return -1;
+    GLuint shp = thin_terrain_prog_->shp_;
+    glUseProgram(shp);
+    cacheThinTerrainUniformLocations(shp);
+    const auto& tl = thinTerrainLocs_;
+
+    // VS uniforms: projection chain
+    if (terrain_mvp_valid_ && tl.terrainMVP >= 0)
+        glUniformMatrix4fv(tl.terrainMVP, 1, GL_FALSE, (const float*)&terrain_mvp_);
+    if (tl.terrainViewport >= 0)
+        glUniform4fv(tl.terrainViewport, 1, (const float*)&terrain_viewport_);
+    if (tl.mvp >= 0)
+        glUniformMatrix4fv(tl.mvp, 1, GL_FALSE, (const float*)&projection_);
+
+    // FS uniforms (same as terrainBindUniformsForPatchStream, minus tess-only params)
+    if (tl.cameraPos >= 0)        glUniform4fv(tl.cameraPos, 1, (const float*)&terrain_camera_pos_);
+    if (tl.terrainLightDir >= 0)  glUniform4fv(tl.terrainLightDir, 1, (const float*)&terrain_light_dir_);
+    if (tl.mapHalfExtent >= 0) {
+        gosPostProcess* pp = getGosPostProcess();
+        float halfExt = pp ? pp->getMapHalfExtent() : 0.0f;
+        glUniform1f(tl.mapHalfExtent, halfExt);
+    }
+    float tiling[4]      = { terrain_detail_tiling_, 0.0f, 0.0f, 0.0f };
+    float strength[4]    = { terrain_detail_strength_, 0.0f, 0.0f, 0.0f };
+    float pomP[4]        = { terrain_pom_scale_, 8.0f, 32.0f, 0.0f };
+    float worldScaleV[4] = { terrain_world_scale_, 0.0f, 0.0f, 0.0f };
+    float cellP[4]       = { terrain_cell_scale_, terrain_cell_jitter_, terrain_cell_rotation_, 0.0f };
+    if (tl.detailNormalTiling >= 0)   glUniform4fv(tl.detailNormalTiling, 1, tiling);
+    if (tl.detailNormalStrength >= 0) glUniform4fv(tl.detailNormalStrength, 1, strength);
+    if (tl.pomParams >= 0)            glUniform4fv(tl.pomParams, 1, pomP);
+    if (tl.terrainWorldScale >= 0)    glUniform4fv(tl.terrainWorldScale, 1, worldScaleV);
+    if (tl.cellBombParams >= 0)       glUniform4fv(tl.cellBombParams, 1, cellP);
+    if (tl.time >= 0) {
+        float elapsed = (float)(timing::get_wall_time_ms() - timeStart_) / 1000.0f;
+        glUniform1f(tl.time, elapsed);
+    }
+    if (tl.tex1 >= 0) glUniform1i(tl.tex1, 0);
+    for (int i = 0; i < 5; i++) {
+        if (terrain_mat_normal_[i] != 0 && tl.matNormal[i] >= 0) {
+            glUniform1i(tl.matNormal[i], 5 + i);
+            glActiveTexture(GL_TEXTURE5 + i);
+            glBindTexture(GL_TEXTURE_2D, terrain_mat_normal_[i]);
+        }
+    }
+    glActiveTexture(GL_TEXTURE0);
+
+    gosPostProcess* pp = getGosPostProcess();
+    if (pp && pp->shadowsEnabled_) {
+        if (tl.lightSpaceMatrix >= 0)
+            glUniformMatrix4fv(tl.lightSpaceMatrix, 1, GL_FALSE, pp->getLightSpaceMatrix());
+        if (tl.enableShadows >= 0)  glUniform1i(tl.enableShadows, 1);
+        if (tl.shadowSoftness >= 0) glUniform1f(tl.shadowSoftness, terrain_shadow_softness_);
+        if (tl.shadowMap >= 0) {
+            glUniform1i(tl.shadowMap, 9);
+            glActiveTexture(GL_TEXTURE9);
+            glBindTexture(GL_TEXTURE_2D, pp->getShadowTexture());
+            glActiveTexture(GL_TEXTURE0);
+        }
+        if (pp->getDynamicShadowFBO()) {
+            if (tl.dynamicLightSpaceMatrix >= 0)
+                glUniformMatrix4fv(tl.dynamicLightSpaceMatrix, 1, GL_FALSE,
+                                   pp->getDynamicLightSpaceMatrix());
+            if (tl.enableDynamicShadows >= 0) glUniform1i(tl.enableDynamicShadows, 1);
+            if (tl.dynamicShadowMap >= 0) {
+                glUniform1i(tl.dynamicShadowMap, 10);
+                glActiveTexture(GL_TEXTURE10);
+                glBindTexture(GL_TEXTURE_2D, pp->getDynamicShadowTexture());
+                glActiveTexture(GL_TEXTURE0);
+            }
+        } else {
+            if (tl.enableDynamicShadows >= 0) glUniform1i(tl.enableDynamicShadows, 0);
+        }
+    } else {
+        if (tl.enableShadows >= 0)        glUniform1i(tl.enableShadows, 0);
+        if (tl.enableDynamicShadows >= 0) glUniform1i(tl.enableDynamicShadows, 0);
+    }
+
+    return tl.ssboRecordBase;
 }
 
 void gosRenderer::terrainDrawIndexedPatches(gosRenderMaterial* material, gosMesh* mesh) {
