@@ -2,6 +2,7 @@
 #include "gos_terrain_patch_stream.h"
 #include "gos_terrain_bridge.h"   // gos_terrain_bridge_* free functions (Task 0)
 
+#include <algorithm>  // std::sort (bucket sort/merge)
 #include <cstdio>
 #include <cstdlib>
 #include <cstring>
@@ -578,14 +579,70 @@ bool TerrainPatchStream::flush()
     gos_VERTEX*        colorSlot  = (gos_VERTEX*)s_colorMap  + slotFirstVert;
     gos_TERRAIN_EXTRA* extrasSlot = (gos_TERRAIN_EXTRA*)s_extrasMap + slotFirstVert;
 
+    {
+    ZoneScopedN("PatchStream.MemoryBarrier");
+    glMemoryBarrier(GL_CLIENT_MAPPED_BUFFER_BARRIER_BIT);
+    }
+
+    // --- Census snapshot from raw staging (before any sort/merge) ---
+    // Must run before sort so raw/unique/canonNoSort measure the unsorted
+    // staging array, not the post-merge draw buckets.
+    if (s_censusOn) {
+        const uint32_t N = s_stagingCount;
+        DWORD resolved[kPatchStreamMaxBuckets];
+        uint32_t sentinelCount = 0;
+        for (uint32_t b = 0; b < N; ++b) {
+            const DWORD r = tex_resolve(s_staging[b].textureIndex);
+            resolved[b] = r;
+            if (r == 0xFFFFFFFFu) ++sentinelCount;
+        }
+        uint32_t unique = 0;
+        for (uint32_t b = 0; b < N; ++b) {
+            bool seen = false;
+            for (uint32_t k = 0; k < b; ++k) {
+                if (resolved[k] == resolved[b]) { seen = true; break; }
+            }
+            if (!seen) ++unique;
+        }
+        uint32_t canonNoSort = (N > 0) ? 1u : 0u;
+        for (uint32_t b = 1; b < N; ++b) {
+            if (resolved[b] != resolved[b - 1]) ++canonNoSort;
+        }
+        s_lastCensusRaw      = N;
+        s_lastCensusUnique   = unique;
+        s_lastCensusSentinel = sentinelCount;
+        s_lastCensusCanon    = canonNoSort;
+    }
+
+    // --- Sort staging by resolved texture handle ---
+    // Sorting groups same-texture staging buckets together so the merge step
+    // can coalesce them into one contiguous ring range (one draw call).
+    // tie-break on stagingIdx preserves append order within same texture for
+    // deterministic output.
+    struct BucketSortEntry { DWORD gosHandle; uint32_t stagingIdx; };
+    BucketSortEntry sortBuf[kPatchStreamMaxBuckets];
+    {
+    ZoneScopedN("PatchStream.BucketSort");
+    for (uint32_t i = 0; i < s_stagingCount; ++i) {
+        sortBuf[i] = { tex_resolve(s_staging[i].textureIndex), i };
+    }
+    std::sort(sortBuf, sortBuf + s_stagingCount,
+        [](const BucketSortEntry& a, const BucketSortEntry& b) {
+            if (a.gosHandle != b.gosHandle) return a.gosHandle < b.gosHandle;
+            return a.stagingIdx < b.stagingIdx;
+        });
+    }
+
+    // --- Consolidate sorted staging into persistent ring, merging same-texture ranges ---
     uint32_t cursor = 0;
     s_drawBucketCount = 0;
     {
     ZoneScopedN("PatchStream.Consolidate");
     for (uint32_t i = 0; i < s_stagingCount; ++i) {
-        const PatchStagingBucket& sb = s_staging[i];
+        const BucketSortEntry&    se = sortBuf[i];
+        const PatchStagingBucket& sb = s_staging[se.stagingIdx];
         if (sb.color.empty()) continue;
-        const uint32_t n = (uint32_t)sb.color.size();   // == sb.extras.size()
+        const uint32_t n = (uint32_t)sb.color.size();  // == sb.extras.size()
 
         {
         ZoneScopedN("PatchStream.Consolidate.CopyColor");
@@ -596,74 +653,23 @@ bool TerrainPatchStream::flush()
         memcpy(extrasSlot + cursor, sb.extras.data(), n * sizeof(gos_TERRAIN_EXTRA));
         }
 
-        PatchStreamBucket& db = s_drawBuckets[s_drawBucketCount++];
-        db.textureIndex = sb.textureIndex;
-        db.firstVertex  = cursor;
-        db.vertexCount  = n;
+        // Merge with previous draw bucket if resolved handle matches.
+        // Data is contiguous in the ring so [firstVertex..firstVertex+vertexCount)
+        // covers the full merged range correctly.
+        if (s_drawBucketCount > 0 &&
+            s_drawBuckets[s_drawBucketCount - 1].gosHandle == se.gosHandle) {
+            s_drawBuckets[s_drawBucketCount - 1].vertexCount += n;
+        } else {
+            PatchStreamBucket& db = s_drawBuckets[s_drawBucketCount++];
+            db.gosHandle   = se.gosHandle;
+            db.firstVertex = cursor;  // slot-relative; slotFirstVert added at draw time
+            db.vertexCount = n;
+        }
         cursor += n;
     }
     }
     TracyPlot("PatchStream verts", (int64_t)cursor);
     TracyPlot("PatchStream buckets", (int64_t)s_drawBucketCount);
-
-    {
-    ZoneScopedN("PatchStream.MemoryBarrier");
-    glMemoryBarrier(GL_CLIENT_MAPPED_BUFFER_BARRIER_BIT);
-    }
-
-    // 1.5. Bucket census (env-gated). Computed here, after s_drawBuckets is
-    //      finalized, so it accurately reflects what draws would be issued.
-    //      No-op when MC2_BUCKET_CENSUS is unset; cheap O(N²) merge for
-    //      "canon" since N ≤ kPatchStreamMaxBuckets and only runs in the
-    //      diagnostic build path.
-    if (s_censusOn) {
-        const uint32_t N = s_drawBucketCount;
-        // Resolve every bucket's canonical key once into a stack scratch
-        // array. This invokes tex_resolve() per bucket which is the same
-        // call the per-bucket draw loop will issue at line `gos_State_Texture`,
-        // so this adds at most one extra resolve per bucket per frame
-        // (memoized after first touch).
-        DWORD resolved[kPatchStreamMaxBuckets];
-        uint32_t sentinelCount = 0;
-        for (uint32_t b = 0; b < N; ++b) {
-            const DWORD r = tex_resolve(s_drawBuckets[b].textureIndex);
-            resolved[b] = r;
-            if (r == 0xFFFFFFFFu) ++sentinelCount;
-        }
-        // Unique-count: O(N²) over what we just resolved. Distinct count
-        // = how many bucket-keys Option B would produce.
-        uint32_t unique = 0;
-        for (uint32_t b = 0; b < N; ++b) {
-            bool seen = false;
-            for (uint32_t k = 0; k < b; ++k) {
-                if (resolved[k] == resolved[b]) { seen = true; break; }
-            }
-            if (!seen) ++unique;
-        }
-        // Canon-after-merge: stable-sort the resolved keys and count
-        // contiguous same-key runs. Equals `unique` if Option-B-equivalent
-        // (because sorting collapses everything). To approximate Option-A's
-        // worst case (no sort, just merge contiguous-as-appended), also
-        // compute a no-sort variant: walk in append order, count run
-        // changes.
-        uint32_t canonNoSort = (N > 0) ? 1u : 0u;
-        for (uint32_t b = 1; b < N; ++b) {
-            if (resolved[b] != resolved[b - 1]) ++canonNoSort;
-        }
-        // For "canon" we report the SORT-ED variant — this is the count
-        // an Option-A implementation that includes a sort step would
-        // achieve, and equals `unique` mathematically. We keep both in
-        // separate counters for the verdict but only print one (sorted).
-        // Rationale: append-order Option-A (canonNoSort) is bounded
-        // above by `unique` only if append order is texture-grouped; on
-        // spatial traversal it can equal raw N in pathological cases.
-        // So canonNoSort is the more pessimistic Option-A bound. We log
-        // it as `canon_nosort` to inform the verdict.
-        s_lastCensusRaw      = N;
-        s_lastCensusUnique   = unique;
-        s_lastCensusSentinel = sentinelCount;
-        s_lastCensusCanon    = canonNoSort;  // Option-A append-order bound
-    }
 
     // 2. Bind uniforms via the engine bridge — sets the program, samplers,
     //    terrainMVP GL_FALSE, all tess + splatting + shadow uniforms.
@@ -730,7 +736,7 @@ bool TerrainPatchStream::flush()
     ZoneScopedN("PatchStream.DrawBuckets");
     for (uint32_t b = 0; b < s_drawBucketCount; ++b) {
         const PatchStreamBucket& bk = s_drawBuckets[b];
-        const DWORD gosHandle = tex_resolve(bk.textureIndex);
+        const DWORD gosHandle = bk.gosHandle;  // tex_resolve already applied at consolidate time
         const GLuint glTex =
             (GLuint)gos_terrain_bridge_glTextureForGosHandle((unsigned int)gosHandle);
 
@@ -816,10 +822,10 @@ bool TerrainPatchStream::flush()
                     glGetIntegerv(GL_TEXTURE_BINDING_2D, &texBind);
                     fprintf(stderr,
                         "[PATCH_STREAM v1] event=bucket_err err=0x%X "
-                        "bucket_idx=%u/%u textureIndex=%lu glTex=%u "
+                        "bucket_idx=%u/%u gosHandle=%lu glTex=%u "
                         "tex0_bound=%d firstVertex=%u vertexCount=%u\n",
                         (unsigned)drawErr, b, s_drawBucketCount,
-                        (unsigned long)bk.textureIndex, (unsigned)glTex,
+                        (unsigned long)bk.gosHandle, (unsigned)glTex,
                         texBind, bk.firstVertex, bk.vertexCount);
                     fflush(stderr);
                 }

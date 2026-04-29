@@ -26,8 +26,8 @@ constexpr uint32_t kPatchStreamColorBytesPerSlot  = 327680u * 32u;  // 10.0 MB
 constexpr uint32_t kPatchStreamExtrasBytesPerSlot = 327680u * 24u;  //  7.5 MB
 
 struct PatchStreamBucket {
-    DWORD textureIndex;  // terrain colormap handle, resolved at draw time
-    uint32_t firstVertex;
+    DWORD    gosHandle;   // resolved gosHandle (tex_resolve already applied)
+    uint32_t firstVertex; // slot-relative vertex offset (slotFirstVert added at draw time)
     uint32_t vertexCount;
 };
 
