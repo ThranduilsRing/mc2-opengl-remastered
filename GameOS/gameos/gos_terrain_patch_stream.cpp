@@ -801,8 +801,7 @@ uint32_t TerrainPatchStream::ensureRecipeForQuad(uint64_t key,
     return slot;
 }
 
-void TerrainPatchStream::appendThinRecordDirect(DWORD terrainHandle,
-                                                 const TerrainQuadThinRecord& tr) {
+void TerrainPatchStream::appendThinRecordDirect(const TerrainQuadThinRecord& tr) {
     if (!s_thinRecordsOn || !s_thinRecordBuf || !s_recipeBuf) return;
     if (!s_initOk || !s_killswitch) return;
     if (s_overflow) return;

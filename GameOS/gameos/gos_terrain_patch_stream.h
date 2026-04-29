@@ -202,7 +202,7 @@ public:
 
     // Write pre-built thin record directly to shadow array. tr.recipeIdx must be valid.
     // Mirrors all guards of appendThinRecord; increments parity counter.
-    static void appendThinRecordDirect(DWORD terrainHandle, const TerrainQuadThinRecord& tr);
+    static void appendThinRecordDirect(const TerrainQuadThinRecord& tr);
 
     // Parity: expected verts from thin records (same semantics as addRecordVertParity).
     static void addThinRecordVertParity(uint32_t n);
