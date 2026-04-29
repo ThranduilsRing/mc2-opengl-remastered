@@ -1362,60 +1362,42 @@ bool TerrainPatchStream::flush()
                s_thinRecordCount * sizeof(TerrainQuadThinRecord));
         }
 
-        // Retrieve useQuadRecords / ssboRecordBase uniform locations (cached from fat path).
-        static GLint s_useQuadRecordsLoc2 = -2;
-        static GLint s_ssboRecordBaseLoc2 = -2;
-        {
-        ZoneScopedN("PatchStream.DrawThinRecords.GLSetup");
-        if (s_useQuadRecordsLoc2 == -2) {
-            GLuint shp = (GLuint)gos_terrain_bridge_getShaderProgram();
-            s_useQuadRecordsLoc2 = shp ? glGetUniformLocation(shp, "useQuadRecords") : -1;
-        }
-        if (s_ssboRecordBaseLoc2 == -2) {
-            GLuint shp = (GLuint)gos_terrain_bridge_getShaderProgram();
-            s_ssboRecordBaseLoc2 = shp ? glGetUniformLocation(shp, "ssboRecordBase") : -1;
-        }
-        }
-
-        if (s_useQuadRecordsLoc2 >= 0) {
-            glUniform1i(s_useQuadRecordsLoc2, 2);  // thin-record TCS path
-
-            {
+        // M1g: draw via dedicated thin VS + GL_TRIANGLES (no tessellation overhead).
+        unsigned int thinProg = gos_terrain_bridge_getThinShaderProgram();
+        if (thinProg != 0) {
             ZoneScopedN("PatchStream.DrawThinRecords.Buckets");
+
+            // Mark invariant GL states dirty (Z, blend, etc.). applyRenderStates in
+            // drawSingleBucketTriangles will flush them without touching glUseProgram.
             gos_terrain_bridge_beginBucketLoop();
+
+            // Switch to thin VS program and set all uniforms.
+            GLint ssboBaseLoc = gos_terrain_bridge_bindThinUniforms();
+
+            // Bind SSBOs once (same across all buckets — slot offset applied per bucket
+            // via ssboRecordBase).
+            glBindBufferBase(GL_SHADER_STORAGE_BUFFER, 2, s_thinRecordBuf);
+            glBindBufferBase(GL_SHADER_STORAGE_BUFFER, 1, s_recipeBuf);
+
             for (uint32_t b = 0; b < thinRecDrawBucketCount; ++b) {
                 const ThinRecBucket& rb = s_thinRecDrawBuckets[b];
-                // Thin records at binding 2 (slot-relative), recipes at binding 1 (global).
-                // Binding 0 is reserved for the fat-record QuadRecordBuf; using 0 here
-                // would alias with a different struct stride and corrupt SSBO indexing.
-                glBindBufferBase(GL_SHADER_STORAGE_BUFFER, 2, s_thinRecordBuf);
-                glBindBufferBase(GL_SHADER_STORAGE_BUFFER, 1, s_recipeBuf);
-                if (s_ssboRecordBaseLoc2 >= 0) {
-                    glUniform1i(s_ssboRecordBaseLoc2, (GLint)(slotFirstThinRec + rb.firstRecord));
-                }
-                // Vertex count = recordCount * 2 patches * 3 verts/patch (GL_PATCH_VERTICES=3).
-                const GLsizei vertCount = (GLsizei)(rb.recordCount * 6);
-                gos_terrain_bridge_drawSingleBucket(
+                if (ssboBaseLoc >= 0)
+                    glUniform1i(ssboBaseLoc,
+                                (GLint)(slotFirstThinRec + rb.firstRecord));
+                const GLsizei vertCount = (GLsizei)(rb.recordCount * 6u);
+                gos_terrain_bridge_drawSingleBucketTriangles(
                     (unsigned int)rb.gosHandle, 0u, (unsigned int)vertCount);
             }
-            gos_terrain_bridge_endBucketLoop(0xFFFFFFFFu);
-            }
 
-            {
-            ZoneScopedN("PatchStream.DrawThinRecords.PostDraw");
-            glUniform1i(s_useQuadRecordsLoc2, 0);
+            gos_terrain_bridge_endBucketLoop(0xFFFFFFFFu);
+
+            // Unbind SSBOs and restore neutral program.
             glBindBufferBase(GL_SHADER_STORAGE_BUFFER, 2, 0);
             glBindBufferBase(GL_SHADER_STORAGE_BUFFER, 1, 0);
-            GLenum e;
-            while ((e = glGetError()) != GL_NO_ERROR) {
-                fprintf(stderr,
-                    "[PATCH_STREAM v1] event=thin_record_post_glerror code=0x%x\n", e);
-                fflush(stderr);
-            }
-            }
+            glUseProgram(0);
         } else {
             fprintf(stderr,
-                "[PATCH_STREAM v1] event=thin_record_draw_skip reason=no_uniform\n");
+                "[PATCH_STREAM v1] event=thin_record_draw_skip reason=no_thin_program\n");
             fflush(stderr);
         }
 
