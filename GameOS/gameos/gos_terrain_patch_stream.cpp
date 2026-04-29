@@ -989,6 +989,85 @@ bool TerrainPatchStream::flush()
 
     gos_terrain_bridge_endBucketLoop((unsigned int)lastGosHandleDrawn);
 
+    // --- M1b record draw path ---
+    if (s_quadRecordsOn && s_quadRecordsDrawOn && s_recordBuf && s_recordCount > 0) {
+        ZoneScopedN("PatchStream.DrawRecords");
+
+        struct RecordBucket { DWORD gosHandle; uint32_t firstRecord; uint32_t recordCount; };
+        static RecordBucket s_recDrawBuckets[kPatchStreamMaxBuckets];
+        uint32_t recDrawBucketCount = 0;
+
+        const uint32_t slotFirstRecord = s_slot * kPatchStreamMaxRecordsPerSlot;
+        TerrainQuadRecord* ringBase = (TerrainQuadRecord*)s_recordMap + slotFirstRecord;
+
+        struct RecSortEntry { DWORD gosHandle; uint32_t recIdx; };
+        static RecSortEntry recSortBuf[kPatchStreamMaxRecordsPerSlot];
+        for (uint32_t r = 0; r < s_recordCount; ++r) {
+            recSortBuf[r] = { (DWORD)tex_resolve(ringBase[r].terrainHandle), r };
+        }
+        std::sort(recSortBuf, recSortBuf + s_recordCount,
+            [](const RecSortEntry& a, const RecSortEntry& b) {
+                return a.gosHandle < b.gosHandle;
+            });
+
+        // Copy sorted records back into ring and build draw buckets.
+        static TerrainQuadRecord recSortedTmp[kPatchStreamMaxRecordsPerSlot];
+        for (uint32_t r = 0; r < s_recordCount; ++r) {
+            recSortedTmp[r] = ringBase[recSortBuf[r].recIdx];
+            recSortedTmp[r].terrainHandle = (uint32_t)recSortBuf[r].gosHandle;
+
+            DWORD gh = recSortBuf[r].gosHandle;
+            if (recDrawBucketCount > 0 && s_recDrawBuckets[recDrawBucketCount-1].gosHandle == gh) {
+                ++s_recDrawBuckets[recDrawBucketCount-1].recordCount;
+            } else {
+                if (recDrawBucketCount < kPatchStreamMaxBuckets) {
+                    s_recDrawBuckets[recDrawBucketCount++] = { gh, r, 1u };
+                }
+            }
+        }
+        memcpy(ringBase, recSortedTmp, s_recordCount * sizeof(TerrainQuadRecord));
+
+        // Retrieve useQuadRecords uniform location (cached after first lookup).
+        static GLint s_useQuadRecordsLoc = -2; // -2 = not yet queried
+        if (s_useQuadRecordsLoc == -2) {
+            GLuint shp = (GLuint)gos_terrain_bridge_getShaderProgram();
+            s_useQuadRecordsLoc = shp ? glGetUniformLocation(shp, "useQuadRecords") : -1;
+        }
+        if (s_useQuadRecordsLoc >= 0) {
+            // Bind SSBO and enable record TCS mode.
+            glBindBufferBase(GL_SHADER_STORAGE_BUFFER, 0, s_recordBuf);
+            glUniform1i(s_useQuadRecordsLoc, 1);
+
+            // Per-texture-bucket draw.
+            {
+            ZoneScopedN("PatchStream.DrawRecords.Buckets");
+            gos_terrain_bridge_beginBucketLoop();
+            for (uint32_t b = 0; b < recDrawBucketCount; ++b) {
+                const RecordBucket& rb = s_recDrawBuckets[b];
+                // 2 patches per record (each patch = 1 triangle = 3 verts).
+                // glDrawArrays(GL_PATCHES, patchFirst, patchCount) uses
+                // gl_PrimitiveID as the patch index inside the TCS.
+                const GLint   patchFirst = (GLint)((slotFirstRecord + rb.firstRecord) * 2);
+                const GLsizei patchCount = (GLsizei)(rb.recordCount * 2);
+                gos_terrain_bridge_drawSingleBucket(
+                    (unsigned int)rb.gosHandle,
+                    (unsigned int)patchFirst,
+                    (unsigned int)patchCount);
+            }
+            gos_terrain_bridge_endBucketLoop(0xFFFFFFFFu);
+            }
+
+            // Restore TCS to passthrough.
+            glUniform1i(s_useQuadRecordsLoc, 0);
+            glBindBufferBase(GL_SHADER_STORAGE_BUFFER, 0, 0);
+        } else {
+            // Shader not yet updated with useQuadRecords uniform -- skip record draw this frame.
+            fprintf(stderr,
+                "[PATCH_STREAM v1] event=record_draw_skip reason=no_uniform\n");
+            fflush(stderr);
+        }
+    }
+
     {
     ZoneScopedN("PatchStream.Cleanup");
     if (locWorldPos  >= 0) glDisableVertexAttribArray(locWorldPos);
