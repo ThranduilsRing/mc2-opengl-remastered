@@ -745,6 +745,93 @@ void TerrainPatchStream::addRecordVertParity(uint32_t n) {
     s_recordVertParity += n;
 }
 
+void TerrainPatchStream::appendThinRecord(
+    DWORD terrainHandle,
+    const TerrainQuadRecipe& recipe,
+    uint32_t flags,
+    uint32_t lightRGB0, uint32_t lightRGB1, uint32_t lightRGB2, uint32_t lightRGB3,
+    uint32_t fogRGB0,   uint32_t fogRGB1,   uint32_t fogRGB2,   uint32_t fogRGB3)
+{
+    if (!s_thinRecordsOn || !s_thinRecordBuf || !s_recipeBuf) return;
+    if (!s_initOk || !s_killswitch) return;
+    if (s_overflow) return;
+    if (s_thinRecordCount >= kPatchStreamMaxThinRecordsPerSlot) {
+        if (s_thinRecordCount == kPatchStreamMaxThinRecordsPerSlot) {
+            fprintf(stderr,
+                "[PATCH_STREAM v1] event=thin_record_overflow slot=%u cap=%u\n",
+                s_slot, kPatchStreamMaxThinRecordsPerSlot);
+            fflush(stderr);
+        }
+        return;
+    }
+
+    // Lazily populate recipe: look up by corner-0 world position bits.
+    // Key encodes XY only; wz0 is NOT included (valid for MC2's flat-grid terrain
+    // where each (x,y) cell is unique). Add wz0 to the key if vertical-stack
+    // quads are ever introduced.
+    uint32_t bx, by;
+    memcpy(&bx, &recipe.wx0, 4);
+    memcpy(&by, &recipe.wy0, 4);
+    const uint64_t key = ((uint64_t)bx << 32) | (uint64_t)by;
+
+    uint32_t recipeSlot;
+    auto it = s_recipeIndex.find(key);
+    if (it != s_recipeIndex.end()) {
+        recipeSlot = it->second;
+        // Debug collision check: if the incoming recipe fields differ from the cached
+        // slot, the key (wx0,wy0) is not unique for this quad. Log and continue using
+        // the cached slot (do not overwrite — the GPU may have already read it).
+        if (s_traceOn) {
+            const TerrainQuadRecipe* recipeBase = (const TerrainQuadRecipe*)s_recipeMap;
+            const TerrainQuadRecipe& cached = recipeBase[recipeSlot];
+            if (cached.wx0 != recipe.wx0 || cached.wy0 != recipe.wy0 ||
+                cached.wz0 != recipe.wz0 || cached.wx1 != recipe.wx1) {
+                fprintf(stderr,
+                    "[PATCH_STREAM v1] event=recipe_key_collision slot=%u "
+                    "key=0x%llx cached=(%.3f,%.3f,%.3f) incoming=(%.3f,%.3f,%.3f)\n",
+                    recipeSlot, (unsigned long long)key,
+                    cached.wx0, cached.wy0, cached.wz0,
+                    recipe.wx0, recipe.wy0, recipe.wz0);
+                fflush(stderr);
+            }
+        }
+    } else {
+        if (s_recipeCount >= kPatchStreamMaxRecipesTotal) {
+            // Overflow: silently skip (no thin record emitted).
+            static bool s_recipeOverflowLogged = false;
+            if (!s_recipeOverflowLogged) {
+                s_recipeOverflowLogged = true;
+                fprintf(stderr,
+                    "[PATCH_STREAM v1] event=recipe_overflow cap=%u\n",
+                    kPatchStreamMaxRecipesTotal);
+                fflush(stderr);
+            }
+            return;
+        }
+        recipeSlot = s_recipeCount++;
+        // Write recipe to coherent persistent map — immediately GPU-visible.
+        TerrainQuadRecipe* recipeBase = (TerrainQuadRecipe*)s_recipeMap;
+        recipeBase[recipeSlot] = recipe;
+        s_recipeIndex[key] = recipeSlot;
+    }
+
+    // Write thin record to CPU shadow (cache-hot; sorted + uploaded in flush).
+    TerrainQuadThinRecord& tr = s_thinRecordShadow[s_thinRecordCount++];
+    tr.recipeIdx     = recipeSlot;
+    tr.terrainHandle = (uint32_t)terrainHandle;
+    tr.flags         = flags;
+    tr._pad0         = 0u;
+    tr.lightRGB0     = lightRGB0; tr.lightRGB1 = lightRGB1;
+    tr.lightRGB2     = lightRGB2; tr.lightRGB3 = lightRGB3;
+    tr.fogRGB0       = fogRGB0;   tr.fogRGB1   = fogRGB1;
+    tr.fogRGB2       = fogRGB2;   tr.fogRGB3   = fogRGB3;
+}
+
+void TerrainPatchStream::addThinRecordVertParity(uint32_t n) {
+    if (!s_thinRecordsOn) return;
+    s_thinRecordVertParity += n;
+}
+
 bool TerrainPatchStream::flush()
 {
     ZoneScopedN("PatchStream.Flush");

@@ -1998,6 +1998,23 @@ void TerrainQuad::draw (void)
 				rec._ctrl2 = 0u; rec._ctrl3 = 0u;
 				TerrainPatchStream::appendQuadRecord(rec);
 				TerrainPatchStream::addRecordVertParity((pzTri1 ? 3u : 0u) + (pzTri2 ? 3u : 0u));
+				{
+					TerrainQuadRecipe recipe;
+					recipe.wx0=vertices[0]->vx; recipe.wy0=vertices[0]->vy; recipe.wz0=vertices[0]->pVertex->elevation; recipe._wp0=0.f;
+					recipe.wx1=vertices[1]->vx; recipe.wy1=vertices[1]->vy; recipe.wz1=vertices[1]->pVertex->elevation; recipe._wp1=0.f;
+					recipe.wx2=vertices[2]->vx; recipe.wy2=vertices[2]->vy; recipe.wz2=vertices[2]->pVertex->elevation; recipe._wp2=0.f;
+					recipe.wx3=vertices[3]->vx; recipe.wy3=vertices[3]->vy; recipe.wz3=vertices[3]->pVertex->elevation; recipe._wp3=0.f;
+					recipe.nx0=vertices[0]->pVertex->vertexNormal.x; recipe.ny0=vertices[0]->pVertex->vertexNormal.y; recipe.nz0=vertices[0]->pVertex->vertexNormal.z; recipe._np0=0.f;
+					recipe.nx1=vertices[1]->pVertex->vertexNormal.x; recipe.ny1=vertices[1]->pVertex->vertexNormal.y; recipe.nz1=vertices[1]->pVertex->vertexNormal.z; recipe._np1=0.f;
+					recipe.nx2=vertices[2]->pVertex->vertexNormal.x; recipe.ny2=vertices[2]->pVertex->vertexNormal.y; recipe.nz2=vertices[2]->pVertex->vertexNormal.z; recipe._np2=0.f;
+					recipe.nx3=vertices[3]->pVertex->vertexNormal.x; recipe.ny3=vertices[3]->pVertex->vertexNormal.y; recipe.nz3=vertices[3]->pVertex->vertexNormal.z; recipe._np3=0.f;
+					recipe.minU=minU; recipe.minV=minV; recipe.maxU=maxU; recipe.maxV=maxV;
+					const uint32_t tFlags = 0u | (pzTri1 ? 2u : 0u) | (pzTri2 ? 4u : 0u); // bit0=0 → TOPRIGHT
+					TerrainPatchStream::appendThinRecord(terrainHandle, recipe, tFlags,
+						gvTri1[0].argb, gvTri1[1].argb, gvTri1[2].argb, gVertex[2].argb,
+						gvTri1[0].frgb, gvTri1[1].frgb, gvTri1[2].frgb, gVertex[2].frgb);
+					TerrainPatchStream::addThinRecordVertParity((pzTri1 ? 3u : 0u) + (pzTri2 ? 3u : 0u));
+				}
 			}
 		}
 		else if (uvMode == BOTTOMLEFT)
@@ -2330,6 +2347,25 @@ void TerrainQuad::draw (void)
 				rec._ctrl2 = 0u; rec._ctrl3 = 0u;
 				TerrainPatchStream::appendQuadRecord(rec);
 				TerrainPatchStream::addRecordVertParity((pzTri1 ? 3u : 0u) + (pzTri2 ? 3u : 0u));
+				{
+					TerrainQuadRecipe recipe;
+					recipe.wx0=vertices[0]->vx; recipe.wy0=vertices[0]->vy; recipe.wz0=vertices[0]->pVertex->elevation; recipe._wp0=0.f;
+					recipe.wx1=vertices[1]->vx; recipe.wy1=vertices[1]->vy; recipe.wz1=vertices[1]->pVertex->elevation; recipe._wp1=0.f;
+					recipe.wx2=vertices[2]->vx; recipe.wy2=vertices[2]->vy; recipe.wz2=vertices[2]->pVertex->elevation; recipe._wp2=0.f;
+					recipe.wx3=vertices[3]->vx; recipe.wy3=vertices[3]->vy; recipe.wz3=vertices[3]->pVertex->elevation; recipe._wp3=0.f;
+					recipe.nx0=vertices[0]->pVertex->vertexNormal.x; recipe.ny0=vertices[0]->pVertex->vertexNormal.y; recipe.nz0=vertices[0]->pVertex->vertexNormal.z; recipe._np0=0.f;
+					recipe.nx1=vertices[1]->pVertex->vertexNormal.x; recipe.ny1=vertices[1]->pVertex->vertexNormal.y; recipe.nz1=vertices[1]->pVertex->vertexNormal.z; recipe._np1=0.f;
+					recipe.nx2=vertices[2]->pVertex->vertexNormal.x; recipe.ny2=vertices[2]->pVertex->vertexNormal.y; recipe.nz2=vertices[2]->pVertex->vertexNormal.z; recipe._np2=0.f;
+					recipe.nx3=vertices[3]->pVertex->vertexNormal.x; recipe.ny3=vertices[3]->pVertex->vertexNormal.y; recipe.nz3=vertices[3]->pVertex->vertexNormal.z; recipe._np3=0.f;
+					recipe.minU=minU; recipe.minV=minV; recipe.maxU=maxU; recipe.maxV=maxV;
+					// BOTTOMLEFT: same corner order as fat record above.
+					// gvTri1[0]=corner0, gvTri1[1]=corner1, gvTri1[2]=corner3; gVertex[1]=corner2
+					const uint32_t tFlags = 1u | (pzTri1 ? 2u : 0u) | (pzTri2 ? 4u : 0u); // bit0=1 → BOTTOMLEFT
+					TerrainPatchStream::appendThinRecord(terrainHandle, recipe, tFlags,
+						gvTri1[0].argb, gvTri1[1].argb, gVertex[1].argb, gvTri1[2].argb,
+						gvTri1[0].frgb, gvTri1[1].frgb, gVertex[1].frgb, gvTri1[2].frgb);
+					TerrainPatchStream::addThinRecordVertParity((pzTri1 ? 3u : 0u) + (pzTri2 ? 3u : 0u));
+				}
 			}
 		}
 	}
