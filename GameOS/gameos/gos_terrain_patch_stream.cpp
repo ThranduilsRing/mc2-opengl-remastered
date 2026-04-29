@@ -1284,6 +1284,135 @@ bool TerrainPatchStream::flush()
         }
     }
 
+    // --- M1d thin-record draw path ---
+    if (s_thinRecordsOn && s_thinRecordsDrawOn && s_thinRecordBuf && s_recipeBuf
+            && s_thinRecordCount > 0) {
+        ZoneScopedN("PatchStream.DrawThinRecords");
+
+        struct ThinRecBucket { DWORD gosHandle; uint32_t firstRecord; uint32_t recordCount; };
+        static ThinRecBucket s_thinRecDrawBuckets[kPatchStreamMaxBuckets];
+        uint32_t thinRecDrawBucketCount = 0;
+
+        const uint32_t slotFirstThinRec =
+            s_slot * kPatchStreamMaxThinRecordsPerSlot;
+        TerrainQuadThinRecord* ringBase =
+            (TerrainQuadThinRecord*)s_thinRecordMap + slotFirstThinRec;
+
+        // Sort shadow by resolved gosHandle.
+        struct ThinSortEntry { DWORD gosHandle; uint32_t recIdx; };
+        static ThinSortEntry thinSortBuf[kPatchStreamMaxThinRecordsPerSlot];
+        {
+        ZoneScopedN("PatchStream.DrawThinRecords.BuildSort");
+        for (uint32_t r = 0; r < s_thinRecordCount; ++r) {
+            thinSortBuf[r] = {
+                (DWORD)tex_resolve(s_thinRecordShadow[r].terrainHandle), r };
+        }
+        std::sort(thinSortBuf, thinSortBuf + s_thinRecordCount,
+            [](const ThinSortEntry& a, const ThinSortEntry& b) {
+                return a.gosHandle < b.gosHandle;
+            });
+        }
+
+        static TerrainQuadThinRecord thinSortedTmp[kPatchStreamMaxThinRecordsPerSlot];
+        {
+        ZoneScopedN("PatchStream.DrawThinRecords.Gather");
+        for (uint32_t r = 0; r < s_thinRecordCount; ++r) {
+            thinSortedTmp[r] = s_thinRecordShadow[thinSortBuf[r].recIdx];
+            thinSortedTmp[r].terrainHandle = (uint32_t)thinSortBuf[r].gosHandle;
+
+            DWORD gh = thinSortBuf[r].gosHandle;
+            if (thinRecDrawBucketCount > 0 &&
+                    s_thinRecDrawBuckets[thinRecDrawBucketCount-1].gosHandle == gh) {
+                ++s_thinRecDrawBuckets[thinRecDrawBucketCount-1].recordCount;
+            } else if (thinRecDrawBucketCount < kPatchStreamMaxBuckets) {
+                s_thinRecDrawBuckets[thinRecDrawBucketCount++] = { gh, r, 1u };
+            }
+        }
+        }
+
+        {
+        ZoneScopedN("PatchStream.DrawThinRecords.Upload");
+        memcpy(ringBase, thinSortedTmp,
+               s_thinRecordCount * sizeof(TerrainQuadThinRecord));
+        }
+
+        // Retrieve useQuadRecords / ssboRecordBase uniform locations (cached from fat path).
+        static GLint s_useQuadRecordsLoc2 = -2;
+        static GLint s_ssboRecordBaseLoc2 = -2;
+        {
+        ZoneScopedN("PatchStream.DrawThinRecords.GLSetup");
+        if (s_useQuadRecordsLoc2 == -2) {
+            GLuint shp = (GLuint)gos_terrain_bridge_getShaderProgram();
+            s_useQuadRecordsLoc2 = shp ? glGetUniformLocation(shp, "useQuadRecords") : -1;
+        }
+        if (s_ssboRecordBaseLoc2 == -2) {
+            GLuint shp = (GLuint)gos_terrain_bridge_getShaderProgram();
+            s_ssboRecordBaseLoc2 = shp ? glGetUniformLocation(shp, "ssboRecordBase") : -1;
+        }
+        }
+
+        if (s_useQuadRecordsLoc2 >= 0) {
+            glUniform1i(s_useQuadRecordsLoc2, 2);  // thin-record TCS path
+
+            {
+            ZoneScopedN("PatchStream.DrawThinRecords.Buckets");
+            gos_terrain_bridge_beginBucketLoop();
+            for (uint32_t b = 0; b < thinRecDrawBucketCount; ++b) {
+                const ThinRecBucket& rb = s_thinRecDrawBuckets[b];
+                // Thin records at binding 0 (slot-relative), recipes at binding 1 (global).
+                glBindBufferBase(GL_SHADER_STORAGE_BUFFER, 0, s_thinRecordBuf);
+                glBindBufferBase(GL_SHADER_STORAGE_BUFFER, 1, s_recipeBuf);
+                if (s_ssboRecordBaseLoc2 >= 0) {
+                    glUniform1i(s_ssboRecordBaseLoc2, (GLint)(slotFirstThinRec + rb.firstRecord));
+                }
+                const GLsizei patchCount = (GLsizei)(rb.recordCount * 2);
+                gos_terrain_bridge_drawSingleBucket(
+                    (unsigned int)rb.gosHandle, 0u, (unsigned int)patchCount);
+            }
+            gos_terrain_bridge_endBucketLoop(0xFFFFFFFFu);
+            }
+
+            {
+            ZoneScopedN("PatchStream.DrawThinRecords.PostDraw");
+            glUniform1i(s_useQuadRecordsLoc2, 0);
+            glBindBufferBase(GL_SHADER_STORAGE_BUFFER, 0, 0);
+            glBindBufferBase(GL_SHADER_STORAGE_BUFFER, 1, 0);
+            GLenum e;
+            while ((e = glGetError()) != GL_NO_ERROR) {
+                fprintf(stderr,
+                    "[PATCH_STREAM v1] event=thin_record_post_glerror code=0x%x\n", e);
+                fflush(stderr);
+            }
+            }
+        } else {
+            fprintf(stderr,
+                "[PATCH_STREAM v1] event=thin_record_draw_skip reason=no_uniform\n");
+            fflush(stderr);
+        }
+
+        // Thin-record parity gate: thin count should match fat count when both enabled.
+        if (!s_thinRecordBannerSeen) {
+            s_thinRecordBannerSeen = true;
+            fprintf(stderr,
+                "[PATCH_STREAM v1] event=thin_records_enabled "
+                "max_per_slot=%u bytes_per_slot=%u recipe_total=%u\n",
+                kPatchStreamMaxThinRecordsPerSlot,
+                kPatchStreamThinRecordBytesPerSlot,
+                kPatchStreamMaxRecipesTotal);
+            fflush(stderr);
+        }
+        const bool thinParityOk = (s_thinRecordVertParity == s_totalVerts);
+        if (s_traceOn || !thinParityOk) {
+            fprintf(stderr,
+                "[PATCH_STREAM v1] event=thin_record_parity slot=%u "
+                "thin_records=%u thin_verts=%u expanded_verts=%u match=%d "
+                "recipes_total=%u\n",
+                s_slot, s_thinRecordCount, s_thinRecordVertParity,
+                s_totalVerts, (int)thinParityOk, s_recipeCount);
+            fflush(stderr);
+        }
+    }
+
     {
     ZoneScopedN("PatchStream.Cleanup");
     if (locWorldPos  >= 0) glDisableVertexAttribArray(locWorldPos);
