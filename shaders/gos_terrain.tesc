@@ -124,8 +124,8 @@ void main()
              :(cornerIdx == 1u) ? rec.worldNorm1
              :(cornerIdx == 2u) ? rec.worldNorm2
              :                    rec.worldNorm3;
-    tcs_WorldPos[id]  = wp.xyz;
-    tcs_WorldNorm[id] = wn.xyz;
+    tcs_WorldPos[gl_InvocationID]  = wp.xyz;
+    tcs_WorldNorm[gl_InvocationID] = wn.xyz;
 
     // UV reconstruction (verified against quad.cpp actual UV assignment):
     //   corner 0 = (minU, minV), corner 1 = (maxU, minV)
@@ -133,24 +133,24 @@ void main()
     // uvData = vec4(minU, minV, maxU, maxV)
     float u = (cornerIdx == 1u || cornerIdx == 2u) ? rec.uvData.z : rec.uvData.x;
     float v = (cornerIdx == 0u || cornerIdx == 1u) ? rec.uvData.y : rec.uvData.w;
-    tcs_Texcoord[id] = vec2(u, v);
+    tcs_Texcoord[gl_InvocationID] = vec2(u, v);
 
     // Lighting -- unpack ARGB.
     uint lrgb = uvec4Idx(rec.lightRGBs, cornerIdx);
     uint frgb = uvec4Idx(rec.fogRGBs,   cornerIdx);
-    tcs_Color[id] = unpackARGB(lrgb);
+    tcs_Color[gl_InvocationID] = unpackARGB(lrgb);
 
     // FogValue: VS assigns vs_FogValue = fog.w (alpha channel of fog vertex attrib).
     // In frgb packing: A = fog.w byte = bits 24-31.
-    tcs_FogValue[id] = float((frgb >> 24u) & 0xFFu) / 255.0;
+    tcs_FogValue[gl_InvocationID] = float((frgb >> 24u) & 0xFFu) / 255.0;
 
     // TerrainType: VS computes vs_TerrainType = floor(fog.x * 255.0 + 0.5).
     // fog.x = float(frgb & 0xFFu) / 255.0 in CPU packing.
     // So TerrainType = float(frgb & 0xFFu), as an integer index 0-3 (NOT normalized).
-    tcs_TerrainType[id] = float(frgb & 0xFFu);
+    tcs_TerrainType[gl_InvocationID] = float(frgb & 0xFFu);
 
     // gl_Position unused by TES in main path; set to safe degenerate.
-    gl_out[id].gl_Position = vec4(0.0, 0.0, 0.0, 1.0);
+    gl_out[gl_InvocationID].gl_Position = vec4(0.0, 0.0, 0.0, 1.0);
 
     // Tessellation levels -- only invocation 0 writes patch-level state.
     if (id == 0u) {
