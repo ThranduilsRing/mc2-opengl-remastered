@@ -2074,7 +2074,7 @@ void TerrainQuad::draw (void)
 			if (pzTri1)
 			{
 				{
-					if(terrainHandle!=0) {
+					if(terrainHandle!=0 && !TerrainPatchStream::isFastPathActive()) {
 						mcTextureManager->addVertices(terrainHandle,gVertex,MC2_ISTERRAIN | MC2_DRAWSOLID);
 						fillTerrainExtra(terrainHandle, MC2_ISTERRAIN | MC2_DRAWSOLID, vertices[0], vertices[1], vertices[3]);
 						// PatchStream append moved to appendQuad after both pz gates.
@@ -2215,7 +2215,7 @@ void TerrainQuad::draw (void)
 			if (pzTri2)
 			{
 				{
-					if(terrainHandle!=0) {
+					if(terrainHandle!=0 && !TerrainPatchStream::isFastPathActive()) {
 						mcTextureManager->addVertices(terrainHandle,gVertex,MC2_ISTERRAIN | MC2_DRAWSOLID);
 						fillTerrainExtra(terrainHandle, MC2_ISTERRAIN | MC2_DRAWSOLID, vertices[1], vertices[2], vertices[3]);
 						// PatchStream append moved to appendQuad below.
