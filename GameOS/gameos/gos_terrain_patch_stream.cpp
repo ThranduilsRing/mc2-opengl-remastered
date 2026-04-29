@@ -1273,11 +1273,12 @@ bool TerrainPatchStream::flush()
                 }
                 // patchFirst=0 because the TCS now uses ssboRecordBase+gl_PrimitiveID/2
                 // to index the SSBO; the draw offset is encoded in the uniform, not here.
-                const GLsizei patchCount = (GLsizei)(rb.recordCount * 2);
+                // Vertex count = recordCount * 2 patches * 3 verts/patch (GL_PATCH_VERTICES=3).
+                const GLsizei vertCount = (GLsizei)(rb.recordCount * 6);
                 gos_terrain_bridge_drawSingleBucket(
                     (unsigned int)rb.gosHandle,
                     0u,
-                    (unsigned int)patchCount);
+                    (unsigned int)vertCount);
             }
             gos_terrain_bridge_endBucketLoop(0xFFFFFFFFu);
             }
@@ -1376,15 +1377,18 @@ bool TerrainPatchStream::flush()
             gos_terrain_bridge_beginBucketLoop();
             for (uint32_t b = 0; b < thinRecDrawBucketCount; ++b) {
                 const ThinRecBucket& rb = s_thinRecDrawBuckets[b];
-                // Thin records at binding 0 (slot-relative), recipes at binding 1 (global).
-                glBindBufferBase(GL_SHADER_STORAGE_BUFFER, 0, s_thinRecordBuf);
+                // Thin records at binding 2 (slot-relative), recipes at binding 1 (global).
+                // Binding 0 is reserved for the fat-record QuadRecordBuf; using 0 here
+                // would alias with a different struct stride and corrupt SSBO indexing.
+                glBindBufferBase(GL_SHADER_STORAGE_BUFFER, 2, s_thinRecordBuf);
                 glBindBufferBase(GL_SHADER_STORAGE_BUFFER, 1, s_recipeBuf);
                 if (s_ssboRecordBaseLoc2 >= 0) {
                     glUniform1i(s_ssboRecordBaseLoc2, (GLint)(slotFirstThinRec + rb.firstRecord));
                 }
-                const GLsizei patchCount = (GLsizei)(rb.recordCount * 2);
+                // Vertex count = recordCount * 2 patches * 3 verts/patch (GL_PATCH_VERTICES=3).
+                const GLsizei vertCount = (GLsizei)(rb.recordCount * 6);
                 gos_terrain_bridge_drawSingleBucket(
-                    (unsigned int)rb.gosHandle, 0u, (unsigned int)patchCount);
+                    (unsigned int)rb.gosHandle, 0u, (unsigned int)vertCount);
             }
             gos_terrain_bridge_endBucketLoop(0xFFFFFFFFu);
             }
@@ -1392,7 +1396,7 @@ bool TerrainPatchStream::flush()
             {
             ZoneScopedN("PatchStream.DrawThinRecords.PostDraw");
             glUniform1i(s_useQuadRecordsLoc2, 0);
-            glBindBufferBase(GL_SHADER_STORAGE_BUFFER, 0, 0);
+            glBindBufferBase(GL_SHADER_STORAGE_BUFFER, 2, 0);
             glBindBufferBase(GL_SHADER_STORAGE_BUFFER, 1, 0);
             GLenum e;
             while ((e = glGetError()) != GL_NO_ERROR) {

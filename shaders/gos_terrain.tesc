@@ -44,7 +44,7 @@ struct TerrainQuadThinRecord {
     uvec4 fogRGBs;    // corners 0-3, packed frgb
 };
 
-layout(std430, binding = 0) readonly buffer ThinRecordBuf {
+layout(std430, binding = 2) readonly buffer ThinRecordBuf {
     TerrainQuadThinRecord thinRecs[];
 };
 
