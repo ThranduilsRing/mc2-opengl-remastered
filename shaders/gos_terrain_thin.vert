@@ -4,7 +4,7 @@
 struct TerrainQuadThinRecord {
     uvec4 control;    // x=recipeIdx, y=terrainHandle, z=flags(bit0=uvMode,bit1=pzTri1,bit2=pzTri2), w=_pad0
     uvec4 lightRGBs;  // corners 0-3, packed ARGB
-    uvec4 fogRGBs;    // corners 0-3, packed frgb
+    // fogRGBs removed — TerrainType now in recipe._wp0, FogValue was dead
 };
 layout(std430, binding = 2) readonly buffer ThinRecordBuf {
     TerrainQuadThinRecord thinRecs[];
@@ -21,7 +21,6 @@ layout(std430, binding = 1) readonly buffer RecipeBuf {
 
 // Output varyings — names MUST match gos_terrain.frag `in` declarations exactly.
 out vec4  Color;
-out float FogValue;
 out vec2  Texcoord;
 out float TerrainType;
 out vec3  WorldNorm;
@@ -70,7 +69,6 @@ void main() {
     if (pzValid == 0u) {
         gl_Position    = vec4(0.0, 0.0, -2.0, 1.0);
         Color          = vec4(0.0);
-        FogValue       = 0.0;
         Texcoord       = vec2(0.0);
         TerrainType    = 0.0;
         WorldNorm      = vec3(0.0, 0.0, 1.0);
@@ -117,14 +115,15 @@ void main() {
     float u = (cornerIdx == 1u || cornerIdx == 2u) ? rec.uvData.z : rec.uvData.x;
     float v = (cornerIdx == 0u || cornerIdx == 1u) ? rec.uvData.y : rec.uvData.w;
 
-    // Lighting and fog per corner.
+    // Lighting per corner.
     uint lrgb = uvec4Idx(tr.lightRGBs, cornerIdx);
-    uint frgb = uvec4Idx(tr.fogRGBs,   cornerIdx);
+
+    // TerrainType: packed by CPU into recipe._wp0 (worldPos0.w), 4 corners × 8 bits.
+    uint terrainTypes = floatBitsToUint(rec.worldPos0.w);
+    TerrainType = float((terrainTypes >> (cornerIdx * 8u)) & 0xFFu);
 
     Color       = unpackARGB(lrgb);
-    FogValue    = float((frgb >> 24u) & 0xFFu) / 255.0;
     Texcoord    = vec2(u, v);
-    TerrainType = float(frgb & 0xFFu);
     WorldNorm   = worldNorm;
     WorldPos    = worldPos;
 

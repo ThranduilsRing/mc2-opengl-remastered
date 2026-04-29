@@ -10,7 +10,6 @@ layout(location = 5) in vec3 worldNorm;
 uniform mat4 mvp;
 
 out vec4 vs_Color;
-out float vs_FogValue;
 out vec2 vs_Texcoord;
 out float vs_TerrainType;
 out vec3 vs_WorldPos;
@@ -23,7 +22,6 @@ void main(void)
     vs_WorldNorm = worldNorm;
 
     vs_Color = color;
-    vs_FogValue = fog.w;
     vs_Texcoord = texcoord;
     // Unpack material index from fog R byte (normalized 0-1 -> 0-255)
     vs_TerrainType = floor(fog.x * 255.0 + 0.5);

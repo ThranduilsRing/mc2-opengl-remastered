@@ -3,14 +3,12 @@
 layout(vertices = 3) out;
 
 in vec4 vs_Color[];
-in float vs_FogValue[];
 in vec2 vs_Texcoord[];
 in float vs_TerrainType[];
 in vec3 vs_WorldPos[];
 in vec3 vs_WorldNorm[];
 
 out vec4 tcs_Color[];
-out float tcs_FogValue[];
 out vec2 tcs_Texcoord[];
 out float tcs_TerrainType[];
 out vec3 tcs_WorldPos[];
@@ -60,7 +58,6 @@ void main()
     if (useQuadRecords == 0) {
         // --- Passthrough path (default, unchanged) ---
         tcs_Color[gl_InvocationID]       = vs_Color[gl_InvocationID];
-        tcs_FogValue[gl_InvocationID]    = vs_FogValue[gl_InvocationID];
         tcs_Texcoord[gl_InvocationID]    = vs_Texcoord[gl_InvocationID];
         tcs_TerrainType[gl_InvocationID] = vs_TerrainType[gl_InvocationID];
         tcs_WorldPos[gl_InvocationID]    = vs_WorldPos[gl_InvocationID];
@@ -139,10 +136,6 @@ void main()
     uint lrgb = uvec4Idx(rec.lightRGBs, cornerIdx);
     uint frgb = uvec4Idx(rec.fogRGBs,   cornerIdx);
     tcs_Color[gl_InvocationID] = unpackARGB(lrgb);
-
-    // FogValue: VS assigns vs_FogValue = fog.w (alpha channel of fog vertex attrib).
-    // In frgb packing: A = fog.w byte = bits 24-31.
-    tcs_FogValue[gl_InvocationID] = float((frgb >> 24u) & 0xFFu) / 255.0;
 
     // TerrainType: VS computes vs_TerrainType = floor(fog.x * 255.0 + 0.5).
     // fog.x = float(frgb & 0xFFu) / 255.0 in CPU packing.

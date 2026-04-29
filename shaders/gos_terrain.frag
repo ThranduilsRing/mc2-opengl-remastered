@@ -20,7 +20,6 @@
 
 in PREC vec4 Color;
 in PREC vec2 Texcoord;
-in PREC float FogValue;
 in PREC float TerrainType;
 in PREC vec3 WorldNorm;
 in PREC vec3 WorldPos;

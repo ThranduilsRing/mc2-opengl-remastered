@@ -3,14 +3,12 @@
 layout(triangles, equal_spacing, ccw) in;
 
 in vec4 tcs_Color[];
-in float tcs_FogValue[];
 in vec2 tcs_Texcoord[];
 in float tcs_TerrainType[];
 in vec3 tcs_WorldPos[];
 in vec3 tcs_WorldNorm[];
 
 out vec4 Color;
-out float FogValue;
 out vec2 Texcoord;
 out float TerrainType;
 out vec3 WorldNorm;
@@ -39,7 +37,6 @@ void main()
 
     if (tessDebug.x < -2.5) {
         Color = vec4(1.0);
-        FogValue = 0.0;
         Texcoord = vec2(0.0);
         TerrainType = 0.0;
         WorldNorm = vec3(0.0, 0.0, 1.0);
@@ -65,10 +62,6 @@ void main()
     Color = bary.x * tcs_Color[0]
           + bary.y * tcs_Color[1]
           + bary.z * tcs_Color[2];
-
-    FogValue = bary.x * tcs_FogValue[0]
-             + bary.y * tcs_FogValue[1]
-             + bary.z * tcs_FogValue[2];
 
     Texcoord = bary.x * tcs_Texcoord[0]
              + bary.y * tcs_Texcoord[1]
