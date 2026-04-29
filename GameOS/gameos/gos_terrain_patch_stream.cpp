@@ -59,9 +59,10 @@ namespace {
     // s_stagingCount and clear()s the live buckets only; the bucket
     // vectors never get destroyed during normal operation.
     //
-    // Linear scan lookup over s_stagingCount entries (count is small —
-    // ~5-40 distinct textures per frame), cheaper than unordered_map +
-    // zero per-frame heap churn after warmup.
+    // O(1) lookup via open-addressing hash table (s_bucketHash) mapping
+    // textureIndex → s_staging[] index. beginFrame() resets the table with
+    // a single memset. kHashTableSize >= 2 × kPatchStreamMaxBuckets keeps
+    // load factor < 0.5 and guarantees probe termination.
     struct PatchStagingBucket {
         DWORD                          textureIndex = 0;
         std::vector<gos_VERTEX>        color;
@@ -72,6 +73,13 @@ namespace {
     uint32_t           s_stagingCount = 0;
     uint32_t           s_totalVerts   = 0;
     bool               s_overflow     = false;
+
+    // Open-addressing hash table mapping textureIndex → s_staging[] index.
+    // Power-of-2 size ≥ 2 × kPatchStreamMaxBuckets keeps load factor < 0.5,
+    // guaranteeing probe termination. kHashEmpty is the vacant sentinel.
+    constexpr uint32_t kHashTableSize = 1024u;
+    constexpr uint32_t kHashEmpty     = 0xFFFFFFFFu;
+    uint32_t           s_bucketHash[kHashTableSize];
 
     // Filled at flush() time from the staging buckets — this is what
     // issueDraws walks for per-bucket glDrawArrays. PatchStreamBucket
@@ -165,25 +173,44 @@ namespace {
         if (s.depthTest) glEnable (GL_DEPTH_TEST); else glDisable(GL_DEPTH_TEST);
     }
 
-    // Linear-scan lookup over the active prefix of s_staging.
-    // Returns nullptr on overflow.
+    // O(1) hash table lookup over s_staging. Uses open-addressing with
+    // Knuth multiplicative hash. kHashTableSize >= 2 × kPatchStreamMaxBuckets
+    // keeps load factor < 0.5, guaranteeing probe termination.
+    // Returns nullptr on overflow (bucket_count or hash_full).
     PatchStagingBucket* findOrCreateStagingBucket(DWORD textureIndex) {
-        for (uint32_t i = 0; i < s_stagingCount; ++i) {
-            if (s_staging[i].textureIndex == textureIndex) return &s_staging[i];
+        const uint32_t startSlot =
+            (static_cast<uint32_t>(textureIndex) * 2654435761u) & (kHashTableSize - 1u);
+        for (uint32_t probe = 0; probe < kHashTableSize; ++probe) {
+            const uint32_t idx    = (startSlot + probe) & (kHashTableSize - 1u);
+            const uint32_t stored = s_bucketHash[idx];
+            if (stored == kHashEmpty) {
+                if (s_stagingCount >= kPatchStreamMaxBuckets) {
+                    fprintf(stderr,
+                        "[PATCH_STREAM v1] event=overflow slot=%u kind=bucket_count "
+                        "count=%u cap=%u\n",
+                        s_slot, s_stagingCount, kPatchStreamMaxBuckets);
+                    fflush(stderr);
+                    s_overflow = true;
+                    return nullptr;
+                }
+                s_bucketHash[idx] = s_stagingCount;
+                PatchStagingBucket& nb = s_staging[s_stagingCount++];
+                nb.textureIndex = textureIndex;
+                return &nb;
+            }
+            if (s_staging[stored].textureIndex == textureIndex) {
+                return &s_staging[stored];
+            }
         }
-        if (s_stagingCount >= kPatchStreamMaxBuckets) {
-            fprintf(stderr,
-                "[PATCH_STREAM v1] event=overflow slot=%u kind=bucket_count count=%u cap=%u\n",
-                s_slot, s_stagingCount, kPatchStreamMaxBuckets);
-            fflush(stderr);
-            s_overflow = true;
-            return nullptr;
-        }
-        PatchStagingBucket& nb = s_staging[s_stagingCount++];
-        nb.textureIndex = textureIndex;
-        // nb.color / nb.extras are cleared (size 0) but their reserved
-        // capacity from init() is intact. No allocation here.
-        return &nb;
+        // Table exhausted without finding key — shouldn't happen if
+        // kHashTableSize >= 2 × kPatchStreamMaxBuckets (load factor < 0.5).
+        fprintf(stderr,
+            "[PATCH_STREAM v1] event=overflow slot=%u kind=hash_full "
+            "count=%u cap=%u\n",
+            s_slot, s_stagingCount, kPatchStreamMaxBuckets);
+        fflush(stderr);
+        s_overflow = true;
+        return nullptr;
     }
 }
 
@@ -290,6 +317,7 @@ bool TerrainPatchStream::init()
         b.color.reserve(4 * 1024);
         b.extras.reserve(4 * 1024);
     }
+    memset(s_bucketHash, 0xFF, sizeof(s_bucketHash));
 
     s_initOk = true;
     fprintf(stderr,
@@ -468,9 +496,9 @@ void TerrainPatchStream::beginFrame()
 
     // Reset per-frame state. Buckets are clear()ed (contents emptied)
     // but their reserved capacity from init() is retained — no
-    // allocator churn after warmup. s_stagingCount goes to 0 so the
-    // linear-scan lookup in findOrCreateStagingBucket only walks
-    // currently-active buckets.
+    // allocator churn after warmup. s_stagingCount goes to 0 and
+    // s_bucketHash is memset to 0xFF (kHashEmpty) so the hash table
+    // starts fresh each frame with no stale entries.
     for (uint32_t i = 0; i < s_stagingCount; ++i) {
         s_staging[i].color.clear();
         s_staging[i].extras.clear();
@@ -479,12 +507,14 @@ void TerrainPatchStream::beginFrame()
     s_totalVerts      = 0;
     s_drawBucketCount = 0;
     s_overflow        = false;
+    memset(s_bucketHash, 0xFF, sizeof(s_bucketHash));
 }
 
 void TerrainPatchStream::appendTriangle(DWORD textureIndex,
                                         const gos_VERTEX* vColor,
                                         const gos_TERRAIN_EXTRA* vExtra)
 {
+    ZoneScopedN("PatchStream.AppendTriangle");
     if (!s_initOk || !s_killswitch) return;
     if (s_overflow) return;  // sticky for the whole frame
 
@@ -503,11 +533,21 @@ void TerrainPatchStream::appendTriangle(DWORD textureIndex,
         return;
     }
 
-    PatchStagingBucket* bk = findOrCreateStagingBucket(textureIndex);
+    PatchStagingBucket* bk = nullptr;
+    {
+    ZoneScopedN("PatchStream.Append.LookupBucket");
+    bk = findOrCreateStagingBucket(textureIndex);
+    }
     if (!bk) return;  // overflow already logged
 
+    {
+    ZoneScopedN("PatchStream.Append.InsertColor");
     bk->color.insert(bk->color.end(),  vColor, vColor + vertsPerTri);
+    }
+    {
+    ZoneScopedN("PatchStream.Append.InsertExtras");
     bk->extras.insert(bk->extras.end(), vExtra, vExtra + vertsPerTri);
+    }
     s_totalVerts += vertsPerTri;
 }
 
@@ -547,8 +587,14 @@ bool TerrainPatchStream::flush()
         if (sb.color.empty()) continue;
         const uint32_t n = (uint32_t)sb.color.size();   // == sb.extras.size()
 
+        {
+        ZoneScopedN("PatchStream.Consolidate.CopyColor");
         memcpy(colorSlot  + cursor, sb.color.data(),  n * sizeof(gos_VERTEX));
+        }
+        {
+        ZoneScopedN("PatchStream.Consolidate.CopyExtras");
         memcpy(extrasSlot + cursor, sb.extras.data(), n * sizeof(gos_TERRAIN_EXTRA));
+        }
 
         PatchStreamBucket& db = s_drawBuckets[s_drawBucketCount++];
         db.textureIndex = sb.textureIndex;
