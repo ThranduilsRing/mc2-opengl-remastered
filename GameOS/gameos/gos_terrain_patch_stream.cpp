@@ -327,6 +327,7 @@ bool TerrainPatchStream::init()
         }
     }
 
+    glBindBuffer(GL_SHADER_STORAGE_BUFFER, 0); // restore SSBO binding after allocPersistentSSBO
     restoreGLState(saved);
 
     if (!s_colorBuf || !s_extrasBuf) {
@@ -515,6 +516,7 @@ void TerrainPatchStream::destroy()
         glDeleteBuffers(1, &s_recordBuf);
         s_recordBuf = 0;
     }
+    glBindBuffer(GL_SHADER_STORAGE_BUFFER, 0);
     glBindBuffer(GL_ARRAY_BUFFER, 0);
     s_initOk = false;
 }
@@ -666,6 +668,7 @@ void TerrainPatchStream::appendQuadRecord(const TerrainQuadRecord& rec) {
 }
 
 void TerrainPatchStream::addRecordVertParity(uint32_t n) {
+    if (!s_quadRecordsOn) return;
     s_recordVertParity += n;
 }
 

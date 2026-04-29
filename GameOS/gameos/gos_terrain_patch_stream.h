@@ -42,8 +42,8 @@ constexpr uint32_t kPatchStreamRecordBytesPerSlot =
 // 192 bytes/record vs 336 bytes for 6 expanded vertices (43% smaller).
 //
 // Corner index convention (same for both uvMode variants):
-//   corner 0 = vertices[0], UV = (maxU, minV)
-//   corner 1 = vertices[1], UV = (minU, minV)
+//   corner 0 = vertices[0], UV = (minU, minV)
+//   corner 1 = vertices[1], UV = (maxU, minV)
 //   corner 2 = vertices[2], UV = (maxU, maxV)
 //   corner 3 = vertices[3], UV = (minU, maxV)
 //
