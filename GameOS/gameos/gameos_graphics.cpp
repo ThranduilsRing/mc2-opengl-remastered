@@ -1286,6 +1286,8 @@ class gosRenderer {
         void terrainBindUniformsForPatchStream(gosRenderMaterial* material);
         // Returns ssboRecordBase uniform location in the thin program, or -1.
         int terrainBindThinUniformsForPatchStream();
+        // Returns the glsl_program for the thin terrain shader. Used by bridge exports.
+        glsl_program* getThinTerrainProgram() const { return thin_terrain_prog_; }
 
         void beginFrame();
         void endFrame();
@@ -1846,6 +1848,29 @@ void gos_terrain_bridge_endBucketLoop(unsigned int lastGosHandle) {
     // applyRenderStates iterates units 0→2, leaving active unit at GL_TEXTURE2.
     // Restore to unit 0 so subsequent renderers bind on the expected unit.
     glActiveTexture(GL_TEXTURE0);
+}
+
+unsigned int gos_terrain_bridge_getThinShaderProgram() {
+    if (!g_gos_renderer) return 0u;
+    glsl_program* p = g_gos_renderer->getThinTerrainProgram();
+    return (p && p->shp_) ? (unsigned int)p->shp_ : 0u;
+}
+
+int gos_terrain_bridge_bindThinUniforms() {
+    if (!g_gos_renderer) return -1;
+    return g_gos_renderer->terrainBindThinUniformsForPatchStream();
+}
+
+void gos_terrain_bridge_drawSingleBucketTriangles(
+    unsigned int gosHandle,
+    unsigned int firstVertex,
+    unsigned int vertexCount)
+{
+    if (!g_gos_renderer || vertexCount == 0) return;
+    g_gos_renderer->setRenderState(gos_State_Texture, (int)gosHandle);
+    g_gos_renderer->applyRenderStates();
+    glActiveTexture(GL_TEXTURE0);
+    glDrawArrays(GL_TRIANGLES, (GLint)firstVertex, (GLsizei)vertexCount);
 }
 
 // ──────────────────────────────────────────────────────────────────────────

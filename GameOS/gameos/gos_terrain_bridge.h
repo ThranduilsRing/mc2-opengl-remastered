@@ -78,3 +78,22 @@ void gos_terrain_bridge_drawSingleBucket(
 // issued (empty bucket loop); any other value (including 0 for evicted textures)
 // triggers the cache sync. No-op when the fast path env var is not set.
 void gos_terrain_bridge_endBucketLoop(unsigned int lastGosHandle);
+
+// Returns the GL program ID of the thin-record VS-only terrain shader (gos_terrain_thin.vert +
+// gos_terrain.frag). Returns 0 if not yet loaded or failed to compile.
+unsigned int gos_terrain_bridge_getThinShaderProgram();
+
+// Switches the active GL program to the thin terrain program and sets all uniforms
+// (projection, cameraPos, shadow maps, PBR params — same as the tessellation path minus tess-only).
+// Returns the ssboRecordBase uniform location in the thin program (for per-bucket setting),
+// or -1 if the thin program is not ready.
+// IMPORTANT: call gos_terrain_bridge_beginBucketLoop() first to dirty the Z/blend states.
+int gos_terrain_bridge_bindThinUniforms();
+
+// Like gos_terrain_bridge_drawSingleBucket but issues glDrawArrays(GL_TRIANGLES, ...).
+// Binds gosHandle texture, calls applyRenderStates(), then draws. Does NOT change glUseProgram —
+// assumes gos_terrain_bridge_bindThinUniforms() was already called.
+void gos_terrain_bridge_drawSingleBucketTriangles(
+    unsigned int gosHandle,
+    unsigned int firstVertex,
+    unsigned int vertexCount);
