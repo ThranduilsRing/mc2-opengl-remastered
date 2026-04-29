@@ -1667,11 +1667,14 @@ void TerrainQuad::draw (void)
 		camPosition = *TG_Shape::s_cameraOrigin;
 
 		// === M2: direct thin-record emit — no gos_VERTEX construction ===
+		// Bypass fast path for quads that need overlay or detail draws (legacy path handles those).
 		if (TerrainPatchStream::isFastPathActive()
 		        && TerrainPatchStream::isThinRecordsActive()
 		        && TerrainPatchStream::isReady()
 		        && !TerrainPatchStream::isOverflowed()
-		        && terrainHandle != 0)
+		        && terrainHandle != 0
+		        && !(useOverlayTexture && overlayHandle != 0xffffffff)
+		        && !(useWaterInterestTexture && terrainDetailHandle != 0xffffffff))
 		{
 		    // pz validity — vertices[c]->pz is pre-projected by the camera transform pass.
 		    // Range [0,1) is in-clip; outside is behind-camera or far-clipped.
