@@ -47,6 +47,17 @@ namespace {
     static bool s_directBindBannerSeen       = false;
     static bool s_directBindFirstDrawChecked = false;
 
+    static const bool s_quadRecordsOn     = (getenv("MC2_PATCHSTREAM_QUAD_RECORDS")      != nullptr);
+    static const bool s_quadRecordsDrawOn = (getenv("MC2_PATCHSTREAM_QUAD_RECORDS_DRAW") != nullptr);
+
+    // Record SSBO — persistent-mapped, triple-buffered alongside color/extras VBOs.
+    // Only allocated when s_quadRecordsOn. SSBO binding point 0.
+    static GLuint    s_recordBuf        = 0;
+    static void*     s_recordMap        = nullptr;
+    static uint32_t  s_recordCount      = 0;  // records staged this frame
+    static uint32_t  s_recordVertParity = 0;  // expected verts from records, for parity check
+    static bool      s_recordBannerSeen = false;
+
     // GL handles. Two separate buffers — one for color, one for extras.
     GLuint s_colorBuf  = 0;
     GLuint s_extrasBuf = 0;
@@ -247,6 +258,22 @@ static GLuint allocPersistentBuffer(GLsizeiptr totalBytes, void** outMappedPtr) 
     return id;
 }
 
+static GLuint allocPersistentSSBO(GLsizeiptr totalBytes, void** outMappedPtr) {
+    const GLbitfield flags = GL_MAP_WRITE_BIT
+                           | GL_MAP_PERSISTENT_BIT
+                           | GL_MAP_COHERENT_BIT;
+    GLuint id = 0;
+    glGenBuffers(1, &id);
+    if (!id) return 0;
+    glBindBuffer(GL_SHADER_STORAGE_BUFFER, id);
+    glBufferStorage(GL_SHADER_STORAGE_BUFFER, totalBytes, nullptr, flags);
+    if (glGetError() != GL_NO_ERROR) { glDeleteBuffers(1, &id); return 0; }
+    void* p = glMapBufferRange(GL_SHADER_STORAGE_BUFFER, 0, totalBytes, flags);
+    if (!p) { glDeleteBuffers(1, &id); return 0; }
+    *outMappedPtr = p;
+    return id;
+}
+
 bool TerrainPatchStream::init()
 {
     const char* env = getenv("MC2_MODERN_TERRAIN_SURFACE");
@@ -282,6 +309,23 @@ bool TerrainPatchStream::init()
 
     s_colorBuf  = allocPersistentBuffer(colorTotal,  &s_colorMap);
     s_extrasBuf = allocPersistentBuffer(extrasTotal, &s_extrasMap);
+
+    if (s_quadRecordsOn) {
+        const GLsizeiptr recTotal =
+            (GLsizeiptr)kPatchStreamRecordBytesPerSlot * kPatchStreamRingFrames;
+        s_recordBuf = allocPersistentSSBO(recTotal, &s_recordMap);
+        if (!s_recordBuf) {
+            fprintf(stderr,
+                "[PATCH_STREAM v1] event=record_ssbo_fail reason=alloc\n");
+            fflush(stderr);
+            // Non-fatal: record path disabled, expanded path continues.
+        } else {
+            fprintf(stderr,
+                "[PATCH_STREAM v1] event=record_ssbo_ok bytes_per_slot=%u slots=%u\n",
+                kPatchStreamRecordBytesPerSlot, kPatchStreamRingFrames);
+            fflush(stderr);
+        }
+    }
 
     restoreGLState(saved);
 
@@ -465,6 +509,12 @@ void TerrainPatchStream::destroy()
         glDeleteBuffers(1, &s_extrasBuf);
         s_extrasBuf = 0; s_extrasMap = nullptr;
     }
+    if (s_recordBuf) {
+        glBindBuffer(GL_SHADER_STORAGE_BUFFER, s_recordBuf);
+        if (s_recordMap) { glUnmapBuffer(GL_SHADER_STORAGE_BUFFER); s_recordMap = nullptr; }
+        glDeleteBuffers(1, &s_recordBuf);
+        s_recordBuf = 0;
+    }
     glBindBuffer(GL_ARRAY_BUFFER, 0);
     s_initOk = false;
 }
@@ -516,6 +566,8 @@ void TerrainPatchStream::beginFrame()
     s_drawBucketCount = 0;
     s_overflow        = false;
     memset(s_bucketHash, 0xFF, sizeof(s_bucketHash));
+    s_recordCount      = 0;
+    s_recordVertParity = 0;
 }
 
 void TerrainPatchStream::appendTriangle(DWORD textureIndex,
@@ -593,6 +645,28 @@ void TerrainPatchStream::appendQuad(
         bk->extras.insert(bk->extras.end(), vExtra2, vExtra2 + 3);
     }
     s_totalVerts += numVerts;
+}
+
+void TerrainPatchStream::appendQuadRecord(const TerrainQuadRecord& rec) {
+    if (!s_quadRecordsOn || !s_recordBuf) return;
+    if (!s_initOk || !s_killswitch) return;
+    if (s_overflow) return;
+    if (s_recordCount >= kPatchStreamMaxRecordsPerSlot) {
+        if (s_recordCount == kPatchStreamMaxRecordsPerSlot) {
+            fprintf(stderr,
+                "[PATCH_STREAM v1] event=record_overflow slot=%u cap=%u\n",
+                s_slot, kPatchStreamMaxRecordsPerSlot);
+            fflush(stderr);
+        }
+        return;
+    }
+    const uint32_t slotFirst = s_slot * kPatchStreamMaxRecordsPerSlot;
+    ((TerrainQuadRecord*)s_recordMap)[slotFirst + s_recordCount] = rec;
+    ++s_recordCount;
+}
+
+void TerrainPatchStream::addRecordVertParity(uint32_t n) {
+    s_recordVertParity += n;
 }
 
 bool TerrainPatchStream::flush()
@@ -921,6 +995,26 @@ bool TerrainPatchStream::flush()
     }
     if (gosPostProcess* pp = getGosPostProcess()) {
         pp->markTerrainDrawn();
+    }
+
+    if (s_quadRecordsOn && s_recordBuf) {
+        if (!s_recordBannerSeen) {
+            s_recordBannerSeen = true;
+            fprintf(stderr,
+                "[PATCH_STREAM v1] event=quad_records_enabled "
+                "max_per_slot=%u bytes_per_slot=%u\n",
+                kPatchStreamMaxRecordsPerSlot, kPatchStreamRecordBytesPerSlot);
+            fflush(stderr);
+        }
+        const bool parityOk = (s_recordVertParity == s_totalVerts);
+        if (s_traceOn || !parityOk) {
+            fprintf(stderr,
+                "[PATCH_STREAM v1] event=record_parity slot=%u records=%u "
+                "record_verts=%u expanded_verts=%u match=%d\n",
+                s_slot, s_recordCount, s_recordVertParity,
+                s_totalVerts, (int)parityOk);
+            fflush(stderr);
+        }
     }
 
     // 7. Fence the slot.

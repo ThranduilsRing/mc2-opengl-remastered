@@ -25,6 +25,57 @@ constexpr uint32_t kPatchStreamMaxBuckets        = 512;
 constexpr uint32_t kPatchStreamColorBytesPerSlot  = 327680u * 32u;  // 10.0 MB
 constexpr uint32_t kPatchStreamExtrasBytesPerSlot = 327680u * 24u;  //  7.5 MB
 
+// One record per quad. Derived from the color ring's per-slot vertex capacity
+// (6 expanded verts per quad). At 192 bytes each, the record SSBO is ~10 MB/slot
+// vs ~10 MB (color) + ~7.5 MB (extras). Future: move worldPos/norm/uvData to
+// a GPU recipe SSBO (one upload per mission) to reach ~104 bytes/record.
+constexpr uint32_t kPatchStreamMaxRecordsPerSlot =
+    kPatchStreamColorBytesPerSlot / (sizeof(gos_VERTEX) * 6u);
+constexpr uint32_t kPatchStreamRecordBytesPerSlot =
+    kPatchStreamMaxRecordsPerSlot * 192u; // sizeof(TerrainQuadRecord) — forward ref
+
+// Compact per-quad record for GPU-side vertex reconstruction (M1).
+// TCS reads this SSBO and emits 6 gos_terrain.tesc outputs — two triangles
+// matching the TOPRIGHT or BOTTOMLEFT diagonal decomposition.
+//
+// Layout: std430-compatible (all members at 16-byte-aligned vec4 boundaries).
+// 192 bytes/record vs 336 bytes for 6 expanded vertices (43% smaller).
+//
+// Corner index convention (same for both uvMode variants):
+//   corner 0 = vertices[0], UV = (maxU, minV)
+//   corner 1 = vertices[1], UV = (minU, minV)
+//   corner 2 = vertices[2], UV = (maxU, maxV)
+//   corner 3 = vertices[3], UV = (minU, maxV)
+//
+// Triangle decomposition by uvMode bit:
+//   TOPRIGHT  (bit0=0): tri1=corners[0,1,2], tri2=corners[0,2,3]
+//   BOTTOMLEFT(bit0=1): tri1=corners[0,1,3], tri2=corners[1,2,3]
+struct alignas(16) TerrainQuadRecord {
+    // Corner world-space positions (vec4 per corner, w=padding for std430)
+    float wx0, wy0, wz0, _wp0;
+    float wx1, wy1, wz1, _wp1;
+    float wx2, wy2, wz2, _wp2;
+    float wx3, wy3, wz3, _wp3;
+    // Corner world-space normals (vec4 per corner, w=padding)
+    float nx0, ny0, nz0, _np0;
+    float nx1, ny1, nz1, _np1;
+    float nx2, ny2, nz2, _np2;
+    float nx3, ny3, nz3, _np3;
+    // UV ranges (same across all verts in quad): minU, minV, maxU, maxV
+    float minU, minV, maxU, maxV;
+    // Per-frame lighting per corner (ARGB packed, same encoding as gos_VERTEX.argb)
+    uint32_t lightRGB0, lightRGB1, lightRGB2, lightRGB3;
+    // Per-frame fog + material byte per corner (same encoding as gos_VERTEX.frgb)
+    uint32_t fogRGB0, fogRGB1, fogRGB2, fogRGB3;
+    // Control
+    uint32_t terrainHandle; // raw gosHandle — tex_resolve applied at flush consolidation
+    uint32_t flags;         // bit 0: uvMode (0=TOPRIGHT, 1=BOTTOMLEFT)
+                            // bit 1: pzTri1Valid, bit 2: pzTri2Valid
+    uint32_t _ctrl2, _ctrl3; // padding to 16-byte boundary
+    // Total: 4*16 + 4*16 + 16 + 16 + 16 + 16 = 192 bytes
+};
+static_assert(sizeof(TerrainQuadRecord) == 192, "TerrainQuadRecord must be 192 bytes for std430 alignment");
+
 struct PatchStreamBucket {
     DWORD    gosHandle;   // resolved gosHandle (tex_resolve already applied)
     uint32_t firstVertex; // slot-relative vertex offset (slotFirstVert added at draw time)
@@ -58,6 +109,17 @@ public:
 
     static bool flush();
     static void beginFrame();
+
+    // Emit one compact quad record for the GPU reconstruction path (M1).
+    // No-op unless MC2_PATCHSTREAM_QUAD_RECORDS=1.
+    // Call after appendQuad() at the same call site — both paths must agree on
+    // which quads are submitted. The record is written directly into the
+    // persistent-mapped record SSBO; no intermediate heap allocation.
+    static void appendQuadRecord(const TerrainQuadRecord& rec);
+
+    // Parity: expected vertex count from record flags (sum of valid tris × 3).
+    // Compared to s_totalVerts in flush() when MC2_PATCHSTREAM_QUAD_RECORDS=1.
+    static void addRecordVertParity(uint32_t n); // n = (pzTri1?3:0)+(pzTri2?3:0)
 
     // Bucket-census instrumentation. Env-gated (MC2_BUCKET_CENSUS=1).
     // Called from txmmgr.cpp Render.TerrainSolid at end of zone, with the

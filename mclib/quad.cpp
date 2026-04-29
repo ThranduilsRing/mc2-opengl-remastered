@@ -1978,6 +1978,26 @@ void TerrainQuad::draw (void)
 				if (pzTri1) buildTerrainExtraTriple(vertices[0], vertices[1], vertices[2], tx1);
 				if (pzTri2) buildTerrainExtraTriple(vertices[0], vertices[2], vertices[3], tx2);
 				TerrainPatchStream::appendQuad(terrainHandle, gvTri1, tx1, pzTri1, gVertex, tx2, pzTri2);
+				// M1 compact record — TOPRIGHT diagonal.
+				// gvTri1[0..2] = corners 0,1,2 (saved before shuffle).
+				// gVertex[2]   = corner 3 (constructed by shuffle from vertices[3]).
+				TerrainQuadRecord rec;
+				rec.wx0=vertices[0]->vx; rec.wy0=vertices[0]->vy; rec.wz0=vertices[0]->pVertex->elevation; rec._wp0=0.f;
+				rec.wx1=vertices[1]->vx; rec.wy1=vertices[1]->vy; rec.wz1=vertices[1]->pVertex->elevation; rec._wp1=0.f;
+				rec.wx2=vertices[2]->vx; rec.wy2=vertices[2]->vy; rec.wz2=vertices[2]->pVertex->elevation; rec._wp2=0.f;
+				rec.wx3=vertices[3]->vx; rec.wy3=vertices[3]->vy; rec.wz3=vertices[3]->pVertex->elevation; rec._wp3=0.f;
+				rec.nx0=vertices[0]->pVertex->vertexNormal.x; rec.ny0=vertices[0]->pVertex->vertexNormal.y; rec.nz0=vertices[0]->pVertex->vertexNormal.z; rec._np0=0.f;
+				rec.nx1=vertices[1]->pVertex->vertexNormal.x; rec.ny1=vertices[1]->pVertex->vertexNormal.y; rec.nz1=vertices[1]->pVertex->vertexNormal.z; rec._np1=0.f;
+				rec.nx2=vertices[2]->pVertex->vertexNormal.x; rec.ny2=vertices[2]->pVertex->vertexNormal.y; rec.nz2=vertices[2]->pVertex->vertexNormal.z; rec._np2=0.f;
+				rec.nx3=vertices[3]->pVertex->vertexNormal.x; rec.ny3=vertices[3]->pVertex->vertexNormal.y; rec.nz3=vertices[3]->pVertex->vertexNormal.z; rec._np3=0.f;
+				rec.minU=minU; rec.minV=minV; rec.maxU=maxU; rec.maxV=maxV;
+				rec.lightRGB0=gvTri1[0].argb; rec.lightRGB1=gvTri1[1].argb; rec.lightRGB2=gvTri1[2].argb; rec.lightRGB3=gVertex[2].argb;
+				rec.fogRGB0  =gvTri1[0].frgb; rec.fogRGB1  =gvTri1[1].frgb; rec.fogRGB2  =gvTri1[2].frgb; rec.fogRGB3  =gVertex[2].frgb;
+				rec.terrainHandle = (uint32_t)terrainHandle;
+				rec.flags = 0u | (pzTri1 ? 2u : 0u) | (pzTri2 ? 4u : 0u); // bit0=0 → TOPRIGHT
+				rec._ctrl2 = 0u; rec._ctrl3 = 0u;
+				TerrainPatchStream::appendQuadRecord(rec);
+				TerrainPatchStream::addRecordVertParity((pzTri1 ? 3u : 0u) + (pzTri2 ? 3u : 0u));
 			}
 		}
 		else if (uvMode == BOTTOMLEFT)
@@ -2287,6 +2307,29 @@ void TerrainQuad::draw (void)
 				if (pzTri1) buildTerrainExtraTriple(vertices[0], vertices[1], vertices[3], tx1);
 				if (pzTri2) buildTerrainExtraTriple(vertices[1], vertices[2], vertices[3], tx2);
 				TerrainPatchStream::appendQuad(terrainHandle, gvTri1, tx1, pzTri1, gVertex, tx2, pzTri2);
+				// M1 compact record — BOTTOMLEFT diagonal.
+				// gvTri1 = {corner0, corner1, corner3} (saved before shuffle).
+				// After shuffle: gVertex[0]=corner1, gVertex[1]=corner2, gVertex[2]=corner3.
+				// corner2 (vertices[2]) is only in gVertex[1] after the shuffle.
+				TerrainQuadRecord rec;
+				rec.wx0=vertices[0]->vx; rec.wy0=vertices[0]->vy; rec.wz0=vertices[0]->pVertex->elevation; rec._wp0=0.f;
+				rec.wx1=vertices[1]->vx; rec.wy1=vertices[1]->vy; rec.wz1=vertices[1]->pVertex->elevation; rec._wp1=0.f;
+				rec.wx2=vertices[2]->vx; rec.wy2=vertices[2]->vy; rec.wz2=vertices[2]->pVertex->elevation; rec._wp2=0.f;
+				rec.wx3=vertices[3]->vx; rec.wy3=vertices[3]->vy; rec.wz3=vertices[3]->pVertex->elevation; rec._wp3=0.f;
+				rec.nx0=vertices[0]->pVertex->vertexNormal.x; rec.ny0=vertices[0]->pVertex->vertexNormal.y; rec.nz0=vertices[0]->pVertex->vertexNormal.z; rec._np0=0.f;
+				rec.nx1=vertices[1]->pVertex->vertexNormal.x; rec.ny1=vertices[1]->pVertex->vertexNormal.y; rec.nz1=vertices[1]->pVertex->vertexNormal.z; rec._np1=0.f;
+				rec.nx2=vertices[2]->pVertex->vertexNormal.x; rec.ny2=vertices[2]->pVertex->vertexNormal.y; rec.nz2=vertices[2]->pVertex->vertexNormal.z; rec._np2=0.f;
+				rec.nx3=vertices[3]->pVertex->vertexNormal.x; rec.ny3=vertices[3]->pVertex->vertexNormal.y; rec.nz3=vertices[3]->pVertex->vertexNormal.z; rec._np3=0.f;
+				rec.minU=minU; rec.minV=minV; rec.maxU=maxU; rec.maxV=maxV;
+				// BOTTOMLEFT: gvTri1[0]=corner0, gvTri1[1]=corner1, gvTri1[2]=corner3
+				//             gVertex[1] after shuffle = corner2
+				rec.lightRGB0=gvTri1[0].argb; rec.lightRGB1=gvTri1[1].argb; rec.lightRGB2=gVertex[1].argb; rec.lightRGB3=gvTri1[2].argb;
+				rec.fogRGB0  =gvTri1[0].frgb; rec.fogRGB1  =gvTri1[1].frgb; rec.fogRGB2  =gVertex[1].frgb; rec.fogRGB3  =gvTri1[2].frgb;
+				rec.terrainHandle = (uint32_t)terrainHandle;
+				rec.flags = 1u | (pzTri1 ? 2u : 0u) | (pzTri2 ? 4u : 0u); // bit0=1 → BOTTOMLEFT
+				rec._ctrl2 = 0u; rec._ctrl3 = 0u;
+				TerrainPatchStream::appendQuadRecord(rec);
+				TerrainPatchStream::addRecordVertParity((pzTri1 ? 3u : 0u) + (pzTri2 ? 3u : 0u));
 			}
 		}
 	}

@@ -232,7 +232,9 @@ def main():
                 **{k: v for k, v in os.environ.items()
                    if k in ("MC2_MODERN_TERRAIN_SURFACE",
                             "MC2_PATCH_STREAM_TRACE",
-                            "MC2_PATCH_STREAM_FORCE_INIT_FAIL")},
+                            "MC2_PATCH_STREAM_FORCE_INIT_FAIL",
+                            "MC2_PATCHSTREAM_QUAD_RECORDS",
+                            "MC2_PATCHSTREAM_QUAD_RECORDS_DRAW")},
             },
         )
         print(f"[runner] running {e.stem} (tier={tier} duration={duration})",
