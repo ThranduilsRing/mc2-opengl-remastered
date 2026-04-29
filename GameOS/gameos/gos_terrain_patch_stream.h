@@ -135,6 +135,10 @@ public:
     static bool isReady();
     static bool isOverflowed();
 
+    // Returns true when the thin-record GPU path is initialized and active.
+    // When true, quad.cpp skips buildTerrainExtraTriple and appendQuad.
+    static bool isThinRecordsActive();
+
     static void appendTriangle(DWORD textureIndex,
                                const gos_VERTEX* vColor,
                                const gos_TERRAIN_EXTRA* vExtra);

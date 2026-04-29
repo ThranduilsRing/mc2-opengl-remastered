@@ -1975,8 +1975,10 @@ void TerrainQuad::draw (void)
 			// PatchStream: one bucket lookup for both triangles of this quad.
 			if (terrainHandle != 0 && TerrainPatchStream::isReady() && !TerrainPatchStream::isOverflowed()) {
 				gos_TERRAIN_EXTRA tx1[3] = {}, tx2[3] = {};
-				if (pzTri1) buildTerrainExtraTriple(vertices[0], vertices[1], vertices[2], tx1);
-				if (pzTri2) buildTerrainExtraTriple(vertices[0], vertices[2], vertices[3], tx2);
+				if (!TerrainPatchStream::isThinRecordsActive()) {
+					if (pzTri1) buildTerrainExtraTriple(vertices[0], vertices[1], vertices[2], tx1);
+					if (pzTri2) buildTerrainExtraTriple(vertices[0], vertices[2], vertices[3], tx2);
+				}
 				TerrainPatchStream::appendQuad(terrainHandle, gvTri1, tx1, pzTri1, gVertex, tx2, pzTri2);
 				// M1 compact record — TOPRIGHT diagonal.
 				// gvTri1[0..2] = corners 0,1,2 (saved before shuffle).
@@ -2321,8 +2323,10 @@ void TerrainQuad::draw (void)
 			// PatchStream: one bucket lookup for both triangles of this quad.
 			if (terrainHandle != 0 && TerrainPatchStream::isReady() && !TerrainPatchStream::isOverflowed()) {
 				gos_TERRAIN_EXTRA tx1[3] = {}, tx2[3] = {};
-				if (pzTri1) buildTerrainExtraTriple(vertices[0], vertices[1], vertices[3], tx1);
-				if (pzTri2) buildTerrainExtraTriple(vertices[1], vertices[2], vertices[3], tx2);
+				if (!TerrainPatchStream::isThinRecordsActive()) {
+					if (pzTri1) buildTerrainExtraTriple(vertices[0], vertices[1], vertices[3], tx1);
+					if (pzTri2) buildTerrainExtraTriple(vertices[1], vertices[2], vertices[3], tx2);
+				}
 				TerrainPatchStream::appendQuad(terrainHandle, gvTri1, tx1, pzTri1, gVertex, tx2, pzTri2);
 				// M1 compact record — BOTTOMLEFT diagonal.
 				// gvTri1 = {corner0, corner1, corner3} (saved before shuffle).

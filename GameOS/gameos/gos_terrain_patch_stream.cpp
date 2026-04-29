@@ -595,6 +595,9 @@ void TerrainPatchStream::destroy()
 
 bool TerrainPatchStream::isReady()      { return s_killswitch && s_initOk; }
 bool TerrainPatchStream::isOverflowed() { return s_overflow; }
+bool TerrainPatchStream::isThinRecordsActive() {
+    return s_thinRecordsOn && (s_thinRecordBuf != 0);
+}
 
 void TerrainPatchStream::beginFrame()
 {
@@ -695,6 +698,8 @@ void TerrainPatchStream::appendQuad(
     ZoneScopedN("PatchStream.AppendQuad");
     if (!s_initOk || !s_killswitch) return;
     if (s_overflow) return;
+    // Thin-record path replaces expanded vertices — skip staging entirely.
+    if (s_thinRecordsOn && s_thinRecordBuf) return;
     if (!tri1Valid && !tri2Valid) return;  // zero lookups when both clipped
 
     const uint32_t numVerts = (tri1Valid ? 3u : 0u) + (tri2Valid ? 3u : 0u);
