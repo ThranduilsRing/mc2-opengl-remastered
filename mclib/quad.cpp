@@ -1723,7 +1723,7 @@ void TerrainQuad::draw (void)
 			{
 				{
 					// sebi: beware this will be drawn with alpha blending, so need to make sure that alpha is not zero, because this is a base terrain layer!
-					if(terrainHandle!=0) {
+					if(terrainHandle!=0 && !TerrainPatchStream::isFastPathActive()) {
 						mcTextureManager->addVertices(terrainHandle,gVertex,MC2_ISTERRAIN | MC2_DRAWSOLID);
 						fillTerrainExtra(terrainHandle, MC2_ISTERRAIN | MC2_DRAWSOLID, vertices[0], vertices[1], vertices[2]);
 						// PatchStream append moved to appendQuad after both pz gates.
@@ -1866,7 +1866,7 @@ void TerrainQuad::draw (void)
 			if (pzTri2)
 			{
 				{
-					if(terrainHandle!=0) {
+					if(terrainHandle!=0 && !TerrainPatchStream::isFastPathActive()) {
 						mcTextureManager->addVertices(terrainHandle,gVertex,MC2_ISTERRAIN | MC2_DRAWSOLID);
 						fillTerrainExtra(terrainHandle, MC2_ISTERRAIN | MC2_DRAWSOLID, vertices[0], vertices[2], vertices[3]);
 						// PatchStream append moved to appendQuad below.
