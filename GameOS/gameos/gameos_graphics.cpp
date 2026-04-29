@@ -1729,7 +1729,8 @@ void gos_terrain_bridge_beginBucketLoop() {
     g_gos_renderer->setRenderState(gos_State_AlphaMode, gos_Alpha_OneZero);
     g_gos_renderer->setRenderState(gos_State_TextureAddress, gos_TextureClamp);
     g_gos_renderer->setRenderState(gos_State_Terrain, 1);
-    glActiveTexture(GL_TEXTURE0);
+    // glActiveTexture intentionally NOT here — applyRenderStates() in
+    // drawSingleBucket may change the active unit; set it after.
 }
 
 void gos_terrain_bridge_drawSingleBucket(
@@ -1740,6 +1741,7 @@ void gos_terrain_bridge_drawSingleBucket(
     if (!g_gos_renderer || vertexCount == 0) return;
     g_gos_renderer->setRenderState(gos_State_Texture, (int)gosHandle);
     g_gos_renderer->applyRenderStates();
+    glActiveTexture(GL_TEXTURE0);  // after applyRenderStates, matching original ordering
     glDrawArrays(GL_PATCHES, (GLint)firstVertex, (GLsizei)vertexCount);
 }
 // ──────────────────────────────────────────────────────────────────────────

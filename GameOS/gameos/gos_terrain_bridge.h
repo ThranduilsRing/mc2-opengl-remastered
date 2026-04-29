@@ -56,7 +56,9 @@ void gos_terrain_bridge_drawPatchStreamBucket(
 
 // Call once before the per-bucket draw loop to set render states that are
 // invariant across all buckets (ZCompare, ZWrite, AlphaMode, TextureAddress,
-// Terrain, active texture unit). Only gos_State_Texture changes per bucket.
+// Terrain). Only gos_State_Texture changes per bucket. glActiveTexture is
+// set in drawSingleBucket() AFTER applyRenderStates(), matching the ordering
+// of the original drawPatchStreamBucket() to prevent AMD driver clobbering.
 // Does NOT call applyRenderStates() — the first drawSingleBucket() flushes
 // all pending dirty flags including these invariants.
 void gos_terrain_bridge_beginBucketLoop();
