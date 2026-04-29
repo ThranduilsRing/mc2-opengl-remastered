@@ -76,6 +76,52 @@ struct alignas(16) TerrainQuadRecord {
 };
 static_assert(sizeof(TerrainQuadRecord) == 192, "TerrainQuadRecord must be 192 bytes for std430 alignment");
 
+// --- M1d: Recipe SSBO (cached-per-quad) + Thin Record SSBO (per-frame) ---
+
+// Per-quad cached recipe: world-space corner positions, normals, UV extents.
+// Uploaded once on first camera-reveal; stable for a given cached quad.
+// Invalidated on mission restart (destroy/init clears s_recipeIndex).
+// Layout: std430-compatible (all members at 16-byte-aligned vec4 boundaries).
+// 9 vec4s = 144 bytes.
+struct alignas(16) TerrainQuadRecipe {
+    float wx0, wy0, wz0, _wp0;
+    float wx1, wy1, wz1, _wp1;
+    float wx2, wy2, wz2, _wp2;
+    float wx3, wy3, wz3, _wp3;
+    float nx0, ny0, nz0, _np0;
+    float nx1, ny1, nz1, _np1;
+    float nx2, ny2, nz2, _np2;
+    float nx3, ny3, nz3, _np3;
+    float minU, minV, maxU, maxV;
+};
+static_assert(sizeof(TerrainQuadRecipe) == 144,
+    "TerrainQuadRecipe must be 144 bytes for std430 alignment");
+
+// Per-frame thin record: recipe index + per-frame lighting, fog, handle, flags.
+// 3 uvec4s = 48 bytes.
+struct alignas(16) TerrainQuadThinRecord {
+    uint32_t recipeIdx;     // index into the recipe SSBO (global, no slot offset)
+    uint32_t terrainHandle; // raw gosHandle — tex_resolve applied at flush
+    uint32_t flags;         // bit 0: uvMode, bit 1: pzTri1Valid, bit 2: pzTri2Valid
+    uint32_t _pad0;
+    uint32_t lightRGB0, lightRGB1, lightRGB2, lightRGB3;
+    uint32_t fogRGB0,   fogRGB1,   fogRGB2,   fogRGB3;
+};
+static_assert(sizeof(TerrainQuadThinRecord) == 48,
+    "TerrainQuadThinRecord must be 48 bytes for std430 alignment");
+
+// Recipe SSBO: single-buffered, shared across all ring slots.
+// Sized for the full terrain grid (120×120 grid ≈ 14 K quads) with 4× headroom.
+constexpr uint32_t kPatchStreamMaxRecipesTotal         = 65536u;
+constexpr uint32_t kPatchStreamRecipeBytes             =
+    kPatchStreamMaxRecipesTotal * 144u;  // 9.2 MB
+
+// Thin-record SSBO: triple-buffered alongside the fat-record SSBO.
+// Same per-slot quad capacity as the fat-record path; 48 B vs 192 B.
+constexpr uint32_t kPatchStreamMaxThinRecordsPerSlot   = kPatchStreamMaxRecordsPerSlot;
+constexpr uint32_t kPatchStreamThinRecordBytesPerSlot  =
+    kPatchStreamMaxThinRecordsPerSlot * 48u;
+
 struct PatchStreamBucket {
     DWORD    gosHandle;   // resolved gosHandle (tex_resolve already applied)
     uint32_t firstVertex; // slot-relative vertex offset (slotFirstVert added at draw time)
@@ -120,6 +166,21 @@ public:
     // Parity: expected vertex count from record flags (sum of valid tris × 3).
     // Compared to s_totalVerts in flush() when MC2_PATCHSTREAM_QUAD_RECORDS=1.
     static void addRecordVertParity(uint32_t n); // n = (pzTri1?3:0)+(pzTri2?3:0)
+
+    // Emit one thin quad record (M1d). No-op unless MC2_PATCHSTREAM_THIN_RECORDS=1.
+    // recipe encodes the static geometry (positions, normals, UVs).
+    // Per-frame fields are passed inline.
+    // Call after appendQuadRecord() at the same quad.cpp call site.
+    static void appendThinRecord(DWORD terrainHandle,
+                                 const TerrainQuadRecipe& recipe,
+                                 uint32_t flags,
+                                 uint32_t lightRGB0, uint32_t lightRGB1,
+                                 uint32_t lightRGB2, uint32_t lightRGB3,
+                                 uint32_t fogRGB0,   uint32_t fogRGB1,
+                                 uint32_t fogRGB2,   uint32_t fogRGB3);
+
+    // Parity: expected verts from thin records (same semantics as addRecordVertParity).
+    static void addThinRecordVertParity(uint32_t n);
 
     // Bucket-census instrumentation. Env-gated (MC2_BUCKET_CENSUS=1).
     // Called from txmmgr.cpp Render.TerrainSolid at end of zone, with the

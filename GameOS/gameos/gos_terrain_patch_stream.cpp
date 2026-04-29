@@ -6,6 +6,7 @@
 #include <cstdio>
 #include <cstdlib>
 #include <cstring>
+#include <unordered_map>
 #include <vector>
 
 #include "gameos.hpp"   // gos_VERTEX, gos_TERRAIN_EXTRA, DWORD, gos_SetRenderState, gos_State_*
@@ -61,6 +62,29 @@ namespace {
     // flush sorts from here then does one sequential memcpy to the GPU ring slot.
     // Not slot-indexed — written and consumed within the same frame.
     static TerrainQuadRecord s_recordShadow[kPatchStreamMaxRecordsPerSlot];
+
+    static const bool s_thinRecordsOn     = (getenv("MC2_PATCHSTREAM_THIN_RECORDS")      != nullptr);
+    static const bool s_thinRecordsDrawOn = (getenv("MC2_PATCHSTREAM_THIN_RECORDS_DRAW") != nullptr);
+
+    // Recipe SSBO — single-buffered, persistent-mapped. Written once per new quad.
+    // Not slot-indexed; recipeIdx is global across all ring slots.
+    static GLuint    s_recipeBuf        = 0;
+    static void*     s_recipeMap        = nullptr;
+    static uint32_t  s_recipeCount      = 0;  // total recipes written (monotonic per mission)
+
+    // CPU recipe index: key = packed float bits of (wx0, wy0), value = recipe slot.
+    // Keyed by corner-0 world position (stable per terrain quad).
+    static std::unordered_map<uint64_t, uint32_t> s_recipeIndex;
+
+    // Thin-record SSBO — triple-buffered, persistent-mapped. Written per-frame.
+    static GLuint    s_thinRecordBuf        = 0;
+    static void*     s_thinRecordMap        = nullptr;
+    static uint32_t  s_thinRecordCount      = 0;  // thin records staged this frame
+    static uint32_t  s_thinRecordVertParity = 0;  // expected verts from thin records
+    static bool      s_thinRecordBannerSeen = false;
+
+    // CPU shadow of the thin-record SSBO (cache-hot staging; flushed sorted to SSBO).
+    static TerrainQuadThinRecord s_thinRecordShadow[kPatchStreamMaxThinRecordsPerSlot];
 
     // GL handles. Two separate buffers — one for color, one for extras.
     GLuint s_colorBuf  = 0;
@@ -331,6 +355,36 @@ bool TerrainPatchStream::init()
         }
     }
 
+    if (s_thinRecordsOn) {
+        // Recipe SSBO — single-buffered, GL_MAP_WRITE_BIT | PERSISTENT | COHERENT.
+        s_recipeBuf = allocPersistentSSBO((GLsizeiptr)kPatchStreamRecipeBytes, &s_recipeMap);
+        if (!s_recipeBuf) {
+            fprintf(stderr,
+                "[PATCH_STREAM v1] event=recipe_ssbo_fail reason=alloc\n");
+            fflush(stderr);
+        } else {
+            fprintf(stderr,
+                "[PATCH_STREAM v1] event=recipe_ssbo_ok bytes=%u max_recipes=%u\n",
+                kPatchStreamRecipeBytes, kPatchStreamMaxRecipesTotal);
+            fflush(stderr);
+        }
+
+        // Thin-record SSBO — triple-buffered, same flags as fat-record SSBO.
+        const GLsizeiptr thinTotal =
+            (GLsizeiptr)kPatchStreamThinRecordBytesPerSlot * kPatchStreamRingFrames;
+        s_thinRecordBuf = allocPersistentSSBO(thinTotal, &s_thinRecordMap);
+        if (!s_thinRecordBuf) {
+            fprintf(stderr,
+                "[PATCH_STREAM v1] event=thin_record_ssbo_fail reason=alloc\n");
+            fflush(stderr);
+        } else {
+            fprintf(stderr,
+                "[PATCH_STREAM v1] event=thin_record_ssbo_ok bytes_per_slot=%u slots=%u\n",
+                kPatchStreamThinRecordBytesPerSlot, kPatchStreamRingFrames);
+            fflush(stderr);
+        }
+    }
+
     glBindBuffer(GL_SHADER_STORAGE_BUFFER, 0); // restore SSBO binding after allocPersistentSSBO
     restoreGLState(saved);
 
@@ -520,6 +574,20 @@ void TerrainPatchStream::destroy()
         glDeleteBuffers(1, &s_recordBuf);
         s_recordBuf = 0;
     }
+    if (s_recipeBuf) {
+        glBindBuffer(GL_SHADER_STORAGE_BUFFER, s_recipeBuf);
+        if (s_recipeMap) { glUnmapBuffer(GL_SHADER_STORAGE_BUFFER); s_recipeMap = nullptr; }
+        glDeleteBuffers(1, &s_recipeBuf);
+        s_recipeBuf = 0;
+    }
+    if (s_thinRecordBuf) {
+        glBindBuffer(GL_SHADER_STORAGE_BUFFER, s_thinRecordBuf);
+        if (s_thinRecordMap) { glUnmapBuffer(GL_SHADER_STORAGE_BUFFER); s_thinRecordMap = nullptr; }
+        glDeleteBuffers(1, &s_thinRecordBuf);
+        s_thinRecordBuf = 0;
+    }
+    s_recipeIndex.clear();
+    s_recipeCount = 0;
     glBindBuffer(GL_SHADER_STORAGE_BUFFER, 0);
     glBindBuffer(GL_ARRAY_BUFFER, 0);
     s_initOk = false;
@@ -574,6 +642,8 @@ void TerrainPatchStream::beginFrame()
     memset(s_bucketHash, 0xFF, sizeof(s_bucketHash));
     s_recordCount      = 0;
     s_recordVertParity = 0;
+    s_thinRecordCount      = 0;
+    s_thinRecordVertParity = 0;
 }
 
 void TerrainPatchStream::appendTriangle(DWORD textureIndex,
