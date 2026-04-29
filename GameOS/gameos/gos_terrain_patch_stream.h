@@ -42,6 +42,20 @@ public:
                                const gos_VERTEX* vColor,
                                const gos_TERRAIN_EXTRA* vExtra);
 
+    // Emit up to two triangles sharing the same terrain texture handle.
+    // tri1Valid/tri2Valid carry the per-triangle pz gate result; a false flag
+    // skips that triangle's vertex write without touching the bucket.
+    // One bucket lookup when either triangle is valid; zero lookups when both
+    // are clipped (early-out before findOrCreateStagingBucket).
+    // vColor1/vExtra1 must point to 3 elements each; same for vColor2/vExtra2.
+    static void appendQuad(DWORD terrainHandle,
+                           const gos_VERTEX*        vColor1,
+                           const gos_TERRAIN_EXTRA* vExtra1,
+                           bool tri1Valid,
+                           const gos_VERTEX*        vColor2,
+                           const gos_TERRAIN_EXTRA* vExtra2,
+                           bool tri2Valid);
+
     static bool flush();
     static void beginFrame();
 

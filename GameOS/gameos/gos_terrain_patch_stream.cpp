@@ -559,6 +559,42 @@ void TerrainPatchStream::appendTriangle(DWORD textureIndex,
     s_totalVerts += vertsPerTri;
 }
 
+void TerrainPatchStream::appendQuad(
+    DWORD terrainHandle,
+    const gos_VERTEX* vColor1, const gos_TERRAIN_EXTRA* vExtra1, bool tri1Valid,
+    const gos_VERTEX* vColor2, const gos_TERRAIN_EXTRA* vExtra2, bool tri2Valid)
+{
+    ZoneScopedN("PatchStream.AppendQuad");
+    if (!s_initOk || !s_killswitch) return;
+    if (s_overflow) return;
+    if (!tri1Valid && !tri2Valid) return;  // zero lookups when both clipped
+
+    const uint32_t numVerts = (tri1Valid ? 3u : 0u) + (tri2Valid ? 3u : 0u);
+    const uint32_t maxVertsThisSlot =
+        kPatchStreamColorBytesPerSlot / (uint32_t)sizeof(gos_VERTEX);
+    if (s_totalVerts + numVerts > maxVertsThisSlot) {
+        fprintf(stderr,
+            "[PATCH_STREAM v1] event=overflow slot=%u kind=byte_budget cursor=%u cap=%u\n",
+            s_slot, s_totalVerts, maxVertsThisSlot);
+        fflush(stderr);
+        s_overflow = true;
+        return;
+    }
+
+    PatchStagingBucket* bk = findOrCreateStagingBucket(terrainHandle);
+    if (!bk) return;
+
+    if (tri1Valid) {
+        bk->color.insert(bk->color.end(), vColor1, vColor1 + 3);
+        bk->extras.insert(bk->extras.end(), vExtra1, vExtra1 + 3);
+    }
+    if (tri2Valid) {
+        bk->color.insert(bk->color.end(), vColor2, vColor2 + 3);
+        bk->extras.insert(bk->extras.end(), vExtra2, vExtra2 + 3);
+    }
+    s_totalVerts += numVerts;
+}
+
 bool TerrainPatchStream::flush()
 {
     ZoneScopedN("PatchStream.Flush");

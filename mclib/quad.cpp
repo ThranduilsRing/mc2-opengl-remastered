@@ -431,6 +431,8 @@ static void addTerrainTriangles(const TerrainRecipe& r)
 
 void TerrainQuad::setupTextures (void)
 {
+	{
+		ZoneScopedN("quadSetupTextures admission / early guards");
 	if (mineTextureHandle == 0xffffffff)
 	{
 		FullPathFileName mineTextureName;
@@ -443,6 +445,7 @@ void TerrainQuad::setupTextures (void)
 		FullPathFileName mineTextureName;
 		mineTextureName.init(texturePath,"defaults" PATH_SEPARATOR "minescorch_00",".tga");
 		blownTextureHandle = mcTextureManager->loadTexture(mineTextureName,gos_Texture_Alpha,gosHint_DisableMipmap | gosHint_DontShrink, 0, 0x1);
+	}
 	}
 	
  	if (!Terrain::terrainTextures2)
@@ -618,6 +621,8 @@ void TerrainQuad::setupTextures (void)
 
 			{
 				ZoneScopedN("TerrainQuad::setupTextures resolveFallback");
+				{
+				ZoneScopedN("quadSetupTextures diagonal branch / triangle selection");
 				TerrainRecipe recipe;
 				TerrainRecipe inlineRecipe;
 
@@ -648,9 +653,13 @@ void TerrainQuad::setupTextures (void)
 					pz_emit_terrain_tris(vertices, uvMode,
 						(uvMode == BOTTOMRIGHT) ? "terrain_quad_cluster_a" : "terrain_quad_cluster_c",
 						__FILE__, __LINE__);
+				}
 			}
 
-			enqueueTerrainMineState(*this);
+			{
+				ZoneScopedN("quadSetupTextures mine/scorch checks");
+				enqueueTerrainMineState(*this);
+			}
 		}
 	}
 
@@ -1704,26 +1713,20 @@ void TerrainQuad::draw (void)
 			gVertex[2].frgb		= vertices[2]->fogRGB;
 			gVertex[2].frgb		= (gVertex[2].frgb & 0xFFFFFF00) | terrainTypeToMaterial(vertices[2]->pVertex->terrainType);
 
-			if ((gVertex[0].z >= 0.0f) &&
-				(gVertex[0].z < 1.0f) &&
-				(gVertex[1].z >= 0.0f) &&
-				(gVertex[1].z < 1.0f) &&
-				(gVertex[2].z >= 0.0f) &&
-				(gVertex[2].z < 1.0f))
+			// Capture tri1 pz result and vertex data before the destructive
+			// gVertex shuffle for tri2. appendQuad (below) uses both.
+			const bool pzTri1 = ((gVertex[0].z >= 0.0f) && (gVertex[0].z < 1.0f) &&
+			                     (gVertex[1].z >= 0.0f) && (gVertex[1].z < 1.0f) &&
+			                     (gVertex[2].z >= 0.0f) && (gVertex[2].z < 1.0f));
+			const gos_VERTEX gvTri1[3] = {gVertex[0], gVertex[1], gVertex[2]};
+			if (pzTri1)
 			{
 				{
 					// sebi: beware this will be drawn with alpha blending, so need to make sure that alpha is not zero, because this is a base terrain layer!
 					if(terrainHandle!=0) {
 						mcTextureManager->addVertices(terrainHandle,gVertex,MC2_ISTERRAIN | MC2_DRAWSOLID);
 						fillTerrainExtra(terrainHandle, MC2_ISTERRAIN | MC2_DRAWSOLID, vertices[0], vertices[1], vertices[2]);
-
-						// Modern mirror — gated by killswitch via TerrainPatchStream::isReady().
-						// INSIDE the pz gate brace by construction. BR4.
-						if (TerrainPatchStream::isReady() && !TerrainPatchStream::isOverflowed()) {
-							gos_TERRAIN_EXTRA tx3[3];
-							buildTerrainExtraTriple(vertices[0], vertices[1], vertices[2], tx3);
-							TerrainPatchStream::appendTriangle(terrainHandle, gVertex, tx3);
-						}
+						// PatchStream append moved to appendQuad after both pz gates.
 					}
 
 					//--------------------------------------------------------------
@@ -1857,25 +1860,16 @@ void TerrainQuad::draw (void)
 			gVertex[2].frgb		= vertices[3]->fogRGB;
 			gVertex[2].frgb		= (gVertex[2].frgb & 0xFFFFFF00) | terrainTypeToMaterial(vertices[3]->pVertex->terrainType);
 
-			if ((gVertex[0].z >= 0.0f) &&
-				(gVertex[0].z < 1.0f) &&
-				(gVertex[1].z >= 0.0f) &&
-				(gVertex[1].z < 1.0f) &&
-				(gVertex[2].z >= 0.0f) &&
-				(gVertex[2].z < 1.0f))
+			const bool pzTri2 = ((gVertex[0].z >= 0.0f) && (gVertex[0].z < 1.0f) &&
+			                     (gVertex[1].z >= 0.0f) && (gVertex[1].z < 1.0f) &&
+			                     (gVertex[2].z >= 0.0f) && (gVertex[2].z < 1.0f));
+			if (pzTri2)
 			{
 				{
 					if(terrainHandle!=0) {
 						mcTextureManager->addVertices(terrainHandle,gVertex,MC2_ISTERRAIN | MC2_DRAWSOLID);
 						fillTerrainExtra(terrainHandle, MC2_ISTERRAIN | MC2_DRAWSOLID, vertices[0], vertices[2], vertices[3]);
-
-						// Modern mirror — gated by killswitch via TerrainPatchStream::isReady().
-						// INSIDE the pz gate brace by construction. BR4.
-						if (TerrainPatchStream::isReady() && !TerrainPatchStream::isOverflowed()) {
-							gos_TERRAIN_EXTRA tx3[3];
-							buildTerrainExtraTriple(vertices[0], vertices[2], vertices[3], tx3);
-							TerrainPatchStream::appendTriangle(terrainHandle, gVertex, tx3);
-						}
+						// PatchStream append moved to appendQuad below.
 					}
 
 					//--------------------------------------------------------------
@@ -1977,6 +1971,14 @@ void TerrainQuad::draw (void)
 					}
 				}
 			}
+
+			// PatchStream: one bucket lookup for both triangles of this quad.
+			if (terrainHandle != 0 && TerrainPatchStream::isReady() && !TerrainPatchStream::isOverflowed()) {
+				gos_TERRAIN_EXTRA tx1[3] = {}, tx2[3] = {};
+				if (pzTri1) buildTerrainExtraTriple(vertices[0], vertices[1], vertices[2], tx1);
+				if (pzTri2) buildTerrainExtraTriple(vertices[0], vertices[2], vertices[3], tx2);
+				TerrainPatchStream::appendQuad(terrainHandle, gvTri1, tx1, pzTri1, gVertex, tx2, pzTri2);
+			}
 		}
 		else if (uvMode == BOTTOMLEFT)
 		{
@@ -2024,25 +2026,19 @@ void TerrainQuad::draw (void)
 			gVertex[2].frgb		= vertices[3]->fogRGB;
 			gVertex[2].frgb		= (gVertex[2].frgb & 0xFFFFFF00) | terrainTypeToMaterial(vertices[3]->pVertex->terrainType);
 
-			if ((gVertex[0].z >= 0.0f) &&
-				(gVertex[0].z < 1.0f) &&
-				(gVertex[1].z >= 0.0f) &&
-				(gVertex[1].z < 1.0f) &&
-				(gVertex[2].z >= 0.0f) &&
-				(gVertex[2].z < 1.0f))
+			// Capture tri1 pz result and vertex data before the destructive
+			// gVertex shuffle for tri2. appendQuad (below) uses both.
+			const bool pzTri1 = ((gVertex[0].z >= 0.0f) && (gVertex[0].z < 1.0f) &&
+			                     (gVertex[1].z >= 0.0f) && (gVertex[1].z < 1.0f) &&
+			                     (gVertex[2].z >= 0.0f) && (gVertex[2].z < 1.0f));
+			const gos_VERTEX gvTri1[3] = {gVertex[0], gVertex[1], gVertex[2]};
+			if (pzTri1)
 			{
 				{
 					if(terrainHandle!=0) {
 						mcTextureManager->addVertices(terrainHandle,gVertex,MC2_ISTERRAIN | MC2_DRAWSOLID);
 						fillTerrainExtra(terrainHandle, MC2_ISTERRAIN | MC2_DRAWSOLID, vertices[0], vertices[1], vertices[3]);
-
-						// Modern mirror — gated by killswitch via TerrainPatchStream::isReady().
-						// INSIDE the pz gate brace by construction. BR4.
-						if (TerrainPatchStream::isReady() && !TerrainPatchStream::isOverflowed()) {
-							gos_TERRAIN_EXTRA tx3[3];
-							buildTerrainExtraTriple(vertices[0], vertices[1], vertices[3], tx3);
-							TerrainPatchStream::appendTriangle(terrainHandle, gVertex, tx3);
-						}
+						// PatchStream append moved to appendQuad after both pz gates.
 					}
 
 					//----------------------------------------------------
@@ -2174,25 +2170,16 @@ void TerrainQuad::draw (void)
 			gVertex[1].frgb		= vertices[2]->fogRGB;
 			gVertex[1].frgb		= (gVertex[1].frgb & 0xFFFFFF00) | terrainTypeToMaterial(vertices[2]->pVertex->terrainType);
 
-			if ((gVertex[0].z >= 0.0f) &&
-				(gVertex[0].z < 1.0f) &&
-				(gVertex[1].z >= 0.0f) &&
-				(gVertex[1].z < 1.0f) &&
-				(gVertex[2].z >= 0.0f) &&
-				(gVertex[2].z < 1.0f))
+			const bool pzTri2 = ((gVertex[0].z >= 0.0f) && (gVertex[0].z < 1.0f) &&
+			                     (gVertex[1].z >= 0.0f) && (gVertex[1].z < 1.0f) &&
+			                     (gVertex[2].z >= 0.0f) && (gVertex[2].z < 1.0f));
+			if (pzTri2)
 			{
 				{
 					if(terrainHandle!=0) {
 						mcTextureManager->addVertices(terrainHandle,gVertex,MC2_ISTERRAIN | MC2_DRAWSOLID);
 						fillTerrainExtra(terrainHandle, MC2_ISTERRAIN | MC2_DRAWSOLID, vertices[1], vertices[2], vertices[3]);
-
-						// Modern mirror — gated by killswitch via TerrainPatchStream::isReady().
-						// INSIDE the pz gate brace by construction. BR4.
-						if (TerrainPatchStream::isReady() && !TerrainPatchStream::isOverflowed()) {
-							gos_TERRAIN_EXTRA tx3[3];
-							buildTerrainExtraTriple(vertices[1], vertices[2], vertices[3], tx3);
-							TerrainPatchStream::appendTriangle(terrainHandle, gVertex, tx3);
-						}
+						// PatchStream append moved to appendQuad below.
 					}
 
 					//----------------------------------------------------
@@ -2292,6 +2279,14 @@ void TerrainQuad::draw (void)
 						}
 					}
 				}
+			}
+
+			// PatchStream: one bucket lookup for both triangles of this quad.
+			if (terrainHandle != 0 && TerrainPatchStream::isReady() && !TerrainPatchStream::isOverflowed()) {
+				gos_TERRAIN_EXTRA tx1[3] = {}, tx2[3] = {};
+				if (pzTri1) buildTerrainExtraTriple(vertices[0], vertices[1], vertices[3], tx1);
+				if (pzTri2) buildTerrainExtraTriple(vertices[1], vertices[2], vertices[3], tx2);
+				TerrainPatchStream::appendQuad(terrainHandle, gvTri1, tx1, pzTri1, gVertex, tx2, pzTri2);
 			}
 		}
 	}
