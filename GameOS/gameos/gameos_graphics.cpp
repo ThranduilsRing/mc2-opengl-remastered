@@ -1722,6 +1722,15 @@ void gos_terrain_bridge_drawPatchStreamBucket(
     glDrawArrays(GL_PATCHES, (GLint)firstVertex, (GLsizei)vertexCount);
 }
 
+static const bool s_patchStreamDirectBind =
+    (getenv("MC2_PATCHSTREAM_DIRECT_TEXTURE_BIND") != nullptr);
+
+// GL sampler object used in the direct-bind fast path to enforce correct
+// filter/wrap state on unit 0 without per-bucket glTexParameteri calls.
+// Sampler objects override per-texture-object sampler state while bound.
+// Terrain colormaps have no mipmaps → GL_LINEAR + GL_CLAMP_TO_EDGE.
+static GLuint s_terrainBucketSampler = 0;
+
 void gos_terrain_bridge_beginBucketLoop() {
     if (!g_gos_renderer) return;
     g_gos_renderer->setRenderState(gos_State_ZCompare, 1);
@@ -1731,10 +1740,22 @@ void gos_terrain_bridge_beginBucketLoop() {
     g_gos_renderer->setRenderState(gos_State_Terrain, 1);
     // glActiveTexture intentionally NOT here — applyRenderStates() in
     // drawSingleBucket may change the active unit; set it after.
-}
 
-static const bool s_patchStreamDirectBind =
-    (getenv("MC2_PATCHSTREAM_DIRECT_TEXTURE_BIND") != nullptr);
+    if (s_patchStreamDirectBind) {
+        // Create sampler object lazily. It enforces GL_LINEAR + GL_CLAMP_TO_EDGE
+        // on unit 0 for the entire bucket loop, overriding any stale per-texture
+        // sampler state (e.g. GL_NEAREST_MIPMAP_LINEAR default on fresh uploads).
+        if (!s_terrainBucketSampler) {
+            glGenSamplers(1, &s_terrainBucketSampler);
+            glSamplerParameteri(s_terrainBucketSampler, GL_TEXTURE_WRAP_S, GL_CLAMP_TO_EDGE);
+            glSamplerParameteri(s_terrainBucketSampler, GL_TEXTURE_WRAP_T, GL_CLAMP_TO_EDGE);
+            glSamplerParameteri(s_terrainBucketSampler, GL_TEXTURE_WRAP_R, GL_CLAMP_TO_EDGE);
+            glSamplerParameteri(s_terrainBucketSampler, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
+            glSamplerParameteri(s_terrainBucketSampler, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
+        }
+        glBindSampler(0, s_terrainBucketSampler);
+    }
+}
 
 void gos_terrain_bridge_drawSingleBucket(
     unsigned int gosHandle,
@@ -1752,7 +1773,7 @@ void gos_terrain_bridge_drawSingleBucket(
         gosTexture* tex = g_gos_renderer->getTexture((DWORD)gosHandle);
         const GLuint glTex = tex ? (GLuint)tex->getTextureId() : 0u;
         glActiveTexture(GL_TEXTURE0);
-        if (glTex) glBindTexture(GL_TEXTURE_2D, glTex);
+        glBindTexture(GL_TEXTURE_2D, glTex); // binding 0 is valid; matches standard path behavior
         glDrawArrays(GL_PATCHES, (GLint)firstVertex, (GLsizei)vertexCount);
     } else {
         // Standard path: full state machine flush.
@@ -1764,11 +1785,19 @@ void gos_terrain_bridge_drawSingleBucket(
 }
 
 void gos_terrain_bridge_endBucketLoop(unsigned int lastGosHandle) {
-    if (!s_patchStreamDirectBind || !g_gos_renderer || lastGosHandle == 0) return;
+    if (!s_patchStreamDirectBind || !g_gos_renderer) return;
+    // Restore per-texture sampler state on unit 0.
+    glBindSampler(0, 0);
+    // 0xFFFFFFFFu means no draws were issued (bucket loop was empty).
+    // gosHandle==0 is a valid (but evicted) texture — do not conflate.
+    if (lastGosHandle == 0xFFFFFFFFu) return;
     // Re-sync state cache: one redundant glBindTexture, but subsequent
     // renderers see a coherent cache entry for gos_State_Texture.
     g_gos_renderer->setRenderState(gos_State_Texture, (int)lastGosHandle);
     g_gos_renderer->applyRenderStates();
+    // applyRenderStates iterates units 0→2, leaving active unit at GL_TEXTURE2.
+    // Restore to unit 0 so subsequent renderers bind on the expected unit.
+    glActiveTexture(GL_TEXTURE0);
 }
 
 // ──────────────────────────────────────────────────────────────────────────

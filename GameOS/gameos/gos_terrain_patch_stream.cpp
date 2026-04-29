@@ -745,7 +745,7 @@ bool TerrainPatchStream::flush()
         fflush(stderr);
     }
 
-    DWORD lastGosHandleDrawn = 0;
+    DWORD lastGosHandleDrawn = 0xFFFFFFFFu; // sentinel: "no draws yet" (distinct from gosHandle==0 for evicted textures)
     static int s_bucketErrFramesChecked = 0;
     const bool checkBucketErrors = s_traceOn && s_bucketErrFramesChecked < 2;
     {
