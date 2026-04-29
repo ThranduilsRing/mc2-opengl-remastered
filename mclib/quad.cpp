@@ -2012,9 +2012,16 @@ void TerrainQuad::draw (void)
 					recipe.nx3=vertices[3]->pVertex->vertexNormal.x; recipe.ny3=vertices[3]->pVertex->vertexNormal.y; recipe.nz3=vertices[3]->pVertex->vertexNormal.z; recipe._np3=0.f;
 					recipe.minU=minU; recipe.minV=minV; recipe.maxU=maxU; recipe.maxV=maxV;
 					const uint32_t tFlags = 0u | (pzTri1 ? 2u : 0u) | (pzTri2 ? 4u : 0u); // bit0=0 → TOPRIGHT
+					{
+						uint32_t m0 = terrainTypeToMaterial(vertices[0]->pVertex->terrainType);
+						uint32_t m1 = terrainTypeToMaterial(vertices[1]->pVertex->terrainType);
+						uint32_t m2 = terrainTypeToMaterial(vertices[2]->pVertex->terrainType);
+						uint32_t m3 = terrainTypeToMaterial(vertices[3]->pVertex->terrainType);
+						uint32_t tpacked = m0 | (m1 << 8) | (m2 << 16) | (m3 << 24);
+						memcpy(&recipe._wp0, &tpacked, 4);
+					}
 					TerrainPatchStream::appendThinRecord(terrainHandle, recipe, tFlags,
-						gvTri1[0].argb, gvTri1[1].argb, gvTri1[2].argb, gVertex[2].argb,
-						gvTri1[0].frgb, gvTri1[1].frgb, gvTri1[2].frgb, gVertex[2].frgb);
+						gvTri1[0].argb, gvTri1[1].argb, gvTri1[2].argb, gVertex[2].argb);
 					TerrainPatchStream::addThinRecordVertParity((pzTri1 ? 3u : 0u) + (pzTri2 ? 3u : 0u));
 				}
 			}
@@ -2365,9 +2372,16 @@ void TerrainQuad::draw (void)
 					// BOTTOMLEFT: same corner order as fat record above.
 					// gvTri1[0]=corner0, gvTri1[1]=corner1, gvTri1[2]=corner3; gVertex[1]=corner2
 					const uint32_t tFlags = 1u | (pzTri1 ? 2u : 0u) | (pzTri2 ? 4u : 0u); // bit0=1 → BOTTOMLEFT
+					{
+						uint32_t m0 = terrainTypeToMaterial(vertices[0]->pVertex->terrainType);
+						uint32_t m1 = terrainTypeToMaterial(vertices[1]->pVertex->terrainType);
+						uint32_t m2 = terrainTypeToMaterial(vertices[2]->pVertex->terrainType);
+						uint32_t m3 = terrainTypeToMaterial(vertices[3]->pVertex->terrainType);
+						uint32_t tpacked = m0 | (m1 << 8) | (m2 << 16) | (m3 << 24);
+						memcpy(&recipe._wp0, &tpacked, 4);
+					}
 					TerrainPatchStream::appendThinRecord(terrainHandle, recipe, tFlags,
-						gvTri1[0].argb, gvTri1[1].argb, gVertex[1].argb, gvTri1[2].argb,
-						gvTri1[0].frgb, gvTri1[1].frgb, gVertex[1].frgb, gvTri1[2].frgb);
+						gvTri1[0].argb, gvTri1[1].argb, gVertex[1].argb, gvTri1[2].argb);
 					TerrainPatchStream::addThinRecordVertParity((pzTri1 ? 3u : 0u) + (pzTri2 ? 3u : 0u));
 				}
 			}

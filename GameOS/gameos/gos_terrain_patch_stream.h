@@ -2,6 +2,7 @@
 #pragma once
 
 #include <cstdint>
+#include <cstring>       // for memcpy in makeRecipeKey
 #include "gameos.hpp"    // for gos_VERTEX, gos_TERRAIN_EXTRA
 
 constexpr uint32_t kPatchStreamRingFrames        = 3;
@@ -97,18 +98,17 @@ struct alignas(16) TerrainQuadRecipe {
 static_assert(sizeof(TerrainQuadRecipe) == 144,
     "TerrainQuadRecipe must be 144 bytes for std430 alignment");
 
-// Per-frame thin record: recipe index + per-frame lighting, fog, handle, flags.
-// 3 uvec4s = 48 bytes.
+// Per-frame thin record: recipe index + per-frame lighting, handle, flags.
+// 2 uvec4s = 32 bytes (fog dropped — GPU reconstructs from height/recipe).
 struct alignas(16) TerrainQuadThinRecord {
     uint32_t recipeIdx;     // index into the recipe SSBO (global, no slot offset)
     uint32_t terrainHandle; // raw gosHandle — tex_resolve applied at flush
     uint32_t flags;         // bit 0: uvMode, bit 1: pzTri1Valid, bit 2: pzTri2Valid
     uint32_t _pad0;
     uint32_t lightRGB0, lightRGB1, lightRGB2, lightRGB3;
-    uint32_t fogRGB0,   fogRGB1,   fogRGB2,   fogRGB3;
 };
-static_assert(sizeof(TerrainQuadThinRecord) == 48,
-    "TerrainQuadThinRecord must be 48 bytes for std430 alignment");
+static_assert(sizeof(TerrainQuadThinRecord) == 32,
+    "TerrainQuadThinRecord must be 32 bytes for std430 alignment");
 
 // Recipe SSBO: single-buffered, shared across all ring slots.
 // Sized for the full terrain grid (120×120 grid ≈ 14 K quads) with 4× headroom.
@@ -117,10 +117,10 @@ constexpr uint32_t kPatchStreamRecipeBytes             =
     kPatchStreamMaxRecipesTotal * 144u;  // 9.2 MB
 
 // Thin-record SSBO: triple-buffered alongside the fat-record SSBO.
-// Same per-slot quad capacity as the fat-record path; 48 B vs 192 B.
+// Same per-slot quad capacity as the fat-record path; 32 B vs 192 B.
 constexpr uint32_t kPatchStreamMaxThinRecordsPerSlot   = kPatchStreamMaxRecordsPerSlot;
 constexpr uint32_t kPatchStreamThinRecordBytesPerSlot  =
-    kPatchStreamMaxThinRecordsPerSlot * 48u;
+    kPatchStreamMaxThinRecordsPerSlot * 32u;
 
 struct PatchStreamBucket {
     DWORD    gosHandle;   // resolved gosHandle (tex_resolve already applied)
@@ -178,15 +178,31 @@ public:
 
     // Emit one thin quad record (M1d). No-op unless MC2_PATCHSTREAM_THIN_RECORDS=1.
     // recipe encodes the static geometry (positions, normals, UVs).
-    // Per-frame fields are passed inline.
+    // Per-frame fields are passed inline. Fog dropped (GPU reconstructs).
     // Call after appendQuadRecord() at the same quad.cpp call site.
     static void appendThinRecord(DWORD terrainHandle,
                                  const TerrainQuadRecipe& recipe,
                                  uint32_t flags,
                                  uint32_t lightRGB0, uint32_t lightRGB1,
-                                 uint32_t lightRGB2, uint32_t lightRGB3,
-                                 uint32_t fogRGB0,   uint32_t fogRGB1,
-                                 uint32_t fogRGB2,   uint32_t fogRGB3);
+                                 uint32_t lightRGB2, uint32_t lightRGB3);
+
+    // Pack (wx0, wy0) float bits into a uint64_t recipe key.
+    // Exposed here so quad.cpp can call ensureRecipeForQuad without duplicating the helper.
+    static inline uint64_t makeRecipeKey(float wx0, float wy0) {
+        uint32_t bx, by;
+        memcpy(&bx, &wx0, 4);
+        memcpy(&by, &wy0, 4);
+        return ((uint64_t)bx << 32) | (uint64_t)by;
+    }
+
+    // Ensures recipe exists in SSBO (allocates on first encounter, no-op thereafter).
+    // recipe._wp0 must be pre-filled with packed corner material types before calling.
+    // Returns recipe slot index, or UINT32_MAX on overflow — caller must skip emit.
+    static uint32_t ensureRecipeForQuad(uint64_t floatKey, const TerrainQuadRecipe& recipe);
+
+    // Write pre-built thin record directly to shadow array. tr.recipeIdx must be valid.
+    // Mirrors all guards of appendThinRecord; increments parity counter.
+    static void appendThinRecordDirect(DWORD terrainHandle, const TerrainQuadThinRecord& tr);
 
     // Parity: expected verts from thin records (same semantics as addRecordVertParity).
     static void addThinRecordVertParity(uint32_t n);
