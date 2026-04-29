@@ -57,6 +57,10 @@ namespace {
     static uint32_t  s_recordCount      = 0;  // records staged this frame
     static uint32_t  s_recordVertParity = 0;  // expected verts from records, for parity check
     static bool      s_recordBannerSeen = false;
+    // CPU-side shadow of the record SSBO. appendQuadRecord writes here (cache-hot);
+    // flush sorts from here then does one sequential memcpy to the GPU ring slot.
+    // Not slot-indexed — written and consumed within the same frame.
+    static TerrainQuadRecord s_recordShadow[kPatchStreamMaxRecordsPerSlot];
 
     // GL handles. Two separate buffers — one for color, one for extras.
     GLuint s_colorBuf  = 0;
@@ -662,8 +666,7 @@ void TerrainPatchStream::appendQuadRecord(const TerrainQuadRecord& rec) {
         }
         return;
     }
-    const uint32_t slotFirst = s_slot * kPatchStreamMaxRecordsPerSlot;
-    ((TerrainQuadRecord*)s_recordMap)[slotFirst + s_recordCount] = rec;
+    s_recordShadow[s_recordCount] = rec;  // CPU-only; flushed to SSBO sorted at draw time
     ++s_recordCount;
 }
 
@@ -993,6 +996,12 @@ bool TerrainPatchStream::flush()
     if (s_quadRecordsOn && s_quadRecordsDrawOn && s_recordBuf && s_recordCount > 0) {
         ZoneScopedN("PatchStream.DrawRecords");
 
+        // Drain any pre-existing GL errors before our own GL calls.
+        { GLenum e; while ((e = glGetError()) != GL_NO_ERROR) {
+            fprintf(stderr, "[PATCH_STREAM v1] event=record_pre_glerror code=0x%x\n", e);
+            fflush(stderr);
+        }}
+
         struct RecordBucket { DWORD gosHandle; uint32_t firstRecord; uint32_t recordCount; };
         static RecordBucket s_recDrawBuckets[kPatchStreamMaxBuckets];
         uint32_t recDrawBucketCount = 0;
@@ -1000,20 +1009,42 @@ bool TerrainPatchStream::flush()
         const uint32_t slotFirstRecord = s_slot * kPatchStreamMaxRecordsPerSlot;
         TerrainQuadRecord* ringBase = (TerrainQuadRecord*)s_recordMap + slotFirstRecord;
 
+        // First-frame diagnostic: log recordCount, slot, patch geometry, GL patch size.
+        static bool s_diagSeen = false;
+        if (!s_diagSeen) {
+            s_diagSeen = true;
+            GLint patchVerts = 0;
+            glGetIntegerv(GL_PATCH_VERTICES, &patchVerts);
+            fprintf(stderr,
+                "[PATCH_STREAM v1] event=record_draw_diag slot=%u slotFirstRecord=%u "
+                "recordCount=%u expectedPatches=%u expectedVerts=%u "
+                "GL_PATCH_VERTICES=%d ssboBytes=%u\n",
+                s_slot, slotFirstRecord, s_recordCount,
+                s_recordCount * 2u, s_recordCount * 6u,
+                patchVerts,
+                kPatchStreamRecordBytesPerSlot);
+            fflush(stderr);
+        }
+
         struct RecSortEntry { DWORD gosHandle; uint32_t recIdx; };
         static RecSortEntry recSortBuf[kPatchStreamMaxRecordsPerSlot];
+        {
+        ZoneScopedN("PatchStream.DrawRecords.BuildSort");
         for (uint32_t r = 0; r < s_recordCount; ++r) {
-            recSortBuf[r] = { (DWORD)tex_resolve(ringBase[r].terrainHandle), r };
+            recSortBuf[r] = { (DWORD)tex_resolve(s_recordShadow[r].terrainHandle), r };
         }
         std::sort(recSortBuf, recSortBuf + s_recordCount,
             [](const RecSortEntry& a, const RecSortEntry& b) {
                 return a.gosHandle < b.gosHandle;
             });
+        }
 
         // Copy sorted records back into ring and build draw buckets.
         static TerrainQuadRecord recSortedTmp[kPatchStreamMaxRecordsPerSlot];
+        {
+        ZoneScopedN("PatchStream.DrawRecords.Gather");
         for (uint32_t r = 0; r < s_recordCount; ++r) {
-            recSortedTmp[r] = ringBase[recSortBuf[r].recIdx];
+            recSortedTmp[r] = s_recordShadow[recSortBuf[r].recIdx]; // CPU shadow — cache-hot
             recSortedTmp[r].terrainHandle = (uint32_t)recSortBuf[r].gosHandle;
 
             DWORD gh = recSortBuf[r].gosHandle;
@@ -1025,19 +1056,28 @@ bool TerrainPatchStream::flush()
                 }
             }
         }
+        }
+
+        {
+        ZoneScopedN("PatchStream.DrawRecords.Upload");
         memcpy(ringBase, recSortedTmp, s_recordCount * sizeof(TerrainQuadRecord));
+        }
 
         // Retrieve useQuadRecords uniform location (cached after first lookup).
         static GLint s_useQuadRecordsLoc = -2; // -2 = not yet queried
+        static GLint s_ssboRecordBaseLoc = -2;
+        {
+        ZoneScopedN("PatchStream.DrawRecords.GLSetup");
         if (s_useQuadRecordsLoc == -2) {
             GLuint shp = (GLuint)gos_terrain_bridge_getShaderProgram();
             s_useQuadRecordsLoc = shp ? glGetUniformLocation(shp, "useQuadRecords") : -1;
         }
-        static GLint s_ssboRecordBaseLoc = -2;
         if (s_ssboRecordBaseLoc == -2) {
             GLuint shp = (GLuint)gos_terrain_bridge_getShaderProgram();
             s_ssboRecordBaseLoc = shp ? glGetUniformLocation(shp, "ssboRecordBase") : -1;
         }
+        }
+
         if (s_useQuadRecordsLoc >= 0) {
             // Enable record TCS mode.
             glUniform1i(s_useQuadRecordsLoc, 1);
@@ -1068,9 +1108,17 @@ bool TerrainPatchStream::flush()
             gos_terrain_bridge_endBucketLoop(0xFFFFFFFFu);
             }
 
+            {
+            ZoneScopedN("PatchStream.DrawRecords.PostDraw");
             // Restore TCS to passthrough.
             glUniform1i(s_useQuadRecordsLoc, 0);
             glBindBufferBase(GL_SHADER_STORAGE_BUFFER, 0, 0);
+            // Drain any GL errors generated by the record draw.
+            { GLenum e; while ((e = glGetError()) != GL_NO_ERROR) {
+                fprintf(stderr, "[PATCH_STREAM v1] event=record_post_glerror code=0x%x\n", e);
+                fflush(stderr);
+            }}
+            }
         } else {
             // Shader not yet updated with useQuadRecords uniform -- skip record draw this frame.
             fprintf(stderr,
