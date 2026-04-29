@@ -37,28 +37,6 @@ layout(std430, binding = 0) readonly buffer QuadRecordBuf {
     TerrainQuadRecord records[];
 };
 
-// M1d: Thin record (48 bytes, per-frame, binding 0 when useQuadRecords==2).
-struct TerrainQuadThinRecord {
-    uvec4 control;    // x=recipeIdx, y=terrainHandle, z=flags, w=_pad0
-    uvec4 lightRGBs;  // corners 0-3, packed ARGB
-    uvec4 fogRGBs;    // corners 0-3, packed frgb
-};
-
-layout(std430, binding = 2) readonly buffer ThinRecordBuf {
-    TerrainQuadThinRecord thinRecs[];
-};
-
-// M1d: Recipe (144 bytes, per-mission, binding 1 when useQuadRecords==2).
-struct TerrainQuadRecipe {
-    vec4 worldPos0, worldPos1, worldPos2, worldPos3;
-    vec4 worldNorm0, worldNorm1, worldNorm2, worldNorm3;
-    vec4 uvData;  // minU, minV, maxU, maxV
-};
-
-layout(std430, binding = 1) readonly buffer RecipeBuf {
-    TerrainQuadRecipe recipes[];
-};
-
 // Unpack ARGB uint to vec4 (each component 0..255 -> 0..1).
 vec4 unpackARGB(uint packed) {
     return vec4(
@@ -91,79 +69,6 @@ void main()
 
         if (gl_InvocationID == 0) {
             float level = max(tessLevel.x, 1.0);
-            gl_TessLevelOuter[0] = level;
-            gl_TessLevelOuter[1] = level;
-            gl_TessLevelOuter[2] = level;
-            gl_TessLevelInner[0] = level;
-        }
-        return;
-    }
-
-    // --- Thin record path (MC2_PATCHSTREAM_THIN_RECORDS_DRAW=1) ---
-    if (useQuadRecords == 2) {
-        uint recordIdx = uint(ssboRecordBase) + uint(gl_PrimitiveID) / 2u;
-        uint triIdx    = uint(gl_PrimitiveID) % 2u;
-        uint id        = uint(gl_InvocationID);
-
-        TerrainQuadThinRecord tr = thinRecs[recordIdx];
-        uint recipeIdx = tr.control.x;
-        uint flags     = tr.control.z;
-        uint uvMode    = flags & 1u;
-        uint pzTri1    = (flags >> 1u) & 1u;
-        uint pzTri2    = (flags >> 2u) & 1u;
-
-        TerrainQuadRecipe rec = recipes[recipeIdx];
-
-        // Corner index — same table as fat record path.
-        uint cornerIdx;
-        if (uvMode == 0u) {
-            if (triIdx == 0u) {
-                if (id == 0u) cornerIdx = 0u;
-                else if (id == 1u) cornerIdx = 1u;
-                else cornerIdx = 2u;
-            } else {
-                if (id == 0u) cornerIdx = 0u;
-                else if (id == 1u) cornerIdx = 2u;
-                else cornerIdx = 3u;
-            }
-        } else {
-            if (triIdx == 0u) {
-                if (id == 0u) cornerIdx = 0u;
-                else if (id == 1u) cornerIdx = 1u;
-                else cornerIdx = 3u;
-            } else {
-                if (id == 0u) cornerIdx = 1u;
-                else if (id == 1u) cornerIdx = 2u;
-                else cornerIdx = 3u;
-            }
-        }
-
-        vec4 wp = (cornerIdx == 0u) ? rec.worldPos0
-                 :(cornerIdx == 1u) ? rec.worldPos1
-                 :(cornerIdx == 2u) ? rec.worldPos2
-                 :                    rec.worldPos3;
-        vec4 wn = (cornerIdx == 0u) ? rec.worldNorm0
-                 :(cornerIdx == 1u) ? rec.worldNorm1
-                 :(cornerIdx == 2u) ? rec.worldNorm2
-                 :                    rec.worldNorm3;
-        tcs_WorldPos[gl_InvocationID]  = wp.xyz;
-        tcs_WorldNorm[gl_InvocationID] = wn.xyz;
-
-        float u = (cornerIdx == 1u || cornerIdx == 2u) ? rec.uvData.z : rec.uvData.x;
-        float v = (cornerIdx == 0u || cornerIdx == 1u) ? rec.uvData.y : rec.uvData.w;
-        tcs_Texcoord[gl_InvocationID] = vec2(u, v);
-
-        uint lrgb = uvec4Idx(tr.lightRGBs, cornerIdx);
-        uint frgb = uvec4Idx(tr.fogRGBs,   cornerIdx);
-        tcs_Color[gl_InvocationID]       = unpackARGB(lrgb);
-        tcs_FogValue[gl_InvocationID]    = float((frgb >> 24u) & 0xFFu) / 255.0;
-        tcs_TerrainType[gl_InvocationID] = float(frgb & 0xFFu);
-
-        gl_out[gl_InvocationID].gl_Position = vec4(0.0, 0.0, 0.0, 1.0);
-
-        if (id == 0u) {
-            uint pzValid = (triIdx == 0u) ? pzTri1 : pzTri2;
-            float level = (pzValid != 0u) ? max(tessLevel.x, 1.0) : 0.0;
             gl_TessLevelOuter[0] = level;
             gl_TessLevelOuter[1] = level;
             gl_TessLevelOuter[2] = level;
