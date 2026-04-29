@@ -846,9 +846,14 @@ bool TerrainPatchStream::flush()
         // were issued, so the slot is unchanged.
         return false;
     }
-    if (s_stagingCount == 0 || s_totalVerts == 0) {
-        // Nothing to draw — treat as success so caller skips legacy too.
-        return true;
+    const bool hasExpanded = (s_stagingCount > 0 && s_totalVerts > 0);
+    const bool hasFat  = s_quadRecordsOn && s_quadRecordsDrawOn
+                         && s_recordBuf && s_recordCount > 0;
+    const bool hasThin = s_thinRecordsOn && s_thinRecordsDrawOn
+                         && s_thinRecordBuf && s_recipeBuf && s_thinRecordCount > 0;
+
+    if (!hasExpanded && !hasFat && !hasThin) {
+        return true;  // Nothing to draw — skip legacy.
     }
 
     SavedGLState saved;
@@ -861,6 +866,9 @@ bool TerrainPatchStream::flush()
     //    for per-bucket draws.
     const uint32_t slotFirstVert =
         s_slot * (kPatchStreamColorBytesPerSlot / (uint32_t)sizeof(gos_VERTEX));
+    uint32_t cursor = 0;  // declared at flush scope for first_flush log
+
+    if (hasExpanded) {
     gos_VERTEX*        colorSlot  = (gos_VERTEX*)s_colorMap  + slotFirstVert;
     gos_TERRAIN_EXTRA* extrasSlot = (gos_TERRAIN_EXTRA*)s_extrasMap + slotFirstVert;
 
@@ -919,7 +927,7 @@ bool TerrainPatchStream::flush()
     }
 
     // --- Consolidate sorted staging into persistent ring, merging same-texture ranges ---
-    uint32_t cursor = 0;
+    cursor = 0;
     s_drawBucketCount = 0;
     {
     ZoneScopedN("PatchStream.Consolidate");
@@ -955,6 +963,7 @@ bool TerrainPatchStream::flush()
     }
     TracyPlot("PatchStream verts", (int64_t)cursor);
     TracyPlot("PatchStream buckets", (int64_t)s_drawBucketCount);
+    } // end if (hasExpanded) staging + consolidate
 
     // 2. Bind uniforms via the engine bridge — sets the program, samplers,
     //    terrainMVP GL_FALSE, all tess + splatting + shadow uniforms.
@@ -1010,7 +1019,9 @@ bool TerrainPatchStream::flush()
 
     glPatchParameteri(GL_PATCH_VERTICES, 3);
 
-    // 6. Per-bucket draws. Each bucket = one texture change. The slot offset
+    // 6. Expanded-vertex per-bucket draws (only when staging has data).
+    if (hasExpanded) {
+    // Per-bucket draws. Each bucket = one texture change. The slot offset
     //    is added to the `first` argument of glDrawArrays — this is the ONE
     //    place the slot offset is applied, for both the color VBO and the
     //    extras VBO simultaneously (since glDrawArrays' `first` is
@@ -1153,6 +1164,7 @@ bool TerrainPatchStream::flush()
     }
 
     gos_terrain_bridge_endBucketLoop((unsigned int)lastGosHandleDrawn);
+    } // end if (hasExpanded) draw buckets
 
     // --- M1b record draw path ---
     if (s_quadRecordsOn && s_quadRecordsDrawOn && s_recordBuf && s_recordCount > 0) {
@@ -1406,7 +1418,10 @@ bool TerrainPatchStream::flush()
                 kPatchStreamMaxRecipesTotal);
             fflush(stderr);
         }
-        const bool thinParityOk = (s_thinRecordVertParity == s_totalVerts);
+        // When expanded path is skipped (M1e), s_totalVerts==0; compare against
+        // thin expected count instead so parity is always true in thin-only mode.
+        const uint32_t thinExpected = hasExpanded ? s_totalVerts : s_thinRecordVertParity;
+        const bool thinParityOk = (s_thinRecordVertParity == thinExpected);
         if (s_traceOn || !thinParityOk) {
             fprintf(stderr,
                 "[PATCH_STREAM v1] event=thin_record_parity slot=%u "
@@ -1420,8 +1435,12 @@ bool TerrainPatchStream::flush()
 
     {
     ZoneScopedN("PatchStream.Cleanup");
-    if (locWorldPos  >= 0) glDisableVertexAttribArray(locWorldPos);
-    if (locWorldNorm >= 0) glDisableVertexAttribArray(locWorldNorm);
+    // Only disable arrays we actually enabled (enabled only when hasExpanded).
+    if (hasExpanded) {
+        if (locWorldPos  >= 0) glDisableVertexAttribArray(locWorldPos);
+        if (locWorldNorm >= 0) glDisableVertexAttribArray(locWorldNorm);
+    }
+    // endVertexDeclaration and end always run when mat is valid.
     gos_terrain_bridge_endVertexDeclaration(mat);
     gos_terrain_bridge_end(mat);
     }
