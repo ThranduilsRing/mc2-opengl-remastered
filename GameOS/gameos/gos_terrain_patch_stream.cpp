@@ -1033,9 +1033,13 @@ bool TerrainPatchStream::flush()
             GLuint shp = (GLuint)gos_terrain_bridge_getShaderProgram();
             s_useQuadRecordsLoc = shp ? glGetUniformLocation(shp, "useQuadRecords") : -1;
         }
+        static GLint s_ssboRecordBaseLoc = -2;
+        if (s_ssboRecordBaseLoc == -2) {
+            GLuint shp = (GLuint)gos_terrain_bridge_getShaderProgram();
+            s_ssboRecordBaseLoc = shp ? glGetUniformLocation(shp, "ssboRecordBase") : -1;
+        }
         if (s_useQuadRecordsLoc >= 0) {
-            // Bind SSBO and enable record TCS mode.
-            glBindBufferBase(GL_SHADER_STORAGE_BUFFER, 0, s_recordBuf);
+            // Enable record TCS mode.
             glUniform1i(s_useQuadRecordsLoc, 1);
 
             // Per-texture-bucket draw.
@@ -1045,13 +1049,20 @@ bool TerrainPatchStream::flush()
             for (uint32_t b = 0; b < recDrawBucketCount; ++b) {
                 const RecordBucket& rb = s_recDrawBuckets[b];
                 // 2 patches per record (each patch = 1 triangle = 3 verts).
-                // glDrawArrays(GL_PATCHES, patchFirst, patchCount) uses
-                // gl_PrimitiveID as the patch index inside the TCS.
-                const GLint   patchFirst = (GLint)((slotFirstRecord + rb.firstRecord) * 2);
+                // gl_PrimitiveID is draw-call-relative (0 per glDrawArrays),
+                // so we pass the absolute SSBO record offset via ssboRecordBase.
+                // Re-bind SSBO inside the loop so it survives any state changes
+                // made by gos_terrain_bridge_drawSingleBucket (e.g. applyRenderStates).
+                glBindBufferBase(GL_SHADER_STORAGE_BUFFER, 0, s_recordBuf);
+                if (s_ssboRecordBaseLoc >= 0) {
+                    glUniform1i(s_ssboRecordBaseLoc, (GLint)(slotFirstRecord + rb.firstRecord));
+                }
+                // patchFirst=0 because the TCS now uses ssboRecordBase+gl_PrimitiveID/2
+                // to index the SSBO; the draw offset is encoded in the uniform, not here.
                 const GLsizei patchCount = (GLsizei)(rb.recordCount * 2);
                 gos_terrain_bridge_drawSingleBucket(
                     (unsigned int)rb.gosHandle,
-                    (unsigned int)patchFirst,
+                    0u,
                     (unsigned int)patchCount);
             }
             gos_terrain_bridge_endBucketLoop(0xFFFFFFFFu);

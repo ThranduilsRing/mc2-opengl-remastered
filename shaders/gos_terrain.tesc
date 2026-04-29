@@ -20,6 +20,7 @@ uniform vec4 tessLevel;
 uniform vec4 tessDistanceRange;
 uniform vec4 cameraPos;
 uniform int  useQuadRecords;  // 0 = passthrough (default), 1 = read SSBO
+uniform int  ssboRecordBase;  // global record index offset for this draw call
 
 // M1 compact quad record — must match TerrainQuadRecord in gos_terrain_patch_stream.h.
 // std430 layout; 192 bytes per record (12 vec4s).
@@ -79,7 +80,7 @@ void main()
     // --- Record path (MC2_PATCHSTREAM_QUAD_RECORDS_DRAW=1) ---
     // Each record maps to 2 patches: gl_PrimitiveID/2 = recordIdx,
     //                                gl_PrimitiveID%2 = triIdx (0=tri1, 1=tri2).
-    uint recordIdx = uint(gl_PrimitiveID) / 2u;
+    uint recordIdx = uint(ssboRecordBase) + uint(gl_PrimitiveID) / 2u;
     uint triIdx    = uint(gl_PrimitiveID) % 2u;
     uint id        = uint(gl_InvocationID); // 0, 1, or 2
 
