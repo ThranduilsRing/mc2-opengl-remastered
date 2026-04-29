@@ -10,7 +10,7 @@ Two independent changes that compose:
 
 **Struct compaction:** `TerrainQuadThinRecord` shrinks from 48 B to 32 B by dropping `fogRGBs` entirely. `TerrainType` (previously `fogRGBs` bits 0–7) migrates to the recipe's unused `_wp0` padding slot as a packed uint (4 corner material values). `FogValue` (previously `fogRGBs` bits 24–31) is confirmed dead in the fragment shader and removed from all shaders and the CPU path. Specular glow bytes deferred to Phase B (GPU lighting).
 
-**Fast-path emit branch:** When both `isThinRecordsActive()` and `isFastPathActive()` are true, `quad.cpp` enters a new branch that never constructs `gos_VERTEX`. It computes projectZ for 4 corners only (not 6 triangle vertices), reads `lightRGB` per corner via `effectiveLightRGB()`, looks up `recipeIdx` from a flat grid array (no hash), and writes the 32 B thin record directly. The legacy path (either gate off) is unchanged.
+**Fast-path emit branch:** When both `isThinRecordsActive()` and `isFastPathActive()` are true, `quad.cpp` enters a new branch that never constructs `gos_VERTEX`. It evaluates projectZ validity for 4 corners only (not 6 triangle vertices), reads `lightRGB` per corner via `effectiveLightRGB()`, ensures a recipe exists via `ensureRecipeForQuad()`, looks up `recipeIdx` from a flat grid array (no hash), and writes the 32 B thin record directly. The legacy path (either gate off) has unchanged render behavior.
 
 ## Tech Stack
 
@@ -65,14 +65,16 @@ Replace the per-frame `s_recipeIndex.find(key)` hash lookup with a flat array:
 // In gos_terrain_patch_stream.cpp:
 static uint32_t s_recipeIdxByGrid[kMaxTerrainGridW * kMaxTerrainGridH];
 // Initialized to UINT32_MAX at init()/destroy().
-// Keyed by: gridX = (int)(wx0 / kTerrainCellSize), gridY = (int)(wy0 / kTerrainCellSize)
+// Key: terrain grid cell index (gridX * kMaxTerrainGridH + gridY)
 ```
+
+**Key derivation — prefer grid indices over float division.** During implementation, check whether MC2's `TerrainVertex` or its parent quad structure carries explicit grid `(x, y)` cell indices (likely as integer fields or derivable from the vertex list position in the traversal). If available, use those directly — they are exact and carry no floating-point rounding risk. Fall back to `(int)(wx0 / kTerrainCellSize)` only if no integer grid index is accessible.
 
 `s_recipeIndex` (the `unordered_map`) is retained as the allocator (source of truth for miss-path). On first encounter: hash lookup allocates slot, result stored in flat array. Subsequent frames: flat array hit, no hash touched.
 
 Add a debug/parity check on flat-array hit: if cached slot's recipe data differs from current quad's positions/normals/UVs, log `[PATCH_STREAM v1] event=recipe_grid_collision` and fall back to hash lookup. Guards against bad grid key derivation.
 
-`kMaxTerrainGridW / kMaxTerrainGridH` and `kTerrainCellSize` must be determined from MC2's terrain constants during implementation. If grid size is not statically knowable, use a small open-addressing table instead (same O(1) guarantee, better cache locality than `unordered_map`).
+`kMaxTerrainGridW / kMaxTerrainGridH` must be determined from MC2's terrain constants during implementation. If the grid dimensions are not statically knowable, use a small open-addressing flat hash table instead (same O(1) guarantee, better cache locality than `unordered_map`).
 
 ---
 
@@ -87,29 +89,31 @@ if (TerrainPatchStream::isFastPathActive() && TerrainPatchStream::isThinRecordsA
     emitThinRecordDirect(terrainHandle, vertices, uvMode, shadow);
     return;
 }
-// Legacy path: build gos_VERTEX[6], appendQuad, appendThinRecord, etc. (unchanged)
+// Legacy path: build gos_VERTEX[6], appendQuad, appendThinRecord, etc.
 ```
 
-This branch fires only when both conditions are set. The legacy path below it is byte-for-byte unchanged.
+This branch fires only when both conditions are set. The legacy path below it has unchanged render behavior. (Shader changes remove `FogValue` from all paths including the legacy passthrough, but this is dead-code removal — it was never read in the fragment shader.)
 
 ### effectiveLightRGB helper
 
 ```cpp
-static inline DWORD effectiveLightRGB(const TerrainVertex* v, bool selected, bool alphaOverride) {
-    if (selected) return SELECTION_COLOR;
+static inline DWORD effectiveLightRGB(const TerrainVertex* v, bool alphaOverride) {
+    if (v->pVertex->selected) return SELECTION_COLOR;
     if (Terrain::terrainTextures2 && alphaOverride) return 0xFFFFFFFFu;
     return v->lightRGB;
 }
 ```
 
-Called once per corner (4 calls per quad). Preserves the three existing override cases from the legacy vertex-building path. `alphaOverride` encodes the `(!isCement || isAlpha)` condition the legacy path computed inline.
+Called once per corner (4 calls per quad). `selected` is read from `v->pVertex->selected` — the same per-vertex field the legacy path uses, not a quad-global flag. `alphaOverride` encodes the `(!isCement || isAlpha)` condition the legacy path computed inline. Preserves all three existing override cases.
 
-### 4-corner projectZ
+### 4-corner projectZ validity
+
+The fast path must produce the same per-triangle pz validity result as the legacy path. During implementation, read quad.cpp to determine whether `vertices[c]` already carries a pre-projected depth value (e.g. `pVertex->px/py/pz/pw` filled by an earlier camera-transform pass) or whether `projectZ()` must be called explicitly. Use whichever mechanism the legacy path uses — do not invent a new projection here.
 
 ```cpp
 bool pz[4];
 for (int c = 0; c < 4; c++)
-    pz[c] = projectZValid(vertices[c]);   // same test as legacy path per-vertex
+    pz[c] = /* same validity test as legacy path for this vertex */;
 bool pzTri1 = pz[t1c0] && pz[t1c1] && pz[t1c2];
 bool pzTri2 = pz[t2c0] && pz[t2c1] && pz[t2c2];
 // t1cN / t2cN are the corner indices for each triangle per uvMode:
@@ -117,28 +121,40 @@ bool pzTri2 = pz[t2c0] && pz[t2c1] && pz[t2c2];
 // BOTTOMLEFT(uvMode=1): tri1=[0,1,3], tri2=[1,2,3]
 ```
 
-6 projectZ calls → 4. Saves ~2 × ~50 ns per quad.
+6 validity evaluations → 4 (2 corners shared between the two triangles). Saves ~2 × ~50 ns per quad.
 
 If both triangles are pz-culled (both false), skip emitting the thin record entirely — zero bytes written, zero bucket touched.
 
-### Direct thin record write
+### Recipe ensure + direct thin record write
+
+Recipe allocation is separated from thin record emit via a new entry point:
 
 ```cpp
+// Ensure recipe exists for this quad (allocates on first encounter, no-op thereafter).
+// Returns UINT32_MAX on overflow; caller skips emit in that case.
+uint32_t recipeIdx = TerrainPatchStream::ensureRecipeForQuad(
+    gridKey,       // flat-array key (preferred) or (wx0,wy0) float key (fallback)
+    recipe);       // TerrainQuadRecipe filled from vertices[0..3] + packed terrainTypes
+
+if (recipeIdx == UINT32_MAX) return;  // SSBO full, graceful skip
+
 TerrainQuadThinRecord tr;
-tr.recipeIdx     = recipeIdxFromGrid(wx0, wy0);   // flat array, no hash
+tr.recipeIdx     = recipeIdx;
 tr.terrainHandle = terrainHandle;
 tr.flags         = (uvMode ? 1u : 0u)
                  | (pzTri1 ? 2u : 0u)
                  | (pzTri2 ? 4u : 0u);
 tr._pad0         = 0;
-tr.lightRGB0     = effectiveLightRGB(vertices[0], selected, alphaOverride0);
-tr.lightRGB1     = effectiveLightRGB(vertices[1], selected, alphaOverride1);
-tr.lightRGB2     = effectiveLightRGB(vertices[2], selected, alphaOverride2);
-tr.lightRGB3     = effectiveLightRGB(vertices[3], selected, alphaOverride3);
+tr.lightRGB0     = effectiveLightRGB(vertices[0], alphaOverride0);
+tr.lightRGB1     = effectiveLightRGB(vertices[1], alphaOverride1);
+tr.lightRGB2     = effectiveLightRGB(vertices[2], alphaOverride2);
+tr.lightRGB3     = effectiveLightRGB(vertices[3], alphaOverride3);
 TerrainPatchStream::appendThinRecordDirect(terrainHandle, tr);
 ```
 
-`appendThinRecordDirect` is a new patchstream entry point that takes a pre-built `TerrainQuadThinRecord` directly (no recipe parameter — recipe already in SSBO from first-frame allocation). Skips the recipe allocation path if `tr.recipeIdx != UINT32_MAX`. Also handles parity counter (`addThinRecordVertParity`).
+`ensureRecipeForQuad`: checks flat array by `gridKey`; on hit returns cached index; on miss allocates a new recipe slot in the SSBO (same logic as current `appendThinRecord` allocation path), stores in flat array, returns index.
+
+`appendThinRecordDirect`: takes a pre-built `TerrainQuadThinRecord`, writes it to the CPU shadow array, increments `s_thinRecordCount`, and calls `addThinRecordVertParity`. No recipe lookup — recipe already guaranteed present by `ensureRecipeForQuad`.
 
 ---
 
@@ -209,7 +225,7 @@ Exit 0, all 5 missions pass. Run without thin-record env vars (standard path mus
 
 ## What This Does NOT Change
 
-- Legacy expanded-vertex path (`!isFastPathActive()`) — byte-for-byte unchanged
+- Legacy expanded-vertex path (`!isFastPathActive()`) — render behavior unchanged
 - Fat-record path (MC2_PATCHSTREAM_QUAD_RECORDS) — unchanged
 - `TerrainQuadRecord` (fat record struct) — unchanged
 - TCS/TES fat-record branch — reads `fogRGBs` from fat record, not thin record; unchanged
