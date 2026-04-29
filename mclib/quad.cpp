@@ -1666,6 +1666,89 @@ void TerrainQuad::draw (void)
 		Stuff::Point3D camPosition;
 		camPosition = *TG_Shape::s_cameraOrigin;
 
+		// === M2: direct thin-record emit — no gos_VERTEX construction ===
+		if (TerrainPatchStream::isFastPathActive()
+		        && TerrainPatchStream::isThinRecordsActive()
+		        && TerrainPatchStream::isReady()
+		        && !TerrainPatchStream::isOverflowed()
+		        && terrainHandle != 0)
+		{
+		    // pz validity — vertices[c]->pz is pre-projected by the camera transform pass.
+		    // Range [0,1) is in-clip; outside is behind-camera or far-clipped.
+		    bool pzc[4];
+		    for (int c = 0; c < 4; c++) {
+		        float pz_adj = vertices[c]->pz + TERRAIN_DEPTH_FUDGE;
+		        pzc[c] = (pz_adj >= 0.0f) && (pz_adj < 1.0f);
+		    }
+
+		    bool pzTri1, pzTri2;
+		    if (uvMode == BOTTOMLEFT) {
+		        // tri1 = corners [0,1,3], tri2 = corners [1,2,3]
+		        pzTri1 = pzc[0] && pzc[1] && pzc[3];
+		        pzTri2 = pzc[1] && pzc[2] && pzc[3];
+		    } else {
+		        // BOTTOMRIGHT (= TOPRIGHT diagonal): tri1 = [0,1,2], tri2 = [0,2,3]
+		        pzTri1 = pzc[0] && pzc[1] && pzc[2];
+		        pzTri2 = pzc[0] && pzc[2] && pzc[3];
+		    }
+
+		    if (!pzTri1 && !pzTri2) return;  // both culled — skip entirely
+
+		    // isCement/isAlpha from corner 0 textureData (same as legacy path)
+		    bool isCement = Terrain::terrainTextures->isCement(vertices[0]->pVertex->textureData & 0x0000ffff);
+		    bool isAlpha  = Terrain::terrainTextures->isAlpha(vertices[0]->pVertex->textureData & 0x0000ffff);
+		    bool alphaOverride = Terrain::terrainTextures2 && (!isCement || isAlpha);
+
+		    // effectiveLightRGB: alphaOverride first, then selected (matching legacy priority)
+		    auto lightRGBc = [&](int c) -> uint32_t {
+		        DWORD lc = vertices[c]->lightRGB;
+		        if (alphaOverride) lc = 0xffffffffu;
+		        if (vertices[c]->pVertex->selected) lc = static_cast<DWORD>(SELECTION_COLOR);
+		        return static_cast<uint32_t>(lc);
+		    };
+
+		    // Build recipe — same fields as both legacy call sites
+		    TerrainQuadRecipe recipe;
+		    recipe.wx0=vertices[0]->vx; recipe.wy0=vertices[0]->vy; recipe.wz0=vertices[0]->pVertex->elevation; recipe._wp0=0.f;
+		    recipe.wx1=vertices[1]->vx; recipe.wy1=vertices[1]->vy; recipe.wz1=vertices[1]->pVertex->elevation; recipe._wp1=0.f;
+		    recipe.wx2=vertices[2]->vx; recipe.wy2=vertices[2]->vy; recipe.wz2=vertices[2]->pVertex->elevation; recipe._wp2=0.f;
+		    recipe.wx3=vertices[3]->vx; recipe.wy3=vertices[3]->vy; recipe.wz3=vertices[3]->pVertex->elevation; recipe._wp3=0.f;
+		    recipe.nx0=vertices[0]->pVertex->vertexNormal.x; recipe.ny0=vertices[0]->pVertex->vertexNormal.y; recipe.nz0=vertices[0]->pVertex->vertexNormal.z; recipe._np0=0.f;
+		    recipe.nx1=vertices[1]->pVertex->vertexNormal.x; recipe.ny1=vertices[1]->pVertex->vertexNormal.y; recipe.nz1=vertices[1]->pVertex->vertexNormal.z; recipe._np1=0.f;
+		    recipe.nx2=vertices[2]->pVertex->vertexNormal.x; recipe.ny2=vertices[2]->pVertex->vertexNormal.y; recipe.nz2=vertices[2]->pVertex->vertexNormal.z; recipe._np2=0.f;
+		    recipe.nx3=vertices[3]->pVertex->vertexNormal.x; recipe.ny3=vertices[3]->pVertex->vertexNormal.y; recipe.nz3=vertices[3]->pVertex->vertexNormal.z; recipe._np3=0.f;
+		    recipe.minU=minU; recipe.minV=minV; recipe.maxU=maxU; recipe.maxV=maxV;
+
+		    // Pack 4 corner material types into _wp0 — bit-preserving write; shader reads via floatBitsToUint
+		    {
+		        uint32_t m0 = terrainTypeToMaterial(vertices[0]->pVertex->terrainType);
+		        uint32_t m1 = terrainTypeToMaterial(vertices[1]->pVertex->terrainType);
+		        uint32_t m2 = terrainTypeToMaterial(vertices[2]->pVertex->terrainType);
+		        uint32_t m3 = terrainTypeToMaterial(vertices[3]->pVertex->terrainType);
+		        uint32_t tpacked = m0 | (m1 << 8) | (m2 << 16) | (m3 << 24);
+		        memcpy(&recipe._wp0, &tpacked, 4);
+		    }
+
+		    const uint64_t recipeKey = TerrainPatchStream::makeRecipeKey(recipe.wx0, recipe.wy0);
+		    uint32_t recipeIdx = TerrainPatchStream::ensureRecipeForQuad(recipeKey, recipe);
+		    if (recipeIdx == UINT32_MAX) return;  // SSBO full — skip gracefully
+
+		    TerrainQuadThinRecord tr;
+		    tr.recipeIdx     = recipeIdx;
+		    tr.terrainHandle = static_cast<uint32_t>(terrainHandle);
+		    tr.flags         = (uvMode == BOTTOMLEFT ? 1u : 0u)
+		                     | (pzTri1 ? 2u : 0u)
+		                     | (pzTri2 ? 4u : 0u);
+		    tr._pad0         = 0u;
+		    tr.lightRGB0     = lightRGBc(0);
+		    tr.lightRGB1     = lightRGBc(1);
+		    tr.lightRGB2     = lightRGBc(2);
+		    tr.lightRGB3     = lightRGBc(3);
+		    TerrainPatchStream::appendThinRecordDirect(tr);
+		    return;
+		}
+		// === end M2 branch — legacy path continues below ===
+
 		if (uvMode == BOTTOMRIGHT)
 		{
 			//--------------------------
