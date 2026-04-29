@@ -139,6 +139,11 @@ public:
     // When true, quad.cpp skips buildTerrainExtraTriple and appendQuad.
     static bool isThinRecordsActive();
 
+    // Returns true when thin records are active and drawing AND MC2_PATCHSTREAM_THIN_RECORD_FASTPATH=1.
+    // When true, quad.cpp skips addVertices(DRAWSOLID) and fillTerrainExtra().
+    // Requires s_thinRecordsDrawOn so terrain solid never disappears without a working GPU draw path.
+    static bool isFastPathActive();
+
     static void appendTriangle(DWORD textureIndex,
                                const gos_VERTEX* vColor,
                                const gos_TERRAIN_EXTRA* vExtra);

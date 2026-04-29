@@ -65,6 +65,7 @@ namespace {
 
     static const bool s_thinRecordsOn     = (getenv("MC2_PATCHSTREAM_THIN_RECORDS")      != nullptr);
     static const bool s_thinRecordsDrawOn = (getenv("MC2_PATCHSTREAM_THIN_RECORDS_DRAW") != nullptr);
+    static const bool s_fastPathOn        = (getenv("MC2_PATCHSTREAM_THIN_RECORD_FASTPATH") != nullptr);
 
     // Recipe SSBO — single-buffered, persistent-mapped. Written once per new quad.
     // Not slot-indexed; recipeIdx is global across all ring slots.
@@ -597,6 +598,13 @@ bool TerrainPatchStream::isReady()      { return s_killswitch && s_initOk; }
 bool TerrainPatchStream::isOverflowed() { return s_overflow; }
 bool TerrainPatchStream::isThinRecordsActive() {
     return s_thinRecordsOn && (s_thinRecordBuf != 0);
+}
+
+bool TerrainPatchStream::isFastPathActive() {
+    return s_fastPathOn &&
+           s_thinRecordsOn &&
+           s_thinRecordsDrawOn &&
+           (s_thinRecordBuf != 0);
 }
 
 void TerrainPatchStream::beginFrame()
