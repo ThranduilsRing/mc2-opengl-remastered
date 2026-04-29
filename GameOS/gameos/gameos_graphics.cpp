@@ -1733,17 +1733,44 @@ void gos_terrain_bridge_beginBucketLoop() {
     // drawSingleBucket may change the active unit; set it after.
 }
 
+static const bool s_patchStreamDirectBind =
+    (getenv("MC2_PATCHSTREAM_DIRECT_TEXTURE_BIND") != nullptr);
+
 void gos_terrain_bridge_drawSingleBucket(
     unsigned int gosHandle,
     unsigned int firstVertex,
     unsigned int vertexCount)
 {
     if (!g_gos_renderer || vertexCount == 0) return;
-    g_gos_renderer->setRenderState(gos_State_Texture, (int)gosHandle);
-    g_gos_renderer->applyRenderStates();
-    glActiveTexture(GL_TEXTURE0);  // after applyRenderStates, matching original ordering
-    glDrawArrays(GL_PATCHES, (GLint)firstVertex, (GLsizei)vertexCount);
+
+    if (s_patchStreamDirectBind) {
+        // Fast path: direct GL texture bind, bypassing applyRenderStates.
+        // Terrain contract already established by beginBucketLoop(); only
+        // the texture changes per bucket. glActiveTexture is per-bucket
+        // here because applyRenderStates (in standard path) can change the
+        // active unit; we cannot rely on beginBucketLoop's setup persisting.
+        gosTexture* tex = g_gos_renderer->getTexture((DWORD)gosHandle);
+        const GLuint glTex = tex ? (GLuint)tex->getTextureId() : 0u;
+        glActiveTexture(GL_TEXTURE0);
+        if (glTex) glBindTexture(GL_TEXTURE_2D, glTex);
+        glDrawArrays(GL_PATCHES, (GLint)firstVertex, (GLsizei)vertexCount);
+    } else {
+        // Standard path: full state machine flush.
+        g_gos_renderer->setRenderState(gos_State_Texture, (int)gosHandle);
+        g_gos_renderer->applyRenderStates();
+        glActiveTexture(GL_TEXTURE0);
+        glDrawArrays(GL_PATCHES, (GLint)firstVertex, (GLsizei)vertexCount);
+    }
 }
+
+void gos_terrain_bridge_endBucketLoop(unsigned int lastGosHandle) {
+    if (!s_patchStreamDirectBind || !g_gos_renderer || lastGosHandle == 0) return;
+    // Re-sync state cache: one redundant glBindTexture, but subsequent
+    // renderers see a coherent cache entry for gos_State_Texture.
+    g_gos_renderer->setRenderState(gos_State_Texture, (int)lastGosHandle);
+    g_gos_renderer->applyRenderStates();
+}
+
 // ──────────────────────────────────────────────────────────────────────────
 
 static GLuint gVAO = 0;

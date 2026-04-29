@@ -40,6 +40,13 @@ namespace {
     bool s_initOk     = false;
     bool s_traceOn    = false;
 
+    static const bool s_directBindOn =
+        (getenv("MC2_PATCHSTREAM_DIRECT_TEXTURE_BIND") != nullptr);
+    static const bool s_directBindCheck =
+        (getenv("MC2_PATCHSTREAM_DIRECT_TEXTURE_BIND_CHECK") != nullptr);
+    static bool s_directBindBannerSeen       = false;
+    static bool s_directBindFirstDrawChecked = false;
+
     // GL handles. Two separate buffers — one for color, one for extras.
     GLuint s_colorBuf  = 0;
     GLuint s_extrasBuf = 0;
@@ -730,6 +737,15 @@ bool TerrainPatchStream::flush()
     //    place the slot offset is applied, for both the color VBO and the
     //    extras VBO simultaneously (since glDrawArrays' `first` is
     //    passed to every bound vertex attribute, both rings advance in lockstep).
+    if (s_directBindOn && !s_directBindBannerSeen) {
+        s_directBindBannerSeen = true;
+        fprintf(stderr,
+            "[PATCH_STREAM v1] event=direct_bind_enabled buckets_this_frame=%u\n",
+            s_drawBucketCount);
+        fflush(stderr);
+    }
+
+    DWORD lastGosHandleDrawn = 0;
     static int s_bucketErrFramesChecked = 0;
     const bool checkBucketErrors = s_traceOn && s_bucketErrFramesChecked < 2;
     {
@@ -738,6 +754,7 @@ bool TerrainPatchStream::flush()
     for (uint32_t b = 0; b < s_drawBucketCount; ++b) {
         const PatchStreamBucket& bk = s_drawBuckets[b];
         const DWORD gosHandle = bk.gosHandle;  // tex_resolve already applied at consolidate time
+        lastGosHandleDrawn = gosHandle;
         const GLuint glTex =
             (GLuint)gos_terrain_bridge_glTextureForGosHandle((unsigned int)gosHandle);
 
@@ -811,6 +828,25 @@ bool TerrainPatchStream::flush()
             slotFirstVert + bk.firstVertex,
             bk.vertexCount);
 
+        if (s_directBindOn && s_directBindCheck && !s_directBindFirstDrawChecked) {
+            s_directBindFirstDrawChecked = true;
+            GLenum glErr;
+            bool hadErr = false;
+            while ((glErr = glGetError()) != GL_NO_ERROR) {
+                hadErr = true;
+                fprintf(stderr,
+                    "[PATCH_STREAM v1] event=direct_bind_first_draw_err "
+                    "bucket=%u err=0x%X\n",
+                    b, (unsigned)glErr);
+                fflush(stderr);
+            }
+            if (!hadErr) {
+                fprintf(stderr,
+                    "[PATCH_STREAM v1] event=direct_bind_first_draw_ok bucket=%u\n", b);
+                fflush(stderr);
+            }
+        }
+
         // Per-bucket post-draw error capture. Rate-limited to first 8
         // erroring buckets per process so we can attribute the bug.
         if (checkBucketErrors) {
@@ -837,6 +873,8 @@ bool TerrainPatchStream::flush()
         ++s_bucketErrFramesChecked;
     }
     }
+
+    gos_terrain_bridge_endBucketLoop((unsigned int)lastGosHandleDrawn);
 
     {
     ZoneScopedN("PatchStream.Cleanup");
@@ -869,8 +907,8 @@ bool TerrainPatchStream::flush()
         static int s_drawCountLogged = 0;
         if (s_drawCountLogged++ < 16) {
         fprintf(stderr,
-            "[PATCH_STREAM v1] event=draw_count slot=%u verts=%u buckets=%u\n",
-            s_slot, cursor, s_drawBucketCount);
+            "[PATCH_STREAM v1] event=draw_count slot=%u verts=%u buckets=%u direct_bind=%d\n",
+            s_slot, cursor, s_drawBucketCount, (int)s_directBindOn);
         fflush(stderr);
         }
     }

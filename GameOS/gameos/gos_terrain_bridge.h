@@ -70,3 +70,9 @@ void gos_terrain_bridge_drawSingleBucket(
     unsigned int gosHandle,
     unsigned int firstVertex,
     unsigned int vertexCount);
+
+// Call once after the per-bucket draw loop to synchronize the render-state
+// cache with the last texture directly bound by the fast path. No-op when
+// MC2_PATCHSTREAM_DIRECT_TEXTURE_BIND is not set. Issues one redundant
+// glBindTexture to prevent cache drift from affecting subsequent renderers.
+void gos_terrain_bridge_endBucketLoop(unsigned int lastGosHandle);
