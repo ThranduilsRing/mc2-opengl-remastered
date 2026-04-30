@@ -852,6 +852,39 @@ void MissionMap::init (long h, long w) {
 		map = (MapCellPtr)systemHeap->Malloc(sizeof(MapCell) * width * height);
 	gosASSERT(map != NULL);
 	memclear(map, sizeof(MapCell) * width * height);
+
+	// Per-tile mine count tracking — sized to the tile grid (cells / MAPCELL_DIM
+	// per dim). Allocated zero-filled; populated by setMine() during cell load
+	// or by rebuildTileMineCounts() after a packet readPacket().
+	if (tileMineCount) {
+		systemHeap->Free(tileMineCount);
+		tileMineCount = NULL;
+	}
+	tileMineCountWidth = w / MAPCELL_DIM;
+	const long tileMineHeight = h / MAPCELL_DIM;
+	const long tileMineSize = tileMineCountWidth * tileMineHeight;
+	if (tileMineSize > 0) {
+		tileMineCount = (unsigned char*)systemHeap->Malloc(tileMineSize);
+		gosASSERT(tileMineCount != NULL);
+		memclear(tileMineCount, tileMineSize);
+	}
+}
+
+//---------------------------------------------------------------------------
+
+void MissionMap::rebuildTileMineCounts (void) {
+	if (!tileMineCount || !map) return;
+	const long tileMineHeight = height / MAPCELL_DIM;
+	const long tileMineSize = tileMineCountWidth * tileMineHeight;
+	memclear(tileMineCount, tileMineSize);
+	for (long r = 0; r < height; ++r) {
+		for (long c = 0; c < width; ++c) {
+			if (map[r * width + c].getMine() != 0) {
+				const long tileIdx = (r / MAPCELL_DIM) * tileMineCountWidth + (c / MAPCELL_DIM);
+				++tileMineCount[tileIdx];
+			}
+		}
+	}
 }
 
 //---------------------------------------------------------------------------
@@ -883,6 +916,11 @@ long MissionMap::init (PacketFile* packetFile, long whichPacket) {
 		for (long c = 0; c < width; c++) {
 			GameMap->setMover(r, c, false);
 		}
+
+	// readPacket() writes raw cell bytes into `map` and bypasses setMine(), so
+	// the incremental tileMineCount maintenance never fired. Rebuild from the
+	// loaded cell contents.
+	rebuildTileMineCounts();
 
 	return(NUM_MISSIONMAP_PACKETS);
 }
@@ -1255,6 +1293,10 @@ void MissionMap::destroy (void) {
 	if (map) {
 		systemHeap->Free(map);
 		map = NULL;
+	}
+	if (tileMineCount) {
+		systemHeap->Free(tileMineCount);
+		tileMineCount = NULL;
 	}
 }
 

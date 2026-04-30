@@ -529,12 +529,19 @@ class MissionMap {
 		long				debugCells[MAX_DEBUG_CELLS][3];
 
 		void				(*placeMoversCallback) (void);
-		
+
+		// Per-tile count of cells (within the MAPCELL_DIM x MAPCELL_DIM tile) whose
+		// mine field is non-zero. Maintained incrementally by setMine() and rebuilt
+		// from cell contents at the end of init(PacketFile*). Lets the per-frame
+		// terrain quad loop skip the inner cell scan for mine-free tiles.
+		unsigned char*      tileMineCount;
+		long                tileMineCountWidth;  // = width / MAPCELL_DIM (cached)
+
 	public:
 
 		void* operator new (size_t mySize);
 		void operator delete (void* us);
-		
+
 		void init (void) {
 			map = NULL;
 			height = 0;
@@ -543,7 +550,9 @@ class MissionMap {
 			preserveCells = false;
 			numPreservedCells = 0;
 			placeMoversCallback = NULL;
-			numDebugCells = 0;  
+			numDebugCells = 0;
+			tileMineCount = NULL;
+			tileMineCountWidth = 0;
 		}
 		
 		MissionMap (void) {
@@ -623,8 +632,33 @@ class MissionMap {
 		}
 
 		void setMine (long row, long col, unsigned long mine) {
-			map[row * width + col].setMine(mine);
+			MapCellPtr cell = &map[row * width + col];
+			const unsigned long oldMine = cell->getMine();
+			cell->setMine(mine);
+			// Maintain per-tile mine count: only cells transitioning between zero
+			// and non-zero affect the count. Updates between two non-zero values
+			// (1 <-> 2 = mine <-> blown) leave the count unchanged.
+			if (tileMineCount && ((oldMine == 0) != (mine == 0))) {
+				const long tileIdx = (row / MAPCELL_DIM) * tileMineCountWidth + (col / MAPCELL_DIM);
+				if (mine == 0) --tileMineCount[tileIdx];
+				else           ++tileMineCount[tileIdx];
+			}
 		}
+
+		// Fast per-frame read used by terrain quad mine/scorch reservation. Returns
+		// true if any cell in the (tileR, tileC) tile has a non-zero mine value.
+		// Pre-rebuild (during init transient), returns true conservatively so callers
+		// fall back to the per-cell scan.
+		bool tileHasMines (long tileR, long tileC) const {
+			if (!tileMineCount) return true;
+			if (tileR < 0 || tileC < 0) return false;
+			if (tileR >= (height / MAPCELL_DIM) || tileC >= tileMineCountWidth) return false;
+			return tileMineCount[tileR * tileMineCountWidth + tileC] > 0;
+		}
+
+		// Rebuilds tileMineCount from current cell contents. Called after a packet
+		// readPacket() that writes cells directly into map memory, bypassing setMine().
+		void rebuildTileMineCounts (void);
 
 		bool getPreserved (long row, long col) {
 			return(map[row * width + col].getPreserved());

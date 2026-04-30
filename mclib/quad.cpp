@@ -193,14 +193,21 @@ static void enqueueTerrainMineState(TerrainQuad& quad)
 	long rowCol = quad.vertices[0]->posTile;
 	long tileR = rowCol>>16;
 	long tileC = rowCol & 0x0000ffff;
-			
+
 	if (GameMap)
 	{
-		long cellPos = 0;
 		quad.mineResult.init();
+
+		// Fast skip for the ~99% of quads with no mines/scorch in any cell.
+		// GameMap maintains tileMineCount incrementally on setMine() and rebuilds
+		// after packet readPacket(); pre-rebuild it returns true conservatively.
+		if (!GameMap->tileHasMines(tileR, tileC))
+			return;
+
+		long cellPos = 0;
 		for (long cellR = 0; cellR < MAPCELL_DIM; cellR++)
 		{
-			for (long cellC = 0; cellC < MAPCELL_DIM; cellC++,cellPos++) 
+			for (long cellC = 0; cellC < MAPCELL_DIM; cellC++,cellPos++)
 			{
 				long actualCellRow = tileR * MAPCELL_DIM + cellR;
 				long actualCellCol = tileC * MAPCELL_DIM + cellC;
