@@ -1,0 +1,52 @@
+// Editor-owned menu catalog.
+// This is the future moddable menu surface. Current MFC .rc menus may still be active.
+
+Menu {
+    key = "menu.file"
+    displayName = "File"
+}
+
+Menu {
+    key = "menu.edit"
+    displayName = "Edit"
+}
+
+Menu {
+    key = "menu.view"
+    displayName = "View"
+}
+
+Menu {
+    key = "menu.overlays"
+    displayName = "Overlays"
+}
+
+Menu {
+    key = "menu.sky"
+    displayName = "Sky"
+}
+
+Menu {
+    key = "menu.other"
+    displayName = "Other"
+}
+
+Menu {
+    key = "menu.select"
+    displayName = "Select"
+}
+
+Menu {
+    key = "menu.alignment"
+    displayName = "Alignment"
+}
+
+Menu {
+    key = "menu.mission"
+    displayName = "Mission"
+}
+
+Menu {
+    key = "menu.campaign"
+    displayName = "Campaign"
+}

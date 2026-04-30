@@ -1,0 +1,18 @@
+// Editor-owned overlay catalog.
+// Add new overlays here. key is primary; legacyOverlayId is optional compatibility metadata.
+
+Overlay {
+    key = "overlay.mud.heavy"
+    displayName = "Heavy Mud"
+    texture = "data/editor/overlays/mud_heavy.png"
+    legacyOverlayId = -1
+    passable = true
+}
+
+Overlay {
+    key = "overlay.water.shallow"
+    displayName = "Shallow Water"
+    texture = "data/editor/overlays/water_shallow.png"
+    legacyOverlayId = -1
+    passable = true
+}

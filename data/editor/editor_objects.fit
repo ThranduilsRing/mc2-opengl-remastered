@@ -1,0 +1,161 @@
+// Editor-owned object catalog.
+// Add new editor/mod objects here. key is primary; legacy IDs are optional compatibility metadata.
+
+Object {
+    key = "object.placeholder.sensor_tower"
+    displayName = "Sensor Tower"
+    category = "Buildings"
+    appearance = "sensor_tower"
+    legacyObjectId = -1
+    legacyStringId = -1
+}
+
+
+// Object menu group labels migrated from legacy mclib resource strings.
+
+ObjectGroup {
+    key = "object.group.markers"
+    index = 0
+    legacyStringId = 10100
+    displayName = "Markers"
+}
+
+ObjectGroup {
+    key = "object.group.trees"
+    index = 1
+    legacyStringId = 10101
+    displayName = "Trees"
+}
+
+ObjectGroup {
+    key = "object.group.small_stuff"
+    index = 2
+    legacyStringId = 10102
+    displayName = "Small Stuff"
+}
+
+ObjectGroup {
+    key = "object.group.turrets"
+    index = 3
+    legacyStringId = 10103
+    displayName = "Turrets"
+}
+
+ObjectGroup {
+    key = "object.group.mechs"
+    index = 4
+    legacyStringId = 10104
+    displayName = "'Mechs"
+}
+
+ObjectGroup {
+    key = "object.group.flammable"
+    index = 5
+    legacyStringId = 10105
+    displayName = "Flammable Things"
+}
+
+ObjectGroup {
+    key = "object.group.vehicles"
+    index = 6
+    legacyStringId = 10106
+    displayName = "Vehicles"
+}
+
+ObjectGroup {
+    key = "object.group.house_davion"
+    index = 7
+    legacyStringId = 10107
+    displayName = "House Davion"
+}
+
+ObjectGroup {
+    key = "object.group.house_liao"
+    index = 8
+    legacyStringId = 10108
+    displayName = "House Liao"
+}
+
+ObjectGroup {
+    key = "object.group.vehicle_props"
+    index = 9
+    legacyStringId = 10109
+    displayName = "Vehicle Props"
+}
+
+ObjectGroup {
+    key = "object.group.house_steiner"
+    index = 10
+    legacyStringId = 10110
+    displayName = "House Steiner"
+}
+
+ObjectGroup {
+    key = "object.group.regular_buildings"
+    index = 11
+    legacyStringId = 10111
+    displayName = "Regular Buildings"
+}
+
+ObjectGroup {
+    key = "object.group.rocks"
+    index = 12
+    legacyStringId = 10112
+    displayName = "Rocks"
+}
+
+ObjectGroup {
+    key = "object.group.gulag_set_piece"
+    index = 13
+    legacyStringId = 10113
+    displayName = "Gulag Set Piece"
+}
+
+ObjectGroup {
+    key = "object.group.starport_set_piece"
+    index = 14
+    legacyStringId = 10114
+    displayName = "Starport Set Piece"
+}
+
+ObjectGroup {
+    key = "object.group.liao_palace_set_piece"
+    index = 15
+    legacyStringId = 10115
+    displayName = "Liao Palace Set Piece"
+}
+
+ObjectGroup {
+    key = "object.group.crash_site_set_piece"
+    index = 16
+    legacyStringId = 10116
+    displayName = "Crash Site Set Piece"
+}
+
+ObjectGroup {
+    key = "object.group.hpg_set_piece"
+    index = 17
+    legacyStringId = 10117
+    displayName = "HPG Set Piece"
+}
+
+ObjectGroup {
+    key = "object.group.steiner_high_command_set_piece"
+    index = 18
+    legacyStringId = 10118
+    displayName = "Steiner High Command Set Piece"
+}
+
+ObjectGroup {
+    key = "object.group.destroyable_road"
+    index = 19
+    legacyStringId = 10119
+    displayName = "Destroyable Road"
+}
+
+ObjectGroup {
+    key = "object.group.dummy_objects"
+    index = 20
+    legacyStringId = 10120
+    displayName = "Dummy Objects"
+}

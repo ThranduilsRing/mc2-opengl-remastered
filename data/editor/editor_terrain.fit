@@ -1,0 +1,927 @@
+// data/editor/editor_terrain.fit
+//
+// Editor terrain paint/menu catalog extracted from mc2res string resources.
+// Source: mc2res strings.res.cpp / strings.res.h, IDS_* values 10000-10075.
+//
+// This file is for the Terrain menu / paint palette.
+// It is NOT for New Mission base terrain selection.
+// New Mission base textures belong in data/editor/editor_base_terrain.fit.
+//
+// Primary identity is `key`.
+// legacyStringId and legacySymbol are compatibility metadata only.
+//
+// Paths may include subdirectories; FIT string values are normal quoted strings.
+// The texture paths below are sandbox placeholders and can be moved freely as long
+// as this catalog is updated.
+
+Terrain {
+    key = "terrain.grasslands.grasslands_accent_2"
+    displayName = "Grasslands Accent 2 (Forest Floor)"
+    category = "grasslands"
+    kind = "paint"
+    texture = "data/textures/terrain/grasslands/grasslands_accent_2.png"
+    index = 0
+    legacyStringId = 10000
+    legacySymbol = "IDS_GRASS1"
+    enabled = true
+}
+
+Terrain {
+    key = "terrain.grasslands.grasslands_accent_1"
+    displayName = "Grasslands Accent 1 (Forest Floor)"
+    category = "grasslands"
+    kind = "paint"
+    texture = "data/textures/terrain/grasslands/grasslands_accent_1.png"
+    index = 1
+    legacyStringId = 10001
+    legacySymbol = "IDS_GRASS2"
+    enabled = true
+}
+
+Terrain {
+    key = "terrain.grasslands.grasslands_1"
+    displayName = "Grasslands 1"
+    category = "grasslands"
+    kind = "paint"
+    texture = "data/textures/terrain/grasslands/grasslands_1.png"
+    index = 2
+    legacyStringId = 10002
+    legacySymbol = "IDS_GRASS3"
+    enabled = true
+}
+
+Terrain {
+    key = "terrain.grasslands.grasslands_2"
+    displayName = "Grasslands 2"
+    category = "grasslands"
+    kind = "paint"
+    texture = "data/textures/terrain/grasslands/grasslands_2.png"
+    index = 3
+    legacyStringId = 10003
+    legacySymbol = "IDS_GRASS4"
+    enabled = true
+}
+
+Terrain {
+    key = "terrain.grasslands.grasslands_3"
+    displayName = "Grasslands 3"
+    category = "grasslands"
+    kind = "paint"
+    texture = "data/textures/terrain/grasslands/grasslands_3.png"
+    index = 4
+    legacyStringId = 10004
+    legacySymbol = "IDS_GRASS5"
+    enabled = true
+}
+
+Terrain {
+    key = "terrain.grasslands.grasslands_4"
+    displayName = "Grasslands 4"
+    category = "grasslands"
+    kind = "paint"
+    texture = "data/textures/terrain/grasslands/grasslands_4.png"
+    index = 5
+    legacyStringId = 10005
+    legacySymbol = "IDS_GRASS6"
+    enabled = true
+}
+
+Terrain {
+    key = "terrain.desert.desert_accent_3"
+    displayName = "Desert Accent 3 (Desert Scrub)"
+    category = "desert"
+    kind = "paint"
+    texture = "data/textures/terrain/desert/desert_accent_3.png"
+    index = 6
+    legacyStringId = 10006
+    legacySymbol = "IDS_STRING10006"
+    enabled = true
+}
+
+Terrain {
+    key = "terrain.desert.desert_accent_1"
+    displayName = "Desert Accent 1 (Desert Scrub)"
+    category = "desert"
+    kind = "paint"
+    texture = "data/textures/terrain/desert/desert_accent_1.png"
+    index = 7
+    legacyStringId = 10007
+    legacySymbol = "IDS_STRING10007"
+    enabled = true
+}
+
+Terrain {
+    key = "terrain.desert.desert_2"
+    displayName = "Desert 2"
+    category = "desert"
+    kind = "paint"
+    texture = "data/textures/terrain/desert/desert_2.png"
+    index = 8
+    legacyStringId = 10008
+    legacySymbol = "IDS_STRING10008"
+    enabled = true
+}
+
+Terrain {
+    key = "terrain.desert.desert_3"
+    displayName = "Desert 3"
+    category = "desert"
+    kind = "paint"
+    texture = "data/textures/terrain/desert/desert_3.png"
+    index = 9
+    legacyStringId = 10009
+    legacySymbol = "IDS_STRING10009"
+    enabled = true
+}
+
+Terrain {
+    key = "terrain.desert.desert_4"
+    displayName = "Desert 4"
+    category = "desert"
+    kind = "paint"
+    texture = "data/textures/terrain/desert/desert_4.png"
+    index = 10
+    legacyStringId = 10010
+    legacySymbol = "IDS_STRING10010"
+    enabled = true
+}
+
+Terrain {
+    key = "terrain.desert.desert_5"
+    displayName = "Desert 5"
+    category = "desert"
+    kind = "paint"
+    texture = "data/textures/terrain/desert/desert_5.png"
+    index = 11
+    legacyStringId = 10011
+    legacySymbol = "IDS_STRING10011"
+    enabled = true
+}
+
+Terrain {
+    key = "terrain.grasslands.grasslands_5"
+    displayName = "Grasslands 5"
+    category = "grasslands"
+    kind = "paint"
+    texture = "data/textures/terrain/grasslands/grasslands_5.png"
+    index = 12
+    legacyStringId = 10012
+    legacySymbol = "IDS_STRING10012"
+    enabled = true
+}
+
+Terrain {
+    key = "terrain.desert.desert_accent_2"
+    displayName = "Desert Accent 2 (Desert Scrub)"
+    category = "desert"
+    kind = "paint"
+    texture = "data/textures/terrain/desert/desert_accent_2.png"
+    index = 13
+    legacyStringId = 10013
+    legacySymbol = "IDS_STRING10013"
+    enabled = true
+}
+
+Terrain {
+    key = "terrain.shore.grasslands_shore_1"
+    displayName = "Grasslands Shore 1"
+    category = "shore"
+    kind = "paint"
+    texture = "data/textures/terrain/shore/grasslands_shore_1.png"
+    index = 14
+    legacyStringId = 10014
+    legacySymbol = "IDS_STRING10014"
+    enabled = true
+}
+
+Terrain {
+    key = "terrain.shore.grasslands_shore_2"
+    displayName = "Grasslands Shore 2"
+    category = "shore"
+    kind = "paint"
+    texture = "data/textures/terrain/shore/grasslands_shore_2.png"
+    index = 15
+    legacyStringId = 10015
+    legacySymbol = "IDS_STRING10015"
+    enabled = true
+}
+
+Terrain {
+    key = "terrain.shore.water"
+    displayName = "Water"
+    category = "shore"
+    kind = "paint"
+    texture = "data/textures/terrain/shore/water.png"
+    index = 16
+    legacyStringId = 10016
+    legacySymbol = "IDS_STRING10016"
+    enabled = true
+}
+
+Terrain {
+    key = "terrain.grasslands.grasslands_accent_3"
+    displayName = "Grasslands Accent 3 (Forest Floor)"
+    category = "grasslands"
+    kind = "paint"
+    texture = "data/textures/terrain/grasslands/grasslands_accent_3.png"
+    index = 17
+    legacyStringId = 10017
+    legacySymbol = "IDS_STRING10017"
+    enabled = true
+}
+
+Terrain {
+    key = "terrain.shore.desert_shore_1"
+    displayName = "Desert Shore 1"
+    category = "shore"
+    kind = "paint"
+    texture = "data/textures/terrain/shore/desert_shore_1.png"
+    index = 18
+    legacyStringId = 10018
+    legacySymbol = "IDS_STRING10018"
+    enabled = true
+}
+
+Terrain {
+    key = "terrain.shore.desert_shore_2"
+    displayName = "Desert Shore 2"
+    category = "shore"
+    kind = "paint"
+    texture = "data/textures/terrain/shore/desert_shore_2.png"
+    index = 19
+    legacyStringId = 10019
+    legacySymbol = "IDS_STRING10019"
+    enabled = true
+}
+
+Terrain {
+    key = "terrain.cement.cement_1"
+    displayName = "Cement 1"
+    category = "cement"
+    kind = "paint"
+    texture = "data/textures/terrain/cement/cement_1.png"
+    index = 20
+    legacyStringId = 10020
+    legacySymbol = "IDS_STRING10020"
+    enabled = true
+}
+
+Terrain {
+    key = "terrain.cement.cement_1"
+    displayName = "Cement 1 (angled)"
+    category = "cement"
+    kind = "paint"
+    texture = "data/textures/terrain/cement/cement_1.png"
+    index = 21
+    legacyStringId = 10021
+    legacySymbol = "IDS_STRING10021"
+    enabled = true
+}
+
+Terrain {
+    key = "terrain.cement.cement_2"
+    displayName = "Cement 2"
+    category = "cement"
+    kind = "paint"
+    texture = "data/textures/terrain/cement/cement_2.png"
+    index = 22
+    legacyStringId = 10022
+    legacySymbol = "IDS_STRING10022"
+    enabled = true
+}
+
+Terrain {
+    key = "terrain.cement.cement_2"
+    displayName = "Cement 2 (angled)"
+    category = "cement"
+    kind = "paint"
+    texture = "data/textures/terrain/cement/cement_2.png"
+    index = 23
+    legacyStringId = 10023
+    legacySymbol = "IDS_STRING10023"
+    enabled = true
+}
+
+Terrain {
+    key = "terrain.cement.cement_3"
+    displayName = "Cement 3"
+    category = "cement"
+    kind = "paint"
+    texture = "data/textures/terrain/cement/cement_3.png"
+    index = 24
+    legacyStringId = 10024
+    legacySymbol = "IDS_STRING10024"
+    enabled = true
+}
+
+Terrain {
+    key = "terrain.cement.cement_3"
+    displayName = "Cement 3 (angled)"
+    category = "cement"
+    kind = "paint"
+    texture = "data/textures/terrain/cement/cement_3.png"
+    index = 25
+    legacyStringId = 10025
+    legacySymbol = "IDS_STRING10025"
+    enabled = true
+}
+
+Terrain {
+    key = "terrain.cement.cement_1"
+    displayName = "Cement 1 (crumbled)"
+    category = "cement"
+    kind = "paint"
+    texture = "data/textures/terrain/cement/cement_1.png"
+    index = 26
+    legacyStringId = 10026
+    legacySymbol = "IDS_STRING10026"
+    enabled = true
+}
+
+Terrain {
+    key = "terrain.cement.cement_2"
+    displayName = "Cement 2 (crumbled)"
+    category = "cement"
+    kind = "paint"
+    texture = "data/textures/terrain/cement/cement_2.png"
+    index = 27
+    legacyStringId = 10027
+    legacySymbol = "IDS_STRING10027"
+    enabled = true
+}
+
+Terrain {
+    key = "terrain.cliffs.grasslands_cliffs_1"
+    displayName = "Grasslands Cliffs 1"
+    category = "cliffs"
+    kind = "paint"
+    texture = "data/textures/terrain/cliffs/grasslands_cliffs_1.png"
+    index = 28
+    legacyStringId = 10028
+    legacySymbol = "IDS_STRING10028"
+    enabled = true
+}
+
+Terrain {
+    key = "terrain.cliffs.desert_cliffs_1"
+    displayName = "Desert Cliffs 1"
+    category = "cliffs"
+    kind = "paint"
+    texture = "data/textures/terrain/cliffs/desert_cliffs_1.png"
+    index = 29
+    legacyStringId = 10029
+    legacySymbol = "IDS_STRING10029"
+    enabled = true
+}
+
+Terrain {
+    key = "terrain.cliffs.desert_cliffs_2"
+    displayName = "Desert Cliffs 2"
+    category = "cliffs"
+    kind = "paint"
+    texture = "data/textures/terrain/cliffs/desert_cliffs_2.png"
+    index = 30
+    legacyStringId = 10030
+    legacySymbol = "IDS_STRING10030"
+    enabled = true
+}
+
+Terrain {
+    key = "terrain.cliffs.grasslands_cliffs_2"
+    displayName = "Grasslands Cliffs 2"
+    category = "cliffs"
+    kind = "paint"
+    texture = "data/textures/terrain/cliffs/grasslands_cliffs_2.png"
+    index = 31
+    legacyStringId = 10031
+    legacySymbol = "IDS_STRING10031"
+    enabled = true
+}
+
+Terrain {
+    key = "terrain.shore.jungle_shore_1"
+    displayName = "Jungle Shore 1"
+    category = "shore"
+    kind = "paint"
+    texture = "data/textures/terrain/shore/jungle_shore_1.png"
+    index = 32
+    legacyStringId = 10032
+    legacySymbol = "IDS_STRING10032"
+    enabled = true
+}
+
+Terrain {
+    key = "terrain.shore.jungle_shore_2"
+    displayName = "Jungle Shore 2"
+    category = "shore"
+    kind = "paint"
+    texture = "data/textures/terrain/shore/jungle_shore_2.png"
+    index = 33
+    legacyStringId = 10033
+    legacySymbol = "IDS_STRING10033"
+    enabled = true
+}
+
+Terrain {
+    key = "terrain.tundra.tundra_accent_1"
+    displayName = "Tundra Accent 1 (Tundra Grass)"
+    category = "tundra"
+    kind = "paint"
+    texture = "data/textures/terrain/tundra/tundra_accent_1.png"
+    index = 34
+    legacyStringId = 10034
+    legacySymbol = "IDS_STRING10034"
+    enabled = true
+}
+
+Terrain {
+    key = "terrain.tundra.tundra_accent_2"
+    displayName = "Tundra Accent 2 (Tundra Grass)"
+    category = "tundra"
+    kind = "paint"
+    texture = "data/textures/terrain/tundra/tundra_accent_2.png"
+    index = 35
+    legacyStringId = 10035
+    legacySymbol = "IDS_STRING10035"
+    enabled = true
+}
+
+Terrain {
+    key = "terrain.tundra.tundra_accent_3"
+    displayName = "Tundra Accent 3 (Tundra Grass)"
+    category = "tundra"
+    kind = "paint"
+    texture = "data/textures/terrain/tundra/tundra_accent_3.png"
+    index = 36
+    legacyStringId = 10036
+    legacySymbol = "IDS_STRING10036"
+    enabled = true
+}
+
+Terrain {
+    key = "terrain.tundra.tundra_1"
+    displayName = "Tundra 1"
+    category = "tundra"
+    kind = "paint"
+    texture = "data/textures/terrain/tundra/tundra_1.png"
+    index = 37
+    legacyStringId = 10037
+    legacySymbol = "IDS_STRING10037"
+    enabled = true
+}
+
+Terrain {
+    key = "terrain.tundra.tundra_2"
+    displayName = "Tundra 2"
+    category = "tundra"
+    kind = "paint"
+    texture = "data/textures/terrain/tundra/tundra_2.png"
+    index = 38
+    legacyStringId = 10038
+    legacySymbol = "IDS_STRING10038"
+    enabled = true
+}
+
+Terrain {
+    key = "terrain.tundra.tundra_3"
+    displayName = "Tundra 3"
+    category = "tundra"
+    kind = "paint"
+    texture = "data/textures/terrain/tundra/tundra_3.png"
+    index = 39
+    legacyStringId = 10039
+    legacySymbol = "IDS_STRING10039"
+    enabled = true
+}
+
+Terrain {
+    key = "terrain.tundra.tundra_4"
+    displayName = "Tundra 4"
+    category = "tundra"
+    kind = "paint"
+    texture = "data/textures/terrain/tundra/tundra_4.png"
+    index = 40
+    legacyStringId = 10040
+    legacySymbol = "IDS_STRING10040"
+    enabled = true
+}
+
+Terrain {
+    key = "terrain.tundra.tundra_5"
+    displayName = "Tundra 5"
+    category = "tundra"
+    kind = "paint"
+    texture = "data/textures/terrain/tundra/tundra_5.png"
+    index = 41
+    legacyStringId = 10041
+    legacySymbol = "IDS_STRING10041"
+    enabled = true
+}
+
+Terrain {
+    key = "terrain.cliffs.tundra_cliffs_1"
+    displayName = "Tundra Cliffs 1"
+    category = "cliffs"
+    kind = "paint"
+    texture = "data/textures/terrain/cliffs/tundra_cliffs_1.png"
+    index = 42
+    legacyStringId = 10042
+    legacySymbol = "IDS_STRING10042"
+    enabled = true
+}
+
+Terrain {
+    key = "terrain.cliffs.tundra_cliffs_2"
+    displayName = "Tundra Cliffs 2"
+    category = "cliffs"
+    kind = "paint"
+    texture = "data/textures/terrain/cliffs/tundra_cliffs_2.png"
+    index = 43
+    legacyStringId = 10043
+    legacySymbol = "IDS_STRING10043"
+    enabled = true
+}
+
+Terrain {
+    key = "terrain.volcanic.volcanic_1"
+    displayName = "Volcanic 1"
+    category = "volcanic"
+    kind = "paint"
+    texture = "data/textures/terrain/volcanic/volcanic_1.png"
+    index = 44
+    legacyStringId = 10044
+    legacySymbol = "IDS_STRING10044"
+    enabled = true
+}
+
+Terrain {
+    key = "terrain.volcanic.volcanic_2"
+    displayName = "Volcanic 2"
+    category = "volcanic"
+    kind = "paint"
+    texture = "data/textures/terrain/volcanic/volcanic_2.png"
+    index = 45
+    legacyStringId = 10045
+    legacySymbol = "IDS_STRING10045"
+    enabled = true
+}
+
+Terrain {
+    key = "terrain.volcanic.volcanic_3"
+    displayName = "Volcanic 3"
+    category = "volcanic"
+    kind = "paint"
+    texture = "data/textures/terrain/volcanic/volcanic_3.png"
+    index = 46
+    legacyStringId = 10046
+    legacySymbol = "IDS_STRING10046"
+    enabled = true
+}
+
+Terrain {
+    key = "terrain.volcanic.volcanic_4"
+    displayName = "Volcanic 4"
+    category = "volcanic"
+    kind = "paint"
+    texture = "data/textures/terrain/volcanic/volcanic_4.png"
+    index = 47
+    legacyStringId = 10047
+    legacySymbol = "IDS_STRING10047"
+    enabled = true
+}
+
+Terrain {
+    key = "terrain.volcanic.volcanic_5"
+    displayName = "Volcanic 5"
+    category = "volcanic"
+    kind = "paint"
+    texture = "data/textures/terrain/volcanic/volcanic_5.png"
+    index = 48
+    legacyStringId = 10048
+    legacySymbol = "IDS_STRING10048"
+    enabled = true
+}
+
+Terrain {
+    key = "terrain.cliffs.volcanic_cliffs_1"
+    displayName = "Volcanic Cliffs 1"
+    category = "cliffs"
+    kind = "paint"
+    texture = "data/textures/terrain/cliffs/volcanic_cliffs_1.png"
+    index = 49
+    legacyStringId = 10049
+    legacySymbol = "IDS_STRING10049"
+    enabled = true
+}
+
+Terrain {
+    key = "terrain.cliffs.volcanic_cliffs_2"
+    displayName = "Volcanic Cliffs 2"
+    category = "cliffs"
+    kind = "paint"
+    texture = "data/textures/terrain/cliffs/volcanic_cliffs_2.png"
+    index = 50
+    legacyStringId = 10050
+    legacySymbol = "IDS_STRING10050"
+    enabled = true
+}
+
+Terrain {
+    key = "terrain.volcanic.volcanic_accent_1"
+    displayName = "Volcanic Accent 1 (Volcanic Vegetation)"
+    category = "volcanic"
+    kind = "paint"
+    texture = "data/textures/terrain/volcanic/volcanic_accent_1.png"
+    index = 51
+    legacyStringId = 10051
+    legacySymbol = "IDS_STRING10051"
+    enabled = true
+}
+
+Terrain {
+    key = "terrain.volcanic.volcanic_accent_2"
+    displayName = "Volcanic Accent 2 (Volcanic Vegetation)"
+    category = "volcanic"
+    kind = "paint"
+    texture = "data/textures/terrain/volcanic/volcanic_accent_2.png"
+    index = 52
+    legacyStringId = 10052
+    legacySymbol = "IDS_STRING10052"
+    enabled = true
+}
+
+Terrain {
+    key = "terrain.volcanic.volcanic_accent_3"
+    displayName = "Volcanic Accent 3 (Volcanic Vegetation)"
+    category = "volcanic"
+    kind = "paint"
+    texture = "data/textures/terrain/volcanic/volcanic_accent_3.png"
+    index = 53
+    legacyStringId = 10053
+    legacySymbol = "IDS_STRING10053"
+    enabled = true
+}
+
+Terrain {
+    key = "terrain.shore.volcanic_shore_1"
+    displayName = "Volcanic Shore 1"
+    category = "shore"
+    kind = "paint"
+    texture = "data/textures/terrain/shore/volcanic_shore_1.png"
+    index = 54
+    legacyStringId = 10054
+    legacySymbol = "IDS_STRING10054"
+    enabled = true
+}
+
+Terrain {
+    key = "terrain.shore.volcanic_shore_2"
+    displayName = "Volcanic Shore 2"
+    category = "shore"
+    kind = "paint"
+    texture = "data/textures/terrain/shore/volcanic_shore_2.png"
+    index = 55
+    legacyStringId = 10055
+    legacySymbol = "IDS_STRING10055"
+    enabled = true
+}
+
+Terrain {
+    key = "terrain.shore.tundra_shore_1"
+    displayName = "Tundra Shore 1"
+    category = "shore"
+    kind = "paint"
+    texture = "data/textures/terrain/shore/tundra_shore_1.png"
+    index = 56
+    legacyStringId = 10056
+    legacySymbol = "IDS_STRING10056"
+    enabled = true
+}
+
+Terrain {
+    key = "terrain.shore.tundra_shore_2"
+    displayName = "Tundra Shore 2"
+    category = "shore"
+    kind = "paint"
+    texture = "data/textures/terrain/shore/tundra_shore_2.png"
+    index = 57
+    legacyStringId = 10057
+    legacySymbol = "IDS_STRING10057"
+    enabled = true
+}
+
+Terrain {
+    key = "terrain.jungle.jungle_1"
+    displayName = "Jungle 1"
+    category = "jungle"
+    kind = "paint"
+    texture = "data/textures/terrain/jungle/jungle_1.png"
+    index = 58
+    legacyStringId = 10058
+    legacySymbol = "IDS_STRING10058"
+    enabled = true
+}
+
+Terrain {
+    key = "terrain.jungle.jungle_2"
+    displayName = "Jungle 2"
+    category = "jungle"
+    kind = "paint"
+    texture = "data/textures/terrain/jungle/jungle_2.png"
+    index = 59
+    legacyStringId = 10059
+    legacySymbol = "IDS_STRING10059"
+    enabled = true
+}
+
+Terrain {
+    key = "terrain.jungle.jungle_3"
+    displayName = "Jungle 3"
+    category = "jungle"
+    kind = "paint"
+    texture = "data/textures/terrain/jungle/jungle_3.png"
+    index = 60
+    legacyStringId = 10060
+    legacySymbol = "IDS_STRING10060"
+    enabled = true
+}
+
+Terrain {
+    key = "terrain.jungle.jungle_4"
+    displayName = "Jungle 4"
+    category = "jungle"
+    kind = "paint"
+    texture = "data/textures/terrain/jungle/jungle_4.png"
+    index = 61
+    legacyStringId = 10061
+    legacySymbol = "IDS_STRING10061"
+    enabled = true
+}
+
+Terrain {
+    key = "terrain.jungle.jungle_5"
+    displayName = "Jungle 5"
+    category = "jungle"
+    kind = "paint"
+    texture = "data/textures/terrain/jungle/jungle_5.png"
+    index = 62
+    legacyStringId = 10062
+    legacySymbol = "IDS_STRING10062"
+    enabled = true
+}
+
+Terrain {
+    key = "terrain.cliffs.jungle_cliffs_1"
+    displayName = "Jungle Cliffs 1"
+    category = "cliffs"
+    kind = "paint"
+    texture = "data/textures/terrain/cliffs/jungle_cliffs_1.png"
+    index = 63
+    legacyStringId = 10063
+    legacySymbol = "IDS_STRING10063"
+    enabled = true
+}
+
+Terrain {
+    key = "terrain.cliffs.jungle_cliffs_2"
+    displayName = "Jungle Cliffs 2"
+    category = "cliffs"
+    kind = "paint"
+    texture = "data/textures/terrain/cliffs/jungle_cliffs_2.png"
+    index = 64
+    legacyStringId = 10064
+    legacySymbol = "IDS_STRING10064"
+    enabled = true
+}
+
+Terrain {
+    key = "terrain.volcanic.jungle_accent_1"
+    displayName = "Jungle Accent 1 (Volcanic Vents)"
+    category = "volcanic"
+    kind = "paint"
+    texture = "data/textures/terrain/volcanic/jungle_accent_1.png"
+    index = 65
+    legacyStringId = 10065
+    legacySymbol = "IDS_STRING10065"
+    enabled = true
+}
+
+Terrain {
+    key = "terrain.volcanic.jungle_accent_2"
+    displayName = "Jungle Accent 2 (Volcanic Vents)"
+    category = "volcanic"
+    kind = "paint"
+    texture = "data/textures/terrain/volcanic/jungle_accent_2.png"
+    index = 66
+    legacyStringId = 10066
+    legacySymbol = "IDS_STRING10066"
+    enabled = true
+}
+
+Terrain {
+    key = "terrain.volcanic.jungle_accent_3"
+    displayName = "Jungle Accent 3 (Volcanic Vents)"
+    category = "volcanic"
+    kind = "paint"
+    texture = "data/textures/terrain/volcanic/jungle_accent_3.png"
+    index = 67
+    legacyStringId = 10067
+    legacySymbol = "IDS_STRING10067"
+    enabled = true
+}
+
+Terrain {
+    key = "terrain.desert.desert_1"
+    displayName = "Desert 1"
+    category = "desert"
+    kind = "paint"
+    texture = "data/textures/terrain/desert/desert_1.png"
+    index = 68
+    legacyStringId = 10068
+    legacySymbol = "IDS_STRING10068"
+    enabled = true
+}
+
+Terrain {
+    key = "terrain.cement.cement_3"
+    displayName = "Cement 3 (crumbled)"
+    category = "cement"
+    kind = "paint"
+    texture = "data/textures/terrain/cement/cement_3.png"
+    index = 69
+    legacyStringId = 10069
+    legacySymbol = "IDS_STRING10069"
+    enabled = true
+}
+
+Terrain {
+    key = "terrain.misc.d"
+    displayName = "D________________"
+    category = "misc"
+    kind = "paint"
+    texture = "data/textures/terrain/misc/d.png"
+    index = 70
+    legacyStringId = 10070
+    legacySymbol = "IDS_STRING10070"
+    enabled = true
+}
+
+Terrain {
+    key = "terrain.misc.g"
+    displayName = "G________________"
+    category = "misc"
+    kind = "paint"
+    texture = "data/textures/terrain/misc/g.png"
+    index = 71
+    legacyStringId = 10071
+    legacySymbol = "IDS_STRING10071"
+    enabled = true
+}
+
+Terrain {
+    key = "terrain.misc.j"
+    displayName = "J________________"
+    category = "misc"
+    kind = "paint"
+    texture = "data/textures/terrain/misc/j.png"
+    index = 72
+    legacyStringId = 10072
+    legacySymbol = "IDS_STRING10072"
+    enabled = true
+}
+
+Terrain {
+    key = "terrain.misc.t"
+    displayName = "T________________"
+    category = "misc"
+    kind = "paint"
+    texture = "data/textures/terrain/misc/t.png"
+    index = 73
+    legacyStringId = 10073
+    legacySymbol = "IDS_STRING10073"
+    enabled = true
+}
+
+Terrain {
+    key = "terrain.misc.v"
+    displayName = "V________________"
+    category = "misc"
+    kind = "paint"
+    texture = "data/textures/terrain/misc/v.png"
+    index = 74
+    legacyStringId = 10074
+    legacySymbol = "IDS_STRING10074"
+    enabled = true
+}
+
+Terrain {
+    key = "terrain.test.test"
+    displayName = "TEST"
+    category = "test"
+    kind = "paint"
+    texture = "data/textures/terrain/test/test.png"
+    index = 75
+    legacyStringId = 10075
+    legacySymbol = "IDS_STRING10075"
+    enabled = true
+}

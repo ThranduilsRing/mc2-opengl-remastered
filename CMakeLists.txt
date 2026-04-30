@@ -357,3 +357,9 @@ add_subdirectory("./res" "./out/res")
 add_subdirectory("./data_tools" "./out/data_tools")
 add_subdirectory("./text_tool" "./out/text_tool")
 add_subdirectory("./Viewer" "./out/Viewer")
+# MC2R Editor Remaster
+# by Methuselas
+# Keep Editor wired as its own optional source tree.
+if(EXISTS "${CMAKE_CURRENT_SOURCE_DIR}/Editor/CMakeLists.txt")
+    add_subdirectory(Editor)
+endif()

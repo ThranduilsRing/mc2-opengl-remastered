@@ -1,0 +1,209 @@
+// Editor-owned UI strings. Numeric legacy IDs are compatibility metadata only.
+
+String {
+    key = "ui.select_slopes"
+    legacyId = 40001
+    value = "Select Slopes"
+}
+
+String {
+    key = "ui.select_altitude"
+    legacyId = 40062
+    value = "Select Altitude"
+}
+
+String {
+    key = "ui.mustbegrayscale"
+    legacyId = 40064
+    value = "Height map must be grayscale."
+}
+
+String {
+    key = "ui.no_dropzone"
+    legacyId = 40065
+    value = "No drop zone selected."
+}
+
+String {
+    key = "ui.mustberightsize"
+    legacyId = 40066
+    value = "Height map must be the correct size."
+}
+
+String {
+    key = "ui.musthaveheightmap"
+    legacyId = 40067
+    value = "Mission must have a height map."
+}
+
+String {
+    key = "ui.mustberightformat"
+    legacyId = 40068
+    value = "Height map must be the correct format."
+}
+
+String {
+    key = "ui.heightmapnotmatch"
+    legacyId = 40069
+    value = "Height map dimensions do not match the selected map size."
+}
+
+String {
+    key = "ui.basemustexist"
+    legacyId = 40070
+    value = "Base file must exist."
+}
+
+String {
+    key = "ui.unnamed_forest"
+    legacyId = 40071
+    value = "Forest %d"
+}
+
+String {
+    key = "ui.no_structures"
+    legacyId = 40072
+    value = "No structures available."
+}
+
+String {
+    key = "ui.no_buildings_selected"
+    legacyId = 40073
+    value = "No buildings selected."
+}
+
+String {
+    key = "ui.more_than_one_building_selected"
+    legacyId = 40074
+    value = "More than one building selected."
+}
+
+String {
+    key = "ui.no_units"
+    legacyId = 40075
+    value = "No units available."
+}
+
+String {
+    key = "ui.no_units_selected"
+    legacyId = 40076
+    value = "No units selected."
+}
+
+String {
+    key = "ui.more_than_one_unit_selected"
+    legacyId = 40077
+    value = "More than one unit selected."
+}
+
+String {
+    key = "ui.unimplemented_action"
+    legacyId = 40078
+    value = "Unimplemented action."
+}
+
+String {
+    key = "ui.unimplemented_condition"
+    legacyId = 40079
+    value = "Unimplemented condition."
+}
+
+String {
+    key = "ui.must_be_in_subdirectory"
+    legacyId = 40080
+    value = "File must be in a subdirectory."
+}
+
+String {
+    key = "ui.too_many_turrets"
+    legacyId = 40081
+    value = "Too many turrets."
+}
+
+String {
+    key = "ui.wrong_size_height_map"
+    legacyId = 40082
+    value = "Wrong size height map."
+}
+
+String {
+    key = "ui.unable_to_delete_newmap"
+    legacyId = 40083
+    value = "Unable to delete newmap."
+}
+
+String {
+    key = "ui.appearance_heap_exhausted"
+    legacyId = 40084
+    value = "Appearance heap exhausted."
+}
+
+String {
+    key = "ui.do_you_want_to_save_your_changes"
+    legacyId = 40085
+    value = "Do you want to save your changes?"
+}
+
+String {
+    key = "ui.do_you_want_to_save_this_mission"
+    legacyId = 40086
+    value = "Do you want to save this mission?"
+}
+
+String {
+    key = "ui.pilot_single_player_version"
+    legacyId = 40087
+    value = "Pilot single player version"
+}
+
+String {
+    key = "ui.pilot_multiplayer_version"
+    legacyId = 40088
+    value = "Pilot multiplayer version"
+}
+
+String {
+    key = "ui.objectives_with_no_conditions"
+    legacyId = 40089
+    value = "Objectives with no conditions."
+}
+
+String {
+    key = "ui.couldnt_open_operation_file"
+    legacyId = 40090
+    value = "Could not open operation file: %s"
+}
+
+String {
+    key = "ui.not_a_valid_operation_file"
+    legacyId = 40091
+    value = "Not a valid operation file."
+}
+
+String {
+    key = "ui.couldnt_open_purchase_file"
+    legacyId = 40092
+    value = "Could not open purchase file: %s"
+}
+
+String {
+    key = "ui.not_a_valid_purchase_file"
+    legacyId = 40093
+    value = "Not a valid purchase file."
+}
+
+// Menu bar header labels.
+// These replace the legacy IDS_BUILDINGS (mc2res) and IDS_TERRAINS (mc2res) calls
+// in EditorInterface::addBuildingsToNewMenu().
+
+String {
+    key = "editor.menu.objects"
+    legacyId = -1
+    value = "O&bjects"
+}
+
+String {
+    key = "editor.menu.terrains"
+    legacyId = -1
+    value = "Terrains"
+}

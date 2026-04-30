@@ -17,8 +17,6 @@ CMakeFiles/
 *.exe
 *.cfg
 *.tga
-Editor
-data
 unpacked_data
 unpacked_data--
 data-orig
@@ -91,4 +89,10 @@ validate*.tga
 
 # Smoke test runtime artifacts
 tests/smoke/artifacts/
+
+
+# Local vcpkg manifest install output
+vcpkg_installed/
+build64/
+.vs/
 

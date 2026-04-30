@@ -1,0 +1,11 @@
+{
+  "name": "mc2-opengl-remastered",
+  "version-string": "0.13.0-editor",
+  "dependencies": [
+    "sdl2",
+    "sdl2-mixer",
+    "sdl2-ttf",
+    "glew",
+    "zlib"
+  ]
+}

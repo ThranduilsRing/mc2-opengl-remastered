@@ -1,0 +1,43 @@
+// Editor-owned base terrain catalog.
+// Primary identity is key. Legacy IDs are import/export compatibility only.
+// texture points at the source asset path so entries can be moved/extended without code changes.
+
+BaseTerrain {
+    key = "base.desert"
+    index = 0
+    legacyStringId = 60000
+    displayName = "Desert"
+    texture = "data/textures/random_maps/desert.jpg"
+}
+
+BaseTerrain {
+    key = "base.forest"
+    index = 1
+    legacyStringId = 60001
+    displayName = "Forest"
+    texture = "data/textures/random_maps/forest.jpg"
+}
+
+BaseTerrain {
+    key = "base.lunar"
+    index = 2
+    legacyStringId = 60002
+    displayName = "Lunar"
+    texture = "data/textures/random_maps/lunar.jpg"
+}
+
+BaseTerrain {
+    key = "base.tundra"
+    index = 3
+    legacyStringId = 60003
+    displayName = "Tundra"
+    texture = "data/textures/random_maps/tundra.jpg"
+}
+
+BaseTerrain {
+    key = "base.volcanic"
+    index = 4
+    legacyStringId = 60004
+    displayName = "Volcanic"
+    texture = "data/textures/random_maps/volcanic.jpg"
+}
