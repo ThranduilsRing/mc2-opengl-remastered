@@ -56,8 +56,11 @@ static inline void pz_capture_vert_preds(int slot) {
 }
 static const bool s_shapeCParityCheck = (getenv("MC2_SHAPE_C_PARITY_CHECK") != nullptr);
 static const bool s_shapeCEnabled = ([] {
+	// Default ON post Slice-1 flip (2026-04-29). Tier1 parity validated:
+	// 19.7M field-equality checks across 5 missions, zero mismatches.
+	// Explicit "0" still opts out for bisection; any other value (including unset) opts in.
 	const char* env = getenv("MC2_MODERN_TERRAIN_PATCHES");
-	return (env != nullptr) && (env[0] == '1');
+	return (env == nullptr) || (env[0] != '0');
 })();
 
 #define SELECTION_COLOR 0xffff7fff
