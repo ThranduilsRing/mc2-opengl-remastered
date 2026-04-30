@@ -611,6 +611,8 @@ int main(int argc, char** argv)
         // GL_ERROR is default-on; the env var suppresses it.
         const bool glprint = (getenv("MC2_GL_ERROR_DRAIN_SILENT") == nullptr);
         const bool smoke   = (getenv("MC2_SMOKE_MODE")           != nullptr);
+        const bool waterFp = (getenv("MC2_RENDER_WATER_FASTPATH")     != nullptr);
+        const bool waterPc = (getenv("MC2_RENDER_WATER_PARITY_CHECK") != nullptr);
         const char* build  =
 #ifdef MC2_BUILD_HASH
             MC2_BUILD_HASH
@@ -620,8 +622,10 @@ int main(int argc, char** argv)
             ;
         char _cbbuf[320];
         snprintf(_cbbuf, sizeof(_cbbuf),
-            "[INSTR v1] enabled: tgl_pool=%d destroy=%d gl_error_print=%d smoke=%d build=%s",
-            tgl ? 1 : 0, destr ? 1 : 0, glprint ? 1 : 0, smoke ? 1 : 0, build);
+            "[INSTR v1] enabled: tgl_pool=%d destroy=%d gl_error_print=%d "
+            "smoke=%d water_fp=%d water_parity=%d build=%s",
+            tgl ? 1 : 0, destr ? 1 : 0, glprint ? 1 : 0, smoke ? 1 : 0,
+            waterFp ? 1 : 0, waterPc ? 1 : 0, build);
         puts(_cbbuf);
         crashbundle_append(_cbbuf);
         if (g_pzTrace) {

@@ -40,6 +40,7 @@ extern float MaxMinUV;
 extern float cloudScrollX;
 extern float cloudScrollY;
 extern long  sprayFrame;
+extern bool  useWaterInterestTexture;
 
 #ifndef CIDENT_H
 #include"cident.h"
@@ -1099,6 +1100,20 @@ void Terrain::renderWaterFastPath (void)
 
 	ZoneScopedN("Terrain::renderWaterFastPath");
 
+	// MC2_WATER_DEBUG=1 parallel timer (matches the legacy renderWater printer
+	// style at terrain.cpp:1004-1077, post-warmup window of 5 frames). Lets
+	// gate B Tracy/perf comparison run side-by-side with one env var.
+	static const bool s_waterDebugOn = (getenv("MC2_WATER_DEBUG") != nullptr);
+	static uint64_t s_qpcFreq2 = 0;
+	static uint64_t s_qpcStart2 = 0;
+	static uint32_t s_framesPrinted2 = 0;
+	static uint32_t s_frameCounter2  = 0;
+	constexpr uint32_t kFastWarmupHoldoffFrames = 1200;
+	if (s_waterDebugOn && s_qpcFreq2 == 0)
+		QueryPerformanceFrequency((LARGE_INTEGER*)&s_qpcFreq2);
+	if (s_waterDebugOn)
+		QueryPerformanceCounter((LARGE_INTEGER*)&s_qpcStart2);
+
 	// getWater*Handle() returns mcTextureManager's textureIndex (master node
 	// id), NOT the engine's gosTextureHandle. tex_resolve() chases the lazy
 	// first-touch indirection — same pattern as M2d overlay at quad.cpp:2084.
@@ -1159,6 +1174,56 @@ void Terrain::renderWaterFastPath (void)
 	    sprayOffsetX,
 	    sprayOffsetY,
 	    MaxMinUV);
+
+	// Stage 3 parity check (env-gated, silent on pass). Runs AFTER the bridge
+	// so g_thinStaging is already populated by UploadAndBindThinRecords. The
+	// check is CPU-only; it does not alter GPU state. See
+	// `gos_terrain_water_stream.h` "Stage 3 parity check" doc-comment for
+	// scope and field-level granularity.
+	{
+		WaterStream::ParityFrameUniforms pu;
+		pu.waterElevation             = Terrain::waterElevation;
+		pu.alphaDepth                 = MapData::alphaDepth;
+		pu.alphaEdgeDword             = Terrain::alphaEdge;
+		pu.alphaMiddleDword           = Terrain::alphaMiddle;
+		pu.alphaDeepDword             = Terrain::alphaDeep;
+		pu.mapTopLeftX                = Terrain::mapTopLeft3d.x;
+		pu.mapTopLeftY                = Terrain::mapTopLeft3d.y;
+		pu.frameCos                   = Terrain::frameCos;
+		pu.frameCosAlpha              = Terrain::frameCosAlpha;
+		pu.oneOverTF                  = oneOverTF;
+		pu.oneOverWaterTF             = oneOverWaterTF;
+		pu.cloudOffsetX               = cloudOffsetX;
+		pu.cloudOffsetY               = cloudOffsetY;
+		pu.sprayOffsetX               = sprayOffsetX;
+		pu.sprayOffsetY               = sprayOffsetY;
+		pu.maxMinUV                   = MaxMinUV;
+		pu.useWaterInterestTexture    = useWaterInterestTexture;
+		pu.waterDetailHandleSentinel  = (uint32_t)waterDetailTexHandle;
+		pu.terrainTextures2Present    = (Terrain::terrainTextures2 != nullptr);
+		WaterStream::CheckParityFrame(pu);
+	}
+
+	if (s_waterDebugOn)
+	{
+		uint64_t qpcEnd = 0;
+		QueryPerformanceCounter((LARGE_INTEGER*)&qpcEnd);
+		const uint64_t elapsedTicks = qpcEnd - s_qpcStart2;
+		const double elapsedUs = (s_qpcFreq2 > 0)
+		    ? (1000000.0 * (double)elapsedTicks / (double)s_qpcFreq2) : 0.0;
+		++s_frameCounter2;
+		if (s_frameCounter2 >= kFastWarmupHoldoffFrames && s_framesPrinted2 < 5)
+		{
+			fprintf(stderr,
+			        "[WATER_FAST v1] event=elapsed frame=%u (post-warmup) "
+			        "recipeCount=%u elapsed_us=%.1f\n",
+			        s_framesPrinted2,
+			        (unsigned)WaterStream::GetRecipeCount(),
+			        elapsedUs);
+			fflush(stderr);
+			++s_framesPrinted2;
+		}
+	}
 }
 
 float cosineEyeHalfFOV = 0.0f;

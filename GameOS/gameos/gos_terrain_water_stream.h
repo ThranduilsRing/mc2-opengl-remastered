@@ -122,6 +122,69 @@ uint32_t UploadAndBindThinRecords();
 // Tear down GL buffers (mission unload, app shutdown).
 void ReleaseGlResources();
 
+// --- Stage 3 parity check ---------------------------------------------------
+//
+// MC2_RENDER_WATER_PARITY_CHECK=1 enables a per-frame CPU-side byte-comparison
+// between the legacy `TerrainQuad::drawWater()` `addVertices` argument streams
+// and the fast-path's recipe + thin-record + per-vertex VS-equivalent CPU
+// computation, for every in-window water-bearing quad this frame.
+//
+// Silent on success (matches the M2 thin-record parity convention in
+// `m2_thin_record_cpu_reduction_results.md`). On any field-level mismatch:
+//
+//   [WATER_PARITY v1] event=mismatch frame=N quad=Q layer=base|detail
+//                     tri=T vert=V field=<name> legacy=0xHEX fast=0xHEX
+//
+// Mismatch prints are throttled to first 16 per frame to keep logs bounded
+// when an early-frame uniform delta cascades. A monotonic summary line is
+// emitted every 600 frames AND on `ReleaseGlResources()`:
+//
+//   [WATER_PARITY v1] event=summary frames=N quads_checked=Q
+//                     total_mismatches=K
+//
+// Comparison granularity:
+// - Recipe-input fields (per-corner vx/vy/elev/terrainType/waterBits, uvMode,
+//   hasDetail) — compared against q.vertices[i]/blocks state.
+// - Thin-record fields (per-corner lightRGB/fogRGB, per-tri pzValid bit) —
+//   compared against the same q.vertices[i] reads + CPU-pz check.
+// - Derived gos_VERTEX bytes (u, v, argb, frgb-high-byte) — synthesized on
+//   both sides per legacy `drawWater` formulas vs fast-path VS formulas, then
+//   byte-compared. x/y/z/rhw NOT compared: legacy reads pre-projected CPU
+//   `wx/wy/wz/ww`; fast path projects on GPU. Per-spec line 122: comparing
+//   GPU-rendered output drifts below 1 ULP and produces fake mismatches.
+//
+// Per `feedback_offload_scope_stock_only.md`, parity is gated against stock
+// content only (tier1 missions). Mod content is out of scope.
+struct ParityFrameUniforms {
+    float    waterElevation;
+    float    alphaDepth;
+    uint32_t alphaEdgeDword;     // Terrain::alphaEdge   (full DWORD, not byte)
+    uint32_t alphaMiddleDword;   // Terrain::alphaMiddle
+    uint32_t alphaDeepDword;     // Terrain::alphaDeep
+    float    mapTopLeftX;
+    float    mapTopLeftY;
+    float    frameCos;
+    float    frameCosAlpha;
+    float    oneOverTF;
+    float    oneOverWaterTF;
+    float    cloudOffsetX;
+    float    cloudOffsetY;
+    float    sprayOffsetX;
+    float    sprayOffsetY;
+    float    maxMinUV;
+    bool     useWaterInterestTexture;
+    uint32_t waterDetailHandleSentinel;  // 0xffffffff if no detail bound this frame
+    bool     terrainTextures2Present;
+};
+
+// Run the parity check for the current frame. Reads g_thinStaging (built by
+// the most recent UploadAndBindThinRecords call, still populated). No-op
+// unless MC2_RENDER_WATER_PARITY_CHECK is set in the environment.
+//
+// Cost in dev mode: ~12 byte-comparisons per in-window water-bearing quad
+// per frame (~1.3K quads on mc2_01 → ~15K compare ops, sub-millisecond CPU).
+void CheckParityFrame(const ParityFrameUniforms& u);
+
 // Build the recipe array from the live Terrain::quadList. Walks all
 // numberQuads entries; flags water-bearing quads (≥1 vertex below
 // waterElevation). Idempotent — calling twice rebuilds.
