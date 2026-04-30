@@ -244,6 +244,15 @@ void GameCamera::render (void)
 			endFrameTexResolve();              // close the per-frame window — clears frameActive,
 			                                   // accumulates resolved-count, emits 600-frame summary
 			                                   // when due. No-op when killswitch OFF or already inactive.
+
+			// Stage 2 of renderWater architectural slice (CPU→GPU offload).
+			// MUST run after renderLists so terrain has flushed before we
+			// alpha-blend water on top. No-op when MC2_RENDER_WATER_FASTPATH
+			// is unset; legacy water already drained inside renderLists().
+			if (land) {
+				ZoneScopedN("GameCamera::render waterFastPath");
+				land->renderWaterFastPath();
+			}
 		}
 
 		if (drawOldWay)

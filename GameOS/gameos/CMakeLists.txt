@@ -13,6 +13,7 @@ set(SOURCES ${SOURCES}
     gos_postprocess.cpp
     gos_static_prop_batcher.cpp
     gos_terrain_patch_stream.cpp
+    gos_terrain_water_stream.cpp
     gos_validate.cpp
     gos_crashbundle.cpp
     gos_smoke.cpp

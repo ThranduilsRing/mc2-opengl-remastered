@@ -29,6 +29,7 @@
 #include "gos_validate.h"  // drainGLErrors (Tier-1 instr §4)
 #include "gos_terrain_bridge.h"
 #include "gos_terrain_patch_stream.h"
+#include "gos_terrain_water_stream.h"
 
 class gosRenderer;
 class gosFont;
@@ -1288,6 +1289,31 @@ class gosRenderer {
         int terrainBindThinUniformsForPatchStream();
         // Returns the glsl_program for the thin terrain shader. Used by bridge exports.
         glsl_program* getThinTerrainProgram() const { return thin_terrain_prog_; }
+        glsl_program* getWaterFastProgram()   const { return water_fast_prog_;   }
+
+        // Water fast path (Stage 2 of renderWater architectural slice).
+        // Issues 1-2 instanced draws against the WaterRecipe + WaterFrame SSBOs.
+        // Spec: docs/superpowers/specs/2026-04-29-renderwater-fastpath-design.md.
+        void renderWaterFastPath(
+            unsigned int recordCount,
+            unsigned int waterGosHandle,
+            unsigned int waterDetailGosHandle,
+            float waterElevation,
+            float alphaDepth,
+            unsigned int alphaEdgeByte,
+            unsigned int alphaMiddleByte,
+            unsigned int alphaDeepByte,
+            float mapTopLeftX,
+            float mapTopLeftY,
+            float frameCos,
+            float frameCosAlpha,
+            float oneOverTF,
+            float oneOverWaterTF,
+            float cloudOffsetX,
+            float cloudOffsetY,
+            float sprayOffsetX,
+            float sprayOffsetY,
+            float maxMinUV);
 
         void beginFrame();
         void endFrame();
@@ -1531,6 +1557,7 @@ class gosRenderer {
         // Terrain tessellation material
         gosRenderMaterial* terrain_material_ = nullptr;
         glsl_program* thin_terrain_prog_ = nullptr;  // gos_terrain_thin.vert + gos_terrain.frag
+        glsl_program* water_fast_prog_   = nullptr;  // gos_terrain_water_fast.vert + gos_tex_vertex.frag
 
         // Shadow mode
         gosRenderMaterial* shadow_terrain_material_ = nullptr;
@@ -1873,6 +1900,305 @@ void gos_terrain_bridge_drawSingleBucketTriangles(
     glDrawArrays(GL_TRIANGLES, (GLint)firstVertex, (GLsizei)vertexCount);
 }
 
+unsigned int gos_terrain_bridge_getWaterFastShaderProgram() {
+    if (!g_gos_renderer) return 0u;
+    glsl_program* p = g_gos_renderer->getWaterFastProgram();
+    return (p && p->shp_) ? (unsigned int)p->shp_ : 0u;
+}
+
+void gos_terrain_bridge_renderWaterFast(
+    unsigned int recordCount,
+    unsigned int waterGosHandle,
+    unsigned int waterDetailGosHandle,
+    float waterElevation,
+    float alphaDepth,
+    unsigned int alphaEdgeByte,
+    unsigned int alphaMiddleByte,
+    unsigned int alphaDeepByte,
+    float mapTopLeftX,
+    float mapTopLeftY,
+    float frameCos,
+    float frameCosAlpha,
+    float oneOverTF,
+    float oneOverWaterTF,
+    float cloudOffsetX,
+    float cloudOffsetY,
+    float sprayOffsetX,
+    float sprayOffsetY,
+    float maxMinUV)
+{
+    if (!g_gos_renderer || recordCount == 0) return;
+    g_gos_renderer->renderWaterFastPath(
+        recordCount, waterGosHandle, waterDetailGosHandle,
+        waterElevation, alphaDepth,
+        alphaEdgeByte, alphaMiddleByte, alphaDeepByte,
+        mapTopLeftX, mapTopLeftY,
+        frameCos, frameCosAlpha,
+        oneOverTF, oneOverWaterTF,
+        cloudOffsetX, cloudOffsetY,
+        sprayOffsetX, sprayOffsetY,
+        maxMinUV);
+}
+
+void gosRenderer::renderWaterFastPath(
+    unsigned int recordCount,
+    unsigned int waterGosHandle,
+    unsigned int waterDetailGosHandle,
+    float waterElevation,
+    float alphaDepth,
+    unsigned int alphaEdgeByte,
+    unsigned int alphaMiddleByte,
+    unsigned int alphaDeepByte,
+    float mapTopLeftX,
+    float mapTopLeftY,
+    float frameCos,
+    float frameCosAlpha,
+    float oneOverTF,
+    float oneOverWaterTF,
+    float cloudOffsetX,
+    float cloudOffsetY,
+    float sprayOffsetX,
+    float sprayOffsetY,
+    float maxMinUV)
+{
+    ZoneScopedN("renderWaterFastPath");
+    if (!water_fast_prog_ || !water_fast_prog_->shp_ || recordCount == 0) return;
+    GLuint prog = water_fast_prog_->shp_;
+
+    // Save state for restore. Water is alpha-blended overlay; we set blend +
+    // depth-mask off temporarily.
+    GLint savedProgram   = 0; glGetIntegerv(GL_CURRENT_PROGRAM, &savedProgram);
+    GLboolean savedBlend = glIsEnabled(GL_BLEND);
+    GLint savedSrcRGB    = 0; glGetIntegerv(GL_BLEND_SRC_RGB, &savedSrcRGB);
+    GLint savedDstRGB    = 0; glGetIntegerv(GL_BLEND_DST_RGB, &savedDstRGB);
+    GLint savedDepthMask = 0; glGetIntegerv(GL_DEPTH_WRITEMASK, &savedDepthMask);
+
+    // VAO must be bound before any glDrawArrays — AMD silently drops draws
+    // when VAO is 0 (memory:projectz_overlay_findings.md). The fast path
+    // runs INSIDE renderWater after Object/HUD passes that may have left
+    // VAO unbound. Same fix the overlay path uses.
+    GLint savedVAO = 0; glGetIntegerv(GL_VERTEX_ARRAY_BINDING, &savedVAO);
+    extern void gos_RendererRebindVAO();
+    gos_RendererRebindVAO();
+
+    glUseProgram(prog);
+
+    // --- One-time uniform binds. setMat4Direct = GL_FALSE (row-major direct,
+    // for terrainMVP per terrain_mvp_gl_false.md: GL_FALSE + row-major
+    // cancels to the right math). setMat4Std = GL_TRUE (transpose to GL
+    // column-major, the canonical convention for `mvp`/`projection_` —
+    // see orchestrator "GL_FALSE → GL_TRUE for thin VS projection_" entry).
+    auto setMat4Direct = [&](const char* name, const float* v) {
+        GLint loc = glGetUniformLocation(prog, name);
+        if (loc >= 0) glUniformMatrix4fv(loc, 1, GL_FALSE, v);
+    };
+    auto setMat4Std = [&](const char* name, const float* v) {
+        GLint loc = glGetUniformLocation(prog, name);
+        if (loc >= 0) glUniformMatrix4fv(loc, 1, GL_TRUE, v);
+    };
+    auto setVec4 = [&](const char* name, const float* v) {
+        GLint loc = glGetUniformLocation(prog, name);
+        if (loc >= 0) glUniform4fv(loc, 1, v);
+    };
+    auto setVec2 = [&](const char* name, float a, float b) {
+        GLint loc = glGetUniformLocation(prog, name);
+        if (loc >= 0) glUniform2f(loc, a, b);
+    };
+    auto setF = [&](const char* name, float a) {
+        GLint loc = glGetUniformLocation(prog, name);
+        if (loc >= 0) glUniform1f(loc, a);
+    };
+    auto setI = [&](const char* name, int a) {
+        GLint loc = glGetUniformLocation(prog, name);
+        if (loc >= 0) glUniform1i(loc, a);
+    };
+
+    setMat4Direct("terrainMVP",      (const float*)&terrain_mvp_);
+    setMat4Std   ("mvp",             (const float*)&projection_);
+    setVec4      ("terrainViewport", (const float*)&terrain_viewport_);
+
+    // Debug-mode override gated by MC2_RENDER_WATER_FASTPATH_DEBUG=N.
+    // 0 = normal, 1 = magenta solid, 2 = green, 3 = yellow.
+    static int s_debugMode = -1;
+    if (s_debugMode < 0) {
+        const char* dm = getenv("MC2_RENDER_WATER_FASTPATH_DEBUG");
+        s_debugMode = dm ? atoi(dm) : 0;
+    }
+    setI("debugMode", s_debugMode);
+    setF   ("waterElevation",  waterElevation);
+    setF   ("alphaDepth",      alphaDepth);
+    // Alpha-band byte uniforms are `int` in the shader because `uniform uint`
+    // crashes the project's shader_builder (memory: uniform_uint_crash.md).
+    // The values are 0..255 and round-trip safely through int.
+    setI   ("alphaEdgeByte",   (int)alphaEdgeByte);
+    setI   ("alphaMiddleByte", (int)alphaMiddleByte);
+    setI   ("alphaDeepByte",   (int)alphaDeepByte);
+    setVec2("mapTopLeft",      mapTopLeftX, mapTopLeftY);
+    setF   ("frameCos",        frameCos);
+    setF   ("frameCosAlpha",   frameCosAlpha);
+    setF   ("maxMinUV",        maxMinUV);
+    setI   ("tex1",            0);
+
+    // Fragment-shader-side fog_color + time uniforms (gos_tex_vertex.frag).
+    // 2026-04-30: fog_color was hardcoded to zeros, which disables the FS
+    // fog branch (`if (fog_color.x>0 || ...)`). The legacy water flush goes
+    // through gosRenderMaterial::apply()→setFogColor(fog_color_), so legacy
+    // gets per-pixel atmospheric mixing that softens shoreline alpha-band
+    // transitions. Without fog mixing, the 3-band classifier's tile-aligned
+    // staircase is fully visible at the shore. Use the renderer's cached
+    // fog_color_ (set from gos_State_Fog at clearWindow time) for parity.
+    setF   ("time", (float)((double)(timing::get_wall_time_ms() - timeStart_) / 1000.0));
+    setVec4("fog_color", (const float*)&fog_color_);
+
+    // SSBO bindings (recipe at 5, thin record at 6).
+    //   Recipe  = static, uploaded once per mission (idempotent guard inside).
+    //   Thin    = per-frame ring; one entry per in-window water quad.
+    //             UploadAndBindThinRecords binds at slot 6 internally and
+    //             returns the actual record count (= our draw instance count).
+    GLuint recipeBuf = (GLuint)WaterStream::EnsureRecipeBufferUploaded();
+    if (recipeBuf == 0) {
+        glDepthMask(savedDepthMask);
+        if (!savedBlend) glDisable(GL_BLEND);
+        glBlendFunc((GLenum)savedSrcRGB, (GLenum)savedDstRGB);
+        glUseProgram((GLuint)savedProgram);
+        return;
+    }
+    glBindBufferBase(GL_SHADER_STORAGE_BUFFER, 5, recipeBuf);
+    const uint32_t thinCount = WaterStream::UploadAndBindThinRecords();
+    if (thinCount == 0) {
+        glDepthMask(savedDepthMask);
+        if (!savedBlend) glDisable(GL_BLEND);
+        glBlendFunc((GLenum)savedSrcRGB, (GLenum)savedDstRGB);
+        glUseProgram((GLuint)savedProgram);
+        return;
+    }
+
+    // Alpha-blend overlay state.
+    // 2026-04-30 shoreline fix: explicitly set depth test ON + LEQUAL.
+    // The legacy water flush goes through applyRenderStates which sets these
+    // from gos_State_ZCompare/gos_State_ZWrite. The bridge originally only
+    // disabled depth-write, leaving depth test inheriting whatever the prior
+    // pass left. Without depth test, water fragments draw over above-water
+    // land tiles, producing a tile-aligned staircase at the shoreline. With
+    // depth test ON + LEQUAL, land's higher Z occludes water's lower Z so
+    // water only renders on actually-submerged pixels — matching the legacy
+    // result where the shore looks effortlessly smooth.
+    GLboolean savedDepthTest = glIsEnabled(GL_DEPTH_TEST);
+    GLint savedDepthFunc = 0; glGetIntegerv(GL_DEPTH_FUNC, &savedDepthFunc);
+    glEnable(GL_DEPTH_TEST);
+    glDepthFunc(GL_LEQUAL);
+    glEnable(GL_BLEND);
+    glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
+    glDepthMask(GL_FALSE);
+
+    // Install a REPEAT/LINEAR sampler on unit 0 for the water draw. The
+    // patch-stream's bucket sampler (CLAMP_TO_EDGE) may still be bound from
+    // the prior terrain pass; CLAMP would reduce the world-scale water UVs
+    // (0..MaxMinUV ≈ 0..8) to texture-edge samples, making water invisible.
+    // The legacy water path runs gos_State_TextureAddress = gos_TextureWrap,
+    // matching REPEAT.
+    static GLuint s_waterFastSampler = 0;
+    if (s_waterFastSampler == 0) {
+        glGenSamplers(1, &s_waterFastSampler);
+        glSamplerParameteri(s_waterFastSampler, GL_TEXTURE_WRAP_S, GL_REPEAT);
+        glSamplerParameteri(s_waterFastSampler, GL_TEXTURE_WRAP_T, GL_REPEAT);
+        glSamplerParameteri(s_waterFastSampler, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
+        glSamplerParameteri(s_waterFastSampler, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
+    }
+    GLuint savedSampler = 0;
+    {
+        GLint q = 0;
+        glGetIntegeri_v(GL_SAMPLER_BINDING, 0, &q);
+        savedSampler = (GLuint)q;
+    }
+    glBindSampler(0, s_waterFastSampler);
+
+    GLuint baseTex   = (GLuint)gos_terrain_bridge_glTextureForGosHandle(waterGosHandle);
+    GLuint detailTex = (waterDetailGosHandle != 0xffffffffu)
+                       ? (GLuint)gos_terrain_bridge_glTextureForGosHandle(waterDetailGosHandle)
+                       : 0u;
+
+    // One-time diagnostic for the fast path.
+    static bool s_fastDiagPrinted = false;
+    if (!s_fastDiagPrinted) {
+        s_fastDiagPrinted = true;
+        // Drain any pending GL errors first so we only catch ours.
+        while (glGetError() != GL_NO_ERROR) {}
+        GLint curVAO=0, curFBO=0, curVP[4]={0};
+        glGetIntegerv(GL_VERTEX_ARRAY_BINDING, &curVAO);
+        glGetIntegerv(GL_DRAW_FRAMEBUFFER_BINDING, &curFBO);
+        glGetIntegerv(GL_VIEWPORT, curVP);
+        GLboolean depthTest = glIsEnabled(GL_DEPTH_TEST);
+        GLboolean cullFace  = glIsEnabled(GL_CULL_FACE);
+        GLint curDepthFunc = 0; glGetIntegerv(GL_DEPTH_FUNC, &curDepthFunc);
+        fprintf(stderr,
+                "[WATER_FAST v1] event=first_draw prog=%u recipeBuf=%u "
+                "thin=%u baseGosH=%u baseGLTex=%u detailGosH=%u detailGLTex=%u "
+                "VAO=%d FBO=%d viewport=[%d,%d,%d,%d] depthTest=%d cullFace=%d depthFunc=0x%x\n",
+                (unsigned)prog, (unsigned)recipeBuf,
+                (unsigned)thinCount,
+                (unsigned)waterGosHandle, (unsigned)baseTex,
+                (unsigned)waterDetailGosHandle, (unsigned)detailTex,
+                curVAO, curFBO, curVP[0], curVP[1], curVP[2], curVP[3],
+                depthTest, cullFace, (unsigned)curDepthFunc);
+        fflush(stderr);
+    }
+
+    const GLsizei drawVerts = (GLsizei)(thinCount * 6u);
+
+    // --- Base water layer ---
+    if (baseTex != 0) {
+        glActiveTexture(GL_TEXTURE0);
+        glBindTexture(GL_TEXTURE_2D, baseTex);
+
+        setI("isWater",    1);
+        setI("detailMode", 0);
+        setF("uvScale",    oneOverTF);
+        setVec2("uvOffset", cloudOffsetX, cloudOffsetY);
+
+        glDrawArrays(GL_TRIANGLES, 0, drawVerts);
+        // GL error diagnostic (silent on success — base_draw_ok was confirmed
+        // during Stage 2 bring-up; only print on actual error from here on).
+        {
+            GLenum err = glGetError();
+            if (err != GL_NO_ERROR) {
+                static bool s_errPrinted = false;
+                if (!s_errPrinted) {
+                    s_errPrinted = true;
+                    fprintf(stderr, "[WATER_FAST v1] event=base_draw_gl_err err=0x%x verts=%d\n",
+                            (unsigned)err, (int)drawVerts);
+                    fflush(stderr);
+                }
+            }
+        }
+    }
+
+    // --- Detail/spray layer ---
+    if (detailTex != 0) {
+        glActiveTexture(GL_TEXTURE0);
+        glBindTexture(GL_TEXTURE_2D, detailTex);
+
+        setI("isWater",    2);
+        setI("detailMode", 1);
+        setF("uvScale",    oneOverWaterTF);
+        setVec2("uvOffset", sprayOffsetX, sprayOffsetY);
+
+        glDrawArrays(GL_TRIANGLES, 0, drawVerts);
+    }
+
+    // Restore GL state to what it was before this function ran.
+    glBindBufferBase(GL_SHADER_STORAGE_BUFFER, 5, 0);
+    glBindBufferBase(GL_SHADER_STORAGE_BUFFER, 6, 0);
+    glBindSampler(0, savedSampler);
+    glDepthMask(savedDepthMask);
+    glDepthFunc((GLenum)savedDepthFunc);
+    if (!savedDepthTest) glDisable(GL_DEPTH_TEST);
+    if (!savedBlend) glDisable(GL_BLEND);
+    glBlendFunc((GLenum)savedSrcRGB, (GLenum)savedDstRGB);
+    glUseProgram((GLuint)savedProgram);
+    glBindVertexArray((GLuint)savedVAO);
+}
+
 // ──────────────────────────────────────────────────────────────────────────
 
 static GLuint gVAO = 0;
@@ -2045,6 +2371,26 @@ void gosRenderer::init() {
         else
             printf("[THIN_TERRAIN] Thin terrain shader loaded: prog=%u\n",
                    (unsigned)thin_terrain_prog_->shp_);
+        fflush(stdout);
+    }
+
+    // Load water fast-path program (Stage 2 of renderWater architectural slice).
+    // Pairs the new VS that consumes WaterRecipe + WaterFrame SSBOs with the
+    // existing gos_tex_vertex.frag (preserves pixel-stable water visuals).
+    {
+        ZoneScopedN("gosRenderer::init waterFastProg");
+        static const char* kWaterFastPrefix = "#version 430\n";
+        water_fast_prog_ = glsl_program::makeProgram(
+            "gos_terrain_water_fast",
+            "shaders/gos_terrain_water_fast.vert",
+            "shaders/gos_tex_vertex.frag",
+            kWaterFastPrefix);
+        if (!water_fast_prog_ || !water_fast_prog_->shp_)
+            fprintf(stderr, "[WATER_FAST] WARNING: failed to compile water-fast shader"
+                            " — MC2_RENDER_WATER_FASTPATH=1 will fall back to legacy\n");
+        else
+            printf("[WATER_FAST] Water-fast shader loaded: prog=%u\n",
+                   (unsigned)water_fast_prog_->shp_);
         fflush(stdout);
     }
 

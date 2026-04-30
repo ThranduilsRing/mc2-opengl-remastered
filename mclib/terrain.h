@@ -220,6 +220,11 @@ class Terrain
 		long update (void);
 		void render (void);
 		void renderWater (void);
+		// Stage 2 of renderWater architectural slice: GPU water fast path.
+		// Called AFTER mcTextureManager->renderLists() so terrain has been
+		// flushed and depth-written before water alpha-blends on top.
+		// No-op when MC2_RENDER_WATER_FASTPATH is unset.
+		void renderWaterFastPath (void);
 		
 		void geometry (void);
 		void primeMissionTerrainCache (volatile float& progress, float progressRange);

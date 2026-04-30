@@ -32,6 +32,14 @@
 #endif
 
 #include"../GameOS/gameos/gos_profiler.h"
+#include"../GameOS/gameos/gos_terrain_water_stream.h"
+#include"../GameOS/gameos/gos_terrain_bridge.h"
+
+// Externals from quad.cpp / mapdata.cpp / mechcmd2.cpp used by the water fast path.
+extern float MaxMinUV;
+extern float cloudScrollX;
+extern float cloudScrollY;
+extern long  sprayFrame;
 
 #ifndef CIDENT_H
 #include"cident.h"
@@ -575,6 +583,17 @@ void Terrain::primeMissionTerrainCache (volatile float& progress, float progress
 		ZoneScopedN("Terrain::primeMissionTerrainCache warm");
 		mapData->warmTerrainFaceCacheResidency(&progress, warmRange);
 	}
+
+	// Stage 2 of the renderWater architectural slice (CPU→GPU offload):
+	// build the static, map-keyed WaterRecipe array. Iterates MapData::blocks
+	// directly (mission-immutable) — independent of quadList which is
+	// camera-windowed and reshuffles each frame. Spec:
+	// docs/superpowers/specs/2026-04-29-renderwater-fastpath-design.md.
+	{
+		ZoneScopedN("Terrain::primeMissionTerrainCache water_stream_build");
+		WaterStream::Reset();
+		WaterStream::Build();
+	}
 }
 
 //---------------------------------------------------------------------------
@@ -974,20 +993,175 @@ void Terrain::render (void)
 //---------------------------------------------------------------------------
 void Terrain::renderWater (void)
 {
+	ZoneScopedN("Terrain::renderWater");
+
+	// MC2_WATER_DEBUG=1: post-warmup population recon for the renderWater slice.
+	// Reports per-frame how many quads are pure-skip (waterHandle == 0xffffffff,
+	// out-of-frustum or non-water by map data) vs handle-valid (the upper bound
+	// on the actually-emitting subset). Mirrors the MC2_THIN_DEBUG pattern in
+	// quad.cpp: prints 5 frames after a 1200-frame warmup hold-off, then dormant.
+	static const bool s_waterDebugOn = (getenv("MC2_WATER_DEBUG") != nullptr);
+	static uint32_t s_total = 0;
+	static uint32_t s_handleValid = 0;
+	static uint32_t s_detailEligibleByHandle = 0;
+	static uint32_t s_framesPrinted = 0;
+	static uint32_t s_frameCounter = 0;
+	static uint64_t s_qpcFreq = 0;
+	static uint64_t s_qpcStart = 0;
+	constexpr uint32_t kWaterWarmupHoldoffFrames = 1200;
+	if (s_waterDebugOn && s_qpcFreq == 0)
+		QueryPerformanceFrequency((LARGE_INTEGER*)&s_qpcFreq);
+	if (s_waterDebugOn)
+		QueryPerformanceCounter((LARGE_INTEGER*)&s_qpcStart);
+
+	// MC2_RENDER_WATER_FASTPATH=1: skip legacy water queueing entirely.
+	// The actual draw runs from Terrain::renderWaterFastPath() AFTER
+	// mcTextureManager->renderLists() has flushed terrain — otherwise
+	// terrain would render OVER our water and overwrite it.
+	static const bool s_fastPath =
+	    (getenv("MC2_RENDER_WATER_FASTPATH") != nullptr);
+	if (s_fastPath
+	    && WaterStream::IsReady()
+	    && WaterStream::GetRecipeCount() > 0
+	    && Terrain::terrainTextures2 != nullptr)
+	{
+		// Skip legacy loop entirely; renderWaterFastPath() does the work.
+		return;
+	}
+
 	//-----------------------------------
 	// Draw resulting terrain quads
 	TerrainQuadPtr currentQuad = quadList;
 
+	const bool collect = s_waterDebugOn && (s_framesPrinted < 5)
+	                     && (s_frameCounter >= kWaterWarmupHoldoffFrames);
+
 	for (long i=0;i<numberQuads;i++)
 	{
+		if (collect)
+		{
+			++s_total;
+			if (currentQuad->waterHandle != 0xffffffff)
+			{
+				++s_handleValid;
+				if (currentQuad->waterDetailHandle != 0xffffffff)
+					++s_detailEligibleByHandle;
+			}
+		}
+
 		if (drawTerrainTiles)
 			currentQuad->drawWater();
-			
+
 		currentQuad++;
+	}
+
+	if (s_waterDebugOn)
+	{
+		uint64_t qpcEnd = 0;
+		QueryPerformanceCounter((LARGE_INTEGER*)&qpcEnd);
+		const uint64_t elapsedTicks = qpcEnd - s_qpcStart;
+		const double elapsedUs = (s_qpcFreq > 0)
+		    ? (1000000.0 * (double)elapsedTicks / (double)s_qpcFreq)
+		    : 0.0;
+		if (s_framesPrinted < 5)
+		{
+			++s_frameCounter;
+			if (s_frameCounter >= kWaterWarmupHoldoffFrames)
+			{
+				fprintf(stderr,
+				        "[WATER_DEBUG v1] event=population frame=%u (post-warmup) "
+				        "total=%u handle_valid=%u detail_eligible=%u "
+				        "elapsed_us=%.1f\n",
+				        s_framesPrinted, s_total, s_handleValid,
+				        s_detailEligibleByHandle, elapsedUs);
+				fflush(stderr);
+				s_total = s_handleValid = s_detailEligibleByHandle = 0;
+				++s_framesPrinted;
+			}
+		}
 	}
 }
 
-float cosineEyeHalfFOV = 0.0f; 
+//---------------------------------------------------------------------------
+// Stage 2 of renderWater architectural slice. Called from gamecam.cpp AFTER
+// mcTextureManager->renderLists() so terrain has been flushed and
+// depth-written. This is required for the alpha-blend-on-top semantics:
+// running fast-path INSIDE renderWater() (before renderLists) means terrain
+// hasn't drawn yet and overwrites our water.
+void Terrain::renderWaterFastPath (void)
+{
+	static const bool s_fastPath =
+	    (getenv("MC2_RENDER_WATER_FASTPATH") != nullptr);
+	if (!s_fastPath) return;
+	if (!WaterStream::IsReady()) return;
+	if (WaterStream::GetRecipeCount() == 0) return;
+	if (!Terrain::terrainTextures2) return;
+
+	ZoneScopedN("Terrain::renderWaterFastPath");
+
+	// getWater*Handle() returns mcTextureManager's textureIndex (master node
+	// id), NOT the engine's gosTextureHandle. tex_resolve() chases the lazy
+	// first-touch indirection — same pattern as M2d overlay at quad.cpp:2084.
+	const DWORD waterTexIdx =
+	    Terrain::terrainTextures2->getWaterTextureHandle();
+	const DWORD waterDetailTexIdx =
+	    Terrain::terrainTextures2->getWaterDetailHandle(sprayFrame);
+	const DWORD waterTexHandle =
+	    (waterTexIdx != 0xffffffff) ? tex_resolve(waterTexIdx) : 0u;
+	const DWORD waterDetailTexHandle =
+	    (waterDetailTexIdx != 0xffffffff) ? tex_resolve(waterDetailTexIdx) : 0xffffffffu;
+
+	const float oneOverWaterTF =
+	    Terrain::terrainTextures2->getWaterDetailTilingFactor()
+	    / Terrain::worldUnitsMapSide;
+	const float oneOverTF =
+	    Terrain::terrainTextures2->getWaterTextureTilingFactor()
+	    / Terrain::worldUnitsMapSide;
+
+	const float cloudOffsetX =
+	    cosf(360.0f * DEGREES_TO_RADS * 32.0f * cloudScrollX) * 0.1f;
+	const float cloudOffsetY =
+	    sinf(360.0f * DEGREES_TO_RADS * 32.0f * cloudScrollY) * 0.1f;
+	const float sprayOffsetX = cloudScrollX * 10.0f;
+	const float sprayOffsetY = cloudScrollY * 10.0f;
+
+	{
+		static bool s_dumped = false;
+		if (!s_dumped && getenv("MC2_WATER_STREAM_DEBUG") != nullptr) {
+			s_dumped = true;
+			fprintf(stderr,
+			        "[WATER_FAST v1] event=alpha_uniforms waterElevation=%.3f "
+			        "alphaDepth=%.3f alphaEdgeByte=%u alphaMiddleByte=%u alphaDeepByte=%u\n",
+			        (double)Terrain::waterElevation, (double)MapData::alphaDepth,
+			        (unsigned)((Terrain::alphaEdge   >> 24) & 0xFFu),
+			        (unsigned)((Terrain::alphaMiddle >> 24) & 0xFFu),
+			        (unsigned)((Terrain::alphaDeep   >> 24) & 0xFFu));
+			fflush(stderr);
+		}
+	}
+	gos_terrain_bridge_renderWaterFast(
+	    WaterStream::GetRecipeCount(),
+	    (unsigned int)waterTexHandle,
+	    (unsigned int)waterDetailTexHandle,
+	    Terrain::waterElevation,
+	    MapData::alphaDepth,
+	    (unsigned int)((Terrain::alphaEdge   >> 24) & 0xFFu),
+	    (unsigned int)((Terrain::alphaMiddle >> 24) & 0xFFu),
+	    (unsigned int)((Terrain::alphaDeep   >> 24) & 0xFFu),
+	    Terrain::mapTopLeft3d.x,
+	    Terrain::mapTopLeft3d.y,
+	    Terrain::frameCos,
+	    Terrain::frameCosAlpha,
+	    oneOverTF,
+	    oneOverWaterTF,
+	    cloudOffsetX,
+	    cloudOffsetY,
+	    sprayOffsetX,
+	    sprayOffsetY,
+	    MaxMinUV);
+}
+
+float cosineEyeHalfFOV = 0.0f;
 #define MAX_CAMERA_RADIUS		(250.0f)
 #define CLIP_THRESHOLD_DISTANCE	(768.0f)
 

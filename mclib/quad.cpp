@@ -667,6 +667,7 @@ void TerrainQuad::setupTextures (void)
 		(vertices[2]->pVertex->water & 1) ||
 		(vertices[3]->pVertex->water & 1))
 	{
+		ZoneScopedN("setupTextures water vertex projection");
 		Stuff::Vector3D vertex3D(vertices[0]->vx,vertices[0]->vy,Terrain::waterElevation);
 		Stuff::Vector4D screenPos;
 

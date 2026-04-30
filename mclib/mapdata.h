@@ -73,8 +73,14 @@ class MapData : public HeapManager
 		PostcompVertexPtr			blankVertex;
 		struct WorldQuadTerrainCacheEntry* terrainFaceCache;
 		int							hasSelection;
-									
+
 	public:
+		// Read-only accessor for the static per-mission vertex array.
+		// Used by gos_terrain_water_stream Stage 2 to build the static
+		// water recipe directly from map-stable data (instead of from
+		// the camera-windowed quadList which reshuffles each frame).
+		PostcompVertexPtr getBlocks (void) const { return blocks; }
+
 		enum TerrainFaceCacheFlags
 		{
 			TERRAIN_CACHE_VALID = 0x01,
