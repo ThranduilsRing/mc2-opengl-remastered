@@ -3024,8 +3024,29 @@ int gosRenderer::terrainBindThinUniformsForPatchStream()
         glUniformMatrix4fv(tl.terrainMVP, 1, GL_FALSE, (const float*)&terrain_mvp_);
     if (tl.terrainViewport >= 0)
         glUniform4fv(tl.terrainViewport, 1, (const float*)&terrain_viewport_);
+    // projection_: row-major Stuff matrix — upload GL_TRUE (column-major interpretation).
+    // All other projection_ upload sites (shadow line ~2737, material setTransform) use GL_TRUE.
+    // terrainMVP stays GL_FALSE — its D3D chain math cancels the implicit transpose.
     if (tl.mvp >= 0)
-        glUniformMatrix4fv(tl.mvp, 1, GL_FALSE, (const float*)&projection_);
+        glUniformMatrix4fv(tl.mvp, 1, GL_TRUE, (const float*)&projection_);
+
+    static const bool s_thinDebug   = (getenv("MC2_THIN_DEBUG") != nullptr);
+    static bool       s_thinDbgDone = false;
+    if (s_thinDebug && !s_thinDbgDone && terrain_mvp_valid_) {
+        s_thinDbgDone = true;
+        const float* p = (const float*)&projection_;
+        const float* m = (const float*)&terrain_mvp_;
+        fprintf(stderr,
+            "[THIN_DEBUG v1] event=thin_uniforms_bound "
+            "proj_row0=[%.5f,%.5f,%.5f,%.5f] proj_row1=[%.5f,%.5f,%.5f,%.5f] "
+            "tmvp_diag=[%.5f,%.5f,%.5f,%.5f] "
+            "vp=[%.1f,%.1f,%.1f,%.1f]\n",
+            p[0], p[1], p[2], p[3], p[4], p[5], p[6], p[7],
+            m[0], m[5], m[10], m[15],
+            terrain_viewport_.x, terrain_viewport_.y,
+            terrain_viewport_.z, terrain_viewport_.w);
+        fflush(stderr);
+    }
 
     // FS uniforms (same as terrainBindUniformsForPatchStream, minus tess-only params)
     if (tl.cameraPos >= 0)        glUniform4fv(tl.cameraPos, 1, (const float*)&terrain_camera_pos_);

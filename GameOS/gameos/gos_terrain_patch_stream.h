@@ -200,6 +200,15 @@ public:
     // Returns recipe slot index, or UINT32_MAX on overflow — caller must skip emit.
     static uint32_t ensureRecipeForQuad(uint64_t floatKey, const TerrainQuadRecipe& recipe);
 
+    // Cache-only peek: returns the recipe slot index if `floatKey` is already cached,
+    // UINT32_MAX otherwise. Allows callers to avoid building the full recipe when it
+    // would be discarded on a hit. ~99% of quads hit the cache after warmup, so the
+    // recipe build's ~20 cold-cache reads through `vertices[c]->pVertex->...` and the
+    // ~30 stack stores are pure waste on the hot path. Caller pattern:
+    //   uint32_t idx = TerrainPatchStream::tryGetRecipeIdx(key);
+    //   if (idx == UINT32_MAX) { build recipe; idx = ensureRecipeForQuad(key, recipe); }
+    static uint32_t tryGetRecipeIdx(uint64_t floatKey);
+
     // Write pre-built thin record directly to shadow array. tr.recipeIdx must be valid.
     // Mirrors all guards of appendThinRecord; increments parity counter.
     static void appendThinRecordDirect(const TerrainQuadThinRecord& tr);

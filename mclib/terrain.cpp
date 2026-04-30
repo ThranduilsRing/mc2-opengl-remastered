@@ -903,50 +903,71 @@ void Terrain::render (void)
 		Terrain::cloudLayer->render();
 	
 	//-----------------------------------
-	// Draw resulting terrain quads
-	TerrainQuadPtr currentQuad = quadList;
+	// Draw resulting terrain quads. Loop split into 3 passes (draw / drawMine /
+	// debugOverlays) so each gets its own Tracy zone — one zone per pass instead
+	// of ~14K per-quad zones.
 	DWORD fogColor = eye->fogColor;
 
-	for (long i=0;i<numberQuads;i++)
+	if (drawTerrainTiles)
 	{
-		if (drawTerrainTiles)
+		ZoneScopedN("Terrain::render drawPass");
+		TerrainQuadPtr currentQuad = quadList;
+		for (long i = 0; i < numberQuads; i++)
+		{
+			// M2b loop-level pure-water hoist: skip the function call entirely for
+			// quads with no base terrain, no overlay, and no detail handle. ~28K
+			// quads/frame on water-heavy maps. Mirror of the in-draw() early-exit;
+			// the in-function check is the fallback if useOverlayTexture /
+			// useWaterInterestTexture globals get toggled at runtime.
+			if (currentQuad->terrainHandle == 0
+			    && currentQuad->overlayHandle == 0xffffffff
+			    && currentQuad->terrainDetailHandle == 0xffffffff)
+			{
+				currentQuad++;
+				continue;
+			}
 			currentQuad->draw();
-			
-		if (drawTerrainTiles)
+			currentQuad++;
+		}
+	}
+
+	if (drawTerrainTiles)
+	{
+		ZoneScopedN("Terrain::render minePass");
+		TerrainQuadPtr currentQuad = quadList;
+		for (long i = 0; i < numberQuads; i++)
+		{
 			currentQuad->drawMine();
-			
-		//--------------------------
-		// Used to debug stuff
-		if (drawTerrainGrid)
-		{
-			if (useFog)
-				gos_SetRenderState( gos_State_Fog, 0);
-
-			currentQuad->drawLine();
-
-			if (useFog)
-				gos_SetRenderState( gos_State_Fog, fogColor);
+			currentQuad++;
 		}
-		else if (DrawDebugCells) 
-		{
-			if (useFog)
-				gos_SetRenderState( gos_State_Fog, 0);
-			currentQuad->drawDebugCellLine();
-			if (useFog)
-				gos_SetRenderState( gos_State_Fog, fogColor);
-		}
-		else if (drawLOSGrid)
-		{
-			if (useFog)
-				gos_SetRenderState( gos_State_Fog, 0);
+	}
 
-			currentQuad->drawLOSLine();
-
-			if (useFog)
-				gos_SetRenderState( gos_State_Fog, fogColor);
+	if (drawTerrainGrid || DrawDebugCells || drawLOSGrid)
+	{
+		ZoneScopedN("Terrain::render debugOverlays");
+		TerrainQuadPtr currentQuad = quadList;
+		for (long i = 0; i < numberQuads; i++)
+		{
+			if (drawTerrainGrid)
+			{
+				if (useFog) gos_SetRenderState(gos_State_Fog, 0);
+				currentQuad->drawLine();
+				if (useFog) gos_SetRenderState(gos_State_Fog, fogColor);
+			}
+			else if (DrawDebugCells)
+			{
+				if (useFog) gos_SetRenderState(gos_State_Fog, 0);
+				currentQuad->drawDebugCellLine();
+				if (useFog) gos_SetRenderState(gos_State_Fog, fogColor);
+			}
+			else if (drawLOSGrid)
+			{
+				if (useFog) gos_SetRenderState(gos_State_Fog, 0);
+				currentQuad->drawLOSLine();
+				if (useFog) gos_SetRenderState(gos_State_Fog, fogColor);
+			}
+			currentQuad++;
 		}
-		
-		currentQuad++;
 	}
 }
 

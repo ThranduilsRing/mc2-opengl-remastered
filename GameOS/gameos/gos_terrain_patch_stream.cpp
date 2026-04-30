@@ -66,6 +66,8 @@ namespace {
     static const bool s_thinRecordsOn     = (getenv("MC2_PATCHSTREAM_THIN_RECORDS")      != nullptr);
     static const bool s_thinRecordsDrawOn = (getenv("MC2_PATCHSTREAM_THIN_RECORDS_DRAW") != nullptr);
     static const bool s_fastPathOn        = (getenv("MC2_PATCHSTREAM_THIN_RECORD_FASTPATH") != nullptr);
+    static const bool s_thinDebugOn       = (getenv("MC2_THIN_DEBUG") != nullptr);
+    static bool       s_thinDebugPrinted  = false;
 
     // Recipe SSBO — single-buffered, persistent-mapped. Written once per new quad.
     // Not slot-indexed; recipeIdx is global across all ring slots.
@@ -758,6 +760,13 @@ void TerrainPatchStream::addRecordVertParity(uint32_t n) {
     s_recordVertParity += n;
 }
 
+uint32_t TerrainPatchStream::tryGetRecipeIdx(uint64_t key) {
+    if (!s_thinRecordsOn || !s_thinRecordBuf || !s_recipeBuf) return UINT32_MAX;
+    if (!s_initOk || !s_killswitch) return UINT32_MAX;
+    auto it = s_recipeIndex.find(key);
+    return (it != s_recipeIndex.end()) ? it->second : UINT32_MAX;
+}
+
 uint32_t TerrainPatchStream::ensureRecipeForQuad(uint64_t key,
                                                   const TerrainQuadRecipe& recipe) {
     if (!s_thinRecordsOn || !s_thinRecordBuf || !s_recipeBuf) return UINT32_MAX;
@@ -1378,6 +1387,23 @@ bool TerrainPatchStream::flush()
                s_thinRecordCount * sizeof(TerrainQuadThinRecord));
         }
 
+        // MC2_THIN_DEBUG: log first recipe + first thin-record once per session.
+        if (s_thinDebugOn && !s_thinDebugPrinted && s_recipeCount > 0 && s_recipeMap) {
+            s_thinDebugPrinted = true;
+            const auto* recipes = static_cast<const TerrainQuadRecipe*>(s_recipeMap);
+            const TerrainQuadThinRecord& tr0 = thinSortedTmp[0];
+            fprintf(stderr,
+                "[THIN_DEBUG v1] event=flush_begin "
+                "slot=%u thin_count=%u recipe_count=%u slot_base=%u "
+                "recipe0: wx=%.2f wy=%.2f wz=%.2f minU=%.4f maxU=%.4f "
+                "thin0: recipeIdx=%u flags=0x%x\n",
+                s_slot, s_thinRecordCount, s_recipeCount, slotFirstThinRec,
+                recipes[0].wx0, recipes[0].wy0, recipes[0].wz0,
+                recipes[0].minU, recipes[0].maxU,
+                tr0.recipeIdx, tr0.flags);
+            fflush(stderr);
+        }
+
         // M1g: draw via dedicated thin VS + GL_TRIANGLES (no tessellation overhead).
         unsigned int thinProg = gos_terrain_bridge_getThinShaderProgram();
         if (thinProg != 0) {
@@ -1432,7 +1458,9 @@ bool TerrainPatchStream::flush()
         // thin expected count instead so parity is always true in thin-only mode.
         const uint32_t thinExpected = hasExpanded ? s_totalVerts : s_thinRecordVertParity;
         const bool thinParityOk = (s_thinRecordVertParity == thinExpected);
-        if (s_traceOn || !thinParityOk) {
+        // Parity-success spam silenced — only print on actual mismatch. Was previously
+        // gated on s_traceOn which is also load-bearing for other unrelated traces.
+        if (!thinParityOk) {
             fprintf(stderr,
                 "[PATCH_STREAM v1] event=thin_record_parity slot=%u "
                 "thin_records=%u thin_verts=%u expanded_verts=%u match=%d "

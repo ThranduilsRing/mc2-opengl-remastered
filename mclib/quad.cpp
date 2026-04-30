@@ -1637,24 +1637,43 @@ void TerrainQuad::draw (void)
 	{
 		numTerrainFaces++;
 
+		// M2b: pure-water early-exit. Quads with no base terrain texture, no overlay,
+		// and no water-interest detail have nothing to emit here — addVertices, appendQuad,
+		// the M2 fast-path emit, and overlay/detail draws are all gated on these
+		// conditions. Water surface is rendered separately by Terrain::renderWater().
+		// On water-heavy maps (mc2_01 ~75% water) this skips ~28K wasted iterations/frame.
+		// Most pure-water quads are loop-hoisted in Terrain::render (terrain.cpp); this
+		// is the in-function fallback for when the global useOverlayTexture /
+		// useWaterInterestTexture flags get toggled and the loop check no longer matches.
+		if (terrainHandle == 0
+		    && !(useOverlayTexture && overlayHandle != 0xffffffff)
+		    && !(useWaterInterestTexture && terrainDetailHandle != 0xffffffff))
+		{
+		    return;
+		}
+
 		//---------------------------------------
 		// GOS 3D draw Calls now!
 
+		// M2b instrumentation: pre-branch setup zone. Wraps gVertex decl, minU/maxU
+		// compute, optional uvData read, camPosition load, fastPathEligible 7-flag
+		// computation (4 PatchStream method calls), and the path_mix counter. This
+		// runs for every quad that didn't pure-water early-exit. Closes at end of
+		// the outer-if scope, so it INCLUDES the fast-path and legacy bodies — but
+		// FP.* and Quad.legacy zones are children, so Tracy will show preBranch self
+		// time = (preBranch total) - (FP.* + Quad.legacy + Legacy.*).
 		gos_VERTEX gVertex[3];
 
         // sebi half pixel, hope this is correct :-)
-		float minU = 0.5f / TERRAIN_TXM_SIZE; //0.00f;
-		float maxU = 1.0f - 0.5f / TERRAIN_TXM_SIZE;//0.9999f;
-								
-		float minV = 0.5f / TERRAIN_TXM_SIZE; //0.00f;
-		float maxV = 1.0f - 0.5f / TERRAIN_TXM_SIZE; //0.9999f;
-		
+		float minU = 0.5f / TERRAIN_TXM_SIZE;
+		float maxU = 1.0f - 0.5f / TERRAIN_TXM_SIZE;
+		float minV = 0.5f / TERRAIN_TXM_SIZE;
+		float maxV = 1.0f - 0.5f / TERRAIN_TXM_SIZE;
 		float oldminU = 0.0078125f;
 		float oldmaxU = 0.9921875f;
-
 		float oldminV = 0.0078125f;
 		float oldmaxV = 0.9921875f;
- 		
+
 		if (Terrain::terrainTextures2 && !(overlayHandle == 0xffffffff && isCement))
 		{
 			minU = uvData.minU;
@@ -1666,15 +1685,76 @@ void TerrainQuad::draw (void)
 		Stuff::Point3D camPosition;
 		camPosition = *TG_Shape::s_cameraOrigin;
 
-		// === M2: direct thin-record emit — no gos_VERTEX construction ===
-		// Bypass fast path for quads that need overlay or detail draws (legacy path handles those).
-		if (TerrainPatchStream::isFastPathActive()
-		        && TerrainPatchStream::isThinRecordsActive()
-		        && TerrainPatchStream::isReady()
-		        && !TerrainPatchStream::isOverflowed()
-		        && terrainHandle != 0
-		        && !(useOverlayTexture && overlayHandle != 0xffffffff)
-		        && !(useWaterInterestTexture && terrainDetailHandle != 0xffffffff))
+		// === M2 fast-path eligibility ===
+		// Quads enter the fast path when:
+		//   (a) terrainHandle != 0           → emit thin record + optional detail
+		//   (b) terrainHandle == 0 + detail  → emit detail only, no thin record
+		// Quads with overlayHandle != 0xffffffff still fall to legacy (M2d-overlay
+		// would absorb them; ~4-5K quads/frame on splatmap-heavy scenes).
+		// Per-gate flags retained so the path_mix diagnostic counter below can
+		// attribute fastPathEligible failures to the specific gate.
+		const bool g_active   = TerrainPatchStream::isFastPathActive();
+		const bool g_thin     = TerrainPatchStream::isThinRecordsActive();
+		const bool g_ready    = TerrainPatchStream::isReady();
+		const bool g_notOver  = !TerrainPatchStream::isOverflowed();
+		const bool g_handle   = (terrainHandle != 0);
+		const bool g_noOverlay= !(useOverlayTexture && overlayHandle != 0xffffffff);
+		const bool g_noWater  = !(useWaterInterestTexture && terrainDetailHandle != 0xffffffff);
+		const bool fastPathEligible =
+		    g_active && g_thin && g_ready && g_notOver && g_noOverlay
+		    && (g_handle || !g_noWater);
+
+		// MC2_THIN_DEBUG=1: per-gate fail counts to pinpoint which condition is culling
+		// most quads from the fast path. Demoted to silent-by-default per CLAUDE.md
+		// debug-instrumentation rule. Holds off until ~frame 1200 to skip warmup load
+		// and capture steady-state. Prints 5 frames then stops; per-quad cost is one
+		// branch on s_framesPrinted after that (effectively zero).
+		{
+		    static const bool s_pathMixOn = (getenv("MC2_THIN_DEBUG") != nullptr);
+		    static uint32_t s_fast = 0, s_legacy = 0;
+		    static uint32_t s_failActive = 0, s_failThin = 0, s_failReady = 0, s_failOver = 0;
+		    static uint32_t s_failHandle = 0, s_failOverlay = 0, s_failWater = 0;
+		    static uint32_t s_framesPrinted = 0;
+		    static uint32_t s_quadsThisFrame = 0;
+		    static uint32_t s_frameCounter = 0;
+		    constexpr uint32_t kWarmupHoldoffFrames = 1200;  // ~15s @ 80fps
+		    if (s_pathMixOn && s_framesPrinted < 5) {
+		        const bool warmedUp = (s_frameCounter >= kWarmupHoldoffFrames);
+		        if (warmedUp) {
+		            if (fastPathEligible) ++s_fast;
+		            else {
+		                ++s_legacy;
+		                if      (!g_active)    ++s_failActive;
+		                else if (!g_thin)      ++s_failThin;
+		                else if (!g_ready)     ++s_failReady;
+		                else if (!g_notOver)   ++s_failOver;
+		                else if (!g_handle)    ++s_failHandle;
+		                else if (!g_noOverlay) ++s_failOverlay;
+		                else if (!g_noWater)   ++s_failWater;
+		            }
+		        }
+		        if (++s_quadsThisFrame >= 14000) {
+		            ++s_frameCounter;
+		            if (warmedUp) {
+		                fprintf(stderr,
+		                    "[THIN_DEBUG v1] event=path_mix frame=%u (post-warmup) fast=%u legacy=%u "
+		                    "fail_active=%u fail_thin=%u fail_ready=%u fail_over=%u "
+		                    "fail_handle0=%u fail_overlay=%u fail_water=%u\n",
+		                    s_framesPrinted, s_fast, s_legacy,
+		                    s_failActive, s_failThin, s_failReady, s_failOver,
+		                    s_failHandle, s_failOverlay, s_failWater);
+		                fflush(stderr);
+		                s_fast = s_legacy = 0;
+		                s_failActive = s_failThin = s_failReady = s_failOver = 0;
+		                s_failHandle = s_failOverlay = s_failWater = 0;
+		                ++s_framesPrinted;
+		            }
+		            s_quadsThisFrame = 0;
+		        }
+		    }
+		}
+
+		if (fastPathEligible)
 		{
 		    // pz validity — vertices[c]->pz is pre-projected by the camera transform pass.
 		    // Range [0,1) is in-clip; outside is behind-camera or far-clipped.
@@ -1697,57 +1777,149 @@ void TerrainQuad::draw (void)
 
 		    if (!pzTri1 && !pzTri2) return;  // both culled — skip entirely
 
-		    // isCement/isAlpha from corner 0 textureData (same as legacy path)
-		    bool isCement = Terrain::terrainTextures->isCement(vertices[0]->pVertex->textureData & 0x0000ffff);
-		    bool isAlpha  = Terrain::terrainTextures->isAlpha(vertices[0]->pVertex->textureData & 0x0000ffff);
-		    bool alphaOverride = Terrain::terrainTextures2 && (!isCement || isAlpha);
-
-		    // effectiveLightRGB: alphaOverride first, then selected (matching legacy priority)
-		    auto lightRGBc = [&](int c) -> uint32_t {
-		        DWORD lc = vertices[c]->lightRGB;
-		        if (alphaOverride) lc = 0xffffffffu;
-		        if (vertices[c]->pVertex->selected) lc = static_cast<DWORD>(SELECTION_COLOR);
-		        return static_cast<uint32_t>(lc);
-		    };
-
-		    // Build recipe — same fields as both legacy call sites
-		    TerrainQuadRecipe recipe;
-		    recipe.wx0=vertices[0]->vx; recipe.wy0=vertices[0]->vy; recipe.wz0=vertices[0]->pVertex->elevation; recipe._wp0=0.f;
-		    recipe.wx1=vertices[1]->vx; recipe.wy1=vertices[1]->vy; recipe.wz1=vertices[1]->pVertex->elevation; recipe._wp1=0.f;
-		    recipe.wx2=vertices[2]->vx; recipe.wy2=vertices[2]->vy; recipe.wz2=vertices[2]->pVertex->elevation; recipe._wp2=0.f;
-		    recipe.wx3=vertices[3]->vx; recipe.wy3=vertices[3]->vy; recipe.wz3=vertices[3]->pVertex->elevation; recipe._wp3=0.f;
-		    recipe.nx0=vertices[0]->pVertex->vertexNormal.x; recipe.ny0=vertices[0]->pVertex->vertexNormal.y; recipe.nz0=vertices[0]->pVertex->vertexNormal.z; recipe._np0=0.f;
-		    recipe.nx1=vertices[1]->pVertex->vertexNormal.x; recipe.ny1=vertices[1]->pVertex->vertexNormal.y; recipe.nz1=vertices[1]->pVertex->vertexNormal.z; recipe._np1=0.f;
-		    recipe.nx2=vertices[2]->pVertex->vertexNormal.x; recipe.ny2=vertices[2]->pVertex->vertexNormal.y; recipe.nz2=vertices[2]->pVertex->vertexNormal.z; recipe._np2=0.f;
-		    recipe.nx3=vertices[3]->pVertex->vertexNormal.x; recipe.ny3=vertices[3]->pVertex->vertexNormal.y; recipe.nz3=vertices[3]->pVertex->vertexNormal.z; recipe._np3=0.f;
-		    recipe.minU=minU; recipe.minV=minV; recipe.maxU=maxU; recipe.maxV=maxV;
-
-		    // Pack 4 corner material types into _wp0 — bit-preserving write; shader reads via floatBitsToUint
+		    // === Thin-record emit path (terrainHandle != 0 only) ===
+		    // Detail-only quads (terrainHandle == 0 + has detail) skip this entire block
+		    // and go straight to the M2c detail emit below. The thin record is a base-
+		    // texture submission; quads without a base texture have nothing to put in it.
+		    if (terrainHandle != 0)
 		    {
-		        uint32_t m0 = terrainTypeToMaterial(vertices[0]->pVertex->terrainType);
-		        uint32_t m1 = terrainTypeToMaterial(vertices[1]->pVertex->terrainType);
-		        uint32_t m2 = terrainTypeToMaterial(vertices[2]->pVertex->terrainType);
-		        uint32_t m3 = terrainTypeToMaterial(vertices[3]->pVertex->terrainType);
-		        uint32_t tpacked = m0 | (m1 << 8) | (m2 << 16) | (m3 << 24);
-		        memcpy(&recipe._wp0, &tpacked, 4);
+		        const bool isCement = Terrain::terrainTextures->isCement(vertices[0]->pVertex->textureData & 0x0000ffff);
+		        const bool isAlpha  = Terrain::terrainTextures->isAlpha(vertices[0]->pVertex->textureData & 0x0000ffff);
+		        const bool alphaOverride = Terrain::terrainTextures2 && (!isCement || isAlpha);
+
+		        // effectiveLightRGB: alphaOverride first, then selected (matching legacy priority)
+		        auto lightRGBc = [&](int c) -> uint32_t {
+		            DWORD lc = vertices[c]->lightRGB;
+		            if (alphaOverride) lc = 0xffffffffu;
+		            if (vertices[c]->pVertex->selected) lc = static_cast<DWORD>(SELECTION_COLOR);
+		            return static_cast<uint32_t>(lc);
+		        };
+
+		        // Lazy recipe build: peek the cache first using only corner-0 (wx0, wy0).
+		        // ~99% of quads hit the cache after warmup; building the full recipe (~20
+		        // cold reads through vertices[c]->pVertex->{elevation, vertexNormal,
+		        // terrainType}, ~30 stack stores, 4× terrainTypeToMaterial, bit-pack +
+		        // memcpy) on a hit is pure waste — ensureRecipeForQuad discards `recipe`
+		        // on hit. Build it only on miss.
+		        const float wx0 = vertices[0]->vx;
+		        const float wy0 = vertices[0]->vy;
+		        const uint64_t recipeKey = TerrainPatchStream::makeRecipeKey(wx0, wy0);
+		        uint32_t recipeIdx = TerrainPatchStream::tryGetRecipeIdx(recipeKey);
+		        if (recipeIdx == UINT32_MAX)
+		        {
+		            TerrainQuadRecipe recipe;
+		            recipe.wx0=wx0;             recipe.wy0=wy0;             recipe.wz0=vertices[0]->pVertex->elevation; recipe._wp0=0.f;
+		            recipe.wx1=vertices[1]->vx; recipe.wy1=vertices[1]->vy; recipe.wz1=vertices[1]->pVertex->elevation; recipe._wp1=0.f;
+		            recipe.wx2=vertices[2]->vx; recipe.wy2=vertices[2]->vy; recipe.wz2=vertices[2]->pVertex->elevation; recipe._wp2=0.f;
+		            recipe.wx3=vertices[3]->vx; recipe.wy3=vertices[3]->vy; recipe.wz3=vertices[3]->pVertex->elevation; recipe._wp3=0.f;
+		            recipe.nx0=vertices[0]->pVertex->vertexNormal.x; recipe.ny0=vertices[0]->pVertex->vertexNormal.y; recipe.nz0=vertices[0]->pVertex->vertexNormal.z; recipe._np0=0.f;
+		            recipe.nx1=vertices[1]->pVertex->vertexNormal.x; recipe.ny1=vertices[1]->pVertex->vertexNormal.y; recipe.nz1=vertices[1]->pVertex->vertexNormal.z; recipe._np1=0.f;
+		            recipe.nx2=vertices[2]->pVertex->vertexNormal.x; recipe.ny2=vertices[2]->pVertex->vertexNormal.y; recipe.nz2=vertices[2]->pVertex->vertexNormal.z; recipe._np2=0.f;
+		            recipe.nx3=vertices[3]->pVertex->vertexNormal.x; recipe.ny3=vertices[3]->pVertex->vertexNormal.y; recipe.nz3=vertices[3]->pVertex->vertexNormal.z; recipe._np3=0.f;
+		            recipe.minU=minU; recipe.minV=minV; recipe.maxU=maxU; recipe.maxV=maxV;
+
+		            // Pack 4 corner material types into _wp0 — bit-preserving write; shader reads via floatBitsToUint
+		            {
+		                uint32_t m0 = terrainTypeToMaterial(vertices[0]->pVertex->terrainType);
+		                uint32_t m1 = terrainTypeToMaterial(vertices[1]->pVertex->terrainType);
+		                uint32_t m2 = terrainTypeToMaterial(vertices[2]->pVertex->terrainType);
+		                uint32_t m3 = terrainTypeToMaterial(vertices[3]->pVertex->terrainType);
+		                uint32_t tpacked = m0 | (m1 << 8) | (m2 << 16) | (m3 << 24);
+		                memcpy(&recipe._wp0, &tpacked, 4);
+		            }
+
+		            recipeIdx = TerrainPatchStream::ensureRecipeForQuad(recipeKey, recipe);
+		            if (recipeIdx == UINT32_MAX) goto fp_detail_only;  // SSBO full — try detail still
+		        }
+
+		        {
+		            TerrainQuadThinRecord tr;
+		            tr.recipeIdx     = recipeIdx;
+		            tr.terrainHandle = static_cast<uint32_t>(terrainHandle);
+		            tr.flags         = (uvMode == BOTTOMLEFT ? 1u : 0u)
+		                             | (pzTri1 ? 2u : 0u)
+		                             | (pzTri2 ? 4u : 0u);
+		            tr._pad0         = 0u;
+		            tr.lightRGB0     = lightRGBc(0);
+		            tr.lightRGB1     = lightRGBc(1);
+		            tr.lightRGB2     = lightRGBc(2);
+		            tr.lightRGB3     = lightRGBc(3);
+		            TerrainPatchStream::appendThinRecordDirect(tr);
+		        }
+		    }
+		    fp_detail_only:;
+
+		    // M2c: water-interest detail emit. Replaces the legacy detail-draw blocks
+		    // at quad.cpp:1972/2115/2288/2429 — same output, but builds sVertex straight
+		    // from vertices[c] instead of memcpy'ing gVertex and overriding most fields.
+		    // Skipped for non-water-interest quads (the && short-circuits).
+		    // ARGB matches legacy Option A: terrainTextures2 → 0xFFFFFFFFu, else
+		    // vertices[c]->lightRGB (NO `selected` override on detail tiles, by design).
+		    if (useWaterInterestTexture && terrainDetailHandle != 0xffffffff)
+		    {
+		        const float tilingFactor = Terrain::terrainTextures2
+		            ? Terrain::terrainTextures2->getDetailTilingFactor()
+		            : Terrain::terrainTextures->getDetailTilingFactor(1);
+		        const float oneOverTf = tilingFactor / Terrain::worldUnitsMapSide;
+		        const bool whitenArgb = (Terrain::terrainTextures2 != nullptr);
+
+		        gos_VERTEX corner[4];
+		        for (int c = 0; c < 4; c++) {
+		            corner[c].x    = vertices[c]->px;
+		            corner[c].y    = vertices[c]->py;
+		            corner[c].z    = vertices[c]->pz + TERRAIN_DEPTH_FUDGE;
+		            corner[c].rhw  = vertices[c]->pw;
+		            corner[c].u    = (vertices[c]->vx - Terrain::mapTopLeft3d.x) * oneOverTf;
+		            corner[c].v    = (Terrain::mapTopLeft3d.y - vertices[c]->vy) * oneOverTf;
+		            corner[c].argb = whitenArgb ? 0xFFFFFFFFu : (DWORD)vertices[c]->lightRGB;
+		            corner[c].frgb = (vertices[c]->fogRGB & 0xFFFFFF00u)
+		                           | terrainTypeToMaterial(vertices[c]->pVertex->terrainType);
+		        }
+
+		        auto clampUVs = [](gos_VERTEX* tri) {
+		            if (tri[0].u > MaxMinUV || tri[0].v > MaxMinUV ||
+		                tri[1].u > MaxMinUV || tri[1].v > MaxMinUV ||
+		                tri[2].u > MaxMinUV || tri[2].v > MaxMinUV) {
+		                float maxU = fmax(tri[0].u, fmax(tri[1].u, tri[2].u));
+		                maxU = floor(maxU - (MaxMinUV - 1.0f));
+		                float maxV = fmax(tri[0].v, fmax(tri[1].v, tri[2].v));
+		                maxV = floor(maxV - (MaxMinUV - 1.0f));
+		                tri[0].u -= maxU; tri[1].u -= maxU; tri[2].u -= maxU;
+		                tri[0].v -= maxV; tri[1].v -= maxV; tri[2].v -= maxV;
+		            }
+		        };
+
+		        // Triangle assembly mirrors the thin-record uvMode/pzTri rules.
+		        if (uvMode == BOTTOMLEFT) {
+		            if (pzTri1) {
+		                gos_VERTEX tri[3] = { corner[0], corner[1], corner[3] };
+		                clampUVs(tri);
+		                mcTextureManager->addVertices(terrainDetailHandle, tri,
+		                                              MC2_ISTERRAIN | MC2_DRAWALPHA);
+		            }
+		            if (pzTri2) {
+		                gos_VERTEX tri[3] = { corner[1], corner[2], corner[3] };
+		                clampUVs(tri);
+		                mcTextureManager->addVertices(terrainDetailHandle, tri,
+		                                              MC2_ISTERRAIN | MC2_DRAWALPHA);
+		            }
+		        } else {
+		            // BOTTOMRIGHT (= TOPRIGHT diagonal)
+		            if (pzTri1) {
+		                gos_VERTEX tri[3] = { corner[0], corner[1], corner[2] };
+		                clampUVs(tri);
+		                mcTextureManager->addVertices(terrainDetailHandle, tri,
+		                                              MC2_ISTERRAIN | MC2_DRAWALPHA);
+		            }
+		            if (pzTri2) {
+		                gos_VERTEX tri[3] = { corner[0], corner[2], corner[3] };
+		                clampUVs(tri);
+		                mcTextureManager->addVertices(terrainDetailHandle, tri,
+		                                              MC2_ISTERRAIN | MC2_DRAWALPHA);
+		            }
+		        }
 		    }
 
-		    const uint64_t recipeKey = TerrainPatchStream::makeRecipeKey(recipe.wx0, recipe.wy0);
-		    uint32_t recipeIdx = TerrainPatchStream::ensureRecipeForQuad(recipeKey, recipe);
-		    if (recipeIdx == UINT32_MAX) return;  // SSBO full — skip gracefully
-
-		    TerrainQuadThinRecord tr;
-		    tr.recipeIdx     = recipeIdx;
-		    tr.terrainHandle = static_cast<uint32_t>(terrainHandle);
-		    tr.flags         = (uvMode == BOTTOMLEFT ? 1u : 0u)
-		                     | (pzTri1 ? 2u : 0u)
-		                     | (pzTri2 ? 4u : 0u);
-		    tr._pad0         = 0u;
-		    tr.lightRGB0     = lightRGBc(0);
-		    tr.lightRGB1     = lightRGBc(1);
-		    tr.lightRGB2     = lightRGBc(2);
-		    tr.lightRGB3     = lightRGBc(3);
-		    TerrainPatchStream::appendThinRecordDirect(tr);
 		    return;
 		}
 		// === end M2 branch — legacy path continues below ===
