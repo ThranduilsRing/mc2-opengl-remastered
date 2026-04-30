@@ -212,17 +212,15 @@ static void enqueueTerrainMineState(TerrainQuad& quad)
 				if (localResult == 1)
 				{
 					tex_resolve(TerrainQuad::mineTextureHandle);
-					mcTextureManager->addTriangle(TerrainQuad::mineTextureHandle,MC2_DRAWALPHA);
-					mcTextureManager->addTriangle(TerrainQuad::mineTextureHandle,MC2_DRAWALPHA);
-					
+					mcTextureManager->addTriangleBulk(TerrainQuad::mineTextureHandle, MC2_DRAWALPHA, 2);
+
 					quad.mineResult.setMine(cellPos,localResult);
 				}
 				else if (localResult == 2)
 				{
 					tex_resolve(TerrainQuad::blownTextureHandle);
-					mcTextureManager->addTriangle(TerrainQuad::blownTextureHandle,MC2_DRAWALPHA);
-					mcTextureManager->addTriangle(TerrainQuad::blownTextureHandle,MC2_DRAWALPHA);
-					
+					mcTextureManager->addTriangleBulk(TerrainQuad::blownTextureHandle, MC2_DRAWALPHA, 2);
+
 					quad.mineResult.setMine(cellPos,localResult);
 				}
 			}
@@ -391,7 +389,9 @@ static bool tryGetCachedTerrainRecipe(
 	return true;
 }
 
-// Calls mcTextureManager->addTriangle() for the recipe's handles.
+// Reserves the recipe's terrain triangle pairs via addTriangleBulk — one slot-walk
+// per (handle, flags) tuple instead of two consecutive addTriangle calls each. Output
+// numVertices is mathematically identical to the prior `addTriangle ×2` pattern.
 // Does NOT call pz_emit_terrain_tris -- that stays at the setupTextures() callsite
 // to preserve projectZ callsite identity.
 static void addTerrainTriangles(const TerrainRecipe& r)
@@ -400,35 +400,22 @@ static void addTerrainTriangles(const TerrainRecipe& r)
 	{
 		if (r.terrainHandle != 0)
 		{
-			mcTextureManager->addTriangle(r.terrainHandle, MC2_ISTERRAIN | MC2_DRAWSOLID);
-			mcTextureManager->addTriangle(r.terrainHandle, MC2_ISTERRAIN | MC2_DRAWSOLID);
+			mcTextureManager->addTriangleBulk(r.terrainHandle, MC2_ISTERRAIN | MC2_DRAWSOLID, 2);
 			if (r.terrainDetailHandle != 0xffffffff)
-			{
-				mcTextureManager->addTriangle(r.terrainDetailHandle, MC2_ISTERRAIN | MC2_DRAWALPHA);
-				mcTextureManager->addTriangle(r.terrainDetailHandle, MC2_ISTERRAIN | MC2_DRAWALPHA);
-			}
+				mcTextureManager->addTriangleBulk(r.terrainDetailHandle, MC2_ISTERRAIN | MC2_DRAWALPHA, 2);
 		}
 	}
 	else if (r.isAlpha)
 	{
 		if (r.terrainHandle != 0)
-		{
-			mcTextureManager->addTriangle(r.terrainHandle, MC2_ISTERRAIN | MC2_DRAWSOLID);
-			mcTextureManager->addTriangle(r.terrainHandle, MC2_ISTERRAIN | MC2_DRAWSOLID);
-		}
+			mcTextureManager->addTriangleBulk(r.terrainHandle, MC2_ISTERRAIN | MC2_DRAWSOLID, 2);
 		if (r.terrainDetailHandle != 0xffffffff)
-		{
-			mcTextureManager->addTriangle(r.terrainDetailHandle, MC2_ISTERRAIN | MC2_DRAWALPHA);
-			mcTextureManager->addTriangle(r.terrainDetailHandle, MC2_ISTERRAIN | MC2_DRAWALPHA);
-		}
+			mcTextureManager->addTriangleBulk(r.terrainDetailHandle, MC2_ISTERRAIN | MC2_DRAWALPHA, 2);
 	}
 	else // pure cement
 	{
 		if (r.terrainHandle != 0)
-		{
-			mcTextureManager->addTriangle(r.terrainHandle, MC2_ISTERRAIN | MC2_DRAWSOLID);
-			mcTextureManager->addTriangle(r.terrainHandle, MC2_ISTERRAIN | MC2_DRAWSOLID);
-		}
+			mcTextureManager->addTriangleBulk(r.terrainHandle, MC2_ISTERRAIN | MC2_DRAWSOLID, 2);
 	}
 }
 
@@ -979,10 +966,8 @@ void TerrainQuad::setupTextures (void)
 				waterDetailHandle = Terrain::terrainTextures2->getWaterDetailHandle(sprayFrame);
 			}
 			
-			mcTextureManager->addTriangle(waterHandle,MC2_ISTERRAIN | MC2_DRAWALPHA | MC2_ISWATER);
-			mcTextureManager->addTriangle(waterHandle,MC2_ISTERRAIN | MC2_DRAWALPHA | MC2_ISWATER);
-			mcTextureManager->addTriangle(waterDetailHandle,MC2_ISTERRAIN | MC2_DRAWALPHA | MC2_ISWATERDETAIL);
-			mcTextureManager->addTriangle(waterDetailHandle,MC2_ISTERRAIN | MC2_DRAWALPHA | MC2_ISWATERDETAIL);
+			mcTextureManager->addTriangleBulk(waterHandle, MC2_ISTERRAIN | MC2_DRAWALPHA | MC2_ISWATER, 2);
+			mcTextureManager->addTriangleBulk(waterDetailHandle, MC2_ISTERRAIN | MC2_DRAWALPHA | MC2_ISWATERDETAIL, 2);
 		}
 		else
 		{

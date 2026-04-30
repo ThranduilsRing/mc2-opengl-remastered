@@ -821,6 +821,77 @@ class MC_TextureManager
 			}
 		}
 
+		// Bulk variant of addTriangle: reserves `triCount` triangles at once for a given
+		// (nodeId, flags) pair, doing the slot allocation + flag-match traversal exactly
+		// once instead of `triCount` times. Mathematically identical numVertices output to
+		// `for (i=0; i<triCount; ++i) addTriangle(nodeId, flags)`. Hot-path optimization
+		// for callers that emit paired/batched triangles (terrain solid+detail layers,
+		// mine pairs, water pairs) — see mclib/quad.cpp.
+		void addTriangleBulk (DWORD nodeId, DWORD flags, int triCount)
+		{
+			if (triCount <= 0) return;
+
+			if ((nodeId < MC_MAXTEXTURES) && (nextAvailableVertexNode < MC_MAXTEXTURES))
+			{
+				if (!masterTextureNodes[nodeId].vertexData)
+				{
+					masterTextureNodes[nodeId].vertexData = &(masterVertexNodes[nextAvailableVertexNode]);
+					gosASSERT(masterTextureNodes[nodeId].vertexData->numVertices == 0);
+					gosASSERT(masterTextureNodes[nodeId].vertexData->vertices == NULL);
+
+					nextAvailableVertexNode++;
+					masterTextureNodes[nodeId].vertexData->flags = flags;
+					masterTextureNodes[nodeId].vertexData->textureIndex = nodeId;
+				}
+				else if (masterTextureNodes[nodeId].vertexData &&
+					(masterTextureNodes[nodeId].vertexData->flags != flags) &&
+					!masterTextureNodes[nodeId].vertexData2)
+				{
+					masterTextureNodes[nodeId].vertexData2 = &(masterVertexNodes[nextAvailableVertexNode]);
+					gosASSERT(masterTextureNodes[nodeId].vertexData2->numVertices == 0);
+					gosASSERT(masterTextureNodes[nodeId].vertexData2->vertices == NULL);
+
+					nextAvailableVertexNode++;
+					masterTextureNodes[nodeId].vertexData2->flags = flags;
+					masterTextureNodes[nodeId].vertexData2->textureIndex = nodeId;
+				}
+				else if (masterTextureNodes[nodeId].vertexData &&
+						(masterTextureNodes[nodeId].vertexData->flags != flags) &&
+						masterTextureNodes[nodeId].vertexData2 &&
+						(masterTextureNodes[nodeId].vertexData2->flags != flags) &&
+						!masterTextureNodes[nodeId].vertexData3)
+				{
+					masterTextureNodes[nodeId].vertexData3 = &(masterVertexNodes[nextAvailableVertexNode]);
+					gosASSERT(masterTextureNodes[nodeId].vertexData3->numVertices == 0);
+					gosASSERT(masterTextureNodes[nodeId].vertexData3->vertices == NULL);
+
+					nextAvailableVertexNode++;
+					masterTextureNodes[nodeId].vertexData3->flags = flags;
+					masterTextureNodes[nodeId].vertexData3->textureIndex = nodeId;
+				}
+
+				const int delta = 3 * triCount;
+				if (masterTextureNodes[nodeId].vertexData->flags == flags)
+					masterTextureNodes[nodeId].vertexData->numVertices += delta;
+				else if (masterTextureNodes[nodeId].vertexData2 &&
+						masterTextureNodes[nodeId].vertexData2->flags == flags)
+					masterTextureNodes[nodeId].vertexData2->numVertices += delta;
+				else if (masterTextureNodes[nodeId].vertexData3 &&
+						masterTextureNodes[nodeId].vertexData3->flags == flags)
+					masterTextureNodes[nodeId].vertexData3->numVertices += delta;
+#ifdef _DEBUG
+				else
+					STOP(("Could not AddTrianglesBulk.  No flags match vertex data"));
+#endif
+			}
+			else
+			{
+				// Untextured path is rare/never for terrain reservations; fall back to
+				// per-triangle to avoid duplicating the 5-slot logic from addTriangle.
+				for (int i = 0; i < triCount; ++i) addTriangle(nodeId, flags);
+			}
+		}
+
 		void addVertices (DWORD nodeId, gos_VERTEX *data, DWORD flags)
 		{
 			//This function adds the actual vertex data to the texture Node.
