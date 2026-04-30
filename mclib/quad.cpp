@@ -1687,12 +1687,15 @@ void TerrainQuad::draw (void)
 
 		// === M2 fast-path eligibility ===
 		// Quads enter the fast path when:
-		//   (a) terrainHandle != 0           → emit thin record + optional detail
-		//   (b) terrainHandle == 0 + detail  → emit detail only, no thin record
-		// Quads with overlayHandle != 0xffffffff still fall to legacy (M2d-overlay
-		// would absorb them; ~4-5K quads/frame on splatmap-heavy scenes).
+		//   (a) terrainHandle != 0           → emit thin record + optional detail + optional overlay
+		//   (b) terrainHandle == 0 + detail  → emit detail only (+ optional overlay), no thin record
+		//   (c) terrainHandle == 0 + overlay → emit overlay only, no thin record, no detail
+		// M2d landed: overlay-only quads are now fast-path eligible; the inline overlay
+		// emit below mirrors the legacy gos_PushTerrainOverlay sites (base/detail blocks
+		// in legacy continue to exist as the fallback when FASTPATH env is off).
 		// Per-gate flags retained so the path_mix diagnostic counter below can
-		// attribute fastPathEligible failures to the specific gate.
+		// attribute fastPathEligible failures to the specific gate (s_failOverlay
+		// should read 0 post-M2d — leaving it in serves as the validation signal).
 		const bool g_active   = TerrainPatchStream::isFastPathActive();
 		const bool g_thin     = TerrainPatchStream::isThinRecordsActive();
 		const bool g_ready    = TerrainPatchStream::isReady();
@@ -1701,8 +1704,8 @@ void TerrainQuad::draw (void)
 		const bool g_noOverlay= !(useOverlayTexture && overlayHandle != 0xffffffff);
 		const bool g_noWater  = !(useWaterInterestTexture && terrainDetailHandle != 0xffffffff);
 		const bool fastPathEligible =
-		    g_active && g_thin && g_ready && g_notOver && g_noOverlay
-		    && (g_handle || !g_noWater);
+		    g_active && g_thin && g_ready && g_notOver
+		    && (g_handle || !g_noWater || !g_noOverlay);
 
 		// MC2_THIN_DEBUG=1: per-gate fail counts to pinpoint which condition is culling
 		// most quads from the fast path. Demoted to silent-by-default per CLAUDE.md
@@ -1916,6 +1919,65 @@ void TerrainQuad::draw (void)
 		                clampUVs(tri);
 		                mcTextureManager->addVertices(terrainDetailHandle, tri,
 		                                              MC2_ISTERRAIN | MC2_DRAWALPHA);
+		            }
+		        }
+		    }
+
+		    // M2d: per-quad base-texture overlay emit. Replaces the four legacy
+		    // gos_PushTerrainOverlay sites further down in this function (TOPRIGHT tri1+tri2,
+		    // BOTTOMLEFT tri1+tri2) — same output, but builds WorldOverlayVert straight from
+		    // vertices[c] instead of memcpy'ing gVertex through oVertex and calling
+		    // setOverlayWorldCoords. wz includes OVERLAY_ELEV_OFFSET (0.15f) to
+		    // prevent z-fighting against the base terrain — matches setOverlayWorldCoords.
+		    // ARGB and fog use raw vertices[c]->lightRGB/fogRGB — NO `selected` override and
+		    // NO `terrainTextures2` whiteout (those overrides apply to base/detail textures
+		    // only; legacy overlay block also uses raw lightRGB).
+		    if (useOverlayTexture && overlayHandle != 0xffffffff)
+		    {
+		        const DWORD overlayTexId = tex_resolve(overlayHandle);
+		        if (overlayTexId != 0)
+		        {
+		            WorldOverlayVert wov_corner[4];
+		            for (int c = 0; c < 4; c++) {
+		                wov_corner[c].wx   = vertices[c]->vx;
+		                wov_corner[c].wy   = vertices[c]->vy;
+		                wov_corner[c].wz   = vertices[c]->pVertex->elevation + OVERLAY_ELEV_OFFSET;
+		                wov_corner[c].fog  = (float)((vertices[c]->fogRGB >> 24) & 0xFF) / 255.0f;
+		                wov_corner[c].argb = (unsigned int)vertices[c]->lightRGB;
+		                // u/v assigned per-tri below.
+		            }
+
+		            if (uvMode == BOTTOMLEFT) {
+		                if (pzTri1) {
+		                    WorldOverlayVert w[3] = { wov_corner[0], wov_corner[1], wov_corner[3] };
+		                    w[0].u=oldminU; w[0].v=oldminV;
+		                    w[1].u=oldmaxU; w[1].v=oldminV;
+		                    w[2].u=oldminU; w[2].v=oldmaxV;
+		                    gos_PushTerrainOverlay(w, overlayTexId);
+		                }
+		                if (pzTri2) {
+		                    WorldOverlayVert w[3] = { wov_corner[1], wov_corner[2], wov_corner[3] };
+		                    w[0].u=oldmaxU; w[0].v=oldminV;
+		                    w[1].u=oldmaxU; w[1].v=oldmaxV;
+		                    w[2].u=oldminU; w[2].v=oldmaxV;
+		                    gos_PushTerrainOverlay(w, overlayTexId);
+		                }
+		            } else {
+		                // BOTTOMRIGHT (= TOPRIGHT diagonal)
+		                if (pzTri1) {
+		                    WorldOverlayVert w[3] = { wov_corner[0], wov_corner[1], wov_corner[2] };
+		                    w[0].u=oldminU; w[0].v=oldminV;
+		                    w[1].u=oldmaxU; w[1].v=oldminV;
+		                    w[2].u=oldmaxU; w[2].v=oldmaxV;
+		                    gos_PushTerrainOverlay(w, overlayTexId);
+		                }
+		                if (pzTri2) {
+		                    WorldOverlayVert w[3] = { wov_corner[0], wov_corner[2], wov_corner[3] };
+		                    w[0].u=oldminU; w[0].v=oldminV;
+		                    w[1].u=oldmaxU; w[1].v=oldmaxV;
+		                    w[2].u=oldminU; w[2].v=oldmaxV;
+		                    gos_PushTerrainOverlay(w, overlayTexId);
+		                }
 		            }
 		        }
 		    }

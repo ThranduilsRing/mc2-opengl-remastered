@@ -1,6 +1,12 @@
 # M2d: Overlay Fast-Path Extension (Design + Handoff)
 
-> Status: design sketch — fresh-session pickup. Sibling to M2c (water-interest fast path, shipped).
+> Status: **SHIPPED 2026-04-29.** Result exceeded predictions: `Terrain::render drawPass` dropped from ~5-6 ms (post-M2c) to **1.46 ms** at max zoom out on mc2_01 vs. the spec's "~3-4 ms" target. `fast=14000 legacy=0` every frame post-warmup; all in-frustum quads now enter the fast path. Tier1 smoke 5/5 PASS, +0 destroys delta. See `memory/m2_thin_record_cpu_reduction_results.md` for the consolidated record.
+>
+> The remainder of this document is the original design sketch, kept for historical reference.
+>
+> **Implementation correction:** spec sketch's `wov_corner[c].wz = vertices[c]->pVertex->elevation` is wrong — must add `+ OVERLAY_ELEV_OFFSET` (0.15f) to match `setOverlayWorldCoords`. Without the offset, overlays z-fight the base terrain.
+>
+> **Parity-log gotcha:** Gate C's `event=thin_record_parity match=1` is **silent on success** — `gos_terrain_patch_stream.cpp:1461-1462` only prints when parity fails. Validation rule: absence of `event=thin_record_parity` lines = pass.
 
 ## Goal
 
