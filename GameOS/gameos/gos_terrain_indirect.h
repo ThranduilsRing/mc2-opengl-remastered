@@ -56,6 +56,33 @@ bool IsEnabled();              // MC2_TERRAIN_INDIRECT
 bool IsParityCheckEnabled();   // MC2_TERRAIN_INDIRECT_PARITY_CHECK
 bool IsTraceEnabled();         // MC2_TERRAIN_INDIRECT_TRACE — gates
                                 // [TERRAIN_INDIRECT v1] event=... lifecycle prints
+bool IsCostSplitEnabled();     // MC2_TERRAIN_COST_SPLIT — gates Stage 1
+                                // per-frame steady_clock accumulators in quad.cpp.
+                                // When unset, the RAII timer scopes are zero-cost
+                                // no-ops (single branch-predicted bool load each).
+
+// ---------------------------------------------------------------------------
+// Stage 1 cost-split accumulators — used by RAII timers in quad.cpp.
+//
+// Per-frame steady_clock nanosecond totals split between SOLID admit clusters
+// (target of this slice) and DRAWALPHA detail/mine/overlay clusters (out of
+// scope here). Reported via the existing 600-frame summary line, suppressed
+// when MC2_TERRAIN_COST_SPLIT is unset to avoid all-zero noise.
+//
+// Per-quad ZoneScopedN() rejected for this measurement: 8 clusters x 14K
+// quads x 60 fps would saturate Tracy's queue and ZoneScopedN overhead would
+// become comparable to the work being measured. Per-frame summation matches
+// slice 2b's mine-counter convention.
+// ---------------------------------------------------------------------------
+void      CostSplit_AddSolidNanos(long long n);
+void      CostSplit_AddDetailOverlayNanos(long long n);
+// Call once per frame at the close of the per-quad setupTextures loop
+// (terrain.cpp:1684 boundary). Internally gated on IsCostSplitEnabled() —
+// safe to call unconditionally.
+void      CostSplit_RollFrame();
+long long CostSplit_GetSolidNanosTotal();
+long long CostSplit_GetDetailOverlayNanosTotal();
+int       CostSplit_GetFramesObserved();
 
 // ---------------------------------------------------------------------------
 // N1 counters — units = per-quad (per cluster), NOT per-triangle.

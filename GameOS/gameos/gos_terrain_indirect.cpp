@@ -46,6 +46,14 @@ bool IsTraceEnabled() {
     return s;
 }
 
+bool IsCostSplitEnabled() {
+    static const bool s = []() {
+        const char* v = getenv("MC2_TERRAIN_COST_SPLIT");
+        return v && v[0] == '1' && v[1] == '\0';
+    }();
+    return s;
+}
+
 }  // namespace gos_terrain_indirect
 
 // ---------------------------------------------------------------------------
@@ -66,6 +74,37 @@ void Counters_AddLegacyDetailOverlayQuad()   { ++s_legacy_detail_overlay_quads; 
 long long Counters_GetLegacySolidSetupQuads()    { return s_legacy_solid_setup_quads; }
 long long Counters_GetIndirectSolidPackedQuads() { return s_indirect_solid_packed_quads; }
 long long Counters_GetLegacyDetailOverlayQuads() { return s_legacy_detail_overlay_quads; }
+
+}  // namespace gos_terrain_indirect
+
+// ---------------------------------------------------------------------------
+// Stage 1 cost-split accumulators
+// ---------------------------------------------------------------------------
+namespace {
+long long s_solidBranchNanosThisFrame   = 0;
+long long s_detailOverlayNanosThisFrame = 0;
+long long s_solidBranchNanosTotal       = 0;
+long long s_detailOverlayNanosTotal     = 0;
+int       s_costSplitFramesObserved     = 0;
+}  // namespace
+
+namespace gos_terrain_indirect {
+
+void CostSplit_AddSolidNanos(long long n)         { s_solidBranchNanosThisFrame  += n; }
+void CostSplit_AddDetailOverlayNanos(long long n) { s_detailOverlayNanosThisFrame += n; }
+
+void CostSplit_RollFrame() {
+    if (!IsCostSplitEnabled()) return;
+    s_solidBranchNanosTotal       += s_solidBranchNanosThisFrame;
+    s_detailOverlayNanosTotal     += s_detailOverlayNanosThisFrame;
+    ++s_costSplitFramesObserved;
+    s_solidBranchNanosThisFrame   = 0;
+    s_detailOverlayNanosThisFrame = 0;
+}
+
+long long CostSplit_GetSolidNanosTotal()         { return s_solidBranchNanosTotal; }
+long long CostSplit_GetDetailOverlayNanosTotal() { return s_detailOverlayNanosTotal; }
+int       CostSplit_GetFramesObserved()          { return s_costSplitFramesObserved; }
 
 }  // namespace gos_terrain_indirect
 
@@ -100,18 +139,47 @@ void ParityFrameTick(int quadsCheckedThisFrame) {
     s_paritySummaryMismatches += s_parityMismatchesThisFrame;
     s_parityMismatchesThisFrame = 0;
     if (s_paritySummaryFrames % 600 == 0) {
-        fprintf(stderr,
-                "[TERRAIN_INDIRECT_PARITY v1] event=summary frames=%lld "
-                "quads_checked=%lld total_mismatches=%lld "
-                "legacy_solid_setup_quads=%lld "
-                "indirect_solid_packed_quads=%lld "
-                "legacy_detail_overlay_quads=%lld\n",
-                s_paritySummaryFrames,
-                s_paritySummaryQuads,
-                s_paritySummaryMismatches,
-                Counters_GetLegacySolidSetupQuads(),
-                Counters_GetIndirectSolidPackedQuads(),
-                Counters_GetLegacyDetailOverlayQuads());
+        // Cost-split columns are appended only when MC2_TERRAIN_COST_SPLIT
+        // is set — otherwise the all-zero noise confuses readers.
+        const int    csFrames = CostSplit_GetFramesObserved();
+        const bool   csOn     = (csFrames > 0);
+        const long long csSolidNs  = csOn ? CostSplit_GetSolidNanosTotal()         : 0;
+        const long long csDetailNs = csOn ? CostSplit_GetDetailOverlayNanosTotal() : 0;
+        const long long csSolidPerFrame  = csOn ? csSolidNs  / csFrames : 0;
+        const long long csDetailPerFrame = csOn ? csDetailNs / csFrames : 0;
+        if (csOn) {
+            fprintf(stderr,
+                    "[TERRAIN_INDIRECT_PARITY v1] event=summary frames=%lld "
+                    "quads_checked=%lld total_mismatches=%lld "
+                    "legacy_solid_setup_quads=%lld "
+                    "indirect_solid_packed_quads=%lld "
+                    "legacy_detail_overlay_quads=%lld "
+                    "solid_branch_ns_per_frame=%lld "
+                    "detail_overlay_branch_ns_per_frame=%lld "
+                    "frames_observed=%d\n",
+                    s_paritySummaryFrames,
+                    s_paritySummaryQuads,
+                    s_paritySummaryMismatches,
+                    Counters_GetLegacySolidSetupQuads(),
+                    Counters_GetIndirectSolidPackedQuads(),
+                    Counters_GetLegacyDetailOverlayQuads(),
+                    csSolidPerFrame,
+                    csDetailPerFrame,
+                    csFrames);
+        } else {
+            fprintf(stderr,
+                    "[TERRAIN_INDIRECT_PARITY v1] event=summary frames=%lld "
+                    "quads_checked=%lld total_mismatches=%lld "
+                    "legacy_solid_setup_quads=%lld "
+                    "indirect_solid_packed_quads=%lld "
+                    "legacy_detail_overlay_quads=%lld\n",
+                    s_paritySummaryFrames,
+                    s_paritySummaryQuads,
+                    s_paritySummaryMismatches,
+                    Counters_GetLegacySolidSetupQuads(),
+                    Counters_GetIndirectSolidPackedQuads(),
+                    Counters_GetLegacyDetailOverlayQuads());
+        }
         fflush(stderr);
     }
 }

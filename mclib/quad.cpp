@@ -40,9 +40,12 @@
 
 #include"../GameOS/gameos/gos_profiler.h"
 #include"../GameOS/gameos/gos_terrain_patch_stream.h"
+#include"../GameOS/gameos/gos_terrain_indirect.h"
 #include"projectz_trace.h"
 #include"projectz_overlay.h"
 #include"tex_resolve_table.h"
+
+#include <chrono>
 
 // Per-quad scratch for the four BoolAdmission per-vertex projectZ calls in
 // TerrainQuad::setupTextures. After each `eye->projectZ()` call we copy
@@ -54,6 +57,44 @@ static ProjectZPredicates s_pzVertPreds[4] = {};
 static inline void pz_capture_vert_preds(int slot) {
     if (g_pzTrace) s_pzVertPreds[slot] = g_pzLastPredicates;
 }
+// Stage 1 cost-split RAII timers — bracket SOLID and DRAWALPHA admit clusters
+// inside TerrainQuad::setupTextures so we can split the per-frame
+// "Terrain::geometry quadSetupTextures" cost between the SOLID branch (target
+// of the indirect-terrain SOLID slice) and the detail/overlay branch (out of
+// scope here). When MC2_TERRAIN_COST_SPLIT is unset, the active bool is read
+// once via a single branch-predicted cached env load and the destructor
+// early-outs without calling steady_clock::now() — production runs pay zero.
+namespace {
+struct CostSplitSolidScope {
+    std::chrono::steady_clock::time_point t0;
+    bool active;
+    CostSplitSolidScope()
+        : active(gos_terrain_indirect::IsCostSplitEnabled()) {
+        if (active) t0 = std::chrono::steady_clock::now();
+    }
+    ~CostSplitSolidScope() {
+        if (!active) return;
+        const auto dt = std::chrono::steady_clock::now() - t0;
+        gos_terrain_indirect::CostSplit_AddSolidNanos(
+            std::chrono::duration_cast<std::chrono::nanoseconds>(dt).count());
+    }
+};
+struct CostSplitDetailOverlayScope {
+    std::chrono::steady_clock::time_point t0;
+    bool active;
+    CostSplitDetailOverlayScope()
+        : active(gos_terrain_indirect::IsCostSplitEnabled()) {
+        if (active) t0 = std::chrono::steady_clock::now();
+    }
+    ~CostSplitDetailOverlayScope() {
+        if (!active) return;
+        const auto dt = std::chrono::steady_clock::now() - t0;
+        gos_terrain_indirect::CostSplit_AddDetailOverlayNanos(
+            std::chrono::duration_cast<std::chrono::nanoseconds>(dt).count());
+    }
+};
+}  // namespace
+
 static const bool s_shapeCParityCheck = (getenv("MC2_SHAPE_C_PARITY_CHECK") != nullptr);
 static const bool s_shapeCEnabled = ([] {
 	// Default ON post Slice-1 flip (2026-04-29). Tier1 parity validated:
@@ -219,15 +260,17 @@ static void enqueueTerrainMineState(TerrainQuad& quad)
 				if (localResult == 1)
 				{
 					tex_resolve(TerrainQuad::mineTextureHandle);
+					{ CostSplitDetailOverlayScope _csDetail;
 					mcTextureManager->addTriangleBulk(TerrainQuad::mineTextureHandle, MC2_DRAWALPHA, 2);
-
+					}
 					quad.mineResult.setMine(cellPos,localResult);
 				}
 				else if (localResult == 2)
 				{
 					tex_resolve(TerrainQuad::blownTextureHandle);
+					{ CostSplitDetailOverlayScope _csDetail;
 					mcTextureManager->addTriangleBulk(TerrainQuad::blownTextureHandle, MC2_DRAWALPHA, 2);
-
+					}
 					quad.mineResult.setMine(cellPos,localResult);
 				}
 			}
@@ -403,26 +446,41 @@ static bool tryGetCachedTerrainRecipe(
 // to preserve projectZ callsite identity.
 static void addTerrainTriangles(const TerrainRecipe& r)
 {
+	// Stage 1 cost-split brackets — this is the hot path under Shape C
+	// default-on (commit aee39cc 2026-04-29). The plan v2 verification
+	// appendix V8 cited the legacy manual-emit clusters at quad.cpp:507/586
+	// but those only fire under MC2_MODERN_TERRAIN_PATCHES=0; under Shape C
+	// the dispatch is here via TerrainPatchStream's recipe cache.
 	if (!r.isCement)
 	{
 		if (r.terrainHandle != 0)
 		{
+			{ CostSplitSolidScope _csSolid;
 			mcTextureManager->addTriangleBulk(r.terrainHandle, MC2_ISTERRAIN | MC2_DRAWSOLID, 2);
-			if (r.terrainDetailHandle != 0xffffffff)
+			}
+			if (r.terrainDetailHandle != 0xffffffff) {
+				CostSplitDetailOverlayScope _csDetail;
 				mcTextureManager->addTriangleBulk(r.terrainDetailHandle, MC2_ISTERRAIN | MC2_DRAWALPHA, 2);
+			}
 		}
 	}
 	else if (r.isAlpha)
 	{
-		if (r.terrainHandle != 0)
+		if (r.terrainHandle != 0) {
+			CostSplitSolidScope _csSolid;
 			mcTextureManager->addTriangleBulk(r.terrainHandle, MC2_ISTERRAIN | MC2_DRAWSOLID, 2);
-		if (r.terrainDetailHandle != 0xffffffff)
+		}
+		if (r.terrainDetailHandle != 0xffffffff) {
+			CostSplitDetailOverlayScope _csDetail;
 			mcTextureManager->addTriangleBulk(r.terrainDetailHandle, MC2_ISTERRAIN | MC2_DRAWALPHA, 2);
+		}
 	}
 	else // pure cement
 	{
-		if (r.terrainHandle != 0)
+		if (r.terrainHandle != 0) {
+			CostSplitSolidScope _csSolid;
 			mcTextureManager->addTriangleBulk(r.terrainHandle, MC2_ISTERRAIN | MC2_DRAWSOLID, 2);
+		}
 	}
 }
 
@@ -463,10 +521,14 @@ void TerrainQuad::setupTextures (void)
 						terrainDetailHandle = 0xffffffff;
 					overlayHandle = 0xffffffff;
 
+					{ CostSplitSolidScope _csSolid;
 					mcTextureManager->addTriangle(terrainHandle,MC2_ISTERRAIN | MC2_DRAWSOLID);
 					mcTextureManager->addTriangle(terrainHandle,MC2_ISTERRAIN | MC2_DRAWSOLID);
+					}
+					{ CostSplitDetailOverlayScope _csDetail;
 					mcTextureManager->addTriangle(terrainDetailHandle,MC2_ISTERRAIN | MC2_DRAWALPHA);
 					mcTextureManager->addTriangle(terrainDetailHandle,MC2_ISTERRAIN | MC2_DRAWALPHA);
+					}
 					pz_emit_terrain_tris(vertices, uvMode, "terrain_quad_cluster_a", __FILE__, __LINE__);
 				}
 
@@ -494,17 +556,19 @@ void TerrainQuad::setupTextures (void)
 							if (localResult == 1)
 							{
 								tex_resolve(mineTextureHandle);
+								{ CostSplitDetailOverlayScope _csDetail;
 								mcTextureManager->addTriangle(mineTextureHandle, MC2_DRAWALPHA);
 								mcTextureManager->addTriangle(mineTextureHandle, MC2_DRAWALPHA);
-								
+								}
 								mineResult.setMine(cellPos,localResult);
 							}
 							else if (localResult == 2)
 							{
 								tex_resolve(blownTextureHandle);
+								{ CostSplitDetailOverlayScope _csDetail;
 								mcTextureManager->addTriangle(blownTextureHandle, MC2_DRAWALPHA);
 								mcTextureManager->addTriangle(blownTextureHandle, MC2_DRAWALPHA);
-								
+								}
 								mineResult.setMine(cellPos,localResult);
 							}
 						}
@@ -536,10 +600,14 @@ void TerrainQuad::setupTextures (void)
 						terrainDetailHandle = 0xffffffff;
 					overlayHandle = 0xffffffff;
 
+					{ CostSplitSolidScope _csSolid;
 					mcTextureManager->addTriangle(terrainHandle,MC2_ISTERRAIN | MC2_DRAWSOLID);
 					mcTextureManager->addTriangle(terrainHandle,MC2_ISTERRAIN | MC2_DRAWSOLID);
+					}
+					{ CostSplitDetailOverlayScope _csDetail;
 					mcTextureManager->addTriangle(terrainDetailHandle,MC2_ISTERRAIN | MC2_DRAWALPHA);
 					mcTextureManager->addTriangle(terrainDetailHandle,MC2_ISTERRAIN | MC2_DRAWALPHA);
+					}
 					pz_emit_terrain_tris(vertices, uvMode, "terrain_quad_cluster_c", __FILE__, __LINE__);
 				}
 
@@ -567,17 +635,19 @@ void TerrainQuad::setupTextures (void)
 							if (localResult == 1)
 							{
 								tex_resolve(mineTextureHandle);
+								{ CostSplitDetailOverlayScope _csDetail;
 								mcTextureManager->addTriangle(mineTextureHandle,MC2_DRAWALPHA);
 								mcTextureManager->addTriangle(mineTextureHandle,MC2_DRAWALPHA);
-								
+								}
 								mineResult.setMine(cellPos,localResult);
 							}
 							else if (localResult == 2)
 							{
 								tex_resolve(blownTextureHandle);
+								{ CostSplitDetailOverlayScope _csDetail;
 								mcTextureManager->addTriangle(blownTextureHandle,MC2_DRAWALPHA);
 								mcTextureManager->addTriangle(blownTextureHandle,MC2_DRAWALPHA);
-								
+								}
 								mineResult.setMine(cellPos,localResult);
 							}
 						}

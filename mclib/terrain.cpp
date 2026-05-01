@@ -33,6 +33,7 @@
 
 #include"../GameOS/gameos/gos_profiler.h"
 #include"../GameOS/gameos/gos_terrain_water_stream.h"
+#include"../GameOS/gameos/gos_terrain_indirect.h"
 #include"../GameOS/gameos/gos_terrain_bridge.h"
 
 #include <vector>
@@ -1684,6 +1685,13 @@ void Terrain::geometry (void)
 			currentQuad->setupTextures();
 			currentQuad++;
 		}
+		// Stage 1 cost-split: roll per-frame nanosecond accumulators (no-op
+		// when MC2_TERRAIN_COST_SPLIT unset). ParityFrameTick advances the
+		// summary cadence — Stage 2 will pass the actual quads-checked
+		// count; in Stage 1 the recipe is unbuilt so we tick with 0 just to
+		// keep the 600-frame summary line firing under MC2_TERRAIN_COST_SPLIT=1.
+		gos_terrain_indirect::CostSplit_RollFrame();
+		gos_terrain_indirect::ParityFrameTick(0);
 	}
 
 	float ywRange = 0.0f, yzRange = 0.0f;
