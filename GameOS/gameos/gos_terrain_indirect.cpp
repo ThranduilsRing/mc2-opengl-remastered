@@ -642,3 +642,388 @@ int ParityCompareRecipeFrame() {
 }
 
 }  // namespace gos_terrain_indirect  // Stage 2 block
+
+// ---------------------------------------------------------------------------
+// Stage 3 — per-frame thin-record packer, indirect-command builder,
+//            preflight arming, and DrawIndirect thin executor.
+//
+// Bridge function (gos_terrain_bridge_drawIndirect) lives in gameos_graphics.cpp
+// where gosRenderer state is accessible.  This file owns the CPU-side logic;
+// the bridge is called by DrawIndirect() after arming.
+// ---------------------------------------------------------------------------
+
+// Forward-declare the bridge (defined in gameos_graphics.cpp).
+// Signature uses unsigned int (not GLuint) to match gos_terrain_bridge.h
+// without pulling in GL headers there.
+bool gos_terrain_bridge_drawIndirect(int cmdCount, unsigned int recipeSSBO,
+                                     unsigned int thinRecordSSBO,
+                                     unsigned int indirectCmdBuffer);
+
+// Include pVertex via PostcompVertex — already available through mapdata.h.
+// (terrain.h already included above, which pulls mapdata.h.)
+#include "../../mclib/vertex.h"     // ScreenVertex, vertexNum
+// tex_resolve — lazy per-frame memoization. Header includes txmmgr.h.
+#include "../../mclib/tex_resolve_table.h"
+
+// Include TERRAIN_DEPTH_FUDGE for the per-tri pz check.
+// Defined in quad.cpp as a local constant, re-stated here.
+// sync: quad.cpp:1832 uses `vertices[c]->pz + TERRAIN_DEPTH_FUDGE` with FUDGE=0.001f
+#ifndef TERRAIN_DEPTH_FUDGE
+static constexpr float TERRAIN_DEPTH_FUDGE = 0.001f;
+#endif
+
+namespace {
+
+// ---------------------------------------------------------------------------
+// Thin-record SSBO (triple-buffered, GPU_STREAM_DRAW).
+// Mirrors the M2 thin-record ring in gos_terrain_patch_stream.cpp.
+// ---------------------------------------------------------------------------
+static constexpr int    kThinRingFrames    = 3;
+static constexpr size_t kMaxThinRecords    = 65536u;  // ≥ max visible quads
+static constexpr size_t kThinRecordBytes   = kMaxThinRecords * sizeof(TerrainQuadThinRecord);
+
+static GLuint g_thinRecordSSBO              = 0;
+static int    g_thinRingSlot                = 0;
+static GLsync g_thinRingFences[kThinRingFrames] = { 0, 0, 0 };
+
+// Indirect command buffer — driver-only, GL_DRAW_INDIRECT_BUFFER.
+// Sized for 16 commands (256 B); PR1 emits exactly 1.
+struct DrawArraysIndirectCommand {
+    GLuint count;
+    GLuint instanceCount;
+    GLuint first;
+    GLuint baseInstance;
+};
+static_assert(sizeof(DrawArraysIndirectCommand) == 16,
+    "DrawArraysIndirectCommand is 4 GLuints = 16 B per GL spec");
+
+static constexpr size_t kIndirectCmdBufferBytes = 16 * sizeof(DrawArraysIndirectCommand);
+static GLuint g_indirectCmdBuffer = 0;
+
+// Per-frame arming state (reset each frame by ComputePreflight).
+static bool  s_frameSolidArmed           = false;
+static int   s_frameSolidPackedThinCount = 0;
+static int   s_frameSolidCmdCount        = 0;
+
+// Process-sticky hard-failure latch.
+static bool  s_processArmingDisabled     = false;
+
+// first_draw lifecycle latch (reset by ResetDenseRecipe / mission teardown).
+// Declared extern in the anonymous ns of the Stage 2 block; re-stated here
+// via file-scope bool below.  Use the existing s_firstDrawPrintedThisMission
+// that's already declared in the Stage 2 anonymous namespace above.
+
+// ResourcesReady lazy-alloc state.
+static bool  s_resourcesAllocated = false;
+static bool  s_resourcesReady     = false;
+
+// ---------------------------------------------------------------------------
+// ResourcesReady() — lazy-allocate thin-record SSBO + indirect buffer.
+// Called from ComputePreflight; returns true once both are allocated.
+// ---------------------------------------------------------------------------
+static bool ResourcesReady() {
+    if (s_resourcesReady) return true;
+    if (s_resourcesAllocated) return false;  // already tried and failed
+
+    // Thin-record SSBO: triple-buffered, GL_STREAM_DRAW.
+    if (g_thinRecordSSBO == 0) {
+        glGenBuffers(1, &g_thinRecordSSBO);
+        glBindBuffer(GL_SHADER_STORAGE_BUFFER, g_thinRecordSSBO);
+        glBufferData(GL_SHADER_STORAGE_BUFFER,
+                     (GLsizeiptr)(kThinRingFrames * kThinRecordBytes),
+                     nullptr, GL_STREAM_DRAW);
+        glBindBuffer(GL_SHADER_STORAGE_BUFFER, 0);
+        if (g_thinRecordSSBO == 0) {
+            if (traceOn()) {
+                fprintf(stderr, "[TERRAIN_INDIRECT v1] event=resources_alloc_fail reason=thin_ssbo\n");
+                fflush(stderr);
+            }
+            s_resourcesAllocated = true;
+            return false;
+        }
+    }
+
+    // Indirect command buffer.
+    if (g_indirectCmdBuffer == 0) {
+        glGenBuffers(1, &g_indirectCmdBuffer);
+        glBindBuffer(GL_DRAW_INDIRECT_BUFFER, g_indirectCmdBuffer);
+        glBufferData(GL_DRAW_INDIRECT_BUFFER,
+                     (GLsizeiptr)kIndirectCmdBufferBytes,
+                     nullptr, GL_STREAM_DRAW);
+        glBindBuffer(GL_DRAW_INDIRECT_BUFFER, 0);
+        if (g_indirectCmdBuffer == 0) {
+            if (traceOn()) {
+                fprintf(stderr, "[TERRAIN_INDIRECT v1] event=resources_alloc_fail reason=indirect_buf\n");
+                fflush(stderr);
+            }
+            s_resourcesAllocated = true;
+            return false;
+        }
+    }
+
+    s_resourcesAllocated = true;
+    s_resourcesReady     = true;
+    if (traceOn()) {
+        fprintf(stderr,
+            "[TERRAIN_INDIRECT v1] event=resources_ready "
+            "thinSSBO=%u indirectBuf=%u ringFrames=%d maxThin=%zu\n",
+            (unsigned)g_thinRecordSSBO, (unsigned)g_indirectCmdBuffer,
+            kThinRingFrames, kMaxThinRecords);
+        fflush(stderr);
+    }
+    return true;
+}
+
+// ---------------------------------------------------------------------------
+// InMissionTransition() — simple stub; returns false until needed.
+// Stage 4's quintuple soak gate validates this boundary.
+// ---------------------------------------------------------------------------
+static inline bool InMissionTransition() { return false; }
+
+// ---------------------------------------------------------------------------
+// PackThinRecordsForFrame() — walks live quadList, packs thin-record SSBO
+// ring slot for this frame.  Returns count of packed quads (≥ 0).
+//
+// Skip set (per memory/water_ssbo_pattern.md):
+//   1. Pointer guards: q.vertices[0..3] and ->pVertex null check
+//   2. Map-edge blank-vertex: vertexNum < 0 sentinel
+//   3. Recipe coverage: RecipeForVertexNum returns nullptr
+//   4. Per-tri pz check (drives flags bits 1, 2)
+// ---------------------------------------------------------------------------
+static int PackThinRecordsForFrame() {
+    ZoneScopedN("Terrain::ThinRecordPack");
+
+    if (!land) return 0;
+    const long total          = land->getNumQuads();
+    const TerrainQuadPtr quads = land->getQuadList();
+    if (!quads || total <= 0) return 0;
+
+    // Advance ring slot — wait on the fence for this slot before overwriting.
+    g_thinRingSlot = (g_thinRingSlot + 1) % kThinRingFrames;
+    if (g_thinRingFences[g_thinRingSlot]) {
+        glClientWaitSync(g_thinRingFences[g_thinRingSlot],
+                         GL_SYNC_FLUSH_COMMANDS_BIT, 10000000u /* 10ms */);
+        glDeleteSync(g_thinRingFences[g_thinRingSlot]);
+        g_thinRingFences[g_thinRingSlot] = 0;
+    }
+
+    // Stage area: up to kMaxThinRecords records into a stack-local shadow.
+    // glBufferSubData one shot at the end.
+    static TerrainQuadThinRecord s_shadow[kMaxThinRecords];
+    int packed = 0;
+
+    for (long qi = 0; qi < total && (size_t)packed < kMaxThinRecords; ++qi) {
+        const TerrainQuad& q = quads[qi];
+
+        // 1. Pointer guards (pVertex not required here — we only need
+        //    vertexNum + pz for the skip set; lightRGB comes from
+        //    vertices[c]->lightRGB which only requires ScreenVertex).
+        if (!q.vertices[0] || !q.vertices[1] ||
+            !q.vertices[2] || !q.vertices[3]) continue;
+
+        // 2. Map-edge blank-vertex skip (vertexNum == -1 sentinel)
+        const int32_t vn0 = q.vertices[0]->vertexNum;
+        if (vn0 < 0 ||
+            q.vertices[1]->vertexNum < 0 ||
+            q.vertices[2]->vertexNum < 0 ||
+            q.vertices[3]->vertexNum < 0) continue;
+
+        // 3. Recipe coverage gate
+        const TerrainQuadRecipe* rec = gos_terrain_indirect::RecipeForVertexNum(vn0);
+        if (!rec) continue;
+
+        // terrainHandle: use tex_resolve for per-frame handle indirection
+        // (memory/mc2_texture_handle_is_live.md — never cache raw handle).
+        const uint32_t th = static_cast<uint32_t>(
+            tex_resolve(static_cast<DWORD>(q.terrainHandle)));
+        // Skip quads with no base terrain texture (detail-only quads).
+        if (th == 0 || th == 0xffffffffu) continue;
+
+        // 4. Per-tri pz check — mirrors quad.cpp:1836-1845 logic.
+        //    vertices[c]->pz is pre-projected by vertexProjectLoop.
+        bool pzc[4];
+        for (int c = 0; c < 4; c++) {
+            float pz_adj = q.vertices[c]->pz + TERRAIN_DEPTH_FUDGE;
+            pzc[c] = (pz_adj >= 0.0f) && (pz_adj < 1.0f);
+        }
+
+        const int uvMode = q.uvMode;
+        bool pzTri1, pzTri2;
+        if (uvMode == 1 /*BOTTOMLEFT*/) {
+            pzTri1 = pzc[0] && pzc[1] && pzc[3];
+            pzTri2 = pzc[1] && pzc[2] && pzc[3];
+        } else {
+            // BOTTOMRIGHT / TOPRIGHT diagonal
+            pzTri1 = pzc[0] && pzc[1] && pzc[2];
+            pzTri2 = pzc[0] && pzc[2] && pzc[3];
+        }
+        if (!pzTri1 && !pzTri2) continue;  // both culled
+
+        // lightRGB — mirrors quad.cpp:1860-1865 (lightRGBc lambda).
+        // alphaOverride (whitens lighting when terrainTextures2 is active
+        // and not pure-cement-with-no-overlay) is baked into the existing
+        // M2 thin path.  We mirror the exact same logic here.
+        // The recipe already carries terrainHandle; we just need per-corner light.
+        // Judgment call: use the same simplified lightRGBc pattern the M2 thin
+        // path uses — terrainTextures2 check for alphaOverride, selection check.
+        const bool alphaOverride = (Terrain::terrainTextures2 != nullptr);
+        auto lightRGBc = [&](int c) -> uint32_t {
+            DWORD lc = q.vertices[c]->lightRGB;
+            if (alphaOverride) lc = 0xffffffffu;
+            if (q.vertices[c]->pVertex && q.vertices[c]->pVertex->selected)
+                lc = static_cast<DWORD>(0xffff7fffu /*SELECTION_COLOR*/);
+            return static_cast<uint32_t>(lc);
+        };
+
+        TerrainQuadThinRecord& tr = s_shadow[packed];
+        tr.recipeIdx     = static_cast<uint32_t>(vn0);
+        tr.terrainHandle = th;
+        tr.flags         = static_cast<uint32_t>((uvMode == 1 ? 1u : 0u)
+                         | (pzTri1 ? 2u : 0u)
+                         | (pzTri2 ? 4u : 0u));
+        tr._pad0         = 0u;
+        tr.lightRGB0     = lightRGBc(0);
+        tr.lightRGB1     = lightRGBc(1);
+        tr.lightRGB2     = lightRGBc(2);
+        tr.lightRGB3     = lightRGBc(3);
+
+        gos_terrain_indirect::Counters_AddIndirectSolidPackedQuad();
+        ++packed;
+    }
+
+    if (packed == 0) return 0;
+
+    // Upload to the current ring slot.
+    const GLintptr slotOffset = (GLintptr)(g_thinRingSlot * kThinRecordBytes);
+    glBindBuffer(GL_SHADER_STORAGE_BUFFER, g_thinRecordSSBO);
+    glBufferSubData(GL_SHADER_STORAGE_BUFFER,
+                    slotOffset,
+                    (GLsizeiptr)(packed * sizeof(TerrainQuadThinRecord)),
+                    s_shadow);
+    glBindBuffer(GL_SHADER_STORAGE_BUFFER, 0);
+
+    return packed;
+}
+
+// ---------------------------------------------------------------------------
+// BuildIndirectCommands() — builds 1 DrawArraysIndirectCommand (PR1 SOLID-only).
+// Returns 1 on success, 0 on error.
+// ---------------------------------------------------------------------------
+static int BuildIndirectCommands(int thinCount) {
+    if (thinCount <= 0) return 0;
+
+    DrawArraysIndirectCommand cmd{};
+    cmd.count         = static_cast<GLuint>(thinCount * 6);
+    cmd.instanceCount = 1u;
+    cmd.first         = 0u;
+    cmd.baseInstance  = 0u;
+
+    glBindBuffer(GL_DRAW_INDIRECT_BUFFER, g_indirectCmdBuffer);
+    glBufferSubData(GL_DRAW_INDIRECT_BUFFER, 0,
+                    (GLsizeiptr)sizeof(cmd), &cmd);
+    glBindBuffer(GL_DRAW_INDIRECT_BUFFER, 0);
+    return 1;
+}
+
+}  // anonymous namespace (Stage 3 helpers)
+
+namespace gos_terrain_indirect {
+
+// ---------------------------------------------------------------------------
+// Stage 3 public API
+// ---------------------------------------------------------------------------
+
+bool IsFrameSolidArmed() {
+    return s_frameSolidArmed && !s_processArmingDisabled;
+}
+
+void ForceDisableArmingForProcess() {
+    s_processArmingDisabled = true;
+}
+
+bool ComputePreflight() {
+    ZoneScopedN("Terrain::IndirectPreflight");
+    s_frameSolidArmed           = false;
+    s_frameSolidPackedThinCount = 0;
+    s_frameSolidCmdCount        = 0;
+
+    if (s_processArmingDisabled) return false;
+    if (!IsEnabled())             return false;
+    if (!IsDenseRecipeReady())    return false;
+    if (!ResourcesReady())        return false;
+    if (InMissionTransition())    return false;
+
+    FlushDirtyRecipeSlotsToGPU();
+
+    const int thinCount = PackThinRecordsForFrame();
+    if (thinCount == 0) {
+        if (traceOn())
+            printf("[TERRAIN_INDIRECT v1] event=preflight_skip reason=zero_thin\n");
+        return false;
+    }
+
+    const int cmdCount = BuildIndirectCommands(thinCount);
+    if (cmdCount == 0) {
+        if (traceOn())
+            printf("[TERRAIN_INDIRECT v1] event=preflight_skip reason=zero_cmd\n");
+        return false;
+    }
+
+    s_frameSolidPackedThinCount = thinCount;
+    s_frameSolidCmdCount        = cmdCount;
+    s_frameSolidArmed           = true;
+    return true;
+}
+
+bool DrawIndirect() {
+    if (!IsFrameSolidArmed()) return false;
+
+    const bool ok = gos_terrain_bridge_drawIndirect(
+        s_frameSolidCmdCount,
+        static_cast<unsigned int>(g_recipeSSBO),
+        static_cast<unsigned int>(g_thinRecordSSBO),
+        static_cast<unsigned int>(g_indirectCmdBuffer));
+
+    if (!ok) {
+        // Hard failure post-arming: gate-off already fired, cannot recover.
+        static bool s_hardFailureLogged = false;
+        if (!s_hardFailureLogged) {
+            s_hardFailureLogged = true;
+            fprintf(stderr,
+                "[TERRAIN_INDIRECT v1] event=hard_failure reason=bridge_returned_false "
+                "thin_count=%d cmd_count=%d "
+                "advice=set MC2_TERRAIN_INDIRECT=0 to fall back to M2 legacy SOLID\n",
+                s_frameSolidPackedThinCount, s_frameSolidCmdCount);
+            fflush(stderr);
+        }
+        ForceDisableArmingForProcess();
+        return false;
+    }
+
+    // first_draw lifecycle print — once per mission via the mission-latch.
+    // s_firstDrawPrintedThisMission is declared in the Stage 2 anonymous ns;
+    // it's reset by ResetDenseRecipe() at mission teardown.
+    if (!s_firstDrawPrintedThisMission && traceOn()) {
+        s_firstDrawPrintedThisMission = true;
+        printf("[TERRAIN_INDIRECT v1] event=first_draw "
+               "thin_count=%d cmd_count=%d ring_slot=%d\n",
+               s_frameSolidPackedThinCount, s_frameSolidCmdCount, g_thinRingSlot);
+        fflush(stdout);
+    }
+
+    // Ring fence for the slot just drawn.
+    if (g_thinRingFences[g_thinRingSlot]) {
+        glDeleteSync(g_thinRingFences[g_thinRingSlot]);
+    }
+    g_thinRingFences[g_thinRingSlot] = glFenceSync(GL_SYNC_GPU_COMMANDS_COMPLETE, 0);
+
+    return true;
+}
+
+}  // namespace gos_terrain_indirect  // Stage 3 block
+
+// Bridge accessor for the current thin-record ring slot (used by
+// gos_terrain_bridge_drawIndirect to compute glBindBufferRange offset).
+int gos_terrain_indirect_getRingSlot() {
+    return g_thinRingSlot;
+}

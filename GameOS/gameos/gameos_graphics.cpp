@@ -2200,6 +2200,146 @@ void gosRenderer::renderWaterFastPath(
 }
 
 // ──────────────────────────────────────────────────────────────────────────
+// Terrain indirect draw bridge (Stage 3 of indirect-terrain SOLID PR1)
+//
+// Called by gos_terrain_indirect::DrawIndirect() after preflight arming.
+// Mirrors gos_terrain_bridge_renderWaterFast structure but for opaque terrain:
+//  - Depth writes ON (terrain is the primary depth source)
+//  - CLAMP_TO_EDGE / LINEAR sampler (atlas-tiled, matches M2 path)
+//  - ColorMask save/restore (M5: shadow pass leaves it FALSE)
+//  - AMD attr-0: glEnableVertexAttribArray(0) after VAO rebind
+//  - glMultiDrawArraysIndirect — NO EBO (thin VS reads SSBO via gl_VertexID)
+//
+// State save/restore covers: Program, Blend enable, BlendSrcDstRGB, DepthMask,
+// DepthTest, DepthFunc, VAO, ColorMask, Sampler[0].
+// Returns false only if the thin program is not available.
+// ──────────────────────────────────────────────────────────────────────────
+bool gos_terrain_bridge_drawIndirect(int cmdCount, unsigned int recipeSSBO,
+                                     unsigned int thinRecordSSBO,
+                                     unsigned int indirectCmdBuffer)
+{
+    ZoneScopedN("Terrain::IndirectDraw");
+    if (!g_gos_renderer) return false;
+    glsl_program* p = g_gos_renderer->getThinTerrainProgram();
+    if (!p || !p->shp_) return false;
+    if (thinRecordSSBO == 0 || indirectCmdBuffer == 0) return false;
+
+    const GLuint prog = p->shp_;
+
+    // ---- Save state --------------------------------------------------------
+    GLint       savedProgram   = 0; glGetIntegerv(GL_CURRENT_PROGRAM,   &savedProgram);
+    GLboolean   savedBlend     = glIsEnabled(GL_BLEND);
+    GLint       savedSrcRGB    = 0; glGetIntegerv(GL_BLEND_SRC_RGB,     &savedSrcRGB);
+    GLint       savedDstRGB    = 0; glGetIntegerv(GL_BLEND_DST_RGB,     &savedDstRGB);
+    GLint       savedDepthMask = 0; glGetIntegerv(GL_DEPTH_WRITEMASK,   &savedDepthMask);
+    GLboolean   savedDepthTest = glIsEnabled(GL_DEPTH_TEST);
+    GLint       savedDepthFunc = 0; glGetIntegerv(GL_DEPTH_FUNC,        &savedDepthFunc);
+    GLint       savedVAO       = 0; glGetIntegerv(GL_VERTEX_ARRAY_BINDING, &savedVAO);
+    GLboolean   savedColorMask[4];  glGetBooleanv(GL_COLOR_WRITEMASK,   savedColorMask);
+    GLuint      savedSampler   = 0;
+    { GLint q = 0; glGetIntegeri_v(GL_SAMPLER_BINDING, 0, &q); savedSampler = (GLuint)q; }
+
+    // ---- VAO rebind (AMD VAO-0 trap) + attr-0 (AMD attribute-0 trap) -------
+    extern void gos_RendererRebindVAO();
+    gos_RendererRebindVAO();
+    // AMD silently drops draws when attribute 0 is disabled and the VS has no
+    // layout(location=0) input. The thin VS reads from SSBOs only and has no
+    // vertex attribute declarations (docs/amd-driver-rules.md:5). Enable a
+    // dummy attr-0 array on the rebound VAO as the runtime mitigation.
+    glEnableVertexAttribArray(0);
+
+    // ---- Program + uniforms ------------------------------------------------
+    // terrainBindThinUniformsForPatchStream sets the program AND all uniforms
+    // (projection chain, camera, shadow maps, PBR params, tex1 sampler).
+    // It also calls glUseProgram, so we can safely use the uniform locations
+    // it caches.  This mirrors how the M2 thin path sets up uniforms before
+    // issueDraws, without duplicating the uniform logic.
+    // ssboRecordBase is set to 0 — the indirect thin-record SSBO is indexed
+    // globally (slot 2); recordIdx in the VS = 0 + vid/6.
+    const int ssboRecordBaseLoc =
+        g_gos_renderer->terrainBindThinUniformsForPatchStream();
+    if (ssboRecordBaseLoc >= 0)
+        glUniform1i(ssboRecordBaseLoc, 0);
+
+    // ---- Depth + color state for opaque terrain ----------------------------
+    glEnable(GL_DEPTH_TEST);
+    glDepthFunc(GL_LEQUAL);
+    glDepthMask(GL_TRUE);
+    // M5: undo any prior shadow-pass glColorMask(FALSE,...) from
+    // gos_postprocess.cpp:1134/1156 — without this the indirect path draws
+    // nothing on the frame following a shadow pass.
+    glColorMask(GL_TRUE, GL_TRUE, GL_TRUE, GL_TRUE);
+    // No blend for opaque terrain SOLID pass.
+    glDisable(GL_BLEND);
+
+    // ---- Sampler: CLAMP_TO_EDGE / LINEAR (matches M2 atlas-tiled path) ----
+    static GLuint s_indirectTerrainSampler = 0;
+    if (s_indirectTerrainSampler == 0) {
+        glGenSamplers(1, &s_indirectTerrainSampler);
+        glSamplerParameteri(s_indirectTerrainSampler, GL_TEXTURE_WRAP_S, GL_CLAMP_TO_EDGE);
+        glSamplerParameteri(s_indirectTerrainSampler, GL_TEXTURE_WRAP_T, GL_CLAMP_TO_EDGE);
+        glSamplerParameteri(s_indirectTerrainSampler, GL_TEXTURE_WRAP_R, GL_CLAMP_TO_EDGE);
+        glSamplerParameteri(s_indirectTerrainSampler, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
+        glSamplerParameteri(s_indirectTerrainSampler, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
+    }
+    glBindSampler(0, s_indirectTerrainSampler);
+
+    // ---- SSBO bindings + indirect buffer -----------------------------------
+    // Slot 1 = recipe (static, mission-stable)
+    // Slot 2 = thin record (per-frame ring) — will be re-bound via range below
+    if (recipeSSBO != 0)
+        glBindBufferBase(GL_SHADER_STORAGE_BUFFER, 1, (GLuint)recipeSSBO);
+    glBindBuffer(GL_DRAW_INDIRECT_BUFFER, (GLuint)indirectCmdBuffer);
+
+    // Bind the thin-record slice at the correct ring offset.
+    // The ring slot was advanced by PackThinRecordsForFrame; we don't
+    // re-derive the slot offset here — instead we bind the whole buffer
+    // at slot 2 and configure ssboRecordBase = 0 with base-instance 0.
+    // The thin VS reads thinRecs[recordIdx] where recordIdx = ssboRecordBase + vid/6.
+    // Because we uploaded at offset ringSlot*kThinRecordBytes, we need to bind
+    // the sub-range at that offset so index 0 in the shader == our first record.
+    // Re-bind as a range binding to point ssboRecordBase=0 to the current slot.
+    {
+        // Ring slot offset in bytes. kThinRecordBytes = kMaxThinRecords * 32.
+        // This is a compile-time constant so we compute it portably.
+        // g_thinRingSlot is in the anonymous namespace of gos_terrain_indirect.cpp;
+        // we need it here. Use the cmdCount and the fact that each ring-slot is
+        // exactly (65536 * 32) bytes from the previous.
+        // Simpler: the ring slot is 0-based.  We share it via a bridge accessor.
+        // Judgment call: use glBindBufferRange to point slot 2 at only the
+        // current ring-slot's region, keeping ssboRecordBase=0.
+        extern int gos_terrain_indirect_getRingSlot();
+        const int    slot       = gos_terrain_indirect_getRingSlot();
+        const size_t kRecordSz  = 32u;
+        const size_t kMaxRecs   = 65536u;
+        const GLintptr offset   = (GLintptr)(slot * kMaxRecs * kRecordSz);
+        const GLsizeiptr sz     = (GLsizeiptr)(kMaxRecs * kRecordSz);
+        glBindBufferRange(GL_SHADER_STORAGE_BUFFER, 2, (GLuint)thinRecordSSBO, offset, sz);
+    }
+
+    // ---- Draw --------------------------------------------------------------
+    glMultiDrawArraysIndirect(GL_TRIANGLES, nullptr, (GLsizei)cmdCount, 0);
+
+    // ---- Restore state -----------------------------------------------------
+    glBindBuffer(GL_DRAW_INDIRECT_BUFFER, 0);
+    glBindBufferBase(GL_SHADER_STORAGE_BUFFER, 1, 0);
+    glBindBufferBase(GL_SHADER_STORAGE_BUFFER, 2, 0);
+    glBindSampler(0, savedSampler);
+    glColorMask(savedColorMask[0], savedColorMask[1],
+                savedColorMask[2], savedColorMask[3]);
+    glDepthMask((GLboolean)savedDepthMask);
+    glDepthFunc((GLenum)savedDepthFunc);
+    if (!savedDepthTest) glDisable(GL_DEPTH_TEST);
+    else                 glEnable(GL_DEPTH_TEST);
+    if (savedBlend) glEnable(GL_BLEND);
+    else            glDisable(GL_BLEND);
+    glBlendFunc((GLenum)savedSrcRGB, (GLenum)savedDstRGB);
+    glBindVertexArray((GLuint)savedVAO);
+    glUseProgram((GLuint)savedProgram);
+    return true;
+}
+
+// ──────────────────────────────────────────────────────────────────────────
 
 static GLuint gVAO = 0;
 static float  s_hud_scale = 0.85f;  // default while iterating; RAlt+5 cycles

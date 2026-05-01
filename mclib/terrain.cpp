@@ -1700,6 +1700,11 @@ void Terrain::geometry (void)
 	TerrainQuadPtr currentQuad = quadList;
 	{
 		ZoneScopedN("Terrain::geometry quadSetupTextures");
+		// Stage 3: preflight arming — walks live quadList BEFORE the loop so
+		// IsFrameSolidArmed() is stable for all setupTextures() calls.
+		// On un-armed frames (recipe not ready, disabled, etc.) this returns
+		// false with zero side-effects; setupTextures runs as normal.
+		gos_terrain_indirect::ComputePreflight();
 		for (i=0;i<numberQuads;i++)
 		{
 			currentQuad->setupTextures();

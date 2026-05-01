@@ -128,6 +128,16 @@ unsigned int gos_terrain_bridge_getWaterFastShaderProgram();
 //   cloudOffsetX/Y     — base UV offset
 //   sprayOffsetX/Y     — detail UV offset
 //   maxMinUV           — UV wrap floor
+// --- Terrain indirect draw bridge (Stage 3 of indirect-terrain SOLID PR1) ---
+//
+// Called by gos_terrain_indirect::DrawIndirect() after preflight arming.
+// Issues one glMultiDrawArraysIndirect using the thin VS + terrain FS with
+// full state save/restore.  Returns false if the thin program is not ready.
+bool gos_terrain_bridge_drawIndirect(int cmdCount,
+                                     unsigned int recipeSSBO,
+                                     unsigned int thinRecordSSBO,
+                                     unsigned int indirectCmdBuffer);
+
 void gos_terrain_bridge_renderWaterFast(
     unsigned int recordCount,
     unsigned int waterGosHandle,

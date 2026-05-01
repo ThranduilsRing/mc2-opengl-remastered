@@ -93,6 +93,24 @@ struct CostSplitDetailOverlayScope {
             std::chrono::duration_cast<std::chrono::nanoseconds>(dt).count());
     }
 };
+
+// Stage 3 SOLID gate-off helpers.
+// When indirect SOLID is armed for this frame, BeginLegacySolidCluster()
+// returns false and the caller skips the addTriangleBulk(MC2_DRAWSOLID) body.
+// EndLegacySolidCluster() bumps the legacy counter (un-armed path only).
+// DRAWALPHA / mine / overlay clusters are NEVER gated — NoteLegacyDetailOverlayCluster
+// is passive instrumentation only.
+//
+// Counter unit: per-quad (per-cluster), NOT per addTriangle call.
+static inline bool BeginLegacySolidCluster() {
+    return !gos_terrain_indirect::IsFrameSolidArmed();
+}
+static inline void EndLegacySolidCluster() {
+    gos_terrain_indirect::Counters_AddLegacySolidSetupQuad();
+}
+static inline void NoteLegacyDetailOverlayCluster() {
+    gos_terrain_indirect::Counters_AddLegacyDetailOverlayQuad();
+}
 }  // namespace
 
 static const bool s_shapeCParityCheck = (getenv("MC2_SHAPE_C_PARITY_CHECK") != nullptr);
@@ -455,31 +473,43 @@ static void addTerrainTriangles(const TerrainRecipe& r)
 	{
 		if (r.terrainHandle != 0)
 		{
-			{ CostSplitSolidScope _csSolid;
-			mcTextureManager->addTriangleBulk(r.terrainHandle, MC2_ISTERRAIN | MC2_DRAWSOLID, 2);
+			// Hot-path SOLID gate-off (Stage 3): skip addTriangleBulk(SOLID) when
+			// indirect draw is armed — the indirect path owns SOLID this frame.
+			if (BeginLegacySolidCluster()) {
+				CostSplitSolidScope _csSolid;
+				mcTextureManager->addTriangleBulk(r.terrainHandle, MC2_ISTERRAIN | MC2_DRAWSOLID, 2);
+				EndLegacySolidCluster();
 			}
 			if (r.terrainDetailHandle != 0xffffffff) {
 				CostSplitDetailOverlayScope _csDetail;
 				mcTextureManager->addTriangleBulk(r.terrainDetailHandle, MC2_ISTERRAIN | MC2_DRAWALPHA, 2);
+				NoteLegacyDetailOverlayCluster();
 			}
 		}
 	}
 	else if (r.isAlpha)
 	{
 		if (r.terrainHandle != 0) {
-			CostSplitSolidScope _csSolid;
-			mcTextureManager->addTriangleBulk(r.terrainHandle, MC2_ISTERRAIN | MC2_DRAWSOLID, 2);
+			if (BeginLegacySolidCluster()) {
+				CostSplitSolidScope _csSolid;
+				mcTextureManager->addTriangleBulk(r.terrainHandle, MC2_ISTERRAIN | MC2_DRAWSOLID, 2);
+				EndLegacySolidCluster();
+			}
 		}
 		if (r.terrainDetailHandle != 0xffffffff) {
 			CostSplitDetailOverlayScope _csDetail;
 			mcTextureManager->addTriangleBulk(r.terrainDetailHandle, MC2_ISTERRAIN | MC2_DRAWALPHA, 2);
+			NoteLegacyDetailOverlayCluster();
 		}
 	}
 	else // pure cement
 	{
 		if (r.terrainHandle != 0) {
-			CostSplitSolidScope _csSolid;
-			mcTextureManager->addTriangleBulk(r.terrainHandle, MC2_ISTERRAIN | MC2_DRAWSOLID, 2);
+			if (BeginLegacySolidCluster()) {
+				CostSplitSolidScope _csSolid;
+				mcTextureManager->addTriangleBulk(r.terrainHandle, MC2_ISTERRAIN | MC2_DRAWSOLID, 2);
+				EndLegacySolidCluster();
+			}
 		}
 	}
 }
@@ -521,13 +551,18 @@ void TerrainQuad::setupTextures (void)
 						terrainDetailHandle = 0xffffffff;
 					overlayHandle = 0xffffffff;
 
-					{ CostSplitSolidScope _csSolid;
+					// Cold-path SOLID gate-off (Stage 3, cluster A): under
+					// MC2_MODERN_TERRAIN_PATCHES=0 only.
+					if (BeginLegacySolidCluster()) {
+					CostSplitSolidScope _csSolid;
 					mcTextureManager->addTriangle(terrainHandle,MC2_ISTERRAIN | MC2_DRAWSOLID);
 					mcTextureManager->addTriangle(terrainHandle,MC2_ISTERRAIN | MC2_DRAWSOLID);
+					EndLegacySolidCluster();
 					}
 					{ CostSplitDetailOverlayScope _csDetail;
 					mcTextureManager->addTriangle(terrainDetailHandle,MC2_ISTERRAIN | MC2_DRAWALPHA);
 					mcTextureManager->addTriangle(terrainDetailHandle,MC2_ISTERRAIN | MC2_DRAWALPHA);
+					NoteLegacyDetailOverlayCluster();
 					}
 					pz_emit_terrain_tris(vertices, uvMode, "terrain_quad_cluster_a", __FILE__, __LINE__);
 				}
@@ -600,13 +635,18 @@ void TerrainQuad::setupTextures (void)
 						terrainDetailHandle = 0xffffffff;
 					overlayHandle = 0xffffffff;
 
-					{ CostSplitSolidScope _csSolid;
+					// Cold-path SOLID gate-off (Stage 3, cluster C): under
+					// MC2_MODERN_TERRAIN_PATCHES=0 only.
+					if (BeginLegacySolidCluster()) {
+					CostSplitSolidScope _csSolid;
 					mcTextureManager->addTriangle(terrainHandle,MC2_ISTERRAIN | MC2_DRAWSOLID);
 					mcTextureManager->addTriangle(terrainHandle,MC2_ISTERRAIN | MC2_DRAWSOLID);
+					EndLegacySolidCluster();
 					}
 					{ CostSplitDetailOverlayScope _csDetail;
 					mcTextureManager->addTriangle(terrainDetailHandle,MC2_ISTERRAIN | MC2_DRAWALPHA);
 					mcTextureManager->addTriangle(terrainDetailHandle,MC2_ISTERRAIN | MC2_DRAWALPHA);
+					NoteLegacyDetailOverlayCluster();
 					}
 					pz_emit_terrain_tris(vertices, uvMode, "terrain_quad_cluster_c", __FILE__, __LINE__);
 				}

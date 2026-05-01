@@ -138,6 +138,31 @@ void FlushDirtyRecipeSlotsToGPU();  // glBufferSubData per dirty slot
 int  ParityCompareRecipeFrame();
 
 // ---------------------------------------------------------------------------
+// Stage 3: per-frame indirect SOLID draw.
+//
+// Public API (callers: terrain.cpp, txmmgr.cpp, gameos_graphics.cpp,
+// quad.cpp gate-off helpers):
+//
+//   ComputePreflight()      — call ONCE per frame BEFORE the setupTextures
+//                             loop. Packs thin records, builds indirect cmds,
+//                             sets IsFrameSolidArmed(). Safe when disabled.
+//   IsFrameSolidArmed()     — true IFF preflight armed this frame. Read by the
+//                             SOLID gate-off helpers in quad.cpp and the txmmgr
+//                             hook. Result is stable for the rest of the frame.
+//   DrawIndirect()          — thin executor: calls the bridge, handles hard
+//                             failure (logs, ForceDisableArmingForProcess).
+//                             Returns false if not armed or bridge fails.
+//   ForceDisableArmingForProcess() — sticky process-wide latch. Once set,
+//                             IsFrameSolidArmed() always returns false until
+//                             process exit. Documented recovery = restart with
+//                             MC2_TERRAIN_INDIRECT=0.
+// ---------------------------------------------------------------------------
+bool ComputePreflight();
+bool IsFrameSolidArmed();
+bool DrawIndirect();
+void ForceDisableArmingForProcess();
+
+// ---------------------------------------------------------------------------
 // Parity-check printer + 600-frame summary cadence.
 //
 // Stage 0 lands the printer skeleton; Stage 2 plugs in the actual recipe-

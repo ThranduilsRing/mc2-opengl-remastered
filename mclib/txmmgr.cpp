@@ -59,6 +59,7 @@
 #include "../GameOS/gameos/gos_static_prop_batcher.h"
 #include "../GameOS/gameos/gos_validate.h"  // drainGLErrors (Tier-1 instr §4)
 #include "../GameOS/gameos/gos_terrain_patch_stream.h"
+#include "../GameOS/gameos/gos_terrain_indirect.h"
 
 //---------------------------------------------------------------------------
 // static globals
@@ -1327,7 +1328,16 @@ void MC_TextureManager::renderLists (void)
 		}
 
 		bool modernHandled = false;
-		if (TerrainPatchStream::isReady() && !TerrainPatchStream::isOverflowed()) {
+		if (gos_terrain_indirect::IsFrameSolidArmed()) {
+			// Indirect SOLID owns this frame. The SOLID gate-off in setupTextures()
+			// already fired, so TerrainPatchStream has no SOLID records — do NOT fall
+			// back to flush() when DrawIndirect returns false (plan v2 advisor
+			// stop-the-line #1). A false return is a hard failure: logged, arming
+			// disabled process-wide; operator advice in event=hard_failure line.
+			modernHandled = gos_terrain_indirect::DrawIndirect();
+		} else if (TerrainPatchStream::isReady() && !TerrainPatchStream::isOverflowed()) {
+			// Un-armed frame: gate-off did not fire, legacy admits filled
+			// TerrainPatchStream normally. M2 thin-record-direct draw runs SOLID.
 			modernHandled = TerrainPatchStream::flush();
 		}
 
