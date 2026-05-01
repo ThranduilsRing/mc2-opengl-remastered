@@ -142,6 +142,7 @@ static BYTE terrainTypeToMaterial(DWORD terrainType)
         case 10: // Concrete
         case 13: case 14: case 15: case 16: // Cement 2-5
         case 17: case 18: case 19:          // Cement 6-8
+        case 20:                            // END_CEMENT_TYPE (terrtxm.h:44)
             return 3; // Concrete
         default:
             return 0; // Rock (Mountain, Cliff, Ash, Tundra, Water, None)

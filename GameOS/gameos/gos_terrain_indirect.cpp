@@ -242,7 +242,7 @@ inline uint8_t terrainTypeToMaterialLocal(uint32_t terrainType) {
         case 3:  case 8:  case 9:  case 12:           return 1; // Grass
         case 2:  case 4:                              return 2; // Dirt
         case 10: case 13: case 14: case 15: case 16:
-        case 17: case 18: case 19:                    return 3; // Concrete
+        case 17: case 18: case 19: case 20:           return 3; // Concrete
         default:                                      return 0; // Rock
     }
 }
