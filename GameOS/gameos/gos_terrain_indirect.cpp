@@ -33,6 +33,11 @@
 
 #include "../gameos/gos_profiler.h"
 
+// CEMENT_DIAG: file-scope extern for the global mission name buffer
+// (defined in code/mechcmd2.cpp:180 and code/logmain.cpp:88 as
+// `char missionName[1024]`).  Used by BuildCementCatalogAtlas summary line.
+extern char missionName[];
+
 namespace gos_terrain_indirect {
 
 // ---------------------------------------------------------------------------
@@ -487,9 +492,27 @@ void BuildCementCatalogAtlas() {
     cementGLTextures.reserve(64);
     bool truncated = false;
 
+    // CEMENT_DIAG (temporary, gated by MC2_TERRAIN_INDIRECT_TRACE).
+    // Walk the FULL slot range without the 255-cap break, classify each
+    // cement-flagged slot as base (< firstTransition) or transition,
+    // and emit a per-slot line + summary.  See MEMORY: cement_diag breakdown.
+    const long firstTransition = tt->getFirstTransition();
+    long diagTotal = 0, diagBase = 0, diagTransition = 0;
+
     for (long slot = 0; slot < lastSlot; ++slot) {
         if (!tt->isCement((DWORD)slot)) continue;
         const DWORD nodeIdx = tt->peekTextureHandle((DWORD)slot);
+
+        // CEMENT_DIAG per-slot line.
+        const int isBase = (firstTransition < 0 || slot < firstTransition) ? 1 : 0;
+        ++diagTotal;
+        if (isBase) ++diagBase; else ++diagTransition;
+        if (traceOn()) {
+            printf("[CEMENT_DIAG] slot=%ld nodeIdx=%u isBase=%d (firstTransition=%ld nextAvailable=%ld)\n",
+                   slot, (unsigned)nodeIdx, isBase,
+                   firstTransition, lastSlot);
+        }
+
         if (nodeIdx == 0xffffffffu) continue;
         if (nodeIdx >= (DWORD)MC_MAXTEXTURES) {
             if (traceOn()) {
@@ -504,9 +527,35 @@ void BuildCementCatalogAtlas() {
         if (gosHandle == 0u) continue;
         const GLuint glTex = gos_terrain_bridge_glTextureForGosHandle((unsigned)gosHandle);
         if (glTex == 0) continue;
-        cementNodeIndices.push_back(nodeIdx);
-        cementGLTextures.push_back(glTex);
-        if (cementNodeIndices.size() >= 255) { truncated = true; break; }
+        // Record-but-don't-break past 255: we still want the diag totals
+        // to reflect TRUE counts for tier1.  Atlas allocation gated on
+        // size below to avoid memory blowup.
+        if (cementNodeIndices.size() < 255) {
+            cementNodeIndices.push_back(nodeIdx);
+            cementGLTextures.push_back(glTex);
+        } else {
+            truncated = true;
+        }
+    }
+
+    // CEMENT_DIAG summary — always emit when trace on, regardless of cap.
+    if (traceOn()) {
+        printf("[CEMENT_DIAG] summary mission=%s total_cement=%ld base=%ld transitions=%ld nextAvailable=%ld firstTransition=%ld\n",
+               (::missionName[0] ? ::missionName : "unknown"),
+               diagTotal, diagBase, diagTransition,
+               lastSlot, firstTransition);
+        fflush(stdout);
+    }
+
+    // Memory blowup guard: if true cement count > 1024, skip atlas alloc
+    // entirely (diag-only run).  Tier1 expected <300 per plan; this is
+    // a safety net while the diag is in tree.
+    if (diagTotal > 1024) {
+        if (traceOn()) {
+            printf("[CEMENT_DIAG] atlas_alloc_skipped diagTotal=%ld exceeds 1024 cap\n", diagTotal);
+            fflush(stdout);
+        }
+        return;
     }
 
     const int N = (int)cementNodeIndices.size();

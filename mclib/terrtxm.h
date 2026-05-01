@@ -238,6 +238,12 @@ class TerrainTextures
 		// [0, getNextAvailableSlot()) and filter via isCement(slot).
 		long getNextAvailableSlot() const { return nextAvailable; }
 
+		// Public accessor for firstTransition (protected long).
+		// Used by gos_terrain_indirect cement diagnostic to classify slots
+		// into base (< firstTransition) vs transition (>= firstTransition).
+		// firstTransition is -1 until the first createTransition() call.
+		long getFirstTransition() const { return firstTransition; }
+
 		long getTextureNameID( long id ) const { return types[id].nameId; }
 		
 		float getDetailFrameRate (long typeInfo)
