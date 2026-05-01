@@ -161,6 +161,12 @@ long TerrainTextures::init (const char *fileName, const char *baseName)
 
 	memset(textures,-1,numTxms * sizeof(TerrainTXM));
 
+	// Indirect-terrain cement-atlas slice: bulk memset(-1) above leaves
+	// TerrainTXM::flags as 0xFFFFFFFF, making isCement() report true on every
+	// uninitialized slot. Explicitly zero flags so only setTexture() can opt in.
+	for (long i = 0; i < numTxms; ++i)
+		textures[i].flags = 0;
+
 	types = (MC_TerrainTypePtr)tileRAMHeap->Malloc(numTypes * sizeof(MC_TerrainType));
 	gosASSERT(types != NULL);
 
