@@ -14,6 +14,10 @@ out float TerrainType;
 out vec3 WorldNorm;
 out vec3 WorldPos;
 out float UndisplacedDepth;
+flat out uint RecordIdx;  // matches gos_terrain_thin.vert; legacy chain has no thin-record
+                          // context, so emit a constant 0u.  Frag's cement-atlas branch
+                          // is gated on useCementAtlas != 0 which the legacy bridge never
+                          // sets, so the SSBO read is dead on the legacy path.
 
 uniform vec4 tessDisplace;      // x=phongAlpha, y=displaceScale
 uniform vec4 tessDebug;         // x debug mode; -2 = screen-space projection probe
@@ -34,6 +38,7 @@ uniform vec4 detailNormalTiling; // .x = base tiling multiplier
 void main()
 {
     vec3 bary = gl_TessCoord;
+    RecordIdx = 0u;  // legacy chain has no thin-record context; set BEFORE early-outs.
 
     if (tessDebug.x < -2.5) {
         Color = vec4(1.0);
