@@ -29,6 +29,7 @@
 #include "../../mclib/mapdata.h"
 #include "../../mclib/terrtxm.h"    // TERRAIN_TXM_SIZE (extern int)
 #include "../../mclib/txmmgr.h"     // MC_MAXTEXTURES (cement node-index space)
+#include "gos_terrain_bridge.h"     // gos_terrain_bridge_glTextureForGosHandle (cement readback)
 
 #include "../gameos/gos_profiler.h"
 
@@ -446,6 +447,152 @@ void BuildColormapAtlas() {
     }
 }
 
+// Bridge accessor: gosHandle → GLuint texture name (declared in
+// gos_terrain_bridge.h, included above).  Implemented at
+// GameOS/gameos/gameos_graphics.cpp:1775-1781.
+
+// BuildCementCatalogAtlas — GPU readback path (B1 of plan v2.1).
+// Runs at BuildDenseRecipe() time.  Walks textures[0..nextAvailable-1],
+// filters by isCement(slot), reads each cement tile via glGetTexImage,
+// blits into a packed grid atlas, uploads as a single GL_TEXTURE_2D.
+//
+// quickLoad-safe: does not depend on tileRAMHeap textureData[0] (which
+// is NULL in stock gameplay per terrtxm.cpp:561 enclosing gate).
+//
+// NO MIPMAPS: cement atlas cells are packed without inter-cell gutters,
+// so glGenerateMipmap would bleed neighboring cells.  Sampler is GL_LINEAR
+// min/mag; potential shimmer at distance/oblique angles is accepted —
+// Gate A includes a distance/oblique screenshot to surface this.  Per-cell
+// mip generation with gutters is a follow-up slice.
+void BuildCementCatalogAtlas() {
+    ZoneScopedN("Terrain::IndirectCementAtlasUpload");
+
+    if (!Terrain::terrainTextures) {
+        if (traceOn()) printf("[TERRAIN_INDIRECT v1] event=cement_atlas_skip reason=no_terrainTextures\n");
+        return;
+    }
+    auto* tt = Terrain::terrainTextures;
+
+    const int txmSize = TERRAIN_TXM_SIZE;  // extern int, typically 64 (terrtxm.cpp:51)
+    const long lastSlot = tt->getNextAvailableSlot();
+    if (lastSlot <= 0) {
+        if (traceOn()) printf("[TERRAIN_INDIRECT v1] event=cement_atlas_skip reason=no_slots\n");
+        return;
+    }
+
+    // Pass 1: enumerate cement slots, resolve each to (nodeIdx, GLuint).
+    std::vector<DWORD>  cementNodeIndices;
+    std::vector<GLuint> cementGLTextures;
+    cementNodeIndices.reserve(64);
+    cementGLTextures.reserve(64);
+    bool truncated = false;
+
+    for (long slot = 0; slot < lastSlot; ++slot) {
+        if (!tt->isCement((DWORD)slot)) continue;
+        const DWORD nodeIdx = tt->peekTextureHandle((DWORD)slot);
+        if (nodeIdx == 0xffffffffu) continue;
+        if (nodeIdx >= (DWORD)MC_MAXTEXTURES) {
+            if (traceOn()) {
+                printf("[TERRAIN_INDIRECT v1] event=cement_atlas_nodeidx_oob "
+                       "slot=%ld nodeIdx=%u cap=%d\n",
+                       slot, (unsigned)nodeIdx, (int)MC_MAXTEXTURES);
+                fflush(stdout);
+            }
+            continue;
+        }
+        const DWORD gosHandle = tex_resolve(nodeIdx);
+        if (gosHandle == 0u) continue;
+        const GLuint glTex = gos_terrain_bridge_glTextureForGosHandle((unsigned)gosHandle);
+        if (glTex == 0) continue;
+        cementNodeIndices.push_back(nodeIdx);
+        cementGLTextures.push_back(glTex);
+        if (cementNodeIndices.size() >= 255) { truncated = true; break; }
+    }
+
+    const int N = (int)cementNodeIndices.size();
+    if (N == 0) {
+        if (traceOn()) printf("[TERRAIN_INDIRECT v1] event=cement_atlas_skip reason=no_cement_tiles count=0\n");
+        return;
+    }
+
+    // Build nodeIdx → layer-index map.
+    memset(g_cementLayerIndexByNodeIdx, 0xFF, sizeof(g_cementLayerIndexByNodeIdx));
+    for (int k = 0; k < N; ++k) {
+        g_cementLayerIndexByNodeIdx[cementNodeIndices[k]] = (uint16_t)k;
+    }
+
+    // Grid: smallest power-of-2 side fitting N cells in a square.
+    int gridSide = 1;
+    while (gridSide * gridSide < N) gridSide <<= 1;
+    const int atlasPixelSide = gridSide * txmSize;
+
+    std::vector<uint32_t> atlasBuf((size_t)atlasPixelSide * atlasPixelSide, 0u);
+    std::vector<uint32_t> tileBuf((size_t)txmSize * txmSize, 0u);
+
+    // Save GL state (V24).
+    GLint savedActive = GL_TEXTURE0;
+    glGetIntegerv(GL_ACTIVE_TEXTURE, &savedActive);
+    glActiveTexture(GL_TEXTURE0);
+    GLint savedTex0Binding = 0;
+    glGetIntegerv(GL_TEXTURE_BINDING_2D, &savedTex0Binding);
+    GLint savedPackAlign = 4;
+    glGetIntegerv(GL_PACK_ALIGNMENT, &savedPackAlign);
+    GLint savedUnpackAlign = 4;
+    glGetIntegerv(GL_UNPACK_ALIGNMENT, &savedUnpackAlign);
+    glPixelStorei(GL_PACK_ALIGNMENT, 4);
+    glPixelStorei(GL_UNPACK_ALIGNMENT, 4);
+
+    for (int k = 0; k < N; ++k) {
+        glBindTexture(GL_TEXTURE_2D, cementGLTextures[k]);
+        glGetTexImage(GL_TEXTURE_2D, 0, GL_BGRA, GL_UNSIGNED_BYTE, tileBuf.data());
+
+        const int col  = k % gridSide;
+        const int row  = k / gridSide;
+        const int dstX = col * txmSize;
+        const int dstY = row * txmSize;
+        for (int py = 0; py < txmSize; ++py) {
+            const uint32_t* srcRow = &tileBuf[(size_t)py * txmSize];
+            uint32_t*       dstRow = &atlasBuf[(size_t)(dstY + py) * atlasPixelSide + dstX];
+            memcpy(dstRow, srcRow, (size_t)txmSize * sizeof(uint32_t));
+        }
+    }
+
+    if (g_cementAtlasGLTex == 0) glGenTextures(1, &g_cementAtlasGLTex);
+    glBindTexture(GL_TEXTURE_2D, g_cementAtlasGLTex);
+    glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA8,
+                 atlasPixelSide, atlasPixelSide, 0,
+                 GL_BGRA, GL_UNSIGNED_BYTE, atlasBuf.data());
+    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR);  // no mips — see header comment
+    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
+    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_REPEAT);
+    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_REPEAT);
+
+    // Restore state (V24).
+    glPixelStorei(GL_PACK_ALIGNMENT, savedPackAlign);
+    glPixelStorei(GL_UNPACK_ALIGNMENT, savedUnpackAlign);
+    glBindTexture(GL_TEXTURE_2D, (GLuint)savedTex0Binding);
+    glActiveTexture((GLenum)savedActive);
+
+    g_cementAtlasGridSide    = gridSide;
+    g_cementAtlasTileCount   = N;
+    g_cementCatalogTruncated = truncated ? 1 : 0;
+    g_cementLayerMapReady    = true;
+
+    if (traceOn()) {
+        printf("[TERRAIN_INDIRECT v1] event=cement_catalog_built tile_count=%d "
+               "atlas_size=%dx%d grid_side=%d gltex=%u truncated=%d "
+               "unmapped_pack_count=%u\n",
+               N, atlasPixelSide, atlasPixelSide, gridSide,
+               (unsigned)g_cementAtlasGLTex,
+               g_cementCatalogTruncated,
+               g_cementPackUnmappedCount);
+        if (truncated) {
+            printf("[TERRAIN_INDIRECT v1] event=cement_catalog_truncated count=255\n");
+        }
+        fflush(stdout);
+    }
+}
+
 }  // anonymous namespace (atlas helpers)
 
 // Bridge accessors — declared extern in gameos_graphics.cpp.
@@ -454,6 +601,10 @@ float  gos_terrain_indirect_getNumTexturesAcross()     { return g_atlasNumTextur
 float  gos_terrain_indirect_getAtlasMapTopLeftX()      { return g_atlasMapTopLeftX; }
 float  gos_terrain_indirect_getAtlasMapTopLeftY()      { return g_atlasMapTopLeftY; }
 float  gos_terrain_indirect_getAtlasOneOverWorldUnits(){ return g_atlasOneOverWorldUnits; }
+
+GLuint gos_terrain_indirect_getCementAtlasGLTex()    { return g_cementAtlasGLTex; }
+int    gos_terrain_indirect_getCementAtlasGridSide() { return g_cementAtlasGridSide; }
+bool   gos_terrain_indirect_isCementAtlasReady()     { return g_cementLayerMapReady && g_cementAtlasGLTex != 0; }
 
 // ---------------------------------------------------------------------------
 // Stage 2 public API
@@ -502,6 +653,10 @@ void BuildDenseRecipe() {
     // Upload the merged colormap atlas for the indirect draw bridge.
     // Must run after recipe build so terrainTextures2 is ready.
     BuildColormapAtlas();
+
+    // Build cement catalog atlas via GPU readback (textureData[0] is NULL in
+    // stock gameplay; see plan v2.1 §C1/B1).
+    BuildCementCatalogAtlas();
 }
 
 void ResetDenseRecipe() {
