@@ -246,7 +246,11 @@ def main():
                             "MC2_RENDER_WATER_FASTPATH",
                             "MC2_RENDER_WATER_PARITY_CHECK",
                             "MC2_VERTEX_PROJECT_FAST",
-                            "MC2_VERTEX_PROJECT_PARITY")},
+                            "MC2_VERTEX_PROJECT_PARITY",
+                            "MC2_TERRAIN_INDIRECT",
+                            "MC2_TERRAIN_INDIRECT_PARITY_CHECK",
+                            "MC2_TERRAIN_INDIRECT_TRACE",
+                            "MC2_TERRAIN_COST_SPLIT")},
             },
         )
         print(f"[runner] running {e.stem} (tier={tier} duration={duration})",
