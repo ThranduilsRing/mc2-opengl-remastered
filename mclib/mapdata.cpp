@@ -34,6 +34,8 @@
 #include<vector>
 #include<algorithm>
 
+#include"../GameOS/gameos/gos_terrain_indirect.h"
+
 //---------------------------------------------------------------------------
 // c'tors for postCompVertex
 PostcompVertex& PostcompVertex::operator=( const PostcompVertex& src )
@@ -147,6 +149,9 @@ void MapData::destroy (void)
 	HeapManager::destroy();
 
 	invalidateTerrainFaceCache();
+	// Stage 2 indirect-terrain: whole-map recipe invalidation on teardown.
+	// Separate from invalidateTerrainFaceCache (different cache system).
+	gos_terrain_indirect::InvalidateAllRecipes();
 
 	if (blankVertex)
 	{
@@ -187,8 +192,11 @@ void MapData::newInit (long numVertices)
 
 	Terrain::recalcLight = true;
 	Terrain::recalcShadows = false;
-	
+
 	invalidateTerrainFaceCache();
+	// Stage 2 indirect-terrain: whole-map recipe invalidation on fresh init.
+	// g_denseRecipes.empty() guard inside makes this a no-op when no recipe built.
+	gos_terrain_indirect::InvalidateAllRecipes();
 	calcTransitions();
 }
 
@@ -906,7 +914,14 @@ void MapData::calcLight (void)
 	}
 	
 	Terrain::recalcShadows = false;
-}	
+
+	// Stage 2 indirect-terrain: normals were just recomputed. Rebuild all
+	// recipe slots so the dense SSBO stays in sync. Called at most once per
+	// lighting recalc (rare during gameplay — only on light-direction change).
+	// InvalidateAllRecipes is a no-op when g_denseRecipes.empty() (i.e., when
+	// neither MC2_TERRAIN_INDIRECT nor MC2_TERRAIN_INDIRECT_PARITY_CHECK is set).
+	gos_terrain_indirect::InvalidateAllRecipes();
+}
 
 //---------------------------------------------------------------------------
 void MapData::clearShadows()
@@ -1348,6 +1363,20 @@ void MapData::setTerrain( long indexY, long indexX, int Type )
 			DWORD txmResult = Terrain::terrainTextures->setTexture(terrainType,overlayType);
 
 			pVertex1->textureData += txmResult;
+		}
+	}
+
+	// Stage 2 indirect-terrain: precise per-vertex recipe invalidation BEFORE
+	// the whole-map Shape C cache invalidation below. This narrows the CPU
+	// recompute to only the affected vertices while the blocks[] data is still
+	// valid. After invalidateTerrainFaceCache() the Shape C cache is NULL, so
+	// buildRecipeSlot falls back to UV defaults — correct (same as legacy).
+	// V17: precise call here, whole-map call only at destroy/newInit sites.
+	for (int _iv = 0; _iv < 4; ++_iv) {
+		if ((indexX > -1 && indexX < Terrain::realVerticesMapSide - 1) &&
+		    (indexY > -1 && indexY < Terrain::realVerticesMapSide - 1)) {
+			const int32_t vn = Vertices[_iv][x] + Vertices[_iv][y] * Terrain::realVerticesMapSide;
+			gos_terrain_indirect::InvalidateRecipeForVertexNum(vn);
 		}
 	}
 

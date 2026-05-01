@@ -1,20 +1,35 @@
 // GameOS/gameos/gos_terrain_indirect.cpp
 //
-// Indirect terrain SOLID-only PR1 — Stage 0 scaffolding.
+// Indirect terrain SOLID-only PR1 — Stage 0 + Stage 2 implementation.
 //
 // See gos_terrain_indirect.h for the slice overview, the Tracy zone name
 // reservations, and the public API contract (counter units = per-quad,
 // parity-printer schema, env-gate semantics).
 //
-// Stage 0 lands env-gate readers, the three N1 counters with public function
-// API, and the parity-printer + 600-frame summary skeleton. Stage 2 wires the
-// recipe build/reset; Stage 3 wires the per-frame thin-record packer,
-// indirect-command builder, preflight-arming, and bridge entry.
+// Stage 0: env-gate readers, N1 counters, parity-printer skeleton.
+// Stage 2: dense TerrainQuadRecipe SSBO build/reset/invalidate/flush,
+//          parity body comparing recipe against live quadList values.
+// Stage 3 wires the per-frame thin-record packer, indirect-command builder,
+// preflight-arming, and bridge entry.
 
 #include "gos_terrain_indirect.h"
+#include "gos_terrain_patch_stream.h"  // TerrainQuadRecipe
 
+#include <vector>
 #include <cstdio>
 #include <cstdlib>
+#include <cstring>  // memcpy
+
+#include <GL/glew.h>
+
+// MC2 types — resolve relative path from GameOS/gameos/
+#include "../../mclib/terrain.h"
+#include "../../mclib/quad.h"
+#include "../../mclib/vertex.h"
+#include "../../mclib/mapdata.h"
+#include "../../mclib/terrtxm.h"    // TERRAIN_TXM_SIZE (extern int)
+
+#include "../gameos/gos_profiler.h"
 
 namespace gos_terrain_indirect {
 
@@ -185,3 +200,445 @@ void ParityFrameTick(int quadsCheckedThisFrame) {
 }
 
 }  // namespace gos_terrain_indirect
+
+// ---------------------------------------------------------------------------
+// Stage 2 — dense recipe SSBO storage and helpers
+// ---------------------------------------------------------------------------
+
+namespace {
+
+// Module-private: dense recipe array indexed by vertexNum (= mx + my * mapSide).
+// Sized mapSide² when built; cleared on ResetDenseRecipe.
+std::vector<TerrainQuadRecipe> g_denseRecipes;
+std::vector<bool>              g_denseRecipeDirty;
+bool                           g_denseRecipeAnyDirty = false;
+GLuint                         g_recipeSSBO          = 0;
+int32_t                        g_recipeMapSide       = 0;
+bool                           g_recipeReady         = false;
+
+// Mission-latch for trace reset
+static bool s_firstDrawPrintedThisMission = false;
+
+// Cached trace flag (avoids repeated getenv calls in hot paths)
+static bool s_indirectTrace = false;
+static bool s_indirectTraceKnown = false;
+static bool traceOn() {
+    if (!s_indirectTraceKnown) {
+        const char* v = getenv("MC2_TERRAIN_INDIRECT_TRACE");
+        s_indirectTrace = (v && v[0] == '1' && v[1] == '\0');
+        s_indirectTraceKnown = true;
+    }
+    return s_indirectTrace;
+}
+
+// Map MC2 terrain type enum (0-20) to PBR material index (0-3).
+// Mirrors quad.cpp terrainTypeToMaterial (file-static, not exported) and
+// gos_terrain_water_stream.cpp terrainTypeToMaterialLocal.
+// MUST stay in sync. Any drift shows up immediately in the parity check
+// _wp0 comparison the next time MC2_TERRAIN_INDIRECT_PARITY_CHECK runs.
+// 0=Rock, 1=Grass, 2=Dirt, 3=Concrete
+inline uint8_t terrainTypeToMaterialLocal(uint32_t terrainType) {
+    switch (terrainType) {
+        case 3:  case 8:  case 9:  case 12:           return 1; // Grass
+        case 2:  case 4:                              return 2; // Dirt
+        case 10: case 13: case 14: case 15: case 16:
+        case 17: case 18: case 19:                    return 3; // Concrete
+        default:                                      return 0; // Rock
+    }
+}
+
+// Populate one slot in the dense recipe array from MapData.
+// Called both from BuildDenseRecipe (full build at primeMissionTerrainCache)
+// and from InvalidateRecipeForVertexNum (in-gameplay precise rebuild).
+//
+// Judgment call on UV defaults during in-gameplay invalidation:
+//   setTerrain() calls invalidateTerrainFaceCache(), which frees the entire
+//   Shape C cache. After that, getTerrainFaceCacheEntry returns nullptr until
+//   the next primeMissionTerrainCache call (mission reload). For in-gameplay
+//   mutations we therefore fall back to the default UV values from
+//   quad.cpp:1734-1737 — the same fallback legacy uses once the cache is gone.
+//   This is correct: default UVs are the pre-Shape-C half-texel padding values.
+void buildRecipeSlot(int32_t vn, TerrainQuadRecipe& out) {
+    const long mapSide = Terrain::realVerticesMapSide;
+    if (mapSide <= 0) { memset(&out, 0, sizeof(TerrainQuadRecipe)); return; }
+
+    // vn = top-left corner vertexNum = mx + my * mapSide
+    const long mx = vn % mapSide;
+    const long my = vn / mapSide;
+
+    // Edge vertex: no valid quad. Zero out.
+    if (mx >= mapSide - 1 || my >= mapSide - 1) {
+        memset(&out, 0, sizeof(TerrainQuadRecipe));
+        return;
+    }
+
+    const PostcompVertexPtr blocks = Terrain::mapData ? Terrain::mapData->getBlocks() : nullptr;
+    if (!blocks) { memset(&out, 0, sizeof(TerrainQuadRecipe)); return; }
+
+    const long halfSide = Terrain::halfVerticesMapSide;
+    const float wupv    = Terrain::worldUnitsPerVertex;
+
+    // Corner layout (matches water stream and quad.cpp):
+    //   v0 = (mx,   my)     top-left
+    //   v1 = (mx+1, my)     top-right
+    //   v2 = (mx+1, my+1)   bottom-right
+    //   v3 = (mx,   my+1)   bottom-left
+    const PostcompVertex& p0 = blocks[mx       + my       * mapSide];
+    const PostcompVertex& p1 = blocks[(mx + 1) + my       * mapSide];
+    const PostcompVertex& p2 = blocks[(mx + 1) + (my + 1) * mapSide];
+    const PostcompVertex& p3 = blocks[mx       + (my + 1) * mapSide];
+
+    // World X/Y from map indices (gos_terrain_water_stream.cpp:125-130)
+    const float wx0 = float(mx     - halfSide) * wupv;
+    const float wy0 = float(halfSide - my    ) * wupv;
+    const float wx1 = float(mx + 1 - halfSide) * wupv;
+    const float wy1 = wy0;
+    const float wx2 = wx1;
+    const float wy2 = float(halfSide - (my + 1)) * wupv;
+    const float wx3 = wx0;
+    const float wy3 = wy2;
+
+    out.wx0 = wx0; out.wy0 = wy0; out.wz0 = p0.elevation; out._wp0 = 0.f;
+    out.wx1 = wx1; out.wy1 = wy1; out.wz1 = p1.elevation; out._wp1 = 0.f;
+    out.wx2 = wx2; out.wy2 = wy2; out.wz2 = p2.elevation; out._wp2 = 0.f;
+    out.wx3 = wx3; out.wy3 = wy3; out.wz3 = p3.elevation; out._wp3 = 0.f;
+
+    out.nx0 = p0.vertexNormal.x; out.ny0 = p0.vertexNormal.y; out.nz0 = p0.vertexNormal.z; out._np0 = 0.f;
+    out.nx1 = p1.vertexNormal.x; out.ny1 = p1.vertexNormal.y; out.nz1 = p1.vertexNormal.z; out._np1 = 0.f;
+    out.nx2 = p2.vertexNormal.x; out.ny2 = p2.vertexNormal.y; out.nz2 = p2.vertexNormal.z; out._np2 = 0.f;
+    out.nx3 = p3.vertexNormal.x; out.ny3 = p3.vertexNormal.y; out.nz3 = p3.vertexNormal.z; out._np3 = 0.f;
+
+    // UV extents — mirror quad.cpp:1734-1748 logic.
+    // Default: half-texel padding. Override from Shape C cache when available.
+    float minU = 0.5f / TERRAIN_TXM_SIZE;
+    float maxU = 1.0f - 0.5f / TERRAIN_TXM_SIZE;
+    float minV = minU;
+    float maxV = maxU;
+
+    if (Terrain::terrainTextures2 && Terrain::mapData) {
+        const MapData::WorldQuadTerrainCacheEntry* entry =
+            Terrain::mapData->getTerrainFaceCacheEntry(my, mx);  // (tileR=my, tileC=mx)
+        if (entry && entry->isValid()) {
+            // Mirror quad.cpp:1743: only use uvData when NOT (overlayHandle==0xffffffff && isCement)
+            const bool isCement  = entry->isCement();
+            const bool noOverlay = (entry->overlayHandle == 0xffffffffu);
+            if (!(noOverlay && isCement)) {
+                minU = entry->uvData.minU;
+                minV = entry->uvData.minV;
+                maxU = entry->uvData.maxU;
+                maxV = entry->uvData.maxV;
+            }
+        }
+        // If entry is NULL or !isValid(): normal after setTerrain; use defaults.
+    }
+
+    out.minU = minU; out.minV = minV; out.maxU = maxU; out.maxV = maxV;
+
+    // Pack 4 corner material types into _wp0 (bit-preserving; shader reads
+    // via floatBitsToUint per gos_terrain_thin.vert:122).
+    {
+        const uint32_t m0 = terrainTypeToMaterialLocal(p0.terrainType);
+        const uint32_t m1 = terrainTypeToMaterialLocal(p1.terrainType);
+        const uint32_t m2 = terrainTypeToMaterialLocal(p2.terrainType);
+        const uint32_t m3 = terrainTypeToMaterialLocal(p3.terrainType);
+        const uint32_t tpacked = m0 | (m1 << 8) | (m2 << 16) | (m3 << 24);
+        memcpy(&out._wp0, &tpacked, 4);
+    }
+}
+
+}  // anonymous namespace
+
+// ---------------------------------------------------------------------------
+// Stage 2 public API
+// ---------------------------------------------------------------------------
+
+namespace gos_terrain_indirect {
+
+void BuildDenseRecipe() {
+    ZoneScopedN("Terrain::IndirectRecipeBuild");
+    if (!Terrain::mapData) return;
+
+    g_recipeMapSide = Terrain::realVerticesMapSide;
+    const size_t N  = (size_t)g_recipeMapSide * (size_t)g_recipeMapSide;
+
+    g_denseRecipes.assign(N, TerrainQuadRecipe{});
+    g_denseRecipeDirty.assign(N, false);
+    g_denseRecipeAnyDirty        = false;
+    g_recipeReady                = false;
+    s_firstDrawPrintedThisMission = false;
+
+    // BuildDenseRecipe is called AFTER mapData->buildTerrainFaceCache (terrain.cpp:585),
+    // so the Shape C cache is populated and getTerrainFaceCacheEntry returns valid entries.
+    for (int32_t vn = 0; vn < (int32_t)N; ++vn) {
+        buildRecipeSlot(vn, g_denseRecipes[vn]);
+    }
+
+    // Full GPU upload on mission load.
+    if (g_recipeSSBO == 0) glGenBuffers(1, &g_recipeSSBO);
+    glBindBuffer(GL_SHADER_STORAGE_BUFFER, g_recipeSSBO);
+    glBufferData(GL_SHADER_STORAGE_BUFFER,
+                 (GLsizeiptr)(N * sizeof(TerrainQuadRecipe)),
+                 g_denseRecipes.data(),
+                 GL_DYNAMIC_DRAW);
+    glBindBuffer(GL_SHADER_STORAGE_BUFFER, 0);
+
+    g_recipeReady = true;
+
+    if (traceOn()) {
+        printf("[TERRAIN_INDIRECT v1] event=recipe_build mapSide=%d entries=%zu "
+               "bytes=%zu ssbo=%u\n",
+               g_recipeMapSide, N, N * sizeof(TerrainQuadRecipe),
+               (unsigned)g_recipeSSBO);
+        fflush(stdout);
+    }
+}
+
+void ResetDenseRecipe() {
+    ZoneScopedN("Terrain::IndirectRecipeReset");
+
+    if (traceOn()) {
+        printf("[TERRAIN_INDIRECT v1] event=recipe_reset ssbo=%u\n",
+               (unsigned)g_recipeSSBO);
+        fflush(stdout);
+    }
+
+    g_denseRecipes.clear();
+    g_denseRecipeDirty.clear();
+    g_denseRecipeAnyDirty        = false;
+    g_recipeMapSide              = 0;
+    g_recipeReady                = false;
+    s_firstDrawPrintedThisMission = false;
+    // g_recipeSSBO stays allocated — reused by next mission's BuildDenseRecipe.
+    // Mirrors WaterStream::Reset() pattern.
+}
+
+bool IsDenseRecipeReady() {
+    return g_recipeReady && g_recipeSSBO != 0;
+}
+
+const TerrainQuadRecipe* RecipeForVertexNum(int32_t vn) {
+    if (vn < 0) return nullptr;
+    if (static_cast<size_t>(vn) >= g_denseRecipes.size()) return nullptr;
+    return &g_denseRecipes[vn];
+}
+
+void InvalidateRecipeForVertexNum(int32_t vn) {
+    if (!IsEnabled() && !IsParityCheckEnabled()) return;
+    if (g_denseRecipes.empty()) return;
+    if (vn < 0 || static_cast<size_t>(vn) >= g_denseRecipes.size()) return;
+    buildRecipeSlot(vn, g_denseRecipes[vn]);
+    g_denseRecipeDirty[vn] = true;
+    g_denseRecipeAnyDirty  = true;
+    if (traceOn()) {
+        printf("[TERRAIN_INDIRECT v1] event=invalidate vn=%d\n", vn);
+        fflush(stdout);
+    }
+}
+
+void InvalidateAllRecipes() {
+    if (!IsEnabled() && !IsParityCheckEnabled()) return;
+    if (g_denseRecipes.empty()) return;
+    const size_t N = g_denseRecipes.size();
+    for (size_t vn = 0; vn < N; ++vn) {
+        buildRecipeSlot((int32_t)vn, g_denseRecipes[vn]);
+        g_denseRecipeDirty[vn] = true;
+    }
+    g_denseRecipeAnyDirty = true;
+    if (traceOn()) {
+        printf("[TERRAIN_INDIRECT v1] event=invalidate_all entries=%zu\n", N);
+        fflush(stdout);
+    }
+}
+
+void FlushDirtyRecipeSlotsToGPU() {
+    if (!g_denseRecipeAnyDirty || g_recipeSSBO == 0) return;
+    glBindBuffer(GL_SHADER_STORAGE_BUFFER, g_recipeSSBO);
+    const size_t N = g_denseRecipes.size();
+    for (size_t vn = 0; vn < N; ++vn) {
+        if (!g_denseRecipeDirty[vn]) continue;
+        glBufferSubData(GL_SHADER_STORAGE_BUFFER,
+                        (GLintptr)(vn * sizeof(TerrainQuadRecipe)),
+                        sizeof(TerrainQuadRecipe),
+                        &g_denseRecipes[vn]);
+        g_denseRecipeDirty[vn] = false;
+    }
+    g_denseRecipeAnyDirty = false;
+    glBindBuffer(GL_SHADER_STORAGE_BUFFER, 0);
+}
+
+// ---------------------------------------------------------------------------
+// Stage 2 parity body
+// ---------------------------------------------------------------------------
+//
+// Walks the live quadList, looks up the dense recipe by top-left vertexNum,
+// and byte-compares recipe input fields against the legacy-equivalent values
+// derived directly from the live quad vertex pointers.
+//
+// Skip set (mirrors water_ssbo_pattern.md):
+//   - null pointer guards on q.vertices[0..3] and ->pVertex
+//   - blank-vertex skip: any vertexNum < 0
+//   - recipe coverage gate: RecipeForVertexNum returns nullptr → skip
+//
+// Compared fields: corner positions (wx*/wy*/wz*), corner normals (nx*/ny*/nz*),
+// UV extents (minU/minV/maxU/maxV), _wp0 terrainType-pack bits.
+// NOT compared: _wp1.._wp3, _np0.._np3 (always 0.f padding),
+//               post-projection data (per water_ssbo_pattern.md — sub-ULP drift).
+//
+int ParityCompareRecipeFrame() {
+    if (!IsParityCheckEnabled()) return 0;
+    if (!g_recipeReady || g_denseRecipes.empty()) return 0;
+    if (!land) return 0;
+
+    const long total            = land->getNumQuads();
+    const TerrainQuadPtr quads  = land->getQuadList();
+    if (!quads || total <= 0) return 0;
+
+    static long long s_parityFrameIdx = 0;
+    const long long frame = ++s_parityFrameIdx;
+
+    const long  mapSide  = Terrain::realVerticesMapSide;
+    const long  halfSide = Terrain::halfVerticesMapSide;
+    const float wupv     = Terrain::worldUnitsPerVertex;
+
+    int quadsChecked = 0;
+
+    for (long qi = 0; qi < total; ++qi) {
+        const TerrainQuad& q = quads[qi];
+
+        // Null-pointer guards
+        if (!q.vertices[0] || !q.vertices[1] || !q.vertices[2] || !q.vertices[3]) continue;
+        if (!q.vertices[0]->pVertex || !q.vertices[1]->pVertex ||
+            !q.vertices[2]->pVertex || !q.vertices[3]->pVertex) continue;
+
+        // Blank-vertex skip
+        if (q.vertices[0]->vertexNum < 0 || q.vertices[1]->vertexNum < 0 ||
+            q.vertices[2]->vertexNum < 0 || q.vertices[3]->vertexNum < 0) continue;
+
+        const int32_t vn0 = (int32_t)q.vertices[0]->vertexNum;
+
+        // Recipe coverage gate
+        const TerrainQuadRecipe* rec = RecipeForVertexNum(vn0);
+        if (!rec) continue;
+
+        ++quadsChecked;
+
+        // Derive expected corner positions from map index arithmetic
+        const long  mx = vn0 % mapSide;
+        const long  my = vn0 / mapSide;
+        const float e_wx0 = float(mx     - halfSide) * wupv;
+        const float e_wy0 = float(halfSide - my    ) * wupv;
+        const float e_wx1 = float(mx + 1 - halfSide) * wupv;
+        const float e_wy1 = e_wy0;
+        const float e_wx2 = e_wx1;
+        const float e_wy2 = float(halfSide - (my + 1)) * wupv;
+        const float e_wx3 = e_wx0;
+        const float e_wy3 = e_wy2;
+
+        // Expected elevations and normals from live pVertex
+        const float e_wz0 = q.vertices[0]->pVertex->elevation;
+        const float e_wz1 = q.vertices[1]->pVertex->elevation;
+        const float e_wz2 = q.vertices[2]->pVertex->elevation;
+        const float e_wz3 = q.vertices[3]->pVertex->elevation;
+
+        const float e_nx0 = q.vertices[0]->pVertex->vertexNormal.x;
+        const float e_ny0 = q.vertices[0]->pVertex->vertexNormal.y;
+        const float e_nz0 = q.vertices[0]->pVertex->vertexNormal.z;
+        const float e_nx1 = q.vertices[1]->pVertex->vertexNormal.x;
+        const float e_ny1 = q.vertices[1]->pVertex->vertexNormal.y;
+        const float e_nz1 = q.vertices[1]->pVertex->vertexNormal.z;
+        const float e_nx2 = q.vertices[2]->pVertex->vertexNormal.x;
+        const float e_ny2 = q.vertices[2]->pVertex->vertexNormal.y;
+        const float e_nz2 = q.vertices[2]->pVertex->vertexNormal.z;
+        const float e_nx3 = q.vertices[3]->pVertex->vertexNormal.x;
+        const float e_ny3 = q.vertices[3]->pVertex->vertexNormal.y;
+        const float e_nz3 = q.vertices[3]->pVertex->vertexNormal.z;
+
+        // Expected UV extents: mirror buildRecipeSlot exactly — read from the
+        // terrain face cache entry (NOT from q.uvData, which is only set by the
+        // Shape C hot-path and stays zero for quads that bypass it).
+        // This comparison is apples-to-apples: recipe was built from the cache;
+        // parity derives the expected value from the same cache.
+        float e_minU = 0.5f / TERRAIN_TXM_SIZE;
+        float e_maxU = 1.0f - 0.5f / TERRAIN_TXM_SIZE;
+        float e_minV = e_minU;
+        float e_maxV = e_maxU;
+        if (Terrain::terrainTextures2 && Terrain::mapData) {
+            const MapData::WorldQuadTerrainCacheEntry* entry =
+                Terrain::mapData->getTerrainFaceCacheEntry(my, mx);
+            if (entry && entry->isValid()) {
+                const bool isCement  = entry->isCement();
+                const bool noOverlay = (entry->overlayHandle == 0xffffffffu);
+                if (!(noOverlay && isCement)) {
+                    e_minU = entry->uvData.minU;
+                    e_minV = entry->uvData.minV;
+                    e_maxU = entry->uvData.maxU;
+                    e_maxV = entry->uvData.maxV;
+                }
+            }
+        }
+
+        // Expected _wp0 (terrainType pack)
+        const uint32_t e_m0 = terrainTypeToMaterialLocal(q.vertices[0]->pVertex->terrainType);
+        const uint32_t e_m1 = terrainTypeToMaterialLocal(q.vertices[1]->pVertex->terrainType);
+        const uint32_t e_m2 = terrainTypeToMaterialLocal(q.vertices[2]->pVertex->terrainType);
+        const uint32_t e_m3 = terrainTypeToMaterialLocal(q.vertices[3]->pVertex->terrainType);
+        const uint32_t e_tpacked = e_m0 | (e_m1 << 8) | (e_m2 << 16) | (e_m3 << 24);
+
+        uint32_t g_tpacked = 0;
+        memcpy(&g_tpacked, &rec->_wp0, 4);
+
+        // Helper: bit-cast float to uint32 for exact mismatch comparison
+        // (avoids NaN != NaN false positives and keeps hex output informative).
+#define FCMP(fname, got_f, exp_f) \
+        do { \
+            uint32_t _g = 0, _e = 0; \
+            float _gf = (got_f), _ef = (exp_f); \
+            memcpy(&_g, &_gf, 4); memcpy(&_e, &_ef, 4); \
+            if (_g != _e) { \
+                ParityPrintMismatch((int)frame, (int)qi, "recipe", 0, 0, fname, _e, _g); \
+            } \
+        } while(0)
+
+        FCMP("wx0", rec->wx0, e_wx0);
+        FCMP("wy0", rec->wy0, e_wy0);
+        FCMP("wz0", rec->wz0, e_wz0);
+        FCMP("wx1", rec->wx1, e_wx1);
+        FCMP("wy1", rec->wy1, e_wy1);
+        FCMP("wz1", rec->wz1, e_wz1);
+        FCMP("wx2", rec->wx2, e_wx2);
+        FCMP("wy2", rec->wy2, e_wy2);
+        FCMP("wz2", rec->wz2, e_wz2);
+        FCMP("wx3", rec->wx3, e_wx3);
+        FCMP("wy3", rec->wy3, e_wy3);
+        FCMP("wz3", rec->wz3, e_wz3);
+
+        FCMP("nx0", rec->nx0, e_nx0);
+        FCMP("ny0", rec->ny0, e_ny0);
+        FCMP("nz0", rec->nz0, e_nz0);
+        FCMP("nx1", rec->nx1, e_nx1);
+        FCMP("ny1", rec->ny1, e_ny1);
+        FCMP("nz1", rec->nz1, e_nz1);
+        FCMP("nx2", rec->nx2, e_nx2);
+        FCMP("ny2", rec->ny2, e_ny2);
+        FCMP("nz2", rec->nz2, e_nz2);
+        FCMP("nx3", rec->nx3, e_nx3);
+        FCMP("ny3", rec->ny3, e_ny3);
+        FCMP("nz3", rec->nz3, e_nz3);
+
+        FCMP("minU", rec->minU, e_minU);
+        FCMP("minV", rec->minV, e_minV);
+        FCMP("maxU", rec->maxU, e_maxU);
+        FCMP("maxV", rec->maxV, e_maxV);
+
+        if (g_tpacked != e_tpacked) {
+            ParityPrintMismatch((int)frame, (int)qi, "recipe", 0, 0,
+                                "_wp0", e_tpacked, g_tpacked);
+        }
+
+#undef FCMP
+    }
+
+    return quadsChecked;
+}
+
+}  // namespace gos_terrain_indirect  // Stage 2 block

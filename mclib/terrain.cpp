@@ -599,6 +599,18 @@ void Terrain::primeMissionTerrainCache (volatile float& progress, float progress
 		WaterStream::Reset();
 		WaterStream::Build();
 	}
+
+	// Stage 2 of the indirect-terrain SOLID-only PR1 (CPU→GPU offload):
+	// build the dense TerrainQuadRecipe array (mapSide² × 144 B) indexed by
+	// vertexNum. Called AFTER buildTerrainFaceCache (line 585) so the Shape C
+	// cache is ready when buildRecipeSlot reads UV data from it.
+	// Gated on IsEnabled() OR IsParityCheckEnabled() — no allocation when both
+	// are unset.
+	if (gos_terrain_indirect::IsEnabled() ||
+	    gos_terrain_indirect::IsParityCheckEnabled()) {
+		gos_terrain_indirect::ResetDenseRecipe();
+		gos_terrain_indirect::BuildDenseRecipe();
+	}
 }
 
 //---------------------------------------------------------------------------
@@ -659,6 +671,14 @@ void Terrain::purgeTransitions (void)
 //---------------------------------------------------------------------------
 void Terrain::destroy (void)
 {
+	// Per-mission dense recipe teardown (Stage 2 indirect-terrain PR1).
+	// Called from Mission::destroy → land->destroy() once per mission exit.
+	// CPU-clears state; GL buffer is kept for reuse by next mission's Build.
+	if (gos_terrain_indirect::IsEnabled() ||
+	    gos_terrain_indirect::IsParityCheckEnabled()) {
+		gos_terrain_indirect::ResetDenseRecipe();
+	}
+
 	if (terrainTextures)
 	{
 		terrainTextures->destroy();
@@ -1687,11 +1707,14 @@ void Terrain::geometry (void)
 		}
 		// Stage 1 cost-split: roll per-frame nanosecond accumulators (no-op
 		// when MC2_TERRAIN_COST_SPLIT unset). ParityFrameTick advances the
-		// summary cadence — Stage 2 will pass the actual quads-checked
-		// count; in Stage 1 the recipe is unbuilt so we tick with 0 just to
-		// keep the 600-frame summary line firing under MC2_TERRAIN_COST_SPLIT=1.
+		// summary cadence; Stage 2 passes the actual quads-checked count.
 		gos_terrain_indirect::CostSplit_RollFrame();
-		gos_terrain_indirect::ParityFrameTick(0);
+		{
+			int quadsChecked = 0;
+			if (gos_terrain_indirect::IsParityCheckEnabled())
+				quadsChecked = gos_terrain_indirect::ParityCompareRecipeFrame();
+			gos_terrain_indirect::ParityFrameTick(quadsChecked);
+		}
 	}
 
 	float ywRange = 0.0f, yzRange = 0.0f;

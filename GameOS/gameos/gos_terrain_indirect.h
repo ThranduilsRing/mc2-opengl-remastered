@@ -42,6 +42,10 @@
 
 #include <cstdint>
 
+// Forward-declare so callers of RecipeForVertexNum don't need to include
+// gos_terrain_patch_stream.h just for the return type.
+struct TerrainQuadRecipe;
+
 namespace gos_terrain_indirect {
 
 // ---------------------------------------------------------------------------
@@ -105,6 +109,33 @@ void Counters_AddLegacyDetailOverlayQuad();   // legacy DRAWALPHA / detail / min
 long long Counters_GetLegacySolidSetupQuads();
 long long Counters_GetIndirectSolidPackedQuads();
 long long Counters_GetLegacyDetailOverlayQuads();
+
+// ---------------------------------------------------------------------------
+// Stage 2: dense recipe SSBO build / lifecycle / per-entry invalidation.
+//
+// Dense recipe indexing convention (Option A):
+//   vn (vertexNum) ∈ [0, mapSide²)  → g_denseRecipes[vn] is the slot.
+//   vn == -1 (blankVertex)          → no recipe; lookup returns nullptr.
+//   vn ≥ mapSide²                   → out-of-range; lookup returns nullptr.
+// All references (parity-check, GLSL shader-side indexing through
+// TerrainQuadThinRecord.recipeIdx in Stage 3) consume vn DIRECTLY.
+// There is no +1 offset.
+// ---------------------------------------------------------------------------
+
+// Recipe-build / lifecycle
+void BuildDenseRecipe();           // called from primeMissionTerrainCache
+void ResetDenseRecipe();           // called from Terrain::destroy + start of Build
+bool IsDenseRecipeReady();
+const ::TerrainQuadRecipe* RecipeForVertexNum(int32_t vn);  // nullptr for vn<0 or out-of-range
+void InvalidateRecipeForVertexNum(int32_t vn);             // precise; CPU recompute + mark dirty
+void InvalidateAllRecipes();                               // whole-map; rebuild all slots + mark dirty
+
+// Internal helper used by Stage 3's preflight too
+void FlushDirtyRecipeSlotsToGPU();  // glBufferSubData per dirty slot
+
+// Stage 2 parity body — walks live quadList, byte-compares recipe against
+// per-quad legacy-equivalent computation. Returns quads_checked count.
+int  ParityCompareRecipeFrame();
 
 // ---------------------------------------------------------------------------
 // Parity-check printer + 600-frame summary cadence.
