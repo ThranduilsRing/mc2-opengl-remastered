@@ -233,6 +233,11 @@ class TerrainTextures
 
 		long getNumTypes() const { return numTypes; }
 
+		// Public accessor for nextAvailable (protected static long, terrtxm.cpp:59).
+		// Used by gos_terrain_indirect::BuildCementCatalogAtlas to walk slots
+		// [0, getNextAvailableSlot()) and filter via isCement(slot).
+		long getNextAvailableSlot() const { return nextAvailable; }
+
 		long getTextureNameID( long id ) const { return types[id].nameId; }
 		
 		float getDetailFrameRate (long typeInfo)
