@@ -44,6 +44,20 @@ uniform sampler2D matNormal4;  // snow (optional — 5th slot)
 
 uniform PREC vec4 terrainLightDir;
 uniform PREC vec4 detailNormalTiling;
+// Atlas-mode toggle for tex1 (colormap) sampling. When the indirect path binds
+// the merged colormap atlas, we need atlas-absolute UV for tex1 sampling, but
+// per-tile UV preserves the legacy frag shader's detail-tiling, anti-tile
+// derivatives, POM ray-march, and matNormal mix math. AtlasUV is reconstructed
+// in the frag from WorldPos (always available — set by all VS variants) using
+// the atlas* uniforms. NOT a varying — that would break linking against the
+// legacy non-thin VS chain which doesn't output AtlasUV. Bridge for indirect
+// path sets useAtlasColormap=1 + the atlas uniforms; legacy paths leave
+// useAtlasColormap=0 (default) and keep using per-tile Texcoord against their
+// per-tile-bound textures.
+uniform int   useAtlasColormap;
+uniform float atlasMapTopLeftX;
+uniform float atlasMapTopLeftY;
+uniform float atlasOneOverWorldUnits;
 uniform PREC vec4 detailNormalStrength;
 uniform PREC vec4 fog_color;
 uniform PREC vec4 pomParams;
@@ -207,7 +221,20 @@ void main(void)
         return;
     }
 
-    PREC vec4 texColor = texture(tex1, Texcoord);
+    // Atlas-mode tex1 sampling: when the indirect bridge has bound the merged
+    // colormap atlas, reconstruct atlas-absolute UV from WorldPos (always set
+    // by all VS variants — safer than a varying that the legacy non-thin VS
+    // chain doesn't emit, which would break linking against gos_terrain.frag).
+    // Per-tile Texcoord remains the source for detail tiling / anti-tile /
+    // POM / matNormal mix, preserving legacy frag math.
+    PREC vec2 colormapUV;
+    if (useAtlasColormap != 0) {
+        colormapUV.x = (WorldPos.x - atlasMapTopLeftX) * atlasOneOverWorldUnits;
+        colormapUV.y = (atlasMapTopLeftY - WorldPos.y) * atlasOneOverWorldUnits;
+    } else {
+        colormapUV = Texcoord;
+    }
+    PREC vec4 texColor = texture(tex1, colormapUV);
     PREC float waterFlag = smoothstep(0.35, 0.45, rgb2hsv(texColor.rgb).x);
     PREC float materialAlpha = mix(1.0, 0.25, waterFlag);
 
@@ -261,22 +288,22 @@ void main(void)
     } else if (lodNear < 0.01) {
         // Mid: 5-tap cross only (skip diagonals)
         colAvg = texColor.rgb;
-        colAvg += texture(tex1, clamp(Texcoord + vec2( blurRadius, 0.0), uvMin, uvMax)).rgb;
-        colAvg += texture(tex1, clamp(Texcoord + vec2(-blurRadius, 0.0), uvMin, uvMax)).rgb;
-        colAvg += texture(tex1, clamp(Texcoord + vec2(0.0,  blurRadius), uvMin, uvMax)).rgb;
-        colAvg += texture(tex1, clamp(Texcoord + vec2(0.0, -blurRadius), uvMin, uvMax)).rgb;
+        colAvg += texture(tex1, clamp(colormapUV + vec2( blurRadius, 0.0), uvMin, uvMax)).rgb;
+        colAvg += texture(tex1, clamp(colormapUV + vec2(-blurRadius, 0.0), uvMin, uvMax)).rgb;
+        colAvg += texture(tex1, clamp(colormapUV + vec2(0.0,  blurRadius), uvMin, uvMax)).rgb;
+        colAvg += texture(tex1, clamp(colormapUV + vec2(0.0, -blurRadius), uvMin, uvMax)).rgb;
         colAvg /= 5.0;
     } else {
         // Near: full 9-tap disc
         colAvg = texColor.rgb;
-        colAvg += texture(tex1, clamp(Texcoord + vec2( blurRadius, 0.0), uvMin, uvMax)).rgb;
-        colAvg += texture(tex1, clamp(Texcoord + vec2(-blurRadius, 0.0), uvMin, uvMax)).rgb;
-        colAvg += texture(tex1, clamp(Texcoord + vec2(0.0,  blurRadius), uvMin, uvMax)).rgb;
-        colAvg += texture(tex1, clamp(Texcoord + vec2(0.0, -blurRadius), uvMin, uvMax)).rgb;
-        colAvg += texture(tex1, clamp(Texcoord + vec2( r2,  r2), uvMin, uvMax)).rgb;
-        colAvg += texture(tex1, clamp(Texcoord + vec2(-r2,  r2), uvMin, uvMax)).rgb;
-        colAvg += texture(tex1, clamp(Texcoord + vec2( r2, -r2), uvMin, uvMax)).rgb;
-        colAvg += texture(tex1, clamp(Texcoord + vec2(-r2, -r2), uvMin, uvMax)).rgb;
+        colAvg += texture(tex1, clamp(colormapUV + vec2( blurRadius, 0.0), uvMin, uvMax)).rgb;
+        colAvg += texture(tex1, clamp(colormapUV + vec2(-blurRadius, 0.0), uvMin, uvMax)).rgb;
+        colAvg += texture(tex1, clamp(colormapUV + vec2(0.0,  blurRadius), uvMin, uvMax)).rgb;
+        colAvg += texture(tex1, clamp(colormapUV + vec2(0.0, -blurRadius), uvMin, uvMax)).rgb;
+        colAvg += texture(tex1, clamp(colormapUV + vec2( r2,  r2), uvMin, uvMax)).rgb;
+        colAvg += texture(tex1, clamp(colormapUV + vec2(-r2,  r2), uvMin, uvMax)).rgb;
+        colAvg += texture(tex1, clamp(colormapUV + vec2( r2, -r2), uvMin, uvMax)).rgb;
+        colAvg += texture(tex1, clamp(colormapUV + vec2(-r2, -r2), uvMin, uvMax)).rgb;
         colAvg /= 9.0;
     }
     if (surfaceDebugMode == 3) {

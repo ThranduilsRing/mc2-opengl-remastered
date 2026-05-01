@@ -390,9 +390,12 @@ void BuildColormapAtlas() {
 
     if (g_atlasGLTex == 0) glGenTextures(1, &g_atlasGLTex);
     glBindTexture(GL_TEXTURE_2D, g_atlasGLTex);
+    // cpuColorMap is BGRA-in-memory (mc2_argb_packing memory note: MC2's textures
+    // are BGRA). Upload format param = GL_BGRA so the driver swizzles to RGBA8
+    // storage at upload time.
     glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA8,
                  tcm->cpuColorMapSize, tcm->cpuColorMapSize,
-                 0, GL_RGBA, GL_UNSIGNED_BYTE, tcm->cpuColorMap);
+                 0, GL_BGRA, GL_UNSIGNED_BYTE, tcm->cpuColorMap);
     glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
     glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
     glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_CLAMP_TO_EDGE);
@@ -406,8 +409,11 @@ void BuildColormapAtlas() {
     g_atlasOneOverWorldUnits = Terrain::oneOverWorldUnitsMapSide;
 
     if (traceOn()) {
-        printf("[TERRAIN_INDIRECT v1] event=atlas_built size=%d numTilesAcross=%.0f gltex=%u\n",
-               g_atlasSize, g_atlasNumTexturesAcross, (unsigned)g_atlasGLTex);
+        printf("[TERRAIN_INDIRECT v1] event=atlas_built size=%d numTilesAcross=%.4f "
+               "mapTopLeftX=%.3f mapTopLeftY=%.3f oneOverWorldUnits=%.9f gltex=%u\n",
+               g_atlasSize, g_atlasNumTexturesAcross,
+               g_atlasMapTopLeftX, g_atlasMapTopLeftY, g_atlasOneOverWorldUnits,
+               (unsigned)g_atlasGLTex);
         fflush(stdout);
     }
 }

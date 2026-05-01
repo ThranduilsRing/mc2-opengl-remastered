@@ -20,8 +20,15 @@ layout(std430, binding = 1) readonly buffer RecipeBuf {
 };
 
 // Output varyings — names MUST match gos_terrain.frag `in` declarations exactly.
+// CRITICAL: this set must remain compatible with the legacy non-thin VS chain
+// (gos_terrain.vert/.tesc/.tese) which feeds the same gos_terrain.frag — adding
+// a varying here that the legacy chain doesn't emit causes silent linker
+// failure → terrain renders transparent through to skybox.
 out vec4  Color;
-out vec2  Texcoord;
+out vec2  Texcoord;       // per-tile UV [0,1] — used by frag's detail tiling, anti-tile
+                          // derivatives, POM ray-march, matNormal mix. Atlas-absolute
+                          // UV for tex1 sampling is reconstructed in the frag from
+                          // WorldPos via atlas* uniforms (NOT a varying, see above).
 out float TerrainType;
 out vec3  WorldNorm;
 out vec3  WorldPos;
@@ -125,24 +132,15 @@ void main() {
     vec3 worldPos  = wp.xyz;
     vec3 worldNorm = normalize(wn.xyz);
 
-    // UV reconstruction — atlas-absolute UV for the merged colormap texture.
-    //
-    // recipe.uvData holds per-tile UV in [0,1] (corner 0=(minU,minV), 1=(maxU,minV),
-    // 2=(maxU,maxV), 3=(minU,maxV)).  We convert to atlas-absolute by computing
-    // which tile this quad belongs to from its world position (corner 0 = top-left,
-    // so all 4 corners of a quad agree on the tile).
-    // EDGE_ADJUST mirrors the 0.0005f constant in terrtxm2.cpp:resolveTextureHandle.
+    // Per-tile UV (LEGACY semantic): cornerIdx-based selection of recipe.uvData.
+    //   corner 0=(minU,minV), 1=(maxU,minV), 2=(maxU,maxV), 3=(minU,maxV)
+    // Atlas-absolute UV is reconstructed in the frag from WorldPos via atlas*
+    // uniforms (see gos_terrain.frag) — keeping it out of the varying interface
+    // preserves linker compatibility with the legacy non-thin VS chain.
     {
-        const float posX  = (rec.worldPos0.x - atlasMapTopLeftX) * atlasOneOverWorldUnits;
-        const float posY  = (atlasMapTopLeftY - rec.worldPos0.y) * atlasOneOverWorldUnits;
-        const float EDGE  = 0.0005;
-        const float tileX = floor(posX * atlasNumTexturesAcross + EDGE);
-        const float tileY = floor(posY * atlasNumTexturesAcross + EDGE);
-        // Per-tile UV component for this corner (u in [minU,maxU], v in [minV,maxV]).
         float tileU = (cornerIdx == 1u || cornerIdx == 2u) ? rec.uvData.z : rec.uvData.x;
         float tileV = (cornerIdx == 0u || cornerIdx == 1u) ? rec.uvData.y : rec.uvData.w;
-        // Map tile-local [0,1] UV to atlas-absolute UV.
-        Texcoord = (vec2(tileX, tileY) + vec2(tileU, tileV)) / atlasNumTexturesAcross;
+        Texcoord = vec2(tileU, tileV);
     }
 
     // Lighting per corner.

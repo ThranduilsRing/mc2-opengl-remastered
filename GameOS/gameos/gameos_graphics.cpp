@@ -2310,10 +2310,16 @@ bool gos_terrain_bridge_drawIndirect(int cmdCount, unsigned int recipeSSBO,
         const GLint locMTX  = glGetUniformLocation(prog, "atlasMapTopLeftX");
         const GLint locMTY  = glGetUniformLocation(prog, "atlasMapTopLeftY");
         const GLint locOOWS = glGetUniformLocation(prog, "atlasOneOverWorldUnits");
+        const GLint locUAC  = glGetUniformLocation(prog, "useAtlasColormap");
         if (locNTA  >= 0) glUniform1f(locNTA,  gos_terrain_indirect_getNumTexturesAcross());
         if (locMTX  >= 0) glUniform1f(locMTX,  gos_terrain_indirect_getAtlasMapTopLeftX());
         if (locMTY  >= 0) glUniform1f(locMTY,  gos_terrain_indirect_getAtlasMapTopLeftY());
         if (locOOWS >= 0) glUniform1f(locOOWS, gos_terrain_indirect_getAtlasOneOverWorldUnits());
+        // useAtlasColormap=1: frag samples tex1 from AtlasUV (atlas-absolute) instead
+        // of Texcoord (per-tile). Texcoord remains per-tile so detail/POM/anti-tile
+        // math stays unchanged. Legacy paths leave this at 0 (default) and continue
+        // to sample tex1 with per-tile Texcoord against per-tile bound textures.
+        if (locUAC  >= 0) glUniform1i(locUAC,  1);
     }
 
     // ---- SSBO bindings + indirect buffer -----------------------------------
@@ -2351,6 +2357,14 @@ bool gos_terrain_bridge_drawIndirect(int cmdCount, unsigned int recipeSSBO,
 
     // ---- Draw --------------------------------------------------------------
     glMultiDrawArraysIndirect(GL_TRIANGLES, nullptr, (GLsizei)cmdCount, 0);
+
+    // Reset useAtlasColormap so M2 fast path (shares this program) doesn't
+    // inherit the atlas-mode flag and sample from AtlasUV against a per-tile
+    // bound texture.
+    {
+        const GLint locUAC = glGetUniformLocation(prog, "useAtlasColormap");
+        if (locUAC >= 0) glUniform1i(locUAC, 0);
+    }
 
     // ---- Restore state -----------------------------------------------------
     glBindBuffer(GL_DRAW_INDIRECT_BUFFER, 0);
