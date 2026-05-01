@@ -28,6 +28,7 @@
 #include "../../mclib/vertex.h"
 #include "../../mclib/mapdata.h"
 #include "../../mclib/terrtxm.h"    // TERRAIN_TXM_SIZE (extern int)
+#include "../../mclib/txmmgr.h"     // MC_MAXTEXTURES (cement node-index space)
 
 #include "../gameos/gos_profiler.h"
 
@@ -376,6 +377,33 @@ static float   g_atlasMapTopLeftX        = 0.f;
 static float   g_atlasMapTopLeftY        = 0.f;
 static float   g_atlasOneOverWorldUnits  = 0.f;
 
+// ---------------------------------------------------------------------------
+// Cement catalog atlas — single GL_TEXTURE_2D, packed grid of N cement tile
+// textures.  Built once per mission at BuildDenseRecipe() time via GPU
+// readback from already-resident catalog textures (textureData[0] in
+// tileRAMHeap is dead in stock gameplay — quickLoad gates the RAM path at
+// terrtxm.cpp:561).  Bound at unit 3 by gos_terrain_bridge_drawIndirect.
+//
+// LAYER MAP: keyed by mcTextureNodeIndex (NOT textures[] slot).
+//   q.terrainHandle returned by quad.cpp:546 (getTextureHandle) is the
+//   nodeIdx, NOT the slot — see V22 in Verification Appendix.
+// ---------------------------------------------------------------------------
+static GLuint  g_cementAtlasGLTex          = 0;
+static int     g_cementAtlasGridSide       = 0;   // cells per row/col (power of 2)
+static int     g_cementAtlasTileCount      = 0;   // distinct cement entries enumerated
+static bool    g_cementLayerMapReady       = false;
+static int     g_cementCatalogTruncated    = 0;   // 1 if N>=255 cap hit (Gate A FAIL)
+
+// Dense lookup: mcTextureNodeIndex → atlas layer-index (0..N-1).
+// Sized MC_MAXTEXTURES = 4096 (mclib/txmmgr.h:44) — node-index space.
+// 0xFFFF = "not cement / not in atlas".
+static uint16_t g_cementLayerIndexByNodeIdx[MC_MAXTEXTURES];
+
+// Per-frame counter — incremented when the packer sees a quad whose
+// q.terrainHandle is non-zero AND maps to no cement layer.  A non-zero count
+// after Stage A.4 is wired indicates an enumeration miss (debug discipline).
+static uint32_t g_cementPackUnmappedCount = 0;
+
 void BuildColormapAtlas() {
     ZoneScopedN("Terrain::IndirectAtlasUpload");
     if (!Terrain::terrainTextures2) {
@@ -504,6 +532,23 @@ void ResetDenseRecipe() {
     g_atlasMapTopLeftX       = 0.f;
     g_atlasMapTopLeftY       = 0.f;
     g_atlasOneOverWorldUnits = 0.f;
+
+    // Cement catalog atlas teardown — mirror g_atlasGLTex pattern.
+    if (g_cementAtlasGLTex != 0) {
+        glDeleteTextures(1, &g_cementAtlasGLTex);
+        g_cementAtlasGLTex = 0;
+    }
+    g_cementAtlasGridSide    = 0;
+    g_cementAtlasTileCount   = 0;
+    g_cementLayerMapReady    = false;
+    g_cementCatalogTruncated = 0;
+    g_cementPackUnmappedCount = 0;
+    memset(g_cementLayerIndexByNodeIdx, 0xFF, sizeof(g_cementLayerIndexByNodeIdx));
+
+    if (traceOn()) {
+        printf("[TERRAIN_INDIRECT v1] event=cement_catalog_reset\n");
+        fflush(stdout);
+    }
 }
 
 bool IsDenseRecipeReady() {
