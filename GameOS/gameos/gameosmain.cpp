@@ -613,6 +613,8 @@ int main(int argc, char** argv)
         const bool smoke   = (getenv("MC2_SMOKE_MODE")           != nullptr);
         const bool waterFp = (getenv("MC2_RENDER_WATER_FASTPATH")     != nullptr);
         const bool waterPc = (getenv("MC2_RENDER_WATER_PARITY_CHECK") != nullptr);
+        const bool vpFast  = (getenv("MC2_VERTEX_PROJECT_FAST")       != nullptr);
+        const bool vpPar   = (getenv("MC2_VERTEX_PROJECT_PARITY")     != nullptr);
         const char* build  =
 #ifdef MC2_BUILD_HASH
             MC2_BUILD_HASH
@@ -620,12 +622,12 @@ int main(int argc, char** argv)
             "UNKNOWN"
 #endif
             ;
-        char _cbbuf[320];
+        char _cbbuf[384];
         snprintf(_cbbuf, sizeof(_cbbuf),
             "[INSTR v1] enabled: tgl_pool=%d destroy=%d gl_error_print=%d "
-            "smoke=%d water_fp=%d water_parity=%d build=%s",
+            "smoke=%d water_fp=%d water_parity=%d vp_fast=%d vp_parity=%d build=%s",
             tgl ? 1 : 0, destr ? 1 : 0, glprint ? 1 : 0, smoke ? 1 : 0,
-            waterFp ? 1 : 0, waterPc ? 1 : 0, build);
+            waterFp ? 1 : 0, waterPc ? 1 : 0, vpFast ? 1 : 0, vpPar ? 1 : 0, build);
         puts(_cbbuf);
         crashbundle_append(_cbbuf);
         if (g_pzTrace) {

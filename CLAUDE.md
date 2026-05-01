@@ -13,8 +13,41 @@ Skills in `.claude/skills/` (copied from main repo):
 - `/mc2-deploy` -- deploy exe + all shaders with diff verification
 - `/mc2-build-deploy` -- full cycle: build then deploy
 - `/mc2-check` -- verify deployed files match source (dry run)
+- `adversarial-plan-review` -- code-grounded adversarial review of plans/specs/designs (the default stance for any review of an architectural-endpoint or legacy-retiring slice; see "Review Discipline" below)
 
 If skills aren't found by the Skill tool, they're also at `A:/Games/mc2-opengl-src/.claude/skills/`. Read the skill file and follow its instructions manually.
+
+## Documentation Discipline — grep at write-time, not after (load-bearing)
+
+**Every cited symbol — struct, function, file:line, signature, env flag, member field, shader binding, "X interacts with Y" claim — must be grep-verified at the moment it enters the document, NOT after the document is written.**
+
+This applies at every stage of the brainstorm → recon → design → plan → review pipeline:
+
+- **Brainstorm Q-answer time:** before committing an answer to a question that names a symbol, grep the symbol. Cite the actual file:line in the answer. If the symbol doesn't exist as imagined, the answer is wrong — re-derive it against real code, not against memory of what you thought existed.
+- **Recon write-time:** before claiming "the loop iterates N times" or "the function does X," read the function. Numbers and behavior come from actual code, not from prior memory files (which decay).
+- **Design write-time:** before describing a struct field or proposing an extension to an API, grep the struct's actual layout and the API's call sites. "We'll add Y to X" requires knowing X's current state.
+- **Plan write-time:** see `.claude/skills/adversarial-plan-review.md`. Verification appendix is the discipline made explicit.
+- **Review time:** see "Review Discipline" below. Adversarial review by default.
+
+**Don't write prose then verify after.** Verify-then-write is roughly the same wall-clock cost (the grep happens either way) but produces a doc with no fictional content. Verify-after produces a coherent-sounding doc that can pass three rounds of prose-only review while describing code that doesn't exist (indirect-terrain plan v1 origin). The cost asymmetry is brutal: grep-at-write-time is minutes; grep-discovers-fiction-at-execution-time is days.
+
+**The carve-out:** when describing intentions ("we will create a new function called X that does Y"), no grep is possible — that symbol doesn't exist yet. That's fine. The rule applies to claims about EXISTING code, not future code.
+
+Origin and full rationale: `memory/brainstorm_code_grounding_lesson.md`. Skill that formalizes the discipline at plan-stage: `.claude/skills/adversarial-plan-review.md`.
+
+## Review Discipline (load-bearing)
+
+**When the user asks for "review", "self-review", "code review", "second opinion", "dispatch a subagent for review", or any equivalent — the default stance is ADVERSARIAL, code-grounded.**
+
+The flow:
+1. Read `.claude/skills/adversarial-plan-review.md` — that's the canonical recipe.
+2. Apply its triggering rule: high-stakes plans (architectural endpoints, legacy retirement, SSBO schemas, "X retires Y" claims, perf gates ≥30%) get the FULL skill — grep every cited symbol, cross-reference every load-bearing constraint, list findings as CRITICAL / MAJOR / MINOR. Lower-stakes work gets prose-only review (still active scrutiny, but without the multi-hour grep pass).
+3. When dispatching a review subagent: the dispatch prompt MUST include "use the adversarial-plan-review skill in `.claude/skills/`" verbatim. Do not let the subagent fall back to prose-only review by accident — that's the failure mode this discipline exists to prevent.
+4. A review that returns "the plan looks fine" without grep evidence FAILS the discipline. Either the reviewer didn't grep (re-run with explicit code-verification instructions) or the plan really is clean (uncommon for high-stakes — must explicitly state symbols/sites/constraints checked, list them).
+
+**Why this exists:** indirect-terrain-draw plan v1 (2026-04-30) passed three rounds of normal review with fictional `TerrainQuadRecipe` field references and a wrong `invalidateTerrainFaceCache` signature. Adversarial code-grounded review caught both in one pass. Prose-only review reads plan against brainstorm/design — if any of those are stale, the failure mode stays invisible. See `memory/brainstorm_code_grounding_lesson.md`.
+
+**Exception:** mechanical follow-up slices (e.g., "delete dead code after soak"), slices that mirror a shipped pattern with predetermined stages, or single-population slices with one clear parity gate get prose review by default. The skill's own "When to use" section governs the stratification — read it.
 
 ## Critical Rules
 - **Stock install must remain playable.** Architectural rule for ALL renderer modernization: any new renderer data must either be generated from stock assets at runtime/cache time or loaded as an optional sidecar. Missing modern data must degrade gracefully to stock-compatible generation, never fail. No stock campaign file is rewritten as part of modernization. No savegame depends on generated render caches. No modern visual sidecar is required for gameplay correctness. Full rationale and how-to-apply: `memory/stock_install_must_remain_playable.md`.

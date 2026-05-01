@@ -35,6 +35,9 @@
 #include"../GameOS/gameos/gos_terrain_water_stream.h"
 #include"../GameOS/gameos/gos_terrain_bridge.h"
 
+#include <vector>
+#include <cstdint>
+
 // Externals from quad.cpp / mapdata.cpp / mechcmd2.cpp used by the water fast path.
 extern float MaxMinUV;
 extern float cloudScrollX;
@@ -1237,6 +1240,26 @@ float leastZ = 1.0f,leastW = 1.0f;
 float mostZ = -1.0f, mostW = -1.0;
 float leastWY = 0.0f, mostWY = 0.0f;
 extern bool InEditor;
+
+//---------------------------------------------------------------------------
+// vertexProjectLoop fast-path (D1: CPU loop hoist + skip PROJECTZ_SITE +
+// direct cull-cascade array writes). See:
+//   docs/superpowers/cpu-to-gpu-offload-orchestrator.md (Status Board)
+//   memory/cull_gates_are_load_bearing.md (why side effects can't move)
+//
+// MC2_VERTEX_PROJECT_FAST=1   — enables fast path (default off).
+// MC2_VERTEX_PROJECT_PARITY=1 — runs legacy in parallel and byte-compares
+//                               per-vertex outputs. Silent on pass; field-
+//                               level mismatch printer (16/frame throttle)
+//                               + 600-frame summary.
+//---------------------------------------------------------------------------
+namespace {
+struct VPParitySnap {
+	bool  clipInfo;
+	float px, py, pz, pw;
+	float hazeFactor;
+};
+}
 //---------------------------------------------------------------------------
 void Terrain::geometry (void)
 {
@@ -1270,7 +1293,169 @@ void Terrain::geometry (void)
 	float vClipConstant = eye->verticalSphereClipConstant;
 	float hClipConstant = eye->horizontalSphereClipConstant; 
 	
+	// vertexProjectLoop fast-path (D1) — see file-scope namespace block above.
+	static const bool s_vpFast   = (getenv("MC2_VERTEX_PROJECT_FAST")   != nullptr);
+	static const bool s_vpParity = (getenv("MC2_VERTEX_PROJECT_PARITY") != nullptr);
+	static uint32_t   s_vpFrame  = 0;
+	static uint64_t   s_vpVertsChecked  = 0;
+	static uint64_t   s_vpVertsMismatch = 0;
+
+	std::vector<VPParitySnap> vpFastSnap;
+	if (s_vpFast && s_vpParity)
+		vpFastSnap.resize(numberVertices);
+
+	if (s_vpFast)
+	{
+		// Hoist invariants out of the hot loop.
+		const bool  vp_usePersp        = eye->usePerspective;
+		const bool  vp_isPerspRenderer = vp_usePersp && (Environment.Renderer != 3);
+		const bool  vp_drawGrid        = drawTerrainGrid;
+		const float vp_maxClipD        = Camera::MaxClipDistance;
+		const float vp_minHazeD        = Camera::MinHazeDistance;
+		const float vp_distFact        = Camera::DistanceFactor;
+		const long  vp_numObjB         = numObjBlocks;
+		const long  vp_numActiveVerts  = realVerticesMapSide * realVerticesMapSide;
+
+		ZoneScopedN("Terrain::geometry vertexProjectLoop");
+		VertexPtr cv = vertexList;
+		for (long vi = 0; vi < numberVertices; ++vi, ++cv)
+		{
+			// Math byte-identical to legacy block at terrain.cpp:1298-1450.
+			// Differences from legacy: PROJECTZ_SITE() is omitted (g_pzTrace is
+			// debug-only); cull-cascade setters are inlined as direct array
+			// writes so the compiler doesn't gamble on inlining setObjBlockActive.
+			bool onScreen = false;
+			float hazeFactor = 0.0f;
+
+			if (vp_usePersp)
+			{
+				onScreen = true;
+
+				Stuff::Vector3D vPosition;
+				vPosition.x = cv->vx;
+				vPosition.y = cv->vy;
+				vPosition.z = cv->pVertex->elevation;
+
+				Stuff::Vector3D objectCenter;
+				objectCenter.Subtract(vPosition, cameraPos);
+				Camera::cameraFrame.trans_to_frame(objectCenter);
+				float distanceToEye = objectCenter.GetApproximateLength();
+
+				Stuff::Vector3D clipVector = objectCenter;
+				clipVector.z = 0.0f;
+				float distanceToClip = clipVector.GetApproximateLength();
+				float clip_distance = fabs(1.0f / objectCenter.y);
+
+				if (distanceToClip > CLIP_THRESHOLD_DISTANCE)
+				{
+					float object_angle = fabs(objectCenter.z) * clip_distance;
+					float extent_angle = VERTEX_EXTENT_RADIUS / distanceToEye;
+					if (object_angle > (vClipConstant + extent_angle))
+					{
+						onScreen = false;
+					}
+					else
+					{
+						object_angle = fabs(objectCenter.x) * clip_distance;
+						if (object_angle > (hClipConstant + extent_angle))
+							onScreen = false;
+					}
+				}
+
+				if (onScreen)
+				{
+					if (distanceToEye > vp_maxClipD)      hazeFactor = 1.0f;
+					else if (distanceToEye > vp_minHazeD) hazeFactor = (distanceToEye - vp_minHazeD) * vp_distFact;
+					else                                  hazeFactor = 0.0f;
+
+					Stuff::Vector3D vPos(cv->vx, cv->vy, cv->pVertex->elevation);
+					bool isVisible = Terrain::IsGameSelectTerrainPosition(vPos) || vp_drawGrid;
+					if (!isVisible)
+					{
+						hazeFactor = 1.0f;
+						onScreen = true;
+					}
+				}
+				else
+				{
+					hazeFactor = 1.0f;
+				}
+			}
+			else
+			{
+				hazeFactor = 0.0f;
+				onScreen = true;
+			}
+
+			bool inView = false;
+			Stuff::Vector4D screenPos(-10000.0f, -10000.0f, -10000.0f, -10000.0f);
+			float pxL, pyL, pzL, pwL;
+			float hazeL = hazeFactor;
+
+			if (onScreen)
+			{
+				Stuff::Vector3D vertex3D(cv->vx, cv->vy, cv->pVertex->elevation);
+				inView = eye->projectForTerrainAdmission(vertex3D, screenPos);
+				pxL = screenPos.x;
+				pyL = screenPos.y;
+				pzL = screenPos.z;
+				pwL = screenPos.w;
+			}
+			else
+			{
+				pxL = pyL = 10000.0f;
+				pzL = -0.5f;
+				pwL = 0.5f;
+				hazeL = 0.0f;
+			}
+
+			const bool clipInfoFinal = vp_isPerspRenderer ? onScreen : inView;
+
+			if (s_vpParity)
+			{
+				// Snapshot only — legacy will write live state below.
+				VPParitySnap& s = vpFastSnap[vi];
+				s.clipInfo   = clipInfoFinal;
+				s.px         = pxL;
+				s.py         = pyL;
+				s.pz         = pzL;
+				s.pw         = pwL;
+				s.hazeFactor = hazeL;
+			}
+			else
+			{
+				// Live writes (cull cascade + accumulators).
+				cv->hazeFactor = hazeL;
+				cv->px = pxL;
+				cv->py = pyL;
+				cv->pz = pzL;
+				cv->pw = pwL;
+				cv->clipInfo = clipInfoFinal;
+
+				if (clipInfoFinal)
+				{
+					const long blockNum = cv->getBlockNumber();
+					if ((blockNum >= 0) && (blockNum < vp_numObjB))
+						objBlockInfo[blockNum].active = true;
+
+					const long vertNum = cv->vertexNum;
+					if ((vertNum >= 0) && (vertNum < vp_numActiveVerts))
+						objVertexActive[vertNum] = true;
+
+					if (inView)
+					{
+						if (screenPos.z < leastZ) leastZ = screenPos.z;
+						if (screenPos.z > mostZ)  mostZ  = screenPos.z;
+						if (screenPos.w < leastW) { leastW = screenPos.w; leastWY = screenPos.y; }
+						if (screenPos.w > mostW)  { mostW  = screenPos.w; mostWY  = screenPos.y; }
+					}
+				}
+			}
+		}
+	}
+
 	long i=0;
+	if (!s_vpFast || s_vpParity)
 	{
 		ZoneScopedN("Terrain::geometry vertexProjectLoop");
 		for (i=0;i<numberVertices;i++)
@@ -1433,7 +1618,61 @@ void Terrain::geometry (void)
 			currentVertex++;
 		}
 	}
-	
+
+	// vertexProjectLoop parity compare. Field-level mismatch printer
+	// (16/frame throttle) + 600-frame summary. Silent on pass.
+	// Comparison is on raw per-vertex output bytes — same CPU math both sides,
+	// so any mismatch is a real bug, not FP drift.
+	if (s_vpFast && s_vpParity)
+	{
+		++s_vpFrame;
+		const int kMaxPrints = 16;
+		int printsThisFrame = 0;
+		VertexPtr cv = vertexList;
+		for (long vi = 0; vi < numberVertices; ++vi, ++cv)
+		{
+			++s_vpVertsChecked;
+			const VPParitySnap& s = vpFastSnap[vi];
+			const bool match =
+				((DWORD)s.clipInfo == cv->clipInfo) &&
+				(s.px         == cv->px) &&
+				(s.py         == cv->py) &&
+				(s.pz         == cv->pz) &&
+				(s.pw         == cv->pw) &&
+				(s.hazeFactor == cv->hazeFactor);
+			if (!match)
+			{
+				++s_vpVertsMismatch;
+				if (printsThisFrame < kMaxPrints)
+				{
+					fprintf(stderr,
+						"[VERTEX_PROJECT_PARITY v1] event=mismatch frame=%u vert=%ld "
+						"clipInfo=(fast=%d/legacy=%d) "
+						"px=(%a/%a) py=(%a/%a) pz=(%a/%a) pw=(%a/%a) haze=(%a/%a)\n",
+						s_vpFrame, vi,
+						(int)s.clipInfo, (int)cv->clipInfo,
+						s.px, cv->px,
+						s.py, cv->py,
+						s.pz, cv->pz,
+						s.pw, cv->pw,
+						s.hazeFactor, cv->hazeFactor);
+					fflush(stderr);
+					++printsThisFrame;
+				}
+			}
+		}
+		if ((s_vpFrame % 600) == 0)
+		{
+			fprintf(stderr,
+				"[VERTEX_PROJECT_PARITY v1] event=summary frames=%u "
+				"verts_checked=%llu total_mismatches=%llu\n",
+				s_vpFrame,
+				(unsigned long long)s_vpVertsChecked,
+				(unsigned long long)s_vpVertsMismatch);
+			fflush(stderr);
+		}
+	}
+
 	//-----------------------------------
 	// setup terrain quad textures
 	// Also sets up mine data.

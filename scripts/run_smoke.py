@@ -244,7 +244,9 @@ def main():
                             "MC2_WATER_DEBUG",
                             "MC2_WATER_STREAM_DEBUG",
                             "MC2_RENDER_WATER_FASTPATH",
-                            "MC2_RENDER_WATER_PARITY_CHECK")},
+                            "MC2_RENDER_WATER_PARITY_CHECK",
+                            "MC2_VERTEX_PROJECT_FAST",
+                            "MC2_VERTEX_PROJECT_PARITY")},
             },
         )
         print(f"[runner] running {e.stem} (tier={tier} duration={duration})",

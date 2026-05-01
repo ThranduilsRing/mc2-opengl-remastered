@@ -75,17 +75,25 @@ Don't cross-contaminate. Full rationale + how-to-apply: `memory/feedback_offload
 | **quadSetupTextures slice 2b** | Mine-state cache — cache mine/blown classification per quad on the recipe entry | 3.06→3.01ms (-0.05ms), σ 384→291 µs (`53f09ca`) |
 | **quadSetupTextures arc — asymptotic** | Recon: water-vertex projection block measured at 11% of self-time (8K calls × 42 ns = 341 µs). Below 30% threshold; further slices below σ noise floor. Arc concludes at cumulative -13% mean / -39% σ. | **Pivot to renderWater.** |
 | **renderWater architectural slice — Stage 1+2+3 shipped, slice closed (2026-04-30)** | Map-stable WaterRecipe (built from `MapData::blocks`) + per-frame WaterThinRecord SSBO + GPU-direct draw via `Terrain::renderWaterFastPath()` post-`renderLists()`. Stage 3 added `MC2_RENDER_WATER_PARITY_CHECK` byte-comparison instrumentation. **All four gates green:** A visual canary clean, B Tracy delta 78–85% reduction (legacy 449–894 µs → fastpath 88–132 µs across mc2_01/03/10/17/24, exceeds ≥50% target), C parity-check silent-on-pass with ~3.2M quads byte-checked / zero mismatches, D tier1 5/5 PASS triple (unset / FASTPATH=1 / FASTPATH=1+PARITY_CHECK=1) with +0 destroys delta. Three real bugs surfaced and fixed during Stage 3 bring-up (recipe coverage, blank-vertex skip, fogRGB material patch) — would have shipped silently without parity. Reusable template lifted to `memory/water_ssbo_pattern.md`. 9 GPU-direct gotchas codified in `memory/gpu_direct_renderer_bringup_checklist.md`. |
+| **vertexProjectLoop slice — D1 hoist asymptotic (2026-04-30)** | D1 CPU loop hoist (locals into registers, branch prediction, scratch globals → L1) shipped behind `MC2_VERTEX_PROJECT_FAST=1` (default off). **Compiler-ceiling outcome:** mean Δ +0.04% (475→475 µs) — the optimizer had already captured everything the hoist could move. σ tightened −10% (67→61 µs); P99/P99.9 came in slightly. Parity scaffolding shipped: `MC2_VERTEX_PROJECT_PARITY=1` with 96M verts byte-checked, zero mismatches across tier1. **Slice closed asymptotic at the trivial-hoist level.** Cost-decomposition surfaced: real floor is the math itself — `trans_to_frame` 3×3 mat-vec, `1/objectCenter.y` reciprocal-divide latency (~72 µs floor for 14400 verts), 2× `GetApproximateLength`, `projectZ` 4×4 matmul on survivors. Future SIMD or GPU-compute attempt has scaffolding ready (env-gate + parity infra), but is not queued — see indirect-terrain decision below. Lessons in `memory/vertexproject_loop_asymptotic.md`. |
 
 ### In progress
 
-_(no in-flight slices — `vertexProjectLoop` is the next queued target.)_
+| Milestone | Stage | Status |
+|---|---|---|
+| **Indirect terrain draw — SOLID-only PR1** | Plan revision after adversarial review caught 3 CRITICAL + multiple major issues | **Stop-the-line 2026-04-30.** Plan v1 non-executable as written: fictional `TerrainQuadRecipe` fields, wrong `invalidateTerrainFaceCache` signature, missing `quadSetupTextures` gate-off. Scope narrowed: PR1 retires SOLID main-emit only; detail/overlay/mine stay legacy. See revision-pass brief. |
 
 ### Queued (next)
 
 | Milestone | Scope | Spec |
 |---|---|---|
-| **vertexProjectLoop offload** | ~500 µs/frame per-vertex projection for cull/admission. Either CPU-side hoist or GPU compute pass writing visibility bitmask. | None yet — measure post-renderWater first |
-| **Indirect terrain draw** | `glMultiDrawElementsIndirect` over recipe SSBO; CPU writes recipes only on terrain mutation (rare). The architectural endpoint of the CPU→GPU offload arc. | None yet — viable only after renderWater + vertexProjectLoop land |
+| **Indirect terrain draw — SOLID-only PR1** | Retire CPU SOLID main-emit setup loop in `quadSetupTextures` for terrain solid quads. Indirect SOLID packer + dense recipe SSBO + preflight-armed legacy bypass. Detail/overlay/mine remain legacy. Brainstorm Q1=(b) narrowed to SOLID-only at plan-revision time per adversarial-review findings. | Brainstorm: `docs/superpowers/brainstorms/2026-04-30-indirect-terrain-draw-scope.md`. Design: `docs/superpowers/specs/2026-04-30-indirect-terrain-draw-design.md`. Recon: `docs/superpowers/specs/2026-04-30-indirect-terrain-recon-handoff.md`. Plan v1 in revision; v2 pending revision-pass brief. |
+| **Indirect terrain draw — detail/overlay/mine consolidation (follow-up)** | After SOLID-only PR1 ships and soaks: address detail (`addVertices(MC2_DRAWALPHA)`), overlay (`gos_PushTerrainOverlay`), and mine population state-cascade. Multi-bucket draw mechanism is a separate design question from SOLID retirement; needs its own brainstorm to settle whether `gl_DrawIDARB` + texture array, separate indirect calls, or single-command-with-per-quad-texture is the right shape. | None yet — brainstorm follow-up after SOLID PR1 soaks |
+| **Indirect terrain draw — legacy retirement (post-soak follow-up)** | After both SOLID and detail/overlay/mine consolidation slices ship and soak: physically delete `TerrainPatchStream::flush()`, M2 thin-record-direct emit, M2b/M2c/M2d branches, and the opt-out env flag. Mechanical (rm + verify), no new design. | None yet — auto-queued post-soak |
+
+### Brainstorm pending (no spec yet)
+
+_(none — SOLID-only PR1 has all three docs; detail/overlay consolidation brainstorm is a future-slice precondition.)_
 
 ### Blocked / parked
 
@@ -208,6 +216,14 @@ When a fresh session needs deeper context for a specific area:
   Eventually retire legacy when fast path covers ≥99% of common cases.
 - **Validate against stock only.** Mod-content parity is not a gate for this
   workstream — see Scope section above.
+- **Grep at write-time, not after.** Every cited symbol (struct field,
+  function signature, file:line, env flag) gets grep-verified at the moment
+  it enters a brainstorm answer, recon claim, design assertion, or plan
+  step — not in an end-of-document appendix pass. Verify-then-write costs
+  minutes; verify-after-write costs days at execution time when fictional
+  content surfaces. Indirect-terrain plan v1 stop-the-line (2026-04-30) is
+  the case study. Worktree `CLAUDE.md` "Documentation Discipline" + skill
+  `.claude/skills/adversarial-plan-review.md` formalize this.
 
 ## Adjacent systems (don't confuse with this work)
 
@@ -233,6 +249,8 @@ own milestones, design docs, and constraints:
 
 > Append a one-liner when something material changes. Most-recent at top.
 
+- **2026-04-30** — Indirect terrain draw plan v1 stop-the-line at adversarial review. 3 CRITICAL findings (fictional `TerrainQuadRecipe` fields, wrong `invalidateTerrainFaceCache` signature, missing `quadSetupTextures` gate-off) + multiple major issues (multi-bucket trap, AMD attrib 0, no per-mission teardown, etc.). Scope narrowed to SOLID-only PR1; detail/overlay/mine deferred to a follow-up consolidation slice with its own brainstorm. Three architectural decisions confirmed: A=(i) SOLID-only, B=(i)-narrowed-to-SOLID gate-off, C=(iv) preflight-armed bypass. Plan revision-pass brief sent back to planner. Process learning: brainstorm Q-by-Q format succeeded structurally but Q3 (SSBO topology) inherited stale memory because no one grep'd actual structs — adversarial review's code-grounded verification is the gap normal review misses. Memory: `brainstorm_code_grounding_lesson.md`.
+- **2026-04-30** — vertexProjectLoop D1 hoist closed asymptotic. Mean Δ +0.04% (475→475 µs), σ −10%, P99/P99.9 in slightly. Parity scaffolding shipped (96M verts byte-checked / 0 mismatches) — useful as durable infra even though perf gate B failed. **Compiler-ceiling outcome:** the optimizer had already register-allocated the trivial-hoist targets; real cost is per-vertex math (mat-vec, reciprocal-divide, length, projectZ matmul) — only SIMD or GPU compute moves it further, neither queued. Pivoting to indirect terrain draw, which now needs a brainstorm phase (D3-prerequisite framing no longer fits; scope questions open). Memory: `vertexproject_loop_asymptotic.md`.
 - **2026-04-30** — renderWater architectural slice **CLOSED.** Stage 3 (`MC2_RENDER_WATER_PARITY_CHECK`) ships silent-on-pass across tier1 stock with ~3.2M quads byte-checked / zero mismatches. Tracy delta gate B verified: legacy 449–894 µs → fastpath 88–132 µs across mc2_01/03/10/17/24 (78–85% reduction, exceeds ≥50% target). tier1 5/5 PASS triple (unset / FASTPATH=1 / FASTPATH=1+PARITY_CHECK=1). Three real bugs found and fixed during bring-up (recipe coverage broadened to all map quads, blank-vertex skip applied to both upload + parity, fogRGB material low byte patched at upload time). Reusable template captured in `memory/water_ssbo_pattern.md` for the indirect-terrain endpoint. `[INSTR v1]` banner extended with `water_fp` + `water_parity` fields.
 - **2026-04-30** — renderWater Stage 2 ships visually + tier1 5/5 PASS both env states. Architecture: map-stable WaterRecipe (from MapData::blocks at primeMissionTerrainCache) + per-frame WaterThinRecord SSBO + GPU-direct draw via new `Terrain::renderWaterFastPath()` hooked AFTER `mcTextureManager->renderLists()`. mc2_17 visual diff matches legacy near-identically. Shoreline alpha-fade fixed via depth-state setup in bridge (gpu_direct_depth_state_inheritance.md). 9 GPU-direct gotchas codified in `memory/gpu_direct_renderer_bringup_checklist.md` + 3 NEW memory files (render_order_post_renderlists_hook, sampler_state_inheritance_in_fast_paths, quadlist_is_camera_windowed) for the previously-undocumented traps.
 - **2026-04-30** — Scope clarified: validation is stock missions only. Mod content (Carver5O, Magic, MCO, Wolfman, MC2X) is out of scope for offload slices. Earlier handoff prompts mentioning "tier1 + Carver5O + Magic" are obsolete; future prompts use tier1 only. See `memory/feedback_offload_scope_stock_only.md`.
