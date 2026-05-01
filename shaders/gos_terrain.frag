@@ -32,7 +32,11 @@ layout (location=1) out PREC vec4 GBuffer1;
 
 uniform sampler2D tex1;  // colormap
 uniform sampler2D tex2;  // detail normal (engine default, fallback)
-uniform sampler2D tex3;  // detail displacement (legacy, unused with per-material POM)
+uniform sampler2D tex3;  // cement-catalog atlas (was: legacy detail displacement, unused with per-material POM).
+                         // Bound at unit 3 by gos_terrain_bridge_drawIndirect when useCementAtlas != 0.
+                         // Texture-object wrap = GL_REPEAT; the bridge clears unit-3 sampler with
+                         // glBindSampler(3, 0) so the texture-object wrap is the contract.
+                         // No mipmaps (cement atlas cells lack gutters; bleed risk).
 
 // Per-material normal maps (individual sampler2D on units 5-8)
 // Alpha channel = displacement map for per-material POM
@@ -58,6 +62,35 @@ uniform int   useAtlasColormap;
 uniform float atlasMapTopLeftX;
 uniform float atlasMapTopLeftY;
 uniform float atlasOneOverWorldUnits;
+
+// --- Cement catalog atlas (Stage 4 / PR2) ---------------------------------
+// Bound at sampler unit 3 (tex3) by the indirect bridge.  Per-quad layer
+// index + validity bit live in TerrainQuadThinRecord._pad0 (control.w),
+// read from binding-2 SSBO indexed by the flat RecordIdx varying.
+//
+// _pad0 encoding (plan v2.1 V23, widened in V27):
+//   bit 31     = CEMENT_LAYER_VALID
+//   bits 30:16 = reserved for future layers
+//   bits 15:0  = cement atlas layer index (0..65535 encoding cap;
+//                practically capped at 1024 by atlas budget)
+//
+// C++ struct: GameOS/gameos/gos_terrain_patch_stream.h:103-111 (8×uint32, 32 B).
+// std430 packs identically to 2×uvec4.  control.x=recipeIdx, .y=terrainHandle,
+// .z=flags, .w=_pad0.  lightRGBs.{x,y,z,w}=lightRGB{0..3} (BGRA-packed).
+uniform int   useCementAtlas;          // 0 = M2 / legacy, 1 = indirect cement-armed
+uniform int   atlasCementGridSide;     // cells per row/col of cement atlas
+uniform float atlasCementWorldUnitsPerTile;  // = Terrain::worldUnitsPerVertex (128.0)
+
+flat in uint RecordIdx;
+
+struct TerrainQuadThinRecord_Frag {
+    uvec4 control;    // x=recipeIdx, y=terrainHandle, z=flags, w=_pad0(cement word)
+    uvec4 lightRGBs;
+};
+layout(std430, binding = 2) readonly buffer ThinRecordBufFrag {
+    TerrainQuadThinRecord_Frag thinRecsFrag[];
+};
+
 uniform PREC vec4 detailNormalStrength;
 uniform PREC vec4 fog_color;
 uniform PREC vec4 pomParams;
@@ -235,6 +268,27 @@ void main(void)
         colormapUV = Texcoord;
     }
     PREC vec4 texColor = texture(tex1, colormapUV);
+
+    // Cement-catalog override: gated on useCementAtlas (M2/legacy never set this)
+    // AND the validity bit in the per-quad cement word.  TerrainType is NOT a
+    // gate — alpha-cement boundary fragments can interpolate TerrainType near 3.0
+    // while their _pad0 has no validity bit set, and we must NOT sample cement[0]
+    // for those (advisor C2).  When validity bit is set, the quad is genuinely
+    // pure-cement and TerrainType is exactly 3.0 across all corners.
+    if (useCementAtlas != 0) {
+        uint cementWord  = thinRecsFrag[RecordIdx].control.w;
+        bool cementValid = (cementWord & 0x80000000u) != 0u;
+        if (cementValid) {
+            uint layerIdx = cementWord & 0xFFFFu;  // V27: was 0xFFu pre-widening
+            int  gridSide = atlasCementGridSide;
+            if (gridSide < 1) gridSide = 1;
+            int  cCol = int(layerIdx) % gridSide;
+            int  cRow = int(layerIdx) / gridSide;
+            PREC vec2 cTileUV = fract(vec2(WorldPos.x, -WorldPos.y) / atlasCementWorldUnitsPerTile);
+            PREC vec2 cAtlasUV = (vec2(float(cCol), float(cRow)) + cTileUV) / float(gridSide);
+            texColor = texture(tex3, cAtlasUV);
+        }
+    }
     PREC float waterFlag = smoothstep(0.35, 0.45, rgb2hsv(texColor.rgb).x);
     PREC float materialAlpha = mix(1.0, 0.25, waterFlag);
 
