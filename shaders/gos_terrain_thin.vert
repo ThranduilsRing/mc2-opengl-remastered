@@ -33,6 +33,10 @@ out float TerrainType;
 out vec3  WorldNorm;
 out vec3  WorldPos;
 out float UndisplacedDepth;
+flat out uint RecordIdx;  // index into thinRecs[] — frag reads thinRecs[RecordIdx]._pad0
+                          // for cement layer-index + validity bit when useCementAtlas != 0.
+                          // Legacy chain emits the matching declaration in gos_terrain.tese
+                          // (NOT gos_terrain.vert — TCS strips VS outputs not consumed).
 
 // Uniforms used by this shader
 uniform int  ssboRecordBase;     // global record index offset for this draw call
@@ -79,6 +83,9 @@ void main() {
     uint triIdx       = vertInRecord / 3u;
     uint id           = vertInRecord % 3u;
     uint recordIdx    = uint(ssboRecordBase) + vid / 6u;
+    RecordIdx = recordIdx;  // assign BEFORE pz-cull early-out (V21/v2.1 lesson:
+                            // varyings left undefined on the early-out path leak
+                            // garbage to the frag).
 
     TerrainQuadThinRecord tr = thinRecs[recordIdx];
     uint flags   = tr.control.z;
