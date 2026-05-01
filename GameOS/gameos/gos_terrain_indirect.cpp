@@ -527,10 +527,13 @@ void BuildCementCatalogAtlas() {
         if (gosHandle == 0u) continue;
         const GLuint glTex = gos_terrain_bridge_glTextureForGosHandle((unsigned)gosHandle);
         if (glTex == 0) continue;
-        // Record-but-don't-break past 255: we still want the diag totals
-        // to reflect TRUE counts for tier1.  Atlas allocation gated on
-        // size below to avoid memory blowup.
-        if (cementNodeIndices.size() < 255) {
+        // Record-but-don't-break past atlas budget cap: we still want the
+        // diag totals to reflect TRUE counts for tier1.  Atlas allocation
+        // gated on size below to avoid memory blowup.
+        // Cap = 1024 = atlas budget cap (gridSide=32, 2048x2048 = 16 MB).
+        // NOT the _pad0 encoding cap (16-bit field, max 65535).  If anyone
+        // ever exceeds 1024, the atlas budget needs revisiting.
+        if (cementNodeIndices.size() < 1024) {
             cementNodeIndices.push_back(nodeIdx);
             cementGLTextures.push_back(glTex);
         } else {
@@ -636,7 +639,7 @@ void BuildCementCatalogAtlas() {
                g_cementCatalogTruncated,
                g_cementPackUnmappedCount);
         if (truncated) {
-            printf("[TERRAIN_INDIRECT v1] event=cement_catalog_truncated count=255\n");
+            printf("[TERRAIN_INDIRECT v1] event=cement_catalog_truncated count=1024\n");
         }
         fflush(stdout);
     }
@@ -1242,10 +1245,12 @@ static int PackThinRecordsForFrame() {
         // at quad.cpp:546 (V22).  The map g_cementLayerIndexByNodeIdx is populated
         // at atlas-build time keyed by nodeIdx, so direct indexing is correct.
         //
-        // Encoding (V23):
+        // Encoding (V23, widened in V27):
         //   bit 31     = CEMENT_LAYER_VALID — disambiguates "layer 0" from "not cement"
-        //   bits 30:8  = reserved for future layers (decals, scorch)
-        //   bits 7:0   = cement atlas layer index (0..254)
+        //   bits 30:16 = reserved for future layers (decals, scorch)
+        //   bits 15:0  = cement atlas layer index (0..65535 encoding cap;
+        //                practically capped at 1024 by atlas budget — see
+        //                BuildCementCatalogAtlas)
         constexpr uint32_t kCementLayerValidBit = 0x80000000u;
         uint32_t cementWord = 0u;
         if (g_cementLayerMapReady) {
@@ -1253,7 +1258,8 @@ static int PackThinRecordsForFrame() {
             if (nodeIdx < (DWORD)MC_MAXTEXTURES) {
                 const uint16_t idx = g_cementLayerIndexByNodeIdx[nodeIdx];
                 if (idx != 0xFFFFu) {
-                    cementWord = kCementLayerValidBit | (uint32_t)idx;
+                    // Mask to bits 15:0 — idx is uint16_t so this is explicit, not necessary.
+                    cementWord = kCementLayerValidBit | ((uint32_t)idx & 0xFFFFu);
                 } else {
                     // Lifecycle counter: only count quads that EXPECT a cement
                     // layer (all 4 corner materials in recipe._wp0 == Concrete=3).
