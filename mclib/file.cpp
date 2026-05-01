@@ -227,6 +227,14 @@ long File::open (const char* fName, FileMode _mode, long numChild, bool doNotLow
     if(!doNotLower)
 	    S_strlwr(fileName);
 
+	// FST keys use forward slashes (see fastfile.cpp:86); some stock .fit data
+	// embeds backslashed paths. Normalize so elfHash() matches the FST key.
+	for (long i = 0; i < fNameLength; ++i)
+	{
+		if (fileName[i] == '\\')
+			fileName[i] = '/';
+	}
+
 	if (fileMode == CREATE)
 	{
 		// sebi: changed _creat to this, because otherwise non binary file is created which is wrong
