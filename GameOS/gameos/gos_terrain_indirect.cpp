@@ -1188,7 +1188,40 @@ static int PackThinRecordsForFrame() {
         tr.flags         = static_cast<uint32_t>((uvMode == 1 ? 1u : 0u)
                          | (pzTri1 ? 2u : 0u)
                          | (pzTri2 ? 4u : 0u));
-        tr._pad0         = 0u;
+        // Cement layer-index lookup, keyed by mcTextureNodeIndex (NOT slot).
+        // q.terrainHandle is the un-resolved nodeIdx returned by getTextureHandle
+        // at quad.cpp:546 (V22).  The map g_cementLayerIndexByNodeIdx is populated
+        // at atlas-build time keyed by nodeIdx, so direct indexing is correct.
+        //
+        // Encoding (V23):
+        //   bit 31     = CEMENT_LAYER_VALID — disambiguates "layer 0" from "not cement"
+        //   bits 30:8  = reserved for future layers (decals, scorch)
+        //   bits 7:0   = cement atlas layer index (0..254)
+        constexpr uint32_t kCementLayerValidBit = 0x80000000u;
+        uint32_t cementWord = 0u;
+        if (g_cementLayerMapReady) {
+            const DWORD nodeIdx = (DWORD)q.terrainHandle;
+            if (nodeIdx < (DWORD)MC_MAXTEXTURES) {
+                const uint16_t idx = g_cementLayerIndexByNodeIdx[nodeIdx];
+                if (idx != 0xFFFFu) {
+                    cementWord = kCementLayerValidBit | (uint32_t)idx;
+                } else {
+                    // Lifecycle counter: only count quads that EXPECT a cement
+                    // layer (all 4 corner materials in recipe._wp0 == Concrete=3).
+                    if (rec) {
+                        uint32_t tpacked = 0u;
+                        memcpy(&tpacked, &rec->_wp0, 4);
+                        const bool allConcrete =
+                            ((tpacked        & 0xFFu) == 3u) &&
+                            (((tpacked >> 8) & 0xFFu) == 3u) &&
+                            (((tpacked >>16) & 0xFFu) == 3u) &&
+                            (((tpacked >>24) & 0xFFu) == 3u);
+                        if (allConcrete) ++g_cementPackUnmappedCount;
+                    }
+                }
+            }
+        }
+        tr._pad0         = cementWord;
         tr.lightRGB0     = lightRGBc(0);
         tr.lightRGB1     = lightRGBc(1);
         tr.lightRGB2     = lightRGBc(2);
