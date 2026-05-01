@@ -2284,6 +2284,38 @@ bool gos_terrain_bridge_drawIndirect(int cmdCount, unsigned int recipeSSBO,
     }
     glBindSampler(0, s_indirectTerrainSampler);
 
+    // ---- Bind merged colormap atlas at unit 0 --------------------------------
+    // The legacy per-bucket path binds each tile's gosHandle before glDrawArrays.
+    // The indirect path issues one glMultiDrawArraysIndirect for ALL quads, so
+    // per-bucket binding is impossible.  Instead we bind the full merged colormap
+    // atlas (cpuColorMap uploaded once by BuildColormapAtlas at mission load) and
+    // let the thin VS compute atlas-absolute UV from world position.
+    // State save: capture current GL_TEXTURE_BINDING_2D on unit 0 so the next
+    // renderer doesn't see the atlas leak.
+    extern GLuint gos_terrain_indirect_getAtlasGLTex();
+    extern float  gos_terrain_indirect_getNumTexturesAcross();
+    extern float  gos_terrain_indirect_getAtlasMapTopLeftX();
+    extern float  gos_terrain_indirect_getAtlasMapTopLeftY();
+    extern float  gos_terrain_indirect_getAtlasOneOverWorldUnits();
+
+    GLint savedTex0Binding = 0;
+    glActiveTexture(GL_TEXTURE0);
+    glGetIntegerv(GL_TEXTURE_BINDING_2D, &savedTex0Binding);
+    glBindTexture(GL_TEXTURE_2D, gos_terrain_indirect_getAtlasGLTex());
+
+    // Upload atlas UV decomposition uniforms (set AFTER glUseProgram via
+    // terrainBindThinUniformsForPatchStream above; prog is already in scope).
+    {
+        const GLint locNTA  = glGetUniformLocation(prog, "atlasNumTexturesAcross");
+        const GLint locMTX  = glGetUniformLocation(prog, "atlasMapTopLeftX");
+        const GLint locMTY  = glGetUniformLocation(prog, "atlasMapTopLeftY");
+        const GLint locOOWS = glGetUniformLocation(prog, "atlasOneOverWorldUnits");
+        if (locNTA  >= 0) glUniform1f(locNTA,  gos_terrain_indirect_getNumTexturesAcross());
+        if (locMTX  >= 0) glUniform1f(locMTX,  gos_terrain_indirect_getAtlasMapTopLeftX());
+        if (locMTY  >= 0) glUniform1f(locMTY,  gos_terrain_indirect_getAtlasMapTopLeftY());
+        if (locOOWS >= 0) glUniform1f(locOOWS, gos_terrain_indirect_getAtlasOneOverWorldUnits());
+    }
+
     // ---- SSBO bindings + indirect buffer -----------------------------------
     // Slot 1 = recipe (static, mission-stable)
     // Slot 2 = thin record (per-frame ring) — will be re-bound via range below
@@ -2325,6 +2357,9 @@ bool gos_terrain_bridge_drawIndirect(int cmdCount, unsigned int recipeSSBO,
     glBindBufferBase(GL_SHADER_STORAGE_BUFFER, 1, 0);
     glBindBufferBase(GL_SHADER_STORAGE_BUFFER, 2, 0);
     glBindSampler(0, savedSampler);
+    // Restore atlas texture bind so next renderer doesn't see the atlas.
+    glActiveTexture(GL_TEXTURE0);
+    glBindTexture(GL_TEXTURE_2D, (GLuint)savedTex0Binding);
     glColorMask(savedColorMask[0], savedColorMask[1],
                 savedColorMask[2], savedColorMask[3]);
     glDepthMask((GLboolean)savedDepthMask);

@@ -33,6 +33,21 @@ uniform mat4 terrainMVP;         // axisSwap * worldToClip
 uniform vec4 terrainViewport;    // (vmx, vmy, vax, vay) for perspective projection
 uniform mat4 mvp;                // projection_: screen pixels -> NDC
 
+// Atlas UV decomposition — set by the indirect bridge for glMultiDrawArraysIndirect.
+// The full merged colormap is bound as a single GL_TEXTURE_2D; per-tile UV (stored
+// in recipe.uvData as fractions within one tile) must be converted to atlas-absolute
+// UV by determining which tile the quad belongs to from its world position.
+// Formula mirrors terrtxm2.cpp:resolveTextureHandle exactly:
+//   posX  = (worldX - atlasMapTopLeftX) * atlasOneOverWorldUnits
+//   posY  = (atlasMapTopLeftY - worldY) * atlasOneOverWorldUnits
+//   tileX = floor((posX + 0.0005) * atlasNumTexturesAcross)
+//   tileY = floor((posY + 0.0005) * atlasNumTexturesAcross)
+//   atlasUV = (vec2(tileX, tileY) + perTileUV) / atlasNumTexturesAcross
+uniform float atlasNumTexturesAcross;
+uniform float atlasMapTopLeftX;
+uniform float atlasMapTopLeftY;
+uniform float atlasOneOverWorldUnits;
+
 // Unpack ARGB uint to vec4 each component 0..255 -> 0..1.
 vec4 unpackARGB(uint packed) {
     return vec4(
@@ -110,10 +125,25 @@ void main() {
     vec3 worldPos  = wp.xyz;
     vec3 worldNorm = normalize(wn.xyz);
 
-    // UV reconstruction (verified against quad.cpp actual UV assignment):
-    //   corner 0=(minU,minV), corner 1=(maxU,minV), corner 2=(maxU,maxV), corner 3=(minU,maxV)
-    float u = (cornerIdx == 1u || cornerIdx == 2u) ? rec.uvData.z : rec.uvData.x;
-    float v = (cornerIdx == 0u || cornerIdx == 1u) ? rec.uvData.y : rec.uvData.w;
+    // UV reconstruction — atlas-absolute UV for the merged colormap texture.
+    //
+    // recipe.uvData holds per-tile UV in [0,1] (corner 0=(minU,minV), 1=(maxU,minV),
+    // 2=(maxU,maxV), 3=(minU,maxV)).  We convert to atlas-absolute by computing
+    // which tile this quad belongs to from its world position (corner 0 = top-left,
+    // so all 4 corners of a quad agree on the tile).
+    // EDGE_ADJUST mirrors the 0.0005f constant in terrtxm2.cpp:resolveTextureHandle.
+    {
+        const float posX  = (rec.worldPos0.x - atlasMapTopLeftX) * atlasOneOverWorldUnits;
+        const float posY  = (atlasMapTopLeftY - rec.worldPos0.y) * atlasOneOverWorldUnits;
+        const float EDGE  = 0.0005;
+        const float tileX = floor(posX * atlasNumTexturesAcross + EDGE);
+        const float tileY = floor(posY * atlasNumTexturesAcross + EDGE);
+        // Per-tile UV component for this corner (u in [minU,maxU], v in [minV,maxV]).
+        float tileU = (cornerIdx == 1u || cornerIdx == 2u) ? rec.uvData.z : rec.uvData.x;
+        float tileV = (cornerIdx == 0u || cornerIdx == 1u) ? rec.uvData.y : rec.uvData.w;
+        // Map tile-local [0,1] UV to atlas-absolute UV.
+        Texcoord = (vec2(tileX, tileY) + vec2(tileU, tileV)) / atlasNumTexturesAcross;
+    }
 
     // Lighting per corner.
     uint lrgb = uvec4Idx(tr.lightRGBs, cornerIdx);
@@ -123,7 +153,7 @@ void main() {
     TerrainType = float((terrainTypes >> (cornerIdx * 8u)) & 0xFFu);
 
     Color       = unpackARGB(lrgb);
-    Texcoord    = vec2(u, v);
+    // Texcoord already set by the atlas UV block above.
     WorldNorm   = worldNorm;
     WorldPos    = worldPos;
 

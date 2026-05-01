@@ -196,6 +196,11 @@ class TerrainColorMap
 		{
 			return waterDetailTilingFactor;
 		}
+
+		float getNumTexturesAcross (void) const
+		{
+			return numTexturesAcross;
+		}
 		
 		void setWaterDetailFrameRate (float frameRate)
 		{

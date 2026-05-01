@@ -349,6 +349,79 @@ void buildRecipeSlot(int32_t vn, TerrainQuadRecipe& out) {
 }  // anonymous namespace
 
 // ---------------------------------------------------------------------------
+// Colormap atlas — single GL texture covering the full merged colormap.
+//
+// cpuColorMap (terrtxm2.h:93) already holds the entire RGBA atlas in CPU
+// memory, retained at mission load.  We upload it once as a plain
+// GL_TEXTURE_2D so gos_terrain_bridge_drawIndirect can bind it at unit 0
+// instead of per-bucket tile binds.
+//
+// Atlas UV formula (mirrors terrtxm2.cpp:resolveTextureHandle):
+//   posX  = (worldX - mapTopLeft3d.x) * oneOverWorldUnitsMapSide
+//   posY  = (mapTopLeft3d.y - worldY) * oneOverWorldUnitsMapSide
+//   tileX = floor((posX + 0.0005) * numTexturesAcross)
+//   tileY = floor((posY + 0.0005) * numTexturesAcross)
+//   atlasUV = (vec2(tileX, tileY) + perTileUV) / numTexturesAcross
+//
+// The per-tile UV (from recipe.uvData) is already in [0,1] within a tile.
+// Dividing by numTexturesAcross converts tile-local to atlas-absolute.
+// ---------------------------------------------------------------------------
+
+namespace {
+
+static GLuint  g_atlasGLTex              = 0;
+static int     g_atlasSize               = 0;
+static float   g_atlasNumTexturesAcross  = 0.f;
+static float   g_atlasMapTopLeftX        = 0.f;
+static float   g_atlasMapTopLeftY        = 0.f;
+static float   g_atlasOneOverWorldUnits  = 0.f;
+
+void BuildColormapAtlas() {
+    ZoneScopedN("Terrain::IndirectAtlasUpload");
+    if (!Terrain::terrainTextures2) {
+        if (traceOn()) printf("[TERRAIN_INDIRECT v1] event=atlas_skip reason=no_terrainTextures2\n");
+        return;
+    }
+    auto* tcm = Terrain::terrainTextures2;
+    if (!tcm->cpuColorMap || tcm->cpuColorMapSize <= 0) {
+        if (traceOn()) printf("[TERRAIN_INDIRECT v1] event=atlas_skip reason=no_cpuColorMap\n");
+        return;
+    }
+
+    if (g_atlasGLTex == 0) glGenTextures(1, &g_atlasGLTex);
+    glBindTexture(GL_TEXTURE_2D, g_atlasGLTex);
+    glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA8,
+                 tcm->cpuColorMapSize, tcm->cpuColorMapSize,
+                 0, GL_RGBA, GL_UNSIGNED_BYTE, tcm->cpuColorMap);
+    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
+    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
+    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_CLAMP_TO_EDGE);
+    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_CLAMP_TO_EDGE);
+    glBindTexture(GL_TEXTURE_2D, 0);
+
+    g_atlasSize              = tcm->cpuColorMapSize;
+    g_atlasNumTexturesAcross = tcm->getNumTexturesAcross();
+    g_atlasMapTopLeftX       = Terrain::mapTopLeft3d.x;
+    g_atlasMapTopLeftY       = Terrain::mapTopLeft3d.y;
+    g_atlasOneOverWorldUnits = Terrain::oneOverWorldUnitsMapSide;
+
+    if (traceOn()) {
+        printf("[TERRAIN_INDIRECT v1] event=atlas_built size=%d numTilesAcross=%.0f gltex=%u\n",
+               g_atlasSize, g_atlasNumTexturesAcross, (unsigned)g_atlasGLTex);
+        fflush(stdout);
+    }
+}
+
+}  // anonymous namespace (atlas helpers)
+
+// Bridge accessors — declared extern in gameos_graphics.cpp.
+GLuint gos_terrain_indirect_getAtlasGLTex()            { return g_atlasGLTex; }
+float  gos_terrain_indirect_getNumTexturesAcross()     { return g_atlasNumTexturesAcross; }
+float  gos_terrain_indirect_getAtlasMapTopLeftX()      { return g_atlasMapTopLeftX; }
+float  gos_terrain_indirect_getAtlasMapTopLeftY()      { return g_atlasMapTopLeftY; }
+float  gos_terrain_indirect_getAtlasOneOverWorldUnits(){ return g_atlasOneOverWorldUnits; }
+
+// ---------------------------------------------------------------------------
 // Stage 2 public API
 // ---------------------------------------------------------------------------
 
@@ -391,6 +464,10 @@ void BuildDenseRecipe() {
                (unsigned)g_recipeSSBO);
         fflush(stdout);
     }
+
+    // Upload the merged colormap atlas for the indirect draw bridge.
+    // Must run after recipe build so terrainTextures2 is ready.
+    BuildColormapAtlas();
 }
 
 void ResetDenseRecipe() {
@@ -410,6 +487,17 @@ void ResetDenseRecipe() {
     s_firstDrawPrintedThisMission = false;
     // g_recipeSSBO stays allocated — reused by next mission's BuildDenseRecipe.
     // Mirrors WaterStream::Reset() pattern.
+
+    // Tear down the atlas GL texture (per-mission; rebuilt by BuildColormapAtlas).
+    if (g_atlasGLTex != 0) {
+        glDeleteTextures(1, &g_atlasGLTex);
+        g_atlasGLTex = 0;
+    }
+    g_atlasSize              = 0;
+    g_atlasNumTexturesAcross = 0.f;
+    g_atlasMapTopLeftX       = 0.f;
+    g_atlasMapTopLeftY       = 0.f;
+    g_atlasOneOverWorldUnits = 0.f;
 }
 
 bool IsDenseRecipeReady() {
@@ -761,14 +849,27 @@ static bool ResourcesReady() {
         }
     }
 
+    // Atlas guard: refuse to arm if BuildColormapAtlas didn't produce a texture.
+    // This keeps ResourcesReady() idempotent-false until BuildDenseRecipe has run
+    // (and thus BuildColormapAtlas has run). Without this, ComputePreflight could
+    // arm and the bridge would draw with no texture bound — reproducing the grey bug.
+    if (g_atlasGLTex == 0) {
+        if (traceOn()) {
+            fprintf(stderr, "[TERRAIN_INDIRECT v1] event=resources_not_ready reason=atlas_not_built\n");
+            fflush(stderr);
+        }
+        // Don't mark s_resourcesAllocated — retry next frame once atlas is ready.
+        return false;
+    }
+
     s_resourcesAllocated = true;
     s_resourcesReady     = true;
     if (traceOn()) {
         fprintf(stderr,
             "[TERRAIN_INDIRECT v1] event=resources_ready "
-            "thinSSBO=%u indirectBuf=%u ringFrames=%d maxThin=%zu\n",
+            "thinSSBO=%u indirectBuf=%u ringFrames=%d maxThin=%zu atlasGLTex=%u\n",
             (unsigned)g_thinRecordSSBO, (unsigned)g_indirectCmdBuffer,
-            kThinRingFrames, kMaxThinRecords);
+            kThinRingFrames, kMaxThinRecords, (unsigned)g_atlasGLTex);
         fflush(stderr);
     }
     return true;

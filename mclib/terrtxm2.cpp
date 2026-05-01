@@ -1908,6 +1908,21 @@ long TerrainColorMap::init (char *fileName)
 			}
 
 			colorMapStarted = true;
+
+			// Retain full-atlas CPU copy for the indirect terrain draw bridge.
+			// cpuColorMap is uploaded once per mission as a single GL_TEXTURE_2D
+			// by BuildColormapAtlas() (gos_terrain_indirect.cpp). Must capture
+			// here (inside the TGA scope where colorMapInfo is in scope and
+			// ColorMap is still valid) before the cleanup block frees ColorMap.
+			if (colorMapInfo.image_type == UNC_TRUE && ColorMap) {
+				if (cpuColorMap) { free(cpuColorMap); cpuColorMap = NULL; }
+				long pixels = (long)colorMapInfo.width * (long)colorMapInfo.width;
+				cpuColorMap = (unsigned char*)malloc(pixels * 4);
+				gosASSERT(cpuColorMap != NULL);
+				cpuColorMapSize = colorMapInfo.width;
+				memcpy(cpuColorMap, ColorMap, pixels * 4);
+				printf("[COLORMAP] retained colormap on CPU (%dx%d)\n", colorMapInfo.width, colorMapInfo.width);
+			}
 		}
 	}
 
