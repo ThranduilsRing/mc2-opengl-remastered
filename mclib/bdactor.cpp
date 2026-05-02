@@ -1322,23 +1322,43 @@ bool BldgAppearance::recalcBounds (void)
 						//Set LOD of Model here because we have the distance and we KNOW we can see it!
 						bool baseLOD = true;
 						DWORD selectLOD = 0;
-						if (useHighObjectDetail)
+						// Animated buildings (turrets, gates, dropships) must stay at LOD 0.
+						// TG_AnimateShape caches node-name -> shape-index after first
+						// SetAnimationState (msl.cpp:2559) and writes the index into shared
+						// per-type state. The animation data is loaded against LOD 0 only
+						// (bdactor.cpp:322), so an LOD swap drives the retract animation
+						// against LOD 1's possibly-different sub-shape ordering -- the
+						// turret body never lowers. Suppressing LOD swap costs a few
+						// extra vertices per animated building (small set per map).
+						bool hasAnimations = false;
+						for (long ai = 0; ai < MAX_BD_ANIMATIONS; ++ai)
 						{
-							for (long i=1;i<MAX_LODS;i++)
+							if (appearType->bdAnimData[ai])
 							{
-								if (appearType->bldgShape[i] && (distanceToEye > appearType->lodDistance[i]))
-								{
-									baseLOD = false;
-									selectLOD = i;
-								}
+								hasAnimations = true;
+								break;
 							}
 						}
-						else	//We always want to use the lowest LOD!!
+						if (!hasAnimations)
 						{
-							if (appearType->bldgShape[1])
+							if (useHighObjectDetail)
 							{
-								baseLOD = false;
-								selectLOD = 1;
+								for (long i=1;i<MAX_LODS;i++)
+								{
+									if (appearType->bldgShape[i] && (distanceToEye > appearType->lodDistance[i]))
+									{
+										baseLOD = false;
+										selectLOD = i;
+									}
+								}
+							}
+							else	//We always want to use the lowest LOD!!
+							{
+								if (appearType->bldgShape[1])
+								{
+									baseLOD = false;
+									selectLOD = 1;
+								}
 							}
 						}
 						
