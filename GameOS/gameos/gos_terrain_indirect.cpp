@@ -47,7 +47,14 @@ namespace gos_terrain_indirect {
 bool IsEnabled() {
     static const bool s = []() {
         const char* v = getenv("MC2_TERRAIN_INDIRECT");
-        // Stage 4 default-on: literal "0" opts out; absent or anything else = on.
+        // Default-on (Stage C of plan v2.3). Literal "0" opts out; absent or
+        // anything else = on. Default-on flip arrived bundled into e22fa3a
+        // 2026-05-01; was previously deferred pending the gosFX/MLR white-
+        // saturation bug (resolved 2026-05-01 in commit e9bf756 by
+        // glDisable(GL_BLEND) before the postprocess composite). Verified
+        // clean on tier1 5/5 with both MC2_TERRAIN_INDIRECT=0 (legacy
+        // regression) and default-on configs 2026-05-01 sess 3 — no
+        // destroys delta, FPS parity within noise.
         if (v && v[0] == '0' && v[1] == '\0') return false;
         return true;
     }();
