@@ -6456,7 +6456,13 @@ long MechWarrior::orderAttackObject (bool unitOrder, long origin, GameObjectPtr 
 		// Order moveToObject, making sure we face the object...
 		setMoveRun(run);
 		params |= TACORDER_PARAM_FACE_OBJECT;
-		//orderMoveToObject(unitOrder, false, origin, target, fromArea, -1/*unitMateId*/, params);
+		// Restored from 2017 OpenGL conversion. The pursue flag is set by
+		// callers intentionally -- player via controlGui.getFireFromCurrentPos()
+		// (missiongui.cpp:3239), AI via ABL TACORDER_PARAM_PURSUE -- and
+		// without this call the chase never happens, so scripted enemies that
+		// engage a target along their path lose the rest of their move (issue
+		// #10). setTacOrder=false keeps the outer attack tacOrder intact.
+		orderMoveToObject(unitOrder, false, origin, target, fromArea, -1/*unitMateId*/, params);
 		}
 	else
 		clearMoveOrders();

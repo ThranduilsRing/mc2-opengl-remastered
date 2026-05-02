@@ -3493,8 +3493,16 @@ Stuff::Vector3D Mover::getLOSPosition (void)
 
 		if (appearance->getCurrentGestureId() == 20)
 		{
+			// Gesture 20 is jump; lowestWeaponNodeZ is only refreshed for
+			// gestures 2/4/7, so we recompute every frame here. Pose
+			// oscillation can drop the raw value to/below 0, which then
+			// fails the `> 0.0f` override below and drops the LOS ray to
+			// the stale cached Z (often below terrain) -- every weapon's
+			// lineOfSight test fails that frame. Clamp to the same
+			// shutdown-mech fudge used as the fallback below.
 			Stuff::Vector3D nodePos = appearance->getWeaponNodePosition(lowestWeaponNodeID);
-			jumpLowestNode = nodePos.z - land->getTerrainElevation(nodePos);
+			float rawZ = nodePos.z - land->getTerrainElevation(nodePos);
+			jumpLowestNode = (rawZ > 15.0f) ? rawZ : 15.0f;
 		}
 
 		if (lowestWeaponNodeZ <= 0.0f)

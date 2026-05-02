@@ -126,7 +126,10 @@ void main()
     vec3 screen;
     screen.x = clip.x * rhw * terrainViewport.x + terrainViewport.z;
     screen.y = clip.y * rhw * terrainViewport.y + terrainViewport.w;
-    screen.z = clip.z * rhw;
+    // Match legacy CPU emit's TERRAIN_DEPTH_FUDGE=0.001 (mclib/quad.cpp:2004 etc.)
+    // so decals/GpuStaticProps/water-on-terrain at coincident depth win the
+    // GL_LEQUAL tie. Precedent: gos_terrain_water_fast.vert:332.
+    screen.z = clip.z * rhw + 0.001;
     vec4 ndc = mvp * vec4(screen, 1.0);
     float absW = abs(clip.w);
     gl_Position = vec4(ndc.xyz * absW, absW);

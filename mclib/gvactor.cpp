@@ -138,7 +138,10 @@ void GVAppearanceType::init (const char * fileName)
 				result = iniFile.readIdFloat(baseLODDist,lodDistance[i]);
 				if (result != NO_ERR)
 					STOP(("LOD %d has no distance value in file %s",i,fileName));
-					
+				// Push out LOD-swap thresholds so high-detail meshes stay visible
+				// at greater zoom-out. See visual_preference_knobs.md.
+				lodDistance[i] *= 5.0f;
+
 				//----------------------------------------------
 				// Base LOD shape.  In stand Pose by default.
 				gvShape[i] = new TG_TypeMultiShape;
