@@ -324,12 +324,30 @@ void main() {
     vec3 screen;
     screen.x = clip.x * rhw * terrainViewport.x + terrainViewport.z;
     screen.y = clip.y * rhw * terrainViewport.y + terrainViewport.w;
-    // 2026-04-30 shoreline polish: bias water slightly farther in screen z to
-    // match legacy's TERRAIN_DEPTH_FUDGE=0.001 (quad.cpp:2775). Combined with
-    // the bridge's GL_LEQUAL depth test, water reliably loses depth ties to
-    // land at the coast — no z-fighting sparkle, no false-positive water on
-    // pixels where the TES'd terrain crests exactly to waterElevation.
-    screen.z = clip.z * rhw + 0.001;
+    // Layered TERRAIN_DEPTH_FUDGE: water MUST be biased farther than terrain
+    // so it loses LEQUAL ties to land at the coast (smooth shore — no
+    // z-fighting sparkle, no false-positive water on pixels where the TES'd
+    // terrain crests exactly to waterElevation).
+    //
+    // History: 2026-04-30 (commit bc8c4f1) shipped this at +0.001 to match
+    // legacy CPU emit's TERRAIN_DEPTH_FUDGE (quad.cpp:2775). Worked because
+    // terrain's TES + thin VS paths emitted screen.z without any fudge — so
+    // water's +0.001 sat strictly above terrain's 0.0, water lost ties, shore
+    // was smooth. 2026-05-01 (commit ee0a7bc) added +0.001 to terrain.tese:132
+    // and gos_terrain_thin.vert:175 to fix decal/overlay z-ties (issue #12,
+    // power generator glow). That collapsed water and terrain to the SAME
+    // bias; ties at coast no longer favored terrain, render order let water
+    // win, shoreline staircase regressed (v0.3 build). 2026-05-02 fix: bump
+    // water to 2× the terrain fudge to re-establish the layering.
+    //
+    // Three-tier z-ordering invariant (load-bearing):
+    //   decals/overlays:  +0.000   (drawn first; smaller z, win LEQUAL pre-terrain)
+    //   terrain:          +0.001   (terrain.tese:132, gos_terrain_thin.vert:175)
+    //   water:            +0.002   (this line; water draws last via post-renderLists hook)
+    //
+    // Future drift check: if terrain's fudge changes, water's must move with it
+    // by the same delta. Watch for symmetric edits.
+    screen.z = clip.z * rhw + 0.002;
     vec4 ndc = mvp * vec4(screen, 1.0);
     float absW = abs(clip.w);
     gl_Position = vec4(ndc.xyz * absW, absW);
