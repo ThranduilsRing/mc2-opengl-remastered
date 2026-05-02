@@ -2297,6 +2297,10 @@ bool gos_terrain_bridge_drawIndirect(int cmdCount, unsigned int recipeSSBO,
     extern float  gos_terrain_indirect_getAtlasMapTopLeftX();
     extern float  gos_terrain_indirect_getAtlasMapTopLeftY();
     extern float  gos_terrain_indirect_getAtlasOneOverWorldUnits();
+    extern GLuint gos_terrain_indirect_getCementAtlasGLTex();
+    extern int    gos_terrain_indirect_getCementAtlasGridSide();
+    extern bool   gos_terrain_indirect_isCementAtlasReady();
+    extern float  gos_terrain_indirect_getWorldUnitsPerVertex();
 
     GLint savedTex0Binding = 0;
     glActiveTexture(GL_TEXTURE0);
@@ -2320,6 +2324,51 @@ bool gos_terrain_bridge_drawIndirect(int cmdCount, unsigned int recipeSSBO,
         // math stays unchanged. Legacy paths leave this at 0 (default) and continue
         // to sample tex1 with per-tile Texcoord against per-tile bound textures.
         if (locUAC  >= 0) glUniform1i(locUAC,  1);
+    }
+
+    // ---- Bind cement catalog atlas at unit 3 (Stage 4 / PR2) ---------------
+    // Sampler-object override safety: clear unit 3's sampler with
+    // glBindSampler(3, 0) so the texture-object wrap (GL_REPEAT) is the binding
+    // (M1/B3 of plan v2.1).
+    GLint  savedTex3Binding = 0;
+    GLuint savedTex3Sampler = 0;
+    const bool cementAtlasReady = gos_terrain_indirect_isCementAtlasReady();
+    if (cementAtlasReady) {
+        glActiveTexture(GL_TEXTURE3);
+        glGetIntegerv(GL_TEXTURE_BINDING_2D, &savedTex3Binding);
+        { GLint q = 0; glGetIntegeri_v(GL_SAMPLER_BINDING, 3, &q); savedTex3Sampler = (GLuint)q; }
+        glBindSampler(3, 0);
+        glBindTexture(GL_TEXTURE_2D, gos_terrain_indirect_getCementAtlasGLTex());
+        glActiveTexture(GL_TEXTURE0);
+    }
+
+    {
+        const GLint locTex3   = glGetUniformLocation(prog, "tex3");
+        const GLint locUCA    = glGetUniformLocation(prog, "useCementAtlas");
+        const GLint locGSide  = glGetUniformLocation(prog, "atlasCementGridSide");
+        const GLint locWUPT   = glGetUniformLocation(prog, "atlasCementWorldUnitsPerTile");
+
+        // Lifecycle warning (subagent M2-v2): if any uniform location is missing
+        // when the atlas is ready, the frag failed to compile with the new
+        // uniforms — print once per process so the failure is visible in the log.
+        static bool s_warnedCementUniforms = false;
+        if (cementAtlasReady && !s_warnedCementUniforms &&
+            (locTex3 < 0 || locUCA < 0 || locGSide < 0 || locWUPT < 0)) {
+            printf("[TERRAIN_INDIRECT v1] event=cement_uniform_missing "
+                   "tex3=%d useCementAtlas=%d gridSide=%d wupt=%d\n",
+                   locTex3, locUCA, locGSide, locWUPT);
+            fflush(stdout);
+            s_warnedCementUniforms = true;
+        }
+
+        if (locTex3  >= 0) glUniform1i(locTex3, 3);
+        if (cementAtlasReady) {
+            if (locUCA   >= 0) glUniform1i(locUCA,   1);
+            if (locGSide >= 0) glUniform1i(locGSide, gos_terrain_indirect_getCementAtlasGridSide());
+            if (locWUPT  >= 0) glUniform1f(locWUPT,  gos_terrain_indirect_getWorldUnitsPerVertex());
+        } else {
+            if (locUCA   >= 0) glUniform1i(locUCA,   0);
+        }
     }
 
     // ---- SSBO bindings + indirect buffer -----------------------------------
@@ -2364,6 +2413,18 @@ bool gos_terrain_bridge_drawIndirect(int cmdCount, unsigned int recipeSSBO,
     {
         const GLint locUAC = glGetUniformLocation(prog, "useAtlasColormap");
         if (locUAC >= 0) glUniform1i(locUAC, 0);
+    }
+    // Reset useCementAtlas so the M2 fast path doesn't inherit the cement flag.
+    {
+        const GLint locUCA = glGetUniformLocation(prog, "useCementAtlas");
+        if (locUCA >= 0) glUniform1i(locUCA, 0);
+    }
+    // Restore unit 3 (texture binding + sampler).
+    if (cementAtlasReady) {
+        glActiveTexture(GL_TEXTURE3);
+        glBindSampler(3, savedTex3Sampler);
+        glBindTexture(GL_TEXTURE_2D, (GLuint)savedTex3Binding);
+        glActiveTexture(GL_TEXTURE0);
     }
 
     // ---- Restore state -----------------------------------------------------

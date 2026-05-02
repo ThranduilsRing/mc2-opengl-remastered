@@ -657,6 +657,7 @@ float  gos_terrain_indirect_getAtlasOneOverWorldUnits(){ return g_atlasOneOverWo
 GLuint gos_terrain_indirect_getCementAtlasGLTex()    { return g_cementAtlasGLTex; }
 int    gos_terrain_indirect_getCementAtlasGridSide() { return g_cementAtlasGridSide; }
 bool   gos_terrain_indirect_isCementAtlasReady()     { return g_cementLayerMapReady && g_cementAtlasGLTex != 0; }
+float  gos_terrain_indirect_getWorldUnitsPerVertex() { return Terrain::worldUnitsPerVertex; }
 
 // ---------------------------------------------------------------------------
 // Stage 2 public API
