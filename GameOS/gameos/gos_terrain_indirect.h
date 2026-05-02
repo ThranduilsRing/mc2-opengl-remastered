@@ -54,8 +54,8 @@ namespace gos_terrain_indirect {
 // ---------------------------------------------------------------------------
 //
 // Stage 0..3 default OFF: only literal "1" turns the path on. Stage 4
-// inverts IsEnabled() to default-on (only literal "0" opts out); other
-// gates stay default-off.
+// flip shipped (this commit): IsEnabled() defaults on (only literal
+// "0" opts out); other gates stay default-off.
 bool IsEnabled();              // MC2_TERRAIN_INDIRECT
 bool IsParityCheckEnabled();   // MC2_TERRAIN_INDIRECT_PARITY_CHECK
 bool IsTraceEnabled();         // MC2_TERRAIN_INDIRECT_TRACE — gates

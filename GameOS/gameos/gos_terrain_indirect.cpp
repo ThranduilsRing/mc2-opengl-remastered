@@ -47,7 +47,9 @@ namespace gos_terrain_indirect {
 bool IsEnabled() {
     static const bool s = []() {
         const char* v = getenv("MC2_TERRAIN_INDIRECT");
-        return v && v[0] == '1' && v[1] == '\0';
+        // Stage 4 default-on: literal "0" opts out; absent or anything else = on.
+        if (v && v[0] == '0' && v[1] == '\0') return false;
+        return true;
     }();
     return s;
 }
@@ -405,10 +407,27 @@ static int     g_cementCatalogTruncated    = 0;   // 1 if N>=255 cap hit (Gate A
 // 0xFFFF = "not cement / not in atlas".
 static uint16_t g_cementLayerIndexByNodeIdx[MC_MAXTEXTURES];
 
+// Slot-keyed lookup: textures[] slot index → atlas layer-index (0..N-1).
+// SLOT IS THE STABLE KEY (persistent across frames).  nodeIdx (mcTextureManager
+// handle) mutates per-frame per memory/mc2_texture_handle_is_live.md, so a
+// nodeIdx-keyed lookup miss-hits per frame → cement validity bit flickers
+// → visible concrete flicker.  Slot is allocated once by initTexture and is
+// stable for the mission lifetime.
+//
+// Sized MC_MAX_TERRAIN_TXMS = 3000 (terrtxm.h:34) — the textures[] cap.
+// 0xFFFF = "not cement / not in atlas".
+static uint16_t g_cementLayerIndexBySlot[MC_MAX_TERRAIN_TXMS];
+
 // Per-frame counter — incremented when the packer sees a quad whose
 // q.terrainHandle is non-zero AND maps to no cement layer.  A non-zero count
 // after Stage A.4 is wired indicates an enumeration miss (debug discipline).
 static uint32_t g_cementPackUnmappedCount = 0;
+
+// Diagnostic Test 1 — per-frame cement classification flip detection.
+// Reset at the start of PackThinRecordsForFrame, emitted every 60 frames
+// when MC2_TERRAIN_INDIRECT_TRACE is on.
+static uint32_t g_cementMappedThisFrame       = 0;  // valid cement layer found
+static uint32_t g_concreteAllCornersThisFrame = 0;  // _wp0 == 3,3,3,3 (genuine pure-cement quad)
 
 void BuildColormapAtlas() {
     ZoneScopedN("Terrain::IndirectAtlasUpload");
@@ -486,8 +505,10 @@ void BuildCementCatalogAtlas() {
     }
 
     // Pass 1: enumerate cement slots, resolve each to (nodeIdx, GLuint).
+    std::vector<int>    cementSlots;
     std::vector<DWORD>  cementNodeIndices;
     std::vector<GLuint> cementGLTextures;
+    cementSlots.reserve(64);
     cementNodeIndices.reserve(64);
     cementGLTextures.reserve(64);
     bool truncated = false;
@@ -501,6 +522,7 @@ void BuildCementCatalogAtlas() {
 
     for (long slot = 0; slot < lastSlot; ++slot) {
         if (!tt->isCement((DWORD)slot)) continue;
+        if (tt->isAlpha((DWORD)slot)) continue;  // pure-cement only (brainstorm Q1)
         const DWORD nodeIdx = tt->peekTextureHandle((DWORD)slot);
 
         // CEMENT_DIAG per-slot line.
@@ -534,6 +556,7 @@ void BuildCementCatalogAtlas() {
         // NOT the _pad0 encoding cap (16-bit field, max 65535).  If anyone
         // ever exceeds 1024, the atlas budget needs revisiting.
         if (cementNodeIndices.size() < 1024) {
+            cementSlots.push_back((int)slot);
             cementNodeIndices.push_back(nodeIdx);
             cementGLTextures.push_back(glTex);
         } else {
@@ -571,6 +594,16 @@ void BuildCementCatalogAtlas() {
     memset(g_cementLayerIndexByNodeIdx, 0xFF, sizeof(g_cementLayerIndexByNodeIdx));
     for (int k = 0; k < N; ++k) {
         g_cementLayerIndexByNodeIdx[cementNodeIndices[k]] = (uint16_t)k;
+    }
+
+    // Build slot → layer-index map.  Slot is the STABLE key (nodeIdx mutates
+    // per-frame per memory/mc2_texture_handle_is_live.md).  This is the lookup
+    // the per-frame packer uses; the nodeIdx map is kept for one-commit dead-code.
+    memset(g_cementLayerIndexBySlot, 0xFF, sizeof(g_cementLayerIndexBySlot));
+    for (int k = 0; k < N; ++k) {
+        if (cementSlots[k] >= 0 && cementSlots[k] < MC_MAX_TERRAIN_TXMS) {
+            g_cementLayerIndexBySlot[cementSlots[k]] = (uint16_t)k;
+        }
     }
 
     // Grid: smallest power-of-2 side fitting N cells in a square.
@@ -752,6 +785,7 @@ void ResetDenseRecipe() {
     g_cementCatalogTruncated = 0;
     g_cementPackUnmappedCount = 0;
     memset(g_cementLayerIndexByNodeIdx, 0xFF, sizeof(g_cementLayerIndexByNodeIdx));
+    memset(g_cementLayerIndexBySlot,    0xFF, sizeof(g_cementLayerIndexBySlot));
 
     if (traceOn()) {
         printf("[TERRAIN_INDIRECT v1] event=cement_catalog_reset\n");
@@ -1153,6 +1187,10 @@ static inline bool InMissionTransition() { return false; }
 static int PackThinRecordsForFrame() {
     ZoneScopedN("Terrain::ThinRecordPack");
 
+    // Diagnostic Test 1 — reset per-frame cement classification counters.
+    g_cementMappedThisFrame       = 0;
+    g_concreteAllCornersThisFrame = 0;
+
     if (!land) return 0;
     const long total          = land->getNumQuads();
     const TerrainQuadPtr quads = land->getQuadList();
@@ -1241,10 +1279,15 @@ static int PackThinRecordsForFrame() {
         tr.flags         = static_cast<uint32_t>((uvMode == 1 ? 1u : 0u)
                          | (pzTri1 ? 2u : 0u)
                          | (pzTri2 ? 4u : 0u));
-        // Cement layer-index lookup, keyed by mcTextureNodeIndex (NOT slot).
-        // q.terrainHandle is the un-resolved nodeIdx returned by getTextureHandle
-        // at quad.cpp:546 (V22).  The map g_cementLayerIndexByNodeIdx is populated
-        // at atlas-build time keyed by nodeIdx, so direct indexing is correct.
+        // Cement layer-index lookup, keyed by textures[] SLOT (stable across
+        // frames).  nodeIdx (q.terrainHandle) mutates per-frame per
+        // memory/mc2_texture_handle_is_live.md, so a nodeIdx-keyed lookup
+        // intermittently misses → cement validity bit flickers → visible
+        // concrete flicker on indirect base + perceived flicker on alpha-cement
+        // overlay composite.  Slot is allocated once by initTexture and stable
+        // for the mission lifetime.  Re-derive the slot at packer time from
+        // pVertex->textureData & 0xFFFFu (the same expression quad.cpp:546
+        // passes to getTextureHandle).
         //
         // Encoding (V23, widened in V27):
         //   bit 31     = CEMENT_LAYER_VALID — disambiguates "layer 0" from "not cement"
@@ -1254,29 +1297,41 @@ static int PackThinRecordsForFrame() {
         //                BuildCementCatalogAtlas)
         constexpr uint32_t kCementLayerValidBit = 0x80000000u;
         uint32_t cementWord = 0u;
-        if (g_cementLayerMapReady) {
-            const DWORD nodeIdx = (DWORD)q.terrainHandle;
-            if (nodeIdx < (DWORD)MC_MAXTEXTURES) {
-                const uint16_t idx = g_cementLayerIndexByNodeIdx[nodeIdx];
+        uint16_t idx = 0xFFFFu;
+        if (g_cementLayerMapReady && q.vertices[0] && q.vertices[0]->pVertex) {
+            const DWORD slot = q.vertices[0]->pVertex->textureData & 0xFFFFu;
+            if (slot < (DWORD)MC_MAX_TERRAIN_TXMS) {
+                idx = g_cementLayerIndexBySlot[slot];
                 if (idx != 0xFFFFu) {
-                    // Mask to bits 15:0 — idx is uint16_t so this is explicit, not necessary.
                     cementWord = kCementLayerValidBit | ((uint32_t)idx & 0xFFFFu);
-                } else {
-                    // Lifecycle counter: only count quads that EXPECT a cement
-                    // layer (all 4 corner materials in recipe._wp0 == Concrete=3).
-                    if (rec) {
-                        uint32_t tpacked = 0u;
-                        memcpy(&tpacked, &rec->_wp0, 4);
-                        const bool allConcrete =
-                            ((tpacked        & 0xFFu) == 3u) &&
-                            (((tpacked >> 8) & 0xFFu) == 3u) &&
-                            (((tpacked >>16) & 0xFFu) == 3u) &&
-                            (((tpacked >>24) & 0xFFu) == 3u);
-                        if (allConcrete) ++g_cementPackUnmappedCount;
-                    }
+                    ++g_cementMappedThisFrame;
+                }
+            }
+            // Lifecycle counter: count quads that EXPECT a cement layer
+            // (all 4 corner materials in recipe._wp0 == Concrete=3),
+            // independent of whether the layer lookup succeeded.
+            if (rec) {
+                uint32_t tpacked = 0u;
+                memcpy(&tpacked, &rec->_wp0, 4);
+                const bool allConcrete =
+                    ((tpacked        & 0xFFu) == 3u) &&
+                    (((tpacked >> 8) & 0xFFu) == 3u) &&
+                    (((tpacked >>16) & 0xFFu) == 3u) &&
+                    (((tpacked >>24) & 0xFFu) == 3u);
+                if (allConcrete) {
+                    ++g_concreteAllCornersThisFrame;
+                    if (idx == 0xFFFFu) ++g_cementPackUnmappedCount;
                 }
             }
         }
+        // Old nodeIdx-based lookup — kept as dead code for one commit; the
+        // slot-keyed lookup above is what drives correctness now.  Slot is
+        // stable across frames; nodeIdx is not.
+        // const DWORD nodeIdx = (DWORD)q.terrainHandle;
+        // if (nodeIdx < (DWORD)MC_MAXTEXTURES) {
+        //     const uint16_t idx2 = g_cementLayerIndexByNodeIdx[nodeIdx];
+        //     ...
+        // }
         tr._pad0         = cementWord;
         tr.lightRGB0     = lightRGBc(0);
         tr.lightRGB1     = lightRGBc(1);
@@ -1297,6 +1352,19 @@ static int PackThinRecordsForFrame() {
                     (GLsizeiptr)(packed * sizeof(TerrainQuadThinRecord)),
                     s_shadow);
     glBindBuffer(GL_SHADER_STORAGE_BUFFER, 0);
+
+    // Diagnostic Test 1 — per-frame cement classification trace (1/sec at 60fps).
+    {
+        static uint32_t s_frameCount = 0;
+        ++s_frameCount;
+        if (traceOn() && (s_frameCount % 60u == 0u)) {
+            printf("[CEMENT_FRAME v1] frame=%u packed_total=%u cement_mapped=%u concrete_all_corners=%u\n",
+                   (unsigned)s_frameCount, (unsigned)packed,
+                   (unsigned)g_cementMappedThisFrame,
+                   (unsigned)g_concreteAllCornersThisFrame);
+            fflush(stdout);
+        }
+    }
 
     return packed;
 }
