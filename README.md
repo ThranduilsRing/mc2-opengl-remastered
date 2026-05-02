@@ -24,6 +24,9 @@ MechCommander 2 was released by Microsoft/FASA Interactive in 2001 and its sourc
 
 ## Features
 
+### Cinematics (new in v0.2)
+- **Full-motion video playback** via FFmpeg (LGPL) -- intros, mission briefings, and debriefs all play in-engine. Audio-mastered A/V clock with wall-clock fallback; letterboxed screen-space quad.
+
 ### Terrain Rendering
 - **PBR splatting** with per-material normal maps, parallax occlusion mapping, and roughness
 - **Hardware tessellation** for smooth terrain geometry; seam expansion stitches cliff face discontinuities via tangent-plane projection
@@ -86,13 +89,10 @@ mc2.exe -mission mis0101    # skip menus, load directly into a mission
 
 ## Improvements over vanilla
 
-### Bug fixes
-- Fixed per-frame sleep timer that was capping framerate
-- Fixed intermittent color flickering
-- Fixed bloom and FXAA contaminating the HUD (effects now apply to scene geometry only)
-- Fixed cliff face seam streaks at biome transitions
-- Fixed grass normal fade and excluded alpha-blended shapes from the dynamic shadow pass
-- Fixed base-game pathfinding crash (GlobalMap zero-init) and neutral turret lookup guard
+### Bug fixes (in upstream code)
+- Removed the 10 ms per-frame `nanosleep` in the main loop that capped framerate at ~100 FPS (alariq port, 2016)
+- Fixed a base-game pathfinding crash: `GlobalMap`'s no-arg ctor left `pathExistsTable` uninitialized, surfacing on mod content
+- Guarded `Turret::update` against `teamId == -1` (neutral/environmental turrets), an out-of-bounds read on `turretsEnabled[]`
 
 ### Performance
 - Moved significant rendering work from CPU to GPU (terrain, static props, tessellation)
@@ -121,6 +121,7 @@ mc2.exe -mission mis0101    # skip menus, load directly into a mission
 ## Credits
 
 - **Original game**: Microsoft / FASA Interactive (2001)
+- **Community Creators** - be sure to check out [MechCommander Omnitech by magic](https://www.moddb.com/mods/mechcommander-omnitech) and [MC2X by Wolfman](https://mc2x.net/) - they have been keeping this game active for 20+ years. 
 - **OpenGL port, Linux support, and engine bug fixes**: [alariq/mc2](https://github.com/alariq/mc2) -- without this there is no remaster; all engine-level work is his
 - **Visual remaster**: ThranduilsRing (this repo)
 - **Development**: [Claude Code](https://claude.ai/code) (Anthropic)
