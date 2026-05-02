@@ -68,3 +68,11 @@ stay at their original sizes.
 
 **No sound:** SDL2_mixer requires audio to be available at startup. Check that your
 default audio device is active before launching.
+
+## Credits
+
+- **Original game**: Microsoft / FASA Interactive (2001)
+- **OpenGL port, Linux support, and engine bug fixes**: [alariq/mc2](https://github.com/alariq/mc2) — without this there is no remaster
+- **FMV / video playback**: thanks to alexbeav, who shared his parallel MC2 video-playback solution as a reference (https://github.com/alexbeav)
+- **Visual remaster**: ThranduilsRing
+- **Development**: [Claude Code](https://claude.ai/code) (Anthropic)
