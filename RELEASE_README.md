@@ -73,6 +73,6 @@ default audio device is active before launching.
 
 - **Original game**: Microsoft / FASA Interactive (2001)
 - **OpenGL port, Linux support, and engine bug fixes**: [alariq/mc2](https://github.com/alariq/mc2) — without this there is no remaster
-- **FMV / video playback**: thanks to alexbeav, who shared his parallel MC2 video-playback solution as a reference (https://github.com/alexbeav)
+- **D3F font loader, multi-monitor mouse grab, SDL window-event dispatch fix, FMV reference**: [Alexbeav](https://github.com/Alexbeav) — code cherry-picked from [MechCommander2-Restoration-Project](https://github.com/Alexbeav/MechCommander2-Restoration-Project)
 - **Visual remaster**: ThranduilsRing
 - **Development**: [Claude Code](https://claude.ai/code) (Anthropic)

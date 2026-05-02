@@ -123,6 +123,6 @@ mc2.exe -mission mis0101    # skip menus, load directly into a mission
 - **Original game**: Microsoft / FASA Interactive (2001)
 - **Community Creators** - be sure to check out [MechCommander Omnitech by magic](https://www.moddb.com/mods/mechcommander-omnitech) and [MC2X by Wolfman](https://mc2x.net/) - they have been keeping this game active for 20+ years. 
 - **OpenGL port, Linux support, and engine bug fixes**: [alariq/mc2](https://github.com/alariq/mc2) -- without this there is no remaster; all engine-level work is his
-- **FMV / video playback**: thanks to alexbeav, who shared his parallel MC2 video-playback solution as a reference (https://github.com/alexbeav)
+- **D3F font loader, multi-monitor mouse grab, SDL window-event dispatch fix, FMV reference**: [Alexbeav](https://github.com/Alexbeav) — code cherry-picked from [MechCommander2-Restoration-Project](https://github.com/Alexbeav/MechCommander2-Restoration-Project)
 - **Visual remaster**: ThranduilsRing (this repo)
 - **Development**: [Claude Code](https://claude.ai/code) (Anthropic)
