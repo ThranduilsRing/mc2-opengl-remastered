@@ -1727,6 +1727,20 @@ void TerrainQuad::setupTextures (void)
 }
 
 #define TERRAIN_DEPTH_FUDGE		0.001f
+// Water MUST be biased farther than terrain so it loses LEQUAL ties at the
+// coast (smooth shore — no tile-aligned staircase where terrain crests
+// exactly to waterElevation). Pre-2026-05-01, terrain TES/thin VS emitted
+// screen.z without any fudge, so water at +0.001 sat strictly above terrain
+// at 0.000. Commit ee0a7bc (2026-05-01) added +0.001 to terrain.tese:132 and
+// gos_terrain_thin.vert:175 to fix overlay z-ties (issue #12 power generator
+// glow). That collapsed terrain and water to the SAME bias on the modern
+// terrain path AND on the legacy CPU emit (this file: every solid emit site
+// uses pz + TERRAIN_DEPTH_FUDGE). Result: tile-aligned staircase regression
+// in v0.3, visible at distance (low TES level → uniform per-tile water z →
+// whole-tile snap to water-or-terrain). Fix: bump water to 2× the terrain
+// fudge. Defining as a multiple keeps the two bound — if terrain's fudge
+// ever moves, water's tracks it. Mirror: gos_terrain_water_fast.vert:350.
+#define WATER_DEPTH_FUDGE		(TERRAIN_DEPTH_FUDGE * 2.0f)
 #define OVERLAY_ELEV_OFFSET		0.15f
 
 // GPU projection: pack MC2 world coords into overlay vertex instead of screen-space
@@ -2883,7 +2897,7 @@ void TerrainQuad::drawWater (void)
 			// Top Triangle
 			gVertex[0].x		= vertices[0]->wx;
 			gVertex[0].y		= vertices[0]->wy;
-			gVertex[0].z		= vertices[0]->wz + TERRAIN_DEPTH_FUDGE;
+			gVertex[0].z		= vertices[0]->wz + WATER_DEPTH_FUDGE;
 			gVertex[0].rhw		= vertices[0]->ww;
 			gVertex[0].u		= minU + cloudOffsetX;
 			gVertex[0].v		= minV + cloudOffsetY;
@@ -2893,7 +2907,7 @@ void TerrainQuad::drawWater (void)
 
 			gVertex[1].x		= vertices[1]->wx;
 			gVertex[1].y		= vertices[1]->wy;
-			gVertex[1].z		= vertices[1]->wz + TERRAIN_DEPTH_FUDGE;
+			gVertex[1].z		= vertices[1]->wz + WATER_DEPTH_FUDGE;
 			gVertex[1].rhw		= vertices[1]->ww;
 			gVertex[1].u		= maxU + cloudOffsetX;
 			gVertex[1].v		= minV + cloudOffsetY;
@@ -2903,7 +2917,7 @@ void TerrainQuad::drawWater (void)
 
 			gVertex[2].x		= vertices[2]->wx;
 			gVertex[2].y		= vertices[2]->wy;
-			gVertex[2].z		= vertices[2]->wz + TERRAIN_DEPTH_FUDGE;
+			gVertex[2].z		= vertices[2]->wz + WATER_DEPTH_FUDGE;
 			gVertex[2].rhw		= vertices[2]->ww;
 			gVertex[2].u		= maxU + cloudOffsetX;
 			gVertex[2].v		= maxV + cloudOffsetY;
@@ -3042,7 +3056,7 @@ void TerrainQuad::drawWater (void)
 
 			gVertex[2].x		= vertices[3]->wx;
 			gVertex[2].y		= vertices[3]->wy;
-			gVertex[2].z		= vertices[3]->wz + TERRAIN_DEPTH_FUDGE;
+			gVertex[2].z		= vertices[3]->wz + WATER_DEPTH_FUDGE;
 			gVertex[2].rhw		= vertices[3]->ww;
 			gVertex[2].u		= minU + cloudOffsetX;
 			gVertex[2].v		= maxV + cloudOffsetY;
@@ -3171,7 +3185,7 @@ void TerrainQuad::drawWater (void)
 			// Top Triangle.
 			gVertex[0].x		= vertices[0]->wx;
 			gVertex[0].y		= vertices[0]->wy;
-			gVertex[0].z		= vertices[0]->wz + TERRAIN_DEPTH_FUDGE;
+			gVertex[0].z		= vertices[0]->wz + WATER_DEPTH_FUDGE;
 			gVertex[0].rhw		= vertices[0]->ww;
 			gVertex[0].u		= minU + cloudOffsetX;;
 			gVertex[0].v		= minV + cloudOffsetY;;
@@ -3181,7 +3195,7 @@ void TerrainQuad::drawWater (void)
 
 			gVertex[1].x		= vertices[1]->wx;
 			gVertex[1].y		= vertices[1]->wy;
-			gVertex[1].z		= vertices[1]->wz + TERRAIN_DEPTH_FUDGE;
+			gVertex[1].z		= vertices[1]->wz + WATER_DEPTH_FUDGE;
 			gVertex[1].rhw		= vertices[1]->ww;
 			gVertex[1].u		= maxU + cloudOffsetX;;
 			gVertex[1].v		= minV + cloudOffsetY;;
@@ -3191,7 +3205,7 @@ void TerrainQuad::drawWater (void)
 
 			gVertex[2].x		= vertices[3]->wx;
 			gVertex[2].y		= vertices[3]->wy;
-			gVertex[2].z		= vertices[3]->wz + TERRAIN_DEPTH_FUDGE;
+			gVertex[2].z		= vertices[3]->wz + WATER_DEPTH_FUDGE;
 			gVertex[2].rhw		= vertices[3]->ww;
 			gVertex[2].u		= minU + cloudOffsetX;;
 			gVertex[2].v		= maxV + cloudOffsetY;;
@@ -3330,7 +3344,7 @@ void TerrainQuad::drawWater (void)
 
 			gVertex[1].x		= vertices[2]->wx;
 			gVertex[1].y		= vertices[2]->wy;
-			gVertex[1].z		= vertices[2]->wz + TERRAIN_DEPTH_FUDGE;
+			gVertex[1].z		= vertices[2]->wz + WATER_DEPTH_FUDGE;
 			gVertex[1].rhw		= vertices[2]->ww;
 			gVertex[1].u		= maxU + cloudOffsetX;;
 			gVertex[1].v		= maxV + cloudOffsetY;;
