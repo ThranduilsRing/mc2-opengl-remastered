@@ -929,6 +929,12 @@ void gosPostProcess::endScene()
     glDisable(GL_DEPTH_TEST);
     glDisable(GL_CULL_FACE);
     glDepthMask(GL_FALSE);
+    // gosFX/MLR additive draws (gos_Alpha_OneOne) leak GL_BLEND+GL_ONE/GL_ONE
+    // state into the composite. With an RGBA8 backbuffer that clamps at 1.0,
+    // the additive accumulation saturates to white over ~1s — pylon power
+    // generator effect on mc2_05/mc2_24 was the canary. Composite is meant
+    // to fully overwrite the backbuffer; force opaque.
+    glDisable(GL_BLEND);
 
     // Draw fullscreen quad with composite shader
     if (compositeProg_ && compositeProg_->is_valid()) {
