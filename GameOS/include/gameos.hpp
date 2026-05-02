@@ -2995,6 +2995,13 @@ void __stdcall gos_LockTexture( DWORD Handle, DWORD MipMapSize, bool ReadOnly, T
 void __stdcall gos_UnLockTexture( DWORD Handle );
 
 //
+// Returns the underlying GL texture id for a gosTexture handle, or 0 if
+// the handle is invalid. Used by the D3F font loader to bind atlases via
+// raw GL calls rather than the gos texture-state machine.
+//
+uint32_t __stdcall gos_GetTextureGLId( DWORD Handle );
+
+//
 // Converts from 32bpp source to subrect of n-bpp dest, bypassing intermediate 32bpp buffer
 //
 void __stdcall gos_ConvertTextureRect( DWORD Handle, DWORD DestLeft, DWORD DestTop, DWORD *Source, DWORD SourcePitch, DWORD Width, DWORD Height );
