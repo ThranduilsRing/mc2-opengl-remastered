@@ -131,11 +131,21 @@ for kind in art tgl; do
 done
 
 # ---------- mc2-remastered-engine.zip ----------
-# mc2.exe + shaders/ + runtime DLLs at the install root. Excludes data/ and FSTs.
+# mc2.exe + shaders/ + runtime DLLs at the install root + assets/ (font data).
+# Excludes data/ and FSTs (those live in mc2-gamedata.zip).
+#
+# assets/ carries .d3f + .glyph font data needed by the gos_font.cpp D3F
+# loader (introduced 2026-04-25 by alexbeav). v0.1.1.zip shipped these
+# inline, v0.2's per-zip layout dropped them, and v0.3's font sprint
+# requires them again — without these files the engine boots but renders
+# UI text as boxes.
 echo "[engine] staging"
 mkdir -p "$STAGE/engine"
 cp "$DEPLOY/mc2.exe" "$STAGE/engine/"
 cp -r "$DEPLOY/shaders" "$STAGE/engine/"
+if [ -d "$DEPLOY/assets" ]; then
+    cp -r "$DEPLOY/assets" "$STAGE/engine/"
+fi
 # Runtime DLLs at the deploy root (SDL2, GLEW, FFmpeg, MSVC redist, etc).
 for f in "$DEPLOY"/*.dll "$DEPLOY"/run-with-log.bat; do
     [ -e "$f" ] && cp "$f" "$STAGE/engine/"
