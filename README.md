@@ -1,6 +1,8 @@
 # MechCommander 2 -- OpenGL Remastered
 
-![MC2 OpenGL Remastered](https://private-user-images.githubusercontent.com/95195674/584548712-78c5373b-bf4c-4d20-b128-8d2dc9f88701.png?jwt=eyJ0eXAiOiJKV1QiLCJhbGciOiJIUzI1NiJ9.eyJpc3MiOiJnaXRodWIuY29tIiwiYXVkIjoicmF3LmdpdGh1YnVzZXJjb250ZW50LmNvbSIsImtleSI6ImtleTUiLCJleHAiOjE3Nzc4NTAyMTAsIm5iZiI6MTc3Nzg0OTkxMCwicGF0aCI6Ii85NTE5NTY3NC81ODQ1NDg3MTItNzhjNTM3M2ItYmY0Yy00ZDIwLWIxMjgtOGQyZGM5Zjg4NzAxLnBuZz9YLUFtei1BbGdvcml0aG09QVdTNC1ITUFDLVNIQTI1NiZYLUFtei1DcmVkZW50aWFsPUFLSUFWQ09EWUxTQTUzUFFLNFpBJTJGMjAyNjA1MDMlMkZ1cy1lYXN0LTElMkZzMyUyRmF3czRfcmVxdWVzdCZYLUFtei1EYXRlPTIwMjYwNTAzVDIzMTE1MFomWC1BbXotRXhwaXJlcz0zMDAmWC1BbXotU2lnbmF0dXJlPWYwMGE5OGM4ZmM3NjYzY2Y3MWJlMmQxOTMyNGJkNWIxNzU4YTljMjI0YzExZTUxMTNjZDc3MWZlNTViN2NhNmImWC1BbXotU2lnbmVkSGVhZGVycz1ob3N0JnJlc3BvbnNlLWNvbnRlbnQtdHlwZT1pbWFnZSUyRnBuZyJ9.ARW1z96fMuM3pzyTJFW_Zk3kYsiR6iQt1YCZweny6hU)
+
+<img width="2141" height="997" alt="image" src="https://github.com/user-attachments/assets/724aa51d-b9ee-44f9-a958-dbf7a7875405" />
+
 
 A visual remaster of MechCommander 2, built on top of [alariq's OpenGL port](https://github.com/alariq/mc2). Rebuilds the rendering pipeline around PBR terrain splatting, real-time shadows, tessellation, and modern post-processing -- while leaving the original gameplay, missions, and systems alone.
 
