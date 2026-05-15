@@ -36,12 +36,12 @@ layout(std430, binding = 0) readonly buffer QuadRecordBuf {
 };
 
 // Unpack ARGB uint to vec4 (each component 0..255 -> 0..1).
-vec4 unpackARGB(uint packed) {
+vec4 unpackARGB(uint packedd) {
     return vec4(
-        float((packed >> 16u) & 0xFFu) / 255.0,  // R
-        float((packed >>  8u) & 0xFFu) / 255.0,  // G
-        float((packed       ) & 0xFFu) / 255.0,  // B
-        float((packed >> 24u) & 0xFFu) / 255.0   // A
+        float((packedd >> 16u) & 0xFFu) / 255.0,  // R
+        float((packedd >>  8u) & 0xFFu) / 255.0,  // G
+        float((packedd       ) & 0xFFu) / 255.0,  // B
+        float((packedd >> 24u) & 0xFFu) / 255.0   // A
     );
 }
 
