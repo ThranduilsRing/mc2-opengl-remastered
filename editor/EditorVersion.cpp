@@ -5,7 +5,7 @@
 * COPYRIGHT: Copyright (C) Microsoft Corporation. All rights reserved.
 * DATE: 05/16/2026
 * MODIFICATION: by Methuselas
-* CHANGES: Carried Editor SemVer 0.15.0 through the helper accessors.
+* CHANGES: Carried Editor SemVer 0.16.0 through the helper accessors.
 ****************************************************************/
 
 #include "stdafx.h"
