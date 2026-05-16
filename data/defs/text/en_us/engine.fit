@@ -1,0 +1,891 @@
+/***************************************************************
+ * FILENAME: engine.fit
+ * DESCRIPTION: Engine and platform visible localized text definitions.
+ *
+ * CREATED BY: Methuselas
+ * CREATED: 2026-04-30
+ *
+ ***************************************************************/
+
+String {
+    key = "engine.source.mc2_gl_error_drain_silent_percents"
+    text = "    \"MC2_GL_ERROR_DRAIN_SILENT\": %s,\n"
+    source = "source_audit"
+    migrationState = "candidate_collapsed_v1"
+    textHash = "432f8fec9d76"
+    occurrenceCount = 1
+    activeOccurrenceCount = 1
+    sourceAreas = "GameOS"
+    categories = "user_or_debug_error_candidate"
+    firstSourceFile = "GameOS/gameos/gos_crashbundle.cpp"
+    firstLine = 255
+}
+
+String {
+    key = "engine.source.gl_error_v1_frame_percentu_pass_percents_code_percents_0xper_7b3abd01"
+    text = "[GL_ERROR v1] frame=%u pass=%s code=%s(0x%04X) mono_count=%llu"
+    source = "source_audit"
+    migrationState = "candidate_collapsed_v1"
+    textHash = "7b3abd016c9e"
+    occurrenceCount = 1
+    activeOccurrenceCount = 1
+    sourceAreas = "GameOS"
+    categories = "user_or_debug_error_candidate"
+    firstSourceFile = "GameOS/gameos/gos_validate.cpp"
+    firstLine = 263
+}
+
+String {
+    key = "engine.source.gl_error_v1_pass_percents_suppressed_elapsed_frames_percentu_df158f97"
+    text = "[GL_ERROR v1] pass=%s suppressed elapsed_frames=%u count_in_window=%u"
+    source = "source_audit"
+    migrationState = "candidate_collapsed_v1"
+    textHash = "df158f97f058"
+    occurrenceCount = 1
+    activeOccurrenceCount = 1
+    sourceAreas = "GameOS"
+    categories = "user_or_debug_error_candidate"
+    firstSourceFile = "GameOS/gameos/gos_validate.cpp"
+    firstLine = 249
+}
+
+String {
+    key = "engine.source.gpuprops_failed_to_compile_link_static_prop_shader_pair"
+    text = "[GPUPROPS] failed to compile/link static_prop shader pair â "
+    source = "source_audit"
+    migrationState = "candidate_collapsed_v1"
+    textHash = "6c2684bea59a"
+    occurrenceCount = 1
+    activeOccurrenceCount = 1
+    sourceAreas = "GameOS"
+    categories = "user_or_debug_error_candidate"
+    firstSourceFile = "GameOS/gameos/gos_static_prop_batcher.cpp"
+    firstLine = 124
+}
+
+String {
+    key = "engine.source.instr_v1_enabled_tgl_pool_percentd_destroy_percentd_gl_error_200fa25a"
+    text = "[INSTR v1] enabled: tgl_pool=%d destroy=%d gl_error_print=%d smoke=%d build=%s"
+    source = "source_audit"
+    migrationState = "candidate_collapsed_v1"
+    textHash = "200fa25a5228"
+    occurrenceCount = 1
+    activeOccurrenceCount = 1
+    sourceAreas = "GameOS"
+    categories = "user_or_debug_error_candidate"
+    firstSourceFile = "GameOS/gameos/gameosmain.cpp"
+    firstLine = 601
+}
+
+String {
+    key = "engine.source.smoke_v1_event_summary_result_fail_reason_argv_error"
+    text = "[SMOKE v1] event=summary result=fail reason=argv_error "
+    source = "source_audit"
+    migrationState = "candidate_collapsed_v1"
+    textHash = "9d9691beb299"
+    occurrenceCount = 3
+    activeOccurrenceCount = 3
+    sourceAreas = "GameOS"
+    categories = "user_or_debug_error_candidate"
+    firstSourceFile = "GameOS/gameos/gos_smoke.cpp"
+    firstLine = 60
+}
+
+String {
+    key = "engine.source.smoke_v1_event_summary_result_fail_reason_argv_error.d6306ff2"
+    text = "[SMOKE v1] event=summary result=fail reason=argv_error ..."
+    source = "source_audit"
+    migrationState = "candidate_collapsed_v1"
+    textHash = "d6306ff27827"
+    occurrenceCount = 1
+    activeOccurrenceCount = 1
+    sourceAreas = "GameOS"
+    categories = "user_or_debug_error_candidate"
+    firstSourceFile = "GameOS/gameos/gos_smoke.h"
+    firstLine = 23
+}
+
+String {
+    key = "engine.source.cannot_open_source_file"
+    text = "Cannot open source file"
+    source = "source_audit"
+    migrationState = "candidate_collapsed_v1"
+    textHash = "ea7788ad7e9e"
+    occurrenceCount = 1
+    activeOccurrenceCount = 1
+    sourceAreas = "mclib"
+    categories = "user_or_debug_error_candidate"
+    firstSourceFile = "mclib/ablerr.cpp"
+    firstLine = 50
+}
+
+String {
+    key = "engine.source.errordetail"
+    text = "ErrorDetail="
+    source = "source_audit"
+    migrationState = "candidate_collapsed_v1"
+    textHash = "e62dd23cddf8"
+    occurrenceCount = 1
+    activeOccurrenceCount = 1
+    sourceAreas = "mclib"
+    categories = "user_or_debug_error_candidate"
+    firstSourceFile = "mclib/msodw.h"
+    firstLine = 38
+}
+
+String {
+    key = "engine.source.errorsig"
+    text = "ErrorSig="
+    source = "source_audit"
+    migrationState = "candidate_collapsed_v1"
+    textHash = "6c1f4dbd47cd"
+    occurrenceCount = 1
+    activeOccurrenceCount = 1
+    sourceAreas = "mclib"
+    categories = "user_or_debug_error_candidate"
+    firstSourceFile = "mclib/msodw.h"
+    firstLine = 37
+}
+
+String {
+    key = "engine.source.errortext"
+    text = "ErrorText="
+    source = "source_audit"
+    migrationState = "candidate_collapsed_v1"
+    textHash = "76e245715a44"
+    occurrenceCount = 1
+    activeOccurrenceCount = 1
+    sourceAreas = "mclib"
+    categories = "user_or_debug_error_candidate"
+    firstSourceFile = "mclib/msodw.h"
+    firstLine = 35
+}
+
+String {
+    key = "engine.source.heap_check_failed"
+    text = "Heap check failed.\n"
+    source = "source_audit"
+    migrationState = "candidate_collapsed_v1"
+    textHash = "2566a78c10a7"
+    occurrenceCount = 1
+    activeOccurrenceCount = 1
+    sourceAreas = "mclib"
+    categories = "user_or_debug_error_candidate"
+    firstSourceFile = "mclib/heap.cpp"
+    firstLine = 38
+}
+
+String {
+    key = "engine.source.invalid_case_value"
+    text = "Invalid case value"
+    source = "source_audit"
+    migrationState = "candidate_collapsed_v1"
+    textHash = "528548912152"
+    occurrenceCount = 1
+    activeOccurrenceCount = 1
+    sourceAreas = "mclib"
+    categories = "user_or_debug_error_candidate"
+    firstSourceFile = "mclib/ablerr.cpp"
+    firstLine = 130
+}
+
+String {
+    key = "engine.source.invalid_constant"
+    text = "Invalid constant"
+    source = "source_audit"
+    migrationState = "candidate_collapsed_v1"
+    textHash = "6000340313ad"
+    occurrenceCount = 1
+    activeOccurrenceCount = 1
+    sourceAreas = "mclib"
+    categories = "user_or_debug_error_candidate"
+    firstSourceFile = "mclib/ablerr.cpp"
+    firstLine = 68
+}
+
+String {
+    key = "engine.source.invalid_exponent"
+    text = "Invalid exponent"
+    source = "source_audit"
+    migrationState = "candidate_collapsed_v1"
+    textHash = "abb1cf1a5de8"
+    occurrenceCount = 1
+    activeOccurrenceCount = 1
+    sourceAreas = "mclib"
+    categories = "user_or_debug_error_candidate"
+    firstSourceFile = "mclib/ablerr.cpp"
+    firstLine = 54
+}
+
+String {
+    key = "engine.source.invalid_expression"
+    text = "Invalid expression"
+    source = "source_audit"
+    migrationState = "candidate_collapsed_v1"
+    textHash = "f8f0786c2dcd"
+    occurrenceCount = 1
+    activeOccurrenceCount = 1
+    sourceAreas = "mclib"
+    categories = "user_or_debug_error_candidate"
+    firstSourceFile = "mclib/ablerr.cpp"
+    firstLine = 59
+}
+
+String {
+    key = "engine.source.invalid_for_control"
+    text = "Invalid for control"
+    source = "source_audit"
+    migrationState = "candidate_collapsed_v1"
+    textHash = "1c5d8af7003c"
+    occurrenceCount = 1
+    activeOccurrenceCount = 1
+    sourceAreas = "mclib"
+    categories = "user_or_debug_error_candidate"
+    firstSourceFile = "mclib/ablerr.cpp"
+    firstLine = 81
+}
+
+String {
+    key = "engine.source.invalid_fraction"
+    text = "Invalid fraction"
+    source = "source_audit"
+    migrationState = "candidate_collapsed_v1"
+    textHash = "ce99ca9ecbf8"
+    occurrenceCount = 1
+    activeOccurrenceCount = 1
+    sourceAreas = "mclib"
+    categories = "user_or_debug_error_candidate"
+    firstSourceFile = "mclib/ablerr.cpp"
+    firstLine = 53
+}
+
+String {
+    key = "engine.source.invalid_function_argument"
+    text = "Invalid function argument"
+    source = "source_audit"
+    migrationState = "candidate_collapsed_v1"
+    textHash = "f26492315166"
+    occurrenceCount = 1
+    activeOccurrenceCount = 1
+    sourceAreas = "mclib"
+    categories = "user_or_debug_error_candidate"
+    firstSourceFile = "mclib/ablerr.cpp"
+    firstLine = 129
+}
+
+String {
+    key = "engine.source.invalid_identifier_usage"
+    text = "Invalid identifier usage"
+    source = "source_audit"
+    migrationState = "candidate_collapsed_v1"
+    textHash = "81e688c2129b"
+    occurrenceCount = 1
+    activeOccurrenceCount = 1
+    sourceAreas = "mclib"
+    categories = "user_or_debug_error_candidate"
+    firstSourceFile = "mclib/ablerr.cpp"
+    firstLine = 75
+}
+
+String {
+    key = "engine.source.invalid_index_type"
+    text = "Invalid index type"
+    source = "source_audit"
+    migrationState = "candidate_collapsed_v1"
+    textHash = "b1dcef71c771"
+    occurrenceCount = 1
+    activeOccurrenceCount = 1
+    sourceAreas = "mclib"
+    categories = "user_or_debug_error_candidate"
+    firstSourceFile = "mclib/ablerr.cpp"
+    firstLine = 101
+}
+
+String {
+    key = "engine.source.invalid_number"
+    text = "Invalid number"
+    source = "source_audit"
+    migrationState = "candidate_collapsed_v1"
+    textHash = "a6784ff84b5b"
+    occurrenceCount = 1
+    activeOccurrenceCount = 1
+    sourceAreas = "mclib"
+    categories = "user_or_debug_error_candidate"
+    firstSourceFile = "mclib/ablerr.cpp"
+    firstLine = 52
+}
+
+String {
+    key = "engine.source.invalid_plane_number_used"
+    text = "Invalid plane number used !"
+    source = "source_audit"
+    migrationState = "candidate_collapsed_v1"
+    textHash = "5956ebda74c4"
+    occurrenceCount = 3
+    activeOccurrenceCount = 3
+    sourceAreas = "mclib"
+    categories = "debug_log_candidate;user_or_debug_error_candidate"
+    firstSourceFile = "mclib/mlr/mlrprimitive.hpp"
+    firstLine = 420
+}
+
+String {
+    key = "engine.source.invalid_reference_parameter"
+    text = "Invalid reference parameter"
+    source = "source_audit"
+    migrationState = "candidate_collapsed_v1"
+    textHash = "80b15b405de2"
+    occurrenceCount = 1
+    activeOccurrenceCount = 1
+    sourceAreas = "mclib"
+    categories = "user_or_debug_error_candidate"
+    firstSourceFile = "mclib/ablerr.cpp"
+    firstLine = 88
+}
+
+String {
+    key = "engine.source.invalid_type"
+    text = "Invalid type"
+    source = "source_audit"
+    migrationState = "candidate_collapsed_v1"
+    textHash = "c60b8adab03e"
+    occurrenceCount = 1
+    activeOccurrenceCount = 1
+    sourceAreas = "mclib"
+    categories = "user_or_debug_error_candidate"
+    firstSourceFile = "mclib/ablerr.cpp"
+    firstLine = 73
+}
+
+String {
+    key = "engine.source.mechcommander_2_resource_dll"
+    text = "MechCommander 2 Resource DLL"
+    source = "source_audit"
+    migrationState = "candidate_collapsed_v1"
+    textHash = "f003134089b2"
+    occurrenceCount = 2
+    activeOccurrenceCount = 2
+    sourceAreas = "mclib"
+    categories = "manual_review"
+    firstSourceFile = "mclib/MCLib.rc"
+    firstLine = 75
+}
+
+String {
+    key = "engine.source.missing_begin"
+    text = "Missing begin"
+    source = "source_audit"
+    migrationState = "candidate_collapsed_v1"
+    textHash = "74c0b9634a83"
+    occurrenceCount = 1
+    activeOccurrenceCount = 1
+    sourceAreas = "mclib"
+    categories = "user_or_debug_error_candidate"
+    firstSourceFile = "mclib/ablerr.cpp"
+    firstLine = 90
+}
+
+String {
+    key = "engine.source.missing_code"
+    text = "Missing code"
+    source = "source_audit"
+    migrationState = "candidate_collapsed_v1"
+    textHash = "a1ad4527ee51"
+    occurrenceCount = 1
+    activeOccurrenceCount = 1
+    sourceAreas = "mclib"
+    categories = "user_or_debug_error_candidate"
+    firstSourceFile = "mclib/ablerr.cpp"
+    firstLine = 93
+}
+
+String {
+    key = "engine.source.missing_colon_ouch"
+    text = "Missing colon (ouch)"
+    source = "source_audit"
+    migrationState = "candidate_collapsed_v1"
+    textHash = "be028d87c31c"
+    occurrenceCount = 1
+    activeOccurrenceCount = 1
+    sourceAreas = "mclib"
+    categories = "user_or_debug_error_candidate"
+    firstSourceFile = "mclib/ablerr.cpp"
+    firstLine = 71
+}
+
+String {
+    key = "engine.source.missing_comma"
+    text = "Missing comma"
+    source = "source_audit"
+    migrationState = "candidate_collapsed_v1"
+    textHash = "0597b1a43c12"
+    occurrenceCount = 1
+    activeOccurrenceCount = 1
+    sourceAreas = "mclib"
+    categories = "user_or_debug_error_candidate"
+    firstSourceFile = "mclib/ablerr.cpp"
+    firstLine = 102
+}
+
+String {
+    key = "engine.source.missing_constant"
+    text = "Missing constant"
+    source = "source_audit"
+    migrationState = "candidate_collapsed_v1"
+    textHash = "89c890860be5"
+    occurrenceCount = 1
+    activeOccurrenceCount = 1
+    sourceAreas = "mclib"
+    categories = "user_or_debug_error_candidate"
+    firstSourceFile = "mclib/ablerr.cpp"
+    firstLine = 106
+}
+
+String {
+    key = "engine.source.missing_do"
+    text = "Missing do"
+    source = "source_audit"
+    migrationState = "candidate_collapsed_v1"
+    textHash = "1e2ee0a05be1"
+    occurrenceCount = 1
+    activeOccurrenceCount = 1
+    sourceAreas = "mclib"
+    categories = "user_or_debug_error_candidate"
+    firstSourceFile = "mclib/ablerr.cpp"
+    firstLine = 100
+}
+
+String {
+    key = "engine.source.missing_end"
+    text = "Missing end"
+    source = "source_audit"
+    migrationState = "candidate_collapsed_v1"
+    textHash = "2d3f66231bfd"
+    occurrenceCount = 1
+    activeOccurrenceCount = 1
+    sourceAreas = "mclib"
+    categories = "user_or_debug_error_candidate"
+    firstSourceFile = "mclib/ablerr.cpp"
+    firstLine = 74
+}
+
+String {
+    key = "engine.source.missing_endcase"
+    text = "Missing endcase"
+    source = "source_audit"
+    migrationState = "candidate_collapsed_v1"
+    textHash = "8a76c9692adb"
+    occurrenceCount = 1
+    activeOccurrenceCount = 1
+    sourceAreas = "mclib"
+    categories = "user_or_debug_error_candidate"
+    firstSourceFile = "mclib/ablerr.cpp"
+    firstLine = 104
+}
+
+String {
+    key = "engine.source.missing_endfor"
+    text = "Missing endfor"
+    source = "source_audit"
+    migrationState = "candidate_collapsed_v1"
+    textHash = "22a49acbb43e"
+    occurrenceCount = 1
+    activeOccurrenceCount = 1
+    sourceAreas = "mclib"
+    categories = "user_or_debug_error_candidate"
+    firstSourceFile = "mclib/ablerr.cpp"
+    firstLine = 96
+}
+
+String {
+    key = "engine.source.missing_endfsm"
+    text = "Missing endfsm"
+    source = "source_audit"
+    migrationState = "candidate_collapsed_v1"
+    textHash = "21df23fc6630"
+    occurrenceCount = 1
+    activeOccurrenceCount = 1
+    sourceAreas = "mclib"
+    categories = "user_or_debug_error_candidate"
+    firstSourceFile = "mclib/ablerr.cpp"
+    firstLine = 114
+}
+
+String {
+    key = "engine.source.missing_endfunction"
+    text = "Missing endfunction"
+    source = "source_audit"
+    migrationState = "candidate_collapsed_v1"
+    textHash = "f57f03d526d1"
+    occurrenceCount = 1
+    activeOccurrenceCount = 1
+    sourceAreas = "mclib"
+    categories = "user_or_debug_error_candidate"
+    firstSourceFile = "mclib/ablerr.cpp"
+    firstLine = 97
+}
+
+String {
+    key = "engine.source.missing_endif"
+    text = "Missing endif"
+    source = "source_audit"
+    migrationState = "candidate_collapsed_v1"
+    textHash = "2029ca6421fe"
+    occurrenceCount = 1
+    activeOccurrenceCount = 1
+    sourceAreas = "mclib"
+    categories = "user_or_debug_error_candidate"
+    firstSourceFile = "mclib/ablerr.cpp"
+    firstLine = 94
+}
+
+String {
+    key = "engine.source.missing_endlibrary"
+    text = "Missing endlibrary"
+    source = "source_audit"
+    migrationState = "candidate_collapsed_v1"
+    textHash = "467455cabcc4"
+    occurrenceCount = 1
+    activeOccurrenceCount = 1
+    sourceAreas = "mclib"
+    categories = "user_or_debug_error_candidate"
+    firstSourceFile = "mclib/ablerr.cpp"
+    firstLine = 99
+}
+
+String {
+    key = "engine.source.missing_endmodule"
+    text = "Missing endmodule"
+    source = "source_audit"
+    migrationState = "candidate_collapsed_v1"
+    textHash = "3832b7165ba8"
+    occurrenceCount = 1
+    activeOccurrenceCount = 1
+    sourceAreas = "mclib"
+    categories = "user_or_debug_error_candidate"
+    firstSourceFile = "mclib/ablerr.cpp"
+    firstLine = 98
+}
+
+String {
+    key = "engine.source.missing_endswitch"
+    text = "Missing endswitch"
+    source = "source_audit"
+    migrationState = "candidate_collapsed_v1"
+    textHash = "b746e5bcccd6"
+    occurrenceCount = 1
+    activeOccurrenceCount = 1
+    sourceAreas = "mclib"
+    categories = "user_or_debug_error_candidate"
+    firstSourceFile = "mclib/ablerr.cpp"
+    firstLine = 105
+}
+
+String {
+    key = "engine.source.missing_endvar"
+    text = "Missing endvar"
+    source = "source_audit"
+    migrationState = "candidate_collapsed_v1"
+    textHash = "7156684ba844"
+    occurrenceCount = 1
+    activeOccurrenceCount = 1
+    sourceAreas = "mclib"
+    categories = "user_or_debug_error_candidate"
+    firstSourceFile = "mclib/ablerr.cpp"
+    firstLine = 91
+}
+
+String {
+    key = "engine.source.missing_endwhile"
+    text = "Missing endwhile"
+    source = "source_audit"
+    migrationState = "candidate_collapsed_v1"
+    textHash = "9c35e0954fed"
+    occurrenceCount = 1
+    activeOccurrenceCount = 1
+    sourceAreas = "mclib"
+    categories = "user_or_debug_error_candidate"
+    firstSourceFile = "mclib/ablerr.cpp"
+    firstLine = 95
+}
+
+String {
+    key = "engine.source.missing_equal"
+    text = "Missing equal"
+    source = "source_audit"
+    migrationState = "candidate_collapsed_v1"
+    textHash = "658574eb448a"
+    occurrenceCount = 1
+    activeOccurrenceCount = 1
+    sourceAreas = "mclib"
+    categories = "user_or_debug_error_candidate"
+    firstSourceFile = "mclib/ablerr.cpp"
+    firstLine = 66
+}
+
+String {
+    key = "engine.source.missing_identifier"
+    text = "Missing identifier"
+    source = "source_audit"
+    migrationState = "candidate_collapsed_v1"
+    textHash = "20ff63aa692b"
+    occurrenceCount = 1
+    activeOccurrenceCount = 1
+    sourceAreas = "mclib"
+    categories = "user_or_debug_error_candidate"
+    firstSourceFile = "mclib/ablerr.cpp"
+    firstLine = 82
+}
+
+String {
+    key = "engine.source.missing_library"
+    text = "Missing library"
+    source = "source_audit"
+    migrationState = "candidate_collapsed_v1"
+    textHash = "9c12d9d51794"
+    occurrenceCount = 1
+    activeOccurrenceCount = 1
+    sourceAreas = "mclib"
+    categories = "user_or_debug_error_candidate"
+    firstSourceFile = "mclib/ablerr.cpp"
+    firstLine = 86
+}
+
+String {
+    key = "engine.source.missing_module"
+    text = "Missing module"
+    source = "source_audit"
+    migrationState = "candidate_collapsed_v1"
+    textHash = "168ecad9cbf8"
+    occurrenceCount = 1
+    activeOccurrenceCount = 1
+    sourceAreas = "mclib"
+    categories = "user_or_debug_error_candidate"
+    firstSourceFile = "mclib/ablerr.cpp"
+    firstLine = 85
+}
+
+String {
+    key = "engine.source.missing_period"
+    text = "Missing period"
+    source = "source_audit"
+    migrationState = "candidate_collapsed_v1"
+    textHash = "6a3021bfba32"
+    occurrenceCount = 1
+    activeOccurrenceCount = 1
+    sourceAreas = "mclib"
+    categories = "user_or_debug_error_candidate"
+    firstSourceFile = "mclib/ablerr.cpp"
+    firstLine = 84
+}
+
+String {
+    key = "engine.source.missing_right_bracket"
+    text = "Missing right bracket"
+    source = "source_audit"
+    migrationState = "candidate_collapsed_v1"
+    textHash = "5abc62d5a76c"
+    occurrenceCount = 1
+    activeOccurrenceCount = 1
+    sourceAreas = "mclib"
+    categories = "user_or_debug_error_candidate"
+    firstSourceFile = "mclib/ablerr.cpp"
+    firstLine = 77
+}
+
+String {
+    key = "engine.source.missing_right_parenthesis"
+    text = "Missing right parenthesis"
+    source = "source_audit"
+    migrationState = "candidate_collapsed_v1"
+    textHash = "daecb2241bf1"
+    occurrenceCount = 1
+    activeOccurrenceCount = 1
+    sourceAreas = "mclib"
+    categories = "user_or_debug_error_candidate"
+    firstSourceFile = "mclib/ablerr.cpp"
+    firstLine = 58
+}
+
+String {
+    key = "engine.source.missing_semi_colon"
+    text = "Missing semi-colon"
+    source = "source_audit"
+    migrationState = "candidate_collapsed_v1"
+    textHash = "83711daa8837"
+    occurrenceCount = 1
+    activeOccurrenceCount = 1
+    sourceAreas = "mclib"
+    categories = "user_or_debug_error_candidate"
+    firstSourceFile = "mclib/ablerr.cpp"
+    firstLine = 67
+}
+
+String {
+    key = "engine.source.missing_state_for_transition"
+    text = "Missing state for transition"
+    source = "source_audit"
+    migrationState = "candidate_collapsed_v1"
+    textHash = "74e7b4c6a85a"
+    occurrenceCount = 1
+    activeOccurrenceCount = 1
+    sourceAreas = "mclib"
+    categories = "user_or_debug_error_candidate"
+    firstSourceFile = "mclib/ablerr.cpp"
+    firstLine = 113
+}
+
+String {
+    key = "engine.source.missing_string_res"
+    text = "missing string res"
+    source = "source_audit"
+    migrationState = "candidate_collapsed_v1"
+    textHash = "3ea7155521d9"
+    occurrenceCount = 1
+    activeOccurrenceCount = 1
+    sourceAreas = "GameOS"
+    categories = "user_or_debug_error_candidate"
+    firstSourceFile = "GameOS/gameos/gameos_res.cpp"
+    firstLine = 107
+}
+
+String {
+    key = "engine.source.missing_then"
+    text = "Missing then"
+    source = "source_audit"
+    migrationState = "candidate_collapsed_v1"
+    textHash = "a5f382909a7e"
+    occurrenceCount = 1
+    activeOccurrenceCount = 1
+    sourceAreas = "mclib"
+    categories = "user_or_debug_error_candidate"
+    firstSourceFile = "mclib/ablerr.cpp"
+    firstLine = 80
+}
+
+String {
+    key = "engine.source.missing_to"
+    text = "Missing to"
+    source = "source_audit"
+    migrationState = "candidate_collapsed_v1"
+    textHash = "da08433e4c3c"
+    occurrenceCount = 1
+    activeOccurrenceCount = 1
+    sourceAreas = "mclib"
+    categories = "user_or_debug_error_candidate"
+    firstSourceFile = "mclib/ablerr.cpp"
+    firstLine = 83
+}
+
+String {
+    key = "engine.source.missing_until"
+    text = "Missing until"
+    source = "source_audit"
+    migrationState = "candidate_collapsed_v1"
+    textHash = "b71931c5564d"
+    occurrenceCount = 1
+    activeOccurrenceCount = 1
+    sourceAreas = "mclib"
+    categories = "user_or_debug_error_candidate"
+    firstSourceFile = "mclib/ablerr.cpp"
+    firstLine = 79
+}
+
+String {
+    key = "engine.source.no_syntax_error"
+    text = "No syntax error"
+    source = "source_audit"
+    migrationState = "candidate_collapsed_v1"
+    textHash = "cebfcb56337d"
+    occurrenceCount = 1
+    activeOccurrenceCount = 1
+    sourceAreas = "mclib"
+    categories = "user_or_debug_error_candidate"
+    firstSourceFile = "mclib/ablerr.cpp"
+    firstLine = 47
+}
+
+String {
+    key = "engine.source.reached_max_watch_limit_unable_to_set_watch"
+    text = "Reached max watch limit--unable to set watch.\n"
+    source = "source_audit"
+    migrationState = "candidate_collapsed_v1"
+    textHash = "a507a42e784e"
+    occurrenceCount = 2
+    activeOccurrenceCount = 2
+    sourceAreas = "mclib"
+    categories = "user_or_debug_error_candidate"
+    firstSourceFile = "mclib/abldbug.cpp"
+    firstLine = 1156
+}
+
+String {
+    key = "engine.source.sky"
+    text = "Sky"
+    source = "editor.menu.rc"
+    migrationState = "candidate_collapsed_v1"
+    textHash = "b3d97fd6dece"
+    occurrenceCount = 1
+    activeOccurrenceCount = 1
+    sourceAreas = "mclib"
+    categories = "identifier_or_key_candidate"
+    firstSourceFile = "mclib/genactor.cpp"
+    firstLine = 505
+}
+
+String {
+    key = "engine.source.syntax_error"
+    text = "Syntax error"
+    source = "source_audit"
+    migrationState = "candidate_collapsed_v1"
+    textHash = "5251dc3f4032"
+    occurrenceCount = 1
+    activeOccurrenceCount = 1
+    sourceAreas = "mclib"
+    categories = "user_or_debug_error_candidate"
+    firstSourceFile = "mclib/ablerr.cpp"
+    firstLine = 48
+}
+
+String {
+    key = "engine.source.too_many_errors"
+    text = "Too many errors"
+    source = "source_audit"
+    migrationState = "candidate_collapsed_v1"
+    textHash = "1aa216784f57"
+    occurrenceCount = 1
+    activeOccurrenceCount = 1
+    sourceAreas = "mclib"
+    categories = "user_or_debug_error_candidate"
+    firstSourceFile = "mclib/ablerr.cpp"
+    firstLine = 49
+}
+
+String {
+    key = "engine.source.unknown_error_code"
+    text = "unknown error code"
+    source = "source_audit"
+    migrationState = "candidate_collapsed_v1"
+    textHash = "e17d37cb4182"
+    occurrenceCount = 1
+    activeOccurrenceCount = 1
+    sourceAreas = "GameOS"
+    categories = "user_or_debug_error_candidate"
+    firstSourceFile = "GameOS/gameos/utils/gl_utils.h"
+    firstLine = 64
+}
+
+String {
+    key = "engine.source.error"
+    text = "{ERROR}"
+    source = "source_audit"
+    migrationState = "candidate_collapsed_v1"
+    textHash = "fb35d2347b74"
+    occurrenceCount = 1
+    activeOccurrenceCount = 1
+    sourceAreas = "mclib"
+    categories = "user_or_debug_error_candidate"
+    firstSourceFile = "mclib/ablscan.cpp"
+    firstLine = 207
+}
+

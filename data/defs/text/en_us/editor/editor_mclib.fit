@@ -1,0 +1,862 @@
+/***************************************************************
+ * FILENAME: editor_mclib.fit
+ * DESCRIPTION: Editor-facing MCLib localized text definitions migrated from embedded MFC resources.
+ *
+ * CREATED BY: Methuselas
+ * CREATED: 2026-05-16
+ *
+ ***************************************************************/
+
+String {
+    key          = "editor.mclib.error"
+    legacyId     = 1000
+    legacySymbol = "IDS_ERROR"
+    text         = "Error"
+    source       = "MCLib.rc"
+}
+
+String {
+    key          = "editor.mclib.cancel"
+    legacyId     = 1006
+    legacySymbol = "IDS_CANCEL"
+    text         = "Cancel"
+    source       = "MCLib.rc"
+}
+
+String {
+    key          = "editor.mclib.ok"
+    legacyId     = 1007
+    legacySymbol = "IDS_OK"
+    text         = "OK"
+    source       = "MCLib.rc"
+}
+
+String {
+    key          = "editor.mclib.yes"
+    legacyId     = 1008
+    legacySymbol = "IDS_YES"
+    text         = "Yes"
+    source       = "MCLib.rc"
+}
+
+String {
+    key          = "editor.mclib.no"
+    legacyId     = 1009
+    legacySymbol = "IDS_NO"
+    text         = "No"
+    source       = "MCLib.rc"
+}
+
+String {
+    key          = "editor.mclib.new"
+    legacyId     = 1100
+    legacySymbol = "IDS_NEW"
+    text         = "New"
+    source       = "MCLib.rc"
+    reviewStatus = "stub_no_rc_text"
+}
+
+String {
+    key          = "editor.mclib.open"
+    legacyId     = 1108
+    legacySymbol = "IDS_OPEN"
+    text         = "Open"
+    source       = "MCLib.rc"
+    reviewStatus = "stub_no_rc_text"
+}
+
+String {
+    key          = "editor.mclib.filename"
+    legacyId     = 1109
+    legacySymbol = "IDS_FILENAME"
+    text         = "Filename"
+    source       = "MCLib.rc"
+    reviewStatus = "stub_no_rc_text"
+}
+
+// ── Editor menu bar labels ────────────────────────────────────────────────
+
+String {
+    key          = "editor.mclib.menu.file"
+    legacyId     = 10000
+    legacySymbol = "IDS_FILE"
+    text         = "File"
+    source       = "MCLib.rc"
+}
+
+String {
+    key          = "editor.mclib.menu.file.new"
+    legacyId     = 10001
+    legacySymbol = "IDS_FILENEW"
+    text         = "New"
+    source       = "MCLib.rc"
+}
+
+String {
+    key          = "editor.mclib.menu.file.open"
+    legacyId     = 10002
+    legacySymbol = "IDS_FILEOPEN"
+    text         = "Open"
+    source       = "MCLib.rc"
+}
+
+String {
+    key          = "editor.mclib.menu.file.save"
+    legacyId     = 10003
+    legacySymbol = "IDS_FILE_SAVE"
+    text         = "Save"
+    source       = "MCLib.rc"
+}
+
+String {
+    key          = "editor.mclib.menu.file.save_cameras"
+    legacyId     = 10004
+    legacySymbol = "IDS_SAVE_CAMERAS"
+    text         = "Save Current Camera"
+    source       = "MCLib.rc"
+}
+
+String {
+    key          = "editor.mclib.menu.file.quit"
+    legacyId     = 10005
+    legacySymbol = "IDS_QUIT"
+    text         = "Quit"
+    source       = "MCLib.rc"
+}
+
+String {
+    key          = "editor.mclib.menu.edit"
+    legacyId     = 10006
+    legacySymbol = "IDS_EDIT"
+    text         = "Edit"
+    source       = "MCLib.rc"
+}
+
+String {
+    key          = "editor.mclib.menu.edit.undo"
+    legacyId     = 10007
+    legacySymbol = "IDS_EDIT_UNDO"
+    text         = "Undo"
+    source       = "MCLib.rc"
+}
+
+String {
+    key          = "editor.mclib.menu.edit.redo"
+    legacyId     = 10008
+    legacySymbol = "IDS_EDIT_REDO"
+    text         = "Redo"
+    source       = "MCLib.rc"
+}
+
+String {
+    key          = "editor.mclib.menu.edit.paste"
+    legacyId     = 10009
+    legacySymbol = "IDS_PASTE"
+    text         = "Paste"
+    source       = "MCLib.rc"
+}
+
+String {
+    key          = "editor.mclib.menu.view"
+    legacyId     = 10010
+    legacySymbol = "IDS_VIEW"
+    text         = "View"
+    source       = "MCLib.rc"
+}
+
+String {
+    key          = "editor.mclib.menu.view.overlays"
+    legacyId     = 10012
+    legacySymbol = "IDS_OVERLAYS"
+    text         = "Overlays"
+    source       = "MCLib.rc"
+}
+
+String {
+    key          = "editor.mclib.menu.view.terrains"
+    legacyId     = 10013
+    legacySymbol = "IDS_TERRAINS"
+    text         = "Terrains"
+    source       = "MCLib.rc"
+}
+
+String {
+    key          = "editor.mclib.menu.view.buildings"
+    legacyId     = 10014
+    legacySymbol = "IDS_BUILDINGS"
+    text         = "O&bjects"
+    source       = "MCLib.rc"
+}
+
+String {
+    key          = "editor.mclib.menu.view.other"
+    legacyId     = 10015
+    legacySymbol = "IDS_OTHER"
+    text         = "Other"
+    source       = "MCLib.rc"
+}
+
+// ── Editor toolbar / tool labels ─────────────────────────────────────────
+
+String {
+    key          = "editor.mclib.tool.erase"
+    legacyId     = 10050
+    legacySymbol = "IDS_ERASE"
+    text         = "Erase"
+    source       = "MCLib.rc"
+    reviewStatus = "stub_no_rc_text"
+}
+
+String {
+    key          = "editor.mclib.tool.new_heights"
+    legacyId     = 10051
+    legacySymbol = "IDS_NEW_HEIGHTS"
+    text         = "New Heights"
+    source       = "MCLib.rc"
+    reviewStatus = "stub_no_rc_text"
+}
+
+String {
+    key          = "editor.mclib.tool.select"
+    legacyId     = 10052
+    legacySymbol = "IDS_SELECT"
+    text         = "Select"
+    source       = "MCLib.rc"
+}
+
+String {
+    key          = "editor.mclib.tool.select_area"
+    legacyId     = 10053
+    legacySymbol = "IDS_SELECT_AREA"
+    text         = "Select Area"
+    source       = "MCLib.rc"
+    reviewStatus = "stub_no_rc_text"
+}
+
+String {
+    key          = "editor.mclib.tool.flatten"
+    legacyId     = 10054
+    legacySymbol = "IDS_FLATTEN"
+    text         = "Flatten"
+    source       = "MCLib.rc"
+}
+
+String {
+    key          = "editor.mclib.tool.dropz"
+    legacyId     = 10099
+    legacySymbol = "IDS_DROPZ"
+    text         = "Drop Z"
+    source       = "MCLib.rc"
+    reviewStatus = "stub_no_rc_text"
+}
+
+// ── Object group labels ───────────────────────────────────────────────────
+
+String {
+    key          = "editor.mclib.group.markers"
+    legacyId     = 10100
+    legacySymbol = "IDS_GROUPS"
+    text         = "Markers"
+    source       = "MCLib.rc"
+}
+
+String {
+    key          = "editor.mclib.group.trees"
+    legacyId     = 10101
+    legacySymbol = "IDS_GROUP1"
+    text         = "Trees"
+    source       = "MCLib.rc"
+}
+
+String {
+    key          = "editor.mclib.group.small_stuff"
+    legacyId     = 10102
+    legacySymbol = "IDS_GROUP2"
+    text         = "Small Stuff"
+    source       = "MCLib.rc"
+}
+
+String {
+    key          = "editor.mclib.group.turrets"
+    legacyId     = 10103
+    legacySymbol = "IDS_GROUP3"
+    text         = "Turrets"
+    source       = "MCLib.rc"
+}
+
+String {
+    key          = "editor.mclib.group.mechs"
+    legacyId     = 10104
+    legacySymbol = "IDS_MECHS"
+    text         = "'Mechs"
+    source       = "MCLib.rc"
+}
+
+String {
+    key          = "editor.mclib.group.flammable"
+    legacyId     = 10105
+    legacySymbol = "IDS_SMALLSTUFF"
+    text         = "Flammable Things"
+    source       = "MCLib.rc"
+}
+
+String {
+    key          = "editor.mclib.group.vehicles"
+    legacyId     = 10106
+    legacySymbol = "IDS_STRING10106"
+    text         = "Vehicles"
+    source       = "MCLib.rc"
+}
+
+String {
+    key          = "editor.mclib.group.house_davion"
+    legacyId     = 10107
+    legacySymbol = "IDS_STRING10107"
+    text         = "House Davion"
+    source       = "MCLib.rc"
+}
+
+String {
+    key          = "editor.mclib.group.house_liao"
+    legacyId     = 10108
+    legacySymbol = "IDS_STRING10108"
+    text         = "House Liao"
+    source       = "MCLib.rc"
+}
+
+String {
+    key          = "editor.mclib.group.vehicle_props"
+    legacyId     = 10109
+    legacySymbol = "IDS_STRING10109"
+    text         = "Vehicle Props"
+    source       = "MCLib.rc"
+}
+
+String {
+    key          = "editor.mclib.group.house_steiner"
+    legacyId     = 10110
+    legacySymbol = "IDS_STRING10110"
+    text         = "House Steiner"
+    source       = "MCLib.rc"
+}
+
+String {
+    key          = "editor.mclib.group.regular_buildings"
+    legacyId     = 10111
+    legacySymbol = "IDS_STRING10111"
+    text         = "Regular Buildings"
+    source       = "MCLib.rc"
+}
+
+String {
+    key          = "editor.mclib.group.rocks"
+    legacyId     = 10112
+    legacySymbol = "IDS_STRING10112"
+    text         = "Rocks"
+    source       = "MCLib.rc"
+}
+
+String {
+    key          = "editor.mclib.group.gulag"
+    legacyId     = 10113
+    legacySymbol = "IDS_STRING10113"
+    text         = "Gulag Set Piece"
+    source       = "MCLib.rc"
+}
+
+String {
+    key          = "editor.mclib.group.starport"
+    legacyId     = 10114
+    legacySymbol = "IDS_STRING10114"
+    text         = "Starport Set Piece"
+    source       = "MCLib.rc"
+}
+
+String {
+    key          = "editor.mclib.group.liao_palace"
+    legacyId     = 10115
+    legacySymbol = "IDS_STRING10115"
+    text         = "Liao Palace Set Piece"
+    source       = "MCLib.rc"
+}
+
+String {
+    key          = "editor.mclib.group.crash_site"
+    legacyId     = 10116
+    legacySymbol = "IDS_STRING10116"
+    text         = "Crash Site Set Piece"
+    source       = "MCLib.rc"
+}
+
+String {
+    key          = "editor.mclib.group.hpg"
+    legacyId     = 10117
+    legacySymbol = "IDS_STRING10117"
+    text         = "HPG Set Piece"
+    source       = "MCLib.rc"
+}
+
+String {
+    key          = "editor.mclib.group.steiner_high_command"
+    legacyId     = 10118
+    legacySymbol = "IDS_STRING10118"
+    text         = "Steiner High Command Set Piece"
+    source       = "MCLib.rc"
+}
+
+String {
+    key          = "editor.mclib.group.destroyable_road"
+    legacyId     = 10119
+    legacySymbol = "IDS_STRING10119"
+    text         = "Destroyable Road"
+    source       = "MCLib.rc"
+}
+
+String {
+    key          = "editor.mclib.group.dummy_objects"
+    legacyId     = 10120
+    legacySymbol = "IDS_STRING10120"
+    text         = "Dummy Objects"
+    source       = "MCLib.rc"
+}
+
+// ── Terrain type labels (stubs — never populated in MCLib.rc) ─────────────
+// These IDs are defined in mclibresource.h but have no text in MCLib.rc.
+// Placeholder text supplied; review against actual terrain palette.
+
+String {
+    key          = "editor.mclib.terrain.dirt_road"
+    legacyId     = 10500
+    legacySymbol = "IDS_DIRTROAD"
+    text         = "Dirt Road"
+    source       = "MCLib.rc"
+}
+
+String {
+    key          = "editor.mclib.terrain.paved_road"
+    legacyId     = 10501
+    legacySymbol = "IDS_PAVED_ROAD"
+    text         = "Paved Road"
+    source       = "MCLib.rc"
+}
+
+String {
+    key          = "editor.mclib.terrain.rough"
+    legacyId     = 10502
+    legacySymbol = "IDS_ROUGH"
+    text         = "Rough"
+    source       = "MCLib.rc"
+}
+
+String {
+    key          = "editor.mclib.terrain.water_blue"
+    legacyId     = 10504
+    legacySymbol = "IDS_BLUEWATER"
+    text         = "Blue Water"
+    source       = "MCLib.rc"
+    reviewStatus = "stub_no_rc_text"
+}
+
+String {
+    key          = "editor.mclib.terrain.water_green"
+    legacyId     = 10505
+    legacySymbol = "IDS_GREENWATER"
+    text         = "Green Water"
+    source       = "MCLib.rc"
+    reviewStatus = "stub_no_rc_text"
+}
+
+String {
+    key          = "editor.mclib.terrain.mud"
+    legacyId     = 10506
+    legacySymbol = "IDS_MUD"
+    text         = "Mud"
+    source       = "MCLib.rc"
+    reviewStatus = "stub_no_rc_text"
+}
+
+String {
+    key          = "editor.mclib.terrain.moss"
+    legacyId     = 10507
+    legacySymbol = "IDS_MOSS"
+    text         = "Moss"
+    source       = "MCLib.rc"
+    reviewStatus = "stub_no_rc_text"
+}
+
+String {
+    key          = "editor.mclib.terrain.dirt"
+    legacyId     = 10508
+    legacySymbol = "IDS_DIRT"
+    text         = "Dirt"
+    source       = "MCLib.rc"
+    reviewStatus = "stub_no_rc_text"
+}
+
+String {
+    key          = "editor.mclib.terrain.ash"
+    legacyId     = 10509
+    legacySymbol = "IDS_ASH"
+    text         = "Ash"
+    source       = "MCLib.rc"
+    reviewStatus = "stub_no_rc_text"
+}
+
+String {
+    key          = "editor.mclib.terrain.mountain"
+    legacyId     = 10510
+    legacySymbol = "IDS_MOUNTAIN"
+    text         = "Mountain"
+    source       = "MCLib.rc"
+    reviewStatus = "stub_no_rc_text"
+}
+
+String {
+    key          = "editor.mclib.terrain.tundra"
+    legacyId     = 10511
+    legacySymbol = "IDS_TUNDRA"
+    text         = "Tundra"
+    source       = "MCLib.rc"
+    reviewStatus = "stub_no_rc_text"
+}
+
+String {
+    key          = "editor.mclib.terrain.grass"
+    legacyId     = 10512
+    legacySymbol = "IDS_GRASS"
+    text         = "Grass"
+    source       = "MCLib.rc"
+    reviewStatus = "stub_no_rc_text"
+}
+
+String {
+    key          = "editor.mclib.terrain.concrete"
+    legacyId     = 10513
+    legacySymbol = "IDS_CONCRETE"
+    text         = "Concrete"
+    source       = "MCLib.rc"
+    reviewStatus = "stub_no_rc_text"
+}
+
+String {
+    key          = "editor.mclib.terrain.cliff"
+    legacyId     = 10514
+    legacySymbol = "IDS_CLIFF"
+    text         = "Cliff"
+    source       = "MCLib.rc"
+    reviewStatus = "stub_no_rc_text"
+}
+
+String {
+    key          = "editor.mclib.terrain.sandy_dirt"
+    legacyId     = 10515
+    legacySymbol = "IDS_SANDY_DIRT"
+    text         = "Sandy Dirt"
+    source       = "MCLib.rc"
+    reviewStatus = "stub_no_rc_text"
+}
+
+String {
+    key          = "editor.mclib.terrain.slimy"
+    legacyId     = 10516
+    legacySymbol = "IDS_SLIMY"
+    text         = "Slimy"
+    source       = "MCLib.rc"
+    reviewStatus = "stub_no_rc_text"
+}
+
+String {
+    key          = "editor.mclib.terrain.cement2"
+    legacyId     = 10517
+    legacySymbol = "IDS_CEMENT2"
+    text         = "Cement 2"
+    source       = "MCLib.rc"
+    reviewStatus = "stub_no_rc_text"
+}
+
+String {
+    key          = "editor.mclib.terrain.cement3"
+    legacyId     = 10518
+    legacySymbol = "IDS_CEMENT3"
+    text         = "Cement 3"
+    source       = "MCLib.rc"
+    reviewStatus = "stub_no_rc_text"
+}
+
+String {
+    key          = "editor.mclib.terrain.cement4"
+    legacyId     = 10519
+    legacySymbol = "IDS_CEMENT4"
+    text         = "Cement 4"
+    source       = "MCLib.rc"
+    reviewStatus = "stub_no_rc_text"
+}
+
+String {
+    key          = "editor.mclib.terrain.cement5"
+    legacyId     = 10520
+    legacySymbol = "IDS_CEMENT5"
+    text         = "Cement 5"
+    source       = "MCLib.rc"
+    reviewStatus = "stub_no_rc_text"
+}
+
+String {
+    key          = "editor.mclib.terrain.cement6"
+    legacyId     = 10521
+    legacySymbol = "IDS_CEMENT6"
+    text         = "Cement 6"
+    source       = "MCLib.rc"
+    reviewStatus = "stub_no_rc_text"
+}
+
+String {
+    key          = "editor.mclib.terrain.cement7"
+    legacyId     = 10522
+    legacySymbol = "IDS_CEMENT7"
+    text         = "Cement 7"
+    source       = "MCLib.rc"
+    reviewStatus = "stub_no_rc_text"
+}
+
+String {
+    key          = "editor.mclib.terrain.cement8"
+    legacyId     = 10523
+    legacySymbol = "IDS_CEMENT8"
+    text         = "Cement 8"
+    source       = "MCLib.rc"
+    reviewStatus = "stub_no_rc_text"
+}
+
+// ── Editor validation / error strings ────────────────────────────────────
+
+String {
+    key          = "editor.mclib.error.save_camera_fail"
+    legacyId     = 10600
+    legacySymbol = "IDS_SAVE_CAMERA_FAIL"
+    text         = "You need to save first!"
+    source       = "MCLib.rc"
+}
+
+String {
+    key          = "editor.mclib.error.no_vertex_sel"
+    legacyId     = 10601
+    legacySymbol = "IDS_NO_VERTEX_SEL"
+    text         = "You must first select some vertices!"
+    source       = "MCLib.rc"
+}
+
+String {
+    key          = "editor.mclib.dialog.assign_elevation"
+    legacyId     = 10602
+    legacySymbol = "IDS_ASSIGN_ELEVATION"
+    text         = "Assign Elevation"
+    source       = "MCLib.rc"
+}
+
+String {
+    key          = "editor.mclib.dialog.elevation"
+    legacyId     = 10603
+    legacySymbol = "IDS_ELEVATION"
+    text         = "Elevation:"
+    source       = "MCLib.rc"
+}
+
+String {
+    key          = "editor.mclib.dialog.smooth_radius"
+    legacyId     = 10604
+    legacySymbol = "IDS_SMOOTH_RADIUS"
+    text         = "Hill radius"
+    source       = "MCLib.rc"
+}
+
+String {
+    key          = "editor.mclib.dialog.radius"
+    legacyId     = 10605
+    legacySymbol = "IDS_RADIUS"
+    text         = "Radius:"
+    source       = "MCLib.rc"
+}
+
+String {
+    key          = "editor.mclib.error.invalid_file"
+    legacyId     = 10606
+    legacySymbol = "IDS_INVALID_FILE"
+    text         = "Could not save the file %s."
+    source       = "MCLib.rc"
+}
+
+String {
+    key          = "editor.mclib.error.must_have_player"
+    legacyId     = 10607
+    legacySymbol = "IDS_MUST_HAVE_PLAYER"
+    text         = "You must have one player mech!"
+    source       = "MCLib.rc"
+}
+
+String {
+    key          = "editor.mclib.error.need_enemy"
+    legacyId     = 10608
+    legacySymbol = "IDS_NEED_ENEMY"
+    text         = "You must have one enemy mech!"
+    source       = "MCLib.rc"
+}
+
+String {
+    key          = "editor.mclib.error.cant_save"
+    legacyId     = 10609
+    legacySymbol = "IDS_CANT_SAVE"
+    text         = "Can't save"
+    source       = "MCLib.rc"
+}
+
+String {
+    key          = "editor.mclib.dialog.distance"
+    legacyId     = 10610
+    legacySymbol = "IDS_DISTANCE"
+    text         = "Distance"
+    source       = "MCLib.rc"
+    reviewStatus = "stub_no_rc_text"
+}
+
+String {
+    key          = "editor.mclib.dialog.meters"
+    legacyId     = 10611
+    legacySymbol = "IDS_METERS"
+    text         = "meters"
+    source       = "MCLib.rc"
+    reviewStatus = "stub_no_rc_text"
+}
+
+String {
+    key          = "editor.mclib.window.untitled"
+    legacyId     = 10612
+    legacySymbol = "IDS_UNTITLED"
+    text         = "Untitled"
+    source       = "MCLib.rc"
+}
+
+String {
+    key          = "editor.mclib.window.caption"
+    legacyId     = 10613
+    legacySymbol = "IDS_CAPTION"
+    text         = "MC2 Editor -- Version %s    %s"
+    source       = "MCLib.rc"
+}
+
+String {
+    key          = "editor.mclib.error.couldnt_open"
+    legacyId     = 10614
+    legacySymbol = "IDS_COULDNT_OPEN"
+    text         = "Couldn't open the file %s."
+    source       = "MCLib.rc"
+}
+
+String {
+    key          = "editor.mclib.dialog.mission_time_limit"
+    legacyId     = 10615
+    legacySymbol = "IDS_MISSION_TIME_LIMIT"
+    text         = "Mission Time Limit"
+    source       = "MCLib.rc"
+    reviewStatus = "stub_no_rc_text"
+}
+
+String {
+    key          = "editor.mclib.dialog.in_seconds"
+    legacyId     = 10616
+    legacySymbol = "IDS_IN_SECONDS"
+    text         = "in seconds"
+    source       = "MCLib.rc"
+}
+
+String {
+    key          = "editor.mclib.error.no_neutral_movers"
+    legacyId     = 10617
+    legacySymbol = "IDS_NO_NEUTRAL_MOVERS"
+    text         = "Cannot have a Neutral Mover!"
+    source       = "MCLib.rc"
+}
+
+String {
+    key          = "editor.mclib.dialog.warning"
+    legacyId     = 10618
+    legacySymbol = "IDS_WARNING"
+    text         = "Warning !"
+    source       = "MCLib.rc"
+}
+
+String {
+    key          = "editor.mclib.error.players_with_no_units"
+    legacyId     = 10619
+    legacySymbol = "IDS_PLAYERS_WITH_NO_UNITS"
+    text         = "Players with no units"
+    source       = "MCLib.rc"
+    reviewStatus = "stub_no_rc_text"
+}
+
+String {
+    key          = "editor.mclib.error.no_enemy_units"
+    legacyId     = 10620
+    legacySymbol = "IDS_NO_ENEMY_UNITS"
+    text         = "Single-player Map: There are no enemy units."
+    source       = "MCLib.rc"
+}
+
+String {
+    key          = "editor.mclib.dialog.blank_space"
+    legacyId     = 10621
+    legacySymbol = "IDS_BLANK_SPACE"
+    text         = " "
+    source       = "MCLib.rc"
+}
+
+String {
+    key          = "editor.mclib.dialog.num_enemy_units"
+    legacyId     = 10622
+    legacySymbol = "IDS_NUM_ENEMY_UNITS"
+    text         = "Number of enemy units"
+    source       = "MCLib.rc"
+}
+
+String {
+    key          = "editor.mclib.dialog.elapsed_time"
+    legacyId     = 10623
+    legacySymbol = "IDS_ELAPSED_TIME"
+    text         = "Elapsed Mission Time"
+    source       = "MCLib.rc"
+}
+
+String {
+    key          = "editor.mclib.error.no_player_units"
+    legacyId     = 10624
+    legacySymbol = "IDS_NO_PLAYER_UNITS"
+    text         = "Single-player Map: There are no player units. A player unit needs to be placed on the map."
+    source       = "MCLib.rc"
+}
+
+// ── Editor warnings (overlap with mc2res 40000 range) ────────────────────
+
+String {
+    key          = "editor.mclib.warning.unnamed_forest"
+    legacyId     = 40071
+    legacySymbol = "IDS_UNNAMDE_FOREST"
+    text         = "Unnamed Forest %ld"
+    source       = "MCLib.rc"
+    notes        = "Typo in original symbol (UNNAMDE) preserved for call-site compatibility"
+}
+
+String {
+    key          = "editor.mclib.warning.too_many_pilots"
+    legacyId     = 40072
+    legacySymbol = "IDS_TOO_MANY_PILOTS"
+    text         = "Too many units on map.  Limit is 104."
+    source       = "MCLib.rc"
+}
+
+String {
+    key          = "editor.mclib.warning.invalid_color_map"
+    legacyId     = 40073
+    legacySymbol = "IDS_INVALID_COLOR_MAP"
+    text         = "Color Map wrong size or not valid TGA."
+    source       = "MCLib.rc"
+}

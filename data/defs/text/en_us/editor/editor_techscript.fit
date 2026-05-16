@@ -1,0 +1,72 @@
+/***************************************************************
+ * FILENAME: editor_techscript.fit
+ * DESCRIPTION: Editor TechScript localized text definitions migrated from mc2res string data.
+ *
+ * CREATED BY: Methuselas
+ * CREATED: 2026-04-30
+ *
+ ***************************************************************/
+
+String {
+    key = "unclassified.condition.and.action.descriptions"
+    text = "Condition and Action Descriptions"
+    legacyId = 51000
+    legacySymbol = "IDS_Condition_and_Action_Descriptions"
+    source = "mc2res"
+    migrationNote = "key prefix: TechScript editor descriptors"
+}
+
+String {
+    key = "unclassified.booleanflagisset"
+    text = "Flag Is Set"
+    legacyId = 51021
+    legacySymbol = "IDS_BooleanFlagIsSet"
+    source = "mc2res"
+    migrationNote = "key prefix: TechScript condition"
+}
+
+String {
+    key = "unclassified.playbik"
+    text = "Play BIK"
+    legacyId = 51050
+    legacySymbol = "IDS_PlayBIK"
+    source = "mc2res"
+    migrationNote = "key prefix: TechScript media action"
+}
+
+String {
+    key = "unclassified.playwav"
+    text = "Play WAV"
+    legacyId = 51051
+    legacySymbol = "IDS_PlayWAV"
+    source = "mc2res"
+    migrationNote = "key prefix: TechScript media action"
+}
+
+String {
+    key = "unclassified.displaytextmessage"
+    text = "Display Text Message"
+    legacyId = 51052
+    legacySymbol = "IDS_DisplayTextMessage"
+    source = "mc2res"
+    migrationNote = "key prefix: TechScript display action"
+}
+
+String {
+    key = "unclassified.displayresourcetextmessage"
+    text = "Display Resource Text Message"
+    legacyId = 51053
+    legacySymbol = "IDS_DisplayResourceTextMessage"
+    source = "mc2res"
+    migrationNote = "key prefix: TechScript display action"
+}
+
+String {
+    key = "unclassified.setbooleanflag"
+    text = "Set Flag"
+    legacyId = 51054
+    legacySymbol = "IDS_SetBooleanFlag"
+    source = "mc2res"
+    migrationNote = "key prefix: TechScript action"
+}
+

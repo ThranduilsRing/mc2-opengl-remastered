@@ -1,0 +1,48 @@
+/***************************************************************
+ * FILENAME: editor_base_terrain.fit
+ * DESCRIPTION: Editor base terrain catalog for New Mission terrain set selection.
+ *
+ * CREATED BY: Methuselas
+ * CREATED: 2026-05-16
+ *
+ ***************************************************************/
+
+BaseTerrain {
+    key = "base.desert"
+    index = 0
+    legacyStringId = 60000
+    displayName = "Desert"
+    texture = "data/textures/random_maps/desert.jpg"
+}
+
+BaseTerrain {
+    key = "base.forest"
+    index = 1
+    legacyStringId = 60001
+    displayName = "Forest"
+    texture = "data/textures/random_maps/forest.jpg"
+}
+
+BaseTerrain {
+    key = "base.lunar"
+    index = 2
+    legacyStringId = 60002
+    displayName = "Lunar"
+    texture = "data/textures/random_maps/lunar.jpg"
+}
+
+BaseTerrain {
+    key = "base.tundra"
+    index = 3
+    legacyStringId = 60003
+    displayName = "Tundra"
+    texture = "data/textures/random_maps/tundra.jpg"
+}
+
+BaseTerrain {
+    key = "base.volcanic"
+    index = 4
+    legacyStringId = 60004
+    displayName = "Volcanic"
+    texture = "data/textures/random_maps/volcanic.jpg"
+}

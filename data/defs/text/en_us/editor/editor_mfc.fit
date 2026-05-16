@@ -1,0 +1,5455 @@
+/***************************************************************
+ * FILENAME: editor_mfc.fit
+ * DESCRIPTION: Editor MFC and resource-script localized text definitions not collapsed into shared text.
+ *
+ * CREATED BY: Methuselas
+ * CREATED: 2026-04-30
+ *
+ ***************************************************************/
+
+String {
+    key = "editor.mfc.source.in_logistics"
+    text = " in logistics"
+    source = "source_audit"
+    migrationState = "candidate_collapsed_v1"
+    textHash = "fc223fc3062d"
+    occurrenceCount = 1
+    activeOccurrenceCount = 1
+    sourceAreas = "Editor"
+    categories = "resource_visible_candidate"
+    firstSourceFile = "Editor/resource.rc"
+    firstLine = 746
+}
+
+String {
+    key = "editor.mfc.source.information_and_thus_restarting_the_application_may_free_up_ad1a1995"
+    text = " information, and thus restarting the application may free up some resources. Deleting objects will also free up resources, but it may be necessary to restart the application before those resources become available as well."
+    source = "source_audit"
+    migrationState = "candidate_collapsed_v1"
+    textHash = "ad1a1995241f"
+    occurrenceCount = 1
+    activeOccurrenceCount = 1
+    sourceAreas = "Editor"
+    categories = "visible_review_candidate"
+    firstSourceFile = "Editor/resource.rc"
+    firstLine = 1752
+}
+
+String {
+    key = "editor.mfc.source.and1"
+    text = "&1"
+    source = "source_audit"
+    migrationState = "candidate_collapsed_v1"
+    textHash = "f78df310ddb3"
+    occurrenceCount = 2
+    activeOccurrenceCount = 2
+    sourceAreas = "Editor"
+    categories = "resource_visible_candidate"
+    firstSourceFile = "Editor/resource.rc"
+    firstLine = 402
+}
+
+String {
+    key = "editor.mfc.source.and2"
+    text = "&2"
+    source = "source_audit"
+    migrationState = "candidate_collapsed_v1"
+    textHash = "e76ec3d8a8ef"
+    occurrenceCount = 2
+    activeOccurrenceCount = 2
+    sourceAreas = "Editor"
+    categories = "resource_visible_candidate"
+    firstSourceFile = "Editor/resource.rc"
+    firstLine = 404
+}
+
+String {
+    key = "editor.mfc.source.and3"
+    text = "&3"
+    source = "source_audit"
+    migrationState = "candidate_collapsed_v1"
+    textHash = "4e64a689ad20"
+    occurrenceCount = 2
+    activeOccurrenceCount = 2
+    sourceAreas = "Editor"
+    categories = "resource_visible_candidate"
+    firstSourceFile = "Editor/resource.rc"
+    firstLine = 405
+}
+
+String {
+    key = "editor.mfc.source.and4"
+    text = "&4"
+    source = "source_audit"
+    migrationState = "candidate_collapsed_v1"
+    textHash = "d38a27843a7c"
+    occurrenceCount = 2
+    activeOccurrenceCount = 2
+    sourceAreas = "Editor"
+    categories = "resource_visible_candidate"
+    firstSourceFile = "Editor/resource.rc"
+    firstLine = 406
+}
+
+String {
+    key = "editor.mfc.source.and5"
+    text = "&5"
+    source = "source_audit"
+    migrationState = "candidate_collapsed_v1"
+    textHash = "790176425b8b"
+    occurrenceCount = 2
+    activeOccurrenceCount = 2
+    sourceAreas = "Editor"
+    categories = "resource_visible_candidate"
+    firstSourceFile = "Editor/resource.rc"
+    firstLine = 407
+}
+
+String {
+    key = "editor.mfc.source.and6"
+    text = "&6"
+    source = "source_audit"
+    migrationState = "candidate_collapsed_v1"
+    textHash = "373356207676"
+    occurrenceCount = 2
+    activeOccurrenceCount = 2
+    sourceAreas = "Editor"
+    categories = "resource_visible_candidate"
+    firstSourceFile = "Editor/resource.rc"
+    firstLine = 408
+}
+
+String {
+    key = "editor.mfc.source.and7"
+    text = "&7"
+    source = "source_audit"
+    migrationState = "candidate_collapsed_v1"
+    textHash = "0789f27b6da0"
+    occurrenceCount = 2
+    activeOccurrenceCount = 2
+    sourceAreas = "Editor"
+    categories = "resource_visible_candidate"
+    firstSourceFile = "Editor/resource.rc"
+    firstLine = 409
+}
+
+String {
+    key = "editor.mfc.source.and8"
+    text = "&8"
+    source = "source_audit"
+    migrationState = "candidate_collapsed_v1"
+    textHash = "95bae823db55"
+    occurrenceCount = 2
+    activeOccurrenceCount = 2
+    sourceAreas = "Editor"
+    categories = "resource_visible_candidate"
+    firstSourceFile = "Editor/resource.rc"
+    firstLine = 410
+}
+
+String {
+    key = "editor.mfc.source.andalignment"
+    text = "&Alignment"
+    source = "source_audit"
+    migrationState = "candidate_collapsed_v1"
+    textHash = "eaa334c40199"
+    occurrenceCount = 1
+    activeOccurrenceCount = 1
+    sourceAreas = "Editor"
+    categories = "resource_visible_candidate"
+    firstSourceFile = "Editor/resource.rc"
+    firstLine = 1122
+}
+
+String {
+    key = "editor.mfc.source.andalpha_deep"
+    text = "&Alpha Deep:"
+    source = "source_audit"
+    migrationState = "candidate_collapsed_v1"
+    textHash = "12bdf7c6e9c4"
+    occurrenceCount = 1
+    activeOccurrenceCount = 1
+    sourceAreas = "Editor"
+    categories = "resource_visible_candidate"
+    firstSourceFile = "Editor/resource.rc"
+    firstLine = 196
+}
+
+String {
+    key = "editor.mfc.source.andalpha_elevation_offset"
+    text = "&Alpha Elevation (offset)"
+    source = "source_audit"
+    migrationState = "candidate_collapsed_v1"
+    textHash = "66ec9a9ae181"
+    occurrenceCount = 1
+    activeOccurrenceCount = 1
+    sourceAreas = "Editor"
+    categories = "resource_visible_candidate"
+    firstSourceFile = "Editor/resource.rc"
+    firstLine = 193
+}
+
+String {
+    key = "editor.mfc.source.andalpha_middle"
+    text = "&Alpha Middle:"
+    source = "source_audit"
+    migrationState = "candidate_collapsed_v1"
+    textHash = "171fd720ef53"
+    occurrenceCount = 1
+    activeOccurrenceCount = 1
+    sourceAreas = "Editor"
+    categories = "resource_visible_candidate"
+    firstSourceFile = "Editor/resource.rc"
+    firstLine = 195
+}
+
+String {
+    key = "editor.mfc.source.andalpha_shallow"
+    text = "&Alpha shallow:"
+    source = "source_audit"
+    migrationState = "candidate_collapsed_v1"
+    textHash = "a3ea82f4ec6a"
+    occurrenceCount = 1
+    activeOccurrenceCount = 1
+    sourceAreas = "Editor"
+    categories = "resource_visible_candidate"
+    firstSourceFile = "Editor/resource.rc"
+    firstLine = 194
+}
+
+String {
+    key = "editor.mfc.source.andamplitude"
+    text = "&Amplitude:"
+    source = "source_audit"
+    migrationState = "candidate_collapsed_v1"
+    textHash = "13121a00a81c"
+    occurrenceCount = 1
+    activeOccurrenceCount = 1
+    sourceAreas = "Editor"
+    categories = "resource_visible_candidate"
+    firstSourceFile = "Editor/resource.rc"
+    firstLine = 189
+}
+
+String {
+    key = "editor.mfc.source.andarbor"
+    text = "&Arbor:"
+    source = "source_audit"
+    migrationState = "candidate_collapsed_v1"
+    textHash = "0e309f391556"
+    occurrenceCount = 1
+    activeOccurrenceCount = 1
+    sourceAreas = "Editor"
+    categories = "resource_visible_candidate"
+    firstSourceFile = "Editor/resource.rc"
+    firstLine = 893
+}
+
+String {
+    key = "editor.mfc.source.andassign_elevation_ctrl_plus_a"
+    text = "&Assign Elevation\tCtrl + A"
+    source = "source_audit"
+    migrationState = "candidate_collapsed_v1"
+    textHash = "1a571baca7b4"
+    occurrenceCount = 1
+    activeOccurrenceCount = 1
+    sourceAreas = "Editor"
+    categories = "resource_visible_candidate"
+    firstSourceFile = "Editor/resource.rc"
+    firstLine = 1095
+}
+
+String {
+    key = "editor.mfc.source.andassign_height_map"
+    text = "&Assign Height Map"
+    source = "source_audit"
+    migrationState = "candidate_collapsed_v1"
+    textHash = "9ff7793d9b6e"
+    occurrenceCount = 1
+    activeOccurrenceCount = 1
+    sourceAreas = "Editor"
+    categories = "resource_visible_candidate"
+    firstSourceFile = "Editor/resource.rc"
+    firstLine = 1036
+}
+
+String {
+    key = "editor.mfc.source.andbase"
+    text = "&Base"
+    source = "source_audit"
+    migrationState = "candidate_collapsed_v1"
+    textHash = "1bc7332af34c"
+    occurrenceCount = 1
+    activeOccurrenceCount = 1
+    sourceAreas = "Editor"
+    categories = "resource_visible_candidate"
+    firstSourceFile = "Editor/resource.rc"
+    firstLine = 539
+}
+
+String {
+    key = "editor.mfc.source.andbase_color"
+    text = "&Base Color"
+    source = "source_audit"
+    migrationState = "candidate_collapsed_v1"
+    textHash = "23690fa7f4a9"
+    occurrenceCount = 1
+    activeOccurrenceCount = 1
+    sourceAreas = "Editor"
+    categories = "resource_visible_candidate"
+    firstSourceFile = "Editor/resource.rc"
+    firstLine = 360
+}
+
+String {
+    key = "editor.mfc.source.andbirch"
+    text = "&Birch:"
+    source = "source_audit"
+    migrationState = "candidate_collapsed_v1"
+    textHash = "11de08c694ac"
+    occurrenceCount = 1
+    activeOccurrenceCount = 1
+    sourceAreas = "Editor"
+    categories = "resource_visible_candidate"
+    firstSourceFile = "Editor/resource.rc"
+    firstLine = 895
+}
+
+String {
+    key = "editor.mfc.source.andcampaign"
+    text = "&Campaign"
+    source = "source_audit"
+    migrationState = "candidate_collapsed_v1"
+    textHash = "6148eedd5b8d"
+    occurrenceCount = 1
+    activeOccurrenceCount = 1
+    sourceAreas = "Editor"
+    categories = "resource_visible_candidate"
+    firstSourceFile = "Editor/resource.rc"
+    firstLine = 1169
+}
+
+String {
+    key = "editor.mfc.source.andcampaign_editor"
+    text = "&Campaign Editor"
+    source = "source_audit"
+    migrationState = "candidate_collapsed_v1"
+    textHash = "7358e1d90f84"
+    occurrenceCount = 1
+    activeOccurrenceCount = 1
+    sourceAreas = "Editor"
+    categories = "resource_visible_candidate"
+    firstSourceFile = "Editor/resource.rc"
+    firstLine = 1171
+}
+
+String {
+    key = "editor.mfc.source.andcancel"
+    text = "&Cancel"
+    source = "source_audit"
+    migrationState = "candidate_collapsed_v1"
+    textHash = "30f95cde8508"
+    occurrenceCount = 2
+    activeOccurrenceCount = 2
+    sourceAreas = "Editor"
+    categories = "resource_visible_candidate"
+    firstSourceFile = "Editor/resource.rc"
+    firstLine = 188
+}
+
+String {
+    key = "editor.mfc.source.andcenter"
+    text = "&Center"
+    source = "source_audit"
+    migrationState = "candidate_collapsed_v1"
+    textHash = "58b1956bdfb9"
+    occurrenceCount = 1
+    activeOccurrenceCount = 1
+    sourceAreas = "Editor"
+    categories = "resource_visible_candidate"
+    firstSourceFile = "Editor/resource.rc"
+    firstLine = 904
+}
+
+String {
+    key = "editor.mfc.source.andcolors"
+    text = "&Colors"
+    source = "source_audit"
+    migrationState = "candidate_collapsed_v1"
+    textHash = "2a163a7c598e"
+    occurrenceCount = 1
+    activeOccurrenceCount = 1
+    sourceAreas = "Editor"
+    categories = "resource_visible_candidate"
+    firstSourceFile = "Editor/resource.rc"
+    firstLine = 535
+}
+
+String {
+    key = "editor.mfc.source.anddamage_d"
+    text = "&Damage\tD"
+    source = "source_audit"
+    migrationState = "candidate_collapsed_v1"
+    textHash = "e20ae5f70f87"
+    occurrenceCount = 1
+    activeOccurrenceCount = 1
+    sourceAreas = "Editor"
+    categories = "resource_visible_candidate"
+    firstSourceFile = "Editor/resource.rc"
+    firstLine = 1089
+}
+
+String {
+    key = "editor.mfc.source.anddelete"
+    text = "&Delete"
+    source = "source_audit"
+    migrationState = "candidate_collapsed_v1"
+    textHash = "273af288dc5b"
+    occurrenceCount = 1
+    activeOccurrenceCount = 1
+    sourceAreas = "Editor"
+    categories = "resource_visible_candidate"
+    firstSourceFile = "Editor/resource.rc"
+    firstLine = 925
+}
+
+String {
+    key = "editor.mfc.source.anddisabled"
+    text = "&Disabled"
+    source = "source_audit"
+    migrationState = "candidate_collapsed_v1"
+    textHash = "80565f3cf793"
+    occurrenceCount = 1
+    activeOccurrenceCount = 1
+    sourceAreas = "Editor"
+    categories = "resource_visible_candidate"
+    firstSourceFile = "Editor/resource.rc"
+    firstLine = 529
+}
+
+String {
+    key = "editor.mfc.source.andedges"
+    text = "&Edges"
+    source = "source_audit"
+    migrationState = "candidate_collapsed_v1"
+    textHash = "393bee1235c8"
+    occurrenceCount = 1
+    activeOccurrenceCount = 1
+    sourceAreas = "Editor"
+    categories = "resource_visible_candidate"
+    firstSourceFile = "Editor/resource.rc"
+    firstLine = 905
+}
+
+String {
+    key = "editor.mfc.source.andedit"
+    text = "&Edit"
+    source = "source_audit"
+    migrationState = "candidate_collapsed_v1"
+    textHash = "a017ac4be5cc"
+    occurrenceCount = 2
+    activeOccurrenceCount = 2
+    sourceAreas = "Editor"
+    categories = "resource_visible_candidate"
+    firstSourceFile = "Editor/resource.rc"
+    firstLine = 926
+}
+
+String {
+    key = "editor.mfc.source.andedit_mission"
+    text = "&Edit Mission"
+    source = "source_audit"
+    migrationState = "candidate_collapsed_v1"
+    textHash = "618662a40739"
+    occurrenceCount = 1
+    activeOccurrenceCount = 1
+    sourceAreas = "Editor"
+    categories = "resource_visible_candidate"
+    firstSourceFile = "Editor/resource.rc"
+    firstLine = 550
+}
+
+String {
+    key = "editor.mfc.source.andelevation"
+    text = "&Elevation:"
+    source = "source_audit"
+    migrationState = "candidate_collapsed_v1"
+    textHash = "c1234b8fb749"
+    occurrenceCount = 1
+    activeOccurrenceCount = 1
+    sourceAreas = "Editor"
+    categories = "resource_visible_candidate"
+    firstSourceFile = "Editor/resource.rc"
+    firstLine = 191
+}
+
+String {
+    key = "editor.mfc.source.andenabled"
+    text = "&Enabled"
+    source = "source_audit"
+    migrationState = "candidate_collapsed_v1"
+    textHash = "5de3ca63c6d3"
+    occurrenceCount = 1
+    activeOccurrenceCount = 1
+    sourceAreas = "Editor"
+    categories = "resource_visible_candidate"
+    firstSourceFile = "Editor/resource.rc"
+    firstLine = 527
+}
+
+String {
+    key = "editor.mfc.source.anderase_e"
+    text = "&Erase\tE"
+    source = "source_audit"
+    migrationState = "candidate_collapsed_v1"
+    textHash = "9875ddbc4abd"
+    occurrenceCount = 1
+    activeOccurrenceCount = 1
+    sourceAreas = "Editor"
+    categories = "resource_visible_candidate"
+    firstSourceFile = "Editor/resource.rc"
+    firstLine = 1088
+}
+
+String {
+    key = "editor.mfc.source.andfile"
+    text = "&File"
+    source = "source_audit"
+    migrationState = "candidate_collapsed_v1"
+    textHash = "97284d237dea"
+    occurrenceCount = 1
+    activeOccurrenceCount = 1
+    sourceAreas = "Editor"
+    categories = "resource_visible_candidate"
+    firstSourceFile = "Editor/resource.rc"
+    firstLine = 1028
+}
+
+String {
+    key = "editor.mfc.source.andflatten_f"
+    text = "&Flatten\tF"
+    source = "source_audit"
+    migrationState = "candidate_collapsed_v1"
+    textHash = "aed4ae252e2a"
+    occurrenceCount = 1
+    activeOccurrenceCount = 1
+    sourceAreas = "Editor"
+    categories = "resource_visible_candidate"
+    firstSourceFile = "Editor/resource.rc"
+    firstLine = 1091
+}
+
+String {
+    key = "editor.mfc.source.andfog_ctrl_plus_f"
+    text = "&Fog\tCtrl + F"
+    source = "source_audit"
+    migrationState = "candidate_collapsed_v1"
+    textHash = "c8bbea0610ac"
+    occurrenceCount = 1
+    activeOccurrenceCount = 1
+    sourceAreas = "Editor"
+    categories = "resource_visible_candidate"
+    firstSourceFile = "Editor/resource.rc"
+    firstLine = 1092
+}
+
+String {
+    key = "editor.mfc.source.andfrequency"
+    text = "&Frequency:"
+    source = "source_audit"
+    migrationState = "candidate_collapsed_v1"
+    textHash = "d2073c3265af"
+    occurrenceCount = 1
+    activeOccurrenceCount = 1
+    sourceAreas = "Editor"
+    categories = "resource_visible_candidate"
+    firstSourceFile = "Editor/resource.rc"
+    firstLine = 190
+}
+
+String {
+    key = "editor.mfc.source.andjungle"
+    text = "&Jungle:"
+    source = "source_audit"
+    migrationState = "candidate_collapsed_v1"
+    textHash = "3d487ba388a0"
+    occurrenceCount = 1
+    activeOccurrenceCount = 1
+    sourceAreas = "Editor"
+    categories = "resource_visible_candidate"
+    firstSourceFile = "Editor/resource.rc"
+    firstLine = 896
+}
+
+String {
+    key = "editor.mfc.source.andlink_l"
+    text = "&Link\tL"
+    source = "source_audit"
+    migrationState = "candidate_collapsed_v1"
+    textHash = "46ba9556dbaf"
+    occurrenceCount = 1
+    activeOccurrenceCount = 1
+    sourceAreas = "Editor"
+    categories = "resource_visible_candidate"
+    firstSourceFile = "Editor/resource.rc"
+    firstLine = 1096
+}
+
+String {
+    key = "editor.mfc.source.andload_settings"
+    text = "&Load Settings"
+    source = "source_audit"
+    migrationState = "candidate_collapsed_v1"
+    textHash = "ba2de3237e99"
+    occurrenceCount = 1
+    activeOccurrenceCount = 1
+    sourceAreas = "Editor"
+    categories = "resource_visible_candidate"
+    firstSourceFile = "Editor/resource.rc"
+    firstLine = 888
+}
+
+String {
+    key = "editor.mfc.source.andmaple"
+    text = "&Maple:"
+    source = "source_audit"
+    migrationState = "candidate_collapsed_v1"
+    textHash = "e80f2605a254"
+    occurrenceCount = 1
+    activeOccurrenceCount = 1
+    sourceAreas = "Editor"
+    categories = "resource_visible_candidate"
+    firstSourceFile = "Editor/resource.rc"
+    firstLine = 897
+}
+
+String {
+    key = "editor.mfc.source.andmission"
+    text = "&Mission"
+    source = "source_audit"
+    migrationState = "candidate_collapsed_v1"
+    textHash = "12a497d1f4ca"
+    occurrenceCount = 1
+    activeOccurrenceCount = 1
+    sourceAreas = "Editor"
+    categories = "resource_visible_candidate"
+    firstSourceFile = "Editor/resource.rc"
+    firstLine = 1135
+}
+
+String {
+    key = "editor.mfc.source.andmission_settings"
+    text = "&Mission Settings"
+    source = "source_audit"
+    migrationState = "candidate_collapsed_v1"
+    textHash = "fc26cdbedd39"
+    occurrenceCount = 1
+    activeOccurrenceCount = 1
+    sourceAreas = "Editor"
+    categories = "resource_visible_candidate"
+    firstSourceFile = "Editor/resource.rc"
+    firstLine = 1137
+}
+
+String {
+    key = "editor.mfc.source.andn"
+    text = "&N"
+    source = "source_audit"
+    migrationState = "candidate_collapsed_v1"
+    textHash = "ab823dc85ed0"
+    occurrenceCount = 1
+    activeOccurrenceCount = 1
+    sourceAreas = "Editor"
+    categories = "resource_visible_candidate"
+    firstSourceFile = "Editor/resource.rc"
+    firstLine = 411
+}
+
+String {
+    key = "editor.mfc.source.andneutral"
+    text = "&Neutral"
+    source = "source_audit"
+    migrationState = "candidate_collapsed_v1"
+    textHash = "13925794a68b"
+    occurrenceCount = 1
+    activeOccurrenceCount = 1
+    sourceAreas = "Editor"
+    categories = "resource_visible_candidate"
+    firstSourceFile = "Editor/resource.rc"
+    firstLine = 1133
+}
+
+String {
+    key = "editor.mfc.source.andnew_ctrl_plus_n"
+    text = "&New\tCtrl + N"
+    source = "source_audit"
+    migrationState = "candidate_collapsed_v1"
+    textHash = "44e5afaeb68f"
+    occurrenceCount = 1
+    activeOccurrenceCount = 1
+    sourceAreas = "Editor"
+    categories = "resource_visible_candidate"
+    firstSourceFile = "Editor/resource.rc"
+    firstLine = 1030
+}
+
+String {
+    key = "editor.mfc.source.andnew_mission"
+    text = "&New Mission"
+    source = "source_audit"
+    migrationState = "candidate_collapsed_v1"
+    textHash = "bdd676106a98"
+    occurrenceCount = 1
+    activeOccurrenceCount = 1
+    sourceAreas = "Editor"
+    categories = "resource_visible_candidate"
+    firstSourceFile = "Editor/resource.rc"
+    firstLine = 549
+}
+
+String {
+    key = "editor.mfc.source.andoak"
+    text = "&Oak:"
+    source = "source_audit"
+    migrationState = "candidate_collapsed_v1"
+    textHash = "658735e4c508"
+    occurrenceCount = 1
+    activeOccurrenceCount = 1
+    sourceAreas = "Editor"
+    categories = "resource_visible_candidate"
+    firstSourceFile = "Editor/resource.rc"
+    firstLine = 898
+}
+
+String {
+    key = "editor.mfc.source.andopen_ctrl_plus_o"
+    text = "&Open\tCtrl + O"
+    source = "source_audit"
+    migrationState = "candidate_collapsed_v1"
+    textHash = "3d6a72201c53"
+    occurrenceCount = 1
+    activeOccurrenceCount = 1
+    sourceAreas = "Editor"
+    categories = "resource_visible_candidate"
+    firstSourceFile = "Editor/resource.rc"
+    firstLine = 1031
+}
+
+String {
+    key = "editor.mfc.source.andorthographic_camera"
+    text = "&Orthographic Camera"
+    source = "source_audit"
+    migrationState = "candidate_collapsed_v1"
+    textHash = "1c0caf219bc1"
+    occurrenceCount = 1
+    activeOccurrenceCount = 1
+    sourceAreas = "Editor"
+    categories = "resource_visible_candidate"
+    firstSourceFile = "Editor/resource.rc"
+    firstLine = 1047
+}
+
+String {
+    key = "editor.mfc.source.andoverlays"
+    text = "&Overlays"
+    source = "source_audit"
+    migrationState = "candidate_collapsed_v1"
+    textHash = "a1648853173a"
+    occurrenceCount = 1
+    activeOccurrenceCount = 1
+    sourceAreas = "Editor"
+    categories = "resource_visible_candidate"
+    firstSourceFile = "Editor/resource.rc"
+    firstLine = 1051
+}
+
+String {
+    key = "editor.mfc.source.andpalm"
+    text = "&Palm:"
+    source = "source_audit"
+    migrationState = "candidate_collapsed_v1"
+    textHash = "756e3061d1a3"
+    occurrenceCount = 1
+    activeOccurrenceCount = 1
+    sourceAreas = "Editor"
+    categories = "resource_visible_candidate"
+    firstSourceFile = "Editor/resource.rc"
+    firstLine = 899
+}
+
+String {
+    key = "editor.mfc.source.andpilot"
+    text = "&Pilot"
+    source = "source_audit"
+    migrationState = "candidate_collapsed_v1"
+    textHash = "7966d4e7eb4c"
+    occurrenceCount = 1
+    activeOccurrenceCount = 1
+    sourceAreas = "Editor"
+    categories = "resource_visible_candidate"
+    firstSourceFile = "Editor/resource.rc"
+    firstLine = 533
+}
+
+String {
+    key = "editor.mfc.source.andplayer"
+    text = "&Player"
+    source = "source_audit"
+    migrationState = "candidate_collapsed_v1"
+    textHash = "bc8ef8eec95b"
+    occurrenceCount = 1
+    activeOccurrenceCount = 1
+    sourceAreas = "Editor"
+    categories = "resource_visible_candidate"
+    firstSourceFile = "Editor/resource.rc"
+    firstLine = 536
+}
+
+String {
+    key = "editor.mfc.source.andplayer_settings"
+    text = "&Player Settings"
+    source = "source_audit"
+    migrationState = "candidate_collapsed_v1"
+    textHash = "46407fded887"
+    occurrenceCount = 1
+    activeOccurrenceCount = 1
+    sourceAreas = "Editor"
+    categories = "resource_visible_candidate"
+    firstSourceFile = "Editor/resource.rc"
+    firstLine = 1149
+}
+
+String {
+    key = "editor.mfc.source.andquick_save_ctrl_plus_q"
+    text = "&Quick Save\tCtrl + Q"
+    source = "source_audit"
+    migrationState = "candidate_collapsed_v1"
+    textHash = "6313b5cc3dba"
+    occurrenceCount = 1
+    activeOccurrenceCount = 1
+    sourceAreas = "Editor"
+    categories = "resource_visible_candidate"
+    firstSourceFile = "Editor/resource.rc"
+    firstLine = 1032
+}
+
+String {
+    key = "editor.mfc.source.andrandom_placement_no_rows"
+    text = "&Random placement (no = rows)"
+    source = "source_audit"
+    migrationState = "candidate_collapsed_v1"
+    textHash = "a3f97934ba35"
+    occurrenceCount = 1
+    activeOccurrenceCount = 1
+    sourceAreas = "Editor"
+    categories = "resource_visible_candidate"
+    firstSourceFile = "Editor/resource.rc"
+    firstLine = 885
+}
+
+String {
+    key = "editor.mfc.source.andredo_ctrl_plus_y"
+    text = "&Redo\t Ctrl + Y"
+    source = "source_audit"
+    migrationState = "candidate_collapsed_v1"
+    textHash = "f6bbf37a9e73"
+    occurrenceCount = 1
+    activeOccurrenceCount = 1
+    sourceAreas = "Editor"
+    categories = "resource_visible_candidate"
+    firstSourceFile = "Editor/resource.rc"
+    firstLine = 1042
+}
+
+String {
+    key = "editor.mfc.source.andrefresh_tac_map"
+    text = "&Refresh Tac Map"
+    source = "source_audit"
+    migrationState = "candidate_collapsed_v1"
+    textHash = "55da4e71c052"
+    occurrenceCount = 1
+    activeOccurrenceCount = 1
+    sourceAreas = "Editor"
+    categories = "resource_visible_candidate"
+    firstSourceFile = "Editor/resource.rc"
+    firstLine = 1046
+}
+
+String {
+    key = "editor.mfc.source.andrename"
+    text = "&Rename"
+    source = "source_audit"
+    migrationState = "candidate_collapsed_v1"
+    textHash = "436d5ebda1bf"
+    occurrenceCount = 1
+    activeOccurrenceCount = 1
+    sourceAreas = "Editor"
+    categories = "resource_visible_candidate"
+    firstSourceFile = "Editor/resource.rc"
+    firstLine = 927
+}
+
+String {
+    key = "editor.mfc.source.andrepair_r"
+    text = "&Repair\tR"
+    source = "source_audit"
+    migrationState = "candidate_collapsed_v1"
+    textHash = "d349efb941ac"
+    occurrenceCount = 1
+    activeOccurrenceCount = 1
+    sourceAreas = "Editor"
+    categories = "resource_visible_candidate"
+    firstSourceFile = "Editor/resource.rc"
+    firstLine = 1090
+}
+
+String {
+    key = "editor.mfc.source.andsave_ctrl_plus_s"
+    text = "&Save\tCtrl + S"
+    source = "source_audit"
+    migrationState = "candidate_collapsed_v1"
+    textHash = "97bd2560436e"
+    occurrenceCount = 1
+    activeOccurrenceCount = 1
+    sourceAreas = "Editor"
+    categories = "resource_visible_candidate"
+    firstSourceFile = "Editor/resource.rc"
+    firstLine = 1033
+}
+
+String {
+    key = "editor.mfc.source.andsave_settings"
+    text = "&Save Settings"
+    source = "source_audit"
+    migrationState = "candidate_collapsed_v1"
+    textHash = "545d0546f98f"
+    occurrenceCount = 1
+    activeOccurrenceCount = 1
+    sourceAreas = "Editor"
+    categories = "resource_visible_candidate"
+    firstSourceFile = "Editor/resource.rc"
+    firstLine = 887
+}
+
+String {
+    key = "editor.mfc.source.andselect"
+    text = "&Select"
+    source = "source_audit"
+    migrationState = "candidate_collapsed_v1"
+    textHash = "c7d43fdd553e"
+    occurrenceCount = 1
+    activeOccurrenceCount = 1
+    sourceAreas = "Editor"
+    categories = "resource_visible_candidate"
+    firstSourceFile = "Editor/resource.rc"
+    firstLine = 1112
+}
+
+String {
+    key = "editor.mfc.source.andselect_esc"
+    text = "&Select\t(Esc)"
+    source = "source_audit"
+    migrationState = "candidate_collapsed_v1"
+    textHash = "915af4094c62"
+    occurrenceCount = 1
+    activeOccurrenceCount = 1
+    sourceAreas = "Editor"
+    categories = "resource_visible_candidate"
+    firstSourceFile = "Editor/resource.rc"
+    firstLine = 1114
+}
+
+String {
+    key = "editor.mfc.source.andshallow_elevation_offset"
+    text = "&Shallow Elevation (offset)"
+    source = "source_audit"
+    migrationState = "candidate_collapsed_v1"
+    textHash = "1f2eaba4d3f4"
+    occurrenceCount = 1
+    activeOccurrenceCount = 1
+    sourceAreas = "Editor"
+    categories = "resource_visible_candidate"
+    firstSourceFile = "Editor/resource.rc"
+    firstLine = 192
+}
+
+String {
+    key = "editor.mfc.source.andshow_grid_and_passability_map"
+    text = "&Show Grid and Passability Map"
+    source = "source_audit"
+    migrationState = "candidate_collapsed_v1"
+    textHash = "a2fb6eba0177"
+    occurrenceCount = 1
+    activeOccurrenceCount = 1
+    sourceAreas = "Editor"
+    categories = "resource_visible_candidate"
+    firstSourceFile = "Editor/resource.rc"
+    firstLine = 1048
+}
+
+String {
+    key = "editor.mfc.source.andsquad"
+    text = "&Squad"
+    source = "source_audit"
+    migrationState = "candidate_collapsed_v1"
+    textHash = "4c625492e77c"
+    occurrenceCount = 1
+    activeOccurrenceCount = 1
+    sourceAreas = "Editor"
+    categories = "resource_visible_candidate"
+    firstSourceFile = "Editor/resource.rc"
+    firstLine = 538
+}
+
+String {
+    key = "editor.mfc.source.andteam"
+    text = "&Team"
+    source = "source_audit"
+    migrationState = "candidate_collapsed_v1"
+    textHash = "fe870f732fb9"
+    occurrenceCount = 1
+    activeOccurrenceCount = 1
+    sourceAreas = "Editor"
+    categories = "resource_visible_candidate"
+    firstSourceFile = "Editor/resource.rc"
+    firstLine = 423
+}
+
+String {
+    key = "editor.mfc.source.andteam_settings_objectives"
+    text = "&Team Settings (Objectives)"
+    source = "source_audit"
+    migrationState = "candidate_collapsed_v1"
+    textHash = "3c7614398eb3"
+    occurrenceCount = 1
+    activeOccurrenceCount = 1
+    sourceAreas = "Editor"
+    categories = "resource_visible_candidate"
+    firstSourceFile = "Editor/resource.rc"
+    firstLine = 1138
+}
+
+String {
+    key = "editor.mfc.source.andtype"
+    text = "&Type"
+    source = "source_audit"
+    migrationState = "candidate_collapsed_v1"
+    textHash = "7c087e87eead"
+    occurrenceCount = 2
+    activeOccurrenceCount = 2
+    sourceAreas = "Editor"
+    categories = "resource_visible_candidate"
+    firstSourceFile = "Editor/resource.rc"
+    firstLine = 422
+}
+
+String {
+    key = "editor.mfc.source.andundo_ctrl_plus_z"
+    text = "&Undo\tCtrl + Z"
+    source = "source_audit"
+    migrationState = "candidate_collapsed_v1"
+    textHash = "3bb435149bac"
+    occurrenceCount = 1
+    activeOccurrenceCount = 1
+    sourceAreas = "Editor"
+    categories = "resource_visible_candidate"
+    firstSourceFile = "Editor/resource.rc"
+    firstLine = 1041
+}
+
+String {
+    key = "editor.mfc.source.andunit_settings"
+    text = "&Unit Settings"
+    source = "source_audit"
+    migrationState = "candidate_collapsed_v1"
+    textHash = "c76af9de27c7"
+    occurrenceCount = 1
+    activeOccurrenceCount = 1
+    sourceAreas = "Editor"
+    categories = "resource_visible_candidate"
+    firstSourceFile = "Editor/resource.rc"
+    firstLine = 1179
+}
+
+String {
+    key = "editor.mfc.source.andunlink_u"
+    text = "&UnLink\tU"
+    source = "source_audit"
+    migrationState = "candidate_collapsed_v1"
+    textHash = "caef517b5107"
+    occurrenceCount = 1
+    activeOccurrenceCount = 1
+    sourceAreas = "Editor"
+    categories = "resource_visible_candidate"
+    firstSourceFile = "Editor/resource.rc"
+    firstLine = 1097
+}
+
+String {
+    key = "editor.mfc.source.andview"
+    text = "&View"
+    source = "source_audit"
+    migrationState = "candidate_collapsed_v1"
+    textHash = "390b6f034913"
+    occurrenceCount = 1
+    activeOccurrenceCount = 1
+    sourceAreas = "Editor"
+    categories = "resource_visible_candidate"
+    firstSourceFile = "Editor/resource.rc"
+    firstLine = 1044
+}
+
+String {
+    key = "editor.mfc.source.andwater_ctrl_plus_w"
+    text = "&Water\tCtrl + W"
+    source = "source_audit"
+    migrationState = "candidate_collapsed_v1"
+    textHash = "2d88a97b1dc0"
+    occurrenceCount = 1
+    activeOccurrenceCount = 1
+    sourceAreas = "Editor"
+    categories = "resource_visible_candidate"
+    firstSourceFile = "Editor/resource.rc"
+    firstLine = 1094
+}
+
+String {
+    key = "editor.mfc.source.andwillow"
+    text = "&Willow:"
+    source = "source_audit"
+    migrationState = "candidate_collapsed_v1"
+    textHash = "e21d3fe031f5"
+    occurrenceCount = 1
+    activeOccurrenceCount = 1
+    sourceAreas = "Editor"
+    categories = "resource_visible_candidate"
+    firstSourceFile = "Editor/resource.rc"
+    firstLine = 901
+}
+
+String {
+    key = "editor.mfc.stringtable.ids_mechs"
+    text = "'Mechs"
+    source = "editor.rc"
+    migrationState = "candidate_collapsed_v1"
+    textHash = "f61861cc981b"
+    occurrenceCount = 1
+    activeOccurrenceCount = 1
+    sourceAreas = "mclib"
+    categories = "resource_visible_candidate"
+    firstSourceFile = "mclib/MCLib.rc"
+    firstLine = 134
+}
+
+String {
+    key = "editor.mfc.source.multi_player_version"
+    text = "(multi-player version)"
+    source = "source_audit"
+    migrationState = "candidate_collapsed_v1"
+    textHash = "200db24c699a"
+    occurrenceCount = 1
+    activeOccurrenceCount = 1
+    sourceAreas = "Editor"
+    categories = "resource_visible_candidate"
+    firstSourceFile = "Editor/resource.rc"
+    firstLine = 1756
+}
+
+String {
+    key = "editor.mfc.source.note_the_user_is_player1_and_on_team1_in_single_player_missi_3fdabd68"
+    text = "(Note: The user is Player1 and on Team1 in single player missions)"
+    source = "source_audit"
+    migrationState = "candidate_collapsed_v1"
+    textHash = "3fdabd686955"
+    occurrenceCount = 1
+    activeOccurrenceCount = 1
+    sourceAreas = "Editor"
+    categories = "resource_visible_candidate"
+    firstSourceFile = "Editor/resource.rc"
+    firstLine = 640
+}
+
+String {
+    key = "editor.mfc.source.single_player_version"
+    text = "(single player version)"
+    source = "source_audit"
+    migrationState = "candidate_collapsed_v1"
+    textHash = "c706b7b192fb"
+    occurrenceCount = 1
+    activeOccurrenceCount = 1
+    sourceAreas = "Editor"
+    categories = "resource_visible_candidate"
+    firstSourceFile = "Editor/resource.rc"
+    firstLine = 1755
+}
+
+String {
+    key = "editor.mfc.source.under_construction_right_click_to_end_selection_mode"
+    text = "(under construction)\rRight click to end selection mode."
+    source = "source_audit"
+    migrationState = "candidate_collapsed_v1"
+    textHash = "9d2d22636b0d"
+    occurrenceCount = 1
+    activeOccurrenceCount = 1
+    sourceAreas = "Editor"
+    categories = "resource_visible_candidate"
+    firstSourceFile = "Editor/resource.rc"
+    firstLine = 489
+}
+
+String {
+    key = "editor.mfc.source.string"
+    text = ")."
+    source = "source_audit"
+    migrationState = "candidate_collapsed_v1"
+    textHash = "d41919407ce8"
+    occurrenceCount = 1
+    activeOccurrenceCount = 1
+    sourceAreas = "Editor"
+    categories = "resource_visible_candidate"
+    firstSourceFile = "Editor/resource.rc"
+    firstLine = 357
+}
+
+String {
+    key = "editor.mfc.source.primary_objective"
+    text = "*  Primary objective"
+    source = "source_audit"
+    migrationState = "candidate_collapsed_v1"
+    textHash = "e9413b3df081"
+    occurrenceCount = 1
+    activeOccurrenceCount = 1
+    sourceAreas = "Editor"
+    categories = "resource_visible_candidate"
+    firstSourceFile = "Editor/resource.rc"
+    firstLine = 224
+}
+
+String {
+    key = "editor.mfc.source.note_failure_of_any_success_condition_already_implies_failur_d56a4994"
+    text = "*Note: Failure of any success condition already implies failure of the objective. Use this area for additional failure conditions or to address success conditions whose failure cannot be determined automatically (i.e. "
+    source = "source_audit"
+    migrationState = "candidate_collapsed_v1"
+    textHash = "d56a49945dac"
+    occurrenceCount = 1
+    activeOccurrenceCount = 1
+    sourceAreas = "Editor"
+    categories = "resource_visible_candidate"
+    firstSourceFile = "Editor/resource.rc"
+    firstLine = 357
+}
+
+String {
+    key = "editor.mfc.source.previous_primary_objective_must_be_completed_first"
+    text = "^  Previous primary objective must be completed first"
+    source = "source_audit"
+    migrationState = "candidate_collapsed_v1"
+    textHash = "23419a927596"
+    occurrenceCount = 1
+    activeOccurrenceCount = 1
+    sourceAreas = "Editor"
+    categories = "resource_visible_candidate"
+    firstSourceFile = "Editor/resource.rc"
+    firstLine = 225
+}
+
+String {
+    key = "editor.mfc.source.a_all_previous_primary_objectives_must_be_completed_first"
+    text = "A  All previous primary objectives must be completed first"
+    source = "source_audit"
+    migrationState = "candidate_collapsed_v1"
+    textHash = "cd0c295bbe2c"
+    occurrenceCount = 1
+    activeOccurrenceCount = 1
+    sourceAreas = "Editor"
+    categories = "resource_visible_candidate"
+    firstSourceFile = "Editor/resource.rc"
+    firstLine = 231
+}
+
+String {
+    key = "editor.mfc.source.actions"
+    text = "Actions"
+    source = "source_audit"
+    migrationState = "candidate_collapsed_v1"
+    textHash = "c3cd636a585b"
+    occurrenceCount = 2
+    activeOccurrenceCount = 2
+    sourceAreas = "Editor"
+    categories = "resource_visible_candidate"
+    firstSourceFile = "Editor/resource.rc"
+    firstLine = 348
+}
+
+String {
+    key = "editor.mfc.source.activate_on_flag"
+    text = "Activate On Flag"
+    source = "source_audit"
+    migrationState = "candidate_collapsed_v1"
+    textHash = "7f261999745e"
+    occurrenceCount = 1
+    activeOccurrenceCount = 1
+    sourceAreas = "Editor"
+    categories = "resource_visible_candidate"
+    firstSourceFile = "Editor/resource.rc"
+    firstLine = 275
+}
+
+String {
+    key = "editor.mfc.source.add_action"
+    text = "Add Action"
+    source = "source_audit"
+    migrationState = "candidate_collapsed_v1"
+    textHash = "b412f37277a4"
+    occurrenceCount = 2
+    activeOccurrenceCount = 2
+    sourceAreas = "Editor"
+    categories = "resource_visible_candidate"
+    firstSourceFile = "Editor/resource.rc"
+    firstLine = 298
+}
+
+String {
+    key = "editor.mfc.source.add_condition"
+    text = "Add Condition"
+    source = "source_audit"
+    migrationState = "candidate_collapsed_v1"
+    textHash = "4803c2377e28"
+    occurrenceCount = 2
+    activeOccurrenceCount = 2
+    sourceAreas = "Editor"
+    categories = "resource_visible_candidate"
+    firstSourceFile = "Editor/resource.rc"
+    firstLine = 287
+}
+
+String {
+    key = "editor.mfc.source.additional_cbills"
+    text = "Additional CBills"
+    source = "source_audit"
+    migrationState = "candidate_collapsed_v1"
+    textHash = "66a1b7ea86fa"
+    occurrenceCount = 1
+    activeOccurrenceCount = 1
+    sourceAreas = "Editor"
+    categories = "resource_visible_candidate"
+    firstSourceFile = "Editor/resource.rc"
+    firstLine = 639
+}
+
+String {
+    key = "editor.mfc.source.air_srike"
+    text = "Air Srike"
+    source = "source_audit"
+    migrationState = "candidate_collapsed_v1"
+    textHash = "c46efc8afbbb"
+    occurrenceCount = 1
+    activeOccurrenceCount = 1
+    sourceAreas = "Editor"
+    categories = "resource_visible_candidate"
+    firstSourceFile = "Editor/resource.rc"
+    firstLine = 594
+}
+
+String {
+    key = "editor.mfc.source.all_previous_primary_objectives_must_be_completed"
+    text = "All previous primary objectives must be completed"
+    source = "source_audit"
+    migrationState = "candidate_collapsed_v1"
+    textHash = "ac4d265f07f5"
+    occurrenceCount = 1
+    activeOccurrenceCount = 1
+    sourceAreas = "Editor"
+    categories = "resource_visible_candidate"
+    firstSourceFile = "Editor/resource.rc"
+    firstLine = 270
+}
+
+String {
+    key = "editor.mfc.source.all_tech"
+    text = "All Tech"
+    source = "source_audit"
+    migrationState = "candidate_collapsed_v1"
+    textHash = "b6ffacdbaa11"
+    occurrenceCount = 1
+    activeOccurrenceCount = 1
+    sourceAreas = "Editor"
+    categories = "resource_visible_candidate"
+    firstSourceFile = "Editor/resource.rc"
+    firstLine = 606
+}
+
+String {
+    key = "editor.mfc.source.altitude"
+    text = "Altitude"
+    source = "source_audit"
+    migrationState = "candidate_collapsed_v1"
+    textHash = "22786d42cc30"
+    occurrenceCount = 1
+    activeOccurrenceCount = 1
+    sourceAreas = "Editor"
+    categories = "resource_visible_candidate"
+    firstSourceFile = "Editor/resource.rc"
+    firstLine = 384
+}
+
+String {
+    key = "editor.mfc.source.ambient_color"
+    text = "Ambient Color:"
+    source = "source_audit"
+    migrationState = "candidate_collapsed_v1"
+    textHash = "ddd457f611cd"
+    occurrenceCount = 1
+    activeOccurrenceCount = 1
+    sourceAreas = "Editor"
+    categories = "resource_visible_candidate"
+    firstSourceFile = "Editor/resource.rc"
+    firstLine = 147
+}
+
+String {
+    key = "editor.mfc.source.arial_narrow"
+    text = "Arial Narrow"
+    source = "source_audit"
+    migrationState = "candidate_collapsed_v1"
+    textHash = "299aae209e48"
+    occurrenceCount = 36
+    activeOccurrenceCount = 36
+    sourceAreas = "Editor"
+    categories = "visible_review_candidate"
+    firstSourceFile = "Editor/resource.rc"
+    firstLine = 104
+}
+
+String {
+    key = "editor.mfc.source.artillery_piece"
+    text = "Artillery Piece"
+    source = "source_audit"
+    migrationState = "candidate_collapsed_v1"
+    textHash = "93428b16edfe"
+    occurrenceCount = 1
+    activeOccurrenceCount = 1
+    sourceAreas = "Editor"
+    categories = "resource_visible_candidate"
+    firstSourceFile = "Editor/resource.rc"
+    firstLine = 604
+}
+
+String {
+    key = "editor.mfc.stringtable.ids_assign_elevation"
+    text = "Assign Elevation"
+    source = "editor.rc"
+    migrationState = "candidate_collapsed_v1"
+    textHash = "f2cbfb52735e"
+    occurrenceCount = 1
+    activeOccurrenceCount = 1
+    sourceAreas = "mclib"
+    categories = "resource_visible_candidate"
+    firstSourceFile = "mclib/MCLib.rc"
+    firstLine = 154
+}
+
+String {
+    key = "editor.mfc.source.assign_heights"
+    text = "Assign Heights"
+    source = "source_audit"
+    migrationState = "candidate_collapsed_v1"
+    textHash = "195842b0d43e"
+    occurrenceCount = 1
+    activeOccurrenceCount = 1
+    sourceAreas = "Editor"
+    categories = "resource_visible_candidate"
+    firstSourceFile = "Editor/resource.rc"
+    firstLine = 165
+}
+
+String {
+    key = "editor.mfc.source.author"
+    text = "Author"
+    source = "source_audit"
+    migrationState = "candidate_collapsed_v1"
+    textHash = "5fda23d62015"
+    occurrenceCount = 3
+    activeOccurrenceCount = 3
+    sourceAreas = "Editor"
+    categories = "identifier_or_key_candidate;resource_visible_candidate"
+    firstSourceFile = "Editor/EditorData.cpp"
+    firstLine = 437
+}
+
+String {
+    key = "editor.mfc.source.azimuth_of_the_sun_in_degrees"
+    text = "Azimuth of the Sun (in degrees):"
+    source = "source_audit"
+    migrationState = "candidate_collapsed_v1"
+    textHash = "b38d4965490c"
+    occurrenceCount = 1
+    activeOccurrenceCount = 1
+    sourceAreas = "Editor"
+    categories = "resource_visible_candidate"
+    firstSourceFile = "Editor/resource.rc"
+    firstLine = 150
+}
+
+String {
+    key = "editor.mfc.source.base_tga_must_be_true_color_24_bit_or_256_color"
+    text = "Base TGA must be True Color (24-bit) or 256 color."
+    source = "source_audit"
+    migrationState = "candidate_collapsed_v1"
+    textHash = "245498cde0dd"
+    occurrenceCount = 1
+    activeOccurrenceCount = 1
+    sourceAreas = "Editor"
+    categories = "resource_visible_candidate"
+    firstSourceFile = "Editor/resource.rc"
+    firstLine = 1730
+}
+
+String {
+    key = "editor.mfc.source.blue"
+    text = "Blue:"
+    source = "source_audit"
+    migrationState = "candidate_collapsed_v1"
+    textHash = "74734d1d58a1"
+    occurrenceCount = 1
+    activeOccurrenceCount = 1
+    sourceAreas = "Editor"
+    categories = "resource_visible_candidate"
+    firstSourceFile = "Editor/resource.rc"
+    firstLine = 792
+}
+
+String {
+    key = "editor.mfc.source.boolean_flag"
+    text = "Boolean Flag"
+    source = "source_audit"
+    migrationState = "candidate_collapsed_v1"
+    textHash = "296fcb082607"
+    occurrenceCount = 1
+    activeOccurrenceCount = 1
+    sourceAreas = "Editor"
+    categories = "resource_visible_candidate"
+    firstSourceFile = "Editor/resource.rc"
+    firstLine = 965
+}
+
+String {
+    key = "editor.mfc.source.bottom"
+    text = "Bottom:"
+    source = "source_audit"
+    migrationState = "candidate_collapsed_v1"
+    textHash = "77d5898dd710"
+    occurrenceCount = 1
+    activeOccurrenceCount = 1
+    sourceAreas = "Editor"
+    categories = "resource_visible_candidate"
+    firstSourceFile = "Editor/resource.rc"
+    firstLine = 788
+}
+
+String {
+    key = "editor.mfc.source.building_settings"
+    text = "Building Settings"
+    source = "source_audit"
+    migrationState = "candidate_collapsed_v1"
+    textHash = "6eb61dfdc34d"
+    occurrenceCount = 1
+    activeOccurrenceCount = 1
+    sourceAreas = "Editor"
+    categories = "resource_visible_candidate"
+    firstSourceFile = "Editor/resource.rc"
+    firstLine = 395
+}
+
+String {
+    key = "editor.mfc.source.c_bills"
+    text = "C-Bills"
+    source = "source_audit"
+    migrationState = "candidate_collapsed_v1"
+    textHash = "da1d67b99942"
+    occurrenceCount = 1
+    activeOccurrenceCount = 1
+    sourceAreas = "Editor"
+    categories = "resource_visible_candidate"
+    firstSourceFile = "Editor/resource.rc"
+    firstLine = 368
+}
+
+String {
+    key = "editor.mfc.source.cactandus"
+    text = "Cact&us:"
+    source = "source_audit"
+    migrationState = "candidate_collapsed_v1"
+    textHash = "cc8545f21656"
+    occurrenceCount = 1
+    activeOccurrenceCount = 1
+    sourceAreas = "Editor"
+    categories = "resource_visible_candidate"
+    firstSourceFile = "Editor/resource.rc"
+    firstLine = 894
+}
+
+String {
+    key = "editor.mfc.source.campaign_name"
+    text = "Campaign Name"
+    source = "source_audit"
+    migrationState = "candidate_collapsed_v1"
+    textHash = "3db4888ccf9a"
+    occurrenceCount = 1
+    activeOccurrenceCount = 1
+    sourceAreas = "Editor"
+    categories = "resource_visible_candidate"
+    firstSourceFile = "Editor/resource.rc"
+    firstLine = 692
+}
+
+String {
+    key = "editor.mfc.stringtable.ids_cant_save"
+    text = "Can't save"
+    source = "editor.rc"
+    migrationState = "candidate_collapsed_v1"
+    textHash = "c768e89f264e"
+    occurrenceCount = 1
+    activeOccurrenceCount = 1
+    sourceAreas = "mclib"
+    categories = "resource_visible_candidate"
+    firstSourceFile = "mclib/MCLib.rc"
+    firstLine = 165
+}
+
+String {
+    key = "editor.mfc.stringtable.ids_no_neutral_movers"
+    text = "Cannot have a Neutral Mover!"
+    source = "editor.rc"
+    migrationState = "candidate_collapsed_v1"
+    textHash = "46a5bffdd366"
+    occurrenceCount = 1
+    activeOccurrenceCount = 1
+    sourceAreas = "mclib"
+    categories = "resource_visible_candidate"
+    firstSourceFile = "mclib/MCLib.rc"
+    firstLine = 170
+}
+
+String {
+    key = "editor.mfc.source.center"
+    text = "Center"
+    source = "source_audit"
+    migrationState = "candidate_collapsed_v1"
+    textHash = "a2391118c814"
+    occurrenceCount = 2
+    activeOccurrenceCount = 2
+    sourceAreas = "Editor"
+    categories = "resource_visible_candidate"
+    firstSourceFile = "Editor/resource.rc"
+    firstLine = 477
+}
+
+String {
+    key = "editor.mfc.source.choose_building"
+    text = "Choose Building"
+    source = "source_audit"
+    migrationState = "candidate_collapsed_v1"
+    textHash = "a13c2accd231"
+    occurrenceCount = 2
+    activeOccurrenceCount = 2
+    sourceAreas = "Editor"
+    categories = "resource_visible_candidate"
+    firstSourceFile = "Editor/resource.rc"
+    firstLine = 447
+}
+
+String {
+    key = "editor.mfc.source.choose_unit"
+    text = "Choose Unit"
+    source = "source_audit"
+    migrationState = "candidate_collapsed_v1"
+    textHash = "4859a16ffe6d"
+    occurrenceCount = 2
+    activeOccurrenceCount = 2
+    sourceAreas = "Editor"
+    categories = "resource_visible_candidate"
+    firstSourceFile = "Editor/resource.rc"
+    firstLine = 433
+}
+
+String {
+    key = "editor.mfc.source.clear_model"
+    text = "Clear Model"
+    source = "source_audit"
+    migrationState = "candidate_collapsed_v1"
+    textHash = "c02dcf9ada5a"
+    occurrenceCount = 1
+    activeOccurrenceCount = 1
+    sourceAreas = "Editor"
+    categories = "resource_visible_candidate"
+    firstSourceFile = "Editor/resource.rc"
+    firstLine = 370
+}
+
+String {
+    key = "editor.mfc.stringtable.ids_invalid_color_map"
+    text = "Color Map wrong size or not valid TGA."
+    source = "editor.rc"
+    migrationState = "candidate_collapsed_v1"
+    textHash = "34e1b8f5cd22"
+    occurrenceCount = 1
+    activeOccurrenceCount = 1
+    sourceAreas = "mclib"
+    categories = "resource_visible_candidate"
+    firstSourceFile = "mclib/MCLib.rc"
+    firstLine = 197
+}
+
+String {
+    key = "editor.mfc.source.conditions"
+    text = "Conditions"
+    source = "source_audit"
+    migrationState = "candidate_collapsed_v1"
+    textHash = "5506eb6161a0"
+    occurrenceCount = 1
+    activeOccurrenceCount = 1
+    sourceAreas = "Editor"
+    categories = "resource_visible_candidate"
+    firstSourceFile = "Editor/resource.rc"
+    firstLine = 344
+}
+
+String {
+    key = "editor.mfc.source.conditions.24a3a753"
+    text = "Conditions*"
+    source = "source_audit"
+    migrationState = "candidate_collapsed_v1"
+    textHash = "24a3a7531d2f"
+    occurrenceCount = 1
+    activeOccurrenceCount = 1
+    sourceAreas = "Editor"
+    categories = "resource_visible_candidate"
+    firstSourceFile = "Editor/resource.rc"
+    firstLine = 352
+}
+
+String {
+    key = "editor.mfc.source.coordinates"
+    text = "Coordinates"
+    source = "source_audit"
+    migrationState = "candidate_collapsed_v1"
+    textHash = "8ebebca01959"
+    occurrenceCount = 1
+    activeOccurrenceCount = 1
+    sourceAreas = "Editor"
+    categories = "resource_visible_candidate"
+    firstSourceFile = "Editor/resource.rc"
+    firstLine = 381
+}
+
+String {
+    key = "editor.mfc.stringtable.ids_invalid_file"
+    text = "Could not save the file %s."
+    source = "editor.rc"
+    migrationState = "candidate_collapsed_v1"
+    textHash = "0a36859196e8"
+    occurrenceCount = 1
+    activeOccurrenceCount = 1
+    sourceAreas = "mclib"
+    categories = "resource_visible_candidate"
+    firstSourceFile = "mclib/MCLib.rc"
+    firstLine = 158
+}
+
+String {
+    key = "editor.mfc.stringtable.ids_couldnt_open"
+    text = "Couldn't open the file %s."
+    source = "editor.rc"
+    migrationState = "candidate_collapsed_v1"
+    textHash = "4e2d0f726408"
+    occurrenceCount = 1
+    activeOccurrenceCount = 1
+    sourceAreas = "mclib"
+    categories = "resource_visible_candidate"
+    firstSourceFile = "mclib/MCLib.rc"
+    firstLine = 168
+}
+
+String {
+    key = "editor.mfc.stringtable.ids_string10116"
+    text = "Crash Site Set Piece"
+    source = "editor.rc"
+    migrationState = "candidate_collapsed_v1"
+    textHash = "7a7b6a924da2"
+    occurrenceCount = 1
+    activeOccurrenceCount = 1
+    sourceAreas = "mclib"
+    categories = "resource_visible_candidate"
+    firstSourceFile = "mclib/MCLib.rc"
+    firstLine = 186
+}
+
+String {
+    key = "editor.mfc.source.damaged_bridge"
+    text = "Damaged Bridge"
+    source = "editor.menu.rc"
+    migrationState = "candidate_collapsed_v1"
+    textHash = "a7299fb057b8"
+    occurrenceCount = 1
+    activeOccurrenceCount = 1
+    sourceAreas = "Editor"
+    categories = "resource_visible_candidate"
+    firstSourceFile = "Editor/resource.rc"
+    firstLine = 1060
+}
+
+String {
+    key = "editor.mfc.source.damaged_road"
+    text = "Damaged Road"
+    source = "editor.menu.rc"
+    migrationState = "candidate_collapsed_v1"
+    textHash = "b5fc75161d47"
+    occurrenceCount = 1
+    activeOccurrenceCount = 1
+    sourceAreas = "Editor"
+    categories = "resource_visible_candidate"
+    firstSourceFile = "Editor/resource.rc"
+    firstLine = 1057
+}
+
+String {
+    key = "editor.mfc.source.default_team_assignment"
+    text = "Default team assignment"
+    source = "source_audit"
+    migrationState = "candidate_collapsed_v1"
+    textHash = "b98f2689fa3d"
+    occurrenceCount = 1
+    activeOccurrenceCount = 1
+    sourceAreas = "Editor"
+    categories = "resource_visible_candidate"
+    firstSourceFile = "Editor/resource.rc"
+    firstLine = 665
+}
+
+String {
+    key = "editor.mfc.source.degrees"
+    text = "degrees"
+    source = "source_audit"
+    migrationState = "candidate_collapsed_v1"
+    textHash = "a63788ba696d"
+    occurrenceCount = 2
+    activeOccurrenceCount = 2
+    sourceAreas = "Editor"
+    categories = "resource_visible_candidate"
+    firstSourceFile = "Editor/resource.rc"
+    firstLine = 1015
+}
+
+String {
+    key = "editor.mfc.source.density_trees_per_tile"
+    text = "Density (Trees per tile)"
+    source = "source_audit"
+    migrationState = "candidate_collapsed_v1"
+    textHash = "70ce7ac98752"
+    occurrenceCount = 1
+    activeOccurrenceCount = 1
+    sourceAreas = "Editor"
+    categories = "resource_visible_candidate"
+    firstSourceFile = "Editor/resource.rc"
+    firstLine = 903
+}
+
+String {
+    key = "editor.mfc.stringtable.ids_string10119"
+    text = "Destroyable Road"
+    source = "editor.rc"
+    migrationState = "candidate_collapsed_v1"
+    textHash = "d4f91a7d50df"
+    occurrenceCount = 1
+    activeOccurrenceCount = 1
+    sourceAreas = "mclib"
+    categories = "resource_visible_candidate"
+    firstSourceFile = "mclib/MCLib.rc"
+    firstLine = 189
+}
+
+String {
+    key = "editor.mfc.source.display_marker"
+    text = "Display Marker"
+    source = "source_audit"
+    migrationState = "candidate_collapsed_v1"
+    textHash = "dbfc6b41693f"
+    occurrenceCount = 1
+    activeOccurrenceCount = 1
+    sourceAreas = "Editor"
+    categories = "resource_visible_candidate"
+    firstSourceFile = "Editor/resource.rc"
+    firstLine = 257
+}
+
+String {
+    key = "editor.mfc.source.dist_from_camera_to_selected_obj"
+    text = "Dist from Camera to Selected Obj"
+    source = "source_audit"
+    migrationState = "candidate_collapsed_v1"
+    textHash = "d6063b8ccfcd"
+    occurrenceCount = 1
+    activeOccurrenceCount = 1
+    sourceAreas = "Editor"
+    categories = "resource_visible_candidate"
+    firstSourceFile = "Editor/resource.rc"
+    firstLine = 387
+}
+
+String {
+    key = "editor.mfc.source.distance_from_last_click"
+    text = "Distance From Last Click"
+    source = "source_audit"
+    migrationState = "candidate_collapsed_v1"
+    textHash = "02807d6e4f67"
+    occurrenceCount = 1
+    activeOccurrenceCount = 1
+    sourceAreas = "Editor"
+    categories = "resource_visible_candidate"
+    firstSourceFile = "Editor/resource.rc"
+    firstLine = 378
+}
+
+String {
+    key = "editor.mfc.source.do_you_want_to_save_this_mission"
+    text = "Do you want to save this mission?"
+    source = "source_audit"
+    migrationState = "candidate_collapsed_v1"
+    textHash = "7da1b627f0e7"
+    occurrenceCount = 1
+    activeOccurrenceCount = 1
+    sourceAreas = "Editor"
+    categories = "resource_visible_candidate"
+    firstSourceFile = "Editor/resource.rc"
+    firstLine = 1754
+}
+
+String {
+    key = "editor.mfc.source.do_you_want_to_save_your_changes"
+    text = "Do you want to save your changes?"
+    source = "source_audit"
+    migrationState = "candidate_collapsed_v1"
+    textHash = "8b9d66bac816"
+    occurrenceCount = 1
+    activeOccurrenceCount = 1
+    sourceAreas = "Editor"
+    categories = "resource_visible_candidate"
+    firstSourceFile = "Editor/resource.rc"
+    firstLine = 1753
+}
+
+String {
+    key = "editor.mfc.source.download_url"
+    text = "Download URL"
+    source = "source_audit"
+    migrationState = "candidate_collapsed_v1"
+    textHash = "42aa0f68a42b"
+    occurrenceCount = 1
+    activeOccurrenceCount = 1
+    sourceAreas = "Editor"
+    categories = "resource_visible_candidate"
+    firstSourceFile = "Editor/resource.rc"
+    firstLine = 649
+}
+
+String {
+    key = "editor.mfc.source.drag_andnormal"
+    text = "Drag &Normal"
+    source = "source_audit"
+    migrationState = "candidate_collapsed_v1"
+    textHash = "c3d1784f1e98"
+    occurrenceCount = 1
+    activeOccurrenceCount = 1
+    sourceAreas = "Editor"
+    categories = "resource_visible_candidate"
+    firstSourceFile = "Editor/resource.rc"
+    firstLine = 1119
+}
+
+String {
+    key = "editor.mfc.source.drag_sandmooth_s"
+    text = "Drag S&mooth\tS"
+    source = "source_audit"
+    migrationState = "candidate_collapsed_v1"
+    textHash = "1860b8604fde"
+    occurrenceCount = 1
+    activeOccurrenceCount = 1
+    sourceAreas = "Editor"
+    categories = "resource_visible_candidate"
+    firstSourceFile = "Editor/resource.rc"
+    firstLine = 1118
+}
+
+String {
+    key = "editor.mfc.source.drop_weight_limit"
+    text = "Drop Weight Limit"
+    source = "source_audit"
+    migrationState = "candidate_collapsed_v1"
+    textHash = "63ffb52f8c89"
+    occurrenceCount = 1
+    activeOccurrenceCount = 1
+    sourceAreas = "Editor"
+    categories = "resource_visible_candidate"
+    firstSourceFile = "Editor/resource.rc"
+    firstLine = 636
+}
+
+String {
+    key = "editor.mfc.stringtable.ids_string10120"
+    text = "Dummy Objects"
+    source = "editor.rc"
+    migrationState = "candidate_collapsed_v1"
+    textHash = "42c72d6c3f52"
+    occurrenceCount = 1
+    activeOccurrenceCount = 1
+    sourceAreas = "mclib"
+    categories = "resource_visible_candidate"
+    firstSourceFile = "mclib/MCLib.rc"
+    firstLine = 190
+}
+
+String {
+    key = "editor.mfc.source.eandxit"
+    text = "E&xit"
+    source = "source_audit"
+    migrationState = "candidate_collapsed_v1"
+    textHash = "47aa608083ed"
+    occurrenceCount = 1
+    activeOccurrenceCount = 1
+    sourceAreas = "Editor"
+    categories = "resource_visible_candidate"
+    firstSourceFile = "Editor/resource.rc"
+    firstLine = 1037
+}
+
+String {
+    key = "editor.mfc.source.edit_description"
+    text = "Edit Description"
+    source = "source_audit"
+    migrationState = "candidate_collapsed_v1"
+    textHash = "9f0426fdc9b6"
+    occurrenceCount = 1
+    activeOccurrenceCount = 1
+    sourceAreas = "Editor"
+    categories = "resource_visible_candidate"
+    firstSourceFile = "Editor/resource.rc"
+    firstLine = 245
+}
+
+String {
+    key = "editor.mfc.source.edit_foreandsts"
+    text = "Edit Fore&sts"
+    source = "source_audit"
+    migrationState = "candidate_collapsed_v1"
+    textHash = "9d674e0beb23"
+    occurrenceCount = 1
+    activeOccurrenceCount = 1
+    sourceAreas = "Editor"
+    categories = "resource_visible_candidate"
+    firstSourceFile = "Editor/resource.rc"
+    firstLine = 1110
+}
+
+String {
+    key = "editor.mfc.source.edit_title"
+    text = "Edit Title"
+    source = "source_audit"
+    migrationState = "candidate_collapsed_v1"
+    textHash = "50ce4496e204"
+    occurrenceCount = 1
+    activeOccurrenceCount = 1
+    sourceAreas = "Editor"
+    categories = "resource_visible_candidate"
+    firstSourceFile = "Editor/resource.rc"
+    firstLine = 243
+}
+
+String {
+    key = "editor.mfc.source.edit"
+    text = "Edit..."
+    source = "source_audit"
+    migrationState = "candidate_collapsed_v1"
+    textHash = "59c4425fb53c"
+    occurrenceCount = 4
+    activeOccurrenceCount = 4
+    sourceAreas = "Editor"
+    categories = "resource_visible_candidate"
+    firstSourceFile = "Editor/resource.rc"
+    firstLine = 560
+}
+
+String {
+    key = "editor.mfc.source.editorrel_exe"
+    text = "EditorRel.exe"
+    source = "source_audit"
+    migrationState = "candidate_collapsed_v1"
+    textHash = "d48eacb353fa"
+    occurrenceCount = 1
+    activeOccurrenceCount = 1
+    sourceAreas = "Editor"
+    categories = "visible_review_candidate"
+    firstSourceFile = "Editor/resource.rc"
+    firstLine = 80
+}
+
+String {
+    key = "editor.mfc.stringtable.ids_elevation"
+    text = "Elevation:"
+    source = "editor.rc"
+    migrationState = "candidate_collapsed_v1"
+    textHash = "8033fb97ca0e"
+    occurrenceCount = 1
+    activeOccurrenceCount = 1
+    sourceAreas = "mclib"
+    categories = "resource_visible_candidate"
+    firstSourceFile = "mclib/MCLib.rc"
+    firstLine = 155
+}
+
+String {
+    key = "editor.mfc.source.enable"
+    text = "Enable "
+    source = "source_audit"
+    migrationState = "candidate_collapsed_v1"
+    textHash = "f70b90dda9b6"
+    occurrenceCount = 1
+    activeOccurrenceCount = 1
+    sourceAreas = "Editor"
+    categories = "resource_visible_candidate"
+    firstSourceFile = "Editor/resource.rc"
+    firstLine = 746
+}
+
+String {
+    key = "editor.mfc.source.enter_text"
+    text = "Enter Text"
+    source = "source_audit"
+    migrationState = "candidate_collapsed_v1"
+    textHash = "29a5683b8c95"
+    occurrenceCount = 1
+    activeOccurrenceCount = 1
+    sourceAreas = "Editor"
+    categories = "resource_visible_candidate"
+    firstSourceFile = "Editor/resource.rc"
+    firstLine = 982
+}
+
+String {
+    key = "editor.mfc.source.error_the_height_map_must_be_of_the_same_dimensions_as_the_m_fec76d87"
+    text = "Error: The height map must be of the same dimensions as the map it's being applied to."
+    source = "source_audit"
+    migrationState = "candidate_collapsed_v1"
+    textHash = "fec76d87f6dc"
+    occurrenceCount = 1
+    activeOccurrenceCount = 1
+    sourceAreas = "Editor"
+    categories = "user_or_debug_error_candidate"
+    firstSourceFile = "Editor/resource.rc"
+    firstLine = 1748
+}
+
+String {
+    key = "editor.mfc.source.error_this_operation_would_exceed_the_maximum_amount_of_reso_fe2f9778"
+    text = "Error: This operation would exceed the maximum amount of resources allowed. If changes have been made during this session, some of these resources may be being used to store "
+    source = "source_audit"
+    migrationState = "candidate_collapsed_v1"
+    textHash = "fe2f9778614f"
+    occurrenceCount = 1
+    activeOccurrenceCount = 1
+    sourceAreas = "Editor"
+    categories = "user_or_debug_error_candidate"
+    firstSourceFile = "Editor/resource.rc"
+    firstLine = 1752
+}
+
+String {
+    key = "editor.mfc.source.f_activated_by_flag_during_the_mission"
+    text = "F  Activated by flag during the mission"
+    source = "source_audit"
+    migrationState = "candidate_collapsed_v1"
+    textHash = "823f5d0d407c"
+    occurrenceCount = 1
+    activeOccurrenceCount = 1
+    sourceAreas = "Editor"
+    categories = "resource_visible_candidate"
+    firstSourceFile = "Editor/resource.rc"
+    firstLine = 234
+}
+
+String {
+    key = "editor.mfc.source.final_video"
+    text = "Final Video"
+    source = "source_audit"
+    migrationState = "candidate_collapsed_v1"
+    textHash = "fca61680ae34"
+    occurrenceCount = 1
+    activeOccurrenceCount = 1
+    sourceAreas = "Editor"
+    categories = "resource_visible_candidate"
+    firstSourceFile = "Editor/resource.rc"
+    firstLine = 694
+}
+
+String {
+    key = "editor.mfc.source.flag_name"
+    text = "Flag Name"
+    source = "source_audit"
+    migrationState = "candidate_collapsed_v1"
+    textHash = "10b365a306b4"
+    occurrenceCount = 1
+    activeOccurrenceCount = 1
+    sourceAreas = "Editor"
+    categories = "resource_visible_candidate"
+    firstSourceFile = "Editor/resource.rc"
+    firstLine = 973
+}
+
+String {
+    key = "editor.mfc.stringtable.ids_smallstuff"
+    text = "Flammable Things"
+    source = "editor.rc"
+    migrationState = "candidate_collapsed_v1"
+    textHash = "fe9a159e7433"
+    occurrenceCount = 1
+    activeOccurrenceCount = 1
+    sourceAreas = "mclib"
+    categories = "resource_visible_candidate"
+    firstSourceFile = "mclib/MCLib.rc"
+    firstLine = 135
+}
+
+String {
+    key = "editor.mfc.stringtable.ids_flatten"
+    text = "Flatten"
+    source = "editor.rc"
+    migrationState = "candidate_collapsed_v1"
+    textHash = "0af14ddb20aa"
+    occurrenceCount = 1
+    activeOccurrenceCount = 1
+    sourceAreas = "mclib"
+    categories = "resource_visible_candidate"
+    firstSourceFile = "mclib/MCLib.rc"
+    firstLine = 147
+}
+
+String {
+    key = "editor.mfc.source.fog"
+    text = "Fog"
+    source = "editor.menu.rc"
+    migrationState = "candidate_collapsed_v1"
+    textHash = "bae15ef895e9"
+    occurrenceCount = 1
+    activeOccurrenceCount = 1
+    sourceAreas = "Editor"
+    categories = "resource_visible_candidate"
+    firstSourceFile = "Editor/resource.rc"
+    firstLine = 777
+}
+
+String {
+    key = "editor.mfc.source.forest_andtool_t"
+    text = "Forest &Tool\tT"
+    source = "source_audit"
+    migrationState = "candidate_collapsed_v1"
+    textHash = "79c15e094146"
+    occurrenceCount = 1
+    activeOccurrenceCount = 1
+    sourceAreas = "Editor"
+    categories = "resource_visible_candidate"
+    firstSourceFile = "Editor/resource.rc"
+    firstLine = 1109
+}
+
+String {
+    key = "editor.mfc.source.forest_list"
+    text = "Forest List"
+    source = "source_audit"
+    migrationState = "candidate_collapsed_v1"
+    textHash = "7e69a02bd0c0"
+    occurrenceCount = 2
+    activeOccurrenceCount = 2
+    sourceAreas = "Editor"
+    categories = "resource_visible_candidate"
+    firstSourceFile = "Editor/resource.rc"
+    firstLine = 919
+}
+
+String {
+    key = "editor.mfc.source.forest_name"
+    text = "Forest Name"
+    source = "source_audit"
+    migrationState = "candidate_collapsed_v1"
+    textHash = "01171c5fd2f7"
+    occurrenceCount = 1
+    activeOccurrenceCount = 1
+    sourceAreas = "Editor"
+    categories = "resource_visible_candidate"
+    firstSourceFile = "Editor/resource.rc"
+    firstLine = 914
+}
+
+String {
+    key = "editor.mfc.source.forest_tool"
+    text = "Forest Tool"
+    source = "editor.menu.rc"
+    migrationState = "candidate_collapsed_v1"
+    textHash = "423d0bdfc1b6"
+    occurrenceCount = 1
+    activeOccurrenceCount = 1
+    sourceAreas = "Editor"
+    categories = "resource_visible_candidate"
+    firstSourceFile = "Editor/resource.rc"
+    firstLine = 833
+}
+
+String {
+    key = "editor.mfc.source.fractalize_terrain"
+    text = "Fractalize Terrain"
+    source = "source_audit"
+    migrationState = "candidate_collapsed_v1"
+    textHash = "b772957e91e4"
+    occurrenceCount = 1
+    activeOccurrenceCount = 1
+    sourceAreas = "Editor"
+    categories = "resource_visible_candidate"
+    firstSourceFile = "Editor/resource.rc"
+    firstLine = 820
+}
+
+String {
+    key = "editor.mfc.source.green"
+    text = "Green:"
+    source = "source_audit"
+    migrationState = "candidate_collapsed_v1"
+    textHash = "97dfea5a91ba"
+    occurrenceCount = 1
+    activeOccurrenceCount = 1
+    sourceAreas = "Editor"
+    categories = "resource_visible_candidate"
+    firstSourceFile = "Editor/resource.rc"
+    firstLine = 791
+}
+
+String {
+    key = "editor.mfc.source.group_label"
+    text = "Group Label"
+    source = "source_audit"
+    migrationState = "candidate_collapsed_v1"
+    textHash = "e6cce5ae619f"
+    occurrenceCount = 1
+    activeOccurrenceCount = 1
+    sourceAreas = "Editor"
+    categories = "resource_visible_candidate"
+    firstSourceFile = "Editor/resource.rc"
+    firstLine = 722
+}
+
+String {
+    key = "editor.mfc.source.groups"
+    text = "Groups"
+    source = "source_audit"
+    migrationState = "candidate_collapsed_v1"
+    textHash = "ae9629f4ebb8"
+    occurrenceCount = 1
+    activeOccurrenceCount = 1
+    sourceAreas = "Editor"
+    categories = "resource_visible_candidate"
+    firstSourceFile = "Editor/resource.rc"
+    firstLine = 695
+}
+
+String {
+    key = "editor.mfc.stringtable.ids_string10113"
+    text = "Gulag Set Piece"
+    source = "editor.rc"
+    migrationState = "candidate_collapsed_v1"
+    textHash = "4b1837730c4b"
+    occurrenceCount = 1
+    activeOccurrenceCount = 1
+    sourceAreas = "mclib"
+    categories = "resource_visible_candidate"
+    firstSourceFile = "mclib/MCLib.rc"
+    firstLine = 183
+}
+
+String {
+    key = "editor.mfc.source.h_hidden_trigger"
+    text = "H  Hidden trigger"
+    source = "source_audit"
+    migrationState = "candidate_collapsed_v1"
+    textHash = "2471d2bc3b76"
+    occurrenceCount = 1
+    activeOccurrenceCount = 1
+    sourceAreas = "Editor"
+    categories = "resource_visible_candidate"
+    firstSourceFile = "Editor/resource.rc"
+    firstLine = 233
+}
+
+String {
+    key = "editor.mfc.source.height_maps_must_be_gray_scale"
+    text = "Height maps must be gray scale."
+    source = "source_audit"
+    migrationState = "candidate_collapsed_v1"
+    textHash = "58eb54ae2a15"
+    occurrenceCount = 1
+    activeOccurrenceCount = 1
+    sourceAreas = "Editor"
+    categories = "resource_visible_candidate"
+    firstSourceFile = "Editor/resource.rc"
+    firstLine = 1729
+}
+
+String {
+    key = "editor.mfc.source.height_variation"
+    text = "Height Variation"
+    source = "source_audit"
+    migrationState = "candidate_collapsed_v1"
+    textHash = "21f837823e78"
+    occurrenceCount = 1
+    activeOccurrenceCount = 1
+    sourceAreas = "Editor"
+    categories = "resource_visible_candidate"
+    firstSourceFile = "Editor/resource.rc"
+    firstLine = 906
+}
+
+String {
+    key = "editor.mfc.source.hidden_trigger"
+    text = "Hidden Trigger"
+    source = "source_audit"
+    migrationState = "candidate_collapsed_v1"
+    textHash = "8a000f8667c1"
+    occurrenceCount = 1
+    activeOccurrenceCount = 1
+    sourceAreas = "Editor"
+    categories = "resource_visible_candidate"
+    firstSourceFile = "Editor/resource.rc"
+    firstLine = 273
+}
+
+String {
+    key = "editor.mfc.source.highlight_1"
+    text = "Highlight 1"
+    source = "source_audit"
+    migrationState = "candidate_collapsed_v1"
+    textHash = "12e156f4bd1f"
+    occurrenceCount = 1
+    activeOccurrenceCount = 1
+    sourceAreas = "Editor"
+    categories = "resource_visible_candidate"
+    firstSourceFile = "Editor/resource.rc"
+    firstLine = 540
+}
+
+String {
+    key = "editor.mfc.source.highlight_2"
+    text = "Highlight 2"
+    source = "source_audit"
+    migrationState = "candidate_collapsed_v1"
+    textHash = "67cce9997eb6"
+    occurrenceCount = 1
+    activeOccurrenceCount = 1
+    sourceAreas = "Editor"
+    categories = "resource_visible_candidate"
+    firstSourceFile = "Editor/resource.rc"
+    firstLine = 541
+}
+
+String {
+    key = "editor.mfc.source.highlight_color_1"
+    text = "Highlight Color 1"
+    source = "source_audit"
+    migrationState = "candidate_collapsed_v1"
+    textHash = "6d00155cb5a8"
+    occurrenceCount = 1
+    activeOccurrenceCount = 1
+    sourceAreas = "Editor"
+    categories = "resource_visible_candidate"
+    firstSourceFile = "Editor/resource.rc"
+    firstLine = 361
+}
+
+String {
+    key = "editor.mfc.source.highlight_color_2"
+    text = "Highlight Color 2"
+    source = "source_audit"
+    migrationState = "candidate_collapsed_v1"
+    textHash = "a862447c5084"
+    occurrenceCount = 1
+    activeOccurrenceCount = 1
+    sourceAreas = "Editor"
+    categories = "resource_visible_candidate"
+    firstSourceFile = "Editor/resource.rc"
+    firstLine = 362
+}
+
+String {
+    key = "editor.mfc.stringtable.ids_smooth_radius"
+    text = "Hill radius"
+    source = "editor.rc"
+    migrationState = "candidate_collapsed_v1"
+    textHash = "1873a08a0014"
+    occurrenceCount = 1
+    activeOccurrenceCount = 1
+    sourceAreas = "mclib"
+    categories = "resource_visible_candidate"
+    firstSourceFile = "mclib/MCLib.rc"
+    firstLine = 156
+}
+
+String {
+    key = "editor.mfc.stringtable.ids_string10107"
+    text = "House Davion"
+    source = "editor.rc"
+    migrationState = "candidate_collapsed_v1"
+    textHash = "b67e13f1f9d2"
+    occurrenceCount = 1
+    activeOccurrenceCount = 1
+    sourceAreas = "mclib"
+    categories = "resource_visible_candidate"
+    firstSourceFile = "mclib/MCLib.rc"
+    firstLine = 137
+}
+
+String {
+    key = "editor.mfc.stringtable.ids_string10108"
+    text = "House Liao"
+    source = "editor.rc"
+    migrationState = "candidate_collapsed_v1"
+    textHash = "46489a670705"
+    occurrenceCount = 1
+    activeOccurrenceCount = 1
+    sourceAreas = "mclib"
+    categories = "resource_visible_candidate"
+    firstSourceFile = "mclib/MCLib.rc"
+    firstLine = 138
+}
+
+String {
+    key = "editor.mfc.stringtable.ids_string10110"
+    text = "House Steiner"
+    source = "editor.rc"
+    migrationState = "candidate_collapsed_v1"
+    textHash = "50b6377f6261"
+    occurrenceCount = 1
+    activeOccurrenceCount = 1
+    sourceAreas = "mclib"
+    categories = "resource_visible_candidate"
+    firstSourceFile = "mclib/MCLib.rc"
+    firstLine = 140
+}
+
+String {
+    key = "editor.mfc.stringtable.ids_string10117"
+    text = "HPG Set Piece"
+    source = "editor.rc"
+    migrationState = "candidate_collapsed_v1"
+    textHash = "15beadd8707e"
+    occurrenceCount = 1
+    activeOccurrenceCount = 1
+    sourceAreas = "mclib"
+    categories = "resource_visible_candidate"
+    firstSourceFile = "mclib/MCLib.rc"
+    firstLine = 187
+}
+
+String {
+    key = "editor.mfc.stringtable.ids_in_seconds"
+    text = "in seconds"
+    source = "editor.rc"
+    migrationState = "candidate_collapsed_v1"
+    textHash = "9e33ade22ccf"
+    occurrenceCount = 1
+    activeOccurrenceCount = 1
+    sourceAreas = "mclib"
+    categories = "resource_visible_candidate"
+    firstSourceFile = "mclib/MCLib.rc"
+    firstLine = 169
+}
+
+String {
+    key = "editor.mfc.source.initial_resource_points"
+    text = "Initial Resource Points"
+    source = "source_audit"
+    migrationState = "candidate_collapsed_v1"
+    textHash = "f7f04face2bb"
+    occurrenceCount = 1
+    activeOccurrenceCount = 1
+    sourceAreas = "Editor"
+    categories = "resource_visible_candidate"
+    firstSourceFile = "Editor/resource.rc"
+    firstLine = 638
+}
+
+String {
+    key = "editor.mfc.source.invoke_post_mission_pilot_promotion_screen"
+    text = "Invoke post-mission pilot promotion screen"
+    source = "source_audit"
+    migrationState = "candidate_collapsed_v1"
+    textHash = "df5b7b3dc735"
+    occurrenceCount = 1
+    activeOccurrenceCount = 1
+    sourceAreas = "Editor"
+    categories = "resource_visible_candidate"
+    firstSourceFile = "Editor/resource.rc"
+    firstLine = 752
+}
+
+String {
+    key = "editor.mfc.source.invoke_post_mission_salvage_screen"
+    text = "Invoke post-mission salvage screen"
+    source = "source_audit"
+    migrationState = "candidate_collapsed_v1"
+    textHash = "48a14ba698c5"
+    occurrenceCount = 1
+    activeOccurrenceCount = 1
+    sourceAreas = "Editor"
+    categories = "resource_visible_candidate"
+    firstSourceFile = "Editor/resource.rc"
+    firstLine = 749
+}
+
+String {
+    key = "editor.mfc.source.invoke_pre_mission_logistics_screens"
+    text = "Invoke pre-mission logistics screens"
+    source = "source_audit"
+    migrationState = "candidate_collapsed_v1"
+    textHash = "7f457c4de802"
+    occurrenceCount = 1
+    activeOccurrenceCount = 1
+    sourceAreas = "Editor"
+    categories = "resource_visible_candidate"
+    firstSourceFile = "Editor/resource.rc"
+    firstLine = 743
+}
+
+String {
+    key = "editor.mfc.source.lay_andmines"
+    text = "Lay &Mines"
+    source = "source_audit"
+    migrationState = "candidate_collapsed_v1"
+    textHash = "5a18cda48773"
+    occurrenceCount = 1
+    activeOccurrenceCount = 1
+    sourceAreas = "Editor"
+    categories = "resource_visible_candidate"
+    firstSourceFile = "Editor/resource.rc"
+    firstLine = 1098
+}
+
+String {
+    key = "editor.mfc.stringtable.ids_string10115"
+    text = "Liao Palace Set Piece"
+    source = "editor.rc"
+    migrationState = "candidate_collapsed_v1"
+    textHash = "37fb70b300e1"
+    occurrenceCount = 1
+    activeOccurrenceCount = 1
+    sourceAreas = "mclib"
+    categories = "resource_visible_candidate"
+    firstSourceFile = "mclib/MCLib.rc"
+    firstLine = 185
+}
+
+String {
+    key = "editor.mfc.source.lighandt_ctrl_plus_l"
+    text = "Ligh&t\tCtrl + L"
+    source = "source_audit"
+    migrationState = "candidate_collapsed_v1"
+    textHash = "f47a04feace2"
+    occurrenceCount = 1
+    activeOccurrenceCount = 1
+    sourceAreas = "Editor"
+    categories = "resource_visible_candidate"
+    firstSourceFile = "Editor/resource.rc"
+    firstLine = 1093
+}
+
+String {
+    key = "editor.mfc.source.live"
+    text = "Live"
+    source = "source_audit"
+    migrationState = "candidate_collapsed_v1"
+    textHash = "65c821a596ce"
+    occurrenceCount = 1
+    activeOccurrenceCount = 1
+    sourceAreas = "Editor"
+    categories = "resource_visible_candidate"
+    firstSourceFile = "Editor/resource.rc"
+    firstLine = 913
+}
+
+String {
+    key = "editor.mfc.source.logistics_model"
+    text = "Logistics Model"
+    source = "source_audit"
+    migrationState = "candidate_collapsed_v1"
+    textHash = "666b3ebfca53"
+    occurrenceCount = 1
+    activeOccurrenceCount = 1
+    sourceAreas = "Editor"
+    categories = "resource_visible_candidate"
+    firstSourceFile = "Editor/resource.rc"
+    firstLine = 359
+}
+
+String {
+    key = "editor.mfc.source.map_heights"
+    text = "Map Heights"
+    source = "source_audit"
+    migrationState = "candidate_collapsed_v1"
+    textHash = "4a9dff9e0b24"
+    occurrenceCount = 1
+    activeOccurrenceCount = 1
+    sourceAreas = "Editor"
+    categories = "resource_visible_candidate"
+    firstSourceFile = "Editor/resource.rc"
+    firstLine = 117
+}
+
+String {
+    key = "editor.mfc.source.marker_location"
+    text = "Marker Location"
+    source = "source_audit"
+    migrationState = "candidate_collapsed_v1"
+    textHash = "346029a780f9"
+    occurrenceCount = 1
+    activeOccurrenceCount = 1
+    sourceAreas = "Editor"
+    categories = "resource_visible_candidate"
+    firstSourceFile = "Editor/resource.rc"
+    firstLine = 364
+}
+
+String {
+    key = "editor.mfc.stringtable.ids_groups"
+    text = "Markers"
+    source = "editor.rc"
+    migrationState = "candidate_collapsed_v1"
+    textHash = "c64fa883b0b0"
+    occurrenceCount = 1
+    activeOccurrenceCount = 1
+    sourceAreas = "mclib"
+    categories = "resource_visible_candidate"
+    firstSourceFile = "mclib/MCLib.rc"
+    firstLine = 130
+}
+
+String {
+    key = "editor.mfc.source.max"
+    text = "Max:"
+    source = "source_audit"
+    migrationState = "candidate_collapsed_v1"
+    textHash = "52d0a59a321f"
+    occurrenceCount = 3
+    activeOccurrenceCount = 3
+    sourceAreas = "Editor"
+    categories = "resource_visible_candidate"
+    firstSourceFile = "Editor/resource.rc"
+    firstLine = 124
+}
+
+String {
+    key = "editor.mfc.source.maximum_number_of_players_2_8"
+    text = "Maximum number of players (2 - 8)"
+    source = "source_audit"
+    migrationState = "candidate_collapsed_v1"
+    textHash = "9f67069661d8"
+    occurrenceCount = 1
+    activeOccurrenceCount = 1
+    sourceAreas = "Editor"
+    categories = "resource_visible_candidate"
+    firstSourceFile = "Editor/resource.rc"
+    firstLine = 644
+}
+
+String {
+    key = "editor.mfc.source.maximum_number_of_teams_2_8"
+    text = "Maximum number of teams (2 - 8)"
+    source = "source_audit"
+    migrationState = "candidate_collapsed_v1"
+    textHash = "387c4a5260c6"
+    occurrenceCount = 1
+    activeOccurrenceCount = 1
+    sourceAreas = "Editor"
+    categories = "resource_visible_candidate"
+    firstSourceFile = "Editor/resource.rc"
+    firstLine = 642
+}
+
+String {
+    key = "editor.mfc.stringtable.ids_caption"
+    text = "MC2 Editor -- Version %s    %s"
+    source = "editor.rc"
+    migrationState = "candidate_collapsed_v1"
+    textHash = "ccc74f1d4cf1"
+    occurrenceCount = 1
+    activeOccurrenceCount = 1
+    sourceAreas = "mclib"
+    categories = "resource_visible_candidate"
+    firstSourceFile = "mclib/MCLib.rc"
+    firstLine = 167
+}
+
+String {
+    key = "editor.mfc.source.mech_lab_and_mech_purchasing"
+    text = "Mech Lab and Mech Purchasing"
+    source = "source_audit"
+    migrationState = "candidate_collapsed_v1"
+    textHash = "2abd39ee115e"
+    occurrenceCount = 1
+    activeOccurrenceCount = 1
+    sourceAreas = "Editor"
+    categories = "resource_visible_candidate"
+    firstSourceFile = "Editor/resource.rc"
+    firstLine = 746
+}
+
+String {
+    key = "editor.mfc.source.mechcommander_2_editor"
+    text = "MechCommander 2  Editor"
+    source = "source_audit"
+    migrationState = "candidate_collapsed_v1"
+    textHash = "2288b0929bcb"
+    occurrenceCount = 1
+    activeOccurrenceCount = 1
+    sourceAreas = "Editor"
+    categories = "visible_review_candidate"
+    firstSourceFile = "Editor/resource.rc"
+    firstLine = 82
+}
+
+String {
+    key = "editor.mfc.source.mechcommander_2_editor.9ec4fe3c"
+    text = "MechCommander 2 Editor"
+    source = "source_audit"
+    migrationState = "candidate_collapsed_v1"
+    textHash = "9ec4fe3cc138"
+    occurrenceCount = 2
+    activeOccurrenceCount = 2
+    sourceAreas = "Editor"
+    categories = "visible_review_candidate"
+    firstSourceFile = "Editor/resource.rc"
+    firstLine = 75
+}
+
+String {
+    key = "editor.mfc.source.min"
+    text = "Min:"
+    source = "source_audit"
+    migrationState = "candidate_collapsed_v1"
+    textHash = "21be6e4ee37c"
+    occurrenceCount = 3
+    activeOccurrenceCount = 3
+    sourceAreas = "Editor"
+    categories = "resource_visible_candidate"
+    firstSourceFile = "Editor/resource.rc"
+    firstLine = 123
+}
+
+String {
+    key = "editor.mfc.source.mine_layer"
+    text = "Mine Layer"
+    source = "source_audit"
+    migrationState = "candidate_collapsed_v1"
+    textHash = "d079e1a3a4d7"
+    occurrenceCount = 1
+    activeOccurrenceCount = 1
+    sourceAreas = "Editor"
+    categories = "resource_visible_candidate"
+    firstSourceFile = "Editor/resource.rc"
+    firstLine = 596
+}
+
+String {
+    key = "editor.mfc.source.mission_briefing"
+    text = "Mission Briefing"
+    source = "source_audit"
+    migrationState = "candidate_collapsed_v1"
+    textHash = "c18087d673d5"
+    occurrenceCount = 1
+    activeOccurrenceCount = 1
+    sourceAreas = "Editor"
+    categories = "resource_visible_candidate"
+    firstSourceFile = "Editor/resource.rc"
+    firstLine = 626
+}
+
+String {
+    key = "editor.mfc.source.mission_description"
+    text = "Mission Description"
+    source = "source_audit"
+    migrationState = "candidate_collapsed_v1"
+    textHash = "90dc27e4c3be"
+    occurrenceCount = 1
+    activeOccurrenceCount = 1
+    sourceAreas = "Editor"
+    categories = "resource_visible_candidate"
+    firstSourceFile = "Editor/resource.rc"
+    firstLine = 631
+}
+
+String {
+    key = "editor.mfc.source.mission_editor"
+    text = "Mission Editor"
+    source = "source_audit"
+    migrationState = "candidate_collapsed_v1"
+    textHash = "e6f9419cfc90"
+    occurrenceCount = 1
+    activeOccurrenceCount = 1
+    sourceAreas = "Editor"
+    categories = "resource_visible_candidate"
+    firstSourceFile = "Editor/resource.rc"
+    firstLine = 546
+}
+
+String {
+    key = "editor.mfc.source.mission_file"
+    text = "Mission File"
+    source = "source_audit"
+    migrationState = "candidate_collapsed_v1"
+    textHash = "a84d49c19659"
+    occurrenceCount = 1
+    activeOccurrenceCount = 1
+    sourceAreas = "Editor"
+    categories = "resource_visible_candidate"
+    firstSourceFile = "Editor/resource.rc"
+    firstLine = 760
+}
+
+String {
+    key = "editor.mfc.source.mission_is_mandatory"
+    text = "Mission is mandatory"
+    source = "source_audit"
+    migrationState = "candidate_collapsed_v1"
+    textHash = "cc9346d6d5c4"
+    occurrenceCount = 1
+    activeOccurrenceCount = 1
+    sourceAreas = "Editor"
+    categories = "resource_visible_candidate"
+    firstSourceFile = "Editor/resource.rc"
+    firstLine = 741
+}
+
+String {
+    key = "editor.mfc.source.mission_name"
+    text = "Mission Name"
+    source = "source_audit"
+    migrationState = "candidate_collapsed_v1"
+    textHash = "50c4713cbc33"
+    occurrenceCount = 1
+    activeOccurrenceCount = 1
+    sourceAreas = "Editor"
+    categories = "resource_visible_candidate"
+    firstSourceFile = "Editor/resource.rc"
+    firstLine = 620
+}
+
+String {
+    key = "editor.mfc.source.mission_settings"
+    text = "Mission Settings"
+    source = "editor.menu.rc"
+    migrationState = "candidate_collapsed_v1"
+    textHash = "04e3653d8815"
+    occurrenceCount = 1
+    activeOccurrenceCount = 1
+    sourceAreas = "Editor"
+    categories = "resource_visible_candidate"
+    firstSourceFile = "Editor/resource.rc"
+    firstLine = 557
+}
+
+String {
+    key = "editor.mfc.source.mission_type"
+    text = "Mission Type"
+    source = "source_audit"
+    migrationState = "candidate_collapsed_v1"
+    textHash = "1273c650a67d"
+    occurrenceCount = 1
+    activeOccurrenceCount = 1
+    sourceAreas = "Editor"
+    categories = "resource_visible_candidate"
+    firstSourceFile = "Editor/resource.rc"
+    firstLine = 650
+}
+
+String {
+    key = "editor.mfc.source.missions"
+    text = "Missions"
+    source = "source_audit"
+    migrationState = "candidate_collapsed_v1"
+    textHash = "323ea30c1dcc"
+    occurrenceCount = 1
+    activeOccurrenceCount = 1
+    sourceAreas = "Editor"
+    categories = "resource_visible_candidate"
+    firstSourceFile = "Editor/resource.rc"
+    firstLine = 729
+}
+
+String {
+    key = "editor.mfc.source.more_than_one_building_was_selected"
+    text = "More than one building was selected."
+    source = "source_audit"
+    migrationState = "candidate_collapsed_v1"
+    textHash = "44afcbf6215a"
+    occurrenceCount = 1
+    activeOccurrenceCount = 1
+    sourceAreas = "Editor"
+    categories = "resource_visible_candidate"
+    firstSourceFile = "Editor/resource.rc"
+    firstLine = 1734
+}
+
+String {
+    key = "editor.mfc.source.more_than_one_unit_was_selected"
+    text = "More than one unit was selected."
+    source = "source_audit"
+    migrationState = "candidate_collapsed_v1"
+    textHash = "241d1cf8f4b7"
+    occurrenceCount = 1
+    activeOccurrenceCount = 1
+    sourceAreas = "Editor"
+    categories = "resource_visible_candidate"
+    firstSourceFile = "Editor/resource.rc"
+    firstLine = 1737
+}
+
+String {
+    key = "editor.mfc.source.move_down"
+    text = "Move Down"
+    source = "source_audit"
+    migrationState = "candidate_collapsed_v1"
+    textHash = "4158bedc2fcd"
+    occurrenceCount = 2
+    activeOccurrenceCount = 2
+    sourceAreas = "Editor"
+    categories = "resource_visible_candidate"
+    firstSourceFile = "Editor/resource.rc"
+    firstLine = 222
+}
+
+String {
+    key = "editor.mfc.source.move_up"
+    text = "Move Up"
+    source = "source_audit"
+    migrationState = "candidate_collapsed_v1"
+    textHash = "c6370aded903"
+    occurrenceCount = 2
+    activeOccurrenceCount = 2
+    sourceAreas = "Editor"
+    categories = "resource_visible_candidate"
+    firstSourceFile = "Editor/resource.rc"
+    firstLine = 221
+}
+
+String {
+    key = "editor.mfc.source.msctls_trackbar32"
+    text = "msctls_trackbar32"
+    source = "source_audit"
+    migrationState = "candidate_collapsed_v1"
+    textHash = "8801335e290a"
+    occurrenceCount = 14
+    activeOccurrenceCount = 14
+    sourceAreas = "Editor"
+    categories = "resource_visible_candidate"
+    firstSourceFile = "Editor/resource.rc"
+    firstLine = 836
+}
+
+String {
+    key = "editor.mfc.source.msctls_updown32"
+    text = "msctls_updown32"
+    source = "source_audit"
+    migrationState = "candidate_collapsed_v1"
+    textHash = "7eac67e9e34e"
+    occurrenceCount = 3
+    activeOccurrenceCount = 3
+    sourceAreas = "Editor"
+    categories = "resource_visible_candidate"
+    firstSourceFile = "Editor/resource.rc"
+    firstLine = 574
+}
+
+String {
+    key = "editor.mfc.stringtable.multiplayer"
+    text = "Multiplayer Map: There are players with no default units. Default units are needed for quickstart games."
+    source = "editor.rc"
+    migrationState = "candidate_collapsed_v1"
+    textHash = "6bb6b2e59753"
+    occurrenceCount = 1
+    activeOccurrenceCount = 1
+    sourceAreas = "mclib"
+    categories = "manual_review"
+    firstSourceFile = "mclib/MCLib.rc"
+    firstLine = 173
+}
+
+String {
+    key = "editor.mfc.source.new_height"
+    text = "New Height:"
+    source = "source_audit"
+    migrationState = "candidate_collapsed_v1"
+    textHash = "67b91ab0de00"
+    occurrenceCount = 1
+    activeOccurrenceCount = 1
+    sourceAreas = "Editor"
+    categories = "resource_visible_candidate"
+    firstSourceFile = "Editor/resource.rc"
+    firstLine = 171
+}
+
+String {
+    key = "editor.mfc.source.no_valid_buildings_were_selected"
+    text = "No valid buildings were selected."
+    source = "source_audit"
+    migrationState = "candidate_collapsed_v1"
+    textHash = "8cea881dfd92"
+    occurrenceCount = 1
+    activeOccurrenceCount = 1
+    sourceAreas = "Editor"
+    categories = "resource_visible_candidate"
+    firstSourceFile = "Editor/resource.rc"
+    firstLine = 1733
+}
+
+String {
+    key = "editor.mfc.source.no_valid_units_were_selected"
+    text = "No valid units were selected."
+    source = "source_audit"
+    migrationState = "candidate_collapsed_v1"
+    textHash = "569acae33ccd"
+    occurrenceCount = 1
+    activeOccurrenceCount = 1
+    sourceAreas = "Editor"
+    categories = "resource_visible_candidate"
+    firstSourceFile = "Editor/resource.rc"
+    firstLine = 1736
+}
+
+String {
+    key = "editor.mfc.source.no_variants"
+    text = "No Variants"
+    source = "source_audit"
+    migrationState = "candidate_collapsed_v1"
+    textHash = "4461ea99611f"
+    occurrenceCount = 1
+    activeOccurrenceCount = 1
+    sourceAreas = "Editor"
+    categories = "resource_visible_candidate"
+    firstSourceFile = "Editor/resource.rc"
+    firstLine = 614
+}
+
+String {
+    key = "editor.mfc.source.noise_0_5"
+    text = "Noise (0 - 5)"
+    source = "source_audit"
+    migrationState = "candidate_collapsed_v1"
+    textHash = "718418d5963f"
+    occurrenceCount = 1
+    activeOccurrenceCount = 1
+    sourceAreas = "Editor"
+    categories = "resource_visible_candidate"
+    firstSourceFile = "Editor/resource.rc"
+    firstLine = 827
+}
+
+String {
+    key = "editor.mfc.stringtable.ids_num_enemy_units"
+    text = "Number of enemy units"
+    source = "editor.rc"
+    migrationState = "candidate_collapsed_v1"
+    textHash = "d7171f636ffe"
+    occurrenceCount = 1
+    activeOccurrenceCount = 1
+    sourceAreas = "mclib"
+    categories = "resource_visible_candidate"
+    firstSourceFile = "mclib/MCLib.rc"
+    firstLine = 176
+}
+
+String {
+    key = "editor.mfc.source.number_of_missions_required_to_complete"
+    text = "Number of missions required to complete"
+    source = "source_audit"
+    migrationState = "candidate_collapsed_v1"
+    textHash = "6a16fbe62385"
+    occurrenceCount = 1
+    activeOccurrenceCount = 1
+    sourceAreas = "Editor"
+    categories = "resource_visible_candidate"
+    firstSourceFile = "Editor/resource.rc"
+    firstLine = 723
+}
+
+String {
+    key = "editor.mfc.source.number_of_random_rp_buildings"
+    text = "Number of random RP Buildings"
+    source = "source_audit"
+    migrationState = "candidate_collapsed_v1"
+    textHash = "58c85bc5ed59"
+    occurrenceCount = 1
+    activeOccurrenceCount = 1
+    sourceAreas = "Editor"
+    categories = "resource_visible_candidate"
+    firstSourceFile = "Editor/resource.rc"
+    firstLine = 648
+}
+
+String {
+    key = "editor.mfc.stringtable.ids_buildings"
+    text = "O&bjects"
+    source = "editor.rc"
+    migrationState = "candidate_collapsed_v1"
+    textHash = "f516c14ab158"
+    occurrenceCount = 1
+    activeOccurrenceCount = 1
+    sourceAreas = "mclib"
+    categories = "resource_visible_candidate"
+    firstSourceFile = "mclib/MCLib.rc"
+    firstLine = 118
+}
+
+String {
+    key = "editor.mfc.source.object_selection_mode"
+    text = "Object Selection Mode"
+    source = "source_audit"
+    migrationState = "candidate_collapsed_v1"
+    textHash = "0ee4224bb58e"
+    occurrenceCount = 1
+    activeOccurrenceCount = 1
+    sourceAreas = "Editor"
+    categories = "resource_visible_candidate"
+    firstSourceFile = "Editor/resource.rc"
+    firstLine = 486
+}
+
+String {
+    key = "editor.mfc.source.objective"
+    text = "Objective"
+    source = "source_audit"
+    migrationState = "candidate_collapsed_v1"
+    textHash = "50c8920b8dc2"
+    occurrenceCount = 1
+    activeOccurrenceCount = 1
+    sourceAreas = "Editor"
+    categories = "resource_visible_candidate"
+    firstSourceFile = "Editor/resource.rc"
+    firstLine = 240
+}
+
+String {
+    key = "editor.mfc.source.objective_failure"
+    text = "Objective Failure"
+    source = "source_audit"
+    migrationState = "candidate_collapsed_v1"
+    textHash = "52fa98780d94"
+    occurrenceCount = 1
+    activeOccurrenceCount = 1
+    sourceAreas = "Editor"
+    categories = "resource_visible_candidate"
+    firstSourceFile = "Editor/resource.rc"
+    firstLine = 349
+}
+
+String {
+    key = "editor.mfc.source.objective_success"
+    text = "Objective Success"
+    source = "source_audit"
+    migrationState = "candidate_collapsed_v1"
+    textHash = "065db875c504"
+    occurrenceCount = 1
+    activeOccurrenceCount = 1
+    sourceAreas = "Editor"
+    categories = "resource_visible_candidate"
+    firstSourceFile = "Editor/resource.rc"
+    firstLine = 341
+}
+
+String {
+    key = "editor.mfc.source.operation_file"
+    text = "Operation File"
+    source = "source_audit"
+    migrationState = "candidate_collapsed_v1"
+    textHash = "30ff3db2114c"
+    occurrenceCount = 1
+    activeOccurrenceCount = 1
+    sourceAreas = "Editor"
+    categories = "resource_visible_candidate"
+    firstSourceFile = "Editor/resource.rc"
+    firstLine = 725
+}
+
+String {
+    key = "editor.mfc.source.otheandr"
+    text = "Othe&r"
+    source = "source_audit"
+    migrationState = "candidate_collapsed_v1"
+    textHash = "3585f6204d24"
+    occurrenceCount = 1
+    activeOccurrenceCount = 1
+    sourceAreas = "Editor"
+    categories = "resource_visible_candidate"
+    firstSourceFile = "Editor/resource.rc"
+    firstLine = 1086
+}
+
+String {
+    key = "editor.mfc.source.part_id"
+    text = "Part ID"
+    source = "source_audit"
+    migrationState = "candidate_collapsed_v1"
+    textHash = "98da451f1640"
+    occurrenceCount = 1
+    activeOccurrenceCount = 1
+    sourceAreas = "Editor"
+    categories = "resource_visible_candidate"
+    firstSourceFile = "Editor/resource.rc"
+    firstLine = 427
+}
+
+String {
+    key = "editor.mfc.source.paved_road"
+    text = "Paved Road"
+    source = "editor.menu.rc"
+    migrationState = "candidate_collapsed_v1"
+    textHash = "32cf6b120382"
+    occurrenceCount = 1
+    activeOccurrenceCount = 1
+    sourceAreas = "Editor"
+    categories = "resource_visible_candidate"
+    firstSourceFile = "Editor/resource.rc"
+    firstLine = 1054
+}
+
+String {
+    key = "editor.mfc.stringtable.ids_paved_road"
+    text = "Paved road"
+    source = "editor.rc"
+    migrationState = "candidate_collapsed_v1"
+    textHash = "dedd567f2f2d"
+    occurrenceCount = 1
+    activeOccurrenceCount = 1
+    sourceAreas = "mclib"
+    categories = "resource_visible_candidate"
+    firstSourceFile = "mclib/MCLib.rc"
+    firstLine = 124
+}
+
+String {
+    key = "editor.mfc.source.piandne"
+    text = "Pi&ne:"
+    source = "source_audit"
+    migrationState = "candidate_collapsed_v1"
+    textHash = "12e8e404b29e"
+    occurrenceCount = 1
+    activeOccurrenceCount = 1
+    sourceAreas = "Editor"
+    categories = "resource_visible_candidate"
+    firstSourceFile = "Editor/resource.rc"
+    firstLine = 900
+}
+
+String {
+    key = "editor.mfc.source.player"
+    text = "Player"
+    source = "source_audit"
+    migrationState = "candidate_collapsed_v1"
+    textHash = "e53407cfe1a5"
+    occurrenceCount = 1
+    activeOccurrenceCount = 1
+    sourceAreas = "Editor"
+    categories = "resource_visible_candidate"
+    firstSourceFile = "Editor/resource.rc"
+    firstLine = 662
+}
+
+String {
+    key = "editor.mfc.source.player_and1"
+    text = "Player &1"
+    source = "source_audit"
+    migrationState = "candidate_collapsed_v1"
+    textHash = "cf3abcd3fa58"
+    occurrenceCount = 2
+    activeOccurrenceCount = 2
+    sourceAreas = "Editor"
+    categories = "resource_visible_candidate"
+    firstSourceFile = "Editor/resource.rc"
+    firstLine = 1124
+}
+
+String {
+    key = "editor.mfc.source.player_and2"
+    text = "Player &2"
+    source = "source_audit"
+    migrationState = "candidate_collapsed_v1"
+    textHash = "91f36edc86d1"
+    occurrenceCount = 2
+    activeOccurrenceCount = 2
+    sourceAreas = "Editor"
+    categories = "resource_visible_candidate"
+    firstSourceFile = "Editor/resource.rc"
+    firstLine = 1125
+}
+
+String {
+    key = "editor.mfc.source.player_and3"
+    text = "Player &3"
+    source = "source_audit"
+    migrationState = "candidate_collapsed_v1"
+    textHash = "77da987f4931"
+    occurrenceCount = 2
+    activeOccurrenceCount = 2
+    sourceAreas = "Editor"
+    categories = "resource_visible_candidate"
+    firstSourceFile = "Editor/resource.rc"
+    firstLine = 1126
+}
+
+String {
+    key = "editor.mfc.source.player_and4"
+    text = "Player &4"
+    source = "source_audit"
+    migrationState = "candidate_collapsed_v1"
+    textHash = "e07a9dfc6352"
+    occurrenceCount = 2
+    activeOccurrenceCount = 2
+    sourceAreas = "Editor"
+    categories = "resource_visible_candidate"
+    firstSourceFile = "Editor/resource.rc"
+    firstLine = 1128
+}
+
+String {
+    key = "editor.mfc.source.player_and5"
+    text = "Player &5"
+    source = "source_audit"
+    migrationState = "candidate_collapsed_v1"
+    textHash = "504f29d9d3c9"
+    occurrenceCount = 2
+    activeOccurrenceCount = 2
+    sourceAreas = "Editor"
+    categories = "resource_visible_candidate"
+    firstSourceFile = "Editor/resource.rc"
+    firstLine = 1129
+}
+
+String {
+    key = "editor.mfc.source.player_and6"
+    text = "Player &6"
+    source = "source_audit"
+    migrationState = "candidate_collapsed_v1"
+    textHash = "a1c795f52b19"
+    occurrenceCount = 2
+    activeOccurrenceCount = 2
+    sourceAreas = "Editor"
+    categories = "resource_visible_candidate"
+    firstSourceFile = "Editor/resource.rc"
+    firstLine = 1130
+}
+
+String {
+    key = "editor.mfc.source.player_and7"
+    text = "Player &7"
+    source = "source_audit"
+    migrationState = "candidate_collapsed_v1"
+    textHash = "5d7422de062e"
+    occurrenceCount = 2
+    activeOccurrenceCount = 2
+    sourceAreas = "Editor"
+    categories = "resource_visible_candidate"
+    firstSourceFile = "Editor/resource.rc"
+    firstLine = 1131
+}
+
+String {
+    key = "editor.mfc.source.player_and8"
+    text = "Player &8"
+    source = "source_audit"
+    migrationState = "candidate_collapsed_v1"
+    textHash = "b6e8567db30e"
+    occurrenceCount = 2
+    activeOccurrenceCount = 2
+    sourceAreas = "Editor"
+    categories = "resource_visible_candidate"
+    firstSourceFile = "Editor/resource.rc"
+    firstLine = 1132
+}
+
+String {
+    key = "editor.mfc.source.player_settings"
+    text = "Player Settings"
+    source = "editor.menu.rc"
+    migrationState = "candidate_collapsed_v1"
+    textHash = "763c3a64895a"
+    occurrenceCount = 1
+    activeOccurrenceCount = 1
+    sourceAreas = "Editor"
+    categories = "resource_visible_candidate"
+    firstSourceFile = "Editor/resource.rc"
+    firstLine = 655
+}
+
+String {
+    key = "editor.mfc.source.pre_video_file"
+    text = "Pre-Video File"
+    source = "source_audit"
+    migrationState = "candidate_collapsed_v1"
+    textHash = "d7cbed946760"
+    occurrenceCount = 1
+    activeOccurrenceCount = 1
+    sourceAreas = "Editor"
+    categories = "resource_visible_candidate"
+    firstSourceFile = "Editor/resource.rc"
+    firstLine = 726
+}
+
+String {
+    key = "editor.mfc.source.previous_primary_objective_must_be_completed"
+    text = "Previous primary objective must be completed"
+    source = "source_audit"
+    migrationState = "candidate_collapsed_v1"
+    textHash = "6ee9cde53f9c"
+    occurrenceCount = 1
+    activeOccurrenceCount = 1
+    sourceAreas = "Editor"
+    categories = "resource_visible_candidate"
+    firstSourceFile = "Editor/resource.rc"
+    firstLine = 267
+}
+
+String {
+    key = "editor.mfc.source.purchase_file"
+    text = "Purchase File"
+    source = "source_audit"
+    migrationState = "candidate_collapsed_v1"
+    textHash = "b727bd294f4c"
+    occurrenceCount = 1
+    activeOccurrenceCount = 1
+    sourceAreas = "Editor"
+    categories = "resource_visible_candidate"
+    firstSourceFile = "Editor/resource.rc"
+    firstLine = 761
+}
+
+String {
+    key = "editor.mfc.source.radius"
+    text = "Radius"
+    source = "source_audit"
+    migrationState = "candidate_collapsed_v1"
+    textHash = "e5aaeaac2e19"
+    occurrenceCount = 3
+    activeOccurrenceCount = 3
+    sourceAreas = "Editor"
+    categories = "identifier_or_key_candidate;resource_visible_candidate"
+    firstSourceFile = "Editor/forest.cpp"
+    firstLine = 147
+}
+
+String {
+    key = "editor.mfc.source.recalculate_terrain_vertex_shadows"
+    text = "Recalculate Terrain Vertex Shadows"
+    source = "source_audit"
+    migrationState = "candidate_collapsed_v1"
+    textHash = "1b788f852e60"
+    occurrenceCount = 1
+    activeOccurrenceCount = 1
+    sourceAreas = "Editor"
+    categories = "resource_visible_candidate"
+    firstSourceFile = "Editor/resource.rc"
+    firstLine = 138
+}
+
+String {
+    key = "editor.mfc.source.red"
+    text = "Red:"
+    source = "source_audit"
+    migrationState = "candidate_collapsed_v1"
+    textHash = "342a5736290d"
+    occurrenceCount = 1
+    activeOccurrenceCount = 1
+    sourceAreas = "Editor"
+    categories = "resource_visible_candidate"
+    firstSourceFile = "Editor/resource.rc"
+    firstLine = 790
+}
+
+String {
+    key = "editor.mfc.source.refractalize_terrain_ctrl_plus_b"
+    text = "Refractalize Terrain\tCtrl + B"
+    source = "source_audit"
+    migrationState = "candidate_collapsed_v1"
+    textHash = "6d0c15e4c7b3"
+    occurrenceCount = 1
+    activeOccurrenceCount = 1
+    sourceAreas = "Editor"
+    categories = "resource_visible_candidate"
+    firstSourceFile = "Editor/resource.rc"
+    firstLine = 1107
+}
+
+String {
+    key = "editor.mfc.source.refractalize_terrain_recalculate_terrain_texture_shadows"
+    text = "Refractalize Terrain (Recalculate Terrain Texture Shadows)"
+    source = "source_audit"
+    migrationState = "candidate_collapsed_v1"
+    textHash = "bc4d7e9ed6c2"
+    occurrenceCount = 1
+    activeOccurrenceCount = 1
+    sourceAreas = "Editor"
+    categories = "resource_visible_candidate"
+    firstSourceFile = "Editor/resource.rc"
+    firstLine = 141
+}
+
+String {
+    key = "editor.mfc.stringtable.ids_string10111"
+    text = "Regular Buildings"
+    source = "editor.rc"
+    migrationState = "candidate_collapsed_v1"
+    textHash = "660591b1a716"
+    occurrenceCount = 1
+    activeOccurrenceCount = 1
+    sourceAreas = "mclib"
+    categories = "resource_visible_candidate"
+    firstSourceFile = "mclib/MCLib.rc"
+    firstLine = 141
+}
+
+String {
+    key = "editor.mfc.source.reload_burn_in_texture"
+    text = "Reload Burn-In Texture"
+    source = "editor.menu.rc"
+    migrationState = "candidate_collapsed_v1"
+    textHash = "960b6b43fa90"
+    occurrenceCount = 1
+    activeOccurrenceCount = 1
+    sourceAreas = "Editor"
+    categories = "resource_visible_candidate"
+    firstSourceFile = "Editor/resource.rc"
+    firstLine = 1106
+}
+
+String {
+    key = "editor.mfc.source.remove_action"
+    text = "Remove Action"
+    source = "source_audit"
+    migrationState = "candidate_collapsed_v1"
+    textHash = "508f145a2479"
+    occurrenceCount = 2
+    activeOccurrenceCount = 2
+    sourceAreas = "Editor"
+    categories = "resource_visible_candidate"
+    firstSourceFile = "Editor/resource.rc"
+    firstLine = 304
+}
+
+String {
+    key = "editor.mfc.source.remove_condition"
+    text = "Remove Condition"
+    source = "source_audit"
+    migrationState = "candidate_collapsed_v1"
+    textHash = "3399f8295cb3"
+    occurrenceCount = 2
+    activeOccurrenceCount = 2
+    sourceAreas = "Editor"
+    categories = "resource_visible_candidate"
+    firstSourceFile = "Editor/resource.rc"
+    firstLine = 294
+}
+
+String {
+    key = "editor.mfc.source.repair_vehicle"
+    text = "Repair Vehicle"
+    source = "source_audit"
+    migrationState = "candidate_collapsed_v1"
+    textHash = "27fc573cbfca"
+    occurrenceCount = 1
+    activeOccurrenceCount = 1
+    sourceAreas = "Editor"
+    categories = "resource_visible_candidate"
+    firstSourceFile = "Editor/resource.rc"
+    firstLine = 608
+}
+
+String {
+    key = "editor.mfc.source.res_arrow_cur"
+    text = "res\\arrow.cur"
+    source = "source_audit"
+    migrationState = "candidate_collapsed_v1"
+    textHash = "794429d5a85b"
+    occurrenceCount = 1
+    activeOccurrenceCount = 1
+    sourceAreas = "Editor"
+    categories = "resource_visible_candidate"
+    firstSourceFile = "Editor/resource.rc"
+    firstLine = 1487
+}
+
+String {
+    key = "editor.mfc.source.res_cursor1_cur"
+    text = "res\\cursor1.cur"
+    source = "source_audit"
+    migrationState = "candidate_collapsed_v1"
+    textHash = "5f3bcdedb8a8"
+    occurrenceCount = 1
+    activeOccurrenceCount = 1
+    sourceAreas = "Editor"
+    categories = "resource_visible_candidate"
+    firstSourceFile = "Editor/resource.rc"
+    firstLine = 1491
+}
+
+String {
+    key = "editor.mfc.source.res_dropzone_cur"
+    text = "res\\dropzone.cur"
+    source = "source_audit"
+    migrationState = "candidate_collapsed_v1"
+    textHash = "328562e10f40"
+    occurrenceCount = 1
+    activeOccurrenceCount = 1
+    sourceAreas = "Editor"
+    categories = "resource_visible_candidate"
+    firstSourceFile = "Editor/resource.rc"
+    firstLine = 1499
+}
+
+String {
+    key = "editor.mfc.source.res_eraser_cur"
+    text = "res\\eraser.cur"
+    source = "source_audit"
+    migrationState = "candidate_collapsed_v1"
+    textHash = "9f78b023fd4d"
+    occurrenceCount = 1
+    activeOccurrenceCount = 1
+    sourceAreas = "Editor"
+    categories = "resource_visible_candidate"
+    firstSourceFile = "Editor/resource.rc"
+    firstLine = 1494
+}
+
+String {
+    key = "editor.mfc.source.res_flatten_cur"
+    text = "res\\flatten.cur"
+    source = "source_audit"
+    migrationState = "candidate_collapsed_v1"
+    textHash = "9563bc574de9"
+    occurrenceCount = 1
+    activeOccurrenceCount = 1
+    sourceAreas = "Editor"
+    categories = "resource_visible_candidate"
+    firstSourceFile = "Editor/resource.rc"
+    firstLine = 1495
+}
+
+String {
+    key = "editor.mfc.source.res_hammer_cur"
+    text = "res\\hammer.cur"
+    source = "source_audit"
+    migrationState = "candidate_collapsed_v1"
+    textHash = "78543cea5865"
+    occurrenceCount = 1
+    activeOccurrenceCount = 1
+    sourceAreas = "Editor"
+    categories = "resource_visible_candidate"
+    firstSourceFile = "Editor/resource.rc"
+    firstLine = 1496
+}
+
+String {
+    key = "editor.mfc.source.res_hand_cur"
+    text = "res\\hand.cur"
+    source = "source_audit"
+    migrationState = "candidate_collapsed_v1"
+    textHash = "5fa637dbdc81"
+    occurrenceCount = 1
+    activeOccurrenceCount = 1
+    sourceAreas = "Editor"
+    categories = "resource_visible_candidate"
+    firstSourceFile = "Editor/resource.rc"
+    firstLine = 1492
+}
+
+String {
+    key = "editor.mfc.source.res_ic_normal_bmp"
+    text = "res\\IC_Normal.BMP"
+    source = "source_audit"
+    migrationState = "candidate_collapsed_v1"
+    textHash = "6f478bf08cec"
+    occurrenceCount = 1
+    activeOccurrenceCount = 1
+    sourceAreas = "Editor"
+    categories = "visible_review_candidate"
+    firstSourceFile = "Editor/resource.rc"
+    firstLine = 1480
+}
+
+String {
+    key = "editor.mfc.source.res_ico128_ico"
+    text = "res\\ico128.ico"
+    source = "source_audit"
+    migrationState = "candidate_collapsed_v1"
+    textHash = "0f0a46e57b1c"
+    occurrenceCount = 1
+    activeOccurrenceCount = 1
+    sourceAreas = "Editor"
+    categories = "visible_review_candidate"
+    firstSourceFile = "Editor/resource.rc"
+    firstLine = 1713
+}
+
+String {
+    key = "editor.mfc.source.res_ico210_ico"
+    text = "res\\ico210.ico"
+    source = "source_audit"
+    migrationState = "candidate_collapsed_v1"
+    textHash = "aa60cef864e6"
+    occurrenceCount = 1
+    activeOccurrenceCount = 1
+    sourceAreas = "Editor"
+    categories = "visible_review_candidate"
+    firstSourceFile = "Editor/resource.rc"
+    firstLine = 1714
+}
+
+String {
+    key = "editor.mfc.source.res_ico211_ico"
+    text = "res\\ico211.ico"
+    source = "source_audit"
+    migrationState = "candidate_collapsed_v1"
+    textHash = "0564599737b3"
+    occurrenceCount = 1
+    activeOccurrenceCount = 1
+    sourceAreas = "Editor"
+    categories = "visible_review_candidate"
+    firstSourceFile = "Editor/resource.rc"
+    firstLine = 1715
+}
+
+String {
+    key = "editor.mfc.source.res_link_cur"
+    text = "res\\Link.cur"
+    source = "source_audit"
+    migrationState = "candidate_collapsed_v1"
+    textHash = "b7eeae6ba6bf"
+    occurrenceCount = 1
+    activeOccurrenceCount = 1
+    sourceAreas = "Editor"
+    categories = "resource_visible_candidate"
+    firstSourceFile = "Editor/resource.rc"
+    firstLine = 1488
+}
+
+String {
+    key = "editor.mfc.source.res_paint_cur"
+    text = "res\\paint.cur"
+    source = "source_audit"
+    migrationState = "candidate_collapsed_v1"
+    textHash = "22a2cd7ba211"
+    occurrenceCount = 1
+    activeOccurrenceCount = 1
+    sourceAreas = "Editor"
+    categories = "resource_visible_candidate"
+    firstSourceFile = "Editor/resource.rc"
+    firstLine = 1493
+}
+
+String {
+    key = "editor.mfc.source.res_target_cur"
+    text = "res\\target.cur"
+    source = "source_audit"
+    migrationState = "candidate_collapsed_v1"
+    textHash = "9979e1acd6d9"
+    occurrenceCount = 1
+    activeOccurrenceCount = 1
+    sourceAreas = "Editor"
+    categories = "resource_visible_candidate"
+    firstSourceFile = "Editor/resource.rc"
+    firstLine = 1498
+}
+
+String {
+    key = "editor.mfc.source.res_unlink_cur"
+    text = "res\\unlink.cur"
+    source = "source_audit"
+    migrationState = "candidate_collapsed_v1"
+    textHash = "40f0c6234db6"
+    occurrenceCount = 1
+    activeOccurrenceCount = 1
+    sourceAreas = "Editor"
+    categories = "resource_visible_candidate"
+    firstSourceFile = "Editor/resource.rc"
+    firstLine = 1489
+}
+
+String {
+    key = "editor.mfc.source.res_up_cur"
+    text = "res\\up.cur"
+    source = "source_audit"
+    migrationState = "candidate_collapsed_v1"
+    textHash = "26e11168febf"
+    occurrenceCount = 1
+    activeOccurrenceCount = 1
+    sourceAreas = "Editor"
+    categories = "resource_visible_candidate"
+    firstSourceFile = "Editor/resource.rc"
+    firstLine = 1490
+}
+
+String {
+    key = "editor.mfc.source.res_wrench_cur"
+    text = "res\\wrench.cur"
+    source = "source_audit"
+    migrationState = "candidate_collapsed_v1"
+    textHash = "fa00ba1625dc"
+    occurrenceCount = 1
+    activeOccurrenceCount = 1
+    sourceAreas = "Editor"
+    categories = "resource_visible_candidate"
+    firstSourceFile = "Editor/resource.rc"
+    firstLine = 1497
+}
+
+String {
+    key = "editor.mfc.source.reset_status_on_flag"
+    text = "Reset Status On Flag"
+    source = "source_audit"
+    migrationState = "candidate_collapsed_v1"
+    textHash = "a521adcf7a13"
+    occurrenceCount = 1
+    activeOccurrenceCount = 1
+    sourceAreas = "Editor"
+    categories = "resource_visible_candidate"
+    firstSourceFile = "Editor/resource.rc"
+    firstLine = 279
+}
+
+String {
+    key = "editor.mfc.source.resource_string_selection"
+    text = "Resource String Selection"
+    source = "source_audit"
+    migrationState = "candidate_collapsed_v1"
+    textHash = "e63c9f1afdde"
+    occurrenceCount = 1
+    activeOccurrenceCount = 1
+    sourceAreas = "Editor"
+    categories = "resource_visible_candidate"
+    firstSourceFile = "Editor/resource.rc"
+    firstLine = 809
+}
+
+String {
+    key = "editor.mfc.stringtable.ids_string10112"
+    text = "Rocks"
+    source = "editor.rc"
+    migrationState = "candidate_collapsed_v1"
+    textHash = "554df09fac22"
+    occurrenceCount = 1
+    activeOccurrenceCount = 1
+    sourceAreas = "mclib"
+    categories = "resource_visible_candidate"
+    firstSourceFile = "mclib/MCLib.rc"
+    firstLine = 182
+}
+
+String {
+    key = "editor.mfc.source.rps_for_mechs"
+    text = "RPs for Mechs"
+    source = "source_audit"
+    migrationState = "candidate_collapsed_v1"
+    textHash = "cf23381f20c2"
+    occurrenceCount = 1
+    activeOccurrenceCount = 1
+    sourceAreas = "Editor"
+    categories = "resource_visible_candidate"
+    firstSourceFile = "Editor/resource.rc"
+    firstLine = 616
+}
+
+String {
+    key = "editor.mfc.source.runway"
+    text = "Runway"
+    source = "editor.menu.rc"
+    migrationState = "candidate_collapsed_v1"
+    textHash = "80a63a7686f1"
+    occurrenceCount = 1
+    activeOccurrenceCount = 1
+    sourceAreas = "Editor"
+    categories = "resource_visible_candidate"
+    firstSourceFile = "Editor/resource.rc"
+    firstLine = 1058
+}
+
+String {
+    key = "editor.mfc.source.sandky"
+    text = "S&ky"
+    source = "source_audit"
+    migrationState = "candidate_collapsed_v1"
+    textHash = "b8ac18025f01"
+    occurrenceCount = 1
+    activeOccurrenceCount = 1
+    sourceAreas = "Editor"
+    categories = "resource_visible_candidate"
+    firstSourceFile = "Editor/resource.rc"
+    firstLine = 1062
+}
+
+String {
+    key = "editor.mfc.source.saandve_as"
+    text = "Sa&ve As..."
+    source = "source_audit"
+    migrationState = "candidate_collapsed_v1"
+    textHash = "9a1eea29049e"
+    occurrenceCount = 1
+    activeOccurrenceCount = 1
+    sourceAreas = "Editor"
+    categories = "resource_visible_candidate"
+    firstSourceFile = "Editor/resource.rc"
+    firstLine = 1034
+}
+
+String {
+    key = "editor.mfc.source.save_andheight_map"
+    text = "Save &Height Map"
+    source = "source_audit"
+    migrationState = "candidate_collapsed_v1"
+    textHash = "ed6b71db7424"
+    occurrenceCount = 1
+    activeOccurrenceCount = 1
+    sourceAreas = "Editor"
+    categories = "resource_visible_candidate"
+    firstSourceFile = "Editor/resource.rc"
+    firstLine = 1035
+}
+
+String {
+    key = "editor.mfc.stringtable.ids_save_cameras"
+    text = "Save Current Camera"
+    source = "editor.rc"
+    migrationState = "candidate_collapsed_v1"
+    textHash = "1270741e88ff"
+    occurrenceCount = 1
+    activeOccurrenceCount = 1
+    sourceAreas = "mclib"
+    categories = "resource_visible_candidate"
+    firstSourceFile = "mclib/MCLib.rc"
+    firstLine = 116
+}
+
+String {
+    key = "editor.mfc.source.save_file_quickly_with_no_move_data"
+    text = "Save file quickly with no move data"
+    source = "source_audit"
+    migrationState = "candidate_collapsed_v1"
+    textHash = "0aeb201db4ad"
+    occurrenceCount = 1
+    activeOccurrenceCount = 1
+    sourceAreas = "Editor"
+    categories = "resource_visible_candidate"
+    firstSourceFile = "Editor/resource.rc"
+    firstLine = 1724
+}
+
+String {
+    key = "editor.mfc.source.scenario_tune"
+    text = "Scenario tune"
+    source = "source_audit"
+    migrationState = "candidate_collapsed_v1"
+    textHash = "c390b7325704"
+    occurrenceCount = 1
+    activeOccurrenceCount = 1
+    sourceAreas = "Editor"
+    categories = "resource_visible_candidate"
+    firstSourceFile = "Editor/resource.rc"
+    firstLine = 646
+}
+
+String {
+    key = "editor.mfc.source.scout_copter"
+    text = "Scout Copter"
+    source = "source_audit"
+    migrationState = "candidate_collapsed_v1"
+    textHash = "8e0ee22468eb"
+    occurrenceCount = 1
+    activeOccurrenceCount = 1
+    sourceAreas = "Editor"
+    categories = "resource_visible_candidate"
+    firstSourceFile = "Editor/resource.rc"
+    firstLine = 598
+}
+
+String {
+    key = "editor.mfc.stringtable.ids_select"
+    text = "Select"
+    source = "editor.rc"
+    migrationState = "candidate_collapsed_v1"
+    textHash = "8598222918d3"
+    occurrenceCount = 1
+    activeOccurrenceCount = 1
+    sourceAreas = "mclib"
+    categories = "resource_visible_candidate"
+    firstSourceFile = "mclib/MCLib.rc"
+    firstLine = 146
+}
+
+String {
+    key = "editor.mfc.source.select_base_texture"
+    text = "Select Base Texture"
+    source = "source_audit"
+    migrationState = "candidate_collapsed_v1"
+    textHash = "53d180913b19"
+    occurrenceCount = 1
+    activeOccurrenceCount = 1
+    sourceAreas = "Editor"
+    categories = "resource_visible_candidate"
+    firstSourceFile = "Editor/resource.rc"
+    firstLine = 155
+}
+
+String {
+    key = "editor.mfc.source.select_by_andaltitude"
+    text = "Select By &Altitude"
+    source = "source_audit"
+    migrationState = "candidate_collapsed_v1"
+    textHash = "203719232561"
+    occurrenceCount = 1
+    activeOccurrenceCount = 1
+    sourceAreas = "Editor"
+    categories = "resource_visible_candidate"
+    firstSourceFile = "Editor/resource.rc"
+    firstLine = 1116
+}
+
+String {
+    key = "editor.mfc.source.select_by_andterrain_type"
+    text = "Select By &Terrain Type"
+    source = "source_audit"
+    migrationState = "candidate_collapsed_v1"
+    textHash = "eaa7958f8dcb"
+    occurrenceCount = 1
+    activeOccurrenceCount = 1
+    sourceAreas = "Editor"
+    categories = "resource_visible_candidate"
+    firstSourceFile = "Editor/resource.rc"
+    firstLine = 1117
+}
+
+String {
+    key = "editor.mfc.source.select_by_sandlope"
+    text = "Select By S&lope"
+    source = "source_audit"
+    migrationState = "candidate_collapsed_v1"
+    textHash = "26bcfa635c94"
+    occurrenceCount = 1
+    activeOccurrenceCount = 1
+    sourceAreas = "Editor"
+    categories = "resource_visible_candidate"
+    firstSourceFile = "Editor/resource.rc"
+    firstLine = 1115
+}
+
+String {
+    key = "editor.mfc.source.select_by_slope"
+    text = "Select By Slope"
+    source = "editor.menu.rc"
+    migrationState = "candidate_collapsed_v1"
+    textHash = "19472f35304a"
+    occurrenceCount = 1
+    activeOccurrenceCount = 1
+    sourceAreas = "Editor"
+    categories = "resource_visible_candidate"
+    firstSourceFile = "Editor/resource.rc"
+    firstLine = 1008
+}
+
+String {
+    key = "editor.mfc.source.select_detail_texture"
+    text = "Select Detail Texture"
+    source = "editor.menu.rc"
+    migrationState = "candidate_collapsed_v1"
+    textHash = "62e955b6b115"
+    occurrenceCount = 1
+    activeOccurrenceCount = 1
+    sourceAreas = "Editor"
+    categories = "resource_visible_candidate"
+    firstSourceFile = "Editor/resource.rc"
+    firstLine = 1099
+}
+
+String {
+    key = "editor.mfc.source.select_map_size"
+    text = "Select Map Size"
+    source = "source_audit"
+    migrationState = "candidate_collapsed_v1"
+    textHash = "aca14e4192b8"
+    occurrenceCount = 1
+    activeOccurrenceCount = 1
+    sourceAreas = "Editor"
+    categories = "resource_visible_candidate"
+    firstSourceFile = "Editor/resource.rc"
+    firstLine = 934
+}
+
+String {
+    key = "editor.mfc.source.select_resource_string"
+    text = "Select Resource String"
+    source = "source_audit"
+    migrationState = "candidate_collapsed_v1"
+    textHash = "450234b4d466"
+    occurrenceCount = 1
+    activeOccurrenceCount = 1
+    sourceAreas = "Editor"
+    categories = "resource_visible_candidate"
+    firstSourceFile = "Editor/resource.rc"
+    firstLine = 984
+}
+
+String {
+    key = "editor.mfc.source.select_terrain_type"
+    text = "Select Terrain Type"
+    source = "source_audit"
+    migrationState = "candidate_collapsed_v1"
+    textHash = "5715cbaafebe"
+    occurrenceCount = 1
+    activeOccurrenceCount = 1
+    sourceAreas = "Editor"
+    categories = "resource_visible_candidate"
+    firstSourceFile = "Editor/resource.rc"
+    firstLine = 766
+}
+
+String {
+    key = "editor.mfc.source.select_water_detail_texture"
+    text = "Select Water Detail Texture"
+    source = "editor.menu.rc"
+    migrationState = "candidate_collapsed_v1"
+    textHash = "699716e40ccd"
+    occurrenceCount = 1
+    activeOccurrenceCount = 1
+    sourceAreas = "Editor"
+    categories = "resource_visible_candidate"
+    firstSourceFile = "Editor/resource.rc"
+    firstLine = 1101
+}
+
+String {
+    key = "editor.mfc.source.select_water_texture"
+    text = "Select Water Texture"
+    source = "editor.menu.rc"
+    migrationState = "candidate_collapsed_v1"
+    textHash = "3eacbda90eb6"
+    occurrenceCount = 1
+    activeOccurrenceCount = 1
+    sourceAreas = "Editor"
+    categories = "resource_visible_candidate"
+    firstSourceFile = "Editor/resource.rc"
+    firstLine = 1100
+}
+
+String {
+    key = "editor.mfc.source.self_andrepair_behavior"
+    text = "Self-&Repair Behavior"
+    source = "source_audit"
+    migrationState = "candidate_collapsed_v1"
+    textHash = "3eee71871041"
+    occurrenceCount = 1
+    activeOccurrenceCount = 1
+    sourceAreas = "Editor"
+    categories = "resource_visible_candidate"
+    firstSourceFile = "Editor/resource.rc"
+    firstLine = 537
+}
+
+String {
+    key = "editor.mfc.source.set_base_texture"
+    text = "Set Base Texture"
+    source = "editor.menu.rc"
+    migrationState = "candidate_collapsed_v1"
+    textHash = "d0390172891f"
+    occurrenceCount = 1
+    activeOccurrenceCount = 1
+    sourceAreas = "Editor"
+    categories = "resource_visible_candidate"
+    firstSourceFile = "Editor/resource.rc"
+    firstLine = 1105
+}
+
+String {
+    key = "editor.mfc.source.show_mission_selection_only_valid_if_logistics_off"
+    text = "Show mission selection (only valid if logistics off)"
+    source = "source_audit"
+    migrationState = "candidate_collapsed_v1"
+    textHash = "34704d865cd7"
+    occurrenceCount = 1
+    activeOccurrenceCount = 1
+    sourceAreas = "Editor"
+    categories = "resource_visible_candidate"
+    firstSourceFile = "Editor/resource.rc"
+    firstLine = 755
+}
+
+String {
+    key = "editor.mfc.source.single_player_mission"
+    text = "Single Player Mission"
+    source = "source_audit"
+    migrationState = "candidate_collapsed_v1"
+    textHash = "bf2e1f1fb467"
+    occurrenceCount = 1
+    activeOccurrenceCount = 1
+    sourceAreas = "Editor"
+    categories = "resource_visible_candidate"
+    firstSourceFile = "Editor/resource.rc"
+    firstLine = 570
+}
+
+String {
+    key = "editor.mfc.stringtable.ids_no_enemy_units"
+    text = "Single-player Map: There are no enemy units."
+    source = "editor.rc"
+    migrationState = "candidate_collapsed_v1"
+    textHash = "a59d6970beef"
+    occurrenceCount = 1
+    activeOccurrenceCount = 1
+    sourceAreas = "mclib"
+    categories = "resource_visible_candidate"
+    firstSourceFile = "mclib/MCLib.rc"
+    firstLine = 174
+}
+
+String {
+    key = "editor.mfc.stringtable.ids_no_player_units"
+    text = "Single-player Map: There are no player units. A player unit  needs to be placed to indicate the dropzone location."
+    source = "editor.rc"
+    migrationState = "candidate_collapsed_v1"
+    textHash = "be84f6ef19d1"
+    occurrenceCount = 1
+    activeOccurrenceCount = 1
+    sourceAreas = "mclib"
+    categories = "resource_visible_candidate"
+    firstSourceFile = "mclib/MCLib.rc"
+    firstLine = 202
+}
+
+String {
+    key = "editor.mfc.source.sky_1"
+    text = "Sky 1"
+    source = "editor.menu.rc"
+    migrationState = "candidate_collapsed_v1"
+    textHash = "dcadf20bc2b2"
+    occurrenceCount = 1
+    activeOccurrenceCount = 1
+    sourceAreas = "Editor"
+    categories = "resource_visible_candidate"
+    firstSourceFile = "Editor/resource.rc"
+    firstLine = 1064
+}
+
+String {
+    key = "editor.mfc.source.sky_10"
+    text = "Sky 10"
+    source = "editor.menu.rc"
+    migrationState = "candidate_collapsed_v1"
+    textHash = "a4ae83c1e19e"
+    occurrenceCount = 1
+    activeOccurrenceCount = 1
+    sourceAreas = "Editor"
+    categories = "resource_visible_candidate"
+    firstSourceFile = "Editor/resource.rc"
+    firstLine = 1073
+}
+
+String {
+    key = "editor.mfc.source.sky_11"
+    text = "Sky 11"
+    source = "editor.menu.rc"
+    migrationState = "candidate_collapsed_v1"
+    textHash = "7f5a45f5d833"
+    occurrenceCount = 1
+    activeOccurrenceCount = 1
+    sourceAreas = "Editor"
+    categories = "resource_visible_candidate"
+    firstSourceFile = "Editor/resource.rc"
+    firstLine = 1074
+}
+
+String {
+    key = "editor.mfc.source.sky_12"
+    text = "Sky 12"
+    source = "editor.menu.rc"
+    migrationState = "candidate_collapsed_v1"
+    textHash = "01f3222b2e90"
+    occurrenceCount = 1
+    activeOccurrenceCount = 1
+    sourceAreas = "Editor"
+    categories = "resource_visible_candidate"
+    firstSourceFile = "Editor/resource.rc"
+    firstLine = 1075
+}
+
+String {
+    key = "editor.mfc.source.sky_13"
+    text = "Sky 13"
+    source = "editor.menu.rc"
+    migrationState = "candidate_collapsed_v1"
+    textHash = "a97d33e31f45"
+    occurrenceCount = 1
+    activeOccurrenceCount = 1
+    sourceAreas = "Editor"
+    categories = "resource_visible_candidate"
+    firstSourceFile = "Editor/resource.rc"
+    firstLine = 1076
+}
+
+String {
+    key = "editor.mfc.source.sky_14"
+    text = "Sky 14"
+    source = "editor.menu.rc"
+    migrationState = "candidate_collapsed_v1"
+    textHash = "5dbdf1e3d308"
+    occurrenceCount = 1
+    activeOccurrenceCount = 1
+    sourceAreas = "Editor"
+    categories = "resource_visible_candidate"
+    firstSourceFile = "Editor/resource.rc"
+    firstLine = 1077
+}
+
+String {
+    key = "editor.mfc.source.sky_15"
+    text = "Sky 15"
+    source = "editor.menu.rc"
+    migrationState = "candidate_collapsed_v1"
+    textHash = "7809bbf09b38"
+    occurrenceCount = 1
+    activeOccurrenceCount = 1
+    sourceAreas = "Editor"
+    categories = "resource_visible_candidate"
+    firstSourceFile = "Editor/resource.rc"
+    firstLine = 1078
+}
+
+String {
+    key = "editor.mfc.source.sky_16"
+    text = "Sky 16"
+    source = "editor.menu.rc"
+    migrationState = "candidate_collapsed_v1"
+    textHash = "79e714c64007"
+    occurrenceCount = 1
+    activeOccurrenceCount = 1
+    sourceAreas = "Editor"
+    categories = "resource_visible_candidate"
+    firstSourceFile = "Editor/resource.rc"
+    firstLine = 1079
+}
+
+String {
+    key = "editor.mfc.source.sky_17"
+    text = "Sky 17"
+    source = "editor.menu.rc"
+    migrationState = "candidate_collapsed_v1"
+    textHash = "559650b3f8ea"
+    occurrenceCount = 1
+    activeOccurrenceCount = 1
+    sourceAreas = "Editor"
+    categories = "resource_visible_candidate"
+    firstSourceFile = "Editor/resource.rc"
+    firstLine = 1080
+}
+
+String {
+    key = "editor.mfc.source.sky_18"
+    text = "Sky 18"
+    source = "editor.menu.rc"
+    migrationState = "candidate_collapsed_v1"
+    textHash = "adfca9541991"
+    occurrenceCount = 1
+    activeOccurrenceCount = 1
+    sourceAreas = "Editor"
+    categories = "resource_visible_candidate"
+    firstSourceFile = "Editor/resource.rc"
+    firstLine = 1081
+}
+
+String {
+    key = "editor.mfc.source.sky_19"
+    text = "Sky 19"
+    source = "editor.menu.rc"
+    migrationState = "candidate_collapsed_v1"
+    textHash = "10c74cce70ee"
+    occurrenceCount = 1
+    activeOccurrenceCount = 1
+    sourceAreas = "Editor"
+    categories = "resource_visible_candidate"
+    firstSourceFile = "Editor/resource.rc"
+    firstLine = 1082
+}
+
+String {
+    key = "editor.mfc.source.sky_2"
+    text = "Sky 2"
+    source = "editor.menu.rc"
+    migrationState = "candidate_collapsed_v1"
+    textHash = "a461033d5abd"
+    occurrenceCount = 1
+    activeOccurrenceCount = 1
+    sourceAreas = "Editor"
+    categories = "resource_visible_candidate"
+    firstSourceFile = "Editor/resource.rc"
+    firstLine = 1065
+}
+
+String {
+    key = "editor.mfc.source.sky_20"
+    text = "Sky 20"
+    source = "editor.menu.rc"
+    migrationState = "candidate_collapsed_v1"
+    textHash = "42410240e406"
+    occurrenceCount = 1
+    activeOccurrenceCount = 1
+    sourceAreas = "Editor"
+    categories = "resource_visible_candidate"
+    firstSourceFile = "Editor/resource.rc"
+    firstLine = 1083
+}
+
+String {
+    key = "editor.mfc.source.sky_21"
+    text = "Sky 21"
+    source = "editor.menu.rc"
+    migrationState = "candidate_collapsed_v1"
+    textHash = "01d08deb1d3c"
+    occurrenceCount = 1
+    activeOccurrenceCount = 1
+    sourceAreas = "Editor"
+    categories = "resource_visible_candidate"
+    firstSourceFile = "Editor/resource.rc"
+    firstLine = 1084
+}
+
+String {
+    key = "editor.mfc.source.sky_3"
+    text = "Sky 3"
+    source = "editor.menu.rc"
+    migrationState = "candidate_collapsed_v1"
+    textHash = "60f27b98de1e"
+    occurrenceCount = 1
+    activeOccurrenceCount = 1
+    sourceAreas = "Editor"
+    categories = "resource_visible_candidate"
+    firstSourceFile = "Editor/resource.rc"
+    firstLine = 1066
+}
+
+String {
+    key = "editor.mfc.source.sky_4"
+    text = "Sky 4"
+    source = "editor.menu.rc"
+    migrationState = "candidate_collapsed_v1"
+    textHash = "71e4f6276037"
+    occurrenceCount = 1
+    activeOccurrenceCount = 1
+    sourceAreas = "Editor"
+    categories = "resource_visible_candidate"
+    firstSourceFile = "Editor/resource.rc"
+    firstLine = 1067
+}
+
+String {
+    key = "editor.mfc.source.sky_5"
+    text = "Sky 5"
+    source = "editor.menu.rc"
+    migrationState = "candidate_collapsed_v1"
+    textHash = "2a8f320b39f7"
+    occurrenceCount = 1
+    activeOccurrenceCount = 1
+    sourceAreas = "Editor"
+    categories = "resource_visible_candidate"
+    firstSourceFile = "Editor/resource.rc"
+    firstLine = 1068
+}
+
+String {
+    key = "editor.mfc.source.sky_6"
+    text = "Sky 6"
+    source = "editor.menu.rc"
+    migrationState = "candidate_collapsed_v1"
+    textHash = "ac2e46e48fe7"
+    occurrenceCount = 1
+    activeOccurrenceCount = 1
+    sourceAreas = "Editor"
+    categories = "resource_visible_candidate"
+    firstSourceFile = "Editor/resource.rc"
+    firstLine = 1069
+}
+
+String {
+    key = "editor.mfc.source.sky_7"
+    text = "Sky 7"
+    source = "editor.menu.rc"
+    migrationState = "candidate_collapsed_v1"
+    textHash = "336cb0c6c2c6"
+    occurrenceCount = 1
+    activeOccurrenceCount = 1
+    sourceAreas = "Editor"
+    categories = "resource_visible_candidate"
+    firstSourceFile = "Editor/resource.rc"
+    firstLine = 1070
+}
+
+String {
+    key = "editor.mfc.source.sky_8"
+    text = "Sky 8"
+    source = "editor.menu.rc"
+    migrationState = "candidate_collapsed_v1"
+    textHash = "06fe780fe09b"
+    occurrenceCount = 1
+    activeOccurrenceCount = 1
+    sourceAreas = "Editor"
+    categories = "resource_visible_candidate"
+    firstSourceFile = "Editor/resource.rc"
+    firstLine = 1071
+}
+
+String {
+    key = "editor.mfc.source.sky_9"
+    text = "Sky 9"
+    source = "editor.menu.rc"
+    migrationState = "candidate_collapsed_v1"
+    textHash = "1fa321ed4473"
+    occurrenceCount = 1
+    activeOccurrenceCount = 1
+    sourceAreas = "Editor"
+    categories = "resource_visible_candidate"
+    firstSourceFile = "Editor/resource.rc"
+    firstLine = 1072
+}
+
+String {
+    key = "editor.mfc.source.slider1"
+    text = "Slider1"
+    source = "source_audit"
+    migrationState = "candidate_collapsed_v1"
+    textHash = "0344b668dbdb"
+    occurrenceCount = 14
+    activeOccurrenceCount = 14
+    sourceAreas = "Editor"
+    categories = "resource_visible_candidate"
+    firstSourceFile = "Editor/resource.rc"
+    firstLine = 836
+}
+
+String {
+    key = "editor.mfc.stringtable.ids_group2"
+    text = "Small Stuff"
+    source = "editor.rc"
+    migrationState = "candidate_collapsed_v1"
+    textHash = "68910a946d90"
+    occurrenceCount = 1
+    activeOccurrenceCount = 1
+    sourceAreas = "mclib"
+    categories = "resource_visible_candidate"
+    firstSourceFile = "mclib/MCLib.rc"
+    firstLine = 132
+}
+
+String {
+    key = "editor.mfc.source.smooth_andradius"
+    text = "Smooth &Radius"
+    source = "source_audit"
+    migrationState = "candidate_collapsed_v1"
+    textHash = "95bc725768da"
+    occurrenceCount = 1
+    activeOccurrenceCount = 1
+    sourceAreas = "Editor"
+    categories = "resource_visible_candidate"
+    firstSourceFile = "Editor/resource.rc"
+    firstLine = 1120
+}
+
+String {
+    key = "editor.mfc.source.spin1"
+    text = "Spin1"
+    source = "source_audit"
+    migrationState = "candidate_collapsed_v1"
+    textHash = "98e5893a12cc"
+    occurrenceCount = 3
+    activeOccurrenceCount = 3
+    sourceAreas = "Editor"
+    categories = "resource_visible_candidate"
+    firstSourceFile = "Editor/resource.rc"
+    firstLine = 574
+}
+
+String {
+    key = "editor.mfc.stringtable.ids_string10114"
+    text = "Starport Set Piece"
+    source = "editor.rc"
+    migrationState = "candidate_collapsed_v1"
+    textHash = "5c8e40305d89"
+    occurrenceCount = 1
+    activeOccurrenceCount = 1
+    sourceAreas = "mclib"
+    categories = "resource_visible_candidate"
+    firstSourceFile = "mclib/MCLib.rc"
+    firstLine = 184
+}
+
+String {
+    key = "editor.mfc.stringtable.ids_string10118"
+    text = "Steiner High Command Set Piece"
+    source = "editor.rc"
+    migrationState = "candidate_collapsed_v1"
+    textHash = "bc2cd18b8941"
+    occurrenceCount = 1
+    activeOccurrenceCount = 1
+    sourceAreas = "mclib"
+    categories = "resource_visible_candidate"
+    firstSourceFile = "mclib/MCLib.rc"
+    firstLine = 188
+}
+
+String {
+    key = "editor.mfc.source.sun_angle_of_elevation_in_degrees_min_5_max_90"
+    text = "Sun Angle of Elevation (in degrees) (min: 5; max: 90):"
+    source = "source_audit"
+    migrationState = "candidate_collapsed_v1"
+    textHash = "424c79e86e21"
+    occurrenceCount = 1
+    activeOccurrenceCount = 1
+    sourceAreas = "Editor"
+    categories = "resource_visible_candidate"
+    firstSourceFile = "Editor/resource.rc"
+    firstLine = 148
+}
+
+String {
+    key = "editor.mfc.source.sun_color"
+    text = "Sun Color:"
+    source = "source_audit"
+    migrationState = "candidate_collapsed_v1"
+    textHash = "5bb16dfc833e"
+    occurrenceCount = 1
+    activeOccurrenceCount = 1
+    sourceAreas = "Editor"
+    categories = "resource_visible_candidate"
+    firstSourceFile = "Editor/resource.rc"
+    firstLine = 146
+}
+
+String {
+    key = "editor.mfc.source.target_area"
+    text = "Target Area"
+    source = "source_audit"
+    migrationState = "candidate_collapsed_v1"
+    textHash = "661da0876202"
+    occurrenceCount = 1
+    activeOccurrenceCount = 1
+    sourceAreas = "Editor"
+    categories = "resource_visible_candidate"
+    firstSourceFile = "Editor/resource.rc"
+    firstLine = 469
+}
+
+String {
+    key = "editor.mfc.source.team"
+    text = "Team"
+    source = "source_audit"
+    migrationState = "candidate_collapsed_v1"
+    textHash = "218887269ad5"
+    occurrenceCount = 1
+    activeOccurrenceCount = 1
+    sourceAreas = "Editor"
+    categories = "resource_visible_candidate"
+    firstSourceFile = "Editor/resource.rc"
+    firstLine = 230
+}
+
+String {
+    key = "editor.mfc.source.team_and1"
+    text = "Team &1"
+    source = "source_audit"
+    migrationState = "candidate_collapsed_v1"
+    textHash = "3720c3788847"
+    occurrenceCount = 1
+    activeOccurrenceCount = 1
+    sourceAreas = "Editor"
+    categories = "resource_visible_candidate"
+    firstSourceFile = "Editor/resource.rc"
+    firstLine = 1140
+}
+
+String {
+    key = "editor.mfc.source.team_and2"
+    text = "Team &2"
+    source = "source_audit"
+    migrationState = "candidate_collapsed_v1"
+    textHash = "04c46c3cea6b"
+    occurrenceCount = 1
+    activeOccurrenceCount = 1
+    sourceAreas = "Editor"
+    categories = "resource_visible_candidate"
+    firstSourceFile = "Editor/resource.rc"
+    firstLine = 1141
+}
+
+String {
+    key = "editor.mfc.source.team_and3"
+    text = "Team &3"
+    source = "source_audit"
+    migrationState = "candidate_collapsed_v1"
+    textHash = "b91b6f2da428"
+    occurrenceCount = 1
+    activeOccurrenceCount = 1
+    sourceAreas = "Editor"
+    categories = "resource_visible_candidate"
+    firstSourceFile = "Editor/resource.rc"
+    firstLine = 1142
+}
+
+String {
+    key = "editor.mfc.source.team_and4"
+    text = "Team &4"
+    source = "source_audit"
+    migrationState = "candidate_collapsed_v1"
+    textHash = "27e0f41c6249"
+    occurrenceCount = 1
+    activeOccurrenceCount = 1
+    sourceAreas = "Editor"
+    categories = "resource_visible_candidate"
+    firstSourceFile = "Editor/resource.rc"
+    firstLine = 1143
+}
+
+String {
+    key = "editor.mfc.source.team_and5"
+    text = "Team &5"
+    source = "source_audit"
+    migrationState = "candidate_collapsed_v1"
+    textHash = "82503ceed435"
+    occurrenceCount = 1
+    activeOccurrenceCount = 1
+    sourceAreas = "Editor"
+    categories = "resource_visible_candidate"
+    firstSourceFile = "Editor/resource.rc"
+    firstLine = 1144
+}
+
+String {
+    key = "editor.mfc.source.team_and6"
+    text = "Team &6"
+    source = "source_audit"
+    migrationState = "candidate_collapsed_v1"
+    textHash = "0e15f1b74c69"
+    occurrenceCount = 1
+    activeOccurrenceCount = 1
+    sourceAreas = "Editor"
+    categories = "resource_visible_candidate"
+    firstSourceFile = "Editor/resource.rc"
+    firstLine = 1145
+}
+
+String {
+    key = "editor.mfc.source.team_and7"
+    text = "Team &7"
+    source = "source_audit"
+    migrationState = "candidate_collapsed_v1"
+    textHash = "0e99a4c320ad"
+    occurrenceCount = 1
+    activeOccurrenceCount = 1
+    sourceAreas = "Editor"
+    categories = "resource_visible_candidate"
+    firstSourceFile = "Editor/resource.rc"
+    firstLine = 1146
+}
+
+String {
+    key = "editor.mfc.source.team_and8"
+    text = "Team &8"
+    source = "source_audit"
+    migrationState = "candidate_collapsed_v1"
+    textHash = "ec55482160a9"
+    occurrenceCount = 1
+    activeOccurrenceCount = 1
+    sourceAreas = "Editor"
+    categories = "resource_visible_candidate"
+    firstSourceFile = "Editor/resource.rc"
+    firstLine = 1147
+}
+
+String {
+    key = "editor.mfc.source.terrain_detail_texture_tiling_factor"
+    text = "Terrain Detail Texture Tiling Factor"
+    source = "source_audit"
+    migrationState = "candidate_collapsed_v1"
+    textHash = "d473b9f5fc9f"
+    occurrenceCount = 1
+    activeOccurrenceCount = 1
+    sourceAreas = "Editor"
+    categories = "resource_visible_candidate"
+    firstSourceFile = "Editor/resource.rc"
+    firstLine = 956
+}
+
+String {
+    key = "editor.mfc.stringtable.ids_terrains"
+    text = "Terrains"
+    source = "editor.rc"
+    migrationState = "candidate_collapsed_v1"
+    textHash = "d121634a1c73"
+    occurrenceCount = 1
+    activeOccurrenceCount = 1
+    sourceAreas = "mclib"
+    categories = "resource_visible_candidate"
+    firstSourceFile = "mclib/MCLib.rc"
+    firstLine = 117
+}
+
+String {
+    key = "editor.mfc.source.text_edit"
+    text = "Text Edit"
+    source = "source_audit"
+    migrationState = "candidate_collapsed_v1"
+    textHash = "a96c6a2ec6fd"
+    occurrenceCount = 1
+    activeOccurrenceCount = 1
+    sourceAreas = "Editor"
+    categories = "resource_visible_candidate"
+    firstSourceFile = "Editor/resource.rc"
+    firstLine = 979
+}
+
+String {
+    key = "editor.mfc.source.text_message"
+    text = "Text Message"
+    source = "source_audit"
+    migrationState = "candidate_collapsed_v1"
+    textHash = "33d60569729e"
+    occurrenceCount = 1
+    activeOccurrenceCount = 1
+    sourceAreas = "Editor"
+    categories = "resource_visible_candidate"
+    firstSourceFile = "Editor/resource.rc"
+    firstLine = 798
+}
+
+String {
+    key = "editor.mfc.source.texture_tiling_factors"
+    text = "Texture Tiling Factors"
+    source = "editor.menu.rc"
+    migrationState = "candidate_collapsed_v1"
+    textHash = "ac602d98daf3"
+    occurrenceCount = 1
+    activeOccurrenceCount = 1
+    sourceAreas = "Editor"
+    categories = "resource_visible_candidate"
+    firstSourceFile = "Editor/resource.rc"
+    firstLine = 1103
+}
+
+String {
+    key = "editor.mfc.source.the_selected_file_must_be_in_a_subdirectory_of_the_install_d_22fd09b0"
+    text = "The selected file must be in a subdirectory of the install directory."
+    source = "source_audit"
+    migrationState = "candidate_collapsed_v1"
+    textHash = "22fd09b03463"
+    occurrenceCount = 1
+    activeOccurrenceCount = 1
+    sourceAreas = "Editor"
+    categories = "visible_review_candidate"
+    firstSourceFile = "Editor/resource.rc"
+    firstLine = 1745
+}
+
+String {
+    key = "editor.mfc.source.there_are_no_appropriate_structures"
+    text = "There are no appropriate structures."
+    source = "source_audit"
+    migrationState = "candidate_collapsed_v1"
+    textHash = "8708657b3c38"
+    occurrenceCount = 1
+    activeOccurrenceCount = 1
+    sourceAreas = "Editor"
+    categories = "resource_visible_candidate"
+    firstSourceFile = "Editor/resource.rc"
+    firstLine = 1732
+}
+
+String {
+    key = "editor.mfc.source.there_are_no_appropriate_units"
+    text = "There are no appropriate units."
+    source = "source_audit"
+    migrationState = "candidate_collapsed_v1"
+    textHash = "113b4447e4db"
+    occurrenceCount = 1
+    activeOccurrenceCount = 1
+    sourceAreas = "Editor"
+    categories = "resource_visible_candidate"
+    firstSourceFile = "Editor/resource.rc"
+    firstLine = 1735
+}
+
+String {
+    key = "editor.mfc.source.threshold_1_5"
+    text = "Threshold (1 - 5)"
+    source = "source_audit"
+    migrationState = "candidate_collapsed_v1"
+    textHash = "467ca9a9641d"
+    occurrenceCount = 1
+    activeOccurrenceCount = 1
+    sourceAreas = "Editor"
+    categories = "resource_visible_candidate"
+    firstSourceFile = "Editor/resource.rc"
+    firstLine = 828
+}
+
+String {
+    key = "editor.mfc.source.tiling_factors"
+    text = "Tiling Factors"
+    source = "source_audit"
+    migrationState = "candidate_collapsed_v1"
+    textHash = "8cca2d669da9"
+    occurrenceCount = 1
+    activeOccurrenceCount = 1
+    sourceAreas = "Editor"
+    categories = "resource_visible_candidate"
+    firstSourceFile = "Editor/resource.rc"
+    firstLine = 945
+}
+
+String {
+    key = "editor.mfc.source.time_limit_in_seconds"
+    text = "Time Limit (in seconds)"
+    source = "source_audit"
+    migrationState = "candidate_collapsed_v1"
+    textHash = "1c7c1d848864"
+    occurrenceCount = 1
+    activeOccurrenceCount = 1
+    sourceAreas = "Editor"
+    categories = "resource_visible_candidate"
+    firstSourceFile = "Editor/resource.rc"
+    firstLine = 637
+}
+
+String {
+    key = "editor.mfc.stringtable.ids_too_many_pilots"
+    text = "Too many units on map.  Limit is 104."
+    source = "editor.rc"
+    migrationState = "candidate_collapsed_v1"
+    textHash = "ea5b375cab64"
+    occurrenceCount = 1
+    activeOccurrenceCount = 1
+    sourceAreas = "mclib"
+    categories = "resource_visible_candidate"
+    firstSourceFile = "mclib/MCLib.rc"
+    firstLine = 196
+}
+
+String {
+    key = "editor.mfc.source.top"
+    text = "Top:"
+    source = "source_audit"
+    migrationState = "candidate_collapsed_v1"
+    textHash = "088caafdbdbe"
+    occurrenceCount = 1
+    activeOccurrenceCount = 1
+    sourceAreas = "Editor"
+    categories = "resource_visible_candidate"
+    firstSourceFile = "Editor/resource.rc"
+    firstLine = 787
+}
+
+String {
+    key = "editor.mfc.source.tree_types"
+    text = "Tree Types"
+    source = "source_audit"
+    migrationState = "candidate_collapsed_v1"
+    textHash = "db13f69cbc27"
+    occurrenceCount = 1
+    activeOccurrenceCount = 1
+    sourceAreas = "Editor"
+    categories = "resource_visible_candidate"
+    firstSourceFile = "Editor/resource.rc"
+    firstLine = 892
+}
+
+String {
+    key = "editor.mfc.stringtable.ids_group1"
+    text = "Trees"
+    source = "editor.rc"
+    migrationState = "candidate_collapsed_v1"
+    textHash = "1e7081d736f4"
+    occurrenceCount = 1
+    activeOccurrenceCount = 1
+    sourceAreas = "mclib"
+    categories = "resource_visible_candidate"
+    firstSourceFile = "mclib/MCLib.rc"
+    firstLine = 131
+}
+
+String {
+    key = "editor.mfc.stringtable.ids_group3"
+    text = "Turrets"
+    source = "editor.rc"
+    migrationState = "candidate_collapsed_v1"
+    textHash = "f3b23a1c7568"
+    occurrenceCount = 1
+    activeOccurrenceCount = 1
+    sourceAreas = "mclib"
+    categories = "resource_visible_candidate"
+    firstSourceFile = "mclib/MCLib.rc"
+    firstLine = 133
+}
+
+String {
+    key = "editor.mfc.source.two_lane_dirt_road"
+    text = "Two Lane Dirt Road"
+    source = "editor.menu.rc"
+    migrationState = "candidate_collapsed_v1"
+    textHash = "88f7624d4bfa"
+    occurrenceCount = 1
+    activeOccurrenceCount = 1
+    sourceAreas = "Editor"
+    categories = "resource_visible_candidate"
+    firstSourceFile = "Editor/resource.rc"
+    firstLine = 1056
+}
+
+String {
+    key = "editor.mfc.source.type_of_action_to_add"
+    text = "Type of action to add"
+    source = "source_audit"
+    migrationState = "candidate_collapsed_v1"
+    textHash = "56f7075bddfc"
+    occurrenceCount = 2
+    activeOccurrenceCount = 2
+    sourceAreas = "Editor"
+    categories = "resource_visible_candidate"
+    firstSourceFile = "Editor/resource.rc"
+    firstLine = 346
+}
+
+String {
+    key = "editor.mfc.source.type_of_condition_to_add"
+    text = "Type of condition to add"
+    source = "source_audit"
+    migrationState = "candidate_collapsed_v1"
+    textHash = "bb17112777b7"
+    occurrenceCount = 2
+    activeOccurrenceCount = 2
+    sourceAreas = "Editor"
+    categories = "resource_visible_candidate"
+    firstSourceFile = "Editor/resource.rc"
+    firstLine = 342
+}
+
+String {
+    key = "editor.mfc.source.unanmed_forest_percentld"
+    text = "Unanmed Forest %ld"
+    source = "source_audit"
+    migrationState = "candidate_collapsed_v1"
+    textHash = "d94d7a6e0a60"
+    occurrenceCount = 1
+    activeOccurrenceCount = 1
+    sourceAreas = "Editor"
+    categories = "resource_visible_candidate"
+    firstSourceFile = "Editor/resource.rc"
+    firstLine = 1731
+}
+
+String {
+    key = "editor.mfc.source.unit_settings"
+    text = "Unit Settings"
+    source = "editor.menu.rc"
+    migrationState = "candidate_collapsed_v1"
+    textHash = "01ea6cdb625c"
+    occurrenceCount = 1
+    activeOccurrenceCount = 1
+    sourceAreas = "Editor"
+    categories = "resource_visible_candidate"
+    firstSourceFile = "Editor/resource.rc"
+    firstLine = 496
+}
+
+String {
+    key = "editor.mfc.source.unlimited_ammo"
+    text = "Unlimited Ammo"
+    source = "source_audit"
+    migrationState = "candidate_collapsed_v1"
+    textHash = "59793a45567c"
+    occurrenceCount = 1
+    activeOccurrenceCount = 1
+    sourceAreas = "Editor"
+    categories = "resource_visible_candidate"
+    firstSourceFile = "Editor/resource.rc"
+    firstLine = 602
+}
+
+String {
+    key = "editor.mfc.stringtable.ids_unnamde_forest"
+    text = "Unnamed Forest %ld"
+    source = "editor.rc"
+    migrationState = "candidate_collapsed_v1"
+    textHash = "5c187be3b2e3"
+    occurrenceCount = 1
+    activeOccurrenceCount = 1
+    sourceAreas = "mclib"
+    categories = "resource_visible_candidate"
+    firstSourceFile = "mclib/MCLib.rc"
+    firstLine = 195
+}
+
+String {
+    key = "editor.mfc.source.using_pointer"
+    text = "using pointer"
+    source = "source_audit"
+    migrationState = "candidate_collapsed_v1"
+    textHash = "19542f1eb45c"
+    occurrenceCount = 2
+    activeOccurrenceCount = 2
+    sourceAreas = "Editor"
+    categories = "resource_visible_candidate"
+    firstSourceFile = "Editor/resource.rc"
+    firstLine = 438
+}
+
+String {
+    key = "editor.mfc.stringtable.ids_string10109"
+    text = "Vehicle Props"
+    source = "editor.rc"
+    migrationState = "candidate_collapsed_v1"
+    textHash = "3351d11c2f4c"
+    occurrenceCount = 1
+    activeOccurrenceCount = 1
+    sourceAreas = "mclib"
+    categories = "resource_visible_candidate"
+    firstSourceFile = "mclib/MCLib.rc"
+    firstLine = 139
+}
+
+String {
+    key = "editor.mfc.stringtable.ids_string10106"
+    text = "Vehicles"
+    source = "editor.rc"
+    migrationState = "candidate_collapsed_v1"
+    textHash = "60261ed2752b"
+    occurrenceCount = 1
+    activeOccurrenceCount = 1
+    sourceAreas = "mclib"
+    categories = "resource_visible_candidate"
+    firstSourceFile = "mclib/MCLib.rc"
+    firstLine = 136
+}
+
+String {
+    key = "editor.mfc.source.video_file"
+    text = "Video File"
+    source = "source_audit"
+    migrationState = "candidate_collapsed_v1"
+    textHash = "ac9ffd23f062"
+    occurrenceCount = 1
+    activeOccurrenceCount = 1
+    sourceAreas = "Editor"
+    categories = "resource_visible_candidate"
+    firstSourceFile = "Editor/resource.rc"
+    firstLine = 727
+}
+
+String {
+    key = "editor.mfc.source.video_filename"
+    text = "Video Filename"
+    source = "source_audit"
+    migrationState = "candidate_collapsed_v1"
+    textHash = "e85b85b0998b"
+    occurrenceCount = 1
+    activeOccurrenceCount = 1
+    sourceAreas = "Editor"
+    categories = "resource_visible_candidate"
+    firstSourceFile = "Editor/resource.rc"
+    firstLine = 647
+}
+
+String {
+    key = "editor.mfc.source.view_action"
+    text = "View Action"
+    source = "source_audit"
+    migrationState = "candidate_collapsed_v1"
+    textHash = "2c21a613473a"
+    occurrenceCount = 2
+    activeOccurrenceCount = 2
+    sourceAreas = "Editor"
+    categories = "resource_visible_candidate"
+    firstSourceFile = "Editor/resource.rc"
+    firstLine = 302
+}
+
+String {
+    key = "editor.mfc.source.view_condition"
+    text = "View Condition"
+    source = "source_audit"
+    migrationState = "candidate_collapsed_v1"
+    textHash = "23a68eb75d0c"
+    occurrenceCount = 2
+    activeOccurrenceCount = 2
+    sourceAreas = "Editor"
+    categories = "resource_visible_candidate"
+    firstSourceFile = "Editor/resource.rc"
+    firstLine = 292
+}
+
+String {
+    key = "editor.mfc.source.view_condition_or_action"
+    text = "View Condition Or Action"
+    source = "source_audit"
+    migrationState = "candidate_collapsed_v1"
+    textHash = "98addf154b94"
+    occurrenceCount = 1
+    activeOccurrenceCount = 1
+    sourceAreas = "Editor"
+    categories = "resource_visible_candidate"
+    firstSourceFile = "Editor/resource.rc"
+    firstLine = 998
+}
+
+String {
+    key = "editor.mfc.stringtable.ids_warning"
+    text = "Warning !"
+    source = "editor.rc"
+    migrationState = "candidate_collapsed_v1"
+    textHash = "338f05228fd3"
+    occurrenceCount = 1
+    activeOccurrenceCount = 1
+    sourceAreas = "mclib"
+    categories = "resource_visible_candidate"
+    firstSourceFile = "mclib/MCLib.rc"
+    firstLine = 171
+}
+
+String {
+    key = "editor.mfc.source.warning_there_are_too_many_turrets_there_are_percentd_turret_0370019d"
+    text = "Warning: There are too many turrets. There are %d turrets. (64 is the maximum supported.)"
+    source = "source_audit"
+    migrationState = "candidate_collapsed_v1"
+    textHash = "0370019d0ee2"
+    occurrenceCount = 1
+    activeOccurrenceCount = 1
+    sourceAreas = "Editor"
+    categories = "resource_visible_candidate"
+    firstSourceFile = "Editor/resource.rc"
+    firstLine = 1746
+}
+
+String {
+    key = "editor.mfc.source.water_detail_texture_tiling_factor"
+    text = "Water Detail Texture Tiling Factor"
+    source = "source_audit"
+    migrationState = "candidate_collapsed_v1"
+    textHash = "22691803deda"
+    occurrenceCount = 1
+    activeOccurrenceCount = 1
+    sourceAreas = "Editor"
+    categories = "resource_visible_candidate"
+    firstSourceFile = "Editor/resource.rc"
+    firstLine = 959
+}
+
+String {
+    key = "editor.mfc.source.water_texture_tiling_factor"
+    text = "Water Texture Tiling Factor"
+    source = "source_audit"
+    migrationState = "candidate_collapsed_v1"
+    textHash = "78f3d270060a"
+    occurrenceCount = 1
+    activeOccurrenceCount = 1
+    sourceAreas = "Editor"
+    categories = "resource_visible_candidate"
+    firstSourceFile = "Editor/resource.rc"
+    firstLine = 958
+}
+
+String {
+    key = "editor.mfc.source.x"
+    text = "X:"
+    source = "source_audit"
+    migrationState = "candidate_collapsed_v1"
+    textHash = "9cca998b0860"
+    occurrenceCount = 1
+    activeOccurrenceCount = 1
+    sourceAreas = "Editor"
+    categories = "resource_visible_candidate"
+    firstSourceFile = "Editor/resource.rc"
+    firstLine = 910
+}
+
+String {
+    key = "editor.mfc.source.y"
+    text = "Y:"
+    source = "source_audit"
+    migrationState = "candidate_collapsed_v1"
+    textHash = "aebff3f20a9e"
+    occurrenceCount = 1
+    activeOccurrenceCount = 1
+    sourceAreas = "Editor"
+    categories = "resource_visible_candidate"
+    firstSourceFile = "Editor/resource.rc"
+    firstLine = 911
+}
+
+String {
+    key = "editor.mfc.stringtable.ids_no_vertex_sel"
+    text = "You must first select some vertices!"
+    source = "editor.rc"
+    migrationState = "candidate_collapsed_v1"
+    textHash = "7e43058293de"
+    occurrenceCount = 1
+    activeOccurrenceCount = 1
+    sourceAreas = "mclib"
+    categories = "resource_visible_candidate"
+    firstSourceFile = "mclib/MCLib.rc"
+    firstLine = 153
+}
+
+String {
+    key = "editor.mfc.stringtable.ids_need_enemy"
+    text = "You must have one enemy mech!"
+    source = "editor.rc"
+    migrationState = "candidate_collapsed_v1"
+    textHash = "40537f7785be"
+    occurrenceCount = 1
+    activeOccurrenceCount = 1
+    sourceAreas = "mclib"
+    categories = "resource_visible_candidate"
+    firstSourceFile = "mclib/MCLib.rc"
+    firstLine = 164
+}
+
+String {
+    key = "editor.mfc.stringtable.ids_must_have_player"
+    text = "You must have one player mech!"
+    source = "editor.rc"
+    migrationState = "candidate_collapsed_v1"
+    textHash = "1ecbf4cac452"
+    occurrenceCount = 1
+    activeOccurrenceCount = 1
+    sourceAreas = "mclib"
+    categories = "resource_visible_candidate"
+    firstSourceFile = "mclib/MCLib.rc"
+    firstLine = 159
+}
+
+String {
+    key = "editor.mfc.stringtable.ids_save_camera_fail"
+    text = "You need to save first!"
+    source = "editor.rc"
+    migrationState = "candidate_collapsed_v1"
+    textHash = "bc10dbd4e696"
+    occurrenceCount = 1
+    activeOccurrenceCount = 1
+    sourceAreas = "mclib"
+    categories = "resource_visible_candidate"
+    firstSourceFile = "mclib/MCLib.rc"
+    firstLine = 152
+}
+

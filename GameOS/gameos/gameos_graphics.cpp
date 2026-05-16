@@ -3910,7 +3910,6 @@ void gosRenderer::drawIndexedTris(gos_VERTEX* vertices, int num_vertices, WORD* 
 
     // for now draw anyway because no render state saved for draw calls
     applyRenderStates();
-
     // Terrain tessellation path
     if (curStates_[gos_State_Terrain] && !curStates_[gos_State_Overlay] && terrain_material_ && terrain_batch_extras_count_ > 0 && terrain_draw_enabled_) {
         ZoneScopedN("Terrain.TessDraw");

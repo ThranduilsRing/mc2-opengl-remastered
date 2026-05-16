@@ -1,0 +1,37 @@
+/***************************************************************
+ * FILENAME: viewer.fit
+ * DESCRIPTION: Viewer localized text definitions.
+ *
+ * CREATED BY: Methuselas
+ * CREATED: 2026-04-30
+ *
+ ***************************************************************/
+
+String {
+    key = "viewer.source.fst"
+    text = ".fst"
+    source = "source_audit"
+    migrationState = "candidate_collapsed_v1"
+    textHash = "4b145b2d3a81"
+    occurrenceCount = 1
+    activeOccurrenceCount = 1
+    sourceAreas = "Viewer"
+    categories = "visible_review_candidate"
+    firstSourceFile = "Viewer/View.cpp"
+    firstLine = 534
+}
+
+String {
+    key = "viewer.source.mechcommander_2_encyclopedia"
+    text = "MechCommander 2 Encyclopedia"
+    source = "source_audit"
+    migrationState = "candidate_collapsed_v1"
+    textHash = "6ffdf478efb8"
+    occurrenceCount = 1
+    activeOccurrenceCount = 1
+    sourceAreas = "Viewer"
+    categories = "visible_review_candidate"
+    firstSourceFile = "Viewer/View.cpp"
+    firstLine = 702
+}
+

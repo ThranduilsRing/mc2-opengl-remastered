@@ -98,8 +98,8 @@ float cornerElev(WaterRecipe r, uint cornerIdx) {
     return r.elev.w;
 }
 
-uint unpackByte(uint packed, uint cornerIdx) {
-    return (packed >> (cornerIdx * 8u)) & 0xFFu;
+uint unpackByte(uint packedByte, uint cornerIdx) {
+    return (packedByte >> (cornerIdx * 8u)) & 0xFFu;
 }
 
 uint cornerLightRGB(WaterThinRecord t, uint cornerIdx) {
@@ -116,12 +116,12 @@ uint cornerFogRGB(WaterThinRecord t, uint cornerIdx) {
     return t.fogRGB.w;
 }
 
-vec4 unpackARGB(uint packed) {
+vec4 unpackARGB(uint packedColor) {
     return vec4(
-        float((packed >> 16u) & 0xFFu) / 255.0,  // R
-        float((packed >>  8u) & 0xFFu) / 255.0,  // G
-        float((packed       ) & 0xFFu) / 255.0,  // B
-        float((packed >> 24u) & 0xFFu) / 255.0   // A
+        float((packedColor >> 16u) & 0xFFu) / 255.0,  // R
+        float((packedColor >>  8u) & 0xFFu) / 255.0,  // G
+        float((packedColor       ) & 0xFFu) / 255.0,  // B
+        float((packedColor >> 24u) & 0xFFu) / 255.0   // A
     );
 }
 

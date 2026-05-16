@@ -1,0 +1,1897 @@
+/***************************************************************
+ * FILENAME: editor.fit
+ * DESCRIPTION: Editor localized text definitions migrated from mc2res string data.
+ *
+ * CREATED BY: Methuselas
+ * CREATED: 2026-04-30
+ *
+ ***************************************************************/
+
+String {
+    key = "multiplayer.mp.lanbrow.title.help"
+    text = "LAN BROWSER     In this screen, you can review the games currently running on your local area network, join an existing game, or host a new game. Games can be sorted by clicking any column heading. A selected game is white, games that can be joined are orange, and games that are not available for selection are gray."
+    legacyId = 26076
+    legacySymbol = "IDS_MP_LANBROW_TITLE_HELP"
+    source = "mc2res"
+    migrationNote = "no v4.1 route found; kept current bucket"
+}
+
+String {
+    key = "multiplayer.mp.load.map.accept.help"
+    text = "ACCEPT     Keep your current map selection and return to the previous screen."
+    legacyId = 26380
+    legacySymbol = "IDS_MP_LOAD_MAP_ACCEPT_HELP"
+    source = "mc2res"
+    migrationNote = "no v4.1 route found; kept current bucket"
+}
+
+String {
+    key = "multiplayer.mp.load.map.cancel.help"
+    text = "CANCEL     Cancel your current map selection and return to the previous screen."
+    legacyId = 26381
+    legacySymbol = "IDS_MP_LOAD_MAP_CANCEL_HELP"
+    source = "mc2res"
+    migrationNote = "no v4.1 route found; kept current bucket"
+}
+
+String {
+    key = "multiplayer.mp.playerprefs.cancel.help"
+    text = "CANCEL     Cancel your selections and return to the Mission Parameters screen."
+    legacyId = 26410
+    legacySymbol = "IDS_MP_PLAYERPREFS_CANCEL_HELP"
+    source = "mc2res"
+    migrationNote = "no v4.1 route found; kept current bucket"
+}
+
+String {
+    key = "multiplayer.mp.playerprefs.accept.help"
+    text = "ACCEPT     Keep your selections and return to the Mission Parameters screen."
+    legacyId = 26411
+    legacySymbol = "IDS_MP_PLAYERPREFS_ACCEPT_HELP"
+    source = "mc2res"
+    migrationNote = "no v4.1 route found; kept current bucket"
+}
+
+String {
+    key = "ui.options.help.unit.colors"
+    text = "UNIT COLORS     Select the base and accent colors of your units in single-player missions. Click the Base or Stripe tab, and then click the color on the palette."
+    legacyId = 26618
+    legacySymbol = "IDS_OPTIONS_HELP_UNIT_COLORS"
+    source = "mc2res"
+    migrationNote = "no v4.1 route found; kept current bucket"
+}
+
+String {
+    key = "unclassified.dropzone"
+    text = "Drop zone"
+    legacyId = 27012
+    legacySymbol = "IDS_DROPZONE"
+    source = "mc2res"
+    migrationNote = "no v4.1 route found; kept current bucket"
+}
+
+String {
+    key = "pilot.promotion.selection.prompt"
+    text = "Select one specialty skill from below"
+    legacyId = 27021
+    legacySymbol = "IDS_PROMOTION_SELECTION_PROMPT"
+    source = "mc2res"
+    migrationNote = "no v4.1 route found; kept current bucket"
+}
+
+String {
+    key = "ui.mm.skirmish.help"
+    text = "Load a previously completed mission from the campaign or a mission created with the Mission Editor."
+    legacyId = 27618
+    legacySymbol = "IDS_MM_SKIRMISH_HELP"
+    source = "mc2res"
+    migrationNote = "no v4.1 route found; kept current bucket"
+}
+
+String {
+    key = "unclassified.help.cm.mission.selection.area"
+    text = "CAMPAIGN MISSIONS     A campaign map that keeps track of completed and upcoming missions. Select any available mission to access its overview and video. Click the Next button when you are ready to play the selected mission."
+    legacyId = 29006
+    legacySymbol = "IDS_HELP_CM_MISSION_SELECTION_AREA"
+    source = "mc2res"
+    migrationNote = "no v4.1 route found; kept current bucket"
+}
+
+String {
+    key = "unclassified.help.cm.stop.button"
+    text = "STOP     Stop the mission overview video."
+    legacyId = 29010
+    legacySymbol = "IDS_HELP_CM_STOP_BUTTON"
+    legacyAliases = "IDS_HELP_MISSIONSELECTION"
+    source = "mc2res"
+    migrationNote = "no v4.1 route found; kept current bucket"
+}
+
+String {
+    key = "unclassified.help.cm.mission.selection.screen.title"
+    text = "MISSION SELECTION     In this screen, you can review the available missions in the current campaign and select one to play."
+    legacyId = 29012
+    legacySymbol = "IDS_HELP_CM_MISSION_SELECTION_SCREEN_TITLE"
+    source = "mc2res"
+    migrationNote = "no v4.1 route found; kept current bucket"
+}
+
+String {
+    key = "unclassified.help.pm.mech.name"
+    text = "CURRENT SELECTION     The name and animation of the currently selected 'Mech."
+    legacyId = 29051
+    legacySymbol = "IDS_HELP_PM_MECH_NAME"
+    source = "mc2res"
+    migrationNote = "no v4.1 route found; kept current bucket"
+}
+
+String {
+    key = "unclassified.help.mb.mech.name"
+    text = "CURRENT SELECTION     The name and animation of the currently selected 'Mech."
+    legacyId = 29053
+    legacySymbol = "IDS_HELP_MB_MECH_NAME"
+    source = "mc2res"
+    migrationNote = "no v4.1 route found; kept current bucket"
+}
+
+String {
+    key = "unclassified.help.mc.selected.component.avi"
+    text = "CURRENT SELECTION          The name and animation of the currently selected weapon or component."
+    legacyId = 29064
+    legacySymbol = "IDS_HELP_MC_SELECTED_COMPONENT_AVI"
+    source = "mc2res"
+    migrationNote = "no v4.1 route found; kept current bucket"
+}
+
+String {
+    key = "unclassified.help.pr.current.selection"
+    text = "CURRENT SELECTION          The name and photo of the currently selected pilot."
+    legacyId = 29081
+    legacySymbol = "IDS_HELP_PR_CURRENT_SELECTION"
+    source = "mc2res"
+    migrationNote = "no v4.1 route found; kept current bucket"
+}
+
+String {
+    key = "unclassified.help.mn.mission.map"
+    text = "MISSION MAP     A dynamic reconnaissance photo of the selected mission's terrain and features. The mission's drop zone and objectives are shown in conjunction with the VidCom."
+    legacyId = 29954
+    legacySymbol = "IDS_HELP_MN_MISSION_MAP"
+    source = "mc2res"
+    migrationNote = "no v4.1 route found; kept current bucket"
+}
+
+String {
+    key = "ui.tacmap"
+    text = "Tactical Map"
+    legacyId = 30051
+    legacySymbol = "IDS_TACMAP"
+    source = "mc2res"
+    migrationNote = "no v4.1 route found; kept current bucket"
+}
+
+String {
+    key = "ui.tacmap.desc"
+    text = "Display sensor contacts, objective locations, unit locations, and other information."
+    legacyId = 30052
+    legacySymbol = "IDS_TACMAP_DESC"
+    source = "mc2res"
+    migrationNote = "no v4.1 route found; kept current bucket"
+}
+
+String {
+    key = "unit.vehicle.tab"
+    text = "Support Palette"
+    legacyId = 30053
+    legacySymbol = "IDS_HELP_MCH0"
+    legacyAliases = "IDS_VEHICLE_TAB"
+    source = "mc2res"
+    migrationNote = "no v4.1 route found; kept current bucket"
+}
+
+String {
+    key = "unclassified.mfdcmd.name"
+    text = "Command Palette"
+    legacyId = 30151
+    legacySymbol = "IDS_MFDCMD_NAME"
+    source = "mc2res"
+    migrationNote = "no v4.1 route found; kept current bucket"
+}
+
+String {
+    key = "object.513"
+    text = "Scrub Brush 1"
+    legacyId = 30513
+    legacySymbol = "IDS_OBJECT_513"
+    source = "mc2res"
+    migrationNote = "no v4.1 route found; kept current bucket"
+}
+
+String {
+    key = "object.514"
+    text = "Scrub Brush 2"
+    legacyId = 30514
+    legacySymbol = "IDS_OBJECT_514"
+    source = "mc2res"
+    migrationNote = "no v4.1 route found; kept current bucket"
+}
+
+String {
+    key = "object.515"
+    text = "Scrub Brush 3"
+    legacyId = 30515
+    legacySymbol = "IDS_OBJECT_515"
+    source = "mc2res"
+    migrationNote = "no v4.1 route found; kept current bucket"
+}
+
+String {
+    key = "object.516"
+    text = "Scrub Brush 4"
+    legacyId = 30516
+    legacySymbol = "IDS_OBJECT_516"
+    source = "mc2res"
+    migrationNote = "no v4.1 route found; kept current bucket"
+}
+
+String {
+    key = "editor.sprite.open_sprites.help"
+    text = "Opens the Sprites.PAK file"
+    legacyId = 40001
+    legacySymbol = "NO_SYMBOL"
+    source = "mc2res"
+    migrationNote = "no v4.1 route found; kept current bucket"
+}
+
+String {
+    key = "editor.file.exit.help"
+    text = "Exit the Application"
+    legacyId = 40002
+    legacySymbol = "NO_SYMBOL"
+    source = "mc2res"
+    migrationNote = "no v4.1 route found; kept current bucket"
+}
+
+String {
+    key = "editor.sprite.export_sprite_pak.help"
+    text = "Export the Sprite PAK File to Incorporate all changes made."
+    legacyId = 40003
+    legacySymbol = "NO_SYMBOL"
+    source = "mc2res"
+    migrationNote = "no v4.1 route found; kept current bucket"
+}
+
+String {
+    key = "editor.components.open_definitions.help"
+    text = "Edit the components definition file"
+    legacyId = 40007
+    legacySymbol = "NO_SYMBOL"
+    source = "mc2res"
+    migrationNote = "no v4.1 route found; kept current bucket"
+}
+
+String {
+    key = "ui.tacmap.help"
+    text = "Click a location on the tactical map to move your camera there.  "
+    legacyId = 45126
+    legacySymbol = "IDS_TACMAP_HELP"
+    source = "mc2res"
+    migrationNote = "no v4.1 route found; kept current bucket"
+}
+
+String {
+    key = "ui.tacmap.help2"
+    text = "Left-click a location on the tactical map to move your camera there. Right-click map to move selected units there."
+    legacyId = 45127
+    legacySymbol = "IDS_TACMAP_HELP2"
+    source = "mc2res"
+    migrationNote = "no v4.1 route found; kept current bucket"
+}
+
+String {
+    key = "unclassified.editor.voodoo3"
+    text = "The MechCommander 2 Mission Editor cannot run on a Voodoo 3 card with a desktop resolution higher than 1024x768. Desktop color depth must also be 16-bit color. Change your desktop resolution by right-clicking the desktop, clicking Properties, and then clicking the Settings tab."
+    legacyId = 60041
+    legacySymbol = "IDS_EDITOR_VOODOO3"
+    source = "mc2res"
+    migrationNote = "no v4.1 route found; kept current bucket"
+}
+
+// ---- Source string migration collapsed candidates v1 ----
+
+String {
+    key = "editor.source.percent_3f"
+    text = "%.3f"
+    source = "source_audit"
+    migrationState = "candidate_collapsed_v1"
+    textHash = "339567ab11a3"
+    occurrenceCount = 8
+    activeOccurrenceCount = 8
+    sourceAreas = "Editor"
+    categories = "debug_log_candidate;visible_review_candidate"
+    firstSourceFile = "Editor/EditorInterface.cpp"
+    firstLine = 1477
+}
+
+String {
+    key = "editor.source.percentd"
+    text = "%d: "
+    source = "source_audit"
+    migrationState = "candidate_collapsed_v1"
+    textHash = "f168bd1907c0"
+    occurrenceCount = 1
+    activeOccurrenceCount = 1
+    sourceAreas = "Editor"
+    categories = "visible_review_candidate"
+    firstSourceFile = "Editor/ResourceStringSelectionDlg.cpp"
+    firstLine = 87
+}
+
+String {
+    key = "editor.source.percentlu"
+    text = "%lu"
+    source = "source_audit"
+    migrationState = "candidate_collapsed_v1"
+    textHash = "b34bcfd49892"
+    occurrenceCount = 1
+    activeOccurrenceCount = 1
+    sourceAreas = "Editor"
+    categories = "visible_review_candidate"
+    firstSourceFile = "Editor/UnitSettingsDlg.cpp"
+    firstLine = 589
+}
+
+String {
+    key = "editor.source.percentsmissionpercentd"
+    text = "%sMission%d"
+    source = "source_audit"
+    migrationState = "candidate_collapsed_v1"
+    textHash = "1929cb3b8371"
+    occurrenceCount = 2
+    activeOccurrenceCount = 2
+    sourceAreas = "Editor"
+    categories = "visible_review_candidate"
+    firstSourceFile = "Editor/CampaignData.cpp"
+    firstLine = 139
+}
+
+String {
+    key = "editor.source.andand_last"
+    text = "' && last == '"
+    source = "source_audit"
+    migrationState = "candidate_collapsed_v1"
+    textHash = "2077999122bc"
+    occurrenceCount = 1
+    activeOccurrenceCount = 1
+    sourceAreas = "Editor"
+    categories = "visible_review_candidate"
+    firstSourceFile = "Editor/EditorResourceCatalog.cpp"
+    firstLine = 120
+}
+
+String {
+    key = "editor.source.other"
+    text = "(Other)"
+    source = "source_audit"
+    migrationState = "candidate_collapsed_v1"
+    textHash = "033a91cd56a1"
+    occurrenceCount = 1
+    activeOccurrenceCount = 1
+    sourceAreas = "Editor"
+    categories = "visible_review_candidate"
+    firstSourceFile = "Editor/EditorData.cpp"
+    firstLine = 2043
+}
+
+String {
+    key = "editor.source.pos_percent_3f_percent_3f_percents"
+    text = "(pos: %.3f, %.3f) %s"
+    source = "source_audit"
+    migrationState = "candidate_collapsed_v1"
+    textHash = "f11a3acae512"
+    occurrenceCount = 4
+    activeOccurrenceCount = 4
+    sourceAreas = "Editor"
+    categories = "visible_review_candidate"
+    firstSourceFile = "Editor/ChooseBuildingDlg.cpp"
+    firstLine = 73
+}
+
+String {
+    key = "editor.source.string"
+    text = "*."
+    source = "source_audit"
+    migrationState = "candidate_collapsed_v1"
+    textHash = "6849765e844a"
+    occurrenceCount = 1
+    activeOccurrenceCount = 1
+    sourceAreas = "Editor"
+    categories = "visible_review_candidate"
+    firstSourceFile = "Editor/DlgFileOpen.cpp"
+    firstLine = 55
+}
+
+String {
+    key = "editor.source.burninshadows"
+    text = "-burnInShadows"
+    source = "source_audit"
+    migrationState = "candidate_collapsed_v1"
+    textHash = "0e2e9d8fceec"
+    occurrenceCount = 1
+    activeOccurrenceCount = 1
+    sourceAreas = "Editor"
+    categories = "visible_review_candidate"
+    firstSourceFile = "Editor/Editor.cpp"
+    firstLine = 1200
+}
+
+String {
+    key = "editor.source.resaveall"
+    text = "-resaveall"
+    source = "source_audit"
+    migrationState = "candidate_collapsed_v1"
+    textHash = "00d10b7633ec"
+    occurrenceCount = 1
+    activeOccurrenceCount = 1
+    sourceAreas = "Editor"
+    categories = "visible_review_candidate"
+    firstSourceFile = "Editor/Editor.cpp"
+    firstLine = 1204
+}
+
+String {
+    key = "editor.source.burnin"
+    text = ".burnin"
+    source = "source_audit"
+    migrationState = "candidate_collapsed_v1"
+    textHash = "47789859eff8"
+    occurrenceCount = 1
+    activeOccurrenceCount = 1
+    sourceAreas = "Editor"
+    categories = "visible_review_candidate"
+    firstSourceFile = "Editor/EditorInterface.cpp"
+    firstLine = 3201
+}
+
+String {
+    key = "editor.source.cvs"
+    text = ".cvs"
+    source = "source_audit"
+    migrationState = "candidate_collapsed_v1"
+    textHash = "9d70877ab426"
+    occurrenceCount = 1
+    activeOccurrenceCount = 1
+    sourceAreas = "Editor"
+    categories = "visible_review_candidate"
+    firstSourceFile = "Editor/EditorObjects.cpp"
+    firstLine = 398
+}
+
+String {
+    key = "editor.source.0_13_0_editor"
+    text = "0.13.0-editor"
+    source = "source_audit"
+    migrationState = "candidate_collapsed_v1"
+    textHash = "982fa6c7ec98"
+    occurrenceCount = 1
+    activeOccurrenceCount = 1
+    sourceAreas = "Editor"
+    categories = "visible_review_candidate"
+    firstSourceFile = "Editor/EditorVersion.h"
+    firstLine = 21
+}
+
+String {
+    key = "editor.source.100x100"
+    text = "100x100"
+    source = "source_audit"
+    migrationState = "candidate_collapsed_v1"
+    textHash = "147f12d01bec"
+    occurrenceCount = 1
+    activeOccurrenceCount = 1
+    sourceAreas = "Editor"
+    categories = "visible_review_candidate"
+    firstSourceFile = "Editor/mapsizedlg.cpp"
+    firstLine = 33
+}
+
+String {
+    key = "editor.source.120x120"
+    text = "120x120"
+    source = "source_audit"
+    migrationState = "candidate_collapsed_v1"
+    textHash = "0ced49dd2b53"
+    occurrenceCount = 1
+    activeOccurrenceCount = 1
+    sourceAreas = "Editor"
+    categories = "visible_review_candidate"
+    firstSourceFile = "Editor/mapsizedlg.cpp"
+    firstLine = 36
+}
+
+String {
+    key = "editor.source.60x60"
+    text = "60x60"
+    source = "source_audit"
+    migrationState = "candidate_collapsed_v1"
+    textHash = "8b11f49f4b15"
+    occurrenceCount = 1
+    activeOccurrenceCount = 1
+    sourceAreas = "Editor"
+    categories = "visible_review_candidate"
+    firstSourceFile = "Editor/mapsizedlg.cpp"
+    firstLine = 27
+}
+
+String {
+    key = "editor.source.80x80"
+    text = "80x80"
+    source = "source_audit"
+    migrationState = "candidate_collapsed_v1"
+    textHash = "de58fba99bd1"
+    occurrenceCount = 1
+    activeOccurrenceCount = 1
+    sourceAreas = "Editor"
+    categories = "visible_review_candidate"
+    firstSourceFile = "Editor/mapsizedlg.cpp"
+    firstLine = 30
+}
+
+String {
+    key = "editor.source.string.01af9139"
+    text = "] "
+    source = "source_audit"
+    migrationState = "candidate_collapsed_v1"
+    textHash = "01af91396f2e"
+    occurrenceCount = 3
+    activeOccurrenceCount = 3
+    sourceAreas = "Editor"
+    categories = "visible_review_candidate"
+    firstSourceFile = "Editor/CampaignDialog.cpp"
+    firstLine = 114
+}
+
+String {
+    key = "editor.source.add_failure_condition"
+    text = "Add (Failure) Condition"
+    source = "source_audit"
+    migrationState = "candidate_collapsed_v1"
+    textHash = "c056dab5fbdd"
+    occurrenceCount = 1
+    activeOccurrenceCount = 1
+    sourceAreas = "Editor"
+    categories = "visible_review_candidate"
+    firstSourceFile = "Editor/ObjectiveDlg.cpp"
+    firstLine = 558
+}
+
+String {
+    key = "editor.source.add_success_condition"
+    text = "Add (Success) Condition"
+    source = "source_audit"
+    migrationState = "candidate_collapsed_v1"
+    textHash = "e7efa49a51fa"
+    occurrenceCount = 1
+    activeOccurrenceCount = 1
+    sourceAreas = "Editor"
+    categories = "visible_review_candidate"
+    firstSourceFile = "Editor/ObjectiveDlg.cpp"
+    firstLine = 555
+}
+
+String {
+    key = "editor.source.already_there"
+    text = "already there\n"
+    source = "source_audit"
+    migrationState = "candidate_collapsed_v1"
+    textHash = "4235d150b7a5"
+    occurrenceCount = 1
+    activeOccurrenceCount = 1
+    sourceAreas = "Editor"
+    categories = "visible_review_candidate"
+    firstSourceFile = "Editor/BuildingLink.cpp"
+    firstLine = 72
+}
+
+String {
+    key = "editor.source.area_effect"
+    text = "area effect"
+    source = "source_audit"
+    migrationState = "candidate_collapsed_v1"
+    textHash = "ff2c78ceca0e"
+    occurrenceCount = 3
+    activeOccurrenceCount = 3
+    sourceAreas = "Editor"
+    categories = "visible_review_candidate"
+    firstSourceFile = "Editor/FlattenBrush.cpp"
+    firstLine = 137
+}
+
+String {
+    key = "editor.source.arial_8"
+    text = "Arial, 8"
+    source = "source_audit"
+    migrationState = "candidate_collapsed_v1"
+    textHash = "5252ea3974fc"
+    occurrenceCount = 1
+    activeOccurrenceCount = 1
+    sourceAreas = "Editor"
+    categories = "visible_review_candidate"
+    firstSourceFile = "Editor/Editor.cpp"
+    firstLine = 324
+}
+
+String {
+    key = "editor.source.arm_appearance"
+    text = "Arm Appearance"
+    source = "source_audit"
+    migrationState = "candidate_collapsed_v1"
+    textHash = "30dd18fb42d3"
+    occurrenceCount = 1
+    activeOccurrenceCount = 1
+    sourceAreas = "Editor"
+    categories = "visible_review_candidate"
+    firstSourceFile = "Editor/EditorData.cpp"
+    firstLine = 1804
+}
+
+String {
+    key = "editor.source.bool_bldgappearance_recalcbounds_void"
+    text = "bool BldgAppearance::recalcBounds (void)"
+    source = "source_audit"
+    migrationState = "candidate_collapsed_v1"
+    textHash = "59590499d523"
+    occurrenceCount = 1
+    activeOccurrenceCount = 1
+    sourceAreas = "Editor"
+    categories = "visible_review_candidate"
+    firstSourceFile = "Editor/BuildingLink.cpp"
+    firstLine = 233
+}
+
+String {
+    key = "editor.source.building_appearance"
+    text = "Building Appearance"
+    source = "source_audit"
+    migrationState = "candidate_collapsed_v1"
+    textHash = "9a554c397c4b"
+    occurrenceCount = 1
+    activeOccurrenceCount = 1
+    sourceAreas = "Editor"
+    categories = "visible_review_candidate"
+    firstSourceFile = "Editor/EditorData.cpp"
+    firstLine = 1807
+}
+
+String {
+    key = "editor.source.campaign_file_fit_fit"
+    text = "Campaign File (*.FIT)|*.FIT|"
+    source = "source_audit"
+    migrationState = "candidate_collapsed_v1"
+    textHash = "dbf6328c1069"
+    occurrenceCount = 2
+    activeOccurrenceCount = 2
+    sourceAreas = "Editor"
+    categories = "visible_review_candidate"
+    firstSourceFile = "Editor/CampaignDialog.cpp"
+    firstLine = 178
+}
+
+String {
+    key = "editor.source.carriage_return"
+    text = "carriage return"
+    source = "source_audit"
+    migrationState = "candidate_collapsed_v1"
+    textHash = "6e9f192b79a1"
+    occurrenceCount = 1
+    activeOccurrenceCount = 1
+    sourceAreas = "Editor"
+    categories = "visible_review_candidate"
+    firstSourceFile = "Editor/UserTextEdit.cpp"
+    firstLine = 101
+}
+
+String {
+    key = "editor.source.cement_4"
+    text = "Cement 4"
+    source = "source_audit"
+    migrationState = "candidate_collapsed_v1"
+    textHash = "5e10d2757305"
+    occurrenceCount = 1
+    activeOccurrenceCount = 1
+    sourceAreas = "Editor"
+    categories = "visible_review_candidate"
+    firstSourceFile = "Editor/EditorResourceFallback.h"
+    firstLine = 95
+}
+
+String {
+    key = "editor.source.cement_5"
+    text = "Cement 5"
+    source = "source_audit"
+    migrationState = "candidate_collapsed_v1"
+    textHash = "526e3b4af0ee"
+    occurrenceCount = 1
+    activeOccurrenceCount = 1
+    sourceAreas = "Editor"
+    categories = "visible_review_candidate"
+    firstSourceFile = "Editor/EditorResourceFallback.h"
+    firstLine = 96
+}
+
+String {
+    key = "editor.source.cement_6"
+    text = "Cement 6"
+    source = "source_audit"
+    migrationState = "candidate_collapsed_v1"
+    textHash = "1a1d3b1b13a9"
+    occurrenceCount = 1
+    activeOccurrenceCount = 1
+    sourceAreas = "Editor"
+    categories = "visible_review_candidate"
+    firstSourceFile = "Editor/EditorResourceFallback.h"
+    firstLine = 97
+}
+
+String {
+    key = "editor.source.cement_7"
+    text = "Cement 7"
+    source = "source_audit"
+    migrationState = "candidate_collapsed_v1"
+    textHash = "99147c1090aa"
+    occurrenceCount = 1
+    activeOccurrenceCount = 1
+    sourceAreas = "Editor"
+    categories = "visible_review_candidate"
+    firstSourceFile = "Editor/EditorResourceFallback.h"
+    firstLine = 98
+}
+
+String {
+    key = "editor.source.cement_8"
+    text = "Cement 8"
+    source = "source_audit"
+    migrationState = "candidate_collapsed_v1"
+    textHash = "3129cb427a3e"
+    occurrenceCount = 1
+    activeOccurrenceCount = 1
+    sourceAreas = "Editor"
+    categories = "visible_review_candidate"
+    firstSourceFile = "Editor/EditorResourceFallback.h"
+    firstLine = 99
+}
+
+String {
+    key = "editor.source.cliff_1"
+    text = "Cliff 1"
+    source = "source_audit"
+    migrationState = "candidate_collapsed_v1"
+    textHash = "8e8b3b060234"
+    occurrenceCount = 1
+    activeOccurrenceCount = 1
+    sourceAreas = "Editor"
+    categories = "visible_review_candidate"
+    firstSourceFile = "Editor/EditorResourceFallback.h"
+    firstLine = 107
+}
+
+String {
+    key = "editor.source.cliff_2"
+    text = "Cliff 2"
+    source = "source_audit"
+    migrationState = "candidate_collapsed_v1"
+    textHash = "9e1784577a1e"
+    occurrenceCount = 1
+    activeOccurrenceCount = 1
+    sourceAreas = "Editor"
+    categories = "visible_review_candidate"
+    firstSourceFile = "Editor/EditorResourceFallback.h"
+    firstLine = 108
+}
+
+String {
+    key = "editor.source.commanderpercentldgroup_percentld"
+    text = "Commander%ldGroup:%ld"
+    source = "source_audit"
+    migrationState = "candidate_collapsed_v1"
+    textHash = "00f3add31d14"
+    occurrenceCount = 1
+    activeOccurrenceCount = 1
+    sourceAreas = "Editor"
+    categories = "visible_review_candidate"
+    firstSourceFile = "Editor/EditorObjectMgr.cpp"
+    firstLine = 2301
+}
+
+String {
+    key = "editor.source.could_not_open_operation_file_percents"
+    text = "Could not open operation file: %s"
+    source = "source_audit"
+    migrationState = "candidate_collapsed_v1"
+    textHash = "a7fc55adc962"
+    occurrenceCount = 1
+    activeOccurrenceCount = 1
+    sourceAreas = "Editor"
+    categories = "user_or_debug_error_candidate"
+    firstSourceFile = "Editor/EditorResourceFallback.h"
+    firstLine = 62
+}
+
+String {
+    key = "editor.source.could_not_open_purchase_file_percents"
+    text = "Could not open purchase file: %s"
+    source = "source_audit"
+    migrationState = "candidate_collapsed_v1"
+    textHash = "8585392587fc"
+    occurrenceCount = 1
+    activeOccurrenceCount = 1
+    sourceAreas = "Editor"
+    categories = "user_or_debug_error_candidate"
+    firstSourceFile = "Editor/EditorResourceFallback.h"
+    firstLine = 63
+}
+
+String {
+    key = "editor.source.data_art"
+    text = "Data\\Art\\"
+    source = "source_audit"
+    migrationState = "candidate_collapsed_v1"
+    textHash = "193b136603c7"
+    occurrenceCount = 1
+    activeOccurrenceCount = 1
+    sourceAreas = "Editor"
+    categories = "visible_review_candidate"
+    firstSourceFile = "Editor/EditorInterface.cpp"
+    firstLine = 592
+}
+
+String {
+    key = "editor.source.data_effects"
+    text = "data\\Effects\\"
+    source = "source_audit"
+    migrationState = "candidate_collapsed_v1"
+    textHash = "7e00cd1a55d7"
+    occurrenceCount = 1
+    activeOccurrenceCount = 1
+    sourceAreas = "Editor"
+    categories = "visible_review_candidate"
+    firstSourceFile = "Editor/Editor.cpp"
+    firstLine = 409
+}
+
+String {
+    key = "editor.source.data_missions"
+    text = "Data\\Missions\\"
+    source = "source_audit"
+    migrationState = "candidate_collapsed_v1"
+    textHash = "cae6d27e819c"
+    occurrenceCount = 4
+    activeOccurrenceCount = 4
+    sourceAreas = "Editor"
+    categories = "visible_review_candidate"
+    firstSourceFile = "Editor/EditorData.cpp"
+    firstLine = 2049
+}
+
+String {
+    key = "editor.source.data_missions_newmap_pak"
+    text = "data\\missions\\newmap.pak"
+    source = "source_audit"
+    migrationState = "candidate_collapsed_v1"
+    textHash = "d3b4b0347a0a"
+    occurrenceCount = 2
+    activeOccurrenceCount = 2
+    sourceAreas = "Editor"
+    categories = "visible_review_candidate"
+    firstSourceFile = "Editor/EditorInterface.cpp"
+    firstLine = 2058
+}
+
+String {
+    key = "editor.source.data_missions_profiles"
+    text = "Data\\Missions\\Profiles\\"
+    source = "source_audit"
+    migrationState = "candidate_collapsed_v1"
+    textHash = "63b8e9b1d338"
+    occurrenceCount = 1
+    activeOccurrenceCount = 1
+    sourceAreas = "Editor"
+    categories = "visible_review_candidate"
+    firstSourceFile = "Editor/EditorObjects.cpp"
+    firstLine = 391
+}
+
+String {
+    key = "editor.source.data_missions_warriors"
+    text = "Data\\Missions\\Warriors\\"
+    source = "source_audit"
+    migrationState = "candidate_collapsed_v1"
+    textHash = "e0b619df3fff"
+    occurrenceCount = 2
+    activeOccurrenceCount = 2
+    sourceAreas = "Editor"
+    categories = "visible_review_candidate"
+    firstSourceFile = "Editor/EditorObjects.cpp"
+    firstLine = 650
+}
+
+String {
+    key = "editor.source.data_movies"
+    text = "Data\\Movies\\"
+    source = "source_audit"
+    migrationState = "candidate_collapsed_v1"
+    textHash = "9962d9179111"
+    occurrenceCount = 3
+    activeOccurrenceCount = 3
+    sourceAreas = "Editor"
+    categories = "visible_review_candidate"
+    firstSourceFile = "Editor/EditorData.cpp"
+    firstLine = 2057
+}
+
+String {
+    key = "editor.source.data_objects"
+    text = "Data\\Objects\\"
+    source = "source_audit"
+    migrationState = "candidate_collapsed_v1"
+    textHash = "db8ffc86535c"
+    occurrenceCount = 1
+    activeOccurrenceCount = 1
+    sourceAreas = "Editor"
+    categories = "visible_review_candidate"
+    firstSourceFile = "Editor/EditorObjects.cpp"
+    firstLine = 396
+}
+
+String {
+    key = "editor.source.data_tgl"
+    text = "Data\\TGL\\"
+    source = "source_audit"
+    migrationState = "candidate_collapsed_v1"
+    textHash = "4bda202f9497"
+    occurrenceCount = 3
+    activeOccurrenceCount = 3
+    sourceAreas = "Editor"
+    categories = "visible_review_candidate"
+    firstSourceFile = "Editor/EditorData.cpp"
+    firstLine = 1774
+}
+
+String {
+    key = "editor.source.drop_zone"
+    text = "Drop Zone"
+    source = "source_audit"
+    migrationState = "candidate_collapsed_v1"
+    textHash = "45358cfd1ab3"
+    occurrenceCount = 2
+    activeOccurrenceCount = 2
+    sourceAreas = "Editor"
+    categories = "visible_review_candidate"
+    firstSourceFile = "Editor/EditorData.cpp"
+    firstLine = 1842
+}
+
+String {
+    key = "editor.source.editor_bridge"
+    text = "Editor Bridge"
+    source = "source_audit"
+    migrationState = "candidate_collapsed_v1"
+    textHash = "d848f7f4a019"
+    occurrenceCount = 1
+    activeOccurrenceCount = 1
+    sourceAreas = "Editor"
+    categories = "visible_review_candidate"
+    firstSourceFile = "Editor/EditorData.cpp"
+    firstLine = 1869
+}
+
+String {
+    key = "editor.source.editor_gate"
+    text = "Editor Gate"
+    source = "source_audit"
+    migrationState = "candidate_collapsed_v1"
+    textHash = "f33cd2cb340e"
+    occurrenceCount = 1
+    activeOccurrenceCount = 1
+    sourceAreas = "Editor"
+    categories = "visible_review_candidate"
+    firstSourceFile = "Editor/EditorData.cpp"
+    firstLine = 1860
+}
+
+String {
+    key = "editor.source.editor_turret"
+    text = "Editor Turret"
+    source = "source_audit"
+    migrationState = "candidate_collapsed_v1"
+    textHash = "f0be88e07f9f"
+    occurrenceCount = 1
+    activeOccurrenceCount = 1
+    sourceAreas = "Editor"
+    categories = "visible_review_candidate"
+    firstSourceFile = "Editor/EditorData.cpp"
+    firstLine = 1863
+}
+
+String {
+    key = "editor.source.editorinterface_instance_render"
+    text = "EditorInterface::instance()->render()"
+    source = "source_audit"
+    migrationState = "candidate_collapsed_v1"
+    textHash = "1447f0f39515"
+    occurrenceCount = 1
+    activeOccurrenceCount = 1
+    sourceAreas = "Editor"
+    categories = "visible_review_candidate"
+    firstSourceFile = "Editor/EditorCamera.h"
+    firstLine = 167
+}
+
+String {
+    key = "editor.source.editorversion_0_13_0_editor_editor_owned_semver"
+    text = "EditorVersion: 0.13.0-editor (Editor-owned SemVer)"
+    source = "source_audit"
+    migrationState = "candidate_collapsed_v1"
+    textHash = "2d63e3a8ce04"
+    occurrenceCount = 1
+    activeOccurrenceCount = 1
+    sourceAreas = "Editor"
+    categories = "visible_review_candidate"
+    firstSourceFile = "Editor/EditorVersion.h"
+    firstLine = 23
+}
+
+String {
+    key = "editor.source.elm_tree"
+    text = "Elm Tree"
+    source = "source_audit"
+    migrationState = "candidate_collapsed_v1"
+    textHash = "d2014890e70e"
+    occurrenceCount = 1
+    activeOccurrenceCount = 1
+    sourceAreas = "Editor"
+    categories = "visible_review_candidate"
+    firstSourceFile = "Editor/EditorData.cpp"
+    firstLine = 1810
+}
+
+String {
+    key = "editor.source.fit_file_fit_fit"
+    text = "FIT File (*.FIT)|*.FIT|"
+    source = "source_audit"
+    migrationState = "candidate_collapsed_v1"
+    textHash = "de5b887b2b69"
+    occurrenceCount = 2
+    activeOccurrenceCount = 2
+    sourceAreas = "Editor"
+    categories = "visible_review_candidate"
+    firstSourceFile = "Editor/GroupDialog.cpp"
+    firstLine = 74
+}
+
+String {
+    key = "editor.source.fit_files_fit_fit"
+    text = "FIT Files (*.FIT)|*.fit||"
+    source = "source_audit"
+    migrationState = "candidate_collapsed_v1"
+    textHash = "303f2442376f"
+    occurrenceCount = 2
+    activeOccurrenceCount = 2
+    sourceAreas = "Editor"
+    categories = "visible_review_candidate"
+    firstSourceFile = "Editor/EditForestDlg.cpp"
+    firstLine = 56
+}
+
+String {
+    key = "editor.source.forest_percentd"
+    text = "Forest %d"
+    source = "source_audit"
+    migrationState = "candidate_collapsed_v1"
+    textHash = "f77da19e1048"
+    occurrenceCount = 1
+    activeOccurrenceCount = 1
+    sourceAreas = "Editor"
+    categories = "runtime_visible_candidate"
+    firstSourceFile = "Editor/EditorResourceFallback.h"
+    firstLine = 55
+}
+
+String {
+    key = "editor.source.forest_floor_1"
+    text = "Forest Floor 1"
+    source = "source_audit"
+    migrationState = "candidate_collapsed_v1"
+    textHash = "b4c92015b69f"
+    occurrenceCount = 1
+    activeOccurrenceCount = 1
+    sourceAreas = "Editor"
+    categories = "visible_review_candidate"
+    firstSourceFile = "Editor/EditorResourceFallback.h"
+    firstLine = 84
+}
+
+String {
+    key = "editor.source.forest_floor_2"
+    text = "Forest Floor 2"
+    source = "source_audit"
+    migrationState = "candidate_collapsed_v1"
+    textHash = "13f98e5e15a1"
+    occurrenceCount = 1
+    activeOccurrenceCount = 1
+    sourceAreas = "Editor"
+    categories = "visible_review_candidate"
+    firstSourceFile = "Editor/EditorResourceFallback.h"
+    firstLine = 85
+}
+
+String {
+    key = "editor.source.forest_floor_3"
+    text = "Forest Floor 3"
+    source = "source_audit"
+    migrationState = "candidate_collapsed_v1"
+    textHash = "aa15c57bb5db"
+    occurrenceCount = 1
+    activeOccurrenceCount = 1
+    sourceAreas = "Editor"
+    categories = "visible_review_candidate"
+    firstSourceFile = "Editor/EditorResourceFallback.h"
+    firstLine = 86
+}
+
+String {
+    key = "editor.source.forest_floor_4"
+    text = "Forest Floor 4"
+    source = "source_audit"
+    migrationState = "candidate_collapsed_v1"
+    textHash = "d354f1867753"
+    occurrenceCount = 1
+    activeOccurrenceCount = 1
+    sourceAreas = "Editor"
+    categories = "visible_review_candidate"
+    firstSourceFile = "Editor/EditorResourceFallback.h"
+    firstLine = 88
+}
+
+String {
+    key = "editor.source.fsy_appearance"
+    text = "FSY Appearance"
+    source = "source_audit"
+    migrationState = "candidate_collapsed_v1"
+    textHash = "ec6c66764b6c"
+    occurrenceCount = 1
+    activeOccurrenceCount = 1
+    sourceAreas = "Editor"
+    categories = "visible_review_candidate"
+    firstSourceFile = "Editor/EditorData.cpp"
+    firstLine = 1795
+}
+
+String {
+    key = "editor.source.grass_2"
+    text = "Grass 2"
+    source = "source_audit"
+    migrationState = "candidate_collapsed_v1"
+    textHash = "5a7bcf10ecf3"
+    occurrenceCount = 1
+    activeOccurrenceCount = 1
+    sourceAreas = "Editor"
+    categories = "visible_review_candidate"
+    firstSourceFile = "Editor/EditorResourceFallback.h"
+    firstLine = 109
+}
+
+String {
+    key = "editor.source.grass_3"
+    text = "Grass 3"
+    source = "source_audit"
+    migrationState = "candidate_collapsed_v1"
+    textHash = "5c546192763b"
+    occurrenceCount = 1
+    activeOccurrenceCount = 1
+    sourceAreas = "Editor"
+    categories = "visible_review_candidate"
+    firstSourceFile = "Editor/EditorResourceFallback.h"
+    firstLine = 110
+}
+
+String {
+    key = "editor.source.grass_light_1"
+    text = "Grass Light 1"
+    source = "source_audit"
+    migrationState = "candidate_collapsed_v1"
+    textHash = "d3590a1e0063"
+    occurrenceCount = 1
+    activeOccurrenceCount = 1
+    sourceAreas = "Editor"
+    categories = "visible_review_candidate"
+    firstSourceFile = "Editor/EditorResourceFallback.h"
+    firstLine = 104
+}
+
+String {
+    key = "editor.source.grass_light_2"
+    text = "Grass Light 2"
+    source = "source_audit"
+    migrationState = "candidate_collapsed_v1"
+    textHash = "67a10b199cea"
+    occurrenceCount = 1
+    activeOccurrenceCount = 1
+    sourceAreas = "Editor"
+    categories = "visible_review_candidate"
+    firstSourceFile = "Editor/EditorResourceFallback.h"
+    firstLine = 105
+}
+
+String {
+    key = "editor.source.grass_light_3"
+    text = "Grass Light 3"
+    source = "source_audit"
+    migrationState = "candidate_collapsed_v1"
+    textHash = "9aed5ced2379"
+    occurrenceCount = 1
+    activeOccurrenceCount = 1
+    sourceAreas = "Editor"
+    categories = "visible_review_candidate"
+    firstSourceFile = "Editor/EditorResourceFallback.h"
+    firstLine = 106
+}
+
+String {
+    key = "editor.source.ground_vehicle"
+    text = "Ground Vehicle"
+    source = "source_audit"
+    migrationState = "candidate_collapsed_v1"
+    textHash = "f1883b32c4d0"
+    occurrenceCount = 1
+    activeOccurrenceCount = 1
+    sourceAreas = "Editor"
+    categories = "visible_review_candidate"
+    firstSourceFile = "Editor/EditorData.cpp"
+    firstLine = 1801
+}
+
+String {
+    key = "editor.source.grouppercentd"
+    text = "Group%d"
+    source = "source_audit"
+    migrationState = "candidate_collapsed_v1"
+    textHash = "c280ae71b247"
+    occurrenceCount = 2
+    activeOccurrenceCount = 2
+    sourceAreas = "Editor"
+    categories = "visible_review_candidate"
+    firstSourceFile = "Editor/CampaignData.cpp"
+    firstLine = 216
+}
+
+String {
+    key = "editor.source.initializegameengine_font_extension_from_ids_float_help_font_9f74d785"
+    text = "InitializeGameEngine: font extension from IDS_FLOAT_HELP_FONT ignored for GameOS bitmap/glyph loader: %s"
+    source = "source_audit"
+    migrationState = "candidate_collapsed_v1"
+    textHash = "9f74d785fd08"
+    occurrenceCount = 1
+    activeOccurrenceCount = 1
+    sourceAreas = "Editor"
+    categories = "runtime_visible_candidate"
+    firstSourceFile = "Editor/Editor.cpp"
+    firstLine = 333
+}
+
+String {
+    key = "editor.source.line_appearance"
+    text = "Line Appearance"
+    source = "source_audit"
+    migrationState = "candidate_collapsed_v1"
+    textHash = "1315e521b25d"
+    occurrenceCount = 1
+    activeOccurrenceCount = 1
+    sourceAreas = "Editor"
+    categories = "visible_review_candidate"
+    firstSourceFile = "Editor/EditorData.cpp"
+    firstLine = 1798
+}
+
+String {
+    key = "editor.source.local_appwizard_generated_applications"
+    text = "Local AppWizard-Generated Applications"
+    source = "source_audit"
+    migrationState = "candidate_collapsed_v1"
+    textHash = "2774c5f98666"
+    occurrenceCount = 1
+    activeOccurrenceCount = 1
+    sourceAreas = "Editor"
+    categories = "visible_review_candidate"
+    firstSourceFile = "Editor/EditorMFC.cpp"
+    firstLine = 90
+}
+
+String {
+    key = "editor.source.mainframe_oncreate_editorinterface_instance_null_after_m_wnd_4d25f1cc"
+    text = "MainFrame::OnCreate EditorInterface instance NULL after m_wndView.Create"
+    source = "source_audit"
+    migrationState = "candidate_collapsed_v1"
+    textHash = "4d25f1cc794b"
+    occurrenceCount = 1
+    activeOccurrenceCount = 1
+    sourceAreas = "Editor"
+    categories = "visible_review_candidate"
+    firstSourceFile = "Editor/MainFrm.cpp"
+    firstLine = 81
+}
+
+String {
+    key = "editor.source.mainframe_oncreate_editorinterface_instance_ok"
+    text = "MainFrame::OnCreate EditorInterface instance OK"
+    source = "source_audit"
+    migrationState = "candidate_collapsed_v1"
+    textHash = "3094324b6c67"
+    occurrenceCount = 1
+    activeOccurrenceCount = 1
+    sourceAreas = "Editor"
+    categories = "visible_review_candidate"
+    firstSourceFile = "Editor/MainFrm.cpp"
+    firstLine = 80
+}
+
+String {
+    key = "editor.source.mc2_editor"
+    text = "MC2 Editor"
+    source = "source_audit"
+    migrationState = "candidate_collapsed_v1"
+    textHash = "dee7b16371bd"
+    occurrenceCount = 1
+    activeOccurrenceCount = 1
+    sourceAreas = "Editor"
+    categories = "visible_review_candidate"
+    firstSourceFile = "Editor/Editor.cpp"
+    firstLine = 320
+}
+
+String {
+    key = "editor.source.mc2_editor_remastered"
+    text = "MC2 Editor (Remastered)"
+    source = "source_audit"
+    migrationState = "candidate_collapsed_v1"
+    textHash = "75ff9977ae38"
+    occurrenceCount = 1
+    activeOccurrenceCount = 1
+    sourceAreas = "Editor"
+    categories = "visible_review_candidate"
+    firstSourceFile = "Editor/EditorGameOS.cpp"
+    firstLine = 243
+}
+
+String {
+    key = "editor.source.mc2r_editor"
+    text = "MC2R Editor"
+    source = "source_audit"
+    migrationState = "candidate_collapsed_v1"
+    textHash = "26ae01fa6461"
+    occurrenceCount = 1
+    activeOccurrenceCount = 1
+    sourceAreas = "Editor"
+    categories = "visible_review_candidate"
+    firstSourceFile = "Editor/EditorVersion.cpp"
+    firstLine = 21
+}
+
+String {
+    key = "editor.source.mc2r_editor_0_13_0_editor"
+    text = "MC2R Editor 0.13.0-editor"
+    source = "source_audit"
+    migrationState = "candidate_collapsed_v1"
+    textHash = "0279734be500"
+    occurrenceCount = 1
+    activeOccurrenceCount = 1
+    sourceAreas = "Editor"
+    categories = "visible_review_candidate"
+    firstSourceFile = "Editor/EditorVersion.h"
+    firstLine = 22
+}
+
+String {
+    key = "editor.source.mc2res_dll_n_not_defined"
+    text = "mc2res.dll:N Not defined"
+    source = "source_audit"
+    migrationState = "candidate_collapsed_v1"
+    textHash = "6f66b48b8204"
+    occurrenceCount = 1
+    activeOccurrenceCount = 1
+    sourceAreas = "Editor"
+    categories = "visible_review_candidate"
+    firstSourceFile = "Editor/EditorObjectMgr.cpp"
+    firstLine = 108
+}
+
+String {
+    key = "editor.source.missing_resource"
+    text = "missing resource"
+    source = "source_audit"
+    migrationState = "candidate_collapsed_v1"
+    textHash = "b4346e75544e"
+    occurrenceCount = 1
+    activeOccurrenceCount = 1
+    sourceAreas = "Editor"
+    categories = "user_or_debug_error_candidate"
+    firstSourceFile = "Editor/EditorResourceFallback.h"
+    firstLine = 139
+}
+
+String {
+    key = "editor.source.mission_group"
+    text = "Mission Group"
+    source = "source_audit"
+    migrationState = "candidate_collapsed_v1"
+    textHash = "55656a4d3018"
+    occurrenceCount = 1
+    activeOccurrenceCount = 1
+    sourceAreas = "Editor"
+    categories = "visible_review_candidate"
+    firstSourceFile = "Editor/EditorInterface.cpp"
+    firstLine = 586
+}
+
+String {
+    key = "editor.source.mlr_appearance"
+    text = "MLR Appearance"
+    source = "source_audit"
+    migrationState = "candidate_collapsed_v1"
+    textHash = "0ad3c6b2eb87"
+    occurrenceCount = 1
+    activeOccurrenceCount = 1
+    sourceAreas = "Editor"
+    categories = "visible_review_candidate"
+    firstSourceFile = "Editor/EditorData.cpp"
+    firstLine = 1822
+}
+
+String {
+    key = "editor.source.modelid_version"
+    text = "ModelID Version"
+    source = "source_audit"
+    migrationState = "candidate_collapsed_v1"
+    textHash = "bdfaff1ff4f9"
+    occurrenceCount = 2
+    activeOccurrenceCount = 2
+    sourceAreas = "Editor"
+    categories = "visible_review_candidate"
+    firstSourceFile = "Editor/Objective.cpp"
+    firstLine = 1422
+}
+
+String {
+    key = "editor.source.more_than_one_building_selected"
+    text = "More than one building selected."
+    source = "source_audit"
+    migrationState = "candidate_collapsed_v1"
+    textHash = "d373e826bdae"
+    occurrenceCount = 1
+    activeOccurrenceCount = 1
+    sourceAreas = "Editor"
+    categories = "visible_review_candidate"
+    firstSourceFile = "Editor/EditorResourceFallback.h"
+    firstLine = 65
+}
+
+String {
+    key = "editor.source.movie_avi_avi"
+    text = "Movie (*.AVI)|*.AVI|"
+    source = "source_audit"
+    migrationState = "candidate_collapsed_v1"
+    textHash = "b212ef7d742b"
+    occurrenceCount = 5
+    activeOccurrenceCount = 5
+    sourceAreas = "Editor"
+    categories = "visible_review_candidate"
+    firstSourceFile = "Editor/CampaignDialog.cpp"
+    firstLine = 87
+}
+
+String {
+    key = "editor.source.mud_1"
+    text = "Mud 1"
+    source = "source_audit"
+    migrationState = "candidate_collapsed_v1"
+    textHash = "8128c21ae01b"
+    occurrenceCount = 1
+    activeOccurrenceCount = 1
+    sourceAreas = "Editor"
+    categories = "visible_review_candidate"
+    firstSourceFile = "Editor/EditorResourceFallback.h"
+    firstLine = 102
+}
+
+String {
+    key = "editor.source.mud_2"
+    text = "Mud 2"
+    source = "source_audit"
+    migrationState = "candidate_collapsed_v1"
+    textHash = "3f188e46d4c7"
+    occurrenceCount = 1
+    activeOccurrenceCount = 1
+    sourceAreas = "Editor"
+    categories = "visible_review_candidate"
+    firstSourceFile = "Editor/EditorResourceFallback.h"
+    firstLine = 103
+}
+
+String {
+    key = "editor.source.mud_flats"
+    text = "Mud Flats"
+    source = "source_audit"
+    migrationState = "candidate_collapsed_v1"
+    textHash = "fa4a5a20457c"
+    occurrenceCount = 1
+    activeOccurrenceCount = 1
+    sourceAreas = "Editor"
+    categories = "visible_review_candidate"
+    firstSourceFile = "Editor/EditorResourceFallback.h"
+    firstLine = 87
+}
+
+String {
+    key = "editor.source.muddy_shore"
+    text = "Muddy Shore"
+    source = "source_audit"
+    migrationState = "candidate_collapsed_v1"
+    textHash = "b0038cad3b13"
+    occurrenceCount = 1
+    activeOccurrenceCount = 1
+    sourceAreas = "Editor"
+    categories = "visible_review_candidate"
+    firstSourceFile = "Editor/EditorResourceFallback.h"
+    firstLine = 89
+}
+
+String {
+    key = "editor.source.new_editor"
+    text = "new Editor()"
+    source = "source_audit"
+    migrationState = "candidate_collapsed_v1"
+    textHash = "4e954a0b76b4"
+    occurrenceCount = 1
+    activeOccurrenceCount = 1
+    sourceAreas = "Editor"
+    categories = "visible_review_candidate"
+    firstSourceFile = "Editor/EditorData.cpp"
+    firstLine = 132
+}
+
+String {
+    key = "editor.source.new_line"
+    text = "new line"
+    source = "source_audit"
+    migrationState = "candidate_collapsed_v1"
+    textHash = "e453d1d3e45b"
+    occurrenceCount = 1
+    activeOccurrenceCount = 1
+    sourceAreas = "Editor"
+    categories = "visible_review_candidate"
+    firstSourceFile = "Editor/UserTextEdit.cpp"
+    firstLine = 101
+}
+
+String {
+    key = "editor.source.no_buildings_selected"
+    text = "No buildings selected."
+    source = "source_audit"
+    migrationState = "candidate_collapsed_v1"
+    textHash = "1c525afef453"
+    occurrenceCount = 1
+    activeOccurrenceCount = 1
+    sourceAreas = "Editor"
+    categories = "visible_review_candidate"
+    firstSourceFile = "Editor/EditorResourceFallback.h"
+    firstLine = 64
+}
+
+String {
+    key = "editor.source.not_defined"
+    text = "Not defined"
+    source = "source_audit"
+    migrationState = "candidate_collapsed_v1"
+    textHash = "815f1f0049cf"
+    occurrenceCount = 1
+    activeOccurrenceCount = 1
+    sourceAreas = "Editor"
+    categories = "visible_review_candidate"
+    firstSourceFile = "Editor/EditorObjectMgr.cpp"
+    firstLine = 117
+}
+
+String {
+    key = "editor.source.object_placement"
+    text = "object placement"
+    source = "source_audit"
+    migrationState = "candidate_collapsed_v1"
+    textHash = "c4edd4ca95b3"
+    occurrenceCount = 1
+    activeOccurrenceCount = 1
+    sourceAreas = "Editor"
+    categories = "visible_review_candidate"
+    firstSourceFile = "Editor/EditorCamera.h"
+    firstLine = 166
+}
+
+String {
+    key = "editor.source.on_top"
+    text = "on top"
+    source = "source_audit"
+    migrationState = "candidate_collapsed_v1"
+    textHash = "20f4979fbcc1"
+    occurrenceCount = 1
+    activeOccurrenceCount = 1
+    sourceAreas = "Editor"
+    categories = "visible_review_candidate"
+    firstSourceFile = "Editor/EditorCamera.h"
+    firstLine = 161
+}
+
+String {
+    key = "editor.source.pak_file_pak_pak"
+    text = "PAK File (*.PAK)|*.PAK|"
+    source = "source_audit"
+    migrationState = "candidate_collapsed_v1"
+    textHash = "165c155b2064"
+    occurrenceCount = 1
+    activeOccurrenceCount = 1
+    sourceAreas = "Editor"
+    categories = "visible_review_candidate"
+    firstSourceFile = "Editor/MissionDialog.cpp"
+    firstLine = 72
+}
+
+String {
+    key = "editor.source.pak_files_pak_pak"
+    text = "Pak Files (*.PAK)|*.pak||"
+    source = "source_audit"
+    migrationState = "candidate_collapsed_v1"
+    textHash = "645dd50d1feb"
+    occurrenceCount = 1
+    activeOccurrenceCount = 1
+    sourceAreas = "Editor"
+    categories = "visible_review_candidate"
+    firstSourceFile = "Editor/EditorInterface.cpp"
+    firstLine = 222
+}
+
+String {
+    key = "editor.source.playerpercentd"
+    text = "Player%d"
+    source = "source_audit"
+    migrationState = "candidate_collapsed_v1"
+    textHash = "7d05c6dce360"
+    occurrenceCount = 2
+    activeOccurrenceCount = 2
+    sourceAreas = "Editor"
+    categories = "visible_review_candidate"
+    firstSourceFile = "Editor/EditorData.cpp"
+    firstLine = 2915
+}
+
+String {
+    key = "editor.source.poly_appearance"
+    text = "Poly Appearance"
+    source = "source_audit"
+    migrationState = "candidate_collapsed_v1"
+    textHash = "9a478d4e08f5"
+    occurrenceCount = 1
+    activeOccurrenceCount = 1
+    sourceAreas = "Editor"
+    categories = "visible_review_candidate"
+    firstSourceFile = "Editor/EditorData.cpp"
+    firstLine = 1819
+}
+
+String {
+    key = "editor.source.power_station"
+    text = "Power Station"
+    source = "source_audit"
+    migrationState = "candidate_collapsed_v1"
+    textHash = "028391779fde"
+    occurrenceCount = 1
+    activeOccurrenceCount = 1
+    sourceAreas = "Editor"
+    categories = "visible_review_candidate"
+    firstSourceFile = "Editor/EditorData.cpp"
+    firstLine = 1851
+}
+
+String {
+    key = "editor.source.purchase_file_fit_fit"
+    text = "Purchase File (*.FIT)|*.FIT|"
+    source = "source_audit"
+    migrationState = "candidate_collapsed_v1"
+    textHash = "e779f57c7bc1"
+    occurrenceCount = 1
+    activeOccurrenceCount = 1
+    sourceAreas = "Editor"
+    categories = "visible_review_candidate"
+    firstSourceFile = "Editor/Objective.cpp"
+    firstLine = 1010
+}
+
+String {
+    key = "editor.source.rendered_immediately"
+    text = "rendered immediately"
+    source = "source_audit"
+    migrationState = "candidate_collapsed_v1"
+    textHash = "fb6fae0cedc6"
+    occurrenceCount = 1
+    activeOccurrenceCount = 1
+    sourceAreas = "Editor"
+    categories = "visible_review_candidate"
+    firstSourceFile = "Editor/EditorCamera.h"
+    firstLine = 170
+}
+
+String {
+    key = "editor.source.required_file_is_missing"
+    text = "Required file is missing."
+    source = "source_audit"
+    migrationState = "candidate_collapsed_v1"
+    textHash = "e526b6c65b96"
+    occurrenceCount = 1
+    activeOccurrenceCount = 1
+    sourceAreas = "Editor"
+    categories = "user_or_debug_error_candidate"
+    firstSourceFile = "Editor/Editor.cpp"
+    firstLine = 314
+}
+
+String {
+    key = "editor.source.required_mechcommander_2_data_is_missing"
+    text = "Required MechCommander 2 data is missing."
+    source = "source_audit"
+    migrationState = "candidate_collapsed_v1"
+    textHash = "fdc8a7692846"
+    occurrenceCount = 1
+    activeOccurrenceCount = 1
+    sourceAreas = "Editor"
+    categories = "user_or_debug_error_candidate"
+    firstSourceFile = "Editor/Editor.cpp"
+    firstLine = 317
+}
+
+String {
+    key = "editor.source.sand_1"
+    text = "Sand 1"
+    source = "source_audit"
+    migrationState = "candidate_collapsed_v1"
+    textHash = "797c95113829"
+    occurrenceCount = 1
+    activeOccurrenceCount = 1
+    sourceAreas = "Editor"
+    categories = "visible_review_candidate"
+    firstSourceFile = "Editor/EditorResourceFallback.h"
+    firstLine = 100
+}
+
+String {
+    key = "editor.source.sand_2"
+    text = "Sand 2"
+    source = "source_audit"
+    migrationState = "candidate_collapsed_v1"
+    textHash = "07dd2d809b53"
+    occurrenceCount = 1
+    activeOccurrenceCount = 1
+    sourceAreas = "Editor"
+    categories = "visible_review_candidate"
+    firstSourceFile = "Editor/EditorResourceFallback.h"
+    firstLine = 101
+}
+
+String {
+    key = "editor.source.sandy_dirt"
+    text = "Sandy Dirt"
+    source = "source_audit"
+    migrationState = "candidate_collapsed_v1"
+    textHash = "ccf95664805a"
+    occurrenceCount = 1
+    activeOccurrenceCount = 1
+    sourceAreas = "Editor"
+    categories = "visible_review_candidate"
+    firstSourceFile = "Editor/EditorResourceFallback.h"
+    firstLine = 91
+}
+
+String {
+    key = "editor.source.sprite_tree"
+    text = "Sprite Tree"
+    source = "source_audit"
+    migrationState = "candidate_collapsed_v1"
+    textHash = "84c8691a9410"
+    occurrenceCount = 1
+    activeOccurrenceCount = 1
+    sourceAreas = "Editor"
+    categories = "visible_review_candidate"
+    firstSourceFile = "Editor/EditorData.cpp"
+    firstLine = 1789
+}
+
+String {
+    key = "editor.source.tga_files_tga_tga"
+    text = "TGA Files (*.TGA)|*.tga||"
+    source = "source_audit"
+    migrationState = "candidate_collapsed_v1"
+    textHash = "7bfa82bb0f5b"
+    occurrenceCount = 1
+    activeOccurrenceCount = 1
+    sourceAreas = "Editor"
+    categories = "visible_review_candidate"
+    firstSourceFile = "Editor/EditorInterface.cpp"
+    firstLine = 221
+}
+
+String {
+    key = "editor.source.typical_object"
+    text = "typical object"
+    source = "source_audit"
+    migrationState = "candidate_collapsed_v1"
+    textHash = "eff7def8f1df"
+    occurrenceCount = 1
+    activeOccurrenceCount = 1
+    sourceAreas = "Editor"
+    categories = "visible_review_candidate"
+    firstSourceFile = "Editor/BuildingLink.cpp"
+    firstLine = 309
+}
+
+String {
+    key = "editor.source.unknown_group"
+    text = "Unknown Group"
+    source = "source_audit"
+    migrationState = "candidate_collapsed_v1"
+    textHash = "008258e4dabd"
+    occurrenceCount = 2
+    activeOccurrenceCount = 2
+    sourceAreas = "Editor"
+    categories = "visible_review_candidate"
+    firstSourceFile = "Editor/EditorObjectMgr.cpp"
+    firstLine = 2953
+}
+
+String {
+    key = "editor.source.unknown_object"
+    text = "Unknown Object"
+    source = "source_audit"
+    migrationState = "candidate_collapsed_v1"
+    textHash = "62769f032e81"
+    occurrenceCount = 3
+    activeOccurrenceCount = 3
+    sourceAreas = "Editor"
+    categories = "visible_review_candidate"
+    firstSourceFile = "Editor/EditorObjectMgr.cpp"
+    firstLine = 2941
+}
+
+String {
+    key = "editor.source.vfx_appearance"
+    text = "VFX Appearance"
+    source = "source_audit"
+    migrationState = "candidate_collapsed_v1"
+    textHash = "e574b3046527"
+    occurrenceCount = 1
+    activeOccurrenceCount = 1
+    sourceAreas = "Editor"
+    categories = "visible_review_candidate"
+    firstSourceFile = "Editor/EditorData.cpp"
+    firstLine = 1792
+}
+
+String {
+    key = "editor.source.wavefile_wav_wav"
+    text = "Wavefile (*.WAV)|*.WAV|"
+    source = "source_audit"
+    migrationState = "candidate_collapsed_v1"
+    textHash = "e233b9db3e41"
+    occurrenceCount = 1
+    activeOccurrenceCount = 1
+    sourceAreas = "Editor"
+    categories = "visible_review_candidate"
+    firstSourceFile = "Editor/Objective.cpp"
+    firstLine = 775
+}
+

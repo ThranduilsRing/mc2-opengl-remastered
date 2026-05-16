@@ -1,6 +1,9 @@
 #ifndef GOS_INPUT_H
 #define GOS_INPUT_H
 
+#include <SDL2/SDL.h>
+#include <cstdint>
+
 namespace input {
 
 enum KeyState {
