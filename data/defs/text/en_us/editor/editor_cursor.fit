@@ -1,0 +1,81 @@
+/***************************************************************
+ * FILENAME: editor_cursor.fit
+ * DESCRIPTION: Editor cursor and terrain-editing localized text definitions migrated from mc2res string data.
+ *
+ * CREATED BY: Methuselas
+ * CREATED: 2026-04-30
+ *
+ ***************************************************************/
+
+String {
+    key = "unclassified.unit.select.help"
+    text = "Click to select a unit."
+    legacyId = 45124
+    legacySymbol = "IDS_UNIT_SELECT_HELP"
+    source = "mc2res"
+    migrationNote = "key prefix: editor unit-select help"
+}
+
+String {
+    key = "unclassified.unit.select.help2"
+    text = "Left-click to select a unit."
+    legacyId = 45125
+    legacySymbol = "IDS_UNIT_SELECT_HELP2"
+    source = "mc2res"
+    migrationNote = "key prefix: editor unit-select help"
+}
+
+String {
+    key = "unclassified.patrol.cursor.left.help"
+    text = "Click the first waypoint or the selected unit to establish a patrol path."
+    legacyId = 45159
+    legacySymbol = "IDS_PATROL_CURSOR_LEFT_HELP"
+    source = "mc2res"
+    migrationNote = "key prefix: patrol cursor help"
+}
+
+String {
+    key = "unclassified.patrol.cursor.right.help"
+    text = "Right-click the first waypoint or the selected unit to establish a circular or linear patrol path, respectively."
+    legacyId = 45160
+    legacySymbol = "IDS_PATROL_CURSOR_RIGHT_HELP"
+    source = "mc2res"
+    migrationNote = "key prefix: patrol cursor help"
+}
+
+String {
+    key = "unclassified.fire.from.current.position.cursor.left.help"
+    text = "Click to attack this target from the current position."
+    legacyId = 45165
+    legacySymbol = "IDS_FIRE_FROM_CURRENT_POSITION_CURSOR_LEFT_HELP"
+    source = "mc2res"
+    migrationNote = "key prefix: fire-from-position cursor"
+}
+
+String {
+    key = "unclassified.fire.from.current.position.cursor.right.help"
+    text = "Right-click to attack this target from the current position."
+    legacyId = 45166
+    legacySymbol = "IDS_FIRE_FROM_CURRENT_POSITION_CURSOR_RIGHT_HELP"
+    source = "mc2res"
+    migrationNote = "key prefix: fire-from-position cursor"
+}
+
+String {
+    key = "unclassified.force.fire.cursor.left.help"
+    text = "Click to force fire on this target."
+    legacyId = 45173
+    legacySymbol = "IDS_FORCE_FIRE_CURSOR_LEFT_HELP"
+    source = "mc2res"
+    migrationNote = "key prefix: force fire cursor"
+}
+
+String {
+    key = "unclassified.force.fire.cursor.right.help"
+    text = "Right-click to force fire on this target."
+    legacyId = 45174
+    legacySymbol = "IDS_FORCE_FIRE_CURSOR_RIGHT_HELP"
+    source = "mc2res"
+    migrationNote = "key prefix: force fire cursor"
+}
+

@@ -1,0 +1,658 @@
+/***************************************************************
+ * FILENAME: mfc_text_bindings.fit
+ * DESCRIPTION: Editor MFC dialog and control text bindings pointing to data/defs String keys.
+ *
+ * CREATED BY: Methuselas
+ * CREATED: Unknown
+ *
+ ***************************************************************/
+
+MFCTextBinding {
+    textKey = "common.text.error"
+    resourceId = "STRINGTABLE"
+    controlId = ""
+    category = "stringtable"
+    sourceFile = "mc2-opengl-remastered-editor-13/mclib/MCLib.rc"
+    sourceLine = 103
+    sourceTextKey = "editor.mfc.stringtable.ids_error"
+    visibleText = "Error"
+}
+
+MFCTextBinding {
+    textKey = "common.text.cancel"
+    resourceId = "STRINGTABLE"
+    controlId = ""
+    category = "stringtable"
+    sourceFile = "mc2-opengl-remastered-editor-13/mclib/MCLib.rc"
+    sourceLine = 104
+    sourceTextKey = "editor.mfc.stringtable.ids_cancel"
+    visibleText = "Cancel"
+}
+
+MFCTextBinding {
+    textKey = "ui.dialog.ok"
+    resourceId = "STRINGTABLE"
+    controlId = ""
+    category = "stringtable"
+    sourceFile = "mc2-opengl-remastered-editor-13/mclib/MCLib.rc"
+    sourceLine = 105
+    sourceTextKey = "editor.mfc.stringtable.ids_ok"
+    visibleText = "OK"
+}
+
+MFCTextBinding {
+    textKey = "common.text.yes"
+    resourceId = "STRINGTABLE"
+    controlId = ""
+    category = "stringtable"
+    sourceFile = "mc2-opengl-remastered-editor-13/mclib/MCLib.rc"
+    sourceLine = 110
+    sourceTextKey = "editor.mfc.stringtable.ids_yes"
+    visibleText = "Yes"
+}
+
+MFCTextBinding {
+    textKey = "common.text.no"
+    resourceId = "STRINGTABLE"
+    controlId = ""
+    category = "stringtable"
+    sourceFile = "mc2-opengl-remastered-editor-13/mclib/MCLib.rc"
+    sourceLine = 111
+    sourceTextKey = "editor.mfc.stringtable.ids_no"
+    visibleText = "No"
+}
+
+MFCTextBinding {
+    textKey = "editor.mfc.stringtable.ids_save_cameras"
+    resourceId = "STRINGTABLE"
+    controlId = ""
+    category = "stringtable"
+    sourceFile = "mc2-opengl-remastered-editor-13/mclib/MCLib.rc"
+    sourceLine = 116
+    sourceTextKey = "editor.mfc.stringtable.ids_save_cameras"
+    visibleText = "Save Current Camera"
+}
+
+MFCTextBinding {
+    textKey = "editor.mfc.stringtable.ids_terrains"
+    resourceId = "STRINGTABLE"
+    controlId = ""
+    category = "stringtable"
+    sourceFile = "mc2-opengl-remastered-editor-13/mclib/MCLib.rc"
+    sourceLine = 117
+    sourceTextKey = "editor.mfc.stringtable.ids_terrains"
+    visibleText = "Terrains"
+}
+
+MFCTextBinding {
+    textKey = "editor.mfc.stringtable.ids_buildings"
+    resourceId = "STRINGTABLE"
+    controlId = ""
+    category = "stringtable"
+    sourceFile = "mc2-opengl-remastered-editor-13/mclib/MCLib.rc"
+    sourceLine = 118
+    sourceTextKey = "editor.mfc.stringtable.ids_buildings"
+    visibleText = "O&bjects"
+}
+
+MFCTextBinding {
+    textKey = "common.text.dirt_road"
+    resourceId = "STRINGTABLE"
+    controlId = ""
+    category = "stringtable"
+    sourceFile = "mc2-opengl-remastered-editor-13/mclib/MCLib.rc"
+    sourceLine = 123
+    sourceTextKey = "editor.mfc.stringtable.ids_dirtroad"
+    visibleText = "Dirt Road"
+}
+
+MFCTextBinding {
+    textKey = "editor.mfc.stringtable.ids_paved_road"
+    resourceId = "STRINGTABLE"
+    controlId = ""
+    category = "stringtable"
+    sourceFile = "mc2-opengl-remastered-editor-13/mclib/MCLib.rc"
+    sourceLine = 124
+    sourceTextKey = "editor.mfc.stringtable.ids_paved_road"
+    visibleText = "Paved road"
+}
+
+MFCTextBinding {
+    textKey = "common.text.rough"
+    resourceId = "STRINGTABLE"
+    controlId = ""
+    category = "stringtable"
+    sourceFile = "mc2-opengl-remastered-editor-13/mclib/MCLib.rc"
+    sourceLine = 125
+    sourceTextKey = "editor.mfc.stringtable.ids_rough"
+    visibleText = "Rough"
+}
+
+MFCTextBinding {
+    textKey = "editor.mfc.stringtable.ids_groups"
+    resourceId = "STRINGTABLE"
+    controlId = ""
+    category = "stringtable"
+    sourceFile = "mc2-opengl-remastered-editor-13/mclib/MCLib.rc"
+    sourceLine = 130
+    sourceTextKey = "editor.mfc.stringtable.ids_groups"
+    visibleText = "Markers"
+}
+
+MFCTextBinding {
+    textKey = "editor.mfc.stringtable.ids_group1"
+    resourceId = "STRINGTABLE"
+    controlId = ""
+    category = "stringtable"
+    sourceFile = "mc2-opengl-remastered-editor-13/mclib/MCLib.rc"
+    sourceLine = 131
+    sourceTextKey = "editor.mfc.stringtable.ids_group1"
+    visibleText = "Trees"
+}
+
+MFCTextBinding {
+    textKey = "editor.mfc.stringtable.ids_group2"
+    resourceId = "STRINGTABLE"
+    controlId = ""
+    category = "stringtable"
+    sourceFile = "mc2-opengl-remastered-editor-13/mclib/MCLib.rc"
+    sourceLine = 132
+    sourceTextKey = "editor.mfc.stringtable.ids_group2"
+    visibleText = "Small Stuff"
+}
+
+MFCTextBinding {
+    textKey = "editor.mfc.stringtable.ids_group3"
+    resourceId = "STRINGTABLE"
+    controlId = ""
+    category = "stringtable"
+    sourceFile = "mc2-opengl-remastered-editor-13/mclib/MCLib.rc"
+    sourceLine = 133
+    sourceTextKey = "editor.mfc.stringtable.ids_group3"
+    visibleText = "Turrets"
+}
+
+MFCTextBinding {
+    textKey = "editor.mfc.stringtable.ids_mechs"
+    resourceId = "STRINGTABLE"
+    controlId = ""
+    category = "stringtable"
+    sourceFile = "mc2-opengl-remastered-editor-13/mclib/MCLib.rc"
+    sourceLine = 134
+    sourceTextKey = "editor.mfc.stringtable.ids_mechs"
+    visibleText = "'Mechs"
+}
+
+MFCTextBinding {
+    textKey = "editor.mfc.stringtable.ids_smallstuff"
+    resourceId = "STRINGTABLE"
+    controlId = ""
+    category = "stringtable"
+    sourceFile = "mc2-opengl-remastered-editor-13/mclib/MCLib.rc"
+    sourceLine = 135
+    sourceTextKey = "editor.mfc.stringtable.ids_smallstuff"
+    visibleText = "Flammable Things"
+}
+
+MFCTextBinding {
+    textKey = "editor.mfc.stringtable.ids_string10106"
+    resourceId = "STRINGTABLE"
+    controlId = ""
+    category = "stringtable"
+    sourceFile = "mc2-opengl-remastered-editor-13/mclib/MCLib.rc"
+    sourceLine = 136
+    sourceTextKey = "editor.mfc.stringtable.ids_string10106"
+    visibleText = "Vehicles"
+}
+
+MFCTextBinding {
+    textKey = "editor.mfc.stringtable.ids_string10107"
+    resourceId = "STRINGTABLE"
+    controlId = ""
+    category = "stringtable"
+    sourceFile = "mc2-opengl-remastered-editor-13/mclib/MCLib.rc"
+    sourceLine = 137
+    sourceTextKey = "editor.mfc.stringtable.ids_string10107"
+    visibleText = "House Davion"
+}
+
+MFCTextBinding {
+    textKey = "editor.mfc.stringtable.ids_string10108"
+    resourceId = "STRINGTABLE"
+    controlId = ""
+    category = "stringtable"
+    sourceFile = "mc2-opengl-remastered-editor-13/mclib/MCLib.rc"
+    sourceLine = 138
+    sourceTextKey = "editor.mfc.stringtable.ids_string10108"
+    visibleText = "House Liao"
+}
+
+MFCTextBinding {
+    textKey = "editor.mfc.stringtable.ids_string10109"
+    resourceId = "STRINGTABLE"
+    controlId = ""
+    category = "stringtable"
+    sourceFile = "mc2-opengl-remastered-editor-13/mclib/MCLib.rc"
+    sourceLine = 139
+    sourceTextKey = "editor.mfc.stringtable.ids_string10109"
+    visibleText = "Vehicle Props"
+}
+
+MFCTextBinding {
+    textKey = "editor.mfc.stringtable.ids_string10110"
+    resourceId = "STRINGTABLE"
+    controlId = ""
+    category = "stringtable"
+    sourceFile = "mc2-opengl-remastered-editor-13/mclib/MCLib.rc"
+    sourceLine = 140
+    sourceTextKey = "editor.mfc.stringtable.ids_string10110"
+    visibleText = "House Steiner"
+}
+
+MFCTextBinding {
+    textKey = "editor.mfc.stringtable.ids_string10111"
+    resourceId = "STRINGTABLE"
+    controlId = ""
+    category = "stringtable"
+    sourceFile = "mc2-opengl-remastered-editor-13/mclib/MCLib.rc"
+    sourceLine = 141
+    sourceTextKey = "editor.mfc.stringtable.ids_string10111"
+    visibleText = "Regular Buildings"
+}
+
+MFCTextBinding {
+    textKey = "editor.mfc.stringtable.ids_select"
+    resourceId = "STRINGTABLE"
+    controlId = ""
+    category = "stringtable"
+    sourceFile = "mc2-opengl-remastered-editor-13/mclib/MCLib.rc"
+    sourceLine = 146
+    sourceTextKey = "editor.mfc.stringtable.ids_select"
+    visibleText = "Select"
+}
+
+MFCTextBinding {
+    textKey = "editor.mfc.stringtable.ids_flatten"
+    resourceId = "STRINGTABLE"
+    controlId = ""
+    category = "stringtable"
+    sourceFile = "mc2-opengl-remastered-editor-13/mclib/MCLib.rc"
+    sourceLine = 147
+    sourceTextKey = "editor.mfc.stringtable.ids_flatten"
+    visibleText = "Flatten"
+}
+
+MFCTextBinding {
+    textKey = "editor.mfc.stringtable.ids_save_camera_fail"
+    resourceId = "STRINGTABLE"
+    controlId = ""
+    category = "stringtable"
+    sourceFile = "mc2-opengl-remastered-editor-13/mclib/MCLib.rc"
+    sourceLine = 152
+    sourceTextKey = "editor.mfc.stringtable.ids_save_camera_fail"
+    visibleText = "You need to save first!"
+}
+
+MFCTextBinding {
+    textKey = "editor.mfc.stringtable.ids_no_vertex_sel"
+    resourceId = "STRINGTABLE"
+    controlId = ""
+    category = "stringtable"
+    sourceFile = "mc2-opengl-remastered-editor-13/mclib/MCLib.rc"
+    sourceLine = 153
+    sourceTextKey = "editor.mfc.stringtable.ids_no_vertex_sel"
+    visibleText = "You must first select some vertices!"
+}
+
+MFCTextBinding {
+    textKey = "editor.mfc.stringtable.ids_assign_elevation"
+    resourceId = "STRINGTABLE"
+    controlId = ""
+    category = "stringtable"
+    sourceFile = "mc2-opengl-remastered-editor-13/mclib/MCLib.rc"
+    sourceLine = 154
+    sourceTextKey = "editor.mfc.stringtable.ids_assign_elevation"
+    visibleText = "Assign Elevation"
+}
+
+MFCTextBinding {
+    textKey = "editor.mfc.stringtable.ids_elevation"
+    resourceId = "STRINGTABLE"
+    controlId = ""
+    category = "stringtable"
+    sourceFile = "mc2-opengl-remastered-editor-13/mclib/MCLib.rc"
+    sourceLine = 155
+    sourceTextKey = "editor.mfc.stringtable.ids_elevation"
+    visibleText = "Elevation:"
+}
+
+MFCTextBinding {
+    textKey = "editor.mfc.stringtable.ids_smooth_radius"
+    resourceId = "STRINGTABLE"
+    controlId = ""
+    category = "stringtable"
+    sourceFile = "mc2-opengl-remastered-editor-13/mclib/MCLib.rc"
+    sourceLine = 156
+    sourceTextKey = "editor.mfc.stringtable.ids_smooth_radius"
+    visibleText = "Hill radius"
+}
+
+MFCTextBinding {
+    textKey = "common.text.radius"
+    resourceId = "STRINGTABLE"
+    controlId = ""
+    category = "stringtable"
+    sourceFile = "mc2-opengl-remastered-editor-13/mclib/MCLib.rc"
+    sourceLine = 157
+    sourceTextKey = "editor.mfc.stringtable.ids_radius"
+    visibleText = "Radius:"
+}
+
+MFCTextBinding {
+    textKey = "editor.mfc.stringtable.ids_invalid_file"
+    resourceId = "STRINGTABLE"
+    controlId = ""
+    category = "stringtable"
+    sourceFile = "mc2-opengl-remastered-editor-13/mclib/MCLib.rc"
+    sourceLine = 158
+    sourceTextKey = "editor.mfc.stringtable.ids_invalid_file"
+    visibleText = "Could not save the file %s."
+}
+
+MFCTextBinding {
+    textKey = "editor.mfc.stringtable.ids_must_have_player"
+    resourceId = "STRINGTABLE"
+    controlId = ""
+    category = "stringtable"
+    sourceFile = "mc2-opengl-remastered-editor-13/mclib/MCLib.rc"
+    sourceLine = 159
+    sourceTextKey = "editor.mfc.stringtable.ids_must_have_player"
+    visibleText = "You must have one player mech!"
+}
+
+MFCTextBinding {
+    textKey = "editor.mfc.stringtable.ids_need_enemy"
+    resourceId = "STRINGTABLE"
+    controlId = ""
+    category = "stringtable"
+    sourceFile = "mc2-opengl-remastered-editor-13/mclib/MCLib.rc"
+    sourceLine = 164
+    sourceTextKey = "editor.mfc.stringtable.ids_need_enemy"
+    visibleText = "You must have one enemy mech!"
+}
+
+MFCTextBinding {
+    textKey = "editor.mfc.stringtable.ids_cant_save"
+    resourceId = "STRINGTABLE"
+    controlId = ""
+    category = "stringtable"
+    sourceFile = "mc2-opengl-remastered-editor-13/mclib/MCLib.rc"
+    sourceLine = 165
+    sourceTextKey = "editor.mfc.stringtable.ids_cant_save"
+    visibleText = "Can't save"
+}
+
+MFCTextBinding {
+    textKey = "common.text.untitled"
+    resourceId = "STRINGTABLE"
+    controlId = ""
+    category = "stringtable"
+    sourceFile = "mc2-opengl-remastered-editor-13/mclib/MCLib.rc"
+    sourceLine = 166
+    sourceTextKey = "editor.mfc.stringtable.ids_untitled"
+    visibleText = "Untitled"
+}
+
+MFCTextBinding {
+    textKey = "editor.mfc.stringtable.ids_caption"
+    resourceId = "STRINGTABLE"
+    controlId = ""
+    category = "stringtable"
+    sourceFile = "mc2-opengl-remastered-editor-13/mclib/MCLib.rc"
+    sourceLine = 167
+    sourceTextKey = "editor.mfc.stringtable.ids_caption"
+    visibleText = "MC2 Editor -- Version %s    %s"
+}
+
+MFCTextBinding {
+    textKey = "editor.mfc.stringtable.ids_couldnt_open"
+    resourceId = "STRINGTABLE"
+    controlId = ""
+    category = "stringtable"
+    sourceFile = "mc2-opengl-remastered-editor-13/mclib/MCLib.rc"
+    sourceLine = 168
+    sourceTextKey = "editor.mfc.stringtable.ids_couldnt_open"
+    visibleText = "Couldn't open the file %s."
+}
+
+MFCTextBinding {
+    textKey = "editor.mfc.stringtable.ids_in_seconds"
+    resourceId = "STRINGTABLE"
+    controlId = ""
+    category = "stringtable"
+    sourceFile = "mc2-opengl-remastered-editor-13/mclib/MCLib.rc"
+    sourceLine = 169
+    sourceTextKey = "editor.mfc.stringtable.ids_in_seconds"
+    visibleText = "in seconds"
+}
+
+MFCTextBinding {
+    textKey = "editor.mfc.stringtable.ids_no_neutral_movers"
+    resourceId = "STRINGTABLE"
+    controlId = ""
+    category = "stringtable"
+    sourceFile = "mc2-opengl-remastered-editor-13/mclib/MCLib.rc"
+    sourceLine = 170
+    sourceTextKey = "editor.mfc.stringtable.ids_no_neutral_movers"
+    visibleText = "Cannot have a Neutral Mover!"
+}
+
+MFCTextBinding {
+    textKey = "editor.mfc.stringtable.ids_warning"
+    resourceId = "STRINGTABLE"
+    controlId = ""
+    category = "stringtable"
+    sourceFile = "mc2-opengl-remastered-editor-13/mclib/MCLib.rc"
+    sourceLine = 171
+    sourceTextKey = "editor.mfc.stringtable.ids_warning"
+    visibleText = "Warning !"
+}
+
+MFCTextBinding {
+    textKey = "editor.mfc.stringtable.multiplayer"
+    resourceId = "STRINGTABLE"
+    controlId = ""
+    category = "stringtable"
+    sourceFile = "mc2-opengl-remastered-editor-13/mclib/MCLib.rc"
+    sourceLine = 173
+    sourceTextKey = "editor.mfc.stringtable.multiplayer"
+    visibleText = "Multiplayer Map: There are players with no default units. Default units are needed for quickstart games."
+}
+
+MFCTextBinding {
+    textKey = "editor.mfc.stringtable.ids_no_enemy_units"
+    resourceId = "STRINGTABLE"
+    controlId = ""
+    category = "stringtable"
+    sourceFile = "mc2-opengl-remastered-editor-13/mclib/MCLib.rc"
+    sourceLine = 174
+    sourceTextKey = "editor.mfc.stringtable.ids_no_enemy_units"
+    visibleText = "Single-player Map: There are no enemy units."
+}
+
+MFCTextBinding {
+    textKey = "ui.string.first.logistics"
+    resourceId = "STRINGTABLE"
+    controlId = ""
+    category = "stringtable"
+    sourceFile = "mc2-opengl-remastered-editor-13/mclib/MCLib.rc"
+    sourceLine = 175
+    sourceTextKey = "editor.mfc.stringtable.ids_blank_space"
+    visibleText = " "
+}
+
+MFCTextBinding {
+    textKey = "editor.mfc.stringtable.ids_num_enemy_units"
+    resourceId = "STRINGTABLE"
+    controlId = ""
+    category = "stringtable"
+    sourceFile = "mc2-opengl-remastered-editor-13/mclib/MCLib.rc"
+    sourceLine = 176
+    sourceTextKey = "editor.mfc.stringtable.ids_num_enemy_units"
+    visibleText = "Number of enemy units"
+}
+
+MFCTextBinding {
+    textKey = "unclassified.elapsedmissiontime"
+    resourceId = "STRINGTABLE"
+    controlId = ""
+    category = "stringtable"
+    sourceFile = "mc2-opengl-remastered-editor-13/mclib/MCLib.rc"
+    sourceLine = 177
+    sourceTextKey = "editor.mfc.stringtable.ids_elapsed_time"
+    visibleText = "Elapsed Mission Time"
+}
+
+MFCTextBinding {
+    textKey = "editor.mfc.stringtable.ids_string10112"
+    resourceId = "STRINGTABLE"
+    controlId = ""
+    category = "stringtable"
+    sourceFile = "mc2-opengl-remastered-editor-13/mclib/MCLib.rc"
+    sourceLine = 182
+    sourceTextKey = "editor.mfc.stringtable.ids_string10112"
+    visibleText = "Rocks"
+}
+
+MFCTextBinding {
+    textKey = "editor.mfc.stringtable.ids_string10113"
+    resourceId = "STRINGTABLE"
+    controlId = ""
+    category = "stringtable"
+    sourceFile = "mc2-opengl-remastered-editor-13/mclib/MCLib.rc"
+    sourceLine = 183
+    sourceTextKey = "editor.mfc.stringtable.ids_string10113"
+    visibleText = "Gulag Set Piece"
+}
+
+MFCTextBinding {
+    textKey = "editor.mfc.stringtable.ids_string10114"
+    resourceId = "STRINGTABLE"
+    controlId = ""
+    category = "stringtable"
+    sourceFile = "mc2-opengl-remastered-editor-13/mclib/MCLib.rc"
+    sourceLine = 184
+    sourceTextKey = "editor.mfc.stringtable.ids_string10114"
+    visibleText = "Starport Set Piece"
+}
+
+MFCTextBinding {
+    textKey = "editor.mfc.stringtable.ids_string10115"
+    resourceId = "STRINGTABLE"
+    controlId = ""
+    category = "stringtable"
+    sourceFile = "mc2-opengl-remastered-editor-13/mclib/MCLib.rc"
+    sourceLine = 185
+    sourceTextKey = "editor.mfc.stringtable.ids_string10115"
+    visibleText = "Liao Palace Set Piece"
+}
+
+MFCTextBinding {
+    textKey = "editor.mfc.stringtable.ids_string10116"
+    resourceId = "STRINGTABLE"
+    controlId = ""
+    category = "stringtable"
+    sourceFile = "mc2-opengl-remastered-editor-13/mclib/MCLib.rc"
+    sourceLine = 186
+    sourceTextKey = "editor.mfc.stringtable.ids_string10116"
+    visibleText = "Crash Site Set Piece"
+}
+
+MFCTextBinding {
+    textKey = "editor.mfc.stringtable.ids_string10117"
+    resourceId = "STRINGTABLE"
+    controlId = ""
+    category = "stringtable"
+    sourceFile = "mc2-opengl-remastered-editor-13/mclib/MCLib.rc"
+    sourceLine = 187
+    sourceTextKey = "editor.mfc.stringtable.ids_string10117"
+    visibleText = "HPG Set Piece"
+}
+
+MFCTextBinding {
+    textKey = "editor.mfc.stringtable.ids_string10118"
+    resourceId = "STRINGTABLE"
+    controlId = ""
+    category = "stringtable"
+    sourceFile = "mc2-opengl-remastered-editor-13/mclib/MCLib.rc"
+    sourceLine = 188
+    sourceTextKey = "editor.mfc.stringtable.ids_string10118"
+    visibleText = "Steiner High Command Set Piece"
+}
+
+MFCTextBinding {
+    textKey = "editor.mfc.stringtable.ids_string10119"
+    resourceId = "STRINGTABLE"
+    controlId = ""
+    category = "stringtable"
+    sourceFile = "mc2-opengl-remastered-editor-13/mclib/MCLib.rc"
+    sourceLine = 189
+    sourceTextKey = "editor.mfc.stringtable.ids_string10119"
+    visibleText = "Destroyable Road"
+}
+
+MFCTextBinding {
+    textKey = "editor.mfc.stringtable.ids_string10120"
+    resourceId = "STRINGTABLE"
+    controlId = ""
+    category = "stringtable"
+    sourceFile = "mc2-opengl-remastered-editor-13/mclib/MCLib.rc"
+    sourceLine = 190
+    sourceTextKey = "editor.mfc.stringtable.ids_string10120"
+    visibleText = "Dummy Objects"
+}
+
+MFCTextBinding {
+    textKey = "editor.mfc.stringtable.ids_unnamde_forest"
+    resourceId = "STRINGTABLE"
+    controlId = ""
+    category = "stringtable"
+    sourceFile = "mc2-opengl-remastered-editor-13/mclib/MCLib.rc"
+    sourceLine = 195
+    sourceTextKey = "editor.mfc.stringtable.ids_unnamde_forest"
+    visibleText = "Unnamed Forest %ld"
+}
+
+MFCTextBinding {
+    textKey = "editor.mfc.stringtable.ids_too_many_pilots"
+    resourceId = "STRINGTABLE"
+    controlId = ""
+    category = "stringtable"
+    sourceFile = "mc2-opengl-remastered-editor-13/mclib/MCLib.rc"
+    sourceLine = 196
+    sourceTextKey = "editor.mfc.stringtable.ids_too_many_pilots"
+    visibleText = "Too many units on map.  Limit is 104."
+}
+
+MFCTextBinding {
+    textKey = "editor.mfc.stringtable.ids_invalid_color_map"
+    resourceId = "STRINGTABLE"
+    controlId = ""
+    category = "stringtable"
+    sourceFile = "mc2-opengl-remastered-editor-13/mclib/MCLib.rc"
+    sourceLine = 197
+    sourceTextKey = "editor.mfc.stringtable.ids_invalid_color_map"
+    visibleText = "Color Map wrong size or not valid TGA."
+}
+
+MFCTextBinding {
+    textKey = "editor.mfc.stringtable.ids_no_player_units"
+    resourceId = "STRINGTABLE"
+    controlId = ""
+    category = "stringtable"
+    sourceFile = "mc2-opengl-remastered-editor-13/mclib/MCLib.rc"
+    sourceLine = 202
+    sourceTextKey = "editor.mfc.stringtable.ids_no_player_units"
+    visibleText = "Single-player Map: There are no player units. A player unit  needs to be placed to indicate the dropzone location."
+}
+

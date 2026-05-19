@@ -357,3 +357,8 @@ add_subdirectory("./res" "./out/res")
 add_subdirectory("./data_tools" "./out/data_tools")
 add_subdirectory("./text_tool" "./out/text_tool")
 add_subdirectory("./Viewer" "./out/Viewer")
+
+# MC2 Mission Editor (MFC/Windows-only). The CMakeLists inside
+# editor/ guards itself with if(NOT MSVC) return() so this is
+# safe on all platforms.
+add_subdirectory("./editor" "./out/editor")

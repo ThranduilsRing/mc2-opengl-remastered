@@ -1,0 +1,1293 @@
+/***************************************************************
+ * FILENAME: menu_text_bindings.fit
+ * DESCRIPTION: Editor menu label bindings from MFC resource command IDs to data/defs String keys.
+ *
+ * CREATED BY: Methuselas
+ * CREATED: Unknown
+ *
+ ***************************************************************/
+
+MenuTextBinding {
+    menuId = "IDR_EDITOR_MENU"
+    kind = "popup"
+    commandId = ""
+    textKey = "common.text.file"
+    visibleText = "File"
+    rawLabel = "&File"
+    accelerator = ""
+    sourceFile = "Editor/resource.rc"
+    sourceLine = 1028
+}
+
+MenuTextBinding {
+    menuId = "IDR_EDITOR_MENU"
+    kind = "menuitem"
+    commandId = "ID_FILE_NEW2"
+    textKey = "common.text.new"
+    visibleText = "New"
+    rawLabel = "&New\tCtrl + N"
+    accelerator = "Ctrl + N"
+    sourceFile = "Editor/resource.rc"
+    sourceLine = 1030
+}
+
+MenuTextBinding {
+    menuId = "IDR_EDITOR_MENU"
+    kind = "menuitem"
+    commandId = "ID_FILE_OPEN2"
+    textKey = "common.text.open"
+    visibleText = "Open"
+    rawLabel = "&Open\tCtrl + O"
+    accelerator = "Ctrl + O"
+    sourceFile = "Editor/resource.rc"
+    sourceLine = 1031
+}
+
+MenuTextBinding {
+    menuId = "IDR_EDITOR_MENU"
+    kind = "menuitem"
+    commandId = "ID_FILE_QUICKSAVE"
+    textKey = "unclassified.inmissionsave.header"
+    visibleText = "Quick Save"
+    rawLabel = "&Quick Save\tCtrl + Q"
+    accelerator = "Ctrl + Q"
+    sourceFile = "Editor/resource.rc"
+    sourceLine = 1032
+}
+
+MenuTextBinding {
+    menuId = "IDR_EDITOR_MENU"
+    kind = "menuitem"
+    commandId = "ID_FILE_SAVE"
+    textKey = "common.text.save"
+    visibleText = "Save"
+    rawLabel = "&Save\tCtrl + S"
+    accelerator = "Ctrl + S"
+    sourceFile = "Editor/resource.rc"
+    sourceLine = 1033
+}
+
+MenuTextBinding {
+    menuId = "IDR_EDITOR_MENU"
+    kind = "menuitem"
+    commandId = "ID_FILE_SAVEAS"
+    textKey = "common.text.save_as"
+    visibleText = "Save As..."
+    rawLabel = "Sa&ve As..."
+    accelerator = ""
+    sourceFile = "Editor/resource.rc"
+    sourceLine = 1034
+}
+
+MenuTextBinding {
+    menuId = "IDR_EDITOR_MENU"
+    kind = "menuitem"
+    commandId = "ID_SAVE_HEIGHT_MAP"
+    textKey = "game.source.save_height_map"
+    visibleText = "Save Height Map"
+    rawLabel = "Save &Height Map"
+    accelerator = ""
+    sourceFile = "Editor/resource.rc"
+    sourceLine = 1035
+}
+
+MenuTextBinding {
+    menuId = "IDR_EDITOR_MENU"
+    kind = "menuitem"
+    commandId = "ID_FILE_ASSIGNHEIGHTMAP"
+    textKey = "game.source.assign_height_map"
+    visibleText = "Assign Height Map"
+    rawLabel = "&Assign Height Map"
+    accelerator = ""
+    sourceFile = "Editor/resource.rc"
+    sourceLine = 1036
+}
+
+MenuTextBinding {
+    menuId = "IDR_EDITOR_MENU"
+    kind = "menuitem"
+    commandId = "ID_FILE_EXIT"
+    textKey = "common.text.exit"
+    visibleText = "Exit"
+    rawLabel = "E&xit"
+    accelerator = ""
+    sourceFile = "Editor/resource.rc"
+    sourceLine = 1037
+}
+
+MenuTextBinding {
+    menuId = "IDR_EDITOR_MENU"
+    kind = "popup"
+    commandId = ""
+    textKey = "common.text.edit"
+    visibleText = "Edit"
+    rawLabel = "&Edit"
+    accelerator = ""
+    sourceFile = "Editor/resource.rc"
+    sourceLine = 1039
+}
+
+MenuTextBinding {
+    menuId = "IDR_EDITOR_MENU"
+    kind = "menuitem"
+    commandId = "ID_EDIT_UNDO2"
+    textKey = "common.text.undo"
+    visibleText = "Undo"
+    rawLabel = "&Undo\tCtrl + Z"
+    accelerator = "Ctrl + Z"
+    sourceFile = "Editor/resource.rc"
+    sourceLine = 1041
+}
+
+MenuTextBinding {
+    menuId = "IDR_EDITOR_MENU"
+    kind = "menuitem"
+    commandId = "ID_EDIT_REDO2"
+    textKey = "common.text.redo"
+    visibleText = "Redo"
+    rawLabel = "&Redo\t Ctrl + Y"
+    accelerator = " Ctrl + Y"
+    sourceFile = "Editor/resource.rc"
+    sourceLine = 1042
+}
+
+MenuTextBinding {
+    menuId = "IDR_EDITOR_MENU"
+    kind = "popup"
+    commandId = ""
+    textKey = "common.text.view"
+    visibleText = "View"
+    rawLabel = "&View"
+    accelerator = ""
+    sourceFile = "Editor/resource.rc"
+    sourceLine = 1044
+}
+
+MenuTextBinding {
+    menuId = "IDR_EDITOR_MENU"
+    kind = "menuitem"
+    commandId = "ID_VIEW_REFRESHTACMAP"
+    textKey = "game.source.refresh_tac_map"
+    visibleText = "Refresh Tac Map"
+    rawLabel = "&Refresh Tac Map"
+    accelerator = ""
+    sourceFile = "Editor/resource.rc"
+    sourceLine = 1046
+}
+
+MenuTextBinding {
+    menuId = "IDR_EDITOR_MENU"
+    kind = "menuitem"
+    commandId = "ID_VIEW_ORTHOGRAPHICCAMERA"
+    textKey = "game.source.orthographic_camera"
+    visibleText = "Orthographic Camera"
+    rawLabel = "&Orthographic Camera"
+    accelerator = ""
+    sourceFile = "Editor/resource.rc"
+    sourceLine = 1047
+}
+
+MenuTextBinding {
+    menuId = "IDR_EDITOR_MENU"
+    kind = "popup"
+    commandId = ""
+    textKey = "game.source.overlays"
+    visibleText = "Overlays"
+    rawLabel = "&Overlays"
+    accelerator = ""
+    sourceFile = "Editor/resource.rc"
+    sourceLine = 1051
+}
+
+MenuTextBinding {
+    menuId = "IDR_EDITOR_MENU"
+    kind = "menuitem"
+    commandId = "ID_OVERLAYS_DIRTROAD"
+    textKey = "common.text.dirt_road"
+    visibleText = "Dirt Road"
+    rawLabel = "Dirt Road"
+    accelerator = ""
+    sourceFile = "Editor/resource.rc"
+    sourceLine = 1053
+}
+
+MenuTextBinding {
+    menuId = "IDR_EDITOR_MENU"
+    kind = "menuitem"
+    commandId = "ID_OVERLAYS_PAEVEDROAD"
+    textKey = "editor.mfc.source.paved_road"
+    visibleText = "Paved Road"
+    rawLabel = "Paved Road"
+    accelerator = ""
+    sourceFile = "Editor/resource.rc"
+    sourceLine = 1054
+}
+
+MenuTextBinding {
+    menuId = "IDR_EDITOR_MENU"
+    kind = "menuitem"
+    commandId = "ID_OVERLAYS_ROUGH"
+    textKey = "common.text.rough"
+    visibleText = "Rough"
+    rawLabel = "Rough"
+    accelerator = ""
+    sourceFile = "Editor/resource.rc"
+    sourceLine = 1055
+}
+
+MenuTextBinding {
+    menuId = "IDR_EDITOR_MENU"
+    kind = "menuitem"
+    commandId = "ID_OVERLAYS_TWOLANEDIRTROAD"
+    textKey = "editor.mfc.source.two_lane_dirt_road"
+    visibleText = "Two Lane Dirt Road"
+    rawLabel = "Two Lane Dirt Road"
+    accelerator = ""
+    sourceFile = "Editor/resource.rc"
+    sourceLine = 1056
+}
+
+MenuTextBinding {
+    menuId = "IDR_EDITOR_MENU"
+    kind = "menuitem"
+    commandId = "ID_OVERLAYS_DAMAGEDROAD"
+    textKey = "editor.mfc.source.damaged_road"
+    visibleText = "Damaged Road"
+    rawLabel = "Damaged Road"
+    accelerator = ""
+    sourceFile = "Editor/resource.rc"
+    sourceLine = 1057
+}
+
+MenuTextBinding {
+    menuId = "IDR_EDITOR_MENU"
+    kind = "menuitem"
+    commandId = "ID_OVERLAYS_RUNWAY"
+    textKey = "editor.mfc.source.runway"
+    visibleText = "Runway"
+    rawLabel = "Runway"
+    accelerator = ""
+    sourceFile = "Editor/resource.rc"
+    sourceLine = 1058
+}
+
+MenuTextBinding {
+    menuId = "IDR_EDITOR_MENU"
+    kind = "menuitem"
+    commandId = "ID_OVERLAYS_BRIDGE"
+    textKey = "ui.ifcbld.bridge"
+    visibleText = "Bridge"
+    rawLabel = "Bridge"
+    accelerator = ""
+    sourceFile = "Editor/resource.rc"
+    sourceLine = 1059
+}
+
+MenuTextBinding {
+    menuId = "IDR_EDITOR_MENU"
+    kind = "menuitem"
+    commandId = "ID_OVERLAYS_DAMAGEDBRIDGE"
+    textKey = "editor.mfc.source.damaged_bridge"
+    visibleText = "Damaged Bridge"
+    rawLabel = "Damaged Bridge"
+    accelerator = ""
+    sourceFile = "Editor/resource.rc"
+    sourceLine = 1060
+}
+
+MenuTextBinding {
+    menuId = "IDR_EDITOR_MENU"
+    kind = "popup"
+    commandId = ""
+    textKey = "engine.source.sky"
+    visibleText = "Sky"
+    rawLabel = "S&ky"
+    accelerator = ""
+    sourceFile = "Editor/resource.rc"
+    sourceLine = 1062
+}
+
+MenuTextBinding {
+    menuId = "IDR_EDITOR_MENU"
+    kind = "menuitem"
+    commandId = "ID_SKY_SKY1"
+    textKey = "editor.mfc.source.sky_1"
+    visibleText = "Sky 1"
+    rawLabel = "Sky 1"
+    accelerator = ""
+    sourceFile = "Editor/resource.rc"
+    sourceLine = 1064
+}
+
+MenuTextBinding {
+    menuId = "IDR_EDITOR_MENU"
+    kind = "menuitem"
+    commandId = "ID_SKY_SKY2"
+    textKey = "editor.mfc.source.sky_2"
+    visibleText = "Sky 2"
+    rawLabel = "Sky 2"
+    accelerator = ""
+    sourceFile = "Editor/resource.rc"
+    sourceLine = 1065
+}
+
+MenuTextBinding {
+    menuId = "IDR_EDITOR_MENU"
+    kind = "menuitem"
+    commandId = "ID_SKY_SKY3"
+    textKey = "editor.mfc.source.sky_3"
+    visibleText = "Sky 3"
+    rawLabel = "Sky 3"
+    accelerator = ""
+    sourceFile = "Editor/resource.rc"
+    sourceLine = 1066
+}
+
+MenuTextBinding {
+    menuId = "IDR_EDITOR_MENU"
+    kind = "menuitem"
+    commandId = "ID_SKY_SKY4"
+    textKey = "editor.mfc.source.sky_4"
+    visibleText = "Sky 4"
+    rawLabel = "Sky 4"
+    accelerator = ""
+    sourceFile = "Editor/resource.rc"
+    sourceLine = 1067
+}
+
+MenuTextBinding {
+    menuId = "IDR_EDITOR_MENU"
+    kind = "menuitem"
+    commandId = "ID_SKY_SKY5"
+    textKey = "editor.mfc.source.sky_5"
+    visibleText = "Sky 5"
+    rawLabel = "Sky 5"
+    accelerator = ""
+    sourceFile = "Editor/resource.rc"
+    sourceLine = 1068
+}
+
+MenuTextBinding {
+    menuId = "IDR_EDITOR_MENU"
+    kind = "menuitem"
+    commandId = "ID_SKY_SKY6"
+    textKey = "editor.mfc.source.sky_6"
+    visibleText = "Sky 6"
+    rawLabel = "Sky 6"
+    accelerator = ""
+    sourceFile = "Editor/resource.rc"
+    sourceLine = 1069
+}
+
+MenuTextBinding {
+    menuId = "IDR_EDITOR_MENU"
+    kind = "menuitem"
+    commandId = "ID_SKY_SKY7"
+    textKey = "editor.mfc.source.sky_7"
+    visibleText = "Sky 7"
+    rawLabel = "Sky 7"
+    accelerator = ""
+    sourceFile = "Editor/resource.rc"
+    sourceLine = 1070
+}
+
+MenuTextBinding {
+    menuId = "IDR_EDITOR_MENU"
+    kind = "menuitem"
+    commandId = "ID_SKY_SKY8"
+    textKey = "editor.mfc.source.sky_8"
+    visibleText = "Sky 8"
+    rawLabel = "Sky 8"
+    accelerator = ""
+    sourceFile = "Editor/resource.rc"
+    sourceLine = 1071
+}
+
+MenuTextBinding {
+    menuId = "IDR_EDITOR_MENU"
+    kind = "menuitem"
+    commandId = "ID_SKY_SKY9"
+    textKey = "editor.mfc.source.sky_9"
+    visibleText = "Sky 9"
+    rawLabel = "Sky 9"
+    accelerator = ""
+    sourceFile = "Editor/resource.rc"
+    sourceLine = 1072
+}
+
+MenuTextBinding {
+    menuId = "IDR_EDITOR_MENU"
+    kind = "menuitem"
+    commandId = "ID_SKY_SKY10"
+    textKey = "editor.mfc.source.sky_10"
+    visibleText = "Sky 10"
+    rawLabel = "Sky 10"
+    accelerator = ""
+    sourceFile = "Editor/resource.rc"
+    sourceLine = 1073
+}
+
+MenuTextBinding {
+    menuId = "IDR_EDITOR_MENU"
+    kind = "menuitem"
+    commandId = "ID_SKY_SKY11"
+    textKey = "editor.mfc.source.sky_11"
+    visibleText = "Sky 11"
+    rawLabel = "Sky 11"
+    accelerator = ""
+    sourceFile = "Editor/resource.rc"
+    sourceLine = 1074
+}
+
+MenuTextBinding {
+    menuId = "IDR_EDITOR_MENU"
+    kind = "menuitem"
+    commandId = "ID_SKY_SKY12"
+    textKey = "editor.mfc.source.sky_12"
+    visibleText = "Sky 12"
+    rawLabel = "Sky 12"
+    accelerator = ""
+    sourceFile = "Editor/resource.rc"
+    sourceLine = 1075
+}
+
+MenuTextBinding {
+    menuId = "IDR_EDITOR_MENU"
+    kind = "menuitem"
+    commandId = "ID_SKY_SKY13"
+    textKey = "editor.mfc.source.sky_13"
+    visibleText = "Sky 13"
+    rawLabel = "Sky 13"
+    accelerator = ""
+    sourceFile = "Editor/resource.rc"
+    sourceLine = 1076
+}
+
+MenuTextBinding {
+    menuId = "IDR_EDITOR_MENU"
+    kind = "menuitem"
+    commandId = "ID_SKY_SKY14"
+    textKey = "editor.mfc.source.sky_14"
+    visibleText = "Sky 14"
+    rawLabel = "Sky 14"
+    accelerator = ""
+    sourceFile = "Editor/resource.rc"
+    sourceLine = 1077
+}
+
+MenuTextBinding {
+    menuId = "IDR_EDITOR_MENU"
+    kind = "menuitem"
+    commandId = "ID_SKY_SKY15"
+    textKey = "editor.mfc.source.sky_15"
+    visibleText = "Sky 15"
+    rawLabel = "Sky 15"
+    accelerator = ""
+    sourceFile = "Editor/resource.rc"
+    sourceLine = 1078
+}
+
+MenuTextBinding {
+    menuId = "IDR_EDITOR_MENU"
+    kind = "menuitem"
+    commandId = "ID_SKY_SKY16"
+    textKey = "editor.mfc.source.sky_16"
+    visibleText = "Sky 16"
+    rawLabel = "Sky 16"
+    accelerator = ""
+    sourceFile = "Editor/resource.rc"
+    sourceLine = 1079
+}
+
+MenuTextBinding {
+    menuId = "IDR_EDITOR_MENU"
+    kind = "menuitem"
+    commandId = "ID_SKY_SKY17"
+    textKey = "editor.mfc.source.sky_17"
+    visibleText = "Sky 17"
+    rawLabel = "Sky 17"
+    accelerator = ""
+    sourceFile = "Editor/resource.rc"
+    sourceLine = 1080
+}
+
+MenuTextBinding {
+    menuId = "IDR_EDITOR_MENU"
+    kind = "menuitem"
+    commandId = "ID_SKY_SKY18"
+    textKey = "editor.mfc.source.sky_18"
+    visibleText = "Sky 18"
+    rawLabel = "Sky 18"
+    accelerator = ""
+    sourceFile = "Editor/resource.rc"
+    sourceLine = 1081
+}
+
+MenuTextBinding {
+    menuId = "IDR_EDITOR_MENU"
+    kind = "menuitem"
+    commandId = "ID_SKY_SKY19"
+    textKey = "editor.mfc.source.sky_19"
+    visibleText = "Sky 19"
+    rawLabel = "Sky 19"
+    accelerator = ""
+    sourceFile = "Editor/resource.rc"
+    sourceLine = 1082
+}
+
+MenuTextBinding {
+    menuId = "IDR_EDITOR_MENU"
+    kind = "menuitem"
+    commandId = "ID_SKY_SKY20"
+    textKey = "editor.mfc.source.sky_20"
+    visibleText = "Sky 20"
+    rawLabel = "Sky 20"
+    accelerator = ""
+    sourceFile = "Editor/resource.rc"
+    sourceLine = 1083
+}
+
+MenuTextBinding {
+    menuId = "IDR_EDITOR_MENU"
+    kind = "menuitem"
+    commandId = "ID_SKY_SKY21"
+    textKey = "editor.mfc.source.sky_21"
+    visibleText = "Sky 21"
+    rawLabel = "Sky 21"
+    accelerator = ""
+    sourceFile = "Editor/resource.rc"
+    sourceLine = 1084
+}
+
+MenuTextBinding {
+    menuId = "IDR_EDITOR_MENU"
+    kind = "popup"
+    commandId = ""
+    textKey = "mission.mfdobj.other"
+    visibleText = "Other"
+    rawLabel = "Othe&r"
+    accelerator = ""
+    sourceFile = "Editor/resource.rc"
+    sourceLine = 1086
+}
+
+MenuTextBinding {
+    menuId = "IDR_EDITOR_MENU"
+    kind = "menuitem"
+    commandId = "ID_OTHER_ERASE"
+    textKey = "game.source.erase"
+    visibleText = "Erase"
+    rawLabel = "&Erase\tE"
+    accelerator = "E"
+    sourceFile = "Editor/resource.rc"
+    sourceLine = 1088
+}
+
+MenuTextBinding {
+    menuId = "IDR_EDITOR_MENU"
+    kind = "menuitem"
+    commandId = "ID_OTHER_DAMAGE"
+    textKey = "common.text.damage"
+    visibleText = "Damage"
+    rawLabel = "&Damage\tD"
+    accelerator = "D"
+    sourceFile = "Editor/resource.rc"
+    sourceLine = 1089
+}
+
+MenuTextBinding {
+    menuId = "IDR_EDITOR_MENU"
+    kind = "menuitem"
+    commandId = "ID_OTHER_REPAIR"
+    textKey = "ui.repair"
+    visibleText = "Repair"
+    rawLabel = "&Repair\tR"
+    accelerator = "R"
+    sourceFile = "Editor/resource.rc"
+    sourceLine = 1090
+}
+
+MenuTextBinding {
+    menuId = "IDR_EDITOR_MENU"
+    kind = "menuitem"
+    commandId = "ID_OTHER_FLATTEN"
+    textKey = "editor.mfc.stringtable.ids_flatten"
+    visibleText = "Flatten"
+    rawLabel = "&Flatten\tF"
+    accelerator = "F"
+    sourceFile = "Editor/resource.rc"
+    sourceLine = 1091
+}
+
+MenuTextBinding {
+    menuId = "IDR_EDITOR_MENU"
+    kind = "menuitem"
+    commandId = "ID_FOG"
+    textKey = "editor.mfc.source.fog"
+    visibleText = "Fog"
+    rawLabel = "&Fog\tCtrl + F"
+    accelerator = "Ctrl + F"
+    sourceFile = "Editor/resource.rc"
+    sourceLine = 1092
+}
+
+MenuTextBinding {
+    menuId = "IDR_EDITOR_MENU"
+    kind = "menuitem"
+    commandId = "ID_LIGHT"
+    textKey = "unclassified.light.mech"
+    visibleText = "Light"
+    rawLabel = "Ligh&t\tCtrl + L"
+    accelerator = "Ctrl + L"
+    sourceFile = "Editor/resource.rc"
+    sourceLine = 1093
+}
+
+MenuTextBinding {
+    menuId = "IDR_EDITOR_MENU"
+    kind = "menuitem"
+    commandId = "ID_WAVES"
+    textKey = "ui.string10016"
+    visibleText = "Water"
+    rawLabel = "&Water\tCtrl + W"
+    accelerator = "Ctrl + W"
+    sourceFile = "Editor/resource.rc"
+    sourceLine = 1094
+}
+
+MenuTextBinding {
+    menuId = "IDR_EDITOR_MENU"
+    kind = "menuitem"
+    commandId = "ID_OTHER_ASSIGNHEIGHT"
+    textKey = "editor.mfc.stringtable.ids_assign_elevation"
+    visibleText = "Assign Elevation"
+    rawLabel = "&Assign Elevation\tCtrl + A"
+    accelerator = "Ctrl + A"
+    sourceFile = "Editor/resource.rc"
+    sourceLine = 1095
+}
+
+MenuTextBinding {
+    menuId = "IDR_EDITOR_MENU"
+    kind = "menuitem"
+    commandId = "ID_OTHER_LINK"
+    textKey = "game.source.link"
+    visibleText = "Link"
+    rawLabel = "&Link\tL"
+    accelerator = "L"
+    sourceFile = "Editor/resource.rc"
+    sourceLine = 1096
+}
+
+MenuTextBinding {
+    menuId = "IDR_EDITOR_MENU"
+    kind = "menuitem"
+    commandId = "ID_OTHER_UNLINK"
+    textKey = "game.source.unlink"
+    visibleText = "UnLink"
+    rawLabel = "&UnLink\tU"
+    accelerator = "U"
+    sourceFile = "Editor/resource.rc"
+    sourceLine = 1097
+}
+
+MenuTextBinding {
+    menuId = "IDR_EDITOR_MENU"
+    kind = "menuitem"
+    commandId = "ID_OTHER_LAYMINES"
+    textKey = "game.source.lay_mines"
+    visibleText = "Lay Mines"
+    rawLabel = "Lay &Mines"
+    accelerator = ""
+    sourceFile = "Editor/resource.rc"
+    sourceLine = 1098
+}
+
+MenuTextBinding {
+    menuId = "IDR_EDITOR_MENU"
+    kind = "menuitem"
+    commandId = "ID_OTHER_SELECTDETAILTEXTURE"
+    textKey = "editor.mfc.source.select_detail_texture"
+    visibleText = "Select Detail Texture"
+    rawLabel = "Select Detail Texture"
+    accelerator = ""
+    sourceFile = "Editor/resource.rc"
+    sourceLine = 1099
+}
+
+MenuTextBinding {
+    menuId = "IDR_EDITOR_MENU"
+    kind = "menuitem"
+    commandId = "ID_OTHER_SELECTWATERTEXTURE"
+    textKey = "editor.mfc.source.select_water_texture"
+    visibleText = "Select Water Texture"
+    rawLabel = "Select Water Texture"
+    accelerator = ""
+    sourceFile = "Editor/resource.rc"
+    sourceLine = 1100
+}
+
+MenuTextBinding {
+    menuId = "IDR_EDITOR_MENU"
+    kind = "menuitem"
+    commandId = "ID_OTHER_SELECTWATERDETAILTEXTURE"
+    textKey = "editor.mfc.source.select_water_detail_texture"
+    visibleText = "Select Water Detail Texture"
+    rawLabel = "Select Water Detail Texture"
+    accelerator = ""
+    sourceFile = "Editor/resource.rc"
+    sourceLine = 1101
+}
+
+MenuTextBinding {
+    menuId = "IDR_EDITOR_MENU"
+    kind = "menuitem"
+    commandId = "ID_OTHER_TEXTURETILINGFACTORS"
+    textKey = "editor.mfc.source.texture_tiling_factors"
+    visibleText = "Texture Tiling Factors"
+    rawLabel = "Texture Tiling Factors"
+    accelerator = ""
+    sourceFile = "Editor/resource.rc"
+    sourceLine = 1103
+}
+
+MenuTextBinding {
+    menuId = "IDR_EDITOR_MENU"
+    kind = "menuitem"
+    commandId = "ID_OTHER_SETBASETEXTURENAME"
+    textKey = "editor.mfc.source.set_base_texture"
+    visibleText = "Set Base Texture"
+    rawLabel = "Set Base Texture"
+    accelerator = ""
+    sourceFile = "Editor/resource.rc"
+    sourceLine = 1105
+}
+
+MenuTextBinding {
+    menuId = "IDR_EDITOR_MENU"
+    kind = "menuitem"
+    commandId = "ID_OTHER_RELOADBASETEXTURE"
+    textKey = "editor.mfc.source.reload_burn_in_texture"
+    visibleText = "Reload Burn-In Texture"
+    rawLabel = "Reload Burn-In Texture"
+    accelerator = ""
+    sourceFile = "Editor/resource.rc"
+    sourceLine = 1106
+}
+
+MenuTextBinding {
+    menuId = "IDR_EDITOR_MENU"
+    kind = "menuitem"
+    commandId = "ID_FOREST_TOOL"
+    textKey = "editor.mfc.source.forest_tool"
+    visibleText = "Forest Tool"
+    rawLabel = "Forest &Tool\tT"
+    accelerator = "T"
+    sourceFile = "Editor/resource.rc"
+    sourceLine = 1109
+}
+
+MenuTextBinding {
+    menuId = "IDR_EDITOR_MENU"
+    kind = "menuitem"
+    commandId = "ID_OTHER_EDITFORESTS"
+    textKey = "game.source.edit_forests"
+    visibleText = "Edit Forests"
+    rawLabel = "Edit Fore&sts"
+    accelerator = ""
+    sourceFile = "Editor/resource.rc"
+    sourceLine = 1110
+}
+
+MenuTextBinding {
+    menuId = "IDR_EDITOR_MENU"
+    kind = "popup"
+    commandId = ""
+    textKey = "editor.mfc.stringtable.ids_select"
+    visibleText = "Select"
+    rawLabel = "&Select"
+    accelerator = ""
+    sourceFile = "Editor/resource.rc"
+    sourceLine = 1112
+}
+
+MenuTextBinding {
+    menuId = "IDR_EDITOR_MENU"
+    kind = "menuitem"
+    commandId = "ID_OTHER_SELECT"
+    textKey = "editor.mfc.stringtable.ids_select"
+    visibleText = "Select"
+    rawLabel = "&Select\t(Esc)"
+    accelerator = "(Esc)"
+    sourceFile = "Editor/resource.rc"
+    sourceLine = 1114
+}
+
+MenuTextBinding {
+    menuId = "IDR_EDITOR_MENU"
+    kind = "menuitem"
+    commandId = "IDS_SELECT_SLOPES"
+    textKey = "editor.mfc.source.select_by_slope"
+    visibleText = "Select By Slope"
+    rawLabel = "Select By S&lope"
+    accelerator = ""
+    sourceFile = "Editor/resource.rc"
+    sourceLine = 1115
+}
+
+MenuTextBinding {
+    menuId = "IDR_EDITOR_MENU"
+    kind = "menuitem"
+    commandId = "IDS_SELECT_ALTITUDE"
+    textKey = "game.source.select_by_altitude"
+    visibleText = "Select By Altitude"
+    rawLabel = "Select By &Altitude"
+    accelerator = ""
+    sourceFile = "Editor/resource.rc"
+    sourceLine = 1116
+}
+
+MenuTextBinding {
+    menuId = "IDR_EDITOR_MENU"
+    kind = "menuitem"
+    commandId = "ID_SELECT_TERRAIN_TYPE"
+    textKey = "game.source.select_by_terrain_type"
+    visibleText = "Select By Terrain Type"
+    rawLabel = "Select By &Terrain Type"
+    accelerator = ""
+    sourceFile = "Editor/resource.rc"
+    sourceLine = 1117
+}
+
+MenuTextBinding {
+    menuId = "IDR_EDITOR_MENU"
+    kind = "menuitem"
+    commandId = "ID_DRAGSMOOTH"
+    textKey = "game.source.drag_smooth"
+    visibleText = "Drag Smooth"
+    rawLabel = "Drag S&mooth\tS"
+    accelerator = "S"
+    sourceFile = "Editor/resource.rc"
+    sourceLine = 1118
+}
+
+MenuTextBinding {
+    menuId = "IDR_EDITOR_MENU"
+    kind = "menuitem"
+    commandId = "ID_DRAGNORMAL"
+    textKey = "game.source.drag_normal"
+    visibleText = "Drag Normal"
+    rawLabel = "Drag &Normal"
+    accelerator = ""
+    sourceFile = "Editor/resource.rc"
+    sourceLine = 1119
+}
+
+MenuTextBinding {
+    menuId = "IDR_EDITOR_MENU"
+    kind = "menuitem"
+    commandId = "ID_SMOOTH_RADIUS"
+    textKey = "game.source.smooth_radius"
+    visibleText = "Smooth Radius"
+    rawLabel = "Smooth &Radius"
+    accelerator = ""
+    sourceFile = "Editor/resource.rc"
+    sourceLine = 1120
+}
+
+MenuTextBinding {
+    menuId = "IDR_EDITOR_MENU"
+    kind = "popup"
+    commandId = ""
+    textKey = "common.text.alignment"
+    visibleText = "Alignment"
+    rawLabel = "&Alignment"
+    accelerator = ""
+    sourceFile = "Editor/resource.rc"
+    sourceLine = 1122
+}
+
+MenuTextBinding {
+    menuId = "IDR_EDITOR_MENU"
+    kind = "menuitem"
+    commandId = "ID_ALIGNMENT_TEAM1"
+    textKey = "game.source.player_1"
+    visibleText = "Player 1"
+    rawLabel = "Player &1"
+    accelerator = ""
+    sourceFile = "Editor/resource.rc"
+    sourceLine = 1124
+}
+
+MenuTextBinding {
+    menuId = "IDR_EDITOR_MENU"
+    kind = "menuitem"
+    commandId = "ID_ALIGNMENT_ENEMY"
+    textKey = "game.source.player_2"
+    visibleText = "Player 2"
+    rawLabel = "Player &2"
+    accelerator = ""
+    sourceFile = "Editor/resource.rc"
+    sourceLine = 1125
+}
+
+MenuTextBinding {
+    menuId = "IDR_EDITOR_MENU"
+    kind = "menuitem"
+    commandId = "ID_ALIGNMENT_NEUTRAL"
+    textKey = "game.source.player_3"
+    visibleText = "Player 3"
+    rawLabel = "Player &3"
+    accelerator = ""
+    sourceFile = "Editor/resource.rc"
+    sourceLine = 1126
+}
+
+MenuTextBinding {
+    menuId = "IDR_EDITOR_MENU"
+    kind = "menuitem"
+    commandId = "ID_ALIGNMENT_TEAM4"
+    textKey = "game.source.player_4"
+    visibleText = "Player 4"
+    rawLabel = "Player &4"
+    accelerator = ""
+    sourceFile = "Editor/resource.rc"
+    sourceLine = 1128
+}
+
+MenuTextBinding {
+    menuId = "IDR_EDITOR_MENU"
+    kind = "menuitem"
+    commandId = "ID_ALIGNMENT_TEAM5"
+    textKey = "game.source.player_5"
+    visibleText = "Player 5"
+    rawLabel = "Player &5"
+    accelerator = ""
+    sourceFile = "Editor/resource.rc"
+    sourceLine = 1129
+}
+
+MenuTextBinding {
+    menuId = "IDR_EDITOR_MENU"
+    kind = "menuitem"
+    commandId = "ID_ALIGNMENT_TEAM6"
+    textKey = "game.source.player_6"
+    visibleText = "Player 6"
+    rawLabel = "Player &6"
+    accelerator = ""
+    sourceFile = "Editor/resource.rc"
+    sourceLine = 1130
+}
+
+MenuTextBinding {
+    menuId = "IDR_EDITOR_MENU"
+    kind = "menuitem"
+    commandId = "ID_ALIGNMENT_TEAM7"
+    textKey = "game.source.player_7"
+    visibleText = "Player 7"
+    rawLabel = "Player &7"
+    accelerator = ""
+    sourceFile = "Editor/resource.rc"
+    sourceLine = 1131
+}
+
+MenuTextBinding {
+    menuId = "IDR_EDITOR_MENU"
+    kind = "menuitem"
+    commandId = "ID_ALIGNMENT_TEAM8"
+    textKey = "game.source.player_8"
+    visibleText = "Player 8"
+    rawLabel = "Player &8"
+    accelerator = ""
+    sourceFile = "Editor/resource.rc"
+    sourceLine = 1132
+}
+
+MenuTextBinding {
+    menuId = "IDR_EDITOR_MENU"
+    kind = "menuitem"
+    commandId = "ID_ALIGNMENT_TRUENEUTRAL"
+    textKey = "game.source.neutral"
+    visibleText = "Neutral"
+    rawLabel = "&Neutral"
+    accelerator = ""
+    sourceFile = "Editor/resource.rc"
+    sourceLine = 1133
+}
+
+MenuTextBinding {
+    menuId = "IDR_EDITOR_MENU"
+    kind = "popup"
+    commandId = ""
+    textKey = "tech.scope.mission.name"
+    visibleText = "Mission"
+    rawLabel = "&Mission"
+    accelerator = ""
+    sourceFile = "Editor/resource.rc"
+    sourceLine = 1135
+}
+
+MenuTextBinding {
+    menuId = "IDR_EDITOR_MENU"
+    kind = "menuitem"
+    commandId = "ID_MISSION_SETTINGS"
+    textKey = "editor.mfc.source.mission_settings"
+    visibleText = "Mission Settings"
+    rawLabel = "&Mission Settings"
+    accelerator = ""
+    sourceFile = "Editor/resource.rc"
+    sourceLine = 1137
+}
+
+MenuTextBinding {
+    menuId = "IDR_EDITOR_MENU"
+    kind = "popup"
+    commandId = ""
+    textKey = "game.source.team_settings_objectives"
+    visibleText = "Team Settings (Objectives)"
+    rawLabel = "&Team Settings (Objectives)"
+    accelerator = ""
+    sourceFile = "Editor/resource.rc"
+    sourceLine = 1138
+}
+
+MenuTextBinding {
+    menuId = "IDR_EDITOR_MENU"
+    kind = "menuitem"
+    commandId = "ID_MISSION_TEAM_TEAM1"
+    textKey = "game.source.team_1"
+    visibleText = "Team 1"
+    rawLabel = "Team &1"
+    accelerator = ""
+    sourceFile = "Editor/resource.rc"
+    sourceLine = 1140
+}
+
+MenuTextBinding {
+    menuId = "IDR_EDITOR_MENU"
+    kind = "menuitem"
+    commandId = "ID_MISSION_TEAM_TEAM2"
+    textKey = "game.source.team_2"
+    visibleText = "Team 2"
+    rawLabel = "Team &2"
+    accelerator = ""
+    sourceFile = "Editor/resource.rc"
+    sourceLine = 1141
+}
+
+MenuTextBinding {
+    menuId = "IDR_EDITOR_MENU"
+    kind = "menuitem"
+    commandId = "ID_MISSION_TEAM_TEAM3"
+    textKey = "game.source.team_3"
+    visibleText = "Team 3"
+    rawLabel = "Team &3"
+    accelerator = ""
+    sourceFile = "Editor/resource.rc"
+    sourceLine = 1142
+}
+
+MenuTextBinding {
+    menuId = "IDR_EDITOR_MENU"
+    kind = "menuitem"
+    commandId = "ID_MISSION_TEAM_TEAM4"
+    textKey = "game.source.team_4"
+    visibleText = "Team 4"
+    rawLabel = "Team &4"
+    accelerator = ""
+    sourceFile = "Editor/resource.rc"
+    sourceLine = 1143
+}
+
+MenuTextBinding {
+    menuId = "IDR_EDITOR_MENU"
+    kind = "menuitem"
+    commandId = "ID_MISSION_TEAM_TEAM5"
+    textKey = "game.source.team_5"
+    visibleText = "Team 5"
+    rawLabel = "Team &5"
+    accelerator = ""
+    sourceFile = "Editor/resource.rc"
+    sourceLine = 1144
+}
+
+MenuTextBinding {
+    menuId = "IDR_EDITOR_MENU"
+    kind = "menuitem"
+    commandId = "ID_MISSION_TEAM_TEAM6"
+    textKey = "game.source.team_6"
+    visibleText = "Team 6"
+    rawLabel = "Team &6"
+    accelerator = ""
+    sourceFile = "Editor/resource.rc"
+    sourceLine = 1145
+}
+
+MenuTextBinding {
+    menuId = "IDR_EDITOR_MENU"
+    kind = "menuitem"
+    commandId = "ID_MISSION_TEAM_TEAM7"
+    textKey = "game.source.team_7"
+    visibleText = "Team 7"
+    rawLabel = "Team &7"
+    accelerator = ""
+    sourceFile = "Editor/resource.rc"
+    sourceLine = 1146
+}
+
+MenuTextBinding {
+    menuId = "IDR_EDITOR_MENU"
+    kind = "menuitem"
+    commandId = "ID_MISSION_TEAM_TEAM8"
+    textKey = "game.source.team_8"
+    visibleText = "Team 8"
+    rawLabel = "Team &8"
+    accelerator = ""
+    sourceFile = "Editor/resource.rc"
+    sourceLine = 1147
+}
+
+MenuTextBinding {
+    menuId = "IDR_EDITOR_MENU"
+    kind = "popup"
+    commandId = ""
+    textKey = "editor.mfc.source.player_settings"
+    visibleText = "Player Settings"
+    rawLabel = "&Player Settings"
+    accelerator = ""
+    sourceFile = "Editor/resource.rc"
+    sourceLine = 1149
+}
+
+MenuTextBinding {
+    menuId = "IDR_EDITOR_MENU"
+    kind = "menuitem"
+    commandId = "ID_MISSION_PLAYER_PLAYER1"
+    textKey = "game.source.player_1"
+    visibleText = "Player 1"
+    rawLabel = "Player &1"
+    accelerator = ""
+    sourceFile = "Editor/resource.rc"
+    sourceLine = 1151
+}
+
+MenuTextBinding {
+    menuId = "IDR_EDITOR_MENU"
+    kind = "menuitem"
+    commandId = "ID_MISSION_PLAYER_PLAYER2"
+    textKey = "game.source.player_2"
+    visibleText = "Player 2"
+    rawLabel = "Player &2"
+    accelerator = ""
+    sourceFile = "Editor/resource.rc"
+    sourceLine = 1153
+}
+
+MenuTextBinding {
+    menuId = "IDR_EDITOR_MENU"
+    kind = "menuitem"
+    commandId = "ID_MISSION_PLAYER_PLAYER3"
+    textKey = "game.source.player_3"
+    visibleText = "Player 3"
+    rawLabel = "Player &3"
+    accelerator = ""
+    sourceFile = "Editor/resource.rc"
+    sourceLine = 1155
+}
+
+MenuTextBinding {
+    menuId = "IDR_EDITOR_MENU"
+    kind = "menuitem"
+    commandId = "ID_MISSION_PLAYER_PLAYER4"
+    textKey = "game.source.player_4"
+    visibleText = "Player 4"
+    rawLabel = "Player &4"
+    accelerator = ""
+    sourceFile = "Editor/resource.rc"
+    sourceLine = 1157
+}
+
+MenuTextBinding {
+    menuId = "IDR_EDITOR_MENU"
+    kind = "menuitem"
+    commandId = "ID_MISSION_PLAYER_PLAYER5"
+    textKey = "game.source.player_5"
+    visibleText = "Player 5"
+    rawLabel = "Player &5"
+    accelerator = ""
+    sourceFile = "Editor/resource.rc"
+    sourceLine = 1159
+}
+
+MenuTextBinding {
+    menuId = "IDR_EDITOR_MENU"
+    kind = "menuitem"
+    commandId = "ID_MISSION_PLAYER_PLAYER6"
+    textKey = "game.source.player_6"
+    visibleText = "Player 6"
+    rawLabel = "Player &6"
+    accelerator = ""
+    sourceFile = "Editor/resource.rc"
+    sourceLine = 1161
+}
+
+MenuTextBinding {
+    menuId = "IDR_EDITOR_MENU"
+    kind = "menuitem"
+    commandId = "ID_MISSION_PLAYER_PLAYER7"
+    textKey = "game.source.player_7"
+    visibleText = "Player 7"
+    rawLabel = "Player &7"
+    accelerator = ""
+    sourceFile = "Editor/resource.rc"
+    sourceLine = 1163
+}
+
+MenuTextBinding {
+    menuId = "IDR_EDITOR_MENU"
+    kind = "menuitem"
+    commandId = "ID_MISSION_PLAYER_PLAYER8"
+    textKey = "game.source.player_8"
+    visibleText = "Player 8"
+    rawLabel = "Player &8"
+    accelerator = ""
+    sourceFile = "Editor/resource.rc"
+    sourceLine = 1165
+}
+
+MenuTextBinding {
+    menuId = "IDR_EDITOR_MENU"
+    kind = "popup"
+    commandId = ""
+    textKey = "tech.scope.campaign.name"
+    visibleText = "Campaign"
+    rawLabel = "&Campaign"
+    accelerator = ""
+    sourceFile = "Editor/resource.rc"
+    sourceLine = 1169
+}
+
+MenuTextBinding {
+    menuId = "IDR_EDITOR_MENU"
+    kind = "menuitem"
+    commandId = "ID_CAMPAIGN_EDITOR"
+    textKey = "game.source.campaign_editor"
+    visibleText = "Campaign Editor"
+    rawLabel = "&Campaign Editor"
+    accelerator = ""
+    sourceFile = "Editor/resource.rc"
+    sourceLine = 1171
+}
+
+MenuTextBinding {
+    menuId = "IDR_POPUP"
+    kind = "menuitem"
+    commandId = "ID_UNITSETTINGS"
+    textKey = "editor.mfc.source.unit_settings"
+    visibleText = "Unit Settings"
+    rawLabel = "&Unit Settings"
+    accelerator = ""
+    sourceFile = "Editor/resource.rc"
+    sourceLine = 1179
+}
+

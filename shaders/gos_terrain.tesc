@@ -26,30 +26,30 @@ struct TerrainQuadRecord {
     vec4 worldPos0, worldPos1, worldPos2, worldPos3;  // xyz + w=pad
     vec4 worldNorm0, worldNorm1, worldNorm2, worldNorm3;
     vec4 uvData;        // minU, minV, maxU, maxV
-    uvec4 lightRGBs;   // corners 0-3, packed as ARGB uint
-    uvec4 fogRGBs;     // corners 0-3, packed as frgb uint
-    uvec4 control;     // x=terrainHandle, y=flags (bit0=uvMode,bit1=pzTri1,bit2=pzTri2), zw=pad
+    ivec4 lightRGBs;   // corners 0-3, packedColor as ARGB int
+    ivec4 fogRGBs;     // corners 0-3, packedColor as frgb int
+    ivec4 control;     // x=terrainHandle, y=flags (bit0=uvMode,bit1=pzTri1,bit2=pzTri2), zw=pad
 };
 
 layout(std430, binding = 0) readonly buffer QuadRecordBuf {
     TerrainQuadRecord records[];
 };
 
-// Unpack ARGB uint to vec4 (each component 0..255 -> 0..1).
-vec4 unpackARGB(uint packed) {
+// Unpack ARGB int to vec4 (each component 0..255 -> 0..1).
+vec4 unpackARGB(int packedColor) {
     return vec4(
-        float((packed >> 16u) & 0xFFu) / 255.0,  // R
-        float((packed >>  8u) & 0xFFu) / 255.0,  // G
-        float((packed       ) & 0xFFu) / 255.0,  // B
-        float((packed >> 24u) & 0xFFu) / 255.0   // A
+        float((packedColor >> 16) & 0xFF) / 255.0,  // R
+        float((packedColor >>  8) & 0xFF) / 255.0,  // G
+        float((packedColor       ) & 0xFF) / 255.0,  // B
+        float((packedColor >> 24) & 0xFF) / 255.0   // A
     );
 }
 
-// Retrieve uvec4 component by index 0-3.
-uint uvec4Idx(uvec4 v, uint idx) {
-    if (idx == 0u) return v.x;
-    if (idx == 1u) return v.y;
-    if (idx == 2u) return v.z;
+// Retrieve ivec4 component by index 0-3.
+int ivec4Idx(ivec4 v, int idx) {
+    if (idx == 0) return v.x;
+    if (idx == 1) return v.y;
+    if (idx == 2) return v.z;
     return v.w;
 }
 
@@ -77,49 +77,49 @@ void main()
     // --- Record path (MC2_PATCHSTREAM_QUAD_RECORDS_DRAW=1) ---
     // Each record maps to 2 patches: gl_PrimitiveID/2 = recordIdx,
     //                                gl_PrimitiveID%2 = triIdx (0=tri1, 1=tri2).
-    uint recordIdx = uint(ssboRecordBase) + uint(gl_PrimitiveID) / 2u;
-    uint triIdx    = uint(gl_PrimitiveID) % 2u;
-    uint id        = uint(gl_InvocationID); // 0, 1, or 2
+    int recordIdx = int(ssboRecordBase) + int(gl_PrimitiveID) / 2;
+    int triIdx    = int(gl_PrimitiveID) % 2;
+    int id        = int(gl_InvocationID); // 0, 1, or 2
 
     TerrainQuadRecord rec = records[recordIdx];
-    uint uvMode = rec.control.y & 1u;
-    uint pzTri1 = (rec.control.y >> 1u) & 1u;
-    uint pzTri2 = (rec.control.y >> 2u) & 1u;
+    int uvMode = rec.control.y & 1;
+    int pzTri1 = (rec.control.y >> 1) & 1;
+    int pzTri2 = (rec.control.y >> 2) & 1;
 
     // Corner index for this invocation.
     // TOPRIGHT  (uvMode=0): tri1=corners[0,1,2], tri2=corners[0,2,3]
     // BOTTOMLEFT(uvMode=1): tri1=corners[0,1,3], tri2=corners[1,2,3]
-    uint cornerIdx;
-    if (uvMode == 0u) {
-        if (triIdx == 0u) {
-            if (id == 0u) cornerIdx = 0u;
-            else if (id == 1u) cornerIdx = 1u;
-            else cornerIdx = 2u;
+    int cornerIdx;
+    if (uvMode == 0) {
+        if (triIdx == 0) {
+            if (id == 0) cornerIdx = 0;
+            else if (id == 1) cornerIdx = 1;
+            else cornerIdx = 2;
         } else {
-            if (id == 0u) cornerIdx = 0u;
-            else if (id == 1u) cornerIdx = 2u;
-            else cornerIdx = 3u;
+            if (id == 0) cornerIdx = 0;
+            else if (id == 1) cornerIdx = 2;
+            else cornerIdx = 3;
         }
     } else {
-        if (triIdx == 0u) {
-            if (id == 0u) cornerIdx = 0u;
-            else if (id == 1u) cornerIdx = 1u;
-            else cornerIdx = 3u;
+        if (triIdx == 0) {
+            if (id == 0) cornerIdx = 0;
+            else if (id == 1) cornerIdx = 1;
+            else cornerIdx = 3;
         } else {
-            if (id == 0u) cornerIdx = 1u;
-            else if (id == 1u) cornerIdx = 2u;
-            else cornerIdx = 3u;
+            if (id == 0) cornerIdx = 1;
+            else if (id == 1) cornerIdx = 2;
+            else cornerIdx = 3;
         }
     }
 
     // World position and normal from record corners.
-    vec4 wp = (cornerIdx == 0u) ? rec.worldPos0
-             :(cornerIdx == 1u) ? rec.worldPos1
-             :(cornerIdx == 2u) ? rec.worldPos2
+    vec4 wp = (cornerIdx == 0) ? rec.worldPos0
+             :(cornerIdx == 1) ? rec.worldPos1
+             :(cornerIdx == 2) ? rec.worldPos2
              :                    rec.worldPos3;
-    vec4 wn = (cornerIdx == 0u) ? rec.worldNorm0
-             :(cornerIdx == 1u) ? rec.worldNorm1
-             :(cornerIdx == 2u) ? rec.worldNorm2
+    vec4 wn = (cornerIdx == 0) ? rec.worldNorm0
+             :(cornerIdx == 1) ? rec.worldNorm1
+             :(cornerIdx == 2) ? rec.worldNorm2
              :                    rec.worldNorm3;
     tcs_WorldPos[gl_InvocationID]  = wp.xyz;
     tcs_WorldNorm[gl_InvocationID] = wn.xyz;
@@ -128,27 +128,27 @@ void main()
     //   corner 0 = (minU, minV), corner 1 = (maxU, minV)
     //   corner 2 = (maxU, maxV), corner 3 = (minU, maxV)
     // uvData = vec4(minU, minV, maxU, maxV)
-    float u = (cornerIdx == 1u || cornerIdx == 2u) ? rec.uvData.z : rec.uvData.x;
-    float v = (cornerIdx == 0u || cornerIdx == 1u) ? rec.uvData.y : rec.uvData.w;
+    float u = (cornerIdx == 1 || cornerIdx == 2) ? rec.uvData.z : rec.uvData.x;
+    float v = (cornerIdx == 0 || cornerIdx == 1) ? rec.uvData.y : rec.uvData.w;
     tcs_Texcoord[gl_InvocationID] = vec2(u, v);
 
     // Lighting -- unpack ARGB.
-    uint lrgb = uvec4Idx(rec.lightRGBs, cornerIdx);
-    uint frgb = uvec4Idx(rec.fogRGBs,   cornerIdx);
+    int lrgb = ivec4Idx(rec.lightRGBs, cornerIdx);
+    int frgb = ivec4Idx(rec.fogRGBs,   cornerIdx);
     tcs_Color[gl_InvocationID] = unpackARGB(lrgb);
 
     // TerrainType: VS computes vs_TerrainType = floor(fog.x * 255.0 + 0.5).
-    // fog.x = float(frgb & 0xFFu) / 255.0 in CPU packing.
-    // So TerrainType = float(frgb & 0xFFu), as an integer index 0-3 (NOT normalized).
-    tcs_TerrainType[gl_InvocationID] = float(frgb & 0xFFu);
+    // fog.x = float(frgb & 0xFF) / 255.0 in CPU packing.
+    // So TerrainType = float(frgb & 0xFF), as an integer index 0-3 (NOT normalized).
+    tcs_TerrainType[gl_InvocationID] = float(frgb & 0xFF);
 
     // gl_Position unused by TES in main path; set to safe degenerate.
     gl_out[gl_InvocationID].gl_Position = vec4(0.0, 0.0, 0.0, 1.0);
 
     // Tessellation levels -- only invocation 0 writes patch-level state.
-    if (id == 0u) {
-        uint pzValid = (triIdx == 0u) ? pzTri1 : pzTri2;
-        float level = (pzValid != 0u) ? max(tessLevel.x, 1.0) : 0.0;
+    if (id == 0) {
+        int pzValid = (triIdx == 0) ? pzTri1 : pzTri2;
+        float level = (pzValid != 0) ? max(tessLevel.x, 1.0) : 0.0;
         gl_TessLevelOuter[0] = level;
         gl_TessLevelOuter[1] = level;
         gl_TessLevelOuter[2] = level;

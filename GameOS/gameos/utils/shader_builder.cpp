@@ -17,6 +17,25 @@
 #include "gos_profiler.h"
 
 
+
+static bool shader_source_has_version_directive(const std::string& source)
+{
+    size_t i = 0;
+    while(i < source.size() && (source[i] == ' ' || source[i] == '\t' || source[i] == '\r' || source[i] == '\n'))
+        ++i;
+
+    return source.compare(i, 8, "#version") == 0;
+}
+
+static const char* effective_shader_prefix(const char* prefix, const std::string& shader_source)
+{
+    if(shader_source_has_version_directive(shader_source))
+        return "";
+
+    return prefix ? prefix : "";
+}
+
+
 std::map<std::string, glsl_shader*> glsl_shader::s_shaders[glsl_shader::NUM_SHADER_TYPES];
 
 std::map<std::string, glsl_program*> glsl_program::s_programs;
@@ -144,9 +163,6 @@ glsl_shader::Shader_t get_shader_type(GLenum type)
 			return glsl_shader::NUM_SHADER_TYPES;
 	}
 }
-
-
-
 const char* glsl_load(const char* fname, size_t* out_size = nullptr)
 {
     assert(fname);
@@ -369,7 +385,7 @@ glsl_shader* glsl_shader::makeShader(Shader_t stype, const char* fname, const ch
     snprintf(unique_id, 256, "%s_%p", fname, pshader);
     std::string uid = &unique_id[0];
 
-#define DUMP_SHADER_PREPROCESSED_FILES 1
+#define DUMP_SHADER_PREPROCESSED_FILES 0
 #if DUMP_SHADER_PREPROCESSED_FILES
     char dump_name[256] = {0};
     snprintf(dump_name, 256, "./dump/%s.glsl", uid.c_str());
@@ -390,7 +406,8 @@ glsl_shader* glsl_shader::makeShader(Shader_t stype, const char* fname, const ch
         return 0;
     }
 
-    const char* strings[] = { prefix == nullptr ? "" : prefix, shader_source.c_str() };
+    const char* effective_prefix = effective_shader_prefix(prefix, shader_source);
+    const char* strings[] = { effective_prefix, shader_source.c_str() };
     if(!compile_shader(shader, strings, sizeof(strings)/sizeof(strings[0])))
     {
         glDeleteShader(shader);
@@ -445,7 +462,8 @@ bool glsl_shader::reload(const char* prefix)
         return false;
     }
 	
-    const char* strings[] = { prefix == nullptr ? "" : prefix, shader_source.c_str() };
+    const char* effective_prefix = effective_shader_prefix(prefix, shader_source);
+    const char* strings[] = { effective_prefix, shader_source.c_str() };
     if(!compile_shader(shader_, strings, sizeof(strings)/sizeof(strings[0])))
     {
         return false;
@@ -796,7 +814,8 @@ bool glsl_program::reload()
             break;
         }
         newShaders[i] = glCreateShader(pipeline[i]->type_);
-        const char* strings[] = { prefix_ ? prefix_ : "", src.c_str() };
+        const char* effective_prefix = effective_shader_prefix(prefix_, src);
+        const char* strings[] = { effective_prefix, src.c_str() };
         if (!compile_shader(newShaders[i], strings, 2)) {
             compileOk = false;
             break;

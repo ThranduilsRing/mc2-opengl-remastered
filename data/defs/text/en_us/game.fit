@@ -1,0 +1,4573 @@
+/***************************************************************
+ * FILENAME: game.fit
+ * DESCRIPTION: Main game localized text definitions.
+ *
+ * CREATED BY: Methuselas
+ * CREATED: 2026-04-30
+ *
+ ***************************************************************/
+
+String {
+    key = "game.source.string"
+    text = " *"
+    source = "source_audit"
+    migrationState = "candidate_collapsed_v1"
+    textHash = "5a968462ecbd"
+    occurrenceCount = 1
+    activeOccurrenceCount = 1
+    sourceAreas = "main_game_code"
+    categories = "visible_review_candidate"
+    firstSourceFile = "code/terrobj.cpp"
+    firstLine = 377
+}
+
+String {
+    key = "game.source.plus"
+    text = " +"
+    source = "source_audit"
+    migrationState = "candidate_collapsed_v1"
+    textHash = "61c9025edd4c"
+    occurrenceCount = 1
+    activeOccurrenceCount = 1
+    sourceAreas = "main_game_code"
+    categories = "visible_review_candidate"
+    firstSourceFile = "code/mover.cpp"
+    firstLine = 2550
+}
+
+String {
+    key = "game.source.plus.3e21bec0"
+    text = " + "
+    source = "source_audit"
+    migrationState = "candidate_collapsed_v1"
+    textHash = "3e21bec0e1e6"
+    occurrenceCount = 9
+    activeOccurrenceCount = 9
+    sourceAreas = "main_game_code"
+    categories = "visible_review_candidate"
+    firstSourceFile = "code/keyboardref.cpp"
+    firstLine = 145
+}
+
+String {
+    key = "game.source.plusplusplus"
+    text = " +++"
+    source = "source_audit"
+    migrationState = "candidate_collapsed_v1"
+    textHash = "1f8dd06f8ab0"
+    occurrenceCount = 1
+    activeOccurrenceCount = 1
+    sourceAreas = "main_game_code"
+    categories = "visible_review_candidate"
+    firstSourceFile = "code/mover.cpp"
+    firstLine = 2501
+}
+
+String {
+    key = "game.source.area_than_the_list_box_giving_up"
+    text = " area than the list box, giving up"
+    source = "source_audit"
+    migrationState = "candidate_collapsed_v1"
+    textHash = "e868dc0c4347"
+    occurrenceCount = 1
+    activeOccurrenceCount = 1
+    sourceAreas = "gui"
+    categories = "visible_review_candidate"
+    firstSourceFile = "gui/afont.cpp"
+    firstLine = 166
+}
+
+String {
+    key = "game.source.prime"
+    text = " Prime"
+    source = "source_audit"
+    migrationState = "candidate_collapsed_v1"
+    textHash = "a59cef9c599e"
+    occurrenceCount = 1
+    activeOccurrenceCount = 1
+    sourceAreas = "main_game_code"
+    categories = "visible_review_candidate"
+    firstSourceFile = "code/mechlopedia.cpp"
+    firstLine = 421
+}
+
+String {
+    key = "game.source.percentd_percentd_percents"
+    text = "%d/%d %s"
+    source = "source_audit"
+    migrationState = "candidate_collapsed_v1"
+    textHash = "ad7e2c8d8632"
+    occurrenceCount = 1
+    activeOccurrenceCount = 1
+    sourceAreas = "main_game_code"
+    categories = "visible_review_candidate"
+    firstSourceFile = "code/simplecomponentlistbox.cpp"
+    firstLine = 144
+}
+
+String {
+    key = "game.source.percentld_percentld_percents"
+    text = "%ld/%ld  %s"
+    source = "source_audit"
+    migrationState = "candidate_collapsed_v1"
+    textHash = "2ba9e3d83e09"
+    occurrenceCount = 1
+    activeOccurrenceCount = 1
+    sourceAreas = "main_game_code"
+    categories = "visible_review_candidate"
+    firstSourceFile = "code/infowindow.cpp"
+    firstLine = 727
+}
+
+String {
+    key = "game.source.percentspercentspercentld"
+    text = "%s%s%ld"
+    source = "source_audit"
+    migrationState = "candidate_collapsed_v1"
+    textHash = "c9152bc2dc95"
+    occurrenceCount = 5
+    activeOccurrenceCount = 5
+    sourceAreas = "gui"
+    categories = "visible_review_candidate"
+    firstSourceFile = "gui/aanim.cpp"
+    firstLine = 96
+}
+
+String {
+    key = "game.source.percentspercentspercentldpercents"
+    text = "%s%s%ld%s"
+    source = "source_audit"
+    migrationState = "candidate_collapsed_v1"
+    textHash = "4595596a1412"
+    occurrenceCount = 2
+    activeOccurrenceCount = 2
+    sourceAreas = "gui"
+    categories = "visible_review_candidate"
+    firstSourceFile = "gui/aanim.cpp"
+    firstLine = 103
+}
+
+String {
+    key = "game.source.mech"
+    text = "'Mech"
+    source = "source_audit"
+    migrationState = "candidate_collapsed_v1"
+    textHash = "75761b9ebcd2"
+    occurrenceCount = 1
+    activeOccurrenceCount = 0
+    sourceAreas = "test_scripts"
+    categories = "manual_review"
+    firstSourceFile = "test_scripts/res_conv/Script1.rc"
+    firstLine = 79
+}
+
+String {
+    key = "game.source.fst"
+    text = "(FST) "
+    source = "source_audit"
+    migrationState = "candidate_collapsed_v1"
+    textHash = "bf93dec19b98"
+    occurrenceCount = 1
+    activeOccurrenceCount = 1
+    sourceAreas = "main_game_code"
+    categories = "visible_review_candidate"
+    firstSourceFile = "code/mc2video.cpp"
+    firstLine = 162
+}
+
+String {
+    key = "game.source.f"
+    text = "*F"
+    source = "source_audit"
+    migrationState = "candidate_collapsed_v1"
+    textHash = "e607a0b0a106"
+    occurrenceCount = 1
+    activeOccurrenceCount = 1
+    sourceAreas = "main_game_code"
+    categories = "visible_review_candidate"
+    firstSourceFile = "code/mover.cpp"
+    firstLine = 2557
+}
+
+String {
+    key = "game.source.r"
+    text = "*R"
+    source = "source_audit"
+    migrationState = "candidate_collapsed_v1"
+    textHash = "3b093593a902"
+    occurrenceCount = 1
+    activeOccurrenceCount = 1
+    sourceAreas = "main_game_code"
+    categories = "visible_review_candidate"
+    firstSourceFile = "code/mover.cpp"
+    firstLine = 2558
+}
+
+String {
+    key = "game.source.t"
+    text = "*T"
+    source = "source_audit"
+    migrationState = "candidate_collapsed_v1"
+    textHash = "b69724b04776"
+    occurrenceCount = 1
+    activeOccurrenceCount = 1
+    sourceAreas = "main_game_code"
+    categories = "visible_review_candidate"
+    firstSourceFile = "code/mover.cpp"
+    firstLine = 2559
+}
+
+String {
+    key = "game.source.string.19f4cbbd"
+    text = "-----------------------------------"
+    source = "source_audit"
+    migrationState = "candidate_collapsed_v1"
+    textHash = "19f4cbbdea0d"
+    occurrenceCount = 4
+    activeOccurrenceCount = 4
+    sourceAreas = "main_game_code"
+    categories = "visible_review_candidate"
+    firstSourceFile = "code/warrior.cpp"
+    firstLine = 6483
+}
+
+String {
+    key = "game.source.string.3fb31211"
+    text = "----------------------------------------------------------------------------"
+    source = "source_audit"
+    migrationState = "candidate_collapsed_v1"
+    textHash = "3fb31211da63"
+    occurrenceCount = 1
+    activeOccurrenceCount = 1
+    sourceAreas = "main_game_code"
+    categories = "visible_review_candidate"
+    firstSourceFile = "code/mechcmd2.cpp"
+    firstLine = 568
+}
+
+String {
+    key = "game.source.braindead"
+    text = "-braindead"
+    source = "source_audit"
+    migrationState = "candidate_collapsed_v1"
+    textHash = "acf7aba5fb9d"
+    occurrenceCount = 1
+    activeOccurrenceCount = 1
+    sourceAreas = "main_game_code"
+    categories = "visible_review_candidate"
+    firstSourceFile = "code/mechcmd2.cpp"
+    firstLine = 2635
+}
+
+String {
+    key = "game.source.disable"
+    text = "-disable"
+    source = "source_audit"
+    migrationState = "candidate_collapsed_v1"
+    textHash = "77a07118e9b2"
+    occurrenceCount = 1
+    activeOccurrenceCount = 1
+    sourceAreas = "main_game_code"
+    categories = "visible_review_candidate"
+    firstSourceFile = "code/mechcmd2.cpp"
+    firstLine = 2691
+}
+
+String {
+    key = "game.source.dropzones"
+    text = "-dropzones"
+    source = "source_audit"
+    migrationState = "candidate_collapsed_v1"
+    textHash = "ba358764c5e7"
+    occurrenceCount = 1
+    activeOccurrenceCount = 1
+    sourceAreas = "main_game_code"
+    categories = "visible_review_candidate"
+    firstSourceFile = "code/mechcmd2.cpp"
+    firstLine = 2742
+}
+
+String {
+    key = "game.source.goalplan"
+    text = "-goalplan"
+    source = "source_audit"
+    migrationState = "candidate_collapsed_v1"
+    textHash = "05436ae101c0"
+    occurrenceCount = 1
+    activeOccurrenceCount = 1
+    sourceAreas = "main_game_code"
+    categories = "visible_review_candidate"
+    firstSourceFile = "code/mechcmd2.cpp"
+    firstLine = 2719
+}
+
+String {
+    key = "game.source.killambient"
+    text = "-killambient"
+    source = "source_audit"
+    migrationState = "candidate_collapsed_v1"
+    textHash = "dede667251ca"
+    occurrenceCount = 1
+    activeOccurrenceCount = 1
+    sourceAreas = "main_game_code"
+    categories = "visible_review_candidate"
+    firstSourceFile = "code/mechcmd2.cpp"
+    firstLine = 2726
+}
+
+String {
+    key = "game.source.movegoals"
+    text = "-movegoals"
+    source = "source_audit"
+    migrationState = "candidate_collapsed_v1"
+    textHash = "434c601867fb"
+    occurrenceCount = 1
+    activeOccurrenceCount = 1
+    sourceAreas = "main_game_code"
+    categories = "visible_review_candidate"
+    firstSourceFile = "code/mechcmd2.cpp"
+    firstLine = 2729
+}
+
+String {
+    key = "game.source.nopain"
+    text = "-nopain"
+    source = "source_audit"
+    migrationState = "candidate_collapsed_v1"
+    textHash = "494cb719b9b9"
+    occurrenceCount = 1
+    activeOccurrenceCount = 1
+    sourceAreas = "main_game_code"
+    categories = "visible_review_candidate"
+    firstSourceFile = "code/mechcmd2.cpp"
+    firstLine = 2684
+}
+
+String {
+    key = "game.source.objectwins"
+    text = "-objectwins"
+    source = "source_audit"
+    migrationState = "candidate_collapsed_v1"
+    textHash = "1351ca22fa28"
+    occurrenceCount = 1
+    activeOccurrenceCount = 1
+    sourceAreas = "main_game_code"
+    categories = "visible_review_candidate"
+    firstSourceFile = "code/mechcmd2.cpp"
+    firstLine = 2668
+}
+
+String {
+    key = "game.source.registerzone"
+    text = "-registerzone"
+    source = "source_audit"
+    migrationState = "candidate_collapsed_v1"
+    textHash = "11c3765068e0"
+    occurrenceCount = 1
+    activeOccurrenceCount = 1
+    sourceAreas = "main_game_code"
+    categories = "visible_review_candidate"
+    firstSourceFile = "code/mechcmd2.cpp"
+    firstLine = 2739
+}
+
+String {
+    key = "game.source.rps"
+    text = "-rps"
+    source = "source_audit"
+    migrationState = "candidate_collapsed_v1"
+    textHash = "a67600c56c1a"
+    occurrenceCount = 1
+    activeOccurrenceCount = 1
+    sourceAreas = "main_game_code"
+    categories = "visible_review_candidate"
+    firstSourceFile = "code/mechcmd2.cpp"
+    firstLine = 2734
+}
+
+String {
+    key = "game.source.show"
+    text = "-show"
+    source = "source_audit"
+    migrationState = "candidate_collapsed_v1"
+    textHash = "85bfa2ab8110"
+    occurrenceCount = 1
+    activeOccurrenceCount = 1
+    sourceAreas = "main_game_code"
+    categories = "visible_review_candidate"
+    firstSourceFile = "code/mechcmd2.cpp"
+    firstLine = 2712
+}
+
+String {
+    key = "game.source.sniffer"
+    text = "-sniffer"
+    source = "source_audit"
+    migrationState = "candidate_collapsed_v1"
+    textHash = "5549429bd589"
+    occurrenceCount = 1
+    activeOccurrenceCount = 1
+    sourceAreas = "main_game_code"
+    categories = "visible_review_candidate"
+    firstSourceFile = "code/mechcmd2.cpp"
+    firstLine = 2631
+}
+
+String {
+    key = "game.source.turrets_off"
+    text = "-turrets_off"
+    source = "source_audit"
+    migrationState = "candidate_collapsed_v1"
+    textHash = "80c8e6b44af7"
+    occurrenceCount = 1
+    activeOccurrenceCount = 1
+    sourceAreas = "main_game_code"
+    categories = "visible_review_candidate"
+    firstSourceFile = "code/mechcmd2.cpp"
+    firstLine = 2642
+}
+
+String {
+    key = "game.source.viewer"
+    text = "-viewer"
+    source = "source_audit"
+    migrationState = "candidate_collapsed_v1"
+    textHash = "a34d3e3a6505"
+    occurrenceCount = 1
+    activeOccurrenceCount = 1
+    sourceAreas = "main_game_code"
+    categories = "visible_review_candidate"
+    firstSourceFile = "code/mechcmd2.cpp"
+    firstLine = 2616
+}
+
+String {
+    key = "game.source.string.babd0c08"
+    text = "...................."
+    source = "source_audit"
+    migrationState = "candidate_collapsed_v1"
+    textHash = "babd0c08a681"
+    occurrenceCount = 1
+    activeOccurrenceCount = 1
+    sourceAreas = "main_game_code"
+    categories = "visible_review_candidate"
+    firstSourceFile = "code/controlgui.cpp"
+    firstLine = 865
+}
+
+String {
+    key = "game.source.abx"
+    text = ".abx"
+    source = "source_audit"
+    migrationState = "candidate_collapsed_v1"
+    textHash = "e5a14932282e"
+    occurrenceCount = 6
+    activeOccurrenceCount = 6
+    sourceAreas = "main_game_code"
+    categories = "visible_review_candidate"
+    firstSourceFile = "code/mission.cpp"
+    firstLine = 2266
+}
+
+String {
+    key = "game.source.fti"
+    text = ".fti"
+    source = "source_audit"
+    migrationState = "candidate_collapsed_v1"
+    textHash = "4b4f253096db"
+    occurrenceCount = 2
+    activeOccurrenceCount = 2
+    sourceAreas = "main_game_code"
+    categories = "visible_review_candidate"
+    firstSourceFile = "code/saveload.cpp"
+    firstLine = 305
+}
+
+String {
+    key = "game.source.hsp"
+    text = ".hsp"
+    source = "source_audit"
+    migrationState = "candidate_collapsed_v1"
+    textHash = "6f48df1e6656"
+    occurrenceCount = 1
+    activeOccurrenceCount = 1
+    sourceAreas = "main_game_code"
+    categories = "visible_review_candidate"
+    firstSourceFile = "code/gvehicl.cpp"
+    firstLine = 599
+}
+
+String {
+    key = "game.source.mkv"
+    text = ".mkv"
+    source = "source_audit"
+    migrationState = "candidate_collapsed_v1"
+    textHash = "28e7fe971ce2"
+    occurrenceCount = 1
+    activeOccurrenceCount = 1
+    sourceAreas = "main_game_code"
+    categories = "visible_review_candidate"
+    firstSourceFile = "code/mc2video.cpp"
+    firstLine = 143
+}
+
+String {
+    key = "game.source.mp4"
+    text = ".mp4"
+    source = "source_audit"
+    migrationState = "candidate_collapsed_v1"
+    textHash = "2bf5d215f676"
+    occurrenceCount = 1
+    activeOccurrenceCount = 1
+    sourceAreas = "main_game_code"
+    categories = "visible_review_candidate"
+    firstSourceFile = "code/mc2video.cpp"
+    firstLine = 142
+}
+
+String {
+    key = "game.source.var"
+    text = ".var"
+    source = "source_audit"
+    migrationState = "candidate_collapsed_v1"
+    textHash = "3fd43d08a519"
+    occurrenceCount = 1
+    activeOccurrenceCount = 1
+    sourceAreas = "main_game_code"
+    categories = "visible_review_candidate"
+    firstSourceFile = "code/logisticsdata.cpp"
+    firstLine = 2130
+}
+
+String {
+    key = "game.source.webm"
+    text = ".webm"
+    source = "source_audit"
+    migrationState = "candidate_collapsed_v1"
+    textHash = "33be0e9f480d"
+    occurrenceCount = 1
+    activeOccurrenceCount = 1
+    sourceAreas = "main_game_code"
+    categories = "visible_review_candidate"
+    firstSourceFile = "code/mc2video.cpp"
+    firstLine = 144
+}
+
+String {
+    key = "game.source.unknown"
+    text = "<unknown>"
+    source = "source_audit"
+    migrationState = "candidate_collapsed_v1"
+    textHash = "fccd4567f818"
+    occurrenceCount = 1
+    activeOccurrenceCount = 1
+    sourceAreas = "main_game_code"
+    categories = "visible_review_candidate"
+    firstSourceFile = "code/mc2video.cpp"
+    firstLine = 70
+}
+
+String {
+    key = "game.source.string.aa2ca021"
+    text = "========================="
+    source = "source_audit"
+    migrationState = "candidate_collapsed_v1"
+    textHash = "aa2ca021870f"
+    occurrenceCount = 3
+    activeOccurrenceCount = 3
+    sourceAreas = "main_game_code"
+    categories = "visible_review_candidate"
+    firstSourceFile = "code/mission2.cpp"
+    firstLine = 143
+}
+
+String {
+    key = "game.source.string.6e6ded10"
+    text = "> "
+    source = "source_audit"
+    migrationState = "candidate_collapsed_v1"
+    textHash = "6e6ded10e237"
+    occurrenceCount = 3
+    activeOccurrenceCount = 3
+    sourceAreas = "gui"
+    categories = "visible_review_candidate"
+    firstSourceFile = "gui/alistbox.cpp"
+    firstLine = 1254
+}
+
+String {
+    key = "game.source.string.16c8f8ac"
+    text = "??"
+    source = "source_audit"
+    migrationState = "candidate_collapsed_v1"
+    textHash = "16c8f8ac7b57"
+    occurrenceCount = 1
+    activeOccurrenceCount = 1
+    sourceAreas = "main_game_code"
+    categories = "visible_review_candidate"
+    firstSourceFile = "code/ablmc2.cpp"
+    firstLine = 8025
+}
+
+String {
+    key = "game.source.i"
+    text = "??i"
+    source = "source_audit"
+    migrationState = "candidate_collapsed_v1"
+    textHash = "0003c441cc1e"
+    occurrenceCount = 1
+    activeOccurrenceCount = 1
+    sourceAreas = "main_game_code"
+    categories = "visible_review_candidate"
+    firstSourceFile = "code/ablmc2.cpp"
+    firstLine = 8032
+}
+
+String {
+    key = "game.source.i.40c69681"
+    text = "?i"
+    source = "source_audit"
+    migrationState = "candidate_collapsed_v1"
+    textHash = "40c696818e1a"
+    occurrenceCount = 1
+    activeOccurrenceCount = 1
+    sourceAreas = "main_game_code"
+    categories = "visible_review_candidate"
+    firstSourceFile = "code/ablmc2.cpp"
+    firstLine = 8026
+}
+
+String {
+    key = "game.source.ii"
+    text = "?ii"
+    source = "source_audit"
+    migrationState = "candidate_collapsed_v1"
+    textHash = "9cf2e5c41498"
+    occurrenceCount = 1
+    activeOccurrenceCount = 1
+    sourceAreas = "main_game_code"
+    categories = "visible_review_candidate"
+    firstSourceFile = "code/ablmc2.cpp"
+    firstLine = 8031
+}
+
+String {
+    key = "game.source.destroy_v1_frame_percentu_obj_percentp_kind_percents_reason_f451699d"
+    text = "[DESTROY v1] frame=%u obj=%p kind=%s reason=%s file=%s line=%d exists_was=0 in_view=%d can_be_seen=%d block_active=%d frames_since_active=%d last_update_ret=%d"
+    source = "source_audit"
+    migrationState = "candidate_collapsed_v1"
+    textHash = "f451699de0a9"
+    occurrenceCount = 1
+    activeOccurrenceCount = 1
+    sourceAreas = "main_game_code"
+    categories = "visible_review_candidate"
+    firstSourceFile = "code/gameobj.cpp"
+    firstLine = 167
+}
+
+String {
+    key = "game.source.destroy_v1_frame_percentu_obj_percentp_kind_percents_reason_d0e1d0c7"
+    text = "[DESTROY v1] frame=%u obj=%p kind=%s reason=%s file=%s line=%d exists_was=1 in_view=%d can_be_seen=%d block_active=%d frames_since_active=%d last_update_ret=%d"
+    source = "source_audit"
+    migrationState = "candidate_collapsed_v1"
+    textHash = "d0e1d0c7138d"
+    occurrenceCount = 1
+    activeOccurrenceCount = 1
+    sourceAreas = "main_game_code"
+    categories = "visible_review_candidate"
+    firstSourceFile = "code/gameobj.cpp"
+    firstLine = 185
+}
+
+String {
+    key = "game.source.mission_skipping_thumbnail_for_percents_invalid_dims_percent_0f0b2ad1"
+    text = "[MISSION] skipping thumbnail for '%s': invalid dims %ldx%ld"
+    source = "source_audit"
+    migrationState = "candidate_collapsed_v1"
+    textHash = "0f0b2ad1d66d"
+    occurrenceCount = 1
+    activeOccurrenceCount = 1
+    sourceAreas = "main_game_code"
+    categories = "user_or_debug_error_candidate"
+    firstSourceFile = "code/missionbriefingscreen.cpp"
+    firstLine = 339
+}
+
+String {
+    key = "game.source.mission_skipping_thumbnail_for_percents_packet3_size_percent_74f8630f"
+    text = "[MISSION] skipping thumbnail for '%s': packet3 size=%ld < TGA header"
+    source = "source_audit"
+    migrationState = "candidate_collapsed_v1"
+    textHash = "74f8630f3f65"
+    occurrenceCount = 1
+    activeOccurrenceCount = 1
+    sourceAreas = "main_game_code"
+    categories = "visible_review_candidate"
+    firstSourceFile = "code/missionbriefingscreen.cpp"
+    firstLine = 319
+}
+
+String {
+    key = "game.source.smoke_v1_sniffer_branch_reached_options_cfg_not_found_at_cwd"
+    text = "[SMOKE v1] sniffer branch reached; options.cfg not found at CWD. "
+    source = "source_audit"
+    migrationState = "candidate_collapsed_v1"
+    textHash = "44ec487324e4"
+    occurrenceCount = 1
+    activeOccurrenceCount = 1
+    sourceAreas = "main_game_code"
+    categories = "visible_review_candidate"
+    firstSourceFile = "code/mechcmd2.cpp"
+    firstLine = 982
+}
+
+String {
+    key = "game.source.aanimbutton_init_animdata"
+    text = "aAnimButton::init animData"
+    source = "source_audit"
+    migrationState = "candidate_collapsed_v1"
+    textHash = "1080f62c6f25"
+    occurrenceCount = 1
+    activeOccurrenceCount = 1
+    sourceAreas = "gui"
+    categories = "visible_review_candidate"
+    firstSourceFile = "gui/abutton.cpp"
+    firstLine = 536
+}
+
+String {
+    key = "game.source.abutton_init_childbmp"
+    text = "aButton::init childBmp"
+    source = "source_audit"
+    migrationState = "candidate_collapsed_v1"
+    textHash = "9719fd3023c0"
+    occurrenceCount = 1
+    activeOccurrenceCount = 1
+    sourceAreas = "gui"
+    categories = "visible_review_candidate"
+    firstSourceFile = "gui/abutton.cpp"
+    firstLine = 456
+}
+
+String {
+    key = "game.source.abutton_init_font"
+    text = "aButton::init font"
+    source = "source_audit"
+    migrationState = "candidate_collapsed_v1"
+    textHash = "900fa7dd8f1a"
+    occurrenceCount = 1
+    activeOccurrenceCount = 1
+    sourceAreas = "gui"
+    categories = "visible_review_candidate"
+    firstSourceFile = "gui/abutton.cpp"
+    firstLine = 321
+}
+
+String {
+    key = "game.source.abutton_init_gos_locktexture"
+    text = "aButton::init gos_LockTexture"
+    source = "source_audit"
+    migrationState = "candidate_collapsed_v1"
+    textHash = "c717be7b0cd0"
+    occurrenceCount = 1
+    activeOccurrenceCount = 1
+    sourceAreas = "gui"
+    categories = "visible_review_candidate"
+    firstSourceFile = "gui/abutton.cpp"
+    firstLine = 386
+}
+
+String {
+    key = "game.source.abutton_init_gos_unlocktexture"
+    text = "aButton::init gos_UnLockTexture"
+    source = "source_audit"
+    migrationState = "candidate_collapsed_v1"
+    textHash = "18643d748a37"
+    occurrenceCount = 1
+    activeOccurrenceCount = 1
+    sourceAreas = "gui"
+    categories = "visible_review_candidate"
+    firstSourceFile = "gui/abutton.cpp"
+    firstLine = 390
+}
+
+String {
+    key = "game.source.abutton_init_layout"
+    text = "aButton::init layout"
+    source = "source_audit"
+    migrationState = "candidate_collapsed_v1"
+    textHash = "74493b570c32"
+    occurrenceCount = 1
+    activeOccurrenceCount = 1
+    sourceAreas = "gui"
+    categories = "visible_review_candidate"
+    firstSourceFile = "gui/abutton.cpp"
+    firstLine = 333
+}
+
+String {
+    key = "game.source.abutton_init_metadata"
+    text = "aButton::init metadata"
+    source = "source_audit"
+    migrationState = "candidate_collapsed_v1"
+    textHash = "81a26d032ecf"
+    occurrenceCount = 1
+    activeOccurrenceCount = 1
+    sourceAreas = "gui"
+    categories = "visible_review_candidate"
+    firstSourceFile = "gui/abutton.cpp"
+    firstLine = 307
+}
+
+String {
+    key = "game.source.abutton_init_texture"
+    text = "aButton::init texture"
+    source = "source_audit"
+    migrationState = "candidate_collapsed_v1"
+    textHash = "d1e4fac5c3c9"
+    occurrenceCount = 1
+    activeOccurrenceCount = 1
+    sourceAreas = "gui"
+    categories = "visible_review_candidate"
+    firstSourceFile = "gui/abutton.cpp"
+    firstLine = 364
+}
+
+String {
+    key = "game.source.abutton_init_uv_metadata"
+    text = "aButton::init uv metadata"
+    source = "source_audit"
+    migrationState = "candidate_collapsed_v1"
+    textHash = "e5ba2a489884"
+    occurrenceCount = 1
+    activeOccurrenceCount = 1
+    sourceAreas = "gui"
+    categories = "visible_review_candidate"
+    firstSourceFile = "gui/abutton.cpp"
+    firstLine = 400
+}
+
+String {
+    key = "game.source.aedit_init_font"
+    text = "aEdit::init font"
+    source = "source_audit"
+    migrationState = "candidate_collapsed_v1"
+    textHash = "3a1f0c7e23c7"
+    occurrenceCount = 1
+    activeOccurrenceCount = 1
+    sourceAreas = "gui"
+    categories = "visible_review_candidate"
+    firstSourceFile = "gui/aedit.cpp"
+    firstLine = 792
+}
+
+String {
+    key = "game.source.aedit_init_layout"
+    text = "aEdit::init layout"
+    source = "source_audit"
+    migrationState = "candidate_collapsed_v1"
+    textHash = "04abe41ca573"
+    occurrenceCount = 1
+    activeOccurrenceCount = 1
+    sourceAreas = "gui"
+    categories = "visible_review_candidate"
+    firstSourceFile = "gui/aedit.cpp"
+    firstLine = 779
+}
+
+String {
+    key = "game.source.alt_number"
+    text = "ALT-#"
+    source = "source_audit"
+    migrationState = "candidate_collapsed_v1"
+    textHash = "a549f18db570"
+    occurrenceCount = 1
+    activeOccurrenceCount = 1
+    sourceAreas = "main_game_code"
+    categories = "visible_review_candidate"
+    firstSourceFile = "code/mechcmd2.cpp"
+    firstLine = 591
+}
+
+String {
+    key = "game.source.alt_ctrl_number"
+    text = "ALT-CTRL-#"
+    source = "source_audit"
+    migrationState = "candidate_collapsed_v1"
+    textHash = "0bc81a5d273e"
+    occurrenceCount = 1
+    activeOccurrenceCount = 1
+    sourceAreas = "main_game_code"
+    categories = "visible_review_candidate"
+    firstSourceFile = "code/mechcmd2.cpp"
+    firstLine = 596
+}
+
+String {
+    key = "game.source.another_useful_addition_to_a_garrison_guard_or_patrol_team_t_e4d1d58b"
+    text = "Another useful addition to a garrison guard or patrol team, the Vedette boasts an autocannon that can cripple opposing 'Mechs if allowed to fire enough volleys at its legs.\n\nWell-armored for a 50-ton tank, the Vedette is nevertheless not to be regarded as a 'Mech-breaker on its own. Deployed in force as an auxiliary cavalry platoon in support of 'Mech groups, Vedettes can mount overwhelming ambushes, especially when given the high ground.\n\nWhen the St. Ives compact hired mercenary units to break McCarron's Armored Cavalry on Harloc, Christobal's Regiment lined a mountain pass with the Vedettes and, in a classic turn-and-fire chase, led the mercenary 'Mechs up into the mountains. The Regiment 'Mechs found a plateau, turned, and descended on the mercenaries, trapping them between the jaws of the Vedette cavalry.\n\nFacing fire from three sides and a tumble down the mountain on the fourth side, the mercenaries engaged the tanks, barely managing to go one round blow for blow with the Vedettes before succumbing. The Regiment lost seven Vedettes but took an equal number of ï¿½Mechs twice their tonnage."
+    source = "source_audit"
+    migrationState = "candidate_collapsed_v1"
+    textHash = "e4d1d58b7330"
+    occurrenceCount = 2
+    activeOccurrenceCount = 0
+    sourceAreas = "test_scripts"
+    categories = "manual_review;runtime_visible_candidate"
+    firstSourceFile = "test_scripts/res_conv/Script1.rc"
+    firstLine = 3580
+}
+
+String {
+    key = "game.source.aobject_init_fit"
+    text = "aObject::init fit"
+    source = "source_audit"
+    migrationState = "candidate_collapsed_v1"
+    textHash = "f5489abd74d8"
+    occurrenceCount = 1
+    activeOccurrenceCount = 1
+    sourceAreas = "gui"
+    categories = "visible_review_candidate"
+    firstSourceFile = "gui/asystem.cpp"
+    firstLine = 87
+}
+
+String {
+    key = "game.source.aobject_init_fit_gos_locktexture"
+    text = "aObject::init fit gos_LockTexture"
+    source = "source_audit"
+    migrationState = "candidate_collapsed_v1"
+    textHash = "1badaaf3c303"
+    occurrenceCount = 1
+    activeOccurrenceCount = 1
+    sourceAreas = "gui"
+    categories = "visible_review_candidate"
+    firstSourceFile = "gui/asystem.cpp"
+    firstLine = 140
+}
+
+String {
+    key = "game.source.aobject_init_fit_gos_unlocktexture"
+    text = "aObject::init fit gos_UnLockTexture"
+    source = "source_audit"
+    migrationState = "candidate_collapsed_v1"
+    textHash = "72730c34037f"
+    occurrenceCount = 1
+    activeOccurrenceCount = 1
+    sourceAreas = "gui"
+    categories = "visible_review_candidate"
+    firstSourceFile = "gui/asystem.cpp"
+    firstLine = 145
+}
+
+String {
+    key = "game.source.aobject_init_fit_metadata"
+    text = "aObject::init fit metadata"
+    source = "source_audit"
+    migrationState = "candidate_collapsed_v1"
+    textHash = "35838d318227"
+    occurrenceCount = 1
+    activeOccurrenceCount = 1
+    sourceAreas = "gui"
+    categories = "visible_review_candidate"
+    firstSourceFile = "gui/asystem.cpp"
+    firstLine = 103
+}
+
+String {
+    key = "game.source.aobject_init_fit_setupvertices"
+    text = "aObject::init fit setupVertices"
+    source = "source_audit"
+    migrationState = "candidate_collapsed_v1"
+    textHash = "3a2d7897a0b8"
+    occurrenceCount = 1
+    activeOccurrenceCount = 1
+    sourceAreas = "gui"
+    categories = "visible_review_candidate"
+    firstSourceFile = "gui/asystem.cpp"
+    firstLine = 169
+}
+
+String {
+    key = "game.source.aobject_init_fit_texture"
+    text = "aObject::init fit texture"
+    source = "source_audit"
+    migrationState = "candidate_collapsed_v1"
+    textHash = "0e457a0e10b7"
+    occurrenceCount = 1
+    activeOccurrenceCount = 1
+    sourceAreas = "gui"
+    categories = "visible_review_candidate"
+    firstSourceFile = "gui/asystem.cpp"
+    firstLine = 115
+}
+
+String {
+    key = "game.source.aobject_init_fit_uv_metadata"
+    text = "aObject::init fit uv metadata"
+    source = "source_audit"
+    migrationState = "candidate_collapsed_v1"
+    textHash = "33a899f785ee"
+    occurrenceCount = 1
+    activeOccurrenceCount = 1
+    sourceAreas = "gui"
+    categories = "visible_review_candidate"
+    firstSourceFile = "gui/asystem.cpp"
+    firstLine = 160
+}
+
+String {
+    key = "game.source.apply_cancel_and_save"
+    text = "apply, cancel and save"
+    source = "source_audit"
+    migrationState = "candidate_collapsed_v1"
+    textHash = "c776a24c58d6"
+    occurrenceCount = 1
+    activeOccurrenceCount = 1
+    sourceAreas = "main_game_code"
+    categories = "visible_review_candidate"
+    firstSourceFile = "code/mechcmd2.cpp"
+    firstLine = 1342
+}
+
+String {
+    key = "game.source.assign_height_map"
+    text = "Assign Height Map"
+    source = "editor.menu.rc"
+    migrationState = "candidate_collapsed_v1"
+}
+
+String {
+    key = "game.source.atext_init_cloadstring"
+    text = "aText::init cLoadString"
+    source = "source_audit"
+    migrationState = "candidate_collapsed_v1"
+    textHash = "8a2f75c0aac7"
+    occurrenceCount = 1
+    activeOccurrenceCount = 1
+    sourceAreas = "gui"
+    categories = "runtime_visible_candidate"
+    firstSourceFile = "gui/asystem.cpp"
+    firstLine = 779
+}
+
+String {
+    key = "game.source.atext_init_font"
+    text = "aText::init font"
+    source = "source_audit"
+    migrationState = "candidate_collapsed_v1"
+    textHash = "687d49e4843f"
+    occurrenceCount = 1
+    activeOccurrenceCount = 1
+    sourceAreas = "gui"
+    categories = "visible_review_candidate"
+    firstSourceFile = "gui/asystem.cpp"
+    firstLine = 750
+}
+
+String {
+    key = "game.source.atext_init_layout"
+    text = "aText::init layout"
+    source = "source_audit"
+    migrationState = "candidate_collapsed_v1"
+    textHash = "8222aa98ea6b"
+    occurrenceCount = 1
+    activeOccurrenceCount = 1
+    sourceAreas = "gui"
+    categories = "visible_review_candidate"
+    firstSourceFile = "gui/asystem.cpp"
+    firstLine = 758
+}
+
+String {
+    key = "game.source.attacker"
+    text = "attacker?"
+    source = "source_audit"
+    migrationState = "candidate_collapsed_v1"
+    textHash = "121d50f24e4d"
+    occurrenceCount = 1
+    activeOccurrenceCount = 1
+    sourceAreas = "main_game_code"
+    categories = "visible_review_candidate"
+    firstSourceFile = "code/gvehicl.cpp"
+    firstLine = 4333
+}
+
+String {
+    key = "game.source.avcodec_send_packet_error"
+    text = "avcodec_send_packet error"
+    source = "source_audit"
+    migrationState = "candidate_collapsed_v1"
+    textHash = "5e196af69072"
+    occurrenceCount = 1
+    activeOccurrenceCount = 1
+    sourceAreas = "main_game_code"
+    categories = "user_or_debug_error_candidate"
+    firstSourceFile = "code/mc2video.cpp"
+    firstLine = 576
+}
+
+String {
+    key = "game.source.born_katherine_morgan_steiner_davion_the_archon_of_the_lyran_6ba30ceb"
+    text = "Born Katherine Morgan Steiner-Davion, the Archon of the Lyran Alliance and Princess of the Federated Commonwealth is heir to the Inner Sphere's most powerful ruling houses. Instead of being trained in the arts of warfare like her brother, Victor Steiner-Davion, Katherine has been groomed from childhood to govern. She is a master of the well-timed phrase and has an unrivaled skill at focusing the media spotlight on her causes.\n\nHer leadership skills have served not only her realm but the entire Inner Sphere. Most recently she sponsored the Whitting Conferences and the campaign to resurrect the Star League.\n\nHer detractors, however, paint another picture. They whisper that she had a hand in her mother's death and that she has forged secret military alliances with the now-defunct Clan Smoke Jaguar and others to carve up the Inner Sphere.\n\nSince Prince Victor's deception of Thomas Marik, Captain-General of the Free Worlds League, the family ties between Victor and Katrina have been tenuous at best. It was Victorï¿½s deception that precipitated Katherine changing her name.\n\nOne thing is certain: Katrina is determined to become the first lord of the new Star League by any means necessary. Whether she achieves her aims by peaceful negotiations or acts of violence remains to be seen.\n\n\n\n\n\n\n"
+    source = "source_audit"
+    migrationState = "candidate_collapsed_v1"
+    textHash = "6ba30ceb1c6b"
+    occurrenceCount = 2
+    activeOccurrenceCount = 0
+    sourceAreas = "test_scripts"
+    categories = "manual_review;runtime_visible_candidate"
+    firstSourceFile = "test_scripts/res_conv/Script1.rc"
+    firstLine = 3674
+}
+
+String {
+    key = "game.source.c_torso"
+    text = "c torso:  "
+    source = "source_audit"
+    migrationState = "candidate_collapsed_v1"
+    textHash = "1b68b0969ffc"
+    occurrenceCount = 1
+    activeOccurrenceCount = 1
+    sourceAreas = "main_game_code"
+    categories = "visible_review_candidate"
+    firstSourceFile = "code/mover.cpp"
+    firstLine = 2595
+}
+
+String {
+    key = "game.source.c"
+    text = "C*"
+    source = "source_audit"
+    migrationState = "candidate_collapsed_v1"
+    textHash = "3f71ba40139e"
+    occurrenceCount = 1
+    activeOccurrenceCount = 1
+    sourceAreas = "main_game_code"
+    categories = "visible_review_candidate"
+    firstSourceFile = "code/ablmc2.cpp"
+    firstLine = 8044
+}
+
+String {
+    key = "game.source.camera_update"
+    text = "Camera Update"
+    source = "source_audit"
+    migrationState = "candidate_collapsed_v1"
+    textHash = "0ffa36b4ab14"
+    occurrenceCount = 1
+    activeOccurrenceCount = 1
+    sourceAreas = "main_game_code"
+    categories = "visible_review_candidate"
+    firstSourceFile = "code/mission2.cpp"
+    firstLine = 147
+}
+
+String {
+    key = "game.source.campaign_editor"
+    text = "Campaign Editor"
+    source = "editor.menu.rc"
+    migrationState = "candidate_collapsed_v1"
+}
+
+String {
+    key = "game.source.center_torso"
+    text = "center torso"
+    source = "source_audit"
+    migrationState = "candidate_collapsed_v1"
+    textHash = "0d989725e58d"
+    occurrenceCount = 4
+    activeOccurrenceCount = 4
+    sourceAreas = "main_game_code"
+    categories = "visible_review_candidate"
+    firstSourceFile = "code/mover.cpp"
+    firstLine = 3534
+}
+
+String {
+    key = "game.source.collision_update"
+    text = "Collision Update"
+    source = "source_audit"
+    migrationState = "candidate_collapsed_v1"
+    textHash = "46a3850db685"
+    occurrenceCount = 1
+    activeOccurrenceCount = 1
+    sourceAreas = "main_game_code"
+    categories = "visible_review_candidate"
+    firstSourceFile = "code/mission2.cpp"
+    firstLine = 156
+}
+
+String {
+    key = "game.source.computer_ai_use_goal_planning_toggle"
+    text = "Computer AI Use Goal Planning (toggle)"
+    source = "source_audit"
+    migrationState = "candidate_collapsed_v1"
+    textHash = "eb0be581ed8e"
+    occurrenceCount = 1
+    activeOccurrenceCount = 1
+    sourceAreas = "main_game_code"
+    categories = "visible_review_candidate"
+    firstSourceFile = "code/mechcmd2.cpp"
+    firstLine = 623
+}
+
+String {
+    key = "game.source.connection_type_info"
+    text = "connection type info"
+    source = "source_audit"
+    migrationState = "candidate_collapsed_v1"
+    textHash = "03888942934b"
+    occurrenceCount = 1
+    activeOccurrenceCount = 1
+    sourceAreas = "main_game_code"
+    categories = "visible_review_candidate"
+    firstSourceFile = "code/mpsetuparea.cpp"
+    firstLine = 189
+}
+
+String {
+    key = "game.source.controlbutton_initbuttons_button"
+    text = "ControlButton::initButtons button"
+    source = "source_audit"
+    migrationState = "candidate_collapsed_v1"
+    textHash = "64cb14ed7441"
+    occurrenceCount = 1
+    activeOccurrenceCount = 1
+    sourceAreas = "main_game_code"
+    categories = "visible_review_candidate"
+    firstSourceFile = "code/controlgui.cpp"
+    firstLine = 2249
+}
+
+String {
+    key = "game.source.controlbutton_initbuttons_layout"
+    text = "ControlButton::initButtons layout"
+    source = "source_audit"
+    migrationState = "candidate_collapsed_v1"
+    textHash = "1a96ef4fcef2"
+    occurrenceCount = 1
+    activeOccurrenceCount = 1
+    sourceAreas = "main_game_code"
+    categories = "visible_review_candidate"
+    firstSourceFile = "code/controlgui.cpp"
+    firstLine = 2285
+}
+
+String {
+    key = "game.source.controlbutton_initbuttons_metadata"
+    text = "ControlButton::initButtons metadata"
+    source = "source_audit"
+    migrationState = "candidate_collapsed_v1"
+    textHash = "cda5338ad18a"
+    occurrenceCount = 1
+    activeOccurrenceCount = 1
+    sourceAreas = "main_game_code"
+    categories = "visible_review_candidate"
+    firstSourceFile = "code/controlgui.cpp"
+    firstLine = 2267
+}
+
+String {
+    key = "game.source.controlbutton_initbuttons_seekblock"
+    text = "ControlButton::initButtons seekBlock"
+    source = "source_audit"
+    migrationState = "candidate_collapsed_v1"
+    textHash = "7fbd6ee82bea"
+    occurrenceCount = 1
+    activeOccurrenceCount = 1
+    sourceAreas = "main_game_code"
+    categories = "visible_review_candidate"
+    firstSourceFile = "code/controlgui.cpp"
+    firstLine = 2255
+}
+
+String {
+    key = "game.source.controlbutton_initbuttons_setupvertices"
+    text = "ControlButton::initButtons setupVertices"
+    source = "source_audit"
+    migrationState = "candidate_collapsed_v1"
+    textHash = "1f1554d9b1e2"
+    occurrenceCount = 1
+    activeOccurrenceCount = 1
+    sourceAreas = "main_game_code"
+    categories = "visible_review_candidate"
+    firstSourceFile = "code/controlgui.cpp"
+    firstLine = 2308
+}
+
+String {
+    key = "game.source.controlbutton_initbuttons_statesetup"
+    text = "ControlButton::initButtons stateSetup"
+    source = "source_audit"
+    migrationState = "candidate_collapsed_v1"
+    textHash = "024faf892ac3"
+    occurrenceCount = 1
+    activeOccurrenceCount = 1
+    sourceAreas = "main_game_code"
+    categories = "visible_review_candidate"
+    firstSourceFile = "code/controlgui.cpp"
+    firstLine = 2399
+}
+
+String {
+    key = "game.source.controlbutton_initbuttons_uvread"
+    text = "ControlButton::initButtons uvRead"
+    source = "source_audit"
+    migrationState = "candidate_collapsed_v1"
+    textHash = "b94550b73d4d"
+    occurrenceCount = 1
+    activeOccurrenceCount = 1
+    sourceAreas = "main_game_code"
+    categories = "visible_review_candidate"
+    firstSourceFile = "code/controlgui.cpp"
+    firstLine = 2362
+}
+
+String {
+    key = "game.source.controlgui_initbuttons_gos_locktexture"
+    text = "ControlGui::initButtons gos_LockTexture"
+    source = "source_audit"
+    migrationState = "candidate_collapsed_v1"
+    textHash = "d716c4b81dad"
+    occurrenceCount = 1
+    activeOccurrenceCount = 1
+    sourceAreas = "main_game_code"
+    categories = "visible_review_candidate"
+    firstSourceFile = "code/controlgui.cpp"
+    firstLine = 2348
+}
+
+String {
+    key = "game.source.controlgui_initbuttons_gos_unlocktexture"
+    text = "ControlGui::initButtons gos_UnLockTexture"
+    source = "source_audit"
+    migrationState = "candidate_collapsed_v1"
+    textHash = "b28f797288c2"
+    occurrenceCount = 1
+    activeOccurrenceCount = 1
+    sourceAreas = "main_game_code"
+    categories = "visible_review_candidate"
+    firstSourceFile = "code/controlgui.cpp"
+    firstLine = 2352
+}
+
+String {
+    key = "game.source.controlgui_initbuttons_loadbuttontexture"
+    text = "ControlGui::initButtons loadButtonTexture"
+    source = "source_audit"
+    migrationState = "candidate_collapsed_v1"
+    textHash = "c15de5d6192a"
+    occurrenceCount = 1
+    activeOccurrenceCount = 1
+    sourceAreas = "main_game_code"
+    categories = "visible_review_candidate"
+    firstSourceFile = "code/controlgui.cpp"
+    firstLine = 2328
+}
+
+String {
+    key = "game.source.controlgui_initrects_header"
+    text = "ControlGui::initRects header"
+    source = "source_audit"
+    migrationState = "candidate_collapsed_v1"
+    textHash = "2588e2614bc8"
+    occurrenceCount = 1
+    activeOccurrenceCount = 1
+    sourceAreas = "main_game_code"
+    categories = "visible_review_candidate"
+    firstSourceFile = "code/controlgui.cpp"
+    firstLine = 2667
+}
+
+String {
+    key = "game.source.controlgui_initrects_rect"
+    text = "ControlGui::initRects rect"
+    source = "source_audit"
+    migrationState = "candidate_collapsed_v1"
+    textHash = "75063a3fe179"
+    occurrenceCount = 1
+    activeOccurrenceCount = 1
+    sourceAreas = "main_game_code"
+    categories = "visible_review_candidate"
+    firstSourceFile = "code/controlgui.cpp"
+    firstLine = 2677
+}
+
+String {
+    key = "game.source.controlgui_initstatics_chatwidgets"
+    text = "ControlGui::initStatics chatWidgets"
+    source = "source_audit"
+    migrationState = "candidate_collapsed_v1"
+    textHash = "255534d1aad9"
+    occurrenceCount = 1
+    activeOccurrenceCount = 1
+    sourceAreas = "main_game_code"
+    categories = "visible_review_candidate"
+    firstSourceFile = "code/controlgui.cpp"
+    firstLine = 2619
+}
+
+String {
+    key = "game.source.controlgui_initstatics_helptext"
+    text = "ControlGui::initStatics helpText"
+    source = "source_audit"
+    migrationState = "candidate_collapsed_v1"
+    textHash = "763b5cf2d776"
+    occurrenceCount = 1
+    activeOccurrenceCount = 1
+    sourceAreas = "main_game_code"
+    categories = "visible_review_candidate"
+    firstSourceFile = "code/controlgui.cpp"
+    firstLine = 2464
+}
+
+String {
+    key = "game.source.controlgui_initstatics_missionresults"
+    text = "ControlGui::initStatics missionResults"
+    source = "source_audit"
+    migrationState = "candidate_collapsed_v1"
+    textHash = "208da29fc674"
+    occurrenceCount = 1
+    activeOccurrenceCount = 1
+    sourceAreas = "main_game_code"
+    categories = "visible_review_candidate"
+    firstSourceFile = "code/controlgui.cpp"
+    firstLine = 2596
+}
+
+String {
+    key = "game.source.controlgui_initstatics_missiontimer"
+    text = "ControlGui::initStatics missionTimer"
+    source = "source_audit"
+    migrationState = "candidate_collapsed_v1"
+    textHash = "43d30cd2a53c"
+    occurrenceCount = 1
+    activeOccurrenceCount = 1
+    sourceAreas = "main_game_code"
+    categories = "visible_review_candidate"
+    firstSourceFile = "code/controlgui.cpp"
+    firstLine = 2573
+}
+
+String {
+    key = "game.source.controlgui_initstatics_objectives"
+    text = "ControlGui::initStatics objectives"
+    source = "source_audit"
+    migrationState = "candidate_collapsed_v1"
+    textHash = "de99c7d38ccf"
+    occurrenceCount = 1
+    activeOccurrenceCount = 1
+    sourceAreas = "main_game_code"
+    categories = "visible_review_candidate"
+    firstSourceFile = "code/controlgui.cpp"
+    firstLine = 2501
+}
+
+String {
+    key = "game.source.controlgui_initstatics_resourcepoints"
+    text = "ControlGui::initStatics resourcePoints"
+    source = "source_audit"
+    migrationState = "candidate_collapsed_v1"
+    textHash = "0731ff4abe08"
+    occurrenceCount = 1
+    activeOccurrenceCount = 1
+    sourceAreas = "main_game_code"
+    categories = "visible_review_candidate"
+    firstSourceFile = "code/controlgui.cpp"
+    firstLine = 2478
+}
+
+String {
+    key = "game.source.controlgui_initstatics_static"
+    text = "ControlGui::initStatics static"
+    source = "source_audit"
+    migrationState = "candidate_collapsed_v1"
+    textHash = "8497b8dc4f65"
+    occurrenceCount = 1
+    activeOccurrenceCount = 1
+    sourceAreas = "main_game_code"
+    categories = "visible_review_candidate"
+    firstSourceFile = "code/controlgui.cpp"
+    firstLine = 2453
+}
+
+String {
+    key = "game.source.controlgui_initstatics_staticsheader"
+    text = "ControlGui::initStatics staticsHeader"
+    source = "source_audit"
+    migrationState = "candidate_collapsed_v1"
+    textHash = "e8291d10e584"
+    occurrenceCount = 1
+    activeOccurrenceCount = 1
+    sourceAreas = "main_game_code"
+    categories = "visible_review_candidate"
+    firstSourceFile = "code/controlgui.cpp"
+    firstLine = 2442
+}
+
+String {
+    key = "game.source.controlgui_initstatics_video"
+    text = "ControlGui::initStatics video"
+    source = "source_audit"
+    migrationState = "candidate_collapsed_v1"
+    textHash = "e965c9d87d0e"
+    occurrenceCount = 1
+    activeOccurrenceCount = 1
+    sourceAreas = "main_game_code"
+    categories = "visible_review_candidate"
+    firstSourceFile = "code/controlgui.cpp"
+    firstLine = 2536
+}
+
+String {
+    key = "game.source.copyright_2001_microsoft"
+    text = "Copyright ?2001 Microsoft"
+    source = "source_audit"
+    migrationState = "candidate_collapsed_v1"
+    textHash = "713200d000a3"
+    occurrenceCount = 1
+    activeOccurrenceCount = 0
+    sourceAreas = "test_scripts"
+    categories = "manual_review"
+    firstSourceFile = "test_scripts/res_conv/Script1.rc"
+    firstLine = 78
+}
+
+String {
+    key = "game.source.couldn_t_open_percents"
+    text = "Couldn't open %s"
+    source = "source_audit"
+    migrationState = "candidate_collapsed_v1"
+    textHash = "035f651168ab"
+    occurrenceCount = 1
+    activeOccurrenceCount = 1
+    sourceAreas = "main_game_code"
+    categories = "visible_review_candidate"
+    firstSourceFile = "code/logisticsdata.cpp"
+    firstLine = 1508
+}
+
+String {
+    key = "game.source.cprefs_applyprefs_gos_setscreenmode"
+    text = "CPrefs::applyPrefs gos_SetScreenMode"
+    source = "source_audit"
+    migrationState = "candidate_collapsed_v1"
+    textHash = "20dd89b3f2b8"
+    occurrenceCount = 1
+    activeOccurrenceCount = 1
+    sourceAreas = "main_game_code"
+    categories = "visible_review_candidate"
+    firstSourceFile = "code/prefs.cpp"
+    firstLine = 465
+}
+
+String {
+    key = "game.source.cprefs_applyprefs_resolution"
+    text = "CPrefs::applyPrefs resolution"
+    source = "source_audit"
+    migrationState = "candidate_collapsed_v1"
+    textHash = "cefe24fae36b"
+    occurrenceCount = 1
+    activeOccurrenceCount = 1
+    sourceAreas = "main_game_code"
+    categories = "visible_review_candidate"
+    firstSourceFile = "code/prefs.cpp"
+    firstLine = 454
+}
+
+String {
+    key = "game.source.cprefs_applyprefs_sndsystem"
+    text = "CPrefs::applyPrefs sndSystem"
+    source = "source_audit"
+    migrationState = "candidate_collapsed_v1"
+    textHash = "b8b7a6896510"
+    occurrenceCount = 1
+    activeOccurrenceCount = 1
+    sourceAreas = "main_game_code"
+    categories = "visible_review_candidate"
+    firstSourceFile = "code/prefs.cpp"
+    firstLine = 410
+}
+
+String {
+    key = "game.source.cprefs_applyprefs_soundsystem"
+    text = "CPrefs::applyPrefs soundSystem"
+    source = "source_audit"
+    migrationState = "candidate_collapsed_v1"
+    textHash = "a91b5e2eeae5"
+    occurrenceCount = 1
+    activeOccurrenceCount = 1
+    sourceAreas = "main_game_code"
+    categories = "visible_review_candidate"
+    firstSourceFile = "code/prefs.cpp"
+    firstLine = 400
+}
+
+String {
+    key = "game.source.cprefs_applyprefs_terrainvisibility"
+    text = "CPrefs::applyPrefs terrainVisibility"
+    source = "source_audit"
+    migrationState = "candidate_collapsed_v1"
+    textHash = "39e633624b57"
+    occurrenceCount = 1
+    activeOccurrenceCount = 1
+    sourceAreas = "main_game_code"
+    categories = "visible_review_candidate"
+    firstSourceFile = "code/prefs.cpp"
+    firstLine = 447
+}
+
+String {
+    key = "game.source.crater_update"
+    text = "Crater Update"
+    source = "source_audit"
+    migrationState = "candidate_collapsed_v1"
+    textHash = "e79f3084b162"
+    occurrenceCount = 1
+    activeOccurrenceCount = 1
+    sourceAreas = "main_game_code"
+    categories = "visible_review_candidate"
+    firstSourceFile = "code/mission2.cpp"
+    firstLine = 152
+}
+
+String {
+    key = "game.source.current_target"
+    text = "current target"
+    source = "source_audit"
+    migrationState = "candidate_collapsed_v1"
+    textHash = "75f84fb72a5a"
+    occurrenceCount = 1
+    activeOccurrenceCount = 1
+    sourceAreas = "main_game_code"
+    categories = "visible_review_candidate"
+    firstSourceFile = "code/warrior.cpp"
+    firstLine = 636
+}
+
+String {
+    key = "game.source.damage_object_for_1_point"
+    text = "Damage Object for 1 point"
+    source = "source_audit"
+    migrationState = "candidate_collapsed_v1"
+    textHash = "c750bd9cdf33"
+    occurrenceCount = 1
+    activeOccurrenceCount = 1
+    sourceAreas = "main_game_code"
+    categories = "visible_review_candidate"
+    firstSourceFile = "code/mechcmd2.cpp"
+    firstLine = 628
+}
+
+String {
+    key = "game.source.damage_object_for_16_points"
+    text = "Damage Object for 16 points"
+    source = "source_audit"
+    migrationState = "candidate_collapsed_v1"
+    textHash = "d3aa19740a1a"
+    occurrenceCount = 1
+    activeOccurrenceCount = 1
+    sourceAreas = "main_game_code"
+    categories = "visible_review_candidate"
+    firstSourceFile = "code/mechcmd2.cpp"
+    firstLine = 643
+}
+
+String {
+    key = "game.source.damage_object_for_25_points"
+    text = "Damage Object for 25 points"
+    source = "source_audit"
+    migrationState = "candidate_collapsed_v1"
+    textHash = "dfaf1b51d7ab"
+    occurrenceCount = 1
+    activeOccurrenceCount = 1
+    sourceAreas = "main_game_code"
+    categories = "visible_review_candidate"
+    firstSourceFile = "code/mechcmd2.cpp"
+    firstLine = 648
+}
+
+String {
+    key = "game.source.damage_object_for_36_points"
+    text = "Damage Object for 36 points"
+    source = "source_audit"
+    migrationState = "candidate_collapsed_v1"
+    textHash = "d0d766355363"
+    occurrenceCount = 1
+    activeOccurrenceCount = 1
+    sourceAreas = "main_game_code"
+    categories = "visible_review_candidate"
+    firstSourceFile = "code/mechcmd2.cpp"
+    firstLine = 653
+}
+
+String {
+    key = "game.source.damage_object_for_4_points"
+    text = "Damage Object for 4 points"
+    source = "source_audit"
+    migrationState = "candidate_collapsed_v1"
+    textHash = "2585f5d6a1ff"
+    occurrenceCount = 1
+    activeOccurrenceCount = 1
+    sourceAreas = "main_game_code"
+    categories = "visible_review_candidate"
+    firstSourceFile = "code/mechcmd2.cpp"
+    firstLine = 633
+}
+
+String {
+    key = "game.source.damage_object_for_9_points"
+    text = "Damage Object for 9 points"
+    source = "source_audit"
+    migrationState = "candidate_collapsed_v1"
+    textHash = "7c782de0b0f0"
+    occurrenceCount = 1
+    activeOccurrenceCount = 1
+    sourceAreas = "main_game_code"
+    categories = "visible_review_candidate"
+    firstSourceFile = "code/mechcmd2.cpp"
+    firstLine = 638
+}
+
+String {
+    key = "game.source.data_missions_warriors"
+    text = "data\\missions\\warriors"
+    source = "source_audit"
+    migrationState = "candidate_collapsed_v1"
+    textHash = "2d11c35c9d51"
+    occurrenceCount = 1
+    activeOccurrenceCount = 1
+    sourceAreas = "main_game_code"
+    categories = "visible_review_candidate"
+    firstSourceFile = "code/mover.cpp"
+    firstLine = 2482
+}
+
+String {
+    key = "game.source.data_multiplayer_insignia"
+    text = "data\\multiplayer\\insignia\\"
+    source = "source_audit"
+    migrationState = "candidate_collapsed_v1"
+    textHash = "8c0ce55f302e"
+    occurrenceCount = 1
+    activeOccurrenceCount = 1
+    sourceAreas = "main_game_code"
+    categories = "visible_review_candidate"
+    firstSourceFile = "code/mpparameterscreen.cpp"
+    firstLine = 863
+}
+
+String {
+    key = "game.source.db_attach"
+    text = "DB Attach "
+    source = "source_audit"
+    migrationState = "candidate_collapsed_v1"
+    textHash = "0579f9fd8d9c"
+    occurrenceCount = 1
+    activeOccurrenceCount = 1
+    sourceAreas = "main_game_code"
+    categories = "runtime_visible_candidate"
+    firstSourceFile = "code/dw.cpp"
+    firstLine = 261
+}
+
+String {
+    key = "game.source.default"
+    text = "DEFAULT!"
+    source = "source_audit"
+    migrationState = "candidate_collapsed_v1"
+    textHash = "ad942ad06f00"
+    occurrenceCount = 1
+    activeOccurrenceCount = 1
+    sourceAreas = "main_game_code"
+    categories = "visible_review_candidate"
+    firstSourceFile = "code/objmgr.cpp"
+    firstLine = 133
+}
+
+String {
+    key = "game.source.deploy_elementals"
+    text = "deploy elementals"
+    source = "source_audit"
+    migrationState = "candidate_collapsed_v1"
+    textHash = "62f994c71bb8"
+    occurrenceCount = 1
+    activeOccurrenceCount = 1
+    sourceAreas = "main_game_code"
+    categories = "visible_review_candidate"
+    firstSourceFile = "code/tacordr.cpp"
+    firstLine = 2156
+}
+
+String {
+    key = "game.source.disable_object"
+    text = "Disable Object"
+    source = "source_audit"
+    migrationState = "candidate_collapsed_v1"
+    textHash = "e85ef4db0bd4"
+    occurrenceCount = 1
+    activeOccurrenceCount = 1
+    sourceAreas = "main_game_code"
+    categories = "visible_review_candidate"
+    firstSourceFile = "code/mechcmd2.cpp"
+    firstLine = 658
+}
+
+String {
+    key = "game.source.dll_is_not_present_cannot_be_found_on_disk"
+    text = "DLL is not present / cannot be found on disk"
+    source = "source_audit"
+    migrationState = "candidate_collapsed_v1"
+    textHash = "3fd471f04076"
+    occurrenceCount = 1
+    activeOccurrenceCount = 1
+    sourceAreas = "main_game_code"
+    categories = "user_or_debug_error_candidate"
+    firstSourceFile = "code/mc2video.cpp"
+    firstLine = 82
+}
+
+String {
+    key = "game.source.drag_normal"
+    text = "Drag Normal"
+    source = "editor.menu.rc"
+    migrationState = "candidate_collapsed_v1"
+}
+
+String {
+    key = "game.source.drag_smooth"
+    text = "Drag Smooth"
+    source = "editor.menu.rc"
+    migrationState = "candidate_collapsed_v1"
+}
+
+String {
+    key = "game.source.edit_forests"
+    text = "Edit Forests"
+    source = "editor.menu.rc"
+    migrationState = "candidate_collapsed_v1"
+}
+
+String {
+    key = "game.source.enemies_brain_dead_toggle"
+    text = "Enemies Brain Dead (toggle)"
+    source = "source_audit"
+    migrationState = "candidate_collapsed_v1"
+    textHash = "36926590dc04"
+    occurrenceCount = 1
+    activeOccurrenceCount = 1
+    sourceAreas = "main_game_code"
+    categories = "visible_review_candidate"
+    firstSourceFile = "code/mechcmd2.cpp"
+    firstLine = 613
+}
+
+String {
+    key = "game.source.erase"
+    text = "Erase"
+    source = "editor.menu.rc"
+    migrationState = "candidate_collapsed_v1"
+}
+
+String {
+    key = "game.source.front"
+    text = "front:    "
+    source = "source_audit"
+    migrationState = "candidate_collapsed_v1"
+    textHash = "4eb341c075a8"
+    occurrenceCount = 1
+    activeOccurrenceCount = 1
+    sourceAreas = "main_game_code"
+    categories = "visible_review_candidate"
+    firstSourceFile = "code/mover.cpp"
+    firstLine = 2605
+}
+
+String {
+    key = "game.source.gamecamera_render_activescene"
+    text = "GameCamera::render activeScene"
+    source = "source_audit"
+    migrationState = "candidate_collapsed_v1"
+    textHash = "3327717fb2b4"
+    occurrenceCount = 1
+    activeOccurrenceCount = 1
+    sourceAreas = "main_game_code"
+    categories = "visible_review_candidate"
+    firstSourceFile = "code/gamecam.cpp"
+    firstLine = 145
+}
+
+String {
+    key = "game.source.gamecamera_render_clipperrendernow"
+    text = "GameCamera::render clipperRenderNow"
+    source = "source_audit"
+    migrationState = "candidate_collapsed_v1"
+    textHash = "b4dd0d0a9bf0"
+    occurrenceCount = 1
+    activeOccurrenceCount = 1
+    sourceAreas = "main_game_code"
+    categories = "visible_review_candidate"
+    firstSourceFile = "code/gamecam.cpp"
+    firstLine = 253
+}
+
+String {
+    key = "game.source.gamecamera_render_compass"
+    text = "GameCamera::render compass"
+    source = "source_audit"
+    migrationState = "candidate_collapsed_v1"
+    textHash = "226e8d2d335c"
+    occurrenceCount = 1
+    activeOccurrenceCount = 1
+    sourceAreas = "main_game_code"
+    categories = "visible_review_candidate"
+    firstSourceFile = "code/gamecam.cpp"
+    firstLine = 234
+}
+
+String {
+    key = "game.source.gamecamera_render_craters"
+    text = "GameCamera::render craters"
+    source = "source_audit"
+    migrationState = "candidate_collapsed_v1"
+    textHash = "41f2527e9c55"
+    occurrenceCount = 1
+    activeOccurrenceCount = 1
+    sourceAreas = "main_game_code"
+    categories = "visible_review_candidate"
+    firstSourceFile = "code/gamecam.cpp"
+    firstLine = 204
+}
+
+String {
+    key = "game.source.gamecamera_render_drawvtol"
+    text = "GameCamera::render drawVTOL"
+    source = "source_audit"
+    migrationState = "candidate_collapsed_v1"
+    textHash = "15ef7d0fe2f6"
+    occurrenceCount = 1
+    activeOccurrenceCount = 1
+    sourceAreas = "main_game_code"
+    categories = "visible_review_candidate"
+    firstSourceFile = "code/gamecam.cpp"
+    firstLine = 226
+}
+
+String {
+    key = "game.source.gamecamera_render_objects"
+    text = "GameCamera::render objects"
+    source = "source_audit"
+    migrationState = "candidate_collapsed_v1"
+    textHash = "1d26b02e6f56"
+    occurrenceCount = 1
+    activeOccurrenceCount = 1
+    sourceAreas = "main_game_code"
+    categories = "visible_review_candidate"
+    firstSourceFile = "code/gamecam.cpp"
+    firstLine = 209
+}
+
+String {
+    key = "game.source.gamecamera_render_shadows"
+    text = "GameCamera::render shadows"
+    source = "source_audit"
+    migrationState = "candidate_collapsed_v1"
+    textHash = "61476bbf7191"
+    occurrenceCount = 1
+    activeOccurrenceCount = 1
+    sourceAreas = "main_game_code"
+    categories = "visible_review_candidate"
+    firstSourceFile = "code/gamecam.cpp"
+    firstLine = 220
+}
+
+String {
+    key = "game.source.gamecamera_render_sky"
+    text = "GameCamera::render sky"
+    source = "source_audit"
+    migrationState = "candidate_collapsed_v1"
+    textHash = "102029713a39"
+    occurrenceCount = 1
+    activeOccurrenceCount = 1
+    sourceAreas = "main_game_code"
+    categories = "visible_review_candidate"
+    firstSourceFile = "code/gamecam.cpp"
+    firstLine = 193
+}
+
+String {
+    key = "game.source.gamecamera_render_terrain"
+    text = "GameCamera::render terrain"
+    source = "source_audit"
+    migrationState = "candidate_collapsed_v1"
+    textHash = "fc7c386afa54"
+    occurrenceCount = 1
+    activeOccurrenceCount = 1
+    sourceAreas = "main_game_code"
+    categories = "visible_review_candidate"
+    firstSourceFile = "code/gamecam.cpp"
+    firstLine = 198
+}
+
+String {
+    key = "game.source.gamecamera_render_texturemanagerrenderlists"
+    text = "GameCamera::render textureManagerRenderLists"
+    source = "source_audit"
+    migrationState = "candidate_collapsed_v1"
+    textHash = "cf57a527d0b9"
+    occurrenceCount = 1
+    activeOccurrenceCount = 1
+    sourceAreas = "main_game_code"
+    categories = "visible_review_candidate"
+    firstSourceFile = "code/gamecam.cpp"
+    firstLine = 241
+}
+
+String {
+    key = "game.source.gamecamera_render_water"
+    text = "GameCamera::render water"
+    source = "source_audit"
+    migrationState = "candidate_collapsed_v1"
+    textHash = "d9f5273078be"
+    occurrenceCount = 1
+    activeOccurrenceCount = 1
+    sourceAreas = "main_game_code"
+    categories = "visible_review_candidate"
+    firstSourceFile = "code/gamecam.cpp"
+    firstLine = 214
+}
+
+String {
+    key = "game.source.gamecamera_render_weather"
+    text = "GameCamera::render weather"
+    source = "source_audit"
+    migrationState = "candidate_collapsed_v1"
+    textHash = "8e792e8ca221"
+    occurrenceCount = 1
+    activeOccurrenceCount = 1
+    sourceAreas = "main_game_code"
+    categories = "visible_review_candidate"
+    firstSourceFile = "code/gamecam.cpp"
+    firstLine = 260
+}
+
+String {
+    key = "game.source.gameobjectmanager_loadterrainobjects_addobjectloop"
+    text = "GameObjectManager::loadTerrainObjects addObjectLoop"
+    source = "source_audit"
+    migrationState = "candidate_collapsed_v1"
+    textHash = "a7085d460116"
+    occurrenceCount = 1
+    activeOccurrenceCount = 1
+    sourceAreas = "main_game_code"
+    categories = "visible_review_candidate"
+    firstSourceFile = "code/objmgr.cpp"
+    firstLine = 959
+}
+
+String {
+    key = "game.source.gameobjectmanager_loadterrainobjects_gatelinks"
+    text = "GameObjectManager::loadTerrainObjects gateLinks"
+    source = "source_audit"
+    migrationState = "candidate_collapsed_v1"
+    textHash = "41777cbdabfd"
+    occurrenceCount = 1
+    activeOccurrenceCount = 1
+    sourceAreas = "main_game_code"
+    categories = "visible_review_candidate"
+    firstSourceFile = "code/objmgr.cpp"
+    firstLine = 1007
+}
+
+String {
+    key = "game.source.gameobjectmanager_loadterrainobjects_powergenerators"
+    text = "GameObjectManager::loadTerrainObjects powerGenerators"
+    source = "source_audit"
+    migrationState = "candidate_collapsed_v1"
+    textHash = "976b0f6beb89"
+    occurrenceCount = 1
+    activeOccurrenceCount = 1
+    sourceAreas = "main_game_code"
+    categories = "visible_review_candidate"
+    firstSourceFile = "code/objmgr.cpp"
+    firstLine = 1045
+}
+
+String {
+    key = "game.source.gameobjectmanager_loadterrainobjects_specialbuildings"
+    text = "GameObjectManager::loadTerrainObjects specialBuildings"
+    source = "source_audit"
+    migrationState = "candidate_collapsed_v1"
+    textHash = "7a4b4195af4a"
+    occurrenceCount = 1
+    activeOccurrenceCount = 1
+    sourceAreas = "main_game_code"
+    categories = "visible_review_candidate"
+    firstSourceFile = "code/objmgr.cpp"
+    firstLine = 1033
+}
+
+String {
+    key = "game.source.gameobjectmanager_loadterrainobjects_turretlinks"
+    text = "GameObjectManager::loadTerrainObjects turretLinks"
+    source = "source_audit"
+    migrationState = "candidate_collapsed_v1"
+    textHash = "fe35aa2bf368"
+    occurrenceCount = 1
+    activeOccurrenceCount = 1
+    sourceAreas = "main_game_code"
+    categories = "visible_review_candidate"
+    firstSourceFile = "code/objmgr.cpp"
+    firstLine = 982
+}
+
+String {
+    key = "game.source.group"
+    text = "Group "
+    source = "source_audit"
+    migrationState = "candidate_collapsed_v1"
+    textHash = "d71f6285cc6f"
+    occurrenceCount = 2
+    activeOccurrenceCount = 2
+    sourceAreas = "main_game_code"
+    categories = "visible_review_candidate"
+    firstSourceFile = "code/mploadmap.cpp"
+    firstLine = 303
+}
+
+String {
+    key = "game.source.half_the_mechs_don_t_render"
+    text = "half the mechs don't render"
+    source = "source_audit"
+    migrationState = "candidate_collapsed_v1"
+    textHash = "e6095fa09991"
+    occurrenceCount = 1
+    activeOccurrenceCount = 1
+    sourceAreas = "main_game_code"
+    categories = "visible_review_candidate"
+    firstSourceFile = "code/mission.cpp"
+    firstLine = 3136
+}
+
+String {
+    key = "game.source.head"
+    text = "head:     "
+    source = "source_audit"
+    migrationState = "candidate_collapsed_v1"
+    textHash = "23334e9767d3"
+    occurrenceCount = 1
+    activeOccurrenceCount = 1
+    sourceAreas = "main_game_code"
+    categories = "visible_review_candidate"
+    firstSourceFile = "code/mover.cpp"
+    firstLine = 2594
+}
+
+String {
+    key = "game.source.help_text"
+    text = "HELP TEXT"
+    source = "source_audit"
+    migrationState = "candidate_collapsed_v1"
+    textHash = "f3dd176a54d1"
+    occurrenceCount = 1
+    activeOccurrenceCount = 1
+    sourceAreas = "main_game_code"
+    categories = "visible_review_candidate"
+    firstSourceFile = "code/mpsetuparea.cpp"
+    firstLine = 179
+}
+
+String {
+    key = "game.source.hidden_trigger"
+    text = "hidden trigger"
+    source = "source_audit"
+    migrationState = "candidate_collapsed_v1"
+    textHash = "7fd3f2fbc7f7"
+    occurrenceCount = 2
+    activeOccurrenceCount = 2
+    sourceAreas = "main_game_code"
+    categories = "visible_review_candidate"
+    firstSourceFile = "code/objective.cpp"
+    firstLine = 2309
+}
+
+String {
+    key = "game.source.hklm_software_microsoft_internet_explorer_registration_digit_2c72543b"
+    text = "HKLM\\Software\\Microsoft\\Internet Explorer\\Registration\\DigitalProductID"
+    source = "source_audit"
+    migrationState = "candidate_collapsed_v1"
+    textHash = "2c72543bdc23"
+    occurrenceCount = 1
+    activeOccurrenceCount = 1
+    sourceAreas = "main_game_code"
+    categories = "visible_review_candidate"
+    firstSourceFile = "code/dw.cpp"
+    firstLine = 178
+}
+
+String {
+    key = "game.source.hold_fire"
+    text = "hold fire"
+    source = "source_audit"
+    migrationState = "candidate_collapsed_v1"
+    textHash = "c5659fa23219"
+    occurrenceCount = 1
+    activeOccurrenceCount = 1
+    sourceAreas = "main_game_code"
+    categories = "visible_review_candidate"
+    firstSourceFile = "code/tacordr.cpp"
+    firstLine = 2127
+}
+
+String {
+    key = "game.source.houses_divided"
+    text = "Houses Divided"
+    source = "source_audit"
+    migrationState = "candidate_collapsed_v1"
+    textHash = "b2b2bcd6a8ab"
+    occurrenceCount = 1
+    activeOccurrenceCount = 1
+    sourceAreas = "main_game_code"
+    categories = "visible_review_candidate"
+    firstSourceFile = "code/logistics.cpp"
+    firstLine = 900
+}
+
+String {
+    key = "game.source.i.6535a918"
+    text = "i*"
+    source = "source_audit"
+    migrationState = "candidate_collapsed_v1"
+    textHash = "6535a918ba0b"
+    occurrenceCount = 3
+    activeOccurrenceCount = 3
+    sourceAreas = "main_game_code"
+    categories = "visible_review_candidate"
+    firstSourceFile = "code/ablmc2.cpp"
+    firstLine = 7833
+}
+
+String {
+    key = "game.source.i.5be482ee"
+    text = "i***"
+    source = "source_audit"
+    migrationState = "candidate_collapsed_v1"
+    textHash = "5be482ee937d"
+    occurrenceCount = 1
+    activeOccurrenceCount = 1
+    sourceAreas = "main_game_code"
+    categories = "visible_review_candidate"
+    firstSourceFile = "code/ablmc2.cpp"
+    firstLine = 7870
+}
+
+String {
+    key = "game.source.i_i"
+    text = "i*i"
+    source = "source_audit"
+    migrationState = "candidate_collapsed_v1"
+    textHash = "1b308646fb6c"
+    occurrenceCount = 2
+    activeOccurrenceCount = 2
+    sourceAreas = "main_game_code"
+    categories = "visible_review_candidate"
+    firstSourceFile = "code/ablmc2.cpp"
+    firstLine = 8038
+}
+
+String {
+    key = "game.source.i_r"
+    text = "i*R"
+    source = "source_audit"
+    migrationState = "candidate_collapsed_v1"
+    textHash = "036c3703a16f"
+    occurrenceCount = 1
+    activeOccurrenceCount = 1
+    sourceAreas = "main_game_code"
+    categories = "visible_review_candidate"
+    firstSourceFile = "code/ablmc2.cpp"
+    firstLine = 7878
+}
+
+String {
+    key = "game.source.in_3050_a_mysterious_invading_force_struck_the_coreward_regi_7cb5f25b"
+    text = "In 3050, a mysterious invading force struck the coreward region of the Inner Sphere, attacking the Federated Commonwealth, Free Rasalhague Republic, and Draconis Combine. The invaders, called the Clans, were the descendants of Kerenskyï¿½s SLDF troops, forged into a warrior society dedicated to becoming the greatest fighting force in history; they intended to capture Terra and reestablish the Star League. With vastly superior technology and fanatical warriors, the Clans conquered world after world until troops belonging to ComStar, the quasi-religious organization that controls all communication within the Inner Sphere, halted their advance in the pivotal Battle of Tukayyid in 3052. The truce signed after that conflict stopped the Clan advance for fifteen years.\n\nIn 3057, the Free Worlds League and the Capellan Confederation launched a war of aggression against the Federated Commonwealth's Sarna March, the worlds taken from them during the Fourth Succession War. Many worlds were conquered once more, whereas others declared their independence from any of the Great Houses. Katherine Steiner-Davion pulled the Lyran half of the Federated Commonwealth out of the union in this \"emergency\" and formed the Lyran Alliance.\n\nOn Tharkad in 3058, leaders from throughout the Inner Sphere, in an effort to avoid another war like that of the previous year and to focus on the menace of the Clans, formally declared peace and joined forces to attack the Clans. After centuries of war, the Star League was finally reborn, although to fight Nicholas Kerenskyï¿½s legacy rather than to honor it.\n\nThe new Star League decided to attack one Clan first to prove their military might. The combined forces overran the Clan Smoke Jaguar occupation zone, decimated its warrior caste, and leveled its homeworld.\n\nPrince Victor carried on the fight to Strana Mechty, the cradle of Clan culture and civilization. In the bloody Trial of Refusal, the Inner Sphere defeated the Crusader Clans.\n\n\n\n\n\n"
+    source = "source_audit"
+    migrationState = "candidate_collapsed_v1"
+    textHash = "7cb5f25b164e"
+    occurrenceCount = 2
+    activeOccurrenceCount = 0
+    sourceAreas = "test_scripts"
+    categories = "debug_log_candidate;runtime_visible_candidate"
+    firstSourceFile = "test_scripts/res_conv/Script1.rc"
+    firstLine = 3751
+}
+
+String {
+    key = "game.source.in_the_midst_of_the_sarna_march_now_dubbed_chaos_march_the_b_39b4a135"
+    text = "In the midst of the Sarna March, now dubbed Chaos March, the battle for House supremacy rages anew among Davion, Steiner, Liao, Marik, and other loyalist forces throughout the Inner Sphere. The battle here on the world of Carver V is but a skirmish in the imbroglio across the Inner Sphere.\n\nBattles between Liao and Davion ended the life of Mandarin Cho, leaving his widow at the helm of House Liaoï¿½s forces on Carver V. Her desire for vengeance must indeed burn more fiercely than that of any commander who has tasted mere defeat.\n\nDavion and Steiner forces continue their alliance, although even after numerous historical victories their union is not a perfect one, particularly in the face of civil war spreading fast throughout their respective realms. Both maintain forces on Carver V, and their cooperation could create a juggernaut.\n\nMarik, Kurita, and other notable military entities of the 31st century have not yet shown their hand on Carver V. Aboriginal movements of Carver citizens as well as more shadowy armed bandits on planet have definitely made their presence known, even if their identities and influence have yet to become clear.\n\nAs the wars of 3062 rage on, the future of Carver V is very much undecided.\n\n\n"
+    source = "source_audit"
+    migrationState = "candidate_collapsed_v1"
+    textHash = "39b4a13585c3"
+    occurrenceCount = 2
+    activeOccurrenceCount = 0
+    sourceAreas = "test_scripts"
+    categories = "manual_review;runtime_visible_candidate"
+    firstSourceFile = "test_scripts/res_conv/Script1.rc"
+    firstLine = 3755
+}
+
+String {
+    key = "game.source.initializegameengine_colortables"
+    text = "InitializeGameEngine colorTables"
+    source = "source_audit"
+    migrationState = "candidate_collapsed_v1"
+    textHash = "f4c82dfbc928"
+    occurrenceCount = 1
+    activeOccurrenceCount = 1
+    sourceAreas = "main_game_code"
+    categories = "visible_review_candidate"
+    firstSourceFile = "code/mechcmd2.cpp"
+    firstLine = 1737
+}
+
+String {
+    key = "game.source.initializegameengine_cursors"
+    text = "InitializeGameEngine cursors"
+    source = "source_audit"
+    migrationState = "candidate_collapsed_v1"
+    textHash = "e909094e77be"
+    occurrenceCount = 1
+    activeOccurrenceCount = 1
+    sourceAreas = "main_game_code"
+    categories = "visible_review_candidate"
+    firstSourceFile = "code/mechcmd2.cpp"
+    firstLine = 1694
+}
+
+String {
+    key = "game.source.initializegameengine_font"
+    text = "InitializeGameEngine font"
+    source = "source_audit"
+    migrationState = "candidate_collapsed_v1"
+    textHash = "5e90ab1bd7a3"
+    occurrenceCount = 1
+    activeOccurrenceCount = 1
+    sourceAreas = "main_game_code"
+    categories = "visible_review_candidate"
+    firstSourceFile = "code/mechcmd2.cpp"
+    firstLine = 1595
+}
+
+String {
+    key = "game.source.initializegameengine_gosfx"
+    text = "InitializeGameEngine gosFX"
+    source = "source_audit"
+    migrationState = "candidate_collapsed_v1"
+    textHash = "d6137a7da2db"
+    occurrenceCount = 1
+    activeOccurrenceCount = 1
+    sourceAreas = "main_game_code"
+    categories = "visible_review_candidate"
+    firstSourceFile = "code/mechcmd2.cpp"
+    firstLine = 1646
+}
+
+String {
+    key = "game.source.initializegameengine_guiheap"
+    text = "InitializeGameEngine guiHeap"
+    source = "source_audit"
+    migrationState = "candidate_collapsed_v1"
+    textHash = "b34883d0ce08"
+    occurrenceCount = 1
+    activeOccurrenceCount = 1
+    sourceAreas = "main_game_code"
+    categories = "visible_review_candidate"
+    firstSourceFile = "code/mechcmd2.cpp"
+    firstLine = 1678
+}
+
+String {
+    key = "game.source.initializegameengine_heaps"
+    text = "InitializeGameEngine heaps"
+    source = "source_audit"
+    migrationState = "candidate_collapsed_v1"
+    textHash = "ee939002f16b"
+    occurrenceCount = 1
+    activeOccurrenceCount = 1
+    sourceAreas = "main_game_code"
+    categories = "visible_review_candidate"
+    firstSourceFile = "code/mechcmd2.cpp"
+    firstLine = 1044
+}
+
+String {
+    key = "game.source.initializegameengine_input"
+    text = "InitializeGameEngine input"
+    source = "source_audit"
+    migrationState = "candidate_collapsed_v1"
+    textHash = "914393bababc"
+    occurrenceCount = 1
+    activeOccurrenceCount = 1
+    sourceAreas = "main_game_code"
+    categories = "visible_review_candidate"
+    firstSourceFile = "code/mechcmd2.cpp"
+    firstLine = 1587
+}
+
+String {
+    key = "game.source.initializegameengine_joystickcount"
+    text = "InitializeGameEngine joystickCount"
+    source = "source_audit"
+    migrationState = "candidate_collapsed_v1"
+    textHash = "b87da0992a83"
+    occurrenceCount = 1
+    activeOccurrenceCount = 1
+    sourceAreas = "main_game_code"
+    categories = "visible_review_candidate"
+    firstSourceFile = "code/mechcmd2.cpp"
+    firstLine = 1794
+}
+
+String {
+    key = "game.source.initializegameengine_joystickinit"
+    text = "InitializeGameEngine joystickInit"
+    source = "source_audit"
+    migrationState = "candidate_collapsed_v1"
+    textHash = "85d89677c1a9"
+    occurrenceCount = 1
+    activeOccurrenceCount = 1
+    sourceAreas = "main_game_code"
+    categories = "visible_review_candidate"
+    firstSourceFile = "code/mechcmd2.cpp"
+    firstLine = 1798
+}
+
+String {
+    key = "game.source.initializegameengine_joystickprobe"
+    text = "InitializeGameEngine joystickProbe"
+    source = "source_audit"
+    migrationState = "candidate_collapsed_v1"
+    textHash = "b1efada53885"
+    occurrenceCount = 1
+    activeOccurrenceCount = 1
+    sourceAreas = "main_game_code"
+    categories = "visible_review_candidate"
+    firstSourceFile = "code/mechcmd2.cpp"
+    firstLine = 1801
+}
+
+String {
+    key = "game.source.initializegameengine_losefocusbehavior"
+    text = "InitializeGameEngine loseFocusBehavior"
+    source = "source_audit"
+    migrationState = "candidate_collapsed_v1"
+    textHash = "24adc70a2816"
+    occurrenceCount = 1
+    activeOccurrenceCount = 1
+    sourceAreas = "main_game_code"
+    categories = "visible_review_candidate"
+    firstSourceFile = "code/mechcmd2.cpp"
+    firstLine = 1789
+}
+
+String {
+    key = "game.source.initializegameengine_mission_initbareminimum"
+    text = "InitializeGameEngine Mission::initBareMinimum"
+    source = "source_audit"
+    migrationState = "candidate_collapsed_v1"
+    textHash = "4770a0105907"
+    occurrenceCount = 1
+    activeOccurrenceCount = 1
+    sourceAreas = "main_game_code"
+    categories = "visible_review_candidate"
+    firstSourceFile = "code/mechcmd2.cpp"
+    firstLine = 1780
+}
+
+String {
+    key = "game.source.initializegameengine_mlr"
+    text = "InitializeGameEngine MLR"
+    source = "source_audit"
+    migrationState = "candidate_collapsed_v1"
+    textHash = "c61a0f4c9325"
+    occurrenceCount = 1
+    activeOccurrenceCount = 1
+    sourceAreas = "main_game_code"
+    categories = "visible_review_candidate"
+    firstSourceFile = "code/mechcmd2.cpp"
+    firstLine = 1632
+}
+
+String {
+    key = "game.source.initializegameengine_networking"
+    text = "InitializeGameEngine networking"
+    source = "source_audit"
+    migrationState = "candidate_collapsed_v1"
+    textHash = "fc89ec46c150"
+    occurrenceCount = 1
+    activeOccurrenceCount = 1
+    sourceAreas = "main_game_code"
+    categories = "visible_review_candidate"
+    firstSourceFile = "code/mechcmd2.cpp"
+    firstLine = 1755
+}
+
+String {
+    key = "game.source.initializegameengine_normalstartup"
+    text = "InitializeGameEngine normalStartup"
+    source = "source_audit"
+    migrationState = "candidate_collapsed_v1"
+    textHash = "096823f0940b"
+    occurrenceCount = 1
+    activeOccurrenceCount = 1
+    sourceAreas = "main_game_code"
+    categories = "visible_review_candidate"
+    firstSourceFile = "code/mechcmd2.cpp"
+    firstLine = 1014
+}
+
+String {
+    key = "game.source.initializegameengine_panewindow"
+    text = "InitializeGameEngine paneWindow"
+    source = "source_audit"
+    migrationState = "candidate_collapsed_v1"
+    textHash = "6715cfec52b1"
+    occurrenceCount = 1
+    activeOccurrenceCount = 1
+    sourceAreas = "main_game_code"
+    categories = "visible_review_candidate"
+    firstSourceFile = "code/mechcmd2.cpp"
+    firstLine = 1711
+}
+
+String {
+    key = "game.source.initializegameengine_prefs_applyprefs"
+    text = "InitializeGameEngine prefs.applyPrefs"
+    source = "source_audit"
+    migrationState = "candidate_collapsed_v1"
+    textHash = "9357e2a43367"
+    occurrenceCount = 1
+    activeOccurrenceCount = 1
+    sourceAreas = "main_game_code"
+    categories = "visible_review_candidate"
+    firstSourceFile = "code/mechcmd2.cpp"
+    firstLine = 1581
+}
+
+String {
+    key = "game.source.initializegameengine_renderclasses"
+    text = "InitializeGameEngine renderClasses"
+    source = "source_audit"
+    migrationState = "candidate_collapsed_v1"
+    textHash = "ed8620dfcf76"
+    occurrenceCount = 1
+    activeOccurrenceCount = 1
+    sourceAreas = "main_game_code"
+    categories = "visible_review_candidate"
+    firstSourceFile = "code/mechcmd2.cpp"
+    firstLine = 1626
+}
+
+String {
+    key = "game.source.initializegameengine_resourcedll"
+    text = "InitializeGameEngine resourceDLL"
+    source = "source_audit"
+    migrationState = "candidate_collapsed_v1"
+    textHash = "4c620008130c"
+    occurrenceCount = 1
+    activeOccurrenceCount = 1
+    sourceAreas = "main_game_code"
+    categories = "visible_review_candidate"
+    firstSourceFile = "code/mechcmd2.cpp"
+    firstLine = 869
+}
+
+String {
+    key = "game.source.initializegameengine_sound"
+    text = "InitializeGameEngine sound"
+    source = "source_audit"
+    migrationState = "candidate_collapsed_v1"
+    textHash = "1ddd961699b7"
+    occurrenceCount = 1
+    activeOccurrenceCount = 1
+    sourceAreas = "main_game_code"
+    categories = "visible_review_candidate"
+    firstSourceFile = "code/mechcmd2.cpp"
+    firstLine = 1702
+}
+
+String {
+    key = "game.source.initializegameengine_texturemanager"
+    text = "InitializeGameEngine textureManager"
+    source = "source_audit"
+    migrationState = "candidate_collapsed_v1"
+    textHash = "2a34d264ef54"
+    occurrenceCount = 1
+    activeOccurrenceCount = 1
+    sourceAreas = "main_game_code"
+    categories = "visible_review_candidate"
+    firstSourceFile = "code/mechcmd2.cpp"
+    firstLine = 1687
+}
+
+String {
+    key = "game.source.initializegameengine_timers"
+    text = "InitializeGameEngine timers"
+    source = "source_audit"
+    migrationState = "candidate_collapsed_v1"
+    textHash = "077c4cc7dae9"
+    occurrenceCount = 1
+    activeOccurrenceCount = 1
+    sourceAreas = "main_game_code"
+    categories = "visible_review_candidate"
+    firstSourceFile = "code/mechcmd2.cpp"
+    firstLine = 1730
+}
+
+String {
+    key = "game.source.insignia_name"
+    text = "INSIGNIA NAME..."
+    source = "source_audit"
+    migrationState = "candidate_collapsed_v1"
+    textHash = "d3b89763fbc2"
+    occurrenceCount = 1
+    activeOccurrenceCount = 1
+    sourceAreas = "main_game_code"
+    categories = "visible_review_candidate"
+    firstSourceFile = "code/mpsetuparea.cpp"
+    firstLine = 204
+}
+
+String {
+    key = "game.source.interface_update"
+    text = "Interface Update"
+    source = "source_audit"
+    migrationState = "candidate_collapsed_v1"
+    textHash = "06abe09cbf56"
+    occurrenceCount = 1
+    activeOccurrenceCount = 1
+    sourceAreas = "main_game_code"
+    categories = "visible_review_candidate"
+    firstSourceFile = "code/mission2.cpp"
+    firstLine = 151
+}
+
+String {
+    key = "game.source.is_the_runner_spawning_from_the_install_directory"
+    text = "Is the runner spawning from the install directory?\n"
+    source = "source_audit"
+    migrationState = "candidate_collapsed_v1"
+    textHash = "e3ed2d947d0c"
+    occurrenceCount = 1
+    activeOccurrenceCount = 1
+    sourceAreas = "main_game_code"
+    categories = "visible_review_candidate"
+    firstSourceFile = "code/mechcmd2.cpp"
+    firstLine = 983
+}
+
+String {
+    key = "game.source.l_arm"
+    text = "l arm:    "
+    source = "source_audit"
+    migrationState = "candidate_collapsed_v1"
+    textHash = "48c1f4962a06"
+    occurrenceCount = 1
+    activeOccurrenceCount = 1
+    sourceAreas = "main_game_code"
+    categories = "visible_review_candidate"
+    firstSourceFile = "code/mover.cpp"
+    firstLine = 2598
+}
+
+String {
+    key = "game.source.l_leg"
+    text = "l leg:    "
+    source = "source_audit"
+    migrationState = "candidate_collapsed_v1"
+    textHash = "890d140a16fc"
+    occurrenceCount = 1
+    activeOccurrenceCount = 1
+    sourceAreas = "main_game_code"
+    categories = "visible_review_candidate"
+    firstSourceFile = "code/mover.cpp"
+    firstLine = 2600
+}
+
+String {
+    key = "game.source.l_torso"
+    text = "l torso:  "
+    source = "source_audit"
+    migrationState = "candidate_collapsed_v1"
+    textHash = "c1f55b14333d"
+    occurrenceCount = 1
+    activeOccurrenceCount = 1
+    sourceAreas = "main_game_code"
+    categories = "visible_review_candidate"
+    firstSourceFile = "code/mover.cpp"
+    firstLine = 2596
+}
+
+String {
+    key = "game.source.lay_mines"
+    text = "Lay Mines"
+    source = "editor.menu.rc"
+    migrationState = "candidate_collapsed_v1"
+}
+
+String {
+    key = "game.source.left_arm"
+    text = "left arm"
+    source = "source_audit"
+    migrationState = "candidate_collapsed_v1"
+    textHash = "63f423558c62"
+    occurrenceCount = 4
+    activeOccurrenceCount = 4
+    sourceAreas = "main_game_code"
+    categories = "visible_review_candidate"
+    firstSourceFile = "code/mover.cpp"
+    firstLine = 3537
+}
+
+String {
+    key = "game.source.left_leg"
+    text = "left leg"
+    source = "source_audit"
+    migrationState = "candidate_collapsed_v1"
+    textHash = "ad42b6347205"
+    occurrenceCount = 4
+    activeOccurrenceCount = 4
+    sourceAreas = "main_game_code"
+    categories = "visible_review_candidate"
+    firstSourceFile = "code/mover.cpp"
+    firstLine = 3539
+}
+
+String {
+    key = "game.source.left_torso"
+    text = "left torso"
+    source = "source_audit"
+    migrationState = "candidate_collapsed_v1"
+    textHash = "7ffa03fd6f95"
+    occurrenceCount = 4
+    activeOccurrenceCount = 4
+    sourceAreas = "main_game_code"
+    categories = "visible_review_candidate"
+    firstSourceFile = "code/mover.cpp"
+    firstLine = 3535
+}
+
+String {
+    key = "game.source.left"
+    text = "left:     "
+    source = "source_audit"
+    migrationState = "candidate_collapsed_v1"
+    textHash = "0eec1399d14d"
+    occurrenceCount = 1
+    activeOccurrenceCount = 1
+    sourceAreas = "main_game_code"
+    categories = "visible_review_candidate"
+    firstSourceFile = "code/mover.cpp"
+    firstLine = 2606
+}
+
+String {
+    key = "game.source.liao"
+    text = "Liao "
+    source = "source_audit"
+    migrationState = "candidate_collapsed_v1"
+    textHash = "040b22a8c925"
+    occurrenceCount = 1
+    activeOccurrenceCount = 1
+    sourceAreas = "main_game_code"
+    categories = "visible_review_candidate"
+    firstSourceFile = "code/mechlopedia.cpp"
+    firstLine = 1106
+}
+
+String {
+    key = "game.source.liao.c2a1919f"
+    text = "LIAO "
+    source = "source_audit"
+    migrationState = "candidate_collapsed_v1"
+    textHash = "c2a1919fa1b3"
+    occurrenceCount = 2
+    activeOccurrenceCount = 2
+    sourceAreas = "main_game_code"
+    categories = "visible_review_candidate"
+    firstSourceFile = "code/mechlopedia.cpp"
+    firstLine = 1108
+}
+
+String {
+    key = "game.source.link"
+    text = "Link"
+    source = "editor.menu.rc"
+    migrationState = "candidate_collapsed_v1"
+}
+
+String {
+    key = "game.source.listitempercentd"
+    text = "ListItem%d"
+    source = "source_audit"
+    migrationState = "candidate_collapsed_v1"
+    textHash = "1e5fc5a19f96"
+    occurrenceCount = 1
+    activeOccurrenceCount = 1
+    sourceAreas = "main_game_code"
+    categories = "visible_review_candidate"
+    firstSourceFile = "code/mpsetuparea.cpp"
+    firstLine = 140
+}
+
+String {
+    key = "game.source.load_carrier"
+    text = "load carrier"
+    source = "source_audit"
+    migrationState = "candidate_collapsed_v1"
+    textHash = "b52ed01a2874"
+    occurrenceCount = 1
+    activeOccurrenceCount = 1
+    sourceAreas = "main_game_code"
+    categories = "visible_review_candidate"
+    firstSourceFile = "code/tacordr.cpp"
+    firstLine = 2153
+}
+
+String {
+    key = "game.source.los_update"
+    text = "LOS Update"
+    source = "source_audit"
+    migrationState = "candidate_collapsed_v1"
+    textHash = "2013a89ffbb4"
+    occurrenceCount = 1
+    activeOccurrenceCount = 1
+    sourceAreas = "main_game_code"
+    categories = "visible_review_candidate"
+    firstSourceFile = "code/mission2.cpp"
+    firstLine = 155
+}
+
+String {
+    key = "game.source.mc2rel_exe"
+    text = "MC2Rel.exe"
+    source = "source_audit"
+    migrationState = "candidate_collapsed_v1"
+    textHash = "1760d4a08481"
+    occurrenceCount = 1
+    activeOccurrenceCount = 0
+    sourceAreas = "test_scripts"
+    categories = "manual_review"
+    firstSourceFile = "test_scripts/res_conv/Script1.rc"
+    firstLine = 80
+}
+
+String {
+    key = "game.source.mc2res_dlleditores_dll"
+    text = "mc2res.dlleditores.dll"
+    source = "source_audit"
+    migrationState = "candidate_collapsed_v1"
+    textHash = "a44a5d9e3eca"
+    occurrenceCount = 1
+    activeOccurrenceCount = 1
+    sourceAreas = "main_game_code"
+    categories = "visible_review_candidate"
+    firstSourceFile = "code/dw.cpp"
+    firstLine = 192
+}
+
+String {
+    key = "game.source.mechcommander_2_game_executable"
+    text = "MechCommander 2 Game Executable"
+    source = "source_audit"
+    migrationState = "candidate_collapsed_v1"
+    textHash = "2ea590017d37"
+    occurrenceCount = 2
+    activeOccurrenceCount = 0
+    sourceAreas = "test_scripts"
+    categories = "manual_review"
+    firstSourceFile = "test_scripts/res_conv/Script1.rc"
+    firstLine = 73
+}
+
+String {
+    key = "game.source.mechcommander2_1_0"
+    text = "MechCommander2\\1.0"
+    source = "source_audit"
+    migrationState = "candidate_collapsed_v1"
+    textHash = "a9af47036f9f"
+    occurrenceCount = 1
+    activeOccurrenceCount = 1
+    sourceAreas = "main_game_code"
+    categories = "visible_review_candidate"
+    firstSourceFile = "code/mechcmd2.cpp"
+    firstLine = 2789
+}
+
+String {
+    key = "game.source.mission_script"
+    text = "Mission Script"
+    source = "source_audit"
+    migrationState = "candidate_collapsed_v1"
+    textHash = "d7aa030286e6"
+    occurrenceCount = 1
+    activeOccurrenceCount = 1
+    sourceAreas = "main_game_code"
+    categories = "visible_review_candidate"
+    firstSourceFile = "code/mission2.cpp"
+    firstLine = 157
+}
+
+String {
+    key = "game.source.mission_init_initbareminimum"
+    text = "Mission::init initBareMinimum"
+    source = "source_audit"
+    migrationState = "candidate_collapsed_v1"
+    textHash = "f265c9ee54f1"
+    occurrenceCount = 1
+    activeOccurrenceCount = 1
+    sourceAreas = "main_game_code"
+    categories = "visible_review_candidate"
+    firstSourceFile = "code/mission.cpp"
+    firstLine = 1712
+}
+
+String {
+    key = "game.source.mission_init_inittglformission"
+    text = "Mission::init initTGLForMission"
+    source = "source_audit"
+    migrationState = "candidate_collapsed_v1"
+    textHash = "779d4e0d7780"
+    occurrenceCount = 1
+    activeOccurrenceCount = 1
+    sourceAreas = "main_game_code"
+    categories = "visible_review_candidate"
+    firstSourceFile = "code/mission.cpp"
+    firstLine = 1714
+}
+
+String {
+    key = "game.source.mission_init_land_init"
+    text = "Mission::init land->init"
+    source = "source_audit"
+    migrationState = "candidate_collapsed_v1"
+    textHash = "c9999dc4654a"
+    occurrenceCount = 1
+    activeOccurrenceCount = 1
+    sourceAreas = "main_game_code"
+    categories = "visible_review_candidate"
+    firstSourceFile = "code/mission.cpp"
+    firstLine = 2199
+}
+
+String {
+    key = "game.source.mission_init_land_load"
+    text = "Mission::init land->load"
+    source = "source_audit"
+    migrationState = "candidate_collapsed_v1"
+    textHash = "a7735e1e6c89"
+    occurrenceCount = 1
+    activeOccurrenceCount = 1
+    sourceAreas = "main_game_code"
+    categories = "visible_review_candidate"
+    firstSourceFile = "code/mission.cpp"
+    firstLine = 2215
+}
+
+String {
+    key = "game.source.mission_init_land_primemissionterraincache"
+    text = "Mission::init land->primeMissionTerrainCache"
+    source = "source_audit"
+    migrationState = "candidate_collapsed_v1"
+    textHash = "e7cf76d64f0b"
+    occurrenceCount = 1
+    activeOccurrenceCount = 1
+    sourceAreas = "main_game_code"
+    categories = "visible_review_candidate"
+    firstSourceFile = "code/mission.cpp"
+    firstLine = 2218
+}
+
+String {
+    key = "game.source.mission_init_objectmanager_loadterrainobjects"
+    text = "Mission::init ObjectManager::loadTerrainObjects"
+    source = "source_audit"
+    migrationState = "candidate_collapsed_v1"
+    textHash = "6d819bc16bac"
+    occurrenceCount = 1
+    activeOccurrenceCount = 1
+    sourceAreas = "main_game_code"
+    categories = "visible_review_candidate"
+    firstSourceFile = "code/mission.cpp"
+    firstLine = 2807
+}
+
+String {
+    key = "game.source.mission_init_objectmanager_primeterrainobjectsformissionload"
+    text = "Mission::init ObjectManager::primeTerrainObjectsForMissionLoad"
+    source = "source_audit"
+    migrationState = "candidate_collapsed_v1"
+    textHash = "db0f19f37250"
+    occurrenceCount = 1
+    activeOccurrenceCount = 1
+    sourceAreas = "main_game_code"
+    categories = "visible_review_candidate"
+    firstSourceFile = "code/mission.cpp"
+    firstLine = 2808
+}
+
+String {
+    key = "game.source.mission_inittglformission_shutdown"
+    text = "Mission::initTGLForMission shutdown"
+    source = "source_audit"
+    migrationState = "candidate_collapsed_v1"
+    textHash = "9cbb331d9a38"
+    occurrenceCount = 1
+    activeOccurrenceCount = 1
+    sourceAreas = "main_game_code"
+    categories = "visible_review_candidate"
+    firstSourceFile = "code/mission.cpp"
+    firstLine = 3069
+}
+
+String {
+    key = "game.source.mission_inittglformission_startup"
+    text = "Mission::initTGLForMission startup"
+    source = "source_audit"
+    migrationState = "candidate_collapsed_v1"
+    textHash = "95bcd7a7fe71"
+    occurrenceCount = 1
+    activeOccurrenceCount = 1
+    sourceAreas = "main_game_code"
+    categories = "visible_review_candidate"
+    firstSourceFile = "code/mission.cpp"
+    firstLine = 3118
+}
+
+String {
+    key = "game.source.mission_update_clearobjblocksactive"
+    text = "Mission::update clearObjBlocksActive"
+    source = "source_audit"
+    migrationState = "candidate_collapsed_v1"
+    textHash = "3fe838251413"
+    occurrenceCount = 1
+    activeOccurrenceCount = 1
+    sourceAreas = "main_game_code"
+    categories = "visible_review_candidate"
+    firstSourceFile = "code/mission.cpp"
+    firstLine = 495
+}
+
+String {
+    key = "game.source.mission_update_clearobjverticesactive"
+    text = "Mission::update clearObjVerticesActive"
+    source = "source_audit"
+    migrationState = "candidate_collapsed_v1"
+    textHash = "221f21a8599a"
+    occurrenceCount = 1
+    activeOccurrenceCount = 1
+    sourceAreas = "main_game_code"
+    categories = "visible_review_candidate"
+    firstSourceFile = "code/mission.cpp"
+    firstLine = 496
+}
+
+String {
+    key = "game.source.mission_update_terraintextures_update"
+    text = "Mission::update terrainTextures->update"
+    source = "source_audit"
+    migrationState = "candidate_collapsed_v1"
+    textHash = "9eebc8210c98"
+    occurrenceCount = 1
+    activeOccurrenceCount = 1
+    sourceAreas = "main_game_code"
+    categories = "visible_review_candidate"
+    firstSourceFile = "code/mission.cpp"
+    firstLine = 497
+}
+
+String {
+    key = "game.source.missionbegin_begin_initabl"
+    text = "MissionBegin::begin initABL"
+    source = "source_audit"
+    migrationState = "candidate_collapsed_v1"
+    textHash = "fc1036d70837"
+    occurrenceCount = 1
+    activeOccurrenceCount = 1
+    sourceAreas = "main_game_code"
+    categories = "visible_review_candidate"
+    firstSourceFile = "code/missionbegin.cpp"
+    firstLine = 121
+}
+
+String {
+    key = "game.source.missionbegin_begin_loadscreen"
+    text = "MissionBegin::begin loadScreen"
+    source = "source_audit"
+    migrationState = "candidate_collapsed_v1"
+    textHash = "d32159c8e336"
+    occurrenceCount = 1
+    activeOccurrenceCount = 1
+    sourceAreas = "main_game_code"
+    categories = "visible_review_candidate"
+    firstSourceFile = "code/missionbegin.cpp"
+    firstLine = 382
+}
+
+String {
+    key = "game.source.missionbegin_begin_mainmenu"
+    text = "MissionBegin::begin mainMenu"
+    source = "source_audit"
+    migrationState = "candidate_collapsed_v1"
+    textHash = "352c5b602e04"
+    occurrenceCount = 1
+    activeOccurrenceCount = 1
+    sourceAreas = "main_game_code"
+    categories = "visible_review_candidate"
+    firstSourceFile = "code/missionbegin.cpp"
+    firstLine = 232
+}
+
+String {
+    key = "game.source.missionbegin_begin_mechbay"
+    text = "MissionBegin::begin mechBay"
+    source = "source_audit"
+    migrationState = "candidate_collapsed_v1"
+    textHash = "160988a8e907"
+    occurrenceCount = 1
+    activeOccurrenceCount = 1
+    sourceAreas = "main_game_code"
+    categories = "visible_review_candidate"
+    firstSourceFile = "code/missionbegin.cpp"
+    firstLine = 295
+}
+
+String {
+    key = "game.source.missionbegin_begin_mechlab"
+    text = "MissionBegin::begin mechLab"
+    source = "source_audit"
+    migrationState = "candidate_collapsed_v1"
+    textHash = "1186056d578b"
+    occurrenceCount = 1
+    activeOccurrenceCount = 1
+    sourceAreas = "main_game_code"
+    categories = "visible_review_candidate"
+    firstSourceFile = "code/missionbegin.cpp"
+    firstLine = 364
+}
+
+String {
+    key = "game.source.missionbegin_begin_mechpurchase"
+    text = "MissionBegin::begin mechPurchase"
+    source = "source_audit"
+    migrationState = "candidate_collapsed_v1"
+    textHash = "814fcf8032e6"
+    occurrenceCount = 1
+    activeOccurrenceCount = 1
+    sourceAreas = "main_game_code"
+    categories = "visible_review_candidate"
+    firstSourceFile = "code/missionbegin.cpp"
+    firstLine = 345
+}
+
+String {
+    key = "game.source.missionbegin_begin_missionbriefing"
+    text = "MissionBegin::begin missionBriefing"
+    source = "source_audit"
+    migrationState = "candidate_collapsed_v1"
+    textHash = "43c23b248a44"
+    occurrenceCount = 1
+    activeOccurrenceCount = 1
+    sourceAreas = "main_game_code"
+    categories = "visible_review_candidate"
+    firstSourceFile = "code/missionbegin.cpp"
+    firstLine = 278
+}
+
+String {
+    key = "game.source.missionbegin_begin_missionselection"
+    text = "MissionBegin::begin missionSelection"
+    source = "source_audit"
+    migrationState = "candidate_collapsed_v1"
+    textHash = "4a14168cb543"
+    occurrenceCount = 1
+    activeOccurrenceCount = 1
+    sourceAreas = "main_game_code"
+    categories = "visible_review_candidate"
+    firstSourceFile = "code/missionbegin.cpp"
+    firstLine = 260
+}
+
+String {
+    key = "game.source.missionbegin_begin_pilotready"
+    text = "MissionBegin::begin pilotReady"
+    source = "source_audit"
+    migrationState = "candidate_collapsed_v1"
+    textHash = "b347bb154b5a"
+    occurrenceCount = 1
+    activeOccurrenceCount = 1
+    sourceAreas = "main_game_code"
+    categories = "visible_review_candidate"
+    firstSourceFile = "code/missionbegin.cpp"
+    firstLine = 323
+}
+
+String {
+    key = "game.source.missionbegin_begin_reuseexistingscreens"
+    text = "MissionBegin::begin reuseExistingScreens"
+    source = "source_audit"
+    migrationState = "candidate_collapsed_v1"
+    textHash = "93ab926cd8f5"
+    occurrenceCount = 1
+    activeOccurrenceCount = 1
+    sourceAreas = "main_game_code"
+    categories = "visible_review_candidate"
+    firstSourceFile = "code/missionbegin.cpp"
+    firstLine = 184
+}
+
+String {
+    key = "game.source.missionbegin_begin_tutorialbrain"
+    text = "MissionBegin::begin tutorialBrain"
+    source = "source_audit"
+    migrationState = "candidate_collapsed_v1"
+    textHash = "54ceae1aebc7"
+    occurrenceCount = 1
+    activeOccurrenceCount = 1
+    sourceAreas = "main_game_code"
+    categories = "visible_review_candidate"
+    firstSourceFile = "code/missionbegin.cpp"
+    firstLine = 143
+}
+
+String {
+    key = "game.source.multiplayer_setup"
+    text = "MULTIPLAYER SETUP"
+    source = "source_audit"
+    migrationState = "candidate_collapsed_v1"
+    textHash = "7fcae571a6ee"
+    occurrenceCount = 1
+    activeOccurrenceCount = 1
+    sourceAreas = "main_game_code"
+    categories = "visible_review_candidate"
+    firstSourceFile = "code/mpsetuparea.cpp"
+    firstLine = 154
+}
+
+String {
+    key = "game.source.multiplayer_update"
+    text = "Multiplayer Update"
+    source = "source_audit"
+    migrationState = "candidate_collapsed_v1"
+    textHash = "f007cf2cd0d3"
+    occurrenceCount = 1
+    activeOccurrenceCount = 1
+    sourceAreas = "main_game_code"
+    categories = "visible_review_candidate"
+    firstSourceFile = "code/mission2.cpp"
+    firstLine = 158
+}
+
+String {
+    key = "game.source.nav_marker_percentd"
+    text = "Nav Marker %d"
+    source = "source_audit"
+    migrationState = "candidate_collapsed_v1"
+    textHash = "5c41613685dc"
+    occurrenceCount = 1
+    activeOccurrenceCount = 1
+    sourceAreas = "main_game_code"
+    categories = "visible_review_candidate"
+    firstSourceFile = "code/objective.cpp"
+    firstLine = 2327
+}
+
+String {
+    key = "game.source.navmarkerpercentd"
+    text = "NavMarker%d"
+    source = "source_audit"
+    migrationState = "candidate_collapsed_v1"
+    textHash = "969173a193f0"
+    occurrenceCount = 1
+    activeOccurrenceCount = 1
+    sourceAreas = "main_game_code"
+    categories = "visible_review_candidate"
+    firstSourceFile = "code/objective.cpp"
+    firstLine = 2321
+}
+
+String {
+    key = "game.source.neutral"
+    text = "Neutral"
+    source = "editor.menu.rc"
+    migrationState = "candidate_collapsed_v1"
+}
+
+String {
+    key = "game.source.no_name"
+    text = "No Name"
+    source = "source_audit"
+    migrationState = "candidate_collapsed_v1"
+    textHash = "2b26f4d75256"
+    occurrenceCount = 1
+    activeOccurrenceCount = 1
+    sourceAreas = "main_game_code"
+    categories = "visible_review_candidate"
+    firstSourceFile = "code/mover.h"
+    firstLine = 1724
+}
+
+String {
+    key = "game.source.object_not_found"
+    text = "object not found"
+    source = "source_audit"
+    migrationState = "candidate_collapsed_v1"
+    textHash = "705e0ee5caec"
+    occurrenceCount = 2
+    activeOccurrenceCount = 2
+    sourceAreas = "main_game_code"
+    categories = "visible_review_candidate"
+    firstSourceFile = "code/mission.cpp"
+    firstLine = 2431
+}
+
+String {
+    key = "game.source.order"
+    text = "order: "
+    source = "source_audit"
+    migrationState = "candidate_collapsed_v1"
+    textHash = "24558c93c443"
+    occurrenceCount = 1
+    activeOccurrenceCount = 1
+    sourceAreas = "main_game_code"
+    categories = "visible_review_candidate"
+    firstSourceFile = "code/mover.cpp"
+    firstLine = 2458
+}
+
+String {
+    key = "game.source.orthographic_camera"
+    text = "Orthographic Camera"
+    source = "editor.menu.rc"
+    migrationState = "candidate_collapsed_v1"
+}
+
+String {
+    key = "game.source.out"
+    text = "out"
+    source = "source_audit"
+    migrationState = "candidate_collapsed_v1"
+    textHash = "f4800df8d1bc"
+    occurrenceCount = 1
+    activeOccurrenceCount = 1
+    sourceAreas = "main_game_code"
+    categories = "runtime_visible_candidate"
+    firstSourceFile = "code/dw.cpp"
+    firstLine = 261
+}
+
+String {
+    key = "game.source.overlays"
+    text = "Overlays"
+    source = "editor.menu.rc"
+    migrationState = "candidate_collapsed_v1"
+}
+
+String {
+    key = "game.source.partid_percentld"
+    text = "partId: %ld"
+    source = "source_audit"
+    migrationState = "candidate_collapsed_v1"
+    textHash = "66b643f27959"
+    occurrenceCount = 3
+    activeOccurrenceCount = 3
+    sourceAreas = "main_game_code"
+    categories = "visible_review_candidate"
+    firstSourceFile = "code/objective.cpp"
+    firstLine = 418
+}
+
+String {
+    key = "game.source.pathmanager_update"
+    text = "PathManager Update"
+    source = "source_audit"
+    migrationState = "candidate_collapsed_v1"
+    textHash = "339888fbebc5"
+    occurrenceCount = 1
+    activeOccurrenceCount = 1
+    sourceAreas = "main_game_code"
+    categories = "visible_review_candidate"
+    firstSourceFile = "code/mission2.cpp"
+    firstLine = 149
+}
+
+String {
+    key = "game.source.patrol_path"
+    text = "patrol path"
+    source = "source_audit"
+    migrationState = "candidate_collapsed_v1"
+    textHash = "c8b094fcf590"
+    occurrenceCount = 1
+    activeOccurrenceCount = 1
+    sourceAreas = "main_game_code"
+    categories = "visible_review_candidate"
+    firstSourceFile = "code/tacordr.cpp"
+    firstLine = 2087
+}
+
+String {
+    key = "game.source.pixel_height"
+    text = "pixel height"
+    source = "source_audit"
+    migrationState = "candidate_collapsed_v1"
+    textHash = "0dc30e399b3b"
+    occurrenceCount = 1
+    activeOccurrenceCount = 1
+    sourceAreas = "main_game_code"
+    categories = "visible_review_candidate"
+    firstSourceFile = "code/mechicon.cpp"
+    firstLine = 939
+}
+
+String {
+    key = "game.source.player_1"
+    text = "Player 1"
+    source = "editor.menu.rc"
+    migrationState = "candidate_collapsed_v1"
+}
+
+String {
+    key = "game.source.player_2"
+    text = "Player 2"
+    source = "editor.menu.rc"
+    migrationState = "candidate_collapsed_v1"
+}
+
+String {
+    key = "game.source.player_3"
+    text = "Player 3"
+    source = "editor.menu.rc"
+    migrationState = "candidate_collapsed_v1"
+}
+
+String {
+    key = "game.source.player_4"
+    text = "Player 4"
+    source = "editor.menu.rc"
+    migrationState = "candidate_collapsed_v1"
+}
+
+String {
+    key = "game.source.player_5"
+    text = "Player 5"
+    source = "editor.menu.rc"
+    migrationState = "candidate_collapsed_v1"
+}
+
+String {
+    key = "game.source.player_6"
+    text = "Player 6"
+    source = "editor.menu.rc"
+    migrationState = "candidate_collapsed_v1"
+}
+
+String {
+    key = "game.source.player_7"
+    text = "Player 7"
+    source = "editor.menu.rc"
+    migrationState = "candidate_collapsed_v1"
+}
+
+String {
+    key = "game.source.player_8"
+    text = "Player 8"
+    source = "editor.menu.rc"
+    migrationState = "candidate_collapsed_v1"
+}
+
+String {
+    key = "game.source.player_name"
+    text = "PLAYER NAME..."
+    source = "source_audit"
+    migrationState = "candidate_collapsed_v1"
+    textHash = "dda6641b55ab"
+    occurrenceCount = 1
+    activeOccurrenceCount = 1
+    sourceAreas = "main_game_code"
+    categories = "visible_review_candidate"
+    firstSourceFile = "code/mpsetuparea.cpp"
+    firstLine = 194
+}
+
+String {
+    key = "game.source.power_down"
+    text = "power down"
+    source = "source_audit"
+    migrationState = "candidate_collapsed_v1"
+    textHash = "e0c2a8cf1049"
+    occurrenceCount = 1
+    activeOccurrenceCount = 1
+    sourceAreas = "main_game_code"
+    categories = "visible_review_candidate"
+    firstSourceFile = "code/tacordr.cpp"
+    firstLine = 2105
+}
+
+String {
+    key = "game.source.power_up"
+    text = "power up"
+    source = "source_audit"
+    migrationState = "candidate_collapsed_v1"
+    textHash = "6b999b42c6d0"
+    occurrenceCount = 1
+    activeOccurrenceCount = 1
+    sourceAreas = "main_game_code"
+    categories = "visible_review_candidate"
+    firstSourceFile = "code/tacordr.cpp"
+    firstLine = 2102
+}
+
+String {
+    key = "game.source.quick_info"
+    text = "Quick Info"
+    source = "source_audit"
+    migrationState = "candidate_collapsed_v1"
+    textHash = "8d8c58458f4c"
+    occurrenceCount = 1
+    activeOccurrenceCount = 1
+    sourceAreas = "main_game_code"
+    categories = "visible_review_candidate"
+    firstSourceFile = "code/mechcmd2.cpp"
+    firstLine = 583
+}
+
+String {
+    key = "game.source.r_arm"
+    text = "r arm:    "
+    source = "source_audit"
+    migrationState = "candidate_collapsed_v1"
+    textHash = "6c86f7ce32e3"
+    occurrenceCount = 1
+    activeOccurrenceCount = 1
+    sourceAreas = "main_game_code"
+    categories = "visible_review_candidate"
+    firstSourceFile = "code/mover.cpp"
+    firstLine = 2599
+}
+
+String {
+    key = "game.source.r_leg"
+    text = "r leg:    "
+    source = "source_audit"
+    migrationState = "candidate_collapsed_v1"
+    textHash = "a8484ac1492c"
+    occurrenceCount = 1
+    activeOccurrenceCount = 1
+    sourceAreas = "main_game_code"
+    categories = "visible_review_candidate"
+    firstSourceFile = "code/mover.cpp"
+    firstLine = 2601
+}
+
+String {
+    key = "game.source.r_torso"
+    text = "r torso:  "
+    source = "source_audit"
+    migrationState = "candidate_collapsed_v1"
+    textHash = "18d53a076bd3"
+    occurrenceCount = 1
+    activeOccurrenceCount = 1
+    sourceAreas = "main_game_code"
+    categories = "visible_review_candidate"
+    firstSourceFile = "code/mover.cpp"
+    firstLine = 2597
+}
+
+String {
+    key = "game.source.rayendcolor"
+    text = "RayEndColor "
+    source = "source_audit"
+    migrationState = "candidate_collapsed_v1"
+    textHash = "78799244bfb5"
+    occurrenceCount = 1
+    activeOccurrenceCount = 1
+    sourceAreas = "main_game_code"
+    categories = "visible_review_candidate"
+    firstSourceFile = "code/mechbayscreen.cpp"
+    firstLine = 118
+}
+
+String {
+    key = "game.source.raystartcolor"
+    text = "RayStartColor "
+    source = "source_audit"
+    migrationState = "candidate_collapsed_v1"
+    textHash = "e49083357ae5"
+    occurrenceCount = 1
+    activeOccurrenceCount = 1
+    sourceAreas = "main_game_code"
+    categories = "visible_review_candidate"
+    firstSourceFile = "code/mechbayscreen.cpp"
+    firstLine = 117
+}
+
+String {
+    key = "game.source.rc_torso"
+    text = "rc torso: "
+    source = "source_audit"
+    migrationState = "candidate_collapsed_v1"
+    textHash = "55a9cd189e19"
+    occurrenceCount = 1
+    activeOccurrenceCount = 1
+    sourceAreas = "main_game_code"
+    categories = "visible_review_candidate"
+    firstSourceFile = "code/mover.cpp"
+    firstLine = 2602
+}
+
+String {
+    key = "game.source.rear_center_torso"
+    text = "rear center torso"
+    source = "source_audit"
+    migrationState = "candidate_collapsed_v1"
+    textHash = "b9bd279ecf6f"
+    occurrenceCount = 4
+    activeOccurrenceCount = 4
+    sourceAreas = "main_game_code"
+    categories = "visible_review_candidate"
+    firstSourceFile = "code/mover.cpp"
+    firstLine = 3541
+}
+
+String {
+    key = "game.source.rear_left_torso"
+    text = "rear left torso"
+    source = "source_audit"
+    migrationState = "candidate_collapsed_v1"
+    textHash = "f1e92e5aee96"
+    occurrenceCount = 4
+    activeOccurrenceCount = 4
+    sourceAreas = "main_game_code"
+    categories = "visible_review_candidate"
+    firstSourceFile = "code/mover.cpp"
+    firstLine = 3542
+}
+
+String {
+    key = "game.source.rear_right_torso"
+    text = "rear right torso"
+    source = "source_audit"
+    migrationState = "candidate_collapsed_v1"
+    textHash = "f65752a8d37a"
+    occurrenceCount = 4
+    activeOccurrenceCount = 4
+    sourceAreas = "main_game_code"
+    categories = "visible_review_candidate"
+    firstSourceFile = "code/mover.cpp"
+    firstLine = 3543
+}
+
+String {
+    key = "game.source.rear"
+    text = "rear:     "
+    source = "source_audit"
+    migrationState = "candidate_collapsed_v1"
+    textHash = "1ad55aeb7458"
+    occurrenceCount = 1
+    activeOccurrenceCount = 1
+    sourceAreas = "main_game_code"
+    categories = "visible_review_candidate"
+    firstSourceFile = "code/mover.cpp"
+    firstLine = 2608
+}
+
+String {
+    key = "game.source.recoveree_and_recoverer_aren_t_pointing_at_each_other"
+    text = "Recoveree and recoverer aren't pointing at each other."
+    source = "source_audit"
+    migrationState = "candidate_collapsed_v1"
+    textHash = "279ac3c0b10a"
+    occurrenceCount = 1
+    activeOccurrenceCount = 1
+    sourceAreas = "main_game_code"
+    categories = "visible_review_candidate"
+    firstSourceFile = "code/tacordr.cpp"
+    firstLine = 1831
+}
+
+String {
+    key = "game.source.refitee_and_refitter_aren_t_pointing_at_each_other"
+    text = "Refitee and refitter aren't pointing at each other."
+    source = "source_audit"
+    migrationState = "candidate_collapsed_v1"
+    textHash = "db50fe708170"
+    occurrenceCount = 1
+    activeOccurrenceCount = 1
+    sourceAreas = "main_game_code"
+    categories = "visible_review_candidate"
+    firstSourceFile = "code/tacordr.cpp"
+    firstLine = 1543
+}
+
+String {
+    key = "game.source.refresh_tac_map"
+    text = "Refresh Tac Map"
+    source = "editor.menu.rc"
+    migrationState = "candidate_collapsed_v1"
+}
+
+String {
+    key = "game.source.renard_s_atlas"
+    text = "Renard's Atlas"
+    source = "source_audit"
+    migrationState = "candidate_collapsed_v1"
+    textHash = "9a2b6ae19bc1"
+    occurrenceCount = 2
+    activeOccurrenceCount = 2
+    sourceAreas = "main_game_code"
+    categories = "visible_review_candidate"
+    firstSourceFile = "code/logisticsvariant.cpp"
+    firstLine = 983
+}
+
+String {
+    key = "game.source.right_arm"
+    text = "right arm"
+    source = "source_audit"
+    migrationState = "candidate_collapsed_v1"
+    textHash = "428d7fc53249"
+    occurrenceCount = 4
+    activeOccurrenceCount = 4
+    sourceAreas = "main_game_code"
+    categories = "visible_review_candidate"
+    firstSourceFile = "code/mover.cpp"
+    firstLine = 3538
+}
+
+String {
+    key = "game.source.right_leg"
+    text = "right leg"
+    source = "source_audit"
+    migrationState = "candidate_collapsed_v1"
+    textHash = "cdc9fa72b922"
+    occurrenceCount = 4
+    activeOccurrenceCount = 4
+    sourceAreas = "main_game_code"
+    categories = "visible_review_candidate"
+    firstSourceFile = "code/mover.cpp"
+    firstLine = 3540
+}
+
+String {
+    key = "game.source.right_torso"
+    text = "right torso"
+    source = "source_audit"
+    migrationState = "candidate_collapsed_v1"
+    textHash = "a4df95834cb8"
+    occurrenceCount = 4
+    activeOccurrenceCount = 4
+    sourceAreas = "main_game_code"
+    categories = "visible_review_candidate"
+    firstSourceFile = "code/mover.cpp"
+    firstLine = 3536
+}
+
+String {
+    key = "game.source.right"
+    text = "right:    "
+    source = "source_audit"
+    migrationState = "candidate_collapsed_v1"
+    textHash = "c214046a7c3b"
+    occurrenceCount = 1
+    activeOccurrenceCount = 1
+    sourceAreas = "main_game_code"
+    categories = "visible_review_candidate"
+    firstSourceFile = "code/mover.cpp"
+    firstLine = 2607
+}
+
+String {
+    key = "game.source.rl_torso"
+    text = "rl torso: "
+    source = "source_audit"
+    migrationState = "candidate_collapsed_v1"
+    textHash = "102a94cb348b"
+    occurrenceCount = 1
+    activeOccurrenceCount = 1
+    sourceAreas = "main_game_code"
+    categories = "visible_review_candidate"
+    firstSourceFile = "code/mover.cpp"
+    firstLine = 2603
+}
+
+String {
+    key = "game.source.rr_torso"
+    text = "rr torso: "
+    source = "source_audit"
+    migrationState = "candidate_collapsed_v1"
+    textHash = "ccaaffc07002"
+    occurrenceCount = 1
+    activeOccurrenceCount = 1
+    sourceAreas = "main_game_code"
+    categories = "visible_review_candidate"
+    firstSourceFile = "code/mover.cpp"
+    firstLine = 2604
+}
+
+String {
+    key = "game.source.save_height_map"
+    text = "Save Height Map"
+    source = "editor.menu.rc"
+    migrationState = "candidate_collapsed_v1"
+}
+
+String {
+    key = "game.source.select_by_altitude"
+    text = "Select By Altitude"
+    source = "editor.menu.rc"
+    migrationState = "candidate_collapsed_v1"
+}
+
+String {
+    key = "game.source.select_by_terrain_type"
+    text = "Select By Terrain Type"
+    source = "editor.menu.rc"
+    migrationState = "candidate_collapsed_v1"
+}
+
+String {
+    key = "game.source.sensor_contact_skill"
+    text = "Sensor Contact Skill"
+    source = "source_audit"
+    migrationState = "candidate_collapsed_v1"
+    textHash = "87ad9fb8b146"
+    occurrenceCount = 1
+    activeOccurrenceCount = 1
+    sourceAreas = "main_game_code"
+    categories = "visible_review_candidate"
+    firstSourceFile = "code/mover.cpp"
+    firstLine = 2163
+}
+
+String {
+    key = "game.source.sensor_update"
+    text = "Sensor Update"
+    source = "source_audit"
+    migrationState = "candidate_collapsed_v1"
+    textHash = "455f86c614f4"
+    occurrenceCount = 1
+    activeOccurrenceCount = 1
+    sourceAreas = "main_game_code"
+    categories = "visible_review_candidate"
+    firstSourceFile = "code/mission2.cpp"
+    firstLine = 154
+}
+
+String {
+    key = "game.source.show_all_movers_toggle"
+    text = "Show All Movers (toggle)"
+    source = "source_audit"
+    migrationState = "candidate_collapsed_v1"
+    textHash = "2693b52755e9"
+    occurrenceCount = 1
+    activeOccurrenceCount = 1
+    sourceAreas = "main_game_code"
+    categories = "visible_review_candidate"
+    firstSourceFile = "code/mechcmd2.cpp"
+    firstLine = 603
+}
+
+String {
+    key = "game.source.single_player_mission"
+    text = "Single-player Mission"
+    source = "source_audit"
+    migrationState = "candidate_collapsed_v1"
+    textHash = "2db0e7353148"
+    occurrenceCount = 1
+    activeOccurrenceCount = 1
+    sourceAreas = "main_game_code"
+    categories = "visible_review_candidate"
+    firstSourceFile = "code/mechcmd2.cpp"
+    firstLine = 561
+}
+
+String {
+    key = "game.source.skill_attempt"
+    text = "Skill Attempt"
+    source = "source_audit"
+    migrationState = "candidate_collapsed_v1"
+    textHash = "84844c83c034"
+    occurrenceCount = 1
+    activeOccurrenceCount = 1
+    sourceAreas = "main_game_code"
+    categories = "visible_review_candidate"
+    firstSourceFile = "code/mover.cpp"
+    firstLine = 2149
+}
+
+String {
+    key = "game.source.skill_success"
+    text = "Skill Success"
+    source = "source_audit"
+    migrationState = "candidate_collapsed_v1"
+    textHash = "a3287631ce30"
+    occurrenceCount = 1
+    activeOccurrenceCount = 1
+    sourceAreas = "main_game_code"
+    categories = "visible_review_candidate"
+    firstSourceFile = "code/mover.cpp"
+    firstLine = 2153
+}
+
+String {
+    key = "game.source.smooth_radius"
+    text = "Smooth Radius"
+    source = "editor.menu.rc"
+    migrationState = "candidate_collapsed_v1"
+}
+
+String {
+    key = "game.source.software_microsoft_microsoft_games"
+    text = "Software\\Microsoft\\Microsoft Games\\"
+    source = "source_audit"
+    migrationState = "candidate_collapsed_v1"
+    textHash = "2a1433d8d9ef"
+    occurrenceCount = 1
+    activeOccurrenceCount = 1
+    sourceAreas = "main_game_code"
+    categories = "visible_review_candidate"
+    firstSourceFile = "code/dw.cpp"
+    firstLine = 174
+}
+
+String {
+    key = "game.source.software_microsoft_microsoft_games_mechcommander2_1_0"
+    text = "Software\\Microsoft\\Microsoft Games\\MechCommander2\\1.0"
+    source = "source_audit"
+    migrationState = "candidate_collapsed_v1"
+    textHash = "997bc04b33e5"
+    occurrenceCount = 1
+    activeOccurrenceCount = 1
+    sourceAreas = "main_game_code"
+    categories = "visible_review_candidate"
+    firstSourceFile = "code/mechcmd2.cpp"
+    firstLine = 848
+}
+
+String {
+    key = "game.source.sprite_speed"
+    text = "sprite speed"
+    source = "source_audit"
+    migrationState = "candidate_collapsed_v1"
+    textHash = "71a451f1fb5e"
+    occurrenceCount = 1
+    activeOccurrenceCount = 1
+    sourceAreas = "main_game_code"
+    categories = "visible_review_candidate"
+    firstSourceFile = "code/warrior.cpp"
+    firstLine = 6341
+}
+
+String {
+    key = "game.source.starting_up"
+    text = "starting up"
+    source = "source_audit"
+    migrationState = "candidate_collapsed_v1"
+    textHash = "b5ac37ec191c"
+    occurrenceCount = 2
+    activeOccurrenceCount = 2
+    sourceAreas = "main_game_code"
+    categories = "visible_review_candidate"
+    firstSourceFile = "code/gvehicl.cpp"
+    firstLine = 2186
+}
+
+String {
+    key = "game.source.swr_convert_error"
+    text = "swr_convert error"
+    source = "source_audit"
+    migrationState = "candidate_collapsed_v1"
+    textHash = "34cd948cc332"
+    occurrenceCount = 1
+    activeOccurrenceCount = 1
+    sourceAreas = "main_game_code"
+    categories = "user_or_debug_error_candidate"
+    firstSourceFile = "code/mc2video.cpp"
+    firstLine = 593
+}
+
+String {
+    key = "game.source.team_1"
+    text = "Team 1"
+    source = "editor.menu.rc"
+    migrationState = "candidate_collapsed_v1"
+}
+
+String {
+    key = "game.source.team_2"
+    text = "Team 2"
+    source = "editor.menu.rc"
+    migrationState = "candidate_collapsed_v1"
+}
+
+String {
+    key = "game.source.team_3"
+    text = "Team 3"
+    source = "editor.menu.rc"
+    migrationState = "candidate_collapsed_v1"
+}
+
+String {
+    key = "game.source.team_4"
+    text = "Team 4"
+    source = "editor.menu.rc"
+    migrationState = "candidate_collapsed_v1"
+}
+
+String {
+    key = "game.source.team_5"
+    text = "Team 5"
+    source = "editor.menu.rc"
+    migrationState = "candidate_collapsed_v1"
+}
+
+String {
+    key = "game.source.team_6"
+    text = "Team 6"
+    source = "editor.menu.rc"
+    migrationState = "candidate_collapsed_v1"
+}
+
+String {
+    key = "game.source.team_7"
+    text = "Team 7"
+    source = "editor.menu.rc"
+    migrationState = "candidate_collapsed_v1"
+}
+
+String {
+    key = "game.source.team_8"
+    text = "Team 8"
+    source = "editor.menu.rc"
+    migrationState = "candidate_collapsed_v1"
+}
+
+String {
+    key = "game.source.team_settings_objectives"
+    text = "Team Settings (Objectives)"
+    source = "editor.menu.rc"
+    migrationState = "candidate_collapsed_v1"
+}
+
+String {
+    key = "game.source.teleport_to_mouse"
+    text = "Teleport to mouse"
+    source = "source_audit"
+    migrationState = "candidate_collapsed_v1"
+    textHash = "8ca9436cb56b"
+    occurrenceCount = 1
+    activeOccurrenceCount = 1
+    sourceAreas = "main_game_code"
+    categories = "visible_review_candidate"
+    firstSourceFile = "code/mechcmd2.cpp"
+    firstLine = 578
+}
+
+String {
+    key = "game.source.terrain_geometry"
+    text = "Terrain Geometry"
+    source = "source_audit"
+    migrationState = "candidate_collapsed_v1"
+    textHash = "81b35c917437"
+    occurrenceCount = 1
+    activeOccurrenceCount = 1
+    sourceAreas = "main_game_code"
+    categories = "visible_review_candidate"
+    firstSourceFile = "code/mission2.cpp"
+    firstLine = 150
+}
+
+String {
+    key = "game.source.terrain_object_appearances_warmed_during_mission_load"
+    text = "Terrain object appearances warmed during mission load"
+    source = "source_audit"
+    migrationState = "candidate_collapsed_v1"
+    textHash = "518342b364c5"
+    occurrenceCount = 1
+    activeOccurrenceCount = 1
+    sourceAreas = "main_game_code"
+    categories = "visible_review_candidate"
+    firstSourceFile = "code/objmgr.cpp"
+    firstLine = 1124
+}
+
+String {
+    key = "game.source.terrain_update"
+    text = "Terrain Update"
+    source = "source_audit"
+    migrationState = "candidate_collapsed_v1"
+    textHash = "d5df85102f40"
+    occurrenceCount = 1
+    activeOccurrenceCount = 1
+    sourceAreas = "main_game_code"
+    categories = "visible_review_candidate"
+    firstSourceFile = "code/mission2.cpp"
+    firstLine = 146
+}
+
+String {
+    key = "game.source.terrainobject_primeappearanceformissionload_appearancesetup"
+    text = "TerrainObject::primeAppearanceForMissionLoad appearanceSetup"
+    source = "source_audit"
+    migrationState = "candidate_collapsed_v1"
+    textHash = "51d439bdf66b"
+    occurrenceCount = 1
+    activeOccurrenceCount = 1
+    sourceAreas = "main_game_code"
+    categories = "visible_review_candidate"
+    firstSourceFile = "code/terrobj.cpp"
+    firstLine = 510
+}
+
+String {
+    key = "game.source.terrainobject_primeappearanceformissionload_justcreated"
+    text = "TerrainObject::primeAppearanceForMissionLoad justCreated"
+    source = "source_audit"
+    migrationState = "candidate_collapsed_v1"
+    textHash = "5fd08c78a759"
+    occurrenceCount = 1
+    activeOccurrenceCount = 1
+    sourceAreas = "main_game_code"
+    categories = "visible_review_candidate"
+    firstSourceFile = "code/terrobj.cpp"
+    firstLine = 464
+}
+
+String {
+    key = "game.source.terrainobject_primeappearanceformissionload_recalcbounds"
+    text = "TerrainObject::primeAppearanceForMissionLoad recalcBounds"
+    source = "source_audit"
+    migrationState = "candidate_collapsed_v1"
+    textHash = "8be891618c4f"
+    occurrenceCount = 1
+    activeOccurrenceCount = 1
+    sourceAreas = "main_game_code"
+    categories = "visible_review_candidate"
+    firstSourceFile = "code/terrobj.cpp"
+    firstLine = 517
+}
+
+String {
+    key = "game.source.terrainobject_update_appearancesetup"
+    text = "TerrainObject::update appearanceSetup"
+    source = "source_audit"
+    migrationState = "candidate_collapsed_v1"
+    textHash = "549603cc442e"
+    occurrenceCount = 1
+    activeOccurrenceCount = 1
+    sourceAreas = "main_game_code"
+    categories = "visible_review_candidate"
+    firstSourceFile = "code/terrobj.cpp"
+    firstLine = 593
+}
+
+String {
+    key = "game.source.terrainobject_update_appearanceupdate"
+    text = "TerrainObject::update appearanceUpdate"
+    source = "source_audit"
+    migrationState = "candidate_collapsed_v1"
+    textHash = "c917b11ae4d3"
+    occurrenceCount = 1
+    activeOccurrenceCount = 1
+    sourceAreas = "main_game_code"
+    categories = "visible_review_candidate"
+    firstSourceFile = "code/terrobj.cpp"
+    firstLine = 607
+}
+
+String {
+    key = "game.source.terrainobject_update_dusteffect"
+    text = "TerrainObject::update dustEffect"
+    source = "source_audit"
+    migrationState = "candidate_collapsed_v1"
+    textHash = "d79c8f05db66"
+    occurrenceCount = 1
+    activeOccurrenceCount = 1
+    sourceAreas = "main_game_code"
+    categories = "visible_review_candidate"
+    firstSourceFile = "code/terrobj.cpp"
+    firstLine = 613
+}
+
+String {
+    key = "game.source.terrainobject_update_justcreated"
+    text = "TerrainObject::update justCreated"
+    source = "source_audit"
+    migrationState = "candidate_collapsed_v1"
+    textHash = "6d792893272d"
+    occurrenceCount = 1
+    activeOccurrenceCount = 1
+    sourceAreas = "main_game_code"
+    categories = "visible_review_candidate"
+    firstSourceFile = "code/terrobj.cpp"
+    firstLine = 528
+}
+
+String {
+    key = "game.source.terrainobject_update_recalcbounds"
+    text = "TerrainObject::update recalcBounds"
+    source = "source_audit"
+    migrationState = "candidate_collapsed_v1"
+    textHash = "c4a98f2e4a38"
+    occurrenceCount = 1
+    activeOccurrenceCount = 1
+    sourceAreas = "main_game_code"
+    categories = "visible_review_candidate"
+    firstSourceFile = "code/terrobj.cpp"
+    firstLine = 599
+}
+
+String {
+    key = "game.source.terrainobjects_active_blocks"
+    text = "TerrainObjects active blocks"
+    source = "source_audit"
+    migrationState = "candidate_collapsed_v1"
+    textHash = "cb6d0a3fdf3d"
+    occurrenceCount = 1
+    activeOccurrenceCount = 1
+    sourceAreas = "main_game_code"
+    categories = "visible_review_candidate"
+    firstSourceFile = "code/objmgr.cpp"
+    firstLine = 1788
+}
+
+String {
+    key = "game.source.terrainobjects_gates_updated"
+    text = "TerrainObjects gates updated"
+    source = "source_audit"
+    migrationState = "candidate_collapsed_v1"
+    textHash = "922b3542fd62"
+    occurrenceCount = 1
+    activeOccurrenceCount = 1
+    sourceAreas = "main_game_code"
+    categories = "visible_review_candidate"
+    firstSourceFile = "code/objmgr.cpp"
+    firstLine = 1787
+}
+
+String {
+    key = "game.source.terrainobjects_specialbuildings_updated"
+    text = "TerrainObjects specialBuildings updated"
+    source = "source_audit"
+    migrationState = "candidate_collapsed_v1"
+    textHash = "f0216ee78798"
+    occurrenceCount = 1
+    activeOccurrenceCount = 1
+    sourceAreas = "main_game_code"
+    categories = "visible_review_candidate"
+    firstSourceFile = "code/objmgr.cpp"
+    firstLine = 1786
+}
+
+String {
+    key = "game.source.terrainobjects_visible_objects_updated"
+    text = "TerrainObjects visible objects updated"
+    source = "source_audit"
+    migrationState = "candidate_collapsed_v1"
+    textHash = "634eb5967b49"
+    occurrenceCount = 1
+    activeOccurrenceCount = 1
+    sourceAreas = "main_game_code"
+    categories = "visible_review_candidate"
+    firstSourceFile = "code/objmgr.cpp"
+    firstLine = 1789
+}
+
+String {
+    key = "game.source.textpercentd"
+    text = "Text%d"
+    source = "source_audit"
+    migrationState = "candidate_collapsed_v1"
+    textHash = "4557d5871047"
+    occurrenceCount = 3
+    activeOccurrenceCount = 3
+    sourceAreas = "main_game_code"
+    categories = "visible_review_candidate"
+    firstSourceFile = "code/mpaddaiplayer.cpp"
+    firstLine = 110
+}
+
+String {
+    key = "game.source.the_advantages_of_deploying_a_jump_jet_equipped_mech_should_61ef0a14"
+    text = "The advantages of deploying a Jump Jet-equipped 'Mech should be considered before any mission.\n\nScout 'Mechs can acquire excellent vantage points for observing enemy installations or battle team movements by vaulting to high ground from the leeward side.\n\nHaving a jump 'Mech in any weight class can help with both dogfights in open terrain and assault/siege attacks. In dogfights, fire-support 'Mechs can grab high ground before foot-bound 'Mechs and serially destroy enemy 'Mechs. 'Mechs on the valley floor, for example, would already be engaged with the jumper's battlemates and could offer diminished defensive fire. Such a jump 'Mech can turn any face-off beneath it into a two-on-one fight with a swivel of its torso.\n\nIn a base assault or siege maneuver, jumpers can hurdle base walls and capture interior structures such as turret and gate controls. Without a jumper ï¿½Mech on the team, the others have to use prolonged barrages to \"open the door.\"\n\n\n\n"
+    source = "source_audit"
+    migrationState = "candidate_collapsed_v1"
+    textHash = "61ef0a1492e4"
+    occurrenceCount = 2
+    activeOccurrenceCount = 0
+    sourceAreas = "test_scripts"
+    categories = "resource_visible_candidate;runtime_visible_candidate"
+    firstSourceFile = "test_scripts/res_conv/Script1.rc"
+    firstLine = 3262
+}
+
+String {
+    key = "game.source.this_should_not_happen_if_the_gate_is_respected"
+    text = "This should not happen if the gate is respected."
+    source = "source_audit"
+    migrationState = "candidate_collapsed_v1"
+    textHash = "4e5a0121f35d"
+    occurrenceCount = 1
+    activeOccurrenceCount = 1
+    sourceAreas = "main_game_code"
+    categories = "visible_review_candidate"
+    firstSourceFile = "code/mc2video.cpp"
+    firstLine = 69
+}
+
+String {
+    key = "game.source.total_los_calc_time"
+    text = "Total LOS Calc Time"
+    source = "source_audit"
+    migrationState = "candidate_collapsed_v1"
+    textHash = "8d0373049877"
+    occurrenceCount = 1
+    activeOccurrenceCount = 1
+    sourceAreas = "main_game_code"
+    categories = "visible_review_candidate"
+    firstSourceFile = "code/mission2.cpp"
+    firstLine = 162
+}
+
+String {
+    key = "game.source.total_mission_time"
+    text = "Total Mission Time"
+    source = "source_audit"
+    migrationState = "candidate_collapsed_v1"
+    textHash = "72194f45f3fc"
+    occurrenceCount = 1
+    activeOccurrenceCount = 1
+    sourceAreas = "main_game_code"
+    categories = "visible_review_candidate"
+    firstSourceFile = "code/mission2.cpp"
+    firstLine = 160
+}
+
+String {
+    key = "game.source.traverse_path"
+    text = "traverse path"
+    source = "source_audit"
+    migrationState = "candidate_collapsed_v1"
+    textHash = "b687fbafd5ec"
+    occurrenceCount = 1
+    activeOccurrenceCount = 1
+    sourceAreas = "main_game_code"
+    categories = "visible_review_candidate"
+    firstSourceFile = "code/tacordr.cpp"
+    firstLine = 2084
+}
+
+String {
+    key = "game.source.turret"
+    text = "turret:   "
+    source = "source_audit"
+    migrationState = "candidate_collapsed_v1"
+    textHash = "21aa15433ed6"
+    occurrenceCount = 1
+    activeOccurrenceCount = 1
+    sourceAreas = "main_game_code"
+    categories = "visible_review_candidate"
+    firstSourceFile = "code/mover.cpp"
+    firstLine = 2609
+}
+
+String {
+    key = "game.source.txm_mgr_update"
+    text = "TXM Mgr Update"
+    source = "source_audit"
+    migrationState = "candidate_collapsed_v1"
+    textHash = "2a7081fb2c16"
+    occurrenceCount = 1
+    activeOccurrenceCount = 1
+    sourceAreas = "main_game_code"
+    categories = "visible_review_candidate"
+    firstSourceFile = "code/mission2.cpp"
+    firstLine = 153
+}
+
+String {
+    key = "game.source.unit_name"
+    text = "UNIT NAME..."
+    source = "source_audit"
+    migrationState = "candidate_collapsed_v1"
+    textHash = "e8e15f88cb07"
+    occurrenceCount = 1
+    activeOccurrenceCount = 1
+    sourceAreas = "main_game_code"
+    categories = "visible_review_candidate"
+    firstSourceFile = "code/mpsetuparea.cpp"
+    firstLine = 199
+}
+
+String {
+    key = "game.source.unlink"
+    text = "UnLink"
+    source = "editor.menu.rc"
+    migrationState = "candidate_collapsed_v1"
+}
+
+String {
+    key = "game.source.updaterenderers_missionrender"
+    text = "UpdateRenderers missionRender"
+    source = "source_audit"
+    migrationState = "candidate_collapsed_v1"
+    textHash = "9707ffc78459"
+    occurrenceCount = 1
+    activeOccurrenceCount = 1
+    sourceAreas = "main_game_code"
+    categories = "visible_review_candidate"
+    firstSourceFile = "code/mechcmd2.cpp"
+    firstLine = 729
+}
+
+String {
+    key = "game.source.updaterenderers_optionsrender"
+    text = "UpdateRenderers optionsRender"
+    source = "source_audit"
+    migrationState = "candidate_collapsed_v1"
+    textHash = "f5a71a8b47aa"
+    occurrenceCount = 1
+    activeOccurrenceCount = 1
+    sourceAreas = "main_game_code"
+    categories = "visible_review_candidate"
+    firstSourceFile = "code/mechcmd2.cpp"
+    firstLine = 747
+}
+
+String {
+    key = "game.source.updaterenderers_setupstates"
+    text = "UpdateRenderers setupStates"
+    source = "source_audit"
+    migrationState = "candidate_collapsed_v1"
+    textHash = "d51d6b261336"
+    occurrenceCount = 1
+    activeOccurrenceCount = 1
+    sourceAreas = "main_game_code"
+    categories = "visible_review_candidate"
+    firstSourceFile = "code/mechcmd2.cpp"
+    firstLine = 709
+}
+
+String {
+    key = "game.source.updaterenderers_uirender"
+    text = "UpdateRenderers uiRender"
+    source = "source_audit"
+    migrationState = "candidate_collapsed_v1"
+    textHash = "db547cc00ac4"
+    occurrenceCount = 1
+    activeOccurrenceCount = 1
+    sourceAreas = "main_game_code"
+    categories = "visible_review_candidate"
+    firstSourceFile = "code/mechcmd2.cpp"
+    firstLine = 759
+}
+
+String {
+    key = "game.source.use_goal_planning_toggle_on_selected_movers"
+    text = "Use Goal Planning (toggle on selected movers)"
+    source = "source_audit"
+    migrationState = "candidate_collapsed_v1"
+    textHash = "b8c63ab5a52a"
+    occurrenceCount = 1
+    activeOccurrenceCount = 1
+    sourceAreas = "main_game_code"
+    categories = "visible_review_candidate"
+    firstSourceFile = "code/mechcmd2.cpp"
+    firstLine = 618
+}
+
+String {
+    key = "game.source.video_playback_disabled_for_this_session"
+    text = "Video playback disabled for this session."
+    source = "source_audit"
+    migrationState = "candidate_collapsed_v1"
+    textHash = "528ebcecdcb0"
+    occurrenceCount = 1
+    activeOccurrenceCount = 1
+    sourceAreas = "main_game_code"
+    categories = "visible_review_candidate"
+    firstSourceFile = "code/mc2video.cpp"
+    firstLine = 117
+}
+
+String {
+    key = "game.source.visual"
+    text = "VISUAL  "
+    source = "source_audit"
+    migrationState = "candidate_collapsed_v1"
+    textHash = "08ffa1639c95"
+    occurrenceCount = 1
+    activeOccurrenceCount = 1
+    sourceAreas = "main_game_code"
+    categories = "visible_review_candidate"
+    firstSourceFile = "code/mover.cpp"
+    firstLine = 2419
+}
+
+String {
+    key = "game.source.waypoints_done"
+    text = "waypoints done"
+    source = "source_audit"
+    migrationState = "candidate_collapsed_v1"
+    textHash = "c49d7c2fb382"
+    occurrenceCount = 1
+    activeOccurrenceCount = 1
+    sourceAreas = "main_game_code"
+    categories = "visible_review_candidate"
+    firstSourceFile = "code/tacordr.cpp"
+    firstLine = 2108
+}
+
+String {
+    key = "game.source.weather_update"
+    text = "Weather Update"
+    source = "source_audit"
+    migrationState = "candidate_collapsed_v1"
+    textHash = "ac521963b873"
+    occurrenceCount = 1
+    activeOccurrenceCount = 1
+    sourceAreas = "main_game_code"
+    categories = "visible_review_candidate"
+    firstSourceFile = "code/mission2.cpp"
+    firstLine = 148
+}
+
+String {
+    key = "game.source.will_now_check_your_computer_s_hardware"
+    text = "will now check your computer's hardware"
+    source = "source_audit"
+    migrationState = "candidate_collapsed_v1"
+    textHash = "bdeb5bf6d784"
+    occurrenceCount = 1
+    activeOccurrenceCount = 1
+    sourceAreas = "main_game_code"
+    categories = "visible_review_candidate"
+    firstSourceFile = "code/mechcmd2.cpp"
+    firstLine = 974
+}
+
+String {
+    key = "game.source.worm_1_filter_avi"
+    text = "Worm 1 filter.avi"
+    source = "source_audit"
+    migrationState = "candidate_collapsed_v1"
+    textHash = "6a349229ebb6"
+    occurrenceCount = 1
+    activeOccurrenceCount = 1
+    sourceAreas = "main_game_code"
+    categories = "visible_review_candidate"
+    firstSourceFile = "code/controlgui.cpp"
+    firstLine = 3236
+}
+
