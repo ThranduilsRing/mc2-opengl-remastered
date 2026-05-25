@@ -1,0 +1,91 @@
+MechCommander 2 - OpenGL Remastered v0.4 beta
+==============================================
+
+QUICK START
+-----------
+
+1) Extract ALL six zips into the SAME folder.
+   - mc2-remastered-engine.zip
+   - mc2-gamedata.zip
+   - mc2-movies.zip
+   - mc2-burnins-4x-pt1.zip
+   - mc2-burnins-4x-pt2.zip
+   - mc2-art.zip
+
+   The folders inside the zips merge together. Do NOT extract each
+   zip into its own subfolder.
+
+2) Do NOT install under "C:\Program Files\" or any folder that
+   requires Administrator to write to. The game and editor write
+   logs and save files into their own folder; if that folder is
+   protected, saves and configuration may silently fail.
+
+   Recommended locations:
+   - C:\Games\MC2-Remastered\
+   - D:\Games\MC2-Remastered\
+   - %USERPROFILE%\Games\MC2-Remastered\
+
+3) Double-click  run-mc2.bat  to play.
+
+   - For the editor:        run-editor.bat
+   - To capture a crash log: run-with-log.bat (writes stderr.log)
+
+
+SMARTSCREEN / "WINDOWS PROTECTED YOUR PC"
+-----------------------------------------
+
+The .exe files are not code-signed. Windows SmartScreen will warn
+the first time you launch them. To run anyway:
+
+   - Click "More info" in the blue popup.
+   - Click "Run anyway".
+
+You only need to do this once per file.
+
+If Windows Defender quarantines a file, restore it from the
+Defender history. False positives on unsigned game binaries are
+common.
+
+
+VISUAL C++ RUNTIME
+------------------
+
+The game requires the Microsoft Visual C++ 2015-2022 Redistributable
+(x64). Most modern Windows installs already have it; if mc2.exe
+fails to start with a "VCRUNTIME140.dll" or "MSVCP140.dll" error,
+download and install it from Microsoft:
+
+   https://aka.ms/vs/17/release/vc_redist.x64.exe
+
+(This is a one-line install. Restart not required.)
+
+
+REQUIREMENTS
+------------
+
+- Windows 10 or 11 (64-bit)
+- GPU with OpenGL 4.3 support
+  (NVIDIA GTX 900 / AMD RX 400 / Intel Iris Xe or newer)
+- ~5 GB free disk space
+
+
+KNOWN ISSUES IN THIS BETA
+-------------------------
+
+- Particle system uses placeholder animations in places.
+- Some small static props pop in and out near tile boundaries.
+- Editor logs a "Failed loading editores.dll" warning and a
+  warriors-mission name assert on startup; both are pre-existing
+  warnings, not fatal — the editor functions normally.
+- Shadow stutter on large camera jumps; pans smoothly.
+
+See RELEASE_README.md for the full list and GitHub-issue triage.
+
+
+WHERE TO FILE BUGS
+------------------
+
+   https://github.com/ThranduilsRing/mc2-opengl-remastered/issues
+
+Please attach  stderr.log  (game) or  editor-stderr.log  (editor)
+to any bug report.

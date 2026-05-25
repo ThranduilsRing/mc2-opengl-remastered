@@ -169,7 +169,14 @@ if [ -f "$DEPLOY/run-editor.bat" ]; then
     cp "$DEPLOY/run-editor.bat" "$STAGE/engine/"
 fi
 # Runtime DLLs at the deploy root (SDL2, GLEW, FFmpeg, MSVC redist, etc).
-for f in "$DEPLOY"/*.dll "$DEPLOY"/run-with-log.bat; do
+for f in "$DEPLOY"/*.dll "$DEPLOY"/run-with-log.bat "$DEPLOY"/run-mc2.bat; do
+    [ -e "$f" ] && cp "$f" "$STAGE/engine/"
+done
+# Idiot-proof docs at the install root. INSTALL.txt covers SmartScreen,
+# VC++ runtime, "don't install under Program Files", and the bat picker.
+# RELEASE_README has the full feature list, known issues, and GH issue
+# triage. license.txt + EULA.txt are required for any public distribution.
+for f in "$DEPLOY"/INSTALL.txt "$DEPLOY"/RELEASE_README.md "$DEPLOY"/license.txt "$DEPLOY"/EULA.txt; do
     [ -e "$f" ] && cp "$f" "$STAGE/engine/"
 done
 # Editor splashes at the deploy root (esplash.bmp, tacsplash.bmp).
