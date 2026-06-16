@@ -5871,6 +5871,36 @@ String {
 }
 
 String {
+    key = "legacy.mc2res.26700"
+    text = "FORCE 4:3 ASPECT"
+    legacyId = 26700
+    legacySymbol = "IDS_OPTIONS_FORCE_43_ASPECT"
+    source = "mc2res"
+    sourceKey = "ui.options.force43aspect"
+    category = "ui_common"
+}
+
+String {
+    key = "legacy.mc2res.26701"
+    text = "AgencyFB11.d3f"
+    legacyId = 26701
+    legacySymbol = "IDS_OPTIONS_FORCE_43_ASPECT_FONT"
+    source = "mc2res"
+    sourceKey = "ui.options.force43aspect.font"
+    category = "ui_common"
+}
+
+String {
+    key = "legacy.mc2res.26702"
+    text = "FORCE 4:3 ASPECT     When enabled, the game renders in a 4:3 viewport with black bars on the sides. Prevents stretching on widescreen and ultrawide monitors."
+    legacyId = 26702
+    legacySymbol = "IDS_OPTIONS_HELP_FORCE_43_ASPECT"
+    source = "mc2res"
+    sourceKey = "ui.options.help.force43aspect"
+    category = "ui_common"
+}
+
+String {
     key = "legacy.mc2res.27000"
     text = " "
     legacyId = 27000

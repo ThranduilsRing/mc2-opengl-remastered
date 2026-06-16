@@ -9,6 +9,8 @@
 #include<stdio.h>
 #include<cstdlib>
 
+extern bool g_force43Aspect;
+
 //
 // The mouse position and buttons are read once a frame.
 //
@@ -44,10 +46,30 @@ void __stdcall gos_GetMouseInfo( float* pXPosition, float* pYPosition, int* pXDe
 
     const input::MouseInfo* mi = input::getMouseInfo();
 
-    if(pXPosition)
-        *pXPosition = mi->x_ / w;
-    if(pYPosition)
-        *pYPosition = mi->y_ / h;
+    if (g_force43Aspect) {
+        const float kTargetAspect = 4.0f / 3.0f;
+        float vpW, vpH, vpX, vpY;
+        if (w / h > kTargetAspect) {
+            vpH = h;
+            vpW = h * kTargetAspect;
+            vpX = (w - vpW) * 0.5f;
+            vpY = 0.0f;
+        } else {
+            vpW = w;
+            vpH = w / kTargetAspect;
+            vpX = 0.0f;
+            vpY = (h - vpH) * 0.5f;
+        }
+        if (pXPosition)
+            *pXPosition = (mi->x_ - vpX) / vpW;
+        if (pYPosition)
+            *pYPosition = (mi->y_ - vpY) / vpH;
+    } else {
+        if (pXPosition)
+            *pXPosition = mi->x_ / w;
+        if (pYPosition)
+            *pYPosition = mi->y_ / h;
+    }
 
     // MC2_MOUSE_RECON: env-gated one-shot-ish confirm log. Prints the raw mouse,
     // both candidate denominators, and the resulting normalized coord so the
@@ -115,9 +137,28 @@ void __stdcall gos_SetMousePosition( float XPosition, float YPosition )
         // 800x600). SDL_WarpMouseInWindow consumes the same physical space here.
         const float w = (float)Environment.drawableWidth;
         const float h = (float)Environment.drawableHeight;
-        SDL_WarpMouseInWindow(g_sdl_window,
-                              (int)(XPosition * w),
-                              (int)(YPosition * h));
+        int px, py;
+        if (g_force43Aspect) {
+            const float kTargetAspect = 4.0f / 3.0f;
+            float vpW, vpH, vpX, vpY;
+            if (w / h > kTargetAspect) {
+                vpH = h;
+                vpW = h * kTargetAspect;
+                vpX = (w - vpW) * 0.5f;
+                vpY = 0.0f;
+            } else {
+                vpW = w;
+                vpH = w / kTargetAspect;
+                vpX = 0.0f;
+                vpY = (h - vpH) * 0.5f;
+            }
+            px = (int)(XPosition * vpW + vpX);
+            py = (int)(YPosition * vpH + vpY);
+        } else {
+            px = (int)(XPosition * w);
+            py = (int)(YPosition * h);
+        }
+        SDL_WarpMouseInWindow(g_sdl_window, px, py);
     }
 }
 

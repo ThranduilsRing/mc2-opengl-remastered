@@ -20,6 +20,8 @@
 #include <vector>
 #include <SDL2/SDL.h>
 
+extern bool g_force43Aspect;
+
 namespace {
 
 // M1.5 C1 fix + M3 plan-review fix: centralized scene-FBO draw-buffer
@@ -1819,9 +1821,35 @@ void gosPostProcess::endScene()
 
     runBloom();
 
-    // Bind default framebuffer
+    // Bind default framebuffer and blit scene into a centered 4:3 viewport
+    // (pillarbox on ultrawide, letterbox on tall displays).
     glBindFramebuffer(GL_FRAMEBUFFER, 0);
-    glViewport(0, 0, width_, height_);
+
+    const int screenW = Environment.drawableWidth;
+    const int screenH = Environment.drawableHeight;
+    if (g_force43Aspect) {
+        const float kTargetAspect = 4.0f / 3.0f;
+        int blitW, blitH, blitX, blitY;
+        if ((float)screenW / (float)screenH > kTargetAspect) {
+            blitH = screenH;
+            blitW = (int)(screenH * kTargetAspect);
+            blitX = (screenW - blitW) / 2;
+            blitY = 0;
+        } else {
+            blitW = screenW;
+            blitH = (int)(screenW / kTargetAspect);
+            blitX = 0;
+            blitY = (screenH - blitH) / 2;
+        }
+
+        glViewport(0, 0, screenW, screenH);
+        glClearColor(0.0f, 0.0f, 0.0f, 1.0f);
+        glClear(GL_COLOR_BUFFER_BIT);
+
+        glViewport(blitX, blitY, blitW, blitH);
+    } else {
+        glViewport(0, 0, width_, height_);
+    }
 
     // Disable depth test and face culling for fullscreen quad
     glDisable(GL_DEPTH_TEST);

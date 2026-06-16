@@ -33,6 +33,8 @@ extern bool useLeftRightMouseProfile;
 extern bool useNonWeaponEffects;
 extern bool useHighObjectDetail;
 
+extern bool g_force43Aspect;
+
 extern long GameVisibleVertices;
 
 extern volatile bool mc2UseAsyncMouse;		//Should mouse draw and update in separate thread?
@@ -80,6 +82,8 @@ CPrefs::CPrefs() {
 
 	scrollSpeedMult = 2.0f;
 	zoomSpeedMult   = 2.0f;
+
+	force43Aspect = true;
 
 #if 0
 	FilterState = gos_FilterNone;
@@ -285,6 +289,10 @@ int CPrefs::load( const char* pFileName ) {
 			if ( result != NO_ERR )
 				zoomSpeedMult = 2.0f;
 
+			result = prefsFile->readIdBoolean( "Force43Aspect", force43Aspect );
+			if ( result != NO_ERR )
+				force43Aspect = true;
+
 		}
 
 	}
@@ -380,6 +388,8 @@ int CPrefs::save() {
 			result = prefsFile->writeIdFloat( "ScrollSpeedMult", scrollSpeedMult );
 			result = prefsFile->writeIdFloat( "ZoomSpeedMult",   zoomSpeedMult );
 
+			result = prefsFile->writeIdBoolean( "Force43Aspect", force43Aspect );
+
 		}
 	}
 #ifndef VIEWER	
@@ -431,6 +441,8 @@ int CPrefs::applyPrefs(bool applyRes) {
 	::useLeftRightMouseProfile = this->useLeftRightMouseProfile;
 	::useNonWeaponEffects = this->useNonWeaponEffects;
 	::useHighObjectDetail = this->useHighObjectDetail;
+
+	::g_force43Aspect = this->force43Aspect;
 
 	int bitDepth = this->bitDepth;
 

@@ -506,6 +506,8 @@ static void process_events( void ) {
 
 extern bool g_disable_quads;
 
+bool g_force43Aspect = true;
+
 static void draw_screen( void )
 {
     g_disable_quads = false;
@@ -522,8 +524,22 @@ static void draw_screen( void )
 
     glCullFace(GL_FRONT);
 
-	const int viewport_w = Environment.drawableWidth;
-	const int viewport_h = Environment.drawableHeight;
+	int viewport_w, viewport_h;
+	if (g_force43Aspect) {
+		const float kTargetAspect = 4.0f / 3.0f;
+		const int drawW = Environment.drawableWidth;
+		const int drawH = Environment.drawableHeight;
+		if ((float)drawW / (float)drawH > kTargetAspect) {
+			viewport_h = drawH;
+			viewport_w = (int)(drawH * kTargetAspect);
+		} else {
+			viewport_w = drawW;
+			viewport_h = (int)(drawW / kTargetAspect);
+		}
+	} else {
+		viewport_w = Environment.drawableWidth;
+		viewport_h = Environment.drawableHeight;
+	}
 
     if (pp) {
         pp->resize(viewport_w, viewport_h);

@@ -72,6 +72,7 @@ extern SoundSystem *sndSystem;
 #define MSG_ASYNC_MOUSE		307
 #define MSG_HARDWARE_RASTERIZER 308
 #define MSG_RESET	309
+#define MSG_FORCE_43_ASPECT	310
 
 #define MSG_GREEN	400
 #define MSG_REGULAR	401
@@ -599,6 +600,7 @@ void OptionsGraphics::end()
 	prefs.useLocalShadows = getButton( MSG_LOCAL_SHADOWS )->isPressed();
 	prefs.asyncMouse = getButton( MSG_ASYNC_MOUSE )->isPressed();
 	prefs.renderer = getButton( MSG_HARDWARE_RASTERIZER )->isPressed() ? 0 : 3;
+	prefs.force43Aspect = getButton( MSG_FORCE_43_ASPECT )->isPressed();
 
 	int sel = resolutionList.GetSelectedItem();
 	if ( sel > -1 )
@@ -684,6 +686,7 @@ void OptionsGraphics::reset(const CPrefs& newPrefs)
 	getButton( MSG_LOCAL_SHADOWS )->press( newPrefs.useLocalShadows );
 	getButton( MSG_ASYNC_MOUSE )->press( newPrefs.asyncMouse );
 	getButton( MSG_HARDWARE_RASTERIZER )->press( (newPrefs.renderer != 3) );
+	getButton( MSG_FORCE_43_ASPECT )->press( newPrefs.force43Aspect );
 
     // find index of mode
     int index = -1;

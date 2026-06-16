@@ -62,6 +62,8 @@ public:
 	bool	saveTranscripts;
 	bool	tutorials;
 
+	bool	force43Aspect;
+
 	// TODO(options-screen): expose these as sliders in the Options screen.
 	// Range suggestion: 0.5x–4.0x. Hook up to the Camera Speed / Zoom Speed
 	// sliders once UI controls are added in the CPrefs options panel.
