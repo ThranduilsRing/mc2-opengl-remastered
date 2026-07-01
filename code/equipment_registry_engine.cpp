@@ -13,6 +13,8 @@
 #include "equipment_registry.h"
 #include "unitprofile.h"           // mc2UnitProfileDataEnabled()
 #include "cmponent.h"              // MasterComponent + masterList
+#include "inifile.h"               // FitIniFile (EQUIPMENT-SOURCE-FLIP-SWITCH-1 overlay)
+#include "file.h"                  // fileExists
 
 #include <cstdio>
 
@@ -81,4 +83,147 @@ void buildAndDumpEquipmentRegistryIfEnabled() {
     }
     if (shown == 0)
         printf("[EQUIPMENT-REGISTRY-FACADE-1]   (no enabled entries -- masterList not loaded?)\n");
+}
+
+// ---------------------------------------------------------------------------
+// EQUIPMENT-SOURCE-FLIP-SWITCH-1 -- gated stat OVERLAY (engine-only file I/O).
+//
+// When MC2_EQUIPMENT_DEFINITION_SOURCE=generated, this runs ONCE right after
+// loadMasterList and OVERWRITES only the green weapon stat fields on each matched
+// masterList row from the deployed generated EquipmentDefinition sidecars under
+// data/defs/equipment/core/<slug>/equipmentdef.fit. It is the ONLY new write path
+// and is bounded (one pass over masterList). Firing/loadout/inventory code is
+// UNTOUCHED and none of the ~180 masterList read sites change -- they simply read
+// the (possibly generated-sourced) stat values as always.
+//
+// Matching: for each populated row we derive its core:<slug> id EXACTLY as the
+// registry/converter do, open that def, and REQUIRE its `l LegacyMasterId` to
+// equal the row ordinal before applying -- so the overlay is keyed by
+// legacyMasterId, never by slug alone. A row with no generated def, a def whose
+// LegacyMasterId mismatches, or a non-weapon def keeps its legacy stats
+// (per-field / per-row fallback). Gate-OFF -> function returns immediately with
+// zero file I/O -> byte-identical.
+//
+// The pure gate / range-bucket / value-selection logic lives in
+// equipment_registry.h (doctest target); this TU owns only file open + block
+// seek + the per-component source-flip log line.
+namespace {
+const char* kGeneratedEquipmentRoot = "data/defs/equipment/core/";
+
+// Read the green weapon stats present in an already-opened [WeaponCombatStats]/
+// [WeaponAmmo] generated def into `out`. Absent fields leave has*=false so the
+// caller keeps the legacy value. Assumes the file cursor is fresh (pre-seek).
+bool readGeneratedWeaponStats(FitIniFile& gen, GeneratedWeaponStats& out) {
+    // WeaponCombatStats block: damage / heat / recycle / range bucket / CV.
+    if (gen.seekBlock("WeaponCombatStats") == NO_ERR) {
+        float f;
+        if (gen.readIdFloat("Damage", f) == NO_ERR)  { out.hasDamage = true;  out.damage = f; }
+        if (gen.readIdFloat("Heat", f) == NO_ERR)    { out.hasHeat = true;    out.heat = f; }
+        if (gen.readIdFloat("Recycle", f) == NO_ERR) { out.hasRecycle = true; out.recycle = f; }
+        char bucket[32] = {0};
+        if (gen.readIdString("RangeBucket", bucket, sizeof(bucket)) == NO_ERR && bucket[0]) {
+            int ord = mc2GeneratedRangeBucketToOrdinal(bucket, -1);
+            if (ord >= 0) { out.hasRangeBucket = true; out.rangeOrdinal = ord; }
+        }
+        if (gen.readIdFloat("CombatValue", f) == NO_ERR) { out.hasCombatValue = true; out.combatValue = f; }
+    }
+    // WeaponAmmo block: ammo linkage ordinal.
+    if (gen.seekBlock("WeaponAmmo") == NO_ERR) {
+        long l;
+        if (gen.readIdLong("AmmoMasterId", l) == NO_ERR) { out.hasAmmoMasterId = true; out.ammoMasterId = l; }
+    }
+    return out.any();
+}
+} // namespace
+
+// Returns the number of rows whose stats were overlaid from generated data.
+size_t overlayGeneratedEquipmentStatsIfEnabled() {
+    if (!mc2EquipmentDefinitionSourceIsGenerated())   // gate legacy (default) -> no-op
+        return 0;
+    if (!MasterComponent::masterList)
+        return 0;
+
+    size_t overlaid = 0;
+    int    logged   = 0;
+    for (long i = 0; i < MasterComponent::numComponents; ++i) {
+        MasterComponent& mc = MasterComponent::masterList[i];
+
+        long        ord = mc.getMasterID();
+        const char* nm  = mc.getName();
+        if (ord < 0 || !nm || !nm[0])        // default-off placeholder row
+            continue;
+        // Only weapon rows carry the green weapon stats we overlay.
+        if (componentFormToKind((int)mc.getForm()) != EQ_WEAPON)
+            continue;
+
+        // core:<slug>; sidecar dir is core/<slug>/equipmentdef.fit (slug == id
+        // after the "core:" prefix, mirroring the converter's write path).
+        std::string qid  = coreQualifiedIdFor(nm, ord);
+        std::string slug = qid.substr(qid.find(':') + 1);
+
+        char path[256];
+        std::snprintf(path, sizeof(path), "%s%s/equipmentdef.fit",
+                      kGeneratedEquipmentRoot, slug.c_str());
+        if (!fileExists(path))               // no generated def -> keep legacy
+            continue;
+
+        FitIniFile gen;
+        if (gen.open(path) != NO_ERR)
+            continue;
+
+        // Key the overlay on legacyMasterId: require the def's LegacyMasterId to
+        // equal this row's ordinal before touching any stat.
+        long genLegacyId = -1;
+        if (gen.seekBlock("Equipment") != NO_ERR ||
+            gen.readIdLong("LegacyMasterId", genLegacyId) != NO_ERR ||
+            genLegacyId != ord)
+            continue;
+
+        GeneratedWeaponStats gs;
+        if (!readGeneratedWeaponStats(gen, gs))
+            continue;
+
+        // Capture legacy values (for the match-legacy log) then OVERWRITE only
+        // present green fields. Firing reads these getters unchanged.
+        const float legDamage  = mc.getWeaponDamage();
+        const float legHeat    = mc.getWeaponHeat();
+        const float legRecycle = mc.getWeaponRecycleTime();
+        const long  legRange   = mc.getWeaponRange();
+        const float legCV      = mc.getCV();
+        const long  legAmmo    = (long)mc.getWeaponAmmoMasterId();
+
+        if (gs.hasDamage)       mc.setWeaponDamage(gs.damage);
+        if (gs.hasHeat)         mc.setWeaponHeat(gs.heat);
+        if (gs.hasRecycle)      mc.setWeaponRecycleTime(gs.recycle);
+        if (gs.hasRangeBucket)  mc.setWeaponRange(gs.rangeOrdinal);
+        if (gs.hasCombatValue)  mc.setCV(gs.combatValue);
+        if (gs.hasAmmoMasterId) mc.setWeaponAmmoMasterId(gs.ammoMasterId);
+
+        ++overlaid;
+
+        // The shadow compare proved generated VALUES == legacy for all 37
+        // weapons, so match-legacy is expected YES; compute it honestly.
+        const bool match =
+            (!gs.hasDamage      || gs.damage       == legDamage)  &&
+            (!gs.hasHeat        || gs.heat         == legHeat)    &&
+            (!gs.hasRecycle     || gs.recycle      == legRecycle) &&
+            (!gs.hasRangeBucket || gs.rangeOrdinal == legRange)   &&
+            (!gs.hasCombatValue || gs.combatValue  == legCV)      &&
+            (!gs.hasAmmoMasterId|| gs.ammoMasterId == legAmmo);
+
+        if (logged < 12) {
+            printf("[EQUIP-SOURCE=generated] core:%s masterID=%ld "
+                   "damage=%.1f heat=%.1f recycle=%.2f range=%ld cv=%.1f ammo=%ld "
+                   "from generated (match-legacy=%s)\n",
+                   slug.c_str(), ord,
+                   mc.getWeaponDamage(), mc.getWeaponHeat(), mc.getWeaponRecycleTime(),
+                   mc.getWeaponRange(), mc.getCV(), (long)mc.getWeaponAmmoMasterId(),
+                   match ? "YES" : "NO");
+            ++logged;
+        }
+    }
+
+    printf("[EQUIP-SOURCE=generated] overlay complete: rows_overlaid=%zu "
+           "(rows with no generated def kept legacy)\n", overlaid);
+    return overlaid;
 }

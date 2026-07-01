@@ -2452,6 +2452,12 @@ void Mission::init (const char *missionName, long loadType, long dropZoneID, Stu
 		    MasterComponent::loadMasterList(compFileName, 255, baseSensorRange);
 		gosASSERT(loadErr == NO_ERR);
 
+		// EQUIPMENT-SOURCE-FLIP-SWITCH-1: gated stat overlay (MC2_EQUIPMENT_
+		// DEFINITION_SOURCE=generated; DEFAULT legacy). Overwrites ONLY the green
+		// weapon stat fields on matched rows from the generated defs; gate-OFF is
+		// a no-op with zero I/O (byte-identical). Firing reads masterList as always.
+		overlayGeneratedEquipmentStatsIfEnabled();
+
 		// EQUIPMENT-REGISTRY-FACADE-1: build the parallel core:<slug> <-> ordinal
 		// registry beside masterList (gated MC2_UNIT_PROFILE_DATA; gate-OFF no-op).
 		// Additive -- reads masterList only, changes no gameplay path.

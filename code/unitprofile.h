@@ -2,6 +2,7 @@
 #define UNITPROFILE_H
 // UNIT-PROFILE-SEAM-1: static baseline facets (ObjectType) + current runtime
 // facets (Mover). Slice 1 facet = capability.
+#include <cstddef>                      // size_t (EQUIPMENT-SOURCE-FLIP-SWITCH-1)
 #include "capability.h"
 #include "locomotion_facet.h"          // LocomotionModel enum + parseLocomotionModel
 #include "damage_schema.h"             // DamageSchemaId enum + parseDamageSchema
@@ -46,6 +47,18 @@ bool mc2ApplyGeneratedDamageSchema(const char* token, class UnitProfile& p);
 // once after MasterComponent::loadMasterList. Gate-OFF: no-op (byte-identical).
 // ADDITIVE: reads masterList only; touches no firing/loadout/inventory/save path.
 void buildAndDumpEquipmentRegistryIfEnabled();
+
+// EQUIPMENT-SOURCE-FLIP-SWITCH-1. Gated stat OVERLAY: when
+// MC2_EQUIPMENT_DEFINITION_SOURCE=generated (SEPARATE gate; DEFAULT legacy), a
+// bounded post-load pass overwrites ONLY the green weapon stat fields (damage/
+// heat/recycle/range bucket/CV/ammo linkage) on each masterList row matched by
+// legacyMasterId, sourcing them from the deployed generated EquipmentDefinition
+// sidecars (data/defs/equipment/). Rows with no generated def keep legacy.
+// Firing/loadout/inventory code and the ~180 masterList read sites are UNTOUCHED
+// -- only the stat VALUES change. Call once, right after loadMasterList, BEFORE
+// buildAndDumpEquipmentRegistryIfEnabled(). Gate-OFF (default) -> returns with
+// zero file I/O -> byte-identical. Returns the number of rows overlaid.
+size_t overlayGeneratedEquipmentStatsIfEnabled();
 
 // FIRE-EXECUTOR-REGISTRY-1 (equipment arc, engine slice E7). Gated proof that
 // the weapon fireExecutor lookup resolves end-to-end: for each weapon-form

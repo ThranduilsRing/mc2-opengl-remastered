@@ -144,6 +144,82 @@ inline EquipmentKind componentFormToKind(int form) {
 }
 
 // -------------------------------------------------------------------------
+// EQUIPMENT-SOURCE-FLIP-SWITCH-1 -- the equipment-definition SOURCE selector.
+//
+// SEPARATE gate from MC2_UNIT_PROFILE_DATA / MC2_UNIT_DEFINITION_SOURCE. Selects
+// WHERE the green weapon stat facets (damage / heat / recycle / range bucket /
+// combat value / ammo linkage) come from when the engine populates
+// MasterComponent::masterList:
+//   legacy    (DEFAULT) -> stats stay exactly as loadMasterList parsed the
+//                          compbas CSV; byte-identical, no overlay pass runs.
+//   generated           -> AFTER loadMasterList, a bounded post-load overlay
+//                          walks the generated EquipmentDefinition sidecars and
+//                          OVERWRITES only those green fields per matched row; a
+//                          component with no generated def keeps its legacy value.
+// Firing/loadout/inventory code is UNTOUCHED -- it still reads masterList exactly
+// as before; only the stat VALUES may be sourced from generated data. The shadow
+// compare proved generated values == legacy, so generated is behavior-identical.
+//
+// `generated` ONLY on the exact token "generated" (case-insensitive); anything
+// else (unset / "legacy" / "0" / junk) resolves to legacy. Pure parser is
+// testable; the cached accessor reads getenv once.
+inline bool mc2_equipment_definition_source_is_generated(const char* e) {
+    if (!e || !e[0]) return false;
+    const char* want = "generated";
+    for (int i = 0; ; ++i) {
+        const char a = (char)std::tolower((unsigned char)e[i]);
+        const char b = want[i];
+        if (b == '\0') return a == '\0';   // matched all of "generated", no junk
+        if (a != b)    return false;
+    }
+}
+inline bool mc2EquipmentDefinitionSourceIsGenerated() {
+    static const bool s =
+        mc2_equipment_definition_source_is_generated(getenv("MC2_EQUIPMENT_DEFINITION_SOURCE"));
+    return s;
+}
+
+// -------------------------------------------------------------------------
+// EQUIPMENT-SOURCE-FLIP-SWITCH-1 -- pure overlay-value logic (doctest target).
+//
+// The generated sidecar stores the weapon range as a NAMED bucket token
+// ("short"/"medium"/"long"); the legacy engine stores it as the WeaponRangeType
+// enum ordinal (WEAPON_RANGE_SHORT=0 / MEDIUM=1 / LONG=2, cmponent.h). This maps
+// the generated bucket string onto that ordinal. An unrecognized/empty bucket
+// yields the caller-supplied legacy fallback so a partial def degrades per-field.
+// Kept engine-enum-FREE (raw ints) so this header stays IO/engine-free.
+inline int mc2GeneratedRangeBucketToOrdinal(const char* bucket, int legacyFallback) {
+    if (!bucket || !bucket[0]) return legacyFallback;
+    // case-insensitive compare, no engine string table dependency
+    char b[16] = {0};
+    unsigned n = 0;
+    for (const char* p = bucket; *p && n + 1 < sizeof(b); ++p)
+        b[n++] = (char)std::tolower((unsigned char)*p);
+    if (std::strcmp(b, "short")  == 0) return 0;   // WEAPON_RANGE_SHORT
+    if (std::strcmp(b, "medium") == 0) return 1;   // WEAPON_RANGE_MEDIUM
+    if (std::strcmp(b, "long")   == 0) return 2;   // WEAPON_RANGE_LONG
+    return legacyFallback;
+}
+
+// The set of green stat values sourced from a generated EquipmentDefinition, plus
+// a per-field "was this actually present in the def" flag so the caller keeps the
+// legacy value for any absent field (per-field fallback). Pure POD; the engine
+// overlay fills it from FitIniFile reads and applies present-fields onto the row.
+struct GeneratedWeaponStats {
+    bool  hasDamage = false;      float damage = 0.0f;
+    bool  hasHeat = false;        float heat = 0.0f;
+    bool  hasRecycle = false;     float recycle = 0.0f;
+    bool  hasRangeBucket = false; int   rangeOrdinal = 0;   // already mapped
+    bool  hasCombatValue = false; float combatValue = 0.0f; // CV
+    bool  hasAmmoMasterId = false; long ammoMasterId = 0;   // ammo linkage
+    // True iff at least one green field was sourced from the generated def.
+    bool any() const {
+        return hasDamage || hasHeat || hasRecycle || hasRangeBucket ||
+               hasCombatValue || hasAmmoMasterId;
+    }
+};
+
+// -------------------------------------------------------------------------
 // Registry entry -- one per component row that the load loop populated.
 // -------------------------------------------------------------------------
 struct EquipmentRegistryEntry {
