@@ -1,6 +1,7 @@
 #ifndef WEAPON_DEFINITION_H
 #define WEAPON_DEFINITION_H
-// WEAPONDEF-OFFLINE-HARNESS-1 / WEAPONDEF-SCHEMA-1 (Phase 0 of the WEAPON-DEFINITION arc).
+// WEAPONDEF-OFFLINE-HARNESS-1 / WEAPONDEF-SCHEMA-1 (Phase 0 of the equipment arc),
+// FOLDED IN by EQUIPMENT-DEFINITION-SCHEMA-1 (equipment arc, slice 1).
 //
 // PURE SCHEMA. Defines what a "weapon" IS as data, mirroring the proven UNIT
 // arc Phase-0 shape (hardpoint.h / unit_action.h). This header wires NO engine
@@ -8,6 +9,16 @@
 // GL/IO-free (FNV-hashed ids / fixed char buffers / plain numbers / reused
 // WeaponTag + DamageLocationId), so it compiles into the offline `mc2_tests`
 // target and drags no engine/GL/IO code -- exactly like hardpoint.h.
+//
+// REFRAME (EQUIPMENT-DEFINITION-SCHEMA-1): compbas.csv is the EQUIPMENT table,
+// not "weapons forever". The TOP type is now `EquipmentDefinition` (a facet
+// aggregator, see equipment_definition.h). The content this header defines is the
+// **WeaponFacet** -- the OPTIONAL weapon facet an EquipmentDefinition carries.
+// `WeaponDefinition` survives as a thin alias for `WeaponFacet` so the Phase-0
+// doctests keep passing byte-for-byte; there is now exactly ONE top type
+// (EquipmentDefinition), and `WeaponDefinition` is "the weapon facet, standalone".
+// This header remains the HOME of the weapon-facet struct; equipment_definition.h
+// COMPOSES it -- it is not duplicated.
 //
 // THE PROBLEM IT KILLS (WEAPON-DEFINITION-ARC-SCOPE-1.md):
 // stock MC2 weapons are rows in compbas.csv loaded into MasterComponent::masterList,
@@ -210,11 +221,18 @@ struct WeaponUIProfile {
 };
 
 // -------------------------------------------------------------------------
-// WeaponDefinition -- the facet aggregator. Modder-facing "what is a weapon",
-// keyed by the stable WeaponId. Category is a WeaponTag (reused from hardpoint.h)
-// -- the same value hardpointAcceptsWeapon() has been waiting for.
+// WeaponFacet -- the weapon-specific facet content (mechanics + weapon-local
+// identity/category/presentation/ui). Modder-facing "what is a weapon", keyed by
+// the stable WeaponId. Category is a WeaponTag (reused from hardpoint.h) -- the
+// same value hardpointAcceptsWeapon() has been waiting for.
+//
+// This is the OPTIONAL facet an EquipmentDefinition carries when its EquipmentKind
+// is Weapon (equipment_definition.h). It is NOT itself the top type -- see the
+// `WeaponDefinition` alias below. Behavior (combat/ammo/fit) lives here; the
+// look/sound half (presentation) is a distinct facet so a modder can reskin a
+// weapon without touching mechanics and vice-versa.
 // -------------------------------------------------------------------------
-struct WeaponDefinition {
+struct WeaponFacet {
     // Identity facet.
     WeaponId  weaponId;            // stable string-id identity (the 255-cap kill)
     WeaponStringId debugName;      // author/debug name (may differ from UI name)
@@ -229,10 +247,17 @@ struct WeaponDefinition {
     WeaponPresentationProfile presentation;   // VFX/SFX -- first-class
     WeaponUIProfile           ui;
 
-    WeaponDefinition() : category(WTAG_ENERGY) {}
+    WeaponFacet() : category(WTAG_ENERGY) {}
 
     bool valid() const { return weaponId.valid(); }
 };
+
+// The Phase-0 top type is now the weapon FACET, standalone. `WeaponDefinition`
+// is retained as a thin alias so every existing caller / doctest keeps compiling
+// unchanged -- there is exactly ONE top type (EquipmentDefinition, which embeds a
+// WeaponFacet); `WeaponDefinition` means "a weapon facet on its own". Do NOT grow
+// a second competing aggregator here.
+typedef WeaponFacet WeaponDefinition;
 
 // -------------------------------------------------------------------------
 // Pure helpers -- the contract later weapon slices / validators call.
@@ -245,7 +270,7 @@ struct WeaponDefinition {
 // AC (WTAG_BALLISTIC) on an energy-only hardpoint -> false. Unlocks author-time
 // HARDPOINT-ENFORCEMENT (mechlab rejects the mount) in a later slice. Pure; no
 // engine types, no side effects.
-inline bool weaponFitsHardpoint(const WeaponDefinition& w, const HardpointProfile& hp) {
+inline bool weaponFitsHardpoint(const WeaponFacet& w, const HardpointProfile& hp) {
     return hardpointAcceptsWeapon(hp, w.category);
 }
 
