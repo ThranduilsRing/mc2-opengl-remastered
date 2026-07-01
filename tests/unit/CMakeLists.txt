@@ -55,6 +55,7 @@ add_executable(mc2_tests
     test_ui_profile.cpp       # UI-PROFILE-1: UIProfile facet + accessor-override helpers + UPV_UI_ASSET_MISSING (offline)
     test_unit_definition.cpp  # SINGLE-SOURCE-UNIT-DEFINITION-1: UnitDefinition facade + mergeUIProfile single UI resolution (offline)
     test_facet_names.cpp      # UNIT-DEFINITION-SHADOW-COMPARE-1: locomotion/damage token-name emitters + parse round-trip (offline)
+    test_modlint.cpp          # UNIT-MODLINT-CLI-1: reason-code->message table + facts-JSON parse + formatter (offline)
 
     # Leaf-TU engine sources (no transitive engine include drag).
     ${MC2_WORKTREE_ROOT}/mclib/fst_hash.cpp
@@ -147,3 +148,27 @@ target_link_libraries(test_render_contract_3 PRIVATE
     ${MC2_WORKTREE_ROOT}/3rdparty/lib/x64/glew32.lib
     opengl32
 )
+
+# UNIT-MODLINT-CLI-1 (Phase-3 slice 3): the offline modder validator CLI.
+# Standalone binary that reads a unit facts-JSON, runs the AUTHORITATIVE pure
+# validateUnitDefinition() (single source of truth, shared with mc2_tests + the
+# engine), and prints modder-readable findings with a CI exit code. GL/IO-free
+# like mc2_tests — the only IO is reading the input file. Built from the SAME
+# standalone cmake as mc2_tests (build64-tests). No engine, no OpenGL link.
+add_executable(mc2_modlint
+    ${MC2_WORKTREE_ROOT}/tools/mc2_modlint/mc2_modlint.cpp
+)
+
+target_include_directories(mc2_modlint PRIVATE
+    ${MC2_WORKTREE_ROOT}/code             # unit_profile_validator.h + facet headers
+    ${MC2_WORKTREE_ROOT}/tools/mc2_modlint
+)
+
+target_compile_definitions(mc2_modlint PRIVATE
+    LINUX_BUILD
+    _CRT_SECURE_NO_WARNINGS
+)
+
+if(MSVC)
+    target_compile_options(mc2_modlint PRIVATE /W4 /WX-)
+endif()
