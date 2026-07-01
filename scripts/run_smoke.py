@@ -994,6 +994,11 @@ def main():
                             # allowlisted or Popen drops it and the generated
                             # sourcing path never runs under the smoke gate.
                             "MC2_UNIT_DEFINITION_SOURCE",
+                            # EQUIPMENT-SOURCE-FLIP-SWITCH-1: equipment-definition
+                            # SOURCE selector (legacy|generated, DEFAULT legacy).
+                            # Must be allowlisted or Popen drops it and the
+                            # generated stat-overlay never runs under the gate.
+                            "MC2_EQUIPMENT_DEFINITION_SOURCE",
                             # VEHICLE-JUMP-PROOF-1 (slice 7): separate default-OFF
                             # gate for the throwaway vehicle-jump proof hook. Must
                             # be allowlisted or Popen drops it and the proof is inert.
