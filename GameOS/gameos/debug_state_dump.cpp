@@ -686,6 +686,68 @@ std::string buildSnapshotJson(const RenderSnapshot& snap,
         s << "    ]\n";
         s << "  }\n";
     }
+    // UNIT-PREVIEW-DUMP-1 (Phase 3): headless per-loaded-unit-TYPE presentation
+    // preview (model/sockets/anim-tags/icon/validator findings a modder verifies
+    // WITHOUT an interactive mission). Additive section, present ONLY under the
+    // same MC2_UNIT_PROFILE_DATA gate — schema byte-for-byte unchanged when absent.
+    // Read-only from already-loaded type data (de-duped per ObjectType).
+    if (envFlagOn("MC2_UNIT_PROFILE_DATA")) {
+        constexpr int kPrevCap = 64;
+        static UnitPreviewWitnessRow prows[kPrevCap];
+        const int nprev = mc2_unitpreview_collect_witness(prows, kPrevCap);
+        s << "  ,\n";
+        s << "  \"unitPreview\": {\n";
+        s << "    \"version\": 1,\n";
+        s << "    \"animTagOrder\": [";
+        for (int a = 0; a < UNIT_PREVIEW_ANIM_TAG_COUNT; ++a)
+            s << (a ? ", " : "") << "\"" << mc2_unitpreview_anim_tag_name(a) << "\"";
+        s << "],\n";
+        s << "    \"rows\": [\n";
+        for (int i = 0; i < nprev; ++i) {
+            const UnitPreviewWitnessRow& r = prows[i];
+            s << "      {\n";
+            s << "        \"objectId\": " << r.objectId << ",\n";
+            s << "        \"name\": \"" << r.name << "\",\n";
+            s << "        \"chassis\": \"" << r.chassis << "\",\n";
+            s << "        \"variant\": \"" << r.variant << "\",\n";
+            s << "        \"is_mech\": "; b(s, r.isMech != 0); s << ",\n";
+            s << "        \"socket_count\": " << r.socketCount << ",\n";
+            s << "        \"missing_socket_count\": " << r.missingSocketCount << ",\n";
+            s << "        \"sockets\": [";
+            for (int k = 0; k < r.socketCount; ++k) {
+                s << (k ? ", " : "") << "{ \"name\": \"" << r.sockets[k].name
+                  << "\", \"present\": "; b(s, r.sockets[k].present != 0); s << " }";
+            }
+            s << "],\n";
+            s << "        \"anim_tags_available\": [";
+            {
+                bool first = true;
+                for (int a = 0; a < UNIT_PREVIEW_ANIM_TAG_COUNT; ++a)
+                    if (r.animTagAvailable[a]) {
+                        s << (first ? "" : ", ") << "\"" << mc2_unitpreview_anim_tag_name(a) << "\"";
+                        first = false;
+                    }
+            }
+            s << "],\n";
+            s << "        \"anim_tags_missing\": [";
+            {
+                bool first = true;
+                for (int a = 0; a < UNIT_PREVIEW_ANIM_TAG_COUNT; ++a)
+                    if (r.isMech && !r.animTagAvailable[a]) {
+                        s << (first ? "" : ", ") << "\"" << mc2_unitpreview_anim_tag_name(a) << "\"";
+                        first = false;
+                    }
+            }
+            s << "],\n";
+            s << "        \"icon_resolved\": \"" << r.iconResolved << "\",\n";
+            s << "        \"finding_count\": " << r.findingCount << ",\n";
+            s << "        \"first_finding_code\": " << r.firstFindingCode << ",\n";
+            s << "        \"first_finding_msg\": \"" << r.firstFindingMsg << "\"\n";
+            s << "      }" << (i + 1 < nprev ? "," : "") << "\n";
+        }
+        s << "    ]\n";
+        s << "  }\n";
+    }
     s << "}\n";
     return s.str();
 }

@@ -130,4 +130,48 @@ struct ComponentWitnessRow {
     int  critSlots;         // InventorySize (size) — the converter's crit_slots
 };
 extern "C" int mc2_component_collect_witness(ComponentWitnessRow* out, int maxRows);
+
+// UNIT-PREVIEW-DUMP-1 (Phase 3): a headless, per-loaded-unit-TYPE presentation
+// preview. Gathers the RESOLVED facts a modder needs to verify a unit WITHOUT
+// launching an interactive mission: the model/appearance name, the declared
+// presentation sockets (with per-socket "present on the loaded model?" flag),
+// which ActionAnimTags resolve to a gesture via the pure fallback resolver
+// (given the loaded skeleton's actual per-gesture clip presence), the resolved
+// UI icon, and the aggregate validateUnitDefinition() finding count for the
+// type. READ-ONLY from already-loaded type data — reuses the same collector
+// plumbing as UnitProfileWitnessRow and loads NO new assets. One row per unique
+// ObjectType (de-duplicated across movers). Present in the dump ONLY under
+// MC2_UNIT_PROFILE_DATA (schema byte-for-byte unchanged when the gate is OFF).
+enum {
+    UNIT_PREVIEW_MAX_SOCKETS   = 32,   // mirrors MAX_PRESENTATION_SOCKETS
+    UNIT_PREVIEW_SOCKET_CAP    = 48,   // mirrors PRESENTATION_SOCKET_NAME_CAP
+    UNIT_PREVIEW_ANIM_TAG_COUNT = 11,  // count of ActionAnimTag enumerators
+};
+struct UnitPreviewSocket {
+    char name[UNIT_PREVIEW_SOCKET_CAP];
+    int  present;   // 0/1: a model node of this exact name exists on the LOD0 shape
+};
+struct UnitPreviewWitnessRow {
+    long objectId;                                  // representative mover's partId
+    char name[64];                                  // mover display name ("" if none)
+    char chassis[64];                               // ObjectType appearance stem
+    char variant[64];                               // spawned variant name ("" if none)
+    int  isMech;                                    // 0/1: BATTLEMECH object class
+    int  socketCount;                               // declared presentation sockets
+    UnitPreviewSocket sockets[UNIT_PREVIEW_MAX_SOCKETS];
+    int  missingSocketCount;                        // declared sockets absent on model
+    // Per-ActionAnimTag availability, indexed by the ActionAnimTag enum value
+    // (0..UNIT_PREVIEW_ANIM_TAG_COUNT-1). 1 = the tag's fallback chain resolves to
+    // a gesture the loaded skeleton actually provides; 0 = it dead-ends (missing).
+    // For a non-mech (no skeleton) every entry is 0.
+    int  animTagAvailable[UNIT_PREVIEW_ANIM_TAG_COUNT];
+    char iconResolved[128];                         // resolved UI icon asset ("" if none)
+    int  findingCount;                              // validateUnitDefinition finding count
+    int  firstFindingCode;                          // first finding's reason code (-1 if none)
+    char firstFindingMsg[128];                      // first finding's message ("" if none)
+};
+extern "C" int mc2_unitpreview_collect_witness(UnitPreviewWitnessRow* out, int maxRows);
+// Canonical ActionAnimTag token for enum index i (0..UNIT_PREVIEW_ANIM_TAG_COUNT-1),
+// or "" if out of range. Used by the dump writer (engine-free TU) to label columns.
+extern "C" const char* mc2_unitpreview_anim_tag_name(int i);
 #endif // UNITPROFILE_H

@@ -4,6 +4,9 @@
 // doctest target forbids, so this populator lives in its own engine-only TU.
 #include "unitprofile.h"
 #include "unit_definition.h"             // SINGLE-SOURCE-UNIT-DEFINITION-1: mergeUIProfile (single UI resolution)
+#include "action_anim_tag.h"             // UNIT-PREVIEW-DUMP-1: ActionAnimTag + animTagResolves
+#include "mech3d.h"                       // UNIT-PREVIEW-DUMP-1: Mech3DAppearance(Type) sockets/gestures
+#include "gameobj.h"                      // UNIT-PREVIEW-DUMP-1: ObjectClass (BATTLEMECH)
 #include "ui_profile_registry.h"         // uiProfileForChassis (additive-merge registry — the shared UI source)
 #include "unit_profile_validator.h"      // UNITPROFILE-VALIDATOR-1: pure validator + facts
 #include "action_executor_registry.h"    // theActionExecutorRegistry()
@@ -256,6 +259,145 @@ void copyToken(char* dst, size_t cap, const char* src) {
     dst[cap - 1] = '\0';
 }
 } // namespace
+
+// UNIT-PREVIEW-DUMP-1 (Phase 3): the ActionAnimTag column order/labels the dump
+// writer uses. Must match the enum in action_anim_tag.h 1:1 (index == enum value).
+namespace {
+const ActionAnimTag kPreviewAnimTags[UNIT_PREVIEW_ANIM_TAG_COUNT] = {
+    ActionAnimTag::Idle,      ActionAnimTag::Move,       ActionAnimTag::Turn,
+    ActionAnimTag::FireWeapon,ActionAnimTag::JumpStart,  ActionAnimTag::JumpLoop,
+    ActionAnimTag::JumpLand,  ActionAnimTag::Death,      ActionAnimTag::HitReact,
+    ActionAnimTag::Startup,   ActionAnimTag::Shutdown,
+};
+const char* const kPreviewAnimTagNames[UNIT_PREVIEW_ANIM_TAG_COUNT] = {
+    "Idle","Move","Turn","FireWeapon","JumpStart","JumpLoop",
+    "JumpLand","Death","HitReact","Startup","Shutdown",
+};
+} // namespace
+
+extern "C" const char* mc2_unitpreview_anim_tag_name(int i) {
+    if (i < 0 || i >= UNIT_PREVIEW_ANIM_TAG_COUNT) return "";
+    return kPreviewAnimTagNames[i];
+}
+
+// UNIT-PREVIEW-DUMP-1: per-unique-ObjectType headless presentation preview.
+// READ-ONLY over already-loaded type data; loads NO assets. De-dupes by
+// ObjectType pointer so N spawned copies of one chassis yield ONE row.
+extern "C" int mc2_unitpreview_collect_witness(UnitPreviewWitnessRow* out, int maxRows) {
+    if (!out || maxRows <= 0 || !ObjectManager)
+        return 0;
+    ObjectTypePtr seen[64];
+    int nseen = 0;
+    int n = 0;
+    const long numMovers = ObjectManager->getNumMovers();
+    for (long i = 0; i < numMovers && n < maxRows; ++i) {
+        MoverPtr m = ObjectManager->getMover(i);
+        if (!m)
+            continue;
+        ObjectTypePtr ot = m->getObjectType();
+        if (!ot)
+            continue;
+        // De-dupe: one preview row per unique ObjectType.
+        bool dup = false;
+        for (int s = 0; s < nseen; ++s)
+            if (seen[s] == ot) { dup = true; break; }
+        if (dup)
+            continue;
+        if (nseen < 64)
+            seen[nseen++] = ot;
+
+        UnitPreviewWitnessRow& r = out[n];
+        r.objectId = m->getPartId();
+        r.name[0] = '\0';
+        const char* nm = m->getName();
+        if (nm) { strncpy(r.name, nm, sizeof(r.name) - 1); r.name[sizeof(r.name)-1] = '\0'; }
+        r.chassis[0] = '\0';
+        const char* appear = ot->getAppearanceTypeName();
+        if (appear) { strncpy(r.chassis, appear, sizeof(r.chassis)-1); r.chassis[sizeof(r.chassis)-1] = '\0'; }
+        r.variant[0] = '\0';
+        const char* vn = m->getVariantName();
+        if (vn) { strncpy(r.variant, vn, sizeof(r.variant)-1); r.variant[sizeof(r.variant)-1] = '\0'; }
+
+        r.isMech = (ot->getObjectClass() == BATTLEMECH) ? 1 : 0;
+        r.socketCount = 0;
+        r.missingSocketCount = 0;
+        for (int a = 0; a < UNIT_PREVIEW_ANIM_TAG_COUNT; ++a)
+            r.animTagAvailable[a] = 0;
+
+        // Mech-specific presentation facts: sockets + per-gesture clip presence.
+        std::vector<DeclaredSocketCheck> declared;
+        Mech3DAppearanceType* mtype = nullptr;
+        if (r.isMech && m->getAppearance()) {
+            Mech3DAppearance* app = static_cast<Mech3DAppearance*>(m->getAppearance());
+            mtype = static_cast<Mech3DAppearanceType*>(app->getAppearanceType());
+        }
+        if (mtype) {
+            const long ns = mtype->numPresentationSockets;
+            for (long si = 0; si < ns && si < UNIT_PREVIEW_MAX_SOCKETS; ++si) {
+                UnitPreviewSocket& ps = r.sockets[r.socketCount];
+                strncpy(ps.name, mtype->presentationSocketName[si], sizeof(ps.name)-1);
+                ps.name[sizeof(ps.name)-1] = '\0';
+                // Present iff the LOD0 shape has a TypeShape node of this exact name
+                // (same scan mech3d.cpp uses for its report-only socket validation).
+                ps.present = 0;
+                if (mtype->mechShape[0]) {
+                    const long numNodes = mtype->mechShape[0]->GetNumShapes();
+                    for (long ni = 0; ni < numNodes; ni++) {
+                        const char* nid = mtype->mechShape[0]->GetNodeId(ni);
+                        if (nid && S_stricmp(nid, ps.name) == 0) { ps.present = 1; break; }
+                    }
+                }
+                if (!ps.present) r.missingSocketCount++;
+                DeclaredSocketCheck d;
+                d.socket  = HardpointSocketName(ps.name);
+                d.present = ps.present != 0;
+                declared.push_back(d);
+                r.socketCount++;
+            }
+            // Per-ActionAnimTag availability: resolve each tag against the loaded
+            // skeleton's real per-gesture clip presence (mechAnim[g] != NULL).
+            for (int a = 0; a < UNIT_PREVIEW_ANIM_TAG_COUNT; ++a) {
+                const bool ok = animTagResolves(kPreviewAnimTags[a],
+                    [mtype](int g) {
+                        return g >= 0 && g < MaxGestures && mtype->mechAnim[g] != NULL;
+                    });
+                r.animTagAvailable[a] = ok ? 1 : 0;
+            }
+        }
+
+        // Resolved UI icon through the single UnitDefinition facade (declared-else-
+        // legacy). No legacy slot in hand here -> pass "" so a stock unit (no [UIProfile]
+        // Icon) resolves to "" and a declared icon shows through.
+        r.iconResolved[0] = '\0';
+        UnitDefinition ud(appear ? appear : "", ot->profile());
+        const char* icon = ud.iconAsset("");
+        if (icon) { strncpy(r.iconResolved, icon, sizeof(r.iconResolved)-1); r.iconResolved[sizeof(r.iconResolved)-1] = '\0'; }
+
+        // Aggregate validateUnitDefinition() findings for this type (report-only).
+        UnitDefinitionValidationInputs in;
+        in.profile.grantsJump = ot->profile().baselineCapabilities.has(CAP_JUMP);
+        in.profile.locomotion = ot->profile().locomotion;
+        in.declaredSockets = declared;
+        if (mtype) {
+            for (int a = 0; a < UNIT_PREVIEW_ANIM_TAG_COUNT; ++a)
+                in.animFallbacks.push_back(NeededAnimFallback(r.animTagAvailable[a] != 0));
+        }
+        const std::vector<UnitProfileFinding> findings =
+            validateUnitDefinition(in, theActionExecutorRegistry());
+        r.findingCount = static_cast<int>(findings.size());
+        r.firstFindingCode = -1;
+        r.firstFindingMsg[0] = '\0';
+        if (!findings.empty()) {
+            r.firstFindingCode = static_cast<int>(findings[0].code);
+            if (findings[0].message) {
+                strncpy(r.firstFindingMsg, findings[0].message, sizeof(r.firstFindingMsg)-1);
+                r.firstFindingMsg[sizeof(r.firstFindingMsg)-1] = '\0';
+            }
+        }
+        ++n;
+    }
+    return n;
+}
 
 extern "C" int mc2_component_collect_witness(ComponentWitnessRow* out, int maxRows) {
     if (!out || maxRows <= 0 || !MasterComponent::masterList)
