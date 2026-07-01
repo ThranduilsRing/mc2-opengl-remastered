@@ -8,16 +8,18 @@ UnitDefinition            = the modder-facing package (references the facets bel
   ├─ UnitProfile/Combat   = rules/capabilities (what it is ALLOWED to be)   [static, type-load]
   ├─ LocomotionProfile    = movement mode (mech/tracked/wheeled/hover/infantry/jump)
   ├─ DamageSchema         = hit locations / armor / internal structure
-  ├─ LoadoutProfile       = equipment + logical hardpoints (what is mounted, where)
+  ├─ HardpointProfile     = HardpointId + allowed weapon tags + damage location + presentation socket + muzzle/fx socket + UI slot  ← THE JOIN KEY
+  ├─ LoadoutProfile       = equipment mounted on HardpointIds (what is mounted, where)
   ├─ PresentationProfile  = model/skeleton/animgraph/VFX/audio/sockets (how it looks/sounds/animates)
+  ├─ AnimationBindingProfile = ActionAnimTag → clip/gesture (JumpStart/Loop/Land, FirePrimary, Death, …)
   ├─ UIProfile            = icon/portrait/minimap/silhouette (how it appears in menus/HUD)
   └─ ValidationProfile    = construction rules; proves the facets agree before a mission starts
 UnitRuntimeState          = what THIS instance currently is (mutable, per-mission)
 Action / Executor         = how an allowed behavior actually RUNS (registry-bound)
 ```
-**Rule of separation:** gameplay asks *what the unit can do*; presentation says *how it looks/animates while doing it*; loadout says *what is mounted where*; validators prove the three agree at load. Do **not** make `UnitProfile` carry everything — it *references* the facets. Existing `BattleMech`/`GroundVehicle` classes become executors/adapters; `getObjectClass()==KIND` branches disappear one by one (tracked in `.claude/unit-kind-classcheck-audit.md`).
+**Rule of separation (keep these apart, join them with stable names):** *capability* (can this unit do X?) · *executor* (what code runs X?) · *loadout* (what is mounted where?) · *presentation* (what model/socket/anim/VFX/audio represents it?) · *UI* (what icon/name/portrait/marker?). Join keys are **stable names, never indices**: `UnitDefinitionId`, `HardpointId`, `ActionId`, `DamageLocationId`, `PresentationSocketId`, `AnimationTag`, `IconId`. No more "row-97 + atlas-column + DLL-string + least-used-node-bucket." Do **not** make `UnitProfile` the everything-blob — it *references* the facets. Existing `BattleMech`/`GroundVehicle` classes become executors/adapters.
 
-**Connective tissue (shared across phases):** a **logical hardpoint** (e.g. `RightArm_Energy_1` {location=RightArm, tags=[Energy,Medium], socket=hp_ra_energy_1}) is the join key. Loadout mounts weapons on logical hardpoints; DamageSchema maps hardpoint→body location; PresentationProfile maps hardpoint→model socket/muzzle. **Never** bind a weapon directly to a model bone — a new model only needs to provide the expected sockets. Animation is **action-driven**: executors request semantic events (JumpStart/Loop/Land, FireWeapon, Death, HitReaction, Startup…); a PresentationAdapter asks the AnimationGraph, never `if BattleMech then playMechJumpAnim()`.
+**★ HardpointId is the center of Phase 2.** The recon's biggest finding: *logical hardpoints do not exist today* — the loadout slot, damage location, model socket, muzzle/FX, UI slot, and animation event each invent their own index language, joined by nothing. `HardpointId` (e.g. `RightTorso_Energy_1`, `LeftArm_Ballistic_1`, `Infantry_PrimaryWeapon`, `Vehicle_Turret_Heavy_1`) is the one bridge every system maps to. That lets the validator say useful things: *"AC20 on RightTorso_Energy_1: invalid weapon class"* · *"RightTorso_Ballistic_1 has no model socket"* · *"model has socket muzzle_rt_01 but no hardpoint maps to it"* · *"loadout references LeftArm_Energy_2 but damage schema has no LeftArm"* · *"Jump exists but AnimationBindingProfile has no JumpLand fallback."* Never bind a weapon directly to a model bone; a new model only supplies expected sockets. Animation stays action-driven — semantic tags resolve to legacy gesture ids; `setGestureGoal(int)` remains the final legacy sink (do NOT rewrite animation).
 
 ## Key correction over the seam
 `canPerform(Jump) -> bool` becomes `queryAction(UnitAction) -> ActionAvailability`:
@@ -47,14 +49,18 @@ Cross-cutting, fold in as reached: **SAVELOAD-VERSIONING** (runtime state serial
 ## Phase 2 — Presentation + Loadout facet family (after Phase 1)
 Ties model/animation/icons/loadout into the SAME facet system (separate facets under `UnitDefinition`, not jammed into `UnitProfile`). Depends on Phase 1's facet framework + validator. Loadout gets its own rework, split into three layers: **ChassisProfile** (what can be mounted) → **VariantLoadout** (default/factory equipment) → **UnitInstanceLoadout** (player's customized/persistent state). Out-of-mission `RosterUnit/HangarUnit` and in-mission `MissionUnit` consume the same validated definition.
 
-Slice order:
-1. **UNIT-DEFINITION-SCHEMA-1** — top-level `UnitDefinition` referencing profile/loadout/presentation/ui/damage/locomotion facets by id. No behavior change; establishes the umbrella + loader.
-2. **PRESENTATION-PROFILE-1** — model/skeleton/animgraph/scale/wreck/selection-radius + `[PresentationSockets]` loaded and validated; no behavior change (legacy render path still authoritative, reads via the facet).
-3. **HARDPOINT-SOCKET-VALIDATOR-1** — every loadout logical hardpoint MUST resolve to a DamageSchema location AND a PresentationProfile socket; validator emits actionable errors (missing socket / missing location / weapon-tag-vs-hardpoint mismatch).
-4. **UNIT-VARIANT-LOADOUT-1** — split ChassisProfile / VariantLoadout / UnitInstanceLoadout; equipment expressed as `Weapon@LogicalHardpoint`, never `Weapon@modelBone`.
-5. **ACTION-ANIMATION-BINDINGS-1** — executors request semantic animation tags (JumpStart/Loop/Land, FireWeapon, Death, HitReaction, Startup, Shutdown, Idle, Move/Stop/Turn); PresentationAdapter resolves via AnimationGraph; validator flags missing tags or uses explicit fallback. Kills `if BattleMech then playMechJumpAnim()`.
-6. **UNIT-EDITOR-SURFACE-1** — editor lists/loads/validates `UnitDefinition`s (in + out of mission).
-7. **NON-MECH-PROOF-UNIT-1** — stand up a test unit purely from data facets (model + loadout + actions + presentation), proving the model/loadout/action path is not class-locked. The Phase-2 analogue of VEHICLE-JUMP-PROOF-1.
+Slice order (HardpointId-first; each slice = gated data facet + optional read + validate + **legacy fallback untouched**, ONE seam at a time — NOT a rewrite of mechlab/animation/appearance):
+1. **HARDPOINT-ID-SCHEMA-1** — define `HardpointId`, weapon tags, damage-location link, socket-name link. No behavior change; pure schema + doctest.
+2. **PRESENTATION-SOCKET-PROFILE-1** — optional socket table loaded from data; validator checks socket names against model/appearance metadata where possible. Legacy INI `nodeData[]` fallback untouched. Seam: `Mech3DAppearanceType::init` / `GetTransformedNodePosition`.
+3. **LOADOUT-HARDPOINT-JOIN-1** — loadout entries may name a `HardpointId`; fallback to legacy positional CSV when absent. Seam: `LogisticsData::initVariants` (additive-merge like model/anim override registries).
+4. **GETWEAPONNODE-HARDPOINT-ADAPTER-1** — route `Mech3DAppearance::getWeaponNode()` through `HardpointId → socket`; fallback to current least-used round-robin when no profile. Returns the same node index the runtime already consumes (no downstream render change).
+5. **ACTION-ANIMATION-BINDINGS-1** — `ActionAnimTag` (JumpStart/Loop/Land, FirePrimary, Death, HitReaction, …) resolves to legacy gesture id; `setGestureGoal(int)` stays the final legacy sink. Seam A = above `setGestureGoal`; generalize `selectClipForMotion`. Do NOT rewrite FK/skinning.
+6. **UI-PROFILE-1** — unit icon/minimap/silhouette/portrait via named profile; fallback to old atlas/index. Seams: `getIconPictureIndex`, `iconFileNames[]`, name/encyclopedia IDs. Do NOT auto-scale the atlas blit math.
+7. **SINGLE-SOURCE-UNIT-DEFINITION-1** — mechlab/logistics and mission sim read the SAME `UnitDefinition` facade (kills the dual-reader divergence: `LogisticsVariant` UI vs `BattleMech` sim).
+8. **UNIT-DEFINITION-VALIDATOR-1** — fail missing sockets, bad hardpoints, bad damage locations, missing icon, missing executor, missing animation fallback — in modder terms, at load.
+9. **NON-MECH-DATA-UNIT-PROOF-1** — test-only unit proving loadout + model socket + action + UI are not class-locked. The Phase-2 analogue of the capability proof.
+
+**Redlines (guard against a giant rewrite):** GOOD = add gated profile registry, read optional facets, validate, fallback to legacy CSV/gesture/node, replace ONE class/index seam at a time. BAD = rewrite mechlab, rewrite the animation system, replace all appearance classes, or convert every unit to a new schema in one slice. Re-ground every line citation in the canonical `nifty` worktree (recon partly read root).
 
 Modder north-star workflow (the acceptance test for Phase 2):
 ```
