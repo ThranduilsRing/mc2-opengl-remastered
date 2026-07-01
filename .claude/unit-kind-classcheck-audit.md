@@ -244,3 +244,27 @@ check + doctests at the single documented extension site in
 `validateUnitProfile()`; each STUB stays non-emitting until its facet inputs
 land. Pure logic covered RED→GREEN in
 `tests/unit/test_unit_profile_validator.cpp` (6 cases; full suite 239 pass).
+
+## VEHICLE-JUMP-PROOF-1 (slice 7 — Phase-1 closer)
+
+The arc's north-star claim — "the C++ class does not gate the jump decision; the
+data facets do" — is now demonstrated end-to-end on a **non-BattleMech**. A gated
+THROWAWAY hook (`mc2_unitprofile_vehicle_jump_proof`, behind the SEPARATE
+`MC2_UNIT_PROFILE_VEHICLE_JUMP_PROOF`, default OFF) writes the SAME two facet
+fields the `.fit [UnitProfile]` path writes — `baselineCapabilities.set(CAP_JUMP)`
++ `locomotion = LOCO_MECH_WALKER` — onto a `GroundVehicleType`'s profile at
+type-load. Through the unchanged stack (`onTypeBound` baseline→current;
+`locomotionModel()` reads the facet; `theActionExecutorRegistry().isCompatible`),
+a GroundVehicle reports `canPerform(Jump) == Available`.
+
+**Measured (mc2_24, has vehicles):** proof-gate ON = 40 `can_perform_jump=TRUE`;
+proof-gate OFF (DATA only) = 22 TRUE (the jet-mechs). The 18-unit flip FALSE→TRUE
+occurs ONLY for units passing through `GroundVehicleType::init` (the hook's sole
+call site) — i.e. the decision became Available on a class that owns no jump
+executor virtual, purely via data. Parity: proof-OFF mc2_24 PASS Δ+0; mc2_01
+DATA-on/proof-off = 4 jet-mechs TRUE PASS Δ+0; mc2_01 both-off = 0 rows PASS Δ+0.
+
+**Honest scope:** this proves the *decision path* is data-driven and
+class-independent. It does NOT make the vehicle functionally jump — no
+jump-*movement* executor runs for vehicles (deferred LOCOMOTION-DATA-1). The hook
+is proof-only and must be removed once a real Phase-2 data-unit proof exists.
