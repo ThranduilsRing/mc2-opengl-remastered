@@ -57,6 +57,7 @@ add_executable(mc2_tests
     test_unit_definition.cpp  # SINGLE-SOURCE-UNIT-DEFINITION-1: UnitDefinition facade + mergeUIProfile single UI resolution (offline)
     test_facet_names.cpp      # UNIT-DEFINITION-SHADOW-COMPARE-1: locomotion/damage token-name emitters + parse round-trip (offline)
     test_modlint.cpp          # UNIT-MODLINT-CLI-1: reason-code->message table + facts-JSON parse + formatter (offline)
+    test_qualified_id.cpp     # UNIT-ID-NAMESPACE-1: namespace:name convention + charset + deterministic override precedence (offline)
 
     # Leaf-TU engine sources (no transitive engine include drag).
     ${MC2_WORKTREE_ROOT}/mclib/fst_hash.cpp

@@ -23,11 +23,20 @@ import re
 from typing import List, Optional, Tuple
 
 from . import model as M
+from . import qualified_id
 from .fitparse import ChassisCsv, CompBas, FitIni, VariantBlock
 
 
 def _namespaced(stem: str, namespace: str = "core") -> str:
-    return f"{namespace}:{stem.lower()}"
+    # UNIT-ID-NAMESPACE-1: canonicalize through the shared qualified-id convention
+    # (mirror of code/qualified_id.h) so every emitted id is a validated
+    # `namespace:name` string. Stock conversion always emits into the reserved
+    # `core` namespace. Raises if the derived id violates the charset rules.
+    raw = f"{namespace}:{stem.lower()}"
+    canon = qualified_id.canonicalize_qualified_id(raw)
+    if canon is None:
+        raise ValueError(f"converter produced an invalid qualified id: {raw!r}")
+    return canon
 
 
 def _variant_slug(variant_name: str, index: int) -> str:
