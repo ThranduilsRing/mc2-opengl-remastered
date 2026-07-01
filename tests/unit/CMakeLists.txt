@@ -66,6 +66,7 @@ add_executable(mc2_tests
     test_equipment_id_alias.cpp   # LOADOUT-EQUIPMENT-ID-ALIAS-1 (E5): resolveLoadoutEquipmentRef qualified/numeric/not-found/needs-widen (offline)
     test_fire_executor_registry.cpp  # FIRE-EXECUTOR-REGISTRY-1 (E7): bind/isBound/entryFor/resolve + stock executor set + classify unset/unbound (offline)
     test_weapon_presentation_resolve.cpp  # ONE-WEAPON-PRESENTATION-PROOF-1 (E8): pure OnFire/OnMuzzleFlash data-vs-legacy effect-id resolution + asset->id parse (offline)
+    test_unit_source_flip.cpp  # UNIT-SOURCE-FLIP-SWITCH-1: MC2_UNIT_DEFINITION_SOURCE gate parse + variant-slug + generated-token facet apply (offline)
 
     # Leaf-TU engine sources (no transitive engine include drag).
     ${MC2_WORKTREE_ROOT}/mclib/fst_hash.cpp

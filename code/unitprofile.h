@@ -10,6 +10,37 @@
 bool mc2_unitprofile_parse_enabled(const char* envValue);   // pure, testable
 bool mc2UnitProfileDataEnabled();                            // cached getenv
 
+// UNIT-SOURCE-FLIP-SWITCH-1: the unit-definition SOURCE selector. SEPARATE gate
+// from MC2_UNIT_PROFILE_DATA. Selects WHERE the green UnitProfile facets come
+// from at unit type/instance load:
+//   legacy    (DEFAULT) -> facets derived the historical way (class default +
+//                          numJumpJets + .fit [UnitProfile]); byte-identical.
+//   generated           -> facets SOURCED from the tools/unit_converter sidecar
+//                          UnitDefinition .fit files under data/defs/units/. A
+//                          MISSING generated def falls back to legacy derivation.
+// `generated` ONLY when the env var is explicitly the exact token "generated";
+// anything else (unset / "legacy" / "0" / junk) resolves to legacy. Pure parser
+// is testable; the cached accessor reads getenv once.
+bool mc2_unit_definition_source_is_generated(const char* envValue);  // pure, testable
+bool mc2UnitDefinitionSourceIsGenerated();                           // cached getenv
+
+// UNIT-SOURCE-FLIP-SWITCH-1: pure mirror of the converter's _variant_slug()
+// (tools/unit_converter/extract.py): lower-case the CSV VariantName, drop
+// apostrophes, collapse any run of non-[a-z0-9] into a single '_', strip leading/
+// trailing '_'; an empty result becomes "v<index>". Deterministic, no I/O. Used
+// to build the per-variant generated-def path core/<chassis>/<slug>/unit.fit.
+// Writes at most cap-1 chars + NUL. Returns out.
+const char* mc2GeneratedVariantSlug(const char* variantName, int index,
+                                    char* out, unsigned long cap);
+
+// UNIT-SOURCE-FLIP-SWITCH-1: pure token-apply helpers, shared by the engine-only
+// file loader and the offline doctest. They mutate ONLY the green facets from
+// already-parsed generated tokens; a null/empty token leaves the field unchanged
+// (so a partial generated def degrades to legacy per-field). Return true iff the
+// field was sourced from a non-empty generated token (for the match-legacy log).
+bool mc2ApplyGeneratedLocomotion(const char* token, class UnitProfile& p);
+bool mc2ApplyGeneratedDamageSchema(const char* token, class UnitProfile& p);
+
 // EQUIPMENT-REGISTRY-FACADE-1 (equipment arc, engine slice E2). Gated build +
 // verification dump of the parallel equipment registry over masterList. Called
 // once after MasterComponent::loadMasterList. Gate-OFF: no-op (byte-identical).
@@ -89,6 +120,27 @@ struct UnitRuntimeState {            // mutable, on Mover
 
 class FitIniFile;                      // fwd; keep heavy I/O header out of unitprofile.h
 void populateProfileFromFit(FitIniFile& fit, UnitProfile& profile);
+
+// UNIT-SOURCE-FLIP-SWITCH-1: gated generated-def SOURCING (engine-only; file I/O).
+// When MC2_UNIT_DEFINITION_SOURCE=generated, source the green facets from the
+// tools/unit_converter sidecar UnitDefinition files under data/defs/units/ instead
+// of the legacy derivation, with a per-field legacy fallback when a def is absent.
+//
+// sourceGeneratedChassisFacets(): CHASSIS-level (locomotion + damageSchema), keyed
+// by the mech ProfileName / chassis stem, read from core/<stem>/chassisdef.fit.
+// No-op (returns false) when the gate is legacy or the file is absent -> the
+// caller's legacy default stands. `typeName` labels the per-unit source-flip log.
+// Returns true iff at least one facet was sourced from generated data.
+bool sourceGeneratedChassisFacets(const char* chassisStem, UnitProfile& profile,
+                                  const char* typeName);
+
+// sourceGeneratedVariantJump(): INSTANCE-level CAP_JUMP, keyed by (chassis stem,
+// spawned VariantName), read from core/<stem>/<variant-slug>/unit.fit `b Jump=`.
+// Writes *jumpOut and returns true iff a generated variant def was found and its
+// Jump token read; otherwise returns false and leaves *jumpOut untouched so the
+// caller keeps the legacy numJumpJets derivation. No-op when the gate is legacy.
+bool sourceGeneratedVariantJump(const char* chassisStem, const char* variantName,
+                                bool* jumpOut);
 
 // VEHICLE-JUMP-PROOF-1 (slice 7, Phase-1 closer) — THROWAWAY/proof-only hook.
 // Gated behind MC2_UNIT_PROFILE_VEHICLE_JUMP_PROOF (default OFF, SEPARATE from

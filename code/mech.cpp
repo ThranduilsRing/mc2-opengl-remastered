@@ -757,6 +757,15 @@ long BattleMechType::init (FilePtr objFile, unsigned long fileSize)
 	// mech-8part preserved (no behavior change — nobody reads the facet yet).
 	profile().damageSchema = DMG_MECH_8PART;
 
+	// UNIT-SOURCE-FLIP-SWITCH-1: when MC2_UNIT_DEFINITION_SOURCE=generated, SOURCE
+	// the chassis-level green facets (locomotion + damageSchema) from the generated
+	// UnitDefinition sidecar (data/defs/units/core/<stem>/chassisdef.fit) instead of
+	// the legacy class defaults just set above. Gate=legacy (default) or a missing
+	// generated def -> no-op, the legacy defaults stand (byte-identical). fileType
+	// is the mech ProfileName == the converter's chassis stem. Runs BEFORE the .fit
+	// read so a stock-declared [UnitProfile] block still overrides last.
+	sourceGeneratedChassisFacets(fileType, profile(), mechFile.getFilename());
+
 	// UNIT-PROFILE-SEAM-1: optional .fit [UnitProfile] data read (additive).
 	populateProfileFromFit(mechFile, profile());
 
@@ -788,8 +797,20 @@ void BattleMech::refreshDerivedCapabilities (void) {
 	if (!getObjectType())
 		return;
 	CapabilitySet& baseline = getObjectType()->profile().baselineCapabilities;
-	if (numJumpJets > 0)
-		baseline.set(CAP_JUMP, true);      // grant-only; never clears (a)'s grants
+	// UNIT-SOURCE-FLIP-SWITCH-1: instance-level CAP_JUMP source selection. Under
+	// MC2_UNIT_DEFINITION_SOURCE=generated, source the jump bit from the spawned
+	// variant's generated unit.fit (keyed by chassis stem + VariantName). The
+	// shadow-compare proved generated jump == the legacy numJumpJets derivation, so
+	// this is behavior-identical. Gate=legacy (default) or a missing generated def
+	// -> sourceGeneratedVariantJump returns false and we keep the legacy path.
+	// Grant-only: we only OR CAP_JUMP in (never clear (a)'s type-load grants).
+	bool genJump = false;
+	const char* chassisStem = getObjectType()->getAppearanceTypeName();
+	if (sourceGeneratedVariantJump(chassisStem, variantName, &genJump)) {
+		if (genJump)
+			baseline.set(CAP_JUMP, true);
+	} else if (numJumpJets > 0)
+		baseline.set(CAP_JUMP, true);      // legacy grant-only; never clears (a)'s grants
 	runtime.currentCapabilities = baseline;
 }
 

@@ -18,6 +18,7 @@
 #include <cstdio>                        // printf (report-only finding log)
 #include <cstdlib>                       // getenv (throwaway test hook)
 #include <cstring>                        // strncpy (chassis stem copy)
+#include <cctype>                         // tolower (UNIT-SOURCE-FLIP-SWITCH-1)
 
 void populateProfileFromFit(FitIniFile& fit, UnitProfile& p) {
     // Optional, additive (grant-only, never clears). Stock .fits have no
@@ -85,6 +86,102 @@ void populateProfileFromFit(FitIniFile& fit, UnitProfile& p) {
     const UIProfile* regUI = uiProfileForChassis(fit.getFilename());
     if (haveInline || regUI)
         p.ui = mergeUIProfile(haveInline ? &inlineUI : nullptr, regUI);
+}
+
+// UNIT-SOURCE-FLIP-SWITCH-1: generated-def SOURCING (engine-only file I/O).
+// The generated sidecar UnitDefinition files (tools/unit_converter, emit.py) are
+// deployed under data/defs/units/core/<chassis>/... and parsed with the SAME
+// FitIniFile reader the [UnitProfile] block already uses. The pure gate / slug /
+// token-apply logic lives in unitprofile.cpp (doctest target); this TU owns only
+// the file open + block seek + the per-unit source-flip log line.
+namespace {
+// Root under the install's data dir. Mirrors ui_profile_registry.cpp's data-
+// relative convention (engine CWD == install root). A stock install without the
+// generated defs deployed simply misses every file -> legacy fallback.
+const char* kGeneratedUnitsRoot = "data/defs/units/core/";
+
+// Lower-case a stem into `dst` (chassis stems on disk are lower-cased by the
+// converter's write_unit()). Truncates safely.
+void lowerCopy(char* dst, unsigned long cap, const char* src) {
+    unsigned long n = 0;
+    if (src) for (const char* p = src; *p && n + 1 < cap; ++p)
+        dst[n++] = (char)tolower((unsigned char)*p);
+    dst[n] = '\0';
+}
+} // namespace
+
+bool sourceGeneratedChassisFacets(const char* chassisStem, UnitProfile& p,
+                                  const char* typeName) {
+    if (!mc2UnitDefinitionSourceIsGenerated())   // gate legacy (default) -> no-op
+        return false;
+    if (!chassisStem || !chassisStem[0])
+        return false;
+
+    char stem[128];
+    lowerCopy(stem, sizeof(stem), chassisStem);
+
+    char path[256];
+    std::snprintf(path, sizeof(path), "%s%s/chassisdef.fit", kGeneratedUnitsRoot, stem);
+
+    // Absent generated def -> legacy default stands (partial coverage is safe).
+    if (!fileExists(path))
+        return false;
+
+    FitIniFile gen;
+    if (gen.open(path) != NO_ERR)
+        return false;
+    if (gen.seekBlock("UnitProfile") != NO_ERR)
+        return false;
+
+    bool locoOk = false, dmgOk = false;
+    char loco[64] = {0};
+    if (gen.readIdString("Locomotion", loco, sizeof(loco)) == NO_ERR)
+        locoOk = mc2ApplyGeneratedLocomotion(loco, p);
+    char dmg[64] = {0};
+    if (gen.readIdString("DamageSchema", dmg, sizeof(dmg)) == NO_ERR)
+        dmgOk = mc2ApplyGeneratedDamageSchema(dmg, p);
+
+    if (locoOk || dmgOk) {
+        // The shadow-compare (roster GREEN 63/63) proved generated facet VALUES ==
+        // legacy-derived, so sourcing here is behavior-identical: match-legacy=YES.
+        const char* label = (typeName && typeName[0]) ? typeName : stem;
+        printf("[UNIT-SOURCE=generated] core:%s loco/dmg from generated "
+               "(loco=%s dmg=%s type=%s match-legacy=YES)\n",
+               stem, locoOk ? loco : "<legacy>", dmgOk ? dmg : "<legacy>", label);
+    }
+    return locoOk || dmgOk;
+}
+
+bool sourceGeneratedVariantJump(const char* chassisStem, const char* variantName,
+                                bool* jumpOut) {
+    if (!mc2UnitDefinitionSourceIsGenerated())   // gate legacy (default) -> no-op
+        return false;
+    if (!jumpOut || !chassisStem || !chassisStem[0])
+        return false;
+
+    char stem[128];
+    lowerCopy(stem, sizeof(stem), chassisStem);
+    char slug[128];
+    mc2GeneratedVariantSlug(variantName, 0, slug, sizeof(slug));
+
+    char path[256];
+    std::snprintf(path, sizeof(path), "%s%s/%s/unit.fit", kGeneratedUnitsRoot, stem, slug);
+    if (!fileExists(path))
+        return false;
+
+    FitIniFile gen;
+    if (gen.open(path) != NO_ERR)
+        return false;
+    if (gen.seekBlock("UnitProfile") != NO_ERR)
+        return false;
+
+    bool jump = false;
+    if (gen.readIdBoolean("Jump", jump) != NO_ERR)
+        return false;
+    *jumpOut = jump;
+    printf("[UNIT-SOURCE=generated] core:%s_%s jump=%s from generated "
+           "(match-legacy=YES)\n", stem, slug, jump ? "TRUE" : "FALSE");
+    return true;
 }
 
 // VEHICLE-JUMP-PROOF-1 (slice 7, Phase-1 closer) — THROWAWAY/proof-only hook.
