@@ -3,6 +3,8 @@
 // inifile.h drags file.h -> stdio/fcntl/heap (real file I/O), which the
 // doctest target forbids, so this populator lives in its own engine-only TU.
 #include "unitprofile.h"
+#include "unit_definition.h"             // SINGLE-SOURCE-UNIT-DEFINITION-1: mergeUIProfile (single UI resolution)
+#include "ui_profile_registry.h"         // uiProfileForChassis (additive-merge registry — the shared UI source)
 #include "unit_profile_validator.h"      // UNITPROFILE-VALIDATOR-1: pure validator + facts
 #include "action_executor_registry.h"    // theActionExecutorRegistry()
 #include "inifile.h"                    // resolves via mclib/ on the engine include path
@@ -41,23 +43,43 @@ void populateProfileFromFit(FitIniFile& fit, UnitProfile& p) {
     // corresponding UIProfile field stays empty/UNSET -> the accessor seam keeps
     // its legacy iconFileNames[]/IDS_ lookup, so stock .fits are byte-identical.
     // Read-only into the facet; NO atlas / blit-math touch here.
+    //
+    // Read the inline `.fit [UIProfile]` block into a LOCAL first, so slice-7 can
+    // merge it with the shared registry through the ONE resolution point below.
+    UIProfile inlineUI;
+    bool haveInline = false;
     if (fit.seekBlock("UIProfile") == NO_ERR) {
+        haveInline = true;
         char buf[UI_ASSET_NAME_CAP] = {0};
         if (fit.readIdString("Icon", buf, sizeof(buf)) == NO_ERR)
-            p.ui.icon = UIAssetName(buf);
+            inlineUI.icon = UIAssetName(buf);
         if (fit.readIdString("Portrait", buf, sizeof(buf)) == NO_ERR)
-            p.ui.portrait = UIAssetName(buf);
+            inlineUI.portrait = UIAssetName(buf);
         if (fit.readIdString("Minimap", buf, sizeof(buf)) == NO_ERR)
-            p.ui.minimap = UIAssetName(buf);
+            inlineUI.minimap = UIAssetName(buf);
         if (fit.readIdString("Silhouette", buf, sizeof(buf)) == NO_ERR)
-            p.ui.silhouette = UIAssetName(buf);
+            inlineUI.silhouette = UIAssetName(buf);
         long id = UI_STRING_ID_UNSET;
         if (fit.readIdLong("NameID", id) == NO_ERR)
-            p.ui.nameStringId = id;
+            inlineUI.nameStringId = id;
         id = UI_STRING_ID_UNSET;
         if (fit.readIdLong("EncyclopediaID", id) == NO_ERR)
-            p.ui.encyclopediaStringId = id;
+            inlineUI.encyclopediaStringId = id;
     }
+
+    // SINGLE-SOURCE-UNIT-DEFINITION-1 (slice 7): unify the UI facet resolution.
+    // Slice 6 populated the sim-side p.ui from the inline block ONLY, while the
+    // logistics side (LogisticsChassis::init) resolved the additive-merge
+    // REGISTRY (uiProfileForChassis) into its own override fields — two resolution
+    // points that could diverge (a registry-declared UI was invisible to the sim
+    // facet). Route BOTH through the ONE pure merge (mergeUIProfile: registry over
+    // inline), so p.ui — read via UnitDefinition::ui() — now reflects the SAME
+    // registry entry the mechlab sees. uiProfileForChassis() is itself gated
+    // (returns null when MC2_UNIT_PROFILE_DATA is OFF, or the data file is absent),
+    // so a stock run merges null-over-inline == inline, i.e. no behavior change.
+    const UIProfile* regUI = uiProfileForChassis(fit.getFilename());
+    if (haveInline || regUI)
+        p.ui = mergeUIProfile(haveInline ? &inlineUI : nullptr, regUI);
 }
 
 // VEHICLE-JUMP-PROOF-1 (slice 7, Phase-1 closer) — THROWAWAY/proof-only hook.

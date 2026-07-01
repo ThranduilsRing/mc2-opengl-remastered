@@ -14,6 +14,7 @@ LogisticsVariant.cpp			: Implementation of the LogisticsVariant component.
 #include"logisticserrors.h"
 #include"ui_profile.h"            // UI-PROFILE-1: UIProfile facet + UI_STRING_ID_UNSET
 #include"ui_profile_registry.h"  // UI-PROFILE-1: uiProfileForChassis (additive-merge, gated)
+#include"unit_definition.h"      // SINGLE-SOURCE-UNIT-DEFINITION-1: mergeUIProfile (shared UI resolution)
 #include"unit_profile_validator.h" // UI-PROFILE-1: UPV_UI_ASSET_MISSING reason code
 
 
@@ -171,12 +172,21 @@ int LogisticsChassis::init( CSVFile* file, int chassisID )
 	// reads (stock parity). Report-only: a declared-but-missing icon file is logged
 	// (UPV_UI_ASSET_MISSING) and still falls through to the legacy slot, never
 	// blocking load. NO icon-atlas blit-math touch — only which asset/id is chosen.
-	if (const UIProfile* up = uiProfileForChassis((const char*)fileName)) {
-		if (!up->icon.empty())       uiIconOverride[0] = up->icon.c_str();
-		if (!up->silhouette.empty()) uiIconOverride[1] = up->silhouette.c_str();
-		if (!up->portrait.empty())   uiIconOverride[2] = up->portrait.c_str();
-		if (up->nameStringId != UI_STRING_ID_UNSET)         uiNameIDOverride = up->nameStringId;
-		if (up->encyclopediaStringId != UI_STRING_ID_UNSET) uiEncyclopediaIDOverride = up->encyclopediaStringId;
+	// SINGLE-SOURCE-UNIT-DEFINITION-1 (slice 7): resolve the UI facet through the
+	// SAME pure merge the sim/mover side now uses (mergeUIProfile), so the two
+	// readers can no longer diverge. The logistics reader has no inline `.fit`
+	// [UIProfile] block (it parses the chassis CSV), so its base is null and the
+	// additive-merge registry is the sole `over` source — identical result to the
+	// prior hand-inlined copy, but via ONE shared resolution point. Legacy accessor
+	// shape (uiIconOverride[]/id + iconFileNames[] fallback) is untouched: no atlas
+	// blit-math change (mechicon.cpp CANARY).
+	if (const UIProfile* reg = uiProfileForChassis((const char*)fileName)) {
+		const UIProfile up = mergeUIProfile(/*base=*/nullptr, /*over=*/reg);
+		if (!up.icon.empty())       uiIconOverride[0] = up.icon.c_str();
+		if (!up.silhouette.empty()) uiIconOverride[1] = up.silhouette.c_str();
+		if (!up.portrait.empty())   uiIconOverride[2] = up.portrait.c_str();
+		if (up.nameStringId != UI_STRING_ID_UNSET)         uiNameIDOverride = up.nameStringId;
+		if (up.encyclopediaStringId != UI_STRING_ID_UNSET) uiEncyclopediaIDOverride = up.encyclopediaStringId;
 		// REPORT-ONLY asset-resolve check (UPV_UI_ASSET_MISSING): a declared icon
 		// file that does not exist would silently fall back to the legacy slot.
 		for (int s = 0; s < 3; ++s) {
