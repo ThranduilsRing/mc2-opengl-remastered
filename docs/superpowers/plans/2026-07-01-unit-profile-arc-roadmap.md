@@ -164,5 +164,10 @@ Cross-cutting later (multi-mod): **MOD-PACKAGE-MANIFEST-1** (`mod.json`: modId/v
 - **Report terse** (keep main context lean): what changed, commit SHAs, build result, gate-ON true-count, gate-OFF parity, any decision future slices must honor. NEVER fake build/smoke output.
 - Full tier1 is banked ONCE at arc end before any merge — not per slice.
 
+## ★ SOURCE-FLIP DONE — generated-authoritative dogfood is now a real toggle (2026-07-01)
+Both switches wired + engine CONSUMES generated (default LEGACY): `UNIT-SOURCE-FLIP-SWITCH-1` `baa79ee8` (unit loco/damage/jump from `data/defs/units/`), `EQUIPMENT-SOURCE-FLIP-SWITCH-1` `0c3f1c54` (green equipment stats overlaid onto masterList from `data/defs/equipment/`, firing untouched). `STOCK-GENERATED-SOURCE-SHADOW-RUN-1` = **tier1 5/5 PASS Δ+0 with BOTH gates=generated ACTIVE** (185 UNIT + 65 EQUIP source-flip lines, all match-legacy=YES) → generated-authoritative == legacy gameplay across the full roster.
+**To dogfood "run it this way":** deploy the generated defs (converter `--batch` → `data/defs/{units,equipment}/`), then set `MC2_UNIT_PROFILE_DATA=1 MC2_UNIT_DEFINITION_SOURCE=generated MC2_EQUIPMENT_DEFINITION_SOURCE=generated`. Unset any = instant legacy fallback. Waived facets (hardpoints/sockets/UI on units; firing/presentation on equipment) stay legacy either way. DEFAULT stays legacy — do NOT flip the default until the waived facets are covered + a longer soak.
+**NEXT:** dogfood a while → `MCO/MC2X-CONVERSION-RECON-1` (extensibility acceptance test — separate mech/component lists, the ordinal-cap payoff) → `INVENTORY-EQUIPMENTREF-WIDEN` (E4) only when live content >254 rows.
+
 ## Honest promise
 today = data-toggled capabilities on existing types; near-term = class-check removal + mod-visible flags; real future = new archetypes with data-defined locomotion/damage/actions/presentation.
