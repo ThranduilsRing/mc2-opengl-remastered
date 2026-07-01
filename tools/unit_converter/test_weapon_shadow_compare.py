@@ -154,14 +154,21 @@ def test_compare_range_bucket_mismatch_surfaced():
     assert any(m.field == "range_bucket" for m in r.mismatches)
 
 
-def test_compare_combat_value_compared_for_nonweapons():
+def test_nonweapon_combat_value_and_crit_slots_waived_when_not_surfaced():
+    # The converter only surfaces combat_value / crit_slots inside the weapon
+    # facet; for a non-weapon it emits None. That is a report-shape asymmetry, NOT
+    # a data disagreement, so the compare skips those two fields for non-weapons
+    # (they must NOT appear as mismatches even when the engine value is nonzero).
     dump = _engine_dump([_erow(5, kind="Heatsink", is_weapon=False,
                                category="", damage=0.0, heat=0.0, recycle=0.0,
                                range_bucket="", combat_value=2.0, crit_slots=1)])
-    rep = _converter_report([_cnonweapon(5, kind="Heatsink", combat_value=7.0)])
+    rep = _converter_report([_cnonweapon(5, kind="Heatsink")])  # no weapon block
     r = WC.compare(WC.load_engine_components(dump),
                    WC.load_converter_components(rep))
-    assert any(m.field == "combat_value" for m in r.mismatches)
+    fields = {m.field for m in r.mismatches}
+    assert "combat_value" not in fields
+    assert "crit_slots" not in fields
+    assert r.verdict == "PASS"  # kind + is_weapon agree, the rest waived
 
 
 # --- weapon-only field gating -----------------------------------------------

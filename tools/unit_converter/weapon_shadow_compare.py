@@ -230,6 +230,14 @@ def compare(engine: Dict[int, ComponentFacets],
             fields += list(WEAPON_FACETS)
         for f in fields:
             ev, cv = e.facet(f), c.facet(f)
+            # The converter surfaces combat_value / crit_slots ONLY inside the
+            # weapon facet (equipment_model.to_report_dict). For a non-weapon the
+            # converter emits None -> the field is simply NOT SURFACED, not a data
+            # disagreement. Skip it (per-component field waiver) so the gate diffs
+            # only fields the converter actually emits, and a genuine kind/stat
+            # divergence isn't drowned in report-shape asymmetry.
+            if cv is None and f in ("combat_value", "crit_slots"):
+                continue
             if _feq(ev, cv):
                 rep.field_matches += 1
                 rep.per_field_matches[f] += 1
