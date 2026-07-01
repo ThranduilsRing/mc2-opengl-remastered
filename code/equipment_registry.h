@@ -33,6 +33,8 @@
 #include <vector>
 #include <map>
 #include <cctype>
+#include <cstdlib>                 // strtol
+#include <cstring>                 // strchr
 
 // -------------------------------------------------------------------------
 // Pure id derivation -- MIRROR of tools/unit_converter/equipment_extract.py.
@@ -231,5 +233,68 @@ private:
     std::map<std::string, size_t>       byId_;      // qualifiedId -> entry index
     std::map<long, std::string>         byOrdinal_; // legacyMasterId -> qualifiedId
 };
+
+// -------------------------------------------------------------------------
+// LOADOUT-EQUIPMENT-ID-ALIAS-1 (equipment arc, engine slice E5) -- the pure
+// resolution rule for a loadout equipment reference.
+//
+// A loadout slot may reference equipment either the legacy way (a numeric
+// masterID ordinal, e.g. "145") OR by qualified string id (e.g.
+// "core:medium_laser"). This helper maps EITHER form to the SAME 8-bit
+// addressable masterID space (0..254) so the caller can drop the result into
+// the UNCHANGED inventory[].masterID (uint8) path -- no widen, no parser
+// rewrite, no firing change.
+//
+// Rules (a ':' anywhere in `ref` selects the qualified-id branch):
+//   qualified id  -> registry.byQualifiedId(ref).legacyMasterId
+//   numeric        -> strtol(ref)
+//   miss / bad     -> kEquipmentRefNotFound  (caller falls back / warns)
+//
+// A resolved ordinal that would not fit the existing 8-bit path (>= 255, i.e.
+// the future-widen case, or the 0xff empty sentinel) is REJECTED with
+// kEquipmentRefNeedsWiden so the caller warns rather than truncating/crashing.
+// This helper NEVER widens and NEVER touches gameplay -- it is a pure lookup
+// over the registry, offline-doctest-testable in mc2_tests.
+// -------------------------------------------------------------------------
+enum {
+    kEquipmentRefNotFound   = -1,  // not a resolvable ref (miss / malformed)
+    kEquipmentRefNeedsWiden = -2   // resolves to an id that needs the E4 widen
+};
+
+// True if `ref` is the qualified-id form (contains ':'), else the legacy
+// numeric-ordinal form. Pure.
+inline bool isQualifiedEquipmentRef(const char* ref) {
+    return ref && std::strchr(ref, ':') != nullptr;
+}
+
+inline int resolveLoadoutEquipmentRef(const EquipmentRegistry& reg,
+                                      const char* ref) {
+    if (!ref || ref[0] == '\0')
+        return kEquipmentRefNotFound;
+
+    long ord;
+    if (isQualifiedEquipmentRef(ref)) {
+        // Qualified string id: resolve through the registry.
+        const EquipmentRegistryEntry* e = reg.byQualifiedId(std::string(ref));
+        if (!e)
+            return kEquipmentRefNotFound;   // unknown id -> caller warns/falls back
+        ord = e->legacyMasterId;
+    } else {
+        // Legacy numeric ordinal.
+        char* end = nullptr;
+        ord = std::strtol(ref, &end, 10);
+        if (end == ref || (end && *end != '\0'))
+            return kEquipmentRefNotFound;   // not a clean number
+    }
+
+    // Only ids in the EXISTING 8-bit space (0..254) are addressable by the
+    // unchanged masterID path. 0xff (255) is the empty sentinel; >=255 is the
+    // future-widen case. Do NOT widen here.
+    if (ord < 0)
+        return kEquipmentRefNotFound;
+    if (ord >= 255)
+        return kEquipmentRefNeedsWiden;
+    return (int)ord;
+}
 
 #endif // EQUIPMENT_REGISTRY_H

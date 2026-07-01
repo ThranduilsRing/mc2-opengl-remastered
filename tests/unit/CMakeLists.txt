@@ -63,6 +63,7 @@ add_executable(mc2_tests
     test_equipment_validator.cpp  # WEAPON-VALIDATOR-1: pure construction-rules validator for EquipmentDefinition/WeaponFacet (EQV_* findings) (offline)
     test_equipment_modlint.cpp    # WEAPON-MODLINT-1: EQV_ reason-code->message table + equipment facts-JSON parse + converter-roster parse + formatter (offline)
     test_equipment_registry.cpp   # EQUIPMENT-REGISTRY-FACADE-1: pure slug (mirrors converter _slug) + form->kind + registry query API (offline)
+    test_equipment_id_alias.cpp   # LOADOUT-EQUIPMENT-ID-ALIAS-1 (E5): resolveLoadoutEquipmentRef qualified/numeric/not-found/needs-widen (offline)
 
     # Leaf-TU engine sources (no transitive engine include drag).
     ${MC2_WORKTREE_ROOT}/mclib/fst_hash.cpp

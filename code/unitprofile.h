@@ -16,6 +16,15 @@ bool mc2UnitProfileDataEnabled();                            // cached getenv
 // ADDITIVE: reads masterList only; touches no firing/loadout/inventory/save path.
 void buildAndDumpEquipmentRegistryIfEnabled();
 
+// LOADOUT-EQUIPMENT-ID-ALIAS-1 (equipment arc, engine slice E5). Accessor for
+// the process-global equipment registry populated by the E2 facade above. The
+// loadout parser queries it (gate-ON) to resolve an optional `core:<slug>`
+// equipment reference to its legacy masterID ordinal (see equipment_registry.h
+// resolveLoadoutEquipmentRef). Empty until buildEquipmentRegistryFromMasterList
+// runs under the gate.
+class EquipmentRegistry;  // fwd; heavy header kept out of unitprofile.h
+const EquipmentRegistry& getEquipmentRegistry();
+
 class UnitProfile {                  // static, on ObjectType (flyweight)
   public:
     CapabilitySet baselineCapabilities;

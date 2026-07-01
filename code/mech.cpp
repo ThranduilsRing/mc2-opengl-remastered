@@ -134,6 +134,7 @@
 #include "../GameAdapters/MechRenderAdapter.h"  // M2: mech spawn/destroy adapter
 #include "move_recon.h"  // MC2_MOVE_RECON per-frame pathfinding cost instrumentation
 #include "../GameOS/gameos/diagnostic_trace.h"  // COMBAT-TRACE-1: weapon-hit JSONL events
+#include "equipment_registry.h"  // LOADOUT-EQUIPMENT-ID-ALIAS-1 (E5): resolveLoadoutEquipmentRef
 
 // C3: env-gated lifecycle routing killswitch (same env var as objmgr.cpp).
 // MC2_GPU_CULL_LIFECYCLE=1 routes AI canBeSeen() combat gates to GPU-lagged visibility.
@@ -1484,6 +1485,93 @@ static bool s_nonmechProofEnabled ()
 // gate is OFF (nonmechDataUnitMountProof returns false before touching it).
 static bool s_nonmechProofFired = false;
 
+//----------------------------------------------------------------------------------
+// LOADOUT-EQUIPMENT-ID-ALIAS-1 (equipment arc, engine slice E5).
+//
+// ADDITIVE string-id branch beside the legacy numeric MasterID column. The stock
+// loadout parse fills inventory[].masterID from a positional numeric CSV column
+// (readUChar(row, 5, masterID)). This helper adds an OPTIONAL string-id token:
+// gate-ON, it reads an `EquipmentId` string from an out-of-band column of the
+// SAME row; if present and it resolves through the EquipmentRegistry to a legacy
+// ordinal in the existing 0..254 space, that becomes the masterID. Otherwise the
+// caller keeps the already-read legacy numeric masterID UNCHANGED.
+//
+// This is NOT a parser rewrite: the legacy readUChar path runs first and is the
+// default; this only OVERRIDES masterID when a string-id token is present AND the
+// gate is ON. Stock CSVs carry no such column -> readString errors -> no override
+// -> byte-identical. No widen (rejects ids >=255), no firing change.
+//
+// The optional token lives in a high, stock-unused column so a stock loadout row
+// never accidentally supplies one.
+enum { kEquipmentIdCsvColumn = 40 };
+
+// Throwaway proof gate (SEPARATE env from MC2_UNIT_PROFILE_DATA), default OFF.
+static bool mc2EquipIdAliasProofEnabled() {
+	static const bool on = mc2_unitprofile_parse_enabled(
+		getenv("MC2_EQUIP_IDALIAS_PROOF"));
+	return on;
+}
+static bool s_equipIdAliasProofFired = false;  // one-shot proof latch (throwaway)
+
+// If gate-ON and the row carries an optional EquipmentId string token that
+// resolves to a legacy ordinal in the existing 8-bit space, return that ordinal
+// (0..254). Otherwise return -1 (no override -> caller keeps legacy masterID).
+static int resolveOptionalEquipmentIdColumn(CSVFile* mechFile, long row)
+{
+	if (!mc2UnitProfileDataEnabled())
+		return -1;                    // gate OFF -> legacy path only (parity)
+
+	char refBuf[64] = {0};
+	// Out-of-band column: stock rows have no data here -> readString != NO_ERR.
+	if (mechFile->readString(row, kEquipmentIdCsvColumn, refBuf, sizeof(refBuf) - 1) != NO_ERR)
+		return -1;                    // no token -> legacy path
+	if (refBuf[0] == '\0')
+		return -1;
+
+	int resolved = resolveLoadoutEquipmentRef(getEquipmentRegistry(), refBuf);
+	if (resolved == kEquipmentRefNeedsWiden) {
+		printf("[EQUIP-IDALIAS] WARNING: equipment ref \"%s\" resolves to an id "
+		       ">=255 (future-widen, E4) -- keeping legacy masterID\n", refBuf);
+		return -1;
+	}
+	if (resolved == kEquipmentRefNotFound) {
+		printf("[EQUIP-IDALIAS] WARNING: unknown equipment ref \"%s\" -- keeping "
+		       "legacy masterID\n", refBuf);
+		return -1;
+	}
+	return resolved;                  // 0..254: override the legacy masterID
+}
+
+// THROWAWAY proof (MC2_EQUIP_IDALIAS_PROOF): once per session, pick a known
+// legacy ordinal, round-trip it through the registry (ordinal -> core:<slug> ->
+// resolveLoadoutEquipmentRef -> ordinal) and log that the qualified id resolves
+// back to the SAME legacy ordinal. Proves the id-alias path is correct WITHOUT
+// requiring any stock data change. Remove once E5 has real data-driven loadouts.
+static void mc2EquipIdAliasProofOnce()
+{
+	if (!mc2EquipIdAliasProofEnabled() || s_equipIdAliasProofFired)
+		return;
+	if (!mc2UnitProfileDataEnabled())
+		return;                       // registry only populated under the data gate
+	const EquipmentRegistry& reg = getEquipmentRegistry();
+	if (reg.count() == 0)
+		return;                       // masterList/registry not loaded yet
+
+	// Find the first enabled entry with an ordinal in the addressable space and
+	// round-trip it: legacy ordinal -> its core:<slug> -> resolve -> ordinal.
+	for (const auto& e : reg.entries()) {
+		if (!e.enabled || e.legacyMasterId < 0 || e.legacyMasterId >= 255)
+			continue;
+		std::string qid = reg.qualifiedIdFor(e.legacyMasterId);
+		int back = resolveLoadoutEquipmentRef(reg, qid.c_str());
+		printf("[EQUIP-IDALIAS-PROOF] %s -> masterID=%d (legacy ordinal match=%s)\n",
+		       qid.c_str(), back,
+		       (back == (int)e.legacyMasterId) ? "YES" : "NO");
+		s_equipIdAliasProofFired = true;
+		return;
+	}
+}
+
 // Returns true and fills mountNode when the proof fired for this item (first
 // weapon item, gate ON, a real weapon node exists). Otherwise false (fall through
 // to the normal resolve). Fires at most ONCE per mech via s_fired latch so the
@@ -1698,6 +1786,10 @@ long BattleMech::init (DWORD variantNum)
 	numAntiMissileSystems = numOther = numWeapons = numAmmos = 0;
 	numArmorComponents = 0;
 
+	// LOADOUT-EQUIPMENT-ID-ALIAS-1 (E5): throwaway registry round-trip proof
+	// (MC2_EQUIP_IDALIAS_PROOF; latched once/session; no-op gate-OFF).
+	mc2EquipIdAliasProofOnce();
+
 	//-----------------------------------------------------
 	// Read in the mech's non-weapon/non-ammo components...
 	long realItemNum = 0;
@@ -1721,6 +1813,16 @@ long BattleMech::init (DWORD variantNum)
 	for (long curItem = 0;curItem < MAX_MOVER_INVENTORY_ITEMS;curItem++)
 	{
 		mechFile->readUChar((26 + (97 * variantNum)) + curItem, 5, inventory[realItemNum].masterID);
+
+		// LOADOUT-EQUIPMENT-ID-ALIAS-1 (E5): ADDITIVE string-id override. Gate-ON,
+		// if this row carries an optional EquipmentId="core:<slug>" token that
+		// resolves to a legacy ordinal in 0..254, use it; else keep the numeric
+		// masterID just read. Stock rows have no token -> no override (parity).
+		{
+			int aliasId = resolveOptionalEquipmentIdColumn(mechFile, (26 + (97 * variantNum)) + curItem);
+			if (aliasId >= 0)
+				inventory[realItemNum].masterID = (unsigned char)aliasId;
+		}
 
 		// MECH-INV-IDX-GUARD-1: masterID is read from an untrusted .mdf and used to
 		// index MasterComponent::masterList (sized numComponents). A corrupt, modded
@@ -1788,6 +1890,15 @@ long BattleMech::init (DWORD variantNum)
 	for (int curItem = 0;curItem < MAX_MOVER_INVENTORY_ITEMS;curItem++)
 	{
 		mechFile->readUChar((26 + (97 * variantNum)) + curItem, 5, inventory[realItemNum].masterID);
+
+		// LOADOUT-EQUIPMENT-ID-ALIAS-1 (E5): ADDITIVE string-id override (weapons
+		// pass). Same rule as the non-weapon pass above -- gate-ON optional
+		// EquipmentId token resolves to a legacy ordinal; else legacy numeric id.
+		{
+			int aliasId = resolveOptionalEquipmentIdColumn(mechFile, (26 + (97 * variantNum)) + curItem);
+			if (aliasId >= 0)
+				inventory[realItemNum].masterID = (unsigned char)aliasId;
+		}
 
 		// MECH-INV-IDX-GUARD-1: masterID is read from an untrusted .mdf and used to
 		// index MasterComponent::masterList (sized numComponents). A corrupt, modded
