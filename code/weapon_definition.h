@@ -197,20 +197,171 @@ struct WeaponFitFacet {
 };
 
 // -------------------------------------------------------------------------
+// WeaponFireExecutorId -- the STABLE-NAME binding to a future fire executor.
+// -------------------------------------------------------------------------
+// WEAPON-FACET-PRESENTATION-SCHEMA (equipment arc, slices 2+3). This is the
+// weapon analogue of the unit arc's action-executor binding: a WeaponFacet NAMES
+// which fire executor runs it (`beam_direct`, `projectile_ballistic`,
+// `missile_salvo`, `artillery_indirect`, `flamer_area`, `tag_designator`, or any
+// mod-authored name) rather than gameplay branching on `if (masterId==PPC ||
+// class==LASER)`. A FUTURE FIRE-EXECUTOR-REGISTRY (roadmap slice 10) resolves this
+// stable name to a registered executor; the ACTUAL firing lives in that later
+// slice. THIS IS JUST THE BINDING FIELD -- schema only, no firing behavior here.
+//
+// Representation mirrors WeaponId / WeaponStringId exactly: an FNV-1a-hashed 32-bit
+// id for O(1) value equality plus a fixed name buffer, so mods can add executors by
+// NAME with no fixed enum / array cap (the same 255-cap kill that WeaponId gives).
+// id == 0 == unset (no executor bound; a validator flags a weapon with no executor).
+struct WeaponFireExecutorId {
+    unsigned int   id;                  // FNV-1a hash of the full name (0 == unset)
+    char           name[WEAPON_NAME_CAP]; // retained (possibly truncated) debug name
+
+    WeaponFireExecutorId() : id(0u) { name[0] = '\0'; }
+
+    explicit WeaponFireExecutorId(const char* n) : id(weaponIdHash(n)) {
+        int i = 0;
+        if (n) { for (; n[i] && i < WEAPON_NAME_CAP - 1; ++i) name[i] = n[i]; }
+        name[i] = '\0';
+    }
+
+    bool valid() const { return id != 0u; }
+    const char* c_str() const { return name; }
+};
+
+// Value equality is hash equality (same discipline as WeaponId).
+inline bool operator==(const WeaponFireExecutorId& a, const WeaponFireExecutorId& b) {
+    return a.id == b.id;
+}
+inline bool operator!=(const WeaponFireExecutorId& a, const WeaponFireExecutorId& b) {
+    return a.id != b.id;
+}
+
+// Convenience factory: `makeFireExecutorId("beam_direct")`.
+inline WeaponFireExecutorId makeFireExecutorId(const char* name) {
+    return WeaponFireExecutorId(name);
+}
+
+// -------------------------------------------------------------------------
+// WeaponEvent -- SEMANTIC firing events an executor emits (event-based presentation).
+// -------------------------------------------------------------------------
+// The design redline: the fire executor emits SEMANTIC events; the presentation
+// profile maps events -> assets. NEVER hardwire an SFX/VFX id into the executor.
+// This mirrors the unit arc's ActionAnimTag intent layer (action_anim_tag.h): the
+// executor names WHAT happened, data resolves it to HOW it looks/sounds. A FUTURE
+// presentation-event-dispatch slice consumes this; nothing here fires anything.
+enum class WeaponEvent {
+    OnFire,            // trigger pulled / shot committed
+    OnProjectileSpawn, // a projectile/round leaves the muzzle (ballistic/missile)
+    OnMuzzleFlash,     // muzzle-flash cue
+    OnBeamStart,       // continuous beam begins (energy)
+    OnBeamEnd,         // continuous beam ends
+    OnImpact,          // round/beam hits a target/surface
+    OnMiss,            // shot resolved as a miss
+    OnJam,             // weapon jammed (ballistic/rotary)
+    OnAmmoDepleted,    // last round consumed
+    OnOverheat         // firing pushed the unit into overheat
+};
+
+// Keep this in lockstep with the enum above; a static_assert in the test locks it.
+enum { NUM_WEAPON_EVENTS = 10 };
+
+inline int weaponEventIndex(WeaponEvent e) { return (int)e; }
+
+// -------------------------------------------------------------------------
+// WeaponAssetKind -- which KIND of asset an event maps to. An event may resolve to
+// several kinds at once (e.g. OnFire -> a firing SFX AND a muzzle-flash VFX AND a
+// light flash). Each kind is a separate string id, resolved by a later slice
+// against the FX/audio/decal/light registries. Empty == not mapped.
+// -------------------------------------------------------------------------
+enum class WeaponAssetKind {
+    Sfx,   // sound cue id
+    Vfx,   // visual-effect cue id
+    Decal, // surface-decal id (scorch/impact mark)
+    Light  // dynamic-light cue id (muzzle flash / beam glow)
+};
+
+enum { NUM_WEAPON_ASSET_KINDS = 4 };
+
+inline int weaponAssetKindIndex(WeaponAssetKind k) { return (int)k; }
+
+// -------------------------------------------------------------------------
 // WeaponPresentationProfile -- VFX/SFX as a FIRST-CLASS facet (the user's
 // "defs -> VFX/SFX" vision). Every cue is a string id, resolved by a later slice
 // against the FX/audio registries. This is the half stock MC2 crushed into a
 // single raw `specialEffect` char id (cmponent.cpp:237); here muzzle vs impact
 // and visual vs audio are distinct, named, and moddable.
+//
+// EVENT-BASED (WEAPON-FACET-PRESENTATION-SCHEMA): the primary shape is an
+// EVENT x ASSET-KIND grid -- each (WeaponEvent, WeaponAssetKind) pair optionally
+// carries a string id. This replaces the flat muzzle/impact/fire/impact 4-field
+// shape with a richer semantic map (OnFire/OnImpact/OnMiss/OnJam/... x sfx/vfx/
+// decal/light). The FLAT fields below are RETAINED for Phase-0 back-compat -- the
+// existing weapon_definition doctests set/read them unchanged. `syncFlatToEvents()`
+// mirrors the flat fields into the event grid so a caller can author either way;
+// the flat fields are the deprecated-but-live compatibility surface, the event grid
+// is the canonical one going forward. Schema only -- resolves to assets, fires
+// nothing.
 // -------------------------------------------------------------------------
 struct WeaponPresentationProfile {
+    // --- Flat Phase-0 compatibility fields (retained; still authored + read) ---
     WeaponStringId muzzleVfxId;    // muzzle-flash / firing VFX cue
     WeaponStringId impactVfxId;    // on-hit VFX cue
     WeaponStringId fireSfxId;      // firing sound cue
     WeaponStringId impactSfxId;    // on-hit sound cue
 
+    // --- Canonical event -> asset grid ([event][kind]) ---
+    // eventAssets[weaponEventIndex(ev)][weaponAssetKindIndex(kind)] is the string id
+    // for that (event, kind) pair; empty() means "not mapped". Fixed-size POD grid,
+    // trivially copyable, no heap -- safe in the offline test target.
+    WeaponStringId eventAssets[NUM_WEAPON_EVENTS][NUM_WEAPON_ASSET_KINDS];
+
     WeaponPresentationProfile() {}
+
+    // Map a (event, kind) pair to an asset string id.
+    void setEventAsset(WeaponEvent ev, WeaponAssetKind kind, const char* assetId) {
+        eventAssets[weaponEventIndex(ev)][weaponAssetKindIndex(kind)] =
+            WeaponStringId(assetId);
+    }
+
+    // Mirror the flat Phase-0 fields into the canonical event grid (back-compat
+    // bridge): fireSfx -> OnFire/Sfx, muzzleVfx -> OnMuzzleFlash/Vfx, impactVfx ->
+    // OnImpact/Vfx, impactSfx -> OnImpact/Sfx. Only non-empty flat fields overwrite;
+    // an already-authored event asset for the same slot is left intact.
+    void syncFlatToEvents() {
+        if (!fireSfxId.empty())
+            eventAssets[weaponEventIndex(WeaponEvent::OnFire)][weaponAssetKindIndex(WeaponAssetKind::Sfx)] = fireSfxId;
+        if (!muzzleVfxId.empty())
+            eventAssets[weaponEventIndex(WeaponEvent::OnMuzzleFlash)][weaponAssetKindIndex(WeaponAssetKind::Vfx)] = muzzleVfxId;
+        if (!impactVfxId.empty())
+            eventAssets[weaponEventIndex(WeaponEvent::OnImpact)][weaponAssetKindIndex(WeaponAssetKind::Vfx)] = impactVfxId;
+        if (!impactSfxId.empty())
+            eventAssets[weaponEventIndex(WeaponEvent::OnImpact)][weaponAssetKindIndex(WeaponAssetKind::Sfx)] = impactSfxId;
+    }
 };
+
+// -------------------------------------------------------------------------
+// Event-presentation pure helpers -- the contract a future presentation-event-
+// dispatch slice calls. All const, side-effect-free; resolve names, fire nothing.
+// -------------------------------------------------------------------------
+
+// The mapped asset id for (event, kind), or empty WeaponStringId when unmapped.
+inline WeaponStringId assetForEvent(const WeaponPresentationProfile& p,
+                                    WeaponEvent ev, WeaponAssetKind kind) {
+    return p.eventAssets[weaponEventIndex(ev)][weaponAssetKindIndex(kind)];
+}
+
+// Does (event, kind) resolve to a non-empty asset?
+inline bool hasAssetForEvent(const WeaponPresentationProfile& p,
+                             WeaponEvent ev, WeaponAssetKind kind) {
+    return !assetForEvent(p, ev, kind).empty();
+}
+
+// Does this event map to ANY asset kind (sfx/vfx/decal/light)?
+inline bool eventHasAnyAsset(const WeaponPresentationProfile& p, WeaponEvent ev) {
+    for (int k = 0; k < NUM_WEAPON_ASSET_KINDS; ++k)
+        if (!p.eventAssets[weaponEventIndex(ev)][k].empty()) return true;
+    return false;
+}
 
 // UI facet: icon + display name by string id, not by IDS-number/atlas index.
 struct WeaponUIProfile {
@@ -239,6 +390,13 @@ struct WeaponFacet {
 
     // Category / mount-tag facet (the missing half of the hardpoint join).
     WeaponTag category;            // WTAG_ENERGY/BALLISTIC/MISSILE/ANTIPERSONNEL/AMS
+
+    // Fire-executor binding (the missing half of the fire-execution join). Names
+    // WHICH executor runs this weapon (`beam_direct`, `projectile_ballistic`, ...);
+    // a FUTURE FIRE-EXECUTOR-REGISTRY resolves the name to registered firing code.
+    // BINDING ONLY -- unset (default) means "no executor bound"; this schema does
+    // NOT fire anything (see WeaponFireExecutorId note above).
+    WeaponFireExecutorId fireExecutor;
 
     // Composed facets.
     WeaponCombatStats         combat;
