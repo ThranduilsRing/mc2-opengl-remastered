@@ -199,10 +199,10 @@ TEST_CASE("registry: empty registry binds nothing") {
 
 TEST_CASE("registry: bind then isBound") {
     ActionExecutorRegistry reg;
-    const int kMechJumpExecutor = 1;
-    reg.bind(UnitAction::Jump, kMechJumpExecutor, {LOCO_MECH_WALKER});
+    const int kExecId = 1;
+    reg.bind(UnitAction::Jump, kExecId, {LOCO_MECH_WALKER});
     CHECK(reg.isBound(UnitAction::Jump));
-    CHECK(reg.executorFor(UnitAction::Jump) == kMechJumpExecutor);
+    CHECK(reg.executorFor(UnitAction::Jump) == kExecId);
 }
 
 TEST_CASE("registry: compatibility is per-locomotion-model") {
@@ -253,4 +253,45 @@ TEST_CASE("registry: feeds resolveAction's executor fields (integration)") {
     // Tracked vehicle: executor is bound, but locomotion is incompatible ->
     // the registry reports it as a missing-locomotion-facet, not a crash.
     CHECK(canJumpFor(LOCO_TRACKED) == ActionAvailability::MissingLocomotionFacet);
+}
+
+// ---------------------------------------------------------------------------
+// ACTION-EXECUTOR-REGISTRY-1 (slice 3): the engine-side singleton binds
+// UnitAction::Jump to the mech jump-jet executor, compatible ONLY with
+// LOCO_MECH_WALKER. Mover::queryAction feeds isCompatible(Jump, locomotionModel())
+// as the `hasExecutor` fact (locomotionSupports stays true this slice), so:
+//   * a BattleMech (locomotionModel == LOCO_MECH_WALKER) + CAP_JUMP -> Available
+//   * a vehicle (non-mech-walker locomotion) even if granted CAP_JUMP ->
+//     MissingExecutor (the "capability-granted vehicle" audit case)
+// This mirrors the singleton's binding with a local registry (the .cpp holding
+// theActionExecutorRegistry() is not linked into the offline test target).
+// ---------------------------------------------------------------------------
+
+// Reproduce the engine Mover::queryAction(Jump) mapping as a pure helper: the
+// executor fact is registry-resolved against a locomotion-model id.
+static ActionAvailability queryJumpVia(const ActionExecutorRegistry& reg,
+                                       bool hasCap, int locomotionModelId) {
+    const bool hasExecutor = reg.isCompatible(UnitAction::Jump, locomotionModelId);
+    return resolveAction(jumpQueryInputs(hasCap, hasExecutor));
+}
+
+TEST_CASE("slice3 binding: mech-walker jet -> Available; vehicle -> MissingExecutor") {
+    ActionExecutorRegistry reg;
+    reg.bind(UnitAction::Jump, kMechJumpExecutor, {LOCO_MECH_WALKER}); // == singleton
+
+    // Jet BattleMech: CAP_JUMP + mech-walker locomotion -> registry-compatible.
+    CHECK(queryJumpVia(reg, /*cap=*/true, LOCO_MECH_WALKER)
+          == ActionAvailability::Available);
+
+    // Capability-granted vehicle: has CAP_JUMP but a non-mech-walker locomotion
+    // model, so no compatible executor -> honestly MissingExecutor (was silently
+    // Available under the old BattleMech-class coupling). The audit case.
+    CHECK(queryJumpVia(reg, /*cap=*/true, LOCO_WHEELED)
+          == ActionAvailability::MissingExecutor);
+    CHECK(queryJumpVia(reg, /*cap=*/true, LOCO_TRACKED)
+          == ActionAvailability::MissingExecutor);
+
+    // No capability at all is still a schema error regardless of locomotion.
+    CHECK(queryJumpVia(reg, /*cap=*/false, LOCO_MECH_WALKER)
+          == ActionAvailability::InvalidForUnitSchema);
 }

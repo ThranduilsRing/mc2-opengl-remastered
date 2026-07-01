@@ -74,4 +74,21 @@ class ActionExecutorRegistry {
     }
 };
 
+// ACTION-EXECUTOR-REGISTRY-1 (slice 3): the ONE engine-side registry instance.
+// Function-local static, populated once on first access (no GL/IO). Defined in
+// action_executor_registry.cpp — a DECLARATION only here, so the pure offline
+// `mc2_tests` target that includes this header drags nothing (it never links
+// the .cpp; the symbol is only referenced from engine TUs like mover.cpp).
+//
+// Binding for slice 3: UnitAction::Jump -> the mech jump-jet executor, compatible
+// ONLY with LOCO_MECH_WALKER. Gameplay resolves "can this unit run Jump?" via
+// theActionExecutorRegistry().isCompatible(Jump, mover->locomotionModel())
+// instead of asking "is this a BattleMech?".
+ActionExecutorRegistry& theActionExecutorRegistry();
+
+// Executor ids are opaque ints (kNoExecutor == -1 is the sentinel). Slice 3
+// assigns the first real one; keep them here so engine + any future registrant
+// share the numbering.
+static const int kMechJumpExecutor = 1;
+
 #endif // ACTION_EXECUTOR_REGISTRY_H

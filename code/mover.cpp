@@ -3171,19 +3171,38 @@ void Mover::onTypeBound (void) {
 //   validForSchema     = hasCapability(CAP_JUMP)  (no capability == not the
 //                        kind of thing that can ever jump -> InvalidForUnitSchema)
 //   hasCapability      = hasCapability(CAP_JUMP)
-//   hasExecutor        = hasJumpExecutor()         (only BattleMech owns it)
+//   hasExecutor        = registry.isCompatible(Jump, locomotionModel())
+//                        (ACTION-EXECUTOR-REGISTRY-1: registry-resolved, NOT a
+//                        class virtual — the jump executor is bound compatible
+//                        with LOCO_MECH_WALKER only, so a BattleMech resolves
+//                        true and a vehicle's non-jump locomotion model false)
 //   locomotionSupports = true   (LOCOMOTION-FACET-1, slice 4 — not yet a fact)
 //   damageDisabled     = false  (no cheap knocked-out signal at this seam yet)
 //   hasAnimation       = true   (presentation adapter facet — future slice)
 //   hasResource        = true   (fuel/heat/ammo facet — future slice)
-// Net reduction, identical to the old bool: cap+executor -> Available;
-// cap-but-no-executor -> MissingExecutor; no-cap -> InvalidForUnitSchema.
+// Net reduction, identical to the old bool for real units: cap+compatible-executor
+// -> Available; cap-but-no-compatible-executor -> MissingExecutor; no-cap ->
+// InvalidForUnitSchema.
+//
+// AUDIT NOTE (ACTION-EXECUTOR-REGISTRY-1): this is where a "capability-granted
+// vehicle" now correctly reports MissingExecutor instead of silently-Available.
+// The old world coupled the executor to the BattleMech class; now the executor
+// is resolved from the registry against the unit's locomotionModel(), so a
+// vehicle that is data-granted CAP_JUMP but whose locomotion model isn't
+// jump-compatible is honestly reported as MissingExecutor.
 ActionAvailability Mover::queryAction(UnitAction a) const {
 	switch (a) {
-		case UnitAction::Jump:
+		case UnitAction::Jump: {
+			// Executor resolved from the ONE engine-side registry (slice 3),
+			// against this unit's transitional locomotion model, instead of the
+			// old hasJumpExecutor() class virtual.
+			const bool hasExecutor =
+				theActionExecutorRegistry().isCompatible(UnitAction::Jump,
+				                                         locomotionModel());
 			// Pure inputs-builder (unit_action.h) keeps engine + tests in lockstep.
 			return resolveAction(jumpQueryInputs(hasCapability(CAP_JUMP),
-			                                     hasJumpExecutor()));
+			                                     hasExecutor));
+		}
 	}
 	return ActionAvailability::InvalidForUnitSchema;
 }

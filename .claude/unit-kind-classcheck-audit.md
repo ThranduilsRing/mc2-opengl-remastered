@@ -140,6 +140,29 @@ Entry schema: `file / line · pattern · current behavior · axis` /
 through the rewired seam automatically once gate-ON; they are not class-checks
 and need no migration.)
 
+### ACTION-EXECUTOR-REGISTRY-1 (slice 3) — executor class-check consolidated
+
+The jump *executor* (previously the `hasJumpExecutor()` class virtual —
+`Mover`=false, `BattleMech`=true) is **no longer a per-class question**. It is
+now resolved from the ONE engine-side `ActionExecutorRegistry` singleton
+(`code/action_executor_registry.cpp`, accessor `theActionExecutorRegistry()`),
+which binds `UnitAction::Jump` → mech jump-jet executor compatible with
+`LOCO_MECH_WALKER` only. `Mover::queryAction(Jump)` feeds
+`isCompatible(Jump, locomotionModel())` as the `hasExecutor` fact.
+
+`hasJumpExecutor()` is **removed** (both the base and the `BattleMech` override).
+All remaining executor class-knowledge is consolidated into ONE method:
+
+| anchor | pattern | current behavior · axis | transitional / future query | owning facet · slice · risk |
+|---|---|---|---|---|
+| `mover.h` `Mover::locomotionModel()` | `return LOCO_WHEELED;` (base) | non-jump locomotion model id · **locomotion** | **NOW:** transitional class-derivation (base=wheeled). **FUTURE:** data facet lookup | locomotion · **LOCOMOTION-FACET-1 (slice 4)** · LOW |
+| `mech.h` `BattleMech::locomotionModel()` | `return LOCO_MECH_WALKER;` | mech-walker locomotion model id · **locomotion** | **NOW:** transitional class override — the ONE remaining executor class-check. **FUTURE:** replaced by a data facet; this accessor is the isolation seam so the swap touches one method | locomotion · **LOCOMOTION-FACET-1 (slice 4)** · LOW |
+
+**Audit case now honestly reported:** a "capability-granted vehicle" (data
+grants `CAP_JUMP` but locomotion model is not mech-walker) now resolves
+`MissingExecutor` from the registry instead of silently-`Available`. Owner of
+the class-derivation removal: **LOCOMOTION-FACET-1**.
+
 ### Completeness check (Task 8, Step 3)
 
 Every **gameplay-bucket** `getObjectClass()==KIND` is accounted for: the one

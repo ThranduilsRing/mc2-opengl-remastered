@@ -35,6 +35,10 @@
 #include"unit_action.h"          // UNIT-ACTION-QUERY-RESULT-1: ActionAvailability
 #endif
 
+#ifndef ACTION_EXECUTOR_REGISTRY_H
+#include"action_executor_registry.h"  // ACTION-EXECUTOR-REGISTRY-1: LocomotionModel + registry
+#endif
+
 #ifndef MOVE_H
 #include"move.h"
 #endif
@@ -1660,7 +1664,15 @@ class Mover : public GameObject {
 		// unit_action.h contract. canPerform() is now a thin adapter over it.
 		virtual ActionAvailability queryAction (UnitAction a) const;
 		bool         canPerform    (UnitAction a) const { return queryAction(a) == ActionAvailability::Available; }
-		virtual bool hasJumpExecutor (void) const { return false; }   // base: no executor
+		// ACTION-EXECUTOR-REGISTRY-1 (slice 3): TRANSITIONAL locomotion-model id.
+		// This is the ONE place the executor's class-derivation is now allowed to
+		// live: base Mover is a non-jump locomotion model (wheeled), BattleMech
+		// overrides to the mech-walker. queryAction() resolves the jump executor
+		// through theActionExecutorRegistry().isCompatible(Jump, locomotionModel())
+		// instead of the old hasJumpExecutor() class virtual. LOCOMOTION-FACET-1
+		// (slice 4) replaces this class-derivation with a data facet, so that
+		// swap touches ONLY this method — the isolation seam.
+		virtual int  locomotionModel (void) const { return LOCO_WHEELED; }   // base: non-jump model
 		virtual bool canJump (void) {
 			if (mc2UnitProfileDataEnabled()) return canPerform(UnitAction::Jump);
 			return false;                       // original Mover behavior

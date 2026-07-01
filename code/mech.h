@@ -664,7 +664,12 @@ class BattleMech : public Mover {
 		// real load path where numJumpJets is final. Transitional: a future slice
 		// moves loadout-derivation up to the type layer, retiring this entirely.
 		void refreshDerivedCapabilities (void);
-		virtual bool hasJumpExecutor (void) const { return true; }   // legacy mech jump path
+		// ACTION-EXECUTOR-REGISTRY-1 (slice 3): a BattleMech is a mech-walker, the
+		// only locomotion model the jump executor is registered compatible with.
+		// This override IS the transitional class-derivation the audit tracks;
+		// LOCOMOTION-FACET-1 replaces it with a data facet. Replaces the old
+		// hasJumpExecutor()==true class virtual (executor now registry-resolved).
+		virtual int  locomotionModel (void) const { return LOCO_MECH_WALKER; }   // legacy mech jump path
 		virtual bool canJump (void) {
 			if (mc2UnitProfileDataEnabled()) return canPerform(UnitAction::Jump);
 			return (numJumpJets > 0);           // original

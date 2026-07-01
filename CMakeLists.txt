@@ -374,6 +374,7 @@ set(SOURCES
     "code/objtype.cpp"
     "code/unitprofile.cpp"
     "code/unitprofile_fit.cpp"
+    "code/action_executor_registry.cpp"
     "code/tacordr.cpp"
     "code/team.cpp"
     "code/terrobj.cpp"
