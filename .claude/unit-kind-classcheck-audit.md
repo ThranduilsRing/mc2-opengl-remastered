@@ -268,3 +268,35 @@ DATA-on/proof-off = 4 jet-mechs TRUE PASS Δ+0; mc2_01 both-off = 0 rows PASS Δ
 class-independent. It does NOT make the vehicle functionally jump — no
 jump-*movement* executor runs for vehicles (deferred LOCOMOTION-DATA-1). The hook
 is proof-only and must be removed once a real Phase-2 data-unit proof exists.
+
+## UNIT-DEFINITION-VALIDATOR-1 (Phase-2 slice 8 — validation consolidation)
+
+The per-facet validators that each earlier slice added at its own type-load site
+are now folded into ONE pure aggregating entry `validateUnitDefinition(
+UnitDefinitionValidationInputs&, ActionExecutorRegistry&)`
+(`code/unit_profile_validator.h`). It concatenates the existing pure per-facet
+checks (jump-executor coherence, loadout→hardpoint joins, declared sockets,
+animation-fallback resolution, declared UI assets) in a stable facet order and
+returns the aggregated findings; report-only, engine/GL/IO-free (compiles into
+`mc2_tests`).
+
+Engine glue: the three scattered per-facet validator entries now route through
+this SINGLE call, each populating only its lifecycle-local input subset —
+`validateAndReportUnitProfile` (jump, `unitprofile_fit.cpp`, type-load),
+`Mover::validateLoadoutHardpointJoins` (loadout joins, `mover.cpp`, instance
+loadout), and the socket block in `Mech3DAppearanceType::init` (`mech3d.cpp`,
+appearance init). Log tag unified to `[UnitDefinition:VALIDATE]`. Gated
+`MC2_UNIT_PROFILE_DATA`, report-only — never rejects a spawn. No new class-check
+is introduced or removed; the jump verdict still keys on the ActionExecutorRegistry
++ locomotion facet, never on the C++ class.
+
+**Verified:** offline doctest 362/362 (4 new: coherent→zero, every LIVE reason
+code reachable through the ONE entry, aggregate==sum-of-delegates). mc2_01
+gate-ON = 4 jet-mechs `can_perform_jump=TRUE`, ZERO validation findings for stock,
+PASS Δ+0; gate-OFF PASS Δ+0 (validator a no-op). Code committed first (`0a84da1c`).
+
+**Reason-code vocabulary the Phase-3 `mc2_modlint` CLI wraps** (unchanged, all 6
+LIVE, reachable through the single entry): `UPV_JUMP_GRANTED_NO_COMPATIBLE_EXECUTOR`,
+`UPV_HARDPOINT_DAMAGE_LOCATION_MISSING`, `UPV_HARDPOINT_SOCKET_MISSING`,
+`UPV_ANIMATION_FALLBACK_MISSING`, `UPV_HARDPOINT_WEAPON_CLASS_REJECTED`,
+`UPV_UI_ASSET_MISSING`.
