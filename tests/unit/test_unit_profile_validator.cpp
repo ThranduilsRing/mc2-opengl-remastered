@@ -107,7 +107,57 @@ TEST_CASE("validator: every LIVE reason code is reachable") {
     REQUIRE(f.size() == 1);
     CHECK(f[0].code == UPV_JUMP_GRANTED_NO_COMPATIBLE_EXECUTOR);
 
-    // Phase-2 codes exist in the vocabulary but are NOT emitted this slice.
-    // (Documented stubs; a Phase-2 slice adds facet inputs + checks + tests.)
-    CHECK(UPV__COUNT == 4);   // vocabulary size lock: 1 live + 3 reserved stubs
+    // UPV_HARDPOINT_SOCKET_MISSING is now LIVE (PRESENTATION-SOCKET-PROFILE-1);
+    // its reachability is covered in the declared-socket cases below.
+    // The remaining Phase-2 codes exist in the vocabulary but are NOT emitted yet.
+    CHECK(UPV__COUNT == 4);   // vocabulary size lock: 2 live + 2 reserved stubs
+}
+
+// -------------------------------------------------------------------------
+// PRESENTATION-SOCKET-PROFILE-1 (Phase-2 slice 2): declared-socket coherence.
+// Pure check: a socket declared in data but absent on the model -> one
+// UPV_HARDPOINT_SOCKET_MISSING finding. Stock units declare none -> zero.
+// -------------------------------------------------------------------------
+
+static DeclaredSocketCheck sock(const char* name, bool present) {
+    DeclaredSocketCheck d;
+    d.socket  = HardpointSocketName(name);
+    d.present = present;
+    return d;
+}
+
+TEST_CASE("sockets: no declared sockets (stock) -> ZERO findings") {
+    // The stock-parity guarantee: every shipped unit declares no presentation
+    // sockets, so the check is a no-op and gate-ON stock stays byte-parity.
+    std::vector<DeclaredSocketCheck> none;
+    CHECK(validateDeclaredSockets(none).empty());
+}
+
+TEST_CASE("sockets: all declared sockets present -> ZERO findings") {
+    std::vector<DeclaredSocketCheck> declared = {
+        sock("RightTorso_Energy_1", true),
+        sock("LeftArm_Ballistic_1", true),
+    };
+    CHECK(validateDeclaredSockets(declared).empty());
+}
+
+TEST_CASE("sockets: one declared socket absent -> one SOCKET_MISSING finding") {
+    std::vector<DeclaredSocketCheck> declared = {
+        sock("RightTorso_Energy_1", true),
+        sock("Vehicle_Turret_Heavy_1", false),   // declared but not on the model
+    };
+    std::vector<UnitProfileFinding> f = validateDeclaredSockets(declared);
+    REQUIRE(f.size() == 1);
+    CHECK(f[0].code == UPV_HARDPOINT_SOCKET_MISSING);
+    CHECK(f[0].message != nullptr);
+}
+
+TEST_CASE("sockets: every declared socket absent -> one finding each") {
+    std::vector<DeclaredSocketCheck> declared = {
+        sock("A", false), sock("B", false), sock("C", false),
+    };
+    std::vector<UnitProfileFinding> f = validateDeclaredSockets(declared);
+    REQUIRE(f.size() == 3);
+    for (const UnitProfileFinding& x : f)
+        CHECK(x.code == UPV_HARDPOINT_SOCKET_MISSING);
 }

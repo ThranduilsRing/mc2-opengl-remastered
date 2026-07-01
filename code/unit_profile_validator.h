@@ -26,6 +26,7 @@
 #include <vector>
 #include "capability.h"                  // CAP_JUMP, UnitAction
 #include "action_executor_registry.h"    // ActionExecutorRegistry, LocomotionModel
+#include "hardpoint.h"                   // HardpointSocketName (PRESENTATION-SOCKET-PROFILE-1)
 
 // -------------------------------------------------------------------------
 // REASON-CODE VOCABULARY.
@@ -35,24 +36,32 @@
 // ADD codes here and grow the vocabulary — they must NOT renumber existing ones,
 // because logs / mod tooling key on the name. `UPV_` = Unit-Profile-Validator.
 //
-// LIVE this slice:
-//   UPV_JUMP_GRANTED_NO_COMPATIBLE_EXECUTOR
+// LIVE:
+//   UPV_JUMP_GRANTED_NO_COMPATIBLE_EXECUTOR  (UNITPROFILE-VALIDATOR-1, slice 6)
+//   UPV_HARDPOINT_SOCKET_MISSING             (PRESENTATION-SOCKET-PROFILE-1, Phase-2
+//        slice 2) — a presentation profile DECLARES a model socket (node name) that
+//        the actually-loaded model shape does not expose. Report-only: tells a modder
+//        "declared socket X does not exist on the model." Emitted by the pure
+//        validateDeclaredSockets() below; the engine glue supplies the present/absent
+//        bool per declared socket from the loaded shape (Mech3DAppearanceType::init).
 //
 // STUBBED (Phase-2 reason codes reserved but NOT checked yet — documented so the
 // vocabulary is stable and the check sites are obvious; see roadmap Phase 2):
 //   UPV_HARDPOINT_DAMAGE_LOCATION_MISSING  -- loadout names a damage location the
 //        DamageSchema has no such location for ("references RightArm but schema has none").
-//   UPV_HARDPOINT_SOCKET_MISSING           -- a hardpoint maps to a model socket the
-//        presentation profile does not expose.
 //   UPV_ANIMATION_FALLBACK_MISSING         -- an action is available but the animation
 //        binding profile has no clip/gesture fallback for it (e.g. no JumpLand).
 enum UnitProfileReasonCode {
     // --- LIVE ---
     UPV_JUMP_GRANTED_NO_COMPATIBLE_EXECUTOR = 0,
 
-    // --- STUBBED (Phase 2; not emitted this slice) ---
+    // --- STUBBED (Phase 2; not emitted yet) ---
     UPV_HARDPOINT_DAMAGE_LOCATION_MISSING,
+
+    // --- LIVE (PRESENTATION-SOCKET-PROFILE-1, Phase-2 slice 2) ---
     UPV_HARDPOINT_SOCKET_MISSING,
+
+    // --- STUBBED (Phase 2; not emitted yet) ---
     UPV_ANIMATION_FALLBACK_MISSING,
 
     UPV__COUNT
@@ -108,6 +117,50 @@ validateUnitProfile(const UnitProfileFacts& facts,
     // the vocabulary is stable and this is the single site future slices extend.
     // Do NOT add Phase-2 checks here without their facet inputs on UnitProfileFacts.
 
+    return findings;
+}
+
+// -------------------------------------------------------------------------
+// PRESENTATION-SOCKET-PROFILE-1 (Phase-2 slice 2): declared-socket coherence.
+//
+// A presentation profile MAY declare model sockets (node-name strings) that
+// later slices resolve against the model via GetTransformedNodePosition. This
+// pure check answers the modder question: "does every socket I declared
+// actually EXIST on the model I ship?" — WITHOUT this header knowing anything
+// about the engine's shape type. The caller (engine glue in
+// Mech3DAppearanceType::init) supplies, per declared socket, a single bool:
+// `present` == "a node with this exact name exists on the loaded shape."
+//
+// PURE + REPORT-ONLY. One finding per DECLARED-but-ABSENT socket, carrying the
+// live UPV_HARDPOINT_SOCKET_MISSING code. An empty declaration list (every stock
+// unit — none declare sockets) yields ZERO findings, so gate-ON stock stays at
+// full parity. This does NOT touch getWeaponNode / nodeData / any render path;
+// the socket table is read-and-validated only, not yet authoritative (slice 4).
+//
+// The message is a fixed literal (findings are flat POD with no ownership); the
+// engine glue already prefixes the type name and can append the socket name when
+// logging, exactly like the jump finding. The bool-per-socket split keeps the
+// engine's node-name lookup (the only impure part) OUT of this header.
+
+// One declared presentation socket + whether it resolved on the model.
+struct DeclaredSocketCheck {
+    HardpointSocketName socket;   // the declared node-name (from data)
+    bool                present;  // engine glue: does a node of this name exist?
+};
+
+// LIVE CHECK: for each declared socket that is NOT present on the model, emit one
+// UPV_HARDPOINT_SOCKET_MISSING finding. Empty input (or every socket present) ->
+// no findings (the stock-parity guarantee: stock units declare no sockets).
+inline std::vector<UnitProfileFinding>
+validateDeclaredSockets(const std::vector<DeclaredSocketCheck>& declared) {
+    std::vector<UnitProfileFinding> findings;
+    for (const DeclaredSocketCheck& d : declared) {
+        if (!d.present) {
+            findings.push_back(UnitProfileFinding{
+                UPV_HARDPOINT_SOCKET_MISSING,
+                "declared presentation socket not found on model"});
+        }
+    }
     return findings;
 }
 
