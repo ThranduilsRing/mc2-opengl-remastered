@@ -989,6 +989,10 @@ def main():
                             # capability gate. Without this allowlisted Popen
                             # drops it and the gate-ON witness proof is inert.
                             "MC2_UNIT_PROFILE_DATA",
+                            # VEHICLE-JUMP-PROOF-1 (slice 7): separate default-OFF
+                            # gate for the throwaway vehicle-jump proof hook. Must
+                            # be allowlisted or Popen drops it and the proof is inert.
+                            "MC2_UNIT_PROFILE_VEHICLE_JUMP_PROOF",
                             "MC2_PRESWAP_FINISH",
                             "MC2_MODERN_TERRAIN_SURFACE",
                             "MC2_MODERN_TERRAIN_PATCHES",
