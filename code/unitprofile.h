@@ -5,6 +5,7 @@
 #include "capability.h"
 #include "locomotion_facet.h"          // LocomotionModel enum + parseLocomotionModel
 #include "damage_schema.h"             // DamageSchemaId enum + parseDamageSchema
+#include "ui_profile.h"                // UIProfile facet + accessor-override helpers
 
 bool mc2_unitprofile_parse_enabled(const char* envValue);   // pure, testable
 bool mc2UnitProfileDataEnabled();                            // cached getenv
@@ -29,6 +30,14 @@ class UnitProfile {                  // static, on ObjectType (flyweight)
     // consults (schemaHasLocation) to reject impossible loadout↔location refs.
     // This slice does NOT change any armor / hit-application math.
     DamageSchemaId damageSchema = DMG_VEHICLE_FACINGS;
+    // UI-PROFILE-1 (Phase-2 slice 6): data-owned UI presentation (icon/portrait/
+    // minimap/silhouette by NAME + optional name/encyclopedia string-id override).
+    // Default is an all-empty UIProfile (every field unmapped) -> every accessor
+    // seam keeps its legacy iconFileNames[]/atlas/IDS_ lookup. Populated ONLY from
+    // an optional `.fit [UIProfile]` block; stock .fits declare none, so stock UI
+    // is byte-identical. PURE DATA facet: it overrides ONLY which asset/id an
+    // accessor selects, never the icon-atlas blit math (mechicon.cpp CANARY).
+    UIProfile ui;
 };
 struct UnitRuntimeState {            // mutable, on Mover
     CapabilitySet currentCapabilities;

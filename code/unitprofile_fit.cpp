@@ -35,6 +35,29 @@ void populateProfileFromFit(FitIniFile& fit, UnitProfile& p) {
         if (fit.readIdString("DamageSchema", dmg, sizeof(dmg)) == NO_ERR)
             p.damageSchema = parseDamageSchema(dmg, p.damageSchema);
     }
+    // UI-PROFILE-1 (Phase-2 slice 6): optional data-owned UI presentation. Lives
+    // in a SEPARATE optional [UIProfile] block (a UNIT may declare UI without
+    // declaring capabilities, and vice-versa). Absent block or absent key -> the
+    // corresponding UIProfile field stays empty/UNSET -> the accessor seam keeps
+    // its legacy iconFileNames[]/IDS_ lookup, so stock .fits are byte-identical.
+    // Read-only into the facet; NO atlas / blit-math touch here.
+    if (fit.seekBlock("UIProfile") == NO_ERR) {
+        char buf[UI_ASSET_NAME_CAP] = {0};
+        if (fit.readIdString("Icon", buf, sizeof(buf)) == NO_ERR)
+            p.ui.icon = UIAssetName(buf);
+        if (fit.readIdString("Portrait", buf, sizeof(buf)) == NO_ERR)
+            p.ui.portrait = UIAssetName(buf);
+        if (fit.readIdString("Minimap", buf, sizeof(buf)) == NO_ERR)
+            p.ui.minimap = UIAssetName(buf);
+        if (fit.readIdString("Silhouette", buf, sizeof(buf)) == NO_ERR)
+            p.ui.silhouette = UIAssetName(buf);
+        long id = UI_STRING_ID_UNSET;
+        if (fit.readIdLong("NameID", id) == NO_ERR)
+            p.ui.nameStringId = id;
+        id = UI_STRING_ID_UNSET;
+        if (fit.readIdLong("EncyclopediaID", id) == NO_ERR)
+            p.ui.encyclopediaStringId = id;
+    }
 }
 
 // VEHICLE-JUMP-PROOF-1 (slice 7, Phase-1 closer) — THROWAWAY/proof-only hook.

@@ -110,9 +110,11 @@ TEST_CASE("validator: every LIVE reason code is reachable") {
     // UPV_HARDPOINT_SOCKET_MISSING is now LIVE (PRESENTATION-SOCKET-PROFILE-1);
     // its reachability is covered in the declared-socket cases below.
     // ACTION-ANIMATION-BINDINGS-1 (slice 5) made UPV_ANIMATION_FALLBACK_MISSING
-    // live -> all 5 reason codes now emit; its reachability is covered in
-    // test_action_anim_tag.cpp (validateAnimationFallbacks). Vocabulary unchanged.
-    CHECK(UPV__COUNT == 5);   // vocabulary size lock
+    // live; its reachability is covered in test_action_anim_tag.cpp
+    // (validateAnimationFallbacks). UI-PROFILE-1 (slice 6) APPENDED
+    // UPV_UI_ASSET_MISSING (reachability covered in test_ui_profile.cpp) -> the
+    // vocabulary grew to 6. Appended, never renumbered.
+    CHECK(UPV__COUNT == 6);   // vocabulary size lock
 }
 
 // -------------------------------------------------------------------------

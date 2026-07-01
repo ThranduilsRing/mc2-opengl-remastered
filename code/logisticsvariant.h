@@ -35,8 +35,9 @@ public:
 	int				init( CSVFile* fileName, int chassisID );
 	void			setFitID( int id ){ fitID = id; }
 	void			setNameID( long id ){ chassisNameID = id; }
-	int				getNameID() const { return chassisNameID; }
-	int				getEncyclopediaID() const { return encyclopediaID; }
+	// UI-PROFILE-1: prefer a resolved UIProfile string-id override, else legacy.
+	int				getNameID() const { return (int)( uiNameIDOverride != -1 ? uiNameIDOverride : chassisNameID ); }
+	int				getEncyclopediaID() const { return (int)( uiEncyclopediaIDOverride != -1 ? uiEncyclopediaIDOverride : encyclopediaID ); }
 	const EString& getFileName() const { return fileName; }
 	int				getHouseID() const{ return houseID; }
 	float			getMaxWeight() const{ return maxWeight; }
@@ -96,6 +97,16 @@ protected:
 
 	long				fitID;
 
+	// UI-PROFILE-1 (Phase-2 slice 6): optional data-owned UI overrides, resolved
+	// ONCE in init() from the additive-merge UIProfile registry (keyed by chassis
+	// filename). Empty EString / -1 == "no override" == the accessor keeps its
+	// legacy iconFileNames[]/IDS_ value. Stock chassis have no registry entry, so
+	// all three EStrings stay empty and both ids stay -1 -> byte-identical stock UI.
+	// Applied at getSmall/Medium/LargeIconFileName + getNameID/getEncyclopediaID.
+	EString				uiIconOverride[3];   // [0]=small(icon) [1]=medium(silhouette) [2]=large(portrait)
+	long				uiNameIDOverride;         // -1 == unset
+	long				uiEncyclopediaIDOverride; // -1 == unset
+
 	MechAppearance*		appearance; 
 
 	friend class		LogisticsVariant;
@@ -137,7 +148,7 @@ protected:
 		float			getMaxWeight() const { return chassis->maxWeight; }
 		long			getChassisName() const { return chassis->chassisNameID; }
 		const EString&		getName() const { return variantName; }
-		long			getEncyclopediaID() const { return chassis->encyclopediaID; }
+		long			getEncyclopediaID() const { return chassis->getEncyclopediaID(); }  // UI-PROFILE-1: via override-aware chassis accessor
 		long			getHelpID() const { return chassis->helpID; }
 		long			getBaseCost() const { return chassis->baseCost; }
 		long			getComponentCount() const { return componentCount; }
@@ -156,9 +167,10 @@ protected:
 		long			effectiveSpeed() const;
 
 		int				getVariantID() const { return ID & 0x00ffffff; }
-		const EString&		getSmallIconFileName() const { return chassis->iconFileNames[0]; }
-		const EString&	getMediumIconFileName() const { return chassis->iconFileNames[1]; }
-		const EString&		getLargeIconFileName() const { return chassis->iconFileNames[2]; }
+		// UI-PROFILE-1: prefer a resolved UIProfile icon-file override, else legacy.
+		const EString&		getSmallIconFileName() const { return chassis->uiIconOverride[0].Length() ? chassis->uiIconOverride[0] : chassis->iconFileNames[0]; }
+		const EString&	getMediumIconFileName() const { return chassis->uiIconOverride[1].Length() ? chassis->uiIconOverride[1] : chassis->iconFileNames[1]; }
+		const EString&		getLargeIconFileName() const { return chassis->uiIconOverride[2].Length() ? chassis->uiIconOverride[2] : chassis->iconFileNames[2]; }
 		int				getComponentsWithLocation( long& count, long* IDArray, long* xLocationArray, long* yLocationArray );
 		int				removeComponent( long xCoord, long yCoord );
 		int				addComponent( LogisticsComponent*, long& xCoord, long& yCoord );

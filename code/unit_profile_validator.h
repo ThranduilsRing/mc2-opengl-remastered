@@ -81,6 +81,16 @@ enum UnitProfileReasonCode {
     // mod tooling key on the value); the vocabulary never renumbers.
     UPV_HARDPOINT_WEAPON_CLASS_REJECTED,
 
+    // --- LIVE (UI-PROFILE-1, Phase-2 slice 6) ---
+    // A UIProfile DECLARES a UI asset (icon / portrait / minimap / silhouette
+    // filename) that does NOT resolve/exist where the engine glue could check it
+    // ("declared icon file 'foo.tga' not found"). REPORT-ONLY: tells a modder the
+    // named asset is missing so the override would silently fall through to the
+    // legacy slot. Emitted by the pure validateDeclaredUIAssets() below; the engine
+    // glue supplies the resolves/absent bool per declared asset (a file existence
+    // check). Appended last so existing codes keep their numbers.
+    UPV_UI_ASSET_MISSING,
+
     UPV__COUNT
 };
 
@@ -290,6 +300,45 @@ validateAnimationFallbacks(const std::vector<NeededAnimTag>& needed,
             findings.push_back(UnitProfileFinding{
                 UPV_ANIMATION_FALLBACK_MISSING,
                 "action animation tag has no available gesture in its fallback chain"});
+        }
+    }
+    return findings;
+}
+
+// -------------------------------------------------------------------------
+// UI-PROFILE-1 (Phase-2 slice 6): declared-UI-asset coherence.
+//
+// A UIProfile MAY declare UI asset filenames (icon / portrait / minimap /
+// silhouette). This pure check answers the modder question: "does every UI asset
+// I named actually resolve?" -- WITHOUT this header knowing how the engine checks
+// a file (the impure existence lookup lives in the engine glue, which hands this
+// header one bool per DECLARED asset: `resolves` == "the named asset exists").
+//
+// PURE + REPORT-ONLY. One finding per DECLARED-but-UNRESOLVED asset, carrying the
+// live UPV_UI_ASSET_MISSING code. An empty declaration list (every stock unit --
+// none declare UI assets) yields ZERO findings, so gate-ON stock stays at full
+// parity. This does NOT touch the icon-atlas blit math or any accessor -- the UI
+// assets are read-and-validated only; the override decision (chooseUIAsset) is a
+// separate, equally pure step in ui_profile.h.
+
+// One declared UI asset + whether it resolved. Mirrors DeclaredSocketCheck: the
+// engine glue does the (impure) file existence check and hands this header a bool.
+struct DeclaredUIAssetCheck {
+    bool resolves;   // engine glue: does the named asset exist/resolve?
+    DeclaredUIAssetCheck() : resolves(true) {}
+};
+
+// LIVE CHECK: for each declared asset that does NOT resolve, emit one
+// UPV_UI_ASSET_MISSING finding. Empty input (or every asset resolving) -> no
+// findings (the stock-parity guarantee: stock units declare no UI assets).
+inline std::vector<UnitProfileFinding>
+validateDeclaredUIAssets(const std::vector<DeclaredUIAssetCheck>& declared) {
+    std::vector<UnitProfileFinding> findings;
+    for (const DeclaredUIAssetCheck& d : declared) {
+        if (!d.resolves) {
+            findings.push_back(UnitProfileFinding{
+                UPV_UI_ASSET_MISSING,
+                "declared UI asset not found/resolvable"});
         }
     }
     return findings;
