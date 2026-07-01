@@ -48,6 +48,7 @@ add_executable(mc2_tests
     test_gpu_buffer_owner.cpp  # GPU-BUFFER-OWNER-SKELETON-1: owner record invariants (offline)
     test_det_rng.cpp        # DETERMINISTIC-RNG-1: LCG kernel determinism (offline)
     test_vulkan_contract.cpp  # VULKAN-CONTRACT-COVERAGE-1: descriptor-class coverage/consistency (offline)
+    test_hardpoint.cpp        # HARDPOINT-ID-SCHEMA-1: HardpointId join key + weapon-tag/damage-location link (offline)
 
     # Leaf-TU engine sources (no transitive engine include drag).
     ${MC2_WORKTREE_ROOT}/mclib/fst_hash.cpp
