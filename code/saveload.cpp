@@ -851,6 +851,9 @@ void Mission::load (const char *loadFileName)
 		buildAndDumpEquipmentRegistryIfEnabled();
 		// FIRE-EXECUTOR-REGISTRY-1 (E7): gated fireExecutor lookup proof (no-op OFF).
 		dumpFireExecutorProofIfEnabled();
+		// ONE-WEAPON-PRESENTATION-PROOF-1 (E8): gated load-time presentation proof
+		// (no-op OFF; resolves an ASSET id only, fires nothing).
+		dumpPresentationProofIfEnabled();
 	}
 
 	result = gameSystemFile->readIdUChar("GodMode", godMode);

@@ -2459,6 +2459,10 @@ void Mission::init (const char *missionName, long loadType, long dropZoneID, Stu
 		// FIRE-EXECUTOR-REGISTRY-1 (E7): gated proof of the fireExecutor lookup
 		// over the just-loaded weapon components (no-op OFF; fires nothing).
 		dumpFireExecutorProofIfEnabled();
+		// ONE-WEAPON-PRESENTATION-PROOF-1 (E8): gated load-time proof that the
+		// target weapon's presentation asset resolves from data (no-op OFF;
+		// resolves an ASSET id only, fires nothing, changes no firing behavior).
+		dumpPresentationProofIfEnabled();
 	}
 
 	result = gameSystemFile->readIdUChar("GodMode", godMode);

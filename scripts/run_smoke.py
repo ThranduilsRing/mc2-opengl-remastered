@@ -1003,6 +1003,12 @@ def main():
                             # round-trip proof ([EQUIP-IDALIAS-PROOF]). Must be
                             # allowlisted or Popen drops it and the proof is inert.
                             "MC2_EQUIP_IDALIAS_PROOF",
+                            # ONE-WEAPON-PRESENTATION-PROOF-1 (E8): separate
+                            # default-OFF gate for the throwaway parity-safe
+                            # presentation proof ([EQUIP-PRESENTATION-PROOF]).
+                            # Must be allowlisted or Popen drops it and the proof
+                            # is inert.
+                            "MC2_EQUIP_PRESENTATION_PROOF",
                             "MC2_PRESWAP_FINISH",
                             "MC2_MODERN_TERRAIN_SURFACE",
                             "MC2_MODERN_TERRAIN_PATCHES",

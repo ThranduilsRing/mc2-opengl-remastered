@@ -25,6 +25,26 @@ void buildAndDumpEquipmentRegistryIfEnabled();
 // nothing; the legacy weaponFire path stays authoritative.
 void dumpFireExecutorProofIfEnabled();
 
+// ONE-WEAPON-PRESENTATION-PROOF-1 (equipment arc, engine slice E8). The ONE seam
+// entry for resolving the OnFire/OnMuzzleFlash VFX effect id of the ONE target
+// weapon (core:ppc) from its EquipmentDefinition presentation data, falling back
+// to the legacy effect id. Called at the weapon-fire VFX emit point in
+// BattleMech::handleWeaponFire (code/mech.cpp) in place of the raw legacy
+// getWeaponSpecialEffect() value. ★ Resolves the presentation ASSET CHOICE ONLY:
+// gate-OFF, non-target weapons, and stock (no data asset) all return
+// legacyEffectType unchanged -> byte-identical, no firing/damage/heat/ammo/timing
+// change. legacy firing stays authoritative. (weapon_presentation_proof.cpp)
+int resolveTargetWeaponFireEffectType(long masterID, int legacyEffectType);
+
+// ONE-WEAPON-PRESENTATION-PROOF-1 (E8): gated load-time proof that the target
+// weapon's OnFire/OnMuzzleFlash presentation asset resolves through the data
+// path (source=DATA when the parity-safe proof gate populates it, source=
+// LEGACY-FALLBACK for stock which carries no data asset). Deterministically
+// observable at load (no live fire needed). Called after
+// dumpFireExecutorProofIfEnabled(). Gate-OFF: no-op -> byte-identical. Resolves
+// an ASSET id only; legacy firing stays authoritative. (weapon_presentation_proof.cpp)
+void dumpPresentationProofIfEnabled();
+
 // LOADOUT-EQUIPMENT-ID-ALIAS-1 (equipment arc, engine slice E5). Accessor for
 // the process-global equipment registry populated by the E2 facade above. The
 // loadout parser queries it (gate-ON) to resolve an optional `core:<slug>`

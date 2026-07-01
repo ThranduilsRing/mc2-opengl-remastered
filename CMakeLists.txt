@@ -378,6 +378,7 @@ set(SOURCES
     "code/ui_profile_registry.cpp"
     "code/action_executor_registry.cpp"
     "code/fire_executor_registry.cpp"
+    "code/weapon_presentation_proof.cpp"
     "code/tacordr.cpp"
     "code/team.cpp"
     "code/terrobj.cpp"

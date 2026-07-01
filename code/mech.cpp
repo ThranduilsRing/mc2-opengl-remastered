@@ -102,6 +102,9 @@
 #include"unitdesg.h"
 #endif
 
+// ONE-WEAPON-PRESENTATION-PROOF-1 (E8): resolveTargetWeaponFireEffectType seam.
+#include"unitprofile.h"
+
 #ifdef USE_ELEMENTALS
 #ifndef ELEMNTL_H
 #include<elemntl.h>
@@ -9186,12 +9189,22 @@ long BattleMech::handleWeaponFire (long weaponIndex,
 				hitLocation,
 				entryAngle);
 
-			unsigned char effectType = MasterComponent::masterList[inventory[weaponIndex].masterID].getWeaponSpecialEffect();
+			// ONE-WEAPON-PRESENTATION-PROOF-1 (E8): the ONE weapon-fire VFX emit
+			// point intercepted for the equipment arc's final slice. For the ONE
+			// target weapon (core:ppc) under MC2_UNIT_PROFILE_DATA, the muzzle/bolt
+			// effect id is resolved from EquipmentDefinition presentation data;
+			// gate-OFF / every other weapon / stock-no-data returns the legacy
+			// getWeaponSpecialEffect() value UNCHANGED. Presentation ASSET CHOICE
+			// only -- the fire decision, damage, heat, ammo, recycle, and the
+			// createWeaponBolt/connect behavior below are the legacy path, untouched.
+			long legacyEffectType = MasterComponent::masterList[inventory[weaponIndex].masterID].getWeaponSpecialEffect();
+			unsigned char effectType = (unsigned char)resolveTargetWeaponFireEffectType(
+				inventory[weaponIndex].masterID, (int)legacyEffectType);
 			weaponFX = ObjectManager->createWeaponBolt(effectType);
-			
-			if (!weaponFX) 
+
+			if (!weaponFX)
 			{
-				if (targetPoint) 
+				if (targetPoint)
 				{
 					//-----------------------------------------
 					// Check for Mine hit and MOVE ON!!!
@@ -9205,7 +9218,7 @@ long BattleMech::handleWeaponFire (long weaponIndex,
 				}
 			}
 			else {
-				if (target) 
+				if (target)
 					weaponFX->connect(this, target, &shotInfo, sourceHotSpot, targetHotSpot);
 				else  {
 					weaponFX->connect(this, *targetPoint, &shotInfo, sourceHotSpot);
