@@ -31,6 +31,10 @@
 #include"objtype.h"
 #endif
 
+#ifndef UNIT_ACTION_H
+#include"unit_action.h"          // UNIT-ACTION-QUERY-RESULT-1: ActionAvailability
+#endif
+
 #ifndef MOVE_H
 #include"move.h"
 #endif
@@ -1652,7 +1656,10 @@ class Mover : public GameObject {
 		
 		// UNIT-PROFILE-SEAM-1
 		bool         hasCapability (Capability c) const { return runtime.currentCapabilities.has(c); }
-		virtual bool canPerform    (UnitAction a) const;
+		// UNIT-ACTION-QUERY-RESULT-1: reasoned availability built on the pure
+		// unit_action.h contract. canPerform() is now a thin adapter over it.
+		virtual ActionAvailability queryAction (UnitAction a) const;
+		bool         canPerform    (UnitAction a) const { return queryAction(a) == ActionAvailability::Available; }
 		virtual bool hasJumpExecutor (void) const { return false; }   // base: no executor
 		virtual bool canJump (void) {
 			if (mc2UnitProfileDataEnabled()) return canPerform(UnitAction::Jump);

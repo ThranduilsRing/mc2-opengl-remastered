@@ -3162,14 +3162,30 @@ void Mover::onTypeBound (void) {
 
 //---------------------------------------------------------------------------
 
-// UNIT-PROFILE-SEAM-1: gameplay intent = capability FACT + working executor.
-// Slice 1's only jump executor is the legacy BattleMech path (override below).
-bool Mover::canPerform(UnitAction a) const {
+// UNIT-ACTION-QUERY-RESULT-1: gameplay intent resolved through the pure
+// unit_action.h contract, which reports a *reason* rather than a bare bool.
+// canPerform() (mover.h) is now a thin adapter: queryAction(a) == Available.
+//
+// Slice-2 input mapping — wire the facts that EXIST TODAY, leave the rest at
+// their non-blocking defaults so future-slice facets never spuriously deny:
+//   validForSchema     = hasCapability(CAP_JUMP)  (no capability == not the
+//                        kind of thing that can ever jump -> InvalidForUnitSchema)
+//   hasCapability      = hasCapability(CAP_JUMP)
+//   hasExecutor        = hasJumpExecutor()         (only BattleMech owns it)
+//   locomotionSupports = true   (LOCOMOTION-FACET-1, slice 4 — not yet a fact)
+//   damageDisabled     = false  (no cheap knocked-out signal at this seam yet)
+//   hasAnimation       = true   (presentation adapter facet — future slice)
+//   hasResource        = true   (fuel/heat/ammo facet — future slice)
+// Net reduction, identical to the old bool: cap+executor -> Available;
+// cap-but-no-executor -> MissingExecutor; no-cap -> InvalidForUnitSchema.
+ActionAvailability Mover::queryAction(UnitAction a) const {
 	switch (a) {
 		case UnitAction::Jump:
-			return hasCapability(CAP_JUMP) && hasJumpExecutor();
+			// Pure inputs-builder (unit_action.h) keeps engine + tests in lockstep.
+			return resolveAction(jumpQueryInputs(hasCapability(CAP_JUMP),
+			                                     hasJumpExecutor()));
 	}
-	return false;
+	return ActionAvailability::InvalidForUnitSchema;
 }
 
 //---------------------------------------------------------------------------

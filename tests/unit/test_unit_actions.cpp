@@ -144,6 +144,43 @@ TEST_CASE("resolveAction: every reason is reachable") {
 }
 
 // ---------------------------------------------------------------------------
+// UNIT-ACTION-QUERY-RESULT-1 (slice 2): jumpQueryInputs() — the pure engine-side
+// mapping Mover::queryAction(Jump) uses. Verifies the three outcomes the old
+// bare `bool canPerform` reduced to, now expressed as reasons.
+// ---------------------------------------------------------------------------
+
+TEST_CASE("jumpQueryInputs: capability + executor -> Available") {
+    CHECK(resolveAction(jumpQueryInputs(/*cap=*/true, /*exec=*/true))
+          == ActionAvailability::Available);
+}
+
+TEST_CASE("jumpQueryInputs: capability but no executor -> MissingExecutor (the seam)") {
+    // profile grants Jump, but only BattleMech ever owned the executor.
+    CHECK(resolveAction(jumpQueryInputs(/*cap=*/true, /*exec=*/false))
+          == ActionAvailability::MissingExecutor);
+}
+
+TEST_CASE("jumpQueryInputs: no capability -> InvalidForUnitSchema") {
+    // Not the sort of thing that can ever jump. Executor presence is irrelevant.
+    CHECK(resolveAction(jumpQueryInputs(/*cap=*/false, /*exec=*/false))
+          == ActionAvailability::InvalidForUnitSchema);
+    CHECK(resolveAction(jumpQueryInputs(/*cap=*/false, /*exec=*/true))
+          == ActionAvailability::InvalidForUnitSchema);
+}
+
+TEST_CASE("jumpQueryInputs: matches the legacy bool canPerform truth table") {
+    // Old world: canPerform(Jump) == (hasCapability(CAP_JUMP) && hasJumpExecutor()).
+    // Adapter is queryAction(a) == Available; confirm parity across all 4 combos.
+    auto adapterCanPerform = [](bool cap, bool exec) {
+        return resolveAction(jumpQueryInputs(cap, exec)) == ActionAvailability::Available;
+    };
+    CHECK      (adapterCanPerform(true,  true));
+    CHECK_FALSE(adapterCanPerform(true,  false));
+    CHECK_FALSE(adapterCanPerform(false, true));
+    CHECK_FALSE(adapterCanPerform(false, false));
+}
+
+// ---------------------------------------------------------------------------
 // ActionExecutorRegistry: bind + compatibility
 //
 // A registry maps a UnitAction key to (executorId, set-of-compatible

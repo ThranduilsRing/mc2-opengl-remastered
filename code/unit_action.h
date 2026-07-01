@@ -79,4 +79,27 @@ inline ActionAvailability resolveAction(const ActionQueryInputs& q) {
     return ActionAvailability::Available;
 }
 
+// UNIT-ACTION-QUERY-RESULT-1 (slice 2): the engine-side inputs mapping for the
+// Jump action, extracted as a PURE free function so it is unit-testable without
+// dragging Mover/engine. Wires only the facts that exist today; every future-
+// slice facet (locomotion / animation / resource / damage) stays at its
+// non-blocking default so it never spuriously denies before its slice lands.
+//
+//   hasCapability = false            -> InvalidForUnitSchema (not that kind of thing)
+//   hasCapability && !hasExecutor    -> MissingExecutor       (the BattleMech seam)
+//   hasCapability && hasExecutor     -> Available
+//
+// Mover::queryAction(Jump) builds the same inputs; keep the two in lockstep.
+inline ActionQueryInputs jumpQueryInputs(bool hasCapability, bool hasExecutor) {
+    ActionQueryInputs q;
+    q.validForSchema     = hasCapability; // no capability == wrong kind of thing
+    q.hasCapability      = hasCapability;
+    q.hasExecutor        = hasExecutor;
+    q.locomotionSupports = true;  // LOCOMOTION-FACET-1 (slice 4)
+    q.damageDisabled     = false; // no cheap knocked-out signal at this seam yet
+    q.hasAnimation       = true;  // presentation adapter facet (future slice)
+    q.hasResource        = true;  // fuel/heat/ammo facet (future slice)
+    return q;
+}
+
 #endif // UNIT_ACTION_H
