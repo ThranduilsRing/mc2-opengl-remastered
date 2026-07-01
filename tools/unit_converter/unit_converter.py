@@ -26,12 +26,15 @@ import sys
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
 from unit_converter import emit  # noqa: E402
+from unit_converter import roster as _roster  # noqa: E402
 from unit_converter.extract import extract_mech, extract_vehicle  # noqa: E402
 from unit_converter.fitparse import CompBas  # noqa: E402
 from unit_converter.model import UnitDefinition  # noqa: E402
 
 _HERE = os.path.dirname(os.path.abspath(__file__))
 FIXTURE_SRCDATA = os.path.join(_HERE, "tests", "fixtures", "stock")
+# Default master unit index relative to a real srcdata root.
+BUILDINGS_CSV_REL = os.path.join("art", "buildings.csv")
 
 
 def convert(srcdata: str, mech_stem: str, vehicle_stem: str):
@@ -98,12 +101,30 @@ def main(argv=None) -> int:
     p.add_argument("--vehicle", default="armoredcar", help="vehicle .fit stem to convert")
     p.add_argument("--out", default=None, help="output dir; if omitted, no files written")
     p.add_argument("--json", action="store_true", help="emit JSON report")
+    p.add_argument("--batch", action="store_true",
+                   help="convert the FULL MECH+VEHICLE roster from the master "
+                        "index (buildings.csv) instead of one mech + one vehicle")
+    p.add_argument("--buildings-csv", default=None,
+                   help="master unit index (default: <srcdata>/art/buildings.csv)")
     args = p.parse_args(argv)
 
     srcdata = args.srcdata or FIXTURE_SRCDATA
     if not os.path.isdir(srcdata):
         print(f"error: srcdata not found: {srcdata}", file=sys.stderr)
         return 2
+
+    if args.batch:
+        buildings = args.buildings_csv or os.path.join(srcdata, BUILDINGS_CSV_REL)
+        if not os.path.isfile(buildings):
+            print(f"error: master index not found: {buildings}", file=sys.stderr)
+            return 2
+        result = _roster.convert_roster(srcdata, buildings, out_root=args.out)
+        report = _roster.build_batch_report(result)
+        if args.json:
+            print(json.dumps(report, indent=2, sort_keys=True))
+        else:
+            print(_roster.render_batch_text(report))
+        return 0
 
     defs = convert(srcdata, args.mech, args.vehicle)
 
