@@ -37,6 +37,7 @@
 
 #ifndef CMPONENT_H
 #include"cmponent.h"
+#include"unitprofile.h"		// EQUIPMENT-REGISTRY-FACADE-1: gated registry build hook
 #endif
 
 #ifndef OBJMGR_H
@@ -845,6 +846,9 @@ void Mission::load (const char *loadFileName)
 #endif
 			MasterComponent::loadMasterList(compFileName, 255, baseSensorRange);
 		gosASSERT(loadErr == NO_ERR);
+
+		// EQUIPMENT-REGISTRY-FACADE-1: gated parallel registry build (no-op OFF).
+		buildAndDumpEquipmentRegistryIfEnabled();
 	}
 
 	result = gameSystemFile->readIdUChar("GodMode", godMode);

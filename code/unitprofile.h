@@ -10,6 +10,12 @@
 bool mc2_unitprofile_parse_enabled(const char* envValue);   // pure, testable
 bool mc2UnitProfileDataEnabled();                            // cached getenv
 
+// EQUIPMENT-REGISTRY-FACADE-1 (equipment arc, engine slice E2). Gated build +
+// verification dump of the parallel equipment registry over masterList. Called
+// once after MasterComponent::loadMasterList. Gate-OFF: no-op (byte-identical).
+// ADDITIVE: reads masterList only; touches no firing/loadout/inventory/save path.
+void buildAndDumpEquipmentRegistryIfEnabled();
+
 class UnitProfile {                  // static, on ObjectType (flyweight)
   public:
     CapabilitySet baselineCapabilities;

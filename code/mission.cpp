@@ -55,6 +55,7 @@ extern void visualTuning_applyProfile(const char*);  // MISSION-VISUAL-TUNING-1
 
 #ifndef CMPONENT_H
 #include"cmponent.h"
+#include"unitprofile.h"		// EQUIPMENT-REGISTRY-FACADE-1: gated registry build hook
 #endif
 
 #ifndef OBJMGR_H
@@ -2450,6 +2451,11 @@ void Mission::init (const char *missionName, long loadType, long dropZoneID, Stu
 #endif
 		    MasterComponent::loadMasterList(compFileName, 255, baseSensorRange);
 		gosASSERT(loadErr == NO_ERR);
+
+		// EQUIPMENT-REGISTRY-FACADE-1: build the parallel core:<slug> <-> ordinal
+		// registry beside masterList (gated MC2_UNIT_PROFILE_DATA; gate-OFF no-op).
+		// Additive -- reads masterList only, changes no gameplay path.
+		buildAndDumpEquipmentRegistryIfEnabled();
 	}
 
 	result = gameSystemFile->readIdUChar("GodMode", godMode);
