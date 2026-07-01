@@ -17,7 +17,6 @@ struct UnitRuntimeState {            // mutable, on Mover
 
 class FitIniFile;                      // fwd; keep heavy I/O header out of unitprofile.h
 void populateProfileFromFit(FitIniFile& fit, UnitProfile& profile);
-void mc2_unitprofile_test_grant_vehicle(UnitProfile& profile);  // THROWAWAY proof hook
 
 // UNIT-PROFILE-SEAM-1: state-dump witness bridge. debug_state_dump.cpp keeps no
 // game headers, so the mover walk lives engine-side (unitprofile_fit.cpp) and is

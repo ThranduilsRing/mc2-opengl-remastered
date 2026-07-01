@@ -2049,6 +2049,13 @@ long BattleMech::init (DWORD variantNum)
 	delete mechFile;
 	mechFile = NULL;
 
+	// UNIT-PROFILE-SEAM-1: numJumpJets is final here (loadout scan complete).
+	// This is the real gameplay mech-load path (mission.cpp -> init(variantNum)).
+	if (getObjectType()) {
+		getObjectType()->profile().baselineCapabilities.set(CAP_JUMP, (numJumpJets > 0));
+		runtime.currentCapabilities = getObjectType()->profile().baselineCapabilities;
+	}
+
 	return(NO_ERR);
 }
 
@@ -2782,12 +2789,6 @@ void BattleMech::resetComponents (long totalComponents, long *componentList)
     //sebi: no really...
 	// should set it to zero ?
 	//numJumpJets = numJumpJets;
-
-	// UNIT-PROFILE-SEAM-1: capability fact mirrors installed-equipment truth.
-	// numJumpJets is instance state; write the shared type baseline from it
-	// (idempotent for stock chassis; per-variant divergence deferred).
-	if (getObjectType())
-		getObjectType()->profile().baselineCapabilities.set(CAP_JUMP, (numJumpJets > 0));
 }
 
 long BattleMech::init (FitIniFile* mechFile) {
@@ -3437,8 +3438,10 @@ long BattleMech::init (FitIniFile* mechFile) {
 	// UNIT-PROFILE-SEAM-1: capability fact mirrors installed-equipment truth.
 	// numJumpJets is instance state; write the shared type baseline from it
 	// (idempotent for stock chassis; per-variant divergence deferred).
-	if (getObjectType())
+	if (getObjectType()) {
 		getObjectType()->profile().baselineCapabilities.set(CAP_JUMP, (numJumpJets > 0));
+		runtime.currentCapabilities = getObjectType()->profile().baselineCapabilities;
+	}
 
 	return(NO_ERR);
 }

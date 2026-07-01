@@ -401,7 +401,6 @@ long GroundVehicleType::init (FilePtr objFile, unsigned long fileSize) {
 	// UNIT-PROFILE-SEAM-1: optional .fit [UnitProfile] data read — SOLE
 	// jump-capability populator for vehicles (no jump component to scan).
 	populateProfileFromFit(vehicleFile, profile());
-	mc2_unitprofile_test_grant_vehicle(profile());   // THROWAWAY slice-9 proof hook
 
 	//------------------------------------------------------------------
 	// Initialize the base object Type from the current file.
