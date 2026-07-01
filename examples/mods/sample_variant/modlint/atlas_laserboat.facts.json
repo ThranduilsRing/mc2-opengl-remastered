@@ -1,0 +1,16 @@
+{
+  "unit_id": "sample:atlas_laserboat",
+  "jump": false,
+  "locomotion": "MechWalker",
+  "loadout_joins": [
+    { "weapon_tag": "Energy", "accepts": ["Energy"], "damage_location": "RightArm",
+      "unit_schema": "Mech8Part", "socket_present": true },
+    { "weapon_tag": "Energy", "accepts": ["Energy"], "damage_location": "LeftArm",
+      "unit_schema": "Mech8Part", "socket_present": true },
+    { "weapon_tag": "Energy", "accepts": ["Energy"], "damage_location": "CenterTorso",
+      "unit_schema": "Mech8Part", "socket_present": true }
+  ],
+  "declared_sockets": [ {"present": true}, {"present": true}, {"present": true} ],
+  "anim_fallbacks": [ {"resolved": true} ],
+  "ui_assets": [ {"resolves": true} ]
+}

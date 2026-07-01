@@ -1,0 +1,43 @@
+FITini
+
+// EXAMPLE-MODS-1 hand-authored mechdef (mod: sample_variant).
+// A new energy-heavy variant on the STOCK Atlas chassis (no new art). The
+// [Variant]/[UnitProfile] tokens match populateProfileFromFit exactly. The
+// [Loadout*] blocks are the forward-looking 3-layer loadout->hardpoint->socket
+// join (no shipped engine reader yet — see tools/unit_converter/emit.py); they
+// reference equipment by qualified id, including sample:hot_medium_laser from the
+// sample_equipment mod.
+
+[Variant]
+st ChassisID="core:atlas"
+st VariantName="laserboat"
+l VariantIndex=90
+
+[UnitProfile]
+b Jump=FALSE
+st Locomotion="MechWalker"
+st DamageSchema="Mech8Part"
+
+// Forward-looking 3-layer loadout (loadout item -> hardpoint -> model socket).
+[Loadout]
+l NumMounts = 3
+
+[Mount0]
+st EquipmentId = "sample:hot_medium_laser"
+st WeaponTag   = "Energy"
+st DamageLocation = "RightArm"
+st SocketName  = "RightArm_Weapon_0"
+
+[Mount1]
+st EquipmentId = "core:large_laser"
+st WeaponTag   = "Energy"
+st DamageLocation = "LeftArm"
+st SocketName  = "LeftArm_Weapon_0"
+
+[Mount2]
+st EquipmentId = "core:laser"
+st WeaponTag   = "Energy"
+st DamageLocation = "CenterTorso"
+st SocketName  = "CenterTorso_Weapon_0"
+
+FITend

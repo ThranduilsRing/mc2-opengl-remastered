@@ -56,19 +56,26 @@ static bool readAll(const std::string& path, std::string* out) {
     return true;
 }
 
+// The source label appended to each finding block so a modder sees WHICH file
+// the finding is about (modder-first error surface). stdin ('-') has no path, so
+// it stays empty and the header is unchanged.
+static std::string sourceLabel(const std::string& path) {
+    return path == "-" ? std::string() : path;
+}
+
 // --unit: one facts JSON -> findings. Returns count of findings.
-static int lintUnit(const std::string& text, bool* parseOk) {
+static int lintUnit(const std::string& text, bool* parseOk, const std::string& src) {
     MlJson root = parseModlintJson(text, parseOk);
     const ActionExecutorRegistry reg = modlintExecutorRegistry();
     std::string label;
     UnitDefinitionValidationInputs in = factsFromJson(root, &label);
     std::vector<UnitProfileFinding> findings = validateUnitDefinition(in, reg);
-    std::cout << formatUnitFindings(label, findings);
+    std::cout << formatUnitFindings(label, findings, src);
     return (int)findings.size();
 }
 
 // --roster: a converter report -> per-unit jump-facet findings + summary.
-static int lintRoster(const std::string& text, bool* parseOk, int* unitsOut) {
+static int lintRoster(const std::string& text, bool* parseOk, int* unitsOut, const std::string& src) {
     MlJson root = parseModlintJson(text, parseOk);
     const ActionExecutorRegistry reg = modlintExecutorRegistry();
     std::vector<RosterUnitFacts> units = parseRosterUnits(root);
@@ -76,31 +83,31 @@ static int lintRoster(const std::string& text, bool* parseOk, int* unitsOut) {
     int totalFindings = 0;
     for (const RosterUnitFacts& u : units) {
         std::vector<UnitProfileFinding> f = validateUnitDefinition(u.inputs, reg);
-        std::cout << formatUnitFindings(u.label, f);
+        std::cout << formatUnitFindings(u.label, f, src);
         totalFindings += (int)f.size();
     }
     return totalFindings;
 }
 
 // --equipment: one equipment facts JSON -> findings. Returns count of findings.
-static int lintEquipment(const std::string& text, bool* parseOk) {
+static int lintEquipment(const std::string& text, bool* parseOk, const std::string& src) {
     MlJson root = parseModlintJson(text, parseOk);
     std::string label;
     EquipmentValidationInputs in = equipmentFactsFromJson(root, &label);
     std::vector<EquipmentFinding> findings = validateEquipmentDefinition(in);
-    std::cout << formatEquipmentFindings(label, findings);
+    std::cout << formatEquipmentFindings(label, findings, src);
     return (int)findings.size();
 }
 
 // --equipment-roster: an equipment converter --json report -> per-component findings.
-static int lintEquipmentRoster(const std::string& text, bool* parseOk, int* compsOut) {
+static int lintEquipmentRoster(const std::string& text, bool* parseOk, int* compsOut, const std::string& src) {
     MlJson root = parseModlintJson(text, parseOk);
     std::vector<RosterEquipmentFacts> comps = parseEquipmentRoster(root);
     *compsOut = (int)comps.size();
     int totalFindings = 0;
     for (const RosterEquipmentFacts& c : comps) {
         std::vector<EquipmentFinding> f = validateEquipmentDefinition(c.inputs);
-        std::cout << formatEquipmentFindings(c.label, f);
+        std::cout << formatEquipmentFindings(c.label, f, src);
         totalFindings += (int)f.size();
     }
     return totalFindings;
@@ -131,16 +138,17 @@ int main(int argc, char** argv) {
     bool parseOk = true;
     int findings = 0, count = 1;
     const char* noun = "unit";
+    const std::string src = sourceLabel(path);
     if (mode == "--unit") {
-        findings = lintUnit(text, &parseOk);
+        findings = lintUnit(text, &parseOk, src);
     } else if (mode == "--roster") {
-        findings = lintRoster(text, &parseOk, &count);
+        findings = lintRoster(text, &parseOk, &count, src);
     } else if (mode == "--equipment") {
         noun = "component";
-        findings = lintEquipment(text, &parseOk);
+        findings = lintEquipment(text, &parseOk, src);
     } else {  // --equipment-roster
         noun = "component";
-        findings = lintEquipmentRoster(text, &parseOk, &count);
+        findings = lintEquipmentRoster(text, &parseOk, &count, src);
     }
 
     if (!parseOk) {

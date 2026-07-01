@@ -1,0 +1,44 @@
+FITini
+
+// EXAMPLE-MODS-1 hand-authored EquipmentDefinition (mod: sample_equipment).
+// Cloned from the stock Medium Laser (core:laser, legacyMasterId 156) with a
+// hotter/harder-hitting profile. Namespaced id 'sample:hot_medium_laser' so it
+// ADDS a new component rather than overriding the stock laser. LegacyMasterId is
+// kept in 0..254 (no E4 id-widen) purely as an addressable alias; because the id
+// is namespaced (sample:) it never aliases a real stock masterList row.
+
+[Equipment]
+st EquipmentId="sample:hot_medium_laser"
+st DisplayName="Hot Medium Laser"
+st Kind="Weapon"
+st Tags="energy"
+l LegacyMasterId=200
+f Heat=4.5
+f Cost=2100.0
+
+[WeaponFacet]
+st Category="Energy"
+st FireExecutor="beam_direct"
+
+[WeaponCombatStats]
+f Damage=3.2
+f Heat=4.5
+f Recycle=4.2
+st RangeBucket="short"
+f CombatValue=120.0
+
+[WeaponAmmo]
+st AmmoCategory=""
+l AmmoMasterId=0
+
+[WeaponFit]
+l CritSlots=1
+f Tonnage=2.0
+st AllowedLocations="CenterTorso,LeftTorso,RightTorso,LeftArm,RightArm"
+
+[Presentation]
+st Icon="MCL_MC_Laser.tga"
+l UINameStringId=32156
+// event-based presentation cues WAIVED (not derivable from compbas)
+
+FITend

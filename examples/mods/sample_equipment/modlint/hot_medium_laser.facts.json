@@ -1,0 +1,16 @@
+{
+  "equip_id": "sample:hot_medium_laser",
+  "kind": "Weapon",
+  "has_weapon": true,
+  "fire_executor": "beam_direct",
+  "category": "Energy",
+  "category_authored": true,
+  "damage": 3.2,
+  "range_short": 90.0,
+  "range_med": 90.0,
+  "range_long": 90.0,
+  "ammo_per_shot": 0,
+  "ammo_category": "",
+  "claimed_events": [],
+  "presented_events": []
+}

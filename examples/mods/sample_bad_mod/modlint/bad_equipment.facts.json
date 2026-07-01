@@ -1,0 +1,16 @@
+{
+  "equip_id": "sample:broken_laser",
+  "kind": "Weapon",
+  "has_weapon": true,
+  "fire_executor": "",
+  "category": "Energy",
+  "category_authored": false,
+  "damage": 5.0,
+  "range_short": 200.0,
+  "range_med": 100.0,
+  "range_long": 50.0,
+  "ammo_per_shot": 2,
+  "ammo_category": "",
+  "claimed_events": ["OnFire"],
+  "presented_events": []
+}

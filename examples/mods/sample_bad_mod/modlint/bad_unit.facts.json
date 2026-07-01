@@ -1,0 +1,12 @@
+{
+  "unit_id": "sample:broken_striker",
+  "jump": false,
+  "locomotion": "MechWalker",
+  "loadout_joins": [
+    { "weapon_tag": "Energy", "accepts": ["Ballistic"], "damage_location": "RightArm",
+      "unit_schema": "Mech8Part", "socket_present": false }
+  ],
+  "declared_sockets": [ {"present": false} ],
+  "anim_fallbacks": [ {"resolved": false} ],
+  "ui_assets": [ {"resolves": false} ]
+}

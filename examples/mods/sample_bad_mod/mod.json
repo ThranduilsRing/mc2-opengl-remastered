@@ -1,0 +1,9 @@
+{
+  "schema": "mc2-mod/1",
+  "id": "sample_bad_mod",
+  "name": "Sample Bad Mod — intentional validation failures",
+  "version": "1.0.0",
+  "type": "assets",
+  "dependencies": [],
+  "description": "Worked example of what NOT to ship: a unit + an equipment def with intentional coherence failures so mc2_modlint demonstrates its modder-first error surface (exit 1 with mod/file/id/field-qualified findings). See README.md for the exact expected findings. This mod is for teaching/CI; do not enable it in a real install."
+}
