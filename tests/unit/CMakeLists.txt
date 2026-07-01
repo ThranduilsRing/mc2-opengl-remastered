@@ -60,6 +60,7 @@ add_executable(mc2_tests
     test_modlint.cpp          # UNIT-MODLINT-CLI-1: reason-code->message table + facts-JSON parse + formatter (offline)
     test_qualified_id.cpp     # UNIT-ID-NAMESPACE-1: namespace:name convention + charset + deterministic override precedence (offline)
     test_weapon_events.cpp    # WEAPON-FACET-PRESENTATION-SCHEMA: WeaponFacet.fireExecutor binding + WeaponEvent->asset presentation grid + flat back-compat (offline)
+    test_equipment_validator.cpp  # WEAPON-VALIDATOR-1: pure construction-rules validator for EquipmentDefinition/WeaponFacet (EQV_* findings) (offline)
 
     # Leaf-TU engine sources (no transitive engine include drag).
     ${MC2_WORKTREE_ROOT}/mclib/fst_hash.cpp
