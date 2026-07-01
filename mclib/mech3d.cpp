@@ -1306,10 +1306,31 @@ long Mech3DAppearance::getWeaponNode (long weaponType)
 
 	//This should never be called AFTER the game inits!!!
 	setWeaponNodeUsed(bestNode);
-	
+
  	return bestNode;
 }
-		
+
+//-----------------------------------------------------------------------------
+// GETWEAPONNODE-HARDPOINT-ADAPTER-1 (Phase-2 slice 4): socket NAME -> weapon-node
+// INDEX. Scans ONLY the weapon-node range of nodeData[] (the same range
+// getWeaponNode() picks from) and returns the matching index, or -1. Read-only:
+// unlike getWeaponNode() this does NOT call setWeaponNodeUsed() -- the caller is
+// choosing a specific declared socket, not consuming a round-robin slot.
+long Mech3DAppearance::resolveWeaponNodeBySocketName (const char* socketName)
+{
+	if (!socketName || !socketName[0])
+		return -1;
+	const long numSmokeNodes = mechType->numSmokeNodes;
+	for (long i = 0; i < mechType->numWeaponNodes; i++)
+	{
+		const long idx = numSmokeNodes + i;
+		const char* nid = mechType->nodeData[idx].nodeId;
+		if (nid && S_stricmp(nid, socketName) == 0)
+			return idx;
+	}
+	return -1;
+}
+
 //-----------------------------------------------------------------------------
 float Mech3DAppearance::getWeaponNodeRecycle (long node)
 {

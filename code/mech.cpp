@@ -1452,6 +1452,30 @@ void BattleMech::setControl (ControlType ctrlType) {
 }
 
 //----------------------------------------------------------------------------------
+// GETWEAPONNODE-HARDPOINT-ADAPTER-1 (Phase-2 slice 4): authoritative-with-fallback
+// weapon-node mount resolution. The pure verdict (socket vs round-robin) lives in
+// chooseWeaponNode() (hardpoint.h); this glue supplies the two node indices.
+long BattleMech::resolveWeaponMountNode (const InventoryItem& item, long sourceWeaponType)
+{
+	// Legacy least-used round-robin -- ALWAYS computed so its nodeUsed[] side
+	// effect is preserved exactly (parity), whichever node we ultimately mount to.
+	const long roundRobinNode = appearance->getWeaponNode(sourceWeaponType);
+
+	// Fast path / stock parity: gate OFF or no declared hardpoint -> fallback.
+	if (!mc2UnitProfileDataEnabled() || item.hardpointId == 0)
+		return roundRobinNode;
+
+	// Declared hardpoint: resolve id -> profile -> socket name -> node index.
+	HardpointProfile hp;
+	long socketNode = -1;
+	if (resolveHardpoint(item.hardpointId, hp) && !hp.socket.empty())
+		socketNode = static_cast<Mech3DAppearance*>(appearance)
+		                 ->resolveWeaponNodeBySocketName(hp.socket.c_str());
+
+	return chooseWeaponNode(/*hasHardpoint*/ true, socketNode, roundRobinNode);
+}
+
+//----------------------------------------------------------------------------------
 long BattleMech::init (DWORD variantNum)
 {
 	//----------------------------------------------
@@ -1718,7 +1742,12 @@ long BattleMech::init (DWORD variantNum)
 					inventory[realItemNum].disabled = false;
 					inventory[realItemNum].amount = 1;
 					inventory[realItemNum].ammoIndex = -1;
-					inventory[realItemNum].facing = appearance->getWeaponNode(sourceWeaponType);
+					// GETWEAPONNODE-HARDPOINT-ADAPTER-1 (Phase-2 slice 4): route the
+					// weapon-node mount through the item's declared HardpointId when one
+					// resolves to a real model socket; else the legacy least-used
+					// round-robin. Stock items carry hardpointId==0 -> always fallback ->
+					// byte-identical mount (parity). Returns the same node-index domain.
+					inventory[realItemNum].facing = (unsigned char)resolveWeaponMountNode(inventory[realItemNum], sourceWeaponType);
 					inventory[realItemNum].readyTime = 0.0;
 					inventory[realItemNum].bodyLocation = 255;
 					inventory[realItemNum].effectiveness = (short)(MasterComponent::masterList[inventory[realItemNum].masterID].getWeaponDamage() * 10.0 /	// damage over 10 seconds
@@ -2486,7 +2515,12 @@ void BattleMech::resetComponents (long totalComponents, long *componentList)
 					inventory[realItemNum].disabled = false;
 					inventory[realItemNum].amount = 1;
 					inventory[realItemNum].ammoIndex = -1;
-					inventory[realItemNum].facing = appearance->getWeaponNode(sourceWeaponType);
+					// GETWEAPONNODE-HARDPOINT-ADAPTER-1 (Phase-2 slice 4): route the
+					// weapon-node mount through the item's declared HardpointId when one
+					// resolves to a real model socket; else the legacy least-used
+					// round-robin. Stock items carry hardpointId==0 -> always fallback ->
+					// byte-identical mount (parity). Returns the same node-index domain.
+					inventory[realItemNum].facing = (unsigned char)resolveWeaponMountNode(inventory[realItemNum], sourceWeaponType);
 					inventory[realItemNum].readyTime = 0.0;
 					inventory[realItemNum].bodyLocation = 255;
 					inventory[realItemNum].effectiveness = (short)(MasterComponent::masterList[inventory[realItemNum].masterID].getWeaponDamage() * 10.0 /	// damage over 10 seconds

@@ -175,4 +175,38 @@ inline bool hardpointResolvesInSchema(const HardpointProfile& hp,
     return schemaHasLocation(schema, hp.damageLocation);
 }
 
+// -------------------------------------------------------------------------
+// GETWEAPONNODE-HARDPOINT-ADAPTER-1 (Phase-2 slice 4): the pure weapon-node
+// SELECTION rule that routes a mounted weapon to its declared hardpoint socket
+// when possible, otherwise to the legacy least-used round-robin node.
+// -------------------------------------------------------------------------
+// This is the whole authoritative-with-fallback decision, factored so it is
+// engine/GL/IO-free and doctest-covered in isolation. The impure half (resolving
+// the item's HardpointId -> HardpointProfile, then that profile's socket NAME ->
+// a weapon-node INDEX on the shape) lives in the engine seam; it hands the two
+// integers here and this function alone owns the "authoritative vs fallback"
+// verdict.
+//
+//   hasHardpoint       : the item declared a HardpointId (hardpointId != 0) AND
+//                        resolveHardpoint() yielded a HardpointProfile.
+//   hardpointSocketNode: that profile's socket name resolved to a weapon-node
+//                        index on the shape, or -1 if the socket is empty / not
+//                        present on the model.
+//   roundRobinNode     : whatever the legacy getWeaponNode() round-robin picked
+//                        (may itself be -1 when the mech has no matching node).
+//
+// Rule: use the hardpoint socket node IFF the join is present AND its socket
+// actually resolved to a real node index (>= 0); otherwise fall back to the
+// round-robin node. Stock weapons carry hardpointId == 0 -> hasHardpoint is
+// false -> ALWAYS fall back -> byte-identical legacy mounts (parity). Returns
+// the SAME node-index domain the runtime already consumes (index into
+// nodeData[]); no downstream render change.
+inline int chooseWeaponNode(bool hasHardpoint,
+                            int hardpointSocketNode,
+                            int roundRobinNode) {
+    if (hasHardpoint && hardpointSocketNode >= 0)
+        return hardpointSocketNode;
+    return roundRobinNode;
+}
+
 #endif // HARDPOINT_H

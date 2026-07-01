@@ -664,6 +664,17 @@ class BattleMech : public Mover {
 		// real load path where numJumpJets is final. Transitional: a future slice
 		// moves loadout-derivation up to the type layer, retiring this entirely.
 		void refreshDerivedCapabilities (void);
+
+		// GETWEAPONNODE-HARDPOINT-ADAPTER-1 (Phase-2 slice 4): resolve the weapon
+		// mount node for one inventory item at load time. When the gate is ON and
+		// the item declares a HardpointId that resolveHardpoint() maps to a
+		// HardpointProfile whose .socket names a node on THIS mech's shape, the
+		// item mounts to that socket's node index; otherwise (gate OFF, no declared
+		// hardpoint, unresolved hardpoint, or a socket the model lacks) it falls
+		// back to the legacy least-used round-robin appearance->getWeaponNode().
+		// Stock items carry hardpointId==0 -> always fallback -> parity. Returns the
+		// same node-index domain inventory[].facing already stores.
+		long resolveWeaponMountNode (const InventoryItem& item, long sourceWeaponType);
 		// LOCOMOTION-FACET-1 (slice 4): the mech-walker locomotion model is now a
 		// DATA facet set on the type profile at BattleMechType::init (see
 		// mech.cpp), NOT a class override. The former `locomotionModel()` override

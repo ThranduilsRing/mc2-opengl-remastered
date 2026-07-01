@@ -780,7 +780,18 @@ class Mech3DAppearance: public ObjectAppearance
 		virtual Stuff::Vector3D getNodeNamePosition (const char *nodeName);
 		
 		virtual long getWeaponNode (long weapontype);
-		
+
+		// GETWEAPONNODE-HARDPOINT-ADAPTER-1 (Phase-2 slice 4): resolve a declared
+		// hardpoint socket NAME to the weapon-node INDEX the runtime consumes
+		// (index into mechType->nodeData[], in the [numSmokeNodes,
+		// numSmokeNodes+numWeaponNodes) weapon-node range -- the SAME domain
+		// getWeaponNode() returns). Returns -1 when socketName is null/empty or
+		// no weapon node's nodeId matches (case-insensitive, mirroring the slice-2
+		// GetNodeId scan). Pure lookup: does NOT increment nodeUsed / recycle and
+		// does NOT touch nodeData -- authoritative-vs-fallback is owned by the pure
+		// chooseWeaponNode() (hardpoint.h). Used only at load-time mount resolution.
+		virtual long resolveWeaponNodeBySocketName (const char* socketName);
+
 		virtual long getLowestWeaponNode (void);
 		
 		virtual float getWeaponNodeRecycle (long node);
