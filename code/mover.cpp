@@ -3298,11 +3298,19 @@ void Mover::validateLoadoutHardpointJoins (const char* unitLabel) const {
 		joins.push_back(j);
 	}
 
-	// Qualified ::-call targets the free pure validator (unit_profile_validator.h),
-	// not this same-named member -- avoids accidental recursion.
-	const std::vector<UnitProfileFinding> findings = ::validateLoadoutHardpointJoins(joins);
+	// UNIT-DEFINITION-VALIDATOR-1 (Phase-2 slice 8): route the loadout-join facet
+	// through the ONE consolidated validateUnitDefinition() pass rather than the
+	// standalone validateLoadoutHardpointJoins() entry. Only the loadoutJoins list
+	// is populated at this instance-loadout site; the profile/socket/anim/UI inputs
+	// stay empty -> zero extra findings, identical output to the old per-facet call.
+	// The registry is passed for the (unexercised-here) jump facet so the single
+	// entry never diverges from the runtime executor resolution.
+	UnitDefinitionValidationInputs in;
+	in.loadoutJoins = joins;
+	const std::vector<UnitProfileFinding> findings =
+		::validateUnitDefinition(in, theActionExecutorRegistry());
 	for (const UnitProfileFinding& f : findings) {
-		printf("[UnitProfile:VALIDATE] %s: %s (reason=%d)\n",
+		printf("[UnitDefinition:VALIDATE] %s: %s (reason=%d)\n",
 		       unitLabel ? unitLabel : "<unknown>",
 		       f.message ? f.message : "",
 		       static_cast<int>(f.code));

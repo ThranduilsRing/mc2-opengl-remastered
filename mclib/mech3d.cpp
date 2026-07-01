@@ -31,6 +31,7 @@ extern uint32_t g_mc2FrameCounter;  // defined mclib/tgl.cpp:3718 — ANIM_ADVAN
 #include <vector>  // PRESENTATION-SOCKET-PROFILE-1: DeclaredSocketCheck list
 #include "unitprofile.h"              // PRESENTATION-SOCKET-PROFILE-1: mc2UnitProfileDataEnabled()
 #include "unit_profile_validator.h"  // PRESENTATION-SOCKET-PROFILE-1: validateDeclaredSockets()
+#include "action_executor_registry.h"  // UNIT-DEFINITION-VALIDATOR-1: theActionExecutorRegistry() for the ONE pass
 
 // M2.5 (Q6 amendment 2): always-on MLR mech draw counter. Incremented
 // at the legacy mechShape->Render(true) fallback site (~line 2623) so
@@ -848,16 +849,23 @@ void Mech3DAppearanceType::init (const char * fileName)
 			}
 			declared.push_back(d);
 		}
-		// The pure check owns the verdict (one finding per absent socket); the glue
-		// only names each missing socket for the modder. `declared` preserves
-		// declaration order, so a non-empty findings list means >=1 absent entry.
-		const std::vector<UnitProfileFinding> findings = validateDeclaredSockets(declared);
+		// UNIT-DEFINITION-VALIDATOR-1 (Phase-2 slice 8): route the socket facet
+		// through the ONE consolidated validateUnitDefinition() pass instead of the
+		// standalone validateDeclaredSockets() entry. Only the declaredSockets list is
+		// populated at this appearance-init site; profile/loadout/anim/UI inputs stay
+		// empty -> zero extra findings, identical verdict to the old per-facet call.
+		// The glue still names each absent socket for the modder (richer than the
+		// generic message); the aggregate verdict just gates whether we emit at all.
+		UnitDefinitionValidationInputs in;
+		in.declaredSockets = declared;
+		const std::vector<UnitProfileFinding> findings =
+			validateUnitDefinition(in, theActionExecutorRegistry());
 		if (!findings.empty())
 		{
 			for (long si = 0; si < numPresentationSockets; si++)
 			{
 				if (!declared[si].present)
-					printf("[UnitProfile:VALIDATE] %s: declared socket '%s' not found on model (reason=%d)\n",
+					printf("[UnitDefinition:VALIDATE] %s: declared socket '%s' not found on model (reason=%d)\n",
 					       fileName ? fileName : "<unknown>",
 					       presentationSocketName[si],
 					       static_cast<int>(UPV_HARDPOINT_SOCKET_MISSING));

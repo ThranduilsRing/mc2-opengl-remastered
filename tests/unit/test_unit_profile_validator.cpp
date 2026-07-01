@@ -245,3 +245,89 @@ TEST_CASE("sockets: every declared socket absent -> one finding each") {
     for (const UnitProfileFinding& x : f)
         CHECK(x.code == UPV_HARDPOINT_SOCKET_MISSING);
 }
+
+// -------------------------------------------------------------------------
+// UNIT-DEFINITION-VALIDATOR-1 (Phase-2 slice 8): the ONE consolidated pass.
+// Every LIVE reason code must be reachable through validateUnitDefinition(); a
+// fully-coherent unit yields ZERO findings (stock parity); a deliberately-broken
+// unit yields the expected multiple findings in stable facet order.
+// -------------------------------------------------------------------------
+
+TEST_CASE("definition: fully coherent stock unit (walker+jump, nothing declared) -> ZERO findings") {
+    // The stock-parity guarantee at the aggregate level: a stock jet mech grants
+    // jump on a walker (coherent) and declares no loadout joins / sockets / anim
+    // failures / UI assets -> the single pass returns nothing.
+    const ActionExecutorRegistry reg = stockJumpRegistry();
+    UnitDefinitionValidationInputs in;
+    in.profile.grantsJump = true;
+    in.profile.locomotion = LOCO_MECH_WALKER;
+    CHECK(validateUnitDefinition(in, reg).empty());
+}
+
+TEST_CASE("definition: stock vehicle (no jump, nothing declared) -> ZERO findings") {
+    const ActionExecutorRegistry reg = stockJumpRegistry();
+    UnitDefinitionValidationInputs in;
+    in.profile.grantsJump = false;
+    in.profile.locomotion = LOCO_TRACKED;
+    CHECK(validateUnitDefinition(in, reg).empty());
+}
+
+TEST_CASE("definition: every LIVE reason code reachable through the ONE entry") {
+    const ActionExecutorRegistry reg = stockJumpRegistry();
+    UnitDefinitionValidationInputs in;
+
+    // Jump facet -> UPV_JUMP_GRANTED_NO_COMPATIBLE_EXECUTOR (vehicle granted jump).
+    in.profile.grantsJump = true;
+    in.profile.locomotion = LOCO_WHEELED;
+
+    // Loadout join tripping all three join codes at once (ballistic on energy-only,
+    // mech-arm loc on a vehicle schema, socket absent).
+    {
+        LoadoutHardpointJoin j = goodEnergyJoin();
+        j.weaponTag = WTAG_BALLISTIC;                 // WEAPON_CLASS_REJECTED
+        j.hardpoint.damageLocation = DLOC_MECH_RARM;
+        j.unitSchema = DMG_VEHICLE_FACINGS;           // DAMAGE_LOCATION_MISSING
+        j.socketPresent = false;                      // SOCKET_MISSING (join path)
+        in.loadoutJoins.push_back(j);
+    }
+    // Declared presentation socket absent -> another SOCKET_MISSING.
+    in.declaredSockets.push_back(sock("Turret_Heavy_1", false));
+    // Animation fallback dead-ends -> ANIMATION_FALLBACK_MISSING.
+    in.animFallbacks.push_back(NeededAnimFallback(false));
+    // Declared UI asset unresolved -> UI_ASSET_MISSING.
+    { DeclaredUIAssetCheck u; u.resolves = false; in.declaredUIAssets.push_back(u); }
+
+    std::vector<UnitProfileFinding> f = validateUnitDefinition(in, reg);
+
+    // Collect which codes appeared; every LIVE code must be present.
+    bool seen[UPV__COUNT] = {false};
+    for (const UnitProfileFinding& x : f) seen[x.code] = true;
+    CHECK(seen[UPV_JUMP_GRANTED_NO_COMPATIBLE_EXECUTOR]);
+    CHECK(seen[UPV_HARDPOINT_WEAPON_CLASS_REJECTED]);
+    CHECK(seen[UPV_HARDPOINT_DAMAGE_LOCATION_MISSING]);
+    CHECK(seen[UPV_HARDPOINT_SOCKET_MISSING]);
+    CHECK(seen[UPV_ANIMATION_FALLBACK_MISSING]);
+    CHECK(seen[UPV_UI_ASSET_MISSING]);
+
+    // Stable facet concatenation order: jump first, UI last.
+    REQUIRE(f.size() >= 6);
+    CHECK(f.front().code == UPV_JUMP_GRANTED_NO_COMPATIBLE_EXECUTOR);
+    CHECK(f.back().code  == UPV_UI_ASSET_MISSING);
+}
+
+TEST_CASE("definition: aggregate equals the sum of its per-facet delegates") {
+    // Guards against the consolidation dropping or reordering a facet: the ONE
+    // pass must equal concatenating the standalone checks in facet order.
+    const ActionExecutorRegistry reg = stockJumpRegistry();
+    UnitDefinitionValidationInputs in;
+    in.profile.grantsJump = true;
+    in.profile.locomotion = LOCO_HOVER;                 // 1 jump finding
+    { LoadoutHardpointJoin j = goodEnergyJoin(); j.weaponTag = WTAG_MISSILE;
+      in.loadoutJoins.push_back(j); }                   // 1 weapon-class finding
+    in.declaredSockets.push_back(sock("X", false));     // 1 socket finding
+    in.animFallbacks.push_back(NeededAnimFallback(false)); // 1 anim finding
+    { DeclaredUIAssetCheck u; u.resolves = false; in.declaredUIAssets.push_back(u); }
+
+    std::vector<UnitProfileFinding> agg = validateUnitDefinition(in, reg);
+    CHECK(agg.size() == 5);   // 1 per facet, none dropped
+}

@@ -344,4 +344,101 @@ validateDeclaredUIAssets(const std::vector<DeclaredUIAssetCheck>& declared) {
     return findings;
 }
 
+// -------------------------------------------------------------------------
+// UNIT-DEFINITION-VALIDATOR-1 (Phase-2 slice 8): the ONE consolidated pass.
+//
+// The accumulated per-facet checks above each shipped with their own engine
+// glue call site (jump in unitprofile_fit.cpp, loadout joins in mover.cpp,
+// sockets in mech3d.cpp). This slice folds them into a SINGLE aggregating entry
+// so type-load calls ONE validator over the whole UnitDefinition instead of
+// scattering per-facet calls across three TUs. Phase-3's `mc2_modlint` CLI wraps
+// exactly this function.
+//
+// PURE + REPORT-ONLY, same as its constituents. It reasons only over the plain
+// facts the caller gathered (booleans / facet-enums / small POD lists) — NO
+// engine types — so it compiles unchanged into `mc2_tests`. Each impure lookup
+// (executor compatibility, model node presence, gesture availability, file
+// existence) is done by the caller and reduced to a plain input BEFORE this runs,
+// exactly like the per-facet checks it delegates to. It does NOT re-implement any
+// rule: it calls the existing pure functions and CONCATENATES their findings in a
+// stable facet order (jump → loadout joins → sockets → animation → UI), so a
+// fully-coherent unit yields zero findings (stock parity) and every LIVE reason
+// code stays reachable through this ONE entry.
+//
+// The animation facet is pre-reduced to a per-tag `resolved` bool by the caller
+// (glue/doctest applies animTagResolves() with its gesture-availability
+// predicate) so this aggregator stays non-templated POD-in/POD-out.
+struct NeededAnimFallback {
+    bool resolved;   // caller: did this tag's fallback chain resolve to a gesture?
+    NeededAnimFallback() : resolved(true) {}
+    explicit NeededAnimFallback(bool r) : resolved(r) {}
+};
+
+// The plain facts the ONE pass reasons over. Every field defaults to the
+// coherent/empty state, so a stock unit (nothing declared, walker+jump) yields
+// zero findings without the caller populating anything but the jump facts.
+struct UnitDefinitionValidationInputs {
+    // Jump-vs-executor coherence (delegates to validateUnitProfile).
+    UnitProfileFacts                  profile;
+    // Declared loadout->hardpoint joins (validateLoadoutHardpointJoins).
+    std::vector<LoadoutHardpointJoin> loadoutJoins;
+    // Declared presentation sockets vs the loaded model (validateDeclaredSockets).
+    std::vector<DeclaredSocketCheck>  declaredSockets;
+    // Per-needed-tag fallback resolution (animation facet, pre-reduced to bool).
+    std::vector<NeededAnimFallback>   animFallbacks;
+    // Declared UI assets vs file existence (validateDeclaredUIAssets).
+    std::vector<DeclaredUIAssetCheck> declaredUIAssets;
+};
+
+// THE single validation entry. Runs every facet check coherently over one
+// UnitDefinition's gathered facts and returns the aggregated findings. `registry`
+// is the SAME ActionExecutorRegistry gameplay queries use, so the jump verdict
+// can never diverge from the runtime executor resolution. Concatenation order is
+// the stable facet order documented above; within a facet, per-entry order is
+// preserved by the delegate.
+inline std::vector<UnitProfileFinding>
+validateUnitDefinition(const UnitDefinitionValidationInputs& in,
+                       const ActionExecutorRegistry& registry) {
+    std::vector<UnitProfileFinding> findings;
+
+    // 1. JUMP granted but no compatible executor for this locomotion.
+    {
+        std::vector<UnitProfileFinding> f = validateUnitProfile(in.profile, registry);
+        findings.insert(findings.end(), f.begin(), f.end());
+    }
+    // 2. Declared loadout->hardpoint joins (weapon class / damage loc / socket).
+    {
+        std::vector<UnitProfileFinding> f = validateLoadoutHardpointJoins(in.loadoutJoins);
+        findings.insert(findings.end(), f.begin(), f.end());
+    }
+    // 3. Declared presentation sockets absent on the model.
+    {
+        std::vector<UnitProfileFinding> f = validateDeclaredSockets(in.declaredSockets);
+        findings.insert(findings.end(), f.begin(), f.end());
+    }
+    // 4. Animation fallback chains that dead-end. The per-tag resolution bool was
+    //    computed by the caller (animTagResolves + gesture predicate); reuse the
+    //    pure validateAnimationFallbacks logic via a trivial availability lambda so
+    //    the emitted finding/message stays identical to the standalone check.
+    {
+        std::vector<NeededAnimTag> needed;    // one placeholder tag per UNRESOLVED entry
+        for (const NeededAnimFallback& a : in.animFallbacks) {
+            if (!a.resolved)
+                needed.push_back(NeededAnimTag{ActionAnimTag::Idle});
+        }
+        // Idle's chain is {kGestureIdle}; make it unavailable so each placeholder
+        // dead-ends -> exactly one UPV_ANIMATION_FALLBACK_MISSING per unresolved tag.
+        std::vector<UnitProfileFinding> f =
+            validateAnimationFallbacks(needed, [](int) { return false; });
+        findings.insert(findings.end(), f.begin(), f.end());
+    }
+    // 5. Declared UI assets that do not resolve.
+    {
+        std::vector<UnitProfileFinding> f = validateDeclaredUIAssets(in.declaredUIAssets);
+        findings.insert(findings.end(), f.begin(), f.end());
+    }
+
+    return findings;
+}
+
 #endif // UNIT_PROFILE_VALIDATOR_H

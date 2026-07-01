@@ -119,24 +119,30 @@ void mc2_unitprofile_vehicle_jump_proof(UnitProfile& p) {
 //   * gate ON, coherent unit (stock walker+jump, stock vehicle no-jump) ->
 //     validator returns no findings, so still no output.
 //   * gate ON, incoherent authored profile (e.g. vehicle granted CAP_JUMP) ->
-//     one "[UnitProfile:VALIDATE]" line per finding. NO spawn rejection.
+//     one "[UnitDefinition:VALIDATE]" line per finding. NO spawn rejection.
 // The validator consults the SAME theActionExecutorRegistry() gameplay queries
 // use, so its verdict can never diverge from the runtime executor resolution.
 void validateAndReportUnitProfile(const UnitProfile& profile, const char* typeName) {
     if (!mc2UnitProfileDataEnabled())
         return;   // gate OFF: no validation, no output -> parity with legacy
 
-    UnitProfileFacts facts;
-    facts.grantsJump = profile.baselineCapabilities.has(CAP_JUMP);
-    facts.locomotion = profile.locomotion;
+    // UNIT-DEFINITION-VALIDATOR-1 (Phase-2 slice 8): route the jump-facet check
+    // through the ONE consolidated pass instead of calling validateUnitProfile()
+    // directly. At the type-load site only the profile facet is in hand (loadout
+    // inventory / loaded shape belong to later lifecycle points and have their own
+    // gathering sites that likewise call validateUnitDefinition); the other input
+    // lists stay empty -> zero extra findings, identical output to the old call.
+    UnitDefinitionValidationInputs in;
+    in.profile.grantsJump = profile.baselineCapabilities.has(CAP_JUMP);
+    in.profile.locomotion = profile.locomotion;
 
     const std::vector<UnitProfileFinding> findings =
-        validateUnitProfile(facts, theActionExecutorRegistry());
+        validateUnitDefinition(in, theActionExecutorRegistry());
 
     const char* label = (typeName && typeName[0]) ? typeName : "<unknown>";
     for (const UnitProfileFinding& f : findings) {
         // Report-only: describe the incoherence in modder terms; do not reject.
-        printf("[UnitProfile:VALIDATE] %s: %s (reason=%d)\n",
+        printf("[UnitDefinition:VALIDATE] %s: %s (reason=%d)\n",
                label, f.message, static_cast<int>(f.code));
     }
 }
