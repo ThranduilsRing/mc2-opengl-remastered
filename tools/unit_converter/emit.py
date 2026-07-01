@@ -38,12 +38,59 @@ def _bool_tok(v: bool) -> str:
     return "TRUE" if v else "FALSE"
 
 
-def emit_unit_fit(ud: M.UnitDefinition) -> str:
-    """`unit.fit`: [UnitProfile] — the engine-consumable capability/locomotion/
-    damage facet block. Tokens match populateProfileFromFit exactly."""
+def emit_chassisdef_fit(ch: "M.ChassisProfile") -> str:
+    """LOADOUT-THREE-LAYER-1 (Phase 3): `chassisdef.fit` — the SHARED frame
+    (BT2018 `chassisdef`), emitted ONCE per chassis and referenced by every
+    variant's mechdef via ChassisID. Holds locomotion/damage/hardpoints (the
+    fixed frame); NOT the per-variant loadout or jump capability. Hardpoints are
+    REPORT-only mount-type descriptors (enforcement is a deferred future slice).
+    The [UnitProfile] Locomotion/DamageSchema tokens match populateProfileFromFit;
+    the chassis/hardpoint blocks are forward-looking (no shipped reader yet)."""
     lines: List[str] = ["FITini", ""]
-    lines.append("// LEGACY-UNIT-CONVERTER-1 generated sidecar (do not hand-edit).")
-    lines.append(f"// source unit: {ud.identity.unit_id}  kind={ud.identity.kind}")
+    lines.append("// LEGACY-UNIT-CONVERTER-1 generated chassisdef (do not hand-edit).")
+    lines.append(f"// chassis: {ch.chassis_id}  kind={ch.kind}")
+    lines.append("")
+    lines.append("[Chassis]")
+    lines.append(f'st ChassisID="{ch.chassis_id}"')
+    lines.append(f'st DisplayName="{ch.display_name}"')
+    if ch.tonnage is not None:
+        lines.append(f"f Tonnage={ch.tonnage}")
+    lines.append("")
+    lines.append("[UnitProfile]")
+    lines.append(f'st Locomotion="{ch.locomotion.model}"')
+    lines.append(f'st DamageSchema="{ch.damage.schema}"')
+    lines.append("")
+    lines.append("[Hardpoints]")
+    lines.append(f"l NumHardpoints = {len(ch.hardpoints)}")
+    lines.append("")
+    for i, hp in enumerate(ch.hardpoints):
+        lines.append(f"[Hardpoint{i}]")
+        lines.append(f'st HardpointId = "{hp.hardpoint_id}"')
+        lines.append(f'st SocketName = "{hp.socket_name}"')
+        lines.append(f'st WeaponTag = "{hp.weapon_tag}"')
+        lines.append("")
+    lines.append("FITend")
+    lines.append("")
+    return "\n".join(lines)
+
+
+def emit_unit_fit(ud: M.UnitDefinition) -> str:
+    """`unit.fit` (per-variant mechdef): [UnitProfile] — the engine-consumable
+    capability/locomotion/damage facet block. Tokens match populateProfileFromFit
+    exactly. References its shared chassis via ChassisID (LOADOUT-THREE-LAYER-1)."""
+    lines: List[str] = ["FITini", ""]
+    lines.append("// LEGACY-UNIT-CONVERTER-1 generated mechdef (do not hand-edit).")
+    lines.append(f"// variant: {ud.identity.unit_id}  kind={ud.identity.kind}")
+    if ud.identity.chassis_id:
+        lines.append(f"// chassis: {ud.identity.chassis_id}"
+                     f"  variant_index={ud.identity.variant_index}"
+                     f'  variant_name="{ud.identity.variant_name}"')
+    lines.append("")
+    lines.append("[Variant]")
+    if ud.identity.chassis_id:
+        lines.append(f'st ChassisID="{ud.identity.chassis_id}"')
+    lines.append(f'st VariantName="{ud.identity.variant_name}"')
+    lines.append(f"l VariantIndex={ud.identity.variant_index}")
     lines.append("")
     lines.append("[UnitProfile]")
     lines.append(f"b Jump={_bool_tok(ud.capabilities.jump)}")
@@ -157,12 +204,33 @@ def emit_all(ud: M.UnitDefinition) -> dict:
     return {fname: fn(ud) for fname, fn in EMITTERS}
 
 
-def write_unit(ud: M.UnitDefinition, out_root: str) -> str:
-    """Write the sidecar set to
-    <out_root>/core/<unit>/{unit,presentation,ui,hardpoints,loadout}.fit.
-    Returns the unit directory. LF newlines, deterministic."""
-    stem = ud.identity.unit_id.split(":", 1)[-1]
+def write_chassis(ch: "M.ChassisProfile", out_root: str) -> str:
+    """LOADOUT-THREE-LAYER-1: write the shared chassisdef ONCE per chassis to
+    <out_root>/core/<chassis-stem>/chassisdef.fit. Returns the file path."""
+    stem = ch.chassis_id.split(":", 1)[-1]
     unit_dir = os.path.join(out_root, "core", stem)
+    os.makedirs(unit_dir, exist_ok=True)
+    path = os.path.join(unit_dir, "chassisdef.fit")
+    with open(path, "w", encoding="latin-1", newline="\n") as fh:
+        fh.write(emit_chassisdef_fit(ch))
+    return path
+
+
+def write_unit(ud: M.UnitDefinition, out_root: str) -> str:
+    """Write the per-variant sidecar set. Mech variants share a chassis dir and
+    get a per-variant subdir so the mechdef sits next to its chassisdef:
+      <out_root>/core/<chassis-stem>/<variant-slug>/{unit,presentation,...}.fit
+    Vehicles (no variant) keep the flat <chassis-stem>/ dir. Returns the dir.
+    LF newlines, deterministic."""
+    stem = ud.identity.unit_id.split(":", 1)[-1]
+    chassis_stem = (ud.identity.chassis_id.split(":", 1)[-1]
+                    if ud.identity.chassis_id else stem)
+    if ud.identity.kind == "mech" and stem != chassis_stem:
+        # variant suffix -> per-variant subdir under the chassis dir
+        variant_slug = stem[len(chassis_stem) + 1:] if stem.startswith(chassis_stem + "_") else stem
+        unit_dir = os.path.join(out_root, "core", chassis_stem, variant_slug)
+    else:
+        unit_dir = os.path.join(out_root, "core", stem)
     os.makedirs(unit_dir, exist_ok=True)
     for fname, text in emit_all(ud).items():
         with open(os.path.join(unit_dir, fname), "w", encoding="latin-1", newline="\n") as fh:

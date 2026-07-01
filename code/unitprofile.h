@@ -84,6 +84,14 @@ struct UnitProfileWitnessRow {
     char chassis[64];       // ObjectType appearance stem; "" if unavailable
     int  locomotion;        // LocomotionModel enum value
     int  damageSchema;      // DamageSchemaId enum value
+    // LOADOUT-THREE-LAYER-1 (Phase 3): spawned VARIANT identity so shadow_compare
+    // can join by (chassis, variant) instead of chassis stem. The converter now
+    // emits one mechdef per variant; joining on chassis alone mismatches whenever
+    // the spawned variant's loadout differs from the FIRST CSV variant (root of
+    // the Atlas-jump finding). variant == "" (base Mover / non-mech) -> the diff
+    // falls back to a chassis-level join, preserving the pre-Phase-3 behavior.
+    char variant[64];       // spawned variant name (Mover::getVariantName()); "" if none
+    long variantId;         // Mover::getVariantId(); -1 if none
 };
 extern "C" int mc2_unitprofile_collect_witness(UnitProfileWitnessRow* out, int maxRows);
 #endif // UNITPROFILE_H

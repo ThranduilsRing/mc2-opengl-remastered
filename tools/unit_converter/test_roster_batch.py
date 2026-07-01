@@ -63,8 +63,14 @@ def test_enumerate_ignores_malformed_rows_without_crashing():
 
 def test_convert_roster_converts_present_and_skips_missing():
     result = R.convert_roster(SRCDATA, BUILDINGS)
+    # LOADOUT-THREE-LAYER-1: atlas -> 3 variant defs + armoredcar -> 1 def.
     converted = {d.identity.unit_id for d in result.defs}
-    assert converted == {"core:atlas", "core:armoredcar"}
+    assert converted == {
+        "core:atlas_atlas_prime", "core:atlas_claymores_atlas",
+        "core:atlas_renards_atlas", "core:armoredcar",
+    }
+    # one shared chassis emitted for the mech (vehicles have no chassisdef)
+    assert {c.chassis_id for c in result.chassis} == {"core:atlas"}
     skipped = {s.stem for s in result.skipped}
     assert skipped == {"ghosttank", "ghostmech"}
     for s in result.skipped:
@@ -75,15 +81,22 @@ def test_batch_report_counts_and_shape():
     result = R.convert_roster(SRCDATA, BUILDINGS)
     rep = R.build_batch_report(result)
     assert rep["tool"] == "CONVERTER-ROSTER-BATCH-1"
-    assert rep["units_converted"] == 2
-    assert rep["mechs"] == 1
+    # per-VARIANT def count: 3 atlas variants + 1 armoredcar
+    assert rep["units_converted"] == 4
+    assert rep["chassis_converted"] == 1
+    assert rep["mechs"] == 3
     assert rep["vehicles"] == 1
     assert rep["units_skipped"] == 2
     # units sorted by unit_id; each carries the per-unit facets + waivers
     ids = [u["unit_id"] for u in rep["units"]]
     assert ids == sorted(ids)
-    assert {u["unit_id"] for u in rep["units"]} == {"core:atlas", "core:armoredcar"}
+    assert {u["unit_id"] for u in rep["units"]} == {
+        "core:atlas_atlas_prime", "core:atlas_claymores_atlas",
+        "core:atlas_renards_atlas", "core:armoredcar",
+    }
     assert all("jump" in u and "locomotion" in u and "waivers" in u for u in rep["units"])
+    # each unit carries its variant identity
+    assert all("chassis_id" in u and "variant_name" in u for u in rep["units"])
     # skipped entries carry stem + kind + reason
     assert {s["stem"] for s in rep["skipped"]} == {"ghosttank", "ghostmech"}
     assert all(s["reason"] for s in rep["skipped"])
@@ -97,9 +110,16 @@ def test_batch_report_total_waivers_is_sum():
 
 def test_batch_writes_sidecars_when_out_given(tmp_path):
     result = R.convert_roster(SRCDATA, BUILDINGS, out_root=str(tmp_path))
-    assert len(result.written_dirs) == 2
-    for uid in ("atlas", "armoredcar"):
-        assert os.path.isfile(os.path.join(str(tmp_path), "core", uid, "unit.fit"))
+    # 1 chassisdef + 3 mech-variant dirs + 1 vehicle dir = 5 written paths
+    assert len(result.written_dirs) == 5
+    core = os.path.join(str(tmp_path), "core")
+    # shared chassisdef emitted once at the chassis dir
+    assert os.path.isfile(os.path.join(core, "atlas", "chassisdef.fit"))
+    # each mech variant gets its own subdir under the chassis
+    for vslug in ("atlas_prime", "claymores_atlas", "renards_atlas"):
+        assert os.path.isfile(os.path.join(core, "atlas", vslug, "unit.fit"))
+    # vehicle keeps the flat chassis dir
+    assert os.path.isfile(os.path.join(core, "armoredcar", "unit.fit"))
 
 
 # --- roster shadow-compare diff ------------------------------------------
@@ -109,14 +129,14 @@ def _dump(rows):
 
 
 def test_roster_diff_all_match_is_pass():
-    # engine agrees with the converter for both fixture units -> PASS
+    # engine agrees with the converter (variant-aware join) -> PASS
     result = R.convert_roster(SRCDATA, BUILDINGS)
     batch = R.build_batch_report(result)
     converter = SC.load_converter_facets(batch)
     dump = _dump([
-        {"chassis": "atlas", "cap_jump_baseline": False,
+        {"chassis": "atlas", "variant": "Atlas Prime", "cap_jump_baseline": False,
          "locomotion": "MechWalker", "damage_schema": "Mech8Part"},
-        {"chassis": "armoredcar", "cap_jump_baseline": False,
+        {"chassis": "armoredcar", "variant": "", "cap_jump_baseline": False,
          "locomotion": "Wheeled", "damage_schema": "VehicleFacings"},
     ])
     engine = SC.load_engine_facets(dump)
@@ -127,13 +147,33 @@ def test_roster_diff_all_match_is_pass():
     assert not rep.mismatches
 
 
-def test_roster_diff_surfaces_facet_mismatch():
-    # engine says atlas jumps, converter says it doesn't -> FINDING, not hidden
+def test_variant_aware_join_resolves_atlas_jump():
+    # THE ATLAS FINDING, RESOLVED: the engine spawns Renard's Atlas (jumpjets ->
+    # jump TRUE). Under the OLD chassis-stem join it diffed against Atlas PRIME
+    # (jump FALSE) -> false mismatch. The variant-aware join now diffs against the
+    # SAME converted variant (Renard's Atlas) -> jump matches, PASS.
     result = R.convert_roster(SRCDATA, BUILDINGS)
     batch = R.build_batch_report(result)
     converter = SC.load_converter_facets(batch)
     dump = _dump([
-        {"chassis": "atlas", "cap_jump_baseline": True,
+        {"chassis": "atlas", "variant": "Renard's Atlas", "cap_jump_baseline": True,
+         "locomotion": "MechWalker", "damage_schema": "Mech8Part"},
+    ])
+    engine = SC.load_engine_facets(dump)
+    # engine row joined to the per-variant converter id, not the chassis stem
+    assert "core:atlas_renards_atlas" in engine
+    rep = SC.compare(engine, converter)
+    assert rep.verdict == "PASS"          # jump TRUE == converter Renard jump TRUE
+    assert not rep.mismatches
+
+
+def test_roster_diff_surfaces_facet_mismatch():
+    # engine says Atlas Prime jumps, converter (Prime) says it doesn't -> FINDING
+    result = R.convert_roster(SRCDATA, BUILDINGS)
+    batch = R.build_batch_report(result)
+    converter = SC.load_converter_facets(batch)
+    dump = _dump([
+        {"chassis": "atlas", "variant": "Atlas Prime", "cap_jump_baseline": True,
          "locomotion": "MechWalker", "damage_schema": "Mech8Part"},
     ])
     engine = SC.load_engine_facets(dump)
@@ -142,19 +182,19 @@ def test_roster_diff_surfaces_facet_mismatch():
     assert len(rep.mismatches) == 1
     m = rep.mismatches[0]
     assert (m.unit_id, m.facet, m.engine, m.converter) == \
-        ("core:atlas", "jump", True, False)
+        ("core:atlas_atlas_prime", "jump", True, False)
 
 
 def test_roster_diff_reports_engine_only_and_converter_only():
     result = R.convert_roster(SRCDATA, BUILDINGS)
     batch = R.build_batch_report(result)
     converter = SC.load_converter_facets(batch)
-    # dump has atlas (converted) + legion (never converted; engine-only). Also
-    # armoredcar is converted but absent from the dump -> converter-only.
+    # dump has atlas Prime (converted) + legion (never converted; engine-only).
+    # Other atlas variants + armoredcar are converted but absent -> converter-only.
     dump = _dump([
-        {"chassis": "atlas", "cap_jump_baseline": False,
+        {"chassis": "atlas", "variant": "Atlas Prime", "cap_jump_baseline": False,
          "locomotion": "MechWalker", "damage_schema": "Mech8Part"},
-        {"chassis": "legion", "cap_jump_baseline": False,
+        {"chassis": "legion", "variant": "", "cap_jump_baseline": False,
          "locomotion": "Wheeled", "damage_schema": "VehicleFacings"},
     ])
     engine = SC.load_engine_facets(dump)
@@ -164,19 +204,19 @@ def test_roster_diff_reports_engine_only_and_converter_only():
 
 
 def test_merge_engine_dumps_unions_multi_mission():
-    d1 = _dump([{"chassis": "atlas", "cap_jump_baseline": False,
+    d1 = _dump([{"chassis": "atlas", "variant": "Atlas Prime", "cap_jump_baseline": False,
                  "locomotion": "MechWalker", "damage_schema": "Mech8Part"}])
-    d2 = _dump([{"chassis": "armoredcar", "cap_jump_baseline": False,
+    d2 = _dump([{"chassis": "armoredcar", "variant": "", "cap_jump_baseline": False,
                  "locomotion": "Wheeled", "damage_schema": "VehicleFacings"}])
     merged = RSC.merge_engine_dumps([d1, d2])
-    assert set(merged) == {"core:atlas", "core:armoredcar"}
+    assert set(merged) == {"core:atlas_atlas_prime", "core:armoredcar"}
 
 
 def test_merge_engine_dumps_surfaces_cross_mission_conflict():
-    # same chassis, divergent facet across two missions -> #conflict entry
-    d1 = _dump([{"chassis": "atlas", "cap_jump_baseline": False,
+    # same chassis+variant, divergent facet across two missions -> #conflict entry
+    d1 = _dump([{"chassis": "atlas", "variant": "Atlas Prime", "cap_jump_baseline": False,
                  "locomotion": "MechWalker", "damage_schema": "Mech8Part"}])
-    d2 = _dump([{"chassis": "atlas", "cap_jump_baseline": True,
+    d2 = _dump([{"chassis": "atlas", "variant": "Atlas Prime", "cap_jump_baseline": True,
                  "locomotion": "MechWalker", "damage_schema": "Mech8Part"}])
     merged = RSC.merge_engine_dumps([d1, d2])
     assert any(k.endswith("#conflict") for k in merged)
@@ -187,13 +227,13 @@ def test_roster_shadow_compare_run_end_to_end(tmp_path):
     dump_path = os.path.join(str(tmp_path), "hist.json")
     with open(dump_path, "w", encoding="utf-8") as fh:
         json.dump(_dump([
-            {"chassis": "atlas", "cap_jump_baseline": False,
+            {"chassis": "atlas", "variant": "Atlas Prime", "cap_jump_baseline": False,
              "locomotion": "MechWalker", "damage_schema": "Mech8Part"},
-            {"chassis": "armoredcar", "cap_jump_baseline": False,
+            {"chassis": "armoredcar", "variant": "", "cap_jump_baseline": False,
              "locomotion": "Wheeled", "damage_schema": "VehicleFacings"},
         ]), fh)
     rep, batch = RSC.run(SRCDATA, BUILDINGS, [dump_path])
-    assert batch["units_converted"] == 2
+    assert batch["units_converted"] == 4     # all 3 atlas variants + armoredcar
     assert rep.verdict == "PASS"
     assert rep.units_compared == 2
 
@@ -217,4 +257,4 @@ def test_batch_report_deterministic_under_hash_randomization():
     out1 = subprocess.check_output([sys.executable, "-c", script], env=env1)
     out2 = subprocess.check_output([sys.executable, "-c", script], env=env2)
     assert out1 == out2
-    assert json.loads(out1)["units_converted"] == 2
+    assert json.loads(out1)["units_converted"] == 4

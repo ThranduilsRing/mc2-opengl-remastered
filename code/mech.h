@@ -698,6 +698,12 @@ class BattleMech : public Mover {
 			return (numJumpJets > 0);           // original
 		}
 
+		// LOADOUT-THREE-LAYER-1 (Phase 3): expose the spawned variant identity so
+		// the shadow-compare witness can join per-variant, not per-chassis. Read
+		// from the CSV variant block at init (mech.cpp: 23 + 97*variantNum stride).
+		virtual const char* getVariantName (void) const { return variantName; }
+		virtual long getVariantId (void) const { return variantID; }
+
 		virtual float getJumpRange (long* numOffsets = NULL, long* jumpCost = NULL);
 
 		virtual bool handleFall (bool forward);

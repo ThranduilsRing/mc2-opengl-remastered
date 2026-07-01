@@ -176,6 +176,15 @@ extern "C" int mc2_unitprofile_collect_witness(UnitProfileWitnessRow* out, int m
         }
         out[n].locomotion   = static_cast<int>(prof.locomotion);
         out[n].damageSchema = static_cast<int>(prof.damageSchema);
+        // LOADOUT-THREE-LAYER-1 (Phase 3): spawned variant identity (mech overrides
+        // getVariantName/Id from its CSV variant block; base Mover -> "" / -1).
+        out[n].variant[0] = '\0';
+        const char* vname = m->getVariantName();
+        if (vname) {
+            strncpy(out[n].variant, vname, sizeof(out[n].variant) - 1);
+            out[n].variant[sizeof(out[n].variant) - 1] = '\0';
+        }
+        out[n].variantId = m->getVariantId();
         ++n;
     }
     return n;

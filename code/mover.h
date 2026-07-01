@@ -1729,6 +1729,16 @@ class Mover : public GameObject {
 		// UNIT-PROFILE-SEAM-1: copy type baseline -> runtime at the type-bind seam.
 		virtual void onTypeBound (void);
 
+		// LOADOUT-THREE-LAYER-1 (Phase 3): variant identity for the shadow-compare
+		// witness. The chassis stem alone is too coarse -- a chassis has many
+		// variants (the CSV 97-row-stride blocks) whose loadouts differ (Atlas
+		// Prime has no jumpjets; other Atlas variants do). This lets the offline
+		// compare join by (chassis, variant) instead of chassis stem, so it diffs
+		// the ACTUAL spawned variant against the SAME converted variant. Base Mover
+		// has no variant concept -> empty string (falls back to chassis-level join).
+		virtual const char* getVariantName (void) const { return ""; }
+		virtual long getVariantId (void) const { return -1; }
+
 		virtual float getJumpRange (long* numOffsets = NULL, long* jumpCost = NULL) {
 			if (numOffsets)
 				*numOffsets = 8;

@@ -19,14 +19,27 @@ Deterministic; no RNG, no engine, no writes.
 from __future__ import annotations
 
 import os
-from typing import List, Optional
+import re
+from typing import List, Optional, Tuple
 
 from . import model as M
-from .fitparse import ChassisCsv, CompBas, FitIni
+from .fitparse import ChassisCsv, CompBas, FitIni, VariantBlock
 
 
 def _namespaced(stem: str, namespace: str = "core") -> str:
     return f"{namespace}:{stem.lower()}"
+
+
+def _variant_slug(variant_name: str, index: int) -> str:
+    """Stable, greppable variant suffix for the namespaced unit_id.
+
+    'Atlas Prime' -> 'prime', "Renard's Atlas" -> 'renards_atlas'. Falls back to
+    the block ordinal when the CSV has no VariantName. Deterministic; only the
+    per-variant SUFFIX (the chassis stem is prepended by the caller)."""
+    # Drop apostrophes so "Claymore's Atlas" -> claymores_atlas (not claymore_s).
+    cleaned = (variant_name or "").strip().lower().replace("'", "")
+    slug = re.sub(r"[^a-z0-9]+", "_", cleaned).strip("_")
+    return slug or f"v{index}"
 
 
 def _weapon_tag_from_comptype(ctype: str) -> str:
@@ -76,31 +89,16 @@ def _jumpnode_present(tgl: FitIni) -> bool:
 # MECH
 # --------------------------------------------------------------------------
 
-def extract_mech(csv_path: str, tgl_path: str, compbas: CompBas,
-                 namespace: str = "core") -> M.UnitDefinition:
-    csvf = ChassisCsv.load(csv_path)
-    tgl = FitIni.load(tgl_path)
-    stem = os.path.splitext(os.path.basename(csv_path))[0]
+def _scan_variant_loadout(items, compbas: CompBas) -> Tuple[List[M.LoadoutEntry], bool, str]:
+    """Scan ONE variant's ItemN rows -> (weapon loadout, jump?, jump-evidence).
 
-    name = csvf.label("MechName", stem) or stem
-    variant = csvf.first_variant_name()
-    if variant:
-        name = variant
-    tonnage = _to_float(csvf.label("Tonnage"))
-    house = _to_int(csvf.label("HouseID"))
-
-    identity = M.Identity(
-        unit_id=_namespaced(stem, namespace), display_name=name,
-        kind="mech", tonnage=tonnage, house_id=house,
-    )
-
-    # Loadout: ItemNMasterId rows; col4 (0-based) is the CompBas# reference,
-    # col5 is the human Name. CompBas#255 == EMPTY, skip. A JumpJet component
-    # (compbas Type==JumpJet) installed anywhere == baseline jump capability.
+    col4 (0-based) is the CompBas# reference, col5 the human name. CompBas#255 ==
+    EMPTY, skip. A JumpJet component installed anywhere in THIS variant == that
+    variant's baseline jump capability (variant-scoped, not chassis-scoped)."""
     loadout: List[M.LoadoutEntry] = []
     jump = False
     jump_evidence = "no installed jumpjet"
-    for _idx, row in csvf.item_rows():
+    for _idx, row in items:
         compbas_id = _to_int(row[4]) if len(row) > 4 else None
         item_name = row[5].strip() if len(row) > 5 else ""
         if compbas_id is None or compbas_id in (0, 255):
@@ -112,25 +110,47 @@ def extract_mech(csv_path: str, tgl_path: str, compbas: CompBas,
             continue
         tag = _weapon_tag_from_comptype(ctype)
         if tag == M.WT_ANY and "weapon" not in ctype.lower():
-            # non-weapon equipment (engine/gyro/sensor/actuator...) -> not a
-            # weapon loadout entry; skip for the loadout facet.
-            continue
+            continue  # non-weapon equipment -> not a weapon loadout entry
         loadout.append(M.LoadoutEntry(
             weapon_name=item_name or compbas.name_of(compbas_id),
             weapon_tag=tag, master_id=compbas_id,
         ))
+    return loadout, jump, jump_evidence
+
+
+def extract_mech_variants(csv_path: str, tgl_path: str, compbas: CompBas,
+                          namespace: str = "core") -> Tuple[M.ChassisProfile, List[M.UnitDefinition]]:
+    """LOADOUT-THREE-LAYER-1 (Phase 3): convert a chassis into ONE shared
+    ChassisProfile (frame/locomotion/damage/hardpoints/presentation) + ONE
+    UnitDefinition per CSV variant (each with its own variant-scoped loadout +
+    jump capability). Returns (chassis, [variant defs...]).
+
+    This is the fix for the Prime-only scoping: every variant of a chassis now
+    converts, keyed `core:<stem>_<variant-slug>` so the shadow-compare can join
+    by (chassis, variant) and diff the ACTUAL spawned variant."""
+    csvf = ChassisCsv.load(csv_path)
+    tgl = FitIni.load(tgl_path)
+    stem = os.path.splitext(os.path.basename(csv_path))[0]
+
+    chassis_name = csvf.label("MechName", stem) or stem
+    tonnage = _to_float(csvf.label("Tonnage"))
+    house = _to_int(csvf.label("HouseID"))
 
     presentation = _presentation_from_tgl(tgl)
-
-    # Hardpoints: one per weapon socket declared by the model. HardpointId is a
-    # stable name (never an index): <UnitStem>_<Tag>_<n>. This is the JOIN KEY
-    # binding loadout mount <-> model socket <-> (future) damage location.
+    # Hardpoints: one per weapon socket declared by the model. Shared across all
+    # variants (they are a property of the frame/model, not the loadout).
     hardpoints = _hardpoints_from_sockets(stem, presentation.sockets)
-    _bind_loadout(loadout, hardpoints)
-
     damage = M.DamageSchema(schema=M.DMG_MECH_8PART, locations=[
         "Head", "CTorso", "LTorso", "RTorso", "LArm", "RArm", "LLeg", "RLeg",
     ])
+    locomotion = M.Locomotion(model=M.LOCO_MECH_WALKER)
+    chassis_id = _namespaced(stem, namespace)
+
+    chassis = M.ChassisProfile(
+        chassis_id=chassis_id, display_name=chassis_name, kind="mech",
+        tonnage=tonnage, house_id=house, locomotion=locomotion, damage=damage,
+        presentation=presentation, hardpoints=list(hardpoints),
+    )
 
     ui = M.UIProfile(
         name_string_id=_to_int(csvf.label("DescIndex")),
@@ -138,13 +158,41 @@ def extract_mech(csv_path: str, tgl_path: str, compbas: CompBas,
         icon=str(csvf.label("LittleIcon", "") or ""),
     )
 
-    ud = M.UnitDefinition(
-        identity=identity, capabilities=M.Capabilities(jump=jump, jump_evidence=jump_evidence),
-        locomotion=M.Locomotion(model=M.LOCO_MECH_WALKER), damage=damage,
-        presentation=presentation, hardpoints=hardpoints, loadout=loadout, ui=ui,
-    )
-    _coherence_notes(ud, tgl, jump_node=_jumpnode_present(tgl))
-    return ud
+    blocks = csvf.variants()
+    defs: List[M.UnitDefinition] = []
+    for vb in blocks:
+        loadout, jump, jump_evidence = _scan_variant_loadout(vb.items, compbas)
+        # Fresh hardpoint copies per variant so the loadout bind doesn't cross-
+        # contaminate variants (each variant binds its own weapons).
+        vhardpoints = [M.Hardpoint(hp.hardpoint_id, hp.socket_name, hp.weapon_tag)
+                       for hp in hardpoints]
+        _bind_loadout(loadout, vhardpoints)
+
+        vslug = _variant_slug(vb.variant_name, vb.index)
+        vdisplay = vb.variant_name or f"{chassis_name} v{vb.index}"
+        identity = M.Identity(
+            unit_id=f"{chassis_id}_{vslug}", display_name=vdisplay, kind="mech",
+            tonnage=tonnage, house_id=house, chassis_id=chassis_id,
+            variant_index=vb.index, variant_name=vb.variant_name,
+        )
+        ud = M.UnitDefinition(
+            identity=identity,
+            capabilities=M.Capabilities(jump=jump, jump_evidence=jump_evidence),
+            locomotion=locomotion, damage=damage, presentation=presentation,
+            hardpoints=vhardpoints, loadout=loadout, ui=ui,
+        )
+        _coherence_notes(ud, tgl, jump_node=_jumpnode_present(tgl))
+        defs.append(ud)
+
+    return chassis, defs
+
+
+def extract_mech(csv_path: str, tgl_path: str, compbas: CompBas,
+                 namespace: str = "core") -> M.UnitDefinition:
+    """Back-compat single-def entry: returns the FIRST (Prime) variant's def.
+    New callers should use extract_mech_variants to get every variant."""
+    _chassis, defs = extract_mech_variants(csv_path, tgl_path, compbas, namespace)
+    return defs[0]
 
 
 # --------------------------------------------------------------------------
@@ -163,9 +211,15 @@ def extract_vehicle(fit_path: str, tgl_path: str, compbas: CompBas,
 
     tonnage = _to_float(fit.get("General", "CurTonnage", fit.get("General", "TonnageClass")))
 
+    # LOADOUT-THREE-LAYER-1: vehicles have a single stock loadout, so the variant
+    # IS the chassis (variant_index 0, variant_name == display). unit_id stays the
+    # bare chassis id (no variant suffix) -> the shadow-compare join falls back to
+    # the chassis-level match, matching the empty-variant dump rows for vehicles.
+    chassis_id = _namespaced(stem, namespace)
     identity = M.Identity(
-        unit_id=_namespaced(stem, namespace), display_name=display,
+        unit_id=chassis_id, display_name=display,
         kind="vehicle", tonnage=tonnage, house_id=None,
+        chassis_id=chassis_id, variant_index=0, variant_name="",
     )
 
     # Locomotion: stock GroundVehicleType has no explicit wheel/track token, so

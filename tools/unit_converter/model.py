@@ -51,11 +51,20 @@ WEAPON_NODE_TYPE_TAG = {
 
 @dataclass
 class Identity:
-    unit_id: str                 # namespaced stable id, e.g. "core:atlas"
-    display_name: str            # "Atlas"
+    unit_id: str                 # namespaced stable id, e.g. "core:atlas_prime"
+    display_name: str            # "Atlas Prime"
     kind: str                    # "mech" | "vehicle"
     tonnage: Optional[float] = None
     house_id: Optional[int] = None
+    # LOADOUT-THREE-LAYER-1 (Phase 3): chassis/variant separation. `chassis_id`
+    # is the shared frame (one chassisdef per chassis); `variant_index`/
+    # `variant_name` identify the per-variant loadout (one mechdef per variant).
+    # The engine dump joins on (chassis, variant) so the spawned variant diffs
+    # against the SAME converted variant. For vehicles (single loadout) these
+    # default to the chassis itself / index 0.
+    chassis_id: str = ""         # "core:atlas" — the shared ChassisProfile id
+    variant_index: int = 0       # CSV VariantInfo block ordinal (0 = first)
+    variant_name: str = ""       # "Atlas Prime" — CSV VariantName (spawn join key)
 
 
 @dataclass
@@ -112,6 +121,38 @@ class UIProfile:
 
 
 @dataclass
+class ChassisProfile:
+    """LOADOUT-THREE-LAYER-1 (Phase 3) — the SHARED frame across all variants of
+    a chassis (BT2018 `chassisdef`). Holds what does NOT change per variant:
+    identity of the frame, tonnage, locomotion, damage schema (locations), and
+    the hardpoint mount-types (REPORT-only mount legality; enforcement is a
+    deferred future slice). Emitted ONCE per chassis as `chassisdef.fit`; every
+    variant's mechdef references it by `chassis_id`."""
+    chassis_id: str              # "core:atlas"
+    display_name: str            # "Atlas" (chassis, not variant)
+    kind: str                    # "mech" | "vehicle"
+    tonnage: Optional[float] = None
+    house_id: Optional[int] = None
+    locomotion: "Locomotion" = field(default_factory=lambda: Locomotion())
+    damage: "DamageSchema" = field(default_factory=lambda: DamageSchema())
+    presentation: "Presentation" = field(default_factory=lambda: Presentation())
+    hardpoints: List[Hardpoint] = field(default_factory=list)
+
+    def to_report_dict(self) -> dict:
+        return {
+            "chassis_id": self.chassis_id,
+            "name": self.display_name,
+            "kind": self.kind,
+            "tonnage": self.tonnage,
+            "locomotion": self.locomotion.model,
+            "damage_schema": self.damage.schema,
+            "num_hardpoints": len(self.hardpoints),
+            "num_sockets": len(self.presentation.sockets),
+            "model": self.presentation.model_name,
+        }
+
+
+@dataclass
 class UnitDefinition:
     identity: Identity
     capabilities: Capabilities
@@ -130,6 +171,9 @@ class UnitDefinition:
             "name": self.identity.display_name,
             "kind": self.identity.kind,
             "tonnage": self.identity.tonnage,
+            "chassis_id": self.identity.chassis_id,
+            "variant_index": self.identity.variant_index,
+            "variant_name": self.identity.variant_name,
             "jump": self.capabilities.jump,
             "jump_evidence": self.capabilities.jump_evidence,
             "locomotion": self.locomotion.model,

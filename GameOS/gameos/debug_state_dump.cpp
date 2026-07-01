@@ -644,6 +644,10 @@ std::string buildSnapshotJson(const RenderSnapshot& snap,
               << locomotionModelName(static_cast<LocomotionModel>(rows[i].locomotion)) << "\"";
             s << ", \"damage_schema\": \""
               << damageSchemaName(static_cast<DamageSchemaId>(rows[i].damageSchema)) << "\"";
+            // LOADOUT-THREE-LAYER-1 (Phase 3): variant identity so shadow_compare
+            // joins per-variant. Empty string when the mover has no variant concept.
+            s << ", \"variant\": \"" << rows[i].variant << "\"";
+            s << ", \"variant_id\": " << rows[i].variantId;
             s << " }" << (i + 1 < nrows ? "," : "") << "\n";
         }
         s << "    ]\n";

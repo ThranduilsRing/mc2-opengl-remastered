@@ -36,6 +36,7 @@ from __future__ import annotations
 import argparse
 import json
 import os
+import re
 import sys
 from dataclasses import dataclass, field
 from typing import Dict, List, Optional
@@ -50,13 +51,43 @@ NAMESPACE = "core"
 
 
 def chassis_to_unit_id(chassis: str, namespace: str = NAMESPACE) -> str:
-    """Map an engine `chassis` stem to the converter's namespaced unit_id.
+    """Map an engine `chassis` stem to the converter's namespaced chassis id.
 
     Mirrors tools/unit_converter/extract.py::_namespaced (lower-cased stem).
     >>> chassis_to_unit_id("Atlas")
     'core:atlas'
     """
     return f"{namespace}:{chassis.strip().lower()}"
+
+
+def _variant_slug(variant_name: str, index: int = 0) -> str:
+    """Mirror extract.py::_variant_slug: stable, greppable variant suffix.
+    >>> _variant_slug("Atlas Prime")
+    'atlas_prime'
+    >>> _variant_slug("Renard's Atlas")
+    'renards_atlas'
+    """
+    cleaned = (variant_name or "").strip().lower().replace("'", "")
+    slug = re.sub(r"[^a-z0-9]+", "_", cleaned).strip("_")
+    return slug or f"v{index}"
+
+
+def variant_join_id(chassis: str, variant: str = "", namespace: str = NAMESPACE) -> str:
+    """LOADOUT-THREE-LAYER-1: compose the per-VARIANT join id the converter emits.
+
+    Engine dump row (chassis, variant) -> converter unit_id. When `variant` is
+    empty (vehicle / base Mover) the id is the bare chassis id, matching the
+    converter's chassis-level unit_id and preserving the pre-Phase-3 join.
+    >>> variant_join_id("Atlas", "Renard's Atlas")
+    'core:atlas_renards_atlas'
+    >>> variant_join_id("ArmoredCar", "")
+    'core:armoredcar'
+    """
+    base = chassis_to_unit_id(chassis, namespace)
+    variant = (variant or "").strip()
+    if not variant:
+        return base
+    return f"{base}_{_variant_slug(variant)}"
 
 
 @dataclass
@@ -135,7 +166,11 @@ def load_engine_facets(dump: dict) -> Dict[str, UnitFacets]:
         chassis = (r.get("chassis") or "").strip()
         if not chassis:
             continue
-        uid = chassis_to_unit_id(chassis)
+        # LOADOUT-THREE-LAYER-1: join by (chassis, variant) so a spawned variant
+        # diffs against the SAME converted variant, not the chassis' first (Prime)
+        # variant. `variant` is absent in pre-Phase-3 dumps -> chassis-level join.
+        variant = (r.get("variant") or "").strip()
+        uid = variant_join_id(chassis, variant)
         facets = UnitFacets(
             unit_id=uid,
             jump=bool(r.get("cap_jump_baseline")),

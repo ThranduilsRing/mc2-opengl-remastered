@@ -16,7 +16,17 @@ from __future__ import annotations
 
 import csv
 import re
+from dataclasses import dataclass, field
 from typing import Dict, List, Optional, Tuple
+
+
+@dataclass
+class VariantBlock:
+    """One CSV `VariantInfo` block: variant identity + its scoped loadout rows."""
+    index: int                                  # 0-based ordinal (0 = Prime)
+    variant_id: Optional[int] = None            # CSV VariantID
+    variant_name: str = ""                      # CSV VariantName
+    items: List[Tuple[int, List[str]]] = field(default_factory=list)
 
 # `st Key = "value"`  /  `l Key=5`  /  `f Distance0 = 0.0`  /  `b Flag=FALSE`
 _FIT_ENTRY = re.compile(r"^\s*(st|l|f|uc|us|c|b|ul)\s+([A-Za-z0-9_]+)\s*=\s*(.*?)\s*$")
@@ -130,6 +140,43 @@ class ChassisCsv:
             if seen_variant and r and r[0].strip() == "VariantName" and len(r) > 1:
                 return r[1].strip()
         return None
+
+    def variants(self) -> List["VariantBlock"]:
+        """Enumerate EVERY `VariantInfo` block (Prime + named variants) with its
+        VariantID, VariantName, and the loadout ItemN rows scoped to that block.
+
+        LOADOUT-THREE-LAYER-1 (Phase 3): the chassis CSV holds one VariantInfo
+        block per variant at a fixed 97-row stride; each block owns its own
+        loadout (Atlas Prime has no jumpjets, Renard's Atlas does). Scoping the
+        loadout per-block is what fixes the Prime-only conversion at the root of
+        the Atlas-jump finding. Rows between one `VariantInfo` and the next belong
+        to that variant; item rows are bucketed accordingly. Deterministic (file
+        order)."""
+        blocks: List[VariantBlock] = []
+        pat = re.compile(r"^Item(\d+)MasterId$")
+        cur: Optional[VariantBlock] = None
+        for r in self.rows:
+            if not r:
+                continue
+            label = r[0].strip()
+            if label == "VariantInfo":
+                cur = VariantBlock(index=len(blocks))
+                blocks.append(cur)
+                continue
+            if cur is None:
+                continue
+            if label == "VariantID" and len(r) > 1:
+                try:
+                    cur.variant_id = int(r[1].strip())
+                except ValueError:
+                    pass
+            elif label == "VariantName" and len(r) > 1:
+                cur.variant_name = r[1].strip()
+            else:
+                m = pat.match(label)
+                if m:
+                    cur.items.append((int(m.group(1)), r))
+        return blocks
 
     def item_rows(self, first_variant_only: bool = True) -> List[Tuple[int, List[str]]]:
         """(item_index, row) for `ItemNMasterId` loadout rows.

@@ -15,7 +15,9 @@ _HERE = os.path.dirname(os.path.abspath(__file__))
 sys.path.insert(0, os.path.dirname(_HERE))  # so `import unit_converter` works
 
 from unit_converter import emit, model as M          # noqa: E402
-from unit_converter.extract import extract_mech, extract_vehicle  # noqa: E402
+from unit_converter.extract import (                  # noqa: E402
+    extract_mech, extract_mech_variants, extract_vehicle,
+)
 from unit_converter.fitparse import ChassisCsv, CompBas, FitIni    # noqa: E402
 
 FIXTURES = os.path.join(_HERE, "tests", "fixtures", "stock")
@@ -29,6 +31,15 @@ def compbas():
 @pytest.fixture(scope="module")
 def atlas(compbas):
     return extract_mech(
+        os.path.join(FIXTURES, "objects", "atlas.csv"),
+        os.path.join(FIXTURES, "tgl", "atlas.ini"),
+        compbas,
+    )
+
+
+@pytest.fixture(scope="module")
+def atlas_variants(compbas):
+    return extract_mech_variants(
         os.path.join(FIXTURES, "objects", "atlas.csv"),
         os.path.join(FIXTURES, "tgl", "atlas.ini"),
         compbas,
@@ -81,7 +92,12 @@ def test_compbas_weapon_type_lookup(compbas):
 # --- mech extraction -----------------------------------------------------
 
 def test_mech_identity_and_facets(atlas):
-    assert atlas.identity.unit_id == "core:atlas"
+    # LOADOUT-THREE-LAYER-1: extract_mech returns the FIRST (Prime) variant, now
+    # keyed per-variant (core:<chassis>_<variant-slug>) referencing chassis core:atlas.
+    assert atlas.identity.unit_id == "core:atlas_atlas_prime"
+    assert atlas.identity.chassis_id == "core:atlas"
+    assert atlas.identity.variant_index == 0
+    assert atlas.identity.variant_name == "Atlas Prime"
     assert atlas.identity.kind == "mech"
     assert atlas.identity.display_name == "Atlas Prime"
     assert atlas.identity.tonnage == 100.0
@@ -101,6 +117,60 @@ def test_mech_presentation_sockets(atlas):
 def test_mech_prime_has_no_jump(atlas):
     # Atlas Prime installs no jumpjet component -> jump False (later variants do)
     assert atlas.capabilities.jump is False
+
+
+# --- LOADOUT-THREE-LAYER-1: multi-variant conversion + chassis/variant split ---
+
+def test_all_variants_convert(atlas_variants):
+    chassis, defs = atlas_variants
+    # atlas.csv has 3 VariantInfo blocks -> 3 variant defs + 1 shared chassis.
+    assert len(defs) == 3
+    assert chassis.chassis_id == "core:atlas"
+    assert chassis.kind == "mech"
+    names = [d.identity.variant_name for d in defs]
+    assert names == ["Atlas Prime", "Claymore's Atlas", "Renard's Atlas"]
+    # every variant references the ONE shared chassis frame
+    assert all(d.identity.chassis_id == "core:atlas" for d in defs)
+    # per-variant unit_ids are stable, greppable, and distinct
+    uids = [d.identity.unit_id for d in defs]
+    assert uids == ["core:atlas_atlas_prime", "core:atlas_claymores_atlas",
+                    "core:atlas_renards_atlas"]
+    assert len(set(uids)) == 3
+
+
+def test_variant_scoped_jump_capability(atlas_variants):
+    # THE ATLAS FINDING: Prime has no jumpjet (jump False); Renard's Atlas installs
+    # one (jump True). Prime-only scoping wrongly reported the whole chassis as no-jump.
+    _chassis, defs = atlas_variants
+    by_name = {d.identity.variant_name: d for d in defs}
+    assert by_name["Atlas Prime"].capabilities.jump is False
+    assert by_name["Renard's Atlas"].capabilities.jump is True
+    assert "JumpJet" in by_name["Renard's Atlas"].capabilities.jump_evidence
+
+
+def test_chassis_shared_frame_facets(atlas_variants):
+    chassis, defs = atlas_variants
+    # frame facets (locomotion/damage/hardpoints/model) are shared, not per-variant
+    assert chassis.locomotion.model == M.LOCO_MECH_WALKER
+    assert chassis.damage.schema == M.DMG_MECH_8PART
+    assert len(chassis.hardpoints) == 5
+    assert chassis.presentation.model_name == "Atlas"
+    for d in defs:
+        assert d.locomotion.model == chassis.locomotion.model
+        assert d.damage.schema == chassis.damage.schema
+
+
+def test_chassisdef_and_mechdef_emit_reference(atlas_variants):
+    chassis, defs = atlas_variants
+    cd = emit.emit_chassisdef_fit(chassis)
+    assert '[Chassis]' in cd
+    assert 'st ChassisID="core:atlas"' in cd
+    assert 'st Locomotion="MechWalker"' in cd
+    # per-variant mechdef references its chassis + carries the variant jump facet
+    renard = next(d for d in defs if d.identity.variant_name == "Renard's Atlas")
+    md = emit.emit_unit_fit(renard)
+    assert 'st ChassisID="core:atlas"' in md
+    assert 'b Jump=TRUE' in md
 
 
 def test_mech_hardpoints_named_not_indexed(atlas):

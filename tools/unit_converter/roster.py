@@ -26,7 +26,7 @@ from dataclasses import dataclass, field
 from typing import List, Optional
 
 from . import emit
-from .extract import extract_mech, extract_vehicle
+from .extract import extract_mech_variants, extract_vehicle
 from .fitparse import CompBas
 
 # buildings.csv column layout (0-based). Only NAME and TYPE are load-bearing here.
@@ -55,7 +55,8 @@ class SkipRecord:
 @dataclass
 class BatchResult:
     """Outcome of a whole-roster batch conversion."""
-    defs: list = field(default_factory=list)          # List[UnitDefinition]
+    defs: list = field(default_factory=list)          # List[UnitDefinition] (per variant)
+    chassis: list = field(default_factory=list)       # List[ChassisProfile] (per chassis)
     skipped: List[SkipRecord] = field(default_factory=list)
     written_dirs: List[str] = field(default_factory=list)
 
@@ -91,9 +92,11 @@ def enumerate_roster(buildings_csv_path: str) -> List[RosterEntry]:
 def _convert_entry(entry: RosterEntry, srcdata: str, compbas: CompBas):
     """Convert one roster entry, or return a SkipRecord with a reason.
 
-    Returns (UnitDefinition, None) on success or (None, SkipRecord) on any
-    missing source / parse failure. Never raises for a bad unit — the batch
-    must survive the whole roster.
+    Returns ((ChassisProfile|None, [UnitDefinition...]), None) on success or
+    (None, SkipRecord) on any missing source / parse failure. A mech yields one
+    chassis + one def per CSV variant (LOADOUT-THREE-LAYER-1); a vehicle yields
+    (None, [single def]). Never raises for a bad unit — the batch must survive the
+    whole roster.
     """
     tgl_path = os.path.join(srcdata, "tgl", f"{entry.stem}.ini")
     if entry.kind == "mech":
@@ -109,29 +112,35 @@ def _convert_entry(entry: RosterEntry, srcdata: str, compbas: CompBas):
                                 f"missing tgl model ini: {entry.stem}.ini")
     try:
         if entry.kind == "mech":
-            ud = extract_mech(src_path, tgl_path, compbas)
+            chassis, defs = extract_mech_variants(src_path, tgl_path, compbas)
         else:
-            ud = extract_vehicle(src_path, tgl_path, compbas)
+            chassis, defs = None, [extract_vehicle(src_path, tgl_path, compbas)]
     except Exception as exc:  # malformed source — skip, don't crash the batch
         return None, SkipRecord(entry.stem, entry.kind,
                                 f"conversion error: {type(exc).__name__}: {exc}")
-    return ud, None
+    return (chassis, defs), None
 
 
 def convert_roster(srcdata: str, buildings_csv_path: str,
                    out_root: Optional[str] = None) -> BatchResult:
-    """Convert the entire MECH + VEHICLE roster. Pure w.r.t. source; writes only
-    under out_root when given. Deterministic (index order)."""
+    """Convert the entire MECH + VEHICLE roster (ALL variants). Pure w.r.t.
+    source; writes only under out_root when given. Deterministic (index order)."""
     compbas = CompBas.load(os.path.join(srcdata, "objects", "compbas.csv"))
     result = BatchResult()
     for entry in enumerate_roster(buildings_csv_path):
-        ud, skip = _convert_entry(entry, srcdata, compbas)
+        conv, skip = _convert_entry(entry, srcdata, compbas)
         if skip is not None:
             result.skipped.append(skip)
             continue
-        result.defs.append(ud)
-        if out_root:
-            result.written_dirs.append(emit.write_unit(ud, out_root))
+        chassis, defs = conv
+        if chassis is not None:
+            result.chassis.append(chassis)
+            if out_root:
+                result.written_dirs.append(emit.write_chassis(chassis, out_root))
+        for ud in defs:
+            result.defs.append(ud)
+            if out_root:
+                result.written_dirs.append(emit.write_unit(ud, out_root))
     return result
 
 
@@ -142,7 +151,8 @@ def build_batch_report(result: BatchResult) -> dict:
     total_waivers = sum(len(d.waivers) for d in defs)
     return {
         "tool": "CONVERTER-ROSTER-BATCH-1",
-        "units_converted": len(defs),
+        "units_converted": len(defs),      # per-VARIANT def count (all variants)
+        "chassis_converted": len(result.chassis),
         "mechs": sum(1 for d in defs if d.identity.kind == "mech"),
         "vehicles": sum(1 for d in defs if d.identity.kind == "vehicle"),
         "units_skipped": len(result.skipped),
