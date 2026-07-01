@@ -11,9 +11,15 @@
 // parser, exactly like mc2_tests. No engine, no OpenGL, no build/deploy/smoke.
 //
 // Usage:
-//   mc2_modlint --unit <facts.json>     lint one unit's facts JSON
-//   mc2_modlint --roster <report.json>  lint every unit in a converter report
-//   mc2_modlint --unit - < facts.json   read from stdin
+//   mc2_modlint --unit <facts.json>               lint one unit's facts JSON
+//   mc2_modlint --roster <report.json>            lint every unit in a converter report
+//   mc2_modlint --equipment <facts.json>          lint one EquipmentDefinition's facts
+//   mc2_modlint --equipment-roster <report.json>  lint an equipment converter --json report
+//   mc2_modlint --unit - < facts.json             read from stdin
+//
+// The --equipment* paths (WEAPON-MODLINT-1, equipment arc slice 7) wrap the SAME
+// authoritative pure validateEquipmentDefinition() the engine will use (single
+// source of truth). The --unit* paths are unchanged (UNIT-MODLINT-CLI-1).
 #include <cstdio>
 #include <fstream>
 #include <iostream>
@@ -26,11 +32,17 @@
 #include "modlint_report.h"
 #include "modlint_registry.h"
 
+#include "equipment_validator.h"
+#include "modlint_equipment_input.h"
+#include "modlint_equipment_report.h"
+
 static void usage() {
     std::fprintf(stderr,
-        "mc2_modlint (UNIT-MODLINT-CLI-1) — offline unit validator\n"
-        "  mc2_modlint --unit <facts.json>      lint one unit's facts\n"
-        "  mc2_modlint --roster <report.json>   lint a converter roster report\n"
+        "mc2_modlint — offline unit + equipment validator\n"
+        "  mc2_modlint --unit <facts.json>               lint one unit's facts\n"
+        "  mc2_modlint --roster <report.json>            lint a unit converter roster\n"
+        "  mc2_modlint --equipment <facts.json>          lint one EquipmentDefinition\n"
+        "  mc2_modlint --equipment-roster <report.json>  lint an equipment converter --json report\n"
         "  use '-' as the path to read from stdin\n");
 }
 
@@ -70,11 +82,36 @@ static int lintRoster(const std::string& text, bool* parseOk, int* unitsOut) {
     return totalFindings;
 }
 
+// --equipment: one equipment facts JSON -> findings. Returns count of findings.
+static int lintEquipment(const std::string& text, bool* parseOk) {
+    MlJson root = parseModlintJson(text, parseOk);
+    std::string label;
+    EquipmentValidationInputs in = equipmentFactsFromJson(root, &label);
+    std::vector<EquipmentFinding> findings = validateEquipmentDefinition(in);
+    std::cout << formatEquipmentFindings(label, findings);
+    return (int)findings.size();
+}
+
+// --equipment-roster: an equipment converter --json report -> per-component findings.
+static int lintEquipmentRoster(const std::string& text, bool* parseOk, int* compsOut) {
+    MlJson root = parseModlintJson(text, parseOk);
+    std::vector<RosterEquipmentFacts> comps = parseEquipmentRoster(root);
+    *compsOut = (int)comps.size();
+    int totalFindings = 0;
+    for (const RosterEquipmentFacts& c : comps) {
+        std::vector<EquipmentFinding> f = validateEquipmentDefinition(c.inputs);
+        std::cout << formatEquipmentFindings(c.label, f);
+        totalFindings += (int)f.size();
+    }
+    return totalFindings;
+}
+
 int main(int argc, char** argv) {
     std::string mode, path;
     for (int i = 1; i < argc; ++i) {
         std::string a = argv[i];
-        if ((a == "--unit" || a == "--roster") && i + 1 < argc) {
+        if ((a == "--unit" || a == "--roster" ||
+             a == "--equipment" || a == "--equipment-roster") && i + 1 < argc) {
             mode = a; path = argv[++i];
         } else if (a == "-h" || a == "--help") {
             usage(); return 0;
@@ -92,11 +129,18 @@ int main(int argc, char** argv) {
     }
 
     bool parseOk = true;
-    int findings = 0, units = 1;
+    int findings = 0, count = 1;
+    const char* noun = "unit";
     if (mode == "--unit") {
         findings = lintUnit(text, &parseOk);
-    } else {
-        findings = lintRoster(text, &parseOk, &units);
+    } else if (mode == "--roster") {
+        findings = lintRoster(text, &parseOk, &count);
+    } else if (mode == "--equipment") {
+        noun = "component";
+        findings = lintEquipment(text, &parseOk);
+    } else {  // --equipment-roster
+        noun = "component";
+        findings = lintEquipmentRoster(text, &parseOk, &count);
     }
 
     if (!parseOk) {
@@ -104,7 +148,7 @@ int main(int argc, char** argv) {
         return 2;
     }
 
-    std::cout << "\nsummary: " << units << " unit(s) linted, "
+    std::cout << "\nsummary: " << count << " " << noun << "(s) linted, "
               << findings << " finding(s)\n";
     std::cout << (findings == 0 ? "RESULT: clean\n" : "RESULT: findings present\n");
     return findings == 0 ? 0 : 1;
