@@ -41,6 +41,7 @@ add_executable(mc2_tests
     test_tactical_overview.cpp   # TACTICAL-OVERVIEW-1: blend-state pure logic
     test_xform_convention.cpp    # XFORM-CONVENTION-HARNESS-1: clip-space convention lock
     test_capability.cpp     # UNIT-PROFILE-SEAM-1
+    test_unit_actions.cpp   # UNITPROFILE-OFFLINE-HARNESS-1: resolveAction + executor registry (offline)
     test_view_currency.cpp  # VIEW-EPOCH-DEDUPE-1: object MVP currency kernel (offline)
     test_frame_graph.cpp    # FRAME-GRAPH-SKELETON-1: resource-DAG validation (offline)
     test_gpu_buffer_owner.cpp  # GPU-BUFFER-OWNER-SKELETON-1: owner record invariants (offline)
