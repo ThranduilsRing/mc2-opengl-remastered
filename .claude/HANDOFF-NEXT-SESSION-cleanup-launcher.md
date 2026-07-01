@@ -19,6 +19,13 @@ Mod system recon: `.claude/MOD-SYSTEM-RECON-1.md`. Launcher `tools/mc2_launcher/
 3. **Deploy generated defs by default** — `deploy_payload.py` should ship `data/defs/{units,equipment}/` (converter `--batch` output) so generated-source works from a normal install (right now they're hand-copied to v0.3 during slice verify).
 4. (stretch) surface modlint result / modder-first errors in launcher when a bad mod is checked.
 
+## ★★ THE BIG GAP surfaced by EXAMPLE-MODS-1 (`c531c124`): OVERLAY-not-ADD
+Source-flip = OVERLAY. It overlays EXISTING masterList rows / ALREADY-SPAWNED units by matching stock ids. A mod can **override** stock content LIVE, but a NEW `sample:`-namespaced def is **NOT auto-instantiated** in a mission by the current engine — proven only at the offline/modlint layer. Making "modder ADDS a brand-new weapon/unit → appears in-game" work =
+- **ADD path**: registry becomes an authoritative SOURCE the engine instantiates from (new equipment rows appended to/served beside masterList; new units registered as spawnable types), not just an overlay onto stock ordinals.
+- **enabled→purchase wire**: surface new/dormant content in the mechlab/purchase catalog (today gated by purchase/RP layer, no `enabled` consumer).
+- **E4 widen** once new equipment pushes >254 live rows.
+This is the real "override stock" → "add new content" line, and the headline moddability work after cleanup/launcher. Example mods (`examples/mods/`) prove the flow offline + prove OVERRIDE; ADD-live is the follow-on.
+
 ## NEXT SLICES (roadmap "MODDABILITY PHASE" order)
 EXAMPLE-MODS-1 (running) → MOD-PACKAGE-MANIFEST-1 (reuse existing mod.json) → MOD-LOAD-ORDER-CONFLICT-REPORT-1 (dup ids / core reserved / override visibility — never silent) → MOD-ROUNDTRIP-SMOKE-1 (modlint+preview+generated-load) → **MODDER-FIRST ERROR SURFACE** (thread which-mod/file/id/field/expected/fallback through modlint + source-flip loaders + conflict report) → MCO/MC2X-CONVERSION-RECON-1 (real extensibility test, AFTER sample mods) → INVENTORY-EQUIPMENTREF-WIDEN=E4 (ONLY when live content >254 rows; 0xff-sentinel + ammoMasterId + .mdf format hazards).
 
