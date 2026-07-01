@@ -756,6 +756,11 @@ long BattleMechType::init (FilePtr objFile, unsigned long fileSize)
 	// UNIT-PROFILE-SEAM-1: optional .fit [UnitProfile] data read (additive).
 	populateProfileFromFit(mechFile, profile());
 
+	// UNITPROFILE-VALIDATOR-1 (slice 6): report-only construction-rules check,
+	// gated behind MC2_UNIT_PROFILE_DATA. Runs AFTER facets are set. A stock jet
+	// mech (walker + CAP_JUMP) is coherent -> logs nothing. Never rejects.
+	validateAndReportUnitProfile(profile(), mechFile.getFilename());
+
 	//------------------------------------------------------------------
 	// Initialize the base object Type from the current file.
 	result = ObjectType::init(&mechFile);

@@ -3,10 +3,13 @@
 // inifile.h drags file.h -> stdio/fcntl/heap (real file I/O), which the
 // doctest target forbids, so this populator lives in its own engine-only TU.
 #include "unitprofile.h"
+#include "unit_profile_validator.h"      // UNITPROFILE-VALIDATOR-1: pure validator + facts
+#include "action_executor_registry.h"    // theActionExecutorRegistry()
 #include "inifile.h"                    // resolves via mclib/ on the engine include path
 #include "objmgr.h"
 #include "mover.h"
 #include "objtype.h"
+#include <cstdio>                        // printf (report-only finding log)
 #include <cstdlib>                       // getenv (throwaway test hook)
 
 void populateProfileFromFit(FitIniFile& fit, UnitProfile& p) {
@@ -31,6 +34,34 @@ void populateProfileFromFit(FitIniFile& fit, UnitProfile& p) {
         char dmg[64] = {0};
         if (fit.readIdString("DamageSchema", dmg, sizeof(dmg)) == NO_ERR)
             p.damageSchema = parseDamageSchema(dmg, p.damageSchema);
+    }
+}
+
+// UNITPROFILE-VALIDATOR-1 (slice 6): run the pure construction-rules validator
+// over a type's populated facets and log each finding. GATED + REPORT-ONLY:
+//   * gate OFF -> returns immediately, no output (behavioral parity).
+//   * gate ON, coherent unit (stock walker+jump, stock vehicle no-jump) ->
+//     validator returns no findings, so still no output.
+//   * gate ON, incoherent authored profile (e.g. vehicle granted CAP_JUMP) ->
+//     one "[UnitProfile:VALIDATE]" line per finding. NO spawn rejection.
+// The validator consults the SAME theActionExecutorRegistry() gameplay queries
+// use, so its verdict can never diverge from the runtime executor resolution.
+void validateAndReportUnitProfile(const UnitProfile& profile, const char* typeName) {
+    if (!mc2UnitProfileDataEnabled())
+        return;   // gate OFF: no validation, no output -> parity with legacy
+
+    UnitProfileFacts facts;
+    facts.grantsJump = profile.baselineCapabilities.has(CAP_JUMP);
+    facts.locomotion = profile.locomotion;
+
+    const std::vector<UnitProfileFinding> findings =
+        validateUnitProfile(facts, theActionExecutorRegistry());
+
+    const char* label = (typeName && typeName[0]) ? typeName : "<unknown>";
+    for (const UnitProfileFinding& f : findings) {
+        // Report-only: describe the incoherence in modder terms; do not reject.
+        printf("[UnitProfile:VALIDATE] %s: %s (reason=%d)\n",
+               label, f.message, static_cast<int>(f.code));
     }
 }
 

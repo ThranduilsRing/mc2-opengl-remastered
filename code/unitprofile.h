@@ -37,6 +37,15 @@ struct UnitRuntimeState {            // mutable, on Mover
 class FitIniFile;                      // fwd; keep heavy I/O header out of unitprofile.h
 void populateProfileFromFit(FitIniFile& fit, UnitProfile& profile);
 
+// UNITPROFILE-VALIDATOR-1 (slice 6): run the pure construction-rules validator
+// (unit_profile_validator.h) over a type's now-populated facets and REPORT each
+// finding to the console. REPORT-ONLY — never rejects/refuses a spawn — and
+// GATED behind mc2UnitProfileDataEnabled(): a no-op when the gate is OFF, so
+// gate-OFF and a clean stock gate-ON run both log nothing (stock units are
+// coherent). `typeName` is a human/modder label (the .fit filename) prefixed
+// onto each logged line. Call at type-load AFTER facets + populateProfileFromFit.
+void validateAndReportUnitProfile(const UnitProfile& profile, const char* typeName);
+
 // UNIT-PROFILE-SEAM-1: state-dump witness bridge. debug_state_dump.cpp keeps no
 // game headers, so the mover walk lives engine-side (unitprofile_fit.cpp) and is
 // exposed as a flat POD array, mirroring gos_getMechTextureNameByNodeIdx.

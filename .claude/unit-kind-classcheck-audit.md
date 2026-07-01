@@ -206,3 +206,41 @@ LEFT,RIGHT,REAR,TURRET}` in `bodyLocationString[]` order; squad/single:
 (case-insensitive; unknown/absent → type-load default). HardpointId→damage-
 location joins are validated against `schemaHasLocation()`; do NOT invent a
 parallel location vocabulary.
+
+## Slice 6 — UNITPROFILE-VALIDATOR-1 (the coherence layer)
+
+Adds a load-time **construction-rules validator** — the layer future slices
+(esp. Phase-2 `UNIT-DEFINITION-VALIDATOR-1`) extend to prove a unit's facets
+COHERE before a mission runs. Pure logic in `code/unit_profile_validator.h`
+(plain enums/bools + `ActionExecutorRegistry`; compiles into `mc2_tests`,
+drags no engine/GL/IO). Engine glue = one report-only call at each type-load
+(`validateAndReportUnitProfile()` in `code/unitprofile_fit.cpp`, wired at
+`mech.cpp` `BattleMechType::init` and `gvehicl.cpp` `GroundVehicleType::init`
+AFTER facets + `populateProfileFromFit`).
+
+**REPORT-FIRST / gated:** behind `mc2UnitProfileDataEnabled()`
+(`MC2_UNIT_PROFILE_DATA`). Never rejects/refuses a spawn this slice — logs one
+`[UnitProfile:VALIDATE] <typeName>: <message> (reason=N)` line per finding.
+Gate-OFF returns immediately (parity). A clean stock gate-ON run logs NOTHING:
+stock jet mechs are walkers (`LOCO_MECH_WALKER` + jump = coherent) and stock
+vehicles grant no `CAP_JUMP` (nothing to prove). Enforcement (rejecting an
+impossible profile) is a deliberate FUTURE toggle. The validator consults the
+SAME `theActionExecutorRegistry()` gameplay queries use, so its verdict can
+never diverge from runtime executor resolution.
+
+**Reason-code vocabulary Phase-2 slices MUST honor** (`UnitProfileReasonCode`,
+`UPV_` prefix — ADD codes, never renumber; logs/mod tooling key on the name):
+
+| code | status | rule |
+|---|---|---|
+| `UPV_JUMP_GRANTED_NO_COMPATIBLE_EXECUTOR` | **LIVE** | `grantsJump && !registry.isCompatible(Jump, locomotion)` — the "capability-granted vehicle would report MissingExecutor" audit case, caught at load |
+| `UPV_HARDPOINT_DAMAGE_LOCATION_MISSING` | STUB (Phase 2) | loadout names a damage location the `DamageSchema` lacks (uses `schemaHasLocation()`) |
+| `UPV_HARDPOINT_SOCKET_MISSING` | STUB (Phase 2) | a hardpoint maps to a model socket the presentation profile does not expose |
+| `UPV_ANIMATION_FALLBACK_MISSING` | STUB (Phase 2) | an available action has no animation-binding fallback (e.g. no JumpLand) |
+
+Facts fed today: `UnitProfileFacts { grantsJump, locomotion }`. Phase-2 slices
+ADD facet fields (hardpoint table, socket set, animation bindings) + their
+check + doctests at the single documented extension site in
+`validateUnitProfile()`; each STUB stays non-emitting until its facet inputs
+land. Pure logic covered RED→GREEN in
+`tests/unit/test_unit_profile_validator.cpp` (6 cases; full suite 239 pass).
