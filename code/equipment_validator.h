@@ -80,6 +80,14 @@ enum EquipmentReasonCode {
     // deferred/blocked per the mech-bay constraint; here it is a finding only.
     EQV_WEAPON_HARDPOINT_REJECTED,
 
+    // FIRE-EXECUTOR-REGISTRY-1 (E7): the weapon NAMES a fireExecutor (id != 0)
+    // but that name is NOT registered in the FireExecutorRegistry -- the lookup
+    // resolves to nullptr, so no executor could run it. Distinct from
+    // EQV_WEAPON_NO_FIRE_EXECUTOR (which is the UNSET id==0 case). WARN, not
+    // reject: a mod may register the executor later. Report-only in E7 --
+    // nothing fires off this resolution; the classification feeds a finding.
+    EQV_FIRE_EXECUTOR_UNBOUND,
+
     EQV__COUNT
 };
 

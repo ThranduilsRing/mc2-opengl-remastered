@@ -849,6 +849,8 @@ void Mission::load (const char *loadFileName)
 
 		// EQUIPMENT-REGISTRY-FACADE-1: gated parallel registry build (no-op OFF).
 		buildAndDumpEquipmentRegistryIfEnabled();
+		// FIRE-EXECUTOR-REGISTRY-1 (E7): gated fireExecutor lookup proof (no-op OFF).
+		dumpFireExecutorProofIfEnabled();
 	}
 
 	result = gameSystemFile->readIdUChar("GodMode", godMode);

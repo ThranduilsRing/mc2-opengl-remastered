@@ -217,6 +217,7 @@ TEST_CASE("equip: every LIVE reason code is reachable + vocabulary-size lock") {
     // Reachability is proven individually above; here we assert coverage and lock
     // the vocabulary size so a future slice APPENDS (never renumbers).
     // EQV codes: NO_FIRE_EXECUTOR, PRESENTATION_ASSET_MISSING, NO_CATEGORY,
-    // AMMO_CATEGORY_MISSING, RANGE_INVALID, KIND_FACET_MISMATCH, HARDPOINT_REJECTED.
-    CHECK(EQV__COUNT == 7);
+    // AMMO_CATEGORY_MISSING, RANGE_INVALID, KIND_FACET_MISMATCH, HARDPOINT_REJECTED,
+    // FIRE_EXECUTOR_UNBOUND (appended by FIRE-EXECUTOR-REGISTRY-1, E7).
+    CHECK(EQV__COUNT == 8);
 }

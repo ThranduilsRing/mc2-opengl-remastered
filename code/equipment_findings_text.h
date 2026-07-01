@@ -41,6 +41,8 @@ inline const char* equipmentReasonToken(EquipmentReasonCode code) {
             return "EQV_KIND_FACET_MISMATCH";
         case EQV_WEAPON_HARDPOINT_REJECTED:
             return "EQV_WEAPON_HARDPOINT_REJECTED";
+        case EQV_FIRE_EXECUTOR_UNBOUND:
+            return "EQV_FIRE_EXECUTOR_UNBOUND";
         case EQV__COUNT:
             break;   // not a real code; fall through to the unknown guard
     }
@@ -65,6 +67,8 @@ inline const char* equipmentReasonMessage(EquipmentReasonCode code) {
             return "Equipment kind and WeaponFacet presence disagree";
         case EQV_WEAPON_HARDPOINT_REJECTED:
             return "Weapon requires a hardpoint that accepts its mount-class";
+        case EQV_FIRE_EXECUTOR_UNBOUND:
+            return "Weapon names a fire executor that is not registered (cannot fire)";
         case EQV__COUNT:
             break;
     }

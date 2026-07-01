@@ -16,6 +16,15 @@ bool mc2UnitProfileDataEnabled();                            // cached getenv
 // ADDITIVE: reads masterList only; touches no firing/loadout/inventory/save path.
 void buildAndDumpEquipmentRegistryIfEnabled();
 
+// FIRE-EXECUTOR-REGISTRY-1 (equipment arc, engine slice E7). Gated proof that
+// the weapon fireExecutor lookup resolves end-to-end: for each weapon-form
+// MasterComponent it derives the converter's default fireExecutor id and
+// resolves it against theFireExecutorRegistry(), reporting bound/unbound counts
+// + samples. Called after buildAndDumpEquipmentRegistryIfEnabled(). Gate-OFF:
+// no-op (byte-identical). ★ SCHEMA/DISPATCH ONLY -- resolves names, fires
+// nothing; the legacy weaponFire path stays authoritative.
+void dumpFireExecutorProofIfEnabled();
+
 // LOADOUT-EQUIPMENT-ID-ALIAS-1 (equipment arc, engine slice E5). Accessor for
 // the process-global equipment registry populated by the E2 facade above. The
 // loadout parser queries it (gate-ON) to resolve an optional `core:<slug>`

@@ -2456,6 +2456,9 @@ void Mission::init (const char *missionName, long loadType, long dropZoneID, Stu
 		// registry beside masterList (gated MC2_UNIT_PROFILE_DATA; gate-OFF no-op).
 		// Additive -- reads masterList only, changes no gameplay path.
 		buildAndDumpEquipmentRegistryIfEnabled();
+		// FIRE-EXECUTOR-REGISTRY-1 (E7): gated proof of the fireExecutor lookup
+		// over the just-loaded weapon components (no-op OFF; fires nothing).
+		dumpFireExecutorProofIfEnabled();
 	}
 
 	result = gameSystemFile->readIdUChar("GodMode", godMode);
