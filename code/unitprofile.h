@@ -74,6 +74,16 @@ struct UnitProfileWitnessRow {
     int  capJumpBaseline;   // 0/1
     int  capJumpCurrent;    // 0/1
     int  canPerformJump;    // 0/1
+    // UNIT-DEFINITION-SHADOW-COMPARE-1 (Phase 3): additive per-mover facet fields
+    // so the offline shadow_compare.py can (a) match a dump row to a converter
+    // unit by chassis stem and (b) diff the engine-derived locomotion/damage
+    // schema against the converter-generated facet. `chassis` is the ObjectType
+    // appearance name (tgl model stem == the converter's --mech/--vehicle stem);
+    // the two enum ints carry the LocomotionModel / DamageSchemaId values (their
+    // canonical token names come from locomotionModelName()/damageSchemaName()).
+    char chassis[64];       // ObjectType appearance stem; "" if unavailable
+    int  locomotion;        // LocomotionModel enum value
+    int  damageSchema;      // DamageSchemaId enum value
 };
 extern "C" int mc2_unitprofile_collect_witness(UnitProfileWitnessRow* out, int maxRows);
 #endif // UNITPROFILE_H

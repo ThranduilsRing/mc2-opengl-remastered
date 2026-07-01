@@ -13,6 +13,7 @@
 #include "objtype.h"
 #include <cstdio>                        // printf (report-only finding log)
 #include <cstdlib>                       // getenv (throwaway test hook)
+#include <cstring>                        // strncpy (chassis stem copy)
 
 void populateProfileFromFit(FitIniFile& fit, UnitProfile& p) {
     // Optional, additive (grant-only, never clears). Stock .fits have no
@@ -158,12 +159,23 @@ extern "C" int mc2_unitprofile_collect_witness(UnitProfileWitnessRow* out, int m
         MoverPtr m = ObjectManager->getMover(i);
         if (!m)
             continue;
-        const bool baseline = m->getObjectType()
-            ? m->getObjectType()->profile().baselineCapabilities.has(CAP_JUMP) : false;
+        ObjectTypePtr ot = m->getObjectType();
+        const UnitProfile emptyProfile;
+        const UnitProfile& prof = ot ? ot->profile() : emptyProfile;
+        const bool baseline = prof.baselineCapabilities.has(CAP_JUMP);
         out[n].objectId        = m->getPartId();
         out[n].capJumpBaseline = baseline ? 1 : 0;
         out[n].capJumpCurrent  = m->hasCapability(CAP_JUMP) ? 1 : 0;
         out[n].canPerformJump  = m->canPerform(UnitAction::Jump) ? 1 : 0;
+        // UNIT-DEFINITION-SHADOW-COMPARE-1: chassis stem + locomotion/damage facet.
+        out[n].chassis[0] = '\0';
+        const char* appear = ot ? ot->getAppearanceTypeName() : nullptr;
+        if (appear) {
+            strncpy(out[n].chassis, appear, sizeof(out[n].chassis) - 1);
+            out[n].chassis[sizeof(out[n].chassis) - 1] = '\0';
+        }
+        out[n].locomotion   = static_cast<int>(prof.locomotion);
+        out[n].damageSchema = static_cast<int>(prof.damageSchema);
         ++n;
     }
     return n;

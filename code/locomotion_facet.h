@@ -45,4 +45,22 @@ inline LocomotionModel parseLocomotionModel(const char* token,
     return fallback;
 }
 
+// UNIT-DEFINITION-SHADOW-COMPARE-1: canonical token NAME for a LocomotionModel.
+// Inverse of parseLocomotionModel — the spelling MUST match the token that path
+// accepts AND the converter's LOCO_* vocabulary (tools/unit_converter/model.py),
+// because shadow_compare.py diffs the engine dump's `locomotion` string against
+// the converter's. A round-trip identity holds: parseLocomotionModel(
+// locomotionModelName(m), other) == m for every enumerator. Pure, offline.
+inline const char* locomotionModelName(LocomotionModel m) {
+    switch (m) {
+        case LOCO_MECH_WALKER: return "MechWalker";
+        case LOCO_TRACKED:     return "Tracked";
+        case LOCO_WHEELED:     return "Wheeled";
+        case LOCO_HOVER:       return "Hover";
+        case LOCO_INFANTRY:    return "Infantry";
+        case LOCO__COUNT:      break;
+    }
+    return "Unknown";
+}
+
 #endif // LOCOMOTION_FACET_H

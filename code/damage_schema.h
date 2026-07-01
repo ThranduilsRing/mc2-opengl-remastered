@@ -86,6 +86,22 @@ inline DamageSchemaId parseDamageSchema(const char* token,
     return fallback;
 }
 
+// UNIT-DEFINITION-SHADOW-COMPARE-1: canonical token NAME for a DamageSchemaId.
+// Inverse of parseDamageSchema — the spelling MUST match the token that path
+// accepts AND the converter's DMG_* vocabulary (tools/unit_converter/model.py),
+// because shadow_compare.py diffs the engine dump's `damage_schema` string
+// against the converter's. Round-trip identity: parseDamageSchema(
+// damageSchemaName(s), other) == s for every enumerator. Pure, offline.
+inline const char* damageSchemaName(DamageSchemaId s) {
+    switch (s) {
+        case DMG_MECH_8PART:      return "Mech8Part";
+        case DMG_VEHICLE_FACINGS: return "VehicleFacings";
+        case DMG_SQUAD:           return "Squad";
+        case DMG_SINGLE_ACTOR:    return "SingleActor";
+    }
+    return "Unknown";
+}
+
 // How many discrete hit locations a schema exposes. DMG_SQUAD is variable at
 // runtime (member count is per-unit data a later slice supplies); the pure query
 // reports its structural minimum of 1 (the whole-squad body). Phase-2 validators

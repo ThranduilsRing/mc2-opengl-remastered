@@ -636,6 +636,14 @@ std::string buildSnapshotJson(const RenderSnapshot& snap,
               << ", \"cap_jump_baseline\": "; b(s, rows[i].capJumpBaseline != 0);
             s << ", \"cap_jump_current\": ";  b(s, rows[i].capJumpCurrent != 0);
             s << ", \"can_perform_jump\": ";  b(s, rows[i].canPerformJump != 0);
+            // UNIT-DEFINITION-SHADOW-COMPARE-1: chassis stem + locomotion/damage
+            // facet as canonical token names (spellings match the converter and
+            // the parse* inverses, so shadow_compare.py can string-diff directly).
+            s << ", \"chassis\": \"" << rows[i].chassis << "\"";
+            s << ", \"locomotion\": \""
+              << locomotionModelName(static_cast<LocomotionModel>(rows[i].locomotion)) << "\"";
+            s << ", \"damage_schema\": \""
+              << damageSchemaName(static_cast<DamageSchemaId>(rows[i].damageSchema)) << "\"";
             s << " }" << (i + 1 < nrows ? "," : "") << "\n";
         }
         s << "    ]\n";
