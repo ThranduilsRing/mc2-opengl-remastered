@@ -133,7 +133,9 @@ class EquipmentDefinition:
                 "heat": w.combat.heat,
                 "recycle": w.combat.recycle_time,
                 "range_bucket": w.combat.range_bucket,
+                "combat_value": w.combat.combat_value,
                 "ammo_category": w.ammo.ammo_category,
+                "ammo_master_id": w.ammo.ammo_master_id,
                 "crit_slots": w.fit.crit_slots,
             }
         return d

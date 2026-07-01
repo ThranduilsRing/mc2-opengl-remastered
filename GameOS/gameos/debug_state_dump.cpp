@@ -653,6 +653,39 @@ std::string buildSnapshotJson(const RenderSnapshot& snap,
         s << "    ]\n";
         s << "  }\n";
     }
+    // WEAPON-SHADOW-COMPARE-1 (equipment arc, slice 5): per-loaded-MasterComponent
+    // witness (the engine's authoritative parse of compbas.csv). Additive section,
+    // present ONLY under the same MC2_UNIT_PROFILE_DATA gate — schema byte-for-byte
+    // unchanged when absent. weapon_shadow_compare.py joins masterId <-> the
+    // converter's legacy_master_id and diffs kind/category/damage/heat/recycle/
+    // range/CV/ammo per stock component.
+    if (envFlagOn("MC2_UNIT_PROFILE_DATA")) {
+        constexpr int kCompCap = 512;
+        static ComponentWitnessRow crows[kCompCap];
+        const int ncomp = mc2_component_collect_witness(crows, kCompCap);
+        s << "  ,\n";
+        s << "  \"masterComponents\": {\n";
+        s << "    \"version\": 1,\n";
+        s << "    \"rows\": [\n";
+        for (int i = 0; i < ncomp; ++i) {
+            const ComponentWitnessRow& r = crows[i];
+            s << "      { \"masterId\": " << r.masterId
+              << ", \"form\": \"" << r.form << "\""
+              << ", \"kind\": \"" << r.kind << "\""
+              << ", \"is_weapon\": "; b(s, r.isWeapon != 0);
+            s << ", \"category\": \"" << r.category << "\""
+              << ", \"damage\": " << r.damage
+              << ", \"heat\": " << r.heat
+              << ", \"recycle\": " << r.recycle
+              << ", \"range_bucket\": \"" << r.rangeBucket << "\""
+              << ", \"combat_value\": " << r.combatValue
+              << ", \"ammo_master_id\": " << r.ammoMasterId
+              << ", \"crit_slots\": " << r.critSlots
+              << " }" << (i + 1 < ncomp ? "," : "") << "\n";
+        }
+        s << "    ]\n";
+        s << "  }\n";
+    }
     s << "}\n";
     return s.str();
 }

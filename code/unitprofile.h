@@ -94,4 +94,40 @@ struct UnitProfileWitnessRow {
     long variantId;         // Mover::getVariantId(); -1 if none
 };
 extern "C" int mc2_unitprofile_collect_witness(UnitProfileWitnessRow* out, int maxRows);
+
+// WEAPON-SHADOW-COMPARE-1 (equipment arc, slice 5): the equipment safety-net.
+// A per-loaded-MasterComponent witness so the offline weapon_shadow_compare.py
+// can diff the compbas converter's generated EquipmentDefinitions against the
+// ENGINE's authoritative parse of compbas.csv (MasterComponent::masterList).
+// This is the equipment mirror of UnitProfileWitnessRow. The walk lives
+// engine-side (unitprofile_fit.cpp) because debug_state_dump.cpp keeps no game
+// headers; exposed as a flat POD array. READ-ONLY; component loading behavior
+// is untouched. Field spellings/enum-token names match the converter's
+// to_report_dict() so the Python join can string-diff directly:
+//   masterId   = the compbas row ordinal == converter legacy_master_id (JOIN KEY)
+//   form       = ComponentFormString[form] token (Engine token; the converter
+//                maps CSV Type -> EquipmentKind, so kind is derived, not equal)
+//   kind       = the converter's EquipmentKind token derived from `form`, so the
+//                two agree by construction on the engine side (kind is checked
+//                against the converter's coarser family classification)
+//   category   = weapon WeaponTag token (Energy/Ballistic/Missile) or "" (non-weapon)
+//   damage/heat/recycle = weapon combat stats (0 for non-weapons)
+//   rangeBucket = "short"/"medium"/"long"/"" (WeaponRangeString[stats.weapon.range])
+//   combatValue = MasterComponent CV (the converter's BR column -> combat_value)
+//   ammoMasterId = stats.weapon.ammoMasterId (the converter's ammo_master_id)
+struct ComponentWitnessRow {
+    long masterId;          // compbas row ordinal (JOIN KEY == converter legacy_master_id)
+    char form[24];          // ComponentFormString[form] token
+    char kind[16];          // derived EquipmentKind token (converter vocabulary)
+    char category[16];      // weapon WeaponTag token or "" (non-weapon)
+    char rangeBucket[8];    // "short"/"medium"/"long"/"" (weapons only)
+    int  isWeapon;          // 0/1
+    float damage;           // stats.weapon.damage (0 for non-weapons)
+    float heat;             // stats.weapon.heat
+    float recycle;          // stats.weapon.recycleTime
+    float combatValue;      // MasterComponent CV
+    int  ammoMasterId;      // stats.weapon.ammoMasterId
+    int  critSlots;         // InventorySize (size) — the converter's crit_slots
+};
+extern "C" int mc2_component_collect_witness(ComponentWitnessRow* out, int maxRows);
 #endif // UNITPROFILE_H

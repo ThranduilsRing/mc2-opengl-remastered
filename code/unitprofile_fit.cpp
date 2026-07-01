@@ -11,6 +11,7 @@
 #include "objmgr.h"
 #include "mover.h"
 #include "objtype.h"
+#include "cmponent.h"                    // WEAPON-SHADOW-COMPARE-1: MasterComponent::masterList
 #include <cstdio>                        // printf (report-only finding log)
 #include <cstdlib>                       // getenv (throwaway test hook)
 #include <cstring>                        // strncpy (chassis stem copy)
@@ -185,6 +186,124 @@ extern "C" int mc2_unitprofile_collect_witness(UnitProfileWitnessRow* out, int m
             out[n].variant[sizeof(out[n].variant) - 1] = '\0';
         }
         out[n].variantId = m->getVariantId();
+        ++n;
+    }
+    return n;
+}
+
+// WEAPON-SHADOW-COMPARE-1 (equipment arc, slice 5): fill the equipment witness
+// from MasterComponent::masterList. READ-ONLY; no component-loading behavior
+// change. ComponentFormString / WeaponRangeString are file-scope tables in
+// cmponent.cpp with no header decl — reference them extern here (the collector
+// is the only cross-TU consumer).
+extern const char* ComponentFormString[];   // cmponent.cpp: form-index -> token
+extern const char* WeaponRangeString[];      // cmponent.cpp: WEAPON_RANGE_* -> token
+
+namespace {
+// Mirror of the converter's TYPE_TO_KIND (equipment_extract.py): map an engine
+// ComponentFormType to the converter's coarse EquipmentKind vocabulary. The
+// converter keys on the CSV `Type` string (== ComponentFormString token), so the
+// two classifications agree by construction — the shadow-compare's `kind` diff
+// therefore catches a *converter* mis-map, not a spelling drift.
+const char* kindTokenForForm(ComponentFormType form) {
+    switch (form) {
+        case COMPONENT_FORM_WEAPON:
+        case COMPONENT_FORM_WEAPON_ENERGY:
+        case COMPONENT_FORM_WEAPON_BALLISTIC:
+        case COMPONENT_FORM_WEAPON_MISSILE: return "Weapon";
+        case COMPONENT_FORM_AMMO:           return "Ammo";
+        case COMPONENT_FORM_SENSOR:
+        case COMPONENT_FORM_PROBE:          return "Sensor";
+        case COMPONENT_FORM_ECM:
+        case COMPONENT_FORM_JAMMER:         return "ECM";
+        case COMPONENT_FORM_JUMPJET:        return "JumpJet";
+        case COMPONENT_FORM_HEATSINK:       return "Heatsink";
+        case COMPONENT_FORM_BULK:
+        case COMPONENT_FORM_CASE:           return "Structure";
+        case COMPONENT_FORM_COCKPIT:
+        case COMPONENT_FORM_LIFESUPPORT:    return "Cockpit";
+        case COMPONENT_FORM_ACTUATOR:
+        case COMPONENT_FORM_GYROSCOPE:      return "Actuator";
+        case COMPONENT_FORM_ENGINE:         return "Engine";
+        default:                            return "Other";
+    }
+}
+
+bool formIsWeapon(ComponentFormType form) {
+    return form == COMPONENT_FORM_WEAPON
+        || form == COMPONENT_FORM_WEAPON_ENERGY
+        || form == COMPONENT_FORM_WEAPON_BALLISTIC
+        || form == COMPONENT_FORM_WEAPON_MISSILE;
+}
+
+// WeaponTag category token mirroring the converter's _weapon_category(): the
+// energy/ballistic/missile split comes from the specific weapon FORM (the CSV
+// EnergyWeapon/BallisticWeapon/MissileWeapon tokens). A generic COMPONENT_FORM_
+// WEAPON has no engine-side split -> "Any" (the converter's WT_ANY).
+const char* weaponCategoryToken(ComponentFormType form) {
+    switch (form) {
+        case COMPONENT_FORM_WEAPON_ENERGY:    return "Energy";
+        case COMPONENT_FORM_WEAPON_BALLISTIC: return "Ballistic";
+        case COMPONENT_FORM_WEAPON_MISSILE:   return "Missile";
+        case COMPONENT_FORM_WEAPON:           return "Any";
+        default:                              return "";
+    }
+}
+
+void copyToken(char* dst, size_t cap, const char* src) {
+    if (!src) { dst[0] = '\0'; return; }
+    strncpy(dst, src, cap - 1);
+    dst[cap - 1] = '\0';
+}
+} // namespace
+
+extern "C" int mc2_component_collect_witness(ComponentWitnessRow* out, int maxRows) {
+    if (!out || maxRows <= 0 || !MasterComponent::masterList)
+        return 0;
+    int n = 0;
+    const long total = MasterComponent::numComponents;
+    for (long i = 0; i < total && n < maxRows; ++i) {
+        MasterComponent& mc = MasterComponent::masterList[i];
+        // Skip the `undefined`/blank sentinel slots (masterID == -1), matching the
+        // converter's dropped-row waivers so the two row sets align on live comps.
+        if (mc.getMasterID() < 0)
+            continue;
+        const ComponentFormType form = mc.getForm();
+        // A slot whose masterID is >= 0 but whose `form` never got assigned
+        // (initEXCEL early-returns -1 on an unknown Type token WITHOUT resetting
+        // masterID) carries a garbage form. `form` is the raw index into the
+        // ComponentFormString table, so an out-of-range value would read OOB.
+        // Skip such slots — they mirror the converter's dropped unconvertible
+        // rows and are not live components.
+        if (form < 0 || form >= NUM_COMPONENT_FORMS)
+            continue;
+        ComponentWitnessRow& r = out[n];
+        r.masterId = mc.getMasterID();
+        copyToken(r.form, sizeof(r.form),
+                  ComponentFormString[static_cast<long>(form)]);
+        copyToken(r.kind, sizeof(r.kind), kindTokenForForm(form));
+        r.critSlots = static_cast<int>(mc.getSize());
+        r.combatValue = mc.getCV();
+        const bool weapon = formIsWeapon(form);
+        r.isWeapon = weapon ? 1 : 0;
+        if (weapon) {
+            copyToken(r.category, sizeof(r.category), weaponCategoryToken(form));
+            r.damage  = mc.getWeaponDamage();
+            r.heat    = mc.getWeaponHeat();
+            r.recycle = mc.getWeaponRecycleTime();
+            r.ammoMasterId = static_cast<int>(mc.getWeaponAmmoMasterId());
+            const long rng = mc.getWeaponRange();
+            const char* rb = "";
+            if (rng == WEAPON_RANGE_SHORT || rng == WEAPON_RANGE_MEDIUM
+                || rng == WEAPON_RANGE_LONG)
+                rb = WeaponRangeString[rng];
+            copyToken(r.rangeBucket, sizeof(r.rangeBucket), rb);
+        } else {
+            r.category[0] = '\0';
+            r.rangeBucket[0] = '\0';
+            r.damage = r.heat = r.recycle = 0.0f;
+            r.ammoMasterId = 0;
+        }
         ++n;
     }
     return n;
