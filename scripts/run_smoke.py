@@ -993,6 +993,11 @@ def main():
                             # gate for the throwaway vehicle-jump proof hook. Must
                             # be allowlisted or Popen drops it and the proof is inert.
                             "MC2_UNIT_PROFILE_VEHICLE_JUMP_PROOF",
+                            # NON-MECH-DATA-UNIT-PROOF-1 (slice 9): separate
+                            # default-OFF gate for the throwaway data-declared
+                            # weapon-mount/UI proof hook. Must be allowlisted or
+                            # Popen drops it and the proof is inert.
+                            "MC2_UNIT_PROFILE_NONMECH_PROOF",
                             "MC2_PRESWAP_FINISH",
                             "MC2_MODERN_TERRAIN_SURFACE",
                             "MC2_MODERN_TERRAIN_PATCHES",

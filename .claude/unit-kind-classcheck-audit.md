@@ -300,3 +300,42 @@ LIVE, reachable through the single entry): `UPV_JUMP_GRANTED_NO_COMPATIBLE_EXECU
 `UPV_HARDPOINT_DAMAGE_LOCATION_MISSING`, `UPV_HARDPOINT_SOCKET_MISSING`,
 `UPV_ANIMATION_FALLBACK_MISSING`, `UPV_HARDPOINT_WEAPON_CLASS_REJECTED`,
 `UPV_UI_ASSET_MISSING`.
+
+---
+
+## NON-MECH-DATA-UNIT-PROOF-1 (Phase-2 slice 9 — Phase-2 CLOSER, commit 5b78143b)
+
+Proves the presentation/loadout stack is NOT class-locked: a DATA-declared
+hardpoint→socket weapon mount + a UI override fire through the AUTHORITATIVE
+(non-legacy) branches end-to-end, witnessed in-mission. Mirrors the Phase-1
+VEHICLE-JUMP-PROOF shape — a throwaway, opt-in proof hook behind a SEPARATE
+gate `MC2_UNIT_PROFILE_NONMECH_PROOF` (default OFF, distinct from
+`MC2_UNIT_PROFILE_DATA`), NOT stock behavior and NOT a shipped data unit.
+
+Wiring: `BattleMech::nonmechDataUnitMountProof` (mech.cpp), one-shot latch, for
+the first weapon item synthesizes the exact DATA a hardpoint source would supply
+— a `HardpointProfile` whose `.socket` is a REAL existing weapon-node name from
+the mech INI (`Mech3DAppearance::getLastWeaponNodeName`, no model/asset change) —
+then drives the same authoritative stack the `.fit` path selects:
+slice-3 `resolveHardpoint` (yields the profile) → slice-2
+`resolveWeaponNodeBySocketName` (socket NAME → node INDEX) → slice-4
+`chooseWeaponNode` (authoritative verdict). Also exercises the slice-6/7 UI facet
+via the pure `chooseUIAsset`. No class-check is added or removed: the mount is
+selected by the presence of a declared, resolvable socket in DATA, never by the
+C++ class.
+
+**Verified:** offline doctest 366/366 (4 new: authoritative mount route,
+socket-absent fallback, UI override selection, `validateUnitDefinition` coherent
+→ zero findings / one `UPV_HARDPOINT_SOCKET_MISSING` when broken / zero when
+fixed). In-mission witness (mc2_01, gate-ON):
+`[NONMECH-PROOF] declared socket="weapon_lefttorso" -> node=5 ; round-robin=2 ;
+chosen=5 ; authoritative=YES` — chosen mount node == declared socket node ≠
+round-robin, i.e. DATA selected the mount. UI line: declared icon `data-selected`
+over legacy. Gate-ON PASS Δ+0; gate-DATA-ON/proof-OFF: 0 proof lines, 4 jet-mechs
+`can_perform_jump=TRUE`, PASS Δ+0; fully-OFF: 0 proof lines, PASS Δ+0.
+`MC2_UNIT_PROFILE_NONMECH_PROOF` allowlisted in `scripts/run_smoke.py`.
+
+HONEST FRAMING: proves the DATA-DRIVEN mount/UI/validation path works end-to-end
+and is selected by DATA, not C++ class. It is a proof hook (throwaway, opt-in),
+not a shipped data unit — a real shipped data unit is Phase 3 (UnitDefinition
+facade + legacy synthesis).
