@@ -653,7 +653,17 @@ class BattleMech : public Mover {
 
 		virtual long getSpeedState (void);
 
-		// UNIT-PROFILE-SEAM-1
+		// UNIT-PROFILE-SEAM-1 / UNITPROFILE-TYPELOAD-SOURCE-1
+		// Single owner of the INSTANCE-loadout-derived capability write. CAP_JUMP
+		// for a mech is genuinely instance-derived: it is only known after the
+		// loadout scan populates numJumpJets. Type-load declared capabilities
+		// (from the .fit [UnitProfile] block, via populateProfileFromFit) are the
+		// OTHER, already-single-owner source. This method folds the numJumpJets
+		// truth into the shared type baseline (grant-only) and refreshes this
+		// instance's runtime.currentCapabilities. Call it once at the end of every
+		// real load path where numJumpJets is final. Transitional: a future slice
+		// moves loadout-derivation up to the type layer, retiring this entirely.
+		void refreshDerivedCapabilities (void);
 		virtual bool hasJumpExecutor (void) const { return true; }   // legacy mech jump path
 		virtual bool canJump (void) {
 			if (mc2UnitProfileDataEnabled()) return canPerform(UnitAction::Jump);

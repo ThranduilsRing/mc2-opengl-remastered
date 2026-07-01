@@ -747,6 +747,28 @@ long BattleMechType::init (FilePtr objFile, unsigned long fileSize)
 }
 
 //-----------------------------------------------------------------------------------
+// UNITPROFILE-TYPELOAD-SOURCE-1: single owner of the instance-loadout-derived
+// capability write. Previously this was open-coded (and drifted into dead code)
+// in every mech load overload. There are TWO legitimate capability sources and
+// this method owns exactly ONE of them:
+//   (a) TYPE-LOAD declared  -> .fit [UnitProfile] block via populateProfileFromFit
+//       (already single-owner; runs once at type load, grant-only, additive).
+//   (b) INSTANCE-loadout-derived -> CAP_JUMP from numJumpJets, which is only
+//       final AFTER the loadout scan. That is THIS method.
+// Grant-only: we OR the jump fact in when jets are installed; we never clear a
+// capability that (a) may have granted. Then we refresh this instance's runtime
+// state from the (now-updated) shared type baseline. Call from the end of every
+// real load path where numJumpJets is authoritative.
+void BattleMech::refreshDerivedCapabilities (void) {
+	if (!getObjectType())
+		return;
+	CapabilitySet& baseline = getObjectType()->profile().baselineCapabilities;
+	if (numJumpJets > 0)
+		baseline.set(CAP_JUMP, true);      // grant-only; never clears (a)'s grants
+	runtime.currentCapabilities = baseline;
+}
+
+//-----------------------------------------------------------------------------------
 
 void BattleMechType::destroy (void) 
 {
@@ -2049,12 +2071,9 @@ long BattleMech::init (DWORD variantNum)
 	delete mechFile;
 	mechFile = NULL;
 
-	// UNIT-PROFILE-SEAM-1: numJumpJets is final here (loadout scan complete).
-	// This is the real gameplay mech-load path (mission.cpp -> init(variantNum)).
-	if (getObjectType()) {
-		getObjectType()->profile().baselineCapabilities.set(CAP_JUMP, (numJumpJets > 0));
-		runtime.currentCapabilities = getObjectType()->profile().baselineCapabilities;
-	}
+	// UNITPROFILE-TYPELOAD-SOURCE-1: numJumpJets is final here (loadout scan
+	// complete). This is the real gameplay mech-load path (init(variantNum)).
+	refreshDerivedCapabilities();
 
 	return(NO_ERR);
 }
@@ -3435,13 +3454,9 @@ long BattleMech::init (FitIniFile* mechFile) {
 		}
 	}
 
-	// UNIT-PROFILE-SEAM-1: capability fact mirrors installed-equipment truth.
-	// numJumpJets is instance state; write the shared type baseline from it
-	// (idempotent for stock chassis; per-variant divergence deferred).
-	if (getObjectType()) {
-		getObjectType()->profile().baselineCapabilities.set(CAP_JUMP, (numJumpJets > 0));
-		runtime.currentCapabilities = getObjectType()->profile().baselineCapabilities;
-	}
+	// UNITPROFILE-TYPELOAD-SOURCE-1: numJumpJets is authoritative here; fold it
+	// into the type baseline + this instance's runtime via the single owner.
+	refreshDerivedCapabilities();
 
 	return(NO_ERR);
 }
@@ -9425,11 +9440,9 @@ void BattleMech::Load (MechData *data)
 	if (!data->sensorOK)
 		sensorSystem->broken = true;
 
-	// UNIT-PROFILE-SEAM-1: numJumpJets is authoritative only after Load.
-	if (getObjectType())
-		getObjectType()->profile().baselineCapabilities.set(CAP_JUMP, (numJumpJets > 0));
-	runtime.currentCapabilities = getObjectType()
-		? getObjectType()->profile().baselineCapabilities : CapabilitySet();
+	// UNITPROFILE-TYPELOAD-SOURCE-1: numJumpJets is authoritative only after Load;
+	// fold it into the type baseline + this instance's runtime via the single owner.
+	refreshDerivedCapabilities();
 }
 
 //***************************************************************************
