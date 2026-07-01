@@ -1557,19 +1557,31 @@ static void mc2EquipIdAliasProofOnce()
 	if (reg.count() == 0)
 		return;                       // masterList/registry not loaded yet
 
-	// Find the first enabled entry with an ordinal in the addressable space and
-	// round-trip it: legacy ordinal -> its core:<slug> -> resolve -> ordinal.
-	for (const auto& e : reg.entries()) {
-		if (!e.enabled || e.legacyMasterId < 0 || e.legacyMasterId >= 255)
-			continue;
-		std::string qid = reg.qualifiedIdFor(e.legacyMasterId);
-		int back = resolveLoadoutEquipmentRef(reg, qid.c_str());
-		printf("[EQUIP-IDALIAS-PROOF] %s -> masterID=%d (legacy ordinal match=%s)\n",
-		       qid.c_str(), back,
-		       (back == (int)e.legacyMasterId) ? "YES" : "NO");
-		s_equipIdAliasProofFired = true;
-		return;
+	// Prefer a recognizable weapon id for a legible proof line; else fall back to
+	// the first enabled entry with an ordinal in the addressable space.
+	static const char* kProofCandidates[] = {
+		"core:ppc", "core:medium_laser", "core:large_laser", "core:er_ppc"
+	};
+	const EquipmentRegistryEntry* pick = nullptr;
+	for (const char* cand : kProofCandidates) {
+		const EquipmentRegistryEntry* e = reg.byQualifiedId(std::string(cand));
+		if (e && e->legacyMasterId >= 0 && e->legacyMasterId < 255) { pick = e; break; }
 	}
+	if (!pick) {
+		for (const auto& e : reg.entries()) {
+			if (e.enabled && e.legacyMasterId >= 0 && e.legacyMasterId < 255) { pick = &e; break; }
+		}
+	}
+	if (!pick)
+		return;
+
+	// Round-trip it: legacy ordinal -> its core:<slug> -> resolve -> ordinal.
+	std::string qid = reg.qualifiedIdFor(pick->legacyMasterId);
+	int back = resolveLoadoutEquipmentRef(reg, qid.c_str());
+	printf("[EQUIP-IDALIAS-PROOF] %s -> masterID=%d (legacy ordinal match=%s)\n",
+	       qid.c_str(), back,
+	       (back == (int)pick->legacyMasterId) ? "YES" : "NO");
+	s_equipIdAliasProofFired = true;
 }
 
 // Returns true and fills mountNode when the proof fired for this item (first

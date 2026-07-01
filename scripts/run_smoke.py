@@ -998,6 +998,11 @@ def main():
                             # weapon-mount/UI proof hook. Must be allowlisted or
                             # Popen drops it and the proof is inert.
                             "MC2_UNIT_PROFILE_NONMECH_PROOF",
+                            # LOADOUT-EQUIPMENT-ID-ALIAS-1 (E5): separate
+                            # default-OFF gate for the throwaway registry
+                            # round-trip proof ([EQUIP-IDALIAS-PROOF]). Must be
+                            # allowlisted or Popen drops it and the proof is inert.
+                            "MC2_EQUIP_IDALIAS_PROOF",
                             "MC2_PRESWAP_FINISH",
                             "MC2_MODERN_TERRAIN_SURFACE",
                             "MC2_MODERN_TERRAIN_PATCHES",
