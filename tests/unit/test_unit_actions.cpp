@@ -13,6 +13,7 @@
 #include "unit_action.h"
 #include "action_executor_registry.h"
 #include "locomotion_facet.h"
+#include "damage_schema.h"
 
 // ---------------------------------------------------------------------------
 // resolveAction() precedence
@@ -347,4 +348,59 @@ TEST_CASE("locomotion facet: data-resolved model drives jump executor compatibil
     // -- proving the model is data-owned, not class-locked.
     const LocomotionModel overridden = parseLocomotionModel("MechWalker", LOCO_WHEELED);
     CHECK(queryJumpVia(reg, /*cap=*/true, overridden) == ActionAvailability::Available);
+}
+
+// ---------------------------------------------------------------------------
+// DAMAGE-SCHEMA-FACET-1 (slice 5): data-owned hit-location model.
+//
+// Which damage schema a unit uses (mech 8 parts / vehicle facings / squad /
+// single actor) is a pure DATA facet on UnitProfile, resolved from an optional
+// `.fit [UnitProfile] DamageSchema=` token via parseDamageSchema(), falling back
+// to the caller's type-load default when the token is absent. This slice adds the
+// vocabulary + a pure location-membership query the Phase-2 HardpointId validator
+// consults; it changes NO armor/hit-application math (nobody reads the facet yet).
+// ---------------------------------------------------------------------------
+
+TEST_CASE("damage schema: absent/empty/null token falls back to type-load default") {
+    // Stock .fits carry no DamageSchema key -> the type-load default is preserved,
+    // which is the parity contract of this slice.
+    CHECK(parseDamageSchema(nullptr, DMG_MECH_8PART)      == DMG_MECH_8PART);
+    CHECK(parseDamageSchema("",      DMG_MECH_8PART)      == DMG_MECH_8PART);
+    CHECK(parseDamageSchema(nullptr, DMG_VEHICLE_FACINGS) == DMG_VEHICLE_FACINGS);
+    // Unknown token also falls back (never guesses).
+    CHECK(parseDamageSchema("Klingon", DMG_VEHICLE_FACINGS) == DMG_VEHICLE_FACINGS);
+}
+
+TEST_CASE("damage schema: recognized tokens map to the enum (case-insensitive)") {
+    CHECK(parseDamageSchema("Mech8Part",      DMG_VEHICLE_FACINGS) == DMG_MECH_8PART);
+    CHECK(parseDamageSchema("mech8part",      DMG_VEHICLE_FACINGS) == DMG_MECH_8PART);
+    CHECK(parseDamageSchema("VehicleFacings", DMG_MECH_8PART)      == DMG_VEHICLE_FACINGS);
+    CHECK(parseDamageSchema("SQUAD",          DMG_MECH_8PART)      == DMG_SQUAD);
+    CHECK(parseDamageSchema("SingleActor",    DMG_MECH_8PART)      == DMG_SINGLE_ACTOR);
+}
+
+TEST_CASE("damage schema: location count per schema") {
+    CHECK(schemaLocationCount(DMG_MECH_8PART)      == 8);   // 8 body parts
+    CHECK(schemaLocationCount(DMG_VEHICLE_FACINGS) == 5);   // Front/Left/Right/Rear/Turret
+    CHECK(schemaLocationCount(DMG_SQUAD)           == 1);   // structural minimum
+    CHECK(schemaLocationCount(DMG_SINGLE_ACTOR)    == 1);
+}
+
+TEST_CASE("damage schema: schemaHasLocation is the Phase-2 validator membership test") {
+    // A mech location belongs to the mech schema, not to a vehicle-facings unit.
+    CHECK(schemaHasLocation(DMG_MECH_8PART, DLOC_MECH_RARM));
+    CHECK(schemaHasLocation(DMG_MECH_8PART, DLOC_MECH_HEAD));
+    CHECK(schemaHasLocation(DMG_MECH_8PART, DLOC_MECH_RLEG));
+    CHECK_FALSE(schemaHasLocation(DMG_VEHICLE_FACINGS, DLOC_MECH_RARM)); // "no RightArm"
+    CHECK_FALSE(schemaHasLocation(DMG_MECH_8PART, DLOC_VEH_TURRET));
+
+    // Vehicle facings belong to the facings schema only.
+    CHECK(schemaHasLocation(DMG_VEHICLE_FACINGS, DLOC_VEH_FRONT));
+    CHECK(schemaHasLocation(DMG_VEHICLE_FACINGS, DLOC_VEH_TURRET));
+    CHECK_FALSE(schemaHasLocation(DMG_VEHICLE_FACINGS, DLOC_BODY));
+
+    // Squad / single-actor collapse to the whole-actor body location.
+    CHECK(schemaHasLocation(DMG_SQUAD,         DLOC_BODY));
+    CHECK(schemaHasLocation(DMG_SINGLE_ACTOR,  DLOC_BODY));
+    CHECK_FALSE(schemaHasLocation(DMG_SQUAD,   DLOC_MECH_HEAD));
 }

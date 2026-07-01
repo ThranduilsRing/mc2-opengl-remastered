@@ -24,6 +24,13 @@ void populateProfileFromFit(FitIniFile& fit, UnitProfile& p) {
         char loco[64] = {0};
         if (fit.readIdString("Locomotion", loco, sizeof(loco)) == NO_ERR)
             p.locomotion = parseLocomotionModel(loco, p.locomotion);
+        // DAMAGE-SCHEMA-FACET-1 (slice 5): optional data override of the damage
+        // schema (hit-location model). Absent key -> p.damageSchema keeps whatever
+        // the type-load default set (mech-8part for mechs, vehicle-facings
+        // otherwise), so stock .fits are parity.
+        char dmg[64] = {0};
+        if (fit.readIdString("DamageSchema", dmg, sizeof(dmg)) == NO_ERR)
+            p.damageSchema = parseDamageSchema(dmg, p.damageSchema);
     }
 }
 

@@ -3229,6 +3229,24 @@ int Mover::locomotionModel (void) const {
 
 //---------------------------------------------------------------------------
 
+// DAMAGE-SCHEMA-FACET-1 (slice 5): hit-location model resolved from the DATA
+// facet on the unit's type profile, not the C++ class. BattleMechType::init sets
+// the facet to DMG_MECH_8PART at type-load; the base/vehicle default is
+// DMG_VEHICLE_FACINGS (UnitProfile's field initializer); an optional `.fit
+// [UnitProfile] DamageSchema=` token can override either. PURE ACCESSOR — nobody
+// reads it yet; it is the source a future resolveHit(HitRequest) and the Phase-2
+// HardpointId validator will consult. A null type falls back to the base default
+// so early-init paths never crash. Mirrors locomotionModel()'s const_cast: the
+// getObjectType() legacy accessor is non-const but does not mutate.
+DamageSchemaId Mover::damageSchema (void) const {
+	ObjectTypePtr type = const_cast<Mover*>(this)->getObjectType();
+	if (type)
+		return type->profile().damageSchema;
+	return DMG_VEHICLE_FACINGS;
+}
+
+//---------------------------------------------------------------------------
+
 float Mover::getEcmRange (void) {
 
 	if ((ecm != 255))

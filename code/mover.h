@@ -39,6 +39,10 @@
 #include"action_executor_registry.h"  // ACTION-EXECUTOR-REGISTRY-1: LocomotionModel + registry
 #endif
 
+#ifndef DAMAGE_SCHEMA_H
+#include"damage_schema.h"             // DAMAGE-SCHEMA-FACET-1: DamageSchemaId
+#endif
+
 #ifndef MOVE_H
 #include"move.h"
 #endif
@@ -1673,6 +1677,15 @@ class Mover : public GameObject {
 		// longer virtual — the value comes from data, not the C++ class, so the
 		// BattleMech override was removed. Defined in mover.cpp (needs ObjectType).
 		int  locomotionModel (void) const;   // reads getObjectType()->profile().locomotion
+		// DAMAGE-SCHEMA-FACET-1 (slice 5): DATA read of the unit's hit-location
+		// model from its type profile (UnitProfile::damageSchema), populated at
+		// type-load: DMG_MECH_8PART for mechs, DMG_VEHICLE_FACINGS for the
+		// base/vehicle default, optionally overridden by a `.fit [UnitProfile]
+		// DamageSchema=` token. PURE ACCESSOR — read by nobody yet; it is the
+		// source a future resolveHit(HitRequest) and the Phase-2 HardpointId
+		// validator will consult. A null type falls back to the base default so
+		// early-init paths never crash. Defined in mover.cpp (needs ObjectType).
+		DamageSchemaId damageSchema (void) const;
 		virtual bool canJump (void) {
 			if (mc2UnitProfileDataEnabled()) return canPerform(UnitAction::Jump);
 			return false;                       // original Mover behavior

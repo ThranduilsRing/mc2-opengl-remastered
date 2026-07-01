@@ -180,3 +180,29 @@ companion passability guard (`:3270`) and the run/gait gate (`:801`) are
 **assigned to `LOCOMOTION-DATA-1`**. All remaining Bucket-2 sites are
 non-gameplay (class-specific subsystem access, FX, damage, refit, elemental
 specials) and carry no slice obligation this arc.
+
+**DAMAGE-SCHEMA-FACET-1 (slice 5) — DONE (additive, no class-check retired).**
+Added a second data facet, `UnitProfile::damageSchema` (a `DamageSchemaId`,
+`code/damage_schema.h`), defaulted to `DMG_VEHICLE_FACINGS` and set to
+`DMG_MECH_8PART` once at `BattleMechType::init` (type-load), optionally overridden
+by a `.fit [UnitProfile] DamageSchema=` token (`parseDamageSchema`, pure). Exposed
+read-only via `Mover::damageSchema()` (mover.cpp, mirrors `locomotionModel()`).
+This slice retires NO existing class-check — the armor / hit-application math
+(`injureBodyLocation`, `body[]`, `bodyLocation`, `criticalSpacesReq[]`) is
+untouched. The facet is the DATA SOURCE that a future `resolveHit(HitRequest)`
+will pick its location model from, and that the **Phase-2 HardpointId validator**
+consults via the pure `schemaHasLocation(DamageSchemaId, DamageLocationId)` /
+`schemaLocationCount()` helpers to reject "loadout references RightArm but the
+unit's DamageSchema has no RightArm". Nobody reads the facet at runtime yet, so
+gate-ON and gate-OFF are both parity (Δdestroys +0). Pure logic covered
+RED→GREEN in `tests/unit/test_unit_actions.cpp` (295 doctests pass).
+
+**DamageSchema contract Phase-2 slices MUST honor** — enum vocabulary
+`DamageSchemaId { DMG_MECH_8PART, DMG_VEHICLE_FACINGS, DMG_SQUAD, DMG_SINGLE_ACTOR }`;
+logical locations `DamageLocationId` (mech: `DLOC_MECH_{HEAD,CTORSO,LTORSO,RTORSO,
+LARM,RARM,LLEG,RLEG}` in `MECH_BODY_LOCATION_*` order; vehicle: `DLOC_VEH_{FRONT,
+LEFT,RIGHT,REAR,TURRET}` in `bodyLocationString[]` order; squad/single:
+`DLOC_BODY`). `.fit` tokens are `Mech8Part / VehicleFacings / Squad / SingleActor`
+(case-insensitive; unknown/absent → type-load default). HardpointId→damage-
+location joins are validated against `schemaHasLocation()`; do NOT invent a
+parallel location vocabulary.

@@ -4,6 +4,7 @@
 // facets (Mover). Slice 1 facet = capability.
 #include "capability.h"
 #include "locomotion_facet.h"          // LocomotionModel enum + parseLocomotionModel
+#include "damage_schema.h"             // DamageSchemaId enum + parseDamageSchema
 
 bool mc2_unitprofile_parse_enabled(const char* envValue);   // pure, testable
 bool mc2UnitProfileDataEnabled();                            // cached getenv
@@ -18,6 +19,16 @@ class UnitProfile {                  // static, on ObjectType (flyweight)
     // `.fit [UnitProfile] Locomotion=` token overrides either. Mover::
     // locomotionModel() now reads THIS field instead of asking "is BattleMech?".
     LocomotionModel locomotion = LOCO_WHEELED;
+    // DAMAGE-SCHEMA-FACET-1 (slice 5): data-owned hit-location model (which
+    // damage schema a unit uses). Default is DMG_VEHICLE_FACINGS (a non-mech
+    // baseline, matching the GroundVehicle facing model); BattleMechType::init
+    // sets DMG_MECH_8PART at type-load, and an optional `.fit [UnitProfile]
+    // DamageSchema=` token overrides either. PURE DATA facet: nobody reads it at
+    // runtime yet — it is the source a future resolveHit(HitRequest) picks its
+    // location model from, and the source the Phase-2 HardpointId validator
+    // consults (schemaHasLocation) to reject impossible loadout↔location refs.
+    // This slice does NOT change any armor / hit-application math.
+    DamageSchemaId damageSchema = DMG_VEHICLE_FACINGS;
 };
 struct UnitRuntimeState {            // mutable, on Mover
     CapabilitySet currentCapabilities;

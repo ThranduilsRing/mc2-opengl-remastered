@@ -745,6 +745,14 @@ long BattleMechType::init (FilePtr objFile, unsigned long fileSize)
 	// which a future full UnitDefinition load will supply directly.
 	profile().locomotion = LOCO_MECH_WALKER;
 
+	// DAMAGE-SCHEMA-FACET-1 (slice 5): a mech's data-owned hit-location model
+	// defaults to the 8-body-part schema. The vehicle/base default is
+	// DMG_VEHICLE_FACINGS (UnitProfile's field initializer), so only the mech
+	// type overrides it here. Set BEFORE the .fit read so an optional
+	// [UnitProfile] DamageSchema= token can override; stock .fits omit it ->
+	// mech-8part preserved (no behavior change — nobody reads the facet yet).
+	profile().damageSchema = DMG_MECH_8PART;
+
 	// UNIT-PROFILE-SEAM-1: optional .fit [UnitProfile] data read (additive).
 	populateProfileFromFit(mechFile, profile());
 
