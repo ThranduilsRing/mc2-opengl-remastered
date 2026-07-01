@@ -37,6 +37,17 @@ struct UnitRuntimeState {            // mutable, on Mover
 class FitIniFile;                      // fwd; keep heavy I/O header out of unitprofile.h
 void populateProfileFromFit(FitIniFile& fit, UnitProfile& profile);
 
+// VEHICLE-JUMP-PROOF-1 (slice 7, Phase-1 closer) — THROWAWAY/proof-only hook.
+// Gated behind MC2_UNIT_PROFILE_VEHICLE_JUMP_PROOF (default OFF, SEPARATE from
+// MC2_UNIT_PROFILE_DATA). When ON, a GroundVehicleType's profile is given
+// locomotion=LOCO_MECH_WALKER + CAP_JUMP via the SAME facet fields the .fit path
+// writes, so a non-BattleMech reports canPerform(Jump)=Available through the full
+// data->facet->registry->queryAction stack. This proves the jump DECISION is
+// data-driven and class-independent. It does NOT make the vehicle functionally
+// jump (no jump-movement executor runs for vehicles — that is the deferred
+// LOCOMOTION-DATA-1 work). Remove once the arc has a real data-unit proof.
+void mc2_unitprofile_vehicle_jump_proof(UnitProfile& profile);
+
 // UNITPROFILE-VALIDATOR-1 (slice 6): run the pure construction-rules validator
 // (unit_profile_validator.h) over a type's now-populated facets and REPORT each
 // finding to the console. REPORT-ONLY — never rejects/refuses a spawn — and

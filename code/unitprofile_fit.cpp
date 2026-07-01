@@ -37,6 +37,37 @@ void populateProfileFromFit(FitIniFile& fit, UnitProfile& p) {
     }
 }
 
+// VEHICLE-JUMP-PROOF-1 (slice 7, Phase-1 closer) — THROWAWAY/proof-only hook.
+// Repacking objects.pak in-session to author a vehicle .fit is infeasible, so
+// this writes the SAME two facet fields a `.fit [UnitProfile]` block would
+// (Jump=TRUE -> baselineCapabilities CAP_JUMP; Locomotion=MechWalker ->
+// locomotion) directly onto a GroundVehicleType's profile at type-load. It is a
+// pure DATA mutation of the facet layer — no C++ class poke, no executor virtual.
+// Gate MC2_UNIT_PROFILE_VEHICLE_JUMP_PROOF is SEPARATE from MC2_UNIT_PROFILE_DATA
+// so the proof is strictly opt-in and default-OFF stays stock-parity.
+//
+// Effect through the existing stack (nothing new added below the facets):
+//   locomotion=LOCO_MECH_WALKER -> Mover::locomotionModel() reads MechWalker
+//     -> theActionExecutorRegistry().isCompatible(Jump, MechWalker) == true
+//   CAP_JUMP baseline -> Mover::onTypeBound copies baseline->current
+//     -> hasCapability(CAP_JUMP) == true
+//   => Mover::queryAction(Jump) == Available on a GroundVehicle (a NON-BattleMech).
+//
+// HONEST FRAMING: this proves the jump DECISION path is class-independent (data
+// facets decide, not the C++ class). It does NOT mean the vehicle jumps: no
+// jump-*movement* code runs for vehicles (deferred LOCOMOTION-DATA-1 executor
+// work). The proof is "jump-Available reached on a non-mech purely via data."
+void mc2_unitprofile_vehicle_jump_proof(UnitProfile& p) {
+    static const bool on = mc2_unitprofile_parse_enabled(
+        getenv("MC2_UNIT_PROFILE_VEHICLE_JUMP_PROOF"));
+    if (!on)
+        return;
+    // Same facet fields the .fit path writes — a compatible locomotion model plus
+    // the capability. Order matches populateProfileFromFit: capability then model.
+    p.baselineCapabilities.set(CAP_JUMP, true);
+    p.locomotion = LOCO_MECH_WALKER;
+}
+
 // UNITPROFILE-VALIDATOR-1 (slice 6): run the pure construction-rules validator
 // over a type's populated facets and log each finding. GATED + REPORT-ONLY:
 //   * gate OFF -> returns immediately, no output (behavioral parity).

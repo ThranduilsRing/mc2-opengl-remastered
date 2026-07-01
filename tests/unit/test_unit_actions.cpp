@@ -351,6 +351,42 @@ TEST_CASE("locomotion facet: data-resolved model drives jump executor compatibil
 }
 
 // ---------------------------------------------------------------------------
+// VEHICLE-JUMP-PROOF-1 (slice 7, Phase-1 closer): the jump DECISION is no longer
+// class-locked. A GroundVehicle is a different C++ class than BattleMech, yet the
+// only thing that decides can-jump is DATA: the CAP_JUMP capability + the
+// locomotion facet the executor registry checks. Prove it purely: hold the class
+// constant and flip ONLY the two data facets, showing the verdict tracks the data
+// and nothing else. (The engine glue drives the same two profile fields on a real
+// GroundVehicleType behind MC2_UNIT_PROFILE_VEHICLE_JUMP_PROOF; this is the logic
+// it exercises.)
+// ---------------------------------------------------------------------------
+
+TEST_CASE("vehicle-jump-proof: verdict follows data facets, not the C++ class") {
+    ActionExecutorRegistry reg;
+    reg.bind(UnitAction::Jump, kMechJumpExecutor, {LOCO_MECH_WALKER}); // == singleton
+
+    // A vehicle as it ships: no CAP_JUMP, vehicle-default locomotion. It is not
+    // the sort of thing that can jump -> schema error (stock parity, no jump).
+    CHECK(queryJumpVia(reg, /*cap=*/false, LOCO_WHEELED)
+          == ActionAvailability::InvalidForUnitSchema);
+
+    // Grant CAP_JUMP alone but leave the vehicle-default locomotion: capability
+    // is a fact, but no compatible executor is bound for a wheeled model, so the
+    // decision is honestly MissingExecutor (was silently Available under the old
+    // BattleMech-class coupling). Capability != a working action.
+    CHECK(queryJumpVia(reg, /*cap=*/true, LOCO_WHEELED)
+          == ActionAvailability::MissingExecutor);
+
+    // Now grant CAP_JUMP *and* set the locomotion facet to MechWalker — PURELY
+    // via data, the exact two profile fields the proof hook writes. The registry
+    // now finds the executor compatible, so the SAME vehicle class reports
+    // Available. The class never changed; only the data did. This is the proof:
+    // the jump decision is data-driven and class-independent.
+    CHECK(queryJumpVia(reg, /*cap=*/true, LOCO_MECH_WALKER)
+          == ActionAvailability::Available);
+}
+
+// ---------------------------------------------------------------------------
 // DAMAGE-SCHEMA-FACET-1 (slice 5): data-owned hit-location model.
 //
 // Which damage schema a unit uses (mech 8 parts / vehicle facings / squad /

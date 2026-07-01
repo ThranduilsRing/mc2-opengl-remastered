@@ -402,6 +402,17 @@ long GroundVehicleType::init (FilePtr objFile, unsigned long fileSize) {
 	// jump-capability populator for vehicles (no jump component to scan).
 	populateProfileFromFit(vehicleFile, profile());
 
+	// VEHICLE-JUMP-PROOF-1 (slice 7) — THROWAWAY/proof-only, gated behind the
+	// SEPARATE MC2_UNIT_PROFILE_VEHICLE_JUMP_PROOF (default OFF). When ON, writes
+	// locomotion=MechWalker + CAP_JUMP onto this vehicle's profile via the SAME
+	// facet fields the .fit path uses, so a GroundVehicle (a non-BattleMech)
+	// reports canPerform(Jump)=Available through the full data->registry stack —
+	// proving the jump DECISION is data-driven, not class-locked. Default-OFF =
+	// stock parity. It does NOT make vehicles functionally jump (no jump-movement
+	// executor for vehicles — deferred). Placed before validate so the gate-ON
+	// validator sees a coherent MechWalker+jump profile (Available, no finding).
+	mc2_unitprofile_vehicle_jump_proof(profile());
+
 	// UNITPROFILE-VALIDATOR-1 (slice 6): report-only construction-rules check,
 	// gated behind MC2_UNIT_PROFILE_DATA. Runs AFTER facets are set. A stock
 	// vehicle grants no CAP_JUMP -> coherent -> logs nothing. A vehicle authored
