@@ -27,6 +27,7 @@
 #include "capability.h"                  // CAP_JUMP, UnitAction
 #include "action_executor_registry.h"    // ActionExecutorRegistry, LocomotionModel
 #include "hardpoint.h"                   // HardpointSocketName (PRESENTATION-SOCKET-PROFILE-1)
+#include "action_anim_tag.h"             // ActionAnimTag, animTagResolves (ACTION-ANIMATION-BINDINGS-1)
 
 // -------------------------------------------------------------------------
 // REASON-CODE VOCABULARY.
@@ -55,10 +56,13 @@
 //        declared hardpoint's accepted weapon-tag set ("AC20 (Ballistic) on an
 //        Energy-only hardpoint"). Emitted via hardpointAcceptsWeapon().
 //
-// STUBBED (Phase-2 reason codes reserved but NOT checked yet — documented so the
-// vocabulary is stable and the check sites are obvious; see roadmap Phase 2):
-//   UPV_ANIMATION_FALLBACK_MISSING         -- an action is available but the animation
-//        binding profile has no clip/gesture fallback for it (e.g. no JumpLand).
+//   UPV_ANIMATION_FALLBACK_MISSING  (now LIVE — ACTION-ANIMATION-BINDINGS-1,
+//        Phase-2 slice 5) — an action's ActionAnimTag has a fallback chain that
+//        dead-ends: NONE of its candidate legacy gesture ids is available on the
+//        unit's loaded skeleton ("Jump exists but no JumpLand/JumpLoop/Move/Idle
+//        clip delivers it"). Emitted by the pure validateAnimationFallbacks()
+//        below via animTagResolves() (code/action_anim_tag.h); the engine glue
+//        supplies the per-gesture availability predicate from the loaded shape.
 enum UnitProfileReasonCode {
     // --- LIVE ---
     UPV_JUMP_GRANTED_NO_COMPATIBLE_EXECUTOR = 0,
@@ -69,7 +73,7 @@ enum UnitProfileReasonCode {
     // --- LIVE (PRESENTATION-SOCKET-PROFILE-1, Phase-2 slice 2) ---
     UPV_HARDPOINT_SOCKET_MISSING,
 
-    // --- STUBBED (Phase 2; not emitted yet) ---
+    // --- LIVE (ACTION-ANIMATION-BINDINGS-1, Phase-2 slice 5) ---
     UPV_ANIMATION_FALLBACK_MISSING,
 
     // --- LIVE (LOADOUT-HARDPOINT-JOIN-1, Phase-2 slice 3) ---
@@ -243,6 +247,49 @@ validateLoadoutHardpointJoins(const std::vector<LoadoutHardpointJoin>& joins) {
             findings.push_back(UnitProfileFinding{
                 UPV_HARDPOINT_SOCKET_MISSING,
                 "declared hardpoint socket not found on model"});
+        }
+    }
+    return findings;
+}
+
+// -------------------------------------------------------------------------
+// ACTION-ANIMATION-BINDINGS-1 (Phase-2 slice 5): animation-fallback coherence.
+//
+// A unit's AnimationBindingProfile maps each action's ActionAnimTag to a fallback
+// chain of legacy gesture ids (code/action_anim_tag.h). This pure check answers
+// the modder question: "for every action this unit can perform, does its skeleton
+// actually deliver SOME animation?" A tag whose entire chain is unavailable on the
+// loaded skeleton is the failure "Jump exists but no JumpLand fallback" — reported
+// at load in modder terms instead of a silent frozen mech in-mission.
+//
+// PURE + REPORT-ONLY. The caller (engine glue at Mech3DAppearanceType::init) gathers
+// the tags this unit needs (from its granted actions) and supplies a predicate
+// `gestureAvailable(gestureId)` == "the loaded shape has a clip for this gesture."
+// A fully-rigged stock mech has every locomotion/idle gesture -> every needed tag
+// resolves -> ZERO findings (gate-ON stock parity). Only a skeleton MISSING the
+// clips its actions need trips the check. This touches NO gesture trigger and
+// NO render path; setGestureGoal(int) stays the final legacy sink.
+
+// One action's ActionAnimTag that a unit needs an animation for.
+struct NeededAnimTag {
+    ActionAnimTag tag;
+};
+
+// LIVE CHECK: for each needed tag whose fallback chain does NOT resolve to any
+// available gesture, emit one UPV_ANIMATION_FALLBACK_MISSING finding. Empty input
+// (or every tag resolving) -> no findings. `gestureAvailable` is the SAME impure
+// split as socketPresent: the engine glue does the per-gesture presence lookup and
+// hands this header a predicate, keeping the header engine/GL/IO-free.
+template <typename GestureAvailablePred>
+inline std::vector<UnitProfileFinding>
+validateAnimationFallbacks(const std::vector<NeededAnimTag>& needed,
+                           GestureAvailablePred gestureAvailable) {
+    std::vector<UnitProfileFinding> findings;
+    for (const NeededAnimTag& n : needed) {
+        if (!animTagResolves(n.tag, gestureAvailable)) {
+            findings.push_back(UnitProfileFinding{
+                UPV_ANIMATION_FALLBACK_MISSING,
+                "action animation tag has no available gesture in its fallback chain"});
         }
     }
     return findings;

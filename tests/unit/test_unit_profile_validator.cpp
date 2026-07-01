@@ -109,9 +109,9 @@ TEST_CASE("validator: every LIVE reason code is reachable") {
 
     // UPV_HARDPOINT_SOCKET_MISSING is now LIVE (PRESENTATION-SOCKET-PROFILE-1);
     // its reachability is covered in the declared-socket cases below.
-    // The remaining Phase-2 codes exist in the vocabulary but are NOT emitted yet.
-    // LOADOUT-HARDPOINT-JOIN-1 added UPV_HARDPOINT_WEAPON_CLASS_REJECTED and made
-    // UPV_HARDPOINT_DAMAGE_LOCATION_MISSING live -> 4 live + 1 reserved stub.
+    // ACTION-ANIMATION-BINDINGS-1 (slice 5) made UPV_ANIMATION_FALLBACK_MISSING
+    // live -> all 5 reason codes now emit; its reachability is covered in
+    // test_action_anim_tag.cpp (validateAnimationFallbacks). Vocabulary unchanged.
     CHECK(UPV__COUNT == 5);   // vocabulary size lock
 }
 

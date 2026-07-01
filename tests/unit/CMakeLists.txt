@@ -50,6 +50,7 @@ add_executable(mc2_tests
     test_vulkan_contract.cpp  # VULKAN-CONTRACT-COVERAGE-1: descriptor-class coverage/consistency (offline)
     test_hardpoint.cpp        # HARDPOINT-ID-SCHEMA-1: HardpointId join key + weapon-tag/damage-location link (offline)
     test_getweaponnode_adapter.cpp  # GETWEAPONNODE-HARDPOINT-ADAPTER-1: chooseWeaponNode() authoritative-with-fallback (offline)
+    test_action_anim_tag.cpp  # ACTION-ANIMATION-BINDINGS-1: ActionAnimTag -> gesture-id resolver + fallback chains (offline)
 
     # Leaf-TU engine sources (no transitive engine include drag).
     ${MC2_WORKTREE_ROOT}/mclib/fst_hash.cpp
