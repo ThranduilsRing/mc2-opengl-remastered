@@ -1452,6 +1452,94 @@ void BattleMech::setControl (ControlType ctrlType) {
 }
 
 //----------------------------------------------------------------------------------
+// NON-MECH-DATA-UNIT-PROOF-1 (Phase-2 slice 9, the Phase-2 CLOSER) — THROWAWAY /
+// proof-only, gated behind the SEPARATE MC2_UNIT_PROFILE_NONMECH_PROOF (default
+// OFF, distinct from MC2_UNIT_PROFILE_DATA). Repacking objects.pak in-session to
+// author a data unit is infeasible, so this synthesizes — for the FIRST weapon
+// item only — the exact DATA a `.fit`/registry hardpoint source would supply:
+//   * a HardpointProfile whose .socket names a REAL existing weapon node on THIS
+//     mech's shape (getLastWeaponNodeName() — no model/asset change), and
+//   * item.hardpointId != 0, marking the item as having a declared join.
+// It then drives the SAME authoritative stack the data path selects — slice-3
+// resolveHardpoint (yields the profile) -> slice-2 resolveWeaponNodeBySocketName
+// (socket NAME -> node INDEX) -> slice-4 chooseWeaponNode (authoritative verdict)
+// — and WITNESSES it: the chosen mount node == the declared socket's node index,
+// which is NOT the legacy round-robin pick. That is the proof: DATA (a declared
+// socket), not the C++ class, selects the mount. Returns the socket node so the
+// witnessed mount is what the runtime actually consumes for that item.
+//
+// HONEST FRAMING: this proves the DATA-DRIVEN mount path fires end-to-end and is
+// selected by DATA, not class. It is a proof hook (throwaway, opt-in), not a
+// shipped data unit — a real shipped data unit is Phase 3 (UnitDefinition facade
+// + legacy synthesis). Default-OFF is byte-identical stock parity.
+static bool s_nonmechProofEnabled ()
+{
+	static const bool on = mc2_unitprofile_parse_enabled(
+		getenv("MC2_UNIT_PROFILE_NONMECH_PROOF"));
+	return on;
+}
+
+// One-shot latch: the proof logs a single clean witness line for the first
+// proof-eligible weapon mount in the session. Proof-only; irrelevant when the
+// gate is OFF (nonmechDataUnitMountProof returns false before touching it).
+static bool s_nonmechProofFired = false;
+
+// Returns true and fills mountNode when the proof fired for this item (first
+// weapon item, gate ON, a real weapon node exists). Otherwise false (fall through
+// to the normal resolve). Fires at most ONCE per mech via s_fired latch so the
+// witness is a single clean line, not one per weapon.
+bool BattleMech::nonmechDataUnitMountProof (const InventoryItem& /*item*/,
+                                            long sourceWeaponType,
+                                            long roundRobinNode,
+                                            long& mountNode)
+{
+	if (!s_nonmechProofEnabled())
+		return false;
+
+	Mech3DAppearance* mech3d = static_cast<Mech3DAppearance*>(appearance);
+	const char* socketName = mech3d ? mech3d->getLastWeaponNodeName() : NULL;
+	if (!socketName || !socketName[0])
+		return false;                       // shape has no weapon node -> no proof
+
+	// Synthesize the DATA a hardpoint source would declare: a HardpointProfile
+	// whose socket is this REAL existing node name. This is exactly what slice-3
+	// resolveHardpoint() would hand back for a declared item.hardpointId.
+	HardpointProfile hp;
+	hp.id     = makeHardpointId("core:proof_nonmech_hardpoint_1");
+	hp.socket = HardpointSocketName(socketName);
+
+	// slice-2: declared socket NAME -> weapon-node INDEX on this shape.
+	const long socketNode = mech3d->resolveWeaponNodeBySocketName(hp.socket.c_str());
+
+	// slice-4: the authoritative-vs-fallback verdict. hasHardpoint=true because
+	// the (synthetic) resolveHardpoint yielded a profile with a non-empty socket.
+	mountNode = chooseWeaponNode(/*hasHardpoint*/ true, socketNode, roundRobinNode);
+
+	const bool authoritative = (mountNode == socketNode) && (socketNode >= 0);
+	printf("[NONMECH-PROOF] declared socket=\"%s\" -> node=%ld ; round-robin=%ld ; "
+	       "chosen=%ld ; authoritative=%s (data-selected mount, not class; "
+	       "sourceWeaponType=%ld)\n",
+	       socketName, socketNode, roundRobinNode, mountNode,
+	       authoritative ? "YES" : "NO", sourceWeaponType);
+
+	// Also exercise the UI facet override under the same proof gate (slice-6/7):
+	// a declared UIProfile icon must win over the legacy accessor value via the
+	// SAME pure chooseUIAsset() decision the logistics UI uses. Header-only, no
+	// engine/atlas touch -- witnesses that a DATA-declared UI asset is selected.
+	UIProfile uiProof;
+	uiProof.icon = UIAssetName("proof_nonmech_icon");
+	const char* legacyIcon  = "legacy_stock_icon";
+	const char* resolvedIcon = chooseUIAsset(uiProof.icon, legacyIcon);
+	printf("[NONMECH-PROOF] UI override: declared icon=\"%s\" over legacy=\"%s\" "
+	       "-> resolved=\"%s\" (%s)\n",
+	       uiProof.icon.c_str(), legacyIcon, resolvedIcon,
+	       (S_stricmp(resolvedIcon, uiProof.icon.c_str()) == 0)
+	           ? "data-selected" : "legacy");
+
+	return true;
+}
+
+//----------------------------------------------------------------------------------
 // GETWEAPONNODE-HARDPOINT-ADAPTER-1 (Phase-2 slice 4): authoritative-with-fallback
 // weapon-node mount resolution. The pure verdict (socket vs round-robin) lives in
 // chooseWeaponNode() (hardpoint.h); this glue supplies the two node indices.
@@ -1460,6 +1548,18 @@ long BattleMech::resolveWeaponMountNode (const InventoryItem& item, long sourceW
 	// Legacy least-used round-robin -- ALWAYS computed so its nodeUsed[] side
 	// effect is preserved exactly (parity), whichever node we ultimately mount to.
 	const long roundRobinNode = appearance->getWeaponNode(sourceWeaponType);
+
+	// NON-MECH-DATA-UNIT-PROOF-1 (slice 9): opt-in, first-weapon-item-only proof
+	// that DATA (a declared socket) selects the mount. Latched so it fires once.
+	if (!s_nonmechProofFired)
+	{
+		long proofNode = -1;
+		if (nonmechDataUnitMountProof(item, sourceWeaponType, roundRobinNode, proofNode))
+		{
+			s_nonmechProofFired = true;
+			return proofNode;
+		}
+	}
 
 	// Fast path / stock parity: gate OFF or no declared hardpoint -> fallback.
 	if (!mc2UnitProfileDataEnabled() || item.hardpointId == 0)

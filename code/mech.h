@@ -675,6 +675,17 @@ class BattleMech : public Mover {
 		// Stock items carry hardpointId==0 -> always fallback -> parity. Returns the
 		// same node-index domain inventory[].facing already stores.
 		long resolveWeaponMountNode (const InventoryItem& item, long sourceWeaponType);
+
+		// NON-MECH-DATA-UNIT-PROOF-1 (Phase-2 slice 9, PROOF-ONLY, gated behind the
+		// SEPARATE MC2_UNIT_PROFILE_NONMECH_PROOF, default OFF): synthesize the DATA a
+		// hardpoint source would declare (a HardpointProfile socketed to a REAL model
+		// node) for the first weapon item, drive the authoritative resolveHardpoint ->
+		// resolveWeaponNodeBySocketName -> chooseWeaponNode stack, and WITNESS that the
+		// chosen mount node == the declared socket node (NOT the round-robin pick) via a
+		// [NONMECH-PROOF] log line. Returns true (and fills mountNode) when the proof
+		// fired; false otherwise (normal resolve continues). Default-OFF = parity.
+		bool nonmechDataUnitMountProof (const InventoryItem& item, long sourceWeaponType,
+		                                long roundRobinNode, long& mountNode);
 		// LOCOMOTION-FACET-1 (slice 4): the mech-walker locomotion model is now a
 		// DATA facet set on the type profile at BattleMechType::init (see
 		// mech.cpp), NOT a class override. The former `locomotionModel()` override

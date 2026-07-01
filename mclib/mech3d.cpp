@@ -1340,6 +1340,19 @@ long Mech3DAppearance::resolveWeaponNodeBySocketName (const char* socketName)
 }
 
 //-----------------------------------------------------------------------------
+// NON-MECH-DATA-UNIT-PROOF-1 (Phase-2 slice 9, PROOF-ONLY): nodeId of the LAST
+// declared weapon node ([numSmokeNodes + numWeaponNodes - 1]), or NULL when the
+// shape declares none. The proof hook declares a hardpoint against this REAL
+// existing socket name so no model/asset change is needed. Read-only.
+const char* Mech3DAppearance::getLastWeaponNodeName (void) const
+{
+	if (!mechType || mechType->numWeaponNodes <= 0 || !mechType->nodeData)
+		return NULL;
+	const long idx = mechType->numSmokeNodes + mechType->numWeaponNodes - 1;
+	return mechType->nodeData[idx].nodeId;
+}
+
+//-----------------------------------------------------------------------------
 float Mech3DAppearance::getWeaponNodeRecycle (long node)
 {
 	node -= mechType->numSmokeNodes;

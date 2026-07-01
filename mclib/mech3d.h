@@ -792,6 +792,13 @@ class Mech3DAppearance: public ObjectAppearance
 		// chooseWeaponNode() (hardpoint.h). Used only at load-time mount resolution.
 		virtual long resolveWeaponNodeBySocketName (const char* socketName);
 
+		// NON-MECH-DATA-UNIT-PROOF-1 (Phase-2 slice 9, PROOF-ONLY): return the
+		// nodeId string of the last DECLARED weapon node on this shape, or NULL
+		// when the shape has none. Read-only; used only by the opt-in proof hook
+		// (MC2_UNIT_PROFILE_NONMECH_PROOF) to obtain a REAL existing socket name to
+		// declare a hardpoint against, so the proof needs NO model/asset change.
+		const char* getLastWeaponNodeName (void) const;
+
 		virtual long getLowestWeaponNode (void);
 		
 		virtual float getWeaponNodeRecycle (long node);
