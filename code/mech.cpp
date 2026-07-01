@@ -1587,6 +1587,10 @@ long BattleMech::init (DWORD variantNum)
 	{
 		inventory[curItem].masterID = 0xff;
 		inventory[realItemNum].disabled = true;
+		// LOADOUT-HARDPOINT-JOIN-1: default the optional logical-hardpoint join key
+		// to unset. Stock CSV loadouts carry no hardpoint column, so this stays 0
+		// (legacy positional-CSV mount unchanged). A data source may later set it.
+		inventory[curItem].hardpointId = 0;
 	}
 
 	//Read in everything but weapons and AMMO
@@ -2095,6 +2099,14 @@ long BattleMech::init (DWORD variantNum)
 	// UNITPROFILE-TYPELOAD-SOURCE-1: numJumpJets is final here (loadout scan
 	// complete). This is the real gameplay mech-load path (init(variantNum)).
 	refreshDerivedCapabilities();
+
+	// LOADOUT-HARDPOINT-JOIN-1 (Phase-2 slice 3): report-only, gated
+	// (MC2_UNIT_PROFILE_DATA). Inventory + body locations are final here. Gathers
+	// any DECLARED loadout->hardpoint joins and logs coherence findings; stock
+	// loadouts declare no hardpoint -> nothing gathered -> silent (gate-ON parity).
+	// No runtime/visual-mount change: inventory[].facing / getWeaponNode still own
+	// the actual mount (slice 4 routes it through the HardpointId).
+	validateLoadoutHardpointJoins(variantName);
 
 	return(NO_ERR);
 }

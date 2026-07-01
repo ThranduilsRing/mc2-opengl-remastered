@@ -110,7 +110,89 @@ TEST_CASE("validator: every LIVE reason code is reachable") {
     // UPV_HARDPOINT_SOCKET_MISSING is now LIVE (PRESENTATION-SOCKET-PROFILE-1);
     // its reachability is covered in the declared-socket cases below.
     // The remaining Phase-2 codes exist in the vocabulary but are NOT emitted yet.
-    CHECK(UPV__COUNT == 4);   // vocabulary size lock: 2 live + 2 reserved stubs
+    // LOADOUT-HARDPOINT-JOIN-1 added UPV_HARDPOINT_WEAPON_CLASS_REJECTED and made
+    // UPV_HARDPOINT_DAMAGE_LOCATION_MISSING live -> 4 live + 1 reserved stub.
+    CHECK(UPV__COUNT == 5);   // vocabulary size lock
+}
+
+// -------------------------------------------------------------------------
+// LOADOUT-HARDPOINT-JOIN-1 (Phase-2 slice 3): declared loadout->hardpoint join.
+// Pure check: for each DECLARED join, three coherence rules — weapon mount-class
+// accepted, damage location in schema, socket present. Stock loadouts declare no
+// HardpointId -> empty input -> zero findings (gate-ON parity).
+// -------------------------------------------------------------------------
+
+// Build a well-formed mech energy hardpoint on the right torso, socket present.
+static LoadoutHardpointJoin goodEnergyJoin() {
+    LoadoutHardpointJoin j;
+    j.hardpoint.id = makeHardpointId("RightTorso_Energy_1");
+    addWeaponTag(j.hardpoint, WTAG_ENERGY);
+    j.hardpoint.damageLocation = DLOC_MECH_RTORSO;
+    j.hardpoint.socket = HardpointSocketName("node_rt_energy");
+    j.weaponTag     = WTAG_ENERGY;
+    j.unitSchema    = DMG_MECH_8PART;
+    j.socketPresent = true;
+    return j;
+}
+
+TEST_CASE("join: no declared joins (stock) -> ZERO findings") {
+    std::vector<LoadoutHardpointJoin> none;
+    CHECK(validateLoadoutHardpointJoins(none).empty());
+}
+
+TEST_CASE("join: a fully coherent declared join -> ZERO findings") {
+    std::vector<LoadoutHardpointJoin> joins = { goodEnergyJoin() };
+    CHECK(validateLoadoutHardpointJoins(joins).empty());
+}
+
+TEST_CASE("join: weapon mount-class not accepted -> WEAPON_CLASS_REJECTED") {
+    // AC20 (Ballistic) mounted on an Energy-only hardpoint.
+    LoadoutHardpointJoin j = goodEnergyJoin();
+    j.weaponTag = WTAG_BALLISTIC;
+    std::vector<UnitProfileFinding> f = validateLoadoutHardpointJoins({j});
+    REQUIRE(f.size() == 1);
+    CHECK(f[0].code == UPV_HARDPOINT_WEAPON_CLASS_REJECTED);
+    CHECK(f[0].message != nullptr);
+}
+
+TEST_CASE("join: hardpoint damage location absent from schema -> DAMAGE_LOCATION_MISSING") {
+    // A mech-arm hardpoint declared on a vehicle-facings unit (no arms).
+    LoadoutHardpointJoin j = goodEnergyJoin();
+    j.hardpoint.damageLocation = DLOC_MECH_RARM;
+    j.unitSchema = DMG_VEHICLE_FACINGS;
+    std::vector<UnitProfileFinding> f = validateLoadoutHardpointJoins({j});
+    REQUIRE(f.size() == 1);
+    CHECK(f[0].code == UPV_HARDPOINT_DAMAGE_LOCATION_MISSING);
+}
+
+TEST_CASE("join: declared socket absent on model -> SOCKET_MISSING") {
+    LoadoutHardpointJoin j = goodEnergyJoin();
+    j.socketPresent = false;
+    std::vector<UnitProfileFinding> f = validateLoadoutHardpointJoins({j});
+    REQUIRE(f.size() == 1);
+    CHECK(f[0].code == UPV_HARDPOINT_SOCKET_MISSING);
+}
+
+TEST_CASE("join: a single join can trip all three checks at once") {
+    // Ballistic weapon on an energy-only, wrong-schema, missing-socket hardpoint.
+    LoadoutHardpointJoin j = goodEnergyJoin();
+    j.weaponTag = WTAG_BALLISTIC;              // -> WEAPON_CLASS_REJECTED
+    j.hardpoint.damageLocation = DLOC_MECH_RARM;
+    j.unitSchema = DMG_VEHICLE_FACINGS;        // -> DAMAGE_LOCATION_MISSING
+    j.socketPresent = false;                   // -> SOCKET_MISSING
+    std::vector<UnitProfileFinding> f = validateLoadoutHardpointJoins({j});
+    REQUIRE(f.size() == 3);
+    CHECK(f[0].code == UPV_HARDPOINT_WEAPON_CLASS_REJECTED);
+    CHECK(f[1].code == UPV_HARDPOINT_DAMAGE_LOCATION_MISSING);
+    CHECK(f[2].code == UPV_HARDPOINT_SOCKET_MISSING);
+}
+
+TEST_CASE("join: multiple joins accumulate findings per entry") {
+    std::vector<LoadoutHardpointJoin> joins = { goodEnergyJoin(), goodEnergyJoin() };
+    joins[1].weaponTag = WTAG_MISSILE;   // second one rejected
+    std::vector<UnitProfileFinding> f = validateLoadoutHardpointJoins(joins);
+    REQUIRE(f.size() == 1);
+    CHECK(f[0].code == UPV_HARDPOINT_WEAPON_CLASS_REJECTED);
 }
 
 // -------------------------------------------------------------------------

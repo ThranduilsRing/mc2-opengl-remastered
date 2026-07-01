@@ -45,17 +45,25 @@
 //        validateDeclaredSockets() below; the engine glue supplies the present/absent
 //        bool per declared socket from the loaded shape (Mech3DAppearanceType::init).
 //
+//   UPV_HARDPOINT_DAMAGE_LOCATION_MISSING  (now LIVE — LOADOUT-HARDPOINT-JOIN-1,
+//        Phase-2 slice 3) — a loadout entry DECLARES a HardpointId whose damage
+//        location does not exist in the unit's DamageSchema ("mounts on LeftArm but
+//        the unit's DamageSchema has no LeftArm"). Emitted by the pure
+//        validateLoadoutHardpointJoins() below via hardpointResolvesInSchema().
+//   UPV_HARDPOINT_WEAPON_CLASS_REJECTED  (LIVE — LOADOUT-HARDPOINT-JOIN-1, Phase-2
+//        slice 3) — a loadout entry mounts a weapon whose mount-class is NOT in the
+//        declared hardpoint's accepted weapon-tag set ("AC20 (Ballistic) on an
+//        Energy-only hardpoint"). Emitted via hardpointAcceptsWeapon().
+//
 // STUBBED (Phase-2 reason codes reserved but NOT checked yet — documented so the
 // vocabulary is stable and the check sites are obvious; see roadmap Phase 2):
-//   UPV_HARDPOINT_DAMAGE_LOCATION_MISSING  -- loadout names a damage location the
-//        DamageSchema has no such location for ("references RightArm but schema has none").
 //   UPV_ANIMATION_FALLBACK_MISSING         -- an action is available but the animation
 //        binding profile has no clip/gesture fallback for it (e.g. no JumpLand).
 enum UnitProfileReasonCode {
     // --- LIVE ---
     UPV_JUMP_GRANTED_NO_COMPATIBLE_EXECUTOR = 0,
 
-    // --- STUBBED (Phase 2; not emitted yet) ---
+    // --- LIVE (LOADOUT-HARDPOINT-JOIN-1, Phase-2 slice 3) ---
     UPV_HARDPOINT_DAMAGE_LOCATION_MISSING,
 
     // --- LIVE (PRESENTATION-SOCKET-PROFILE-1, Phase-2 slice 2) ---
@@ -63,6 +71,11 @@ enum UnitProfileReasonCode {
 
     // --- STUBBED (Phase 2; not emitted yet) ---
     UPV_ANIMATION_FALLBACK_MISSING,
+
+    // --- LIVE (LOADOUT-HARDPOINT-JOIN-1, Phase-2 slice 3) ---
+    // Appended AFTER the reserved stub so existing codes keep their numbers (logs /
+    // mod tooling key on the value); the vocabulary never renumbers.
+    UPV_HARDPOINT_WEAPON_CLASS_REJECTED,
 
     UPV__COUNT
 };
@@ -159,6 +172,77 @@ validateDeclaredSockets(const std::vector<DeclaredSocketCheck>& declared) {
             findings.push_back(UnitProfileFinding{
                 UPV_HARDPOINT_SOCKET_MISSING,
                 "declared presentation socket not found on model"});
+        }
+    }
+    return findings;
+}
+
+// -------------------------------------------------------------------------
+// LOADOUT-HARDPOINT-JOIN-1 (Phase-2 slice 3): declared loadout->hardpoint join.
+//
+// A loadout entry MAY optionally name a HardpointId (from data). When it does,
+// this pure check proves the declared join COHERES across the three index spaces
+// the recon found joined-by-nothing today:
+//   1. weapon mount-class  -> the hardpoint's accepted weapon-tag set
+//        (hardpointAcceptsWeapon)          -> UPV_HARDPOINT_WEAPON_CLASS_REJECTED
+//   2. hardpoint damage-loc -> the unit's DamageSchema
+//        (hardpointResolvesInSchema)       -> UPV_HARDPOINT_DAMAGE_LOCATION_MISSING
+//   3. hardpoint socket     -> present on the loaded model
+//        (engine glue supplies the bool)   -> UPV_HARDPOINT_SOCKET_MISSING
+//
+// REPORT-ONLY, PURE. It reasons only over declared joins the caller gathered; a
+// loadout entry that names NO hardpoint is never passed in, so it produces
+// nothing. Stock loadouts declare no HardpointId -> empty input -> ZERO findings
+// -> gate-ON stock parity. It does NOT touch getWeaponNode / inventory[].facing /
+// any mount or render path — the actual visual mount stays legacy (slice 4).
+//
+// The `socketPresent` bool is the SAME impure split as DeclaredSocketCheck: the
+// engine glue does the model node-name lookup and hands this header a bool, so
+// the header stays engine/GL/IO-free and offline-testable. A hardpoint whose
+// socket field is EMPTY ("not mapped yet") is not socket-checked — an unmapped
+// socket is a different (future) finding, not a "missing on model" one; the glue
+// signals this by setting socketPresent=true for empty-socket joins.
+
+// One declared loadout->hardpoint join to validate. The caller (engine glue at
+// LogisticsData::initVariants / spawn) resolves the loadout entry's optional
+// HardpointId to its HardpointProfile, reads the weapon's mount-class, knows the
+// unit's DamageSchema, and supplies socketPresent per the loaded model.
+struct LoadoutHardpointJoin {
+    HardpointProfile hardpoint;      // the resolved declared hardpoint
+    WeaponTag        weaponTag;      // the mounted weapon's mount-class
+    DamageSchemaId   unitSchema;     // the unit's damage schema
+    bool             socketPresent;  // engine glue: node of hardpoint.socket exists?
+
+    LoadoutHardpointJoin()
+        : weaponTag(WTAG_ENERGY), unitSchema(DMG_MECH_8PART), socketPresent(true) {}
+};
+
+// LIVE CHECK: for each declared join, emit one finding per failed coherence rule
+// (a single join can trip more than one). Empty input -> no findings (the
+// stock-parity guarantee: stock loadouts declare no HardpointId). Order of
+// emitted findings mirrors the check order above so glue can pair them with the
+// join it walked.
+inline std::vector<UnitProfileFinding>
+validateLoadoutHardpointJoins(const std::vector<LoadoutHardpointJoin>& joins) {
+    std::vector<UnitProfileFinding> findings;
+    for (const LoadoutHardpointJoin& j : joins) {
+        // 1. weapon mount-class accepted by this hardpoint?
+        if (!hardpointAcceptsWeapon(j.hardpoint, j.weaponTag)) {
+            findings.push_back(UnitProfileFinding{
+                UPV_HARDPOINT_WEAPON_CLASS_REJECTED,
+                "weapon mount-class not accepted by the declared hardpoint"});
+        }
+        // 2. hardpoint's damage location exists in the unit's DamageSchema?
+        if (!hardpointResolvesInSchema(j.hardpoint, j.unitSchema)) {
+            findings.push_back(UnitProfileFinding{
+                UPV_HARDPOINT_DAMAGE_LOCATION_MISSING,
+                "declared hardpoint damage location absent from unit DamageSchema"});
+        }
+        // 3. hardpoint's model socket present on the loaded model?
+        if (!j.socketPresent) {
+            findings.push_back(UnitProfileFinding{
+                UPV_HARDPOINT_SOCKET_MISSING,
+                "declared hardpoint socket not found on model"});
         }
     }
     return findings;

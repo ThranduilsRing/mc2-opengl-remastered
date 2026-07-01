@@ -126,6 +126,10 @@
 #include "move_recon.h"  // MC2_MOVE_RECON per-frame pathfinding cost instrumentation
 #include "../GameOS/gameos/diagnostic_trace.h"  // TARGETING-GUARD-1 chokepoint trace
 #include <cstdlib>  // TARGETING-GUARD-1: std::getenv
+#include "unitprofile.h"             // LOADOUT-HARDPOINT-JOIN-1: mc2UnitProfileDataEnabled()
+#include "unit_profile_validator.h"  // LOADOUT-HARDPOINT-JOIN-1: validateLoadoutHardpointJoins()
+#include "hardpoint.h"               // LOADOUT-HARDPOINT-JOIN-1: HardpointProfile / WeaponTag
+#include <cmponent.h>                // LOADOUT-HARDPOINT-JOIN-1: ComponentFormType (weapon form)
 
 //--------
 // DEFINES
@@ -3243,6 +3247,66 @@ DamageSchemaId Mover::damageSchema (void) const {
 	if (type)
 		return type->profile().damageSchema;
 	return DMG_VEHICLE_FACINGS;
+}
+
+//---------------------------------------------------------------------------
+
+// LOADOUT-HARDPOINT-JOIN-1 (Phase-2 slice 3). Map a weapon's coarse component
+// FORM (the legacy Energy/Ballistic/Missile bucket getWeaponNode round-robins
+// over) to the typed WeaponTag the hardpoint accept-set speaks. Returns false for
+// non-weapon / unmapped forms so a bad slot is skipped rather than mis-tagged.
+static bool weaponFormToTag (ComponentFormType form, WeaponTag& out) {
+	switch (form) {
+		case COMPONENT_FORM_WEAPON_ENERGY:    out = WTAG_ENERGY;    return true;
+		case COMPONENT_FORM_WEAPON_BALLISTIC: out = WTAG_BALLISTIC; return true;
+		case COMPONENT_FORM_WEAPON_MISSILE:   out = WTAG_MISSILE;   return true;
+		default: return false;
+	}
+}
+
+// Gated report-only loadout->hardpoint join validation. Walks inventory[],
+// gathers only DECLARED joins (hardpointId != 0 AND resolvable to a profile),
+// runs the pure validator, and logs findings. NO runtime/visual-mount change.
+// Stock loadouts declare no hardpointId -> `joins` empty -> silent (parity).
+void Mover::validateLoadoutHardpointJoins (const char* unitLabel) const {
+	if (!mc2UnitProfileDataEnabled())
+		return;
+
+	const DamageSchemaId schema = damageSchema();
+	std::vector<LoadoutHardpointJoin> joins;
+	for (long i = 0; i < MAX_MOVER_INVENTORY_ITEMS; i++) {
+		const InventoryItem& it = inventory[i];
+		if (it.masterID == 0xff)
+			continue;                       // empty slot
+		if (it.hardpointId == 0)
+			continue;                       // no declared hardpoint -> legacy CSV path
+		HardpointProfile hp;
+		if (!resolveHardpoint(it.hardpointId, hp))
+			continue;                       // declared id has no profile (base: none)
+		WeaponTag tag;
+		if (!weaponFormToTag(MasterComponent::masterList[it.masterID].getForm(), tag))
+			continue;                       // non-weapon slot carrying a hardpoint: skip
+		LoadoutHardpointJoin j;
+		j.hardpoint     = hp;
+		j.weaponTag     = tag;
+		j.unitSchema    = schema;
+		// Socket presence is a model-node lookup this slice does not perform (that is
+		// the getWeaponNode adapter's territory, slice 4). Report the OTHER two joins
+		// now; treat the socket as present so we do not emit a spurious SOCKET_MISSING
+		// here (the authoritative socket check lives in Mech3DAppearanceType::init).
+		j.socketPresent = true;
+		joins.push_back(j);
+	}
+
+	// Qualified ::-call targets the free pure validator (unit_profile_validator.h),
+	// not this same-named member -- avoids accidental recursion.
+	const std::vector<UnitProfileFinding> findings = ::validateLoadoutHardpointJoins(joins);
+	for (const UnitProfileFinding& f : findings) {
+		printf("[UnitProfile:VALIDATE] %s: %s (reason=%d)\n",
+		       unitLabel ? unitLabel : "<unknown>",
+		       f.message ? f.message : "",
+		       static_cast<int>(f.code));
+	}
 }
 
 //---------------------------------------------------------------------------
