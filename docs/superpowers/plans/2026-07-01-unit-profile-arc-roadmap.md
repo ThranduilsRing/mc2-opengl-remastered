@@ -64,7 +64,15 @@ mods/MyUnit/  unit.fit  presentation.fit  hardpoints.fit  loadouts/HBK-4G.fit
 ```
 Validator must yell in modder terms, e.g.: `Missing socket: RightTorso_Ballistic_1` · `Weapon AC20 requires Ballistic hardpoint` · `Jump granted but no JumpExecutor-compatible locomotion` · `AnimationGraph missing JumpLand` · `Damage location RightArm referenced but schema has no RightArm`. That is the line between "mod-friendly" and "modders grep C++ crashes."
 
-## Discipline (every slice)
-- Canonical worktree `.claude/worktrees/unit-profile-seam`, branch `claude/unit-profile-seam`. Grep-anchored edits (line numbers drift). Full relink on layout change.
-- Offline doctest RED→GREEN before engine glue. Gate default-OFF; gate-OFF must be behavioral parity (tier1). Gate-ON dump proof per slice.
-- Honest promise: today = data-toggled capabilities on existing types; near-term = class-check removal + mod-visible flags; real future = new archetypes with data-defined locomotion/damage/actions/presentation.
+## Standard slice-dispatch contract (applies to EVERY slice; subagents get "implement SLICE-X per roadmap + recon, standard contract")
+- **Worktree:** `A:/Games/mc2-opengl-src/.claude/worktrees/unit-profile-seam`, branch `claude/unit-profile-seam`. Root `code/` is STALE — never edit it. `preflight_fast` is hardwired to the nifty worktree and will falsely report `branch_ok=false`; verify instead with `git -C <worktree> rev-parse --abbrev-ref HEAD` == `claude/unit-profile-seam`.
+- **Edits:** grep-anchored (line numbers drift). Full relink on header/layout change. Don't touch the stock `case COMPONENT_FORM_JUMPJET` no-break fall-through, or the FK/skinning below `setGestureGoal`.
+- **Gate:** everything new behind `MC2_UNIT_PROFILE_DATA` (via `mc2UnitProfileDataEnabled()`), default OFF. Gate-OFF must be behavioral parity. run_smoke propagates the gate (fixed `cfa2f292`).
+- **Offline-first:** any pure logic goes into `tests/unit/` doctest (standalone `build64-tests`, GL/IO-free), RED→GREEN, BEFORE engine glue. Reuse the Phase-0 contracts (`unit_action.h`, `action_executor_registry.h`).
+- **Verify (single mission mc2_01 ONLY — never full tier1 per slice):** commit code FIRST (survives a process death). Build (VS cmake `--target mc2`) → deploy v0.3 ONLY (`--build-dir build64/RelWithDebInfo`; build `mc2_launcher` first if deploy complains) → gate-ON `--mission mc2_01 --no-lease --exe A:/Games/mc2-opengl/mc2-win64-v0.3/mc2.exe` with `MC2_DEBUG_STATE_DUMP=1 MC2_DEBUG_STATE_DUMP_HISTORY=1`: confirm 4 jet-mechs `can_perform_jump=TRUE` in `v0.3/debug_state/history_*.json` → gate-OFF same mission: PASS, Δdestroys +0.
+- **Commit:** prefix `feat/refactor/test(unit-profile):` + trailer `Co-Authored-By: Claude Opus 4.8 <noreply@anthropic.com>`. Update `.claude/unit-kind-classcheck-audit.md` when a class-check is retired/isolated.
+- **Report terse** (keep main context lean): what changed, commit SHAs, build result, gate-ON true-count, gate-OFF parity, any decision future slices must honor. NEVER fake build/smoke output.
+- Full tier1 is banked ONCE at arc end before any merge — not per slice.
+
+## Honest promise
+today = data-toggled capabilities on existing types; near-term = class-check removal + mod-visible flags; real future = new archetypes with data-defined locomotion/damage/actions/presentation.
