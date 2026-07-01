@@ -985,6 +985,10 @@ def main():
                             "MC2_FRAME_PASS_STATS",
                             "MC2_FRAME_PASS_STATS_EVERY",
                             "MC2_DEBUG_STATE_DUMP",
+                            # UNITPROFILE-TYPELOAD-SOURCE-1: data-driven unit
+                            # capability gate. Without this allowlisted Popen
+                            # drops it and the gate-ON witness proof is inert.
+                            "MC2_UNIT_PROFILE_DATA",
                             "MC2_PRESWAP_FINISH",
                             "MC2_MODERN_TERRAIN_SURFACE",
                             "MC2_MODERN_TERRAIN_PATCHES",
