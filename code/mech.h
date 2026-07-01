@@ -664,12 +664,13 @@ class BattleMech : public Mover {
 		// real load path where numJumpJets is final. Transitional: a future slice
 		// moves loadout-derivation up to the type layer, retiring this entirely.
 		void refreshDerivedCapabilities (void);
-		// ACTION-EXECUTOR-REGISTRY-1 (slice 3): a BattleMech is a mech-walker, the
-		// only locomotion model the jump executor is registered compatible with.
-		// This override IS the transitional class-derivation the audit tracks;
-		// LOCOMOTION-FACET-1 replaces it with a data facet. Replaces the old
-		// hasJumpExecutor()==true class virtual (executor now registry-resolved).
-		virtual int  locomotionModel (void) const { return LOCO_MECH_WALKER; }   // legacy mech jump path
+		// LOCOMOTION-FACET-1 (slice 4): the mech-walker locomotion model is now a
+		// DATA facet set on the type profile at BattleMechType::init (see
+		// mech.cpp), NOT a class override. The former `locomotionModel()` override
+		// (return LOCO_MECH_WALKER) was removed — Mover::locomotionModel() reads
+		// UnitProfile::locomotion for every unit, so this class no longer answers
+		// the locomotion question in code. This retired the last executor-shaped
+		// class-check the audit tracked.
 		virtual bool canJump (void) {
 			if (mc2UnitProfileDataEnabled()) return canPerform(UnitAction::Jump);
 			return (numJumpJets > 0);           // original

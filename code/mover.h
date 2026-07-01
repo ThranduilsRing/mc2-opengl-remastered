@@ -1664,15 +1664,15 @@ class Mover : public GameObject {
 		// unit_action.h contract. canPerform() is now a thin adapter over it.
 		virtual ActionAvailability queryAction (UnitAction a) const;
 		bool         canPerform    (UnitAction a) const { return queryAction(a) == ActionAvailability::Available; }
-		// ACTION-EXECUTOR-REGISTRY-1 (slice 3): TRANSITIONAL locomotion-model id.
-		// This is the ONE place the executor's class-derivation is now allowed to
-		// live: base Mover is a non-jump locomotion model (wheeled), BattleMech
-		// overrides to the mech-walker. queryAction() resolves the jump executor
-		// through theActionExecutorRegistry().isCompatible(Jump, locomotionModel())
-		// instead of the old hasJumpExecutor() class virtual. LOCOMOTION-FACET-1
-		// (slice 4) replaces this class-derivation with a data facet, so that
-		// swap touches ONLY this method — the isolation seam.
-		virtual int  locomotionModel (void) const { return LOCO_WHEELED; }   // base: non-jump model
+		// LOCOMOTION-FACET-1 (slice 4): DATA read, no longer class-derived. The
+		// locomotion model is a facet on the unit's type profile (UnitProfile::
+		// locomotion), populated at type-load: LOCO_MECH_WALKER for mechs,
+		// LOCO_WHEELED for the base/vehicle default, optionally overridden by a
+		// `.fit [UnitProfile] Locomotion=` token. queryAction() feeds it into
+		// theActionExecutorRegistry().isCompatible(Jump, locomotionModel()). No
+		// longer virtual — the value comes from data, not the C++ class, so the
+		// BattleMech override was removed. Defined in mover.cpp (needs ObjectType).
+		int  locomotionModel (void) const;   // reads getObjectType()->profile().locomotion
 		virtual bool canJump (void) {
 			if (mc2UnitProfileDataEnabled()) return canPerform(UnitAction::Jump);
 			return false;                       // original Mover behavior

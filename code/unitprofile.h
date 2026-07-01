@@ -3,6 +3,7 @@
 // UNIT-PROFILE-SEAM-1: static baseline facets (ObjectType) + current runtime
 // facets (Mover). Slice 1 facet = capability.
 #include "capability.h"
+#include "locomotion_facet.h"          // LocomotionModel enum + parseLocomotionModel
 
 bool mc2_unitprofile_parse_enabled(const char* envValue);   // pure, testable
 bool mc2UnitProfileDataEnabled();                            // cached getenv
@@ -10,6 +11,13 @@ bool mc2UnitProfileDataEnabled();                            // cached getenv
 class UnitProfile {                  // static, on ObjectType (flyweight)
   public:
     CapabilitySet baselineCapabilities;
+    // LOCOMOTION-FACET-1 (slice 4): data-owned movement mode. Replaces the
+    // transitional Mover/BattleMech locomotionModel() class-derivation. Default
+    // is LOCO_WHEELED (a non-jump model), matching slice 3's base-Mover value;
+    // BattleMechType::init sets LOCO_MECH_WALKER at type-load, and an optional
+    // `.fit [UnitProfile] Locomotion=` token overrides either. Mover::
+    // locomotionModel() now reads THIS field instead of asking "is BattleMech?".
+    LocomotionModel locomotion = LOCO_WHEELED;
 };
 struct UnitRuntimeState {            // mutable, on Mover
     CapabilitySet currentCapabilities;

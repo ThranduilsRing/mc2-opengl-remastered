@@ -18,6 +18,12 @@ void populateProfileFromFit(FitIniFile& fit, UnitProfile& p) {
         bool jump = false;
         if (fit.readIdBoolean("Jump", jump) == NO_ERR && jump)
             p.baselineCapabilities.set(CAP_JUMP, true);
+        // LOCOMOTION-FACET-1 (slice 4): optional data override of the locomotion
+        // model. Absent key -> p.locomotion keeps whatever the type-load default
+        // set (walker for mechs, wheeled otherwise), so stock .fits are parity.
+        char loco[64] = {0};
+        if (fit.readIdString("Locomotion", loco, sizeof(loco)) == NO_ERR)
+            p.locomotion = parseLocomotionModel(loco, p.locomotion);
     }
 }
 

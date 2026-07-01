@@ -3209,6 +3209,26 @@ ActionAvailability Mover::queryAction(UnitAction a) const {
 
 //---------------------------------------------------------------------------
 
+// LOCOMOTION-FACET-1 (slice 4): locomotion model resolved from the DATA facet on
+// the unit's type profile, not the C++ class. BattleMechType::init sets the
+// facet to LOCO_MECH_WALKER at type-load; the base/vehicle default is LOCO_WHEELED
+// (UnitProfile's field initializer); an optional `.fit [UnitProfile] Locomotion=`
+// token can override either. This is the isolation-seam swap the audit tracked:
+// the value now comes from data, so the old virtual + BattleMech override are
+// gone and this single read replaces both class sites. A null type falls back to
+// the base default so early-init paths never crash.
+int Mover::locomotionModel (void) const {
+	// getObjectType() is a non-const legacy accessor but does not mutate; the
+	// read is logically const. const_cast keeps locomotionModel()/queryAction()
+	// const (their callers query availability without a mutable Mover).
+	ObjectTypePtr type = const_cast<Mover*>(this)->getObjectType();
+	if (type)
+		return type->profile().locomotion;
+	return LOCO_WHEELED;
+}
+
+//---------------------------------------------------------------------------
+
 float Mover::getEcmRange (void) {
 
 	if ((ecm != 255))

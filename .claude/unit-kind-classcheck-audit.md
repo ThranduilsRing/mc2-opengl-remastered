@@ -155,13 +155,21 @@ All remaining executor class-knowledge is consolidated into ONE method:
 
 | anchor | pattern | current behavior · axis | transitional / future query | owning facet · slice · risk |
 |---|---|---|---|---|
-| `mover.h` `Mover::locomotionModel()` | `return LOCO_WHEELED;` (base) | non-jump locomotion model id · **locomotion** | **NOW:** transitional class-derivation (base=wheeled). **FUTURE:** data facet lookup | locomotion · **LOCOMOTION-FACET-1 (slice 4)** · LOW |
-| `mech.h` `BattleMech::locomotionModel()` | `return LOCO_MECH_WALKER;` | mech-walker locomotion model id · **locomotion** | **NOW:** transitional class override — the ONE remaining executor class-check. **FUTURE:** replaced by a data facet; this accessor is the isolation seam so the swap touches one method | locomotion · **LOCOMOTION-FACET-1 (slice 4)** · LOW |
+| `mover.h` `Mover::locomotionModel()` | ~~`return LOCO_WHEELED;` (base)~~ | non-jump locomotion model id · **locomotion** | **DONE (LOCOMOTION-FACET-1):** de-virtualized; now a single DATA read `getObjectType()->profile().locomotion` (defined in `mover.cpp`). Class-derivation removed. | locomotion · **LOCOMOTION-FACET-1 (slice 4) — RETIRED** · LOW |
+| `mech.h` `BattleMech::locomotionModel()` | ~~`return LOCO_MECH_WALKER;`~~ | mech-walker locomotion model id · **locomotion** | **DONE (LOCOMOTION-FACET-1):** override **REMOVED**. The mech-walker value is now a data facet set once at type-load (`BattleMechType::init`, `mech.cpp` `profile().locomotion = LOCO_MECH_WALKER;`) — the last class-touch, a type-keyed data default a future `UnitDefinition` load supplies directly. | locomotion · **LOCOMOTION-FACET-1 (slice 4) — RETIRED** · LOW |
 
-**Audit case now honestly reported:** a "capability-granted vehicle" (data
-grants `CAP_JUMP` but locomotion model is not mech-walker) now resolves
-`MissingExecutor` from the registry instead of silently-`Available`. Owner of
-the class-derivation removal: **LOCOMOTION-FACET-1**.
+**LOCOMOTION-FACET-1 (slice 4) — DONE.** The two `locomotionModel()` class
+sites are reduced to ONE data read (`Mover::locomotionModel()` →
+`UnitProfile::locomotion`, a `LocomotionModel` field defaulted to `LOCO_WHEELED`).
+The mech-walker value moved to `BattleMechType::init` as a type-load facet
+default (last class-touch, clearly the seam a future `UnitDefinition` removes),
+optionally overridden by a `.fit [UnitProfile] Locomotion=` token
+(`parseLocomotionModel`, `code/locomotion_facet.h`; pure logic covered by
+`tests/unit/test_unit_actions.cpp`). Values unchanged from slice 3 → gate-ON
+parity. The "capability-granted vehicle" audit case still resolves
+`MissingExecutor` (its wheeled/tracked data model isn't jump-compatible), and a
+vehicle whose `.fit` declares `Locomotion=MechWalker` would now be compatible —
+proving the model is data-owned, not class-locked.
 
 ### Completeness check (Task 8, Step 3)
 

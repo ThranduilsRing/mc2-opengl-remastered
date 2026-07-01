@@ -12,6 +12,7 @@
 #include "doctest.h"
 #include "unit_action.h"
 #include "action_executor_registry.h"
+#include "locomotion_facet.h"
 
 // ---------------------------------------------------------------------------
 // resolveAction() precedence
@@ -294,4 +295,56 @@ TEST_CASE("slice3 binding: mech-walker jet -> Available; vehicle -> MissingExecu
     // No capability at all is still a schema error regardless of locomotion.
     CHECK(queryJumpVia(reg, /*cap=*/false, LOCO_MECH_WALKER)
           == ActionAvailability::InvalidForUnitSchema);
+}
+
+// ---------------------------------------------------------------------------
+// LOCOMOTION-FACET-1 (slice 4): data-owned locomotion model.
+//
+// The locomotion model id that queryAction feeds into isCompatible() no longer
+// comes from the C++ class (Mover=wheeled, BattleMech=mech-walker). It is a data
+// facet carried on the UnitProfile, resolved from an optional
+// `.fit [UnitProfile] Locomotion=` token via parseLocomotionModel(), falling
+// back to the caller's class-default when the token is absent. This slice moves
+// WHERE the value comes from, not the values -- so mech-default + no token still
+// resolves LOCO_MECH_WALKER and a jet mech is still Available.
+// ---------------------------------------------------------------------------
+
+TEST_CASE("locomotion facet: absent/empty/null token falls back to class-default") {
+    // Stock .fits carry no Locomotion key -> the class-default is preserved,
+    // which is the whole parity contract of this slice.
+    CHECK(parseLocomotionModel(nullptr, LOCO_MECH_WALKER) == LOCO_MECH_WALKER);
+    CHECK(parseLocomotionModel("",      LOCO_MECH_WALKER) == LOCO_MECH_WALKER);
+    CHECK(parseLocomotionModel(nullptr, LOCO_WHEELED)     == LOCO_WHEELED);
+    // Unknown token also falls back (never guesses).
+    CHECK(parseLocomotionModel("Spider", LOCO_WHEELED)    == LOCO_WHEELED);
+}
+
+TEST_CASE("locomotion facet: recognized tokens map to the enum (case-insensitive)") {
+    CHECK(parseLocomotionModel("MechWalker", LOCO_WHEELED) == LOCO_MECH_WALKER);
+    CHECK(parseLocomotionModel("mechwalker", LOCO_WHEELED) == LOCO_MECH_WALKER);
+    CHECK(parseLocomotionModel("Tracked",    LOCO_WHEELED) == LOCO_TRACKED);
+    CHECK(parseLocomotionModel("Wheeled",    LOCO_MECH_WALKER) == LOCO_WHEELED);
+    CHECK(parseLocomotionModel("HOVER",      LOCO_WHEELED) == LOCO_HOVER);
+    CHECK(parseLocomotionModel("Infantry",   LOCO_WHEELED) == LOCO_INFANTRY);
+}
+
+TEST_CASE("locomotion facet: data-resolved model drives jump executor compatibility") {
+    // The end-to-end slice-4 seam, pure: the facet resolves a locomotion model,
+    // and THAT id (not the class) is what the registry compatibility uses.
+    ActionExecutorRegistry reg;
+    reg.bind(UnitAction::Jump, kMechJumpExecutor, {LOCO_MECH_WALKER}); // == singleton
+
+    // Mech type default, no token -> MechWalker -> a jet mech is Available.
+    const LocomotionModel mechModel = parseLocomotionModel(nullptr, LOCO_MECH_WALKER);
+    CHECK(queryJumpVia(reg, /*cap=*/true, mechModel) == ActionAvailability::Available);
+
+    // Vehicle type default, no token -> Wheeled -> data-granted CAP_JUMP still
+    // resolves MissingExecutor (the honest audit case, now data-driven).
+    const LocomotionModel vehModel = parseLocomotionModel(nullptr, LOCO_WHEELED);
+    CHECK(queryJumpVia(reg, /*cap=*/true, vehModel) == ActionAvailability::MissingExecutor);
+
+    // A vehicle whose .fit DECLARES Locomotion=MechWalker would now be compatible
+    // -- proving the model is data-owned, not class-locked.
+    const LocomotionModel overridden = parseLocomotionModel("MechWalker", LOCO_WHEELED);
+    CHECK(queryJumpVia(reg, /*cap=*/true, overridden) == ActionAvailability::Available);
 }

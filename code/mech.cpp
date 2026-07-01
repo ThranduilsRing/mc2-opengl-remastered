@@ -737,6 +737,14 @@ long BattleMechType::init (FilePtr objFile, unsigned long fileSize)
 	dynamics.setType(DYNAMICS_MECH);
 	dynamics.init(&mechCSVFile);
 	
+	// LOCOMOTION-FACET-1 (slice 4): a mech's data-owned locomotion facet defaults
+	// to the mech-walker model (was the BattleMech::locomotionModel() class
+	// override). Set BEFORE the .fit read so an optional [UnitProfile] Locomotion=
+	// token can override it; stock .fits omit the key -> walker preserved (parity
+	// with slice 3). This is the last class-touch: a data default keyed by type,
+	// which a future full UnitDefinition load will supply directly.
+	profile().locomotion = LOCO_MECH_WALKER;
+
 	// UNIT-PROFILE-SEAM-1: optional .fit [UnitProfile] data read (additive).
 	populateProfileFromFit(mechFile, profile());
 
