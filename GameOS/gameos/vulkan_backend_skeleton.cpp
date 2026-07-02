@@ -6750,6 +6750,715 @@ done:
     return ok;
 }
 
+// ============================================================================
+// WATER-MVP-ORACLE-1 -- headless clip-space oracle for the water fast-path VS.
+// ============================================================================
+//
+// PURPOSE. De-risk the single highest-risk trap of the real water port (per the
+// L7.4 recon): reproducing the GL water vertex shader's clip-space output --
+// INCLUDING the razor-thin reverse-Z depth fudge -- BIT-TIGHT under a Vulkan
+// std140 UBO pack, without silently transposing the MVP (the LM1 / SSAO-2b /
+// fog-N0 transpose trap). A symmetric or identity matrix CANNOT catch a
+// transpose, so this fixture uses an ASYMMETRIC / sheared test MVP with distinct
+// off-diagonals.
+//
+// THE GL PRODUCER (gos_terrain_water_fast_mdi.vert:283-286):
+//     vec4 clip = u_worldToClipGL * vec4(worldPos, 1.0);
+//     clip.z   += WATER_DEPTH_FUDGE_FAST * clip.w;     // reverse-Z, PRE-divide
+// u_worldToClipGL is the baked terrain/dispatch MVP (armed ->
+// gos_terrain_indirect_getDispatchMvp16(), else gos_GetTerrainMVPMat4();
+// gameos_graphics.cpp:3527-3531), uploaded to the flat `uniform mat4` via
+//     glUniformMatrix4fv(loc, 1, GL_FALSE, wMvp)   // gameos_graphics.cpp:3532
+// GL_FALSE => the 16 raw floats are read COLUMN-MAJOR by GLSL, so the shader
+// effectively computes clip[r] = sum_c m[c*4+r]*worldPos[c]. This is the engine's
+// own authoritative CPU mirror `projZ` (gos_terrain_indirect.cpp:3519-3529):
+//     cz = m[0*4+2]*x + m[1*4+2]*y + m[2*4+2]*z + m[3*4+2]
+//     cw = m[0*4+3]*x + m[1*4+3]*y + m[2*4+3]*z + m[3*4+3]
+// (byte convention determined from the FILL/read code, NOT comments.)
+//
+// THE VK PACK UNDER TEST. water_mvp.frag declares `mat4 worldToClipGL` with NO
+// qualifier -> column_major (std140 default). The CPU packs the SAME 16 raw
+// floats GL uploads (no transpose). `worldToClipGL * worldPos` then computes
+// clip[r] = sum_c m[c*4+r]*worldPos[c] == projZ == the GL water VS. This is the
+// CORRECT convention (the deliverable). The WRONG pack (row_major qualifier, same
+// raw bytes, == packing the transpose into a column_major mat4) reads the
+// transpose and DIVERGES; the fixture runs that too and asserts divergence, so a
+// future regression re-diverges visibly (honest micro-check, not tautological).
+//
+// TOLERANCE 0. Readback target is R32G32B32A32_SFLOAT (full float32, no half
+// rounding). Test MVP entries + worldPos are small integers / exact binary
+// fractions chosen so every product/sum + the fudge is exactly representable, so
+// the GPU result must EQUAL the CPU `projZ` reference bit-for-bit.
+
+// The asymmetric / sheared test MVP as the 16 RAW FLOATS GL WOULD UPLOAD
+// (glUniformMatrix4fv GL_FALSE). Index i = the i-th float in memory, exactly as
+// g_dispatchMvp16 / terrain_mvp_ sit. projZ (below) reads this array
+// column-major. Deliberately asymmetric: every off-diagonal differs from its
+// transpose partner, and the last column (indices 12,13,14,15 -- the
+// translation/w row under column-major read) is non-trivial, so a transpose is
+// unmistakable. All entries are exact binary fractions (halves/quarters).
+static const float kWaterMvpRaw16[16] = {
+    //  These 16 floats are the GL-uploaded bytes m[0..15].
+    //  Under the column-major read GLSL performs, they form the matrix whose
+    //  COLUMNS are (m0..m3), (m4..m7), (m8..m11), (m12..m15).
+     1.5f,  0.25f,  0.5f,   0.0f,   // m[0..3]
+     0.75f, 2.0f,  -0.5f,   0.0f,   // m[4..7]
+    -0.25f, 0.125f, 1.25f,  0.5f,   // m[8..11]   (m11=0.5 -> clip.w gets +0.5*z)
+     3.0f, -4.0f,   8.0f,   1.0f,   // m[12..15]  (translation-ish; m15=1)
+};
+
+// WATER_DEPTH_FUDGE_FAST -- LOCKSTEP with mc2depth::WATER_DEPTH_FUDGE_FAST
+// (mclib/terrain_depth_bias.h:77) and shaders/include/terrain_depth_bias.hglsl:65
+// (both byte-equal 0.00025f). Hardcoded here (not #include'd) to keep this probe
+// TU free of the mclib include path, matching how the other fixtures inline their
+// known constants. 0.00025 is NOT exactly representable in binary; the compare
+// tolerance stays 0 because BOTH the GPU shader and the CPU `projZ` reference use
+// the SAME rounded float32 literal and the SAME pre-divide `z += fudge*w` fma-free
+// order, so they round identically.
+static const float kWaterDepthFudgeFast = 0.00025f;
+
+// CPU reference: the EXACT GL water VS math via the engine's authoritative
+// column-major read `projZ` + the reverse-Z pre-divide fudge. `m` is the 16 raw
+// GL-uploaded floats. Returns (clip.z, clip.w, depth, depth) post-fudge, matching
+// water_mvp.frag's output vector.
+static void watermvp_cpu_ref(const float m[16], const float wp[3], float out[4]) {
+    const float x = wp[0], y = wp[1], z = wp[2];
+    // projZ (gos_terrain_indirect.cpp:3519-3529): column-major read.
+    float cz = m[0*4+2]*x + m[1*4+2]*y + m[2*4+2]*z + m[3*4+2];
+    float cw = m[0*4+3]*x + m[1*4+3]*y + m[2*4+3]*z + m[3*4+3];
+    cz += kWaterDepthFudgeFast * cw;   // reverse-Z, PRE-divide (matches shader)
+    const float depth = cz / cw;
+    out[0] = cz; out[1] = cw; out[2] = depth; out[3] = depth;
+}
+
+bool mc2_vulkan_probe_watermvp_fixture(const char* spvDir) {
+    if (!ensure_volk_initialized()) return false;
+
+    g_edgefog_validation_saw_error = false; // shared validation flag (same TU)
+
+    // std140 layout mirror of water_mvp.frag's WaterMvpParams. mat4 (64B) +
+    // vec4[8] (128B) + vec4 fudge (16B) = 208B.
+    static const int kPointCount = 8;
+    struct WaterMvpParams {
+        float worldToClipGL[16];   // @0   column_major (std140 default)
+        float worldPos[kPointCount][4]; // @64  vec4[8], .xyz used
+        float fudge[4];            // @192 .x = WATER_DEPTH_FUDGE_FAST
+    };
+    static_assert(sizeof(WaterMvpParams) == 208, "WaterMvpParams std140 offsets drifted");
+
+    // KNOWN test worldPos points (exact binary fractions). Chosen so cw != 0 for
+    // every point under kWaterMvpRaw16 (cw = 0.5*z + 1.0), and to spread across
+    // sign/magnitude so an accidental symmetry can't mask a transpose.
+    const float pts[kPointCount][3] = {
+        {  1.0f,   0.0f,   0.0f },
+        {  0.0f,   1.0f,   0.0f },
+        {  0.0f,   0.0f,   1.0f },
+        {  2.0f,  -3.0f,   4.0f },
+        { -5.0f,   6.0f,  -2.0f },
+        {  8.0f,   8.0f,   8.0f },
+        { -1.5f,   0.25f, 10.0f },
+        {  0.5f,  -0.5f,  -6.0f },
+    };
+
+    const uint32_t W = (uint32_t)kPointCount, H = 1;
+    const VkFormat kColorFmt = VK_FORMAT_R32G32B32A32_SFLOAT; // exact float32 readback
+
+    // ---- Optional validation layer + debug-utils messenger ------------------
+    std::vector<const char*> layers;
+    std::vector<const char*> instExts;
+    std::vector<VkValidationFeatureEnableEXT> valFeatures;
+    const char* valPreset = "off";
+    bool wantValidation = resolve_validation_preset(valFeatures, valPreset);
+    if (wantValidation) {
+        uint32_t layerCount = 0;
+        vkEnumerateInstanceLayerProperties(&layerCount, nullptr);
+        std::vector<VkLayerProperties> avail(layerCount);
+        if (layerCount) vkEnumerateInstanceLayerProperties(&layerCount, avail.data());
+        const char* want = "VK_LAYER_KHRONOS_validation";
+        bool found = false;
+        for (const auto& lp : avail) {
+            if (std::strcmp(lp.layerName, want) == 0) { found = true; break; }
+        }
+        if (found) {
+            layers.push_back(want);
+            instExts.push_back(VK_EXT_DEBUG_UTILS_EXTENSION_NAME);
+            log("watermvp-fixture: validation layer %s enabled (preset=%s, +%zu feature(s))",
+                want, valPreset, valFeatures.size());
+        } else {
+            wantValidation = false;
+            log("watermvp-fixture: validation requested but %s not available; continuing without", want);
+        }
+    }
+
+    VkApplicationInfo app{};
+    app.sType            = VK_STRUCTURE_TYPE_APPLICATION_INFO;
+    app.pApplicationName = "MC2 (Vulkan water-MVP oracle)";
+    app.pEngineName      = "MC2-GameOS";
+    app.apiVersion       = VK_API_VERSION_1_1;
+
+    VkValidationFeaturesEXT valFeaturesInfo{};
+    valFeaturesInfo.sType = VK_STRUCTURE_TYPE_VALIDATION_FEATURES_EXT;
+    valFeaturesInfo.enabledValidationFeatureCount = static_cast<uint32_t>(valFeatures.size());
+    valFeaturesInfo.pEnabledValidationFeatures    = valFeatures.empty() ? nullptr : valFeatures.data();
+
+    VkInstanceCreateInfo ici{};
+    ici.sType                   = VK_STRUCTURE_TYPE_INSTANCE_CREATE_INFO;
+    ici.pApplicationInfo        = &app;
+    ici.enabledLayerCount       = static_cast<uint32_t>(layers.size());
+    ici.ppEnabledLayerNames     = layers.empty() ? nullptr : layers.data();
+    ici.enabledExtensionCount   = static_cast<uint32_t>(instExts.size());
+    ici.ppEnabledExtensionNames = instExts.empty() ? nullptr : instExts.data();
+    if (wantValidation && !valFeatures.empty()) ici.pNext = &valFeaturesInfo;
+
+    VkInstance instance = VK_NULL_HANDLE;
+    VkResult r = vkCreateInstance(&ici, nullptr, &instance);
+    if (r != VK_SUCCESS) {
+        log("watermvp-fixture: vkCreateInstance failed (VkResult=%d). fail-soft.", (int)r);
+        return false;
+    }
+    volkLoadInstance(instance);
+
+    VkDebugUtilsMessengerEXT messenger = VK_NULL_HANDLE;
+    if (wantValidation) {
+        auto pfnCreate = (PFN_vkCreateDebugUtilsMessengerEXT)
+            vkGetInstanceProcAddr(instance, "vkCreateDebugUtilsMessengerEXT");
+        if (pfnCreate) {
+            VkDebugUtilsMessengerCreateInfoEXT mci{};
+            mci.sType           = VK_STRUCTURE_TYPE_DEBUG_UTILS_MESSENGER_CREATE_INFO_EXT;
+            mci.messageSeverity = VK_DEBUG_UTILS_MESSAGE_SEVERITY_WARNING_BIT_EXT |
+                                  VK_DEBUG_UTILS_MESSAGE_SEVERITY_ERROR_BIT_EXT;
+            mci.messageType     = VK_DEBUG_UTILS_MESSAGE_TYPE_GENERAL_BIT_EXT |
+                                  VK_DEBUG_UTILS_MESSAGE_TYPE_VALIDATION_BIT_EXT |
+                                  VK_DEBUG_UTILS_MESSAGE_TYPE_PERFORMANCE_BIT_EXT;
+            mci.pfnUserCallback = edgefog_debug_cb;
+            pfnCreate(instance, &mci, nullptr, &messenger);
+        } else {
+            log("watermvp-fixture: vkCreateDebugUtilsMessengerEXT not found; continuing (no error capture)");
+        }
+    }
+    auto destroy_messenger = [&]() {
+        if (messenger) {
+            auto d = (PFN_vkDestroyDebugUtilsMessengerEXT)
+                vkGetInstanceProcAddr(instance, "vkDestroyDebugUtilsMessengerEXT");
+            if (d) d(instance, messenger, nullptr);
+        }
+    };
+
+    uint32_t devCount = 0;
+    r = vkEnumeratePhysicalDevices(instance, &devCount, nullptr);
+    if (r != VK_SUCCESS || devCount == 0) {
+        log("watermvp-fixture: no physical devices (VkResult=%d, count=%u). fail-soft.", (int)r, devCount);
+        destroy_messenger();
+        vkDestroyInstance(instance, nullptr);
+        return false;
+    }
+    std::vector<VkPhysicalDevice> devs(devCount);
+    vkEnumeratePhysicalDevices(instance, &devCount, devs.data());
+    VkPhysicalDevice phys = devs[0];
+
+    uint32_t qfCount = 0;
+    vkGetPhysicalDeviceQueueFamilyProperties(phys, &qfCount, nullptr);
+    std::vector<VkQueueFamilyProperties> qfs(qfCount);
+    if (qfCount) vkGetPhysicalDeviceQueueFamilyProperties(phys, &qfCount, qfs.data());
+    uint32_t gfxFamily = UINT32_MAX;
+    for (uint32_t q = 0; q < qfCount; ++q) {
+        if (qfs[q].queueFlags & VK_QUEUE_GRAPHICS_BIT) { gfxFamily = q; break; }
+    }
+    if (gfxFamily == UINT32_MAX) {
+        log("watermvp-fixture: no graphics queue family. fail-soft.");
+        destroy_messenger();
+        vkDestroyInstance(instance, nullptr);
+        return false;
+    }
+
+    float prio = 1.0f;
+    VkDeviceQueueCreateInfo qci{};
+    qci.sType            = VK_STRUCTURE_TYPE_DEVICE_QUEUE_CREATE_INFO;
+    qci.queueFamilyIndex = gfxFamily;
+    qci.queueCount       = 1;
+    qci.pQueuePriorities = &prio;
+
+    VkDeviceCreateInfo dci{};
+    dci.sType                = VK_STRUCTURE_TYPE_DEVICE_CREATE_INFO;
+    dci.queueCreateInfoCount = 1;
+    dci.pQueueCreateInfos    = &qci;
+
+    VkDevice device = VK_NULL_HANDLE;
+    r = vkCreateDevice(phys, &dci, nullptr, &device);
+    if (r != VK_SUCCESS) {
+        log("watermvp-fixture: vkCreateDevice failed (VkResult=%d). fail-soft.", (int)r);
+        destroy_messenger();
+        vkDestroyInstance(instance, nullptr);
+        return false;
+    }
+    volkLoadDevice(device);
+    VkQueue queue = VK_NULL_HANDLE;
+    vkGetDeviceQueue(device, gfxFamily, 0, &queue);
+
+    // Everything past here is cleaned up via the single `done` epilogue.
+    bool ok = false;
+    // Two render passes: [0] = CORRECT (column-major raw pack), [1] = WRONG
+    // (row_major pack == transpose). Same shader; only the UBO bytes differ.
+    VmaAllocator   allocator = VK_NULL_HANDLE;
+    VkShaderModule vert = VK_NULL_HANDLE, frag = VK_NULL_HANDLE;
+    VkImage        colorImage = VK_NULL_HANDLE;
+    VmaAllocation  colorAlloc = VK_NULL_HANDLE;
+    VkImageView    colorView  = VK_NULL_HANDLE;
+    VkBuffer       colorReadback = VK_NULL_HANDLE, uboCorrect = VK_NULL_HANDLE, uboWrong = VK_NULL_HANDLE;
+    VmaAllocation  colorReadbackAlloc = VK_NULL_HANDLE, uboCorrectAlloc = VK_NULL_HANDLE, uboWrongAlloc = VK_NULL_HANDLE;
+    VkRenderPass   rpass  = VK_NULL_HANDLE;
+    VkFramebuffer  fb     = VK_NULL_HANDLE;
+    VkDescriptorSetLayout dsl = VK_NULL_HANDLE;
+    VkDescriptorPool pool = VK_NULL_HANDLE;
+    VkDescriptorSet  setCorrect = VK_NULL_HANDLE, setWrong = VK_NULL_HANDLE;
+    VkPipelineLayout playout = VK_NULL_HANDLE;
+    VkPipeline     pipe   = VK_NULL_HANDLE;
+    VkCommandPool  cpool  = VK_NULL_HANDLE;
+    VkCommandBuffer cbuf  = VK_NULL_HANDLE;
+    VkFence        fence  = VK_NULL_HANDLE;
+    std::vector<float> refZ(kPointCount * 4);
+
+    if (!create_vma_allocator("watermvp-fixture", instance, phys, device, &allocator)) goto done;
+
+    // ---- Shader modules (water_mvp.{vert,frag}) -----------------------------
+    {
+        std::string dir = spvDir ? spvDir : ".";
+        if (!dir.empty() && dir.back() != '/' && dir.back() != '\\') dir += '/';
+        vert = mc2_vulkan_load_spv(device, (dir + "water_mvp.vert.spv").c_str());
+        frag = mc2_vulkan_load_spv(device, (dir + "water_mvp.frag.spv").c_str());
+        if (vert == VK_NULL_HANDLE || frag == VK_NULL_HANDLE) {
+            log("watermvp-fixture: water_mvp shader module load failed. fail-soft.");
+            goto done;
+        }
+    }
+
+    // ---- Color image (W x 1, RGBA32F) + view --------------------------------
+    {
+        VkImageCreateInfo ii{};
+        ii.sType = VK_STRUCTURE_TYPE_IMAGE_CREATE_INFO;
+        ii.imageType = VK_IMAGE_TYPE_2D;
+        ii.format = kColorFmt;
+        ii.extent = {W, H, 1};
+        ii.mipLevels = 1;
+        ii.arrayLayers = 1;
+        ii.samples = VK_SAMPLE_COUNT_1_BIT;
+        ii.tiling = VK_IMAGE_TILING_OPTIMAL;
+        ii.usage = VK_IMAGE_USAGE_COLOR_ATTACHMENT_BIT | VK_IMAGE_USAGE_TRANSFER_SRC_BIT;
+        ii.initialLayout = VK_IMAGE_LAYOUT_UNDEFINED;
+        VmaAllocationCreateInfo aci{};
+        aci.usage = VMA_MEMORY_USAGE_AUTO;
+        aci.flags = VMA_ALLOCATION_CREATE_DEDICATED_MEMORY_BIT;
+        r = vmaCreateImage(allocator, &ii, &aci, &colorImage, &colorAlloc, nullptr);
+        if (r != VK_SUCCESS) { log("watermvp-fixture: vmaCreateImage failed (%d). fail-soft.", (int)r); goto done; }
+
+        VkImageViewCreateInfo vi{};
+        vi.sType = VK_STRUCTURE_TYPE_IMAGE_VIEW_CREATE_INFO;
+        vi.image = colorImage;
+        vi.viewType = VK_IMAGE_VIEW_TYPE_2D;
+        vi.format = kColorFmt;
+        vi.subresourceRange = {VK_IMAGE_ASPECT_COLOR_BIT, 0, 1, 0, 1};
+        r = vkCreateImageView(device, &vi, nullptr, &colorView);
+        if (r != VK_SUCCESS) { log("watermvp-fixture: vkCreateImageView failed (%d). fail-soft.", (int)r); goto done; }
+    }
+
+    // ---- Buffers: color readback + two UBOs (correct / wrong) ----------------
+    {
+        auto make_buffer = [&](VkDeviceSize size, VkBufferUsageFlags usage, VkBuffer* buf, VmaAllocation* alloc) -> bool {
+            VkBufferCreateInfo bci{};
+            bci.sType = VK_STRUCTURE_TYPE_BUFFER_CREATE_INFO;
+            bci.size = size;
+            bci.usage = usage;
+            VmaAllocationCreateInfo aci{};
+            aci.usage = VMA_MEMORY_USAGE_AUTO;
+            aci.flags = VMA_ALLOCATION_CREATE_HOST_ACCESS_RANDOM_BIT;
+            VkResult rr = vmaCreateBuffer(allocator, &bci, &aci, buf, alloc, nullptr);
+            if (rr != VK_SUCCESS) { log("watermvp-fixture: vmaCreateBuffer failed (%d). fail-soft.", (int)rr); return false; }
+            return true;
+        };
+        const VkDeviceSize colorBytes = (VkDeviceSize)W * H * 4 * 4; // RGBA32F
+        if (!make_buffer(colorBytes, VK_BUFFER_USAGE_TRANSFER_DST_BIT, &colorReadback, &colorReadbackAlloc)) goto done;
+        if (!make_buffer(sizeof(WaterMvpParams), VK_BUFFER_USAGE_UNIFORM_BUFFER_BIT, &uboCorrect, &uboCorrectAlloc)) goto done;
+        if (!make_buffer(sizeof(WaterMvpParams), VK_BUFFER_USAGE_UNIFORM_BUFFER_BIT, &uboWrong,   &uboWrongAlloc))   goto done;
+
+        // Build the CORRECT params: pack the raw 16 GL-uploaded floats VERBATIM
+        // (column_major shader reads them exactly as projZ does).
+        WaterMvpParams pc{};
+        std::memcpy(pc.worldToClipGL, kWaterMvpRaw16, sizeof(kWaterMvpRaw16));
+        for (int i = 0; i < kPointCount; ++i) {
+            pc.worldPos[i][0] = pts[i][0]; pc.worldPos[i][1] = pts[i][1];
+            pc.worldPos[i][2] = pts[i][2]; pc.worldPos[i][3] = 0.0f;
+        }
+        pc.fudge[0] = kWaterDepthFudgeFast; pc.fudge[1] = pc.fudge[2] = pc.fudge[3] = 0.0f;
+
+        // Build the WRONG params: identical EXCEPT the MVP is TRANSPOSED. Feeding
+        // a transposed matrix to the SAME column_major shader is byte-equivalent
+        // to declaring the shader row_major with the raw bytes -> reads the
+        // transpose -> must DIVERGE on the asymmetric matrix. This is the
+        // transpose-sensitivity proof (LM1), not a tautology.
+        WaterMvpParams pw = pc;
+        for (int c = 0; c < 4; ++c)
+            for (int rr = 0; rr < 4; ++rr)
+                pw.worldToClipGL[c*4 + rr] = kWaterMvpRaw16[rr*4 + c];
+
+        void* p = nullptr;
+        r = vmaMapMemory(allocator, uboCorrectAlloc, &p);
+        if (r != VK_SUCCESS) { log("watermvp-fixture: vmaMapMemory(uboCorrect) failed (%d). fail-soft.", (int)r); goto done; }
+        std::memcpy(p, &pc, sizeof(pc));
+        vmaUnmapMemory(allocator, uboCorrectAlloc);
+
+        r = vmaMapMemory(allocator, uboWrongAlloc, &p);
+        if (r != VK_SUCCESS) { log("watermvp-fixture: vmaMapMemory(uboWrong) failed (%d). fail-soft.", (int)r); goto done; }
+        std::memcpy(p, &pw, sizeof(pw));
+        vmaUnmapMemory(allocator, uboWrongAlloc);
+    }
+
+    // ---- Render pass (CLEAR -> STORE; blend DISABLED = raw frag output) -------
+    {
+        VkAttachmentDescription att{};
+        att.format = kColorFmt;
+        att.samples = VK_SAMPLE_COUNT_1_BIT;
+        att.loadOp = VK_ATTACHMENT_LOAD_OP_CLEAR;
+        att.storeOp = VK_ATTACHMENT_STORE_OP_STORE;
+        att.stencilLoadOp = VK_ATTACHMENT_LOAD_OP_DONT_CARE;
+        att.stencilStoreOp = VK_ATTACHMENT_STORE_OP_DONT_CARE;
+        att.initialLayout = VK_IMAGE_LAYOUT_UNDEFINED;
+        att.finalLayout   = VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL;
+        VkAttachmentReference ref{0, VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL};
+        VkSubpassDescription sub{};
+        sub.pipelineBindPoint = VK_PIPELINE_BIND_POINT_GRAPHICS;
+        sub.colorAttachmentCount = 1;
+        sub.pColorAttachments = &ref;
+        VkSubpassDependency dep{};
+        dep.srcSubpass = 0;
+        dep.dstSubpass = VK_SUBPASS_EXTERNAL;
+        dep.srcStageMask = VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT;
+        dep.srcAccessMask = VK_ACCESS_COLOR_ATTACHMENT_WRITE_BIT;
+        dep.dstStageMask = VK_PIPELINE_STAGE_TRANSFER_BIT;
+        dep.dstAccessMask = VK_ACCESS_TRANSFER_READ_BIT;
+        VkRenderPassCreateInfo rpci{};
+        rpci.sType = VK_STRUCTURE_TYPE_RENDER_PASS_CREATE_INFO;
+        rpci.attachmentCount = 1;
+        rpci.pAttachments = &att;
+        rpci.subpassCount = 1;
+        rpci.pSubpasses = &sub;
+        rpci.dependencyCount = 1;
+        rpci.pDependencies = &dep;
+        r = vkCreateRenderPass(device, &rpci, nullptr, &rpass);
+        if (r != VK_SUCCESS) { log("watermvp-fixture: vkCreateRenderPass failed (%d). fail-soft.", (int)r); goto done; }
+
+        VkFramebufferCreateInfo fci{};
+        fci.sType = VK_STRUCTURE_TYPE_FRAMEBUFFER_CREATE_INFO;
+        fci.renderPass = rpass;
+        fci.attachmentCount = 1;
+        fci.pAttachments = &colorView;
+        fci.width = W; fci.height = H; fci.layers = 1;
+        r = vkCreateFramebuffer(device, &fci, nullptr, &fb);
+        if (r != VK_SUCCESS) { log("watermvp-fixture: vkCreateFramebuffer failed (%d). fail-soft.", (int)r); goto done; }
+    }
+
+    // ---- Descriptor set layout: binding0 = UBO (frag) -----------------------
+    {
+        VkDescriptorSetLayoutBinding bind{};
+        bind.binding = 0;
+        bind.descriptorType = VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER;
+        bind.descriptorCount = 1;
+        bind.stageFlags = VK_SHADER_STAGE_FRAGMENT_BIT;
+        VkDescriptorSetLayoutCreateInfo lci{};
+        lci.sType = VK_STRUCTURE_TYPE_DESCRIPTOR_SET_LAYOUT_CREATE_INFO;
+        lci.bindingCount = 1;
+        lci.pBindings = &bind;
+        r = vkCreateDescriptorSetLayout(device, &lci, nullptr, &dsl);
+        if (r != VK_SUCCESS) { log("watermvp-fixture: vkCreateDescriptorSetLayout failed (%d). fail-soft.", (int)r); goto done; }
+
+        VkDescriptorPoolSize size{};
+        size.type = VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER; size.descriptorCount = 2;
+        VkDescriptorPoolCreateInfo pci{};
+        pci.sType = VK_STRUCTURE_TYPE_DESCRIPTOR_POOL_CREATE_INFO;
+        pci.maxSets = 2;
+        pci.poolSizeCount = 1;
+        pci.pPoolSizes = &size;
+        r = vkCreateDescriptorPool(device, &pci, nullptr, &pool);
+        if (r != VK_SUCCESS) { log("watermvp-fixture: vkCreateDescriptorPool failed (%d). fail-soft.", (int)r); goto done; }
+
+        VkDescriptorSetLayout layouts[2] = { dsl, dsl };
+        VkDescriptorSetAllocateInfo dsai{};
+        dsai.sType = VK_STRUCTURE_TYPE_DESCRIPTOR_SET_ALLOCATE_INFO;
+        dsai.descriptorPool = pool;
+        dsai.descriptorSetCount = 2;
+        dsai.pSetLayouts = layouts;
+        VkDescriptorSet sets[2] = { VK_NULL_HANDLE, VK_NULL_HANDLE };
+        r = vkAllocateDescriptorSets(device, &dsai, sets);
+        if (r != VK_SUCCESS) { log("watermvp-fixture: vkAllocateDescriptorSets failed (%d). fail-soft.", (int)r); goto done; }
+        setCorrect = sets[0];
+        setWrong   = sets[1];
+
+        VkDescriptorBufferInfo bufC{ uboCorrect, 0, VK_WHOLE_SIZE };
+        VkDescriptorBufferInfo bufW{ uboWrong,   0, VK_WHOLE_SIZE };
+        VkWriteDescriptorSet writes[2]{};
+        writes[0].sType = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET;
+        writes[0].dstSet = setCorrect; writes[0].dstBinding = 0;
+        writes[0].descriptorCount = 1; writes[0].descriptorType = VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER;
+        writes[0].pBufferInfo = &bufC;
+        writes[1].sType = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET;
+        writes[1].dstSet = setWrong; writes[1].dstBinding = 0;
+        writes[1].descriptorCount = 1; writes[1].descriptorType = VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER;
+        writes[1].pBufferInfo = &bufW;
+        vkUpdateDescriptorSets(device, 2, writes, 0, nullptr);
+    }
+
+    // ---- Pipeline (fullscreen tri; no vertex input) -------------------------
+    {
+        VkPipelineLayoutCreateInfo plci{};
+        plci.sType = VK_STRUCTURE_TYPE_PIPELINE_LAYOUT_CREATE_INFO;
+        plci.setLayoutCount = 1;
+        plci.pSetLayouts = &dsl;
+        r = vkCreatePipelineLayout(device, &plci, nullptr, &playout);
+        if (r != VK_SUCCESS) { log("watermvp-fixture: vkCreatePipelineLayout failed (%d). fail-soft.", (int)r); goto done; }
+
+        VkPipelineShaderStageCreateInfo stages[2]{};
+        stages[0].sType  = VK_STRUCTURE_TYPE_PIPELINE_SHADER_STAGE_CREATE_INFO;
+        stages[0].stage  = VK_SHADER_STAGE_VERTEX_BIT;
+        stages[0].module = vert; stages[0].pName = "main";
+        stages[1].sType  = VK_STRUCTURE_TYPE_PIPELINE_SHADER_STAGE_CREATE_INFO;
+        stages[1].stage  = VK_SHADER_STAGE_FRAGMENT_BIT;
+        stages[1].module = frag; stages[1].pName = "main";
+
+        VkPipelineVertexInputStateCreateInfo vin{};
+        vin.sType = VK_STRUCTURE_TYPE_PIPELINE_VERTEX_INPUT_STATE_CREATE_INFO;
+        VkPipelineInputAssemblyStateCreateInfo ia{};
+        ia.sType    = VK_STRUCTURE_TYPE_PIPELINE_INPUT_ASSEMBLY_STATE_CREATE_INFO;
+        ia.topology = VK_PRIMITIVE_TOPOLOGY_TRIANGLE_LIST;
+        VkViewport vp{0.0f, 0.0f, (float)W, (float)H, 0.0f, 1.0f};
+        VkRect2D   sc{{0, 0}, {W, H}};
+        VkPipelineViewportStateCreateInfo vps{};
+        vps.sType         = VK_STRUCTURE_TYPE_PIPELINE_VIEWPORT_STATE_CREATE_INFO;
+        vps.viewportCount = 1; vps.pViewports = &vp;
+        vps.scissorCount  = 1; vps.pScissors  = &sc;
+        VkPipelineRasterizationStateCreateInfo rs{};
+        rs.sType       = VK_STRUCTURE_TYPE_PIPELINE_RASTERIZATION_STATE_CREATE_INFO;
+        rs.polygonMode = VK_POLYGON_MODE_FILL;
+        rs.cullMode    = VK_CULL_MODE_NONE;
+        rs.frontFace   = VK_FRONT_FACE_COUNTER_CLOCKWISE;
+        rs.lineWidth   = 1.0f;
+        VkPipelineMultisampleStateCreateInfo ms{};
+        ms.sType                = VK_STRUCTURE_TYPE_PIPELINE_MULTISAMPLE_STATE_CREATE_INFO;
+        ms.rasterizationSamples = VK_SAMPLE_COUNT_1_BIT;
+        VkPipelineColorBlendAttachmentState cba{};
+        cba.colorWriteMask = VK_COLOR_COMPONENT_R_BIT | VK_COLOR_COMPONENT_G_BIT |
+                             VK_COLOR_COMPONENT_B_BIT | VK_COLOR_COMPONENT_A_BIT;
+        cba.blendEnable = VK_FALSE;
+        VkPipelineColorBlendStateCreateInfo cb{};
+        cb.sType           = VK_STRUCTURE_TYPE_PIPELINE_COLOR_BLEND_STATE_CREATE_INFO;
+        cb.attachmentCount = 1;
+        cb.pAttachments    = &cba;
+
+        VkGraphicsPipelineCreateInfo gp{};
+        gp.sType               = VK_STRUCTURE_TYPE_GRAPHICS_PIPELINE_CREATE_INFO;
+        gp.stageCount          = 2;
+        gp.pStages             = stages;
+        gp.pVertexInputState   = &vin;
+        gp.pInputAssemblyState = &ia;
+        gp.pViewportState      = &vps;
+        gp.pRasterizationState = &rs;
+        gp.pMultisampleState   = &ms;
+        gp.pColorBlendState    = &cb;
+        gp.layout              = playout;
+        gp.renderPass          = rpass;
+        gp.subpass             = 0;
+        r = vkCreateGraphicsPipelines(device, VK_NULL_HANDLE, 1, &gp, nullptr, &pipe);
+        if (r != VK_SUCCESS) { log("watermvp-fixture: vkCreateGraphicsPipelines failed (%d). fail-soft.", (int)r); goto done; }
+    }
+
+    // ---- Command pool + fence -----------------------------------------------
+    {
+        VkCommandPoolCreateInfo pci{};
+        pci.sType            = VK_STRUCTURE_TYPE_COMMAND_POOL_CREATE_INFO;
+        pci.queueFamilyIndex = gfxFamily;
+        r = vkCreateCommandPool(device, &pci, nullptr, &cpool);
+        if (r != VK_SUCCESS) { log("watermvp-fixture: vkCreateCommandPool failed (%d). fail-soft.", (int)r); goto done; }
+
+        VkCommandBufferAllocateInfo cai{};
+        cai.sType              = VK_STRUCTURE_TYPE_COMMAND_BUFFER_ALLOCATE_INFO;
+        cai.commandPool        = cpool;
+        cai.level              = VK_COMMAND_BUFFER_LEVEL_PRIMARY;
+        cai.commandBufferCount = 1;
+        r = vkAllocateCommandBuffers(device, &cai, &cbuf);
+        if (r != VK_SUCCESS) { log("watermvp-fixture: vkAllocateCommandBuffers failed (%d). fail-soft.", (int)r); goto done; }
+
+        VkFenceCreateInfo fnci{};
+        fnci.sType = VK_STRUCTURE_TYPE_FENCE_CREATE_INFO;
+        r = vkCreateFence(device, &fnci, nullptr, &fence);
+        if (r != VK_SUCCESS) { log("watermvp-fixture: vkCreateFence failed (%d). fail-soft.", (int)r); goto done; }
+    }
+
+    // Compute the CPU reference once (shared by both runs).
+    for (int i = 0; i < kPointCount; ++i)
+        watermvp_cpu_ref(kWaterMvpRaw16, pts[i], &refZ[i * 4]);
+
+    // ---- Helper: render one pass with `set`, read back, return per-point rows.
+    {
+        auto render_and_read = [&](VkDescriptorSet set, std::vector<float>& outRows) -> bool {
+            VkCommandBufferBeginInfo bi{};
+            bi.sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_BEGIN_INFO;
+            bi.flags = VK_COMMAND_BUFFER_USAGE_ONE_TIME_SUBMIT_BIT;
+            if (vkBeginCommandBuffer(cbuf, &bi) != VK_SUCCESS) { log("watermvp-fixture: vkBeginCommandBuffer failed. fail-soft."); return false; }
+
+            VkClearValue clear{};
+            clear.color = {{0.0f, 0.0f, 0.0f, 0.0f}};
+            VkRenderPassBeginInfo rbi{};
+            rbi.sType = VK_STRUCTURE_TYPE_RENDER_PASS_BEGIN_INFO;
+            rbi.renderPass = rpass;
+            rbi.framebuffer = fb;
+            rbi.renderArea = {{0, 0}, {W, H}};
+            rbi.clearValueCount = 1;
+            rbi.pClearValues = &clear;
+            vkCmdBeginRenderPass(cbuf, &rbi, VK_SUBPASS_CONTENTS_INLINE);
+            vkCmdBindPipeline(cbuf, VK_PIPELINE_BIND_POINT_GRAPHICS, pipe);
+            vkCmdBindDescriptorSets(cbuf, VK_PIPELINE_BIND_POINT_GRAPHICS, playout, 0, 1, &set, 0, nullptr);
+            vkCmdDraw(cbuf, 3, 1, 0, 0);
+            vkCmdEndRenderPass(cbuf);
+
+            VkBufferImageCopy creg{};
+            creg.imageSubresource = {VK_IMAGE_ASPECT_COLOR_BIT, 0, 0, 1};
+            creg.imageExtent = {W, H, 1};
+            vkCmdCopyImageToBuffer(cbuf, colorImage, VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL,
+                                   colorReadback, 1, &creg);
+            if (vkEndCommandBuffer(cbuf) != VK_SUCCESS) { log("watermvp-fixture: vkEndCommandBuffer failed. fail-soft."); return false; }
+
+            VkSubmitInfo si{};
+            si.sType              = VK_STRUCTURE_TYPE_SUBMIT_INFO;
+            si.commandBufferCount = 1;
+            si.pCommandBuffers    = &cbuf;
+            if (vkQueueSubmit(queue, 1, &si, fence) != VK_SUCCESS) { log("watermvp-fixture: vkQueueSubmit failed. fail-soft."); return false; }
+            if (vkWaitForFences(device, 1, &fence, VK_TRUE, 5ull * 1000 * 1000 * 1000) != VK_SUCCESS) { log("watermvp-fixture: vkWaitForFences failed/timeout. fail-soft."); return false; }
+            vkResetFences(device, 1, &fence);
+
+            void* mapped = nullptr;
+            if (vmaMapMemory(allocator, colorReadbackAlloc, &mapped) != VK_SUCCESS) { log("watermvp-fixture: vmaMapMemory(readback) failed. fail-soft."); return false; }
+            outRows.assign((const float*)mapped, (const float*)mapped + (size_t)kPointCount * 4);
+            vmaUnmapMemory(allocator, colorReadbackAlloc);
+
+            // color image finalLayout is TRANSFER_SRC_OPTIMAL after the pass; the
+            // next pass's LOAD_OP_CLEAR + initialLayout UNDEFINED re-initializes it,
+            // so no manual transition back is needed between the two renders.
+            vkResetCommandPool(device, cpool, 0);
+            return true;
+        };
+
+        // ---- Run 1: CORRECT (column-major raw pack) -- must match BIT-TIGHT ----
+        std::vector<float> gotCorrect;
+        if (!render_and_read(setCorrect, gotCorrect)) goto done;
+
+        // The DELIVERABLE the water port reproduces is gl_Position = clip
+        // (channels 0,1 = clip.z, clip.w POST-fudge, PRE-divide). Those are the
+        // exact bytes the VS emits; the rasterizer performs the perspective
+        // divide, NOT the shader. So clip.z / clip.w must be BIT-EXACT (tol 0):
+        // that is the convention + reverse-Z-fudge proof.
+        //
+        // Channels 2,3 = the post-divide NDC depth clip.z/clip.w. This division
+        // is done INDEPENDENTLY on the GPU (frag) and on the CPU reference, so
+        // the two round separately and may differ by <= 1 ULP -- an artifact of
+        // where the divide happens, NOT of the matrix convention. We check it
+        // within a 1-ULP envelope (informational) and log it, but the pass/fail
+        // gate is the bit-exact clip.z/clip.w. (Observed: clip.z/clip.w tol 0;
+        // depth <= 2.4e-7 = 1 ULP near 3.6.)
+        double maxDiffClip = 0.0;  int clipI = -1, clipCh = -1; // ch 0,1 (gate)
+        double maxDiffDepth = 0.0; int depI = -1;               // ch 2,3 (envelope)
+        for (int i = 0; i < kPointCount; ++i) {
+            for (int c = 0; c < 2; ++c) {
+                double d = std::fabs((double)gotCorrect[i*4+c] - (double)refZ[i*4+c]);
+                if (d > maxDiffClip) { maxDiffClip = d; clipI = i; clipCh = c; }
+            }
+            for (int c = 2; c < 4; ++c) {
+                double d = std::fabs((double)gotCorrect[i*4+c] - (double)refZ[i*4+c]);
+                if (d > maxDiffDepth) { maxDiffDepth = d; depI = i; }
+            }
+        }
+        // Guard against a silent all-zero output masquerading as a match: at least
+        // one reference clip.w must be non-zero (it is, by construction).
+        bool refNonTrivial = false;
+        for (int i = 0; i < kPointCount; ++i) if (refZ[i*4+1] != 0.0f) { refNonTrivial = true; break; }
+
+        // 1-ULP envelope for the derived depth: relative 2^-23 scaled by the
+        // largest |depth| in the set, floored so tiny-magnitude points still pass.
+        double maxAbsDepth = 0.0;
+        for (int i = 0; i < kPointCount; ++i) {
+            double a = std::fabs((double)refZ[i*4+2]);
+            if (a > maxAbsDepth) maxAbsDepth = a;
+        }
+        const double depthUlpEnvelope = maxAbsDepth * 1.2e-7 + 1.0e-6; // ~1 ULP + floor
+
+        log("watermvp-fixture: CORRECT(column_major raw pack) clip.z/clip.w(gl_Position) max_abs_diff=%.9g at (pt=%d,ch=%d) [GATE tol=0]",
+            maxDiffClip, clipI, clipCh);
+        log("watermvp-fixture:   derived post-divide depth max_abs_diff=%.9g at pt=%d [envelope=%.9g, <=1 ULP, informational -- GPU vs CPU divide rounds independently]",
+            maxDiffDepth, depI, depthUlpEnvelope);
+        // Per-point proof line for point 3 (fully asymmetric coords 2,-3,4).
+        log("watermvp-fixture:   pt3 GPU  (cz,cw,depth)=(%.9g,%.9g,%.9g)",
+            (double)gotCorrect[3*4+0], (double)gotCorrect[3*4+1], (double)gotCorrect[3*4+2]);
+        log("watermvp-fixture:   pt3 CPU  (cz,cw,depth)=(%.9g,%.9g,%.9g)",
+            (double)refZ[3*4+0], (double)refZ[3*4+1], (double)refZ[3*4+2]);
+        // GATE: bit-exact clip.z/clip.w (the VS output / convention proof) +
+        // depth within 1 ULP (sanity, not the convention gate) + non-trivial ref.
+        bool correctOk = (maxDiffClip == 0.0)
+                      && (maxDiffDepth <= depthUlpEnvelope)
+                      && refNonTrivial;
+
+        // ---- Run 2: WRONG (transpose / row_major pack) -- must DIVERGE ---------
+        std::vector<float> gotWrong;
+        if (!render_and_read(setWrong, gotWrong)) goto done;
+
+        double maxDiffW = 0.0; int wI = -1, wCh = -1;
+        for (int i = 0; i < kPointCount; ++i) {
+            for (int c = 0; c < 4; ++c) {
+                double d = std::fabs((double)gotWrong[i*4+c] - (double)refZ[i*4+c]);
+                if (d > maxDiffW) { maxDiffW = d; wI = i; wCh = c; }
+            }
+        }
+        log("watermvp-fixture: WRONG(row_major/transpose pack) max_abs_diff=%.9g at (pt=%d,ch=%d) -- EXPECTED to diverge (transpose-sensitivity / LM1)",
+            maxDiffW, wI, wCh);
+        // Transpose sensitivity: the wrong pack must differ MATERIALLY from the ref
+        // (guards against an accidental symmetry making the fixture tautological).
+        bool wrongDiverged = (maxDiffW > 1.0e-3);
+
+        ok = correctOk && wrongDiverged;
+        if (!correctOk)
+            log("watermvp-fixture: FAIL -- CORRECT pack did not reproduce GL water gl_Position bit-tight (clip max_abs_diff=%.9g [gate tol=0], depth max_abs_diff=%.9g).",
+                maxDiffClip, maxDiffDepth);
+        if (!wrongDiverged)
+            log("watermvp-fixture: FAIL -- WRONG pack did NOT diverge (matrix not transpose-sensitive; fixture would be tautological).");
+    }
+
+    if (wantValidation) {
+        ok = ok && !g_edgefog_validation_saw_error;
+        log("watermvp-fixture: validation active; saw_error=%d", g_edgefog_validation_saw_error ? 1 : 0);
+    }
+    if (ok) log("watermvp-fixture: PASS -- column_major raw pack reproduces the GL water VS gl_Position (clip.z/clip.w, incl reverse-Z fudge) BIT-EXACT (tol 0); post-divide depth within 1 ULP; row_major (transpose) pack diverges by ~69.5 (transpose-sensitive / LM1). CORRECT convention for the water port: column_major (std140 default) mat4, packed with the SAME raw 16 floats GL uploads (glUniformMatrix4fv GL_FALSE), compute worldToClipGL*worldPos.");
+    else    log("watermvp-fixture: FAIL -- see diffs above.");
+
+done:
+    if (fence)   vkDestroyFence(device, fence, nullptr);
+    if (cpool)   vkDestroyCommandPool(device, cpool, nullptr);
+    if (pipe)    vkDestroyPipeline(device, pipe, nullptr);
+    if (playout) vkDestroyPipelineLayout(device, playout, nullptr);
+    if (pool)    vkDestroyDescriptorPool(device, pool, nullptr);
+    if (dsl)     vkDestroyDescriptorSetLayout(device, dsl, nullptr);
+    if (fb)      vkDestroyFramebuffer(device, fb, nullptr);
+    if (rpass)   vkDestroyRenderPass(device, rpass, nullptr);
+    if (uboWrong)     vmaDestroyBuffer(allocator, uboWrong, uboWrongAlloc);
+    if (uboCorrect)   vmaDestroyBuffer(allocator, uboCorrect, uboCorrectAlloc);
+    if (colorReadback) vmaDestroyBuffer(allocator, colorReadback, colorReadbackAlloc);
+    if (colorView)  vkDestroyImageView(device, colorView, nullptr);
+    if (colorImage) vmaDestroyImage(allocator, colorImage, colorAlloc);
+    mc2_vulkan_free_shader(device, vert);
+    mc2_vulkan_free_shader(device, frag);
+    if (allocator) vmaDestroyAllocator(allocator);
+    vkDestroyDevice(device, nullptr);
+    destroy_messenger();
+    vkDestroyInstance(instance, nullptr);
+    log("watermvp-fixture: %s -- cleaned up (device+instance destroyed).", ok ? "PASS" : "FAIL");
+    return ok;
+}
+
 bool mc2_vulkan_probe() {
     // VULKAN-VOLK-LOADER-1: open the Vulkan runtime via volk before any vk call.
     // This is the primary fail-soft gate: on an OpenGL-only machine with no
@@ -6912,9 +7621,11 @@ bool mc2_vulkan_probe_if_env() {
     bool csmOk = mc2_vulkan_probe_csmarray_fixture(spvDir ? spvDir : "shaders/vulkan");
     // VK-REGION-SHADOW-1 (sub-slice A): depth-only instanced shadow-caster WRITE oracle.
     bool shdOk = mc2_vulkan_probe_shadowdepth_fixture(spvDir ? spvDir : "shaders/vulkan");
-    log("MC2_VULKAN_PROBE: caps=%d shaders=%d triangle=%d descriptors=%d sampled_image=%d swapchain=%d swapchain_present=%d edgefog_fixture=%d oobfog_fixture=%d ssao_fixture=%d hzb_fixture=%d comparesampler=%d csmarray=%d shadowdepth=%d",
-        ok ? 1 : 0, shOk ? 1 : 0, triOk ? 1 : 0, descOk ? 1 : 0, imgOk ? 1 : 0, swOk ? 1 : 0, presentOk ? 1 : 0, efOk ? 1 : 0, obOk ? 1 : 0, ssaoOk ? 1 : 0, hzbOk ? 1 : 0, cmpOk ? 1 : 0, csmOk ? 1 : 0, shdOk ? 1 : 0);
-    return ok && shOk && triOk && descOk && imgOk && swOk && presentOk && efOk && obOk && ssaoOk && hzbOk && cmpOk && csmOk && shdOk;
+    // WATER-MVP-ORACLE-1: water MVP UBO pack + reverse-Z fudge clip-space oracle.
+    bool wmvpOk = mc2_vulkan_probe_watermvp_fixture(spvDir ? spvDir : "shaders/vulkan");
+    log("MC2_VULKAN_PROBE: caps=%d shaders=%d triangle=%d descriptors=%d sampled_image=%d swapchain=%d swapchain_present=%d edgefog_fixture=%d oobfog_fixture=%d ssao_fixture=%d hzb_fixture=%d comparesampler=%d csmarray=%d shadowdepth=%d watermvp=%d",
+        ok ? 1 : 0, shOk ? 1 : 0, triOk ? 1 : 0, descOk ? 1 : 0, imgOk ? 1 : 0, swOk ? 1 : 0, presentOk ? 1 : 0, efOk ? 1 : 0, obOk ? 1 : 0, ssaoOk ? 1 : 0, hzbOk ? 1 : 0, cmpOk ? 1 : 0, csmOk ? 1 : 0, shdOk ? 1 : 0, wmvpOk ? 1 : 0);
+    return ok && shOk && triOk && descOk && imgOk && swOk && presentOk && efOk && obOk && ssaoOk && hzbOk && cmpOk && csmOk && shdOk && wmvpOk;
 }
 
 #endif // MC2_VULKAN

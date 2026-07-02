@@ -187,6 +187,21 @@ void mc2_vulkan_destroy_shadow_depth_pipeline(VkDevice device, Mc2VkShadowDepthP
 // error -> log + return false. spvDir = dir with the compiled shadow_depth .spv.
 bool mc2_vulkan_probe_shadowdepth_fixture(const char* spvDir);
 
+// WATER-MVP-ORACLE-1: headless clip-space oracle for the MC2 water fast-path VS.
+// Runs water_mvp.{vert,frag} on a set of KNOWN worldPos points through a std140
+// UBO pack of an ASYMMETRIC/sheared water MVP + the reverse-Z depth fudge, reads
+// back (clip.z, clip.w, depth, depth+fudge) from an R32G32B32A32_SFLOAT target,
+// and compares BIT-TIGHT (tolerance 0) against a CPU reference computing the SAME
+// GL water math (`projZ`: clip[r] = sum_c m[c*4+r]*P[c], then z += fudge*w). It
+// ALSO runs the WRONG convention (row_major pack = transpose of the same raw
+// bytes) and asserts it DIVERGES on the asymmetric matrix -- proving the fixture
+// is transpose-sensitive (LM1), not tautological. The CORRECT convention for the
+// real water port: pack the SAME 16 raw floats GL uploads (glUniformMatrix4fv
+// GL_FALSE) into a column_major (std140 default) mat4 and compute M*worldPos.
+// Fail-soft: any VkResult error -> log + return false. spvDir = dir with the
+// compiled water_mvp .spv.
+bool mc2_vulkan_probe_watermvp_fixture(const char* spvDir);
+
 // VK-BOOTSTRAP-INTEGRATE-1: Vulkan swapchain PROBE (create + query + destroy).
 // Uses vk-bootstrap's vkb::SwapchainBuilder against a bespoke devs[0] device and
 // a hidden 256x256 SDL Vulkan window/surface. Creates a swapchain, queries its
