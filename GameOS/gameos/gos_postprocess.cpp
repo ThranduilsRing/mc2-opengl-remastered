@@ -2851,6 +2851,21 @@ bool gosPostProcess::runFogRegionVulkanBackend(
         (void)ctx.resolver->resolve(ctx.color);
         (void)ctx.resolver->resolve(ctx.depth);
     }
+    // VK-FOG-SKYEXCLUDE-GUARD-1: the vk fog subgraph has NO stencil input — the
+    // ported shaders/vulkan/{edge_fog,fog_oob}.frag carry no stencilTex, so with
+    // MC2_SKYBOX_FOG_EXCLUDE=1 the Vulkan path would silently fog sky pixels the
+    // GL path excludes (SKYBOX-FOG-EXCLUDE-1's usampler2D STENCIL_INDEX view).
+    // Decline honestly -> caller runs GL and stamps FallbackGL. Eventual fix if
+    // sky-exclude-under-vk is ever needed: bridge the stencil plane like depth
+    // (glGetTexImage(GL_STENCIL_INDEX, GL_UNSIGNED_BYTE) -> staging ->
+    // VK_FORMAT_R8_UINT image, usampler2D in the ported frag) — see
+    // .claude/VULKAN-NEXT-SLICES.md LM4.
+    if (skyboxFogExcludeEnabled()) {
+        if (out) { out->impl = RenderCore::RenderRegionImpl::None;
+                   out->fallbackReason = "sky_exclude_not_ported";
+                   out->glPassesRun = 0; out->vkDraws = 0; }
+        return false;
+    }
     if (!postprocessSubgraphReadyForRegion()) {
         if (out) { out->impl = RenderCore::RenderRegionImpl::None;
                    out->fallbackReason = "vk_device_init_failed";
