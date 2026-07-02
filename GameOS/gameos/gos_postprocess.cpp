@@ -2281,6 +2281,27 @@ bool gosPostProcess::runSSAORegionVulkanBackend(
         (void)ctx.resolver->resolve(ctx.color);
         (void)ctx.resolver->resolve(ctx.occlusion);
     }
+    // N0 BUG-1 (enable-guard parity): the GL runSSAO() self-guards on
+    // ssaoEnabled_ && sceneHasTerrain_ (+ program/FBO validity) and no-ops when
+    // any is false, so it NEVER runs against a frame whose terrain MVP / scene
+    // depth have not been produced (menus, load frames, no-terrain frames). The
+    // Vulkan island had NO such guard, so it ran EVERY routed frame -- including
+    // frames where inverseViewProj_/viewProj_ are still zero-initialized and
+    // sceneDepthTex_ is all-zero -- reconstructing garbage AO. Mirror GL's guard
+    // exactly here: decline (return false) so the caller runs the GL wrapper,
+    // whose own guard then no-ops. This keeps the Vulkan path bit-for-bit
+    // scoped to the SAME frames GL would actually shade.
+    const bool ssaoGatesLetItRun =
+        ssaoEnabled_ && sceneHasTerrain_ &&
+        ssaoProg_ && ssaoProg_->is_valid() &&
+        ssaoApplyProg_ && ssaoApplyProg_->is_valid() &&
+        ssaoFBO_ && ssaoColorTex_;
+    if (!ssaoGatesLetItRun) {
+        if (out) { out->impl = RenderCore::RenderRegionImpl::None;
+                   out->fallbackReason = "ssao_gate_off";
+                   out->glPassesRun = 0; out->vkDraws = 0; }
+        return false;
+    }
     if (!ssaoRegionVulkanReady()) {
         if (out) { out->impl = RenderCore::RenderRegionImpl::None;
                    out->fallbackReason = "vk_device_init_failed";
@@ -3161,15 +3182,28 @@ void gosPostProcess::runSSAORegionThroughBackend()
 
     RenderCore::RegionOutput out;
     bool ran = false;
+    // N0 BUG-1: a decline whose reason is "ssao_gate_off" means SSAO's OWN gates
+    // (ssaoEnabled_/sceneHasTerrain_/program/FBO) skip the region THIS frame --
+    // exactly as GL's runSSAO() no-ops -- so neither backend does real work.
+    // That is NOT a Vulkan device FallbackGL (which the parity harness treats as
+    // INCONCLUSIVE, exit 5). Track it so we (a) do not relabel the no-op GL run
+    // as FallbackGL, and (b) do not overwrite the last REAL per-frame impl in the
+    // health snapshot -- otherwise a trailing menu/no-terrain frame would stamp
+    // the shutdown dump FallbackGL and void an otherwise-clean vk compare.
+    bool gateOffSkip = false;
 
 #ifdef MC2_VULKAN_ISLAND
     if (s_wantVk) {
         // Route through the Vulkan SSAO island backend (1C). On false the
-        // caller (this function) runs GL below with impl=FallbackGL.
+        // caller (this function) runs GL below with impl=FallbackGL, UNLESS the
+        // decline was a gate-off skip (handled below).
         ran = runSSAORegionVulkanBackend(ctx, &out);
         if (!ran) {
-            ssao_region_set_fallback_reason(out.fallbackReason && out.fallbackReason[0]
-                                                ? out.fallbackReason : "vk_declined");
+            const char* why = (out.fallbackReason && out.fallbackReason[0])
+                                  ? out.fallbackReason : "vk_declined";
+            gateOffSkip = (std::strcmp(why, "ssao_gate_off") == 0);
+            if (!gateOffSkip)
+                ssao_region_set_fallback_reason(why);
         }
     }
 #endif
@@ -3178,18 +3212,24 @@ void gosPostProcess::runSSAORegionThroughBackend()
         GlSsaoRegionBackend gl;
         gl.pp = this;
         bool okGl = gl.runRegion(RenderCore::RenderRegionId::PostprocessSSAO, ctx, &out);
-        if (s_wantVk) {
+        if (s_wantVk && !gateOffSkip) {
             // requested vk but GL actually ran -> FallbackGL (not plain GLInline).
             out.impl = RenderCore::RenderRegionImpl::FallbackGL;
         }
         (void)okGl;
     }
 
-    g_ssaoRegion.lastImpl        = (int)out.impl;
-    g_ssaoRegion.lastGlPassesRun = out.glPassesRun;
-    g_ssaoRegion.lastVkDraws     = out.vkDraws;
-    if (out.impl != RenderCore::RenderRegionImpl::FallbackGL)
-        ssao_region_set_fallback_reason("");
+    // Gate-off skip: the region did no real work this frame; leave the health
+    // snapshot's last-real impl/reason untouched so shutdown reflects the last
+    // frame the region ACTUALLY ran (mirrors GL, where runSSAO() simply no-ops
+    // and leaves no region-health footprint).
+    if (!gateOffSkip) {
+        g_ssaoRegion.lastImpl        = (int)out.impl;
+        g_ssaoRegion.lastGlPassesRun = out.glPassesRun;
+        g_ssaoRegion.lastVkDraws     = out.vkDraws;
+        if (out.impl != RenderCore::RenderRegionImpl::FallbackGL)
+            ssao_region_set_fallback_reason("");
+    }
 
     render_frame_plan::trace(render_frame_plan::Phase::PostProcess, "PostprocessSSAORegion",
         render_frame_plan::PathKind::ApplyPipeline, 1,
