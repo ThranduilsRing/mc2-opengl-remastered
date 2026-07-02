@@ -776,6 +776,8 @@ void gosPostProcess::destroy()
     destroyVulkanOobFogIsland();
     // VULKAN-POSTPROCESS-SUBGRAPH-1: same teardown for the fused subgraph.
     destroyVulkanPostprocessSubgraph();
+    // VK-REGION-SSAO-1: same teardown for the SSAO island.
+    destroyVulkanSSAOIsland();
 #endif
 
     // CLUSTER-DEPTH-PYRAMID-NATIVE-1: release the gated pass's GL resources.
@@ -2227,6 +2229,74 @@ void gosPostProcess::runSSAO()
     glActiveTexture(GL_TEXTURE0);
 }
 
+// ===========================================================================
+// VK-REGION-SSAO-1: PostprocessSSAO region (second region through runRegion).
+// ===========================================================================
+//
+// 1A: the extracted GL SSAO region wrapper. Calls the UNCHANGED runSSAO()
+// inline body. No interface, no Vulkan: pure code-move. Under the master
+// gate OFF this wrapper is never entered (endScene() calls runSSAO() directly);
+// under gate ON, the GL backend calls this so its output == the old inline
+// path. Returns 1 if SSAO's own gates let it run this frame, 0 if it
+// early-returned (mirrors the fog wrapper's equivalence-count contract, but
+// SSAO is a single logical effect so the count is 0/1, not 0/2).
+int gosPostProcess::runSSAORegionGL()
+{
+    const bool willRun = ssaoEnabled_ && sceneHasTerrain_ &&
+                         ssaoProg_ && ssaoProg_->is_valid() &&
+                         ssaoApplyProg_ && ssaoApplyProg_->is_valid() &&
+                         ssaoFBO_ && ssaoColorTex_;
+    runSSAO();
+    return willRun ? 1 : 0;
+}
+
+// Resolver: gosPostProcess owns the scene + SSAO textures, so it maps the
+// neutral ids to the concrete GL handles. Keeps handles OUT of the region
+// context (same discipline as resolveRegionResource() for fog).
+unsigned int gosPostProcess::resolveSSAORegionResource(RenderCore::RenderResourceId id) const
+{
+    switch (id) {
+        case RenderCore::RenderResourceId::MainColor:     return (unsigned int)sceneColorTex_;
+        case RenderCore::RenderResourceId::MainDepth:     return (unsigned int)sceneDepthTex_;
+        case RenderCore::RenderResourceId::MainNormal:    return (unsigned int)sceneNormalTex_;
+        case RenderCore::RenderResourceId::SsaoOcclusion: return (unsigned int)ssaoColorTex_;
+        default: return 0u;
+    }
+}
+
+#ifdef MC2_VULKAN_ISLAND
+// 1C: Vulkan impl of the PostprocessSSAO region. Fail-soft: readiness returns
+// false ONLY on a genuine device/init failure (self-disables), so we return
+// false -> caller runs GL (FallbackGL = real failure, not "gate off"). The
+// neutral ctx values already equal the GL runSSAO() uploads exactly, so no
+// data is threaded through here beyond the resolver exercise (contract
+// symmetry with the fog region's 1C).
+bool gosPostProcess::runSSAORegionVulkanBackend(
+    const RenderCore::PostprocessSSAORegionContext& ctx,
+    RenderCore::RegionOutput* out)
+{
+    if (ctx.resolver) {
+        (void)ctx.resolver->resolve(ctx.depth);
+        (void)ctx.resolver->resolve(ctx.normal);
+        (void)ctx.resolver->resolve(ctx.color);
+        (void)ctx.resolver->resolve(ctx.occlusion);
+    }
+    if (!ssaoRegionVulkanReady()) {
+        if (out) { out->impl = RenderCore::RenderRegionImpl::None;
+                   out->fallbackReason = "vk_device_init_failed";
+                   out->glPassesRun = 0; out->vkDraws = 0; }
+        return false;
+    }
+    // runSSAORegionVulkanBackend is only reached when the region-iface routes
+    // SSAO through Vulkan; the actual per-frame render is driven from the
+    // island (vulkan_ssao_island.cpp) via runSSAOVulkan(), called below.
+    runSSAOVulkan();
+    if (out) { out->impl = RenderCore::RenderRegionImpl::VulkanSubgraph;
+               out->fallbackReason = ""; out->glPassesRun = 0; out->vkDraws = 2; }
+    return true;
+}
+#endif
+
 void gosPostProcess::clearGBuffer1()
 {
     if (!sceneNormalTex_) return;
@@ -2956,6 +3026,161 @@ void gosPostProcess::runFogRegionThroughBackend()
         RenderCore::region_impl_to_string(out.impl));
 }
 
+// ---------------------------------------------------------------------------
+// VK-REGION-SSAO-1: SSAO region routing -- selector + GL backend impl + health
+// snapshot. Distinct health struct from g_region (fog) so both regions' state
+// is independently catchable in the debug-state dump.
+// ---------------------------------------------------------------------------
+namespace {
+
+struct SsaoRegionSelectHealth {
+    int         ifaceGateOn      = 0;    // MC2_RENDER_BACKEND_REGION_IFACE==1
+    char        requestedBackend[8] = "gl";  // MC2_POSTPROCESS_BACKEND (gl|vk)
+    int         lastImpl         = 0;    // RenderRegionImpl (None/GLInline/VulkanSubgraph/FallbackGL)
+    char        lastFallbackReason[64] = {0};
+    int         lastGlPassesRun  = 0;    // 0 or 1 (SSAO is a single logical effect)
+    int         lastVkDraws      = 0;    // 0 or 2 (occlusion + apply)
+    unsigned long routedFrames   = 0;    // frames routed through runRegion
+};
+SsaoRegionSelectHealth g_ssaoRegion;
+
+void ssao_region_set_fallback_reason(const char* r) {
+    std::strncpy(g_ssaoRegion.lastFallbackReason, r ? r : "",
+                 sizeof(g_ssaoRegion.lastFallbackReason) - 1);
+    g_ssaoRegion.lastFallbackReason[sizeof(g_ssaoRegion.lastFallbackReason) - 1] = '\0';
+}
+
+// Neutral-context resolver adaptor wrapping gosPostProcess::resolveSSAORegionResource.
+struct GosSsaoResourceResolver final : RenderCore::IResourceResolver {
+    const gosPostProcess* pp = nullptr;
+    unsigned int resolve(RenderCore::RenderResourceId id) const override {
+        return pp ? pp->resolveSSAORegionResource(id) : 0u;
+    }
+};
+
+// GL impl of runRegion for the PostprocessSSAO region: resolves depth/normal/
+// color/occlusion from the neutral context (proving the id->handle path is
+// exercised even though the GL SSAO body reads the members directly today)
+// and runs the extracted GL wrapper. Always succeeds -> out->impl = GLInline.
+struct GlSsaoRegionBackend final : RenderCore::IRenderBackend {
+    gosPostProcess* pp = nullptr;
+    void bindBackbuffer() override {}
+    void bindFramebuffer(unsigned int) override {}
+    void setViewport(int, int, int, int) override {}
+    void clear(unsigned int, float, float, float, float) override {}
+    bool runRegion(RenderCore::RenderRegionId id,
+                   const RenderCore::PostprocessSSAORegionContext& ctx,
+                   RenderCore::RegionOutput* out) override {
+        if (id != RenderCore::RenderRegionId::PostprocessSSAO || !pp) return false;
+        if (ctx.resolver) {
+            (void)ctx.resolver->resolve(ctx.depth);
+            (void)ctx.resolver->resolve(ctx.normal);
+            (void)ctx.resolver->resolve(ctx.color);
+            (void)ctx.resolver->resolve(ctx.occlusion);
+        }
+        int gl = pp->runSSAORegionGL();
+        if (out) { out->impl = RenderCore::RenderRegionImpl::GLInline;
+                   out->glPassesRun = gl; out->vkDraws = 0; out->fallbackReason = ""; }
+        return true;
+    }
+};
+
+} // namespace
+
+// C-linkage accessor for the debug-state dump (SSAO region-selection health).
+// Mirrors mc2_render_backend_region_health (fog); always compiled (no #ifdef).
+extern "C" void mc2_render_backend_ssao_region_health(
+    int* ifaceGateOn, const char** requestedBackend, int* lastImpl,
+    const char** lastFallbackReason, int* lastGlPassesRun, int* lastVkDraws,
+    unsigned long* routedFrames) {
+    if (ifaceGateOn)         *ifaceGateOn         = g_ssaoRegion.ifaceGateOn;
+    if (requestedBackend)    *requestedBackend    = g_ssaoRegion.requestedBackend;
+    if (lastImpl)            *lastImpl            = g_ssaoRegion.lastImpl;
+    if (lastFallbackReason)  *lastFallbackReason  = g_ssaoRegion.lastFallbackReason;
+    if (lastGlPassesRun)     *lastGlPassesRun     = g_ssaoRegion.lastGlPassesRun;
+    if (lastVkDraws)         *lastVkDraws         = g_ssaoRegion.lastVkDraws;
+    if (routedFrames)        *routedFrames        = g_ssaoRegion.routedFrames;
+}
+
+// The routed entry (master gate ON). Builds the neutral SSAO context, selects
+// the backend, calls runRegion; falls back to GL on false. Never double-
+// applies: exactly ONE of {GL wrapper, Vulkan island} runs, and the direct
+// runSSAO() call in endScene() is skipped whenever this routed path is taken.
+void gosPostProcess::runSSAORegionThroughBackend()
+{
+    ++g_ssaoRegion.routedFrames;
+    g_ssaoRegion.ifaceGateOn = 1;
+
+    // Sub-selector: MC2_POSTPROCESS_BACKEND = gl | vk (default gl). SAME env var
+    // as the fog region -- one selector picks the backend for every region.
+    static const bool s_wantVk = []() {
+        const char* v = getenv("MC2_POSTPROCESS_BACKEND");
+        return v && (v[0] == 'v' || v[0] == 'V');   // "vk"
+    }();
+    std::strncpy(g_ssaoRegion.requestedBackend, s_wantVk ? "vk" : "gl",
+                 sizeof(g_ssaoRegion.requestedBackend) - 1);
+
+    // Build the BACKEND-NEUTRAL context (RenderResourceId + params + dims; NO
+    // raw handles). Values pulled EXACTLY from the GL runSSAO() uploads.
+    GosSsaoResourceResolver resolver;
+    resolver.pp = this;
+    RenderCore::PostprocessSSAORegionContext ctx;
+    ctx.depth     = RenderCore::RenderResourceId::MainDepth;
+    ctx.normal    = RenderCore::RenderResourceId::MainNormal;
+    ctx.color     = RenderCore::RenderResourceId::MainColor;
+    ctx.occlusion = RenderCore::RenderResourceId::SsaoOcclusion;
+    ctx.width  = width_;
+    ctx.height = height_;
+    ctx.halfWidth  = ssaoW_;
+    ctx.halfHeight = ssaoH_;
+    ctx.resolver = &resolver;
+    std::memcpy(ctx.params.invViewProj, inverseViewProj_, 16 * sizeof(float));
+    std::memcpy(ctx.params.viewProj, viewProj_, 16 * sizeof(float));
+    ctx.params.screenWidth  = (float)width_;
+    ctx.params.screenHeight = (float)height_;
+    ctx.params.aoRadius   = aoRadius_;
+    ctx.params.aoBias     = aoBias_;
+    ctx.params.aoStrength = aoStrength_;
+    ctx.params.aoPower    = aoPower_;
+    ctx.params.debugMode  = ssaoDebug_;
+
+    RenderCore::RegionOutput out;
+    bool ran = false;
+
+#ifdef MC2_VULKAN_ISLAND
+    if (s_wantVk) {
+        // Route through the Vulkan SSAO island backend (1C). On false the
+        // caller (this function) runs GL below with impl=FallbackGL.
+        ran = runSSAORegionVulkanBackend(ctx, &out);
+        if (!ran) {
+            ssao_region_set_fallback_reason(out.fallbackReason && out.fallbackReason[0]
+                                                ? out.fallbackReason : "vk_declined");
+        }
+    }
+#endif
+
+    if (!ran) {
+        GlSsaoRegionBackend gl;
+        gl.pp = this;
+        bool okGl = gl.runRegion(RenderCore::RenderRegionId::PostprocessSSAO, ctx, &out);
+        if (s_wantVk) {
+            // requested vk but GL actually ran -> FallbackGL (not plain GLInline).
+            out.impl = RenderCore::RenderRegionImpl::FallbackGL;
+        }
+        (void)okGl;
+    }
+
+    g_ssaoRegion.lastImpl        = (int)out.impl;
+    g_ssaoRegion.lastGlPassesRun = out.glPassesRun;
+    g_ssaoRegion.lastVkDraws     = out.vkDraws;
+    if (out.impl != RenderCore::RenderRegionImpl::FallbackGL)
+        ssao_region_set_fallback_reason("");
+
+    render_frame_plan::trace(render_frame_plan::Phase::PostProcess, "PostprocessSSAORegion",
+        render_frame_plan::PathKind::ApplyPipeline, 1,
+        RenderCore::region_impl_to_string(out.impl));
+}
+
 // Forward declarations for ISLAND-2 sub-stage wrappers (defined below the executor section).
 static void executorOwnBeginSub(gosPostProcess*, RenderCore::framegraph::ExecutorIslandId);
 static void executorOwnEndSub(gosPostProcess*, RenderCore::framegraph::ExecutorIslandId);
@@ -3028,8 +3253,22 @@ void gosPostProcess::endScene()
     runShoreline();
     executorOwnEndSub(this, RenderCore::framegraph::ExecutorIslandId::Shoreline);
 
-    // SSAO grounding pass (multiplicative darkening into scene color). Default-OFF (gated).
-    runSSAO();
+    // RENDER-BACKEND-REGION-IFACE-1 (Layer-6 ENTRY): master gate read ONCE, shared by
+    // the SSAO region below and the fog region further down (hoisted here so both
+    // sites can gate on the same value without re-reading getenv per-site).
+    const bool regionRouted = regionIfaceEnabled();
+
+    // SSAO grounding pass (multiplicative darkening into scene color). Default-OFF
+    // (MC2_SSAO gates whether it runs at all, unchanged). VK-REGION-SSAO-1: when the
+    // SAME master gate as fog (MC2_RENDER_BACKEND_REGION_IFACE) is ON, route through
+    // IRenderBackend::runRegion (MC2_POSTPROCESS_BACKEND=gl|vk picks the impl, VK
+    // falls back to GL on failure) instead of calling runSSAO() directly. Gate OFF ->
+    // the original direct call runs verbatim (byte-identical).
+    if (regionRouted) {
+        runSSAORegionThroughBackend();
+    } else {
+        runSSAO();
+    }
 
     // BT2018-BOX-DECAL-1: screen-space box decal composited into lit+shadowed+AO'd
     // scene color, before fog/tonemap. Default-OFF (MC2_BOX_DECAL); no-op when gate off.
@@ -3047,7 +3286,7 @@ void gosPostProcess::endScene()
     // (byte-identical). Precedence when ON: region-iface > (subgraph > island > GL
     // inside the GL/VK impls). The region-iface path is mutually exclusive with
     // the legacy in-site subgraph/island paths (which stay reachable gate-OFF).
-    const bool regionRouted = regionIfaceEnabled();
+    // (regionRouted computed once above, shared with the SSAO region site.)
     bool subgraphRanThisFrame = false;   // scope spans to the FogOob site below
     (void)subgraphRanThisFrame;          // read only under MC2_VULKAN_ISLAND
     if (regionRouted) {

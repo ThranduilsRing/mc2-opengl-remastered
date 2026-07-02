@@ -41,6 +41,15 @@ struct IRenderBackend {
         return false;
     }
 
+    // VK-REGION-SSAO-1: second region overload (ruling R3 — overload per region
+    // context type, matching the fog precedent; keeps each context POD + GL-free).
+    // Default impl declines, same contract as the fog overload above.
+    virtual bool runRegion(RenderRegionId /*id*/,
+                           const PostprocessSSAORegionContext& /*ctx*/,
+                           RegionOutput* /*out*/) {
+        return false;
+    }
+
     // Bind the window's default framebuffer (the backbuffer) as the current
     // render target for the composite output edge. GL impl == glBindFramebuffer
     // (GL_FRAMEBUFFER, 0). This is the single op the PostProcess composite edge

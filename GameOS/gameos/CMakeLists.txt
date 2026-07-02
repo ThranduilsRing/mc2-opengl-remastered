@@ -115,6 +115,11 @@ if(MC2_VULKAN)
         # discipline; layout-affecting header members added under the same macro,
         # already propagated to all consumers by the root ODR-harden block.
         list(APPEND SOURCES vulkan_postprocess_subgraph.cpp)
+        # VK-REGION-SSAO-1: the SSAO island (first NEW region through runRegion
+        # beyond fog). Same #ifdef MC2_VULKAN_ISLAND discipline; layout-affecting
+        # header members (vkSSAOIsland_ + method decls) added under the same
+        # macro, already propagated to all consumers by the root ODR-harden block.
+        list(APPEND SOURCES vulkan_ssao_island.cpp)
     endif()
 endif()
 
@@ -193,7 +198,11 @@ if(MC2_VULKAN)
     # These are only USED when MC2_VULKAN_ISLAND=ON, but baking them under plain
     # MC2_VULKAN is harmless (extra .spv outputs) and keeps the toolchain simple.
     # VULKAN-OOB-FOG-ISLAND-1: bake fog_oob.{vert,frag} alongside edge_fog.
-    set(MC2_VK_SHADER_BASENAMES fullscreen edge_fog fog_oob)
+    # VK-REGION-SSAO-1: bake ssao.{vert,frag} + ssao_apply.{vert,frag} (two
+    # programs: occlusion pass1, multiplicative-apply pass2). Both verts are
+    # the same fullscreen-triangle construction (separate files only because
+    # the bake loop expects one vert per basename).
+    set(MC2_VK_SHADER_BASENAMES fullscreen edge_fog fog_oob ssao ssao_apply)
     set(MC2_VK_SPV_OUTPUTS "")
     if(MC2_GLSLANG_VALIDATOR OR MC2_GLSLC)
         foreach(_base ${MC2_VK_SHADER_BASENAMES})

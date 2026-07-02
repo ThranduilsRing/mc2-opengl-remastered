@@ -308,6 +308,31 @@ public:
     float aoPower_;         // contrast curve
     void runSSAO();
 
+    // VK-REGION-SSAO-1 (RENDER-BACKEND-REGION-IFACE-1, second region): the SSAO
+    // region (occlusion pass1 + multiplicative apply pass2) made SELECTABLE
+    // GL-vs-Vulkan through IRenderBackend, mirroring the PostprocessFog region
+    // precedent exactly. Gated by the SAME master gate
+    // (MC2_RENDER_BACKEND_REGION_IFACE) + the SAME sub-selector
+    // (MC2_POSTPROCESS_BACKEND=gl|vk); MC2_SSAO still gates whether the region
+    // runs AT ALL (unchanged — SSAO stays default-OFF either way).
+    //
+    // 1A: the extracted GL SSAO region wrapper. Calls the UNCHANGED runSSAO()
+    // inline body (pure code-move). Returns 1 if SSAO actually ran this frame
+    // (its own early-return guards still apply), 0 if it early-returned.
+    int  runSSAORegionGL();
+
+    // 1B: the routed entry called from endScene() when the master gate is ON.
+    // Builds the neutral SSAO context, picks the backend by
+    // MC2_POSTPROCESS_BACKEND, calls runRegion(); on false (VK unavailable/
+    // failed) runs runSSAORegionGL(). Writes region_impl/fallback_reason to
+    // the SSAO region health snapshot.
+    void runSSAORegionThroughBackend();
+
+    // GL handle resolver for the SSAO region context (depth/normal/color/
+    // occlusion -> concrete GL texture names). Defined as a tiny adaptor in
+    // the .cpp, same shape as resolveRegionResource() for fog.
+    unsigned int resolveSSAORegionResource(RenderCore::RenderResourceId id) const;
+
     // BT2018-BOX-DECAL-1: screen-space AABB decal volume. Reconstructs scene world
     // pos from the depth COPY (reversed-Z), box-clips, normal-rejects, and composites
     // a procedural decal into COLOR0 only. Default-OFF (MC2_BOX_DECAL). v1 = single
@@ -431,6 +456,28 @@ public:
                                      RenderCore::RegionOutput* out);
     struct VulkanPostprocessSubgraph;   // defined in vulkan_postprocess_subgraph.cpp
     VulkanPostprocessSubgraph* vkPostprocessSubgraph_ = nullptr;
+
+    // VK-REGION-SSAO-1: Vulkan impl of the PostprocessSSAO region -- the first
+    // NEW region grown through runRegion (beyond fog). Two internal draws
+    // (occlusion -> apply) across TWO Vulkan render passes (different targets
+    // + resolutions, so unlike the fog subgraph they cannot share one render
+    // pass); the half-res occlusion image stays a Vulkan-owned intermediate
+    // between them (no GL round-trip mid-region). Ports shaders/vulkan/ssao.
+    // {vert,frag} + ssao_apply.{vert,frag} -- a HAND PORT, NOT the baked
+    // shaders/spv/ssao.frag.default.*.spv artifact: that artifact (compiled
+    // for the GL glShaderBinary consumer, no explicit layout(binding=) in the
+    // GLSL source) decorates BOTH its samplers to (set=0,binding=0) -- a
+    // genuine descriptor-set collision, unusable by a Vulkan pipeline
+    // (verified via spirv-dis). See vulkan_ssao_island.cpp header comment.
+    // Fail-soft: returns false on device/init failure -> caller runs GL
+    // (FallbackGL). Never crashes.
+    bool  ssaoRegionVulkanReady();
+    bool  runSSAORegionVulkanBackend(const RenderCore::PostprocessSSAORegionContext& ctx,
+                                      RenderCore::RegionOutput* out);
+    void  runSSAOVulkan();
+    void  destroyVulkanSSAOIsland();
+    struct VulkanSSAOIsland;   // defined in vulkan_ssao_island.cpp
+    VulkanSSAOIsland* vkSSAOIsland_ = nullptr;
 #endif
 
     // OOB-FOG-1: fullscreen fog over out-of-bounds far-plane pixels.
