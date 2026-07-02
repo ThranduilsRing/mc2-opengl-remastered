@@ -10,6 +10,7 @@
 #include "pipeline_binder.h"                     // MECH-PIPELINEDESC-1 applyPipeline
 #include "../../RenderCore/frame_executor.h"     // APPLY-STATE-MECHOPAQUE-1: ApplyPassId
 #include "../../RenderCore/RenderResourceRegistry.h"  // REGISTRY-MATERIAL-SSBO-1: MaterialGpuBuffer
+#include "../../RenderCore/GpuBufferOwner.h"  // VK-SHADOW-RING-OWNER-1: ring SSBO owner records
 // M2.5: IsObjectIdBufferEnabled() drives the GLSL prefix that gates the
 // mech.frag layout(location=2) write. Mirrors the include shipped by M1.5
 // at gos_static_prop_batcher.cpp:3. GameOS/ is outside the firewall
@@ -455,6 +456,23 @@ static std::unordered_map<TypeLodKey, uint32_t, TypeLodKeyHash> s_typeLodIndex;
 // Per-frame ring SSBOs.
 static GLuint   s_instanceSsbo    = 0;
 static GLuint   s_boneSsbo        = 0;
+// VK-SHADOW-RING-OWNER-1: parallel GpuBufferOwner identity records for the two
+// per-frame ring SSBOs (logical id + lifetime + debug name + handle). The raw GLuint
+// globals above are UNCHANGED so every gen/bind/map/delete site keeps its exact GL
+// args/order; the owner record's backendHandle is written straight from the freshly
+// gen'd handle (pattern (b): `owner.backendHandle = s_xxxSsbo` right after glGenBuffers,
+// mirrors view_uniforms). Registered at create, invalidated on destroy (grow-realloc +
+// onMapUnload). Lifetime Persistent: persistent-mapped, realloc-on-grow, freed on unload.
+static RenderCore::GpuBufferOwner s_instanceSsboOwner{
+    RenderCore::RenderResourceId::MechInstanceRingSsbo,
+    RenderCore::RenderResourceLifetime::Persistent,
+    "MechInstanceRingSsbo",
+    0u};
+static RenderCore::GpuBufferOwner s_boneSsboOwner{
+    RenderCore::RenderResourceId::MechBoneRingSsbo,
+    RenderCore::RenderResourceLifetime::Persistent,
+    "MechBoneRingSsbo",
+    0u};
 static void*    s_instanceMap     = nullptr;
 static void*    s_boneMap         = nullptr;
 static size_t   s_instanceCapacity = 0;  // per ring slot (in GpuMechInstance units)
@@ -787,8 +805,19 @@ static void ensureRingCapacity(size_t neededInstances, size_t neededBones) {
             s_fence[i] = 0;
         }
     }
-    if (s_instanceSsbo) { glDeleteBuffers(1, &s_instanceSsbo); s_instanceSsbo = 0; s_instanceMap = nullptr; }
-    if (s_boneSsbo)     { glDeleteBuffers(1, &s_boneSsbo);     s_boneSsbo     = 0; s_boneMap     = nullptr; }
+    // VK-SHADOW-RING-OWNER-1: invalidate owner record + registry slot on destroy.
+    if (s_instanceSsbo) {
+        glDeleteBuffers(1, &s_instanceSsbo); s_instanceSsbo = 0; s_instanceMap = nullptr;
+        s_instanceSsboOwner.backendHandle = 0;
+        RenderCore::RenderResourceDesc invalid; invalid.id = RenderCore::RenderResourceId::MechInstanceRingSsbo;
+        RenderCore::registerOrUpdateRenderResource(invalid);
+    }
+    if (s_boneSsbo) {
+        glDeleteBuffers(1, &s_boneSsbo); s_boneSsbo = 0; s_boneMap = nullptr;
+        s_boneSsboOwner.backendHandle = 0;
+        RenderCore::RenderResourceDesc invalid; invalid.id = RenderCore::RenderResourceId::MechBoneRingSsbo;
+        RenderCore::registerOrUpdateRenderResource(invalid);
+    }
 
     s_instanceCapacity = std::max(neededInstances,
         s_instanceCapacity ? s_instanceCapacity * 2 : kInitialInstancesPerFrame);
@@ -812,23 +841,51 @@ static void ensureRingCapacity(size_t neededInstances, size_t neededBones) {
 
     const GLbitfield flags = GL_MAP_WRITE_BIT | GL_MAP_PERSISTENT_BIT | GL_MAP_COHERENT_BIT;
 
-    // TIER2-EXCLUDED: ring
+    // VK-SHADOW-RING-OWNER-1: now OWNED (GpuBufferOwner) — the old TIER2-EXCLUDED:ring
+    // tag is removed (a buffer is owned XOR excluded). Same GL args/order as before.
     glGenBuffers(1, &s_instanceSsbo);
+    s_instanceSsboOwner.backendHandle = s_instanceSsbo;  // mirror handle into owner
     glBindBuffer(GL_SHADER_STORAGE_BUFFER, s_instanceSsbo);
     glBufferStorage(GL_SHADER_STORAGE_BUFFER,
         (GLsizeiptr)(MECH_RING_FRAMES * s_instanceCapacity * sizeof(GpuMechInstance)),
         nullptr, flags);
     s_instanceMap = glMapBufferRange(GL_SHADER_STORAGE_BUFFER, 0,
         (GLsizeiptr)(MECH_RING_FRAMES * s_instanceCapacity * sizeof(GpuMechInstance)), flags);
+    {
+        // VK-SHADOW-RING-OWNER-1: register the slot (observe-only metadata; never read by the draw path).
+        RenderCore::RenderResourceDesc d;
+        d.id        = s_instanceSsboOwner.id;
+        d.kind      = RenderCore::RenderResourceKind::Buffer;
+        d.lifetime  = s_instanceSsboOwner.lifetime;
+        d.format    = RenderCore::RenderResourceFormat::BufferRaw;
+        d.debugName = s_instanceSsboOwner.debugName;
+        d.glName    = s_instanceSsbo;
+        d.sizeBytes = static_cast<uint64_t>(MECH_RING_FRAMES * s_instanceCapacity * sizeof(GpuMechInstance));
+        d.valid     = true;
+        RenderCore::registerOrUpdateRenderResource(d);
+    }
 
-    // TIER2-EXCLUDED: ring
+    // VK-SHADOW-RING-OWNER-1: now OWNED (GpuBufferOwner) — TIER2-EXCLUDED:ring removed.
     glGenBuffers(1, &s_boneSsbo);
+    s_boneSsboOwner.backendHandle = s_boneSsbo;  // mirror handle into owner
     glBindBuffer(GL_SHADER_STORAGE_BUFFER, s_boneSsbo);
     glBufferStorage(GL_SHADER_STORAGE_BUFFER,
         (GLsizeiptr)(MECH_RING_FRAMES * s_boneCapacity * sizeof(GpuMechBone)),
         nullptr, flags);
     s_boneMap = glMapBufferRange(GL_SHADER_STORAGE_BUFFER, 0,
         (GLsizeiptr)(MECH_RING_FRAMES * s_boneCapacity * sizeof(GpuMechBone)), flags);
+    {
+        RenderCore::RenderResourceDesc d;
+        d.id        = s_boneSsboOwner.id;
+        d.kind      = RenderCore::RenderResourceKind::Buffer;
+        d.lifetime  = s_boneSsboOwner.lifetime;
+        d.format    = RenderCore::RenderResourceFormat::BufferRaw;
+        d.debugName = s_boneSsboOwner.debugName;
+        d.glName    = s_boneSsbo;
+        d.sizeBytes = static_cast<uint64_t>(MECH_RING_FRAMES * s_boneCapacity * sizeof(GpuMechBone));
+        d.valid     = true;
+        RenderCore::registerOrUpdateRenderResource(d);
+    }
 
     glBindBuffer(GL_SHADER_STORAGE_BUFFER, 0);
 
@@ -927,8 +984,19 @@ void GpuMechBatcher::onMapUnload() {
     if (s_sharedVbo)    { glDeleteBuffers(1, &s_sharedVbo);         s_sharedVbo    = 0; }
     if (s_sharedIbo)    { glDeleteBuffers(1, &s_sharedIbo);         s_sharedIbo    = 0; }
     if (s_sampler)      { glDeleteSamplers(1, &s_sampler);          s_sampler      = 0; }
-    if (s_instanceSsbo) { glDeleteBuffers(1, &s_instanceSsbo);      s_instanceSsbo = 0; s_instanceMap = nullptr; }
-    if (s_boneSsbo)     { glDeleteBuffers(1, &s_boneSsbo);          s_boneSsbo     = 0; s_boneMap     = nullptr; }
+    // VK-SHADOW-RING-OWNER-1: invalidate owner record + registry slot on destroy.
+    if (s_instanceSsbo) {
+        glDeleteBuffers(1, &s_instanceSsbo); s_instanceSsbo = 0; s_instanceMap = nullptr;
+        s_instanceSsboOwner.backendHandle = 0;
+        RenderCore::RenderResourceDesc invalid; invalid.id = RenderCore::RenderResourceId::MechInstanceRingSsbo;
+        RenderCore::registerOrUpdateRenderResource(invalid);
+    }
+    if (s_boneSsbo) {
+        glDeleteBuffers(1, &s_boneSsbo); s_boneSsbo = 0; s_boneMap = nullptr;
+        s_boneSsboOwner.backendHandle = 0;
+        RenderCore::RenderResourceDesc invalid; invalid.id = RenderCore::RenderResourceId::MechBoneRingSsbo;
+        RenderCore::registerOrUpdateRenderResource(invalid);
+    }
     s_instanceCapacity  = 0;
     s_boneCapacity      = 0;
     s_geometryFinalized = false;

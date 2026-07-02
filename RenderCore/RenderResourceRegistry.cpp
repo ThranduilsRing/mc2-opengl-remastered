@@ -81,6 +81,10 @@ const char* toString(RenderResourceId id) {
         case RenderResourceId::DynamicPropShadowSsbo: return "DynamicPropShadowSsbo";
         case RenderResourceId::PostprocessSubgraphColor: return "PostprocessSubgraphColor";
         case RenderResourceId::PostprocessSubgraphDepth: return "PostprocessSubgraphDepth";
+        case RenderResourceId::MechInstanceRingSsbo: return "MechInstanceRingSsbo";
+        case RenderResourceId::MechBoneRingSsbo:     return "MechBoneRingSsbo";
+        case RenderResourceId::StaticPropInstanceRingSsbo: return "StaticPropInstanceRingSsbo";
+        case RenderResourceId::StaticPropColorRingSsbo:    return "StaticPropColorRingSsbo";
         case RenderResourceId::Count:                return "Count";
     }
     return "unknown";

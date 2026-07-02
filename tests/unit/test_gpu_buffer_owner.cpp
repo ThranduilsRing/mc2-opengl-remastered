@@ -267,6 +267,42 @@ TEST_CASE("SCENE-SSBO-OWNER-SWEEP-1 dynamic prop-shadow owner round-trips id/lif
     CHECK((RenderResourceId::DynamicPropShadowSsbo != RenderResourceId::StaticPropMaterialGpuBuffer));
 }
 
+TEST_CASE("VK-SHADOW-RING-OWNER-1 the 4 shadow ring SSBO owners round-trip id/lifetime/name and valid->invalid (Persistent, realloc-on-grow)") {
+    struct Case { RenderResourceId id; const char* name; uint32_t handle; };
+    const Case cases[] = {
+        { RenderResourceId::MechInstanceRingSsbo,       "MechInstanceRingSsbo",       39u },
+        { RenderResourceId::MechBoneRingSsbo,           "MechBoneRingSsbo",           40u },
+        { RenderResourceId::StaticPropInstanceRingSsbo, "StaticPropInstanceRingSsbo", 41u },
+        { RenderResourceId::StaticPropColorRingSsbo,    "StaticPropColorRingSsbo",    42u },
+    };
+    for (const auto& c : cases) {
+        // Persistent lifetime: persistent-mapped ring, realloc-on-grow, freed on unload.
+        GpuBufferOwner o{ c.id, RenderResourceLifetime::Persistent, c.name, 0u };
+        CHECK_FALSE(o.valid());                 // backendHandle 0 -> unallocated
+        o.backendHandle = c.handle;             // glGenBuffers stores a handle
+        CHECK((o.id == c.id));
+        CHECK((o.lifetime == RenderResourceLifetime::Persistent));
+        CHECK(std::strcmp(o.debugName, c.name) == 0);
+        CHECK(o.valid());
+        // realloc-on-grow: handle recreated -> still valid, id/name preserved.
+        o.backendHandle = c.handle + 100u;
+        CHECK(o.valid());
+        CHECK((o.id == c.id));
+        // Invalidate-on-destroy (grow-realloc / onMapUnload).
+        o.backendHandle = 0u;
+        CHECK_FALSE(o.valid());
+        CHECK(std::strcmp(toString(c.id), c.name) == 0);
+        CHECK(int(c.id) < int(RenderResourceId::Count));
+    }
+    // The 4 ring ids are distinct from each other and from the material tables.
+    CHECK((RenderResourceId::MechInstanceRingSsbo       != RenderResourceId::MechBoneRingSsbo));
+    CHECK((RenderResourceId::StaticPropInstanceRingSsbo != RenderResourceId::StaticPropColorRingSsbo));
+    CHECK((RenderResourceId::MechInstanceRingSsbo       != RenderResourceId::StaticPropInstanceRingSsbo));
+    CHECK((RenderResourceId::MechInstanceRingSsbo       != RenderResourceId::MaterialGpuBuffer));
+    CHECK((RenderResourceId::StaticPropInstanceRingSsbo != RenderResourceId::StaticPropMaterialGpuBuffer));
+    CHECK((RenderResourceId::StaticPropColorRingSsbo    != RenderResourceId::DynamicPropShadowSsbo));
+}
+
 TEST_CASE("GpuBufferOwner is a trivially-copyable POD") {
     CHECK(std::is_trivially_copyable<GpuBufferOwner>::value);
 }

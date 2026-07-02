@@ -425,6 +425,21 @@ static std::unordered_set<uint32_t> s_buildingShadowTypeIDs;
 // Per-frame persistent-mapped rings.
 GLuint   s_instanceSsbo = 0;
 GLuint   s_colorSsbo    = 0;
+// VK-SHADOW-RING-OWNER-1: parallel GpuBufferOwner identity records for the two ring
+// SSBOs. The raw GLuint globals above are UNCHANGED so every gen/bind/map/delete site
+// keeps its exact GL args/order; the owner's backendHandle is written from the freshly
+// gen'd handle (pattern (b), mirrors view_uniforms). Registered at create, invalidated
+// on destroy (grow-realloc). Lifetime Persistent: persistent-mapped ring, realloc-on-grow.
+static RenderCore::GpuBufferOwner s_instanceSsboOwner{
+    RenderCore::RenderResourceId::StaticPropInstanceRingSsbo,
+    RenderCore::RenderResourceLifetime::Persistent,
+    "StaticPropInstanceRingSsbo",
+    0u};
+static RenderCore::GpuBufferOwner s_colorSsboOwner{
+    RenderCore::RenderResourceId::StaticPropColorRingSsbo,
+    RenderCore::RenderResourceLifetime::Persistent,
+    "StaticPropColorRingSsbo",
+    0u};
 void*    s_instanceMap  = nullptr;
 void*    s_colorMap     = nullptr;
 GLsync   s_fence[RING_FRAMES] = {0};
@@ -1562,8 +1577,19 @@ void ensureRingCapacity(size_t neededInstances, size_t neededColorEntries) {
             s_fence[i] = 0;
         }
     }
-    if (s_instanceSsbo) { glDeleteBuffers(1, &s_instanceSsbo); s_instanceSsbo = 0; s_instanceMap = nullptr; }
-    if (s_colorSsbo)    { glDeleteBuffers(1, &s_colorSsbo);    s_colorSsbo    = 0; s_colorMap    = nullptr; }
+    // VK-SHADOW-RING-OWNER-1: invalidate owner record + registry slot on destroy.
+    if (s_instanceSsbo) {
+        glDeleteBuffers(1, &s_instanceSsbo); s_instanceSsbo = 0; s_instanceMap = nullptr;
+        s_instanceSsboOwner.backendHandle = 0;
+        RenderCore::RenderResourceDesc invalid; invalid.id = RenderCore::RenderResourceId::StaticPropInstanceRingSsbo;
+        RenderCore::registerOrUpdateRenderResource(invalid);
+    }
+    if (s_colorSsbo) {
+        glDeleteBuffers(1, &s_colorSsbo); s_colorSsbo = 0; s_colorMap = nullptr;
+        s_colorSsboOwner.backendHandle = 0;
+        RenderCore::RenderResourceDesc invalid; invalid.id = RenderCore::RenderResourceId::StaticPropColorRingSsbo;
+        RenderCore::registerOrUpdateRenderResource(invalid);
+    }
 
     s_instanceCapacity = std::max(neededInstances,
         s_instanceCapacity ? s_instanceCapacity * 2 : INITIAL_INSTANCES_PER_FRAME);
@@ -1589,8 +1615,9 @@ void ensureRingCapacity(size_t neededInstances, size_t neededColorEntries) {
     const GLbitfield storageFlags = GL_MAP_WRITE_BIT | GL_MAP_PERSISTENT_BIT | GL_MAP_COHERENT_BIT;
     const GLbitfield mapFlags     = storageFlags;
 
-    // TIER2-EXCLUDED: ring
+    // VK-SHADOW-RING-OWNER-1: now OWNED (GpuBufferOwner) — TIER2-EXCLUDED:ring removed.
     glGenBuffers(1, &s_instanceSsbo);
+    s_instanceSsboOwner.backendHandle = s_instanceSsbo;  // mirror handle into owner
     glBindBuffer(GL_SHADER_STORAGE_BUFFER, s_instanceSsbo);
     glBufferStorage(GL_SHADER_STORAGE_BUFFER,
                     static_cast<GLsizeiptr>(RING_FRAMES * s_instanceCapacity * sizeof(GpuStaticPropInstance)),
@@ -1598,9 +1625,23 @@ void ensureRingCapacity(size_t neededInstances, size_t neededColorEntries) {
     s_instanceMap = MC2_GL_MapBufferRange(GL_SHADER_STORAGE_BUFFER, 0,
                     static_cast<GLsizeiptr>(RING_FRAMES * s_instanceCapacity * sizeof(GpuStaticPropInstance)),
                     mapFlags);
+    {
+        // VK-SHADOW-RING-OWNER-1: register the slot (observe-only metadata; never read by the draw path).
+        RenderCore::RenderResourceDesc d;
+        d.id        = s_instanceSsboOwner.id;
+        d.kind      = RenderCore::RenderResourceKind::Buffer;
+        d.lifetime  = s_instanceSsboOwner.lifetime;
+        d.format    = RenderCore::RenderResourceFormat::BufferRaw;
+        d.debugName = s_instanceSsboOwner.debugName;
+        d.glName    = s_instanceSsbo;
+        d.sizeBytes = static_cast<uint64_t>(RING_FRAMES * s_instanceCapacity * sizeof(GpuStaticPropInstance));
+        d.valid     = true;
+        RenderCore::registerOrUpdateRenderResource(d);
+    }
 
-    // TIER2-EXCLUDED: ring
+    // VK-SHADOW-RING-OWNER-1: now OWNED (GpuBufferOwner) — TIER2-EXCLUDED:ring removed.
     glGenBuffers(1, &s_colorSsbo);
+    s_colorSsboOwner.backendHandle = s_colorSsbo;  // mirror handle into owner
     glBindBuffer(GL_SHADER_STORAGE_BUFFER, s_colorSsbo);
     glBufferStorage(GL_SHADER_STORAGE_BUFFER,
                     static_cast<GLsizeiptr>(RING_FRAMES * s_colorCapacity * sizeof(uint32_t)),
@@ -1608,6 +1649,18 @@ void ensureRingCapacity(size_t neededInstances, size_t neededColorEntries) {
     s_colorMap = MC2_GL_MapBufferRange(GL_SHADER_STORAGE_BUFFER, 0,
                     static_cast<GLsizeiptr>(RING_FRAMES * s_colorCapacity * sizeof(uint32_t)),
                     mapFlags);
+    {
+        RenderCore::RenderResourceDesc d;
+        d.id        = s_colorSsboOwner.id;
+        d.kind      = RenderCore::RenderResourceKind::Buffer;
+        d.lifetime  = s_colorSsboOwner.lifetime;
+        d.format    = RenderCore::RenderResourceFormat::BufferRaw;
+        d.debugName = s_colorSsboOwner.debugName;
+        d.glName    = s_colorSsbo;
+        d.sizeBytes = static_cast<uint64_t>(RING_FRAMES * s_colorCapacity * sizeof(uint32_t));
+        d.valid     = true;
+        RenderCore::registerOrUpdateRenderResource(d);
+    }
 
     glBindBuffer(GL_SHADER_STORAGE_BUFFER, 0);
 

@@ -47,6 +47,10 @@ enum class RenderResourceId : uint16_t {
     DynamicPropShadowSsbo = 36, // SCENE-SSBO-OWNER-SWEEP-1: dynamic prop-shadow caster instance SSBO (s_dynamicPropShadowSsbo, GL binding 0, gos_static_prop_batcher.cpp drawDynamicPropShadows); LIVE default-path (gate MC2_SHADOW_DYNAMIC_PROP_CASTERS default-ON, inside the always-on dynamic shadow pass). Mission lifetime: handle glGen'd once per map, per-frame orphan-on-write bufferData, freed on onMapUnload. GL binding 0 unrelated to id numbering. COMPLETENESS-SWEEP gap B#5. Siblings (s_staticBldgShadowSsbo, s_blockVisSsbo, particle s_ssbo/tube SSBOs) DEFERRED to exclusion ledger — created only under default-OFF gates.
     PostprocessSubgraphColor = 37, // POSTPROCESS-VK-IMAGE-OWNERSHIP-1: Layer-4 subgraph OWNED intermediate COLOR image (R16G16B16A16_SFLOAT). Copied-in from GL sceneColor, blended by BOTH fog passes (edge then oob) in ONE render pass, copied-out to GL. Layout chain UNDEFINED->TRANSFER_DST->COLOR_ATTACHMENT->TRANSFER_SRC. Runtime VkImage handle lives in the future subgraph .cpp, NOT here. Proof-only enum id.
     PostprocessSubgraphDepth = 38, // POSTPROCESS-VK-IMAGE-OWNERSHIP-1: Layer-4 subgraph OWNED intermediate DEPTH image (D32_SFLOAT). Copied-in from GL sceneDepth, SAMPLED (read-only) by both fog passes. Layout chain UNDEFINED->TRANSFER_DST->SHADER_READ_ONLY. Runtime VkImage handle lives in the future subgraph .cpp, NOT here. Proof-only enum id.
+    MechInstanceRingSsbo = 39,  // VK-SHADOW-RING-OWNER-1: mech batcher per-frame instance ring SSBO (s_instanceSsbo, GL binding 0, gos_mech_batcher.cpp); persistent-mapped ring, realloc-on-grow, freed on onMapUnload. Read by the mech opaque + shadow draw. L7.2 Shadow prep. GL binding 0 unrelated to id numbering.
+    MechBoneRingSsbo     = 40,  // VK-SHADOW-RING-OWNER-1: mech batcher per-frame bone ring SSBO (s_boneSsbo, GL binding 1, gos_mech_batcher.cpp); persistent-mapped ring, realloc-on-grow, freed on onMapUnload. Feeds GPU skinning for the shadow-caster draw. L7.2 Shadow prep. GL binding 1 unrelated to id numbering.
+    StaticPropInstanceRingSsbo = 41,  // VK-SHADOW-RING-OWNER-1: static-prop batcher per-frame instance ring SSBO (s_instanceSsbo, GL binding 0, gos_static_prop_batcher.cpp); persistent-mapped ring, realloc-on-grow. Read by the static-prop opaque + shadow draw. L7.2 Shadow prep. GL binding 0 unrelated to id numbering.
+    StaticPropColorRingSsbo    = 42,  // VK-SHADOW-RING-OWNER-1: static-prop batcher per-frame color ring SSBO (s_colorSsbo, GL binding 1, gos_static_prop_batcher.cpp); persistent-mapped ring, realloc-on-grow. Per-instance color feed for the prop draw. L7.2 Shadow prep. GL binding 1 unrelated to id numbering.
     Count
 };
 
@@ -66,16 +70,17 @@ static_assert(static_cast<int>(RenderResourceId::Unknown)                       
 static_assert(static_cast<int>(RenderResourceId::DynamicPropShadowSsbo)         < static_cast<int>(RenderResourceId::Count), "id >= Count would index out of bounds");
 static_assert(static_cast<int>(RenderResourceId::PostprocessSubgraphColor)      < static_cast<int>(RenderResourceId::Count), "id >= Count would index out of bounds");
 static_assert(static_cast<int>(RenderResourceId::PostprocessSubgraphDepth)      < static_cast<int>(RenderResourceId::Count), "id >= Count would index out of bounds");
+static_assert(static_cast<int>(RenderResourceId::StaticPropColorRingSsbo)        < static_cast<int>(RenderResourceId::Count), "id >= Count would index out of bounds");
 
-// (b) The run is DENSE: Count == number-of-real-slots. PostprocessSubgraphDepth is the
-//     last real id (value 38) and Count follows it, so Count must be 39. If a new id
+// (b) The run is DENSE: Count == number-of-real-slots. StaticPropColorRingSsbo is the
+//     last real id (value 42) and Count follows it, so Count must be 43. If a new id
 //     is inserted, or an existing one renumbered leaving a hole, this breaks — forcing
 //     a review of the dense-index consumers.
-static_assert(static_cast<int>(RenderResourceId::PostprocessSubgraphDepth) + 1
+static_assert(static_cast<int>(RenderResourceId::StaticPropColorRingSsbo) + 1
                   == static_cast<int>(RenderResourceId::Count),
               "RenderResourceId is not a dense 0..Count-1 run (Count must immediately "
               "follow the last real id); dense-index consumers assume no holes above Count");
-static_assert(static_cast<int>(RenderResourceId::Count) == 39,
+static_assert(static_cast<int>(RenderResourceId::Count) == 43,
               "RenderResourceId::Count changed; update dense-index consumers "
               "(frame_graph_validate.h, postprocess_subgraph.h) and this guard");
 
