@@ -448,7 +448,37 @@ stencilTex → either bridge it (R8_UINT pattern) or spec-constant it out
 if unclear; do not silently sample an unbound descriptor (validation will catch it — sync
 preset is mandatory here).
 
-## L6.6 — VK-REGION-COMPOSITE-PRESENT-1 (L / medium — SUPERVISED, get a go first)
+## L6.6 — L6.6-COMPOSITE-PRESENT-SCAFFOLD (renamed; SUPERVISOR RULING 2026-07-02)
+
+**★ SUPERVISOR RULING (2026-07-02) — SCOPE SPLIT. Renamed from "VK-REGION-COMPOSITE-PRESENT-1"
+to avoid the lie that "Vulkan presents the game."** Recon proved L5's "engine-owned swapchain
+present" (`vulkan_swapchain_present.cpp`) is a THROWAWAY PROBE: it opens its OWN separate SDL
+Vulkan window, presents 16 frames, tears down — never integrated. **THE WALL:** one SDL window
+is created GL-context OR Vulkan-surface, not both; GL owns the real game window and renders the
+scene. For Vulkan to present the ACTUAL game image, GL must relinquish window ownership and the
+scene image must reach Vulkan via GL↔VK shared-image interop (`GL_EXT_memory_object`) — which the
+ladder explicitly DEFERS to L7 (§4). So "Vulkan presents the game" is NOT L6.6 — it is L7 interop /
+ownership surgery, and pulling it into L6.6 would violate the ladder.
+
+**L6.6-lite (this rung) — build the reusable machinery + contract ONLY, present to a SEPARATE
+Vulkan window, GL game window UNTOUCHED:**
+1. `CompositePresent` RenderCore contract — additive, backend-neutral, GL/VK-free, default-OFF.
+   No change to the GL game window.
+2. Extract L5's throwaway probe into a PERSISTENT Vulkan present object (reusable
+   acquire/present/resize/per-image-semaphore machinery). No temp-window toy code left as the
+   only impl. Isolated from the real game present path.
+3. A `CompositePresent` TEST region that presents to its OWN Vulkan window — prove
+   region→acquire→present→resize with the per-image semaphore fix. Preserve GL game-window
+   ownership. NO game-window takeover, NO shared-image interop.
+4. Gate+prove: gate OFF = byte/behavior-identical GL game window; gate ON = separate Vulkan
+   present window works + survives resize. NO deploy if the GL game window changes ownership.
+   NO claim that Vulkan presents the real game image.
+5. **LEDGERED WALL: full game-window Vulkan present is BLOCKED on L7 shared-image interop /
+   ownership migration.** L6.6-lite banks the present machinery + contract so L7 has something
+   real to plug into. Revisit full game-window present as a supervised L7/L8 step AFTER L7.1 +
+   the interop plan mature. A future agent MUST NOT assume the ownership problem is solved.
+
+--- (original spec below, retained for the region-contract + present-machinery shape) ---
 
 First "Vulkan writes the presented image". Couples the region path to the L5 engine-owned
 swapchain (`vulkan_swapchain_present` machinery from the lib track). Region =
