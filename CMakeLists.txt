@@ -151,6 +151,8 @@ if(MC2_VULKAN)
         GameOS/gameos/vulkan_swapchain_probe.cpp
         # VULKAN-SWAPCHAIN-PRESENT-1: Layer-5 swapchain PRESENT path.
         GameOS/gameos/vulkan_swapchain_present.cpp
+        # L6.6-COMPOSITE-PRESENT-SCAFFOLD: persistent present object (extracted).
+        GameOS/gameos/vulkan_present_object.cpp
         3rdparty/vk_bootstrap/VkBootstrap.cpp
         # VULKAN-VMA-INTEGRATION-1: single VMA_IMPLEMENTATION TU.
         GameOS/gameos/vma_impl.cpp

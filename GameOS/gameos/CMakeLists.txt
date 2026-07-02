@@ -93,6 +93,10 @@ if(MC2_VULKAN)
     # VULKAN-SWAPCHAIN-PRESENT-1: Layer-5 swapchain PRESENT path (own window +
     # swapchain, present 16 frames, resize, fail-soft). Same MC2_VULKAN gate.
     list(APPEND SOURCES vulkan_swapchain_present.cpp)
+    # L6.6-COMPOSITE-PRESENT-SCAFFOLD: the PERSISTENT present object extracted
+    # from the L5 probe (reusable acquire/present/resize + per-image semaphores).
+    # Same MC2_VULKAN gate (NOT _ISLAND -- the swapchain-present probe uses it).
+    list(APPEND SOURCES vulkan_present_object.cpp)
     list(APPEND SOURCES "${CMAKE_SOURCE_DIR}/3rdparty/vk_bootstrap/VkBootstrap.cpp")
     # VULKAN-VMA-INTEGRATION-1: single VMA_IMPLEMENTATION TU (header-only lib).
     list(APPEND SOURCES vma_impl.cpp)

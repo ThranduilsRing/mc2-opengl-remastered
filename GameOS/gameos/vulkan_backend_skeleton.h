@@ -148,6 +148,19 @@ bool mc2_vulkan_probe_swapchain();
 // holding the compiled fullscreen.*.spv.
 bool mc2_vulkan_probe_swapchain_present(const char* spvDir);
 
+// L6.6-COMPOSITE-PRESENT-SCAFFOLD: the CompositePresent TEST region's driver.
+// Stands up the PERSISTENT mc2vk::VulkanPresentObject, presents `frames` frames
+// (0 -> default 16) to its OWN separate Vulkan window, exercising a resize at the
+// midpoint -- proving the region->acquire->present->resize path + the per-image
+// render-semaphore discipline WITHOUT touching the GL game window. Fail-soft (no
+// crash). Optional out-params receive present-frame / resize / validation-error
+// tallies. Full game-window Vulkan present is BLOCKED on L7 interop (ledgered).
+// Defined in vulkan_swapchain_present.cpp (compiled only under MC2_VULKAN).
+bool mc2_vulkan_composite_present_scaffold(const char* spvDir, unsigned int frames,
+                                           unsigned int* presentFramesOut,
+                                           unsigned int* resizeCountOut,
+                                           unsigned int* validationErrorsOut);
+
 // Returns true if a VkInstance was created, at least one physical device was
 // enumerated, and the capability dump completed. Fail-soft: logs + returns
 // false on any error.

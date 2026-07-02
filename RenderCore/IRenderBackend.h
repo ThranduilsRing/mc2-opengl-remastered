@@ -58,6 +58,18 @@ struct IRenderBackend {
         return false;
     }
 
+    // L6.6-COMPOSITE-PRESENT-SCAFFOLD: fourth region overload (ruling R3 —
+    // overload per region context type). Default impl declines. A Vulkan backend
+    // that owns the persistent present object presents ctx.color to a SEPARATE
+    // Vulkan window (never the GL game window) and sets out->presented; any GL
+    // backend declines (returns false) — there is no GL present-to-a-second-window
+    // path, and the GL game present stays untouched.
+    virtual bool runRegion(RenderRegionId /*id*/,
+                           const CompositePresentRegionContext& /*ctx*/,
+                           RegionOutput* /*out*/) {
+        return false;
+    }
+
     // Bind the window's default framebuffer (the backbuffer) as the current
     // render target for the composite output edge. GL impl == glBindFramebuffer
     // (GL_FRAMEBUFFER, 0). This is the single op the PostProcess composite edge
