@@ -2249,8 +2249,25 @@ bool mc2_vulkan_probe_edgefog_fixture(const char* spvDir) {
         vmaUnmapMemory(allocator, depthStagingAlloc);
 
         // fill UBO
+        // VK-FOG-FIXTURE-COLMAJOR-1 (the correction that should have shipped with
+        // ab8cfc7b): edge_fog.frag's UBO is now column_major (std140 default; matches
+        // the GL fog path's effective column-major read = mul_colmajor, the correct
+        // unprojection). The invVP literal above is written ROW-major (row 0 = indices
+        // 0..3) and the CPU reference (edgefog_cpu_ref) reads it row-major = the
+        // LOGICAL matrix. To feed the column_major shader that SAME logical matrix,
+        // pack the TRANSPOSE. Pre-fix this packed raw while the shader still read
+        // row_major, so the fixture validated the shader against its own transpose
+        // convention; after ab8cfc7b flipped the shader to column_major the fixture
+        // (unchanged) diverged. Transposing here + the column_major shader closes it.
+        // The invVP is asymmetric (the -100 in element [2][3]), so a regression back
+        // to a row_major shader re-diverges the reconstruction visibly (LM1).
         EdgeFogParams params{};
-        std::memcpy(params.invViewProj, invVP, 16 * sizeof(float));
+        auto transpose16 = [](const float* src, float* dst) {
+            for (int c = 0; c < 4; ++c)
+                for (int rr = 0; rr < 4; ++rr)
+                    dst[c*4 + rr] = src[rr*4 + c];
+        };
+        transpose16(invVP, params.invViewProj);
         params.fogColor[0] = fogColor[0]; params.fogColor[1] = fogColor[1]; params.fogColor[2] = fogColor[2];
         params._pad0 = 0.0f;
         params.halfExtent = halfExtent;
@@ -2914,8 +2931,19 @@ bool mc2_vulkan_probe_oobfog_fixture(const char* spvDir) {
         std::memcpy(p, depthScratch.data(), (size_t)W * H * 4);
         vmaUnmapMemory(allocator, depthStagingAlloc);
 
+        // VK-FOG-FIXTURE-COLMAJOR-1: fog_oob.frag's UBO is now column_major (ab8cfc7b;
+        // matches mul_colmajor, the correct unprojection). The invVP literal is written
+        // ROW-major and fogoob_cpu_ref reads it row-major = the LOGICAL matrix; pack the
+        // TRANSPOSE to feed the column_major shader that same logical matrix. The invVP
+        // is strongly asymmetric (row0col2=40, row1col2=20, row2col3=10), so a regression
+        // back to a row_major shader re-diverges the reconstruction visibly (LM1).
         FogOobParams params{};
-        std::memcpy(params.invViewProj, invVP, 16 * sizeof(float));
+        auto transpose16 = [](const float* src, float* dst) {
+            for (int c = 0; c < 4; ++c)
+                for (int rr = 0; rr < 4; ++rr)
+                    dst[c*4 + rr] = src[rr*4 + c];
+        };
+        transpose16(invVP, params.invViewProj);
         params.fogColor[0] = fogColor[0]; params.fogColor[1] = fogColor[1]; params.fogColor[2] = fogColor[2];
         params.fogOpacity = fogOpacity;
         params.time = timeVal;
