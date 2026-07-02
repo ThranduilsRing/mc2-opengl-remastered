@@ -458,7 +458,10 @@ def load_expected_bookmarks(scene: str) -> list[str] | None:
     """Read the expected bookmark NAMES for a scene from its bookmark JSON, so
     the preflight can assert every one came back present. Returns None if the
     file is absent (then presence is asserted against whatever was captured)."""
-    bm_path = ROOT / "tests" / "visual" / "bookmarks" / ("%s.json" % scene)
+    bm_dir = (Path(os.environ["MC2_VISUAL_BOOKMARK_DIR"])
+              if os.environ.get("MC2_VISUAL_BOOKMARK_DIR")
+              else ROOT / "tests" / "visual" / "bookmarks")
+    bm_path = bm_dir / ("%s.json" % scene)
     if not bm_path.exists():
         return None
     try:

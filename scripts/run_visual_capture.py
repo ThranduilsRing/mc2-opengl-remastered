@@ -84,7 +84,9 @@ sys.path.insert(0, str(ROOT / "scripts"))
 import manifest_schema as ms  # noqa: E402
 
 DEFAULT_EXE = Path(r"A:/Games/mc2-opengl/releases/mc2-win64-v0.4d-rc1/mc2.exe")
-BOOKMARK_DIR = ROOT / "tests" / "visual" / "bookmarks"
+BOOKMARK_DIR = (Path(os.environ["MC2_VISUAL_BOOKMARK_DIR"])
+                if os.environ.get("MC2_VISUAL_BOOKMARK_DIR")
+                else ROOT / "tests" / "visual" / "bookmarks")
 DEFAULT_OUT = ROOT / "tests" / "visual" / "captures"
 GOLDENS_DIR = ROOT / "tests" / "visual" / "baselines"
 GOLDEN_SETS_REGISTRY = ROOT / "tests" / "visual" / "golden-sets.json"
