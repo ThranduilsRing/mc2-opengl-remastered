@@ -46,6 +46,22 @@ Rule: a compile define that toggles a class-LAYOUT-affecting member/vtable/base 
 
 ## PASS  (`MC2_VULKAN`)
 
+- Header: `GameOS/gameos/vulkan_backend_skeleton.h:162`
+- Class: `Mc2VkShadowDepthPipeline`  (data-member)
+- Member: `VkPipeline            pipeline   = VK_NULL_HANDLE;`
+- Consuming targets: gameos
+- Reached by define: gameos[gameos(PRIVATE)]
+
+## PASS  (`MC2_VULKAN`)
+
+- Header: `GameOS/gameos/vulkan_backend_skeleton.h:163`
+- Class: `Mc2VkShadowDepthPipeline`  (data-member)
+- Member: `VkPipelineLayout      layout     = VK_NULL_HANDLE;`
+- Consuming targets: gameos
+- Reached by define: gameos[gameos(PRIVATE)]
+
+## PASS  (`MC2_VULKAN`)
+
 - Header: `GameOS/gameos/vulkan_present_object.h:47`
 - Class: `SwapchainResources`  (data-member)
 - Member: `bool                       have = false;`
@@ -342,4 +358,4 @@ Rule: a compile define that toggles a class-LAYOUT-affecting member/vtable/base 
 
 ---
 
-Result: 42 guard(s) analyzed, 0 violation(s).
+Result: 44 guard(s) analyzed, 0 violation(s).

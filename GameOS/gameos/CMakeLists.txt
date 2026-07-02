@@ -214,7 +214,9 @@ if(MC2_VULKAN)
     # VK-REGION-HZB-1: bake hzb_reduce.{vert,frag} (one program, N level draws).
     # VK-COMPARE-SAMPLER-FIXTURE-1: bake compare_shadow.{vert,frag} (depth-COMPARE
     # sampler oracle) + csm_array_shadow.{vert,frag} (2D_ARRAY compare oracle).
-    set(MC2_VK_SHADER_BASENAMES fullscreen edge_fog fog_oob ssao ssao_apply hzb_reduce compare_shadow csm_array_shadow)
+    # VK-REGION-SHADOW-1: bake shadow_depth.{vert,frag} (depth-only INSTANCED
+    # shadow-caster WRITE pipeline -- vert reads the instance ring SSBO).
+    set(MC2_VK_SHADER_BASENAMES fullscreen edge_fog fog_oob ssao ssao_apply hzb_reduce compare_shadow csm_array_shadow shadow_depth)
     set(MC2_VK_SPV_OUTPUTS "")
     if(MC2_GLSLANG_VALIDATOR OR MC2_GLSLC)
         foreach(_base ${MC2_VK_SHADER_BASENAMES})

@@ -147,6 +147,46 @@ bool mc2_vulkan_probe_comparesampler_fixture(const char* spvDir);
 // Fail-soft. spvDir = dir with the compiled csm_array_shadow .spv.
 bool mc2_vulkan_probe_csmarray_fixture(const char* spvDir);
 
+// VK-REGION-SHADOW-1 (sub-slice A): reusable DEPTH-ONLY INSTANCED shadow-caster
+// pipeline (the WRITE side of the shadow path; comparesampler/csmarray proved the
+// READ side). Defined in vulkan_shadow_island.cpp (compiled ONLY under MC2_VULKAN,
+// additive island code -- does NOT touch the GL shadow producer). The pipeline has
+// NO color attachment, depthTestEnable+depthWriteEnable=TRUE, D32_SFLOAT depth
+// target, compareOp=LESS. Descriptor layout: set0 = per-frame view/cascade UBO,
+// set1 = instance ring bound STORAGE_BUFFER_DYNAMIC (per-instance transforms).
+// Vertex input = a single vec3 position stream (a unit quad, instanced). The
+// caller owns the render pass (single D32 vs N-layer CSM D32 array), images, and
+// buffers; this builds only the pipeline + its two set layouts. Fail-soft: returns
+// false + leaves *out zeroed on any error.
+struct Mc2VkShadowDepthPipeline {
+    VkPipeline            pipeline   = VK_NULL_HANDLE;
+    VkPipelineLayout      layout     = VK_NULL_HANDLE;
+    VkDescriptorSetLayout frameSetLayout    = VK_NULL_HANDLE; // set0: UBO
+    VkDescriptorSetLayout instanceSetLayout = VK_NULL_HANDLE; // set1: STORAGE_BUFFER_DYNAMIC
+};
+
+// Builds the depth-only instanced pipeline into *out against `renderPass`
+// (subpass 0, depth-only). `vert`/`frag` are the compiled shadow_depth modules.
+// Fail-soft: returns false + leaves *out zeroed on any error.
+bool mc2_vulkan_build_shadow_depth_pipeline(VkDevice device, VkRenderPass renderPass,
+                                            VkShaderModule vert, VkShaderModule frag,
+                                            Mc2VkShadowDepthPipeline* out);
+
+// Destroys everything in *out and zeroes it. No-op on VK_NULL_HANDLE fields.
+void mc2_vulkan_destroy_shadow_depth_pipeline(VkDevice device, Mc2VkShadowDepthPipeline* p);
+
+// VK-REGION-SHADOW-1 (sub-slice A): headless shadow-depth-render FIXTURE. Drives
+// the depth-only instanced pipeline with SYNTHETIC instanced geometry (a handful of
+// full-viewport quads at KNOWN world transforms fed via a synthetic instance-ring
+// SSBO bound STORAGE_BUFFER_DYNAMIC) into (a) a single D32_SFLOAT shadow map and
+// (b) a 3-layer CSM D32_SFLOAT array (a distinct light-space matrix per layer),
+// reads back the depth and validates BIT-TIGHT against a CPU reference that
+// computes the same projected depth per instance (depth-test LESS + clear 1.0 ->
+// per-texel min over instances). Geometry/transforms are chosen so every projected
+// depth is exactly representable in binary -> tolerance 0. Fail-soft: any VkResult
+// error -> log + return false. spvDir = dir with the compiled shadow_depth .spv.
+bool mc2_vulkan_probe_shadowdepth_fixture(const char* spvDir);
+
 // VK-BOOTSTRAP-INTEGRATE-1: Vulkan swapchain PROBE (create + query + destroy).
 // Uses vk-bootstrap's vkb::SwapchainBuilder against a bespoke devs[0] device and
 // a hidden 256x256 SDL Vulkan window/surface. Creates a swapchain, queries its

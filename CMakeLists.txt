@@ -153,6 +153,9 @@ if(MC2_VULKAN)
         GameOS/gameos/vulkan_swapchain_present.cpp
         # L6.6-COMPOSITE-PRESENT-SCAFFOLD: persistent present object (extracted).
         GameOS/gameos/vulkan_present_object.cpp
+        # VK-REGION-SHADOW-1: depth-only instanced shadow-caster pipeline (island;
+        # additive, probe-only -- does NOT touch the GL shadow producer).
+        GameOS/gameos/vulkan_shadow_island.cpp
         3rdparty/vk_bootstrap/VkBootstrap.cpp
         # VULKAN-VMA-INTEGRATION-1: single VMA_IMPLEMENTATION TU.
         GameOS/gameos/vma_impl.cpp

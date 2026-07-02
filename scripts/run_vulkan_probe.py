@@ -80,7 +80,10 @@ CANONICAL_CMAKE = (
 # VK-COMPARE-SAMPLER-FIXTURE-1 added "comparesampler" (depth-COMPARE sampler /
 # GL sampler2DShadow analog, texel-center taps, tolerance 0) + "csmarray"
 # (sampler2DArrayShadow CSM per-layer cascade select, every layer bit-exact).
-SUCCESS_TOKENS = ("caps", "shaders", "triangle", "descriptors", "swapchain", "edgefog_fixture", "oobfog_fixture", "ssao_fixture", "hzb_fixture", "comparesampler", "csmarray", "failSoftOK")
+# VK-REGION-SHADOW-1 (sub-slice A) added "shadowdepth" (depth-only INSTANCED
+# shadow-caster WRITE pipeline: single D32 + 3-layer CSM D32 array, per-texel
+# depth bit-tight vs a CPU projected-depth reference, tolerance 0).
+SUCCESS_TOKENS = ("caps", "shaders", "triangle", "descriptors", "swapchain", "edgefog_fixture", "oobfog_fixture", "ssao_fixture", "hzb_fixture", "comparesampler", "csmarray", "shadowdepth", "failSoftOK")
 
 # Validation-layer error signature emitted by the skeleton's debug messenger
 # (vulkan_backend_skeleton.cpp: "[VULKAN_SKELETON] <probe>: VALIDATION: <msg>").
@@ -366,6 +369,7 @@ def main(argv: list[str]) -> int:
         "hzb_fixture": "hzb",
         "comparesampler": "cmp",
         "csmarray": "csm",
+        "shadowdepth": "shd",
         "failSoftOK": "failsoft",
     }
     probe_summary = "/".join(f"{short_names[t]}{token_vals[t]}" for t in SUCCESS_TOKENS)

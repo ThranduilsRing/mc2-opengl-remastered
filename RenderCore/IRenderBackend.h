@@ -70,6 +70,18 @@ struct IRenderBackend {
         return false;
     }
 
+    // VK-REGION-SHADOW-1: fifth region overload (ruling R3 — overload per region
+    // context type). The FIRST GEOMETRY region: a depth-only instanced shadow-caster
+    // producer that WRITES a shadow map (single or CSM 2D_ARRAY) from the per-frame
+    // instance ring named in the context. Default impl declines. A Vulkan backend
+    // that owns the depth target renders it and returns true; a GL backend declines
+    // (the GL shadow producer stays the direct-GL path, untouched by this seam).
+    virtual bool runRegion(RenderRegionId /*id*/,
+                           const ShadowDepthRegionContext& /*ctx*/,
+                           RegionOutput* /*out*/) {
+        return false;
+    }
+
     // Bind the window's default framebuffer (the backbuffer) as the current
     // render target for the composite output edge. GL impl == glBindFramebuffer
     // (GL_FRAMEBUFFER, 0). This is the single op the PostProcess composite edge

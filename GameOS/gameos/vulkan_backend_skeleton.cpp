@@ -6145,6 +6145,611 @@ done:
     return ok;
 }
 
+// ---------------------------------------------------------------------------
+// VK-REGION-SHADOW-1 (sub-slice A): shadow-depth-render FIXTURE.
+//
+// The WRITE side of the shadow path (comparesampler/csmarray proved the READ).
+// Drives the depth-only INSTANCED pipeline (mc2_vulkan_build_shadow_depth_pipeline,
+// vulkan_shadow_island.cpp) with SYNTHETIC instanced geometry into (a) a single
+// D32 shadow map and (b) a 3-layer CSM D32 array, then validates the readback
+// BIT-TIGHT (tolerance 0) against a CPU reference.
+//
+// SYNTHETIC GEOMETRY (chosen so every projected depth is EXACTLY representable):
+//   * Object-space quad: X in {0,1}, Y in {-1,1}, Z=0 (two triangles).
+//   * kInst instances. Instance i's row-major transform maps the quad to a
+//     vertical BAND: worldX = bandScale*X + bandOffset  (NDC), worldY = Y,
+//     worldZ = zi. Band edges land on TEXEL COLUMN boundaries (W % kInst == 0),
+//     so every pixel center is unambiguously inside exactly one band -> no
+//     rasterization tie.
+//   * lightSpace (row-major) is identity in XY and adds a per-cascade bias to Z:
+//     clipZ = worldZ + layerBias[c], w = 1 -> depth = zi + layerBias[c].
+//   * zi and layerBias are clean binary fractions in [0,1) -> depth exact.
+//   * Depth clears to 1.0, compareOp LESS: a texel column covered by band i gets
+//     exactly (zi + bias); uncovered columns keep 1.0. The CPU reference computes
+//     the identical per-texel value. Tolerance 0. Do not loosen.
+namespace {
+
+// Row-major 4x4 written as 16 floats (matches ShadowDepthRegionContext.lightSpace
+// and the instance-ring record the shadow_depth.vert reads).
+struct Mat4RM { float m[16]; };
+
+Mat4RM shadow_identity() {
+    Mat4RM r{};
+    r.m[0] = r.m[5] = r.m[10] = r.m[15] = 1.0f;
+    return r;
+}
+
+const int   kShadowInst   = 4;      // instances (== bands); W must be a multiple
+const uint32_t kShadowW    = 16;    // 16 % 4 == 0 -> band edges on texel columns
+const uint32_t kShadowH    = 16;
+const int   kShadowLayers = 3;      // CSM array layers
+
+// Per-instance world Z (clean binary fractions in [0, 0.5)).
+float shadow_inst_z(int i) {
+    static const float z[4] = { 0.0625f, 0.1250f, 0.2500f, 0.3750f };
+    return z[i % 4];
+}
+// Per-cascade additive depth bias (clean binary fractions; keeps depth < 1).
+float shadow_layer_bias(int c) {
+    static const float b[3] = { 0.0f, 0.1250f, 0.2500f };
+    return b[c % 3];
+}
+
+// CPU reference depth for texel column x (0..W-1) at cascade c. Band i owns the
+// column range [i*W/kInst, (i+1)*W/kInst). Uncovered -> clear (1.0).
+float shadow_cpu_depth(uint32_t x, int c) {
+    int band = (int)(x * (uint32_t)kShadowInst / kShadowW);   // exact: W % kInst == 0
+    if (band < 0 || band >= kShadowInst) return 1.0f;
+    return shadow_inst_z(band) + shadow_layer_bias(c);
+}
+
+}  // namespace
+
+bool mc2_vulkan_probe_shadowdepth_fixture(const char* spvDir) {
+    if (!ensure_volk_initialized()) return false;
+    g_edgefog_validation_saw_error = false; // shared validation flag (same TU)
+
+    const VkFormat kDepthFmt = VK_FORMAT_D32_SFLOAT;
+    const uint32_t W = kShadowW, H = kShadowH;
+
+    // ---- Instance ring contents (row-major transform per instance) ----------
+    // Band i: worldX = bandScale*X + bandOffset, worldY = Y, worldZ = zi.
+    // NDC bands span [-1,1] split into kInst equal columns:
+    //   bandScale = 2/kInst ; bandOffset = -1 + i*(2/kInst).
+    std::vector<Mat4RM> instData((size_t)kShadowInst);
+    for (int i = 0; i < kShadowInst; ++i) {
+        float bandScale  = 2.0f / (float)kShadowInst;
+        float bandOffset = -1.0f + (float)i * bandScale;
+        Mat4RM t = shadow_identity();
+        // row0: worldX = bandScale*X + 0*Y + 0*Z + bandOffset
+        t.m[0] = bandScale; t.m[3] = bandOffset;
+        // row1: worldY = Y  (identity already)
+        // row2: worldZ = zi (constant; kill X/Y contribution, translate to zi)
+        t.m[8] = 0.0f; t.m[9] = 0.0f; t.m[10] = 0.0f; t.m[11] = shadow_inst_z(i);
+        instData[i] = t;
+    }
+
+    // ---- Vertex buffer: unit quad, X in {0,1}, Y in {-1,1}, Z=0 (6 verts) ----
+    const float quad[6 * 3] = {
+        0.0f, -1.0f, 0.0f,   1.0f, -1.0f, 0.0f,   1.0f, 1.0f, 0.0f,
+        0.0f, -1.0f, 0.0f,   1.0f,  1.0f, 0.0f,   0.0f, 1.0f, 0.0f,
+    };
+
+    // ---- Per-frame UBO shape (std140): lightSpace[4] + cascadeIndex + pad -----
+    struct ShadowFrameUBO {
+        float lightSpace[4][16];
+        int   cascadeIndex;
+        int   _pad0, _pad1, _pad2;
+    };
+    static_assert(sizeof(ShadowFrameUBO) == 4 * 64 + 16, "ShadowFrameUBO std140 offsets drifted");
+
+    // ---- Instance-ring dynamic-offset params (inventory hard-case #2) --------
+    // A 3-frames-in-flight ring: capacity kInst records/slot, stride sizeof(Mat4RM).
+    // We fill slot `kUseSlot` and bind STORAGE_BUFFER_DYNAMIC with dynamic offset =
+    // slot*capacity*stride, proving the dynamic-offset path (not just offset 0).
+    const int      kFramesInFlight = 3;
+    const int      kUseSlot        = 1;   // non-zero slot -> exercises dynamic offset
+    const uint32_t kInstStride     = (uint32_t)sizeof(Mat4RM);
+    const VkDeviceSize ringBytes   = (VkDeviceSize)kFramesInFlight * kShadowInst * kInstStride;
+    const VkDeviceSize dynOffset   = (VkDeviceSize)kUseSlot * kShadowInst * kInstStride;
+
+    // ---- Validation layer bring-up (mirrors csmarray-fixture) ---------------
+    std::vector<const char*> layers;
+    std::vector<const char*> instExts;
+    std::vector<VkValidationFeatureEnableEXT> valFeatures;
+    const char* valPreset = "off";
+    bool wantValidation = resolve_validation_preset(valFeatures, valPreset);
+    if (wantValidation) {
+        uint32_t layerCount = 0;
+        vkEnumerateInstanceLayerProperties(&layerCount, nullptr);
+        std::vector<VkLayerProperties> avail(layerCount);
+        if (layerCount) vkEnumerateInstanceLayerProperties(&layerCount, avail.data());
+        const char* want = "VK_LAYER_KHRONOS_validation";
+        bool found = false;
+        for (const auto& lp : avail) if (std::strcmp(lp.layerName, want) == 0) { found = true; break; }
+        if (found) {
+            layers.push_back(want);
+            instExts.push_back(VK_EXT_DEBUG_UTILS_EXTENSION_NAME);
+            log("shadowdepth-fixture: validation layer %s enabled (preset=%s, +%zu feature(s))",
+                want, valPreset, valFeatures.size());
+        } else {
+            wantValidation = false;
+            log("shadowdepth-fixture: validation requested but %s not available; continuing without", want);
+        }
+    }
+
+    VkApplicationInfo app{};
+    app.sType            = VK_STRUCTURE_TYPE_APPLICATION_INFO;
+    app.pApplicationName = "MC2 (Vulkan shadow-depth fixture)";
+    app.pEngineName      = "MC2-GameOS";
+    app.apiVersion       = VK_API_VERSION_1_1;
+
+    VkValidationFeaturesEXT valFeaturesInfo{};
+    valFeaturesInfo.sType = VK_STRUCTURE_TYPE_VALIDATION_FEATURES_EXT;
+    valFeaturesInfo.enabledValidationFeatureCount = static_cast<uint32_t>(valFeatures.size());
+    valFeaturesInfo.pEnabledValidationFeatures    = valFeatures.empty() ? nullptr : valFeatures.data();
+
+    VkInstanceCreateInfo ici{};
+    ici.sType                   = VK_STRUCTURE_TYPE_INSTANCE_CREATE_INFO;
+    ici.pApplicationInfo        = &app;
+    ici.enabledLayerCount       = static_cast<uint32_t>(layers.size());
+    ici.ppEnabledLayerNames     = layers.empty() ? nullptr : layers.data();
+    ici.enabledExtensionCount   = static_cast<uint32_t>(instExts.size());
+    ici.ppEnabledExtensionNames = instExts.empty() ? nullptr : instExts.data();
+    if (wantValidation && !valFeatures.empty()) ici.pNext = &valFeaturesInfo;
+
+    VkInstance instance = VK_NULL_HANDLE;
+    VkResult r = vkCreateInstance(&ici, nullptr, &instance);
+    if (r != VK_SUCCESS) {
+        log("shadowdepth-fixture: vkCreateInstance failed (VkResult=%d). fail-soft.", (int)r);
+        return false;
+    }
+    volkLoadInstance(instance);
+
+    VkDebugUtilsMessengerEXT messenger = VK_NULL_HANDLE;
+    if (wantValidation) {
+        auto pfnCreate = (PFN_vkCreateDebugUtilsMessengerEXT)
+            vkGetInstanceProcAddr(instance, "vkCreateDebugUtilsMessengerEXT");
+        if (pfnCreate) {
+            VkDebugUtilsMessengerCreateInfoEXT mci{};
+            mci.sType           = VK_STRUCTURE_TYPE_DEBUG_UTILS_MESSENGER_CREATE_INFO_EXT;
+            mci.messageSeverity = VK_DEBUG_UTILS_MESSAGE_SEVERITY_WARNING_BIT_EXT |
+                                  VK_DEBUG_UTILS_MESSAGE_SEVERITY_ERROR_BIT_EXT;
+            mci.messageType     = VK_DEBUG_UTILS_MESSAGE_TYPE_GENERAL_BIT_EXT |
+                                  VK_DEBUG_UTILS_MESSAGE_TYPE_VALIDATION_BIT_EXT |
+                                  VK_DEBUG_UTILS_MESSAGE_TYPE_PERFORMANCE_BIT_EXT;
+            mci.pfnUserCallback = edgefog_debug_cb;
+            pfnCreate(instance, &mci, nullptr, &messenger);
+        }
+    }
+    auto destroy_messenger = [&]() {
+        if (messenger) {
+            auto d = (PFN_vkDestroyDebugUtilsMessengerEXT)
+                vkGetInstanceProcAddr(instance, "vkDestroyDebugUtilsMessengerEXT");
+            if (d) d(instance, messenger, nullptr);
+        }
+    };
+
+    uint32_t devCount = 0;
+    r = vkEnumeratePhysicalDevices(instance, &devCount, nullptr);
+    if (r != VK_SUCCESS || devCount == 0) {
+        log("shadowdepth-fixture: no physical devices (VkResult=%d, count=%u). fail-soft.", (int)r, devCount);
+        destroy_messenger();
+        vkDestroyInstance(instance, nullptr);
+        return false;
+    }
+    std::vector<VkPhysicalDevice> devs(devCount);
+    vkEnumeratePhysicalDevices(instance, &devCount, devs.data());
+    VkPhysicalDevice phys = devs[0];
+
+    uint32_t qfCount = 0;
+    vkGetPhysicalDeviceQueueFamilyProperties(phys, &qfCount, nullptr);
+    std::vector<VkQueueFamilyProperties> qfs(qfCount);
+    if (qfCount) vkGetPhysicalDeviceQueueFamilyProperties(phys, &qfCount, qfs.data());
+    uint32_t gfxFamily = UINT32_MAX;
+    for (uint32_t q = 0; q < qfCount; ++q)
+        if (qfs[q].queueFlags & VK_QUEUE_GRAPHICS_BIT) { gfxFamily = q; break; }
+    if (gfxFamily == UINT32_MAX) {
+        log("shadowdepth-fixture: no graphics queue family. fail-soft.");
+        destroy_messenger();
+        vkDestroyInstance(instance, nullptr);
+        return false;
+    }
+
+    float prio = 1.0f;
+    VkDeviceQueueCreateInfo qci{};
+    qci.sType            = VK_STRUCTURE_TYPE_DEVICE_QUEUE_CREATE_INFO;
+    qci.queueFamilyIndex = gfxFamily;
+    qci.queueCount       = 1;
+    qci.pQueuePriorities = &prio;
+    VkDeviceCreateInfo dci{};
+    dci.sType                = VK_STRUCTURE_TYPE_DEVICE_CREATE_INFO;
+    dci.queueCreateInfoCount = 1;
+    dci.pQueueCreateInfos    = &qci;
+    VkDevice device = VK_NULL_HANDLE;
+    r = vkCreateDevice(phys, &dci, nullptr, &device);
+    if (r != VK_SUCCESS) {
+        log("shadowdepth-fixture: vkCreateDevice failed (VkResult=%d). fail-soft.", (int)r);
+        destroy_messenger();
+        vkDestroyInstance(instance, nullptr);
+        return false;
+    }
+    volkLoadDevice(device);
+    VkQueue queue = VK_NULL_HANDLE;
+    vkGetDeviceQueue(device, gfxFamily, 0, &queue);
+
+    bool ok = false;
+    bool singlePass = false, arrayPass = false;   // per-target results
+    VmaAllocator   allocator = VK_NULL_HANDLE;
+    VkShaderModule vert = VK_NULL_HANDLE, frag = VK_NULL_HANDLE;
+    VkRenderPass   rpass = VK_NULL_HANDLE;
+    Mc2VkShadowDepthPipeline pipe{};
+    VkBuffer       vbuf = VK_NULL_HANDLE, ring = VK_NULL_HANDLE, ubo = VK_NULL_HANDLE, readback = VK_NULL_HANDLE;
+    VmaAllocation  vbufAlloc = VK_NULL_HANDLE, ringAlloc = VK_NULL_HANDLE, uboAlloc = VK_NULL_HANDLE, readbackAlloc = VK_NULL_HANDLE;
+    VkDescriptorPool pool = VK_NULL_HANDLE;
+    VkDescriptorSet  frameSet = VK_NULL_HANDLE, instSet = VK_NULL_HANDLE;
+    VkCommandPool  cpool = VK_NULL_HANDLE;
+
+    if (!create_vma_allocator("shadowdepth-fixture", instance, phys, device, &allocator)) goto done;
+
+    {
+        std::string dir = spvDir ? spvDir : ".";
+        if (!dir.empty() && dir.back() != '/' && dir.back() != '\\') dir += '/';
+        vert = mc2_vulkan_load_spv(device, (dir + "shadow_depth.vert.spv").c_str());
+        frag = mc2_vulkan_load_spv(device, (dir + "shadow_depth.frag.spv").c_str());
+        if (vert == VK_NULL_HANDLE || frag == VK_NULL_HANDLE) {
+            log("shadowdepth-fixture: shadow_depth shader module load failed. fail-soft.");
+            goto done;
+        }
+    }
+
+    // ---- Depth-only render pass (single subpass, one D32 depth attachment) ---
+    {
+        VkAttachmentDescription att{};
+        att.format         = kDepthFmt;
+        att.samples        = VK_SAMPLE_COUNT_1_BIT;
+        att.loadOp         = VK_ATTACHMENT_LOAD_OP_CLEAR;
+        att.storeOp        = VK_ATTACHMENT_STORE_OP_STORE;
+        att.stencilLoadOp  = VK_ATTACHMENT_LOAD_OP_DONT_CARE;
+        att.stencilStoreOp = VK_ATTACHMENT_STORE_OP_DONT_CARE;
+        att.initialLayout  = VK_IMAGE_LAYOUT_UNDEFINED;
+        att.finalLayout    = VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL;
+        VkAttachmentReference ref{0, VK_IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT_OPTIMAL};
+        VkSubpassDescription sub{};
+        sub.pipelineBindPoint       = VK_PIPELINE_BIND_POINT_GRAPHICS;
+        sub.colorAttachmentCount    = 0;                 // DEPTH-ONLY: no color
+        sub.pDepthStencilAttachment = &ref;
+        VkSubpassDependency dep{};
+        dep.srcSubpass    = 0;
+        dep.dstSubpass    = VK_SUBPASS_EXTERNAL;
+        dep.srcStageMask  = VK_PIPELINE_STAGE_LATE_FRAGMENT_TESTS_BIT;
+        dep.srcAccessMask = VK_ACCESS_DEPTH_STENCIL_ATTACHMENT_WRITE_BIT;
+        dep.dstStageMask  = VK_PIPELINE_STAGE_TRANSFER_BIT;
+        dep.dstAccessMask = VK_ACCESS_TRANSFER_READ_BIT;
+        VkRenderPassCreateInfo rpci{};
+        rpci.sType           = VK_STRUCTURE_TYPE_RENDER_PASS_CREATE_INFO;
+        rpci.attachmentCount = 1;
+        rpci.pAttachments    = &att;
+        rpci.subpassCount    = 1;
+        rpci.pSubpasses      = &sub;
+        rpci.dependencyCount = 1;
+        rpci.pDependencies   = &dep;
+        r = vkCreateRenderPass(device, &rpci, nullptr, &rpass);
+        if (r != VK_SUCCESS) { log("shadowdepth-fixture: vkCreateRenderPass failed (%d). fail-soft.", (int)r); goto done; }
+    }
+
+    if (!mc2_vulkan_build_shadow_depth_pipeline(device, rpass, vert, frag, &pipe)) {
+        log("shadowdepth-fixture: build depth-only pipeline failed. fail-soft.");
+        goto done;
+    }
+
+    // ---- Buffers: vertex, instance ring, UBO, readback ----------------------
+    {
+        auto make_buffer = [&](VkDeviceSize size, VkBufferUsageFlags usage, VkBuffer* b, VmaAllocation* a) -> bool {
+            VkBufferCreateInfo bci{};
+            bci.sType = VK_STRUCTURE_TYPE_BUFFER_CREATE_INFO;
+            bci.size = size; bci.usage = usage;
+            VmaAllocationCreateInfo aci{};
+            aci.usage = VMA_MEMORY_USAGE_AUTO;
+            aci.flags = VMA_ALLOCATION_CREATE_HOST_ACCESS_RANDOM_BIT;
+            VkResult rr = vmaCreateBuffer(allocator, &bci, &aci, b, a, nullptr);
+            if (rr != VK_SUCCESS) { log("shadowdepth-fixture: vmaCreateBuffer failed (%d). fail-soft.", (int)rr); return false; }
+            return true;
+        };
+        if (!make_buffer(sizeof(quad), VK_BUFFER_USAGE_VERTEX_BUFFER_BIT, &vbuf, &vbufAlloc)) goto done;
+        if (!make_buffer(ringBytes, VK_BUFFER_USAGE_STORAGE_BUFFER_BIT, &ring, &ringAlloc)) goto done;
+        if (!make_buffer(sizeof(ShadowFrameUBO), VK_BUFFER_USAGE_UNIFORM_BUFFER_BIT, &ubo, &uboAlloc)) goto done;
+        if (!make_buffer((VkDeviceSize)W * H * 4, VK_BUFFER_USAGE_TRANSFER_DST_BIT, &readback, &readbackAlloc)) goto done;
+
+        void* p = nullptr;
+        r = vmaMapMemory(allocator, vbufAlloc, &p);
+        if (r != VK_SUCCESS) { log("shadowdepth-fixture: map vbuf failed (%d). fail-soft.", (int)r); goto done; }
+        std::memcpy(p, quad, sizeof(quad));
+        vmaUnmapMemory(allocator, vbufAlloc);
+
+        // Fill ONLY slot kUseSlot of the ring (rest left zero) -> proves the
+        // dynamic offset lands on the right records.
+        r = vmaMapMemory(allocator, ringAlloc, &p);
+        if (r != VK_SUCCESS) { log("shadowdepth-fixture: map ring failed (%d). fail-soft.", (int)r); goto done; }
+        std::memset(p, 0, (size_t)ringBytes);
+        std::memcpy((char*)p + dynOffset, instData.data(), (size_t)kShadowInst * kInstStride);
+        vmaUnmapMemory(allocator, ringAlloc);
+    }
+
+    // ---- Descriptor pool + set0 (UBO) + set1 (STORAGE_BUFFER_DYNAMIC) --------
+    {
+        VkDescriptorPoolSize sizes[2]{};
+        sizes[0].type = VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER;          sizes[0].descriptorCount = 1;
+        sizes[1].type = VK_DESCRIPTOR_TYPE_STORAGE_BUFFER_DYNAMIC;  sizes[1].descriptorCount = 1;
+        VkDescriptorPoolCreateInfo pci{};
+        pci.sType = VK_STRUCTURE_TYPE_DESCRIPTOR_POOL_CREATE_INFO;
+        pci.maxSets = 2;
+        pci.poolSizeCount = 2;
+        pci.pPoolSizes = sizes;
+        r = vkCreateDescriptorPool(device, &pci, nullptr, &pool);
+        if (r != VK_SUCCESS) { log("shadowdepth-fixture: vkCreateDescriptorPool failed (%d). fail-soft.", (int)r); goto done; }
+
+        VkDescriptorSetAllocateInfo ai0{};
+        ai0.sType = VK_STRUCTURE_TYPE_DESCRIPTOR_SET_ALLOCATE_INFO;
+        ai0.descriptorPool = pool; ai0.descriptorSetCount = 1; ai0.pSetLayouts = &pipe.frameSetLayout;
+        r = vkAllocateDescriptorSets(device, &ai0, &frameSet);
+        if (r != VK_SUCCESS) { log("shadowdepth-fixture: alloc set0 failed (%d). fail-soft.", (int)r); goto done; }
+        VkDescriptorSetAllocateInfo ai1{};
+        ai1.sType = VK_STRUCTURE_TYPE_DESCRIPTOR_SET_ALLOCATE_INFO;
+        ai1.descriptorPool = pool; ai1.descriptorSetCount = 1; ai1.pSetLayouts = &pipe.instanceSetLayout;
+        r = vkAllocateDescriptorSets(device, &ai1, &instSet);
+        if (r != VK_SUCCESS) { log("shadowdepth-fixture: alloc set1 failed (%d). fail-soft.", (int)r); goto done; }
+
+        VkDescriptorBufferInfo uboInfo{ ubo, 0, sizeof(ShadowFrameUBO) };
+        // Dynamic SSBO: base range is ONE slot's worth (dynamic offset added at bind).
+        VkDescriptorBufferInfo ringInfo{ ring, 0, (VkDeviceSize)kShadowInst * kInstStride };
+        VkWriteDescriptorSet writes[2]{};
+        writes[0].sType = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET;
+        writes[0].dstSet = frameSet; writes[0].dstBinding = 0; writes[0].descriptorCount = 1;
+        writes[0].descriptorType = VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER;
+        writes[0].pBufferInfo = &uboInfo;
+        writes[1].sType = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET;
+        writes[1].dstSet = instSet; writes[1].dstBinding = 0; writes[1].descriptorCount = 1;
+        writes[1].descriptorType = VK_DESCRIPTOR_TYPE_STORAGE_BUFFER_DYNAMIC;
+        writes[1].pBufferInfo = &ringInfo;
+        vkUpdateDescriptorSets(device, 2, writes, 0, nullptr);
+    }
+
+    {
+        VkCommandPoolCreateInfo cpci{};
+        cpci.sType = VK_STRUCTURE_TYPE_COMMAND_POOL_CREATE_INFO;
+        cpci.queueFamilyIndex = gfxFamily;
+        cpci.flags = VK_COMMAND_POOL_CREATE_RESET_COMMAND_BUFFER_BIT;
+        r = vkCreateCommandPool(device, &cpci, nullptr, &cpool);
+        if (r != VK_SUCCESS) { log("shadowdepth-fixture: vkCreateCommandPool failed (%d). fail-soft.", (int)r); goto done; }
+    }
+
+    // ---- One render+readback+validate for a given number of array layers ----
+    // layerCount==1 -> single D32 shadow map; layerCount==kShadowLayers -> CSM
+    // array (one draw per layer, distinct cascade bias). Returns bit-tight pass.
+    {
+    auto run_target = [&](int layerCount) -> bool {
+        VkImage        depthImage = VK_NULL_HANDLE;
+        VmaAllocation  depthAlloc = VK_NULL_HANDLE;
+        std::vector<VkImageView> layerViews((size_t)layerCount, VK_NULL_HANDLE);
+        std::vector<VkFramebuffer> fbs((size_t)layerCount, VK_NULL_HANDLE);
+        VkCommandBuffer cbuf = VK_NULL_HANDLE;
+        VkFence         fence = VK_NULL_HANDLE;
+        bool targetOk = false;
+        VkResult rr;
+
+        // N-layer (or 1-layer) D32 image; each layer rendered independently.
+        VkImageCreateInfo ii{};
+        ii.sType = VK_STRUCTURE_TYPE_IMAGE_CREATE_INFO;
+        ii.imageType = VK_IMAGE_TYPE_2D;
+        ii.format = kDepthFmt;
+        ii.extent = {W, H, 1};
+        ii.mipLevels = 1;
+        ii.arrayLayers = (uint32_t)layerCount;
+        ii.samples = VK_SAMPLE_COUNT_1_BIT;
+        ii.tiling = VK_IMAGE_TILING_OPTIMAL;
+        ii.usage = VK_IMAGE_USAGE_DEPTH_STENCIL_ATTACHMENT_BIT | VK_IMAGE_USAGE_TRANSFER_SRC_BIT;
+        ii.initialLayout = VK_IMAGE_LAYOUT_UNDEFINED;
+        VmaAllocationCreateInfo aci{};
+        aci.usage = VMA_MEMORY_USAGE_AUTO;
+        aci.flags = VMA_ALLOCATION_CREATE_DEDICATED_MEMORY_BIT;
+        rr = vmaCreateImage(allocator, &ii, &aci, &depthImage, &depthAlloc, nullptr);
+        if (rr != VK_SUCCESS) { log("shadowdepth-fixture: vmaCreateImage(depth,%d layers) failed (%d).", layerCount, (int)rr); goto tdone; }
+
+        // Per-layer single-layer 2D view + framebuffer.
+        for (int L = 0; L < layerCount; ++L) {
+            VkImageViewCreateInfo vi{};
+            vi.sType = VK_STRUCTURE_TYPE_IMAGE_VIEW_CREATE_INFO;
+            vi.image = depthImage;
+            vi.viewType = VK_IMAGE_VIEW_TYPE_2D;
+            vi.format = kDepthFmt;
+            vi.subresourceRange = {VK_IMAGE_ASPECT_DEPTH_BIT, 0, 1, (uint32_t)L, 1};
+            rr = vkCreateImageView(device, &vi, nullptr, &layerViews[L]);
+            if (rr != VK_SUCCESS) { log("shadowdepth-fixture: create layer view %d failed (%d).", L, (int)rr); goto tdone; }
+            VkFramebufferCreateInfo fci{};
+            fci.sType = VK_STRUCTURE_TYPE_FRAMEBUFFER_CREATE_INFO;
+            fci.renderPass = rpass;
+            fci.attachmentCount = 1;
+            fci.pAttachments = &layerViews[L];
+            fci.width = W; fci.height = H; fci.layers = 1;
+            rr = vkCreateFramebuffer(device, &fci, nullptr, &fbs[L]);
+            if (rr != VK_SUCCESS) { log("shadowdepth-fixture: create fb %d failed (%d).", L, (int)rr); goto tdone; }
+        }
+
+        // Render each layer as its OWN submit (own command buffer + fence). This
+        // is required for correctness: the UBO is a single buffer updated on the
+        // CPU per layer, so all layer draws must NOT share one deferred command
+        // buffer (they would all read the LAST UBO write). One submit/layer makes
+        // each layer's UBO write happen-before its own draw.
+        {
+            VkClearValue clr{};
+            clr.depthStencil.depth = 1.0f;
+            VkViewport vp{0.0f, 0.0f, (float)W, (float)H, 0.0f, 1.0f};
+            VkRect2D sc{{0, 0}, {W, H}};
+            VkDeviceSize vboff = 0;
+
+            for (int L = 0; L < layerCount; ++L) {
+                // Per-layer UBO: cascadeIndex = L (the vert selects lightSpace[L]).
+                // lightSpace[c] = identity + Z bias (row2 col3 = bias) -> depth = zi + bias[c].
+                ShadowFrameUBO fu{};
+                for (int c = 0; c < 4; ++c) {
+                    Mat4RM m = shadow_identity();
+                    m.m[11] = shadow_layer_bias(c);   // row2 translate == +bias on Z
+                    std::memcpy(fu.lightSpace[c], m.m, sizeof(m.m));
+                }
+                fu.cascadeIndex = L;
+                void* up = nullptr;
+                rr = vmaMapMemory(allocator, uboAlloc, &up);
+                if (rr != VK_SUCCESS) { log("shadowdepth-fixture: map ubo failed (%d).", (int)rr); goto tdone; }
+                std::memcpy(up, &fu, sizeof(fu));
+                vmaUnmapMemory(allocator, uboAlloc);
+
+                VkCommandBufferAllocateInfo cai{};
+                cai.sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_ALLOCATE_INFO;
+                cai.commandPool = cpool;
+                cai.level = VK_COMMAND_BUFFER_LEVEL_PRIMARY;
+                cai.commandBufferCount = 1;
+                rr = vkAllocateCommandBuffers(device, &cai, &cbuf);
+                if (rr != VK_SUCCESS) { log("shadowdepth-fixture: alloc cbuf L%d failed (%d).", L, (int)rr); goto tdone; }
+                VkCommandBufferBeginInfo bi{};
+                bi.sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_BEGIN_INFO;
+                bi.flags = VK_COMMAND_BUFFER_USAGE_ONE_TIME_SUBMIT_BIT;
+                rr = vkBeginCommandBuffer(cbuf, &bi);
+                if (rr != VK_SUCCESS) { log("shadowdepth-fixture: begin cbuf L%d failed (%d).", L, (int)rr); goto tdone; }
+
+                VkRenderPassBeginInfo rbi{};
+                rbi.sType = VK_STRUCTURE_TYPE_RENDER_PASS_BEGIN_INFO;
+                rbi.renderPass = rpass;
+                rbi.framebuffer = fbs[L];
+                rbi.renderArea = {{0, 0}, {W, H}};
+                rbi.clearValueCount = 1;
+                rbi.pClearValues = &clr;
+                vkCmdBeginRenderPass(cbuf, &rbi, VK_SUBPASS_CONTENTS_INLINE);
+                vkCmdBindPipeline(cbuf, VK_PIPELINE_BIND_POINT_GRAPHICS, pipe.pipeline);
+                vkCmdSetViewport(cbuf, 0, 1, &vp);
+                vkCmdSetScissor(cbuf, 0, 1, &sc);
+                vkCmdBindVertexBuffers(cbuf, 0, 1, &vbuf, &vboff);
+                vkCmdBindDescriptorSets(cbuf, VK_PIPELINE_BIND_POINT_GRAPHICS, pipe.layout,
+                                        0, 1, &frameSet, 0, nullptr);
+                uint32_t dyn = (uint32_t)dynOffset;   // STORAGE_BUFFER_DYNAMIC offset
+                vkCmdBindDescriptorSets(cbuf, VK_PIPELINE_BIND_POINT_GRAPHICS, pipe.layout,
+                                        1, 1, &instSet, 1, &dyn);
+                // 6 verts, kShadowInst instances (each instance -> its band).
+                vkCmdDraw(cbuf, 6, (uint32_t)kShadowInst, 0, 0);
+                vkCmdEndRenderPass(cbuf);
+                rr = vkEndCommandBuffer(cbuf);
+                if (rr != VK_SUCCESS) { log("shadowdepth-fixture: end cbuf L%d failed (%d).", L, (int)rr); goto tdone; }
+
+                VkFenceCreateInfo fnci{};
+                fnci.sType = VK_STRUCTURE_TYPE_FENCE_CREATE_INFO;
+                rr = vkCreateFence(device, &fnci, nullptr, &fence);
+                if (rr != VK_SUCCESS) { log("shadowdepth-fixture: create fence L%d failed (%d).", L, (int)rr); goto tdone; }
+                VkSubmitInfo si{};
+                si.sType = VK_STRUCTURE_TYPE_SUBMIT_INFO;
+                si.commandBufferCount = 1;
+                si.pCommandBuffers = &cbuf;
+                rr = vkQueueSubmit(queue, 1, &si, fence);
+                if (rr != VK_SUCCESS) { log("shadowdepth-fixture: submit L%d failed (%d).", L, (int)rr); goto tdone; }
+                rr = vkWaitForFences(device, 1, &fence, VK_TRUE, 5ull * 1000 * 1000 * 1000);
+                if (rr != VK_SUCCESS) { log("shadowdepth-fixture: wait fence L%d failed/timeout (%d).", L, (int)rr); goto tdone; }
+                vkDestroyFence(device, fence, nullptr); fence = VK_NULL_HANDLE;
+                vkFreeCommandBuffers(device, cpool, 1, &cbuf); cbuf = VK_NULL_HANDLE;
+            }
+        }
+
+        // Validate each layer: copy layer -> readback (own one-shot cmd), map, compare.
+        targetOk = true;
+        for (int L = 0; L < layerCount && targetOk; ++L) {
+            VkCommandBuffer ccb = VK_NULL_HANDLE;
+            VkCommandBufferAllocateInfo cai{};
+            cai.sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_ALLOCATE_INFO;
+            cai.commandPool = cpool; cai.level = VK_COMMAND_BUFFER_LEVEL_PRIMARY; cai.commandBufferCount = 1;
+            rr = vkAllocateCommandBuffers(device, &cai, &ccb);
+            if (rr != VK_SUCCESS) { log("shadowdepth-fixture: alloc copy-cbuf L%d failed (%d).", L, (int)rr); targetOk = false; break; }
+            VkCommandBufferBeginInfo bi{};
+            bi.sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_BEGIN_INFO;
+            bi.flags = VK_COMMAND_BUFFER_USAGE_ONE_TIME_SUBMIT_BIT;
+            vkBeginCommandBuffer(ccb, &bi);
+            VkBufferImageCopy creg{};
+            creg.bufferOffset = 0;
+            creg.imageSubresource = {VK_IMAGE_ASPECT_DEPTH_BIT, 0, (uint32_t)L, 1};
+            creg.imageExtent = {W, H, 1};
+            vkCmdCopyImageToBuffer(ccb, depthImage, VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL, readback, 1, &creg);
+            vkEndCommandBuffer(ccb);
+            VkFence f2 = VK_NULL_HANDLE;
+            VkFenceCreateInfo fnci{}; fnci.sType = VK_STRUCTURE_TYPE_FENCE_CREATE_INFO;
+            vkCreateFence(device, &fnci, nullptr, &f2);
+            VkSubmitInfo si{}; si.sType = VK_STRUCTURE_TYPE_SUBMIT_INFO; si.commandBufferCount = 1; si.pCommandBuffers = &ccb;
+            vkQueueSubmit(queue, 1, &si, f2);
+            vkWaitForFences(device, 1, &f2, VK_TRUE, 5ull * 1000 * 1000 * 1000);
+            vkDestroyFence(device, f2, nullptr);
+            vkFreeCommandBuffers(device, cpool, 1, &ccb);
+
+            void* mapped = nullptr;
+            rr = vmaMapMemory(allocator, readbackAlloc, &mapped);
+            if (rr != VK_SUCCESS) { log("shadowdepth-fixture: map readback L%d failed (%d).", L, (int)rr); targetOk = false; break; }
+            const float* gpu = static_cast<const float*>(mapped);
+            uint32_t bad = 0; int firstBadIdx = -1; float fbGpu = 0, fbCpu = 0;
+            for (uint32_t y = 0; y < H; ++y) {
+                for (uint32_t x = 0; x < W; ++x) {
+                    float cpu = shadow_cpu_depth(x, L);
+                    float g = gpu[y * W + x];
+                    if (g != cpu) {
+                        if (firstBadIdx < 0) { firstBadIdx = (int)(y * W + x); fbGpu = g; fbCpu = cpu; }
+                        ++bad;
+                    }
+                }
+            }
+            vmaUnmapMemory(allocator, readbackAlloc);
+            log("shadowdepth-fixture: %s layer %d: mismatches=%u/%u %s",
+                (layerCount == 1 ? "single" : "csm"), L, bad, W * H, bad ? "FAIL" : "bit-exact");
+            if (bad) {
+                log("shadowdepth-fixture: FIRST mismatch idx %d: gpu=%.9g cpu=%.9g -- BIT-TIGHT oracle, not loosening.",
+                    firstBadIdx, (double)fbGpu, (double)fbCpu);
+                targetOk = false;
+            }
+        }
+
+    tdone:
+        if (fence) vkDestroyFence(device, fence, nullptr);
+        if (cbuf)  vkFreeCommandBuffers(device, cpool, 1, &cbuf);
+        for (auto fb : fbs) if (fb) vkDestroyFramebuffer(device, fb, nullptr);
+        for (auto v : layerViews) if (v) vkDestroyImageView(device, v, nullptr);
+        if (depthImage) vmaDestroyImage(allocator, depthImage, depthAlloc);
+        return targetOk;
+    };
+
+    singlePass = run_target(1);
+    arrayPass  = run_target(kShadowLayers);
+    ok = singlePass && arrayPass;
+    }
+
+    if (wantValidation) {
+        ok = ok && !g_edgefog_validation_saw_error;
+        log("shadowdepth-fixture: validation active; saw_error=%d", g_edgefog_validation_saw_error ? 1 : 0);
+    }
+    if (ok) log("shadowdepth-fixture: PASS -- depth-only instanced pipeline: single D32 + %d-layer CSM array bit-exact vs CPU ref (tolerance 0).", kShadowLayers);
+    else    log("shadowdepth-fixture: FAIL -- single=%d array=%d (see above).", singlePass ? 1 : 0, arrayPass ? 1 : 0);
+
+done:
+    if (cpool)    vkDestroyCommandPool(device, cpool, nullptr);
+    if (pool)     vkDestroyDescriptorPool(device, pool, nullptr);
+    mc2_vulkan_destroy_shadow_depth_pipeline(device, &pipe);
+    if (rpass)    vkDestroyRenderPass(device, rpass, nullptr);
+    if (readback) vmaDestroyBuffer(allocator, readback, readbackAlloc);
+    if (ubo)      vmaDestroyBuffer(allocator, ubo, uboAlloc);
+    if (ring)     vmaDestroyBuffer(allocator, ring, ringAlloc);
+    if (vbuf)     vmaDestroyBuffer(allocator, vbuf, vbufAlloc);
+    mc2_vulkan_free_shader(device, vert);
+    mc2_vulkan_free_shader(device, frag);
+    if (allocator) vmaDestroyAllocator(allocator);
+    vkDestroyDevice(device, nullptr);
+    destroy_messenger();
+    vkDestroyInstance(instance, nullptr);
+    log("shadowdepth-fixture: %s -- cleaned up (device+instance destroyed).", ok ? "PASS" : "FAIL");
+    return ok;
+}
+
 bool mc2_vulkan_probe() {
     // VULKAN-VOLK-LOADER-1: open the Vulkan runtime via volk before any vk call.
     // This is the primary fail-soft gate: on an OpenGL-only machine with no
@@ -6305,9 +6910,11 @@ bool mc2_vulkan_probe_if_env() {
     // VK-COMPARE-SAMPLER-FIXTURE-1: bit-tight depth-compare + CSM 2D_ARRAY oracles.
     bool cmpOk = mc2_vulkan_probe_comparesampler_fixture(spvDir ? spvDir : "shaders/vulkan");
     bool csmOk = mc2_vulkan_probe_csmarray_fixture(spvDir ? spvDir : "shaders/vulkan");
-    log("MC2_VULKAN_PROBE: caps=%d shaders=%d triangle=%d descriptors=%d sampled_image=%d swapchain=%d swapchain_present=%d edgefog_fixture=%d oobfog_fixture=%d ssao_fixture=%d hzb_fixture=%d comparesampler=%d csmarray=%d",
-        ok ? 1 : 0, shOk ? 1 : 0, triOk ? 1 : 0, descOk ? 1 : 0, imgOk ? 1 : 0, swOk ? 1 : 0, presentOk ? 1 : 0, efOk ? 1 : 0, obOk ? 1 : 0, ssaoOk ? 1 : 0, hzbOk ? 1 : 0, cmpOk ? 1 : 0, csmOk ? 1 : 0);
-    return ok && shOk && triOk && descOk && imgOk && swOk && presentOk && efOk && obOk && ssaoOk && hzbOk && cmpOk && csmOk;
+    // VK-REGION-SHADOW-1 (sub-slice A): depth-only instanced shadow-caster WRITE oracle.
+    bool shdOk = mc2_vulkan_probe_shadowdepth_fixture(spvDir ? spvDir : "shaders/vulkan");
+    log("MC2_VULKAN_PROBE: caps=%d shaders=%d triangle=%d descriptors=%d sampled_image=%d swapchain=%d swapchain_present=%d edgefog_fixture=%d oobfog_fixture=%d ssao_fixture=%d hzb_fixture=%d comparesampler=%d csmarray=%d shadowdepth=%d",
+        ok ? 1 : 0, shOk ? 1 : 0, triOk ? 1 : 0, descOk ? 1 : 0, imgOk ? 1 : 0, swOk ? 1 : 0, presentOk ? 1 : 0, efOk ? 1 : 0, obOk ? 1 : 0, ssaoOk ? 1 : 0, hzbOk ? 1 : 0, cmpOk ? 1 : 0, csmOk ? 1 : 0, shdOk ? 1 : 0);
+    return ok && shOk && triOk && descOk && imgOk && swOk && presentOk && efOk && obOk && ssaoOk && hzbOk && cmpOk && csmOk && shdOk;
 }
 
 #endif // MC2_VULKAN
