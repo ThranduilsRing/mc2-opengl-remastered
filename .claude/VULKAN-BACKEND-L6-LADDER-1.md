@@ -253,6 +253,24 @@ set) specced at the L7.2 recon — do NOT stretch this postprocess table over th
 
 ---
 
+### 5b. Per-region tolerance floor — SUPERVISOR ORACLE RULING (2026-07-02, verbatim)
+
+> transcendental-class regions may declare an EXPLICIT per-region tolerance floor — max
+> |diff| ≤ 1 LSB AND diff-pixel count ≤ 0.1% — in REGION_SPEC (same family as the oobfog
+> envelope precedent). Byte-exact remains the DEFAULT for all regions; the floor is a
+> declared per-region property, never global.
+
+Encoded in `scripts/run_golden_parity.py` (`REGION_SPEC[...]["tolerance_floor"]` +
+`evaluate_region_tolerance`, self-tested case (e)). Applied to **PostprocessSSAO** (16-sample
+hard-branch occlusion accumulation over `sin/cos/fract/pow` — driver-GLSL vs glslang-SPIR-V
+frontends legitimately flip ±1 LSB on a sub-0.1% pixel population). Guardrails baked into the
+harness: the floor is consulted ONLY after a byte-exact FAIL, structural culprits
+(registry_hash / pass_counters / render_health) are NEVER tolerated, missing/undecodable PNGs
+REFUSE (the floor must be proven, never assumed), and the RESULT line keeps
+`within_floor=False` (honest byte-exact verdict) next to `region_tolerance=WITHIN[stats]`.
+This resolves open ruling §8.3's family question for SSAO; cloud/shoreline (FBM, way beyond
+1 LSB) still need the separate perceptual gate if ever ported — this floor does NOT cover them.
+
 ## 6. Milestone ladder (L6 → L8), one line each
 
 Each region slice = opt-in behind `MC2_POSTPROCESS_BACKEND=vk`-style selection + fail-soft +
@@ -263,7 +281,7 @@ template checklist. `size` = S/M/L; `risk` L/M/H; `proof` = harness; `gate` = en
 |---|---|---|---|---|---|
 | L6.0 | **island readback R-A-W barrier (H1)** | S | L | sync-validation 0 + 6 fog bookmarks byte-identical | (fixes existing island path) |
 | L6.1 | **backendHandle rename** (`GpuBufferOwner.glName`→64-bit `backendHandle`) | S | L | build byte-identical, unit suite green | none (mechanical) |
-| L6.2 | **SSAO region** through runRegion (fullscreen, no SSBO) — **LANDED `af5f9cdc`**, fixture GREEN (probe ssao1, sync-val 0), **BUT backend-compare PARITY **FAILED** (2026-07-02)**: the only genuine vk run (harness B, island exe confirmed by its own dump) corrupted all 5 bookmarks (~40% darkening + center moiré, systematic). "Clean rerun" observations that night are VOID — a concurrent agent swapped the lane exe (see VULKAN-NEXT-SLICES.md LM8), so the corruption may be plain-deterministic. CONFIRMED deterministic 03:0x: quiet-window rerun reproduced B's corrupt hashes BIT-EXACTLY; island raw-AO field is ao~0.08 + center-X while GL is ~1.0 -> pass-1 INPUT plumbing (depth/normal readback) is the prime suspect. Confirmed bugs: vk route missing the MC2_SSAO/sceneHasTerrain enable-guard (island ran 2268 frames with MC2_SSAO unset); vk apply samples ssaoTex NEAREST where GL is LINEAR (prime moiré suspect). Dossier + fix order: VULKAN-NEXT-SLICES.md → VK-SSAO-PARITY-FAIL-1 (N0). **L6.4+ region growth BLOCKED until N0 closes.** | M | L→**M** | synthetic fixture + backend-compare `--region PostprocessSSAO` (+`MC2_SSAO=1`) | `MC2_POSTPROCESS_BACKEND=vk` |
+| L6.2 | **SSAO region** through runRegion (fullscreen, no SSBO) — **COMPLETE (2026-07-02)**. Landed `af5f9cdc`; N0 parity-fail root-caused in three layers: (1) enable-guard missing on the vk route (`f902b2ef`), (2) LINEAR apply sampler + R16F occlusion (`a38a610e`), (3) **SSAO params UBO row_major transpose vs the GL_FALSE column-major upload** (`ac96e31d` — LM1 in action; fixture corrected to pack real-path convention). Post-fix compare: 4/5 bookmarks byte-IDENTICAL; residual = highangle_wide ±1 LSB on 134/480000 px (0.028%), deterministic transcendental drift → **§5b tolerance floor declared for PostprocessSSAO (supervisor ruling)** → compare 5/5 GREEN (4 byte-exact + 1 within declared floor). N0 RESOLVED. | M | L→**M** | synthetic fixture + backend-compare `--region PostprocessSSAO` (+`MC2_SSAO=1`, §5b floor) | `MC2_POSTPROCESS_BACKEND=vk` |
 | L6.3 | **CloudShadow + Shoreline regions** (FBM) + **perceptual-tolerance gate** | M | M | new SSIM harness (byte-exact impossible) | vk + tolerance policy |
 | L6.4 | **HZB-reduce region** (per-mip intra-pass barriers, B13) | M | M | fixture + compare; per-mip barrier enumerated | vk |
 | L6.5 | **fold fog+ssao `.frag` forks onto explicit-binding baked `.spv`** (retire hand-mirror; requires §5a bake plan) | S | L | fog/ssao output byte-identical GL vs baked-spv | none |

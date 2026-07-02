@@ -95,6 +95,22 @@ CAP_TIMEOUT_S = 180
 # env BOTH states need so the region actually runs in-frame (SSAO is
 # default-OFF: without MC2_SSAO=1 a "compare" would trivially pass on a frame
 # that never entered the region).
+#
+# PER-REGION TOLERANCE FLOOR -- SUPERVISOR ORACLE RULING (2026-07-02, verbatim):
+#   "transcendental-class regions may declare an EXPLICIT per-region tolerance
+#    floor -- max |diff| <= 1 LSB AND diff-pixel count <= 0.1% -- in
+#    REGION_SPEC (same family as the oobfog envelope precedent). Byte-exact
+#    remains the DEFAULT for all regions; the floor is a declared per-region
+#    property, never global."
+# Mechanics (evaluate_region_tolerance): the floor is consulted ONLY when the
+# byte-exact compare already FAILED, ONLY in backend-compare mode, ONLY for the
+# region under test, and ONLY when every beyond-floor culprit is a pixel field
+# (any structural culprit -- registry_hash / pass_counters / render_health --
+# is NEVER tolerated).  Each diverging bookmark's A/B PNGs are decoded
+# (pure-stdlib) and must satisfy BOTH bounds; the RESULT line then reports
+# within_floor=False (honest byte-exact verdict) alongside
+# region_tolerance=WITHIN[per-bookmark stats].  A region without a
+# "tolerance_floor" key keeps the byte-exact oracle unchanged.
 REGION_SPEC = {
     "PostprocessFog": {
         "health_block": "render_backend_region",
@@ -103,6 +119,15 @@ REGION_SPEC = {
     "PostprocessSSAO": {
         "health_block": "render_backend_ssao_region",
         "extra_env": {"MC2_SSAO": "1"},
+        # Transcendental-class: 16-sample hard-branch occlusion accumulation
+        # over sin/cos/fract/pow -- driver-GLSL vs glslang-SPIR-V frontends
+        # legitimately flip +-1 LSB on a sub-0.1% pixel population
+        # (N0 residual: 134/480000 px, max |diff| = 1, deterministic).
+        "tolerance_floor": {
+            "class": "transcendental",
+            "max_abs_diff_lsb": 1,        # per-channel, 8-bit levels
+            "max_diff_pixel_frac": 0.001,  # <= 0.1% of pixels may differ
+        },
     },
 }
 
@@ -190,11 +215,13 @@ def capture_state(label: str, scene: str, exe: Path, work: Path,
     if bmarks is None:
         bmarks = _dig_bookmarks(vm)
     pixel_shas = {}
+    pixel_pngs = {}
     present_map = {}
     any_nondet = False
     for b in bmarks or []:
         name = b.get("name", "?")
         pixel_shas[name] = b.get("sha256")
+        pixel_pngs[name] = b.get("png")
         present_map[name] = bool(b.get("present"))
         if b.get("engine_deterministic") is False:
             any_nondet = True
@@ -262,6 +289,9 @@ def capture_state(label: str, scene: str, exe: Path, work: Path,
         # LOAD-BEARING pixel oracle from run_visual_capture (EXACT-comparable):
         "pixel_shas": pixel_shas,
         "pixel_sha_all": pixel_sha_all,
+        # PNG paths per bookmark (volatile; consumed by the per-region
+        # tolerance-floor evaluation when a declared floor exists):
+        "pixel_pngs": pixel_pngs,
         "pixel_any_nondeterministic": any_nondet,
         # CAPTURE-LIVENESS fields (asserted by preflight BEFORE any compare):
         "bookmark_present": present_map,
@@ -458,6 +488,179 @@ def classify_pixel_fields(floor_path: Path) -> tuple[list[str], list[str]]:
     return sorted(exact), sorted(nonexact)
 
 
+def _png_decode(path: Path) -> tuple[int, int, int, bytes]:
+    """Minimal pure-stdlib PNG decoder for the engine's capture PNGs
+    (8-bit, non-interlaced, RGB or RGBA). Returns (w, h, channels, raw bytes).
+    Raises ValueError on anything outside that envelope -- the tolerance
+    evaluation then refuses (it must never guess)."""
+    import struct
+    import zlib
+    data = Path(path).read_bytes()
+    if data[:8] != b"\x89PNG\r\n\x1a\n":
+        raise ValueError("not a PNG: %s" % path)
+    pos, idat, w, h, colortype = 8, b"", None, None, None
+    while pos + 8 <= len(data):
+        ln = int.from_bytes(data[pos:pos + 4], "big")
+        typ = data[pos + 4:pos + 8]
+        chunk = data[pos + 8:pos + 8 + ln]
+        pos += 12 + ln
+        if typ == b"IHDR":
+            w, h, depth, colortype, _comp, _filt, interlace = struct.unpack(
+                ">IIBBBBB", chunk)
+            if depth != 8 or interlace != 0 or colortype not in (2, 6):
+                raise ValueError(
+                    "unsupported PNG shape (depth=%d colortype=%d interlace=%d)"
+                    % (depth, colortype, interlace))
+        elif typ == b"IDAT":
+            idat += chunk
+        elif typ == b"IEND":
+            break
+    if w is None or not idat:
+        raise ValueError("truncated PNG: %s" % path)
+    raw = zlib.decompress(idat)
+    ch = 3 if colortype == 2 else 4
+    stride = w * ch
+    out = bytearray(h * stride)
+    prev = bytearray(stride)
+    pos = 0
+    for y in range(h):
+        f = raw[pos]
+        pos += 1
+        line = bytearray(raw[pos:pos + stride])
+        pos += stride
+        if f == 1:      # Sub
+            for i in range(ch, stride):
+                line[i] = (line[i] + line[i - ch]) & 0xFF
+        elif f == 2:    # Up
+            for i in range(stride):
+                line[i] = (line[i] + prev[i]) & 0xFF
+        elif f == 3:    # Average
+            for i in range(stride):
+                a = line[i - ch] if i >= ch else 0
+                line[i] = (line[i] + ((a + prev[i]) >> 1)) & 0xFF
+        elif f == 4:    # Paeth
+            for i in range(stride):
+                a = line[i - ch] if i >= ch else 0
+                b = prev[i]
+                c = prev[i - ch] if i >= ch else 0
+                p = a + b - c
+                pa, pb, pc = abs(p - a), abs(p - b), abs(p - c)
+                pr = a if (pa <= pb and pa <= pc) else (b if pb <= pc else c)
+                line[i] = (line[i] + pr) & 0xFF
+        elif f != 0:
+            raise ValueError("unknown PNG filter %d at row %d" % (f, y))
+        out[y * stride:(y + 1) * stride] = line
+        prev = line
+    return w, h, ch, bytes(out)
+
+
+def png_diff_stats(path_a: Path, path_b: Path) -> dict:
+    """Per-pixel diff between two capture PNGs. A pixel counts as differing if
+    ANY channel differs; max_abs_diff is the per-channel maximum over the whole
+    image. Pure stdlib (the harness discipline)."""
+    wa, ha, ca, da = _png_decode(path_a)
+    wb, hb, cb, db = _png_decode(path_b)
+    if (wa, ha, ca) != (wb, hb, cb):
+        raise ValueError("PNG shape mismatch: %dx%dx%d vs %dx%dx%d"
+                         % (wa, ha, ca, wb, hb, cb))
+    total_px = wa * ha
+    max_d = 0
+    diff_px = 0
+    for i in range(0, total_px * ca, ca):
+        pd = 0
+        for k in range(ca):
+            d = da[i + k] - db[i + k]
+            if d < 0:
+                d = -d
+            if d > pd:
+                pd = d
+        if pd:
+            diff_px += 1
+            if pd > max_d:
+                max_d = pd
+    return {
+        "width": wa, "height": ha, "channels": ca,
+        "total_px": total_px,
+        "diff_px": diff_px,
+        "diff_px_frac": (diff_px / total_px) if total_px else 0.0,
+        "max_abs_diff": max_d,
+    }
+
+
+def evaluate_region_tolerance(man_a: dict, man_b: dict, culprits: list[str],
+                              tol: dict) -> dict:
+    """Apply a DECLARED per-region tolerance floor (supervisor oracle ruling
+    2026-07-02 -- see REGION_SPEC comment) to a byte-exact-FAILED backend
+    compare. Returns {"within": bool, "summary": str, "log": [str],
+    "per_bookmark": {name: stats}}.
+
+    Refuses (within=False) when: any culprit is non-pixel (structural
+    divergence is never tolerated), the culprit list is empty (unknown
+    divergence), or a diverging bookmark's PNGs are unavailable/undecodable
+    (the floor must be PROVEN, never assumed)."""
+    max_lsb = int(tol["max_abs_diff_lsb"])
+    max_frac = float(tol["max_diff_pixel_frac"])
+    log = ["REGION TOLERANCE FLOOR (class=%s): max|diff|<=%d LSB AND "
+           "diff-px<=%s%% -- declared per-region (supervisor oracle ruling "
+           "2026-07-02); byte-exact remains the default oracle"
+           % (tol.get("class", "?"), max_lsb, max_frac * 100.0)]
+    if not culprits:
+        log.append("REFUSED: byte-exact compare failed but culprit list is "
+                   "empty (unknown divergence cannot be tolerated)")
+        return {"within": False, "summary": "unknown-culprits", "log": log,
+                "per_bookmark": {}}
+    nonpx = [c for c in culprits
+             if c != "pixel_sha_all" and not c.startswith("pixel_shas.")]
+    if nonpx:
+        log.append("REFUSED: non-pixel culprit(s) %s -- structural divergence "
+                   "is never tolerated" % ",".join(nonpx))
+        return {"within": False, "summary": "non-pixel-culprits:%s"
+                % ",".join(nonpx), "log": log, "per_bookmark": {}}
+    # Derive the diverging bookmarks from the sha maps (pixel_sha_all is a
+    # join of these; per-bookmark is the authoritative granularity).
+    shas_a = man_a.get("pixel_shas") or {}
+    shas_b = man_b.get("pixel_shas") or {}
+    diff_names = sorted(n for n in set(shas_a) | set(shas_b)
+                        if shas_a.get(n) != shas_b.get(n))
+    if not diff_names:
+        log.append("REFUSED: pixel culprits reported but no bookmark sha "
+                   "actually differs (inconsistent manifests)")
+        return {"within": False, "summary": "inconsistent-shas", "log": log,
+                "per_bookmark": {}}
+    pngs_a = man_a.get("pixel_pngs") or {}
+    pngs_b = man_b.get("pixel_pngs") or {}
+    per = {}
+    within = True
+    parts = []
+    for name in diff_names:
+        pa, pb = pngs_a.get(name), pngs_b.get(name)
+        if not pa or not pb or not Path(pa).exists() or not Path(pb).exists():
+            log.append("REFUSED: bookmark '%s' diverges but its A/B PNGs are "
+                       "unavailable -- floor cannot be proven" % name)
+            return {"within": False, "summary": "pngs-unavailable:%s" % name,
+                    "log": log, "per_bookmark": per}
+        try:
+            st = png_diff_stats(Path(pa), Path(pb))
+        except ValueError as e:
+            log.append("REFUSED: bookmark '%s' PNG diff failed: %s" % (name, e))
+            return {"within": False, "summary": "png-diff-failed:%s" % name,
+                    "log": log, "per_bookmark": per}
+        per[name] = st
+        ok = (st["max_abs_diff"] <= max_lsb
+              and st["diff_px_frac"] <= max_frac)
+        within = within and ok
+        stat_str = ("max|diff|=%d(<=%d) diff_px=%d/%d=%.4f%%(<=%.2f%%)"
+                    % (st["max_abs_diff"], max_lsb, st["diff_px"],
+                       st["total_px"], st["diff_px_frac"] * 100.0,
+                       max_frac * 100.0))
+        log.append("  %s: %s -> %s declared floor"
+                   % (name, stat_str, "WITHIN" if ok else "EXCEEDS"))
+        parts.append("%s:%s" % (name, stat_str))
+    return {"within": within,
+            "summary": "; ".join(parts),
+            "log": log, "per_bookmark": per}
+
+
 def main() -> int:
     ap = argparse.ArgumentParser(
         description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
@@ -645,6 +848,22 @@ def main() -> int:
     # --- culprit fields (re-derive from combined manifests for the RESULT line)
     culprits = _culprit_fields(man_a, man_b, floor_path)
 
+    # --- PER-REGION TOLERANCE FLOOR (supervisor oracle ruling 2026-07-02) ------
+    # Consulted ONLY on a byte-exact FAIL, in backend-compare mode, for a
+    # region that DECLARES a floor in REGION_SPEC. within_floor in the RESULT
+    # line stays the honest byte-exact verdict; the tolerance verdict is
+    # reported separately and, when WITHIN, flips the overall exit to PASS.
+    byte_exact_ok = cmp_rc == 0
+    tol_result = None
+    if backend_mode and cmp_rc != 0 and not fell_back:
+        tol = REGION_SPEC.get(args.region, {}).get("tolerance_floor")
+        if tol:
+            tol_result = evaluate_region_tolerance(man_a, man_b, culprits, tol)
+            for line in tol_result["log"]:
+                print("[golden_parity] %s" % line, file=sys.stderr)
+            if tol_result["within"]:
+                cmp_rc = 0
+
     dt = int(time.time() - t0)
     px_sharp = ("SHARP(%d exact px fields)" % len(exact_px) if exact_px
                 else "BLUNT(0 exact px fields -- pixel oracle too noisy for this "
@@ -653,7 +872,12 @@ def main() -> int:
 
     if backend_mode:
         # Distinct backend-parity wording + named region + named bucket/culprit.
-        within = cmp_rc == 0
+        within = byte_exact_ok
+        tol_note = ""
+        if tol_result is not None:
+            tol_note = (" region_tolerance=%s[%s]"
+                        % ("WITHIN" if tol_result["within"] else "EXCEEDED",
+                           tol_result["summary"]))
         culprit_str = (",".join(culprits) if culprits else "(none)")
         if fell_back:
             # A fallback must NOT masquerade as proven backend parity.
@@ -667,11 +891,11 @@ def main() -> int:
             print("[golden_parity] A green here would be GL-vs-GL, not a proven "
                   "GL-vs-Vulkan backend parity. Treating as INCONCLUSIVE.")
             return 5
-        print("RESULT: %s backend parity: %s vs %s (region=%s) within_floor=%s "
+        print("RESULT: %s backend parity: %s vs %s (region=%s) within_floor=%s%s "
               "pixel_oracle=%s culprit_bookmark=%s report=%s elapsed=%ds"
               % (verdict, backend_a.upper() if backend_a == "gl" else backend_a,
                  "Vulkan" if backend_b == "vk" else backend_b, args.region,
-                 within, px_sharp, culprit_str,
+                 within, tol_note, px_sharp, culprit_str,
                  report_path if report_path.exists() else "(none)", dt))
     else:
         print("RESULT: %s scene=%s gate=%s=%s within_floor=%s pixel_oracle=%s "
@@ -772,6 +996,80 @@ def _selftest() -> int:
     ok = ok and d_ok
     print("[selftest] (d) backend fallback detect  -> %s (real->None, "
           "FallbackGL->flagged)" % ("OK" if d_ok else "WRONG"))
+
+    # (e) PER-REGION TOLERANCE FLOOR (supervisor oracle ruling 2026-07-02):
+    #     synthetic PNG pairs prove the evaluator's bounds + refusals with no
+    #     GPU. Floor under test = the PostprocessSSAO declaration (1 LSB/0.1%).
+    import struct
+    import tempfile
+    import zlib
+
+    def _chunk(typ: bytes, payload: bytes) -> bytes:
+        return (struct.pack(">I", len(payload)) + typ + payload
+                + struct.pack(">I", zlib.crc32(typ + payload) & 0xFFFFFFFF))
+
+    def _write_png(path: Path, w: int, h: int, rgb: bytes) -> None:
+        ihdr = struct.pack(">IIBBBBB", w, h, 8, 2, 0, 0, 0)
+        raw = b"".join(b"\x00" + rgb[y * w * 3:(y + 1) * w * 3]
+                       for y in range(h))
+        path.write_bytes(b"\x89PNG\r\n\x1a\n" + _chunk(b"IHDR", ihdr)
+                         + _chunk(b"IDAT", zlib.compress(raw))
+                         + _chunk(b"IEND", b""))
+
+    tol = REGION_SPEC["PostprocessSSAO"]["tolerance_floor"]
+    w, h = 100, 100  # 10000 px -> 0.1% floor = at most 10 diff pixels
+    base = bytes((i * 7 + k * 13) % 251 for i in range(w * h)
+                 for k in range(3))
+
+    def _mut(offsets_deltas) -> bytes:
+        buf = bytearray(base)
+        for off, dv in offsets_deltas:
+            buf[off] = (buf[off] + dv) & 0xFF
+        return bytes(buf)
+
+    with tempfile.TemporaryDirectory() as td:
+        tdir = Path(td)
+
+        def _mans(name: str, b_rgb: bytes):
+            pa, pb = tdir / ("%s_a.png" % name), tdir / ("%s_b.png" % name)
+            _write_png(pa, w, h, base)
+            _write_png(pb, w, h, b_rgb)
+            ma = {"pixel_shas": {"bm": "sha_a"}, "pixel_pngs": {"bm": str(pa)}}
+            mb = {"pixel_shas": {"bm": "sha_b"}, "pixel_pngs": {"bm": str(pb)}}
+            return ma, mb
+
+        # e1: 5 px at +-1 LSB (0.05% < 0.1%) -> WITHIN
+        ma, mb = _mans("e1", _mut([(i * 3 * 97, 1) for i in range(5)]))
+        r1 = evaluate_region_tolerance(ma, mb, ["pixel_shas.bm"], tol)
+        e1 = r1["within"] and r1["per_bookmark"]["bm"]["max_abs_diff"] == 1
+        # e2: one pixel at +-2 LSB -> EXCEEDS (max|diff| bound)
+        ma, mb = _mans("e2", _mut([(0, 2)]))
+        r2 = evaluate_region_tolerance(ma, mb, ["pixel_shas.bm"], tol)
+        e2 = not r2["within"] and r2["per_bookmark"]["bm"]["max_abs_diff"] == 2
+        # e3: 11 px at 1 LSB (0.11% > 0.1%) -> EXCEEDS (pixel-count bound)
+        ma, mb = _mans("e3", _mut([(i * 3 * 53, 1) for i in range(11)]))
+        r3 = evaluate_region_tolerance(ma, mb, ["pixel_shas.bm"], tol)
+        e3 = not r3["within"] and r3["per_bookmark"]["bm"]["diff_px"] == 11
+        # e4: structural culprit alongside the pixel culprit -> REFUSED
+        ma, mb = _mans("e4", _mut([(0, 1)]))
+        r4 = evaluate_region_tolerance(
+            ma, mb, ["pixel_shas.bm", "registry_hash"], tol)
+        e4 = not r4["within"] and "non-pixel" in r4["summary"]
+        # e5: empty culprit list -> REFUSED (unknown divergence)
+        r5 = evaluate_region_tolerance(ma, mb, [], tol)
+        e5 = not r5["within"] and "unknown" in r5["summary"]
+        # e6: diverging bookmark with missing PNG -> REFUSED (must be proven)
+        mb2 = dict(mb)
+        mb2["pixel_pngs"] = {"bm": str(tdir / "absent.png")}
+        r6 = evaluate_region_tolerance(ma, mb2, ["pixel_shas.bm"], tol)
+        e6 = not r6["within"] and "unavailable" in r6["summary"]
+
+    e_ok = all((e1, e2, e3, e4, e5, e6))
+    ok = ok and e_ok
+    print("[selftest] (e) region tolerance floor   -> %s (within@1LSB/0.05%%=%s,"
+          " 2LSB-exceeds=%s, 0.11%%-exceeds=%s, structural-refuse=%s,"
+          " empty-refuse=%s, missing-png-refuse=%s)"
+          % ("OK" if e_ok else "WRONG", e1, e2, e3, e4, e5, e6))
 
     print("[selftest] RESULT: %s" % ("ALL PASS" if ok else "FAILED"))
     return 0 if ok else 1

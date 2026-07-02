@@ -12,8 +12,9 @@ fail-soft, own commit, proof run BEFORE the commit message claims it.** If a pro
 STOP and report — do not weaken the oracle to make it pass (precedent: the frame-graph
 reorder candidate was REJECTED on parity failure and the gate stayed OFF forever).
 
-**⚠ ORDER OF WORK: N0 (nondeterminism) is BLOCKING — L6.4/L6.5/L6.6 must not start until
-N0's acceptance passes.** N1 is independent and can land any time.
+**⚠ ORDER OF WORK: ~~N0 (nondeterminism) is BLOCKING~~ — N0 RESOLVED 2026-07-02
+(supervisor tolerance-floor ruling + 5/5 GREEN compare; see N0 section).
+L6.4/L6.5/L6.6 are UNBLOCKED.** N1 shipped `d7fbd72f`.
 
 ---
 
@@ -115,7 +116,40 @@ $env:MC2_DEBUG_STATE_DUMP="1"; py -3 scripts/run_smoke.py --tier tier1 --duratio
 
 ---
 
-## N0 — VK-SSAO-PARITY-FAIL-1 (UNIFORM-RATIO BUG DEAD — matrix transpose fixed `ac96e31d`; residual is now ±1 LSB on 0.03% px, a perceptual-floor question for the supervisor; M / medium)
+## N0 — VK-SSAO-PARITY-FAIL-1 — **RESOLVED 2026-07-02 (supervisor oracle ruling + 5/5 GREEN)**
+
+### RESOLUTION (2026-07-02, session 4)
+
+**SUPERVISOR ORACLE RULING (verbatim, now encoded in `run_golden_parity.py` REGION_SPEC
+comment + ladder §5b):** "transcendental-class regions may declare an EXPLICIT per-region
+tolerance floor — max |diff| ≤ 1 LSB AND diff-pixel count ≤ 0.1% — in REGION_SPEC (same
+family as the oobfog envelope precedent). Byte-exact remains the DEFAULT for all regions;
+the floor is a declared per-region property, never global."
+
+Encoded as `REGION_SPEC["PostprocessSSAO"]["tolerance_floor"]` +
+`evaluate_region_tolerance()` (pure-stdlib PNG diff; consulted ONLY after a byte-exact
+FAIL; structural culprits NEVER tolerated; missing PNGs REFUSE; RESULT line keeps the
+honest `within_floor=False` next to `region_tolerance=WITHIN[stats]`). Self-test case (e)
+covers within/exceeds-1LSB/exceeds-0.1%/structural-refuse/empty-refuse/missing-png-refuse.
+
+**Proof (quiet lane, LM8 bracketed: exe cmp'd before+after = build64_island output, md5
+`a4d12301`; B's own capture log carries `[VK_SSAO_ISLAND]` health lines
+attempted=3946 used_vulkan=3946 validation_errors=0):**
+
+```
+RESULT: PASS backend parity: GL vs Vulkan (region=PostprocessSSAO) within_floor=False
+region_tolerance=WITHIN[highangle_wide:max|diff|=1(<=1) diff_px=134/480000=0.0279%(<=0.10%)]
+pixel_oracle=SHARP(6 exact px fields) exit=0   A(gl)=GLInline B(vk)=VulkanSubgraph
+```
+
+4/5 bookmarks byte-IDENTICAL; highangle_wide within the declared floor → **5/5 GREEN.
+L6.4 / L6.5 / L6.6 UNBLOCKED.** Fog re-proof was already GREEN byte-exact on this exe
+(session 3). Remaining N0 acceptance (tier1 defaults on the island exe) run this session —
+see state ledger.
+
+---
+
+### (history) VK-SSAO-PARITY-FAIL-1 (UNIFORM-RATIO BUG DEAD — matrix transpose fixed `ac96e31d`; residual is now ±1 LSB on 0.03% px, a perceptual-floor question for the supervisor; M / medium)
 
 ### UPDATE 2026-07-02 (session 3 — ROOT CAUSE FOUND: SSAO UBO row-major transpose)
 
