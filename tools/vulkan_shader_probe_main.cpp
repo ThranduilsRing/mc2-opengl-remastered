@@ -43,6 +43,10 @@ int main(int argc, char** argv) {
     // VK-REGION-SHADOW-1 (sub-slice A): depth-only INSTANCED shadow-caster WRITE
     // pipeline -> single D32 + 3-layer CSM D32 array, bit-tight vs CPU ref (tol 0).
     bool shadowdepth = mc2_vulkan_probe_shadowdepth_fixture(spvDir);
+    // WATER-MVP-ORACLE-1: clip-space oracle proving the Vulkan water MVP UBO pack
+    // + reverse-Z depth fudge reproduces the GL water VS BIT-TIGHT (tol 0) under an
+    // ASYMMETRIC/sheared matrix; the wrong (transpose) pack must diverge (LM1).
+    bool watermvp = mc2_vulkan_probe_watermvp_fixture(spvDir);
     // VULKAN-SWAPCHAIN-PRESENT-1 / L6.6-COMPOSITE-PRESENT-SCAFFOLD: opt-in
     // present proof. MC2_VULKAN_SWAPCHAIN_PRESENT drives the PERSISTENT present
     // object (16 frames + a mid-loop resize) to its OWN separate Vulkan window;
@@ -54,8 +58,8 @@ int main(int argc, char** argv) {
     }
     // Fail-soft re-check: a bogus spv dir must log + return false, no crash.
     bool failSoft = !mc2_vulkan_probe_triangle("this/dir/does/not/exist");
-    std::printf("[vulkan_shader_probe] caps=%d shaders=%d triangle=%d descriptors=%d swapchain=%d edgefog_fixture=%d oobfog_fixture=%d ssao_fixture=%d hzb_fixture=%d comparesampler=%d csmarray=%d shadowdepth=%d failSoftOK=%d\n",
+    std::printf("[vulkan_shader_probe] caps=%d shaders=%d triangle=%d descriptors=%d swapchain=%d edgefog_fixture=%d oobfog_fixture=%d ssao_fixture=%d hzb_fixture=%d comparesampler=%d csmarray=%d shadowdepth=%d watermvp=%d failSoftOK=%d\n",
                 caps ? 1 : 0, shaders ? 1 : 0, triangle ? 1 : 0, descriptors ? 1 : 0,
-                swapchain ? 1 : 0, edgefogFixture ? 1 : 0, oobfogFixture ? 1 : 0, ssaoFixture ? 1 : 0, hzbFixture ? 1 : 0, comparesampler ? 1 : 0, csmarray ? 1 : 0, shadowdepth ? 1 : 0, failSoft ? 1 : 0);
-    return (caps && shaders && triangle && descriptors && swapchain && edgefogFixture && oobfogFixture && ssaoFixture && hzbFixture && comparesampler && csmarray && shadowdepth && failSoft) ? 0 : 1;
+                swapchain ? 1 : 0, edgefogFixture ? 1 : 0, oobfogFixture ? 1 : 0, ssaoFixture ? 1 : 0, hzbFixture ? 1 : 0, comparesampler ? 1 : 0, csmarray ? 1 : 0, shadowdepth ? 1 : 0, watermvp ? 1 : 0, failSoft ? 1 : 0);
+    return (caps && shaders && triangle && descriptors && swapchain && edgefogFixture && oobfogFixture && ssaoFixture && hzbFixture && comparesampler && csmarray && shadowdepth && watermvp && failSoft) ? 0 : 1;
 }

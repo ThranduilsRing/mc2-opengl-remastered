@@ -83,7 +83,12 @@ CANONICAL_CMAKE = (
 # VK-REGION-SHADOW-1 (sub-slice A) added "shadowdepth" (depth-only INSTANCED
 # shadow-caster WRITE pipeline: single D32 + 3-layer CSM D32 array, per-texel
 # depth bit-tight vs a CPU projected-depth reference, tolerance 0).
-SUCCESS_TOKENS = ("caps", "shaders", "triangle", "descriptors", "swapchain", "edgefog_fixture", "oobfog_fixture", "ssao_fixture", "hzb_fixture", "comparesampler", "csmarray", "shadowdepth", "failSoftOK")
+# WATER-MVP-ORACLE-1 added "watermvp" (clip-space oracle: the Vulkan water MVP
+# std140 UBO pack + reverse-Z depth fudge reproduces the GL water VS gl_Position
+# (clip.z/clip.w) BIT-EXACT (tol 0) under an ASYMMETRIC/sheared matrix; the derived
+# post-divide depth matches within 1 ULP (GPU vs CPU divide rounds separately); the
+# wrong (transpose / row_major) pack must DIVERGE -- transpose-sensitivity / LM1).
+SUCCESS_TOKENS = ("caps", "shaders", "triangle", "descriptors", "swapchain", "edgefog_fixture", "oobfog_fixture", "ssao_fixture", "hzb_fixture", "comparesampler", "csmarray", "shadowdepth", "watermvp", "failSoftOK")
 
 # Validation-layer error signature emitted by the skeleton's debug messenger
 # (vulkan_backend_skeleton.cpp: "[VULKAN_SKELETON] <probe>: VALIDATION: <msg>").
@@ -263,6 +268,12 @@ def main(argv: list[str]) -> int:
             "-G", "Visual Studio 17 2022",
             "-A", "x64",
             "-DMC2_VULKAN=ON",
+            # The editor (EditRel) is ImGui-coupled and FATAL_ERRORs unless
+            # MC2_IMGUI=ON (editor/CMakeLists.txt:43); the probe never needs it.
+            # MC2_EDITOR=OFF skips that subdirectory so the Vulkan-island configure
+            # succeeds with MC2_IMGUI at its default OFF (root CMakeLists.txt:108).
+            # Without this the vulkan_shader_probe configure cannot complete here.
+            "-DMC2_EDITOR=OFF",
             "-DCMAKE_LIBRARY_ARCHITECTURE=x64",
             f"-DCMAKE_PREFIX_PATH={prefix}",
         ]
@@ -370,6 +381,7 @@ def main(argv: list[str]) -> int:
         "comparesampler": "cmp",
         "csmarray": "csm",
         "shadowdepth": "shd",
+        "watermvp": "watermvp",
         "failSoftOK": "failsoft",
     }
     probe_summary = "/".join(f"{short_names[t]}{token_vals[t]}" for t in SUCCESS_TOKENS)

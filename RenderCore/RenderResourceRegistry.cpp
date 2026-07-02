@@ -85,6 +85,10 @@ const char* toString(RenderResourceId id) {
         case RenderResourceId::MechBoneRingSsbo:     return "MechBoneRingSsbo";
         case RenderResourceId::StaticPropInstanceRingSsbo: return "StaticPropInstanceRingSsbo";
         case RenderResourceId::StaticPropColorRingSsbo:    return "StaticPropColorRingSsbo";
+        case RenderResourceId::WaterThinBuf:         return "WaterThinBuf";
+        case RenderResourceId::WaterRecipeBuf:       return "WaterRecipeBuf";
+        case RenderResourceId::WaterHeaderBuf:       return "WaterHeaderBuf";
+        case RenderResourceId::WaterIndirectCmdBuf:  return "WaterIndirectCmdBuf";
         case RenderResourceId::Count:                return "Count";
     }
     return "unknown";
