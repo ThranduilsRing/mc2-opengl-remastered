@@ -51,6 +51,10 @@ enum class RenderResourceId : uint16_t {
     MechBoneRingSsbo     = 40,  // VK-SHADOW-RING-OWNER-1: mech batcher per-frame bone ring SSBO (s_boneSsbo, GL binding 1, gos_mech_batcher.cpp); persistent-mapped ring, realloc-on-grow, freed on onMapUnload. Feeds GPU skinning for the shadow-caster draw. L7.2 Shadow prep. GL binding 1 unrelated to id numbering.
     StaticPropInstanceRingSsbo = 41,  // VK-SHADOW-RING-OWNER-1: static-prop batcher per-frame instance ring SSBO (s_instanceSsbo, GL binding 0, gos_static_prop_batcher.cpp); persistent-mapped ring, realloc-on-grow. Read by the static-prop opaque + shadow draw. L7.2 Shadow prep. GL binding 0 unrelated to id numbering.
     StaticPropColorRingSsbo    = 42,  // VK-SHADOW-RING-OWNER-1: static-prop batcher per-frame color ring SSBO (s_colorSsbo, GL binding 1, gos_static_prop_batcher.cpp); persistent-mapped ring, realloc-on-grow. Per-instance color feed for the prop draw. L7.2 Shadow prep. GL binding 1 unrelated to id numbering.
+    WaterThinBuf         = 43,  // WATER-REGISTRY-0: live MDI water per-frame thin-record ring SSBO (g_thinBuffer, gos_terrain_water_stream.cpp); Mission lifetime, fenced ring-3 (WATER-THINRING-FENCE-1), realloc-on-grow. Read by the water compute cull + MDI draw. L7.4 Water prep. Bound via gpuBindSsboRange wrapper (kWaterThinSsboBinding), not glBindBufferBase.
+    WaterRecipeBuf       = 44,  // WATER-REGISTRY-0: live MDI water static recipe SSBO (g_recipeBuffer, gos_terrain_water_stream.cpp); Mission lifetime, uploaded once per mission. Bound binding 0 for water compute. L7.4 Water prep.
+    WaterHeaderBuf       = 45,  // WATER-REGISTRY-0: live MDI water bucket-header SSBO (g_waterBucketHeaderSsbo, gos_terrain_water_stream.cpp); Mission lifetime, 16 B GpuDrivenBucketHeader (visibleCount). Bound binding 6 (setup) / 0 (cmd patch). L7.4 Water prep.
+    WaterIndirectCmdBuf  = 46,  // WATER-REGISTRY-0: live MDI water indirect-command buffer (g_waterIndirectCmdBuffer, gos_terrain_water_stream.cpp); Mission lifetime, 2x DrawArraysIndirectCommand (32 B). Source of glMultiDrawArraysIndirect (gameos_graphics.cpp:3706). Bound binding 1 (cmd patch) + GL_DRAW_INDIRECT_BUFFER. L7.4 Water prep.
     Count
 };
 
@@ -71,16 +75,17 @@ static_assert(static_cast<int>(RenderResourceId::DynamicPropShadowSsbo)         
 static_assert(static_cast<int>(RenderResourceId::PostprocessSubgraphColor)      < static_cast<int>(RenderResourceId::Count), "id >= Count would index out of bounds");
 static_assert(static_cast<int>(RenderResourceId::PostprocessSubgraphDepth)      < static_cast<int>(RenderResourceId::Count), "id >= Count would index out of bounds");
 static_assert(static_cast<int>(RenderResourceId::StaticPropColorRingSsbo)        < static_cast<int>(RenderResourceId::Count), "id >= Count would index out of bounds");
+static_assert(static_cast<int>(RenderResourceId::WaterIndirectCmdBuf)            < static_cast<int>(RenderResourceId::Count), "id >= Count would index out of bounds");
 
-// (b) The run is DENSE: Count == number-of-real-slots. StaticPropColorRingSsbo is the
-//     last real id (value 42) and Count follows it, so Count must be 43. If a new id
+// (b) The run is DENSE: Count == number-of-real-slots. WaterIndirectCmdBuf is the
+//     last real id (value 46) and Count follows it, so Count must be 47. If a new id
 //     is inserted, or an existing one renumbered leaving a hole, this breaks — forcing
 //     a review of the dense-index consumers.
-static_assert(static_cast<int>(RenderResourceId::StaticPropColorRingSsbo) + 1
+static_assert(static_cast<int>(RenderResourceId::WaterIndirectCmdBuf) + 1
                   == static_cast<int>(RenderResourceId::Count),
               "RenderResourceId is not a dense 0..Count-1 run (Count must immediately "
               "follow the last real id); dense-index consumers assume no holes above Count");
-static_assert(static_cast<int>(RenderResourceId::Count) == 43,
+static_assert(static_cast<int>(RenderResourceId::Count) == 47,
               "RenderResourceId::Count changed; update dense-index consumers "
               "(frame_graph_validate.h, postprocess_subgraph.h) and this guard");
 
