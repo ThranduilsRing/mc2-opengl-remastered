@@ -169,8 +169,15 @@ failed 5/5). Live suspects, in order:
 - **D32_SFLOAT vs DEPTH24 precision — RULED OUT analytically.** `glGetTexImage(DEPTH24→
   GL_FLOAT)` yields floats quantized to 2^24 levels; D32_SFLOAT stores those losslessly and
   returns them exactly on sample = exactly GL's sampled `.r`. No redistribution in practice.
-- **LEADING HYPOTHESIS (needs empirical confirmation): hard-branch transcendental
-  amplification.** The occlusion pass accumulates 16 samples, each gated by a HARD boolean
+- **LEADING HYPOTHESIS — now CORROBORATED by the fog re-proof: hard-branch transcendental
+  amplification.** ★ The PostprocessFog backend-compare on this SAME fixed exe
+  (`da788127`, quiet lane, exe_md5-verified in-run) went **GREEN: within_floor=True,
+  culprit_bookmark=(none), exit 0, SHARP(6 exact px fields)** — byte-exact. Fog and SSAO
+  share the ENTIRE bridge (glGetTexImage depth readback, D32_SFLOAT depth, RGBA16F color
+  round-trip, Vulkan clip-Y). Fog reaching byte-exact through that bridge EMPIRICALLY
+  confirms the bridge + round-trip + Y-flip cancellation + depth precision are all sound —
+  so the SSAO residual is NOT plumbing. The one structural difference is that SSAO's
+  occlusion pass accumulates 16 samples, each gated by a HARD boolean
   `storedDepth > sampleProjDepth + aoBias` and weighted by `smoothstep`, over
   `sin/cos/fract/pow/normalize` math. GL compiles GLSL text via the AMD GL driver; VK
   consumes glslang-baked SPIR-V — different frontends/optimizers. Sub-ULP differences in the
