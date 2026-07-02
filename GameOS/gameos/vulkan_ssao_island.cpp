@@ -252,8 +252,15 @@ VkShaderModule load_spv(VkDevice device, const std::string& path) {
 }
 
 // std140 layouts -- IDENTICAL to the shaders/vulkan/ssao{,_apply}.frag UBOs.
+// N0 FIX (VK-SSAO-PARITY-FAIL-1): the SSAOParams UBO in ssao.frag is column_major
+// (default), NOT row_major -- the GL SSAO path uploads inverseViewProj_/viewProj_
+// with a single glUniformMatrix4fv(GL_FALSE) (column-major read), unlike the fog
+// path's pre-transpose+GL_TRUE (row-major read). We memcpy the SAME raw
+// column-major bytes below; the column_major shader reads them correctly. A
+// row_major qualifier here transposed the matrices and made ~every sample read as
+// occluded (raw AO ~0.08 vs GL ~1.0).
 struct SSAOOcclusionParams {
-    float invViewProj[16]; // @0   (row-major, matches the GL path's direct upload)
+    float invViewProj[16]; // @0   (column-major, matches the GL path's GL_FALSE upload)
     float viewProj[16];    // @64
     float screenSize[2];   // @128
     float aoRadius;        // @136

@@ -42,7 +42,24 @@ layout(set = 0, binding = 1) uniform sampler2D sceneNormalTex;
 //   aoBias       @140
 //   aoStrength   @144
 //   aoPower      @148
-layout(set = 0, binding = 2, std140, row_major) uniform SSAOParams {
+//
+// N0 FIX (VK-SSAO-PARITY-FAIL-1, matrix-convention divergence): column_major, NOT
+// row_major. The GL SSAO path (gos_postprocess.cpp runSSAO()) uploads
+// inverseViewProj_ / viewProj_ with a SINGLE glUniformMatrix4fv(..., GL_FALSE, ...)
+// -- GLSL reads a GL_FALSE upload column-major, and inverseViewProj_/viewProj_ are
+// stored column-major on the CPU (index = col*4+row; boxDecalMulColMajor,
+// gos_postprocess.cpp:1508). So the GL SSAO shader computes M * v with M read
+// column-major. The FOG path is different: it PRE-transposes (invT =
+// transpose(inverseViewProj_)) then setMat4 uploads GL_TRUE (a SECOND transpose),
+// so the fog shader nets a ROW-major read -- which is why the fog VK UBOs qualify
+// row_major and stay byte-exact. SSAO has only the single implicit transpose, so a
+// row_major UBO here reads transpose(M) and produces a transposed world
+// reconstruction: dist collapses, rangeCheck saturates, ~every sample reads as
+// occluded (raw AO ~0.08 vs GL's ~1.0 on the same inputs). std140 mat4 defaults to
+// column_major and tightly-packed contiguous floats land element (col c,row r) at
+// byte (c*4+r)*4 -- exactly the GL_FALSE upload layout. Pack the SAME raw bytes; do
+// NOT qualify row_major.
+layout(set = 0, binding = 2, std140) uniform SSAOParams {
     mat4  invViewProj;
     mat4  viewProj;
     vec2  screenSize;

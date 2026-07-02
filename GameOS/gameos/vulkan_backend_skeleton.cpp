@@ -3361,7 +3361,11 @@ bool mc2_vulkan_probe_ssao_fixture(const char* spvDir) {
                                                                // the MATH is what's proven)
 
     // ---- KNOWN inputs (see block comment) -----------------------------------
-    // viewProj: affine, w==1 (row3 = 0,0,0,1). Row-major as the GL path uploads.
+    // viewProj: affine, w==1 (row3 = 0,0,0,1). Written ROW-major here (row 0 =
+    // indices 0..3); the CPU reference reads it row-major = the LOGICAL matrix, and
+    // it is TRANSPOSED at UBO pack time to feed the column_major shader the same
+    // logical matrix (N0 FIX; the GL SSAO path uploads GL_FALSE = column-major, so
+    // the shader is column_major, NOT row_major -- see the pack site + ssao.frag).
     //   ndc_x = 0.25*x + 0.5*z   (the x<-z shear = transpose detector)
     //   ndc_y = 0.25*y - 0.25*z
     //   ndc_z = 0.5*z + 0.25     (depth depends ONLY on world z)
@@ -3664,9 +3668,25 @@ bool mc2_vulkan_probe_ssao_fixture(const char* spvDir) {
         std::memcpy(p, normalScratch.data(), (size_t)W * H * 4 * 2);
         vmaUnmapMemory(allocator, normalStagingAlloc);
 
+        // N0 FIX (VK-SSAO-PARITY-FAIL-1): the SSAOParams UBO is now column_major
+        // (matching the GL SSAO GL_FALSE upload; see ssao.frag). The VP/invVP
+        // literals above are written ROW-major (row 0 = indices 0..3) and the CPU
+        // reference (ssao_cpu_ref/ssao_row_mul) reads them row-major = the LOGICAL
+        // matrix. To feed the column_major shader that SAME logical matrix, pack
+        // the TRANSPOSE. Pre-fix this packed raw + qualified the UBO row_major, so
+        // the fixture validated the shader against its own transpose convention and
+        // could NOT catch the row/col-major divergence from the real GL path (the
+        // LM1 fixture trap). Transposing here + column_major shader closes it: the
+        // synthetic VP still carries the x<-z shear, so a regression to row_major
+        // re-diverges the reconstruction visibly.
         SsaoFixtureParams params{};
-        std::memcpy(params.invViewProj, invVP, 16 * sizeof(float));
-        std::memcpy(params.viewProj,    VP,    16 * sizeof(float));
+        auto transpose16 = [](const float* src, float* dst) {
+            for (int c = 0; c < 4; ++c)
+                for (int rr = 0; rr < 4; ++rr)
+                    dst[c*4 + rr] = src[rr*4 + c];
+        };
+        transpose16(invVP, params.invViewProj);
+        transpose16(VP,    params.viewProj);
         params.screenSize[0] = screenW; params.screenSize[1] = screenH;
         params.aoRadius = aoRadius; params.aoBias = aoBias;
         params.aoStrength = aoStrength; params.aoPower = aoPower;
