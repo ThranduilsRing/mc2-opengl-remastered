@@ -115,7 +115,81 @@ $env:MC2_DEBUG_STATE_DUMP="1"; py -3 scripts/run_smoke.py --tier tier1 --duratio
 
 ---
 
-## N0 — VK-SSAO-PARITY-FAIL-1 (BLOCKING — resolve before ANY new region; M / medium)
+## N0 — VK-SSAO-PARITY-FAIL-1 (STILL BLOCKING — root cause of the GROSS corruption found + 3 plumbing bugs fixed; a RESIDUAL over-darkening remains OPEN; M / medium)
+
+### UPDATE 2026-07-02 (session 2 — instrumented, quiet-lane, LM8 bracketed)
+
+**Root cause of the GROSS corruption (raw AO ≈0.08 / center-X): the island ran on
+frames it should have SKIPPED.** `MC2_VK_SSAO_DUMP_INPUTS=1` (new, default-OFF)
+proved it: on the island's FIRST executed frame the depth readback is ALL-ZERO and
+`inverseViewProj_`/`viewProj_` are ALL-ZERO — because those matrices are populated
+ONLY by `setTerrainMVP()` during terrain draw, and are zero-initialized otherwise.
+GL's `runSSAO()` self-guards on `ssaoEnabled_ && sceneHasTerrain_` (+ program/FBO)
+and no-ops on such frames; the island had NO guard, so it reconstructed garbage AO
+from a zero matrix + zero depth. On the first IN-MISSION (depth-signal) frame the
+same dump showed **correct** depth (min/max/mean plausible), unit-length normals,
+non-zero matrices, and a **healthy** effective AO ratio (mean out.g/in.g = 0.66–0.96
+across the run). So the "depth/normal readback CONTENTS" prime suspect was WRONG —
+the readback is correct in-mission; the corruption was the missing enable-guard.
+
+**Three plumbing bugs fixed (commits below):**
+1. **BUG-1 enable-guard** (`f902b2ef`) — `runSSAORegionVulkanBackend` now declines
+   (`ssao_gate_off`) when `!ssaoEnabled_ || !sceneHasTerrain_ || program/FBO invalid`,
+   mirroring GL. `runSSAORegionThroughBackend` treats that decline as a SKIP (not
+   FallbackGL) so a trailing no-terrain frame can't stamp the shutdown health
+   FallbackGL (harness exit-5). This is ALSO "the vk route ignores MC2_SSAO gate".
+2. **BUG-2 LINEAR apply sampler** (`a38a610e`) — `occSampler` NEAREST→`VK_FILTER_LINEAR`
+   to match GL `ssaoColorTex_` GL_LINEAR (the 4-tap box relies on HW bilinear).
+3. **BUG-3 occlusion format** (`a38a610e`) — `R8_UNORM`→`VK_FORMAT_R16_SFLOAT` to match
+   GL's GL_R16F precision (R8's 256 levels alone exceeded the pixel-exact floor).
+Harness gap also fixed (`5cd3cc65`): `MC2_SSAO`/`MC2_SSAO_DEBUG` added to the
+`run_smoke.py` allowlist (the compare's structural half was running SSAO OFF).
+
+**RESIDUAL — STILL OPEN (N0 NOT closed, L6.4/6.5/6.6 STAY BLOCKED).** With ALL three
+fixes the `--region PostprocessSSAO` backend-compare **still FAILs** (within_floor=False,
+5/5 bookmarks, region_impl B=VulkanSubgraph so NOT a FallbackGL — a genuine vk run).
+Direct PNG diff (A=gl vs B=vk, quiet lane, both `[VK_SSAO_ISLAND]`-verified):
+**B is UNIFORMLY DARKER than A** — B-darker 69% / B-brighter 0%, mean B/A luminance
+ratio ≈0.68 (median 0.66), ~68% of pixels changed, mean magnitude 4.5–17.6/chan.
+gl-vs-gl floor is byte-IDENTICAL (0 px), so the oracle is sound and byte-exact IS the
+bar. VK **over-darkens ~34%** — a systematic occlusion-computation divergence, NOT the
+plumbing. This over-darkening PRE-DATES this session (the pre-fix baseline B also
+failed 5/5). Live suspects, in order:
+- **Vulkan clip-Y flip — RULED OUT analytically this session.** SSAO is two passes
+  (occlusion→apply), but the flip cancels: VK writes occlusion top-row from TexCoord.y=0
+  = depth image v=0 = GL's bottom depth row (glGetTexImage is bottom-up); the apply pass
+  samples that same flipped occlusion and rasterizes flipped again, and the readback
+  `glTexSubImage2D` writes row 0 to the GL-bottom texel — the double flip cancels and the
+  AO lands on the correct scene pixel. (Fog's single pass cancels the same way; fog is
+  byte-exact.) Not the Y-flip.
+- **half-res sampling GRID OFFSET — RULED OUT analytically.** Both GL (`quadVAO_` 6-vert +
+  `postprocess.vert`) and VK (`ssao.vert` 3-vert `gl_VertexIndex` tri) interpolate TexCoord
+  to identical pixel-center UVs `(px+0.5)/halfW,(py+0.5)/halfH`; NEAREST-sampling full-res
+  depth at that UV picks the same texel in both. No offset.
+- **D32_SFLOAT vs DEPTH24 precision — RULED OUT analytically.** `glGetTexImage(DEPTH24→
+  GL_FLOAT)` yields floats quantized to 2^24 levels; D32_SFLOAT stores those losslessly and
+  returns them exactly on sample = exactly GL's sampled `.r`. No redistribution in practice.
+- **LEADING HYPOTHESIS (needs empirical confirmation): hard-branch transcendental
+  amplification.** The occlusion pass accumulates 16 samples, each gated by a HARD boolean
+  `storedDepth > sampleProjDepth + aoBias` and weighted by `smoothstep`, over
+  `sin/cos/fract/pow/normalize` math. GL compiles GLSL text via the AMD GL driver; VK
+  consumes glslang-baked SPIR-V — different frontends/optimizers. Sub-ULP differences in the
+  transcendentals FLIP whole-sample `occluded` booleans, and 16 accumulated flips compound
+  into the observed ~6%/±34% AO divergence. Fog has NO hard-branch accumulation, which is
+  why fog reaches byte-exact and SSAO may NOT. **If confirmed, SSAO cannot meet the
+  exact-SHA oracle** and needs a per-region tolerance floor (an ORACLE-DESIGN decision for
+  the supervisor — do NOT self-weaken; precedent: reorder candidate rejected, gate stayed
+  OFF).
+**NEXT (to confirm): isolate occlusion-pass-only** — add a default-OFF debug env that forces
+the apply pass to passthrough so the readback carries the raw occlusion buffer, diff GL
+`ssaoColorTex_` vs the VK occlusion. If the raw AO already differs with identical inputs
+(which the input-dump proves), the branch-amplification hypothesis is confirmed; escalate the
+tolerance-floor question. Do NOT weaken the oracle unilaterally; L6.4/6.5/6.6 STAY BLOCKED
+until PostprocessSSAO is genuinely GREEN ×5 (or the supervisor rules a floor is acceptable).
+
+**Instrumentation retained** for this: `MC2_VK_SSAO_DUMP_INPUTS=1`.
+
+---
 
 **Finding (2026-07-02, forensically corrected — read LM8 first):** the first SSAO
 backend-compare (`run_golden_parity.py mc2_01 --backend-compare --region PostprocessSSAO`)
