@@ -11,8 +11,11 @@
 //
 // GL-FREE BY CONSTRUCTION. This header includes no GL and calls no GL. It does
 // NOT glGenBuffers / glDeleteBuffers / bind -- it only records ownership identity.
-// The raw GL handle is stored as a plain uint32_t (the GLuint value), never
-// touched. A thin .cpp doing the actual create/destroy/bind is a LATER slice.
+// The raw backend handle is stored as a plain uint64_t, never touched: wide
+// enough for a GL name (GLuint zero-extends) AND a Vulkan VkBuffer (a 64-bit
+// dispatchable-object handle) -- VULKAN-BACKEND-L6-LADDER-1 L6.1 (backendHandle
+// rename, boundary-recon recommendation). A thin .cpp doing the actual
+// create/destroy/bind is a LATER slice.
 //
 // Boundaries (matches gpu-buffer-wrapper-design-1.md non-goals, scoped down):
 //   - NOT an allocator / sub-allocator. One owner == one GL buffer object.
@@ -24,22 +27,26 @@
 
 namespace RenderCore {
 
-// Ownership identity record for ONE GL buffer object. Plain value type.
-//   id        -- the logical RenderResourceId this buffer is registered under.
-//   lifetime  -- how long the buffer stays valid (Persistent / Mission / ...).
-//   debugName -- string-literal label (KHR_debug / residency key); never heap.
-//   glName    -- the raw GLuint handle value (0 == unallocated). Stored, not used.
+// Ownership identity record for ONE GPU buffer object. Plain value type.
+//   id            -- the logical RenderResourceId this buffer is registered under.
+//   lifetime      -- how long the buffer stays valid (Persistent / Mission / ...).
+//   debugName     -- string-literal label (KHR_debug / residency key); never heap.
+//   backendHandle -- the raw backend handle value (0 == unallocated). Stored,
+//                    not used. On the GL backend this is the GLuint name
+//                    (zero-extended); on Vulkan it will hold the VkBuffer bits.
+//                    GL call sites narrow with static_cast<GLuint>(...) at the
+//                    point of use -- the record itself stays backend-neutral.
 struct GpuBufferOwner {
-    RenderResourceId       id        = RenderResourceId::Unknown;
-    RenderResourceLifetime lifetime  = RenderResourceLifetime::Unset;
-    const char*            debugName = nullptr;
-    uint32_t               glName    = 0;  // GLuint value; 0 = unallocated. Identity only.
+    RenderResourceId       id            = RenderResourceId::Unknown;
+    RenderResourceLifetime lifetime      = RenderResourceLifetime::Unset;
+    const char*            debugName     = nullptr;
+    uint64_t               backendHandle = 0;  // 0 = unallocated. Identity only.
 
-    // A fully-formed owner: a real GL handle and a non-null debug label.
-    // (Identity invariant only -- says nothing about GL validity, which this
-    // GL-free record cannot and must not check.)
+    // A fully-formed owner: a real backend handle and a non-null debug label.
+    // (Identity invariant only -- says nothing about backend-object validity,
+    // which this backend-free record cannot and must not check.)
     bool valid() const {
-        return glName != 0 && debugName != nullptr;
+        return backendHandle != 0 && debugName != nullptr;
     }
 };
 

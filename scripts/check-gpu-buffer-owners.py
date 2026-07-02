@@ -7,7 +7,7 @@ silently regress the completed GPU-buffer-owner arc. The doctest proves the
 RUNTIME invariant (owners register with a non-Unset lifetime); this gate proves
 the STATIC source invariant on every CI pass, no build required.
 
-Every `RenderCore::GpuBufferOwner s_foo{ id, lifetime, name, glName }`
+Every `RenderCore::GpuBufferOwner s_foo{ id, lifetime, name, backendHandle }`
 construction site (in GameOS/gameos/*.cpp + RenderCore/*.cpp) is parsed and the
 4 positional initializer args are checked:
 
@@ -99,7 +99,7 @@ BIND_BASE = re.compile(
 
 # Peel the wrappers off a bound-handle expression to reach the backing var name:
 #   static_cast<GLuint>(x) / (GLuint)x  -> x
-#   owner.glName                        -> (owned, resolved separately)
+#   owner.backendHandle                 -> (owned, resolved separately)
 #   0 / 0u / nullptr                    -> unbind, not a handle
 # Returns the bare identifier, or None if the expr is a literal/getter-call/field
 # access that doesn't name a glGenBuffers target var directly.
@@ -155,7 +155,7 @@ def owner_sites():
     """Yield (relpath, lineno, args[]) for each owner construction site.
 
     args = the 4 positional initializer tokens between the outermost braces:
-    [id-expr, lifetime-expr, name-literal-or-expr, glName-expr].
+    [id-expr, lifetime-expr, name-literal-or-expr, backendHandle-expr].
     """
     for d in SCAN_DIRS:
         if not os.path.isdir(d):
@@ -191,9 +191,11 @@ def owner_aliased_names():
     """SSBO/UBO-named vars that ARE owned even though glGenBuffers writes them.
 
     Two owner patterns in the tree write the raw handle without a temp var:
-      (a) `#define <var> (<owner>.glName)`  -- <var> is a macro alias for the
-          owner's glName field (e.g. s_lightDataSsbo, s_dynamicPropShadowSsbo).
-      (b) `<owner>.glName = <var>` near a glGenBuffers(&<var>) -- the freshly
+      (a) `#define <var> (static_cast<GLuint>(<owner>.backendHandle))` -- <var>
+          is a READ-ONLY macro alias for the owner's 64-bit backendHandle field
+          (e.g. s_lightDataSsbo, s_dynamicPropShadowSsbo). The bare
+          `(<owner>.backendHandle)` form (pre-L6.1-widen) is also accepted.
+      (b) `<owner>.backendHandle = <var>` near a glGenBuffers(&<var>) -- the freshly
           generated name is stored straight into an owner (e.g. view_uniforms
           `ubo`). Detected per-site in the partition scan, not here.
     Returns the set of macro-aliased names (pattern a).
@@ -207,7 +209,8 @@ def owner_aliased_names():
                 continue
             text = read(os.path.join(d, fn))
             for m in re.finditer(
-                    r"#define\s+([A-Za-z_]\w*)\s*\(\s*[A-Za-z_]\w*\.glName\s*\)",
+                    r"#define\s+([A-Za-z_]\w*)\s*\(\s*(?:static_cast\s*<\s*GLuint\s*>\s*\(\s*)?"
+                    r"[A-Za-z_]\w*\.backendHandle\s*\)?\s*\)",
                     text):
                 aliased.add(m.group(1))
     return aliased
@@ -218,7 +221,7 @@ def bound_ssbo_ubo_vars():
 
     Scans SCAN_DIRS for glBindBufferBase(GL_SHADER_STORAGE_BUFFER/GL_UNIFORM_
     BUFFER, slot, <handle>), peels casts/parens, and keeps the bare identifier.
-    `owner.glName` field-access and literal `0`/`0u`/`nullptr` unbinds and
+    `owner.backendHandle` field-access and literal `0`/`0u`/`nullptr` unbinds and
     getter calls are dropped -- their backing buffer is named + classified at
     its own glGenBuffers site (or is an owner). The returned set is intersected
     with actual glGenBuffers target vars by the caller, so getter-return locals
@@ -297,11 +300,11 @@ def check_partition(aliased, bound):
                         tag = tm.group(1)
                         break
 
-                # OWNED via macro alias (#define var (owner.glName)) OR
-                # `<owner>.glName = <var>` within a few lines (temp-assigned).
+                # OWNED via macro alias (#define var (cast)(owner.backendHandle)) OR
+                # `<owner>.backendHandle = <var>` within a few lines (temp-assigned).
                 lookahead = "\n".join(lines[i:i + 4])
                 owned = var in aliased or bool(re.search(
-                    r"\.glName\s*=\s*(?:static_cast<[^>]+>\s*\(\s*)?"
+                    r"\.backendHandle\s*=\s*(?:static_cast<[^>]+>\s*\(\s*)?"
                     + re.escape(var) + r"\b", lookahead))
                 if owned:
                     # STRICT rule 1: owned + excluded is a contradiction.

@@ -8894,19 +8894,22 @@ void __stdcall gos_SetRenderMaterialSamplerUnit(HGOSRENDERMATERIAL material, con
 // See docs/superpowers/plans/2026-05-17-lightsdata-ubo-to-ssbo.md
 // ===================================================================
 // LIGHTDATA-SSBO-OWNER-1: the live default-path light-data SSBO is narrowed behind
-// a GpuBufferOwner identity record (logical id + lifetime + debug name + GLuint
-// value). Every gen/bind/bufferData/subdata/delete/guard site reaches the raw
-// handle ONLY via s_lightDataOwner.glName; GL args/binding-slot/flags/order are
+// a GpuBufferOwner identity record (logical id + lifetime + debug name + backend
+// handle). Every gen/bind/bufferData/subdata/delete/guard site reaches the raw
+// handle ONLY via s_lightDataOwner.backendHandle; GL args/binding-slot/flags/order are
 // unchanged. Persistent lifetime: lazy-created on first upload, destroyed in
 // gos_LightDataSsbo_Destroy (txmmgr.cpp mcTextureManager teardown). Grow-once:
 // on grow the handle is deleted+regenerated, so the owner is RE-REGISTERED on the
 // new handle (registerLightDataSsbo helper) and invalidated on destroy.
+// L6.1 backendHandle widen: the alias below is a READ-ONLY GLuint view of the
+// 64-bit owner handle; gen/delete/reset sites write the owner field via a
+// GLuint local (the standard owner idiom), never through the macro.
 static RenderCore::GpuBufferOwner s_lightDataOwner{
     RenderCore::RenderResourceId::LightDataSsbo,
     RenderCore::RenderResourceLifetime::Persistent,
     "LightDataSsbo",
     0u};
-#define s_lightDataSsbo (s_lightDataOwner.glName)
+#define s_lightDataSsbo (static_cast<GLuint>(s_lightDataOwner.backendHandle))
 static GLsizeiptr s_lightDataSsboBytes = 0;
 
 // LIGHTDATA-SSBO-OWNER-1: (re)register the owner in the resource registry at every
@@ -8918,7 +8921,7 @@ static void registerLightDataSsbo(GLsizeiptr bytes) {
     d.lifetime  = RenderCore::RenderResourceLifetime::Persistent;
     d.format    = RenderCore::RenderResourceFormat::BufferRaw;
     d.debugName = "LightDataSsbo";
-    d.glName    = static_cast<GLuint>(s_lightDataOwner.glName);
+    d.glName    = static_cast<GLuint>(s_lightDataOwner.backendHandle);
     d.sizeBytes = static_cast<uint64_t>(bytes);
     d.valid     = true;
     RenderCore::registerOrUpdateRenderResource(d);
@@ -8967,7 +8970,9 @@ static bool gos_LightDataSsbo_UploadGrowOnce(const void* data, size_t bytes)
 		// First create: allocate at requested size + headroom, no data copy
 		// of trailing slack. Upload the live bytes via SubData.
 		const GLsizeiptr cap = want + kLightGrowHeadroomRecords * kLightRecordStride;
-		glGenBuffers(1, &s_lightDataSsbo);
+		GLuint local = 0;
+		glGenBuffers(1, &local);
+		s_lightDataOwner.backendHandle = local;  // LIGHTDATA-SSBO-OWNER-1 / L6.1 owner idiom
 		glBindBuffer(GL_SHADER_STORAGE_BUFFER, s_lightDataSsbo);
 		// Allocate uninitialized capacity (nullptr) ONCE, then fill live bytes.
 		// GL_DYNAMIC_DRAW: rewritten-often, drawn-often (read every frame).
@@ -8999,8 +9004,11 @@ static bool gos_LightDataSsbo_UploadGrowOnce(const void* data, size_t bytes)
 		const GLsizeiptr oldCap = s_lightDataSsboBytes;
 		glFinish();  // drain any in-flight reads of the old store before delete
 		glBindBuffer(GL_SHADER_STORAGE_BUFFER, 0);
-		glDeleteBuffers(1, &s_lightDataSsbo);
-		glGenBuffers(1, &s_lightDataSsbo);
+		GLuint local = s_lightDataSsbo;
+		glDeleteBuffers(1, &local);
+		local = 0;
+		glGenBuffers(1, &local);
+		s_lightDataOwner.backendHandle = local;  // LIGHTDATA-SSBO-OWNER-1 / L6.1 owner idiom
 		glBindBuffer(GL_SHADER_STORAGE_BUFFER, s_lightDataSsbo);
 		glBufferData(GL_SHADER_STORAGE_BUFFER, newCap, nullptr, GL_DYNAMIC_DRAW);
 		s_lightDataSsboBytes = newCap;
@@ -9036,7 +9044,9 @@ void __stdcall gos_LightDataSsbo_Upload(const void* data, size_t bytes)
 		if (gos_LightDataSsbo_UploadGrowOnce(data, bytes)) return;
 	}
 	if (s_lightDataSsbo == 0) {
-		glGenBuffers(1, &s_lightDataSsbo);
+		GLuint local = 0;
+		glGenBuffers(1, &local);
+		s_lightDataOwner.backendHandle = local;  // LIGHTDATA-SSBO-OWNER-1 / L6.1 owner idiom
 		glBindBuffer(GL_SHADER_STORAGE_BUFFER, s_lightDataSsbo);
 		MC2_GL_BufferData_Owner(GL_SHADER_STORAGE_BUFFER, (GLsizeiptr)bytes, data, GL_DYNAMIC_DRAW, LightSsbo);
 		s_lightDataSsboBytes = (GLsizeiptr)bytes;
@@ -9147,8 +9157,9 @@ void __stdcall gos_LightDataSsbo_UploadSplit(const void* data, size_t prefixByte
 void __stdcall gos_LightDataSsbo_Destroy()
 {
 	if (s_lightDataSsbo) {
-		glDeleteBuffers(1, &s_lightDataSsbo);
-		s_lightDataSsbo      = 0;
+		GLuint local = s_lightDataSsbo;
+		glDeleteBuffers(1, &local);
+		s_lightDataOwner.backendHandle = 0;  // L6.1 owner idiom: reset through the owner
 		s_lightDataSsboBytes = 0;
 		invalidateLightDataSsbo();  // LIGHTDATA-SSBO-OWNER-1: mark registry slot unavailable on teardown
 	}

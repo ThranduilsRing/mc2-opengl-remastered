@@ -16,7 +16,7 @@ TEST_CASE("GpuBufferOwner default is invalid (zero handle, null name, Unset)") {
     CHECK((o.id == RenderResourceId::Unknown));
     CHECK((o.lifetime == RenderResourceLifetime::Unset));
     CHECK(o.debugName == nullptr);
-    CHECK(o.glName == 0u);
+    CHECK(o.backendHandle == 0u);
     CHECK_FALSE(o.valid());
 }
 
@@ -25,12 +25,12 @@ TEST_CASE("GpuBufferOwner valid() requires a non-zero handle AND a non-null name
     o.id        = RenderResourceId::ViewUniformsUbo;
     o.lifetime  = RenderResourceLifetime::Persistent;
     o.debugName = "ViewUniformsUbo";
-    o.glName    = 7u;
+    o.backendHandle    = 7u;
     CHECK(o.valid());
 
     // Zero handle -> invalid even with a name.
     GpuBufferOwner noHandle = o;
-    noHandle.glName = 0u;
+    noHandle.backendHandle = 0u;
     CHECK_FALSE(noHandle.valid());
 
     // Null name -> invalid even with a handle.
@@ -44,11 +44,11 @@ TEST_CASE("GpuBufferOwner id and lifetime round-trip the stored fields") {
     o.id        = RenderResourceId::TerrainCementSsbo;
     o.lifetime  = RenderResourceLifetime::Mission;
     o.debugName = "TerrainCementSsbo";
-    o.glName    = 4242u;
+    o.backendHandle    = 4242u;
 
     CHECK((o.id == RenderResourceId::TerrainCementSsbo));
     CHECK((o.lifetime == RenderResourceLifetime::Mission));
-    CHECK(o.glName == 4242u);
+    CHECK(o.backendHandle == 4242u);
     CHECK(std::strcmp(o.debugName, "TerrainCementSsbo") == 0);
     CHECK(o.valid());
 }
@@ -61,18 +61,18 @@ TEST_CASE("TERRAIN-HEIGHT-SSBO-OWNER-1 height owner round-trips id/lifetime/name
         RenderResourceLifetime::Mission,
         "TerrainHeightSsbo",
         0u};
-    // Newly-constructed (glName 0) -> not yet allocated -> invalid.
+    // Newly-constructed (backendHandle 0) -> not yet allocated -> invalid.
     CHECK_FALSE(o.valid());
 
     // After glGen stores a handle -> valid, fields preserved.
-    o.glName = 14u;
+    o.backendHandle = 14u;
     CHECK((o.id == RenderResourceId::TerrainHeightSsbo));
     CHECK((o.lifetime == RenderResourceLifetime::Mission));
     CHECK(std::strcmp(o.debugName, "TerrainHeightSsbo") == 0);
     CHECK(o.valid());
 
-    // Invalidate-on-destroy (glName cleared) -> invalid again.
-    o.glName = 0u;
+    // Invalidate-on-destroy (backendHandle cleared) -> invalid again.
+    o.backendHandle = 0u;
     CHECK_FALSE(o.valid());
 
     CHECK(std::strcmp(toString(RenderResourceId::TerrainHeightSsbo), "TerrainHeightSsbo") == 0);
@@ -85,18 +85,18 @@ TEST_CASE("MECH-MATERIAL-SSBO-OWNER-1 material owner round-trips id/lifetime/nam
         RenderResourceLifetime::Persistent,
         "MaterialGpuBuffer",
         0u};
-    // Newly-constructed (glName 0) -> not yet allocated -> invalid.
+    // Newly-constructed (backendHandle 0) -> not yet allocated -> invalid.
     CHECK_FALSE(o.valid());
 
     // After glGen stores a handle -> valid, fields preserved.
-    o.glName = 22u;
+    o.backendHandle = 22u;
     CHECK((o.id == RenderResourceId::MaterialGpuBuffer));
     CHECK((o.lifetime == RenderResourceLifetime::Persistent));
     CHECK(std::strcmp(o.debugName, "MaterialGpuBuffer") == 0);
     CHECK(o.valid());
 
-    // Invalidate-on-destroy (glName cleared) -> invalid again.
-    o.glName = 0u;
+    // Invalidate-on-destroy (backendHandle cleared) -> invalid again.
+    o.backendHandle = 0u;
     CHECK_FALSE(o.valid());
 
     CHECK(std::strcmp(toString(RenderResourceId::MaterialGpuBuffer), "MaterialGpuBuffer") == 0);
@@ -109,18 +109,18 @@ TEST_CASE("STATICPROP-MATERIAL-SSBO-OWNER-1 static-prop material owner round-tri
         RenderResourceLifetime::Mission,
         "StaticPropMaterialGpuBuffer",
         0u};
-    // Newly-constructed (glName 0) -> not yet allocated -> invalid.
+    // Newly-constructed (backendHandle 0) -> not yet allocated -> invalid.
     CHECK_FALSE(o.valid());
 
     // After glGen stores a handle -> valid, fields preserved.
-    o.glName = 28u;
+    o.backendHandle = 28u;
     CHECK((o.id == RenderResourceId::StaticPropMaterialGpuBuffer));
     CHECK((o.lifetime == RenderResourceLifetime::Mission));
     CHECK(std::strcmp(o.debugName, "StaticPropMaterialGpuBuffer") == 0);
     CHECK(o.valid());
 
-    // Invalidate-on-destroy (glName cleared) -> invalid again.
-    o.glName = 0u;
+    // Invalidate-on-destroy (backendHandle cleared) -> invalid again.
+    o.backendHandle = 0u;
     CHECK_FALSE(o.valid());
 
     CHECK(std::strcmp(toString(RenderResourceId::StaticPropMaterialGpuBuffer), "StaticPropMaterialGpuBuffer") == 0);
@@ -135,19 +135,19 @@ TEST_CASE("MECH-PROFILE-SSBO-OWNER-1 mech-profile material owner round-trips id/
         RenderResourceLifetime::Persistent,
         "MechProfileMaterialGpuBuffer",
         0u};
-    // Newly-constructed (glName 0) -> not yet allocated -> invalid.
+    // Newly-constructed (backendHandle 0) -> not yet allocated -> invalid.
     // Default run (MC2_MECH_SURFACE_MATERIAL unset) never creates the buffer.
     CHECK_FALSE(o.valid());
 
     // After glGen stores a handle -> valid, fields preserved.
-    o.glName = 29u;
+    o.backendHandle = 29u;
     CHECK((o.id == RenderResourceId::MechProfileMaterialGpuBuffer));
     CHECK((o.lifetime == RenderResourceLifetime::Persistent));
     CHECK(std::strcmp(o.debugName, "MechProfileMaterialGpuBuffer") == 0);
     CHECK(o.valid());
 
-    // Invalidate-on-destroy (glName cleared) -> invalid again.
-    o.glName = 0u;
+    // Invalidate-on-destroy (backendHandle cleared) -> invalid again.
+    o.backendHandle = 0u;
     CHECK_FALSE(o.valid());
 
     CHECK(std::strcmp(toString(RenderResourceId::MechProfileMaterialGpuBuffer), "MechProfileMaterialGpuBuffer") == 0);
@@ -163,20 +163,20 @@ TEST_CASE("TERRAIN-VISUAL-HEIGHT-SSBO-OWNER-1 visual-height owner round-trips id
         RenderResourceLifetime::Mission,
         "TerrainVisualHeightSsbo",
         0u};
-    // Newly-constructed (glName 0) -> not yet allocated -> invalid. WIP feature: the
+    // Newly-constructed (backendHandle 0) -> not yet allocated -> invalid. WIP feature: the
     // create path is gated upstream (MC2_TERRAIN_VISUAL_HEIGHT/_DISPLACE + a bake that
-    // does NOT ship), so default smoke never creates the buffer — glName stays 0.
+    // does NOT ship), so default smoke never creates the buffer — backendHandle stays 0.
     CHECK_FALSE(o.valid());
 
     // After glGen stores a handle -> valid, fields preserved.
-    o.glName = 30u;
+    o.backendHandle = 30u;
     CHECK((o.id == RenderResourceId::TerrainVisualHeightSsbo));
     CHECK((o.lifetime == RenderResourceLifetime::Mission));
     CHECK(std::strcmp(o.debugName, "TerrainVisualHeightSsbo") == 0);
     CHECK(o.valid());
 
-    // Invalidate-on-destroy (glName cleared) -> invalid again.
-    o.glName = 0u;
+    // Invalidate-on-destroy (backendHandle cleared) -> invalid again.
+    o.backendHandle = 0u;
     CHECK_FALSE(o.valid());
 
     CHECK(std::strcmp(toString(RenderResourceId::TerrainVisualHeightSsbo), "TerrainVisualHeightSsbo") == 0);
@@ -196,16 +196,16 @@ TEST_CASE("TERRAIN-LIGHTING-SSBO-OWNER-1 the 3 compute SSBO owners round-trip id
     };
     for (const auto& c : cases) {
         GpuBufferOwner o{ c.id, RenderResourceLifetime::Mission, c.name, 0u };
-        // Newly-constructed (glName 0) -> not yet allocated -> invalid.
+        // Newly-constructed (backendHandle 0) -> not yet allocated -> invalid.
         CHECK_FALSE(o.valid());
         // After glGen stores a handle -> valid, fields preserved.
-        o.glName = c.handle;
+        o.backendHandle = c.handle;
         CHECK((o.id == c.id));
         CHECK((o.lifetime == RenderResourceLifetime::Mission));
         CHECK(std::strcmp(o.debugName, c.name) == 0);
         CHECK(o.valid());
-        // Invalidate-on-destroy (glName cleared) -> invalid again.
-        o.glName = 0u;
+        // Invalidate-on-destroy (backendHandle cleared) -> invalid again.
+        o.backendHandle = 0u;
         CHECK_FALSE(o.valid());
         // Registered id + matching toString label, strictly below Count.
         CHECK(std::strcmp(toString(c.id), c.name) == 0);
@@ -223,18 +223,18 @@ TEST_CASE("LIGHTDATA-SSBO-OWNER-1 light-data owner round-trips id/lifetime/name 
     // Persistent lifetime: lazy-created on first upload, destroyed at renderer teardown.
     GpuBufferOwner o{ RenderResourceId::LightDataSsbo, RenderResourceLifetime::Persistent,
                       "LightDataSsbo", 0u };
-    CHECK_FALSE(o.valid());                       // glName 0 -> unallocated
-    o.glName = 34u;                               // glGen stores a handle
+    CHECK_FALSE(o.valid());                       // backendHandle 0 -> unallocated
+    o.backendHandle = 34u;                               // glGen stores a handle
     CHECK((o.id == RenderResourceId::LightDataSsbo));
     CHECK((o.lifetime == RenderResourceLifetime::Persistent));
     CHECK(std::strcmp(o.debugName, "LightDataSsbo") == 0);
     CHECK(o.valid());
-    // Grow-once: handle recreated -> glName updated, still valid, id/name preserved.
-    o.glName = 77u;
+    // Grow-once: handle recreated -> backendHandle updated, still valid, id/name preserved.
+    o.backendHandle = 77u;
     CHECK(o.valid());
     CHECK((o.id == RenderResourceId::LightDataSsbo));
     // Invalidate-on-destroy.
-    o.glName = 0u;
+    o.backendHandle = 0u;
     CHECK_FALSE(o.valid());
     // Registered id + matching toString label, strictly below Count, distinct.
     CHECK(std::strcmp(toString(RenderResourceId::LightDataSsbo), "LightDataSsbo") == 0);
@@ -248,8 +248,8 @@ TEST_CASE("SCENE-SSBO-OWNER-SWEEP-1 dynamic prop-shadow owner round-trips id/lif
     // orphan-on-write bufferData refreshes size WITHOUT a new handle.
     GpuBufferOwner o{ RenderResourceId::DynamicPropShadowSsbo, RenderResourceLifetime::Mission,
                       "DynamicPropShadowSsbo", 0u };
-    CHECK_FALSE(o.valid());                       // glName 0 -> unallocated (no shadow set yet)
-    o.glName = 36u;                               // glGenBuffers stores a handle
+    CHECK_FALSE(o.valid());                       // backendHandle 0 -> unallocated (no shadow set yet)
+    o.backendHandle = 36u;                               // glGenBuffers stores a handle
     CHECK((o.id == RenderResourceId::DynamicPropShadowSsbo));
     CHECK((o.lifetime == RenderResourceLifetime::Mission));
     CHECK(std::strcmp(o.debugName, "DynamicPropShadowSsbo") == 0);
@@ -258,7 +258,7 @@ TEST_CASE("SCENE-SSBO-OWNER-SWEEP-1 dynamic prop-shadow owner round-trips id/lif
     CHECK(o.valid());
     CHECK((o.id == RenderResourceId::DynamicPropShadowSsbo));
     // Invalidate-on-destroy (onMapUnload).
-    o.glName = 0u;
+    o.backendHandle = 0u;
     CHECK_FALSE(o.valid());
     // Registered id + matching toString label, strictly below Count, distinct.
     CHECK(std::strcmp(toString(RenderResourceId::DynamicPropShadowSsbo), "DynamicPropShadowSsbo") == 0);

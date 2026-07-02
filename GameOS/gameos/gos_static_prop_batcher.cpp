@@ -402,8 +402,9 @@ static GLuint s_staticBldgShadowSsbo = 0;
 // CASTERS (DEFAULT ON) inside the always-on dynamic shadow pass, so it is created on the
 // stock run. Narrowed behind a GpuBufferOwner identity record; every gen/bind/bufferData/
 // bindbase/delete site reaches the raw handle ONLY via s_dynamicPropShadowSsbo (the
-// #define below aliases the bare name to owner.glName -> zero site churn). Same GL args/
-// slot/flags/order. Mission lifetime: rebuilt per frame but freed on onMapUnload;
+// #define below aliases the bare name to a READ-ONLY GLuint view of owner.backendHandle
+// -> zero site churn; writes go through the owner field via a GLuint local, L6.1). Same
+// GL args/slot/flags/order. Mission lifetime: rebuilt per frame but freed on onMapUnload;
 // registered at create (bufferData), invalidated on destroy.
 // The sibling buffers in gap B#5 are DEFERRED to the exclusion ledger (created only under
 // default-OFF gates): s_staticBldgShadowSsbo (MC2_STATIC_PROP_BUILDING_SHADOW, default
@@ -415,7 +416,7 @@ static RenderCore::GpuBufferOwner s_dynamicPropShadowOwner{
     RenderCore::RenderResourceLifetime::Mission,
     "DynamicPropShadowSsbo",
     0u};
-#define s_dynamicPropShadowSsbo (s_dynamicPropShadowOwner.glName)
+#define s_dynamicPropShadowSsbo (static_cast<GLuint>(s_dynamicPropShadowOwner.backendHandle))
 // typeIDs drawn into the static building shadow map. When the static building
 // shadow is active, flushShadow(skipStaticBuildingTypes=true) skips these in the
 // DYNAMIC pass so buildings don't cast a redundant (fuzzy) second shadow.
@@ -770,7 +771,7 @@ static std::unordered_map<uint32_t, uint32_t> s_typeInstanceCountPrevFrame;
 // STATICPROP-MATERIAL-SSBO-OWNER-1: static-prop MaterialGpu table SSBO (binding 5),
 // narrowed behind a GpuBufferOwner identity record (logical id + lifetime + debug
 // name + GLuint value). GL calls happen at the same sites with the same
-// args/order/flags/slot; the raw handle is reached only via owner.glName.
+// args/order/flags/slot; the raw handle is reached only via owner.backendHandle.
 // Lifetime Mission: created in finalizeGeometry(), torn down on onMapUnload();
 // rebuilt per map. Registered at create (upload), invalidated on destroy.
 static RenderCore::GpuBufferOwner           s_materialGpuSsbo{
@@ -2046,8 +2047,8 @@ void GpuStaticPropBatcher::onMapUnload() {
     // SHADOW-STATIC-BUILDINGS-2: per-map one-shot building shadow SSBO.
     if (s_staticBldgShadowSsbo) { glDeleteBuffers(1, &s_staticBldgShadowSsbo); s_staticBldgShadowSsbo = 0; }
     if (s_dynamicPropShadowSsbo) {
-        GLuint dynShadowLocal = static_cast<GLuint>(s_dynamicPropShadowOwner.glName);
-        glDeleteBuffers(1, &dynShadowLocal); s_dynamicPropShadowSsbo = 0;
+        GLuint dynShadowLocal = static_cast<GLuint>(s_dynamicPropShadowOwner.backendHandle);
+        glDeleteBuffers(1, &dynShadowLocal); s_dynamicPropShadowOwner.backendHandle = 0;
         // SCENE-SSBO-OWNER-SWEEP-1: mark the registry slot unavailable on teardown.
         RenderCore::RenderResourceDesc invalid;
         invalid.id    = RenderCore::RenderResourceId::DynamicPropShadowSsbo;
@@ -2140,7 +2141,7 @@ void GpuStaticPropBatcher::onMapUnload() {
     if (s_cmdToBucketSsbo)  { glDeleteBuffers(1,  &s_cmdToBucketSsbo);  s_cmdToBucketSsbo  = 0; }
     // MaterialGpu-2 teardown: runs regardless of gate state (defensive).
     // When gate is OFF, s_materialGpuSsbo == 0 and the if-block is skipped entirely.
-    if (s_materialGpuSsbo.glName != 0) {
+    if (s_materialGpuSsbo.backendHandle != 0) {
         const size_t byteSize =
             s_materialGpuTable.size() * sizeof(RenderCore::MaterialGpu);
         char buf[96];
@@ -2148,9 +2149,9 @@ void GpuStaticPropBatcher::onMapUnload() {
                       "[MATERIAL_GPU v4] event=unload materials=%zu bytes=%zu\n",
                       s_materialGpuTable.size(), byteSize);
         std::fputs(buf, stderr);
-        GLuint local = static_cast<GLuint>(s_materialGpuSsbo.glName);
+        GLuint local = static_cast<GLuint>(s_materialGpuSsbo.backendHandle);
         glDeleteBuffers(1, &local);
-        s_materialGpuSsbo.glName = 0;
+        s_materialGpuSsbo.backendHandle = 0;
 
         // STATICPROP-MATERIAL-SSBO-OWNER-1: mark the slot unavailable on teardown.
         RenderCore::RenderResourceDesc invalid;
@@ -3977,18 +3978,18 @@ void GpuStaticPropBatcher::finalizeGeometry() {
                 // Idempotent: delete any buffer from a prior finalizeGeometry call.
                 // finalizeGeometry() should be once-per-map, but defensive cleanup
                 // prevents leaks if it is ever called again (partial reinit, hot-reload, etc.).
-                if (s_materialGpuSsbo.glName != 0) {
-                    GLuint local = static_cast<GLuint>(s_materialGpuSsbo.glName);
+                if (s_materialGpuSsbo.backendHandle != 0) {
+                    GLuint local = static_cast<GLuint>(s_materialGpuSsbo.backendHandle);
                     glDeleteBuffers(1, &local);
-                    s_materialGpuSsbo.glName = 0;
+                    s_materialGpuSsbo.backendHandle = 0;
                 }
                 while (glGetError() != GL_NO_ERROR) {}  // drain stale BEFORE operation
                 {
                     GLuint local = 0;
                     glGenBuffers(1, &local);
-                    s_materialGpuSsbo.glName = static_cast<uint32_t>(local);
+                    s_materialGpuSsbo.backendHandle = static_cast<uint32_t>(local);
                 }
-                glBindBuffer(GL_SHADER_STORAGE_BUFFER, static_cast<GLuint>(s_materialGpuSsbo.glName));
+                glBindBuffer(GL_SHADER_STORAGE_BUFFER, static_cast<GLuint>(s_materialGpuSsbo.backendHandle));
                 MC2_GL_BufferData(GL_SHADER_STORAGE_BUFFER,
                              static_cast<GLsizeiptr>(byteSize),
                              s_materialGpuTable.data(),
@@ -4002,11 +4003,11 @@ void GpuStaticPropBatcher::finalizeGeometry() {
                                   uploadErr);
                     std::fputs(buf, stderr);
                     // Delete the corrupt/incomplete buffer so s_materialGpuSsbo returns to 0.
-                    // sampleOn checks s_materialGpuSsbo.glName != 0, so this guarantees sampling is
+                    // sampleOn checks s_materialGpuSsbo.backendHandle != 0, so this guarantees sampling is
                     // disabled without needing a separate s_materialGpuSidecarValid invalidation.
-                    GLuint local = static_cast<GLuint>(s_materialGpuSsbo.glName);
+                    GLuint local = static_cast<GLuint>(s_materialGpuSsbo.backendHandle);
                     glDeleteBuffers(1, &local);
-                    s_materialGpuSsbo.glName = 0;
+                    s_materialGpuSsbo.backendHandle = 0;
 
                     // STATICPROP-MATERIAL-SSBO-OWNER-1: corrupt buffer dropped — keep slot unregistered.
                     RenderCore::RenderResourceDesc invalid;
@@ -4023,7 +4024,7 @@ void GpuStaticPropBatcher::finalizeGeometry() {
                     d.lifetime  = s_materialGpuSsbo.lifetime;
                     d.format    = RenderCore::RenderResourceFormat::BufferRaw;
                     d.debugName = s_materialGpuSsbo.debugName;
-                    d.glName    = s_materialGpuSsbo.glName;
+                    d.glName    = static_cast<GLuint>(s_materialGpuSsbo.backendHandle);
                     d.sizeBytes = static_cast<uint64_t>(byteSize);
                     d.valid     = true;
                     RenderCore::registerOrUpdateRenderResource(d);
@@ -5360,11 +5361,11 @@ static bool flushDepthPrepassV6(
     // computation (flush() ~line 5598-5621) on THIS program so the alpha-test UV →
     // tex_color.a → discard decision is byte-identical. sampleOn replicates the
     // color pass's five-condition gate verbatim (incl. s_materialGpuSidecarValid).
-    if (s_materialGpuEnabled && s_materialGpuSsbo.glName != 0)
-        glBindBufferBase(GL_SHADER_STORAGE_BUFFER, 5, static_cast<GLuint>(s_materialGpuSsbo.glName));
+    if (s_materialGpuEnabled && s_materialGpuSsbo.backendHandle != 0)
+        glBindBufferBase(GL_SHADER_STORAGE_BUFFER, 5, static_cast<GLuint>(s_materialGpuSsbo.backendHandle));
     const bool depthSampleOn = s_materialGpuEnabled
                             && s_materialGpuSampleEnabled
-                            && s_materialGpuSsbo.glName != 0
+                            && s_materialGpuSsbo.backendHandle != 0
                             && s_materialGpuSidecarValid
                             && s_locsDepthCoalesce.materialGpuSample >= 0;
     if (s_locsDepthCoalesce.materialGpuSample >= 0)
@@ -6134,9 +6135,9 @@ void GpuStaticPropBatcher::flush(const RenderSnapshot* snap) {
         // The terrain pass uses slot 5 for WaterRecipeBuf in a different GL program —
         // that is not a conflict (terrain re-binds WaterRecipeBuf before its own draw).
         // prevSsbo5 is saved at flush() entry and restored at flush() exit.
-        if (s_materialGpuEnabled && s_materialGpuSsbo.glName != 0) {
+        if (s_materialGpuEnabled && s_materialGpuSsbo.backendHandle != 0) {
             while (glGetError() != GL_NO_ERROR) {}  // drain stale before bind check
-            glBindBufferBase(GL_SHADER_STORAGE_BUFFER, 5, static_cast<GLuint>(s_materialGpuSsbo.glName));
+            glBindBufferBase(GL_SHADER_STORAGE_BUFFER, 5, static_cast<GLuint>(s_materialGpuSsbo.backendHandle));
             const GLenum bindErr = glGetError();
             if (bindErr != GL_NO_ERROR) {
                 char buf[96];
@@ -6152,7 +6153,7 @@ void GpuStaticPropBatcher::flush(const RenderSnapshot* snap) {
         // When sampleOn=0, static_prop.frag falls back to texArrayLayer (no pixel change).
         const bool sampleOn = s_materialGpuEnabled
                            && s_materialGpuSampleEnabled
-                           && s_materialGpuSsbo.glName != 0
+                           && s_materialGpuSsbo.backendHandle != 0
                            && s_materialGpuSidecarValid
                            && s_locsCoalesce.materialGpuSample >= 0;
 
@@ -6193,7 +6194,7 @@ void GpuStaticPropBatcher::flush(const RenderSnapshot* snap) {
             const char* reason = "ok";
             if (!s_materialGpuEnabled)                    reason = "upload_env_off";
             else if (!s_materialGpuSampleEnabled)          reason = "sample_env_off";
-            else if (s_materialGpuSsbo.glName == 0)        reason = "no_ssbo";
+            else if (s_materialGpuSsbo.backendHandle == 0)        reason = "no_ssbo";
             else if (!s_materialGpuSidecarValid)           reason = "sidecar_invalid";
             else if (s_locsCoalesce.materialGpuSample < 0) reason = "uniform_missing";
             // else: reason == "ok" -> sampleOn is true (all 5 conditions met)
@@ -8079,7 +8080,7 @@ void GpuStaticPropBatcher::drawDynamicPropShadows(
     if (s_dynamicPropShadowSsbo == 0) {
         GLuint dynShadowGen = 0;
         glGenBuffers(1, &dynShadowGen);
-        s_dynamicPropShadowOwner.glName = dynShadowGen;
+        s_dynamicPropShadowOwner.backendHandle = dynShadowGen;
     }
     glBindBuffer(GL_SHADER_STORAGE_BUFFER, s_dynamicPropShadowSsbo);
     // GPU-UPDATE-BUFFER-COUNTER-1: per-frame transient shadow SSBO orphan-on-write.
@@ -8099,7 +8100,7 @@ void GpuStaticPropBatcher::drawDynamicPropShadows(
         d.lifetime  = s_dynamicPropShadowOwner.lifetime;
         d.format    = RenderCore::RenderResourceFormat::BufferRaw;
         d.debugName = s_dynamicPropShadowOwner.debugName;
-        d.glName    = s_dynamicPropShadowOwner.glName;
+        d.glName    = static_cast<GLuint>(s_dynamicPropShadowOwner.backendHandle);
         d.sizeBytes = static_cast<uint64_t>(dynShadowBytes);
         d.valid     = true;
         RenderCore::registerOrUpdateRenderResource(d);
