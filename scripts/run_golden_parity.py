@@ -89,6 +89,23 @@ FLOORS_DIR = ROOT / "golden_floors"
 # Per-capture wall budget: a smoke/visual sweep is ~30-45s; give generous margin.
 CAP_TIMEOUT_S = 180
 
+# BACKEND-COMPARE region map (VK-REGION-SSAO-1 made the region set >1).
+# Each region names (a) the debug-state health block its fallback detection
+# reads (region_impl / fallback_reason live per-region now) and (b) any extra
+# env BOTH states need so the region actually runs in-frame (SSAO is
+# default-OFF: without MC2_SSAO=1 a "compare" would trivially pass on a frame
+# that never entered the region).
+REGION_SPEC = {
+    "PostprocessFog": {
+        "health_block": "render_backend_region",
+        "extra_env": {},
+    },
+    "PostprocessSSAO": {
+        "health_block": "render_backend_ssao_region",
+        "extra_env": {"MC2_SSAO": "1"},
+    },
+}
+
 
 def _run(cmd: list[str], env: dict | None = None, timeout: int = CAP_TIMEOUT_S) -> int:
     """Shell a child python tool; stream nothing, just return exit code.
@@ -128,6 +145,11 @@ def capture_state(label: str, scene: str, exe: Path, work: Path,
         # not a feature-gate on/off. Enable the region interface + pick backend.
         env["MC2_RENDER_BACKEND_REGION_IFACE"] = "1"
         env["MC2_POSTPROCESS_BACKEND"] = backend
+        # Region-specific enable env applies to BOTH states (and the floor):
+        # the region must actually run in-frame for the compare to mean anything.
+        for k, v in REGION_SPEC.get(region or "PostprocessFog",
+                                    REGION_SPEC["PostprocessFog"])["extra_env"].items():
+            env[k] = v
     elif gate_name:
         # FEATURE-GATE mode: OFF and ON differ only by this one knob.
         if gate_value is None:
@@ -206,11 +228,15 @@ def capture_state(label: str, scene: str, exe: Path, work: Path,
     gs = json.loads(gs_out.read_text(encoding="utf-8"))
 
     # --- 2b) BACKEND-REGION health (region_impl) for fallback detection --------
-    # golden_scene does not carry render_backend_region; read it straight from the
-    # engine state dump it just produced. region_impl == "FallbackGL" means the
+    # golden_scene does not carry the region health; read it straight from the
+    # engine state dump it just produced, from the block belonging to the
+    # region under test (fog -> render_backend_region, ssao ->
+    # render_backend_ssao_region). region_impl == "FallbackGL" means the
     # Vulkan backend failed to init and the region silently ran on GL -- a
     # backend compare against that is GL-vs-GL, NOT a real backend compare.
-    region_health = read_backend_region_health(exe)
+    region_health = read_backend_region_health(
+        exe, REGION_SPEC.get(region or "PostprocessFog",
+                             REGION_SPEC["PostprocessFog"])["health_block"])
 
     # --- 3) COMBINED manifest (the thing we floor/compare) ---------------------
     combined = {
@@ -290,10 +316,13 @@ def _dig_field(obj, key):
     return None
 
 
-def read_backend_region_health(exe: Path) -> dict:
-    """Read the render_backend_region block from the engine state dump that
-    golden_scene just produced (<exe_dir>/debug_state/latest_render_state.json).
-    Returns {} if absent (e.g. an older exe). Keys of interest:
+def read_backend_region_health(exe: Path,
+                               block: str = "render_backend_region") -> dict:
+    """Read the given per-region backend-health block from the engine state
+    dump that golden_scene just produced
+    (<exe_dir>/debug_state/latest_render_state.json).
+    block: "render_backend_region" (fog) / "render_backend_ssao_region" (ssao)
+    -- see REGION_SPEC. Returns {} if absent (e.g. an older exe). Keys:
       region_impl: "GLInline" | "VulkanSubgraph" | "FallbackGL" | "None"
       backend_region_selected: "gl" | "vk" | "fallback_gl" | "none"
       fallback_reason: str
@@ -305,7 +334,7 @@ def read_backend_region_health(exe: Path) -> dict:
         d = json.loads(dump.read_text(encoding="utf-8"))
     except Exception:
         return {}
-    rbr = d.get("render_backend_region")
+    rbr = d.get(block)
     return rbr if isinstance(rbr, dict) else {}
 
 
@@ -449,8 +478,11 @@ def main() -> int:
     ap.add_argument("--backend-b", default=None,
                     help="BACKEND-COMPARE: backend for state B (e.g. 'vk').")
     ap.add_argument("--region", default="PostprocessFog",
+                    choices=sorted(REGION_SPEC),
                     help="BACKEND-COMPARE: region under test (default "
-                         "PostprocessFog -- the only region-selectable region).")
+                         "PostprocessFog). PostprocessSSAO additionally forces "
+                         "MC2_SSAO=1 for both states + the floor and reads the "
+                         "render_backend_ssao_region health block.")
     ap.add_argument("--backend-compare", action="store_true",
                     help="BACKEND-COMPARE shorthand: gl vs vk on --region.")
     ap.add_argument("--exe", default=str(DEFAULT_EXE),

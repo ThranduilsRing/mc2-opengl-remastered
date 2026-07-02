@@ -1844,6 +1844,107 @@ void fogoob_cpu_ref(const float invVP[16], float rawDepth, float u, float v,
     out[3] = alpha;
 }
 
+// ---- VK-REGION-SSAO-FIXTURE-1: CPU reference for ssao.frag ---------------------
+// Reimplementation of shaders/vulkan/ssao.frag (== the GL shaders/ssao.frag math)
+// for one pixel, float precision, row-major matrices. The per-pixel random TBN
+// rotation comes from a sin()-based hash (hash12) -> like the OOB-fog FBM it is
+// NOT bit-portable CPU<->GPU; the fixture therefore uses a class-based oracle
+// (see the fixture block comment) and this ref supplies (a) the deterministic-
+// class cross-check and (b) the CPU-side occlusion-liveness signal.
+float ssao_row_mul(const float m[16], int r, float x, float y, float z, float w) {
+    return m[r*4+0]*x + m[r*4+1]*y + m[r*4+2]*z + m[r*4+3]*w;
+}
+// NEAREST + CLAMP_TO_EDGE texel fetch on a WxH float texture.
+float ssao_fetch(const std::vector<float>& tex, uint32_t W, uint32_t H, float u, float v) {
+    int ix = (int)std::floor(u * (float)W);
+    int iy = (int)std::floor(v * (float)H);
+    if (ix < 0) ix = 0; if (ix > (int)W - 1) ix = (int)W - 1;
+    if (iy < 0) iy = 0; if (iy > (int)H - 1) iy = (int)H - 1;
+    return tex[(size_t)iy * W + ix];
+}
+// Full ssao.frag for one pixel. Normal is FIXED at +Z (the fixture's normal
+// texture encodes (0,0,1) everywhere), matching the shader's decode exactly.
+float ssao_cpu_ref(const float invVP[16], const float VP[16],
+                   const std::vector<float>& depthTex, uint32_t W, uint32_t H,
+                   float u, float v, float screenW, float screenH,
+                   float aoRadius, float aoBias, float aoStrength, float aoPower) {
+    const float kKernel[16][3] = {
+        { 0.024f, -0.012f, 0.040f}, {-0.045f,  0.039f, 0.052f},
+        { 0.071f,  0.061f, 0.090f}, {-0.083f, -0.052f, 0.071f},
+        { 0.012f,  0.114f, 0.140f}, { 0.131f, -0.078f, 0.121f},
+        {-0.151f,  0.026f, 0.180f}, { 0.067f,  0.175f, 0.205f},
+        {-0.092f, -0.196f, 0.171f}, { 0.226f,  0.041f, 0.241f},
+        {-0.198f,  0.158f, 0.276f}, { 0.046f, -0.281f, 0.252f},
+        { 0.258f,  0.182f, 0.330f}, {-0.314f, -0.072f, 0.301f},
+        { 0.121f,  0.341f, 0.388f}, {-0.279f,  0.252f, 0.421f},
+    };
+    float depth = ssao_fetch(depthTex, W, H, u, v);
+    if (depth <= 0.0001f) return 1.0f;
+
+    auto reconstruct = [&](float uu, float vv, float d, float out3[3]) {
+        float nx = uu * 2.0f - 1.0f, ny = vv * 2.0f - 1.0f;
+        float px = ssao_row_mul(invVP, 0, nx, ny, d, 1.0f);
+        float py = ssao_row_mul(invVP, 1, nx, ny, d, 1.0f);
+        float pz = ssao_row_mul(invVP, 2, nx, ny, d, 1.0f);
+        float pw = ssao_row_mul(invVP, 3, nx, ny, d, 1.0f);
+        out3[0] = px / pw; out3[1] = py / pw; out3[2] = pz / pw;
+    };
+    float P[3];
+    reconstruct(u, v, depth, P);
+    const float N[3] = { 0.0f, 0.0f, 1.0f };  // fixture normal texture: +Z everywhere
+
+    // hash12(TexCoord * screenSize) -- sin-based, CPU-libm flavor (liveness only).
+    float hx = u * screenW * 12.9898f + v * screenH * 78.233f;
+    float s  = std::sin(hx) * 43758.5453f;
+    float rnd = s - std::floor(s);
+    float ca = std::cos(rnd * 6.2831853f);
+    float sa = std::sin(rnd * 6.2831853f);
+    float rv[3] = { ca, sa, 0.5f };
+    float rvl = std::sqrt(rv[0]*rv[0] + rv[1]*rv[1] + rv[2]*rv[2]);
+    rv[0] /= rvl; rv[1] /= rvl; rv[2] /= rvl;
+    float rdotn = rv[0]*N[0] + rv[1]*N[1] + rv[2]*N[2];
+    float tan3[3] = { rv[0] - N[0]*rdotn, rv[1] - N[1]*rdotn, rv[2] - N[2]*rdotn };
+    float tl = std::sqrt(tan3[0]*tan3[0] + tan3[1]*tan3[1] + tan3[2]*tan3[2]);
+    tan3[0] /= tl; tan3[1] /= tl; tan3[2] /= tl;
+    float bit3[3] = { N[1]*tan3[2] - N[2]*tan3[1],
+                      N[2]*tan3[0] - N[0]*tan3[2],
+                      N[0]*tan3[1] - N[1]*tan3[0] };
+
+    float occlusion = 0.0f;
+    for (int i = 0; i < 16; ++i) {
+        float kx = kKernel[i][0], ky = kKernel[i][1], kz = kKernel[i][2];
+        // TBN * k (columns = tangent, bitangent, N)
+        float ox = tan3[0]*kx + bit3[0]*ky + N[0]*kz;
+        float oy = tan3[1]*kx + bit3[1]*ky + N[1]*kz;
+        float oz = tan3[2]*kx + bit3[2]*ky + N[2]*kz;
+        float sw[3] = { P[0] + ox*aoRadius, P[1] + oy*aoRadius, P[2] + oz*aoRadius };
+
+        float cx = ssao_row_mul(VP, 0, sw[0], sw[1], sw[2], 1.0f);
+        float cy = ssao_row_mul(VP, 1, sw[0], sw[1], sw[2], 1.0f);
+        float cz = ssao_row_mul(VP, 2, sw[0], sw[1], sw[2], 1.0f);
+        float cw = ssao_row_mul(VP, 3, sw[0], sw[1], sw[2], 1.0f);
+        if (cw <= 0.0f) continue;
+        float ndcx = cx / cw, ndcy = cy / cw, ndcz = cz / cw;
+        float su = ndcx * 0.5f + 0.5f, sv = ndcy * 0.5f + 0.5f;
+        if (su < 0.0f || su > 1.0f || sv < 0.0f || sv > 1.0f) continue;
+
+        float storedDepth = ssao_fetch(depthTex, W, H, su, sv);
+        if (storedDepth <= 0.0001f) continue;
+        bool occluded = storedDepth > ndcz + aoBias;
+
+        float SW[3];
+        reconstruct(su, sv, storedDepth, SW);
+        float dx = SW[0]-P[0], dy = SW[1]-P[1], dz = SW[2]-P[2];
+        float dist = std::sqrt(dx*dx + dy*dy + dz*dz);
+        float rangeCheck = glsl_smoothstep(0.0f, 1.0f, aoRadius / std::fmax(dist, 1e-4f));
+        occlusion += (occluded ? 1.0f : 0.0f) * rangeCheck;
+    }
+
+    float ao = 1.0f - (occlusion / 16.0f) * aoStrength;
+    ao = std::pow(glsl_clamp(ao, 0.0f, 1.0f), std::fmax(aoPower, 0.0001f));
+    return ao;
+}
+
 } // namespace
 
 bool mc2_vulkan_probe_edgefog_fixture(const char* spvDir) {
@@ -3211,6 +3312,761 @@ done:
     return ok;
 }
 
+// VK-REGION-SSAO-FIXTURE-1 -- headless shader-MATH oracle for the SSAO occlusion
+// port (closes the VK-REGION-SSAO-1 acceptance debt; ladder L6.2 proof column).
+// Mirrors the edge-fog/oob-fog fixtures; differences: TWO sampled inputs (depth
+// D32_SFLOAT binding 0 + normal RGBA16F binding 1) + UBO at binding 2, per the
+// §5a postprocess binding convention (samplers in slot order, params UBO last).
+//
+// CLASS-BASED ORACLE (honest: hash12 is sin()-based -> the per-pixel random TBN
+// rotation is NOT bit-portable CPU<->GPU, same transcendental-precision property
+// as the OOB-fog FBM). The synthetic scene is built so entire pixel classes are
+// provably rotation-INDEPENDENT and those are checked bit-tight:
+//
+//   depth texture (64x64):  rows y<16 = 0.0 (sky);
+//                           else cols x>=48 = 0.9 (near "wall");
+//                           else 0.5 (flat "floor").
+//   normal texture: +Z everywhere. viewProj/invViewProj: exact-inverse affine
+//   pair (w==1) with x<-z SHEAR coupling (VP row0 has 0.5*z) chosen so a
+//   row/col-major transpose bug leaks rotation-dependent kernel xy into the
+//   depth compare and breaks the deterministic classes (the 2b-bug detector);
+//   under the CORRECT interpretation depth displacement depends only on k.z>0.
+//
+//   (A) SKY (y<16):            early-out       -> exactly vec4(1).
+//   (B) FLOOR-DET (x<=40):     every sample is floor/sky; lifted samples are
+//       strictly nearer (reverse-Z larger) than the stored floor -> occlusion
+//       accumulator stays exactly 0 -> ao = pow(1,1) = 1 exactly, ANY rotation.
+//       (max sample UV reach ~5.1 texels < the 7.5-texel wall margin.)
+//   (C) WALL-DET (x>=48):      own depth 0.9 is the nearest surface in the
+//       scene -> no stored sample can be nearer than the lifted sample -> 1.0.
+//   (D) ENVELOPE (40<x<48):    wall-hits ARE rotation-dependent -> checked as
+//       a closed interval [1 - strength*smoothstep(0,1,radius/zgap), 1] (all
+//       occluders sit at world-z gap >= 0.8) + LIVENESS: both the GPU and the
+//       CPU ref must see ao < 0.995 somewhere in the band (guards a silent
+//       all-ones masquerade).
+//   Structural (ALL pixels): R==G==B bit-equal halfs; A == 1.0.
+//
+// Tolerance 1/1024 (RGBA16F half floor, same justification as edge-fog).
+// Fail-soft everywhere. spvDir = dir with the compiled ssao.{vert,frag}.spv.
+bool mc2_vulkan_probe_ssao_fixture(const char* spvDir) {
+    if (!ensure_volk_initialized()) return false;
+
+    g_edgefog_validation_saw_error = false; // shared validation flag (same TU)
+
+    const uint32_t W = 64, H = 64;
+    const VkFormat kDepthFmt  = VK_FORMAT_D32_SFLOAT;          // matches the island
+    const VkFormat kNormalFmt = VK_FORMAT_R16G16B16A16_SFLOAT; // matches the island
+    const VkFormat kColorFmt  = VK_FORMAT_R16G16B16A16_SFLOAT; // full-precision oracle
+                                                               // (island renders R8_UNORM;
+                                                               // the MATH is what's proven)
+
+    // ---- KNOWN inputs (see block comment) -----------------------------------
+    // viewProj: affine, w==1 (row3 = 0,0,0,1). Row-major as the GL path uploads.
+    //   ndc_x = 0.25*x + 0.5*z   (the x<-z shear = transpose detector)
+    //   ndc_y = 0.25*y - 0.25*z
+    //   ndc_z = 0.5*z + 0.25     (depth depends ONLY on world z)
+    const float VP[16] = {
+        0.25f, 0.0f,   0.5f,  0.0f,
+        0.0f,  0.25f, -0.25f, 0.0f,
+        0.0f,  0.0f,   0.5f,  0.25f,
+        0.0f,  0.0f,   0.0f,  1.0f,
+    };
+    // invViewProj: the EXACT inverse (all entries exact binary fractions).
+    const float invVP[16] = {
+        4.0f, 0.0f, -4.0f,  1.0f,
+        0.0f, 4.0f,  2.0f, -0.5f,
+        0.0f, 0.0f,  2.0f, -0.5f,
+        0.0f, 0.0f,  0.0f,  1.0f,
+    };
+    const float screenW = (float)W, screenH = (float)H;
+    const float aoRadius = 0.5f, aoBias = 0.01f, aoStrength = 1.0f, aoPower = 1.0f;
+
+    // Synthetic depth (reverse-Z: sky ~0, larger = closer).
+    std::vector<float> depthScratch((size_t)W * H);
+    for (uint32_t y = 0; y < H; ++y)
+        for (uint32_t x = 0; x < W; ++x)
+            depthScratch[(size_t)y * W + x] = (y < 16) ? 0.0f : ((x >= 48) ? 0.9f : 0.5f);
+
+    // Normal texture: encoded +Z = (0.5, 0.5, 1.0, 0) -- exact halfs.
+    std::vector<uint16_t> normalScratch((size_t)W * H * 4);
+    for (size_t i = 0; i < (size_t)W * H; ++i) {
+        normalScratch[i*4+0] = 0x3800u; // 0.5
+        normalScratch[i*4+1] = 0x3800u; // 0.5
+        normalScratch[i*4+2] = 0x3C00u; // 1.0
+        normalScratch[i*4+3] = 0x0000u;
+    }
+
+    // std140 layout IDENTICAL to shaders/vulkan/ssao.frag SSAOParams / the
+    // island's SSAOOcclusionParams (152B).
+    struct SsaoFixtureParams {
+        float invViewProj[16]; // @0
+        float viewProj[16];    // @64
+        float screenSize[2];   // @128
+        float aoRadius;        // @136
+        float aoBias;          // @140
+        float aoStrength;      // @144
+        float aoPower;         // @148
+    };
+    static_assert(sizeof(SsaoFixtureParams) == 152, "SsaoFixtureParams std140 offsets drifted");
+
+    // ---- Optional validation layer + debug-utils messenger ------------------
+    std::vector<const char*> layers;
+    std::vector<const char*> instExts;
+    std::vector<VkValidationFeatureEnableEXT> valFeatures;
+    const char* valPreset = "off";
+    bool wantValidation = resolve_validation_preset(valFeatures, valPreset);
+    if (wantValidation) {
+        uint32_t layerCount = 0;
+        vkEnumerateInstanceLayerProperties(&layerCount, nullptr);
+        std::vector<VkLayerProperties> avail(layerCount);
+        if (layerCount) vkEnumerateInstanceLayerProperties(&layerCount, avail.data());
+        const char* want = "VK_LAYER_KHRONOS_validation";
+        bool found = false;
+        for (const auto& lp : avail) {
+            if (std::strcmp(lp.layerName, want) == 0) { found = true; break; }
+        }
+        if (found) {
+            layers.push_back(want);
+            instExts.push_back(VK_EXT_DEBUG_UTILS_EXTENSION_NAME);
+            log("ssao-fixture: validation layer %s enabled (preset=%s, +%zu feature(s))",
+                want, valPreset, valFeatures.size());
+        } else {
+            wantValidation = false;
+            log("ssao-fixture: validation requested but %s not available; continuing without", want);
+        }
+    }
+
+    VkApplicationInfo app{};
+    app.sType            = VK_STRUCTURE_TYPE_APPLICATION_INFO;
+    app.pApplicationName = "MC2 (Vulkan SSAO fixture)";
+    app.pEngineName      = "MC2-GameOS";
+    app.apiVersion       = VK_API_VERSION_1_1;
+
+    VkValidationFeaturesEXT valFeaturesInfo{};
+    valFeaturesInfo.sType = VK_STRUCTURE_TYPE_VALIDATION_FEATURES_EXT;
+    valFeaturesInfo.enabledValidationFeatureCount = static_cast<uint32_t>(valFeatures.size());
+    valFeaturesInfo.pEnabledValidationFeatures    = valFeatures.empty() ? nullptr : valFeatures.data();
+
+    VkInstanceCreateInfo ici{};
+    ici.sType                   = VK_STRUCTURE_TYPE_INSTANCE_CREATE_INFO;
+    ici.pApplicationInfo        = &app;
+    ici.enabledLayerCount       = static_cast<uint32_t>(layers.size());
+    ici.ppEnabledLayerNames     = layers.empty() ? nullptr : layers.data();
+    ici.enabledExtensionCount   = static_cast<uint32_t>(instExts.size());
+    ici.ppEnabledExtensionNames = instExts.empty() ? nullptr : instExts.data();
+    if (wantValidation && !valFeatures.empty()) ici.pNext = &valFeaturesInfo;
+
+    VkInstance instance = VK_NULL_HANDLE;
+    VkResult r = vkCreateInstance(&ici, nullptr, &instance);
+    if (r != VK_SUCCESS) {
+        log("ssao-fixture: vkCreateInstance failed (VkResult=%d). fail-soft.", (int)r);
+        return false;
+    }
+    volkLoadInstance(instance);
+
+    VkDebugUtilsMessengerEXT messenger = VK_NULL_HANDLE;
+    if (wantValidation) {
+        auto pfnCreate = (PFN_vkCreateDebugUtilsMessengerEXT)
+            vkGetInstanceProcAddr(instance, "vkCreateDebugUtilsMessengerEXT");
+        if (pfnCreate) {
+            VkDebugUtilsMessengerCreateInfoEXT mci{};
+            mci.sType           = VK_STRUCTURE_TYPE_DEBUG_UTILS_MESSENGER_CREATE_INFO_EXT;
+            mci.messageSeverity = VK_DEBUG_UTILS_MESSAGE_SEVERITY_WARNING_BIT_EXT |
+                                  VK_DEBUG_UTILS_MESSAGE_SEVERITY_ERROR_BIT_EXT;
+            mci.messageType     = VK_DEBUG_UTILS_MESSAGE_TYPE_GENERAL_BIT_EXT |
+                                  VK_DEBUG_UTILS_MESSAGE_TYPE_VALIDATION_BIT_EXT |
+                                  VK_DEBUG_UTILS_MESSAGE_TYPE_PERFORMANCE_BIT_EXT;
+            mci.pfnUserCallback = edgefog_debug_cb;
+            pfnCreate(instance, &mci, nullptr, &messenger);
+        } else {
+            log("ssao-fixture: vkCreateDebugUtilsMessengerEXT not found; continuing (no error capture)");
+        }
+    }
+    auto destroy_messenger = [&]() {
+        if (messenger) {
+            auto d = (PFN_vkDestroyDebugUtilsMessengerEXT)
+                vkGetInstanceProcAddr(instance, "vkDestroyDebugUtilsMessengerEXT");
+            if (d) d(instance, messenger, nullptr);
+        }
+    };
+
+    uint32_t devCount = 0;
+    r = vkEnumeratePhysicalDevices(instance, &devCount, nullptr);
+    if (r != VK_SUCCESS || devCount == 0) {
+        log("ssao-fixture: no physical devices (VkResult=%d, count=%u). fail-soft.", (int)r, devCount);
+        destroy_messenger();
+        vkDestroyInstance(instance, nullptr);
+        return false;
+    }
+    std::vector<VkPhysicalDevice> devs(devCount);
+    vkEnumeratePhysicalDevices(instance, &devCount, devs.data());
+    VkPhysicalDevice phys = devs[0];
+
+    uint32_t qfCount = 0;
+    vkGetPhysicalDeviceQueueFamilyProperties(phys, &qfCount, nullptr);
+    std::vector<VkQueueFamilyProperties> qfs(qfCount);
+    if (qfCount) vkGetPhysicalDeviceQueueFamilyProperties(phys, &qfCount, qfs.data());
+    uint32_t gfxFamily = UINT32_MAX;
+    for (uint32_t q = 0; q < qfCount; ++q) {
+        if (qfs[q].queueFlags & VK_QUEUE_GRAPHICS_BIT) { gfxFamily = q; break; }
+    }
+    if (gfxFamily == UINT32_MAX) {
+        log("ssao-fixture: no graphics queue family. fail-soft.");
+        destroy_messenger();
+        vkDestroyInstance(instance, nullptr);
+        return false;
+    }
+
+    float prio = 1.0f;
+    VkDeviceQueueCreateInfo qci{};
+    qci.sType            = VK_STRUCTURE_TYPE_DEVICE_QUEUE_CREATE_INFO;
+    qci.queueFamilyIndex = gfxFamily;
+    qci.queueCount       = 1;
+    qci.pQueuePriorities = &prio;
+
+    VkDeviceCreateInfo dci{};
+    dci.sType                = VK_STRUCTURE_TYPE_DEVICE_CREATE_INFO;
+    dci.queueCreateInfoCount = 1;
+    dci.pQueueCreateInfos    = &qci;
+
+    VkDevice device = VK_NULL_HANDLE;
+    r = vkCreateDevice(phys, &dci, nullptr, &device);
+    if (r != VK_SUCCESS) {
+        log("ssao-fixture: vkCreateDevice failed (VkResult=%d). fail-soft.", (int)r);
+        destroy_messenger();
+        vkDestroyInstance(instance, nullptr);
+        return false;
+    }
+    volkLoadDevice(device);
+    VkQueue queue = VK_NULL_HANDLE;
+    vkGetDeviceQueue(device, gfxFamily, 0, &queue);
+
+    bool ok = false;
+    VmaAllocator   allocator = VK_NULL_HANDLE;
+    VkShaderModule vert = VK_NULL_HANDLE, frag = VK_NULL_HANDLE;
+    VkImage        depthImage = VK_NULL_HANDLE, normalImage = VK_NULL_HANDLE, colorImage = VK_NULL_HANDLE;
+    VmaAllocation  depthAlloc = VK_NULL_HANDLE, normalAlloc = VK_NULL_HANDLE, colorAlloc = VK_NULL_HANDLE;
+    VkImageView    depthView = VK_NULL_HANDLE, normalView = VK_NULL_HANDLE, colorView = VK_NULL_HANDLE;
+    VkSampler      sampler   = VK_NULL_HANDLE;
+    VkBuffer       depthStaging = VK_NULL_HANDLE, normalStaging = VK_NULL_HANDLE,
+                   colorReadback = VK_NULL_HANDLE, ubo = VK_NULL_HANDLE;
+    VmaAllocation  depthStagingAlloc = VK_NULL_HANDLE, normalStagingAlloc = VK_NULL_HANDLE,
+                   colorReadbackAlloc = VK_NULL_HANDLE, uboAlloc = VK_NULL_HANDLE;
+    VkRenderPass   rpass  = VK_NULL_HANDLE;
+    VkFramebuffer  fb     = VK_NULL_HANDLE;
+    VkDescriptorSetLayout dsl = VK_NULL_HANDLE;
+    VkDescriptorPool pool = VK_NULL_HANDLE;
+    VkDescriptorSet  set  = VK_NULL_HANDLE;
+    VkPipelineLayout playout = VK_NULL_HANDLE;
+    VkPipeline     pipe   = VK_NULL_HANDLE;
+    VkCommandPool  cpool  = VK_NULL_HANDLE;
+    VkCommandBuffer cbuf  = VK_NULL_HANDLE;
+    VkFence        fence  = VK_NULL_HANDLE;
+
+    if (!create_vma_allocator("ssao-fixture", instance, phys, device, &allocator)) goto done;
+
+    {
+        std::string dir = spvDir ? spvDir : ".";
+        if (!dir.empty() && dir.back() != '/' && dir.back() != '\\') dir += '/';
+        vert = mc2_vulkan_load_spv(device, (dir + "ssao.vert.spv").c_str());
+        frag = mc2_vulkan_load_spv(device, (dir + "ssao.frag.spv").c_str());
+        if (vert == VK_NULL_HANDLE || frag == VK_NULL_HANDLE) {
+            log("ssao-fixture: ssao shader module load failed. fail-soft.");
+            goto done;
+        }
+    }
+
+    {
+        auto make_image = [&](VkFormat fmt, VkImageUsageFlags usage, VkImage* img, VmaAllocation* alloc) -> bool {
+            VkImageCreateInfo ii{};
+            ii.sType = VK_STRUCTURE_TYPE_IMAGE_CREATE_INFO;
+            ii.imageType = VK_IMAGE_TYPE_2D;
+            ii.format = fmt;
+            ii.extent = {W, H, 1};
+            ii.mipLevels = 1;
+            ii.arrayLayers = 1;
+            ii.samples = VK_SAMPLE_COUNT_1_BIT;
+            ii.tiling = VK_IMAGE_TILING_OPTIMAL;
+            ii.usage = usage;
+            ii.initialLayout = VK_IMAGE_LAYOUT_UNDEFINED;
+            VmaAllocationCreateInfo aci{};
+            aci.usage = VMA_MEMORY_USAGE_AUTO;
+            aci.flags = VMA_ALLOCATION_CREATE_DEDICATED_MEMORY_BIT;
+            VkResult rr = vmaCreateImage(allocator, &ii, &aci, img, alloc, nullptr);
+            if (rr != VK_SUCCESS) { log("ssao-fixture: vmaCreateImage failed (%d). fail-soft.", (int)rr); return false; }
+            return true;
+        };
+        if (!make_image(kDepthFmt, VK_IMAGE_USAGE_SAMPLED_BIT | VK_IMAGE_USAGE_TRANSFER_DST_BIT,
+                        &depthImage, &depthAlloc)) goto done;
+        if (!make_image(kNormalFmt, VK_IMAGE_USAGE_SAMPLED_BIT | VK_IMAGE_USAGE_TRANSFER_DST_BIT,
+                        &normalImage, &normalAlloc)) goto done;
+        if (!make_image(kColorFmt, VK_IMAGE_USAGE_COLOR_ATTACHMENT_BIT | VK_IMAGE_USAGE_TRANSFER_SRC_BIT,
+                        &colorImage, &colorAlloc)) goto done;
+
+        auto make_view = [&](VkImage img, VkFormat fmt, VkImageAspectFlags aspect, VkImageView* view) -> bool {
+            VkImageViewCreateInfo vi{};
+            vi.sType = VK_STRUCTURE_TYPE_IMAGE_VIEW_CREATE_INFO;
+            vi.image = img;
+            vi.viewType = VK_IMAGE_VIEW_TYPE_2D;
+            vi.format = fmt;
+            vi.subresourceRange = {aspect, 0, 1, 0, 1};
+            VkResult rr = vkCreateImageView(device, &vi, nullptr, view);
+            if (rr != VK_SUCCESS) { log("ssao-fixture: vkCreateImageView failed (%d). fail-soft.", (int)rr); return false; }
+            return true;
+        };
+        if (!make_view(depthImage,  kDepthFmt,  VK_IMAGE_ASPECT_DEPTH_BIT, &depthView))  goto done;
+        if (!make_view(normalImage, kNormalFmt, VK_IMAGE_ASPECT_COLOR_BIT, &normalView)) goto done;
+        if (!make_view(colorImage,  kColorFmt,  VK_IMAGE_ASPECT_COLOR_BIT, &colorView))  goto done;
+    }
+
+    {
+        VkSamplerCreateInfo si{};
+        si.sType = VK_STRUCTURE_TYPE_SAMPLER_CREATE_INFO;
+        si.magFilter = VK_FILTER_NEAREST;
+        si.minFilter = VK_FILTER_NEAREST;
+        si.mipmapMode = VK_SAMPLER_MIPMAP_MODE_NEAREST;
+        si.addressModeU = VK_SAMPLER_ADDRESS_MODE_CLAMP_TO_EDGE;
+        si.addressModeV = VK_SAMPLER_ADDRESS_MODE_CLAMP_TO_EDGE;
+        si.addressModeW = VK_SAMPLER_ADDRESS_MODE_CLAMP_TO_EDGE;
+        r = vkCreateSampler(device, &si, nullptr, &sampler);
+        if (r != VK_SUCCESS) { log("ssao-fixture: vkCreateSampler failed (%d). fail-soft.", (int)r); goto done; }
+    }
+
+    {
+        auto make_buffer = [&](VkDeviceSize size, VkBufferUsageFlags usage, VkBuffer* buf, VmaAllocation* alloc) -> bool {
+            VkBufferCreateInfo bci{};
+            bci.sType = VK_STRUCTURE_TYPE_BUFFER_CREATE_INFO;
+            bci.size = size;
+            bci.usage = usage;
+            VmaAllocationCreateInfo aci{};
+            aci.usage = VMA_MEMORY_USAGE_AUTO;
+            aci.flags = VMA_ALLOCATION_CREATE_HOST_ACCESS_RANDOM_BIT;
+            VkResult rr = vmaCreateBuffer(allocator, &bci, &aci, buf, alloc, nullptr);
+            if (rr != VK_SUCCESS) { log("ssao-fixture: vmaCreateBuffer failed (%d). fail-soft.", (int)rr); return false; }
+            return true;
+        };
+        const VkDeviceSize depthBytes  = (VkDeviceSize)W * H * 4;
+        const VkDeviceSize normalBytes = (VkDeviceSize)W * H * 4 * 2;
+        const VkDeviceSize colorBytes  = (VkDeviceSize)W * H * 4 * 2;
+        if (!make_buffer(depthBytes,  VK_BUFFER_USAGE_TRANSFER_SRC_BIT, &depthStaging,  &depthStagingAlloc))  goto done;
+        if (!make_buffer(normalBytes, VK_BUFFER_USAGE_TRANSFER_SRC_BIT, &normalStaging, &normalStagingAlloc)) goto done;
+        if (!make_buffer(colorBytes,  VK_BUFFER_USAGE_TRANSFER_DST_BIT, &colorReadback, &colorReadbackAlloc)) goto done;
+        if (!make_buffer(sizeof(SsaoFixtureParams), VK_BUFFER_USAGE_UNIFORM_BUFFER_BIT, &ubo, &uboAlloc)) goto done;
+
+        void* p = nullptr;
+        r = vmaMapMemory(allocator, depthStagingAlloc, &p);
+        if (r != VK_SUCCESS) { log("ssao-fixture: vmaMapMemory(depthStaging) failed (%d). fail-soft.", (int)r); goto done; }
+        std::memcpy(p, depthScratch.data(), (size_t)W * H * 4);
+        vmaUnmapMemory(allocator, depthStagingAlloc);
+
+        r = vmaMapMemory(allocator, normalStagingAlloc, &p);
+        if (r != VK_SUCCESS) { log("ssao-fixture: vmaMapMemory(normalStaging) failed (%d). fail-soft.", (int)r); goto done; }
+        std::memcpy(p, normalScratch.data(), (size_t)W * H * 4 * 2);
+        vmaUnmapMemory(allocator, normalStagingAlloc);
+
+        SsaoFixtureParams params{};
+        std::memcpy(params.invViewProj, invVP, 16 * sizeof(float));
+        std::memcpy(params.viewProj,    VP,    16 * sizeof(float));
+        params.screenSize[0] = screenW; params.screenSize[1] = screenH;
+        params.aoRadius = aoRadius; params.aoBias = aoBias;
+        params.aoStrength = aoStrength; params.aoPower = aoPower;
+        r = vmaMapMemory(allocator, uboAlloc, &p);
+        if (r != VK_SUCCESS) { log("ssao-fixture: vmaMapMemory(ubo) failed (%d). fail-soft.", (int)r); goto done; }
+        std::memcpy(p, &params, sizeof(params));
+        vmaUnmapMemory(allocator, uboAlloc);
+    }
+
+    {
+        VkAttachmentDescription att{};
+        att.format = kColorFmt;
+        att.samples = VK_SAMPLE_COUNT_1_BIT;
+        att.loadOp = VK_ATTACHMENT_LOAD_OP_CLEAR;
+        att.storeOp = VK_ATTACHMENT_STORE_OP_STORE;
+        att.stencilLoadOp = VK_ATTACHMENT_LOAD_OP_DONT_CARE;
+        att.stencilStoreOp = VK_ATTACHMENT_STORE_OP_DONT_CARE;
+        att.initialLayout = VK_IMAGE_LAYOUT_UNDEFINED;
+        att.finalLayout   = VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL;
+        VkAttachmentReference ref{0, VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL};
+        VkSubpassDescription sub{};
+        sub.pipelineBindPoint = VK_PIPELINE_BIND_POINT_GRAPHICS;
+        sub.colorAttachmentCount = 1;
+        sub.pColorAttachments = &ref;
+        // H1 pattern (VULKAN-ISLAND-READBACK-SYNC-BARRIER-1): external dependency so
+        // the implicit final transition to TRANSFER_SRC orders color writes before
+        // the vkCmdCopyImageToBuffer transfer read (sync-validation clean).
+        VkSubpassDependency dep{};
+        dep.srcSubpass = 0;
+        dep.dstSubpass = VK_SUBPASS_EXTERNAL;
+        dep.srcStageMask = VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT;
+        dep.srcAccessMask = VK_ACCESS_COLOR_ATTACHMENT_WRITE_BIT;
+        dep.dstStageMask = VK_PIPELINE_STAGE_TRANSFER_BIT;
+        dep.dstAccessMask = VK_ACCESS_TRANSFER_READ_BIT;
+        VkRenderPassCreateInfo rpci{};
+        rpci.sType = VK_STRUCTURE_TYPE_RENDER_PASS_CREATE_INFO;
+        rpci.attachmentCount = 1;
+        rpci.pAttachments = &att;
+        rpci.subpassCount = 1;
+        rpci.pSubpasses = &sub;
+        rpci.dependencyCount = 1;
+        rpci.pDependencies = &dep;
+        r = vkCreateRenderPass(device, &rpci, nullptr, &rpass);
+        if (r != VK_SUCCESS) { log("ssao-fixture: vkCreateRenderPass failed (%d). fail-soft.", (int)r); goto done; }
+
+        VkFramebufferCreateInfo fci{};
+        fci.sType = VK_STRUCTURE_TYPE_FRAMEBUFFER_CREATE_INFO;
+        fci.renderPass = rpass;
+        fci.attachmentCount = 1;
+        fci.pAttachments = &colorView;
+        fci.width = W; fci.height = H; fci.layers = 1;
+        r = vkCreateFramebuffer(device, &fci, nullptr, &fb);
+        if (r != VK_SUCCESS) { log("ssao-fixture: vkCreateFramebuffer failed (%d). fail-soft.", (int)r); goto done; }
+    }
+
+    {
+        // §5a convention: binding 0 = depth sampler (GL unit 0), binding 1 =
+        // normal sampler (GL unit 1), binding 2 = params UBO (N samplers -> N).
+        VkDescriptorSetLayoutBinding binds[3]{};
+        binds[0].binding = 0;
+        binds[0].descriptorType = VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER;
+        binds[0].descriptorCount = 1;
+        binds[0].stageFlags = VK_SHADER_STAGE_FRAGMENT_BIT;
+        binds[1].binding = 1;
+        binds[1].descriptorType = VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER;
+        binds[1].descriptorCount = 1;
+        binds[1].stageFlags = VK_SHADER_STAGE_FRAGMENT_BIT;
+        binds[2].binding = 2;
+        binds[2].descriptorType = VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER;
+        binds[2].descriptorCount = 1;
+        binds[2].stageFlags = VK_SHADER_STAGE_FRAGMENT_BIT;
+        VkDescriptorSetLayoutCreateInfo lci{};
+        lci.sType = VK_STRUCTURE_TYPE_DESCRIPTOR_SET_LAYOUT_CREATE_INFO;
+        lci.bindingCount = 3;
+        lci.pBindings = binds;
+        r = vkCreateDescriptorSetLayout(device, &lci, nullptr, &dsl);
+        if (r != VK_SUCCESS) { log("ssao-fixture: vkCreateDescriptorSetLayout failed (%d). fail-soft.", (int)r); goto done; }
+
+        VkDescriptorPoolSize sizes[2]{};
+        sizes[0].type = VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER; sizes[0].descriptorCount = 2;
+        sizes[1].type = VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER;         sizes[1].descriptorCount = 1;
+        VkDescriptorPoolCreateInfo pci{};
+        pci.sType = VK_STRUCTURE_TYPE_DESCRIPTOR_POOL_CREATE_INFO;
+        pci.maxSets = 1;
+        pci.poolSizeCount = 2;
+        pci.pPoolSizes = sizes;
+        r = vkCreateDescriptorPool(device, &pci, nullptr, &pool);
+        if (r != VK_SUCCESS) { log("ssao-fixture: vkCreateDescriptorPool failed (%d). fail-soft.", (int)r); goto done; }
+
+        VkDescriptorSetAllocateInfo dsai{};
+        dsai.sType = VK_STRUCTURE_TYPE_DESCRIPTOR_SET_ALLOCATE_INFO;
+        dsai.descriptorPool = pool;
+        dsai.descriptorSetCount = 1;
+        dsai.pSetLayouts = &dsl;
+        r = vkAllocateDescriptorSets(device, &dsai, &set);
+        if (r != VK_SUCCESS) { log("ssao-fixture: vkAllocateDescriptorSets failed (%d). fail-soft.", (int)r); goto done; }
+
+        VkDescriptorImageInfo depthInfo{};
+        depthInfo.sampler = sampler;
+        depthInfo.imageView = depthView;
+        depthInfo.imageLayout = VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL;
+        VkDescriptorImageInfo normalInfo{};
+        normalInfo.sampler = sampler;
+        normalInfo.imageView = normalView;
+        normalInfo.imageLayout = VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL;
+        VkDescriptorBufferInfo uboInfo{ ubo, 0, VK_WHOLE_SIZE };
+        VkWriteDescriptorSet writes[3]{};
+        writes[0].sType = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET;
+        writes[0].dstSet = set; writes[0].dstBinding = 0; writes[0].descriptorCount = 1;
+        writes[0].descriptorType = VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER;
+        writes[0].pImageInfo = &depthInfo;
+        writes[1].sType = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET;
+        writes[1].dstSet = set; writes[1].dstBinding = 1; writes[1].descriptorCount = 1;
+        writes[1].descriptorType = VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER;
+        writes[1].pImageInfo = &normalInfo;
+        writes[2].sType = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET;
+        writes[2].dstSet = set; writes[2].dstBinding = 2; writes[2].descriptorCount = 1;
+        writes[2].descriptorType = VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER;
+        writes[2].pBufferInfo = &uboInfo;
+        vkUpdateDescriptorSets(device, 3, writes, 0, nullptr);
+    }
+
+    {
+        VkPipelineLayoutCreateInfo plci{};
+        plci.sType = VK_STRUCTURE_TYPE_PIPELINE_LAYOUT_CREATE_INFO;
+        plci.setLayoutCount = 1;
+        plci.pSetLayouts = &dsl;
+        r = vkCreatePipelineLayout(device, &plci, nullptr, &playout);
+        if (r != VK_SUCCESS) { log("ssao-fixture: vkCreatePipelineLayout failed (%d). fail-soft.", (int)r); goto done; }
+
+        VkPipelineShaderStageCreateInfo stages[2]{};
+        stages[0].sType  = VK_STRUCTURE_TYPE_PIPELINE_SHADER_STAGE_CREATE_INFO;
+        stages[0].stage  = VK_SHADER_STAGE_VERTEX_BIT;
+        stages[0].module = vert;
+        stages[0].pName  = "main";
+        stages[1].sType  = VK_STRUCTURE_TYPE_PIPELINE_SHADER_STAGE_CREATE_INFO;
+        stages[1].stage  = VK_SHADER_STAGE_FRAGMENT_BIT;
+        stages[1].module = frag;
+        stages[1].pName  = "main";
+
+        VkPipelineVertexInputStateCreateInfo vin{};
+        vin.sType = VK_STRUCTURE_TYPE_PIPELINE_VERTEX_INPUT_STATE_CREATE_INFO;
+        VkPipelineInputAssemblyStateCreateInfo ia{};
+        ia.sType    = VK_STRUCTURE_TYPE_PIPELINE_INPUT_ASSEMBLY_STATE_CREATE_INFO;
+        ia.topology = VK_PRIMITIVE_TOPOLOGY_TRIANGLE_LIST;
+        VkViewport vp{0.0f, 0.0f, (float)W, (float)H, 0.0f, 1.0f};
+        VkRect2D   sc{{0, 0}, {W, H}};
+        VkPipelineViewportStateCreateInfo vps{};
+        vps.sType         = VK_STRUCTURE_TYPE_PIPELINE_VIEWPORT_STATE_CREATE_INFO;
+        vps.viewportCount = 1; vps.pViewports = &vp;
+        vps.scissorCount  = 1; vps.pScissors  = &sc;
+        VkPipelineRasterizationStateCreateInfo rs{};
+        rs.sType       = VK_STRUCTURE_TYPE_PIPELINE_RASTERIZATION_STATE_CREATE_INFO;
+        rs.polygonMode = VK_POLYGON_MODE_FILL;
+        rs.cullMode    = VK_CULL_MODE_NONE;
+        rs.frontFace   = VK_FRONT_FACE_COUNTER_CLOCKWISE;
+        rs.lineWidth   = 1.0f;
+        VkPipelineMultisampleStateCreateInfo ms{};
+        ms.sType                = VK_STRUCTURE_TYPE_PIPELINE_MULTISAMPLE_STATE_CREATE_INFO;
+        ms.rasterizationSamples = VK_SAMPLE_COUNT_1_BIT;
+        // Blend DISABLED: readback == raw frag output vec4(ao, ao, ao, 1).
+        VkPipelineColorBlendAttachmentState cba{};
+        cba.colorWriteMask = VK_COLOR_COMPONENT_R_BIT | VK_COLOR_COMPONENT_G_BIT |
+                             VK_COLOR_COMPONENT_B_BIT | VK_COLOR_COMPONENT_A_BIT;
+        cba.blendEnable = VK_FALSE;
+        VkPipelineColorBlendStateCreateInfo cb{};
+        cb.sType           = VK_STRUCTURE_TYPE_PIPELINE_COLOR_BLEND_STATE_CREATE_INFO;
+        cb.attachmentCount = 1;
+        cb.pAttachments    = &cba;
+
+        VkGraphicsPipelineCreateInfo gp{};
+        gp.sType               = VK_STRUCTURE_TYPE_GRAPHICS_PIPELINE_CREATE_INFO;
+        gp.stageCount          = 2;
+        gp.pStages             = stages;
+        gp.pVertexInputState   = &vin;
+        gp.pInputAssemblyState = &ia;
+        gp.pViewportState      = &vps;
+        gp.pRasterizationState = &rs;
+        gp.pMultisampleState   = &ms;
+        gp.pColorBlendState    = &cb;
+        gp.layout              = playout;
+        gp.renderPass          = rpass;
+        gp.subpass             = 0;
+        r = vkCreateGraphicsPipelines(device, VK_NULL_HANDLE, 1, &gp, nullptr, &pipe);
+        if (r != VK_SUCCESS) { log("ssao-fixture: vkCreateGraphicsPipelines failed (%d). fail-soft.", (int)r); goto done; }
+    }
+
+    {
+        VkCommandPoolCreateInfo cpci{};
+        cpci.sType = VK_STRUCTURE_TYPE_COMMAND_POOL_CREATE_INFO;
+        cpci.queueFamilyIndex = gfxFamily;
+        r = vkCreateCommandPool(device, &cpci, nullptr, &cpool);
+        if (r != VK_SUCCESS) { log("ssao-fixture: vkCreateCommandPool failed (%d). fail-soft.", (int)r); goto done; }
+        VkCommandBufferAllocateInfo cai{};
+        cai.sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_ALLOCATE_INFO;
+        cai.commandPool = cpool;
+        cai.level = VK_COMMAND_BUFFER_LEVEL_PRIMARY;
+        cai.commandBufferCount = 1;
+        r = vkAllocateCommandBuffers(device, &cai, &cbuf);
+        if (r != VK_SUCCESS) { log("ssao-fixture: vkAllocateCommandBuffers failed (%d). fail-soft.", (int)r); goto done; }
+
+        VkCommandBufferBeginInfo bi{};
+        bi.sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_BEGIN_INFO;
+        bi.flags = VK_COMMAND_BUFFER_USAGE_ONE_TIME_SUBMIT_BIT;
+        r = vkBeginCommandBuffer(cbuf, &bi);
+        if (r != VK_SUCCESS) { log("ssao-fixture: vkBeginCommandBuffer failed (%d). fail-soft.", (int)r); goto done; }
+
+        // Upload BOTH sampled inputs: UNDEFINED -> TRANSFER_DST -> copy -> SHADER_READ.
+        auto upload_image = [&](VkImage img, VkImageAspectFlags aspect, VkBuffer staging) {
+            VkImageSubresourceRange range{aspect, 0, 1, 0, 1};
+            VkImageMemoryBarrier toDst{};
+            toDst.sType = VK_STRUCTURE_TYPE_IMAGE_MEMORY_BARRIER;
+            toDst.oldLayout = VK_IMAGE_LAYOUT_UNDEFINED;
+            toDst.newLayout = VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL;
+            toDst.srcQueueFamilyIndex = VK_QUEUE_FAMILY_IGNORED;
+            toDst.dstQueueFamilyIndex = VK_QUEUE_FAMILY_IGNORED;
+            toDst.image = img;
+            toDst.subresourceRange = range;
+            toDst.srcAccessMask = 0;
+            toDst.dstAccessMask = VK_ACCESS_TRANSFER_WRITE_BIT;
+            vkCmdPipelineBarrier(cbuf, VK_PIPELINE_STAGE_TOP_OF_PIPE_BIT, VK_PIPELINE_STAGE_TRANSFER_BIT,
+                                 0, 0, nullptr, 0, nullptr, 1, &toDst);
+            VkBufferImageCopy region{};
+            region.imageSubresource = {aspect, 0, 0, 1};
+            region.imageExtent = {W, H, 1};
+            vkCmdCopyBufferToImage(cbuf, staging, img, VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL, 1, &region);
+            VkImageMemoryBarrier toRead{};
+            toRead.sType = VK_STRUCTURE_TYPE_IMAGE_MEMORY_BARRIER;
+            toRead.oldLayout = VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL;
+            toRead.newLayout = VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL;
+            toRead.srcQueueFamilyIndex = VK_QUEUE_FAMILY_IGNORED;
+            toRead.dstQueueFamilyIndex = VK_QUEUE_FAMILY_IGNORED;
+            toRead.image = img;
+            toRead.subresourceRange = range;
+            toRead.srcAccessMask = VK_ACCESS_TRANSFER_WRITE_BIT;
+            toRead.dstAccessMask = VK_ACCESS_SHADER_READ_BIT;
+            vkCmdPipelineBarrier(cbuf, VK_PIPELINE_STAGE_TRANSFER_BIT, VK_PIPELINE_STAGE_FRAGMENT_SHADER_BIT,
+                                 0, 0, nullptr, 0, nullptr, 1, &toRead);
+        };
+        upload_image(depthImage,  VK_IMAGE_ASPECT_DEPTH_BIT, depthStaging);
+        upload_image(normalImage, VK_IMAGE_ASPECT_COLOR_BIT, normalStaging);
+
+        VkClearValue clear{};
+        clear.color = {{0.0f, 0.0f, 0.0f, 0.0f}};
+        VkRenderPassBeginInfo rbi{};
+        rbi.sType = VK_STRUCTURE_TYPE_RENDER_PASS_BEGIN_INFO;
+        rbi.renderPass = rpass;
+        rbi.framebuffer = fb;
+        rbi.renderArea = {{0, 0}, {W, H}};
+        rbi.clearValueCount = 1;
+        rbi.pClearValues = &clear;
+        vkCmdBeginRenderPass(cbuf, &rbi, VK_SUBPASS_CONTENTS_INLINE);
+        vkCmdBindPipeline(cbuf, VK_PIPELINE_BIND_POINT_GRAPHICS, pipe);
+        vkCmdBindDescriptorSets(cbuf, VK_PIPELINE_BIND_POINT_GRAPHICS, playout, 0, 1, &set, 0, nullptr);
+        vkCmdDraw(cbuf, 3, 1, 0, 0);
+        vkCmdEndRenderPass(cbuf);
+
+        VkBufferImageCopy creg{};
+        creg.imageSubresource = {VK_IMAGE_ASPECT_COLOR_BIT, 0, 0, 1};
+        creg.imageExtent = {W, H, 1};
+        vkCmdCopyImageToBuffer(cbuf, colorImage, VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL,
+                               colorReadback, 1, &creg);
+
+        r = vkEndCommandBuffer(cbuf);
+        if (r != VK_SUCCESS) { log("ssao-fixture: vkEndCommandBuffer failed (%d). fail-soft.", (int)r); goto done; }
+
+        VkFenceCreateInfo fnci{};
+        fnci.sType = VK_STRUCTURE_TYPE_FENCE_CREATE_INFO;
+        r = vkCreateFence(device, &fnci, nullptr, &fence);
+        if (r != VK_SUCCESS) { log("ssao-fixture: vkCreateFence failed (%d). fail-soft.", (int)r); goto done; }
+
+        VkSubmitInfo si{};
+        si.sType              = VK_STRUCTURE_TYPE_SUBMIT_INFO;
+        si.commandBufferCount = 1;
+        si.pCommandBuffers    = &cbuf;
+        r = vkQueueSubmit(queue, 1, &si, fence);
+        if (r != VK_SUCCESS) { log("ssao-fixture: vkQueueSubmit failed (%d). fail-soft.", (int)r); goto done; }
+        r = vkWaitForFences(device, 1, &fence, VK_TRUE, 5ull * 1000 * 1000 * 1000);
+        if (r != VK_SUCCESS) { log("ssao-fixture: vkWaitForFences failed/timeout (%d). fail-soft.", (int)r); goto done; }
+    }
+
+    {
+        void* mapped = nullptr;
+        r = vmaMapMemory(allocator, colorReadbackAlloc, &mapped);
+        if (r != VK_SUCCESS) { log("ssao-fixture: vmaMapMemory(readback) failed (%d). fail-soft.", (int)r); goto done; }
+        const uint16_t* px = static_cast<const uint16_t*>(mapped);
+
+        const float TOL = 1.0f / 1024.0f;
+        // Conservative envelope floor: every possible occluder sits at world-z
+        // gap >= |1.3 - 0.5| = 0.8 -> rangeCheck <= smoothstep(0,1, radius/0.8).
+        const float envT  = glsl_clamp(aoRadius / 0.8f, 0.0f, 1.0f);
+        const float envSS = envT * envT * (3.0f - 2.0f * envT);
+        const float envLo = std::pow(glsl_clamp(1.0f - aoStrength * envSS, 0.0f, 1.0f),
+                                     std::fmax(aoPower, 0.0001f));
+
+        double maxDiff = 0.0;          // over DETERMINISTIC-class + structural checks
+        uint32_t maxX = 0, maxY = 0;
+        int maxCh = -1;
+        uint32_t beyond = 0;
+        uint32_t worstBeyondX = 0, worstBeyondY = 0;
+        uint32_t cpuRefConstructionBugs = 0;
+        float gpuMinEnvelope = 1.0f, cpuMinEnvelope = 1.0f;
+
+        for (uint32_t y = 0; y < H; ++y) {
+            for (uint32_t x = 0; x < W; ++x) {
+                float u = (x + 0.5f) / (float)W;
+                float v = (y + 0.5f) / (float)H;
+                const uint16_t* p = px + ((size_t)y * W + x) * 4;
+                float g[4];
+                for (int c = 0; c < 4; ++c) g[c] = half_to_float(p[c]);
+
+                auto record = [&](float diff, int ch) {
+                    if (diff > maxDiff) { maxDiff = diff; maxX = x; maxY = y; maxCh = ch; }
+                    if (diff > TOL) { if (beyond == 0) { worstBeyondX = x; worstBeyondY = y; } ++beyond; }
+                };
+
+                // STRUCTURAL (all pixels): R==G==B bit-equal halfs; A == 1.0.
+                if (p[0] != p[1] || p[1] != p[2]) record(1.0f, 1);  // hard structural break
+                record(std::fabs(g[3] - 1.0f), 3);
+
+                float cpuAo = ssao_cpu_ref(invVP, VP, depthScratch, W, H, u, v,
+                                           screenW, screenH,
+                                           aoRadius, aoBias, aoStrength, aoPower);
+
+                const bool sky      = (y < 16);
+                const bool floorDet = (!sky && x <= 40);
+                const bool wallDet  = (!sky && x >= 48);
+                if (sky || floorDet || wallDet) {
+                    // Deterministic classes: exactly 1.0 on the GPU (any rotation)...
+                    record(std::fabs(g[0] - 1.0f), 0);
+                    // ...and the CPU ref MUST agree exactly (or the fixture scene
+                    // itself is mis-constructed -- distinct failure, not a port bug).
+                    if (cpuAo != 1.0f) ++cpuRefConstructionBugs;
+                } else {
+                    // ENVELOPE class: rotation-dependent; membership + liveness.
+                    float over = 0.0f;
+                    if (g[0] < envLo - TOL) over = (envLo - TOL) - g[0];
+                    else if (g[0] > 1.0f + TOL) over = g[0] - (1.0f + TOL);
+                    record(over, 0);
+                    if (cpuAo < envLo - 1e-6f || cpuAo > 1.0f + 1e-6f) ++cpuRefConstructionBugs;
+                    if (g[0]  < gpuMinEnvelope) gpuMinEnvelope = g[0];
+                    if (cpuAo < cpuMinEnvelope) cpuMinEnvelope = cpuAo;
+                }
+            }
+        }
+        vmaUnmapMemory(allocator, colorReadbackAlloc);
+
+        const bool gpuSawAO = gpuMinEnvelope < 0.995f;
+        const bool cpuSawAO = cpuMinEnvelope < 0.995f;
+        log("ssao-fixture: DETERMINISTIC-class max_abs_diff=%.6g at (x=%u,y=%u,ch=%d) tol=%.6g "
+            "pixels_beyond_tol=%u envelope=[%.6g,1] gpu_min_env=%.6g cpu_min_env=%.6g "
+            "gpu_saw_ao=%d cpu_saw_ao=%d cpu_ref_construction_bugs=%u "
+            "(rotation-modulated envelope values proven by golden bookmark, not this CPU ref)",
+            maxDiff, maxX, maxY, maxCh, (double)TOL, beyond, (double)envLo,
+            (double)gpuMinEnvelope, (double)cpuMinEnvelope,
+            gpuSawAO ? 1 : 0, cpuSawAO ? 1 : 0, cpuRefConstructionBugs);
+        if (beyond) {
+            log("ssao-fixture: FIRST beyond-tol pixel at (x=%u,y=%u) -- CHARACTERIZED DIVERGENCE, not loosening tolerance.",
+                worstBeyondX, worstBeyondY);
+        }
+        ok = (beyond == 0) && gpuSawAO && cpuSawAO && (cpuRefConstructionBugs == 0);
+    }
+
+    if (wantValidation) {
+        ok = ok && !g_edgefog_validation_saw_error;
+        log("ssao-fixture: validation active; saw_error=%d", g_edgefog_validation_saw_error ? 1 : 0);
+    }
+    if (ok) log("ssao-fixture: PASS -- deterministic classes bit-tight (sky/floor/wall exactly 1.0, R==G==B, A==1), envelope band in-interval + AO live on GPU & CPU.");
+    else    log("ssao-fixture: FAIL -- deterministic-class divergence, envelope escape, or AO not produced (see above).");
+
+done:
+    if (fence)   vkDestroyFence(device, fence, nullptr);
+    if (cpool)   vkDestroyCommandPool(device, cpool, nullptr);
+    if (pipe)    vkDestroyPipeline(device, pipe, nullptr);
+    if (playout) vkDestroyPipelineLayout(device, playout, nullptr);
+    if (pool)    vkDestroyDescriptorPool(device, pool, nullptr);
+    if (dsl)     vkDestroyDescriptorSetLayout(device, dsl, nullptr);
+    if (fb)      vkDestroyFramebuffer(device, fb, nullptr);
+    if (rpass)   vkDestroyRenderPass(device, rpass, nullptr);
+    if (ubo)           vmaDestroyBuffer(allocator, ubo, uboAlloc);
+    if (colorReadback) vmaDestroyBuffer(allocator, colorReadback, colorReadbackAlloc);
+    if (normalStaging) vmaDestroyBuffer(allocator, normalStaging, normalStagingAlloc);
+    if (depthStaging)  vmaDestroyBuffer(allocator, depthStaging, depthStagingAlloc);
+    if (sampler) vkDestroySampler(device, sampler, nullptr);
+    if (colorView)  vkDestroyImageView(device, colorView, nullptr);
+    if (normalView) vkDestroyImageView(device, normalView, nullptr);
+    if (depthView)  vkDestroyImageView(device, depthView, nullptr);
+    if (colorImage)  vmaDestroyImage(allocator, colorImage, colorAlloc);
+    if (normalImage) vmaDestroyImage(allocator, normalImage, normalAlloc);
+    if (depthImage)  vmaDestroyImage(allocator, depthImage, depthAlloc);
+    mc2_vulkan_free_shader(device, vert);
+    mc2_vulkan_free_shader(device, frag);
+    if (allocator) vmaDestroyAllocator(allocator);
+    vkDestroyDevice(device, nullptr);
+    destroy_messenger();
+    vkDestroyInstance(instance, nullptr);
+    log("ssao-fixture: %s -- cleaned up (device+instance destroyed).", ok ? "PASS" : "FAIL");
+    return ok;
+}
+
 bool mc2_vulkan_probe() {
     // VULKAN-VOLK-LOADER-1: open the Vulkan runtime via volk before any vk call.
     // This is the primary fail-soft gate: on an OpenGL-only machine with no
@@ -3364,9 +4220,11 @@ bool mc2_vulkan_probe_if_env() {
     bool efOk = mc2_vulkan_probe_edgefog_fixture(spvDir ? spvDir : "shaders/vulkan");
     // VULKAN-OOB-FOG-ISLAND-1: shader-math oracle for the OOB-fog port.
     bool obOk = mc2_vulkan_probe_oobfog_fixture(spvDir ? spvDir : "shaders/vulkan");
-    log("MC2_VULKAN_PROBE: caps=%d shaders=%d triangle=%d descriptors=%d sampled_image=%d swapchain=%d swapchain_present=%d edgefog_fixture=%d oobfog_fixture=%d",
-        ok ? 1 : 0, shOk ? 1 : 0, triOk ? 1 : 0, descOk ? 1 : 0, imgOk ? 1 : 0, swOk ? 1 : 0, presentOk ? 1 : 0, efOk ? 1 : 0, obOk ? 1 : 0);
-    return ok && shOk && triOk && descOk && imgOk && swOk && presentOk && efOk && obOk;
+    // VK-REGION-SSAO-FIXTURE-1: shader-math oracle for the SSAO occlusion port.
+    bool ssaoOk = mc2_vulkan_probe_ssao_fixture(spvDir ? spvDir : "shaders/vulkan");
+    log("MC2_VULKAN_PROBE: caps=%d shaders=%d triangle=%d descriptors=%d sampled_image=%d swapchain=%d swapchain_present=%d edgefog_fixture=%d oobfog_fixture=%d ssao_fixture=%d",
+        ok ? 1 : 0, shOk ? 1 : 0, triOk ? 1 : 0, descOk ? 1 : 0, imgOk ? 1 : 0, swOk ? 1 : 0, presentOk ? 1 : 0, efOk ? 1 : 0, obOk ? 1 : 0, ssaoOk ? 1 : 0);
+    return ok && shOk && triOk && descOk && imgOk && swOk && presentOk && efOk && obOk && ssaoOk;
 }
 
 #endif // MC2_VULKAN

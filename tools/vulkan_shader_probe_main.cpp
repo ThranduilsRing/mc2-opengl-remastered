@@ -27,10 +27,13 @@ int main(int argc, char** argv) {
     bool edgefogFixture = mc2_vulkan_probe_edgefog_fixture(spvDir);
     // VULKAN-OOB-FOG-ISLAND-1: shader-math oracle for the OOB-fog port.
     bool oobfogFixture = mc2_vulkan_probe_oobfog_fixture(spvDir);
+    // VK-REGION-SSAO-FIXTURE-1: shader-math oracle for the SSAO occlusion port
+    // (class-based: sky/floor/wall bit-tight, wall-adjacent band enveloped).
+    bool ssaoFixture = mc2_vulkan_probe_ssao_fixture(spvDir);
     // Fail-soft re-check: a bogus spv dir must log + return false, no crash.
     bool failSoft = !mc2_vulkan_probe_triangle("this/dir/does/not/exist");
-    std::printf("[vulkan_shader_probe] caps=%d shaders=%d triangle=%d descriptors=%d swapchain=%d edgefog_fixture=%d oobfog_fixture=%d failSoftOK=%d\n",
+    std::printf("[vulkan_shader_probe] caps=%d shaders=%d triangle=%d descriptors=%d swapchain=%d edgefog_fixture=%d oobfog_fixture=%d ssao_fixture=%d failSoftOK=%d\n",
                 caps ? 1 : 0, shaders ? 1 : 0, triangle ? 1 : 0, descriptors ? 1 : 0,
-                swapchain ? 1 : 0, edgefogFixture ? 1 : 0, oobfogFixture ? 1 : 0, failSoft ? 1 : 0);
-    return (caps && shaders && triangle && descriptors && swapchain && edgefogFixture && oobfogFixture && failSoft) ? 0 : 1;
+                swapchain ? 1 : 0, edgefogFixture ? 1 : 0, oobfogFixture ? 1 : 0, ssaoFixture ? 1 : 0, failSoft ? 1 : 0);
+    return (caps && shaders && triangle && descriptors && swapchain && edgefogFixture && oobfogFixture && ssaoFixture && failSoft) ? 0 : 1;
 }

@@ -100,6 +100,18 @@ bool mc2_vulkan_probe_edgefog_fixture(const char* spvDir);
 // compiled fog_oob .spv (build output).
 bool mc2_vulkan_probe_oobfog_fixture(const char* spvDir);
 
+// VK-REGION-SSAO-FIXTURE-1: headless shader-MATH oracle for the SSAO occlusion
+// Vulkan port (closes the VK-REGION-SSAO-1 acceptance debt). Runs the shipped
+// ssao.{vert,frag}.spv on a KNOWN synthetic depth+normal pair + exact-inverse
+// sheared viewProj/invViewProj (transpose-bug detector) and checks a CLASS-BASED
+// oracle: sky/flat-floor/wall pixel classes are provably rotation-independent
+// (the sin-hash TBN rotation is not CPU<->GPU bit-portable) and must be exactly
+// 1.0; the wall-adjacent band is checked against a closed AO envelope + a
+// GPU-and-CPU occlusion-liveness signal. R==G==B and A==1 structurally, 1/1024
+// FP16 tolerance. Fail-soft: any VkResult error -> log + return false. spvDir =
+// dir with the compiled ssao .spv (build output).
+bool mc2_vulkan_probe_ssao_fixture(const char* spvDir);
+
 // VK-BOOTSTRAP-INTEGRATE-1: Vulkan swapchain PROBE (create + query + destroy).
 // Uses vk-bootstrap's vkb::SwapchainBuilder against a bespoke devs[0] device and
 // a hidden 256x256 SDL Vulkan window/surface. Creates a swapchain, queries its

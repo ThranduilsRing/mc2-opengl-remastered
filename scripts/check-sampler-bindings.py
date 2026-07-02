@@ -48,6 +48,12 @@ GLSL_DIR = "shaders"
 EXCLUDE_SUBSTR = [
     os.path.join("tools", ""),
     os.path.join("shaders", "fixtures", ""),
+    # shaders/vulkan/ = hand-ported Vulkan DESCRIPTOR-SET shaders (explicit
+    # layout(set,binding)); they have no GL texture units, so the GL unit
+    # anchors here must not see them (a Vulkan mirror of an anchored GL name,
+    # e.g. ssaoTex in vulkan/ssao_apply.frag, is NOT multiplexing). Their
+    # set/binding consistency is checked by check-vulkan-bindings.py instead.
+    os.path.join("shaders", "vulkan", ""),
     os.path.join("build64", ""),
     os.path.join("3rdparty", ""),
     os.path.join(".claude", ""),
