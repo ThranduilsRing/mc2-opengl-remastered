@@ -42,6 +42,60 @@
       "proj": 35.0,
       "alt": 1500.0,
       "covers": ["edge_fog"]
+    },
+    {
+      "name": "oblique_fog",
+      "pos": [5376.0, -5376.0, 0.0],
+      "rot": -80.0,
+      "proj": 14.75,
+      "alt": 5639.5659,
+      "covers": ["edge_fog", "oob_fog", "water", "sky", "invviewproj_transpose_repro"],
+      "_note": "TRANSPOSE-REVEALING pose (user-authored, saved_view.txt 2026-07-02). Oblique low-pitch across the SE map edge: water/terrain/OOB-fog boundary with NONZERO fog alpha. Top-down bookmarks gate edge_fog to vec4(0) and hide the invViewProj transpose; this one exercises the matrix. Used to prove the vk fog island row_major regression and gate the L6.5 column_major fix."
+    },
+    {
+      "name": "oblique_horizon",
+      "pos": [5376.0, -5376.0, 0.0],
+      "rot": -78.875,
+      "proj": -25.0,
+      "alt": 5639.5659,
+      "covers": ["oob_fog", "sky", "hdri_skybox"],
+      "_note": "Edge-on horizon pose (user-authored) — sees HDRI/skybox + OOB fog. proj=-25 may clamp to MIN_PERSPECTIVE; clamp applies equally to GL and vk so parity is unaffected."
+    },
+    {
+      "name": "runway_overview",
+      "pos": [3571.5442, -872.0615, 0.0],
+      "rot": -135.125,
+      "proj": 86.875,
+      "alt": 5490.0234,
+      "covers": ["terrain_splat", "runway_decal"],
+      "_note": "User-authored 2026-07-02. Near top-down (proj 86.9) over the runway."
+    },
+    {
+      "name": "cliff_side_on",
+      "pos": [55.7989, 628.6685, 0.0],
+      "rot": -127.25,
+      "proj": 9.25,
+      "alt": 1596.366,
+      "covers": ["terrain_cliff", "edge_fog", "invviewproj_transpose_repro"],
+      "_note": "User-authored 2026-07-02. Very low pitch (proj 9.25) side-on at a cliff — oblique, transpose-revealing."
+    },
+    {
+      "name": "pyramid_islands_topdown",
+      "pos": [910.1816, -2934.218, 0.0],
+      "rot": 25.75,
+      "proj": 86.875,
+      "alt": 3692.2559,
+      "covers": ["terrain_splat", "water"],
+      "_note": "User-authored 2026-07-02. Top-down (proj 86.9) over the pyramid islands."
+    },
+    {
+      "name": "cross_map_view",
+      "pos": [-5376.0, -5376.0, 0.0],
+      "rot": 134.875,
+      "proj": 14.875,
+      "alt": 5775.7979,
+      "covers": ["edge_fog", "oob_fog", "water", "sky", "invviewproj_transpose_repro"],
+      "_note": "User-authored 2026-07-02. Oblique cross-map (proj 14.9) from the NW corner — water/terrain/OOB-fog, transpose-revealing."
     }
   ]
 }

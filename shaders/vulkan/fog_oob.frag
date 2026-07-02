@@ -33,10 +33,12 @@ layout(set = 0, binding = 0) uniform sampler2D depthTex;
 //   u_fogColor   @ 64  (vec3, 12B)
 //   u_fogOpacity @ 76  (float; packs into the vec3's trailing slot in std140)
 //   u_time       @ 80  (float)
-// row_major: the CPU packs invViewProj as the SAME 16 floats the GL path uploads.
-// std140 mat4 defaults to column-major, which would transpose the matrix and break
-// the unprojection (the VULKAN-EDGE-FOG-ISLAND-2b matrix bug) -- hence row_major.
-layout(set = 0, binding = 1, std140, row_major) uniform FogOobParams {
+// column_major (std140 default): the subgraph/island packs invViewProj as RAW
+// inverseViewProj_ (column-major CPU bytes, index=col*4+row) -- the same bytes the GL
+// net upload yields. GLSL reading them column-major = mul_colmajor is the correct
+// unprojection; row_major reads transpose(M) and breaks it (L6.5 transpose regression).
+// Same convention as edge_fog.frag / ssao.frag (N0). Do NOT qualify row_major.
+layout(set = 0, binding = 1, std140) uniform FogOobParams {
     mat4  invViewProj;
     vec3  u_fogColor;
     float u_fogOpacity;

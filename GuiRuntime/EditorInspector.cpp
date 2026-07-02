@@ -5,7 +5,7 @@
 
 // HZB camera-view dump: thin C helper defined in code/gamecam.cpp so we don't
 // have to pull the full camera.h -> terrain.h chain into GuiRuntime.
-extern "C" void mc2_hzb_dump_camera_view(void);
+extern "C" int mc2_hzb_dump_camera_view(void);
 #include "../GameOS/gameos/debug_renderer.h"  // IMG-INSPECT-3
 #include "../GameOS/gameos/gos_frame_pass_stats.h"  // FRAME-INSPECTOR-1
 #include "../GameOS/gameos/gos_render_pass_timer.h"  // FRAME-INSPECTOR-1 (ms col)
@@ -474,14 +474,23 @@ void EditorInspector::drawImGui() {
     // to avoid pulling the camera.h -> terrain.h header chain into GuiRuntime.
     {
         static bool s_hzbSaved = false;
+        static bool s_hzbFailed = false;
         ImGui::Spacing();
         if (ImGui::Button("Save Camera View (HZB)")) {
-            mc2_hzb_dump_camera_view();
-            s_hzbSaved = true;
+            if (mc2_hzb_dump_camera_view() == 1) {
+                s_hzbSaved = true;
+                s_hzbFailed = false;
+            } else {
+                s_hzbSaved = false;
+                s_hzbFailed = true;
+            }
         }
         if (s_hzbSaved) {
             ImGui::SameLine();
             ImGui::TextDisabled("saved!");
+        } else if (s_hzbFailed) {
+            ImGui::SameLine();
+            ImGui::TextColored(ImVec4(1.0f, 0.3f, 0.3f, 1.0f), "save FAILED (see stderr / path)");
         }
         ImGui::Spacing();
     }

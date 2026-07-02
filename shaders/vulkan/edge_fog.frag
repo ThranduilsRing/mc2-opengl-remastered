@@ -31,11 +31,15 @@ layout(set = 0, binding = 0) uniform sampler2D depthTex;
 //   u_fogHeight      @ 88
 //   u_fogMax         @ 92
 //   u_waterElevation @ 96
-// row_major: the CPU packs invViewProj as the SAME 16 floats the GL path uploads
-// (row-major direct upload, glUniformMatrix4fv GL_FALSE). std140 mat4 defaults to
-// column-major, which would transpose the matrix and break the unprojection
-// (VULKAN-EDGE-FOG-ISLAND-2b: GL-Z=-15.39 vs VK-Z=669.57 before this qualifier).
-layout(set = 0, binding = 1, std140, row_major) uniform EdgeFogParams {
+// column_major (std140 default): the CPU packs invViewProj as the SAME 16 raw floats
+// the GL path uploads (glUniformMatrix4fv GL_FALSE). inverseViewProj_ is column-major
+// on the CPU (index=col*4+row), so GL_FALSE => GLSL reads it column-major => mul_colmajor
+// is the CORRECT unprojection (ground truth: GL-Z=-15.39). row_major here reads
+// transpose(M) (=669.57) and breaks world reconstruction -- the L6.5 transpose
+// regression, proved via oblique fog bookmarks (cliff_side_on/oblique_fog/oblique_horizon
+// DIFF; top-down views gate fog to vec4(0) and hid it). Same convention as ssao.frag
+// (N0 fix ac96e31d). Do NOT qualify row_major.
+layout(set = 0, binding = 1, std140) uniform EdgeFogParams {
     mat4  invViewProj;
     vec3  u_fogColor;
     float _pad0;

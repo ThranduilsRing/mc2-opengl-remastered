@@ -866,32 +866,55 @@ void gosPostProcess::runEdgeFogVulkan()
     glGetTexImage(GL_TEXTURE_2D, 0, GL_RGBA, GL_HALF_FLOAT, s->colorScratch.data());
     glBindTexture(GL_TEXTURE_2D, 0);
 
-    // ---- DEPTH-CONVENTION MICRO-CHECK (one-shot) ----
-    // Unproject a known NDC point at a known depth via the SAME invViewProj math the
-    // shader does, and log it next to the row-major (GL upload convention) reference.
-    // If the Vulkan (column-major, as GLSL reads std140) result matches the GL
-    // (row-major direct upload) result, the depth/matrix convention is consistent.
+    // ---- DEPTH-CONVENTION MICRO-CHECK (one-shot, HONEST) ----
+    // GROUND TRUTH: the real GL path uploads invViewProj with GL_FALSE, so the GLSL
+    // mat4 reads the 16 floats COLUMN-MAJOR (GLSL's std140 default). See
+    // shaders/vulkan/ssao.frag:46-61 and gos_postprocess.cpp boxDecalMulColMajor.
+    // So mul_colmajor(m, ndc) is the engine's correct unprojection == ground truth.
+    //
+    // UNDER TEST: this island's EdgeFogParams UBO qualifies the mat4 `row_major`, which
+    // makes GLSL read the SAME raw bytes ROW-MAJOR (a transpose). That is what
+    // mul_rowmajor(m, ndc) computes. If the row_major qualifier is wrong for these
+    // bytes, colmajor and rowmajor DIVERGE -- and with the current row_major island
+    // they SHOULD diverge (proving the island is transposed relative to GL). This is
+    // an honest diagnostic: it is allowed to report divergence, and does NOT force a
+    // match. A transpose is only detectable on an ASYMMETRIC matrix (LM1) -- a
+    // symmetric/identity matrix cannot reveal it -- so we run a second hardcoded
+    // asymmetric fixture that never goes near-degenerate.
     if (!s->microCheckDone) {
         s->microCheckDone = true;
         const float* m = inverseViewProj_;
         // Screen center, mid depth in reverse-Z [0,1].
         Vec4 ndc{0.0, 0.0, 0.5, 1.0};
-        Vec4 glW  = mul_rowmajor(m, ndc);  // what the GL path (GL_FALSE row-major upload) yields
-        // The Vulkan frag's EdgeFogParams UBO is now layout(row_major) (2b matrix
-        // fix), so the shader reads the SAME 16 floats row-major -- identical math
-        // to the GL path. mul_rowmajor here mirrors that; GL-Z should ~= VK-Z. (The
-        // column-major reading -- what a default std140 mat4 would do, the pre-2b
-        // bug -- is logged too so a regression re-diverges visibly.)
-        Vec4 vkW  = mul_rowmajor(m, ndc);  // what the Vulkan frag (std140 row_major) now computes
-        Vec4 vkWcol = mul_colmajor(m, ndc); // pre-2b (col-major) reading, for contrast
-        double glZ = glW.w != 0.0 ? glW.z / glW.w : 0.0;
-        double vkZ = vkW.w != 0.0 ? vkW.z / vkW.w : 0.0;
-        double vkZcol = vkWcol.w != 0.0 ? vkWcol.z / vkWcol.w : 0.0;
-        vlog("MICRO-CHECK depth-convention @ ndc(0,0,0.5): GL-world-Z=%.4f  VK-world-Z=%.4f  "
-             "(match=%s)  [pre-2b col-major would be %.4f] -- GL-Z ~= VK-Z means the "
-             "invViewProj/Z convention is consistent (row_major UBO).",
-             glZ, vkZ, (glZ * vkZ > 0.0 && (glZ==0.0 || (vkZ/glZ > 0.5 && vkZ/glZ < 2.0))) ? "yes" : "NO",
-             vkZcol);
+        Vec4 glReal    = mul_colmajor(m, ndc); // GL ground truth (GL_FALSE => column-major read)
+        Vec4 vkIsland  = mul_rowmajor(m, ndc); // island under test (row_major qualifier)
+        double glZ = glReal.w   != 0.0 ? glReal.z   / glReal.w   : 0.0;
+        double vkZ = vkIsland.w != 0.0 ? vkIsland.z / vkIsland.w : 0.0;
+        bool liveDiverge = !(glZ == vkZ) &&
+            (glZ == 0.0 || !(vkZ / glZ > 0.999 && vkZ / glZ < 1.001));
+
+        // Asymmetric fixture: distinct off-diagonals so column-major != row-major.
+        // (A sheared perspective-inverse-like 4x4; symmetric matrices can't catch a
+        // transpose, so this is deliberately non-symmetric.)
+        static const float kAsym[16] = {
+            1.0f,  0.2f,  0.3f,  4.0f,
+            0.5f,  1.1f,  0.0f, -2.0f,
+            0.7f, -0.4f,  0.9f,  1.5f,
+            0.1f,  0.6f, -0.8f,  1.0f
+        };
+        Vec4 asymCol = mul_colmajor(kAsym, ndc);
+        Vec4 asymRow = mul_rowmajor(kAsym, ndc);
+        double aCol = asymCol.w != 0.0 ? asymCol.z / asymCol.w : 0.0;
+        double aRow = asymRow.w != 0.0 ? asymRow.z / asymRow.w : 0.0;
+        bool asymDiverge = !(aCol == aRow) &&
+            (aCol == 0.0 || !(aRow / aCol > 0.999 && aRow / aCol < 1.001));
+
+        vlog("MICRO-CHECK invViewProj: GL(colmajor).worldZ=%.4f  island(rowmajor).worldZ=%.4f  "
+             "diverge=%s  [asym-matrix colmajor=%.4f rowmajor=%.4f diverge=%s]  "
+             "(GL_FALSE upload => GLSL column-major read is ground truth; island row_major is under test; "
+             "divergence == island is transposed vs GL and is EXPECTED right now)",
+             glZ, vkZ, liveDiverge ? "yes" : "no",
+             aCol, aRow, asymDiverge ? "yes" : "no");
     }
 
     // Copy scratch into the mapped staging buffers.
