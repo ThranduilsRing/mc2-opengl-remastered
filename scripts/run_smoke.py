@@ -1592,6 +1592,17 @@ def main():
                             # FallbackGL path is provable under smoke.
                             "MC2_RENDER_BACKEND_REGION_IFACE",
                             "MC2_POSTPROCESS_BACKEND",
+                            # SSAO-GTAO-LITE-MVP-1 / VK-REGION-SSAO-1: the SSAO master
+                            # gate + its debug (raw-AO) override. The PostprocessSSAO
+                            # backend-compare (run_golden_parity --region PostprocessSSAO)
+                            # forces MC2_SSAO=1 for BOTH states so the region actually
+                            # shades in-frame; without this in the allowlist Popen drops
+                            # it from golden_scene's structural capture and the compare's
+                            # structural half runs with SSAO silently OFF (the region
+                            # never fires, so a "pass" proves nothing). MC2_SSAO_DEBUG
+                            # lets the raw occlusion buffer be inspected under smoke.
+                            "MC2_SSAO",
+                            "MC2_SSAO_DEBUG",
                             # SKYBOX-FOG-EXCLUDE-1: stencil-tag true sky pixels during
                             # the HDRI skybox draw so runEdgeFog/runFogOob hard-exclude
                             # them (default OFF -> byte-identical). Without this in the
