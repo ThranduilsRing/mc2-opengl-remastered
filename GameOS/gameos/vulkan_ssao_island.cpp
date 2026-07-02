@@ -68,6 +68,7 @@
 #include <cstdio>
 #include <cstdlib>
 #include <cstring>
+#include <cmath>
 #include <chrono>
 #include <string>
 #include <vector>
@@ -272,7 +273,14 @@ static_assert(sizeof(SSAOApplyParams) == 16, "SSAOApplyParams std140 offsets dri
 const VkFormat kFullResColorFmt = VK_FORMAT_R16G16B16A16_SFLOAT; // scene color (matches fog subgraph)
 const VkFormat kDepthFmt        = VK_FORMAT_D32_SFLOAT;          // scene depth
 const VkFormat kNormalFmt       = VK_FORMAT_R16G16B16A16_SFLOAT; // GBuffer1 world normal (matches sceneNormalTex_)
-const VkFormat kOcclusionFmt    = VK_FORMAT_R8_UNORM;            // half-res AO (matches ssaoColorTex_ GL_R16F closely enough for a [0,1] factor; single-channel)
+// N0 BUG-3 (occlusion format parity): GL's half-res AO buffer (ssaoColorTex_) is
+// GL_R16F. The island originally used R8_UNORM ("close enough for a [0,1]
+// factor"), but that quantizes the AO to 256 levels where GL keeps ~half-float
+// precision -- so the LINEAR-upsampled, multiplied scene color diverges from GL
+// by more than the pixel-exact golden floor tolerates (the parity oracle SHAs the
+// final PNG). Match GL exactly with R16_SFLOAT (single-channel half-float,
+// renderable + linear-filterable on all targets incl. AMD 7900 XTX).
+const VkFormat kOcclusionFmt    = VK_FORMAT_R16_SFLOAT;          // half-res AO (matches GL ssaoColorTex_ GL_R16F precision)
 
 } // namespace
 
@@ -302,8 +310,8 @@ struct gosPostProcess::VulkanSSAOIsland {
     VkImageView   colorView   = VK_NULL_HANDLE;
     VkImage       occImage    = VK_NULL_HANDLE;  VmaAllocation occAlloc    = VK_NULL_HANDLE; // half-res occlusion intermediate
     VkImageView   occView     = VK_NULL_HANDLE;
-    VkSampler     depthSampler  = VK_NULL_HANDLE; // NEAREST, shared depth+normal+occlusion sampler
-    VkSampler     occSampler    = VK_NULL_HANDLE; // NEAREST, distinct handle (same params) for the apply pass
+    VkSampler     depthSampler  = VK_NULL_HANDLE; // NEAREST, shared depth+normal sampler (occlusion pass)
+    VkSampler     occSampler    = VK_NULL_HANDLE; // LINEAR (N0 BUG-2): half-res AO upsample in the apply pass (matches GL ssaoColorTex_ GL_LINEAR)
 
     // Host-visible staging: depth-in, normal-in, color-in, color-out + the two UBOs.
     VkBuffer      depthStaging  = VK_NULL_HANDLE; VmaAllocation depthStagingAlloc  = VK_NULL_HANDLE;
@@ -596,11 +604,11 @@ bool build_island(gosPostProcess::VulkanSSAOIsland* s, int fullW, int fullH, int
     if (!make_view(s->colorImage,  kFullResColorFmt, VK_IMAGE_ASPECT_COLOR_BIT, &s->colorView))  return false;
     if (!make_view(s->occImage,    kOcclusionFmt,    VK_IMAGE_ASPECT_COLOR_BIT, &s->occView))    return false;
 
-    auto make_sampler = [&](VkSampler* samp) -> bool {
+    auto make_sampler = [&](VkSampler* samp, VkFilter filter) -> bool {
         VkSamplerCreateInfo si{};
         si.sType = VK_STRUCTURE_TYPE_SAMPLER_CREATE_INFO;
-        si.magFilter = VK_FILTER_NEAREST;
-        si.minFilter = VK_FILTER_NEAREST;
+        si.magFilter = filter;
+        si.minFilter = filter;
         si.mipmapMode = VK_SAMPLER_MIPMAP_MODE_NEAREST;
         si.addressModeU = VK_SAMPLER_ADDRESS_MODE_CLAMP_TO_EDGE;
         si.addressModeV = VK_SAMPLER_ADDRESS_MODE_CLAMP_TO_EDGE;
@@ -609,8 +617,17 @@ bool build_island(gosPostProcess::VulkanSSAOIsland* s, int fullW, int fullH, int
         if (rr != VK_SUCCESS) { vlog("vkCreateSampler failed (%d).", (int)rr); return false; }
         return true;
     };
-    if (!make_sampler(&s->depthSampler)) return false;
-    if (!make_sampler(&s->occSampler))   return false;
+    // depthSampler samples full-res scene depth + normal in the occlusion pass;
+    // GL's sceneDepthTex_/sceneNormalTex_ are NEAREST, so keep NEAREST.
+    if (!make_sampler(&s->depthSampler, VK_FILTER_NEAREST)) return false;
+    // N0 BUG-2 (apply-sampler filter parity): the apply pass upsamples the
+    // half-res occlusion buffer with a 4-tap box at +/-0.5-texel offsets. GL's
+    // ssaoColorTex_ is created with GL_LINEAR min/mag (gos_postprocess.cpp
+    // ssaoColorTex_ setup), so those off-center taps get HARDWARE BILINEAR
+    // interpolation on top of the box. A NEAREST sampler snaps each tap to a
+    // texel center -> a blockier, subtly-different upsample (the moire-vs-grid
+    // artifact). Use LINEAR here to reproduce GL's filter exactly.
+    if (!make_sampler(&s->occSampler,   VK_FILTER_LINEAR))  return false;
 
     auto make_buffer = [&](VkDeviceSize size, VkBufferUsageFlags usage, VkBuffer* buf, VmaAllocation* alloc) -> bool {
         VkBufferCreateInfo bci{};
@@ -959,7 +976,7 @@ bool build_island(gosPostProcess::VulkanSSAOIsland* s, int fullW, int fullH, int
     s->inited = true;
     setFallback("");
     vlog("island initialized: full %dx%d / half %dx%d device ready (depth D32_SFLOAT, "
-         "normal/color RGBA16F, occlusion R8_UNORM, 2 render passes, 2 draws, "
+         "normal/color RGBA16F, occlusion R16_SFLOAT, 2 render passes, 2 draws, "
          "NO internal readback between passes -- occlusion image stays Vulkan-owned).",
          fullW, fullH, halfW, halfH);
     return true;
@@ -1033,6 +1050,94 @@ void gosPostProcess::runSSAOVulkan()
     glGetTexImage(GL_TEXTURE_2D, 0, GL_RGBA, GL_HALF_FLOAT, s->colorScratch.data());
     glBindTexture(GL_TEXTURE_2D, 0);
     g_health.copyColorInUs = usSince(tColor0);
+
+    // ---- N0 bridge instrumentation (MC2_VK_SSAO_DUMP_INPUTS=1): dump the
+    // readback contents' statistics so a deterministic input bug (depth/normal
+    // plumbing) can be named without guessing. Prints ONCE per run (first frame
+    // the island executes) so it does not spam. Half-float decode is inline.
+    {
+        static bool s_dumpedInputs = false;
+        static unsigned long s_dumpFrame = 0;
+        ++s_dumpFrame;
+        const char* dbgEnv = std::getenv("MC2_VK_SSAO_DUMP_INPUTS");
+        // Only dump once we have a real depth signal (so we capture an IN-MISSION
+        // frame, not the first menu/load frame where the terrain MVP hasn't been
+        // pushed yet). Scan a stride of the depth staging for any nonzero texel.
+        bool haveDepthSignal = false;
+        if (dbgEnv && dbgEnv[0] && dbgEnv[0] != '0' && !s_dumpedInputs) {
+            const size_t nPixScan = (size_t)fullW * fullH;
+            for (size_t i = 0; i < nPixScan; i += 97) {
+                if (s->depthScratch[i] > 0.0001f) { haveDepthSignal = true; break; }
+            }
+            // Heartbeat: every 300 frames with no signal yet, note depth is still zero.
+            if (!haveDepthSignal && (s_dumpFrame % 300 == 1)) {
+                vlog("[N0-DUMP] frame=%lu depth STILL all-zero (no in-mission signal yet)",
+                     s_dumpFrame);
+            }
+        }
+        if (!s_dumpedInputs && dbgEnv && dbgEnv[0] && dbgEnv[0] != '0' && haveDepthSignal) {
+            s_dumpedInputs = true;
+            auto halfToFloat = [](uint16_t h) -> float {
+                uint32_t sign = (uint32_t)(h >> 15) & 0x1u;
+                uint32_t exp  = (uint32_t)(h >> 10) & 0x1Fu;
+                uint32_t man  = (uint32_t)h & 0x3FFu;
+                uint32_t f;
+                if (exp == 0) {
+                    if (man == 0) { f = sign << 31; }
+                    else {
+                        exp = 127 - 15 + 1;
+                        while ((man & 0x400u) == 0) { man <<= 1; --exp; }
+                        man &= 0x3FFu;
+                        f = (sign << 31) | (exp << 23) | (man << 13);
+                    }
+                } else if (exp == 0x1F) {
+                    f = (sign << 31) | (0xFFu << 23) | (man << 13);
+                } else {
+                    f = (sign << 31) | ((exp - 15 + 127) << 23) | (man << 13);
+                }
+                float out; std::memcpy(&out, &f, 4); return out;
+            };
+            const size_t nPix = (size_t)fullW * fullH;
+            // Depth stats.
+            double dMin = 1e30, dMax = -1e30, dSum = 0.0; size_t dNZ = 0;
+            for (size_t i = 0; i < nPix; ++i) {
+                float d = s->depthScratch[i];
+                if (d < dMin) dMin = d; if (d > dMax) dMax = d; dSum += d;
+                if (d > 0.0001f) ++dNZ;
+            }
+            // Normal stats: decode .xyz*2-1, report mean length + component means.
+            double nLenSum = 0.0, nxSum = 0.0, nySum = 0.0, nzSum = 0.0; size_t nValid = 0;
+            for (size_t i = 0; i < nPix; ++i) {
+                float nx = halfToFloat(s->normalScratch[i * 4 + 0]) * 2.0f - 1.0f;
+                float ny = halfToFloat(s->normalScratch[i * 4 + 1]) * 2.0f - 1.0f;
+                float nz = halfToFloat(s->normalScratch[i * 4 + 2]) * 2.0f - 1.0f;
+                double len = std::sqrt((double)nx * nx + (double)ny * ny + (double)nz * nz);
+                nLenSum += len; nxSum += nx; nySum += ny; nzSum += nz;
+                if (len > 0.1) ++nValid;
+            }
+            // Center-pixel probe.
+            size_t c = ((size_t)(fullH / 2) * fullW) + (fullW / 2);
+            float cnx = halfToFloat(s->normalScratch[c * 4 + 0]) * 2.0f - 1.0f;
+            float cny = halfToFloat(s->normalScratch[c * 4 + 1]) * 2.0f - 1.0f;
+            float cnz = halfToFloat(s->normalScratch[c * 4 + 2]) * 2.0f - 1.0f;
+            vlog("[N0-DUMP] frame=%lu full=%dx%d depth[min=%.5f max=%.5f mean=%.5f nonzero=%zu/%zu] "
+                 "normal[meanLen=%.4f meanXYZ=(%.4f,%.4f,%.4f) valid=%zu/%zu] "
+                 "centerDepth=%.5f centerNormal=(%.3f,%.3f,%.3f) "
+                 "aoRadius=%.4f aoBias=%.5f aoStrength=%.4f aoPower=%.4f",
+                 s_dumpFrame, fullW, fullH, dMin, dMax, dSum / (double)nPix, dNZ, nPix,
+                 nLenSum / (double)nPix, nxSum / (double)nPix, nySum / (double)nPix,
+                 nzSum / (double)nPix, nValid, nPix,
+                 s->depthScratch[c], cnx, cny, cnz,
+                 aoRadius_, aoBias_, aoStrength_, aoPower_);
+            // Matrix probe: print row 0 and row 3 of invViewProj + viewProj as the
+            // island packs them (raw 16 floats, row-major convention).
+            vlog("[N0-DUMP] invVP row0=(%.4f,%.4f,%.4f,%.4f) row3=(%.4f,%.4f,%.4f,%.4f) "
+                 "VP row3=(%.4f,%.4f,%.4f,%.4f)",
+                 inverseViewProj_[0], inverseViewProj_[1], inverseViewProj_[2], inverseViewProj_[3],
+                 inverseViewProj_[12], inverseViewProj_[13], inverseViewProj_[14], inverseViewProj_[15],
+                 viewProj_[12], viewProj_[13], viewProj_[14], viewProj_[15]);
+        }
+    }
 
     {
         void* p = nullptr;
@@ -1194,6 +1299,37 @@ void gosPostProcess::runSSAOVulkan()
     {
         void* p = nullptr;
         if (vmaMapMemory(s->allocator, s->colorReadbackAlloc, &p) == VK_SUCCESS) {
+            // N0: before overwriting colorScratch (which still holds the INPUT scene
+            // color), compute the effective AO ratio = mean(out.g)/mean(in.g). Prints
+            // once per run on the first depth-signal frame.
+            {
+                static unsigned long s_aoFrame = 0;
+                ++s_aoFrame;
+                const char* dbgEnv = std::getenv("MC2_VK_SSAO_DUMP_INPUTS");
+                // Dump AO ratio periodically (every 120 frames) so we see whether the
+                // effective AO is stable across the run or degrades on the bookmark frames.
+                if (dbgEnv && dbgEnv[0] && dbgEnv[0] != '0' && (s_aoFrame % 120 == 2)) {
+                    auto h2f = [](uint16_t h) -> float {
+                        uint32_t sign=(uint32_t)(h>>15)&1u, exp=(uint32_t)(h>>10)&0x1Fu, man=(uint32_t)h&0x3FFu, f;
+                        if(exp==0){ if(man==0)f=sign<<31; else{exp=127-15+1; while((man&0x400u)==0){man<<=1;--exp;} man&=0x3FFu; f=(sign<<31)|(exp<<23)|(man<<13);} }
+                        else if(exp==0x1F) f=(sign<<31)|(0xFFu<<23)|(man<<13);
+                        else f=(sign<<31)|((exp-15+127)<<23)|(man<<13);
+                        float o; std::memcpy(&o,&f,4); return o; };
+                    const uint16_t* inHalf = s->colorScratch.data();     // still INPUT color
+                    const uint16_t* outHalf = static_cast<const uint16_t*>(p); // OUTPUT color
+                    const size_t nPix = (size_t)fullW * fullH;
+                    double inSum = 0.0, outSum = 0.0; size_t cnt = 0;
+                    for (size_t i = 0; i < nPix; i += 7) {
+                        float ig = h2f(inHalf[i*4+1]);
+                        float og = h2f(outHalf[i*4+1]);
+                        if (ig > 1e-4f) { inSum += ig; outSum += og; ++cnt; }
+                    }
+                    double ratio = (inSum > 1e-9) ? (outSum / inSum) : -1.0;
+                    vlog("[N0-DUMP-AO] frame=%lu effective AO ratio (mean out.g / mean in.g) = %.4f "
+                         "(in=%.4f out=%.4f over %zu px) debugMode=%d",
+                         s_aoFrame, ratio, cnt ? inSum/cnt : 0.0, cnt ? outSum/cnt : 0.0, cnt, ssaoDebug_);
+                }
+            }
             std::memcpy(s->colorScratch.data(), p, (size_t)fullW * fullH * 4 * 2);
             vmaUnmapMemory(s->allocator, s->colorReadbackAlloc);
             glBindTexture(GL_TEXTURE_2D, sceneColorTex_);

@@ -3,14 +3,15 @@
 //
 // MATH is bit-for-bit identical to the GL ssao_apply.frag. ONLY the
 // uniform/sampler plumbing changed:
-//   set=0,binding=0  ssaoTex   -> sampler2D (half-res AO, NEAREST -- matches
-//                                 the sampler used by the occlusion pass'
-//                                 output image; the GL path relies on linear
-//                                 filtering blending between the 4 taps, but
-//                                 the box filter itself does the blend, so a
-//                                 NEAREST sampler here reproduces the same
-//                                 4-tap math without relying on hardware
-//                                 bilinear on top of it)
+//   set=0,binding=0  ssaoTex   -> sampler2D (half-res AO). The 4-tap box below
+//                                 samples at +/-0.5-texel offsets; GL's
+//                                 ssaoColorTex_ is GL_LINEAR, so those off-center
+//                                 taps get hardware bilinear interpolation ON TOP
+//                                 of the box. N0 BUG-2: the island therefore binds
+//                                 a LINEAR sampler for this image (vulkan_ssao_
+//                                 island.cpp occSampler), NOT NEAREST -- a NEAREST
+//                                 sampler snaps each tap to a texel center and
+//                                 produces a blockier, non-GL-matching upsample.
 //   set=0,binding=1  SSAOApplyParams -> std140 UBO: ssaoTexel + debugMode.
 //
 // Multiplicative apply is expressed by the CALLER's blend state (Vulkan
