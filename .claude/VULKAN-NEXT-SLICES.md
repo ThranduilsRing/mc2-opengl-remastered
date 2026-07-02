@@ -115,7 +115,56 @@ $env:MC2_DEBUG_STATE_DUMP="1"; py -3 scripts/run_smoke.py --tier tier1 --duratio
 
 ---
 
-## N0 — VK-SSAO-PARITY-FAIL-1 (STILL BLOCKING — root cause of the GROSS corruption found + 3 plumbing bugs fixed; a RESIDUAL over-darkening remains OPEN; M / medium)
+## N0 — VK-SSAO-PARITY-FAIL-1 (UNIFORM-RATIO BUG DEAD — matrix transpose fixed `ac96e31d`; residual is now ±1 LSB on 0.03% px, a perceptual-floor question for the supervisor; M / medium)
+
+### UPDATE 2026-07-02 (session 3 — ROOT CAUSE FOUND: SSAO UBO row-major transpose)
+
+**The uniform ~34% over-darkening is DEAD. Single diverging constant found (exactly as the
+supervisor predicted — not ULP drift): the SSAO params UBO was qualified `row_major` but
+the GL SSAO path uploads column-major.** `shaders/vulkan/ssao.frag` `SSAOParams` had
+`layout(std140, row_major)`. The GL SSAO path (`gos_postprocess.cpp` `runSSAO()`) uploads
+`inverseViewProj_`/`viewProj_` with a SINGLE `glUniformMatrix4fv(..., GL_FALSE, ...)`, and
+those arrays are column-major on the CPU (index=col*4+row; `boxDecalMulColMajor` +
+comment `gos_postprocess.cpp:1508`). GLSL reads a GL_FALSE upload column-major → GL SSAO
+computes `M*v` with M column-major. The `row_major` VK UBO read the SAME bytes transposed
+→ `transpose(M)*v` → world reconstruction collapsed, `dist` shrank, `rangeCheck`
+saturated, ~every sample read `occluded` (raw AO ~0.08 vs GL ~1.0 on byte-identical
+inputs). **Why fog was immune:** the GL FOG path DOUBLE-transposes (`invT =
+transpose(inverseViewProj_)` then `setMat4`/GL_TRUE, `gos_postprocess.cpp:2755-2771`) →
+nets a row-major read → fog's `row_major` UBO is correct. SSAO has only the single
+implicit transpose → needs `column_major` (the std140 default). Fog uses ONLY
+`invViewProj`; SSAO is the sole consumer of the forward `viewProj` — so fog's byte-exact
+proof never exercised this convention (LM1 in action).
+
+**Fix (`ac96e31d`):** drop `row_major` from `SSAOParams` (column_major default now matches
+the GL_FALSE upload; contiguous std140 mat4 lands element (col c,row r) at byte (c*4+r)*4 =
+the GL array layout). CPU pack unchanged. **Fixture correction (the LM1 trap, same
+commit):** the SSAO fixture packed matrices raw AND read its CPU reference row-major, so it
+validated the shader against its OWN transpose convention and could NOT catch the real-path
+divergence. Now the fixture transposes its (row-major-written) literals at UBO pack time so
+the column_major shader gets the same LOGICAL matrix the CPU ref computes; the x←z shear is
+preserved so a regression re-diverges. `probe --validation sync`: **ssao1,
+validation_errors=0.**
+
+**Proof (mc2_01 PostprocessSSAO backend-compare, quiet lane, exe md5 `a4d12301`,
+region_impl=VulkanSubgraph — genuine vk, not FallbackGL):** went from **5/5 bookmarks
+failing** (69% darker, mean B/A 0.68) → **4/5 byte-IDENTICAL** (overview_center,
+ridge_lowangle, edge_fog_boundary_south, edge_fog_corner_southwest all match GL SHA
+exactly). Only `highangle_wide` (the one occlusion-bearing high view) still differs.
+
+**RESIDUAL characterization (highangle_wide, final scene, non-debug, GL vs VK):
+134/480000 px changed = 0.03%; MAX |diff| = 1 (ONE 8-bit level); mean luminance ratio
+1.0000 overall / 0.9929 on the 134 changed px. Deterministic (stable hash across 2 VK
+reruns).** This is the ±1-LSB `sin/cos/fract/pow` rounding drift between the AMD GL driver's
+GLSL frontend and glslang SPIR-V flipping the occasional `occluded` boolean — i.e. exactly
+the sub-1% residual the supervisor said "earns a perceptual-floor discussion" once the
+uniform-ratio bug was dead. **ESCALATION: the byte-exact oracle now blocks ONLY on this
+±1-LSB residual. This is an ORACLE-DESIGN decision for the supervisor** (per the
+reorder-candidate precedent I did NOT self-weaken). Options: (a) accept a per-region
+tolerance floor of ≤1 LSB / ≤0.05% px for PostprocessSSAO (transcendental-bearing region,
+same class as oobfog's structural-envelope oracle); (b) keep byte-exact and treat SSAO as
+permanently 4/5 with a documented known-diverging bookmark. **L6.4/6.5/6.6 remain BLOCKED
+pending that ruling** — but the plumbing/math is now proven sound.
 
 ### UPDATE 2026-07-02 (session 2 — instrumented, quiet-lane, LM8 bracketed)
 
