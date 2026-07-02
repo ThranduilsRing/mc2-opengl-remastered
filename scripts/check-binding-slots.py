@@ -47,6 +47,22 @@ EXCLUDE_SUBSTR = [
 CPP_EXT = (".h", ".hpp", ".cpp", ".cc", ".cxx")
 GLSL_EXT = (".vert", ".frag", ".comp", ".tesc", ".tese", ".geom", ".glsl", ".hglsl")
 
+# Cross-file same-PIPELINE collisions that were RESOLVED by an explicit slice
+# (this same-file checker cannot see cross-file/cross-stage collisions — the
+# per-pipeline classifier scripts/check-vulkan-bindings.py owns that. This list
+# is a documentation cross-reference + regression breadcrumb, printed for
+# visibility. Format: (namespace, slot) -> note).
+RESOLVED_COLLISIONS = {
+    ("SSBO", 2): (
+        "VK-H2-BINDING-SPLIT-1: former terrain-mask-solid/water same-pipeline "
+        "collision (vert LightingBuf@2 vs frag ThinRecordBufFrag@2) RESOLVED — "
+        "LightingBuf moved to SSBO slot 4. Slot 2 now carries only "
+        "ThinRecordBufFrag in the mask programs. Do NOT reintroduce a second "
+        "buffer at SSBO:2 in the terrain mask VS (check-vulkan-bindings.py "
+        "enforces the ERROR)."
+    ),
+}
+
 # A name is "binding-ish" if it plausibly names a buffer binding-base slot.
 BINDINGISH = re.compile(r"(BINDING|_SLOT|SsboBinding|Binding)\b", re.IGNORECASE)
 
@@ -332,6 +348,8 @@ def main():
         print(f"  C++ binding constants : {len(cpp_defs)}")
         print(f"  GLSL bound blocks     : {len(blocks)}")
         print(f"  shared named pairs    : {', '.join(sorted(shared)) or '(none)'}")
+        for (ns, slot), note in sorted(RESOLVED_COLLISIONS.items()):
+            print(f"  RESOLVED: {ns}:{slot} — {note}")
         for w in warns:
             print(f"  WARN: {w}")
         for fl in fails:

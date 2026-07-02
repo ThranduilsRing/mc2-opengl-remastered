@@ -4658,7 +4658,9 @@ bool gos_terrain_bridge_drawMaskSolid(uint32_t solidMaskSSBO,
     glBindBufferBase(GL_SHADER_STORAGE_BUFFER, 17, (GLuint)solidMaskSSBO);
     glBindBufferBase(GL_SHADER_STORAGE_BUFFER, 19, (GLuint)recipeSSBO);
     if (lightingSSBO != 0)
-        glBindBufferBase(GL_SHADER_STORAGE_BUFFER, 2, (GLuint)lightingSSBO);
+        // VK-H2-BINDING-SPLIT-1: LightingBuf moved slot 2 -> 4 (lockstep with
+        // gos_terrain_mask_solid.vert). Slot 2 kept clear for ThinRecordBufFrag.
+        glBindBufferBase(GL_SHADER_STORAGE_BUFFER, 4, (GLuint)lightingSSBO);
 
     // ---- Build and issue one DrawArraysIndirect ----------------------------
     struct DrawArraysIndirectCommand {
@@ -4686,7 +4688,7 @@ bool gos_terrain_bridge_drawMaskSolid(uint32_t solidMaskSSBO,
     glBindBufferBase(GL_SHADER_STORAGE_BUFFER, 17, 0);
     glBindBufferBase(GL_SHADER_STORAGE_BUFFER, 19, 0);
     if (lightingSSBO != 0)
-        glBindBufferBase(GL_SHADER_STORAGE_BUFFER, 2, 0);
+        glBindBufferBase(GL_SHADER_STORAGE_BUFFER, 4, 0);  // VK-H2-BINDING-SPLIT-1: LightingBuf slot 2 -> 4
 
     // Reset useAtlasColormap on this program so re-entry doesn't inherit atlas mode.
     {
@@ -4820,7 +4822,9 @@ bool gos_terrain_bridge_drawMaskWater(uint32_t waterMaskSSBO,
     glBindBufferBase(GL_SHADER_STORAGE_BUFFER, 18, (GLuint)waterMaskSSBO);
     glBindBufferBase(GL_SHADER_STORAGE_BUFFER,  5, (GLuint)recipeSSBO);
     if (lightingSSBO != 0)
-        glBindBufferBase(GL_SHADER_STORAGE_BUFFER, 2, (GLuint)lightingSSBO);
+        // VK-H2-BINDING-SPLIT-1: LightingBuf moved slot 2 -> 4 (lockstep with
+        // gos_terrain_mask_water.vert). Slot 2 kept clear for ThinRecordBufFrag.
+        glBindBufferBase(GL_SHADER_STORAGE_BUFFER, 4, (GLuint)lightingSSBO);
 
     // ---- Build and issue one DrawArraysIndirect ----------------------------
     struct DrawArraysIndirectCommand {
@@ -4848,7 +4852,7 @@ bool gos_terrain_bridge_drawMaskWater(uint32_t waterMaskSSBO,
     glBindBufferBase(GL_SHADER_STORAGE_BUFFER, 18, 0);
     glBindBufferBase(GL_SHADER_STORAGE_BUFFER,  5, 0);
     if (lightingSSBO != 0)
-        glBindBufferBase(GL_SHADER_STORAGE_BUFFER, 2, 0);
+        glBindBufferBase(GL_SHADER_STORAGE_BUFFER, 4, 0);  // VK-H2-BINDING-SPLIT-1: LightingBuf slot 2 -> 4
 
     glBindSampler(0, savedSampler);
     glActiveTexture(GL_TEXTURE0);

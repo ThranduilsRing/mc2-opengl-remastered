@@ -38,7 +38,7 @@ struct GpuTerrainLightingOutput {
     uint lightRGB;  // ARGB packed (low 24 bits = RGB, high byte = alpha/unused)
     uint fogRGB;    // fogRGB; high byte = FogValue (0..255)
 };
-layout(std430, binding =  2) readonly buffer LightingBuf {
+layout(std430, binding =  4) readonly buffer LightingBuf {  // VK-H2-BINDING-SPLIT-1: was binding=2 (collided with gos_terrain.frag ThinRecordBufFrag@2 in same program)
     GpuTerrainLightingOutput lighting[];
 };
 
