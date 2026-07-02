@@ -78,6 +78,13 @@ extern "C" void mc2_render_backend_ssao_region_health(
     const char** lastFallbackReason, int* lastGlPassesRun, int* lastVkDraws,
     unsigned long* routedFrames);
 
+// VK-REGION-HZB-1: PostprocessHzb region-selection health (defined in
+// GameOS/gameos/gos_postprocess.cpp). ALWAYS compiled, same shape.
+extern "C" void mc2_render_backend_hzb_region_health(
+    int* ifaceGateOn, const char** requestedBackend, int* lastImpl,
+    const char** lastFallbackReason, int* lastGlPassesRun, int* lastVkDraws,
+    unsigned long* routedFrames);
+
 #ifdef MC2_VULKAN_ISLAND
 // VULKAN-ISLAND-HEALTH-DUMP-1: EdgeFog Vulkan island health snapshot (defined in
 // GameOS/gameos/vulkan_edge_fog_island.cpp, compiled only under MC2_VULKAN_ISLAND).
@@ -114,6 +121,14 @@ extern "C" void mc2_vulkan_ssao_island_health(
     const char** fallbackReason, unsigned long* vkDraws,
     double* copyDepthUs, double* copyNormalUs, double* copyColorInUs,
     double* occlusionUs, double* applyUs, double* colorOutUs, double* totalUs);
+// VK-REGION-HZB-1: HZB Vulkan island health snapshot (defined in
+// GameOS/gameos/vulkan_hzb_island.cpp, same #ifdef MC2_VULKAN_ISLAND).
+extern "C" void mc2_vulkan_hzb_island_health(
+    int* vulkanAvailable, int* buildEnabled,
+    const char** deviceName, unsigned long* validationErrors,
+    unsigned long* attempted, unsigned long* usedVulkan,
+    const char** fallbackReason, unsigned long* vkDraws, unsigned long* levels,
+    double* copyDepthUs, double* buildUs, double* readbackOutUs, double* totalUs);
 #endif
 
 #include <chrono>
@@ -817,6 +832,34 @@ std::string buildSnapshotJson(const RenderSnapshot& snap,
         s << "    \"total_us\": " << totUs << "\n";
         s << "  }\n";
     }
+    // VK-REGION-HZB-1: additive "vulkan_hzb_island" section (same
+    // build64_island-only discipline). Byte-identical when the whole block is
+    // #ifdef'd out; zeros when compiled but the region isn't routed to Vulkan.
+    {
+        int va = 0, be = 0;
+        const char* dev = "";
+        const char* fbr = "";
+        unsigned long ve = 0, att = 0, used = 0, vkDraws = 0, levels = 0;
+        double cdUs = 0.0, bUs = 0.0, roUs = 0.0, totUs = 0.0;
+        mc2_vulkan_hzb_island_health(&va, &be, &dev, &ve, &att, &used, &fbr,
+                                     &vkDraws, &levels, &cdUs, &bUs, &roUs, &totUs);
+        s << "  ,\n";
+        s << "  \"vulkan_hzb_island\": {\n";
+        s << "    \"vulkan_available\": " << va << ",\n";
+        s << "    \"build_enabled\": " << be << ",\n";
+        s << "    \"device_name\": \"" << jsonEscape(dev) << "\",\n";
+        s << "    \"validation_errors\": " << ve << ",\n";
+        s << "    \"hzb_attempted\": " << att << ",\n";
+        s << "    \"hzb_used_vulkan\": " << used << ",\n";
+        s << "    \"hzb_fallback_reason\": \"" << jsonEscape(fbr) << "\",\n";
+        s << "    \"vk_draws\": " << vkDraws << ",\n";
+        s << "    \"levels\": " << levels << ",\n";
+        s << "    \"copy_depth_us\": " << cdUs << ",\n";
+        s << "    \"build_us\": " << bUs << ",\n";
+        s << "    \"readback_out_us\": " << roUs << ",\n";
+        s << "    \"total_us\": " << totUs << "\n";
+        s << "  }\n";
+    }
 #endif
     // RENDER-BACKEND-REGION-IFACE-1 (Layer-6 ENTRY): PostprocessFog region-selection
     // health. ALWAYS emitted (region iface exists on every build). Surfaces
@@ -869,6 +912,36 @@ std::string buildSnapshotJson(const RenderSnapshot& snap,
         s << "  ,\n";
         s << "  \"render_backend_ssao_region\": {\n";
         s << "    \"region_id\": \"PostprocessSSAO\",\n";
+        s << "    \"iface_gate_on\": " << gateOn << ",\n";
+        s << "    \"requested_backend\": \"" << jsonEscape(reqBackend) << "\",\n";
+        s << "    \"backend_region_selected\": \"" << selectedStr << "\",\n";
+        s << "    \"region_impl\": \"" << implStr << "\",\n";
+        s << "    \"fallback_reason\": \"" << jsonEscape(fbReason) << "\",\n";
+        s << "    \"gl_passes_run\": " << glPasses << ",\n";
+        s << "    \"vk_draws\": " << vkDraws << ",\n";
+        s << "    \"routed_frames\": " << routed << "\n";
+        s << "  }\n";
+    }
+    // VK-REGION-HZB-1: PostprocessHzb region-selection health. ALWAYS emitted
+    // (region iface exists on every build), same shape as render_backend_region.
+    {
+        int gateOn = 0, impl = 0, glPasses = 0, vkDraws = 0;
+        const char* reqBackend = "gl";
+        const char* fbReason = "";
+        unsigned long routed = 0;
+        mc2_render_backend_hzb_region_health(&gateOn, &reqBackend, &impl, &fbReason,
+                                             &glPasses, &vkDraws, &routed);
+        const char* implStr =
+            impl == 1 ? "GLInline" :
+            impl == 2 ? "VulkanSubgraph" :
+            impl == 3 ? "FallbackGL" : "None";
+        const char* selectedStr =
+            impl == 2 ? "vk" :
+            impl == 3 ? "fallback_gl" :
+            impl == 1 ? "gl" : "none";
+        s << "  ,\n";
+        s << "  \"render_backend_hzb_region\": {\n";
+        s << "    \"region_id\": \"PostprocessHzb\",\n";
         s << "    \"iface_gate_on\": " << gateOn << ",\n";
         s << "    \"requested_backend\": \"" << jsonEscape(reqBackend) << "\",\n";
         s << "    \"backend_region_selected\": \"" << selectedStr << "\",\n";

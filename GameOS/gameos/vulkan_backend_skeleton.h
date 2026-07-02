@@ -112,6 +112,18 @@ bool mc2_vulkan_probe_oobfog_fixture(const char* spvDir);
 // dir with the compiled ssao .spv (build output).
 bool mc2_vulkan_probe_ssao_fixture(const char* spvDir);
 
+// VK-REGION-HZB-1: headless BIT-TIGHT oracle for the HZB reduce-chain Vulkan
+// port. Runs the shipped hzb_reduce.{vert,frag}.spv over a KNOWN 64x64
+// synthetic reverse-Z depth pattern, builds the full 7-level ceil ladder
+// (separate R32F image per level, per-level B13 external-dependency barrier,
+// dynamic viewport -- exactly the island's shape), reads back EVERY level and
+// compares against a CPU min-reduce reference with tolerance 0: min() of
+// floats is bit-portable across compilers and pow2 dims make every sampling
+// computation exact in binary fractions (no ssao/fog transcendental caveat).
+// Fail-soft: any VkResult error -> log + return false. spvDir = dir with the
+// compiled hzb_reduce .spv (build output).
+bool mc2_vulkan_probe_hzb_fixture(const char* spvDir);
+
 // VK-BOOTSTRAP-INTEGRATE-1: Vulkan swapchain PROBE (create + query + destroy).
 // Uses vk-bootstrap's vkb::SwapchainBuilder against a bespoke devs[0] device and
 // a hidden 256x256 SDL Vulkan window/surface. Creates a swapchain, queries its

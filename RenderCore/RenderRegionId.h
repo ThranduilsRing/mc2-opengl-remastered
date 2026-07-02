@@ -26,6 +26,7 @@ namespace RenderCore {
 enum class RenderRegionId {
     PostprocessFog = 0,   // fused EdgeFog + OOB fog composite
     PostprocessSSAO = 1,  // half-res AO occlusion + multiplicative apply (VK-REGION-SSAO-1)
+    PostprocessHzb = 2,   // reverse-Z Hi-Z depth-pyramid reduce chain (VK-REGION-HZB-1)
 };
 
 // Which backend implementation actually ran the region this frame. Surfaced in
@@ -41,6 +42,7 @@ inline const char* region_id_to_string(RenderRegionId id) {
     switch (id) {
         case RenderRegionId::PostprocessFog:  return "PostprocessFog";
         case RenderRegionId::PostprocessSSAO: return "PostprocessSSAO";
+        case RenderRegionId::PostprocessHzb:  return "PostprocessHzb";
     }
     return "Unknown";
 }
@@ -138,6 +140,24 @@ struct PostprocessSSAORegionContext {
     int halfWidth  = 0;  // occlusion intermediate width  (ssaoW_)
     int halfHeight = 0;  // occlusion intermediate height (ssaoH_)
     SSAOParams params;
+    // Translation service: RenderResourceId -> concrete backend handle. GL-free
+    // interface (see below). Owned by the caller; must outlive the runRegion call.
+    const struct IResourceResolver* resolver = nullptr;
+};
+
+// BACKEND-NEUTRAL region context for the HZB region (VK-REGION-HZB-1).
+// depth/pyramid name resources by id (HzbPyramid is a MULTI-LEVEL resource --
+// one ceil-ladder R32F texture per level in GL; the resolver returns the
+// level-0 representative handle, and the backend impl owns the per-level
+// mapping, same discipline as the SSAO region's member access). All the GL
+// pass's uniforms (uSrcTexel per level, uReduce) are DERIVED from
+// width/height/mipCount -- no extra params struct needed.
+struct PostprocessHzbRegionContext {
+    RenderResourceId depth   = RenderResourceId::MainDepth;
+    RenderResourceId pyramid = RenderResourceId::HzbPyramid;
+    int width    = 0;   // pyramid level-0 width  (hzbW_ == full-res scene width)
+    int height   = 0;   // pyramid level-0 height (hzbH_)
+    int mipCount = 0;   // ceil-ladder level count (hzbMipCount_)
     // Translation service: RenderResourceId -> concrete backend handle. GL-free
     // interface (see below). Owned by the caller; must outlive the runRegion call.
     const struct IResourceResolver* resolver = nullptr;

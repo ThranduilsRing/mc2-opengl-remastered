@@ -116,6 +116,15 @@ REGION_SPEC = {
         "health_block": "render_backend_region",
         "extra_env": {},
     },
+    "PostprocessHzb": {
+        # VK-REGION-HZB-1. HZB output feeds NOTHING visible yet (diagnostic
+        # substrate) -- the pixel oracle proves no-regression of the visible
+        # frame with the gate ON; the region's math proof is the bit-tight
+        # hzb_fixture (probe) + region_impl non-fallback here. NO tolerance
+        # floor: min-reduce is bit-portable, byte-exact is the bar.
+        "health_block": "render_backend_hzb_region",
+        "extra_env": {"MC2_HZB_BUILD": "1"},
+    },
     "PostprocessSSAO": {
         "health_block": "render_backend_ssao_region",
         "extra_env": {"MC2_SSAO": "1"},
@@ -371,11 +380,21 @@ def read_backend_region_health(exe: Path,
 def detect_fallback(man: dict) -> str | None:
     """If a backend-compare state's region fell back to GL, return a human
     reason string; else None. A FallbackGL region means the Vulkan backend
-    failed to init -> the compare is GL-vs-GL, not a real backend compare."""
+    failed to init -> the compare is GL-vs-GL, not a real backend compare.
+
+    VK-REGION-HZB-1 hardening: a region that NEVER RAN (impl None/missing --
+    e.g. its enable env was dropped by a runner allowlist, or its own gates
+    skipped every frame) is equally NOT a real backend compare: neither
+    backend shaded the region, so a green result proves nothing. Flag it the
+    same way (caller exits 5 INCONCLUSIVE)."""
     impl = man.get("region_impl")
     if impl == "FallbackGL":
         why = man.get("fallback_reason") or "(no reason reported)"
         return "region_impl=FallbackGL (fallback_reason=%s)" % why
+    if impl in (None, "", "None"):
+        return ("region_impl=%s -- region NEVER RAN in this state (enable env "
+                "dropped by a runner allowlist, or region gates off every "
+                "frame); compare proves nothing" % impl)
     return None
 
 
@@ -990,9 +1009,14 @@ def _selftest() -> int:
     fb_real = {"region_impl": "VulkanSubgraph", "fallback_reason": ""}
     fb_fell = {"region_impl": "FallbackGL",
                "fallback_reason": "vk device init failed"}
+    fb_never = {"region_impl": "None", "fallback_reason": ""}
+    fb_miss = {}
     d_ok = (detect_fallback(fb_real) is None
             and detect_fallback(fb_fell) is not None
-            and "FallbackGL" in (detect_fallback(fb_fell) or ""))
+            and "FallbackGL" in (detect_fallback(fb_fell) or "")
+            # VK-REGION-HZB-1 hardening: never-ran / missing impl flagged too
+            and "NEVER RAN" in (detect_fallback(fb_never) or "")
+            and "NEVER RAN" in (detect_fallback(fb_miss) or ""))
     ok = ok and d_ok
     print("[selftest] (d) backend fallback detect  -> %s (real->None, "
           "FallbackGL->flagged)" % ("OK" if d_ok else "WRONG"))

@@ -778,6 +778,8 @@ void gosPostProcess::destroy()
     destroyVulkanPostprocessSubgraph();
     // VK-REGION-SSAO-1: same teardown for the SSAO island.
     destroyVulkanSSAOIsland();
+    // VK-REGION-HZB-1: same teardown for the HZB island.
+    destroyVulkanHzbIsland();
 #endif
 
     // CLUSTER-DEPTH-PYRAMID-NATIVE-1: release the gated pass's GL resources.
@@ -3236,6 +3238,218 @@ void gosPostProcess::runSSAORegionThroughBackend()
         RenderCore::region_impl_to_string(out.impl));
 }
 
+// ---------------------------------------------------------------------------
+// VK-REGION-HZB-1: HZB region routing -- selector + GL backend impl + health
+// snapshot. Third region through runRegion (fog, ssao, hzb). Same shape as
+// the SSAO region block above; distinct health struct so all regions' state
+// is independently catchable in the debug-state dump.
+// ---------------------------------------------------------------------------
+
+// 1A: the extracted GL HZB region wrapper. Calls the UNCHANGED runHzbReduce()
+// inline body (pure code-move). Returns 1 if HZB's own gates let it run this
+// frame, 0 if it early-returned (single logical effect -> 0/1 count, like SSAO).
+int gosPostProcess::runHzbRegionGL()
+{
+    const bool willRun = hzbEnabled_ &&
+                         hzbReduceProg_ && hzbReduceProg_->is_valid() &&
+                         hzbLevelTex_[0] && hzbFBO_ && hzbMipCount_ >= 1 &&
+                         sceneDepthTex_ != 0;
+    runHzbReduce();
+    return willRun ? 1 : 0;
+}
+
+// Resolver: gosPostProcess owns the scene depth + pyramid textures, so it maps
+// the neutral ids to the concrete GL handles. HzbPyramid is a MULTI-LEVEL
+// resource (one texture per ceil-ladder level); the resolver returns the
+// level-0 representative handle -- the backend impl owns the per-level mapping
+// (member access, same discipline as the SSAO region).
+unsigned int gosPostProcess::resolveHzbRegionResource(RenderCore::RenderResourceId id) const
+{
+    switch (id) {
+        case RenderCore::RenderResourceId::MainDepth:  return (unsigned int)sceneDepthTex_;
+        case RenderCore::RenderResourceId::HzbPyramid: return (unsigned int)hzbLevelTex_[0];
+        default: return 0u;
+    }
+}
+
+namespace {
+
+struct HzbRegionSelectHealth {
+    int         ifaceGateOn      = 0;    // MC2_RENDER_BACKEND_REGION_IFACE==1
+    char        requestedBackend[8] = "gl";  // MC2_POSTPROCESS_BACKEND (gl|vk)
+    int         lastImpl         = 0;    // RenderRegionImpl (None/GLInline/VulkanSubgraph/FallbackGL)
+    char        lastFallbackReason[64] = {0};
+    int         lastGlPassesRun  = 0;    // 0 or 1 (HZB is a single logical effect)
+    int         lastVkDraws      = 0;    // 0 or hzbMipCount_ (one draw per level)
+    unsigned long routedFrames   = 0;    // frames routed through runRegion
+};
+HzbRegionSelectHealth g_hzbRegion;
+
+void hzb_region_set_fallback_reason(const char* r) {
+    std::strncpy(g_hzbRegion.lastFallbackReason, r ? r : "",
+                 sizeof(g_hzbRegion.lastFallbackReason) - 1);
+    g_hzbRegion.lastFallbackReason[sizeof(g_hzbRegion.lastFallbackReason) - 1] = '\0';
+}
+
+// Neutral-context resolver adaptor wrapping gosPostProcess::resolveHzbRegionResource.
+struct GosHzbResourceResolver final : RenderCore::IResourceResolver {
+    const gosPostProcess* pp = nullptr;
+    unsigned int resolve(RenderCore::RenderResourceId id) const override {
+        return pp ? pp->resolveHzbRegionResource(id) : 0u;
+    }
+};
+
+// GL impl of runRegion for the PostprocessHzb region: resolves depth/pyramid
+// from the neutral context (proving the id->handle path is exercised even
+// though the GL HZB body reads the members directly today) and runs the
+// extracted GL wrapper. Always succeeds -> out->impl = GLInline.
+struct GlHzbRegionBackend final : RenderCore::IRenderBackend {
+    gosPostProcess* pp = nullptr;
+    void bindBackbuffer() override {}
+    void bindFramebuffer(unsigned int) override {}
+    void setViewport(int, int, int, int) override {}
+    void clear(unsigned int, float, float, float, float) override {}
+    bool runRegion(RenderCore::RenderRegionId id,
+                   const RenderCore::PostprocessHzbRegionContext& ctx,
+                   RenderCore::RegionOutput* out) override {
+        if (id != RenderCore::RenderRegionId::PostprocessHzb || !pp) return false;
+        if (ctx.resolver) {
+            (void)ctx.resolver->resolve(ctx.depth);
+            (void)ctx.resolver->resolve(ctx.pyramid);
+        }
+        int gl = pp->runHzbRegionGL();
+        if (out) { out->impl = RenderCore::RenderRegionImpl::GLInline;
+                   out->glPassesRun = gl; out->vkDraws = 0; out->fallbackReason = ""; }
+        return true;
+    }
+};
+
+} // namespace
+
+// C-linkage accessor for the debug-state dump (HZB region-selection health).
+// Mirrors mc2_render_backend_ssao_region_health; always compiled (no #ifdef).
+extern "C" void mc2_render_backend_hzb_region_health(
+    int* ifaceGateOn, const char** requestedBackend, int* lastImpl,
+    const char** lastFallbackReason, int* lastGlPassesRun, int* lastVkDraws,
+    unsigned long* routedFrames) {
+    if (ifaceGateOn)         *ifaceGateOn         = g_hzbRegion.ifaceGateOn;
+    if (requestedBackend)    *requestedBackend    = g_hzbRegion.requestedBackend;
+    if (lastImpl)            *lastImpl            = g_hzbRegion.lastImpl;
+    if (lastFallbackReason)  *lastFallbackReason  = g_hzbRegion.lastFallbackReason;
+    if (lastGlPassesRun)     *lastGlPassesRun     = g_hzbRegion.lastGlPassesRun;
+    if (lastVkDraws)         *lastVkDraws         = g_hzbRegion.lastVkDraws;
+    if (routedFrames)        *routedFrames        = g_hzbRegion.routedFrames;
+}
+
+#ifdef MC2_VULKAN_ISLAND
+// 1C: Vulkan impl of the PostprocessHzb region. Fail-soft; declines with
+// "hzb_gate_off" (a SKIP, not FallbackGL) when HZB's own gates would make the
+// GL path no-op -- the N0-BUG-1 enable-guard-parity lesson applied from birth:
+// the Vulkan path is bit-for-bit scoped to the SAME frames GL would shade.
+bool gosPostProcess::runHzbRegionVulkanBackend(
+    const RenderCore::PostprocessHzbRegionContext& ctx,
+    RenderCore::RegionOutput* out)
+{
+    if (ctx.resolver) {
+        (void)ctx.resolver->resolve(ctx.depth);
+        (void)ctx.resolver->resolve(ctx.pyramid);
+    }
+    const bool hzbGatesLetItRun =
+        hzbEnabled_ &&
+        hzbReduceProg_ && hzbReduceProg_->is_valid() &&
+        hzbLevelTex_[0] && hzbFBO_ && hzbMipCount_ >= 1 &&
+        sceneDepthTex_ != 0;
+    if (!hzbGatesLetItRun) {
+        if (out) { out->impl = RenderCore::RenderRegionImpl::None;
+                   out->fallbackReason = "hzb_gate_off";
+                   out->glPassesRun = 0; out->vkDraws = 0; }
+        return false;
+    }
+    if (!hzbRegionVulkanReady()) {
+        if (out) { out->impl = RenderCore::RenderRegionImpl::None;
+                   out->fallbackReason = "vk_device_init_failed";
+                   out->glPassesRun = 0; out->vkDraws = 0; }
+        return false;
+    }
+    runHzbVulkan();
+    if (out) { out->impl = RenderCore::RenderRegionImpl::VulkanSubgraph;
+               out->fallbackReason = ""; out->glPassesRun = 0;
+               out->vkDraws = hzbMipCount_; }
+    return true;
+}
+#endif
+
+// The routed entry (master gate ON). Builds the neutral HZB context, selects
+// the backend, calls runRegion; falls back to GL on false. Never double-
+// applies: exactly ONE of {GL wrapper, Vulkan island} runs, and the direct
+// runHzbReduce() call in endScene() is skipped whenever this routed path is taken.
+void gosPostProcess::runHzbRegionThroughBackend()
+{
+    ++g_hzbRegion.routedFrames;
+    g_hzbRegion.ifaceGateOn = 1;
+
+    static const bool s_wantVk = []() {
+        const char* v = getenv("MC2_POSTPROCESS_BACKEND");
+        return v && (v[0] == 'v' || v[0] == 'V');   // "vk"
+    }();
+    std::strncpy(g_hzbRegion.requestedBackend, s_wantVk ? "vk" : "gl",
+                 sizeof(g_hzbRegion.requestedBackend) - 1);
+
+    GosHzbResourceResolver resolver;
+    resolver.pp = this;
+    RenderCore::PostprocessHzbRegionContext ctx;
+    ctx.depth    = RenderCore::RenderResourceId::MainDepth;
+    ctx.pyramid  = RenderCore::RenderResourceId::HzbPyramid;
+    ctx.width    = hzbW_;
+    ctx.height   = hzbH_;
+    ctx.mipCount = hzbMipCount_;
+    ctx.resolver = &resolver;
+
+    RenderCore::RegionOutput out;
+    bool ran = false;
+    // Gate-off decline handling mirrors the SSAO region exactly (N0 BUG-1):
+    // "hzb_gate_off" means HZB's OWN gates skip the region this frame -- both
+    // backends no-op -- so it is a SKIP, never relabeled FallbackGL, and it
+    // must not overwrite the last REAL impl in the health snapshot.
+    bool gateOffSkip = false;
+
+#ifdef MC2_VULKAN_ISLAND
+    if (s_wantVk) {
+        ran = runHzbRegionVulkanBackend(ctx, &out);
+        if (!ran) {
+            const char* why = (out.fallbackReason && out.fallbackReason[0])
+                                  ? out.fallbackReason : "vk_declined";
+            gateOffSkip = (std::strcmp(why, "hzb_gate_off") == 0);
+            if (!gateOffSkip)
+                hzb_region_set_fallback_reason(why);
+        }
+    }
+#endif
+
+    if (!ran) {
+        GlHzbRegionBackend gl;
+        gl.pp = this;
+        bool okGl = gl.runRegion(RenderCore::RenderRegionId::PostprocessHzb, ctx, &out);
+        if (s_wantVk && !gateOffSkip) {
+            // requested vk but GL actually ran -> FallbackGL (not plain GLInline).
+            out.impl = RenderCore::RenderRegionImpl::FallbackGL;
+        }
+        (void)okGl;
+    }
+
+    if (!gateOffSkip) {
+        g_hzbRegion.lastImpl        = (int)out.impl;
+        g_hzbRegion.lastGlPassesRun = out.glPassesRun;
+        g_hzbRegion.lastVkDraws     = out.vkDraws;
+        if (out.impl != RenderCore::RenderRegionImpl::FallbackGL)
+            hzb_region_set_fallback_reason("");
+    }
+
+    render_frame_plan::trace(render_frame_plan::Phase::PostProcess, "PostprocessHzbRegion",
+        render_frame_plan::PathKind::ApplyPipeline, 1,
+        RenderCore::region_impl_to_string(out.impl));
+}
+
 // Forward declarations for ISLAND-2 sub-stage wrappers (defined below the executor section).
 static void executorOwnBeginSub(gosPostProcess*, RenderCore::framegraph::ExecutorIslandId);
 static void executorOwnEndSub(gosPostProcess*, RenderCore::framegraph::ExecutorIslandId);
@@ -3259,7 +3473,18 @@ void gosPostProcess::endScene()
     // HZB-DEPTH-PYRAMID-MVP-1: build the reverse-Z Hi-Z pyramid from the
     // resolved scene depth before any post pass. Gated (MC2_HZB_BUILD), no
     // consumers, no draw suppression -> no-op + byte-identical when OFF.
-    runHzbReduce();
+    // VK-REGION-HZB-1: when the region-iface master gate is ON, route through
+    // IRenderBackend::runRegion (MC2_POSTPROCESS_BACKEND=gl|vk picks the impl,
+    // VK falls back to GL on failure) instead of calling runHzbReduce()
+    // directly. Gate OFF -> the original direct call runs verbatim
+    // (byte-identical). The probe stays direct either way: it reads whatever
+    // pyramid the selected backend produced (a free CPU cross-check of the
+    // Vulkan-built pyramid when MC2_HZB_PROBE is also on).
+    if (regionIfaceEnabled()) {
+        runHzbRegionThroughBackend();
+    } else {
+        runHzbReduce();
+    }
     runHzbProbe();   // diagnostic-only; reads the pyramid, suppresses no draws
 
     // CLUSTER-DEPTH-PYRAMID-NATIVE-1: build a per-tile (min,max) depth image

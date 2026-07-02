@@ -328,6 +328,24 @@ public:
     // the SSAO region health snapshot.
     void runSSAORegionThroughBackend();
 
+    // VK-REGION-HZB-1 (RENDER-BACKEND-REGION-IFACE-1, third region): the HZB
+    // reduce chain routed through IRenderBackend::runRegion. Same shape as the
+    // SSAO region: master gate MC2_RENDER_BACKEND_REGION_IFACE + selector
+    // MC2_POSTPROCESS_BACKEND=gl|vk; MC2_HZB_BUILD still gates whether the
+    // region runs AT ALL (unchanged -- HZB stays default-OFF either way).
+    //
+    // 1A: the extracted GL HZB region wrapper. Calls the UNCHANGED
+    // runHzbReduce() inline body (pure code-move). Returns 1 if HZB's own
+    // gates let it run this frame, 0 if it early-returned.
+    int  runHzbRegionGL();
+    // The routed entry (master gate ON). Builds the neutral HZB context,
+    // picks the backend by MC2_POSTPROCESS_BACKEND, calls runRegion; on
+    // decline/failure runs runHzbRegionGL(). Writes region_impl /
+    // fallback_reason to the HZB region health snapshot.
+    void runHzbRegionThroughBackend();
+    // GL handle resolver for the HZB region context (depth / pyramid-level-0).
+    unsigned int resolveHzbRegionResource(RenderCore::RenderResourceId id) const;
+
     // GL handle resolver for the SSAO region context (depth/normal/color/
     // occlusion -> concrete GL texture names). Defined as a tiny adaptor in
     // the .cpp, same shape as resolveRegionResource() for fog.
@@ -478,6 +496,26 @@ public:
     void  destroyVulkanSSAOIsland();
     struct VulkanSSAOIsland;   // defined in vulkan_ssao_island.cpp
     VulkanSSAOIsland* vkSSAOIsland_ = nullptr;
+
+    // VK-REGION-HZB-1: Vulkan impl of the PostprocessHzb region -- the reverse-Z
+    // Hi-Z pyramid reduce chain. N sequential fullscreen draws (level 0 seeds
+    // from bridged scene depth; level k 2x2-MIN-reduces level k-1), one
+    // SEPARATE R32_SFLOAT Vulkan image per level (mirrors GL: the ceil ladder
+    // is deliberately mip-incomplete, and Vulkan's mip dims are floor-halved so
+    // a single mipped image CANNOT represent it). The per-level render pass's
+    // external subpass dependency (COLOR_ATTACHMENT_WRITE -> FRAGMENT_SHADER
+    // READ) is the B13 per-mip barrier; the whole chain readback bridges into
+    // hzbLevelTex_[] so the GL probe cross-checks Vulkan-produced data.
+    // Hand-ports shaders/vulkan/hzb_reduce.{vert,frag} (same stopgap as ssao).
+    // Fail-soft: returns false on device/init failure -> caller runs GL
+    // (FallbackGL). Never crashes.
+    bool  hzbRegionVulkanReady();
+    bool  runHzbRegionVulkanBackend(const RenderCore::PostprocessHzbRegionContext& ctx,
+                                     RenderCore::RegionOutput* out);
+    void  runHzbVulkan();
+    void  destroyVulkanHzbIsland();
+    struct VulkanHzbIsland;   // defined in vulkan_hzb_island.cpp
+    VulkanHzbIsland* vkHzbIsland_ = nullptr;
 #endif
 
     // OOB-FOG-1: fullscreen fog over out-of-bounds far-plane pixels.

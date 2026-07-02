@@ -120,6 +120,11 @@ if(MC2_VULKAN)
         # header members (vkSSAOIsland_ + method decls) added under the same
         # macro, already propagated to all consumers by the root ODR-harden block.
         list(APPEND SOURCES vulkan_ssao_island.cpp)
+        # VK-REGION-HZB-1: the HZB reduce-chain island (third region). Same
+        # #ifdef MC2_VULKAN_ISLAND discipline; layout-affecting header members
+        # (vkHzbIsland_ + method decls) added under the same macro, already
+        # propagated to all consumers by the root ODR-harden block.
+        list(APPEND SOURCES vulkan_hzb_island.cpp)
     endif()
 endif()
 
@@ -202,7 +207,8 @@ if(MC2_VULKAN)
     # programs: occlusion pass1, multiplicative-apply pass2). Both verts are
     # the same fullscreen-triangle construction (separate files only because
     # the bake loop expects one vert per basename).
-    set(MC2_VK_SHADER_BASENAMES fullscreen edge_fog fog_oob ssao ssao_apply)
+    # VK-REGION-HZB-1: bake hzb_reduce.{vert,frag} (one program, N level draws).
+    set(MC2_VK_SHADER_BASENAMES fullscreen edge_fog fog_oob ssao ssao_apply hzb_reduce)
     set(MC2_VK_SPV_OUTPUTS "")
     if(MC2_GLSLANG_VALIDATOR OR MC2_GLSLC)
         foreach(_base ${MC2_VK_SHADER_BASENAMES})

@@ -1603,6 +1603,16 @@ def main():
                             # lets the raw occlusion buffer be inspected under smoke.
                             "MC2_SSAO",
                             "MC2_SSAO_DEBUG",
+                            # HZB-DEPTH-PYRAMID-MVP-1 / VK-REGION-HZB-1: the HZB build
+                            # gate (+ its CPU cross-check probe). The PostprocessHzb
+                            # backend-compare (run_golden_parity --region PostprocessHzb)
+                            # forces MC2_HZB_BUILD=1 for BOTH states so the region
+                            # actually builds in-frame; without this in the allowlist
+                            # Popen drops it and the compare runs with HZB silently OFF
+                            # (region_impl=None -- the compare proves nothing; same trap
+                            # class as the MC2_SSAO gap fixed by 5cd3cc65).
+                            "MC2_HZB_BUILD",
+                            "MC2_HZB_PROBE",
                             # SKYBOX-FOG-EXCLUDE-1: stencil-tag true sky pixels during
                             # the HDRI skybox draw so runEdgeFog/runFogOob hard-exclude
                             # them (default OFF -> byte-identical). Without this in the

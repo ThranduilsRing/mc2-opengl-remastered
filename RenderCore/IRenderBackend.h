@@ -50,6 +50,14 @@ struct IRenderBackend {
         return false;
     }
 
+    // VK-REGION-HZB-1: third region overload (ruling R3 — overload per region
+    // context type). Default impl declines, same contract as above.
+    virtual bool runRegion(RenderRegionId /*id*/,
+                           const PostprocessHzbRegionContext& /*ctx*/,
+                           RegionOutput* /*out*/) {
+        return false;
+    }
+
     // Bind the window's default framebuffer (the backbuffer) as the current
     // render target for the composite output edge. GL impl == glBindFramebuffer
     // (GL_FRAMEBUFFER, 0). This is the single op the PostProcess composite edge
