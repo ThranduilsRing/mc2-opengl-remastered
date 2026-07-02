@@ -6,7 +6,11 @@
 // Reads:
 //   binding=17  SolidMaskBuf   (per-frame bitset, one bit per quad vertexNum)
 //   binding=19  RecipeBuf      (dense recipe SSBO, indexed by vertexNum)
-//   binding=2   LightingBuf    (GpuTerrainLightingOutput per vertex)
+//   binding=4   LightingBuf    (GpuTerrainLightingOutput per vertex)
+//               VK-H2-BINDING-SPLIT-1: moved off slot 2 (was colliding with
+//               gos_terrain.frag ThinRecordBufFrag@2 in the SAME linked program).
+//               Slot 4 is free in the terrain mask draw pipeline (static-prop's
+//               slot-4 use is a different pass; cross-pass reuse is documented).
 //
 // One draw covers ALL quadCount*6 vertices in the dense recipe. Quads outside
 // the mask are degenerated (gl_Position pushed offscreen) so the rasterizer
@@ -30,7 +34,7 @@ struct GpuTerrainLightingOutput {
     uint lightRGB;
     uint fogRGB;
 };
-layout(std430, binding = 2) readonly buffer LightingBuf {
+layout(std430, binding = 4) readonly buffer LightingBuf {  // VK-H2-BINDING-SPLIT-1: was binding=2
     GpuTerrainLightingOutput lighting[];
 };
 
