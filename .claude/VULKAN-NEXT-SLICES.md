@@ -167,11 +167,37 @@ defaults on the island exe (the 2026-07-02 02:34 tier1 ran the foreign exe — i
 mc2_01 crash_silent tell us nothing about this branch; the crash_silent also coincided with
 foreign lane activity).
 
-**Order of work inside N0:** (1) land the enable-guard fix (bug 1) + LINEAR sampler (bug 2)
-— both provable by inspection + island build; (2) secure a quiet lane (LM8 protocol);
-(3) single instrumented vk capture → if still corrupt, bisect with MC2_SSAO_DEBUG=1 on the
-ISLAND exe (raw AO view isolates pass-1 vs apply/round-trip); (4) 5 consecutive
-backend-compare exit-0 runs + fog compare re-proof + tier1 on the island exe.
+**UPDATE 2026-07-02 03:0x — corruption is DETERMINISTIC and localized to pass-1 inputs:**
+- Quiet-window rerun (island exe verified via `[VK_SSAO_ISLAND]` lines in the run's OWN
+  log, LM8 protocol): bookmark hashes **bit-identical to the corrupt parity-B hashes**
+  (831d5ecd/52a229eb/e8527982/28e98749/8afd8d51). Deterministic, reproducible.
+- Island raw-AO capture (`MC2_SSAO_DEBUG=1`, island exe): the occlusion field is
+  **ao≈0.08 nearly everywhere** (mean 19.5/255, p99=64) with a bright X/hourglass
+  converging at frame center — while GL's AO on the same scene is ≈1.0. Same shader math,
+  supposedly same inputs → the island's INPUTS are not what GL samples.
+- Ruled out by inspection tonight: UBO layout/fill (matches shader + fixture, 152B,
+  full-res screenSize, same matrices), descriptor writes (depth→0, normal→1, UBO→2, occ
+  apply→0), pass-1 viewport/scissor (half-res), Y-orientation (conventions cancel;
+  fog parity proves the bridge orientation), param value sources.
+- PRIME remaining suspects, in order: (a) **depth readback contents** —
+  `glGetTexImage(GL_DEPTH_COMPONENT, GL_FLOAT)` on `sceneDepthTex_` while it may still be
+  ATTACHED to the bound scene FBO (feedback/undefined-read hazard; the fog subgraph reads
+  the SAME depth — but fog only thresholds depth, so subtly-wrong values can pass fog
+  parity while destroying SSAO's position reconstruction); instrument by dumping
+  depthScratch to a file and comparing against a GL-side readback taken at a known-good
+  point; (b) normal readback contents (same instrumentation); (c) pass-1 pipeline state
+  not yet inspected (front-face/rasterizer irrelevant for fullscreen tri, but check
+  depth-clamp/sample-shading defaults); (d) the NEAREST depth sampler vs GL's
+  sceneDepthTex_ filter state (check `glTexParameteri` on creation — LINEAR depth
+  filtering would smooth reconstruction; NEAREST vs LINEAR alone should not produce
+  ao 1.0→0.08 though).
+
+**Order of work inside N0:** (1) instrument the bridge: dump depthScratch/normalScratch
+(first 64 floats + a checksum) behind an env; compare vs GL truth — this names suspect
+(a)/(b) in one run; (2) land the enable-guard fix (bug 1) + LINEAR apply sampler (bug 2);
+(3) fix the named input bug; (4) rerun raw-AO debug capture (expect ≈white), then 5
+consecutive backend-compare exit-0 runs + fog compare re-proof post-rename + tier1 on the
+island exe (all under LM8 protocol).
 **Until N0 closes, do NOT start L6.4/L6.5/L6.6 — do not grow the family on an unproven
 template** (the fog subgraph shares the same bridge code pattern).
 
