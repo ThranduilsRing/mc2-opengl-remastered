@@ -17,7 +17,7 @@ complexity).
 
 ## Region → buffers that must be OWNED+registered first (JIT per rung)
 - **L7.2 Shadow:** mech `s_instanceSsbo`/`s_boneSsbo`, prop `Instances`, `DynamicPropShadowSsbo`(id36). Rings are raw file-static globals today.
-- **L7.3 Terrain:** height(id14)/type(id26)/cement(id27), recipe(id10)/thin(id11), TL-compute in/out(id31/32/33), indirect cmd. ★Cheap early win: type/cement SSBOs. ★Fix the inversion: LIVE LOD-chunk buffers are UNregistered while DEAD indirect-path buffers ARE — close first.
+- **L7.3 Terrain:** height(id14)/type(id26)/cement(id27), recipe(id10)/thin(id11), TL-compute in/out(id31/32/33), indirect cmd. ★UPDATE 2026-07-02 (verified twice): ownership inversion is ALREADY CLOSED — all LIVE LOD-chunk buffers (14/26/27/30) + TL-compute (31/32/33) + ViewUniforms(25) are registered-on-create; DEAD indirect buffers (10/11) also registered. No ownership prep remains for terrain. Live solid renderer = gos_terrain_lod_chunk.cpp (glDrawElements, default-ON); gos_terrain_indirect.cpp (MDI) is DEAD (reference only). First L7.3 slice = descriptor-table authoring, NOT ownership.
 - **L7.4 Water:** water thin(SSBO3 fenced), water recipe(SSBO5), reflection RT(id7/8 External).
 - **L7.5 SP+Mech:** ★cheapest win = `ViewUniformsUbo`(id25, 1 site); then material tables (id5/28/29), instance/color/base rings, LightData(id34).
 
