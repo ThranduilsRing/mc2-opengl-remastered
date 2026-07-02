@@ -124,6 +124,29 @@ bool mc2_vulkan_probe_ssao_fixture(const char* spvDir);
 // compiled hzb_reduce .spv (build output).
 bool mc2_vulkan_probe_hzb_fixture(const char* spvDir);
 
+// VK-COMPARE-SAMPLER-FIXTURE-1: headless depth-COMPARE sampler oracle. Creates a
+// small VK_FORMAT_D32_SFLOAT depth image with a KNOWN pattern and a VkSampler
+// with compareEnable=TRUE / compareOp=VK_COMPARE_OP_LESS, runs the shipped
+// compare_shadow.{vert,frag}.spv (texture(sampler2DShadow, vec3(uv,ref))) at
+// texel-center taps, reads the result back and compares against a CPU reference
+// computing the SAME hardware compare (ref < stored ? 1 : 0). NEAREST + texel
+// centers -> deterministic 0/1, tolerance 0 (bit-tight). This is the Vulkan
+// analog of GL sampler2DShadow / GL_COMPARE_REF_TO_TEXTURE that L7.2 Shadow
+// needs. Fail-soft: any VkResult error -> log + return false. spvDir = dir with
+// the compiled compare_shadow .spv (build output).
+bool mc2_vulkan_probe_comparesampler_fixture(const char* spvDir);
+
+// VK-COMPARE-SAMPLER-FIXTURE-1: headless CSM 2D_ARRAY depth-compare oracle.
+// Creates an N-layer VK_FORMAT_D32_SFLOAT 2D_ARRAY depth image (distinct pattern
+// per layer) + a sampler2DArrayShadow compare sampler, runs the shipped
+// csm_array_shadow.{vert,frag}.spv (per-texel cascade select +
+// texture(sampler2DArrayShadow, vec4(uv,layer,ref))), reads the result back and
+// compares against a per-layer CPU reference (ref < stored ? 1 : 0). Bit-tight
+// at texel centers, tolerance 0. This is the Vulkan analog of GL
+// sampler2DArrayShadow (calcDynamicShadow CSM path) that L7.3 Terrain needs.
+// Fail-soft. spvDir = dir with the compiled csm_array_shadow .spv.
+bool mc2_vulkan_probe_csmarray_fixture(const char* spvDir);
+
 // VK-BOOTSTRAP-INTEGRATE-1: Vulkan swapchain PROBE (create + query + destroy).
 // Uses vk-bootstrap's vkb::SwapchainBuilder against a bespoke devs[0] device and
 // a hidden 256x256 SDL Vulkan window/surface. Creates a swapchain, queries its

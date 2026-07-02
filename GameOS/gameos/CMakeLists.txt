@@ -212,7 +212,9 @@ if(MC2_VULKAN)
     # the same fullscreen-triangle construction (separate files only because
     # the bake loop expects one vert per basename).
     # VK-REGION-HZB-1: bake hzb_reduce.{vert,frag} (one program, N level draws).
-    set(MC2_VK_SHADER_BASENAMES fullscreen edge_fog fog_oob ssao ssao_apply hzb_reduce)
+    # VK-COMPARE-SAMPLER-FIXTURE-1: bake compare_shadow.{vert,frag} (depth-COMPARE
+    # sampler oracle) + csm_array_shadow.{vert,frag} (2D_ARRAY compare oracle).
+    set(MC2_VK_SHADER_BASENAMES fullscreen edge_fog fog_oob ssao ssao_apply hzb_reduce compare_shadow csm_array_shadow)
     set(MC2_VK_SPV_OUTPUTS "")
     if(MC2_GLSLANG_VALIDATOR OR MC2_GLSLC)
         foreach(_base ${MC2_VK_SHADER_BASENAMES})

@@ -4825,6 +4825,1298 @@ done:
     return ok;
 }
 
+// ---------------------------------------------------------------------------
+// VK-COMPARE-SAMPLER-FIXTURE-1 -- headless depth-COMPARE sampler oracle.
+//
+// De-risks the ONE net-new capability L7.2 Shadow needs: a Vulkan sampler with
+// compareEnable=TRUE / compareOp=VK_COMPARE_OP_LESS -- the analog of the GL
+// sampler2DShadow / GL_COMPARE_REF_TO_TEXTURE the shadow shaders sample via
+// texture(shadowMap, vec3(uv, ref)) (shaders/include/shadow.hglsl calcShadow).
+//
+// Shape mirrors the HZB fixture: KNOWN D32_SFLOAT depth pattern uploaded to a
+// sampled image, a single fullscreen-triangle draw at the depth image's exact
+// dims (1:1 output<->texel), compare sampler bound at binding 0, dims UBO at
+// binding 1, R32F color readback, then a bit-tight CPU compare.
+//
+// BIT-TIGHT: the frag samples at the EXACT texel center. With texel-center UVs
+// exactly one stored texel is covered (LINEAR bilinear weight collapses to 1.0
+// on that texel), so the compare result is a deterministic 0.0/1.0 -- no
+// ambiguous filter weights. `ref` is derived from the integer texel index, so
+// the CPU mirrors the shader's ref pattern byte-for-byte. compareOp LESS ->
+// (ref < stored ? 1 : 0). Tolerance 0. Do not loosen.
+// ---------------------------------------------------------------------------
+bool mc2_vulkan_probe_comparesampler_fixture(const char* spvDir) {
+    if (!ensure_volk_initialized()) return false;
+
+    g_edgefog_validation_saw_error = false; // shared validation flag (same TU)
+
+    const uint32_t W = 16, H = 16;
+    const VkFormat kDepthFmt = VK_FORMAT_D32_SFLOAT;
+    const VkFormat kColorFmt = VK_FORMAT_R32_SFLOAT;
+
+    // ---- KNOWN depth pattern: exact binary fractions k/256 in [0,1). ----
+    std::vector<float> depthScratch((size_t)W * H);
+    for (uint32_t y = 0; y < H; ++y) {
+        for (uint32_t x = 0; x < W; ++x) {
+            uint32_t i = y * W + x;
+            depthScratch[i] = (float)((i * 53u) & 0xFFu) / 256.0f;
+        }
+    }
+
+    // ---- CPU reference: mirror compare_shadow.frag EXACTLY.
+    //   ref = ((idx*37)&0xFF)/256 ; result = (ref < stored ? 1 : 0).
+    std::vector<float> cpuRef((size_t)W * H);
+    for (uint32_t i = 0; i < W * H; ++i) {
+        float ref = (float)((i * 37u) & 0xFFu) / 256.0f;
+        float stored = depthScratch[i];
+        cpuRef[i] = (ref < stored) ? 1.0f : 0.0f;
+    }
+
+    struct CompareParams {
+        float dims[2]; // @0
+        int   _pad0;   // @8
+        int   _pad1;   // @12
+    };
+    static_assert(sizeof(CompareParams) == 16, "CompareParams std140 offsets drifted");
+
+    // ---- Optional validation layer + debug-utils messenger ------------------
+    std::vector<const char*> layers;
+    std::vector<const char*> instExts;
+    std::vector<VkValidationFeatureEnableEXT> valFeatures;
+    const char* valPreset = "off";
+    bool wantValidation = resolve_validation_preset(valFeatures, valPreset);
+    if (wantValidation) {
+        uint32_t layerCount = 0;
+        vkEnumerateInstanceLayerProperties(&layerCount, nullptr);
+        std::vector<VkLayerProperties> avail(layerCount);
+        if (layerCount) vkEnumerateInstanceLayerProperties(&layerCount, avail.data());
+        const char* want = "VK_LAYER_KHRONOS_validation";
+        bool found = false;
+        for (const auto& lp : avail) {
+            if (std::strcmp(lp.layerName, want) == 0) { found = true; break; }
+        }
+        if (found) {
+            layers.push_back(want);
+            instExts.push_back(VK_EXT_DEBUG_UTILS_EXTENSION_NAME);
+            log("comparesampler-fixture: validation layer %s enabled (preset=%s, +%zu feature(s))",
+                want, valPreset, valFeatures.size());
+        } else {
+            wantValidation = false;
+            log("comparesampler-fixture: validation requested but %s not available; continuing without", want);
+        }
+    }
+
+    VkApplicationInfo app{};
+    app.sType            = VK_STRUCTURE_TYPE_APPLICATION_INFO;
+    app.pApplicationName = "MC2 (Vulkan compare-sampler fixture)";
+    app.pEngineName      = "MC2-GameOS";
+    app.apiVersion       = VK_API_VERSION_1_1;
+
+    VkValidationFeaturesEXT valFeaturesInfo{};
+    valFeaturesInfo.sType = VK_STRUCTURE_TYPE_VALIDATION_FEATURES_EXT;
+    valFeaturesInfo.enabledValidationFeatureCount = static_cast<uint32_t>(valFeatures.size());
+    valFeaturesInfo.pEnabledValidationFeatures    = valFeatures.empty() ? nullptr : valFeatures.data();
+
+    VkInstanceCreateInfo ici{};
+    ici.sType                   = VK_STRUCTURE_TYPE_INSTANCE_CREATE_INFO;
+    ici.pApplicationInfo        = &app;
+    ici.enabledLayerCount       = static_cast<uint32_t>(layers.size());
+    ici.ppEnabledLayerNames     = layers.empty() ? nullptr : layers.data();
+    ici.enabledExtensionCount   = static_cast<uint32_t>(instExts.size());
+    ici.ppEnabledExtensionNames = instExts.empty() ? nullptr : instExts.data();
+    if (wantValidation && !valFeatures.empty()) ici.pNext = &valFeaturesInfo;
+
+    VkInstance instance = VK_NULL_HANDLE;
+    VkResult r = vkCreateInstance(&ici, nullptr, &instance);
+    if (r != VK_SUCCESS) {
+        log("comparesampler-fixture: vkCreateInstance failed (VkResult=%d). fail-soft.", (int)r);
+        return false;
+    }
+    volkLoadInstance(instance);
+
+    VkDebugUtilsMessengerEXT messenger = VK_NULL_HANDLE;
+    if (wantValidation) {
+        auto pfnCreate = (PFN_vkCreateDebugUtilsMessengerEXT)
+            vkGetInstanceProcAddr(instance, "vkCreateDebugUtilsMessengerEXT");
+        if (pfnCreate) {
+            VkDebugUtilsMessengerCreateInfoEXT mci{};
+            mci.sType           = VK_STRUCTURE_TYPE_DEBUG_UTILS_MESSENGER_CREATE_INFO_EXT;
+            mci.messageSeverity = VK_DEBUG_UTILS_MESSAGE_SEVERITY_WARNING_BIT_EXT |
+                                  VK_DEBUG_UTILS_MESSAGE_SEVERITY_ERROR_BIT_EXT;
+            mci.messageType     = VK_DEBUG_UTILS_MESSAGE_TYPE_GENERAL_BIT_EXT |
+                                  VK_DEBUG_UTILS_MESSAGE_TYPE_VALIDATION_BIT_EXT |
+                                  VK_DEBUG_UTILS_MESSAGE_TYPE_PERFORMANCE_BIT_EXT;
+            mci.pfnUserCallback = edgefog_debug_cb;
+            pfnCreate(instance, &mci, nullptr, &messenger);
+        } else {
+            log("comparesampler-fixture: vkCreateDebugUtilsMessengerEXT not found; continuing (no error capture)");
+        }
+    }
+    auto destroy_messenger = [&]() {
+        if (messenger) {
+            auto d = (PFN_vkDestroyDebugUtilsMessengerEXT)
+                vkGetInstanceProcAddr(instance, "vkDestroyDebugUtilsMessengerEXT");
+            if (d) d(instance, messenger, nullptr);
+        }
+    };
+
+    uint32_t devCount = 0;
+    r = vkEnumeratePhysicalDevices(instance, &devCount, nullptr);
+    if (r != VK_SUCCESS || devCount == 0) {
+        log("comparesampler-fixture: no physical devices (VkResult=%d, count=%u). fail-soft.", (int)r, devCount);
+        destroy_messenger();
+        vkDestroyInstance(instance, nullptr);
+        return false;
+    }
+    std::vector<VkPhysicalDevice> devs(devCount);
+    vkEnumeratePhysicalDevices(instance, &devCount, devs.data());
+    VkPhysicalDevice phys = devs[0];
+
+    uint32_t qfCount = 0;
+    vkGetPhysicalDeviceQueueFamilyProperties(phys, &qfCount, nullptr);
+    std::vector<VkQueueFamilyProperties> qfs(qfCount);
+    if (qfCount) vkGetPhysicalDeviceQueueFamilyProperties(phys, &qfCount, qfs.data());
+    uint32_t gfxFamily = UINT32_MAX;
+    for (uint32_t q = 0; q < qfCount; ++q) {
+        if (qfs[q].queueFlags & VK_QUEUE_GRAPHICS_BIT) { gfxFamily = q; break; }
+    }
+    if (gfxFamily == UINT32_MAX) {
+        log("comparesampler-fixture: no graphics queue family. fail-soft.");
+        destroy_messenger();
+        vkDestroyInstance(instance, nullptr);
+        return false;
+    }
+
+    float prio = 1.0f;
+    VkDeviceQueueCreateInfo qci{};
+    qci.sType            = VK_STRUCTURE_TYPE_DEVICE_QUEUE_CREATE_INFO;
+    qci.queueFamilyIndex = gfxFamily;
+    qci.queueCount       = 1;
+    qci.pQueuePriorities = &prio;
+
+    VkDeviceCreateInfo dci{};
+    dci.sType                = VK_STRUCTURE_TYPE_DEVICE_CREATE_INFO;
+    dci.queueCreateInfoCount = 1;
+    dci.pQueueCreateInfos    = &qci;
+
+    VkDevice device = VK_NULL_HANDLE;
+    r = vkCreateDevice(phys, &dci, nullptr, &device);
+    if (r != VK_SUCCESS) {
+        log("comparesampler-fixture: vkCreateDevice failed (VkResult=%d). fail-soft.", (int)r);
+        destroy_messenger();
+        vkDestroyInstance(instance, nullptr);
+        return false;
+    }
+    volkLoadDevice(device);
+    VkQueue queue = VK_NULL_HANDLE;
+    vkGetDeviceQueue(device, gfxFamily, 0, &queue);
+
+    bool ok = false;
+    VmaAllocator   allocator = VK_NULL_HANDLE;
+    VkShaderModule vert = VK_NULL_HANDLE, frag = VK_NULL_HANDLE;
+    VkImage        depthImage = VK_NULL_HANDLE;
+    VmaAllocation  depthAlloc = VK_NULL_HANDLE;
+    VkImageView    depthView = VK_NULL_HANDLE;
+    VkSampler      sampler   = VK_NULL_HANDLE;
+    VkImage        colorImage = VK_NULL_HANDLE;
+    VmaAllocation  colorAlloc = VK_NULL_HANDLE;
+    VkImageView    colorView = VK_NULL_HANDLE;
+    VkBuffer       depthStaging = VK_NULL_HANDLE, readback = VK_NULL_HANDLE, ubo = VK_NULL_HANDLE;
+    VmaAllocation  depthStagingAlloc = VK_NULL_HANDLE, readbackAlloc = VK_NULL_HANDLE, uboAlloc = VK_NULL_HANDLE;
+    VkRenderPass   rpass  = VK_NULL_HANDLE;
+    VkFramebuffer  fb     = VK_NULL_HANDLE;
+    VkDescriptorSetLayout dsl = VK_NULL_HANDLE;
+    VkDescriptorPool pool = VK_NULL_HANDLE;
+    VkDescriptorSet  set  = VK_NULL_HANDLE;
+    VkPipelineLayout playout = VK_NULL_HANDLE;
+    VkPipeline     pipe   = VK_NULL_HANDLE;
+    VkCommandPool  cpool  = VK_NULL_HANDLE;
+    VkCommandBuffer cbuf  = VK_NULL_HANDLE;
+    VkFence        fence  = VK_NULL_HANDLE;
+
+    if (!create_vma_allocator("comparesampler-fixture", instance, phys, device, &allocator)) goto done;
+
+    {
+        std::string dir = spvDir ? spvDir : ".";
+        if (!dir.empty() && dir.back() != '/' && dir.back() != '\\') dir += '/';
+        vert = mc2_vulkan_load_spv(device, (dir + "compare_shadow.vert.spv").c_str());
+        frag = mc2_vulkan_load_spv(device, (dir + "compare_shadow.frag.spv").c_str());
+        if (vert == VK_NULL_HANDLE || frag == VK_NULL_HANDLE) {
+            log("comparesampler-fixture: compare_shadow shader module load failed. fail-soft.");
+            goto done;
+        }
+    }
+
+    {
+        auto make_image = [&](VkFormat fmt, VkImageUsageFlags usage, int w, int h,
+                              VkImage* img, VmaAllocation* alloc) -> bool {
+            VkImageCreateInfo ii{};
+            ii.sType = VK_STRUCTURE_TYPE_IMAGE_CREATE_INFO;
+            ii.imageType = VK_IMAGE_TYPE_2D;
+            ii.format = fmt;
+            ii.extent = {(uint32_t)w, (uint32_t)h, 1};
+            ii.mipLevels = 1;
+            ii.arrayLayers = 1;
+            ii.samples = VK_SAMPLE_COUNT_1_BIT;
+            ii.tiling = VK_IMAGE_TILING_OPTIMAL;
+            ii.usage = usage;
+            ii.initialLayout = VK_IMAGE_LAYOUT_UNDEFINED;
+            VmaAllocationCreateInfo aci{};
+            aci.usage = VMA_MEMORY_USAGE_AUTO;
+            aci.flags = VMA_ALLOCATION_CREATE_DEDICATED_MEMORY_BIT;
+            VkResult rr = vmaCreateImage(allocator, &ii, &aci, img, alloc, nullptr);
+            if (rr != VK_SUCCESS) { log("comparesampler-fixture: vmaCreateImage failed (%d). fail-soft.", (int)rr); return false; }
+            return true;
+        };
+        auto make_view = [&](VkImage img, VkFormat fmt, VkImageAspectFlags aspect, VkImageView* view) -> bool {
+            VkImageViewCreateInfo vi{};
+            vi.sType = VK_STRUCTURE_TYPE_IMAGE_VIEW_CREATE_INFO;
+            vi.image = img;
+            vi.viewType = VK_IMAGE_VIEW_TYPE_2D;
+            vi.format = fmt;
+            vi.subresourceRange = {aspect, 0, 1, 0, 1};
+            VkResult rr = vkCreateImageView(device, &vi, nullptr, view);
+            if (rr != VK_SUCCESS) { log("comparesampler-fixture: vkCreateImageView failed (%d). fail-soft.", (int)rr); return false; }
+            return true;
+        };
+        auto make_buffer = [&](VkDeviceSize size, VkBufferUsageFlags usage, VkBuffer* buf, VmaAllocation* alloc) -> bool {
+            VkBufferCreateInfo bci{};
+            bci.sType = VK_STRUCTURE_TYPE_BUFFER_CREATE_INFO;
+            bci.size = size;
+            bci.usage = usage;
+            VmaAllocationCreateInfo aci{};
+            aci.usage = VMA_MEMORY_USAGE_AUTO;
+            aci.flags = VMA_ALLOCATION_CREATE_HOST_ACCESS_RANDOM_BIT;
+            VkResult rr = vmaCreateBuffer(allocator, &bci, &aci, buf, alloc, nullptr);
+            if (rr != VK_SUCCESS) { log("comparesampler-fixture: vmaCreateBuffer failed (%d). fail-soft.", (int)rr); return false; }
+            return true;
+        };
+
+        if (!make_image(kDepthFmt, VK_IMAGE_USAGE_SAMPLED_BIT | VK_IMAGE_USAGE_TRANSFER_DST_BIT,
+                        (int)W, (int)H, &depthImage, &depthAlloc)) goto done;
+        if (!make_view(depthImage, kDepthFmt, VK_IMAGE_ASPECT_DEPTH_BIT, &depthView)) goto done;
+        if (!make_image(kColorFmt,
+                        VK_IMAGE_USAGE_COLOR_ATTACHMENT_BIT | VK_IMAGE_USAGE_TRANSFER_SRC_BIT,
+                        (int)W, (int)H, &colorImage, &colorAlloc)) goto done;
+        if (!make_view(colorImage, kColorFmt, VK_IMAGE_ASPECT_COLOR_BIT, &colorView)) goto done;
+
+        if (!make_buffer((VkDeviceSize)W * H * 4, VK_BUFFER_USAGE_TRANSFER_SRC_BIT,
+                         &depthStaging, &depthStagingAlloc)) goto done;
+        if (!make_buffer((VkDeviceSize)W * H * 4, VK_BUFFER_USAGE_TRANSFER_DST_BIT,
+                         &readback, &readbackAlloc)) goto done;
+        if (!make_buffer(sizeof(CompareParams), VK_BUFFER_USAGE_UNIFORM_BUFFER_BIT, &ubo, &uboAlloc)) goto done;
+
+        void* p = nullptr;
+        r = vmaMapMemory(allocator, depthStagingAlloc, &p);
+        if (r != VK_SUCCESS) { log("comparesampler-fixture: vmaMapMemory(depthStaging) failed (%d). fail-soft.", (int)r); goto done; }
+        std::memcpy(p, depthScratch.data(), (size_t)W * H * 4);
+        vmaUnmapMemory(allocator, depthStagingAlloc);
+
+        CompareParams params{};
+        params.dims[0] = (float)W;
+        params.dims[1] = (float)H;
+        p = nullptr;
+        r = vmaMapMemory(allocator, uboAlloc, &p);
+        if (r != VK_SUCCESS) { log("comparesampler-fixture: vmaMapMemory(ubo) failed (%d). fail-soft.", (int)r); goto done; }
+        std::memcpy(p, &params, sizeof(params));
+        vmaUnmapMemory(allocator, uboAlloc);
+    }
+
+    {
+        // COMPARE sampler: compareEnable=TRUE, compareOp=LESS, LINEAR filter,
+        // CLAMP_TO_EDGE. This is the ONE net-new capability under test.
+        VkSamplerCreateInfo si{};
+        si.sType = VK_STRUCTURE_TYPE_SAMPLER_CREATE_INFO;
+        si.magFilter = VK_FILTER_LINEAR;
+        si.minFilter = VK_FILTER_LINEAR;
+        si.mipmapMode = VK_SAMPLER_MIPMAP_MODE_NEAREST;
+        si.addressModeU = VK_SAMPLER_ADDRESS_MODE_CLAMP_TO_EDGE;
+        si.addressModeV = VK_SAMPLER_ADDRESS_MODE_CLAMP_TO_EDGE;
+        si.addressModeW = VK_SAMPLER_ADDRESS_MODE_CLAMP_TO_EDGE;
+        si.compareEnable = VK_TRUE;
+        si.compareOp = VK_COMPARE_OP_LESS;
+        r = vkCreateSampler(device, &si, nullptr, &sampler);
+        if (r != VK_SUCCESS) { log("comparesampler-fixture: vkCreateSampler failed (%d). fail-soft.", (int)r); goto done; }
+    }
+
+    {
+        VkAttachmentDescription att{};
+        att.format = kColorFmt;
+        att.samples = VK_SAMPLE_COUNT_1_BIT;
+        att.loadOp = VK_ATTACHMENT_LOAD_OP_DONT_CARE;
+        att.storeOp = VK_ATTACHMENT_STORE_OP_STORE;
+        att.stencilLoadOp = VK_ATTACHMENT_LOAD_OP_DONT_CARE;
+        att.stencilStoreOp = VK_ATTACHMENT_STORE_OP_DONT_CARE;
+        att.initialLayout = VK_IMAGE_LAYOUT_UNDEFINED;
+        att.finalLayout   = VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL;
+        VkAttachmentReference ref{0, VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL};
+        VkSubpassDescription sub{};
+        sub.pipelineBindPoint = VK_PIPELINE_BIND_POINT_GRAPHICS;
+        sub.colorAttachmentCount = 1;
+        sub.pColorAttachments = &ref;
+        // EXTERNAL dep: color write -> transfer read (readback H1 discipline).
+        VkSubpassDependency dep{};
+        dep.srcSubpass = 0;
+        dep.dstSubpass = VK_SUBPASS_EXTERNAL;
+        dep.srcStageMask = VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT;
+        dep.srcAccessMask = VK_ACCESS_COLOR_ATTACHMENT_WRITE_BIT;
+        dep.dstStageMask = VK_PIPELINE_STAGE_TRANSFER_BIT;
+        dep.dstAccessMask = VK_ACCESS_TRANSFER_READ_BIT;
+        VkRenderPassCreateInfo rpci{};
+        rpci.sType = VK_STRUCTURE_TYPE_RENDER_PASS_CREATE_INFO;
+        rpci.attachmentCount = 1;
+        rpci.pAttachments = &att;
+        rpci.subpassCount = 1;
+        rpci.pSubpasses = &sub;
+        rpci.dependencyCount = 1;
+        rpci.pDependencies = &dep;
+        r = vkCreateRenderPass(device, &rpci, nullptr, &rpass);
+        if (r != VK_SUCCESS) { log("comparesampler-fixture: vkCreateRenderPass failed (%d). fail-soft.", (int)r); goto done; }
+
+        VkFramebufferCreateInfo fci{};
+        fci.sType = VK_STRUCTURE_TYPE_FRAMEBUFFER_CREATE_INFO;
+        fci.renderPass = rpass;
+        fci.attachmentCount = 1;
+        fci.pAttachments = &colorView;
+        fci.width = W; fci.height = H; fci.layers = 1;
+        r = vkCreateFramebuffer(device, &fci, nullptr, &fb);
+        if (r != VK_SUCCESS) { log("comparesampler-fixture: vkCreateFramebuffer failed (%d). fail-soft.", (int)r); goto done; }
+    }
+
+    {
+        VkDescriptorSetLayoutBinding binds[2]{};
+        binds[0].binding = 0;
+        binds[0].descriptorType = VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER;
+        binds[0].descriptorCount = 1;
+        binds[0].stageFlags = VK_SHADER_STAGE_FRAGMENT_BIT;
+        binds[1].binding = 1;
+        binds[1].descriptorType = VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER;
+        binds[1].descriptorCount = 1;
+        binds[1].stageFlags = VK_SHADER_STAGE_FRAGMENT_BIT;
+        VkDescriptorSetLayoutCreateInfo lci{};
+        lci.sType = VK_STRUCTURE_TYPE_DESCRIPTOR_SET_LAYOUT_CREATE_INFO;
+        lci.bindingCount = 2;
+        lci.pBindings = binds;
+        r = vkCreateDescriptorSetLayout(device, &lci, nullptr, &dsl);
+        if (r != VK_SUCCESS) { log("comparesampler-fixture: vkCreateDescriptorSetLayout failed (%d). fail-soft.", (int)r); goto done; }
+
+        VkDescriptorPoolSize sizes[2]{};
+        sizes[0].type = VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER; sizes[0].descriptorCount = 1;
+        sizes[1].type = VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER;         sizes[1].descriptorCount = 1;
+        VkDescriptorPoolCreateInfo pci{};
+        pci.sType = VK_STRUCTURE_TYPE_DESCRIPTOR_POOL_CREATE_INFO;
+        pci.maxSets = 1;
+        pci.poolSizeCount = 2;
+        pci.pPoolSizes = sizes;
+        r = vkCreateDescriptorPool(device, &pci, nullptr, &pool);
+        if (r != VK_SUCCESS) { log("comparesampler-fixture: vkCreateDescriptorPool failed (%d). fail-soft.", (int)r); goto done; }
+
+        VkDescriptorSetAllocateInfo dsai{};
+        dsai.sType = VK_STRUCTURE_TYPE_DESCRIPTOR_SET_ALLOCATE_INFO;
+        dsai.descriptorPool = pool;
+        dsai.descriptorSetCount = 1;
+        dsai.pSetLayouts = &dsl;
+        r = vkAllocateDescriptorSets(device, &dsai, &set);
+        if (r != VK_SUCCESS) { log("comparesampler-fixture: vkAllocateDescriptorSets failed (%d). fail-soft.", (int)r); goto done; }
+
+        VkDescriptorImageInfo srcInfo{};
+        srcInfo.sampler = sampler;
+        srcInfo.imageView = depthView;
+        srcInfo.imageLayout = VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL;
+        VkDescriptorBufferInfo uboInfo{ ubo, 0, VK_WHOLE_SIZE };
+        VkWriteDescriptorSet writes[2]{};
+        writes[0].sType = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET;
+        writes[0].dstSet = set; writes[0].dstBinding = 0; writes[0].descriptorCount = 1;
+        writes[0].descriptorType = VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER;
+        writes[0].pImageInfo = &srcInfo;
+        writes[1].sType = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET;
+        writes[1].dstSet = set; writes[1].dstBinding = 1; writes[1].descriptorCount = 1;
+        writes[1].descriptorType = VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER;
+        writes[1].pBufferInfo = &uboInfo;
+        vkUpdateDescriptorSets(device, 2, writes, 0, nullptr);
+    }
+
+    {
+        VkPipelineLayoutCreateInfo plci{};
+        plci.sType = VK_STRUCTURE_TYPE_PIPELINE_LAYOUT_CREATE_INFO;
+        plci.setLayoutCount = 1;
+        plci.pSetLayouts = &dsl;
+        r = vkCreatePipelineLayout(device, &plci, nullptr, &playout);
+        if (r != VK_SUCCESS) { log("comparesampler-fixture: vkCreatePipelineLayout failed (%d). fail-soft.", (int)r); goto done; }
+
+        VkPipelineShaderStageCreateInfo stages[2]{};
+        stages[0].sType  = VK_STRUCTURE_TYPE_PIPELINE_SHADER_STAGE_CREATE_INFO;
+        stages[0].stage  = VK_SHADER_STAGE_VERTEX_BIT;
+        stages[0].module = vert;
+        stages[0].pName  = "main";
+        stages[1].sType  = VK_STRUCTURE_TYPE_PIPELINE_SHADER_STAGE_CREATE_INFO;
+        stages[1].stage  = VK_SHADER_STAGE_FRAGMENT_BIT;
+        stages[1].module = frag;
+        stages[1].pName  = "main";
+
+        VkPipelineVertexInputStateCreateInfo vin{};
+        vin.sType = VK_STRUCTURE_TYPE_PIPELINE_VERTEX_INPUT_STATE_CREATE_INFO;
+        VkPipelineInputAssemblyStateCreateInfo ia{};
+        ia.sType    = VK_STRUCTURE_TYPE_PIPELINE_INPUT_ASSEMBLY_STATE_CREATE_INFO;
+        ia.topology = VK_PRIMITIVE_TOPOLOGY_TRIANGLE_LIST;
+        VkPipelineViewportStateCreateInfo vps{};
+        vps.sType         = VK_STRUCTURE_TYPE_PIPELINE_VIEWPORT_STATE_CREATE_INFO;
+        vps.viewportCount = 1;
+        vps.scissorCount  = 1;
+        VkPipelineRasterizationStateCreateInfo rs{};
+        rs.sType       = VK_STRUCTURE_TYPE_PIPELINE_RASTERIZATION_STATE_CREATE_INFO;
+        rs.polygonMode = VK_POLYGON_MODE_FILL;
+        rs.cullMode    = VK_CULL_MODE_NONE;
+        rs.frontFace   = VK_FRONT_FACE_COUNTER_CLOCKWISE;
+        rs.lineWidth   = 1.0f;
+        VkPipelineMultisampleStateCreateInfo ms{};
+        ms.sType                = VK_STRUCTURE_TYPE_PIPELINE_MULTISAMPLE_STATE_CREATE_INFO;
+        ms.rasterizationSamples = VK_SAMPLE_COUNT_1_BIT;
+        VkPipelineColorBlendAttachmentState cba{};
+        cba.colorWriteMask = VK_COLOR_COMPONENT_R_BIT | VK_COLOR_COMPONENT_G_BIT |
+                             VK_COLOR_COMPONENT_B_BIT | VK_COLOR_COMPONENT_A_BIT;
+        cba.blendEnable = VK_FALSE;
+        VkPipelineColorBlendStateCreateInfo cb{};
+        cb.sType           = VK_STRUCTURE_TYPE_PIPELINE_COLOR_BLEND_STATE_CREATE_INFO;
+        cb.attachmentCount = 1;
+        cb.pAttachments    = &cba;
+        VkDynamicState dyn[2] = { VK_DYNAMIC_STATE_VIEWPORT, VK_DYNAMIC_STATE_SCISSOR };
+        VkPipelineDynamicStateCreateInfo dsci{};
+        dsci.sType = VK_STRUCTURE_TYPE_PIPELINE_DYNAMIC_STATE_CREATE_INFO;
+        dsci.dynamicStateCount = 2;
+        dsci.pDynamicStates = dyn;
+
+        VkGraphicsPipelineCreateInfo gp{};
+        gp.sType               = VK_STRUCTURE_TYPE_GRAPHICS_PIPELINE_CREATE_INFO;
+        gp.stageCount          = 2;
+        gp.pStages             = stages;
+        gp.pVertexInputState   = &vin;
+        gp.pInputAssemblyState = &ia;
+        gp.pViewportState      = &vps;
+        gp.pRasterizationState = &rs;
+        gp.pMultisampleState   = &ms;
+        gp.pColorBlendState    = &cb;
+        gp.pDynamicState       = &dsci;
+        gp.layout              = playout;
+        gp.renderPass          = rpass;
+        gp.subpass             = 0;
+        r = vkCreateGraphicsPipelines(device, VK_NULL_HANDLE, 1, &gp, nullptr, &pipe);
+        if (r != VK_SUCCESS) { log("comparesampler-fixture: vkCreateGraphicsPipelines failed (%d). fail-soft.", (int)r); goto done; }
+    }
+
+    {
+        VkCommandPoolCreateInfo cpci{};
+        cpci.sType = VK_STRUCTURE_TYPE_COMMAND_POOL_CREATE_INFO;
+        cpci.queueFamilyIndex = gfxFamily;
+        r = vkCreateCommandPool(device, &cpci, nullptr, &cpool);
+        if (r != VK_SUCCESS) { log("comparesampler-fixture: vkCreateCommandPool failed (%d). fail-soft.", (int)r); goto done; }
+        VkCommandBufferAllocateInfo cai{};
+        cai.sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_ALLOCATE_INFO;
+        cai.commandPool = cpool;
+        cai.level = VK_COMMAND_BUFFER_LEVEL_PRIMARY;
+        cai.commandBufferCount = 1;
+        r = vkAllocateCommandBuffers(device, &cai, &cbuf);
+        if (r != VK_SUCCESS) { log("comparesampler-fixture: vkAllocateCommandBuffers failed (%d). fail-soft.", (int)r); goto done; }
+
+        VkCommandBufferBeginInfo bi{};
+        bi.sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_BEGIN_INFO;
+        bi.flags = VK_COMMAND_BUFFER_USAGE_ONE_TIME_SUBMIT_BIT;
+        r = vkBeginCommandBuffer(cbuf, &bi);
+        if (r != VK_SUCCESS) { log("comparesampler-fixture: vkBeginCommandBuffer failed (%d). fail-soft.", (int)r); goto done; }
+
+        // Upload depth: UNDEFINED -> TRANSFER_DST -> copy -> SHADER_READ.
+        {
+            VkImageSubresourceRange range{VK_IMAGE_ASPECT_DEPTH_BIT, 0, 1, 0, 1};
+            VkImageMemoryBarrier toDst{};
+            toDst.sType = VK_STRUCTURE_TYPE_IMAGE_MEMORY_BARRIER;
+            toDst.oldLayout = VK_IMAGE_LAYOUT_UNDEFINED;
+            toDst.newLayout = VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL;
+            toDst.srcQueueFamilyIndex = VK_QUEUE_FAMILY_IGNORED;
+            toDst.dstQueueFamilyIndex = VK_QUEUE_FAMILY_IGNORED;
+            toDst.image = depthImage;
+            toDst.subresourceRange = range;
+            toDst.srcAccessMask = 0;
+            toDst.dstAccessMask = VK_ACCESS_TRANSFER_WRITE_BIT;
+            vkCmdPipelineBarrier(cbuf, VK_PIPELINE_STAGE_TOP_OF_PIPE_BIT, VK_PIPELINE_STAGE_TRANSFER_BIT,
+                                 0, 0, nullptr, 0, nullptr, 1, &toDst);
+            VkBufferImageCopy region{};
+            region.imageSubresource = {VK_IMAGE_ASPECT_DEPTH_BIT, 0, 0, 1};
+            region.imageExtent = {W, H, 1};
+            vkCmdCopyBufferToImage(cbuf, depthStaging, depthImage, VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL, 1, &region);
+            VkImageMemoryBarrier toRead{};
+            toRead.sType = VK_STRUCTURE_TYPE_IMAGE_MEMORY_BARRIER;
+            toRead.oldLayout = VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL;
+            toRead.newLayout = VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL;
+            toRead.srcQueueFamilyIndex = VK_QUEUE_FAMILY_IGNORED;
+            toRead.dstQueueFamilyIndex = VK_QUEUE_FAMILY_IGNORED;
+            toRead.image = depthImage;
+            toRead.subresourceRange = range;
+            toRead.srcAccessMask = VK_ACCESS_TRANSFER_WRITE_BIT;
+            toRead.dstAccessMask = VK_ACCESS_SHADER_READ_BIT;
+            vkCmdPipelineBarrier(cbuf, VK_PIPELINE_STAGE_TRANSFER_BIT, VK_PIPELINE_STAGE_FRAGMENT_SHADER_BIT,
+                                 0, 0, nullptr, 0, nullptr, 1, &toRead);
+        }
+
+        VkRenderPassBeginInfo rbi{};
+        rbi.sType = VK_STRUCTURE_TYPE_RENDER_PASS_BEGIN_INFO;
+        rbi.renderPass = rpass;
+        rbi.framebuffer = fb;
+        rbi.renderArea = {{0, 0}, {W, H}};
+        rbi.clearValueCount = 0;
+        vkCmdBeginRenderPass(cbuf, &rbi, VK_SUBPASS_CONTENTS_INLINE);
+        vkCmdBindPipeline(cbuf, VK_PIPELINE_BIND_POINT_GRAPHICS, pipe);
+        VkViewport vp{0.0f, 0.0f, (float)W, (float)H, 0.0f, 1.0f};
+        VkRect2D sc{{0, 0}, {W, H}};
+        vkCmdSetViewport(cbuf, 0, 1, &vp);
+        vkCmdSetScissor(cbuf, 0, 1, &sc);
+        vkCmdBindDescriptorSets(cbuf, VK_PIPELINE_BIND_POINT_GRAPHICS, playout, 0, 1, &set, 0, nullptr);
+        vkCmdDraw(cbuf, 3, 1, 0, 0);
+        vkCmdEndRenderPass(cbuf);
+
+        // color (finalLayout TRANSFER_SRC via external dep) -> readback.
+        VkBufferImageCopy creg{};
+        creg.bufferOffset = 0;
+        creg.imageSubresource = {VK_IMAGE_ASPECT_COLOR_BIT, 0, 0, 1};
+        creg.imageExtent = {W, H, 1};
+        vkCmdCopyImageToBuffer(cbuf, colorImage, VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL,
+                               readback, 1, &creg);
+
+        r = vkEndCommandBuffer(cbuf);
+        if (r != VK_SUCCESS) { log("comparesampler-fixture: vkEndCommandBuffer failed (%d). fail-soft.", (int)r); goto done; }
+
+        VkFenceCreateInfo fnci{};
+        fnci.sType = VK_STRUCTURE_TYPE_FENCE_CREATE_INFO;
+        r = vkCreateFence(device, &fnci, nullptr, &fence);
+        if (r != VK_SUCCESS) { log("comparesampler-fixture: vkCreateFence failed (%d). fail-soft.", (int)r); goto done; }
+
+        VkSubmitInfo si{};
+        si.sType              = VK_STRUCTURE_TYPE_SUBMIT_INFO;
+        si.commandBufferCount = 1;
+        si.pCommandBuffers    = &cbuf;
+        r = vkQueueSubmit(queue, 1, &si, fence);
+        if (r != VK_SUCCESS) { log("comparesampler-fixture: vkQueueSubmit failed (%d). fail-soft.", (int)r); goto done; }
+        r = vkWaitForFences(device, 1, &fence, VK_TRUE, 5ull * 1000 * 1000 * 1000);
+        if (r != VK_SUCCESS) { log("comparesampler-fixture: vkWaitForFences failed/timeout (%d). fail-soft.", (int)r); goto done; }
+    }
+
+    {
+        // BIT-TIGHT compare: every texel must equal the CPU compare EXACTLY.
+        void* mapped = nullptr;
+        r = vmaMapMemory(allocator, readbackAlloc, &mapped);
+        if (r != VK_SUCCESS) { log("comparesampler-fixture: vmaMapMemory(readback) failed (%d). fail-soft.", (int)r); goto done; }
+        const float* gpu = static_cast<const float*>(mapped);
+        uint32_t bad = 0;
+        int firstBadIdx = -1;
+        float firstBadGpu = 0.0f, firstBadCpu = 0.0f;
+        uint32_t passCount = 0;
+        for (uint32_t i = 0; i < W * H; ++i) {
+            if (cpuRef[i] > 0.5f) ++passCount;
+            if (gpu[i] != cpuRef[i]) {
+                if (firstBadIdx < 0) { firstBadIdx = (int)i; firstBadGpu = gpu[i]; firstBadCpu = cpuRef[i]; }
+                ++bad;
+            }
+        }
+        vmaUnmapMemory(allocator, readbackAlloc);
+        log("comparesampler-fixture: %ux%u texels, %u compare-pass / %u compare-fail expected, mismatches=%u/%u %s",
+            W, H, passCount, W * H - passCount, bad, W * H, bad ? "FAIL" : "bit-exact");
+        if (bad) {
+            log("comparesampler-fixture: FIRST mismatch at idx %d: gpu=%.9g cpu=%.9g -- BIT-TIGHT oracle, not loosening.",
+                firstBadIdx, (double)firstBadGpu, (double)firstBadCpu);
+        }
+        ok = (bad == 0);
+    }
+
+    if (wantValidation) {
+        ok = ok && !g_edgefog_validation_saw_error;
+        log("comparesampler-fixture: validation active; saw_error=%d", g_edgefog_validation_saw_error ? 1 : 0);
+    }
+    if (ok) log("comparesampler-fixture: PASS -- depth-compare sampler (compareOp LESS) bit-exact vs CPU ref (tolerance 0).");
+    else    log("comparesampler-fixture: FAIL -- mismatch or validation error (see above).");
+
+done:
+    if (fence)   vkDestroyFence(device, fence, nullptr);
+    if (cpool)   vkDestroyCommandPool(device, cpool, nullptr);
+    if (pipe)    vkDestroyPipeline(device, pipe, nullptr);
+    if (playout) vkDestroyPipelineLayout(device, playout, nullptr);
+    if (pool)    vkDestroyDescriptorPool(device, pool, nullptr);
+    if (dsl)     vkDestroyDescriptorSetLayout(device, dsl, nullptr);
+    if (fb)      vkDestroyFramebuffer(device, fb, nullptr);
+    if (rpass)   vkDestroyRenderPass(device, rpass, nullptr);
+    if (ubo)          vmaDestroyBuffer(allocator, ubo, uboAlloc);
+    if (readback)     vmaDestroyBuffer(allocator, readback, readbackAlloc);
+    if (depthStaging) vmaDestroyBuffer(allocator, depthStaging, depthStagingAlloc);
+    if (sampler) vkDestroySampler(device, sampler, nullptr);
+    if (colorView)  vkDestroyImageView(device, colorView, nullptr);
+    if (colorImage) vmaDestroyImage(allocator, colorImage, colorAlloc);
+    if (depthView)  vkDestroyImageView(device, depthView, nullptr);
+    if (depthImage) vmaDestroyImage(allocator, depthImage, depthAlloc);
+    mc2_vulkan_free_shader(device, vert);
+    mc2_vulkan_free_shader(device, frag);
+    if (allocator) vmaDestroyAllocator(allocator);
+    vkDestroyDevice(device, nullptr);
+    destroy_messenger();
+    vkDestroyInstance(instance, nullptr);
+    log("comparesampler-fixture: %s -- cleaned up (device+instance destroyed).", ok ? "PASS" : "FAIL");
+    return ok;
+}
+
+// ---------------------------------------------------------------------------
+// VK-COMPARE-SAMPLER-FIXTURE-1 -- headless CSM 2D_ARRAY depth-compare oracle.
+//
+// De-risks the second net-new capability, needed by L7.3 Terrain / dynamic-CSM
+// shadows: a sampler2DArrayShadow with per-layer cascade select -- the analog
+// of the GL calcDynamicShadow() CSM path (shaders/include/shadow.hglsl:104/144)
+// texture(dynamicShadowArray, vec4(uv, layer, ref)).
+//
+// Shape = the compare-sampler fixture, but the depth image is an N-layer 2D
+// ARRAY (VK_IMAGE_VIEW_TYPE_2D_ARRAY), each layer seeded with a DISTINCT known
+// pattern, and the frag does a per-texel cascade select. Bit-tight: NEAREST +
+// texel centers -> deterministic 0/1 per layer; the CPU reference mirrors the
+// shader's layer + ref derivation for every texel. Every layer must match.
+// Tolerance 0. Do not loosen.
+// ---------------------------------------------------------------------------
+bool mc2_vulkan_probe_csmarray_fixture(const char* spvDir) {
+    if (!ensure_volk_initialized()) return false;
+
+    g_edgefog_validation_saw_error = false;
+
+    const uint32_t W = 16, H = 16;
+    const int      kLayers = 3;
+    const VkFormat kDepthFmt = VK_FORMAT_D32_SFLOAT;
+    const VkFormat kColorFmt = VK_FORMAT_R32_SFLOAT;
+
+    // ---- KNOWN per-layer depth patterns (distinct hash per layer). ----
+    std::vector<float> depthScratch((size_t)kLayers * W * H);
+    for (int L = 0; L < kLayers; ++L) {
+        for (uint32_t i = 0; i < W * H; ++i) {
+            uint32_t h = (i * 53u + (uint32_t)L * 131u) & 0xFFu;
+            depthScratch[(size_t)L * W * H + i] = (float)h / 256.0f;
+        }
+    }
+
+    // ---- CPU reference: mirror csm_array_shadow.frag EXACTLY.
+    //   layer = idx % kLayers ; ref = ((idx*37)+(layer*91))&0xFF)/256 ;
+    //   result = (ref < stored_in_layer ? 1 : 0). One output value per texel.
+    std::vector<float> cpuRef((size_t)W * H);
+    for (uint32_t i = 0; i < W * H; ++i) {
+        int layer = (int)(i % (uint32_t)kLayers);
+        float ref = (float)(((i * 37u) + (uint32_t)layer * 91u) & 0xFFu) / 256.0f;
+        float stored = depthScratch[(size_t)layer * W * H + i];
+        cpuRef[i] = (ref < stored) ? 1.0f : 0.0f;
+    }
+
+    struct CsmParams {
+        float dims[2]; // @0
+        int   layers;  // @8
+        int   _pad0;   // @12
+    };
+    static_assert(sizeof(CsmParams) == 16, "CsmParams std140 offsets drifted");
+
+    std::vector<const char*> layers;
+    std::vector<const char*> instExts;
+    std::vector<VkValidationFeatureEnableEXT> valFeatures;
+    const char* valPreset = "off";
+    bool wantValidation = resolve_validation_preset(valFeatures, valPreset);
+    if (wantValidation) {
+        uint32_t layerCount = 0;
+        vkEnumerateInstanceLayerProperties(&layerCount, nullptr);
+        std::vector<VkLayerProperties> avail(layerCount);
+        if (layerCount) vkEnumerateInstanceLayerProperties(&layerCount, avail.data());
+        const char* want = "VK_LAYER_KHRONOS_validation";
+        bool found = false;
+        for (const auto& lp : avail) {
+            if (std::strcmp(lp.layerName, want) == 0) { found = true; break; }
+        }
+        if (found) {
+            layers.push_back(want);
+            instExts.push_back(VK_EXT_DEBUG_UTILS_EXTENSION_NAME);
+            log("csmarray-fixture: validation layer %s enabled (preset=%s, +%zu feature(s))",
+                want, valPreset, valFeatures.size());
+        } else {
+            wantValidation = false;
+            log("csmarray-fixture: validation requested but %s not available; continuing without", want);
+        }
+    }
+
+    VkApplicationInfo app{};
+    app.sType            = VK_STRUCTURE_TYPE_APPLICATION_INFO;
+    app.pApplicationName = "MC2 (Vulkan CSM-array fixture)";
+    app.pEngineName      = "MC2-GameOS";
+    app.apiVersion       = VK_API_VERSION_1_1;
+
+    VkValidationFeaturesEXT valFeaturesInfo{};
+    valFeaturesInfo.sType = VK_STRUCTURE_TYPE_VALIDATION_FEATURES_EXT;
+    valFeaturesInfo.enabledValidationFeatureCount = static_cast<uint32_t>(valFeatures.size());
+    valFeaturesInfo.pEnabledValidationFeatures    = valFeatures.empty() ? nullptr : valFeatures.data();
+
+    VkInstanceCreateInfo ici{};
+    ici.sType                   = VK_STRUCTURE_TYPE_INSTANCE_CREATE_INFO;
+    ici.pApplicationInfo        = &app;
+    ici.enabledLayerCount       = static_cast<uint32_t>(layers.size());
+    ici.ppEnabledLayerNames     = layers.empty() ? nullptr : layers.data();
+    ici.enabledExtensionCount   = static_cast<uint32_t>(instExts.size());
+    ici.ppEnabledExtensionNames = instExts.empty() ? nullptr : instExts.data();
+    if (wantValidation && !valFeatures.empty()) ici.pNext = &valFeaturesInfo;
+
+    VkInstance instance = VK_NULL_HANDLE;
+    VkResult r = vkCreateInstance(&ici, nullptr, &instance);
+    if (r != VK_SUCCESS) {
+        log("csmarray-fixture: vkCreateInstance failed (VkResult=%d). fail-soft.", (int)r);
+        return false;
+    }
+    volkLoadInstance(instance);
+
+    VkDebugUtilsMessengerEXT messenger = VK_NULL_HANDLE;
+    if (wantValidation) {
+        auto pfnCreate = (PFN_vkCreateDebugUtilsMessengerEXT)
+            vkGetInstanceProcAddr(instance, "vkCreateDebugUtilsMessengerEXT");
+        if (pfnCreate) {
+            VkDebugUtilsMessengerCreateInfoEXT mci{};
+            mci.sType           = VK_STRUCTURE_TYPE_DEBUG_UTILS_MESSENGER_CREATE_INFO_EXT;
+            mci.messageSeverity = VK_DEBUG_UTILS_MESSAGE_SEVERITY_WARNING_BIT_EXT |
+                                  VK_DEBUG_UTILS_MESSAGE_SEVERITY_ERROR_BIT_EXT;
+            mci.messageType     = VK_DEBUG_UTILS_MESSAGE_TYPE_GENERAL_BIT_EXT |
+                                  VK_DEBUG_UTILS_MESSAGE_TYPE_VALIDATION_BIT_EXT |
+                                  VK_DEBUG_UTILS_MESSAGE_TYPE_PERFORMANCE_BIT_EXT;
+            mci.pfnUserCallback = edgefog_debug_cb;
+            pfnCreate(instance, &mci, nullptr, &messenger);
+        } else {
+            log("csmarray-fixture: vkCreateDebugUtilsMessengerEXT not found; continuing (no error capture)");
+        }
+    }
+    auto destroy_messenger = [&]() {
+        if (messenger) {
+            auto d = (PFN_vkDestroyDebugUtilsMessengerEXT)
+                vkGetInstanceProcAddr(instance, "vkDestroyDebugUtilsMessengerEXT");
+            if (d) d(instance, messenger, nullptr);
+        }
+    };
+
+    uint32_t devCount = 0;
+    r = vkEnumeratePhysicalDevices(instance, &devCount, nullptr);
+    if (r != VK_SUCCESS || devCount == 0) {
+        log("csmarray-fixture: no physical devices (VkResult=%d, count=%u). fail-soft.", (int)r, devCount);
+        destroy_messenger();
+        vkDestroyInstance(instance, nullptr);
+        return false;
+    }
+    std::vector<VkPhysicalDevice> devs(devCount);
+    vkEnumeratePhysicalDevices(instance, &devCount, devs.data());
+    VkPhysicalDevice phys = devs[0];
+
+    uint32_t qfCount = 0;
+    vkGetPhysicalDeviceQueueFamilyProperties(phys, &qfCount, nullptr);
+    std::vector<VkQueueFamilyProperties> qfs(qfCount);
+    if (qfCount) vkGetPhysicalDeviceQueueFamilyProperties(phys, &qfCount, qfs.data());
+    uint32_t gfxFamily = UINT32_MAX;
+    for (uint32_t q = 0; q < qfCount; ++q) {
+        if (qfs[q].queueFlags & VK_QUEUE_GRAPHICS_BIT) { gfxFamily = q; break; }
+    }
+    if (gfxFamily == UINT32_MAX) {
+        log("csmarray-fixture: no graphics queue family. fail-soft.");
+        destroy_messenger();
+        vkDestroyInstance(instance, nullptr);
+        return false;
+    }
+
+    float prio = 1.0f;
+    VkDeviceQueueCreateInfo qci{};
+    qci.sType            = VK_STRUCTURE_TYPE_DEVICE_QUEUE_CREATE_INFO;
+    qci.queueFamilyIndex = gfxFamily;
+    qci.queueCount       = 1;
+    qci.pQueuePriorities = &prio;
+
+    VkDeviceCreateInfo dci{};
+    dci.sType                = VK_STRUCTURE_TYPE_DEVICE_CREATE_INFO;
+    dci.queueCreateInfoCount = 1;
+    dci.pQueueCreateInfos    = &qci;
+
+    VkDevice device = VK_NULL_HANDLE;
+    r = vkCreateDevice(phys, &dci, nullptr, &device);
+    if (r != VK_SUCCESS) {
+        log("csmarray-fixture: vkCreateDevice failed (VkResult=%d). fail-soft.", (int)r);
+        destroy_messenger();
+        vkDestroyInstance(instance, nullptr);
+        return false;
+    }
+    volkLoadDevice(device);
+    VkQueue queue = VK_NULL_HANDLE;
+    vkGetDeviceQueue(device, gfxFamily, 0, &queue);
+
+    bool ok = false;
+    VmaAllocator   allocator = VK_NULL_HANDLE;
+    VkShaderModule vert = VK_NULL_HANDLE, frag = VK_NULL_HANDLE;
+    VkImage        depthImage = VK_NULL_HANDLE;   // N-layer 2D array
+    VmaAllocation  depthAlloc = VK_NULL_HANDLE;
+    VkImageView    depthView = VK_NULL_HANDLE;    // 2D_ARRAY view
+    VkSampler      sampler   = VK_NULL_HANDLE;
+    VkImage        colorImage = VK_NULL_HANDLE;
+    VmaAllocation  colorAlloc = VK_NULL_HANDLE;
+    VkImageView    colorView = VK_NULL_HANDLE;
+    VkBuffer       depthStaging = VK_NULL_HANDLE, readback = VK_NULL_HANDLE, ubo = VK_NULL_HANDLE;
+    VmaAllocation  depthStagingAlloc = VK_NULL_HANDLE, readbackAlloc = VK_NULL_HANDLE, uboAlloc = VK_NULL_HANDLE;
+    VkRenderPass   rpass  = VK_NULL_HANDLE;
+    VkFramebuffer  fb     = VK_NULL_HANDLE;
+    VkDescriptorSetLayout dsl = VK_NULL_HANDLE;
+    VkDescriptorPool pool = VK_NULL_HANDLE;
+    VkDescriptorSet  set  = VK_NULL_HANDLE;
+    VkPipelineLayout playout = VK_NULL_HANDLE;
+    VkPipeline     pipe   = VK_NULL_HANDLE;
+    VkCommandPool  cpool  = VK_NULL_HANDLE;
+    VkCommandBuffer cbuf  = VK_NULL_HANDLE;
+    VkFence        fence  = VK_NULL_HANDLE;
+
+    if (!create_vma_allocator("csmarray-fixture", instance, phys, device, &allocator)) goto done;
+
+    {
+        std::string dir = spvDir ? spvDir : ".";
+        if (!dir.empty() && dir.back() != '/' && dir.back() != '\\') dir += '/';
+        vert = mc2_vulkan_load_spv(device, (dir + "csm_array_shadow.vert.spv").c_str());
+        frag = mc2_vulkan_load_spv(device, (dir + "csm_array_shadow.frag.spv").c_str());
+        if (vert == VK_NULL_HANDLE || frag == VK_NULL_HANDLE) {
+            log("csmarray-fixture: csm_array_shadow shader module load failed. fail-soft.");
+            goto done;
+        }
+    }
+
+    {
+        auto make_buffer = [&](VkDeviceSize size, VkBufferUsageFlags usage, VkBuffer* buf, VmaAllocation* alloc) -> bool {
+            VkBufferCreateInfo bci{};
+            bci.sType = VK_STRUCTURE_TYPE_BUFFER_CREATE_INFO;
+            bci.size = size;
+            bci.usage = usage;
+            VmaAllocationCreateInfo aci{};
+            aci.usage = VMA_MEMORY_USAGE_AUTO;
+            aci.flags = VMA_ALLOCATION_CREATE_HOST_ACCESS_RANDOM_BIT;
+            VkResult rr = vmaCreateBuffer(allocator, &bci, &aci, buf, alloc, nullptr);
+            if (rr != VK_SUCCESS) { log("csmarray-fixture: vmaCreateBuffer failed (%d). fail-soft.", (int)rr); return false; }
+            return true;
+        };
+
+        // N-layer 2D ARRAY depth image.
+        {
+            VkImageCreateInfo ii{};
+            ii.sType = VK_STRUCTURE_TYPE_IMAGE_CREATE_INFO;
+            ii.imageType = VK_IMAGE_TYPE_2D;
+            ii.format = kDepthFmt;
+            ii.extent = {W, H, 1};
+            ii.mipLevels = 1;
+            ii.arrayLayers = (uint32_t)kLayers;
+            ii.samples = VK_SAMPLE_COUNT_1_BIT;
+            ii.tiling = VK_IMAGE_TILING_OPTIMAL;
+            ii.usage = VK_IMAGE_USAGE_SAMPLED_BIT | VK_IMAGE_USAGE_TRANSFER_DST_BIT;
+            ii.initialLayout = VK_IMAGE_LAYOUT_UNDEFINED;
+            VmaAllocationCreateInfo aci{};
+            aci.usage = VMA_MEMORY_USAGE_AUTO;
+            aci.flags = VMA_ALLOCATION_CREATE_DEDICATED_MEMORY_BIT;
+            r = vmaCreateImage(allocator, &ii, &aci, &depthImage, &depthAlloc, nullptr);
+            if (r != VK_SUCCESS) { log("csmarray-fixture: vmaCreateImage(depth array) failed (%d). fail-soft.", (int)r); goto done; }
+
+            VkImageViewCreateInfo vi{};
+            vi.sType = VK_STRUCTURE_TYPE_IMAGE_VIEW_CREATE_INFO;
+            vi.image = depthImage;
+            vi.viewType = VK_IMAGE_VIEW_TYPE_2D_ARRAY;
+            vi.format = kDepthFmt;
+            vi.subresourceRange = {VK_IMAGE_ASPECT_DEPTH_BIT, 0, 1, 0, (uint32_t)kLayers};
+            r = vkCreateImageView(device, &vi, nullptr, &depthView);
+            if (r != VK_SUCCESS) { log("csmarray-fixture: vkCreateImageView(depth array) failed (%d). fail-soft.", (int)r); goto done; }
+        }
+
+        // Color output (single-layer 2D).
+        {
+            VkImageCreateInfo ii{};
+            ii.sType = VK_STRUCTURE_TYPE_IMAGE_CREATE_INFO;
+            ii.imageType = VK_IMAGE_TYPE_2D;
+            ii.format = kColorFmt;
+            ii.extent = {W, H, 1};
+            ii.mipLevels = 1;
+            ii.arrayLayers = 1;
+            ii.samples = VK_SAMPLE_COUNT_1_BIT;
+            ii.tiling = VK_IMAGE_TILING_OPTIMAL;
+            ii.usage = VK_IMAGE_USAGE_COLOR_ATTACHMENT_BIT | VK_IMAGE_USAGE_TRANSFER_SRC_BIT;
+            ii.initialLayout = VK_IMAGE_LAYOUT_UNDEFINED;
+            VmaAllocationCreateInfo aci{};
+            aci.usage = VMA_MEMORY_USAGE_AUTO;
+            aci.flags = VMA_ALLOCATION_CREATE_DEDICATED_MEMORY_BIT;
+            r = vmaCreateImage(allocator, &ii, &aci, &colorImage, &colorAlloc, nullptr);
+            if (r != VK_SUCCESS) { log("csmarray-fixture: vmaCreateImage(color) failed (%d). fail-soft.", (int)r); goto done; }
+            VkImageViewCreateInfo vi{};
+            vi.sType = VK_STRUCTURE_TYPE_IMAGE_VIEW_CREATE_INFO;
+            vi.image = colorImage;
+            vi.viewType = VK_IMAGE_VIEW_TYPE_2D;
+            vi.format = kColorFmt;
+            vi.subresourceRange = {VK_IMAGE_ASPECT_COLOR_BIT, 0, 1, 0, 1};
+            r = vkCreateImageView(device, &vi, nullptr, &colorView);
+            if (r != VK_SUCCESS) { log("csmarray-fixture: vkCreateImageView(color) failed (%d). fail-soft.", (int)r); goto done; }
+        }
+
+        if (!make_buffer((VkDeviceSize)kLayers * W * H * 4, VK_BUFFER_USAGE_TRANSFER_SRC_BIT,
+                         &depthStaging, &depthStagingAlloc)) goto done;
+        if (!make_buffer((VkDeviceSize)W * H * 4, VK_BUFFER_USAGE_TRANSFER_DST_BIT,
+                         &readback, &readbackAlloc)) goto done;
+        if (!make_buffer(sizeof(CsmParams), VK_BUFFER_USAGE_UNIFORM_BUFFER_BIT, &ubo, &uboAlloc)) goto done;
+
+        void* p = nullptr;
+        r = vmaMapMemory(allocator, depthStagingAlloc, &p);
+        if (r != VK_SUCCESS) { log("csmarray-fixture: vmaMapMemory(depthStaging) failed (%d). fail-soft.", (int)r); goto done; }
+        std::memcpy(p, depthScratch.data(), (size_t)kLayers * W * H * 4);
+        vmaUnmapMemory(allocator, depthStagingAlloc);
+
+        CsmParams params{};
+        params.dims[0] = (float)W;
+        params.dims[1] = (float)H;
+        params.layers = kLayers;
+        p = nullptr;
+        r = vmaMapMemory(allocator, uboAlloc, &p);
+        if (r != VK_SUCCESS) { log("csmarray-fixture: vmaMapMemory(ubo) failed (%d). fail-soft.", (int)r); goto done; }
+        std::memcpy(p, &params, sizeof(params));
+        vmaUnmapMemory(allocator, uboAlloc);
+    }
+
+    {
+        VkSamplerCreateInfo si{};
+        si.sType = VK_STRUCTURE_TYPE_SAMPLER_CREATE_INFO;
+        si.magFilter = VK_FILTER_LINEAR;
+        si.minFilter = VK_FILTER_LINEAR;
+        si.mipmapMode = VK_SAMPLER_MIPMAP_MODE_NEAREST;
+        si.addressModeU = VK_SAMPLER_ADDRESS_MODE_CLAMP_TO_EDGE;
+        si.addressModeV = VK_SAMPLER_ADDRESS_MODE_CLAMP_TO_EDGE;
+        si.addressModeW = VK_SAMPLER_ADDRESS_MODE_CLAMP_TO_EDGE;
+        si.compareEnable = VK_TRUE;
+        si.compareOp = VK_COMPARE_OP_LESS;
+        r = vkCreateSampler(device, &si, nullptr, &sampler);
+        if (r != VK_SUCCESS) { log("csmarray-fixture: vkCreateSampler failed (%d). fail-soft.", (int)r); goto done; }
+    }
+
+    {
+        VkAttachmentDescription att{};
+        att.format = kColorFmt;
+        att.samples = VK_SAMPLE_COUNT_1_BIT;
+        att.loadOp = VK_ATTACHMENT_LOAD_OP_DONT_CARE;
+        att.storeOp = VK_ATTACHMENT_STORE_OP_STORE;
+        att.stencilLoadOp = VK_ATTACHMENT_LOAD_OP_DONT_CARE;
+        att.stencilStoreOp = VK_ATTACHMENT_STORE_OP_DONT_CARE;
+        att.initialLayout = VK_IMAGE_LAYOUT_UNDEFINED;
+        att.finalLayout   = VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL;
+        VkAttachmentReference ref{0, VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL};
+        VkSubpassDescription sub{};
+        sub.pipelineBindPoint = VK_PIPELINE_BIND_POINT_GRAPHICS;
+        sub.colorAttachmentCount = 1;
+        sub.pColorAttachments = &ref;
+        VkSubpassDependency dep{};
+        dep.srcSubpass = 0;
+        dep.dstSubpass = VK_SUBPASS_EXTERNAL;
+        dep.srcStageMask = VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT;
+        dep.srcAccessMask = VK_ACCESS_COLOR_ATTACHMENT_WRITE_BIT;
+        dep.dstStageMask = VK_PIPELINE_STAGE_TRANSFER_BIT;
+        dep.dstAccessMask = VK_ACCESS_TRANSFER_READ_BIT;
+        VkRenderPassCreateInfo rpci{};
+        rpci.sType = VK_STRUCTURE_TYPE_RENDER_PASS_CREATE_INFO;
+        rpci.attachmentCount = 1;
+        rpci.pAttachments = &att;
+        rpci.subpassCount = 1;
+        rpci.pSubpasses = &sub;
+        rpci.dependencyCount = 1;
+        rpci.pDependencies = &dep;
+        r = vkCreateRenderPass(device, &rpci, nullptr, &rpass);
+        if (r != VK_SUCCESS) { log("csmarray-fixture: vkCreateRenderPass failed (%d). fail-soft.", (int)r); goto done; }
+
+        VkFramebufferCreateInfo fci{};
+        fci.sType = VK_STRUCTURE_TYPE_FRAMEBUFFER_CREATE_INFO;
+        fci.renderPass = rpass;
+        fci.attachmentCount = 1;
+        fci.pAttachments = &colorView;
+        fci.width = W; fci.height = H; fci.layers = 1;
+        r = vkCreateFramebuffer(device, &fci, nullptr, &fb);
+        if (r != VK_SUCCESS) { log("csmarray-fixture: vkCreateFramebuffer failed (%d). fail-soft.", (int)r); goto done; }
+    }
+
+    {
+        VkDescriptorSetLayoutBinding binds[2]{};
+        binds[0].binding = 0;
+        binds[0].descriptorType = VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER;
+        binds[0].descriptorCount = 1;
+        binds[0].stageFlags = VK_SHADER_STAGE_FRAGMENT_BIT;
+        binds[1].binding = 1;
+        binds[1].descriptorType = VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER;
+        binds[1].descriptorCount = 1;
+        binds[1].stageFlags = VK_SHADER_STAGE_FRAGMENT_BIT;
+        VkDescriptorSetLayoutCreateInfo lci{};
+        lci.sType = VK_STRUCTURE_TYPE_DESCRIPTOR_SET_LAYOUT_CREATE_INFO;
+        lci.bindingCount = 2;
+        lci.pBindings = binds;
+        r = vkCreateDescriptorSetLayout(device, &lci, nullptr, &dsl);
+        if (r != VK_SUCCESS) { log("csmarray-fixture: vkCreateDescriptorSetLayout failed (%d). fail-soft.", (int)r); goto done; }
+
+        VkDescriptorPoolSize sizes[2]{};
+        sizes[0].type = VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER; sizes[0].descriptorCount = 1;
+        sizes[1].type = VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER;         sizes[1].descriptorCount = 1;
+        VkDescriptorPoolCreateInfo pci{};
+        pci.sType = VK_STRUCTURE_TYPE_DESCRIPTOR_POOL_CREATE_INFO;
+        pci.maxSets = 1;
+        pci.poolSizeCount = 2;
+        pci.pPoolSizes = sizes;
+        r = vkCreateDescriptorPool(device, &pci, nullptr, &pool);
+        if (r != VK_SUCCESS) { log("csmarray-fixture: vkCreateDescriptorPool failed (%d). fail-soft.", (int)r); goto done; }
+
+        VkDescriptorSetAllocateInfo dsai{};
+        dsai.sType = VK_STRUCTURE_TYPE_DESCRIPTOR_SET_ALLOCATE_INFO;
+        dsai.descriptorPool = pool;
+        dsai.descriptorSetCount = 1;
+        dsai.pSetLayouts = &dsl;
+        r = vkAllocateDescriptorSets(device, &dsai, &set);
+        if (r != VK_SUCCESS) { log("csmarray-fixture: vkAllocateDescriptorSets failed (%d). fail-soft.", (int)r); goto done; }
+
+        VkDescriptorImageInfo srcInfo{};
+        srcInfo.sampler = sampler;
+        srcInfo.imageView = depthView;
+        srcInfo.imageLayout = VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL;
+        VkDescriptorBufferInfo uboInfo{ ubo, 0, VK_WHOLE_SIZE };
+        VkWriteDescriptorSet writes[2]{};
+        writes[0].sType = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET;
+        writes[0].dstSet = set; writes[0].dstBinding = 0; writes[0].descriptorCount = 1;
+        writes[0].descriptorType = VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER;
+        writes[0].pImageInfo = &srcInfo;
+        writes[1].sType = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET;
+        writes[1].dstSet = set; writes[1].dstBinding = 1; writes[1].descriptorCount = 1;
+        writes[1].descriptorType = VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER;
+        writes[1].pBufferInfo = &uboInfo;
+        vkUpdateDescriptorSets(device, 2, writes, 0, nullptr);
+    }
+
+    {
+        VkPipelineLayoutCreateInfo plci{};
+        plci.sType = VK_STRUCTURE_TYPE_PIPELINE_LAYOUT_CREATE_INFO;
+        plci.setLayoutCount = 1;
+        plci.pSetLayouts = &dsl;
+        r = vkCreatePipelineLayout(device, &plci, nullptr, &playout);
+        if (r != VK_SUCCESS) { log("csmarray-fixture: vkCreatePipelineLayout failed (%d). fail-soft.", (int)r); goto done; }
+
+        VkPipelineShaderStageCreateInfo stages[2]{};
+        stages[0].sType  = VK_STRUCTURE_TYPE_PIPELINE_SHADER_STAGE_CREATE_INFO;
+        stages[0].stage  = VK_SHADER_STAGE_VERTEX_BIT;
+        stages[0].module = vert;
+        stages[0].pName  = "main";
+        stages[1].sType  = VK_STRUCTURE_TYPE_PIPELINE_SHADER_STAGE_CREATE_INFO;
+        stages[1].stage  = VK_SHADER_STAGE_FRAGMENT_BIT;
+        stages[1].module = frag;
+        stages[1].pName  = "main";
+
+        VkPipelineVertexInputStateCreateInfo vin{};
+        vin.sType = VK_STRUCTURE_TYPE_PIPELINE_VERTEX_INPUT_STATE_CREATE_INFO;
+        VkPipelineInputAssemblyStateCreateInfo ia{};
+        ia.sType    = VK_STRUCTURE_TYPE_PIPELINE_INPUT_ASSEMBLY_STATE_CREATE_INFO;
+        ia.topology = VK_PRIMITIVE_TOPOLOGY_TRIANGLE_LIST;
+        VkPipelineViewportStateCreateInfo vps{};
+        vps.sType         = VK_STRUCTURE_TYPE_PIPELINE_VIEWPORT_STATE_CREATE_INFO;
+        vps.viewportCount = 1;
+        vps.scissorCount  = 1;
+        VkPipelineRasterizationStateCreateInfo rs{};
+        rs.sType       = VK_STRUCTURE_TYPE_PIPELINE_RASTERIZATION_STATE_CREATE_INFO;
+        rs.polygonMode = VK_POLYGON_MODE_FILL;
+        rs.cullMode    = VK_CULL_MODE_NONE;
+        rs.frontFace   = VK_FRONT_FACE_COUNTER_CLOCKWISE;
+        rs.lineWidth   = 1.0f;
+        VkPipelineMultisampleStateCreateInfo ms{};
+        ms.sType                = VK_STRUCTURE_TYPE_PIPELINE_MULTISAMPLE_STATE_CREATE_INFO;
+        ms.rasterizationSamples = VK_SAMPLE_COUNT_1_BIT;
+        VkPipelineColorBlendAttachmentState cba{};
+        cba.colorWriteMask = VK_COLOR_COMPONENT_R_BIT | VK_COLOR_COMPONENT_G_BIT |
+                             VK_COLOR_COMPONENT_B_BIT | VK_COLOR_COMPONENT_A_BIT;
+        cba.blendEnable = VK_FALSE;
+        VkPipelineColorBlendStateCreateInfo cb{};
+        cb.sType           = VK_STRUCTURE_TYPE_PIPELINE_COLOR_BLEND_STATE_CREATE_INFO;
+        cb.attachmentCount = 1;
+        cb.pAttachments    = &cba;
+        VkDynamicState dyn[2] = { VK_DYNAMIC_STATE_VIEWPORT, VK_DYNAMIC_STATE_SCISSOR };
+        VkPipelineDynamicStateCreateInfo dsci{};
+        dsci.sType = VK_STRUCTURE_TYPE_PIPELINE_DYNAMIC_STATE_CREATE_INFO;
+        dsci.dynamicStateCount = 2;
+        dsci.pDynamicStates = dyn;
+
+        VkGraphicsPipelineCreateInfo gp{};
+        gp.sType               = VK_STRUCTURE_TYPE_GRAPHICS_PIPELINE_CREATE_INFO;
+        gp.stageCount          = 2;
+        gp.pStages             = stages;
+        gp.pVertexInputState   = &vin;
+        gp.pInputAssemblyState = &ia;
+        gp.pViewportState      = &vps;
+        gp.pRasterizationState = &rs;
+        gp.pMultisampleState   = &ms;
+        gp.pColorBlendState    = &cb;
+        gp.pDynamicState       = &dsci;
+        gp.layout              = playout;
+        gp.renderPass          = rpass;
+        gp.subpass             = 0;
+        r = vkCreateGraphicsPipelines(device, VK_NULL_HANDLE, 1, &gp, nullptr, &pipe);
+        if (r != VK_SUCCESS) { log("csmarray-fixture: vkCreateGraphicsPipelines failed (%d). fail-soft.", (int)r); goto done; }
+    }
+
+    {
+        VkCommandPoolCreateInfo cpci{};
+        cpci.sType = VK_STRUCTURE_TYPE_COMMAND_POOL_CREATE_INFO;
+        cpci.queueFamilyIndex = gfxFamily;
+        r = vkCreateCommandPool(device, &cpci, nullptr, &cpool);
+        if (r != VK_SUCCESS) { log("csmarray-fixture: vkCreateCommandPool failed (%d). fail-soft.", (int)r); goto done; }
+        VkCommandBufferAllocateInfo cai{};
+        cai.sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_ALLOCATE_INFO;
+        cai.commandPool = cpool;
+        cai.level = VK_COMMAND_BUFFER_LEVEL_PRIMARY;
+        cai.commandBufferCount = 1;
+        r = vkAllocateCommandBuffers(device, &cai, &cbuf);
+        if (r != VK_SUCCESS) { log("csmarray-fixture: vkAllocateCommandBuffers failed (%d). fail-soft.", (int)r); goto done; }
+
+        VkCommandBufferBeginInfo bi{};
+        bi.sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_BEGIN_INFO;
+        bi.flags = VK_COMMAND_BUFFER_USAGE_ONE_TIME_SUBMIT_BIT;
+        r = vkBeginCommandBuffer(cbuf, &bi);
+        if (r != VK_SUCCESS) { log("csmarray-fixture: vkBeginCommandBuffer failed (%d). fail-soft.", (int)r); goto done; }
+
+        // Upload all layers: UNDEFINED -> TRANSFER_DST -> copy (N layers) -> READ.
+        {
+            VkImageSubresourceRange range{VK_IMAGE_ASPECT_DEPTH_BIT, 0, 1, 0, (uint32_t)kLayers};
+            VkImageMemoryBarrier toDst{};
+            toDst.sType = VK_STRUCTURE_TYPE_IMAGE_MEMORY_BARRIER;
+            toDst.oldLayout = VK_IMAGE_LAYOUT_UNDEFINED;
+            toDst.newLayout = VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL;
+            toDst.srcQueueFamilyIndex = VK_QUEUE_FAMILY_IGNORED;
+            toDst.dstQueueFamilyIndex = VK_QUEUE_FAMILY_IGNORED;
+            toDst.image = depthImage;
+            toDst.subresourceRange = range;
+            toDst.srcAccessMask = 0;
+            toDst.dstAccessMask = VK_ACCESS_TRANSFER_WRITE_BIT;
+            vkCmdPipelineBarrier(cbuf, VK_PIPELINE_STAGE_TOP_OF_PIPE_BIT, VK_PIPELINE_STAGE_TRANSFER_BIT,
+                                 0, 0, nullptr, 0, nullptr, 1, &toDst);
+            // One copy region per layer (bufferOffset = layer * W*H*4).
+            VkBufferImageCopy regions[8]{};
+            for (int L = 0; L < kLayers; ++L) {
+                regions[L].bufferOffset = (VkDeviceSize)L * W * H * 4;
+                regions[L].imageSubresource = {VK_IMAGE_ASPECT_DEPTH_BIT, 0, (uint32_t)L, 1};
+                regions[L].imageExtent = {W, H, 1};
+            }
+            vkCmdCopyBufferToImage(cbuf, depthStaging, depthImage, VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL,
+                                   (uint32_t)kLayers, regions);
+            VkImageMemoryBarrier toRead{};
+            toRead.sType = VK_STRUCTURE_TYPE_IMAGE_MEMORY_BARRIER;
+            toRead.oldLayout = VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL;
+            toRead.newLayout = VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL;
+            toRead.srcQueueFamilyIndex = VK_QUEUE_FAMILY_IGNORED;
+            toRead.dstQueueFamilyIndex = VK_QUEUE_FAMILY_IGNORED;
+            toRead.image = depthImage;
+            toRead.subresourceRange = range;
+            toRead.srcAccessMask = VK_ACCESS_TRANSFER_WRITE_BIT;
+            toRead.dstAccessMask = VK_ACCESS_SHADER_READ_BIT;
+            vkCmdPipelineBarrier(cbuf, VK_PIPELINE_STAGE_TRANSFER_BIT, VK_PIPELINE_STAGE_FRAGMENT_SHADER_BIT,
+                                 0, 0, nullptr, 0, nullptr, 1, &toRead);
+        }
+
+        VkRenderPassBeginInfo rbi{};
+        rbi.sType = VK_STRUCTURE_TYPE_RENDER_PASS_BEGIN_INFO;
+        rbi.renderPass = rpass;
+        rbi.framebuffer = fb;
+        rbi.renderArea = {{0, 0}, {W, H}};
+        rbi.clearValueCount = 0;
+        vkCmdBeginRenderPass(cbuf, &rbi, VK_SUBPASS_CONTENTS_INLINE);
+        vkCmdBindPipeline(cbuf, VK_PIPELINE_BIND_POINT_GRAPHICS, pipe);
+        VkViewport vp{0.0f, 0.0f, (float)W, (float)H, 0.0f, 1.0f};
+        VkRect2D sc{{0, 0}, {W, H}};
+        vkCmdSetViewport(cbuf, 0, 1, &vp);
+        vkCmdSetScissor(cbuf, 0, 1, &sc);
+        vkCmdBindDescriptorSets(cbuf, VK_PIPELINE_BIND_POINT_GRAPHICS, playout, 0, 1, &set, 0, nullptr);
+        vkCmdDraw(cbuf, 3, 1, 0, 0);
+        vkCmdEndRenderPass(cbuf);
+
+        VkBufferImageCopy creg{};
+        creg.bufferOffset = 0;
+        creg.imageSubresource = {VK_IMAGE_ASPECT_COLOR_BIT, 0, 0, 1};
+        creg.imageExtent = {W, H, 1};
+        vkCmdCopyImageToBuffer(cbuf, colorImage, VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL,
+                               readback, 1, &creg);
+
+        r = vkEndCommandBuffer(cbuf);
+        if (r != VK_SUCCESS) { log("csmarray-fixture: vkEndCommandBuffer failed (%d). fail-soft.", (int)r); goto done; }
+
+        VkFenceCreateInfo fnci{};
+        fnci.sType = VK_STRUCTURE_TYPE_FENCE_CREATE_INFO;
+        r = vkCreateFence(device, &fnci, nullptr, &fence);
+        if (r != VK_SUCCESS) { log("csmarray-fixture: vkCreateFence failed (%d). fail-soft.", (int)r); goto done; }
+
+        VkSubmitInfo si{};
+        si.sType              = VK_STRUCTURE_TYPE_SUBMIT_INFO;
+        si.commandBufferCount = 1;
+        si.pCommandBuffers    = &cbuf;
+        r = vkQueueSubmit(queue, 1, &si, fence);
+        if (r != VK_SUCCESS) { log("csmarray-fixture: vkQueueSubmit failed (%d). fail-soft.", (int)r); goto done; }
+        r = vkWaitForFences(device, 1, &fence, VK_TRUE, 5ull * 1000 * 1000 * 1000);
+        if (r != VK_SUCCESS) { log("csmarray-fixture: vkWaitForFences failed/timeout (%d). fail-soft.", (int)r); goto done; }
+    }
+
+    {
+        void* mapped = nullptr;
+        r = vmaMapMemory(allocator, readbackAlloc, &mapped);
+        if (r != VK_SUCCESS) { log("csmarray-fixture: vmaMapMemory(readback) failed (%d). fail-soft.", (int)r); goto done; }
+        const float* gpu = static_cast<const float*>(mapped);
+        // Per-layer mismatch accounting: a texel belongs to layer idx%kLayers.
+        uint32_t badPerLayer[8] = {};
+        uint32_t nPerLayer[8] = {};
+        uint32_t bad = 0;
+        int firstBadIdx = -1;
+        float firstBadGpu = 0.0f, firstBadCpu = 0.0f;
+        for (uint32_t i = 0; i < W * H; ++i) {
+            int layer = (int)(i % (uint32_t)kLayers);
+            ++nPerLayer[layer];
+            if (gpu[i] != cpuRef[i]) {
+                ++badPerLayer[layer];
+                if (firstBadIdx < 0) { firstBadIdx = (int)i; firstBadGpu = gpu[i]; firstBadCpu = cpuRef[i]; }
+                ++bad;
+            }
+        }
+        vmaUnmapMemory(allocator, readbackAlloc);
+        for (int L = 0; L < kLayers; ++L) {
+            log("csmarray-fixture: layer %d: mismatches=%u/%u %s",
+                L, badPerLayer[L], nPerLayer[L], badPerLayer[L] ? "FAIL" : "bit-exact");
+        }
+        if (bad) {
+            log("csmarray-fixture: FIRST mismatch at idx %d: gpu=%.9g cpu=%.9g -- BIT-TIGHT oracle, not loosening.",
+                firstBadIdx, (double)firstBadGpu, (double)firstBadCpu);
+        }
+        ok = (bad == 0);
+    }
+
+    if (wantValidation) {
+        ok = ok && !g_edgefog_validation_saw_error;
+        log("csmarray-fixture: validation active; saw_error=%d", g_edgefog_validation_saw_error ? 1 : 0);
+    }
+    if (ok) log("csmarray-fixture: PASS -- %d-layer sampler2DArrayShadow compare bit-exact vs CPU ref (tolerance 0).", kLayers);
+    else    log("csmarray-fixture: FAIL -- layer mismatch or validation error (see above).");
+
+done:
+    if (fence)   vkDestroyFence(device, fence, nullptr);
+    if (cpool)   vkDestroyCommandPool(device, cpool, nullptr);
+    if (pipe)    vkDestroyPipeline(device, pipe, nullptr);
+    if (playout) vkDestroyPipelineLayout(device, playout, nullptr);
+    if (pool)    vkDestroyDescriptorPool(device, pool, nullptr);
+    if (dsl)     vkDestroyDescriptorSetLayout(device, dsl, nullptr);
+    if (fb)      vkDestroyFramebuffer(device, fb, nullptr);
+    if (rpass)   vkDestroyRenderPass(device, rpass, nullptr);
+    if (ubo)          vmaDestroyBuffer(allocator, ubo, uboAlloc);
+    if (readback)     vmaDestroyBuffer(allocator, readback, readbackAlloc);
+    if (depthStaging) vmaDestroyBuffer(allocator, depthStaging, depthStagingAlloc);
+    if (sampler) vkDestroySampler(device, sampler, nullptr);
+    if (colorView)  vkDestroyImageView(device, colorView, nullptr);
+    if (colorImage) vmaDestroyImage(allocator, colorImage, colorAlloc);
+    if (depthView)  vkDestroyImageView(device, depthView, nullptr);
+    if (depthImage) vmaDestroyImage(allocator, depthImage, depthAlloc);
+    mc2_vulkan_free_shader(device, vert);
+    mc2_vulkan_free_shader(device, frag);
+    if (allocator) vmaDestroyAllocator(allocator);
+    vkDestroyDevice(device, nullptr);
+    destroy_messenger();
+    vkDestroyInstance(instance, nullptr);
+    log("csmarray-fixture: %s -- cleaned up (device+instance destroyed).", ok ? "PASS" : "FAIL");
+    return ok;
+}
+
 bool mc2_vulkan_probe() {
     // VULKAN-VOLK-LOADER-1: open the Vulkan runtime via volk before any vk call.
     // This is the primary fail-soft gate: on an OpenGL-only machine with no
@@ -4982,9 +6274,12 @@ bool mc2_vulkan_probe_if_env() {
     bool ssaoOk = mc2_vulkan_probe_ssao_fixture(spvDir ? spvDir : "shaders/vulkan");
     // VK-REGION-HZB-1: bit-tight oracle for the HZB reduce-chain port.
     bool hzbOk = mc2_vulkan_probe_hzb_fixture(spvDir ? spvDir : "shaders/vulkan");
-    log("MC2_VULKAN_PROBE: caps=%d shaders=%d triangle=%d descriptors=%d sampled_image=%d swapchain=%d swapchain_present=%d edgefog_fixture=%d oobfog_fixture=%d ssao_fixture=%d hzb_fixture=%d",
-        ok ? 1 : 0, shOk ? 1 : 0, triOk ? 1 : 0, descOk ? 1 : 0, imgOk ? 1 : 0, swOk ? 1 : 0, presentOk ? 1 : 0, efOk ? 1 : 0, obOk ? 1 : 0, ssaoOk ? 1 : 0, hzbOk ? 1 : 0);
-    return ok && shOk && triOk && descOk && imgOk && swOk && presentOk && efOk && obOk && ssaoOk && hzbOk;
+    // VK-COMPARE-SAMPLER-FIXTURE-1: bit-tight depth-compare + CSM 2D_ARRAY oracles.
+    bool cmpOk = mc2_vulkan_probe_comparesampler_fixture(spvDir ? spvDir : "shaders/vulkan");
+    bool csmOk = mc2_vulkan_probe_csmarray_fixture(spvDir ? spvDir : "shaders/vulkan");
+    log("MC2_VULKAN_PROBE: caps=%d shaders=%d triangle=%d descriptors=%d sampled_image=%d swapchain=%d swapchain_present=%d edgefog_fixture=%d oobfog_fixture=%d ssao_fixture=%d hzb_fixture=%d comparesampler=%d csmarray=%d",
+        ok ? 1 : 0, shOk ? 1 : 0, triOk ? 1 : 0, descOk ? 1 : 0, imgOk ? 1 : 0, swOk ? 1 : 0, presentOk ? 1 : 0, efOk ? 1 : 0, obOk ? 1 : 0, ssaoOk ? 1 : 0, hzbOk ? 1 : 0, cmpOk ? 1 : 0, csmOk ? 1 : 0);
+    return ok && shOk && triOk && descOk && imgOk && swOk && presentOk && efOk && obOk && ssaoOk && hzbOk && cmpOk && csmOk;
 }
 
 #endif // MC2_VULKAN

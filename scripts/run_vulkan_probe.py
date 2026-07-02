@@ -77,7 +77,10 @@ CANONICAL_CMAKE = (
 # rotation-independent pixel classes bit-tight, wall-adjacent band enveloped).
 # VK-REGION-HZB-1 added "hzb_fixture" (BIT-TIGHT min-reduce oracle: every texel
 # of every ceil-ladder level must equal the CPU reference exactly, tolerance 0).
-SUCCESS_TOKENS = ("caps", "shaders", "triangle", "descriptors", "swapchain", "edgefog_fixture", "oobfog_fixture", "ssao_fixture", "hzb_fixture", "failSoftOK")
+# VK-COMPARE-SAMPLER-FIXTURE-1 added "comparesampler" (depth-COMPARE sampler /
+# GL sampler2DShadow analog, texel-center taps, tolerance 0) + "csmarray"
+# (sampler2DArrayShadow CSM per-layer cascade select, every layer bit-exact).
+SUCCESS_TOKENS = ("caps", "shaders", "triangle", "descriptors", "swapchain", "edgefog_fixture", "oobfog_fixture", "ssao_fixture", "hzb_fixture", "comparesampler", "csmarray", "failSoftOK")
 
 # Validation-layer error signature emitted by the skeleton's debug messenger
 # (vulkan_backend_skeleton.cpp: "[VULKAN_SKELETON] <probe>: VALIDATION: <msg>").
@@ -361,6 +364,8 @@ def main(argv: list[str]) -> int:
         "oobfog_fixture": "oobfog",
         "ssao_fixture": "ssao",
         "hzb_fixture": "hzb",
+        "comparesampler": "cmp",
+        "csmarray": "csm",
         "failSoftOK": "failsoft",
     }
     probe_summary = "/".join(f"{short_names[t]}{token_vals[t]}" for t in SUCCESS_TOKENS)
