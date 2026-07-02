@@ -9,13 +9,10 @@
 //   set=0,binding=0  depthTex        -> sampler2D (the scene depth, uploaded to a
 //                                       D32_SFLOAT image; sampling returns depth in
 //                                       .r, same as sampling a GL depth texture's .r)
-//   set=0,binding=1  FogOobParams    -> std140 UBO mirroring the GL uniforms. The
-//                                       CPU packs invViewProj as the SAME 16 floats
-//                                       the GL path uploads (fog_oob GL path builds
-//                                       invT = transpose(inverseViewProj_) then
-//                                       setMat4 GL_TRUE -> the shader receives the
-//                                       row-major inverseViewProj_ bytes; we pack
-//                                       those same bytes here and qualify row_major).
+//   set=0,binding=1  FogOobParams    -> std140 UBO mirroring the GL uniforms.
+//                                       (invViewProj packing convention is documented
+//                                       at the layout declaration below -- column_major,
+//                                       do NOT qualify row_major.)
 //
 // invViewProj depth convention: reverse-Z [0,1]. pNear uses ndc-depth 1.0 (near),
 // pFar uses ndc-depth 0.0 (far) -- identical to the GL shader. No Y-flip is applied

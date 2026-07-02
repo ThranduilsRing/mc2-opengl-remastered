@@ -2566,6 +2566,8 @@ bool mc2_vulkan_probe_edgefog_fixture(const char* spvDir) {
         int maxCh = -1;
         uint32_t beyond = 0;
         uint32_t worstBeyondX = 0, worstBeyondY = 0;
+        bool cpuSawFog = false;
+        bool gpuSawFog = false;
 
         for (uint32_t y = 0; y < H; ++y) {
             for (uint32_t x = 0; x < W; ++x) {
@@ -2576,9 +2578,12 @@ bool mc2_vulkan_probe_edgefog_fixture(const char* spvDir) {
                 float ref[4];
                 edgefog_cpu_ref(invVP, rawDepth, u, v, fogColor, halfExtent, fogStart,
                                 fogHeight, fogMax, waterElev, ref);
+                if (ref[0] > 0.0f || ref[1] > 0.0f || ref[2] > 0.0f || ref[3] > 0.0f)
+                    cpuSawFog = true;
                 const uint16_t* p = px + ((size_t)y * W + x) * 4;
                 for (int c = 0; c < 4; ++c) {
                     float g = half_to_float(p[c]);
+                    if (g > 0.0f) gpuSawFog = true;
                     double d = std::fabs((double)g - (double)ref[c]);
                     if (d > maxDiff) { maxDiff = d; maxX = x; maxY = y; maxCh = c; }
                     if (d > TOL) {
@@ -2590,23 +2595,25 @@ bool mc2_vulkan_probe_edgefog_fixture(const char* spvDir) {
         }
         vmaUnmapMemory(allocator, colorReadbackAlloc);
 
-        log("edgefog-fixture: max_abs_diff=%.6g at (x=%u,y=%u,ch=%d) tol=%.6g pixels_beyond_tol=%u",
-            maxDiff, maxX, maxY, maxCh, (double)TOL, beyond);
+        log("edgefog-fixture: max_abs_diff=%.6g at (x=%u,y=%u,ch=%d) tol=%.6g pixels_beyond_tol=%u "
+            "cpu_saw_fog=%d gpu_saw_fog=%d",
+            maxDiff, maxX, maxY, maxCh, (double)TOL, beyond, cpuSawFog ? 1 : 0, gpuSawFog ? 1 : 0);
         if (beyond) {
             log("edgefog-fixture: FIRST beyond-tol pixel at (x=%u,y=%u) -- CHARACTERIZED DIVERGENCE, not loosening tolerance.",
                 worstBeyondX, worstBeyondY);
         }
         // Also require the render actually produced fog somewhere (guards a
-        // silent all-clear/all-zero output masquerading as a "match").
-        ok = (beyond == 0);
+        // silent all-clear/all-zero output masquerading as a "match" -- which would
+        // vacuously PASS beyond==0 and silently kill the transpose oracle).
+        ok = (beyond == 0) && cpuSawFog && gpuSawFog;
     }
 
     if (wantValidation) {
         ok = ok && !g_edgefog_validation_saw_error;
         log("edgefog-fixture: validation active; saw_error=%d", g_edgefog_validation_saw_error ? 1 : 0);
     }
-    if (ok) log("edgefog-fixture: PASS -- GPU edge_fog output matches CPU reference within tolerance.");
-    else    log("edgefog-fixture: FAIL -- GPU vs CPU diverged (see max_abs_diff / beyond-tol above).");
+    if (ok) log("edgefog-fixture: PASS -- GPU edge_fog output matches CPU reference within tolerance + fog live on GPU & CPU.");
+    else    log("edgefog-fixture: FAIL -- GPU vs CPU diverged or fog not produced (see max_abs_diff / beyond-tol / saw_fog above).");
 
 done:
     if (fence)   vkDestroyFence(device, fence, nullptr);
@@ -5498,10 +5505,12 @@ done:
 //
 // Shape = the compare-sampler fixture, but the depth image is an N-layer 2D
 // ARRAY (VK_IMAGE_VIEW_TYPE_2D_ARRAY), each layer seeded with a DISTINCT known
-// pattern, and the frag does a per-texel cascade select. Bit-tight: NEAREST +
-// texel centers -> deterministic 0/1 per layer; the CPU reference mirrors the
-// shader's layer + ref derivation for every texel. Every layer must match.
-// Tolerance 0. Do not loosen.
+// pattern, and the frag does a per-texel cascade select. Bit-tight: LINEAR filter
+// but sampled at exact texel centers, so the bilinear weight collapses to 1.0 on
+// the single covered texel -> deterministic 0/1 per layer (same degenerate-LINEAR
+// rationale as the comparesampler fixture); the CPU reference mirrors the shader's
+// layer + ref derivation for every texel. Every layer must match. Tolerance 0. Do
+// not loosen.
 // ---------------------------------------------------------------------------
 bool mc2_vulkan_probe_csmarray_fixture(const char* spvDir) {
     if (!ensure_volk_initialized()) return false;
