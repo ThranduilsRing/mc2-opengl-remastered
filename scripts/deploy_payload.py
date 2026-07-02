@@ -423,6 +423,31 @@ def enumerate_payload(src_root, build_dir, exe_name, pdb_name,
         # relpath so an existing target copy gets hashed.
         items.append((launcher_src or LAUNCHER_NAME, LAUNCHER_NAME, "exe"))
 
+    # Baked Vulkan SPIR-V (VULKAN-SHADER-TOOLCHAIN-1): glslangValidator/glslc
+    # compiles shaders/vulkan/*.{vert,frag} to <build64-root>/shaders/vulkan/*.spv
+    # (CMAKE_BINARY_DIR, i.e. the build64 root, NOT the per-config build_dir --
+    # same non-standard location as mc2-launcher.exe above). The Vulkan island
+    # loaders (vulkan_*_island.cpp, vulkan_backend_skeleton.cpp) read
+    # MC2_VULKAN_SPV_DIR if set, else default to "shaders/vulkan" relative to
+    # the exe's CWD -- so deployed .spv must land at <target>/shaders/vulkan/.
+    # Without this, any deployed install hits "cannot open spv" ->
+    # vk_device_init_failed for every Vulkan region/island, even though the
+    # exe + GL shaders deployed fine (found by VK-REGION-SSAO-1 content pass).
+    # Soft: MC2_VULKAN is an opt-in CMake flag, so most builds never produce
+    # these; only enforce the lockstep hash-match discipline (kind="shader")
+    # for whichever ones ARE present in the build output.
+    vk_spv_dir = os.path.join(b64, "shaders", "vulkan") if b64 else ""
+    if vk_spv_dir and os.path.isdir(vk_spv_dir):
+        for fn in sorted(os.listdir(vk_spv_dir)):
+            if fn.endswith(".spv"):
+                p = os.path.join(vk_spv_dir, fn)
+                if os.path.isfile(p):
+                    items.append((p, f"shaders/vulkan/{fn}", "shader"))
+    elif require_build:
+        log(f"INFO: no baked Vulkan SPIR-V at {vk_spv_dir or '<no build64 root>'} "
+            "-- skipping (MC2_VULKAN not compiled in this build; Vulkan "
+            "islands will fail-soft to GL in the deployed install)")
+
     # Deploy the ENTIRE shaders/ tree recursively (every file, all extensions),
     # not an extension allowlist. Shaders #include each other across stages and
     # extensions (.comp pulls .glsl/.hglsl; .frag pulls include/*.hglsl); a
