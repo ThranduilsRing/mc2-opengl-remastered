@@ -144,6 +144,39 @@ to GL if unavailable. **This is the user's stated goal.**
 
 ---
 
+## Standing orders (user, 2026-07-03)
+- **Always keep ONE forward-recon queued** so pieces execute back-to-back with no recon stall.
+- **Build offline harnesses/tools** for parity/proof wherever possible — don't rely on the ~460s
+  game-launch golden-parity as the iteration loop. Offline oracle first (seconds), game golden-parity
+  as FINAL confirmation only. First tool: headless interop-transport parity harness (see TOOLS below).
+- **Light adversarial retro every 5-6 slices** — re-attack PAST landed slices (did they actually hold?
+  drift? regression? foundation still sound?). SLICE COUNTER: P1 done. Next retro due ~after P5/P6.
+- **TOOLING-REFRESH CHECKPOINT** — at the START of every NEW *type* of piece (first PP-boundary, first
+  depth, first VK↔VK chain, first geometry region, first present piece, ...) AND every ~3 slices: pause
+  and ask "what offline harness / proof tool / oracle would make THIS type fast + provable, and does it
+  exist yet?" If not, build the tool BEFORE grinding the slices manually. Update the Tooling Ledger below.
+  A new type usually needs a new offline oracle — build it once, reuse it across every piece of that type.
+
+## Tooling ledger (what exists / what each new TYPE needs — refresh at each checkpoint)
+| Tool | Covers | Status |
+|---|---|---|
+| `tools/vk_gl_interop_spike` (color) | G1 zero-copy color transport primitive | ✅ built, PASS |
+| `tools/vk_gl_interop_spike` (main_depth) | T0 D32 depth transport primitive | ✅ built, VIABLE |
+| `tools/vk_interop_transport_test` | offline per-piece transport-transparency parity (seconds) | ✅ built, PASS (neg-test verified) |
+| forbidden-counter asserts (in-island) | "no readback on interop path" proof | ✅ pattern established |
+| golden-parity game launch | final real-pixel confirmation (~460s) | ✅ existing, keep as FINAL only |
+| *(new type: VK↔VK chain)* | offline 2-pass-shared-image parity | ❌ build at P6 checkpoint |
+| *(new type: geometry region)* | headless geometry-region parity (props/terrain draw) | ❌ build at P8 checkpoint |
+| *(new type: present/window)* | headless swapchain/present + fallback smoke | ❌ build at P13 checkpoint |
+
+## TOOLS / offline harnesses (build these to speed + de-risk the proof loop)
+- **interop-transport parity harness** (tools/, headless, seconds) — for a given VK pass + fixed golden
+  inputs, render it BOTH ways (readback-bridged image vs interop-shared VkImageResource) and assert
+  output byte-identical + forbidden-counters==0 + validation-clean. Parameterizable per island. Proves
+  the transport is transparent for that shader WITHOUT a game launch. Run per-piece before the full
+  golden-parity. (IN FLIGHT.)
+- Reuse/extend `tools/vk_gl_interop_spike` (G1 color + T0 depth) as the primitive substrate.
+
 ## Standing rules for every piece
 - Default-OFF byte-identical (cmp the gate-OFF exe); register+allowlist+document the gate.
 - Prove with the oracle bookmarks, not new fixtures; forbidden-counter hard-asserts for "no readback";
