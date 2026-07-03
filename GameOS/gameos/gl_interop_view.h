@@ -21,9 +21,15 @@
 
 struct GlInteropView {
     GLuint glTex = 0, glMemObj = 0;
-    // doneSem[] imported into GL: one GL semaphore per VkImageResource slot. GL waits
-    // the slot VK signalled (parity threaded through signal/wait below).
+    // doneSem[] imported into GL: one GL semaphore per VkImageResource slot for the
+    // GL->VK direction (GL signals it via glInteropSignalToVk; the VK submit waits it).
     GLuint glDoneSem[2] = {0, 0};
+    // P1.5: the VK->GL semaphores (vkToGlSem[]) imported into GL. The VK submit signals
+    // them; GL WAITS them (glInteropWaitFromVkGpu) -- a GPU hand-off replacing the CPU
+    // fence wait. vkToGlImported=false if the import failed -> caller falls back to the
+    // fence-wait path (fail-soft; do NOT crash).
+    GLuint glVkToGlSem[2] = {0, 0};
+    bool   vkToGlImported = false;
     GLenum glInternalFormat = 0;
     const VkImageResource* src = nullptr;
 };
@@ -43,6 +49,11 @@ void glInteropSignalToVk(const GlInteropView& v, GLenum glDstLayout, uint32_t pa
 
 // GL waits for the VK producer before touching the tex again (spike 572-574).
 // glSrcLayout = the GL_LAYOUT_*_EXT the VK producer left the image in.
+//
+// P1.5: this now waits the VK->GL semaphore (glVkToGlSem[]) that the VK submit SIGNALS
+// -- a GPU-side wait (glWaitSemaphoreEXT), NOT a CPU fence wait. Requires
+// v.vkToGlImported (import succeeded). If the VK->GL semaphore was NOT imported the
+// caller must fall back to the CPU fence-wait path; this function then does nothing.
 void glInteropWaitFromVk(const GlInteropView& v, GLenum glSrcLayout, uint32_t parity);
 
 // -----------------------------------------------------------------------------

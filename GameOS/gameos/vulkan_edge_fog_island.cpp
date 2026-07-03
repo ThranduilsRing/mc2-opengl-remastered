@@ -75,6 +75,9 @@ struct IslandHealth {
     // VK-INTEROP-BRIDGE-1 (T3/T4): zero-copy color interop seam.
     unsigned long edgeFogUsedInterop = 0;  // frames composited via the zero-copy color path
     int  interopActive          = 0;   // useInterop resolved true this run
+    // P1.5: 1 when the VK->GL semaphore back-channel is active (GPU wait on the color
+    // hand-off); 0 when we fell back to the CPU fence wait (import failed).
+    int  vk2glSemActive         = 0;
 };
 IslandHealth g_health;
 
@@ -339,7 +342,15 @@ struct gosPostProcess::VulkanEdgeFogIsland {
     VkShaderModule    frag   = VK_NULL_HANDLE;
 
     VkCommandPool     cpool  = VK_NULL_HANDLE;
-    VkCommandBuffer   cbuf   = VK_NULL_HANDLE;
+    VkCommandBuffer   cbuf   = VK_NULL_HANDLE;   // readback path: 1 buf, guarded by inline fence wait
+    // P1.5: the interop path no longer CPU-waits inline, so its command buffer must be
+    // DOUBLE-BUFFERED per parity slot. vkImageResourceBeginFrame waits frameFence[parity]
+    // (retiring the PRIOR submit on that slot, i.e. frame N-2) BEFORE we reset+record
+    // cbufInterop[parity] -- so the reset never races a still-pending submit. This is the
+    // "fence as cmd-buf-reuse guard, waited at BeginFrame N+2" the plan specified; it only
+    // works if the cbuf is per-slot (a single shared cbuf would be reset while frame N-1's
+    // submit is still pending).
+    VkCommandBuffer   cbufInterop[2] = {VK_NULL_HANDLE, VK_NULL_HANDLE};
     VkFence           fence  = VK_NULL_HANDLE;
 
     // CPU scratch for the GL<->staging bridge.
@@ -634,8 +645,13 @@ bool build_island(gosPostProcess::VulkanEdgeFogIsland* s, int W, int H) {
         if (ok) {
             s->useInterop = true;
             g_health.interopActive = 1;
+            // P1.5: is the VK->GL GPU semaphore hand-off available, or do we keep the
+            // CPU fence wait? glInteropViewCreate sets vkToGlImported fail-soft.
+            g_health.vk2glSemActive = s->colorGlView.vkToGlImported ? 1 : 0;
             vlog("[VK_INTEROP] color interop seam ACTIVE -- zero-copy exportable RGBA16F "
-                 "attachment imported into GL (readback color path disabled).");
+                 "attachment imported into GL (readback color path disabled). vk2gl_sem=%d "
+                 "(%s VK->GL hand-off).", g_health.vk2glSemActive,
+                 g_health.vk2glSemActive ? "GPU-semaphore" : "CPU-fence-fallback");
         } else {
             if (s->interopFbo) { glDeleteFramebuffers(1, &s->interopFbo); s->interopFbo = 0; }
             glInteropViewDestroy(&s->colorGlView);
@@ -748,8 +764,17 @@ bool build_island(gosPostProcess::VulkanEdgeFogIsland* s, int W, int H) {
         // semaphore carries the hand-off (no UNDEFINED first-use barrier). finalLayout
         // becomes SHADER_READ_ONLY_OPTIMAL -- the layout GL re-consumes it in via
         // glInteropWaitFromVk(GL_LAYOUT_SHADER_READ_ONLY_EXT). No vkCmdCopyImageToBuffer.
+        // P1.5: on the interop path keep finalLayout == initialLayout ==
+        // COLOR_ATTACHMENT_OPTIMAL. Once the inline CPU fence wait is gone, a SHADER_READ_ONLY
+        // finalLayout means EndRenderPass performs an image-layout-transition WRITE every
+        // frame; sync-validation then flags a cross-submit R-A-W between frame N's transition
+        // WRITE and frame N+1's color LOAD READ (it cannot follow the GL semaphore round-trip
+        // that actually serializes them). A layout-STABLE pass (no transition, LOAD+STORE in
+        // COLOR_ATTACHMENT) removes that transition WRITE entirely -> sync-val clean. GL
+        // re-consumes the image in GL_LAYOUT_COLOR_ATTACHMENT_EXT (see glInteropWaitFromVk
+        // call), which is a valid layout for GL to then sample/copy from.
         att.initialLayout = VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL;
-        att.finalLayout   = s->useInterop ? VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL
+        att.finalLayout   = s->useInterop ? VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL
                                           : VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL;
         VkAttachmentReference ref{0, VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL};
         VkSubpassDescription sub{};
@@ -761,17 +786,37 @@ bool build_island(gosPostProcess::VulkanEdgeFogIsland* s, int W, int H) {
         // read (copy). Interop: transition to SHADER_READ_ONLY before the semaphore that
         // hands the image to GL is signalled -- dst = BOTTOM_OF_PIPE so the whole
         // color-write + layout transition completes before the cross-API signal.
-        VkSubpassDependency dep{};
-        dep.srcSubpass = 0;
-        dep.dstSubpass = VK_SUBPASS_EXTERNAL;
-        dep.srcStageMask = VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT;
-        dep.srcAccessMask = VK_ACCESS_COLOR_ATTACHMENT_WRITE_BIT;
+        VkSubpassDependency deps[2]{};
+        deps[0].srcSubpass = 0;
+        deps[0].dstSubpass = VK_SUBPASS_EXTERNAL;
+        deps[0].srcStageMask = VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT;
+        deps[0].srcAccessMask = VK_ACCESS_COLOR_ATTACHMENT_WRITE_BIT;
         if (s->useInterop) {
-            dep.dstStageMask  = VK_PIPELINE_STAGE_BOTTOM_OF_PIPE_BIT;
-            dep.dstAccessMask = 0;
+            deps[0].dstStageMask  = VK_PIPELINE_STAGE_BOTTOM_OF_PIPE_BIT;
+            deps[0].dstAccessMask = 0;
         } else {
-            dep.dstStageMask  = VK_PIPELINE_STAGE_TRANSFER_BIT;
-            dep.dstAccessMask = VK_ACCESS_TRANSFER_READ_BIT;
+            deps[0].dstStageMask  = VK_PIPELINE_STAGE_TRANSFER_BIT;
+            deps[0].dstAccessMask = VK_ACCESS_TRANSFER_READ_BIT;
+        }
+        // P1.5: INCOMING external->subpass dependency. Once the inline CPU fence wait is
+        // removed, sync-validation sees consecutive per-parity submits touching the SAME
+        // shared color image unserialized: frame N+1's BeginRenderPass color LOAD (a READ)
+        // races frame N's EndRenderPass finalLayout WRITE (->SHADER_READ_ONLY) -> R-A-W.
+        // Functionally the cross-API semaphores serialize it (GL waits vk2gl then re-signals
+        // glToVk before the next submit waits it), but VK sync-val can't see across the GL
+        // boundary. This dependency makes the ordering explicit inside the render pass: the
+        // color LOAD (attachment read+write) waits on the prior color-output stage. Interop
+        // path only (the readback path CPU-waits its own fence, so it needs no such edge).
+        uint32_t depCount = 1;
+        if (s->useInterop) {
+            deps[1].srcSubpass = VK_SUBPASS_EXTERNAL;
+            deps[1].dstSubpass = 0;
+            deps[1].srcStageMask  = VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT;
+            deps[1].srcAccessMask = VK_ACCESS_COLOR_ATTACHMENT_WRITE_BIT;
+            deps[1].dstStageMask  = VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT;
+            deps[1].dstAccessMask = VK_ACCESS_COLOR_ATTACHMENT_READ_BIT |
+                                    VK_ACCESS_COLOR_ATTACHMENT_WRITE_BIT;
+            depCount = 2;
         }
         VkRenderPassCreateInfo rpci{};
         rpci.sType = VK_STRUCTURE_TYPE_RENDER_PASS_CREATE_INFO;
@@ -779,8 +824,8 @@ bool build_island(gosPostProcess::VulkanEdgeFogIsland* s, int W, int H) {
         rpci.pAttachments = &att;
         rpci.subpassCount = 1;
         rpci.pSubpasses = &sub;
-        rpci.dependencyCount = 1;
-        rpci.pDependencies = &dep;
+        rpci.dependencyCount = depCount;
+        rpci.pDependencies = deps;
         r = vkCreateRenderPass(s->device, &rpci, nullptr, &s->rpass);
         if (r != VK_SUCCESS) { vlog("vkCreateRenderPass failed (%d).", (int)r); return false; }
 
@@ -934,6 +979,11 @@ bool build_island(gosPostProcess::VulkanEdgeFogIsland* s, int W, int H) {
         cai.commandBufferCount = 1;
         r = vkAllocateCommandBuffers(s->device, &cai, &s->cbuf);
         if (r != VK_SUCCESS) { vlog("vkAllocateCommandBuffers failed (%d).", (int)r); return false; }
+        // P1.5: double-buffered interop command buffers (per parity slot).
+        VkCommandBufferAllocateInfo cai2 = cai;
+        cai2.commandBufferCount = 2;
+        r = vkAllocateCommandBuffers(s->device, &cai2, s->cbufInterop);
+        if (r != VK_SUCCESS) { vlog("vkAllocateCommandBuffers(interop x2) failed (%d).", (int)r); return false; }
         VkFenceCreateInfo fnci{};
         fnci.sType = VK_STRUCTURE_TYPE_FENCE_CREATE_INFO;
         r = vkCreateFence(s->device, &fnci, nullptr, &s->fence);
@@ -1192,16 +1242,16 @@ void gosPostProcess::runEdgeFogVulkan()
 // runEdgeFogVulkanInterop(): T4 zero-copy COLOR per-frame path. NO color-side
 // readback/copy (blocker #5). Depth still round-trips (blocker #3, color-only slice).
 //
-// Sync (blocker #4): VkImageResource holds ONE binary semaphore per parity slot
-// (doneSem[parity], "producer->consumer"). That is enough for the GL->VK hand-off
-// (GL signals it, the VK submit waits it). A binary semaphore cannot be both waited
-// AND signalled by the same submit, so the VK->GL hand-off is carried by the slot's
-// per-frame FENCE (frameFence[parity], returned by vkImageResourceBeginFrame): the
-// island CPU-waits that fence before GL re-samples the shared image. This is a FENCE
-// wait, NOT a readback -- no forbidden-counter fires -- and it is honest with the
-// slice's already-accepted CPU sync point (depth round-trips too). A second
-// VK->GL exportable semaphore is the follow-on once T1/T2 grow a doneSem-back slot;
-// this slice does not modify those TUs. All GL *EXT calls are on the frame-loop thread.
+// Sync (blocker #4 + P1.5): VkImageResource now holds TWO binary semaphores per parity
+// slot. doneSem[parity] = GL->VK (GL signals, the VK submit waits). vkToGlSem[parity] =
+// VK->GL (the VK submit SIGNALS it, GL waits it via glWaitSemaphoreEXT). Because these
+// are two distinct semaphores, one submit both waits doneSem and signals vkToGlSem --
+// so the VK->GL hand-off is a GPU semaphore wait, NOT a CPU fence wait. The per-frame
+// FENCE is now ONLY the cmd-buf-reuse / slot-recycle guard: it is waited at the NEXT
+// BeginFrame on this slot (frame N+2), never inline here. Net: NO inline CPU stall on
+// the color path. FAIL-SOFT: if the VK->GL semaphore did not import (vkToGlImported
+// false) the path falls back to the inline CPU fence wait (correct, just stalls). All
+// GL *EXT calls are on the frame-loop thread.
 // ---------------------------------------------------------------------------
 void gosPostProcess::runEdgeFogVulkanInterop()
 {
@@ -1247,6 +1297,10 @@ void gosPostProcess::runEdgeFogVulkanInterop()
 
     // ---- 3) Begin the frame's parity slot; hand the shared color GL->VK. ----
     VkFrameSync fs = vkImageResourceBeginFrame(&s->colorResource);
+    // P1.5: use the parity slot's OWN command buffer. BeginFrame just waited
+    // frameFence[fs.parity], which retired the prior submit on THIS slot -> cb is safe to
+    // reset even though no inline CPU wait happens after submit.
+    VkCommandBuffer cb = s->cbufInterop[fs.parity & 1u];
     // GL releases the shared image in COLOR_ATTACHMENT layout == render-pass initialLayout.
     glInteropSignalToVk(s->colorGlView, GL_LAYOUT_COLOR_ATTACHMENT_EXT, fs.parity);
 
@@ -1272,11 +1326,11 @@ void gosPostProcess::runEdgeFogVulkanInterop()
 
     // ---- 5) Record: depth upload + fog render pass. NO color copy (blocker #5). ----
     const clk::time_point tRender0 = clk::now();
-    vkResetCommandBuffer(s->cbuf, 0);
+    vkResetCommandBuffer(cb, 0);
     VkCommandBufferBeginInfo bi{};
     bi.sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_BEGIN_INFO;
     bi.flags = VK_COMMAND_BUFFER_USAGE_ONE_TIME_SUBMIT_BIT;
-    if (vkBeginCommandBuffer(s->cbuf, &bi) != VK_SUCCESS) return;
+    if (vkBeginCommandBuffer(cb, &bi) != VK_SUCCESS) return;
 
     auto barrier = [&](VkImage img, VkImageAspectFlags aspect, VkImageLayout oldL, VkImageLayout newL,
                        VkAccessFlags srcA, VkAccessFlags dstA, VkPipelineStageFlags srcS, VkPipelineStageFlags dstS) {
@@ -1288,7 +1342,7 @@ void gosPostProcess::runEdgeFogVulkanInterop()
         b.image = img;
         b.subresourceRange = {aspect, 0, 1, 0, 1};
         b.srcAccessMask = srcA; b.dstAccessMask = dstA;
-        vkCmdPipelineBarrier(s->cbuf, srcS, dstS, 0, 0, nullptr, 0, nullptr, 1, &b);
+        vkCmdPipelineBarrier(cb, srcS, dstS, 0, 0, nullptr, 0, nullptr, 1, &b);
     };
 
     VkBufferImageCopy depthRegion{};
@@ -1298,32 +1352,36 @@ void gosPostProcess::runEdgeFogVulkanInterop()
     // depth: UNDEFINED -> TRANSFER_DST, copy, -> SHADER_READ_ONLY (EXPECTED depth copy).
     barrier(s->depthImage, VK_IMAGE_ASPECT_DEPTH_BIT, VK_IMAGE_LAYOUT_UNDEFINED, VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL,
             0, VK_ACCESS_TRANSFER_WRITE_BIT, VK_PIPELINE_STAGE_TOP_OF_PIPE_BIT, VK_PIPELINE_STAGE_TRANSFER_BIT);
-    vkCmdCopyBufferToImage(s->cbuf, s->depthStaging, s->depthImage, VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL, 1, &depthRegion);
+    vkCmdCopyBufferToImage(cb, s->depthStaging, s->depthImage, VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL, 1, &depthRegion);
     ++g_depthCopyBufferToImage; // depth-side (EXPECTED; NOT a color op)
     barrier(s->depthImage, VK_IMAGE_ASPECT_DEPTH_BIT, VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL, VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL,
             VK_ACCESS_TRANSFER_WRITE_BIT, VK_ACCESS_SHADER_READ_BIT, VK_PIPELINE_STAGE_TRANSFER_BIT, VK_PIPELINE_STAGE_FRAGMENT_SHADER_BIT);
 
-    // NO color barrier + NO vkCmdCopyBufferToImage for color: the shared image already
-    // holds the scene color (GL wrote + handed it over in COLOR_ATTACHMENT layout, which
-    // is the render pass initialLayout). The cross-API semaphore (waited by this submit)
-    // makes GL's writes visible; the render pass LOADs the color and blends fog OVER it.
+    // NO vkCmdCopyBufferToImage for color: the shared image already holds the scene color
+    // (GL wrote + handed it over in COLOR_ATTACHMENT layout, the render pass initialLayout).
+    // The render pass LOADs the color and blends fog OVER it.
     VkRenderPassBeginInfo rbi{};
     rbi.sType = VK_STRUCTURE_TYPE_RENDER_PASS_BEGIN_INFO;
     rbi.renderPass = s->rpass;
     rbi.framebuffer = s->fb;
     rbi.renderArea = {{0, 0}, {(uint32_t)W, (uint32_t)H}};
     rbi.clearValueCount = 0; // LOAD, no clear
-    vkCmdBeginRenderPass(s->cbuf, &rbi, VK_SUBPASS_CONTENTS_INLINE);
-    vkCmdBindPipeline(s->cbuf, VK_PIPELINE_BIND_POINT_GRAPHICS, s->pipe);
-    vkCmdBindDescriptorSets(s->cbuf, VK_PIPELINE_BIND_POINT_GRAPHICS, s->playout, 0, 1, &s->set, 0, nullptr);
-    vkCmdDraw(s->cbuf, 3, 1, 0, 0);
-    vkCmdEndRenderPass(s->cbuf);
+    vkCmdBeginRenderPass(cb, &rbi, VK_SUBPASS_CONTENTS_INLINE);
+    vkCmdBindPipeline(cb, VK_PIPELINE_BIND_POINT_GRAPHICS, s->pipe);
+    vkCmdBindDescriptorSets(cb, VK_PIPELINE_BIND_POINT_GRAPHICS, s->playout, 0, 1, &s->set, 0, nullptr);
+    vkCmdDraw(cb, 3, 1, 0, 0);
+    vkCmdEndRenderPass(cb);
     // render pass finalLayout = SHADER_READ_ONLY_OPTIMAL (the layout GL re-consumes it in).
     // NO vkCmdCopyImageToBuffer.
 
-    if (vkEndCommandBuffer(s->cbuf) != VK_SUCCESS) return;
+    if (vkEndCommandBuffer(cb) != VK_SUCCESS) return;
 
-    // ---- 6) Submit: WAIT the GL->VK semaphore (doneSem[parity]); signal the FENCE. ----
+    // ---- 6) Submit: WAIT the GL->VK semaphore (doneSem[parity]); SIGNAL the VK->GL
+    // semaphore (vkToGlSem[parity], P1.5) AND the FENCE (slot-recycle guard). ----
+    // The fence is signalled for cmd-buf-reuse / slot-recycle ONLY; it is waited at the
+    // NEXT vkImageResourceBeginFrame on this slot (frame N+2), never inline here when the
+    // GPU semaphore path is active. That is what removes the color-path CPU stall.
+    const bool useGpuVk2Gl = s->colorGlView.vkToGlImported && (fs.vk2gl != VK_NULL_HANDLE);
     VkPipelineStageFlags waitStage = VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT;
     VkSubmitInfo si{};
     si.sType = VK_STRUCTURE_TYPE_SUBMIT_INFO;
@@ -1331,26 +1389,35 @@ void gosPostProcess::runEdgeFogVulkanInterop()
     si.pWaitSemaphores    = &fs.signal;   // GL signalled this via glInteropSignalToVk
     si.pWaitDstStageMask  = &waitStage;
     si.commandBufferCount = 1;
-    si.pCommandBuffers    = &s->cbuf;
+    si.pCommandBuffers    = &cb;   // P1.5: this parity slot's OWN double-buffered cbuf
+    if (useGpuVk2Gl) {
+        si.signalSemaphoreCount = 1;
+        si.pSignalSemaphores    = &fs.vk2gl;  // VK->GL GPU hand-off (P1.5)
+    }
     if (vkQueueSubmit(s->queue, 1, &si, fs.fence) != VK_SUCCESS) {
         vlog("[VK_INTEROP] vkQueueSubmit failed -- disabling island, GL fallback next frame.");
         setFallback("interop_submit_failed");
         s->disabled = true;
         return;
     }
-    // VK->GL hand-off via the per-frame fence (see function header for why a fence and
-    // not a second semaphore). CPU-wait ensures the fog write + SHADER_READ_ONLY
-    // transition retired before GL re-samples the shared image.
-    if (vkWaitForFences(s->device, 1, &fs.fence, VK_TRUE, 5ull * 1000 * 1000 * 1000) != VK_SUCCESS) {
-        vlog("[VK_INTEROP] fence wait failed/timeout -- disabling island, GL fallback next frame.");
-        setFallback("interop_fence_timeout");
-        s->disabled = true;
-        return;
+    if (useGpuVk2Gl) {
+        // ---- 7a) GPU hand-off: GL waits the VK->GL semaphore (glWaitSemaphoreEXT). No
+        // inline CPU fence wait -> the color-path CPU stall is GONE. The fog write +
+        // SHADER_READ_ONLY transition are made visible to GL by this GPU semaphore. The
+        // fence still recycles the slot two frames later (blocker #4 lifetime guard).
+        // VK left the image in COLOR_ATTACHMENT_OPTIMAL (layout-stable pass, P1.5 sync-val
+        // fix), so GL re-acquires it in GL_LAYOUT_COLOR_ATTACHMENT_EXT.
+        glInteropWaitFromVk(s->colorGlView, GL_LAYOUT_COLOR_ATTACHMENT_EXT, fs.parity);
+    } else {
+        // ---- 7b) Fail-soft fallback (VK->GL sem not imported): CPU fence wait, as before.
+        if (vkWaitForFences(s->device, 1, &fs.fence, VK_TRUE, 5ull * 1000 * 1000 * 1000) != VK_SUCCESS) {
+            vlog("[VK_INTEROP] fence wait failed/timeout -- disabling island, GL fallback next frame.");
+            setFallback("interop_fence_timeout");
+            s->disabled = true;
+            return;
+        }
     }
     g_health.renderUs = usSince(tRender0);
-
-    // ---- 7) GL reacquires the shared image (VK left it in SHADER_READ_ONLY). ----
-    glInteropWaitFromVk(s->colorGlView, GL_LAYOUT_SHADER_READ_ONLY_EXT, fs.parity);
 
     // ---- 8) Composite: the fogged shared color is the result; put it where the
     // downstream GL composite reads it (sceneColorTex_). GL->GL image copy, no readback.
@@ -1402,10 +1469,10 @@ void gosPostProcess::destroyVulkanEdgeFogIsland()
     // counters. The proof harness asserts the four forbidden_* ==0 on the interop path;
     // edgefog_used_interop>0 confirms the zero-copy color path actually ran. Depth-side
     // copies are surfaced separately and are EXPECTED (color-only slice).
-    vlog("[VK_EDGE_FOG] interop_active=%d edgefog_used_interop=%lu "
+    vlog("[VK_EDGE_FOG] interop_active=%d vk2gl_sem=%d edgefog_used_interop=%lu "
          "forbidden_copyBufToImg=%lu forbidden_copyImgToBuf=%lu forbidden_getTexImage=%lu "
          "forbidden_texSubImage=%lu depth_copyBufToImg=%lu depth_getTexImage=%lu",
-         g_health.interopActive, g_health.edgeFogUsedInterop,
+         g_health.interopActive, g_health.vk2glSemActive, g_health.edgeFogUsedInterop,
          g_interopForbidden.vkCmdCopyBufferToImage, g_interopForbidden.vkCmdCopyImageToBuffer,
          g_interopForbidden.glGetTexImage, g_interopForbidden.glTexSubImage2D,
          g_depthCopyBufferToImage, g_depthGetTexImage);

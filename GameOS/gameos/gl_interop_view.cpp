@@ -121,15 +121,38 @@ bool glInteropViewCreate(GlInteropView* v, const VkImageResource* src,
     glTextureStorageMem2DEXT(v->glTex, 1, glInternalFormat, src->w, src->h, v->glMemObj, 0);
     if (!glOk("glTextureStorageMem2DEXT")) { glInteropViewDestroy(v); return false; }
 
-    // ---- import both doneSem[] slots into GL (spike 500-505) ----
+    // ---- import both GL->VK doneSem[] slots into GL (spike 500-505) ----
     for (int i = 0; i < 2; ++i) {
         glGenSemaphoresEXT(1, &v->glDoneSem[i]);
         glImportSemaphoreWin32HandleEXT(v->glDoneSem[i], GL_HANDLE_TYPE_OPAQUE_WIN32_EXT,
                                         src->doneSemWin32[i]);
-        if (!glOk("glImportSemaphoreWin32HandleEXT")) { glInteropViewDestroy(v); return false; }
+        if (!glOk("glImportSemaphoreWin32HandleEXT(glToVk)")) { glInteropViewDestroy(v); return false; }
     }
 
-    glog("imported memory+texture+2 semaphores (zero-copy backing established).");
+    // ---- P1.5: import both VK->GL vkToGlSem[] slots into GL (GPU hand-off channel) ----
+    // Fail-SOFT: if either import errors we tear down just the VK->GL GL semaphores and
+    // leave vkToGlImported=false; the caller then keeps the CPU fence-wait path. The
+    // GL->VK direction above is unaffected, so the interop seam still works (just with
+    // the original CPU stall) rather than crashing.
+    bool vk2gl_ok = true;
+    for (int i = 0; i < 2 && vk2gl_ok; ++i) {
+        if (!src->vkToGlSemWin32[i]) { vk2gl_ok = false; break; }
+        glGenSemaphoresEXT(1, &v->glVkToGlSem[i]);
+        glImportSemaphoreWin32HandleEXT(v->glVkToGlSem[i], GL_HANDLE_TYPE_OPAQUE_WIN32_EXT,
+                                        src->vkToGlSemWin32[i]);
+        if (!glOk("glImportSemaphoreWin32HandleEXT(vkToGl)")) vk2gl_ok = false;
+    }
+    if (vk2gl_ok) {
+        v->vkToGlImported = true;
+        glog("imported memory+texture+2 GL->VK sems +2 VK->GL sems "
+             "(zero-copy backing + GPU VK->GL hand-off established).");
+    } else {
+        for (int i = 0; i < 2; ++i)
+            if (v->glVkToGlSem[i]) { glDeleteSemaphoresEXT(1, &v->glVkToGlSem[i]); v->glVkToGlSem[i] = 0; }
+        v->vkToGlImported = false;
+        glog("VK->GL semaphore import FAILED -- falling back to CPU fence wait on the "
+             "color hand-off (interop seam still active, just not zero-CPU-stall).");
+    }
     return true;
 }
 
@@ -137,8 +160,10 @@ void glInteropViewDestroy(GlInteropView* v) {
     if (!v) return;
     if (v->glTex)    glDeleteTextures(1, &v->glTex);
     if (v->glMemObj) glDeleteMemoryObjectsEXT(1, &v->glMemObj);
-    for (int i = 0; i < 2; ++i)
-        if (v->glDoneSem[i]) glDeleteSemaphoresEXT(1, &v->glDoneSem[i]);
+    for (int i = 0; i < 2; ++i) {
+        if (v->glDoneSem[i])   glDeleteSemaphoresEXT(1, &v->glDoneSem[i]);
+        if (v->glVkToGlSem[i]) glDeleteSemaphoresEXT(1, &v->glVkToGlSem[i]);
+    }
     *v = GlInteropView{};
 }
 
@@ -150,10 +175,14 @@ void glInteropSignalToVk(const GlInteropView& v, GLenum glDstLayout, uint32_t pa
     glOk("glInteropSignalToVk");
 }
 
-// GL waits the slot's semaphore before touching the tex again (spike 572-574).
+// GL waits the slot's VK->GL semaphore before touching the tex again (spike 572-574).
+// P1.5: waits glVkToGlSem[] (the sem the VK submit SIGNALS) -- a GPU-side wait, so no
+// CPU fence stall. Requires vkToGlImported; the caller must NOT invoke this otherwise
+// (it falls back to the CPU fence wait). Distinct from glDoneSem[] which is the GL->VK
+// hand-off (GL signals it, VK waits it) -- waiting that here would be a no-op / wrong.
 void glInteropWaitFromVk(const GlInteropView& v, GLenum glSrcLayout, uint32_t parity) {
     GLuint tex = v.glTex;
-    glWaitSemaphoreEXT(v.glDoneSem[parity & 1u], 0, nullptr, 1, &tex, &glSrcLayout);
+    glWaitSemaphoreEXT(v.glVkToGlSem[parity & 1u], 0, nullptr, 1, &tex, &glSrcLayout);
     glOk("glInteropWaitFromVk");
 }
 
@@ -195,11 +224,20 @@ bool runSelfTestBody(VkDevice device, VkPhysicalDevice phys) {
     GlInteropView view{};
     bool ok = glInteropViewCreate(&view, &res, phys, GL_RGBA16F);
     if (ok) {
-        // One signal/wait round with a dummy layout (no real work between; this only
-        // exercises the GL semaphore import + the parity plumbing).
+        // Confirm the P1.5 VK->GL semaphore back-channel imported (create/import/destroy
+        // exercise). We do NOT issue the GL VK->GL wait here: glVkToGlSem is signalled by
+        // a VK submit in the live path, and there is no queue/cmdbuf in this self-check --
+        // waiting an un-signalled semaphore on the GL server would deadlock. The live fog
+        // island path exercises signal+wait end-to-end (gate-ON sanity, proof step 3).
+        if (!view.vkToGlImported) {
+            glog("selftest: VK->GL semaphore back-channel did NOT import (P1.5).");
+            ok = false;
+        }
+        // One GL->VK signal with a dummy layout: exercises the GL->VK semaphore import +
+        // the parity plumbing (this direction has a real signaller -- GL itself).
         VkFrameSync fs = vkImageResourceBeginFrame(&res);
+        (void)fs.vk2gl;  // present iff exportable; used by the live submit, not here.
         glInteropSignalToVk(view, GL_LAYOUT_COLOR_ATTACHMENT_EXT, fs.parity);
-        glInteropWaitFromVk(view, GL_LAYOUT_SHADER_READ_ONLY_EXT, fs.parity);
         glFinish();  // let GL settle so any semaphore error surfaces before teardown
     } else {
         glog("selftest: glInteropViewCreate FAILED (see prior log for LUID/ext cause).");
