@@ -88,6 +88,12 @@ set(SOURCES ${SOURCES}
 # When OFF the TU is not added -> no Vulkan headers/loader pulled in.
 if(MC2_VULKAN)
     list(APPEND SOURCES vulkan_backend_skeleton.cpp)
+    # VK-REGION-SHADOW-1: depth-only instanced shadow-caster pipeline builder.
+    # TU is #ifdef MC2_VULKAN (same gate as the skeleton, which calls its
+    # mc2_vulkan_build/destroy_shadow_depth_pipeline symbols from the
+    # shadowdepth fixture). Registration omitted in commit 95095a94 -> link
+    # break; restored here (T-minus-1 build unblock).
+    list(APPEND SOURCES vulkan_shadow_island.cpp)
     # VK-BOOTSTRAP-INTEGRATE-1: swapchain probe TU + vendored vk-bootstrap impl.
     list(APPEND SOURCES vulkan_swapchain_probe.cpp)
     # VULKAN-SWAPCHAIN-PRESENT-1: Layer-5 swapchain PRESENT path (own window +
@@ -129,6 +135,13 @@ if(MC2_VULKAN)
         # (vkHzbIsland_ + method decls) added under the same macro, already
         # propagated to all consumers by the root ODR-harden block.
         list(APPEND SOURCES vulkan_hzb_island.cpp)
+        # VK-INTEROP-BRIDGE-1 / T1+T2: the composable zero-copy GL<->VK interop SEAM.
+        # vk_image_resource = GL-free raw-allocated exportable VkImage + double-buffered
+        # sync (survives the future VK<->VK chain slice); gl_interop_view = the GL-boundary
+        # adapter (imports into GL, LUID match, signal/wait). Both #ifdef MC2_VULKAN_ISLAND.
+        # No new link libs (volk + GLEW already linked into gameos).
+        list(APPEND SOURCES vk_image_resource.cpp)
+        list(APPEND SOURCES gl_interop_view.cpp)
     endif()
 endif()
 

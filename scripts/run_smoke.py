@@ -1562,6 +1562,18 @@ def main():
                             # gate-ON island smoke silently runs the GL path.
                             "MC2_VULKAN_EDGE_FOG_ISLAND",
                             "MC2_VULKAN_SPV_DIR",
+                            # VK-INTEROP-BRIDGE-1: zero-copy GL<->VK image interop
+                            # seam. MC2_VK_INTEROP_BRIDGE = the per-frame color
+                            # interop path (default OFF, fail-soft to readback);
+                            # MC2_VK_INTEROP_SELFTEST = the standalone T1/T2
+                            # create/import/signal/wait self-check at island init;
+                            # MC2_OOB_FOG isolates the byte-exact edge-fog oracle
+                            # from the non-byte-exact fog_oob pass. Without these in
+                            # the allowlist Popen drops them and the gate-ON interop
+                            # smoke silently runs the readback path (gate inert).
+                            "MC2_VK_INTEROP_BRIDGE",
+                            "MC2_VK_INTEROP_SELFTEST",
+                            "MC2_OOB_FOG",
                             # VULKAN-ISLAND-FALLBACK-PROOF-1: debug hook that forces
                             # ensure-init to fail with a chosen fallback_reason so the
                             # GL fail-soft path can be exercised deterministically

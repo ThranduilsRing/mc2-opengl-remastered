@@ -432,6 +432,10 @@ public:
     // destroyVulkanEdgeFogIsland(): torn down from destroy().
     bool  vulkanEdgeFogIslandEnabled();
     void  runEdgeFogVulkan();
+    // VK-INTEROP-BRIDGE-1 (T4): the zero-copy color interop per-frame path. Dispatched
+    // from runEdgeFogVulkan() when the interop seam is active (MC2_VK_INTEROP_BRIDGE + a
+    // successfully imported shared color image). Defined in vulkan_edge_fog_island.cpp.
+    void  runEdgeFogVulkanInterop();
     void  destroyVulkanEdgeFogIsland();
     struct VulkanEdgeFogIsland;   // defined in vulkan_edge_fog_island.cpp
     VulkanEdgeFogIsland* vkFogIsland_ = nullptr;

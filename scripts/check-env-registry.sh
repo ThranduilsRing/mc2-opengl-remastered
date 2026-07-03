@@ -299,6 +299,7 @@ ALLOWLIST=(
     MC2_VISUAL_DIFF_MISSION     # infra -- visual diff tool
     MC2_VISUAL_DIFF_OUT         # infra -- visual diff tool
     MC2_VISUAL_TUNING_FILE      # infra -- visual tuning profile path override (visual_tuning_profile.cpp)
+    MC2_VK_INTEROP_SELFTEST     # infra -- VK-INTEROP-BRIDGE-1 T1/T2 create/import/signal/wait self-check at island init
     MC2_VPL_CULL                # feature -- promote-to-registry
     MC2_VPL_PICK                # feature -- promote-to-registry
     MC2_VPL_REDUCE              # feature -- promote-to-registry

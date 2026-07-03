@@ -1141,6 +1141,22 @@ static constexpr EnvVarDesc kAuxEnvVars[] = {
         "of falling back to GLSL — used to surface artifact corruption in "
         "testing. Default-OFF = silent-but-logged GLSL fallback."
     },
+    {
+        "MC2_FEATURE_VK_INTEROP_BRIDGE",
+        "MC2_VK_INTEROP_BRIDGE",
+        EnvVarKind::Feature,
+        false,
+        "VK-INTEROP-BRIDGE-1: zero-copy GL<->VK image interop SEAM proven live on the "
+        "EdgeFog color island (GameOS/gameos/vulkan_edge_fog_island.cpp). =1 repoints the "
+        "island's color attachment to an exportable VkImageResource imported into GL "
+        "(vk_image_resource.{h,cpp} + gl_interop_view.{h,cpp}); the per-frame COLOR "
+        "readback/upload (glGetTexImage/vkCmdCopyImageToBuffer/glTexSubImage2D) are gone "
+        "(hard-asserted ==0). Requires MC2_VULKAN_EDGE_FOG_ISLAND=1. DEFAULT-OFF, fail-soft "
+        "to the readback path on any negative (LUID mismatch / missing exts / import fail); "
+        "gate-OFF is byte-identical with zero external probes (blocker #6). Depth still "
+        "round-trips (color-only slice). Companion infra gate MC2_VK_INTEROP_SELFTEST runs "
+        "the standalone create/import/signal/wait self-check at island init."
+    },
 };
 
 // ---------------------------------------------------------------------------
