@@ -116,6 +116,19 @@ bool waterInteropGateRequested() {
     return state == 1;
 }
 
+// MC2_VK_WATER_PERF — fine-grained per-sub-step microsecond breakdown of the VK
+// water interop path (additive diagnostic; zero cost when OFF). Emits a
+// [VK_WATER_PERF] line per frame with the readback/stage/depth-in/sem/submit/
+// fence-wait/composite split so the ~11ms Tracy zone can be attributed.
+bool waterPerfGateRequested() {
+    static int state = -1;
+    if (state == -1) {
+        const char* e = std::getenv("MC2_VK_WATER_PERF");
+        state = (e && e[0] == '1') ? 1 : 0;
+    }
+    return state == 1;
+}
+
 std::string spv_dir() {
     const char* env = std::getenv("MC2_VULKAN_SPV_DIR");
     std::string d = (env && *env) ? env : "shaders/vulkan";
@@ -830,6 +843,16 @@ extern "C" int mc2_vk_water_island_run(
     using clk = std::chrono::steady_clock;
     auto usSince = [](clk::time_point t0){ return std::chrono::duration<double, std::micro>(clk::now() - t0).count(); };
     const clk::time_point tTotal0 = clk::now();
+    const bool perf = waterPerfGateRequested();
+    // Fine-grained sub-step timers (only meaningful when `perf`; cheap to always fill).
+    double us_stage = 0.0;      // recipe/thin/UBO memcpy staging (steps 1-3)
+    double us_depth_readback=0.0; // glGetTexImage(DEPTH) GL->CPU stall (step 5)
+    double us_depth_stage = 0.0;  // memcpy depth scratch -> VK staging (step 5)
+    double us_record = 0.0;     // command-buffer record (step 7)
+    double us_submit = 0.0;     // vkQueueSubmit (step 8)
+    double us_sem_wait = 0.0;   // glInteropWaitFromVk (step 8)
+    double us_fence_wait = 0.0; // vkWaitForFences inline stall (step 8)
+    double us_composite = 0.0;  // GL composite draw (step 9)
 
     // Lazy init / rebuild on size change.
     if (g_island && (g_island->w != w || g_island->h != h)) {
@@ -852,6 +875,7 @@ extern "C" int mc2_vk_water_island_run(
     const unsigned long f0c = g_forbidden.glGetTexImage;
     const unsigned long f0d = g_forbidden.glTexSubImage2D;
 
+    const clk::time_point tStage0 = clk::now();
     // ---- 1) Upload recipe SSBO once (mission-static). ----
     if (!s->recipeUploaded) {
         const VkDeviceSize need = (VkDeviceSize)recipeCount * 64;
@@ -901,6 +925,7 @@ extern "C" int mc2_vk_water_island_run(
     // sceneColorTex param is now unused for input; kept for signature stability.) ----
     (void)sceneColorTex;
     g_health.copyColorInUs = 0.0;
+    us_stage = usSince(tStage0);
 
     // ---- 5) Import GL scene depth into the VK depth image (EXPECTED depth-in copy).
     // Water still depth-TESTS against the staged GL scene depth so shoreline occlusion
@@ -912,6 +937,8 @@ extern "C" int mc2_vk_water_island_run(
     glGetTexImage(GL_TEXTURE_2D, 0, GL_DEPTH_COMPONENT, GL_FLOAT, s->depthScratch.data());
     ++g_depthInGetTexImage; // EXPECTED (depth-side, not a color op)
     glBindTexture(GL_TEXTURE_2D, 0);
+    us_depth_readback = usSince(tDepthIn0);
+    const clk::time_point tDepthStage0 = clk::now();
     {
         void* p = nullptr;
         if (vmaMapMemory(s->allocator, s->depthStagingAlloc, &p) == VK_SUCCESS) {
@@ -919,6 +946,7 @@ extern "C" int mc2_vk_water_island_run(
             vmaUnmapMemory(s->allocator, s->depthStagingAlloc);
         }
     }
+    us_depth_stage = usSince(tDepthStage0);
     g_health.copyDepthInUs = usSince(tDepthIn0);
 
     // ---- 6) Begin frame parity; GL hands the shared color to VK. ----
@@ -993,6 +1021,7 @@ extern "C" int mc2_vk_water_island_run(
     vkCmdEndRenderPass(cb);
 
     if (vkEndCommandBuffer(cb) != VK_SUCCESS) { setFallback("record_failed"); s->disabled = true; return 0; }
+    us_record = usSince(tRender0);
 
     // ---- 8) Submit: WAIT GL->VK sem; SIGNAL VK->GL sem + fence. ----
     const bool useGpuVk2Gl = s->colorGlView.vkToGlImported && (fs.vk2gl != VK_NULL_HANDLE);
@@ -1002,9 +1031,13 @@ extern "C" int mc2_vk_water_island_run(
     si.waitSemaphoreCount = 1; si.pWaitSemaphores = &fs.signal; si.pWaitDstStageMask = &waitStage;
     si.commandBufferCount = 1; si.pCommandBuffers = &cb;
     if (useGpuVk2Gl) { si.signalSemaphoreCount = 1; si.pSignalSemaphores = &fs.vk2gl; }
+    const clk::time_point tSubmit0 = clk::now();
     if (vkQueueSubmit(s->queue, 1, &si, fs.fence) != VK_SUCCESS) { setFallback("submit_failed"); s->disabled = true; return 0; }
+    us_submit = usSince(tSubmit0);
     if (useGpuVk2Gl) {
+        const clk::time_point tSem0 = clk::now();
         glInteropWaitFromVk(s->colorGlView, GL_LAYOUT_COLOR_ATTACHMENT_EXT, fs.parity);
+        us_sem_wait = usSince(tSem0);
     }
     // WAW FIX (sync-val, P9a): fully retire THIS frame's VK submit before the next
     // frame records/submits, so the two parity command buffers never have overlapping
@@ -1015,9 +1048,11 @@ extern "C" int mc2_vk_water_island_run(
     // WITHIN a submit). Small per-frame CPU cost (one already-near-complete fence wait);
     // P9a prioritizes correctness + clean sync-val. (Future: a VK->VK timeline serialize
     // could drop this stall once the region chains natively.)
+    const clk::time_point tFence0 = clk::now();
     if (vkWaitForFences(s->device, 1, &fs.fence, VK_TRUE, 5ull*1000*1000*1000) != VK_SUCCESS) {
         setFallback("fence_timeout"); s->disabled = true; return 0;
     }
+    us_fence_wait = usSince(tFence0);
     g_health.drawUs = usSince(tRender0);
 
     // ---- 9) Composite (option b): GL alpha-blends the WATER-ONLY shared image onto
@@ -1028,7 +1063,8 @@ extern "C" int mc2_vk_water_island_run(
     // shared water texture. NOT a copy-back / NOT a forbidden readback. ----
     const clk::time_point tOut0 = clk::now();
     composite_water_onto_maincolor(s, w, h);
-    g_health.colorOutUs = usSince(tOut0);
+    us_composite = usSince(tOut0);
+    g_health.colorOutUs = us_composite;
 
     // ---- HARD assert: no COLOR-side readback/copy fired on the interop path. ----
     const bool colorReadbackFired =
@@ -1044,6 +1080,18 @@ extern "C" int mc2_vk_water_island_run(
     ++g_health.usedVulkan;
     ++g_health.usedInterop;
     g_health.totalUs = usSince(tTotal0);
+
+    // MC2_VK_WATER_PERF: per-frame sub-step breakdown. `total_us` here is the island
+    // run() only; it does NOT include ReadbackGpuThinForVk (the GL thin-buffer
+    // readback at the call site, reported separately as thin_readback_us).
+    if (perf) {
+        std::fprintf(stderr,
+            "[VK_WATER_PERF] thin=%u recipes=%u stage_us=%.1f depth_readback_us=%.1f depth_stage_us=%.1f "
+            "record_us=%.1f submit_us=%.1f sem_wait_us=%.1f fence_wait_us=%.1f composite_us=%.1f island_total_us=%.1f\n",
+            thinCount, recipeCount, us_stage, us_depth_readback, us_depth_stage,
+            us_record, us_submit, us_sem_wait, us_fence_wait, us_composite, g_health.totalUs);
+        std::fflush(stderr);
+    }
     return 1;
 }
 

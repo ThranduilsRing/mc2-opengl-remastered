@@ -1629,6 +1629,12 @@ def main():
                             # allowlist Popen drops it and the gate-ON smoke silently runs the
                             # GL water draw (gate inert).
                             "MC2_VK_WATER_INTEROP",
+                            # MC2_VK_WATER_PERF: fine-grained per-sub-step us breakdown
+                            # of the VK water interop path ([VK_WATER_PERF] lines).
+                            # Additive diagnostic; must be allowlisted or Popen drops it
+                            # and the breakdown never emits.
+                            "MC2_VK_WATER_PERF",
+                            "MC2_NO_LAUNCHER",
                             # VK-P8a SHADOW-INTEROP: VK produces the dynamic shadow
                             # depth map, GL samples it. Requires the shared engine
                             # VulkanContext (MC2_RENDER_BACKEND=vulkan). Without this

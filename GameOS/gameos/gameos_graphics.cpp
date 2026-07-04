@@ -13,6 +13,7 @@
 
 #ifdef LINUX_BUILD
 #include <cstdarg>
+#include <chrono>                // MC2_VK_WATER_PERF thin-readback timing
 #endif
 
 #include "platform_stdlib.h"
@@ -3731,7 +3732,23 @@ void gosRenderer::renderWaterFastPath(
             // reads the bucket-header count + the packed ring slot into a CPU copy after
             // the compute's final barrier. No fenced GL buffer crosses into VK.
             const void*    vkThinPtr   = nullptr;
+            // MC2_VK_WATER_PERF: time the GL thin-buffer readback (2x glGetBufferSubData
+            // = blocking sync on the GL water cull/pack compute). Reported alongside the
+            // island run()'s [VK_WATER_PERF] line so the full per-frame cost is visible.
+            static int s_vkWaterPerf = -1;
+            if (s_vkWaterPerf == -1) {
+                const char* e = std::getenv("MC2_VK_WATER_PERF");
+                s_vkWaterPerf = (e && e[0] == '1') ? 1 : 0;
+            }
+            const auto tThinRb0 = std::chrono::steady_clock::now();
             const uint32_t vkThinCount = WaterStream::ReadbackGpuThinForVk(&vkThinPtr);
+            if (s_vkWaterPerf) {
+                const double us = std::chrono::duration<double, std::micro>(
+                    std::chrono::steady_clock::now() - tThinRb0).count();
+                std::fprintf(stderr, "[VK_WATER_PERF] thin_readback_us=%.1f thin=%u\n",
+                             us, vkThinCount);
+                std::fflush(stderr);
+            }
             const void*    vkRecipes   = (const void*)WaterStream::GetRecipes();
             const uint32_t vkRecipeN   = WaterStream::GetRecipeCount();
             gosPostProcess* ppVk = getGosPostProcess();
