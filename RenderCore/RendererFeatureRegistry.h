@@ -742,6 +742,24 @@ static constexpr EnvVarDesc kAuxEnvVars[] = {
         "unavailable -> GL fallback. Surfaced in [VK_TERRAIN_TIER1] health/log. Gate OFF (or island "
         "not compiled) = byte-identical GL LOD-chunk terrain path."
     },
+    // VK-TERRAIN-LIGHTING: make the VK Tier-1 terrain LIT (directional relief + baked static shadow).
+    {
+        "MC2_FEATURE_VK_TERRAIN_LIGHTING",
+        "MC2_VK_TERRAIN_LIGHTING",
+        EnvVarKind::Feature,
+        false,
+        "VK-TERRAIN-LIGHTING: presence-gated =1, default OFF (requires MC2_VK_TERRAIN_TIER1). Makes the "
+        "VK terrain island's LOD0 co-write LIT instead of flat: reproduces the GL LOD-chunk NdotL relief "
+        "band (terrain_lod_chunk.frag:891-893, mix(0.35,1.20,clamp(NdotL,0.02,1.0))) + the baked STATIC "
+        "sun shadow (shaders/include/shadow.hglsl calcShadow, 16-tap Poisson PCF) via a REUSABLE VK GLSL "
+        "helper (shaders/vulkan/include/lighting_shadow_vk.glsl; props/mechs reuse computeNdotLBand later). "
+        "The static shadow map is copied PER FRAME (glGetTexImage of the GL DEPTH_COMPONENT24 shadow "
+        "texture -> VK D32 depth-COMPARE image, compareOp=LESS_OR_EQUAL, LINEAR HW PCF, CLAMP_TO_BORDER "
+        "white=1.0) at binding 5. Cement is flat-lit + static-shadow-dropped (mirrors GL pureConcrete). "
+        "DEFERRED vs GL: detail-normal/POM/macro relief, DYNAMIC (mech/building) shadow + CSM, hemisphere "
+        "ambient fill. FAIL-SOFT: shadow map not importable -> shadow=1.0 (lit, no shadow), never a hole. "
+        "Gate OFF = byte-identical to the pre-lighting VK colormap+cement frame."
+    },
     // GOSFX-TUBE-RIBBON-1: gosFX Tube swept-quad ribbon oracle.
     {
         "MC2_VFX_ORACLE_TUBE",

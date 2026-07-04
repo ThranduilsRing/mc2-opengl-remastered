@@ -70,6 +70,19 @@ struct Mc2TerrainTier1Feed {
     uint32_t                    glCementSsbo;          // GL name of the per-vertex cement-word SSBO (binding 25)
     uint64_t                    cementBytes;           // mapSide*mapSide*sizeof(uint)
     uint64_t                    cementVersion;         // bumps when the cement-word field changes (snapshot key)
+    // VK-TERRAIN-LIGHTING sub-slice: make the VK terrain LIT (directional relief + baked
+    // static sun shadow) to match GL. Gate MC2_VK_TERRAIN_LIGHTING (requires TIER1).
+    int32_t                     lightingEnabled;       // 1 iff MC2_VK_TERRAIN_LIGHTING gate on
+    float                       terrainLightDir[3];    // gos_GetTerrainLightDir() (sun dir)
+    // STATIC sun shadow map: the GL depth texture (gos_postprocess getShadowTexture(),
+    // GL_DEPTH_COMPONENT24) the island copies PER FRAME into a VK D32 depth-COMPARE image,
+    // plus the static light-space matrix (pp->getLightSpaceMatrix(), row-major GL_FALSE,
+    // z already [0,1]). All 0/false when shadows are off -> VK terrain is lit but unshadowed.
+    int32_t                     shadowsEnabled;        // pp->shadowsEnabled_ (1 -> map is valid to sample)
+    uint32_t                    glStaticShadowTex;     // GL name of shadowDepthTex_ (0 = not ready)
+    int32_t                     staticShadowSize;      // shadowMapSize_ (edge in texels, 4096)
+    float                       staticLightSpaceMatrix[16]; // pp->getLightSpaceMatrix()
+    float                       shadowSoftness;        // GL default 2.5
 };
 
 // Provided BY the GL terrain path (gos_terrain_lod_chunk.cpp). The island calls this

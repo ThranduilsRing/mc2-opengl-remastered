@@ -43,6 +43,17 @@ layout(set = 0, binding = 0, std140) uniform TerrainFrameUBO {
     float cementWUPT;
     int   useTransitionMask;
     int   cementDiagConnect;
+    // VK-TERRAIN-LIGHTING sub-slice (used by the FS; declared here to keep the std140
+    // UBO layout LOCKSTEP with terrain_tier1.frag).
+    int   _lightPad0;
+    int   _lightPad1;
+    int   _lightPad2;
+    vec4  terrainLightDir;
+    mat4  staticLightSpaceMatrix;
+    int   lightingEnabled;
+    int   enableShadows;
+    float shadowSoftness;
+    int   _lightPad3;
 } uT;
 
 // Height SSBO (VK-owned snapshot of the GL height field, binding 23 semantics).

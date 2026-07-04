@@ -24,6 +24,13 @@
 //                        the ONE difference vs props (a=0.25); the coverage oracle
 //                        histograms a==1.0 inside the terrain silhouette.
 #version 450
+// VK-TERRAIN-LIGHTING sub-slice: make the VK terrain LIT (directional relief + baked
+// static sun shadow) so it matches the GL LOD-chunk terrain instead of flat. Uses the
+// REUSABLE lighting/shadow helper (props/mechs reuse it later). Gate MC2_VK_TERRAIN_LIGHTING
+// (requires MC2_VK_TERRAIN_TIER1): OFF -> uT.lightingEnabled==0 -> the compose is the
+// identity (base only), byte-identical to the pre-lighting colormap+cement frame.
+#extension GL_GOOGLE_include_directive : require
+#include "include/lighting_shadow_vk.glsl"
 
 layout(location = 0) in vec3 v_worldPos;
 
@@ -50,6 +57,17 @@ layout(set = 0, binding = 0, std140) uniform TerrainFrameUBO {
     float cementWUPT;       // world units per cement tile (== 128)
     int   useTransitionMask;// CEMENT-HARD-EDGE-1 gate (GL default-on)
     int   cementDiagConnect;// CEMENT-DIAG-CONNECT-1 gate (GL default-off)
+    // VK-TERRAIN-LIGHTING sub-slice. std140: pad to a 16B boundary, then a vec4 sun
+    // dir + a mat4 static light-space matrix (both 16-aligned) + scalar toggles.
+    int   _lightPad0;       // off 116 -> pad so terrainLightDir starts at off 128 (vec4 align)
+    int   _lightPad1;       // off 120
+    int   _lightPad2;       // off 124
+    vec4  terrainLightDir;  // off 128: sun dir (xyz), w unused (mirrors GL terrainLightDir)
+    mat4  staticLightSpaceMatrix; // off 144: GL pp->getLightSpaceMatrix() (row-major GL_FALSE)
+    int   lightingEnabled;  // off 208: MC2_VK_TERRAIN_LIGHTING gate (0 -> base only)
+    int   enableShadows;    // off 212: static shadow map imported+valid this frame
+    float shadowSoftness;   // off 216: penumbra radius in texels (GL default 2.5)
+    int   _lightPad3;       // off 220
 } uT;
 
 // COLORMAP-BASE: the VK-owned copy-once import of the GL colormap atlas.
@@ -60,9 +78,21 @@ layout(set = 0, binding = 3) uniform sampler2D u_cementAtlas;
 layout(set = 0, binding = 4, std430) readonly buffer TerrainCementBuf {
     uint cementWordsF[];
 } uC;
+// VK-TERRAIN-LIGHTING: the STATIC sun shadow map, a VK-owned per-frame copy of the GL
+// static shadow depth texture (gos_postprocess getShadowTexture()) into a D32 depth-
+// COMPARE image. HW LINEAR compare, compareOp=LESS_OR_EQUAL, CLAMP_TO_BORDER white=1.0
+// (matches GL sampler2DShadow). Always a valid descriptor (1x1 dummy until imported);
+// uT.enableShadows gates whether it is actually sampled.
+layout(set = 0, binding = 5) uniform sampler2DShadow u_staticShadow;
 
 void main() {
     vec3 base;
+    // VK-TERRAIN-LIGHTING: track whether this fragment resolved to a solid cement slab.
+    // GL treats pure concrete as a flat-lit slab (no NdotL relief) and drops the STATIC
+    // self-shadow on it (terrain_lod_chunk.frag:894 + :902-907). We mirror that: on a
+    // solid-cement hit -> flat-lit + no static shadow. (The GL dynamic building shadow on
+    // concrete is a SEPARATE dynamic map, still deferred here.)
+    bool pureConcrete = false;
     if (uT.colormapReady != 0) {
         // Mirror terrain_lod_chunk.frag:466-482 EXACTLY (world-XY -> atlas-UV, then
         // the 9-tap disc blur) so the VK base color matches GL's colormap sample.
@@ -166,11 +196,12 @@ void main() {
                         alpha = (((1.0 - u) + v < 0.5) || (u + (1.0 - v) < 0.5)) ? 1.0 : 0.0;
                     }
                     base = mix(base, cementColor, alpha);
-                    if (alpha > 0.5) cementHit = true;
+                    if (alpha > 0.5) { cementHit = true; pureConcrete = true; }
                 }
             } else {
                 base = cementColor;
                 cementHit = true;
+                pureConcrete = true;
             }
         }
 
@@ -192,12 +223,36 @@ void main() {
                     int  dRow = int(dLayerIdx) / dGridSide;
                     vec2 dAtlasUV = (vec2(float(dCol), float(dRow)) + dTileUV) / float(dGridSide);
                     base = texture(u_cementAtlas, dAtlasUV).rgb;
+                    pureConcrete = true;
                 }
             }
         }
     }
 
-    fragColor = vec4(base, 1.0);   // opaque in-place (a=1, NOT premult)
+    // ★VK-TERRAIN-LIGHTING compose. Mirrors terrain_lod_chunk.frag:889-928 (the NdotL
+    // relief band + baked static sun shadow, cement flat-lit + shadow-dropped). Terrain
+    // normal is the flat-up (0,0,1) the GBuffer1 encodes and GL's calcShadow uses as
+    // shadowN. Gate uT.lightingEnabled==0 -> lit==base (identity) -> byte-identical to
+    // the pre-lighting frame. DEFERRED vs GL: detail-normal/POM/macro-variation relief,
+    // the DYNAMIC (mech/building) shadow, and hemisphere ambient fill.
+    vec3 lit = base;
+    if (uT.lightingEnabled != 0) {
+        const vec3 N = vec3(0.0, 0.0, 1.0);                       // flat-up terrain normal
+        vec3 lightDir = uT.terrainLightDir.xyz;
+
+        float normalLight = computeNdotLBand(N, lightDir);
+        if (pureConcrete) normalLight = 1.0;                     // cement: flat-lit slab
+
+        float shadow = 1.0;
+        if (uT.enableShadows != 0 && !pureConcrete) {            // static shadow dropped on cement
+            shadow = computeBakedShadow(v_worldPos, N, lightDir,
+                                        u_staticShadow, uT.staticLightSpaceMatrix,
+                                        uT.shadowSoftness, 16);
+        }
+        lit = base * normalLight * shadow;
+    }
+
+    fragColor = vec4(lit, 1.0);   // opaque in-place (a=1, NOT premult)
 
     // ★TERRAIN shadow-class GBuffer1: flat-up normal + a=1.0 (handles own shadow).
     GBuffer1 = vec4(0.5, 0.5, 1.0, 1.0);

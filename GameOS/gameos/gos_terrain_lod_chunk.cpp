@@ -835,6 +835,36 @@ extern "C" int mc2_terrain_tier1_get_frame_feed(Mc2TerrainTier1Feed* out)
     out->glCementSsbo       = static_cast<uint32_t>(s_cementSsbo.backendHandle);
     out->cementBytes        = (uint64_t)s_mapSide * (uint64_t)s_mapSide * sizeof(unsigned int);
     out->cementVersion      = g_terrainCementVersion;
+
+    // VK-TERRAIN-LIGHTING sub-slice: hand the sun dir + the STATIC sun shadow map + the
+    // static light-space matrix to the island so the VK terrain frag can reproduce the GL
+    // NdotL relief band + baked static PCF shadow (terrain_lod_chunk.frag:889-928). Gate
+    // MC2_VK_TERRAIN_LIGHTING (default-off -> lightingEnabled=0 -> VK stays flat, byte-safe).
+    {
+        int lightingOn = 0;
+        if (const char* e = getenv("MC2_VK_TERRAIN_LIGHTING")) lightingOn = (e[0] == '1' && e[1] == '\0') ? 1 : 0;
+        out->lightingEnabled = lightingOn;
+        float lx = 0.f, ly = 0.f, lz = 1.f;
+        gos_GetTerrainLightDir(&lx, &ly, &lz);
+        out->terrainLightDir[0] = lx; out->terrainLightDir[1] = ly; out->terrainLightDir[2] = lz;
+        // Default: no shadow (lit-only) until the GL static shadow map is live.
+        out->shadowsEnabled     = 0;
+        out->glStaticShadowTex  = 0;
+        out->staticShadowSize   = 0;
+        out->shadowSoftness     = 2.5f;   // shadow.hglsl default
+        std::memset(out->staticLightSpaceMatrix, 0, sizeof(out->staticLightSpaceMatrix));
+        gosPostProcess* pp = getGosPostProcess();
+        if (lightingOn && pp && pp->shadowsEnabled_) {
+            const GLuint sTex = pp->getShadowTexture();
+            if (sTex != 0) {
+                out->shadowsEnabled    = 1;
+                out->glStaticShadowTex = static_cast<uint32_t>(sTex);
+                out->staticShadowSize  = 4096;   // gos_postprocess.cpp:5113 shadowMapSize_
+                std::memcpy(out->staticLightSpaceMatrix, pp->getLightSpaceMatrix(),
+                            sizeof(out->staticLightSpaceMatrix));
+            }
+        }
+    }
     return 1;
 }
 #endif
