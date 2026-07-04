@@ -8353,16 +8353,35 @@ extern "C" int mc2_shadow_island_get_geometry_feed(Mc2ShadowGeomFeed* out) {
     return 1;
 }
 
-// VK-P11 STATIC-PROP COLOR — flatten the live per-type color buckets into a single
+// VK-P11 STATIC-PROP COLOR — flatten the full static-prop instance set into a single
 // GpuStaticPropInstance array grouped by typeID, and hand out the world->clip matrix
 // + reverse-Z depth bias. Called by the color island ONLY when its gate is ON (the
-// GL flush() is skipped in that case, so s_bucketsByType is still populated for this
-// frame). Read-only: does NOT mutate any batcher state (no clear, no upload). The
-// output blob is a reused static scratch vector, valid until the next call.
+// GL flush() is skipped in that case).
+//
+// VK-PROP-COVERAGE FIX (source correction): originally this read s_bucketsByType.
+// That map is a per-FRAME accumulator whose ONLY per-frame clear lives inside
+// GpuStaticPropBatcher::flush() (line ~7661) — which is SKIPPED when the island owns
+// the frame. So s_bucketsByType was simultaneously (a) unbounded-accumulating across
+// island frames (measured on mc2_01: feed_total 968 -> 1.17M over ~10 frames as
+// reinjectPersistentStatic() re-appended the whole store every frame with nothing
+// clearing it), overflowing the island's instance/buffer capacity so only low-offset
+// building runs survived -> "props are building-only"; and (b) on frames where the
+// registry's frame-currency optimisation left it near-empty, feeding only 1-2 props.
+// Either way the buckets are the WRONG source for a "draw one frame's full prop set"
+// island that runs in place of flush().
+//
+// The AUTHORITATIVE, stable, all-population set is the persistent-static store
+// (s_persistentStaticStore) — the registry recipes for every registered static prop:
+// Buildings AND Trees AND Generic (all use the registry markVisible path; measured:
+// 733 trees eligible, all via the store, dyn-submit=0). It is population-agnostic and
+// is exactly what reinjectPersistentStatic() copies into the GL buckets each frame, so
+// feeding it directly gives the island the SAME prop set GL flush() draws — trees,
+// tents, misc props included — without the accumulation hazard. Read-only: does NOT
+// mutate any batcher state. Output is a reused static scratch vector.
 extern "C" int mc2_color_prop_island_get_frame_feed(Mc2ColorPropFeed* out) {
     if (!out) return 0;
     if (!s_geometryFinalized || s_fatalRegistrationFailure) return 0;
-    if (s_bucketsByType.empty()) return 0;
+    if (s_persistentStaticStore.empty()) return 0;
 
     static std::vector<GpuStaticPropInstance> s_colorFeedFlat;
     s_colorFeedFlat.clear();
@@ -8371,13 +8390,13 @@ extern "C" int mc2_color_prop_island_get_frame_feed(Mc2ColorPropFeed* out) {
     // one type-run per contiguous typeID block via firstInstance). Deterministic
     // ordering (ascending typeID) so the flattening is stable frame-to-frame.
     std::vector<uint32_t> typeIds;
-    typeIds.reserve(s_bucketsByType.size());
-    for (const auto& kv : s_bucketsByType) typeIds.push_back(kv.first);
+    typeIds.reserve(s_persistentStaticStore.size());
+    for (const auto& kv : s_persistentStaticStore) typeIds.push_back(kv.first);
     std::sort(typeIds.begin(), typeIds.end());
     for (uint32_t tid : typeIds) {
-        auto it = s_bucketsByType.find(tid);
-        if (it == s_bucketsByType.end()) continue;
-        const std::vector<GpuStaticPropInstance>& insts = it->second.instances;
+        auto it = s_persistentStaticStore.find(tid);
+        if (it == s_persistentStaticStore.end()) continue;
+        const std::vector<GpuStaticPropInstance>& insts = it->second;
         s_colorFeedFlat.insert(s_colorFeedFlat.end(), insts.begin(), insts.end());
     }
     if (s_colorFeedFlat.empty()) return 0;
