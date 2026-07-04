@@ -232,4 +232,47 @@ else()
             "${MC2_3RDPARTY}/lib/x64/SDL2.dll"  $<TARGET_FILE_DIR:vk_gl_interop_colorcowrite_spike>
         COMMAND ${CMAKE_COMMAND} -E copy_if_different
             "${MC2_3RDPARTY}/lib/x64/glew32.dll" $<TARGET_FILE_DIR:vk_gl_interop_colorcowrite_spike>)
+
+    # =========================================================================
+    # SAMPLE-TEXTURE PARITY spike (VK-INTEROP-BRIDGE-1) — SEPARATE target.
+    # The STOP-gate / oracle for the GL->VK SOURCE-TEXTURE seam: prove VK
+    # sampling of an uploaded texture matches GL sampling of the SAME source
+    # bytes across every format axis MC2 uses (2D RGBA8, BGRA-order, 2D_ARRAY,
+    # BC7 UNORM, BC7 sRGB, LINEAR bilinear). No shared images/semaphores — each
+    # API uploads independently; we compare the two sampled results. GLSL ->
+    # embedded SPIR-V via glslc. Standalone deps.
+    # =========================================================================
+    foreach(_sh sampletex.vert sampletex.frag sampletex_array.frag)
+        add_custom_command(
+            OUTPUT "${_dt_dir}/${_sh}.spv.inc"
+            COMMAND "${MC2_GLSLC}" -mfmt=c -o "${_dt_dir}/${_sh}.spv.inc" "${_dt_dir}/${_sh}"
+            DEPENDS "${_dt_dir}/${_sh}"
+            COMMENT "glslc -> ${_sh}.spv.inc")
+    endforeach()
+
+    add_executable(vk_gl_interop_sampletex_spike
+        main_sampletex.cpp
+        "${_dt_dir}/sampletex.vert.spv.inc"
+        "${_dt_dir}/sampletex.frag.spv.inc"
+        "${_dt_dir}/sampletex_array.frag.spv.inc")
+    target_include_directories(vk_gl_interop_sampletex_spike PRIVATE
+        "${_dt_dir}"
+        "${MC2_3RDPARTY}/include"
+        "${MC2_3RDPARTY}/include/SDL2"
+        "${VK_SDK}/Include")
+    target_link_directories(vk_gl_interop_sampletex_spike PRIVATE
+        "${MC2_3RDPARTY}/lib/x64"
+        "${VK_SDK}/Lib")
+    target_compile_definitions(vk_gl_interop_sampletex_spike PRIVATE GLEW_DLL WIN32_LEAN_AND_MEAN NOMINMAX)
+    target_link_libraries(vk_gl_interop_sampletex_spike PRIVATE
+        SDL2main SDL2 glew32 vulkan-1 opengl32)
+    if(MSVC)
+        set_target_properties(vk_gl_interop_sampletex_spike PROPERTIES
+            LINK_FLAGS "/SUBSYSTEM:CONSOLE")
+    endif()
+    add_custom_command(TARGET vk_gl_interop_sampletex_spike POST_BUILD
+        COMMAND ${CMAKE_COMMAND} -E copy_if_different
+            "${MC2_3RDPARTY}/lib/x64/SDL2.dll"  $<TARGET_FILE_DIR:vk_gl_interop_sampletex_spike>
+        COMMAND ${CMAKE_COMMAND} -E copy_if_different
+            "${MC2_3RDPARTY}/lib/x64/glew32.dll" $<TARGET_FILE_DIR:vk_gl_interop_sampletex_spike>)
 endif()
