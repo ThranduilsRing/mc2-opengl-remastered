@@ -132,6 +132,18 @@ extern "C" void mc2_vulkan_ssao_island_health(
     unsigned long* forbiddenCopyBufToImg, unsigned long* forbiddenCopyImgToBuf,
     unsigned long* forbiddenGetTexImage, unsigned long* forbiddenTexSubImage,
     unsigned long* depthNormalCopyBufToImg, unsigned long* depthNormalGetTexImage);
+// VK-P9a WATER-INTEROP: water Vulkan island health snapshot (defined in
+// GameOS/gameos/vulkan_water_island.cpp, same #ifdef MC2_VULKAN_ISLAND).
+extern "C" void mc2_render_backend_water_region_health(
+    int* vulkanAvailable, int* buildEnabled, const char** deviceName,
+    unsigned long* validationErrors, unsigned long* attempted, unsigned long* usedVulkan,
+    const char** fallbackReason, unsigned long* vkDraws,
+    int* interopActive, int* vk2glSemActive, unsigned long* usedInterop,
+    unsigned long* thinRecords, unsigned long* recipeCount,
+    unsigned long* forbiddenCopyBufToImg, unsigned long* forbiddenCopyImgToBuf,
+    unsigned long* forbiddenGetTexImage, unsigned long* forbiddenTexSubImage,
+    unsigned long* depthInGetTexImage, unsigned long* depthInCopyBufToImg,
+    double* copyColorInUs, double* copyDepthInUs, double* drawUs, double* colorOutUs, double* totalUs);
 // VK-REGION-HZB-1: HZB Vulkan island health snapshot (defined in
 // GameOS/gameos/vulkan_hzb_island.cpp, same #ifdef MC2_VULKAN_ISLAND).
 extern "C" void mc2_vulkan_hzb_island_health(
@@ -855,6 +867,46 @@ std::string buildSnapshotJson(const RenderSnapshot& snap,
         s << "    \"forbidden_tex_sub_image\": " << fTsi << ",\n";
         s << "    \"depthnormal_copy_buf_to_img\": " << dnCbi << ",\n";
         s << "    \"depthnormal_get_tex_image\": " << dnGti << "\n";
+        s << "  }\n";
+    }
+    // VK-P9a WATER-INTEROP: additive "vulkan_water_island" section (build64_island-only).
+    // Zeros when compiled but the water region isn't routed to Vulkan (gate off / GL path).
+    {
+        int va = 0, be = 0, ia = 0, v2g = 0;
+        const char* dev = ""; const char* fbr = "";
+        unsigned long ve = 0, att = 0, used = 0, vkDraws = 0, usedInterop = 0, thinN = 0, recN = 0;
+        unsigned long fCbi = 0, fCib = 0, fGti = 0, fTsi = 0, diGti = 0, diCbi = 0;
+        double cciUs = 0.0, cdiUs = 0.0, drUs = 0.0, coUs = 0.0, totUs = 0.0;
+        mc2_render_backend_water_region_health(&va, &be, &dev, &ve, &att, &used, &fbr, &vkDraws,
+                                               &ia, &v2g, &usedInterop, &thinN, &recN,
+                                               &fCbi, &fCib, &fGti, &fTsi, &diGti, &diCbi,
+                                               &cciUs, &cdiUs, &drUs, &coUs, &totUs);
+        s << "  ,\n";
+        s << "  \"vulkan_water_island\": {\n";
+        s << "    \"vulkan_available\": " << va << ",\n";
+        s << "    \"build_enabled\": " << be << ",\n";
+        s << "    \"device_name\": \"" << jsonEscape(dev) << "\",\n";
+        s << "    \"validation_errors\": " << ve << ",\n";
+        s << "    \"water_attempted\": " << att << ",\n";
+        s << "    \"water_used_vulkan\": " << used << ",\n";
+        s << "    \"water_fallback_reason\": \"" << jsonEscape(fbr) << "\",\n";
+        s << "    \"vk_draws\": " << vkDraws << ",\n";
+        s << "    \"interop_active\": " << ia << ",\n";
+        s << "    \"vk2gl_sem_active\": " << v2g << ",\n";
+        s << "    \"water_used_interop\": " << usedInterop << ",\n";
+        s << "    \"thin_records\": " << thinN << ",\n";
+        s << "    \"recipe_count\": " << recN << ",\n";
+        s << "    \"forbidden_copy_buf_to_img\": " << fCbi << ",\n";
+        s << "    \"forbidden_copy_img_to_buf\": " << fCib << ",\n";
+        s << "    \"forbidden_get_tex_image\": " << fGti << ",\n";
+        s << "    \"forbidden_tex_sub_image\": " << fTsi << ",\n";
+        s << "    \"depthin_get_tex_image\": " << diGti << ",\n";
+        s << "    \"depthin_copy_buf_to_img\": " << diCbi << ",\n";
+        s << "    \"copy_color_in_us\": " << cciUs << ",\n";
+        s << "    \"copy_depth_in_us\": " << cdiUs << ",\n";
+        s << "    \"draw_us\": " << drUs << ",\n";
+        s << "    \"color_out_us\": " << coUs << ",\n";
+        s << "    \"total_us\": " << totUs << "\n";
         s << "  }\n";
     }
     // VK-REGION-HZB-1: additive "vulkan_hzb_island" section (same

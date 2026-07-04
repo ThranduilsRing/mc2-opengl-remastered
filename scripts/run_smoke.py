@@ -1621,6 +1621,25 @@ def main():
                             # allowlist Popen drops it and the gate-ON interop smoke silently
                             # runs the SSAO readback path (gate inert).
                             "MC2_VK_SSAO_INTEROP",
+                            # VK-P9a WATER-INTEROP: the first VK geometry region. Renders
+                            # the armed water base layer in Vulkan into an exportable RGBA16F
+                            # composited into MainColor. Default OFF; borrows the shared
+                            # engine VulkanContext so it REQUIRES MC2_RENDER_BACKEND=vulkan
+                            # (fail-soft to the GL water draw otherwise). Without this in the
+                            # allowlist Popen drops it and the gate-ON smoke silently runs the
+                            # GL water draw (gate inert).
+                            "MC2_VK_WATER_INTEROP",
+                            # VK-P9a WATER-INTEROP proof: the bookmark-capture sweep
+                            # env, so a smoke run (which reliably reaches steady render,
+                            # unlike the standalone capture harness on some setups) can
+                            # ALSO drive the camera to the water-visible bookmark poses
+                            # and dump per-pose PNGs for VK-vs-GL water parity. Without
+                            # these in the allowlist Popen drops them and the sweep never
+                            # arms (water never framed -> island never engages).
+                            "MC2_VISUAL_BOOKMARK_CAPTURE",
+                            "MC2_VISUAL_CAPTURE_DIR",
+                            "MC2_VISUAL_CAPTURE_FRAME",
+                            "MC2_VISUAL_SETTLE",
                             # RENDER-BACKEND-REGION-IFACE-1 (Layer-6 ENTRY): master
                             # gate + backend sub-selector for the SELECTABLE
                             # PostprocessFog region. Without these in the allowlist

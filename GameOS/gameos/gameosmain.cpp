@@ -15,6 +15,12 @@
 
 // SHADOW-SPINE-0: C-linkage accessors from batcher TUs. Declared at file
 // scope because `extern "C"` is illegal at function/block scope.
+#ifdef MC2_VULKAN_ISLAND
+// VK-P9a WATER-INTEROP: water island shutdown teardown (defined in
+// vulkan_water_island.cpp under the same #ifdef). Called at engine shutdown before
+// the shared VkDevice is destroyed so the island's Vk objects don't leak.
+extern "C" void mc2_vk_water_island_destroy();
+#endif
 extern "C" uint32_t gos_getMechShadowProgramId();
 extern "C" uint32_t gos_getMechShadowTypesDrawn();
 extern "C" uint32_t gos_getMechShadowInstDrawn();
@@ -1144,6 +1150,11 @@ int main(int argc, char** argv)
         // force it OFF before we volkLoadDevice the engine device, so the engine
         // device is the sole owner of the global table. (The alternative fail-soft
         // path is available if coercion is ever undesirable.)
+        // VK-P9a WATER-INTEROP: MC2_VK_WATER_INTEROP is DELIBERATELY NOT in this list.
+        // The water island borrows the SHARED engine device (no second volkLoadDevice),
+        // so it does NOT hit the global-dispatch collision and must NOT be coerced off —
+        // water + present coexist on the one shared device. Only add SELF-CREATING-device
+        // gates here.
         {
             const char* kInteropGates[] = {
                 "MC2_VK_INTEROP_BRIDGE",
@@ -1973,6 +1984,14 @@ int main(int argc, char** argv)
     gos_DestroyRenderer();
 
 #ifdef MC2_VULKAN
+#ifdef MC2_VULKAN_ISLAND
+    // VK-P9a WATER-INTEROP: tear down the water island (pipeline/render-pass/images/
+    // buffers/command pool/exportable color seam) BEFORE the shared device is destroyed,
+    // so its objects don't leak (vkDestroyDevice would report them). No-op if never born.
+    // Must run while both the GL context (deletes the interop FBO / imported tex) and the
+    // shared device are alive — same ordering rationale as the present teardown below.
+    mc2_vk_water_island_destroy();
+#endif
     // VK-P13-SELECTOR-1 / T3: tear down the VK present path FIRST -- it deletes GL
     // objects (copy-1 FBO / imported tex) and VK resources on the shared device,
     // so it must run while both the GL context and the shared device are alive.

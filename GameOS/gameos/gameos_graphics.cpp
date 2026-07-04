@@ -3178,6 +3178,19 @@ void gos_terrain_bridge_renderWaterFast(
         maxMinUV);
 }
 
+#ifdef MC2_VULKAN_ISLAND
+// VK-P9a WATER-INTEROP: the water island entry points (defined in
+// GameOS/gameos/vulkan_water_island.cpp under the same #ifdef). File-scope
+// declarations so renderWaterFastPath can call them (extern "C" must be at
+// namespace scope, not inside a function body).
+extern "C" int mc2_vk_water_island_enabled();
+extern "C" int mc2_vk_water_island_run(
+    unsigned int sceneColorTex, unsigned int sceneDepthTex, int w, int h,
+    const void* thinRecords, unsigned int thinCount,
+    const void* recipes, unsigned int recipeCount,
+    const void* vsParams, const void* fsParams);
+#endif
+
 void gosRenderer::renderWaterFastPath(
     unsigned int recordCount,
     unsigned int waterGosHandle,
@@ -3700,13 +3713,72 @@ void gosRenderer::renderWaterFastPath(
             glActiveTexture(GL_TEXTURE0);
         }
 
+        // VK-P9a WATER-INTEROP: when MC2_VK_WATER_INTEROP is ON, render the water
+        // BASE layer in Vulkan (first VK geometry region) into an exportable RGBA16F
+        // and composite into MainColor, instead of the GL MDI draw. Mutually exclusive
+        // with the GL draw (gate is the single arbiter). Feed = CPU-staged (STEP 0):
+        // run the CPU thin pack (byte-identical to the compute pack) to populate
+        // g_thinStaging, then hand its pointer/count + recipes + packed UBOs to the
+        // island. On success (returns 1) the GL MDI draw is SKIPPED. On any fail-soft
+        // (returns 0) fall through to the GL draw. Gate OFF -> GL MDI draw as before
+        // (byte-identical).
+        bool vkWaterHandled = false;
+#ifdef MC2_VULKAN_ISLAND
+        if (mc2_vk_water_island_enabled()) {
+            // Feed (STEP 0 revised): read back the thin records the armed GPU compute
+            // ACTUALLY packed this frame (ground truth) — the CPU pack yields 0 on the
+            // full-recipe-authoritative path (no CPU projection state). ReadbackGpuThinForVk
+            // reads the bucket-header count + the packed ring slot into a CPU copy after
+            // the compute's final barrier. No fenced GL buffer crosses into VK.
+            const void*    vkThinPtr   = nullptr;
+            const uint32_t vkThinCount = WaterStream::ReadbackGpuThinForVk(&vkThinPtr);
+            const void*    vkRecipes   = (const void*)WaterStream::GetRecipes();
+            const uint32_t vkRecipeN   = WaterStream::GetRecipeCount();
+            gosPostProcess* ppVk = getGosPostProcess();
+            if (vkThinCount > 0 && vkThinPtr && vkRecipes && vkRecipeN > 0 && ppVk) {
+                // Pack VS/FS UBO params LOCKSTEP with water_geom.{vert,frag}.
+                struct VkWaterVsP { float m[16]; float p0[4],p1[4],p2[4],p3[4]; } vsP{};
+                struct VkWaterFsP { float fog[4],f0[4],f1[4],f2[4],deep[4],shallow[4]; } fsP{};
+                memcpy(vsP.m, wMvpWaterMdi, 16 * sizeof(float));
+                vsP.p0[0]=waterElevation; vsP.p0[1]=alphaDepth; vsP.p0[2]=mapTopLeftX; vsP.p0[3]=mapTopLeftY;
+                vsP.p1[0]=frameCos; vsP.p1[1]=maxMinUV; vsP.p1[2]=oneOverTF; vsP.p1[3]=cloudOffsetX;
+                // WATER_DEPTH_FUDGE_FAST — LOCKSTEP with mclib/terrain_depth_bias.h
+                // (mc2depth::WATER_DEPTH_FUDGE_FAST) + shaders/include/terrain_depth_bias.hglsl
+                // (WATER_DEPTH_FUDGE_FAST). The VS applies clip.z += this * clip.w.
+                vsP.p2[0]=cloudOffsetY; vsP.p2[1]=0.00025f;
+                vsP.p2[2]=(float)alphaEdgeByte; vsP.p2[3]=(float)alphaMiddleByte;
+                vsP.p3[0]=(float)alphaDeepByte;
+                {
+                    const vec4 waterFog = uint32_to_vec4(renderStates_[gos_State_Fog]);
+                    memcpy(fsP.fog, &waterFog, 4*sizeof(float));
+                }
+                fsP.f0[0]= SmokeMode::fixedTimestepEnabled()
+                             ? (float)SmokeMode::fixedClockSeconds()
+                             : (float)((double)(timing::get_wall_time_ms() - timeStart_) / 1000.0);
+                fsP.f0[1]=camMC2[0]; fsP.f0[2]=camMC2[1]; fsP.f0[3]=camMC2[2];
+                fsP.f1[0]=alphaDepth; fsP.f1[1]=g_waterAbsorptionDensity;
+                fsP.f1[2]=g_waterMaxAlpha; fsP.f1[3]=g_waterRippleGain;
+                fsP.f2[0]=g_waterGlintGain;
+                memcpy(fsP.deep,    g_waterDeepColor,    3*sizeof(float));
+                memcpy(fsP.shallow, g_waterShallowColor, 3*sizeof(float));
+                vkWaterHandled = (1 == mc2_vk_water_island_run(
+                    (unsigned int)ppVk->getSceneColorTexture(),
+                    (unsigned int)ppVk->getSceneDepthTexture(),
+                    ppVk->getWidth(), ppVk->getHeight(),
+                    vkThinPtr, vkThinCount, vkRecipes, vkRecipeN, &vsP, &fsP));
+            }
+        }
+#endif
+
         // MDI: 2 draws (base + detail); 1 if detail not present.
         const GLsizei drawCount = (detailTex != 0) ? 2 : 1;
-        glBindBuffer(GL_DRAW_INDIRECT_BUFFER, WaterStream::GetIndirectCmdBuffer());
-        glMultiDrawArraysIndirect(GL_TRIANGLES, nullptr, drawCount, 0);
-        mdi_submit::trace("WaterFastPath", "MultiDrawArraysIndirect", (int)drawCount,
-                          "GPU", "WaterStreamIndirect", false);
-        glBindBuffer(GL_DRAW_INDIRECT_BUFFER, 0);
+        if (!vkWaterHandled) {
+            glBindBuffer(GL_DRAW_INDIRECT_BUFFER, WaterStream::GetIndirectCmdBuffer());
+            glMultiDrawArraysIndirect(GL_TRIANGLES, nullptr, drawCount, 0);
+            mdi_submit::trace("WaterFastPath", "MultiDrawArraysIndirect", (int)drawCount,
+                              "GPU", "WaterStreamIndirect", false);
+            glBindBuffer(GL_DRAW_INDIRECT_BUFFER, 0);
+        }
 
         // Restore unit 2 — mirror unit-1 force-clear + sampler restore.
         if (bindRefl) {

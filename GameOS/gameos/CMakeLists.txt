@@ -137,6 +137,12 @@ if(MC2_VULKAN)
         # header members (vkSSAOIsland_ + method decls) added under the same
         # macro, already propagated to all consumers by the root ODR-harden block.
         list(APPEND SOURCES vulkan_ssao_island.cpp)
+        # VK-P9a WATER-INTEROP: the water island — FIRST Vulkan GEOMETRY region.
+        # Renders the armed water fast-path mesh (base layer) in VK into an exportable
+        # RGBA16F, GL composites into MainColor. Borrows the shared engine VulkanContext
+        # (no second device). Gate MC2_VK_WATER_INTEROP default-OFF -> GL water unchanged.
+        # No layout-affecting header members (extern "C" entry points only).
+        list(APPEND SOURCES vulkan_water_island.cpp)
         # VK-REGION-HZB-1: the HZB reduce-chain island (third region). Same
         # #ifdef MC2_VULKAN_ISLAND discipline; layout-affecting header members
         # (vkHzbIsland_ + method decls) added under the same macro, already
@@ -245,7 +251,10 @@ if(MC2_VULKAN)
     # WATER-MVP-ORACLE-1: bake water_mvp.{vert,frag} (clip-space oracle proving the
     # water MVP UBO pack + reverse-Z depth fudge reproduces the GL water VS
     # bit-tight; frag does M*worldPos + fudge, column_major std140 UBO).
-    set(MC2_VK_SHADER_BASENAMES fullscreen edge_fog fog_oob ssao ssao_apply hzb_reduce compare_shadow csm_array_shadow shadow_depth water_mvp)
+    # VK-P9a WATER-INTEROP: bake water_geom.{vert,frag} (procedural water mesh VS +
+    # base-layer FS for the first VK GEOMETRY region). SPIR-V loaded at runtime by
+    # vulkan_water_island.cpp via load_spv(spv_dir()+"water_geom.*.spv").
+    set(MC2_VK_SHADER_BASENAMES fullscreen edge_fog fog_oob ssao ssao_apply hzb_reduce compare_shadow csm_array_shadow shadow_depth water_mvp water_geom)
     set(MC2_VK_SPV_OUTPUTS "")
     if(MC2_GLSLANG_VALIDATOR OR MC2_GLSLC)
         foreach(_base ${MC2_VK_SHADER_BASENAMES})

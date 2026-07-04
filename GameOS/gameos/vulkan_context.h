@@ -113,6 +113,15 @@ VulkanContext& getOrCreateEngineVulkanContext();
 // Convenience: true if the engine context has been born and holds a live device.
 bool engineVulkanContextValid();
 
+// VK-P9a WATER-INTEROP: on-demand shared-context birth DECOUPLED from present.
+// Lazy + idempotent: returns true if the shared context is already valid; else
+// brings it up once via init(wantInterop=true, wantPresent=false) -- the SAME
+// shared device (one volkLoadDevice), interop exts but no surface/swapchain, so a
+// VK-interop-region gate (MC2_VK_WATER_INTEROP) can run on the GL-present path
+// WITHOUT MC2_RENDER_BACKEND=vulkan and without a healthy present/window. init()
+// is one-shot (no retry after failure). Fail-soft: false -> caller uses GL.
+bool ensureEngineVulkanContextForInterop();
+
 }  // namespace mc2vk
 
 #endif  // MC2_VULKAN

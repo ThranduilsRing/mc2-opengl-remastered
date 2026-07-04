@@ -387,6 +387,25 @@ bool engineVulkanContextValid() {
     return g_engineContext.valid();
 }
 
+// VK-P9a WATER-INTEROP: on-demand shared-context birth, DECOUPLED from present.
+// The shared engine VulkanContext is the first-class durable device (P13 T2);
+// present is just ONE consumer. A VK-interop-region gate (e.g. MC2_VK_WATER_INTEROP)
+// must be able to bring the SAME shared device up on the GL-present path, WITHOUT
+// MC2_RENDER_BACKEND=vulkan and WITHOUT a healthy present/window. Lazy + idempotent:
+//   - If the context is already valid (born by =vulkan in gameosmain, or a prior
+//     call here), return true immediately -- NO second init, NO second volkLoadDevice
+//     (the device is shared; init() is a no-op after success).
+//   - Else init(wantInterop=true, wantPresent=false): brings up instance/device/queue/
+//     VMA + the SINGLE volkLoadDevice, with the external-memory/-semaphore Win32 exts
+//     but NO surface/swapchain (present-independent). Interop islands reuse this device.
+//   - init() is one-shot: after a failed attempt it returns false without retrying, so
+//     a repeated caller never thrashes. Fail-soft: returns false, caller falls back to GL.
+// This is the generalization that unblocks every VK geometry/interop region uniformly.
+bool ensureEngineVulkanContextForInterop() {
+    if (g_engineContext.valid()) return true;               // already born (=vulkan or prior lazy)
+    return g_engineContext.init(/*wantInterop=*/true, /*wantPresent=*/false);
+}
+
 }  // namespace mc2vk
 
 #endif  // MC2_VULKAN

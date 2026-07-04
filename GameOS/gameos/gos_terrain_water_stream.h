@@ -119,7 +119,13 @@ unsigned int EnsureRecipeBufferUploaded();
 // recipeIdx, packs lightRGB / fogRGB / pzValid into a triple-buffered ring
 // SSBO, binds it at kWaterThinSsboBinding. Returns the count of thin
 // records emitted (i.e., the per-frame draw instance count).
-uint32_t UploadAndBindThinRecords();
+//
+// forceFullWalk (VK-P9a): ignore the narrow-walk fast path and walk the full
+// quadList, so g_thinStaging is populated even when the armed full-recipe-
+// authoritative GPU path (default-on) has skipped the CPU narrow walk. The VK
+// water island passes true to get a CPU-staged thin feed. Default false =
+// byte-identical existing behavior for all legacy callers.
+uint32_t UploadAndBindThinRecords(bool forceFullWalk = false);
 
 // --- Narrow-walk fast path -------------------------------------------------
 //
@@ -182,6 +188,16 @@ void EndThinRingFrameFence();
 // reads both back from SSBOs, and byte-compares by recipeIdx. Emits
 // [GPU_DRIVEN_WATER_PARITY v1] summary every 600 frames.
 void ComputeDispatchParity_Check();
+
+// VK-P9a WATER-INTEROP: GPU thin-record READBACK feed for the Vulkan water island.
+// Reads back the thin records the armed GPU compute actually packed this frame (count
+// from the bucket header, records from the packed ring slot) into an internal CPU copy
+// and returns the count with *outPtr pointing at it (48B WaterThinRecord each, valid
+// until the next call). Call AFTER ComputeDispatchAndBindThinRecords (the compute's
+// final barrier makes the data visible). Returns 0 if the GPU path didn't run this
+// frame. This is the reliable feed on the armed full-recipe-authoritative path, where
+// the CPU pack (UploadAndBindThinRecords) yields 0 records.
+uint32_t ReadbackGpuThinForVk(const void** outPtr);
 
 // Tear down GL buffers (mission unload, app shutdown).
 void ReleaseGlResources();
