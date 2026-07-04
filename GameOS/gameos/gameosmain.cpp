@@ -1189,7 +1189,9 @@ int main(int argc, char** argv)
             if (dw <= 0) dw = w;
             if (dh <= 0) dh = h;
             mc2vk::EnginePresentVk& vkpres = mc2vk::getOrCreateEnginePresentVk();
-            const bool presok = vkpres.init(vkctx, (uint32_t)dw, (uint32_t)dh);
+            // P13b: present onto the EXISTING visible GL game window (g_sdl_window)
+            // via raw vkCreateWin32SurfaceKHR on its HWND -- no hidden VK window.
+            const bool presok = vkpres.init(vkctx, g_sdl_window, (uint32_t)dw, (uint32_t)dh);
             vkpres.logHealth();
             if (!presok || !vkpres.valid()) {
                 mc2::forceGLFallback(vkpres.health().fallback_reason.empty()

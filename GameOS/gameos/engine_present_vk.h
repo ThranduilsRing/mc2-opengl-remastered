@@ -71,11 +71,14 @@ public:
     EnginePresentVk(const EnginePresentVk&) = delete;
     EnginePresentVk& operator=(const EnginePresentVk&) = delete;
 
-    // Stand up the hidden present window + surface + swapchain + interop image,
-    // sized to (w,h) == the GL drawable extent. `ctx` MUST be a valid, present-
-    // capable (init(wantPresent=true)) engine context. Returns false + sets
+    // Stand up the present surface + swapchain + interop image on the EXISTING
+    // visible GL game window (P13b: same-HWND raw vkCreateWin32SurfaceKHR, no
+    // second window), sized to (w,h) == the GL drawable extent. `glWindow` is the
+    // game's SDL_WINDOW_OPENGL window (g_sdl_window) whose HWND we present to; it
+    // stays visible and owns all input. `ctx` MUST be a valid, present-capable
+    // (init(wantPresent=true)) engine context. Returns false + sets
     // health.fallback_reason on any error (fail-soft: partial state torn down).
-    bool init(VulkanContext& ctx, uint32_t w, uint32_t h);
+    bool init(VulkanContext& ctx, SDL_Window* glWindow, uint32_t w, uint32_t h);
 
     // Present ONE finished GL frame. `glFbo0DrawableW/H` is the current GL
     // drawable size (for resize detection). Runs copy-1 (GL blit FBO-0 -> shared
@@ -90,7 +93,8 @@ public:
     void destroy();
 
     bool valid() const { return created_; }
-    SDL_Window* window() const { return window_; }
+    // P13b: the visible GL game window we present onto (borrowed, not owned).
+    SDL_Window* window() const { return glWindow_; }
     const EnginePresentHealth& health() const { return health_; }
 
     // Emit the [VK_PRESENT] health line for the T5 proof.
@@ -108,7 +112,9 @@ private:
     Impl* impl_ = nullptr;
 
     bool created_ = false;
-    SDL_Window* window_ = nullptr;
+    // P13b: the existing visible GL game window we present onto via its HWND.
+    // BORROWED (owned by gos_render / g_sdl_window) -- never destroyed here.
+    SDL_Window* glWindow_ = nullptr;
     EnginePresentHealth health_;
 };
 

@@ -30,6 +30,7 @@
 #include <GL/glew.h>   // copy-1 GL blit (FBO-0 -> shared GL texture)
 #include <SDL2/SDL.h>
 #include <SDL2/SDL_vulkan.h>
+#include <SDL2/SDL_syswm.h>   // P13b: SDL_GetWindowWMInfo -> HWND / HINSTANCE
 
 #include <cstdarg>
 #include <cstdio>
@@ -309,7 +310,7 @@ bool buildSharedImage(EnginePresentVk::Impl& s, uint32_t w, uint32_t h, std::str
 
 }  // namespace
 
-bool EnginePresentVk::init(VulkanContext& ctx, uint32_t w, uint32_t h) {
+bool EnginePresentVk::init(VulkanContext& ctx, SDL_Window* glWindow, uint32_t w, uint32_t h) {
     health_ = EnginePresentHealth{};
     health_.attempted = true;
     if (!ctx.valid()) {
@@ -317,6 +318,12 @@ bool EnginePresentVk::init(VulkanContext& ctx, uint32_t w, uint32_t h) {
         plog("%s. fail-soft.", health_.fallback_reason.c_str());
         return false;
     }
+    if (!glWindow) {
+        health_.fallback_reason = "P13b: NULL GL game window handed to present init";
+        plog("%s. fail-soft.", health_.fallback_reason.c_str());
+        return false;
+    }
+    glWindow_ = glWindow;   // BORROWED (g_sdl_window) -- never destroyed here.
     if (w == 0) w = 1;
     if (h == 0) h = 1;
 
@@ -337,24 +344,46 @@ bool EnginePresentVk::init(VulkanContext& ctx, uint32_t w, uint32_t h) {
         return false;
     };
 
-    // ---- hidden Vulkan window ---------------------------------------------
-    // SDL video is already up (the GL window created it). Load the SDL Vulkan
-    // library so SDL_Vulkan_CreateSurface works against the shared instance.
-    if (SDL_Vulkan_LoadLibrary(nullptr) != 0) {
-        return fail(std::string("SDL_Vulkan_LoadLibrary: ") + SDL_GetError());
+    // ---- P13b: raw Win32 surface on the EXISTING visible GL game window -----
+    // No hidden VK window. Pull the native HWND+HINSTANCE from the game's GL
+    // window (SDL_WINDOW_OPENGL, g_sdl_window) via SDL_GetWindowWMInfo -- exactly
+    // as the mouse grab does (gos_render.cpp:64-74) and as the T0 probe proved --
+    // then vkCreateWin32SurfaceKHR straight onto that HWND. The GL context owns
+    // the pixel format/HDC; VK presents via the WSI/compositor path on the same
+    // HWND (no conflict, since GL swap is suppressed in =vulkan mode). One window,
+    // already visible, already owning focus + all input.
+    SDL_SysWMinfo wm; SDL_VERSION(&wm.version);
+    if (SDL_GetWindowWMInfo(glWindow_, &wm) != SDL_TRUE) {
+        return fail(std::string("P13b SDL_GetWindowWMInfo: ") + SDL_GetError());
     }
-    window_ = SDL_CreateWindow(
-        "MC2 VK present (hidden)", SDL_WINDOWPOS_CENTERED, SDL_WINDOWPOS_CENTERED,
-        (int)w, (int)h, SDL_WINDOW_VULKAN | SDL_WINDOW_HIDDEN);
-    if (!window_) {
-        return fail(std::string("SDL_CreateWindow(VULKAN|HIDDEN): ") + SDL_GetError());
+    if (wm.subsystem != SDL_SYSWM_WINDOWS) {
+        return fail("P13b: GL window subsystem is not SDL_SYSWM_WINDOWS");
     }
-    plog("created HIDDEN %ux%u Vulkan present window (shares the engine device).", w, h);
+    HWND      hwnd  = wm.info.win.window;
+    HINSTANCE hinst = wm.info.win.hinstance;
+    if (!hwnd) return fail("P13b: SDL_GetWindowWMInfo gave a NULL HWND");
+    if (!hinst) hinst = GetModuleHandle(nullptr);   // SDL may leave hinstance NULL
 
-    // ---- surface on the SHARED instance -----------------------------------
-    if (SDL_Vulkan_CreateSurface(window_, s.inst, &s.surface) != SDL_TRUE) {
-        return fail(std::string("SDL_Vulkan_CreateSurface: ") + SDL_GetError());
+    // Resolve the Win32 surface entrypoint at runtime (volk's global symbol is
+    // only defined when volk.c is built with VK_USE_PLATFORM_WIN32_KHR, which this
+    // build's volk TU is not -- so link against vkGetInstanceProcAddr instead, as
+    // the T0 probe does). The shared instance enabled VK_KHR_win32_surface.
+    auto pfnCreateWin32Surface = (PFN_vkCreateWin32SurfaceKHR)
+        vkGetInstanceProcAddr(s.inst, "vkCreateWin32SurfaceKHR");
+    if (pfnCreateWin32Surface == nullptr) {
+        return fail("P13b: vkGetInstanceProcAddr(vkCreateWin32SurfaceKHR) NULL "
+                    "(VK_KHR_win32_surface not on the shared instance?)");
     }
+    VkWin32SurfaceCreateInfoKHR wsci{VK_STRUCTURE_TYPE_WIN32_SURFACE_CREATE_INFO_KHR};
+    wsci.hinstance = hinst;
+    wsci.hwnd      = hwnd;
+    VkResult sr = pfnCreateWin32Surface(s.inst, &wsci, nullptr, &s.surface);
+    if (sr != VK_SUCCESS) {
+        return fail("P13b: vkCreateWin32SurfaceKHR on the GL window's HWND failed ("
+                    + std::to_string((int)sr) + ")");
+    }
+    plog("P13b: VK surface created on the VISIBLE GL game window HWND=%p (no hidden "
+         "window; GL keeps input+focus).", (void*)hwnd);
 
     // ---- queue confirm + present mode -------------------------------------
     {
@@ -419,14 +448,21 @@ bool EnginePresentVk::presentGLFrame(uint32_t glDrawableW, uint32_t glDrawableH,
     }
     Impl& s = *impl_;
 
-    // Pump SDL events so the hidden window stays responsive (does not honor quit).
-    SDL_Event ev; while (SDL_PollEvent(&ev)) { /* drain */ }
+    // P13b: do NOT drain SDL events here. We present onto the SAME visible GL
+    // window the game owns; its events (esp. mouse-motion) must flow to the
+    // game's normal SDL event loop (gameosmain process_events). The old hidden-
+    // window drain-and-discard would starve the game of input.
+
+    // Minimized / zero-drawable: skip present this frame (fail-soft, no crash).
+    // The game loop also throttles on MINIMIZED via g_sdl_window, but guard here
+    // too so a zero extent never reaches the swapchain rebuild.
+    if (glDrawableW == 0 || glDrawableH == 0) {
+        return true;   // nothing to present; try again next frame
+    }
 
     // Resize: if the GL drawable changed, rebuild the shared image + swapchain to
-    // match. (The hidden VK window is resized to keep the surface caps in step.)
-    if (glDrawableW != 0 && glDrawableH != 0 &&
-        (glDrawableW != s.imgW || glDrawableH != s.imgH)) {
-        SDL_SetWindowSize(window_, (int)glDrawableW, (int)glDrawableH);
+    // match the game window's new size (OS-driven resize / DPI change).
+    if (glDrawableW != s.imgW || glDrawableH != s.imgH) {
         std::string r;
         if (!buildSharedImage(s, glDrawableW, glDrawableH, r)) {
             health_.fallback_reason = "resize: " + r; return false;
@@ -475,11 +511,18 @@ bool EnginePresentVk::presentGLFrame(uint32_t glDrawableW, uint32_t glDrawableH,
     uint32_t imageIndex = 0;
     r = vkAcquireNextImageKHR(s.dev, s.swapchain, UINT64_MAX, s.acquireSem, VK_NULL_HANDLE, &imageIndex);
     if (r == VK_ERROR_OUT_OF_DATE_KHR) {
-        int dw = 0, dh = 0; SDL_Vulkan_GetDrawableSize(window_, &dw, &dh);
-        std::string rr;
-        if (!rebuildSwapchain(s, (uint32_t)dw, (uint32_t)dh, rr)) { health_.fallback_reason = rr; return false; }
+        // OS-driven resize/alt-tab invalidated the swapchain. Rebuild to the GL
+        // game window's current drawable. If it's zero (minimized), skip the
+        // rebuild and just re-signal the fence -- retry next frame, no crash.
+        int dw = 0, dh = 0; SDL_GL_GetDrawableSize(glWindow_, &dw, &dh);
         VkSubmitInfo empty{VK_STRUCTURE_TYPE_SUBMIT_INFO};
         vkQueueSubmit(s.gfxQ, 1, &empty, s.inFlight);   // re-signal fence
+        if (dw > 0 && dh > 0) {
+            std::string rr;
+            if (!rebuildSwapchain(s, (uint32_t)dw, (uint32_t)dh, rr)) {
+                health_.fallback_reason = rr; return false;
+            }
+        }
         return true;  // retry next frame
     } else if (r == VK_ERROR_DEVICE_LOST) {
         health_.fallback_reason = "DEVICE_LOST at acquire"; return false;
@@ -583,9 +626,13 @@ bool EnginePresentVk::presentGLFrame(uint32_t glDrawableW, uint32_t glDrawableH,
         ++health_.present_frames;
     } else if (r == VK_ERROR_OUT_OF_DATE_KHR || r == VK_SUBOPTIMAL_KHR) {
         ++health_.present_frames;
-        int dw = 0, dh = 0; SDL_Vulkan_GetDrawableSize(window_, &dw, &dh);
-        std::string rr;
-        if (!rebuildSwapchain(s, (uint32_t)dw, (uint32_t)dh, rr)) { health_.fallback_reason = rr; return false; }
+        int dw = 0, dh = 0; SDL_GL_GetDrawableSize(glWindow_, &dw, &dh);
+        if (dw > 0 && dh > 0) {
+            std::string rr;
+            if (!rebuildSwapchain(s, (uint32_t)dw, (uint32_t)dh, rr)) {
+                health_.fallback_reason = rr; return false;
+            }
+        }
     } else if (r == VK_ERROR_DEVICE_LOST) {
         health_.fallback_reason = "DEVICE_LOST at present"; return false;
     } else {
@@ -714,7 +761,9 @@ void EnginePresentVk::destroy() {
         delete impl_;
         impl_ = nullptr;
     }
-    if (window_) { SDL_DestroyWindow(window_); window_ = nullptr; }
+    // P13b: glWindow_ is BORROWED (g_sdl_window, owned by gos_render). Never
+    // destroy it here -- just drop our reference.
+    glWindow_ = nullptr;
     created_ = false;
 }
 
