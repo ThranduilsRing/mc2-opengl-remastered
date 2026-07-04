@@ -760,6 +760,33 @@ static constexpr EnvVarDesc kAuxEnvVars[] = {
         "ambient fill. FAIL-SOFT: shadow map not importable -> shadow=1.0 (lit, no shadow), never a hole. "
         "Gate OFF = byte-identical to the pre-lighting VK colormap+cement frame."
     },
+    {
+        "MC2_FEATURE_VK_PROP_MATERIAL",
+        "MC2_VK_PROP_MATERIAL",
+        EnvVarKind::Feature,
+        false,
+        "VK-PROP-MATERIAL: presence-gated =1, default OFF (requires MC2_VK_PROP_COLOR_TIER1). Replaces the "
+        "VK prop Tier-1 flat DEBUG teal with real textured VERTEX-BAKED-lit materials (NOT PBR — GL props are "
+        "vertex-baked by default, u_pbrV1Strength=0). Copy-once imports BOTH static-prop albedo 2D_ARRAYs "
+        "(s_texArrayOff binding 3 + s_texArrayOn binding 6; per-type group-relative layer tables bindings 2/5; "
+        "RGBA8->R8G8B8A8_UNORM or BC7->BC7_*_BLOCK per real internalformat, full mips, LINEAR_MIPMAP_LINEAR/"
+        "CLAMP). Alpha-ON (class-1, alpha-MIXED) types route to s_texArrayOn with the GL 0.5 alpha-test "
+        "discard (static_prop.frag:236). Frag = albedo * vArgb where vArgb = per-vertex base_light seed "
+        "(a_aRGBLight loc4) + stand-in ambient + sun*NdotL. GBuffer1 unchanged (a=0.25). FAIL-SOFT: array "
+        "not ready / layer<0 -> teal. DEFERRED vs GL parity: ObjectLights ambient + per-type magic hot-color "
+        "SSBO + per-actor sun/highlight/fog (stand-in constants; lighting is approximate model, not byte-"
+        "parity), MaterialGpu roughness/metallic, BC7-bucketed arrays. SEPARATE parked issue: Tree/Generic "
+        "POPULATION coverage (only Building population fed). Gate OFF = byte-identical VK prop path."
+    },
+    {
+        "MC2_FEATURE_VK_PROP_MATERIAL_DEBUG",
+        "MC2_VK_PROP_MATERIAL_DEBUG",
+        EnvVarKind::Feature,
+        false,
+        "VK-PROP-MATERIAL-DEBUG: presence-gated =1, default OFF. One-shot [GPUPROPS_HIST v2] instance-weighted "
+        "layer histogram (textured/alpha_on/no_primary/total) from the material feed — diagnostic only, no "
+        "render effect. Gate OFF = no log, byte-identical."
+    },
     // GOSFX-TUBE-RIBBON-1: gosFX Tube swept-quad ribbon oracle.
     {
         "MC2_VFX_ORACLE_TUBE",

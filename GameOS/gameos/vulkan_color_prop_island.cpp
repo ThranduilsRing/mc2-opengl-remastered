@@ -62,6 +62,14 @@
 #include <chrono>
 #include <algorithm>
 
+// VK-P11 STATIC-PROP MATERIAL: BC7 internalformat enums (fallback if GLEW headers lack).
+#ifndef GL_COMPRESSED_RGBA_BPTC_UNORM
+#define GL_COMPRESSED_RGBA_BPTC_UNORM        0x8E8C
+#endif
+#ifndef GL_COMPRESSED_SRGB_ALPHA_BPTC_UNORM
+#define GL_COMPRESSED_SRGB_ALPHA_BPTC_UNORM  0x8E8D
+#endif
+
 namespace {
 
 // ---------------------------------------------------------------------------
@@ -134,6 +142,17 @@ bool propColorTier1Requested() {
     return state == 1;
 }
 
+// VK-P11 STATIC-PROP MATERIAL: real lit textured props (albedo 2D_ARRAY sample +
+// shared computePBR). Requires the Tier-1 gate (shared-GBuffer co-write). Default-OFF.
+bool propMaterialRequested() {
+    static int state = -1;
+    if (state == -1) {
+        const char* e = std::getenv("MC2_VK_PROP_MATERIAL");
+        state = (e && e[0] == '1' && e[1] == '\0') ? 1 : 0;
+    }
+    return state == 1;
+}
+
 std::string spv_dir() {
     const char* env = std::getenv("MC2_VULKAN_SPV_DIR");
     std::string d = (env && *env) ? env : "shaders/vulkan";
@@ -177,12 +196,19 @@ struct GpuStaticPropInstanceMirror {
 };                             // 112 bytes
 static_assert(sizeof(GpuStaticPropInstanceMirror) == 112, "instance mirror must be 112B");
 
-// std140 per-frame UBO (LOCKSTEP with color_prop.vert ColorFrameUBO).
+// std140 per-frame UBO (LOCKSTEP with color_prop.vert / color_prop_tier1.frag
+// ColorFrameUBO). VK-P11 STATIC-PROP MATERIAL extends the Tier-0 UBO with the
+// terrain sun (surface->sun, MC2 world) + a materialReady flag so the Tier-1 FS
+// samples the real albedo array + shared computePBR when armed, else keeps teal.
+// The tail (sun/materialReady) is default-zero and IGNORED by the Tier-0 vert/frag
+// (they only read the first 20 bytes) so the Tier-0 path is byte-identical.
 struct ColorFrameUBO {
-    float worldToClipGL[16]; // gos_GetObjectFixBMVPMat4() — GL_FALSE
-    float objectDepthBias;
-    int32_t instBase;
-    int32_t _pad0, _pad1;
+    float   worldToClipGL[16]; // gos_GetObjectFixBMVPMat4() — GL_FALSE   (off 0)
+    float   objectDepthBias;   //                                          (off 64)
+    int32_t instBase;          //                                          (off 68)
+    int32_t materialReady;     // 1 = sample alpha-OFF albedo array         (off 72)
+    int32_t materialReadyOn;   // 1 = sample alpha-ON albedo array (a-test) (off 76)
+    float   terrainSunMC2[4];  // surface->sun (MC2 world); .w pad          (off 80)
 };
 
 const VkFormat kColorFmt = VK_FORMAT_R16G16B16A16_SFLOAT; // MainColor-compatible
@@ -248,6 +274,33 @@ struct ColorPropIsland {
     VkDeviceSize  instCapBytes = 0;
     VkBuffer      ubo = VK_NULL_HANDLE; VmaAllocation uboAlloc = VK_NULL_HANDLE;
 
+    // VK-P11 STATIC-PROP MATERIAL: copy-once albedo 2D_ARRAY import + per-type layer
+    // table + terrain sun. All optional (Tier-1 + MC2_VK_PROP_MATERIAL); fail-soft to
+    // teal when unavailable (materialReady stays false).
+    bool          wantMaterial   = false;   // MC2_VK_PROP_MATERIAL armed
+    bool          materialReady  = false;   // albedo array imported this map
+    uint32_t      albedoGlTexImported = 0;  // GL name last imported (re-import guard)
+    VkImage       albedoImg   = VK_NULL_HANDLE; VmaAllocation albedoAlloc = VK_NULL_HANDLE;
+    VkImageView   albedoView  = VK_NULL_HANDLE;
+    VkSampler     albedoSamp  = VK_NULL_HANDLE;
+    uint32_t      albedoLayers = 0;
+    VkBuffer      layerBuf = VK_NULL_HANDLE; VmaAllocation layerAlloc = VK_NULL_HANDLE; // per-type int layer SSBO
+    VkDeviceSize  layerCapBytes = 0;
+    float         terrainSunMC2[3] = {0.0f, 0.0f, 1.0f};
+
+    // VK-P11 STATIC-PROP MATERIAL alpha-ON (class 1): second copy-once array import +
+    // second per-type layer SSBO. Class-1 types (alpha-MIXED buildings) sample this
+    // array with a 0.5 alpha-test discard (matches GL static_prop.frag). Fail-soft to
+    // teal when unavailable (materialReadyOn stays false).
+    bool          materialReadyOn = false;  // alpha-ON array imported this map
+    uint32_t      albedoOnGlTexImported = 0;
+    VkImage       albedoOnImg  = VK_NULL_HANDLE; VmaAllocation albedoOnAlloc = VK_NULL_HANDLE;
+    VkImageView   albedoOnView = VK_NULL_HANDLE;
+    VkSampler     albedoOnSamp = VK_NULL_HANDLE;
+    uint32_t      albedoOnLayers = 0;
+    VkBuffer      layerOnBuf = VK_NULL_HANDLE; VmaAllocation layerOnAlloc = VK_NULL_HANDLE; // per-type int layer SSBO (class 1)
+    VkDeviceSize  layerOnCapBytes = 0;
+
     VkRenderPass      rpass  = VK_NULL_HANDLE;
     VkFramebuffer     fb     = VK_NULL_HANDLE;
     VkDescriptorSetLayout dsl = VK_NULL_HANDLE;
@@ -287,14 +340,49 @@ void write_descriptors(ColorPropIsland* s) {
     if (s->set == VK_NULL_HANDLE) return;
     VkDescriptorBufferInfo uboInfo{ s->ubo, 0, VK_WHOLE_SIZE };
     VkDescriptorBufferInfo instInfo{ s->instBuf, 0, VK_WHOLE_SIZE };
-    VkWriteDescriptorSet w[2]{};
-    w[0].sType = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET; w[0].dstSet = s->set;
-    w[0].dstBinding = 0; w[0].descriptorCount = 1;
-    w[0].descriptorType = VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER; w[0].pBufferInfo = &uboInfo;
-    w[1].sType = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET; w[1].dstSet = s->set;
-    w[1].dstBinding = 1; w[1].descriptorCount = 1;
-    w[1].descriptorType = VK_DESCRIPTOR_TYPE_STORAGE_BUFFER; w[1].pBufferInfo = &instInfo;
-    vkUpdateDescriptorSets(s->device, 2, w, 0, nullptr);
+    VkWriteDescriptorSet w[4]{};
+    uint32_t n = 0;
+    w[n].sType = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET; w[n].dstSet = s->set;
+    w[n].dstBinding = 0; w[n].descriptorCount = 1;
+    w[n].descriptorType = VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER; w[n].pBufferInfo = &uboInfo; ++n;
+    w[n].sType = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET; w[n].dstSet = s->set;
+    w[n].dstBinding = 1; w[n].descriptorCount = 1;
+    w[n].descriptorType = VK_DESCRIPTOR_TYPE_STORAGE_BUFFER; w[n].pBufferInfo = &instInfo; ++n;
+    // VK-P11 STATIC-PROP MATERIAL: binding2 layer SSBO (VS) + binding3 albedo array (FS).
+    // Only written when the layout declared them (wantMaterial) AND the objects exist
+    // (dummy or real). A valid descriptor is required for binding3 even pre-import.
+    VkDescriptorBufferInfo layerInfo{};
+    VkDescriptorImageInfo  albInfo{};
+    VkDescriptorBufferInfo layerOnInfo{};
+    VkDescriptorImageInfo  albOnInfo{};
+    VkWriteDescriptorSet   wm[4]{};   // alpha-OFF (2/3) + alpha-ON (5/6) material writes
+    uint32_t m = 0;
+    if (s->wantMaterial && s->tier1 && s->layerBuf != VK_NULL_HANDLE &&
+        s->albedoView != VK_NULL_HANDLE && s->albedoSamp != VK_NULL_HANDLE &&
+        s->layerOnBuf != VK_NULL_HANDLE &&
+        s->albedoOnView != VK_NULL_HANDLE && s->albedoOnSamp != VK_NULL_HANDLE) {
+        layerInfo = VkDescriptorBufferInfo{ s->layerBuf, 0, VK_WHOLE_SIZE };
+        wm[m].sType = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET; wm[m].dstSet = s->set;
+        wm[m].dstBinding = 2; wm[m].descriptorCount = 1;
+        wm[m].descriptorType = VK_DESCRIPTOR_TYPE_STORAGE_BUFFER; wm[m].pBufferInfo = &layerInfo; ++m;
+        albInfo.sampler = s->albedoSamp; albInfo.imageView = s->albedoView;
+        albInfo.imageLayout = VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL;
+        wm[m].sType = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET; wm[m].dstSet = s->set;
+        wm[m].dstBinding = 3; wm[m].descriptorCount = 1;
+        wm[m].descriptorType = VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER; wm[m].pImageInfo = &albInfo; ++m;
+        // alpha-ON group: binding5 layer SSBO (VS) + binding6 albedo array (FS).
+        layerOnInfo = VkDescriptorBufferInfo{ s->layerOnBuf, 0, VK_WHOLE_SIZE };
+        wm[m].sType = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET; wm[m].dstSet = s->set;
+        wm[m].dstBinding = 5; wm[m].descriptorCount = 1;
+        wm[m].descriptorType = VK_DESCRIPTOR_TYPE_STORAGE_BUFFER; wm[m].pBufferInfo = &layerOnInfo; ++m;
+        albOnInfo.sampler = s->albedoOnSamp; albOnInfo.imageView = s->albedoOnView;
+        albOnInfo.imageLayout = VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL;
+        wm[m].sType = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET; wm[m].dstSet = s->set;
+        wm[m].dstBinding = 6; wm[m].descriptorCount = 1;
+        wm[m].descriptorType = VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER; wm[m].pImageInfo = &albOnInfo; ++m;
+    }
+    if (n) vkUpdateDescriptorSets(s->device, n, w, 0, nullptr);
+    if (m) vkUpdateDescriptorSets(s->device, m, wm, 0, nullptr);
 }
 
 bool ensure_inst_capacity(ColorPropIsland* s, VkDeviceSize bytes) {
@@ -340,6 +428,16 @@ void destroy_island(ColorPropIsland* s) {
     if (s->ibo)     vmaDestroyBuffer(s->allocator, s->ibo, s->iboAlloc);
     if (s->instBuf) vmaDestroyBuffer(s->allocator, s->instBuf, s->instAlloc);
     if (s->ubo)     vmaDestroyBuffer(s->allocator, s->ubo, s->uboAlloc);
+    // VK-P11 STATIC-PROP MATERIAL: copy-once albedo array + per-type layer SSBO.
+    if (s->albedoView)  vkDestroyImageView(d, s->albedoView, nullptr);
+    if (s->albedoImg)   vmaDestroyImage(s->allocator, s->albedoImg, s->albedoAlloc);
+    if (s->albedoSamp)  vkDestroySampler(d, s->albedoSamp, nullptr);
+    if (s->layerBuf)    vmaDestroyBuffer(s->allocator, s->layerBuf, s->layerAlloc);
+    // alpha-ON group.
+    if (s->albedoOnView)  vkDestroyImageView(d, s->albedoOnView, nullptr);
+    if (s->albedoOnImg)   vmaDestroyImage(s->allocator, s->albedoOnImg, s->albedoOnAlloc);
+    if (s->albedoOnSamp)  vkDestroySampler(d, s->albedoOnSamp, nullptr);
+    if (s->layerOnBuf)    vmaDestroyBuffer(s->allocator, s->layerOnBuf, s->layerOnAlloc);
     if (s->cpool)   vkDestroyCommandPool(d, s->cpool, nullptr);
     if (s->glCompositeProg) { glDeleteProgram(s->glCompositeProg); s->glCompositeProg = 0; }
     if (s->glCompositeVao)  { glDeleteVertexArrays(1, &s->glCompositeVao); s->glCompositeVao = 0; }
@@ -369,6 +467,250 @@ bool make_depth(ColorPropIsland* s) {
         vlog("depth view failed."); return false;
     }
     return true;
+}
+
+// VK-P11 STATIC-PROP MATERIAL ------------------------------------------------
+// Copy-once import of the GL alpha-OFF albedo GL_TEXTURE_2D_ARRAY into a VK sampled
+// array image (all layers, full mips), + a LINEAR_MIPMAP_LINEAR / CLAMP_TO_EDGE
+// sampler matching the GL static-prop array. Generalizes the terrain island's
+// single-layer/single-mip upload_sampled_image to arrayLayers=N + mipLevels=M:
+// glGetTexImage(GL_TEXTURE_2D_ARRAY) / glGetCompressedTexImage return ALL layers of a
+// level contiguously, so one vkCmdCopyBufferToImage per mip with layerCount=N copies
+// the whole level. This is a ONCE-PER-MAP material import (like the terrain colormap),
+// NOT the per-frame zero-copy color surface — so it does NOT touch g_forbidden.
+
+VkCommandBuffer cp_begin_oneshot(ColorPropIsland* s) {
+    VkCommandBufferAllocateInfo cbi{};
+    cbi.sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_ALLOCATE_INFO;
+    cbi.commandPool = s->cpool; cbi.level = VK_COMMAND_BUFFER_LEVEL_PRIMARY; cbi.commandBufferCount = 1;
+    VkCommandBuffer cb = VK_NULL_HANDLE;
+    if (vkAllocateCommandBuffers(s->device, &cbi, &cb) != VK_SUCCESS) return VK_NULL_HANDLE;
+    VkCommandBufferBeginInfo bi{};
+    bi.sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_BEGIN_INFO;
+    bi.flags = VK_COMMAND_BUFFER_USAGE_ONE_TIME_SUBMIT_BIT;
+    vkBeginCommandBuffer(cb, &bi);
+    return cb;
+}
+void cp_end_oneshot(ColorPropIsland* s, VkCommandBuffer cb) {
+    vkEndCommandBuffer(cb);
+    VkSubmitInfo si{}; si.sType = VK_STRUCTURE_TYPE_SUBMIT_INFO;
+    si.commandBufferCount = 1; si.pCommandBuffers = &cb;
+    vkQueueSubmit(s->queue, 1, &si, VK_NULL_HANDLE);
+    vkQueueWaitIdle(s->queue);
+    vkFreeCommandBuffers(s->device, s->cpool, 1, &cb);
+}
+
+// VK-P11 STATIC-PROP MATERIAL: a single array-import target (alpha-OFF or alpha-ON).
+// Both albedo groups share the same import code via this indirection.
+struct AlbedoTarget {
+    VkImage*       img;
+    VmaAllocation* alloc;
+    VkImageView*   view;
+    VkSampler*     samp;
+    uint32_t*      layers;
+    uint32_t*      importedGlName;
+    bool*          ready;
+    const char*    tag;   // "alpha-OFF" / "alpha-ON" for logs
+};
+AlbedoTarget cp_target_off(ColorPropIsland* s) {
+    return AlbedoTarget{ &s->albedoImg, &s->albedoAlloc, &s->albedoView, &s->albedoSamp,
+                         &s->albedoLayers, &s->albedoGlTexImported, &s->materialReady, "alpha-OFF" };
+}
+AlbedoTarget cp_target_on(ColorPropIsland* s) {
+    return AlbedoTarget{ &s->albedoOnImg, &s->albedoOnAlloc, &s->albedoOnView, &s->albedoOnSamp,
+                         &s->albedoOnLayers, &s->albedoOnGlTexImported, &s->materialReadyOn, "alpha-ON" };
+}
+
+bool cp_make_albedo_sampler(ColorPropIsland* s, VkSampler* samp, uint32_t mipLevels) {
+    if (*samp != VK_NULL_HANDLE) return true;
+    VkSamplerCreateInfo sci{};
+    sci.sType = VK_STRUCTURE_TYPE_SAMPLER_CREATE_INFO;
+    sci.magFilter = VK_FILTER_LINEAR; sci.minFilter = VK_FILTER_LINEAR;
+    sci.mipmapMode = VK_SAMPLER_MIPMAP_MODE_LINEAR;           // LINEAR_MIPMAP_LINEAR
+    sci.addressModeU = sci.addressModeV = sci.addressModeW = VK_SAMPLER_ADDRESS_MODE_CLAMP_TO_EDGE;
+    sci.maxLod = (mipLevels > 0) ? (float)(mipLevels - 1) : 0.0f;
+    return vkCreateSampler(s->device, &sci, nullptr, samp) == VK_SUCCESS;
+}
+
+// Build a VK sampled 2D_ARRAY image from a contiguous byte blob laid out
+// mip-major then layer-major-per-mip is NOT how GL returns it; GL returns, per mip
+// level, all layers contiguously. `regions` carries one VkBufferImageCopy per mip
+// (layerCount = layers, correct bufferOffset). Caller owns `bytes`.
+bool cp_upload_albedo_array(ColorPropIsland* s, const AlbedoTarget& tgt,
+                            VkFormat fmt, uint32_t w, uint32_t h,
+                            uint32_t layers, uint32_t mips, bool compressed,
+                            const void* bytes, VkDeviceSize byteCount,
+                            const std::vector<VkBufferImageCopy>& regions) {
+    if (*tgt.view) { vkDestroyImageView(s->device, *tgt.view, nullptr); *tgt.view = VK_NULL_HANDLE; }
+    if (*tgt.img)  { vmaDestroyImage(s->allocator, *tgt.img, *tgt.alloc); *tgt.img = VK_NULL_HANDLE; }
+    (void)compressed;
+
+    VkBuffer stg = VK_NULL_HANDLE; VmaAllocation stgAlloc = VK_NULL_HANDLE;
+    if (!make_buffer(s, byteCount, VK_BUFFER_USAGE_TRANSFER_SRC_BIT, &stg, &stgAlloc, true)) return false;
+    { void* p = nullptr;
+      if (vmaMapMemory(s->allocator, stgAlloc, &p) != VK_SUCCESS) { vmaDestroyBuffer(s->allocator, stg, stgAlloc); return false; }
+      std::memcpy(p, bytes, (size_t)byteCount); vmaUnmapMemory(s->allocator, stgAlloc); }
+
+    VkImageCreateInfo ici{};
+    ici.sType = VK_STRUCTURE_TYPE_IMAGE_CREATE_INFO;
+    ici.imageType = VK_IMAGE_TYPE_2D; ici.format = fmt;
+    ici.extent = {w, h, 1}; ici.mipLevels = mips; ici.arrayLayers = layers;
+    ici.samples = VK_SAMPLE_COUNT_1_BIT; ici.tiling = VK_IMAGE_TILING_OPTIMAL;
+    ici.usage = VK_IMAGE_USAGE_SAMPLED_BIT | VK_IMAGE_USAGE_TRANSFER_DST_BIT;
+    ici.initialLayout = VK_IMAGE_LAYOUT_UNDEFINED;
+    VmaAllocationCreateInfo aci{}; aci.usage = VMA_MEMORY_USAGE_AUTO;
+    if (vmaCreateImage(s->allocator, &ici, &aci, tgt.img, tgt.alloc, nullptr) != VK_SUCCESS) {
+        vmaDestroyBuffer(s->allocator, stg, stgAlloc); return false;
+    }
+
+    VkCommandBuffer cb = cp_begin_oneshot(s);
+    if (cb == VK_NULL_HANDLE) { vmaDestroyBuffer(s->allocator, stg, stgAlloc); return false; }
+    VkImageMemoryBarrier bar{};
+    bar.sType = VK_STRUCTURE_TYPE_IMAGE_MEMORY_BARRIER;
+    bar.oldLayout = VK_IMAGE_LAYOUT_UNDEFINED; bar.newLayout = VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL;
+    bar.srcQueueFamilyIndex = bar.dstQueueFamilyIndex = VK_QUEUE_FAMILY_IGNORED; bar.image = *tgt.img;
+    bar.subresourceRange = {VK_IMAGE_ASPECT_COLOR_BIT, 0, mips, 0, layers};
+    bar.srcAccessMask = 0; bar.dstAccessMask = VK_ACCESS_TRANSFER_WRITE_BIT;
+    vkCmdPipelineBarrier(cb, VK_PIPELINE_STAGE_TOP_OF_PIPE_BIT, VK_PIPELINE_STAGE_TRANSFER_BIT,
+                         0, 0, nullptr, 0, nullptr, 1, &bar);
+    vkCmdCopyBufferToImage(cb, stg, *tgt.img, VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL,
+                           (uint32_t)regions.size(), regions.data());
+    bar.oldLayout = VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL; bar.newLayout = VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL;
+    bar.srcAccessMask = VK_ACCESS_TRANSFER_WRITE_BIT; bar.dstAccessMask = VK_ACCESS_SHADER_READ_BIT;
+    vkCmdPipelineBarrier(cb, VK_PIPELINE_STAGE_TRANSFER_BIT, VK_PIPELINE_STAGE_FRAGMENT_SHADER_BIT,
+                         0, 0, nullptr, 0, nullptr, 1, &bar);
+    cp_end_oneshot(s, cb);
+    vmaDestroyBuffer(s->allocator, stg, stgAlloc);
+
+    VkImageViewCreateInfo vci{};
+    vci.sType = VK_STRUCTURE_TYPE_IMAGE_VIEW_CREATE_INFO;
+    vci.image = *tgt.img; vci.viewType = VK_IMAGE_VIEW_TYPE_2D_ARRAY; vci.format = fmt;
+    vci.subresourceRange = {VK_IMAGE_ASPECT_COLOR_BIT, 0, mips, 0, layers};
+    if (vkCreateImageView(s->device, &vci, nullptr, tgt.view) != VK_SUCCESS) return false;
+    *tgt.layers = layers;
+    return true;
+}
+
+// Bind a 1x1 opaque-magenta placeholder array so binding3 is a VALID descriptor even
+// when the real albedo import fails/isn't ready. materialReady stays false -> the FS
+// keeps flat teal (never samples the dummy).
+bool cp_ensure_dummy_albedo(ColorPropIsland* s, const AlbedoTarget& tgt) {
+    if (!cp_make_albedo_sampler(s, tgt.samp, 1)) return false;
+    if (*tgt.view != VK_NULL_HANDLE) return true;
+    const uint8_t px[4] = {255, 0, 255, 255};
+    std::vector<VkBufferImageCopy> rgn(1);
+    rgn[0].bufferOffset = 0;
+    rgn[0].imageSubresource = {VK_IMAGE_ASPECT_COLOR_BIT, 0, 0, 1};
+    rgn[0].imageExtent = {1, 1, 1};
+    return cp_upload_albedo_array(s, tgt, VK_FORMAT_R8G8B8A8_UNORM, 1, 1, 1, 1, false,
+                                  px, sizeof(px), rgn);
+}
+
+// Copy-once import the GL alpha-OFF albedo 2D_ARRAY. Re-imports only when the GL tex
+// name changes. Sets s->materialReady on success. Fail-soft: leaves the dummy bound
+// (materialReady=false -> FS keeps teal). Returns true if a NEW real import landed.
+bool cp_import_albedo_array(ColorPropIsland* s, const AlbedoTarget& tgt, uint32_t glTexArray) {
+    const uint32_t glTexArrayOff = glTexArray;
+    if (glTexArrayOff == 0) return false;
+    if (glTexArrayOff == *tgt.importedGlName && *tgt.ready) return false; // already
+
+    glBindTexture(GL_TEXTURE_2D_ARRAY, (GLuint)glTexArrayOff);
+    GLint w = 0, h = 0, layers = 0, internalFmt = 0;
+    glGetTexLevelParameteriv(GL_TEXTURE_2D_ARRAY, 0, GL_TEXTURE_WIDTH, &w);
+    glGetTexLevelParameteriv(GL_TEXTURE_2D_ARRAY, 0, GL_TEXTURE_HEIGHT, &h);
+    glGetTexLevelParameteriv(GL_TEXTURE_2D_ARRAY, 0, GL_TEXTURE_DEPTH, &layers);   // array layer count
+    glGetTexLevelParameteriv(GL_TEXTURE_2D_ARRAY, 0, GL_TEXTURE_INTERNAL_FORMAT, &internalFmt);
+    if (w <= 0 || h <= 0 || layers <= 0) { glBindTexture(GL_TEXTURE_2D_ARRAY, 0); return false; }
+
+    // Full mip chain (match GL: LINEAR_MIPMAP_LINEAR needs the levels present).
+    uint32_t mips = 1;
+    { uint32_t mw = (uint32_t)w, mh = (uint32_t)h;
+      while (mw > 1 || mh > 1) { mw = mw > 1 ? mw >> 1 : 1; mh = mh > 1 ? mh >> 1 : 1; ++mips; } }
+    // Only trust mips that actually exist on the GL texture (a non-mipped array
+    // reports level-0 only). Probe level 1; if absent, single mip.
+    { GLint w1 = 0; glGetTexLevelParameteriv(GL_TEXTURE_2D_ARRAY, 1, GL_TEXTURE_WIDTH, &w1);
+      if (w1 <= 0) mips = 1; }
+
+    const bool bc7 = (internalFmt == GL_COMPRESSED_RGBA_BPTC_UNORM ||
+                      internalFmt == GL_COMPRESSED_SRGB_ALPHA_BPTC_UNORM);
+    const VkFormat vkFmt = bc7
+        ? ((internalFmt == GL_COMPRESSED_SRGB_ALPHA_BPTC_UNORM) ? VK_FORMAT_BC7_SRGB_BLOCK
+                                                                : VK_FORMAT_BC7_UNORM_BLOCK)
+        : VK_FORMAT_R8G8B8A8_UNORM;
+
+    // Gather every mip level (all layers contiguous per level) into one blob + regions.
+    std::vector<uint8_t> blob;
+    std::vector<VkBufferImageCopy> regions;
+    regions.reserve(mips);
+    bool ok = true;
+    for (uint32_t m = 0; m < mips && ok; ++m) {
+        GLint lw = 0, lh = 0;
+        glGetTexLevelParameteriv(GL_TEXTURE_2D_ARRAY, (GLint)m, GL_TEXTURE_WIDTH, &lw);
+        glGetTexLevelParameteriv(GL_TEXTURE_2D_ARRAY, (GLint)m, GL_TEXTURE_HEIGHT, &lh);
+        if (lw <= 0 || lh <= 0) { mips = m; break; }
+        const VkDeviceSize off = blob.size();
+        if (bc7) {
+            GLint compBytes = 0;
+            glGetTexLevelParameteriv(GL_TEXTURE_2D_ARRAY, (GLint)m, GL_TEXTURE_COMPRESSED_IMAGE_SIZE, &compBytes);
+            if (compBytes <= 0) { ok = false; break; }  // all layers this level
+            blob.resize((size_t)off + (size_t)compBytes);
+            glGetCompressedTexImage(GL_TEXTURE_2D_ARRAY, (GLint)m, blob.data() + off);
+        } else {
+            const size_t bytes = (size_t)lw * (size_t)lh * (size_t)layers * 4u;
+            blob.resize(off + bytes);
+            glGetTexImage(GL_TEXTURE_2D_ARRAY, (GLint)m, GL_RGBA, GL_UNSIGNED_BYTE, blob.data() + off);
+        }
+        VkBufferImageCopy r{};
+        r.bufferOffset = off;
+        r.imageSubresource = {VK_IMAGE_ASPECT_COLOR_BIT, m, 0, (uint32_t)layers};
+        r.imageExtent = {(uint32_t)lw, (uint32_t)lh, 1};
+        regions.push_back(r);
+    }
+    glBindTexture(GL_TEXTURE_2D_ARRAY, 0);
+    if (!ok || regions.empty()) return false;
+
+    // (Re)create sampler with the real mip count.
+    if (*tgt.samp) { vkDestroySampler(s->device, *tgt.samp, nullptr); *tgt.samp = VK_NULL_HANDLE; }
+    if (!cp_make_albedo_sampler(s, tgt.samp, mips)) return false;
+
+    if (!cp_upload_albedo_array(s, tgt, vkFmt, (uint32_t)w, (uint32_t)h, (uint32_t)layers,
+                                mips, bc7, blob.data(), (VkDeviceSize)blob.size(), regions)) {
+        return false;
+    }
+    *tgt.importedGlName = glTexArrayOff;
+    *tgt.ready = true;
+    vlog("%s albedo 2D_ARRAY imported: %dx%d layers=%d mips=%u fmt=%s (%llu B).",
+         tgt.tag, w, h, layers, mips, bc7 ? "BC7" : "RGBA8", (unsigned long long)blob.size());
+    return true;
+}
+
+// Upload the per-type albedo-layer table (int32 per type) into a layer SSBO
+// (alpha-OFF binding2, or alpha-ON binding5).
+bool cp_upload_layer_table_into(ColorPropIsland* s, VkBuffer* buf, VmaAllocation* alloc,
+                                VkDeviceSize* capBytes, const int32_t* layers, uint32_t count) {
+    const VkDeviceSize bytes = (VkDeviceSize)(count ? count : 1) * sizeof(int32_t);
+    if (*buf != VK_NULL_HANDLE && bytes > *capBytes) {
+        vkDeviceWaitIdle(s->device);
+        vmaDestroyBuffer(s->allocator, *buf, *alloc);
+        *buf = VK_NULL_HANDLE;
+    }
+    if (*buf == VK_NULL_HANDLE) {
+        if (!make_buffer(s, bytes, VK_BUFFER_USAGE_STORAGE_BUFFER_BIT, buf, alloc, true))
+            return false;
+        *capBytes = bytes;
+    }
+    void* p = nullptr;
+    if (vmaMapMemory(s->allocator, *alloc, &p) != VK_SUCCESS) return false;
+    if (count && layers) std::memcpy(p, layers, (size_t)count * sizeof(int32_t));
+    else { int32_t neg = -1; std::memcpy(p, &neg, sizeof(neg)); }
+    vmaUnmapMemory(s->allocator, *alloc);
+    return true;
+}
+bool cp_upload_layer_table(ColorPropIsland* s, const int32_t* layers, uint32_t count) {
+    return cp_upload_layer_table_into(s, &s->layerBuf, &s->layerAlloc, &s->layerCapBytes, layers, count);
+}
+bool cp_upload_layer_table_on(ColorPropIsland* s, const int32_t* layers, uint32_t count) {
+    return cp_upload_layer_table_into(s, &s->layerOnBuf, &s->layerOnAlloc, &s->layerOnCapBytes, layers, count);
 }
 
 // One-time init.
@@ -401,6 +743,8 @@ bool init_island(ColorPropIsland* s, int w, int h) {
     // Tier-1 requires EITHER the Tier-0 gate OR the Tier-1 gate to be armed. Tier-1
     // takes precedence (it REPLACES Tier-0's side-image+composite path).
     s->tier1 = propColorTier1Requested();
+    // VK-P11 STATIC-PROP MATERIAL requires the Tier-1 shared-GBuffer co-write path.
+    s->wantMaterial = s->tier1 && propMaterialRequested();
     if (!s->tier1 && !colorPropGateRequested()) { setFallback("gate_off"); return false; }
 
     if (s->tier1) {
@@ -586,25 +930,43 @@ bool init_island(ColorPropIsland* s, int w, int h) {
         }
     }
 
-    // ---- Descriptor layout/pool/set (UBO binding0 VS, instance SSBO binding1 VS). ----
+    // ---- Descriptor layout/pool/set (UBO binding0 VS, instance SSBO binding1 VS).
+    // VK-P11 STATIC-PROP MATERIAL (tier1 only): binding2 = per-type albedo-layer SSBO
+    // (VS), binding3 = albedo sampler2DArray (FS). Declared on the tier1 layout even
+    // when material isn't ready (dummy layer SSBO + dummy 1x1 array bound) so the
+    // Tier-1 shaders can always reference them; the shader gates real sampling on
+    // uFrame.materialReady. Tier-0 keeps exactly 2 bindings (byte-identical). ----
+    const bool materialBindings = s->tier1 && s->wantMaterial;
     {
-        VkDescriptorSetLayoutBinding b[2]{};
+        // Tier-0: bindings 0(UBO),1(inst SSBO). Material (tier1): +2(alpha-OFF layer
+        // SSBO VS), 3(alpha-OFF albedo FS), 5(alpha-ON layer SSBO VS), 6(alpha-ON
+        // albedo FS). Binding 4 is left unused (keeps 3/6 sampler indices readable).
+        VkDescriptorSetLayoutBinding b[6]{};
         b[0].binding = 0; b[0].descriptorType = VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER;
-        b[0].descriptorCount = 1; b[0].stageFlags = VK_SHADER_STAGE_VERTEX_BIT;
+        b[0].descriptorCount = 1; b[0].stageFlags = VK_SHADER_STAGE_VERTEX_BIT | VK_SHADER_STAGE_FRAGMENT_BIT;
         b[1].binding = 1; b[1].descriptorType = VK_DESCRIPTOR_TYPE_STORAGE_BUFFER;
         b[1].descriptorCount = 1; b[1].stageFlags = VK_SHADER_STAGE_VERTEX_BIT;
+        b[2].binding = 2; b[2].descriptorType = VK_DESCRIPTOR_TYPE_STORAGE_BUFFER;
+        b[2].descriptorCount = 1; b[2].stageFlags = VK_SHADER_STAGE_VERTEX_BIT;
+        b[3].binding = 3; b[3].descriptorType = VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER;
+        b[3].descriptorCount = 1; b[3].stageFlags = VK_SHADER_STAGE_FRAGMENT_BIT;
+        b[4].binding = 5; b[4].descriptorType = VK_DESCRIPTOR_TYPE_STORAGE_BUFFER;
+        b[4].descriptorCount = 1; b[4].stageFlags = VK_SHADER_STAGE_VERTEX_BIT;
+        b[5].binding = 6; b[5].descriptorType = VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER;
+        b[5].descriptorCount = 1; b[5].stageFlags = VK_SHADER_STAGE_FRAGMENT_BIT;
         VkDescriptorSetLayoutCreateInfo lci{};
         lci.sType = VK_STRUCTURE_TYPE_DESCRIPTOR_SET_LAYOUT_CREATE_INFO;
-        lci.bindingCount = 2; lci.pBindings = b;
+        lci.bindingCount = materialBindings ? 6u : 2u; lci.pBindings = b;
         if (vkCreateDescriptorSetLayout(s->device, &lci, nullptr, &s->dsl) != VK_SUCCESS) {
             vlog("vkCreateDescriptorSetLayout failed."); return false;
         }
-        VkDescriptorPoolSize sizes[2]{};
+        VkDescriptorPoolSize sizes[3]{};
         sizes[0].type = VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER; sizes[0].descriptorCount = 1;
-        sizes[1].type = VK_DESCRIPTOR_TYPE_STORAGE_BUFFER; sizes[1].descriptorCount = 1;
+        sizes[1].type = VK_DESCRIPTOR_TYPE_STORAGE_BUFFER; sizes[1].descriptorCount = materialBindings ? 3u : 1u;
+        sizes[2].type = VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER; sizes[2].descriptorCount = materialBindings ? 2u : 1u;
         VkDescriptorPoolCreateInfo pci{};
         pci.sType = VK_STRUCTURE_TYPE_DESCRIPTOR_POOL_CREATE_INFO;
-        pci.maxSets = 1; pci.poolSizeCount = 2; pci.pPoolSizes = sizes;
+        pci.maxSets = 1; pci.poolSizeCount = materialBindings ? 3u : 2u; pci.pPoolSizes = sizes;
         if (vkCreateDescriptorPool(s->device, &pci, nullptr, &s->pool) != VK_SUCCESS) {
             vlog("vkCreateDescriptorPool failed."); return false;
         }
@@ -822,6 +1184,21 @@ bool init_island(ColorPropIsland* s, int w, int h) {
         }
     }
 
+    // VK-P11 STATIC-PROP MATERIAL: bind a valid dummy albedo array + layer SSBO now
+    // (needs the command pool above for the one-shot upload) so binding3 is a valid
+    // descriptor before the first frame. The REAL array is imported once geometry is
+    // finalized (cp_import_albedo_array in run()); materialReady gates FS sampling.
+    if (s->wantMaterial && s->tier1) {
+        if (!cp_ensure_dummy_albedo(s, cp_target_off(s))) { setFallback("material_dummy_failed"); return false; }
+        // VK-P11 STATIC-PROP MATERIAL alpha-ON: dummy alpha-ON array + layer SSBO so
+        // bindings 5+6 are valid before the first frame (materialReadyOn gates sampling).
+        if (!cp_ensure_dummy_albedo(s, cp_target_on(s))) { setFallback("material_on_dummy_failed"); return false; }
+        int32_t neg = -1;
+        if (!cp_upload_layer_table(s, &neg, 1))    { setFallback("material_layer_buf_failed"); return false; }
+        if (!cp_upload_layer_table_on(s, &neg, 1)) { setFallback("material_on_layer_buf_failed"); return false; }
+        write_descriptors(s);  // now writes bindings 2/3 (alpha-OFF) + 5/6 (alpha-ON) dummies too
+    }
+
     s->inited = true;
     setFallback("");
     vlog("island initialized %dx%d (borrowed shared device; exportable RGBA16F prop color, "
@@ -998,6 +1375,53 @@ extern "C" int mc2_vk_color_prop_island_run(int w, int h) {
 
     if (!upload_geometry_once(s)) { setFallback("geometry_not_ready"); return 0; }
 
+    // VK-P11 STATIC-PROP MATERIAL: copy-once import the alpha-OFF albedo 2D_ARRAY +
+    // per-type layer table once geometry is finalized. Fail-soft: any miss (feed not
+    // ready, BC7-bucketed, import failure) leaves materialReady=false -> FS keeps teal.
+    if (s->wantMaterial && s->tier1 && (!s->materialReady || !s->materialReadyOn)) {
+        Mc2ColorPropMaterialFeed mf{};
+        if (mc2_color_prop_island_get_material_feed(&mf) && mf.glTexArrayOff != 0 && !mf.bucketed) {
+            s->terrainSunMC2[0] = mf.terrainSunMC2[0];
+            s->terrainSunMC2[1] = mf.terrainSunMC2[1];
+            s->terrainSunMC2[2] = mf.terrainSunMC2[2];
+            bool changed = false;
+            // ---- alpha-OFF (class 0): textured layer per type -> s_texArrayOff. ----
+            if (!s->materialReady) {
+                std::vector<int32_t> layerTbl(mf.typeCount, -1);
+                for (uint32_t t = 0; t < mf.typeCount; ++t) {
+                    if (mf.typeAlphaClass[t] == 0 && mf.typeAlbedoLayer[t] >= 0)
+                        layerTbl[t] = mf.typeAlbedoLayer[t];
+                }
+                if (cp_import_albedo_array(s, cp_target_off(s), mf.glTexArrayOff)) {
+                    cp_upload_layer_table(s, layerTbl.data(), mf.typeCount);
+                    changed = true;
+                    vlog("material feed active: alpha-OFF %u types textured (sun=%.2f,%.2f,%.2f).",
+                         mf.typeCount, s->terrainSunMC2[0], s->terrainSunMC2[1], s->terrainSunMC2[2]);
+                }
+            }
+            // ---- alpha-ON (class 1): the alpha-MIXED buildings. typeAlbedoLayer[t] is
+            // ALREADY group-relative into s_texArrayOn for class-1 types, so the same
+            // table shape works with the alpha-ON array + a 0.5 alpha-test in the FS. ----
+            if (!s->materialReadyOn && mf.glTexArrayOn != 0) {
+                std::vector<int32_t> layerOnTbl(mf.typeCount, -1);
+                for (uint32_t t = 0; t < mf.typeCount; ++t) {
+                    if (mf.typeAlphaClass[t] == 1 && mf.typeAlbedoLayer[t] >= 0)
+                        layerOnTbl[t] = mf.typeAlbedoLayer[t];
+                }
+                if (cp_import_albedo_array(s, cp_target_on(s), mf.glTexArrayOn)) {
+                    cp_upload_layer_table_on(s, layerOnTbl.data(), mf.typeCount);
+                    changed = true;
+                    vlog("material feed active: alpha-ON %u types textured (alpha-test 0.5).",
+                         mf.typeCount);
+                }
+            }
+            if (changed) write_descriptors(s);  // rebind real arrays (3/6) + layer SSBOs (2/5)
+        } else if (mf.bucketed) {
+            static bool warned = false;
+            if (!warned) { vlog("material feed is BC7-bucketed — DEFERRED; props keep flat teal."); warned = true; }
+        }
+    }
+
     const unsigned long f0a = g_forbidden.vkCmdCopyImageToBuffer;
     const unsigned long f0b = g_forbidden.glGetTexImage;
     const unsigned long f0c = g_forbidden.glReadPixels;
@@ -1022,6 +1446,15 @@ extern "C" int mc2_vk_color_prop_island_run(int w, int h) {
         std::memcpy(u.worldToClipGL, feed.worldToClipGL, sizeof(u.worldToClipGL));
         u.objectDepthBias = feed.objectDepthBias;
         u.instBase = 0;
+        // VK-P11 STATIC-PROP MATERIAL: gate FS albedo sample + computePBR on the real
+        // import having landed (Tier-1 only). Tier-0 leaves these zero (its shaders
+        // never read them).
+        u.materialReady = (s->wantMaterial && s->tier1 && s->materialReady) ? 1 : 0;
+        u.materialReadyOn = (s->wantMaterial && s->tier1 && s->materialReadyOn) ? 1 : 0;
+        u.terrainSunMC2[0] = s->terrainSunMC2[0];
+        u.terrainSunMC2[1] = s->terrainSunMC2[1];
+        u.terrainSunMC2[2] = s->terrainSunMC2[2];
+        u.terrainSunMC2[3] = 0.0f;
         void* p = nullptr;
         if (vmaMapMemory(s->allocator, s->uboAlloc, &p) == VK_SUCCESS) {
             std::memcpy(p, &u, sizeof(u)); vmaUnmapMemory(s->allocator, s->uboAlloc);

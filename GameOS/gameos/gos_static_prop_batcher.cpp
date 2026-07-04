@@ -784,6 +784,13 @@ static std::vector<StaticPropMaterialInventoryEntry> s_materialInventory;
 // Copied from layerForPacket[] in finalizeGeometry() before that local is discarded.
 // Valid until next finalizeGeometry() or onMapUnload(). -1 for unavailable packets.
 static std::vector<int32_t> s_packetTexArrayLayer;
+// VK-P11 STATIC-PROP MATERIAL: per-type group-relative albedo layer + alpha-class,
+// persisted for mc2_color_prop_island_get_material_feed (the VK island copy-once
+// imports s_texArrayOff and samples at typeAlbedoLayer[typeID]). Populated in
+// finalizeGeometry() from layerForType[] + s_types[t].alphaClass; cleared in
+// onMapUnload(). -1 = type has no alpha-OFF albedo texture.
+static std::vector<int32_t> s_typeAlbedoLayer;
+static std::vector<int32_t> s_typeAlphaClass;
 // v2.1: per-type instance count snapshot from the most recent flush().
 // Keyed by typeID. Cleared in onMapUnload().
 // Same prior-frame semantics as s_recipeHasSubstrateRecord / hasCullRecord:
@@ -2034,6 +2041,8 @@ void GpuStaticPropBatcher::onMapLoad() {
     s_stagingIbo.clear();
     s_sharedVboBytes = 0;   // VK-P8a SHADOW-INTEROP: geometry feed invalid after unmap
     s_sharedIboBytes = 0;
+    s_typeAlbedoLayer.clear();  // VK-P11 STATIC-PROP MATERIAL: feed invalid after unmap
+    s_typeAlphaClass.clear();
     s_failedTypes.clear();
     s_geometryFinalized = false;
     s_fatalRegistrationFailure = false;
@@ -3322,7 +3331,12 @@ void GpuStaticPropBatcher::finalizeGeometry() {
                 auto it = glTexIdToLayer.find(glTexId);
                 if (it != glTexIdToLayer.end()) {
                     layerForPacket[globalPktIdx] = it->second;
-                    if (pIdx == 0) layerForType[typeID] = it->second;
+                    // VK-P11 MATERIAL FIX: FIRST-VALID-LAYER-WINS (was pIdx==0 only).
+                    // A multi-packet type whose packet 0 hit the no-dims skip left
+                    // layerForType==-1 (the "no_primary" teal bucket) even though a
+                    // later packet had a valid layer. Record the first VALID (>=0)
+                    // layer so the VK material feed textures the type.
+                    if (layerForType[typeID] < 0) layerForType[typeID] = it->second;
                     packetsInGroup.emplace_back(globalPktIdx, it->second);
                     continue;
                 }
@@ -3384,7 +3398,7 @@ void GpuStaticPropBatcher::finalizeGeometry() {
                 // layer exists yet in this group, fall through to the skip.
                 if (type.isOverride && !uniques.empty()) {
                     layerForPacket[globalPktIdx] = 0;
-                    if (pIdx == 0) layerForType[typeID] = 0;
+                    if (layerForType[typeID] < 0) layerForType[typeID] = 0; // VK-P11: first-valid wins
                     packetsInGroup.emplace_back(globalPktIdx, 0);
                     if (getenv("MC2_MODOVERRIDE_TRACE")) {
                         std::fprintf(stderr, "[SEAMPROBE] OVERRIDE_ROUTE type=%u pkt=%u "
@@ -3417,7 +3431,7 @@ void GpuStaticPropBatcher::finalizeGeometry() {
             uniques.push_back({glTexId, W, H, nodeIdx});
             glTexIdToLayer[glTexId] = layer;
             layerForPacket[globalPktIdx] = layer;
-            if (pIdx == 0) layerForType[typeID] = layer;
+            if (layerForType[typeID] < 0) layerForType[typeID] = layer; // VK-P11: first-valid wins
             packetsInGroup.emplace_back(globalPktIdx, layer);
             } // end per-packet loop
         }
@@ -3844,6 +3858,17 @@ void GpuStaticPropBatcher::finalizeGeometry() {
     // layerForPacket is fully populated here; the PerDrawEntry loop below reads
     // but does not modify it. -1 entries = packets with unavailable textures.
     s_packetTexArrayLayer.assign(layerForPacket.begin(), layerForPacket.end());
+
+    // VK-P11 STATIC-PROP MATERIAL: persist per-type group-relative albedo layer +
+    // alpha-class for the VK color island's copy-once material feed. layerForType[]
+    // is fully populated above (group-relative layer into s_texArrayOff/On); the
+    // island only textures alpha-OFF (class 0) types from s_texArrayOff, so we keep
+    // the raw group-relative layer and the class side-by-side. Compiled always (cheap
+    // pair of vector copies); read only when MC2_VK_PROP_MATERIAL is armed.
+    s_typeAlbedoLayer.assign(layerForType.begin(), layerForType.end());
+    s_typeAlphaClass.assign(s_types.size(), 0);
+    for (size_t t = 0; t < s_types.size(); ++t)
+        s_typeAlphaClass[t] = static_cast<int32_t>(s_types[t].alphaClass);
 
     // 2026-05-11 per-packet rework: build s_sortedPacketOrder, s_alphaOff/OnCmdCount,
     // s_perDrawSsbo (one entry per packet in sorted order), and s_cmdToBucketSsbo
@@ -8364,6 +8389,72 @@ extern "C" int mc2_color_prop_island_get_frame_feed(Mc2ColorPropFeed* out) {
     else     std::memset(out->worldToClipGL, 0, sizeof(out->worldToClipGL));
     // OBJECT_DEPTH_BIAS mirror (shaders/include/terrain_depth_bias.hglsl:62).
     out->objectDepthBias = 0.0001f;
+    return 1;
+}
+
+// VK-P11 STATIC-PROP MATERIAL — expose the alpha-OFF albedo 2D_ARRAY + per-type
+// layer table so the color island can copy-once import it and sample real textures.
+// Read-only; buffers persist until onMapUnload(). Returns 0 (fail soft -> island
+// keeps flat teal) when geometry is not finalized, the alpha-OFF array is unbuilt,
+// or the group was BC7-bucketed (bucket-relative layers invalidate the single-array
+// import — materials for BC7 are a follow-on).
+extern "C" int mc2_color_prop_island_get_material_feed(Mc2ColorPropMaterialFeed* out) {
+    if (!out) return 0;
+    if (!s_geometryFinalized || s_fatalRegistrationFailure) return 0;
+    if (s_texArrayOff == 0) return 0;                 // alpha-OFF array not built
+    if (s_typeAlbedoLayer.empty() ||
+        s_typeAlbedoLayer.size() != s_types.size()) return 0;
+
+    out->glTexArrayOff   = s_texArrayOff;
+    // VK-P11 STATIC-PROP MATERIAL alpha-ON: expose the alpha-ON group array (0 if not
+    // built). typeAlbedoLayer[] already carries the group-relative layer for class-1
+    // types, so the island routes them into this array with the same layer table.
+    out->glTexArrayOn    = s_texArrayOn;
+    // BC7-bucketed: per-bucket sibling arrays with bucket-relative layers. The
+    // single-array (group-relative) import + layer table below do not describe that
+    // layout, so signal the island to fail soft (keep teal) rather than mis-sample.
+    out->bucketed        = s_bucketArrays.empty() ? 0u : 1u;
+    out->typeAlbedoLayer = s_typeAlbedoLayer.data();
+    out->typeAlphaClass  = s_typeAlphaClass.data();
+    out->typeCount       = (uint32_t)s_typeAlbedoLayer.size();
+
+    // Terrain sun (MC2 world, surface->sun) — same vector the GL prop VS uses for the
+    // directional term (STATIC-PROP-TERRAIN-SUN-DIFFUSE). Provides computePBR's L.
+    extern void gos_GetTerrainLightDir(float*, float*, float*);
+    float tsx = 0.0f, tsy = 0.0f, tsz = 1.0f;
+    gos_GetTerrainLightDir(&tsx, &tsy, &tsz);
+    out->terrainSunMC2[0] = tsx;
+    out->terrainSunMC2[1] = tsy;
+    out->terrainSunMC2[2] = tsz;
+
+    // VK-P11 MATERIAL DEBUG (temporary): one-shot INSTANCE-WEIGHTED layer histogram so
+    // we can SEE whether the VISIBLE prop types (high instance count) actually get a
+    // real albedo layer or fall to teal. Type-count alone hid that the big buildings
+    // were the no_primary bucket. Env-gated + one-shot (no hot-loop spam). REMOVE once
+    // the teal bug is confirmed fixed in-engine.
+    if (std::getenv("MC2_VK_PROP_MATERIAL_DEBUG")) {
+        static bool s_histLogged = false;
+        if (!s_histLogged) {
+            s_histLogged = true;
+            uint64_t instTextured = 0, instAlphaOn = 0, instNoPrimary = 0, instTotal = 0;
+            uint32_t tyTextured = 0, tyAlphaOn = 0, tyNoPrimary = 0;
+            for (size_t t = 0; t < s_typeAlbedoLayer.size(); ++t) {
+                const auto icIt = s_typeInstanceCountPrevFrame.find((uint32_t)t);
+                const uint64_t ic = (icIt != s_typeInstanceCountPrevFrame.end()) ? icIt->second : 0u;
+                instTotal += ic;
+                if (s_typeAlphaClass[t] == 1) { ++tyAlphaOn; instAlphaOn += ic; }
+                else if (s_typeAlbedoLayer[t] < 0) { ++tyNoPrimary; instNoPrimary += ic; }
+                else { ++tyTextured; instTextured += ic; }
+            }
+            std::fprintf(stderr,
+                "[GPUPROPS_HIST v2] types: textured=%u alpha_on=%u no_primary=%u | "
+                "instances: textured=%llu alpha_on=%llu no_primary=%llu total=%llu\n",
+                tyTextured, tyAlphaOn, tyNoPrimary,
+                (unsigned long long)instTextured, (unsigned long long)instAlphaOn,
+                (unsigned long long)instNoPrimary, (unsigned long long)instTotal);
+            std::fflush(stderr);
+        }
+    }
     return 1;
 }
 #endif // MC2_VULKAN_ISLAND

@@ -1670,6 +1670,10 @@ def main():
                             # in the allowlist Popen drops it and the gate-ON smoke
                             # silently runs the GL flush() prop path (gate inert).
                             "MC2_VK_PROP_COLOR_TIER1",
+                            # VK-PROP-MATERIAL: real textured vertex-baked-lit prop
+                            # materials (both albedo arrays). Requires MC2_VK_PROP_COLOR_TIER1.
+                            "MC2_VK_PROP_MATERIAL",
+                            "MC2_VK_PROP_MATERIAL_DEBUG",
                             # VK-P9a WATER-INTEROP proof: the bookmark-capture sweep
                             # env, so a smoke run (which reliably reaches steady render,
                             # unlike the standalone capture harness on some setups) can
