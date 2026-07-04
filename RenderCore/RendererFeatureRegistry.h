@@ -641,6 +641,32 @@ static constexpr EnvVarDesc kAuxEnvVars[] = {
         "separately). Surfaced in [VK_WATER_INTEROP] health. Gate OFF -> GL water draw as "
         "before (byte-identical)."
     },
+    // VK-P8a SHADOW-INTEROP: the SECOND VK geometry region + FIRST VK-produces-depth gate.
+    {
+        "MC2_FEATURE_VK_SHADOW_INTEROP",
+        "MC2_VK_SHADOW_INTEROP",
+        EnvVarKind::Feature,
+        false,
+        "VK-P8a SHADOW-INTEROP: presence-gated =1, default OFF. Renders the DYNAMIC "
+        "static-prop shadow-caster depth in Vulkan (the SECOND VK geometry region and the "
+        "FIRST VK-PRODUCES-DEPTH region -- water was GL-produces/VK-consumes; shadow reverses "
+        "it) into an exportable D32 VkImageResource. GL binds that shared D32 in place of "
+        "gosPostProcess::getDynamicShadowTexture() and samples it via the UNCHANGED hardware "
+        "sampler2DShadow calcShadow() path (shadow.hglsl) -- lighting up the vk2gl back-channel "
+        "(glVkToGlSem / glInteropWaitFromVk) for the first time on a geometry region: VK submit "
+        "SIGNALS vk2gl, GL WAITS it, then samples. Feed (VK-P8a STEP 0): the CPU "
+        "GpuStaticPropInstance vector (dynShadowSet, 112B each) the GL path already builds each "
+        "frame is memcpy'd into a VK instance SSBO; the shared static-prop VBO/IBO are copied "
+        "ONCE per map into VK-owned buffers. Depth-only pipeline: LESS forward-Z (NOT reverse-Z; "
+        "matches the GL dynamic shadow map), cull NONE, depthBias set to glPolygonOffset("
+        "shadowBiasFactor_, shadowBiasUnits_) EXACTLY (the parity STOP-watch). Reproduces "
+        "shadow_static_prop.vert math bit-for-bit (pos*M row-vector -> Stuff->MC2 swizzle -> "
+        "lightSpaceMatrix*). BORROWS the shared engine VulkanContext "
+        "(ensureEngineVulkanContextForInterop), no second device, no volkLoadDevice. Depth "
+        "zero-copy; forbidden DEPTH-readback counters hard-asserted ==0. Surfaced in "
+        "[VK_SHADOW_INTEROP] health. Gate OFF -> GL shadow path byte-identical. P8a = opaque "
+        "static props, single map (foliage-alpha + terrain casters = P8b, mechs = P12)."
+    },
     // GOSFX-TUBE-RIBBON-1: gosFX Tube swept-quad ribbon oracle.
     {
         "MC2_VFX_ORACLE_TUBE",

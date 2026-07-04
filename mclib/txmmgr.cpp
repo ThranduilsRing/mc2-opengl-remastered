@@ -71,6 +71,9 @@
 #include "gos_postprocess.h"
 #include "gos_profiler.h"
 #include "../GameOS/gameos/gos_static_prop_batcher.h"
+#ifdef MC2_VULKAN_ISLAND
+#include "../GameOS/gameos/vulkan_shadow_island_live.h"  // VK-P8a SHADOW-INTEROP: producer call
+#endif
 #include "../GameOS/gameos/render_frame_plan.h"  // RENDER-FRAME-PLAN-SCAFFOLD-1
 #include "../GameOS/gameos/render_snapshot.h"  // getLastRenderSnapshot() for snap-cull (v2.3)
 #include "../GameOS/gameos/gos_static_prop_registry.h"  // Stage 3.C: flush()
@@ -2731,6 +2734,17 @@ void MC_TextureManager::renderLists (void)
 			render_contract::executorOwnBeginTopLevel(render_contract::PassIdentity::ShadowCaster,
 			                                          "renderLists_gos_BeginDynamicShadowPass");
 			gos_BeginDynamicShadowPass();             // no-op if shadowsEnabled_ false
+#ifdef MC2_VULKAN_ISLAND
+			// VK-P8a SHADOW-INTEROP: clear any stale VK-produced shadow tex at the top of
+			// the bracket so a frame where the island declines/isn't reached (e.g. the
+			// non-prop-caster flushShadow branch) never leaves a stale VK tex bound for the
+			// forward consumers. The producer below re-publishes it on success. No-op when
+			// the gate is OFF (the tex is already 0 and stays 0).
+			if (mc2_vk_shadow_island_enabled()) {
+				if (gosPostProcess* ppClr = getGosPostProcess())
+					ppClr->setDynamicShadowInteropTexture(0);
+			}
+#endif
 			// Item 1 P1: caster set used by the CSM cascade replay (set in the
 			// prop-caster path below; nullptr => CSM replay uses flushShadow).
 			const std::vector<GpuStaticPropInstance>* csmCasterSet = nullptr;
@@ -2894,6 +2908,38 @@ void MC_TextureManager::renderLists (void)
 				TracyGpuZone("GpuSP.DynShadowDraw");
 				GpuStaticPropBatcher::instance().drawDynamicPropShadows(*dynShadowSet);
 			}
+#ifdef MC2_VULKAN_ISLAND
+				// VK-P8a SHADOW-INTEROP (gate MC2_VK_SHADOW_INTEROP, default-OFF): the SECOND
+				// VK geometry region and the FIRST VK-PRODUCES-DEPTH region. VK re-renders the
+				// SAME dynShadowSet caster instances into an exportable D32 shadow map on the
+				// on-demand shared engine VulkanContext, signals vk2gl, and hands GL the imported
+				// GL-texture view of that D32. GL then binds it in place of getDynamicShadowTexture()
+				// so the four forward-shading consumers sample the VK-produced map via the UNCHANGED
+				// hardware sampler2DShadow calcShadow() path. Ordering: VK produce -> VK signal vk2gl
+				// -> GL wait (inside the island) -> here we publish the tex -> GL consumes at forward
+				// shading. The GL caster draw above still ran (it fills the engine-owned depth tex);
+				// its output is simply unused this frame when VK succeeds. NO GL->VK acquire is issued
+				// (VK never reads a GL-written depth) -- that direction poisons the AMD interop
+				// timeline (scene blackout). Gate OFF -> enabled()==0 -> interop tex stays 0 ->
+				// getDynamicShadowTexture() returns the GL tex -> byte-identical.
+				if (mc2_vk_shadow_island_enabled()) {
+					ZoneScopedN("RenderLists.VkShadowInterop");
+					gosPostProcess* ppVk = getGosPostProcess();
+					if (ppVk) {
+						const unsigned int vkTex = mc2_vk_shadow_island_run(
+							ppVk->getDynamicShadowMapSize(),
+							ppVk->getDynamicLightSpaceMatrix(),
+							dynShadowSet->data(),
+							(unsigned int)dynShadowSet->size(),
+							ppVk->getShadowBiasFactor(),
+							ppVk->getShadowBiasUnits());
+						// >0 => VK produced+signalled this frame; publish the shared D32's GL view so
+						// forward consumers sample it. 0 => island declined (fail-soft) -> leave the
+						// interop tex cleared so consumers use the GL-produced map (no regression).
+						ppVk->setDynamicShadowInteropTexture((GLuint)vkTex);
+					}
+				}
+#endif
 				csmCasterSet = dynShadowSet;   // Item 1 P1: remember for the cascade replay
 			} else {
 				GpuStaticPropBatcher::instance().flushShadow(s_skipBldgInDynamic);

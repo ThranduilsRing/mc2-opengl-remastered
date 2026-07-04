@@ -143,6 +143,14 @@ if(MC2_VULKAN)
         # (no second device). Gate MC2_VK_WATER_INTEROP default-OFF -> GL water unchanged.
         # No layout-affecting header members (extern "C" entry points only).
         list(APPEND SOURCES vulkan_water_island.cpp)
+        # VK-P8a SHADOW-INTEROP: the shadow island — SECOND VK GEOMETRY region and
+        # FIRST VK-PRODUCES-DEPTH region (water was GL-produces/VK-consumes; shadow
+        # reverses it: VK renders the static-prop shadow-caster depth into an
+        # exportable D32, GL samples it via the unchanged hardware calcShadow path,
+        # lighting up the vk2gl back-channel). Borrows the shared engine
+        # VulkanContext (no second device). Gate MC2_VK_SHADOW_INTEROP default-OFF
+        # -> GL shadow path byte-identical. extern "C" entry points only.
+        list(APPEND SOURCES vulkan_shadow_island_live.cpp)
         # VK-REGION-HZB-1: the HZB reduce-chain island (third region). Same
         # #ifdef MC2_VULKAN_ISLAND discipline; layout-affecting header members
         # (vkHzbIsland_ + method decls) added under the same macro, already
@@ -254,7 +262,7 @@ if(MC2_VULKAN)
     # VK-P9a WATER-INTEROP: bake water_geom.{vert,frag} (procedural water mesh VS +
     # base-layer FS for the first VK GEOMETRY region). SPIR-V loaded at runtime by
     # vulkan_water_island.cpp via load_spv(spv_dir()+"water_geom.*.spv").
-    set(MC2_VK_SHADER_BASENAMES fullscreen edge_fog fog_oob ssao ssao_apply hzb_reduce compare_shadow csm_array_shadow shadow_depth water_mvp water_geom)
+    set(MC2_VK_SHADER_BASENAMES fullscreen edge_fog fog_oob ssao ssao_apply hzb_reduce compare_shadow csm_array_shadow shadow_depth water_mvp water_geom shadow_prop)
     set(MC2_VK_SPV_OUTPUTS "")
     if(MC2_GLSLANG_VALIDATOR OR MC2_GLSLC)
         foreach(_base ${MC2_VK_SHADER_BASENAMES})

@@ -181,7 +181,24 @@ public:
     void buildDynamicLightMatrix(float sunDirX, float sunDirY, float sunDirZ,
                                  const float camFitCornersMC2[8][3],
                                  const float shadowCenterXYZ[3], bool shadowCenterValid);
-    GLuint getDynamicShadowTexture() const { return dynShadowDepthTex_; }
+    // VK-P8a SHADOW-INTEROP: consumer-facing getter. When the VK shadow island
+    // produced the map this frame (dynShadowInteropTex_ != 0), the four forward
+    // shading consumers sample the VK-produced D32 in place of the GL texture. The
+    // WRITE pass (beginDynamicShadowPass/endDynamicShadowPass compare-mode flips +
+    // FBO bind) must use getDynamicShadowTextureRaw() so it never toggles compare-
+    // mode on the VK-owned texture. Gate OFF -> dynShadowInteropTex_ stays 0 ->
+    // byte-identical to returning dynShadowDepthTex_.
+    GLuint getDynamicShadowTexture() const {
+#ifdef MC2_VULKAN_ISLAND
+        if (dynShadowInteropTex_) return dynShadowInteropTex_;
+#endif
+        return dynShadowDepthTex_;
+    }
+    // Always the engine-owned GL texture (write-pass compare-mode + FBO ops).
+    GLuint getDynamicShadowTextureRaw() const { return dynShadowDepthTex_; }
+#ifdef MC2_VULKAN_ISLAND
+    void setDynamicShadowInteropTexture(GLuint tex) { dynShadowInteropTex_ = tex; }
+#endif
     GLuint getDynamicShadowFBO() const { return dynShadowFBO_; }
     // When CSM is active during the caster pass, this returns the matrix for the
     // cascade currently being rendered (csmActiveCascade_), so the existing
@@ -194,6 +211,12 @@ public:
         return dynamicLightSpaceMatrix_;
     }
     int getDynamicShadowMapSize() const { return dynShadowMapSize_; }
+    // VK-P8a SHADOW-INTEROP: the dynamic prop caster draw enables polygon offset via
+    // glPolygonOffset(shadowBiasFactor_, shadowBiasUnits_) (gos_static_prop_batcher.cpp
+    // drawDynamicPropShadows). The VK shadow island must reproduce this as VK depthBias
+    // EXACTLY (the parity STOP-watch), so it needs these values.
+    float getShadowBiasFactor() const { return shadowBiasFactor_; }
+    float getShadowBiasUnits() const { return shadowBiasUnits_; }
 
     // --- Item 1: Cascaded Shadow Maps (dynamic path) -----------------------
     // Gate (MC2_SHADOW_CSM, default OFF). When OFF the legacy single-map path
@@ -698,6 +721,16 @@ private:
     GLuint dynShadowFBO_;
     GLuint dynShadowDepthTex_;
     GLuint dynShadowDummyColorTex_;
+#ifdef MC2_VULKAN_ISLAND
+    // VK-P8a SHADOW-INTEROP: when MC2_VK_SHADOW_INTEROP is ON and the VK shadow
+    // island produced the dynamic shadow map this frame, this holds the GL-imported
+    // view of the VK-produced D32 (compare-mode already set). getDynamicShadowTexture()
+    // returns it in place of dynShadowDepthTex_ so the four forward-shading consumers
+    // (terrain ×2, LOD-chunk, static-prop helper) sample the VK map via the UNCHANGED
+    // hardware sampler2DShadow calcShadow() path. 0 -> legacy GL texture (gate OFF /
+    // island declined). Set per-frame by txmmgr after the shadow island run.
+    GLuint dynShadowInteropTex_ = 0;
+#endif
     int dynShadowMapSize_;
     float dynamicLightSpaceMatrix_[16];
     glsl_program* shadowDebugProg_;

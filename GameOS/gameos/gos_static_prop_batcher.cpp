@@ -380,6 +380,12 @@ constexpr uint32_t BASE_INSTANCE_SSBO_BINDING     = 16u;
 // Immutable per-map geometry.
 GLuint s_sharedVbo = 0;
 GLuint s_sharedIbo = 0;
+// VK-P8a SHADOW-INTEROP: byte sizes of the shared immutable VBO/IBO, captured at
+// finalize BEFORE the CPU staging vectors are freed (line ~2532). The Vulkan shadow
+// island reads these + the GL handles to copy the caster geometry ONCE per map
+// (the CPU staging is gone by then). 0 until finalized / after unmap.
+uint64_t s_sharedVboBytes = 0;
+uint64_t s_sharedIboBytes = 0;
 GLuint s_sharedVao = 0;
 
 // Slice 2 (object-offload) — Stage 2.C.2: per-type hot-color SSBO.
@@ -2026,6 +2032,8 @@ void GpuStaticPropBatcher::onMapLoad() {
     s_typeDescTable.clear();
     s_stagingVbo.clear();
     s_stagingIbo.clear();
+    s_sharedVboBytes = 0;   // VK-P8a SHADOW-INTEROP: geometry feed invalid after unmap
+    s_sharedIboBytes = 0;
     s_failedTypes.clear();
     s_geometryFinalized = false;
     s_fatalRegistrationFailure = false;
@@ -2527,6 +2535,12 @@ void GpuStaticPropBatcher::finalizeGeometry() {
                         0);
         glBindBuffer(GL_SHADER_STORAGE_BUFFER, 0);
     }
+
+    // VK-P8a SHADOW-INTEROP: capture the shared VBO/IBO byte sizes BEFORE the CPU
+    // staging is freed, so the Vulkan shadow island can pull the geometry from the
+    // GL buffers (glGetBufferSubData) once per map.
+    s_sharedVboBytes = (uint64_t)s_stagingVbo.size();
+    s_sharedIboBytes = (uint64_t)s_stagingIbo.size() * sizeof(uint32_t);
 
     // Free CPU staging.
     s_stagingVbo.clear(); s_stagingVbo.shrink_to_fit();
@@ -8259,6 +8273,61 @@ extern "C" uint32_t gos_getStaticPropShadowTypesDrawn() {
 extern "C" uint32_t gos_getStaticPropShadowInstDrawn() {
     return (uint32_t)s_shadowInstDrawn;
 }
+
+// VK-P8a SHADOW-INTEROP: caster-geometry feed for the Vulkan shadow island. Exposes
+// the finalized shared VBO/IBO staging bytes + per-type packet ranges so the island
+// can copy them ONCE per map into VK-owned buffers (STEP 0 feed decision, fallback
+// (B): VK owns a copy). Read-only; buffers persist until onMapUnload() clears the
+// staging vectors. Returns false if geometry is not yet finalized.
+#ifdef MC2_VULKAN_ISLAND
+#include "vulkan_shadow_island_live.h"
+extern "C" int mc2_shadow_island_get_geometry_feed(Mc2ShadowGeomFeed* out) {
+    if (!out) return 0;
+    if (!s_geometryFinalized || s_fatalRegistrationFailure) return 0;
+    // CPU staging is freed at finalize; the geometry lives only in the immutable GL
+    // buffers now, so require those + the captured byte sizes instead.
+    if (s_sharedVbo == 0 || s_sharedIbo == 0 ||
+        s_sharedVboBytes == 0 || s_sharedIboBytes == 0 || s_packets.empty()) return 0;
+
+    // Per-packet ranges (subset of GpuStaticPropPacket) + per-type packet spans.
+    // Rebuilt when the packet/type count changes (finalize is once per map).
+    static std::vector<Mc2ShadowPacket> s_feedPackets;
+    static std::vector<uint32_t>        s_feedTypeFirstPacket;
+    static std::vector<uint32_t>        s_feedTypePacketCount;
+    static size_t s_feedPacketGen = SIZE_MAX;
+    static size_t s_feedTypeGen   = SIZE_MAX;
+    if (s_feedPacketGen != s_packets.size()) {
+        s_feedPackets.resize(s_packets.size());
+        for (size_t i = 0; i < s_packets.size(); ++i) {
+            s_feedPackets[i].firstIndex = s_packets[i].firstIndex;
+            s_feedPackets[i].indexCount = s_packets[i].indexCount;
+            s_feedPackets[i].baseVertex = (uint32_t)s_packets[i].baseVertex;
+        }
+        s_feedPacketGen = s_packets.size();
+    }
+    if (s_feedTypeGen != s_types.size()) {
+        s_feedTypeFirstPacket.resize(s_types.size());
+        s_feedTypePacketCount.resize(s_types.size());
+        for (size_t t = 0; t < s_types.size(); ++t) {
+            s_feedTypeFirstPacket[t] = s_types[t].firstPacket;
+            s_feedTypePacketCount[t] = s_types[t].packetCount;
+        }
+        s_feedTypeGen = s_types.size();
+    }
+
+    out->glVbo           = s_sharedVbo;
+    out->vboBytes        = s_sharedVboBytes;
+    out->glIbo           = s_sharedIbo;
+    out->iboBytes        = s_sharedIboBytes;
+    out->vertexStride    = (uint32_t)kVertexStride;
+    out->packets         = s_feedPackets.data();
+    out->packetCount     = (uint32_t)s_feedPackets.size();
+    out->typeFirstPacket = s_feedTypeFirstPacket.data();
+    out->typePacketCount = s_feedTypePacketCount.data();
+    out->typeCount       = (uint32_t)s_types.size();
+    return 1;
+}
+#endif // MC2_VULKAN_ISLAND
 
 // ---------------------------------------------------------------------------
 // Slice 2, Stage 2.A — new method and free-function definitions

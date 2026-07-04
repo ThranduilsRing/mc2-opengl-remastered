@@ -6738,8 +6738,9 @@ void gosRenderer::beginDynamicShadowPass() {
     glBindTexture(GL_TEXTURE_2D, 0);
     glActiveTexture(GL_TEXTURE0);
 
-    // Disable comparison mode for writing
-    glBindTexture(GL_TEXTURE_2D, pp->getDynamicShadowTexture());
+    // Disable comparison mode for writing (RAW: the engine-owned GL texture; never
+    // the VK-produced interop texture, whose compare-mode must stay REF_TO_TEXTURE).
+    glBindTexture(GL_TEXTURE_2D, pp->getDynamicShadowTextureRaw());
     glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_COMPARE_MODE, GL_NONE);
     glBindTexture(GL_TEXTURE_2D, 0);
 
@@ -6809,8 +6810,9 @@ void gosRenderer::endDynamicShadowPass() {
 
     gosPostProcess* pp = getGosPostProcess();
 
-    // Restore comparison mode on dynamic shadow texture
-    glBindTexture(GL_TEXTURE_2D, pp->getDynamicShadowTexture());
+    // Restore comparison mode on dynamic shadow texture (RAW: engine-owned GL
+    // texture; the VK interop texture keeps its own compare-mode set at island init).
+    glBindTexture(GL_TEXTURE_2D, pp->getDynamicShadowTextureRaw());
     glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_COMPARE_MODE, GL_COMPARE_REF_TO_TEXTURE);
     glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_COMPARE_FUNC, GL_LEQUAL);
     glBindTexture(GL_TEXTURE_2D, 0);

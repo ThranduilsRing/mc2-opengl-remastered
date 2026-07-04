@@ -1629,6 +1629,12 @@ def main():
                             # allowlist Popen drops it and the gate-ON smoke silently runs the
                             # GL water draw (gate inert).
                             "MC2_VK_WATER_INTEROP",
+                            # VK-P8a SHADOW-INTEROP: VK produces the dynamic shadow
+                            # depth map, GL samples it. Requires the shared engine
+                            # VulkanContext (MC2_RENDER_BACKEND=vulkan). Without this
+                            # in the allowlist Popen drops it and the gate-ON smoke
+                            # silently runs the GL shadow path (gate inert).
+                            "MC2_VK_SHADOW_INTEROP",
                             # VK-P9a WATER-INTEROP proof: the bookmark-capture sweep
                             # env, so a smoke run (which reliably reaches steady render,
                             # unlike the standalone capture harness on some setups) can
