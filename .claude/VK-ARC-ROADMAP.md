@@ -51,13 +51,30 @@ any parity/validation failure → gate stays default-OFF forever, piece not ship
   SSAO is parity-proven (5/5 green, 1 within-floor). Put its GL boundaries on the seam. Oracle: the
   existing SSAO backend-compare bookmarks.
 
-- **P4 — HZB island onto the seam** *(recon-first: HZB is SCAFFOLD-only — needs a live
-  backend-compare parity FIRST, then seam)*. HZB reduce feeds GPU cull; zero-copy pairs with it.
+- **P5 — Depth zero-copy for the fog/postprocess regions** *(recon `.claude/VK-P5-DEPTH-RECON.md`; BEFORE
+  P4; HAS A REAL FORMAT RISK)*. ★CORRECTION: T0 proved **D32_SFLOAT**, but the engine's real
+  `sceneDepthTex_` is **GL_DEPTH24_STENCIL8** (gos_postprocess.cpp:933); readback works only because
+  glGetTexImage CONVERTS D24S8→f32. Zero-copy aliases bytes — can't convert → P5 needs a **D24S8 /
+  D24_UNORM_S8_UINT external import**, UNPROVEN on the 7900 XTX (AMD packed depth-stencil export is
+  historically shakier). **MANDATORY P5-T0′ SPIKE FIRST**: extend main_depth.cpp to D24S8; if it FAILS, P5
+  (postprocess depth zero-copy) is BLOCKED — do NOT fake with readback; escalate (options: VK-side D32
+  depth pre-pass, or accept depth-readback at the GL-produced boundary and only zero-copy depth where the
+  PRODUCER is VK). This cascades to P4/HZB depth input. Primitives are otherwise depth-ready (aspect
+  handling, dedicated-alloc, GL-internalformat param); depth is INPUT-only (GL→VK, reuses doneSem, no
+  vkToGlSem) — simpler than color. Needs a depth-aspect-only sampled view override (D24S8 sampled can't be
+  DEPTH|STENCIL). Extend existing per-region gates (depth-on when color-on) + a
+  MC2_VK_INTEROP_DEPTH_FORCE_READBACK bisect knob. P5 touches the subgraph TU → REBASE on P2 first; edge-fog
+  half is independent (can go first). Tooling checkpoint P5-T0′: parameterize main_depth.cpp +
+  vk_interop_transport_test + vkInteropSelfTest to D32 AND D24S8. Oracle: edge bookmarks, depth counters==0,
+  validation-clean.
 
-- **P5 — Depth zero-copy for the fog/postprocess regions** *(T0-proven viable)*. Add a depth
-  `VkImageResource` (dedicated-allocated) + `GlInteropView` depth import; remove the depth readback in
-  edge-fog + subgraph. Completes the postprocess tail's boundaries. Oracle: same edge bookmarks,
-  now depth counters == 0 too; validation-clean.
+- **P4 — HZB island onto the seam** *(recon done `.claude/VK-P4-HZB-RECON.md`; AFTER P5)*. CORRECTION:
+  HZB backend-compare ALREADY PASSED (commit 92b8874c, live region like SSAO) — NOT scaffold, no parity
+  prereq. REAL complication = FORMAT: HZB is D32 depth-in + **11× R32_SFLOAT** single-channel out; the seam
+  is only proven for RGBA16F. Needs R32F export (greenfield) + D32 import (from P5). **Tooling checkpoint
+  T0 (mandatory): parameterize `vk_interop_transport_test` + `vkInteropSelfTest` to R32F, retire the
+  single-channel risk offline BEFORE any game launch.** Gate `MC2_VK_HZB_INTEROP`, own device (+6 exts).
+  Consumes P5's shared depth as level-0 source + adds 11× R32F shared outputs.
 
 **Phase A exit:** the whole postprocess tail (shadow-consume → SSAO → HZB → fog) reads/writes GL only
 at the outer boundary; internal hand-offs are VK↔VK zero-copy.
@@ -146,6 +163,10 @@ to GL if unavailable. **This is the user's stated goal.**
 
 ## Standing orders (user, 2026-07-03)
 - **Always keep ONE forward-recon queued** so pieces execute back-to-back with no recon stall.
+- **Whenever waiting on a background session, SET A FALLBACK WAKEUP** (ScheduleWakeup ~900-1200s) so a
+  silently-dead agent is caught in minutes, not an hour of idle. A prior P2 parity agent died silently;
+  the run completed but the agent never reported. On wake: check the agent, recover from artifacts or
+  re-dispatch (foreground), re-arm if still legitimately running.
 - **Build offline harnesses/tools** for parity/proof wherever possible — don't rely on the ~460s
   game-launch golden-parity as the iteration loop. Offline oracle first (seconds), game golden-parity
   as FINAL confirmation only. First tool: headless interop-transport parity harness (see TOOLS below).
