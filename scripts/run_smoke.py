@@ -1276,6 +1276,14 @@ def main():
                             # gate-ON smoke runs are inert.
                             "MC2_GL_DEBUG",
                             "MC2_RENDER_BACKEND_IFACE",
+                            # VK-P13-SELECTOR-1 / T1: top-level GL-vs-Vulkan
+                            # backend selector (gl|vulkan). Must be allowlisted
+                            # or Popen drops it and the =vulkan smoke silently
+                            # runs on GL. (MC2_VULKAN_VALIDATION is already
+                            # allowlisted below for the device-birth proof.)
+                            "MC2_RENDER_BACKEND",
+                            # VK-P13-SELECTOR-1 / T4: fail-soft proof knob.
+                            "MC2_VK_FORCE_FAIL",
                             "MC2_GPU_DEBUG_NAMES",
                             # Integrated gosFX-retirement / GPU-particles plan
                             # (2026-05-20-integrated-gosfx-retirement-*):

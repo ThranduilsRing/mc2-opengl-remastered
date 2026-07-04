@@ -66,6 +66,9 @@ set(SOURCES ${SOURCES}
     diagnostic_trace.cpp
     visual_tuning_profile.cpp
     terrain_material_lib.cpp
+    # VK-P13-SELECTOR-1 / T1: top-level MC2_RENDER_BACKEND selector (GL-safe; no
+    # Vulkan headers, always compiled -- inert on =gl/unset, byte-identical).
+    render_backend_select.cpp
 
     utils/stream.cpp
     utils/camera.cpp
@@ -103,6 +106,10 @@ if(MC2_VULKAN)
     # from the L5 probe (reusable acquire/present/resize + per-image semaphores).
     # Same MC2_VULKAN gate (NOT _ISLAND -- the swapchain-present probe uses it).
     list(APPEND SOURCES vulkan_present_object.cpp)
+    # VK-P13-SELECTOR-1 / T2: the standalone SHARED engine Vulkan context
+    # (instance/device/queue/VMA owned HERE, not in the present object). Same
+    # MC2_VULKAN gate as the present object; entirely #ifdef MC2_VULKAN.
+    list(APPEND SOURCES vulkan_context.cpp)
     list(APPEND SOURCES "${CMAKE_SOURCE_DIR}/3rdparty/vk_bootstrap/VkBootstrap.cpp")
     # VULKAN-VMA-INTEGRATION-1: single VMA_IMPLEMENTATION TU (header-only lib).
     list(APPEND SOURCES vma_impl.cpp)

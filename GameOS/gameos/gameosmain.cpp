@@ -154,6 +154,10 @@ static LONG WINAPI mc2_unhandled_exception_filter(EXCEPTION_POINTERS* ep)
 #include "gos_object_recon_tracy.h"  // [OBJECT_RECON v1] slice-2 recon zero (env-gated)
 #include "projectz_trace.h"  // projectz_trace_init/frame_tick/shutdown (PROJECTZ v1)
 #include "projectz_overlay.h" // RAlt+P debug overlay (commit 4)
+#include "render_backend_select.h"  // VK-P13-SELECTOR-1 / T1: MC2_RENDER_BACKEND
+#ifdef MC2_VULKAN
+#include "vulkan_context.h"         // VK-P13-SELECTOR-1 / T2: shared engine VK device
+#endif
 #include "gos_visual_diff.h"  // Stage 2.E pre-HUD capture + Ctrl+Shift+P record
 #include "gos_rdoc_capture.h"  // Tier 5: env-gated in-process RenderDoc capture
 #include "gos_terrain_indirect.h"  // [INSTR v1] banner: terrain_indirect{,_parity} fields
@@ -1123,6 +1127,65 @@ int main(int argc, char** argv)
     }
     fflush(stdout);
 
+    // VK-P13-SELECTOR-1 / T2+T4: birth the standalone shared engine Vulkan
+    // context when MC2_RENDER_BACKEND=vulkan. The GL window + GL context above
+    // are UNTOUCHED (approach A'); this only additionally stands up the shared
+    // VK device that P6/P8/P9/P14 will reuse. Present is still GL swap (T3 wires
+    // the VK present intercept later). On =gl/unset this whole block is skipped
+    // -> byte-identical GL behavior.
+    if (mc2::renderBackend() == mc2::RenderBackend::Vulkan) {
+#ifdef MC2_VULKAN
+        // R2 INTERLOCK (plan §6/R2, landed here since the device is born here):
+        // volkLoadDevice writes a PROCESS-GLOBAL dispatch table. Both the engine
+        // context AND every postprocess-interop island load their own device into
+        // that table -> whichever loaded last wins -> wrong function pointers.
+        // ENFORCE (logged coercion): if any postprocess-interop island gate is on,
+        // force it OFF before we volkLoadDevice the engine device, so the engine
+        // device is the sole owner of the global table. (The alternative fail-soft
+        // path is available if coercion is ever undesirable.)
+        {
+            const char* kInteropGates[] = {
+                "MC2_VK_INTEROP_BRIDGE",
+                "MC2_VULKAN_POSTPROCESS_SUBGRAPH_INTEROP",
+                "MC2_VK_SSAO_INTEROP",
+            };
+            for (const char* g : kInteropGates) {
+                const char* v = getenv(g);
+                const bool on = (v && v[0] && v[0] != '0');
+                if (on) {
+                    printf("[RENDER_BACKEND] R2 interlock: engine Vulkan context active; "
+                           "coercing postprocess-interop island gate %s=%s -> OFF "
+                           "(global volk dispatch collision guard).\n", g, v);
+                    fflush(stdout);
+#if defined(_MSC_VER)
+                    _putenv_s(g, "0");
+#else
+                    setenv(g, "0", 1);
+#endif
+                }
+            }
+        }
+
+        // Interop-capable device: request the external-memory/-semaphore exts so
+        // P6/P8/P14 can import/export shared images against this device.
+        mc2vk::VulkanContext& vkctx = mc2vk::getOrCreateEngineVulkanContext();
+        const bool vkok = vkctx.init(/*wantInterop=*/true);
+        vkctx.logHealth();
+        if (!vkok || !vkctx.valid()) {
+            // Fail-soft: force the whole session back to GL. renderBackend() stays
+            // queryable but now returns GL; the VK device is null; every consumer
+            // takes the GL path. Present was never changed, so nothing to revert.
+            mc2::forceGLFallback(vkctx.health().fallbackReason.empty()
+                                     ? "engine Vulkan context did not come up"
+                                     : vkctx.health().fallbackReason.c_str());
+        }
+#else
+        // MC2_RENDER_BACKEND=vulkan requested but this build has no Vulkan
+        // support compiled in (GL-only build). Fail-soft to GL.
+        mc2::forceGLFallback("MC2_RENDER_BACKEND=vulkan but build has no MC2_VULKAN support");
+#endif
+    }
+
 	// Install GL debug callback only when MC2_GL_DEBUG is set. In shipping
 	// builds this keeps stdout free of harmless driver warnings (esp. the
 	// AMD ~glsl_program double-detach chatter) and saves the sync-debug
@@ -1851,6 +1914,12 @@ int main(int argc, char** argv)
     GuiRuntime::Shutdown();
 #endif
     gos_DestroyRenderer();
+
+#ifdef MC2_VULKAN
+    // VK-P13-SELECTOR-1 / T2: tear down the shared engine Vulkan context (no-op
+    // if it was never born / already destroyed). Before the GL context teardown.
+    mc2vk::getOrCreateEngineVulkanContext().destroy();
+#endif
 
     graphics::destroy_render_context(ctx);
     graphics::destroy_window(win);

@@ -577,6 +577,19 @@ if(MC2_VULKAN_ISLAND)
     target_compile_definitions(gameadapters PRIVATE MC2_VULKAN_ISLAND)
     target_compile_definitions(gui_runtime PRIVATE MC2_VULKAN_ISLAND)
 endif()
+
+# VK-P13-SELECTOR-1 / T2: gameosmain.cpp (in the gameos_main target) includes
+# vulkan_context.h under #ifdef MC2_VULKAN to birth the shared engine VK device
+# at engine init. gameos_main gets MC2_VULKAN + the volk/Vulkan-headers include
+# path so that #ifdef is active and <volk.h> resolves. Guarded on MC2_VULKAN so
+# the GL-only build (option OFF) is byte-identical (the block never runs -> the
+# =vulkan selector fail-softs to GL via the #else path in gameosmain.cpp).
+if(MC2_VULKAN)
+    target_compile_definitions(gameos_main PRIVATE MC2_VULKAN)
+    target_include_directories(gameos_main PRIVATE
+        "${CMAKE_SOURCE_DIR}/3rdparty/volk"
+        ${Vulkan_INCLUDE_DIR})
+endif()
 target_link_libraries(mc2 mclib fx_trace particles gosfx mlr stuff gui gameos gameos_main windows ZLIB::ZLIB ${SDL2_LIBRARIES} GLEW::GLEW SDL2_mixer::SDL2_mixer ${ADDITIONAL_LIBS} OpenGL::GL renderworld gameadapters editorbridge imgui gui_runtime)
 
 if(MC2_IMGUI)

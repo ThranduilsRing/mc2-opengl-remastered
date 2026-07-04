@@ -583,6 +583,38 @@ static_assert(
 // The enforcement script greps BOTH tables for "MC2_" string literals.
 
 static constexpr EnvVarDesc kAuxEnvVars[] = {
+    // VK-P13-SELECTOR-1 / T1: the top-level GL-vs-Vulkan backend selector.
+    {
+        "MC2_FEATURE_RENDER_BACKEND",
+        "MC2_RENDER_BACKEND",
+        EnvVarKind::Feature,
+        false,
+        "VK-P13-SELECTOR-1: top-level render-backend selector, values gl|vulkan "
+        "(default gl; unset/unrecognized -> gl, coercion logged). Read ONCE and "
+        "memoized by mc2::renderBackend() (GameOS/gameos/render_backend_select.*). "
+        "DISTINCT from MC2_RENDER_BACKEND_IFACE (a per-region postprocess interface "
+        "toggle). =vulkan births the standalone shared engine Vulkan device "
+        "(mc2vk::VulkanContext, GameOS/gameos/vulkan_context.*) at engine init for "
+        "P6/P8/P9/P14 to reuse; present is still GL swap in P13 (VK present intercept "
+        "is T3). Fail-soft: any VK bring-up failure forces the session back to GL. "
+        "R2 interlock: when =vulkan is active, postprocess-interop island gates "
+        "(MC2_VK_INTEROP_BRIDGE / MC2_VULKAN_POSTPROCESS_SUBGRAPH_INTEROP / "
+        "MC2_VK_SSAO_INTEROP) are coerced OFF (logged) to avoid the process-global "
+        "volk dispatch collision. On =gl/unset the accessor adds only one memoized "
+        "getenv -> byte-identical GL behavior."
+    },
+    // VK-P13-SELECTOR-1 / T4: fail-soft proof knob for the engine VK context.
+    {
+        "MC2_FEATURE_VK_FORCE_FAIL",
+        "MC2_VK_FORCE_FAIL",
+        EnvVarKind::Trace,
+        false,
+        "VK-P13-SELECTOR-1: presence-gated =1, default OFF. Forces mc2vk::VulkanContext::init() "
+        "to fail deterministically BEFORE creating any Vulkan object, so the =vulkan fail-soft "
+        "path (log reason -> mc2::forceGLFallback -> GL for the session, no crash) can be "
+        "exercised on demand. Only consulted when MC2_RENDER_BACKEND=vulkan. Diagnostic/proof "
+        "only; no effect on the GL path or on a normal =vulkan run."
+    },
     // GOSFX-TUBE-RIBBON-1: gosFX Tube swept-quad ribbon oracle.
     {
         "MC2_VFX_ORACLE_TUBE",
