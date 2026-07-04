@@ -8916,6 +8916,38 @@ static RenderCore::GpuBufferOwner s_lightDataOwner{
 #define s_lightDataSsbo (static_cast<GLuint>(s_lightDataOwner.backendHandle))
 static GLsizeiptr s_lightDataSsboBytes = 0;
 
+// LIGHT-GROW-ONCE-PREFIX-SKIP-1: number of immutable-prefix bytes currently known
+// resident in the persistent grow-once store. The static light prefix [0..S) is
+// proven permanent (STATICPROP-PERMANENT-INSTANCE-LIGHTS-1); once uploaded into the
+// persistent store it stays valid across frames (grow-once never orphans in steady
+// state). We re-ship the prefix ONLY when it changes (prefixDirty), when its extent
+// changes (prefixBytes != resident), or when the backing store was (re)created by a
+// create/grow — in all of which cases the resident prefix is stale/gone. Otherwise
+// the steady-state frame uploads the dynamic SUFFIX only, and the immutable prefix
+// is not re-shipped. Reset to 0 on destroy / create / grow so the next call re-ships.
+static GLsizeiptr s_lightPrefixResidentBytes = 0;
+
+// LIGHT-GROW-ONCE-PREFIX-SKIP-1: per-frame light-upload byte accounting (deterministic
+// win metric — quantifies the immutable-prefix bytes NOT re-shipped once the prefix is
+// resident). Behind MC2_LIGHT_UPLOAD_STATS so it is zero-cost when off. Mirrors the
+// #1 MC2_VFX_TUBE_UPLOAD_STATS pattern. baselineBytes = what the pre-fix grow-once
+// path WOULD have uploaded (the full live range every frame).
+struct LightUploadStats {
+	unsigned long long uploadBytes   = 0;  // glBufferSubData payload bytes this frame (post-fix)
+	unsigned long long baselineBytes = 0;  // full-range bytes the pre-fix path would ship
+	unsigned long long prefixSkipped = 0;  // immutable-prefix bytes NOT re-shipped this frame
+	unsigned int       frames        = 0;  // grow-once upload calls accounted this frame window
+};
+static LightUploadStats s_lightUploadStats;
+static bool lightUploadStatsEnabled() {
+	static int cached = -1;
+	if (cached < 0) {
+		const char* v = std::getenv("MC2_LIGHT_UPLOAD_STATS");
+		cached = (v && v[0] && v[0] != '0') ? 1 : 0;
+	}
+	return cached != 0;
+}
+
 // LIGHTDATA-SSBO-OWNER-1: (re)register the owner in the resource registry at every
 // create/grow site (observe-only metadata; never read by the draw/upload path).
 static void registerLightDataSsbo(GLsizeiptr bytes) {
@@ -8967,9 +8999,37 @@ static constexpr GLsizeiptr kLightGrowHeadroomRecords = 128;
 // On AMD this is tolerated (no stall), which is WHY this gate is default-OFF and
 // NVIDIA is a HARD BLOCKER before any default-on. Do NOT add an N-buffer rotation
 // to fix it — that is the full GpuStorageRing ring (explicitly out of scope here).
-static bool gos_LightDataSsbo_UploadGrowOnce(const void* data, size_t bytes)
+// LIGHT-GROW-ONCE-PREFIX-SKIP-1: prefixBytes/prefixDirty let the persistent grow-once
+// store honor the immutable static-prefix skip that the orphan split path CANNOT (an
+// orphan discards the store). Contract: bytes[0..prefixBytes) is the permanent static
+// light table; bytes[prefixBytes..bytes) is the dynamic per-frame tail. On create/grow
+// the WHOLE range is uploaded (prefix included) so the GPU is correct, and the resident
+// prefix is (re)established. In steady state, the prefix is re-shipped ONLY if dirty or
+// its extent changed; otherwise only the dynamic suffix is uploaded. Callers with no
+// static prefix (gos_LightDataSsbo_Upload legacy whole-buffer) pass prefixBytes=0 /
+// prefixDirty=true, which degenerates to "upload the whole range" — byte-identical to
+// the prior behavior.
+static bool gos_LightDataSsbo_UploadGrowOnce(const void* data, size_t bytes,
+                                             size_t prefixBytes = 0, bool prefixDirty = true)
 {
 	const GLsizeiptr want = (GLsizeiptr)bytes;
+	if ((GLsizeiptr)prefixBytes > want) prefixBytes = (size_t)want;  // clamp
+	const char* base = static_cast<const char*>(data);
+	const bool statsOn = lightUploadStatsEnabled();
+	if (statsOn) {
+		s_lightUploadStats.baselineBytes += (unsigned long long)want;  // pre-fix would ship full range
+		s_lightUploadStats.frames        += 1;
+		// Periodic window dump (every 300 accounted calls ≈ 300 frames). savedBytes =
+		// prefixSkipped = the immutable-prefix bytes NOT re-shipped this window.
+		if (s_lightUploadStats.frames >= 300) {
+			std::fprintf(stderr,
+			    "[LIGHT_UPLOAD_STATS] frames=%u uploadBytes=%llu baselineBytes=%llu savedBytes=%llu\n",
+			    s_lightUploadStats.frames, s_lightUploadStats.uploadBytes,
+			    s_lightUploadStats.baselineBytes, s_lightUploadStats.prefixSkipped);
+			std::fflush(stderr);
+			s_lightUploadStats = LightUploadStats{};  // reset window
+		}
+	}
 	if (s_lightDataSsbo == 0) {
 		// First create: allocate at requested size + headroom, no data copy
 		// of trailing slack. Upload the live bytes via SubData.
@@ -8982,14 +9042,16 @@ static bool gos_LightDataSsbo_UploadGrowOnce(const void* data, size_t bytes)
 		// GL_DYNAMIC_DRAW: rewritten-often, drawn-often (read every frame).
 		glBufferData(GL_SHADER_STORAGE_BUFFER, cap, nullptr, GL_DYNAMIC_DRAW);
 		s_lightDataSsboBytes = cap;
-		MC2_GL_BufferSubData(GL_SHADER_STORAGE_BUFFER, 0, want, data);
+		MC2_GL_BufferSubData(GL_SHADER_STORAGE_BUFFER, 0, want, data);  // full range incl. prefix
 		glBindBufferBase(GL_SHADER_STORAGE_BUFFER, LIGHT_DATA_SSBO_BINDING, s_lightDataSsbo);
 		glBindBuffer(GL_SHADER_STORAGE_BUFFER, 0);
 		registerLightDataSsbo(s_lightDataSsboBytes);  // LIGHTDATA-SSBO-OWNER-1: register at create
+		s_lightPrefixResidentBytes = (GLsizeiptr)prefixBytes;  // prefix now resident in the fresh store
+		if (statsOn) s_lightUploadStats.uploadBytes += (unsigned long long)want;
 		if (s_lightSsboTrace) {
 			std::fprintf(stderr,
-			    "[LIGHTSSBO v1] event=growonce_create binding=%d capBytes=%td liveBytes=%zu\n",
-			    LIGHT_DATA_SSBO_BINDING, (ptrdiff_t)cap, bytes);
+			    "[LIGHTSSBO v1] event=growonce_create binding=%d capBytes=%td liveBytes=%zu prefix=%zu\n",
+			    LIGHT_DATA_SSBO_BINDING, (ptrdiff_t)cap, bytes, prefixBytes);
 			std::fflush(stderr);
 		}
 		return true;
@@ -9016,14 +9078,16 @@ static bool gos_LightDataSsbo_UploadGrowOnce(const void* data, size_t bytes)
 		glBindBuffer(GL_SHADER_STORAGE_BUFFER, s_lightDataSsbo);
 		glBufferData(GL_SHADER_STORAGE_BUFFER, newCap, nullptr, GL_DYNAMIC_DRAW);
 		s_lightDataSsboBytes = newCap;
-		MC2_GL_BufferSubData(GL_SHADER_STORAGE_BUFFER, 0, want, data);
+		MC2_GL_BufferSubData(GL_SHADER_STORAGE_BUFFER, 0, want, data);  // full range incl. prefix into fresh store
 		glBindBufferBase(GL_SHADER_STORAGE_BUFFER, LIGHT_DATA_SSBO_BINDING, s_lightDataSsbo);
 		glBindBuffer(GL_SHADER_STORAGE_BUFFER, 0);
 		registerLightDataSsbo(s_lightDataSsboBytes);  // LIGHTDATA-SSBO-OWNER-1: handle recreated on grow -> re-register
+		s_lightPrefixResidentBytes = (GLsizeiptr)prefixBytes;  // store recreated -> prefix re-established
+		if (statsOn) s_lightUploadStats.uploadBytes += (unsigned long long)want;
 		if (s_lightSsboTrace) {
 			std::fprintf(stderr,
-			    "[LIGHTSSBO v1] event=growonce_grow oldCap=%td newCap=%td liveBytes=%zu\n",
-			    (ptrdiff_t)oldCap, (ptrdiff_t)newCap, bytes);
+			    "[LIGHTSSBO v1] event=growonce_grow oldCap=%td newCap=%td liveBytes=%zu prefix=%zu\n",
+			    (ptrdiff_t)oldCap, (ptrdiff_t)newCap, bytes, prefixBytes);
 			std::fflush(stderr);
 		}
 		return true;
@@ -9032,7 +9096,25 @@ static bool gos_LightDataSsbo_UploadGrowOnce(const void* data, size_t bytes)
 	// no full re-spec. This is the per-frame win — [GPUBUF v1] light owner
 	// orphan bytes drop to ~0 (routed through MC2_GL_BufferSubData, NOT the
 	// owner glBufferData macro, so the light orphan tally is not incremented).
-	MC2_GL_BufferSubData(GL_SHADER_STORAGE_BUFFER, 0, want, data);
+	//
+	// LIGHT-GROW-ONCE-PREFIX-SKIP-1: the immutable static prefix [0..prefixBytes)
+	// was uploaded on the last create/grow/dirty frame and is still resident in the
+	// persistent (never-orphaned) store. Re-ship it ONLY when it is dirty or its
+	// extent changed; otherwise upload just the dynamic suffix. GPU contents are
+	// byte-identical to shipping the full range — the skipped prefix bytes are
+	// already present and unchanged.
+	const bool prefixResident = (s_lightPrefixResidentBytes == (GLsizeiptr)prefixBytes);
+	const GLsizeiptr skipStart = (prefixDirty || !prefixResident) ? (GLsizeiptr)0
+	                                                               : (GLsizeiptr)prefixBytes;
+	if (skipStart < want) {
+		MC2_GL_BufferSubData(GL_SHADER_STORAGE_BUFFER, skipStart, want - skipStart,
+		                     base + skipStart);
+	}
+	s_lightPrefixResidentBytes = (GLsizeiptr)prefixBytes;  // prefix confirmed resident this frame
+	if (statsOn) {
+		s_lightUploadStats.uploadBytes   += (unsigned long long)(want - skipStart);
+		s_lightUploadStats.prefixSkipped += (unsigned long long)skipStart;
+	}
 	glBindBufferBase(GL_SHADER_STORAGE_BUFFER, LIGHT_DATA_SSBO_BINDING, s_lightDataSsbo);
 	glBindBuffer(GL_SHADER_STORAGE_BUFFER, 0);
 	return true;
@@ -9112,11 +9194,14 @@ void __stdcall gos_LightDataSsbo_UploadSplit(const void* data, size_t prefixByte
 	// per-frame cost is one glBufferSubData of usedBytes (the win). See the
 	// NVIDIA in-flight caveat on gos_LightDataSsbo_UploadGrowOnce.
 	if (gosLightGrowOnceEnabled()) {
-		gos_LightDataSsbo_UploadGrowOnce(data, totalBytes);
+		// LIGHT-GROW-ONCE-PREFIX-SKIP-1: forward the prefix so the persistent
+		// grow-once store honors the immutable-prefix skip (the split's whole point).
+		// Prior behavior re-shipped the full range every steady-state frame here.
+		gos_LightDataSsbo_UploadGrowOnce(data, totalBytes, prefixBytes, prefixDirty);
 		if (s_lightSsboTrace) {
 			std::fprintf(stderr,
-			    "[LIGHTSSBO v2] event=growonce_split_subsumed total=%zu prefix=%zu\n",
-			    totalBytes, prefixBytes);
+			    "[LIGHTSSBO v2] event=growonce_split_prefixaware total=%zu prefix=%zu dirty=%d\n",
+			    totalBytes, prefixBytes, prefixDirty ? 1 : 0);
 			std::fflush(stderr);
 		}
 		return;
@@ -9165,6 +9250,7 @@ void __stdcall gos_LightDataSsbo_Destroy()
 		glDeleteBuffers(1, &local);
 		s_lightDataOwner.backendHandle = 0;  // L6.1 owner idiom: reset through the owner
 		s_lightDataSsboBytes = 0;
+		s_lightPrefixResidentBytes = 0;  // LIGHT-GROW-ONCE-PREFIX-SKIP-1: store gone -> prefix not resident
 		invalidateLightDataSsbo();  // LIGHTDATA-SSBO-OWNER-1: mark registry slot unavailable on teardown
 	}
 }
