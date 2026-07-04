@@ -1709,7 +1709,15 @@ void gosPostProcess::runSSAOVulkanInterop()
     VkCommandBufferBeginInfo bi{};
     bi.sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_BEGIN_INFO;
     bi.flags = VK_COMMAND_BUFFER_USAGE_ONE_TIME_SUBMIT_BIT;
-    if (vkBeginCommandBuffer(cb, &bi) != VK_SUCCESS) return;
+    if (vkBeginCommandBuffer(cb, &bi) != VK_SUCCESS) {
+        // glInteropSignalToVk already signalled fs.signal with no submit to consume it.
+        // Fail-soft like the submit-failure path so the binary semaphore isn't left
+        // dangling and re-signalled two frames later (blocker #4 double-signal).
+        vlog("[VK_SSAO_INTEROP] vkBeginCommandBuffer failed -- disabling island, GL fallback next frame.");
+        setFallback("interop_record_failed");
+        s->disabled = true;
+        return;
+    }
 
     auto barrier = [&](VkImage img, VkImageAspectFlags aspect, VkImageLayout oldL, VkImageLayout newL,
                        VkAccessFlags srcA, VkAccessFlags dstA, VkPipelineStageFlags srcS, VkPipelineStageFlags dstS) {
@@ -1784,7 +1792,14 @@ void gosPostProcess::runSSAOVulkanInterop()
     vkCmdDraw(cb, 3, 1, 0, 0);
     vkCmdEndRenderPass(cb);
 
-    if (vkEndCommandBuffer(cb) != VK_SUCCESS) return;
+    if (vkEndCommandBuffer(cb) != VK_SUCCESS) {
+        // Same fail-soft as vkBeginCommandBuffer above: fs.signal already signalled, no
+        // submit to wait it. Don't leave it dangling.
+        vlog("[VK_SSAO_INTEROP] vkEndCommandBuffer failed -- disabling island, GL fallback next frame.");
+        setFallback("interop_record_failed");
+        s->disabled = true;
+        return;
+    }
 
     // ---- 6) Submit: WAIT doneSem[parity] (GL->VK); SIGNAL vkToGlSem[parity] (VK->GL,
     // P1.5) AND the FENCE (slot-recycle guard, waited at frame N+2's BeginFrame). ----

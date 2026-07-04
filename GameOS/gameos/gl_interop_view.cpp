@@ -121,11 +121,11 @@ bool glInteropViewCreate(GlInteropView* v, const VkImageResource* src,
     glTextureStorageMem2DEXT(v->glTex, 1, glInternalFormat, src->w, src->h, v->glMemObj, 0);
     if (!glOk("glTextureStorageMem2DEXT")) { glInteropViewDestroy(v); return false; }
 
-    // ---- import both GL->VK doneSem[] slots into GL (spike 500-505) ----
+    // ---- import both GL->VK glToVkSem[] slots into GL (spike 500-505) ----
     for (int i = 0; i < 2; ++i) {
         glGenSemaphoresEXT(1, &v->glDoneSem[i]);
         glImportSemaphoreWin32HandleEXT(v->glDoneSem[i], GL_HANDLE_TYPE_OPAQUE_WIN32_EXT,
-                                        src->doneSemWin32[i]);
+                                        src->glToVkSemWin32[i]);
         if (!glOk("glImportSemaphoreWin32HandleEXT(glToVk)")) { glInteropViewDestroy(v); return false; }
     }
 

@@ -173,7 +173,7 @@ bool vkImageResourceCreate(VkImageResource* r, VkDevice device, VkPhysicalDevice
         }
     }
     // Helper: create one (optionally exportable) binary semaphore + export its Win32
-    // handle. Same sequence for both directions (GL->VK doneSem and VK->GL vkToGlSem).
+    // handle. Same sequence for both directions (GL->VK glToVkSem and VK->GL vkToGlSem).
     auto makeSem = [&](VkSemaphore* sem, HANDLE* win32, const char* tag, int i) -> bool {
         VkExportSemaphoreCreateInfo esci{VK_STRUCTURE_TYPE_EXPORT_SEMAPHORE_CREATE_INFO};
         esci.handleTypes = semHandleType;
@@ -194,8 +194,8 @@ bool vkImageResourceCreate(VkImageResource* r, VkDevice device, VkPhysicalDevice
         return true;
     };
     for (int i = 0; i < 2; ++i) {
-        // GL->VK direction (doneSem / glToVk).
-        if (!makeSem(&r->doneSem[i], &r->doneSemWin32[i], "glToVk", i)) {
+        // GL->VK direction (glToVkSem).
+        if (!makeSem(&r->glToVkSem[i], &r->glToVkSemWin32[i], "glToVk", i)) {
             vkImageResourceDestroy(r, device); return false;
         }
         // P1.5: VK->GL direction (vkToGlSem). The VK submit signals it, GL waits it,
@@ -220,11 +220,11 @@ void vkImageResourceDestroy(VkImageResource* r, VkDevice device) {
     if (!r) return;
     for (int i = 0; i < 2; ++i) {
         if (r->frameFence[i])     vkDestroyFence(device, r->frameFence[i], nullptr);
-        if (r->doneSem[i])        vkDestroySemaphore(device, r->doneSem[i], nullptr);
+        if (r->glToVkSem[i])      vkDestroySemaphore(device, r->glToVkSem[i], nullptr);
         if (r->vkToGlSem[i])      vkDestroySemaphore(device, r->vkToGlSem[i], nullptr);
         // Win32 handle ownership: this resource owns its exported handles; the GL
         // importer duplicated them (spike 482-483). Close ours here. No double-close.
-        if (r->doneSemWin32[i])   CloseHandle(r->doneSemWin32[i]);
+        if (r->glToVkSemWin32[i]) CloseHandle(r->glToVkSemWin32[i]);
         if (r->vkToGlSemWin32[i]) CloseHandle(r->vkToGlSemWin32[i]);
     }
     if (r->view)     vkDestroyImageView(device, r->view, nullptr);
@@ -241,7 +241,7 @@ VkFrameSync vkImageResourceBeginFrame(VkImageResource* r) {
     vkWaitForFences(r->device, 1, &r->frameFence[p], VK_TRUE, UINT64_MAX);
     vkResetFences(r->device, 1, &r->frameFence[p]);
     // signal = GL->VK sem (submit waits it); vk2gl = VK->GL sem (submit signals it, P1.5).
-    VkFrameSync s{r->frameFence[p], r->doneSem[p], r->vkToGlSem[p], p};
+    VkFrameSync s{r->frameFence[p], r->glToVkSem[p], r->vkToGlSem[p], p};
     r->frameParity ^= 1u;
     return s;
 }

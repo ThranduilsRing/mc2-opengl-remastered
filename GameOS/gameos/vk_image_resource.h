@@ -40,17 +40,15 @@ struct VkImageResource {
     // [parity] is reused two frames later, frameFence[parity] is waited so the prior
     // submit retired and the binary semaphores are un-signalled + safe to re-signal.
     //
-    // doneSem == the GL->VK direction (aka glToVkSem): GL signals it, the VK submit
-    // WAITS it. The name is kept (not renamed) to avoid churn across the GL adapter +
-    // fog TUs; read it as "glToVkSem".
-    VkSemaphore       doneSem[2]      = {VK_NULL_HANDLE, VK_NULL_HANDLE};  // GL->VK (glToVk)
+    // glToVkSem == the GL->VK direction: GL signals it, the VK submit WAITS it.
+    VkSemaphore       glToVkSem[2]    = {VK_NULL_HANDLE, VK_NULL_HANDLE};  // GL->VK (glToVk)
     // P1.5: the SECOND, VK->GL-direction exportable semaphore slot. The VK submit
     // SIGNALS it; GL (or a future VK consumer) WAITS it -- a GPU semaphore hand-off,
     // NOT a CPU fence wait. This is the back-channel the VK<->VK chain reuses verbatim
     // (a VK consumer waits vkToGlSem instead of GL). Valid/exported only if exportable.
     VkSemaphore       vkToGlSem[2]      = {VK_NULL_HANDLE, VK_NULL_HANDLE};  // VK->GL
     VkFence           frameFence[2]   = {VK_NULL_HANDLE, VK_NULL_HANDLE};
-    HANDLE            doneSemWin32[2]   = {nullptr, nullptr};              // GL->VK sem, if exportable
+    HANDLE            glToVkSemWin32[2] = {nullptr, nullptr};              // GL->VK sem, if exportable
     HANDLE            vkToGlSemWin32[2] = {nullptr, nullptr};              // VK->GL sem, if exportable
     uint32_t          frameParity     = 0;        // ^=1 each frame; picks [frameParity]
 
@@ -65,7 +63,7 @@ struct VkImageResource {
 // signals + the parity the GL side must mirror. Producer signals `signal`; the next
 // VK consumer waits it via submit-wait / barrier -- NO GL, NO CPU stall between VK
 // passes. This is the primitive the VK<->VK-chain slice reuses verbatim.
-// `signal` = the GL->VK semaphore the VK submit WAITS (glInteropSignalToVk signalled it).
+// `signal` = the GL->VK semaphore (glToVkSem) the VK submit WAITS (glInteropSignalToVk signalled it).
 // `vk2gl`  = the VK->GL semaphore the VK submit SIGNALS; GL (or a future VK consumer)
 //            waits it -- a GPU hand-off replacing the CPU fence wait (P1.5). VK_NULL_HANDLE
 //            when the resource is non-exportable (fence-only fallback path).
@@ -74,7 +72,7 @@ struct VkFrameSync { VkFence fence; VkSemaphore signal; VkSemaphore vk2gl; uint3
 // Raw-allocated exportable image, transliterated from tools/vk_gl_interop_spike/
 // main.cpp:395-440 (NOT vmaCreateImage). When exportable=true the image gets a
 // VkExternalMemoryImageCreateInfo{OPAQUE_WIN32}, a dedicated + exported allocation,
-// and exported Win32 handles for the memory and both doneSem[] semaphores. Returns
+// and exported Win32 handles for the memory and both glToVkSem[] semaphores. Returns
 // false fail-soft on any error (nothing to clean up on the caller side; the partial
 // resource is torn down internally before returning false).
 bool vkImageResourceCreate(VkImageResource* r, VkDevice device, VkPhysicalDevice phys,

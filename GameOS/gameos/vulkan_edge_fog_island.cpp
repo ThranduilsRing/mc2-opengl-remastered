@@ -305,7 +305,6 @@ bool interopGateRequested() {
 struct gosPostProcess::VulkanEdgeFogIsland {
     bool disabled = false;   // init failed once -> never retry, always GL path
     bool inited   = false;
-    bool microCheckDone = false;
 
     int width  = 0;
     int height = 0;
@@ -412,7 +411,6 @@ void destroy_island(gosPostProcess::VulkanEdgeFogIsland* s) {
     // Reset all handles so a rebuild (resize) starts clean.
     gosPostProcess::VulkanEdgeFogIsland fresh;
     fresh.disabled       = s->disabled;
-    fresh.microCheckDone = s->microCheckDone;
     *s = fresh;
 }
 
@@ -1330,7 +1328,15 @@ void gosPostProcess::runEdgeFogVulkanInterop()
     VkCommandBufferBeginInfo bi{};
     bi.sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_BEGIN_INFO;
     bi.flags = VK_COMMAND_BUFFER_USAGE_ONE_TIME_SUBMIT_BIT;
-    if (vkBeginCommandBuffer(cb, &bi) != VK_SUCCESS) return;
+    if (vkBeginCommandBuffer(cb, &bi) != VK_SUCCESS) {
+        // glInteropSignalToVk (step 3) already signalled fs.signal; there is no submit to
+        // consume it. Fail-soft like the submit-failure path so we don't leave the binary
+        // semaphore dangling and re-signal it two frames later (blocker #4 double-signal).
+        vlog("[VK_INTEROP] vkBeginCommandBuffer failed -- disabling island, GL fallback next frame.");
+        setFallback("interop_record_failed");
+        s->disabled = true;
+        return;
+    }
 
     auto barrier = [&](VkImage img, VkImageAspectFlags aspect, VkImageLayout oldL, VkImageLayout newL,
                        VkAccessFlags srcA, VkAccessFlags dstA, VkPipelineStageFlags srcS, VkPipelineStageFlags dstS) {
@@ -1374,7 +1380,14 @@ void gosPostProcess::runEdgeFogVulkanInterop()
     // render pass finalLayout = SHADER_READ_ONLY_OPTIMAL (the layout GL re-consumes it in).
     // NO vkCmdCopyImageToBuffer.
 
-    if (vkEndCommandBuffer(cb) != VK_SUCCESS) return;
+    if (vkEndCommandBuffer(cb) != VK_SUCCESS) {
+        // Same fail-soft as vkBeginCommandBuffer above: fs.signal was already signalled by
+        // glInteropSignalToVk with no submit to wait it. Don't leave it dangling.
+        vlog("[VK_INTEROP] vkEndCommandBuffer failed -- disabling island, GL fallback next frame.");
+        setFallback("interop_record_failed");
+        s->disabled = true;
+        return;
+    }
 
     // ---- 6) Submit: WAIT the GL->VK semaphore (doneSem[parity]); SIGNAL the VK->GL
     // semaphore (vkToGlSem[parity], P1.5) AND the FENCE (slot-recycle guard). ----

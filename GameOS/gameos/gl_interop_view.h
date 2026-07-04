@@ -1,7 +1,7 @@
 // VK-INTEROP-BRIDGE-1 / T2 -- GlInteropView: the GL-boundary adapter that imports one
 // exportable VkImageResource into GL zero-copy (see plan "Strategic reshape"). Used
 // ONLY at a GL boundary; deletable the day the boundary moves fully into VK. Imports
-// the resource's memory + doneSem[] into GL and wraps GL's signal/wait onto the shared
+// the resource's memory + glToVkSem[] into GL and wraps GL's signal/wait onto the shared
 // texture (spike tools/vk_gl_interop_spike/main.cpp:472-508 / 572-574 / 622-624).
 //
 // glInteropViewCreate ASSERTS src->exportable and performs the LUID match (blocker #2)
@@ -34,7 +34,7 @@ struct GlInteropView {
     const VkImageResource* src = nullptr;
 };
 
-// Import an exportable VkImageResource's memory + doneSem[] into GL (spike 472-508).
+// Import an exportable VkImageResource's memory + glToVkSem[] into GL (spike 472-508).
 // Requires src->exportable (asserted). Runs the LUID match (blocker #2); needs the
 // resource's VkPhysicalDevice to query the VK LUID. Returns false fail-soft on any
 // mismatch / missing GL extension / GL error.
