@@ -81,6 +81,35 @@ at the outer boundary; internal hand-offs are VK↔VK zero-copy.
 
 ---
 
+### P5/P4 STATUS (2026-07-03): DEFERRED as optimization
+P5-T0′ spike result: `D24_UNORM_S8_UINT` NOT externally-shareable on AMD 7900 XTX
+(VK_ERROR_FORMAT_NOT_SUPPORTED); `D32_SFLOAT_S8_UINT` ↔ GL_DEPTH24_STENCIL8 depth-only-view WORKS
+(validation-clean, depth sampled exact) — but D32S8 is 64bit/texel vs GL 32bit, so NOT a raw byte-alias
+of the existing sceneDepthTex_. Clean P5 requires the shared depth resource be built VK-side with the
+PRODUCER rendering depth into it (redirect the scene depth attachment) — invasive (touches all depth
+consumers) and it's a CPU-stall OPTIMIZATION, not migration coverage (color already on seam; depth
+readback is functionally fine). Per "get to Vulkan THEN optimize": P5 DEFERRED to the optimization phase
+(Phase F). P4 (HZB, depends on P5 shared depth) deferred with it. Spike + format recorded for later:
+tools/vk_gl_interop_spike/main_d24s8.cpp, P5-T0-d24s8-result.log. Resume P5 when doing depth-stall
+optimization; standardize shared depth on D32_SFLOAT_S8_UINT.
+
+### RESEQUENCE (2026-07-03, next-move recon `.claude/VK-NEXT-MOVE-RECON.md`)
+Postprocess color seam is proven across 4 regions. Depth (P5/P4) deferred (opt phase). NEXT is
+**P13-minimal (backend-selector seam)**, NOT P6. Why:
+- **Device-unification blocker:** every island calls vkCreateDevice independently (edge-fog:596,
+  oob:469, ssao:673, subgraph:610, hzb:493) + volkLoadDevice into volk's PROCESS-GLOBAL dispatch table.
+  No shared device. P6 (chain SSAO→fog) requires building one shared postprocess device, re-parenting 4
+  island TUs, AND porting BoxDecals (GL-only, sits between SSAO+fog, gos_postprocess.cpp:1518) →
+  highest-cost, least-selectable → P6 is now LAST. ⚠LATENT: global dispatch table = if two islands ever
+  live simultaneously, dispatch is whichever loaded last (retro checking).
+- **P13-minimal is the smallest step to actually SELECTABLE:** MC2_RENDER_BACKEND read at init; VK path
+  creates a swapchain presenting a shared-image BLIT of the GL frame; GL fallback. Keeps GL renderer +
+  window intact (GL-compiled-out / VK-owns-renderer deferred to P14). Present machinery already exists
+  (VulkanPresentObject: real swapchain/present/resize to a separate window). TOOLING FIRST (P13
+  checkpoint): headless swapchain/present + fallback smoke harness.
+- New order: **P13-minimal (selector+blit-present) → P8 shadow (smallest geometry) → P9 water →
+  P14 VK-owns-renderer → … → P6 chain (last) → P5/P4 depth (opt) → optimize → flip.**
+
 ## PHASE B — Grow the native VK subgraph (rung 2→3)
 
 - **P6 — Chain SSAO→fog in VK (no GL between)** *(recon-first: contiguity per Subgraph Contiguity
