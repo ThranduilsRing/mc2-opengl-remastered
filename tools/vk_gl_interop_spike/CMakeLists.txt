@@ -136,3 +136,54 @@ add_custom_command(TARGET vk_gl_interop_d24s8_spike POST_BUILD
     COMMAND ${CMAKE_COMMAND} -E copy_if_different
         "${MC2_3RDPARTY}/lib/x64/glew32.dll" $<TARGET_FILE_DIR:vk_gl_interop_d24s8_spike>
 )
+
+# =============================================================================
+# D32S8 DEPTH-TEST spike (VK-INTEROP-BRIDGE-1) — SEPARATE target.
+# The Tier-1 STOP-gate: GL AUTHORS reverse-Z/GEQUAL depth into the shared D32S8
+# image; VK imports it as a DEPTH-STENCIL ATTACHMENT and depth-TESTS a color
+# draw (GREATER_OR_EQUAL) against it. New capability vs the sample-only P5-T0.
+# GLSL is compiled to embedded SPIR-V by glslc at build time. Standalone deps.
+# =============================================================================
+find_program(MC2_GLSLC glslc HINTS "${VK_SDK}/Bin" "${VK_SDK}/bin")
+if(NOT MC2_GLSLC)
+    message(WARNING "glslc not found in ${VK_SDK}/Bin — d32s8 depth-test spike will not build")
+else()
+    set(_dt_dir "${CMAKE_CURRENT_SOURCE_DIR}")
+    add_custom_command(
+        OUTPUT "${_dt_dir}/d32s8_depthtest.vert.spv.inc"
+        COMMAND "${MC2_GLSLC}" -mfmt=c -o "${_dt_dir}/d32s8_depthtest.vert.spv.inc"
+                "${_dt_dir}/d32s8_depthtest.vert"
+        DEPENDS "${_dt_dir}/d32s8_depthtest.vert"
+        COMMENT "glslc -> d32s8_depthtest.vert.spv.inc")
+    add_custom_command(
+        OUTPUT "${_dt_dir}/d32s8_depthtest.frag.spv.inc"
+        COMMAND "${MC2_GLSLC}" -mfmt=c -o "${_dt_dir}/d32s8_depthtest.frag.spv.inc"
+                "${_dt_dir}/d32s8_depthtest.frag"
+        DEPENDS "${_dt_dir}/d32s8_depthtest.frag"
+        COMMENT "glslc -> d32s8_depthtest.frag.spv.inc")
+
+    add_executable(vk_gl_interop_d32s8_depthtest_spike
+        main_d32s8_depthtest.cpp
+        "${_dt_dir}/d32s8_depthtest.vert.spv.inc"
+        "${_dt_dir}/d32s8_depthtest.frag.spv.inc")
+    target_include_directories(vk_gl_interop_d32s8_depthtest_spike PRIVATE
+        "${_dt_dir}"
+        "${MC2_3RDPARTY}/include"
+        "${MC2_3RDPARTY}/include/SDL2"
+        "${VK_SDK}/Include")
+    target_link_directories(vk_gl_interop_d32s8_depthtest_spike PRIVATE
+        "${MC2_3RDPARTY}/lib/x64"
+        "${VK_SDK}/Lib")
+    target_compile_definitions(vk_gl_interop_d32s8_depthtest_spike PRIVATE GLEW_DLL WIN32_LEAN_AND_MEAN NOMINMAX)
+    target_link_libraries(vk_gl_interop_d32s8_depthtest_spike PRIVATE
+        SDL2main SDL2 glew32 vulkan-1 opengl32)
+    if(MSVC)
+        set_target_properties(vk_gl_interop_d32s8_depthtest_spike PROPERTIES
+            LINK_FLAGS "/SUBSYSTEM:CONSOLE")
+    endif()
+    add_custom_command(TARGET vk_gl_interop_d32s8_depthtest_spike POST_BUILD
+        COMMAND ${CMAKE_COMMAND} -E copy_if_different
+            "${MC2_3RDPARTY}/lib/x64/SDL2.dll"  $<TARGET_FILE_DIR:vk_gl_interop_d32s8_depthtest_spike>
+        COMMAND ${CMAKE_COMMAND} -E copy_if_different
+            "${MC2_3RDPARTY}/lib/x64/glew32.dll" $<TARGET_FILE_DIR:vk_gl_interop_d32s8_depthtest_spike>)
+endif()
