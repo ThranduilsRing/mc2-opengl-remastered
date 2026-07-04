@@ -275,4 +275,47 @@ else()
             "${MC2_3RDPARTY}/lib/x64/SDL2.dll"  $<TARGET_FILE_DIR:vk_gl_interop_sampletex_spike>
         COMMAND ${CMAKE_COMMAND} -E copy_if_different
             "${MC2_3RDPARTY}/lib/x64/glew32.dll" $<TARGET_FILE_DIR:vk_gl_interop_sampletex_spike>)
+
+    # =========================================================================
+    # SHADOW-COMPARE PARITY spike (VK-INTEROP-BRIDGE-1) — SEPARATE target.
+    # The LAST genuine-unknown STOP-gate for the shared VK lighting/shadow
+    # helper: prove a VK sampler2DShadow (compareOp=LESS_OR_EQUAL, LINEAR)
+    # produces the SAME hardware 2x2 PCF blend as GL's LINEAR sampler2DShadow
+    # (GL_COMPARE_REF_TO_TEXTURE + GL_LEQUAL) across a grid of (uv,refDepth)
+    # points — incl. edge/transition texels, out-of-range white border, and
+    # exact-boundary LEQUAL ties. Also tests a manual NEAREST 4-tap PCF fallback.
+    # GLSL -> embedded SPIR-V via glslc. Standalone deps.
+    # =========================================================================
+    foreach(_sh shadowcmp.vert shadowcmp.frag)
+        add_custom_command(
+            OUTPUT "${_dt_dir}/${_sh}.spv.inc"
+            COMMAND "${MC2_GLSLC}" -mfmt=c -o "${_dt_dir}/${_sh}.spv.inc" "${_dt_dir}/${_sh}"
+            DEPENDS "${_dt_dir}/${_sh}"
+            COMMENT "glslc -> ${_sh}.spv.inc")
+    endforeach()
+
+    add_executable(vk_gl_interop_shadowcmp_spike
+        main_shadowcmp.cpp
+        "${_dt_dir}/shadowcmp.vert.spv.inc"
+        "${_dt_dir}/shadowcmp.frag.spv.inc")
+    target_include_directories(vk_gl_interop_shadowcmp_spike PRIVATE
+        "${_dt_dir}"
+        "${MC2_3RDPARTY}/include"
+        "${MC2_3RDPARTY}/include/SDL2"
+        "${VK_SDK}/Include")
+    target_link_directories(vk_gl_interop_shadowcmp_spike PRIVATE
+        "${MC2_3RDPARTY}/lib/x64"
+        "${VK_SDK}/Lib")
+    target_compile_definitions(vk_gl_interop_shadowcmp_spike PRIVATE GLEW_DLL WIN32_LEAN_AND_MEAN NOMINMAX)
+    target_link_libraries(vk_gl_interop_shadowcmp_spike PRIVATE
+        SDL2main SDL2 glew32 vulkan-1 opengl32)
+    if(MSVC)
+        set_target_properties(vk_gl_interop_shadowcmp_spike PROPERTIES
+            LINK_FLAGS "/SUBSYSTEM:CONSOLE")
+    endif()
+    add_custom_command(TARGET vk_gl_interop_shadowcmp_spike POST_BUILD
+        COMMAND ${CMAKE_COMMAND} -E copy_if_different
+            "${MC2_3RDPARTY}/lib/x64/SDL2.dll"  $<TARGET_FILE_DIR:vk_gl_interop_shadowcmp_spike>
+        COMMAND ${CMAKE_COMMAND} -E copy_if_different
+            "${MC2_3RDPARTY}/lib/x64/glew32.dll" $<TARGET_FILE_DIR:vk_gl_interop_shadowcmp_spike>)
 endif()
