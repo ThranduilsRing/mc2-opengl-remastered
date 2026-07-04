@@ -104,3 +104,35 @@ add_custom_command(TARGET vk_gl_interop_depth_spike POST_BUILD
     COMMAND ${CMAKE_COMMAND} -E copy_if_different
         "${MC2_3RDPARTY}/lib/x64/glew32.dll" $<TARGET_FILE_DIR:vk_gl_interop_depth_spike>
 )
+
+# =============================================================================
+# P5-T0' packed depth-stencil micro-spike (VK-INTEROP-BRIDGE-1) — SEPARATE target.
+# The GO/NO-GO for P5 (postprocess depth zero-copy). Extends the depth spike to
+# the engine's REAL scene-depth boundary: VK_FORMAT_D24_UNORM_S8_UINT (fallback
+# D32_SFLOAT_S8_UINT) shared as a GL_DEPTH24_STENCIL8 texture. Standalone deps.
+# =============================================================================
+add_executable(vk_gl_interop_d24s8_spike main_d24s8.cpp)
+
+target_include_directories(vk_gl_interop_d24s8_spike PRIVATE
+    "${MC2_3RDPARTY}/include"
+    "${MC2_3RDPARTY}/include/SDL2"
+    "${VK_SDK}/Include"
+)
+target_link_directories(vk_gl_interop_d24s8_spike PRIVATE
+    "${MC2_3RDPARTY}/lib/x64"
+    "${VK_SDK}/Lib"
+)
+target_compile_definitions(vk_gl_interop_d24s8_spike PRIVATE GLEW_DLL WIN32_LEAN_AND_MEAN NOMINMAX)
+target_link_libraries(vk_gl_interop_d24s8_spike PRIVATE
+    SDL2main SDL2 glew32 vulkan-1 opengl32
+)
+if(MSVC)
+    set_target_properties(vk_gl_interop_d24s8_spike PROPERTIES
+        LINK_FLAGS "/SUBSYSTEM:CONSOLE")
+endif()
+add_custom_command(TARGET vk_gl_interop_d24s8_spike POST_BUILD
+    COMMAND ${CMAKE_COMMAND} -E copy_if_different
+        "${MC2_3RDPARTY}/lib/x64/SDL2.dll"  $<TARGET_FILE_DIR:vk_gl_interop_d24s8_spike>
+    COMMAND ${CMAKE_COMMAND} -E copy_if_different
+        "${MC2_3RDPARTY}/lib/x64/glew32.dll" $<TARGET_FILE_DIR:vk_gl_interop_d24s8_spike>
+)
