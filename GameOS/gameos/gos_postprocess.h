@@ -463,6 +463,16 @@ public:
     struct VulkanEdgeFogIsland;   // defined in vulkan_edge_fog_island.cpp
     VulkanEdgeFogIsland* vkFogIsland_ = nullptr;
 
+    // VK-TIER1 SHARED SCENE DEPTH: when MC2_VK_SHARED_SCENE_DEPTH is ON and the
+    // shared VK image was built + imported at createFBOs, this owns the VK
+    // exportable D32S8 image + its GL import view; sceneDepthTex_ then points at
+    // the imported GL_DEPTH24_STENCIL8 texture instead of a plain GL alloc. Torn
+    // down + rebuilt with the FBOs on resize (destroyFBOs). nullptr => the plain
+    // GL depth alloc is live (gate OFF / interop fell back). Opaque pointer only
+    // (no Vulkan header leaks into this header). Defined in
+    // vulkan_shared_scene_depth.cpp.
+    struct Mc2SharedSceneDepth* sharedSceneDepth_ = nullptr;
+
     // VULKAN-OOB-FOG-ISLAND-1: the SECOND offscreen Vulkan island (proves the
     // VULKAN-ISLAND-TEMPLATE-1 checklist repeats). When MC2_VULKAN_OOB_FOG_ISLAND=1
     // AND lazy Vulkan init succeeds, the OOB-fog composite runs on a headless Vulkan

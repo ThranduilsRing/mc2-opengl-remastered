@@ -23,6 +23,9 @@
 #include "gos_lightgrid_build.h"         // MC2-LIGHTGRID-BUILD-NATIVE-1 (gated, inert)
 #include "gos_postprocess_blur.h"        // POSTPROCESS-COMPUTE-BLUR-1 (gated substrate)
 #include "../../mclib/dynamic_decal_ring.h"  // DECAL-INTEGRATE-1: ring-fed projected decals
+#ifdef MC2_VULKAN_ISLAND
+#include "vulkan_shared_scene_depth.h"  // VK-TIER1 SHARED SCENE DEPTH substrate (gated)
+#endif
 
 #include <cassert>
 #include <cstdio>
@@ -56,6 +59,22 @@ int mc2ShaderPathTint()
         return (v && v[0]) ? atoi(v) : 0;   // DEFAULT 0 (off, byte-identical)
     }();
     return s_v;
+}
+
+// VK-TIER1 SHARED SCENE DEPTH: presence-gated =1, DEFAULT OFF. When ON (and the
+// island is compiled), the scene-depth texture (sceneDepthTex_) is backed by a
+// VK-built exportable D32S8 image imported into GL as GL_DEPTH24_STENCIL8 instead
+// of a plain GL texture. GL-only slice (no VK depth consumer yet). Fail-soft: if
+// the shared VK context/interop is unavailable at scene-FBO creation, the plain
+// GL alloc is used, so gate-ON with no interop degrades to the GL path. Gate OFF
+// (or island not compiled) = byte-identical to today.
+static bool mc2VkSharedSceneDepthEnabled()
+{
+    static const bool s_on = []() {
+        const char* v = getenv("MC2_VK_SHARED_SCENE_DEPTH");
+        return v && v[0] == '1' && v[1] == '\0';   // DEFAULT OFF; only "1" enables
+    }();
+    return s_on;
 }
 
 int mc2ShadowCsmCount()
@@ -928,15 +947,60 @@ void gosPostProcess::createFBOs(int w, int h)
 
     // Depth/stencil texture (sampleable for post-process depth reconstruction)
     // TEX-CLASS: render-target -- scene depth (sampleable, FBO attach)
-    glGenTextures(1, &sceneDepthTex_);
-    glBindTexture(GL_TEXTURE_2D, sceneDepthTex_);
-    glTexStorage2D(GL_TEXTURE_2D, 1, GL_DEPTH24_STENCIL8, w, h);
-    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_NEAREST);
-    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_NEAREST);
-    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_CLAMP_TO_EDGE);
-    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_CLAMP_TO_EDGE);
-    glFramebufferTexture2D(GL_FRAMEBUFFER, GL_DEPTH_STENCIL_ATTACHMENT,
-                           GL_TEXTURE_2D, sceneDepthTex_, 0);
+    //
+    // VK-TIER1 SHARED SCENE DEPTH (gated, GL-only slice): when the gate is ON and
+    // the island is compiled, back sceneDepthTex_ with a VK-built exportable
+    // D32S8 image imported into GL as GL_DEPTH24_STENCIL8 (the P5-T0 + depth-test
+    // spikes proved this is transparent to the 42 depth-sample consumers, the
+    // glCopyImageSubData snapshot, and the stencil glTextureView). This is the
+    // SINGLE scene-depth alloc+attach site. Fail-soft: if the shared VK context /
+    // interop is unavailable, we fall through to the plain GL alloc below so the
+    // engine never crashes (gate-ON with no interop == the GL path). Rebuilt on
+    // resize because destroyFBOs tears down sharedSceneDepth_ too.
+    bool sceneDepthShared = false;
+#ifdef MC2_VULKAN_ISLAND
+    if (mc2VkSharedSceneDepthEnabled()) {
+        GLuint importedDepthTex = 0;
+        const char* reason = "unset";
+        sharedSceneDepth_ =
+            mc2SharedSceneDepthCreate(w, h, &importedDepthTex, &reason);
+        if (sharedSceneDepth_ && importedDepthTex != 0) {
+            sceneDepthTex_ = importedDepthTex;
+            sceneDepthShared = true;
+            // Re-assert the same sampler state the plain GL path uses (NEAREST /
+            // CLAMP_TO_EDGE) on the imported texture, so the 42 consumers see an
+            // identically-parameterized GL_DEPTH24_STENCIL8 texture.
+            glBindTexture(GL_TEXTURE_2D, sceneDepthTex_);
+            glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_NEAREST);
+            glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_NEAREST);
+            glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_CLAMP_TO_EDGE);
+            glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_CLAMP_TO_EDGE);
+            glFramebufferTexture2D(GL_FRAMEBUFFER, GL_DEPTH_STENCIL_ATTACHMENT,
+                                   GL_TEXTURE_2D, sceneDepthTex_, 0);
+            fprintf(stderr, "[VK_SHARED_SCENE_DEPTH] active tex=%u %dx%d "
+                            "(VK-backed GL_DEPTH24_STENCIL8)\n",
+                    (unsigned)sceneDepthTex_, w, h);
+        } else {
+            // Fail-soft: create() already logged the reason; drop the (null) owner
+            // and use the plain GL alloc below. Gate-ON degrades to the GL path.
+            sharedSceneDepth_ = nullptr;
+            fprintf(stderr, "[VK_SHARED_SCENE_DEPTH] fallback reason=%s "
+                            "(plain GL GL_DEPTH24_STENCIL8)\n",
+                    reason ? reason : "unknown");
+        }
+    }
+#endif
+    if (!sceneDepthShared) {
+        glGenTextures(1, &sceneDepthTex_);
+        glBindTexture(GL_TEXTURE_2D, sceneDepthTex_);
+        glTexStorage2D(GL_TEXTURE_2D, 1, GL_DEPTH24_STENCIL8, w, h);
+        glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_NEAREST);
+        glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_NEAREST);
+        glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_CLAMP_TO_EDGE);
+        glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_CLAMP_TO_EDGE);
+        glFramebufferTexture2D(GL_FRAMEBUFFER, GL_DEPTH_STENCIL_ATTACHMENT,
+                               GL_TEXTURE_2D, sceneDepthTex_, 0);
+    }
 
     // SKYBOX-FOG-EXCLUDE-1: stencil-only view onto sceneDepthTex_'s storage.
     // glTextureView requires immutable storage (glTexStorage2D above), which
@@ -1343,8 +1407,22 @@ void gosPostProcess::destroyFBOs()
         RenderCore::registerOrUpdateRenderResource(inv);
     }
     if (sceneDepthTex_) {
-        glDeleteTextures(1, &sceneDepthTex_);
-        sceneDepthTex_ = 0;
+#ifdef MC2_VULKAN_ISLAND
+        if (sharedSceneDepth_) {
+            // VK-TIER1 SHARED SCENE DEPTH: sceneDepthTex_ is the GL interop view's
+            // texture, owned by sharedSceneDepth_. Destroying the owner deletes
+            // that GL texture (glInteropViewDestroy) + frees the VK image, so we
+            // must NOT glDeleteTextures it here (double-free). Rebuilt by the next
+            // createFBOs when the gate stays ON (resize).
+            mc2SharedSceneDepthDestroy(sharedSceneDepth_);
+            sharedSceneDepth_ = nullptr;
+            sceneDepthTex_ = 0;
+        } else
+#endif
+        {
+            glDeleteTextures(1, &sceneDepthTex_);
+            sceneDepthTex_ = 0;
+        }
         // REGISTER-MAIN-DEPTH-RESOURCE: mark the slot unavailable on teardown
         // (resize destroys+recreates, so this re-validates in createFBOs).
         RenderCore::RenderResourceDesc inv;

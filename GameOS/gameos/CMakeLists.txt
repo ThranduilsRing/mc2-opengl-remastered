@@ -172,6 +172,14 @@ if(MC2_VULKAN)
         # No new link libs (volk + GLEW already linked into gameos).
         list(APPEND SOURCES vk_image_resource.cpp)
         list(APPEND SOURCES gl_interop_view.cpp)
+        # VK-TIER1 SHARED SCENE DEPTH (step 2): back sceneDepthTex_ with a VK-built
+        # exportable D32S8 image imported into GL as GL_DEPTH24_STENCIL8, at the
+        # single gos_postprocess scene-FBO depth alloc+attach site. GL-only slice
+        # (no VK depth consumer yet) using the interop primitives above. Gate
+        # MC2_VK_SHARED_SCENE_DEPTH default-OFF -> plain GL depth alloc (byte-
+        # identical). Layout-affecting header member (sharedSceneDepth_) added
+        # under #ifdef MC2_VULKAN_ISLAND, propagated by the root ODR-harden block.
+        list(APPEND SOURCES vulkan_shared_scene_depth.cpp)
         # water-perf STEP 1: the BUFFER analog of the image interop pair above.
         # vk_gl_shared_buffer = GL-free raw-allocated exportable VkBuffer + reused
         # double-buffered sync; gl_interop_buffer_view = the GL-boundary adapter that

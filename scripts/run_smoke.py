@@ -1648,6 +1648,14 @@ def main():
                             # Popen drops it and the gate-ON smoke silently runs the GL
                             # flush() prop color path (gate inert).
                             "MC2_VK_PROP_COLOR_INTEROP",
+                            # VK-TIER1 SHARED SCENE DEPTH: backs sceneDepthTex_ with a
+                            # VK-built exportable D32S8 image imported into GL as
+                            # GL_DEPTH24_STENCIL8 at the scene-FBO depth alloc+attach
+                            # site (GL-only slice; no VK depth consumer yet). Requires
+                            # the shared engine VulkanContext. Without this in the
+                            # allowlist Popen drops it and the gate-ON smoke silently
+                            # runs the plain GL depth alloc (gate inert / fail-soft).
+                            "MC2_VK_SHARED_SCENE_DEPTH",
                             # VK-P9a WATER-INTEROP proof: the bookmark-capture sweep
                             # env, so a smoke run (which reliably reaches steady render,
                             # unlike the standalone capture harness on some setups) can

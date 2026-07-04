@@ -696,6 +696,29 @@ static constexpr EnvVarDesc kAuxEnvVars[] = {
         "health. TIER-0 scope: props composite OVER the scene (prop-vs-terrain occlusion APPROXIMATE, "
         "NOT pixel parity -- shared scene depth = Tier-1). Gate OFF = byte-identical GL prop color path."
     },
+    // VK-TIER1 SHARED SCENE DEPTH: the shared-depth substrate slice (step 2).
+    {
+        "MC2_FEATURE_VK_SHARED_SCENE_DEPTH",
+        "MC2_VK_SHARED_SCENE_DEPTH",
+        EnvVarKind::Feature,
+        false,
+        "VK-TIER1 SHARED SCENE DEPTH: presence-gated =1, default OFF. Backs the engine "
+        "scene-depth texture (sceneDepthTex_) with a VK-BUILT exportable D32_SFLOAT_S8_UINT "
+        "VkImageResource imported into GL as a GL_DEPTH24_STENCIL8 texture (depth+stencil "
+        "aspect usable for BOTH sampling AND FBO depth-stencil attachment), substituted at "
+        "the SINGLE scene-FBO depth alloc+attach site (gos_postprocess createFBOs). GL-ONLY "
+        "slice: GL still renders scene depth into it and the 42 depth-sample consumers "
+        "(SSAO/edge-fog/OOB-fog/HZB/DOF/god-rays/cluster/particle-copy/stencil-view) sample "
+        "it unchanged -- there is NO VK depth consumer yet (that is the P11 Tier-1 slice). "
+        "The P5-T0 + depth-test spikes proved the D32S8-backed image imported under "
+        "GL_DEPTH24_STENCIL8 samples the DEPTH aspect exactly (0 val errors), so the swap is "
+        "transparent. BORROWS the shared engine VulkanContext (ensureEngineVulkanContextForInterop), "
+        "no second device. FAIL-SOFT: if the shared VK context/interop is unavailable at "
+        "scene-FBO creation, falls back to the plain GL GL_DEPTH24_STENCIL8 alloc (logs the "
+        "reason) -> gate-ON with no interop degrades to the GL path, never crashes. Rebuilt on "
+        "resize (destroyFBOs tears down + createFBOs rebuilds). Surfaced in [VK_SHARED_SCENE_DEPTH] "
+        "log line. Gate OFF (or island not compiled) = byte-identical GL scene-depth path."
+    },
     // GOSFX-TUBE-RIBBON-1: gosFX Tube swept-quad ribbon oracle.
     {
         "MC2_VFX_ORACLE_TUBE",
