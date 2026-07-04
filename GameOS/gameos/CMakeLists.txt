@@ -149,6 +149,12 @@ if(MC2_VULKAN)
         # No new link libs (volk + GLEW already linked into gameos).
         list(APPEND SOURCES vk_image_resource.cpp)
         list(APPEND SOURCES gl_interop_view.cpp)
+        # VK-P13-SELECTOR-1 / T3: the whole-frame GL->VK present intercept. Borrows
+        # the T2 shared VulkanContext device (no second device); owns the hidden
+        # present window + surface + swapchain + the exportable interop image. Uses
+        # the interop primitives above, so it is gated on MC2_VULKAN_ISLAND (the TU
+        # #if requires BOTH MC2_VULKAN and MC2_VULKAN_ISLAND). No new link libs.
+        list(APPEND SOURCES engine_present_vk.cpp)
     endif()
 endif()
 

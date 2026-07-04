@@ -110,7 +110,7 @@ bool resolveValidationPreset(std::vector<VkValidationFeatureEnableEXT>& feats,
 
 }  // namespace
 
-bool VulkanContext::init(bool wantInterop) {
+bool VulkanContext::init(bool wantInterop, bool wantPresent) {
     health_.attempted = true;
 
     // Idempotent: already up, or already tried and failed.
@@ -160,6 +160,28 @@ bool VulkanContext::init(bool wantInterop) {
         instExts.push_back(VK_KHR_EXTERNAL_MEMORY_CAPABILITIES_EXTENSION_NAME);
         instExts.push_back(VK_KHR_EXTERNAL_SEMAPHORE_CAPABILITIES_EXTENSION_NAME);
         instExts.push_back(VK_KHR_GET_PHYSICAL_DEVICE_PROPERTIES_2_EXTENSION_NAME);
+    }
+
+    // VK-P13 T3: surface instance extensions so the shared device can create a
+    // VkSurfaceKHR for the hidden present window (SDL_Vulkan_CreateSurface needs
+    // the instance to carry these). On Windows the surface pair is well-known
+    // (SDL requires exactly these), so we do not need an SDL window before
+    // instance creation. GET_PHYSICAL_DEVICE_PROPERTIES_2 may already be present
+    // via wantInterop; duplicate names in ppEnabledExtensionNames are harmless
+    // but we de-dup to keep the loader quiet.
+    if (wantPresent) {
+        instExts.push_back(VK_KHR_SURFACE_EXTENSION_NAME);
+        instExts.push_back(VK_KHR_WIN32_SURFACE_EXTENSION_NAME);
+    }
+    // De-dup instExts (interop + present can both add PDP2/etc.).
+    {
+        std::vector<const char*> uniq;
+        for (const char* e : instExts) {
+            bool seen = false;
+            for (const char* u : uniq) if (std::strcmp(u, e) == 0) { seen = true; break; }
+            if (!seen) uniq.push_back(e);
+        }
+        instExts.swap(uniq);
     }
 
     if (wantValidation) {
@@ -280,6 +302,10 @@ bool VulkanContext::init(bool wantInterop) {
         devExts.push_back(VK_KHR_DEDICATED_ALLOCATION_EXTENSION_NAME);
         devExts.push_back(VK_KHR_GET_MEMORY_REQUIREMENTS_2_EXTENSION_NAME);
     }
+    // VK-P13 T3: swapchain device extension for the hidden present window.
+    if (wantPresent) {
+        devExts.push_back(VK_KHR_SWAPCHAIN_EXTENSION_NAME);
+    }
 
     VkDeviceCreateInfo dci{};
     dci.sType = VK_STRUCTURE_TYPE_DEVICE_CREATE_INFO;
@@ -314,8 +340,8 @@ bool VulkanContext::init(bool wantInterop) {
 
     health_.created = true;
     health_.fallbackReason.clear();
-    ctxlog("engine Vulkan device created: device_name=\"%s\" interop=%d validation=%s.",
-           health_.deviceName, wantInterop ? 1 : 0, valPreset);
+    ctxlog("engine Vulkan device created: device_name=\"%s\" interop=%d present=%d validation=%s.",
+           health_.deviceName, wantInterop ? 1 : 0, wantPresent ? 1 : 0, valPreset);
     return true;
 }
 

@@ -157,6 +157,7 @@ static LONG WINAPI mc2_unhandled_exception_filter(EXCEPTION_POINTERS* ep)
 #include "render_backend_select.h"  // VK-P13-SELECTOR-1 / T1: MC2_RENDER_BACKEND
 #ifdef MC2_VULKAN
 #include "vulkan_context.h"         // VK-P13-SELECTOR-1 / T2: shared engine VK device
+#include "engine_present_vk.h"      // VK-P13-SELECTOR-1 / T3: GL->VK present intercept
 #endif
 #include "gos_visual_diff.h"  // Stage 2.E pre-HUD capture + Ctrl+Shift+P record
 #include "gos_rdoc_capture.h"  // Tier 5: env-gated in-process RenderDoc capture
@@ -1169,7 +1170,7 @@ int main(int argc, char** argv)
         // Interop-capable device: request the external-memory/-semaphore exts so
         // P6/P8/P14 can import/export shared images against this device.
         mc2vk::VulkanContext& vkctx = mc2vk::getOrCreateEngineVulkanContext();
-        const bool vkok = vkctx.init(/*wantInterop=*/true);
+        const bool vkok = vkctx.init(/*wantInterop=*/true, /*wantPresent=*/true);
         vkctx.logHealth();
         if (!vkok || !vkctx.valid()) {
             // Fail-soft: force the whole session back to GL. renderBackend() stays
@@ -1178,6 +1179,23 @@ int main(int argc, char** argv)
             mc2::forceGLFallback(vkctx.health().fallbackReason.empty()
                                      ? "engine Vulkan context did not come up"
                                      : vkctx.health().fallbackReason.c_str());
+        } else {
+            // VK-P13 T3: stand up the whole-frame GL->VK present intercept on the
+            // shared device. Sized to the GL drawable (backbuffer, incl. pillarbox
+            // by construction: source is FBO-0 at swap). Fail-soft: if present init
+            // fails, force GL -- the GL swap path is untouched.
+            int dw = 0, dh = 0;
+            graphics::get_drawable_size(win, &dw, &dh);
+            if (dw <= 0) dw = w;
+            if (dh <= 0) dh = h;
+            mc2vk::EnginePresentVk& vkpres = mc2vk::getOrCreateEnginePresentVk();
+            const bool presok = vkpres.init(vkctx, (uint32_t)dw, (uint32_t)dh);
+            vkpres.logHealth();
+            if (!presok || !vkpres.valid()) {
+                mc2::forceGLFallback(vkpres.health().fallback_reason.empty()
+                                         ? "VK present path did not come up"
+                                         : vkpres.health().fallback_reason.c_str());
+            }
         }
 #else
         // MC2_RENDER_BACKEND=vulkan requested but this build has no Vulkan
@@ -1780,7 +1798,44 @@ int main(int argc, char** argv)
                 static const bool s_preSwapFinish = (getenv("MC2_PRESWAP_FINISH") != nullptr);
                 if (s_preSwapFinish) { ZoneScopedN("SwapWindow.PreFinish"); glFinish(); }
             }
-            { ZoneScopedN("SwapWindow.SDL"); graphics::swap_window(win); }
+            {
+                ZoneScopedN("SwapWindow.SDL");
+#ifdef MC2_VULKAN
+                // VK-P13 T3: present intercept. When MC2_RENDER_BACKEND=vulkan AND
+                // the VK present path is up, present the finished GL frame (FBO-0,
+                // post-HUD/composite/pillarbox) through the hidden-window VK
+                // swapchain instead of SDL_GL_SwapWindow. Any hard error fail-softs
+                // to GL for the rest of the session (never breaks the GL path).
+                bool vkPresented = false;
+                if (mc2::renderBackend() == mc2::RenderBackend::Vulkan) {
+                    mc2vk::EnginePresentVk& vkpres = mc2vk::getOrCreateEnginePresentVk();
+                    if (vkpres.valid()) {
+                        int pdw = 0, pdh = 0;
+                        graphics::get_drawable_size(win, &pdw, &pdh);
+                        // T5 content verification: readback on a light cadence for
+                        // the first stretch (proves real, changing frame content
+                        // without a per-frame readback stall).
+                        const bool verify =
+                            (getenv("MC2_VK_PRESENT_VERIFY") != nullptr) &&
+                            (g_mc2FrameCounter < 600) && (g_mc2FrameCounter % 60 == 0);
+                        if (vkpres.presentGLFrame((uint32_t)pdw, (uint32_t)pdh, verify)) {
+                            vkPresented = true;
+                            static unsigned long s_vkHealthCadence = 0;
+                            if ((s_vkHealthCadence++ % 300) == 0) vkpres.logHealth();
+                        } else {
+                            // Present failed: force GL for the rest of the session.
+                            mc2::forceGLFallback(vkpres.health().fallback_reason.empty()
+                                                     ? "VK present frame failed"
+                                                     : vkpres.health().fallback_reason.c_str());
+                            vkpres.logHealth();
+                        }
+                    }
+                }
+                if (!vkPresented) { graphics::swap_window(win); }
+#else
+                graphics::swap_window(win);
+#endif
+            }
             render_contract::renderPassTelemetryFrameTick();  // [RENDER_PASS v1] frame boundary
             render_contract::renderPassScopeFrameBoundary();   // ENFORCEMENT-1 missing-end flush
             static bool s_first_frame_logged = false;
@@ -1916,8 +1971,11 @@ int main(int argc, char** argv)
     gos_DestroyRenderer();
 
 #ifdef MC2_VULKAN
-    // VK-P13-SELECTOR-1 / T2: tear down the shared engine Vulkan context (no-op
-    // if it was never born / already destroyed). Before the GL context teardown.
+    // VK-P13-SELECTOR-1 / T3: tear down the VK present path FIRST -- it deletes GL
+    // objects (copy-1 FBO / imported tex) and VK resources on the shared device,
+    // so it must run while both the GL context and the shared device are alive.
+    mc2vk::getOrCreateEnginePresentVk().destroy();
+    // T2: then tear down the shared engine Vulkan context (no-op if never born).
     mc2vk::getOrCreateEngineVulkanContext().destroy();
 #endif
 

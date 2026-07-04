@@ -62,10 +62,13 @@ public:
     // false without retrying. Reads MC2_VULKAN_VALIDATION for the validation
     // preset (same convention as the islands). `wantInterop` requests the
     // external-memory/-semaphore Win32 device extensions so P6/P8/P14 interop
-    // can import/export against this device.
+    // can import/export against this device. `wantPresent` (VK-P13 T3) requests
+    // the surface (VK_KHR_surface + VK_KHR_win32_surface instance) + swapchain
+    // (VK_KHR_swapchain device) extensions so the shared device can drive the
+    // hidden-window VK present path. Both are additive and off unless requested.
     // Returns false + sets health.fallbackReason on any error (fail-soft: any
     // partial state is torn down before returning).
-    bool init(bool wantInterop);
+    bool init(bool wantInterop, bool wantPresent = false);
 
     // Tear down in reverse order (safe on partial init / repeated calls).
     void destroy();

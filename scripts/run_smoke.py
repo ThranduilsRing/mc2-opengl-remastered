@@ -1284,6 +1284,10 @@ def main():
                             "MC2_RENDER_BACKEND",
                             # VK-P13-SELECTOR-1 / T4: fail-soft proof knob.
                             "MC2_VK_FORCE_FAIL",
+                            # VK-P13-SELECTOR-1 / T3+T5: enable the VK present
+                            # shared-image readback content check (proves the
+                            # presented frame is the real, changing GL frame).
+                            "MC2_VK_PRESENT_VERIFY",
                             "MC2_GPU_DEBUG_NAMES",
                             # Integrated gosFX-retirement / GPU-particles plan
                             # (2026-05-20-integrated-gosfx-retirement-*):
