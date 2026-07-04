@@ -34,8 +34,8 @@ The table below is parsed: `| symbol | class | producer | sync | TU |` (one buff
 | `lightData_` | D | CPU-upload | IMPLICIT-SYNC | txmmgr.cpp |
 | `s_ssbo` (particle) | D | CPU-glBufferData | IMPLICIT-SYNC | gos_particle_bridge.cpp |
 | `s_tubePosSsbo` | D | CPU-glBufferData | IMPLICIT-SYNC | gos_particle_bridge.cpp |
-| `s_indirectCmdBuf` (terrain-mask) | D | CPU-glBufferData | IMPLICIT-SYNC | gameos_graphics.cpp |
-| `s_waterIndirectCmdBuf` (terrain-mask) | D | CPU-glBufferData | IMPLICIT-SYNC | gameos_graphics.cpp |
+| `s_indirectCmdBuf` (terrain-mask) | D | CPU-glBufferData | orphan-then-upload (VK-OPT-4) | gameos_graphics.cpp |
+| `s_waterIndirectCmdBuf` (terrain-mask) | D | CPU-glBufferData | orphan-then-upload (VK-OPT-4) | gameos_graphics.cpp |
 
 ## Known stale telemetry
 
@@ -58,3 +58,16 @@ The table below is parsed: `| symbol | class | producer | sync | TU |` (one buff
 - STALE-COUNTER-RETIRE-1 (make gpu_drawn_instances honest).
 - LIGHT-BUFFER-BARRIER-VERIFY-1 / PARTICLE-BUFFER-LIFETIME-1 (class-D: confirm/insert the
   explicit barrier or ring; freshest highest-touch risk).
+
+## VK-OPT-4 — class-D terrain-mask orphan mitigation (2026-07-04)
+
+`s_indirectCmdBuf` / `s_waterIndirectCmdBuf` (terrain-mask indirect command buffers,
+`gameos_graphics.cpp`) now use **orphan-then-upload** (`maskOrphanUploadCmd`): a
+`glBufferData(size, NULL)` rename precedes the per-frame `glBufferSubData`, so the GL
+driver hands back fresh storage instead of implicit-sync-stalling on the previous frame's
+`glDrawArraysIndirect` read. Byte-identical output (same 16-byte command); only the driver
+serialization is removed. Mirrors the `tubeOrphanUpload` template (VK-OPT-1,
+`gos_particle_bridge.cpp`). They remain **class-D** in the taxonomy (orphaning is a driver
+rename, not a fence/ring/explicit barrier), so the debt stays visible for the Vulkan
+migration — VK has no implicit-sync, so these still need an explicit barrier/ring at port
+time. Measurable via `MC2_TERRAIN_MASK_UPLOAD_STATS` (orphan+upload byte counter).

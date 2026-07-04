@@ -4574,6 +4574,58 @@ bool gos_terrain_bridge_drawIndirect(int cmdCount, unsigned int recipeSSBO,
 }
 
 // ──────────────────────────────────────────────────────────────────────────
+// VK-OPT-4: class-D orphan-then-upload for the terrain-mask indirect command
+// buffers (s_indirectCmdBuf / s_waterIndirectCmdBuf). These are per-frame
+// CPU-written DrawArraysIndirect command buffers that were previously
+// glBufferSubData'd WITHOUT orphaning/fencing, so the GL driver implicit-sync
+// stalls (waits for the prior frame's glDrawArraysIndirect to finish reading
+// the buffer before overwriting). Orphaning renames the storage so the driver
+// hands back fresh memory instead of stalling — same bytes, byte-identical
+// output, only the driver serialization is removed. Mirrors the reusable
+// tubeOrphanUpload template from gos_particle_bridge.cpp (VK-OPT-1).
+//
+// The orphan reuses the buffer's fixed capacity (a single 16-byte command),
+// so it is a cheap rename, not a reallocation. On Vulkan this class of
+// implicit-sync buffer does not exist at all — this is also VK-migration prep.
+//
+// Optional, zero-cost-when-off instrumentation behind MC2_TERRAIN_MASK_UPLOAD_STATS
+// makes the orphaning measurable / regression-guardable (parallels
+// MC2_VFX_TUBE_UPLOAD_STATS / MC2_LIGHT_UPLOAD_STATS).
+namespace {
+struct MaskUploadStats {
+    unsigned long long uploadBytes = 0;  // command bytes pushed this frame
+    unsigned long long orphans     = 0;  // orphan-then-upload calls this frame
+};
+MaskUploadStats s_maskUploadStats;
+
+bool maskUploadStatsEnabled() {
+    static int cached = -1;
+    if (cached < 0) {
+        const char* v = std::getenv("MC2_TERRAIN_MASK_UPLOAD_STATS");
+        cached = (v && v[0] && v[0] != '0') ? 1 : 0;
+    }
+    return cached != 0;
+}
+
+// Orphan-then-upload the indirect command: rename storage (glBufferData NULL at
+// the buffer's existing size) before the glBufferSubData so the driver does not
+// implicit-sync-stall on the previous frame's indirect read. Buffer must be
+// bound to `target` by the caller (it already is at the draw site).
+void maskOrphanUploadCmd(GLenum target, GLsizeiptr bytes, const void* data) {
+    glBufferData(target, bytes, nullptr, GL_DYNAMIC_DRAW);  // orphan/rename
+    glBufferSubData(target, 0, bytes, data);
+    if (maskUploadStatsEnabled()) {
+        s_maskUploadStats.uploadBytes += (unsigned long long)bytes;
+        ++s_maskUploadStats.orphans;
+        std::fprintf(stderr,
+            "[TERRAIN_MASK_UPLOAD_STATS] orphan+upload bytes=%lld orphans=%llu totalBytes=%llu\n",
+            (long long)bytes, s_maskUploadStats.orphans, s_maskUploadStats.uploadBytes);
+        std::fflush(stderr);
+    }
+}
+}  // namespace
+
+// ──────────────────────────────────────────────────────────────────────────
 // B4 Slice Stage 1b — Mask-SOLID dual-run draw bridge.
 //
 // Called by gos_terrain_mask_dispatch::DrawMaskSolid() from
@@ -4750,7 +4802,9 @@ bool gos_terrain_bridge_drawMaskSolid(uint32_t solidMaskSSBO,
     }
     DrawArraysIndirectCommand cmd = { uint32_t(quadCount * 6), 1u, 0u, 0u };
     glBindBuffer(GL_DRAW_INDIRECT_BUFFER, s_indirectCmdBuf);
-    glBufferSubData(GL_DRAW_INDIRECT_BUFFER, 0, sizeof(cmd), &cmd);
+    // VK-OPT-4 (class-D fix): orphan-then-upload so the driver renames storage
+    // instead of implicit-sync-stalling on the previous frame's indirect read.
+    maskOrphanUploadCmd(GL_DRAW_INDIRECT_BUFFER, sizeof(cmd), &cmd);
     glDrawArraysIndirect(GL_TRIANGLES, nullptr);
     mdi_submit::trace("TerrainMaskSolid", "DrawArraysIndirect", 1,
                       "CPU", "s_indirectCmdBuf", false);
@@ -4914,7 +4968,9 @@ bool gos_terrain_bridge_drawMaskWater(uint32_t waterMaskSSBO,
     }
     DrawArraysIndirectCommand cmd = { uint32_t(recipeCount * 6), 1u, 0u, 0u };
     glBindBuffer(GL_DRAW_INDIRECT_BUFFER, s_waterIndirectCmdBuf);
-    glBufferSubData(GL_DRAW_INDIRECT_BUFFER, 0, sizeof(cmd), &cmd);
+    // VK-OPT-4 (class-D fix): orphan-then-upload so the driver renames storage
+    // instead of implicit-sync-stalling on the previous frame's indirect read.
+    maskOrphanUploadCmd(GL_DRAW_INDIRECT_BUFFER, sizeof(cmd), &cmd);
     glDrawArraysIndirect(GL_TRIANGLES, nullptr);
     mdi_submit::trace("TerrainMaskWater", "DrawArraysIndirect", 1,
                       "CPU", "s_waterIndirectCmdBuf", false);
