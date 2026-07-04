@@ -186,4 +186,50 @@ else()
             "${MC2_3RDPARTY}/lib/x64/SDL2.dll"  $<TARGET_FILE_DIR:vk_gl_interop_d32s8_depthtest_spike>
         COMMAND ${CMAKE_COMMAND} -E copy_if_different
             "${MC2_3RDPARTY}/lib/x64/glew32.dll" $<TARGET_FILE_DIR:vk_gl_interop_d32s8_depthtest_spike>)
+
+    # =========================================================================
+    # COLOR CO-WRITE spike (VK-INTEROP-BRIDGE-1) — SEPARATE target.
+    # Color analogue of the depth-test STOP-gate: GL and VK CO-WRITE the SAME
+    # shared RGBA16F color attachment in one frame under a shared depth-test, in
+    # place, with neither clobbering the other (VK loadOp=LOAD, no re-clear, no
+    # mid-path readback). The STOP-gate before the in-place shared-GBuffer XXL
+    # slice. GLSL -> embedded SPIR-V via glslc. Standalone deps.
+    # =========================================================================
+    add_custom_command(
+        OUTPUT "${_dt_dir}/colorcowrite.vert.spv.inc"
+        COMMAND "${MC2_GLSLC}" -mfmt=c -o "${_dt_dir}/colorcowrite.vert.spv.inc"
+                "${_dt_dir}/colorcowrite.vert"
+        DEPENDS "${_dt_dir}/colorcowrite.vert"
+        COMMENT "glslc -> colorcowrite.vert.spv.inc")
+    add_custom_command(
+        OUTPUT "${_dt_dir}/colorcowrite.frag.spv.inc"
+        COMMAND "${MC2_GLSLC}" -mfmt=c -o "${_dt_dir}/colorcowrite.frag.spv.inc"
+                "${_dt_dir}/colorcowrite.frag"
+        DEPENDS "${_dt_dir}/colorcowrite.frag"
+        COMMENT "glslc -> colorcowrite.frag.spv.inc")
+
+    add_executable(vk_gl_interop_colorcowrite_spike
+        main_colorcowrite.cpp
+        "${_dt_dir}/colorcowrite.vert.spv.inc"
+        "${_dt_dir}/colorcowrite.frag.spv.inc")
+    target_include_directories(vk_gl_interop_colorcowrite_spike PRIVATE
+        "${_dt_dir}"
+        "${MC2_3RDPARTY}/include"
+        "${MC2_3RDPARTY}/include/SDL2"
+        "${VK_SDK}/Include")
+    target_link_directories(vk_gl_interop_colorcowrite_spike PRIVATE
+        "${MC2_3RDPARTY}/lib/x64"
+        "${VK_SDK}/Lib")
+    target_compile_definitions(vk_gl_interop_colorcowrite_spike PRIVATE GLEW_DLL WIN32_LEAN_AND_MEAN NOMINMAX)
+    target_link_libraries(vk_gl_interop_colorcowrite_spike PRIVATE
+        SDL2main SDL2 glew32 vulkan-1 opengl32)
+    if(MSVC)
+        set_target_properties(vk_gl_interop_colorcowrite_spike PROPERTIES
+            LINK_FLAGS "/SUBSYSTEM:CONSOLE")
+    endif()
+    add_custom_command(TARGET vk_gl_interop_colorcowrite_spike POST_BUILD
+        COMMAND ${CMAKE_COMMAND} -E copy_if_different
+            "${MC2_3RDPARTY}/lib/x64/SDL2.dll"  $<TARGET_FILE_DIR:vk_gl_interop_colorcowrite_spike>
+        COMMAND ${CMAKE_COMMAND} -E copy_if_different
+            "${MC2_3RDPARTY}/lib/x64/glew32.dll" $<TARGET_FILE_DIR:vk_gl_interop_colorcowrite_spike>)
 endif()
