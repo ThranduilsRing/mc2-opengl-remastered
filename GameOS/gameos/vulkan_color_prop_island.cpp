@@ -47,6 +47,10 @@
 #include "vulkan_context.h"
 #include "vulkan_shadow_island_live.h"   // Mc2ShadowGeomFeed + Mc2ColorPropFeed contracts
 #include "vulkan_color_prop_island.h"
+#define MC2_VULKAN_SHARED_SCENE_COLOR_IMPL_ISLAND
+#include "vulkan_shared_scene_color.h"   // TIER-1: fetch shared scene color/normal images
+#define MC2_VULKAN_SHARED_SCENE_DEPTH_IMPL_ISLAND
+#include "vulkan_shared_scene_depth.h"   // TIER-1: fetch shared scene depth (island accessors)
 
 #include <cstdio>
 #include <cstdlib>
@@ -110,6 +114,22 @@ bool colorPropGateRequested() {
     if (state == -1) {
         const char* e = std::getenv("MC2_VK_PROP_COLOR_INTEROP");
         state = (e && e[0] == '1') ? 1 : 0;
+    }
+    return state == 1;
+}
+
+// TIER-1 (parity): co-write props IN-PLACE into the SHARED scene color+normal+depth
+// GBuffer (no side-image/composite). Default-OFF; requires MC2_VK_SHARED_SCENE_DEPTH
+// (the shared depth Tier-1 depth-tests against). When Tier-1 is armed it REPLACES the
+// Tier-0 side-image+composite path (both gate-OFF -> GL flush, byte-identical).
+bool propColorTier1Requested() {
+    static int state = -1;
+    if (state == -1) {
+        const char* e = std::getenv("MC2_VK_PROP_COLOR_TIER1");
+        const char* d = std::getenv("MC2_VK_SHARED_SCENE_DEPTH");
+        const bool tier1 = e && e[0] == '1' && e[1] == '\0';
+        const bool depth = d && d[0] == '1' && d[1] == '\0';
+        state = (tier1 && depth) ? 1 : 0;  // require shared depth
     }
     return state == 1;
 }
@@ -179,6 +199,23 @@ struct ColorPropIsland {
     bool disabled = false;
     bool inited   = false;
     bool useInterop = false;
+    bool tier1    = false;   // TIER-1 in-place shared-GBuffer co-write (vs Tier-0 side image)
+
+    // ---- TIER-1: shared-GBuffer co-write objects (built over the SAME shared
+    // color/normal/depth images the GL scene renders terrain into). ----
+    VkRenderPass  t1_rpass = VK_NULL_HANDLE;   // 2 color LOAD + depth LOAD
+    VkFramebuffer t1_fb    = VK_NULL_HANDLE;   // over the 3 shared image views
+    VkPipeline    t1_pipe  = VK_NULL_HANDLE;   // depthWrite ON GEQUAL, 2 outputs, no blend
+    VkShaderModule t1_vert = VK_NULL_HANDLE;
+    VkShaderModule t1_frag = VK_NULL_HANDLE;
+    // Borrowed (NOT owned) shared-image resources/views, fetched per-frame from the
+    // shared-scene-color/-depth registries. Cached at init for the framebuffer build.
+    struct VkImageResource* t1_colorRes  = nullptr;
+    struct VkImageResource* t1_normalRes = nullptr;
+    struct VkImageResource* t1_depthRes  = nullptr;
+    struct GlInteropView*   t1_colorView  = nullptr;
+    struct GlInteropView*   t1_normalView = nullptr;
+    struct GlInteropView*   t1_depthView  = nullptr;
 
     int w = 0, h = 0;
 
@@ -279,6 +316,14 @@ void destroy_island(ColorPropIsland* s) {
     if (!s) return;
     VkDevice d = s->device;
     if (d != VK_NULL_HANDLE) vkDeviceWaitIdle(d);
+    // TIER-1 objects (own the render pass/framebuffer/pipeline/shaders; the shared
+    // color/normal/depth images are BORROWED — owned by the postprocess registries).
+    if (s->t1_pipe)  vkDestroyPipeline(d, s->t1_pipe, nullptr);
+    if (s->t1_vert)  vkDestroyShaderModule(d, s->t1_vert, nullptr);
+    if (s->t1_frag)  vkDestroyShaderModule(d, s->t1_frag, nullptr);
+    if (s->t1_fb)    vkDestroyFramebuffer(d, s->t1_fb, nullptr);
+    if (s->t1_rpass) vkDestroyRenderPass(d, s->t1_rpass, nullptr);
+    // Tier-0 side-image color + local depth (only built in Tier-0 mode).
     glInteropViewDestroy(&s->colorGlView);
     if (d != VK_NULL_HANDLE) vkImageResourceDestroy(&s->colorResource, d);
     if (s->depthView)  vkDestroyImageView(d, s->depthView, nullptr);
@@ -353,38 +398,66 @@ bool init_island(ColorPropIsland* s, int w, int h) {
         g_health.deviceName[sizeof(g_health.deviceName) - 1] = '\0';
     }
 
-    if (!colorPropGateRequested()) { setFallback("gate_off"); return false; }
+    // Tier-1 requires EITHER the Tier-0 gate OR the Tier-1 gate to be armed. Tier-1
+    // takes precedence (it REPLACES Tier-0's side-image+composite path).
+    s->tier1 = propColorTier1Requested();
+    if (!s->tier1 && !colorPropGateRequested()) { setFallback("gate_off"); return false; }
 
-    // ---- Exportable shared RGBA16F color (GL composites it). ----
-    bool ok = vkImageResourceCreate(&s->colorResource, s->device, s->phys,
-                                    (uint32_t)w, (uint32_t)h, kColorFmt,
-                                    VK_IMAGE_USAGE_COLOR_ATTACHMENT_BIT |
-                                    VK_IMAGE_USAGE_SAMPLED_BIT,
-                                    /*exportable*/ true);
-    if (ok) ok = glInteropViewCreate(&s->colorGlView, &s->colorResource, s->phys, GL_RGBA16F);
-    if (!ok) {
-        glInteropViewDestroy(&s->colorGlView);
-        vkImageResourceDestroy(&s->colorResource, s->device);
-        setFallback("interop_setup_failed");
-        return false; // interop-only; no readback fallback path
+    if (s->tier1) {
+        // ---- TIER-1: fetch the SHARED scene color/normal/depth exportable images the
+        // GL scene renders terrain into (built by the postprocess seams; the island
+        // co-writes props into these SAME images in-place). Fail-soft: any missing =>
+        // GL fallback (the caller runs the GL prop flush). ----
+        s->t1_colorRes  = mc2SharedSceneColorGetResource(MC2_SHARED_SCENE_COLOR0);
+        s->t1_normalRes = mc2SharedSceneColorGetResource(MC2_SHARED_SCENE_NORMAL);
+        s->t1_depthRes  = mc2SharedSceneDepthGetResource();
+        s->t1_colorView  = mc2SharedSceneColorGetGlView(MC2_SHARED_SCENE_COLOR0);
+        s->t1_normalView = mc2SharedSceneColorGetGlView(MC2_SHARED_SCENE_NORMAL);
+        s->t1_depthView  = mc2SharedSceneDepthGetGlView();
+        if (!s->t1_colorRes || !s->t1_normalRes || !s->t1_depthRes ||
+            !s->t1_colorView || !s->t1_normalView || !s->t1_depthView) {
+            setFallback("tier1_shared_gbuffer_not_ready");
+            return false;
+        }
+        s->useInterop = true;
+        g_health.interopActive = 1;
+        // vk2gl active if the shared color view imported its VK->GL semaphore.
+        g_health.vk2glSemActive =
+            reinterpret_cast<GlInteropView*>(s->t1_colorView)->vkToGlImported ? 1 : 0;
+        vlog("TIER-1 shared-GBuffer co-write ACTIVE — in-place RGBA16F color(MRT0)+normal(MRT1) "
+             "+ shared D32S8 depth (vk2gl_sem=%d).", g_health.vk2glSemActive);
+    } else {
+        // ---- TIER-0: Exportable shared RGBA16F color (GL composites it). ----
+        bool ok = vkImageResourceCreate(&s->colorResource, s->device, s->phys,
+                                        (uint32_t)w, (uint32_t)h, kColorFmt,
+                                        VK_IMAGE_USAGE_COLOR_ATTACHMENT_BIT |
+                                        VK_IMAGE_USAGE_SAMPLED_BIT,
+                                        /*exportable*/ true);
+        if (ok) ok = glInteropViewCreate(&s->colorGlView, &s->colorResource, s->phys, GL_RGBA16F);
+        if (!ok) {
+            glInteropViewDestroy(&s->colorGlView);
+            vkImageResourceDestroy(&s->colorResource, s->device);
+            setFallback("interop_setup_failed");
+            return false; // interop-only; no readback fallback path
+        }
+        s->useInterop = true;
+        g_health.interopActive = 1;
+        g_health.vk2glSemActive = s->colorGlView.vkToGlImported ? 1 : 0;
+        vlog("color interop seam ACTIVE — zero-copy exportable RGBA16F prop color (vk2gl_sem=%d).",
+             g_health.vk2glSemActive);
+
+        // ---- VK-owned local D32 depth (inter-prop occlusion). ----
+        if (!make_depth(s)) { setFallback("depth_setup_failed"); return false; }
     }
-    s->useInterop = true;
-    g_health.interopActive = 1;
-    g_health.vk2glSemActive = s->colorGlView.vkToGlImported ? 1 : 0;
-    vlog("color interop seam ACTIVE — zero-copy exportable RGBA16F prop color (vk2gl_sem=%d).",
-         g_health.vk2glSemActive);
 
-    // ---- VK-owned local D32 depth (inter-prop occlusion). ----
-    if (!make_depth(s)) { setFallback("depth_setup_failed"); return false; }
-
-    // ---- Instance SSBO + UBO. ----
+    // ---- Instance SSBO + UBO (common to both tiers). ----
     if (!ensure_inst_capacity(s, 256 * 1024)) return false;
     if (!make_buffer(s, sizeof(ColorFrameUBO), VK_BUFFER_USAGE_UNIFORM_BUFFER_BIT, &s->ubo, &s->uboAlloc, true)) return false;
 
-    // ---- Render pass: color0 (shared, CLEAR transparent, STORE, layout-stable
+    // ---- TIER-0 Render pass: color0 (shared, CLEAR transparent, STORE, layout-stable
     // COLOR_ATTACHMENT so no transition write across the GL semaphore) + depth
     // (VK-owned, CLEAR to 0.0 reverse-Z far, DONT_CARE store). ----
-    {
+    if (!s->tier1) {
         VkAttachmentDescription att[2]{};
         att[0].format = kColorFmt; att[0].samples = VK_SAMPLE_COUNT_1_BIT;
         att[0].loadOp = VK_ATTACHMENT_LOAD_OP_CLEAR; att[0].storeOp = VK_ATTACHMENT_STORE_OP_STORE;
@@ -439,6 +512,80 @@ bool init_island(ColorPropIsland* s, int w, int h) {
         }
     }
 
+    // ---- TIER-1 Render pass: 2 color LOAD (preserve GL terrain in the SHARED
+    // color(MRT0)+normal(MRT1)) + shared depth LOAD (D32S8, depth-TEST GEQUAL,
+    // write-on to match GL StaticPropOpaque). NO clear of any attachment (respects
+    // the GL scene render + clearGBuffer1 that already ran). GL handed all three over
+    // in their *_ATTACHMENT layouts; keep them there so GL resumes cleanly. ----
+    if (s->tier1) {
+        VkImageResource* colorRes  = reinterpret_cast<VkImageResource*>(s->t1_colorRes);
+        VkImageResource* normalRes = reinterpret_cast<VkImageResource*>(s->t1_normalRes);
+        VkImageResource* depthRes  = reinterpret_cast<VkImageResource*>(s->t1_depthRes);
+
+        VkAttachmentDescription att[3]{};
+        // color0 (MRT0) — LOAD GL terrain color, STORE result.
+        att[0].format = colorRes->format; att[0].samples = VK_SAMPLE_COUNT_1_BIT;
+        att[0].loadOp = VK_ATTACHMENT_LOAD_OP_LOAD; att[0].storeOp = VK_ATTACHMENT_STORE_OP_STORE;
+        att[0].stencilLoadOp = VK_ATTACHMENT_LOAD_OP_DONT_CARE; att[0].stencilStoreOp = VK_ATTACHMENT_STORE_OP_DONT_CARE;
+        att[0].initialLayout = VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL;
+        att[0].finalLayout   = VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL;
+        // color1 (MRT1 GBuffer1) — LOAD GL terrain normals (respect clearGBuffer1), STORE.
+        att[1].format = normalRes->format; att[1].samples = VK_SAMPLE_COUNT_1_BIT;
+        att[1].loadOp = VK_ATTACHMENT_LOAD_OP_LOAD; att[1].storeOp = VK_ATTACHMENT_STORE_OP_STORE;
+        att[1].stencilLoadOp = VK_ATTACHMENT_LOAD_OP_DONT_CARE; att[1].stencilStoreOp = VK_ATTACHMENT_STORE_OP_DONT_CARE;
+        att[1].initialLayout = VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL;
+        att[1].finalLayout   = VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL;
+        // depth (shared D32S8) — LOAD GL scene depth, TEST+WRITE (GEQUAL), STORE so GL
+        // (and post passes) see the prop-updated depth. Stencil LOAD/STORE preserved.
+        att[2].format = depthRes->format; att[2].samples = VK_SAMPLE_COUNT_1_BIT;
+        att[2].loadOp = VK_ATTACHMENT_LOAD_OP_LOAD; att[2].storeOp = VK_ATTACHMENT_STORE_OP_STORE;
+        att[2].stencilLoadOp = VK_ATTACHMENT_LOAD_OP_LOAD; att[2].stencilStoreOp = VK_ATTACHMENT_STORE_OP_STORE;
+        att[2].initialLayout = VK_IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT_OPTIMAL;
+        att[2].finalLayout   = VK_IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT_OPTIMAL;
+
+        VkAttachmentReference colorRefs[2] = {
+            {0, VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL},
+            {1, VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL},
+        };
+        VkAttachmentReference depthRef{2, VK_IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT_OPTIMAL};
+        VkSubpassDescription sub{};
+        sub.pipelineBindPoint = VK_PIPELINE_BIND_POINT_GRAPHICS;
+        sub.colorAttachmentCount = 2; sub.pColorAttachments = colorRefs;
+        sub.pDepthStencilAttachment = &depthRef;
+
+        // Same cross-submit WAW/hand-off deps shape as Tier-0 (GL semaphore provides
+        // the actual ordering; these let sync-val see the LOAD-preserve co-write).
+        VkSubpassDependency deps[2]{};
+        deps[0].srcSubpass = VK_SUBPASS_EXTERNAL; deps[0].dstSubpass = 0;
+        deps[0].srcStageMask  = VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT | VK_PIPELINE_STAGE_LATE_FRAGMENT_TESTS_BIT;
+        deps[0].srcAccessMask = VK_ACCESS_COLOR_ATTACHMENT_WRITE_BIT | VK_ACCESS_DEPTH_STENCIL_ATTACHMENT_WRITE_BIT;
+        deps[0].dstStageMask  = VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT | VK_PIPELINE_STAGE_EARLY_FRAGMENT_TESTS_BIT;
+        deps[0].dstAccessMask = VK_ACCESS_COLOR_ATTACHMENT_READ_BIT | VK_ACCESS_COLOR_ATTACHMENT_WRITE_BIT |
+                                VK_ACCESS_DEPTH_STENCIL_ATTACHMENT_READ_BIT | VK_ACCESS_DEPTH_STENCIL_ATTACHMENT_WRITE_BIT;
+        deps[1].srcSubpass = 0; deps[1].dstSubpass = VK_SUBPASS_EXTERNAL;
+        deps[1].srcStageMask  = VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT | VK_PIPELINE_STAGE_LATE_FRAGMENT_TESTS_BIT;
+        deps[1].srcAccessMask = VK_ACCESS_COLOR_ATTACHMENT_WRITE_BIT | VK_ACCESS_DEPTH_STENCIL_ATTACHMENT_WRITE_BIT;
+        deps[1].dstStageMask  = VK_PIPELINE_STAGE_BOTTOM_OF_PIPE_BIT;
+        deps[1].dstAccessMask = 0;
+
+        VkRenderPassCreateInfo rpci{};
+        rpci.sType = VK_STRUCTURE_TYPE_RENDER_PASS_CREATE_INFO;
+        rpci.attachmentCount = 3; rpci.pAttachments = att;
+        rpci.subpassCount = 1; rpci.pSubpasses = &sub;
+        rpci.dependencyCount = 2; rpci.pDependencies = deps;
+        if (vkCreateRenderPass(s->device, &rpci, nullptr, &s->t1_rpass) != VK_SUCCESS) {
+            vlog("TIER-1 vkCreateRenderPass failed."); setFallback("tier1_renderpass_failed"); return false;
+        }
+        VkImageView fbViews[3] = { colorRes->view, normalRes->view, depthRes->view };
+        VkFramebufferCreateInfo fci{};
+        fci.sType = VK_STRUCTURE_TYPE_FRAMEBUFFER_CREATE_INFO;
+        fci.renderPass = s->t1_rpass; fci.attachmentCount = 3; fci.pAttachments = fbViews;
+        fci.width = (uint32_t)w; fci.height = (uint32_t)h; fci.layers = 1;
+        if (vkCreateFramebuffer(s->device, &fci, nullptr, &s->t1_fb) != VK_SUCCESS) {
+            vlog("TIER-1 vkCreateFramebuffer failed."); setFallback("tier1_framebuffer_failed"); return false;
+        }
+    }
+
     // ---- Descriptor layout/pool/set (UBO binding0 VS, instance SSBO binding1 VS). ----
     {
         VkDescriptorSetLayoutBinding b[2]{};
@@ -470,9 +617,9 @@ bool init_island(ColorPropIsland* s, int w, int h) {
         write_descriptors(s);
     }
 
-    // ---- Pipeline: full 40B vertex stream (pos/normal/uv/id/aRGB), instanced,
+    // ---- TIER-0 Pipeline: full 40B vertex stream (pos/normal/uv/id/aRGB), instanced,
     // reverse-Z GEQUAL depth-test+write, cull NONE, premult-over color blend. ----
-    {
+    if (!s->tier1) {
         s->vert = load_spv(s->device, spv_dir() + "color_prop.vert.spv");
         s->frag = load_spv(s->device, spv_dir() + "color_prop.frag.spv");
         if (s->vert == VK_NULL_HANDLE || s->frag == VK_NULL_HANDLE) { setFallback("spv_load_failed"); return false; }
@@ -562,6 +709,99 @@ bool init_island(ColorPropIsland* s, int w, int h) {
         gp.layout = s->playout; gp.renderPass = s->rpass; gp.subpass = 0;
         if (vkCreateGraphicsPipelines(s->device, VK_NULL_HANDLE, 1, &gp, nullptr, &s->pipe) != VK_SUCCESS) {
             vlog("vkCreateGraphicsPipelines failed."); return false;
+        }
+    }
+
+    // ---- TIER-1 Pipeline: same 40B vertex stream, but emits TWO GBuffer outputs
+    // (loc0 lit color, loc1 GBuffer1 normal+0.25), reverse-Z GEQUAL depth-test+WRITE,
+    // cull NONE, and NO blend on either attachment (opaque in-place overwrite — a
+    // winning prop fragment fully replaces the terrain GBuffer pixel, matching GL). ----
+    if (s->tier1) {
+        s->t1_vert = load_spv(s->device, spv_dir() + "color_prop_tier1.vert.spv");
+        s->t1_frag = load_spv(s->device, spv_dir() + "color_prop_tier1.frag.spv");
+        if (s->t1_vert == VK_NULL_HANDLE || s->t1_frag == VK_NULL_HANDLE) { setFallback("tier1_spv_load_failed"); return false; }
+
+        VkPipelineLayoutCreateInfo plci{};
+        plci.sType = VK_STRUCTURE_TYPE_PIPELINE_LAYOUT_CREATE_INFO;
+        plci.setLayoutCount = 1; plci.pSetLayouts = &s->dsl;
+        if (vkCreatePipelineLayout(s->device, &plci, nullptr, &s->playout) != VK_SUCCESS) {
+            vlog("TIER-1 vkCreatePipelineLayout failed."); return false;
+        }
+
+        VkVertexInputBindingDescription vib{};
+        vib.binding = 0; vib.stride = s->vertexStride ? s->vertexStride : 40;
+        vib.inputRate = VK_VERTEX_INPUT_RATE_VERTEX;
+        VkVertexInputAttributeDescription via[5]{};
+        via[0].location = 0; via[0].binding = 0; via[0].format = VK_FORMAT_R32G32B32_SFLOAT; via[0].offset = 0;
+        via[1].location = 1; via[1].binding = 0; via[1].format = VK_FORMAT_R32G32B32_SFLOAT; via[1].offset = 12;
+        via[2].location = 2; via[2].binding = 0; via[2].format = VK_FORMAT_R32G32_SFLOAT;    via[2].offset = 24;
+        via[3].location = 3; via[3].binding = 0; via[3].format = VK_FORMAT_R32_UINT;         via[3].offset = 32;
+        via[4].location = 4; via[4].binding = 0; via[4].format = VK_FORMAT_R32_UINT;         via[4].offset = 36;
+        VkPipelineVertexInputStateCreateInfo vin{};
+        vin.sType = VK_STRUCTURE_TYPE_PIPELINE_VERTEX_INPUT_STATE_CREATE_INFO;
+        vin.vertexBindingDescriptionCount = 1; vin.pVertexBindingDescriptions = &vib;
+        vin.vertexAttributeDescriptionCount = 5; vin.pVertexAttributeDescriptions = via;
+
+        VkPipelineInputAssemblyStateCreateInfo ia{};
+        ia.sType = VK_STRUCTURE_TYPE_PIPELINE_INPUT_ASSEMBLY_STATE_CREATE_INFO;
+        ia.topology = VK_PRIMITIVE_TOPOLOGY_TRIANGLE_LIST;
+
+        VkPipelineViewportStateCreateInfo vps{};
+        vps.sType = VK_STRUCTURE_TYPE_PIPELINE_VIEWPORT_STATE_CREATE_INFO;
+        vps.viewportCount = 1; vps.scissorCount = 1;
+
+        VkPipelineRasterizationStateCreateInfo rs{};
+        rs.sType = VK_STRUCTURE_TYPE_PIPELINE_RASTERIZATION_STATE_CREATE_INFO;
+        rs.polygonMode = VK_POLYGON_MODE_FILL;
+        rs.cullMode = VK_CULL_MODE_NONE;
+        rs.frontFace = VK_FRONT_FACE_COUNTER_CLOCKWISE;
+        rs.lineWidth = 1.0f;
+
+        VkPipelineMultisampleStateCreateInfo ms{};
+        ms.sType = VK_STRUCTURE_TYPE_PIPELINE_MULTISAMPLE_STATE_CREATE_INFO;
+        ms.rasterizationSamples = VK_SAMPLE_COUNT_1_BIT;
+
+        // Reverse-Z GEQUAL, test+WRITE on (matches GL StaticPropOpaque; props occlude
+        // vs the SHARED scene depth GL authored — the point of Tier-1).
+        VkPipelineDepthStencilStateCreateInfo ds{};
+        ds.sType = VK_STRUCTURE_TYPE_PIPELINE_DEPTH_STENCIL_STATE_CREATE_INFO;
+        ds.depthTestEnable = VK_TRUE;
+        ds.depthWriteEnable = VK_TRUE;
+        ds.depthCompareOp = VK_COMPARE_OP_GREATER_OR_EQUAL;
+
+        // NO blend on EITHER attachment: opaque in-place overwrite. GBuffer1 is NOT
+        // alpha-blendable (premult-over would corrupt the normal+class encoding), and
+        // the color pass is opaque, so a winning fragment writes rgba directly.
+        VkPipelineColorBlendAttachmentState cba[2]{};
+        for (int k = 0; k < 2; ++k) {
+            cba[k].blendEnable = VK_FALSE;
+            cba[k].colorWriteMask = VK_COLOR_COMPONENT_R_BIT | VK_COLOR_COMPONENT_G_BIT |
+                                    VK_COLOR_COMPONENT_B_BIT | VK_COLOR_COMPONENT_A_BIT;
+        }
+        VkPipelineColorBlendStateCreateInfo cb{};
+        cb.sType = VK_STRUCTURE_TYPE_PIPELINE_COLOR_BLEND_STATE_CREATE_INFO;
+        cb.attachmentCount = 2; cb.pAttachments = cba;
+
+        VkDynamicState dyn[2] = { VK_DYNAMIC_STATE_VIEWPORT, VK_DYNAMIC_STATE_SCISSOR };
+        VkPipelineDynamicStateCreateInfo dsci{};
+        dsci.sType = VK_STRUCTURE_TYPE_PIPELINE_DYNAMIC_STATE_CREATE_INFO;
+        dsci.dynamicStateCount = 2; dsci.pDynamicStates = dyn;
+
+        VkPipelineShaderStageCreateInfo stages[2]{};
+        stages[0].sType = VK_STRUCTURE_TYPE_PIPELINE_SHADER_STAGE_CREATE_INFO;
+        stages[0].stage = VK_SHADER_STAGE_VERTEX_BIT; stages[0].module = s->t1_vert; stages[0].pName = "main";
+        stages[1].sType = VK_STRUCTURE_TYPE_PIPELINE_SHADER_STAGE_CREATE_INFO;
+        stages[1].stage = VK_SHADER_STAGE_FRAGMENT_BIT; stages[1].module = s->t1_frag; stages[1].pName = "main";
+        VkGraphicsPipelineCreateInfo gp{};
+        gp.sType = VK_STRUCTURE_TYPE_GRAPHICS_PIPELINE_CREATE_INFO;
+        gp.stageCount = 2; gp.pStages = stages;
+        gp.pVertexInputState = &vin; gp.pInputAssemblyState = &ia;
+        gp.pViewportState = &vps; gp.pRasterizationState = &rs;
+        gp.pMultisampleState = &ms; gp.pDepthStencilState = &ds; gp.pColorBlendState = &cb;
+        gp.pDynamicState = &dsci;
+        gp.layout = s->playout; gp.renderPass = s->t1_rpass; gp.subpass = 0;
+        if (vkCreateGraphicsPipelines(s->device, VK_NULL_HANDLE, 1, &gp, nullptr, &s->t1_pipe) != VK_SUCCESS) {
+            vlog("TIER-1 vkCreateGraphicsPipelines failed."); setFallback("tier1_pipeline_failed"); return false;
         }
     }
 
@@ -724,11 +964,12 @@ void composite_props_onto_maincolor(ColorPropIsland* s, int w, int h) {
 // ===========================================================================
 
 extern "C" int mc2_vk_color_prop_island_enabled() {
-    return colorPropGateRequested() ? 1 : 0;
+    // Either tier armed => the caller skips the GL prop color flush and calls run().
+    return (colorPropGateRequested() || propColorTier1Requested()) ? 1 : 0;
 }
 
 extern "C" int mc2_vk_color_prop_island_run(int w, int h) {
-    if (!colorPropGateRequested()) return 0;
+    if (!colorPropGateRequested() && !propColorTier1Requested()) return 0;
     if (w <= 0 || h <= 0) return 0;
 
     using clk = std::chrono::steady_clock;
@@ -791,6 +1032,143 @@ extern "C" int mc2_vk_color_prop_island_run(int w, int h) {
     // The feed is already grouped by ascending typeID; build contiguous type-runs.
     const GpuStaticPropInstanceMirror* insts =
         reinterpret_cast<const GpuStaticPropInstanceMirror*>(feed.instances112);
+
+    // ===================================================================
+    // TIER-1 co-write: props rendered IN-PLACE into the SHARED scene color(MRT0)+
+    // normal(MRT1)+depth GBuffer. GL authored terrain into all three and handed them
+    // to VK (each in its *_ATTACHMENT layout); VK LOADs (does NOT clear) all three,
+    // depth-tests GEQUAL reverse-Z, and only overwrites where the prop wins. No
+    // side-image, no composite, NO re-clear of GBuffer1 (respects clearGBuffer1()).
+    // ===================================================================
+    if (s->tier1) {
+        VkImageResource* colorRes  = reinterpret_cast<VkImageResource*>(s->t1_colorRes);
+        VkImageResource* normalRes = reinterpret_cast<VkImageResource*>(s->t1_normalRes);
+        VkImageResource* depthRes  = reinterpret_cast<VkImageResource*>(s->t1_depthRes);
+        GlInteropView*   colorView  = reinterpret_cast<GlInteropView*>(s->t1_colorView);
+        GlInteropView*   normalView = reinterpret_cast<GlInteropView*>(s->t1_normalView);
+        GlInteropView*   depthView  = reinterpret_cast<GlInteropView*>(s->t1_depthView);
+
+        // Begin a frame on EACH shared image (waits+resets its parity fence so its
+        // binary semaphores are safe to re-signal). Drive all three on the color's
+        // parity for a single coherent hand-off.
+        VkFrameSync fsC = vkImageResourceBeginFrame(colorRes);
+        VkFrameSync fsN = vkImageResourceBeginFrame(normalRes);
+        VkFrameSync fsD = vkImageResourceBeginFrame(depthRes);
+        VkCommandBuffer cb = s->cbuf[fsC.parity & 1u];
+
+        // GL hands each shared image to VK in its attachment layout.
+        glInteropSignalToVk(*colorView,  GL_LAYOUT_COLOR_ATTACHMENT_EXT,          fsC.parity);
+        glInteropSignalToVk(*normalView, GL_LAYOUT_COLOR_ATTACHMENT_EXT,          fsN.parity);
+        glInteropSignalToVk(*depthView,  GL_LAYOUT_DEPTH_STENCIL_ATTACHMENT_EXT,  fsD.parity);
+
+        const clk::time_point tRender0 = clk::now();
+        vkResetCommandBuffer(cb, 0);
+        VkCommandBufferBeginInfo bi{};
+        bi.sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_BEGIN_INFO;
+        bi.flags = VK_COMMAND_BUFFER_USAGE_ONE_TIME_SUBMIT_BIT;
+        if (vkBeginCommandBuffer(cb, &bi) != VK_SUCCESS) { setFallback("record_failed"); s->disabled = true; return 0; }
+
+        // Begin the LOAD renderpass — NO clear values (all attachments loadOp=LOAD).
+        VkRenderPassBeginInfo rbi{};
+        rbi.sType = VK_STRUCTURE_TYPE_RENDER_PASS_BEGIN_INFO;
+        rbi.renderPass = s->t1_rpass; rbi.framebuffer = s->t1_fb;
+        rbi.renderArea = {{0, 0}, {(uint32_t)w, (uint32_t)h}};
+        rbi.clearValueCount = 0; rbi.pClearValues = nullptr;
+        vkCmdBeginRenderPass(cb, &rbi, VK_SUBPASS_CONTENTS_INLINE);
+
+        VkViewport vp{0.0f, 0.0f, (float)w, (float)h, 0.0f, 1.0f};
+        VkRect2D scissor{{0, 0}, {(uint32_t)w, (uint32_t)h}};
+        vkCmdSetViewport(cb, 0, 1, &vp);
+        vkCmdSetScissor(cb, 0, 1, &scissor);
+
+        vkCmdBindPipeline(cb, VK_PIPELINE_BIND_POINT_GRAPHICS, s->t1_pipe);
+        vkCmdBindDescriptorSets(cb, VK_PIPELINE_BIND_POINT_GRAPHICS, s->playout, 0, 1, &s->set, 0, nullptr);
+        VkDeviceSize vboOff = 0;
+        vkCmdBindVertexBuffers(cb, 0, 1, &s->vbo, &vboOff);
+        vkCmdBindIndexBuffer(cb, s->ibo, 0, VK_INDEX_TYPE_UINT32);
+
+        unsigned long typeRuns = 0;
+        uint32_t i = 0;
+        while (i < instanceCount) {
+            const uint32_t tid = insts[i].typeID;
+            uint32_t j = i;
+            while (j < instanceCount && insts[j].typeID == tid) ++j;
+            const uint32_t instCount = j - i;
+            if (tid < s->typeRuns.size()) {
+                const TypeRun& tr = s->typeRuns[tid];
+                for (uint32_t p = 0; p < tr.packetCount; ++p) {
+                    const uint32_t pk = tr.firstPacket + p;
+                    if (pk >= s->packets.size()) break;
+                    const Mc2ShadowPacket& pkt = s->packets[pk];
+                    vkCmdDrawIndexed(cb, pkt.indexCount, instCount,
+                                     pkt.firstIndex, (int32_t)pkt.baseVertex, i);
+                }
+                ++typeRuns;
+            }
+            i = j;
+        }
+        g_health.typeRuns = typeRuns;
+
+        vkCmdEndRenderPass(cb);
+        if (vkEndCommandBuffer(cb) != VK_SUCCESS) { setFallback("record_failed"); s->disabled = true; return 0; }
+
+        // Submit: WAIT all three GL->VK sems (GL owns all three targets); SIGNAL all
+        // three VK->GL sems + the color fence. GL then waits all three back.
+        VkSemaphore waitSems[3];   VkPipelineStageFlags waitStages[3];
+        VkSemaphore signalSems[3]; uint32_t waitN = 0, sigN = 0;
+        auto addWait = [&](VkSemaphore sem, VkPipelineStageFlags stage){
+            if (sem != VK_NULL_HANDLE) { waitSems[waitN] = sem; waitStages[waitN] = stage; ++waitN; } };
+        addWait(fsC.signal, VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT);
+        addWait(fsN.signal, VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT);
+        addWait(fsD.signal, VK_PIPELINE_STAGE_EARLY_FRAGMENT_TESTS_BIT);
+        const bool gpuC = colorView->vkToGlImported  && fsC.vk2gl != VK_NULL_HANDLE;
+        const bool gpuN = normalView->vkToGlImported && fsN.vk2gl != VK_NULL_HANDLE;
+        const bool gpuD = depthView->vkToGlImported  && fsD.vk2gl != VK_NULL_HANDLE;
+        if (gpuC) signalSems[sigN++] = fsC.vk2gl;
+        if (gpuN) signalSems[sigN++] = fsN.vk2gl;
+        if (gpuD) signalSems[sigN++] = fsD.vk2gl;
+
+        VkSubmitInfo si{};
+        si.sType = VK_STRUCTURE_TYPE_SUBMIT_INFO;
+        si.waitSemaphoreCount = waitN; si.pWaitSemaphores = waitSems; si.pWaitDstStageMask = waitStages;
+        si.commandBufferCount = 1; si.pCommandBuffers = &cb;
+        si.signalSemaphoreCount = sigN; si.pSignalSemaphores = signalSems;
+        if (vkQueueSubmit(s->queue, 1, &si, fsC.fence) != VK_SUCCESS) { setFallback("submit_failed"); s->disabled = true; return 0; }
+
+        // GL waits each shared image back in its attachment layout (GPU hand-off).
+        if (gpuC) glInteropWaitFromVk(*colorView,  GL_LAYOUT_COLOR_ATTACHMENT_EXT,         fsC.parity);
+        if (gpuN) glInteropWaitFromVk(*normalView, GL_LAYOUT_COLOR_ATTACHMENT_EXT,         fsN.parity);
+        if (gpuD) glInteropWaitFromVk(*depthView,  GL_LAYOUT_DEPTH_STENCIL_ATTACHMENT_EXT, fsD.parity);
+
+        // Retire this frame's submit before the parity slot is reused (WAW).
+        if (vkWaitForFences(s->device, 1, &fsC.fence, VK_TRUE, 5ull*1000*1000*1000) != VK_SUCCESS) {
+            setFallback("fence_timeout"); s->disabled = true; return 0;
+        }
+        g_health.drawUs = usSince(tRender0);
+
+        // NO composite — props were co-written in-place into the real GBuffer.
+
+        const bool readbackFired =
+            (g_forbidden.vkCmdCopyImageToBuffer != f0a) ||
+            (g_forbidden.glGetTexImage != f0b) || (g_forbidden.glReadPixels != f0c);
+        if (readbackFired) {
+            vlog("FATAL(tier1): a readback fired on the co-write path — failing frame + disabling.");
+            setFallback("interop_did_readback"); s->disabled = true; return 0;
+        }
+
+        g_health.vkDraws = 1;
+        ++g_health.usedVulkan;
+        ++g_health.usedInterop;
+        g_health.totalUs = usSince(tTotal0);
+        static bool s_t1FirstOk = false;
+        if (!s_t1FirstOk) {
+            vlog("first TIER-1 in-place GBuffer co-write: instCount=%u typeRuns=%lu "
+                 "(props co-written into shared color(MRT0)+normal(MRT1)+depth; no composite).",
+                 instanceCount, g_health.typeRuns);
+            s_t1FirstOk = true;
+        }
+        return 1;
+    }
 
     // ---- 3) Begin frame parity; GL hands the shared color to VK (this is a
     // GL-owns-target -> VK-writes case like the water island, so signal GL->VK). ----

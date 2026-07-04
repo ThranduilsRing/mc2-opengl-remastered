@@ -18,6 +18,7 @@
 #define VK_USE_PLATFORM_WIN32_KHR
 #endif
 
+#define MC2_VULKAN_SHARED_SCENE_DEPTH_IMPL_ISLAND
 #include "vulkan_shared_scene_depth.h"
 
 #include <volk.h>
@@ -47,6 +48,11 @@ struct Mc2SharedSceneDepth {
 };
 
 namespace {
+// The single ACTIVE shared scene-depth owner (only one gosPostProcess FBO exists),
+// exposed to the VK-P11 Tier-1 prop island via the accessors below so it can build a
+// LOAD depth attachment over the SAME shared image.
+Mc2SharedSceneDepth* g_activeSharedDepth = nullptr;
+
 void slog(const char* fmt, ...) {
     char buf[512];
     va_list ap; va_start(ap, fmt);
@@ -117,6 +123,7 @@ Mc2SharedSceneDepth* mc2SharedSceneDepthCreate(int w, int h, GLuint* outGlTex,
 
     *outGlTex = d->view.glTex;
     if (outReason) *outReason = "active";
+    g_activeSharedDepth = d;
     slog("active: VK D32S8 %dx%d imported to GL_DEPTH24_STENCIL8 tex=%u", w, h,
          (unsigned)d->view.glTex);
     return d;
@@ -124,10 +131,22 @@ Mc2SharedSceneDepth* mc2SharedSceneDepthCreate(int w, int h, GLuint* outGlTex,
 
 void mc2SharedSceneDepthDestroy(Mc2SharedSceneDepth* d) {
     if (!d) return;
+    if (g_activeSharedDepth == d) g_activeSharedDepth = nullptr;
     if (d->viewValid) glInteropViewDestroy(&d->view);
     if (d->resValid && d->device != VK_NULL_HANDLE)
         vkImageResourceDestroy(&d->res, d->device);
     delete d;
+}
+
+// ---- Island-facing accessors ------------------------------------------------
+VkImageResource* mc2SharedSceneDepthGetResource() {
+    Mc2SharedSceneDepth* d = g_activeSharedDepth;
+    return (d && d->resValid) ? &d->res : nullptr;
+}
+
+GlInteropView* mc2SharedSceneDepthGetGlView() {
+    Mc2SharedSceneDepth* d = g_activeSharedDepth;
+    return (d && d->viewValid) ? &d->view : nullptr;
 }
 
 #endif // MC2_VULKAN_ISLAND

@@ -180,6 +180,14 @@ if(MC2_VULKAN)
         # identical). Layout-affecting header member (sharedSceneDepth_) added
         # under #ifdef MC2_VULKAN_ISLAND, propagated by the root ODR-harden block.
         list(APPEND SOURCES vulkan_shared_scene_depth.cpp)
+        # VK-P11 TIER-1: shared scene COLOR/NORMAL substrate — sibling of the shared
+        # depth above. Backs sceneColorTex_ (MRT0) + sceneNormalTex_ (MRT1) with VK-
+        # built exportable RGBA16F images imported into GL, so the VK prop island co-
+        # writes props into the SAME GBuffer attachments in-place (Tier-1). Gate
+        # MC2_VK_PROP_COLOR_TIER1 default-OFF (requires MC2_VK_SHARED_SCENE_DEPTH) ->
+        # plain GL alloc (byte-identical). Layout-affecting header members
+        # (sharedSceneColor_/sharedSceneNormal_) under #ifdef MC2_VULKAN_ISLAND.
+        list(APPEND SOURCES vulkan_shared_scene_color.cpp)
         # water-perf STEP 1: the BUFFER analog of the image interop pair above.
         # vk_gl_shared_buffer = GL-free raw-allocated exportable VkBuffer + reused
         # double-buffered sync; gl_interop_buffer_view = the GL-boundary adapter that
@@ -290,7 +298,7 @@ if(MC2_VULKAN)
     # VK-P11 STATIC-PROP COLOR: bake color_prop.{vert,frag} (instanced static-prop color
     # VS + Tier-0 flat/debug FS). SPIR-V loaded at runtime by vulkan_color_prop_island.cpp
     # via load_spv(spv_dir()+"color_prop.*.spv").
-    set(MC2_VK_SHADER_BASENAMES fullscreen edge_fog fog_oob ssao ssao_apply hzb_reduce compare_shadow csm_array_shadow shadow_depth water_mvp water_geom shadow_prop color_prop)
+    set(MC2_VK_SHADER_BASENAMES fullscreen edge_fog fog_oob ssao ssao_apply hzb_reduce compare_shadow csm_array_shadow shadow_depth water_mvp water_geom shadow_prop color_prop color_prop_tier1)
     set(MC2_VK_SPV_OUTPUTS "")
     if(MC2_GLSLANG_VALIDATOR OR MC2_GLSLC)
         foreach(_base ${MC2_VK_SHADER_BASENAMES})

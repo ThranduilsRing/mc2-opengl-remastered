@@ -473,6 +473,17 @@ public:
     // vulkan_shared_scene_depth.cpp.
     struct Mc2SharedSceneDepth* sharedSceneDepth_ = nullptr;
 
+    // VK-P11 TIER-1 SHARED SCENE COLOR/NORMAL: when MC2_VK_PROP_COLOR_TIER1 is ON
+    // (and MC2_VK_SHARED_SCENE_DEPTH provides the shared depth), sceneColorTex_
+    // (MRT0) and sceneNormalTex_ (MRT1) are each backed by a VK-built exportable
+    // RGBA16F image imported into GL as GL_RGBA16F, so the VK prop island can
+    // co-write props into the SAME GBuffer attachments in-place. Torn down + rebuilt
+    // with the FBOs on resize. nullptr => the plain GL alloc is live for that slot
+    // (gate OFF / interop fell back). Opaque pointers; defined in
+    // vulkan_shared_scene_color.cpp.
+    struct Mc2SharedSceneColor* sharedSceneColor_  = nullptr;   // MRT0 sceneColorTex_
+    struct Mc2SharedSceneColor* sharedSceneNormal_ = nullptr;   // MRT1 sceneNormalTex_
+
     // VULKAN-OOB-FOG-ISLAND-1: the SECOND offscreen Vulkan island (proves the
     // VULKAN-ISLAND-TEMPLATE-1 checklist repeats). When MC2_VULKAN_OOB_FOG_ISLAND=1
     // AND lazy Vulkan init succeeds, the OOB-fog composite runs on a headless Vulkan

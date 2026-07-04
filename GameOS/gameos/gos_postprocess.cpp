@@ -25,6 +25,7 @@
 #include "../../mclib/dynamic_decal_ring.h"  // DECAL-INTEGRATE-1: ring-fed projected decals
 #ifdef MC2_VULKAN_ISLAND
 #include "vulkan_shared_scene_depth.h"  // VK-TIER1 SHARED SCENE DEPTH substrate (gated)
+#include "vulkan_shared_scene_color.h"  // VK-P11 TIER-1 SHARED SCENE COLOR/NORMAL (gated)
 #endif
 
 #include <cassert>
@@ -73,6 +74,25 @@ static bool mc2VkSharedSceneDepthEnabled()
     static const bool s_on = []() {
         const char* v = getenv("MC2_VK_SHARED_SCENE_DEPTH");
         return v && v[0] == '1' && v[1] == '\0';   // DEFAULT OFF; only "1" enables
+    }();
+    return s_on;
+}
+
+// VK-P11 TIER-1 SHARED SCENE COLOR/NORMAL: presence-gated =1, DEFAULT OFF. When ON
+// (island compiled) AND shared scene depth is ON, sceneColorTex_ (MRT0) and
+// sceneNormalTex_ (MRT1) are backed by VK-built exportable RGBA16F images imported
+// into GL as GL_RGBA16F, so the VK prop island can co-write props into the SAME
+// GBuffer attachments in-place (Tier-1). REQUIRES MC2_VK_SHARED_SCENE_DEPTH (Tier-1
+// depth-tests against the shared scene depth). Fail-soft: if the shared VK context /
+// interop is unavailable at scene-FBO creation, the plain GL alloc is used, so
+// gate-ON with no interop degrades to the GL path. Gate OFF (or the require missing,
+// or island not compiled) = byte-identical to today.
+static bool mc2VkPropColorTier1Enabled()
+{
+    static const bool s_on = []() {
+        const char* v = getenv("MC2_VK_PROP_COLOR_TIER1");
+        const bool tier1 = v && v[0] == '1' && v[1] == '\0';   // DEFAULT OFF; only "1"
+        return tier1 && mc2VkSharedSceneDepthEnabled();        // require shared depth
     }();
     return s_on;
 }
@@ -908,14 +928,54 @@ void gosPostProcess::createFBOs(int w, int h)
 
     // Color attachment: RGBA16F
     // TEX-CLASS: render-target -- scene HDR color (MRT0, FBO attach)
-    glGenTextures(1, &sceneColorTex_);
-    glBindTexture(GL_TEXTURE_2D, sceneColorTex_);
-    glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA16F, w, h, 0, GL_RGBA, GL_FLOAT, nullptr);
-    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
-    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
-    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_CLAMP_TO_EDGE);
-    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_CLAMP_TO_EDGE);
-    glFramebufferTexture2D(GL_FRAMEBUFFER, GL_COLOR_ATTACHMENT0, GL_TEXTURE_2D, sceneColorTex_, 0);
+    //
+    // VK-P11 TIER-1 SHARED SCENE COLOR (gated): when MC2_VK_PROP_COLOR_TIER1 is ON
+    // (requires shared depth), back sceneColorTex_ with a VK-built exportable RGBA16F
+    // image imported into GL as GL_RGBA16F (byte-compatible with the plain GL scene
+    // color format), so the VK prop island can co-write props into this SAME
+    // attachment in-place. SINGLE color alloc+attach site. Fail-soft: any interop
+    // failure falls through to the plain GL alloc below. Rebuilt on resize
+    // (destroyFBOs tears down sharedSceneColor_ too).
+    bool sceneColorShared = false;
+#ifdef MC2_VULKAN_ISLAND
+    if (mc2VkPropColorTier1Enabled()) {
+        GLuint importedColorTex = 0;
+        const char* reason = "unset";
+        sharedSceneColor_ = mc2SharedSceneColorCreate(MC2_SHARED_SCENE_COLOR0, w, h,
+                                                      &importedColorTex, &reason);
+        if (sharedSceneColor_ && importedColorTex != 0) {
+            sceneColorTex_ = importedColorTex;
+            sceneColorShared = true;
+            // Re-assert the plain GL path's sampler state (LINEAR / CLAMP_TO_EDGE)
+            // on the imported texture so the color consumers see an identically
+            // parameterized GL_RGBA16F texture.
+            glBindTexture(GL_TEXTURE_2D, sceneColorTex_);
+            glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
+            glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
+            glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_CLAMP_TO_EDGE);
+            glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_CLAMP_TO_EDGE);
+            glFramebufferTexture2D(GL_FRAMEBUFFER, GL_COLOR_ATTACHMENT0,
+                                   GL_TEXTURE_2D, sceneColorTex_, 0);
+            fprintf(stderr, "[VK_SHARED_SCENE_COLOR] color active tex=%u %dx%d "
+                            "(VK-backed GL_RGBA16F MRT0)\n",
+                    (unsigned)sceneColorTex_, w, h);
+        } else {
+            sharedSceneColor_ = nullptr;
+            fprintf(stderr, "[VK_SHARED_SCENE_COLOR] color fallback reason=%s "
+                            "(plain GL RGBA16F)\n", reason ? reason : "unknown");
+        }
+    }
+#endif
+    if (!sceneColorShared) {
+        glGenTextures(1, &sceneColorTex_);
+        glBindTexture(GL_TEXTURE_2D, sceneColorTex_);
+        glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA16F, w, h, 0, GL_RGBA, GL_FLOAT, nullptr);
+        glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
+        glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
+        glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_CLAMP_TO_EDGE);
+        glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_CLAMP_TO_EDGE);
+        glFramebufferTexture2D(GL_FRAMEBUFFER, GL_COLOR_ATTACHMENT0, GL_TEXTURE_2D, sceneColorTex_, 0);
+    }
 
     // LINEAR-COLOR-AUDIT-1: one-shot runtime color-pipeline probe. Logging only,
     // no GL state change. Gate MC2_LIGHTING_LINEAR_AUDIT=1. Confirms at RUNTIME
@@ -1024,14 +1084,48 @@ void gosPostProcess::createFBOs(int w, int h)
 
     // Normal buffer: MRT attachment 1 (rgb=world normal encoded, a=shadow skip flag)
     // TEX-CLASS: render-target -- GBuffer normal (MRT1, FBO attach)
-    glGenTextures(1, &sceneNormalTex_);
-    glBindTexture(GL_TEXTURE_2D, sceneNormalTex_);
-    glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA16F, w, h, 0, GL_RGBA, GL_FLOAT, nullptr);
-    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_NEAREST);
-    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_NEAREST);
-    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_CLAMP_TO_EDGE);
-    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_CLAMP_TO_EDGE);
-    glFramebufferTexture2D(GL_FRAMEBUFFER, GL_COLOR_ATTACHMENT1, GL_TEXTURE_2D, sceneNormalTex_, 0);
+    //
+    // VK-P11 TIER-1 SHARED SCENE NORMAL (gated): mirror of the color slot above.
+    // Backed by a VK-built exportable RGBA16F imported as GL_RGBA16F so the VK prop
+    // island co-writes the GBuffer1 normal (N*0.5+0.5, a=0.25) into this SAME
+    // attachment in-place. SINGLE normal alloc+attach site. Fail-soft to plain GL.
+    bool sceneNormalShared = false;
+#ifdef MC2_VULKAN_ISLAND
+    if (mc2VkPropColorTier1Enabled()) {
+        GLuint importedNormalTex = 0;
+        const char* reason = "unset";
+        sharedSceneNormal_ = mc2SharedSceneColorCreate(MC2_SHARED_SCENE_NORMAL, w, h,
+                                                       &importedNormalTex, &reason);
+        if (sharedSceneNormal_ && importedNormalTex != 0) {
+            sceneNormalTex_ = importedNormalTex;
+            sceneNormalShared = true;
+            glBindTexture(GL_TEXTURE_2D, sceneNormalTex_);
+            glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_NEAREST);
+            glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_NEAREST);
+            glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_CLAMP_TO_EDGE);
+            glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_CLAMP_TO_EDGE);
+            glFramebufferTexture2D(GL_FRAMEBUFFER, GL_COLOR_ATTACHMENT1,
+                                   GL_TEXTURE_2D, sceneNormalTex_, 0);
+            fprintf(stderr, "[VK_SHARED_SCENE_COLOR] normal active tex=%u %dx%d "
+                            "(VK-backed GL_RGBA16F MRT1)\n",
+                    (unsigned)sceneNormalTex_, w, h);
+        } else {
+            sharedSceneNormal_ = nullptr;
+            fprintf(stderr, "[VK_SHARED_SCENE_COLOR] normal fallback reason=%s "
+                            "(plain GL RGBA16F)\n", reason ? reason : "unknown");
+        }
+    }
+#endif
+    if (!sceneNormalShared) {
+        glGenTextures(1, &sceneNormalTex_);
+        glBindTexture(GL_TEXTURE_2D, sceneNormalTex_);
+        glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA16F, w, h, 0, GL_RGBA, GL_FLOAT, nullptr);
+        glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_NEAREST);
+        glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_NEAREST);
+        glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_CLAMP_TO_EDGE);
+        glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_CLAMP_TO_EDGE);
+        glFramebufferTexture2D(GL_FRAMEBUFFER, GL_COLOR_ATTACHMENT1, GL_TEXTURE_2D, sceneNormalTex_, 0);
+    }
 
     // M1.5: object-ID attachment-2 (GL_R32UI). Gated on
     // MC2_OBJECT_ID_BUFFER; when env-OFF we skip the texture
@@ -1398,8 +1492,20 @@ void gosPostProcess::destroyFBOs()
         sceneFBO_ = 0;
     }
     if (sceneColorTex_) {
-        glDeleteTextures(1, &sceneColorTex_);
-        sceneColorTex_ = 0;
+#ifdef MC2_VULKAN_ISLAND
+        if (sharedSceneColor_) {
+            // VK-P11 TIER-1: sceneColorTex_ is the GL interop view's texture owned by
+            // sharedSceneColor_; destroying the owner deletes that GL texture + frees
+            // the VK image, so we must NOT glDeleteTextures it here (double-free).
+            mc2SharedSceneColorDestroy(sharedSceneColor_);
+            sharedSceneColor_ = nullptr;
+            sceneColorTex_ = 0;
+        } else
+#endif
+        {
+            glDeleteTextures(1, &sceneColorTex_);
+            sceneColorTex_ = 0;
+        }
         // REGISTRY-POSTPROCESS-FBO-1: mark MainColor unavailable on teardown
         // (resize destroys+recreates; createFBOs re-validates).
         RenderCore::RenderResourceDesc inv;
@@ -1439,8 +1545,19 @@ void gosPostProcess::destroyFBOs()
         sceneStencilViewTex_ = 0;
     }
     if (sceneNormalTex_) {
-        glDeleteTextures(1, &sceneNormalTex_);
-        sceneNormalTex_ = 0;
+#ifdef MC2_VULKAN_ISLAND
+        if (sharedSceneNormal_) {
+            // VK-P11 TIER-1: owner-deletes the imported GL texture + VK image (as
+            // above) — must NOT glDeleteTextures it here.
+            mc2SharedSceneColorDestroy(sharedSceneNormal_);
+            sharedSceneNormal_ = nullptr;
+            sceneNormalTex_ = 0;
+        } else
+#endif
+        {
+            glDeleteTextures(1, &sceneNormalTex_);
+            sceneNormalTex_ = 0;
+        }
         // REGISTRY-POSTPROCESS-FBO-1: mark MainNormal unavailable on teardown.
         RenderCore::RenderResourceDesc inv;
         inv.id = RenderCore::RenderResourceId::MainNormal; inv.valid = false;

@@ -51,5 +51,17 @@ Mc2SharedSceneDepth* mc2SharedSceneDepthCreate(int w, int h, GLuint* outGlTex,
 // dropped its sceneDepthTex_ reference / re-created the FBO.
 void mc2SharedSceneDepthDestroy(Mc2SharedSceneDepth* d);
 
+#ifdef MC2_VULKAN_SHARED_SCENE_DEPTH_IMPL_ISLAND
+// Island-facing accessors (only VK island TUs that include volk define the IMPL
+// macro before including this header). Return the ACTIVE shared scene-depth
+// exportable VkImageResource + its GlInteropView, or nullptr if none is live (gate
+// OFF / interop fell back / resized away). The VK-P11 Tier-1 prop island uses these
+// to build a LOAD depth attachment over the SAME shared depth GL authored.
+struct VkImageResource;
+struct GlInteropView;
+VkImageResource* mc2SharedSceneDepthGetResource();
+GlInteropView*   mc2SharedSceneDepthGetGlView();
+#endif
+
 #endif // MC2_VULKAN_ISLAND
 #endif // MC2_VULKAN_SHARED_SCENE_DEPTH_H
