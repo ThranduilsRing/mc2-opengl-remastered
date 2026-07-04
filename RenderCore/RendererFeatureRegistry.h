@@ -719,6 +719,29 @@ static constexpr EnvVarDesc kAuxEnvVars[] = {
         "resize (destroyFBOs tears down + createFBOs rebuilds). Surfaced in [VK_SHARED_SCENE_DEPTH] "
         "log line. Gate OFF (or island not compiled) = byte-identical GL scene-depth path."
     },
+    // VK-P10 TERRAIN TIER-1: the terrain in-place shared-GBuffer co-write region.
+    {
+        "MC2_FEATURE_VK_TERRAIN_TIER1",
+        "MC2_VK_TERRAIN_TIER1",
+        EnvVarKind::Feature,
+        false,
+        "VK-P10 TERRAIN TIER-1: presence-gated =1, default OFF (requires MC2_VK_SHARED_SCENE_DEPTH). "
+        "The VK terrain island co-writes the LIVE LOD-chunk opaque MAIN-triangle draw for the "
+        "nearest (LOD0, lodStep==1) patches IN-PLACE into the SHARED scene color(MRT0)+normal(MRT1)+"
+        "depth GBuffer as the opaque PREFIX, then GL/props/mechs continue on top. Terrain analogue of "
+        "the prop Tier-1 island: REUSES its shared-GBuffer plumbing + LOAD-preserve co-write renderpass "
+        "+ reverse-Z GEQUAL double-sided pipeline verbatim. gbuffer1 = vec4(0.5,0.5,1.0,1.0), a=1.0 "
+        "(terrain shadow-class 'handles own shadow'; props use a=0.25). Consumes the GL height SSBO "
+        "(binding 23) via a per-change interop snapshot (glGetBufferSubData map-load, NOT a per-frame "
+        "handoff readback); CPU-side LOD0 chunk selection stays on GL/CPU. When ON the GL LOD-chunk "
+        "loop SKIPS the LOD0 main+skirt draws (both paths exclude LOD0 skirts for like-for-like A/B). "
+        "SCOPE = LOD0 main-triangle ONLY (skirts / coarser bands / edge-stitch / visual-displace "
+        "DEFERRED; non-LOD0 bands stay on GL). Extends the postprocess shared-scene color/normal "
+        "conversion to trigger for this gate too (mc2VkSharedSceneColorNeeded). Fires markTerrainDrawn "
+        "so terrain-gated post passes stay live. FAIL-SOFT: shared GBuffer not ready / interop "
+        "unavailable -> GL fallback. Surfaced in [VK_TERRAIN_TIER1] health/log. Gate OFF (or island "
+        "not compiled) = byte-identical GL LOD-chunk terrain path."
+    },
     // GOSFX-TUBE-RIBBON-1: gosFX Tube swept-quad ribbon oracle.
     {
         "MC2_VFX_ORACLE_TUBE",

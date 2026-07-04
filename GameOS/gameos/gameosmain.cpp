@@ -25,6 +25,12 @@ extern "C" void mc2_vk_water_island_destroy();
 // the water island (deletes the interop FBO/imported tex + VK objects while both the
 // GL context and the shared device are alive). No-op if never born.
 extern "C" void mc2_vk_color_prop_island_destroy();
+// VK-P10 TERRAIN TIER-1: terrain island shutdown teardown (defined in
+// vulkan_terrain_island.cpp under the same #ifdef). Same ordering rationale — frees
+// the VK renderpass/framebuffer/pipeline + snapshot buffers while the shared device
+// is alive. The shared GBuffer images it borrows are owned by the postprocess
+// registries. No-op if never born.
+extern "C" void mc2_vk_terrain_island_destroy();
 #endif
 extern "C" uint32_t gos_getMechShadowProgramId();
 extern "C" uint32_t gos_getMechShadowTypesDrawn();
@@ -1998,6 +2004,8 @@ int main(int argc, char** argv)
     mc2_vk_water_island_destroy();
     // VK-P11 STATIC-PROP COLOR: tear down the color-prop island alongside water.
     mc2_vk_color_prop_island_destroy();
+    // VK-P10 TERRAIN TIER-1: tear down the terrain island alongside the others.
+    mc2_vk_terrain_island_destroy();
 #endif
     // VK-P13-SELECTOR-1 / T3: tear down the VK present path FIRST -- it deletes GL
     // objects (copy-1 FBO / imported tex) and VK resources on the shared device,

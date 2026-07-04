@@ -160,6 +160,15 @@ if(MC2_VULKAN)
         # color path byte-identical. extern "C" entry points only (no layout-affecting
         # header members).
         list(APPEND SOURCES vulkan_color_prop_island.cpp)
+        # VK-P10 TERRAIN TIER-1: the terrain island — co-writes the LIVE LOD0
+        # (lodStep==1) terrain opaque MAIN-triangle draw IN-PLACE into the SHARED
+        # scene GBuffer (color MRT0 + normal MRT1 a=1.0 + shared depth) as the opaque
+        # PREFIX, reusing the prop Tier-1 shared-GBuffer plumbing + LOAD-preserve
+        # renderpass + reverse-Z/double-sided pipeline. Consumes the GL height SSBO
+        # via a per-change interop snapshot. Gate MC2_VK_TERRAIN_TIER1 default-OFF
+        # (requires MC2_VK_SHARED_SCENE_DEPTH) -> GL terrain path byte-identical.
+        # extern "C" entry points only (no layout-affecting header members).
+        list(APPEND SOURCES vulkan_terrain_island.cpp)
         # VK-REGION-HZB-1: the HZB reduce-chain island (third region). Same
         # #ifdef MC2_VULKAN_ISLAND discipline; layout-affecting header members
         # (vkHzbIsland_ + method decls) added under the same macro, already
@@ -298,7 +307,10 @@ if(MC2_VULKAN)
     # VK-P11 STATIC-PROP COLOR: bake color_prop.{vert,frag} (instanced static-prop color
     # VS + Tier-0 flat/debug FS). SPIR-V loaded at runtime by vulkan_color_prop_island.cpp
     # via load_spv(spv_dir()+"color_prop.*.spv").
-    set(MC2_VK_SHADER_BASENAMES fullscreen edge_fog fog_oob ssao ssao_apply hzb_reduce compare_shadow csm_array_shadow shadow_depth water_mvp water_geom shadow_prop color_prop color_prop_tier1)
+    # VK-P10 TERRAIN TIER-1: bake terrain_tier1.{vert,frag} (LOD0 terrain co-write VS
+    # reading the height SSBO snapshot + 2-output GBuffer FS with a=1.0). SPIR-V loaded
+    # at runtime by vulkan_terrain_island.cpp via load_spv(spv_dir()+"terrain_tier1.*.spv").
+    set(MC2_VK_SHADER_BASENAMES fullscreen edge_fog fog_oob ssao ssao_apply hzb_reduce compare_shadow csm_array_shadow shadow_depth water_mvp water_geom shadow_prop color_prop color_prop_tier1 terrain_tier1)
     set(MC2_VK_SPV_OUTPUTS "")
     if(MC2_GLSLANG_VALIDATOR OR MC2_GLSLC)
         foreach(_base ${MC2_VK_SHADER_BASENAMES})

@@ -19,6 +19,10 @@
 #include <vector>
 #include <map>
 
+#ifdef MC2_VULKAN_ISLAND
+#include "vulkan_terrain_island.h"   // VK-P10 TERRAIN TIER-1: LOD0 shared-GBuffer co-write
+#endif
+
 // GlStateGuard slice 2 kill-switch. Default-ON: when set, the terrain chunk
 // draw owns its depth/blend/cull/mask/func via RAII guards (mc2gl::GlScoped*).
 // MC2_GLSTATEGUARD_TERRAIN=0 reverts to the legacy hand-rolled save/restore
@@ -779,6 +783,36 @@ void gos_TerrainLodChunk_Destroy()
 // count==0 is a strict no-op. Restores GL state on exit.
 // ---------------------------------------------------------------------------
 
+#ifdef MC2_VULKAN_ISLAND
+// ---------------------------------------------------------------------------
+// VK-P10 TERRAIN TIER-1 feed. When MC2_VK_TERRAIN_TIER1 (+ shared depth) is armed,
+// SubmitDrawCommands captures the LOD0 (lodStep==1) patch list + shared params into
+// this scratch, SKIPS the GL LOD0 main+skirt draws, and the VK terrain island
+// co-writes those patches into the shared scene GBuffer instead. Default-OFF ->
+// none of this runs -> the GL path draws every band exactly as before.
+// ---------------------------------------------------------------------------
+static uint64_t g_terrainHeightVersion = 0;  // bumps on UploadHeightFull
+static std::vector<Mc2TerrainTier1Patch> s_vkTerrainPatches;  // this frame's LOD0 patches
+static float    s_vkTerrainMvp[16] = {0};
+static bool     s_vkTerrainFeedValid = false;
+
+extern "C" int mc2_terrain_tier1_get_frame_feed(Mc2TerrainTier1Feed* out)
+{
+    if (!out) return 0;
+    if (!s_vkTerrainFeedValid || s_vkTerrainPatches.empty()) return 0;
+    if (s_heightSsbo.backendHandle == 0 || s_mapSide <= 0) return 0;
+    out->patches    = s_vkTerrainPatches.data();
+    out->patchCount = (uint32_t)s_vkTerrainPatches.size();
+    std::memcpy(out->worldToClipGL, s_vkTerrainMvp, sizeof(out->worldToClipGL));
+    out->mapSide       = s_mapSide;
+    out->halfMap       = s_halfMap;
+    out->glHeightSsbo  = static_cast<uint32_t>(s_heightSsbo.backendHandle);
+    out->heightBytes   = (uint64_t)s_mapSide * (uint64_t)s_mapSide * sizeof(float);
+    out->heightVersion = g_terrainHeightVersion;
+    return 1;
+}
+#endif
+
 void gos_TerrainLodChunk_SubmitDrawCommands(
     const TerrainDrawCommand* cmds,
     const float*              skirtDepths,
@@ -1374,6 +1408,20 @@ void gos_TerrainLodChunk_SubmitDrawCommands(
     // for this submit; populated per-command below, printed after the loop.
     for (int lvl = 0; lvl < 6; ++lvl) s_visualDisplacedCounts[lvl] = 0;
 
+#ifdef MC2_VULKAN_ISLAND
+    // VK-P10 TERRAIN TIER-1: when armed, the VK terrain island co-writes the LOD0
+    // (lodStep==1) MAIN patches into the shared GBuffer. Capture them here and SKIP
+    // their GL main+skirt draws (so the A/B reference and the VK path both exclude
+    // LOD0 skirts — the probe compares LOD0 main-triangle pixels like-for-like).
+    // Default-OFF -> s_vkTerrainActive=false -> the loop below is byte-identical.
+    const bool s_vkTerrainActive = (mc2_vk_terrain_island_enabled() != 0);
+    s_vkTerrainPatches.clear();
+    s_vkTerrainFeedValid = false;
+    if (s_vkTerrainActive) {
+        std::memcpy(s_vkTerrainMvp, mvp, sizeof(s_vkTerrainMvp)); // same MVP the GL draw uses
+    }
+#endif
+
     for (int i = 0; i < count; ++i)
     {
         const TerrainDrawCommand& cmd = cmds[i];
@@ -1381,6 +1429,27 @@ void gos_TerrainLodChunk_SubmitDrawCommands(
         int qcY = (cmd.quadCountsPacked >> 8) & 0xFF;
 
         if (qcX <= 0 || qcY <= 0) continue;
+
+#ifdef MC2_VULKAN_ISLAND
+        // VK-P10 TERRAIN TIER-1: hand LOD0 (lodStep==1) main patches to the VK island
+        // and skip their GL main+skirt draws. Only the non-displaced coarse LOD0 path
+        // is ported (visual-displace / edge-stitch are DEFERRED); if either is active
+        // for this patch, leave it on the GL path (do NOT capture) so nothing regresses.
+        if (s_vkTerrainActive && cmd.lodStep == 1 &&
+            !(visualDisplaceActive && cmd.lodStep == 1) &&
+            (edgeStitch == nullptr || edgeStitch[i] == 0)) {
+            const int maxOffX = qcX;  // (qcX/1)*1
+            const int maxOffY = qcY;
+            Mc2TerrainTier1Patch p;
+            p.blockOriginX = cmd.blockOriginX;
+            p.blockOriginY = cmd.blockOriginY;
+            p.quadCountX   = maxOffX;
+            p.quadCountY   = maxOffY;
+            s_vkTerrainPatches.push_back(p);
+            s_vkTerrainFeedValid = true;
+            continue;   // GL skips this patch's main + skirt draws; VK owns it
+        }
+#endif
 
         // TERRAIN-VISUAL-HEIGHT-SAMPLE-1 (LOD0) + TERRAIN-VISUAL-HEIGHT-S2-ALLLOD
         // (LOD1+): displace every band. LOD0 uses the 4x-finer builder (mode 1,
@@ -1539,6 +1608,22 @@ void gos_TerrainLodChunk_SubmitDrawCommands(
     // cull/mask/func when their optionals destruct at the closing brace below.
     glBindVertexArray((GLuint)prevVAO);
     glUseProgram((GLuint)prevProg);
+
+#ifdef MC2_VULKAN_ISLAND
+    // VK-P10 TERRAIN TIER-1: after the GL terrain bands drew (and GL state is fully
+    // restored), the VK island co-writes the captured LOD0 patches into the SAME
+    // shared scene GBuffer (color MRT0 + normal MRT1 + shared depth), reverse-Z
+    // depth-tested against what GL just authored. Default-OFF -> feed empty -> no-op.
+    // markTerrainDrawn already fired above (GL owns it); the island also latches it
+    // for robustness if a frame is all-LOD0. Fail-soft: run()==0 leaves the GBuffer
+    // as GL authored it (but the LOD0 main patches were skipped above, so a fallback
+    // frame shows LOD0 gaps — acceptable for a default-OFF probe gate).
+    if (s_vkTerrainActive && s_vkTerrainFeedValid) {
+        if (gosPostProcess* ppVk = getGosPostProcess()) {
+            mc2_vk_terrain_island_run(ppVk->getWidth(), ppVk->getHeight());
+        }
+    }
+#endif
 }
 
 // ---------------------------------------------------------------------------
@@ -1567,6 +1652,12 @@ void gos_TerrainLodChunk_UploadHeightFull(const float* elevations, int mapSide)
 
     s_mapSide = mapSide;
     s_halfMap = (float)mapSide * 128.0f * 0.5f;
+
+#ifdef MC2_VULKAN_ISLAND
+    // VK-P10 TERRAIN TIER-1: the height field changed -> bump the snapshot key so the
+    // VK terrain island re-copies it (glGetBufferSubData map-load) on the next frame.
+    ++g_terrainHeightVersion;
+#endif
 
     // REGISTRY-TERRAIN-SSBO-1: register the live height SSBO (observe-only metadata;
     // never read by the draw path). Registered here (not at Init) because the byte

@@ -1,0 +1,835 @@
+// vulkan_terrain_island.cpp — VK-P10 TERRAIN TIER-1: LIVE LOD0 terrain opaque prefix
+// co-written IN-PLACE into the SHARED scene GBuffer.
+// =============================================================================
+// The terrain analogue of the prop Tier-1 island (vulkan_color_prop_island.cpp,
+// tier1 path). It REUSES that proven plumbing VERBATIM:
+//   - Borrows the shared engine VulkanContext (no second device).
+//   - Fetches the SAME shared exportable color(MRT0)+normal(MRT1)+depth images the
+//     GL scene renders terrain into (mc2SharedSceneColorGetResource /
+//     mc2SharedSceneDepthGetResource), builds a LOAD-preserve renderpass +
+//     framebuffer over them (2 color LOAD + shared depth LOAD, no clears).
+//   - Pipeline state COPIED from the GL terrain contract (gos_terrain_lod_chunk.cpp
+//     :869-884), which is byte-identical to the prop tier1 pipeline: cullMode=NONE
+//     (terrainMVP bakes the GL-NDC X-flip -> double-sided), frontFace=CCW,
+//     depthTestEnable=TRUE, depthWriteEnable=TRUE, depthCompareOp=GREATER_OR_EQUAL
+//     (reverse-Z), NO blend on either color attachment (opaque in-place overwrite).
+//
+// TERRAIN differences from props:
+//   - Geometry: NO shared-prop VBO. The island REBUILDS the LOD0 patch grid itself
+//     (a deterministic int16 (lx,ly) grid + uint16 indices from quadCountX/Y — the
+//     same shape getOrBuildPatch() builds for lodStep==1), cached per (qcX,qcY).
+//   - Feed: the height SSBO (GL binding 23) is snapshot-copied ONCE PER CHANGE into
+//     a VK-owned storage buffer via glGetBufferSubData (map-load pattern, coherent
+//     snapshot — NOT a per-frame handoff readback; endorsed by the recon). CPU-side
+//     LOD0 chunk selection stays on GL/CPU (the feed hands over the LOD0 patch list).
+//   - GBuffer1 = vec4(0.5,0.5,1.0,1.0), a=1.0 (terrain shadow-class; props use 0.25).
+//   - Per-patch placement (blockOrigin/quadCount) is fed via a DYNAMIC UBO offset
+//     (one UBO slot per LOD0 patch), replacing the GL per-block u_blockOrigin*
+//     uniforms.
+//
+// SCOPE = LOD0 (lodStep==1) MAIN triangle draw ONLY. Skirts, coarser bands, stitch,
+// visual-displace are DEFERRED. The GL LOD-chunk path draws everything else.
+//
+// The whole TU compiles to nothing unless MC2_VULKAN_ISLAND is defined.
+// =============================================================================
+
+#ifdef MC2_VULKAN_ISLAND
+
+#ifndef VK_USE_PLATFORM_WIN32_KHR
+#define VK_USE_PLATFORM_WIN32_KHR
+#endif
+
+#include <volk.h>
+#include <GL/glew.h>
+
+#define VMA_STATIC_VULKAN_FUNCTIONS 0
+#define VMA_DYNAMIC_VULKAN_FUNCTIONS 0
+#include <vk_mem_alloc.h>
+
+#include "vk_image_resource.h"
+#include "gl_interop_view.h"
+#include "vulkan_context.h"
+#include "vulkan_terrain_island.h"
+#define MC2_VULKAN_SHARED_SCENE_COLOR_IMPL_ISLAND
+#include "vulkan_shared_scene_color.h"
+#define MC2_VULKAN_SHARED_SCENE_DEPTH_IMPL_ISLAND
+#include "vulkan_shared_scene_depth.h"
+
+#include <cstdio>
+#include <cstdlib>
+#include <cstring>
+#include <cstdarg>
+#include <cstdint>
+#include <vector>
+#include <string>
+#include <chrono>
+#include <unordered_map>
+
+namespace {
+
+// ---------------------------------------------------------------------------
+// Health snapshot (mirrors the prop island's).
+// ---------------------------------------------------------------------------
+struct TerrainIslandHealth {
+    int   vulkanAvailable = 0;
+    int   buildEnabled    = 1;
+    char  deviceName[256] = {0};
+    unsigned long attempted   = 0;
+    unsigned long usedVulkan  = 0;
+    char  fallbackReason[256] = {0};
+    unsigned long vkDraws     = 0;
+    int   interopActive  = 0;
+    int   vk2glSemActive = 0;
+    unsigned long patchRecords    = 0;   // LOD0 patches co-written this frame
+    unsigned long heightSnapshots = 0;   // height-SSBO snapshot copies (bumps on change)
+    double stageUs = 0.0, drawUs = 0.0, totalUs = 0.0;
+};
+TerrainIslandHealth g_health;
+
+struct InteropForbidden {
+    unsigned long glGetTexImage = 0;   // color CPU pull (must be 0)
+    unsigned long glReadPixels  = 0;   // color CPU pull (must be 0)
+};
+InteropForbidden g_forbidden;
+
+void setFallback(const char* reason) {
+    std::strncpy(g_health.fallbackReason, reason ? reason : "",
+                 sizeof(g_health.fallbackReason) - 1);
+    g_health.fallbackReason[sizeof(g_health.fallbackReason) - 1] = '\0';
+}
+
+void vlog(const char* fmt, ...) {
+    va_list ap; va_start(ap, fmt);
+    std::fprintf(stderr, "[VK_TERRAIN_ISLAND] ");
+    std::vfprintf(stderr, fmt, ap);
+    std::fprintf(stderr, "\n");
+    std::fflush(stderr);
+    va_end(ap);
+}
+
+// Gate: MC2_VK_TERRAIN_TIER1==1 AND MC2_VK_SHARED_SCENE_DEPTH==1 (the shared depth
+// the Tier-1 pass depth-tests against). Mirrors propColorTier1Requested().
+bool terrainTier1Requested() {
+    static int state = -1;
+    if (state == -1) {
+        const char* e = std::getenv("MC2_VK_TERRAIN_TIER1");
+        const char* d = std::getenv("MC2_VK_SHARED_SCENE_DEPTH");
+        const bool t1    = e && e[0] == '1' && e[1] == '\0';
+        const bool depth = d && d[0] == '1' && d[1] == '\0';
+        state = (t1 && depth) ? 1 : 0;
+    }
+    return state == 1;
+}
+
+std::string spv_dir() {
+    const char* env = std::getenv("MC2_VULKAN_SPV_DIR");
+    std::string d = (env && *env) ? env : "shaders/vulkan";
+    if (!d.empty() && d.back() != '/' && d.back() != '\\') d += '/';
+    return d;
+}
+
+VkShaderModule load_spv(VkDevice device, const std::string& path) {
+    std::FILE* f = std::fopen(path.c_str(), "rb");
+    if (!f) { vlog("cannot open spv '%s'.", path.c_str()); return VK_NULL_HANDLE; }
+    std::fseek(f, 0, SEEK_END);
+    long len = std::ftell(f);
+    std::fseek(f, 0, SEEK_SET);
+    if (len <= 0 || (len % 4) != 0) { vlog("spv '%s' bad size %ld.", path.c_str(), len); std::fclose(f); return VK_NULL_HANDLE; }
+    std::vector<uint32_t> code(static_cast<size_t>(len) / 4);
+    size_t got = std::fread(code.data(), 1, static_cast<size_t>(len), f);
+    std::fclose(f);
+    if (got != static_cast<size_t>(len)) { vlog("spv short read '%s'.", path.c_str()); return VK_NULL_HANDLE; }
+    VkShaderModuleCreateInfo smci{};
+    smci.sType = VK_STRUCTURE_TYPE_SHADER_MODULE_CREATE_INFO;
+    smci.codeSize = static_cast<size_t>(len);
+    smci.pCode = code.data();
+    VkShaderModule mod = VK_NULL_HANDLE;
+    if (vkCreateShaderModule(device, &smci, nullptr, &mod) != VK_SUCCESS) {
+        vlog("vkCreateShaderModule('%s') failed.", path.c_str()); return VK_NULL_HANDLE;
+    }
+    return mod;
+}
+
+// std140 per-patch UBO (LOCKSTEP with terrain_tier1.vert TerrainFrameUBO). One slot
+// per LOD0 patch, addressed by dynamic offset. Padded to 96B so the UBO stride meets
+// minUniformBufferOffsetAlignment (256 on all target GPUs after rounding).
+struct TerrainFrameUBO {
+    float   worldToClipGL[16]; // off 0
+    int32_t mapSide;           // off 64
+    float   halfMap;           // off 68
+    int32_t blockOriginX;      // off 72
+    int32_t blockOriginY;      // off 76
+    int32_t _pad[44];          // pad the slot up to 256B (dynamic UBO alignment)
+};
+static_assert(sizeof(TerrainFrameUBO) == 256, "UBO slot must be 256B (dynamic alignment)");
+
+// int16 local-offset vertex (mirrors terrain_lod_chunk.cpp LocalVertex { int16 lx,ly }).
+struct LocalVertex { int16_t lx, ly; };
+
+const VkFormat kColorFmt = VK_FORMAT_R16G16B16A16_SFLOAT; // MainColor-compatible
+
+// A cached LOD0 patch grid (VK-owned VBO/IBO), keyed by (quadCountX,quadCountY).
+struct PatchMesh {
+    VkBuffer      vbo = VK_NULL_HANDLE; VmaAllocation vboAlloc = VK_NULL_HANDLE;
+    VkBuffer      ibo = VK_NULL_HANDLE; VmaAllocation iboAlloc = VK_NULL_HANDLE;
+    uint32_t      indexCount = 0;
+};
+
+struct TerrainIsland {
+    bool disabled = false;
+    bool inited   = false;
+
+    int w = 0, h = 0;
+
+    // Borrowed from the shared engine context (NOT owned).
+    VkInstance       instance  = VK_NULL_HANDLE;
+    VkPhysicalDevice phys      = VK_NULL_HANDLE;
+    VkDevice         device    = VK_NULL_HANDLE;
+    uint32_t         gfxFamily = UINT32_MAX;
+    VkQueue          queue     = VK_NULL_HANDLE;
+    VmaAllocator     allocator = VK_NULL_HANDLE;
+
+    // Borrowed shared-GBuffer images (owned by the postprocess registries).
+    VkImageResource* colorRes  = nullptr;
+    VkImageResource* normalRes = nullptr;
+    VkImageResource* depthRes  = nullptr;
+    GlInteropView*   colorView  = nullptr;
+    GlInteropView*   normalView = nullptr;
+    GlInteropView*   depthView  = nullptr;
+
+    // LOAD-preserve co-write renderpass + framebuffer (over the 3 shared views).
+    VkRenderPass  rpass = VK_NULL_HANDLE;
+    VkFramebuffer fb    = VK_NULL_HANDLE;
+
+    // Pipeline (2 GBuffer outputs, reverse-Z GEQUAL depth-write, cull NONE, no blend).
+    VkDescriptorSetLayout dsl = VK_NULL_HANDLE;
+    VkDescriptorPool  pool   = VK_NULL_HANDLE;
+    VkDescriptorSet   set    = VK_NULL_HANDLE;
+    VkPipelineLayout  playout = VK_NULL_HANDLE;
+    VkPipeline        pipe   = VK_NULL_HANDLE;
+    VkShaderModule    vert   = VK_NULL_HANDLE;
+    VkShaderModule    frag   = VK_NULL_HANDLE;
+
+    // VK-owned snapshot of the GL height SSBO (binding 23 -> here binding 1).
+    VkBuffer      heightBuf = VK_NULL_HANDLE; VmaAllocation heightAlloc = VK_NULL_HANDLE;
+    VkDeviceSize  heightCapBytes = 0;
+    uint64_t      heightVersionCopied = UINT64_MAX; // last snapshotted feed version
+
+    // Per-patch dynamic UBO (one 256B slot per LOD0 patch this frame).
+    VkBuffer      ubo = VK_NULL_HANDLE; VmaAllocation uboAlloc = VK_NULL_HANDLE;
+    VkDeviceSize  uboCapBytes = 0;
+
+    std::unordered_map<uint32_t, PatchMesh> patchCache;
+
+    VkCommandPool     cpool  = VK_NULL_HANDLE;
+    VkCommandBuffer   cbuf[2] = {VK_NULL_HANDLE, VK_NULL_HANDLE};
+};
+
+TerrainIsland* g_island = nullptr;
+
+bool make_buffer(TerrainIsland* s, VkDeviceSize size, VkBufferUsageFlags usage,
+                 VkBuffer* buf, VmaAllocation* alloc, bool hostVisible) {
+    VkBufferCreateInfo bci{};
+    bci.sType = VK_STRUCTURE_TYPE_BUFFER_CREATE_INFO;
+    bci.size = size ? size : 16; bci.usage = usage;
+    VmaAllocationCreateInfo aci{};
+    aci.usage = VMA_MEMORY_USAGE_AUTO;
+    aci.flags = hostVisible ? VMA_ALLOCATION_CREATE_HOST_ACCESS_RANDOM_BIT : 0;
+    if (vmaCreateBuffer(s->allocator, &bci, &aci, buf, alloc, nullptr) != VK_SUCCESS) {
+        vlog("vmaCreateBuffer failed."); return false;
+    }
+    return true;
+}
+
+// Build (or fetch cached) a LOD0 patch grid for (qcX,qcY). LOD0 (lodStep==1) => the
+// sample positions are 0..qc contiguous, and the CCW two-triangles-per-quad split is
+// the FIXED (TL-BR) diagonal (checkerDiag is a separate default-off feature not
+// ported to the probe), matching getOrBuildPatch()'s bottomRight default.
+const PatchMesh* getOrBuildPatch(TerrainIsland* s, int qcX, int qcY) {
+    uint32_t key = ((uint32_t)(qcX & 0xFFFF)) | (((uint32_t)(qcY & 0xFFFF)) << 16);
+    auto it = s->patchCache.find(key);
+    if (it != s->patchCache.end()) return &it->second;
+    if (qcX <= 0 || qcY <= 0) return nullptr;
+
+    // Vertices: (qcX+1) x (qcY+1) grid of int16 local offsets (lodStep==1).
+    std::vector<LocalVertex> verts;
+    verts.reserve((size_t)(qcX + 1) * (qcY + 1));
+    for (int yy = 0; yy <= qcY; ++yy)
+        for (int xx = 0; xx <= qcX; ++xx)
+            verts.push_back({(int16_t)xx, (int16_t)yy});
+
+    // Indices: two CCW triangles per quad, FIXED TL-BR diagonal (== getOrBuildPatch
+    // bottomRight default): {TL,BL,BR} + {TL,BR,TR}.
+    std::vector<uint16_t> indices;
+    const int W = qcX + 1;
+    for (int j = 0; j < qcY; ++j) {
+        for (int i = 0; i < qcX; ++i) {
+            uint16_t tl = (uint16_t)(j * W + i);
+            uint16_t tr = (uint16_t)(j * W + i + 1);
+            uint16_t bl = (uint16_t)((j + 1) * W + i);
+            uint16_t br = (uint16_t)((j + 1) * W + i + 1);
+            indices.insert(indices.end(), {tl, bl, br, tl, br, tr});
+        }
+    }
+
+    PatchMesh pm;
+    pm.indexCount = (uint32_t)indices.size();
+    const VkDeviceSize vboBytes = verts.size() * sizeof(LocalVertex);
+    const VkDeviceSize iboBytes = indices.size() * sizeof(uint16_t);
+    if (!make_buffer(s, vboBytes, VK_BUFFER_USAGE_VERTEX_BUFFER_BIT, &pm.vbo, &pm.vboAlloc, true)) return nullptr;
+    if (!make_buffer(s, iboBytes, VK_BUFFER_USAGE_INDEX_BUFFER_BIT,  &pm.ibo, &pm.iboAlloc, true)) return nullptr;
+    { void* p = nullptr;
+      if (vmaMapMemory(s->allocator, pm.vboAlloc, &p) == VK_SUCCESS) {
+          std::memcpy(p, verts.data(), (size_t)vboBytes); vmaUnmapMemory(s->allocator, pm.vboAlloc); } }
+    { void* p = nullptr;
+      if (vmaMapMemory(s->allocator, pm.iboAlloc, &p) == VK_SUCCESS) {
+          std::memcpy(p, indices.data(), (size_t)iboBytes); vmaUnmapMemory(s->allocator, pm.iboAlloc); } }
+
+    auto res = s->patchCache.emplace(key, pm);
+    return &res.first->second;
+}
+
+void write_descriptors(TerrainIsland* s) {
+    if (s->set == VK_NULL_HANDLE) return;
+    // binding 0 = dynamic UBO (per-patch frame block); binding 1 = height SSBO.
+    VkDescriptorBufferInfo uboInfo{ s->ubo, 0, sizeof(TerrainFrameUBO) }; // range = one slot
+    VkDescriptorBufferInfo hInfo{ s->heightBuf, 0, VK_WHOLE_SIZE };
+    VkWriteDescriptorSet w[2]{};
+    w[0].sType = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET; w[0].dstSet = s->set;
+    w[0].dstBinding = 0; w[0].descriptorCount = 1;
+    w[0].descriptorType = VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER_DYNAMIC; w[0].pBufferInfo = &uboInfo;
+    w[1].sType = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET; w[1].dstSet = s->set;
+    w[1].dstBinding = 1; w[1].descriptorCount = 1;
+    w[1].descriptorType = VK_DESCRIPTOR_TYPE_STORAGE_BUFFER; w[1].pBufferInfo = &hInfo;
+    vkUpdateDescriptorSets(s->device, 2, w, 0, nullptr);
+}
+
+bool ensure_height_capacity(TerrainIsland* s, VkDeviceSize bytes) {
+    if (s->heightBuf != VK_NULL_HANDLE && bytes <= s->heightCapBytes) return true;
+    if (s->heightBuf != VK_NULL_HANDLE) {
+        vkDeviceWaitIdle(s->device);
+        vmaDestroyBuffer(s->allocator, s->heightBuf, s->heightAlloc);
+        s->heightBuf = VK_NULL_HANDLE;
+    }
+    VkDeviceSize cap = bytes + bytes / 4 + 4096;
+    if (!make_buffer(s, cap, VK_BUFFER_USAGE_STORAGE_BUFFER_BIT, &s->heightBuf, &s->heightAlloc, true))
+        return false;
+    s->heightCapBytes = cap;
+    s->heightVersionCopied = UINT64_MAX; // force re-snapshot into the new buffer
+    write_descriptors(s);
+    return true;
+}
+
+bool ensure_ubo_capacity(TerrainIsland* s, VkDeviceSize bytes) {
+    if (s->ubo != VK_NULL_HANDLE && bytes <= s->uboCapBytes) return true;
+    if (s->ubo != VK_NULL_HANDLE) {
+        vkDeviceWaitIdle(s->device);
+        vmaDestroyBuffer(s->allocator, s->ubo, s->uboAlloc);
+        s->ubo = VK_NULL_HANDLE;
+    }
+    VkDeviceSize cap = bytes + bytes / 2 + sizeof(TerrainFrameUBO);
+    if (!make_buffer(s, cap, VK_BUFFER_USAGE_UNIFORM_BUFFER_BIT, &s->ubo, &s->uboAlloc, true))
+        return false;
+    s->uboCapBytes = cap;
+    write_descriptors(s);
+    return true;
+}
+
+void destroy_island(TerrainIsland* s) {
+    if (!s) return;
+    VkDevice d = s->device;
+    if (d != VK_NULL_HANDLE) vkDeviceWaitIdle(d);
+    for (auto& kv : s->patchCache) {
+        if (kv.second.vbo) vmaDestroyBuffer(s->allocator, kv.second.vbo, kv.second.vboAlloc);
+        if (kv.second.ibo) vmaDestroyBuffer(s->allocator, kv.second.ibo, kv.second.iboAlloc);
+    }
+    s->patchCache.clear();
+    if (s->pipe)    vkDestroyPipeline(d, s->pipe, nullptr);
+    if (s->playout) vkDestroyPipelineLayout(d, s->playout, nullptr);
+    if (s->vert)    vkDestroyShaderModule(d, s->vert, nullptr);
+    if (s->frag)    vkDestroyShaderModule(d, s->frag, nullptr);
+    if (s->dsl)     vkDestroyDescriptorSetLayout(d, s->dsl, nullptr);
+    if (s->pool)    vkDestroyDescriptorPool(d, s->pool, nullptr);
+    if (s->fb)      vkDestroyFramebuffer(d, s->fb, nullptr);
+    if (s->rpass)   vkDestroyRenderPass(d, s->rpass, nullptr);
+    if (s->heightBuf) vmaDestroyBuffer(s->allocator, s->heightBuf, s->heightAlloc);
+    if (s->ubo)     vmaDestroyBuffer(s->allocator, s->ubo, s->uboAlloc);
+    if (s->cpool)   vkDestroyCommandPool(d, s->cpool, nullptr);
+    // instance/phys/device/queue/allocator + the shared GBuffer images are BORROWED.
+}
+
+// One-time init: fetch shared GBuffer, build LOAD renderpass/framebuffer/pipeline.
+bool init_island(TerrainIsland* s, int w, int h) {
+    s->w = w; s->h = h;
+    ++g_health.attempted;
+
+    if (!mc2vk::ensureEngineVulkanContextForInterop()) { setFallback("engine_vk_context_birth_failed"); return false; }
+    mc2vk::VulkanContext& ctx = mc2vk::getOrCreateEngineVulkanContext();
+    if (!ctx.valid()) { setFallback("engine_vk_context_not_valid"); return false; }
+    s->instance  = ctx.instance();
+    s->phys      = ctx.physicalDevice();
+    s->device    = ctx.device();
+    s->queue     = ctx.graphicsQueue();
+    s->gfxFamily = ctx.graphicsFamily();
+    s->allocator = ctx.allocator();
+    if (s->device == VK_NULL_HANDLE || s->allocator == VK_NULL_HANDLE) { setFallback("engine_vk_device_or_allocator_null"); return false; }
+    g_health.vulkanAvailable = 1;
+    {
+        VkPhysicalDeviceProperties props{};
+        vkGetPhysicalDeviceProperties(s->phys, &props);
+        std::strncpy(g_health.deviceName, props.deviceName, sizeof(g_health.deviceName) - 1);
+        g_health.deviceName[sizeof(g_health.deviceName) - 1] = '\0';
+    }
+
+    if (!terrainTier1Requested()) { setFallback("gate_off"); return false; }
+
+    // ---- Fetch the SHARED scene color(MRT0)+normal(MRT1)+depth exportable images the
+    // GL scene renders terrain into. Fail-soft: any missing => GL fallback. Same
+    // accessors the prop Tier-1 island uses (built by the postprocess createFBOs seam,
+    // now triggered for the terrain gate too). ----
+    s->colorRes  = mc2SharedSceneColorGetResource(MC2_SHARED_SCENE_COLOR0);
+    s->normalRes = mc2SharedSceneColorGetResource(MC2_SHARED_SCENE_NORMAL);
+    s->depthRes  = mc2SharedSceneDepthGetResource();
+    s->colorView  = mc2SharedSceneColorGetGlView(MC2_SHARED_SCENE_COLOR0);
+    s->normalView = mc2SharedSceneColorGetGlView(MC2_SHARED_SCENE_NORMAL);
+    s->depthView  = mc2SharedSceneDepthGetGlView();
+    if (!s->colorRes || !s->normalRes || !s->depthRes || !s->colorView || !s->normalView || !s->depthView) {
+        setFallback("shared_gbuffer_not_ready");
+        return false;
+    }
+    g_health.interopActive = 1;
+    g_health.vk2glSemActive = s->colorView->vkToGlImported ? 1 : 0;
+
+    // ---- LOAD-preserve renderpass (2 color LOAD + shared depth LOAD; no clears).
+    // COPIED from vulkan_color_prop_island.cpp:520-587 (tier1 renderpass) verbatim. ----
+    {
+        VkAttachmentDescription att[3]{};
+        att[0].format = s->colorRes->format; att[0].samples = VK_SAMPLE_COUNT_1_BIT;
+        att[0].loadOp = VK_ATTACHMENT_LOAD_OP_LOAD; att[0].storeOp = VK_ATTACHMENT_STORE_OP_STORE;
+        att[0].stencilLoadOp = VK_ATTACHMENT_LOAD_OP_DONT_CARE; att[0].stencilStoreOp = VK_ATTACHMENT_STORE_OP_DONT_CARE;
+        att[0].initialLayout = VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL;
+        att[0].finalLayout   = VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL;
+        att[1].format = s->normalRes->format; att[1].samples = VK_SAMPLE_COUNT_1_BIT;
+        att[1].loadOp = VK_ATTACHMENT_LOAD_OP_LOAD; att[1].storeOp = VK_ATTACHMENT_STORE_OP_STORE;
+        att[1].stencilLoadOp = VK_ATTACHMENT_LOAD_OP_DONT_CARE; att[1].stencilStoreOp = VK_ATTACHMENT_STORE_OP_DONT_CARE;
+        att[1].initialLayout = VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL;
+        att[1].finalLayout   = VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL;
+        att[2].format = s->depthRes->format; att[2].samples = VK_SAMPLE_COUNT_1_BIT;
+        att[2].loadOp = VK_ATTACHMENT_LOAD_OP_LOAD; att[2].storeOp = VK_ATTACHMENT_STORE_OP_STORE;
+        att[2].stencilLoadOp = VK_ATTACHMENT_LOAD_OP_LOAD; att[2].stencilStoreOp = VK_ATTACHMENT_STORE_OP_STORE;
+        att[2].initialLayout = VK_IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT_OPTIMAL;
+        att[2].finalLayout   = VK_IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT_OPTIMAL;
+
+        VkAttachmentReference colorRefs[2] = {
+            {0, VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL},
+            {1, VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL},
+        };
+        VkAttachmentReference depthRef{2, VK_IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT_OPTIMAL};
+        VkSubpassDescription sub{};
+        sub.pipelineBindPoint = VK_PIPELINE_BIND_POINT_GRAPHICS;
+        sub.colorAttachmentCount = 2; sub.pColorAttachments = colorRefs;
+        sub.pDepthStencilAttachment = &depthRef;
+
+        VkSubpassDependency deps[2]{};
+        deps[0].srcSubpass = VK_SUBPASS_EXTERNAL; deps[0].dstSubpass = 0;
+        deps[0].srcStageMask  = VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT | VK_PIPELINE_STAGE_LATE_FRAGMENT_TESTS_BIT;
+        deps[0].srcAccessMask = VK_ACCESS_COLOR_ATTACHMENT_WRITE_BIT | VK_ACCESS_DEPTH_STENCIL_ATTACHMENT_WRITE_BIT;
+        deps[0].dstStageMask  = VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT | VK_PIPELINE_STAGE_EARLY_FRAGMENT_TESTS_BIT;
+        deps[0].dstAccessMask = VK_ACCESS_COLOR_ATTACHMENT_READ_BIT | VK_ACCESS_COLOR_ATTACHMENT_WRITE_BIT |
+                                VK_ACCESS_DEPTH_STENCIL_ATTACHMENT_READ_BIT | VK_ACCESS_DEPTH_STENCIL_ATTACHMENT_WRITE_BIT;
+        deps[1].srcSubpass = 0; deps[1].dstSubpass = VK_SUBPASS_EXTERNAL;
+        deps[1].srcStageMask  = VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT | VK_PIPELINE_STAGE_LATE_FRAGMENT_TESTS_BIT;
+        deps[1].srcAccessMask = VK_ACCESS_COLOR_ATTACHMENT_WRITE_BIT | VK_ACCESS_DEPTH_STENCIL_ATTACHMENT_WRITE_BIT;
+        deps[1].dstStageMask  = VK_PIPELINE_STAGE_BOTTOM_OF_PIPE_BIT;
+        deps[1].dstAccessMask = 0;
+
+        VkRenderPassCreateInfo rpci{};
+        rpci.sType = VK_STRUCTURE_TYPE_RENDER_PASS_CREATE_INFO;
+        rpci.attachmentCount = 3; rpci.pAttachments = att;
+        rpci.subpassCount = 1; rpci.pSubpasses = &sub;
+        rpci.dependencyCount = 2; rpci.pDependencies = deps;
+        if (vkCreateRenderPass(s->device, &rpci, nullptr, &s->rpass) != VK_SUCCESS) {
+            vlog("vkCreateRenderPass failed."); setFallback("renderpass_failed"); return false;
+        }
+        VkImageView fbViews[3] = { s->colorRes->view, s->normalRes->view, s->depthRes->view };
+        VkFramebufferCreateInfo fci{};
+        fci.sType = VK_STRUCTURE_TYPE_FRAMEBUFFER_CREATE_INFO;
+        fci.renderPass = s->rpass; fci.attachmentCount = 3; fci.pAttachments = fbViews;
+        fci.width = (uint32_t)w; fci.height = (uint32_t)h; fci.layers = 1;
+        if (vkCreateFramebuffer(s->device, &fci, nullptr, &s->fb) != VK_SUCCESS) {
+            vlog("vkCreateFramebuffer failed."); setFallback("framebuffer_failed"); return false;
+        }
+    }
+
+    // ---- Buffers (height snapshot SSBO + per-patch dynamic UBO). ----
+    if (!ensure_height_capacity(s, 256 * 1024)) return false;
+    if (!ensure_ubo_capacity(s, 64 * sizeof(TerrainFrameUBO))) return false;
+
+    // ---- Descriptor layout: binding0 dynamic UBO (VS+FS), binding1 height SSBO (VS). ----
+    {
+        VkDescriptorSetLayoutBinding b[2]{};
+        b[0].binding = 0; b[0].descriptorType = VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER_DYNAMIC;
+        b[0].descriptorCount = 1; b[0].stageFlags = VK_SHADER_STAGE_VERTEX_BIT | VK_SHADER_STAGE_FRAGMENT_BIT;
+        b[1].binding = 1; b[1].descriptorType = VK_DESCRIPTOR_TYPE_STORAGE_BUFFER;
+        b[1].descriptorCount = 1; b[1].stageFlags = VK_SHADER_STAGE_VERTEX_BIT;
+        VkDescriptorSetLayoutCreateInfo lci{};
+        lci.sType = VK_STRUCTURE_TYPE_DESCRIPTOR_SET_LAYOUT_CREATE_INFO;
+        lci.bindingCount = 2; lci.pBindings = b;
+        if (vkCreateDescriptorSetLayout(s->device, &lci, nullptr, &s->dsl) != VK_SUCCESS) {
+            vlog("vkCreateDescriptorSetLayout failed."); return false;
+        }
+        VkDescriptorPoolSize sizes[2]{};
+        sizes[0].type = VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER_DYNAMIC; sizes[0].descriptorCount = 1;
+        sizes[1].type = VK_DESCRIPTOR_TYPE_STORAGE_BUFFER;         sizes[1].descriptorCount = 1;
+        VkDescriptorPoolCreateInfo pci{};
+        pci.sType = VK_STRUCTURE_TYPE_DESCRIPTOR_POOL_CREATE_INFO;
+        pci.maxSets = 1; pci.poolSizeCount = 2; pci.pPoolSizes = sizes;
+        if (vkCreateDescriptorPool(s->device, &pci, nullptr, &s->pool) != VK_SUCCESS) {
+            vlog("vkCreateDescriptorPool failed."); return false;
+        }
+        VkDescriptorSetAllocateInfo dsai{};
+        dsai.sType = VK_STRUCTURE_TYPE_DESCRIPTOR_SET_ALLOCATE_INFO;
+        dsai.descriptorPool = s->pool; dsai.descriptorSetCount = 1; dsai.pSetLayouts = &s->dsl;
+        if (vkAllocateDescriptorSets(s->device, &dsai, &s->set) != VK_SUCCESS) {
+            vlog("vkAllocateDescriptorSets failed."); return false;
+        }
+        write_descriptors(s);
+    }
+
+    // ---- Pipeline: int16x2 SINT vertex, reverse-Z GEQUAL depth-test+WRITE, cull
+    // NONE, frontFace CCW, 2 GBuffer outputs, NO blend (opaque overwrite). State COPIED
+    // from the GL terrain contract (== prop tier1 pipeline). ----
+    {
+        s->vert = load_spv(s->device, spv_dir() + "terrain_tier1.vert.spv");
+        s->frag = load_spv(s->device, spv_dir() + "terrain_tier1.frag.spv");
+        if (s->vert == VK_NULL_HANDLE || s->frag == VK_NULL_HANDLE) { setFallback("spv_load_failed"); return false; }
+
+        VkPipelineLayoutCreateInfo plci{};
+        plci.sType = VK_STRUCTURE_TYPE_PIPELINE_LAYOUT_CREATE_INFO;
+        plci.setLayoutCount = 1; plci.pSetLayouts = &s->dsl;
+        if (vkCreatePipelineLayout(s->device, &plci, nullptr, &s->playout) != VK_SUCCESS) {
+            vlog("vkCreatePipelineLayout failed."); return false;
+        }
+
+        // Mirror the GL terrain VAO: loc0 ivec2 (int16 lx,ly), stride 4, integer.
+        VkVertexInputBindingDescription vib{};
+        vib.binding = 0; vib.stride = sizeof(LocalVertex); vib.inputRate = VK_VERTEX_INPUT_RATE_VERTEX;
+        VkVertexInputAttributeDescription via{};
+        via.location = 0; via.binding = 0; via.format = VK_FORMAT_R16G16_SINT; via.offset = 0;
+        VkPipelineVertexInputStateCreateInfo vin{};
+        vin.sType = VK_STRUCTURE_TYPE_PIPELINE_VERTEX_INPUT_STATE_CREATE_INFO;
+        vin.vertexBindingDescriptionCount = 1; vin.pVertexBindingDescriptions = &vib;
+        vin.vertexAttributeDescriptionCount = 1; vin.pVertexAttributeDescriptions = &via;
+
+        VkPipelineInputAssemblyStateCreateInfo ia{};
+        ia.sType = VK_STRUCTURE_TYPE_PIPELINE_INPUT_ASSEMBLY_STATE_CREATE_INFO;
+        ia.topology = VK_PRIMITIVE_TOPOLOGY_TRIANGLE_LIST;
+
+        VkPipelineViewportStateCreateInfo vps{};
+        vps.sType = VK_STRUCTURE_TYPE_PIPELINE_VIEWPORT_STATE_CREATE_INFO;
+        vps.viewportCount = 1; vps.scissorCount = 1;
+
+        VkPipelineRasterizationStateCreateInfo rs{};
+        rs.sType = VK_STRUCTURE_TYPE_PIPELINE_RASTERIZATION_STATE_CREATE_INFO;
+        rs.polygonMode = VK_POLYGON_MODE_FILL;
+        rs.cullMode = VK_CULL_MODE_NONE;                        // double-sided (terrainMVP X-flip)
+        rs.frontFace = VK_FRONT_FACE_COUNTER_CLOCKWISE;         // authored CCW
+        rs.lineWidth = 1.0f;
+
+        VkPipelineMultisampleStateCreateInfo ms{};
+        ms.sType = VK_STRUCTURE_TYPE_PIPELINE_MULTISAMPLE_STATE_CREATE_INFO;
+        ms.rasterizationSamples = VK_SAMPLE_COUNT_1_BIT;
+
+        VkPipelineDepthStencilStateCreateInfo ds{};
+        ds.sType = VK_STRUCTURE_TYPE_PIPELINE_DEPTH_STENCIL_STATE_CREATE_INFO;
+        ds.depthTestEnable = VK_TRUE;
+        ds.depthWriteEnable = VK_TRUE;
+        ds.depthCompareOp = VK_COMPARE_OP_GREATER_OR_EQUAL;    // reverse-Z GEQUAL
+
+        VkPipelineColorBlendAttachmentState cba[2]{};
+        for (int k = 0; k < 2; ++k) {
+            cba[k].blendEnable = VK_FALSE;                      // opaque in-place overwrite
+            cba[k].colorWriteMask = VK_COLOR_COMPONENT_R_BIT | VK_COLOR_COMPONENT_G_BIT |
+                                    VK_COLOR_COMPONENT_B_BIT | VK_COLOR_COMPONENT_A_BIT;
+        }
+        VkPipelineColorBlendStateCreateInfo cb{};
+        cb.sType = VK_STRUCTURE_TYPE_PIPELINE_COLOR_BLEND_STATE_CREATE_INFO;
+        cb.attachmentCount = 2; cb.pAttachments = cba;
+
+        VkDynamicState dyn[2] = { VK_DYNAMIC_STATE_VIEWPORT, VK_DYNAMIC_STATE_SCISSOR };
+        VkPipelineDynamicStateCreateInfo dsci{};
+        dsci.sType = VK_STRUCTURE_TYPE_PIPELINE_DYNAMIC_STATE_CREATE_INFO;
+        dsci.dynamicStateCount = 2; dsci.pDynamicStates = dyn;
+
+        VkPipelineShaderStageCreateInfo stages[2]{};
+        stages[0].sType = VK_STRUCTURE_TYPE_PIPELINE_SHADER_STAGE_CREATE_INFO;
+        stages[0].stage = VK_SHADER_STAGE_VERTEX_BIT; stages[0].module = s->vert; stages[0].pName = "main";
+        stages[1].sType = VK_STRUCTURE_TYPE_PIPELINE_SHADER_STAGE_CREATE_INFO;
+        stages[1].stage = VK_SHADER_STAGE_FRAGMENT_BIT; stages[1].module = s->frag; stages[1].pName = "main";
+        VkGraphicsPipelineCreateInfo gp{};
+        gp.sType = VK_STRUCTURE_TYPE_GRAPHICS_PIPELINE_CREATE_INFO;
+        gp.stageCount = 2; gp.pStages = stages;
+        gp.pVertexInputState = &vin; gp.pInputAssemblyState = &ia;
+        gp.pViewportState = &vps; gp.pRasterizationState = &rs;
+        gp.pMultisampleState = &ms; gp.pDepthStencilState = &ds; gp.pColorBlendState = &cb;
+        gp.pDynamicState = &dsci;
+        gp.layout = s->playout; gp.renderPass = s->rpass; gp.subpass = 0;
+        if (vkCreateGraphicsPipelines(s->device, VK_NULL_HANDLE, 1, &gp, nullptr, &s->pipe) != VK_SUCCESS) {
+            vlog("vkCreateGraphicsPipelines failed."); setFallback("pipeline_failed"); return false;
+        }
+    }
+
+    // ---- Command pool + 2 command buffers (per parity). ----
+    {
+        VkCommandPoolCreateInfo pci{};
+        pci.sType = VK_STRUCTURE_TYPE_COMMAND_POOL_CREATE_INFO;
+        pci.flags = VK_COMMAND_POOL_CREATE_RESET_COMMAND_BUFFER_BIT;
+        pci.queueFamilyIndex = s->gfxFamily;
+        if (vkCreateCommandPool(s->device, &pci, nullptr, &s->cpool) != VK_SUCCESS) {
+            vlog("vkCreateCommandPool failed."); return false;
+        }
+        VkCommandBufferAllocateInfo cai{};
+        cai.sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_ALLOCATE_INFO;
+        cai.commandPool = s->cpool; cai.level = VK_COMMAND_BUFFER_LEVEL_PRIMARY; cai.commandBufferCount = 2;
+        if (vkAllocateCommandBuffers(s->device, &cai, s->cbuf) != VK_SUCCESS) {
+            vlog("vkAllocateCommandBuffers failed."); return false;
+        }
+    }
+
+    s->inited = true;
+    setFallback("");
+    vlog("island initialized %dx%d (shared GBuffer co-write; LOD0 main-triangle terrain "
+         "prefix; reverse-Z GEQUAL double-sided; gbuffer1.a=1.0).", w, h);
+    return true;
+}
+
+// Snapshot the GL height SSBO into the VK-owned buffer when the feed version changes.
+// Map-load copy (glGetBufferSubData -> vmaMap), NOT a per-frame handoff readback.
+bool snapshot_height(TerrainIsland* s, const Mc2TerrainTier1Feed& feed) {
+    if (feed.heightVersion == s->heightVersionCopied) return true; // unchanged
+    if (feed.glHeightSsbo == 0 || feed.heightBytes == 0) return false;
+    if (!ensure_height_capacity(s, (VkDeviceSize)feed.heightBytes)) return false;
+    std::vector<uint8_t> scratch((size_t)feed.heightBytes);
+    glBindBuffer(GL_SHADER_STORAGE_BUFFER, (GLuint)feed.glHeightSsbo);
+    glGetBufferSubData(GL_SHADER_STORAGE_BUFFER, 0, (GLsizeiptr)feed.heightBytes, scratch.data());
+    glBindBuffer(GL_SHADER_STORAGE_BUFFER, 0);
+    void* p = nullptr;
+    if (vmaMapMemory(s->allocator, s->heightAlloc, &p) != VK_SUCCESS) return false;
+    std::memcpy(p, scratch.data(), (size_t)feed.heightBytes);
+    vmaUnmapMemory(s->allocator, s->heightAlloc);
+    s->heightVersionCopied = feed.heightVersion;
+    ++g_health.heightSnapshots;
+    return true;
+}
+
+} // namespace
+
+// ===========================================================================
+// PUBLIC ENTRY POINTS.
+// ===========================================================================
+
+extern "C" int mc2_vk_terrain_island_enabled() {
+    return terrainTier1Requested() ? 1 : 0;
+}
+
+extern "C" int mc2_vk_terrain_island_run(int w, int h) {
+    if (!terrainTier1Requested()) return 0;
+    if (w <= 0 || h <= 0) return 0;
+
+    using clk = std::chrono::steady_clock;
+    auto usSince = [](clk::time_point t0){ return std::chrono::duration<double, std::micro>(clk::now() - t0).count(); };
+    const clk::time_point tTotal0 = clk::now();
+
+    // Pull this frame's LOD0 patch list + shared params from the GL terrain path.
+    Mc2TerrainTier1Feed feed{};
+    if (!mc2_terrain_tier1_get_frame_feed(&feed)) { setFallback("no_terrain_feed"); return 0; }
+    if (!feed.patches || feed.patchCount == 0) { setFallback("no_lod0_patches"); return 0; }
+    if (feed.mapSide <= 0) { setFallback("bad_mapside"); return 0; }
+
+    if (g_island && (g_island->w != w || g_island->h != h)) {
+        destroy_island(g_island); delete g_island; g_island = nullptr;
+    }
+    if (!g_island) {
+        g_island = new TerrainIsland();
+        if (!init_island(g_island, w, h)) {
+            vlog("init failed (%s) — GL fallback.", g_health.fallbackReason);
+            destroy_island(g_island); delete g_island; g_island = nullptr;
+            return 0;
+        }
+    }
+    TerrainIsland* s = g_island;
+    if (s->disabled || !s->inited) return 0;
+
+    const unsigned long f0b = g_forbidden.glGetTexImage;
+    const unsigned long f0c = g_forbidden.glReadPixels;
+
+    const clk::time_point tStage0 = clk::now();
+
+    // Snapshot the height field (only re-copies when the feed version changes).
+    if (!snapshot_height(s, feed)) { setFallback("height_snapshot_failed"); return 0; }
+
+    // Fill one dynamic-UBO slot per LOD0 patch (shared MVP/mapSide/halfMap + per-patch
+    // blockOrigin). quadCount comes from the patch record (drives grid rebuild).
+    const uint32_t patchCount = feed.patchCount;
+    const VkDeviceSize needUbo = (VkDeviceSize)patchCount * sizeof(TerrainFrameUBO);
+    if (!ensure_ubo_capacity(s, needUbo)) { s->disabled = true; return 0; }
+    {
+        void* p = nullptr;
+        if (vmaMapMemory(s->allocator, s->uboAlloc, &p) == VK_SUCCESS) {
+            TerrainFrameUBO* slots = reinterpret_cast<TerrainFrameUBO*>(p);
+            for (uint32_t i = 0; i < patchCount; ++i) {
+                TerrainFrameUBO u{};
+                std::memcpy(u.worldToClipGL, feed.worldToClipGL, sizeof(u.worldToClipGL));
+                u.mapSide      = feed.mapSide;
+                u.halfMap      = feed.halfMap;
+                u.blockOriginX = feed.patches[i].blockOriginX;
+                u.blockOriginY = feed.patches[i].blockOriginY;
+                slots[i] = u;
+            }
+            vmaUnmapMemory(s->allocator, s->uboAlloc);
+        }
+    }
+    g_health.stageUs = usSince(tStage0);
+    g_health.patchRecords = patchCount;
+
+    // ---- Begin a frame on each shared image; GL hands them to VK in attachment
+    // layouts. COPIED from vulkan_color_prop_island.cpp tier1 path. ----
+    VkFrameSync fsC = vkImageResourceBeginFrame(s->colorRes);
+    VkFrameSync fsN = vkImageResourceBeginFrame(s->normalRes);
+    VkFrameSync fsD = vkImageResourceBeginFrame(s->depthRes);
+    VkCommandBuffer cb = s->cbuf[fsC.parity & 1u];
+
+    glInteropSignalToVk(*s->colorView,  GL_LAYOUT_COLOR_ATTACHMENT_EXT,         fsC.parity);
+    glInteropSignalToVk(*s->normalView, GL_LAYOUT_COLOR_ATTACHMENT_EXT,         fsN.parity);
+    glInteropSignalToVk(*s->depthView,  GL_LAYOUT_DEPTH_STENCIL_ATTACHMENT_EXT, fsD.parity);
+
+    const clk::time_point tRender0 = clk::now();
+    vkResetCommandBuffer(cb, 0);
+    VkCommandBufferBeginInfo bi{};
+    bi.sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_BEGIN_INFO;
+    bi.flags = VK_COMMAND_BUFFER_USAGE_ONE_TIME_SUBMIT_BIT;
+    if (vkBeginCommandBuffer(cb, &bi) != VK_SUCCESS) { setFallback("record_failed"); s->disabled = true; return 0; }
+
+    VkRenderPassBeginInfo rbi{};
+    rbi.sType = VK_STRUCTURE_TYPE_RENDER_PASS_BEGIN_INFO;
+    rbi.renderPass = s->rpass; rbi.framebuffer = s->fb;
+    rbi.renderArea = {{0, 0}, {(uint32_t)w, (uint32_t)h}};
+    rbi.clearValueCount = 0; rbi.pClearValues = nullptr; // all attachments LOAD
+    vkCmdBeginRenderPass(cb, &rbi, VK_SUBPASS_CONTENTS_INLINE);
+
+    VkViewport vp{0.0f, 0.0f, (float)w, (float)h, 0.0f, 1.0f};
+    VkRect2D scissor{{0, 0}, {(uint32_t)w, (uint32_t)h}};
+    vkCmdSetViewport(cb, 0, 1, &vp);
+    vkCmdSetScissor(cb, 0, 1, &scissor);
+    vkCmdBindPipeline(cb, VK_PIPELINE_BIND_POINT_GRAPHICS, s->pipe);
+
+    unsigned long drawn = 0;
+    for (uint32_t i = 0; i < patchCount; ++i) {
+        const Mc2TerrainTier1Patch& pr = feed.patches[i];
+        const PatchMesh* pm = getOrBuildPatch(s, pr.quadCountX, pr.quadCountY);
+        if (!pm || pm->indexCount == 0) continue;
+        const uint32_t dynOff = i * (uint32_t)sizeof(TerrainFrameUBO);
+        vkCmdBindDescriptorSets(cb, VK_PIPELINE_BIND_POINT_GRAPHICS, s->playout, 0, 1, &s->set, 1, &dynOff);
+        VkDeviceSize vboOff = 0;
+        vkCmdBindVertexBuffers(cb, 0, 1, &pm->vbo, &vboOff);
+        vkCmdBindIndexBuffer(cb, pm->ibo, 0, VK_INDEX_TYPE_UINT16);
+        vkCmdDrawIndexed(cb, pm->indexCount, 1, 0, 0, 0);
+        ++drawn;
+    }
+
+    vkCmdEndRenderPass(cb);
+    if (vkEndCommandBuffer(cb) != VK_SUCCESS) { setFallback("record_failed"); s->disabled = true; return 0; }
+
+    // Submit: WAIT all three GL->VK sems; SIGNAL all three VK->GL sems + color fence.
+    VkSemaphore waitSems[3];   VkPipelineStageFlags waitStages[3];
+    VkSemaphore signalSems[3]; uint32_t waitN = 0, sigN = 0;
+    auto addWait = [&](VkSemaphore sem, VkPipelineStageFlags stage){
+        if (sem != VK_NULL_HANDLE) { waitSems[waitN] = sem; waitStages[waitN] = stage; ++waitN; } };
+    addWait(fsC.signal, VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT);
+    addWait(fsN.signal, VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT);
+    addWait(fsD.signal, VK_PIPELINE_STAGE_EARLY_FRAGMENT_TESTS_BIT);
+    const bool gpuC = s->colorView->vkToGlImported  && fsC.vk2gl != VK_NULL_HANDLE;
+    const bool gpuN = s->normalView->vkToGlImported && fsN.vk2gl != VK_NULL_HANDLE;
+    const bool gpuD = s->depthView->vkToGlImported  && fsD.vk2gl != VK_NULL_HANDLE;
+    if (gpuC) signalSems[sigN++] = fsC.vk2gl;
+    if (gpuN) signalSems[sigN++] = fsN.vk2gl;
+    if (gpuD) signalSems[sigN++] = fsD.vk2gl;
+
+    VkSubmitInfo si{};
+    si.sType = VK_STRUCTURE_TYPE_SUBMIT_INFO;
+    si.waitSemaphoreCount = waitN; si.pWaitSemaphores = waitSems; si.pWaitDstStageMask = waitStages;
+    si.commandBufferCount = 1; si.pCommandBuffers = &cb;
+    si.signalSemaphoreCount = sigN; si.pSignalSemaphores = signalSems;
+    if (vkQueueSubmit(s->queue, 1, &si, fsC.fence) != VK_SUCCESS) { setFallback("submit_failed"); s->disabled = true; return 0; }
+
+    if (gpuC) glInteropWaitFromVk(*s->colorView,  GL_LAYOUT_COLOR_ATTACHMENT_EXT,         fsC.parity);
+    if (gpuN) glInteropWaitFromVk(*s->normalView, GL_LAYOUT_COLOR_ATTACHMENT_EXT,         fsN.parity);
+    if (gpuD) glInteropWaitFromVk(*s->depthView,  GL_LAYOUT_DEPTH_STENCIL_ATTACHMENT_EXT, fsD.parity);
+
+    if (vkWaitForFences(s->device, 1, &fsC.fence, VK_TRUE, 5ull*1000*1000*1000) != VK_SUCCESS) {
+        setFallback("fence_timeout"); s->disabled = true; return 0;
+    }
+    g_health.drawUs = usSince(tRender0);
+
+    // HARD assert: no COLOR-side readback fired on the co-write path (the height
+    // snapshot uses glGetBufferSubData on an SSBO — that is NOT a color/tex readback
+    // and does not touch these counters).
+    const bool readbackFired =
+        (g_forbidden.glGetTexImage != f0b) || (g_forbidden.glReadPixels != f0c);
+    if (readbackFired) {
+        vlog("FATAL: a color readback fired on the co-write path — failing frame + disabling.");
+        setFallback("interop_did_readback"); s->disabled = true; return 0;
+    }
+
+    g_health.vkDraws = drawn;
+    ++g_health.usedVulkan;
+    g_health.totalUs = usSince(tTotal0);
+    static bool s_firstOk = false;
+    if (!s_firstOk) {
+        vlog("first TIER-1 in-place terrain GBuffer co-write: lod0Patches=%u drawn=%lu "
+             "(color(MRT0)+normal(MRT1 a=1.0)+depth co-written; no composite).",
+             patchCount, drawn);
+        s_firstOk = true;
+    }
+    return 1;
+}
+
+extern "C" void mc2_render_backend_terrain_region_health(
+    int* vulkanAvailable, int* buildEnabled, const char** deviceName,
+    unsigned long* attempted, unsigned long* usedVulkan, const char** fallbackReason,
+    unsigned long* vkDraws, int* interopActive, int* vk2glSemActive,
+    unsigned long* patchRecords, unsigned long* heightSnapshots,
+    unsigned long* forbiddenGetTexImage, unsigned long* forbiddenReadPixels,
+    double* stageUs, double* drawUs, double* totalUs) {
+    if (vulkanAvailable)  *vulkanAvailable  = g_health.vulkanAvailable;
+    if (buildEnabled)     *buildEnabled     = g_health.buildEnabled;
+    if (deviceName)       *deviceName       = g_health.deviceName;
+    if (attempted)        *attempted        = g_health.attempted;
+    if (usedVulkan)       *usedVulkan       = g_health.usedVulkan;
+    if (fallbackReason)   *fallbackReason   = g_health.fallbackReason;
+    if (vkDraws)          *vkDraws          = g_health.vkDraws;
+    if (interopActive)    *interopActive    = g_health.interopActive;
+    if (vk2glSemActive)   *vk2glSemActive   = g_health.vk2glSemActive;
+    if (patchRecords)     *patchRecords     = g_health.patchRecords;
+    if (heightSnapshots)  *heightSnapshots  = g_health.heightSnapshots;
+    if (forbiddenGetTexImage) *forbiddenGetTexImage = g_forbidden.glGetTexImage;
+    if (forbiddenReadPixels)  *forbiddenReadPixels  = g_forbidden.glReadPixels;
+    if (stageUs)          *stageUs          = g_health.stageUs;
+    if (drawUs)           *drawUs           = g_health.drawUs;
+    if (totalUs)          *totalUs          = g_health.totalUs;
+}
+
+extern "C" void mc2_vk_terrain_island_destroy() {
+    vlog("[VK_TERRAIN_TIER1] vulkan_available=%d used_vulkan=%lu interop_active=%d vk2gl_sem=%d "
+         "patch_records=%lu height_snapshots=%lu fallback_reason=\"%s\" vk_draws=%lu "
+         "forbidden_getTexImage=%lu forbidden_readPixels=%lu stage_us=%.1f draw_us=%.1f total_us=%.1f",
+         g_health.vulkanAvailable, g_health.usedVulkan, g_health.interopActive, g_health.vk2glSemActive,
+         g_health.patchRecords, g_health.heightSnapshots, g_health.fallbackReason, g_health.vkDraws,
+         g_forbidden.glGetTexImage, g_forbidden.glReadPixels,
+         g_health.stageUs, g_health.drawUs, g_health.totalUs);
+    if (!g_island) return;
+    destroy_island(g_island);
+    delete g_island; g_island = nullptr;
+}
+
+#endif // MC2_VULKAN_ISLAND

@@ -97,6 +97,30 @@ static bool mc2VkPropColorTier1Enabled()
     return s_on;
 }
 
+// VK-P10 TERRAIN TIER-1: presence-gated =1, DEFAULT OFF. When ON (island compiled)
+// AND shared scene depth is ON, the VK terrain island co-writes the LOD0 terrain
+// prefix into the SAME shared scene color(MRT0)+normal(MRT1)+depth GBuffer in-place.
+// It needs the SAME VK-backed exportable color/normal/depth substrate the prop Tier-1
+// gate builds, so the shared-scene conversion below must trigger for EITHER gate.
+// REQUIRES MC2_VK_SHARED_SCENE_DEPTH (Tier-1 depth-tests against the shared depth).
+// Gate OFF / require missing / island not compiled = byte-identical.
+static bool mc2VkTerrainTier1Enabled()
+{
+    static const bool s_on = []() {
+        const char* v = getenv("MC2_VK_TERRAIN_TIER1");
+        const bool tier1 = v && v[0] == '1' && v[1] == '\0';   // DEFAULT OFF; only "1"
+        return tier1 && mc2VkSharedSceneDepthEnabled();        // require shared depth
+    }();
+    return s_on;
+}
+
+// The shared scene color(MRT0)+normal(MRT1) exportable substrate is needed when
+// EITHER the prop Tier-1 OR the terrain Tier-1 in-place co-write gate is armed.
+static bool mc2VkSharedSceneColorNeeded()
+{
+    return mc2VkPropColorTier1Enabled() || mc2VkTerrainTier1Enabled();
+}
+
 int mc2ShadowCsmCount()
 {
     static const int s_n = []() {
@@ -938,7 +962,7 @@ void gosPostProcess::createFBOs(int w, int h)
     // (destroyFBOs tears down sharedSceneColor_ too).
     bool sceneColorShared = false;
 #ifdef MC2_VULKAN_ISLAND
-    if (mc2VkPropColorTier1Enabled()) {
+    if (mc2VkSharedSceneColorNeeded()) {
         GLuint importedColorTex = 0;
         const char* reason = "unset";
         sharedSceneColor_ = mc2SharedSceneColorCreate(MC2_SHARED_SCENE_COLOR0, w, h,
@@ -1091,7 +1115,7 @@ void gosPostProcess::createFBOs(int w, int h)
     // attachment in-place. SINGLE normal alloc+attach site. Fail-soft to plain GL.
     bool sceneNormalShared = false;
 #ifdef MC2_VULKAN_ISLAND
-    if (mc2VkPropColorTier1Enabled()) {
+    if (mc2VkSharedSceneColorNeeded()) {
         GLuint importedNormalTex = 0;
         const char* reason = "unset";
         sharedSceneNormal_ = mc2SharedSceneColorCreate(MC2_SHARED_SCENE_NORMAL, w, h,
