@@ -470,6 +470,43 @@ void tubeEnsureBuffer(GLuint& buf, GLsizei& cap, GLenum target,
     (void)binding;
 }
 
+// ── VK-OPT-1: tube-ribbon upload instrumentation ──────────────────────────
+// Automatable redundancy detection for the class-D tube upload path. Counts
+// bytes pushed to the GPU + heap allocations per frame so a regression that
+// re-introduces per-record scratch allocs or a fatter vertex format is
+// measurable (and catchable in a future gate). Behind MC2_VFX_TUBE_UPLOAD_STATS
+// so it is zero-cost when off. Frame totals are dumped from the deferred flush.
+struct TubeUploadStats {
+    unsigned long long uploadBytes   = 0;  // total glBufferSubData payload bytes this frame (opt)
+    unsigned long long baselineBytes = 0;  // what the pre-opt vec4-padded format would upload
+    unsigned long long heapAllocs    = 0;  // per-record scratch allocations this frame (0 with opt)
+    unsigned int       records       = 0;  // ribbon records flushed this frame
+    unsigned int       posVerts      = 0;  // total position verts uploaded (for the 12B vs 16B split)
+};
+TubeUploadStats s_tubeStats;
+
+bool tubeUploadStatsEnabled() {
+    static int cached = -1;
+    if (cached < 0) {
+        const char* v = std::getenv("MC2_VFX_TUBE_UPLOAD_STATS");
+        cached = (v && v[0] && v[0] != '0') ? 1 : 0;
+    }
+    return cached != 0;
+}
+
+// Orphan-then-upload: rename the buffer's storage (glBufferData NULL) before
+// writing, so the driver does NOT implicit-sync-stall waiting for the previous
+// frame's draw to finish reading the same buffer (class-D fix). The orphan
+// reuses the buffer's existing capacity (`cap`), so it is a cheap rename, not a
+// reallocation. Reusable template for the other class-D buffers (#4/#13).
+void tubeOrphanUpload(GLuint buf, GLsizei cap, GLenum target,
+                      GLsizeiptr bytes, const void* data) {
+    glBindBuffer(target, buf);
+    glBufferData(target, (GLsizeiptr)cap, nullptr, GL_DYNAMIC_DRAW);  // orphan
+    glBufferSubData(target, 0, bytes, data);
+    if (tubeUploadStatsEnabled()) s_tubeStats.uploadBytes += (unsigned long long)bytes;
+}
+
 }  // namespace (tube ribbon)
 
 extern "C" void gos_tube_ribbon_flush(const float*          positions,
@@ -543,8 +580,10 @@ extern "C" void gos_tube_ribbon_flush(const float*          positions,
     glBindVertexArray(s_tubeVao);
 
     // ── Upload mesh into the 3 SSBOs + the element buffer ──────────────
+    // VK-OPT-1: tight float[] position layout (see deferred path) — keeps this
+    // dead-but-live-shader path consistent with the shared tube_ribbon.vert.
     tubeEnsureBuffer(s_tubePosSsbo, s_tubePosCap, GL_SHADER_STORAGE_BUFFER,
-                     (GLsizei)(numVerts * 4u * sizeof(float)), 0);
+                     (GLsizei)(numVerts * 3u * sizeof(float)), 0);
     tubeEnsureBuffer(s_tubeColSsbo, s_tubeColCap, GL_SHADER_STORAGE_BUFFER,
                      (GLsizei)(numVerts * 4u * sizeof(float)), 0);
     tubeEnsureBuffer(s_tubeUvSsbo,  s_tubeUvCap,  GL_SHADER_STORAGE_BUFFER,
@@ -552,28 +591,15 @@ extern "C" void gos_tube_ribbon_flush(const float*          positions,
     tubeEnsureBuffer(s_tubeIbo,     s_tubeIdxCap, GL_ELEMENT_ARRAY_BUFFER,
                      (GLsizei)(numIndices * sizeof(unsigned short)), 0);
 
-    // Positions arrive as 3 floats/vert; expand to vec4 (w=1) for std430 vec4.
-    {
-        std::vector<float> pos4((size_t)numVerts * 4u);
-        for (unsigned i = 0; i < numVerts; ++i) {
-            pos4[i*4+0] = positions[i*3+0];
-            pos4[i*4+1] = positions[i*3+1];
-            pos4[i*4+2] = positions[i*3+2];
-            pos4[i*4+3] = 1.0f;
-        }
-        glBindBuffer(GL_SHADER_STORAGE_BUFFER, s_tubePosSsbo);
-        glBufferSubData(GL_SHADER_STORAGE_BUFFER, 0,
-                        (GLsizeiptr)(pos4.size()*sizeof(float)), pos4.data());
-    }
-    glBindBuffer(GL_SHADER_STORAGE_BUFFER, s_tubeColSsbo);
-    glBufferSubData(GL_SHADER_STORAGE_BUFFER, 0,
-                    (GLsizeiptr)(numVerts * 4u * sizeof(float)), colors);
-    glBindBuffer(GL_SHADER_STORAGE_BUFFER, s_tubeUvSsbo);
-    glBufferSubData(GL_SHADER_STORAGE_BUFFER, 0,
-                    (GLsizeiptr)(numVerts * 2u * sizeof(float)), uvs);
-    glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, s_tubeIbo);
-    glBufferSubData(GL_ELEMENT_ARRAY_BUFFER, 0,
-                    (GLsizeiptr)(numIndices * sizeof(unsigned short)), indices);
+    // Orphan-then-upload native data (no expansion / no scratch alloc).
+    tubeOrphanUpload(s_tubePosSsbo, s_tubePosCap, GL_SHADER_STORAGE_BUFFER,
+                     (GLsizeiptr)(numVerts * 3u * sizeof(float)), positions);
+    tubeOrphanUpload(s_tubeColSsbo, s_tubeColCap, GL_SHADER_STORAGE_BUFFER,
+                     (GLsizeiptr)(numVerts * 4u * sizeof(float)), colors);
+    tubeOrphanUpload(s_tubeUvSsbo,  s_tubeUvCap,  GL_SHADER_STORAGE_BUFFER,
+                     (GLsizeiptr)(numVerts * 2u * sizeof(float)), uvs);
+    tubeOrphanUpload(s_tubeIbo,     s_tubeIdxCap, GL_ELEMENT_ARRAY_BUFFER,
+                     (GLsizeiptr)(numIndices * sizeof(unsigned short)), indices);
 
     glBindBufferBase(GL_SHADER_STORAGE_BUFFER, 14, s_tubePosSsbo);
     glBindBufferBase(GL_SHADER_STORAGE_BUFFER, 15, s_tubeColSsbo);
@@ -702,6 +728,11 @@ extern "C" void gos_tube_ribbon_flush_deferred(void) {
     ZoneScopedN("gos.TubeRibbon.FlushDeferred");
     mc2::fx_cost_split::Scope _fxcs(mc2::fx_cost_split::B_TUBE_BRIDGE_FLUSH);
 
+    // VK-OPT-1: reset per-frame upload counters (heapAllocs is 0 by construction
+    // now — the per-record scratch vector is gone; the field stays so a future
+    // regression that re-adds a scratch alloc shows up non-zero).
+    if (tubeUploadStatsEnabled()) s_tubeStats = TubeUploadStats{};
+
     // ── State save (same set as the immediate flush) ───────────────────
     GLint savedProgram   = 0; glGetIntegerv(GL_CURRENT_PROGRAM, &savedProgram);
     GLint savedVAO       = 0; glGetIntegerv(GL_VERTEX_ARRAY_BINDING, &savedVAO);
@@ -796,9 +827,12 @@ extern "C" void gos_tube_ribbon_flush_deferred(void) {
         const GLuint glTex = (GLuint)gos_GetGLTextureName(rec.gosHandle);
         if (glTex == 0) continue;
 
-        // Ensure SSBOs and IBO are large enough, then upload.
+        // Ensure SSBOs and IBO are large enough, then upload. VK-OPT-1: the
+        // position SSBO is now a TIGHT float[] (3 floats/vert), not a padded
+        // vec4[] — no CPU expansion loop, no per-record scratch heap alloc, and
+        // 25% fewer position bytes. The w=1 expansion moved into the VS.
         tubeEnsureBuffer(s_tubePosSsbo, s_tubePosCap, GL_SHADER_STORAGE_BUFFER,
-                         (GLsizei)(numVerts * 4u * sizeof(float)), 0);
+                         (GLsizei)(numVerts * 3u * sizeof(float)), 0);
         tubeEnsureBuffer(s_tubeColSsbo, s_tubeColCap, GL_SHADER_STORAGE_BUFFER,
                          (GLsizei)(numVerts * 4u * sizeof(float)), 0);
         tubeEnsureBuffer(s_tubeUvSsbo,  s_tubeUvCap,  GL_SHADER_STORAGE_BUFFER,
@@ -806,29 +840,21 @@ extern "C" void gos_tube_ribbon_flush_deferred(void) {
         tubeEnsureBuffer(s_tubeIbo,     s_tubeIdxCap, GL_ELEMENT_ARRAY_BUFFER,
                          (GLsizei)(numIndices * sizeof(unsigned short)), 0);
 
-        // Positions arrive as 3 floats/vert; expand to vec4 (w=1) for std430 vec4.
-        {
-            std::vector<float> pos4((size_t)numVerts * 4u);
-            for (unsigned i = 0; i < numVerts; ++i) {
-                pos4[i*4+0] = rec.positions[i*3+0];
-                pos4[i*4+1] = rec.positions[i*3+1];
-                pos4[i*4+2] = rec.positions[i*3+2];
-                pos4[i*4+3] = 1.0f;
-            }
-            glBindBuffer(GL_SHADER_STORAGE_BUFFER, s_tubePosSsbo);
-            glBufferSubData(GL_SHADER_STORAGE_BUFFER, 0,
-                            (GLsizeiptr)(pos4.size() * sizeof(float)), pos4.data());
+        // Class-D fix: orphan-then-upload the native record data (no expansion,
+        // no scratch alloc) so the driver renames storage instead of
+        // implicit-sync-stalling on the previous frame's read.
+        tubeOrphanUpload(s_tubePosSsbo, s_tubePosCap, GL_SHADER_STORAGE_BUFFER,
+                         (GLsizeiptr)(numVerts * 3u * sizeof(float)), rec.positions.data());
+        tubeOrphanUpload(s_tubeColSsbo, s_tubeColCap, GL_SHADER_STORAGE_BUFFER,
+                         (GLsizeiptr)(numVerts * 4u * sizeof(float)), rec.colors.data());
+        tubeOrphanUpload(s_tubeUvSsbo,  s_tubeUvCap,  GL_SHADER_STORAGE_BUFFER,
+                         (GLsizeiptr)(numVerts * 2u * sizeof(float)), rec.uvs.data());
+        tubeOrphanUpload(s_tubeIbo,     s_tubeIdxCap, GL_ELEMENT_ARRAY_BUFFER,
+                         (GLsizeiptr)(numIndices * sizeof(unsigned short)), rec.indices.data());
+        if (tubeUploadStatsEnabled()) {
+            ++s_tubeStats.records;
+            s_tubeStats.posVerts += numVerts;
         }
-        glBindBuffer(GL_SHADER_STORAGE_BUFFER, s_tubeColSsbo);
-        glBufferSubData(GL_SHADER_STORAGE_BUFFER, 0,
-                        (GLsizeiptr)(numVerts * 4u * sizeof(float)), rec.colors.data());
-        glBindBuffer(GL_SHADER_STORAGE_BUFFER, s_tubeUvSsbo);
-        glBufferSubData(GL_SHADER_STORAGE_BUFFER, 0,
-                        (GLsizeiptr)(numVerts * 2u * sizeof(float)), rec.uvs.data());
-        glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, s_tubeIbo);
-        glBufferSubData(GL_ELEMENT_ARRAY_BUFFER, 0,
-                        (GLsizeiptr)(numIndices * sizeof(unsigned short)),
-                        rec.indices.data());
 
         glBindBufferBase(GL_SHADER_STORAGE_BUFFER, 14, s_tubePosSsbo);
         glBindBufferBase(GL_SHADER_STORAGE_BUFFER, 15, s_tubeColSsbo);
@@ -897,6 +923,26 @@ extern "C" void gos_tube_ribbon_flush_deferred(void) {
 
     extern void __stdcall gos_InvalidateRenderStateCache();
     gos_InvalidateRenderStateCache();
+
+    // VK-OPT-1: per-frame upload/alloc summary (gated). Prints total bytes
+    // pushed to the GPU + per-record scratch allocs so the redundancy is
+    // measurable and a regression is catchable. With the fix heapAllocs=0 and
+    // uploadBytes reflects the tight (pos=12B/vert) format.
+    if (tubeUploadStatsEnabled()) {
+        // baselineBytes = opt bytes + the 4 bytes/vert of position padding the
+        // old vec4-format uploaded (16B/vert) but the tight float[] (12B/vert)
+        // does not. saved = baselineBytes - uploadBytes.
+        s_tubeStats.baselineBytes =
+            s_tubeStats.uploadBytes + (unsigned long long)s_tubeStats.posVerts * 4ull;
+        const unsigned long long saved =
+            s_tubeStats.baselineBytes - s_tubeStats.uploadBytes;
+        std::fprintf(stderr,
+            "[VFX_TUBE_UPLOAD_STATS] records=%u posVerts=%u uploadBytes=%llu "
+            "baselineBytes=%llu savedBytes=%llu heapAllocs=%llu\n",
+            s_tubeStats.records, s_tubeStats.posVerts, s_tubeStats.uploadBytes,
+            s_tubeStats.baselineBytes, saved, s_tubeStats.heapAllocs);
+        std::fflush(stderr);
+    }
 
     s_ribbonQueue.clear();
 }
