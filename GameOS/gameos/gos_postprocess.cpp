@@ -27,6 +27,10 @@
 #include "vulkan_shared_scene_depth.h"  // VK-TIER1 SHARED SCENE DEPTH substrate (gated)
 #include "vulkan_shared_scene_color.h"  // VK-P11 TIER-1 SHARED SCENE COLOR/NORMAL (gated)
 #endif
+#include "render_backend_select.h"      // VK-P14b: mc2::renderBackend() (GL-safe, no VK dep)
+#ifdef MC2_VULKAN
+#include "engine_present_vk.h"          // VK-P14b: MC2_VK_PRESENT_DIRECT_FBO present-FBO accessor
+#endif
 
 #include <cassert>
 #include <cstdio>
@@ -4056,7 +4060,27 @@ void gosPostProcess::endScene()
         const char* v = getenv("MC2_RENDER_BACKEND_IFACE");
         return v && v[0] == '1';
     }();
-    if (s_backendIface) {
+    // VK-P14b (MC2_VK_PRESENT_DIRECT_FBO, copy-1 elimination): when the Vulkan
+    // backend owns present AND the direct-composite gate is on, redirect this
+    // single backbuffer bind to the FBO wrapping the shared exportable present
+    // image, so the WHOLE composite + FORCE-43 pillarbox + HUD + ImGui render
+    // straight into the shared image (presentGLFrame then SKIPS copy-1 and does
+    // the Y-flip in copy-2). Everything downstream in endScene inherits this bind.
+    // presentDirectFbo() returns 0 (fail-soft to FBO-0 + copy-1) unless the gate
+    // is on AND the present path is valid AND the FBO exists; the ==0 case leaves
+    // the original GL path byte-identical. NON-default FBO target: the shared FBO
+    // is COLOR_ATTACHMENT0-complete (RGBA8, no default sRGB encoding) so the
+    // inherited glClear / glReadBuffer(GL_BACK is only used inside copy-1, which is
+    // now skipped) all target this attachment correctly (see FBO-0-assumption scan).
+    GLuint directFbo = 0;
+#ifdef MC2_VULKAN
+    if (mc2::renderBackend() == mc2::RenderBackend::Vulkan) {
+        directFbo = (GLuint)mc2vk::getOrCreateEnginePresentVk().presentDirectFbo();
+    }
+#endif
+    if (directFbo != 0) {
+        glBindFramebuffer(GL_FRAMEBUFFER, directFbo);
+    } else if (s_backendIface) {
         RenderCore::getGLBackend().bindBackbuffer();
     } else {
         glBindFramebuffer(GL_FRAMEBUFFER, 0);

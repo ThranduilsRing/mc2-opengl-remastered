@@ -93,6 +93,21 @@ public:
     void destroy();
 
     bool valid() const { return created_; }
+
+    // VK-P14b (MC2_VK_PRESENT_DIRECT_FBO, copy-1 elimination): the GL FBO id that
+    // wraps the shared exportable present image (COLOR_ATTACHMENT, FRAMEBUFFER_
+    // COMPLETE). When the direct-composite gate is ON and the present path is up,
+    // endScene binds THIS instead of FBO-0 so the whole composite+pillarbox+HUD+
+    // ImGui renders straight into the shared image, and presentGLFrame then SKIPS
+    // copy-1 (the FBO-0->shared blit). Returns 0 when: the present path isn't
+    // valid, the gate is OFF, or the FBO isn't available -> caller falls back to
+    // the normal FBO-0 bind + copy-1 (fail-soft, no crash). Reading this also
+    // arms presentGLFrame's copy-1 skip for the frame (single source of truth:
+    // whichever branch endScene took, presentGLFrame mirrors it via directFbo_).
+    // Return type is a bare `unsigned int` (== GLuint) to keep this header free of
+    // any GL include; the impl casts to/from GLuint at the .cpp boundary.
+    unsigned int presentDirectFbo();
+
     // P13b: the visible GL game window we present onto (borrowed, not owned).
     SDL_Window* window() const { return glWindow_; }
     const EnginePresentHealth& health() const { return health_; }
@@ -112,6 +127,10 @@ private:
     Impl* impl_ = nullptr;
 
     bool created_ = false;
+    // VK-P14b: last FBO id handed out by presentDirectFbo() this frame (0 == none
+    // -> presentGLFrame runs copy-1 as usual; non-0 -> endScene rendered straight
+    // into the shared image so presentGLFrame SKIPS copy-1 and Y-flips in copy-2).
+    unsigned int directFbo_ = 0;
     // P13b: the existing visible GL game window we present onto via its HWND.
     // BORROWED (owned by gos_render / g_sdl_window) -- never destroyed here.
     SDL_Window* glWindow_ = nullptr;

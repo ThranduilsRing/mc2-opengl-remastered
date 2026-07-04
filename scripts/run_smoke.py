@@ -1288,6 +1288,13 @@ def main():
                             # shared-image readback content check (proves the
                             # presented frame is the real, changing GL frame).
                             "MC2_VK_PRESENT_VERIFY",
+                            # VK-P14b: copy-1 elimination. Redirect endScene's
+                            # backbuffer bind to the shared present FBO so the
+                            # composite renders straight into the shared image
+                            # (skips copy-1, Y-flip moves into copy-2). default
+                            # OFF; must be allowlisted or Popen drops it and the
+                            # gate-ON present-parity run silently runs copy-1.
+                            "MC2_VK_PRESENT_DIRECT_FBO",
                             "MC2_GPU_DEBUG_NAMES",
                             # Integrated gosFX-retirement / GPU-particles plan
                             # (2026-05-20-integrated-gosfx-retirement-*):

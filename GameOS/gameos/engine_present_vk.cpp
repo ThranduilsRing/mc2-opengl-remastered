@@ -108,6 +108,18 @@ struct EnginePresentVk::Impl {
 
 namespace {
 
+// VK-P14b (MC2_VK_PRESENT_DIRECT_FBO, copy-1 elimination): memoized gate. When ON
+// AND MC2_RENDER_BACKEND=vulkan AND the present path is valid, endScene binds the
+// shared present FBO instead of FBO-0, so copy-1 is skipped and the Y-flip moves
+// into copy-2. Default OFF -> gate-OFF is byte-identical to the copy-1 path.
+bool directFboGateEnabled() {
+    static const bool on = []() {
+        const char* v = getenv("MC2_VK_PRESENT_DIRECT_FBO");
+        return v && v[0] == '1';
+    }();
+    return on;
+}
+
 // -------- swapchain (re)build against the SHARED device -------------------
 bool chooseQueuesAndPresentMode(EnginePresentVk::Impl& s, std::string& reason) {
     // The shared context picked gfxFamily; confirm it can present to our surface.
@@ -438,8 +450,24 @@ bool EnginePresentVk::init(VulkanContext& ctx, SDL_Window* glWindow, uint32_t w,
     return true;
 }
 
+// VK-P14b: expose the shared present FBO for endScene's direct-composite bind.
+// Returns 0 (endScene falls back to FBO-0 + copy-1) UNLESS the gate is ON, the
+// present path is up, and the copyFbo exists. Records the decision in directFbo_
+// so the SAME frame's presentGLFrame skips copy-1 iff it handed one out. Called
+// once per frame from gosPostProcess::endScene, before the composite tail.
+unsigned int EnginePresentVk::presentDirectFbo() {
+    if (!directFboGateEnabled() || !created_ || !impl_ || impl_->copyFbo == 0) {
+        directFbo_ = 0;
+        return 0;
+    }
+    directFbo_ = (unsigned int)impl_->copyFbo;
+    return directFbo_;
+}
+
 // One frame: copy-1 (GL FBO-0 -> shared GL tex) + signal, then copy-2 (VK blit
 // shared -> swapchain) + present. Rebuild swapchain + shared image on resize.
+// VK-P14b: when endScene rendered straight into the shared image (directFbo_!=0),
+// copy-1 is SKIPPED here and the Y-flip is done in copy-2 instead.
 bool EnginePresentVk::presentGLFrame(uint32_t glDrawableW, uint32_t glDrawableH,
                                      bool verifyReadback) {
     if (!created_ || !impl_) {
@@ -480,20 +508,31 @@ bool EnginePresentVk::presentGLFrame(uint32_t glDrawableW, uint32_t glDrawableH,
     // frame at the swap point. Blit it into the shared texture, flip Y so the VK
     // blit + present orientation matches the GL backbuffer (GL origin is bottom-
     // left; we present top-left origin swapchain images).
-    glGetError();
-    glBindFramebuffer(GL_READ_FRAMEBUFFER, 0);
-    glReadBuffer(GL_BACK);
-    glBindFramebuffer(GL_DRAW_FRAMEBUFFER, s.copyFbo);
-    // src (0,0)-(W,H) -> dst (0,H)-(W,0): vertical flip.
-    glBlitFramebuffer(0, 0, (GLint)s.imgW, (GLint)s.imgH,
-                      0, (GLint)s.imgH, (GLint)s.imgW, 0,
-                      GL_COLOR_BUFFER_BIT, GL_NEAREST);
-    glBindFramebuffer(GL_DRAW_FRAMEBUFFER, 0);
-    glBindFramebuffer(GL_READ_FRAMEBUFFER, 0);
-    if (glGetError() != GL_NO_ERROR) {
-        health_.fallback_reason = "copy-1 glBlitFramebuffer error";
-        plog("%s. fail-soft.", health_.fallback_reason.c_str());
-        return false;
+    //
+    // VK-P14b (MC2_VK_PRESENT_DIRECT_FBO): when endScene rendered the whole
+    // composite straight INTO the shared image (directFbo_ != 0), the shared
+    // image already IS the finished frame -> SKIP copy-1 entirely. The Y-flip
+    // copy-1 used to do is moved into copy-2 below (dst Y offsets swapped) so the
+    // presented orientation is unchanged. directFbo_ is set/cleared by
+    // presentDirectFbo() earlier this same frame from endScene -> the two sites
+    // always agree on which path ran.
+    const bool copy1Skipped = (directFbo_ != 0);
+    if (!copy1Skipped) {
+        glGetError();
+        glBindFramebuffer(GL_READ_FRAMEBUFFER, 0);
+        glReadBuffer(GL_BACK);
+        glBindFramebuffer(GL_DRAW_FRAMEBUFFER, s.copyFbo);
+        // src (0,0)-(W,H) -> dst (0,H)-(W,0): vertical flip.
+        glBlitFramebuffer(0, 0, (GLint)s.imgW, (GLint)s.imgH,
+                          0, (GLint)s.imgH, (GLint)s.imgW, 0,
+                          GL_COLOR_BUFFER_BIT, GL_NEAREST);
+        glBindFramebuffer(GL_DRAW_FRAMEBUFFER, 0);
+        glBindFramebuffer(GL_READ_FRAMEBUFFER, 0);
+        if (glGetError() != GL_NO_ERROR) {
+            health_.fallback_reason = "copy-1 glBlitFramebuffer error";
+            plog("%s. fail-soft.", health_.fallback_reason.c_str());
+            return false;
+        }
     }
 
     // ==== GL -> VK hand-off ================================================
@@ -556,8 +595,18 @@ bool EnginePresentVk::presentGLFrame(uint32_t glDrawableW, uint32_t glDrawableH,
     region.srcOffsets[0] = {0, 0, 0};
     region.srcOffsets[1] = {(int32_t)s.imgW, (int32_t)s.imgH, 1};
     region.dstSubresource = {VK_IMAGE_ASPECT_COLOR_BIT, 0, 0, 1};
-    region.dstOffsets[0] = {0, 0, 0};
-    region.dstOffsets[1] = {(int32_t)s.scExtent.width, (int32_t)s.scExtent.height, 1};
+    // VK-P14b Y-flip lockstep: when copy-1 ran it already flipped Y (dst had
+    // origin at bottom), so copy-2 blits straight (dst 0->H). When copy-1 was
+    // SKIPPED (endScene rendered into the shared image with GL bottom-left
+    // origin), the flip that copy-1 used to do must happen HERE instead: swap the
+    // dst Y offsets (0,H)->(H,0) so the top-left-origin swapchain image is upright.
+    if (copy1Skipped) {
+        region.dstOffsets[0] = {0, (int32_t)s.scExtent.height, 0};
+        region.dstOffsets[1] = {(int32_t)s.scExtent.width, 0, 1};
+    } else {
+        region.dstOffsets[0] = {0, 0, 0};
+        region.dstOffsets[1] = {(int32_t)s.scExtent.width, (int32_t)s.scExtent.height, 1};
+    }
     vkCmdBlitImage(s.cbuf,
                    s.sharedImg.image, VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL,
                    scImg,             VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL,
