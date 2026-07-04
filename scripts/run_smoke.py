@@ -1595,6 +1595,12 @@ def main():
                             # runs the GL edge+oob fog path instead.
                             "MC2_VULKAN_POSTPROCESS_SUBGRAPH",
                             "MC2_VULKAN_POSTPROCESS_SUBGRAPH_FORCE_FALLBACK",
+                            # VK-INTEROP-BRIDGE-1 P2: the fused subgraph's COLOR
+                            # boundaries on the zero-copy interop seam (default OFF,
+                            # fail-soft to the subgraph readback path). Without this in
+                            # the allowlist Popen drops it and the gate-ON interop smoke
+                            # silently runs the subgraph readback path (gate inert).
+                            "MC2_VULKAN_POSTPROCESS_SUBGRAPH_INTEROP",
                             # RENDER-BACKEND-REGION-IFACE-1 (Layer-6 ENTRY): master
                             # gate + backend sub-selector for the SELECTABLE
                             # PostprocessFog region. Without these in the allowlist

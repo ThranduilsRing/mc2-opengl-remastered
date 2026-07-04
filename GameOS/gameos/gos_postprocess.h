@@ -476,6 +476,13 @@ public:
     // signal) route through this, so backend=vk runs Vulkan without the subgraph gate.
     bool  postprocessSubgraphReadyForRegion();
     void  runPostprocessSubgraph();
+    // P2 (MC2_VULKAN_POSTPROCESS_SUBGRAPH_INTEROP): the zero-copy COLOR-boundary variant
+    // of runPostprocessSubgraph(). Dispatched from runPostprocessSubgraph() when the
+    // subgraph's shared exportable color VkImageResource + GlInteropView are active. The
+    // already-fused VK<->VK 2-draw/1-render-pass chain is UNCHANGED; only the INPUT (scene
+    // color in) and OUTPUT (fog result out) boundaries are on the interop seam instead of
+    // glGetTexImage/vkCmdCopyImageToBuffer/glTexSubImage2D. Depth stays readback (P5 scope).
+    void  runPostprocessSubgraphInterop();
     void  destroyVulkanPostprocessSubgraph();
 
     // RENDER-BACKEND-REGION-IFACE-1 (1C): Vulkan impl of runRegion for the

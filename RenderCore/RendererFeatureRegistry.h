@@ -1157,6 +1157,26 @@ static constexpr EnvVarDesc kAuxEnvVars[] = {
         "round-trips (color-only slice). Companion infra gate MC2_VK_INTEROP_SELFTEST runs "
         "the standalone create/import/signal/wait self-check at island init."
     },
+    {
+        "MC2_FEATURE_VULKAN_POSTPROCESS_SUBGRAPH_INTEROP",
+        "MC2_VULKAN_POSTPROCESS_SUBGRAPH_INTEROP",
+        EnvVarKind::Feature,
+        false,
+        "VK-INTEROP-BRIDGE-1 P2: puts the already-fused VK<->VK fog subgraph "
+        "(edge_fog+fog_oob, GameOS/gameos/vulkan_postprocess_subgraph.cpp) COLOR "
+        "boundaries on the zero-copy interop seam. =1 repoints the subgraph render-pass "
+        "color attachment to an exportable VkImageResource imported into GL "
+        "(vk_image_resource.{h,cpp} + gl_interop_view.{h,cpp}, post-P1.5 vkToGlSem "
+        "back-channel); the per-frame COLOR readback (glGetTexImage/vkCmdCopyBufferToImage/"
+        "vkCmdCopyImageToBuffer/glTexSubImage2D for color) are gone (hard-asserted ==0). "
+        "The internal VK<->VK 2-draw/1-render-pass chain is UNCHANGED. Requires the subgraph "
+        "to be selected (MC2_VULKAN_POSTPROCESS_SUBGRAPH=1 or backend=vk). DEFAULT-OFF, "
+        "fail-soft to the subgraph readback path on any negative (LUID mismatch / missing "
+        "exts / import fail); gate-OFF is byte-identical with zero external probes (blocker "
+        "#6). DEPTH still round-trips (color-only slice; P5 scope). Surfaced in the "
+        "[VK_PP_SUBGRAPH_INTEROP] health line: interop_active, used_interop, "
+        "forbidden_copyBufToImg/copyImgToBuf/getTexImage/texSubImage (all ==0 on interop)."
+    },
 };
 
 // ---------------------------------------------------------------------------

@@ -36,12 +36,25 @@
 
 #ifdef MC2_VULKAN_ISLAND
 
+// P2: the external-memory/-semaphore Win32 KHR ext-name macros + entrypoints are gated
+// behind VK_USE_PLATFORM_WIN32_KHR in vulkan_core.h/volk (must be defined BEFORE the first
+// volk include). Matches vk_image_resource.h / the spike. Guard so we never double-define.
+#ifndef VK_USE_PLATFORM_WIN32_KHR
+#define VK_USE_PLATFORM_WIN32_KHR
+#endif
 // volk owns Vulkan dispatch (dynamic load; no hard link to vulkan-1.dll).
 #include <volk.h>
 #include "vk_mem_alloc.h"
 
 // GL for the glGetTexImage / glTexSubImage2D bridge + the sampleable GL textures.
 #include "utils/gl_utils.h"
+
+// P2 (MC2_VULKAN_POSTPROCESS_SUBGRAPH_INTEROP): the composable zero-copy interop
+// primitives (post-P1.5 -- VkImageResource carries the VK->GL semaphore back-channel
+// vkToGlSem, GlInteropView imports it). The subgraph wraps its INPUT (scene color) +
+// OUTPUT (fog result) boundaries in these, exactly like the proven edge-fog island.
+#include "vk_image_resource.h"
+#include "gl_interop_view.h"
 
 // Fixed-timestep clock so the animated OOB FBM time matches the GL path under smoke.
 #include "gos_smoke.h"
@@ -87,13 +100,46 @@ struct SubgraphHealth {
     double renderUs      = 0.0;  // submit+fence-wait total render
     double colorOutUs    = 0.0;  // image->buffer readback + map + glTexSubImage2D
     double totalUs       = 0.0;  // whole runPostprocessSubgraph() body
+
+    // P2 (MC2_VULKAN_POSTPROCESS_SUBGRAPH_INTEROP): zero-copy COLOR-boundary liveness.
+    int  interopActive   = 0;   // useInterop resolved true this run
+    int  vk2glSemActive  = 0;   // VK->GL GPU semaphore imported (P1.5), else CPU-fence
+    unsigned long usedInterop = 0;   // frames the zero-copy color path actually ran
 };
 SubgraphHealth g_sub;
+
+// P2 blocker #5 (mirrors the edge-fog island): COLOR-side forbidden-op counters. On the
+// interop path any of these firing for COLOR data means a copy/readback slipped through
+// -> setFallback + LOUD log + fail the frame (parity-green-with-readback is a FAIL). This
+// is a SEPARATE file-static instance from the edge-fog island's identically-named counter
+// (both live in their own TU's anonymous namespace -> internal linkage, no ODR collision).
+// Depth-side copies are EXPECTED (depth still round-trips, P5 scope) and counted apart.
+struct SubgraphInteropForbidden {
+    unsigned long vkCmdCopyBufferToImage = 0;  // COLOR staging upload (must be 0 on interop)
+    unsigned long vkCmdCopyImageToBuffer = 0;  // COLOR readback        (must be 0 on interop)
+    unsigned long glGetTexImage          = 0;  // COLOR pull            (must be 0 on interop)
+    unsigned long glTexSubImage2D        = 0;  // COLOR writeback       (must be 0 on interop)
+};
+SubgraphInteropForbidden g_forbidden;
 
 void setFallback(const char* reason) {
     std::strncpy(g_sub.fallbackReason, reason ? reason : "",
                  sizeof(g_sub.fallbackReason) - 1);
     g_sub.fallbackReason[sizeof(g_sub.fallbackReason) - 1] = '\0';
+}
+
+// P2 (blocker #6): the interop gate, resolved ONCE. OFF -> useInterop=false -> readback
+// path -> byte-identical, and NOT one external-ext call / probe is issued (this getter is
+// the ONLY place the env is read, every interop code path is behind s->useInterop). Read
+// only inside the MC2_VULKAN_POSTPROCESS_SUBGRAPH path (the subgraph gate must already be
+// selected). Distinct env from the edge-fog seam so the two can be exercised independently.
+bool subgraphInteropGateRequested() {
+    static int state = -1; // -1 untested
+    if (state == -1) {
+        const char* e = std::getenv("MC2_VULKAN_POSTPROCESS_SUBGRAPH_INTEROP");
+        state = (e && e[0] == '1') ? 1 : 0;
+    }
+    return state == 1;
 }
 } // namespace
 
@@ -318,12 +364,27 @@ struct gosPostProcess::VulkanPostprocessSubgraph {
     VkShaderModule    oobFrag  = VK_NULL_HANDLE;
 
     VkCommandPool     cpool  = VK_NULL_HANDLE;
-    VkCommandBuffer   cbuf   = VK_NULL_HANDLE;
+    VkCommandBuffer   cbuf   = VK_NULL_HANDLE;   // readback path: 1 buf, inline fence wait
+    // P2/P1.5: the interop path no longer CPU-waits inline (GPU VK->GL semaphore), so its
+    // command buffer is DOUBLE-BUFFERED per parity slot. vkImageResourceBeginFrame waits
+    // frameFence[parity] (retiring the PRIOR submit on that slot, frame N-2) BEFORE we
+    // reset+record cbufInterop[parity] -- so the reset never races a still-pending submit.
+    VkCommandBuffer   cbufInterop[2] = {VK_NULL_HANDLE, VK_NULL_HANDLE};
     VkFence           fence  = VK_NULL_HANDLE;
 
     // CPU scratch for the GL<->staging bridge.
     std::vector<float>    depthScratch;  // width*height floats
     std::vector<uint16_t> colorScratch;  // width*height*4 halfs
+
+    // P2 (MC2_VULKAN_POSTPROCESS_SUBGRAPH_INTEROP): zero-copy COLOR-boundary seam. When
+    // useInterop is true the color INPUT+OUTPUT are repointed to a shared exportable
+    // VkImageResource (colorResource) imported into GL (colorGlView); the VMA colorImage /
+    // colorStaging / colorReadback are NOT created (no color readback path). Depth is
+    // UNCHANGED (still readback -- P5 scope). The internal VK<->VK 2-draw chain is UNCHANGED.
+    bool            useInterop = false;      // gate AND resource-create-ok AND LUID-ok
+    VkImageResource colorResource{};         // exportable RGBA16F, IS the render attachment
+    GlInteropView   colorGlView{};           // GL side of colorResource (glTex is the shared FBO)
+    GLuint          interopFbo = 0;          // GL FBO wrapping colorGlView.glTex (scene->shared copy)
 };
 
 namespace {
@@ -333,6 +394,12 @@ void destroy_subgraph(gosPostProcess::VulkanPostprocessSubgraph* s) {
     if (!s) return;
     VkDevice d = s->device;
     if (d != VK_NULL_HANDLE) vkDeviceWaitIdle(d);
+    // P2: tear down the shared color image + GL view + FBO first (GL side before the
+    // VkDevice; the resource CloseHandle()s its own Win32 handles). Safe on non-interop
+    // state (all handles zero/null). vkImageResourceDestroy needs a live device.
+    if (s->interopFbo) { glDeleteFramebuffers(1, &s->interopFbo); s->interopFbo = 0; }
+    glInteropViewDestroy(&s->colorGlView);
+    if (d != VK_NULL_HANDLE) vkImageResourceDestroy(&s->colorResource, d);
     if (s->fence)  vkDestroyFence(d, s->fence, nullptr);
     if (s->cpool)  vkDestroyCommandPool(d, s->cpool, nullptr);
     if (s->edgePipe) vkDestroyPipeline(d, s->edgePipe, nullptr);
@@ -400,6 +467,20 @@ bool build_subgraph(gosPostProcess::VulkanPostprocessSubgraph* s, int W, int H) 
     std::vector<const char*> instExts;
     std::vector<VkValidationFeatureEnableEXT> valFeatures;
     const char* valPreset = "off";
+
+    // P2 (blocker #2/#6): the external-capabilities INSTANCE extensions are added ONLY
+    // when interop is requested. Gate OFF -> instExts untouched -> the instance is created
+    // with the ORIGINAL ext list (byte-identical, zero probes). These three caps exts are
+    // core-promoted in 1.1 and universally present. Guarded on the SAME device/instance
+    // the subgraph builds itself (it does NOT share the edge-fog island's device).
+    const bool wantInterop = subgraphInteropGateRequested();
+    if (wantInterop) {
+        instExts.push_back(VK_KHR_EXTERNAL_MEMORY_CAPABILITIES_EXTENSION_NAME);
+        instExts.push_back(VK_KHR_EXTERNAL_SEMAPHORE_CAPABILITIES_EXTENSION_NAME);
+        instExts.push_back(VK_KHR_GET_PHYSICAL_DEVICE_PROPERTIES_2_EXTENSION_NAME);
+        vlog("[VK_INTEROP] MC2_VULKAN_POSTPROCESS_SUBGRAPH_INTEROP=1 -- requesting "
+             "external-memory/-semaphore instance caps exts (blocker #2).");
+    }
     bool wantValidation = resolve_validation_preset(valFeatures, valPreset);
     if (wantValidation) {
         uint32_t layerCount = 0;
@@ -473,6 +554,18 @@ bool build_subgraph(gosPostProcess::VulkanPostprocessSubgraph* s, int W, int H) 
     vkEnumeratePhysicalDevices(s->instance, &devCount, devs.data());
     s->phys = devs[0];
 
+    // P2 (blocker #2): when interop is requested, prefer the DISCRETE GPU (devs[0] can be
+    // the wrong device on a multi-GPU box). The LUID match itself is done by
+    // glInteropViewCreate against the GL device later; here we only bias selection toward
+    // the discrete GPU so the LUID check is likely to pass. Single-GPU box -> unchanged.
+    if (wantInterop && devCount > 1) {
+        for (auto pd : devs) {
+            VkPhysicalDeviceProperties p{};
+            vkGetPhysicalDeviceProperties(pd, &p);
+            if (p.deviceType == VK_PHYSICAL_DEVICE_TYPE_DISCRETE_GPU) { s->phys = pd; break; }
+        }
+    }
+
     {
         VkPhysicalDeviceProperties props{};
         vkGetPhysicalDeviceProperties(s->phys, &props);
@@ -495,10 +588,25 @@ bool build_subgraph(gosPostProcess::VulkanPostprocessSubgraph* s, int W, int H) 
     qci.queueFamilyIndex = s->gfxFamily;
     qci.queueCount = 1;
     qci.pQueuePriorities = &prio;
+    // P2 (blocker #2/#6): the six external-memory/-semaphore Win32 device exts are added
+    // ONLY when interop is requested. Gate OFF -> devExts stays empty -> the device is
+    // created with NO extensions (byte-identical to today's subgraph device).
+    std::vector<const char*> devExts;
+    if (wantInterop) {
+        devExts.push_back(VK_KHR_EXTERNAL_MEMORY_EXTENSION_NAME);
+        devExts.push_back(VK_KHR_EXTERNAL_MEMORY_WIN32_EXTENSION_NAME);
+        devExts.push_back(VK_KHR_EXTERNAL_SEMAPHORE_EXTENSION_NAME);
+        devExts.push_back(VK_KHR_EXTERNAL_SEMAPHORE_WIN32_EXTENSION_NAME);
+        devExts.push_back(VK_KHR_DEDICATED_ALLOCATION_EXTENSION_NAME);
+        devExts.push_back(VK_KHR_GET_MEMORY_REQUIREMENTS_2_EXTENSION_NAME);
+    }
+
     VkDeviceCreateInfo dci{};
     dci.sType = VK_STRUCTURE_TYPE_DEVICE_CREATE_INFO;
     dci.queueCreateInfoCount = 1;
     dci.pQueueCreateInfos = &qci;
+    dci.enabledExtensionCount   = static_cast<uint32_t>(devExts.size());
+    dci.ppEnabledExtensionNames = devExts.empty() ? nullptr : devExts.data();
     r = vkCreateDevice(s->phys, &dci, nullptr, &s->device);
     if (r != VK_SUCCESS) { vlog("vkCreateDevice failed (%d).", (int)r); return false; }
     volkLoadDevice(s->device);
@@ -516,6 +624,53 @@ bool build_subgraph(gosPostProcess::VulkanPostprocessSubgraph* s, int W, int H) 
         aci.pVulkanFunctions = &fns;
         r = vmaCreateAllocator(&aci, &s->allocator);
         if (r != VK_SUCCESS) { vlog("vmaCreateAllocator failed (%d).", (int)r); s->allocator = VK_NULL_HANDLE; return false; }
+    }
+
+    // ---- P2 (blocker #1): shared exportable COLOR image + GL view ----
+    // When interop is requested, the color attachment becomes a raw-allocated exportable
+    // VkImageResource (NOT the VMA colorImage) imported into GL zero-copy. useInterop =
+    // gate AND resource-create-ok AND GL-import(LUID)-ok. Any failure -> fail-soft: the
+    // VMA readback color path is built below (byte-identical to today). Exportable image
+    // needs COLOR_ATTACHMENT (it IS the attachment) + SAMPLED (GL samples it); NO transfer
+    // usage (no readback copies happen). Depth is UNCHANGED (still VMA + readback -- P5).
+    s->useInterop = false;
+    if (wantInterop) {
+        bool ok = vkImageResourceCreate(&s->colorResource, s->device, s->phys,
+                                        (uint32_t)W, (uint32_t)H, kColorFmt,
+                                        VK_IMAGE_USAGE_COLOR_ATTACHMENT_BIT |
+                                        VK_IMAGE_USAGE_SAMPLED_BIT,
+                                        /*exportable*/ true);
+        if (ok) ok = glInteropViewCreate(&s->colorGlView, &s->colorResource, s->phys, GL_RGBA16F);
+        if (ok) {
+            // GL FBO wrapping the shared texture, so the scene color can be copied into it
+            // on the GL side (a GL->GL copy -- NOT a forbidden readback op).
+            glGenFramebuffers(1, &s->interopFbo);
+            glBindFramebuffer(GL_FRAMEBUFFER, s->interopFbo);
+            glFramebufferTexture2D(GL_FRAMEBUFFER, GL_COLOR_ATTACHMENT0, GL_TEXTURE_2D,
+                                   s->colorGlView.glTex, 0);
+            GLenum fbst = glCheckFramebufferStatus(GL_FRAMEBUFFER);
+            glBindFramebuffer(GL_FRAMEBUFFER, 0);
+            if (fbst != GL_FRAMEBUFFER_COMPLETE) {
+                vlog("[VK_INTEROP] shared-tex FBO incomplete (0x%x) -- fail-soft to readback.", fbst);
+                ok = false;
+            }
+        }
+        if (ok) {
+            s->useInterop = true;
+            g_sub.interopActive = 1;
+            g_sub.vk2glSemActive = s->colorGlView.vkToGlImported ? 1 : 0;
+            vlog("[VK_INTEROP] subgraph color interop seam ACTIVE -- zero-copy exportable "
+                 "RGBA16F attachment imported into GL (color readback path disabled). "
+                 "vk2gl_sem=%d (%s VK->GL hand-off).", g_sub.vk2glSemActive,
+                 g_sub.vk2glSemActive ? "GPU-semaphore" : "CPU-fence-fallback");
+        } else {
+            if (s->interopFbo) { glDeleteFramebuffers(1, &s->interopFbo); s->interopFbo = 0; }
+            glInteropViewDestroy(&s->colorGlView);
+            vkImageResourceDestroy(&s->colorResource, s->device);
+            setFallback("interop_setup_failed");
+            vlog("[VK_INTEROP] subgraph interop setup failed -- falling back to the "
+                 "readback color path.");
+        }
     }
 
     auto make_image = [&](VkFormat fmt, VkImageUsageFlags usage, VkImage* img, VmaAllocation* alloc) -> bool {
@@ -537,11 +692,16 @@ bool build_subgraph(gosPostProcess::VulkanPostprocessSubgraph* s, int W, int H) 
         if (rr != VK_SUCCESS) { vlog("vmaCreateImage failed (%d).", (int)rr); return false; }
         return true;
     };
-    // Depth (sampled by both frags) + transfer-dst; Color (attachment) + transfer-dst + transfer-src.
+    // Depth (sampled by both frags) + transfer-dst -- ALWAYS (depth round-trips, P5 scope).
     if (!make_image(kDepthFmt, VK_IMAGE_USAGE_SAMPLED_BIT | VK_IMAGE_USAGE_TRANSFER_DST_BIT,
                     &s->depthImage, &s->depthAlloc)) return false;
-    if (!make_image(kColorFmt, VK_IMAGE_USAGE_COLOR_ATTACHMENT_BIT | VK_IMAGE_USAGE_TRANSFER_DST_BIT |
-                    VK_IMAGE_USAGE_TRANSFER_SRC_BIT, &s->colorImage, &s->colorAlloc)) return false;
+    // Color: on the interop path the shared exportable image IS the attachment, so the VMA
+    // colorImage is NOT created (no wasted memory -- blocker #1). Only the readback path
+    // needs it: attachment + transfer-dst (preload) + transfer-src (readback).
+    if (!s->useInterop) {
+        if (!make_image(kColorFmt, VK_IMAGE_USAGE_COLOR_ATTACHMENT_BIT | VK_IMAGE_USAGE_TRANSFER_DST_BIT |
+                        VK_IMAGE_USAGE_TRANSFER_SRC_BIT, &s->colorImage, &s->colorAlloc)) return false;
+    }
 
     auto make_view = [&](VkImage img, VkFormat fmt, VkImageAspectFlags aspect, VkImageView* view) -> bool {
         VkImageViewCreateInfo vi{};
@@ -555,7 +715,11 @@ bool build_subgraph(gosPostProcess::VulkanPostprocessSubgraph* s, int W, int H) 
         return true;
     };
     if (!make_view(s->depthImage, kDepthFmt, VK_IMAGE_ASPECT_DEPTH_BIT, &s->depthView)) return false;
-    if (!make_view(s->colorImage, kColorFmt, VK_IMAGE_ASPECT_COLOR_BIT, &s->colorView)) return false;
+    // Interop: the color view is the shared resource's view (made inside vkImageResourceCreate);
+    // the readback path makes its own over the VMA colorImage.
+    if (!s->useInterop) {
+        if (!make_view(s->colorImage, kColorFmt, VK_IMAGE_ASPECT_COLOR_BIT, &s->colorView)) return false;
+    }
 
     {
         VkSamplerCreateInfo si{};
@@ -584,9 +748,13 @@ bool build_subgraph(gosPostProcess::VulkanPostprocessSubgraph* s, int W, int H) 
     };
     const VkDeviceSize depthBytes = (VkDeviceSize)W * H * 4;      // R32 float
     const VkDeviceSize colorBytes = (VkDeviceSize)W * H * 4 * 2;  // RGBA16F
+    // Depth staging is ALWAYS needed (depth round-trips even on the interop path -- P5).
     if (!make_buffer(depthBytes, VK_BUFFER_USAGE_TRANSFER_SRC_BIT, &s->depthStaging, &s->depthStagingAlloc)) return false;
-    if (!make_buffer(colorBytes, VK_BUFFER_USAGE_TRANSFER_SRC_BIT, &s->colorStaging, &s->colorStagingAlloc)) return false;
-    if (!make_buffer(colorBytes, VK_BUFFER_USAGE_TRANSFER_DST_BIT, &s->colorReadback, &s->colorReadbackAlloc)) return false;
+    // Color staging (upload) + readback are ONLY for the readback path -- skipped on interop.
+    if (!s->useInterop) {
+        if (!make_buffer(colorBytes, VK_BUFFER_USAGE_TRANSFER_SRC_BIT, &s->colorStaging, &s->colorStagingAlloc)) return false;
+        if (!make_buffer(colorBytes, VK_BUFFER_USAGE_TRANSFER_DST_BIT, &s->colorReadback, &s->colorReadbackAlloc)) return false;
+    }
     if (!make_buffer(sizeof(EdgeFogParams), VK_BUFFER_USAGE_UNIFORM_BUFFER_BIT, &s->edgeUbo, &s->edgeUboAlloc)) return false;
     if (!make_buffer(sizeof(FogOobParams),  VK_BUFFER_USAGE_UNIFORM_BUFFER_BIT, &s->oobUbo,  &s->oobUboAlloc))  return false;
 
@@ -602,32 +770,66 @@ bool build_subgraph(gosPostProcess::VulkanPostprocessSubgraph* s, int W, int H) 
         att.storeOp = VK_ATTACHMENT_STORE_OP_STORE;
         att.stencilLoadOp = VK_ATTACHMENT_LOAD_OP_DONT_CARE;
         att.stencilStoreOp = VK_ATTACHMENT_STORE_OP_DONT_CARE;
+        // Layout reconcile (blocker #1). Readback path: attachment preloaded (barrier'd to
+        // COLOR_ATTACHMENT before the pass) -> TRANSFER_SRC for the copy-back. Interop path:
+        // GL hands the shared image over in GL_LAYOUT_COLOR_ATTACHMENT_EXT (== COLOR_ATTACHMENT
+        // _OPTIMAL), so initialLayout matches and the cross-API semaphore carries the hand-off
+        // (no UNDEFINED first-use barrier). P1.5 layout-STABLE: keep finalLayout ==
+        // initialLayout == COLOR_ATTACHMENT_OPTIMAL on the interop path so EndRenderPass
+        // performs NO layout-transition WRITE -- otherwise sync-val flags a cross-submit R-A-W
+        // between frame N's transition WRITE and frame N+1's color LOAD READ (the GL semaphore
+        // round-trip that actually serializes them is invisible to VK sync-val). GL re-consumes
+        // the image in GL_LAYOUT_COLOR_ATTACHMENT_EXT (valid for GL to then copy/sample from).
         att.initialLayout = VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL; // barrier'd there before the pass
-        att.finalLayout   = VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL;     // ready to copy back
+        att.finalLayout   = s->useInterop ? VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL
+                                          : VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL;
         VkAttachmentReference ref{0, VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL};
         VkSubpassDescription sub{};
         sub.pipelineBindPoint = VK_PIPELINE_BIND_POINT_GRAPHICS;
         sub.colorAttachmentCount = 1;
         sub.pColorAttachments = &ref;
-        // External dependency: order the render pass' implicit final layout transition
-        // (COLOR_ATTACHMENT_OPTIMAL -> TRANSFER_SRC, a WRITE performed at vkCmdEndRenderPass)
-        // before the following vkCmdCopyImageToBuffer transfer read. Without this the
-        // transition-write vs transfer-read is a sync-validation READ_AFTER_WRITE hazard.
-        VkSubpassDependency dep{};
-        dep.srcSubpass = 0;
-        dep.dstSubpass = VK_SUBPASS_EXTERNAL;
-        dep.srcStageMask = VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT;
-        dep.srcAccessMask = VK_ACCESS_COLOR_ATTACHMENT_WRITE_BIT;
-        dep.dstStageMask = VK_PIPELINE_STAGE_TRANSFER_BIT;
-        dep.dstAccessMask = VK_ACCESS_TRANSFER_READ_BIT;
+        // Outgoing external dependency (subpass -> EXTERNAL). Readback: order the implicit
+        // final layout transition (-> TRANSFER_SRC, a WRITE at vkCmdEndRenderPass) before the
+        // following vkCmdCopyImageToBuffer transfer read (else R-A-W hazard). Interop: no
+        // transition/copy -- dst = BOTTOM_OF_PIPE so the whole color write completes before the
+        // cross-API VK->GL signal.
+        VkSubpassDependency deps[2]{};
+        deps[0].srcSubpass = 0;
+        deps[0].dstSubpass = VK_SUBPASS_EXTERNAL;
+        deps[0].srcStageMask = VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT;
+        deps[0].srcAccessMask = VK_ACCESS_COLOR_ATTACHMENT_WRITE_BIT;
+        if (s->useInterop) {
+            deps[0].dstStageMask  = VK_PIPELINE_STAGE_BOTTOM_OF_PIPE_BIT;
+            deps[0].dstAccessMask = 0;
+        } else {
+            deps[0].dstStageMask  = VK_PIPELINE_STAGE_TRANSFER_BIT;
+            deps[0].dstAccessMask = VK_ACCESS_TRANSFER_READ_BIT;
+        }
+        // P1.5: INCOMING external->subpass dependency (interop only). With no inline CPU fence
+        // wait, sync-val sees consecutive per-parity submits touching the SAME shared color
+        // image unserialized: frame N+1's BeginRenderPass color LOAD (a READ) races frame N's
+        // color-output WRITE -> R-A-W. The cross-API semaphores serialize it functionally, but
+        // VK sync-val can't see across the GL boundary. This edge makes the ordering explicit
+        // inside the render pass: the color LOAD waits on the prior color-output stage.
+        uint32_t depCount = 1;
+        if (s->useInterop) {
+            deps[1].srcSubpass = VK_SUBPASS_EXTERNAL;
+            deps[1].dstSubpass = 0;
+            deps[1].srcStageMask  = VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT;
+            deps[1].srcAccessMask = VK_ACCESS_COLOR_ATTACHMENT_WRITE_BIT;
+            deps[1].dstStageMask  = VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT;
+            deps[1].dstAccessMask = VK_ACCESS_COLOR_ATTACHMENT_READ_BIT |
+                                    VK_ACCESS_COLOR_ATTACHMENT_WRITE_BIT;
+            depCount = 2;
+        }
         VkRenderPassCreateInfo rpci{};
         rpci.sType = VK_STRUCTURE_TYPE_RENDER_PASS_CREATE_INFO;
         rpci.attachmentCount = 1;
         rpci.pAttachments = &att;
         rpci.subpassCount = 1;
         rpci.pSubpasses = &sub;
-        rpci.dependencyCount = 1;
-        rpci.pDependencies = &dep;
+        rpci.dependencyCount = depCount;
+        rpci.pDependencies = deps;
         r = vkCreateRenderPass(s->device, &rpci, nullptr, &s->rpass);
         if (r != VK_SUCCESS) { vlog("vkCreateRenderPass failed (%d).", (int)r); return false; }
 
@@ -635,7 +837,9 @@ bool build_subgraph(gosPostProcess::VulkanPostprocessSubgraph* s, int W, int H) 
         fci.sType = VK_STRUCTURE_TYPE_FRAMEBUFFER_CREATE_INFO;
         fci.renderPass = s->rpass;
         fci.attachmentCount = 1;
-        fci.pAttachments = &s->colorView;
+        // Interop: attachment 0 is the shared exportable image's view (blocker #1).
+        VkImageView colorAttachView = s->useInterop ? s->colorResource.view : s->colorView;
+        fci.pAttachments = &colorAttachView;
         fci.width = W; fci.height = H; fci.layers = 1;
         r = vkCreateFramebuffer(s->device, &fci, nullptr, &s->fb);
         if (r != VK_SUCCESS) { vlog("vkCreateFramebuffer failed (%d).", (int)r); return false; }
@@ -804,6 +1008,17 @@ bool build_subgraph(gosPostProcess::VulkanPostprocessSubgraph* s, int W, int H) 
         cai.commandBufferCount = 1;
         r = vkAllocateCommandBuffers(s->device, &cai, &s->cbuf);
         if (r != VK_SUCCESS) { vlog("vkAllocateCommandBuffers failed (%d).", (int)r); return false; }
+        // P2/P1.5: the interop path uses per-parity-slot command buffers (see cbufInterop
+        // comment). Allocate two more when interop is active; the readback path uses cbuf.
+        if (s->useInterop) {
+            VkCommandBufferAllocateInfo cai2{};
+            cai2.sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_ALLOCATE_INFO;
+            cai2.commandPool = s->cpool;
+            cai2.level = VK_COMMAND_BUFFER_LEVEL_PRIMARY;
+            cai2.commandBufferCount = 2;
+            r = vkAllocateCommandBuffers(s->device, &cai2, s->cbufInterop);
+            if (r != VK_SUCCESS) { vlog("vkAllocateCommandBuffers (interop x2) failed (%d).", (int)r); return false; }
+        }
         VkFenceCreateInfo fnci{};
         fnci.sType = VK_STRUCTURE_TYPE_FENCE_CREATE_INFO;
         r = vkCreateFence(s->device, &fnci, nullptr, &s->fence);
@@ -813,9 +1028,12 @@ bool build_subgraph(gosPostProcess::VulkanPostprocessSubgraph* s, int W, int H) 
     s->depthScratch.resize((size_t)W * H);
     s->colorScratch.resize((size_t)W * H * 4);
     s->inited = true;
-    setFallback("");
+    // Interop keeps its own fallback reason if it fell back to readback; only clear it on
+    // the pure-readback build (matches the edge-fog island convention).
+    if (!s->useInterop) setFallback("");
     vlog("subgraph initialized: %dx%d device ready (depth D32_SFLOAT, color RGBA16F, "
-         "2 pipelines edge_fog+fog_oob, ONE render pass, TWO draws, NO internal readback).", W, H);
+         "2 pipelines edge_fog+fog_oob, ONE render pass, TWO draws, NO internal readback). "
+         "color boundary = %s.", W, H, s->useInterop ? "zero-copy-interop" : "readback");
     return true;
 }
 
@@ -883,6 +1101,15 @@ void gosPostProcess::runPostprocessSubgraph()
     VulkanPostprocessSubgraph* s = vkPostprocessSubgraph_;
     if (!s || !s->inited || s->disabled) return;
 
+    // P2 (MC2_VULKAN_POSTPROCESS_SUBGRAPH_INTEROP): when the zero-copy color seam is active
+    // it does the whole frame (GL scene color -> shared tex -> VK 2-draw fog chain -> GL)
+    // with NO color-side readback/copy, and returns. The readback body below is the
+    // fail-soft fallback (byte-identical to today's shipped subgraph).
+    if (s->useInterop) {
+        runPostprocessSubgraphInterop();
+        return;
+    }
+
     // Reset this frame's equivalence counters -- if we bail early they stay 0 (the
     // seam still skips the GL sites, so a 0/0 here paired with a GL pass running is
     // exactly the double-apply/miss we want visible in the health dump).
@@ -907,6 +1134,7 @@ void gosPostProcess::runPostprocessSubgraph()
     const clk::time_point tColor0 = clk::now();
     glBindTexture(GL_TEXTURE_2D, sceneColorTex_);
     glGetTexImage(GL_TEXTURE_2D, 0, GL_RGBA, GL_HALF_FLOAT, s->colorScratch.data());
+    ++g_forbidden.glGetTexImage; // COLOR pull -- readback path only (must be 0 on interop)
     glBindTexture(GL_TEXTURE_2D, 0);
     g_sub.copyColorInUs = usSince(tColor0);
 
@@ -998,6 +1226,7 @@ void gosPostProcess::runPostprocessSubgraph()
     barrier(s->colorImage, VK_IMAGE_ASPECT_COLOR_BIT, VK_IMAGE_LAYOUT_UNDEFINED, VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL,
             0, VK_ACCESS_TRANSFER_WRITE_BIT, VK_PIPELINE_STAGE_TOP_OF_PIPE_BIT, VK_PIPELINE_STAGE_TRANSFER_BIT);
     vkCmdCopyBufferToImage(s->cbuf, s->colorStaging, s->colorImage, VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL, 1, &colorRegion);
+    ++g_forbidden.vkCmdCopyBufferToImage; // COLOR upload -- readback path only
     barrier(s->colorImage, VK_IMAGE_ASPECT_COLOR_BIT, VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL, VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL,
             VK_ACCESS_TRANSFER_WRITE_BIT, VK_ACCESS_COLOR_ATTACHMENT_READ_BIT | VK_ACCESS_COLOR_ATTACHMENT_WRITE_BIT,
             VK_PIPELINE_STAGE_TRANSFER_BIT, VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT);
@@ -1026,6 +1255,7 @@ void gosPostProcess::runPostprocessSubgraph()
     // which orders the implicit final layout-transition WRITE before the transfer read)
     // -> copy to readback buffer.
     vkCmdCopyImageToBuffer(s->cbuf, s->colorImage, VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL, s->colorReadback, 1, &colorRegion);
+    ++g_forbidden.vkCmdCopyImageToBuffer; // COLOR readback -- readback path only
 
     if (vkEndCommandBuffer(s->cbuf) != VK_SUCCESS) return;
 
@@ -1056,6 +1286,7 @@ void gosPostProcess::runPostprocessSubgraph()
             vmaUnmapMemory(s->allocator, s->colorReadbackAlloc);
             glBindTexture(GL_TEXTURE_2D, sceneColorTex_);
             glTexSubImage2D(GL_TEXTURE_2D, 0, 0, 0, W, H, GL_RGBA, GL_HALF_FLOAT, s->colorScratch.data());
+            ++g_forbidden.glTexSubImage2D; // COLOR writeback -- readback path only
             glBindTexture(GL_TEXTURE_2D, 0);
         }
     }
@@ -1078,6 +1309,237 @@ void gosPostProcess::runPostprocessSubgraph()
 }
 
 // ---------------------------------------------------------------------------
+// runPostprocessSubgraphInterop(): P2 -- the zero-copy COLOR-boundary variant of
+// runPostprocessSubgraph(). The already-fused VK<->VK chain (2 draws / 1 render pass /
+// 1 VK-owned intermediate, NO GL between the draws) is UNCHANGED; only its INPUT (scene
+// color IN) + OUTPUT (fog result OUT) boundaries are on the interop seam:
+//   - INPUT : GL copies scene color into the shared exportable tex (GL->GL copy, NOT a
+//     forbidden readback), then hands it to VK (glInteropSignalToVk). NO glGetTexImage
+//     (color) + NO vkCmdCopyBufferToImage (color).
+//   - OUTPUT: VK signals the VK->GL semaphore (P1.5); GL waits it (glInteropWaitFromVk,
+//     GPU-side, no CPU stall) then copies the fogged shared tex into sceneColorTex_
+//     (GL->GL copy). NO vkCmdCopyImageToBuffer + NO glTexSubImage2D.
+// DEPTH still round-trips (glGetTexImage(DEPTH) + vkCmdCopyBufferToImage(depth)) -- P5.
+// FAIL-SOFT: if the VK->GL semaphore did not import, falls back to an inline CPU fence
+// wait (correct, just stalls). Blocker #5 hard-assert: any COLOR forbidden op firing this
+// frame fails the frame + disables interop.
+// ---------------------------------------------------------------------------
+void gosPostProcess::runPostprocessSubgraphInterop()
+{
+    VulkanPostprocessSubgraph* s = vkPostprocessSubgraph_;
+    if (!s || !s->inited || s->disabled || !s->useInterop) return;
+
+    const int W = s->width, H = s->height;
+    ++g_sub.attempted;
+    g_sub.vkDraws = 0; g_sub.glSkipped = 0;
+    using clk = std::chrono::steady_clock;
+    auto usSince = [](clk::time_point t0) {
+        return std::chrono::duration<double, std::micro>(clk::now() - t0).count();
+    };
+    const clk::time_point tTotal0 = clk::now();
+
+    // Snapshot the COLOR-forbidden counters so we can prove NONE fired this frame.
+    const unsigned long f0a = g_forbidden.vkCmdCopyBufferToImage;
+    const unsigned long f0b = g_forbidden.vkCmdCopyImageToBuffer;
+    const unsigned long f0c = g_forbidden.glGetTexImage;
+    const unsigned long f0d = g_forbidden.glTexSubImage2D;
+
+    // ---- 1) Depth still round-trips (color-only slice; P5 scope). ----
+    const clk::time_point tDepth0 = clk::now();
+    glActiveTexture(GL_TEXTURE0);
+    glBindTexture(GL_TEXTURE_2D, sceneDepthTex_);
+    glGetTexImage(GL_TEXTURE_2D, 0, GL_DEPTH_COMPONENT, GL_FLOAT, s->depthScratch.data());
+    glBindTexture(GL_TEXTURE_2D, 0);
+    g_sub.copyDepthUs = usSince(tDepth0);
+    {
+        void* p = nullptr;
+        if (vmaMapMemory(s->allocator, s->depthStagingAlloc, &p) == VK_SUCCESS) {
+            std::memcpy(p, s->depthScratch.data(), (size_t)W * H * 4);
+            vmaUnmapMemory(s->allocator, s->depthStagingAlloc);
+        }
+    }
+
+    // ---- 2) GL copies the scene color into the shared tex (zero-copy target). ----
+    // glCopyImageSubData is a server-side image copy (NOT a readback / not a forbidden
+    // COLOR op) between two same-format RGBA16F GL_TEXTURE_2D images.
+    const clk::time_point tColorIn0 = clk::now();
+    glCopyImageSubData(sceneColorTex_, GL_TEXTURE_2D, 0, 0, 0, 0,
+                       s->colorGlView.glTex, GL_TEXTURE_2D, 0, 0, 0, 0,
+                       W, H, 1);
+    g_sub.copyColorInUs = usSince(tColorIn0);
+
+    // ---- 3) Begin the frame's parity slot; hand the shared color GL->VK. ----
+    VkFrameSync fs = vkImageResourceBeginFrame(&s->colorResource);
+    VkCommandBuffer cb = s->cbufInterop[fs.parity & 1u];
+    // GL releases the shared image in COLOR_ATTACHMENT layout == render-pass initialLayout.
+    glInteropSignalToVk(s->colorGlView, GL_LAYOUT_COLOR_ATTACHMENT_EXT, fs.parity);
+
+    // ---- 4) Upload BOTH param UBOs (values IDENTICAL to the readback path). ----
+    {
+        EdgeFogParams params{};
+        std::memcpy(params.invViewProj, inverseViewProj_, 16 * sizeof(float));
+        params.fogColor[0] = edgeFogColor_[0];
+        params.fogColor[1] = edgeFogColor_[1];
+        params.fogColor[2] = edgeFogColor_[2];
+        params._pad0 = 0.0f;
+        params.halfExtent = mapHalfExtent_;
+        params.fogStart = edgeFogStart_;
+        params.fogHeight = edgeFogHeight_;
+        params.fogMax = edgeFogMax_;
+        params.waterElevation = waterElevation_;
+        void* p = nullptr;
+        if (vmaMapMemory(s->allocator, s->edgeUboAlloc, &p) == VK_SUCCESS) {
+            std::memcpy(p, &params, sizeof(params));
+            vmaUnmapMemory(s->allocator, s->edgeUboAlloc);
+        }
+    }
+    {
+        FogOobParams params{};
+        std::memcpy(params.invViewProj, inverseViewProj_, 16 * sizeof(float));
+        params.fogColor[0] = oobFogColor_[0];
+        params.fogColor[1] = oobFogColor_[1];
+        params.fogColor[2] = oobFogColor_[2];
+        params.fogOpacity  = oobFogOpacity_;
+        params.time = SmokeMode::fixedTimestepEnabled()
+                          ? (float)SmokeMode::fixedClockSeconds()
+                          : (float)SDL_GetTicks() / 1000.0f;
+        void* p = nullptr;
+        if (vmaMapMemory(s->allocator, s->oobUboAlloc, &p) == VK_SUCCESS) {
+            std::memcpy(p, &params, sizeof(params));
+            vmaUnmapMemory(s->allocator, s->oobUboAlloc);
+        }
+    }
+
+    // ---- 5) Record: depth upload + fog render pass (2 draws). NO color copy. ----
+    const clk::time_point tRender0 = clk::now();
+    vkResetCommandBuffer(cb, 0);
+    VkCommandBufferBeginInfo bi{};
+    bi.sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_BEGIN_INFO;
+    bi.flags = VK_COMMAND_BUFFER_USAGE_ONE_TIME_SUBMIT_BIT;
+    if (vkBeginCommandBuffer(cb, &bi) != VK_SUCCESS) return;
+
+    auto barrier = [&](VkImage img, VkImageAspectFlags aspect, VkImageLayout oldL, VkImageLayout newL,
+                       VkAccessFlags srcA, VkAccessFlags dstA, VkPipelineStageFlags srcS, VkPipelineStageFlags dstS) {
+        VkImageMemoryBarrier b{};
+        b.sType = VK_STRUCTURE_TYPE_IMAGE_MEMORY_BARRIER;
+        b.oldLayout = oldL; b.newLayout = newL;
+        b.srcQueueFamilyIndex = VK_QUEUE_FAMILY_IGNORED;
+        b.dstQueueFamilyIndex = VK_QUEUE_FAMILY_IGNORED;
+        b.image = img;
+        b.subresourceRange = {aspect, 0, 1, 0, 1};
+        b.srcAccessMask = srcA; b.dstAccessMask = dstA;
+        vkCmdPipelineBarrier(cb, srcS, dstS, 0, 0, nullptr, 0, nullptr, 1, &b);
+    };
+
+    VkBufferImageCopy depthRegion{};
+    depthRegion.imageSubresource = {VK_IMAGE_ASPECT_DEPTH_BIT, 0, 0, 1};
+    depthRegion.imageExtent = {(uint32_t)W, (uint32_t)H, 1};
+
+    // depth: UNDEFINED -> TRANSFER_DST, copy, -> SHADER_READ_ONLY (EXPECTED depth copy).
+    barrier(s->depthImage, VK_IMAGE_ASPECT_DEPTH_BIT, VK_IMAGE_LAYOUT_UNDEFINED, VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL,
+            0, VK_ACCESS_TRANSFER_WRITE_BIT, VK_PIPELINE_STAGE_TOP_OF_PIPE_BIT, VK_PIPELINE_STAGE_TRANSFER_BIT);
+    vkCmdCopyBufferToImage(cb, s->depthStaging, s->depthImage, VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL, 1, &depthRegion);
+    barrier(s->depthImage, VK_IMAGE_ASPECT_DEPTH_BIT, VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL, VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL,
+            VK_ACCESS_TRANSFER_WRITE_BIT, VK_ACCESS_SHADER_READ_BIT, VK_PIPELINE_STAGE_TRANSFER_BIT, VK_PIPELINE_STAGE_FRAGMENT_SHADER_BIT);
+
+    // NO vkCmdCopyBufferToImage for color: the shared image already holds the scene color
+    // (GL copied + handed it over in COLOR_ATTACHMENT layout, the render pass initialLayout).
+    // ONE render pass: LOAD preloaded color, blend edge then oob fog OVER it in ORDER
+    // (sequential draws preserve blend order -- NO internal barrier), STORE. No copy-out.
+    VkRenderPassBeginInfo rbi{};
+    rbi.sType = VK_STRUCTURE_TYPE_RENDER_PASS_BEGIN_INFO;
+    rbi.renderPass = s->rpass;
+    rbi.framebuffer = s->fb;
+    rbi.renderArea = {{0, 0}, {(uint32_t)W, (uint32_t)H}};
+    rbi.clearValueCount = 0; // LOAD, no clear
+    vkCmdBeginRenderPass(cb, &rbi, VK_SUBPASS_CONTENTS_INLINE);
+    // draw 1: edge fog.
+    vkCmdBindPipeline(cb, VK_PIPELINE_BIND_POINT_GRAPHICS, s->edgePipe);
+    vkCmdBindDescriptorSets(cb, VK_PIPELINE_BIND_POINT_GRAPHICS, s->playout, 0, 1, &s->edgeSet, 0, nullptr);
+    vkCmdDraw(cb, 3, 1, 0, 0);
+    // draw 2: oob fog.
+    vkCmdBindPipeline(cb, VK_PIPELINE_BIND_POINT_GRAPHICS, s->oobPipe);
+    vkCmdBindDescriptorSets(cb, VK_PIPELINE_BIND_POINT_GRAPHICS, s->playout, 0, 1, &s->oobSet, 0, nullptr);
+    vkCmdDraw(cb, 3, 1, 0, 0);
+    vkCmdEndRenderPass(cb);
+    // render pass finalLayout = COLOR_ATTACHMENT_OPTIMAL (layout-stable, P1.5). No copy-out.
+
+    if (vkEndCommandBuffer(cb) != VK_SUCCESS) return;
+
+    // ---- 6) Submit: WAIT the GL->VK semaphore; SIGNAL the VK->GL semaphore (P1.5) +
+    // the FENCE (slot-recycle guard, waited at the NEXT BeginFrame on this slot). ----
+    const bool useGpuVk2Gl = s->colorGlView.vkToGlImported && (fs.vk2gl != VK_NULL_HANDLE);
+    VkPipelineStageFlags waitStage = VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT;
+    VkSubmitInfo si{};
+    si.sType = VK_STRUCTURE_TYPE_SUBMIT_INFO;
+    si.waitSemaphoreCount = 1;
+    si.pWaitSemaphores    = &fs.signal;   // GL signalled this via glInteropSignalToVk
+    si.pWaitDstStageMask  = &waitStage;
+    si.commandBufferCount = 1;
+    si.pCommandBuffers    = &cb;
+    if (useGpuVk2Gl) {
+        si.signalSemaphoreCount = 1;
+        si.pSignalSemaphores    = &fs.vk2gl;  // VK->GL GPU hand-off (P1.5)
+    }
+    if (vkQueueSubmit(s->queue, 1, &si, fs.fence) != VK_SUCCESS) {
+        vlog("[VK_INTEROP] subgraph vkQueueSubmit failed -- disabling, GL fallback next frame.");
+        setFallback("interop_submit_failed");
+        s->disabled = true;
+        return;
+    }
+    if (useGpuVk2Gl) {
+        // GPU hand-off: GL waits the VK->GL semaphore -- no inline CPU fence stall. VK left
+        // the image in COLOR_ATTACHMENT_OPTIMAL (layout-stable pass), so GL re-acquires it
+        // in GL_LAYOUT_COLOR_ATTACHMENT_EXT. The fence recycles the slot two frames later.
+        glInteropWaitFromVk(s->colorGlView, GL_LAYOUT_COLOR_ATTACHMENT_EXT, fs.parity);
+    } else {
+        // Fail-soft: VK->GL sem not imported -> inline CPU fence wait (correct, just stalls).
+        if (vkWaitForFences(s->device, 1, &fs.fence, VK_TRUE, 5ull * 1000 * 1000 * 1000) != VK_SUCCESS) {
+            vlog("[VK_INTEROP] subgraph fence wait failed/timeout -- disabling, GL fallback.");
+            setFallback("interop_fence_timeout");
+            s->disabled = true;
+            return;
+        }
+    }
+    g_sub.renderUs = usSince(tRender0);
+    g_sub.edgeFogDrawUs = g_sub.renderUs * 0.5;
+    g_sub.oobFogDrawUs  = g_sub.renderUs * 0.5;
+
+    // ---- 7) Composite: copy the fogged shared color into sceneColorTex_ (GL->GL, no
+    // readback) so the downstream GL composite reads the result. ----
+    const clk::time_point tOut0 = clk::now();
+    glCopyImageSubData(s->colorGlView.glTex, GL_TEXTURE_2D, 0, 0, 0, 0,
+                       sceneColorTex_, GL_TEXTURE_2D, 0, 0, 0, 0,
+                       W, H, 1);
+    glActiveTexture(GL_TEXTURE0);
+    g_sub.colorOutUs = usSince(tOut0);
+
+    // ---- blocker #5: HARD assert -- no COLOR-side readback/copy fired this frame. ----
+    const bool colorReadbackFired =
+        (g_forbidden.vkCmdCopyBufferToImage != f0a) ||
+        (g_forbidden.vkCmdCopyImageToBuffer != f0b) ||
+        (g_forbidden.glGetTexImage          != f0c) ||
+        (g_forbidden.glTexSubImage2D        != f0d);
+    if (colorReadbackFired) {
+        vlog("[VK_INTEROP] FATAL: a COLOR-side readback/copy fired on the subgraph interop "
+             "path (copyBufToImg=%lu copyImgToBuf=%lu getTexImage=%lu texSubImage=%lu) -- "
+             "the zero-copy invariant is violated; failing the frame + disabling interop.",
+             g_forbidden.vkCmdCopyBufferToImage, g_forbidden.vkCmdCopyImageToBuffer,
+             g_forbidden.glGetTexImage, g_forbidden.glTexSubImage2D);
+        setFallback("interop_did_readback");
+        s->disabled = true;
+        return;
+    }
+
+    // Success: 2 Vulkan draws did BOTH fog effects; the seam skips BOTH GL fog sites.
+    g_sub.vkDraws   = 2;
+    g_sub.glSkipped = 2;
+    ++g_sub.usedVulkan;
+    ++g_sub.usedInterop;
+    g_sub.totalUs = usSince(tTotal0);
+}
+
+// ---------------------------------------------------------------------------
 // destroyVulkanPostprocessSubgraph(): called from gosPostProcess::destroy().
 // ---------------------------------------------------------------------------
 void gosPostProcess::destroyVulkanPostprocessSubgraph()
@@ -1092,6 +1554,17 @@ void gosPostProcess::destroyVulkanPostprocessSubgraph()
          g_sub.expectedGlReplaced, g_sub.vkDraws, g_sub.glSkipped,
          g_sub.copyDepthUs, g_sub.copyColorInUs, g_sub.edgeFogDrawUs, g_sub.oobFogDrawUs,
          g_sub.colorOutUs, g_sub.totalUs);
+
+    // P2 (blocker #5): interop liveness + forbidden COLOR-op counters. The offline/game
+    // proof asserts the four forbidden_* ==0 on the interop path; used_interop>0 confirms
+    // the zero-copy color path actually ran. Depth-side copies are EXPECTED (P5 scope) and
+    // are NOT color forbidden ops (they use the depth staging path, uncounted here).
+    vlog("[VK_PP_SUBGRAPH_INTEROP] interop_active=%d vk2gl_sem=%d used_interop=%lu "
+         "forbidden_copyBufToImg=%lu forbidden_copyImgToBuf=%lu forbidden_getTexImage=%lu "
+         "forbidden_texSubImage=%lu",
+         g_sub.interopActive, g_sub.vk2glSemActive, g_sub.usedInterop,
+         g_forbidden.vkCmdCopyBufferToImage, g_forbidden.vkCmdCopyImageToBuffer,
+         g_forbidden.glGetTexImage, g_forbidden.glTexSubImage2D);
 
     if (!vkPostprocessSubgraph_) return;
     destroy_subgraph(vkPostprocessSubgraph_);
