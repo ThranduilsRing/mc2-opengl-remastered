@@ -1601,6 +1601,14 @@ def main():
                             # the allowlist Popen drops it and the gate-ON interop smoke
                             # silently runs the subgraph readback path (gate inert).
                             "MC2_VULKAN_POSTPROCESS_SUBGRAPH_INTEROP",
+                            # VK-INTEROP-BRIDGE-1 P3: the SSAO island's COLOR I/O on the
+                            # zero-copy interop seam (pass2 scene color + blended color;
+                            # depth+normal stay readback = P5 scope). Default OFF, fail-soft
+                            # to the SSAO readback path. Requires the SSAO Vulkan backend
+                            # (MC2_SSAO=1 + MC2_POSTPROCESS_BACKEND=vk). Without this in the
+                            # allowlist Popen drops it and the gate-ON interop smoke silently
+                            # runs the SSAO readback path (gate inert).
+                            "MC2_VK_SSAO_INTEROP",
                             # RENDER-BACKEND-REGION-IFACE-1 (Layer-6 ENTRY): master
                             # gate + backend sub-selector for the SELECTABLE
                             # PostprocessFog region. Without these in the allowlist

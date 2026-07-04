@@ -126,7 +126,12 @@ extern "C" void mc2_vulkan_ssao_island_health(
     unsigned long* attempted, unsigned long* usedVulkan,
     const char** fallbackReason, unsigned long* vkDraws,
     double* copyDepthUs, double* copyNormalUs, double* copyColorInUs,
-    double* occlusionUs, double* applyUs, double* colorOutUs, double* totalUs);
+    double* occlusionUs, double* applyUs, double* colorOutUs, double* totalUs,
+    // VK-INTEROP-BRIDGE-1 P3: zero-copy COLOR I/O interop liveness + forbidden counters.
+    int* interopActive, int* vk2glSemActive, unsigned long* usedInterop,
+    unsigned long* forbiddenCopyBufToImg, unsigned long* forbiddenCopyImgToBuf,
+    unsigned long* forbiddenGetTexImage, unsigned long* forbiddenTexSubImage,
+    unsigned long* depthNormalCopyBufToImg, unsigned long* depthNormalGetTexImage);
 // VK-REGION-HZB-1: HZB Vulkan island health snapshot (defined in
 // GameOS/gameos/vulkan_hzb_island.cpp, same #ifdef MC2_VULKAN_ISLAND).
 extern "C" void mc2_vulkan_hzb_island_health(
@@ -817,8 +822,12 @@ std::string buildSnapshotJson(const RenderSnapshot& snap,
         const char* fbr = "";
         unsigned long ve = 0, att = 0, used = 0, vkDraws = 0;
         double cdUs = 0.0, cnUs = 0.0, cciUs = 0.0, occUs = 0.0, apUs = 0.0, coUs = 0.0, totUs = 0.0;
+        int ia = 0, v2g = 0;
+        unsigned long usedInterop = 0, fCbi = 0, fCib = 0, fGti = 0, fTsi = 0, dnCbi = 0, dnGti = 0;
         mc2_vulkan_ssao_island_health(&va, &be, &dev, &ve, &att, &used, &fbr, &vkDraws,
-                                      &cdUs, &cnUs, &cciUs, &occUs, &apUs, &coUs, &totUs);
+                                      &cdUs, &cnUs, &cciUs, &occUs, &apUs, &coUs, &totUs,
+                                      &ia, &v2g, &usedInterop, &fCbi, &fCib, &fGti, &fTsi,
+                                      &dnCbi, &dnGti);
         s << "  ,\n";
         s << "  \"vulkan_ssao_island\": {\n";
         s << "    \"vulkan_available\": " << va << ",\n";
@@ -835,7 +844,17 @@ std::string buildSnapshotJson(const RenderSnapshot& snap,
         s << "    \"occlusion_us\": " << occUs << ",\n";
         s << "    \"apply_us\": " << apUs << ",\n";
         s << "    \"color_out_us\": " << coUs << ",\n";
-        s << "    \"total_us\": " << totUs << "\n";
+        s << "    \"total_us\": " << totUs << ",\n";
+        // VK-INTEROP-BRIDGE-1 P3: zero-copy COLOR I/O interop liveness + forbidden counters.
+        s << "    \"interop_active\": " << ia << ",\n";
+        s << "    \"vk2gl_sem_active\": " << v2g << ",\n";
+        s << "    \"ssao_used_interop\": " << usedInterop << ",\n";
+        s << "    \"forbidden_copy_buf_to_img\": " << fCbi << ",\n";
+        s << "    \"forbidden_copy_img_to_buf\": " << fCib << ",\n";
+        s << "    \"forbidden_get_tex_image\": " << fGti << ",\n";
+        s << "    \"forbidden_tex_sub_image\": " << fTsi << ",\n";
+        s << "    \"depthnormal_copy_buf_to_img\": " << dnCbi << ",\n";
+        s << "    \"depthnormal_get_tex_image\": " << dnGti << "\n";
         s << "  }\n";
     }
     // VK-REGION-HZB-1: additive "vulkan_hzb_island" section (same

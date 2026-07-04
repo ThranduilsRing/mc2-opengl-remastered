@@ -515,6 +515,10 @@ public:
     bool  runSSAORegionVulkanBackend(const RenderCore::PostprocessSSAORegionContext& ctx,
                                       RenderCore::RegionOutput* out);
     void  runSSAOVulkan();
+    // VK-INTEROP-BRIDGE-1 P3: the zero-copy COLOR I/O interop per-frame path (pass2
+    // scene color + blended color on the shared exportable VkImageResource seam; depth
+    // + normal stay readback = P5 scope). Reached from runSSAOVulkan() when useInterop.
+    void  runSSAOVulkanInterop();
     void  destroyVulkanSSAOIsland();
     struct VulkanSSAOIsland;   // defined in vulkan_ssao_island.cpp
     VulkanSSAOIsland* vkSSAOIsland_ = nullptr;

@@ -57,9 +57,24 @@
 
 #ifdef MC2_VULKAN_ISLAND
 
+// VK-INTEROP-BRIDGE-1 P3: the Win32 external-handle KHR structs/entrypoints
+// (VK_KHR_EXTERNAL_MEMORY_WIN32_EXTENSION_NAME etc.) are gated behind this macro;
+// it MUST be defined before <volk.h> so those symbols are declared for the interop
+// device-ext list. Same discipline as vk_image_resource.h (spike main.cpp:31).
+#ifndef VK_USE_PLATFORM_WIN32_KHR
+#define VK_USE_PLATFORM_WIN32_KHR
+#endif
+
 // volk owns Vulkan dispatch (dynamic load; no hard link to vulkan-1.dll).
 #include <volk.h>
 #include "vk_mem_alloc.h"
+
+// VK-INTEROP-BRIDGE-1 P3: the composable zero-copy GL<->VK interop SEAM primitives.
+// vk_image_resource = GL-free raw-allocated exportable VkImage + double-buffered
+// sync (post-P1.5 vkToGlSem VK->GL back-channel); gl_interop_view = the GL-boundary
+// adapter (import into GL, LUID match, signal/wait). Both #ifdef MC2_VULKAN_ISLAND.
+#include "vk_image_resource.h"
+#include "gl_interop_view.h"
 
 // GL for the glGetTexImage / glTexSubImage2D bridge + the sampleable GL textures.
 #include "utils/gl_utils.h"
@@ -90,6 +105,11 @@ struct SsaoIslandHealth {
 
     unsigned long vkDraws        = 0;  // last-frame actual Vulkan draws (2 on success)
 
+    // VK-INTEROP-BRIDGE-1 P3: zero-copy COLOR I/O interop liveness.
+    int  interopActive     = 0;   // useInterop resolved true this run
+    int  vk2glSemActive    = 0;   // VK->GL GPU semaphore hand-off imported (P1.5)
+    unsigned long usedInterop = 0; // frames composited via the zero-copy color path
+
     // timings (last frame, microseconds)
     double copyDepthUs   = 0.0;
     double copyNormalUs  = 0.0;
@@ -106,6 +126,39 @@ void setFallback(const char* reason) {
                  sizeof(g_health.fallbackReason) - 1);
     g_health.fallbackReason[sizeof(g_health.fallbackReason) - 1] = '\0';
 }
+
+// VK-INTEROP-BRIDGE-1 P3 blocker #5: forbidden COLOR-op counters. Incremented at
+// the call sites of the four COLOR-side readback/copy ops the interop path MUST
+// eliminate (scene-color input pull/upload + blended-color output readback/writeback).
+// On the interop path any of these firing for COLOR data means a copy slipped through
+// -> setFallback + LOUD log + fail the frame (parity-green-with-readback is a FAIL).
+// DEPTH + NORMAL copies are EXPECTED (they still round-trip in this color-only slice --
+// P5 scope) and are counted SEPARATELY so they never trip the color assert.
+struct InteropForbidden {
+    unsigned long vkCmdCopyBufferToImage = 0;  // COLOR staging upload  (must be 0 on interop)
+    unsigned long vkCmdCopyImageToBuffer = 0;  // COLOR readback        (must be 0 on interop)
+    unsigned long glGetTexImage          = 0;  // COLOR pull            (must be 0 on interop)
+    unsigned long glTexSubImage2D        = 0;  // COLOR writeback       (must be 0 on interop)
+};
+InteropForbidden g_interopForbidden;
+// Depth/normal-side copies (EXPECTED on the color-only slice; excluded from the color assert).
+unsigned long g_ssaoDepthNormalCopyBufferToImage = 0;
+unsigned long g_ssaoDepthNormalGetTexImage       = 0;
+
+// VK-INTEROP-BRIDGE-1 P3 (blocker #6): the interop gate, resolved ONCE. Off ->
+// useInterop=false -> readback path -> byte-identical, and NOT one external-ext call /
+// probe is issued (this getter is the ONLY place the env is read, and every interop
+// code path is behind s->useInterop). Requires the SSAO Vulkan backend to be selected
+// (MC2_SSAO=1 + MC2_POSTPROCESS_BACKEND=vk) -- enforced by the caller; this only reads
+// the interop request bit.
+bool ssaoInteropGateRequested() {
+    static int state = -1; // -1 untested
+    if (state == -1) {
+        const char* e = std::getenv("MC2_VK_SSAO_INTEROP");
+        state = (e && e[0] == '1') ? 1 : 0;
+    }
+    return state == 1;
+}
 } // namespace
 
 // Read-only accessor consumed by GameOS/gameos/debug_state_dump.cpp (under the same
@@ -116,7 +169,12 @@ extern "C" void mc2_vulkan_ssao_island_health(
     unsigned long* attempted, unsigned long* usedVulkan,
     const char** fallbackReason, unsigned long* vkDraws,
     double* copyDepthUs, double* copyNormalUs, double* copyColorInUs,
-    double* occlusionUs, double* applyUs, double* colorOutUs, double* totalUs) {
+    double* occlusionUs, double* applyUs, double* colorOutUs, double* totalUs,
+    // VK-INTEROP-BRIDGE-1 P3: zero-copy COLOR I/O interop liveness + forbidden counters.
+    int* interopActive, int* vk2glSemActive, unsigned long* usedInterop,
+    unsigned long* forbiddenCopyBufToImg, unsigned long* forbiddenCopyImgToBuf,
+    unsigned long* forbiddenGetTexImage, unsigned long* forbiddenTexSubImage,
+    unsigned long* depthNormalCopyBufToImg, unsigned long* depthNormalGetTexImage) {
     if (vulkanAvailable)  *vulkanAvailable  = g_health.vulkanAvailable;
     if (buildEnabled)     *buildEnabled     = g_health.buildEnabled;
     if (deviceName)       *deviceName       = g_health.deviceName;
@@ -132,6 +190,15 @@ extern "C" void mc2_vulkan_ssao_island_health(
     if (applyUs)          *applyUs          = g_health.applyUs;
     if (colorOutUs)       *colorOutUs       = g_health.colorOutUs;
     if (totalUs)          *totalUs          = g_health.totalUs;
+    if (interopActive)         *interopActive         = g_health.interopActive;
+    if (vk2glSemActive)        *vk2glSemActive        = g_health.vk2glSemActive;
+    if (usedInterop)           *usedInterop           = g_health.usedInterop;
+    if (forbiddenCopyBufToImg) *forbiddenCopyBufToImg = g_interopForbidden.vkCmdCopyBufferToImage;
+    if (forbiddenCopyImgToBuf) *forbiddenCopyImgToBuf = g_interopForbidden.vkCmdCopyImageToBuffer;
+    if (forbiddenGetTexImage)  *forbiddenGetTexImage  = g_interopForbidden.glGetTexImage;
+    if (forbiddenTexSubImage)  *forbiddenTexSubImage  = g_interopForbidden.glTexSubImage2D;
+    if (depthNormalCopyBufToImg) *depthNormalCopyBufToImg = g_ssaoDepthNormalCopyBufferToImage;
+    if (depthNormalGetTexImage)  *depthNormalGetTexImage  = g_ssaoDepthNormalGetTexImage;
 }
 
 namespace {
@@ -358,6 +425,19 @@ struct gosPostProcess::VulkanSSAOIsland {
     std::vector<float>    depthScratch;   // fullW*fullH floats
     std::vector<uint16_t> normalScratch;  // fullW*fullH*4 halfs (RGBA16F GBuffer1)
     std::vector<uint16_t> colorScratch;   // fullW*fullH*4 halfs
+
+    // VK-INTEROP-BRIDGE-1 P3: zero-copy COLOR I/O seam. When useInterop is true the
+    // pass2 (apply) color attachment is repointed to a shared exportable
+    // VkImageResource (colorResource) imported into GL (colorGlView); the VMA
+    // colorImage / colorStaging / colorReadback are NOT created (no readback path).
+    // Occlusion pass1, depth + normal stay UNCHANGED (depth/normal readback = P5 scope).
+    bool            useInterop = false;      // gate AND resource-create-ok AND LUID-ok
+    VkImageResource colorResource{};         // exportable RGBA16F, IS the pass2 attachment
+    GlInteropView   colorGlView{};           // GL side of colorResource (glTex is the shared FBO)
+    GLuint          interopFbo = 0;          // GL FBO wrapping colorGlView.glTex (scene->shared copy)
+    // P1.5: double-buffered interop command buffers (per parity slot) so the reset never
+    // races a still-pending submit (the VK->GL GPU hand-off means no inline CPU fence wait).
+    VkCommandBuffer cbufInterop[2] = {VK_NULL_HANDLE, VK_NULL_HANDLE};
 };
 
 namespace {
@@ -367,6 +447,11 @@ void destroy_island(gosPostProcess::VulkanSSAOIsland* s) {
     if (!s) return;
     VkDevice d = s->device;
     if (d != VK_NULL_HANDLE) vkDeviceWaitIdle(d);
+    // VK-INTEROP-BRIDGE-1 P3: tear down the shared color seam first (GL side then VK
+    // side). The GL FBO wraps the imported shared tex; delete it before the GL view.
+    if (s->interopFbo) { glDeleteFramebuffers(1, &s->interopFbo); s->interopFbo = 0; }
+    glInteropViewDestroy(&s->colorGlView);
+    if (d != VK_NULL_HANDLE) vkImageResourceDestroy(&s->colorResource, d);
     if (s->fence)  vkDestroyFence(d, s->fence, nullptr);
     if (s->cpool)  vkDestroyCommandPool(d, s->cpool, nullptr);
     if (s->occPipe)   vkDestroyPipeline(d, s->occPipe, nullptr);
@@ -445,6 +530,20 @@ bool build_island(gosPostProcess::VulkanSSAOIsland* s, int fullW, int fullH, int
     std::vector<const char*> instExts;
     std::vector<VkValidationFeatureEnableEXT> valFeatures;
     const char* valPreset = "off";
+
+    // VK-INTEROP-BRIDGE-1 P3 (blocker #2/#6): the external-capabilities instance
+    // extensions are added ONLY when interop is requested. Gate OFF -> instExts is
+    // untouched -> the instance is created with the ORIGINAL (empty) ext list
+    // (byte-identical, zero probes -- blocker #6). These three caps exts are
+    // core-promoted in 1.1 and universally present.
+    const bool wantInterop = ssaoInteropGateRequested();
+    if (wantInterop) {
+        instExts.push_back(VK_KHR_EXTERNAL_MEMORY_CAPABILITIES_EXTENSION_NAME);
+        instExts.push_back(VK_KHR_EXTERNAL_SEMAPHORE_CAPABILITIES_EXTENSION_NAME);
+        instExts.push_back(VK_KHR_GET_PHYSICAL_DEVICE_PROPERTIES_2_EXTENSION_NAME);
+        vlog("[VK_SSAO_INTEROP] MC2_VK_SSAO_INTEROP=1 -- requesting external-memory/-semaphore "
+             "instance caps exts (blocker #2).");
+    }
     bool wantValidation = resolve_validation_preset(valFeatures, valPreset);
     if (wantValidation) {
         uint32_t layerCount = 0;
@@ -518,6 +617,18 @@ bool build_island(gosPostProcess::VulkanSSAOIsland* s, int fullW, int fullH, int
     vkEnumeratePhysicalDevices(s->instance, &devCount, devs.data());
     s->phys = devs[0];
 
+    // VK-INTEROP-BRIDGE-1 P3 (blocker #2): when interop is requested, prefer the
+    // DISCRETE GPU (devs[0] can be the wrong device on a multi-GPU box). The LUID
+    // match itself runs in glInteropViewCreate against the GL device later; here we
+    // only bias selection so the LUID check is likely to pass. Single-GPU -> unchanged.
+    if (wantInterop && devCount > 1) {
+        for (auto pd : devs) {
+            VkPhysicalDeviceProperties p{};
+            vkGetPhysicalDeviceProperties(pd, &p);
+            if (p.deviceType == VK_PHYSICAL_DEVICE_TYPE_DISCRETE_GPU) { s->phys = pd; break; }
+        }
+    }
+
     {
         VkPhysicalDeviceProperties props{};
         vkGetPhysicalDeviceProperties(s->phys, &props);
@@ -540,10 +651,25 @@ bool build_island(gosPostProcess::VulkanSSAOIsland* s, int fullW, int fullH, int
     qci.queueFamilyIndex = s->gfxFamily;
     qci.queueCount = 1;
     qci.pQueuePriorities = &prio;
+    // VK-INTEROP-BRIDGE-1 P3 (blocker #2/#6): the six external-memory/-semaphore
+    // Win32 device exts are added ONLY when interop is requested. Gate OFF -> devExts
+    // stays empty -> the device is created with NO extensions (byte-identical to today).
+    std::vector<const char*> devExts;
+    if (wantInterop) {
+        devExts.push_back(VK_KHR_EXTERNAL_MEMORY_EXTENSION_NAME);
+        devExts.push_back(VK_KHR_EXTERNAL_MEMORY_WIN32_EXTENSION_NAME);
+        devExts.push_back(VK_KHR_EXTERNAL_SEMAPHORE_EXTENSION_NAME);
+        devExts.push_back(VK_KHR_EXTERNAL_SEMAPHORE_WIN32_EXTENSION_NAME);
+        devExts.push_back(VK_KHR_DEDICATED_ALLOCATION_EXTENSION_NAME);
+        devExts.push_back(VK_KHR_GET_MEMORY_REQUIREMENTS_2_EXTENSION_NAME);
+    }
+
     VkDeviceCreateInfo dci{};
     dci.sType = VK_STRUCTURE_TYPE_DEVICE_CREATE_INFO;
     dci.queueCreateInfoCount = 1;
     dci.pQueueCreateInfos = &qci;
+    dci.enabledExtensionCount   = static_cast<uint32_t>(devExts.size());
+    dci.ppEnabledExtensionNames = devExts.empty() ? nullptr : devExts.data();
     r = vkCreateDevice(s->phys, &dci, nullptr, &s->device);
     if (r != VK_SUCCESS) { vlog("vkCreateDevice failed (%d).", (int)r); return false; }
     volkLoadDevice(s->device);
@@ -561,6 +687,55 @@ bool build_island(gosPostProcess::VulkanSSAOIsland* s, int fullW, int fullH, int
         aci.pVulkanFunctions = &fns;
         r = vmaCreateAllocator(&aci, &s->allocator);
         if (r != VK_SUCCESS) { vlog("vmaCreateAllocator failed (%d).", (int)r); s->allocator = VK_NULL_HANDLE; return false; }
+    }
+
+    // ---- VK-INTEROP-BRIDGE-1 P3: shared exportable full-res COLOR image + GL view ----
+    // When interop is requested, the pass2 (apply) color attachment becomes a
+    // raw-allocated exportable VkImageResource (NOT the VMA colorImage) imported into
+    // GL zero-copy. useInterop = gate AND resource-create-ok AND GL-import(LUID)-ok.
+    // Any failure -> fail-soft: useInterop stays false and the VMA readback color path
+    // is built below. Blocker #1: exportable image needs COLOR_ATTACHMENT (it IS the
+    // attachment) + SAMPLED usage; NO transfer usage (no readback copies happen).
+    // Depth + normal + occlusion pass1 are UNCHANGED (P5 scope for depth/normal zero-copy).
+    s->useInterop = false;
+    if (wantInterop) {
+        bool ok = vkImageResourceCreate(&s->colorResource, s->device, s->phys,
+                                        (uint32_t)fullW, (uint32_t)fullH, kFullResColorFmt,
+                                        VK_IMAGE_USAGE_COLOR_ATTACHMENT_BIT |
+                                        VK_IMAGE_USAGE_SAMPLED_BIT,
+                                        /*exportable*/ true);
+        if (ok) ok = glInteropViewCreate(&s->colorGlView, &s->colorResource, s->phys, GL_RGBA16F);
+        if (ok) {
+            // GL FBO wrapping the shared texture, so the scene color can be blitted into
+            // it on the GL side (a GL->GL copy -- NOT a forbidden readback op).
+            glGenFramebuffers(1, &s->interopFbo);
+            glBindFramebuffer(GL_FRAMEBUFFER, s->interopFbo);
+            glFramebufferTexture2D(GL_FRAMEBUFFER, GL_COLOR_ATTACHMENT0, GL_TEXTURE_2D,
+                                   s->colorGlView.glTex, 0);
+            GLenum fbst = glCheckFramebufferStatus(GL_FRAMEBUFFER);
+            glBindFramebuffer(GL_FRAMEBUFFER, 0);
+            if (fbst != GL_FRAMEBUFFER_COMPLETE) {
+                vlog("[VK_SSAO_INTEROP] shared-tex FBO incomplete (0x%x) -- fail-soft to readback.", fbst);
+                ok = false;
+            }
+        }
+        if (ok) {
+            s->useInterop = true;
+            g_health.interopActive = 1;
+            // P1.5: is the VK->GL GPU semaphore hand-off available, or do we keep the
+            // CPU fence wait? glInteropViewCreate sets vkToGlImported fail-soft.
+            g_health.vk2glSemActive = s->colorGlView.vkToGlImported ? 1 : 0;
+            vlog("[VK_SSAO_INTEROP] color interop seam ACTIVE -- zero-copy exportable RGBA16F "
+                 "pass2 attachment imported into GL (readback color path disabled). vk2gl_sem=%d "
+                 "(%s VK->GL hand-off).", g_health.vk2glSemActive,
+                 g_health.vk2glSemActive ? "GPU-semaphore" : "CPU-fence-fallback");
+        } else {
+            if (s->interopFbo) { glDeleteFramebuffers(1, &s->interopFbo); s->interopFbo = 0; }
+            glInteropViewDestroy(&s->colorGlView);
+            vkImageResourceDestroy(&s->colorResource, s->device);
+            setFallback("interop_setup_failed");
+            vlog("[VK_SSAO_INTEROP] setup failed -- falling back to the readback color path.");
+        }
     }
 
     auto make_image = [&](VkFormat fmt, VkImageUsageFlags usage, int w, int h,
@@ -590,8 +765,13 @@ bool build_island(gosPostProcess::VulkanSSAOIsland* s, int fullW, int fullH, int
                     fullW, fullH, &s->depthImage, &s->depthAlloc)) return false;
     if (!make_image(kNormalFmt, VK_IMAGE_USAGE_SAMPLED_BIT | VK_IMAGE_USAGE_TRANSFER_DST_BIT,
                     fullW, fullH, &s->normalImage, &s->normalAlloc)) return false;
-    if (!make_image(kFullResColorFmt, VK_IMAGE_USAGE_COLOR_ATTACHMENT_BIT | VK_IMAGE_USAGE_TRANSFER_DST_BIT |
-                    VK_IMAGE_USAGE_TRANSFER_SRC_BIT, fullW, fullH, &s->colorImage, &s->colorAlloc)) return false;
+    // Color: on the interop path the shared exportable image IS the pass2 attachment,
+    // so the VMA colorImage is NOT created (no wasted memory -- blocker #1). Only the
+    // readback path needs it: attachment + transfer-dst (preload) + transfer-src (readback).
+    if (!s->useInterop) {
+        if (!make_image(kFullResColorFmt, VK_IMAGE_USAGE_COLOR_ATTACHMENT_BIT | VK_IMAGE_USAGE_TRANSFER_DST_BIT |
+                        VK_IMAGE_USAGE_TRANSFER_SRC_BIT, fullW, fullH, &s->colorImage, &s->colorAlloc)) return false;
+    }
     if (!make_image(kOcclusionFmt, VK_IMAGE_USAGE_COLOR_ATTACHMENT_BIT | VK_IMAGE_USAGE_SAMPLED_BIT,
                     halfW, halfH, &s->occImage, &s->occAlloc)) return false;
 
@@ -608,7 +788,11 @@ bool build_island(gosPostProcess::VulkanSSAOIsland* s, int fullW, int fullH, int
     };
     if (!make_view(s->depthImage,  kDepthFmt,        VK_IMAGE_ASPECT_DEPTH_BIT, &s->depthView))  return false;
     if (!make_view(s->normalImage, kNormalFmt,       VK_IMAGE_ASPECT_COLOR_BIT, &s->normalView)) return false;
-    if (!make_view(s->colorImage,  kFullResColorFmt, VK_IMAGE_ASPECT_COLOR_BIT, &s->colorView))  return false;
+    // Interop: the shared exportable image supplies its own view (colorResource.view);
+    // the readback path makes its own over the VMA colorImage.
+    if (!s->useInterop) {
+        if (!make_view(s->colorImage,  kFullResColorFmt, VK_IMAGE_ASPECT_COLOR_BIT, &s->colorView))  return false;
+    }
     if (!make_view(s->occImage,    kOcclusionFmt,    VK_IMAGE_ASPECT_COLOR_BIT, &s->occView))    return false;
 
     auto make_sampler = [&](VkSampler* samp, VkFilter filter) -> bool {
@@ -653,8 +837,11 @@ bool build_island(gosPostProcess::VulkanSSAOIsland* s, int fullW, int fullH, int
     const VkDeviceSize colorBytes  = (VkDeviceSize)fullW * fullH * 4 * 2;  // RGBA16F
     if (!make_buffer(depthBytes,  VK_BUFFER_USAGE_TRANSFER_SRC_BIT, &s->depthStaging,  &s->depthStagingAlloc))  return false;
     if (!make_buffer(normalBytes, VK_BUFFER_USAGE_TRANSFER_SRC_BIT, &s->normalStaging, &s->normalStagingAlloc)) return false;
-    if (!make_buffer(colorBytes,  VK_BUFFER_USAGE_TRANSFER_SRC_BIT, &s->colorStaging,  &s->colorStagingAlloc))  return false;
-    if (!make_buffer(colorBytes,  VK_BUFFER_USAGE_TRANSFER_DST_BIT, &s->colorReadback, &s->colorReadbackAlloc)) return false;
+    // Color staging (upload) + readback are ONLY for the readback path -- skipped on interop.
+    if (!s->useInterop) {
+        if (!make_buffer(colorBytes,  VK_BUFFER_USAGE_TRANSFER_SRC_BIT, &s->colorStaging,  &s->colorStagingAlloc))  return false;
+        if (!make_buffer(colorBytes,  VK_BUFFER_USAGE_TRANSFER_DST_BIT, &s->colorReadback, &s->colorReadbackAlloc)) return false;
+    }
     if (!make_buffer(sizeof(SSAOOcclusionParams), VK_BUFFER_USAGE_UNIFORM_BUFFER_BIT, &s->occlusionUbo, &s->occlusionUboAlloc)) return false;
     if (!make_buffer(sizeof(SSAOApplyParams),     VK_BUFFER_USAGE_UNIFORM_BUFFER_BIT, &s->applyUbo,     &s->applyUboAlloc))     return false;
 
@@ -718,31 +905,65 @@ bool build_island(gosPostProcess::VulkanSSAOIsland* s, int fullW, int fullH, int
         att.storeOp = VK_ATTACHMENT_STORE_OP_STORE;
         att.stencilLoadOp = VK_ATTACHMENT_LOAD_OP_DONT_CARE;
         att.stencilStoreOp = VK_ATTACHMENT_STORE_OP_DONT_CARE;
+        // Layout reconcile (blocker #1). Readback path: attachment preloaded (barrier'd
+        // to COLOR_ATTACHMENT before the pass) -> TRANSFER_SRC for the copy-back.
+        // Interop path (P1.5 layout-STABLE): GL hands the shared image over in
+        // GL_LAYOUT_COLOR_ATTACHMENT_EXT (== COLOR_ATTACHMENT_OPTIMAL) so initialLayout
+        // matches (no UNDEFINED first-use barrier -- the cross-API semaphore carries the
+        // hand-off); finalLayout stays COLOR_ATTACHMENT_OPTIMAL so EndRenderPass performs
+        // NO layout-transition WRITE (a SHADER_READ_ONLY finalLayout would make sync-val
+        // flag a cross-submit R-A-W the GL semaphore round-trip serializes but VK can't
+        // see). GL re-consumes it in GL_LAYOUT_COLOR_ATTACHMENT_EXT. No vkCmdCopyImageToBuffer.
         att.initialLayout = VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL;
-        att.finalLayout   = VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL;
+        att.finalLayout   = s->useInterop ? VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL
+                                          : VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL;
         VkAttachmentReference ref{0, VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL};
         VkSubpassDescription sub{};
         sub.pipelineBindPoint = VK_PIPELINE_BIND_POINT_GRAPHICS;
         sub.colorAttachmentCount = 1;
         sub.pColorAttachments = &ref;
-        // VULKAN-ISLAND-READBACK-SYNC-BARRIER-1 (H1) pattern: order the render
-        // pass' implicit final layout transition (WRITE) before the following
-        // vkCmdCopyImageToBuffer (TRANSFER read).
-        VkSubpassDependency dep{};
-        dep.srcSubpass = 0;
-        dep.dstSubpass = VK_SUBPASS_EXTERNAL;
-        dep.srcStageMask = VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT;
-        dep.srcAccessMask = VK_ACCESS_COLOR_ATTACHMENT_WRITE_BIT;
-        dep.dstStageMask = VK_PIPELINE_STAGE_TRANSFER_BIT;
-        dep.dstAccessMask = VK_ACCESS_TRANSFER_READ_BIT;
+        // OUTGOING external dependency. Readback (H1 pattern): order the implicit final
+        // layout transition WRITE before the following vkCmdCopyImageToBuffer (TRANSFER
+        // read). Interop: dst = BOTTOM_OF_PIPE so the whole color-write completes before
+        // the cross-API signal that hands the image to GL.
+        VkSubpassDependency deps[2]{};
+        deps[0].srcSubpass = 0;
+        deps[0].dstSubpass = VK_SUBPASS_EXTERNAL;
+        deps[0].srcStageMask = VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT;
+        deps[0].srcAccessMask = VK_ACCESS_COLOR_ATTACHMENT_WRITE_BIT;
+        if (s->useInterop) {
+            deps[0].dstStageMask  = VK_PIPELINE_STAGE_BOTTOM_OF_PIPE_BIT;
+            deps[0].dstAccessMask = 0;
+        } else {
+            deps[0].dstStageMask  = VK_PIPELINE_STAGE_TRANSFER_BIT;
+            deps[0].dstAccessMask = VK_ACCESS_TRANSFER_READ_BIT;
+        }
+        // P1.5: INCOMING external->subpass dependency (interop only). With no inline CPU
+        // fence wait, sync-val sees consecutive per-parity submits touching the SAME
+        // shared color image unserialized: frame N+1's BeginRenderPass color LOAD (READ)
+        // races frame N's color-output WRITE -> R-A-W. The cross-API semaphores serialize
+        // it functionally, but VK sync-val can't see across the GL boundary; this edge
+        // makes the ordering explicit inside the render pass. (Multiplicative blend also
+        // READS the loaded color, so the incoming dep covers the LOAD+blend read.)
+        uint32_t depCount = 1;
+        if (s->useInterop) {
+            deps[1].srcSubpass = VK_SUBPASS_EXTERNAL;
+            deps[1].dstSubpass = 0;
+            deps[1].srcStageMask  = VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT;
+            deps[1].srcAccessMask = VK_ACCESS_COLOR_ATTACHMENT_WRITE_BIT;
+            deps[1].dstStageMask  = VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT;
+            deps[1].dstAccessMask = VK_ACCESS_COLOR_ATTACHMENT_READ_BIT |
+                                    VK_ACCESS_COLOR_ATTACHMENT_WRITE_BIT;
+            depCount = 2;
+        }
         VkRenderPassCreateInfo rpci{};
         rpci.sType = VK_STRUCTURE_TYPE_RENDER_PASS_CREATE_INFO;
         rpci.attachmentCount = 1;
         rpci.pAttachments = &att;
         rpci.subpassCount = 1;
         rpci.pSubpasses = &sub;
-        rpci.dependencyCount = 1;
-        rpci.pDependencies = &dep;
+        rpci.dependencyCount = depCount;
+        rpci.pDependencies = deps;
         r = vkCreateRenderPass(s->device, &rpci, nullptr, &s->applyRpass);
         if (r != VK_SUCCESS) { vlog("vkCreateRenderPass(apply) failed (%d).", (int)r); return false; }
 
@@ -750,7 +971,9 @@ bool build_island(gosPostProcess::VulkanSSAOIsland* s, int fullW, int fullH, int
         fci.sType = VK_STRUCTURE_TYPE_FRAMEBUFFER_CREATE_INFO;
         fci.renderPass = s->applyRpass;
         fci.attachmentCount = 1;
-        fci.pAttachments = &s->colorView;
+        // Interop: attachment 0 is the shared exportable image's view (blocker #1).
+        VkImageView applyAttachView = s->useInterop ? s->colorResource.view : s->colorView;
+        fci.pAttachments = &applyAttachView;
         fci.width = (uint32_t)fullW; fci.height = (uint32_t)fullH; fci.layers = 1;
         r = vkCreateFramebuffer(s->device, &fci, nullptr, &s->applyFb);
         if (r != VK_SUCCESS) { vlog("vkCreateFramebuffer(apply) failed (%d).", (int)r); return false; }
@@ -971,6 +1194,11 @@ bool build_island(gosPostProcess::VulkanSSAOIsland* s, int fullW, int fullH, int
         cai.commandBufferCount = 1;
         r = vkAllocateCommandBuffers(s->device, &cai, &s->cbuf);
         if (r != VK_SUCCESS) { vlog("vkAllocateCommandBuffers failed (%d).", (int)r); return false; }
+        // P1.5: double-buffered interop command buffers (per parity slot).
+        VkCommandBufferAllocateInfo cai2 = cai;
+        cai2.commandBufferCount = 2;
+        r = vkAllocateCommandBuffers(s->device, &cai2, s->cbufInterop);
+        if (r != VK_SUCCESS) { vlog("vkAllocateCommandBuffers(interop x2) failed (%d).", (int)r); return false; }
         VkFenceCreateInfo fnci{};
         fnci.sType = VK_STRUCTURE_TYPE_FENCE_CREATE_INFO;
         r = vkCreateFence(s->device, &fnci, nullptr, &s->fence);
@@ -981,11 +1209,12 @@ bool build_island(gosPostProcess::VulkanSSAOIsland* s, int fullW, int fullH, int
     s->normalScratch.resize((size_t)fullW * fullH * 4);
     s->colorScratch.resize((size_t)fullW * fullH * 4);
     s->inited = true;
-    setFallback("");
+    if (!s->useInterop) setFallback("");  // readback path healthy (interop keeps its own reason if it fell back)
     vlog("island initialized: full %dx%d / half %dx%d device ready (depth D32_SFLOAT, "
          "normal/color RGBA16F, occlusion R16_SFLOAT, 2 render passes, 2 draws, "
-         "NO internal readback between passes -- occlusion image stays Vulkan-owned).",
-         fullW, fullH, halfW, halfH);
+         "NO internal readback between passes -- occlusion image stays Vulkan-owned) "
+         "color_path=%s.",
+         fullW, fullH, halfW, halfH, s->useInterop ? "zero-copy-interop" : "readback");
     return true;
 }
 
@@ -1034,6 +1263,16 @@ void gosPostProcess::runSSAOVulkan()
     const int halfW = s->halfW, halfH = s->halfH;
 
     ++g_health.attempted;
+
+    // VK-INTEROP-BRIDGE-1 P3 (T4): the zero-copy color interop path. When active it does
+    // the whole frame (occlusion pass1 unchanged + apply pass2 over the shared scene
+    // color, NO color-side readback/copy) and returns. The readback body below is the
+    // fail-soft fallback.
+    if (s->useInterop) {
+        runSSAOVulkanInterop();
+        return;
+    }
+
     using clk = std::chrono::steady_clock;
     auto usSince = [](clk::time_point t0) {
         return std::chrono::duration<double, std::micro>(clk::now() - t0).count();
@@ -1045,16 +1284,19 @@ void gosPostProcess::runSSAOVulkan()
     glActiveTexture(GL_TEXTURE0);
     glBindTexture(GL_TEXTURE_2D, sceneDepthTex_);
     glGetTexImage(GL_TEXTURE_2D, 0, GL_DEPTH_COMPONENT, GL_FLOAT, s->depthScratch.data());
+    ++g_ssaoDepthNormalGetTexImage; // depth-side (EXPECTED even on interop; NOT a color op)
     g_health.copyDepthUs = usSince(tDepth0);
 
     const clk::time_point tNormal0 = clk::now();
     glBindTexture(GL_TEXTURE_2D, sceneNormalTex_);
     glGetTexImage(GL_TEXTURE_2D, 0, GL_RGBA, GL_HALF_FLOAT, s->normalScratch.data());
+    ++g_ssaoDepthNormalGetTexImage; // normal-side (EXPECTED even on interop; NOT a color op)
     g_health.copyNormalUs = usSince(tNormal0);
 
     const clk::time_point tColor0 = clk::now();
     glBindTexture(GL_TEXTURE_2D, sceneColorTex_);
     glGetTexImage(GL_TEXTURE_2D, 0, GL_RGBA, GL_HALF_FLOAT, s->colorScratch.data());
+    ++g_interopForbidden.glGetTexImage; // COLOR readback -- readback path only
     glBindTexture(GL_TEXTURE_2D, 0);
     g_health.copyColorInUs = usSince(tColor0);
 
@@ -1227,6 +1469,7 @@ void gosPostProcess::runSSAOVulkan()
     barrier(s->depthImage, VK_IMAGE_ASPECT_DEPTH_BIT, VK_IMAGE_LAYOUT_UNDEFINED, VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL,
             0, VK_ACCESS_TRANSFER_WRITE_BIT, VK_PIPELINE_STAGE_TOP_OF_PIPE_BIT, VK_PIPELINE_STAGE_TRANSFER_BIT);
     vkCmdCopyBufferToImage(s->cbuf, s->depthStaging, s->depthImage, VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL, 1, &depthRegion);
+    ++g_ssaoDepthNormalCopyBufferToImage; // depth-side (EXPECTED; NOT a color op)
     barrier(s->depthImage, VK_IMAGE_ASPECT_DEPTH_BIT, VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL, VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL,
             VK_ACCESS_TRANSFER_WRITE_BIT, VK_ACCESS_SHADER_READ_BIT, VK_PIPELINE_STAGE_TRANSFER_BIT, VK_PIPELINE_STAGE_FRAGMENT_SHADER_BIT);
 
@@ -1234,6 +1477,7 @@ void gosPostProcess::runSSAOVulkan()
     barrier(s->normalImage, VK_IMAGE_ASPECT_COLOR_BIT, VK_IMAGE_LAYOUT_UNDEFINED, VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL,
             0, VK_ACCESS_TRANSFER_WRITE_BIT, VK_PIPELINE_STAGE_TOP_OF_PIPE_BIT, VK_PIPELINE_STAGE_TRANSFER_BIT);
     vkCmdCopyBufferToImage(s->cbuf, s->normalStaging, s->normalImage, VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL, 1, &normalRegion);
+    ++g_ssaoDepthNormalCopyBufferToImage; // normal-side (EXPECTED; NOT a color op)
     barrier(s->normalImage, VK_IMAGE_ASPECT_COLOR_BIT, VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL, VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL,
             VK_ACCESS_TRANSFER_WRITE_BIT, VK_ACCESS_SHADER_READ_BIT, VK_PIPELINE_STAGE_TRANSFER_BIT, VK_PIPELINE_STAGE_FRAGMENT_SHADER_BIT);
 
@@ -1241,6 +1485,7 @@ void gosPostProcess::runSSAOVulkan()
     barrier(s->colorImage, VK_IMAGE_ASPECT_COLOR_BIT, VK_IMAGE_LAYOUT_UNDEFINED, VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL,
             0, VK_ACCESS_TRANSFER_WRITE_BIT, VK_PIPELINE_STAGE_TOP_OF_PIPE_BIT, VK_PIPELINE_STAGE_TRANSFER_BIT);
     vkCmdCopyBufferToImage(s->cbuf, s->colorStaging, s->colorImage, VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL, 1, &colorRegion);
+    ++g_interopForbidden.vkCmdCopyBufferToImage; // COLOR upload -- readback path only
     barrier(s->colorImage, VK_IMAGE_ASPECT_COLOR_BIT, VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL, VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL,
             VK_ACCESS_TRANSFER_WRITE_BIT, VK_ACCESS_COLOR_ATTACHMENT_READ_BIT | VK_ACCESS_COLOR_ATTACHMENT_WRITE_BIT,
             VK_PIPELINE_STAGE_TRANSFER_BIT, VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT);
@@ -1283,6 +1528,7 @@ void gosPostProcess::runSSAOVulkan()
     // color image is now TRANSFER_SRC (via the apply render pass' external
     // subpass dependency -- the H1 fix pattern) -> copy to readback buffer.
     vkCmdCopyImageToBuffer(s->cbuf, s->colorImage, VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL, s->colorReadback, 1, &colorRegion);
+    ++g_interopForbidden.vkCmdCopyImageToBuffer; // COLOR readback -- readback path only
 
     if (vkEndCommandBuffer(s->cbuf) != VK_SUCCESS) return;
 
@@ -1341,6 +1587,7 @@ void gosPostProcess::runSSAOVulkan()
             vmaUnmapMemory(s->allocator, s->colorReadbackAlloc);
             glBindTexture(GL_TEXTURE_2D, sceneColorTex_);
             glTexSubImage2D(GL_TEXTURE_2D, 0, 0, 0, fullW, fullH, GL_RGBA, GL_HALF_FLOAT, s->colorScratch.data());
+            ++g_interopForbidden.glTexSubImage2D; // COLOR writeback -- readback path only
             glBindTexture(GL_TEXTURE_2D, 0);
         }
     }
@@ -1350,6 +1597,263 @@ void gosPostProcess::runSSAOVulkan()
     // Success: 2 Vulkan draws did the whole SSAO region (occlusion + apply).
     g_health.vkDraws = 2;
     ++g_health.usedVulkan;
+    g_health.totalUs = usSince(tTotal0);
+}
+
+// ---------------------------------------------------------------------------
+// runSSAOVulkanInterop(): VK-INTEROP-BRIDGE-1 P3 zero-copy COLOR I/O per-frame path.
+// Occlusion pass1 + apply pass2 exactly as the readback path, EXCEPT the pass2 scene
+// COLOR input + blended COLOR output move onto the shared exportable VkImageResource
+// (no glGetTexImage(color) / copyBufToImage(color) / copyImageToBuffer(color) /
+// glTexSubImage2D(color)). DEPTH + NORMAL still round-trip (P5 scope). Occlusion is
+// VK-internal. Sync (blocker #4 + P1.5): doneSem[parity] = GL->VK (VK submit waits);
+// vkToGlSem[parity] = VK->GL (VK submit signals, GL waits via glWaitSemaphoreEXT) -- a
+// GPU hand-off, no inline CPU stall. Fail-soft: if the VK->GL semaphore did not import,
+// falls back to the inline CPU fence wait. All GL *EXT calls on the frame-loop thread.
+// ---------------------------------------------------------------------------
+void gosPostProcess::runSSAOVulkanInterop()
+{
+    VulkanSSAOIsland* s = vkSSAOIsland_;
+    if (!s || !s->inited || s->disabled || !s->useInterop) return;
+
+    const int fullW = s->fullW, fullH = s->fullH;
+    const int halfW = s->halfW, halfH = s->halfH;
+
+    using clk = std::chrono::steady_clock;
+    auto usSince = [](clk::time_point t0) {
+        return std::chrono::duration<double, std::micro>(clk::now() - t0).count();
+    };
+    const clk::time_point tTotal0 = clk::now();
+
+    // Snapshot the color-forbidden counters so we can prove NONE fired this frame.
+    const unsigned long f0a = g_interopForbidden.vkCmdCopyBufferToImage;
+    const unsigned long f0b = g_interopForbidden.vkCmdCopyImageToBuffer;
+    const unsigned long f0c = g_interopForbidden.glGetTexImage;
+    const unsigned long f0d = g_interopForbidden.glTexSubImage2D;
+
+    // ---- 1) DEPTH + NORMAL still round-trip (color-only slice; P5 scope). ----
+    const clk::time_point tDepth0 = clk::now();
+    glActiveTexture(GL_TEXTURE0);
+    glBindTexture(GL_TEXTURE_2D, sceneDepthTex_);
+    glGetTexImage(GL_TEXTURE_2D, 0, GL_DEPTH_COMPONENT, GL_FLOAT, s->depthScratch.data());
+    ++g_ssaoDepthNormalGetTexImage; // depth-side (EXPECTED; NOT a color op)
+    g_health.copyDepthUs = usSince(tDepth0);
+
+    const clk::time_point tNormal0 = clk::now();
+    glBindTexture(GL_TEXTURE_2D, sceneNormalTex_);
+    glGetTexImage(GL_TEXTURE_2D, 0, GL_RGBA, GL_HALF_FLOAT, s->normalScratch.data());
+    ++g_ssaoDepthNormalGetTexImage; // normal-side (EXPECTED; NOT a color op)
+    glBindTexture(GL_TEXTURE_2D, 0);
+    g_health.copyNormalUs = usSince(tNormal0);
+
+    {
+        void* p = nullptr;
+        if (vmaMapMemory(s->allocator, s->depthStagingAlloc, &p) == VK_SUCCESS) {
+            std::memcpy(p, s->depthScratch.data(), (size_t)fullW * fullH * 4);
+            vmaUnmapMemory(s->allocator, s->depthStagingAlloc);
+        }
+        if (vmaMapMemory(s->allocator, s->normalStagingAlloc, &p) == VK_SUCCESS) {
+            std::memcpy(p, s->normalScratch.data(), (size_t)fullW * fullH * 4 * 2);
+            vmaUnmapMemory(s->allocator, s->normalStagingAlloc);
+        }
+    }
+
+    // ---- 2) GL copies the composited scene color into the shared tex (zero-copy
+    // target). glCopyImageSubData is a server-side image copy (NOT a readback / not a
+    // forbidden COLOR op) between two same-format RGBA16F GL_TEXTURE_2D images. This is
+    // the pass2 LOAD preload (equivalent of the readback path's copyBufToImage(color)). ----
+    const clk::time_point tColorIn0 = clk::now();
+    glCopyImageSubData(sceneColorTex_, GL_TEXTURE_2D, 0, 0, 0, 0,
+                       s->colorGlView.glTex, GL_TEXTURE_2D, 0, 0, 0, 0,
+                       fullW, fullH, 1);
+    g_health.copyColorInUs = usSince(tColorIn0);
+
+    // ---- 3) Upload BOTH param UBOs (values EXACTLY as the readback path). ----
+    {
+        SSAOOcclusionParams params{};
+        std::memcpy(params.invViewProj, inverseViewProj_, 16 * sizeof(float));
+        std::memcpy(params.viewProj, viewProj_, 16 * sizeof(float));
+        params.screenSize[0] = (float)width_;
+        params.screenSize[1] = (float)height_;
+        params.aoRadius   = aoRadius_;
+        params.aoBias     = aoBias_;
+        params.aoStrength = aoStrength_;
+        params.aoPower    = aoPower_;
+        void* p = nullptr;
+        if (vmaMapMemory(s->allocator, s->occlusionUboAlloc, &p) == VK_SUCCESS) {
+            std::memcpy(p, &params, sizeof(params));
+            vmaUnmapMemory(s->allocator, s->occlusionUboAlloc);
+        }
+    }
+    {
+        SSAOApplyParams params{};
+        params.ssaoTexel[0] = 1.0f / (float)halfW;
+        params.ssaoTexel[1] = 1.0f / (float)halfH;
+        params.debugMode = ssaoDebug_;
+        void* p = nullptr;
+        if (vmaMapMemory(s->allocator, s->applyUboAlloc, &p) == VK_SUCCESS) {
+            std::memcpy(p, &params, sizeof(params));
+            vmaUnmapMemory(s->allocator, s->applyUboAlloc);
+        }
+    }
+
+    // ---- 4) Begin the frame's parity slot; hand the shared color GL->VK. ----
+    VkFrameSync fs = vkImageResourceBeginFrame(&s->colorResource);
+    VkCommandBuffer cb = s->cbufInterop[fs.parity & 1u];
+    // GL releases the shared image in COLOR_ATTACHMENT layout == pass2 render-pass initialLayout.
+    glInteropSignalToVk(s->colorGlView, GL_LAYOUT_COLOR_ATTACHMENT_EXT, fs.parity);
+
+    // ---- 5) Record: depth+normal upload, occlusion pass1, apply pass2. NO color copy. ----
+    const clk::time_point tRender0 = clk::now();
+    vkResetCommandBuffer(cb, 0);
+    VkCommandBufferBeginInfo bi{};
+    bi.sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_BEGIN_INFO;
+    bi.flags = VK_COMMAND_BUFFER_USAGE_ONE_TIME_SUBMIT_BIT;
+    if (vkBeginCommandBuffer(cb, &bi) != VK_SUCCESS) return;
+
+    auto barrier = [&](VkImage img, VkImageAspectFlags aspect, VkImageLayout oldL, VkImageLayout newL,
+                       VkAccessFlags srcA, VkAccessFlags dstA, VkPipelineStageFlags srcS, VkPipelineStageFlags dstS) {
+        VkImageMemoryBarrier b{};
+        b.sType = VK_STRUCTURE_TYPE_IMAGE_MEMORY_BARRIER;
+        b.oldLayout = oldL; b.newLayout = newL;
+        b.srcQueueFamilyIndex = VK_QUEUE_FAMILY_IGNORED;
+        b.dstQueueFamilyIndex = VK_QUEUE_FAMILY_IGNORED;
+        b.image = img;
+        b.subresourceRange = {aspect, 0, 1, 0, 1};
+        b.srcAccessMask = srcA; b.dstAccessMask = dstA;
+        vkCmdPipelineBarrier(cb, srcS, dstS, 0, 0, nullptr, 0, nullptr, 1, &b);
+    };
+
+    VkBufferImageCopy depthRegion{};
+    depthRegion.imageSubresource = {VK_IMAGE_ASPECT_DEPTH_BIT, 0, 0, 1};
+    depthRegion.imageExtent = {(uint32_t)fullW, (uint32_t)fullH, 1};
+    VkBufferImageCopy normalRegion{};
+    normalRegion.imageSubresource = {VK_IMAGE_ASPECT_COLOR_BIT, 0, 0, 1};
+    normalRegion.imageExtent = {(uint32_t)fullW, (uint32_t)fullH, 1};
+
+    // depth: UNDEFINED -> TRANSFER_DST, copy, -> SHADER_READ_ONLY (EXPECTED depth copy).
+    barrier(s->depthImage, VK_IMAGE_ASPECT_DEPTH_BIT, VK_IMAGE_LAYOUT_UNDEFINED, VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL,
+            0, VK_ACCESS_TRANSFER_WRITE_BIT, VK_PIPELINE_STAGE_TOP_OF_PIPE_BIT, VK_PIPELINE_STAGE_TRANSFER_BIT);
+    vkCmdCopyBufferToImage(cb, s->depthStaging, s->depthImage, VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL, 1, &depthRegion);
+    ++g_ssaoDepthNormalCopyBufferToImage; // depth-side (EXPECTED; NOT a color op)
+    barrier(s->depthImage, VK_IMAGE_ASPECT_DEPTH_BIT, VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL, VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL,
+            VK_ACCESS_TRANSFER_WRITE_BIT, VK_ACCESS_SHADER_READ_BIT, VK_PIPELINE_STAGE_TRANSFER_BIT, VK_PIPELINE_STAGE_FRAGMENT_SHADER_BIT);
+
+    // normal: UNDEFINED -> TRANSFER_DST, copy, -> SHADER_READ_ONLY (EXPECTED normal copy).
+    barrier(s->normalImage, VK_IMAGE_ASPECT_COLOR_BIT, VK_IMAGE_LAYOUT_UNDEFINED, VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL,
+            0, VK_ACCESS_TRANSFER_WRITE_BIT, VK_PIPELINE_STAGE_TOP_OF_PIPE_BIT, VK_PIPELINE_STAGE_TRANSFER_BIT);
+    vkCmdCopyBufferToImage(cb, s->normalStaging, s->normalImage, VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL, 1, &normalRegion);
+    ++g_ssaoDepthNormalCopyBufferToImage; // normal-side (EXPECTED; NOT a color op)
+    barrier(s->normalImage, VK_IMAGE_ASPECT_COLOR_BIT, VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL, VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL,
+            VK_ACCESS_TRANSFER_WRITE_BIT, VK_ACCESS_SHADER_READ_BIT, VK_PIPELINE_STAGE_TRANSFER_BIT, VK_PIPELINE_STAGE_FRAGMENT_SHADER_BIT);
+
+    // NO vkCmdCopyBufferToImage for color: the shared image already holds the scene
+    // color (GL copied + handed it over in COLOR_ATTACHMENT layout == pass2 initialLayout).
+
+    // ---- Pass 1: half-res occlusion (CLEAR->STORE, no blend). Its render pass'
+    // external subpass dependency is the B14 intra-pass barrier ordering this write
+    // before pass2's read of the occlusion image (UNCHANGED). ----
+    VkClearValue occClear{};
+    occClear.color = {{0.0f, 0.0f, 0.0f, 0.0f}};
+    VkRenderPassBeginInfo occRbi{};
+    occRbi.sType = VK_STRUCTURE_TYPE_RENDER_PASS_BEGIN_INFO;
+    occRbi.renderPass = s->occRpass;
+    occRbi.framebuffer = s->occFb;
+    occRbi.renderArea = {{0, 0}, {(uint32_t)halfW, (uint32_t)halfH}};
+    occRbi.clearValueCount = 1;
+    occRbi.pClearValues = &occClear;
+    vkCmdBeginRenderPass(cb, &occRbi, VK_SUBPASS_CONTENTS_INLINE);
+    vkCmdBindPipeline(cb, VK_PIPELINE_BIND_POINT_GRAPHICS, s->occPipe);
+    vkCmdBindDescriptorSets(cb, VK_PIPELINE_BIND_POINT_GRAPHICS, s->occPlayout, 0, 1, &s->occSet, 0, nullptr);
+    vkCmdDraw(cb, 3, 1, 0, 0);
+    vkCmdEndRenderPass(cb);
+    const double occlusionUs = usSince(tRender0);
+
+    // ---- Pass 2: full-res apply (LOAD shared scene color, multiplicative blend, STORE).
+    // finalLayout == COLOR_ATTACHMENT (layout-stable, P1.5). NO vkCmdCopyImageToBuffer. ----
+    const clk::time_point tApply0 = clk::now();
+    VkRenderPassBeginInfo applyRbi{};
+    applyRbi.sType = VK_STRUCTURE_TYPE_RENDER_PASS_BEGIN_INFO;
+    applyRbi.renderPass = s->applyRpass;
+    applyRbi.framebuffer = s->applyFb;
+    applyRbi.renderArea = {{0, 0}, {(uint32_t)fullW, (uint32_t)fullH}};
+    applyRbi.clearValueCount = 0; // LOAD, no clear
+    vkCmdBeginRenderPass(cb, &applyRbi, VK_SUBPASS_CONTENTS_INLINE);
+    vkCmdBindPipeline(cb, VK_PIPELINE_BIND_POINT_GRAPHICS, s->applyPipe);
+    vkCmdBindDescriptorSets(cb, VK_PIPELINE_BIND_POINT_GRAPHICS, s->applyPlayout, 0, 1, &s->applySet, 0, nullptr);
+    vkCmdDraw(cb, 3, 1, 0, 0);
+    vkCmdEndRenderPass(cb);
+
+    if (vkEndCommandBuffer(cb) != VK_SUCCESS) return;
+
+    // ---- 6) Submit: WAIT doneSem[parity] (GL->VK); SIGNAL vkToGlSem[parity] (VK->GL,
+    // P1.5) AND the FENCE (slot-recycle guard, waited at frame N+2's BeginFrame). ----
+    const bool useGpuVk2Gl = s->colorGlView.vkToGlImported && (fs.vk2gl != VK_NULL_HANDLE);
+    VkPipelineStageFlags waitStage = VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT;
+    VkSubmitInfo si{};
+    si.sType = VK_STRUCTURE_TYPE_SUBMIT_INFO;
+    si.waitSemaphoreCount = 1;
+    si.pWaitSemaphores    = &fs.signal;   // GL signalled this via glInteropSignalToVk
+    si.pWaitDstStageMask  = &waitStage;
+    si.commandBufferCount = 1;
+    si.pCommandBuffers    = &cb;
+    if (useGpuVk2Gl) {
+        si.signalSemaphoreCount = 1;
+        si.pSignalSemaphores    = &fs.vk2gl;  // VK->GL GPU hand-off (P1.5)
+    }
+    if (vkQueueSubmit(s->queue, 1, &si, fs.fence) != VK_SUCCESS) {
+        vlog("[VK_SSAO_INTEROP] vkQueueSubmit failed -- disabling island, GL fallback next frame.");
+        setFallback("interop_submit_failed");
+        s->disabled = true;
+        return;
+    }
+    if (useGpuVk2Gl) {
+        // GPU hand-off: GL waits the VK->GL semaphore (glWaitSemaphoreEXT). No inline CPU
+        // fence wait. VK left the image in COLOR_ATTACHMENT_OPTIMAL (layout-stable pass),
+        // so GL re-acquires it in GL_LAYOUT_COLOR_ATTACHMENT_EXT.
+        glInteropWaitFromVk(s->colorGlView, GL_LAYOUT_COLOR_ATTACHMENT_EXT, fs.parity);
+    } else {
+        // Fail-soft fallback (VK->GL sem not imported): CPU fence wait, as before.
+        if (vkWaitForFences(s->device, 1, &fs.fence, VK_TRUE, 5ull * 1000 * 1000 * 1000) != VK_SUCCESS) {
+            vlog("[VK_SSAO_INTEROP] fence wait failed/timeout -- disabling island, GL fallback next frame.");
+            setFallback("interop_fence_timeout");
+            s->disabled = true;
+            return;
+        }
+    }
+    g_health.occlusionUs = occlusionUs;
+    g_health.applyUs = usSince(tApply0);
+
+    // ---- 7) Composite: the AO-multiplied shared color is the result; put it where the
+    // downstream GL composite reads it (sceneColorTex_). GL->GL image copy, no readback. ----
+    const clk::time_point tOut0 = clk::now();
+    glCopyImageSubData(s->colorGlView.glTex, GL_TEXTURE_2D, 0, 0, 0, 0,
+                       sceneColorTex_, GL_TEXTURE_2D, 0, 0, 0, 0,
+                       fullW, fullH, 1);
+    glActiveTexture(GL_TEXTURE0);
+    g_health.colorOutUs = usSince(tOut0);
+
+    // ---- blocker #5: HARD assert -- no COLOR-side readback/copy fired this frame. ----
+    const bool colorReadbackFired =
+        (g_interopForbidden.vkCmdCopyBufferToImage != f0a) ||
+        (g_interopForbidden.vkCmdCopyImageToBuffer != f0b) ||
+        (g_interopForbidden.glGetTexImage          != f0c) ||
+        (g_interopForbidden.glTexSubImage2D        != f0d);
+    if (colorReadbackFired) {
+        vlog("[VK_SSAO_INTEROP] FATAL: a COLOR-side readback/copy fired on the interop path "
+             "(copyBufToImg=%lu copyImgToBuf=%lu getTexImage=%lu texSubImage=%lu) -- "
+             "the zero-copy invariant is violated; failing the frame + disabling interop.",
+             g_interopForbidden.vkCmdCopyBufferToImage, g_interopForbidden.vkCmdCopyImageToBuffer,
+             g_interopForbidden.glGetTexImage, g_interopForbidden.glTexSubImage2D);
+        setFallback("interop_did_readback");
+        s->disabled = true;
+        return;
+    }
+
+    // Success: 2 Vulkan draws did the whole SSAO region, zero-copy color I/O.
+    g_health.vkDraws = 2;
+    ++g_health.usedVulkan;
+    ++g_health.usedInterop;
     g_health.totalUs = usSince(tTotal0);
 }
 
@@ -1366,6 +1870,18 @@ void gosPostProcess::destroyVulkanSSAOIsland()
          g_health.validationErrors, g_health.attempted, g_health.usedVulkan, g_health.fallbackReason,
          g_health.vkDraws, g_health.copyDepthUs, g_health.copyNormalUs, g_health.copyColorInUs,
          g_health.occlusionUs, g_health.applyUs, g_health.colorOutUs, g_health.totalUs);
+
+    // VK-INTEROP-BRIDGE-1 P3 (T4, blocker #5): interop liveness + forbidden COLOR-op
+    // counters. The proof harness asserts the four forbidden_* ==0 on the interop path;
+    // ssao_used_interop>0 confirms the zero-copy color path actually ran. Depth/normal
+    // copies are surfaced separately and are EXPECTED (color-only slice; P5 scope).
+    vlog("[VK_SSAO_ISLAND_INTEROP] interop_active=%d vk2gl_sem=%d ssao_used_interop=%lu "
+         "forbidden_copyBufToImg=%lu forbidden_copyImgToBuf=%lu forbidden_getTexImage=%lu "
+         "forbidden_texSubImage=%lu depthnormal_copyBufToImg=%lu depthnormal_getTexImage=%lu",
+         g_health.interopActive, g_health.vk2glSemActive, g_health.usedInterop,
+         g_interopForbidden.vkCmdCopyBufferToImage, g_interopForbidden.vkCmdCopyImageToBuffer,
+         g_interopForbidden.glGetTexImage, g_interopForbidden.glTexSubImage2D,
+         g_ssaoDepthNormalCopyBufferToImage, g_ssaoDepthNormalGetTexImage);
 
     if (!vkSSAOIsland_) return;
     destroy_island(vkSSAOIsland_);
