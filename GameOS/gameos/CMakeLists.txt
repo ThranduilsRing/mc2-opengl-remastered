@@ -163,6 +163,14 @@ if(MC2_VULKAN)
         # No new link libs (volk + GLEW already linked into gameos).
         list(APPEND SOURCES vk_image_resource.cpp)
         list(APPEND SOURCES gl_interop_view.cpp)
+        # water-perf STEP 1: the BUFFER analog of the image interop pair above.
+        # vk_gl_shared_buffer = GL-free raw-allocated exportable VkBuffer + reused
+        # double-buffered sync; gl_interop_buffer_view = the GL-boundary adapter that
+        # imports it as a GL buffer (glNamedBufferStorageMemEXT) + STEP-1 self-check.
+        # Both #ifdef MC2_VULKAN_ISLAND; extracted from the proven buffer probe. No new
+        # link libs. Unused-by-default (Seam A wires it into water next).
+        list(APPEND SOURCES vk_gl_shared_buffer.cpp)
+        list(APPEND SOURCES gl_interop_buffer_view.cpp)
         # VK-P13-SELECTOR-1 / T3: the whole-frame GL->VK present intercept. Borrows
         # the T2 shared VulkanContext device (no second device); owns the hidden
         # present window + surface + swapchain + the exportable interop image. Uses

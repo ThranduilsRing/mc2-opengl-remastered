@@ -46,6 +46,10 @@
 // vk_image_resource.h.
 #include "gl_interop_view.h"
 
+// water-perf STEP 1: the BUFFER interop pair's self-check (gated behind
+// MC2_VK_SHARED_BUFFER_SELFTEST). Header transitively pulls vk_gl_shared_buffer.h.
+#include "gl_interop_buffer_view.h"
+
 #include <cstdarg>
 #include <cstdio>
 #include <cstdlib>
@@ -1027,6 +1031,13 @@ bool gosPostProcess::vulkanEdgeFogIslandEnabled()
                 vlog("MC2_VK_INTEROP_SELFTEST=1 -- running VkImageResource/GlInteropView self-check.");
                 bool ok = vkInteropSelfTestStandalone();
                 vlog("VK_INTEROP self-check result: %s.", ok ? "PASS" : "FAIL");
+            }
+            // water-perf STEP 1: BUFFER interop pair self-check (separate gate).
+            const char* sb = std::getenv("MC2_VK_SHARED_BUFFER_SELFTEST");
+            if (sb && sb[0] == '1') {
+                vlog("MC2_VK_SHARED_BUFFER_SELFTEST=1 -- running VkGlSharedBuffer/GlInteropBufferView self-check.");
+                bool ok = vkGlSharedBufferSelfTestStandalone();
+                vlog("VK_SHARED_BUFFER self-check result: %s.", ok ? "PASS" : "FAIL");
             }
         }
     }
