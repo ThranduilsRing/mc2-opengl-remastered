@@ -792,6 +792,7 @@ void gos_TerrainLodChunk_Destroy()
 // none of this runs -> the GL path draws every band exactly as before.
 // ---------------------------------------------------------------------------
 static uint64_t g_terrainHeightVersion = 0;  // bumps on UploadHeightFull
+static uint64_t g_terrainCementVersion = 0;  // bumps on UploadCementWordsFull
 static std::vector<Mc2TerrainTier1Patch> s_vkTerrainPatches;  // this frame's LOD0 patches
 static float    s_vkTerrainMvp[16] = {0};
 static bool     s_vkTerrainFeedValid = false;
@@ -815,6 +816,25 @@ extern "C" int mc2_terrain_tier1_get_frame_feed(Mc2TerrainTier1Feed* out)
     out->atlasTopLeftX          = gos_terrain_indirect_getAtlasMapTopLeftX();
     out->atlasTopLeftY          = gos_terrain_indirect_getAtlasMapTopLeftY();
     out->atlasOneOverWorldUnits = gos_terrain_indirect_getAtlasOneOverWorldUnits();
+
+    // CEMENT/ROAD atlas sub-slice: hand the GL cement atlas + per-vertex cement-word
+    // SSBO + the cement uniforms the GL LOD-chunk frag reads. useCement mirrors the GL
+    // gate (gos_terrain_lod_chunk.cpp:1122-1124): atlas ready AND cement SSBO live.
+    const bool cementReady = gos_terrain_indirect_isCementAtlasReady();
+    const bool cementLive  = cementReady && s_cementSsbo.backendHandle != 0;
+    out->glCementAtlasTex   = static_cast<uint32_t>(gos_terrain_indirect_getCementAtlasGLTex());
+    out->cementGridSide     = gos_terrain_indirect_getCementAtlasGridSide();
+    out->cementWUPT         = 128.0f;  // Terrain::worldUnitsPerVertex (GL uploads 128.0)
+    out->useCement          = cementLive ? 1 : 0;
+    out->useTransitionMask  = gos_terrain_indirect_isTransitionMaskReady() ? 1 : 0;
+    {
+        int diagOn = 0;
+        if (const char* e = getenv("MC2_TERRAIN_CEMENT_DIAG_CONNECT")) diagOn = (e[0] && e[0] != '0') ? 1 : 0;
+        out->cementDiagConnect = diagOn;
+    }
+    out->glCementSsbo       = static_cast<uint32_t>(s_cementSsbo.backendHandle);
+    out->cementBytes        = (uint64_t)s_mapSide * (uint64_t)s_mapSide * sizeof(unsigned int);
+    out->cementVersion      = g_terrainCementVersion;
     return 1;
 }
 #endif
@@ -1937,6 +1957,12 @@ void gos_TerrainLodChunk_UploadCementWordsFull(const unsigned int* words, int co
     glBufferData(GL_SHADER_STORAGE_BUFFER, bytes, words, GL_DYNAMIC_DRAW);
     glBindBufferBase(GL_SHADER_STORAGE_BUFFER, TERRAIN_CEMENT_SSBO_BINDING, cementBuf);
     glBindBuffer(GL_SHADER_STORAGE_BUFFER, 0);
+
+#ifdef MC2_VULKAN_ISLAND
+    // VK-P10 CEMENT/ROAD sub-slice: the cement-word field changed -> bump the snapshot
+    // key so the VK terrain island re-copies it (glGetBufferSubData map-load) next frame.
+    ++g_terrainCementVersion;
+#endif
 
     // TERRAIN-LODCHUNK-SSBO-OWNER-1: register the live cement SSBO. Conditional by
     // construction -- this upload only runs when cement words actually exist, so

@@ -55,6 +55,21 @@ struct Mc2TerrainTier1Feed {
     float                       atlasTopLeftX;
     float                       atlasTopLeftY;
     float                       atlasOneOverWorldUnits;
+    // CEMENT/ROAD atlas sub-slice: the GL cement/road overlay atlas (g_cementAtlasGLTex,
+    // runtime-assembled RGBA8, GL_REPEAT wrap) the VK island imports copy-once into a
+    // REPEAT-sampled image, plus the per-vertex cement-word SSBO (GL binding 25) it
+    // snapshots (map-load, same as the height SSBO), plus the cement uniforms the GL
+    // LOD-chunk frag reads (gos_terrain_lod_chunk.cpp:1122-1143). All 0/false when the
+    // cement atlas isn't ready -> VK frag falls back to the colormap base (no hole).
+    uint32_t                    glCementAtlasTex;      // GL name of g_cementAtlasGLTex (0 = not ready)
+    int32_t                     cementGridSide;        // gos_terrain_indirect_getCementAtlasGridSide()
+    float                       cementWUPT;            // world units per cement tile (== 128)
+    int32_t                     useCement;             // 1 iff cement atlas ready AND cement SSBO live
+    int32_t                     useTransitionMask;     // gos_terrain_indirect_isTransitionMaskReady()
+    int32_t                     cementDiagConnect;     // MC2_TERRAIN_CEMENT_DIAG_CONNECT gate
+    uint32_t                    glCementSsbo;          // GL name of the per-vertex cement-word SSBO (binding 25)
+    uint64_t                    cementBytes;           // mapSide*mapSide*sizeof(uint)
+    uint64_t                    cementVersion;         // bumps when the cement-word field changes (snapshot key)
 };
 
 // Provided BY the GL terrain path (gos_terrain_lod_chunk.cpp). The island calls this

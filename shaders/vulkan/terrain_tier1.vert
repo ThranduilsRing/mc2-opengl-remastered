@@ -36,6 +36,13 @@ layout(set = 0, binding = 0, std140) uniform TerrainFrameUBO {
     float atlasTopLeftY;
     float atlasOneOverWorldUnits;
     int   colormapReady;
+    // CEMENT/ROAD sub-slice: cement uniforms (used by the FS; declared here to keep the
+    // std140 UBO layout LOCKSTEP with terrain_tier1.frag).
+    int   useCement;
+    int   cementGridSide;
+    float cementWUPT;
+    int   useTransitionMask;
+    int   cementDiagConnect;
 } uT;
 
 // Height SSBO (VK-owned snapshot of the GL height field, binding 23 semantics).

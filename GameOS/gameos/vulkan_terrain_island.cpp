@@ -172,7 +172,14 @@ struct TerrainFrameUBO {
     float   atlasTopLeftY;          // off 84
     float   atlasOneOverWorldUnits; // off 88
     int32_t colormapReady;          // off 92
-    int32_t _pad[40];               // pad the slot up to 256B (dynamic UBO alignment)
+    // CEMENT/ROAD atlas sub-slice: cement uniforms (mirror the GL LOD-chunk frag's
+    // u_useCement/u_cementGridSide/u_cementWUPT/u_useTransitionMask/u_cementDiagConnect).
+    int32_t useCement;              // off 96
+    int32_t cementGridSide;         // off 100
+    float   cementWUPT;             // off 104
+    int32_t useTransitionMask;      // off 108
+    int32_t cementDiagConnect;      // off 112
+    int32_t _pad[35];               // pad the slot up to 256B (dynamic UBO alignment)
 };
 static_assert(sizeof(TerrainFrameUBO) == 256, "UBO slot must be 256B (dynamic alignment)");
 
@@ -237,6 +244,20 @@ struct TerrainIsland {
     uint32_t      colormapTexImported = 0;   // GL tex name last imported (0 = none yet)
     bool          colormapReady = false;     // set once the sampled image is live
 
+    // CEMENT/ROAD atlas sub-slice: VK-owned copy-once import of the GL cement atlas
+    // (g_cementAtlasGLTex, runtime RGBA8). Sampled image + view + REPEAT sampler; binding
+    // 3. Keyed by the GL tex name so a per-mission rebuild re-imports. PLUS a VK-owned
+    // snapshot of the GL per-vertex cement-word SSBO (binding 25 -> here binding 4).
+    VkImage       cementImg   = VK_NULL_HANDLE; VmaAllocation cementAlloc = VK_NULL_HANDLE;
+    VkImageView   cementView  = VK_NULL_HANDLE;
+    VkSampler     cementSamp  = VK_NULL_HANDLE;   // REPEAT/LINEAR (GL_REPEAT wrap)
+    uint32_t      cementTexImported = 0;          // GL cement tex name last imported (0 = none)
+    bool          cementReady = false;            // set once the cement image is live
+    VkBuffer      cementBuf = VK_NULL_HANDLE; VmaAllocation cementBufAlloc = VK_NULL_HANDLE;
+    VkDeviceSize  cementCapBytes = 0;
+    uint64_t      cementVersionCopied = UINT64_MAX; // last snapshotted cement-word version
+    bool          cementWordsReady = false;       // set once the cement SSBO has a real snapshot
+
     // Per-patch dynamic UBO (one 256B slot per LOD0 patch this frame).
     VkBuffer      ubo = VK_NULL_HANDLE; VmaAllocation uboAlloc = VK_NULL_HANDLE;
     VkDeviceSize  uboCapBytes = 0;
@@ -252,6 +273,9 @@ TerrainIsland* g_island = nullptr;
 // Forward decls (COLORMAP-BASE helpers defined after snapshot_height, used earlier).
 bool ensure_dummy_colormap(TerrainIsland* s);
 void import_colormap(TerrainIsland* s, const Mc2TerrainTier1Feed& feed);
+bool ensure_dummy_cement(TerrainIsland* s);
+void import_cement(TerrainIsland* s, const Mc2TerrainTier1Feed& feed);
+bool snapshot_cement(TerrainIsland* s, const Mc2TerrainTier1Feed& feed);
 
 bool make_buffer(TerrainIsland* s, VkDeviceSize size, VkBufferUsageFlags usage,
                  VkBuffer* buf, VmaAllocation* alloc, bool hostVisible) {
@@ -319,9 +343,10 @@ void write_descriptors(TerrainIsland* s) {
     if (s->set == VK_NULL_HANDLE) return;
     // binding 0 = dynamic UBO (per-patch frame block); binding 1 = height SSBO;
     // binding 2 = colormap combined-image-sampler (COLORMAP-BASE, only when live).
+    // binding 3 = cement combined-image-sampler (dummy/real); binding 4 = cement-word SSBO.
     VkDescriptorBufferInfo uboInfo{ s->ubo, 0, sizeof(TerrainFrameUBO) }; // range = one slot
     VkDescriptorBufferInfo hInfo{ s->heightBuf, 0, VK_WHOLE_SIZE };
-    VkWriteDescriptorSet w[3]{};
+    VkWriteDescriptorSet w[5]{};
     uint32_t n = 0;
     w[n].sType = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET; w[n].dstSet = s->set;
     w[n].dstBinding = 0; w[n].descriptorCount = 1;
@@ -336,6 +361,23 @@ void write_descriptors(TerrainIsland* s) {
         w[n].sType = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET; w[n].dstSet = s->set;
         w[n].dstBinding = 2; w[n].descriptorCount = 1;
         w[n].descriptorType = VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER; w[n].pImageInfo = &cmInfo; ++n;
+    }
+    // CEMENT: binding 3 sampler — always written (dummy 1x1 until the real atlas imports).
+    VkDescriptorImageInfo ceInfo{};
+    if (s->cementView != VK_NULL_HANDLE && s->cementSamp != VK_NULL_HANDLE) {
+        ceInfo.sampler = s->cementSamp; ceInfo.imageView = s->cementView;
+        ceInfo.imageLayout = VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL;
+        w[n].sType = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET; w[n].dstSet = s->set;
+        w[n].dstBinding = 3; w[n].descriptorCount = 1;
+        w[n].descriptorType = VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER; w[n].pImageInfo = &ceInfo; ++n;
+    }
+    // CEMENT: binding 4 cement-word SSBO — always written (dummy 16B until first snapshot).
+    VkDescriptorBufferInfo ceBuf{};
+    if (s->cementBuf != VK_NULL_HANDLE) {
+        ceBuf.buffer = s->cementBuf; ceBuf.offset = 0; ceBuf.range = VK_WHOLE_SIZE;
+        w[n].sType = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET; w[n].dstSet = s->set;
+        w[n].dstBinding = 4; w[n].descriptorCount = 1;
+        w[n].descriptorType = VK_DESCRIPTOR_TYPE_STORAGE_BUFFER; w[n].pBufferInfo = &ceBuf; ++n;
     }
     vkUpdateDescriptorSets(s->device, n, w, 0, nullptr);
 }
@@ -393,6 +435,10 @@ void destroy_island(TerrainIsland* s) {
     if (s->colormapSamp) vkDestroySampler(d, s->colormapSamp, nullptr);
     if (s->colormapView) vkDestroyImageView(d, s->colormapView, nullptr);
     if (s->colormapImg)  vmaDestroyImage(s->allocator, s->colormapImg, s->colormapAlloc);
+    if (s->cementSamp) vkDestroySampler(d, s->cementSamp, nullptr);
+    if (s->cementView) vkDestroyImageView(d, s->cementView, nullptr);
+    if (s->cementImg)  vmaDestroyImage(s->allocator, s->cementImg, s->cementAlloc);
+    if (s->cementBuf)  vmaDestroyBuffer(s->allocator, s->cementBuf, s->cementBufAlloc);
     if (s->cpool)   vkDestroyCommandPool(d, s->cpool, nullptr);
     // instance/phys/device/queue/allocator + the shared GBuffer images are BORROWED.
 }
@@ -524,10 +570,20 @@ bool init_island(TerrainIsland* s, int w, int h) {
     // Bind a 1x1 dummy colormap so binding 2 is a valid descriptor from frame 1
     // (colormapReady stays false until the real atlas imports -> FS uses olive).
     if (!ensure_dummy_colormap(s)) { setFallback("colormap_dummy_failed"); return false; }
+    // CEMENT: dummy cement atlas (binding 3) + dummy cement-word SSBO (binding 4) so both
+    // are valid descriptors from frame 1 (useCement stays 0 until the real atlas+words
+    // are ready -> FS ignores the cement branch -> colormap base, no hole).
+    if (!ensure_dummy_cement(s)) { setFallback("cement_dummy_failed"); return false; }
+    if (s->cementBuf == VK_NULL_HANDLE) {
+        if (!make_buffer(s, 16, VK_BUFFER_USAGE_STORAGE_BUFFER_BIT, &s->cementBuf, &s->cementBufAlloc, true)) {
+            setFallback("cement_dummy_ssbo_failed"); return false;
+        }
+        s->cementCapBytes = 16;
+    }
 
     // ---- Descriptor layout: binding0 dynamic UBO (VS+FS), binding1 height SSBO (VS). ----
     {
-        VkDescriptorSetLayoutBinding b[3]{};
+        VkDescriptorSetLayoutBinding b[5]{};
         b[0].binding = 0; b[0].descriptorType = VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER_DYNAMIC;
         b[0].descriptorCount = 1; b[0].stageFlags = VK_SHADER_STAGE_VERTEX_BIT | VK_SHADER_STAGE_FRAGMENT_BIT;
         b[1].binding = 1; b[1].descriptorType = VK_DESCRIPTOR_TYPE_STORAGE_BUFFER;
@@ -536,16 +592,21 @@ bool init_island(TerrainIsland* s, int w, int h) {
         // descriptor is always written (dummy 1x1 until the real atlas is imported).
         b[2].binding = 2; b[2].descriptorType = VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER;
         b[2].descriptorCount = 1; b[2].stageFlags = VK_SHADER_STAGE_FRAGMENT_BIT;
+        // CEMENT: binding 3 = cement atlas sampler (FS); binding 4 = cement-word SSBO (FS).
+        b[3].binding = 3; b[3].descriptorType = VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER;
+        b[3].descriptorCount = 1; b[3].stageFlags = VK_SHADER_STAGE_FRAGMENT_BIT;
+        b[4].binding = 4; b[4].descriptorType = VK_DESCRIPTOR_TYPE_STORAGE_BUFFER;
+        b[4].descriptorCount = 1; b[4].stageFlags = VK_SHADER_STAGE_FRAGMENT_BIT;
         VkDescriptorSetLayoutCreateInfo lci{};
         lci.sType = VK_STRUCTURE_TYPE_DESCRIPTOR_SET_LAYOUT_CREATE_INFO;
-        lci.bindingCount = 3; lci.pBindings = b;
+        lci.bindingCount = 5; lci.pBindings = b;
         if (vkCreateDescriptorSetLayout(s->device, &lci, nullptr, &s->dsl) != VK_SUCCESS) {
             vlog("vkCreateDescriptorSetLayout failed."); return false;
         }
-        VkDescriptorPoolSize sizes[3]{};
+        VkDescriptorPoolSize sizes[4]{};
         sizes[0].type = VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER_DYNAMIC;  sizes[0].descriptorCount = 1;
-        sizes[1].type = VK_DESCRIPTOR_TYPE_STORAGE_BUFFER;          sizes[1].descriptorCount = 1;
-        sizes[2].type = VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER;  sizes[2].descriptorCount = 1;
+        sizes[1].type = VK_DESCRIPTOR_TYPE_STORAGE_BUFFER;          sizes[1].descriptorCount = 2; // height + cement
+        sizes[2].type = VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER;  sizes[2].descriptorCount = 2; // colormap + cement
         VkDescriptorPoolCreateInfo pci{};
         pci.sType = VK_STRUCTURE_TYPE_DESCRIPTOR_POOL_CREATE_INFO;
         pci.maxSets = 1; pci.poolSizeCount = 3; pci.pPoolSizes = sizes;
@@ -712,13 +773,16 @@ bool create_colormap_sampler(TerrainIsland* s) {
     return vkCreateSampler(s->device, &sci, nullptr, &s->colormapSamp) == VK_SUCCESS;
 }
 
-// Build a VK sampled image from raw bytes (staging -> copy -> SHADER_READ). Frees the
-// previous image/view. Leaves s->colormapImg/View populated on success.
-bool upload_colormap_image(TerrainIsland* s, VkFormat fmt, uint32_t width, uint32_t height,
-                           const void* bytes, VkDeviceSize byteCount) {
-    // Free any prior import.
-    if (s->colormapView) { vkDestroyImageView(s->device, s->colormapView, nullptr); s->colormapView = VK_NULL_HANDLE; }
-    if (s->colormapImg)  { vmaDestroyImage(s->allocator, s->colormapImg, s->colormapAlloc); s->colormapImg = VK_NULL_HANDLE; }
+// Generic: build a VK sampled image from raw bytes (staging -> copy -> SHADER_READ).
+// Frees the previous image/view (passed by ref). Reused by BOTH the colormap and cement
+// copy-once imports. Match `fmt` to the GL upload's channel order (RGBA8 storage read
+// back as GL_RGBA -> R8G8B8A8_UNORM; do NOT double-encode sRGB).
+bool upload_sampled_image(TerrainIsland* s, VkImage* outImg, VmaAllocation* outAlloc,
+                          VkImageView* outView, VkFormat fmt, uint32_t width, uint32_t height,
+                          const void* bytes, VkDeviceSize byteCount) {
+    // Free any prior import (idempotent re-import on a per-mission atlas rebuild).
+    if (*outView) { vkDestroyImageView(s->device, *outView, nullptr); *outView = VK_NULL_HANDLE; }
+    if (*outImg)  { vmaDestroyImage(s->allocator, *outImg, *outAlloc); *outImg = VK_NULL_HANDLE; }
 
     // Staging buffer (host-visible).
     VkBuffer stg = VK_NULL_HANDLE; VmaAllocation stgAlloc = VK_NULL_HANDLE;
@@ -736,7 +800,7 @@ bool upload_colormap_image(TerrainIsland* s, VkFormat fmt, uint32_t width, uint3
     ici.usage = VK_IMAGE_USAGE_SAMPLED_BIT | VK_IMAGE_USAGE_TRANSFER_DST_BIT;
     ici.initialLayout = VK_IMAGE_LAYOUT_UNDEFINED;
     VmaAllocationCreateInfo aci{}; aci.usage = VMA_MEMORY_USAGE_AUTO;
-    if (vmaCreateImage(s->allocator, &ici, &aci, &s->colormapImg, &s->colormapAlloc, nullptr) != VK_SUCCESS) {
+    if (vmaCreateImage(s->allocator, &ici, &aci, outImg, outAlloc, nullptr) != VK_SUCCESS) {
         vmaDestroyBuffer(s->allocator, stg, stgAlloc); return false;
     }
 
@@ -746,7 +810,7 @@ bool upload_colormap_image(TerrainIsland* s, VkFormat fmt, uint32_t width, uint3
     VkImageMemoryBarrier bar{};
     bar.sType = VK_STRUCTURE_TYPE_IMAGE_MEMORY_BARRIER;
     bar.oldLayout = VK_IMAGE_LAYOUT_UNDEFINED; bar.newLayout = VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL;
-    bar.srcQueueFamilyIndex = bar.dstQueueFamilyIndex = VK_QUEUE_FAMILY_IGNORED; bar.image = s->colormapImg;
+    bar.srcQueueFamilyIndex = bar.dstQueueFamilyIndex = VK_QUEUE_FAMILY_IGNORED; bar.image = *outImg;
     bar.subresourceRange = {VK_IMAGE_ASPECT_COLOR_BIT, 0, 1, 0, 1};
     bar.srcAccessMask = 0; bar.dstAccessMask = VK_ACCESS_TRANSFER_WRITE_BIT;
     vkCmdPipelineBarrier(cb, VK_PIPELINE_STAGE_TOP_OF_PIPE_BIT, VK_PIPELINE_STAGE_TRANSFER_BIT,
@@ -754,7 +818,7 @@ bool upload_colormap_image(TerrainIsland* s, VkFormat fmt, uint32_t width, uint3
     VkBufferImageCopy rgn{};
     rgn.imageSubresource = {VK_IMAGE_ASPECT_COLOR_BIT, 0, 0, 1};
     rgn.imageExtent = {width, height, 1};
-    vkCmdCopyBufferToImage(cb, stg, s->colormapImg, VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL, 1, &rgn);
+    vkCmdCopyBufferToImage(cb, stg, *outImg, VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL, 1, &rgn);
     bar.oldLayout = VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL; bar.newLayout = VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL;
     bar.srcAccessMask = VK_ACCESS_TRANSFER_WRITE_BIT; bar.dstAccessMask = VK_ACCESS_SHADER_READ_BIT;
     vkCmdPipelineBarrier(cb, VK_PIPELINE_STAGE_TRANSFER_BIT, VK_PIPELINE_STAGE_FRAGMENT_SHADER_BIT,
@@ -765,10 +829,17 @@ bool upload_colormap_image(TerrainIsland* s, VkFormat fmt, uint32_t width, uint3
     // Image view.
     VkImageViewCreateInfo vci{};
     vci.sType = VK_STRUCTURE_TYPE_IMAGE_VIEW_CREATE_INFO;
-    vci.image = s->colormapImg; vci.viewType = VK_IMAGE_VIEW_TYPE_2D; vci.format = fmt;
+    vci.image = *outImg; vci.viewType = VK_IMAGE_VIEW_TYPE_2D; vci.format = fmt;
     vci.subresourceRange = {VK_IMAGE_ASPECT_COLOR_BIT, 0, 1, 0, 1};
-    if (vkCreateImageView(s->device, &vci, nullptr, &s->colormapView) != VK_SUCCESS) return false;
+    if (vkCreateImageView(s->device, &vci, nullptr, outView) != VK_SUCCESS) return false;
     return true;
+}
+
+// Colormap-atlas wrapper over the generic uploader.
+bool upload_colormap_image(TerrainIsland* s, VkFormat fmt, uint32_t width, uint32_t height,
+                           const void* bytes, VkDeviceSize byteCount) {
+    return upload_sampled_image(s, &s->colormapImg, &s->colormapAlloc, &s->colormapView,
+                                fmt, width, height, bytes, byteCount);
 }
 
 // Create a 1x1 opaque placeholder so binding 2 is ALWAYS a valid descriptor even
@@ -837,6 +908,106 @@ void import_colormap(TerrainIsland* s, const Mc2TerrainTier1Feed& feed) {
     // On failure the dummy stays bound (colormapReady=false) -> FS uses olive.
 }
 
+// ---------------------------------------------------------------------------
+// CEMENT/ROAD atlas sub-slice: copy-once import of the GL cement/road overlay atlas
+// (g_cementAtlasGLTex, runtime-assembled RGBA8, GL_REPEAT wrap) + a REPEAT sampler
+// (binding 3), plus a map-load snapshot of the per-vertex cement-word SSBO (GL binding
+// 25 -> here binding 4). REUSES the colormap copy-once primitive verbatim; the ONLY
+// deltas are (a) a REPEAT (not CLAMP) sampler — cement tiles wrap via fract() UV — and
+// (b) the extra cement-word SSBO snapshot fed to the FS's cement branch.
+// ---------------------------------------------------------------------------
+
+bool create_cement_sampler(TerrainIsland* s) {
+    if (s->cementSamp != VK_NULL_HANDLE) return true;
+    VkSamplerCreateInfo sci{};
+    sci.sType = VK_STRUCTURE_TYPE_SAMPLER_CREATE_INFO;
+    sci.magFilter = VK_FILTER_LINEAR; sci.minFilter = VK_FILTER_LINEAR;   // GL_LINEAR
+    sci.mipmapMode = VK_SAMPLER_MIPMAP_MODE_NEAREST;
+    // ★CEMENT: GL_REPEAT wrap (gos_terrain_indirect.cpp:1291-1292) — cement tiles wrap.
+    sci.addressModeU = sci.addressModeV = sci.addressModeW = VK_SAMPLER_ADDRESS_MODE_REPEAT;
+    sci.maxLod = 0.25f;
+    return vkCreateSampler(s->device, &sci, nullptr, &s->cementSamp) == VK_SUCCESS;
+}
+
+// 1x1 placeholder so binding 3 is ALWAYS a valid descriptor before the real atlas
+// imports (cementReady stays false -> FS ignores the cement branch -> colormap base).
+bool ensure_dummy_cement(TerrainIsland* s) {
+    if (!create_cement_sampler(s)) return false;
+    if (s->cementView != VK_NULL_HANDLE) return true; // already bound
+    const uint8_t px[4] = {128, 128, 128, 255}; // neutral grey; irrelevant (useCement=0)
+    if (!upload_sampled_image(s, &s->cementImg, &s->cementAlloc, &s->cementView,
+                              VK_FORMAT_R8G8B8A8_UNORM, 1, 1, px, sizeof(px))) return false;
+    s->cementReady = false;
+    return true;
+}
+
+// Copy-once import of the GL cement atlas. Re-imports only when the GL tex name changes
+// (per-mission rebuild). The cement atlas is ALWAYS RGBA8 storage (runtime-assembled;
+// never BC7), uploaded from BGRA source swizzled to RGBA8 on upload — so reading it back
+// as GL_RGBA -> VK_FORMAT_R8G8B8A8_UNORM preserves channel order end-to-end, IDENTICAL
+// to the colormap RGBA8 path. Fail-soft: on failure the dummy stays bound.
+void import_cement(TerrainIsland* s, const Mc2TerrainTier1Feed& feed) {
+    const uint32_t glTex = feed.glCementAtlasTex;
+    if (glTex == 0) return;                     // atlas not built yet -> cement stays off
+    if (glTex == s->cementTexImported && s->cementReady) return; // already imported
+
+    glBindTexture(GL_TEXTURE_2D, (GLuint)glTex);
+    GLint w = 0, h = 0;
+    glGetTexLevelParameteriv(GL_TEXTURE_2D, 0, GL_TEXTURE_WIDTH, &w);
+    glGetTexLevelParameteriv(GL_TEXTURE_2D, 0, GL_TEXTURE_HEIGHT, &h);
+    if (w <= 0 || h <= 0) { glBindTexture(GL_TEXTURE_2D, 0); return; }
+    std::vector<uint8_t> px((size_t)w * (size_t)h * 4u);
+    glGetTexImage(GL_TEXTURE_2D, 0, GL_RGBA, GL_UNSIGNED_BYTE, px.data());
+    glBindTexture(GL_TEXTURE_2D, 0);
+
+    if (upload_sampled_image(s, &s->cementImg, &s->cementAlloc, &s->cementView,
+                             VK_FORMAT_R8G8B8A8_UNORM, (uint32_t)w, (uint32_t)h,
+                             px.data(), (VkDeviceSize)px.size())) {
+        s->cementTexImported = glTex;
+        s->cementReady = true;
+        write_descriptors(s);
+        static bool s_firstCem = false;
+        if (!s_firstCem) {
+            vlog("CEMENT/ROAD: imported GL cement atlas gltex=%u %dx%d (RGBA8->R8G8B8A8, "
+                 "REPEAT wrap); VK terrain concrete apron now matches GL.", glTex, w, h);
+            s_firstCem = true;
+        }
+    }
+    // On failure the dummy stays bound (cementReady=false) -> FS uses colormap base.
+}
+
+// Snapshot the GL cement-word SSBO into the VK-owned buffer when the feed version
+// changes. Map-load copy (glGetBufferSubData -> vmaMap), mirroring snapshot_height.
+bool snapshot_cement(TerrainIsland* s, const Mc2TerrainTier1Feed& feed) {
+    if (feed.glCementSsbo == 0 || feed.cementBytes == 0) return false;  // not live yet
+    if (feed.cementVersion == s->cementVersionCopied && s->cementWordsReady) return true;
+    // Ensure capacity (grow-only, like the height buffer).
+    if (s->cementBuf == VK_NULL_HANDLE || (VkDeviceSize)feed.cementBytes > s->cementCapBytes) {
+        if (s->cementBuf != VK_NULL_HANDLE) {
+            vkDeviceWaitIdle(s->device);
+            vmaDestroyBuffer(s->allocator, s->cementBuf, s->cementBufAlloc);
+            s->cementBuf = VK_NULL_HANDLE;
+        }
+        VkDeviceSize cap = (VkDeviceSize)feed.cementBytes + feed.cementBytes / 4 + 4096;
+        if (!make_buffer(s, cap, VK_BUFFER_USAGE_STORAGE_BUFFER_BIT, &s->cementBuf, &s->cementBufAlloc, true))
+            return false;
+        s->cementCapBytes = cap;
+        s->cementVersionCopied = UINT64_MAX; // force re-snapshot into the new buffer
+        write_descriptors(s);
+    }
+    std::vector<uint8_t> scratch((size_t)feed.cementBytes);
+    glBindBuffer(GL_SHADER_STORAGE_BUFFER, (GLuint)feed.glCementSsbo);
+    glGetBufferSubData(GL_SHADER_STORAGE_BUFFER, 0, (GLsizeiptr)feed.cementBytes, scratch.data());
+    glBindBuffer(GL_SHADER_STORAGE_BUFFER, 0);
+    void* p = nullptr;
+    if (vmaMapMemory(s->allocator, s->cementBufAlloc, &p) != VK_SUCCESS) return false;
+    std::memcpy(p, scratch.data(), (size_t)feed.cementBytes);
+    vmaUnmapMemory(s->allocator, s->cementBufAlloc);
+    s->cementVersionCopied = feed.cementVersion;
+    s->cementWordsReady = true;
+    return true;
+}
+
 } // namespace
 
 // ===========================================================================
@@ -888,6 +1059,12 @@ extern "C" int mc2_vk_terrain_island_run(int w, int h) {
     // GL context is current (this entry point is called on the GL/render thread).
     import_colormap(s, feed);
 
+    // CEMENT/ROAD: copy-once import of the GL cement atlas + map-load snapshot of the
+    // per-vertex cement-word SSBO. Both no-op once imported / while not ready. Runs on
+    // the GL/render thread (GL context current) — same as the colormap/height copies.
+    import_cement(s, feed);
+    snapshot_cement(s, feed);
+
     // Fill one dynamic-UBO slot per LOD0 patch (shared MVP/mapSide/halfMap + per-patch
     // blockOrigin). quadCount comes from the patch record (drives grid rebuild).
     const uint32_t patchCount = feed.patchCount;
@@ -908,6 +1085,14 @@ extern "C" int mc2_vk_terrain_island_run(int w, int h) {
                 u.atlasTopLeftY          = feed.atlasTopLeftY;
                 u.atlasOneOverWorldUnits = feed.atlasOneOverWorldUnits;
                 u.colormapReady          = s->colormapReady ? 1 : 0;
+                // CEMENT: only enable the FS cement branch when the GL gate is on AND both
+                // the VK cement atlas image and the cement-word snapshot are live (fail-soft
+                // if only one of them is ready -> colormap base, no hole).
+                u.useCement         = (feed.useCement && s->cementReady && s->cementWordsReady) ? 1 : 0;
+                u.cementGridSide    = feed.cementGridSide;
+                u.cementWUPT        = feed.cementWUPT;
+                u.useTransitionMask = feed.useTransitionMask;
+                u.cementDiagConnect = feed.cementDiagConnect;
                 slots[i] = u;
             }
             vmaUnmapMemory(s->allocator, s->uboAlloc);
