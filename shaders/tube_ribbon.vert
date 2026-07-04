@@ -16,7 +16,12 @@
 // exactly the same convention the billboard VS uses, so the ribbon lands
 // pixel-coincident with where legacy MLR / the billboard path would place it.
 
-layout(std430, binding = 14) readonly buffer RibbonPos   { vec4 positions[]; };
+// VK-OPT-1: positions uploaded as a TIGHT scalar float[] (3 floats/vert),
+// not a padded vec4[]. std430 scalar arrays have a 4-byte stride, so this
+// packs with no per-element padding — the CPU vec3->vec4 expansion loop
+// (and its per-record heap alloc) is gone; the w=1 expansion happens here
+// in the VS. Same projected pixels, 25% fewer position bytes uploaded.
+layout(std430, binding = 14) readonly buffer RibbonPos   { float positions[]; };
 layout(std430, binding = 15) readonly buffer RibbonColor { vec4 colors[];    };
 layout(std430, binding = 16) readonly buffer RibbonUv     { vec2 uvs[];        };
 
@@ -27,7 +32,8 @@ out vec4 v_color;
 
 void main() {
     // gl_VertexID indexes the bound element buffer -> per-vertex SSBO fetch.
-    vec3 stuffPos = positions[gl_VertexID].xyz;
+    int base = gl_VertexID * 3;
+    vec3 stuffPos = vec3(positions[base], positions[base + 1], positions[base + 2]);
     vec3 glPos    = vec3(-stuffPos.x, stuffPos.z, stuffPos.y);
     gl_Position   = u_worldToClipGL * vec4(glPos, 1.0);
     v_uv    = uvs[gl_VertexID];
