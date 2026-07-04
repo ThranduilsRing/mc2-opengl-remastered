@@ -8327,6 +8327,45 @@ extern "C" int mc2_shadow_island_get_geometry_feed(Mc2ShadowGeomFeed* out) {
     out->typeCount       = (uint32_t)s_types.size();
     return 1;
 }
+
+// VK-P11 STATIC-PROP COLOR — flatten the live per-type color buckets into a single
+// GpuStaticPropInstance array grouped by typeID, and hand out the world->clip matrix
+// + reverse-Z depth bias. Called by the color island ONLY when its gate is ON (the
+// GL flush() is skipped in that case, so s_bucketsByType is still populated for this
+// frame). Read-only: does NOT mutate any batcher state (no clear, no upload). The
+// output blob is a reused static scratch vector, valid until the next call.
+extern "C" int mc2_color_prop_island_get_frame_feed(Mc2ColorPropFeed* out) {
+    if (!out) return 0;
+    if (!s_geometryFinalized || s_fatalRegistrationFailure) return 0;
+    if (s_bucketsByType.empty()) return 0;
+
+    static std::vector<GpuStaticPropInstance> s_colorFeedFlat;
+    s_colorFeedFlat.clear();
+
+    // Grouped by typeID for correct per-type geometry addressing (the island issues
+    // one type-run per contiguous typeID block via firstInstance). Deterministic
+    // ordering (ascending typeID) so the flattening is stable frame-to-frame.
+    std::vector<uint32_t> typeIds;
+    typeIds.reserve(s_bucketsByType.size());
+    for (const auto& kv : s_bucketsByType) typeIds.push_back(kv.first);
+    std::sort(typeIds.begin(), typeIds.end());
+    for (uint32_t tid : typeIds) {
+        auto it = s_bucketsByType.find(tid);
+        if (it == s_bucketsByType.end()) continue;
+        const std::vector<GpuStaticPropInstance>& insts = it->second.instances;
+        s_colorFeedFlat.insert(s_colorFeedFlat.end(), insts.begin(), insts.end());
+    }
+    if (s_colorFeedFlat.empty()) return 0;
+
+    out->instances112 = s_colorFeedFlat.data();
+    out->count        = (uint32_t)s_colorFeedFlat.size();
+    const float* mvp = gos_GetObjectFixBMVPMat4();
+    if (mvp) std::memcpy(out->worldToClipGL, mvp, sizeof(out->worldToClipGL));
+    else     std::memset(out->worldToClipGL, 0, sizeof(out->worldToClipGL));
+    // OBJECT_DEPTH_BIAS mirror (shaders/include/terrain_depth_bias.hglsl:62).
+    out->objectDepthBias = 0.0001f;
+    return 1;
+}
 #endif // MC2_VULKAN_ISLAND
 
 // ---------------------------------------------------------------------------

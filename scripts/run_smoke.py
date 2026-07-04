@@ -1641,6 +1641,13 @@ def main():
                             # in the allowlist Popen drops it and the gate-ON smoke
                             # silently runs the GL shadow path (gate inert).
                             "MC2_VK_SHADOW_INTEROP",
+                            # VK-P11 STATIC-PROP COLOR: VK renders the visible static-prop
+                            # color instances into an exportable RGBA16F, GL composites it
+                            # over MainColor. Requires the shared engine VulkanContext
+                            # (MC2_RENDER_BACKEND=vulkan). Without this in the allowlist
+                            # Popen drops it and the gate-ON smoke silently runs the GL
+                            # flush() prop color path (gate inert).
+                            "MC2_VK_PROP_COLOR_INTEROP",
                             # VK-P9a WATER-INTEROP proof: the bookmark-capture sweep
                             # env, so a smoke run (which reliably reaches steady render,
                             # unlike the standalone capture harness on some setups) can

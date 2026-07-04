@@ -52,6 +52,28 @@ struct Mc2ShadowGeomFeed {
 // gos_static_prop_batcher.cpp. Buffers persist until onMapUnload().
 int mc2_shadow_island_get_geometry_feed(Mc2ShadowGeomFeed* out);
 
+// VK-P11 STATIC-PROP COLOR — per-frame COLOR instance feed. The color island reuses
+// the SAME shared VBO/IBO + packet/type tables as the shadow feed above (identical
+// geometry), but its per-frame instance set is the VISIBLE color-pass instances the
+// GL GpuStaticPropBatcher::flush() draws (s_bucketsByType), NOT the shadow-caster
+// set. This accessor flattens the live per-type buckets into a single
+// GpuStaticPropInstance-layout (112B) array grouped by typeID and hands out the
+// engine's world->clip matrix (gos_GetObjectFixBMVPMat4(), GL_FALSE) + the reverse-Z
+// object depth bias. Called by the color island ONLY when the gate is ON (i.e. when
+// the GL flush() was skipped, so the buckets are still populated for this frame).
+// Returns false if geometry is not finalized or there are no visible instances.
+//
+// The instance blob pointer is owned by the batcher (a reused static scratch
+// vector) and is valid until the next call. `instances112` points at count
+// GpuStaticPropInstance records (112B each, same std430 POD).
+struct Mc2ColorPropFeed {
+    const void* instances112;   // count * GpuStaticPropInstance (112B), grouped by typeID
+    uint32_t    count;
+    float       worldToClipGL[16]; // gos_GetObjectFixBMVPMat4() — GL_FALSE, 16 linear floats
+    float       objectDepthBias;   // reverse-Z surface bias (== OBJECT_DEPTH_BIAS)
+};
+int mc2_color_prop_island_get_frame_feed(Mc2ColorPropFeed* out);
+
 // --- Island public API (implemented in vulkan_shadow_island_live.cpp) --------
 
 // True when MC2_VK_SHADOW_INTEROP requests the VK shadow region.

@@ -20,6 +20,11 @@
 // vulkan_water_island.cpp under the same #ifdef). Called at engine shutdown before
 // the shared VkDevice is destroyed so the island's Vk objects don't leak.
 extern "C" void mc2_vk_water_island_destroy();
+// VK-P11 STATIC-PROP COLOR: color-prop island shutdown teardown (defined in
+// vulkan_color_prop_island.cpp under the same #ifdef). Same ordering rationale as
+// the water island (deletes the interop FBO/imported tex + VK objects while both the
+// GL context and the shared device are alive). No-op if never born.
+extern "C" void mc2_vk_color_prop_island_destroy();
 #endif
 extern "C" uint32_t gos_getMechShadowProgramId();
 extern "C" uint32_t gos_getMechShadowTypesDrawn();
@@ -1991,6 +1996,8 @@ int main(int argc, char** argv)
     // Must run while both the GL context (deletes the interop FBO / imported tex) and the
     // shared device are alive — same ordering rationale as the present teardown below.
     mc2_vk_water_island_destroy();
+    // VK-P11 STATIC-PROP COLOR: tear down the color-prop island alongside water.
+    mc2_vk_color_prop_island_destroy();
 #endif
     // VK-P13-SELECTOR-1 / T3: tear down the VK present path FIRST -- it deletes GL
     // objects (copy-1 FBO / imported tex) and VK resources on the shared device,

@@ -73,6 +73,7 @@
 #include "../GameOS/gameos/gos_static_prop_batcher.h"
 #ifdef MC2_VULKAN_ISLAND
 #include "../GameOS/gameos/vulkan_shadow_island_live.h"  // VK-P8a SHADOW-INTEROP: producer call
+#include "../GameOS/gameos/vulkan_color_prop_island.h"   // VK-P11 STATIC-PROP COLOR: producer call
 #endif
 #include "../GameOS/gameos/render_frame_plan.h"  // RENDER-FRAME-PLAN-SCAFFOLD-1
 #include "../GameOS/gameos/render_snapshot.h"  // getLastRenderSnapshot() for snap-cull (v2.3)
@@ -3314,7 +3315,27 @@ void MC_TextureManager::renderLists (void)
 			if (g_useGpuStaticProps || g_useGpuObjects) {
 				ZoneScopedN("GpuSP.BatcherFlush");
 				TracyGpuZone("GpuSP.BatcherFlush");
+#ifdef MC2_VULKAN_ISLAND
+				// VK-P11 STATIC-PROP COLOR (gate MC2_VK_PROP_COLOR_INTEROP, default-OFF):
+				// when armed, render the visible static-prop color instances in Vulkan into
+				// an exportable RGBA16F and GL-composite it over MainColor INSTEAD of the GL
+				// flush() color draws. The island pulls its per-frame instance feed from the
+				// batcher (s_bucketsByType still populated here because we skip flush()). On
+				// success skip the GL flush; on any fail-soft (0) fall through to GL so props
+				// still draw. Gate OFF -> enabled()==0 -> GL flush() as before (byte-identical).
+				bool vkPropColorHandled = false;
+				if (mc2_vk_color_prop_island_enabled()) {
+					ZoneScopedN("GpuSP.VkColorPropInterop");
+					if (gosPostProcess* ppVkClr = getGosPostProcess()) {
+						vkPropColorHandled = (1 == mc2_vk_color_prop_island_run(
+							ppVkClr->getWidth(), ppVkClr->getHeight()));
+					}
+				}
+				if (!vkPropColorHandled)
+					GpuStaticPropBatcher::instance().flush(getLastRenderSnapshot());
+#else
 				GpuStaticPropBatcher::instance().flush(getLastRenderSnapshot());
+#endif
 			}
 			// Pass_SpColor ends after the static-prop flush: GL_TIME_ELAPSED
 			// scopes cannot nest, so mechs get their own disjoint scope.

@@ -151,6 +151,15 @@ if(MC2_VULKAN)
         # VulkanContext (no second device). Gate MC2_VK_SHADOW_INTEROP default-OFF
         # -> GL shadow path byte-identical. extern "C" entry points only.
         list(APPEND SOURCES vulkan_shadow_island_live.cpp)
+        # VK-P11 STATIC-PROP COLOR: the color island — FIRST VK-native COLOR geometry
+        # region rendering REAL static-prop triangle geometry into an exportable RGBA16F
+        # (VK-owned D32 depth for inter-prop occlusion) that GL composites over MainColor,
+        # instead of the GL GpuStaticPropBatcher::flush() color draws. Borrows the shared
+        # engine VulkanContext (no second device) + reuses the shadow island's shared
+        # static-prop VBO/IBO feed. Gate MC2_VK_PROP_COLOR_INTEROP default-OFF -> GL prop
+        # color path byte-identical. extern "C" entry points only (no layout-affecting
+        # header members).
+        list(APPEND SOURCES vulkan_color_prop_island.cpp)
         # VK-REGION-HZB-1: the HZB reduce-chain island (third region). Same
         # #ifdef MC2_VULKAN_ISLAND discipline; layout-affecting header members
         # (vkHzbIsland_ + method decls) added under the same macro, already
@@ -270,7 +279,10 @@ if(MC2_VULKAN)
     # VK-P9a WATER-INTEROP: bake water_geom.{vert,frag} (procedural water mesh VS +
     # base-layer FS for the first VK GEOMETRY region). SPIR-V loaded at runtime by
     # vulkan_water_island.cpp via load_spv(spv_dir()+"water_geom.*.spv").
-    set(MC2_VK_SHADER_BASENAMES fullscreen edge_fog fog_oob ssao ssao_apply hzb_reduce compare_shadow csm_array_shadow shadow_depth water_mvp water_geom shadow_prop)
+    # VK-P11 STATIC-PROP COLOR: bake color_prop.{vert,frag} (instanced static-prop color
+    # VS + Tier-0 flat/debug FS). SPIR-V loaded at runtime by vulkan_color_prop_island.cpp
+    # via load_spv(spv_dir()+"color_prop.*.spv").
+    set(MC2_VK_SHADER_BASENAMES fullscreen edge_fog fog_oob ssao ssao_apply hzb_reduce compare_shadow csm_array_shadow shadow_depth water_mvp water_geom shadow_prop color_prop)
     set(MC2_VK_SPV_OUTPUTS "")
     if(MC2_GLSLANG_VALIDATOR OR MC2_GLSLC)
         foreach(_base ${MC2_VK_SHADER_BASENAMES})
