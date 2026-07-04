@@ -809,6 +809,12 @@ extern "C" int mc2_terrain_tier1_get_frame_feed(Mc2TerrainTier1Feed* out)
     out->glHeightSsbo  = static_cast<uint32_t>(s_heightSsbo.backendHandle);
     out->heightBytes   = (uint64_t)s_mapSide * (uint64_t)s_mapSide * sizeof(float);
     out->heightVersion = g_terrainHeightVersion;
+    // COLORMAP-BASE sub-slice: hand the GL colormap atlas tex + UV params to the
+    // island so it can copy-once import the colormap and sample the REAL base color.
+    out->glColormapTex          = static_cast<uint32_t>(gos_terrain_indirect_getAtlasGLTex());
+    out->atlasTopLeftX          = gos_terrain_indirect_getAtlasMapTopLeftX();
+    out->atlasTopLeftY          = gos_terrain_indirect_getAtlasMapTopLeftY();
+    out->atlasOneOverWorldUnits = gos_terrain_indirect_getAtlasOneOverWorldUnits();
     return 1;
 }
 #endif

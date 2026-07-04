@@ -48,6 +48,13 @@ struct Mc2TerrainTier1Feed {
     uint32_t                    glHeightSsbo;      // GL name of the height SSBO (binding 23)
     uint64_t                    heightBytes;       // mapSide*mapSide*sizeof(float)
     uint64_t                    heightVersion;     // bumps when the height field changes (snapshot key)
+    // COLORMAP-BASE sub-slice: the GL colormap atlas texture (g_atlasGLTex) the VK
+    // island imports copy-once, plus the atlas-UV reconstruction params (same source
+    // as the GL LOD-chunk u_colormap / u_atlasTopLeftX/Y / u_atlasOneOverWorldUnits).
+    uint32_t                    glColormapTex;         // GL name of g_atlasGLTex (0 = not built yet)
+    float                       atlasTopLeftX;
+    float                       atlasTopLeftY;
+    float                       atlasOneOverWorldUnits;
 };
 
 // Provided BY the GL terrain path (gos_terrain_lod_chunk.cpp). The island calls this

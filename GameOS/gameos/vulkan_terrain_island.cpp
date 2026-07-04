@@ -65,6 +65,13 @@
 #include <chrono>
 #include <unordered_map>
 
+#ifndef GL_COMPRESSED_RGBA_BPTC_UNORM
+#define GL_COMPRESSED_RGBA_BPTC_UNORM        0x8E8C
+#endif
+#ifndef GL_COMPRESSED_SRGB_ALPHA_BPTC_UNORM
+#define GL_COMPRESSED_SRGB_ALPHA_BPTC_UNORM  0x8E8D
+#endif
+
 namespace {
 
 // ---------------------------------------------------------------------------
@@ -159,7 +166,13 @@ struct TerrainFrameUBO {
     float   halfMap;           // off 68
     int32_t blockOriginX;      // off 72
     int32_t blockOriginY;      // off 76
-    int32_t _pad[44];          // pad the slot up to 256B (dynamic UBO alignment)
+    // COLORMAP-BASE sub-slice: atlas-UV reconstruction params (mirror GL
+    // u_atlasTopLeftX/Y + u_atlasOneOverWorldUnits) + colormap-ready flag.
+    float   atlasTopLeftX;          // off 80
+    float   atlasTopLeftY;          // off 84
+    float   atlasOneOverWorldUnits; // off 88
+    int32_t colormapReady;          // off 92
+    int32_t _pad[40];               // pad the slot up to 256B (dynamic UBO alignment)
 };
 static_assert(sizeof(TerrainFrameUBO) == 256, "UBO slot must be 256B (dynamic alignment)");
 
@@ -215,6 +228,15 @@ struct TerrainIsland {
     VkDeviceSize  heightCapBytes = 0;
     uint64_t      heightVersionCopied = UINT64_MAX; // last snapshotted feed version
 
+    // COLORMAP-BASE sub-slice: VK-owned copy-once import of the GL colormap atlas
+    // (g_atlasGLTex). Sampled image + view + sampler; binding 2. Keyed by the GL tex
+    // name so a re-built atlas (per-mission) re-imports.
+    VkImage       colormapImg   = VK_NULL_HANDLE; VmaAllocation colormapAlloc = VK_NULL_HANDLE;
+    VkImageView   colormapView  = VK_NULL_HANDLE;
+    VkSampler     colormapSamp  = VK_NULL_HANDLE;
+    uint32_t      colormapTexImported = 0;   // GL tex name last imported (0 = none yet)
+    bool          colormapReady = false;     // set once the sampled image is live
+
     // Per-patch dynamic UBO (one 256B slot per LOD0 patch this frame).
     VkBuffer      ubo = VK_NULL_HANDLE; VmaAllocation uboAlloc = VK_NULL_HANDLE;
     VkDeviceSize  uboCapBytes = 0;
@@ -226,6 +248,10 @@ struct TerrainIsland {
 };
 
 TerrainIsland* g_island = nullptr;
+
+// Forward decls (COLORMAP-BASE helpers defined after snapshot_height, used earlier).
+bool ensure_dummy_colormap(TerrainIsland* s);
+void import_colormap(TerrainIsland* s, const Mc2TerrainTier1Feed& feed);
 
 bool make_buffer(TerrainIsland* s, VkDeviceSize size, VkBufferUsageFlags usage,
                  VkBuffer* buf, VmaAllocation* alloc, bool hostVisible) {
@@ -291,17 +317,27 @@ const PatchMesh* getOrBuildPatch(TerrainIsland* s, int qcX, int qcY) {
 
 void write_descriptors(TerrainIsland* s) {
     if (s->set == VK_NULL_HANDLE) return;
-    // binding 0 = dynamic UBO (per-patch frame block); binding 1 = height SSBO.
+    // binding 0 = dynamic UBO (per-patch frame block); binding 1 = height SSBO;
+    // binding 2 = colormap combined-image-sampler (COLORMAP-BASE, only when live).
     VkDescriptorBufferInfo uboInfo{ s->ubo, 0, sizeof(TerrainFrameUBO) }; // range = one slot
     VkDescriptorBufferInfo hInfo{ s->heightBuf, 0, VK_WHOLE_SIZE };
-    VkWriteDescriptorSet w[2]{};
-    w[0].sType = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET; w[0].dstSet = s->set;
-    w[0].dstBinding = 0; w[0].descriptorCount = 1;
-    w[0].descriptorType = VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER_DYNAMIC; w[0].pBufferInfo = &uboInfo;
-    w[1].sType = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET; w[1].dstSet = s->set;
-    w[1].dstBinding = 1; w[1].descriptorCount = 1;
-    w[1].descriptorType = VK_DESCRIPTOR_TYPE_STORAGE_BUFFER; w[1].pBufferInfo = &hInfo;
-    vkUpdateDescriptorSets(s->device, 2, w, 0, nullptr);
+    VkWriteDescriptorSet w[3]{};
+    uint32_t n = 0;
+    w[n].sType = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET; w[n].dstSet = s->set;
+    w[n].dstBinding = 0; w[n].descriptorCount = 1;
+    w[n].descriptorType = VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER_DYNAMIC; w[n].pBufferInfo = &uboInfo; ++n;
+    w[n].sType = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET; w[n].dstSet = s->set;
+    w[n].dstBinding = 1; w[n].descriptorCount = 1;
+    w[n].descriptorType = VK_DESCRIPTOR_TYPE_STORAGE_BUFFER; w[n].pBufferInfo = &hInfo; ++n;
+    VkDescriptorImageInfo cmInfo{};
+    if (s->colormapReady && s->colormapView != VK_NULL_HANDLE && s->colormapSamp != VK_NULL_HANDLE) {
+        cmInfo.sampler = s->colormapSamp; cmInfo.imageView = s->colormapView;
+        cmInfo.imageLayout = VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL;
+        w[n].sType = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET; w[n].dstSet = s->set;
+        w[n].dstBinding = 2; w[n].descriptorCount = 1;
+        w[n].descriptorType = VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER; w[n].pImageInfo = &cmInfo; ++n;
+    }
+    vkUpdateDescriptorSets(s->device, n, w, 0, nullptr);
 }
 
 bool ensure_height_capacity(TerrainIsland* s, VkDeviceSize bytes) {
@@ -354,6 +390,9 @@ void destroy_island(TerrainIsland* s) {
     if (s->rpass)   vkDestroyRenderPass(d, s->rpass, nullptr);
     if (s->heightBuf) vmaDestroyBuffer(s->allocator, s->heightBuf, s->heightAlloc);
     if (s->ubo)     vmaDestroyBuffer(s->allocator, s->ubo, s->uboAlloc);
+    if (s->colormapSamp) vkDestroySampler(d, s->colormapSamp, nullptr);
+    if (s->colormapView) vkDestroyImageView(d, s->colormapView, nullptr);
+    if (s->colormapImg)  vmaDestroyImage(s->allocator, s->colormapImg, s->colormapAlloc);
     if (s->cpool)   vkDestroyCommandPool(d, s->cpool, nullptr);
     // instance/phys/device/queue/allocator + the shared GBuffer images are BORROWED.
 }
@@ -465,25 +504,51 @@ bool init_island(TerrainIsland* s, int w, int h) {
     if (!ensure_height_capacity(s, 256 * 1024)) return false;
     if (!ensure_ubo_capacity(s, 64 * sizeof(TerrainFrameUBO))) return false;
 
+    // ---- COLORMAP-BASE: command pool must exist before the copy-once import can
+    // run its one-shot cmd buffer; create it here (also allocs the 2 draw cbufs). ----
+    {
+        VkCommandPoolCreateInfo pci{};
+        pci.sType = VK_STRUCTURE_TYPE_COMMAND_POOL_CREATE_INFO;
+        pci.flags = VK_COMMAND_POOL_CREATE_RESET_COMMAND_BUFFER_BIT;
+        pci.queueFamilyIndex = s->gfxFamily;
+        if (vkCreateCommandPool(s->device, &pci, nullptr, &s->cpool) != VK_SUCCESS) {
+            vlog("vkCreateCommandPool failed."); return false;
+        }
+        VkCommandBufferAllocateInfo cai{};
+        cai.sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_ALLOCATE_INFO;
+        cai.commandPool = s->cpool; cai.level = VK_COMMAND_BUFFER_LEVEL_PRIMARY; cai.commandBufferCount = 2;
+        if (vkAllocateCommandBuffers(s->device, &cai, s->cbuf) != VK_SUCCESS) {
+            vlog("vkAllocateCommandBuffers failed."); return false;
+        }
+    }
+    // Bind a 1x1 dummy colormap so binding 2 is a valid descriptor from frame 1
+    // (colormapReady stays false until the real atlas imports -> FS uses olive).
+    if (!ensure_dummy_colormap(s)) { setFallback("colormap_dummy_failed"); return false; }
+
     // ---- Descriptor layout: binding0 dynamic UBO (VS+FS), binding1 height SSBO (VS). ----
     {
-        VkDescriptorSetLayoutBinding b[2]{};
+        VkDescriptorSetLayoutBinding b[3]{};
         b[0].binding = 0; b[0].descriptorType = VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER_DYNAMIC;
         b[0].descriptorCount = 1; b[0].stageFlags = VK_SHADER_STAGE_VERTEX_BIT | VK_SHADER_STAGE_FRAGMENT_BIT;
         b[1].binding = 1; b[1].descriptorType = VK_DESCRIPTOR_TYPE_STORAGE_BUFFER;
         b[1].descriptorCount = 1; b[1].stageFlags = VK_SHADER_STAGE_VERTEX_BIT;
+        // COLORMAP-BASE: binding 2 = colormap sampler (FS). Always in the layout; the
+        // descriptor is always written (dummy 1x1 until the real atlas is imported).
+        b[2].binding = 2; b[2].descriptorType = VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER;
+        b[2].descriptorCount = 1; b[2].stageFlags = VK_SHADER_STAGE_FRAGMENT_BIT;
         VkDescriptorSetLayoutCreateInfo lci{};
         lci.sType = VK_STRUCTURE_TYPE_DESCRIPTOR_SET_LAYOUT_CREATE_INFO;
-        lci.bindingCount = 2; lci.pBindings = b;
+        lci.bindingCount = 3; lci.pBindings = b;
         if (vkCreateDescriptorSetLayout(s->device, &lci, nullptr, &s->dsl) != VK_SUCCESS) {
             vlog("vkCreateDescriptorSetLayout failed."); return false;
         }
-        VkDescriptorPoolSize sizes[2]{};
-        sizes[0].type = VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER_DYNAMIC; sizes[0].descriptorCount = 1;
-        sizes[1].type = VK_DESCRIPTOR_TYPE_STORAGE_BUFFER;         sizes[1].descriptorCount = 1;
+        VkDescriptorPoolSize sizes[3]{};
+        sizes[0].type = VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER_DYNAMIC;  sizes[0].descriptorCount = 1;
+        sizes[1].type = VK_DESCRIPTOR_TYPE_STORAGE_BUFFER;          sizes[1].descriptorCount = 1;
+        sizes[2].type = VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER;  sizes[2].descriptorCount = 1;
         VkDescriptorPoolCreateInfo pci{};
         pci.sType = VK_STRUCTURE_TYPE_DESCRIPTOR_POOL_CREATE_INFO;
-        pci.maxSets = 1; pci.poolSizeCount = 2; pci.pPoolSizes = sizes;
+        pci.maxSets = 1; pci.poolSizeCount = 3; pci.pPoolSizes = sizes;
         if (vkCreateDescriptorPool(s->device, &pci, nullptr, &s->pool) != VK_SUCCESS) {
             vlog("vkCreateDescriptorPool failed."); return false;
         }
@@ -579,23 +644,6 @@ bool init_island(TerrainIsland* s, int w, int h) {
         }
     }
 
-    // ---- Command pool + 2 command buffers (per parity). ----
-    {
-        VkCommandPoolCreateInfo pci{};
-        pci.sType = VK_STRUCTURE_TYPE_COMMAND_POOL_CREATE_INFO;
-        pci.flags = VK_COMMAND_POOL_CREATE_RESET_COMMAND_BUFFER_BIT;
-        pci.queueFamilyIndex = s->gfxFamily;
-        if (vkCreateCommandPool(s->device, &pci, nullptr, &s->cpool) != VK_SUCCESS) {
-            vlog("vkCreateCommandPool failed."); return false;
-        }
-        VkCommandBufferAllocateInfo cai{};
-        cai.sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_ALLOCATE_INFO;
-        cai.commandPool = s->cpool; cai.level = VK_COMMAND_BUFFER_LEVEL_PRIMARY; cai.commandBufferCount = 2;
-        if (vkAllocateCommandBuffers(s->device, &cai, s->cbuf) != VK_SUCCESS) {
-            vlog("vkAllocateCommandBuffers failed."); return false;
-        }
-    }
-
     s->inited = true;
     setFallback("");
     vlog("island initialized %dx%d (shared GBuffer co-write; LOD0 main-triangle terrain "
@@ -620,6 +668,173 @@ bool snapshot_height(TerrainIsland* s, const Mc2TerrainTier1Feed& feed) {
     s->heightVersionCopied = feed.heightVersion;
     ++g_health.heightSnapshots;
     return true;
+}
+
+// ---------------------------------------------------------------------------
+// COLORMAP-BASE sub-slice: VK-owned copy-once import of the GL colormap atlas.
+// PROVEN pattern (tools/vk_gl_interop_spike/main_sampletex.cpp): read the GL texel
+// bytes back on the GL side (RGBA8 -> glGetTexImage(GL_RGBA); BC7 ->
+// glGetCompressedTexImage), stage to a VK buffer, vkCmdCopyBufferToImage into a
+// sampled VK image, LINEAR/CLAMP_TO_EDGE sampler (mip0). Match VK format to the GL
+// upload's channel order / block encoding; do NOT double-encode sRGB.
+// ---------------------------------------------------------------------------
+
+// One-shot command buffer on the island's borrowed queue (mirror the spike helper).
+VkCommandBuffer begin_oneshot(TerrainIsland* s) {
+    VkCommandBufferAllocateInfo cbi{};
+    cbi.sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_ALLOCATE_INFO;
+    cbi.commandPool = s->cpool; cbi.level = VK_COMMAND_BUFFER_LEVEL_PRIMARY; cbi.commandBufferCount = 1;
+    VkCommandBuffer cb = VK_NULL_HANDLE;
+    if (vkAllocateCommandBuffers(s->device, &cbi, &cb) != VK_SUCCESS) return VK_NULL_HANDLE;
+    VkCommandBufferBeginInfo bi{};
+    bi.sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_BEGIN_INFO;
+    bi.flags = VK_COMMAND_BUFFER_USAGE_ONE_TIME_SUBMIT_BIT;
+    vkBeginCommandBuffer(cb, &bi);
+    return cb;
+}
+void end_oneshot(TerrainIsland* s, VkCommandBuffer cb) {
+    vkEndCommandBuffer(cb);
+    VkSubmitInfo si{}; si.sType = VK_STRUCTURE_TYPE_SUBMIT_INFO;
+    si.commandBufferCount = 1; si.pCommandBuffers = &cb;
+    vkQueueSubmit(s->queue, 1, &si, VK_NULL_HANDLE);
+    vkQueueWaitIdle(s->queue);
+    vkFreeCommandBuffers(s->device, s->cpool, 1, &cb);
+}
+
+bool create_colormap_sampler(TerrainIsland* s) {
+    if (s->colormapSamp != VK_NULL_HANDLE) return true;
+    VkSamplerCreateInfo sci{};
+    sci.sType = VK_STRUCTURE_TYPE_SAMPLER_CREATE_INFO;
+    sci.magFilter = VK_FILTER_LINEAR; sci.minFilter = VK_FILTER_LINEAR;   // GL_LINEAR
+    sci.mipmapMode = VK_SAMPLER_MIPMAP_MODE_NEAREST;
+    sci.addressModeU = sci.addressModeV = sci.addressModeW = VK_SAMPLER_ADDRESS_MODE_CLAMP_TO_EDGE; // GL_CLAMP_TO_EDGE
+    sci.maxLod = 0.25f;
+    return vkCreateSampler(s->device, &sci, nullptr, &s->colormapSamp) == VK_SUCCESS;
+}
+
+// Build a VK sampled image from raw bytes (staging -> copy -> SHADER_READ). Frees the
+// previous image/view. Leaves s->colormapImg/View populated on success.
+bool upload_colormap_image(TerrainIsland* s, VkFormat fmt, uint32_t width, uint32_t height,
+                           const void* bytes, VkDeviceSize byteCount) {
+    // Free any prior import.
+    if (s->colormapView) { vkDestroyImageView(s->device, s->colormapView, nullptr); s->colormapView = VK_NULL_HANDLE; }
+    if (s->colormapImg)  { vmaDestroyImage(s->allocator, s->colormapImg, s->colormapAlloc); s->colormapImg = VK_NULL_HANDLE; }
+
+    // Staging buffer (host-visible).
+    VkBuffer stg = VK_NULL_HANDLE; VmaAllocation stgAlloc = VK_NULL_HANDLE;
+    if (!make_buffer(s, byteCount, VK_BUFFER_USAGE_TRANSFER_SRC_BIT, &stg, &stgAlloc, true)) return false;
+    { void* p = nullptr;
+      if (vmaMapMemory(s->allocator, stgAlloc, &p) != VK_SUCCESS) { vmaDestroyBuffer(s->allocator, stg, stgAlloc); return false; }
+      std::memcpy(p, bytes, (size_t)byteCount); vmaUnmapMemory(s->allocator, stgAlloc); }
+
+    // Device-local sampled image.
+    VkImageCreateInfo ici{};
+    ici.sType = VK_STRUCTURE_TYPE_IMAGE_CREATE_INFO;
+    ici.imageType = VK_IMAGE_TYPE_2D; ici.format = fmt;
+    ici.extent = {width, height, 1}; ici.mipLevels = 1; ici.arrayLayers = 1;
+    ici.samples = VK_SAMPLE_COUNT_1_BIT; ici.tiling = VK_IMAGE_TILING_OPTIMAL;
+    ici.usage = VK_IMAGE_USAGE_SAMPLED_BIT | VK_IMAGE_USAGE_TRANSFER_DST_BIT;
+    ici.initialLayout = VK_IMAGE_LAYOUT_UNDEFINED;
+    VmaAllocationCreateInfo aci{}; aci.usage = VMA_MEMORY_USAGE_AUTO;
+    if (vmaCreateImage(s->allocator, &ici, &aci, &s->colormapImg, &s->colormapAlloc, nullptr) != VK_SUCCESS) {
+        vmaDestroyBuffer(s->allocator, stg, stgAlloc); return false;
+    }
+
+    // Copy staging -> image, transition UNDEFINED -> TRANSFER_DST -> SHADER_READ.
+    VkCommandBuffer cb = begin_oneshot(s);
+    if (cb == VK_NULL_HANDLE) { vmaDestroyBuffer(s->allocator, stg, stgAlloc); return false; }
+    VkImageMemoryBarrier bar{};
+    bar.sType = VK_STRUCTURE_TYPE_IMAGE_MEMORY_BARRIER;
+    bar.oldLayout = VK_IMAGE_LAYOUT_UNDEFINED; bar.newLayout = VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL;
+    bar.srcQueueFamilyIndex = bar.dstQueueFamilyIndex = VK_QUEUE_FAMILY_IGNORED; bar.image = s->colormapImg;
+    bar.subresourceRange = {VK_IMAGE_ASPECT_COLOR_BIT, 0, 1, 0, 1};
+    bar.srcAccessMask = 0; bar.dstAccessMask = VK_ACCESS_TRANSFER_WRITE_BIT;
+    vkCmdPipelineBarrier(cb, VK_PIPELINE_STAGE_TOP_OF_PIPE_BIT, VK_PIPELINE_STAGE_TRANSFER_BIT,
+                         0, 0, nullptr, 0, nullptr, 1, &bar);
+    VkBufferImageCopy rgn{};
+    rgn.imageSubresource = {VK_IMAGE_ASPECT_COLOR_BIT, 0, 0, 1};
+    rgn.imageExtent = {width, height, 1};
+    vkCmdCopyBufferToImage(cb, stg, s->colormapImg, VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL, 1, &rgn);
+    bar.oldLayout = VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL; bar.newLayout = VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL;
+    bar.srcAccessMask = VK_ACCESS_TRANSFER_WRITE_BIT; bar.dstAccessMask = VK_ACCESS_SHADER_READ_BIT;
+    vkCmdPipelineBarrier(cb, VK_PIPELINE_STAGE_TRANSFER_BIT, VK_PIPELINE_STAGE_FRAGMENT_SHADER_BIT,
+                         0, 0, nullptr, 0, nullptr, 1, &bar);
+    end_oneshot(s, cb);
+    vmaDestroyBuffer(s->allocator, stg, stgAlloc);
+
+    // Image view.
+    VkImageViewCreateInfo vci{};
+    vci.sType = VK_STRUCTURE_TYPE_IMAGE_VIEW_CREATE_INFO;
+    vci.image = s->colormapImg; vci.viewType = VK_IMAGE_VIEW_TYPE_2D; vci.format = fmt;
+    vci.subresourceRange = {VK_IMAGE_ASPECT_COLOR_BIT, 0, 1, 0, 1};
+    if (vkCreateImageView(s->device, &vci, nullptr, &s->colormapView) != VK_SUCCESS) return false;
+    return true;
+}
+
+// Create a 1x1 opaque placeholder so binding 2 is ALWAYS a valid descriptor even
+// before/without the real atlas (colormapReady stays false -> FS uses olive).
+bool ensure_dummy_colormap(TerrainIsland* s) {
+    if (!create_colormap_sampler(s)) return false;
+    if (s->colormapView != VK_NULL_HANDLE) return true; // something already bound
+    const uint8_t px[4] = {107, 102, 71, 255}; // ~olive, RGBA8; irrelevant (flag=0)
+    if (!upload_colormap_image(s, VK_FORMAT_R8G8B8A8_UNORM, 1, 1, px, sizeof(px))) return false;
+    s->colormapReady = false;
+    return true;
+}
+
+// Copy-once import of the GL colormap atlas. Re-imports only when the GL tex name
+// changes (per-mission rebuild). Sets s->colormapReady on success. Fail-soft: leaves
+// the dummy bound (colormapReady=false) so the FS falls back to olive.
+void import_colormap(TerrainIsland* s, const Mc2TerrainTier1Feed& feed) {
+    const uint32_t glTex = feed.glColormapTex;
+    if (glTex == 0) return;                       // atlas not built yet -> stay olive
+    if (glTex == s->colormapTexImported && s->colormapReady) return; // already imported
+
+    // Query the REAL internalformat of the GL atlas (RGBA8 vs BC7 UNORM/SRGB).
+    glBindTexture(GL_TEXTURE_2D, (GLuint)glTex);
+    GLint w = 0, h = 0, internalFmt = 0;
+    glGetTexLevelParameteriv(GL_TEXTURE_2D, 0, GL_TEXTURE_WIDTH, &w);
+    glGetTexLevelParameteriv(GL_TEXTURE_2D, 0, GL_TEXTURE_HEIGHT, &h);
+    glGetTexLevelParameteriv(GL_TEXTURE_2D, 0, GL_TEXTURE_INTERNAL_FORMAT, &internalFmt);
+    if (w <= 0 || h <= 0) { glBindTexture(GL_TEXTURE_2D, 0); return; }
+
+    bool ok = false;
+    if (internalFmt == GL_COMPRESSED_RGBA_BPTC_UNORM ||
+        internalFmt == GL_COMPRESSED_SRGB_ALPHA_BPTC_UNORM) {
+        // BC7: copy the compressed blocks verbatim. VK format per UNORM/SRGB.
+        GLint compBytes = 0;
+        glGetTexLevelParameteriv(GL_TEXTURE_2D, 0, GL_TEXTURE_COMPRESSED_IMAGE_SIZE, &compBytes);
+        if (compBytes > 0) {
+            std::vector<uint8_t> blocks((size_t)compBytes);
+            glGetCompressedTexImage(GL_TEXTURE_2D, 0, blocks.data());
+            const VkFormat vkFmt = (internalFmt == GL_COMPRESSED_SRGB_ALPHA_BPTC_UNORM)
+                                 ? VK_FORMAT_BC7_SRGB_BLOCK : VK_FORMAT_BC7_UNORM_BLOCK;
+            ok = upload_colormap_image(s, vkFmt, (uint32_t)w, (uint32_t)h, blocks.data(), (VkDeviceSize)compBytes);
+        }
+    } else {
+        // RGBA8 path: the GL atlas is RGBA8 storage (BGRA source swizzled to RGBA on
+        // upload). Read it back as RGBA -> VK_FORMAT_R8G8B8A8_UNORM (channel order
+        // preserved end-to-end; do NOT feed BGRA to an R8G8B8A8 image).
+        std::vector<uint8_t> px((size_t)w * (size_t)h * 4u);
+        glGetTexImage(GL_TEXTURE_2D, 0, GL_RGBA, GL_UNSIGNED_BYTE, px.data());
+        ok = upload_colormap_image(s, VK_FORMAT_R8G8B8A8_UNORM, (uint32_t)w, (uint32_t)h,
+                                   px.data(), (VkDeviceSize)px.size());
+    }
+    glBindTexture(GL_TEXTURE_2D, 0);
+
+    if (ok) {
+        s->colormapTexImported = glTex;
+        s->colormapReady = true;
+        write_descriptors(s);
+        static bool s_firstCm = false;
+        if (!s_firstCm) {
+            vlog("COLORMAP-BASE: imported GL colormap atlas gltex=%u %dx%d internalFmt=0x%x "
+                 "(RGBA8->R8G8B8A8 or BC7 verbatim); VK terrain base color now real.",
+                 glTex, w, h, (unsigned)internalFmt);
+            s_firstCm = true;
+        }
+    }
+    // On failure the dummy stays bound (colormapReady=false) -> FS uses olive.
 }
 
 } // namespace
@@ -668,6 +883,11 @@ extern "C" int mc2_vk_terrain_island_run(int w, int h) {
     // Snapshot the height field (only re-copies when the feed version changes).
     if (!snapshot_height(s, feed)) { setFallback("height_snapshot_failed"); return 0; }
 
+    // COLORMAP-BASE: copy-once import of the GL colormap atlas (no-op once imported;
+    // no-op while the atlas isn't built -> FS falls back to olive). Must run while the
+    // GL context is current (this entry point is called on the GL/render thread).
+    import_colormap(s, feed);
+
     // Fill one dynamic-UBO slot per LOD0 patch (shared MVP/mapSide/halfMap + per-patch
     // blockOrigin). quadCount comes from the patch record (drives grid rebuild).
     const uint32_t patchCount = feed.patchCount;
@@ -684,6 +904,10 @@ extern "C" int mc2_vk_terrain_island_run(int w, int h) {
                 u.halfMap      = feed.halfMap;
                 u.blockOriginX = feed.patches[i].blockOriginX;
                 u.blockOriginY = feed.patches[i].blockOriginY;
+                u.atlasTopLeftX          = feed.atlasTopLeftX;
+                u.atlasTopLeftY          = feed.atlasTopLeftY;
+                u.atlasOneOverWorldUnits = feed.atlasOneOverWorldUnits;
+                u.colormapReady          = s->colormapReady ? 1 : 0;
                 slots[i] = u;
             }
             vmaUnmapMemory(s->allocator, s->uboAlloc);

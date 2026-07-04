@@ -30,6 +30,12 @@ layout(set = 0, binding = 0, std140) uniform TerrainFrameUBO {
     // Per-patch placement (updated per LOD0 patch draw via dynamic UBO offset).
     int   blockOriginX;
     int   blockOriginY;
+    // COLORMAP-BASE sub-slice: atlas-UV params (used by the FS; declared here to
+    // keep the std140 UBO layout LOCKSTEP with terrain_tier1.frag).
+    float atlasTopLeftX;
+    float atlasTopLeftY;
+    float atlasOneOverWorldUnits;
+    int   colormapReady;
 } uT;
 
 // Height SSBO (VK-owned snapshot of the GL height field, binding 23 semantics).
