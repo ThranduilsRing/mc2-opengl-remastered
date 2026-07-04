@@ -74,6 +74,7 @@
 #ifdef MC2_VULKAN_ISLAND
 #include "../GameOS/gameos/vulkan_shadow_island_live.h"  // VK-P8a SHADOW-INTEROP: producer call
 #include "../GameOS/gameos/vulkan_color_prop_island.h"   // VK-P11 STATIC-PROP COLOR: producer call
+#include "../GameOS/gameos/vulkan_mech_island.h"          // VK-P14 MECH TIER-1: producer call
 #endif
 #include "../GameOS/gameos/render_frame_plan.h"  // RENDER-FRAME-PLAN-SCAFFOLD-1
 #include "../GameOS/gameos/render_snapshot.h"  // getLastRenderSnapshot() for snap-cull (v2.3)
@@ -3367,7 +3368,21 @@ void MC_TextureManager::renderLists (void)
 			    RenderCore::framegraph::findTopLevelStateDesc(RenderCore::RenderPassId::MechOpaque) != nullptr) {
 				GpuMechBatcher::instance().executorApplyMechOpaqueState();
 			}
+			// VK-P14 MECH TIER-1 (gate MC2_VK_MECH_TIER1, requires MC2_VK_SHARED_SCENE_DEPTH,
+			// default-OFF): flush() still BUILDS the instance/bone SSBOs + feed snapshot but
+			// SKIPS its GL color draws when the gate is on; the island then co-writes the
+			// skinned mechs IN-PLACE into the shared GBuffer. Fail-soft (island 0) = mechs
+			// dropped this frame (GL draws already skipped), no corruption. Gate OFF ->
+			// enabled()==0 -> flush() draws GL as before (byte-identical).
 			GpuMechBatcher::instance().flush();
+#ifdef MC2_VULKAN_ISLAND
+			if (mc2_vk_mech_island_enabled()) {
+				ZoneScopedN("Render.GpuMechs.VkTier1");
+				if (gosPostProcess* ppVkMech = getGosPostProcess()) {
+					(void)mc2_vk_mech_island_run(ppVkMech->getWidth(), ppVkMech->getHeight());
+				}
+			}
+#endif
 			gos_render_pass_timer::End(gos_render_pass_timer::Pass_Mechs);
 		};
 

@@ -169,6 +169,16 @@ if(MC2_VULKAN)
         # (requires MC2_VK_SHARED_SCENE_DEPTH) -> GL terrain path byte-identical.
         # extern "C" entry points only (no layout-affecting header members).
         list(APPEND SOURCES vulkan_terrain_island.cpp)
+        # VK-P14 MECH TIER-1: the mech island — the FIRST VK-native SKINNED region.
+        # Co-writes the GL mech batcher's visible instances IN-PLACE into the SHARED
+        # scene GBuffer (color MRT0 + normal MRT1 a=0.0 + shared depth), VK-skinned
+        # (linear-blend over 4 bone weights + MC2 axis swap), reusing the prop Tier-1
+        # shared-GBuffer plumbing (LOAD-preserve renderpass + reverse-Z pipeline).
+        # Feed (instances + bone palette + shared VBO/IBO + per-run slot-0 paint tex)
+        # exported by gos_mech_batcher.cpp. Gate MC2_VK_MECH_TIER1 default-OFF (requires
+        # MC2_VK_SHARED_SCENE_DEPTH) -> GL mech color flush byte-identical. extern "C"
+        # entry points only (no layout-affecting header members).
+        list(APPEND SOURCES vulkan_mech_island.cpp)
         # VK-REGION-HZB-1: the HZB reduce-chain island (third region). Same
         # #ifdef MC2_VULKAN_ISLAND discipline; layout-affecting header members
         # (vkHzbIsland_ + method decls) added under the same macro, already
@@ -310,7 +320,10 @@ if(MC2_VULKAN)
     # VK-P10 TERRAIN TIER-1: bake terrain_tier1.{vert,frag} (LOD0 terrain co-write VS
     # reading the height SSBO snapshot + 2-output GBuffer FS with a=1.0). SPIR-V loaded
     # at runtime by vulkan_terrain_island.cpp via load_spv(spv_dir()+"terrain_tier1.*.spv").
-    set(MC2_VK_SHADER_BASENAMES fullscreen edge_fog fog_oob ssao ssao_apply hzb_reduce compare_shadow csm_array_shadow shadow_depth water_mvp water_geom shadow_prop color_prop color_prop_tier1 terrain_tier1)
+    # VK-P14 MECH TIER-1: bake mech_tier1.{vert,frag} (skinned mech co-write VS reading
+    # the instance + bone-palette SSBOs + 2-output GBuffer FS with a=0.0). SPIR-V loaded
+    # at runtime by vulkan_mech_island.cpp via load_spv(spv_dir()+"mech_tier1.*.spv").
+    set(MC2_VK_SHADER_BASENAMES fullscreen edge_fog fog_oob ssao ssao_apply hzb_reduce compare_shadow csm_array_shadow shadow_depth water_mvp water_geom shadow_prop color_prop color_prop_tier1 terrain_tier1 mech_tier1)
     set(MC2_VK_SPV_OUTPUTS "")
     if(MC2_GLSLANG_VALIDATOR OR MC2_GLSLC)
         foreach(_base ${MC2_VK_SHADER_BASENAMES})

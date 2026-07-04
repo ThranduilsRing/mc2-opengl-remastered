@@ -25,6 +25,10 @@
 #include "utils/shader_builder.h"
 #include "gos_postprocess.h"           // getGosPostProcess()->getDynamicLightSpaceMatrix()
 #include "../../mclib/txmmgr.h"       // mcTextureManager->get_gosTextureHandle (live resolve)
+#include "../../mclib/terrain_depth_bias.h"  // VK-P14 MECH: OBJECT_DEPTH_BIAS feed
+#ifdef MC2_VULKAN_ISLAND
+#include "vulkan_mech_island.h"       // VK-P14 MECH: island feed contract (Vulkan-free POD)
+#endif
 #include <GL/glew.h>
 #include "gl_state_guard.h"            // GlStateGuard adoption: mc2gl::GlScopedSsboBinding
 #include <cstdio>
@@ -125,6 +129,30 @@ bool g_drawMechs = true;
 // Slice A: GPU mech batcher. Foundation for the entire stack.
 // Opt-out: MC2_GPU_MECHS=0
 bool g_useGpuMechs = envFlagDefaultOn("MC2_GPU_MECHS");
+
+#ifdef MC2_VULKAN_ISLAND
+// VK-P14 MECH TIER-1 (gate MC2_VK_MECH_TIER1, requires MC2_VK_SHARED_SCENE_DEPTH,
+// default-OFF): when armed, the flush() below still BUILDS the instance/bone SSBOs
+// and the feed snapshot, but SKIPS its own GL color draws; the caller (txmmgr) runs
+// mc2_vk_mech_island_run() to co-write the mechs IN-PLACE into the shared GBuffer.
+// Gate OFF -> s_vkMechGateOn stays false -> GL flush() byte-identical.
+static bool s_vkMechGateOn = [] {
+    const char* e = std::getenv("MC2_VK_MECH_TIER1");
+    const char* d = std::getenv("MC2_VK_SHARED_SCENE_DEPTH");
+    const bool on  = e && e[0] == '1' && e[1] == '\0';
+    const bool dep = d && d[0] == '1' && d[1] == '\0';
+    return on && dep;   // require shared depth (the co-write depth-tests against it)
+}();
+
+// VK-P14 MECH feed snapshots (persisted host-visible copies the island memcpy's).
+// Populated at flush() end ONLY when s_vkMechGateOn; empty otherwise.
+static std::vector<GpuMechInstance> s_vkMechInstSnapshot;
+static std::vector<GpuMechBone>     s_vkMechBoneSnapshot;
+static std::vector<Mc2MechDrawRun>  s_vkMechRunSnapshot;
+static float                        s_vkMechWorldToClipGL[16] = {0};
+static float                        s_vkMechObjectDepthBias   = 0.0f;
+static bool                         s_vkMechFrameReady        = false;
+#endif
 
 // SimpleCamera UI preview-render context depth (Mech Bay / Mech Purchase).
 // See gos_mech_killswitch.h. Zero during tactical/world rendering.
@@ -2537,6 +2565,11 @@ void GpuMechBatcher::flush() {
     // Step 7: Issue one draw call per bucket.
     uint32_t drawnCalls = 0;
     static int s_texDiagPrinted = 0;
+#ifdef MC2_VULKAN_ISLAND
+    // VK-P14 MECH TIER-1: when armed, capture each run (with its LIVE slot-0 paint
+    // texture resolved this frame) for the island and SKIP the GL draw below.
+    if (s_vkMechGateOn) s_vkMechRunSnapshot.clear();
+#endif
     for (const DrawCall& dc : drawCalls) {
         const GpuMechPacket& pkt = s_packets[dc.globalPacketIdx];
 
@@ -2553,6 +2586,19 @@ void GpuMechBatcher::flush() {
             ? mcTextureManager->get_gosTextureHandle(dc.texHandle)
             : 0u;
         const uint32_t glTexId = gos_GetGLTextureId((uint32_t)liveGosHandle);
+#ifdef MC2_VULKAN_ISLAND
+        if (s_vkMechGateOn) {
+            Mc2MechDrawRun run{};
+            run.firstIndex    = pkt.firstIndex;
+            run.indexCount    = pkt.indexCount;
+            run.baseVertex    = pkt.baseVertex;
+            run.instanceBase  = dc.instanceBase;
+            run.instanceCount = dc.instanceCount;
+            run.materialFlags = dc.materialFlags;
+            run.slot0GlTex    = glTexId;   // LIVE per-actor paint scheme this frame
+            s_vkMechRunSnapshot.push_back(run);
+        }
+#endif
         if (s_mechBatcherTrace && s_texDiagPrinted < 16) {
             ++s_texDiagPrinted;
             // Probe what the bound texture object actually contains.
@@ -2639,6 +2685,11 @@ void GpuMechBatcher::flush() {
         // specific filter/wrap onto a gosTexture handle that another renderer
         // may want to sample with auto-LOD or CLAMP later.
 
+#ifdef MC2_VULKAN_ISLAND
+        // VK-P14 MECH TIER-1: gate ON -> the island co-writes these mechs into the
+        // shared GBuffer instead; skip the GL color draw (SSBOs + feed still built).
+        if (!s_vkMechGateOn)
+#endif
         glDrawElementsInstancedBaseVertex(
             GL_TRIANGLES,
             (GLsizei)pkt.indexCount,
@@ -2736,6 +2787,25 @@ void GpuMechBatcher::flush() {
     s_lastTotalInstances = totalInstances;
     s_lastTotalBones     = totalBones;
 
+#ifdef MC2_VULKAN_ISLAND
+    // VK-P14 MECH TIER-1: snapshot this frame's instance + bone palette (host-visible
+    // copies out of the mapped ring slot) + the world->clip / depth-bias the GL VS
+    // uses, so the island can memcpy them into VK SSBOs without touching a fenced GL
+    // buffer. Runs only when the gate is armed (empty otherwise -> feed reports 0).
+    if (s_vkMechGateOn) {
+        s_vkMechInstSnapshot.assign(instDst, instDst + totalInstances);
+        s_vkMechBoneSnapshot.assign(boneDst, boneDst + totalBones);
+        // gos_GetMechFixBMVPMat4() is the row-major (GL_FALSE) kAxisSwap*worldToClip
+        // the GL mech VS uploads as u_worldToClipGL (see the s_loc_terrainMVP upload).
+        const float* mvp = gos_GetMechFixBMVPMat4();
+        if (mvp) std::memcpy(s_vkMechWorldToClipGL, mvp, sizeof(s_vkMechWorldToClipGL));
+        s_vkMechObjectDepthBias = mc2depth::OBJECT_DEPTH_BIAS;   // mclib/terrain_depth_bias.h
+        s_vkMechFrameReady = (totalInstances > 0 && !s_vkMechRunSnapshot.empty());
+    } else {
+        s_vkMechFrameReady = false;
+    }
+#endif
+
     // MECH-EXTRACTION-0: persist per-actor facts for batcher_getMechPendingCount/Entry.
     // Must run before s_pendingSubmits.clear() so ExtractRenderSnapshot can read this frame's data.
     static const bool s_mechExtractEnabled = [] {
@@ -2796,6 +2866,44 @@ bool batcher_getMechPendingEntry(uint32_t idx, ExtractedMechPacket* out) {
 uint64_t batcher_getLastFlushSubmitCount() {
     return s_lastFlushSubmitCount;
 }
+
+#ifdef MC2_VULKAN_ISLAND
+// ---------------------------------------------------------------------------
+// VK-P14 MECH TIER-1: island feed accessors (Vulkan-free; the island never
+// includes this batcher). Geometry is copy-once; the per-frame feed points at
+// the persistent snapshots built at flush() end. Return 0 if not ready.
+// ---------------------------------------------------------------------------
+extern "C" int mc2_mech_island_get_geometry_feed(Mc2MechGeomFeed* out) {
+    if (!out) return 0;
+    if (!s_vkMechGateOn || !s_geometryFinalized || s_sharedVbo == 0 || s_sharedIbo == 0)
+        return 0;
+    // Byte sizes from the staged CPU geometry (uploaded verbatim to the GL buffers).
+    const uint64_t vboBytes = (uint64_t)s_stagingVbo.size();
+    const uint64_t iboBytes = (uint64_t)s_stagingIbo.size() * sizeof(uint32_t);
+    if (vboBytes == 0 || iboBytes == 0) return 0;
+    out->glVbo        = s_sharedVbo;
+    out->glIbo        = s_sharedIbo;
+    out->vboBytes     = vboBytes;
+    out->iboBytes     = iboBytes;
+    out->vertexStride = (uint32_t)sizeof(GpuMechVertex);   // 48
+    return 1;
+}
+
+extern "C" int mc2_mech_island_get_frame_feed(Mc2MechFrameFeed* out) {
+    if (!out) return 0;
+    if (!s_vkMechGateOn || !s_vkMechFrameReady) return 0;
+    if (s_vkMechInstSnapshot.empty() || s_vkMechRunSnapshot.empty()) return 0;
+    out->instances64   = s_vkMechInstSnapshot.data();
+    out->instanceCount = (uint32_t)s_vkMechInstSnapshot.size();
+    out->bones64       = s_vkMechBoneSnapshot.data();
+    out->boneCount     = (uint32_t)s_vkMechBoneSnapshot.size();
+    out->runs          = s_vkMechRunSnapshot.data();
+    out->runCount      = (uint32_t)s_vkMechRunSnapshot.size();
+    std::memcpy(out->worldToClipGL, s_vkMechWorldToClipGL, sizeof(out->worldToClipGL));
+    out->objectDepthBias = s_vkMechObjectDepthBias;
+    return 1;
+}
+#endif // MC2_VULKAN_ISLAND
 
 void batcher_compareMechSnapshot(RenderSnapshot* snap) {
     if (!snap) return;

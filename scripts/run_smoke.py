@@ -1674,6 +1674,14 @@ def main():
                             # materials (both albedo arrays). Requires MC2_VK_PROP_COLOR_TIER1.
                             "MC2_VK_PROP_MATERIAL",
                             "MC2_VK_PROP_MATERIAL_DEBUG",
+                            # VK-P14 MECH TIER-1: the first VK-native SKINNED region —
+                            # co-writes the GL mech batcher's visible instances IN-PLACE
+                            # into the shared GBuffer, VK-skinned (LBS + MC2 axis swap).
+                            # Requires MC2_VK_SHARED_SCENE_DEPTH. Sub-slice 1 = skinning +
+                            # flat color; MC2_VK_MECH_MATERIAL adds the copy-once slot-0
+                            # paint-scheme albedo (single-material probe).
+                            "MC2_VK_MECH_TIER1",
+                            "MC2_VK_MECH_MATERIAL",
                             # VK-P9a WATER-INTEROP proof: the bookmark-capture sweep
                             # env, so a smoke run (which reliably reaches steady render,
                             # unlike the standalone capture harness on some setups) can

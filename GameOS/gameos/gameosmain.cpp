@@ -31,6 +31,11 @@ extern "C" void mc2_vk_color_prop_island_destroy();
 // is alive. The shared GBuffer images it borrows are owned by the postprocess
 // registries. No-op if never born.
 extern "C" void mc2_vk_terrain_island_destroy();
+// VK-P14 MECH TIER-1: mech island shutdown teardown (defined in vulkan_mech_island.cpp
+// under the same #ifdef). Frees the VK renderpass/framebuffer/pipeline + instance/bone/
+// geometry buffers + copy-once albedo while the shared device is alive. The shared
+// GBuffer images it borrows are owned by the postprocess registries. No-op if never born.
+extern "C" void mc2_vk_mech_island_destroy();
 #endif
 extern "C" uint32_t gos_getMechShadowProgramId();
 extern "C" uint32_t gos_getMechShadowTypesDrawn();
@@ -2006,6 +2011,8 @@ int main(int argc, char** argv)
     mc2_vk_color_prop_island_destroy();
     // VK-P10 TERRAIN TIER-1: tear down the terrain island alongside the others.
     mc2_vk_terrain_island_destroy();
+    // VK-P14 MECH TIER-1: tear down the mech island alongside the others.
+    mc2_vk_mech_island_destroy();
 #endif
     // VK-P13-SELECTOR-1 / T3: tear down the VK present path FIRST -- it deletes GL
     // objects (copy-1 FBO / imported tex) and VK resources on the shared device,

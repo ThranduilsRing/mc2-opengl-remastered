@@ -787,6 +787,32 @@ static constexpr EnvVarDesc kAuxEnvVars[] = {
         "layer histogram (textured/alpha_on/no_primary/total) from the material feed — diagnostic only, no "
         "render effect. Gate OFF = no log, byte-identical."
     },
+    {
+        "MC2_FEATURE_VK_MECH_TIER1",
+        "MC2_VK_MECH_TIER1",
+        EnvVarKind::Feature,
+        false,
+        "VK-MECH-TIER1: presence-gated =1, default OFF (requires MC2_VK_SHARED_SCENE_DEPTH). Renders mechs "
+        "IN-PLACE into the shared scene GBuffer (vulkan_mech_island.cpp): VK-skinned (VS linear-blend over "
+        "the CPU-filled bone-palette SSBO + MC2 axis swap, mirrors mech.vert; copy-once VBO/IBO, per-frame "
+        "memcpy instance+bone SSBOs), LOAD-preserve MRT0 color + MRT1 normal + shared D32S8 depth, GEQUAL "
+        "reverse-Z, gbuffer1 .a=0.0 (screen-shadow eligible, GL screen pass shadows). Gate-ON skips the GL "
+        "mech color flush for covered types; island co-writes. SKINNING PROVEN (13 mechs, correct biped "
+        "silhouette). DEFERRED: material (MC2_VK_MECH_MATERIAL, single copy-once albedo probe; per-actor "
+        "paint-scheme handle->descriptor cache = general case), lighting (VS calc_light Lambert + LightsData "
+        "UBO — NOT computePBR/vertex-baked). FAIL-SOFT: shared GBuffer/context unavailable -> GL flush. "
+        "Gate OFF = byte-identical GL mech path."
+    },
+    {
+        "MC2_FEATURE_VK_MECH_MATERIAL",
+        "MC2_VK_MECH_MATERIAL",
+        EnvVarKind::Feature,
+        false,
+        "VK-MECH-MATERIAL: presence-gated =1, default OFF (requires MC2_VK_MECH_TIER1). Copy-once imports the "
+        "first mech run's live slot-0 paint texture (single 2D, un-lit) so the VK mech is textured instead of "
+        "flat. Per-frame per-actor paint-scheme handle->VK-descriptor cache DEFERRED (probe = one static "
+        "actor). Gate OFF = flat probe color."
+    },
     // GOSFX-TUBE-RIBBON-1: gosFX Tube swept-quad ribbon oracle.
     {
         "MC2_VFX_ORACLE_TUBE",

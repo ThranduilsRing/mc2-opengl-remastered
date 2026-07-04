@@ -118,11 +118,23 @@ static bool mc2VkTerrainTier1Enabled()
     return s_on;
 }
 
+// VK mech Tier-1 in-place co-write also renders into the shared scene GBuffer.
+static bool mc2VkMechTier1Enabled()
+{
+    static const bool s_on = []() {
+        const char* v = getenv("MC2_VK_MECH_TIER1");
+        const bool tier1 = v && v[0] == '1' && v[1] == '\0';   // DEFAULT OFF; only "1"
+        return tier1 && mc2VkSharedSceneDepthEnabled();        // require shared depth
+    }();
+    return s_on;
+}
+
 // The shared scene color(MRT0)+normal(MRT1) exportable substrate is needed when
-// EITHER the prop Tier-1 OR the terrain Tier-1 in-place co-write gate is armed.
+// the prop Tier-1 OR terrain Tier-1 OR mech Tier-1 in-place co-write gate is armed.
 static bool mc2VkSharedSceneColorNeeded()
 {
-    return mc2VkPropColorTier1Enabled() || mc2VkTerrainTier1Enabled();
+    return mc2VkPropColorTier1Enabled() || mc2VkTerrainTier1Enabled()
+        || mc2VkMechTier1Enabled();
 }
 
 int mc2ShadowCsmCount()
