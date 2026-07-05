@@ -36,6 +36,8 @@
 #include "modlint_equipment_input.h"
 #include "modlint_equipment_report.h"
 
+#include "modlint_manifest.h"
+
 static void usage() {
     std::fprintf(stderr,
         "mc2_modlint — offline unit + equipment validator\n"
@@ -43,6 +45,7 @@ static void usage() {
         "  mc2_modlint --roster <report.json>            lint a unit converter roster\n"
         "  mc2_modlint --equipment <facts.json>          lint one EquipmentDefinition\n"
         "  mc2_modlint --equipment-roster <report.json>  lint an equipment converter --json report\n"
+        "  mc2_modlint --manifest <mod.json>             lint a mod package manifest (mods/<id>/mod.json)\n"
         "  use '-' as the path to read from stdin\n");
 }
 
@@ -113,12 +116,22 @@ static int lintEquipmentRoster(const std::string& text, bool* parseOk, int* comp
     return totalFindings;
 }
 
+// --manifest: one mod.json -> MODMAN_* findings. Returns count of findings.
+static int lintManifest(const std::string& text, bool* parseOk, const std::string& src) {
+    MlJson root = parseModlintJson(text, parseOk);
+    ModManifestFacts facts = manifestFactsFromJson(root);
+    std::vector<ModManifestFinding> findings = validateModManifest(facts);
+    std::cout << formatManifestFindings(facts.id, findings, src);
+    return (int)findings.size();
+}
+
 int main(int argc, char** argv) {
     std::string mode, path;
     for (int i = 1; i < argc; ++i) {
         std::string a = argv[i];
         if ((a == "--unit" || a == "--roster" ||
-             a == "--equipment" || a == "--equipment-roster") && i + 1 < argc) {
+             a == "--equipment" || a == "--equipment-roster" ||
+             a == "--manifest") && i + 1 < argc) {
             mode = a; path = argv[++i];
         } else if (a == "-h" || a == "--help") {
             usage(); return 0;
@@ -146,6 +159,9 @@ int main(int argc, char** argv) {
     } else if (mode == "--equipment") {
         noun = "component";
         findings = lintEquipment(text, &parseOk, src);
+    } else if (mode == "--manifest") {
+        noun = "manifest";
+        findings = lintManifest(text, &parseOk, src);
     } else {  // --equipment-roster
         noun = "component";
         findings = lintEquipmentRoster(text, &parseOk, &count, src);

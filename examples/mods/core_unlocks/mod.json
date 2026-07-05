@@ -3,6 +3,7 @@
   "id": "core_unlocks",
   "name": "Core Unlocks (v0 — dormant content re-surface, STUB)",
   "version": "0.1.0",
+  "author": "MC2 remaster examples",
   "type": "assets",
   "dependencies": [],
   "description": "Honest v0 STUB: re-surfaces ONE dormant stock component for purchase. Per the mod-system recon there is no clean enabled->purchase wire yet, so re-surfacing rides the LEGACY overlay path — a whole-file override of data/objects/compbas.csv (the same mechanism mods/magic-ballistic-weapons uses). This example ships as a documented stub (no bundled compbas.csv, to avoid vendoring a large stock data file) plus README instructions for producing the one-row override. See README.md."

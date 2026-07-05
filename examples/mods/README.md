@@ -54,3 +54,32 @@ phase and `core_unlocks/README.md`).
 A mod that RE-STATS an EXISTING stock weapon (reusing the stock `core:<slug>`
 path + matching `LegacyMasterId`) IS picked up live by the overlay — that is the
 supported live path today, and `core_unlocks` documents the legacy variant of it.
+
+## mod.json — the mod package manifest (MOD-PACKAGE-MANIFEST-1)
+
+Every mod ships one `mod.json` at its root (`mods/<id>/mod.json`). This is the
+ONE manifest — the engine loader (`mclib/file.cpp` `ReadModJson()`), the
+launcher (`tools/mc2_launcher/mc2_launcher.cpp`), and the packer
+(`tools/mc2mod/mc2mod.py`) all read the same file. Validate it offline:
+
+```
+mc2_modlint --manifest mods/<id>/mod.json
+```
+
+| field | required | consumer | rule |
+|---|---|---|---|
+| `schema` | yes | packer + tooling | must be `"mc2-mod/1"` |
+| `id` | yes | engine loader (namespace + dep resolution), launcher | lowercase token `^[a-z0-9][a-z0-9._-]*$`; matches the install folder name |
+| `name` | yes | launcher (display name) | non-empty string |
+| `version` | yes | launcher/packer | dotted digits, e.g. `"1.0.0"` |
+| `author` | no | launcher tooltip / conflict-report attribution (near-term) | free string |
+| `type` | yes | launcher bucketing | `"assets"` (stackable checkbox add-on), `"campaign"`, or `"dependency"` |
+| `dependencies` | yes (may be `[]`) | engine loader (load order: active mod > dep[0] > … > base) | array of mod id tokens; no self-dep, no duplicates |
+| `description` | yes | launcher description pane | non-empty string |
+| `radioGroup` | no | launcher (mutually-exclusive radio bank) | token |
+| `env` | no | launcher (child env vars when mod active) | flat `{ "KEY": "VALUE" }` object |
+
+Missing/malformed fields produce `MODMAN_*` findings (stable grep-able tokens,
+exit 1) so CI and modders catch manifest problems without launching the game.
+The `package.json` inside a packed `.mc2mod` zip is packer-GENERATED
+(`mc2-package/1`, with hashes) — never hand-author that one.
