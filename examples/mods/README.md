@@ -1,6 +1,6 @@
 # examples/mods — worked example checkbox mods (EXAMPLE-MODS-1)
 
-Four small **real** mods that exercise the shipped mod system (`mod.json` /
+Five small **real** mods that exercise the shipped mod system (`mod.json` /
 `MC2_MOD_DEPS` loader) + the generated-definition source-flip
 (`data/defs/{units,equipment}/…`, gates `MC2_UNIT_DEFINITION_SOURCE` /
 `MC2_EQUIPMENT_DEFINITION_SOURCE=generated`) + the offline validator
@@ -16,6 +16,7 @@ with the mods absent, the game is byte-identical.
 |---|---|
 | `sample_equipment` | a genuinely NEW weapon (`sample:hot_medium_laser`) that goes LIVE via EQUIP-ADD-FILL-1: explicit `LegacyMasterId=40` fills a FREE compbas ordinal at load (both consumers: in-sim MasterComponent + mechlab row), `Enabled=TRUE` rides the S1 enable wire; gates `MC2_UNIT_PROFILE_DATA=1 MC2_EQUIPMENT_ADD=1`; modlint-clean |
 | `sample_variant`   | a new namespaced unit variant (`sample:atlas_laserboat`) on a stock chassis, 3-layer loadout join, modlint-clean |
+| `sample_new_variant` | the LEGACY zero-code variant ADD (UNIT-VARIANT-ADD-1 / S4): whole-file-shadows `data/objects/atlas.csv` with an appended 4th variant block at row 314 = 23+97×3 (`Atlas AS7-X Sampler`, distinct loadout); no gate, no engine change; `mc2_modlint --mod` now lints shadowed chassis CSVs (VARC_ rules: stride, unreachable blocks, duplicate names, loadout refs, truncation) |
 | `sample_bad_mod`   | INTENTIONAL failures the validator catches with modder-first messages (exit 1) |
 | `core_unlocks`     | re-surface TWO dormant stock weapons (Clan Gauss Rifle 113, ER PPC 146) via the CLEAN enabled->purchase wire (EQUIP-ENABLE-WIRE-1: tiny `[Equipment] b Enabled=TRUE` def overrides, gate `MC2_UNIT_PROFILE_DATA=1`; enable-only, purchase.fit stays authoritative) |
 
@@ -56,7 +57,7 @@ TWO rungs of the clean wire have now landed on top of the overlay:
   filled; NO auto-assign of ordinals. Gates `MC2_UNIT_PROFILE_DATA=1` +
   `MC2_EQUIPMENT_ADD=1`, both default OFF — gates off is byte-identical.
 
-New-UNIT (chassis) ADD remains future work (S4/S5); the in-mission info window's
+New unit VARIANT ADD is now covered by `sample_new_variant` (S4, legacy zero-code path + `mc2_modlint --mod` chassis-CSV linting); new CHASSIS ADD remains future work (S5); the in-mission info window's
 `IDS_COMP_ABBR0+masterID` label for new ids is the S3 UI-name rung.
 
 A mod that RE-STATS an EXISTING stock weapon (reusing the stock `core:<slug>`
