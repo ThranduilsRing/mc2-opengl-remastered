@@ -118,6 +118,32 @@ enum ComponentFormOrdinal {
     CFORM_BULK
 };
 
+// -------------------------------------------------------------------------
+// EQUIP-ADD-FILL-1 divergence fix: THE populated-row test, shared by the
+// registry build and the ADD fill pass (semantically same as the debug-state
+// witness's). A masterList slot is POPULATED iff initEXCEL fully parsed it:
+// masterID >= 0 AND form is a valid ComponentFormType ordinal.
+//
+// Why the form check (and why NOT a name check): initEXCEL early-returns -1 on
+// an unknown Type token ("undefined" is not in ComponentFormString) WITHOUT
+// resetting masterID/name, and name comes from the string table
+// (cLoadString(32000+id)) BEFORE that bail -- so on installs with a full
+// string table an undefined row used to carry masterID==ordinal + a NON-EMPTY
+// name + a garbage form, and any "masterID>=0 && name[0]" test misclassified
+// EVERY free ordinal as populated (live witness failure 2026-07-05: all ADD
+// defs refused EQADD_SKIP_POPULATED). loadMasterList now restores the sentinel
+// on parse failure (cmponent.cpp), and this helper keeps the form-validity
+// check as belt-and-braces against any other masterList producer. Conversely a
+// name check would let a populated row with a MISSING string-table entry be
+// misread as free (clobberable). Pure -> doctest target.
+// -------------------------------------------------------------------------
+enum { kComponentFormOrdinalCount = 20 };   // == NUM_COMPONENT_FORMS (cmponent.h)
+
+inline bool mc2ComponentRowPopulated(long masterId, int formOrdinal) {
+    if (masterId < 0) return false;
+    return formOrdinal >= 0 && formOrdinal < kComponentFormOrdinalCount;
+}
+
 inline EquipmentKind componentFormToKind(int form) {
     switch (form) {
         case CFORM_WEAPON:

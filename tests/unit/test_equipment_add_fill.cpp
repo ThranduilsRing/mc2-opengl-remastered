@@ -71,6 +71,31 @@ TEST_CASE("equipmentAddFillDecide: explicit-only, free-only, first-wins, no-255"
     CHECK(equipmentAddFillDecide(true, 40, N, false, false, true) == EQADD_SKIP_DUPLICATE);
 }
 
+TEST_CASE("mc2ComponentRowPopulated: the string-table-name divergence class") {
+    // A truly populated row: masterID >= 0 and a VALID form.
+    CHECK(mc2ComponentRowPopulated(156, CFORM_WEAPON_ENERGY));
+    CHECK(mc2ComponentRowPopulated(0, CFORM_SIMPLE));
+    CHECK(mc2ComponentRowPopulated(254, CFORM_BULK));   // last valid form ordinal (19)
+
+    // The sentinel state loadMasterList now guarantees for undefined rows.
+    CHECK(!mc2ComponentRowPopulated(-1, CFORM_WEAPON_ENERGY));
+
+    // THE 2026-07-05 live-witness divergence: initEXCEL bails on "undefined"
+    // WITHOUT resetting masterID, leaving masterID==ordinal + a string-table
+    // name + a GARBAGE form. A name-based test called this row populated (all
+    // ADD defs refused EQADD_SKIP_POPULATED); the form-validity test does not.
+    CHECK(!mc2ComponentRowPopulated(40, 999));               // garbage form
+    CHECK(!mc2ComponentRowPopulated(40, -1));                // garbage form
+    CHECK(!mc2ComponentRowPopulated(40, kComponentFormOrdinalCount)); // one-past-end
+
+    // Conversely, a populated row whose string-table entry is MISSING (empty
+    // name) must still read as populated -- a name test would mark it free
+    // (clobberable by an ADD def). The helper takes no name at all.
+    CHECK(mc2ComponentRowPopulated(150, CFORM_AMMO));
+
+    CHECK(kComponentFormOrdinalCount == 20);   // == NUM_COMPONENT_FORMS lock
+}
+
 TEST_CASE("equipmentAddKindToFormOrdinal maps kind+category to legacy form") {
     CHECK(equipmentAddKindToFormOrdinal("Weapon", "Energy") == CFORM_WEAPON_ENERGY);
     CHECK(equipmentAddKindToFormOrdinal("Weapon", "Ballistic") == CFORM_WEAPON_BALLISTIC);

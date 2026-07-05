@@ -62,12 +62,14 @@ size_t buildEquipmentRegistryFromMasterList() {
     for (long i = 0; i < MasterComponent::numComponents; ++i) {
         MasterComponent& mc = MasterComponent::masterList[i];
 
-        // A default-off / placeholder row is one the load loop left empty: the
-        // "undefined" compbas rows reset masterID to -1 and never set a name
-        // (cmponent.cpp initEXCEL). Everything else is an enabled component.
+        // A default-off / placeholder row is one initEXCEL failed to parse
+        // (undefined compbas rows) -- masterID sentinel -1 + valid-form check
+        // via the ONE shared populated test. Do NOT test the name: it comes
+        // from the string table and is non-empty for undefined rows on installs
+        // with a full string table (2026-07-05 live-witness divergence).
         long   ord     = mc.getMasterID();
         const char* nm = mc.getName();
-        bool   enabled = (ord >= 0) && nm && nm[0] != '\0';
+        bool   enabled = mc2ComponentRowPopulated(ord, (int)mc.getForm());
 
         // legacyMasterId is the ROW ORDINAL (the 8-bit addressable id), which is
         // the loop index i for populated rows. For placeholder rows getMasterID()
@@ -180,7 +182,7 @@ size_t overlayGeneratedEquipmentStatsIfEnabled() {
 
         long        ord = mc.getMasterID();
         const char* nm  = mc.getName();
-        if (ord < 0 || !nm || !nm[0])        // default-off placeholder row
+        if (!mc2ComponentRowPopulated(ord, (int)mc.getForm()))   // placeholder row
             continue;
         // Only weapon rows carry the green weapon stats we overlay.
         if (componentFormToKind((int)mc.getForm()) != EQ_WEAPON)
@@ -466,12 +468,17 @@ size_t applyEquipmentAddFillIfEnabled(float baseSensorRange) {
         long ord = -1;
         bool hasOrdinal = (gen.readIdLong("LegacyMasterId", ord) == NO_ERR);
 
-        // Row state for the decision.
+        // Row state for the decision. Populated = initEXCEL fully parsed the
+        // row (masterID>=0 + VALID form) -- NOT a name test: the name comes
+        // from the string table and is non-empty for undefined rows on installs
+        // with a full string table (2026-07-05 live-witness divergence: every
+        // free ordinal was refused EQADD_SKIP_POPULATED).
         bool rowPopulated = false, selfOverride = false, alreadyClaimed = false;
         if (hasOrdinal && ord >= 0 && ord < MasterComponent::numComponents) {
             MasterComponent& row = MasterComponent::masterList[ord];
             const char* rn = row.getName();
-            rowPopulated = (row.getMasterID() >= 0) && rn && rn[0] != '\0';
+            rowPopulated = mc2ComponentRowPopulated(row.getMasterID(),
+                                                    (int)row.getForm());
             if (rowPopulated)
                 selfOverride = (qid == coreQualifiedIdFor(rn, ord));
             alreadyClaimed = (g_addFillQualifiedIds.find(ord)
