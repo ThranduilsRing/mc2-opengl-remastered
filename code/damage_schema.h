@@ -86,6 +86,19 @@ inline DamageSchemaId parseDamageSchema(const char* token,
     return fallback;
 }
 
+// MODDER-FIRST-ERROR-SURFACE-1: was the token RECOGNIZED (vs silent fallback)?
+// Same two-fallback probe as locomotionTokenKnown(). Pure.
+inline bool damageSchemaTokenKnown(const char* token) {
+    if (!token || token[0] == '\0') return false;
+    return parseDamageSchema(token, DMG_MECH_8PART)
+        == parseDamageSchema(token, DMG_VEHICLE_FACINGS);
+}
+
+// The accepted vocabulary, for expected= context in modder findings.
+inline const char* damageSchemaTokenVocabulary() {
+    return "Mech8Part|VehicleFacings|Squad|SingleActor";
+}
+
 // UNIT-DEFINITION-SHADOW-COMPARE-1: canonical token NAME for a DamageSchemaId.
 // Inverse of parseDamageSchema — the spelling MUST match the token that path
 // accepts AND the converter's DMG_* vocabulary (tools/unit_converter/model.py),

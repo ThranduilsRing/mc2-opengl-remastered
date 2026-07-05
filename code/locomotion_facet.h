@@ -45,6 +45,22 @@ inline LocomotionModel parseLocomotionModel(const char* token,
     return fallback;
 }
 
+// MODDER-FIRST-ERROR-SURFACE-1: was the token actually RECOGNIZED (vs silently
+// falling back)? A known token parses to the SAME model whatever fallback is
+// supplied; an unknown one echoes the fallback and therefore differs. Pure —
+// lets loaders report "unknown Locomotion token 'X', kept legacy" instead of
+// silently applying the fallback.
+inline bool locomotionTokenKnown(const char* token) {
+    if (!token || token[0] == '\0') return false;
+    return parseLocomotionModel(token, LOCO_WHEELED)
+        == parseLocomotionModel(token, LOCO_MECH_WALKER);
+}
+
+// The accepted vocabulary, for expected= context in modder findings.
+inline const char* locomotionTokenVocabulary() {
+    return "MechWalker|Tracked|Wheeled|Hover|Infantry";
+}
+
 // UNIT-DEFINITION-SHADOW-COMPARE-1: canonical token NAME for a LocomotionModel.
 // Inverse of parseLocomotionModel — the spelling MUST match the token that path
 // accepts AND the converter's LOCO_* vocabulary (tools/unit_converter/model.py),
