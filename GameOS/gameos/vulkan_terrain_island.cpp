@@ -190,7 +190,14 @@ struct TerrainFrameUBO {
     int32_t enableShadows;          // off 212: static shadow map imported+valid this frame
     float   shadowSoftness;         // off 216: GL default 2.5
     int32_t _lightPad3;             // off 220
-    int32_t _pad[8];                // pad the slot up to 256B (dynamic UBO alignment)
+    // VK-TERRAIN-DETAIL sub-slice: terrain normal perturbation (macro slope + material
+    // detail normal) so grass reads with NdotL relief like GL. LOCKSTEP with the frag.
+    int32_t detailEnabled;          // off 224: MC2_VK_TERRAIN_DETAIL gate (requires lighting)
+    int32_t detailReady;            // off 228: matNormalArray 2D_ARRAY imported+bound
+    float   nfhStrength;            // off 232: terrainNormalsFromHeightStrength (GL default 1.0)
+    float   detailTiling;           // off 236: detailNormalTiling.x (GL default 1.0)
+    float   detailStrength;         // off 240: detailNormalStrength.x (GL default 1.0)
+    int32_t _pad[3];                // pad the slot up to 256B (dynamic UBO alignment)
 };
 static_assert(sizeof(TerrainFrameUBO) == 256, "UBO slot must be 256B (dynamic alignment)");
 
@@ -283,6 +290,17 @@ struct TerrainIsland {
     VkBuffer      shadowStage = VK_NULL_HANDLE; VmaAllocation shadowStageAlloc = VK_NULL_HANDLE;
     VkDeviceSize  shadowStageBytes = 0;
 
+    // VK-TERRAIN-DETAIL sub-slice: the material detail-normal ARRAY. A VK copy-once
+    // import of the GL terrain_normal_array_tex_ (9-layer RGBA8 GL_TEXTURE_2D_ARRAY,
+    // GL_REPEAT wrap). Sampled at binding 6 (sampler2DArray, REPEAT/LINEAR). Dummy 1x1
+    // 1-layer until the real array imports (matNormalReady gates the FS sample).
+    VkImage       matNormalImg   = VK_NULL_HANDLE; VmaAllocation matNormalAlloc = VK_NULL_HANDLE;
+    VkImageView   matNormalView  = VK_NULL_HANDLE;
+    VkSampler     matNormalSamp  = VK_NULL_HANDLE;   // REPEAT/LINEAR (GL_REPEAT wrap)
+    uint32_t      matNormalTexImported = 0;          // GL array tex name last imported (0 = none)
+    uint32_t      matNormalLayers = 0;               // layer count of the imported array
+    bool          matNormalReady = false;            // set once the real array is live
+
     // Per-patch dynamic UBO (one 256B slot per LOD0 patch this frame).
     VkBuffer      ubo = VK_NULL_HANDLE; VmaAllocation uboAlloc = VK_NULL_HANDLE;
     VkDeviceSize  uboCapBytes = 0;
@@ -304,6 +322,8 @@ bool snapshot_cement(TerrainIsland* s, const Mc2TerrainTier1Feed& feed);
 bool ensure_shadow_sampler(TerrainIsland* s);
 bool ensure_dummy_shadow(TerrainIsland* s);
 bool copy_static_shadow(TerrainIsland* s, const Mc2TerrainTier1Feed& feed);
+bool ensure_dummy_matnormal(TerrainIsland* s);
+void import_matnormal(TerrainIsland* s, const Mc2TerrainTier1Feed& feed);
 
 bool make_buffer(TerrainIsland* s, VkDeviceSize size, VkBufferUsageFlags usage,
                  VkBuffer* buf, VmaAllocation* alloc, bool hostVisible) {
@@ -374,7 +394,7 @@ void write_descriptors(TerrainIsland* s) {
     // binding 3 = cement combined-image-sampler (dummy/real); binding 4 = cement-word SSBO.
     VkDescriptorBufferInfo uboInfo{ s->ubo, 0, sizeof(TerrainFrameUBO) }; // range = one slot
     VkDescriptorBufferInfo hInfo{ s->heightBuf, 0, VK_WHOLE_SIZE };
-    VkWriteDescriptorSet w[6]{};
+    VkWriteDescriptorSet w[7]{};
     uint32_t n = 0;
     w[n].sType = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET; w[n].dstSet = s->set;
     w[n].dstBinding = 0; w[n].descriptorCount = 1;
@@ -416,6 +436,16 @@ void write_descriptors(TerrainIsland* s) {
         w[n].sType = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET; w[n].dstSet = s->set;
         w[n].dstBinding = 5; w[n].descriptorCount = 1;
         w[n].descriptorType = VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER; w[n].pImageInfo = &shInfo; ++n;
+    }
+    // VK-TERRAIN-DETAIL: binding 6 material detail-normal sampler2DArray — always written
+    // once the (dummy 1x1x1 or real) array image + sampler exist (uT.detailReady gates use).
+    VkDescriptorImageInfo mnInfo{};
+    if (s->matNormalView != VK_NULL_HANDLE && s->matNormalSamp != VK_NULL_HANDLE) {
+        mnInfo.sampler = s->matNormalSamp; mnInfo.imageView = s->matNormalView;
+        mnInfo.imageLayout = VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL;
+        w[n].sType = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET; w[n].dstSet = s->set;
+        w[n].dstBinding = 6; w[n].descriptorCount = 1;
+        w[n].descriptorType = VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER; w[n].pImageInfo = &mnInfo; ++n;
     }
     vkUpdateDescriptorSets(s->device, n, w, 0, nullptr);
 }
@@ -481,6 +511,9 @@ void destroy_island(TerrainIsland* s) {
     if (s->shadowView) vkDestroyImageView(d, s->shadowView, nullptr);
     if (s->shadowImg)  vmaDestroyImage(s->allocator, s->shadowImg, s->shadowAlloc);
     if (s->shadowStage) vmaDestroyBuffer(s->allocator, s->shadowStage, s->shadowStageAlloc);
+    if (s->matNormalSamp) vkDestroySampler(d, s->matNormalSamp, nullptr);
+    if (s->matNormalView) vkDestroyImageView(d, s->matNormalView, nullptr);
+    if (s->matNormalImg)  vmaDestroyImage(s->allocator, s->matNormalImg, s->matNormalAlloc);
     if (s->cpool)   vkDestroyCommandPool(d, s->cpool, nullptr);
     // instance/phys/device/queue/allocator + the shared GBuffer images are BORROWED.
 }
@@ -626,14 +659,20 @@ bool init_island(TerrainIsland* s, int w, int h) {
     // valid descriptor from frame 1 (shadowReady stays false until MC2_VK_TERRAIN_LIGHTING
     // is on AND the GL static shadow map is live -> FS enableShadows=0 -> lit-only, no hole).
     if (!ensure_dummy_shadow(s)) { setFallback("shadow_dummy_failed"); return false; }
+    // VK-TERRAIN-DETAIL: 1x1x1 flat-normal matNormalArray dummy so binding 6 is a valid
+    // descriptor from frame 1 (matNormalReady stays false until MC2_VK_TERRAIN_DETAIL is on
+    // AND the GL array is live -> FS uses macro-slope-only normal, no hole).
+    if (!ensure_dummy_matnormal(s)) { setFallback("matnormal_dummy_failed"); return false; }
 
     // ---- Descriptor layout: binding0 dynamic UBO (VS+FS), binding1 height SSBO (VS). ----
     {
-        VkDescriptorSetLayoutBinding b[6]{};
+        VkDescriptorSetLayoutBinding b[7]{};
         b[0].binding = 0; b[0].descriptorType = VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER_DYNAMIC;
         b[0].descriptorCount = 1; b[0].stageFlags = VK_SHADER_STAGE_VERTEX_BIT | VK_SHADER_STAGE_FRAGMENT_BIT;
+        // VK-TERRAIN-DETAIL: binding 1 (height SSBO) is now ALSO read by the FS
+        // (mv_smoothTerrainNormal reproduces GL's height-derived macro slope).
         b[1].binding = 1; b[1].descriptorType = VK_DESCRIPTOR_TYPE_STORAGE_BUFFER;
-        b[1].descriptorCount = 1; b[1].stageFlags = VK_SHADER_STAGE_VERTEX_BIT;
+        b[1].descriptorCount = 1; b[1].stageFlags = VK_SHADER_STAGE_VERTEX_BIT | VK_SHADER_STAGE_FRAGMENT_BIT;
         // COLORMAP-BASE: binding 2 = colormap sampler (FS). Always in the layout; the
         // descriptor is always written (dummy 1x1 until the real atlas is imported).
         b[2].binding = 2; b[2].descriptorType = VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER;
@@ -646,16 +685,19 @@ bool init_island(TerrainIsland* s, int w, int h) {
         // VK-TERRAIN-LIGHTING: binding 5 = static shadow sampler2DShadow (FS).
         b[5].binding = 5; b[5].descriptorType = VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER;
         b[5].descriptorCount = 1; b[5].stageFlags = VK_SHADER_STAGE_FRAGMENT_BIT;
+        // VK-TERRAIN-DETAIL: binding 6 = material detail-normal sampler2DArray (FS).
+        b[6].binding = 6; b[6].descriptorType = VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER;
+        b[6].descriptorCount = 1; b[6].stageFlags = VK_SHADER_STAGE_FRAGMENT_BIT;
         VkDescriptorSetLayoutCreateInfo lci{};
         lci.sType = VK_STRUCTURE_TYPE_DESCRIPTOR_SET_LAYOUT_CREATE_INFO;
-        lci.bindingCount = 6; lci.pBindings = b;
+        lci.bindingCount = 7; lci.pBindings = b;
         if (vkCreateDescriptorSetLayout(s->device, &lci, nullptr, &s->dsl) != VK_SUCCESS) {
             vlog("vkCreateDescriptorSetLayout failed."); return false;
         }
         VkDescriptorPoolSize sizes[4]{};
         sizes[0].type = VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER_DYNAMIC;  sizes[0].descriptorCount = 1;
         sizes[1].type = VK_DESCRIPTOR_TYPE_STORAGE_BUFFER;          sizes[1].descriptorCount = 2; // height + cement
-        sizes[2].type = VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER;  sizes[2].descriptorCount = 3; // colormap + cement + shadow
+        sizes[2].type = VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER;  sizes[2].descriptorCount = 4; // colormap + cement + shadow + matNormalArray
         VkDescriptorPoolCreateInfo pci{};
         pci.sType = VK_STRUCTURE_TYPE_DESCRIPTOR_POOL_CREATE_INFO;
         pci.maxSets = 1; pci.poolSizeCount = 3; pci.pPoolSizes = sizes;
@@ -1025,6 +1067,131 @@ void import_cement(TerrainIsland* s, const Mc2TerrainTier1Feed& feed) {
     // On failure the dummy stays bound (cementReady=false) -> FS uses colormap base.
 }
 
+// ---------------------------------------------------------------------------
+// VK-TERRAIN-DETAIL: 2D_ARRAY sampled-image uploader (RGBA8, all layers at level 0).
+// Mirrors upload_sampled_image but with arrayLayers=layerCount and a 2D_ARRAY view.
+// `bytes` is tightly packed layer-major (layer0 WxH RGBA8, then layer1, ...), exactly
+// what glGetTexImage(GL_TEXTURE_2D_ARRAY, level0) returns.
+bool upload_sampled_image_array(TerrainIsland* s, VkImage* outImg, VmaAllocation* outAlloc,
+                                VkImageView* outView, VkFormat fmt, uint32_t width,
+                                uint32_t height, uint32_t layers,
+                                const void* bytes, VkDeviceSize byteCount) {
+    if (*outView) { vkDestroyImageView(s->device, *outView, nullptr); *outView = VK_NULL_HANDLE; }
+    if (*outImg)  { vmaDestroyImage(s->allocator, *outImg, *outAlloc); *outImg = VK_NULL_HANDLE; }
+
+    VkBuffer stg = VK_NULL_HANDLE; VmaAllocation stgAlloc = VK_NULL_HANDLE;
+    if (!make_buffer(s, byteCount, VK_BUFFER_USAGE_TRANSFER_SRC_BIT, &stg, &stgAlloc, true)) return false;
+    { void* p = nullptr;
+      if (vmaMapMemory(s->allocator, stgAlloc, &p) != VK_SUCCESS) { vmaDestroyBuffer(s->allocator, stg, stgAlloc); return false; }
+      std::memcpy(p, bytes, (size_t)byteCount); vmaUnmapMemory(s->allocator, stgAlloc); }
+
+    VkImageCreateInfo ici{};
+    ici.sType = VK_STRUCTURE_TYPE_IMAGE_CREATE_INFO;
+    ici.imageType = VK_IMAGE_TYPE_2D; ici.format = fmt;
+    ici.extent = {width, height, 1}; ici.mipLevels = 1; ici.arrayLayers = layers;
+    ici.samples = VK_SAMPLE_COUNT_1_BIT; ici.tiling = VK_IMAGE_TILING_OPTIMAL;
+    ici.usage = VK_IMAGE_USAGE_SAMPLED_BIT | VK_IMAGE_USAGE_TRANSFER_DST_BIT;
+    ici.initialLayout = VK_IMAGE_LAYOUT_UNDEFINED;
+    VmaAllocationCreateInfo aci{}; aci.usage = VMA_MEMORY_USAGE_AUTO;
+    if (vmaCreateImage(s->allocator, &ici, &aci, outImg, outAlloc, nullptr) != VK_SUCCESS) {
+        vmaDestroyBuffer(s->allocator, stg, stgAlloc); return false;
+    }
+
+    VkCommandBuffer cb = begin_oneshot(s);
+    if (cb == VK_NULL_HANDLE) { vmaDestroyBuffer(s->allocator, stg, stgAlloc); return false; }
+    VkImageMemoryBarrier bar{};
+    bar.sType = VK_STRUCTURE_TYPE_IMAGE_MEMORY_BARRIER;
+    bar.oldLayout = VK_IMAGE_LAYOUT_UNDEFINED; bar.newLayout = VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL;
+    bar.srcQueueFamilyIndex = bar.dstQueueFamilyIndex = VK_QUEUE_FAMILY_IGNORED; bar.image = *outImg;
+    bar.subresourceRange = {VK_IMAGE_ASPECT_COLOR_BIT, 0, 1, 0, layers};
+    bar.srcAccessMask = 0; bar.dstAccessMask = VK_ACCESS_TRANSFER_WRITE_BIT;
+    vkCmdPipelineBarrier(cb, VK_PIPELINE_STAGE_TOP_OF_PIPE_BIT, VK_PIPELINE_STAGE_TRANSFER_BIT,
+                         0, 0, nullptr, 0, nullptr, 1, &bar);
+    // One copy region covering all layers (tightly packed layer-major, level 0).
+    VkBufferImageCopy rgn{};
+    rgn.imageSubresource = {VK_IMAGE_ASPECT_COLOR_BIT, 0, 0, layers};
+    rgn.imageExtent = {width, height, 1};
+    vkCmdCopyBufferToImage(cb, stg, *outImg, VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL, 1, &rgn);
+    bar.oldLayout = VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL; bar.newLayout = VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL;
+    bar.srcAccessMask = VK_ACCESS_TRANSFER_WRITE_BIT; bar.dstAccessMask = VK_ACCESS_SHADER_READ_BIT;
+    vkCmdPipelineBarrier(cb, VK_PIPELINE_STAGE_TRANSFER_BIT, VK_PIPELINE_STAGE_FRAGMENT_SHADER_BIT,
+                         0, 0, nullptr, 0, nullptr, 1, &bar);
+    end_oneshot(s, cb);
+    vmaDestroyBuffer(s->allocator, stg, stgAlloc);
+
+    VkImageViewCreateInfo vci{};
+    vci.sType = VK_STRUCTURE_TYPE_IMAGE_VIEW_CREATE_INFO;
+    vci.image = *outImg; vci.viewType = VK_IMAGE_VIEW_TYPE_2D_ARRAY; vci.format = fmt;
+    vci.subresourceRange = {VK_IMAGE_ASPECT_COLOR_BIT, 0, 1, 0, layers};
+    if (vkCreateImageView(s->device, &vci, nullptr, outView) != VK_SUCCESS) return false;
+    return true;
+}
+
+bool create_matnormal_sampler(TerrainIsland* s) {
+    if (s->matNormalSamp != VK_NULL_HANDLE) return true;
+    VkSamplerCreateInfo sci{};
+    sci.sType = VK_STRUCTURE_TYPE_SAMPLER_CREATE_INFO;
+    sci.magFilter = VK_FILTER_LINEAR; sci.minFilter = VK_FILTER_LINEAR;   // GL_LINEAR (mag)
+    sci.mipmapMode = VK_SAMPLER_MIPMAP_MODE_NEAREST;
+    // GL_REPEAT wrap (gameos_graphics.cpp:2174-2175) — material detail normals tile.
+    sci.addressModeU = sci.addressModeV = sci.addressModeW = VK_SAMPLER_ADDRESS_MODE_REPEAT;
+    sci.maxLod = 0.25f;  // base level only (VK detail port samples level 0, no anti-tile mips)
+    return vkCreateSampler(s->device, &sci, nullptr, &s->matNormalSamp) == VK_SUCCESS;
+}
+
+// 1x1x1 flat-normal placeholder so binding 6 is ALWAYS a valid descriptor before the
+// real array imports (matNormalReady stays false -> FS uses macro-slope-only normal).
+bool ensure_dummy_matnormal(TerrainIsland* s) {
+    if (!create_matnormal_sampler(s)) return false;
+    if (s->matNormalView != VK_NULL_HANDLE) return true;
+    const uint8_t px[4] = {128, 128, 255, 255}; // (0,0,1) tangent-space flat normal
+    if (!upload_sampled_image_array(s, &s->matNormalImg, &s->matNormalAlloc, &s->matNormalView,
+                                    VK_FORMAT_R8G8B8A8_UNORM, 1, 1, 1, px, sizeof(px))) return false;
+    s->matNormalReady = false;
+    s->matNormalLayers = 1;
+    return true;
+}
+
+// Copy-once import of the GL terrain_normal_array_tex_ (9-layer RGBA8 GL_TEXTURE_2D_ARRAY,
+// GL_REPEAT). Re-imports only when the GL tex name changes (per-mission rebuild). The GL
+// array is RGBA8 storage (glTexImage3D GL_RGBA8); read back level 0 all layers as GL_RGBA
+// -> VK_FORMAT_R8G8B8A8_UNORM (channel order preserved). Level-0 only (VK detail port does
+// not use anti-tile mips). Fail-soft: on failure the dummy stays bound.
+void import_matnormal(TerrainIsland* s, const Mc2TerrainTier1Feed& feed) {
+    const uint32_t glTex = feed.glMatNormalArrayTex;
+    if (glTex == 0) return;                        // array not built yet -> macro-slope only
+    if (glTex == s->matNormalTexImported && s->matNormalReady) return; // already imported
+
+    glBindTexture(GL_TEXTURE_2D_ARRAY, (GLuint)glTex);
+    // Read the ARRAY's base level (GL_TEXTURE_BASE_LEVEL may be >0 after mip trimming);
+    // query dimensions at level 0 (glTexImage3D allocates the full array at level 0).
+    GLint w = 0, h = 0, layers = 0;
+    glGetTexLevelParameteriv(GL_TEXTURE_2D_ARRAY, 0, GL_TEXTURE_WIDTH,  &w);
+    glGetTexLevelParameteriv(GL_TEXTURE_2D_ARRAY, 0, GL_TEXTURE_HEIGHT, &h);
+    glGetTexLevelParameteriv(GL_TEXTURE_2D_ARRAY, 0, GL_TEXTURE_DEPTH,  &layers);
+    if (w <= 0 || h <= 0 || layers <= 0) { glBindTexture(GL_TEXTURE_2D_ARRAY, 0); return; }
+    std::vector<uint8_t> px((size_t)w * (size_t)h * (size_t)layers * 4u);
+    glGetTexImage(GL_TEXTURE_2D_ARRAY, 0, GL_RGBA, GL_UNSIGNED_BYTE, px.data());
+    glBindTexture(GL_TEXTURE_2D_ARRAY, 0);
+
+    if (upload_sampled_image_array(s, &s->matNormalImg, &s->matNormalAlloc, &s->matNormalView,
+                                   VK_FORMAT_R8G8B8A8_UNORM, (uint32_t)w, (uint32_t)h,
+                                   (uint32_t)layers, px.data(), (VkDeviceSize)px.size())) {
+        s->matNormalTexImported = glTex;
+        s->matNormalLayers = (uint32_t)layers;
+        s->matNormalReady = true;
+        write_descriptors(s);
+        static bool s_firstMn = false;
+        if (!s_firstMn) {
+            vlog("VK-TERRAIN-DETAIL: imported GL matNormalArray gltex=%u %dx%d x%d layers "
+                 "(RGBA8->R8G8B8A8_2D_ARRAY, REPEAT); VK terrain grass now perturbed like GL.",
+                 glTex, w, h, layers);
+            s_firstMn = true;
+        }
+    }
+    // On failure the dummy stays bound (matNormalReady=false) -> FS uses macro-slope only.
+}
+
 // Snapshot the GL cement-word SSBO into the VK-owned buffer when the feed version
 // changes. Map-load copy (glGetBufferSubData -> vmaMap), mirroring snapshot_height.
 bool snapshot_cement(TerrainIsland* s, const Mc2TerrainTier1Feed& feed) {
@@ -1260,6 +1427,11 @@ extern "C" int mc2_vk_terrain_island_run(int w, int h) {
     // terrain is lit but unshadowed (fail-soft, never a hole). Runs on the GL/render thread.
     copy_static_shadow(s, feed);
 
+    // VK-TERRAIN-DETAIL: copy-once import of the GL material detail-normal 2D_ARRAY. No-op
+    // once imported / while the gate is off (feed.glMatNormalArrayTex==0). Fail-soft: leaves
+    // the flat-normal dummy bound (matNormalReady=false) -> FS uses macro-slope-only normal.
+    import_matnormal(s, feed);
+
     // Fill one dynamic-UBO slot per LOD0 patch (shared MVP/mapSide/halfMap + per-patch
     // blockOrigin). quadCount comes from the patch record (drives grid rebuild).
     const uint32_t patchCount = feed.patchCount;
@@ -1300,6 +1472,14 @@ extern "C" int mc2_vk_terrain_island_run(int w, int h) {
                 u.lightingEnabled = feed.lightingEnabled ? 1 : 0;
                 u.enableShadows   = (feed.lightingEnabled && feed.shadowsEnabled && s->shadowReady) ? 1 : 0;
                 u.shadowSoftness  = feed.shadowSoftness;
+                // VK-TERRAIN-DETAIL: normal perturbation. detailReady is only 1 once the GL
+                // matNormalArray actually imported (else the FS uses the macro-slope-only
+                // normal — still a big win over flat-up, and never a hole).
+                u.detailEnabled  = (feed.lightingEnabled && feed.detailEnabled) ? 1 : 0;
+                u.detailReady    = s->matNormalReady ? 1 : 0;
+                u.nfhStrength    = feed.nfhStrength;
+                u.detailTiling   = feed.detailTiling;
+                u.detailStrength = feed.detailStrength;
                 slots[i] = u;
             }
             vmaUnmapMemory(s->allocator, s->uboAlloc);

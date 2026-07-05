@@ -1682,6 +1682,10 @@ def main():
                             # paint-scheme albedo (single-material probe).
                             "MC2_VK_MECH_TIER1",
                             "MC2_VK_MECH_MATERIAL",
+                            # VK terrain in-place shared-GBuffer region + lighting + detail.
+                            "MC2_VK_TERRAIN_TIER1",
+                            "MC2_VK_TERRAIN_LIGHTING",
+                            "MC2_VK_TERRAIN_DETAIL",
                             # VK-P9a WATER-INTEROP proof: the bookmark-capture sweep
                             # env, so a smoke run (which reliably reaches steady render,
                             # unlike the standalone capture harness on some setups) can

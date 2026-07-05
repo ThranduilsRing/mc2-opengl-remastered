@@ -761,6 +761,22 @@ static constexpr EnvVarDesc kAuxEnvVars[] = {
         "Gate OFF = byte-identical to the pre-lighting VK colormap+cement frame."
     },
     {
+        "MC2_FEATURE_VK_TERRAIN_DETAIL",
+        "MC2_VK_TERRAIN_DETAIL",
+        EnvVarKind::Feature,
+        false,
+        "VK-TERRAIN-DETAIL: presence-gated =1, default OFF (requires MC2_VK_TERRAIN_LIGHTING). Perturbs the "
+        "flat-up terrain normal before NdotL to close the flat-grass residual: (1) macro-slope normal from "
+        "the height SSBO bilinear central-difference (smoothTerrainNormal, terrain_lod_chunk.frag:165-173, "
+        "always on) + (2) per-material weighted detail-normal from matNormalArray (9-layer 2D_ARRAY, "
+        "copy-once import, GL_REPEAT) via the colormap classifier, composed exactly as GL (pert = "
+        "(baseN.xy/baseN.z*nfhStrength + dN.xy*detailStrength, 1)). Detail suppressed on pureConcrete; shadow "
+        "still sampled with flat-up N (parity). EXACT: macro-slope, classifier, pert, NdotL band. DEFERRED: "
+        "POM, anti-tile, per-layer fwidth fade, LOD-tier detail fade, painted-concrete/marble-cliff normal "
+        "(oblique/grazing-angle residual remains). FAIL-SOFT: detail array not ready -> macro-slope only "
+        "(still a win), no hole. Gate OFF = byte-identical to lighting-only VK frame."
+    },
+    {
         "MC2_FEATURE_VK_PROP_MATERIAL",
         "MC2_VK_PROP_MATERIAL",
         EnvVarKind::Feature,

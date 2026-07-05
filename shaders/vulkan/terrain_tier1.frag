@@ -68,7 +68,131 @@ layout(set = 0, binding = 0, std140) uniform TerrainFrameUBO {
     int   enableShadows;    // off 212: static shadow map imported+valid this frame
     float shadowSoftness;   // off 216: penumbra radius in texels (GL default 2.5)
     int   _lightPad3;       // off 220
+    // VK-TERRAIN-DETAIL sub-slice (extends VK-TERRAIN-LIGHTING). Perturb the terrain
+    // surface normal like GL (terrain_lod_chunk.frag:740-808) so grass gets NdotL
+    // relief instead of flat-lit -> closes the "grass ~3 levels darker" residual.
+    //   detailEnabled : MC2_VK_TERRAIN_DETAIL gate (requires lightingEnabled). 0 ->
+    //                   N stays flat-up -> byte-identical to the lighting-only frame.
+    //   detailReady   : matNormalArray 2D_ARRAY imported+bound (else macro-slope only).
+    //   nfhStrength / detailTiling / detailStrength : GL uniform values (all default
+    //                   1.0). Per-material tiling/boost/class thresholds are baked as
+    //                   consts below (GL default state; ImGui slider drift not tracked).
+    int   detailEnabled;    // off 224
+    int   detailReady;      // off 228
+    float nfhStrength;      // off 232: terrainNormalsFromHeightStrength (GL default 1.0)
+    float detailTiling;     // off 236: detailNormalTiling.x (GL default 1.0)
+    float detailStrength;   // off 240: detailNormalStrength.x (GL default 1.0)
 } uT;
+
+// VK-TERRAIN-DETAIL: the height SSBO (VK-owned snapshot; same buffer the VS reads at
+// binding 1). The FS reads it to reproduce GL's smoothTerrainNormal() macro slope
+// (terrain_lod_chunk.frag:152-173). Bilinear central difference -> +Z-up world normal.
+layout(set = 0, binding = 1, std430) readonly buffer TerrainHeightBufFS {
+    float heightsFS[];
+} uHF;
+// VK-TERRAIN-DETAIL: the material tangent-space detail-normal array (VK copy-once
+// import of GL terrain_normal_array_tex_, a 9-layer RGBA8 GL_TEXTURE_2D_ARRAY,
+// GL_REPEAT). Layers per include/terrain_mat_layers.hglsl. Dummy 1x1 until imported
+// (uT.detailReady gates the sample).
+layout(set = 0, binding = 6) uniform sampler2DArray u_matNormalArray;
+
+// Material layer indices (mirror shaders/include/terrain_mat_layers.hglsl).
+#define MAT_LAYER_ROCK   0
+#define MAT_LAYER_GRASS  1
+#define MAT_LAYER_DIRT   2
+#define MAT_LAYER_SNOW   4
+
+// GL default tuning (terrain_lod_chunk.frag uniforms; ImGui-driven, values are the
+// gameos_graphics.cpp member defaults). Baked const for the parity oracle.
+const vec4  MATV_NORMAL_BOOST = vec4(0.9, 0.5, 1.1, 2.5);  // rock,grass,dirt,conc
+const vec4  MATV_TILING       = vec4(3.0, 2.0, 1.0, 6.0);  // rock,grass,dirt,conc
+const float MATV_TILING_SNOW  = 1.0;
+const vec4  MATV_CLASS_GRASS  = vec4(-0.02, 0.06, 0.22, 0.40); // gMinusR lo/hi, gBright lo/hi
+const vec4  MATV_CLASS_DIRT   = vec4(-0.02, 0.06, 0.22, 0.45); // rMinusG lo/hi, rBright lo/hi
+const float MATV_WU_PER_TILE  = 768.0;  // MAT_WORLD_UNITS_PER_TILE (terrain_lod_chunk.frag:240)
+
+// --- GL smoothTerrainNormal port (terrain_lod_chunk.frag:145-173). ----------
+float mv_heightAtCell(int cx, int cy) {
+    cx = clamp(cx, 0, uT.mapSide - 1);
+    cy = clamp(cy, 0, uT.mapSide - 1);
+    return uHF.heightsFS[cx + cy * uT.mapSide];
+}
+float mv_heightBilinear(float fx, float fy) {
+    int   x0 = int(floor(fx)), y0 = int(floor(fy));
+    float tx = fx - float(x0), ty = fy - float(y0);
+    float h00 = mv_heightAtCell(x0,     y0);
+    float h10 = mv_heightAtCell(x0 + 1, y0);
+    float h01 = mv_heightAtCell(x0,     y0 + 1);
+    float h11 = mv_heightAtCell(x0 + 1, y0 + 1);
+    return mix(mix(h00, h10, tx), mix(h01, h11, tx), ty);
+}
+vec3 mv_smoothTerrainNormal(vec2 worldXY) {
+    float colF = (worldXY.x + uT.halfMap) / 128.0;
+    float rowF = (uT.halfMap - worldXY.y) / 128.0;
+    float span = 2.0 * 128.0;
+    float dhdx   = (mv_heightBilinear(colF + 1.0, rowF) - mv_heightBilinear(colF - 1.0, rowF)) / span;
+    float dhdrow = (mv_heightBilinear(colF, rowF + 1.0) - mv_heightBilinear(colF, rowF - 1.0)) / span;
+    float dhdy   = -dhdrow;
+    return normalize(vec3(-dhdx, -dhdy, 1.0));
+}
+
+// --- GL colormap material classifier (terrain_lod_chunk.frag chunkColorWeights +
+// chunkWeights, :244-338). g_terrainMaterialProfile is default 0 (legacy) here. -----
+vec3 mv_rgb2hsv(vec3 c) {
+    vec4 K = vec4(0.0, -1.0/3.0, 2.0/3.0, -1.0);
+    vec4 p = mix(vec4(c.bg, K.wz), vec4(c.gb, K.xy), step(c.b, c.g));
+    vec4 q = mix(vec4(p.xyw, c.r), vec4(c.r, p.yzx), step(p.x, c.r));
+    float d = q.x - min(q.w, q.y);
+    return vec3(abs(q.z + (q.w - q.y) / (6.0 * d + 1.0e-10)), d / (q.x + 1.0e-10), q.x);
+}
+vec4 mv_colorWeights(vec3 color) {
+    vec4 w = vec4(0.0);
+    float gMinusR = color.g - color.r;
+    w.y = smoothstep(MATV_CLASS_GRASS.x, MATV_CLASS_GRASS.y, gMinusR)
+        * smoothstep(MATV_CLASS_GRASS.z, MATV_CLASS_GRASS.w, color.g);
+    float rMinusG = color.r - color.g;
+    w.z = smoothstep(MATV_CLASS_DIRT.x, MATV_CLASS_DIRT.y, rMinusG)
+        * smoothstep(MATV_CLASS_DIRT.z, MATV_CLASS_DIRT.w, color.r);
+    w.x = 1.0 - max(w.y, w.z);   // everything else -> rock
+    float isWater = smoothstep(0.0, 0.08, min(color.g, color.b) - color.r);
+    w.x += isWater; w.y *= (1.0 - isWater); w.z *= (1.0 - isWater);
+    float total = w.x + w.y + w.z + w.w;
+    return (total < 0.01) ? vec4(1.0, 0.0, 0.0, 0.0) : w / total;
+}
+void mv_weights(vec3 colAvg, out vec4 w, out float snowWeight) {
+    w = mv_colorWeights(colAvg);
+    vec3 hsv = mv_rgb2hsv(colAvg);
+    float snowRaw = smoothstep(0.15, 0.03, hsv.y) * smoothstep(0.42, 0.62, hsv.z);
+    snowWeight = smoothstep(0.25, 0.55, snowRaw);
+    w *= (1.0 - snowWeight);
+    float tot = w.x + w.y + w.z + w.w;
+    if (tot > 0.01) w /= tot; else w = vec4(1.0, 0.0, 0.0, 0.0);
+}
+
+// --- GL detail-normal accumulation (terrain_lod_chunk.frag chunkDetailNormal,
+// :341-419). PORTED CORE: per-layer weighted tangent-space normals (rock /3 boost,
+// grass, dirt, snow). DEFERRED vs GL (report): POM, anti-tile (sampleAntiTileArr),
+// per-layer fwidth sub-pixel fade, LOD-tier fade, painted-concrete normal, cliff
+// triplanar. Uses implicit-LOD texture() (uniform control flow here — no non-uniform
+// weight branch, so LOD is well-defined). -----------------------------------------
+vec3 mv_detailNormal(vec4 w, float snowWeight, vec2 worldXY) {
+    vec2 uv = worldXY * (uT.detailTiling / MATV_WU_PER_TILE);
+    vec2 uvRock  = uv * (MATV_TILING.x / 3.0);
+    vec2 uvGrass = uv * MATV_TILING.y;
+    vec2 uvDirt  = uv * MATV_TILING.z;
+    vec2 uvSnow  = uv * MATV_TILING_SNOW;
+    vec3 dN = vec3(0.0);
+    // rock: boost/3 (GL parity — rock detail was too dense/strong).
+    dN += w.x * (MATV_NORMAL_BOOST.x / 3.0) *
+          (texture(u_matNormalArray, vec3(uvRock,  float(MAT_LAYER_ROCK))).rgb  * 2.0 - 1.0);
+    dN += w.y * MATV_NORMAL_BOOST.y *
+          (texture(u_matNormalArray, vec3(uvGrass, float(MAT_LAYER_GRASS))).rgb * 2.0 - 1.0);
+    dN += w.z * MATV_NORMAL_BOOST.z *
+          (texture(u_matNormalArray, vec3(uvDirt,  float(MAT_LAYER_DIRT))).rgb  * 2.0 - 1.0);
+    dN += snowWeight * 0.9 *
+          (texture(u_matNormalArray, vec3(uvSnow,  float(MAT_LAYER_SNOW))).rgb  * 2.0 - 1.0);
+    return dN;
+}
 
 // COLORMAP-BASE: the VK-owned copy-once import of the GL colormap atlas.
 layout(set = 0, binding = 2) uniform sampler2D u_colormap;
@@ -237,7 +361,27 @@ void main() {
     // the DYNAMIC (mech/building) shadow, and hemisphere ambient fill.
     vec3 lit = base;
     if (uT.lightingEnabled != 0) {
-        const vec3 N = vec3(0.0, 0.0, 1.0);                       // flat-up terrain normal
+        // VK-TERRAIN-DETAIL: perturb the terrain normal like GL (terrain_lod_chunk.frag
+        // :740-808). Gate uT.detailEnabled==0 -> N stays flat-up -> byte-identical to the
+        // lighting-only frame. On cement (pureConcrete) GL suppresses the detail perturb
+        // (dN *= 1-pureConcrete) and lights the slab flat, so we keep N flat-up there too.
+        //   pert = vec3(baseN.xy/max(baseN.z,0.2)*nfhStrength + dN.xy*detailStrength, 1.0)
+        //   N    = normalize(pert)
+        // baseN = height-derived macro slope (always live via the bound height SSBO);
+        // dN    = weighted material detail normal (only when the array imported).
+        vec3 N = vec3(0.0, 0.0, 1.0);                            // flat-up terrain normal (default)
+        if (uT.detailEnabled != 0 && !pureConcrete) {
+            vec3 baseN = mv_smoothTerrainNormal(v_worldPos.xy);  // macro slope (height SSBO)
+            vec3 dN    = vec3(0.0);
+            if (uT.detailReady != 0) {
+                vec4  matW; float snowW;
+                mv_weights(base, matW, snowW);                   // classify from colormap base
+                dN = mv_detailNormal(matW, snowW, v_worldPos.xy);
+            }
+            vec3 pert = vec3(baseN.xy / max(baseN.z, 0.2) * uT.nfhStrength
+                             + dN.xy * uT.detailStrength, 1.0);
+            N = normalize(pert);
+        }
         vec3 lightDir = uT.terrainLightDir.xyz;
 
         float normalLight = computeNdotLBand(N, lightDir);
@@ -245,7 +389,9 @@ void main() {
 
         float shadow = 1.0;
         if (uT.enableShadows != 0 && !pureConcrete) {            // static shadow dropped on cement
-            shadow = computeBakedShadow(v_worldPos, N, lightDir,
+            // GL calcShadow uses shadowN = flat-up (shadow.hglsl caller passes (0,0,1)),
+            // NOT the perturbed N. Keep parity: sample the shadow with flat-up.
+            shadow = computeBakedShadow(v_worldPos, vec3(0.0, 0.0, 1.0), lightDir,
                                         u_staticShadow, uT.staticLightSpaceMatrix,
                                         uT.shadowSoftness, 16);
         }

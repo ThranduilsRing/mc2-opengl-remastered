@@ -865,6 +865,28 @@ extern "C" int mc2_terrain_tier1_get_frame_feed(Mc2TerrainTier1Feed* out)
             }
         }
     }
+
+    // VK-TERRAIN-DETAIL sub-slice: hand the material detail-normal ARRAY tex + the GL
+    // detail tuning scalars to the island so the VK terrain frag can perturb the surface
+    // normal (macro slope from height + material detail normal) EXACTLY like GL
+    // (terrain_lod_chunk.frag:740-808) -> grass reads with NdotL relief instead of flat.
+    // Gate MC2_VK_TERRAIN_DETAIL (requires MC2_VK_TERRAIN_LIGHTING; default-off ->
+    // detailEnabled=0 -> VK N stays flat-up, byte-identical to the lighting-only frame).
+    {
+        int detailOn = 0;
+        if (out->lightingEnabled) {
+            if (const char* e = getenv("MC2_VK_TERRAIN_DETAIL"))
+                detailOn = (e[0] == '1' && e[1] == '\0') ? 1 : 0;
+        }
+        out->detailEnabled       = detailOn;
+        out->glMatNormalArrayTex = detailOn ? (uint32_t)gos_GetTerrainNormalArrayTex() : 0u;
+        // GL uniform values (gameos_graphics.cpp member defaults; all 1.0). The VK frag
+        // bakes per-material tiling/boost/class thresholds as const, so only these three
+        // scalars flow through the UBO. See terrain_tier1.frag MATV_* consts.
+        out->nfhStrength    = 1.0f;   // terrainNormalsFromHeightStrength (terrain_nfh_strength_)
+        out->detailTiling   = 1.0f;   // detailNormalTiling.x (terrain_detail_tiling_)
+        out->detailStrength = 1.0f;   // detailNormalStrength.x (terrain_detail_strength_)
+    }
     return 1;
 }
 #endif

@@ -83,6 +83,16 @@ struct Mc2TerrainTier1Feed {
     int32_t                     staticShadowSize;      // shadowMapSize_ (edge in texels, 4096)
     float                       staticLightSpaceMatrix[16]; // pp->getLightSpaceMatrix()
     float                       shadowSoftness;        // GL default 2.5
+    // VK-TERRAIN-DETAIL sub-slice: perturb the terrain normal (macro slope + material
+    // detail normal) like GL (terrain_lod_chunk.frag:740-808) so grass gets NdotL relief
+    // -> closes the "grass ~3 levels darker" residual. Gate MC2_VK_TERRAIN_DETAIL
+    // (requires MC2_VK_TERRAIN_LIGHTING). detailEnabled=0 -> VK terrain N stays flat-up
+    // (byte-identical to the lighting-only frame).
+    int32_t                     detailEnabled;         // 1 iff MC2_VK_TERRAIN_DETAIL gate on
+    uint32_t                    glMatNormalArrayTex;   // GL name of terrain_normal_array_tex_ (0 = not built)
+    float                       nfhStrength;           // terrainNormalsFromHeightStrength (GL default 1.0)
+    float                       detailTiling;          // detailNormalTiling.x (GL default 1.0)
+    float                       detailStrength;        // detailNormalStrength.x (GL default 1.0)
 };
 
 // Provided BY the GL terrain path (gos_terrain_lod_chunk.cpp). The island calls this

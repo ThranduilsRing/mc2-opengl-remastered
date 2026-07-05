@@ -54,6 +54,13 @@ layout(set = 0, binding = 0, std140) uniform TerrainFrameUBO {
     int   enableShadows;
     float shadowSoftness;
     int   _lightPad3;
+    // VK-TERRAIN-DETAIL sub-slice (used by the FS; declared here to keep the std140
+    // UBO layout LOCKSTEP with terrain_tier1.frag).
+    int   detailEnabled;
+    int   detailReady;
+    float nfhStrength;
+    float detailTiling;
+    float detailStrength;
 } uT;
 
 // Height SSBO (VK-owned snapshot of the GL height field, binding 23 semantics).
