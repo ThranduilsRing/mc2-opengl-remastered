@@ -49,6 +49,11 @@ class LogisticsComponent
 		// shared component is safe — only one mech is edited at a time.
 		void			setEngineProfile( int w, int h, float heatVal )
 							{ iconX = w; iconY = h; heat = heatVal; }
+		// EQUIP-ADD-FILL-1: init() sources `name` from the string table via the
+		// CSV stringID column; a NEW modded id has no string, so the gated ADD
+		// append overwrites it with the def's DisplayName. `name` and
+		// `flavorText` alias ONE allocation in init() -- keep that invariant.
+		void			setDisplayName( const char* n );
 		bool			compare( LogisticsComponent* second, int type );
 		bool			isAvailable(){ return bAvailable; }
 		void			setAvailable(bool avail){ bAvailable = avail; }

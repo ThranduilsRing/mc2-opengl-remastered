@@ -71,6 +71,27 @@ size_t overlayGeneratedEquipmentStatsIfEnabled();
 // of ordinals newly forced available.
 size_t applyEquipmentEnableWireIfEnabled(bool* available, long availableCount);
 
+// EQUIP-ADD-FILL-1 (equipment arc, ADD-ladder S2). Gated ADD pass: each ACTIVE-
+// MOD equipment def (g_modIndex, data/defs/equipment/) with an EXPLICIT
+// LegacyMasterId naming an UNDEFINED masterList row is materialized as a live
+// MasterComponent (synthesized compbas line -> the stock initEXCEL parser ->
+// name/abbrev from the def's DisplayName). Conflicts are first-wins + finding,
+// never silent; POPULATED stock ordinals are never filled. Call once right
+// after loadMasterList + the stat overlay, BEFORE
+// buildAndDumpEquipmentRegistryIfEnabled() (the registry keeps the filled row's
+// namespaced id). Gate: MC2_EQUIPMENT_ADD *and* MC2_UNIT_PROFILE_DATA (both
+// default OFF) -> gate-OFF is zero-I/O byte-identical. Returns rows filled.
+size_t applyEquipmentAddFillIfEnabled(float baseSensorRange);
+
+// Rows the ADD pass materialized -- the SECOND consumer (LogisticsData::
+// initComponents / updateAvailability) appends a LogisticsComponent per row from
+// the SAME synthesized CSV line so the item exists in mechlab too. Empty when
+// the gate is OFF or the pass has not run. Defined in equipment_registry.h;
+// engine TUs that consume the rows include that header.
+#include <vector>
+struct EquipmentAddFillRow;
+const std::vector<EquipmentAddFillRow>& equipmentAddFillRows();
+
 // FIRE-EXECUTOR-REGISTRY-1 (equipment arc, engine slice E7). Gated proof that
 // the weapon fireExecutor lookup resolves end-to-end: for each weapon-form
 // MasterComponent it derives the converter's default fireExecutor id and

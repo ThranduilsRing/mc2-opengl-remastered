@@ -17,8 +17,10 @@
 #include "file.h"                  // fileExists
 
 #include <cstdio>
+#include <cstring>
 
 #include "modder_finding.h"   // MODDER-FIRST-ERROR-SURFACE-1: shared context format
+#include "platform_str.h"     // S_stricmp (EQUIP-ADD-FILL-1 def-leaf filter)
 
 namespace {
 // One consistent emit for generated-equipment problems. Only reachable when
@@ -33,6 +35,17 @@ void reportEquipSourceFinding(const ModderFinding& f) {
 // runtime firing/loadout path). Empty until buildEquipmentRegistryFromMasterList
 // runs under the gate.
 static EquipmentRegistry g_equipmentRegistry;
+
+// EQUIP-ADD-FILL-1 (S2): rows the gated ADD pass materialized. The registry
+// rebuild consults the map so a filled row keeps its NAMESPACED mod id (e.g.
+// sample:hot_medium_laser) instead of deriving core:<slug> from its name; the
+// vector feeds the SECOND consumer (LogisticsData::initComponents append).
+static std::vector<EquipmentAddFillRow>  g_addFillRows;
+static std::map<long, std::string>       g_addFillQualifiedIds;
+
+const std::vector<EquipmentAddFillRow>& equipmentAddFillRows() {
+    return g_addFillRows;
+}
 
 const EquipmentRegistry& getEquipmentRegistry() {
     return g_equipmentRegistry;
@@ -63,7 +76,13 @@ size_t buildEquipmentRegistryFromMasterList() {
         long legacyMasterId = i;
 
         EquipmentKind kind = componentFormToKind((int)mc.getForm());
-        std::string qid    = coreQualifiedIdFor(nm, legacyMasterId);
+        std::string qid;
+        // EQUIP-ADD-FILL-1: an ADD-filled row keeps its namespaced mod id.
+        auto addIt = g_addFillQualifiedIds.find(legacyMasterId);
+        if (addIt != g_addFillQualifiedIds.end())
+            qid = addIt->second;
+        else
+            qid = coreQualifiedIdFor(nm, legacyMasterId);
 
         g_equipmentRegistry.add(qid, legacyMasterId, kind, enabled);
     }
@@ -319,16 +338,16 @@ size_t applyEquipmentEnableWireIfEnabled(bool* available, long availableCount) {
         if (e.legacyMasterId < 0 || e.legacyMasterId >= availableCount)
             continue;
 
-        // Derive the def sidecar path exactly as the overlay pass does.
-        std::string slug = e.qualifiedId.substr(e.qualifiedId.find(':') + 1);
-        char path[256];
-        std::snprintf(path, sizeof(path), "%s%s/equipmentdef.fit",
-                      kGeneratedEquipmentRoot, slug.c_str());
-        if (!fileExists(path))            // no def -> purchase.fit verdict stands
+        // Derive the def sidecar path, NAMESPACE-aware (an S2 ADD-filled row's
+        // registry id is its namespaced mod id, so its def lives under
+        // data/defs/equipment/<ns>/<slug>/ -- core rows resolve as before).
+        std::string pathStr = equipmentDefPathForQualifiedId(e.qualifiedId);
+        const char* path = pathStr.c_str();
+        if (!fileExists((char*)path))     // no def -> purchase.fit verdict stands
             continue;
 
         FitIniFile gen;
-        if (gen.open(path) != NO_ERR)
+        if (gen.open((char*)path) != NO_ERR)
             continue;                     // unreadable def: overlay pass reports it
         if (gen.seekBlock("Equipment") != NO_ERR)
             continue;
@@ -372,4 +391,237 @@ size_t applyEquipmentEnableWireIfEnabled(bool* available, long availableCount) {
         printf("[EQUIP-ENABLE-WIRE-1] enable wire forced %zu component(s) available\n",
                forced);
     return forced;
+}
+
+// ---------------------------------------------------------------------------
+// EQUIP-ADD-FILL-1 (equipment arc, ADD-ladder S2) -- new equipment on a FREE
+// (undefined) compbas ordinal.
+//
+// Called right after loadMasterList (+ the S1 overlay), BEFORE the registry
+// rebuild, at both seams (mission.cpp / saveload.cpp). Enumerates the ACTIVE
+// MOD's equipment defs (g_modIndex, prefix data/defs/equipment/); each def with
+// an EXPLICIT LegacyMasterId naming an UNDEFINED masterList row is materialized
+// as a live MasterComponent by synthesizing ONE compbas-format CSV line and
+// running it through the SAME initEXCEL parser stock rows use -- so form-
+// specific stat routing (weapon/ammo/sensor/...) is legacy-exact by
+// construction. The same line later feeds LogisticsComponent::init (the second
+// consumer) via equipmentAddFillRows(); column-order equality of the two
+// parsers is locked by doctest.
+//
+// Conflicts (first-wins, never silent): duplicate ordinal claim -> finding;
+// def targeting a POPULATED stock ordinal that is not the row's own core def ->
+// finding, no fill. NO auto-assign: a def without LegacyMasterId is a finding.
+// Gate: MC2_EQUIPMENT_ADD + MC2_UNIT_PROFILE_DATA, both default OFF; gate-OFF
+// (or no active mod) -> zero I/O, byte-identical. Returns rows filled.
+namespace {
+void collectEquipDefPath(const char* absPath, void* userData) {
+    // Only the def leaf files; the mod index prefix walk may also see other
+    // .fit files under data/defs/equipment/ in the future.
+    const char* base = absPath;
+    for (const char* p = absPath; *p; ++p)
+        if (*p == '/' || *p == '\\') base = p + 1;
+    if (S_stricmp(base, "equipmentdef.fit") != 0) return;
+    static_cast<std::vector<std::string>*>(userData)->push_back(absPath);
+}
+
+void reportAddFinding(const ModderFinding& f) {
+    printf("[EQUIP-ADD] %s\n", formatModderFinding(f).c_str());
+}
+} // namespace
+
+size_t applyEquipmentAddFillIfEnabled(float baseSensorRange) {
+    if (!mc2UnitProfileDataEnabled() || !mc2EquipmentAddEnabled())
+        return 0;                          // both gates default OFF -> no-op
+    if (!MasterComponent::masterList)
+        return 0;
+
+    g_addFillRows.clear();
+    g_addFillQualifiedIds.clear();
+
+    std::vector<std::string> defPaths;
+    EnumerateModFitFiles("data/defs/equipment/", collectEquipDefPath, &defPaths);
+    if (defPaths.empty())
+        return 0;                          // no active mod defs -> nothing to add
+
+    size_t filled = 0;
+    for (const std::string& defPath : defPaths) {
+        FitIniFile gen;
+        if (gen.open((char*)defPath.c_str()) != NO_ERR) {
+            ModderFinding f;
+            f.message  = "equipment def could not be opened/parsed";
+            f.source   = "add-fill"; f.file = defPath;
+            f.fallback = "def ignored (no row filled)";
+            reportAddFinding(f);
+            continue;
+        }
+        if (gen.seekBlock("Equipment") != NO_ERR)
+            continue;                      // not an equipment def shape
+
+        char idBuf[128] = {0}, nameBuf[128] = {0}, kindBuf[32] = {0};
+        gen.readIdString("EquipmentId", idBuf, sizeof(idBuf) - 1);
+        gen.readIdString("DisplayName", nameBuf, sizeof(nameBuf) - 1);
+        gen.readIdString("Kind", kindBuf, sizeof(kindBuf) - 1);
+        std::string qid = idBuf;
+
+        long ord = -1;
+        bool hasOrdinal = (gen.readIdLong("LegacyMasterId", ord) == NO_ERR);
+
+        // Row state for the decision.
+        bool rowPopulated = false, selfOverride = false, alreadyClaimed = false;
+        if (hasOrdinal && ord >= 0 && ord < MasterComponent::numComponents) {
+            MasterComponent& row = MasterComponent::masterList[ord];
+            const char* rn = row.getName();
+            rowPopulated = (row.getMasterID() >= 0) && rn && rn[0] != '\0';
+            if (rowPopulated)
+                selfOverride = (qid == coreQualifiedIdFor(rn, ord));
+            alreadyClaimed = (g_addFillQualifiedIds.find(ord)
+                              != g_addFillQualifiedIds.end());
+        }
+
+        EquipmentAddFillDecision d = equipmentAddFillDecide(
+            hasOrdinal, ord, MasterComponent::numComponents,
+            rowPopulated, selfOverride, alreadyClaimed);
+
+        if (d != EQADD_FILL) {
+            if (d == EQADD_SKIP_SELF_OVERRIDE)
+                continue;                  // the row's own core def (overlay/enable land)
+            ModderFinding f;
+            f.source = "add-fill"; f.file = defPath; f.id = qid;
+            f.field  = "LegacyMasterId";
+            char ordBuf[16];
+            std::snprintf(ordBuf, sizeof(ordBuf), "%ld", ord);
+            switch (d) {
+                case EQADD_SKIP_NO_ORDINAL:
+                    f.message  = "ADD def carries no explicit LegacyMasterId (no auto-assign; ids must be explicit)";
+                    f.expected = "l LegacyMasterId=<free ordinal 0..254>";
+                    break;
+                case EQADD_SKIP_ORDINAL_RANGE:
+                    f.message  = "ADD def LegacyMasterId outside the 8-bit addressable space (255 = 0xff sentinel)";
+                    f.expected = "0..254 and < numComponents";
+                    f.actual   = ordBuf;
+                    break;
+                case EQADD_SKIP_POPULATED:
+                    f.message  = "ADD def targets a POPULATED stock ordinal (not an override of that row)";
+                    f.expected = "an UNDEFINED (free) compbas ordinal";
+                    f.actual   = ordBuf;
+                    break;
+                case EQADD_SKIP_DUPLICATE:
+                    f.message  = "ordinal already claimed by an earlier ADD def (first-wins)";
+                    f.actual   = ordBuf;
+                    break;
+                default: break;
+            }
+            f.fallback = "row not filled";
+            reportAddFinding(f);
+            continue;
+        }
+
+        // --- Gather the row fields from the def facets. ---
+        EquipmentAddRowFields rf;
+        rf.ordinal     = ord;
+        rf.displayName = nameBuf[0] ? nameBuf : qid;
+
+        char catBuf[32] = {0};
+        if (gen.seekBlock("WeaponFacet") == NO_ERR)
+            gen.readIdString("Category", catBuf, sizeof(catBuf) - 1);
+        rf.formOrdinal = equipmentAddKindToFormOrdinal(kindBuf, catBuf);
+
+        float fv; long lv;
+        if (gen.seekBlock("Equipment") == NO_ERR &&
+            gen.readIdFloat("Cost", fv) == NO_ERR)
+            rf.cost = (long)fv;
+
+        if (gen.seekBlock("WeaponCombatStats") == NO_ERR) {
+            if (gen.readIdFloat("Damage", fv) == NO_ERR)       rf.damage = fv;
+            if (gen.readIdFloat("Heat", fv) == NO_ERR)         rf.heat = fv;
+            if (gen.readIdFloat("Recycle", fv) == NO_ERR)      rf.recycle = fv;
+            if (gen.readIdFloat("CombatValue", fv) == NO_ERR)  rf.combatValue = fv;
+            char bucket[32] = {0};
+            if (gen.readIdString("RangeBucket", bucket, sizeof(bucket) - 1) == NO_ERR)
+                rf.rangeOrdinal = mc2GeneratedRangeBucketToOrdinal(bucket, -1);
+        }
+        if (gen.seekBlock("WeaponAmmo") == NO_ERR &&
+            gen.readIdLong("AmmoMasterId", lv) == NO_ERR)
+            rf.ammoMasterId = lv;
+        if (gen.seekBlock("WeaponFit") == NO_ERR) {
+            if (gen.readIdLong("CritSlots", lv) == NO_ERR)  rf.critSlots = (int)lv;
+            if (gen.readIdFloat("Tonnage", fv) == NO_ERR)   rf.tonnage = fv;
+            char locs[256] = {0};
+            if (gen.readIdString("AllowedLocations", locs, sizeof(locs) - 1) == NO_ERR)
+                equipmentAddAllowedLocationsToCrit(locs, rf.crit);
+        }
+        if (gen.seekBlock("Presentation") == NO_ERR) {
+            char icon[128] = {0}, pic[128] = {0};
+            if (gen.readIdString("Icon", icon, sizeof(icon) - 1) == NO_ERR)
+                rf.iconFile = icon;
+            if (gen.readIdString("Picture", pic, sizeof(pic) - 1) == NO_ERR)
+                rf.pictureFile = pic;
+            if (gen.readIdLong("UINameStringId", lv) == NO_ERR) rf.stringId = lv;
+            if (gen.readIdLong("SpecialEffect", lv) == NO_ERR)  rf.specialEffect = (int)lv;
+            if (gen.readIdLong("IconX", lv) == NO_ERR)          rf.iconX = (int)lv;
+            if (gen.readIdLong("IconY", lv) == NO_ERR)          rf.iconY = (int)lv;
+        }
+        rf.helpStringId = 34000 + ord;      // legacy help-string slot for the ordinal
+
+        // Two-consumer trap: the logistics consumer SKIPS a row whose icon
+        // column is empty/'0' -> the item would fill in-sim but vanish from the
+        // mechlab. Refuse the half-materialized state; surface it instead.
+        if (rf.iconFile.empty() || rf.iconFile == "0") {
+            ModderFinding f;
+            f.message  = "ADD def has no [Presentation] Icon (mechlab consumer drops icon-less rows)";
+            f.source   = "add-fill"; f.file = defPath; f.id = qid;
+            f.field    = "Icon";
+            f.expected = "st Icon=\"<file>.tga\"";
+            f.fallback = "row not filled";
+            reportAddFinding(f);
+            continue;
+        }
+
+        // --- Fill consumer 1: MasterComponent via the STOCK initEXCEL parser. ---
+        std::string csv = buildEquipmentAddCsvLine(rf);
+        char lineBuf[1024];
+        strncpy(lineBuf, csv.c_str(), sizeof(lineBuf) - 1);
+        lineBuf[sizeof(lineBuf) - 1] = '\0';
+
+        MasterComponent& row = MasterComponent::masterList[ord];
+        if (row.initEXCEL(lineBuf, baseSensorRange) != NO_ERR) {
+            ModderFinding f;
+            f.message  = "synthesized compbas line rejected by initEXCEL";
+            f.source   = "add-fill"; f.file = defPath; f.id = qid;
+            f.actual   = csv;
+            f.fallback = "row not filled";
+            reportAddFinding(f);
+            row.init();                    // restore the undefined-placeholder state
+            continue;
+        }
+        // initEXCEL sourced name/abbrev from the string table (garbage for a new
+        // id) and never sets uses/techBase on the CSV path -- fix all four.
+        row.setName(rf.displayName.c_str());
+        row.setAbbreviation(rf.displayName.c_str());
+        row.clearUseFlags();
+        row.setCanMechUse();
+        row.setCanVehicleUse();
+        row.setBothTechBase();
+
+        EquipmentAddFillRow out;
+        out.ordinal      = ord;
+        out.qualifiedId  = qid;
+        out.displayName  = rf.displayName;
+        out.csvLine      = csv;
+        out.ammoMasterId = rf.ammoMasterId;
+        g_addFillRows.push_back(out);
+        g_addFillQualifiedIds[ord] = qid;
+        ++filled;
+
+        printf("[EQUIP-ADD] filled ordinal=%ld id=%s name=\"%s\" form=%d "
+               "damage=%.2f heat=%.2f recycle=%.2f range=%d cv=%.2f ammo=%ld (def %s)\n",
+               ord, qid.c_str(), rf.displayName.c_str(), rf.formOrdinal,
+               rf.damage, rf.heat, rf.recycle, rf.rangeOrdinal, rf.combatValue,
+               rf.ammoMasterId, defPath.c_str());
+    }
+
+    if (filled > 0)
+        printf("[EQUIP-ADD] add-fill complete: rows_filled=%zu (of %zu def(s) scanned)\n",
+               filled, defPaths.size());
+    return filled;
 }

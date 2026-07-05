@@ -2538,6 +2538,13 @@ void Mission::init (const char *missionName, long loadType, long dropZoneID, Stu
 		// a no-op with zero I/O (byte-identical). Firing reads masterList as always.
 		overlayGeneratedEquipmentStatsIfEnabled();
 
+		// EQUIP-ADD-FILL-1 (S2): gated ADD pass -- mod defs with an explicit
+		// LegacyMasterId on an UNDEFINED compbas ordinal materialize as live
+		// MasterComponent rows (MC2_EQUIPMENT_ADD + MC2_UNIT_PROFILE_DATA, both
+		// default OFF -> no-op). Runs BEFORE the registry rebuild below so the
+		// filled rows register under their namespaced mod ids.
+		applyEquipmentAddFillIfEnabled(baseSensorRange);
+
 		// EQUIPMENT-REGISTRY-FACADE-1: build the parallel core:<slug> <-> ordinal
 		// registry beside masterList (gated MC2_UNIT_PROFILE_DATA; gate-OFF no-op).
 		// Additive -- reads masterList only, changes no gameplay path.

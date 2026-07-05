@@ -173,6 +173,7 @@ Headless Vulkan probe / backend-skeleton exercise gates. All read via bare `gete
 - `MC2_MOVE_RECON` — pathfinding cost instrumentation (`mclib/move_recon.cpp`). Default **OFF**, zero behavior change when unset. `MC2_MOVE_CHUNK_SHADOW` / `MC2_MOVE_PATH_CACHE_SHADOW` are alternate enables for the same instrumentation.
 - `MC2_SMART_LOAD=1` — SMART-LOAD startup/mission-load perf path (`code/logisticsdata.cpp`). Default **OFF**. `MC2_SMART_LOAD_TRACE=1` logs the load-time breakdown.
 - `MC2_UNIT_PROFILE_DATA` — UNIT-PROFILE-ARC data-driven unit+equipment definition source (`code/unitprofile.cpp`). Default **LEGACY** (unset/`0` = legacy path); any non-`0` value switches to the generated `UnitProfileData` source.
+- `MC2_EQUIPMENT_ADD` — EQUIP-ADD-FILL-1 (ADD-ladder S2): mod equipment defs with an explicit `LegacyMasterId` on an UNDEFINED compbas ordinal materialize as live MasterComponent + mechlab rows at load (`code/equipment_registry_engine.cpp`). Default **OFF** (unset/`0`); requires `MC2_UNIT_PROFILE_DATA=1` and an active mod (`MC2_ACTIVE_MOD`/`MC2_MOD_DEPS`). Gate-OFF is zero-I/O byte-identical.
 
 ## EditorBridge
 
