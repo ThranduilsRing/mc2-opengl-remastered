@@ -1,0 +1,307 @@
+// MC2R ImGui FIT generated from legacy UI FIT.
+// Source: data/defs/ui/legacy/game/MCL_PR_AvailablePilotEntry.fit
+// Legacy files remain source truth only; edit the generated ImGui FIT.
+
+GuiPage {
+    key = "game.mcl_pr_availablepilotentry"
+    title = "Game Mcl Pr Availablepilotentry"
+    sourceLegacyFit = "data/defs/ui/legacy/game/MCL_PR_AvailablePilotEntry.fit"
+    sourceSystem = "game"
+    sourceScreen = "mcl_pr_availablepilotentry"
+    sourceKind = "legacy_component"
+    layout = "component_absolute"
+    coordinateSpace = "component_local"
+    localWidth = 207
+    localHeight = 35
+    mountOffset = "0,0"
+    editableSource = "generated_imgui_only"
+    overlayGameOS = true
+    renderMode = "gameos_overlay"
+    backgroundPolicy = "transparent_overlay"
+}
+
+GuiMetadata {
+    key = "game.mcl_pr_availablepilotentry.metadata.metadata"
+    pageKey = "game.mcl_pr_availablepilotentry"
+    legacySection = "Rects"
+    legacyContext = "~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ | ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ | ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~"
+    role = "metadata"
+    layer = "metadata"
+    aliasOverride = "metadata"
+    sourceControlType = "Rects"
+    rect = "0,0,0,0"
+    legacyLocalRect = "0,0,0,0"
+    legacyRectSource = "xywh"
+    visible = false
+}
+
+GuiRect {
+    key = "game.mcl_pr_availablepilotentry.rect.rect"
+    pageKey = "game.mcl_pr_availablepilotentry"
+    legacySection = "Rect0"
+    role = "rect"
+    layer = "layout"
+    aliasOverride = "rect"
+    sourceControlType = "Rect0"
+    rect = "2,2,205,33"
+    legacyLocalRect = "2,2,205,33"
+    legacyRectSource = "xywh"
+    uiPackage = "default"
+    rectModel = "legacy_imgui.modern_rect_v1"
+    controlRect = "2,2,205,33"
+    legacyColor = 0xff43311C
+    outline = 1
+    filled = false
+    fillColorArgb = "0x00000000"
+    borderColorArgb = "0x00000000"
+    colorArgb = "0xffffffff"
+}
+
+GuiRect {
+    key = "game.mcl_pr_availablepilotentry.rect.rect_01"
+    pageKey = "game.mcl_pr_availablepilotentry"
+    legacySection = "Rect1"
+    role = "rect"
+    layer = "layout"
+    aliasOverride = "rect"
+    sourceControlType = "Rect1"
+    rect = "4,4,22,30"
+    legacyLocalRect = "4,4,22,30"
+    legacyRectSource = "xywh"
+    uiPackage = "default"
+    rectModel = "legacy_imgui.modern_rect_v1"
+    controlRect = "4,4,22,30"
+    legacyColor = 0xff43311C
+    outline = 1
+    filled = false
+    fillColorArgb = "0x00000000"
+    borderColorArgb = "0x00000000"
+    colorArgb = "0xffffffff"
+}
+
+GuiMetadata {
+    key = "game.mcl_pr_availablepilotentry.metadata.metadata_01"
+    pageKey = "game.mcl_pr_availablepilotentry"
+    legacySection = "Rect2"
+    role = "metadata"
+    layer = "metadata"
+    aliasOverride = "metadata"
+    sourceControlType = "Rect2"
+    rect = "27,2,0,32"
+    legacyLocalRect = "27,2,0,32"
+    legacyRectSource = "xywh"
+    legacyColor = 0xff43311C
+    outline = 1
+    visible = false
+}
+
+GuiMetadata {
+    key = "game.mcl_pr_availablepilotentry.metadata.metadata_02"
+    pageKey = "game.mcl_pr_availablepilotentry"
+    legacySection = "Texts"
+    legacyContext = "~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ | ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ | ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~"
+    role = "metadata"
+    layer = "metadata"
+    aliasOverride = "metadata"
+    sourceControlType = "Texts"
+    rect = "0,0,0,0"
+    legacyLocalRect = "0,0,0,0"
+    legacyRectSource = "xywh"
+    visible = false
+}
+
+GuiText {
+    key = "game.mcl_pr_availablepilotentry.text.text"
+    pageKey = "game.mcl_pr_availablepilotentry"
+    legacySection = "Text0"
+    role = "text"
+    layer = "text"
+    aliasOverride = "text"
+    sourceControlType = "Text0"
+    rect = "32,5,220,24"
+    legacyLocalRect = "32,5,220,24"
+    legacyRectSource = "xywh"
+    uiPackage = "default"
+    rectModel = "legacy_imgui.modern_rect_v1"
+    controlRect = "32,5,220,24"
+    runtimeOverridesText = true
+    runtimeTextBinding = "pilotready.availablePilot.name"
+    runtimeTextSource = "legacy runtime populates this entry/list text after the template FIT loads"
+    visibleText = "<pilot name>"
+    runtimeTextPreviewMissing = true
+    textMissing = false
+    legacyFontId = 27172
+    legacyFontComment = "use agencyfb11"
+    font = "Agency Regular"
+    fontStyle = "Regular"
+    fontSize = 11
+    bold = false
+    italic = false
+    textAlign = "left"
+    textAnchor = "upper_left"
+    wrapText = false
+    colorArgb = "0xffc66600"
+    legacyColor = 0xffC66600
+    legacyFontComment = "use agencyfb11"
+    textKey = "game.mcl_pr_availablepilotentry.string.text"
+    borderColorArgb = "0x00000000"
+}
+
+GuiText {
+    key = "game.mcl_pr_availablepilotentry.text.text_01"
+    pageKey = "game.mcl_pr_availablepilotentry"
+    legacySection = "Text1"
+    role = "text"
+    layer = "text"
+    aliasOverride = "text"
+    sourceControlType = "Text1"
+    rect = "183,7,220,24"
+    legacyLocalRect = "183,7,220,24"
+    legacyRectSource = "xywh"
+    uiPackage = "default"
+    rectModel = "legacy_imgui.modern_rect_v1"
+    controlRect = "183,7,220,24"
+    runtimeOverridesText = true
+    runtimeTextBinding = "pilotready.availablePilot.rankOrSkill"
+    runtimeTextSource = "legacy runtime populates this entry/list text after the template FIT loads"
+    visibleText = "<rank>"
+    runtimeTextPreviewMissing = true
+    textMissing = false
+    legacyFontId = 27173
+    legacyFontComment = "Use ArialNarrow8"
+    font = "Agency Regular"
+    fontStyle = "Regular"
+    fontSize = 8
+    bold = false
+    italic = false
+    textAlign = "right"
+    textAnchor = "upper_right"
+    wrapText = false
+    colorArgb = "0xffc66600"
+    legacyColor = 0xffC66600
+    legacyAlignment = 1
+    legacyFontComment = "Use ArialNarrow8"
+    textKey = "game.mcl_pr_availablepilotentry.string.text_01"
+    borderColorArgb = "0x00000000"
+}
+
+GuiMetadata {
+    key = "game.mcl_pr_availablepilotentry.metadata.metadata_03"
+    pageKey = "game.mcl_pr_availablepilotentry"
+    legacySection = "Statics"
+    legacyContext = "~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ | ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ | ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~"
+    role = "metadata"
+    layer = "metadata"
+    aliasOverride = "metadata"
+    sourceControlType = "Statics"
+    rect = "0,0,0,0"
+    legacyLocalRect = "0,0,0,0"
+    legacyRectSource = "xywh"
+    visible = false
+}
+
+GuiImage {
+    key = "game.mcl_pr_availablepilotentry.image.pilot_icon"
+    pageKey = "game.mcl_pr_availablepilotentry"
+    legacySection = "Static0"
+    legacyComment = "pilot icon"
+    role = "image"
+    layer = "art"
+    aliasOverride = "pilot icon"
+    sourceControlType = "Static0"
+    rect = "5,5,20,28"
+    legacyLocalRect = "5,5,20,28"
+    legacyRectSource = "xywh"
+    texture = "data/art/gui/\"MCUI_Low2\";.png"
+    legacyTexture = "\"MCUI_Low2\";"
+    uiPackage = "default"
+    rectModel = "legacy_imgui.modern_rect_v1"
+    controlRect = "5,5,20,28"
+    artRect = "5,5,20,28"
+    artLayer = "control_art"
+    legacyColor = 0xffFF8900
+}
+
+GuiImage {
+    key = "game.mcl_pr_availablepilotentry.image.rank_icon"
+    pageKey = "game.mcl_pr_availablepilotentry"
+    legacySection = "Static1"
+    legacyComment = "rank icon-"
+    legacyContext = "don't animate"
+    role = "image"
+    layer = "art"
+    aliasOverride = "rank icon-"
+    sourceControlType = "Static1"
+    rect = "190,5,15,15"
+    legacyLocalRect = "190,5,15,15"
+    legacyRectSource = "xywh"
+    texture = "data/art/gui/MCL_PR_PilotSkillIcons.png"
+    legacyTexture = "MCL_PR_PilotSkillIcons"
+    uiPackage = "default"
+    rectModel = "legacy_imgui.modern_rect_v1"
+    controlRect = "190,5,15,15"
+    artRect = "190,5,15,15"
+    artLayer = "control_art"
+    uvX = 0
+    uvY = 96
+    uvWidth = 15
+    uvHeight = 15
+}
+
+GuiMetadata {
+    key = "game.mcl_pr_availablepilotentry.metadata.bright_orange"
+    pageKey = "game.mcl_pr_availablepilotentry"
+    legacySection = "Animation0"
+    legacyComment = "bright orange"
+    legacyContext = "~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ | ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ | ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~"
+    role = "metadata"
+    layer = "metadata"
+    aliasOverride = "bright orange"
+    sourceControlType = "Animation0"
+    rect = "0,0,0,0"
+    legacyLocalRect = "0,0,0,0"
+    legacyRectSource = "xywh"
+    visible = false
+    normalColorArgb = "0xffFF8A00"
+    pressedColorArgb = "0xffFF8A00"
+    highlightColorArgb = "0xffFF8A00"
+    disabledColorArgb = "0xff6b6b6b"
+}
+
+GuiMetadata {
+    key = "game.mcl_pr_availablepilotentry.metadata.medium_orange"
+    pageKey = "game.mcl_pr_availablepilotentry"
+    legacySection = "Animation1"
+    legacyComment = "medium orange"
+    role = "metadata"
+    layer = "metadata"
+    aliasOverride = "medium orange"
+    sourceControlType = "Animation1"
+    rect = "0,0,0,0"
+    legacyLocalRect = "0,0,0,0"
+    legacyRectSource = "xywh"
+    visible = false
+    normalColorArgb = "0xffC66600"
+    pressedColorArgb = "0xffC66600"
+    highlightColorArgb = "0xffC66600"
+    disabledColorArgb = "0xff6b6b6b"
+}
+
+GuiMetadata {
+    key = "game.mcl_pr_availablepilotentry.metadata.dark_orange"
+    pageKey = "game.mcl_pr_availablepilotentry"
+    legacySection = "Animation2"
+    legacyComment = "dark orange"
+    role = "metadata"
+    layer = "metadata"
+    aliasOverride = "dark orange"
+    sourceControlType = "Animation2"
+    rect = "0,0,0,0"
+    legacyLocalRect = "0,0,0,0"
+    legacyRectSource = "xywh"
+    visible = false
+    normalColorArgb = "0xff43311C"
+    pressedColorArgb = "0xff43311C"
+    highlightColorArgb = "0xff43311C"
+    disabledColorArgb = "0xff6b6b6b"
+}

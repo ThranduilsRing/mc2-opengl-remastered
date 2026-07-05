@@ -162,6 +162,7 @@ private:
 	static void makeKeyString( long hotKey, char* buffer );
 	static int makeInputKeyString( long& hotKey, char* buffer );
 
+	void refreshHotKeyList();
 
 	aListBox		hotKeyList;
 	bool			bShowDlg;

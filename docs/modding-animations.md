@@ -119,10 +119,14 @@ mods/<yourMod>/data/anim_overrides/my_strut.ase     # your clip (cooks to .agl h
 
 ## Swapping FX too (pointer)
 
-Weapon/explosion FX swap through a parallel path — `data/effects/mc2.fx` overlay + the
-`tools/mc2fx/` CLI (`dump`/`build`/`clone`/`new`). See
-[gosfx-modder-dropin-path.md](gosfx-modder-dropin-path.md). Bind a weapon to a different effect via
-`compbas.csv` "Special FX ID" → `effects.csv` names, or a `<weapon>.fit` `HitEffect=`/`MissEffect=`.
+Weapon/explosion FX swap through a parallel path — a per-effect JSON sidecar
+(`data/effects/defs/<EffectName>.fxdef.json`, `MC2_FX_DEFS=1`) for retuning/replacing an
+**existing** effect's texture/blend/color/scale, no `mc2.fx` rebuild required. See
+[modding-effects.md](modding-effects.md) (field reference, `fxlint`, worked example) for that
+path, or [gosfx-modder-dropin-path.md](gosfx-modder-dropin-path.md) for the whole-blob overlay +
+`tools/mc2fx/` CLI (`dump`/`build`/`clone`/`new`) needed to add a **brand-new** effect name.
+Bind a weapon to a different effect via `compbas.csv` "Special FX ID" → `effects.csv` names, or
+a `<weapon>.fit` `HitEffect=`/`MissEffect=`.
 Note: gosFX particles are **default-disabled in the current beta** (`MC2_DISABLE_GOSFX=1`).
 
 ---

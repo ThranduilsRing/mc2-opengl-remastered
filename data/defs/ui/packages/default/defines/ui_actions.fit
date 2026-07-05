@@ -1,0 +1,62 @@
+/***************************************************************
+ * FILENAME: ui_actions.fit
+ * DESCRIPTION: Action taxonomy for legacy_imgui page/control links.
+ *
+ * AUTHOR: Methuselas
+ * CREATED: 2026-05-25
+ *
+ * UPDATED BY: Methuselas
+ * UPDATED: 2026-05-25
+ *
+ * CHANGES:
+ * - Added initial action defines for upcoming button/page-link truth pass.
+ ***************************************************************/
+
+UiActionDefine {
+    key = "ui.action.open_page"
+    meaning = "Open or replace the active UI page."
+    fields = "targetPageKey,targetFit"
+}
+
+UiActionDefine {
+    key = "ui.action.mount_companion"
+    meaning = "Mount a companion/detail page over a base page in its runtime rect."
+    fields = "basePageKey,targetPageKey,mountRect,mountOffset"
+}
+
+UiActionDefine {
+    key = "ui.action.switch_tab"
+    meaning = "Switch an options/logistics/multiplayer tab by changing the active companion page."
+    fields = "groupKey,targetPageKey,selectedState"
+}
+
+UiActionDefine {
+    key = "ui.action.close_page"
+    meaning = "Close current UI or return to previous page."
+    fields = "returnTarget"
+}
+
+UiActionDefine {
+    key = "ui.action.apply_option"
+    meaning = "Apply a setting change from Options UI."
+    fields = "settingKey,valueBinding"
+}
+
+UiActionDefine {
+    key = "ui.action.launch_mission"
+    meaning = "Launch the selected mission. Not every page should expose this action."
+    fields = "missionSelectionBinding"
+}
+
+UiActionDefine {
+    key = "ui.action.multiplayer_flow"
+    meaning = "Multiplayer host/join/lobby/ready flow action. Multiplayer UI must become Editor-owned truth."
+    fields = "flowKey,targetPageKey"
+}
+
+UiActionAuditStatus {
+    key = "legacy_imgui.action_audit"
+    currentStatus = "inventory_only"
+    auditCsv = "data/defs/ui/_audit/page_link_action_audit.csv"
+    notes = "Do not guess button behavior. Map actions from legacy code/FIT evidence."
+}

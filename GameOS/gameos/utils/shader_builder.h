@@ -153,6 +153,10 @@ struct glsl_program {
     // returns time of least-recently modified file on which this shader depends
     uint64_t getModTimeMs();
     bool needsReload();
+    // DEV-SHELL-1: full compile/link error text of the last failed reload()
+    // ("" after a successful one). The dev shell returns this to the client
+    // so a failed hot-reload is never silent.
+    std::string reload_log_;
 	
 private:
     glsl_program():shp_(0), vsh_(0), fsh_(0), hsh_(0), dsh_(0), gsh_(0), is_valid_(false) {};

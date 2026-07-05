@@ -1,0 +1,520 @@
+// MC2R ImGui FIT generated from legacy UI FIT.
+// Source: data/defs/ui/legacy/game/MCUI_MR_SalvageAreaEntryBox.fit
+// Legacy files remain source truth only; edit the generated ImGui FIT.
+
+GuiPage {
+    key = "game.mcui_mr_salvageareaentrybox"
+    title = "Game Mcui Mr Salvageareaentrybox"
+    sourceLegacyFit = "data/defs/ui/legacy/game/MCUI_MR_SalvageAreaEntryBox.fit"
+    sourceSystem = "game"
+    sourceScreen = "mcui_mr_salvageareaentrybox"
+    sourceKind = "legacy_component"
+    layout = "component_absolute"
+    coordinateSpace = "component_local"
+    localWidth = 314
+    localHeight = 48
+    mountOffset = "0,0"
+    editableSource = "generated_imgui_only"
+    overlayGameOS = true
+    renderMode = "gameos_overlay"
+    backgroundPolicy = "transparent_overlay"
+}
+
+GuiMetadata {
+    key = "game.mcui_mr_salvageareaentrybox.metadata.metadata"
+    pageKey = "game.mcui_mr_salvageareaentrybox"
+    legacySection = "Buttons"
+    legacyContext = "~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ | ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ | ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~"
+    role = "metadata"
+    layer = "metadata"
+    aliasOverride = "metadata"
+    sourceControlType = "Buttons"
+    rect = "0,0,0,0"
+    legacyLocalRect = "0,0,0,0"
+    legacyRectSource = "xywh"
+    visible = false
+}
+
+GuiButton {
+    key = "game.mcui_mr_salvageareaentrybox.button.this_is_the_check_box_for_the_salvageable_mechs"
+    pageKey = "game.mcui_mr_salvageareaentrybox"
+    legacySection = "Button0"
+    legacyComment = "This is the check box for the salvageable mechs."
+    role = "button"
+    layer = "control"
+    aliasOverride = "This is the check box for the salvageable mechs."
+    sourceControlType = "Button0"
+    rect = "4,2,46,46"
+    legacyLocalRect = "4,2,46,46"
+    legacyRectSource = "xywh"
+    texture = "data/art/gui/MCUI_MR_2.png"
+    legacyTexture = "MCUI_MR_2"
+    uiPackage = "default"
+    rectModel = "legacy_imgui.modern_rect_v1"
+    controlRect = "4,2,46,46"
+    hitRect = "4,2,46,46"
+    artRect = "4,2,46,46"
+    artLayer = "control_art"
+    controlModel = "composite_hit_art_text_v1"
+    linkedLayers = "hit,art,text"
+    editMode = "linked_control_with_independent_text"
+    textRect = "4,2,46,46"
+    textRectMode = "control_rect_fallback"
+    helpCaptionLegacyId = 45044
+    helpCaptionKey = "legacy.mc2res.45044"
+    helpCaptionText = "SALVAGE BUTTON"
+    helpCaptionLegacySymbol = "IDS_SALVAGE_CHECKBOXITEMHELP_HEADER"
+    helpCaptionSource = "mc2res"
+    helpCaptionMissing = false
+    helpDescLegacyId = 45043
+    helpDescKey = "legacy.mc2res.45043"
+    helpDescText = "Click this item to Salvage it."
+    helpDescLegacySymbol = "IDS_SALVAGE_CHECKBOX_HELP"
+    helpDescSource = "mc2res"
+    helpDescMissing = false
+    font = "Agency Regular"
+    fontStyle = "Regular"
+    fontSize = 14
+    bold = false
+    italic = false
+    textAlign = "center"
+    textAnchor = "center"
+    legacyTextAlignmentSource = "aButton::init default Alignment=2"
+    wrapText = false
+    legacyId = "xxx"
+    uvX = 205
+    uvY = 94
+    uvWidth = 46
+    uvHeight = 46
+    uvPressedX = 205
+    uvPressedY = 48
+    uvHighlightX = 205
+    uvHighlightY = 94
+    uvHighlightPressedX = 205
+    uvHighlightPressedY = 94
+    uvDisabledX = 205
+    uvDisabledY = 94
+    legacyToggle = 1
+    legacyAnimationRef = "Animation0"
+    legacyNormalAnimationTimeStamps = 1
+    legacyNormalAnimationLoops = false
+    legacyNormalAnimTime0 = 0.0
+    legacyNormalAnimColor0 = 0xffff0000
+    legacyPressedAnimationTimeStamps = 2
+    legacyPressedAnimationLoops = false
+    legacyPressedAnimTime0 = 0.0
+    legacyPressedAnimColor0 = 0xffffffff
+    legacyPressedAnimTime1 = 0.1
+    legacyPressedAnimColor1 = 0xffff0000
+    legacyHighlightAnimationTimeStamps = 3
+    legacyHighlightAnimationLoops = false
+    legacyHighlightAnimTime0 = 0.0
+    legacyHighlightAnimColor0 = 0xffffffff
+    legacyHighlightAnimTime1 = 0.5
+    legacyHighlightAnimColor1 = 0xffff0000
+    legacyHighlightAnimTime2 = 0.75
+    legacyHighlightAnimColor2 = 0xffffffff
+    legacyHighlightPressedAnimationTimeStamps = 2
+    legacyHighlightPressedAnimationLoops = false
+    legacyHighlightPressedAnimTime0 = 0.0
+    legacyHighlightPressedAnimColor0 = 0xffffffff
+    legacyHighlightPressedAnimTime1 = 0.5
+    legacyHighlightPressedAnimColor1 = 0xffff0000
+    legacyDisabledAnimationTimeStamps = 1
+    legacyDisabledAnimationLoops = false
+    legacyDisabledAnimTime0 = 0.0
+    legacyDisabledAnimColor0 = 0xff6b6b6b
+    fillColorArgb = "0x00000000"
+    borderColorArgb = "0x00000000"
+    normalTextColorArgb = "0xffffffff"
+    pressedTextColorArgb = "0xfff26f00"
+    highlightTextColorArgb = "0xfff26f00"
+    disabledTextColorArgb = "0xff6b6b6b"
+}
+
+GuiMetadata {
+    key = "game.mcui_mr_salvageareaentrybox.metadata.metadata_01"
+    pageKey = "game.mcui_mr_salvageareaentrybox"
+    legacySection = "Rects"
+    legacyContext = "~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ | ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ | ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~"
+    role = "metadata"
+    layer = "metadata"
+    aliasOverride = "metadata"
+    sourceControlType = "Rects"
+    rect = "0,0,0,0"
+    legacyLocalRect = "0,0,0,0"
+    legacyRectSource = "xywh"
+    visible = false
+}
+
+GuiRect {
+    key = "game.mcui_mr_salvageareaentrybox.rect.outline_for_salvage_entry_box"
+    pageKey = "game.mcui_mr_salvageareaentrybox"
+    legacySection = "Rect0"
+    legacyComment = "outline for salvage entry box"
+    role = "rect"
+    layer = "layout"
+    aliasOverride = "outline for salvage entry box"
+    sourceControlType = "Rect0"
+    rect = "51,2,263,45"
+    legacyLocalRect = "51,2,263,45"
+    legacyRectSource = "xywh"
+    uiPackage = "default"
+    rectModel = "legacy_imgui.modern_rect_v1"
+    controlRect = "51,2,263,45"
+    legacyColor = 0xffffffff
+    outline = "TRUE"
+    filled = false
+    fillColorArgb = "0x00000000"
+    borderColorArgb = "0x00000000"
+    colorArgb = "0xffffffff"
+}
+
+GuiRect {
+    key = "game.mcui_mr_salvageareaentrybox.rect.outline_for_check_box_button"
+    pageKey = "game.mcui_mr_salvageareaentrybox"
+    legacySection = "Rect1"
+    legacyComment = "outline for check box button"
+    role = "rect"
+    layer = "layout"
+    aliasOverride = "outline for check box button"
+    sourceControlType = "Rect1"
+    rect = "4,2,46,46"
+    legacyLocalRect = "4,2,46,46"
+    legacyRectSource = "xywh"
+    uiPackage = "default"
+    rectModel = "legacy_imgui.modern_rect_v1"
+    controlRect = "4,2,46,46"
+    legacyColor = 0xffffffff
+    outline = "TRUE"
+    filled = false
+    fillColorArgb = "0x00000000"
+    borderColorArgb = "0x00000000"
+    colorArgb = "0xffffffff"
+}
+
+GuiMetadata {
+    key = "game.mcui_mr_salvageareaentrybox.metadata.metadata_02"
+    pageKey = "game.mcui_mr_salvageareaentrybox"
+    legacySection = "Statics"
+    legacyContext = "~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ | ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ | ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~"
+    role = "metadata"
+    layer = "metadata"
+    aliasOverride = "metadata"
+    sourceControlType = "Statics"
+    rect = "0,0,0,0"
+    legacyLocalRect = "0,0,0,0"
+    legacyRectSource = "xywh"
+    visible = false
+}
+
+GuiImage {
+    key = "game.mcui_mr_salvageareaentrybox.image.mechentryicon"
+    pageKey = "game.mcui_mr_salvageareaentrybox"
+    legacySection = "Static0"
+    legacyComment = "MechEntryIcon"
+    role = "image"
+    layer = "art"
+    aliasOverride = "MechEntryIcon"
+    sourceControlType = "Static0"
+    rect = "53,10,32,38"
+    legacyLocalRect = "53,10,32,38"
+    legacyRectSource = "xywh"
+    uiPackage = "default"
+    rectModel = "legacy_imgui.modern_rect_v1"
+    controlRect = "53,10,32,38"
+    uvWidth = 32
+    uvHeight = 38
+}
+
+GuiImage {
+    key = "game.mcui_mr_salvageareaentrybox.image.weighticon"
+    pageKey = "game.mcui_mr_salvageareaentrybox"
+    legacySection = "Static1"
+    legacyComment = "WeightIcon"
+    legacyContext = "use MCUI_Med4 icons | don't animate"
+    role = "image"
+    layer = "art"
+    aliasOverride = "WeightIcon"
+    sourceControlType = "Static1"
+    rect = "295,7,15,15"
+    legacyLocalRect = "295,7,15,15"
+    legacyRectSource = "xywh"
+    texture = "data/art/gui/MCUI_MR_2.png"
+    legacyTexture = "MCUI_MR_2"
+    uiPackage = "default"
+    rectModel = "legacy_imgui.modern_rect_v1"
+    controlRect = "295,7,15,15"
+    artRect = "295,7,15,15"
+    artLayer = "control_art"
+    uvX = 214
+    uvY = 30
+    uvWidth = 15
+    uvHeight = 15
+}
+
+GuiImage {
+    key = "game.mcui_mr_salvageareaentrybox.image.cbills_icon"
+    pageKey = "game.mcui_mr_salvageareaentrybox"
+    legacySection = "Static2"
+    legacyComment = "CBills Icon"
+    role = "image"
+    layer = "art"
+    aliasOverride = "CBills Icon"
+    sourceControlType = "Static2"
+    rect = "295,29,15,15"
+    legacyLocalRect = "295,29,15,15"
+    legacyRectSource = "xywh"
+    texture = "data/art/gui/MCUI_MR_2.png"
+    legacyTexture = "MCUI_MR_2"
+    uiPackage = "default"
+    rectModel = "legacy_imgui.modern_rect_v1"
+    controlRect = "295,29,15,15"
+    artRect = "295,29,15,15"
+    artLayer = "control_art"
+    uvX = 229
+    uvY = 30
+    uvWidth = 15
+    uvHeight = 15
+}
+
+GuiMetadata {
+    key = "game.mcui_mr_salvageareaentrybox.metadata.metadata_03"
+    pageKey = "game.mcui_mr_salvageareaentrybox"
+    legacySection = "Texts"
+    legacyContext = "~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ | ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ | ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~"
+    role = "metadata"
+    layer = "metadata"
+    aliasOverride = "metadata"
+    sourceControlType = "Texts"
+    rect = "0,0,0,0"
+    legacyLocalRect = "0,0,0,0"
+    legacyRectSource = "xywh"
+    visible = false
+}
+
+GuiText {
+    key = "game.mcui_mr_salvageareaentrybox.text.mechnametext"
+    pageKey = "game.mcui_mr_salvageareaentrybox"
+    legacySection = "Text0"
+    legacyComment = "MechNameText"
+    role = "text"
+    layer = "text"
+    aliasOverride = "MechNameText"
+    sourceControlType = "Text0"
+    rect = "93,5,143,22"
+    legacyLocalRect = "93,5,143,22"
+    legacyRectSource = "xywh"
+    uiPackage = "default"
+    rectModel = "legacy_imgui.modern_rect_v1"
+    controlRect = "93,5,143,22"
+    textRect = "93,5,143,22"
+    textRectMode = "control_rect_fallback"
+    textLegacyId = 0
+    visible = false
+    textKey = "legacy.strings.ids_undefined_string_sebi"
+    textLegacySymbol = "IDS_undefined_string_sebi"
+    textSource = "strings.res.h"
+    textMissing = true
+    textMissingReason = "symbol_only_from_strings_res_h"
+    legacyFontId = 28000
+    legacyFontComment = "use agencyfb14"
+    font = "Agency Regular"
+    fontStyle = "Regular"
+    fontSize = 14
+    bold = false
+    italic = false
+    textAlign = "left"
+    textAnchor = "upper_left"
+    wrapText = false
+    colorArgb = "0xff5c96c2"
+    legacyColor = 0xff5C96C2
+    outline = "FALSE"
+    legacyAlignment = 0
+    legacyFontComment = "use agencyfb14"
+    borderColorArgb = "0x00000000"
+}
+
+GuiText {
+    key = "game.mcui_mr_salvageareaentrybox.text.variantnametext"
+    pageKey = "game.mcui_mr_salvageareaentrybox"
+    legacySection = "Text1"
+    legacyComment = "VariantNameText"
+    role = "text"
+    layer = "text"
+    aliasOverride = "VariantNameText"
+    sourceControlType = "Text1"
+    rect = "93,26,143,22"
+    legacyLocalRect = "93,26,143,22"
+    legacyRectSource = "xywh"
+    uiPackage = "default"
+    rectModel = "legacy_imgui.modern_rect_v1"
+    controlRect = "93,26,143,22"
+    textRect = "93,26,143,22"
+    textRectMode = "control_rect_fallback"
+    textLegacyId = 0
+    visible = false
+    textKey = "legacy.strings.ids_undefined_string_sebi"
+    textLegacySymbol = "IDS_undefined_string_sebi"
+    textSource = "strings.res.h"
+    textMissing = true
+    textMissingReason = "symbol_only_from_strings_res_h"
+    legacyFontId = 28001
+    legacyFontComment = "use agencyfb14"
+    font = "Agency Regular"
+    fontStyle = "Regular"
+    fontSize = 14
+    bold = false
+    italic = false
+    textAlign = "left"
+    textAnchor = "upper_left"
+    wrapText = false
+    colorArgb = "0xff005392"
+    legacyColor = 0xff005392
+    outline = "FALSE"
+    legacyAlignment = 0
+    legacyFontComment = "use agencyfb14"
+    borderColorArgb = "0x00000000"
+}
+
+GuiText {
+    key = "game.mcui_mr_salvageareaentrybox.text.weighttext"
+    pageKey = "game.mcui_mr_salvageareaentrybox"
+    legacySection = "Text2"
+    legacyComment = "WeightText"
+    role = "text"
+    layer = "text"
+    aliasOverride = "WeightText"
+    sourceControlType = "Text2"
+    rect = "243,5,46,22"
+    legacyLocalRect = "243,5,46,22"
+    legacyRectSource = "xywh"
+    uiPackage = "default"
+    rectModel = "legacy_imgui.modern_rect_v1"
+    controlRect = "243,5,46,22"
+    textRect = "243,5,46,22"
+    textRectMode = "control_rect_fallback"
+    textLegacyId = 0
+    visible = false
+    textKey = "legacy.strings.ids_undefined_string_sebi"
+    textLegacySymbol = "IDS_undefined_string_sebi"
+    textSource = "strings.res.h"
+    textMissing = true
+    textMissingReason = "symbol_only_from_strings_res_h"
+    legacyFontId = 28002
+    legacyFontComment = "use agencyfb14"
+    font = "Agency Regular"
+    fontStyle = "Regular"
+    fontSize = 14
+    bold = false
+    italic = false
+    textAlign = "right"
+    textAnchor = "upper_right"
+    wrapText = false
+    colorArgb = "0xff5c96c2"
+    legacyColor = 0xff5C96C2
+    outline = "FALSE"
+    legacyAlignment = 1
+    legacyFontComment = "use agencyfb14"
+    borderColorArgb = "0x00000000"
+}
+
+GuiText {
+    key = "game.mcui_mr_salvageareaentrybox.text.cbillstext"
+    pageKey = "game.mcui_mr_salvageareaentrybox"
+    legacySection = "Text3"
+    legacyComment = "CBillsText"
+    role = "text"
+    layer = "text"
+    aliasOverride = "CBillsText"
+    sourceControlType = "Text3"
+    rect = "243,26,46,22"
+    legacyLocalRect = "243,26,46,22"
+    legacyRectSource = "xywh"
+    uiPackage = "default"
+    rectModel = "legacy_imgui.modern_rect_v1"
+    controlRect = "243,26,46,22"
+    textRect = "243,26,46,22"
+    textRectMode = "control_rect_fallback"
+    textLegacyId = 0
+    visible = false
+    textKey = "legacy.strings.ids_undefined_string_sebi"
+    textLegacySymbol = "IDS_undefined_string_sebi"
+    textSource = "strings.res.h"
+    textMissing = true
+    textMissingReason = "symbol_only_from_strings_res_h"
+    legacyFontId = 28003
+    legacyFontComment = "use agencyfb14"
+    font = "Agency Regular"
+    fontStyle = "Regular"
+    fontSize = 14
+    bold = false
+    italic = false
+    textAlign = "right"
+    textAnchor = "upper_right"
+    wrapText = false
+    colorArgb = "0xff005392"
+    legacyColor = 0xff005392
+    outline = "FALSE"
+    legacyAlignment = 1
+    legacyFontComment = "use agencyfb14"
+    borderColorArgb = "0x00000000"
+}
+
+GuiMetadata {
+    key = "game.mcui_mr_salvageareaentrybox.metadata.medium_blue"
+    pageKey = "game.mcui_mr_salvageareaentrybox"
+    legacySection = "Animation0"
+    legacyComment = "medium blue"
+    legacyContext = "~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ | ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ | ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~"
+    role = "metadata"
+    layer = "metadata"
+    aliasOverride = "medium blue"
+    sourceControlType = "Animation0"
+    rect = "0,0,0,0"
+    legacyLocalRect = "0,0,0,0"
+    legacyRectSource = "xywh"
+    visible = false
+    normalColorArgb = "0xffff0000"
+    pressedColorArgb = "0xffffffff"
+    highlightColorArgb = "0xffffffff"
+    disabledColorArgb = "0xff6b6b6b"
+}
+
+GuiMetadata {
+    key = "game.mcui_mr_salvageareaentrybox.metadata.dark_blue"
+    pageKey = "game.mcui_mr_salvageareaentrybox"
+    legacySection = "Animation1"
+    legacyComment = "dark blue"
+    role = "metadata"
+    layer = "metadata"
+    aliasOverride = "dark blue"
+    sourceControlType = "Animation1"
+    rect = "0,0,0,0"
+    legacyLocalRect = "0,0,0,0"
+    legacyRectSource = "xywh"
+    visible = false
+    normalColorArgb = "0xffff0000"
+    pressedColorArgb = "0xffffffff"
+    highlightColorArgb = "0xffffffff"
+    disabledColorArgb = "0xff6b6b6b"
+}
+
+GuiMetadata {
+    key = "game.mcui_mr_salvageareaentrybox.metadata.light_blue"
+    pageKey = "game.mcui_mr_salvageareaentrybox"
+    legacySection = "Animation2"
+    legacyComment = "light blue"
+    role = "metadata"
+    layer = "metadata"
+    aliasOverride = "light blue"
+    sourceControlType = "Animation2"
+    rect = "0,0,0,0"
+    legacyLocalRect = "0,0,0,0"
+    legacyRectSource = "xywh"
+    visible = false
+    normalColorArgb = "0xffff0000"
+    pressedColorArgb = "0xffffffff"
+    highlightColorArgb = "0xffffffff"
+    disabledColorArgb = "0xff6b6b6b"
+}

@@ -64,6 +64,14 @@ class MainMenu: public LogisticsScreen
 		void setDrawBackground( bool bDrawBackground );
 		void skipIntro();
 
+		// True while this menu fully covers whatever logistics screen sits
+		// behind it (intro movie playing, or steady-state splash menu with
+		// its opaque background up).  Legacy code relied on painter's-order
+		// GameOS draws to hide the screen behind; the data/defs UI path
+		// composites through ImGui AFTER all GameOS draws, so callers must
+		// skip rendering occluded screens instead.
+		bool occludesLogisticsScreens() const;
+
 		virtual int	handleMessage( unsigned long, unsigned long );
 		
 

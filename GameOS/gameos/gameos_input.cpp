@@ -49,7 +49,17 @@ void __stdcall gos_GetMouseInfo( float* pXPosition, float* pYPosition, int* pXDe
     // the existing viewMul transform (and thus world pick) lands on the same
     // pixels the scene was composited into. Outside the box -> <0 or >1 (no hit).
     int bx, by, bw, bh;
-    if (gos_Compute43Box(Environment.drawableWidth, Environment.drawableHeight,
+    // UI-ASPECT-ANCHOR-1: on front-end frames the UI draws into the centered
+    // 16:9 canvas, so normalize mouse relative to that box (same convention as
+    // the FORCE-43 branch below). Inactive in mission (never asserted) so the
+    // world-pick viewMul transform is untouched.
+    if (gos_ComputeUiCanvasBox(Environment.drawableWidth, Environment.drawableHeight,
+                               &bx, &by, &bw, &bh)) {
+        if(pXPosition)
+            *pXPosition = (mi->x_ - (float)bx) / (float)bw;
+        if(pYPosition)
+            *pYPosition = (mi->y_ - (float)by) / (float)bh;
+    } else if (gos_Compute43Box(Environment.drawableWidth, Environment.drawableHeight,
                          &bx, &by, &bw, &bh)) {
         if(pXPosition)
             *pXPosition = (mi->x_ - (float)bx) / (float)bw;
@@ -131,7 +141,13 @@ void __stdcall gos_SetMousePosition( float XPosition, float YPosition )
         // [FORCE-43 v1] Inverse of the box-relative normalize in gos_GetMouseInfo:
         // map the 0..1 box coordinate back into physical drawable pixels.
         int bx, by, bw, bh;
-        if (gos_Compute43Box(Environment.drawableWidth, Environment.drawableHeight,
+        // UI-ASPECT-ANCHOR-1: inverse of the canvas-relative normalize above.
+        if (gos_ComputeUiCanvasBox(Environment.drawableWidth, Environment.drawableHeight,
+                                   &bx, &by, &bw, &bh)) {
+            SDL_WarpMouseInWindow(g_sdl_window,
+                                  (int)((float)bx + XPosition * (float)bw),
+                                  (int)((float)by + YPosition * (float)bh));
+        } else if (gos_Compute43Box(Environment.drawableWidth, Environment.drawableHeight,
                              &bx, &by, &bw, &bh)) {
             SDL_WarpMouseInWindow(g_sdl_window,
                                   (int)((float)bx + XPosition * (float)bw),

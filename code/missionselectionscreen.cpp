@@ -60,6 +60,8 @@ MissionSelectionScreen::~MissionSelectionScreen()
 void MissionSelectionScreen::init( FitIniFile* file )
 {
 	LogisticsScreen::init( *file, "CMStatic", "CMTextEntry", "CMRect", "CMButton" );
+	// Route the hover help text (set by LogisticsScreen::update) into the defs help area.
+	defsHelpTextKey = "game.mission_selection.text.help_text_area";
 	for ( int i= 0; i < buttonCount; i++ )
 		buttons[i].setMessageOnRelease();
 
@@ -82,11 +84,22 @@ void MissionSelectionScreen::init( FitIniFile* file )
 
 void MissionSelectionScreen::render(int xOffset, int yOffset )
 {
-	if ( xOffset == 0 && yOffset == 0 )
-		missionDescriptionListBox.render();
+	// Mission overview renders via the defs GuiText (routed in updateListBox);
+	// the legacy aListBox is no longer drawn.
 
-	//Renders the movie the old way.
-	//movie Now!
+	// VIDCOM: composite the decoded video frame THROUGH the defs image (ImGui
+	// layer) so it overlays the notransmission fallback, instead of the old gos
+	// quad which drew underneath the defs overlay. Passing 0 when nothing is
+	// playing clears the override so the element shows the notransmission art.
+	if ( !xOffset && !yOffset )
+	{
+		const char* vidcom = "game.mission_selection.image.no_transmission_thing";
+		if ( bMovie && bMovie->isPlaying() && bMovie->getTextureHandle() )
+			setDefsElementGosTexture( vidcom, bMovie->getTextureHandle() );
+		else
+			setDefsElementGosTexture( vidcom, 0 );
+	}
+
 	LogisticsScreen::render( xOffset, yOffset );
 	if ( !xOffset && !yOffset )
 	{
@@ -116,8 +129,8 @@ void MissionSelectionScreen::render(int xOffset, int yOffset )
 		gos_SetRenderState( gos_State_Texture,  0 );
 		*/
 
-		if (bMovie)
-			bMovie->render();
+		// bMovie->render() (gos quad) removed — the frame now composites via the
+		// defs VIDCOM image above. bMovie->update() still decodes each frame.
 	}
 
 
@@ -412,9 +425,10 @@ void MissionSelectionScreen::setMission( int whichOne )
 	char text[64];
 	sprintf( text, "%ld ", LogisticsData::instance->getCBills() );
 	textObjects[RP_TEXT].setText( text );
+	setDefsElementText( "game.mission_selection.text.cbills_readout", text );
 
 
-	updateListBox(); 
+	updateListBox();
 
 }
 
@@ -422,36 +436,15 @@ void MissionSelectionScreen::updateListBox()
 {
 	missionDescriptionListBox.removeAllItems( true );
 
-	
-	aTextListItem* pEntry = new aTextListItem( IDS_MN_LB_FONT );
-	pEntry->resize( missionDescriptionListBox.width() - missionDescriptionListBox.getScrollBarWidth() - 2,
-		pEntry->height() );
-	pEntry->setText( IDS_MN_DIVIDER );
-	pEntry->setColor( 0xffC66600 );
-	missionDescriptionListBox.AddItem( pEntry );
+	// Leave the legacy aListBox EMPTY (it is auto-rendered by the aObject system,
+	// so emptying it is the only reliable way to stop the old text drawing).
 
-
-	pEntry = new aTextListItem( IDS_MN_LB_FONT );
-	pEntry->resize( missionDescriptionListBox.width() - missionDescriptionListBox.getScrollBarWidth() - 2,
-		pEntry->height() );
-	pEntry->setText( LogisticsData::instance->getCurrentMissionFriendlyName() );
-	pEntry->setColor( 0xffC66600 );
-	missionDescriptionListBox.AddItem( pEntry );
-
-	pEntry = new aTextListItem( IDS_MN_LB_FONT );
-	pEntry->resize( missionDescriptionListBox.width() - missionDescriptionListBox.getScrollBarWidth() - 2,
-		pEntry->height() );
-	pEntry->setText( IDS_MN_DIVIDER );
-	pEntry->setColor( 0xffC66600   );
-	missionDescriptionListBox.AddItem( pEntry );
-
-	pEntry = new aTextListItem( IDS_MN_LB_FONT );
-	pEntry->resize( missionDescriptionListBox.width() - missionDescriptionListBox.getScrollBarWidth() - 2,
-		pEntry->height() );
-	pEntry->setText( LogisticsData::instance->getCurrentMissionDescription() );
-	pEntry->setColor( 0xffC66600 );
-	pEntry->sizeToText();
-	missionDescriptionListBox.AddItem( pEntry );
+	// Pure-ImGui path: route name + description into the converter's pre-generated
+	// runtime_text defs elements (runtimeTextBinding = mission.selection.descriptionList).
+	const char* mn = LogisticsData::instance->getCurrentMissionFriendlyName();
+	const char* md = LogisticsData::instance->getCurrentMissionDescription();
+	setDefsElementText( "game.mission_selection.runtime_text.current_mission_name", mn ? mn : "" );
+	setDefsElementText( "game.mission_selection.runtime_text.current_mission_blurb", md ? md : "" );
 
 
 

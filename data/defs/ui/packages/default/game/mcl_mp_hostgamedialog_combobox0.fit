@@ -1,0 +1,317 @@
+// MC2R ImGui FIT generated from legacy UI FIT.
+// Source: data/defs/ui/legacy/game/mcl_mp_hostgamedialog_combobox0.fit
+// Legacy files remain source truth only; edit the generated ImGui FIT.
+
+GuiPage {
+    key = "game.mcl_mp_hostgamedialog_combobox0"
+    title = "Game Mcl Mp Hostgamedialog Combobox0"
+    sourceLegacyFit = "data/defs/ui/legacy/game/mcl_mp_hostgamedialog_combobox0.fit"
+    sourceSystem = "game"
+    sourceScreen = "mcl_mp_hostgamedialog_combobox0"
+    sourceKind = "legacy_component"
+    layout = "component_absolute"
+    coordinateSpace = "component_local"
+    localWidth = 240
+    localHeight = 306
+    mountOffset = "0,0"
+    editableSource = "generated_imgui_only"
+    overlayGameOS = true
+    renderMode = "gameos_overlay"
+    backgroundPolicy = "transparent_overlay"
+}
+
+GuiRect {
+    key = "game.mcl_mp_hostgamedialog_combobox0.rect.rect"
+    pageKey = "game.mcl_mp_hostgamedialog_combobox0"
+    legacySection = "VariantComboBox"
+    legacyContext = "drop down menu for max number of players in host new game dialog"
+    role = "rect"
+    layer = "layout"
+    aliasOverride = "rect"
+    sourceControlType = "VariantComboBox"
+    rect = "196,271,44,35"
+    legacyLocalRect = "196,271,44,35"
+    legacyRectSource = "xywh"
+    uiPackage = "default"
+    rectModel = "legacy_imgui.modern_rect_v1"
+    controlRect = "196,271,44,35"
+    filled = true
+    fillColorArgb = "0x00000000"
+    borderColorArgb = "0x00000000"
+    colorArgb = "0xffffffff"
+}
+
+GuiButton {
+    key = "game.mcl_mp_hostgamedialog_combobox0.button.button"
+    pageKey = "game.mcl_mp_hostgamedialog_combobox0"
+    legacySection = "ExpandButton"
+    role = "button"
+    layer = "control"
+    aliasOverride = "button"
+    sourceControlType = "ExpandButton"
+    rect = "224,272,16,34"
+    legacyLocalRect = "224,272,16,34"
+    legacyRectSource = "child_relative_xywh"
+    texture = "data/art/gui/mcl_mp_playerprefs_7.png"
+    legacyTexture = "mcl_mp_playerprefs_7.tga"
+    uiPackage = "default"
+    rectModel = "legacy_imgui.modern_rect_v1"
+    controlRect = "224,272,16,34"
+    hitRect = "224,272,16,34"
+    artRect = "224,272,16,34"
+    artLayer = "control_art"
+    controlModel = "composite_hit_art_text_v1"
+    linkedLayers = "hit,art,text"
+    editMode = "linked_control_with_independent_text"
+    font = "Agency Regular"
+    fontStyle = "Regular"
+    fontSize = 14
+    bold = false
+    italic = false
+    textAlign = "center"
+    textAnchor = "center"
+    legacyTextAlignmentSource = "aButton::init default Alignment=2"
+    wrapText = false
+    normalTextColorArgb = "0xffc66600"
+    normalOverlayColorArgb = "0xffc66600"
+    colorArgb = "0xffc66600"
+    pressedTextColorArgb = "0xffffffff"
+    pressedOverlayColorArgb = "0xffffffff"
+    highlightTextColorArgb = "0xffffffff"
+    highlightOverlayColorArgb = "0xffffffff"
+    disabledTextColorArgb = "0xff6b6b6b"
+    disabledOverlayColorArgb = "0xff6b6b6b"
+    buttonOverlayEnabled = true
+    buttonOverlayAlpha = 0.30
+    uvX = 209
+    uvY = 106
+    uvWidth = 16
+    uvHeight = 34
+    uvPressedX = 209
+    uvPressedY = 106
+    uvDisabledX = 209
+    uvDisabledY = 106
+    legacyNormalAnimationTimeStamps = 2
+    legacyNormalAnimationLoops = true
+    legacyNormalAnimTime0 = 0.0
+    legacyNormalAnimColor0 = 0xffC66600
+    legacyNormalAnimTime1 = 15.0
+    legacyNormalAnimColor1 = 0xffC66600
+    legacyPressedAnimationTimeStamps = 2
+    legacyPressedAnimationLoops = false
+    legacyPressedAnimTime0 = 0.0
+    legacyPressedAnimColor0 = 0xffffffff
+    legacyPressedAnimTime1 = 0.5
+    legacyPressedAnimColor1 = 0xffFF8A00
+    legacyHighlightAnimationTimeStamps = 3
+    legacyHighlightAnimationLoops = true
+    legacyHighlightAnimTime0 = 0.0
+    legacyHighlightAnimColor0 = 0xffffffff
+    legacyHighlightAnimTime1 = 0.5
+    legacyHighlightAnimColor1 = 0xffFF8A00
+    legacyHighlightAnimTime2 = 0.75
+    legacyHighlightAnimColor2 = 0xffffffff
+    legacyDisabledAnimationTimeStamps = 2
+    legacyDisabledAnimationLoops = true
+    legacyDisabledAnimTime0 = 0.0
+    legacyDisabledAnimColor0 = 0xff6B6B6B
+    legacyDisabledAnimTime1 = 15.0
+    legacyDisabledAnimColor1 = 0xff6B6B6B
+    fillColorArgb = "0x00000000"
+    borderColorArgb = "0x00000000"
+}
+
+GuiRect {
+    key = "game.mcl_mp_hostgamedialog_combobox0.rect.rect_01"
+    pageKey = "game.mcl_mp_hostgamedialog_combobox0"
+    legacySection = "EditBox"
+    legacyContext = "~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ | ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ | ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~"
+    role = "rect"
+    layer = "layout"
+    aliasOverride = "rect"
+    sourceControlType = "EditBox"
+    rect = "203,282,25,33"
+    legacyLocalRect = "203,282,25,33"
+    legacyRectSource = "child_relative_xywh"
+    uiPackage = "default"
+    rectModel = "legacy_imgui.modern_rect_v1"
+    controlRect = "203,282,25,33"
+    legacyColor = 0xffc66600
+    legacyAlignment = 0
+    filled = true
+    fillColorArgb = "0x00000000"
+    borderColorArgb = "0x00000000"
+    colorArgb = "0xffffffff"
+}
+
+GuiMetadata {
+    key = "game.mcl_mp_hostgamedialog_combobox0.metadata.metadata"
+    pageKey = "game.mcl_mp_hostgamedialog_combobox0"
+    legacySection = "Rects"
+    legacyContext = "~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ | ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ | ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~"
+    role = "metadata"
+    layer = "metadata"
+    aliasOverride = "metadata"
+    sourceControlType = "Rects"
+    rect = "196,271,0,0"
+    legacyLocalRect = "196,271,0,0"
+    legacyRectSource = "child_relative_xywh"
+    visible = false
+}
+
+GuiRect {
+    key = "game.mcl_mp_hostgamedialog_combobox0.rect.outline_whole_menu"
+    pageKey = "game.mcl_mp_hostgamedialog_combobox0"
+    legacySection = "Rect0"
+    legacyComment = "outline whole menu"
+    role = "rect"
+    layer = "layout"
+    aliasOverride = "outline whole menu"
+    sourceControlType = "Rect0"
+    rect = "196,271,44,35"
+    legacyLocalRect = "196,271,44,35"
+    legacyRectSource = "child_relative_xywh"
+    uiPackage = "default"
+    rectModel = "legacy_imgui.modern_rect_v1"
+    controlRect = "196,271,44,35"
+    legacyColor = 0xff43311C
+    outline = "TRUE"
+    filled = false
+    fillColorArgb = "0x00000000"
+    borderColorArgb = "0x00000000"
+    colorArgb = "0xffffffff"
+}
+
+GuiRect {
+    key = "game.mcl_mp_hostgamedialog_combobox0.rect.rectangle_for_list_box"
+    pageKey = "game.mcl_mp_hostgamedialog_combobox0"
+    legacySection = "Rect2"
+    legacyComment = "rectangle for list box"
+    role = "listbox_mount"
+    layer = "control"
+    aliasOverride = "rectangle for list box"
+    sourceControlType = "Rect2"
+    rect = "196,306,44,75"
+    legacyLocalRect = "196,306,44,75"
+    legacyRectSource = "child_relative_xywh"
+    uiPackage = "default"
+    rectModel = "legacy_imgui.modern_rect_v1"
+    controlRect = "196,306,44,75"
+    legacyColor = 0xff43311C
+    outline = "TRUE"
+    filled = false
+    fillColorArgb = "0x00000000"
+    borderColorArgb = "0x00000000"
+    colorArgb = "0xffffffff"
+}
+
+GuiScrollbar {
+    key = "game.mcl_mp_hostgamedialog_combobox0.scrollbar.rectangle_for_list_box"
+    pageKey = "game.mcl_mp_hostgamedialog_combobox0"
+    legacySection = "Rect2"
+    role = "listbox_scrollbar"
+    layer = "control"
+    aliasOverride = "listbox_scrollbar"
+    sourceControlType = "runtime mcScrollBar"
+    sourceStyle = "ScrollBar.fit"
+    sourceLine = "aListBox::init => scrollBar->init(w - 17, 2, 15, h - 4)"
+    rect = "223,308,15,71"
+    legacyLocalRect = "223,308,15,71"
+    legacyRectSource = "runtime_listbox_scrollbar"
+    runtimePlacement = "aListBox::mcScrollBar"
+    scrollbarTemplate = "data/defs/ui/packages/legacy_imgui/shared/scrollbar.fit"
+    scrollbarStyle = "orange"
+}
+
+GuiMetadata {
+    key = "game.mcl_mp_hostgamedialog_combobox0.metadata.divider_between_down_triangle_and_text"
+    pageKey = "game.mcl_mp_hostgamedialog_combobox0"
+    legacySection = "Rect1"
+    legacyComment = "divider between down triangle and text"
+    role = "video"
+    layer = "video"
+    aliasOverride = "divider between down triangle and text"
+    sourceControlType = "Rect1"
+    rect = "223,272,0,33"
+    legacyLocalRect = "223,272,0,33"
+    legacyRectSource = "child_relative_xywh"
+    legacyColor = 0xff43311C
+    outline = "TRUE"
+    visible = false
+}
+
+GuiMetadata {
+    key = "game.mcl_mp_hostgamedialog_combobox0.metadata.metadata_01"
+    pageKey = "game.mcl_mp_hostgamedialog_combobox0"
+    legacySection = "Texts"
+    legacyContext = "~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ | ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ | ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~"
+    role = "metadata"
+    layer = "metadata"
+    aliasOverride = "metadata"
+    sourceControlType = "Texts"
+    rect = "196,271,0,0"
+    legacyLocalRect = "196,271,0,0"
+    legacyRectSource = "child_relative_xywh"
+    visible = false
+}
+
+GuiText {
+    key = "game.mcl_mp_hostgamedialog_combobox0.text.number_of_players_allowed"
+    pageKey = "game.mcl_mp_hostgamedialog_combobox0"
+    legacySection = "Text0"
+    legacyComment = "number of players allowed"
+    role = "text"
+    layer = "text"
+    aliasOverride = "number of players allowed"
+    sourceControlType = "Text0"
+    rect = "197,272,26,34"
+    legacyLocalRect = "197,272,26,34"
+    legacyRectSource = "child_relative_xywh"
+    uiPackage = "default"
+    rectModel = "legacy_imgui.modern_rect_v1"
+    controlRect = "197,272,26,34"
+    textRect = "197,272,26,34"
+    textRectMode = "control_rect_fallback"
+    textLegacyId = 27000
+    visible = false
+    textKey = "legacy.mc2res.27000"
+    visibleText = " "
+    textLegacySymbol = "IDS_STRING_FIRST_LOGISTICS"
+    textSource = "mc2res"
+    textMissing = false
+    legacyFontId = 27333
+    legacyFontComment = "use agencyfb11"
+    font = "Agency Regular"
+    fontStyle = "Regular"
+    fontSize = 11
+    bold = false
+    italic = false
+    textAlign = "left"
+    textAnchor = "upper_left"
+    wrapText = true
+    colorArgb = "0xffc66600"
+    legacyColor = 0xFFc66600
+    outline = "FALSE"
+    legacyAlignment = 0
+    legacyFontComment = "use agencyfb11"
+    borderColorArgb = "0x00000000"
+}
+
+GuiMetadata {
+    key = "game.mcl_mp_hostgamedialog_combobox0.metadata.for_list_box_text"
+    pageKey = "game.mcl_mp_hostgamedialog_combobox0"
+    legacySection = "Animation0"
+    legacyComment = "for list box text"
+    role = "metadata"
+    layer = "metadata"
+    aliasOverride = "for list box text"
+    sourceControlType = "Animation0"
+    rect = "196,271,0,0"
+    legacyLocalRect = "196,271,0,0"
+    legacyRectSource = "child_relative_xywh"
+    visible = false
+    normalColorArgb = "0xff846643"
+    pressedColorArgb = "0xffFFAE4D"
+    highlightColorArgb = "0xffFFAE4D"
+    disabledColorArgb = "0xff6b6b6b"
+}

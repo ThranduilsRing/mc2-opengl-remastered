@@ -4,3 +4,10 @@
 // called, but the linker still needs the symbol resolved.
 #include <cstdint>
 uint32_t getBrainTickIndex() { return 0; }
+
+// BRAINSPECIAL-FLOW-WAIT-1: settable brain-time stub for WAIT deadline tests.
+// Engine definition (warrior.cpp) reads scenarioTime*1000; the harness advances
+// this value between flow-sequential passes via harnessSetBrainTimeMs().
+static uint32_t g_stubBrainTimeMs = 0;
+uint32_t getBrainTimeMs() { return g_stubBrainTimeMs; }
+void harnessSetBrainTimeMs(uint32_t ms) { g_stubBrainTimeMs = ms; }

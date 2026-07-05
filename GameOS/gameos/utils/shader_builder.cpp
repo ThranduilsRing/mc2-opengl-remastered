@@ -1228,17 +1228,22 @@ bool glsl_program::reload()
     GLuint newShaders[5] = {};
     std::vector<std::string> newIncludes[5];
     bool compileOk = true;
+    reload_log_.clear();
     for (size_t i = 0; i < 5; ++i) {
         if (!pipeline[i]) continue;
         std::string src;
         if (!load_shader(pipeline[i]->fname_.c_str(), src, newIncludes[i])) {
             log_error("Shader reload: failed to load %s\n", pipeline[i]->fname_.c_str());
+            reload_log_ = "failed to load " + pipeline[i]->fname_;
             compileOk = false;
             break;
         }
         newShaders[i] = glCreateShader(pipeline[i]->type_);
         const char* strings[] = { prefix_ ? prefix_ : "", src.c_str() };
-        if (!compile_shader(newShaders[i], strings, 2)) {
+        std::string stageLog;
+        if (!compile_shader(newShaders[i], strings, 2, &stageLog)) {
+            reload_log_ = pipeline[i]->fname_ + ": "
+                + (stageLog.empty() ? "compile failed (empty info log)" : stageLog);
             compileOk = false;
             break;
         }
@@ -1275,6 +1280,7 @@ bool glsl_program::reload()
             mc2_diag::writeEvent("SHADER_COMPILE", 1, 0, data.str().c_str());
         }
         glDeleteProgram(newProg);
+        reload_log_ = "link: " + (reloadLinkLog.empty() ? std::string("failed (empty info log)") : reloadLinkLog);
         printf("[SHADER] reload failed (link); keeping previous program\n");
         return false;
     }

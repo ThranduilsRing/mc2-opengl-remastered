@@ -1,0 +1,4564 @@
+// MC2R ImGui FIT generated from legacy UI FIT.
+// Source: data/defs/ui/legacy/game/MCL_PR_Layout.fit
+// Legacy files remain source truth only; edit the generated ImGui FIT.
+
+GuiPage {
+    key = "game.mcl_pr_layout"
+    title = "Game Mcl Pr Layout"
+    sourceLegacyFit = "data/defs/ui/legacy/game/MCL_PR_Layout.fit"
+    sourceSystem = "game"
+    sourceScreen = "mcl_pr_layout"
+    sourceKind = "legacy_screen"
+    layout = "absolute"
+    coordinateSpace = "screen_absolute"
+    localWidth = 800
+    localHeight = 600
+    mountOffset = "0,0"
+    editableSource = "generated_imgui_only"
+    overlayGameOS = true
+    renderMode = "gameos_overlay"
+    backgroundPolicy = "transparent_overlay"
+}
+
+GuiMetadata {
+    key = "game.mcl_pr_layout.metadata.metadata"
+    pageKey = "game.mcl_pr_layout"
+    legacySection = "PilotReadyStatics"
+    legacyContext = "~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ | ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ | ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~"
+    role = "metadata"
+    layer = "metadata"
+    aliasOverride = "metadata"
+    sourceControlType = "PilotReadyStatics"
+    rect = "0,0,0,0"
+    legacyLocalRect = "0,0,0,0"
+    legacyRectSource = "xywh"
+    visible = false
+}
+
+GuiImage {
+    key = "game.mcl_pr_layout.image.a"
+    pageKey = "game.mcl_pr_layout"
+    legacySection = "PilotReadyStatic0"
+    legacyComment = "A"
+    role = "image"
+    layer = "art"
+    aliasOverride = "A"
+    sourceControlType = "PilotReadyStatic0"
+    rect = "0,0,256,8"
+    legacyLocalRect = "0,0,256,8"
+    legacyRectSource = "xywh"
+    texture = "data/art/gui/MCL_PR_3.png"
+    legacyTexture = "MCL_PR_3"
+    uiPackage = "default"
+    rectModel = "legacy_imgui.modern_rect_v1"
+    controlRect = "0,0,256,8"
+    artRect = "0,0,256,8"
+    artLayer = "control_art"
+    uvX = 0
+    uvY = 0
+    uvWidth = 256
+    uvHeight = 8
+}
+
+GuiImage {
+    key = "game.mcl_pr_layout.image.b"
+    pageKey = "game.mcl_pr_layout"
+    legacySection = "PilotReadyStatic1"
+    legacyComment = "B"
+    role = "image"
+    layer = "art"
+    aliasOverride = "B"
+    sourceControlType = "PilotReadyStatic1"
+    rect = "256,0,256,8"
+    legacyLocalRect = "256,0,256,8"
+    legacyRectSource = "xywh"
+    texture = "data/art/gui/MCL_PR_3.png"
+    legacyTexture = "MCL_PR_3"
+    uiPackage = "default"
+    rectModel = "legacy_imgui.modern_rect_v1"
+    controlRect = "256,0,256,8"
+    artRect = "256,0,256,8"
+    artLayer = "control_art"
+    uvX = 0
+    uvY = 8
+    uvWidth = 256
+    uvHeight = 8
+}
+
+GuiImage {
+    key = "game.mcl_pr_layout.image.c"
+    pageKey = "game.mcl_pr_layout"
+    legacySection = "PilotReadyStatic2"
+    legacyComment = "C"
+    role = "image"
+    layer = "art"
+    aliasOverride = "C"
+    sourceControlType = "PilotReadyStatic2"
+    rect = "512,0,256,8"
+    legacyLocalRect = "512,0,256,8"
+    legacyRectSource = "xywh"
+    texture = "data/art/gui/MCL_PR_3.png"
+    legacyTexture = "MCL_PR_3"
+    uiPackage = "default"
+    rectModel = "legacy_imgui.modern_rect_v1"
+    controlRect = "512,0,256,8"
+    artRect = "512,0,256,8"
+    artLayer = "control_art"
+    uvX = 0
+    uvY = 16
+    uvWidth = 256
+    uvHeight = 8
+}
+
+GuiImage {
+    key = "game.mcl_pr_layout.image.d"
+    pageKey = "game.mcl_pr_layout"
+    legacySection = "PilotReadyStatic3"
+    legacyComment = "D"
+    role = "image"
+    layer = "art"
+    aliasOverride = "D"
+    sourceControlType = "PilotReadyStatic3"
+    rect = "768,0,32,8"
+    legacyLocalRect = "768,0,32,8"
+    legacyRectSource = "xywh"
+    texture = "data/art/gui/MCL_PR_3.png"
+    legacyTexture = "MCL_PR_3"
+    uiPackage = "default"
+    rectModel = "legacy_imgui.modern_rect_v1"
+    controlRect = "768,0,32,8"
+    artRect = "768,0,32,8"
+    artLayer = "control_art"
+    uvX = 176
+    uvY = 205
+    uvWidth = 32
+    uvHeight = 8
+}
+
+GuiImage {
+    key = "game.mcl_pr_layout.image.e"
+    pageKey = "game.mcl_pr_layout"
+    legacySection = "PilotReadyStatic4"
+    legacyComment = "E"
+    role = "image"
+    layer = "art"
+    aliasOverride = "E"
+    sourceControlType = "PilotReadyStatic4"
+    rect = "0,8,10,32"
+    legacyLocalRect = "0,8,10,32"
+    legacyRectSource = "xywh"
+    texture = "data/art/gui/MCL_PR_4.png"
+    legacyTexture = "MCL_PR_4"
+    uiPackage = "default"
+    rectModel = "legacy_imgui.modern_rect_v1"
+    controlRect = "0,8,10,32"
+    artRect = "0,8,10,32"
+    artLayer = "control_art"
+    uvX = 224
+    uvY = 0
+    uvWidth = 10
+    uvHeight = 32
+}
+
+GuiImage {
+    key = "game.mcl_pr_layout.image.f"
+    pageKey = "game.mcl_pr_layout"
+    legacySection = "PilotReadyStatic5"
+    legacyComment = "F"
+    role = "image"
+    layer = "art"
+    aliasOverride = "F"
+    sourceControlType = "PilotReadyStatic5"
+    rect = "426,8,20,32"
+    legacyLocalRect = "426,8,20,32"
+    legacyRectSource = "xywh"
+    texture = "data/art/gui/MCL_PR_4.png"
+    legacyTexture = "MCL_PR_4"
+    uiPackage = "default"
+    rectModel = "legacy_imgui.modern_rect_v1"
+    controlRect = "426,8,20,32"
+    artRect = "426,8,20,32"
+    artLayer = "control_art"
+    uvX = 234
+    uvY = 0
+    uvWidth = 20
+    uvHeight = 32
+}
+
+GuiImage {
+    key = "game.mcl_pr_layout.image.g"
+    pageKey = "game.mcl_pr_layout"
+    legacySection = "PilotReadyStatic6"
+    legacyComment = "G"
+    role = "image"
+    layer = "art"
+    aliasOverride = "G"
+    sourceControlType = "PilotReadyStatic6"
+    rect = "594,8,20,32"
+    legacyLocalRect = "594,8,20,32"
+    legacyRectSource = "xywh"
+    texture = "data/art/gui/MCL_MB_4.png"
+    legacyTexture = "MCL_MB_4"
+    uiPackage = "default"
+    rectModel = "legacy_imgui.modern_rect_v1"
+    controlRect = "594,8,20,32"
+    artRect = "594,8,20,32"
+    artLayer = "control_art"
+    uvX = 224
+    uvY = 32
+    uvWidth = 20
+    uvHeight = 32
+}
+
+GuiImage {
+    key = "game.mcl_pr_layout.image.h"
+    pageKey = "game.mcl_pr_layout"
+    legacySection = "PilotReadyStatic7"
+    legacyComment = "H"
+    role = "image"
+    layer = "art"
+    aliasOverride = "H"
+    sourceControlType = "PilotReadyStatic7"
+    rect = "790,8,10,40"
+    legacyLocalRect = "790,8,10,40"
+    legacyRectSource = "xywh"
+    texture = "data/art/gui/MCL_PR_4.png"
+    legacyTexture = "MCL_PR_4"
+    uiPackage = "default"
+    rectModel = "legacy_imgui.modern_rect_v1"
+    controlRect = "790,8,10,40"
+    artRect = "790,8,10,40"
+    artLayer = "control_art"
+    uvX = 244
+    uvY = 32
+    uvWidth = 10
+    uvHeight = 40
+}
+
+GuiImage {
+    key = "game.mcl_pr_layout.image.i"
+    pageKey = "game.mcl_pr_layout"
+    legacySection = "PilotReadyStatic8"
+    legacyComment = "I"
+    role = "image"
+    layer = "art"
+    aliasOverride = "I"
+    sourceControlType = "PilotReadyStatic8"
+    rect = "0,40,256,18"
+    legacyLocalRect = "0,40,256,18"
+    legacyRectSource = "xywh"
+    texture = "data/art/gui/MCL_PR_3.png"
+    legacyTexture = "MCL_PR_3"
+    uiPackage = "default"
+    rectModel = "legacy_imgui.modern_rect_v1"
+    controlRect = "0,40,256,18"
+    artRect = "0,40,256,18"
+    artLayer = "control_art"
+    uvX = 0
+    uvY = 24
+    uvWidth = 256
+    uvHeight = 18
+}
+
+GuiImage {
+    key = "game.mcl_pr_layout.image.k"
+    pageKey = "game.mcl_pr_layout"
+    legacySection = "PilotReadyStatic9"
+    legacyComment = "K"
+    role = "image"
+    layer = "art"
+    aliasOverride = "K"
+    sourceControlType = "PilotReadyStatic9"
+    rect = "256,40,256,18"
+    legacyLocalRect = "256,40,256,18"
+    legacyRectSource = "xywh"
+    texture = "data/art/gui/MCL_PR_3.png"
+    legacyTexture = "MCL_PR_3"
+    uiPackage = "default"
+    rectModel = "legacy_imgui.modern_rect_v1"
+    controlRect = "256,40,256,18"
+    artRect = "256,40,256,18"
+    artLayer = "control_art"
+    uvX = 0
+    uvY = 42
+    uvWidth = 256
+    uvHeight = 18
+}
+
+GuiImage {
+    key = "game.mcl_pr_layout.image.l"
+    pageKey = "game.mcl_pr_layout"
+    legacySection = "PilotReadyStatic10"
+    legacyComment = "L"
+    role = "image"
+    layer = "art"
+    aliasOverride = "L"
+    sourceControlType = "PilotReadyStatic10"
+    rect = "512,40,102,8"
+    legacyLocalRect = "512,40,102,8"
+    legacyRectSource = "xywh"
+    texture = "data/art/gui/MCL_PR_3.png"
+    legacyTexture = "MCL_PR_3"
+    uiPackage = "default"
+    rectModel = "legacy_imgui.modern_rect_v1"
+    controlRect = "512,40,102,8"
+    artRect = "512,40,102,8"
+    artLayer = "control_art"
+    uvX = 0
+    uvY = 222
+    uvWidth = 102
+    uvHeight = 8
+}
+
+GuiImage {
+    key = "game.mcl_pr_layout.image.m"
+    pageKey = "game.mcl_pr_layout"
+    legacySection = "PilotReadyStatic11"
+    legacyComment = "M"
+    role = "image"
+    layer = "art"
+    aliasOverride = "M"
+    sourceControlType = "PilotReadyStatic11"
+    rect = "512,48,256,10"
+    legacyLocalRect = "512,48,256,10"
+    legacyRectSource = "xywh"
+    texture = "data/art/gui/MCL_PR_3.png"
+    legacyTexture = "MCL_PR_3"
+    uiPackage = "default"
+    rectModel = "legacy_imgui.modern_rect_v1"
+    controlRect = "512,48,256,10"
+    artRect = "512,48,256,10"
+    artLayer = "control_art"
+    uvX = 0
+    uvY = 60
+    uvWidth = 256
+    uvHeight = 10
+}
+
+GuiImage {
+    key = "game.mcl_pr_layout.image.n"
+    pageKey = "game.mcl_pr_layout"
+    legacySection = "PilotReadyStatic12"
+    legacyComment = "N"
+    role = "image"
+    layer = "art"
+    aliasOverride = "N"
+    sourceControlType = "PilotReadyStatic12"
+    rect = "768,48,32,10"
+    legacyLocalRect = "768,48,32,10"
+    legacyRectSource = "xywh"
+    texture = "data/art/gui/MCL_PR_3.png"
+    legacyTexture = "MCL_PR_3"
+    uiPackage = "default"
+    rectModel = "legacy_imgui.modern_rect_v1"
+    controlRect = "768,48,32,10"
+    artRect = "768,48,32,10"
+    artLayer = "control_art"
+    uvX = 176
+    uvY = 213
+    uvWidth = 32
+    uvHeight = 10
+}
+
+GuiImage {
+    key = "game.mcl_pr_layout.image.o"
+    pageKey = "game.mcl_pr_layout"
+    legacySection = "PilotReadyStatic13"
+    legacyComment = "O"
+    role = "image"
+    layer = "art"
+    aliasOverride = "O"
+    sourceControlType = "PilotReadyStatic13"
+    rect = "0,58,15,240"
+    legacyLocalRect = "0,58,15,240"
+    legacyRectSource = "xywh"
+    texture = "data/art/gui/MCL_PR_4.png"
+    legacyTexture = "MCL_PR_4"
+    uiPackage = "default"
+    rectModel = "legacy_imgui.modern_rect_v1"
+    controlRect = "0,58,15,240"
+    artRect = "0,58,15,240"
+    artLayer = "control_art"
+    uvX = 0
+    uvY = 0
+    uvWidth = 15
+    uvHeight = 240
+}
+
+GuiImage {
+    key = "game.mcl_pr_layout.image.p"
+    pageKey = "game.mcl_pr_layout"
+    legacySection = "PilotReadyStatic14"
+    legacyComment = "P"
+    role = "image"
+    layer = "art"
+    aliasOverride = "P"
+    sourceControlType = "PilotReadyStatic14"
+    rect = "345,58,11,101"
+    legacyLocalRect = "345,58,11,101"
+    legacyRectSource = "xywh"
+    texture = "data/art/gui/MCL_PR_4.png"
+    legacyTexture = "MCL_PR_4"
+    uiPackage = "default"
+    rectModel = "legacy_imgui.modern_rect_v1"
+    controlRect = "345,58,11,101"
+    artRect = "345,58,11,101"
+    artLayer = "control_art"
+    uvX = 182
+    uvY = 0
+    uvWidth = 11
+    uvHeight = 101
+}
+
+GuiImage {
+    key = "game.mcl_pr_layout.image.q"
+    pageKey = "game.mcl_pr_layout"
+    legacySection = "PilotReadyStatic15"
+    legacyComment = "Q"
+    role = "image"
+    layer = "art"
+    aliasOverride = "Q"
+    sourceControlType = "PilotReadyStatic15"
+    rect = "532,58,11,240"
+    legacyLocalRect = "532,58,11,240"
+    legacyRectSource = "xywh"
+    texture = "data/art/gui/MCL_PR_4.png"
+    legacyTexture = "MCL_PR_4"
+    uiPackage = "default"
+    rectModel = "legacy_imgui.modern_rect_v1"
+    controlRect = "532,58,11,240"
+    artRect = "532,58,11,240"
+    artLayer = "control_art"
+    uvX = 15
+    uvY = 0
+    uvWidth = 11
+    uvHeight = 240
+}
+
+GuiImage {
+    key = "game.mcl_pr_layout.image.r"
+    pageKey = "game.mcl_pr_layout"
+    legacySection = "PilotReadyStatic16"
+    legacyComment = "R"
+    role = "image"
+    layer = "art"
+    aliasOverride = "R"
+    sourceControlType = "PilotReadyStatic16"
+    rect = "788,58,12,240"
+    legacyLocalRect = "788,58,12,240"
+    legacyRectSource = "xywh"
+    texture = "data/art/gui/MCL_PR_4.png"
+    legacyTexture = "MCL_PR_4"
+    uiPackage = "default"
+    rectModel = "legacy_imgui.modern_rect_v1"
+    controlRect = "788,58,12,240"
+    artRect = "788,58,12,240"
+    artLayer = "control_art"
+    uvX = 26
+    uvY = 0
+    uvWidth = 12
+    uvHeight = 240
+}
+
+GuiImage {
+    key = "game.mcl_pr_layout.image.s"
+    pageKey = "game.mcl_pr_layout"
+    legacySection = "PilotReadyStatic17"
+    legacyComment = "S"
+    role = "image"
+    layer = "art"
+    aliasOverride = "S"
+    sourceControlType = "PilotReadyStatic17"
+    rect = "356,100,176,4"
+    legacyLocalRect = "356,100,176,4"
+    legacyRectSource = "xywh"
+    texture = "data/art/gui/MCL_PR_3.png"
+    legacyTexture = "MCL_PR_3"
+    uiPackage = "default"
+    rectModel = "legacy_imgui.modern_rect_v1"
+    controlRect = "356,100,176,4"
+    artRect = "356,100,176,4"
+    artLayer = "control_art"
+    uvX = 0
+    uvY = 218
+    uvWidth = 176
+    uvHeight = 4
+}
+
+GuiImage {
+    key = "game.mcl_pr_layout.image.t"
+    pageKey = "game.mcl_pr_layout"
+    legacySection = "PilotReadyStatic18"
+    legacyComment = "T"
+    role = "image"
+    layer = "art"
+    aliasOverride = "T"
+    sourceControlType = "PilotReadyStatic18"
+    rect = "356,146,176,13"
+    legacyLocalRect = "356,146,176,13"
+    legacyRectSource = "xywh"
+    texture = "data/art/gui/MCL_PR_3.png"
+    legacyTexture = "MCL_PR_3"
+    uiPackage = "default"
+    rectModel = "legacy_imgui.modern_rect_v1"
+    controlRect = "356,146,176,13"
+    artRect = "356,146,176,13"
+    artLayer = "control_art"
+    uvX = 0
+    uvY = 205
+    uvWidth = 13
+    uvHeight = 13
+}
+
+GuiImage {
+    key = "game.mcl_pr_layout.image.u"
+    pageKey = "game.mcl_pr_layout"
+    legacySection = "PilotReadyStatic19"
+    legacyComment = "U"
+    role = "image"
+    layer = "art"
+    aliasOverride = "U"
+    sourceControlType = "PilotReadyStatic19"
+    rect = "0,298,256,14"
+    legacyLocalRect = "0,298,256,14"
+    legacyRectSource = "xywh"
+    texture = "data/art/gui/MCL_PR_3.png"
+    legacyTexture = "MCL_PR_3"
+    uiPackage = "default"
+    rectModel = "legacy_imgui.modern_rect_v1"
+    controlRect = "0,298,256,14"
+    artRect = "0,298,256,14"
+    artLayer = "control_art"
+    uvX = 0
+    uvY = 70
+    uvWidth = 256
+    uvHeight = 14
+}
+
+GuiImage {
+    key = "game.mcl_pr_layout.image.v"
+    pageKey = "game.mcl_pr_layout"
+    legacySection = "PilotReadyStatic20"
+    legacyComment = "V"
+    role = "image"
+    layer = "art"
+    aliasOverride = "V"
+    sourceControlType = "PilotReadyStatic20"
+    rect = "256,298,256,14"
+    legacyLocalRect = "256,298,256,14"
+    legacyRectSource = "xywh"
+    texture = "data/art/gui/MCL_PR_3.png"
+    legacyTexture = "MCL_PR_3"
+    uiPackage = "default"
+    rectModel = "legacy_imgui.modern_rect_v1"
+    controlRect = "256,298,256,14"
+    artRect = "256,298,256,14"
+    artLayer = "control_art"
+    uvX = 0
+    uvY = 84
+    uvWidth = 256
+    uvHeight = 14
+}
+
+GuiImage {
+    key = "game.mcl_pr_layout.image.w"
+    pageKey = "game.mcl_pr_layout"
+    legacySection = "PilotReadyStatic21"
+    legacyComment = "W"
+    role = "image"
+    layer = "art"
+    aliasOverride = "W"
+    sourceControlType = "PilotReadyStatic21"
+    rect = "512,298,256,14"
+    legacyLocalRect = "512,298,256,14"
+    legacyRectSource = "xywh"
+    texture = "data/art/gui/MCL_PR_3.png"
+    legacyTexture = "MCL_PR_3"
+    uiPackage = "default"
+    rectModel = "legacy_imgui.modern_rect_v1"
+    controlRect = "512,298,256,14"
+    artRect = "512,298,256,14"
+    artLayer = "control_art"
+    uvX = 0
+    uvY = 98
+    uvWidth = 256
+    uvHeight = 14
+}
+
+GuiImage {
+    key = "game.mcl_pr_layout.image.x"
+    pageKey = "game.mcl_pr_layout"
+    legacySection = "PilotReadyStatic22"
+    legacyComment = "X"
+    role = "image"
+    layer = "art"
+    aliasOverride = "X"
+    sourceControlType = "PilotReadyStatic22"
+    rect = "768,298,32,14"
+    legacyLocalRect = "768,298,32,14"
+    legacyRectSource = "xywh"
+    texture = "data/art/gui/MCL_PR_3.png"
+    legacyTexture = "MCL_PR_3"
+    uiPackage = "default"
+    rectModel = "legacy_imgui.modern_rect_v1"
+    controlRect = "768,298,32,14"
+    artRect = "768,298,32,14"
+    artLayer = "control_art"
+    uvX = 208
+    uvY = 205
+    uvWidth = 32
+    uvHeight = 14
+}
+
+GuiImage {
+    key = "game.mcl_pr_layout.image.y"
+    pageKey = "game.mcl_pr_layout"
+    legacySection = "PilotReadyStatic23"
+    legacyComment = "Y"
+    role = "image"
+    layer = "art"
+    aliasOverride = "Y"
+    sourceControlType = "PilotReadyStatic23"
+    rect = "0,312,72,208"
+    legacyLocalRect = "0,312,72,208"
+    legacyRectSource = "xywh"
+    texture = "data/art/gui/MCL_PR_4.png"
+    legacyTexture = "MCL_PR_4"
+    uiPackage = "default"
+    rectModel = "legacy_imgui.modern_rect_v1"
+    controlRect = "0,312,72,208"
+    artRect = "0,312,72,208"
+    artLayer = "control_art"
+    uvX = 38
+    uvY = 0
+    uvWidth = 72
+    uvHeight = 208
+}
+
+GuiImage {
+    key = "game.mcl_pr_layout.image.z"
+    pageKey = "game.mcl_pr_layout"
+    legacySection = "PilotReadyStatic24"
+    legacyComment = "Z"
+    role = "image"
+    layer = "art"
+    aliasOverride = "Z"
+    sourceControlType = "PilotReadyStatic24"
+    rect = "728,312,72,196"
+    legacyLocalRect = "728,312,72,196"
+    legacyRectSource = "xywh"
+    texture = "data/art/gui/MCL_PR_4.png"
+    legacyTexture = "MCL_PR_4"
+    uiPackage = "default"
+    rectModel = "legacy_imgui.modern_rect_v1"
+    controlRect = "728,312,72,196"
+    artRect = "728,312,72,196"
+    artLayer = "control_art"
+    uvX = 110
+    uvY = 0
+    uvWidth = 72
+    uvHeight = 196
+}
+
+GuiImage {
+    key = "game.mcl_pr_layout.image.zz"
+    pageKey = "game.mcl_pr_layout"
+    legacySection = "PilotReadyStatic25"
+    legacyComment = "ZZ"
+    role = "image"
+    layer = "art"
+    aliasOverride = "ZZ"
+    sourceControlType = "PilotReadyStatic25"
+    rect = "728,508,72,12"
+    legacyLocalRect = "728,508,72,12"
+    legacyRectSource = "xywh"
+    texture = "data/art/gui/MCL_PR_4.png"
+    legacyTexture = "MCL_PR_4"
+    uiPackage = "default"
+    rectModel = "legacy_imgui.modern_rect_v1"
+    controlRect = "728,508,72,12"
+    artRect = "728,508,72,12"
+    artLayer = "control_art"
+    uvX = 182
+    uvY = 101
+    uvWidth = 72
+    uvHeight = 12
+}
+
+GuiImage {
+    key = "game.mcl_pr_layout.image.aa"
+    pageKey = "game.mcl_pr_layout"
+    legacySection = "PilotReadyStatic26"
+    legacyComment = "AA"
+    role = "image"
+    layer = "art"
+    aliasOverride = "AA"
+    sourceControlType = "PilotReadyStatic26"
+    rect = "0,520,256,26"
+    legacyLocalRect = "0,520,256,26"
+    legacyRectSource = "xywh"
+    texture = "data/art/gui/MCL_PR_3.png"
+    legacyTexture = "MCL_PR_3"
+    uiPackage = "default"
+    rectModel = "legacy_imgui.modern_rect_v1"
+    controlRect = "0,520,256,26"
+    artRect = "0,520,256,26"
+    artLayer = "control_art"
+    uvX = 0
+    uvY = 112
+    uvWidth = 256
+    uvHeight = 26
+}
+
+GuiImage {
+    key = "game.mcl_pr_layout.image.bb"
+    pageKey = "game.mcl_pr_layout"
+    legacySection = "PilotReadyStatic27"
+    legacyComment = "BB"
+    role = "image"
+    layer = "art"
+    aliasOverride = "BB"
+    sourceControlType = "PilotReadyStatic27"
+    rect = "256,520,256,26"
+    legacyLocalRect = "256,520,256,26"
+    legacyRectSource = "xywh"
+    texture = "data/art/gui/MCL_PR_3.png"
+    legacyTexture = "MCL_PR_3"
+    uiPackage = "default"
+    rectModel = "legacy_imgui.modern_rect_v1"
+    controlRect = "256,520,256,26"
+    artRect = "256,520,256,26"
+    artLayer = "control_art"
+    uvX = 0
+    uvY = 138
+    uvWidth = 256
+    uvHeight = 26
+}
+
+GuiImage {
+    key = "game.mcl_pr_layout.image.cc"
+    pageKey = "game.mcl_pr_layout"
+    legacySection = "PilotReadyStatic28"
+    legacyComment = "CC"
+    role = "image"
+    layer = "art"
+    aliasOverride = "CC"
+    sourceControlType = "PilotReadyStatic28"
+    rect = "512,520,256,26"
+    legacyLocalRect = "512,520,256,26"
+    legacyRectSource = "xywh"
+    texture = "data/art/gui/MCL_PR_3.png"
+    legacyTexture = "MCL_PR_3"
+    uiPackage = "default"
+    rectModel = "legacy_imgui.modern_rect_v1"
+    controlRect = "512,520,256,26"
+    artRect = "512,520,256,26"
+    artLayer = "control_art"
+    uvX = 0
+    uvY = 164
+    uvWidth = 256
+    uvHeight = 26
+}
+
+GuiImage {
+    key = "game.mcl_pr_layout.image.dd"
+    pageKey = "game.mcl_pr_layout"
+    legacySection = "PilotReadyStatic29"
+    legacyComment = "DD"
+    role = "image"
+    layer = "art"
+    aliasOverride = "DD"
+    sourceControlType = "PilotReadyStatic29"
+    rect = "768,520,32,16"
+    legacyLocalRect = "768,520,32,16"
+    legacyRectSource = "xywh"
+    texture = "data/art/gui/MCL_PR_3.png"
+    legacyTexture = "MCL_PR_3"
+    uiPackage = "default"
+    rectModel = "legacy_imgui.modern_rect_v1"
+    controlRect = "768,520,32,16"
+    artRect = "768,520,32,16"
+    artLayer = "control_art"
+    uvX = 208
+    uvY = 219
+    uvWidth = 32
+    uvHeight = 16
+}
+
+GuiImage {
+    key = "game.mcl_pr_layout.image.ee"
+    pageKey = "game.mcl_pr_layout"
+    legacySection = "PilotReadyStatic30"
+    legacyComment = "EE"
+    role = "image"
+    layer = "art"
+    aliasOverride = "EE"
+    sourceControlType = "PilotReadyStatic30"
+    rect = "0,536,5,59"
+    legacyLocalRect = "0,536,5,59"
+    legacyRectSource = "xywh"
+    texture = "data/art/gui/MCL_PR_4.png"
+    legacyTexture = "MCL_PR_4"
+    uiPackage = "default"
+    rectModel = "legacy_imgui.modern_rect_v1"
+    controlRect = "0,536,5,59"
+    artRect = "0,536,5,59"
+    artLayer = "control_art"
+    uvX = 193
+    uvY = 0
+    uvWidth = 5
+    uvHeight = 59
+}
+
+GuiImage {
+    key = "game.mcl_pr_layout.image.ff"
+    pageKey = "game.mcl_pr_layout"
+    legacySection = "PilotReadyStatic31"
+    legacyComment = "FF"
+    role = "image"
+    layer = "art"
+    aliasOverride = "FF"
+    sourceControlType = "PilotReadyStatic31"
+    rect = "133,546,10,49"
+    legacyLocalRect = "133,546,10,49"
+    legacyRectSource = "xywh"
+    texture = "data/art/gui/MCL_PR_4.png"
+    legacyTexture = "MCL_PR_4"
+    uiPackage = "default"
+    rectModel = "legacy_imgui.modern_rect_v1"
+    controlRect = "133,546,10,49"
+    artRect = "133,546,10,49"
+    artLayer = "control_art"
+    uvX = 198
+    uvY = 0
+    uvWidth = 10
+    uvHeight = 49
+}
+
+GuiImage {
+    key = "game.mcl_pr_layout.image.gg"
+    pageKey = "game.mcl_pr_layout"
+    legacySection = "PilotReadyStatic32"
+    legacyComment = "GG"
+    role = "image"
+    layer = "art"
+    aliasOverride = "GG"
+    sourceControlType = "PilotReadyStatic32"
+    rect = "656,546,10,49"
+    legacyLocalRect = "656,546,10,49"
+    legacyRectSource = "xywh"
+    texture = "data/art/gui/MCL_PR_4.png"
+    legacyTexture = "MCL_PR_4"
+    uiPackage = "default"
+    rectModel = "legacy_imgui.modern_rect_v1"
+    controlRect = "656,546,10,49"
+    artRect = "656,546,10,49"
+    artLayer = "control_art"
+    uvX = 208
+    uvY = 0
+    uvWidth = 10
+    uvHeight = 49
+}
+
+GuiImage {
+    key = "game.mcl_pr_layout.image.hh"
+    pageKey = "game.mcl_pr_layout"
+    legacySection = "PilotReadyStatic33"
+    legacyComment = "HH"
+    role = "image"
+    layer = "art"
+    aliasOverride = "HH"
+    sourceControlType = "PilotReadyStatic33"
+    rect = "794,536,6,59"
+    legacyLocalRect = "794,536,6,59"
+    legacyRectSource = "xywh"
+    texture = "data/art/gui/MCL_PR_4.png"
+    legacyTexture = "MCL_PR_4"
+    uiPackage = "default"
+    rectModel = "legacy_imgui.modern_rect_v1"
+    controlRect = "794,536,6,59"
+    artRect = "794,536,6,59"
+    artLayer = "control_art"
+    uvX = 218
+    uvY = 0
+    uvWidth = 6
+    uvHeight = 59
+}
+
+GuiImage {
+    key = "game.mcl_pr_layout.image.ii"
+    pageKey = "game.mcl_pr_layout"
+    legacySection = "PilotReadyStatic34"
+    legacyComment = "II"
+    role = "image"
+    layer = "art"
+    aliasOverride = "II"
+    sourceControlType = "PilotReadyStatic34"
+    rect = "0,595,256,5"
+    legacyLocalRect = "0,595,256,5"
+    legacyRectSource = "xywh"
+    texture = "data/art/gui/MCL_PR_3.png"
+    legacyTexture = "MCL_PR_3"
+    uiPackage = "default"
+    rectModel = "legacy_imgui.modern_rect_v1"
+    controlRect = "0,595,256,5"
+    artRect = "0,595,256,5"
+    artLayer = "control_art"
+    uvX = 0
+    uvY = 190
+    uvWidth = 256
+    uvHeight = 5
+}
+
+GuiImage {
+    key = "game.mcl_pr_layout.image.kk"
+    pageKey = "game.mcl_pr_layout"
+    legacySection = "PilotReadyStatic35"
+    legacyComment = "KK"
+    role = "image"
+    layer = "art"
+    aliasOverride = "KK"
+    sourceControlType = "PilotReadyStatic35"
+    rect = "256,595,256,5"
+    legacyLocalRect = "256,595,256,5"
+    legacyRectSource = "xywh"
+    texture = "data/art/gui/MCL_PR_3.png"
+    legacyTexture = "MCL_PR_3"
+    uiPackage = "default"
+    rectModel = "legacy_imgui.modern_rect_v1"
+    controlRect = "256,595,256,5"
+    artRect = "256,595,256,5"
+    artLayer = "control_art"
+    uvX = 0
+    uvY = 195
+    uvWidth = 256
+    uvHeight = 5
+}
+
+GuiImage {
+    key = "game.mcl_pr_layout.image.ll"
+    pageKey = "game.mcl_pr_layout"
+    legacySection = "PilotReadyStatic36"
+    legacyComment = "LL"
+    role = "image"
+    layer = "art"
+    aliasOverride = "LL"
+    sourceControlType = "PilotReadyStatic36"
+    rect = "512,595,256,5"
+    legacyLocalRect = "512,595,256,5"
+    legacyRectSource = "xywh"
+    texture = "data/art/gui/MCL_PR_3.png"
+    legacyTexture = "MCL_PR_3"
+    uiPackage = "default"
+    rectModel = "legacy_imgui.modern_rect_v1"
+    controlRect = "512,595,256,5"
+    artRect = "512,595,256,5"
+    artLayer = "control_art"
+    uvX = 0
+    uvY = 200
+    uvWidth = 256
+    uvHeight = 5
+}
+
+GuiImage {
+    key = "game.mcl_pr_layout.image.mm"
+    pageKey = "game.mcl_pr_layout"
+    legacySection = "PilotReadyStatic37"
+    legacyComment = "MM"
+    role = "image"
+    layer = "art"
+    aliasOverride = "MM"
+    sourceControlType = "PilotReadyStatic37"
+    rect = "768,595,32,5"
+    legacyLocalRect = "768,595,32,5"
+    legacyRectSource = "xywh"
+    texture = "data/art/gui/MCL_PR_3.png"
+    legacyTexture = "MCL_PR_3"
+    uiPackage = "default"
+    rectModel = "legacy_imgui.modern_rect_v1"
+    controlRect = "768,595,32,5"
+    artRect = "768,595,32,5"
+    artLayer = "control_art"
+    uvX = 176
+    uvY = 223
+    uvWidth = 32
+    uvHeight = 5
+}
+
+GuiImage {
+    key = "game.mcl_pr_layout.image.cbills_icon"
+    pageKey = "game.mcl_pr_layout"
+    legacySection = "PilotReadyStatic38"
+    legacyComment = "cbills icon"
+    role = "image"
+    layer = "art"
+    aliasOverride = "cbills icon"
+    sourceControlType = "PilotReadyStatic38"
+    rect = "447,9,30,30"
+    legacyLocalRect = "447,9,30,30"
+    legacyRectSource = "xywh"
+    texture = "data/art/gui/MCL_PR_4.png"
+    legacyTexture = "MCL_PR_4"
+    uiPackage = "default"
+    rectModel = "legacy_imgui.modern_rect_v1"
+    controlRect = "447,9,30,30"
+    artRect = "447,9,30,30"
+    artLayer = "control_art"
+    helpDescLegacyId = 29003
+    helpDescKey = "legacy.mc2res.29003"
+    helpDescText = "C-BILLS     The amount of currency available for purchasing and customizing 'Mechs."
+    helpDescLegacySymbol = "IDS_HELP_ALL_CBILLS"
+    helpDescSource = "mc2res"
+    helpDescMissing = false
+    uvX = 182
+    uvY = 113
+    uvWidth = 30
+    uvHeight = 30
+}
+
+GuiImage {
+    key = "game.mcl_pr_layout.image.where_team_weight_used_to_be_big_static"
+    pageKey = "game.mcl_pr_layout"
+    legacySection = "PilotReadyStatic39"
+    legacyComment = "where team weight used to be- big static"
+    role = "image"
+    layer = "art"
+    aliasOverride = "where team weight used to be- big static"
+    sourceControlType = "PilotReadyStatic39"
+    rect = "345,159,187,139"
+    legacyLocalRect = "345,159,187,139"
+    legacyRectSource = "xywh"
+    texture = "data/art/gui/MCL_PR_5.png"
+    legacyTexture = "MCL_PR_5"
+    uiPackage = "default"
+    rectModel = "legacy_imgui.modern_rect_v1"
+    controlRect = "345,159,187,139"
+    artRect = "345,159,187,139"
+    artLayer = "control_art"
+    uvX = 0
+    uvY = 0
+    uvWidth = 187
+    uvHeight = 139
+}
+
+GuiImage {
+    key = "game.mcl_pr_layout.image.pilot_info_targeting_icon"
+    pageKey = "game.mcl_pr_layout"
+    legacySection = "PilotReadyStatic40"
+    legacyComment = "pilot info targeting icon"
+    role = "image"
+    layer = "art"
+    aliasOverride = "pilot info targeting icon"
+    sourceControlType = "PilotReadyStatic40"
+    rect = "82,374,96,32"
+    legacyLocalRect = "82,374,96,32"
+    legacyRectSource = "xywh"
+    texture = "data/art/gui/MCL_PR_PilotSkillIcons.png"
+    legacyTexture = "MCL_PR_PilotSkillIcons"
+    uiPackage = "default"
+    rectModel = "legacy_imgui.modern_rect_v1"
+    controlRect = "82,374,96,32"
+    artRect = "82,374,96,32"
+    artLayer = "control_art"
+    uvX = 0
+    uvY = 0
+    uvWidth = 96
+    uvHeight = 32
+}
+
+GuiImage {
+    key = "game.mcl_pr_layout.image.pilot_info_piloting_icon"
+    pageKey = "game.mcl_pr_layout"
+    legacySection = "PilotReadyStatic41"
+    legacyComment = "pilot info piloting icon"
+    role = "image"
+    layer = "art"
+    aliasOverride = "pilot info piloting icon"
+    sourceControlType = "PilotReadyStatic41"
+    rect = "82,426,96,32"
+    legacyLocalRect = "82,426,96,32"
+    legacyRectSource = "xywh"
+    texture = "data/art/gui/MCL_PR_PilotSkillIcons.png"
+    legacyTexture = "MCL_PR_PilotSkillIcons"
+    uiPackage = "default"
+    rectModel = "legacy_imgui.modern_rect_v1"
+    controlRect = "82,426,96,32"
+    artRect = "82,426,96,32"
+    artLayer = "control_art"
+    uvX = 0
+    uvY = 32
+    uvWidth = 96
+    uvHeight = 32
+}
+
+GuiImage {
+    key = "game.mcl_pr_layout.image.pilot_info_kills_icon"
+    pageKey = "game.mcl_pr_layout"
+    legacySection = "PilotReadyStatic42"
+    legacyComment = "pilot info KILLS ICON"
+    role = "image"
+    layer = "art"
+    aliasOverride = "pilot info KILLS ICON"
+    sourceControlType = "PilotReadyStatic42"
+    rect = "82,478,96,32"
+    legacyLocalRect = "82,478,96,32"
+    legacyRectSource = "xywh"
+    texture = "data/art/gui/MCL_PR_PilotSkillIcons.png"
+    legacyTexture = "MCL_PR_PilotSkillIcons"
+    uiPackage = "default"
+    rectModel = "legacy_imgui.modern_rect_v1"
+    controlRect = "82,478,96,32"
+    artRect = "82,478,96,32"
+    artLayer = "control_art"
+    uvX = 0
+    uvY = 64
+    uvWidth = 96
+    uvHeight = 32
+}
+
+GuiImage {
+    key = "game.mcl_pr_layout.image.dep_team_combo_item_1"
+    pageKey = "game.mcl_pr_layout"
+    legacySection = "PilotReadyStatic43"
+    legacyComment = "dep team combo item 1"
+    role = "image"
+    layer = "art"
+    aliasOverride = "dep team combo item 1"
+    sourceControlType = "PilotReadyStatic43"
+    rect = "25,86,75,64"
+    legacyLocalRect = "25,86,75,64"
+    legacyRectSource = "xywh"
+    texture = "data/art/gui/MCL_PR_1.png"
+    legacyTexture = "MCL_PR_1"
+    uiPackage = "default"
+    rectModel = "legacy_imgui.modern_rect_v1"
+    controlRect = "25,86,75,64"
+    artRect = "25,86,75,64"
+    artLayer = "control_art"
+    uvX = 176
+    uvY = 0
+    uvWidth = 75
+    uvHeight = 64
+}
+
+GuiImage {
+    key = "game.mcl_pr_layout.image.dep_team_combo_item_2"
+    pageKey = "game.mcl_pr_layout"
+    legacySection = "PilotReadyStatic44"
+    legacyComment = "dep team combo item 2"
+    role = "image"
+    layer = "art"
+    aliasOverride = "dep team combo item 2"
+    sourceControlType = "PilotReadyStatic44"
+    rect = "104,86,75,64"
+    legacyLocalRect = "104,86,75,64"
+    legacyRectSource = "xywh"
+    texture = "data/art/gui/MCL_PR_1.png"
+    legacyTexture = "MCL_PR_1"
+    uiPackage = "default"
+    rectModel = "legacy_imgui.modern_rect_v1"
+    controlRect = "104,86,75,64"
+    artRect = "104,86,75,64"
+    artLayer = "control_art"
+    uvX = 176
+    uvY = 0
+    uvWidth = 75
+    uvHeight = 64
+}
+
+GuiImage {
+    key = "game.mcl_pr_layout.image.dep_team_combo_item_3"
+    pageKey = "game.mcl_pr_layout"
+    legacySection = "PilotReadyStatic45"
+    legacyComment = "dep team combo item 3"
+    role = "image"
+    layer = "art"
+    aliasOverride = "dep team combo item 3"
+    sourceControlType = "PilotReadyStatic45"
+    rect = "183,86,75,64"
+    legacyLocalRect = "183,86,75,64"
+    legacyRectSource = "xywh"
+    texture = "data/art/gui/MCL_PR_1.png"
+    legacyTexture = "MCL_PR_1"
+    uiPackage = "default"
+    rectModel = "legacy_imgui.modern_rect_v1"
+    controlRect = "183,86,75,64"
+    artRect = "183,86,75,64"
+    artLayer = "control_art"
+    uvX = 176
+    uvY = 0
+    uvWidth = 75
+    uvHeight = 64
+}
+
+GuiImage {
+    key = "game.mcl_pr_layout.image.dep_team_combo_item_4"
+    pageKey = "game.mcl_pr_layout"
+    legacySection = "PilotReadyStatic46"
+    legacyComment = "dep team combo item 4"
+    role = "image"
+    layer = "art"
+    aliasOverride = "dep team combo item 4"
+    sourceControlType = "PilotReadyStatic46"
+    rect = "262,86,75,64"
+    legacyLocalRect = "262,86,75,64"
+    legacyRectSource = "xywh"
+    texture = "data/art/gui/MCL_PR_1.png"
+    legacyTexture = "MCL_PR_1"
+    uiPackage = "default"
+    rectModel = "legacy_imgui.modern_rect_v1"
+    controlRect = "262,86,75,64"
+    artRect = "262,86,75,64"
+    artLayer = "control_art"
+    uvX = 176
+    uvY = 0
+    uvWidth = 75
+    uvHeight = 64
+}
+
+GuiImage {
+    key = "game.mcl_pr_layout.image.dep_team_combo_item_5"
+    pageKey = "game.mcl_pr_layout"
+    legacySection = "PilotReadyStatic47"
+    legacyComment = "dep team combo item 5"
+    role = "image"
+    layer = "art"
+    aliasOverride = "dep team combo item 5"
+    sourceControlType = "PilotReadyStatic47"
+    rect = "25,155,75,64"
+    legacyLocalRect = "25,155,75,64"
+    legacyRectSource = "xywh"
+    texture = "data/art/gui/MCL_PR_1.png"
+    legacyTexture = "MCL_PR_1"
+    uiPackage = "default"
+    rectModel = "legacy_imgui.modern_rect_v1"
+    controlRect = "25,155,75,64"
+    artRect = "25,155,75,64"
+    artLayer = "control_art"
+    uvX = 176
+    uvY = 0
+    uvWidth = 75
+    uvHeight = 64
+}
+
+GuiImage {
+    key = "game.mcl_pr_layout.image.dep_team_combo_item_6"
+    pageKey = "game.mcl_pr_layout"
+    legacySection = "PilotReadyStatic48"
+    legacyComment = "dep team combo item 6"
+    role = "image"
+    layer = "art"
+    aliasOverride = "dep team combo item 6"
+    sourceControlType = "PilotReadyStatic48"
+    rect = "104,155,75,64"
+    legacyLocalRect = "104,155,75,64"
+    legacyRectSource = "xywh"
+    texture = "data/art/gui/MCL_PR_1.png"
+    legacyTexture = "MCL_PR_1"
+    uiPackage = "default"
+    rectModel = "legacy_imgui.modern_rect_v1"
+    controlRect = "104,155,75,64"
+    artRect = "104,155,75,64"
+    artLayer = "control_art"
+    uvX = 176
+    uvY = 0
+    uvWidth = 75
+    uvHeight = 64
+}
+
+GuiImage {
+    key = "game.mcl_pr_layout.image.dep_team_combo_item_7"
+    pageKey = "game.mcl_pr_layout"
+    legacySection = "PilotReadyStatic49"
+    legacyComment = "dep team combo item 7"
+    role = "image"
+    layer = "art"
+    aliasOverride = "dep team combo item 7"
+    sourceControlType = "PilotReadyStatic49"
+    rect = "183,155,75,64"
+    legacyLocalRect = "183,155,75,64"
+    legacyRectSource = "xywh"
+    texture = "data/art/gui/MCL_PR_1.png"
+    legacyTexture = "MCL_PR_1"
+    uiPackage = "default"
+    rectModel = "legacy_imgui.modern_rect_v1"
+    controlRect = "183,155,75,64"
+    artRect = "183,155,75,64"
+    artLayer = "control_art"
+    uvX = 176
+    uvY = 0
+    uvWidth = 75
+    uvHeight = 64
+}
+
+GuiImage {
+    key = "game.mcl_pr_layout.image.dep_team_combo_item_8"
+    pageKey = "game.mcl_pr_layout"
+    legacySection = "PilotReadyStatic50"
+    legacyComment = "dep team combo item 8"
+    role = "image"
+    layer = "art"
+    aliasOverride = "dep team combo item 8"
+    sourceControlType = "PilotReadyStatic50"
+    rect = "262,155,75,64"
+    legacyLocalRect = "262,155,75,64"
+    legacyRectSource = "xywh"
+    texture = "data/art/gui/MCL_PR_1.png"
+    legacyTexture = "MCL_PR_1"
+    uiPackage = "default"
+    rectModel = "legacy_imgui.modern_rect_v1"
+    controlRect = "262,155,75,64"
+    artRect = "262,155,75,64"
+    artLayer = "control_art"
+    uvX = 176
+    uvY = 0
+    uvWidth = 75
+    uvHeight = 64
+}
+
+GuiImage {
+    key = "game.mcl_pr_layout.image.dep_team_combo_item_9"
+    pageKey = "game.mcl_pr_layout"
+    legacySection = "PilotReadyStatic51"
+    legacyComment = "dep team combo item 9"
+    role = "image"
+    layer = "art"
+    aliasOverride = "dep team combo item 9"
+    sourceControlType = "PilotReadyStatic51"
+    rect = "25,224,75,64"
+    legacyLocalRect = "25,224,75,64"
+    legacyRectSource = "xywh"
+    texture = "data/art/gui/MCL_PR_1.png"
+    legacyTexture = "MCL_PR_1"
+    uiPackage = "default"
+    rectModel = "legacy_imgui.modern_rect_v1"
+    controlRect = "25,224,75,64"
+    artRect = "25,224,75,64"
+    artLayer = "control_art"
+    uvX = 176
+    uvY = 0
+    uvWidth = 75
+    uvHeight = 64
+}
+
+GuiImage {
+    key = "game.mcl_pr_layout.image.dep_team_combo_item_10"
+    pageKey = "game.mcl_pr_layout"
+    legacySection = "PilotReadyStatic52"
+    legacyComment = "dep team combo item 10"
+    role = "image"
+    layer = "art"
+    aliasOverride = "dep team combo item 10"
+    sourceControlType = "PilotReadyStatic52"
+    rect = "104,224,75,64"
+    legacyLocalRect = "104,224,75,64"
+    legacyRectSource = "xywh"
+    texture = "data/art/gui/MCL_PR_1.png"
+    legacyTexture = "MCL_PR_1"
+    uiPackage = "default"
+    rectModel = "legacy_imgui.modern_rect_v1"
+    controlRect = "104,224,75,64"
+    artRect = "104,224,75,64"
+    artLayer = "control_art"
+    uvX = 176
+    uvY = 0
+    uvWidth = 75
+    uvHeight = 64
+}
+
+GuiImage {
+    key = "game.mcl_pr_layout.image.dep_team_combo_item_11"
+    pageKey = "game.mcl_pr_layout"
+    legacySection = "PilotReadyStatic53"
+    legacyComment = "dep team combo item 11"
+    role = "image"
+    layer = "art"
+    aliasOverride = "dep team combo item 11"
+    sourceControlType = "PilotReadyStatic53"
+    rect = "183,224,75,64"
+    legacyLocalRect = "183,224,75,64"
+    legacyRectSource = "xywh"
+    texture = "data/art/gui/MCL_PR_1.png"
+    legacyTexture = "MCL_PR_1"
+    uiPackage = "default"
+    rectModel = "legacy_imgui.modern_rect_v1"
+    controlRect = "183,224,75,64"
+    artRect = "183,224,75,64"
+    artLayer = "control_art"
+    uvX = 176
+    uvY = 0
+    uvWidth = 75
+    uvHeight = 64
+}
+
+GuiImage {
+    key = "game.mcl_pr_layout.image.dep_team_combo_item_12"
+    pageKey = "game.mcl_pr_layout"
+    legacySection = "PilotReadyStatic54"
+    legacyComment = "dep team combo item 12"
+    role = "image"
+    layer = "art"
+    aliasOverride = "dep team combo item 12"
+    sourceControlType = "PilotReadyStatic54"
+    rect = "262,224,75,64"
+    legacyLocalRect = "262,224,75,64"
+    legacyRectSource = "xywh"
+    texture = "data/art/gui/MCL_PR_1.png"
+    legacyTexture = "MCL_PR_1"
+    uiPackage = "default"
+    rectModel = "legacy_imgui.modern_rect_v1"
+    controlRect = "262,224,75,64"
+    artRect = "262,224,75,64"
+    artLayer = "control_art"
+    uvX = 176
+    uvY = 0
+    uvWidth = 75
+    uvHeight = 64
+}
+
+GuiImage {
+    key = "game.mcl_pr_layout.image.small_border_piece_for_medals"
+    pageKey = "game.mcl_pr_layout"
+    legacySection = "PilotReadyStatic55"
+    legacyComment = "small border piece for medals"
+    role = "image"
+    layer = "art"
+    aliasOverride = "small border piece for medals"
+    sourceControlType = "PilotReadyStatic55"
+    rect = "360,344,36,7"
+    legacyLocalRect = "360,344,36,7"
+    legacyRectSource = "xywh"
+    texture = "data/art/gui/MCL_PR_5.png"
+    legacyTexture = "MCL_PR_5"
+    uiPackage = "default"
+    rectModel = "legacy_imgui.modern_rect_v1"
+    controlRect = "360,344,36,7"
+    artRect = "360,344,36,7"
+    artLayer = "control_art"
+    uvX = 0
+    uvY = 248
+    uvWidth = 36
+    uvHeight = 7
+}
+
+GuiImage {
+    key = "game.mcl_pr_layout.image.small_right_border_piece_for_medals"
+    pageKey = "game.mcl_pr_layout"
+    legacySection = "PilotReadyStatic56"
+    legacyComment = "small right  border piece for medals"
+    role = "image"
+    layer = "art"
+    aliasOverride = "small right  border piece for medals"
+    sourceControlType = "PilotReadyStatic56"
+    rect = "492,344,36,7"
+    legacyLocalRect = "492,344,36,7"
+    legacyRectSource = "xywh"
+    texture = "data/art/gui/MCL_PR_5.png"
+    legacyTexture = "MCL_PR_5"
+    uiPackage = "default"
+    rectModel = "legacy_imgui.modern_rect_v1"
+    controlRect = "492,344,36,7"
+    artRect = "492,344,36,7"
+    artLayer = "control_art"
+    uvX = 0
+    uvY = 248
+    uvWidth = 36
+    uvHeight = 7
+}
+
+GuiImage {
+    key = "game.mcl_pr_layout.image.mid_size_mid_border_piece_for_medals"
+    pageKey = "game.mcl_pr_layout"
+    legacySection = "PilotReadyStatic57"
+    legacyComment = "mid size mid border piece for medals"
+    role = "image"
+    layer = "art"
+    aliasOverride = "mid size mid border piece for medals"
+    sourceControlType = "PilotReadyStatic57"
+    rect = "395,471,98,6"
+    legacyLocalRect = "395,471,98,6"
+    legacyRectSource = "xywh"
+    texture = "data/art/gui/MCL_PR_5.png"
+    legacyTexture = "MCL_PR_5"
+    uiPackage = "default"
+    rectModel = "legacy_imgui.modern_rect_v1"
+    controlRect = "395,471,98,6"
+    artRect = "395,471,98,6"
+    artLayer = "control_art"
+    uvX = 0
+    uvY = 242
+    uvWidth = 98
+    uvHeight = 6
+}
+
+GuiImage {
+    key = "game.mcl_pr_layout.image.large_size_bottom_border_piece_for_medals"
+    pageKey = "game.mcl_pr_layout"
+    legacySection = "PilotReadyStatic58"
+    legacyComment = "large size bottom border piece for medals"
+    role = "image"
+    layer = "art"
+    aliasOverride = "large size bottom border piece for medals"
+    sourceControlType = "PilotReadyStatic58"
+    rect = "360,505,168,7"
+    legacyLocalRect = "360,505,168,7"
+    legacyRectSource = "xywh"
+    texture = "data/art/gui/MCL_PR_5.png"
+    legacyTexture = "MCL_PR_5"
+    uiPackage = "default"
+    rectModel = "legacy_imgui.modern_rect_v1"
+    controlRect = "360,505,168,7"
+    artRect = "360,505,168,7"
+    artLayer = "control_art"
+    uvX = 0
+    uvY = 235
+    uvWidth = 168
+    uvHeight = 7
+}
+
+GuiImage {
+    key = "game.mcl_pr_layout.image.left_vertical_line_1"
+    pageKey = "game.mcl_pr_layout"
+    legacySection = "PilotReadyStatic59"
+    legacyComment = "left vertical line 1"
+    role = "image"
+    layer = "art"
+    aliasOverride = "left vertical line 1"
+    sourceControlType = "PilotReadyStatic59"
+    rect = "360,352,1,152"
+    legacyLocalRect = "360,352,1,152"
+    legacyRectSource = "xywh"
+    texture = "data/art/gui/MCL_PR_5.png"
+    legacyTexture = "MCL_PR_5"
+    uiPackage = "default"
+    rectModel = "legacy_imgui.modern_rect_v1"
+    controlRect = "360,352,1,152"
+    artRect = "360,352,1,152"
+    artLayer = "control_art"
+    uvX = 0
+    uvY = 255
+    uvWidth = 1
+    uvHeight = 1
+}
+
+GuiImage {
+    key = "game.mcl_pr_layout.image.left_vertical_line_2"
+    pageKey = "game.mcl_pr_layout"
+    legacySection = "PilotReadyStatic60"
+    legacyComment = "left vertical line 2"
+    role = "image"
+    layer = "art"
+    aliasOverride = "left vertical line 2"
+    sourceControlType = "PilotReadyStatic60"
+    rect = "395,352,1,118"
+    legacyLocalRect = "395,352,1,118"
+    legacyRectSource = "xywh"
+    texture = "data/art/gui/MCL_PR_5.png"
+    legacyTexture = "MCL_PR_5"
+    uiPackage = "default"
+    rectModel = "legacy_imgui.modern_rect_v1"
+    controlRect = "395,352,1,118"
+    artRect = "395,352,1,118"
+    artLayer = "control_art"
+    uvX = 0
+    uvY = 255
+    uvWidth = 1
+    uvHeight = 1
+}
+
+GuiImage {
+    key = "game.mcl_pr_layout.image.right_vertical_line_2"
+    pageKey = "game.mcl_pr_layout"
+    legacySection = "PilotReadyStatic61"
+    legacyComment = "right vertical line 2"
+    role = "image"
+    layer = "art"
+    aliasOverride = "right vertical line 2"
+    sourceControlType = "PilotReadyStatic61"
+    rect = "527,352,1,152"
+    legacyLocalRect = "527,352,1,152"
+    legacyRectSource = "xywh"
+    texture = "data/art/gui/MCL_PR_5.png"
+    legacyTexture = "MCL_PR_5"
+    uiPackage = "default"
+    rectModel = "legacy_imgui.modern_rect_v1"
+    controlRect = "527,352,1,152"
+    artRect = "527,352,1,152"
+    artLayer = "control_art"
+    uvX = 0
+    uvY = 255
+    uvWidth = 1
+    uvHeight = 1
+}
+
+GuiImage {
+    key = "game.mcl_pr_layout.image.right_vertical_line_1"
+    pageKey = "game.mcl_pr_layout"
+    legacySection = "PilotReadyStatic62"
+    legacyComment = "right vertical line 1"
+    role = "image"
+    layer = "art"
+    aliasOverride = "right vertical line 1"
+    sourceControlType = "PilotReadyStatic62"
+    rect = "492,352,1,118"
+    legacyLocalRect = "492,352,1,118"
+    legacyRectSource = "xywh"
+    texture = "data/art/gui/MCL_PR_5.png"
+    legacyTexture = "MCL_PR_5"
+    uiPackage = "default"
+    rectModel = "legacy_imgui.modern_rect_v1"
+    controlRect = "492,352,1,118"
+    artRect = "492,352,1,118"
+    artLayer = "control_art"
+    uvX = 0
+    uvY = 255
+    uvWidth = 1
+    uvHeight = 1
+}
+
+GuiImage {
+    key = "game.mcl_pr_layout.image.left_vertical_line_for_spec_skills"
+    pageKey = "game.mcl_pr_layout"
+    legacySection = "PilotReadyStatic63"
+    legacyComment = "left vertical line for spec skills"
+    role = "image"
+    layer = "art"
+    aliasOverride = "left vertical line for spec skills"
+    sourceControlType = "PilotReadyStatic63"
+    rect = "684,328,1,176"
+    legacyLocalRect = "684,328,1,176"
+    legacyRectSource = "xywh"
+    texture = "data/art/gui/MCL_PR_5.png"
+    legacyTexture = "MCL_PR_5"
+    uiPackage = "default"
+    rectModel = "legacy_imgui.modern_rect_v1"
+    controlRect = "684,328,1,176"
+    artRect = "684,328,1,176"
+    artLayer = "control_art"
+    uvX = 0
+    uvY = 255
+    uvWidth = 1
+    uvHeight = 1
+}
+
+GuiImage {
+    key = "game.mcl_pr_layout.image.right_vertical_line_for_spec_skills"
+    pageKey = "game.mcl_pr_layout"
+    legacySection = "PilotReadyStatic64"
+    legacyComment = "right vertical line for spec skills"
+    role = "image"
+    layer = "art"
+    aliasOverride = "right vertical line for spec skills"
+    sourceControlType = "PilotReadyStatic64"
+    rect = "719,328,1,176"
+    legacyLocalRect = "719,328,1,176"
+    legacyRectSource = "xywh"
+    texture = "data/art/gui/MCL_PR_5.png"
+    legacyTexture = "MCL_PR_5"
+    uiPackage = "default"
+    rectModel = "legacy_imgui.modern_rect_v1"
+    controlRect = "719,328,1,176"
+    artRect = "719,328,1,176"
+    artLayer = "control_art"
+    uvX = 0
+    uvY = 255
+    uvWidth = 1
+    uvHeight = 1
+}
+
+GuiImage {
+    key = "game.mcl_pr_layout.image.small_bottom_border_piece_for_spec_skills"
+    pageKey = "game.mcl_pr_layout"
+    legacySection = "PilotReadyStatic65"
+    legacyComment = "small bottom border piece for spec. skills"
+    role = "image"
+    layer = "art"
+    aliasOverride = "small bottom border piece for spec. skills"
+    sourceControlType = "PilotReadyStatic65"
+    rect = "684,505,36,7"
+    legacyLocalRect = "684,505,36,7"
+    legacyRectSource = "xywh"
+    texture = "data/art/gui/MCL_PR_5.png"
+    legacyTexture = "MCL_PR_5"
+    uiPackage = "default"
+    rectModel = "legacy_imgui.modern_rect_v1"
+    controlRect = "684,505,36,7"
+    artRect = "684,505,36,7"
+    artLayer = "control_art"
+    uvX = 36
+    uvY = 248
+    uvWidth = 36
+    uvHeight = 7
+}
+
+GuiImage {
+    key = "game.mcl_pr_layout.image.small_top_border_piece_for_spec_skills"
+    pageKey = "game.mcl_pr_layout"
+    legacySection = "PilotReadyStatic66"
+    legacyComment = "small top border piece for spec. skills"
+    role = "image"
+    layer = "art"
+    aliasOverride = "small top border piece for spec. skills"
+    sourceControlType = "PilotReadyStatic66"
+    rect = "684,320,36,7"
+    legacyLocalRect = "684,320,36,7"
+    legacyRectSource = "xywh"
+    texture = "data/art/gui/MCL_PR_5.png"
+    legacyTexture = "MCL_PR_5"
+    uiPackage = "default"
+    rectModel = "legacy_imgui.modern_rect_v1"
+    controlRect = "684,320,36,7"
+    artRect = "684,320,36,7"
+    artLayer = "control_art"
+    uvX = 0
+    uvY = 248
+    uvWidth = 36
+    uvHeight = 7
+}
+
+GuiImage {
+    key = "game.mcl_pr_layout.image.this_rect_defines_the_placement"
+    pageKey = "game.mcl_pr_layout"
+    legacySection = "PilotReadyStatic67"
+    legacyComment = "this rect defines the placement"
+    role = "image"
+    layer = "art"
+    aliasOverride = "this rect defines the placement"
+    sourceControlType = "PilotReadyStatic67"
+    rect = "398,344,92,128"
+    legacyLocalRect = "398,344,92,128"
+    legacyRectSource = "xywh"
+    uiPackage = "default"
+    rectModel = "legacy_imgui.modern_rect_v1"
+    controlRect = "398,344,92,128"
+    helpDescLegacyId = 29081
+    helpDescKey = "legacy.mc2res.29081"
+    helpDescText = "CURRENT SELECTION          The name and photo of the currently selected pilot."
+    helpDescLegacySymbol = "IDS_HELP_PR_CURRENT_SELECTION"
+    helpDescSource = "mc2res"
+    helpDescMissing = false
+    uvX = 0
+    uvY = 0
+    uvWidth = 92
+    uvHeight = 128
+}
+
+GuiImage {
+    key = "game.mcl_pr_layout.image.corner_left_of_pilot_name"
+    pageKey = "game.mcl_pr_layout"
+    legacySection = "PilotReadyStatic68"
+    legacyComment = "corner left of pilot name"
+    role = "image"
+    layer = "art"
+    aliasOverride = "corner left of pilot name"
+    sourceControlType = "PilotReadyStatic68"
+    rect = "345,317,16,27"
+    legacyLocalRect = "345,317,16,27"
+    legacyRectSource = "xywh"
+    texture = "data/art/gui/MCL_PR_4.png"
+    legacyTexture = "MCL_PR_4"
+    uiPackage = "default"
+    rectModel = "legacy_imgui.modern_rect_v1"
+    controlRect = "345,317,16,27"
+    artRect = "345,317,16,27"
+    artLayer = "control_art"
+    uvX = 182
+    uvY = 143
+    uvWidth = 16
+    uvHeight = 27
+}
+
+GuiImage {
+    key = "game.mcl_pr_layout.image.corner_right_of_pilot_name"
+    pageKey = "game.mcl_pr_layout"
+    legacySection = "PilotReadyStatic69"
+    legacyComment = "corner right of pilot name"
+    role = "image"
+    layer = "art"
+    aliasOverride = "corner right of pilot name"
+    sourceControlType = "PilotReadyStatic69"
+    rect = "527,317,16,27"
+    legacyLocalRect = "527,317,16,27"
+    legacyRectSource = "xywh"
+    texture = "data/art/gui/MCL_PR_4.png"
+    legacyTexture = "MCL_PR_4"
+    uiPackage = "default"
+    rectModel = "legacy_imgui.modern_rect_v1"
+    controlRect = "527,317,16,27"
+    artRect = "527,317,16,27"
+    artLayer = "control_art"
+    uvX = 198
+    uvY = 143
+    uvWidth = 16
+    uvHeight = 27
+}
+
+GuiImage {
+    key = "game.mcl_pr_layout.image.corner_right_top_of_spec_skills"
+    pageKey = "game.mcl_pr_layout"
+    legacySection = "PilotReadyStatic70"
+    legacyComment = "corner right top of spec skills"
+    role = "image"
+    layer = "art"
+    aliasOverride = "corner right top of spec skills"
+    sourceControlType = "PilotReadyStatic70"
+    rect = "676,317,8,3"
+    legacyLocalRect = "676,317,8,3"
+    legacyRectSource = "xywh"
+    texture = "data/art/gui/MCL_PR_4.png"
+    legacyTexture = "MCL_PR_4"
+    uiPackage = "default"
+    rectModel = "legacy_imgui.modern_rect_v1"
+    controlRect = "676,317,8,3"
+    artRect = "676,317,8,3"
+    artLayer = "control_art"
+    uvX = 182
+    uvY = 173
+    uvWidth = 8
+    uvHeight = 3
+}
+
+GuiImage {
+    key = "game.mcl_pr_layout.image.corner_right_bottom_of_spec_skills"
+    pageKey = "game.mcl_pr_layout"
+    legacySection = "PilotReadyStatic71"
+    legacyComment = "corner right bottom of spec skills"
+    role = "image"
+    layer = "art"
+    aliasOverride = "corner right bottom of spec skills"
+    sourceControlType = "PilotReadyStatic71"
+    rect = "676,512,8,3"
+    legacyLocalRect = "676,512,8,3"
+    legacyRectSource = "xywh"
+    texture = "data/art/gui/MCL_PR_4.png"
+    legacyTexture = "MCL_PR_4"
+    uiPackage = "default"
+    rectModel = "legacy_imgui.modern_rect_v1"
+    controlRect = "676,512,8,3"
+    artRect = "676,512,8,3"
+    artLayer = "control_art"
+    uvX = 182
+    uvY = 170
+    uvWidth = 8
+    uvHeight = 3
+}
+
+GuiImage {
+    key = "game.mcl_pr_layout.image.corner_right_bottom_of_pilot_pic"
+    pageKey = "game.mcl_pr_layout"
+    legacySection = "PilotReadyStatic72"
+    legacyComment = "corner right bottom of pilot pic"
+    role = "image"
+    layer = "art"
+    aliasOverride = "corner right bottom of pilot pic"
+    sourceControlType = "PilotReadyStatic72"
+    rect = "528,512,8,3"
+    legacyLocalRect = "528,512,8,3"
+    legacyRectSource = "xywh"
+    texture = "data/art/gui/MCL_PR_4.png"
+    legacyTexture = "MCL_PR_4"
+    uiPackage = "default"
+    rectModel = "legacy_imgui.modern_rect_v1"
+    controlRect = "528,512,8,3"
+    artRect = "528,512,8,3"
+    artLayer = "control_art"
+    uvX = 190
+    uvY = 170
+    uvWidth = 8
+    uvHeight = 3
+}
+
+GuiImage {
+    key = "game.mcl_pr_layout.image.corner_left_bottom_of_pilot_pic"
+    pageKey = "game.mcl_pr_layout"
+    legacySection = "PilotReadyStatic73"
+    legacyComment = "corner left bottom of pilot pic"
+    role = "image"
+    layer = "art"
+    aliasOverride = "corner left bottom of pilot pic"
+    sourceControlType = "PilotReadyStatic73"
+    rect = "352,512,8,3"
+    legacyLocalRect = "352,512,8,3"
+    legacyRectSource = "xywh"
+    texture = "data/art/gui/MCL_PR_4.png"
+    legacyTexture = "MCL_PR_4"
+    uiPackage = "default"
+    rectModel = "legacy_imgui.modern_rect_v1"
+    controlRect = "352,512,8,3"
+    artRect = "352,512,8,3"
+    artLayer = "control_art"
+    uvX = 182
+    uvY = 170
+    uvWidth = 8
+    uvHeight = 3
+}
+
+GuiMetadata {
+    key = "game.mcl_pr_layout.metadata.metadata_01"
+    pageKey = "game.mcl_pr_layout"
+    legacySection = "PilotReadyRects"
+    legacyContext = "~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ | ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ | ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~"
+    role = "metadata"
+    layer = "metadata"
+    aliasOverride = "metadata"
+    sourceControlType = "PilotReadyRects"
+    rect = "0,0,0,0"
+    legacyLocalRect = "0,0,0,0"
+    legacyRectSource = "xywh"
+    visible = false
+}
+
+GuiRect {
+    key = "game.mcl_pr_layout.rect.rect"
+    pageKey = "game.mcl_pr_layout"
+    legacySection = "PilotReadyRect0"
+    role = "rect"
+    layer = "layout"
+    aliasOverride = "rect"
+    sourceControlType = "PilotReadyRect0"
+    rect = "552,86,226,202"
+    legacyLocalRect = "552,86,226,202"
+    legacyRectSource = "ltrb"
+    uiPackage = "default"
+    rectModel = "legacy_imgui.modern_rect_v1"
+    controlRect = "552,86,226,202"
+    helpDescLegacyId = 29075
+    helpDescKey = "legacy.mc2res.29075"
+    helpDescText = "AVAILABLE PILOTS     A list of pilots awaiting assignment. Select a pilot here, and then click the Add Pilot button to assign him or her to the 'Mech selected in the Deployment Team area. You can also drag or double-click a pilot to assign him or her to the selected 'Mech. Green = Green, yellow = Regular, red = Veteran, blue = Elite."
+    helpDescLegacySymbol = "IDS_HELP_PR_AVAILABLE_PILOTS"
+    helpDescSource = "mc2res"
+    helpDescMissing = false
+    legacyColor = 0xff43311c
+    outline = 1
+    filled = false
+    fillColorArgb = "0x00000000"
+    borderColorArgb = "0x00000000"
+    colorArgb = "0xffffffff"
+}
+
+GuiMetadata {
+    key = "game.mcl_pr_layout.metadata.decoline_left_top"
+    pageKey = "game.mcl_pr_layout"
+    legacySection = "PilotReadyRect1"
+    legacyComment = "decoline left top"
+    role = "metadata"
+    layer = "metadata"
+    aliasOverride = "decoline left top"
+    sourceControlType = "PilotReadyRect1"
+    rect = "77,317,266,0"
+    legacyLocalRect = "77,317,266,0"
+    legacyRectSource = "xywh"
+    legacyColor = 0xff002F55
+    outline = 1
+    visible = false
+}
+
+GuiMetadata {
+    key = "game.mcl_pr_layout.metadata.decoline_right_top"
+    pageKey = "game.mcl_pr_layout"
+    legacySection = "PilotReadyRect2"
+    legacyComment = "decoline right top"
+    role = "metadata"
+    layer = "metadata"
+    aliasOverride = "decoline right top"
+    sourceControlType = "PilotReadyRect2"
+    rect = "544,317,129,0"
+    legacyLocalRect = "544,317,129,0"
+    legacyRectSource = "xywh"
+    legacyColor = 0xff002F55
+    outline = 1
+    visible = false
+}
+
+GuiMetadata {
+    key = "game.mcl_pr_layout.metadata.decoline_left_vert"
+    pageKey = "game.mcl_pr_layout"
+    legacySection = "PilotReadyRect3"
+    legacyComment = "decoline left vert"
+    role = "metadata"
+    layer = "metadata"
+    aliasOverride = "decoline left vert"
+    sourceControlType = "PilotReadyRect3"
+    rect = "77,317,0,197"
+    legacyLocalRect = "77,317,0,197"
+    legacyRectSource = "xywh"
+    legacyColor = 0xff002F55
+    outline = 1
+    visible = false
+}
+
+GuiMetadata {
+    key = "game.mcl_pr_layout.metadata.decoline_left_bot"
+    pageKey = "game.mcl_pr_layout"
+    legacySection = "PilotReadyRect4"
+    legacyComment = "decoline left bot"
+    role = "metadata"
+    layer = "metadata"
+    aliasOverride = "decoline left bot"
+    sourceControlType = "PilotReadyRect4"
+    rect = "77,514,273,0"
+    legacyLocalRect = "77,514,273,0"
+    legacyRectSource = "xywh"
+    legacyColor = 0xff002F55
+    outline = 1
+    visible = false
+}
+
+GuiMetadata {
+    key = "game.mcl_pr_layout.metadata.decoline_right_bot"
+    pageKey = "game.mcl_pr_layout"
+    legacySection = "PilotReadyRect5"
+    legacyComment = "decoline right bot"
+    role = "metadata"
+    layer = "metadata"
+    aliasOverride = "decoline right bot"
+    sourceControlType = "PilotReadyRect5"
+    rect = "537,514,137,0"
+    legacyLocalRect = "537,514,137,0"
+    legacyRectSource = "xywh"
+    legacyColor = 0xff002F55
+    outline = 1
+    visible = false
+}
+
+GuiRect {
+    key = "game.mcl_pr_layout.rect.pilot_name"
+    pageKey = "game.mcl_pr_layout"
+    legacySection = "PilotReadyRect6"
+    legacyComment = "pilot name"
+    role = "rect"
+    layer = "layout"
+    aliasOverride = "pilot name"
+    sourceControlType = "PilotReadyRect6"
+    rect = "359,312,162,28"
+    legacyLocalRect = "359,312,162,28"
+    legacyRectSource = "xywh"
+    uiPackage = "default"
+    rectModel = "legacy_imgui.modern_rect_v1"
+    controlRect = "359,312,162,28"
+    legacyColor = 0
+    outline = "FALSE"
+    filled = true
+    fillColorArgb = "0x00000000"
+    borderColorArgb = "0x00000000"
+    colorArgb = "0xffffffff"
+}
+
+GuiRect {
+    key = "game.mcl_pr_layout.rect.pilot_specialty"
+    pageKey = "game.mcl_pr_layout"
+    legacySection = "PilotReadyRect7"
+    legacyComment = "pilot specialty"
+    role = "rect"
+    layer = "layout"
+    aliasOverride = "pilot specialty"
+    sourceControlType = "PilotReadyRect7"
+    rect = "526,312,155,199"
+    legacyLocalRect = "526,312,155,199"
+    legacyRectSource = "xywh"
+    uiPackage = "default"
+    rectModel = "legacy_imgui.modern_rect_v1"
+    controlRect = "526,312,155,199"
+    helpDescLegacyId = 0
+    helpDescKey = "legacy.strings.ids_undefined_string_sebi"
+    helpDescLegacySymbol = "IDS_undefined_string_sebi"
+    helpDescSource = "strings.res.h"
+    helpDescMissing = true
+    helpDescMissingReason = "symbol_only_from_strings_res_h"
+    legacyColor = 0
+    outline = "FALSE"
+    filled = true
+    fillColorArgb = "0x00000000"
+    borderColorArgb = "0x00000000"
+    colorArgb = "0xffffffff"
+}
+
+GuiRect {
+    key = "game.mcl_pr_layout.rect.help_rect_for_screen_title_box"
+    pageKey = "game.mcl_pr_layout"
+    legacySection = "PilotReadyRect8"
+    legacyComment = "help rect for screen title box"
+    role = "help"
+    layer = "help"
+    aliasOverride = "help rect for screen title box"
+    sourceControlType = "PilotReadyRect8"
+    rect = "11,7,416,32"
+    legacyLocalRect = "11,7,416,32"
+    legacyRectSource = "xywh"
+    uiPackage = "default"
+    rectModel = "legacy_imgui.modern_rect_v1"
+    controlRect = "11,7,416,32"
+    helpDescLegacyId = 29072
+    helpDescKey = "legacy.mc2res.29072"
+    helpDescText = "PILOT READY AREA     In this screen, you can review and assign pilots to the 'Mechs in the Deployment Team area."
+    helpDescLegacySymbol = "IDS_HELP_PR_HEADER_TEXT"
+    helpDescSource = "mc2res"
+    helpDescMissing = false
+    legacyColor = 0
+    outline = "FALSE"
+    filled = true
+    fillColorArgb = "0x00000000"
+    borderColorArgb = "0x00000000"
+    colorArgb = "0xffffffff"
+}
+
+GuiRect {
+    key = "game.mcl_pr_layout.rect.help_rect_for_cbill_icon_and_text_readout"
+    pageKey = "game.mcl_pr_layout"
+    legacySection = "PilotReadyRect9"
+    legacyComment = "help rect for cbill icon and text readout"
+    role = "help"
+    layer = "help"
+    aliasOverride = "help rect for cbill icon and text readout"
+    sourceControlType = "PilotReadyRect9"
+    rect = "448,7,147,32"
+    legacyLocalRect = "448,7,147,32"
+    legacyRectSource = "xywh"
+    uiPackage = "default"
+    rectModel = "legacy_imgui.modern_rect_v1"
+    controlRect = "448,7,147,32"
+    helpDescLegacyId = 29003
+    helpDescKey = "legacy.mc2res.29003"
+    helpDescText = "C-BILLS     The amount of currency available for purchasing and customizing 'Mechs."
+    helpDescLegacySymbol = "IDS_HELP_ALL_CBILLS"
+    helpDescSource = "mc2res"
+    helpDescMissing = false
+    legacyColor = 0
+    outline = "FALSE"
+    filled = true
+    fillColorArgb = "0x00000000"
+    borderColorArgb = "0x00000000"
+    colorArgb = "0xffffffff"
+}
+
+GuiRect {
+    key = "game.mcl_pr_layout.rect.help_rect_for_currently_selected_pilot_name_and_pic"
+    pageKey = "game.mcl_pr_layout"
+    legacySection = "PilotReadyRect10"
+    legacyComment = "help rect for currently selected pilot name and pic"
+    role = "help"
+    layer = "help"
+    aliasOverride = "help rect for currently selected pilot name and pic"
+    sourceControlType = "PilotReadyRect10"
+    rect = "396,316,93,159"
+    legacyLocalRect = "396,316,93,159"
+    legacyRectSource = "xywh"
+    uiPackage = "default"
+    rectModel = "legacy_imgui.modern_rect_v1"
+    controlRect = "396,316,93,159"
+    helpDescLegacyId = 29081
+    helpDescKey = "legacy.mc2res.29081"
+    helpDescText = "CURRENT SELECTION          The name and photo of the currently selected pilot."
+    helpDescLegacySymbol = "IDS_HELP_PR_CURRENT_SELECTION"
+    helpDescSource = "mc2res"
+    helpDescMissing = false
+    legacyColor = 0
+    outline = "FALSE"
+    filled = true
+    fillColorArgb = "0x00000000"
+    borderColorArgb = "0x00000000"
+    colorArgb = "0xffffffff"
+}
+
+GuiRect {
+    key = "game.mcl_pr_layout.rect.help_rect_for_gunnery_box"
+    pageKey = "game.mcl_pr_layout"
+    legacySection = "PilotReadyRect11"
+    legacyComment = "help rect for gunnery box"
+    role = "help"
+    layer = "help"
+    aliasOverride = "help rect for gunnery box"
+    sourceControlType = "PilotReadyRect11"
+    rect = "82,373,218,31"
+    legacyLocalRect = "82,373,218,31"
+    legacyRectSource = "xywh"
+    uiPackage = "default"
+    rectModel = "legacy_imgui.modern_rect_v1"
+    controlRect = "82,373,218,31"
+    helpDescLegacyId = 29078
+    helpDescKey = "legacy.mc2res.29078"
+    helpDescText = "GUNNERY SKILL     The compentence level of the selected pilot's weapons control."
+    helpDescLegacySymbol = "IDS_HELP_PR_GUNNERY_SKILL"
+    helpDescSource = "mc2res"
+    helpDescMissing = false
+    legacyColor = 0
+    outline = "FALSE"
+    filled = true
+    fillColorArgb = "0x00000000"
+    borderColorArgb = "0x00000000"
+    colorArgb = "0xffffffff"
+}
+
+GuiRect {
+    key = "game.mcl_pr_layout.rect.help_rect_for_piloting_skill_box"
+    pageKey = "game.mcl_pr_layout"
+    legacySection = "PilotReadyRect12"
+    legacyComment = "help rect for piloting skill box"
+    role = "help"
+    layer = "help"
+    aliasOverride = "help rect for piloting skill box"
+    sourceControlType = "PilotReadyRect12"
+    rect = "82,426,218,31"
+    legacyLocalRect = "82,426,218,31"
+    legacyRectSource = "xywh"
+    uiPackage = "default"
+    rectModel = "legacy_imgui.modern_rect_v1"
+    controlRect = "82,426,218,31"
+    helpDescLegacyId = 29079
+    helpDescKey = "legacy.mc2res.29079"
+    helpDescText = "PILOTING SKILL     The competence level of the selected pilot's 'Mech control."
+    helpDescLegacySymbol = "IDS_HELP_PR_PILOTING_SKILL"
+    helpDescSource = "mc2res"
+    helpDescMissing = false
+    legacyColor = 0
+    outline = "FALSE"
+    filled = true
+    fillColorArgb = "0x00000000"
+    borderColorArgb = "0x00000000"
+    colorArgb = "0xffffffff"
+}
+
+GuiRect {
+    key = "game.mcl_pr_layout.rect.help_rect_for_kills_box"
+    pageKey = "game.mcl_pr_layout"
+    legacySection = "PilotReadyRect13"
+    legacyComment = "help rect for kills box"
+    role = "help"
+    layer = "help"
+    aliasOverride = "help rect for kills box"
+    sourceControlType = "PilotReadyRect13"
+    rect = "82,477,218,31"
+    legacyLocalRect = "82,477,218,31"
+    legacyRectSource = "xywh"
+    uiPackage = "default"
+    rectModel = "legacy_imgui.modern_rect_v1"
+    controlRect = "82,477,218,31"
+    helpDescLegacyId = 29080
+    helpDescKey = "legacy.mc2res.29080"
+    helpDescText = "KILLS     The number of 'Mechs the pilot has destroyed."
+    helpDescLegacySymbol = "IDS_HELP_PR_KILLS"
+    helpDescSource = "mc2res"
+    helpDescMissing = false
+    legacyColor = 0
+    outline = "FALSE"
+    filled = true
+    fillColorArgb = "0x00000000"
+    borderColorArgb = "0x00000000"
+    colorArgb = "0xffffffff"
+}
+
+GuiRect {
+    key = "game.mcl_pr_layout.rect.help_rect_for_ranks_box"
+    pageKey = "game.mcl_pr_layout"
+    legacySection = "PilotReadyRect14"
+    legacyComment = "help rect for ranks box"
+    role = "help"
+    layer = "help"
+    aliasOverride = "help rect for ranks box"
+    sourceControlType = "PilotReadyRect14"
+    rect = "82,322,218,30"
+    legacyLocalRect = "82,322,218,30"
+    legacyRectSource = "xywh"
+    uiPackage = "default"
+    rectModel = "legacy_imgui.modern_rect_v1"
+    controlRect = "82,322,218,30"
+    helpDescLegacyId = 29077
+    helpDescKey = "legacy.mc2res.29077"
+    helpDescText = "RANK     The rank of the selected pilot, as determined by gunnery and piloting skills."
+    helpDescLegacySymbol = "IDS_HELP_PR_RANK"
+    helpDescSource = "mc2res"
+    helpDescMissing = false
+    legacyColor = 0
+    outline = "FALSE"
+    filled = true
+    fillColorArgb = "0x00000000"
+    borderColorArgb = "0x00000000"
+    colorArgb = "0xffffffff"
+}
+
+GuiRect {
+    key = "game.mcl_pr_layout.rect.transparent_rect_defining_deployment_area_for_tutorial"
+    pageKey = "game.mcl_pr_layout"
+    legacySection = "PilotReadyRect15"
+    legacyComment = "Transparent Rect Defining Deployment area for Tutorial"
+    role = "rect"
+    layer = "layout"
+    aliasOverride = "Transparent Rect Defining Deployment area for Tutorial"
+    sourceControlType = "PilotReadyRect15"
+    rect = "19,62,322,231"
+    legacyLocalRect = "19,62,322,231"
+    legacyRectSource = "ltrb"
+    uiPackage = "default"
+    rectModel = "legacy_imgui.modern_rect_v1"
+    controlRect = "19,62,322,231"
+    legacyColor = 0
+    filled = true
+    fillColorArgb = "0x00000000"
+    borderColorArgb = "0x00000000"
+    colorArgb = "0xffffffff"
+}
+
+GuiMetadata {
+    key = "game.mcl_pr_layout.metadata.metadata_02"
+    pageKey = "game.mcl_pr_layout"
+    legacySection = "PilotReadyButtons"
+    legacyContext = "~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ | ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ | ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~"
+    role = "metadata"
+    layer = "metadata"
+    aliasOverride = "metadata"
+    sourceControlType = "PilotReadyButtons"
+    rect = "0,0,0,0"
+    legacyLocalRect = "0,0,0,0"
+    legacyRectSource = "xywh"
+    visible = false
+}
+
+GuiButton {
+    key = "game.mcl_pr_layout.button.back_button"
+    pageKey = "game.mcl_pr_layout"
+    legacySection = "PilotReadyButton0"
+    legacyComment = "back button"
+    role = "button"
+    layer = "control"
+    aliasOverride = "back button"
+    sourceControlType = "PilotReadyButton0"
+    rect = "5,536,128,59"
+    legacyLocalRect = "5,536,128,59"
+    legacyRectSource = "xywh"
+    texture = "data/art/gui/MCL_PR_2.png"
+    legacyTexture = "MCL_PR_2"
+    uiPackage = "default"
+    rectModel = "legacy_imgui.modern_rect_v1"
+    controlRect = "5,536,128,59"
+    hitRect = "5,536,128,59"
+    artRect = "5,536,128,59"
+    artLayer = "control_art"
+    controlModel = "composite_hit_art_text_v1"
+    linkedLayers = "hit,art,text"
+    editMode = "linked_control_with_independent_text"
+    textRect = "33,550,86,30"
+    textRectMode = "explicit_legacy"
+    textLegacyId = 27101
+    textKey = "legacy.mc2res.27101"
+    visibleText = "BACK"
+    textLegacySymbol = "IDS_BACK"
+    textSource = "mc2res"
+    textMissing = false
+    helpCaptionLegacyId = 27101
+    helpCaptionKey = "legacy.mc2res.27101"
+    helpCaptionText = "BACK"
+    helpCaptionLegacySymbol = "IDS_BACK"
+    helpCaptionSource = "mc2res"
+    helpCaptionMissing = false
+    helpDescLegacyId = 27151
+    helpDescKey = "legacy.mc2res.27151"
+    helpDescText = "BACK     Return to the 'Mech Bay."
+    helpDescLegacySymbol = "IDS_PR_HELP_BACK"
+    helpDescSource = "mc2res"
+    helpDescMissing = false
+    legacyFontId = 27175
+    legacyFontComment = "use AgencyFB17"
+    font = "Agency Regular"
+    fontStyle = "Regular"
+    fontSize = 17
+    bold = false
+    italic = false
+    textAlign = "center"
+    textAnchor = "center"
+    legacyTextAlignmentSource = "aButton::init default Alignment=2"
+    wrapText = false
+    textX = 33
+    textY = 550
+    textWidth = 86
+    textHeight = 30
+    legacyTextRectSource = "XTextLocation/YTextLocation/TextWidth/TextHeight"
+    normalTextColorArgb = "0xff005392"
+    normalOverlayColorArgb = "0xff005392"
+    colorArgb = "0xff005392"
+    pressedTextColorArgb = "0xffffffff"
+    pressedOverlayColorArgb = "0xffffffff"
+    highlightTextColorArgb = "0xffffffff"
+    highlightOverlayColorArgb = "0xffffffff"
+    disabledTextColorArgb = "0xff373737"
+    disabledOverlayColorArgb = "0xff373737"
+    buttonOverlayEnabled = true
+    buttonOverlayAlpha = 0.30
+    pulseEnabled = true
+    pulseSpeed = 1.5
+    textEffect = "pulse"
+    legacyTextEffectSource = "AnimateText"
+    legacyId = 51
+    legacyColor = 0xff005392
+    legacyTextOutline = "TRUE"
+    legacyAnimateBmp = 0
+    legacyAnimateText = 1
+    uvX = 0
+    uvY = 0
+    uvWidth = 128
+    uvHeight = 59
+    uvPressedX = 0
+    uvPressedY = 59
+    uvHighlightX = 0
+    uvHighlightY = 0
+    uvDisabledX = 0
+    uvDisabledY = 59
+    legacyDisabledColor = 0xff373737
+    legacyFontComment = "use AgencyFB17"
+    fillColorArgb = "0x00000000"
+    borderColorArgb = "0x00000000"
+    legacyNormalAnimationTimeStamps = 4
+    legacyNormalAnimationLoops = false
+    legacyNormalAnimTime0 = 0.0
+    legacyNormalAnimColor0 = 0xff005392
+    legacyNormalAnimTime1 = 7.0
+    legacyNormalAnimColor1 = 0xff005392
+    legacyNormalAnimTime2 = 7.5
+    legacyNormalAnimColor2 = 0xff005392
+    legacyNormalAnimTime3 = 8.0
+    legacyNormalAnimColor3 = 0xff005392
+    legacyPressedAnimationTimeStamps = 2
+    legacyPressedAnimationLoops = false
+    legacyPressedAnimTime0 = 0.0
+    legacyPressedAnimColor0 = 0xffffffff
+    legacyPressedAnimTime1 = 0.5
+    legacyPressedAnimColor1 = 0xff5C96C2
+    legacyHighlightAnimationTimeStamps = 3
+    legacyHighlightAnimationLoops = true
+    legacyHighlightAnimTime0 = 0.0
+    legacyHighlightAnimColor0 = 0xffffffff
+    legacyHighlightAnimTime1 = 0.4
+    legacyHighlightAnimColor1 = 0xff5C96C2
+    legacyHighlightAnimTime2 = 0.75
+    legacyHighlightAnimColor2 = 0xffffffff
+}
+
+GuiImage {
+    key = "game.mcl_pr_layout.image.mcl_pr_1"
+    pageKey = "game.mcl_pr_layout"
+    legacySection = "PilotReadyButton0Bmp0"
+    role = "image"
+    layer = "art"
+    aliasOverride = "MCL_PR_1"
+    sourceControlType = "PilotReadyButton0Bmp0"
+    rect = "21,555,11,22"
+    legacyLocalRect = "21,555,11,22"
+    legacyRectSource = "xywh"
+    texture = "data/art/gui/MCL_PR_1.png"
+    legacyTexture = "MCL_PR_1"
+    uiPackage = "default"
+    rectModel = "legacy_imgui.modern_rect_v1"
+    controlRect = "21,555,11,22"
+    artRect = "21,555,11,22"
+    artLayer = "control_art"
+    legacyColor = 0xff005392
+    legacyAnimateBmp = 1
+    uvX = 227
+    uvY = 164
+    uvWidth = 11
+    uvHeight = 22
+}
+
+GuiButton {
+    key = "game.mcl_pr_layout.button.launch_button"
+    pageKey = "game.mcl_pr_layout"
+    legacySection = "PilotReadyButton1"
+    legacyComment = "LAUNCH  button"
+    role = "button"
+    layer = "control"
+    aliasOverride = "LAUNCH  button"
+    sourceControlType = "PilotReadyButton1"
+    rect = "666,536,128,59"
+    legacyLocalRect = "666,536,128,59"
+    legacyRectSource = "xywh"
+    texture = "data/art/gui/MCL_PR_2.png"
+    legacyTexture = "MCL_PR_2"
+    uiPackage = "default"
+    rectModel = "legacy_imgui.modern_rect_v1"
+    controlRect = "666,536,128,59"
+    hitRect = "666,536,128,59"
+    artRect = "666,536,128,59"
+    artLayer = "control_art"
+    controlModel = "composite_hit_art_text_v1"
+    linkedLayers = "hit,art,text"
+    editMode = "linked_control_with_independent_text"
+    textRect = "680,550,85,30"
+    textRectMode = "explicit_legacy"
+    textLegacyId = 27171
+    textKey = "legacy.mc2res.27171"
+    visibleText = "LAUNCH"
+    textLegacySymbol = "IDS_STRING27171"
+    textSource = "mc2res"
+    textMissing = false
+    helpCaptionLegacyId = 27100
+    helpCaptionKey = "legacy.mc2res.27100"
+    helpCaptionText = "NEXT"
+    helpCaptionLegacySymbol = "IDS_NEXT"
+    helpCaptionSource = "mc2res"
+    helpCaptionMissing = false
+    helpDescLegacyId = 29076
+    helpDescKey = "legacy.mc2res.29076"
+    helpDescText = "LAUNCH    Begin the mission."
+    helpDescLegacySymbol = "IDS_HELP_PR_LAUNCH"
+    helpDescSource = "mc2res"
+    helpDescMissing = false
+    legacyFontId = 27175
+    legacyFontComment = "use AgencyFB17"
+    font = "Agency Regular"
+    fontStyle = "Regular"
+    fontSize = 17
+    bold = false
+    italic = false
+    textAlign = "center"
+    textAnchor = "center"
+    legacyTextAlignmentSource = "aButton::init default Alignment=2"
+    wrapText = false
+    textX = 680
+    textY = 550
+    textWidth = 85
+    textHeight = 30
+    legacyTextRectSource = "XTextLocation/YTextLocation/TextWidth/TextHeight"
+    normalTextColorArgb = "0xffc61c00"
+    normalOverlayColorArgb = "0xffc61c00"
+    colorArgb = "0xffc61c00"
+    pressedTextColorArgb = "0xff000000"
+    pressedOverlayColorArgb = "0xff000000"
+    highlightTextColorArgb = "0xff000000"
+    highlightOverlayColorArgb = "0xff000000"
+    disabledTextColorArgb = "0xff373737"
+    disabledOverlayColorArgb = "0xff373737"
+    buttonOverlayEnabled = true
+    buttonOverlayAlpha = 0.30
+    pulseEnabled = true
+    pulseSpeed = 1.5
+    textEffect = "pulse"
+    legacyTextEffectSource = "AnimateText"
+    legacyId = 50
+    legacyColor = 0xffff0000
+    legacyTextOutline = "TRUE"
+    legacyAnimateBmp = 0
+    legacyAnimateText = 1
+    uvX = 128
+    uvY = 0
+    uvWidth = 128
+    uvHeight = 59
+    uvPressedX = 128
+    uvPressedY = 118
+    uvHighlightX = 128
+    uvHighlightY = 59
+    uvDisabledX = 128
+    uvDisabledY = 118
+    legacyFontComment = "use AgencyFB17"
+    fillColorArgb = "0x00000000"
+    borderColorArgb = "0x00000000"
+    legacyNormalAnimationTimeStamps = 2
+    legacyNormalAnimationLoops = false
+    legacyNormalAnimTime0 = 0.0
+    legacyNormalAnimColor0 = 0xffC61C00
+    legacyNormalAnimTime1 = 7.0
+    legacyNormalAnimColor1 = 0xffC61C00
+    legacyPressedAnimationTimeStamps = 2
+    legacyPressedAnimationLoops = false
+    legacyPressedAnimTime0 = 0.0
+    legacyPressedAnimColor0 = 0xff000000
+    legacyPressedAnimTime1 = 0.5
+    legacyPressedAnimColor1 = 0xffC61C00
+    legacyHighlightAnimationTimeStamps = 3
+    legacyHighlightAnimationLoops = true
+    legacyHighlightAnimTime0 = 0.0
+    legacyHighlightAnimColor0 = 0xff000000
+    legacyHighlightAnimTime1 = 0.2
+    legacyHighlightAnimColor1 = 0xffC61C00
+    legacyHighlightAnimTime2 = 0.4
+    legacyHighlightAnimColor2 = 0xff000000
+    legacyDisabledAnimationTimeStamps = 2
+    legacyDisabledAnimationLoops = false
+    legacyDisabledAnimTime0 = 0.0
+    legacyDisabledAnimColor0 = 0xff373737
+    legacyDisabledAnimTime1 = 0.2
+    legacyDisabledAnimColor1 = 0xff373737
+}
+
+GuiImage {
+    key = "game.mcl_pr_layout.image.mcl_pr_1_01"
+    pageKey = "game.mcl_pr_layout"
+    legacySection = "PilotReadyButton1Bmp0"
+    role = "image"
+    layer = "art"
+    aliasOverride = "MCL_PR_1"
+    sourceControlType = "PilotReadyButton1Bmp0"
+    rect = "767,555,11,22"
+    legacyLocalRect = "767,555,11,22"
+    legacyRectSource = "xywh"
+    texture = "data/art/gui/MCL_PR_1.png"
+    legacyTexture = "MCL_PR_1"
+    uiPackage = "default"
+    rectModel = "legacy_imgui.modern_rect_v1"
+    controlRect = "767,555,11,22"
+    artRect = "767,555,11,22"
+    artLayer = "control_art"
+    legacyColor = 0xffC61C00
+    legacyAnimateBmp = 1
+    uvX = 238
+    uvY = 186
+    uvWidth = 11
+    uvHeight = 22
+}
+
+GuiButton {
+    key = "game.mcl_pr_layout.button.add_pilot_button"
+    pageKey = "game.mcl_pr_layout"
+    legacySection = "PilotReadyButton2"
+    legacyComment = "add pilot button"
+    role = "button"
+    layer = "control"
+    aliasOverride = "add pilot button"
+    sourceControlType = "PilotReadyButton2"
+    rect = "356,58,176,42"
+    legacyLocalRect = "356,58,176,42"
+    legacyRectSource = "xywh"
+    texture = "data/art/gui/MCL_PR_1.png"
+    legacyTexture = "MCL_PR_1"
+    uiPackage = "default"
+    rectModel = "legacy_imgui.modern_rect_v1"
+    controlRect = "356,58,176,42"
+    hitRect = "356,58,176,42"
+    artRect = "356,58,176,42"
+    artLayer = "control_art"
+    controlModel = "composite_hit_art_text_v1"
+    linkedLayers = "hit,art,text"
+    editMode = "linked_control_with_independent_text"
+    textRect = "377,67,145,23"
+    textRectMode = "explicit_legacy"
+    textLegacyId = 27150
+    textKey = "legacy.mc2res.27150"
+    visibleText = "ADD PILOT"
+    textLegacySymbol = "IDS_PR_ADD_PILOT"
+    textSource = "mc2res"
+    textMissing = false
+    helpCaptionLegacyId = 27150
+    helpCaptionKey = "legacy.mc2res.27150"
+    helpCaptionText = "ADD PILOT"
+    helpCaptionLegacySymbol = "IDS_PR_ADD_PILOT"
+    helpCaptionSource = "mc2res"
+    helpCaptionMissing = false
+    helpDescLegacyId = 27154
+    helpDescKey = "legacy.mc2res.27154"
+    helpDescText = "ADD PILOT     Assign the selected pilot to the 'Mech selected in the Deployment Team area."
+    helpDescLegacySymbol = "IDS_PR_ADD_HELP"
+    helpDescSource = "mc2res"
+    helpDescMissing = false
+    legacyFontId = 27153
+    legacyFontComment = "use AgencyFB14"
+    font = "Agency Regular"
+    fontStyle = "Regular"
+    fontSize = 14
+    bold = false
+    italic = false
+    textAlign = "center"
+    textAnchor = "center"
+    legacyTextAlignmentSource = "aButton::init default Alignment=2"
+    wrapText = false
+    textX = 377
+    textY = 67
+    textWidth = 145
+    textHeight = 23
+    legacyTextRectSource = "XTextLocation/YTextLocation/TextWidth/TextHeight"
+    normalTextColorArgb = "0xffc66600"
+    normalOverlayColorArgb = "0xffc66600"
+    colorArgb = "0xffc66600"
+    pressedTextColorArgb = "0xffffffff"
+    pressedOverlayColorArgb = "0xffffffff"
+    highlightTextColorArgb = "0xffffffff"
+    highlightOverlayColorArgb = "0xffffffff"
+    disabledTextColorArgb = "0xff373737"
+    disabledOverlayColorArgb = "0xff373737"
+    buttonOverlayEnabled = true
+    buttonOverlayAlpha = 0.30
+    pulseEnabled = true
+    pulseSpeed = 1.5
+    textEffect = "pulse"
+    legacyTextEffectSource = "AnimateText"
+    legacyId = 62
+    legacyColor = 0xffc66600
+    legacyTextOutline = "TRUE"
+    legacyAnimateBmp = 0
+    legacyAnimateText = 1
+    uvX = 0
+    uvY = 0
+    uvWidth = 176
+    uvHeight = 42
+    uvPressedX = 0
+    uvPressedY = 42
+    uvHighlightX = 0
+    uvHighlightY = 0
+    uvDisabledX = 0
+    uvDisabledY = 42
+    legacyFontComment = "use AgencyFB14"
+    fillColorArgb = "0x00000000"
+    borderColorArgb = "0x00000000"
+    legacyNormalAnimationTimeStamps = 2
+    legacyNormalAnimationLoops = false
+    legacyNormalAnimTime0 = 0.0
+    legacyNormalAnimColor0 = 0xffC66600
+    legacyNormalAnimTime1 = 7.0
+    legacyNormalAnimColor1 = 0xffC66600
+    legacyPressedAnimationTimeStamps = 4
+    legacyPressedAnimationLoops = false
+    legacyPressedAnimTime0 = 0.05
+    legacyPressedAnimColor0 = 0xffffffff
+    legacyPressedAnimTime1 = 0.1
+    legacyPressedAnimColor1 = 0xffC66600
+    legacyPressedAnimTime2 = 0.15
+    legacyPressedAnimColor2 = 0xffffffff
+    legacyPressedAnimTime3 = 0.5
+    legacyPressedAnimColor3 = 0xffFFAE4D
+    legacyHighlightAnimationTimeStamps = 3
+    legacyHighlightAnimationLoops = true
+    legacyHighlightAnimTime0 = 0.0
+    legacyHighlightAnimColor0 = 0xffffffff
+    legacyHighlightAnimTime1 = 0.4
+    legacyHighlightAnimColor1 = 0xffFFAE4D
+    legacyHighlightAnimTime2 = 0.75
+    legacyHighlightAnimColor2 = 0xffffffff
+    legacyDisabledAnimationTimeStamps = 2
+    legacyDisabledAnimationLoops = false
+    legacyDisabledAnimTime0 = 0.05
+    legacyDisabledAnimColor0 = 0xff373737
+    legacyDisabledAnimTime1 = 0.10
+    legacyDisabledAnimColor1 = 0xff373737
+}
+
+GuiImage {
+    key = "game.mcl_pr_layout.image.mcl_pr_1_02"
+    pageKey = "game.mcl_pr_layout"
+    legacySection = "PilotReadyButton2Bmp0"
+    role = "image"
+    layer = "art"
+    aliasOverride = "MCL_PR_1"
+    sourceControlType = "PilotReadyButton2Bmp0"
+    rect = "365,68,11,22"
+    legacyLocalRect = "365,68,11,22"
+    legacyRectSource = "xywh"
+    texture = "data/art/gui/MCL_PR_1.png"
+    legacyTexture = "MCL_PR_1"
+    uiPackage = "default"
+    rectModel = "legacy_imgui.modern_rect_v1"
+    controlRect = "365,68,11,22"
+    artRect = "365,68,11,22"
+    artLayer = "control_art"
+    legacyColor = 0xffC66600
+    legacyAnimateBmp = 1
+    uvX = 227
+    uvY = 164
+    uvWidth = 11
+    uvHeight = 22
+}
+
+GuiButton {
+    key = "game.mcl_pr_layout.button.remove_pilot_button"
+    pageKey = "game.mcl_pr_layout"
+    legacySection = "PilotReadyButton3"
+    legacyComment = "remove pilot button"
+    role = "button"
+    layer = "control"
+    aliasOverride = "remove pilot button"
+    sourceControlType = "PilotReadyButton3"
+    rect = "356,104,176,42"
+    legacyLocalRect = "356,104,176,42"
+    legacyRectSource = "xywh"
+    texture = "data/art/gui/MCL_PR_1.png"
+    legacyTexture = "MCL_PR_1"
+    uiPackage = "default"
+    rectModel = "legacy_imgui.modern_rect_v1"
+    controlRect = "356,104,176,42"
+    hitRect = "356,104,176,42"
+    artRect = "356,104,176,42"
+    artLayer = "control_art"
+    controlModel = "composite_hit_art_text_v1"
+    linkedLayers = "hit,art,text"
+    editMode = "linked_control_with_independent_text"
+    textRect = "365,113,145,23"
+    textRectMode = "explicit_legacy"
+    textLegacyId = 27155
+    textKey = "legacy.mc2res.27155"
+    visibleText = "REMOVE PILOT"
+    textLegacySymbol = "IDS_PR_REMOVE"
+    textSource = "mc2res"
+    textMissing = false
+    helpCaptionLegacyId = 27155
+    helpCaptionKey = "legacy.mc2res.27155"
+    helpCaptionText = "REMOVE PILOT"
+    helpCaptionLegacySymbol = "IDS_PR_REMOVE"
+    helpCaptionSource = "mc2res"
+    helpCaptionMissing = false
+    helpDescLegacyId = 27157
+    helpDescKey = "legacy.mc2res.27157"
+    helpDescText = "REMOVE PILOT     Remove the pilot from the selected 'Mech and return him or her to the Available Pilots list."
+    helpDescLegacySymbol = "IDS_PR_REMOVE_HELP"
+    helpDescSource = "mc2res"
+    helpDescMissing = false
+    legacyFontId = 27156
+    legacyFontComment = "use AgencyFB14"
+    font = "Agency Regular"
+    fontStyle = "Regular"
+    fontSize = 14
+    bold = false
+    italic = false
+    textAlign = "center"
+    textAnchor = "center"
+    legacyTextAlignmentSource = "aButton::init default Alignment=2"
+    wrapText = false
+    textX = 365
+    textY = 113
+    textWidth = 145
+    textHeight = 23
+    legacyTextRectSource = "XTextLocation/YTextLocation/TextWidth/TextHeight"
+    normalTextColorArgb = "0xffc66600"
+    normalOverlayColorArgb = "0xffc66600"
+    colorArgb = "0xffc66600"
+    pressedTextColorArgb = "0xffffffff"
+    pressedOverlayColorArgb = "0xffffffff"
+    highlightTextColorArgb = "0xffffffff"
+    highlightOverlayColorArgb = "0xffffffff"
+    disabledTextColorArgb = "0xff373737"
+    disabledOverlayColorArgb = "0xff373737"
+    buttonOverlayEnabled = true
+    buttonOverlayAlpha = 0.30
+    pulseEnabled = true
+    pulseSpeed = 1.5
+    textEffect = "pulse"
+    legacyTextEffectSource = "AnimateText"
+    legacyId = 63
+    legacyColor = 0xffc66600
+    legacyTextOutline = "TRUE"
+    legacyAnimateBmp = 0
+    legacyAnimateText = 1
+    uvX = 0
+    uvY = 0
+    uvWidth = 176
+    uvHeight = 42
+    uvPressedX = 0
+    uvPressedY = 42
+    uvHighlightX = 0
+    uvHighlightY = 0
+    uvDisabledX = 0
+    uvDisabledY = 42
+    legacyFontComment = "use AgencyFB14"
+    fillColorArgb = "0x00000000"
+    borderColorArgb = "0x00000000"
+    legacyNormalAnimationTimeStamps = 2
+    legacyNormalAnimationLoops = false
+    legacyNormalAnimTime0 = 0.0
+    legacyNormalAnimColor0 = 0xffC66600
+    legacyNormalAnimTime1 = 7.0
+    legacyNormalAnimColor1 = 0xffC66600
+    legacyPressedAnimationTimeStamps = 4
+    legacyPressedAnimationLoops = false
+    legacyPressedAnimTime0 = 0.05
+    legacyPressedAnimColor0 = 0xffffffff
+    legacyPressedAnimTime1 = 0.1
+    legacyPressedAnimColor1 = 0xffC66600
+    legacyPressedAnimTime2 = 0.15
+    legacyPressedAnimColor2 = 0xffffffff
+    legacyPressedAnimTime3 = 0.5
+    legacyPressedAnimColor3 = 0xffFFAE4D
+    legacyHighlightAnimationTimeStamps = 3
+    legacyHighlightAnimationLoops = true
+    legacyHighlightAnimTime0 = 0.0
+    legacyHighlightAnimColor0 = 0xffffffff
+    legacyHighlightAnimTime1 = 0.4
+    legacyHighlightAnimColor1 = 0xffFFAE4D
+    legacyHighlightAnimTime2 = 0.75
+    legacyHighlightAnimColor2 = 0xffffffff
+    legacyDisabledAnimationTimeStamps = 2
+    legacyDisabledAnimationLoops = false
+    legacyDisabledAnimTime0 = 0.05
+    legacyDisabledAnimColor0 = 0xff373737
+    legacyDisabledAnimTime1 = 0.10
+    legacyDisabledAnimColor1 = 0xff373737
+}
+
+GuiImage {
+    key = "game.mcl_pr_layout.image.mcl_pr_1_03"
+    pageKey = "game.mcl_pr_layout"
+    legacySection = "PilotReadyButton3Bmp0"
+    role = "image"
+    layer = "art"
+    aliasOverride = "MCL_PR_1"
+    sourceControlType = "PilotReadyButton3Bmp0"
+    rect = "512,114,11,22"
+    legacyLocalRect = "512,114,11,22"
+    legacyRectSource = "xywh"
+    texture = "data/art/gui/MCL_PR_1.png"
+    legacyTexture = "MCL_PR_1"
+    uiPackage = "default"
+    rectModel = "legacy_imgui.modern_rect_v1"
+    controlRect = "512,114,11,22"
+    artRect = "512,114,11,22"
+    artLayer = "control_art"
+    legacyColor = 0xffC66600
+    legacyAnimateBmp = 1
+    uvX = 238
+    uvY = 164
+    uvWidth = 11
+    uvHeight = 22
+}
+
+GuiButton {
+    key = "game.mcl_pr_layout.button.main_menu_button"
+    pageKey = "game.mcl_pr_layout"
+    legacySection = "PilotReadyButton4"
+    legacyComment = "main menu button"
+    role = "button"
+    layer = "control"
+    aliasOverride = "main menu button"
+    sourceControlType = "PilotReadyButton4"
+    rect = "614,8,176,40"
+    legacyLocalRect = "614,8,176,40"
+    legacyRectSource = "xywh"
+    texture = "data/art/gui/MCL_PR_1.png"
+    legacyTexture = "MCL_PR_1"
+    uiPackage = "default"
+    rectModel = "legacy_imgui.modern_rect_v1"
+    controlRect = "614,8,176,40"
+    hitRect = "614,8,176,40"
+    artRect = "614,8,176,40"
+    artLayer = "control_art"
+    controlModel = "composite_hit_art_text_v1"
+    linkedLayers = "hit,art,text"
+    editMode = "linked_control_with_independent_text"
+    textRect = "623,17,157,21"
+    textRectMode = "explicit_legacy"
+    textLegacyId = 27104
+    textKey = "legacy.mc2res.27104"
+    visibleText = "MAIN MENU"
+    textLegacySymbol = "IDS_MAIN_MENU_BUTTON"
+    textSource = "mc2res"
+    textMissing = false
+    helpCaptionLegacyId = 27104
+    helpCaptionKey = "legacy.mc2res.27104"
+    helpCaptionText = "MAIN MENU"
+    helpCaptionLegacySymbol = "IDS_MAIN_MENU_BUTTON"
+    helpCaptionSource = "mc2res"
+    helpCaptionMissing = false
+    helpDescLegacyId = 27113
+    helpDescKey = "legacy.mc2res.27113"
+    helpDescText = "MAIN MENU     Return to the Main Menu."
+    helpDescLegacySymbol = "IDS_MB_HELP_MAIN_MENU"
+    helpDescSource = "mc2res"
+    helpDescMissing = false
+    legacyFontId = 27174
+    legacyFontComment = "use AgencyFB17"
+    font = "Agency Regular"
+    fontStyle = "Regular"
+    fontSize = 17
+    bold = false
+    italic = false
+    textAlign = "center"
+    textAnchor = "center"
+    legacyTextAlignmentSource = "aButton::init default Alignment=2"
+    wrapText = false
+    textX = 623
+    textY = 17
+    textWidth = 157
+    textHeight = 21
+    legacyTextRectSource = "XTextLocation/YTextLocation/TextWidth/TextHeight"
+    normalTextColorArgb = "0xff005392"
+    normalOverlayColorArgb = "0xff005392"
+    colorArgb = "0xff005392"
+    pressedTextColorArgb = "0xffffffff"
+    pressedOverlayColorArgb = "0xffffffff"
+    highlightTextColorArgb = "0xffffffff"
+    highlightOverlayColorArgb = "0xffffffff"
+    disabledTextColorArgb = "0xff373737"
+    disabledOverlayColorArgb = "0xff373737"
+    buttonOverlayEnabled = true
+    buttonOverlayAlpha = 0.30
+    pulseEnabled = true
+    pulseSpeed = 1.5
+    textEffect = "pulse"
+    legacyTextEffectSource = "AnimateText"
+    legacyId = 57
+    legacyColor = 0xff005392
+    legacyTextOutline = "TRUE"
+    legacyAnimateBmp = 0
+    legacyAnimateText = 1
+    uvX = 0
+    uvY = 84
+    uvWidth = 176
+    uvHeight = 40
+    uvPressedX = 0
+    uvPressedY = 124
+    uvHighlightX = 0
+    uvHighlightY = 84
+    uvDisabledX = 0
+    uvDisabledY = 124
+    legacyDisabledColor = 0xff373737
+    legacyFontComment = "use AgencyFB17"
+    fillColorArgb = "0x00000000"
+    borderColorArgb = "0x00000000"
+    legacyNormalAnimationTimeStamps = 4
+    legacyNormalAnimationLoops = false
+    legacyNormalAnimTime0 = 0.0
+    legacyNormalAnimColor0 = 0xff005392
+    legacyNormalAnimTime1 = 7.0
+    legacyNormalAnimColor1 = 0xff005392
+    legacyNormalAnimTime2 = 7.5
+    legacyNormalAnimColor2 = 0xff005392
+    legacyNormalAnimTime3 = 8.0
+    legacyNormalAnimColor3 = 0xff005392
+    legacyPressedAnimationTimeStamps = 2
+    legacyPressedAnimationLoops = false
+    legacyPressedAnimTime0 = 0.0
+    legacyPressedAnimColor0 = 0xffffffff
+    legacyPressedAnimTime1 = 0.5
+    legacyPressedAnimColor1 = 0xff5C96C2
+    legacyHighlightAnimationTimeStamps = 3
+    legacyHighlightAnimationLoops = true
+    legacyHighlightAnimTime0 = 0.0
+    legacyHighlightAnimColor0 = 0xffffffff
+    legacyHighlightAnimTime1 = 0.4
+    legacyHighlightAnimColor1 = 0xff5C96C2
+    legacyHighlightAnimTime2 = 0.75
+    legacyHighlightAnimColor2 = 0xffffffff
+}
+
+GuiMetadata {
+    key = "game.mcl_pr_layout.metadata.metadata_03"
+    pageKey = "game.mcl_pr_layout"
+    legacySection = "PilotReadyTextEntrys"
+    legacyContext = "~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ | ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ | ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~"
+    role = "metadata"
+    layer = "metadata"
+    aliasOverride = "metadata"
+    sourceControlType = "PilotReadyTextEntrys"
+    rect = "0,0,0,0"
+    legacyLocalRect = "0,0,0,0"
+    legacyRectSource = "xywh"
+    visible = false
+}
+
+GuiText {
+    key = "game.mcl_pr_layout.text.pilot_ready_area_header"
+    pageKey = "game.mcl_pr_layout"
+    legacySection = "PilotReadyTextEntry0"
+    legacyComment = "PILOT READY AREA header"
+    role = "title"
+    layer = "text"
+    aliasOverride = "PILOT READY AREA header"
+    sourceControlType = "PilotReadyTextEntry0"
+    rect = "18,12,220,24"
+    legacyLocalRect = "18,12,220,24"
+    legacyRectSource = "xywh"
+    uiPackage = "default"
+    rectModel = "legacy_imgui.modern_rect_v1"
+    controlRect = "18,12,220,24"
+    textRect = "18,12,220,24"
+    textRectMode = "control_rect_fallback"
+    textLegacyId = 27158
+    textKey = "legacy.mc2res.27158"
+    visibleText = "PILOT READY AREA"
+    textLegacySymbol = "IDS_PR_PILOT_READY"
+    textSource = "mc2res"
+    textMissing = false
+    legacyFontId = 27159
+    font = "Agency Regular"
+    fontStyle = "Regular"
+    fontSize = 14
+    bold = false
+    italic = false
+    textAlign = "left"
+    textAnchor = "upper_left"
+    wrapText = false
+    colorArgb = "0xffff8a0d"
+    legacyColor = 0xffFF8A0D
+    borderColorArgb = "0x00000000"
+}
+
+GuiText {
+    key = "game.mcl_pr_layout.text.cbills_text"
+    pageKey = "game.mcl_pr_layout"
+    legacySection = "PilotReadyTextEntry1"
+    legacyComment = "cbills text"
+    role = "text"
+    layer = "text"
+    aliasOverride = "cbills text"
+    sourceControlType = "PilotReadyTextEntry1"
+    rect = "482,12,106,30"
+    legacyLocalRect = "482,12,106,30"
+    legacyRectSource = "xywh"
+    uiPackage = "default"
+    rectModel = "legacy_imgui.modern_rect_v1"
+    controlRect = "482,12,106,30"
+    textRect = "482,12,106,30"
+    textRectMode = "control_rect_fallback"
+    textLegacyId = 27213
+    textKey = "legacy.mc2res.27213"
+    visibleText = "C-BILLS"
+    textLegacySymbol = "IDS_PM_CBILLS"
+    textSource = "mc2res"
+    textMissing = false
+    helpDescLegacyId = 29003
+    helpDescKey = "legacy.mc2res.29003"
+    helpDescText = "C-BILLS     The amount of currency available for purchasing and customizing 'Mechs."
+    helpDescLegacySymbol = "IDS_HELP_ALL_CBILLS"
+    helpDescSource = "mc2res"
+    helpDescMissing = false
+    legacyFontId = 27161
+    legacyFontComment = "agencyfb17"
+    font = "Agency Regular"
+    fontStyle = "Regular"
+    fontSize = 17
+    bold = false
+    italic = false
+    textAlign = "right"
+    textAnchor = "upper_right"
+    wrapText = true
+    colorArgb = "0xff005392"
+    legacyColor = -16755822
+    outline = "FALSE"
+    legacyAlignment = 1
+    legacyFontComment = "agencyfb17"
+    borderColorArgb = "0x00000000"
+}
+
+GuiText {
+    key = "game.mcl_pr_layout.text.deployment_teams_header"
+    pageKey = "game.mcl_pr_layout"
+    legacySection = "PilotReadyTextEntry2"
+    legacyComment = "DEPLOYMENT TEAMS  header"
+    role = "title"
+    layer = "text"
+    aliasOverride = "DEPLOYMENT TEAMS  header"
+    sourceControlType = "PilotReadyTextEntry2"
+    rect = "25,63,220,24"
+    legacyLocalRect = "25,63,220,24"
+    legacyRectSource = "xywh"
+    uiPackage = "default"
+    rectModel = "legacy_imgui.modern_rect_v1"
+    controlRect = "25,63,220,24"
+    textRect = "25,63,220,24"
+    textRectMode = "control_rect_fallback"
+    textLegacyId = 27162
+    textKey = "legacy.mc2res.27162"
+    visibleText = "DEPLOYMENT TEAM"
+    textLegacySymbol = "IDS_PR_DEPLOYMENT_TEAMS"
+    textSource = "mc2res"
+    textMissing = false
+    legacyFontId = 27163
+    font = "Agency Regular"
+    fontStyle = "Regular"
+    fontSize = 14
+    bold = false
+    italic = false
+    textAlign = "left"
+    textAnchor = "upper_left"
+    wrapText = false
+    colorArgb = "0xffff8a0d"
+    legacyColor = 0xffFF8A0D
+    borderColorArgb = "0x00000000"
+}
+
+GuiText {
+    key = "game.mcl_pr_layout.text.available_pilots_header"
+    pageKey = "game.mcl_pr_layout"
+    legacySection = "PilotReadyTextEntry3"
+    legacyComment = "AVAILABLE PILOTS header"
+    role = "title"
+    layer = "text"
+    aliasOverride = "AVAILABLE PILOTS header"
+    sourceControlType = "PilotReadyTextEntry3"
+    rect = "552,63,220,24"
+    legacyLocalRect = "552,63,220,24"
+    legacyRectSource = "xywh"
+    uiPackage = "default"
+    rectModel = "legacy_imgui.modern_rect_v1"
+    controlRect = "552,63,220,24"
+    textRect = "552,63,220,24"
+    textRectMode = "control_rect_fallback"
+    textLegacyId = 27164
+    textKey = "legacy.mc2res.27164"
+    visibleText = "AVAILABLE PILOTS"
+    textLegacySymbol = "IDS_PR_AVAILABLE_PILOTS"
+    textSource = "mc2res"
+    textMissing = false
+    legacyFontId = 27165
+    font = "Agency Regular"
+    fontStyle = "Regular"
+    fontSize = 14
+    bold = false
+    italic = false
+    textAlign = "left"
+    textAnchor = "upper_left"
+    wrapText = false
+    colorArgb = "0xffff8a0d"
+    legacyColor = 0xffFF8A0D
+    borderColorArgb = "0x00000000"
+}
+
+GuiText {
+    key = "game.mcl_pr_layout.text.pilot_info_rank"
+    pageKey = "game.mcl_pr_layout"
+    legacySection = "PilotReadyTextEntry4"
+    legacyComment = "PILOT info rank"
+    role = "text"
+    layer = "text"
+    aliasOverride = "PILOT info rank"
+    sourceControlType = "PilotReadyTextEntry4"
+    rect = "183,337,220,24"
+    legacyLocalRect = "183,337,220,24"
+    legacyRectSource = "xywh"
+    uiPackage = "default"
+    rectModel = "legacy_imgui.modern_rect_v1"
+    controlRect = "183,337,220,24"
+    textRect = "183,337,220,24"
+    textRectMode = "control_rect_fallback"
+    textLegacyId = 0
+    visible = false
+    textKey = "legacy.strings.ids_undefined_string_sebi"
+    textLegacySymbol = "IDS_undefined_string_sebi"
+    textSource = "strings.res.h"
+    textMissing = true
+    textMissingReason = "symbol_only_from_strings_res_h"
+    legacyFontId = 27166
+    font = "Agency Regular"
+    fontStyle = "Regular"
+    fontSize = 18
+    bold = false
+    italic = false
+    textAlign = "left"
+    textAnchor = "upper_left"
+    wrapText = false
+    colorArgb = "0xff005392"
+    legacyColor = 0xff005392
+    borderColorArgb = "0x00000000"
+}
+
+GuiText {
+    key = "game.mcl_pr_layout.text.pilot_info_targeting_number"
+    pageKey = "game.mcl_pr_layout"
+    legacySection = "PilotReadyTextEntry5"
+    legacyComment = "pilot info targeting number"
+    role = "text"
+    layer = "text"
+    aliasOverride = "pilot info targeting number"
+    sourceControlType = "PilotReadyTextEntry5"
+    rect = "280,389,220,24"
+    legacyLocalRect = "280,389,220,24"
+    legacyRectSource = "xywh"
+    uiPackage = "default"
+    rectModel = "legacy_imgui.modern_rect_v1"
+    controlRect = "280,389,220,24"
+    textRect = "280,389,220,24"
+    textRectMode = "control_rect_fallback"
+    textLegacyId = 0
+    visible = false
+    textKey = "legacy.strings.ids_undefined_string_sebi"
+    textLegacySymbol = "IDS_undefined_string_sebi"
+    textSource = "strings.res.h"
+    textMissing = true
+    textMissingReason = "symbol_only_from_strings_res_h"
+    legacyFontId = 27176
+    font = "Agency Regular"
+    fontStyle = "Regular"
+    fontSize = 18
+    bold = false
+    italic = false
+    textAlign = "left"
+    textAnchor = "upper_left"
+    wrapText = false
+    colorArgb = "0xff005392"
+    legacyColor = 0xff005392
+    borderColorArgb = "0x00000000"
+}
+
+GuiText {
+    key = "game.mcl_pr_layout.text.pilot_info_piloting_number"
+    pageKey = "game.mcl_pr_layout"
+    legacySection = "PilotReadyTextEntry6"
+    legacyComment = "pilot info piloting number"
+    role = "text"
+    layer = "text"
+    aliasOverride = "pilot info piloting number"
+    sourceControlType = "PilotReadyTextEntry6"
+    rect = "280,441,220,24"
+    legacyLocalRect = "280,441,220,24"
+    legacyRectSource = "xywh"
+    uiPackage = "default"
+    rectModel = "legacy_imgui.modern_rect_v1"
+    controlRect = "280,441,220,24"
+    textRect = "280,441,220,24"
+    textRectMode = "control_rect_fallback"
+    textLegacyId = 0
+    visible = false
+    textKey = "legacy.strings.ids_undefined_string_sebi"
+    textLegacySymbol = "IDS_undefined_string_sebi"
+    textSource = "strings.res.h"
+    textMissing = true
+    textMissingReason = "symbol_only_from_strings_res_h"
+    legacyFontId = 27176
+    font = "Agency Regular"
+    fontStyle = "Regular"
+    fontSize = 18
+    bold = false
+    italic = false
+    textAlign = "left"
+    textAnchor = "upper_left"
+    wrapText = false
+    colorArgb = "0xff005392"
+    legacyColor = 0xff005392
+    borderColorArgb = "0x00000000"
+}
+
+GuiText {
+    key = "game.mcl_pr_layout.text.pilot_info_kills_number"
+    pageKey = "game.mcl_pr_layout"
+    legacySection = "PilotReadyTextEntry7"
+    legacyComment = "pilot info kills number"
+    role = "text"
+    layer = "text"
+    aliasOverride = "pilot info kills number"
+    sourceControlType = "PilotReadyTextEntry7"
+    rect = "183,493,220,24"
+    legacyLocalRect = "183,493,220,24"
+    legacyRectSource = "xywh"
+    uiPackage = "default"
+    rectModel = "legacy_imgui.modern_rect_v1"
+    controlRect = "183,493,220,24"
+    textRect = "183,493,220,24"
+    textRectMode = "control_rect_fallback"
+    textLegacyId = 0
+    visible = false
+    textKey = "legacy.strings.ids_undefined_string_sebi"
+    textLegacySymbol = "IDS_undefined_string_sebi"
+    textSource = "strings.res.h"
+    textMissing = true
+    textMissingReason = "symbol_only_from_strings_res_h"
+    legacyFontId = 27176
+    font = "Agency Regular"
+    fontStyle = "Regular"
+    fontSize = 18
+    bold = false
+    italic = false
+    textAlign = "left"
+    textAnchor = "upper_left"
+    wrapText = false
+    colorArgb = "0xff005392"
+    legacyColor = 0xff005392
+    borderColorArgb = "0x00000000"
+}
+
+GuiText {
+    key = "game.mcl_pr_layout.text.pilot_name_header"
+    pageKey = "game.mcl_pr_layout"
+    legacySection = "PilotReadyTextEntry8"
+    legacyComment = "pilot NAME header"
+    role = "title"
+    layer = "text"
+    aliasOverride = "pilot NAME header"
+    sourceControlType = "PilotReadyTextEntry8"
+    rect = "362,319,163,35"
+    legacyLocalRect = "362,319,163,35"
+    legacyRectSource = "xywh"
+    uiPackage = "default"
+    rectModel = "legacy_imgui.modern_rect_v1"
+    controlRect = "362,319,163,35"
+    textRect = "362,319,163,35"
+    textRectMode = "control_rect_fallback"
+    textLegacyId = 0
+    visible = false
+    textKey = "legacy.strings.ids_undefined_string_sebi"
+    textLegacySymbol = "IDS_undefined_string_sebi"
+    textSource = "strings.res.h"
+    textMissing = true
+    textMissingReason = "symbol_only_from_strings_res_h"
+    legacyFontId = 27167
+    font = "Agency Regular"
+    fontStyle = "Regular"
+    fontSize = 18
+    bold = false
+    italic = false
+    textAlign = "center"
+    textAnchor = "center"
+    wrapText = true
+    colorArgb = "0xff5c96c2"
+    legacyColor = 0xff5C96C2
+    legacyAlignment = 2
+    borderColorArgb = "0x00000000"
+}
+
+GuiText {
+    key = "game.mcl_pr_layout.text.special_skill_1"
+    pageKey = "game.mcl_pr_layout"
+    legacySection = "PilotReadyTextEntry9"
+    legacyComment = "special skill 1"
+    role = "text"
+    layer = "text"
+    aliasOverride = "special skill 1"
+    sourceControlType = "PilotReadyTextEntry9"
+    rect = "475,340,200,24"
+    legacyLocalRect = "475,340,200,24"
+    legacyRectSource = "xywh"
+    uiPackage = "default"
+    rectModel = "legacy_imgui.modern_rect_v1"
+    controlRect = "475,340,200,24"
+    textRect = "475,340,200,24"
+    textRectMode = "control_rect_fallback"
+    textLegacyId = 0
+    visible = false
+    textKey = "legacy.strings.ids_undefined_string_sebi"
+    textLegacySymbol = "IDS_undefined_string_sebi"
+    textSource = "strings.res.h"
+    textMissing = true
+    textMissingReason = "symbol_only_from_strings_res_h"
+    legacyFontId = 27168
+    font = "Agency Regular"
+    fontStyle = "Regular"
+    fontSize = 18
+    bold = false
+    italic = false
+    textAlign = "right"
+    textAnchor = "upper_right"
+    wrapText = false
+    colorArgb = "0xff005392"
+    legacyColor = 0xff005392
+    legacyAlignment = 1
+    borderColorArgb = "0x00000000"
+}
+
+GuiText {
+    key = "game.mcl_pr_layout.text.special_skill_2"
+    pageKey = "game.mcl_pr_layout"
+    legacySection = "PilotReadyTextEntry10"
+    legacyComment = "special skill 2"
+    role = "text"
+    layer = "text"
+    aliasOverride = "special skill 2"
+    sourceControlType = "PilotReadyTextEntry10"
+    rect = "475,391,200,24"
+    legacyLocalRect = "475,391,200,24"
+    legacyRectSource = "xywh"
+    uiPackage = "default"
+    rectModel = "legacy_imgui.modern_rect_v1"
+    controlRect = "475,391,200,24"
+    textRect = "475,391,200,24"
+    textRectMode = "control_rect_fallback"
+    textLegacyId = 0
+    visible = false
+    textKey = "legacy.strings.ids_undefined_string_sebi"
+    textLegacySymbol = "IDS_undefined_string_sebi"
+    textSource = "strings.res.h"
+    textMissing = true
+    textMissingReason = "symbol_only_from_strings_res_h"
+    legacyFontId = 27168
+    font = "Agency Regular"
+    fontStyle = "Regular"
+    fontSize = 18
+    bold = false
+    italic = false
+    textAlign = "right"
+    textAnchor = "upper_right"
+    wrapText = false
+    colorArgb = "0xff005392"
+    legacyColor = 0xff005392
+    legacyAlignment = 1
+    borderColorArgb = "0x00000000"
+}
+
+GuiText {
+    key = "game.mcl_pr_layout.text.special_skill_3"
+    pageKey = "game.mcl_pr_layout"
+    legacySection = "PilotReadyTextEntry11"
+    legacyComment = "special skill 3"
+    role = "text"
+    layer = "text"
+    aliasOverride = "special skill 3"
+    sourceControlType = "PilotReadyTextEntry11"
+    rect = "475,444,200,24"
+    legacyLocalRect = "475,444,200,24"
+    legacyRectSource = "xywh"
+    uiPackage = "default"
+    rectModel = "legacy_imgui.modern_rect_v1"
+    controlRect = "475,444,200,24"
+    textRect = "475,444,200,24"
+    textRectMode = "control_rect_fallback"
+    textLegacyId = 0
+    visible = false
+    textKey = "legacy.strings.ids_undefined_string_sebi"
+    textLegacySymbol = "IDS_undefined_string_sebi"
+    textSource = "strings.res.h"
+    textMissing = true
+    textMissingReason = "symbol_only_from_strings_res_h"
+    legacyFontId = 27168
+    font = "Agency Regular"
+    fontStyle = "Regular"
+    fontSize = 18
+    bold = false
+    italic = false
+    textAlign = "right"
+    textAnchor = "upper_right"
+    wrapText = false
+    colorArgb = "0xff005392"
+    legacyColor = 0xff005392
+    legacyAlignment = 1
+    borderColorArgb = "0x00000000"
+}
+
+GuiText {
+    key = "game.mcl_pr_layout.text.special_skill_4"
+    pageKey = "game.mcl_pr_layout"
+    legacySection = "PilotReadyTextEntry12"
+    legacyComment = "special skill 4"
+    role = "text"
+    layer = "text"
+    aliasOverride = "special skill 4"
+    sourceControlType = "PilotReadyTextEntry12"
+    rect = "475,496,200,24"
+    legacyLocalRect = "475,496,200,24"
+    legacyRectSource = "xywh"
+    uiPackage = "default"
+    rectModel = "legacy_imgui.modern_rect_v1"
+    controlRect = "475,496,200,24"
+    textRect = "475,496,200,24"
+    textRectMode = "control_rect_fallback"
+    textLegacyId = 0
+    visible = false
+    textKey = "legacy.strings.ids_undefined_string_sebi"
+    textLegacySymbol = "IDS_undefined_string_sebi"
+    textSource = "strings.res.h"
+    textMissing = true
+    textMissingReason = "symbol_only_from_strings_res_h"
+    legacyFontId = 27168
+    font = "Agency Regular"
+    fontStyle = "Regular"
+    fontSize = 18
+    bold = false
+    italic = false
+    textAlign = "right"
+    textAnchor = "upper_right"
+    wrapText = false
+    colorArgb = "0xff005392"
+    legacyColor = 0xff005392
+    legacyAlignment = 1
+    borderColorArgb = "0x00000000"
+}
+
+GuiText {
+    key = "game.mcl_pr_layout.text.help_text"
+    pageKey = "game.mcl_pr_layout"
+    legacySection = "PilotReadyTextEntry13"
+    legacyComment = "help text"
+    role = "help"
+    layer = "help"
+    aliasOverride = "help text"
+    sourceControlType = "PilotReadyTextEntry13"
+    rect = "146,542,456,55"
+    legacyLocalRect = "146,542,456,55"
+    legacyRectSource = "xywh"
+    uiPackage = "default"
+    rectModel = "legacy_imgui.modern_rect_v1"
+    controlRect = "146,542,456,55"
+    textRect = "146,542,456,55"
+    textRectMode = "control_rect_fallback"
+    textLegacyId = 0
+    visible = false
+    textKey = "legacy.strings.ids_undefined_string_sebi"
+    textLegacySymbol = "IDS_undefined_string_sebi"
+    textSource = "strings.res.h"
+    textMissing = true
+    textMissingReason = "symbol_only_from_strings_res_h"
+    legacyFontId = 27177
+    legacyFontComment = "arialnarrow8"
+    font = "Agency Regular"
+    fontStyle = "Regular"
+    fontSize = 8
+    bold = false
+    italic = false
+    textAlign = "left"
+    textAnchor = "upper_left"
+    wrapText = true
+    colorArgb = "0xffffffff"
+    legacyColor = -1
+    outline = "FALSE"
+    legacyAlignment = 0
+    legacyFontComment = "arialnarrow8"
+    borderColorArgb = "0x00000000"
+}
+
+GuiMetadata {
+    key = "game.mcl_pr_layout.metadata.meters_for_the_pilot_info_area_of_pilot_ready_area"
+    pageKey = "game.mcl_pr_layout"
+    legacySection = "AttributeMeters"
+    legacyComment = "meters for the pilot info area of pilot ready area"
+    legacyContext = "~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ | ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ | ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~"
+    role = "metadata"
+    layer = "metadata"
+    aliasOverride = "meters for the pilot info area of pilot ready area"
+    sourceControlType = "AttributeMeters"
+    rect = "0,0,0,0"
+    legacyLocalRect = "0,0,0,0"
+    legacyRectSource = "xywh"
+    visible = false
+}
+
+GuiMeter {
+    key = "game.mcl_pr_layout.meter.for_targeting"
+    pageKey = "game.mcl_pr_layout"
+    legacySection = "AttributeMeter0"
+    legacyComment = "for targeting"
+    role = "meter"
+    layer = "control"
+    aliasOverride = "for targeting"
+    sourceControlType = "AttributeMeter0"
+    rect = "182,374,92,31"
+    legacyLocalRect = "182,374,92,31"
+    legacyRectSource = "ltrb"
+    uiPackage = "default"
+    rectModel = "legacy_imgui.modern_rect_v1"
+    controlRect = "182,374,92,31"
+    legacyColor = 0xff002F55
+    legacyColorMin = 0xff005392
+    legacyColorMax = 0xffC9E5FF
+    legacyUnitWidth = 4
+    legacyUnitSkip = 1
+    legacyNumberUnits = 18
+}
+
+GuiMeter {
+    key = "game.mcl_pr_layout.meter.for_piloting"
+    pageKey = "game.mcl_pr_layout"
+    legacySection = "AttributeMeter1"
+    legacyComment = "for piloting"
+    role = "meter"
+    layer = "control"
+    aliasOverride = "for piloting"
+    sourceControlType = "AttributeMeter1"
+    rect = "182,426,92,31"
+    legacyLocalRect = "182,426,92,31"
+    legacyRectSource = "ltrb"
+    uiPackage = "default"
+    rectModel = "legacy_imgui.modern_rect_v1"
+    controlRect = "182,426,92,31"
+    legacyColor = 0xff002F55
+    legacyColorMin = 0xff005392
+    legacyColorMax = 0xffC9E5FF
+    legacyUnitWidth = 4
+    legacyUnitSkip = 1
+    legacyNumberUnits = 18
+}
+
+GuiImage {
+    key = "game.mcl_pr_layout.image.green"
+    pageKey = "game.mcl_pr_layout"
+    legacySection = "PilotReadyRankIcon0"
+    legacyComment = "green"
+    legacyContext = "~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ | ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ | ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~"
+    role = "image"
+    layer = "art"
+    aliasOverride = "green"
+    sourceControlType = "PilotReadyRankIcon0"
+    rect = "82,322,96,32"
+    legacyLocalRect = "82,322,96,32"
+    legacyRectSource = "xywh"
+    texture = "data/art/gui/MCL_PR_5.png"
+    legacyTexture = "MCL_PR_5"
+    uiPackage = "default"
+    rectModel = "legacy_imgui.modern_rect_v1"
+    controlRect = "82,322,96,32"
+    artRect = "82,322,96,32"
+    artLayer = "control_art"
+    uvX = 0
+    uvY = 139
+    uvWidth = 96
+    uvHeight = 32
+}
+
+GuiImage {
+    key = "game.mcl_pr_layout.image.regular"
+    pageKey = "game.mcl_pr_layout"
+    legacySection = "PilotReadyRankIcon1"
+    legacyComment = "regular"
+    role = "image"
+    layer = "art"
+    aliasOverride = "regular"
+    sourceControlType = "PilotReadyRankIcon1"
+    rect = "82,322,96,32"
+    legacyLocalRect = "82,322,96,32"
+    legacyRectSource = "xywh"
+    texture = "data/art/gui/MCL_PR_5.png"
+    legacyTexture = "MCL_PR_5"
+    uiPackage = "default"
+    rectModel = "legacy_imgui.modern_rect_v1"
+    controlRect = "82,322,96,32"
+    artRect = "82,322,96,32"
+    artLayer = "control_art"
+    uvX = 96
+    uvY = 139
+    uvWidth = 96
+    uvHeight = 32
+}
+
+GuiImage {
+    key = "game.mcl_pr_layout.image.veteran"
+    pageKey = "game.mcl_pr_layout"
+    legacySection = "PilotReadyRankIcon2"
+    legacyComment = "veteran"
+    role = "image"
+    layer = "art"
+    aliasOverride = "veteran"
+    sourceControlType = "PilotReadyRankIcon2"
+    rect = "82,322,96,32"
+    legacyLocalRect = "82,322,96,32"
+    legacyRectSource = "xywh"
+    texture = "data/art/gui/MCL_PR_5.png"
+    legacyTexture = "MCL_PR_5"
+    uiPackage = "default"
+    rectModel = "legacy_imgui.modern_rect_v1"
+    controlRect = "82,322,96,32"
+    artRect = "82,322,96,32"
+    artLayer = "control_art"
+    uvX = 0
+    uvY = 171
+    uvWidth = 96
+    uvHeight = 32
+}
+
+GuiImage {
+    key = "game.mcl_pr_layout.image.elite"
+    pageKey = "game.mcl_pr_layout"
+    legacySection = "PilotReadyRankIcon3"
+    legacyComment = "elite"
+    role = "image"
+    layer = "art"
+    aliasOverride = "elite"
+    sourceControlType = "PilotReadyRankIcon3"
+    rect = "82,322,96,32"
+    legacyLocalRect = "82,322,96,32"
+    legacyRectSource = "xywh"
+    texture = "data/art/gui/MCL_PR_5.png"
+    legacyTexture = "MCL_PR_5"
+    uiPackage = "default"
+    rectModel = "legacy_imgui.modern_rect_v1"
+    controlRect = "82,322,96,32"
+    artRect = "82,322,96,32"
+    artLayer = "control_art"
+    uvX = 96
+    uvY = 171
+    uvWidth = 96
+    uvHeight = 32
+}
+
+GuiImage {
+    key = "game.mcl_pr_layout.image.ace"
+    pageKey = "game.mcl_pr_layout"
+    legacySection = "PilotReadyRankIcon4"
+    legacyComment = "ace"
+    role = "image"
+    layer = "art"
+    aliasOverride = "ace"
+    sourceControlType = "PilotReadyRankIcon4"
+    rect = "82,322,96,32"
+    legacyLocalRect = "82,322,96,32"
+    legacyRectSource = "xywh"
+    texture = "data/art/gui/MCL_PR_5.png"
+    legacyTexture = "MCL_PR_5"
+    uiPackage = "default"
+    rectModel = "legacy_imgui.modern_rect_v1"
+    controlRect = "82,322,96,32"
+    artRect = "82,322,96,32"
+    artLayer = "control_art"
+    uvX = 0
+    uvY = 203
+    uvWidth = 96
+    uvHeight = 32
+}
+
+GuiRect {
+    key = "game.mcl_pr_layout.rect.placement_for_pilot_s_first_specialty_skill"
+    pageKey = "game.mcl_pr_layout"
+    legacySection = "PilotSpecialtySkill0"
+    legacyComment = "placement for pilot's first specialty skill"
+    legacyContext = "~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ | ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ | ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~"
+    role = "rect"
+    layer = "layout"
+    aliasOverride = "placement for pilot's first specialty skill"
+    sourceControlType = "PilotSpecialtySkill0"
+    rect = "686,322,31,31"
+    legacyLocalRect = "686,322,31,31"
+    legacyRectSource = "ltrb"
+    uiPackage = "default"
+    rectModel = "legacy_imgui.modern_rect_v1"
+    controlRect = "686,322,31,31"
+    filled = true
+    fillColorArgb = "0x00000000"
+    borderColorArgb = "0x00000000"
+    colorArgb = "0xffffffff"
+}
+
+GuiRect {
+    key = "game.mcl_pr_layout.rect.placement_for_pilot_s_second_specialty_skill"
+    pageKey = "game.mcl_pr_layout"
+    legacySection = "PilotSpecialtySkill1"
+    legacyComment = "placement for pilot's second specialty skill"
+    role = "rect"
+    layer = "layout"
+    aliasOverride = "placement for pilot's second specialty skill"
+    sourceControlType = "PilotSpecialtySkill1"
+    rect = "686,374,31,31"
+    legacyLocalRect = "686,374,31,31"
+    legacyRectSource = "ltrb"
+    uiPackage = "default"
+    rectModel = "legacy_imgui.modern_rect_v1"
+    controlRect = "686,374,31,31"
+    filled = true
+    fillColorArgb = "0x00000000"
+    borderColorArgb = "0x00000000"
+    colorArgb = "0xffffffff"
+}
+
+GuiRect {
+    key = "game.mcl_pr_layout.rect.placement_for_pilot_s_third_specialty_skill"
+    pageKey = "game.mcl_pr_layout"
+    legacySection = "PilotSpecialtySkill2"
+    legacyComment = "placement for pilot's third specialty skill"
+    role = "rect"
+    layer = "layout"
+    aliasOverride = "placement for pilot's third specialty skill"
+    sourceControlType = "PilotSpecialtySkill2"
+    rect = "686,426,31,31"
+    legacyLocalRect = "686,426,31,31"
+    legacyRectSource = "ltrb"
+    uiPackage = "default"
+    rectModel = "legacy_imgui.modern_rect_v1"
+    controlRect = "686,426,31,31"
+    filled = true
+    fillColorArgb = "0x00000000"
+    borderColorArgb = "0x00000000"
+    colorArgb = "0xffffffff"
+}
+
+GuiRect {
+    key = "game.mcl_pr_layout.rect.placement_for_pilot_s_fourth_specialty_skill"
+    pageKey = "game.mcl_pr_layout"
+    legacySection = "PilotSpecialtySkill3"
+    legacyComment = "placement for pilot's fourth specialty skill"
+    role = "rect"
+    layer = "layout"
+    aliasOverride = "placement for pilot's fourth specialty skill"
+    sourceControlType = "PilotSpecialtySkill3"
+    rect = "686,478,31,31"
+    legacyLocalRect = "686,478,31,31"
+    legacyRectSource = "ltrb"
+    uiPackage = "default"
+    rectModel = "legacy_imgui.modern_rect_v1"
+    controlRect = "686,478,31,31"
+    filled = true
+    fillColorArgb = "0x00000000"
+    borderColorArgb = "0x00000000"
+    colorArgb = "0xffffffff"
+}
+
+GuiMetadata {
+    key = "game.mcl_pr_layout.metadata.weapon_type_specialty_skill_icon"
+    pageKey = "game.mcl_pr_layout"
+    legacySection = "PilotSpecialtySkillIcon0"
+    legacyComment = "weapon type specialty skill icon"
+    role = "metadata"
+    layer = "metadata"
+    aliasOverride = "weapon type specialty skill icon"
+    sourceControlType = "PilotSpecialtySkillIcon0"
+    rect = "0,0,0,0"
+    legacyLocalRect = "0,0,0,0"
+    legacyRectSource = "xywh"
+    texture = "data/art/gui/MCL_PR_PilotSkillIcons.png"
+    legacyTexture = "MCL_PR_PilotSkillIcons"
+    uvX = 96
+    uvY = 0
+    uvWidth = 32
+    uvHeight = 32
+    visible = false
+}
+
+GuiMetadata {
+    key = "game.mcl_pr_layout.metadata.mech_type_specialty_skill_icon"
+    pageKey = "game.mcl_pr_layout"
+    legacySection = "PilotSpecialtySkillIcon1"
+    legacyComment = "mech type specialty skill icon"
+    role = "metadata"
+    layer = "metadata"
+    aliasOverride = "mech type specialty skill icon"
+    sourceControlType = "PilotSpecialtySkillIcon1"
+    rect = "0,0,0,0"
+    legacyLocalRect = "0,0,0,0"
+    legacyRectSource = "xywh"
+    texture = "data/art/gui/MCL_PR_PilotSkillIcons.png"
+    legacyTexture = "MCL_PR_PilotSkillIcons"
+    uvX = 96
+    uvY = 32
+    uvWidth = 32
+    uvHeight = 32
+    visible = false
+}
+
+GuiMetadata {
+    key = "game.mcl_pr_layout.metadata.range_type_specialty_skill_icon"
+    pageKey = "game.mcl_pr_layout"
+    legacySection = "PilotSpecialtySkillIcon2"
+    legacyComment = "range type specialty skill icon"
+    role = "metadata"
+    layer = "metadata"
+    aliasOverride = "range type specialty skill icon"
+    sourceControlType = "PilotSpecialtySkillIcon2"
+    rect = "0,0,0,0"
+    legacyLocalRect = "0,0,0,0"
+    legacyRectSource = "xywh"
+    texture = "data/art/gui/MCL_PR_PilotSkillIcons.png"
+    legacyTexture = "MCL_PR_PilotSkillIcons"
+    uvX = 96
+    uvY = 64
+    uvWidth = 32
+    uvHeight = 32
+    visible = false
+}
+
+GuiMetadata {
+    key = "game.mcl_pr_layout.metadata.generic_type_specialty_skill_icon"
+    pageKey = "game.mcl_pr_layout"
+    legacySection = "PilotSpecialtySkillIcon3"
+    legacyComment = "generic type specialty skill icon"
+    role = "metadata"
+    layer = "metadata"
+    aliasOverride = "generic type specialty skill icon"
+    sourceControlType = "PilotSpecialtySkillIcon3"
+    rect = "0,0,0,0"
+    legacyLocalRect = "0,0,0,0"
+    legacyRectSource = "xywh"
+    texture = "data/art/gui/MCL_PR_PilotSkillIcons.png"
+    legacyTexture = "MCL_PR_PilotSkillIcons"
+    uvX = 96
+    uvY = 96
+    uvWidth = 32
+    uvHeight = 32
+    visible = false
+}
+
+GuiMetadata {
+    key = "game.mcl_pr_layout.metadata.campaign_1_no_honors"
+    pageKey = "game.mcl_pr_layout"
+    legacySection = "PilotMedal0"
+    legacyComment = "campaign 1 no honors"
+    legacyContext = "~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ | ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ | ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~"
+    role = "metadata"
+    layer = "metadata"
+    aliasOverride = "campaign 1 no honors"
+    sourceControlType = "PilotMedal0"
+    rect = "0,0,0,0"
+    legacyLocalRect = "0,0,0,0"
+    legacyRectSource = "xywh"
+    texture = "data/art/gui/MCL_PR_Medals.png"
+    legacyTexture = "MCL_PR_Medals"
+    uvX = 0
+    uvY = 0
+    uvWidth = 32
+    uvHeight = 32
+    visible = false
+}
+
+GuiMetadata {
+    key = "game.mcl_pr_layout.metadata.campaign_2_no_honors"
+    pageKey = "game.mcl_pr_layout"
+    legacySection = "PilotMedal1"
+    legacyComment = "campaign 2 no honors"
+    role = "metadata"
+    layer = "metadata"
+    aliasOverride = "campaign 2 no honors"
+    sourceControlType = "PilotMedal1"
+    rect = "0,0,0,0"
+    legacyLocalRect = "0,0,0,0"
+    legacyRectSource = "xywh"
+    texture = "data/art/gui/MCL_PR_Medals.png"
+    legacyTexture = "MCL_PR_Medals"
+    uvX = 64
+    uvY = 0
+    uvWidth = 32
+    uvHeight = 32
+    visible = false
+}
+
+GuiMetadata {
+    key = "game.mcl_pr_layout.metadata.campaign_3_no_honors"
+    pageKey = "game.mcl_pr_layout"
+    legacySection = "PilotMedal2"
+    legacyComment = "campaign 3 no honors"
+    role = "metadata"
+    layer = "metadata"
+    aliasOverride = "campaign 3 no honors"
+    sourceControlType = "PilotMedal2"
+    rect = "0,0,0,0"
+    legacyLocalRect = "0,0,0,0"
+    legacyRectSource = "xywh"
+    texture = "data/art/gui/MCL_PR_Medals.png"
+    legacyTexture = "MCL_PR_Medals"
+    uvX = 0
+    uvY = 32
+    uvWidth = 32
+    uvHeight = 32
+    visible = false
+}
+
+GuiMetadata {
+    key = "game.mcl_pr_layout.metadata.campaign_1_honors_overrides_original"
+    pageKey = "game.mcl_pr_layout"
+    legacySection = "PilotMedal3"
+    legacyComment = "campaign 1 honors- overrides original"
+    role = "metadata"
+    layer = "metadata"
+    aliasOverride = "campaign 1 honors- overrides original"
+    sourceControlType = "PilotMedal3"
+    rect = "0,0,0,0"
+    legacyLocalRect = "0,0,0,0"
+    legacyRectSource = "xywh"
+    texture = "data/art/gui/MCL_PR_Medals.png"
+    legacyTexture = "MCL_PR_Medals"
+    uvX = 32
+    uvY = 0
+    uvWidth = 32
+    uvHeight = 32
+    visible = false
+}
+
+GuiMetadata {
+    key = "game.mcl_pr_layout.metadata.campaign_2_honors_overrides_original"
+    pageKey = "game.mcl_pr_layout"
+    legacySection = "PilotMedal4"
+    legacyComment = "campaign 2 honors- overrides original"
+    role = "metadata"
+    layer = "metadata"
+    aliasOverride = "campaign 2 honors- overrides original"
+    sourceControlType = "PilotMedal4"
+    rect = "0,0,0,0"
+    legacyLocalRect = "0,0,0,0"
+    legacyRectSource = "xywh"
+    texture = "data/art/gui/MCL_PR_Medals.png"
+    legacyTexture = "MCL_PR_Medals"
+    uvX = 96
+    uvY = 0
+    uvWidth = 32
+    uvHeight = 32
+    visible = false
+}
+
+GuiMetadata {
+    key = "game.mcl_pr_layout.metadata.campaign_3_honors_overrides_original"
+    pageKey = "game.mcl_pr_layout"
+    legacySection = "PilotMedal5"
+    legacyComment = "campaign 3 honors- overrides original"
+    role = "metadata"
+    layer = "metadata"
+    aliasOverride = "campaign 3 honors- overrides original"
+    sourceControlType = "PilotMedal5"
+    rect = "0,0,0,0"
+    legacyLocalRect = "0,0,0,0"
+    legacyRectSource = "xywh"
+    texture = "data/art/gui/MCL_PR_Medals.png"
+    legacyTexture = "MCL_PR_Medals"
+    uvX = 32
+    uvY = 32
+    uvWidth = 32
+    uvHeight = 32
+    visible = false
+}
+
+GuiMetadata {
+    key = "game.mcl_pr_layout.metadata.purple_heart_pilot_can_earn_more_than_one_but_only_one_should_show"
+    pageKey = "game.mcl_pr_layout"
+    legacySection = "PilotMedal6"
+    legacyComment = "purple heart- pilot can earn more than one, but only one should show"
+    role = "metadata"
+    layer = "metadata"
+    aliasOverride = "purple heart- pilot can earn more than one, but only one should show"
+    sourceControlType = "PilotMedal6"
+    rect = "0,0,0,0"
+    legacyLocalRect = "0,0,0,0"
+    legacyRectSource = "xywh"
+    texture = "data/art/gui/MCL_PR_Medals.png"
+    legacyTexture = "MCL_PR_Medals"
+    uvX = 64
+    uvY = 32
+    uvWidth = 32
+    uvHeight = 32
+    visible = false
+}
+
+GuiMetadata {
+    key = "game.mcl_pr_layout.metadata.valor_pilot_can_earn_more_than_one_but_only_one_should_show"
+    pageKey = "game.mcl_pr_layout"
+    legacySection = "PilotMedal7"
+    legacyComment = "valor- pilot can earn more than one, but only one should show"
+    role = "metadata"
+    layer = "metadata"
+    aliasOverride = "valor- pilot can earn more than one, but only one should show"
+    sourceControlType = "PilotMedal7"
+    rect = "0,0,0,0"
+    legacyLocalRect = "0,0,0,0"
+    legacyRectSource = "xywh"
+    texture = "data/art/gui/MCL_PR_Medals.png"
+    legacyTexture = "MCL_PR_Medals"
+    uvX = 96
+    uvY = 32
+    uvWidth = 32
+    uvHeight = 32
+    visible = false
+}
+
+GuiMetadata {
+    key = "game.mcl_pr_layout.metadata.extreme_valor_pilot_can_earn_more_than_one_but_only_one_should_show"
+    pageKey = "game.mcl_pr_layout"
+    legacySection = "PilotMedal8"
+    legacyComment = "extreme valor- pilot can earn more than one, but only one should show"
+    role = "metadata"
+    layer = "metadata"
+    aliasOverride = "extreme valor- pilot can earn more than one, but only one should show"
+    sourceControlType = "PilotMedal8"
+    rect = "0,0,0,0"
+    legacyLocalRect = "0,0,0,0"
+    legacyRectSource = "xywh"
+    texture = "data/art/gui/MCL_PR_Medals.png"
+    legacyTexture = "MCL_PR_Medals"
+    uvX = 0
+    uvY = 64
+    uvWidth = 32
+    uvHeight = 32
+    visible = false
+}
+
+GuiMetadata {
+    key = "game.mcl_pr_layout.metadata.specific_mission_award_1"
+    pageKey = "game.mcl_pr_layout"
+    legacySection = "PilotMedal9"
+    legacyComment = "specific mission award 1"
+    role = "metadata"
+    layer = "metadata"
+    aliasOverride = "specific mission award 1"
+    sourceControlType = "PilotMedal9"
+    rect = "0,0,0,0"
+    legacyLocalRect = "0,0,0,0"
+    legacyRectSource = "xywh"
+    texture = "data/art/gui/MCL_PR_Medals.png"
+    legacyTexture = "MCL_PR_Medals"
+    uvX = 32
+    uvY = 64
+    uvWidth = 32
+    uvHeight = 32
+    visible = false
+}
+
+GuiMetadata {
+    key = "game.mcl_pr_layout.metadata.specific_mission_award_2"
+    pageKey = "game.mcl_pr_layout"
+    legacySection = "PilotMedal10"
+    legacyComment = "specific mission award 2"
+    role = "metadata"
+    layer = "metadata"
+    aliasOverride = "specific mission award 2"
+    sourceControlType = "PilotMedal10"
+    rect = "0,0,0,0"
+    legacyLocalRect = "0,0,0,0"
+    legacyRectSource = "xywh"
+    texture = "data/art/gui/MCL_PR_Medals.png"
+    legacyTexture = "MCL_PR_Medals"
+    uvX = 64
+    uvY = 64
+    uvWidth = 32
+    uvHeight = 32
+    visible = false
+}
+
+GuiMetadata {
+    key = "game.mcl_pr_layout.metadata.specific_mission_award_3"
+    pageKey = "game.mcl_pr_layout"
+    legacySection = "PilotMedal11"
+    legacyComment = "specific mission award 3"
+    role = "metadata"
+    layer = "metadata"
+    aliasOverride = "specific mission award 3"
+    sourceControlType = "PilotMedal11"
+    rect = "0,0,0,0"
+    legacyLocalRect = "0,0,0,0"
+    legacyRectSource = "xywh"
+    texture = "data/art/gui/MCL_PR_Medals.png"
+    legacyTexture = "MCL_PR_Medals"
+    uvX = 96
+    uvY = 64
+    uvWidth = 32
+    uvHeight = 32
+    visible = false
+}
+
+GuiMetadata {
+    key = "game.mcl_pr_layout.metadata.specific_mission_award_4"
+    pageKey = "game.mcl_pr_layout"
+    legacySection = "PilotMedal12"
+    legacyComment = "specific mission award 4"
+    role = "metadata"
+    layer = "metadata"
+    aliasOverride = "specific mission award 4"
+    sourceControlType = "PilotMedal12"
+    rect = "0,0,0,0"
+    legacyLocalRect = "0,0,0,0"
+    legacyRectSource = "xywh"
+    texture = "data/art/gui/MCL_PR_Medals.png"
+    legacyTexture = "MCL_PR_Medals"
+    uvX = 0
+    uvY = 96
+    uvWidth = 32
+    uvHeight = 32
+    visible = false
+}
+
+GuiMetadata {
+    key = "game.mcl_pr_layout.metadata.liao_medal"
+    pageKey = "game.mcl_pr_layout"
+    legacySection = "PilotMedal13"
+    legacyComment = "liao medal"
+    role = "metadata"
+    layer = "metadata"
+    aliasOverride = "liao medal"
+    sourceControlType = "PilotMedal13"
+    rect = "0,0,0,0"
+    legacyLocalRect = "0,0,0,0"
+    legacyRectSource = "xywh"
+    texture = "data/art/gui/MCL_PR_Medals.png"
+    legacyTexture = "MCL_PR_Medals"
+    uvX = 32
+    uvY = 96
+    uvWidth = 32
+    uvHeight = 32
+    visible = false
+}
+
+GuiMetadata {
+    key = "game.mcl_pr_layout.metadata.davion_medal"
+    pageKey = "game.mcl_pr_layout"
+    legacySection = "PilotMedal14"
+    legacyComment = "davion medal"
+    role = "metadata"
+    layer = "metadata"
+    aliasOverride = "davion medal"
+    sourceControlType = "PilotMedal14"
+    rect = "0,0,0,0"
+    legacyLocalRect = "0,0,0,0"
+    legacyRectSource = "xywh"
+    texture = "data/art/gui/MCL_PR_Medals.png"
+    legacyTexture = "MCL_PR_Medals"
+    uvX = 64
+    uvY = 96
+    uvWidth = 32
+    uvHeight = 32
+    visible = false
+}
+
+GuiMetadata {
+    key = "game.mcl_pr_layout.metadata.steiner_medal"
+    pageKey = "game.mcl_pr_layout"
+    legacySection = "PilotMedal15"
+    legacyComment = "steiner medal"
+    role = "metadata"
+    layer = "metadata"
+    aliasOverride = "steiner medal"
+    sourceControlType = "PilotMedal15"
+    rect = "0,0,0,0"
+    legacyLocalRect = "0,0,0,0"
+    legacyRectSource = "xywh"
+    texture = "data/art/gui/MCL_PR_Medals.png"
+    legacyTexture = "MCL_PR_Medals"
+    uvX = 96
+    uvY = 96
+    uvWidth = 32
+    uvHeight = 32
+    visible = false
+}
+
+GuiRect {
+    key = "game.mcl_pr_layout.rect.placement_for_pilot_s_first_medal"
+    pageKey = "game.mcl_pr_layout"
+    legacySection = "PilotMedalPlacement0"
+    legacyComment = "placement for pilot's first medal"
+    legacyContext = "~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ | ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ | ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~"
+    role = "rect"
+    layer = "layout"
+    aliasOverride = "placement for pilot's first medal"
+    sourceControlType = "PilotMedalPlacement0"
+    rect = "428,478,31,31"
+    legacyLocalRect = "428,478,31,31"
+    legacyRectSource = "ltrb"
+    uiPackage = "default"
+    rectModel = "legacy_imgui.modern_rect_v1"
+    controlRect = "428,478,31,31"
+    filled = true
+    fillColorArgb = "0x00000000"
+    borderColorArgb = "0x00000000"
+    colorArgb = "0xffffffff"
+}
+
+GuiRect {
+    key = "game.mcl_pr_layout.rect.placement_for_pilot_s_second_medal"
+    pageKey = "game.mcl_pr_layout"
+    legacySection = "PilotMedalPlacement1"
+    legacyComment = "placement for pilot's second medal"
+    role = "rect"
+    layer = "layout"
+    aliasOverride = "placement for pilot's second medal"
+    sourceControlType = "PilotMedalPlacement1"
+    rect = "461,478,31,31"
+    legacyLocalRect = "461,478,31,31"
+    legacyRectSource = "ltrb"
+    uiPackage = "default"
+    rectModel = "legacy_imgui.modern_rect_v1"
+    controlRect = "461,478,31,31"
+    filled = true
+    fillColorArgb = "0x00000000"
+    borderColorArgb = "0x00000000"
+    colorArgb = "0xffffffff"
+}
+
+GuiRect {
+    key = "game.mcl_pr_layout.rect.placement_for_pilot_s_third_medal"
+    pageKey = "game.mcl_pr_layout"
+    legacySection = "PilotMedalPlacement2"
+    legacyComment = "placement for pilot's third medal"
+    role = "rect"
+    layer = "layout"
+    aliasOverride = "placement for pilot's third medal"
+    sourceControlType = "PilotMedalPlacement2"
+    rect = "395,478,31,31"
+    legacyLocalRect = "395,478,31,31"
+    legacyRectSource = "ltrb"
+    uiPackage = "default"
+    rectModel = "legacy_imgui.modern_rect_v1"
+    controlRect = "395,478,31,31"
+    filled = true
+    fillColorArgb = "0x00000000"
+    borderColorArgb = "0x00000000"
+    colorArgb = "0xffffffff"
+}
+
+GuiRect {
+    key = "game.mcl_pr_layout.rect.placement_for_pilot_s_fourth_medal"
+    pageKey = "game.mcl_pr_layout"
+    legacySection = "PilotMedalPlacement3"
+    legacyComment = "placement for pilot's fourth medal"
+    role = "rect"
+    layer = "layout"
+    aliasOverride = "placement for pilot's fourth medal"
+    sourceControlType = "PilotMedalPlacement3"
+    rect = "494,478,31,31"
+    legacyLocalRect = "494,478,31,31"
+    legacyRectSource = "ltrb"
+    uiPackage = "default"
+    rectModel = "legacy_imgui.modern_rect_v1"
+    controlRect = "494,478,31,31"
+    filled = true
+    fillColorArgb = "0x00000000"
+    borderColorArgb = "0x00000000"
+    colorArgb = "0xffffffff"
+}
+
+GuiRect {
+    key = "game.mcl_pr_layout.rect.placement_for_pilot_s_fifth_medal"
+    pageKey = "game.mcl_pr_layout"
+    legacySection = "PilotMedalPlacement4"
+    legacyComment = "placement for pilot's fifth medal"
+    role = "rect"
+    layer = "layout"
+    aliasOverride = "placement for pilot's fifth medal"
+    sourceControlType = "PilotMedalPlacement4"
+    rect = "362,478,31,31"
+    legacyLocalRect = "362,478,31,31"
+    legacyRectSource = "ltrb"
+    uiPackage = "default"
+    rectModel = "legacy_imgui.modern_rect_v1"
+    controlRect = "362,478,31,31"
+    filled = true
+    fillColorArgb = "0x00000000"
+    borderColorArgb = "0x00000000"
+    colorArgb = "0xffffffff"
+}
+
+GuiRect {
+    key = "game.mcl_pr_layout.rect.placement_for_pilot_s_sixth_medal"
+    pageKey = "game.mcl_pr_layout"
+    legacySection = "PilotMedalPlacement5"
+    legacyComment = "placement for pilot's sixth medal"
+    role = "rect"
+    layer = "layout"
+    aliasOverride = "placement for pilot's sixth medal"
+    sourceControlType = "PilotMedalPlacement5"
+    rect = "494,445,31,31"
+    legacyLocalRect = "494,445,31,31"
+    legacyRectSource = "ltrb"
+    uiPackage = "default"
+    rectModel = "legacy_imgui.modern_rect_v1"
+    controlRect = "494,445,31,31"
+    filled = true
+    fillColorArgb = "0x00000000"
+    borderColorArgb = "0x00000000"
+    colorArgb = "0xffffffff"
+}
+
+GuiRect {
+    key = "game.mcl_pr_layout.rect.placement_for_pilot_s_seventh_medal"
+    pageKey = "game.mcl_pr_layout"
+    legacySection = "PilotMedalPlacement6"
+    legacyComment = "placement for pilot's seventh medal"
+    role = "rect"
+    layer = "layout"
+    aliasOverride = "placement for pilot's seventh medal"
+    sourceControlType = "PilotMedalPlacement6"
+    rect = "362,445,31,31"
+    legacyLocalRect = "362,445,31,31"
+    legacyRectSource = "ltrb"
+    uiPackage = "default"
+    rectModel = "legacy_imgui.modern_rect_v1"
+    controlRect = "362,445,31,31"
+    filled = true
+    fillColorArgb = "0x00000000"
+    borderColorArgb = "0x00000000"
+    colorArgb = "0xffffffff"
+}
+
+GuiRect {
+    key = "game.mcl_pr_layout.rect.placement_for_pilot_s_eighth_medal"
+    pageKey = "game.mcl_pr_layout"
+    legacySection = "PilotMedalPlacement7"
+    legacyComment = "placement for pilot's eighth medal"
+    role = "rect"
+    layer = "layout"
+    aliasOverride = "placement for pilot's eighth medal"
+    sourceControlType = "PilotMedalPlacement7"
+    rect = "494,412,31,31"
+    legacyLocalRect = "494,412,31,31"
+    legacyRectSource = "ltrb"
+    uiPackage = "default"
+    rectModel = "legacy_imgui.modern_rect_v1"
+    controlRect = "494,412,31,31"
+    filled = true
+    fillColorArgb = "0x00000000"
+    borderColorArgb = "0x00000000"
+    colorArgb = "0xffffffff"
+}
+
+GuiRect {
+    key = "game.mcl_pr_layout.rect.placement_for_pilot_s_ninth_medal"
+    pageKey = "game.mcl_pr_layout"
+    legacySection = "PilotMedalPlacement8"
+    legacyComment = "placement for pilot's ninth medal"
+    role = "rect"
+    layer = "layout"
+    aliasOverride = "placement for pilot's ninth medal"
+    sourceControlType = "PilotMedalPlacement8"
+    rect = "362,412,31,31"
+    legacyLocalRect = "362,412,31,31"
+    legacyRectSource = "ltrb"
+    uiPackage = "default"
+    rectModel = "legacy_imgui.modern_rect_v1"
+    controlRect = "362,412,31,31"
+    filled = true
+    fillColorArgb = "0x00000000"
+    borderColorArgb = "0x00000000"
+    colorArgb = "0xffffffff"
+}
+
+GuiRect {
+    key = "game.mcl_pr_layout.rect.placement_for_pilot_s_tenth_medal"
+    pageKey = "game.mcl_pr_layout"
+    legacySection = "PilotMedalPlacement9"
+    legacyComment = "placement for pilot's tenth medal"
+    role = "rect"
+    layer = "layout"
+    aliasOverride = "placement for pilot's tenth medal"
+    sourceControlType = "PilotMedalPlacement9"
+    rect = "494,369,31,41"
+    legacyLocalRect = "494,369,31,41"
+    legacyRectSource = "ltrb"
+    uiPackage = "default"
+    rectModel = "legacy_imgui.modern_rect_v1"
+    controlRect = "494,369,31,41"
+    filled = true
+    fillColorArgb = "0x00000000"
+    borderColorArgb = "0x00000000"
+    colorArgb = "0xffffffff"
+}
+
+GuiRect {
+    key = "game.mcl_pr_layout.rect.placement_for_pilot_s_eleventh_medal"
+    pageKey = "game.mcl_pr_layout"
+    legacySection = "PilotMedalPlacement10"
+    legacyComment = "placement for pilot's eleventh medal"
+    role = "rect"
+    layer = "layout"
+    aliasOverride = "placement for pilot's eleventh medal"
+    sourceControlType = "PilotMedalPlacement10"
+    rect = "362,369,31,41"
+    legacyLocalRect = "362,369,31,41"
+    legacyRectSource = "ltrb"
+    uiPackage = "default"
+    rectModel = "legacy_imgui.modern_rect_v1"
+    controlRect = "362,369,31,41"
+    filled = true
+    fillColorArgb = "0x00000000"
+    borderColorArgb = "0x00000000"
+    colorArgb = "0xffffffff"
+}
+
+GuiRect {
+    key = "game.mcl_pr_layout.rect.placement_for_pilot_s_twelfth_medal"
+    pageKey = "game.mcl_pr_layout"
+    legacySection = "PilotMedalPlacement11"
+    legacyComment = "placement for pilot's twelfth medal"
+    role = "rect"
+    layer = "layout"
+    aliasOverride = "placement for pilot's twelfth medal"
+    sourceControlType = "PilotMedalPlacement11"
+    rect = "494,346,31,31"
+    legacyLocalRect = "494,346,31,31"
+    legacyRectSource = "ltrb"
+    uiPackage = "default"
+    rectModel = "legacy_imgui.modern_rect_v1"
+    controlRect = "494,346,31,31"
+    filled = true
+    fillColorArgb = "0x00000000"
+    borderColorArgb = "0x00000000"
+    colorArgb = "0xffffffff"
+}
+
+GuiRect {
+    key = "game.mcl_pr_layout.rect.placement_for_pilot_s_thirteenth_medal"
+    pageKey = "game.mcl_pr_layout"
+    legacySection = "PilotMedalPlacement12"
+    legacyComment = "placement for pilot's thirteenth medal"
+    role = "rect"
+    layer = "layout"
+    aliasOverride = "placement for pilot's thirteenth medal"
+    sourceControlType = "PilotMedalPlacement12"
+    rect = "362,346,31,31"
+    legacyLocalRect = "362,346,31,31"
+    legacyRectSource = "ltrb"
+    uiPackage = "default"
+    rectModel = "legacy_imgui.modern_rect_v1"
+    controlRect = "362,346,31,31"
+    filled = true
+    fillColorArgb = "0x00000000"
+    borderColorArgb = "0x00000000"
+    colorArgb = "0xffffffff"
+}
+GuiRect {
+    key = "game.mcl_pr_layout.rect.available_pilots_header_bg"
+    pageKey = "game.mcl_pr_layout"
+    rect = "552,48,226,40"
+    controlRect = "552,48,226,40"
+    outline = false
+    filled = true
+    fillColorArgb = "0xff000000"
+    borderColorArgb = "0x00000000"
+}

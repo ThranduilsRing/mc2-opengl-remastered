@@ -1,0 +1,77 @@
+// MC2R mechlopedia legacy_imgui package manifest
+// Generated package-local index; legacy source FITs remain under data/defs/ui/legacy.
+
+GuiManifest {
+    package = "legacy_imgui"
+    key = "legacy_imgui.mechlopedia"
+    surface = "mechlopedia"
+    layout = "absolute"
+    coordinateSpace = "screen_absolute"
+    rootPageKey = "game.mcl_en"
+}
+
+GuiPageRef {
+    pageKey = "mechlopedia.buildings"
+    file = "buildings.fit"
+    mountOffset = "0,0"
+}
+
+GuiPageRef {
+    pageKey = "mechlopedia.content_styles"
+    file = "content_styles.fit"
+    mountOffset = "0,0"
+}
+
+GuiPageRef {
+    pageKey = "mechlopedia.history"
+    file = "history.fit"
+    mountOffset = "0,0"
+}
+
+GuiPageRef {
+    pageKey = "mechlopedia.list_entry"
+    file = "list_entry.fit"
+    mountOffset = "0,0"
+}
+
+GuiPageRef {
+    pageKey = "mechlopedia.main"
+    file = "main.fit"
+    mountOffset = "0,0"
+}
+
+GuiPageRef {
+    pageKey = "mechlopedia.mechs"
+    file = "mechs.fit"
+    mountOffset = "0,0"
+}
+
+GuiPageRef {
+    pageKey = "mechlopedia.mechs_vehicles"
+    file = "mechs_vehicles.fit"
+    mountOffset = "0,0"
+}
+
+GuiPageRef {
+    pageKey = "mechlopedia.personalities"
+    file = "personalities.fit"
+    mountOffset = "0,0"
+}
+
+GuiPageRef {
+    pageKey = "mechlopedia.personalities_history"
+    file = "personalities_history.fit"
+    mountOffset = "0,0"
+}
+
+GuiPageRef {
+    pageKey = "mechlopedia.vehicles"
+    file = "vehicles.fit"
+    mountOffset = "0,0"
+}
+
+GuiPageRef {
+    pageKey = "mechlopedia.weapons_components"
+    file = "weapons_components.fit"
+    mountOffset = "0,0"
+}

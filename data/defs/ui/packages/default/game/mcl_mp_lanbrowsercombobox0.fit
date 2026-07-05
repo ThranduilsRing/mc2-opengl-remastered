@@ -1,0 +1,474 @@
+// MC2R ImGui FIT generated from legacy UI FIT.
+// Source: data/defs/ui/legacy/game/mcl_mp_lanbrowsercombobox0.fit
+// Legacy files remain source truth only; edit the generated ImGui FIT.
+
+GuiPage {
+    key = "game.mcl_mp_lanbrowsercombobox0"
+    title = "Game Mcl Mp Lanbrowsercombobox0"
+    sourceLegacyFit = "data/defs/ui/legacy/game/mcl_mp_lanbrowsercombobox0.fit"
+    sourceSystem = "game"
+    sourceScreen = "mcl_mp_lanbrowsercombobox0"
+    sourceKind = "legacy_component"
+    layout = "component_absolute"
+    coordinateSpace = "component_local"
+    localWidth = 747
+    localHeight = 376
+    mountOffset = "0,0"
+    editableSource = "generated_imgui_only"
+    overlayGameOS = true
+    renderMode = "gameos_overlay"
+    backgroundPolicy = "transparent_overlay"
+}
+
+GuiList {
+    key = "game.mcl_mp_lanbrowsercombobox0.list.list"
+    pageKey = "game.mcl_mp_lanbrowsercombobox0"
+    legacySection = "GameList"
+    legacyContext = "~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ | ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ | ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~"
+    role = "list"
+    layer = "control"
+    aliasOverride = "list"
+    sourceControlType = "GameList"
+    rect = "72,106,675,270"
+    legacyLocalRect = "72,106,675,270"
+    legacyRectSource = "xywh"
+    uiPackage = "default"
+    rectModel = "legacy_imgui.modern_rect_v1"
+    controlRect = "72,106,675,270"
+    hitRect = "72,106,675,270"
+    font = "Agency Regular"
+    fontStyle = "Regular"
+    fontSize = 14
+    bold = false
+    italic = false
+    textAlign = "left"
+    textAnchor = "upper_left"
+    wrapText = true
+}
+
+GuiMetadata {
+    key = "game.mcl_mp_lanbrowsercombobox0.metadata.metadata"
+    pageKey = "game.mcl_mp_lanbrowsercombobox0"
+    legacySection = "GameListItem"
+    legacyContext = "~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ | ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ | ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~"
+    role = "metadata"
+    layer = "metadata"
+    aliasOverride = "metadata"
+    sourceControlType = "GameListItem"
+    rect = "72,106,0,0"
+    legacyLocalRect = "72,106,0,0"
+    legacyRectSource = "child_relative_xywh"
+    visible = false
+}
+
+GuiMetadata {
+    key = "game.mcl_mp_lanbrowsercombobox0.metadata.metadata_01"
+    pageKey = "game.mcl_mp_lanbrowsercombobox0"
+    legacySection = "Rects"
+    role = "metadata"
+    layer = "metadata"
+    aliasOverride = "metadata"
+    sourceControlType = "Rects"
+    rect = "72,106,0,0"
+    legacyLocalRect = "72,106,0,0"
+    legacyRectSource = "child_relative_xywh"
+    visible = false
+}
+
+GuiRect {
+    key = "game.mcl_mp_lanbrowsercombobox0.rect.rect_around_locked_icon"
+    pageKey = "game.mcl_mp_lanbrowsercombobox0"
+    legacySection = "Rect0"
+    legacyComment = "rect around locked icon"
+    role = "rect"
+    layer = "layout"
+    aliasOverride = "rect around locked icon"
+    sourceControlType = "Rect0"
+    rect = "72,106,28,24"
+    legacyLocalRect = "72,106,28,24"
+    legacyRectSource = "child_relative_xywh"
+    uiPackage = "default"
+    rectModel = "legacy_imgui.modern_rect_v1"
+    controlRect = "72,106,28,24"
+    legacyColor = 0xff000000
+    outline = "TRUE"
+    filled = false
+    fillColorArgb = "0x00000000"
+    borderColorArgb = "0x00000000"
+    colorArgb = "0xffffffff"
+}
+
+GuiRect {
+    key = "game.mcl_mp_lanbrowsercombobox0.rect.game_name_rectangle"
+    pageKey = "game.mcl_mp_lanbrowsercombobox0"
+    legacySection = "Rect1"
+    legacyComment = "game name rectangle"
+    role = "rect"
+    layer = "layout"
+    aliasOverride = "game name rectangle"
+    sourceControlType = "Rect1"
+    rect = "103,106,214,24"
+    legacyLocalRect = "103,106,214,24"
+    legacyRectSource = "child_relative_xywh"
+    uiPackage = "default"
+    rectModel = "legacy_imgui.modern_rect_v1"
+    controlRect = "103,106,214,24"
+    legacyColor = 0xff000000
+    outline = "TRUE"
+    filled = false
+    fillColorArgb = "0x00000000"
+    borderColorArgb = "0x00000000"
+    colorArgb = "0xffffffff"
+}
+
+GuiRect {
+    key = "game.mcl_mp_lanbrowsercombobox0.rect.player_rectangle"
+    pageKey = "game.mcl_mp_lanbrowsercombobox0"
+    legacySection = "Rect2"
+    legacyComment = "player # rectangle"
+    role = "rect"
+    layer = "layout"
+    aliasOverride = "player # rectangle"
+    sourceControlType = "Rect2"
+    rect = "320,106,101,24"
+    legacyLocalRect = "320,106,101,24"
+    legacyRectSource = "child_relative_xywh"
+    uiPackage = "default"
+    rectModel = "legacy_imgui.modern_rect_v1"
+    controlRect = "320,106,101,24"
+    legacyColor = 0xff000000
+    outline = "TRUE"
+    filled = false
+    fillColorArgb = "0x00000000"
+    borderColorArgb = "0x00000000"
+    colorArgb = "0xffffffff"
+}
+
+GuiRect {
+    key = "game.mcl_mp_lanbrowsercombobox0.rect.map_name_rectangle"
+    pageKey = "game.mcl_mp_lanbrowsercombobox0"
+    legacySection = "Rect3"
+    legacyComment = "map name rectangle"
+    role = "planet_map_mount"
+    layer = "map"
+    aliasOverride = "map name rectangle"
+    sourceControlType = "Rect3"
+    rect = "424,106,215,24"
+    legacyLocalRect = "424,106,215,24"
+    legacyRectSource = "child_relative_xywh"
+    uiPackage = "default"
+    rectModel = "legacy_imgui.modern_rect_v1"
+    controlRect = "424,106,215,24"
+    legacyColor = 0xff000000
+    outline = "TRUE"
+    filled = false
+    fillColorArgb = "0x00000000"
+    borderColorArgb = "0x00000000"
+    colorArgb = "0xffffffff"
+}
+
+GuiRect {
+    key = "game.mcl_mp_lanbrowsercombobox0.rect.ping_rectangle"
+    pageKey = "game.mcl_mp_lanbrowsercombobox0"
+    legacySection = "Rect4"
+    legacyComment = "PING rectangle"
+    role = "rect"
+    layer = "layout"
+    aliasOverride = "PING rectangle"
+    sourceControlType = "Rect4"
+    rect = "642,106,84,24"
+    legacyLocalRect = "642,106,84,24"
+    legacyRectSource = "child_relative_xywh"
+    uiPackage = "default"
+    rectModel = "legacy_imgui.modern_rect_v1"
+    controlRect = "642,106,84,24"
+    legacyColor = 0xff000000
+    outline = "TRUE"
+    filled = false
+    fillColorArgb = "0x00000000"
+    borderColorArgb = "0x00000000"
+    colorArgb = "0xffffffff"
+}
+
+GuiMetadata {
+    key = "game.mcl_mp_lanbrowsercombobox0.metadata.metadata_02"
+    pageKey = "game.mcl_mp_lanbrowsercombobox0"
+    legacySection = "Statics"
+    legacyContext = "~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ | ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ | ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~"
+    role = "metadata"
+    layer = "metadata"
+    aliasOverride = "metadata"
+    sourceControlType = "Statics"
+    rect = "72,106,0,0"
+    legacyLocalRect = "72,106,0,0"
+    legacyRectSource = "child_relative_xywh"
+    visible = false
+}
+
+GuiImage {
+    key = "game.mcl_mp_lanbrowsercombobox0.image.locked_icon"
+    pageKey = "game.mcl_mp_lanbrowsercombobox0"
+    legacySection = "Static0"
+    legacyComment = "locked icon"
+    role = "image"
+    layer = "art"
+    aliasOverride = "locked icon"
+    sourceControlType = "Static0"
+    rect = "81,112,12,12"
+    legacyLocalRect = "81,112,12,12"
+    legacyRectSource = "child_relative_xywh"
+    texture = "data/art/gui/mcl_mp_lanbrowser_1.png"
+    legacyTexture = "mcl_mp_lanbrowser_1.tga"
+    uiPackage = "default"
+    rectModel = "legacy_imgui.modern_rect_v1"
+    controlRect = "81,112,12,12"
+    artRect = "81,112,12,12"
+    artLayer = "control_art"
+    uvX = 240
+    uvY = 0
+    uvWidth = 12
+    uvHeight = 12
+}
+
+GuiImage {
+    key = "game.mcl_mp_lanbrowsercombobox0.image.latency_icon_sequence"
+    pageKey = "game.mcl_mp_lanbrowsercombobox0"
+    legacySection = "Static1"
+    legacyComment = "latency icon sequence"
+    role = "image"
+    layer = "art"
+    aliasOverride = "latency icon sequence"
+    sourceControlType = "Static1"
+    rect = "649,112,12,12"
+    legacyLocalRect = "649,112,12,12"
+    legacyRectSource = "child_relative_xywh"
+    texture = "data/art/gui/mcl_mp_lanbrowser_1.png"
+    legacyTexture = "mcl_mp_lanbrowser_1.tga"
+    uiPackage = "default"
+    rectModel = "legacy_imgui.modern_rect_v1"
+    controlRect = "649,112,12,12"
+    artRect = "649,112,12,12"
+    artLayer = "control_art"
+    uvX = 139
+    uvY = 132
+    uvWidth = 12
+    uvHeight = 12
+}
+
+GuiMetadata {
+    key = "game.mcl_mp_lanbrowsercombobox0.metadata.metadata_03"
+    pageKey = "game.mcl_mp_lanbrowsercombobox0"
+    legacySection = "Texts"
+    legacyContext = "~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ | ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ | ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~"
+    role = "metadata"
+    layer = "metadata"
+    aliasOverride = "metadata"
+    sourceControlType = "Texts"
+    rect = "72,106,0,0"
+    legacyLocalRect = "72,106,0,0"
+    legacyRectSource = "child_relative_xywh"
+    visible = false
+}
+
+GuiText {
+    key = "game.mcl_mp_lanbrowsercombobox0.text.game_name"
+    pageKey = "game.mcl_mp_lanbrowsercombobox0"
+    legacySection = "Text0"
+    legacyComment = "game name"
+    role = "text"
+    layer = "text"
+    aliasOverride = "game name"
+    sourceControlType = "Text0"
+    rect = "112,109,197,18"
+    legacyLocalRect = "112,109,197,18"
+    legacyRectSource = "child_relative_xywh"
+    uiPackage = "default"
+    rectModel = "legacy_imgui.modern_rect_v1"
+    controlRect = "112,109,197,18"
+    textRect = "112,109,197,18"
+    textRectMode = "control_rect_fallback"
+    textLegacyId = 26051
+    textKey = "legacy.mc2res.26051"
+    visibleText = "HOST GAME"
+    textLegacySymbol = "IDS_STRING26051"
+    textSource = "mc2res"
+    textMissing = false
+    legacyFontId = 26067
+    legacyFontComment = "use agency fb 11"
+    font = "Agency Regular"
+    fontStyle = "Regular"
+    fontSize = 11
+    bold = false
+    italic = false
+    textAlign = "left"
+    textAnchor = "upper_left"
+    wrapText = false
+    colorArgb = "0xffc66600"
+    legacyColor = -3774976
+    outline = "FALSE"
+    legacyAlignment = 0
+    legacyFontComment = "use agency fb 11"
+    borderColorArgb = "0x00000000"
+}
+
+GuiText {
+    key = "game.mcl_mp_lanbrowsercombobox0.text.of_players"
+    pageKey = "game.mcl_mp_lanbrowsercombobox0"
+    legacySection = "Text1"
+    legacyComment = "# of players"
+    role = "text"
+    layer = "text"
+    aliasOverride = "# of players"
+    sourceControlType = "Text1"
+    rect = "328,109,86,18"
+    legacyLocalRect = "328,109,86,18"
+    legacyRectSource = "child_relative_xywh"
+    uiPackage = "default"
+    rectModel = "legacy_imgui.modern_rect_v1"
+    controlRect = "328,109,86,18"
+    textRect = "328,109,86,18"
+    textRectMode = "control_rect_fallback"
+    textLegacyId = 26051
+    textKey = "legacy.mc2res.26051"
+    visibleText = "HOST GAME"
+    textLegacySymbol = "IDS_STRING26051"
+    textSource = "mc2res"
+    textMissing = false
+    legacyFontId = 26067
+    legacyFontComment = "use agency fb 11"
+    font = "Agency Regular"
+    fontStyle = "Regular"
+    fontSize = 11
+    bold = false
+    italic = false
+    textAlign = "left"
+    textAnchor = "upper_left"
+    wrapText = false
+    colorArgb = "0xffc66601"
+    legacyColor = -3774975
+    outline = "FALSE"
+    legacyAlignment = 0
+    legacyFontComment = "use agency fb 11"
+    borderColorArgb = "0x00000000"
+}
+
+GuiText {
+    key = "game.mcl_mp_lanbrowsercombobox0.text.map_name"
+    pageKey = "game.mcl_mp_lanbrowsercombobox0"
+    legacySection = "Text2"
+    legacyComment = "map name"
+    role = "map"
+    layer = "map"
+    aliasOverride = "map name"
+    sourceControlType = "Text2"
+    rect = "433,109,200,18"
+    legacyLocalRect = "433,109,200,18"
+    legacyRectSource = "child_relative_xywh"
+    uiPackage = "default"
+    rectModel = "legacy_imgui.modern_rect_v1"
+    controlRect = "433,109,200,18"
+    textRect = "433,109,200,18"
+    textRectMode = "control_rect_fallback"
+    textLegacyId = 26051
+    textKey = "legacy.mc2res.26051"
+    visibleText = "HOST GAME"
+    textLegacySymbol = "IDS_STRING26051"
+    textSource = "mc2res"
+    textMissing = false
+    legacyFontId = 26067
+    legacyFontComment = "use agency fb 11"
+    font = "Agency Regular"
+    fontStyle = "Regular"
+    fontSize = 11
+    bold = false
+    italic = false
+    textAlign = "left"
+    textAnchor = "upper_left"
+    wrapText = false
+    colorArgb = "0xffc66602"
+    legacyColor = -3774974
+    outline = "FALSE"
+    legacyAlignment = 0
+    legacyFontComment = "use agency fb 11"
+    borderColorArgb = "0x00000000"
+}
+
+GuiText {
+    key = "game.mcl_mp_lanbrowsercombobox0.text.ping_number"
+    pageKey = "game.mcl_mp_lanbrowsercombobox0"
+    legacySection = "Text3"
+    legacyComment = "ping number"
+    role = "text"
+    layer = "text"
+    aliasOverride = "ping number"
+    sourceControlType = "Text3"
+    rect = "671,111,50,18"
+    legacyLocalRect = "671,111,50,18"
+    legacyRectSource = "child_relative_xywh"
+    uiPackage = "default"
+    rectModel = "legacy_imgui.modern_rect_v1"
+    controlRect = "671,111,50,18"
+    textRect = "671,111,50,18"
+    textRectMode = "control_rect_fallback"
+    textLegacyId = 26051
+    textKey = "legacy.mc2res.26051"
+    visibleText = "HOST GAME"
+    textLegacySymbol = "IDS_STRING26051"
+    textSource = "mc2res"
+    textMissing = false
+    legacyFontId = 26067
+    legacyFontComment = "use agency fb 11"
+    font = "Agency Regular"
+    fontStyle = "Regular"
+    fontSize = 11
+    bold = false
+    italic = false
+    textAlign = "left"
+    textAnchor = "upper_left"
+    wrapText = false
+    legacyColor = ""
+    outline = "FALSE"
+    legacyAlignment = 0
+    legacyFontComment = "use agency fb 11"
+    colorArgb = "0xffd6d6d6"
+    borderColorArgb = "0x00000000"
+}
+
+GuiMetadata {
+    key = "game.mcl_mp_lanbrowsercombobox0.metadata.for_text_and_locked_icon"
+    pageKey = "game.mcl_mp_lanbrowsercombobox0"
+    legacySection = "Animation0"
+    legacyComment = "for text and locked icon"
+    legacyContext = "~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ | ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ | ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~"
+    role = "metadata"
+    layer = "metadata"
+    aliasOverride = "for text and locked icon"
+    sourceControlType = "Animation0"
+    rect = "72,106,0,0"
+    legacyLocalRect = "72,106,0,0"
+    legacyRectSource = "child_relative_xywh"
+    visible = false
+    normalColorArgb = "0xffC66600"
+    pressedColorArgb = "0xffffffff"
+    highlightColorArgb = "0xffC66600"
+    disabledColorArgb = "0xff6b6b6b"
+}
+
+GuiMetadata {
+    key = "game.mcl_mp_lanbrowsercombobox0.metadata.for_highlight_rects"
+    pageKey = "game.mcl_mp_lanbrowsercombobox0"
+    legacySection = "Animation1"
+    legacyComment = "for highlight rects"
+    role = "metadata"
+    layer = "metadata"
+    aliasOverride = "for highlight rects"
+    sourceControlType = "Animation1"
+    rect = "72,106,0,0"
+    legacyLocalRect = "72,106,0,0"
+    legacyRectSource = "child_relative_xywh"
+    visible = false
+    normalColorArgb = "0xff000000"
+    pressedColorArgb = "0xffC66600"
+    highlightColorArgb = "0xffC66600"
+    disabledColorArgb = "0xff6b6b6b"
+}

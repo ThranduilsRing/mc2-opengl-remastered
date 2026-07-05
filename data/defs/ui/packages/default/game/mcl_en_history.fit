@@ -1,0 +1,443 @@
+// MC2R ImGui FIT generated from legacy UI FIT.
+// Source: data/defs/ui/legacy/game/mcl_en_person.fit
+// Legacy files remain source truth only; edit the generated ImGui FIT.
+
+GuiPage {
+    runtimeVariant = "history"
+    key = "game.mcl_en_history"
+    title = "Game Mcl En History"
+    sourceLegacyFit = "data/defs/ui/legacy/game/mcl_en_person.fit"
+    sourceSystem = "game"
+    sourceScreen = "mcl_en_person"
+    sourceKind = "legacy_screen"
+    layout = "absolute"
+    coordinateSpace = "screen_absolute"
+    localWidth = 800
+    localHeight = 600
+    mountOffset = "285,58"
+    runtimeMountAppliedBy = "GuiPage.mountOffset"
+    editableSource = "generated_imgui_only"
+    overlayGameOS = true
+    renderMode = "gameos_overlay"
+    backgroundPolicy = "transparent_overlay"
+}
+
+GuiMetadata {
+    key = "game.mcl_en_person.metadata.metadata"
+    pageKey = "game.mcl_en_history"
+    legacySection = "Rects"
+    legacyContext = "~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ | ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ | ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~"
+    role = "metadata"
+    layer = "metadata"
+    aliasOverride = "metadata"
+    sourceControlType = "Rects"
+    rect = "0,0,0,0"
+    legacyLocalRect = "0,0,0,0"
+    legacyRectSource = "xywh"
+    mountOffset = "285,58"
+    visible = false
+}
+
+GuiRect {
+    key = "game.mcl_en_person.rect.personality_description_scroll_box"
+    pageKey = "game.mcl_en_history"
+    legacySection = "Rect0"
+    legacyComment = "personality description scroll box"
+    role = "listbox_mount"
+    layer = "control"
+    aliasOverride = "personality description scroll box"
+    sourceControlType = "Rect0"
+    rect = "204,35,289,417"
+    legacyLocalRect = "204,35,289,417"
+    legacyRectSource = "xywh"
+    mountOffset = "285,58"
+    uiPackage = "default"
+    rectModel = "legacy_imgui.modern_rect_v1"
+    controlRect = "204,35,289,417"
+    legacyColor = -16765099
+    outline = "TRUE"
+    filled = false
+    fillColorArgb = "0x00000000"
+    borderColorArgb = "0x00000000"
+    colorArgb = "0xffffffff"
+}
+
+GuiScrollbar {
+    key = "game.mcl_en_person.scrollbar.personality_description_scroll_box"
+    visible = false
+    pageKey = "game.mcl_en_history"
+    legacySection = "Rect0"
+    role = "description_scrollbar"
+    layer = "control"
+    aliasOverride = "description_scrollbar"
+    sourceControlType = "runtime mcScrollBar"
+    sourceStyle = "ScrollBar.fit"
+    sourceLine = "aListBox::init => scrollBar->init(w - 17, 2, 15, h - 4)"
+    rect = "476,37,15,413"
+    legacyLocalRect = "476,37,15,413"
+    legacyRectSource = "runtime_listbox_scrollbar"
+    runtimePlacement = "aListBox::mcScrollBar"
+    scrollbarTemplate = "data/defs/ui/packages/legacy_imgui/shared/scrollbar.fit"
+    scrollbarStyle = "orange"
+}
+
+GuiMetadata {
+    key = "game.mcl_en_person.metadata.metadata_01"
+    pageKey = "game.mcl_en_history"
+    legacySection = "Rect1"
+    role = "metadata"
+    layer = "metadata"
+    aliasOverride = "metadata"
+    sourceControlType = "Rect1"
+    rect = "18,290,167,0"
+    legacyLocalRect = "18,290,167,0"
+    legacyRectSource = "xywh"
+    mountOffset = "285,58"
+    legacyColor = 0xff002F55
+    outline = "TRUE"
+    visible = false
+}
+
+GuiMetadata {
+    key = "game.mcl_en_person.metadata.metadata_02"
+    pageKey = "game.mcl_en_history"
+    legacySection = "Rect2"
+    role = "metadata"
+    layer = "metadata"
+    aliasOverride = "metadata"
+    sourceControlType = "Rect2"
+    rect = "193,43,0,239"
+    legacyLocalRect = "193,43,0,239"
+    legacyRectSource = "xywh"
+    mountOffset = "285,58"
+    legacyColor = 0xff002F55
+    outline = "TRUE"
+    visible = false
+}
+
+GuiMetadata {
+    key = "game.mcl_en_person.metadata.metadata_03"
+    pageKey = "game.mcl_en_history"
+    legacySection = "Rect3"
+    role = "metadata"
+    layer = "metadata"
+    aliasOverride = "metadata"
+    sourceControlType = "Rect3"
+    rect = "10,43,0,239"
+    legacyLocalRect = "10,43,0,239"
+    legacyRectSource = "xywh"
+    mountOffset = "285,58"
+    legacyColor = 0xff002F55
+    outline = "TRUE"
+    visible = false
+}
+
+GuiMetadata {
+    key = "game.mcl_en_person.metadata.metadata_04"
+    pageKey = "game.mcl_en_history"
+    legacySection = "Rect4"
+    role = "metadata"
+    layer = "metadata"
+    aliasOverride = "metadata"
+    sourceControlType = "Rect4"
+    rect = "18,35,167,0"
+    legacyLocalRect = "18,35,167,0"
+    legacyRectSource = "xywh"
+    mountOffset = "285,58"
+    legacyColor = 0xff002F55
+    outline = "TRUE"
+    visible = false
+}
+
+GuiMetadata {
+    key = "game.mcl_en_person.metadata.metadata_05"
+    pageKey = "game.mcl_en_history"
+    legacySection = "Statics"
+    legacyContext = "~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ | ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ | ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~"
+    role = "metadata"
+    layer = "metadata"
+    aliasOverride = "metadata"
+    sourceControlType = "Statics"
+    rect = "0,0,0,0"
+    legacyLocalRect = "0,0,0,0"
+    legacyRectSource = "xywh"
+    mountOffset = "285,58"
+    visible = false
+}
+
+GuiImage {
+    key = "game.mcl_en_person.image.mcl_en_2"
+    pageKey = "game.mcl_en_history"
+    legacySection = "Static0"
+    role = "image"
+    layer = "art"
+    aliasOverride = "MCL_EN_2"
+    sourceControlType = "Static0"
+    rect = "10,35,7,7"
+    legacyLocalRect = "10,35,7,7"
+    legacyRectSource = "xywh"
+    mountOffset = "285,58"
+    texture = "data/art/gui/MCL_EN_2.png"
+    legacyTexture = "mcl_en_2.tga"
+    uiPackage = "default"
+    rectModel = "legacy_imgui.modern_rect_v1"
+    controlRect = "10,35,7,7"
+    artRect = "10,35,7,7"
+    artLayer = "control_art"
+    uvX = 202
+    uvY = 80
+    uvWidth = 7
+    uvHeight = 7
+}
+
+GuiImage {
+    key = "game.mcl_en_person.image.mcl_en_2_01"
+    pageKey = "game.mcl_en_history"
+    legacySection = "Static1"
+    role = "image"
+    layer = "art"
+    aliasOverride = "MCL_EN_2"
+    sourceControlType = "Static1"
+    rect = "187,35,7,7"
+    legacyLocalRect = "187,35,7,7"
+    legacyRectSource = "xywh"
+    mountOffset = "285,58"
+    texture = "data/art/gui/MCL_EN_2.png"
+    legacyTexture = "mcl_en_2.tga"
+    uiPackage = "default"
+    rectModel = "legacy_imgui.modern_rect_v1"
+    controlRect = "187,35,7,7"
+    artRect = "187,35,7,7"
+    artLayer = "control_art"
+    uvX = 209
+    uvY = 80
+    uvWidth = 7
+    uvHeight = 7
+}
+
+GuiImage {
+    key = "game.mcl_en_person.image.mcl_en_2_02"
+    pageKey = "game.mcl_en_history"
+    legacySection = "Static2"
+    role = "image"
+    layer = "art"
+    aliasOverride = "MCL_EN_2"
+    sourceControlType = "Static2"
+    rect = "10,284,7,7"
+    legacyLocalRect = "10,284,7,7"
+    legacyRectSource = "xywh"
+    mountOffset = "285,58"
+    texture = "data/art/gui/MCL_EN_2.png"
+    legacyTexture = "mcl_en_2.tga"
+    uiPackage = "default"
+    rectModel = "legacy_imgui.modern_rect_v1"
+    controlRect = "10,284,7,7"
+    artRect = "10,284,7,7"
+    artLayer = "control_art"
+    uvX = 202
+    uvY = 87
+    uvWidth = 7
+    uvHeight = 7
+}
+
+GuiImage {
+    key = "game.mcl_en_person.image.mcl_en_2_03"
+    pageKey = "game.mcl_en_history"
+    legacySection = "Static3"
+    role = "image"
+    layer = "art"
+    aliasOverride = "MCL_EN_2"
+    sourceControlType = "Static3"
+    rect = "187,284,7,7"
+    legacyLocalRect = "187,284,7,7"
+    legacyRectSource = "xywh"
+    mountOffset = "285,58"
+    texture = "data/art/gui/MCL_EN_2.png"
+    legacyTexture = "mcl_en_2.tga"
+    uiPackage = "default"
+    rectModel = "legacy_imgui.modern_rect_v1"
+    controlRect = "187,284,7,7"
+    artRect = "187,284,7,7"
+    artLayer = "control_art"
+    uvX = 209
+    uvY = 87
+    uvWidth = 7
+    uvHeight = 7
+}
+
+GuiImage {
+    key = "game.mcl_en_person.image.personality_picture_is_placed_here"
+    pageKey = "game.mcl_en_history"
+    legacySection = "Static4"
+    legacyComment = "personality picture is placed here"
+    role = "image"
+    layer = "art"
+    aliasOverride = "personality picture is placed here"
+    sourceControlType = "Static4"
+    rect = "12,43,180,240"
+    legacyLocalRect = "12,43,180,240"
+    legacyRectSource = "xywh"
+    mountOffset = "285,58"
+    uiPackage = "default"
+    rectModel = "legacy_imgui.modern_rect_v1"
+    controlRect = "12,43,180,240"
+}
+
+GuiImage {
+    key = "game.mcl_en_person.image.mcl_en_5"
+    pageKey = "game.mcl_en_history"
+    legacySection = "Static5"
+    role = "image"
+    layer = "art"
+    aliasOverride = "MCL_EN_5"
+    sourceControlType = "Static5"
+    rect = "10,301,128,128"
+    legacyLocalRect = "10,301,128,128"
+    legacyRectSource = "xywh"
+    mountOffset = "285,58"
+    texture = "data/art/gui/MCL_EN_5.png"
+    legacyTexture = "mcl_en_5.tga"
+    uiPackage = "default"
+    rectModel = "legacy_imgui.modern_rect_v1"
+    controlRect = "10,301,128,128"
+    artRect = "10,301,128,128"
+    artLayer = "control_art"
+    uvX = 0
+    uvY = 0
+    uvWidth = 128
+    uvHeight = 128
+}
+
+GuiImage {
+    key = "game.mcl_en_person.image.mcl_en_4"
+    pageKey = "game.mcl_en_history"
+    legacySection = "Static6"
+    role = "image"
+    layer = "art"
+    aliasOverride = "MCL_EN_4"
+    sourceControlType = "Static6"
+    rect = "138,301,56,64"
+    legacyLocalRect = "138,301,56,64"
+    legacyRectSource = "xywh"
+    mountOffset = "285,58"
+    texture = "data/art/gui/MCL_EN_4.png"
+    legacyTexture = "mcl_en_4.tga"
+    uiPackage = "default"
+    rectModel = "legacy_imgui.modern_rect_v1"
+    controlRect = "138,301,56,64"
+    artRect = "138,301,56,64"
+    artLayer = "control_art"
+    uvX = 0
+    uvY = 162
+    uvWidth = 56
+    uvHeight = 64
+}
+
+GuiImage {
+    key = "game.mcl_en_person.image.mcl_en_4_01"
+    pageKey = "game.mcl_en_history"
+    legacySection = "Static7"
+    role = "image"
+    layer = "art"
+    aliasOverride = "MCL_EN_4"
+    sourceControlType = "Static7"
+    rect = "138,365,56,64"
+    legacyLocalRect = "138,365,56,64"
+    legacyRectSource = "xywh"
+    mountOffset = "285,58"
+    texture = "data/art/gui/MCL_EN_4.png"
+    legacyTexture = "mcl_en_4.tga"
+    uiPackage = "default"
+    rectModel = "legacy_imgui.modern_rect_v1"
+    controlRect = "138,365,56,64"
+    artRect = "138,365,56,64"
+    artLayer = "control_art"
+    uvX = 56
+    uvY = 162
+    uvWidth = 56
+    uvHeight = 64
+}
+
+GuiImage {
+    key = "game.mcl_en_person.image.mcl_en_4_02"
+    pageKey = "game.mcl_en_history"
+    legacySection = "Static8"
+    role = "image"
+    layer = "art"
+    aliasOverride = "MCL_EN_4"
+    sourceControlType = "Static8"
+    rect = "10,429,184,23"
+    legacyLocalRect = "10,429,184,23"
+    legacyRectSource = "xywh"
+    mountOffset = "285,58"
+    texture = "data/art/gui/MCL_EN_4.png"
+    legacyTexture = "mcl_en_4.tga"
+    uiPackage = "default"
+    rectModel = "legacy_imgui.modern_rect_v1"
+    controlRect = "10,429,184,23"
+    artRect = "10,429,184,23"
+    artLayer = "control_art"
+    uvX = 0
+    uvY = 226
+    uvWidth = 184
+    uvHeight = 23
+}
+
+GuiMetadata {
+    key = "game.mcl_en_person.metadata.metadata_06"
+    pageKey = "game.mcl_en_history"
+    legacySection = "Texts"
+    legacyContext = "~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ | ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ | ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~"
+    role = "metadata"
+    layer = "metadata"
+    aliasOverride = "metadata"
+    sourceControlType = "Texts"
+    rect = "0,0,0,0"
+    legacyLocalRect = "0,0,0,0"
+    legacyRectSource = "xywh"
+    mountOffset = "285,58"
+    visible = false
+}
+
+GuiText {
+    key = "game.mcl_en_person.text.personality_or_history_name"
+    pageKey = "game.mcl_en_history"
+    legacySection = "Text0"
+    legacyComment = "personality or history name"
+    role = "text"
+    layer = "text"
+    aliasOverride = "personality or history name"
+    sourceControlType = "Text0"
+    rect = "10,9,483,22"
+    legacyLocalRect = "10,9,483,22"
+    legacyRectSource = "xywh"
+    mountOffset = "285,58"
+    uiPackage = "default"
+    rectModel = "legacy_imgui.modern_rect_v1"
+    controlRect = "10,9,483,22"
+    textRect = "10,9,483,22"
+    textRectMode = "control_rect_fallback"
+    textLegacyId = 27000
+    visible = false
+    textKey = "legacy.mc2res.27000"
+    visibleText = " "
+    textLegacySymbol = "IDS_STRING_FIRST_LOGISTICS"
+    textSource = "mc2res"
+    textMissing = false
+    legacyFontId = 27735
+    legacyFontComment = "use agency fb 14"
+    font = "Agency Regular"
+    fontStyle = "Regular"
+    fontSize = 14
+    bold = false
+    italic = false
+    textAlign = "left"
+    textAnchor = "upper_left"
+    wrapText = false
+    colorArgb = "0xff5c96c3"
+    legacyColor = -10709309
+    outline = "FALSE"
+    legacyAlignment = 0
+    legacyFontComment = "use agency fb 14"
+    borderColorArgb = "0x00000000"
+}

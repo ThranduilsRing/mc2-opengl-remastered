@@ -52,6 +52,8 @@ class Mechlopedia : public LogisticsScreen
 
 	private:
 
+		void syncEntityList();
+
 		LogisticsScreen*	subScreens[6];
 		int					currentScreen;
 		aListBox			listBox;

@@ -1,0 +1,4621 @@
+﻿// MC2R ImGui FIT generated from legacy UI FIT.
+// Source: data/defs/ui/legacy/game/buttonLayout800.fit
+// Legacy files remain source truth only; edit the generated ImGui FIT.
+
+GuiPage {
+    key = "game.buttonlayout800"
+    title = "Game Buttonlayout800"
+    sourceLegacyFit = "data/defs/ui/legacy/game/buttonLayout800.fit"
+    sourceSystem = "game"
+    sourceScreen = "buttonlayout800"
+    sourceKind = "legacy_screen"
+    layout = "absolute"
+    coordinateSpace = "screen_absolute"
+    localWidth = 800
+    localHeight = 600
+    mountOffset = "0,0"
+    editableSource = "generated_imgui_only"
+    overlayGameOS = true
+    renderMode = "gameos_overlay"
+    backgroundPolicy = "transparent_overlay"
+}
+
+GuiMetadata {
+    key = "game.buttonlayout800.metadata.metadata"
+    pageKey = "game.buttonlayout800"
+    legacySection = "Fonts"
+    legacyContext = "IN-GAME UI"
+    role = "metadata"
+    layer = "metadata"
+    aliasOverride = "metadata"
+    sourceControlType = "Fonts"
+    rect = "0,0,0,0"
+    legacyLocalRect = "0,0,0,0"
+    legacyRectSource = "xywh"
+    visible = false
+}
+
+GuiMetadata {
+    key = "game.buttonlayout800.metadata.blink_these_when_calling_attention_to_tab_instead_of_blinking_tab_itself"
+    pageKey = "game.buttonlayout800"
+    legacySection = "TabRects"
+    legacyComment = "blink these when calling attention to tab- instead of blinking tab itself"
+    role = "metadata"
+    layer = "metadata"
+    aliasOverride = "blink these when calling attention to tab- instead of blinking tab itself"
+    sourceControlType = "TabRects"
+    rect = "0,0,0,0"
+    legacyLocalRect = "0,0,0,0"
+    legacyRectSource = "xywh"
+    visible = false
+}
+
+GuiRect {
+    key = "game.buttonlayout800.rect.rect_over_tac_map_tab"
+    pageKey = "game.buttonlayout800"
+    legacySection = "TabRect0"
+    legacyComment = "rect over tac map tab"
+    role = "planet_map_mount"
+    layer = "map"
+    aliasOverride = "rect over tac map tab"
+    sourceControlType = "TabRect0"
+    rect = "4,394,31,26"
+    legacyLocalRect = "4,394,31,26"
+    legacyRectSource = "xywh"
+    uiPackage = "default"
+    rectModel = "legacy_imgui.modern_rect_v1"
+    controlRect = "4,394,31,26"
+    legacyColor = 0xff000000
+    outline = "FALSE"
+    filled = true
+    fillColorArgb = "0x00000000"
+    borderColorArgb = "0x00000000"
+    colorArgb = "0xffffffff"
+}
+
+GuiRect {
+    key = "game.buttonlayout800.rect.rect_over_support_tab"
+    pageKey = "game.buttonlayout800"
+    legacySection = "TabRect1"
+    legacyComment = "rect over support tab"
+    role = "rect"
+    layer = "layout"
+    aliasOverride = "rect over support tab"
+    sourceControlType = "TabRect1"
+    rect = "63,394,31,26"
+    legacyLocalRect = "63,394,31,26"
+    legacyRectSource = "xywh"
+    uiPackage = "default"
+    rectModel = "legacy_imgui.modern_rect_v1"
+    controlRect = "63,394,31,26"
+    legacyColor = 0xff000000
+    outline = "FALSE"
+    filled = true
+    fillColorArgb = "0x00000000"
+    borderColorArgb = "0x00000000"
+    colorArgb = "0xffffffff"
+}
+
+GuiRect {
+    key = "game.buttonlayout800.rect.rect_over_info_tab"
+    pageKey = "game.buttonlayout800"
+    legacySection = "TabRect2"
+    legacyComment = "rect over info tab"
+    role = "rect"
+    layer = "layout"
+    aliasOverride = "rect over info tab"
+    sourceControlType = "TabRect2"
+    rect = "121,394,31,26"
+    legacyLocalRect = "121,394,31,26"
+    legacyRectSource = "xywh"
+    uiPackage = "default"
+    rectModel = "legacy_imgui.modern_rect_v1"
+    controlRect = "121,394,31,26"
+    legacyColor = 0xff000000
+    outline = "FALSE"
+    filled = true
+    fillColorArgb = "0x00000000"
+    borderColorArgb = "0x00000000"
+    colorArgb = "0xffffffff"
+}
+
+GuiText {
+    key = "game.buttonlayout800.text.help"
+    pageKey = "game.buttonlayout800"
+    legacySection = "HelpText"
+    role = "help"
+    layer = "help"
+    aliasOverride = "help"
+    sourceControlType = "HelpText"
+    rect = "0,0,220,24"
+    legacyLocalRect = "0,0,220,24"
+    legacyRectSource = "xywh"
+    uiPackage = "default"
+    rectModel = "legacy_imgui.modern_rect_v1"
+    controlRect = "0,0,220,24"
+    runtimeTextBinding = "legacy.blank_or_runtime_placeholder"
+    runtimeTextSource = "legacy text rectangle has no TextID"
+    textMissing = false
+    font = "Agency Regular"
+    fontStyle = "Regular"
+    fontSize = 14
+    bold = false
+    italic = false
+    textAlign = "left"
+    textAnchor = "upper_left"
+    wrapText = false
+    colorArgb = "0xffd6d6d6"
+    borderColorArgb = "0x00000000"
+}
+
+GuiMetadata {
+    key = "game.buttonlayout800.metadata.metadata_01"
+    pageKey = "game.buttonlayout800"
+    legacySection = "ResourcePoints"
+    role = "metadata"
+    layer = "metadata"
+    aliasOverride = "metadata"
+    sourceControlType = "ResourcePoints"
+    rect = "0,0,0,0"
+    legacyLocalRect = "0,0,0,0"
+    legacyRectSource = "xywh"
+    visible = false
+}
+
+GuiImage {
+    key = "game.buttonlayout800.image.mcui_jumpjets"
+    pageKey = "game.buttonlayout800"
+    legacySection = "JumpJetIcon"
+    role = "image"
+    layer = "art"
+    aliasOverride = "MCUI_JumpJets"
+    sourceControlType = "JumpJetIcon"
+    rect = "22,-22,16,21"
+    legacyLocalRect = "22,-22,16,21"
+    legacyRectSource = "xywh"
+    texture = "data/art/gui/MCUI_JumpJets.png"
+    legacyTexture = "MCUI_JumpJets"
+    uiPackage = "default"
+    rectModel = "legacy_imgui.modern_rect_v1"
+    controlRect = "22,-22,16,21"
+    artRect = "22,-22,16,21"
+    artLayer = "control_art"
+    uvX = 10
+    uvY = 33
+    uvWidth = 16
+    uvHeight = 21
+}
+
+GuiMetadata {
+    key = "game.buttonlayout800.metadata.metadata_02"
+    pageKey = "game.buttonlayout800"
+    legacySection = "ControlButtons"
+    role = "metadata"
+    layer = "metadata"
+    aliasOverride = "metadata"
+    sourceControlType = "ControlButtons"
+    rect = "0,0,0,0"
+    legacyLocalRect = "0,0,0,0"
+    legacyRectSource = "xywh"
+    visible = false
+}
+
+GuiButton {
+    key = "game.buttonlayout800.button.default_attack"
+    pageKey = "game.buttonlayout800"
+    legacySection = "Button0"
+    legacyComment = "default attack"
+    role = "button"
+    layer = "control"
+    aliasOverride = "default attack"
+    sourceControlType = "Button0"
+    rect = "691,465,50,31"
+    legacyLocalRect = "691,465,50,31"
+    legacyRectSource = "xywh"
+    texture = "data/art/gui/MCUI_Med3.png"
+    legacyTexture = "MCUI_Med3"
+    uiPackage = "default"
+    rectModel = "legacy_imgui.modern_rect_v1"
+    controlRect = "691,465,50,31"
+    hitRect = "691,465,50,31"
+    artRect = "691,465,50,31"
+    artLayer = "control_art"
+    controlModel = "composite_hit_art_text_v1"
+    linkedLayers = "hit,art,text"
+    editMode = "linked_control_with_independent_text"
+    textRect = "691,465,50,31"
+    textRectMode = "control_rect_fallback"
+    helpCaptionLegacyId = 30063
+    helpCaptionKey = "legacy.mc2res.30063"
+    helpCaptionText = "Default Range"
+    helpCaptionLegacySymbol = "IDS_DEFAULTRANGE"
+    helpCaptionSource = "mc2res"
+    helpCaptionMissing = false
+    helpDescLegacyId = 30064
+    helpDescKey = "legacy.mc2res.30064"
+    helpDescText = "Sets the selected 'Mechs to attack at their default range"
+    helpDescLegacySymbol = "IDS_DEFAULTRANGE_DESC"
+    helpDescSource = "mc2res"
+    helpDescMissing = false
+    font = "Agency Regular"
+    fontStyle = "Regular"
+    fontSize = 14
+    bold = false
+    italic = false
+    textAlign = "center"
+    textAnchor = "center"
+    legacyTextAlignmentSource = "aButton::init default Alignment=2"
+    wrapText = false
+    legacyId = 0
+    uvX = 0
+    uvY = 0
+    uvWidth = 50
+    uvHeight = 31
+    uvPressedX = 50
+    uvPressedY = 0
+    uvDisabledX = 100
+    uvDisabledY = 0
+    fillColorArgb = "0x00000000"
+    borderColorArgb = "0x00000000"
+    normalTextColorArgb = "0xffffffff"
+    pressedTextColorArgb = "0xfff26f00"
+    highlightTextColorArgb = "0xfff26f00"
+    disabledTextColorArgb = "0xff6b6b6b"
+}
+
+GuiButton {
+    key = "game.buttonlayout800.button.short_range_attack"
+    pageKey = "game.buttonlayout800"
+    legacySection = "Button1"
+    legacyComment = "short range attack"
+    role = "button"
+    layer = "control"
+    aliasOverride = "short range attack"
+    sourceControlType = "Button1"
+    rect = "743,465,50,31"
+    legacyLocalRect = "743,465,50,31"
+    legacyRectSource = "xywh"
+    texture = "data/art/gui/MCUI_Med3.png"
+    legacyTexture = "MCUI_Med3"
+    uiPackage = "default"
+    rectModel = "legacy_imgui.modern_rect_v1"
+    controlRect = "743,465,50,31"
+    hitRect = "743,465,50,31"
+    artRect = "743,465,50,31"
+    artLayer = "control_art"
+    controlModel = "composite_hit_art_text_v1"
+    linkedLayers = "hit,art,text"
+    editMode = "linked_control_with_independent_text"
+    textRect = "743,465,50,31"
+    textRectMode = "control_rect_fallback"
+    helpCaptionLegacyId = 30029
+    helpCaptionKey = "legacy.mc2res.30029"
+    helpCaptionText = "Short-Range Attack Command (S)"
+    helpCaptionLegacySymbol = "IDS_HELP_GEN0"
+    helpCaptionSource = "mc2res"
+    helpCaptionMissing = false
+    helpDescLegacyId = 30030
+    helpDescKey = "legacy.mc2res.30030"
+    helpDescText = "Order the selected 'Mechs to attack at short range."
+    helpDescLegacySymbol = "IDS_HELP_GEN1"
+    helpDescSource = "mc2res"
+    helpDescMissing = false
+    font = "Agency Regular"
+    fontStyle = "Regular"
+    fontSize = 14
+    bold = false
+    italic = false
+    textAlign = "center"
+    textAnchor = "center"
+    legacyTextAlignmentSource = "aButton::init default Alignment=2"
+    wrapText = false
+    legacyId = 1
+    uvX = 0
+    uvY = 31
+    uvWidth = 50
+    uvHeight = 31
+    uvPressedX = 50
+    uvPressedY = 31
+    uvDisabledX = 100
+    uvDisabledY = 31
+    fillColorArgb = "0x00000000"
+    borderColorArgb = "0x00000000"
+    normalTextColorArgb = "0xffffffff"
+    pressedTextColorArgb = "0xfff26f00"
+    highlightTextColorArgb = "0xfff26f00"
+    disabledTextColorArgb = "0xff6b6b6b"
+}
+
+GuiButton {
+    key = "game.buttonlayout800.button.medium_attack"
+    pageKey = "game.buttonlayout800"
+    legacySection = "Button2"
+    legacyComment = "medium attack"
+    role = "button"
+    layer = "control"
+    aliasOverride = "medium attack"
+    sourceControlType = "Button2"
+    rect = "691,498,50,31"
+    legacyLocalRect = "691,498,50,31"
+    legacyRectSource = "xywh"
+    texture = "data/art/gui/MCUI_Med3.png"
+    legacyTexture = "MCUI_Med3"
+    uiPackage = "default"
+    rectModel = "legacy_imgui.modern_rect_v1"
+    controlRect = "691,498,50,31"
+    hitRect = "691,498,50,31"
+    artRect = "691,498,50,31"
+    artLayer = "control_art"
+    controlModel = "composite_hit_art_text_v1"
+    linkedLayers = "hit,art,text"
+    editMode = "linked_control_with_independent_text"
+    textRect = "691,498,50,31"
+    textRectMode = "control_rect_fallback"
+    helpCaptionLegacyId = 30033
+    helpCaptionKey = "legacy.mc2res.30033"
+    helpCaptionText = "Medium-Range Attack Command (M)"
+    helpCaptionLegacySymbol = "IDS_HELP_BRI1"
+    helpCaptionSource = "mc2res"
+    helpCaptionMissing = false
+    helpDescLegacyId = 30034
+    helpDescKey = "legacy.mc2res.30034"
+    helpDescText = "Order the selected 'Mechs to attack at medium range."
+    helpDescLegacySymbol = "IDS_MEDIUMRANGE_DESC"
+    helpDescSource = "mc2res"
+    helpDescMissing = false
+    font = "Agency Regular"
+    fontStyle = "Regular"
+    fontSize = 14
+    bold = false
+    italic = false
+    textAlign = "center"
+    textAnchor = "center"
+    legacyTextAlignmentSource = "aButton::init default Alignment=2"
+    wrapText = false
+    legacyId = 2
+    uvX = 0
+    uvY = 62
+    uvWidth = 50
+    uvHeight = 31
+    uvPressedX = 50
+    uvPressedY = 62
+    uvDisabledX = 100
+    uvDisabledY = 62
+    fillColorArgb = "0x00000000"
+    borderColorArgb = "0x00000000"
+    normalTextColorArgb = "0xffffffff"
+    pressedTextColorArgb = "0xfff26f00"
+    highlightTextColorArgb = "0xfff26f00"
+    disabledTextColorArgb = "0xff6b6b6b"
+}
+
+GuiButton {
+    key = "game.buttonlayout800.button.l_attack"
+    pageKey = "game.buttonlayout800"
+    legacySection = "Button3"
+    legacyComment = "l attack"
+    role = "button"
+    layer = "control"
+    aliasOverride = "l attack"
+    sourceControlType = "Button3"
+    rect = "743,498,50,31"
+    legacyLocalRect = "743,498,50,31"
+    legacyRectSource = "xywh"
+    texture = "data/art/gui/MCUI_Med3.png"
+    legacyTexture = "MCUI_Med3"
+    uiPackage = "default"
+    rectModel = "legacy_imgui.modern_rect_v1"
+    controlRect = "743,498,50,31"
+    hitRect = "743,498,50,31"
+    artRect = "743,498,50,31"
+    artLayer = "control_art"
+    controlModel = "composite_hit_art_text_v1"
+    linkedLayers = "hit,art,text"
+    editMode = "linked_control_with_independent_text"
+    textRect = "743,498,50,31"
+    textRectMode = "control_rect_fallback"
+    helpCaptionLegacyId = 30031
+    helpCaptionKey = "legacy.mc2res.30031"
+    helpCaptionText = "Long-Range Attack Command (L)"
+    helpCaptionLegacySymbol = "IDS_HELP_GEN2"
+    helpCaptionSource = "mc2res"
+    helpCaptionMissing = false
+    helpDescLegacyId = 30032
+    helpDescKey = "legacy.mc2res.30032"
+    helpDescText = "Order the selected 'Mechs to attack at long range."
+    helpDescLegacySymbol = "IDS_HELP_BRI0"
+    helpDescSource = "mc2res"
+    helpDescMissing = false
+    font = "Agency Regular"
+    fontStyle = "Regular"
+    fontSize = 14
+    bold = false
+    italic = false
+    textAlign = "center"
+    textAnchor = "center"
+    legacyTextAlignmentSource = "aButton::init default Alignment=2"
+    wrapText = false
+    legacyId = 3
+    uvX = 0
+    uvY = 93
+    uvWidth = 50
+    uvHeight = 31
+    uvPressedX = 50
+    uvPressedY = 93
+    uvDisabledX = 100
+    uvDisabledY = 93
+    fillColorArgb = "0x00000000"
+    borderColorArgb = "0x00000000"
+    normalTextColorArgb = "0xffffffff"
+    pressedTextColorArgb = "0xfff26f00"
+    highlightTextColorArgb = "0xfff26f00"
+    disabledTextColorArgb = "0xff6b6b6b"
+}
+
+GuiButton {
+    key = "game.buttonlayout800.button.jump"
+    pageKey = "game.buttonlayout800"
+    legacySection = "Button4"
+    legacyComment = "jump"
+    role = "button"
+    layer = "control"
+    aliasOverride = "jump"
+    sourceControlType = "Button4"
+    rect = "743,471,50,45"
+    legacyLocalRect = "743,471,50,45"
+    legacyRectSource = "xywh"
+    texture = "data/art/gui/MCUI_Med3.png"
+    legacyTexture = "MCUI_Med3"
+    uiPackage = "default"
+    rectModel = "legacy_imgui.modern_rect_v1"
+    controlRect = "743,471,50,45"
+    hitRect = "743,471,50,45"
+    artRect = "743,471,50,45"
+    artLayer = "control_art"
+    controlModel = "composite_hit_art_text_v1"
+    linkedLayers = "hit,art,text"
+    editMode = "linked_control_with_independent_text"
+    textRect = "743,471,50,45"
+    textRectMode = "control_rect_fallback"
+    helpCaptionLegacyId = 30035
+    helpCaptionKey = "legacy.mc2res.30035"
+    helpCaptionText = "Jump Command (J)"
+    helpCaptionLegacySymbol = "IDS_HELP_BRI3"
+    helpCaptionSource = "mc2res"
+    helpCaptionMissing = false
+    helpDescLegacyId = 30036
+    helpDescKey = "legacy.mc2res.30036"
+    helpDescText = "Order the selected units to jump on their next move command."
+    helpDescLegacySymbol = "IDS_HELP_BRI4"
+    helpDescSource = "mc2res"
+    helpDescMissing = false
+    font = "Agency Regular"
+    fontStyle = "Regular"
+    fontSize = 14
+    bold = false
+    italic = false
+    textAlign = "center"
+    textAnchor = "center"
+    legacyTextAlignmentSource = "aButton::init default Alignment=2"
+    wrapText = false
+    legacyId = 4
+    uvX = 0
+    uvY = 45
+    uvWidth = 50
+    uvHeight = 45
+    uvPressedX = 50
+    uvPressedY = 45
+    uvDisabledX = 100
+    uvDisabledY = 45
+    fillColorArgb = "0x00000000"
+    borderColorArgb = "0x00000000"
+    normalTextColorArgb = "0xffffffff"
+    pressedTextColorArgb = "0xfff26f00"
+    highlightTextColorArgb = "0xfff26f00"
+    disabledTextColorArgb = "0xff6b6b6b"
+}
+
+GuiButton {
+    key = "game.buttonlayout800.button.run"
+    pageKey = "game.buttonlayout800"
+    legacySection = "Button5"
+    legacyComment = "run"
+    role = "button"
+    layer = "control"
+    aliasOverride = "run"
+    sourceControlType = "Button5"
+    rect = "691,471,50,45"
+    legacyLocalRect = "691,471,50,45"
+    legacyRectSource = "xywh"
+    texture = "data/art/gui/MCUI_Med3.png"
+    legacyTexture = "MCUI_Med3"
+    uiPackage = "default"
+    rectModel = "legacy_imgui.modern_rect_v1"
+    controlRect = "691,471,50,45"
+    hitRect = "691,471,50,45"
+    artRect = "691,471,50,45"
+    artLayer = "control_art"
+    controlModel = "composite_hit_art_text_v1"
+    linkedLayers = "hit,art,text"
+    editMode = "linked_control_with_independent_text"
+    textRect = "691,471,50,45"
+    textRectMode = "control_rect_fallback"
+    helpCaptionLegacyId = 30037
+    helpCaptionKey = "legacy.mc2res.30037"
+    helpCaptionText = "Run Command (SPACEBAR)"
+    helpCaptionLegacySymbol = "IDS_RUN"
+    helpCaptionSource = "mc2res"
+    helpCaptionMissing = false
+    helpDescLegacyId = 30038
+    helpDescKey = "legacy.mc2res.30038"
+    helpDescText = "Order the selected units to run on their next move command."
+    helpDescLegacySymbol = "IDS_HELP_BRI6"
+    helpDescSource = "mc2res"
+    helpDescMissing = false
+    font = "Agency Regular"
+    fontStyle = "Regular"
+    fontSize = 14
+    bold = false
+    italic = false
+    textAlign = "center"
+    textAnchor = "center"
+    legacyTextAlignmentSource = "aButton::init default Alignment=2"
+    wrapText = false
+    legacyId = 5
+    uvX = 0
+    uvY = 0
+    uvWidth = 50
+    uvHeight = 45
+    uvPressedX = 50
+    uvPressedY = 0
+    uvDisabledX = 100
+    uvDisabledY = 0
+    fillColorArgb = "0x00000000"
+    borderColorArgb = "0x00000000"
+    normalTextColorArgb = "0xffffffff"
+    pressedTextColorArgb = "0xfff26f00"
+    highlightTextColorArgb = "0xfff26f00"
+    disabledTextColorArgb = "0xff6b6b6b"
+}
+
+GuiButton {
+    key = "game.buttonlayout800.button.guard"
+    pageKey = "game.buttonlayout800"
+    legacySection = "Button6"
+    legacyComment = "guard"
+    role = "button"
+    layer = "control"
+    aliasOverride = "guard"
+    sourceControlType = "Button6"
+    rect = "691,519,50,45"
+    legacyLocalRect = "691,519,50,45"
+    legacyRectSource = "xywh"
+    texture = "data/art/gui/MCUI_Med6.png"
+    legacyTexture = "MCUI_Med6"
+    uiPackage = "default"
+    rectModel = "legacy_imgui.modern_rect_v1"
+    controlRect = "691,519,50,45"
+    hitRect = "691,519,50,45"
+    artRect = "691,519,50,45"
+    artLayer = "control_art"
+    controlModel = "composite_hit_art_text_v1"
+    linkedLayers = "hit,art,text"
+    editMode = "linked_control_with_independent_text"
+    textRect = "691,519,50,45"
+    textRectMode = "control_rect_fallback"
+    helpCaptionLegacyId = 30039
+    helpCaptionKey = "legacy.mc2res.30039"
+    helpCaptionText = "Guard Command (G)"
+    helpCaptionLegacySymbol = "IDS_GUARD"
+    helpCaptionSource = "mc2res"
+    helpCaptionMissing = false
+    helpDescLegacyId = 30040
+    helpDescKey = "legacy.mc2res.30040"
+    helpDescText = "Order the selected units to guard another unit."
+    helpDescLegacySymbol = "IDS_GUARD_DESC"
+    helpDescSource = "mc2res"
+    helpDescMissing = false
+    font = "Agency Regular"
+    fontStyle = "Regular"
+    fontSize = 14
+    bold = false
+    italic = false
+    textAlign = "center"
+    textAnchor = "center"
+    legacyTextAlignmentSource = "aButton::init default Alignment=2"
+    wrapText = false
+    legacyId = 6
+    uvX = 0
+    uvY = 0
+    uvWidth = 50
+    uvHeight = 45
+    uvPressedX = 50
+    uvPressedY = 0
+    uvDisabledX = 0
+    uvDisabledY = 45
+    fillColorArgb = "0x00000000"
+    borderColorArgb = "0x00000000"
+    normalTextColorArgb = "0xffffffff"
+    pressedTextColorArgb = "0xfff26f00"
+    highlightTextColorArgb = "0xfff26f00"
+    disabledTextColorArgb = "0xff6b6b6b"
+}
+
+GuiButton {
+    key = "game.buttonlayout800.button.fire_from_current_pos"
+    pageKey = "game.buttonlayout800"
+    legacySection = "Button7"
+    legacyComment = "fire from current pos"
+    role = "button"
+    layer = "control"
+    aliasOverride = "fire from current pos"
+    sourceControlType = "Button7"
+    rect = "691,567,32,28"
+    legacyLocalRect = "691,567,32,28"
+    legacyRectSource = "xywh"
+    texture = "data/art/gui/MCUI_Med2.png"
+    legacyTexture = "MCUI_Med2"
+    uiPackage = "default"
+    rectModel = "legacy_imgui.modern_rect_v1"
+    controlRect = "691,567,32,28"
+    hitRect = "691,567,32,28"
+    artRect = "691,567,32,28"
+    artLayer = "control_art"
+    controlModel = "composite_hit_art_text_v1"
+    linkedLayers = "hit,art,text"
+    editMode = "linked_control_with_independent_text"
+    textRect = "691,567,32,28"
+    textRectMode = "control_rect_fallback"
+    helpCaptionLegacyId = 30041
+    helpCaptionKey = "legacy.mc2res.30041"
+    helpCaptionText = "Fire from Current Position Command (C)"
+    helpCaptionLegacySymbol = "IDS_FIREFROMCURRENTPOS"
+    helpCaptionSource = "mc2res"
+    helpCaptionMissing = false
+    helpDescLegacyId = 30042
+    helpDescKey = "legacy.mc2res.30042"
+    helpDescText = "Order the selected units to stop and fire from their current positions."
+    helpDescLegacySymbol = "IDS_FIREFROMCURRENTPOS_DESC"
+    helpDescSource = "mc2res"
+    helpDescMissing = false
+    font = "Agency Regular"
+    fontStyle = "Regular"
+    fontSize = 14
+    bold = false
+    italic = false
+    textAlign = "center"
+    textAnchor = "center"
+    legacyTextAlignmentSource = "aButton::init default Alignment=2"
+    wrapText = false
+    legacyId = 7
+    uvX = 0
+    uvY = 164
+    uvWidth = 32
+    uvHeight = 28
+    uvPressedX = 32
+    uvPressedY = 164
+    uvDisabledX = 64
+    uvDisabledY = 164
+    fillColorArgb = "0x00000000"
+    borderColorArgb = "0x00000000"
+    normalTextColorArgb = "0xffffffff"
+    pressedTextColorArgb = "0xfff26f00"
+    highlightTextColorArgb = "0xfff26f00"
+    disabledTextColorArgb = "0xff6b6b6b"
+}
+
+GuiButton {
+    key = "game.buttonlayout800.button.stop"
+    pageKey = "game.buttonlayout800"
+    legacySection = "Button8"
+    legacyComment = "stop"
+    role = "button"
+    layer = "control"
+    aliasOverride = "stop"
+    sourceControlType = "Button8"
+    rect = "743,519,50,45"
+    legacyLocalRect = "743,519,50,45"
+    legacyRectSource = "xywh"
+    texture = "data/art/gui/MCUI_Med1.png"
+    legacyTexture = "MCUI_Med1"
+    uiPackage = "default"
+    rectModel = "legacy_imgui.modern_rect_v1"
+    controlRect = "743,519,50,45"
+    hitRect = "743,519,50,45"
+    artRect = "743,519,50,45"
+    artLayer = "control_art"
+    controlModel = "composite_hit_art_text_v1"
+    linkedLayers = "hit,art,text"
+    editMode = "linked_control_with_independent_text"
+    textRect = "743,519,50,45"
+    textRectMode = "control_rect_fallback"
+    helpCaptionLegacyId = 30043
+    helpCaptionKey = "legacy.mc2res.30043"
+    helpCaptionText = "Stop/Hold Fire Command (BACKSPACE)"
+    helpCaptionLegacySymbol = "IDS_STOP"
+    helpCaptionSource = "mc2res"
+    helpCaptionMissing = false
+    helpDescLegacyId = 30044
+    helpDescKey = "legacy.mc2res.30044"
+    helpDescText = "Order the selected units to stop their previous commands."
+    helpDescLegacySymbol = "IDS_HELP_INV4"
+    helpDescSource = "mc2res"
+    helpDescMissing = false
+    font = "Agency Regular"
+    fontStyle = "Regular"
+    fontSize = 14
+    bold = false
+    italic = false
+    textAlign = "center"
+    textAnchor = "center"
+    legacyTextAlignmentSource = "aButton::init default Alignment=2"
+    wrapText = false
+    legacyId = 8
+    uvX = 0
+    uvY = 200
+    uvWidth = 50
+    uvHeight = 45
+    uvPressedX = 50
+    uvPressedY = 200
+    uvDisabledX = 100
+    uvDisabledY = 200
+    fillColorArgb = "0x00000000"
+    borderColorArgb = "0x00000000"
+    normalTextColorArgb = "0xffffffff"
+    pressedTextColorArgb = "0xfff26f00"
+    highlightTextColorArgb = "0xfff26f00"
+    disabledTextColorArgb = "0xff6b6b6b"
+}
+
+GuiButton {
+    key = "game.buttonlayout800.button.info"
+    pageKey = "game.buttonlayout800"
+    legacySection = "Button9"
+    legacyComment = "info"
+    role = "button"
+    layer = "control"
+    aliasOverride = "info"
+    sourceControlType = "Button9"
+    rect = "726,440,32,28"
+    legacyLocalRect = "726,440,32,28"
+    legacyRectSource = "xywh"
+    texture = "data/art/gui/MCUI_Med1.png"
+    legacyTexture = "MCUI_Med1"
+    uiPackage = "default"
+    rectModel = "legacy_imgui.modern_rect_v1"
+    controlRect = "726,440,32,28"
+    hitRect = "726,440,32,28"
+    artRect = "726,440,32,28"
+    artLayer = "control_art"
+    controlModel = "composite_hit_art_text_v1"
+    linkedLayers = "hit,art,text"
+    editMode = "linked_control_with_independent_text"
+    textRect = "726,440,32,28"
+    textRectMode = "control_rect_fallback"
+    helpCaptionLegacyId = 30045
+    helpCaptionKey = "legacy.mc2res.30045"
+    helpCaptionText = "Info (I)"
+    helpCaptionLegacySymbol = "IDS_INFO"
+    helpCaptionSource = "mc2res"
+    helpCaptionMissing = false
+    helpDescLegacyId = 30046
+    helpDescKey = "legacy.mc2res.30046"
+    helpDescText = "Display detailed information on the selected 'Mech or vehicle."
+    helpDescLegacySymbol = "IDS_INFO_DESC"
+    helpDescSource = "mc2res"
+    helpDescMissing = false
+    font = "Agency Regular"
+    fontStyle = "Regular"
+    fontSize = 14
+    bold = false
+    italic = false
+    textAlign = "center"
+    textAnchor = "center"
+    legacyTextAlignmentSource = "aButton::init default Alignment=2"
+    wrapText = false
+    legacyId = 9
+    uvX = 142
+    uvY = 94
+    uvWidth = 32
+    uvHeight = 28
+    uvPressedX = 174
+    uvPressedY = 94
+    uvDisabledX = 206
+    uvDisabledY = 94
+    fillColorArgb = "0x00000000"
+    borderColorArgb = "0x00000000"
+    normalTextColorArgb = "0xffffffff"
+    pressedTextColorArgb = "0xfff26f00"
+    highlightTextColorArgb = "0xfff26f00"
+    disabledTextColorArgb = "0xff6b6b6b"
+}
+
+GuiButton {
+    key = "game.buttonlayout800.button.objectives"
+    pageKey = "game.buttonlayout800"
+    legacySection = "Button10"
+    legacyComment = "objectives"
+    role = "button"
+    layer = "control"
+    aliasOverride = "objectives"
+    sourceControlType = "Button10"
+    rect = "691,440,32,28"
+    legacyLocalRect = "691,440,32,28"
+    legacyRectSource = "xywh"
+    texture = "data/art/gui/MCUI_Med1.png"
+    legacyTexture = "MCUI_Med1"
+    uiPackage = "default"
+    rectModel = "legacy_imgui.modern_rect_v1"
+    controlRect = "691,440,32,28"
+    hitRect = "691,440,32,28"
+    artRect = "691,440,32,28"
+    artLayer = "control_art"
+    controlModel = "composite_hit_art_text_v1"
+    linkedLayers = "hit,art,text"
+    editMode = "linked_control_with_independent_text"
+    textRect = "691,440,32,28"
+    textRectMode = "control_rect_fallback"
+    helpCaptionLegacyId = 30047
+    helpCaptionKey = "legacy.mc2res.30047"
+    helpCaptionText = "Objectives List (F9)"
+    helpCaptionLegacySymbol = "IDS_OBJECTIVES_COMMAND"
+    helpCaptionSource = "mc2res"
+    helpCaptionMissing = false
+    helpDescLegacyId = 30048
+    helpDescKey = "legacy.mc2res.30048"
+    helpDescText = "Toggle the list of current mission objectives."
+    helpDescLegacySymbol = "IDS_OBJECTIVES_COMMAND_DESC"
+    helpDescSource = "mc2res"
+    helpDescMissing = false
+    font = "Agency Regular"
+    fontStyle = "Regular"
+    fontSize = 14
+    bold = false
+    italic = false
+    textAlign = "center"
+    textAnchor = "center"
+    legacyTextAlignmentSource = "aButton::init default Alignment=2"
+    wrapText = false
+    legacyId = 10
+    uvX = 142
+    uvY = 66
+    uvWidth = 32
+    uvHeight = 28
+    uvPressedX = 174
+    uvPressedY = 66
+    uvDisabledX = 206
+    uvDisabledY = 66
+    fillColorArgb = "0x00000000"
+    borderColorArgb = "0x00000000"
+    normalTextColorArgb = "0xffffffff"
+    pressedTextColorArgb = "0xfff26f00"
+    highlightTextColorArgb = "0xfff26f00"
+    disabledTextColorArgb = "0xff6b6b6b"
+}
+
+GuiButton {
+    key = "game.buttonlayout800.button.pause_window"
+    pageKey = "game.buttonlayout800"
+    legacySection = "Button11"
+    legacyComment = "PAUSE WINDOW"
+    role = "button"
+    layer = "control"
+    aliasOverride = "PAUSE WINDOW"
+    sourceControlType = "Button11"
+    rect = "761,440,32,28"
+    legacyLocalRect = "761,440,32,28"
+    legacyRectSource = "xywh"
+    texture = "data/art/gui/MCUI_Med1.png"
+    legacyTexture = "MCUI_Med1"
+    uiPackage = "default"
+    rectModel = "legacy_imgui.modern_rect_v1"
+    controlRect = "761,440,32,28"
+    hitRect = "761,440,32,28"
+    artRect = "761,440,32,28"
+    artLayer = "control_art"
+    controlModel = "composite_hit_art_text_v1"
+    linkedLayers = "hit,art,text"
+    editMode = "linked_control_with_independent_text"
+    textRect = "761,440,32,28"
+    textRectMode = "control_rect_fallback"
+    helpCaptionLegacyId = 30049
+    helpCaptionKey = "legacy.mc2res.30049"
+    helpCaptionText = "System Menu (ESC)"
+    helpCaptionLegacySymbol = "IDS_HELP_REP0"
+    helpCaptionSource = "mc2res"
+    helpCaptionMissing = false
+    helpDescLegacyId = 30050
+    helpDescKey = "legacy.mc2res.30050"
+    helpDescText = "Toggle the System Menu, which pauses the mission when open."
+    helpDescLegacySymbol = "IDS_HELP_REP1"
+    helpDescSource = "mc2res"
+    helpDescMissing = false
+    font = "Agency Regular"
+    fontStyle = "Regular"
+    fontSize = 14
+    bold = false
+    italic = false
+    textAlign = "center"
+    textAnchor = "center"
+    legacyTextAlignmentSource = "aButton::init default Alignment=2"
+    wrapText = false
+    legacyId = 11
+    uvX = 142
+    uvY = 38
+    uvWidth = 32
+    uvHeight = 28
+    uvPressedX = 174
+    uvPressedY = 38
+    uvDisabledX = 206
+    uvDisabledY = 38
+    fillColorArgb = "0x00000000"
+    borderColorArgb = "0x00000000"
+    normalTextColorArgb = "0xffffffff"
+    pressedTextColorArgb = "0xfff26f00"
+    highlightTextColorArgb = "0xfff26f00"
+    disabledTextColorArgb = "0xff6b6b6b"
+}
+
+GuiButton {
+    key = "game.buttonlayout800.button.tac_map"
+    pageKey = "game.buttonlayout800"
+    legacySection = "Button12"
+    legacyComment = "tac map"
+    role = "map"
+    layer = "map"
+    aliasOverride = "tac map"
+    sourceControlType = "Button12"
+    rect = "0,391,56,37"
+    legacyLocalRect = "0,391,56,37"
+    legacyRectSource = "xywh"
+    texture = "data/art/gui/MCUI_Med3.png"
+    legacyTexture = "MCUI_Med3"
+    uiPackage = "default"
+    rectModel = "legacy_imgui.modern_rect_v1"
+    controlRect = "0,391,56,37"
+    hitRect = "0,391,56,37"
+    artRect = "0,391,56,37"
+    artLayer = "control_art"
+    controlModel = "composite_hit_art_text_v1"
+    linkedLayers = "hit,art,text"
+    editMode = "linked_control_with_independent_text"
+    textRect = "0,391,56,37"
+    textRectMode = "control_rect_fallback"
+    helpCaptionLegacyId = 30051
+    helpCaptionKey = "legacy.mc2res.30051"
+    helpCaptionText = "Tactical Map"
+    helpCaptionLegacySymbol = "IDS_TACMAP"
+    helpCaptionSource = "mc2res"
+    helpCaptionMissing = false
+    helpDescLegacyId = 30052
+    helpDescKey = "legacy.mc2res.30052"
+    helpDescText = "Display sensor contacts, objective locations, unit locations, and other information."
+    helpDescLegacySymbol = "IDS_TACMAP_DESC"
+    helpDescSource = "mc2res"
+    helpDescMissing = false
+    font = "Agency Regular"
+    fontStyle = "Regular"
+    fontSize = 14
+    bold = false
+    italic = false
+    textAlign = "center"
+    textAnchor = "center"
+    legacyTextAlignmentSource = "aButton::init default Alignment=2"
+    wrapText = false
+    legacyId = 12
+    uvX = 200
+    uvY = 37
+    uvWidth = 56
+    uvHeight = 37
+    uvPressedX = 200
+    uvPressedY = 0
+    fillColorArgb = "0x00000000"
+    borderColorArgb = "0x00000000"
+    normalTextColorArgb = "0xffffffff"
+    pressedTextColorArgb = "0xfff26f00"
+    highlightTextColorArgb = "0xfff26f00"
+    disabledTextColorArgb = "0xff6b6b6b"
+}
+
+GuiButton {
+    key = "game.buttonlayout800.button.info_tab"
+    pageKey = "game.buttonlayout800"
+    legacySection = "Button13"
+    legacyComment = "info tab"
+    role = "button"
+    layer = "control"
+    aliasOverride = "info tab"
+    sourceControlType = "Button13"
+    rect = "117,391,56,37"
+    legacyLocalRect = "117,391,56,37"
+    legacyRectSource = "xywh"
+    texture = "data/art/gui/MCUI_Med3.png"
+    legacyTexture = "MCUI_Med3"
+    uiPackage = "default"
+    rectModel = "legacy_imgui.modern_rect_v1"
+    controlRect = "117,391,56,37"
+    hitRect = "117,391,56,37"
+    artRect = "117,391,56,37"
+    artLayer = "control_art"
+    controlModel = "composite_hit_art_text_v1"
+    linkedLayers = "hit,art,text"
+    editMode = "linked_control_with_independent_text"
+    textRect = "117,391,56,37"
+    textRectMode = "control_rect_fallback"
+    helpCaptionLegacyId = 30055
+    helpCaptionKey = "legacy.mc2res.30055"
+    helpCaptionText = "Unit Info"
+    helpCaptionLegacySymbol = "IDS_INFOTAB"
+    helpCaptionSource = "mc2res"
+    helpCaptionMissing = false
+    helpDescLegacyId = 30056
+    helpDescKey = "legacy.mc2res.30056"
+    helpDescText = "Display detailed information on the selected 'Mech or vehicle."
+    helpDescLegacySymbol = "IDS_INFOTAB_DESC"
+    helpDescSource = "mc2res"
+    helpDescMissing = false
+    font = "Agency Regular"
+    fontStyle = "Regular"
+    fontSize = 14
+    bold = false
+    italic = false
+    textAlign = "center"
+    textAnchor = "center"
+    legacyTextAlignmentSource = "aButton::init default Alignment=2"
+    wrapText = false
+    legacyId = 13
+    uvX = 200
+    uvY = 185
+    uvWidth = 56
+    uvHeight = 37
+    uvPressedX = 200
+    uvPressedY = 148
+    fillColorArgb = "0x00000000"
+    borderColorArgb = "0x00000000"
+    normalTextColorArgb = "0xffffffff"
+    pressedTextColorArgb = "0xfff26f00"
+    highlightTextColorArgb = "0xfff26f00"
+    disabledTextColorArgb = "0xff6b6b6b"
+}
+
+GuiButton {
+    key = "game.buttonlayout800.button.vehicle_tab"
+    pageKey = "game.buttonlayout800"
+    legacySection = "Button14"
+    legacyComment = "vehicle tab"
+    role = "button"
+    layer = "control"
+    aliasOverride = "vehicle tab"
+    sourceControlType = "Button14"
+    rect = "59,391,56,37"
+    legacyLocalRect = "59,391,56,37"
+    legacyRectSource = "xywh"
+    texture = "data/art/gui/MCUI_Med3.png"
+    legacyTexture = "MCUI_Med3"
+    uiPackage = "default"
+    rectModel = "legacy_imgui.modern_rect_v1"
+    controlRect = "59,391,56,37"
+    hitRect = "59,391,56,37"
+    artRect = "59,391,56,37"
+    artLayer = "control_art"
+    controlModel = "composite_hit_art_text_v1"
+    linkedLayers = "hit,art,text"
+    editMode = "linked_control_with_independent_text"
+    textRect = "59,391,56,37"
+    textRectMode = "control_rect_fallback"
+    helpCaptionLegacyId = 30053
+    helpCaptionKey = "legacy.mc2res.30053"
+    helpCaptionText = "Support Palette"
+    helpCaptionLegacySymbol = "IDS_HELP_MCH0"
+    helpCaptionSource = "mc2res"
+    helpCaptionMissing = false
+    helpDescLegacyId = 30054
+    helpDescKey = "legacy.mc2res.30054"
+    helpDescText = "Display artillery and vehicle reinforcement options."
+    helpDescLegacySymbol = "IDS_HELP_MCH1"
+    helpDescSource = "mc2res"
+    helpDescMissing = false
+    font = "Agency Regular"
+    fontStyle = "Regular"
+    fontSize = 14
+    bold = false
+    italic = false
+    textAlign = "center"
+    textAnchor = "center"
+    legacyTextAlignmentSource = "aButton::init default Alignment=2"
+    wrapText = false
+    legacyId = 14
+    uvX = 200
+    uvY = 111
+    uvWidth = 56
+    uvHeight = 37
+    uvPressedX = 200
+    uvPressedY = 74
+    fillColorArgb = "0x00000000"
+    borderColorArgb = "0x00000000"
+    normalTextColorArgb = "0xffffffff"
+    pressedTextColorArgb = "0xfff26f00"
+    highlightTextColorArgb = "0xfff26f00"
+    disabledTextColorArgb = "0xff6b6b6b"
+}
+
+GuiButton {
+    key = "game.buttonlayout800.button.minelayer"
+    pageKey = "game.buttonlayout800"
+    legacySection = "Button15"
+    legacyComment = "minelayer"
+    role = "button"
+    layer = "control"
+    aliasOverride = "minelayer"
+    sourceControlType = "Button15"
+    rect = "761,567,32,28"
+    legacyLocalRect = "761,567,32,28"
+    legacyRectSource = "xywh"
+    texture = "data/art/gui/MCUI_Med2.png"
+    legacyTexture = "MCUI_Med2"
+    uiPackage = "default"
+    rectModel = "legacy_imgui.modern_rect_v1"
+    controlRect = "761,567,32,28"
+    hitRect = "761,567,32,28"
+    artRect = "761,567,32,28"
+    artLayer = "control_art"
+    controlModel = "composite_hit_art_text_v1"
+    linkedLayers = "hit,art,text"
+    editMode = "linked_control_with_independent_text"
+    textRect = "761,567,32,28"
+    textRectMode = "control_rect_fallback"
+    helpCaptionLegacyId = 30057
+    helpCaptionKey = "legacy.mc2res.30057"
+    helpCaptionText = "Lay Mines Toggle Command (V)"
+    helpCaptionLegacySymbol = "IDS_LAYMINES"
+    helpCaptionSource = "mc2res"
+    helpCaptionMissing = false
+    helpDescLegacyId = 30058
+    helpDescKey = "legacy.mc2res.30058"
+    helpDescText = "Order the selected Minelayer to lay mines on its next movement command."
+    helpDescLegacySymbol = "IDS_HELP_MCH5"
+    helpDescSource = "mc2res"
+    helpDescMissing = false
+    font = "Agency Regular"
+    fontStyle = "Regular"
+    fontSize = 14
+    bold = false
+    italic = false
+    textAlign = "center"
+    textAnchor = "center"
+    legacyTextAlignmentSource = "aButton::init default Alignment=2"
+    wrapText = false
+    legacyId = 15
+    uvX = 0
+    uvY = 192
+    uvWidth = 32
+    uvHeight = 28
+    uvPressedX = 32
+    uvPressedY = 192
+    uvDisabledX = 64
+    uvDisabledY = 192
+    fillColorArgb = "0x00000000"
+    borderColorArgb = "0x00000000"
+    normalTextColorArgb = "0xffffffff"
+    pressedTextColorArgb = "0xfff26f00"
+    highlightTextColorArgb = "0xfff26f00"
+    disabledTextColorArgb = "0xff6b6b6b"
+}
+
+GuiButton {
+    key = "game.buttonlayout800.button.repair"
+    pageKey = "game.buttonlayout800"
+    legacySection = "Button16"
+    legacyComment = "repair"
+    role = "button"
+    layer = "control"
+    aliasOverride = "repair"
+    sourceControlType = "Button16"
+    rect = "761,567,32,28"
+    legacyLocalRect = "761,567,32,28"
+    legacyRectSource = "xywh"
+    texture = "data/art/gui/MCUI_Med2.png"
+    legacyTexture = "MCUI_Med2"
+    uiPackage = "default"
+    rectModel = "legacy_imgui.modern_rect_v1"
+    controlRect = "761,567,32,28"
+    hitRect = "761,567,32,28"
+    artRect = "761,567,32,28"
+    artLayer = "control_art"
+    controlModel = "composite_hit_art_text_v1"
+    linkedLayers = "hit,art,text"
+    editMode = "linked_control_with_independent_text"
+    textRect = "761,567,32,28"
+    textRectMode = "control_rect_fallback"
+    helpCaptionLegacyId = 30059
+    helpCaptionKey = "legacy.mc2res.30059"
+    helpCaptionText = "Repair"
+    helpCaptionLegacySymbol = "IDS_REPAIR"
+    helpCaptionSource = "mc2res"
+    helpCaptionMissing = false
+    helpDescLegacyId = 30060
+    helpDescKey = "legacy.mc2res.30060"
+    helpDescText = "Activates Repair Mode for the selected Repair Truck"
+    helpDescLegacySymbol = "IDS_REPAIR_DESC"
+    helpDescSource = "mc2res"
+    helpDescMissing = false
+    font = "Agency Regular"
+    fontStyle = "Regular"
+    fontSize = 14
+    bold = false
+    italic = false
+    textAlign = "center"
+    textAnchor = "center"
+    legacyTextAlignmentSource = "aButton::init default Alignment=2"
+    wrapText = false
+    legacyId = 16
+    uvX = 96
+    uvY = 108
+    uvWidth = 32
+    uvHeight = 28
+    uvPressedX = 128
+    uvPressedY = 108
+    uvDisabledX = 160
+    uvDisabledY = 108
+    fillColorArgb = "0x00000000"
+    borderColorArgb = "0x00000000"
+    normalTextColorArgb = "0xffffffff"
+    pressedTextColorArgb = "0xfff26f00"
+    highlightTextColorArgb = "0xfff26f00"
+    disabledTextColorArgb = "0xff6b6b6b"
+}
+
+GuiButton {
+    key = "game.buttonlayout800.button.salvage"
+    pageKey = "game.buttonlayout800"
+    legacySection = "Button17"
+    legacyComment = "salvage"
+    role = "button"
+    layer = "control"
+    aliasOverride = "salvage"
+    sourceControlType = "Button17"
+    rect = "761,567,32,28"
+    legacyLocalRect = "761,567,32,28"
+    legacyRectSource = "xywh"
+    texture = "data/art/gui/MCUI_Med2.png"
+    legacyTexture = "MCUI_Med2"
+    uiPackage = "default"
+    rectModel = "legacy_imgui.modern_rect_v1"
+    controlRect = "761,567,32,28"
+    hitRect = "761,567,32,28"
+    artRect = "761,567,32,28"
+    artLayer = "control_art"
+    controlModel = "composite_hit_art_text_v1"
+    linkedLayers = "hit,art,text"
+    editMode = "linked_control_with_independent_text"
+    textRect = "761,567,32,28"
+    textRectMode = "control_rect_fallback"
+    helpCaptionLegacyId = 30061
+    helpCaptionKey = "legacy.mc2res.30061"
+    helpCaptionText = "Recover"
+    helpCaptionLegacySymbol = "IDS_HELP_MCH8"
+    helpCaptionSource = "mc2res"
+    helpCaptionMissing = false
+    helpDescLegacyId = 30062
+    helpDescKey = "legacy.mc2res.30062"
+    helpDescText = "Activates Recover Mode for the selected Salvage Craft"
+    helpDescLegacySymbol = "IDS_HELP_MCH9"
+    helpDescSource = "mc2res"
+    helpDescMissing = false
+    font = "Agency Regular"
+    fontStyle = "Regular"
+    fontSize = 14
+    bold = false
+    italic = false
+    textAlign = "center"
+    textAnchor = "center"
+    legacyTextAlignmentSource = "aButton::init default Alignment=2"
+    wrapText = false
+    legacyId = 17
+    uvX = 96
+    uvY = 136
+    uvWidth = 32
+    uvHeight = 28
+    uvPressedX = 128
+    uvPressedY = 136
+    uvDisabledX = 160
+    uvDisabledY = 136
+    fillColorArgb = "0x00000000"
+    borderColorArgb = "0x00000000"
+    normalTextColorArgb = "0xffffffff"
+    pressedTextColorArgb = "0xfff26f00"
+    highlightTextColorArgb = "0xfff26f00"
+    disabledTextColorArgb = "0xff6b6b6b"
+}
+
+GuiButton {
+    key = "game.buttonlayout800.button.artillery_piece_suppression_fire"
+    pageKey = "game.buttonlayout800"
+    legacySection = "Button18"
+    legacyComment = "artillery piece suppression fire"
+    role = "button"
+    layer = "control"
+    aliasOverride = "artillery piece suppression fire"
+    sourceControlType = "Button18"
+    rect = "761,567,32,28"
+    legacyLocalRect = "761,567,32,28"
+    legacyRectSource = "xywh"
+    texture = "data/art/gui/MCUI_Med2.png"
+    legacyTexture = "MCUI_Med2"
+    uiPackage = "default"
+    rectModel = "legacy_imgui.modern_rect_v1"
+    controlRect = "761,567,32,28"
+    hitRect = "761,567,32,28"
+    artRect = "761,567,32,28"
+    artLayer = "control_art"
+    controlModel = "composite_hit_art_text_v1"
+    linkedLayers = "hit,art,text"
+    editMode = "linked_control_with_independent_text"
+    textRect = "761,567,32,28"
+    textRectMode = "control_rect_fallback"
+    helpCaptionLegacyId = 43240
+    helpCaptionKey = "legacy.mc2res.43240"
+    helpCaptionText = "Suppression Fire Toggle Command (V)"
+    helpCaptionLegacySymbol = "IDS_GUARDTOWER"
+    helpCaptionSource = "mc2res"
+    helpCaptionMissing = false
+    helpDescLegacyId = 43241
+    helpDescKey = "legacy.mc2res.43241"
+    helpDescText = "Order the selected Fixed Artillery to fire continuously at its next target."
+    helpDescLegacySymbol = "IDS_GUARDTOWER_DESC"
+    helpDescSource = "mc2res"
+    helpDescMissing = false
+    font = "Agency Regular"
+    fontStyle = "Regular"
+    fontSize = 14
+    bold = false
+    italic = false
+    textAlign = "center"
+    textAnchor = "center"
+    legacyTextAlignmentSource = "aButton::init default Alignment=2"
+    wrapText = false
+    legacyId = 18
+    uvX = 96
+    uvY = 220
+    uvWidth = 32
+    uvHeight = 28
+    uvPressedX = 128
+    uvPressedY = 220
+    uvDisabledX = 160
+    uvDisabledY = 220
+    fillColorArgb = "0x00000000"
+    borderColorArgb = "0x00000000"
+    normalTextColorArgb = "0xffffffff"
+    pressedTextColorArgb = "0xfff26f00"
+    highlightTextColorArgb = "0xfff26f00"
+    disabledTextColorArgb = "0xff6b6b6b"
+}
+
+GuiButton {
+    key = "game.buttonlayout800.button.hold_position"
+    pageKey = "game.buttonlayout800"
+    legacySection = "Button19"
+    legacyComment = "hold position"
+    role = "button"
+    layer = "control"
+    aliasOverride = "hold position"
+    sourceControlType = "Button19"
+    rect = "726,567,32,28"
+    legacyLocalRect = "726,567,32,28"
+    legacyRectSource = "xywh"
+    texture = "data/art/gui/MCUI_Med3.png"
+    legacyTexture = "MCUI_Med3"
+    uiPackage = "default"
+    rectModel = "legacy_imgui.modern_rect_v1"
+    controlRect = "726,567,32,28"
+    hitRect = "726,567,32,28"
+    artRect = "726,567,32,28"
+    artLayer = "control_art"
+    controlModel = "composite_hit_art_text_v1"
+    linkedLayers = "hit,art,text"
+    editMode = "linked_control_with_independent_text"
+    textRect = "726,567,32,28"
+    textRectMode = "control_rect_fallback"
+    helpCaptionLegacyId = 43238
+    helpCaptionKey = "legacy.mc2res.43238"
+    helpCaptionText = "Hold Position Toggle Command (H)"
+    helpCaptionLegacySymbol = "IDS_HOTKEY33"
+    helpCaptionSource = "mc2res"
+    helpCaptionMissing = false
+    helpDescLegacyId = 43239
+    helpDescKey = "legacy.mc2res.43239"
+    helpDescText = "Order the selected units to not move until given a movement or capture command."
+    helpDescLegacySymbol = "IDS_HOTKEY34"
+    helpDescSource = "mc2res"
+    helpDescMissing = false
+    font = "Agency Regular"
+    fontStyle = "Regular"
+    fontSize = 14
+    bold = false
+    italic = false
+    textAlign = "center"
+    textAnchor = "center"
+    legacyTextAlignmentSource = "aButton::init default Alignment=2"
+    wrapText = false
+    legacyId = 19
+    uvX = 160
+    uvY = 223
+    uvWidth = 32
+    uvHeight = 28
+    uvPressedX = 192
+    uvPressedY = 223
+    uvDisabledX = 224
+    uvDisabledY = 223
+    fillColorArgb = "0x00000000"
+    borderColorArgb = "0x00000000"
+    normalTextColorArgb = "0xffffffff"
+    pressedTextColorArgb = "0xfff26f00"
+    highlightTextColorArgb = "0xfff26f00"
+    disabledTextColorArgb = "0xff6b6b6b"
+}
+
+GuiMetadata {
+    key = "game.buttonlayout800.metadata.metadata_03"
+    pageKey = "game.buttonlayout800"
+    legacySection = "VehicleButtons"
+    role = "metadata"
+    layer = "metadata"
+    aliasOverride = "metadata"
+    sourceControlType = "VehicleButtons"
+    rect = "0,0,0,0"
+    legacyLocalRect = "0,0,0,0"
+    legacyRectSource = "xywh"
+    visible = false
+}
+
+GuiImage {
+    key = "game.buttonlayout800.image.large_airstrike"
+    pageKey = "game.buttonlayout800"
+    legacySection = "Vehicle0"
+    legacyComment = "Large AirStrike"
+    role = "image"
+    layer = "art"
+    aliasOverride = "Large AirStrike"
+    sourceControlType = "Vehicle0"
+    rect = "8,439,32,38"
+    legacyLocalRect = "8,439,32,38"
+    legacyRectSource = "xywh"
+    texture = "data/art/gui/MCUI_Med3.png"
+    legacyTexture = "MCUI_Med3"
+    uiPackage = "default"
+    rectModel = "legacy_imgui.modern_rect_v1"
+    controlRect = "8,439,32,38"
+    artRect = "8,439,32,38"
+    artLayer = "control_art"
+    helpCaptionLegacyId = 30065
+    helpCaptionKey = "legacy.mc2res.30065"
+    helpCaptionText = "Airstrike (NUMPAD *)"
+    helpCaptionLegacySymbol = "IDS_HELP_GEN3"
+    helpCaptionSource = "mc2res"
+    helpCaptionMissing = false
+    helpDescLegacyId = 30066
+    helpDescKey = "legacy.mc2res.30066"
+    helpDescText = "Call in an Airstrike to a specified location."
+    helpDescLegacySymbol = "IDS_HELP_GEN4"
+    helpDescSource = "mc2res"
+    helpDescMissing = false
+    legacyId = 100
+    uvX = 0
+    uvY = 124
+    uvWidth = 32
+    uvHeight = 38
+    uvPressedX = 0
+    uvPressedY = 124
+    uvDisabledX = 32
+    uvDisabledY = 124
+}
+
+GuiImage {
+    key = "game.buttonlayout800.image.guard_tower"
+    pageKey = "game.buttonlayout800"
+    legacySection = "Vehicle1"
+    legacyComment = "guard tower"
+    role = "image"
+    layer = "art"
+    aliasOverride = "guard tower"
+    sourceControlType = "Vehicle1"
+    rect = "48,439,32,38"
+    legacyLocalRect = "48,439,32,38"
+    legacyRectSource = "xywh"
+    texture = "data/art/gui/MCUI_Med3.png"
+    legacyTexture = "MCUI_Med3"
+    uiPackage = "default"
+    rectModel = "legacy_imgui.modern_rect_v1"
+    controlRect = "48,439,32,38"
+    artRect = "48,439,32,38"
+    artLayer = "control_art"
+    helpCaptionLegacyId = 30069
+    helpCaptionKey = "legacy.mc2res.30069"
+    helpCaptionText = "Fixed Artillery"
+    helpCaptionLegacySymbol = "IDS_SMALLAIRSTRIKE"
+    helpCaptionSource = "mc2res"
+    helpCaptionMissing = false
+    helpDescLegacyId = 30070
+    helpDescKey = "legacy.mc2res.30070"
+    helpDescText = "Purchase and deploy a Fixed Artillery piece to a specified location."
+    helpDescLegacySymbol = "IDS_SMALLAIRSTRIKE_DESC"
+    helpDescSource = "mc2res"
+    helpDescMissing = false
+    legacyId = 101
+    uvX = 0
+    uvY = 162
+    uvWidth = 32
+    uvHeight = 38
+    uvPressedX = 0
+    uvPressedY = 164
+    uvDisabledX = 32
+    uvDisabledY = 162
+}
+
+GuiImage {
+    key = "game.buttonlayout800.image.sensor_probe"
+    pageKey = "game.buttonlayout800"
+    legacySection = "Vehicle2"
+    legacyComment = "sensor probe"
+    role = "image"
+    layer = "art"
+    aliasOverride = "sensor probe"
+    sourceControlType = "Vehicle2"
+    rect = "88,439,32,38"
+    legacyLocalRect = "88,439,32,38"
+    legacyRectSource = "xywh"
+    texture = "data/art/gui/MCUI_Med3.png"
+    legacyTexture = "MCUI_Med3"
+    uiPackage = "default"
+    rectModel = "legacy_imgui.modern_rect_v1"
+    controlRect = "88,439,32,38"
+    artRect = "88,439,32,38"
+    artLayer = "control_art"
+    helpCaptionLegacyId = 30067
+    helpCaptionKey = "legacy.mc2res.30067"
+    helpCaptionText = "Sensor Probe (NUMPAD /)"
+    helpCaptionLegacySymbol = "IDS_SENSORPROBE"
+    helpCaptionSource = "mc2res"
+    helpCaptionMissing = false
+    helpDescLegacyId = 30068
+    helpDescKey = "legacy.mc2res.30068"
+    helpDescText = "Call in a Sensor Probe to a specified location."
+    helpDescLegacySymbol = "IDS_HELP_MCH12"
+    helpDescSource = "mc2res"
+    helpDescMissing = false
+    legacyId = 102
+    uvX = 0
+    uvY = 200
+    uvWidth = 32
+    uvHeight = 38
+    uvPressedX = 0
+    uvPressedY = 200
+    uvDisabledX = 32
+    uvDisabledY = 200
+}
+
+GuiImage {
+    key = "game.buttonlayout800.image.repair_vehicle"
+    pageKey = "game.buttonlayout800"
+    legacySection = "Vehicle3"
+    legacyComment = "Repair Vehicle"
+    role = "image"
+    layer = "art"
+    aliasOverride = "Repair Vehicle"
+    sourceControlType = "Vehicle3"
+    rect = "128,439,32,38"
+    legacyLocalRect = "128,439,32,38"
+    legacyRectSource = "xywh"
+    texture = "data/art/gui/MCUI_Med3.png"
+    legacyTexture = "MCUI_Med3"
+    uiPackage = "default"
+    rectModel = "legacy_imgui.modern_rect_v1"
+    controlRect = "128,439,32,38"
+    artRect = "128,439,32,38"
+    artLayer = "control_art"
+    helpCaptionLegacyId = 30071
+    helpCaptionKey = "legacy.mc2res.30071"
+    helpCaptionText = "Repair Truck"
+    helpCaptionLegacySymbol = "IDS_HELP_REP4"
+    helpCaptionSource = "mc2res"
+    helpCaptionMissing = false
+    helpDescLegacyId = 30072
+    helpDescKey = "legacy.mc2res.30072"
+    helpDescText = "Purchase and deploy a Repair Truck."
+    helpDescLegacySymbol = "IDS_PDLG0"
+    helpDescSource = "mc2res"
+    helpDescMissing = false
+    legacyId = 103
+    uvX = 64
+    uvY = 162
+    uvWidth = 32
+    uvHeight = 38
+    uvPressedX = 64
+    uvPressedY = 162
+    uvDisabledX = 96
+    uvDisabledY = 162
+}
+
+GuiImage {
+    key = "game.buttonlayout800.image.scout"
+    pageKey = "game.buttonlayout800"
+    legacySection = "Vehicle4"
+    legacyComment = "scout"
+    role = "image"
+    layer = "art"
+    aliasOverride = "scout"
+    sourceControlType = "Vehicle4"
+    rect = "8,502,32,38"
+    legacyLocalRect = "8,502,32,38"
+    legacyRectSource = "xywh"
+    texture = "data/art/gui/MCUI_Med3.png"
+    legacyTexture = "MCUI_Med3"
+    uiPackage = "default"
+    rectModel = "legacy_imgui.modern_rect_v1"
+    controlRect = "8,502,32,38"
+    artRect = "8,502,32,38"
+    artLayer = "control_art"
+    helpCaptionLegacyId = 30073
+    helpCaptionKey = "legacy.mc2res.30073"
+    helpCaptionText = "Scout 'Copter"
+    helpCaptionLegacySymbol = "IDS_SCOUT"
+    helpCaptionSource = "mc2res"
+    helpCaptionMissing = false
+    helpDescLegacyId = 30074
+    helpDescKey = "legacy.mc2res.30074"
+    helpDescText = "Purchase and deploy a Scout 'Copter."
+    helpDescLegacySymbol = "IDS_SCOUT_DESC"
+    helpDescSource = "mc2res"
+    helpDescMissing = false
+    legacyId = 104
+    uvX = 64
+    uvY = 124
+    uvWidth = 32
+    uvHeight = 38
+    uvPressedX = 64
+    uvPressedY = 124
+    uvDisabledX = 96
+    uvDisabledY = 124
+}
+
+GuiImage {
+    key = "game.buttonlayout800.image.minelayer"
+    pageKey = "game.buttonlayout800"
+    legacySection = "Vehicle5"
+    legacyComment = "MineLayer"
+    role = "image"
+    layer = "art"
+    aliasOverride = "MineLayer"
+    sourceControlType = "Vehicle5"
+    rect = "48,502,32,38"
+    legacyLocalRect = "48,502,32,38"
+    legacyRectSource = "xywh"
+    texture = "data/art/gui/MCUI_Med3.png"
+    legacyTexture = "MCUI_Med3"
+    uiPackage = "default"
+    rectModel = "legacy_imgui.modern_rect_v1"
+    controlRect = "48,502,32,38"
+    artRect = "48,502,32,38"
+    artLayer = "control_art"
+    helpCaptionLegacyId = 30075
+    helpCaptionKey = "legacy.mc2res.30075"
+    helpCaptionText = "Minelayer"
+    helpCaptionLegacySymbol = "IDS_MINELAYER"
+    helpCaptionSource = "mc2res"
+    helpCaptionMissing = false
+    helpDescLegacyId = 30076
+    helpDescKey = "legacy.mc2res.30076"
+    helpDescText = "Purchase and deploy a Minelayer."
+    helpDescLegacySymbol = "IDS_BDLG0"
+    helpDescSource = "mc2res"
+    helpDescMissing = false
+    legacyId = 105
+    uvX = 128
+    uvY = 162
+    uvWidth = 32
+    uvHeight = 38
+    uvPressedX = 128
+    uvPressedY = 162
+    uvDisabledX = 160
+    uvDisabledY = 162
+}
+
+GuiImage {
+    key = "game.buttonlayout800.image.recovery_team"
+    pageKey = "game.buttonlayout800"
+    legacySection = "Vehicle6"
+    legacyComment = "recovery team"
+    role = "image"
+    layer = "art"
+    aliasOverride = "recovery team"
+    sourceControlType = "Vehicle6"
+    rect = "88,502,32,38"
+    legacyLocalRect = "88,502,32,38"
+    legacyRectSource = "xywh"
+    texture = "data/art/gui/MCUI_Med3.png"
+    legacyTexture = "MCUI_Med3"
+    uiPackage = "default"
+    rectModel = "legacy_imgui.modern_rect_v1"
+    controlRect = "88,502,32,38"
+    artRect = "88,502,32,38"
+    artLayer = "control_art"
+    helpCaptionLegacyId = 30077
+    helpCaptionKey = "legacy.mc2res.30077"
+    helpCaptionText = "Salvage Craft"
+    helpCaptionLegacySymbol = "IDS_BDLG1"
+    helpCaptionSource = "mc2res"
+    helpCaptionMissing = false
+    helpDescLegacyId = 30078
+    helpDescKey = "legacy.mc2res.30078"
+    helpDescText = "Purchase and deploy a Salvage Craft."
+    helpDescLegacySymbol = "IDS_SALVAGE_VEHICLE_DESC"
+    helpDescSource = "mc2res"
+    helpDescMissing = false
+    legacyId = 106
+    uvX = 128
+    uvY = 124
+    uvWidth = 32
+    uvHeight = 38
+    uvPressedX = 128
+    uvPressedY = 124
+    uvDisabledX = 160
+    uvDisabledY = 124
+}
+
+GuiImage {
+    key = "game.buttonlayout800.image.cancel"
+    pageKey = "game.buttonlayout800"
+    legacySection = "Vehicle7"
+    legacyComment = "cancel"
+    role = "image"
+    layer = "art"
+    aliasOverride = "cancel"
+    sourceControlType = "Vehicle7"
+    rect = "128,502,32,38"
+    legacyLocalRect = "128,502,32,38"
+    legacyRectSource = "xywh"
+    texture = "data/art/gui/MCUI_Med3.png"
+    legacyTexture = "MCUI_Med3"
+    uiPackage = "default"
+    rectModel = "legacy_imgui.modern_rect_v1"
+    controlRect = "128,502,32,38"
+    artRect = "128,502,32,38"
+    artLayer = "control_art"
+    helpCaptionLegacyId = 30079
+    helpCaptionKey = "legacy.mc2res.30079"
+    helpCaptionText = "Cancel Deployment"
+    helpCaptionLegacySymbol = "IDS_STOP_VEHICLE"
+    helpCaptionSource = "mc2res"
+    helpCaptionMissing = false
+    helpDescLegacyId = 30080
+    helpDescKey = "legacy.mc2res.30080"
+    helpDescText = "Cancel the selected deployment."
+    helpDescLegacySymbol = "IDS_STOP_VEHICLE_DESC"
+    helpDescSource = "mc2res"
+    helpDescMissing = false
+    legacyId = 107
+    uvX = 64
+    uvY = 200
+    uvWidth = 32
+    uvHeight = 38
+    uvPressedX = 64
+    uvPressedY = 200
+    uvDisabledX = 96
+    uvDisabledY = 200
+}
+
+GuiMetadata {
+    key = "game.buttonlayout800.metadata.metadata_04"
+    pageKey = "game.buttonlayout800"
+    legacySection = "Statics"
+    role = "metadata"
+    layer = "metadata"
+    aliasOverride = "metadata"
+    sourceControlType = "Statics"
+    rect = "0,0,0,0"
+    legacyLocalRect = "0,0,0,0"
+    legacyRectSource = "xywh"
+    visible = false
+}
+
+GuiImage {
+    key = "game.buttonlayout800.image.left_hand_top_border"
+    pageKey = "game.buttonlayout800"
+    legacySection = "Static0"
+    legacyComment = "left hand top border"
+    role = "image"
+    layer = "art"
+    aliasOverride = "left hand top border"
+    sourceControlType = "Static0"
+    rect = "258,471,200,13"
+    legacyLocalRect = "258,471,200,13"
+    legacyRectSource = "xywh"
+    texture = "data/art/gui/MCUI_Med1.png"
+    legacyTexture = "MCUI_Med1"
+    uiPackage = "default"
+    rectModel = "legacy_imgui.modern_rect_v1"
+    controlRect = "258,471,200,13"
+    artRect = "258,471,200,13"
+    artLayer = "control_art"
+    uvX = 0
+    uvY = 0
+    uvWidth = 200
+    uvHeight = 13
+}
+
+GuiImage {
+    key = "game.buttonlayout800.image.compalette_left"
+    pageKey = "game.buttonlayout800"
+    legacySection = "Static1"
+    legacyComment = "compalette left"
+    role = "image"
+    layer = "art"
+    aliasOverride = "compalette left"
+    sourceControlType = "Static1"
+    rect = "677,438,12,159"
+    legacyLocalRect = "677,438,12,159"
+    legacyRectSource = "xywh"
+    texture = "data/art/gui/MCUI_Med1.png"
+    legacyTexture = "MCUI_Med1"
+    uiPackage = "default"
+    rectModel = "legacy_imgui.modern_rect_v1"
+    controlRect = "677,438,12,159"
+    artRect = "677,438,12,159"
+    artLayer = "control_art"
+    uvX = 0
+    uvY = 13
+    uvWidth = 12
+    uvHeight = 159
+}
+
+GuiImage {
+    key = "game.buttonlayout800.image.compalette_right"
+    pageKey = "game.buttonlayout800"
+    legacySection = "Static2"
+    legacyComment = "compalette right"
+    role = "image"
+    layer = "art"
+    aliasOverride = "compalette right"
+    sourceControlType = "Static2"
+    rect = "795,438,5,159"
+    legacyLocalRect = "795,438,5,159"
+    legacyRectSource = "xywh"
+    texture = "data/art/gui/MCUI_Med1.png"
+    legacyTexture = "MCUI_Med1"
+    uiPackage = "default"
+    rectModel = "legacy_imgui.modern_rect_v1"
+    controlRect = "795,438,5,159"
+    artRect = "795,438,5,159"
+    artLayer = "control_art"
+    uvX = 12
+    uvY = 13
+    uvWidth = 5
+    uvHeight = 159
+}
+
+GuiImage {
+    key = "game.buttonlayout800.image.right_top_border"
+    pageKey = "game.buttonlayout800"
+    legacySection = "Static3"
+    legacyComment = "right top border"
+    role = "image"
+    layer = "art"
+    aliasOverride = "right top border"
+    sourceControlType = "Static3"
+    rect = "458,471,137,13"
+    legacyLocalRect = "458,471,137,13"
+    legacyRectSource = "xywh"
+    texture = "data/art/gui/MCUI_Med1.png"
+    legacyTexture = "MCUI_Med1"
+    uiPackage = "default"
+    rectModel = "legacy_imgui.modern_rect_v1"
+    controlRect = "458,471,137,13"
+    artRect = "458,471,137,13"
+    artLayer = "control_art"
+    uvX = 17
+    uvY = 13
+    uvWidth = 137
+    uvHeight = 13
+}
+
+GuiImage {
+    key = "game.buttonlayout800.image.left_mini_bevel"
+    pageKey = "game.buttonlayout800"
+    legacySection = "Static4"
+    legacyComment = "left mini bevel"
+    role = "image"
+    layer = "art"
+    aliasOverride = "left mini bevel"
+    sourceControlType = "Static4"
+    rect = "177,434,14,19"
+    legacyLocalRect = "177,434,14,19"
+    legacyRectSource = "xywh"
+    texture = "data/art/gui/MCUI_Med1.png"
+    legacyTexture = "MCUI_Med1"
+    uiPackage = "default"
+    rectModel = "legacy_imgui.modern_rect_v1"
+    controlRect = "177,434,14,19"
+    artRect = "177,434,14,19"
+    artLayer = "control_art"
+    uvX = 154
+    uvY = 13
+    uvWidth = 14
+    uvHeight = 19
+}
+
+GuiImage {
+    key = "game.buttonlayout800.image.right_mini_bevel"
+    pageKey = "game.buttonlayout800"
+    legacySection = "Static5"
+    legacyComment = "right mini bevel"
+    role = "image"
+    layer = "art"
+    aliasOverride = "right mini bevel"
+    sourceControlType = "Static5"
+    rect = "662,438,15,15"
+    legacyLocalRect = "662,438,15,15"
+    legacyRectSource = "xywh"
+    texture = "data/art/gui/MCUI_Med1.png"
+    legacyTexture = "MCUI_Med1"
+    uiPackage = "default"
+    rectModel = "legacy_imgui.modern_rect_v1"
+    controlRect = "662,438,15,15"
+    artRect = "662,438,15,15"
+    artLayer = "control_art"
+    uvX = 168
+    uvY = 13
+    uvWidth = 15
+    uvHeight = 15
+}
+
+GuiImage {
+    key = "game.buttonlayout800.image.mapframe_right"
+    pageKey = "game.buttonlayout800"
+    legacySection = "Static6"
+    legacyComment = "mapframe right"
+    role = "map"
+    layer = "map"
+    aliasOverride = "mapframe right"
+    sourceControlType = "Static6"
+    rect = "165,434,12,163"
+    legacyLocalRect = "165,434,12,163"
+    legacyRectSource = "xywh"
+    texture = "data/art/gui/MCUI_Med1.png"
+    legacyTexture = "MCUI_Med1"
+    uiPackage = "default"
+    rectModel = "legacy_imgui.modern_rect_v1"
+    controlRect = "165,434,12,163"
+    artRect = "165,434,12,163"
+    artLayer = "control_art"
+    uvX = 241
+    uvY = 0
+    uvWidth = 12
+    uvHeight = 163
+}
+
+GuiImage {
+    key = "game.buttonlayout800.image.mapframe_left"
+    pageKey = "game.buttonlayout800"
+    legacySection = "Static7"
+    legacyComment = "mapframe left"
+    role = "map"
+    layer = "map"
+    aliasOverride = "mapframe left"
+    sourceControlType = "Static7"
+    rect = "0,434,3,163"
+    legacyLocalRect = "0,434,3,163"
+    legacyRectSource = "xywh"
+    texture = "data/art/gui/MCUI_Med1.png"
+    legacyTexture = "MCUI_Med1"
+    uiPackage = "default"
+    rectModel = "legacy_imgui.modern_rect_v1"
+    controlRect = "0,434,3,163"
+    artRect = "0,434,3,163"
+    artLayer = "control_art"
+    uvX = 253
+    uvY = 0
+    uvWidth = 3
+    uvHeight = 163
+}
+
+GuiImage {
+    key = "game.buttonlayout800.image.compalette_top"
+    pageKey = "game.buttonlayout800"
+    legacySection = "Static8"
+    legacyComment = "compalette top"
+    role = "image"
+    layer = "art"
+    aliasOverride = "compalette top"
+    sourceControlType = "Static8"
+    rect = "668,426,132,12"
+    legacyLocalRect = "668,426,132,12"
+    legacyRectSource = "xywh"
+    texture = "data/art/gui/MCUI_Med1.png"
+    legacyTexture = "MCUI_Med1"
+    uiPackage = "default"
+    rectModel = "legacy_imgui.modern_rect_v1"
+    controlRect = "668,426,132,12"
+    artRect = "668,426,132,12"
+    artLayer = "control_art"
+    uvX = 17
+    uvY = 26
+    uvWidth = 132
+    uvHeight = 12
+}
+
+GuiImage {
+    key = "game.buttonlayout800.image.compalette_bottom"
+    pageKey = "game.buttonlayout800"
+    legacySection = "Static9"
+    legacyComment = "compalette bottom"
+    role = "image"
+    layer = "art"
+    aliasOverride = "compalette bottom"
+    sourceControlType = "Static9"
+    rect = "677,597,123,3"
+    legacyLocalRect = "677,597,123,3"
+    legacyRectSource = "xywh"
+    texture = "data/art/gui/MCUI_Med1.png"
+    legacyTexture = "MCUI_Med1"
+    uiPackage = "default"
+    rectModel = "legacy_imgui.modern_rect_v1"
+    controlRect = "677,597,123,3"
+    artRect = "677,597,123,3"
+    artLayer = "control_art"
+    uvX = 17
+    uvY = 38
+    uvWidth = 123
+    uvHeight = 3
+}
+
+GuiImage {
+    key = "game.buttonlayout800.image.dropteam_palette_one"
+    pageKey = "game.buttonlayout800"
+    legacySection = "Static10"
+    legacyComment = "dropteam palette one"
+    role = "image"
+    layer = "art"
+    aliasOverride = "dropteam palette one"
+    sourceControlType = "Static10"
+    rect = "177,484,125,116"
+    legacyLocalRect = "177,484,125,116"
+    legacyRectSource = "xywh"
+    texture = "data/art/gui/MCUI_Med1.png"
+    legacyTexture = "MCUI_Med1"
+    uiPackage = "default"
+    rectModel = "legacy_imgui.modern_rect_v1"
+    controlRect = "177,484,125,116"
+    artRect = "177,484,125,116"
+    artLayer = "control_art"
+    uvX = 17
+    uvY = 41
+    uvWidth = 125
+    uvHeight = 116
+}
+
+GuiImage {
+    key = "game.buttonlayout800.image.dropteam_palette_two"
+    pageKey = "game.buttonlayout800"
+    legacySection = "Static11"
+    legacyComment = "dropteam palette two"
+    role = "image"
+    layer = "art"
+    aliasOverride = "dropteam palette two"
+    sourceControlType = "Static11"
+    rect = "302,484,125,116"
+    legacyLocalRect = "302,484,125,116"
+    legacyRectSource = "xywh"
+    texture = "data/art/gui/MCUI_Med1.png"
+    legacyTexture = "MCUI_Med1"
+    uiPackage = "default"
+    rectModel = "legacy_imgui.modern_rect_v1"
+    controlRect = "302,484,125,116"
+    artRect = "302,484,125,116"
+    artLayer = "control_art"
+    uvX = 17
+    uvY = 41
+    uvWidth = 125
+    uvHeight = 116
+}
+
+GuiImage {
+    key = "game.buttonlayout800.image.dropteam_palette_three"
+    pageKey = "game.buttonlayout800"
+    legacySection = "Static12"
+    legacyComment = "dropteam palette three"
+    role = "image"
+    layer = "art"
+    aliasOverride = "dropteam palette three"
+    sourceControlType = "Static12"
+    rect = "552,484,125,116"
+    legacyLocalRect = "552,484,125,116"
+    legacyRectSource = "xywh"
+    texture = "data/art/gui/MCUI_Med1.png"
+    legacyTexture = "MCUI_Med1"
+    uiPackage = "default"
+    rectModel = "legacy_imgui.modern_rect_v1"
+    controlRect = "552,484,125,116"
+    artRect = "552,484,125,116"
+    artLayer = "control_art"
+    uvX = 17
+    uvY = 41
+    uvWidth = 125
+    uvHeight = 116
+}
+
+GuiImage {
+    key = "game.buttonlayout800.image.left_big_bevel"
+    pageKey = "game.buttonlayout800"
+    legacySection = "Static14"
+    legacyComment = "left big bevel"
+    role = "image"
+    layer = "art"
+    aliasOverride = "left big bevel"
+    sourceControlType = "Static14"
+    rect = "177,453,81,31"
+    legacyLocalRect = "177,453,81,31"
+    legacyRectSource = "xywh"
+    texture = "data/art/gui/MCUI_Med1.png"
+    legacyTexture = "MCUI_Med1"
+    uiPackage = "default"
+    rectModel = "legacy_imgui.modern_rect_v1"
+    controlRect = "177,453,81,31"
+    artRect = "177,453,81,31"
+    artLayer = "control_art"
+    uvX = 17
+    uvY = 157
+    uvWidth = 81
+    uvHeight = 31
+}
+
+GuiImage {
+    key = "game.buttonlayout800.image.right_big_bevel"
+    pageKey = "game.buttonlayout800"
+    legacySection = "Static15"
+    legacyComment = "right big bevel"
+    role = "image"
+    layer = "art"
+    aliasOverride = "right big bevel"
+    sourceControlType = "Static15"
+    rect = "595,453,82,31"
+    legacyLocalRect = "595,453,82,31"
+    legacyRectSource = "xywh"
+    texture = "data/art/gui/MCUI_Med1.png"
+    legacyTexture = "MCUI_Med1"
+    uiPackage = "default"
+    rectModel = "legacy_imgui.modern_rect_v1"
+    controlRect = "595,453,82,31"
+    artRect = "595,453,82,31"
+    artLayer = "control_art"
+    uvX = 98
+    uvY = "157w"
+    uvWidth = 82
+    uvHeight = 31
+}
+
+GuiImage {
+    key = "game.buttonlayout800.image.map_area_bottom"
+    pageKey = "game.buttonlayout800"
+    legacySection = "Static16"
+    legacyComment = "map area bottom"
+    role = "map"
+    layer = "map"
+    aliasOverride = "map area bottom"
+    sourceControlType = "Static16"
+    rect = "0,597,177,3"
+    legacyLocalRect = "0,597,177,3"
+    legacyRectSource = "xywh"
+    texture = "data/art/gui/MCUI_Med1.png"
+    legacyTexture = "MCUI_Med1"
+    uiPackage = "default"
+    rectModel = "legacy_imgui.modern_rect_v1"
+    controlRect = "0,597,177,3"
+    artRect = "0,597,177,3"
+    artLayer = "control_art"
+    uvX = 0
+    uvY = 188
+    uvWidth = 177
+    uvHeight = 3
+}
+
+GuiImage {
+    key = "game.buttonlayout800.image.map_area_top"
+    pageKey = "game.buttonlayout800"
+    legacySection = "Static17"
+    legacyComment = "map area top"
+    role = "map"
+    layer = "map"
+    aliasOverride = "map area top"
+    sourceControlType = "Static17"
+    rect = "0,425,183,9"
+    legacyLocalRect = "0,425,183,9"
+    legacyRectSource = "xywh"
+    texture = "data/art/gui/MCUI_Med1.png"
+    legacyTexture = "MCUI_Med1"
+    uiPackage = "default"
+    rectModel = "legacy_imgui.modern_rect_v1"
+    controlRect = "0,425,183,9"
+    artRect = "0,425,183,9"
+    artLayer = "control_art"
+    uvX = 0
+    uvY = 191
+    uvWidth = 183
+    uvHeight = 9
+}
+
+GuiMetadata {
+    key = "game.buttonlayout800.metadata.compass_second_state_should_rotate_about_center_point_64_64"
+    pageKey = "game.buttonlayout800"
+    legacySection = "Static18"
+    legacyComment = "COMPASS, second state - should rotate about center point: 64, 64"
+    role = "metadata"
+    layer = "metadata"
+    aliasOverride = "COMPASS, second state - should rotate about center point: 64, 64"
+    sourceControlType = "Static18"
+    rect = "683,290,0,0"
+    legacyLocalRect = "683,290,0,0"
+    legacyRectSource = "xywh"
+    texture = "data/art/gui/a_compass_small.png"
+    legacyTexture = "a_compass_small.tga"
+    uvX = 0
+    uvY = 0
+    uvWidth = 0
+    uvHeight = 0
+    visible = false
+}
+
+GuiImage {
+    key = "game.buttonlayout800.image.cover"
+    pageKey = "game.buttonlayout800"
+    legacySection = "Static19"
+    legacyComment = "COVER"
+    role = "image"
+    layer = "art"
+    aliasOverride = "COVER"
+    sourceControlType = "Static19"
+    rect = "761,567,32,28"
+    legacyLocalRect = "761,567,32,28"
+    legacyRectSource = "xywh"
+    texture = "data/art/gui/MCUI_Med2.png"
+    legacyTexture = "MCUI_Med2"
+    uiPackage = "default"
+    rectModel = "legacy_imgui.modern_rect_v1"
+    controlRect = "761,567,32,28"
+    artRect = "761,567,32,28"
+    artLayer = "control_art"
+    uvX = 224
+    uvY = 72
+    uvWidth = 32
+    uvHeight = 28
+}
+
+GuiImage {
+    key = "game.buttonlayout800.image.force_group_cover"
+    pageKey = "game.buttonlayout800"
+    legacySection = "Static20"
+    legacyComment = "force group cover"
+    role = "image"
+    layer = "art"
+    aliasOverride = "force group cover"
+    sourceControlType = "Static20"
+    rect = "179,487,59,53"
+    legacyLocalRect = "179,487,59,53"
+    legacyRectSource = "xywh"
+    texture = "data/art/gui/MCUI_med7.png"
+    legacyTexture = "MCUI_med7"
+    uiPackage = "default"
+    rectModel = "legacy_imgui.modern_rect_v1"
+    controlRect = "179,487,59,53"
+    artRect = "179,487,59,53"
+    artLayer = "control_art"
+    uvX = 0
+    uvY = 0
+    uvWidth = 59
+    uvHeight = 53
+}
+
+GuiImage {
+    key = "game.buttonlayout800.image.thin_line_over_grid_block_1"
+    pageKey = "game.buttonlayout800"
+    legacySection = "Static21"
+    legacyComment = "thin line over grid block 1"
+    role = "image"
+    layer = "art"
+    aliasOverride = "thin line over grid block 1"
+    sourceControlType = "Static21"
+    rect = "302,484,125,2"
+    legacyLocalRect = "302,484,125,2"
+    legacyRectSource = "xywh"
+    texture = "data/art/gui/MCUI_med6.png"
+    legacyTexture = "MCUI_med6"
+    uiPackage = "default"
+    rectModel = "legacy_imgui.modern_rect_v1"
+    controlRect = "302,484,125,2"
+    artRect = "302,484,125,2"
+    artLayer = "control_art"
+    uvX = 0
+    uvY = 90
+    uvWidth = 125
+    uvHeight = 2
+}
+
+GuiImage {
+    key = "game.buttonlayout800.image.thin_line_over_grid_block_2"
+    pageKey = "game.buttonlayout800"
+    legacySection = "Static22"
+    legacyComment = "thin line over grid block 2"
+    role = "image"
+    layer = "art"
+    aliasOverride = "thin line over grid block 2"
+    sourceControlType = "Static22"
+    rect = "427,484,125,2"
+    legacyLocalRect = "427,484,125,2"
+    legacyRectSource = "xywh"
+    texture = "data/art/gui/MCUI_med6.png"
+    legacyTexture = "MCUI_med6"
+    uiPackage = "default"
+    rectModel = "legacy_imgui.modern_rect_v1"
+    controlRect = "427,484,125,2"
+    artRect = "427,484,125,2"
+    artLayer = "control_art"
+    uvX = 0
+    uvY = 92
+    uvWidth = 125
+    uvHeight = 2
+}
+
+GuiImage {
+    key = "game.buttonlayout800.image.thin_line_over_grid_block_3"
+    pageKey = "game.buttonlayout800"
+    legacySection = "Static23"
+    legacyComment = "thin line over grid block 3"
+    role = "image"
+    layer = "art"
+    aliasOverride = "thin line over grid block 3"
+    sourceControlType = "Static23"
+    rect = "552,484,125,2"
+    legacyLocalRect = "552,484,125,2"
+    legacyRectSource = "xywh"
+    texture = "data/art/gui/MCUI_med6.png"
+    legacyTexture = "MCUI_med6"
+    uiPackage = "default"
+    rectModel = "legacy_imgui.modern_rect_v1"
+    controlRect = "552,484,125,2"
+    artRect = "552,484,125,2"
+    artLayer = "control_art"
+    uvX = 0
+    uvY = 94
+    uvWidth = 125
+    uvHeight = 2
+}
+
+GuiImage {
+    key = "game.buttonlayout800.image.thin_line_over_grid_block_4"
+    pageKey = "game.buttonlayout800"
+    legacySection = "Static24"
+    legacyComment = "thin line over grid block 4"
+    role = "image"
+    layer = "art"
+    aliasOverride = "thin line over grid block 4"
+    sourceControlType = "Static24"
+    rect = "302,597,125,3"
+    legacyLocalRect = "302,597,125,3"
+    legacyRectSource = "xywh"
+    texture = "data/art/gui/MCUI_med6.png"
+    legacyTexture = "MCUI_med6"
+    uiPackage = "default"
+    rectModel = "legacy_imgui.modern_rect_v1"
+    controlRect = "302,597,125,3"
+    artRect = "302,597,125,3"
+    artLayer = "control_art"
+    uvX = 0
+    uvY = 96
+    uvWidth = 125
+    uvHeight = 3
+}
+
+GuiImage {
+    key = "game.buttonlayout800.image.thin_line_over_grid_block_5"
+    pageKey = "game.buttonlayout800"
+    legacySection = "Static25"
+    legacyComment = "thin line over grid block 5"
+    role = "image"
+    layer = "art"
+    aliasOverride = "thin line over grid block 5"
+    sourceControlType = "Static25"
+    rect = "427,597,125,3"
+    legacyLocalRect = "427,597,125,3"
+    legacyRectSource = "xywh"
+    texture = "data/art/gui/MCUI_med6.png"
+    legacyTexture = "MCUI_med6"
+    uiPackage = "default"
+    rectModel = "legacy_imgui.modern_rect_v1"
+    controlRect = "427,597,125,3"
+    artRect = "427,597,125,3"
+    artLayer = "control_art"
+    uvX = 0
+    uvY = 99
+    uvWidth = 125
+    uvHeight = 3
+}
+
+GuiImage {
+    key = "game.buttonlayout800.image.thin_line_over_grid_block_6"
+    pageKey = "game.buttonlayout800"
+    legacySection = "Static26"
+    legacyComment = "thin line over grid block 6"
+    role = "image"
+    layer = "art"
+    aliasOverride = "thin line over grid block 6"
+    sourceControlType = "Static26"
+    rect = "552,597,125,3"
+    legacyLocalRect = "552,597,125,3"
+    legacyRectSource = "xywh"
+    texture = "data/art/gui/MCUI_med6.png"
+    legacyTexture = "MCUI_med6"
+    uiPackage = "default"
+    rectModel = "legacy_imgui.modern_rect_v1"
+    controlRect = "552,597,125,3"
+    artRect = "552,597,125,3"
+    artLayer = "control_art"
+    uvX = 0
+    uvY = 102
+    uvWidth = 125
+    uvHeight = 3
+}
+
+GuiMetadata {
+    key = "game.buttonlayout800.metadata.metadata_05"
+    pageKey = "game.buttonlayout800"
+    legacySection = "MechIcons"
+    role = "metadata"
+    layer = "metadata"
+    aliasOverride = "metadata"
+    sourceControlType = "MechIcons"
+    rect = "0,0,0,0"
+    legacyLocalRect = "0,0,0,0"
+    legacyRectSource = "xywh"
+    visible = false
+}
+
+GuiMetadata {
+    key = "game.buttonlayout800.metadata.metadata_06"
+    pageKey = "game.buttonlayout800"
+    legacySection = "MechIcon0"
+    role = "metadata"
+    layer = "metadata"
+    aliasOverride = "metadata"
+    sourceControlType = "MechIcon0"
+    rect = "0,0,0,0"
+    legacyLocalRect = "0,0,0,0"
+    legacyRectSource = "xywh"
+    visible = false
+}
+
+GuiMetadata {
+    key = "game.buttonlayout800.metadata.metadata_07"
+    pageKey = "game.buttonlayout800"
+    legacySection = "MechIcon1"
+    role = "metadata"
+    layer = "metadata"
+    aliasOverride = "metadata"
+    sourceControlType = "MechIcon1"
+    rect = "0,0,0,0"
+    legacyLocalRect = "0,0,0,0"
+    legacyRectSource = "xywh"
+    visible = false
+}
+
+GuiMetadata {
+    key = "game.buttonlayout800.metadata.metadata_08"
+    pageKey = "game.buttonlayout800"
+    legacySection = "MechIcon2"
+    role = "metadata"
+    layer = "metadata"
+    aliasOverride = "metadata"
+    sourceControlType = "MechIcon2"
+    rect = "0,0,0,0"
+    legacyLocalRect = "0,0,0,0"
+    legacyRectSource = "xywh"
+    visible = false
+}
+
+GuiMetadata {
+    key = "game.buttonlayout800.metadata.metadata_09"
+    pageKey = "game.buttonlayout800"
+    legacySection = "MechIcon3"
+    role = "metadata"
+    layer = "metadata"
+    aliasOverride = "metadata"
+    sourceControlType = "MechIcon3"
+    rect = "0,0,0,0"
+    legacyLocalRect = "0,0,0,0"
+    legacyRectSource = "xywh"
+    visible = false
+}
+
+GuiMetadata {
+    key = "game.buttonlayout800.metadata.metadata_10"
+    pageKey = "game.buttonlayout800"
+    legacySection = "MechIcon4"
+    role = "metadata"
+    layer = "metadata"
+    aliasOverride = "metadata"
+    sourceControlType = "MechIcon4"
+    rect = "0,0,0,0"
+    legacyLocalRect = "0,0,0,0"
+    legacyRectSource = "xywh"
+    visible = false
+}
+
+GuiMetadata {
+    key = "game.buttonlayout800.metadata.metadata_11"
+    pageKey = "game.buttonlayout800"
+    legacySection = "MechIcon5"
+    role = "metadata"
+    layer = "metadata"
+    aliasOverride = "metadata"
+    sourceControlType = "MechIcon5"
+    rect = "0,0,0,0"
+    legacyLocalRect = "0,0,0,0"
+    legacyRectSource = "xywh"
+    visible = false
+}
+
+GuiMetadata {
+    key = "game.buttonlayout800.metadata.metadata_12"
+    pageKey = "game.buttonlayout800"
+    legacySection = "MechIcon6"
+    role = "metadata"
+    layer = "metadata"
+    aliasOverride = "metadata"
+    sourceControlType = "MechIcon6"
+    rect = "0,0,0,0"
+    legacyLocalRect = "0,0,0,0"
+    legacyRectSource = "xywh"
+    visible = false
+}
+
+GuiMetadata {
+    key = "game.buttonlayout800.metadata.metadata_13"
+    pageKey = "game.buttonlayout800"
+    legacySection = "MechIcon7"
+    role = "metadata"
+    layer = "metadata"
+    aliasOverride = "metadata"
+    sourceControlType = "MechIcon7"
+    rect = "0,0,0,0"
+    legacyLocalRect = "0,0,0,0"
+    legacyRectSource = "xywh"
+    visible = false
+}
+
+GuiMetadata {
+    key = "game.buttonlayout800.metadata.metadata_14"
+    pageKey = "game.buttonlayout800"
+    legacySection = "MechIcon8"
+    role = "metadata"
+    layer = "metadata"
+    aliasOverride = "metadata"
+    sourceControlType = "MechIcon8"
+    rect = "0,0,0,0"
+    legacyLocalRect = "0,0,0,0"
+    legacyRectSource = "xywh"
+    visible = false
+}
+
+GuiMetadata {
+    key = "game.buttonlayout800.metadata.metadata_15"
+    pageKey = "game.buttonlayout800"
+    legacySection = "MechIcon9"
+    role = "metadata"
+    layer = "metadata"
+    aliasOverride = "metadata"
+    sourceControlType = "MechIcon9"
+    rect = "0,0,0,0"
+    legacyLocalRect = "0,0,0,0"
+    legacyRectSource = "xywh"
+    visible = false
+}
+
+GuiMetadata {
+    key = "game.buttonlayout800.metadata.metadata_16"
+    pageKey = "game.buttonlayout800"
+    legacySection = "MechIcon10"
+    role = "metadata"
+    layer = "metadata"
+    aliasOverride = "metadata"
+    sourceControlType = "MechIcon10"
+    rect = "0,0,0,0"
+    legacyLocalRect = "0,0,0,0"
+    legacyRectSource = "xywh"
+    visible = false
+}
+
+GuiMetadata {
+    key = "game.buttonlayout800.metadata.metadata_17"
+    pageKey = "game.buttonlayout800"
+    legacySection = "MechIcon11"
+    role = "metadata"
+    layer = "metadata"
+    aliasOverride = "metadata"
+    sourceControlType = "MechIcon11"
+    rect = "0,0,0,0"
+    legacyLocalRect = "0,0,0,0"
+    legacyRectSource = "xywh"
+    visible = false
+}
+
+GuiMetadata {
+    key = "game.buttonlayout800.metadata.metadata_18"
+    pageKey = "game.buttonlayout800"
+    legacySection = "MechIcon12"
+    role = "metadata"
+    layer = "metadata"
+    aliasOverride = "metadata"
+    sourceControlType = "MechIcon12"
+    rect = "0,0,0,0"
+    legacyLocalRect = "0,0,0,0"
+    legacyRectSource = "xywh"
+    visible = false
+}
+
+GuiMetadata {
+    key = "game.buttonlayout800.metadata.metadata_19"
+    pageKey = "game.buttonlayout800"
+    legacySection = "MechIcon13"
+    role = "metadata"
+    layer = "metadata"
+    aliasOverride = "metadata"
+    sourceControlType = "MechIcon13"
+    rect = "0,0,0,0"
+    legacyLocalRect = "0,0,0,0"
+    legacyRectSource = "xywh"
+    visible = false
+}
+
+GuiMetadata {
+    key = "game.buttonlayout800.metadata.metadata_20"
+    pageKey = "game.buttonlayout800"
+    legacySection = "MechIcon14"
+    role = "metadata"
+    layer = "metadata"
+    aliasOverride = "metadata"
+    sourceControlType = "MechIcon14"
+    rect = "0,0,0,0"
+    legacyLocalRect = "0,0,0,0"
+    legacyRectSource = "xywh"
+    visible = false
+}
+
+GuiMetadata {
+    key = "game.buttonlayout800.metadata.metadata_21"
+    pageKey = "game.buttonlayout800"
+    legacySection = "MechIcon15"
+    role = "metadata"
+    layer = "metadata"
+    aliasOverride = "metadata"
+    sourceControlType = "MechIcon15"
+    rect = "0,0,0,0"
+    legacyLocalRect = "0,0,0,0"
+    legacyRectSource = "xywh"
+    visible = false
+}
+
+GuiRect {
+    key = "game.buttonlayout800.rect.rect"
+    pageKey = "game.buttonlayout800"
+    legacySection = "InfoWindow"
+    role = "rect"
+    layer = "layout"
+    aliasOverride = "rect"
+    sourceControlType = "InfoWindow"
+    rect = "3,434,162,163"
+    legacyLocalRect = "3,434,162,163"
+    legacyRectSource = "xywh"
+    uiPackage = "default"
+    rectModel = "legacy_imgui.modern_rect_v1"
+    controlRect = "3,434,162,163"
+    filled = true
+    fillColorArgb = "0x00000000"
+    borderColorArgb = "0x00000000"
+    colorArgb = "0xffffffff"
+}
+
+GuiMeter {
+    key = "game.buttonlayout800.meter.meter"
+    pageKey = "game.buttonlayout800"
+    legacySection = "SkillMeter"
+    legacyContext = "skill info"
+    role = "meter"
+    layer = "control"
+    aliasOverride = "meter"
+    sourceControlType = "SkillMeter"
+    rect = "69,0,3,17"
+    legacyLocalRect = "69,0,3,17"
+    legacyRectSource = "xywh"
+    uiPackage = "default"
+    rectModel = "legacy_imgui.modern_rect_v1"
+    controlRect = "69,0,3,17"
+    legacyLeft = 69
+    legacyRight = 111
+    legacyUnitWidth = 3
+    legacyUnitSkip = 1
+    legacyNumberUnits = 10
+}
+
+GuiImage {
+    key = "game.buttonlayout800.image.green"
+    pageKey = "game.buttonlayout800"
+    legacySection = "Skill0"
+    legacyComment = "green"
+    role = "image"
+    layer = "art"
+    aliasOverride = "green"
+    sourceControlType = "Skill0"
+    rect = "15,0,50,15"
+    legacyLocalRect = "15,0,50,15"
+    legacyRectSource = "xywh"
+    texture = "data/art/gui/MCUI_Med2.png"
+    legacyTexture = "MCUI_Med2"
+    uiPackage = "default"
+    rectModel = "legacy_imgui.modern_rect_v1"
+    controlRect = "15,0,50,15"
+    artRect = "15,0,50,15"
+    artLayer = "control_art"
+    uvX = 206
+    uvY = 153
+    uvWidth = 50
+    uvHeight = 15
+}
+
+GuiImage {
+    key = "game.buttonlayout800.image.regular"
+    pageKey = "game.buttonlayout800"
+    legacySection = "Skill1"
+    legacyComment = "regular"
+    role = "image"
+    layer = "art"
+    aliasOverride = "regular"
+    sourceControlType = "Skill1"
+    rect = "15,0,50,15"
+    legacyLocalRect = "15,0,50,15"
+    legacyRectSource = "xywh"
+    texture = "data/art/gui/MCUI_Med2.png"
+    legacyTexture = "MCUI_Med2"
+    uiPackage = "default"
+    rectModel = "legacy_imgui.modern_rect_v1"
+    controlRect = "15,0,50,15"
+    artRect = "15,0,50,15"
+    artLayer = "control_art"
+    uvX = 206
+    uvY = 168
+    uvWidth = 50
+    uvHeight = 15
+}
+
+GuiImage {
+    key = "game.buttonlayout800.image.veteran"
+    pageKey = "game.buttonlayout800"
+    legacySection = "Skill2"
+    legacyComment = "veteran"
+    role = "image"
+    layer = "art"
+    aliasOverride = "veteran"
+    sourceControlType = "Skill2"
+    rect = "15,0,50,15"
+    legacyLocalRect = "15,0,50,15"
+    legacyRectSource = "xywh"
+    texture = "data/art/gui/MCUI_Med2.png"
+    legacyTexture = "MCUI_Med2"
+    uiPackage = "default"
+    rectModel = "legacy_imgui.modern_rect_v1"
+    controlRect = "15,0,50,15"
+    artRect = "15,0,50,15"
+    artLayer = "control_art"
+    uvX = 206
+    uvY = 183
+    uvWidth = 50
+    uvHeight = 15
+}
+
+GuiImage {
+    key = "game.buttonlayout800.image.elite"
+    pageKey = "game.buttonlayout800"
+    legacySection = "Skill3"
+    legacyComment = "elite"
+    role = "image"
+    layer = "art"
+    aliasOverride = "elite"
+    sourceControlType = "Skill3"
+    rect = "15,0,50,15"
+    legacyLocalRect = "15,0,50,15"
+    legacyRectSource = "xywh"
+    texture = "data/art/gui/MCUI_Med2.png"
+    legacyTexture = "MCUI_Med2"
+    uiPackage = "default"
+    rectModel = "legacy_imgui.modern_rect_v1"
+    controlRect = "15,0,50,15"
+    artRect = "15,0,50,15"
+    artLayer = "control_art"
+    uvX = 206
+    uvY = 198
+    uvWidth = 50
+    uvHeight = 15
+}
+
+GuiImage {
+    key = "game.buttonlayout800.image.ace"
+    pageKey = "game.buttonlayout800"
+    legacySection = "Skill4"
+    legacyComment = "ace"
+    role = "image"
+    layer = "art"
+    aliasOverride = "ace"
+    sourceControlType = "Skill4"
+    rect = "15,0,50,15"
+    legacyLocalRect = "15,0,50,15"
+    legacyRectSource = "xywh"
+    texture = "data/art/gui/MCUI_Med2.png"
+    legacyTexture = "MCUI_Med2"
+    uiPackage = "default"
+    rectModel = "legacy_imgui.modern_rect_v1"
+    controlRect = "15,0,50,15"
+    artRect = "15,0,50,15"
+    artLayer = "control_art"
+    uvX = 206
+    uvY = 213
+    uvWidth = 50
+    uvHeight = 15
+}
+
+GuiImage {
+    key = "game.buttonlayout800.image.gunnery"
+    pageKey = "game.buttonlayout800"
+    legacySection = "Skill5"
+    legacyComment = "gunnery"
+    role = "image"
+    layer = "art"
+    aliasOverride = "gunnery"
+    sourceControlType = "Skill5"
+    rect = "15,0,50,15"
+    legacyLocalRect = "15,0,50,15"
+    legacyRectSource = "xywh"
+    texture = "data/art/gui/MCUI_Med2.png"
+    legacyTexture = "MCUI_Med2"
+    uiPackage = "default"
+    rectModel = "legacy_imgui.modern_rect_v1"
+    controlRect = "15,0,50,15"
+    artRect = "15,0,50,15"
+    artLayer = "control_art"
+    uvX = 206
+    uvY = 108
+    uvWidth = 50
+    uvHeight = 15
+}
+
+GuiImage {
+    key = "game.buttonlayout800.image.piloting"
+    pageKey = "game.buttonlayout800"
+    legacySection = "Skill6"
+    legacyComment = "piloting"
+    role = "image"
+    layer = "art"
+    aliasOverride = "piloting"
+    sourceControlType = "Skill6"
+    rect = "15,0,50,15"
+    legacyLocalRect = "15,0,50,15"
+    legacyRectSource = "xywh"
+    texture = "data/art/gui/MCUI_Med2.png"
+    legacyTexture = "MCUI_Med2"
+    uiPackage = "default"
+    rectModel = "legacy_imgui.modern_rect_v1"
+    controlRect = "15,0,50,15"
+    artRect = "15,0,50,15"
+    artLayer = "control_art"
+    uvX = 206
+    uvY = 123
+    uvWidth = 50
+    uvHeight = 15
+}
+
+GuiButton {
+    key = "game.buttonlayout800.button.button"
+    pageKey = "game.buttonlayout800"
+    legacySection = "ScrollButton"
+    role = "button"
+    layer = "control"
+    aliasOverride = "button"
+    sourceControlType = "ScrollButton"
+    rect = "144,484,12,10"
+    legacyLocalRect = "144,484,12,10"
+    legacyRectSource = "xywh"
+    texture = "data/art/gui/MCUI_Med1.png"
+    legacyTexture = "MCUI_Med1"
+    uiPackage = "default"
+    rectModel = "legacy_imgui.modern_rect_v1"
+    controlRect = "144,484,12,10"
+    hitRect = "144,484,12,10"
+    artRect = "144,484,12,10"
+    artLayer = "control_art"
+    controlModel = "composite_hit_art_text_v1"
+    linkedLayers = "hit,art,text"
+    editMode = "linked_control_with_independent_text"
+    font = "Agency Regular"
+    fontStyle = "Regular"
+    fontSize = 14
+    bold = false
+    italic = false
+    textAlign = "center"
+    textAnchor = "center"
+    legacyTextAlignmentSource = "aButton::init default Alignment=2"
+    wrapText = false
+    uvX = 201
+    uvY = 6
+    uvWidth = 12
+    uvHeight = 10
+    fillColorArgb = "0x00000000"
+    borderColorArgb = "0x00000000"
+    normalTextColorArgb = "0xffffffff"
+    pressedTextColorArgb = "0xfff26f00"
+    highlightTextColorArgb = "0xfff26f00"
+    disabledTextColorArgb = "0xff6b6b6b"
+}
+
+GuiButton {
+    key = "game.buttonlayout800.button.scroll_up"
+    pageKey = "game.buttonlayout800"
+    legacySection = "InfoButton0"
+    legacyComment = "scroll up"
+    role = "button"
+    layer = "control"
+    aliasOverride = "scroll up"
+    sourceControlType = "InfoButton0"
+    rect = "144,477,12,6"
+    legacyLocalRect = "144,477,12,6"
+    legacyRectSource = "xywh"
+    texture = "data/art/gui/MCUI_Med1.png"
+    legacyTexture = "MCUI_Med1"
+    uiPackage = "default"
+    rectModel = "legacy_imgui.modern_rect_v1"
+    controlRect = "144,477,12,6"
+    hitRect = "144,477,12,6"
+    artRect = "144,477,12,6"
+    artLayer = "control_art"
+    controlModel = "composite_hit_art_text_v1"
+    linkedLayers = "hit,art,text"
+    editMode = "linked_control_with_independent_text"
+    textRect = "144,477,12,6"
+    textRectMode = "control_rect_fallback"
+    helpCaptionLegacyId = 30063
+    helpCaptionKey = "legacy.mc2res.30063"
+    helpCaptionText = "Default Range"
+    helpCaptionLegacySymbol = "IDS_DEFAULTRANGE"
+    helpCaptionSource = "mc2res"
+    helpCaptionMissing = false
+    helpDescLegacyId = 30064
+    helpDescKey = "legacy.mc2res.30064"
+    helpDescText = "Sets the selected 'Mechs to attack at their default range"
+    helpDescLegacySymbol = "IDS_DEFAULTRANGE_DESC"
+    helpDescSource = "mc2res"
+    helpDescMissing = false
+    font = "Agency Regular"
+    fontStyle = "Regular"
+    fontSize = 14
+    bold = false
+    italic = false
+    textAlign = "center"
+    textAnchor = "center"
+    legacyTextAlignmentSource = "aButton::init default Alignment=2"
+    wrapText = false
+    legacyId = 1
+    uvX = 201
+    uvY = 0
+    uvWidth = 12
+    uvHeight = 6
+    uvPressedX = 201
+    uvPressedY = 0
+    uvDisabledX = 201
+    uvDisabledY = 0
+    fillColorArgb = "0x00000000"
+    borderColorArgb = "0x00000000"
+    normalTextColorArgb = "0xffffffff"
+    pressedTextColorArgb = "0xfff26f00"
+    highlightTextColorArgb = "0xfff26f00"
+    disabledTextColorArgb = "0xff6b6b6b"
+}
+
+GuiButton {
+    key = "game.buttonlayout800.button.scroll_down"
+    pageKey = "game.buttonlayout800"
+    legacySection = "InfoButton1"
+    legacyComment = "scroll down"
+    role = "button"
+    layer = "control"
+    aliasOverride = "scroll down"
+    sourceControlType = "InfoButton1"
+    rect = "144,583,12,6"
+    legacyLocalRect = "144,583,12,6"
+    legacyRectSource = "xywh"
+    texture = "data/art/gui/MCUI_Med1.png"
+    legacyTexture = "MCUI_Med1"
+    uiPackage = "default"
+    rectModel = "legacy_imgui.modern_rect_v1"
+    controlRect = "144,583,12,6"
+    hitRect = "144,583,12,6"
+    artRect = "144,583,12,6"
+    artLayer = "control_art"
+    controlModel = "composite_hit_art_text_v1"
+    linkedLayers = "hit,art,text"
+    editMode = "linked_control_with_independent_text"
+    textRect = "144,583,12,6"
+    textRectMode = "control_rect_fallback"
+    helpCaptionLegacyId = 30063
+    helpCaptionKey = "legacy.mc2res.30063"
+    helpCaptionText = "Default Range"
+    helpCaptionLegacySymbol = "IDS_DEFAULTRANGE"
+    helpCaptionSource = "mc2res"
+    helpCaptionMissing = false
+    helpDescLegacyId = 30064
+    helpDescKey = "legacy.mc2res.30064"
+    helpDescText = "Sets the selected 'Mechs to attack at their default range"
+    helpDescLegacySymbol = "IDS_DEFAULTRANGE_DESC"
+    helpDescSource = "mc2res"
+    helpDescMissing = false
+    font = "Agency Regular"
+    fontStyle = "Regular"
+    fontSize = 14
+    bold = false
+    italic = false
+    textAlign = "center"
+    textAnchor = "center"
+    legacyTextAlignmentSource = "aButton::init default Alignment=2"
+    wrapText = false
+    legacyId = 2
+    uvX = 201
+    uvY = 16
+    uvWidth = 12
+    uvHeight = 6
+    uvPressedX = 201
+    uvPressedY = 16
+    uvDisabledX = 201
+    uvDisabledY = 16
+    fillColorArgb = "0x00000000"
+    borderColorArgb = "0x00000000"
+    normalTextColorArgb = "0xffffffff"
+    pressedTextColorArgb = "0xfff26f00"
+    highlightTextColorArgb = "0xfff26f00"
+    disabledTextColorArgb = "0xff6b6b6b"
+}
+
+GuiMetadata {
+    key = "game.buttonlayout800.metadata.metadata_22"
+    pageKey = "game.buttonlayout800"
+    legacySection = "Rects"
+    role = "metadata"
+    layer = "metadata"
+    aliasOverride = "metadata"
+    sourceControlType = "Rects"
+    rect = "0,0,0,0"
+    legacyLocalRect = "0,0,0,0"
+    legacyRectSource = "xywh"
+    visible = false
+}
+
+GuiRect {
+    key = "game.buttonlayout800.rect.this_is_the_size_the_map_should_be"
+    pageKey = "game.buttonlayout800"
+    legacySection = "Rect0"
+    legacyComment = "this is the size the map should be"
+    role = "planet_map_mount"
+    layer = "map"
+    aliasOverride = "this is the size the map should be"
+    sourceControlType = "Rect0"
+    rect = "4,435,161,161"
+    legacyLocalRect = "4,435,161,161"
+    legacyRectSource = "ltrb"
+    uiPackage = "default"
+    rectModel = "legacy_imgui.modern_rect_v1"
+    controlRect = "4,435,161,161"
+    filled = true
+    fillColorArgb = "0x00000000"
+    borderColorArgb = "0x00000000"
+    colorArgb = "0xffffffff"
+}
+
+GuiRect {
+    key = "game.buttonlayout800.rect.rect_01"
+    pageKey = "game.buttonlayout800"
+    legacySection = "Rect1"
+    role = "rect"
+    layer = "layout"
+    aliasOverride = "rect"
+    sourceControlType = "Rect1"
+    rect = "689,438,106,159"
+    legacyLocalRect = "689,438,106,159"
+    legacyRectSource = "ltrb"
+    uiPackage = "default"
+    rectModel = "legacy_imgui.modern_rect_v1"
+    controlRect = "689,438,106,159"
+    legacyColor = 0xff000000
+    filled = true
+    fillColorArgb = "0x00000000"
+    borderColorArgb = "0x00000000"
+    colorArgb = "0xffffffff"
+}
+
+GuiRect {
+    key = "game.buttonlayout800.rect.rectangle_behind_tac_map"
+    pageKey = "game.buttonlayout800"
+    legacySection = "Rect2"
+    legacyComment = "rectangle behind tac map"
+    role = "planet_map_mount"
+    layer = "map"
+    aliasOverride = "rectangle behind tac map"
+    sourceControlType = "Rect2"
+    rect = "3,434,162,163"
+    legacyLocalRect = "3,434,162,163"
+    legacyRectSource = "ltrb"
+    uiPackage = "default"
+    rectModel = "legacy_imgui.modern_rect_v1"
+    controlRect = "3,434,162,163"
+    legacyColor = 0xff000000
+    filled = true
+    fillColorArgb = "0x00000000"
+    borderColorArgb = "0x00000000"
+    colorArgb = "0xffffffff"
+}
+
+GuiMetadata {
+    key = "game.buttonlayout800.metadata.metadata_23"
+    pageKey = "game.buttonlayout800"
+    legacySection = "PauseWindow"
+    role = "metadata"
+    layer = "metadata"
+    aliasOverride = "metadata"
+    sourceControlType = "PauseWindow"
+    rect = "0,0,0,0"
+    legacyLocalRect = "0,0,0,0"
+    legacyRectSource = "xywh"
+    visible = false
+}
+
+GuiButton {
+    key = "game.buttonlayout800.button.obj"
+    pageKey = "game.buttonlayout800"
+    legacySection = "PauseButton0"
+    legacyComment = "obj"
+    role = "button"
+    layer = "control"
+    aliasOverride = "obj"
+    sourceControlType = "PauseButton0"
+    rect = "664,116,128,22"
+    legacyLocalRect = "664,116,128,22"
+    legacyRectSource = "xywh"
+    texture = "data/art/gui/MCUI_Universal1.png"
+    legacyTexture = "MCUI_Universal1"
+    uiPackage = "default"
+    rectModel = "legacy_imgui.modern_rect_v1"
+    controlRect = "664,116,128,22"
+    hitRect = "664,116,128,22"
+    artRect = "664,116,128,22"
+    artLayer = "control_art"
+    controlModel = "composite_hit_art_text_v1"
+    linkedLayers = "hit,art,text"
+    editMode = "linked_control_with_independent_text"
+    textRect = "664,116,128,22"
+    textRectMode = "control_rect_fallback"
+    textLegacyId = 43000
+    textKey = "legacy.mc2res.43000"
+    visibleText = "OBJECTIVES"
+    textLegacySymbol = "IDS_OBJECTIVES"
+    textSource = "mc2res"
+    textMissing = false
+    helpCaptionLegacyId = 43007
+    helpCaptionKey = "legacy.mc2res.43007"
+    helpCaptionText = "Objectives List"
+    helpCaptionLegacySymbol = "IDS_OBJECTIVES_HELPHEADER"
+    helpCaptionSource = "mc2res"
+    helpCaptionMissing = false
+    helpDescLegacyId = 43014
+    helpDescKey = "legacy.mc2res.43014"
+    helpDescText = "Toggle the list of current mission objectives."
+    helpDescLegacySymbol = "IDS_OBJECTIVES_HELP"
+    helpDescSource = "mc2res"
+    helpDescMissing = false
+    font = "Agency Regular"
+    fontStyle = "Regular"
+    fontSize = 14
+    bold = false
+    italic = false
+    textAlign = "center"
+    textAnchor = "center"
+    legacyTextAlignmentSource = "aButton::init default Alignment=2"
+    wrapText = false
+    legacyId = 0
+    uvX = 0
+    uvY = 0
+    uvWidth = 128
+    uvHeight = 22
+    uvPressedX = 0
+    uvPressedY = 22
+    uvHighlightX = 0
+    uvHighlightY = 97
+    uvDisabledX = 0
+    uvDisabledY = 44
+    fillColorArgb = "0x00000000"
+    borderColorArgb = "0x00000000"
+    normalTextColorArgb = "0xffffffff"
+    pressedTextColorArgb = "0xfff26f00"
+    highlightTextColorArgb = "0xfff26f00"
+    disabledTextColorArgb = "0xff6b6b6b"
+}
+
+GuiButton {
+    key = "game.buttonlayout800.button.inmissionsave"
+    pageKey = "game.buttonlayout800"
+    legacySection = "PauseButton1"
+    legacyComment = "inmissionsave"
+    role = "button"
+    layer = "control"
+    aliasOverride = "inmissionsave"
+    sourceControlType = "PauseButton1"
+    rect = "664,143,128,22"
+    legacyLocalRect = "664,143,128,22"
+    legacyRectSource = "xywh"
+    texture = "data/art/gui/MCUI_Universal1.png"
+    legacyTexture = "MCUI_Universal1"
+    uiPackage = "default"
+    rectModel = "legacy_imgui.modern_rect_v1"
+    controlRect = "664,143,128,22"
+    hitRect = "664,143,128,22"
+    artRect = "664,143,128,22"
+    artLayer = "control_art"
+    controlModel = "composite_hit_art_text_v1"
+    linkedLayers = "hit,art,text"
+    editMode = "linked_control_with_independent_text"
+    textRect = "664,143,128,22"
+    textRectMode = "control_rect_fallback"
+    textLegacyId = 43001
+    textKey = "legacy.mc2res.43001"
+    visibleText = "QUICK SAVE"
+    textLegacySymbol = "IDS_INMISSION"
+    textSource = "mc2res"
+    textMissing = false
+    helpCaptionLegacyId = 43008
+    helpCaptionKey = "legacy.mc2res.43008"
+    helpCaptionText = "Quick Save"
+    helpCaptionLegacySymbol = "IDS_INMISSIONSAVE_HEADER"
+    helpCaptionSource = "mc2res"
+    helpCaptionMissing = false
+    helpDescLegacyId = 43015
+    helpDescKey = "legacy.mc2res.43015"
+    helpDescText = "Save the current mission."
+    helpDescLegacySymbol = "IDS_INMISSION_HELP"
+    helpDescSource = "mc2res"
+    helpDescMissing = false
+    font = "Agency Regular"
+    fontStyle = "Regular"
+    fontSize = 14
+    bold = false
+    italic = false
+    textAlign = "center"
+    textAnchor = "center"
+    legacyTextAlignmentSource = "aButton::init default Alignment=2"
+    wrapText = false
+    legacyId = 1
+    uvX = 0
+    uvY = 0
+    uvWidth = 128
+    uvHeight = 22
+    uvPressedX = 0
+    uvPressedY = 22
+    uvHighlightX = 0
+    uvHighlightY = 97
+    uvDisabledX = 0
+    uvDisabledY = 44
+    fillColorArgb = "0x00000000"
+    borderColorArgb = "0x00000000"
+    normalTextColorArgb = "0xffffffff"
+    pressedTextColorArgb = "0xfff26f00"
+    highlightTextColorArgb = "0xfff26f00"
+    disabledTextColorArgb = "0xff6b6b6b"
+}
+
+GuiButton {
+    key = "game.buttonlayout800.button.inmissionload"
+    pageKey = "game.buttonlayout800"
+    legacySection = "PauseButton2"
+    legacyComment = "inmissionload"
+    role = "button"
+    layer = "control"
+    aliasOverride = "inmissionload"
+    sourceControlType = "PauseButton2"
+    rect = "664,170,128,22"
+    legacyLocalRect = "664,170,128,22"
+    legacyRectSource = "xywh"
+    texture = "data/art/gui/MCUI_Universal1.png"
+    legacyTexture = "MCUI_Universal1"
+    uiPackage = "default"
+    rectModel = "legacy_imgui.modern_rect_v1"
+    controlRect = "664,170,128,22"
+    hitRect = "664,170,128,22"
+    artRect = "664,170,128,22"
+    artLayer = "control_art"
+    controlModel = "composite_hit_art_text_v1"
+    linkedLayers = "hit,art,text"
+    editMode = "linked_control_with_independent_text"
+    textRect = "664,170,128,22"
+    textRectMode = "control_rect_fallback"
+    textLegacyId = 43002
+    textKey = "legacy.mc2res.43002"
+    visibleText = "QUICK LOAD"
+    textLegacySymbol = "IDS_INMISSIONLOAD"
+    textSource = "mc2res"
+    textMissing = false
+    helpCaptionLegacyId = 43009
+    helpCaptionKey = "legacy.mc2res.43009"
+    helpCaptionText = "Quick Load"
+    helpCaptionLegacySymbol = "IDS_INMISSIONLOAD_HEADER"
+    helpCaptionSource = "mc2res"
+    helpCaptionMissing = false
+    helpDescLegacyId = 43016
+    helpDescKey = "legacy.mc2res.43016"
+    helpDescText = "Load your mission."
+    helpDescLegacySymbol = "IDS_INMISSIONLOAD_HELP"
+    helpDescSource = "mc2res"
+    helpDescMissing = false
+    font = "Agency Regular"
+    fontStyle = "Regular"
+    fontSize = 14
+    bold = false
+    italic = false
+    textAlign = "center"
+    textAnchor = "center"
+    legacyTextAlignmentSource = "aButton::init default Alignment=2"
+    wrapText = false
+    legacyId = 2
+    uvX = 0
+    uvY = 0
+    uvWidth = 128
+    uvHeight = 22
+    uvPressedX = 0
+    uvPressedY = 22
+    uvHighlightX = 0
+    uvHighlightY = 97
+    uvDisabledX = 0
+    uvDisabledY = 44
+    fillColorArgb = "0x00000000"
+    borderColorArgb = "0x00000000"
+    normalTextColorArgb = "0xffffffff"
+    pressedTextColorArgb = "0xfff26f00"
+    highlightTextColorArgb = "0xfff26f00"
+    disabledTextColorArgb = "0xff6b6b6b"
+}
+
+GuiButton {
+    key = "game.buttonlayout800.button.options"
+    pageKey = "game.buttonlayout800"
+    legacySection = "PauseButton3"
+    legacyComment = "options"
+    role = "button"
+    layer = "control"
+    aliasOverride = "options"
+    sourceControlType = "PauseButton3"
+    rect = "664,197,128,22"
+    legacyLocalRect = "664,197,128,22"
+    legacyRectSource = "xywh"
+    texture = "data/art/gui/MCUI_Universal1.png"
+    legacyTexture = "MCUI_Universal1"
+    uiPackage = "default"
+    rectModel = "legacy_imgui.modern_rect_v1"
+    controlRect = "664,197,128,22"
+    hitRect = "664,197,128,22"
+    artRect = "664,197,128,22"
+    artLayer = "control_art"
+    controlModel = "composite_hit_art_text_v1"
+    linkedLayers = "hit,art,text"
+    editMode = "linked_control_with_independent_text"
+    textRect = "664,197,128,22"
+    textRectMode = "control_rect_fallback"
+    textLegacyId = 43003
+    textKey = "legacy.mc2res.43003"
+    visibleText = "OPTIONS"
+    textLegacySymbol = "IDS_OPTIONS"
+    textSource = "mc2res"
+    textMissing = false
+    helpCaptionLegacyId = 43010
+    helpCaptionKey = "legacy.mc2res.43010"
+    helpCaptionText = "Options"
+    helpCaptionLegacySymbol = "IDS_OPTIONS_HHEADER"
+    helpCaptionSource = "mc2res"
+    helpCaptionMissing = false
+    helpDescLegacyId = 43017
+    helpDescKey = "legacy.mc2res.43017"
+    helpDescText = "Customize game, graphics, audio, and control settings."
+    helpDescLegacySymbol = "IDS_OPTIONS_HELP"
+    helpDescSource = "mc2res"
+    helpDescMissing = false
+    font = "Agency Regular"
+    fontStyle = "Regular"
+    fontSize = 14
+    bold = false
+    italic = false
+    textAlign = "center"
+    textAnchor = "center"
+    legacyTextAlignmentSource = "aButton::init default Alignment=2"
+    wrapText = false
+    legacyId = 3
+    uvX = 0
+    uvY = 0
+    uvWidth = 128
+    uvHeight = 22
+    uvPressedX = 0
+    uvPressedY = 22
+    uvHighlightX = 0
+    uvHighlightY = 97
+    uvDisabledX = 0
+    uvDisabledY = 44
+    fillColorArgb = "0x00000000"
+    borderColorArgb = "0x00000000"
+    normalTextColorArgb = "0xffffffff"
+    pressedTextColorArgb = "0xfff26f00"
+    highlightTextColorArgb = "0xfff26f00"
+    disabledTextColorArgb = "0xff6b6b6b"
+}
+
+GuiButton {
+    key = "game.buttonlayout800.button.restart_mission"
+    pageKey = "game.buttonlayout800"
+    legacySection = "PauseButton4"
+    legacyComment = "restart mission"
+    role = "button"
+    layer = "control"
+    aliasOverride = "restart mission"
+    sourceControlType = "PauseButton4"
+    rect = "664,224,128,22"
+    legacyLocalRect = "664,224,128,22"
+    legacyRectSource = "xywh"
+    texture = "data/art/gui/MCUI_Universal1.png"
+    legacyTexture = "MCUI_Universal1"
+    uiPackage = "default"
+    rectModel = "legacy_imgui.modern_rect_v1"
+    controlRect = "664,224,128,22"
+    hitRect = "664,224,128,22"
+    artRect = "664,224,128,22"
+    artLayer = "control_art"
+    controlModel = "composite_hit_art_text_v1"
+    linkedLayers = "hit,art,text"
+    editMode = "linked_control_with_independent_text"
+    textRect = "664,224,128,22"
+    textRectMode = "control_rect_fallback"
+    textLegacyId = 43004
+    textKey = "legacy.mc2res.43004"
+    visibleText = "ABORT MISSION"
+    textLegacySymbol = "IDS_RESTART"
+    textSource = "mc2res"
+    textMissing = false
+    helpCaptionLegacyId = 43011
+    helpCaptionKey = "legacy.mc2res.43011"
+    helpCaptionText = "Abort Mission"
+    helpCaptionLegacySymbol = "IDS_RESTARTHEADER"
+    helpCaptionSource = "mc2res"
+    helpCaptionMissing = false
+    helpDescLegacyId = 43018
+    helpDescKey = "legacy.mc2res.43018"
+    helpDescText = "Quit the current mission."
+    helpDescLegacySymbol = "IDS_RESTART_HELP"
+    helpDescSource = "mc2res"
+    helpDescMissing = false
+    font = "Agency Regular"
+    fontStyle = "Regular"
+    fontSize = 14
+    bold = false
+    italic = false
+    textAlign = "center"
+    textAnchor = "center"
+    legacyTextAlignmentSource = "aButton::init default Alignment=2"
+    wrapText = false
+    legacyId = 4
+    uvX = 0
+    uvY = 0
+    uvWidth = 128
+    uvHeight = 22
+    uvPressedX = 0
+    uvPressedY = 22
+    uvHighlightX = 0
+    uvHighlightY = 97
+    uvDisabledX = 0
+    uvDisabledY = 44
+    fillColorArgb = "0x00000000"
+    borderColorArgb = "0x00000000"
+    normalTextColorArgb = "0xffffffff"
+    pressedTextColorArgb = "0xfff26f00"
+    highlightTextColorArgb = "0xfff26f00"
+    disabledTextColorArgb = "0xff6b6b6b"
+}
+
+GuiButton {
+    key = "game.buttonlayout800.button.exit"
+    pageKey = "game.buttonlayout800"
+    legacySection = "PauseButton5"
+    legacyComment = "exit"
+    role = "button"
+    layer = "control"
+    aliasOverride = "exit"
+    sourceControlType = "PauseButton5"
+    rect = "664,251,128,22"
+    legacyLocalRect = "664,251,128,22"
+    legacyRectSource = "xywh"
+    texture = "data/art/gui/MCUI_Universal1.png"
+    legacyTexture = "MCUI_Universal1"
+    uiPackage = "default"
+    rectModel = "legacy_imgui.modern_rect_v1"
+    controlRect = "664,251,128,22"
+    hitRect = "664,251,128,22"
+    artRect = "664,251,128,22"
+    artLayer = "control_art"
+    controlModel = "composite_hit_art_text_v1"
+    linkedLayers = "hit,art,text"
+    editMode = "linked_control_with_independent_text"
+    textRect = "664,251,128,22"
+    textRectMode = "control_rect_fallback"
+    textLegacyId = 43005
+    textKey = "legacy.mc2res.43005"
+    visibleText = "EXIT GAME"
+    textLegacySymbol = "IDS_EXIT"
+    textSource = "mc2res"
+    textMissing = false
+    helpCaptionLegacyId = 43012
+    helpCaptionKey = "legacy.mc2res.43012"
+    helpCaptionText = "Exit Game"
+    helpCaptionLegacySymbol = "IDS_EXIT_HEADER"
+    helpCaptionSource = "mc2res"
+    helpCaptionMissing = false
+    helpDescLegacyId = 43019
+    helpDescKey = "legacy.mc2res.43019"
+    helpDescText = "Exit MechCommander 2."
+    helpDescLegacySymbol = "IDS_EXIT_HELP"
+    helpDescSource = "mc2res"
+    helpDescMissing = false
+    font = "Agency Regular"
+    fontStyle = "Regular"
+    fontSize = 14
+    bold = false
+    italic = false
+    textAlign = "center"
+    textAnchor = "center"
+    legacyTextAlignmentSource = "aButton::init default Alignment=2"
+    wrapText = false
+    legacyId = 5
+    uvX = 0
+    uvY = 0
+    uvWidth = 128
+    uvHeight = 22
+    uvPressedX = 0
+    uvPressedY = 22
+    uvHighlightX = 0
+    uvHighlightY = 97
+    uvDisabledX = 0
+    uvDisabledY = 44
+    fillColorArgb = "0x00000000"
+    borderColorArgb = "0x00000000"
+    normalTextColorArgb = "0xffffffff"
+    pressedTextColorArgb = "0xfff26f00"
+    highlightTextColorArgb = "0xfff26f00"
+    disabledTextColorArgb = "0xff6b6b6b"
+}
+
+GuiButton {
+    key = "game.buttonlayout800.button.return_to_game"
+    pageKey = "game.buttonlayout800"
+    legacySection = "PauseButton6"
+    legacyComment = "return to game"
+    role = "button"
+    layer = "control"
+    aliasOverride = "return to game"
+    sourceControlType = "PauseButton6"
+    rect = "664,278,128,22"
+    legacyLocalRect = "664,278,128,22"
+    legacyRectSource = "xywh"
+    texture = "data/art/gui/MCUI_Universal1.png"
+    legacyTexture = "MCUI_Universal1"
+    uiPackage = "default"
+    rectModel = "legacy_imgui.modern_rect_v1"
+    controlRect = "664,278,128,22"
+    hitRect = "664,278,128,22"
+    artRect = "664,278,128,22"
+    artLayer = "control_art"
+    controlModel = "composite_hit_art_text_v1"
+    linkedLayers = "hit,art,text"
+    editMode = "linked_control_with_independent_text"
+    textRect = "664,278,128,22"
+    textRectMode = "control_rect_fallback"
+    textLegacyId = 43006
+    textKey = "legacy.mc2res.43006"
+    visibleText = "RETURN TO GAME"
+    textLegacySymbol = "IDS_RETURN_TOGAME"
+    textSource = "mc2res"
+    textMissing = false
+    helpCaptionLegacyId = 43013
+    helpCaptionKey = "legacy.mc2res.43013"
+    helpCaptionText = "Return to Game"
+    helpCaptionLegacySymbol = "IDS_RETURN_TOGAME_HEADER"
+    helpCaptionSource = "mc2res"
+    helpCaptionMissing = false
+    helpDescLegacyId = 43020
+    helpDescKey = "legacy.mc2res.43020"
+    helpDescText = "Return to the current mission."
+    helpDescLegacySymbol = "IDS_RETURN_TOGAME_HELP"
+    helpDescSource = "mc2res"
+    helpDescMissing = false
+    font = "Agency Regular"
+    fontStyle = "Regular"
+    fontSize = 14
+    bold = false
+    italic = false
+    textAlign = "center"
+    textAnchor = "center"
+    legacyTextAlignmentSource = "aButton::init default Alignment=2"
+    wrapText = false
+    legacyId = 6
+    uvX = 0
+    uvY = 0
+    uvWidth = 128
+    uvHeight = 22
+    uvPressedX = 0
+    uvPressedY = 22
+    uvHighlightX = 0
+    uvHighlightY = 97
+    uvDisabledX = 0
+    uvDisabledY = 44
+    fillColorArgb = "0x00000000"
+    borderColorArgb = "0x00000000"
+    normalTextColorArgb = "0xffffffff"
+    pressedTextColorArgb = "0xfff26f00"
+    highlightTextColorArgb = "0xfff26f00"
+    disabledTextColorArgb = "0xff6b6b6b"
+}
+
+GuiImage {
+    key = "game.buttonlayout800.image.upper_left_hand_corner_piece"
+    pageKey = "game.buttonlayout800"
+    legacySection = "PauseStatic0"
+    legacyComment = "upper left hand corner piece"
+    role = "image"
+    layer = "art"
+    aliasOverride = "upper left hand corner piece"
+    sourceControlType = "PauseStatic0"
+    rect = "638,86,34,5"
+    legacyLocalRect = "638,86,34,5"
+    legacyRectSource = "xywh"
+    texture = "data/art/gui/MCUI_Universal1.png"
+    legacyTexture = "MCUI_Universal1"
+    uiPackage = "default"
+    rectModel = "legacy_imgui.modern_rect_v1"
+    controlRect = "638,86,34,5"
+    artRect = "638,86,34,5"
+    artLayer = "control_art"
+    uvX = 0
+    uvY = 92
+    uvWidth = 34
+    uvHeight = 5
+}
+
+GuiImage {
+    key = "game.buttonlayout800.image.uppermost_thin_horizontal_bar"
+    pageKey = "game.buttonlayout800"
+    legacySection = "PauseStatic1"
+    legacyComment = "uppermost thin horizontal bar"
+    role = "image"
+    layer = "art"
+    aliasOverride = "uppermost thin horizontal bar"
+    sourceControlType = "PauseStatic1"
+    rect = "672,86,128,5"
+    legacyLocalRect = "672,86,128,5"
+    legacyRectSource = "xywh"
+    texture = "data/art/gui/MCUI_Universal1.png"
+    legacyTexture = "MCUI_Universal1"
+    uiPackage = "default"
+    rectModel = "legacy_imgui.modern_rect_v1"
+    controlRect = "672,86,128,5"
+    artRect = "672,86,128,5"
+    artLayer = "control_art"
+    uvX = 0
+    uvY = 66
+    uvWidth = 128
+    uvHeight = 5
+}
+
+GuiImage {
+    key = "game.buttonlayout800.image.lefthand_topmost_vertical_bar"
+    pageKey = "game.buttonlayout800"
+    legacySection = "PauseStatic2"
+    legacyComment = "lefthand topmost vertical bar"
+    role = "image"
+    layer = "art"
+    aliasOverride = "lefthand topmost vertical bar"
+    sourceControlType = "PauseStatic2"
+    rect = "638,91,23,118"
+    legacyLocalRect = "638,91,23,118"
+    legacyRectSource = "xywh"
+    texture = "data/art/gui/MCUI_Universal3.png"
+    legacyTexture = "MCUI_Universal3"
+    uiPackage = "default"
+    rectModel = "legacy_imgui.modern_rect_v1"
+    controlRect = "638,91,23,118"
+    artRect = "638,91,23,118"
+    artLayer = "control_art"
+    uvX = 79
+    uvY = 10
+    uvWidth = 23
+    uvHeight = 118
+}
+
+GuiImage {
+    key = "game.buttonlayout800.image.top_right_vert_frame"
+    pageKey = "game.buttonlayout800"
+    legacySection = "PauseStatic3"
+    legacyComment = "top right vert frame"
+    role = "image"
+    layer = "art"
+    aliasOverride = "top right vert frame"
+    sourceControlType = "PauseStatic3"
+    rect = "795,91,5,118"
+    legacyLocalRect = "795,91,5,118"
+    legacyRectSource = "xywh"
+    texture = "data/art/gui/MCUI_Universal3.png"
+    legacyTexture = "MCUI_Universal3"
+    uiPackage = "default"
+    rectModel = "legacy_imgui.modern_rect_v1"
+    controlRect = "795,91,5,118"
+    artRect = "795,91,5,118"
+    artLayer = "control_art"
+    uvX = 107
+    uvY = 10
+    uvWidth = 5
+    uvHeight = 118
+}
+
+GuiImage {
+    key = "game.buttonlayout800.image.left_middle_vertical_frame"
+    pageKey = "game.buttonlayout800"
+    legacySection = "PauseStatic4"
+    legacyComment = "left middle vertical frame"
+    role = "image"
+    layer = "art"
+    aliasOverride = "left middle vertical frame"
+    sourceControlType = "PauseStatic4"
+    rect = "638,209,23,116"
+    legacyLocalRect = "638,209,23,116"
+    legacyRectSource = "xywh"
+    texture = "data/art/gui/MCUI_Universal3.png"
+    legacyTexture = "MCUI_Universal3"
+    uiPackage = "default"
+    rectModel = "legacy_imgui.modern_rect_v1"
+    controlRect = "638,209,23,116"
+    artRect = "638,209,23,116"
+    artLayer = "control_art"
+    uvX = 56
+    uvY = 10
+    uvWidth = 23
+    uvHeight = 116
+}
+
+GuiImage {
+    key = "game.buttonlayout800.image.bottom_right_vertical_frame"
+    pageKey = "game.buttonlayout800"
+    legacySection = "PauseStatic5"
+    legacyComment = "bottom right vertical frame"
+    role = "image"
+    layer = "art"
+    aliasOverride = "bottom right vertical frame"
+    sourceControlType = "PauseStatic5"
+    rect = "795,209,5,95"
+    legacyLocalRect = "795,209,5,95"
+    legacyRectSource = "xywh"
+    texture = "data/art/gui/MCUI_Universal3.png"
+    legacyTexture = "MCUI_Universal3"
+    uiPackage = "default"
+    rectModel = "legacy_imgui.modern_rect_v1"
+    controlRect = "795,209,5,95"
+    artRect = "795,209,5,95"
+    artLayer = "control_art"
+    uvX = 102
+    uvY = 10
+    uvWidth = 5
+    uvHeight = 95
+}
+
+GuiImage {
+    key = "game.buttonlayout800.image.bottom_left_small_piece"
+    pageKey = "game.buttonlayout800"
+    legacySection = "PauseStatic6"
+    legacyComment = "bottom left small piece"
+    role = "image"
+    layer = "art"
+    aliasOverride = "bottom left small piece"
+    sourceControlType = "PauseStatic6"
+    rect = "661,304,11,21"
+    legacyLocalRect = "661,304,11,21"
+    legacyRectSource = "xywh"
+    texture = "data/art/gui/MCUI_Universal3.png"
+    legacyTexture = "MCUI_Universal3"
+    uiPackage = "default"
+    rectModel = "legacy_imgui.modern_rect_v1"
+    controlRect = "661,304,11,21"
+    artRect = "661,304,11,21"
+    artLayer = "control_art"
+    uvX = 112
+    uvY = 10
+    uvWidth = 11
+    uvHeight = 21
+}
+
+GuiImage {
+    key = "game.buttonlayout800.image.bottommost_horizontal_thick_frame"
+    pageKey = "game.buttonlayout800"
+    legacySection = "PauseStatic7"
+    legacyComment = "bottommost horizontal thick frame"
+    role = "image"
+    layer = "art"
+    aliasOverride = "bottommost horizontal thick frame"
+    sourceControlType = "PauseStatic7"
+    rect = "672,304,128,21"
+    legacyLocalRect = "672,304,128,21"
+    legacyRectSource = "xywh"
+    texture = "data/art/gui/MCUI_Universal1.png"
+    legacyTexture = "MCUI_Universal1"
+    uiPackage = "default"
+    rectModel = "legacy_imgui.modern_rect_v1"
+    controlRect = "672,304,128,21"
+    artRect = "672,304,128,21"
+    artLayer = "control_art"
+    uvX = 0
+    uvY = 71
+    uvWidth = 128
+    uvHeight = 21
+}
+
+GuiImage {
+    key = "game.buttonlayout800.image.bottommost_horizontal_thick_frame_01"
+    pageKey = "game.buttonlayout800"
+    legacySection = "PauseStatic8"
+    legacyComment = "bottommost horizontal thick frame"
+    role = "image"
+    layer = "art"
+    aliasOverride = "bottommost horizontal thick frame"
+    sourceControlType = "PauseStatic8"
+    rect = "672,304,128,21"
+    legacyLocalRect = "672,304,128,21"
+    legacyRectSource = "xywh"
+    texture = "data/art/gui/MCUI_Universal1.png"
+    legacyTexture = "MCUI_Universal1"
+    uiPackage = "default"
+    rectModel = "legacy_imgui.modern_rect_v1"
+    controlRect = "672,304,128,21"
+    artRect = "672,304,128,21"
+    artLayer = "control_art"
+    uvX = 0
+    uvY = 71
+    uvWidth = 128
+    uvHeight = 21
+}
+
+GuiImage {
+    key = "game.buttonlayout800.image.bottommost_horizontal_thick_frame_02"
+    pageKey = "game.buttonlayout800"
+    legacySection = "PauseStatic9"
+    legacyComment = "bottommost horizontal thick frame"
+    role = "image"
+    layer = "art"
+    aliasOverride = "bottommost horizontal thick frame"
+    sourceControlType = "PauseStatic9"
+    rect = "672,304,128,21"
+    legacyLocalRect = "672,304,128,21"
+    legacyRectSource = "xywh"
+    texture = "data/art/gui/MCUI_Universal1.png"
+    legacyTexture = "MCUI_Universal1"
+    uiPackage = "default"
+    rectModel = "legacy_imgui.modern_rect_v1"
+    controlRect = "672,304,128,21"
+    artRect = "672,304,128,21"
+    artLayer = "control_art"
+    uvX = 0
+    uvY = 71
+    uvWidth = 128
+    uvHeight = 21
+}
+
+GuiRect {
+    key = "game.buttonlayout800.rect.pause_menu_black_background"
+    pageKey = "game.buttonlayout800"
+    legacySection = "PauseBackRect"
+    legacyComment = "pause menu black background"
+    role = "rect"
+    layer = "layout"
+    aliasOverride = "pause menu black background"
+    sourceControlType = "PauseBackRect"
+    rect = "661,91,134,213"
+    legacyLocalRect = "661,91,134,213"
+    legacyRectSource = "ltrb"
+    uiPackage = "default"
+    rectModel = "legacy_imgui.modern_rect_v1"
+    controlRect = "661,91,134,213"
+    filled = true
+    fillColorArgb = "0x00000000"
+    borderColorArgb = "0x00000000"
+    colorArgb = "0xffffffff"
+}
+
+GuiText {
+    key = "game.buttonlayout800.text.pause_menu_text_header_goes_here"
+    pageKey = "game.buttonlayout800"
+    legacySection = "PauseText"
+    legacyComment = "pause menu text header goes here"
+    role = "title"
+    layer = "text"
+    aliasOverride = "pause menu text header goes here"
+    sourceControlType = "PauseText"
+    rect = "661,91,134,24"
+    legacyLocalRect = "661,91,134,24"
+    legacyRectSource = "ltrb"
+    uiPackage = "default"
+    rectModel = "legacy_imgui.modern_rect_v1"
+    controlRect = "661,91,134,24"
+    runtimeTextBinding = "legacy.blank_or_runtime_placeholder"
+    runtimeTextSource = "legacy text rectangle has no TextID"
+    textMissing = false
+    font = "Agency Regular"
+    fontStyle = "Regular"
+    fontSize = 14
+    bold = false
+    italic = false
+    textAlign = "left"
+    textAnchor = "upper_left"
+    wrapText = false
+    colorArgb = "0xffd6d6d6"
+    borderColorArgb = "0x00000000"
+}
+
+GuiMetadata {
+    key = "game.buttonlayout800.metadata.metadata_24"
+    pageKey = "game.buttonlayout800"
+    legacySection = "Objectives"
+    role = "metadata"
+    layer = "metadata"
+    aliasOverride = "metadata"
+    sourceControlType = "Objectives"
+    rect = "0,0,0,0"
+    legacyLocalRect = "0,0,0,0"
+    legacyRectSource = "xywh"
+    visible = false
+}
+
+GuiImage {
+    key = "game.buttonlayout800.image.top_objective_bar"
+    pageKey = "game.buttonlayout800"
+    legacySection = "ObjStatic0"
+    legacyComment = "top objective bar"
+    role = "image"
+    layer = "art"
+    aliasOverride = "top objective bar"
+    sourceControlType = "ObjStatic0"
+    rect = "0,76,14,118"
+    legacyLocalRect = "0,76,14,118"
+    legacyRectSource = "xywh"
+    texture = "data/art/gui/MCUI_Universal3.png"
+    legacyTexture = "MCUI_Universal3"
+    uiPackage = "default"
+    rectModel = "legacy_imgui.modern_rect_v1"
+    controlRect = "0,76,14,118"
+    artRect = "0,76,14,118"
+    artLayer = "control_art"
+    uvX = 0
+    uvY = 10
+    uvWidth = 14
+    uvHeight = 118
+}
+
+GuiImage {
+    key = "game.buttonlayout800.image.bottom_objective_bar"
+    pageKey = "game.buttonlayout800"
+    legacySection = "ObjStatic1"
+    legacyComment = "bottom objective bar"
+    role = "image"
+    layer = "art"
+    aliasOverride = "bottom objective bar"
+    sourceControlType = "ObjStatic1"
+    rect = "0,194,14,118"
+    legacyLocalRect = "0,194,14,118"
+    legacyRectSource = "xywh"
+    texture = "data/art/gui/MCUI_Universal3.png"
+    legacyTexture = "MCUI_Universal3"
+    uiPackage = "default"
+    rectModel = "legacy_imgui.modern_rect_v1"
+    controlRect = "0,194,14,118"
+    artRect = "0,194,14,118"
+    artLayer = "control_art"
+    uvX = 14
+    uvY = 10
+    uvWidth = 14
+    uvHeight = 118
+}
+
+GuiMetadata {
+    key = "game.buttonlayout800.metadata.primary_objectives"
+    pageKey = "game.buttonlayout800"
+    legacySection = "PrimaryObjHeader"
+    legacyComment = "PRIMARY OBJECTIVES"
+    role = "title"
+    layer = "text"
+    aliasOverride = "PRIMARY OBJECTIVES"
+    sourceControlType = "PrimaryObjHeader"
+    rect = "0,0,0,0"
+    legacyLocalRect = "0,0,0,0"
+    legacyRectSource = "xywh"
+    visible = false
+}
+
+GuiRect {
+    key = "game.buttonlayout800.rect.check_and_cross_go_in_here_3_pixel_skip"
+    pageKey = "game.buttonlayout800"
+    legacySection = "PrimaryObjBox"
+    legacyComment = "Check and Cross go in here, 3 pixel skip"
+    role = "rect"
+    layer = "layout"
+    aliasOverride = "Check and Cross go in here, 3 pixel skip"
+    sourceControlType = "PrimaryObjBox"
+    rect = "33,0,12,12"
+    legacyLocalRect = "33,0,12,12"
+    legacyRectSource = "xywh"
+    texture = "data/art/gui/MCUI_Universal2.png"
+    legacyTexture = "MCUI_Universal2"
+    uiPackage = "default"
+    rectModel = "legacy_imgui.modern_rect_v1"
+    controlRect = "33,0,12,12"
+    artRect = "33,0,12,12"
+    artLayer = "control_art"
+    uvX = 0
+    uvY = 95
+    uvWidth = 12
+    uvHeight = 12
+    filled = true
+    fillColorArgb = "0x00000000"
+    borderColorArgb = "0x00000000"
+    colorArgb = "0xffffffff"
+}
+
+GuiImage {
+    key = "game.buttonlayout800.image.for_objective_completion"
+    pageKey = "game.buttonlayout800"
+    legacySection = "PrimaryObjCheck"
+    legacyComment = "For Objective completion"
+    role = "image"
+    layer = "art"
+    aliasOverride = "For Objective completion"
+    sourceControlType = "PrimaryObjCheck"
+    rect = "34,0,10,10"
+    legacyLocalRect = "34,0,10,10"
+    legacyRectSource = "xywh"
+    texture = "data/art/gui/MCUI_Universal2.png"
+    legacyTexture = "MCUI_Universal2"
+    uiPackage = "default"
+    rectModel = "legacy_imgui.modern_rect_v1"
+    controlRect = "34,0,10,10"
+    artRect = "34,0,10,10"
+    artLayer = "control_art"
+    uvX = 25
+    uvY = 96
+    uvWidth = 10
+    uvHeight = 10
+}
+
+GuiImage {
+    key = "game.buttonlayout800.image.for_objective_failed"
+    pageKey = "game.buttonlayout800"
+    legacySection = "PrimaryObjX"
+    legacyComment = "for objective failed"
+    role = "image"
+    layer = "art"
+    aliasOverride = "for objective failed"
+    sourceControlType = "PrimaryObjX"
+    rect = "34,0,10,10"
+    legacyLocalRect = "34,0,10,10"
+    legacyRectSource = "xywh"
+    texture = "data/art/gui/MCUI_Universal2.png"
+    legacyTexture = "MCUI_Universal2"
+    uiPackage = "default"
+    rectModel = "legacy_imgui.modern_rect_v1"
+    controlRect = "34,0,10,10"
+    artRect = "34,0,10,10"
+    artLayer = "control_art"
+    uvX = 13
+    uvY = 96
+    uvWidth = 10
+    uvHeight = 10
+}
+
+GuiAnimation {
+    key = "game.buttonlayout800.animation.video"
+    pageKey = "game.buttonlayout800"
+    legacySection = "VideoWindow"
+    role = "video"
+    layer = "video"
+    aliasOverride = "video"
+    sourceControlType = "VideoWindow"
+    rect = "667,5,128,72"
+    legacyLocalRect = "667,5,128,72"
+    legacyRectSource = "ltrb"
+    uiPackage = "default"
+    rectModel = "legacy_imgui.modern_rect_v1"
+    controlRect = "667,5,128,72"
+}
+
+GuiImage {
+    key = "game.buttonlayout800.image.frame_top"
+    pageKey = "game.buttonlayout800"
+    legacySection = "VideoStatic0"
+    legacyComment = "frame top"
+    role = "video"
+    layer = "video"
+    aliasOverride = "frame top"
+    sourceControlType = "VideoStatic0"
+    rect = "667,0,128,5"
+    legacyLocalRect = "667,0,128,5"
+    legacyRectSource = "xywh"
+    texture = "data/art/gui/MCUI_Universal3.png"
+    legacyTexture = "MCUI_Universal3"
+    uiPackage = "default"
+    rectModel = "legacy_imgui.modern_rect_v1"
+    controlRect = "667,0,128,5"
+    artRect = "667,0,128,5"
+    artLayer = "control_art"
+    uvX = 0
+    uvY = 0
+    uvWidth = 128
+    uvHeight = 5
+}
+
+GuiImage {
+    key = "game.buttonlayout800.image.frame_bottom"
+    pageKey = "game.buttonlayout800"
+    legacySection = "VideoStatic1"
+    legacyComment = "frame bottom"
+    role = "video"
+    layer = "video"
+    aliasOverride = "frame bottom"
+    sourceControlType = "VideoStatic1"
+    rect = "667,77,128,5"
+    legacyLocalRect = "667,77,128,5"
+    legacyRectSource = "xywh"
+    texture = "data/art/gui/MCUI_Universal3.png"
+    legacyTexture = "MCUI_Universal3"
+    uiPackage = "default"
+    rectModel = "legacy_imgui.modern_rect_v1"
+    controlRect = "667,77,128,5"
+    artRect = "667,77,128,5"
+    artLayer = "control_art"
+    uvX = 0
+    uvY = 5
+    uvWidth = 128
+    uvHeight = 5
+}
+
+GuiImage {
+    key = "game.buttonlayout800.image.frame_left"
+    pageKey = "game.buttonlayout800"
+    legacySection = "VideoStatic2"
+    legacyComment = "frame left"
+    role = "video"
+    layer = "video"
+    aliasOverride = "frame left"
+    sourceControlType = "VideoStatic2"
+    rect = "644,0,23,82"
+    legacyLocalRect = "644,0,23,82"
+    legacyRectSource = "xywh"
+    texture = "data/art/gui/MCUI_Universal3.png"
+    legacyTexture = "MCUI_Universal3"
+    uiPackage = "default"
+    rectModel = "legacy_imgui.modern_rect_v1"
+    controlRect = "644,0,23,82"
+    artRect = "644,0,23,82"
+    artLayer = "control_art"
+    uvX = 28
+    uvY = 10
+    uvWidth = 23
+    uvHeight = 82
+}
+
+GuiImage {
+    key = "game.buttonlayout800.image.frame_right"
+    pageKey = "game.buttonlayout800"
+    legacySection = "VideoStatic3"
+    legacyComment = "frame right"
+    role = "video"
+    layer = "video"
+    aliasOverride = "frame right"
+    sourceControlType = "VideoStatic3"
+    rect = "795,0,5,82"
+    legacyLocalRect = "795,0,5,82"
+    legacyRectSource = "xywh"
+    texture = "data/art/gui/MCUI_Universal3.png"
+    legacyTexture = "MCUI_Universal3"
+    uiPackage = "default"
+    rectModel = "legacy_imgui.modern_rect_v1"
+    controlRect = "795,0,5,82"
+    artRect = "795,0,5,82"
+    artLayer = "control_art"
+    uvX = 52
+    uvY = 10
+    uvWidth = 5
+    uvHeight = 82
+}
+
+GuiText {
+    key = "game.buttonlayout800.text.text_gets_centered_in_this_box_arialnarrow8_all_caps"
+    pageKey = "game.buttonlayout800"
+    legacySection = "VideoTextBox"
+    legacyComment = "Text gets centered in this box- arialnarrow8 all caps"
+    role = "video"
+    layer = "video"
+    aliasOverride = "Text gets centered in this box- arialnarrow8 all caps"
+    sourceControlType = "VideoTextBox"
+    rect = "667,98,127,13"
+    legacyLocalRect = "667,98,127,13"
+    legacyRectSource = "ltrb"
+    uiPackage = "default"
+    rectModel = "legacy_imgui.modern_rect_v1"
+    controlRect = "667,98,127,13"
+    runtimeTextBinding = "legacy.blank_or_runtime_placeholder"
+    runtimeTextSource = "legacy text rectangle has no TextID"
+    textMissing = false
+    font = "Agency Regular"
+    fontStyle = "Regular"
+    fontSize = 14
+    bold = false
+    italic = false
+    textAlign = "left"
+    textAnchor = "upper_left"
+    wrapText = false
+    colorArgb = "0xffd6d6d6"
+    borderColorArgb = "0x00000000"
+}
+
+GuiMetadata {
+    key = "game.buttonlayout800.metadata.arialnarrow8"
+    pageKey = "game.buttonlayout800"
+    legacySection = "MissionTimer"
+    legacyComment = "arialnarrow8"
+    role = "metadata"
+    layer = "metadata"
+    aliasOverride = "arialnarrow8"
+    sourceControlType = "MissionTimer"
+    rect = "779,410,0,0"
+    legacyLocalRect = "779,410,0,0"
+    legacyRectSource = "xywh"
+    legacyColor = 0xffffffff
+    visible = false
+}
+
+GuiImage {
+    key = "game.buttonlayout800.image.timer_graphic"
+    pageKey = "game.buttonlayout800"
+    legacySection = "TimerStatic0"
+    legacyComment = "timer graphic"
+    role = "image"
+    layer = "art"
+    aliasOverride = "timer graphic"
+    sourceControlType = "TimerStatic0"
+    rect = "784,410,16,16"
+    legacyLocalRect = "784,410,16,16"
+    legacyRectSource = "xywh"
+    texture = "data/art/gui/MCUI_Universal2.png"
+    legacyTexture = "MCUI_Universal2"
+    uiPackage = "default"
+    rectModel = "legacy_imgui.modern_rect_v1"
+    controlRect = "784,410,16,16"
+    artRect = "784,410,16,16"
+    artLayer = "control_art"
+    uvX = 0
+    uvY = 107
+    uvWidth = 16
+    uvHeight = 16
+}
+
+GuiMetadata {
+    key = "game.buttonlayout800.metadata.metadata_25"
+    pageKey = "game.buttonlayout800"
+    legacySection = "MissionResults"
+    role = "metadata"
+    layer = "metadata"
+    aliasOverride = "metadata"
+    sourceControlType = "MissionResults"
+    rect = "0,0,0,0"
+    legacyLocalRect = "0,0,0,0"
+    legacyRectSource = "xywh"
+    visible = false
+}
+
+GuiImage {
+    key = "game.buttonlayout800.image.top_left_frame"
+    pageKey = "game.buttonlayout800"
+    legacySection = "ResultsStatic0"
+    legacyComment = "top left frame"
+    role = "image"
+    layer = "art"
+    aliasOverride = "top left frame"
+    sourceControlType = "ResultsStatic0"
+    rect = "229,0,128,8"
+    legacyLocalRect = "229,0,128,8"
+    legacyRectSource = "xywh"
+    texture = "data/art/gui/MCUI_Universal2.png"
+    legacyTexture = "MCUI_Universal2"
+    uiPackage = "default"
+    rectModel = "legacy_imgui.modern_rect_v1"
+    controlRect = "229,0,128,8"
+    artRect = "229,0,128,8"
+    artLayer = "control_art"
+    uvX = 0
+    uvY = 0
+    uvWidth = 128
+    uvHeight = 8
+}
+
+GuiImage {
+    key = "game.buttonlayout800.image.top_mid_frame"
+    pageKey = "game.buttonlayout800"
+    legacySection = "ResultsStatic1"
+    legacyComment = "top mid frame"
+    role = "image"
+    layer = "art"
+    aliasOverride = "top mid frame"
+    sourceControlType = "ResultsStatic1"
+    rect = "357,0,128,8"
+    legacyLocalRect = "357,0,128,8"
+    legacyRectSource = "xywh"
+    texture = "data/art/gui/MCUI_Universal2.png"
+    legacyTexture = "MCUI_Universal2"
+    uiPackage = "default"
+    rectModel = "legacy_imgui.modern_rect_v1"
+    controlRect = "357,0,128,8"
+    artRect = "357,0,128,8"
+    artLayer = "control_art"
+    uvX = 0
+    uvY = 8
+    uvWidth = 128
+    uvHeight = 8
+}
+
+GuiImage {
+    key = "game.buttonlayout800.image.top_right_frame"
+    pageKey = "game.buttonlayout800"
+    legacySection = "ResultsStatic2"
+    legacyComment = "top right frame"
+    role = "image"
+    layer = "art"
+    aliasOverride = "top right frame"
+    sourceControlType = "ResultsStatic2"
+    rect = "485,0,86,8"
+    legacyLocalRect = "485,0,86,8"
+    legacyRectSource = "xywh"
+    texture = "data/art/gui/MCUI_Universal2.png"
+    legacyTexture = "MCUI_Universal2"
+    uiPackage = "default"
+    rectModel = "legacy_imgui.modern_rect_v1"
+    controlRect = "485,0,86,8"
+    artRect = "485,0,86,8"
+    artLayer = "control_art"
+    uvX = 0
+    uvY = 16
+    uvWidth = 86
+    uvHeight = 8
+}
+
+GuiImage {
+    key = "game.buttonlayout800.image.left_frame"
+    pageKey = "game.buttonlayout800"
+    legacySection = "ResultsStatic3"
+    legacyComment = "left frame"
+    role = "image"
+    layer = "art"
+    aliasOverride = "left frame"
+    sourceControlType = "ResultsStatic3"
+    rect = "229,8,11,31"
+    legacyLocalRect = "229,8,11,31"
+    legacyRectSource = "xywh"
+    texture = "data/art/gui/MCUI_Universal2.png"
+    legacyTexture = "MCUI_Universal2"
+    uiPackage = "default"
+    rectModel = "legacy_imgui.modern_rect_v1"
+    controlRect = "229,8,11,31"
+    artRect = "229,8,11,31"
+    artLayer = "control_art"
+    uvX = 86
+    uvY = 16
+    uvWidth = 11
+    uvHeight = 31
+}
+
+GuiImage {
+    key = "game.buttonlayout800.image.right_frame"
+    pageKey = "game.buttonlayout800"
+    legacySection = "ResultsStatic4"
+    legacyComment = "right frame"
+    role = "image"
+    layer = "art"
+    aliasOverride = "right frame"
+    sourceControlType = "ResultsStatic4"
+    rect = "560,8,11,31"
+    legacyLocalRect = "560,8,11,31"
+    legacyRectSource = "xywh"
+    texture = "data/art/gui/MCUI_Universal2.png"
+    legacyTexture = "MCUI_Universal2"
+    uiPackage = "default"
+    rectModel = "legacy_imgui.modern_rect_v1"
+    controlRect = "560,8,11,31"
+    artRect = "560,8,11,31"
+    artLayer = "control_art"
+    uvX = 97
+    uvY = 16
+    uvWidth = 11
+    uvHeight = 31
+}
+
+GuiImage {
+    key = "game.buttonlayout800.image.bottom_right_frame"
+    pageKey = "game.buttonlayout800"
+    legacySection = "ResultsStatic5"
+    legacyComment = "bottom right frame"
+    role = "image"
+    layer = "art"
+    aliasOverride = "bottom right frame"
+    sourceControlType = "ResultsStatic5"
+    rect = "485,39,86,23"
+    legacyLocalRect = "485,39,86,23"
+    legacyRectSource = "xywh"
+    texture = "data/art/gui/MCUI_Universal2.png"
+    legacyTexture = "MCUI_Universal2"
+    uiPackage = "default"
+    rectModel = "legacy_imgui.modern_rect_v1"
+    controlRect = "485,39,86,23"
+    artRect = "485,39,86,23"
+    artLayer = "control_art"
+    uvX = 0
+    uvY = 24
+    uvWidth = 86
+    uvHeight = 23
+}
+
+GuiImage {
+    key = "game.buttonlayout800.image.bottom_mid_frame"
+    pageKey = "game.buttonlayout800"
+    legacySection = "ResultsStatic6"
+    legacyComment = "bottom mid frame"
+    role = "image"
+    layer = "art"
+    aliasOverride = "bottom mid frame"
+    sourceControlType = "ResultsStatic6"
+    rect = "357,39,128,23"
+    legacyLocalRect = "357,39,128,23"
+    legacyRectSource = "xywh"
+    texture = "data/art/gui/MCUI_Universal2.png"
+    legacyTexture = "MCUI_Universal2"
+    uiPackage = "default"
+    rectModel = "legacy_imgui.modern_rect_v1"
+    controlRect = "357,39,128,23"
+    artRect = "357,39,128,23"
+    artLayer = "control_art"
+    uvX = 0
+    uvY = 47
+    uvWidth = 128
+    uvHeight = 23
+}
+
+GuiImage {
+    key = "game.buttonlayout800.image.bottom_left_frame"
+    pageKey = "game.buttonlayout800"
+    legacySection = "ResultsStatic7"
+    legacyComment = "bottom left frame"
+    role = "image"
+    layer = "art"
+    aliasOverride = "bottom left frame"
+    sourceControlType = "ResultsStatic7"
+    rect = "229,39,128,23"
+    legacyLocalRect = "229,39,128,23"
+    legacyRectSource = "xywh"
+    texture = "data/art/gui/MCUI_Universal2.png"
+    legacyTexture = "MCUI_Universal2"
+    uiPackage = "default"
+    rectModel = "legacy_imgui.modern_rect_v1"
+    controlRect = "229,39,128,23"
+    artRect = "229,39,128,23"
+    artLayer = "control_art"
+    uvX = 0
+    uvY = 72
+    uvWidth = 128
+    uvHeight = 23
+}
+
+GuiText {
+    key = "game.buttonlayout800.text.text_gets_centered_in_this_box_agencyfb17_all_caps"
+    pageKey = "game.buttonlayout800"
+    legacySection = "ResultsTextBox"
+    legacyComment = "Text gets centered in this box- agencyfb17 all caps"
+    role = "text"
+    layer = "text"
+    aliasOverride = "Text gets centered in this box- agencyfb17 all caps"
+    sourceControlType = "ResultsTextBox"
+    rect = "240,8,320,32"
+    legacyLocalRect = "240,8,320,32"
+    legacyRectSource = "ltrb"
+    uiPackage = "default"
+    rectModel = "legacy_imgui.modern_rect_v1"
+    controlRect = "240,8,320,32"
+    runtimeTextBinding = "legacy.blank_or_runtime_placeholder"
+    runtimeTextSource = "legacy text rectangle has no TextID"
+    textMissing = false
+    font = "Agency Regular"
+    fontStyle = "Regular"
+    fontSize = 14
+    bold = false
+    italic = false
+    textAlign = "left"
+    textAnchor = "upper_left"
+    wrapText = true
+    colorArgb = "0xffd6d6d6"
+    borderColorArgb = "0x00000000"
+}
+
+GuiRect {
+    key = "game.buttonlayout800.rect.rect_02"
+    pageKey = "game.buttonlayout800"
+    legacySection = "ChatPlayerNameRect"
+    role = "rect"
+    layer = "layout"
+    aliasOverride = "rect"
+    sourceControlType = "ChatPlayerNameRect"
+    rect = "1,1,99,11"
+    legacyLocalRect = "1,1,99,11"
+    legacyRectSource = "xywh"
+    uiPackage = "default"
+    rectModel = "legacy_imgui.modern_rect_v1"
+    controlRect = "1,1,99,11"
+    legacyColor = ""
+    outline = 0
+    filled = true
+    fillColorArgb = "0x00000000"
+    borderColorArgb = "0x00000000"
+    colorArgb = "0xffffffff"
+}
+
+GuiText {
+    key = "game.buttonlayout800.text.text"
+    pageKey = "game.buttonlayout800"
+    legacySection = "ChatTextRect"
+    role = "text"
+    layer = "text"
+    aliasOverride = "text"
+    sourceControlType = "ChatTextRect"
+    rect = "102,1,374,11"
+    legacyLocalRect = "102,1,374,11"
+    legacyRectSource = "xywh"
+    uiPackage = "default"
+    rectModel = "legacy_imgui.modern_rect_v1"
+    controlRect = "102,1,374,11"
+    runtimeTextBinding = "legacy.blank_or_runtime_placeholder"
+    runtimeTextSource = "legacy text rectangle has no TextID"
+    textMissing = false
+    font = "Agency Regular"
+    fontStyle = "Regular"
+    fontSize = 14
+    bold = false
+    italic = false
+    textAlign = "left"
+    textAnchor = "upper_left"
+    wrapText = false
+    colorArgb = "0x33000000"
+    legacyColor = 0x33000000
+    outline = 0
+    borderColorArgb = "0x00000000"
+}

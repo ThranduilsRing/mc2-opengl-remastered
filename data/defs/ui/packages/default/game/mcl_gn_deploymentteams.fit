@@ -1,0 +1,298 @@
+// MC2R ImGui FIT generated from legacy UI FIT.
+// Source: data/defs/ui/legacy/game/MCL_GN_DeploymentTeams.fit
+// Legacy files remain source truth only; edit the generated ImGui FIT.
+
+GuiPage {
+    key = "game.mcl_gn_deploymentteams"
+    title = "Game Mcl Gn Deploymentteams"
+    sourceLegacyFit = "data/defs/ui/legacy/game/MCL_GN_DeploymentTeams.fit"
+    sourceSystem = "game"
+    sourceScreen = "mcl_gn_deploymentteams"
+    sourceKind = "legacy_component"
+    layout = "component_absolute"
+    coordinateSpace = "component_local"
+    localWidth = 100
+    localHeight = 150
+    mountOffset = "0,0"
+    editableSource = "generated_imgui_only"
+    overlayGameOS = true
+    renderMode = "gameos_overlay"
+    backgroundPolicy = "transparent_overlay"
+}
+
+GuiMetadata {
+    key = "game.mcl_gn_deploymentteams.metadata.this_info_gets_used_in_mech_bay_and_pilot_ready_area_only"
+    pageKey = "game.mcl_gn_deploymentteams"
+    legacySection = "DeploymentTeamBox"
+    legacyComment = "this info gets used in Mech Bay and Pilot Ready area only"
+    legacyContext = "DEPLOYMENT TEAMS FOR LOGISTICS"
+    role = "metadata"
+    layer = "metadata"
+    aliasOverride = "this info gets used in Mech Bay and Pilot Ready area only"
+    sourceControlType = "DeploymentTeamBox"
+    rect = "0,0,0,0"
+    legacyLocalRect = "0,0,0,0"
+    legacyRectSource = "xywh"
+    visible = false
+    legacyXSkip = 4
+    legacyYSkip = 5
+}
+
+GuiText {
+    key = "game.mcl_gn_deploymentteams.text.this_reads_empty_if_no_mech_is_assigned"
+    pageKey = "game.mcl_gn_deploymentteams"
+    legacySection = "MechNameText"
+    legacyComment = "this reads EMPTY if no mech is assigned"
+    legacyContext = "~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ | ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ | ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~"
+    role = "text"
+    layer = "text"
+    aliasOverride = "this reads EMPTY if no mech is assigned"
+    sourceControlType = "MechNameText"
+    rect = "4,4,220,24"
+    legacyLocalRect = "4,4,220,24"
+    legacyRectSource = "xywh"
+    uiPackage = "default"
+    rectModel = "legacy_imgui.modern_rect_v1"
+    controlRect = "4,4,220,24"
+    runtimeOverridesText = true
+    runtimeTextBinding = "deploymentTeam.mechName"
+    runtimeTextSource = "legacy runtime populates this entry/list text after the template FIT loads"
+    visibleText = "EMPTY"
+    runtimeTextPreviewMissing = true
+    textMissing = false
+    legacyFontId = 27855
+    legacyFontComment = "Use ArialNarrow8"
+    font = "Agency Regular"
+    fontStyle = "Regular"
+    fontSize = 8
+    bold = false
+    italic = false
+    textAlign = "left"
+    textAnchor = "upper_left"
+    wrapText = false
+    colorArgb = "0xffff8a00"
+    legacyColor = 0xffFF8A00
+    legacyFontComment = "Use ArialNarrow8"
+    textKey = "game.mcl_gn_deploymentteams.string.this_reads_empty_if_no_mech_is_assigned"
+    borderColorArgb = "0x00000000"
+}
+
+GuiText {
+    key = "game.mcl_gn_deploymentteams.text.this_reads_no_pilot_if_no_pilot_is_assigned"
+    pageKey = "game.mcl_gn_deploymentteams"
+    legacySection = "PilotNameText"
+    legacyComment = "this reads NO PILOT if no pilot is assigned"
+    role = "text"
+    layer = "text"
+    aliasOverride = "this reads NO PILOT if no pilot is assigned"
+    sourceControlType = "PilotNameText"
+    rect = "4,15,220,24"
+    legacyLocalRect = "4,15,220,24"
+    legacyRectSource = "xywh"
+    uiPackage = "default"
+    rectModel = "legacy_imgui.modern_rect_v1"
+    controlRect = "4,15,220,24"
+    runtimeOverridesText = true
+    runtimeTextBinding = "deploymentTeam.pilotName"
+    runtimeTextSource = "legacy runtime populates this entry/list text after the template FIT loads"
+    visibleText = "NO PILOT"
+    runtimeTextPreviewMissing = true
+    textMissing = false
+    legacyFontId = 27856
+    legacyFontComment = "Use ArialNarrow8"
+    font = "Agency Regular"
+    fontStyle = "Regular"
+    fontSize = 8
+    bold = false
+    italic = false
+    textAlign = "left"
+    textAnchor = "upper_left"
+    wrapText = false
+    colorArgb = "0xffc66600"
+    legacyColor = 0xffC66600
+    legacyFontComment = "Use ArialNarrow8"
+    textKey = "game.mcl_gn_deploymentteams.string.this_reads_no_pilot_if_no_pilot_is_assigned"
+    borderColorArgb = "0x00000000"
+}
+
+GuiImage {
+    key = "game.mcl_gn_deploymentteams.image.get_icons_from_mcui_gn_mechicons"
+    pageKey = "game.mcl_gn_deploymentteams"
+    legacySection = "MechEntryIcon"
+    legacyComment = "get icons from MCUI_GN_MechIcons"
+    legacyContext = "~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ | ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ | ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~"
+    role = "image"
+    layer = "art"
+    aliasOverride = "get icons from MCUI_GN_MechIcons"
+    sourceControlType = "MechEntryIcon"
+    rect = "3,31,25,30"
+    legacyLocalRect = "3,31,25,30"
+    legacyRectSource = "xywh"
+    texture = "data/art/gui/mcui_gn_mechicons.png"
+    legacyTexture = "mcui_gn_mechicons"
+    uiPackage = "default"
+    rectModel = "legacy_imgui.modern_rect_v1"
+    controlRect = "3,31,25,30"
+    artRect = "3,31,25,30"
+    artLayer = "control_art"
+    legacyColor = 0xffFF8900
+}
+
+GuiImage {
+    key = "game.mcl_gn_deploymentteams.image.get_icons_from_mcui_low2"
+    pageKey = "game.mcl_gn_deploymentteams"
+    legacySection = "PilotIcon"
+    legacyComment = "get icons from MCUI_Low2"
+    role = "image"
+    layer = "art"
+    aliasOverride = "get icons from MCUI_Low2"
+    sourceControlType = "PilotIcon"
+    rect = "51,32,20,28"
+    legacyLocalRect = "51,32,20,28"
+    legacyRectSource = "xywh"
+    texture = "data/art/gui/mcui_low2.png"
+    legacyTexture = "mcui_low2"
+    uiPackage = "default"
+    rectModel = "legacy_imgui.modern_rect_v1"
+    controlRect = "51,32,20,28"
+    artRect = "51,32,20,28"
+    artLayer = "control_art"
+    legacyAnimateBmp = 0
+}
+
+GuiImage {
+    key = "game.mcl_gn_deploymentteams.image.bmp_art_for_connecting_lines_from"
+    pageKey = "game.mcl_gn_deploymentteams"
+    legacySection = "IconConnector"
+    legacyComment = "bmp art for connecting lines from"
+    legacyContext = "don't animate"
+    role = "image"
+    layer = "art"
+    aliasOverride = "bmp art for connecting lines from"
+    sourceControlType = "IconConnector"
+    rect = "1,27,73,36"
+    legacyLocalRect = "1,27,73,36"
+    legacyRectSource = "xywh"
+    texture = "data/art/gui/MCL_MB_1.png"
+    legacyTexture = "MCL_MB_1"
+    uiPackage = "default"
+    rectModel = "legacy_imgui.modern_rect_v1"
+    controlRect = "1,27,73,36"
+    artRect = "1,27,73,36"
+    artLayer = "control_art"
+    uvX = 177
+    uvY = 128
+    uvWidth = 73
+    uvHeight = 36
+}
+
+GuiRect {
+    key = "game.mcl_gn_deploymentteams.rect.rect"
+    pageKey = "game.mcl_gn_deploymentteams"
+    legacySection = "BoxOutline"
+    role = "rect"
+    layer = "layout"
+    aliasOverride = "rect"
+    sourceControlType = "BoxOutline"
+    rect = "25,86,75,64"
+    legacyLocalRect = "25,86,75,64"
+    legacyRectSource = "xywh"
+    texture = "data/art/gui/MCL_MB_1.png"
+    legacyTexture = "MCL_MB_1"
+    uiPackage = "default"
+    rectModel = "legacy_imgui.modern_rect_v1"
+    controlRect = "25,86,75,64"
+    artRect = "25,86,75,64"
+    artLayer = "control_art"
+    uvX = 176
+    uvY = 64
+    uvWidth = 75
+    uvHeight = 64
+    uvPressedX = 176
+    uvPressedY = 64
+    uvHighlightX = 176
+    uvHighlightY = 64
+    uvDisabledX = 176
+    uvDisabledY = 64
+    filled = true
+    fillColorArgb = "0x00000000"
+    borderColorArgb = "0x00000000"
+    colorArgb = "0xffffffff"
+}
+
+GuiMetadata {
+    key = "game.mcl_gn_deploymentteams.metadata.bright_orange"
+    pageKey = "game.mcl_gn_deploymentteams"
+    legacySection = "Animation0"
+    legacyComment = "bright orange"
+    legacyContext = "~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ | ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ | ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~"
+    role = "metadata"
+    layer = "metadata"
+    aliasOverride = "bright orange"
+    sourceControlType = "Animation0"
+    rect = "0,0,0,0"
+    legacyLocalRect = "0,0,0,0"
+    legacyRectSource = "xywh"
+    visible = false
+    normalColorArgb = "0xffFF8A00"
+    pressedColorArgb = "0xffFF8A00"
+    highlightColorArgb = "0xffC66600"
+    disabledColorArgb = "0xff373737"
+}
+
+GuiMetadata {
+    key = "game.mcl_gn_deploymentteams.metadata.medium_orange"
+    pageKey = "game.mcl_gn_deploymentteams"
+    legacySection = "Animation1"
+    legacyComment = "medium orange"
+    role = "metadata"
+    layer = "metadata"
+    aliasOverride = "medium orange"
+    sourceControlType = "Animation1"
+    rect = "0,0,0,0"
+    legacyLocalRect = "0,0,0,0"
+    legacyRectSource = "xywh"
+    visible = false
+    normalColorArgb = "0xffC66600"
+    pressedColorArgb = "0xffC66600"
+    highlightColorArgb = "0xffC66600"
+    disabledColorArgb = "0xff373737"
+}
+
+GuiMetadata {
+    key = "game.mcl_gn_deploymentteams.metadata.dark_orange"
+    pageKey = "game.mcl_gn_deploymentteams"
+    legacySection = "Animation2"
+    legacyComment = "dark orange"
+    role = "metadata"
+    layer = "metadata"
+    aliasOverride = "dark orange"
+    sourceControlType = "Animation2"
+    rect = "0,0,0,0"
+    legacyLocalRect = "0,0,0,0"
+    legacyRectSource = "xywh"
+    visible = false
+    normalColorArgb = "0xff43311C"
+    pressedColorArgb = "0xff43311C"
+    highlightColorArgb = "0xffC66600"
+    disabledColorArgb = "0xff373737"
+}
+
+GuiMetadata {
+    key = "game.mcl_gn_deploymentteams.metadata.outline_orange"
+    pageKey = "game.mcl_gn_deploymentteams"
+    legacySection = "Animation3"
+    legacyComment = "outline orange"
+    role = "metadata"
+    layer = "metadata"
+    aliasOverride = "outline orange"
+    sourceControlType = "Animation3"
+    rect = "0,0,0,0"
+    legacyLocalRect = "0,0,0,0"
+    legacyRectSource = "xywh"
+    visible = false
+    normalColorArgb = "0xffC66600"
+    pressedColorArgb = "0xffC66600"
+    highlightColorArgb = "0xffC66600"
+    disabledColorArgb = "0xff373737"
+}

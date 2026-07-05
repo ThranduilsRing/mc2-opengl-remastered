@@ -1,0 +1,94 @@
+{
+  "schema_v": 1,
+  "mission": "gaea_peaks_01",
+  "_note": "TERRAIN-LOD-GEOMORPH-1 FORCE_LOD A/B oracle poses. High-relief 1200wu ridgelines (map 120 verts / 15360wu). Map-centered RTS camera, setPosition clamps to map interior, z overridden to terrain elevation. The sky_* poses are the oracle money shots: proj ~3deg grazing views whose frames contain the actual terrain-vs-sky boundary (black unlit terrain against bright sky = binary skyline segmentation; per-column skyline-row diff measures silhouette loss in pixels). The original 3 downward poses (all-terrain frames, near-black on this unlit generated map) are kept as catastrophic-regression sentinels (they caught the mode-2 collapse-to-NW-corner slab bug) and band-coverage poses for u_diag 41/42.",
+  "bookmarks": [
+    {
+      "name": "overview_center",
+      "pos": [
+        0.0,
+        0.0,
+        0.0
+      ],
+      "rot": 45.0,
+      "proj": 30.0,
+      "alt": 1400.0,
+      "covers": [
+        "terrain_splat",
+        "terrain_lod_chunk_bands"
+      ]
+    },
+    {
+      "name": "ridge_lowangle",
+      "pos": [
+        -2000.0,
+        -2000.0,
+        0.0
+      ],
+      "rot": 135.0,
+      "proj": 18.0,
+      "alt": 900.0,
+      "covers": [
+        "terrain_lod_chunk_silhouette",
+        "terrain_lod_chunk_skirts"
+      ]
+    },
+    {
+      "name": "highangle_wide",
+      "pos": [
+        2500.0,
+        2500.0,
+        0.0
+      ],
+      "rot": 0.0,
+      "proj": 42.0,
+      "alt": 1800.0,
+      "covers": [
+        "terrain_splat",
+        "terrain_lod_chunk_bands"
+      ]
+    },
+    {
+      "name": "sky_y45",
+      "pos": [
+        0.0,
+        0.0,
+        0.0
+      ],
+      "rot": 45.0,
+      "proj": 3.0,
+      "alt": 2500.0,
+      "covers": [
+        "terrain_lod_chunk_silhouette"
+      ]
+    },
+    {
+      "name": "sky_y135",
+      "pos": [
+        0.0,
+        0.0,
+        0.0
+      ],
+      "rot": 135.0,
+      "proj": 3.0,
+      "alt": 2500.0,
+      "covers": [
+        "terrain_lod_chunk_silhouette"
+      ]
+    },
+    {
+      "name": "sky_y225",
+      "pos": [
+        0.0,
+        0.0,
+        0.0
+      ],
+      "rot": 225.0,
+      "proj": 3.0,
+      "alt": 2500.0,
+      "covers": [
+        "terrain_lod_chunk_silhouette"
+      ]
+    }
+  ]
+}

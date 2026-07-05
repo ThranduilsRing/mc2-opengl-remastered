@@ -1,0 +1,188 @@
+// MC2R ImGui FIT generated from legacy UI FIT.
+// Source: data/defs/ui/legacy/shared/ScrollBar.fit
+// Legacy files remain source truth only; edit the generated ImGui FIT.
+
+GuiPage {
+    key = "shared.scrollbar"
+    title = "Shared Scrollbar"
+    sourceLegacyFit = "data/defs/ui/legacy/shared/ScrollBar.fit"
+    sourceSystem = "shared"
+    sourceScreen = "scrollbar"
+    sourceKind = "legacy_component"
+    layout = "component_absolute"
+    coordinateSpace = "component_local"
+    localWidth = 20
+    localHeight = 128
+    runtimePlacement = "dynamic_parent_height"
+    mountOffset = "0,0"
+    editableSource = "generated_imgui_only"
+}
+
+GuiScrollbar {
+    key = "shared.scrollbar.scrollbar.this_is_the_scroll_up_button_for_the_salvageable_mech_entry_box_area"
+    pageKey = "shared.scrollbar"
+    legacySection = "ScrollButton0"
+    legacyComment = "This is the scroll up button for the salvageable mech entry box area"
+    role = "scrollbar_up_button"
+    layer = "control"
+    aliasOverride = "This is the scroll up button for the salvageable mech entry box area"
+    sourceControlType = "ScrollButton0"
+    rect = "2,3,12,6"
+    legacyLocalRect = "2,3,12,6"
+    legacyRectSource = "xywh"
+    texture = "data/art/gui/MCUI_Scroll.png"
+    legacyTexture = "MCUI_Scroll"
+    uiPackage = "legacy_imgui"
+    rectModel = "legacy_imgui.modern_rect_v1"
+    controlRect = "2,3,12,6"
+    hitRect = "2,3,12,6"
+    artRect = "2,3,12,6"
+    artLayer = "control_art"
+    helpCaptionLegacyId = 0
+    helpCaptionKey = "legacy.strings.ids_undefined_string_sebi"
+    helpCaptionLegacySymbol = "IDS_undefined_string_sebi"
+    helpCaptionSource = "strings.res.h"
+    helpCaptionMissing = true
+    helpCaptionMissingReason = "symbol_only_from_strings_res_h"
+    helpDescLegacyId = 0
+    helpDescKey = "legacy.strings.ids_undefined_string_sebi"
+    helpDescLegacySymbol = "IDS_undefined_string_sebi"
+    helpDescSource = "strings.res.h"
+    helpDescMissing = true
+    helpDescMissingReason = "symbol_only_from_strings_res_h"
+    legacyId = "xxx"
+    uvX = 0
+    uvY = 12
+    uvWidth = 12
+    uvHeight = 6
+    uvPressedX = 0
+    uvPressedY = 12
+    uvHighlightX = 0
+    uvHighlightY = 12
+    uvDisabledX = 0
+    uvDisabledY = 12
+}
+
+GuiScrollbar {
+    key = "shared.scrollbar.scrollbar.this_is_the_scroll_down_button_for_the_salvageable_mech_entry_box_area"
+    pageKey = "shared.scrollbar"
+    legacySection = "ScrollButton1"
+    legacyComment = "This is the scroll down button for the salvageable mech entry box area"
+    role = "scrollbar_down_button"
+    layer = "control"
+    aliasOverride = "This is the scroll down button for the salvageable mech entry box area"
+    sourceControlType = "ScrollButton1"
+    rect = "2,120,12,6"
+    legacyLocalRect = "2,120,12,6"
+    legacyRectSource = "runtime_component_preview"
+    runtimePlacement = "dynamic_parent_height"
+    texture = "data/art/gui/MCUI_Scroll.png"
+    legacyTexture = "MCUI_Scroll"
+    uiPackage = "legacy_imgui"
+    rectModel = "legacy_imgui.modern_rect_v1"
+    controlRect = "2,120,12,6"
+    hitRect = "2,120,12,6"
+    artRect = "2,120,12,6"
+    artLayer = "control_art"
+    helpCaptionLegacyId = 0
+    helpCaptionKey = "legacy.strings.ids_undefined_string_sebi"
+    helpCaptionLegacySymbol = "IDS_undefined_string_sebi"
+    helpCaptionSource = "strings.res.h"
+    helpCaptionMissing = true
+    helpCaptionMissingReason = "symbol_only_from_strings_res_h"
+    helpDescLegacyId = 0
+    helpDescKey = "legacy.strings.ids_undefined_string_sebi"
+    helpDescLegacySymbol = "IDS_undefined_string_sebi"
+    helpDescSource = "strings.res.h"
+    helpDescMissing = true
+    helpDescMissingReason = "symbol_only_from_strings_res_h"
+    legacyId = "xxx"
+    uvX = 0
+    uvY = 18
+    uvWidth = 12
+    uvHeight = 6
+    uvPressedX = 0
+    uvPressedY = 12
+    uvHighlightX = 0
+    uvHighlightY = 18
+    uvDisabledX = 0
+    uvDisabledY = 12
+}
+
+GuiScrollbar {
+    key = "shared.scrollbar.scrollbar.this_is_the_scroll_slider_for_the_salvageable_mech_entry_box_area"
+    pageKey = "shared.scrollbar"
+    legacySection = "ScrollButton2"
+    legacyComment = "This is the scroll slider for the salvageable mech entry box area"
+    role = "scrollbar_thumb"
+    layer = "control"
+    aliasOverride = "This is the scroll slider for the salvageable mech entry box area"
+    sourceControlType = "ScrollButton2"
+    rect = "2,10,12,12"
+    legacyLocalRect = "2,10,12,12"
+    legacyRectSource = "runtime_component_preview"
+    runtimePlacement = "dynamic_parent_height"
+    texture = "data/art/gui/MCUI_Scroll.png"
+    legacyTexture = "MCUI_Scroll"
+    uiPackage = "legacy_imgui"
+    rectModel = "legacy_imgui.modern_rect_v1"
+    controlRect = "2,10,12,12"
+    hitRect = "2,10,12,12"
+    artRect = "2,10,12,12"
+    artLayer = "control_art"
+    helpCaptionLegacyId = 0
+    helpCaptionKey = "legacy.strings.ids_undefined_string_sebi"
+    helpCaptionLegacySymbol = "IDS_undefined_string_sebi"
+    helpCaptionSource = "strings.res.h"
+    helpCaptionMissing = true
+    helpCaptionMissingReason = "symbol_only_from_strings_res_h"
+    helpDescLegacyId = 0
+    helpDescKey = "legacy.strings.ids_undefined_string_sebi"
+    helpDescLegacySymbol = "IDS_undefined_string_sebi"
+    helpDescSource = "strings.res.h"
+    helpDescMissing = true
+    helpDescMissingReason = "symbol_only_from_strings_res_h"
+    legacyId = "xxx"
+    uvX = 0
+    uvY = 0
+    uvWidth = 12
+    uvHeight = 12
+    uvPressedX = 244
+    uvPressedY = 0
+    uvHighlightX = 0
+    uvHighlightY = 0
+    uvDisabledX = 0
+    uvDisabledY = 12
+}
+
+GuiMetadata {
+    key = "shared.scrollbar.metadata.scrollbar_style"
+    pageKey = "shared.scrollbar"
+    legacySection = "Green"
+    role = "scrollbar_style"
+    layer = "metadata"
+    aliasOverride = "scrollbar_style"
+    sourceControlType = "Green"
+    rect = "0,0,0,0"
+    legacyLocalRect = "0,0,0,0"
+    legacyRectSource = "xywh"
+    uvDisabledX = 0
+    uvDisabledY = 12
+    visible = false
+}
+
+GuiMetadata {
+    key = "shared.scrollbar.metadata.scrollbar_style_01"
+    pageKey = "shared.scrollbar"
+    legacySection = "Orange"
+    role = "scrollbar_style"
+    layer = "metadata"
+    aliasOverride = "scrollbar_style"
+    sourceControlType = "Orange"
+    rect = "0,0,0,0"
+    legacyLocalRect = "0,0,0,0"
+    legacyRectSource = "xywh"
+    uvDisabledX = 0
+    uvDisabledY = 12
+    visible = false
+}

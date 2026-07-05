@@ -1,0 +1,9 @@
+{
+  "schema": "mc2-mod/1",
+  "id": "sample_good_mod",
+  "name": "fxlint sample: valid defs",
+  "version": "1.0.0",
+  "type": "assets",
+  "dependencies": [],
+  "description": "fxlint fixture (tests/fxlint/): a minimal, entirely valid .fxdef.json to prove a clean lint (0 errors, 0 warnings). Sibling of sample_bad_mod, which is the intentional-failure counterpart."
+}

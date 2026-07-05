@@ -39,6 +39,8 @@ void  gos_SetTerrainLightingV1Strength(float s);
 float gos_GetTerrainLightingV1Strength();
 void  gos_SetTerrainLightingV2Floor(float f);
 float gos_GetTerrainLightingV2Floor();
+void  gos_SetTerrainCliffShadowFloor(float f);
+float gos_GetTerrainCliffShadowFloor();
 // WATER-TUNING-UI-1 / WATER-DEBUG-VIEWS-1 — MDI water FS accessors (defined in
 // gameos_graphics.cpp). Debug-mode selector + runtime material tunables
 // (defaults match the former gos_terrain_water_mdi.frag consts exactly).
@@ -669,6 +671,30 @@ static void drawTerrainTuningSection() {
         ImGui::TextDisabled("(V2 floor only acts on the V1 hemi term — set MC2_TERRAIN_LIGHTING_V1=1 too)");
     }
     ImGui::TextDisabled("Debug Mode 10 = height-normal RGB; Mode 11 = hemi additive ×4");
+
+    // CLIFF SHADOW FLOOR: lifts shadow-side steep terrain faces off near-black.
+    {
+        const char* cliffEnv = std::getenv("MC2_TERRAIN_CLIFF_SHADOW_FLOOR");
+        bool cliffGateOn = (cliffEnv && cliffEnv[0] && cliffEnv[0] != '0');
+        if (cliffGateOn)
+            ImGui::TextColored(ImVec4(0.4f, 1.0f, 0.4f, 1.0f), "Cliff Shadow Floor: ON");
+        else
+            ImGui::TextColored(ImVec4(0.8f, 0.8f, 0.8f, 1.0f),
+                "Cliff Shadow Floor: OFF (set MC2_TERRAIN_CLIFF_SHADOW_FLOOR=<0..0.6>)");
+        float cliffFloor = ::gos_GetTerrainCliffShadowFloor();
+        if (ImGui::SliderFloat("Cliff Shadow Floor", &cliffFloor, 0.0f, 0.6f, "%.2f")) {
+            ::gos_SetTerrainCliffShadowFloor(cliffFloor);
+        }
+        if (ImGui::IsItemHovered())
+            ImGui::SetTooltip("Minimum shadow value on steep terrain cliff faces.\n"
+                              "0.0 = byte-identical (steep faces can go near-black).\n"
+                              "0.3 = lift shadow-side cliffs to 30%% min light.\n"
+                              "Only effective when MC2_TERRAIN_CLIFF_SHADOW_FLOOR is set.");
+        ImGui::SameLine();
+        if (ImGui::SmallButton("Reset##cliffsf")) ::gos_SetTerrainCliffShadowFloor(0.0f);
+        if (!cliffGateOn)
+            ImGui::TextDisabled("(slider has no effect until MC2_TERRAIN_CLIFF_SHADOW_FLOOR is set)");
+    }
 
     // MC2_DYNAMIC_DECALS: live ring-buffer status (gate-off shows 0/64 inactive).
     {

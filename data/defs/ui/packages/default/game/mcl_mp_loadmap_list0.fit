@@ -1,0 +1,126 @@
+// MC2R ImGui FIT generated from legacy UI FIT.
+// Source: data/defs/ui/legacy/game/mcl_mp_loadmap_list0.fit
+// Legacy files remain source truth only; edit the generated ImGui FIT.
+
+GuiPage {
+    key = "game.mcl_mp_loadmap_list0"
+    title = "Game Mcl Mp Loadmap List0"
+    sourceLegacyFit = "data/defs/ui/legacy/game/mcl_mp_loadmap_list0.fit"
+    sourceSystem = "game"
+    sourceScreen = "mcl_mp_loadmap_list0"
+    sourceKind = "legacy_screen"
+    layout = "absolute"
+    coordinateSpace = "screen_absolute"
+    localWidth = 800
+    localHeight = 600
+    mountOffset = "0,0"
+    editableSource = "generated_imgui_only"
+    overlayGameOS = true
+    renderMode = "gameos_overlay"
+    backgroundPolicy = "transparent_overlay"
+}
+
+GuiList {
+    key = "game.mcl_mp_loadmap_list0.list.map"
+    pageKey = "game.mcl_mp_loadmap_list0"
+    legacySection = "MapList"
+    legacyContext = "~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ | ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ | ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~"
+    role = "map"
+    layer = "map"
+    aliasOverride = "map"
+    sourceControlType = "MapList"
+    rect = "125,133,231,327"
+    legacyLocalRect = "125,133,231,327"
+    legacyRectSource = "xywh"
+    uiPackage = "default"
+    rectModel = "legacy_imgui.modern_rect_v1"
+    controlRect = "125,133,231,327"
+    hitRect = "125,133,231,327"
+    font = "Agency Regular"
+    fontStyle = "Regular"
+    fontSize = 14
+    bold = false
+    italic = false
+    textAlign = "left"
+    textAnchor = "upper_left"
+    wrapText = true
+    colorArgb = "0xffc66600"
+    fillColorArgb = "0xff000000"
+}
+
+GuiMetadata {
+    key = "game.mcl_mp_loadmap_list0.metadata.metadata"
+    pageKey = "game.mcl_mp_loadmap_list0"
+    legacySection = "Texts"
+    legacyContext = "~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ | ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ | ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~"
+    role = "metadata"
+    layer = "metadata"
+    aliasOverride = "metadata"
+    sourceControlType = "Texts"
+    rect = "125,133,0,0"
+    legacyLocalRect = "125,133,0,0"
+    legacyRectSource = "child_relative_xywh"
+    visible = false
+}
+
+GuiText {
+    key = "game.mcl_mp_loadmap_list0.text.text_for_game_name"
+    pageKey = "game.mcl_mp_loadmap_list0"
+    legacySection = "Text0"
+    legacyComment = "text for game name"
+    role = "text"
+    layer = "text"
+    aliasOverride = "text for game name"
+    sourceControlType = "Text0"
+    rect = "129,135,212,17"
+    legacyLocalRect = "129,135,212,17"
+    legacyRectSource = "child_relative_xywh"
+    uiPackage = "default"
+    rectModel = "legacy_imgui.modern_rect_v1"
+    controlRect = "129,135,212,17"
+    textRect = "129,135,212,17"
+    textRectMode = "control_rect_fallback"
+    textLegacyId = 27000
+    visible = false
+    textKey = "legacy.mc2res.27000"
+    visibleText = " "
+    textLegacySymbol = "IDS_STRING_FIRST_LOGISTICS"
+    textSource = "mc2res"
+    textMissing = false
+    legacyFontId = 26307
+    legacyFontComment = "use agencyfb11"
+    font = "Agency Regular"
+    fontStyle = "Regular"
+    fontSize = 11
+    bold = false
+    italic = false
+    textAlign = "left"
+    textAnchor = "upper_left"
+    wrapText = false
+    colorArgb = "0xffffffff"
+    legacyColor = 0xffffffff
+    outline = "FALSE"
+    legacyAlignment = 0
+    legacyFontComment = "use agencyfb11"
+    borderColorArgb = "0x00000000"
+}
+
+GuiMetadata {
+    key = "game.mcl_mp_loadmap_list0.metadata.for_text"
+    pageKey = "game.mcl_mp_loadmap_list0"
+    legacySection = "Animation0"
+    legacyComment = "for text"
+    legacyContext = "~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ | ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ | ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~"
+    role = "metadata"
+    layer = "metadata"
+    aliasOverride = "for text"
+    sourceControlType = "Animation0"
+    rect = "125,133,0,0"
+    legacyLocalRect = "125,133,0,0"
+    legacyRectSource = "child_relative_xywh"
+    visible = false
+    normalColorArgb = "0xff846643"
+    pressedColorArgb = "0xffc66600"
+    highlightColorArgb = "0xffc66600"
+    disabledColorArgb = "0xff6b6b6b"
+}

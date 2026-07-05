@@ -49,7 +49,25 @@ extern float worldUnitsPerMeter;   // sensor range is in world units; /this = me
 #include"chatwindow.h"
 #include"../GameOS/gameos/gos_profiler.h"
 
-
+// ---- MISSION-INTERFACE-PERF-1 (MC2_IFACE_COST_SPLIT / MC2_MIF_SPLIT) ----
+// ControlGui::update sub-phase per-frame ns accumulators. DEFINED here;
+// folded + emitted once per frame by mfFrameEnd() in missiongui.cpp (extern
+// array pattern per TOBJSPLIT precedent, terrobj.cpp). CgPhase order MUST
+// match the MF_CG_* tail of MifPhase in missiongui.cpp. chrono is fine:
+// once-per-frame per-phase brackets, not per-element probes. Zero chrono
+// calls when both envs unset. Default OFF.
+#include <chrono>
+unsigned long long g_ifaceCgFrameNs[8] = {0};
+namespace {
+	enum CgPhase { CG_PAUSE=0, CG_BTNHOVER, CG_ROSTER, CG_MOVERSTATE, CG_TACMAP, CG_INFOWND, CG_VEHTAB, CG_FGBAR };
+	static const bool s_cgSplitOn = (std::getenv("MC2_MIF_SPLIT") != nullptr) || (std::getenv("MC2_IFACE_COST_SPLIT") != nullptr);
+	struct CgScope {
+		int idx; std::chrono::steady_clock::time_point t0;
+		explicit CgScope(int i):idx(i){ if(s_cgSplitOn) t0=std::chrono::steady_clock::now(); }
+		~CgScope(){ if(!s_cgSplitOn) return; g_ifaceCgFrameNs[idx]+=(unsigned long long)
+			std::chrono::duration_cast<std::chrono::nanoseconds>(std::chrono::steady_clock::now()-t0).count(); }
+	};
+}
 
 ControlGui* ControlGui::instance = 0;
 
@@ -1572,7 +1590,7 @@ void ControlGui::update( bool bPaused, bool bLOS )
 	{ ZoneScopedN("CGui.ServerMissing"); showServerMissing(); }
 
 	if ( bPaused )
-	{ ZoneScopedN("CGui.PauseWnd"); pauseWnd->update(); }
+	{ ZoneScopedN("CGui.PauseWnd"); CgScope _c(CG_PAUSE); pauseWnd->update(); }
 
 	if (moviePlaying && bMovie)
 	{
@@ -1603,7 +1621,7 @@ void ControlGui::update( bool bPaused, bool bLOS )
 
 	
 	// also going to initialize buttons here
-	{ ZoneScopedN("CGui.ButtonHover");
+	{ ZoneScopedN("CGui.ButtonHover"); CgScope _c(CG_BTNHOVER);
 	for ( int i = LAST_COMMAND - 1; i > -1; i-- )
 	{
 		if ( buttons[i].location[0].x <= mouseX && mouseX <= buttons[i].location[2].x
@@ -1662,7 +1680,7 @@ void ControlGui::update( bool bPaused, bool bLOS )
 	Mover* pSelectedMover = 0;
 	int holdPositionCount = 0;
 
-	{ ZoneScopedN("CGui.RosterScan");
+	{ ZoneScopedN("CGui.RosterScan"); CgScope _c(CG_ROSTER);
 	for (int i = 0; i < pTeam->getRosterSize(); ++i )
 	{
 		Mover* pMover = (Mover*)pTeam->getMover( i );
@@ -1709,7 +1727,7 @@ void ControlGui::update( bool bPaused, bool bLOS )
 	}
 	} // CGui.RosterScan
 
-	{ ZoneScopedN("CGui.MoverState");
+	{ ZoneScopedN("CGui.MoverState"); CgScope _c(CG_MOVERSTATE);
 
 	if ( !holdPositionCount )
 	{
@@ -1847,7 +1865,7 @@ void ControlGui::update( bool bPaused, bool bLOS )
 
 	if ( getButton( TACMAP_TAB )->state & ControlButton::PRESSED )
 	{
-		ZoneScopedN("CGui.TacMap");
+		ZoneScopedN("CGui.TacMap"); CgScope _c(CG_TACMAP);
 		tacMap.update();
 		if ( bMouseInsideTacArea )
 		{
@@ -1857,7 +1875,7 @@ void ControlGui::update( bool bPaused, bool bLOS )
 	}
 	else if ( getButton( INFO_TAB )->state & ControlButton::PRESSED )
 	{
-		ZoneScopedN("CGui.InfoWnd");
+		ZoneScopedN("CGui.InfoWnd"); CgScope _c(CG_INFOWND);
 		infoWnd->update();
 		if ( bMouseInsideTacArea )
 		{
@@ -1871,7 +1889,7 @@ void ControlGui::update( bool bPaused, bool bLOS )
 		helpTextID = IDS_VEHICLE_TAB_DESC;
 	}
 
-	{ ZoneScopedN("CGui.VehicleTab");  updateVehicleTab( mouseX, mouseY, bLOS ); }
+	{ ZoneScopedN("CGui.VehicleTab"); CgScope _c(CG_VEHTAB); updateVehicleTab( mouseX, mouseY, bLOS ); }
 
 
 
@@ -1880,7 +1898,7 @@ void ControlGui::update( bool bPaused, bool bLOS )
 	else
 		getButton( OBJECTIVES_COMMAND )->press( false );
 
-	{ ZoneScopedN("CGui.ForceGroupBar"); forceGroupBar.update(); }
+	{ ZoneScopedN("CGui.ForceGroupBar"); CgScope _c(CG_FGBAR); forceGroupBar.update(); }
 
 	getButton( DEFAULT_RANGE )->hide(true);
 	getButton( SHORT_RANGE )->hide(true);

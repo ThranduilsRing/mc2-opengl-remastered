@@ -191,7 +191,9 @@ void Mission::initializeStatistics()
 void Mission::initTGLForLogistics()
 {
 	//---------------------------------------------------------
-	unsigned long tglHeapSize = 4 * 1024 * 1024;
+	// 48 MB: the TGL pools below were enlarged to hold the largest single
+	// preview object; the legacy 4 MB heap could not back them.
+	unsigned long tglHeapSize = 48 * 1024 * 1024;
 
 	//---------------------------------------------------------
 	//Reset the lightening in case they exitted with a flash on screen!!
@@ -251,20 +253,27 @@ void Mission::initTGLForLogistics()
 		TG_Shape::tglHeap->init(tglHeapSize,"TinyGeom");
 		
 		//Start up the TGL RAM pools.
+		// Sized to hold the largest single encyclopedia/logistics object
+		// (mech body + shadow + sensor shapes, or a large building) in one
+		// frame. The legacy 2000-vertex pools overflowed: mechs sat right at
+		// the limit (intermittent "exploded" geometry from stale listOfVertices
+		// on the shapes that got a NULL alloc) and buildings/large vehicles blew
+		// past it entirely, so most of their shapes never rendered. The pools
+		// are reset per frame, so this only needs to cover one object at a time.
 		colorPool 		= new TG_VertexPool;
-		colorPool->init(2000);
-		
+		colorPool->init(64000);
+
 		vertexPool 		= new TG_GOSVertexPool;
-		vertexPool->init(2000);
-		
+		vertexPool->init(64000);
+
 		facePool 		= new TG_DWORDPool;
-		facePool->init(4000);
-		
+		facePool->init(128000);
+
 		shadowPool 		= new TG_ShadowPool;
-		shadowPool->init(2000);
-		
+		shadowPool->init(64000);
+
 		trianglePool 	= new TG_TrianglePool;
-		trianglePool->init(2000);
+		trianglePool->init(64000);
 	}
 }
 

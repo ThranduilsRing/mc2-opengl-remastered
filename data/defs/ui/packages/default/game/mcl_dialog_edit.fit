@@ -1,0 +1,785 @@
+﻿// MC2R ImGui FIT generated from legacy UI FIT.
+// Source: data/defs/ui/legacy/game/mcl_dialog_edit.fit
+// Legacy files remain source truth only; edit the generated ImGui FIT.
+
+GuiPage {
+    key = "game.mcl_dialog_edit"
+    title = "Game Mcl Dialog Edit"
+    sourceLegacyFit = "data/defs/ui/legacy/game/mcl_dialog_edit.fit"
+    sourceSystem = "game"
+    sourceScreen = "mcl_dialog_edit"
+    sourceKind = "legacy_screen"
+    layout = "absolute"
+    coordinateSpace = "screen_absolute"
+    localWidth = 800
+    localHeight = 600
+    mountOffset = "0,0"
+    editableSource = "generated_imgui_only"
+    overlayGameOS = true
+    renderMode = "gameos_overlay"
+    backgroundPolicy = "transparent_overlay"
+}
+
+GuiMetadata {
+    key = "game.mcl_dialog_edit.metadata.metadata"
+    pageKey = "game.mcl_dialog_edit"
+    legacySection = "Buttons"
+    legacyContext = "Dialog box with editable text area"
+    role = "metadata"
+    layer = "metadata"
+    aliasOverride = "metadata"
+    sourceControlType = "Buttons"
+    rect = "0,0,0,0"
+    legacyLocalRect = "0,0,0,0"
+    legacyRectSource = "xywh"
+    visible = false
+}
+
+GuiButton {
+    key = "game.mcl_dialog_edit.button.cancel_button"
+    pageKey = "game.mcl_dialog_edit"
+    legacySection = "Button0"
+    legacyComment = "cancel button"
+    role = "button"
+    layer = "control"
+    aliasOverride = "cancel button"
+    sourceControlType = "Button0"
+    rect = "237,367,128,59"
+    legacyLocalRect = "237,367,128,59"
+    legacyRectSource = "xywh"
+    texture = "data/art/gui/mcl_dialog_3.png"
+    legacyTexture = "mcl_dialog_3.tga"
+    uiPackage = "default"
+    rectModel = "legacy_imgui.modern_rect_v1"
+    controlRect = "237,367,128,59"
+    hitRect = "237,367,128,59"
+    artRect = "237,367,128,59"
+    artLayer = "control_art"
+    controlModel = "composite_hit_art_text_v1"
+    linkedLayers = "hit,art,text"
+    editMode = "linked_control_with_independent_text"
+    textRect = "251,381,86,31"
+    textRectMode = "explicit_legacy"
+    textLegacyId = 27653
+    textKey = "legacy.mc2res.27653"
+    visibleText = "NO"
+    textLegacySymbol = "IDS_DIALOG_NO"
+    textSource = "mc2res"
+    textMissing = false
+    helpCaptionLegacyId = 0
+    helpCaptionKey = "legacy.strings.ids_undefined_string_sebi"
+    helpCaptionLegacySymbol = "IDS_undefined_string_sebi"
+    helpCaptionSource = "strings.res.h"
+    helpCaptionMissing = true
+    helpCaptionMissingReason = "symbol_only_from_strings_res_h"
+    helpDescLegacyId = 0
+    helpDescKey = "legacy.strings.ids_undefined_string_sebi"
+    helpDescLegacySymbol = "IDS_undefined_string_sebi"
+    helpDescSource = "strings.res.h"
+    helpDescMissing = true
+    helpDescMissingReason = "symbol_only_from_strings_res_h"
+    legacyFontId = 27655
+    legacyFontComment = "use AgencyFB17"
+    font = "Agency Regular"
+    fontStyle = "Regular"
+    fontSize = 17
+    bold = false
+    italic = false
+    textAlign = "center"
+    textAnchor = "center"
+    legacyTextAlignmentSource = "aButton::init default Alignment=2"
+    wrapText = false
+    textX = 251
+    textY = 381
+    textWidth = 86
+    textHeight = 31
+    legacyTextRectSource = "XTextLocation/YTextLocation/TextWidth/TextHeight"
+    normalTextColorArgb = "0xff005392"
+    normalOverlayColorArgb = "0xff005392"
+    colorArgb = "0xff005392"
+    pressedTextColorArgb = "0xffffffff"
+    pressedOverlayColorArgb = "0xffffffff"
+    highlightTextColorArgb = "0xffffffff"
+    highlightOverlayColorArgb = "0xffffffff"
+    disabledTextColorArgb = "0xff373737"
+    disabledOverlayColorArgb = "0xff373737"
+    buttonOverlayEnabled = true
+    buttonOverlayAlpha = 0.30
+    pulseEnabled = true
+    pulseSpeed = 1.5
+    textEffect = "pulse"
+    legacyTextEffectSource = "AnimateText"
+    legacyId = 8
+    legacyColor = 0xff005392
+    legacyTextOutline = "TRUE"
+    legacyAnimateBmp = 0
+    legacyAnimateText = 1
+    uvX = 50
+    uvY = 118
+    uvWidth = 128
+    uvHeight = 59
+    uvPressedX = 50
+    uvPressedY = 177
+    uvHighlightX = 50
+    uvHighlightY = 118
+    uvDisabledX = 50
+    uvDisabledY = 177
+    legacyDisabledColor = 0xff373737
+    legacyFontComment = "use AgencyFB17"
+    fillColorArgb = "0x00000000"
+    borderColorArgb = "0x00000000"
+    legacyNormalAnimationTimeStamps = 4
+    legacyNormalAnimationLoops = true
+    legacyNormalAnimTime0 = 0.0
+    legacyNormalAnimColor0 = 0xff005392
+    legacyNormalAnimTime1 = 7.0
+    legacyNormalAnimColor1 = 0xff005392
+    legacyNormalAnimTime2 = 7.5
+    legacyNormalAnimColor2 = 0xff5C96C2
+    legacyNormalAnimTime3 = 8.0
+    legacyNormalAnimColor3 = 0xff005392
+    legacyPressedAnimationTimeStamps = 2
+    legacyPressedAnimationLoops = false
+    legacyPressedAnimTime0 = 0.0
+    legacyPressedAnimColor0 = 0xffffffff
+    legacyPressedAnimTime1 = 0.5
+    legacyPressedAnimColor1 = 0xff5C96C2
+    legacyHighlightAnimationTimeStamps = 4
+    legacyHighlightAnimationLoops = true
+    legacyHighlightAnimTime0 = 0.0
+    legacyHighlightAnimColor0 = 0xffffffff
+    legacyHighlightAnimTime1 = 0.1
+    legacyHighlightAnimColor1 = 0xff000000
+    legacyHighlightAnimTime2 = 0.2
+    legacyHighlightAnimColor2 = 0xffffffff
+    legacyHighlightAnimTime3 = 0.8
+    legacyHighlightAnimColor3 = 0xff5C96C2
+    legacyDisabledAnimationTimeStamps = 2
+    legacyDisabledAnimationLoops = false
+    legacyDisabledAnimTime0 = 0.0
+    legacyDisabledAnimColor0 = 0xff373737
+    legacyDisabledAnimTime1 = 0.5
+    legacyDisabledAnimColor1 = 0xff373737
+}
+
+GuiButton {
+    key = "game.mcl_dialog_edit.button.okay_button"
+    pageKey = "game.mcl_dialog_edit"
+    legacySection = "Button1"
+    legacyComment = "OKAY button"
+    role = "button"
+    layer = "control"
+    aliasOverride = "OKAY button"
+    sourceControlType = "Button1"
+    rect = "435,367,128,59"
+    legacyLocalRect = "435,367,128,59"
+    legacyRectSource = "xywh"
+    texture = "data/art/gui/mcl_dialog_edit_3.png"
+    legacyTexture = "mcl_dialog_edit_3.tga"
+    uiPackage = "default"
+    rectModel = "legacy_imgui.modern_rect_v1"
+    controlRect = "435,367,128,59"
+    hitRect = "435,367,128,59"
+    artRect = "435,367,128,59"
+    artLayer = "control_art"
+    controlModel = "composite_hit_art_text_v1"
+    linkedLayers = "hit,art,text"
+    editMode = "linked_control_with_independent_text"
+    textRect = "449,381,86,31"
+    textRectMode = "explicit_legacy"
+    textLegacyId = 27652
+    textKey = "legacy.mc2res.27652"
+    visibleText = "YES"
+    textLegacySymbol = "IDS_DIALOG_YES"
+    textSource = "mc2res"
+    textMissing = false
+    helpCaptionLegacyId = 0
+    helpCaptionKey = "legacy.strings.ids_undefined_string_sebi"
+    helpCaptionLegacySymbol = "IDS_undefined_string_sebi"
+    helpCaptionSource = "strings.res.h"
+    helpCaptionMissing = true
+    helpCaptionMissingReason = "symbol_only_from_strings_res_h"
+    helpDescLegacyId = 0
+    helpDescKey = "legacy.strings.ids_undefined_string_sebi"
+    helpDescLegacySymbol = "IDS_undefined_string_sebi"
+    helpDescSource = "strings.res.h"
+    helpDescMissing = true
+    helpDescMissingReason = "symbol_only_from_strings_res_h"
+    legacyFontId = 27655
+    legacyFontComment = "use AgencyFB17"
+    font = "Agency Regular"
+    fontStyle = "Regular"
+    fontSize = 17
+    bold = false
+    italic = false
+    textAlign = "center"
+    textAnchor = "center"
+    legacyTextAlignmentSource = "aButton::init default Alignment=2"
+    wrapText = false
+    textX = 449
+    textY = 381
+    textWidth = 86
+    textHeight = 31
+    legacyTextRectSource = "XTextLocation/YTextLocation/TextWidth/TextHeight"
+    normalTextColorArgb = "0xff005392"
+    normalOverlayColorArgb = "0xff005392"
+    colorArgb = "0xff005392"
+    pressedTextColorArgb = "0xffffffff"
+    pressedOverlayColorArgb = "0xffffffff"
+    highlightTextColorArgb = "0xffffffff"
+    highlightOverlayColorArgb = "0xffffffff"
+    disabledTextColorArgb = "0xff373737"
+    disabledOverlayColorArgb = "0xff373737"
+    buttonOverlayEnabled = true
+    buttonOverlayAlpha = 0.30
+    pulseEnabled = true
+    pulseSpeed = 1.5
+    textEffect = "pulse"
+    legacyTextEffectSource = "AnimateText"
+    legacyId = 7
+    legacyColor = 0xff005392
+    legacyTextOutline = "TRUE"
+    legacyAnimateBmp = 0
+    legacyAnimateText = 1
+    uvX = 50
+    uvY = 118
+    uvWidth = 128
+    uvHeight = 59
+    uvPressedX = 50
+    uvPressedY = 177
+    uvHighlightX = 50
+    uvHighlightY = 118
+    uvDisabledX = 50
+    uvDisabledY = 177
+    legacyDisabledColor = 0xff373737
+    legacyFontComment = "use AgencyFB17"
+    fillColorArgb = "0x00000000"
+    borderColorArgb = "0x00000000"
+    legacyNormalAnimationTimeStamps = 4
+    legacyNormalAnimationLoops = true
+    legacyNormalAnimTime0 = 0.0
+    legacyNormalAnimColor0 = 0xff005392
+    legacyNormalAnimTime1 = 7.0
+    legacyNormalAnimColor1 = 0xff005392
+    legacyNormalAnimTime2 = 7.5
+    legacyNormalAnimColor2 = 0xff5C96C2
+    legacyNormalAnimTime3 = 8.0
+    legacyNormalAnimColor3 = 0xff005392
+    legacyPressedAnimationTimeStamps = 2
+    legacyPressedAnimationLoops = false
+    legacyPressedAnimTime0 = 0.0
+    legacyPressedAnimColor0 = 0xffffffff
+    legacyPressedAnimTime1 = 0.5
+    legacyPressedAnimColor1 = 0xff5C96C2
+    legacyHighlightAnimationTimeStamps = 4
+    legacyHighlightAnimationLoops = true
+    legacyHighlightAnimTime0 = 0.0
+    legacyHighlightAnimColor0 = 0xffffffff
+    legacyHighlightAnimTime1 = 0.1
+    legacyHighlightAnimColor1 = 0xff000000
+    legacyHighlightAnimTime2 = 0.2
+    legacyHighlightAnimColor2 = 0xffffffff
+    legacyHighlightAnimTime3 = 0.8
+    legacyHighlightAnimColor3 = 0xff5C96C2
+    legacyDisabledAnimationTimeStamps = 2
+    legacyDisabledAnimationLoops = false
+    legacyDisabledAnimTime0 = 0.0
+    legacyDisabledAnimColor0 = 0xff373737
+    legacyDisabledAnimTime1 = 0.5
+    legacyDisabledAnimColor1 = 0xff373737
+}
+
+GuiMetadata {
+    key = "game.mcl_dialog_edit.metadata.metadata_01"
+    pageKey = "game.mcl_dialog_edit"
+    legacySection = "Rects"
+    legacyContext = "~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ | ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ | ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~"
+    role = "metadata"
+    layer = "metadata"
+    aliasOverride = "metadata"
+    sourceControlType = "Rects"
+    rect = "0,0,0,0"
+    legacyLocalRect = "0,0,0,0"
+    legacyRectSource = "xywh"
+    visible = false
+}
+
+GuiRect {
+    key = "game.mcl_dialog_edit.rect.black_rect_behind_text"
+    pageKey = "game.mcl_dialog_edit"
+    legacySection = "Rect0"
+    legacyComment = "black rect behind text"
+    role = "rect"
+    layer = "layout"
+    aliasOverride = "black rect behind text"
+    sourceControlType = "Rect0"
+    rect = "237,256,325,132"
+    legacyLocalRect = "237,256,325,132"
+    legacyRectSource = "xywh"
+    uiPackage = "default"
+    rectModel = "legacy_imgui.modern_rect_v1"
+    controlRect = "237,256,325,132"
+    legacyColor = 0xff000000
+    outline = "FALSE"
+    filled = true
+    fillColorArgb = "0x00000000"
+    borderColorArgb = "0x00000000"
+    colorArgb = "0xffffffff"
+}
+
+GuiRect {
+    key = "game.mcl_dialog_edit.rect.outline_rect_for_text"
+    pageKey = "game.mcl_dialog_edit"
+    legacySection = "Rect1"
+    legacyComment = "outline rect for text"
+    role = "rect"
+    layer = "layout"
+    aliasOverride = "outline rect for text"
+    sourceControlType = "Rect1"
+    rect = "247,226,305,112"
+    legacyLocalRect = "247,226,305,112"
+    legacyRectSource = "xywh"
+    uiPackage = "default"
+    rectModel = "legacy_imgui.modern_rect_v1"
+    controlRect = "247,226,305,112"
+    legacyColor = 0xff43311C
+    outline = "TRUE"
+    filled = false
+    fillColorArgb = "0x00000000"
+    borderColorArgb = "0x00000000"
+    colorArgb = "0xffffffff"
+}
+
+GuiRect {
+    key = "game.mcl_dialog_edit.rect.outline_rect_for_text_edit_area"
+    pageKey = "game.mcl_dialog_edit"
+    legacySection = "Rect1"
+    legacyComment = "outline rect for text edit area"
+    role = "rect"
+    layer = "layout"
+    aliasOverride = "outline rect for text edit area"
+    sourceControlType = "Rect1"
+    rect = "291,295,217,32"
+    legacyLocalRect = "291,295,217,32"
+    legacyRectSource = "xywh"
+    uiPackage = "default"
+    rectModel = "legacy_imgui.modern_rect_v1"
+    controlRect = "291,295,217,32"
+    legacyColor = 0xff43311C
+    outline = "TRUE"
+    filled = false
+    fillColorArgb = "0x00000000"
+    borderColorArgb = "0x00000000"
+    colorArgb = "0xffffffff"
+}
+
+GuiMetadata {
+    key = "game.mcl_dialog_edit.metadata.metadata_02"
+    pageKey = "game.mcl_dialog_edit"
+    legacySection = "Statics"
+    legacyContext = "~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ | ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ | ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~"
+    role = "metadata"
+    layer = "metadata"
+    aliasOverride = "metadata"
+    sourceControlType = "Statics"
+    rect = "0,0,0,0"
+    legacyLocalRect = "0,0,0,0"
+    legacyRectSource = "xywh"
+    visible = false
+}
+
+GuiImage {
+    key = "game.mcl_dialog_edit.image.mcl_dialog_edit_1"
+    pageKey = "game.mcl_dialog_edit"
+    legacySection = "Static0"
+    role = "image"
+    layer = "art"
+    aliasOverride = "mcl_dialog_edit_1"
+    sourceControlType = "Static0"
+    rect = "187,0,256,256"
+    legacyLocalRect = "187,0,256,256"
+    legacyRectSource = "xywh"
+    texture = "data/art/gui/mcl_dialog_edit_1.png"
+    legacyTexture = "mcl_dialog_edit_1.tga"
+    uiPackage = "default"
+    rectModel = "legacy_imgui.modern_rect_v1"
+    controlRect = "187,0,256,256"
+    artRect = "187,0,256,256"
+    artLayer = "control_art"
+    uvX = 0
+    uvY = 0
+    uvWidth = 256
+    uvHeight = 256
+}
+
+GuiImage {
+    key = "game.mcl_dialog_edit.image.mcl_dialog_edit_2"
+    pageKey = "game.mcl_dialog_edit"
+    legacySection = "Static1"
+    role = "image"
+    layer = "art"
+    aliasOverride = "mcl_dialog_edit_2"
+    sourceControlType = "Static1"
+    rect = "443,0,170,256"
+    legacyLocalRect = "443,0,170,256"
+    legacyRectSource = "xywh"
+    texture = "data/art/gui/mcl_dialog_edit_2.png"
+    legacyTexture = "mcl_dialog_edit_2.tga"
+    uiPackage = "default"
+    rectModel = "legacy_imgui.modern_rect_v1"
+    controlRect = "443,0,170,256"
+    artRect = "443,0,170,256"
+    artLayer = "control_art"
+    uvX = 0
+    uvY = 0
+    uvWidth = 170
+    uvHeight = 256
+}
+
+GuiImage {
+    key = "game.mcl_dialog_edit.image.mcl_dialog_edit_2_01"
+    pageKey = "game.mcl_dialog_edit"
+    legacySection = "Static2"
+    role = "image"
+    layer = "art"
+    aliasOverride = "mcl_dialog_edit_2"
+    sourceControlType = "Static2"
+    rect = "187,256,50,93"
+    legacyLocalRect = "187,256,50,93"
+    legacyRectSource = "xywh"
+    texture = "data/art/gui/mcl_dialog_edit_2.png"
+    legacyTexture = "mcl_dialog_edit_2.tga"
+    uiPackage = "default"
+    rectModel = "legacy_imgui.modern_rect_v1"
+    controlRect = "187,256,50,93"
+    artRect = "187,256,50,93"
+    artLayer = "control_art"
+    uvX = 170
+    uvY = 0
+    uvWidth = 50
+    uvHeight = 93
+}
+
+GuiImage {
+    key = "game.mcl_dialog_edit.image.mcl_dialog_edit_2_02"
+    pageKey = "game.mcl_dialog_edit"
+    legacySection = "Static3"
+    role = "image"
+    layer = "art"
+    aliasOverride = "mcl_dialog_edit_2"
+    sourceControlType = "Static3"
+    rect = "563,256,50,93"
+    legacyLocalRect = "563,256,50,93"
+    legacyRectSource = "xywh"
+    texture = "data/art/gui/mcl_dialog_edit_2.png"
+    legacyTexture = "mcl_dialog_edit_2.tga"
+    uiPackage = "default"
+    rectModel = "legacy_imgui.modern_rect_v1"
+    controlRect = "563,256,50,93"
+    artRect = "563,256,50,93"
+    artLayer = "control_art"
+    uvX = 170
+    uvY = 93
+    uvWidth = 50
+    uvHeight = 93
+}
+
+GuiImage {
+    key = "game.mcl_dialog_edit.image.mcl_dialog_edit_3"
+    pageKey = "game.mcl_dialog_edit"
+    legacySection = "Static4"
+    role = "image"
+    layer = "art"
+    aliasOverride = "mcl_dialog_edit_3"
+    sourceControlType = "Static4"
+    rect = "187,349,256,18"
+    legacyLocalRect = "187,349,256,18"
+    legacyRectSource = "xywh"
+    texture = "data/art/gui/mcl_dialog_edit_3.png"
+    legacyTexture = "mcl_dialog_edit_3.tga"
+    uiPackage = "default"
+    rectModel = "legacy_imgui.modern_rect_v1"
+    controlRect = "187,349,256,18"
+    artRect = "187,349,256,18"
+    artLayer = "control_art"
+    uvX = 0
+    uvY = 0
+    uvWidth = 256
+    uvHeight = 18
+}
+
+GuiImage {
+    key = "game.mcl_dialog_edit.image.mcl_dialog_edit_3_01"
+    pageKey = "game.mcl_dialog_edit"
+    legacySection = "Static5"
+    role = "image"
+    layer = "art"
+    aliasOverride = "mcl_dialog_edit_3"
+    sourceControlType = "Static5"
+    rect = "443,349,170,18"
+    legacyLocalRect = "443,349,170,18"
+    legacyRectSource = "xywh"
+    texture = "data/art/gui/mcl_dialog_edit_3.png"
+    legacyTexture = "mcl_dialog_edit_3.tga"
+    uiPackage = "default"
+    rectModel = "legacy_imgui.modern_rect_v1"
+    controlRect = "443,349,170,18"
+    artRect = "443,349,170,18"
+    artLayer = "control_art"
+    uvX = 0
+    uvY = 59
+    uvWidth = 170
+    uvHeight = 18
+}
+
+GuiImage {
+    key = "game.mcl_dialog_edit.image.mcl_dialog_edit_3_02"
+    pageKey = "game.mcl_dialog_edit"
+    legacySection = "Static6"
+    role = "image"
+    layer = "art"
+    aliasOverride = "mcl_dialog_edit_3"
+    sourceControlType = "Static6"
+    rect = "187,367,50,59"
+    legacyLocalRect = "187,367,50,59"
+    legacyRectSource = "xywh"
+    texture = "data/art/gui/mcl_dialog_edit_3.png"
+    legacyTexture = "mcl_dialog_edit_3.tga"
+    uiPackage = "default"
+    rectModel = "legacy_imgui.modern_rect_v1"
+    controlRect = "187,367,50,59"
+    artRect = "187,367,50,59"
+    artLayer = "control_art"
+    uvX = 170
+    uvY = 59
+    uvWidth = 50
+    uvHeight = 59
+}
+
+GuiImage {
+    key = "game.mcl_dialog_edit.image.mcl_dialog_edit_2_03"
+    pageKey = "game.mcl_dialog_edit"
+    legacySection = "Static7"
+    role = "image"
+    layer = "art"
+    aliasOverride = "mcl_dialog_edit_2"
+    sourceControlType = "Static7"
+    rect = "365,367,70,59"
+    legacyLocalRect = "365,367,70,59"
+    legacyRectSource = "xywh"
+    texture = "data/art/gui/mcl_dialog_edit_2.png"
+    legacyTexture = "mcl_dialog_edit_2.tga"
+    uiPackage = "default"
+    rectModel = "legacy_imgui.modern_rect_v1"
+    controlRect = "365,367,70,59"
+    artRect = "365,367,70,59"
+    artLayer = "control_art"
+    uvX = 170
+    uvY = 186
+    uvWidth = 70
+    uvHeight = 59
+}
+
+GuiImage {
+    key = "game.mcl_dialog_edit.image.mcl_dialog_edit_3_03"
+    pageKey = "game.mcl_dialog_edit"
+    legacySection = "Static8"
+    role = "image"
+    layer = "art"
+    aliasOverride = "mcl_dialog_edit_3"
+    sourceControlType = "Static8"
+    rect = "563,367,50,59"
+    legacyLocalRect = "563,367,50,59"
+    legacyRectSource = "xywh"
+    texture = "data/art/gui/mcl_dialog_edit_3.png"
+    legacyTexture = "mcl_dialog_edit_3.tga"
+    uiPackage = "default"
+    rectModel = "legacy_imgui.modern_rect_v1"
+    controlRect = "563,367,50,59"
+    artRect = "563,367,50,59"
+    artLayer = "control_art"
+    uvX = 0
+    uvY = 118
+    uvWidth = 50
+    uvHeight = 59
+}
+
+GuiImage {
+    key = "game.mcl_dialog_edit.image.mcl_dialog_edit_3_04"
+    pageKey = "game.mcl_dialog_edit"
+    legacySection = "Static9"
+    role = "image"
+    layer = "art"
+    aliasOverride = "mcl_dialog_edit_3"
+    sourceControlType = "Static9"
+    rect = "187,426,256,41"
+    legacyLocalRect = "187,426,256,41"
+    legacyRectSource = "xywh"
+    texture = "data/art/gui/mcl_dialog_edit_3.png"
+    legacyTexture = "mcl_dialog_edit_3.tga"
+    uiPackage = "default"
+    rectModel = "legacy_imgui.modern_rect_v1"
+    controlRect = "187,426,256,41"
+    artRect = "187,426,256,41"
+    artLayer = "control_art"
+    uvX = 0
+    uvY = 18
+    uvWidth = 256
+    uvHeight = 41
+}
+
+GuiImage {
+    key = "game.mcl_dialog_edit.image.mcl_dialog_edit_3_05"
+    pageKey = "game.mcl_dialog_edit"
+    legacySection = "Static10"
+    role = "image"
+    layer = "art"
+    aliasOverride = "mcl_dialog_edit_3"
+    sourceControlType = "Static10"
+    rect = "443,426,170,41"
+    legacyLocalRect = "443,426,170,41"
+    legacyRectSource = "xywh"
+    texture = "data/art/gui/mcl_dialog_edit_3.png"
+    legacyTexture = "mcl_dialog_edit_3.tga"
+    uiPackage = "default"
+    rectModel = "legacy_imgui.modern_rect_v1"
+    controlRect = "443,426,170,41"
+    artRect = "443,426,170,41"
+    artLayer = "control_art"
+    uvX = 0
+    uvY = 77
+    uvWidth = 170
+    uvHeight = 41
+}
+
+GuiMetadata {
+    key = "game.mcl_dialog_edit.metadata.metadata_03"
+    pageKey = "game.mcl_dialog_edit"
+    legacySection = "Texts"
+    legacyContext = "~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ | ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ | ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~"
+    role = "metadata"
+    layer = "metadata"
+    aliasOverride = "metadata"
+    sourceControlType = "Texts"
+    rect = "0,0,0,0"
+    legacyLocalRect = "0,0,0,0"
+    legacyRectSource = "xywh"
+    visible = false
+}
+
+GuiText {
+    key = "game.mcl_dialog_edit.text.explanation_text"
+    pageKey = "game.mcl_dialog_edit"
+    legacySection = "Text0"
+    legacyComment = "explanation text"
+    role = "text"
+    layer = "text"
+    aliasOverride = "explanation text"
+    sourceControlType = "Text0"
+    rect = "252,231,295,59"
+    legacyLocalRect = "252,231,295,59"
+    legacyRectSource = "xywh"
+    uiPackage = "default"
+    rectModel = "legacy_imgui.modern_rect_v1"
+    controlRect = "252,231,295,59"
+    textRect = "252,231,295,59"
+    textRectMode = "control_rect_fallback"
+    textLegacyId = 27654
+    textKey = "legacy.mc2res.27654"
+    visibleText = "Do you really want to quit?"
+    textLegacySymbol = "IDS_DIALOG_QUIT_PROMPT"
+    textSource = "mc2res"
+    textMissing = false
+    legacyFontId = 27656
+    legacyFontComment = "use agencyfb11"
+    font = "Agency Regular"
+    fontStyle = "Regular"
+    fontSize = 11
+    bold = false
+    italic = false
+    textAlign = "center"
+    textAnchor = "center"
+    wrapText = true
+    colorArgb = "0xffc66600"
+    legacyColor = 0xffC66600
+    outline = "FALSE"
+    legacyAlignment = 3
+    legacyFontComment = "use agencyfb11"
+    borderColorArgb = "0x00000000"
+}
+
+GuiText {
+    key = "game.mcl_dialog_edit.text.text"
+    pageKey = "game.mcl_dialog_edit"
+    legacySection = "Text1"
+    role = "text"
+    layer = "text"
+    aliasOverride = "text"
+    sourceControlType = "Text1"
+    rect = "295,299,209,24"
+    legacyLocalRect = "295,299,209,24"
+    legacyRectSource = "xywh"
+    uiPackage = "default"
+    rectModel = "legacy_imgui.modern_rect_v1"
+    controlRect = "295,299,209,24"
+    textRect = "295,299,209,24"
+    textRectMode = "control_rect_fallback"
+    textLegacyId = 27654
+    textKey = "legacy.mc2res.27654"
+    visibleText = "Do you really want to quit?"
+    textLegacySymbol = "IDS_DIALOG_QUIT_PROMPT"
+    textSource = "mc2res"
+    textMissing = false
+    legacyFontId = 27656
+    legacyFontComment = "use agencyfb11"
+    font = "Agency Regular"
+    fontStyle = "Regular"
+    fontSize = 11
+    bold = false
+    italic = false
+    textAlign = "left"
+    textAnchor = "upper_left"
+    wrapText = false
+    colorArgb = "0xffc66600"
+    legacyColor = -3774976
+    outline = "FALSE"
+    legacyAlignment = 0
+    legacyFontComment = "use agencyfb11"
+    borderColorArgb = "0x00000000"
+}
+
+GuiAnimation {
+    key = "game.mcl_dialog_edit.animation.enter_anim"
+    pageKey = "game.mcl_dialog_edit"
+    legacySection = "EnterAnim"
+    legacyComment = "use when dialog appears on screen"
+    role = "animation"
+    layer = "animation"
+    animType = "in_anim"
+    rect = "0,0,0,0"
+    animationKeyframes = 2
+    keyframe0Time = 0.0
+    keyframe0X = 0
+    keyframe0Y = -466
+    keyframe1Time = 0.15
+    keyframe1X = 0
+    keyframe1Y = 0
+}
+
+GuiAnimation {
+    key = "game.mcl_dialog_edit.animation.leave_anim"
+    pageKey = "game.mcl_dialog_edit"
+    legacySection = "LeaveAnim"
+    legacyComment = "use when dialog leaves after cancel or okay is pressed"
+    role = "animation"
+    layer = "animation"
+    animType = "out_anim"
+    rect = "0,0,0,0"
+    animationKeyframes = 2
+    keyframe0Time = 0.0
+    keyframe0X = 0
+    keyframe0Y = 0
+    keyframe1Time = 0.1
+    keyframe1X = 0
+    keyframe1Y = -466
+}

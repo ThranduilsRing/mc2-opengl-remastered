@@ -16,6 +16,7 @@ MechPurchaseScreen.cpp			: Implementation of the MechPurchaseScreen component.
 #include"attributemeter.h"
 #include"chatwindow.h"
 #include"multplyr.h"
+#include"../GuiRuntime/GuiRuntime.h"
 
 MechPurchaseScreen* MechPurchaseScreen::s_instance = NULL;
 
@@ -146,6 +147,11 @@ void MechPurchaseScreen::update()
 	sprintf( tmp, "%ld ", amount);
 	textObjects[1].setText( tmp );
 	textObjects[1].setColor( color );
+	// CBILLS-MIRROR-1: the defs page suppresses the legacy readout — mirror the
+	// live amount into the defs text element (same pattern as mechbayscreen's
+	// cbills_text). Without this the panel showed the static fit label
+	// ("C-Bills") instead of the number.
+	setDefsElementText( "game.mcl_mdollar.text.cbills", tmp );
 
 	int oldSell = inventoryListBox.GetSelectedItem();
 	inventoryListBox.update();
@@ -230,13 +236,25 @@ void MechPurchaseScreen::render( int xOffset, int yOffset )
 		}
 	}
 
+	// Legacy->display scale for the text bridge (crisp TTF labels on the two mech
+	// lists + the mech-info display, matching the data/defs UI layer).
+	// UI-ASPECT-ANCHOR-1: canvas-aware transform (scale + pad origin).
+	float tbSx = 1.f, tbSy = 1.f, tbOx = 0.f, tbOy = 0.f;
+	aObject::getCanvasTransform( tbSx, tbSy, tbOx, tbOy );
+
+	// Only the two mech lists need the text bridge (mech names).  mechDisplay routes
+	// its info text into the mcl_mechinfo defs page and its loadout into a defs GuiList
+	// (matching Mech Bay), so it must NOT be bridged -- otherwise the legacy loadout
+	// list would TTF-draw on top of the GuiList and double up.
+	aObject::beginTextBridge( tbSx, tbSy, 1.0f, tbOx, tbOy );
 	inventoryListBox.move( xOffset, yOffset);
 	inventoryListBox.render();
 	inventoryListBox.move( -xOffset, -yOffset );
 
 	variantListBox.move(xOffset, yOffset);
 	variantListBox.render();
-	variantListBox.move(-xOffset, -yOffset);	
+	variantListBox.move(-xOffset, -yOffset);
+	aObject::endTextBridge();
 
 	mechDisplay.render( xOffset, yOffset );
 

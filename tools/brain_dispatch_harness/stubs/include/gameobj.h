@@ -6,6 +6,7 @@
 // Replaces the engine gameobj.h (which pulls mclib.h and the whole world).
 
 #include <cstdint>
+#include "stuff_vector3d.h"
 
 // GameObjectWatchID — mirrors dgameobj.h (int32_t typedef)
 typedef int32_t GameObjectWatchID;
@@ -20,6 +21,9 @@ public:
     virtual ~GameObject() = default;
     virtual long    getWatchID(bool assign = true) { return 0; }
     virtual TeamPtr getTeam() { return nullptr; }
+    // HARNESS-STUB-REPAIR-1: BRAIN-ENGAGE-1 / BRAIN-OPORD-MOVE-1 additions.
+    virtual bool    isDisabled() { return false; }
+    virtual Stuff::Vector3D getPosition() { return {}; }
 };
 
 typedef GameObject* GameObjectPtr;

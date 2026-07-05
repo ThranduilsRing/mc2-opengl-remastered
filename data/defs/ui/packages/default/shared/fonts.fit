@@ -1,0 +1,104 @@
+// MC2R shared UI font catalog.
+// Keys are human-readable font names for the future UI Editor font picker.
+// Font files are runtime assets and should live under assets/graphics/fonts.
+//
+// GuiText may use either a catalog name:
+//   font = "Agency Regular"
+// or a direct file path:
+//   font = "assets/graphics/fonts/Agency-Regular.ttf"
+
+FontAsset {
+    key = "Agency Regular"
+    displayName = "Agency Regular"
+    path = "assets/graphics/fonts/Agency-Regular.ttf"
+    family = "Agency"
+    style = "Regular"
+    defaultSize = 17
+    legacyId = 3
+    supportsBold = false
+    supportsItalic = false
+}
+
+FontAsset {
+    key = "Agency Bold"
+    displayName = "Agency Bold"
+    path = "assets/graphics/fonts/Agency-Bold.ttf"
+    family = "Agency"
+    style = "Bold"
+    defaultSize = 17
+    legacyId = 3
+    supportsBold = true
+    supportsItalic = false
+}
+
+FontAsset {
+    key = "BladeRunnerMovieFont"
+    displayName = "Blade Runner Movie Font"
+    path = "assets/graphics/fonts/BladeRunnerMovieFont.ttf"
+    family = "Blade Runner Movie Font"
+    style = "Regular"
+    defaultSize = 11
+    legacyId = 0
+    supportsBold = false
+    supportsItalic = false
+}
+
+FontAsset {
+    key = "Impact"
+    displayName = "Impact"
+    path = "assets/graphics/fonts/Impact.ttf"
+    family = "Impact"
+    style = "Regular"
+    defaultSize = 20
+    legacyId = 4
+    supportsBold = false
+    supportsItalic = false
+}
+
+FontAsset {
+    key = "Liberation Sans"
+    displayName = "Liberation Sans"
+    path = "assets/graphics/fonts/LiberationSans-Regular.ttf"
+    family = "Liberation Sans"
+    style = "Regular"
+    defaultSize = 16
+    legacyId = 0
+    supportsBold = true
+    supportsItalic = true
+}
+
+FontAsset {
+    key = "Liberation Sans Bold"
+    displayName = "Liberation Sans Bold"
+    path = "assets/graphics/fonts/LiberationSans-Bold.ttf"
+    family = "Liberation Sans"
+    style = "Bold"
+    defaultSize = 16
+    legacyId = 2
+    supportsBold = true
+    supportsItalic = false
+}
+
+FontAsset {
+    key = "Liberation Sans Italic"
+    displayName = "Liberation Sans Italic"
+    path = "assets/graphics/fonts/LiberationSans-Italic.ttf"
+    family = "Liberation Sans"
+    style = "Italic"
+    defaultSize = 16
+    legacyId = 0
+    supportsBold = false
+    supportsItalic = true
+}
+
+FontAsset {
+    key = "Liberation Sans Bold Italic"
+    displayName = "Liberation Sans Bold Italic"
+    path = "assets/graphics/fonts/LiberationSans-BoldItalic.ttf"
+    family = "Liberation Sans"
+    style = "BoldItalic"
+    defaultSize = 16
+    legacyId = 0
+    supportsBold = true
+    supportsItalic = true
+}

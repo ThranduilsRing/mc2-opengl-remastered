@@ -13,6 +13,9 @@
 // preflight-arming, and bridge entry.
 
 #include "gos_terrain_indirect.h"
+
+// ROAD-PBR-FAILSOFT-1 (defined in gameos_graphics.cpp)
+extern bool gos_TerrainRoadMaterialReady(int matId);
 #include "gos_gpu_sync.h"               // GPU-SYNC-CONTRACT typed barrier helper
 #include "gos_terrain_patch_stream.h"  // TerrainQuadRecipe
 #include "gpu_driven_common.h"         // gpu_driven::IsTerrainSolidEnabled
@@ -1933,6 +1936,12 @@ static GLint g_locSolidMVP = -1;   // u_terrainMVP    (per-frame)
 static GLint g_locSolidBHT = -1;   // u_bucketHeaderTrace (per-frame int gate)
 static GLint g_locSolidUW  = -1;   // u_useWindow (per-frame: 1=windowed, 0=full-range identity)
 static GLint g_locSolidMS  = -1;   // u_mapSide (PER-FRAME: changes when a different-size map loads)
+// WATER-REFLECTION-CLIP-1: u_reflectionPass (per-frame int gate; see .comp for
+// rationale). Set true only for the duration of RenderWaterReflectionPass()'s
+// ComputeDispatch() call, false otherwise -- so the main SOLID dispatch is
+// unaffected (byte-identical pzOk behavior).
+static GLint g_locSolidReflPass = -1;
+static bool  s_solidReflectionPassActive = false;
 
 
 // Flag: whether ComputeDispatch() ran the GPU path this frame.
@@ -2856,6 +2865,10 @@ void ComputeDispatch() {
         // decompose use the stale side) -> all-black terrain. Cache the location;
         // upload the live value per frame in ComputeDispatch().
         g_locSolidMS  = glGetUniformLocation(g_solidComputeProgram, "u_mapSide");
+        // WATER-REFLECTION-CLIP-1: may be optimized out if unused by the
+        // driver in some future shader revision; -1 is handled below (skip
+        // upload, shader-side uniform defaults to 0 = main-pass behavior).
+        g_locSolidReflPass = glGetUniformLocation(g_solidComputeProgram, "u_reflectionPass");
         // Upload the genuinely-constant uniforms once.
         MC2_GL_UseProgram(g_solidComputeProgram);
         const GLint locMTR  = glGetUniformLocation(g_solidComputeProgram, "u_maxThinRecords");
@@ -3376,6 +3389,11 @@ void ComputeDispatch() {
     // GPU readback.
     if (g_locSolidUW >= 0)
         glUniform1i(g_locSolidUW, s_solidUseWindow);
+    // WATER-REFLECTION-CLIP-1: armed ONLY for the duration of the reflection
+    // pass's own ComputeDispatch() call (see RenderWaterReflectionPass). 0 on
+    // every other call site (main SOLID dispatch) -> byte-identical pzOk.
+    if (g_locSolidReflPass >= 0)
+        glUniform1i(g_locSolidReflPass, s_solidReflectionPassActive ? 1 : 0);
 
     {
         const float* mvp = gos_GetTerrainMVPMat4();
@@ -3886,7 +3904,13 @@ void RenderWaterReflectionPass() {
     uint64_t savedDispatchFrameIdx = g_dispatchMvpFrameIdx;
 
     gos_SetTerrainMVP(mir);   // install mirror -> compute bakes mirrored clip
+    // WATER-REFLECTION-CLIP-1: arm the reflection-pass pzOk relaxation ONLY for
+    // this ComputeDispatch() call, then disarm immediately after -- the flag is
+    // read once per dispatch (uploaded inside ComputeDispatch itself) so there is
+    // no window where the main SOLID pass could see it armed.
+    s_solidReflectionPassActive = true;
     ComputeDispatch();        // fresh ring slot + refills shared cmd buffer
+    s_solidReflectionPassActive = false;
 
     glBindFramebuffer(GL_FRAMEBUFFER, fbo);
     glViewport(0, 0, rw, rh);
@@ -3894,7 +3918,36 @@ void RenderWaterReflectionPass() {
     glClearDepth(0.0);                        // reverse-Z: far plane = 0 (GEQUAL)
     glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
 
+    // WATER-REFLECTION-CLIP-1: cheap mirrored-draw-count proof. Read back just
+    // the indirect cmd's DrawArraysIndirectCommand.count (16 bytes) rather than
+    // the whole RT -- this is the count of mirrored VERTICES the CLIP-1-relaxed
+    // pzOk gate admitted this dispatch (0 == the pre-fix bug: everything culled).
+    // Still a GL sync point (glGetBufferSubData waits for the write), but is
+    // ~4-5 orders of magnitude less data than the recon's landmine-6
+    // whole-RT glReadPixels(GL_RGBA, GL_FLOAT) stall, which is now opt-in only
+    // (MC2_WATER_REFL_RT_PIXELPROOF=1) for deep debugging.
+    uint32_t mirroredCmdCount = 0;
+    {
+        GLint prevDIB = 0; glGetIntegerv(GL_DRAW_INDIRECT_BUFFER_BINDING, &prevDIB);
+        glBindBuffer(GL_DRAW_INDIRECT_BUFFER, g_indirectCmdBuffer);
+        glGetBufferSubData(GL_DRAW_INDIRECT_BUFFER, 0, (GLsizeiptr)sizeof(mirroredCmdCount), &mirroredCmdCount);
+        glBindBuffer(GL_DRAW_INDIRECT_BUFFER, (GLuint)prevDIB);
+    }
+
+    // WATER-REFLECTION-CLIP-1: pzOk (compute-side) now ADMITS far-mirrored quads
+    // (see u_reflectionPass), but hardware near/far clipping happens again at
+    // the rasterizer regardless of what the compute gate decided -- a quad with
+    // clip.z > clip.w still gets clipped/discarded by the GPU, not just culled
+    // by our own gate. GL_DEPTH_CLAMP disables that hardware far-plane clip
+    // (clamps depth to [0,1] instead of discarding), matching the recon's
+    // "relax pzOk + GL_DEPTH_CLAMP" interim-fix pairing. Scoped to this pass
+    // only; restored immediately after (was disabled engine-wide before this).
+    const GLboolean depthClampWasEnabled = glIsEnabled(GL_DEPTH_CLAMP);
+    if (!depthClampWasEnabled) glEnable(GL_DEPTH_CLAMP);
+
     const bool drew = DrawIndirect();          // bridge inherits this FBO+viewport
+
+    if (!depthClampWasEnabled) glDisable(GL_DEPTH_CLAMP);
 
     glBindFramebuffer(GL_FRAMEBUFFER, (GLuint)prevFBO);
     glViewport(prevVP[0], prevVP[1], prevVP[2], prevVP[3]);
@@ -3906,32 +3959,45 @@ void RenderWaterReflectionPass() {
     g_dispatchMvpFp       = savedDispatchFp;
     g_dispatchMvpFrameIdx = savedDispatchFrameIdx;
 
-    // Throttled diagnostics + non-clear PROOF. Whole-RT coverage (not just
-    // center) so a camera-dependent center sample can't read black when terrain
-    // IS landing elsewhere in the RT. coverage = fraction of pixels with any
-    // non-zero color; alpha_cov = fraction with alpha>0 (terrain-marked).
+    // Throttled diagnostics. Default: cheap count-only proof (mirroredCmdCount,
+    // read back above -- BEFORE the restore, since g_indirectCmdBuffer is
+    // per-dispatch-shared and DrawIndirect()/the next frame's main dispatch may
+    // reuse the slot). Opt-in MC2_WATER_REFL_RT_PIXELPROOF=1 additionally does
+    // the old whole-RT glReadPixels coverage/alpha_cov breakdown for deep debug.
     static long s_frame = 0; ++s_frame;
     if (s_frame == 1 || s_frame == 5 || s_frame == 30 || s_frame == 120 ||
         (s_frame % 600) == 0) {
-        glBindFramebuffer(GL_FRAMEBUFFER, fbo);
-        std::vector<float> px((size_t)rw * rh * 4, 0.0f);
-        glReadPixels(0, 0, rw, rh, GL_RGBA, GL_FLOAT, px.data());
-        glBindFramebuffer(GL_FRAMEBUFFER, (GLuint)prevFBO);
-        int n = rw * rh, colorHits = 0, alphaHits = 0; float maxL = 0.0f; double acc = 0.0;
-        for (int i = 0; i < n; ++i) {
-            float L = 0.2126f*px[i*4] + 0.7152f*px[i*4+1] + 0.0722f*px[i*4+2];
-            if (L > 0.001f)        ++colorHits;
-            if (px[i*4+3] > 0.001f) ++alphaHits;
-            if (L > maxL) maxL = L;
-            acc += L;
+        static const bool s_pixelProof = [](){
+            const char* v = getenv("MC2_WATER_REFL_RT_PIXELPROOF");
+            return v && v[0] && v[0] != '0';
+        }();
+        if (!s_pixelProof) {
+            fprintf(stderr, "[WATER_REFL_RT v1] frame=%ld gate=1 fbo=%u dims=%dx%d drew=%d "
+                    "mirrored_cmd_count=%u\n",
+                    s_frame, (unsigned)fbo, rw, rh, (int)drew, (unsigned)mirroredCmdCount);
+            fflush(stderr);
+        } else {
+            glBindFramebuffer(GL_FRAMEBUFFER, fbo);
+            std::vector<float> px((size_t)rw * rh * 4, 0.0f);
+            glReadPixels(0, 0, rw, rh, GL_RGBA, GL_FLOAT, px.data());
+            glBindFramebuffer(GL_FRAMEBUFFER, (GLuint)prevFBO);
+            int n = rw * rh, colorHits = 0, alphaHits = 0; float maxL = 0.0f; double acc = 0.0;
+            for (int i = 0; i < n; ++i) {
+                float L = 0.2126f*px[i*4] + 0.7152f*px[i*4+1] + 0.0722f*px[i*4+2];
+                if (L > 0.001f)        ++colorHits;
+                if (px[i*4+3] > 0.001f) ++alphaHits;
+                if (L > maxL) maxL = L;
+                acc += L;
+            }
+            GLenum err = glGetError();
+            fprintf(stderr, "[WATER_REFL_RT v1] frame=%ld gate=1 fbo=%u dims=%dx%d drew=%d "
+                    "mirrored_cmd_count=%u coverage=%.1f%% alpha_cov=%.1f%% max_luma=%.4f "
+                    "avg_luma=%.5f gl_err=0x%x\n",
+                    s_frame, (unsigned)fbo, rw, rh, (int)drew, (unsigned)mirroredCmdCount,
+                    100.0*colorHits/(n?n:1), 100.0*alphaHits/(n?n:1), maxL,
+                    (n?acc/n:0.0), (unsigned)err);
+            fflush(stderr);
         }
-        GLenum err = glGetError();
-        fprintf(stderr, "[WATER_REFL_RT v1] frame=%ld gate=1 fbo=%u dims=%dx%d drew=%d "
-                "coverage=%.1f%% alpha_cov=%.1f%% max_luma=%.4f avg_luma=%.5f gl_err=0x%x\n",
-                s_frame, (unsigned)fbo, rw, rh, (int)drew,
-                100.0*colorHits/(n?n:1), 100.0*alphaHits/(n?n:1), maxL,
-                (n?acc/n:0.0), (unsigned)err);
-        fflush(stderr);
     }
 }
 
@@ -4521,6 +4587,27 @@ void BuildDecalStaticVBO() {
             const DWORD overlayTexId = tex_resolve(overlayHandle);
             if (overlayTexId == 0) continue;
 
+            // OVERLAY-TILE-HIRES-1 (gated, default OFF => kOld* constants used
+            // verbatim). Mirror quad.cpp's per-overlay half-texel inset: a
+            // resynced hi-res overlay tile sampled with the 64px inset (0.5/64)
+            // crops its outer texel ring and breaks road continuity at seams.
+            // physical edge = logical * uvScale (disk 4x-upscale TGA convention).
+            float tileMinU = kOldMinU, tileMaxU = kOldMaxU;
+            float tileMinV = kOldMinV, tileMaxV = kOldMaxV;
+            if (MC2_OverlayTileHiresSize() > 0)
+            {
+                DWORD ovLogicalW = 0, ovLogicalH = 0;
+                if (mcTextureManager->tryGetTextureLogicalSize(overlayHandle, ovLogicalW, ovLogicalH))
+                {
+                    const DWORD ovEdge = ovLogicalW * mcTextureManager->getUVScale(overlayHandle);
+                    if (ovEdge > 0)
+                    {
+                        tileMinU = tileMinV = 0.5f / (float)ovEdge;
+                        tileMaxU = tileMaxV = 1.0f - 0.5f / (float)ovEdge;
+                    }
+                }
+            }
+
             // 4 corners — mirror buildTerrainFaceCache (mapdata.cpp:266-275)
             // and fillWorldCacheVertex (mapdata.cpp:125-132). Quad
             // vertices[0..3] == cache worldVertices[0..3] (verified vs
@@ -4546,6 +4633,38 @@ void BuildDecalStaticVBO() {
             c[1].wz = p1->elevation + kOverlayElevOffset;
             c[2].wz = p2->elevation + kOverlayElevOffset;
             c[3].wz = p3->elevation + kOverlayElevOffset;
+
+            // TERRAIN-OVERLAY-V2-DECAL-SUPPRESS-1: when the authored OVERLAY_V2
+            // sidecar covers this tile it already draws the runway/road/cement
+            // here (composited in the LOD-chunk frag). Baking the legacy decal
+            // too draws it TWICE (visible double-draw at e.g. the mc2_01 runway).
+            // Skip the legacy decal for tiles FULLY inside the sidecar's world
+            // bounds so cement/runway draws once. Byte-identical when OVERLAY_V2
+            // is off (sidecar not loaded -> guard false, no tile skipped) and
+            // for tiles OUTSIDE the bounds (fall through -> baked normally, so
+            // no gaps where the sidecar doesn't reach). Bounds-rect v0 (per the
+            // decal recon): assumes the sidecar authors the overlay content
+            // within its bounds; alpha-accurate per-tile suppression is a
+            // follow-up. Env MC2_TERRAIN_OVERLAY_V2_DECAL_SUPPRESS=0 reverts.
+            {
+                static const bool s_decalSuppress = []() {
+                    const char* v = getenv("MC2_TERRAIN_OVERLAY_V2_DECAL_SUPPRESS");
+                    return !(v && v[0] == '0');   // default ON
+                }();
+                if (s_decalSuppress && gos_TerrainLodChunk_OverlaySidecarLoaded()) {
+                    const float* ob = gos_TerrainLodChunk_OverlayBounds();
+                    const float bMinX = ob[0];
+                    const float bMaxY = ob[1];
+                    const float bMaxX = ob[0] + ob[2];
+                    const float bMinY = ob[1] - ob[3];
+                    bool allInside = true;
+                    for (int k = 0; k < 4; ++k) {
+                        if (c[k].wx < bMinX || c[k].wx > bMaxX ||
+                            c[k].wy < bMinY || c[k].wy > bMaxY) { allInside = false; break; }
+                    }
+                    if (allInside) continue;   // sidecar owns this tile's overlay
+                }
+            }
 
             // [TERRAIN_OVERLAY v1] decal_corner_probe — env-gated
             // (MC2_TERRAIN_INDIRECT_TRACE), first few cement tiles only,
@@ -4599,13 +4718,19 @@ void BuildDecalStaticVBO() {
             // 0x02 (Color.a ~= 0.0078), all other tiles -> 0xff (Color.a == 1.0).
             // The vert decodes matByte<250 as the id (else 0 = no material), so the
             // 0xff tiles stay byte-identical to pre-slice behaviour.
+            // ROAD-PBR-FAILSOFT-1: only bake a PBR material id when its albedo
+            // actually loaded (gos_TerrainRoadMaterialReady). Installs without
+            // the hand-placed asphalt/gravel TGAs previously got matId anyway ->
+            // the frag sampled texture 0 -> BLACK roads (looked like the roads
+            // were gone). matId 0xff = legacy tgl/64 road tile path, untouched.
             uint32_t tileArgb;
-            if (decalOverlayType == PAVED_ROAD || decalOverlayType == RUNWAY)
+            if ((decalOverlayType == PAVED_ROAD || decalOverlayType == RUNWAY)
+                && ::gos_TerrainRoadMaterialReady(1))
                 tileArgb = 0x01000000u;       // asphalt (v_matId==1)
-            else if (decalOverlayType == DIRT_ROAD)
+            else if (decalOverlayType == DIRT_ROAD && ::gos_TerrainRoadMaterialReady(2))
                 tileArgb = 0x02000000u;       // gravel  (v_matId==2)
             else
-                tileArgb = 0xffffffffu;       // no overlay material
+                tileArgb = 0xffffffffu;       // no overlay material (legacy tile)
             for (int k = 0; k < 4; ++k) {
                 c[k].fog  = 1.0f;          // frag discards FogValue (terrain_overlay.frag:48)
                 c[k].argb = tileArgb;      // ROAD material id (alpha byte)
@@ -4631,24 +4756,25 @@ void BuildDecalStaticVBO() {
 
             // EXACT reproduction of M2d's per-uvMode tri emit
             // (quad.cpp:2412-2443), but UNCONDITIONAL (no pzTri1/pzTri2).
+            // tileMin/Max == kOld* constants unless OVERLAY-TILE-HIRES is on.
             if (uvMode == BOTTOMLEFT) {
                 // tri1: corners 0,1,3
-                emit(c[0], kOldMinU, kOldMinV,
-                     c[1], kOldMaxU, kOldMinV,
-                     c[3], kOldMinU, kOldMaxV);
+                emit(c[0], tileMinU, tileMinV,
+                     c[1], tileMaxU, tileMinV,
+                     c[3], tileMinU, tileMaxV);
                 // tri2: corners 1,2,3
-                emit(c[1], kOldMaxU, kOldMinV,
-                     c[2], kOldMaxU, kOldMaxV,
-                     c[3], kOldMinU, kOldMaxV);
+                emit(c[1], tileMaxU, tileMinV,
+                     c[2], tileMaxU, tileMaxV,
+                     c[3], tileMinU, tileMaxV);
             } else {
                 // BOTTOMRIGHT — tri1: corners 0,1,2
-                emit(c[0], kOldMinU, kOldMinV,
-                     c[1], kOldMaxU, kOldMinV,
-                     c[2], kOldMaxU, kOldMaxV);
+                emit(c[0], tileMinU, tileMinV,
+                     c[1], tileMaxU, tileMinV,
+                     c[2], tileMaxU, tileMaxV);
                 // tri2: corners 0,2,3
-                emit(c[0], kOldMinU, kOldMinV,
-                     c[2], kOldMaxU, kOldMaxV,
-                     c[3], kOldMinU, kOldMaxV);
+                emit(c[0], tileMinU, tileMinV,
+                     c[2], tileMaxU, tileMaxV,
+                     c[3], tileMinU, tileMaxV);
             }
         }
     }

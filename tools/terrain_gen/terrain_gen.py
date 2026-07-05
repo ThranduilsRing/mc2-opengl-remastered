@@ -78,7 +78,135 @@ def _save_terrain_type(tt: np.ndarray, path: Path) -> None:
     Image.fromarray(rgb, mode='RGB').save(str(path))
 
 
-def _write_fit(path: Path, burnin_name: str, recipe: TerrainRecipe) -> None:
+def _mission_skeleton_blocks() -> str:
+    """Minimal GAME-LAUNCHABLE mission blocks (MISSION-FIT-MIN-BLOCKS-1).
+
+    Mission::init (code/mission.cpp ~2640-2740) derives team/commander counts
+    from [Parts] Part<N> TeamId/CommanderId; with no parts, maxCommanderID
+    stays -1, Team::teams[0]/Commander::commanders[0] are never created, and
+    `Commander::commanders[0]->setTeam(Team::home)` AVs (the gosASSERTs are
+    no-ops in RelWithDebInfo). So an imported map that should be launchable
+    in-game MUST carry at least one part with TeamID=0/CommanderID=0.
+
+    Emits: 1 player part (Werewolf at map center -- cheapest known-good stock
+    unit, cloned from stock mc2_01 Part1) + 1 warrior, empty [Teams], zeroed
+    NavMarkers/Artillery/Objectives, a sane [MissionSettings] (scenarioTuneNum
+    is read there), and [Script] ScenarioScript="m0101" (stock scenario ABL
+    present in mission.fst; same default the editor writes for new maps --
+    ABLi_preProcess STOPs on a missing/empty script name).
+    """
+    return (
+        "\n"
+        "[Warriors]\n"
+        "ul NumWarriors = 1\n"
+        "\n"
+        "[Warrior1]\n"
+        "st Profile = \"pmwflash\"\n"
+        "st Brain = \"PBrain\"\n"
+        "l NumCells = 0\n"
+        "l NumStaticVars = 0\n"
+        "\n"
+        "[Parts]\n"
+        "ul NumParts = 1\n"
+        "\n"
+        "[Part1]\n"
+        "ul ObjectNumber = 1305\n"
+        "ul ControlType = 2\n"
+        "b PlayerPart = TRUE\n"
+        "c MyIcon = 0\n"
+        "c TeamID = 0\n"
+        "c CommanderID = 0\n"
+        "ul Pilot = 1\n"
+        "f PositionX = 0.000000\n"
+        "f PositionY = 0.000000\n"
+        "f Rotation = 0.000000\n"
+        "l Active = 1\n"
+        "l Exists = 1\n"
+        "f Damage = 0.000000\n"
+        "ul BaseColor = -16711936\n"
+        "ul HighlightColor1 = -16760832\n"
+        "ul HighlightColor2 = -16760832\n"
+        "ul SelfRepairBehavior = 1\n"
+        "ul ControlDataType = 1\n"
+        "st ObjectProfile = \"PM207300\"\n"
+        "st CSVFile = \"Werewolf\"\n"
+        "ul VariantNumber = 0\n"
+        "ul SquadNum = 1\n"
+        "ul NumAlternatives = 0\n"
+        "ul AlternativeStartIndex = 0\n"
+        "l[15] IndicesOfAlternatives = -1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,\n"
+        "\n"
+        "[Teams]\n"
+        "\n"
+        "[Commander0Group:0]\n"
+        "l[12] Mates = 1,0,0,0,0,0,0,0,0,0,0,0,\n"
+        "\n"
+        "[NavMarkers]\n"
+        "ul NumNavMarkers = 0\n"
+        "\n"
+        "[Artillery]\n"
+        "l NumLargeStrikes = 0\n"
+        "l NumSmallStrikes = 0\n"
+        "l NumSensorStrikes = 0\n"
+        "l NumCameraStrikes = 0\n"
+        "\n"
+        "[MissionSettings]\n"
+        "st MissionName = \"\"\n"
+        "b MissionNameUseResourceString = FALSE\n"
+        "ul MissionNameResourceStringID = 0\n"
+        "st Author = \"terrain_gen import\"\n"
+        "st Blurb = \"\"\n"
+        "b BlurbUseResourceString = FALSE\n"
+        "ul BlurbResourceStringID = 0\n"
+        "st Blurb2 = \"\"\n"
+        "b Blurb2UseResourceString = FALSE\n"
+        "ul Blurb2ResourceStringID = 0\n"
+        "f TimeLimit = -1.000000\n"
+        "f DropWeightLimit = 300.000000\n"
+        "l ResourcePoints = 100000\n"
+        "ul IsSinglePlayer = 1\n"
+        "ul MaximumNumberOfTeams = 2\n"
+        "ul MaximumNumberOfPlayers = 2\n"
+        "uc scenarioTuneNum = 0\n"
+        "st AVIFilename = \"\"\n"
+        "l AdditionalCBills = 0\n"
+        "ul NumRandomRPbuildings = 0\n"
+        "\n"
+        "[Weather]\n"
+        "ul MaxRainDrops = 0\n"
+        "f StartingRainLevel = 0.000000\n"
+        "l ChanceOfRain = 0\n"
+        "f BaseLighteningChance = 0.000000\n"
+        "\n"
+        "[TheSky]\n"
+        "l SkyNumber = 1\n"
+        "\n"
+        "[Objectives Version]\n"
+        "ul Version = 3\n"
+        "\n"
+        "[Team0Objectives]\n"
+        "ul NumObjectives = 0\n"
+        "\n"
+        "[Team1Objectives]\n"
+        "ul NumObjectives = 0\n"
+        "\n"
+        "[Player0]\n"
+        "ul DefaultTeam = 0\n"
+        "\n"
+        "[Player1]\n"
+        "ul DefaultTeam = 1\n"
+        "\n"
+        "[Music]\n"
+        "uc scenarioTuneNum = 0\n"
+        "\n"
+        "[Script]\n"
+        "st ScenarioScript = \"m0101\"\n"
+        "FITend \n"
+    )
+
+
+def _write_fit(path: Path, burnin_name: str, recipe: TerrainRecipe,
+               mission_ready: bool = False) -> None:
     """Write a minimal FitIniFile that the MC2 editor can open alongside a .pak.
 
     The editor (EditorData::initTerrainFromPCV) requires:
@@ -87,6 +215,11 @@ def _write_fit(path: Path, burnin_name: str, recipe: TerrainRecipe) -> None:
 
     Everything else (camera, warriors, objects) the editor builds fresh on first save.
     burnin_name is the stem only (no extension), e.g. "my_map" -> loads "my_map.burnin.tga".
+
+    mission_ready=True additionally appends the minimal GAME-launchable mission
+    skeleton (player part/commander/team/script -- see _mission_skeleton_blocks);
+    without it the .fit is editor-only and Mission::init crashes with no
+    commanders. Default False keeps the editor-import path byte-identical.
     """
     world_half = recipe.size * 128 * 0.5   # worldUnitsPerVertex=128
     content = (
@@ -102,6 +235,8 @@ def _write_fit(path: Path, burnin_name: str, recipe: TerrainRecipe) -> None:
         f"f TerrainMinX = {-world_half:.6f}\n"
         f"f TerrainMinY = {world_half:.6f}\n"
     )
+    if mission_ready:
+        content += _mission_skeleton_blocks()
     path.write_text(content, encoding='latin-1')
 
 

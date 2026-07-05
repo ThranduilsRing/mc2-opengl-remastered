@@ -102,6 +102,12 @@ endif()
 # ---------------------------------------------------------------------------
 option(MC2_ASAN "Build with MSVC AddressSanitizer (parallel dev build)" OFF)
 option(MC2_IMGUI "Enable in-game ImGui UI" OFF)
+# MC2_EDITOR: build the MFC/Windows-only Mission Editor (EditRel). The editor is
+# ImGui-gated (editor/CMakeLists.txt FATAL_ERRORs if NOT MC2_IMGUI). Default ON so
+# every existing build (build64 shipping, build64_vulkan, EditRel) is UNCHANGED.
+# Turn OFF for a pure-mc2 build with MC2_IMGUI=OFF (e.g. the Vulkan parity island),
+# which otherwise cannot exist because the editor forces MC2_IMGUI=ON.
+option(MC2_EDITOR "Build the MC2 Mission Editor (Windows-only, requires MC2_IMGUI=ON)" ON)
 # DETERMINISTIC-RNG-1: compile-in the per-gos_rand() "RNG" JSONL trace. Default OFF
 # so stock builds pay nothing; runtime still requires MC2_DETERMINISTIC_RNG=1 +
 # MC2_DIAG_TAGS=RNG. Turn ON only for determinism-proof builds.
@@ -117,20 +123,68 @@ if(MC2_VULKAN)
     message(STATUS "MC2_VULKAN=ON -- Vulkan found: ${Vulkan_LIBRARY} (include ${Vulkan_INCLUDE_DIR})")
 endif()
 
+# VULKAN-EDGE-FOG-ISLAND-2a: first REAL Vulkan render work in the frame loop.
+# Compiles GameOS/gameos/vulkan_edge_fog_island.cpp INTO gameos (the main mc2
+# target), gated behind #ifdef MC2_VULKAN_ISLAND. Default OFF -> byte-identical
+# to the non-island build. Requires MC2_VULKAN=ON (volk + VMA + headers). The
+# island is off at runtime too unless MC2_VULKAN_EDGE_FOG_ISLAND=1; on lazy-init
+# failure it fails soft to the GL edge-fog path.
+option(MC2_VULKAN_ISLAND "Compile the Vulkan edge-fog island into gameos (VULKAN-EDGE-FOG-ISLAND-2a)" OFF)
+if(MC2_VULKAN_ISLAND AND NOT MC2_VULKAN)
+    message(FATAL_ERROR "MC2_VULKAN_ISLAND=ON requires MC2_VULKAN=ON (volk/VMA/Vulkan headers).")
+endif()
+
 # VULKAN-SHADER-TOOLCHAIN-1: standalone headless probe harness (ON only).
 # Links ONLY the Vulkan loader + the skeleton TU -- no GL/SDL/window/game.
 # Verifies the SPIR-V shader-module load path against the compiled .spv.
 # OFF -> target does not exist.
 if(MC2_VULKAN)
+    # VK-BOOTSTRAP-INTEGRATE-1: the swapchain probe needs a hidden SDL Vulkan
+    # window + surface, so this target now links SDL2. find_package(SDL2) runs
+    # again lower in this file for the main build; calling it here (config mode)
+    # makes the SDL2::SDL2 imported target available at probe-definition time.
+    find_package(SDL2 REQUIRED CONFIG REQUIRED COMPONENTS SDL2)
     add_executable(vulkan_shader_probe
         tools/vulkan_shader_probe_main.cpp
-        GameOS/gameos/vulkan_backend_skeleton.cpp)
-    target_include_directories(vulkan_shader_probe PRIVATE GameOS/gameos)
+        GameOS/gameos/vulkan_backend_skeleton.cpp
+        # VK-BOOTSTRAP-INTEGRATE-1: swapchain probe TU + vendored vk-bootstrap impl.
+        GameOS/gameos/vulkan_swapchain_probe.cpp
+        # VULKAN-SWAPCHAIN-PRESENT-1: Layer-5 swapchain PRESENT path.
+        GameOS/gameos/vulkan_swapchain_present.cpp
+        3rdparty/vk_bootstrap/VkBootstrap.cpp
+        # VULKAN-VMA-INTEGRATION-1: single VMA_IMPLEMENTATION TU.
+        GameOS/gameos/vma_impl.cpp
+        # VULKAN-VOLK-LOADER-1: volk meta-loader (dynamic Vulkan load; no hard
+        # link to vulkan-1.dll). Compiled ONLY here under MC2_VULKAN.
+        3rdparty/volk/volk.c)
+    target_include_directories(vulkan_shader_probe PRIVATE GameOS/gameos
+        # VULKAN-VMA-INTEGRATION-1: vendored header-only VMA (3rdparty/vma).
+        "${CMAKE_SOURCE_DIR}/3rdparty/vma"
+        # VULKAN-VOLK-LOADER-1: vendored volk (volk.h/volk.c).
+        "${CMAKE_SOURCE_DIR}/3rdparty/volk"
+        # VK-BOOTSTRAP-INTEGRATE-1: vendored vk-bootstrap (SwapchainBuilder).
+        "${CMAKE_SOURCE_DIR}/3rdparty/vk_bootstrap"
+        # VK-BOOTSTRAP-INTEGRATE-1: SDL2 headers (SDL_vulkan.h) for the probe.
+        "${CMAKE_SOURCE_DIR}/3rdparty/include")
     target_compile_definitions(vulkan_shader_probe PRIVATE MC2_VULKAN)
-    target_link_libraries(vulkan_shader_probe PRIVATE Vulkan::Vulkan)
+    # VULKAN-VOLK-LOADER-1: link Vulkan HEADERS only -- volk owns runtime
+    # dispatch via LoadLibrary("vulkan-1.dll"), so we must NOT link the loader
+    # import lib (Vulkan::Vulkan). Vulkan::Headers gives include paths with no
+    # link dependency, which is exactly the point of the volk indirection.
+    # VK-BOOTSTRAP-INTEGRATE-1: SDL2 for the hidden Vulkan window/surface.
+    target_link_libraries(vulkan_shader_probe PRIVATE Vulkan::Headers SDL2::SDL2)
     if(TARGET mc2_vulkan_shaders)
         add_dependencies(vulkan_shader_probe mc2_vulkan_shaders)
     endif()
+    # VK-BOOTSTRAP-INTEGRATE-1: the probe dynamically links SDL2, so SDL2.dll
+    # must sit beside vulkan_shader_probe.exe. Copy it post-build (anchored on
+    # the SDL2::SDL2 imported target's own dll location).
+    add_custom_command(TARGET vulkan_shader_probe POST_BUILD
+        COMMAND ${CMAKE_COMMAND} -E copy_if_different
+            "$<TARGET_FILE:SDL2::SDL2>"
+            "$<TARGET_FILE_DIR:vulkan_shader_probe>"
+        COMMENT "VK-BOOTSTRAP-INTEGRATE-1: copy SDL2.dll beside vulkan_shader_probe.exe"
+        VERBATIM)
 endif()
 
 if(MC2_ASAN)
@@ -365,6 +419,7 @@ set(SOURCES
     "code/gameobj.cpp"
     "code/gate.cpp"
     "code/goal.cpp"
+    "code/ground_contact_blob.cpp"
     "code/group.cpp"
     "code/gvehicl.cpp"
     "code/light.cpp"
@@ -387,6 +442,7 @@ set(SOURCES
     "code/brain_symbol_resolve.cpp"
     "code/brain_missionfit_oporbd.cpp"
     "code/brain_tactic_select.cpp"
+    "code/fitblockwriter.cpp"
     "code/warrior.cpp"
     "code/weaponbolt.cpp"
     "code/ablmc2.cpp"
@@ -492,6 +548,36 @@ add_custom_target(build_fingerprint
 
 add_executable(mc2 ${SOURCES} ${MAIN_SRC})
 add_dependencies(mc2 build_fingerprint)
+# VULKAN-EDGE-FOG-ISLAND-2a: ensure the SPIR-V shaders (edge_fog.{vert,frag}.spv,
+# fullscreen.*) are baked when building the mc2 target directly (mc2_vulkan_shaders
+# is an ALL target, but --target mc2 does not pull ALL). Only exists under MC2_VULKAN.
+if(MC2_VULKAN_ISLAND AND TARGET mc2_vulkan_shaders)
+    add_dependencies(mc2 mc2_vulkan_shaders)
+endif()
+# VULKAN-EDGE-FOG-ISLAND-2b: gos_postprocess.h changes the gosPostProcess class
+# LAYOUT under #ifdef MC2_VULKAN_ISLAND (adds vkFogIsland_ + method decls). The
+# macro is PUBLIC on gameos, but gameos_main / mc2 do NOT consume gameos's usage
+# requirements (gameos_main has no target_link_libraries(gameos)), so define it
+# directly on the TUs that include the header, or getSceneFBO()/getWidth()/
+# getHeight() read the wrong offset (ODR) -> garbage FBO -> visual capture never
+# fires. Harmless when the header block declares only an opaque pointer + decls.
+#
+# VULKAN-ISLAND-ODR-HARDEN-1: gos_postprocess.h is ALSO included by TUs in mclib,
+# renderworld, gameadapters and gui_runtime (all of which link into mc2). Those
+# targets do NOT consume gameos's PUBLIC usage requirement (they don't
+# target_link_libraries(gameos)), so without the define here they would see the
+# smaller (member-absent) gosPostProcess layout -> shifted offsets for any member
+# declared after vkFogIsland_ -> ODR mismatch in the ON build. Propagate the
+# define to EVERY consuming target so the layout is uniform across the whole link.
+# Only added when the option is ON, so build64 (option OFF) stays byte-identical.
+if(MC2_VULKAN_ISLAND)
+    target_compile_definitions(gameos_main PRIVATE MC2_VULKAN_ISLAND)
+    target_compile_definitions(mc2 PRIVATE MC2_VULKAN_ISLAND)
+    target_compile_definitions(mclib PRIVATE MC2_VULKAN_ISLAND)
+    target_compile_definitions(renderworld PRIVATE MC2_VULKAN_ISLAND)
+    target_compile_definitions(gameadapters PRIVATE MC2_VULKAN_ISLAND)
+    target_compile_definitions(gui_runtime PRIVATE MC2_VULKAN_ISLAND)
+endif()
 target_link_libraries(mc2 mclib fx_trace particles gosfx mlr stuff gui gameos gameos_main windows ZLIB::ZLIB ${SDL2_LIBRARIES} GLEW::GLEW SDL2_mixer::SDL2_mixer ${ADDITIONAL_LIBS} OpenGL::GL renderworld gameadapters editorbridge imgui gui_runtime)
 
 if(MC2_IMGUI)
@@ -635,7 +721,11 @@ add_subdirectory("./text_tool" "./out/text_tool")
 # itself with if(NOT MSVC) return() so this is safe on all platforms.
 # Scoped import from PR #36: editor tree + gameos_editor only; PR's
 # terrain-shader/.fit/resource rework deliberately NOT merged.
-add_subdirectory("./editor" "./out/editor")
+# MC2_EDITOR gate: editor is ImGui-coupled and forces MC2_IMGUI=ON. Skipping it
+# lets mc2 build MC2_IMGUI=OFF (Vulkan parity island). Default ON = no change.
+if(MC2_EDITOR)
+    add_subdirectory("./editor" "./out/editor")
+endif()
 
 # -----------------------------------------------------------------------
 # Shader contract reflection CI (Tier 1.2)

@@ -2,6 +2,12 @@
 
 **Date:** 2026-06-10. Worktree: nifty-mendeleev. Companion: [gosfx-animation-lifecycle-recon.md](gosfx-animation-lifecycle-recon.md).
 
+> **FX-DEFS-SIDECAR-1 update:** retuning/replacing an **existing** effect's texture/blend/color/
+> scale no longer requires the whole-blob overlay below — see
+> [modding-effects.md](modding-effects.md) for the per-effect `.fxdef.json` sidecar
+> (`MC2_FX_DEFS=1`). The whole-blob `mc2.fx` overlay + `tools/mc2fx/` CLI documented in this
+> file are still the only path to **add a brand-new effect name** (Part 2 below).
+
 ## Two independent problems
 1. **BIND** an effect to a weapon — pure data edit, **works today**.
 2. **AUTHOR** a brand-new effect spec — byte layer exists, **no modder-facing tool exists**.

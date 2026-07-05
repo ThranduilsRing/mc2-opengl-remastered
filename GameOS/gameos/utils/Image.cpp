@@ -172,6 +172,118 @@ bool Image::loadPNG(const char *fileName)
 	return loadWIC(fileName);
 }
 
+// Memory-based PNG decode.  The MC2 texture cache (mcTextureManager) stores
+// raw file bytes and creates GPU textures later via gos_NewTextureFromMemory;
+// that path historically assumed TGA bytes.  The data/defs UI Editor pages
+// reference .png art, so the from-memory path needs a PNG decoder too.
+bool Image::loadPNG(const unsigned char* mem, size_t len)
+{
+	return loadWICFromMemory(mem, len);
+}
+
+bool Image::loadWICFromMemory(const unsigned char* mem, size_t len)
+{
+#ifdef _WIN32
+	clear();
+
+	if (!mem || len == 0)
+		return false;
+
+	HRESULT comInit = CoInitializeEx(NULL, COINIT_MULTITHREADED);
+	const bool shouldUninitializeCom = SUCCEEDED(comInit);
+	if (comInit == RPC_E_CHANGED_MODE)
+		comInit = S_OK;
+
+	if (FAILED(comInit))
+		return false;
+
+	IWICImagingFactory* factory = NULL;
+	IWICStream* stream = NULL;
+	IWICBitmapDecoder* decoder = NULL;
+	IWICBitmapFrameDecode* frame = NULL;
+	IWICFormatConverter* converter = NULL;
+
+	bool ok = false;
+
+	HRESULT hr = CoCreateInstance(
+		CLSID_WICImagingFactory,
+		NULL,
+		CLSCTX_INPROC_SERVER,
+		IID_PPV_ARGS(&factory));
+
+	if (SUCCEEDED(hr))
+		hr = factory->CreateStream(&stream);
+
+	if (SUCCEEDED(hr))
+		hr = stream->InitializeFromMemory(
+			const_cast<BYTE*>(reinterpret_cast<const BYTE*>(mem)),
+			static_cast<DWORD>(len));
+
+	if (SUCCEEDED(hr))
+		hr = factory->CreateDecoderFromStream(
+			stream,
+			NULL,
+			WICDecodeMetadataCacheOnLoad,
+			&decoder);
+
+	if (SUCCEEDED(hr))
+		hr = decoder->GetFrame(0, &frame);
+
+	UINT decodedWidth = 0;
+	UINT decodedHeight = 0;
+	if (SUCCEEDED(hr))
+		hr = frame->GetSize(&decodedWidth, &decodedHeight);
+
+	if (SUCCEEDED(hr))
+		hr = factory->CreateFormatConverter(&converter);
+
+	if (SUCCEEDED(hr))
+		hr = converter->Initialize(
+		frame,
+		GUID_WICPixelFormat32bppRGBA,
+		WICBitmapDitherTypeNone,
+		NULL,
+		0.0,
+		WICBitmapPaletteTypeCustom);
+
+	if (SUCCEEDED(hr) && decodedWidth > 0 && decodedHeight > 0)
+	{
+		const UINT stride = decodedWidth * 4;
+		const UINT imageBytes = stride * decodedHeight;
+		unsigned char* decodedPixels = new unsigned char[imageBytes];
+
+		hr = converter->CopyPixels(NULL, stride, imageBytes, decodedPixels);
+		if (SUCCEEDED(hr))
+		{
+			pixels = decodedPixels;
+			width = decodedWidth;
+			height = decodedHeight;
+			format = FORMAT_RGBA8;
+			ok = true;
+		}
+		else
+		{
+			delete[] decodedPixels;
+		}
+	}
+
+	if (converter) converter->Release();
+	if (frame) frame->Release();
+	if (decoder) decoder->Release();
+	if (stream) stream->Release();
+	if (factory) factory->Release();
+
+	if (shouldUninitializeCom)
+		CoUninitialize();
+
+	return ok;
+#else
+	(void)mem;
+	(void)len;
+	return false;
+#endif
+}
+
 bool Image::loadWIC(const char *fileName)
 {
 #ifdef _WIN32

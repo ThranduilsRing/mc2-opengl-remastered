@@ -132,6 +132,10 @@ static const bool s_spotlightRealTrace = (getenv("MC2_SPOTLIGHT_REAL_TRACE") != 
 #include <intrin.h>  // __rdtsc (MSVC intrinsic)
 #include "mc2_hitch_trace.h"
 
+// SP-BATCHER-ALPHASCAN-GATE-1: see header. Starts at 1 so a fresh scan (cached
+// gen 0) always runs its first pass regardless of any early destruction events.
+std::atomic<uint64_t> g_staticPropAlphaGeneration{1};
+
 static const bool s_spflushCostSplitEnabled = []() {
     const char* v = getenv("MC2_STATIC_PROP_FLUSH_COST_SPLIT");
     return v && v[0] == '1' && v[1] == '\0';
@@ -314,6 +318,42 @@ float g_iblShStrength = []() -> float {
     float f = (float)std::atof(v);
     if (f < 0.0f) f = 0.0f;
     if (f > 3.0f) f = 3.0f;
+    return f;
+}();
+
+// TERRAIN-DECAL-FILL-1: ambient/fill floor for the cliff-wall mesh-decal's
+// shadow side. static_prop lighting is max(N·L,0) with no ambient floor, so a
+// face pointing away from the sun goes to ~0 (black void). This uniform is a
+// per-fragment floor applied ONLY to fragments whose instance carries the
+// kFlagDecalFill bit (bit 3), set on the MarbleCliff decal instances at
+// registration (bdactor.cpp). All other static props (mechs/buildings/trees)
+// never carry that bit, so they are byte-identical regardless of this value.
+// Default 0.20 (modest — shadow side reads as dark rock, not black; lit side
+// unaffected because litRgb is already >= the floor there). MC2_TERRAIN_DECAL_FILL
+// overrides (clamped 0..1). External linkage so GuiRuntime.cpp can drive a slider.
+float g_terrainDecalFill = []() -> float {
+    const char* v = std::getenv("MC2_TERRAIN_DECAL_FILL");
+    if (!v || !v[0]) return 0.20f;
+    float f = (float)std::atof(v);
+    if (f < 0.0f) f = 0.0f;
+    if (f > 1.0f) f = 1.0f;
+    return f;
+}();
+
+// TERRAIN-DECAL-COLORBLEND-1: RVT-style terrain-color match for the cliff mesh
+// decal. Blends the flagged decal's albedo toward the terrain COLORMAP sampled
+// at the decal's world-XY (same atlas + world->UV transform the terrain chunk
+// shader uses). Applied ONLY to kFlagDecalFill (bit 3) fragments in the shader;
+// 0.0 (default when MC2_TERRAIN_DECAL_COLORBLEND unset) OR flag-unset OR
+// blend==0 -> byte-identical for every other static prop AND the decal itself.
+// Default 0.35 (subtle base-color pull toward terrain). Env override clamped
+// 0..1. External linkage so GuiRuntime.cpp can drive the "Color blend" slider.
+float g_terrainDecalColorBlend = []() -> float {
+    const char* v = std::getenv("MC2_TERRAIN_DECAL_COLORBLEND");
+    if (!v || !v[0]) return 0.35f;
+    float f = (float)std::atof(v);
+    if (f < 0.0f) f = 0.0f;
+    if (f > 1.0f) f = 1.0f;
     return f;
 }();
 
@@ -1005,11 +1045,21 @@ struct ProgramLocs {
     GLint ormSampleEnable     = -1;   // STATICPROP-MATERIAL-ORM-1: u_ormSampleEnable (int)
     GLint pathTint            = -1;   // MC2_SHADER_PATH_TINT debug: u_pathTint (int)
     GLint terrainSunMC2       = -1;   // GREYBEARD-DIFFUSE-TEST: u_terrainSunMC2 (vec3)
+    GLint terrainDecalFill    = -1;   // TERRAIN-DECAL-FILL-1: u_terrainDecalFill (float)
+    // TERRAIN-DECAL-COLORBLEND-1: colormap sampler + atlas UV params + blend.
+    GLint terrainColormap        = -1;  // u_terrainColormap (sampler2D)
+    GLint decalAtlasTLX          = -1;  // u_decalAtlasTLX (float)
+    GLint decalAtlasTLY          = -1;  // u_decalAtlasTLY (float)
+    GLint decalAtlasOOW          = -1;  // u_decalAtlasOOW (float)
+    GLint terrainDecalColorBlend = -1;  // u_terrainDecalColorBlend (float)
 };
 
 // STATICPROP-MATERIAL-ORM-1 — texture unit reserved for the per-bucket ORM
 // sibling array. Unit 0 stays the albedo array (u_texArr); unit 1 is ORM.
 static constexpr GLuint kOrmTexUnit = 1;
+// TERRAIN-DECAL-COLORBLEND-1 — texture unit for the terrain colormap atlas,
+// sampled only by the flagged cliff decal. Clear of albedo(0)/ORM(1).
+static constexpr GLuint kColormapTexUnit = 4;
 static ProgramLocs s_locsLegacy;
 static ProgramLocs s_locsCoalesce;
 
@@ -1318,6 +1368,14 @@ void loadProgramsIfNeeded() {
     s_locsLegacy.pathTint          = glGetUniformLocation(s_staticPropProgram, "u_pathTint");
     // GREYBEARD-DIFFUSE-TEST: terrain sun (raw MC2) for forced-diffuse probe.
     s_locsLegacy.terrainSunMC2     = glGetUniformLocation(s_staticPropProgram, "u_terrainSunMC2");
+    // TERRAIN-DECAL-FILL-1: cliff-decal shadow-side ambient floor (flag-gated in frag).
+    s_locsLegacy.terrainDecalFill  = glGetUniformLocation(s_staticPropProgram, "u_terrainDecalFill");
+    // TERRAIN-DECAL-COLORBLEND-1: colormap sampler + atlas UV params + blend (flag-gated in frag).
+    s_locsLegacy.terrainColormap        = glGetUniformLocation(s_staticPropProgram, "u_terrainColormap");
+    s_locsLegacy.decalAtlasTLX          = glGetUniformLocation(s_staticPropProgram, "u_decalAtlasTLX");
+    s_locsLegacy.decalAtlasTLY          = glGetUniformLocation(s_staticPropProgram, "u_decalAtlasTLY");
+    s_locsLegacy.decalAtlasOOW          = glGetUniformLocation(s_staticPropProgram, "u_decalAtlasOOW");
+    s_locsLegacy.terrainDecalColorBlend = glGetUniformLocation(s_staticPropProgram, "u_terrainDecalColorBlend");
     // V-IBL-STATIC-1: SH-L2 coeffs + strength (default strength 0.0 = OFF).
     s_locsLegacy.iblSh             = glGetUniformLocation(s_staticPropProgram, "u_iblSh");
     s_locsLegacy.iblShStrength     = glGetUniformLocation(s_staticPropProgram, "u_iblShStrength");
@@ -1363,6 +1421,14 @@ void loadProgramsIfNeeded() {
             s_locsCoalesce.pathTint          = glGetUniformLocation(s_staticPropProgramCoalesce, "u_pathTint");
             // GREYBEARD-DIFFUSE-TEST: terrain sun (raw MC2) for forced-diffuse probe.
             s_locsCoalesce.terrainSunMC2     = glGetUniformLocation(s_staticPropProgramCoalesce, "u_terrainSunMC2");
+            // TERRAIN-DECAL-FILL-1: cliff-decal shadow-side ambient floor (flag-gated in frag).
+            s_locsCoalesce.terrainDecalFill  = glGetUniformLocation(s_staticPropProgramCoalesce, "u_terrainDecalFill");
+            // TERRAIN-DECAL-COLORBLEND-1: colormap sampler + atlas UV params + blend (flag-gated in frag).
+            s_locsCoalesce.terrainColormap        = glGetUniformLocation(s_staticPropProgramCoalesce, "u_terrainColormap");
+            s_locsCoalesce.decalAtlasTLX          = glGetUniformLocation(s_staticPropProgramCoalesce, "u_decalAtlasTLX");
+            s_locsCoalesce.decalAtlasTLY          = glGetUniformLocation(s_staticPropProgramCoalesce, "u_decalAtlasTLY");
+            s_locsCoalesce.decalAtlasOOW          = glGetUniformLocation(s_staticPropProgramCoalesce, "u_decalAtlasOOW");
+            s_locsCoalesce.terrainDecalColorBlend = glGetUniformLocation(s_staticPropProgramCoalesce, "u_terrainDecalColorBlend");
             // V-IBL-STATIC-1: SH-L2 coeffs + strength (default strength 0.0 = OFF).
             s_locsCoalesce.iblSh             = glGetUniformLocation(s_staticPropProgramCoalesce, "u_iblSh");
             s_locsCoalesce.iblShStrength     = glGetUniformLocation(s_staticPropProgramCoalesce, "u_iblShStrength");
@@ -5951,37 +6017,59 @@ void GpuStaticPropBatcher::flush(const RenderSnapshot* snap) {
             if (s_lastSeenMaterialFlags.size() != pktCount) {
                 s_lastSeenMaterialFlags.assign(pktCount, -1);
             }
-            bool anyChanged = false;
-            for (size_t i = 0; i < pktCount; ++i) {
-                const uint32_t globalPktIdx = s_sortedPacketOrder[i];
-                if (globalPktIdx >= s_packets.size()) continue;
-                const auto& pkt = s_packets[globalPktIdx];
-                int32_t flags = (pkt.materialFlags & STATIC_PROP_FLAG_ALPHA_TEST)
-                                ? STATIC_PROP_FLAG_ALPHA_TEST : 0;
-                if (flags == 0 && pkt.owningTypeID < s_types.size()) {
-                    const TG_TypeShape* src = s_types[pkt.owningTypeID].source;
-                    if (src && src->listOfTextures &&
-                        pkt.textureSlot < src->numTextures &&
-                        src->listOfTextures[pkt.textureSlot].textureAlpha) {
-                        flags = STATIC_PROP_FLAG_ALPHA_TEST;
+            // SP-BATCHER-ALPHASCAN-GATE-1: the per-packet OR-reduce scan below is
+            // frame-constant except immediately after a destruction/damage event
+            // (which flips a type's texture alpha via TG_TypeMultiShape::SetTextureAlpha
+            // and bumps g_staticPropAlphaGeneration). When the gate is armed and the
+            // generation is unchanged since the last scan AND the packet count is
+            // unchanged (buffer layout stable), skip the whole scan — the SSBO already
+            // holds the correct flags from the last event. Default OFF => scan always
+            // runs (byte-identical). First scan always runs (cached gen 0 != live >=1).
+            static const bool s_alphaScanGate = []() {
+                const char* v = getenv("MC2_SP_ALPHASCAN_GATE");
+                return v && v[0] != '0';
+            }();
+            static uint64_t s_lastScannedAlphaGen = 0;
+            static size_t   s_lastScannedPktCount = (size_t)-1;
+            const uint64_t liveAlphaGen = g_staticPropAlphaGeneration.load(std::memory_order_relaxed);
+            const bool alphaScanSkip = s_alphaScanGate &&
+                s_lastScannedAlphaGen == liveAlphaGen &&
+                s_lastScannedPktCount == pktCount;
+            if (!alphaScanSkip) {
+                s_lastScannedAlphaGen = liveAlphaGen;
+                s_lastScannedPktCount = pktCount;
+                bool anyChanged = false;
+                for (size_t i = 0; i < pktCount; ++i) {
+                    const uint32_t globalPktIdx = s_sortedPacketOrder[i];
+                    if (globalPktIdx >= s_packets.size()) continue;
+                    const auto& pkt = s_packets[globalPktIdx];
+                    int32_t flags = (pkt.materialFlags & STATIC_PROP_FLAG_ALPHA_TEST)
+                                    ? STATIC_PROP_FLAG_ALPHA_TEST : 0;
+                    if (flags == 0 && pkt.owningTypeID < s_types.size()) {
+                        const TG_TypeShape* src = s_types[pkt.owningTypeID].source;
+                        if (src && src->listOfTextures &&
+                            pkt.textureSlot < src->numTextures &&
+                            src->listOfTextures[pkt.textureSlot].textureAlpha) {
+                            flags = STATIC_PROP_FLAG_ALPHA_TEST;
+                        }
+                    }
+                    if (s_lastSeenMaterialFlags[i] != flags) {
+                        s_lastSeenMaterialFlags[i] = flags;
+                        anyChanged = true;
                     }
                 }
-                if (s_lastSeenMaterialFlags[i] != flags) {
-                    s_lastSeenMaterialFlags[i] = flags;
-                    anyChanged = true;
+                if (anyChanged && s_perDrawSsbo) {
+                    const size_t entryStride = sizeof(PerDrawEntry);
+                    const size_t flagOffset  = offsetof(PerDrawEntry, materialFlags);
+                    glBindBuffer(GL_SHADER_STORAGE_BUFFER, s_perDrawSsbo);
+                    for (size_t i = 0; i < pktCount; ++i) {
+                        const int32_t f = s_lastSeenMaterialFlags[i];
+                        MC2_GL_BufferSubData(GL_SHADER_STORAGE_BUFFER,
+                                        static_cast<GLintptr>(i * entryStride + flagOffset),
+                                        sizeof(int32_t), &f);
+                    }
+                    glBindBuffer(GL_SHADER_STORAGE_BUFFER, 0);
                 }
-            }
-            if (anyChanged && s_perDrawSsbo) {
-                const size_t entryStride = sizeof(PerDrawEntry);
-                const size_t flagOffset  = offsetof(PerDrawEntry, materialFlags);
-                glBindBuffer(GL_SHADER_STORAGE_BUFFER, s_perDrawSsbo);
-                for (size_t i = 0; i < pktCount; ++i) {
-                    const int32_t f = s_lastSeenMaterialFlags[i];
-                    MC2_GL_BufferSubData(GL_SHADER_STORAGE_BUFFER,
-                                    static_cast<GLintptr>(i * entryStride + flagOffset),
-                                    sizeof(int32_t), &f);
-                }
-                glBindBuffer(GL_SHADER_STORAGE_BUFFER, 0);
             }
         }
         // ---- Step 11.7 coalesce draw branch ----
@@ -6058,6 +6146,37 @@ void GpuStaticPropBatcher::flush(const RenderSnapshot* snap) {
         if (s_locsCoalesce.ambientV1Strength >= 0)
             glUniform1f       (s_locsCoalesce.ambientV1Strength,
                                s_staticPropAmbientV1Enabled ? 1.0f : 0.0f);
+        // TERRAIN-DECAL-FILL-1: cliff-decal shadow-side ambient floor. Uploaded
+        // globally but the frag only applies it to fragments whose instance
+        // carries kFlagDecalFill (bit 3) — set solely on MarbleCliff decal
+        // instances. Other props are byte-identical regardless of this value.
+        if (s_locsCoalesce.terrainDecalFill >= 0)
+            glUniform1f       (s_locsCoalesce.terrainDecalFill, g_terrainDecalFill);
+        // TERRAIN-DECAL-COLORBLEND-1: bind the terrain colormap atlas + atlas-UV
+        // params so the flagged cliff decal can pull its albedo toward the
+        // surrounding terrain colour. Only touches GL texture state when the
+        // feature is active (blend>0); with blend==0 (default) we still upload
+        // the 0.0 scalar so the shader's flag-gated branch is a no-op and every
+        // prop stays byte-identical.
+        if (s_locsCoalesce.terrainDecalColorBlend >= 0)
+            glUniform1f       (s_locsCoalesce.terrainDecalColorBlend, g_terrainDecalColorBlend);
+        if (g_terrainDecalColorBlend > 0.0f) {
+            extern GLuint gos_terrain_indirect_getAtlasGLTex();
+            extern float  gos_terrain_indirect_getAtlasMapTopLeftX();
+            extern float  gos_terrain_indirect_getAtlasMapTopLeftY();
+            extern float  gos_terrain_indirect_getAtlasOneOverWorldUnits();
+            glActiveTexture(GL_TEXTURE0 + kColormapTexUnit);
+            glBindTexture(GL_TEXTURE_2D, gos_terrain_indirect_getAtlasGLTex());
+            glActiveTexture(GL_TEXTURE0);
+            if (s_locsCoalesce.terrainColormap >= 0)
+                glUniform1i(s_locsCoalesce.terrainColormap, static_cast<GLint>(kColormapTexUnit));
+            if (s_locsCoalesce.decalAtlasTLX >= 0)
+                glUniform1f(s_locsCoalesce.decalAtlasTLX, gos_terrain_indirect_getAtlasMapTopLeftX());
+            if (s_locsCoalesce.decalAtlasTLY >= 0)
+                glUniform1f(s_locsCoalesce.decalAtlasTLY, gos_terrain_indirect_getAtlasMapTopLeftY());
+            if (s_locsCoalesce.decalAtlasOOW >= 0)
+                glUniform1f(s_locsCoalesce.decalAtlasOOW, gos_terrain_indirect_getAtlasOneOverWorldUnits());
+        }
         // V-MATERIAL-DEBUG-1: per-frag material debug view. Default 0 = OFF;
         // shader skips entire debug branch when uniform == 0 (byte-identical
         // pixel invariant — proof at static_prop.frag `if (u_debugMaterialMode != 0)`).
@@ -7206,6 +7325,31 @@ void GpuStaticPropBatcher::flush(const RenderSnapshot* snap) {
             if (s_locsLegacy.ambientV1Strength >= 0)
                 glUniform1f(s_locsLegacy.ambientV1Strength,
                             s_staticPropAmbientV1Enabled ? 1.0f : 0.0f);
+            // TERRAIN-DECAL-FILL-1: cliff-decal shadow-side ambient floor (legacy
+            // program). Frag applies it only to kFlagDecalFill (bit 3) fragments.
+            if (s_locsLegacy.terrainDecalFill >= 0)
+                glUniform1f(s_locsLegacy.terrainDecalFill, g_terrainDecalFill);
+            // TERRAIN-DECAL-COLORBLEND-1: colormap atlas + UV params + blend
+            // (legacy program). Same flag-gated no-op contract as coalesce.
+            if (s_locsLegacy.terrainDecalColorBlend >= 0)
+                glUniform1f(s_locsLegacy.terrainDecalColorBlend, g_terrainDecalColorBlend);
+            if (g_terrainDecalColorBlend > 0.0f) {
+                extern GLuint gos_terrain_indirect_getAtlasGLTex();
+                extern float  gos_terrain_indirect_getAtlasMapTopLeftX();
+                extern float  gos_terrain_indirect_getAtlasMapTopLeftY();
+                extern float  gos_terrain_indirect_getAtlasOneOverWorldUnits();
+                glActiveTexture(GL_TEXTURE0 + kColormapTexUnit);
+                glBindTexture(GL_TEXTURE_2D, gos_terrain_indirect_getAtlasGLTex());
+                glActiveTexture(GL_TEXTURE0);
+                if (s_locsLegacy.terrainColormap >= 0)
+                    glUniform1i(s_locsLegacy.terrainColormap, static_cast<GLint>(kColormapTexUnit));
+                if (s_locsLegacy.decalAtlasTLX >= 0)
+                    glUniform1f(s_locsLegacy.decalAtlasTLX, gos_terrain_indirect_getAtlasMapTopLeftX());
+                if (s_locsLegacy.decalAtlasTLY >= 0)
+                    glUniform1f(s_locsLegacy.decalAtlasTLY, gos_terrain_indirect_getAtlasMapTopLeftY());
+                if (s_locsLegacy.decalAtlasOOW >= 0)
+                    glUniform1f(s_locsLegacy.decalAtlasOOW, gos_terrain_indirect_getAtlasOneOverWorldUnits());
+            }
             // V-MATERIAL-DEBUG-1: per-frag material debug view (legacy program).
             // Default 0 = OFF; shader skips entire debug branch when 0.
             if (s_locsLegacy.debugMaterialMode >= 0)

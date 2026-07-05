@@ -1,0 +1,1419 @@
+﻿// MC2R ImGui FIT generated from legacy UI FIT.
+// Source: data/defs/ui/legacy/game/mcl_mp_loadmap.fit
+// Legacy files remain source truth only; edit the generated ImGui FIT.
+
+GuiPage {
+    key = "game.mcl_mp_loadmap"
+    title = "Game Mcl Mp Loadmap"
+    sourceLegacyFit = "data/defs/ui/legacy/game/mcl_mp_loadmap.fit"
+    sourceSystem = "game"
+    sourceScreen = "mcl_mp_loadmap"
+    sourceKind = "legacy_screen"
+    layout = "absolute"
+    coordinateSpace = "screen_absolute"
+    localWidth = 800
+    localHeight = 600
+    mountOffset = "0,0"
+    editableSource = "generated_imgui_only"
+    overlayGameOS = true
+    renderMode = "gameos_overlay"
+    backgroundPolicy = "transparent_overlay"
+}
+
+GuiMetadata {
+    key = "game.mcl_mp_loadmap.metadata.metadata"
+    pageKey = "game.mcl_mp_loadmap"
+    legacySection = "Buttons"
+    legacyContext = "~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ | ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ | ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~"
+    role = "metadata"
+    layer = "metadata"
+    aliasOverride = "metadata"
+    sourceControlType = "Buttons"
+    rect = "0,0,0,0"
+    legacyLocalRect = "0,0,0,0"
+    legacyRectSource = "xywh"
+    visible = false
+}
+
+GuiButton {
+    key = "game.mcl_mp_loadmap.button.cancel_button"
+    pageKey = "game.mcl_mp_loadmap"
+    legacySection = "Button0"
+    legacyComment = "cancel button"
+    role = "button"
+    layer = "control"
+    aliasOverride = "cancel button"
+    sourceControlType = "Button0"
+    rect = "5,536,128,59"
+    legacyLocalRect = "5,536,128,59"
+    legacyRectSource = "xywh"
+    texture = "data/art/gui/mcl_m$_4.png"
+    legacyTexture = "mcl_m$_4.tga"
+    uiPackage = "default"
+    rectModel = "legacy_imgui.modern_rect_v1"
+    controlRect = "5,536,128,59"
+    hitRect = "5,536,128,59"
+    artRect = "5,536,128,59"
+    artLayer = "control_art"
+    controlModel = "composite_hit_art_text_v1"
+    linkedLayers = "hit,art,text"
+    editMode = "linked_control_with_independent_text"
+    textRect = "19,550,100,30"
+    textRectMode = "explicit_legacy"
+    textLegacyId = 27206
+    textKey = "legacy.mc2res.27206"
+    visibleText = "CANCEL"
+    textLegacySymbol = "IDS_PM_CANCEL"
+    textSource = "mc2res"
+    textMissing = false
+    helpCaptionLegacyId = 0
+    helpCaptionKey = "legacy.strings.ids_undefined_string_sebi"
+    helpCaptionLegacySymbol = "IDS_undefined_string_sebi"
+    helpCaptionSource = "strings.res.h"
+    helpCaptionMissing = true
+    helpCaptionMissingReason = "symbol_only_from_strings_res_h"
+    helpDescLegacyId = 26381
+    helpDescKey = "legacy.mc2res.26381"
+    helpDescText = "CANCEL     Cancel your current map selection and return to the previous screen."
+    helpDescLegacySymbol = "IDS_MP_LOAD_MAP_CANCEL_HELP"
+    helpDescSource = "mc2res"
+    helpDescMissing = false
+    legacyFontId = 27207
+    legacyFontComment = "use AgencyFB17"
+    font = "Agency Regular"
+    fontStyle = "Regular"
+    fontSize = 17
+    bold = false
+    italic = false
+    textAlign = "center"
+    textAnchor = "center"
+    legacyTextAlignmentSource = "aButton::init default Alignment=2"
+    wrapText = false
+    textX = 19
+    textY = 550
+    textWidth = 100
+    textHeight = 30
+    legacyTextRectSource = "XTextLocation/YTextLocation/TextWidth/TextHeight"
+    normalTextColorArgb = "0xff005392"
+    normalOverlayColorArgb = "0xff005392"
+    colorArgb = "0xff005392"
+    pressedTextColorArgb = "0xffffffff"
+    pressedOverlayColorArgb = "0xffffffff"
+    highlightTextColorArgb = "0xffffffff"
+    highlightOverlayColorArgb = "0xffffffff"
+    disabledTextColorArgb = "0xff373737"
+    disabledOverlayColorArgb = "0xff373737"
+    buttonOverlayEnabled = true
+    buttonOverlayAlpha = 0.30
+    pulseEnabled = true
+    pulseSpeed = 1.5
+    textEffect = "pulse"
+    legacyTextEffectSource = "AnimateText"
+    legacyId = 8
+    legacyColor = 0xff005392
+    legacyTextOutline = "TRUE"
+    legacyAnimateBmp = 0
+    legacyAnimateText = 1
+    uvX = 0
+    uvY = 164
+    uvWidth = 128
+    uvHeight = 59
+    uvPressedX = 128
+    uvPressedY = 164
+    uvHighlightX = 0
+    uvHighlightY = 164
+    uvDisabledX = 128
+    uvDisabledY = 164
+    legacyFontComment = "use AgencyFB17"
+    fillColorArgb = "0x00000000"
+    borderColorArgb = "0x00000000"
+    legacyNormalAnimationTimeStamps = 4
+    legacyNormalAnimationLoops = false
+    legacyNormalAnimTime0 = 0.0
+    legacyNormalAnimColor0 = 0xff005392
+    legacyNormalAnimTime1 = 7.0
+    legacyNormalAnimColor1 = 0xff005392
+    legacyNormalAnimTime2 = 7.5
+    legacyNormalAnimColor2 = 0xff005392
+    legacyNormalAnimTime3 = 8.0
+    legacyNormalAnimColor3 = 0xff005392
+    legacyPressedAnimationTimeStamps = 2
+    legacyPressedAnimationLoops = false
+    legacyPressedAnimTime0 = 0.0
+    legacyPressedAnimColor0 = 0xffffffff
+    legacyPressedAnimTime1 = 0.5
+    legacyPressedAnimColor1 = 0xff5C96C2
+    legacyHighlightAnimationTimeStamps = 3
+    legacyHighlightAnimationLoops = true
+    legacyHighlightAnimTime0 = 0.0
+    legacyHighlightAnimColor0 = 0xffffffff
+    legacyHighlightAnimTime1 = 0.4
+    legacyHighlightAnimColor1 = 0xff5C96C2
+    legacyHighlightAnimTime2 = 0.75
+    legacyHighlightAnimColor2 = 0xffffffff
+    legacyDisabledAnimationTimeStamps = 2
+    legacyDisabledAnimationLoops = false
+    legacyDisabledAnimTime0 = 0.0
+    legacyDisabledAnimColor0 = 0xff373737
+    legacyDisabledAnimTime1 = 0.5
+    legacyDisabledAnimColor1 = 0xff373737
+}
+
+GuiButton {
+    key = "game.mcl_mp_loadmap.button.accept_button"
+    pageKey = "game.mcl_mp_loadmap"
+    legacySection = "Button1"
+    legacyComment = "accept button"
+    role = "button"
+    layer = "control"
+    aliasOverride = "accept button"
+    sourceControlType = "Button1"
+    rect = "666,536,128,59"
+    legacyLocalRect = "666,536,128,59"
+    legacyRectSource = "xywh"
+    texture = "data/art/gui/mcl_m$_4.png"
+    legacyTexture = "mcl_m$_4.tga"
+    uiPackage = "default"
+    rectModel = "legacy_imgui.modern_rect_v1"
+    controlRect = "666,536,128,59"
+    hitRect = "666,536,128,59"
+    artRect = "666,536,128,59"
+    artLayer = "control_art"
+    controlModel = "composite_hit_art_text_v1"
+    linkedLayers = "hit,art,text"
+    editMode = "linked_control_with_independent_text"
+    textRect = "680,550,100,30"
+    textRectMode = "explicit_legacy"
+    textLegacyId = 27209
+    textKey = "legacy.mc2res.27209"
+    visibleText = "ACCEPT"
+    textLegacySymbol = "IDS_PM_ACCEPT"
+    textSource = "mc2res"
+    textMissing = false
+    helpCaptionLegacyId = 0
+    helpCaptionKey = "legacy.strings.ids_undefined_string_sebi"
+    helpCaptionLegacySymbol = "IDS_undefined_string_sebi"
+    helpCaptionSource = "strings.res.h"
+    helpCaptionMissing = true
+    helpCaptionMissingReason = "symbol_only_from_strings_res_h"
+    helpDescLegacyId = 26380
+    helpDescKey = "legacy.mc2res.26380"
+    helpDescText = "ACCEPT     Keep your current map selection and return to the previous screen."
+    helpDescLegacySymbol = "IDS_MP_LOAD_MAP_ACCEPT_HELP"
+    helpDescSource = "mc2res"
+    helpDescMissing = false
+    legacyFontId = 27207
+    legacyFontComment = "use AgencyFB17"
+    font = "Agency Regular"
+    fontStyle = "Regular"
+    fontSize = 17
+    bold = false
+    italic = false
+    textAlign = "center"
+    textAnchor = "center"
+    legacyTextAlignmentSource = "aButton::init default Alignment=2"
+    wrapText = false
+    textX = 680
+    textY = 550
+    textWidth = 100
+    textHeight = 30
+    legacyTextRectSource = "XTextLocation/YTextLocation/TextWidth/TextHeight"
+    normalTextColorArgb = "0xff005392"
+    normalOverlayColorArgb = "0xff005392"
+    colorArgb = "0xff005392"
+    pressedTextColorArgb = "0xffffffff"
+    pressedOverlayColorArgb = "0xffffffff"
+    highlightTextColorArgb = "0xffffffff"
+    highlightOverlayColorArgb = "0xffffffff"
+    disabledTextColorArgb = "0xff373737"
+    disabledOverlayColorArgb = "0xff373737"
+    buttonOverlayEnabled = true
+    buttonOverlayAlpha = 0.30
+    pulseEnabled = true
+    pulseSpeed = 1.5
+    textEffect = "pulse"
+    legacyTextEffectSource = "AnimateText"
+    legacyId = 7
+    legacyColor = 0xff005392
+    legacyTextOutline = "TRUE"
+    legacyAnimateBmp = 0
+    legacyAnimateText = 1
+    uvX = 0
+    uvY = 164
+    uvWidth = 128
+    uvHeight = 59
+    uvPressedX = 128
+    uvPressedY = 164
+    uvHighlightX = 0
+    uvHighlightY = 164
+    uvDisabledX = 128
+    uvDisabledY = 164
+    legacyFontComment = "use AgencyFB17"
+    fillColorArgb = "0x00000000"
+    borderColorArgb = "0x00000000"
+    legacyNormalAnimationTimeStamps = 4
+    legacyNormalAnimationLoops = false
+    legacyNormalAnimTime0 = 0.0
+    legacyNormalAnimColor0 = 0xff005392
+    legacyNormalAnimTime1 = 7.0
+    legacyNormalAnimColor1 = 0xff005392
+    legacyNormalAnimTime2 = 7.5
+    legacyNormalAnimColor2 = 0xff005392
+    legacyNormalAnimTime3 = 8.0
+    legacyNormalAnimColor3 = 0xff005392
+    legacyPressedAnimationTimeStamps = 2
+    legacyPressedAnimationLoops = false
+    legacyPressedAnimTime0 = 0.0
+    legacyPressedAnimColor0 = 0xffffffff
+    legacyPressedAnimTime1 = 0.5
+    legacyPressedAnimColor1 = 0xff5C96C2
+    legacyHighlightAnimationTimeStamps = 3
+    legacyHighlightAnimationLoops = true
+    legacyHighlightAnimTime0 = 0.0
+    legacyHighlightAnimColor0 = 0xffffffff
+    legacyHighlightAnimTime1 = 0.4
+    legacyHighlightAnimColor1 = 0xff5C96C2
+    legacyHighlightAnimTime2 = 0.75
+    legacyHighlightAnimColor2 = 0xffffffff
+    legacyDisabledAnimationTimeStamps = 2
+    legacyDisabledAnimationLoops = false
+    legacyDisabledAnimTime0 = 0.0
+    legacyDisabledAnimColor0 = 0xff373737
+    legacyDisabledAnimTime1 = 0.5
+    legacyDisabledAnimColor1 = 0xff373737
+}
+
+GuiMetadata {
+    key = "game.mcl_mp_loadmap.metadata.metadata_01"
+    pageKey = "game.mcl_mp_loadmap"
+    legacySection = "Rects"
+    legacyContext = "~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ | ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ | ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~"
+    role = "metadata"
+    layer = "metadata"
+    aliasOverride = "metadata"
+    sourceControlType = "Rects"
+    rect = "0,0,0,0"
+    legacyLocalRect = "0,0,0,0"
+    legacyRectSource = "xywh"
+    visible = false
+}
+
+GuiRect {
+    key = "game.mcl_mp_loadmap.rect.background_black_1"
+    pageKey = "game.mcl_mp_loadmap"
+    legacySection = "Rect0"
+    legacyComment = "background black 1"
+    role = "rect"
+    layer = "layout"
+    aliasOverride = "background black 1"
+    sourceControlType = "Rect0"
+    rect = "115,101,569,32"
+    legacyLocalRect = "115,101,569,32"
+    legacyRectSource = "xywh"
+    uiPackage = "default"
+    rectModel = "legacy_imgui.modern_rect_v1"
+    controlRect = "115,101,569,32"
+    legacyColor = 0xff000000
+    outline = "FALSE"
+    filled = true
+    fillColorArgb = "0x00000000"
+    borderColorArgb = "0x00000000"
+    colorArgb = "0xffffffff"
+}
+
+GuiRect {
+    key = "game.mcl_mp_loadmap.rect.background_black_2"
+    pageKey = "game.mcl_mp_loadmap"
+    legacySection = "Rect1"
+    legacyComment = "background black 2"
+    role = "rect"
+    layer = "layout"
+    aliasOverride = "background black 2"
+    sourceControlType = "Rect1"
+    rect = "115,133,10,339"
+    legacyLocalRect = "115,133,10,339"
+    legacyRectSource = "xywh"
+    uiPackage = "default"
+    rectModel = "legacy_imgui.modern_rect_v1"
+    controlRect = "115,133,10,339"
+    legacyColor = 0xff000000
+    outline = "FALSE"
+    filled = true
+    fillColorArgb = "0x00000000"
+    borderColorArgb = "0x00000000"
+    colorArgb = "0xffffffff"
+}
+
+GuiRect {
+    key = "game.mcl_mp_loadmap.rect.background_black_3"
+    pageKey = "game.mcl_mp_loadmap"
+    legacySection = "Rect2"
+    legacyComment = "background black 3"
+    role = "rect"
+    layer = "layout"
+    aliasOverride = "background black 3"
+    sourceControlType = "Rect2"
+    rect = "125,461,232,11"
+    legacyLocalRect = "125,461,232,11"
+    legacyRectSource = "xywh"
+    uiPackage = "default"
+    rectModel = "legacy_imgui.modern_rect_v1"
+    controlRect = "125,461,232,11"
+    legacyColor = 0xff000000
+    outline = "FALSE"
+    filled = true
+    fillColorArgb = "0x00000000"
+    borderColorArgb = "0x00000000"
+    colorArgb = "0xffffffff"
+}
+
+GuiRect {
+    key = "game.mcl_mp_loadmap.rect.background_black_4"
+    pageKey = "game.mcl_mp_loadmap"
+    legacySection = "Rect3"
+    legacyComment = "background black 4"
+    role = "rect"
+    layer = "layout"
+    aliasOverride = "background black 4"
+    sourceControlType = "Rect3"
+    rect = "357,133,327,339"
+    legacyLocalRect = "357,133,327,339"
+    legacyRectSource = "xywh"
+    uiPackage = "default"
+    rectModel = "legacy_imgui.modern_rect_v1"
+    controlRect = "357,133,327,339"
+    legacyColor = 0xff000000
+    outline = "FALSE"
+    filled = true
+    fillColorArgb = "0x00000000"
+    borderColorArgb = "0x00000000"
+    colorArgb = "0xffffffff"
+}
+
+GuiRect {
+    key = "game.mcl_mp_loadmap.rect.main_header_background_black"
+    pageKey = "game.mcl_mp_loadmap"
+    legacySection = "Rect4"
+    legacyComment = "main header background black"
+    role = "title"
+    layer = "text"
+    aliasOverride = "main header background black"
+    sourceControlType = "Rect4"
+    rect = "115,59,576,32"
+    legacyLocalRect = "115,59,576,32"
+    legacyRectSource = "xywh"
+    uiPackage = "default"
+    rectModel = "legacy_imgui.modern_rect_v1"
+    controlRect = "115,59,576,32"
+    legacyColor = 0xff000000
+    outline = "FALSE"
+    filled = true
+    fillColorArgb = "0x00000000"
+    borderColorArgb = "0x00000000"
+    colorArgb = "0xffffffff"
+}
+
+GuiRect {
+    key = "game.mcl_mp_loadmap.rect.outline_rect_for_map_info_text"
+    pageKey = "game.mcl_mp_loadmap"
+    legacySection = "Rect5"
+    legacyComment = "outline rect for map info text"
+    role = "planet_map_mount"
+    layer = "map"
+    aliasOverride = "outline rect for map info text"
+    sourceControlType = "Rect5"
+    rect = "367,339,306,121"
+    legacyLocalRect = "367,339,306,121"
+    legacyRectSource = "xywh"
+    uiPackage = "default"
+    rectModel = "legacy_imgui.modern_rect_v1"
+    controlRect = "367,339,306,121"
+    legacyColor = 0xff002f55
+    outline = "TRUE"
+    filled = false
+    fillColorArgb = "0x00000000"
+    borderColorArgb = "0x00000000"
+    colorArgb = "0xffffffff"
+}
+
+GuiRect {
+    key = "game.mcl_mp_loadmap.rect.rect_for_map_list"
+    pageKey = "game.mcl_mp_loadmap"
+    legacySection = "Rect6"
+    legacyComment = "rect for map list"
+    role = "planet_map_mount"
+    layer = "map"
+    aliasOverride = "rect for map list"
+    sourceControlType = "Rect6"
+    rect = "125,133,231,327"
+    legacyLocalRect = "125,133,231,327"
+    legacyRectSource = "xywh"
+    uiPackage = "default"
+    rectModel = "legacy_imgui.modern_rect_v1"
+    controlRect = "125,133,231,327"
+    helpDescLegacyId = 26378
+    helpDescKey = "legacy.mc2res.26378"
+    helpDescText = "MAP LIST     A list of all available maps for this game. Select a map to view its tactical map image. Click Accept to load the map for the current game. If the map you want does not appear in this list, make sure it is stored in the \\\\\\\\Data\\\\\\\\Missions folder where MechCommander 2 is installed on your hard drive."
+    helpDescLegacySymbol = "IDS_MP_LOAD_MAP_MAP_LIST_HELP"
+    helpDescSource = "mc2res"
+    helpDescMissing = false
+    legacyColor = 0xff43311C
+    outline = "TRUE"
+    filled = false
+    fillColorArgb = "0x00000000"
+    borderColorArgb = "0x00000000"
+    colorArgb = "0xffffffff"
+}
+
+GuiRect {
+    key = "game.mcl_mp_loadmap.rect.outline_rect_for_tac_map"
+    pageKey = "game.mcl_mp_loadmap"
+    legacySection = "Rect7"
+    legacyComment = "outline rect for tac map"
+    role = "planet_map_mount"
+    layer = "map"
+    aliasOverride = "outline rect for tac map"
+    sourceControlType = "Rect7"
+    rect = "367,133,137,137"
+    legacyLocalRect = "367,133,137,137"
+    legacyRectSource = "xywh"
+    uiPackage = "default"
+    rectModel = "legacy_imgui.modern_rect_v1"
+    controlRect = "367,133,137,137"
+    legacyColor = 0xff002f55
+    outline = "TRUE"
+    filled = false
+    fillColorArgb = "0x00000000"
+    borderColorArgb = "0x00000000"
+    colorArgb = "0xffffffff"
+}
+
+GuiRect {
+    key = "game.mcl_mp_loadmap.rect.rect_help"
+    pageKey = "game.mcl_mp_loadmap"
+    legacySection = "Rect8"
+    legacyComment = "rect help"
+    role = "help"
+    layer = "help"
+    aliasOverride = "rect help"
+    sourceControlType = "Rect8"
+    rect = "143,546,512,48"
+    legacyLocalRect = "143,546,512,48"
+    legacyRectSource = "xywh"
+    uiPackage = "default"
+    rectModel = "legacy_imgui.modern_rect_v1"
+    controlRect = "143,546,512,48"
+    legacyColor = 0xff000000
+    outline = "FALSE"
+    filled = true
+    fillColorArgb = "0x00000000"
+    borderColorArgb = "0x00000000"
+    colorArgb = "0xffffffff"
+}
+
+GuiRect {
+    key = "game.mcl_mp_loadmap.rect.map_info"
+    pageKey = "game.mcl_mp_loadmap"
+    legacySection = "Rect9"
+    legacyComment = "map info"
+    role = "planet_map_mount"
+    layer = "map"
+    aliasOverride = "map info"
+    sourceControlType = "Rect9"
+    rect = "367,133,306,205"
+    legacyLocalRect = "367,133,306,205"
+    legacyRectSource = "xywh"
+    uiPackage = "default"
+    rectModel = "legacy_imgui.modern_rect_v1"
+    controlRect = "367,133,306,205"
+    helpDescLegacyId = 26379
+    helpDescKey = "legacy.mc2res.26379"
+    helpDescText = "MAP INFO     Information on the map selected in the Map List."
+    helpDescLegacySymbol = "IDS_MP_LOAD_MAP_MAP_INFO_HELP"
+    helpDescSource = "mc2res"
+    helpDescMissing = false
+    legacyColor = 0xff000000
+    outline = "FALSE"
+    filled = true
+    fillColorArgb = "0x00000000"
+    borderColorArgb = "0x00000000"
+    colorArgb = "0xffffffff"
+}
+
+GuiRect {
+    key = "game.mcl_mp_loadmap.rect.title"
+    pageKey = "game.mcl_mp_loadmap"
+    legacySection = "Rect10"
+    legacyComment = "title"
+    role = "title"
+    layer = "text"
+    aliasOverride = "title"
+    sourceControlType = "Rect10"
+    rect = "115,58,562,31"
+    legacyLocalRect = "115,58,562,31"
+    legacyRectSource = "xywh"
+    uiPackage = "default"
+    rectModel = "legacy_imgui.modern_rect_v1"
+    controlRect = "115,58,562,31"
+    helpDescLegacyId = 26382
+    helpDescKey = "legacy.mc2res.26382"
+    helpDescText = "LOAD MAP     In this screen, you review and select a map and mission for the game."
+    helpDescLegacySymbol = "IDS_MP_LOAD_MAP_TITLE_HELP"
+    helpDescSource = "mc2res"
+    helpDescMissing = false
+    legacyColor = 0xff000000
+    outline = "FALSE"
+    filled = true
+    fillColorArgb = "0x00000000"
+    borderColorArgb = "0x00000000"
+    colorArgb = "0xffffffff"
+}
+
+GuiRect {
+    key = "game.mcl_mp_loadmap.rect.overview"
+    pageKey = "game.mcl_mp_loadmap"
+    legacySection = "Rect11"
+    legacyComment = "overview"
+    role = "rect"
+    layer = "layout"
+    aliasOverride = "overview"
+    sourceControlType = "Rect11"
+    rect = "366,338,307,121"
+    legacyLocalRect = "366,338,307,121"
+    legacyRectSource = "xywh"
+    uiPackage = "default"
+    rectModel = "legacy_imgui.modern_rect_v1"
+    controlRect = "366,338,307,121"
+    helpDescLegacyId = 29011
+    helpDescKey = "legacy.mc2res.29011"
+    helpDescText = "MISSION OVERVIEW     An overview of the selected mission."
+    helpDescLegacySymbol = "IDS_HELP_CM_MISSION_OVERVIEW_TEXT_AREA"
+    helpDescSource = "mc2res"
+    helpDescMissing = false
+    legacyColor = 0xff000000
+    outline = "FALSE"
+    filled = true
+    fillColorArgb = "0x00000000"
+    borderColorArgb = "0x00000000"
+    colorArgb = "0xffffffff"
+}
+
+GuiMetadata {
+    key = "game.mcl_mp_loadmap.metadata.metadata_02"
+    pageKey = "game.mcl_mp_loadmap"
+    legacySection = "Statics"
+    legacyContext = "~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ | ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ | ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~"
+    role = "metadata"
+    layer = "metadata"
+    aliasOverride = "metadata"
+    sourceControlType = "Statics"
+    rect = "0,0,0,0"
+    legacyLocalRect = "0,0,0,0"
+    legacyRectSource = "xywh"
+    visible = false
+}
+
+GuiImage {
+    key = "game.mcl_mp_loadmap.image.mcl_mp_addai_1"
+    pageKey = "game.mcl_mp_loadmap"
+    legacySection = "Static0"
+    role = "image"
+    layer = "art"
+    aliasOverride = "mcl_mp_addai_1"
+    sourceControlType = "Static0"
+    rect = "0,0,256,59"
+    legacyLocalRect = "0,0,256,59"
+    legacyRectSource = "xywh"
+    texture = "data/art/gui/mcl_mp_addai_1.png"
+    legacyTexture = "mcl_mp_addai_1.tga"
+    uiPackage = "default"
+    rectModel = "legacy_imgui.modern_rect_v1"
+    controlRect = "0,0,256,59"
+    artRect = "0,0,256,59"
+    artLayer = "control_art"
+    uvX = 0
+    uvY = 0
+    uvWidth = 256
+    uvHeight = 59
+}
+
+GuiImage {
+    key = "game.mcl_mp_loadmap.image.mcl_mp_addai_1_01"
+    pageKey = "game.mcl_mp_loadmap"
+    legacySection = "Static1"
+    role = "image"
+    layer = "art"
+    aliasOverride = "mcl_mp_addai_1"
+    sourceControlType = "Static1"
+    rect = "256,0,256,59"
+    legacyLocalRect = "256,0,256,59"
+    legacyRectSource = "xywh"
+    texture = "data/art/gui/mcl_mp_addai_1.png"
+    legacyTexture = "mcl_mp_addai_1.tga"
+    uiPackage = "default"
+    rectModel = "legacy_imgui.modern_rect_v1"
+    controlRect = "256,0,256,59"
+    artRect = "256,0,256,59"
+    artLayer = "control_art"
+    uvX = 0
+    uvY = 59
+    uvWidth = 256
+    uvHeight = 59
+}
+
+GuiImage {
+    key = "game.mcl_mp_loadmap.image.mcl_mp_addai_1_02"
+    pageKey = "game.mcl_mp_loadmap"
+    legacySection = "Static2"
+    role = "image"
+    layer = "art"
+    aliasOverride = "mcl_mp_addai_1"
+    sourceControlType = "Static2"
+    rect = "512,0,256,59"
+    legacyLocalRect = "512,0,256,59"
+    legacyRectSource = "xywh"
+    texture = "data/art/gui/mcl_mp_addai_1.png"
+    legacyTexture = "mcl_mp_addai_1.tga"
+    uiPackage = "default"
+    rectModel = "legacy_imgui.modern_rect_v1"
+    controlRect = "512,0,256,59"
+    artRect = "512,0,256,59"
+    artLayer = "control_art"
+    uvX = 0
+    uvY = 118
+    uvWidth = 256
+    uvHeight = 59
+}
+
+GuiImage {
+    key = "game.mcl_mp_loadmap.image.mcl_mp_addai_5"
+    pageKey = "game.mcl_mp_loadmap"
+    legacySection = "Static3"
+    role = "image"
+    layer = "art"
+    aliasOverride = "mcl_mp_addai_5"
+    sourceControlType = "Static3"
+    rect = "768,0,32,59"
+    legacyLocalRect = "768,0,32,59"
+    legacyRectSource = "xywh"
+    texture = "data/art/gui/mcl_mp_addai_5.png"
+    legacyTexture = "mcl_mp_addai_5.tga"
+    uiPackage = "default"
+    rectModel = "legacy_imgui.modern_rect_v1"
+    controlRect = "768,0,32,59"
+    artRect = "768,0,32,59"
+    artLayer = "control_art"
+    uvX = 33
+    uvY = 0
+    uvWidth = 32
+    uvHeight = 59
+}
+
+GuiImage {
+    key = "game.mcl_mp_loadmap.image.mcl_mp_addai_1_03"
+    pageKey = "game.mcl_mp_loadmap"
+    legacySection = "Static4"
+    role = "image"
+    layer = "art"
+    aliasOverride = "mcl_mp_addai_1"
+    sourceControlType = "Static4"
+    rect = "0,59,114,32"
+    legacyLocalRect = "0,59,114,32"
+    legacyRectSource = "xywh"
+    texture = "data/art/gui/mcl_mp_addai_1.png"
+    legacyTexture = "mcl_mp_addai_1.tga"
+    uiPackage = "default"
+    rectModel = "legacy_imgui.modern_rect_v1"
+    controlRect = "0,59,114,32"
+    artRect = "0,59,114,32"
+    artLayer = "control_art"
+    uvX = 0
+    uvY = 207
+    uvWidth = 114
+    uvHeight = 32
+}
+
+GuiImage {
+    key = "game.mcl_mp_loadmap.image.mcl_mp_addai_1_04"
+    pageKey = "game.mcl_mp_loadmap"
+    legacySection = "Static5"
+    role = "image"
+    layer = "art"
+    aliasOverride = "mcl_mp_addai_1"
+    sourceControlType = "Static5"
+    rect = "684,59,116,32"
+    legacyLocalRect = "684,59,116,32"
+    legacyRectSource = "xywh"
+    texture = "data/art/gui/mcl_mp_addai_1.png"
+    legacyTexture = "mcl_mp_addai_1.tga"
+    uiPackage = "default"
+    rectModel = "legacy_imgui.modern_rect_v1"
+    controlRect = "684,59,116,32"
+    artRect = "684,59,116,32"
+    artLayer = "control_art"
+    uvX = 114
+    uvY = 207
+    uvWidth = 116
+    uvHeight = 32
+}
+
+GuiImage {
+    key = "game.mcl_mp_loadmap.image.mcl_mp_addai_1_05"
+    pageKey = "game.mcl_mp_loadmap"
+    legacySection = "Static6"
+    role = "image"
+    layer = "art"
+    aliasOverride = "mcl_mp_addai_1"
+    sourceControlType = "Static6"
+    rect = "0,91,255,10"
+    legacyLocalRect = "0,91,255,10"
+    legacyRectSource = "xywh"
+    texture = "data/art/gui/mcl_mp_addai_1.png"
+    legacyTexture = "mcl_mp_addai_1.tga"
+    uiPackage = "default"
+    rectModel = "legacy_imgui.modern_rect_v1"
+    controlRect = "0,91,255,10"
+    artRect = "0,91,255,10"
+    artLayer = "control_art"
+    uvX = 0
+    uvY = 177
+    uvWidth = 255
+    uvHeight = 10
+}
+
+GuiImage {
+    key = "game.mcl_mp_loadmap.image.mcl_mp_addai_1_06"
+    pageKey = "game.mcl_mp_loadmap"
+    legacySection = "Static7"
+    role = "image"
+    layer = "art"
+    aliasOverride = "mcl_mp_addai_1"
+    sourceControlType = "Static7"
+    rect = "255,91,256,10"
+    legacyLocalRect = "255,91,256,10"
+    legacyRectSource = "xywh"
+    texture = "data/art/gui/mcl_mp_addai_1.png"
+    legacyTexture = "mcl_mp_addai_1.tga"
+    uiPackage = "default"
+    rectModel = "legacy_imgui.modern_rect_v1"
+    controlRect = "255,91,256,10"
+    artRect = "255,91,256,10"
+    artLayer = "control_art"
+    uvX = 0
+    uvY = 187
+    uvWidth = 256
+    uvHeight = 10
+}
+
+GuiImage {
+    key = "game.mcl_mp_loadmap.image.mcl_mp_addai_1_07"
+    pageKey = "game.mcl_mp_loadmap"
+    legacySection = "Static8"
+    role = "image"
+    layer = "art"
+    aliasOverride = "mcl_mp_addai_1"
+    sourceControlType = "Static8"
+    rect = "511,91,256,10"
+    legacyLocalRect = "511,91,256,10"
+    legacyRectSource = "xywh"
+    texture = "data/art/gui/mcl_mp_addai_1.png"
+    legacyTexture = "mcl_mp_addai_1.tga"
+    uiPackage = "default"
+    rectModel = "legacy_imgui.modern_rect_v1"
+    controlRect = "511,91,256,10"
+    artRect = "511,91,256,10"
+    artLayer = "control_art"
+    uvX = 0
+    uvY = 197
+    uvWidth = 256
+    uvHeight = 10
+}
+
+GuiImage {
+    key = "game.mcl_mp_loadmap.image.mcl_mp_addai_5_01"
+    pageKey = "game.mcl_mp_loadmap"
+    legacySection = "Static9"
+    role = "image"
+    layer = "art"
+    aliasOverride = "mcl_mp_addai_5"
+    sourceControlType = "Static9"
+    rect = "767,91,33,10"
+    legacyLocalRect = "767,91,33,10"
+    legacyRectSource = "xywh"
+    texture = "data/art/gui/mcl_mp_addai_5.png"
+    legacyTexture = "mcl_mp_addai_5.tga"
+    uiPackage = "default"
+    rectModel = "legacy_imgui.modern_rect_v1"
+    controlRect = "767,91,33,10"
+    artRect = "767,91,33,10"
+    artLayer = "control_art"
+    uvX = 33
+    uvY = 59
+    uvWidth = 33
+    uvHeight = 10
+}
+
+GuiImage {
+    key = "game.mcl_mp_loadmap.image.mcl_mp_addai_4"
+    pageKey = "game.mcl_mp_loadmap"
+    legacySection = "Static10"
+    role = "image"
+    layer = "art"
+    aliasOverride = "mcl_mp_addai_4"
+    sourceControlType = "Static10"
+    rect = "0,101,115,256"
+    legacyLocalRect = "0,101,115,256"
+    legacyRectSource = "xywh"
+    texture = "data/art/gui/mcl_mp_addai_4.png"
+    legacyTexture = "mcl_mp_addai_4.tga"
+    uiPackage = "default"
+    rectModel = "legacy_imgui.modern_rect_v1"
+    controlRect = "0,101,115,256"
+    artRect = "0,101,115,256"
+    artLayer = "control_art"
+    uvX = 0
+    uvY = 0
+    uvWidth = 115
+    uvHeight = 256
+}
+
+GuiImage {
+    key = "game.mcl_mp_loadmap.image.mcl_mp_addai_4_01"
+    pageKey = "game.mcl_mp_loadmap"
+    legacySection = "Static11"
+    role = "image"
+    layer = "art"
+    aliasOverride = "mcl_mp_addai_4"
+    sourceControlType = "Static11"
+    rect = "684,101,116,256"
+    legacyLocalRect = "684,101,116,256"
+    legacyRectSource = "xywh"
+    texture = "data/art/gui/mcl_mp_addai_4.png"
+    legacyTexture = "mcl_mp_addai_4.tga"
+    uiPackage = "default"
+    rectModel = "legacy_imgui.modern_rect_v1"
+    controlRect = "684,101,116,256"
+    artRect = "684,101,116,256"
+    artLayer = "control_art"
+    uvX = 115
+    uvY = 0
+    uvWidth = 116
+    uvHeight = 256
+}
+
+GuiImage {
+    key = "game.mcl_mp_loadmap.image.mcl_mp_addai_3"
+    pageKey = "game.mcl_mp_loadmap"
+    legacySection = "Static12"
+    role = "image"
+    layer = "art"
+    aliasOverride = "mcl_mp_addai_3"
+    sourceControlType = "Static12"
+    rect = "0,357,115,115"
+    legacyLocalRect = "0,357,115,115"
+    legacyRectSource = "xywh"
+    texture = "data/art/gui/mcl_mp_addai_3.png"
+    legacyTexture = "mcl_mp_addai_3.tga"
+    uiPackage = "default"
+    rectModel = "legacy_imgui.modern_rect_v1"
+    controlRect = "0,357,115,115"
+    artRect = "0,357,115,115"
+    artLayer = "control_art"
+    uvX = 0
+    uvY = 128
+    uvWidth = 115
+    uvHeight = 115
+}
+
+GuiImage {
+    key = "game.mcl_mp_loadmap.image.mcl_mp_addai_3_01"
+    pageKey = "game.mcl_mp_loadmap"
+    legacySection = "Static13"
+    role = "image"
+    layer = "art"
+    aliasOverride = "mcl_mp_addai_3"
+    sourceControlType = "Static13"
+    rect = "684,357,116,115"
+    legacyLocalRect = "684,357,116,115"
+    legacyRectSource = "xywh"
+    texture = "data/art/gui/mcl_mp_addai_3.png"
+    legacyTexture = "mcl_mp_addai_3.tga"
+    uiPackage = "default"
+    rectModel = "legacy_imgui.modern_rect_v1"
+    controlRect = "684,357,116,115"
+    artRect = "684,357,116,115"
+    artLayer = "control_art"
+    uvX = 115
+    uvY = 128
+    uvWidth = 116
+    uvHeight = 115
+}
+
+GuiImage {
+    key = "game.mcl_mp_loadmap.image.mcl_mp_addai_2"
+    pageKey = "game.mcl_mp_loadmap"
+    legacySection = "Static14"
+    role = "image"
+    layer = "art"
+    aliasOverride = "mcl_mp_addai_2"
+    sourceControlType = "Static14"
+    rect = "0,472,255,128"
+    legacyLocalRect = "0,472,255,128"
+    legacyRectSource = "xywh"
+    texture = "data/art/gui/mcl_mp_addai_2.png"
+    legacyTexture = "mcl_mp_addai_2.tga"
+    uiPackage = "default"
+    rectModel = "legacy_imgui.modern_rect_v1"
+    controlRect = "0,472,255,128"
+    artRect = "0,472,255,128"
+    artLayer = "control_art"
+    uvX = 0
+    uvY = 0
+    uvWidth = 255
+    uvHeight = 128
+}
+
+GuiImage {
+    key = "game.mcl_mp_loadmap.image.mcl_mp_addai_2_01"
+    pageKey = "game.mcl_mp_loadmap"
+    legacySection = "Static15"
+    role = "image"
+    layer = "art"
+    aliasOverride = "mcl_mp_addai_2"
+    sourceControlType = "Static15"
+    rect = "255,472,256,128"
+    legacyLocalRect = "255,472,256,128"
+    legacyRectSource = "xywh"
+    texture = "data/art/gui/mcl_mp_addai_2.png"
+    legacyTexture = "mcl_mp_addai_2.tga"
+    uiPackage = "default"
+    rectModel = "legacy_imgui.modern_rect_v1"
+    controlRect = "255,472,256,128"
+    artRect = "255,472,256,128"
+    artLayer = "control_art"
+    uvX = 0
+    uvY = 128
+    uvWidth = 256
+    uvHeight = 128
+}
+
+GuiImage {
+    key = "game.mcl_mp_loadmap.image.mcl_mp_addai_3_02"
+    pageKey = "game.mcl_mp_loadmap"
+    legacySection = "Static16"
+    role = "image"
+    layer = "art"
+    aliasOverride = "mcl_mp_addai_3"
+    sourceControlType = "Static16"
+    rect = "511,472,256,128"
+    legacyLocalRect = "511,472,256,128"
+    legacyRectSource = "xywh"
+    texture = "data/art/gui/mcl_mp_addai_3.png"
+    legacyTexture = "mcl_mp_addai_3.tga"
+    uiPackage = "default"
+    rectModel = "legacy_imgui.modern_rect_v1"
+    controlRect = "511,472,256,128"
+    artRect = "511,472,256,128"
+    artLayer = "control_art"
+    uvX = 0
+    uvY = 0
+    uvWidth = 256
+    uvHeight = 128
+}
+
+GuiImage {
+    key = "game.mcl_mp_loadmap.image.mcl_mp_addai_5_02"
+    pageKey = "game.mcl_mp_loadmap"
+    legacySection = "Static17"
+    role = "image"
+    layer = "art"
+    aliasOverride = "mcl_mp_addai_5"
+    sourceControlType = "Static17"
+    rect = "767,472,33,128"
+    legacyLocalRect = "767,472,33,128"
+    legacyRectSource = "xywh"
+    texture = "data/art/gui/mcl_mp_addai_5.png"
+    legacyTexture = "mcl_mp_addai_5.tga"
+    uiPackage = "default"
+    rectModel = "legacy_imgui.modern_rect_v1"
+    controlRect = "767,472,33,128"
+    artRect = "767,472,33,128"
+    artLayer = "control_art"
+    uvX = 0
+    uvY = 0
+    uvWidth = 33
+    uvHeight = 128
+}
+
+GuiImage {
+    key = "game.mcl_mp_loadmap.image.this_static_is_for_the_tac_map"
+    pageKey = "game.mcl_mp_loadmap"
+    legacySection = "Static18"
+    legacyComment = "this static is for the tac map"
+    role = "map"
+    layer = "map"
+    aliasOverride = "this static is for the tac map"
+    sourceControlType = "Static18"
+    rect = "372,138,128,128"
+    legacyLocalRect = "372,138,128,128"
+    legacyRectSource = "xywh"
+    uiPackage = "default"
+    rectModel = "legacy_imgui.modern_rect_v1"
+    controlRect = "372,138,128,128"
+}
+
+GuiMetadata {
+    key = "game.mcl_mp_loadmap.metadata.metadata_03"
+    pageKey = "game.mcl_mp_loadmap"
+    legacySection = "Texts"
+    legacyContext = "~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ | ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ | ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~"
+    role = "metadata"
+    layer = "metadata"
+    aliasOverride = "metadata"
+    sourceControlType = "Texts"
+    rect = "0,0,0,0"
+    legacyLocalRect = "0,0,0,0"
+    legacyRectSource = "xywh"
+    visible = false
+}
+
+GuiText {
+    key = "game.mcl_mp_loadmap.text.main_header"
+    pageKey = "game.mcl_mp_loadmap"
+    legacySection = "Text0"
+    legacyComment = "main header"
+    role = "title"
+    layer = "text"
+    aliasOverride = "main header"
+    sourceControlType = "Text0"
+    rect = "122,63,554,26"
+    legacyLocalRect = "122,63,554,26"
+    legacyRectSource = "xywh"
+    uiPackage = "default"
+    rectModel = "legacy_imgui.modern_rect_v1"
+    controlRect = "122,63,554,26"
+    textRect = "122,63,554,26"
+    textRectMode = "control_rect_fallback"
+    textLegacyId = 26300
+    textKey = "legacy.mc2res.26300"
+    visibleText = "LOAD MAP"
+    textLegacySymbol = "IDS_MP_LM_LOAD_MAP"
+    textSource = "mc2res"
+    textMissing = false
+    legacyFontId = 26301
+    legacyFontComment = "use agency fb 17"
+    font = "Agency Regular"
+    fontStyle = "Regular"
+    fontSize = 17
+    bold = false
+    italic = false
+    textAlign = "left"
+    textAnchor = "upper_left"
+    wrapText = false
+    colorArgb = "0xffff8a00"
+    legacyColor = 0xffff8a00
+    outline = "FALSE"
+    legacyAlignment = 0
+    legacyFontComment = "use agency fb 17"
+    borderColorArgb = "0x00000000"
+}
+
+GuiText {
+    key = "game.mcl_mp_loadmap.text.map_list_header"
+    pageKey = "game.mcl_mp_loadmap"
+    legacySection = "Text1"
+    legacyComment = "MAP LIST header"
+    role = "map"
+    layer = "map"
+    aliasOverride = "MAP LIST header"
+    sourceControlType = "Text1"
+    rect = "126,110,231,18"
+    legacyLocalRect = "126,110,231,18"
+    legacyRectSource = "xywh"
+    uiPackage = "default"
+    rectModel = "legacy_imgui.modern_rect_v1"
+    controlRect = "126,110,231,18"
+    textRect = "126,110,231,18"
+    textRectMode = "control_rect_fallback"
+    textLegacyId = 26302
+    textKey = "legacy.mc2res.26302"
+    visibleText = "MAP LIST"
+    textLegacySymbol = "IDS_MP_LM_MAP_LIST"
+    textSource = "mc2res"
+    textMissing = false
+    legacyFontId = 26303
+    legacyFontComment = "use agency fb 14"
+    font = "Agency Regular"
+    fontStyle = "Regular"
+    fontSize = 14
+    bold = false
+    italic = false
+    textAlign = "left"
+    textAnchor = "upper_left"
+    wrapText = false
+    colorArgb = "0xffff8a00"
+    legacyColor = -30208
+    outline = "FALSE"
+    legacyAlignment = 0
+    legacyFontComment = "use agency fb 14"
+    borderColorArgb = "0x00000000"
+}
+
+GuiText {
+    key = "game.mcl_mp_loadmap.text.maximum_players"
+    pageKey = "game.mcl_mp_loadmap"
+    legacySection = "Text2"
+    legacyComment = "maximum players"
+    role = "text"
+    layer = "text"
+    aliasOverride = "maximum players"
+    sourceControlType = "Text2"
+    rect = "367,314,307,18"
+    legacyLocalRect = "367,314,307,18"
+    legacyRectSource = "xywh"
+    uiPackage = "default"
+    rectModel = "legacy_imgui.modern_rect_v1"
+    controlRect = "367,314,307,18"
+    textRect = "367,314,307,18"
+    textRectMode = "control_rect_fallback"
+    textLegacyId = 26304
+    textKey = "legacy.mc2res.26304"
+    visibleText = "%ld MAX PLAYERS"
+    textLegacySymbol = "IDS_MP_LM_MAP_LIST_MAX_PLAYERS"
+    textSource = "mc2res"
+    textMissing = false
+    legacyFontId = 26305
+    legacyFontComment = "use agency fb 11"
+    font = "Agency Regular"
+    fontStyle = "Regular"
+    fontSize = 11
+    bold = false
+    italic = false
+    textAlign = "left"
+    textAnchor = "upper_left"
+    wrapText = false
+    colorArgb = "0xff005392"
+    legacyColor = 0xff005392
+    outline = "FALSE"
+    legacyAlignment = 0
+    legacyFontComment = "use agency fb 11"
+    borderColorArgb = "0x00000000"
+}
+
+GuiText {
+    key = "game.mcl_mp_loadmap.text.map_name_header"
+    pageKey = "game.mcl_mp_loadmap"
+    legacySection = "Text3"
+    legacyComment = "map name header"
+    role = "map"
+    layer = "map"
+    aliasOverride = "map name header"
+    sourceControlType = "Text3"
+    rect = "367,278,307,18"
+    legacyLocalRect = "367,278,307,18"
+    legacyRectSource = "xywh"
+    uiPackage = "default"
+    rectModel = "legacy_imgui.modern_rect_v1"
+    controlRect = "367,278,307,18"
+    textRect = "367,278,307,18"
+    textRectMode = "control_rect_fallback"
+    textLegacyId = 26306
+    textKey = "legacy.mc2res.26306"
+    visibleText = "MAP NAME : %s"
+    textLegacySymbol = "IDS_MP_LM_MAP_LIST_MAP_NAME"
+    textSource = "mc2res"
+    textMissing = false
+    legacyFontId = 26307
+    legacyFontComment = "use agency fb 11"
+    font = "Agency Regular"
+    fontStyle = "Regular"
+    fontSize = 11
+    bold = false
+    italic = false
+    textAlign = "left"
+    textAnchor = "upper_left"
+    wrapText = false
+    colorArgb = "0xff5c96c2"
+    legacyColor = 0xff5C96C2
+    outline = "FALSE"
+    legacyAlignment = 0
+    legacyFontComment = "use agency fb 11"
+    borderColorArgb = "0x00000000"
+}
+
+GuiText {
+    key = "game.mcl_mp_loadmap.text.mission_type"
+    pageKey = "game.mcl_mp_loadmap"
+    legacySection = "Text4"
+    legacyComment = "mission type"
+    role = "text"
+    layer = "text"
+    aliasOverride = "mission type"
+    sourceControlType = "Text4"
+    rect = "367,296,307,18"
+    legacyLocalRect = "367,296,307,18"
+    legacyRectSource = "xywh"
+    uiPackage = "default"
+    rectModel = "legacy_imgui.modern_rect_v1"
+    controlRect = "367,296,307,18"
+    textRect = "367,296,307,18"
+    textRectMode = "control_rect_fallback"
+    textLegacyId = 26308
+    textKey = "legacy.mc2res.26308"
+    visibleText = "MISSION TYPE : %s"
+    textLegacySymbol = "IDS_MP_LM_MAP_LIST_TYPE"
+    textSource = "mc2res"
+    textMissing = false
+    legacyFontId = 26309
+    legacyFontComment = "use agency fb 11"
+    font = "Agency Regular"
+    fontStyle = "Regular"
+    fontSize = 11
+    bold = false
+    italic = false
+    textAlign = "left"
+    textAnchor = "upper_left"
+    wrapText = false
+    colorArgb = "0xff005392"
+    legacyColor = 0xff005392
+    outline = "FALSE"
+    legacyAlignment = 0
+    legacyFontComment = "use agency fb 11"
+    borderColorArgb = "0x00000000"
+}
+
+GuiText {
+    key = "game.mcl_mp_loadmap.text.map_info"
+    pageKey = "game.mcl_mp_loadmap"
+    legacySection = "Text5"
+    legacyComment = "map info"
+    role = "map"
+    layer = "map"
+    aliasOverride = "map info"
+    sourceControlType = "Text5"
+    rect = "373,342,296,115"
+    legacyLocalRect = "373,342,296,115"
+    legacyRectSource = "xywh"
+    uiPackage = "default"
+    rectModel = "legacy_imgui.modern_rect_v1"
+    controlRect = "373,342,296,115"
+    textRect = "373,342,296,115"
+    textRectMode = "control_rect_fallback"
+    textLegacyId = 26310
+    textKey = "legacy.mc2res.26310"
+    visibleText = "OTHER MAP INFO GOES HERE... WHERE DOES THIS COME FROM?"
+    textLegacySymbol = "IDS_MP_LM_MAP_LIST_MAP_INFO"
+    textSource = "mc2res"
+    textMissing = false
+    legacyFontId = 26311
+    legacyFontComment = "use agency fb 11"
+    font = "Agency Regular"
+    fontStyle = "Regular"
+    fontSize = 11
+    bold = false
+    italic = false
+    textAlign = "left"
+    textAnchor = "upper_left"
+    wrapText = true
+    colorArgb = "0xff005392"
+    legacyColor = 0xff005392
+    outline = "FALSE"
+    legacyAlignment = 0
+    legacyFontComment = "use agency fb 11"
+    borderColorArgb = "0x00000000"
+}
+
+GuiText {
+    key = "game.mcl_mp_loadmap.text.help_text"
+    pageKey = "game.mcl_mp_loadmap"
+    legacySection = "Text6"
+    legacyComment = "help text"
+    role = "help"
+    layer = "help"
+    aliasOverride = "help text"
+    sourceControlType = "Text6"
+    rect = "146,542,456,52"
+    legacyLocalRect = "146,542,456,52"
+    legacyRectSource = "xywh"
+    uiPackage = "default"
+    rectModel = "legacy_imgui.modern_rect_v1"
+    controlRect = "146,542,456,52"
+    textRect = "146,542,456,52"
+    textRectMode = "control_rect_fallback"
+    textLegacyId = 0
+    visible = false
+    textKey = "legacy.strings.ids_undefined_string_sebi"
+    textLegacySymbol = "IDS_undefined_string_sebi"
+    textSource = "strings.res.h"
+    textMissing = true
+    textMissingReason = "symbol_only_from_strings_res_h"
+    legacyFontId = 26312
+    legacyFontComment = "use arial narrow 8"
+    font = "Agency Regular"
+    fontStyle = "Regular"
+    fontSize = 8
+    bold = false
+    italic = false
+    textAlign = "left"
+    textAnchor = "upper_left"
+    wrapText = true
+    colorArgb = "0xffffffff"
+    legacyColor = 0xffffffff
+    outline = "FALSE"
+    legacyAlignment = 0
+    legacyFontComment = "use arial narrow 8"
+    borderColorArgb = "0x00000000"
+}
+
+GuiMetadata {
+    key = "game.mcl_mp_loadmap.metadata.map"
+    pageKey = "game.mcl_mp_loadmap"
+    legacySection = "MapList"
+    legacyContext = "~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ | ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ | ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~"
+    role = "map"
+    layer = "map"
+    aliasOverride = "map"
+    sourceControlType = "MapList"
+    rect = "126,138,0,0"
+    legacyLocalRect = "126,138,0,0"
+    legacyRectSource = "xywh"
+    texture = "data/art/gui/mcl_mp_loadmap_list0.png"
+    legacyTexture = "mcl_mp_loadmap_list0"
+    visible = false
+}
+
+GuiAnimation {
+    key = "game.mcl_mp_loadmap.animation.enter_anim"
+    pageKey = "game.mcl_mp_loadmap"
+    legacySection = "EnterAnim"
+    legacyComment = "use when dialog appears on screen"
+    role = "animation"
+    layer = "animation"
+    animType = "in_anim"
+    rect = "0,0,0,0"
+    animationKeyframes = 2
+    keyframe0Time = 0.0
+    keyframe0X = 0
+    keyframe0Y = -600
+    keyframe1Time = 0.23
+    keyframe1X = 0
+    keyframe1Y = 0
+}
+
+GuiAnimation {
+    key = "game.mcl_mp_loadmap.animation.leave_anim"
+    pageKey = "game.mcl_mp_loadmap"
+    legacySection = "LeaveAnim"
+    legacyComment = "use when dialog leaves after cancel or okay is pressed"
+    role = "animation"
+    layer = "animation"
+    animType = "out_anim"
+    rect = "0,0,0,0"
+    animationKeyframes = 2
+    keyframe0Time = 0.0
+    keyframe0X = 0
+    keyframe0Y = 0
+    keyframe1Time = 0.23
+    keyframe1X = 0
+    keyframe1Y = -600
+}

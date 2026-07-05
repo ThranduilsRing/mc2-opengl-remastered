@@ -16,8 +16,34 @@ MechBayScreen.cpp			: Implementation of the MechBayScreen component.
 #include"multplyr.h"
 #include"chatwindow.h"
 #include"prefs.h"
+#include"../GuiRuntime/GuiRuntime.h"
 
 MechBayScreen* MechBayScreen::s_instance = NULL;
+
+// Mirror a populated weapon/component ComponentListBox into a defs-page GuiList,
+// preserving the per-item range colours (short=olive, medium=blue, long=red,
+// components=gold).  So the Mech Loadout box renders through the ImGui defs layer
+// instead of the legacy gos list, which composites UNDER the defs page and is
+// occluded by its frame art.  (Local copy of the same helper in mechlopedia.cpp,
+// which lives in an anonymous namespace and so isn't linkable across TUs.)
+namespace {
+void syncWeaponLoadout( LogisticsScreen* screen, ComponentListBox& box, const char* listKey )
+{
+	std::vector<std::string>  items;
+	std::vector<unsigned int> colors;
+	for ( int i = 0; i < box.GetItemCount(); i++ )
+	{
+		aTextListItem* pItem = (aTextListItem*)box.GetItem( i );
+		if ( pItem )
+		{
+			items.push_back( pItem->getText() );
+			colors.push_back( (unsigned int)pItem->getColor() );
+		}
+	}
+	screen->setDefsListItems( listKey, items );
+	screen->setDefsListItemColors( listKey, colors );
+}
+} // namespace
 
 
 
@@ -53,7 +79,8 @@ void MechBayScreen::init(FitIniFile* file)
 {
 	// init button, texts, statics, rects
 	LogisticsScreen::init( *file, "MechBayStatic", "MechBayTextEntry", "MechBayRect", "MechBayButton" );
-	
+	defsHelpTextKey = "game.mcl_mb_layout.text.help_text";
+
 	// initialize the list box
 	mechListBox.init();
 	mechListBox.setHelpID( IDS_HELP_MECHSTORAGE );
@@ -240,16 +267,43 @@ void MechBayScreen::begin()
 }
 void MechBayScreen::render(int xOffset, int yOffset)
 {
+	// Legacy->display scale for the text bridge (crisp TTF labels on the mech-
+	// storage list + deployment icons, matching the data/defs UI layer).
+	// UI-ASPECT-ANCHOR-1: canvas-aware transform (scale + pad origin) so
+	// bridged icons/text and preview composites line up with the defs page
+	// at every aspect; full-stretch fallback when no canvas is active.
+	float tbSx = 1.f, tbSy = 1.f, tbOx = 0.f, tbOy = 0.f;
+	aObject::getCanvasTransform( tbSx, tbSy, tbOx, tbOy );
+
+	aObject::beginTextBridge( tbSx, tbSy, 1.0f, tbOx, tbOy );
 	mechListBox.move( xOffset, yOffset );
 	mechListBox.render();
 	mechListBox.move( -xOffset, -yOffset );
+	aObject::endTextBridge();
 
 	loadoutListBox.move( xOffset, yOffset );
 	loadoutListBox.render();
 	loadoutListBox.move( -xOffset, -yOffset );
 
 	if ( !xOffset && !yOffset && pCurMech)
+	{
+		// PREVIEW-FBO-FIXED-800x600-1: Mech Bay has no defs/ImGui Gui3DView panel
+		// (no hasDefsUiPage() branch, no such block in mcl_mb_layout.fit) -- but
+		// GuiRuntime::Render() still composites every frame regardless, so we can
+		// draw the preview via the same offscreen-FBO + ImGui-image technique used
+		// for Mechlopedia, just computing the real-screen destination rect
+		// ourselves (mechCamera->bounds[] is the panel rect in raw, unscaled
+		// 800x600 legacy space -- mechbayscreen.cpp's mechCamera->init() call,
+		// unlike mechlopedia.cpp's defs branch, never multiplies it by sx/sy) by
+		// scaling with the SAME tbSx/tbSy ratio already used for the text bridge
+		// above.
+		mechCamera->setPreviewOffscreen( true );
 		mechCamera->render();
+		mechCamera->drawPreviewToPanel(
+			mechCamera->bounds[0] * tbSx + tbOx, mechCamera->bounds[1] * tbSy + tbOy,
+			(mechCamera->bounds[2] - mechCamera->bounds[0]) * tbSx,
+			(mechCamera->bounds[3] - mechCamera->bounds[1]) * tbSy );
+	}
 
 
 
@@ -264,10 +318,20 @@ void MechBayScreen::render(int xOffset, int yOffset)
 
 	LogisticsScreen::render(xOffset, yOffset);
 
+	// MECH-ICON-BLANK-1: full GUI bridge, not just the text bridge. With the
+	// data/defs replacement page active, legacy gos_DrawQuads output is buried
+	// under the ImGui page — the deployment-slot icon/pilot/connector QUADS
+	// were drawn but invisible while the bridged TEXT (names) showed. Routing
+	// the whole icon widget tree through the gui bridge draws it on the ImGui
+	// HUD layer at display scale, same as the names.
+	aObject::beginGuiBridge( tbSx, tbSy, tbOx, tbOy );
+	aObject::beginTextBridge( tbSx, tbSy, 1.0f, tbOx, tbOy );
 	for (int i = 0; i < ICON_COUNT; i++ )
 	{
 		pIcons[i].render( xOffset, yOffset );
 	}
+	aObject::endTextBridge();
+	aObject::endGuiBridge();
 
 	if ( MPlayer && ChatWindow::instance() )
 		ChatWindow::instance()->render(xOffset, yOffset);
@@ -395,6 +459,7 @@ void MechBayScreen::update()
 	// RP
 	sprintf( str, "%ld ", LogisticsData::instance->getCBills() );
 	textObjects[1].setText( str );
+	setDefsElementText( "game.mcl_mb_layout.text.cbills_text", str );
 
 	long mouseX = userInput->getMouseX();
 	long mouseY = userInput->getMouseY();
@@ -411,6 +476,7 @@ void MechBayScreen::update()
 
 	sprintf( str, tmpStr, currentDropWeight, maxDropWeight );
 	textObjects[6].setText( str );
+	setDefsElementText( "game.mcl_mb_layout.text.team_weight_readout", str );
 
 
 	// update drag and drop
@@ -814,22 +880,29 @@ void MechBayScreen::setMech( LogisticsMech* pMech,  bool bCommandFromLB )
 		cLoadString( IDS_MB_MECH_WEIGHT, tmpStr, 63 );
 		sprintf( str, tmpStr, pCurMech->getMaxWeight(), (const char*)pCurMech->getMechClass() );
 		textObjects[7].setText( str );
+		setDefsElementText( "game.mcl_mb_layout.text.mech_info_tonnage", str );
 
-		// firing range
+		// firing range (getOptimalRangeString returns a string-table ID)
 		uint32_t tmpColor;
-		textObjects[14].setText( pCurMech->getVariant()->getOptimalRangeString( tmpColor ) );
+		int rangeID = pCurMech->getVariant()->getOptimalRangeString( tmpColor );
+		textObjects[14].setText( rangeID );
 		textObjects[14].setColor( tmpColor );
+		char rangeBuf[128];
+		cLoadString( rangeID, rangeBuf, sizeof( rangeBuf ) - 1 );
+		setDefsElementText( "game.mcl_mb_layout.text.mech_info_range_text", rangeBuf );
 
 		// armor
 		int armor = pCurMech->getArmor();
 		sprintf( str, "%ld", armor );
 		textObjects[8].setText( str );
+		setDefsElementText( "game.mcl_mb_layout.text.mech_info_armor", str );
 		attributeMeters[0].setValue( armor/MAX_ARMOR_RANGE );
 
 		// speed
 		int speed = pCurMech->getDisplaySpeed();
 		sprintf( str, "%ld", speed );
 		textObjects[9].setText( str );
+		setDefsElementText( "game.mcl_mb_layout.text.mech_info_speed", str );
 		attributeMeters[1].setValue( pCurMech->getSpeed()/MAX_SPEED_RANGE );
 
 
@@ -837,10 +910,16 @@ void MechBayScreen::setMech( LogisticsMech* pMech,  bool bCommandFromLB )
 		int jumpRange = pCurMech->getJumpRange();
 		sprintf( str, "%ld", jumpRange * 25 );
 		textObjects[10].setText( str );
+		setDefsElementText( "game.mcl_mb_layout.text.mech_info_jump_dist", str );
 		attributeMeters[2].setValue( jumpRange * 25 / MAX_JUMP_RANGE );
 
+		// chassis name is a string-table ID; variant name is an EString.
 		textObjects[11].setText( pCurMech->getChassisName() );
+		char chassisBuf[128];
+		cLoadString( pCurMech->getChassisName(), chassisBuf, sizeof( chassisBuf ) - 1 );
+		setDefsElementText( "game.mcl_mb_layout.text.mech_name_header", chassisBuf );
 		textObjects[12].setText( pCurMech->getName() );
+		setDefsElementText( "game.mcl_mb_layout.text.variant_name_header", (const char*)pCurMech->getName() );
 	}
 	else
 	{
@@ -851,12 +930,24 @@ void MechBayScreen::setMech( LogisticsMech* pMech,  bool bCommandFromLB )
 		textObjects[11].setText( "" );
 		textObjects[12].setText( "" );
 		textObjects[14].setText( "" );
+		setDefsElementText( "game.mcl_mb_layout.text.mech_info_tonnage", "" );
+		setDefsElementText( "game.mcl_mb_layout.text.mech_info_armor", "" );
+		setDefsElementText( "game.mcl_mb_layout.text.mech_info_speed", "" );
+		setDefsElementText( "game.mcl_mb_layout.text.mech_info_jump_dist", "" );
+		setDefsElementText( "game.mcl_mb_layout.text.mech_name_header", "" );
+		setDefsElementText( "game.mcl_mb_layout.text.variant_name_header", "" );
+		setDefsElementText( "game.mcl_mb_layout.text.mech_info_range_text", "" );
 		for ( int i = 0; i < 3; i++ )
 		{
 			attributeMeters[i].setValue(0);
 		}
 
 	}
+
+	// Mirror the (legacy, occluded) loadout list into the defs GuiList so it renders
+	// on the ImGui layer.  loadoutListBox was populated above via setMech(); an empty
+	// box (pMech == NULL) pushes an empty list, clearing the defs display.
+	syncWeaponLoadout( this, loadoutListBox, "game.mcl_mb_layout.list.loadout" );
 }
 
 void MechBayScreen::beginDrag( LogisticsMech* pMech )

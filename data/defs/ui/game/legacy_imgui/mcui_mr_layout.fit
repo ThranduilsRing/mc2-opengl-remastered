@@ -12,7 +12,12 @@ GuiPage {
     layout = "absolute"
     coordinateSpace = "screen_absolute"
     localWidth = 800
-    localHeight = 1326
+    // RESULTS-SQUISH-1: converter took the page extent from ONE promotion
+    // slide-in element authored offscreen (y->1326); every on-screen widget of
+    // all four sub-areas lives in 0..600. 1326 made PageScale sy=displayH/1326
+    // squash the whole AAR into the top of the screen. Design space is 800x600;
+    // the outlier element clips, exactly as legacy did.
+    localHeight = 600
     mountOffset = "0,0"
     editableSource = "generated_imgui_only"
 }

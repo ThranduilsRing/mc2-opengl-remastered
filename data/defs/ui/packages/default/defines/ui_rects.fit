@@ -1,0 +1,68 @@
+/***************************************************************
+ * FILENAME: ui_rects.fit
+ * DESCRIPTION: Modern rect model definitions for legacy_imgui UI controls.
+ *
+ * AUTHOR: Methuselas
+ * CREATED: 2026-05-25
+ *
+ * UPDATED BY: Methuselas
+ * UPDATED: 2026-05-25
+ *
+ * CHANGES:
+ * - Declared explicit control/art/hit/text rect fields for migrated ImGui UI.
+ ***************************************************************/
+
+UiRectModel {
+    key = "legacy_imgui.modern_rect_v1"
+    source = "GameOS FIT migration"
+    purpose = "Make every current UI rect explicit before Engine/Viewer/Editor ImGui hookup."
+    coordinateSpace = "screen_absolute"
+    sourceRectField = "legacyLocalRect"
+    previewRectField = "rect"
+    controlRectField = "controlRect"
+    artRectField = "artRect"
+    hitRectField = "hitRect"
+    textRectField = "textRect"
+    textOffsetField = "textOffset"
+    preserveLegacyFields = true
+}
+
+UiRectField {
+    key = "ui.rect.control"
+    field = "controlRect"
+    meaning = "Logical control bounds. Moving the control moves linked layers unless a sublayer edit mode is active."
+}
+
+UiRectField {
+    key = "ui.rect.art"
+    field = "artRect"
+    meaning = "Visual/image layer bounds. This may match controlRect or be separately adjusted for modern art."
+}
+
+UiRectField {
+    key = "ui.rect.hit"
+    field = "hitRect"
+    meaning = "Clickable/action bounds. This should remain stable when only text placement is adjusted."
+}
+
+UiRectField {
+    key = "ui.rect.text"
+    field = "textRect"
+    meaning = "Text layout bounds. Text is aligned inside this rect and may be moved without moving the button art."
+}
+
+UiRectField {
+    key = "ui.rect.text_offset"
+    field = "textOffset"
+    meaning = "Text rect origin relative to controlRect origin, stored for fast inspector editing."
+}
+
+UiRectMode {
+    key = "explicit_legacy"
+    meaning = "Legacy FIT provided a text rectangle; migrated UI preserves it as first-class textRect."
+}
+
+UiRectMode {
+    key = "control_rect_fallback"
+    meaning = "No legacy text rectangle existed; text defaults to the control bounds until edited."
+}

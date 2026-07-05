@@ -3,6 +3,8 @@
 
 #include "utils/gl_utils.h"
 
+#include "../../RenderCore/RenderRegionId.h"   // RENDER-BACKEND-REGION-IFACE-1 (relative: reachable from every TU that includes this header, incl. RenderWorld)
+
 struct glsl_program;
 
 class gosPostProcess {
@@ -170,6 +172,12 @@ public:
     void setMapHalfExtent(float extent) { mapHalfExtent_ = extent; }
     float getMapHalfExtent() const { return mapHalfExtent_; }
     void setWaterElevation(float elev) { waterElevation_ = elev; }
+    // TERRAIN-SHORELINE-V3: read-only accessor so the chunk terrain driver
+    // (gos_terrain_lod_chunk.cpp) can upload the SAME water elevation the
+    // water fast path uses (Terrain::waterElevation, mirrored here at mission
+    // load via setWaterElevation/gos_SetWaterElevation) as u_waterElevation
+    // for elevation-based shoreline band placement.
+    float getWaterElevation() const { return waterElevation_; }
 
     // Dynamic object shadows: camera-centered, re-rendered every frame
     void initDynamicShadows();
@@ -194,9 +202,10 @@ public:
     int getDynamicShadowMapSize() const { return dynShadowMapSize_; }
 
     // --- Item 1: Cascaded Shadow Maps (dynamic path) -----------------------
-    // Gate (MC2_SHADOW_CSM, default OFF). When OFF the legacy single-map path
-    // above is used unchanged (byte-identical). When ON, the dynamic shadow is
-    // a GL_TEXTURE_2D_ARRAY of csmCount layers, each with its own light matrix.
+    // Gate (MC2_SHADOW_CSM, default ON since 2026-06-18 `8ff13a36`; "=0" opts
+    // out to the legacy single-map path above, byte-identical). When ON
+    // (the default), the dynamic shadow is a GL_TEXTURE_2D_ARRAY of csmCount
+    // layers, each with its own light matrix.
     GLuint getDynamicShadowArrayTexture() const { return dynShadowArrayTex_; }
     int    getDynamicShadowCascadeCount() const { return csmCount_; }
     // Flat float[csmCount_*16] of per-cascade light-space matrices (col-major).
@@ -230,6 +239,16 @@ public:
     float fxaaSubpix_;
     float fxaaEdgeThreshold_;
     float fxaaEdgeThresholdMin_;
+
+    // POST-FX-CAS-1: AMD FidelityFX Contrast Adaptive Sharpening, folded into the
+    // composite shader (same precedent as FXAA above). Applied to the final graded
+    // LDR color; gate OFF -> u_casEnabled==0 -> shader skips it (byte-identical).
+    // Seeded from MC2_POST_CAS / MC2_POST_CAS_SHARPNESS at init.
+    bool  casEnabled_;
+    float casSharpness_;  // 0..1, default 0.5
+
+    // POST-FX-TONEMAP-V2: 0 off (default, byte-identical), 1 AgX, 2 Hable, 3 Reinhard.
+    int   tonemapMode_;
 
     void runScreenShadow();
     bool screenShadowEnabled_;
@@ -286,6 +305,14 @@ public:
     // cloudShadowStateAppliedByExecutor_). Set by executorApplyShorelineState().
     bool shorelineStateAppliedByExecutor_ = false;
     void runShoreline();
+    // TERRAIN-SHORELINE-MASK-1 (recon landmine #6 "double-shore"): set every
+    // frame by the terrain chunk driver (gos_terrain_lod_chunk.cpp) to true
+    // when a terrain-side wet/foam shoreline mask is active (gate ON + sidecar
+    // loaded). runShoreline() yields when this is true so the screen-space
+    // foam halo and the new terrain-side band never brighten the seam twice.
+    // Default false -> runShoreline() behaves exactly as before (byte-identical).
+    bool shorelineSuppressedByTerrainMask_ = false;
+    void setShorelineSuppressedByTerrainMask(bool b) { shorelineSuppressedByTerrainMask_ = b; }
 
     // SSAO-GTAO-LITE-MVP-1 (Track V, MC2_SSAO). Half-res world-space AO.
     // Default OFF -> runSSAO() is skipped entirely (byte-identical). Resolved
@@ -316,12 +343,119 @@ public:
     // Gate OFF (executor never called): flag stays false → body sets state as before
     // → byte-identical to pre-slice behavior.
     bool  edgeFogStateAppliedByExecutor_ = false;
-    float edgeFogColor_[3] = {0.93f, 0.94f, 0.95f};
+    // FOG-EXPOSURE-HEADROOM-1: fog composites into sceneFBO_ BEFORE the composite
+    // pass applies exposure_ + the unconditional warm grade (postprocess.frag:89,
+    // 95-112). At the near-white {0.93,0.94,0.95} the graded missions (mc2_24
+    // exposure 1.1, mc2_10 1.05) drove fog past 1.0 -> blown-out white cloud
+    // ("fog super bright in some spots"). Drop the base so exposure*grade has
+    // headroom: 0.80 * 1.1(exp) * 1.10(grade) ~= 0.97, still a bright cloud bank
+    // but no clip. Env MC2_OOB_FOG_COLOR still overrides oob at runtime.
+    float edgeFogColor_[3] = {0.80f, 0.81f, 0.83f};
     float edgeFogStart_    = 50.0f;    // world units inside boundary where fog begins
     float edgeFogHeight_   = 2000.0f;  // cloud bank top in world Z (MC2_EDGE_FOG_HEIGHT)
     float edgeFogMax_      = 0.92f;    // max opacity
     glsl_program* edgeFogProg_ = nullptr;
     void  runEdgeFog();
+
+    // RENDER-BACKEND-REGION-IFACE-1 (Layer-6 ENTRY). The PostprocessFog region
+    // (EdgeFog + OOB fog) made SELECTABLE GL-vs-Vulkan through IRenderBackend.
+    //
+    // Master gate MC2_RENDER_BACKEND_REGION_IFACE (default OFF): OFF -> the
+    // ORIGINAL direct-GL fog sites run (abstraction fully skipped, byte-identical).
+    // ON -> endScene() routes the fog region through runFogRegionThroughBackend(),
+    // which builds the backend-neutral context, selects the backend
+    // (MC2_POSTPROCESS_BACKEND=gl|vk, default gl), and calls
+    // IRenderBackend::runRegion(); GL falls back on any failure.
+    bool regionIfaceEnabled() const;   // MC2_RENDER_BACKEND_REGION_IFACE==1
+
+    // 1A: the extracted GL fog region wrapper. Calls runEdgeFog() then runFogOob()
+    // UNCHANGED (same two inline bodies, same order). Returns the number of GL fog
+    // passes that actually executed (always 2 here; the inner run*() early-returns
+    // still short-circuit per-effect but the wrapper's contract is "run both GL
+    // sites"). This is what the GL backend's runRegion() invokes.
+    int  runFogRegionGL();
+
+    // 1B: the routed entry called from endScene() when the master gate is ON. Builds
+    // the neutral context, picks the backend by MC2_POSTPROCESS_BACKEND, calls
+    // runRegion(); on false (VK unavailable/failed) runs runFogRegionGL(). Writes
+    // the region_impl / fallback_reason / equivalence counters to the health snapshot.
+    void runFogRegionThroughBackend();
+
+    // GL handle resolver for the region context. gosPostProcess owns
+    // sceneColorTex_/sceneDepthTex_, so IT is the resolver: MainColor->sceneColorTex_,
+    // MainDepth->sceneDepthTex_. Defined as a tiny adaptor in the .cpp; the neutral
+    // context carries a pointer to it (a resolver is a SERVICE, not a handle).
+    unsigned int resolveRegionResource(RenderCore::RenderResourceId id) const;
+
+#ifdef MC2_VULKAN_ISLAND
+    // VULKAN-EDGE-FOG-ISLAND-2a: the first REAL Vulkan render work in the frame
+    // loop. When MC2_VULKAN_EDGE_FOG_ISLAND=1 AND lazy Vulkan init succeeds, the
+    // edge-fog composite runs on a headless Vulkan device instead of the GL path
+    // (see the seam in beginPostProcess()/composite). All Vulkan state is held in
+    // an opaque struct so the Vulkan headers never leak into this header.
+    //
+    // vulkanEdgeFogIslandEnabled(): reads MC2_VULKAN_EDGE_FOG_ISLAND once, lazily
+    // initializes the device on first call, and returns true only if init
+    // succeeded. On failure it logs once, disables itself, and returns false so
+    // the caller falls back to runEdgeFog() (the GL path). Never throws/crashes.
+    // runEdgeFogVulkan(): per-frame GL->Vulkan->GL edge-fog composite.
+    // destroyVulkanEdgeFogIsland(): torn down from destroy().
+    bool  vulkanEdgeFogIslandEnabled();
+    void  runEdgeFogVulkan();
+    void  destroyVulkanEdgeFogIsland();
+    struct VulkanEdgeFogIsland;   // defined in vulkan_edge_fog_island.cpp
+    VulkanEdgeFogIsland* vkFogIsland_ = nullptr;
+
+    // VULKAN-OOB-FOG-ISLAND-1: the SECOND offscreen Vulkan island (proves the
+    // VULKAN-ISLAND-TEMPLATE-1 checklist repeats). When MC2_VULKAN_OOB_FOG_ISLAND=1
+    // AND lazy Vulkan init succeeds, the OOB-fog composite runs on a headless Vulkan
+    // device instead of the GL runFogOob() path. Opaque pointer only -- no Vulkan
+    // headers leak into this header.
+    // vulkanOobFogIslandEnabled(): reads MC2_VULKAN_OOB_FOG_ISLAND once, lazily
+    // initializes the device on first call; false on failure -> GL fallback.
+    // runFogOobVulkan(): per-frame GL->Vulkan->GL OOB-fog composite.
+    // destroyVulkanOobFogIsland(): torn down from destroy().
+    bool  vulkanOobFogIslandEnabled();
+    void  runFogOobVulkan();
+    void  destroyVulkanOobFogIsland();
+    struct VulkanOobFogIsland;   // defined in vulkan_oob_fog_island.cpp
+    VulkanOobFogIsland* vkOobFogIsland_ = nullptr;
+
+    // VULKAN-POSTPROCESS-SUBGRAPH-1: the Layer-4 milestone -- fuse the EdgeFog +
+    // OOB-fog islands into ONE native Vulkan subgraph. A Vulkan-owned intermediate
+    // color image is copied in from GL sceneColor ONCE, blended by BOTH fog passes
+    // (edge then oob) in ONE render pass / ONE subpass / TWO draws (NO CPU readback
+    // between the two passes, 2 fewer copies than running both islands), then copied
+    // back to GL ONCE. Opaque pointer only -- no Vulkan headers leak into this header.
+    //
+    // vulkanPostprocessSubgraphEnabled(): reads MC2_VULKAN_POSTPROCESS_SUBGRAPH once,
+    // lazily inits the device on first call; false on failure -> GL fallback (BOTH GL
+    // fog passes run). runPostprocessSubgraph(): per-frame fused GL->Vulkan->GL edge+
+    // oob composite (does BOTH fog effects). destroyVulkanPostprocessSubgraph(): torn
+    // down from destroy().
+    bool  vulkanPostprocessSubgraphEnabled();
+    // POSTPROCESS-VULKAN-BACKEND-OPT-IN: the env-gate-FREE half of
+    // vulkanPostprocessSubgraphEnabled() -- lazy init + size-match + device-validity,
+    // with NO MC2_VULKAN_POSTPROCESS_SUBGRAPH check. Returns true iff the subgraph is
+    // ready to render THIS frame. Both the standalone gate path (after its env check)
+    // and the region-iface Vulkan backend (whose backend=vk selection IS the enable
+    // signal) route through this, so backend=vk runs Vulkan without the subgraph gate.
+    bool  postprocessSubgraphReadyForRegion();
+    void  runPostprocessSubgraph();
+    void  destroyVulkanPostprocessSubgraph();
+
+    // RENDER-BACKEND-REGION-IFACE-1 (1C): Vulkan impl of runRegion for the
+    // PostprocessFog region. Returns false (fail-soft) if the subgraph is
+    // unavailable/failed this frame -> caller runs the GL wrapper (FallbackGL).
+    // On success runs runPostprocessSubgraph() and reports impl=VulkanSubgraph
+    // with vkDraws=2. Never crashes. Defined in gos_postprocess.cpp under the
+    // same #ifdef; the neutral context values already match the subgraph's
+    // EXACT uploads (both pull from the same members).
+    bool  runFogRegionVulkanBackend(const RenderCore::PostprocessFogRegionContext& ctx,
+                                     RenderCore::RegionOutput* out);
+    struct VulkanPostprocessSubgraph;   // defined in vulkan_postprocess_subgraph.cpp
+    VulkanPostprocessSubgraph* vkPostprocessSubgraph_ = nullptr;
+#endif
 
     // OOB-FOG-1: fullscreen fog over out-of-bounds far-plane pixels.
     // Default ON (MC2_OOB_FOG=0 to disable). Reads only scene depth —
@@ -330,9 +464,33 @@ public:
     // APPLY-STATE-REDUNDANT-BODY-REMOVE-2: per-island executor-applied flag (see
     // cloudShadowStateAppliedByExecutor_). Set by executorApplyFogOobState().
     bool  fogOobStateAppliedByExecutor_ = false;
-    float oobFogColor_[3] = {0.93f, 0.94f, 0.95f}; // default: white cloud bank
+    // FOG-EXPOSURE-HEADROOM-1: see edgeFogColor_ above. fog_oob.frag's noise
+    // "sunlit tops" (col = fogColor*1.05, line 101) clip FIRST under exposure,
+    // which is what read as bright *spots*. 0.80 base * 1.05(top) * 1.1(exp) *
+    // 1.10(grade) ~= 1.01 -- tops stay bright, no saturated white blob.
+    float oobFogColor_[3] = {0.80f, 0.81f, 0.83f}; // bright cloud bank (exposure-headroom)
     float oobFogOpacity_ = 1.0f;
     void  runFogOob();
+
+    // FOG-HORIZON-CLAMP-1: reshape the OOB/edge-fog elevation profile so fog is
+    // FULL at/below the horizon (covers OOB terrain/water sideways + down) and
+    // fades to ZERO within a small elevation band just above the horizon, leaving
+    // the sky above clear. Supersedes the old worldDir.z 0.22 exclusion band
+    // (which let fog survive to ~12deg+ elevation, bleeding up into the sky).
+    //   MC2_FOG_HORIZON_FADE_START -- elevation (deg) where the fade begins; fog
+    //                                 still full at/below this.  Default 0.
+    //   MC2_FOG_HORIZON_FADE_END   -- elevation (deg) where fog reaches zero.
+    //                                 Default 5.  Must be > start.
+    //   MC2_FOG_HORIZON_CLAMP=0    -- kill-switch: restore the previous profile
+    //                                 (no elevation clamp; old worldDir.z band).
+    // Shader form is cheap: we pass the SINES of the two angles (elevSin =
+    // -worldDir.z for a normalized dir), so the frag does a plain smoothstep on
+    // -worldDir.z with no per-fragment trig.
+    bool  fogHorizonClampEnabled_ = true;    // default ON (rides existing fog gate)
+    float fogHorizonFadeStartDeg_ = 0.0f;
+    float fogHorizonFadeEndDeg_   = 5.0f;
+    float fogHorizonFadeStartSin_ = 0.0f;    // sin(0deg)
+    float fogHorizonFadeEndSin_   = 0.08716f;// sin(5deg); recomputed from env in ctor
 
     // HZB-DEPTH-PYRAMID-MVP-1 (TRACKRV-HZB-VISIBILITY-OPUS-1). Gated reverse-Z
     // Hi-Z depth pyramid built from sceneDepthTex_ via a custom fragment MIN
@@ -384,6 +542,12 @@ private:
     GLuint sceneFBO_;
     GLuint sceneColorTex_;
     GLuint sceneDepthTex_;
+    // SKYBOX-FOG-EXCLUDE-1: stencil-only view onto sceneDepthTex_'s storage
+    // (GL_DEPTH_STENCIL_TEXTURE_MODE=GL_STENCIL_INDEX baked in via glTextureView,
+    // so it can be sampled in the same draw as the depth-mode sceneDepthTex_
+    // binding without per-bind mode toggling). Lazily created; 0 when
+    // MC2_SKYBOX_FOG_EXCLUDE=0 (never allocated -> zero cost OFF).
+    GLuint sceneStencilViewTex_ = 0;
     GLuint sceneNormalTex_;
     GLuint sceneObjectIdTex_ = 0;   // M1.5 R32UI MRT attachment-2 (gated on MC2_OBJECT_ID_BUFFER)
     GLuint sceneDepthCopyTex_ = 0;  // VFX-SOFT-PARTICLES-MVP-1 lazy depth copy (DEPTH24_STENCIL8)
@@ -426,6 +590,10 @@ private:
     bool          hdriEnabled_     = false;  // resolved once from env at init
     bool          hdriReady_       = false;  // true iff tex + program both valid
     GLuint        hdriDummyVao_    = 0;      // fallback when quadVAO_ unavailable
+    // SKYBOX-FOG-EXCLUDE-1: stencil-only tag pass program (hdri_skybox_stencil_tag.frag).
+    // Compiled lazily on first use under MC2_SKYBOX_FOG_EXCLUDE=1; null/no-op when
+    // the gate is off (zero cost OFF).
+    glsl_program* hdriSkyboxStencilTagProg_ = nullptr;
     // HDRI-SKY Item 2: GL-equirect azimuth (radians) of the baked sun in the
     // EXR, derived at load time by luminance-weighted centroid of the brightest
     // above-horizon texels. NaN => scan unavailable (sun-sync stays disabled).

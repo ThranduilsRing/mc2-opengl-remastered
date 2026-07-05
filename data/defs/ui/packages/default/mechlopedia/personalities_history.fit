@@ -1,0 +1,8 @@
+// Compatibility redirect. Do not fork this UI page.
+// Legacy GameOS generated ImGui FIT is the shared source for Viewer and Engine.
+
+GuiRedirect {
+    key = "mechlopedia.personalities_history"
+    target = "../game/mcl_en_person.fit"
+    reason = "shared_game_mechlopedia_truth"
+}

@@ -408,6 +408,14 @@ private:
 	long						lastKey;
 	bool 						bObjectSelectOnlyMode;
 	CMenu**						menus;
+	// EDITOR-EXIT-CRASH-1 (#2): number of entries actually allocated into
+	// menus[] by addBuildingsToNewMenu() (groupCount+2 at alloc time). menus
+	// is NULL until that call runs (it's skipped when land==NULL at init()
+	// time, e.g. the map-generator path). terminate() must free exactly this
+	// many entries, and only when menus != NULL — NOT re-query
+	// getBuildingGroupCount() at teardown time, which walks OOB/garbage when
+	// menus was never allocated or the group count has since changed.
+	int							menusAllocatedCount;
 
 	EditorTacMap				tacMap;
 	HACCEL						m_hAccelTable;

@@ -1,0 +1,230 @@
+// MC2R ImGui FIT generated from legacy UI FIT.
+// Source: data/defs/ui/legacy/game/mcl_options_combobox1.fit
+// Legacy files remain source truth only; edit the generated ImGui FIT.
+
+GuiPage {
+    key = "game.mcl_options_combobox1"
+    title = "Game Mcl Options Combobox1"
+    sourceLegacyFit = "data/defs/ui/legacy/game/mcl_options_combobox1.fit"
+    sourceSystem = "game"
+    sourceScreen = "mcl_options_combobox1"
+    sourceKind = "legacy_component"
+    layout = "component_absolute"
+    coordinateSpace = "component_local"
+    localWidth = 568
+    localHeight = 23
+    mountOffset = "0,0"
+    editableSource = "generated_imgui_only"
+    overlayGameOS = true
+    renderMode = "gameos_overlay"
+    backgroundPolicy = "transparent_overlay"
+}
+
+GuiMetadata {
+    key = "game.mcl_options_combobox1.metadata.metadata"
+    pageKey = "game.mcl_options_combobox1"
+    legacySection = "Texts"
+    legacyContext = "for hotkey entry"
+    role = "metadata"
+    layer = "metadata"
+    aliasOverride = "metadata"
+    sourceControlType = "Texts"
+    rect = "0,0,0,0"
+    legacyLocalRect = "0,0,0,0"
+    legacyRectSource = "xywh"
+    visible = false
+}
+
+GuiText {
+    key = "game.mcl_options_combobox1.text.command"
+    pageKey = "game.mcl_options_combobox1"
+    legacySection = "Text0"
+    legacyComment = "command"
+    role = "text"
+    layer = "text"
+    aliasOverride = "command"
+    sourceControlType = "Text0"
+    rect = "7,5,336,16"
+    legacyLocalRect = "7,5,336,16"
+    legacyRectSource = "xywh"
+    uiPackage = "default"
+    rectModel = "legacy_imgui.modern_rect_v1"
+    controlRect = "7,5,336,16"
+    textRect = "7,5,336,16"
+    textRectMode = "control_rect_fallback"
+    textLegacyId = 26591
+    visible = false
+    suppressedLegacyTextId = 26591
+    suppressedLegacyTextReason = "font_resource_id"
+    runtimeTextBinding = "legacy.blank_or_runtime_placeholder"
+    runtimeTextSource = "legacy text rectangle has no TextID"
+    textMissing = false
+    legacyFontId = 26591
+    legacyFontComment = "AgencyFB11"
+    font = "Agency Regular"
+    fontStyle = "Regular"
+    fontSize = 11
+    bold = false
+    italic = false
+    textAlign = "left"
+    textAnchor = "upper_left"
+    wrapText = false
+    colorArgb = "0xffffffff"
+    legacyColor = 0xffffffff
+    outline = "FALSE"
+    legacyAlignment = 0
+    legacyFontComment = "AgencyFB11"
+    borderColorArgb = "0x00000000"
+}
+
+GuiText {
+    key = "game.mcl_options_combobox1.text.hotkey_this_entry_changes_depending_on_what_player_wants"
+    pageKey = "game.mcl_options_combobox1"
+    legacySection = "Text1"
+    legacyComment = "hotkey- this entry changes depending on what player wants"
+    role = "text"
+    layer = "text"
+    aliasOverride = "hotkey- this entry changes depending on what player wants"
+    sourceControlType = "Text1"
+    rect = "354,5,211,16"
+    legacyLocalRect = "354,5,211,16"
+    legacyRectSource = "xywh"
+    uiPackage = "default"
+    rectModel = "legacy_imgui.modern_rect_v1"
+    controlRect = "354,5,211,16"
+    textRect = "354,5,211,16"
+    textRectMode = "control_rect_fallback"
+    textLegacyId = 26589
+    textKey = "legacy.mc2res.26589"
+    visibleText = "HOTKEY"
+    textLegacySymbol = "IDS_OPTIONS_HOTKEY"
+    textSource = "mc2res"
+    textMissing = false
+    legacyFontId = 26591
+    legacyFontComment = "AgencyFB11"
+    font = "Agency Regular"
+    fontStyle = "Regular"
+    fontSize = 11
+    bold = false
+    italic = false
+    textAlign = "left"
+    textAnchor = "upper_left"
+    wrapText = false
+    colorArgb = "0xffffffff"
+    legacyColor = 0xffffffff
+    outline = "FALSE"
+    legacyAlignment = 0
+    legacyFontComment = "AgencyFB11"
+    borderColorArgb = "0x00000000"
+}
+
+GuiMetadata {
+    key = "game.mcl_options_combobox1.metadata.metadata_01"
+    pageKey = "game.mcl_options_combobox1"
+    legacySection = "Rects"
+    role = "metadata"
+    layer = "metadata"
+    aliasOverride = "metadata"
+    sourceControlType = "Rects"
+    rect = "0,0,0,0"
+    legacyLocalRect = "0,0,0,0"
+    legacyRectSource = "xywh"
+    visible = false
+}
+
+GuiMetadata {
+    key = "game.mcl_options_combobox1.metadata.underline"
+    pageKey = "game.mcl_options_combobox1"
+    legacySection = "Rect0"
+    legacyComment = "underline"
+    role = "metadata"
+    layer = "metadata"
+    aliasOverride = "underline"
+    sourceControlType = "Rect0"
+    rect = "0,25,570,0"
+    legacyLocalRect = "0,25,570,0"
+    legacyRectSource = "xywh"
+    legacyColor = 0xff43311C
+    outline = "TRUE"
+    visible = false
+}
+
+GuiRect {
+    key = "game.mcl_options_combobox1.rect.full_color_rect_for_editing_highlight"
+    pageKey = "game.mcl_options_combobox1"
+    legacySection = "Rect1"
+    legacyComment = "full color rect for \"editing\" highlight"
+    role = "rect"
+    layer = "layout"
+    aliasOverride = "full color rect for \"editing\" highlight"
+    sourceControlType = "Rect1"
+    rect = "349,2,219,21"
+    legacyLocalRect = "349,2,219,21"
+    legacyRectSource = "xywh"
+    uiPackage = "default"
+    rectModel = "legacy_imgui.modern_rect_v1"
+    controlRect = "349,2,219,21"
+    legacyColor = 0xffffffff
+    outline = "FALSE"
+    filled = true
+    fillColorArgb = "0x00000000"
+    borderColorArgb = "0x00000000"
+    colorArgb = "0xffffffff"
+}
+
+GuiMetadata {
+    key = "game.mcl_options_combobox1.metadata.for_command_text"
+    pageKey = "game.mcl_options_combobox1"
+    legacySection = "Animation0"
+    legacyComment = "for command text"
+    role = "metadata"
+    layer = "metadata"
+    aliasOverride = "for command text"
+    sourceControlType = "Animation0"
+    rect = "0,0,0,0"
+    legacyLocalRect = "0,0,0,0"
+    legacyRectSource = "xywh"
+    visible = false
+    normalColorArgb = "0xff846643"
+    pressedColorArgb = "0xff846643"
+    highlightColorArgb = "0xff846643"
+    disabledColorArgb = "0xff6b6b6b"
+}
+
+GuiMetadata {
+    key = "game.mcl_options_combobox1.metadata.for_hotkey_text"
+    pageKey = "game.mcl_options_combobox1"
+    legacySection = "Animation1"
+    legacyComment = "for hotkey text"
+    role = "metadata"
+    layer = "metadata"
+    aliasOverride = "for hotkey text"
+    sourceControlType = "Animation1"
+    rect = "0,0,0,0"
+    legacyLocalRect = "0,0,0,0"
+    legacyRectSource = "xywh"
+    visible = false
+    normalColorArgb = "0xff846643"
+    pressedColorArgb = "0xff000000"
+    highlightColorArgb = "0xff846643"
+    disabledColorArgb = "0xff6b6b6b"
+}
+
+GuiMetadata {
+    key = "game.mcl_options_combobox1.metadata.for_highlight_rectangle"
+    pageKey = "game.mcl_options_combobox1"
+    legacySection = "Animation2"
+    legacyComment = "for highlight rectangle"
+    role = "metadata"
+    layer = "metadata"
+    aliasOverride = "for highlight rectangle"
+    sourceControlType = "Animation2"
+    rect = "0,0,0,0"
+    legacyLocalRect = "0,0,0,0"
+    legacyRectSource = "xywh"
+    visible = false
+    normalColorArgb = "0xff000000"
+    pressedColorArgb = "0xffff8a00"
+    highlightColorArgb = "0xff000000"
+    disabledColorArgb = "0xff000000"
+}

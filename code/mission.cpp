@@ -43,6 +43,7 @@
 #endif
 
 extern void visualTuning_applyProfile(const char*);  // MISSION-VISUAL-TUNING-1
+extern void terrainMaterials_apply(const char*);     // TERRAIN-MATERIAL-LIB-1
 
 #include "brain_special_dispatch.h"  // TECHSCRIPT-SPECIAL-DISPATCH-1A: parseBrainSpecialBody
 #include "brain_missionfit_oporbd.h"  // BRAIN-MISSIONFIT-OPORD-CONSUMER-1: declarative mission.fit OPORD parser
@@ -95,6 +96,8 @@ extern void visualTuning_applyProfile(const char*);  // MISSION-VISUAL-TUNING-1
 #endif
 
 #include "frame_jobs.h"  // FRAME-JOBS-1: fixed worker pool for parallel CPU prep
+#include <vector>        // TERRAIN-REAUTH-UNPIN-1 Half B: mover cell scratch
+#include "../GameOS/gameos/gos_terrain_lod_chunk.h"  // TERRAIN-REAUTH-UNPIN-1 Half B: visual-damp mover stamps
 
 #ifndef MULTPLYR_H
 #include"multplyr.h"
@@ -135,6 +138,7 @@ extern void visualTuning_applyProfile(const char*);  // MISSION-VISUAL-TUNING-1
 #include "../resource.h"
 
 #include<gameos.hpp>
+#include "mc2_verify.h"  // MC2-VERIFY-LIVE-1: live data-contract guards
 #include "../GameOS/gameos/gpu_cull_substrate.h"  // C0-3: GPU cull substrate init/shutdown
 #include "../GameOS/gameos/gpu_cull_compute.h"   // C1a: GPU visibility compute dispatch
 #include "../GameOS/gameos/gpu_cull_readback.h"  // C2: async readback ring buffer
@@ -314,6 +318,7 @@ extern PriorityQueuePtr	openList;
 // Phase-timing hooks implemented in GameOS/gameos/gameosmain.cpp.
 extern "C" void mission_phase_begin();
 extern "C" void mission_phase_mark(const char* name);
+extern "C" void mission_phase_report();
 
 long GameVisibleVertices		= 500;
 float BaseHeadShotElevation		= 1.0f;
@@ -877,7 +882,41 @@ long Mission::update (void)
 		}
 
 		{ ZoneScopedN("GameLogic.Mission.Craters"); craterManager->update(); }
-		
+
+		// TERRAIN-REAUTH-UNPIN-1 Half B: near-object displacement fade, mover
+		// half. Gathers live mover positions in coarse-cell space and stamps
+		// them into the visual-displacement damp map (min-combined with the
+		// static building damp) so units always stand on TRUE gameplay height
+		// with no visual pop. Rides MC2_TERRAIN_VISUAL_DISPLACE; whole block is
+		// a single cheap bool check when the displace gate / damp map is off.
+		if (gos_TerrainLodChunk_VisualDampWanted())
+		{
+			ZoneScopedN("GameLogic.Mission.VisualDampMovers");
+			static std::vector<float> s_moverCells;
+			s_moverCells.clear();
+			const float halfMap = Terrain::worldUnitsMapSide * 0.5f;
+			const float wupv    = Terrain::worldUnitsPerVertex;   // 128
+			for (long mi = 0; mi < ObjectManager->getNumMovers(); ++mi)
+			{
+				MoverPtr mv = ObjectManager->getMover(mi);
+				if (!mv || !mv->getExists())
+					continue;
+				Stuff::Vector3D mp = mv->getPosition();
+				s_moverCells.push_back((mp.x + halfMap) / wupv);
+				s_moverCells.push_back((halfMap - mp.y) / wupv);
+			}
+			static const float s_objfadeRadiusWu = []() {
+				const char* v = getenv("MC2_TERRAIN_VISUAL_DISPLACE_OBJFADE_RADIUS");
+				float r = (v && v[0]) ? (float)atof(v) : 256.0f;
+				if (r < 32.0f) r = 32.0f;
+				if (r > 1024.0f) r = 1024.0f;
+				return r;
+			}();
+			gos_TerrainLodChunk_UpdateVisualDampMovers(
+				s_moverCells.data(), (int)(s_moverCells.size() / 2),
+				s_objfadeRadiusWu / wupv, 48.0f / wupv);
+		}
+
 		//Do not UPDATE the textures during a pause.
 		//This uncaches things which only objectManager->update can cache back in!!!!!
 		if ( !missionInterface->isPaused() || MPlayer )
@@ -1493,19 +1532,24 @@ float applyDifficultyWeapon (float dmg, bool isPlayer)
 void InitDifficultySettings (FitIniFile *gameSystemFile)
 {
 	long result = gameSystemFile->seekBlock("DifficultySettings");
-	gosASSERT(result == NO_ERR);
-	
+	// MC2_VERIFY reclassified from gosASSERT (slice MISSION-DATA-DEREF-HARDEN-1)
+	MC2_VERIFY(result == NO_ERR, "InitDifficultySettings: gamesys.fit missing [DifficultySettings] block");
+
 	result = gameSystemFile->readIdLongArray("PlayerSkills", globalPlayerSkills,4);
-	gosASSERT(result == NO_ERR);
-	
+	// MC2_VERIFY reclassified from gosASSERT (slice MISSION-DATA-DEREF-HARDEN-1)
+	MC2_VERIFY(result == NO_ERR, "InitDifficultySettings: [DifficultySettings] missing PlayerSkills");
+
 	result = gameSystemFile->readIdLongArray("EnemySkills",globalEnemySkills,4);
-	gosASSERT(result == NO_ERR);
-	
+	// MC2_VERIFY reclassified from gosASSERT (slice MISSION-DATA-DEREF-HARDEN-1)
+	MC2_VERIFY(result == NO_ERR, "InitDifficultySettings: [DifficultySettings] missing EnemySkills");
+
 	result = gameSystemFile->readIdLongArray("PlayerWeapons",globalPlayerWeapons,4);
-	gosASSERT(result == NO_ERR);
-	
+	// MC2_VERIFY reclassified from gosASSERT (slice MISSION-DATA-DEREF-HARDEN-1)
+	MC2_VERIFY(result == NO_ERR, "InitDifficultySettings: [DifficultySettings] missing PlayerWeapons");
+
 	result = gameSystemFile->readIdLongArray("EnemyWeapons",globalEnemyWeapons,4);
-	gosASSERT(result == NO_ERR);
+	// MC2_VERIFY reclassified from gosASSERT (slice MISSION-DATA-DEREF-HARDEN-1)
+	MC2_VERIFY(result == NO_ERR, "InitDifficultySettings: [DifficultySettings] missing EnemyWeapons");
 }	
 
 //--------------------------------------------------
@@ -1748,9 +1792,14 @@ long Mission::addMover (MoverInitData* moverSpec) {
 	gosASSERT(pilotFile != NULL);
 		
 	long result = pilotFile->open(pilotFullFileName);
-	gosASSERT(result == NO_ERR);
+	// MC2_VERIFY reclassified from gosASSERT (slice MISSION-DATA-DEREF-HARDEN-1):
+	// the pilot .fit is required external data; a failed open feeds a not-open
+	// FitIniFile into pilot->init() below.
+	MC2_VERIFY(result == NO_ERR, "Mission::addMover: pilot .fit open failed (%ld): %s",
+		result, moverSpec ? moverSpec->pilotFileName : "(null)");
 	result = pilot->init(pilotFile);
-	gosASSERT(result == NO_ERR);
+	// MC2_VERIFY reclassified from gosASSERT (slice MISSION-DATA-DEREF-HARDEN-1)
+	MC2_VERIFY(result == NO_ERR, "Mission::addMover: pilot init failed (%ld)", result);
 
 	pilotFile->close();
 	delete pilotFile;
@@ -1783,7 +1832,9 @@ long Mission::addMover (MoverInitData* moverSpec) {
 	}
 		
 	long moduleHandle = ABLi_preProcess(brainFullFileName, &numErrors, &numLinesProcessed);
-	gosASSERT(moduleHandle >= 0);
+	// MC2_VERIFY reclassified from gosASSERT (slice MISSION-DATA-DEREF-HARDEN-1):
+	// a negative handle from a bad/missing .abl brain is then handed to setBrain().
+	MC2_VERIFY(moduleHandle >= 0, "Mission::addMover: ABL brain preprocess failed (handle %ld)", moduleHandle);
 	pilot->setBrain(moduleHandle);
 
 /*
@@ -1932,7 +1983,17 @@ typedef struct _MoverInitData {
 				mover->setLocalMoverId(0);
 
 			ObjectManager->modifyMoverLists(mover, MOVERLIST_ADD);
-			Team::teams[moverSpec->teamID]->addToRoster(mover);
+			// TEAM-COMMANDER-OWNERSHIP-1 audit: the only id-indexed access to the
+			// static Team::teams[] that survives OUTSIDE init's now-bounded create
+			// loops. moverSpec->teamID is a file/save-supplied char (MoverInitData)
+			// that indexes Team::teams[MAX_TEAMS] and is immediately dereferenced --
+			// a bad/mod-supplied id is an OOB read + NULL/garbage deref (companion to
+			// the init-side A5 write guards). Bound the index AND require the slot to
+			// have been created before the addToRoster deref; log mode skips the
+			// roster add for the malformed mover instead of AVing.
+			if (MC2_VERIFY_BOUNDS(moverSpec->teamID, MAX_TEAMS, "Mission::addMover moverSpec->teamID") &&
+				MC2_VERIFY_NOTNULL(Team::teams[moverSpec->teamID], "Mission::addMover Team::teams[teamID]"))
+				Team::teams[moverSpec->teamID]->addToRoster(mover);
 			missionInterface->addMover(mover);
 
 			for (long i = 0; i < ObjectManager->getNumMovers(); i++) {
@@ -2353,6 +2414,7 @@ void Mission::init (const char *missionName, long loadType, long dropZoneID, Stu
 	{ ZoneScopedN("Mission::init initBareMinimum"); initBareMinimum(); }
 	loadProgress = 4.0f;
 	{ ZoneScopedN("Mission::init initTGLForMission"); initTGLForMission(); }
+	mission_phase_mark("setup_tgl_ready"); // LOAD-PHASE-FACTS-1
 	
 	//--------------------------------------------------------------
 	// Start the Mission Heap
@@ -2370,29 +2432,40 @@ void Mission::init (const char *missionName, long loadType, long dropZoneID, Stu
 	gosASSERT(gameSystemFile != NULL);
 		
 	long result = gameSystemFile->open(fullGameSystemName);
-	gosASSERT(result == NO_ERR);
+	// MC2_VERIFY reclassified from gosASSERT (slice MISSION-DATA-DEREF-HARDEN-1):
+	// gamesys.fit is a required per-mission data file; if it fails to open every
+	// subsequent readId below reads uninitialized WeaponRanges/ranges/mine/smoke
+	// values used unconditionally. fatal mode STOPs at the contract violation;
+	// log mode logs and preserves the legacy (garbage-read) path bit-for-bit.
+	MC2_VERIFY(result == NO_ERR, "Mission::init: gamesys.fit open failed (%ld): %s",
+		result, (const char*)fullGameSystemName);
 
 	result = gameSystemFile->seekBlock("WeaponRanges");
-	gosASSERT(result == NO_ERR);
+	// MC2_VERIFY reclassified from gosASSERT (slice MISSION-DATA-DEREF-HARDEN-1)
+	MC2_VERIFY(result == NO_ERR, "Mission::init: gamesys.fit missing [WeaponRanges] block");
 
 	float span[2];
 	result = gameSystemFile->readIdFloatArray("Short", span, 2);
-	gosASSERT(result == NO_ERR);
+	// MC2_VERIFY reclassified from gosASSERT (slice MISSION-DATA-DEREF-HARDEN-1)
+	MC2_VERIFY(result == NO_ERR, "Mission::init: [WeaponRanges] missing Short");
 	WeaponRanges[WEAPON_RANGE_SHORT][0] = span[0];
 	WeaponRanges[WEAPON_RANGE_SHORT][1] = span[1];
 
 	result = gameSystemFile->readIdFloatArray("Medium", span, 2);
-	gosASSERT(result == NO_ERR);
+	// MC2_VERIFY reclassified from gosASSERT (slice MISSION-DATA-DEREF-HARDEN-1)
+	MC2_VERIFY(result == NO_ERR, "Mission::init: [WeaponRanges] missing Medium");
 	WeaponRanges[WEAPON_RANGE_MEDIUM][0] = span[0];
 	WeaponRanges[WEAPON_RANGE_MEDIUM][1] = span[1];
 
 	result = gameSystemFile->readIdFloatArray("Long", span, 2);
-	gosASSERT(result == NO_ERR);
+	// MC2_VERIFY reclassified from gosASSERT (slice MISSION-DATA-DEREF-HARDEN-1)
+	MC2_VERIFY(result == NO_ERR, "Mission::init: [WeaponRanges] missing Long");
 	WeaponRanges[WEAPON_RANGE_LONG][0] = span[0];
 	WeaponRanges[WEAPON_RANGE_LONG][1] = span[1];
 
 	result = gameSystemFile->readIdFloatArray("OptimalRangePoints", OptimalRangePoints, 5);
-	gosASSERT(result == NO_ERR);
+	// MC2_VERIFY reclassified from gosASSERT (slice MISSION-DATA-DEREF-HARDEN-1)
+	MC2_VERIFY(result == NO_ERR, "Mission::init: [WeaponRanges] missing OptimalRangePoints");
 
 	for (long i = 0; i < 5; i++)
 		for (long j = 0; j < 3; j++) {
@@ -2403,31 +2476,37 @@ void Mission::init (const char *missionName, long loadType, long dropZoneID, Stu
 		}
 
 	result = gameSystemFile->seekBlock("General");
-	gosASSERT(result == NO_ERR);
+	// MC2_VERIFY reclassified from gosASSERT (slice MISSION-DATA-DEREF-HARDEN-1)
+	MC2_VERIFY(result == NO_ERR, "Mission::init: gamesys.fit missing [General] block");
 
 	result = gameSystemFile->readIdFloat("MaxVisualRange",maxVisualRange);
-	gosASSERT(result == NO_ERR);
+	// MC2_VERIFY reclassified from gosASSERT (slice MISSION-DATA-DEREF-HARDEN-1)
+	MC2_VERIFY(result == NO_ERR, "Mission::init: [General] missing MaxVisualRange");
 	MaxVisualRadius = maxVisualRange * 1.4142;
 
 	result = gameSystemFile->readIdFloat("FireVisualRange",fireVisualRange);
-	gosASSERT(result == NO_ERR);
+	// MC2_VERIFY reclassified from gosASSERT (slice MISSION-DATA-DEREF-HARDEN-1)
+	MC2_VERIFY(result == NO_ERR, "Mission::init: [General] missing FireVisualRange");
 
 	result = gameSystemFile->readIdULong("MaxTreeLOSBlock",MaxTreeLOSCellBlock);
 	if (result != NO_ERR)
 		MaxTreeLOSCellBlock = 5;
 
 	result = gameSystemFile->readIdFloatArray("WeaponRange", WeaponRange, NUM_FIRERANGES);
-	gosASSERT(result == NO_ERR);
+	// MC2_VERIFY reclassified from gosASSERT (slice MISSION-DATA-DEREF-HARDEN-1)
+	MC2_VERIFY(result == NO_ERR, "Mission::init: [General] missing WeaponRange");
 
 	result = gameSystemFile->readIdFloat("DefaultAttackRange", DefaultAttackRange);
 	if (result != NO_ERR)
 		DefaultAttackRange = 75.0;
 
 	result = gameSystemFile->readIdFloat("BaseSensorRange",baseSensorRange);
-	gosASSERT(result == NO_ERR);
+	// MC2_VERIFY reclassified from gosASSERT (slice MISSION-DATA-DEREF-HARDEN-1)
+	MC2_VERIFY(result == NO_ERR, "Mission::init: [General] missing BaseSensorRange");
 
 	result = gameSystemFile->readIdLongArray("VisualRangeTable",visualRangeTable,256);
-	gosASSERT(result == NO_ERR);
+	// MC2_VERIFY reclassified from gosASSERT (slice MISSION-DATA-DEREF-HARDEN-1)
+	MC2_VERIFY(result == NO_ERR, "Mission::init: [General] missing VisualRangeTable");
 
 	result = gameSystemFile->readIdFloat("BaseHeadShotElevation",BaseHeadShotElevation);
 	if (result != NO_ERR)
@@ -2435,7 +2514,8 @@ void Mission::init (const char *missionName, long loadType, long dropZoneID, Stu
 
 	long forestMoveCost;
 	result = gameSystemFile->readIdLong("ForestMoveCost", forestMoveCost);
-	gosASSERT(result == NO_ERR);
+	// MC2_VERIFY reclassified from gosASSERT (slice MISSION-DATA-DEREF-HARDEN-1)
+	MC2_VERIFY(result == NO_ERR, "Mission::init: [General] missing ForestMoveCost");
 
 	result = gameSystemFile->readIdFloat("MaxUnitExtractDistance",MaxExtractUnitDistance);
 	if (result != NO_ERR)
@@ -2485,10 +2565,12 @@ void Mission::init (const char *missionName, long loadType, long dropZoneID, Stu
 		footPrints = 1;
 
 	result = gameSystemFile->readIdLong("BonusTonnageDivisor",tonnageDivisor);
-	gosASSERT(result == NO_ERR);
-	
+	// MC2_VERIFY reclassified from gosASSERT (slice MISSION-DATA-DEREF-HARDEN-1)
+	MC2_VERIFY(result == NO_ERR, "Mission::init: [General] missing BonusTonnageDivisor");
+
 	result = gameSystemFile->readIdLong("BonusPointsPerTon",resourcesPerTonDivided);
-	gosASSERT(result == NO_ERR);
+	// MC2_VERIFY reclassified from gosASSERT (slice MISSION-DATA-DEREF-HARDEN-1)
+	MC2_VERIFY(result == NO_ERR, "Mission::init: [General] missing BonusPointsPerTon");
 	
 #ifndef FINAL
  	result = gameSystemFile->readIdFloat("CheatHitDamage",CheatHitDamage);
@@ -2501,17 +2583,20 @@ void Mission::init (const char *missionName, long loadType, long dropZoneID, Stu
 	InitDifficultySettings(gameSystemFile);
 
 	result = Mover::loadGameSystem(gameSystemFile, maxVisualRange);
-	gosASSERT(result == NO_ERR);
+	// MC2_VERIFY reclassified from gosASSERT (slice MISSION-DATA-DEREF-HARDEN-1)
+	MC2_VERIFY(result == NO_ERR, "Mission::init: Mover::loadGameSystem failed (%ld)", result);
 
 	//result = loadMultiplayerGameSystem(gameSystemFile);
 	//gosASSERT(result == NO_ERR);
 
 	result = BattleMech::loadGameSystem(gameSystemFile);
-	gosASSERT(result == NO_ERR);
+	// MC2_VERIFY reclassified from gosASSERT (slice MISSION-DATA-DEREF-HARDEN-1)
+	MC2_VERIFY(result == NO_ERR, "Mission::init: BattleMech::loadGameSystem failed (%ld)", result);
 
 	//--------------------------------------------------------------------
 	result = GroundVehicle::loadGameSystem(gameSystemFile);
-	gosASSERT(result == NO_ERR);
+	// MC2_VERIFY reclassified from gosASSERT (slice MISSION-DATA-DEREF-HARDEN-1)
+	MC2_VERIFY(result == NO_ERR, "Mission::init: GroundVehicle::loadGameSystem failed (%ld)", result);
 
 #ifdef USE_ELEMENTALS
 	result = loadElementalGameSystem(gameSystemFile);
@@ -2519,19 +2604,24 @@ void Mission::init (const char *missionName, long loadType, long dropZoneID, Stu
 #endif
 
 	result = gameSystemFile->seekBlock("Mine");
-	gosASSERT(result == NO_ERR);
+	// MC2_VERIFY reclassified from gosASSERT (slice MISSION-DATA-DEREF-HARDEN-1)
+	MC2_VERIFY(result == NO_ERR, "Mission::init: gamesys.fit missing [Mine] block");
 
 	result = gameSystemFile->readIdFloat("BaseDamage", MineDamage);
-	gosASSERT(result == NO_ERR);
-		
+	// MC2_VERIFY reclassified from gosASSERT (slice MISSION-DATA-DEREF-HARDEN-1)
+	MC2_VERIFY(result == NO_ERR, "Mission::init: [Mine] missing BaseDamage");
+
 	result = gameSystemFile->readIdFloat("SplashDamage", MineSplashDamage);
-	gosASSERT(result == NO_ERR);
-		
+	// MC2_VERIFY reclassified from gosASSERT (slice MISSION-DATA-DEREF-HARDEN-1)
+	MC2_VERIFY(result == NO_ERR, "Mission::init: [Mine] missing SplashDamage");
+
 	result = gameSystemFile->readIdFloat("SplashRange", MineSplashRange);
-	gosASSERT(result == NO_ERR);
-		
+	// MC2_VERIFY reclassified from gosASSERT (slice MISSION-DATA-DEREF-HARDEN-1)
+	MC2_VERIFY(result == NO_ERR, "Mission::init: [Mine] missing SplashRange");
+
 	result = gameSystemFile->readIdLong("Explosion", MineExplosion);
-	gosASSERT(result == NO_ERR);
+	// MC2_VERIFY reclassified from gosASSERT (slice MISSION-DATA-DEREF-HARDEN-1)
+	MC2_VERIFY(result == NO_ERR, "Mission::init: [Mine] missing Explosion");
 
 	result = gameSystemFile->readIdLong("MineLayThrottle", MineLayThrottle);
 	if (result != NO_ERR)
@@ -2542,31 +2632,40 @@ void Mission::init (const char *missionName, long loadType, long dropZoneID, Stu
 		MineSweepThrottle = 50;
 
 	result = gameSystemFile->readIdFloat("MineWaitTime", MineWaitTime);
-	gosASSERT(result == NO_ERR);
+	// MC2_VERIFY reclassified from gosASSERT (slice MISSION-DATA-DEREF-HARDEN-1)
+	MC2_VERIFY(result == NO_ERR, "Mission::init: [Mine] missing MineWaitTime");
 
 	result = gameSystemFile->readIdFloat("StrikeWaitTime", StrikeWaitTime);
-	gosASSERT(result == NO_ERR);
+	// MC2_VERIFY reclassified from gosASSERT (slice MISSION-DATA-DEREF-HARDEN-1)
+	MC2_VERIFY(result == NO_ERR, "Mission::init: [Mine] missing StrikeWaitTime");
 
 	result = gameSystemFile->readIdFloat("StrikeTimeToImpact", StrikeTimeToImpact);
-	gosASSERT(result == NO_ERR);
+	// MC2_VERIFY reclassified from gosASSERT (slice MISSION-DATA-DEREF-HARDEN-1)
+	MC2_VERIFY(result == NO_ERR, "Mission::init: [Mine] missing StrikeTimeToImpact");
 
 	result = gameSystemFile->seekBlock("Smoke");
-	gosASSERT(result == NO_ERR);
-	
+	// MC2_VERIFY reclassified from gosASSERT (slice MISSION-DATA-DEREF-HARDEN-1)
+	MC2_VERIFY(result == NO_ERR, "Mission::init: gamesys.fit missing [Smoke] block");
+
 	result = gameSystemFile->readIdLong("MaxSmokeSpheres",totalSmokeSpheres);
-	gosASSERT(result == NO_ERR);
+	// MC2_VERIFY reclassified from gosASSERT (slice MISSION-DATA-DEREF-HARDEN-1)
+	MC2_VERIFY(result == NO_ERR, "Mission::init: [Smoke] missing MaxSmokeSpheres");
 
 	result = gameSystemFile->readIdLong("TotalSmokeShapeSize",totalSmokeShapeSize);
-	gosASSERT(result == NO_ERR);
+	// MC2_VERIFY reclassified from gosASSERT (slice MISSION-DATA-DEREF-HARDEN-1)
+	MC2_VERIFY(result == NO_ERR, "Mission::init: [Smoke] missing TotalSmokeShapeSize");
 
 	result = gameSystemFile->seekBlock("Fire");
-	gosASSERT(result == NO_ERR);
-	
+	// MC2_VERIFY reclassified from gosASSERT (slice MISSION-DATA-DEREF-HARDEN-1)
+	MC2_VERIFY(result == NO_ERR, "Mission::init: gamesys.fit missing [Fire] block");
+
 	result = gameSystemFile->readIdLong("MaxFiresBurning", maxFiresBurning);
-	gosASSERT(result == NO_ERR);
-	
+	// MC2_VERIFY reclassified from gosASSERT (slice MISSION-DATA-DEREF-HARDEN-1)
+	MC2_VERIFY(result == NO_ERR, "Mission::init: [Fire] missing MaxFiresBurning");
+
 	result = gameSystemFile->readIdFloat("MaxFireBurnTime", maxFireBurnTime);
-	gosASSERT(result == NO_ERR);
+	// MC2_VERIFY reclassified from gosASSERT (slice MISSION-DATA-DEREF-HARDEN-1)
+	MC2_VERIFY(result == NO_ERR, "Mission::init: [Fire] missing MaxFireBurnTime");
 
 	memset(missionFileName,0,80);
 	strncpy(missionFileName,missionName,79);
@@ -2657,18 +2756,68 @@ void Mission::init (const char *missionName, long loadType, long dropZoneID, Stu
 
 	result = missionFile->seekBlock("Teams");
 	Assert(result == NO_ERR, result, " Could not find Teams Block ");
-	for (int i = 0; i < Team::numTeams; i++)
-		if (Team::teams[i]) {
-			delete Team::teams[i];
-			Team::teams[i] = NULL;
+	// TEAM-COMMANDER-OWNERSHIP-1: re-init guard against stale teams/commanders
+	// from a prior mission that was NOT torn down (quickstart -> mission without a
+	// logistics destroy). Was a duplicated inline free loop identical to the one
+	// in Mission::destroy -- the divergence/dual-free source. Now the single
+	// shared authority; also nulls the home aliases before they are re-pointed
+	// below at :2808/:2833.
+	Mission::resetTeamsAndCommanders();
+
+	// MC2_MISSION_CYCLE_TEST fixture (default OFF -> stock byte-identical): the
+	// real in-process proof for the class this slice retires. run_smoke launches
+	// a fresh process per mission and kills it mid-play, so it never exercises an
+	// in-process teardown+reload -- the exact path where the old duplicated free
+	// loops used to double-free / leave home dangling. This runs a miniature
+	// mission cycle of the static arrays in isolation, on EVERY mission load
+	// (so it is observable inside the 30s smoke window):
+	//   populate (mimics init's create loop, bumps the static counts + home) ->
+	//   resetTeamsAndCommanders() (mimics destroy's free) ->
+	//   resetTeamsAndCommanders() AGAIN (the ex-double-free init-then-destroy path).
+	// A non-idempotent / non-null-safe helper AVs on the second free or trips the
+	// verify; a helper that forgot the home aliases leaves them dangling. The
+	// statics are left empty (as at entry), so the real init below is untouched.
+	{
+		static const bool s_missionCycleTest = (getenv("MC2_MISSION_CYCLE_TEST") != nullptr);
+		if (s_missionCycleTest) {
+			// State must be quiescent here (the reset above just ran).
+			MC2_VERIFY(Team::numTeams == 0 && Commander::numCommanders == 0,
+				"MC2_MISSION_CYCLE_TEST: entry state not clean (teams=%ld commanders=%ld)",
+				Team::numTeams, Commander::numCommanders);
+
+			// Populate a couple of slots exactly like the real create loop:
+			// new Team + init(i) bumps Team::numTeams; new Commander bumps
+			// Commander::numCommanders (see team.cpp:134 / comndr.cpp init()).
+			for (long i = 0; i < 2 && i < MAX_TEAMS; i++) {
+				Team::teams[i] = new Team;
+				Team::teams[i]->init(i);
+			}
+			for (long i = 0; i < 2 && i < MAX_COMMANDERS; i++) {
+				Commander::commanders[i] = new Commander;
+				Commander::commanders[i]->setId(i);
+			}
+			Team::home = Team::teams[0];
+			Commander::home = Commander::commanders[0];
+			MC2_VERIFY(Team::numTeams == 2 && Commander::numCommanders == 2 &&
+					Team::home != NULL && Commander::home != NULL,
+				"MC2_MISSION_CYCLE_TEST: synthetic populate wrong "
+				"(teams=%ld commanders=%ld)", Team::numTeams, Commander::numCommanders);
+
+			// First reset = the "destroy frees" leg.
+			Mission::resetTeamsAndCommanders();
+			// Second reset back-to-back = the ex-double-free (init frees, then
+			// destroy frees again). MUST be a clean no-op with home NULL.
+			Mission::resetTeamsAndCommanders();
+			MC2_VERIFY(Team::numTeams == 0 && Commander::numCommanders == 0 &&
+					Team::home == NULL && Commander::home == NULL &&
+					Team::teams[0] == NULL && Commander::commanders[0] == NULL,
+				"MC2_MISSION_CYCLE_TEST: reset not idempotent / home not nulled "
+				"(teams=%ld commanders=%ld home=%p/%p slot0=%p/%p)",
+				Team::numTeams, Commander::numCommanders,
+				(void*)Team::home, (void*)Commander::home,
+				(void*)Team::teams[0], (void*)Commander::commanders[0]);
 		}
-	Team::numTeams = 0;
-	for (int i = 0; i < Commander::numCommanders; i++)
-		if (Commander::commanders[i]) {
-			delete Commander::commanders[i];
-			Commander::commanders[i] = NULL;
-		}
-	Commander::numCommanders = 0;
+	}
 
 	//------------------------------------------------------------
 	// First, let's see how many teams and commanders there are...
@@ -2684,29 +2833,37 @@ void Mission::init (const char *missionName, long loadType, long dropZoneID, Stu
 		}
 	else {
 		result = missionFile->seekBlock("Parts");
-		gosASSERT(result == NO_ERR);
+		// MC2_VERIFY reclassified from gosASSERT (slice MC2-VERIFY-LIVE-1)
+		MC2_VERIFY(result == NO_ERR, "Mission::init: no [Parts] block in mission .fit: %s",
+			missionName ? missionName : "(null)");
 		result = missionFile->readIdULong("NumParts",numParts);
-		gosASSERT(result == NO_ERR);
+		// MC2_VERIFY reclassified from gosASSERT (slice MC2-VERIFY-LIVE-1)
+		if (!MC2_VERIFY(result == NO_ERR, "Mission::init: [Parts] NumParts read failed"))
+			numParts = 0;	// log mode: degrade to no parts instead of iterating garbage
 		if (numParts)
 			for (int i = 1; i < long(numParts + 1); i++) {
 				char partName[12];
 				sprintf(partName,"Part%d",i);
-				
+
 				//------------------------------------------------------------------
 				// Find the object to load
 				result = missionFile->seekBlock(partName);
-				gosASSERT(result == NO_ERR);
+				// MC2_VERIFY reclassified from gosASSERT (slice MC2-VERIFY-LIVE-1)
+				if (!MC2_VERIFY(result == NO_ERR, "Mission::init: missing [%s] block", partName))
+					continue;	// log mode: skip the absent part
 
 				char teamID = -1;
 				result = missionFile->readIdChar("TeamId", teamID);
-				gosASSERT(result == NO_ERR);
+				// MC2_VERIFY reclassified from gosASSERT (slice MC2-VERIFY-LIVE-1)
+				MC2_VERIFY(result == NO_ERR, "Mission::init: [%s] missing TeamId", partName);
 
 				char commanderID = -1;
 				result = missionFile->readIdChar("CommanderId", commanderID);
 				if (result != NO_ERR) {
 					long cID;
 					result = missionFile->readIdLong("CommanderId", cID);
-					gosASSERT(result == NO_ERR);
+					// MC2_VERIFY reclassified from gosASSERT (slice MC2-VERIFY-LIVE-1)
+					MC2_VERIFY(result == NO_ERR, "Mission::init: [%s] missing CommanderId", partName);
 					commanderID = (char)cID;
 				}
 
@@ -2719,6 +2876,21 @@ void Mission::init (const char *missionName, long loadType, long dropZoneID, Stu
 					teamID = commandersToLoad[origCommanderID][1];
 				}
 
+				// MC2_VERIFY reclassified from gosASSERT (slice MC2-VERIFY-LIVE-1):
+				// file-supplied TeamId/CommanderId (chars, up to 127) feed
+				// maxTeamID/maxCommanderID unchecked; ids > 7 overflow the
+				// static Team::teams[MAX_TEAMS]/Commander::commanders[
+				// MAX_COMMANDERS] init-loop WRITES below (adversarial A5, the
+				// SP-reachable landmine). Verify at the read site + bound.
+				if (!MC2_VERIFY((long)teamID < MAX_TEAMS,
+						"Mission::init: [%s] TeamId %d exceeds MAX_TEAMS-1 (%d) -- bounding",
+						partName, (int)teamID, MAX_TEAMS - 1))
+					teamID = MAX_TEAMS - 1;
+				if (!MC2_VERIFY((long)commanderID < MAX_COMMANDERS,
+						"Mission::init: [%s] CommanderId %d exceeds MAX_COMMANDERS-1 (%d) -- bounding",
+						partName, (int)commanderID, MAX_COMMANDERS - 1))
+					commanderID = MAX_COMMANDERS - 1;
+
 				if (commanderID > maxCommanderID)
 					maxCommanderID = commanderID;
 				if (teamID > maxTeamID)
@@ -2728,6 +2900,18 @@ void Mission::init (const char *missionName, long loadType, long dropZoneID, Stu
 
 	//----------------------------------------------
 	// Now, init the teams and commanders we need...
+	// MC2_VERIFY reclassified from gosASSERT (slice MC2-VERIFY-LIVE-1):
+	// write-side guard for the marquee static-array overflow -- covers ALL
+	// sources of maxTeamID/maxCommanderID (file parts above, MP_LOGISTICS
+	// playerInfo branch), not just the SP read site.
+	if (!MC2_VERIFY(maxTeamID < MAX_TEAMS,
+			"Mission::init: maxTeamID %ld >= MAX_TEAMS %d -- bounding (Team::teams[] write overflow)",
+			maxTeamID, MAX_TEAMS))
+		maxTeamID = MAX_TEAMS - 1;
+	if (!MC2_VERIFY(maxCommanderID < MAX_COMMANDERS,
+			"Mission::init: maxCommanderID %ld >= MAX_COMMANDERS %d -- bounding (Commander::commanders[] write overflow)",
+			maxCommanderID, MAX_COMMANDERS))
+		maxCommanderID = MAX_COMMANDERS - 1;
 	for (int i = 0; i <= maxTeamID; i++) {
 		Team::teams[i] = new Team;
 		Team::teams[i]->init(i);
@@ -2745,11 +2929,44 @@ void Mission::init (const char *missionName, long loadType, long dropZoneID, Stu
 				Commander::commanders[MPlayer->playerInfo[i].commanderID]->setTeam(Team::teams[MPlayer->playerInfo[i].team]);
 		}
 	else {
+		// CRASH-HARDEN (MISSION-NO-COMMANDERS): a mission .fit with no [Parts]
+		// (or no part carrying TeamId/CommanderId) leaves maxTeamID/
+		// maxCommanderID at -1, so the init loops above create NO teams and NO
+		// commanders — teams[0]/commanders[0] stay NULL and the setTeam calls
+		// below AV (0xC0000005 null read). The seekBlock("Parts") gosASSERTs
+		// upstream are no-ops in RelWithDebInfo, so this is reachable with any
+		// hand-made/imported map (e.g. terrain-gen imports that only wrote
+		// [ColorMap]/[Terrain]). Fail with a clear fatal instead of the AV.
+		// MC2_VERIFY reclassified from gosASSERT (slice MC2-VERIFY-LIVE-1):
+		// aligned with the existing CRASH-HARDEN STOP (b71702ba) below -- in
+		// fatal mode the verify stops first with the same message; in log/off
+		// mode the legacy STOP path is preserved unchanged.
+		MC2_VERIFY((Team::teams[0] != NULL) && (Commander::commanders[0] != NULL),
+			"mission has no commanders -- invalid mission data (no [Parts] with TeamId/CommanderId): %s",
+			missionName ? missionName : "(null)");
+		if ((Team::teams[0] == NULL) || (Commander::commanders[0] == NULL))
+			STOP(("mission has no commanders -- invalid mission data (no [Parts] with TeamId/CommanderId): %s",
+			      missionName ? missionName : "(null)"));
 		Team::home = Team::teams[0];
 		Commander::home = Commander::commanders[0];
 		for (long i = 0; i <= maxCommanderID; i++) {
-			if (commandersToLoad[i][0] > -1)
-				Commander::commanders[commandersToLoad[i][0]]->setTeam(Team::teams[commandersToLoad[i][1]]);
+			// MC2_VERIFY reclassified from gosASSERT (slice MC2-VERIFY-LIVE-1):
+			// caller-supplied commandersToLoad[8][3] is read up to
+			// maxCommanderID (now bounded above) and its commander/team ids
+			// index the static arrays -- verify both ids + that the referenced
+			// slots were actually created before the setTeam deref
+			// (adversarial A5: the :2744 read-overflow companion).
+			long ctlCommander = commandersToLoad[i][0];
+			long ctlTeam = commandersToLoad[i][1];
+			if (ctlCommander > -1) {
+				if (!MC2_VERIFY_BOUNDS(ctlCommander, MAX_COMMANDERS, "Mission::init commandersToLoad commander") ||
+					!MC2_VERIFY_BOUNDS(ctlTeam, MAX_TEAMS, "Mission::init commandersToLoad team") ||
+					!MC2_VERIFY((Commander::commanders[ctlCommander] != NULL) && (Team::teams[ctlTeam] != NULL),
+						"Mission::init: commandersToLoad[%ld] names uninitialized commander %ld / team %ld",
+						i, ctlCommander, ctlTeam))
+					continue;	// log mode: skip the malformed entry
+				Commander::commanders[ctlCommander]->setTeam(Team::teams[ctlTeam]);
+			}
 		}
 		Commander::commanders[0]->setTeam(Team::home);
 	}
@@ -2791,10 +3008,12 @@ void Mission::init (const char *missionName, long loadType, long dropZoneID, Stu
 	// Load the names of the scenario tunes.
 	//result = missionFile->seekBlock("Music");
 	result = missionFile->seekBlock("MissionSettings");
-	gosASSERT(result == NO_ERR);
-		
+	// MC2_VERIFY reclassified from gosASSERT (slice MISSION-DATA-DEREF-HARDEN-1)
+	MC2_VERIFY(result == NO_ERR, "Mission::init: mission .fit missing [MissionSettings] block");
+
 	result = missionFile->readIdUChar("scenarioTuneNum",missionTuneNum);
-	gosASSERT(result == NO_ERR);
+	// MC2_VERIFY reclassified from gosASSERT (slice MISSION-DATA-DEREF-HARDEN-1)
+	MC2_VERIFY(result == NO_ERR, "Mission::init: [MissionSettings] missing scenarioTuneNum");
 
 	long numRPoints;
 	result = missionFile->readIdLong("ResourcePoints",numRPoints);
@@ -2841,7 +3060,11 @@ void Mission::init (const char *missionName, long loadType, long dropZoneID, Stu
 
 	PacketFile pakFile;
 	result = pakFile.open( terrainFileName );
-	gosASSERT( result == NO_ERR );
+	// MC2_VERIFY reclassified from gosASSERT (slice MISSION-DATA-DEREF-HARDEN-1):
+	// the terrain .pak is a required per-mission data file; a failed open feeds a
+	// closed PacketFile into terrain load below (garbage/empty terrain).
+	MC2_VERIFY( result == NO_ERR, "Mission::init: terrain .pak open failed (%ld): %s",
+		result, (const char*)terrainFileName );
 
 	land = new Terrain;
 
@@ -2879,6 +3102,7 @@ void Mission::init (const char *missionName, long loadType, long dropZoneID, Stu
 	loadProgress = 36.0f;
 	{ ZoneScopedN("Mission::init land->primeMissionTerrainCache"); land->primeMissionTerrainCache(loadProgress, 4.0f); }
 	loadProgress = 40.0f;
+	mission_phase_mark("terrain_ready"); // LOAD-PHASE-FACTS-1: FST/pak parse + terrain prime done
 
 //	land->recalcWater();		//Should have already been done in the editor
 
@@ -2992,10 +3216,15 @@ void Mission::init (const char *missionName, long loadType, long dropZoneID, Stu
 	//-----------------------------------------------------------------
 	// We now read in the mission Script File Name
 	result = missionFile->seekBlock("Script");
-	gosASSERT(result == NO_ERR);
-	
+	// MC2_VERIFY reclassified from gosASSERT (slice MISSION-DATA-DEREF-HARDEN-1)
+	MC2_VERIFY(result == NO_ERR, "Mission::init: mission .fit missing [Script] block");
+
 	result = missionFile->readIdString("ScenarioScript",missionScriptName,79);
-	gosASSERT(result == NO_ERR);
+	// MC2_VERIFY reclassified from gosASSERT (slice MISSION-DATA-DEREF-HARDEN-1):
+	// missionScriptName drives ABLi_preProcess of the scenario .abl below; a failed
+	// read leaves it uninitialized (the MC2_BRAIN_INLINE_EMPTY_SKIP fallback below
+	// only triggers on an *empty*, not garbage, name).
+	MC2_VERIFY(result == NO_ERR, "Mission::init: [Script] missing ScenarioScript");
 
 	// FULL-CAMPAIGN-1: TechScript/Enhanced-converted missions (carver_v_enhanced) leave
 	// ScenarioScript empty — the per-warrior brains move to inline Brain{} blocks and mission
@@ -3018,6 +3247,9 @@ void Mission::init (const char *missionName, long loadType, long dropZoneID, Stu
 	}
 
 	visualTuning_applyProfile(missionScriptName);  // MISSION-VISUAL-TUNING-1
+	terrainMaterials_apply(missionScriptName);     // TERRAIN-MATERIAL-LIB-1: applied AFTER
+	                                                // visual_tuning.json so it wins on any
+	                                                // overlapping terrain material key.
 
 	FullPathFileName brainFileName;
 	brainFileName.init(missionPath, missionScriptName, ".abl");
@@ -3054,11 +3286,22 @@ void Mission::init (const char *missionName, long loadType, long dropZoneID, Stu
 	MechWarrior::setup();
 
 	result = missionFile->seekBlock("Warriors");
-	gosASSERT(result == NO_ERR);
+	// MC2_VERIFY reclassified from gosASSERT (slice MC2-VERIFY-LIVE-1)
+	MC2_VERIFY(result == NO_ERR, "Mission::init: no [Warriors] block in mission .fit: %s",
+		missionName ? missionName : "(null)");
 
 	unsigned long numWarriors;
 	result = missionFile->readIdULong("NumWarriors",numWarriors);
-	gosASSERT(result == NO_ERR);
+	// MC2_VERIFY reclassified from gosASSERT (slice MC2-VERIFY-LIVE-1)
+	if (!MC2_VERIFY(result == NO_ERR, "Mission::init: [Warriors] NumWarriors read failed"))
+		numWarriors = 0;	// log mode: degrade instead of looping over an uninitialized count
+	// MC2_VERIFY reclassified from gosASSERT (slice MC2-VERIFY-LIVE-1): the
+	// 1-based warrior loops below index warriorList[numWarriors] -- a
+	// file-supplied count >= MAX_WARRIORS reads past the static array.
+	if (!MC2_VERIFY((long)numWarriors < MAX_WARRIORS,
+			"Mission::init: NumWarriors %lu exceeds MAX_WARRIORS-1 (%d) -- bounding",
+			numWarriors, MAX_WARRIORS - 1))
+		numWarriors = MAX_WARRIORS - 1;
 
 	bool loadBrainParameters = (result == NO_ERR);
 	// CRASH-SOAK harness: tally how many mission AI brains (e.g. "magicx" on
@@ -3094,9 +3337,13 @@ void Mission::init (const char *missionName, long loadType, long dropZoneID, Stu
 			gosASSERT(pilotFile != NULL);
 		
 			long result = pilotFile->open(pilotFullFileName);
-			gosASSERT(result == NO_ERR);
+			// MC2_VERIFY reclassified from gosASSERT (slice MC2-VERIFY-LIVE-1)
+			MC2_VERIFY(result == NO_ERR, "Mission::init: warrior profile open failed: %s",
+				(const char*)pilotFullFileName);
 			result = pilot->init(pilotFile);
-			gosASSERT(result == NO_ERR);
+			// MC2_VERIFY reclassified from gosASSERT (slice MC2-VERIFY-LIVE-1)
+			MC2_VERIFY(result == NO_ERR, "Mission::init: warrior init failed: %s",
+				(const char*)pilotFullFileName);
 			
 			pilotFile->close();
 			delete pilotFile;
@@ -3106,7 +3353,8 @@ void Mission::init (const char *missionName, long loadType, long dropZoneID, Stu
 			// Read in the Brain module...
 			char moduleName[128];
 			result = missionFile->readIdString("Brain", moduleName, 127);
-			gosASSERT(result == NO_ERR);
+			// MC2_VERIFY reclassified from gosASSERT (slice MC2-VERIFY-LIVE-1)
+			MC2_VERIFY(result == NO_ERR, "Mission::init: %s missing Brain key", warriorName);
 			
 			//------------------------------------------------------------
 			// For now, all mplayer brains are pbrain. Need to change when
@@ -3177,6 +3425,12 @@ void Mission::init (const char *missionName, long loadType, long dropZoneID, Stu
 			if (inlineEmptySkipParams && MechWarrior::warriorList[i] &&
 			    !MechWarrior::warriorList[i]->getBrain())
 				continue;
+			// MC2_VERIFY reclassified from gosASSERT (slice MC2-VERIFY-LIVE-1):
+			// warriorList[i] is NULL when newWarrior() ran out of slots above
+			// (the "Too many pilots" STOP continues in release) -- null-deref.
+			if (!MC2_VERIFY(MechWarrior::warriorList[i] != NULL,
+					"Mission::init: warriorList[%lu] is NULL (loadBrainParameters)", i))
+				continue;	// log mode: skip the missing warrior
 			result = MechWarrior::warriorList[i]->loadBrainParameters(missionFile, i);
 			//Assert(result == NO_ERR, result, " Could not load Warrior Brain Parameters ");
 		}
@@ -3605,10 +3859,16 @@ void Mission::init (const char *missionName, long loadType, long dropZoneID, Stu
 	// We then create each object and place it in the world at the 
 	// position we read in with the frame we read in.
 	result = missionFile->seekBlock("Parts");
-	gosASSERT(result == NO_ERR);
-		
+	// MC2_VERIFY reclassified from gosASSERT (slice MISSION-DATA-DEREF-HARDEN-1):
+	// the SP object-instantiation pass; a missing [Parts] block leaves numParts
+	// uninitialized and sizes the parts[] Malloc below off garbage.
+	MC2_VERIFY(result == NO_ERR, "Mission::init: mission .fit missing [Parts] block (load pass)");
+
 	result = missionFile->readIdULong("NumParts",numParts);
-	gosASSERT(result == NO_ERR);
+	// MC2_VERIFY reclassified from gosASSERT (slice MISSION-DATA-DEREF-HARDEN-1):
+	// numParts sizes missionHeap->Malloc(sizeof(Part)*(numParts+1)) below and
+	// bounds every part loop; a failed read leaves it uninitialized.
+	MC2_VERIFY(result == NO_ERR, "Mission::init: [Parts] NumParts read failed (load pass)");
 
 	//--------------------------------------------------------------------------------
 	// IMPORTANT NOTE: mission parts should always start with Part 1.
@@ -3655,7 +3915,9 @@ void Mission::init (const char *missionName, long loadType, long dropZoneID, Stu
 			sprintf(partName,"Part%d",i);
 
 			result = missionFile->seekBlock(partName);
-			gosASSERT(result == NO_ERR);
+			// MC2_VERIFY reclassified from gosASSERT (slice MISSION-DATA-DEREF-HARDEN-1):
+			// alternatives-prep pass; NumParts promised this Part block.
+			MC2_VERIFY(result == NO_ERR, "Mission::init: mission .fit missing [%s] block (alt-prep pass)", partName);
 			unsigned long squadNum;
 			result = missionFile->readIdULong("squadNum", squadNum);
 			long squadIndex = 0;
@@ -3719,7 +3981,10 @@ void Mission::init (const char *missionName, long loadType, long dropZoneID, Stu
 			//------------------------------------------------------------------
 			// Find the object to load
 			result = missionFile->seekBlock(partName);
-			gosASSERT(result == NO_ERR);
+			// MC2_VERIFY reclassified from gosASSERT (slice MISSION-DATA-DEREF-HARDEN-1):
+			// NumParts promised this Part block; a missing block leaves parts[i]
+			// zeroed and spawns a garbage object type at loadObjectType(objNumber).
+			MC2_VERIFY(result == NO_ERR, "Mission::init: mission .fit missing [%s] block", partName);
 
 #ifdef USE_ALTERNATES
 			//----------------------------------------------------------------------
@@ -3737,7 +4002,8 @@ void Mission::init (const char *missionName, long loadType, long dropZoneID, Stu
 
 			long alternatives[MAX_ALTERNATIVES];
 			result = missionFile->readIdLongArray("IndicesOfAlternatives", alternatives, MAX_ALTERNATIVES);
-			gosASSERT(result == NO_ERR);
+			// MC2_VERIFY reclassified from gosASSERT (slice MISSION-DATA-DEREF-HARDEN-1)
+			MC2_VERIFY(result == NO_ERR, "Mission::init: [%s] missing IndicesOfAlternatives", partName);
 			if (maxAlternatives[squadIndex]) 
 			{
 				long partId = i;
@@ -3750,29 +4016,37 @@ void Mission::init (const char *missionName, long loadType, long dropZoneID, Stu
 				//MUST save off ORIGINAL Pilot.  WE don't load the alternate pilots!!!!!
 				usingAlternate = true;
 				result = missionFile->readIdULong("Pilot", realPilot);
-				gosASSERT(result == NO_ERR);
+				// MC2_VERIFY reclassified from gosASSERT (slice MISSION-DATA-DEREF-HARDEN-1)
+				MC2_VERIFY(result == NO_ERR, "Mission::init: [%s] missing Pilot (alternate)", partName);
 
 				sprintf(partName, "Part%d", partId);
 				result = missionFile->seekBlock(partName);
-				gosASSERT(result == NO_ERR);
+				// MC2_VERIFY reclassified from gosASSERT (slice MISSION-DATA-DEREF-HARDEN-1)
+				MC2_VERIFY(result == NO_ERR, "Mission::init: alternate part block [%s] missing", partName);
 			}
 #endif
 
 			//------------------------------------------------------------------
 			// Find out what kind of object this is.
 			result = missionFile->readIdULong("ObjectNumber",parts[i].objNumber);
-			gosASSERT(result == NO_ERR);
+			// MC2_VERIFY reclassified from gosASSERT (slice MISSION-DATA-DEREF-HARDEN-1):
+			// objNumber feeds loadObjectType() below; a failed read leaves it
+			// uninitialized-then-used to spawn the wrong/garbage object type.
+			MC2_VERIFY(result == NO_ERR, "Mission::init: [%s] missing ObjectNumber", partName);
 
 			//-------------------------------------------------
 			// Read in the data needed to control the object...
 			result = missionFile->readIdULong("ControlType", parts[i].controlType);
-			gosASSERT(result == NO_ERR);
+			// MC2_VERIFY reclassified from gosASSERT (slice MISSION-DATA-DEREF-HARDEN-1)
+			MC2_VERIFY(result == NO_ERR, "Mission::init: [%s] missing ControlType", partName);
 
 			result = missionFile->readIdULong("ControlDataType", parts[i].controlDataType);
-			gosASSERT(result == NO_ERR);
+			// MC2_VERIFY reclassified from gosASSERT (slice MISSION-DATA-DEREF-HARDEN-1)
+			MC2_VERIFY(result == NO_ERR, "Mission::init: [%s] missing ControlDataType", partName);
 
 			result = missionFile->readIdString("ObjectProfile", parts[i].profileName, 9);
-			gosASSERT(result == NO_ERR);
+			// MC2_VERIFY reclassified from gosASSERT (slice MISSION-DATA-DEREF-HARDEN-1)
+			MC2_VERIFY(result == NO_ERR, "Mission::init: [%s] missing ObjectProfile", partName);
 
 			// Mod-tolerance: read CSVFile so we can back-fill the ObjectType
 			// appearance name when the pak lookup fails for a high ObjectNumber.
@@ -3792,24 +4066,29 @@ void Mission::init (const char *missionName, long loadType, long dropZoneID, Stu
 			else
 			{
 				result = missionFile->readIdULong("Pilot", parts[i].pilot);
-				gosASSERT(result == NO_ERR);
+				// MC2_VERIFY reclassified from gosASSERT (slice MISSION-DATA-DEREF-HARDEN-1)
+				MC2_VERIFY(result == NO_ERR, "Mission::init: [%s] missing Pilot", partName);
 			}
-			
+
 			//------------------------------------------------------------------
 			// Read the object's position, initial velocity and rotation.
 			result = missionFile->readIdFloat("PositionX",parts[i].position.x);
-			gosASSERT(result == NO_ERR);
-				
+			// MC2_VERIFY reclassified from gosASSERT (slice MISSION-DATA-DEREF-HARDEN-1)
+			MC2_VERIFY(result == NO_ERR, "Mission::init: [%s] missing PositionX", partName);
+
 			result = missionFile->readIdFloat("PositionY",parts[i].position.y);
-			gosASSERT(result == NO_ERR);
-				
+			// MC2_VERIFY reclassified from gosASSERT (slice MISSION-DATA-DEREF-HARDEN-1)
+			MC2_VERIFY(result == NO_ERR, "Mission::init: [%s] missing PositionY", partName);
+
 			parts[i].position.z = -1.0;
 
 			result = missionFile->readIdFloat("Rotation",parts[i].rotation);
-			gosASSERT(result == NO_ERR);
-				
+			// MC2_VERIFY reclassified from gosASSERT (slice MISSION-DATA-DEREF-HARDEN-1)
+			MC2_VERIFY(result == NO_ERR, "Mission::init: [%s] missing Rotation", partName);
+
 			result = missionFile->readIdChar("TeamId",parts[i].teamId);
-			gosASSERT(result == NO_ERR);
+			// MC2_VERIFY reclassified from gosASSERT (slice MISSION-DATA-DEREF-HARDEN-1)
+			MC2_VERIFY(result == NO_ERR, "Mission::init: [%s] missing TeamId", partName);
 			//--------------------------------------------------------------------------
 			// Hack for singleplayer, until editor spits this out properly for allies...
 			if (!MPlayer && (parts[i].teamId == 2))
@@ -3861,10 +4140,12 @@ void Mission::init (const char *missionName, long loadType, long dropZoneID, Stu
   			parts[i].velocity = 0;
 			
 			result = missionFile->readIdLong("Active",parts[i].active);
-			gosASSERT(result == NO_ERR);
+			// MC2_VERIFY reclassified from gosASSERT (slice MISSION-DATA-DEREF-HARDEN-1)
+			MC2_VERIFY(result == NO_ERR, "Mission::init: [%s] missing Active", partName);
 
 			result = missionFile->readIdLong("Exists",parts[i].exists);
-			gosASSERT(result == NO_ERR);
+			// MC2_VERIFY reclassified from gosASSERT (slice MISSION-DATA-DEREF-HARDEN-1)
+			MC2_VERIFY(result == NO_ERR, "Mission::init: [%s] missing Exists", partName);
 
 			float fDamage = 0.0f;
 			result = missionFile->readIdFloat("Damage",fDamage);
@@ -3875,10 +4156,12 @@ void Mission::init (const char *missionName, long loadType, long dropZoneID, Stu
 			}
 
 			result = missionFile->readIdChar("MyIcon", parts[i].myIcon);
-			gosASSERT(result == NO_ERR);
+			// MC2_VERIFY reclassified from gosASSERT (slice MISSION-DATA-DEREF-HARDEN-1)
+			MC2_VERIFY(result == NO_ERR, "Mission::init: [%s] missing MyIcon", partName);
 
 			result = missionFile->readIdChar("MyIcon", parts[i].myIcon);
-			gosASSERT(result == NO_ERR);
+			// MC2_VERIFY reclassified from gosASSERT (slice MISSION-DATA-DEREF-HARDEN-1)
+			MC2_VERIFY(result == NO_ERR, "Mission::init: [%s] missing MyIcon", partName);
 
 			result = missionFile->readIdBoolean("Captureable", parts[i].captureable);
 			if (result != NO_ERR)
@@ -4029,10 +4312,12 @@ void Mission::init (const char *missionName, long loadType, long dropZoneID, Stu
 #endif
 
 	loadProgress = 68.0f;
+	mission_phase_mark("actor_spawn_ready"); // LOAD-PHASE-FACTS-1: mover/vehicle/part object init done
 
 	{ ZoneScopedN("Mission::init ObjectManager::loadTerrainObjects"); ObjectManager->loadTerrainObjects(&pakFile, loadProgress, 30); }
 	{ ZoneScopedN("Mission::init ObjectManager::primeTerrainObjectsForMissionLoad"); ObjectManager->primeTerrainObjectsForMissionLoad(loadProgress, 2.0f); }
 	{ ZoneScopedN("Mission::init Track B static-prop registration walk"); ObjectManager->registerStaticPropsForMissionLoad(); }
+	mission_phase_mark("texture_prewarm_ready"); // LOAD-PHASE-FACTS-1: terrain-object load + static-prop residency prewarm done
 
 	loadProgress = 98.0f;
 
@@ -4106,8 +4391,28 @@ void Mission::init (const char *missionName, long loadType, long dropZoneID, Stu
 		if (commandersToLoad[curCommanderId][0] == -1)
 			continue;
 
+		// TEAM-COMMANDER-OWNERSHIP-1 audit: this reads commandersToLoad back to
+		// INDEX + DEREF Commander::commanders[] below, but (unlike the setTeam site
+		// at :2851) only checked != -1. A caller-supplied id >= MAX_COMMANDERS is an
+		// OOB read (always a bug -> bound it up front). The NULL-slot case (init
+		// loops only created [0..maxCommanderID]) is NOT gated here: the original
+		// only dereferences the slot INSIDE the group-block while loop, so a NULL
+		// slot with no CommanderNGroup:0 block is benign and must stay silent to
+		// keep stock byte-identical. The null-check therefore gates only the actual
+		// dereference site, once per commander that truly has group blocks.
+		long ctlCommander = commandersToLoad[curCommanderId][0];
+		if (!MC2_VERIFY_BOUNDS(ctlCommander, MAX_COMMANDERS, "Mission::init commander-groups commandersToLoad"))
+			continue;
+
 		sprintf(headingStr, "Commander%dGroup:%d", curCommanderId, numGroups);
 		result = missionFile->seekBlock(headingStr);
+		// A group block exists for this commander -> the loop below WILL deref the
+		// slot. Verify it was created before entering (matches the original's
+		// reachable deref exactly; skips the malformed commander's groups in log
+		// mode instead of AVing on the uninitialized slot).
+		if (result == NO_ERR &&
+			!MC2_VERIFY_NOTNULL(Commander::commanders[ctlCommander], "Mission::init commander-groups Commander::commanders[]"))
+			continue;
 		while (result == NO_ERR) {
 			//---------------------------
 			// Read in the Group Mates...
@@ -4117,10 +4422,10 @@ void Mission::init (const char *missionName, long loadType, long dropZoneID, Stu
 			Assert(result == NO_ERR, result, " could not find Mates in Group in Scenario File ");
 			for (long curMate = 0; curMate < MAX_MOVERGROUP_COUNT_START; curMate++) {
 				if ((groupMates[curMate] > 0) && parts[groupMates[curMate]].objectWID) {
-					ObjectManager->setPartId(ObjectManager->getByWatchID(parts[groupMates[curMate]].objectWID), commandersToLoad[curCommanderId][0], numGroups, curMate);
-					Commander::commanders[commandersToLoad[curCommanderId][0]]->getGroup(numGroups)->add((MoverPtr)ObjectManager->getByWatchID(parts[groupMates[curMate]].objectWID));
+					ObjectManager->setPartId(ObjectManager->getByWatchID(parts[groupMates[curMate]].objectWID), ctlCommander, numGroups, curMate);
+					Commander::commanders[ctlCommander]->getGroup(numGroups)->add((MoverPtr)ObjectManager->getByWatchID(parts[groupMates[curMate]].objectWID));
 					if (!pointSet) {
-						Commander::commanders[commandersToLoad[curCommanderId][0]]->getGroup(numGroups)->selectPoint(true);
+						Commander::commanders[ctlCommander]->getGroup(numGroups)->selectPoint(true);
 						pointSet = true;
 					}
 				}
@@ -4293,6 +4598,7 @@ void Mission::init (const char *missionName, long loadType, long dropZoneID, Stu
 	{ ZoneScopedN("Mission::init prewarmStaticPropLightBakes");
 	  eye->primeActiveLightsForPrewarm();
 	  ObjectManager->prewarmStaticPropLightBakes(eye); }
+	mission_phase_mark("gpu_finalize_ready"); // LOAD-PHASE-FACTS-1: geometry finalize + indirect-buffer build + light-bake prewarm done
 
 	// Vegetation card system — notify adapter that terrain + move map are ready.
 	// land and GameMap are both stable by this point (terrain init + MOVE_readData
@@ -4311,11 +4617,25 @@ void Mission::start (void)
 {
 	active = true;
 	mission_phase_mark("mission_ready");
+	mission_phase_report(); // LOAD-PHASE-FACTS-1: emit consolidated [LOAD_PHASES v1] line
 	// MISSION-START-HOVER-TARGET-LIFETIME-1: mission world is now fully live (objects loaded,
 	// active set). Re-enable hover picking that was suppressed since invalidateHoverTarget().
 	if (missionInterface)
 		MissionInterfaceManager::armHoverTarget();
 	gos_SetHudScaleActive(true);  // enable HUD shrink only during mission
+	gos_SetHudCanvasActive(true); // UI-ASPECT-ANCHOR-1: HUD chrome on the 16:9 canvas
+	// LOAD-BANNER-RESIDUE-1 (queue #4 floating banner): the ProgressTimer
+	// async blit keeps compositing the load-progress art over live mission
+	// frames while loadProgress lingers in 1..99 after mission_ready — the
+	// ~1s world-floating blue panel at mission start. Load is DONE here;
+	// zero the progress so the blit's (0,100) window closes immediately.
+	// MP 'waiting for players' uses loadProgress==1000 and is untouched.
+	if (!MPlayer)
+	{
+		extern float loadProgress;
+		if (loadProgress > 0.0f && loadProgress < 100.0f)
+			loadProgress = 0.0f;
+	}
 	for (long i = 0; i < NumGameObjectsToDisplay; i++)
 		DEBUGWINS_setGameObject(-1, ObjectManager->getByWatchID(parts[GameObjectWindowList[i]].objectWID));
 }
@@ -4430,9 +4750,60 @@ void Mission::initTGLForMission()
 
 
 //----------------------------------------------------------------------------------
+// TEAM-COMMANDER-OWNERSHIP-1: the ONE owner / ONE destroy path for the
+// Team::teams[]/Commander::commanders[] static arrays. Previously the identical
+// free loop was duplicated inline in Mission::init (re-init guard) AND
+// Mission::destroy -- two copies that could drift, double-free, or (the live
+// hazard) leave Team::home/Commander::home dangling into a freed slot across a
+// mission cycle. Both sites now call this single helper.
+//
+// Contract: idempotent + null-safe. Every live slot up to the recorded count is
+// deleted and nulled, the counts are zeroed, and the home aliases are nulled.
+// A second back-to-back call is a guaranteed no-op (counts are 0), which is the
+// property the MC2_MISSION_CYCLE_TEST probe in destroy() exercises to prove the
+// double-free can no longer happen.
+void Mission::resetTeamsAndCommanders()
+{
+	long numt = Team::numTeams;
+	for (long i = 0; i < numt; i++)
+		if (Team::teams[i]) {
+			delete Team::teams[i];
+			Team::teams[i] = NULL;
+		}
+	Team::numTeams = 0;
+	// Null the raw alias into teams[] -- it pointed at a slot just freed above
+	// (or was already NULL). Leaving it dangling is the cross-cycle hazard the
+	// game-layer review flagged; readers (mission.cpp:659/930/... , update HUD /
+	// objectives) guard some but not all dereferences.
+	Team::home = NULL;
+
+	long numC = Commander::numCommanders;
+	for (long i = 0; i < numC; i++)
+		if (Commander::commanders[i]) {
+			delete Commander::commanders[i];
+			Commander::commanders[i] = NULL;
+		}
+	Commander::numCommanders = 0;
+	Commander::home = NULL;
+
+	// Post-condition: exactly one teardown authority left the statics empty.
+	// Silent when TRUE; only the cold path (a leftover live slot / stale count
+	// -> a would-be leak or double-free source) logs/stops per MC2_VERIFY_MODE.
+	MC2_VERIFY(Team::numTeams == 0 && Commander::numCommanders == 0,
+		"resetTeamsAndCommanders: counts not zeroed (teams=%ld commanders=%ld)",
+		Team::numTeams, Commander::numCommanders);
+}
+
+
+//----------------------------------------------------------------------------------
 void Mission::destroy (bool initLogistics)
 {
+	// MC2-VERIFY-LIVE-1: [VERIFY] counter line at mission end (soak evidence:
+	// fires=0 expected on stock missions). Silent when MC2_VERIFY_MODE=off.
+	mc2verify::MissionSummary(missionFileName);
+
 	gos_SetHudScaleActive(false);  // back to 100% for menus/logistics
+	gos_SetHudCanvasActive(false); // UI-ASPECT-ANCHOR-1: canvas off with the shrink
 
 	// C2: release async readback ring buffer at mission teardown.
 	gpu_cull::readback_shutdown();
@@ -4598,21 +4969,10 @@ void Mission::destroy (bool initLogistics)
 	//	SensorManager = NULL;
 	//}
 
-	long numt = Team::numTeams;
-	for (long i = 0; i < numt; i++)
-		if (Team::teams[i]) {
-			delete Team::teams[i];
-			Team::teams[i] = NULL;
-		}
-	Team::numTeams = 0;
-
-	long numC = Commander::numCommanders;
-	for (int i = 0; i < numC; i++)
-		if (Commander::commanders[i]) {
-			delete Commander::commanders[i];
-			Commander::commanders[i] = NULL;
-		}
-	Commander::numCommanders = 0;
+	// TEAM-COMMANDER-OWNERSHIP-1: single teardown authority (was a duplicated
+	// inline free loop; see resetTeamsAndCommanders()). Also nulls the
+	// Team::home/Commander::home aliases.
+	Mission::resetTeamsAndCommanders();
 
 	if (Mover::triggerAreaMgr) {
 		delete Mover::triggerAreaMgr;

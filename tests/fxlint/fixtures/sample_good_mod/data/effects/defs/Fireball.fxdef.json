@@ -1,0 +1,13 @@
+{
+  "effect": "Fireball",
+  "disabled": false,
+  "blend": "additive",
+  "curves": {
+    "alpha": 0.9,
+    "red": 1.0,
+    "green": 0.5,
+    "blue": 0.1,
+    "scale": 1.4,
+    "lifeSpan": 1.2
+  }
+}

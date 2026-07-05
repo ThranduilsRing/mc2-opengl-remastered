@@ -50,13 +50,16 @@ class MissionBriefingScreen: public LogisticsScreen
 	virtual int			handleMessage( unsigned long, unsigned long );
 
 
-	static long	getMissionTGA( const char* missionName );
+	static long	getMissionTGA( const char* missionName, bool swizzleForImGui = false );
 
 
 
 	private:
 
 	aObject*		objectiveButtons[MAX_OBJECTIVES];
+	float			objMarkerFx[MAX_OBJECTIVES];   // objective marker map-fraction (0..1)
+	float			objMarkerFy[MAX_OBJECTIVES];
+	float			dropZoneFx, dropZoneFy;        // drop-zone marker map-fraction (0..1)
 	aObject			dropZoneButton;
 	EString			objectiveModels[MAX_OBJECTIVES];
 	long			modelTypes[MAX_OBJECTIVES];
@@ -68,6 +71,9 @@ class MissionBriefingScreen: public LogisticsScreen
 	int			addItem( int ID, unsigned long color, int LBid );
 	void		addObjectiveButton( float fMakerX, float fMarkerY, int count, int priority,
 											   float mapWidth, float mapHeight, bool display );
+	// Mirror the (hidden) legacy objectives listbox into the defs GuiList; setItems=false
+	// only refreshes the per-line colours (cheap, preserves scroll) for the auto-cycle.
+	void		syncObjectivesToDefs( bool setItems );
 	void		setupDropZone( float fX, float fY, float mapWidth, float mapHeight );
 
 

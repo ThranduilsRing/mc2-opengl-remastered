@@ -192,6 +192,86 @@ unsigned long long spflush_GetRecipeRebuildTotal() {
 }
 
 // ---------------------------------------------------------------------------
+// [RENDERLISTS_COST v1] — TXMMGR-PERF-EASYWINS-1 coarse per-phase CPU cost
+// split of MC_TextureManager::renderLists(). Smoke-visible complement of the
+// Tracy zones (smoke runs cannot take user-driven Tracy captures). Pattern =
+// SPFLUSH_COST_SPLIT: env-gated, window-averaged, default OFF (zero overhead
+// beyond one cached-bool test per phase when unset; ~2 steady_clock reads per
+// phase per frame when set — coarse spans only, per the 100ns-floor rule).
+// Enable: MC2_RENDERLISTS_COST_SPLIT=1 -> one [RENDERLISTS_COST v1] stderr
+// summary every 60 frames: per-frame mean µs per phase + node-table sizes.
+// self_us = total minus the sum of instrumented phases (unattributed gaps).
+// ---------------------------------------------------------------------------
+namespace rlcost {
+static const bool s_enabled = []() {
+    const char* v = getenv("MC2_RENDERLISTS_COST_SPLIT");
+    return v && v[0] != '0';
+}();
+enum Phase {
+    kPreamble = 0, kLightUpload, kSceneData, kObj3d, kStateRestore,
+    kStaticShadowBuild, kSpRegistryFlush, kDynShadow, kTerrainSolid,
+    kGpuSpPrep, kSpBatcherFlush, kMechFlush, kOverlays, kWaterLoops,
+    kNoUnderlayer, kShadowBlobs, kAlphaLoops, kVfxHud, kTotal, kPhaseCount
+};
+static const char* kName[kPhaseCount] = {
+    "preamble", "light_upload", "scene_data", "obj3d", "state_restore",
+    "static_shadow_build", "sp_registry_flush", "dyn_shadow", "terrain_solid",
+    "gpusp_prep_cull", "sp_batcher_flush", "mech_flush", "overlays",
+    "water_loops", "no_underlayer", "shadow_blobs", "alpha_loops",
+    "vfx_hud", "total"
+};
+static unsigned long long s_ns[kPhaseCount] = {};
+static int s_frames = 0;
+
+static inline unsigned long long nowNs() {
+    return static_cast<unsigned long long>(
+        std::chrono::duration_cast<std::chrono::nanoseconds>(
+            std::chrono::steady_clock::now().time_since_epoch()).count());
+}
+
+// Lexical phase span. Zero-cost (two branch-predicted tests) when disabled.
+struct Span {
+    int p; unsigned long long t0;
+    explicit Span(int phase) : p(phase), t0(s_enabled ? nowNs() : 0ULL) {}
+    ~Span() { if (s_enabled) s_ns[p] += nowNs() - t0; }
+};
+
+// Whole-function span + window emit. Construct FIRST in renderLists() so the
+// destructor runs LAST: accumulates total, then emits every 60 frames.
+struct TotalSpan {
+    unsigned long long t0; long nodes_; long hwNodes_;
+    TotalSpan(long nodes, long hwNodes)
+        : t0(s_enabled ? nowNs() : 0ULL), nodes_(nodes), hwNodes_(hwNodes) {}
+    ~TotalSpan() {
+        if (!s_enabled) return;
+        s_ns[kTotal] += nowNs() - t0;
+        if (++s_frames < 60) return;
+        const double wf = static_cast<double>(s_frames);
+        double phaseSumUs = 0.0;
+        char line[1400]; int off = 0;
+        off += snprintf(line + off, sizeof(line) - off,
+            "[RENDERLISTS_COST v1] event=summary frames=%d nodes=%ld hw_nodes=%ld",
+            s_frames, nodes_, hwNodes_);
+        for (int p = 0; p < kPhaseCount; ++p) {
+            const double us = static_cast<double>(s_ns[p]) / 1000.0 / wf;
+            if (p != kTotal) phaseSumUs += us;
+            if (off < static_cast<int>(sizeof(line)))
+                off += snprintf(line + off, sizeof(line) - off,
+                                " %s_us=%.1f", kName[p], us);
+        }
+        const double selfUs =
+            static_cast<double>(s_ns[kTotal]) / 1000.0 / wf - phaseSumUs;
+        if (off < static_cast<int>(sizeof(line)))
+            snprintf(line + off, sizeof(line) - off, " self_us=%.1f", selfUs);
+        fprintf(stderr, "%s\n", line);
+        fflush(stderr);
+        memset(s_ns, 0, sizeof(s_ns));
+        s_frames = 0;
+    }
+};
+} // namespace rlcost
+
+// ---------------------------------------------------------------------------
 // [TXMMGR_BOUNDS v1] — TXMMGR-BOUNDS-HARDEN-1 exhaustion counters.
 // Declared extern in txmmgr.h so the inline pool allocators + addVertices paths
 // can bump them. atomic+relaxed because addVertices/addRenderShape run on
@@ -367,6 +447,32 @@ static bool tryReadTgaLogicalSize(File& textureFile, DWORD uvScale, DWORD& logic
 
 	if (textureFile.fileSize() < sizeof(TGAFileHeader))
 		return false;
+
+	// [UI-PHASE1] carried from mc2r_ui_phase1 (base->theirs hunk @txmmgr.cpp:202+).
+	// PNG check first: the data/defs UI art is .png, and interpreting the
+	// PNG signature bytes as a TGA header yields garbage width/height.
+	// PNG IHDR stores big-endian width/height at offsets 16 and 20.
+	unsigned char sniff[24] = {0};
+	if (textureFile.read((MemoryPtr)sniff, sizeof(sniff)) == sizeof(sniff) &&
+		sniff[0] == 0x89 && sniff[1] == 'P' && sniff[2] == 'N' && sniff[3] == 'G')
+	{
+		textureFile.seek(0);
+		const DWORD pngWidth = (static_cast<DWORD>(sniff[16]) << 24) |
+							   (static_cast<DWORD>(sniff[17]) << 16) |
+							   (static_cast<DWORD>(sniff[18]) << 8) |
+							   static_cast<DWORD>(sniff[19]);
+		const DWORD pngHeight = (static_cast<DWORD>(sniff[20]) << 24) |
+								(static_cast<DWORD>(sniff[21]) << 16) |
+								(static_cast<DWORD>(sniff[22]) << 8) |
+								static_cast<DWORD>(sniff[23]);
+		if (!pngWidth || !pngHeight)
+			return false;
+		// PNG UI art is authored 1:1; do not apply the TGA uvScale shrink.
+		logicalWidth = pngWidth;
+		logicalHeight = pngHeight;
+		return true;
+	}
+	textureFile.seek(0);
 
 	TGAFileHeader header;
 	if (textureFile.read((MemoryPtr)&header, sizeof(header)) != sizeof(header))
@@ -2357,9 +2463,14 @@ void GatherLightsParameters(TG_HWLightsData* lights)
 void MC_TextureManager::renderLists (void)
 {
 	ZoneScopedN("textureManagerRenderLists");
+	// [RENDERLISTS_COST v1] whole-function span; constructed first so its dtor
+	// (accumulate + 60-frame emit) runs after every phase span has closed.
+	rlcost::TotalSpan _rlTotal(nextAvailableVertexNode,
+	                           static_cast<long>(nextAvailableHardwareVertexNode));
 	static bool bSkip = true; // used across preamble and Render.3DObjects
 	{
 	ZoneScopedN("RenderLists.Preamble");
+	rlcost::Span _rl(rlcost::kPreamble);
 	if (Environment.Renderer == 3)
 	{
 		gos_SetRenderState( gos_State_AlphaMode, gos_Alpha_OneZero);
@@ -2411,6 +2522,7 @@ void MC_TextureManager::renderLists (void)
 
 	{
 	ZoneScopedN("RenderLists.LightDataUpload");
+	rlcost::Span _rl(rlcost::kLightUpload);
     // copy global list of light data into GPU buffer
 
     // [LIGHTSSBO v1] Upload-size FLOOR retained (NOT a removable UBO-window
@@ -2452,6 +2564,7 @@ void MC_TextureManager::renderLists (void)
     Stuff::Vector3D cp = eye->getCameraOrigin();
     {
         ZoneScopedN("Camera.SceneDataUpload");
+        rlcost::Span _rl(rlcost::kSceneData);
         sceneData_->fog_start = eye->fogStart;
         sceneData_->fog_end = eye->fogFull;
         sceneData_->min_haze_dist = Camera::MinHazeDistance;
@@ -2474,6 +2587,7 @@ void MC_TextureManager::renderLists (void)
 	{
 		ZoneScopedN("Render.3DObjects");
 		TracyGpuZone("Render.3DObjects");
+		rlcost::Span _rl(rlcost::kObj3d);
 		gos_render_pass_timer::Begin(gos_render_pass_timer::Pass_Obj3d);
 		// SAME-ORDER-EXECUTOR-SLICE-2: validate-only ownership of MechOpaque top-level
 		// pass. Body sets its own state (no apply); this just validates ambient+FBO.
@@ -2546,6 +2660,7 @@ void MC_TextureManager::renderLists (void)
 
 	{
 	ZoneScopedN("RenderLists.PostObjectsStateRestore");
+	rlcost::Span _rl(rlcost::kStateRestore);
 	// [Moved in Phase 4 debug] flush() was originally here (after
 	// Render.3DObjects). But Render.TerrainSolid runs AFTER us on line
 	// ~1287, so terrain was overwriting our building pixels. Flush is
@@ -2578,6 +2693,7 @@ void MC_TextureManager::renderLists (void)
 	    Terrain::mapData) {
 		ZoneScopedN("Shadow.StaticFullMapBuild");
 		TracyGpuZone("Shadow.StaticFullMapBuild");
+		rlcost::Span _rl(rlcost::kStaticShadowBuild);
 		gos_render_pass_timer::Begin(gos_render_pass_timer::Pass_ShadowStatic);
 
 		gos_BuildStaticLightMatrix();   // world-fixed, camera-independent
@@ -2651,6 +2767,7 @@ void MC_TextureManager::renderLists (void)
 	// Render.GpuStaticProps block; runs regardless of tessellation/mech state.
 	{
 		ZoneScopedN("RenderLists.StaticPropRegistryFlush");
+		rlcost::Span _rl(rlcost::kSpRegistryFlush);
 		extern bool g_useGpuStaticProps;
 		extern bool g_useGpuObjects;
 		if (g_useGpuStaticProps || g_useGpuObjects) {
@@ -2672,6 +2789,7 @@ void MC_TextureManager::renderLists (void)
 	// off-screen-caster low-sun shadow is the documented Phase-2 gap).
 	{
 		ZoneScopedN("RenderLists.DynamicShadowPass");
+		rlcost::Span _rl(rlcost::kDynShadow);
 		gos_render_pass_timer::Begin(gos_render_pass_timer::Pass_ShadowDyn);
 		extern bool g_useGpuObjects;
 		extern bool g_useGpuMechs;
@@ -2822,8 +2940,21 @@ void MC_TextureManager::renderLists (void)
 					if (s_casterLightboxCull) {
 						ZoneScopedN("Shadow.CasterCull");
 						static std::vector<GpuStaticPropInstance> s_culledDynPropInsts; // reused, no churn
-						s_culledDynPropInsts.clear();
-						s_culledDynPropInsts.reserve(s_dynPropInsts.size());
+						// SHADOW-CASTER-CULL-CACHE-1 (TXMMGR-PERF-EASYWINS-1, gate
+						// MC2_SHADOW_CASTER_CULL_CACHE, DEFAULT OFF): the cull result is a
+						// pure function of (caster set, light-space matrix, margin). The
+						// caster set is generation-keyed (rebuilt above only on
+						// s_registryGeneration change) and the matrix is camera-fit — on a
+						// stationary camera its 16 floats are bit-identical across frames.
+						// Reuse the previous culled vector when BOTH are unchanged; any
+						// camera motion or registry mutation recomputes exactly as before.
+						// margin + includeBldg are session-static (env-init'd) — no key part.
+						static const bool s_cullCacheEnabled = []() {
+							const char* v = getenv("MC2_SHADOW_CASTER_CULL_CACHE");
+							return v && v[0] != '0';
+						}();
+						static uint64_t s_cullCacheGen = UINT64_MAX;   // sentinel: no cache
+						static float    s_cullCacheM[16] = {};
 						static const float s_cullMargin = []() {
 							const char* v = getenv("MC2_SHADOW_CASTER_CULL_MARGIN");
 							const float m = (v && v[0]) ? static_cast<float>(atof(v)) : 0.25f;
@@ -2836,7 +2967,15 @@ void MC_TextureManager::renderLists (void)
 						if (!M) {
 							// No matrix yet (early frames) -> keep everything (safe).
 							dynShadowSet = &s_dynPropInsts;
+						} else if (s_cullCacheEnabled &&
+						           s_cullCacheGen == GpuStaticPropRegistry::getRegistryGeneration() &&
+						           0 == memcmp(s_cullCacheM, M, sizeof(s_cullCacheM))) {
+							// Cache HIT: same caster generation + bit-identical light matrix
+							// -> the cull result is unchanged; reuse the retained vector.
+							dynShadowSet = &s_culledDynPropInsts;
 						} else {
+							s_culledDynPropInsts.clear();
+							s_culledDynPropInsts.reserve(s_dynPropInsts.size());
 							const float lim = 1.0f + s_cullMargin;
 							int dbgN = 0;
 							for (const GpuStaticPropInstance& inst : s_dynPropInsts) {
@@ -2872,6 +3011,10 @@ void MC_TextureManager::renderLists (void)
 								if (keep) s_culledDynPropInsts.push_back(inst);
 							}
 							dynShadowSet = &s_culledDynPropInsts;
+							if (s_cullCacheEnabled) {
+								s_cullCacheGen = GpuStaticPropRegistry::getRegistryGeneration();
+								memcpy(s_cullCacheM, M, sizeof(s_cullCacheM));
+							}
 
 							static bool s_cullLogged = false;
 							if (!s_cullLogged) {
@@ -2946,6 +3089,7 @@ void MC_TextureManager::renderLists (void)
 
 	{
 		ZoneScopedN("Render.TerrainSolid");
+	rlcost::Span _rl(rlcost::kTerrainSolid);
 		TracyGpuZone("Render.TerrainSolid");
 		gos_render_pass_timer::Begin(gos_render_pass_timer::Pass_TerrainSolid);
 
@@ -3159,6 +3303,9 @@ void MC_TextureManager::renderLists (void)
 		extern bool g_useGpuStaticProps;
 		extern bool g_useGpuObjects;
 		if (g_useGpuStaticProps || g_useGpuObjects) {
+			// [RENDERLISTS_COST v1] prep+cull-dispatch only; the two flush units
+			// below carry their own spans (no double-count vs total).
+			rlcost::Span _rl(rlcost::kGpuSpPrep);
 			// Stage 3.C registry flush MOVED earlier (before flushShadow, see
 			// STATIC-PROP SHADOW-ORDER FIX 2026-05-29) so terrain-object instances
 			// are in s_bucketsByType before the shadow-time SSBO upload locks the
@@ -3268,6 +3415,7 @@ void MC_TextureManager::renderLists (void)
 			if (g_useGpuStaticProps || g_useGpuObjects) {
 				ZoneScopedN("GpuSP.BatcherFlush");
 				TracyGpuZone("GpuSP.BatcherFlush");
+				rlcost::Span _rl(rlcost::kSpBatcherFlush);
 				GpuStaticPropBatcher::instance().flush(getLastRenderSnapshot());
 			}
 			// Pass_SpColor ends after the static-prop flush: GL_TIME_ELAPSED
@@ -3283,6 +3431,7 @@ void MC_TextureManager::renderLists (void)
 		auto runMechFlushUnit = []() {
 			ZoneScopedN("Render.GpuMechs");
 			TracyGpuZone("Render.GpuMechs");
+			rlcost::Span _rl(rlcost::kMechFlush);
 			gos_render_pass_timer::Begin(gos_render_pass_timer::Pass_Mechs);
 			// [RENDER_PASS v1] advisory telemetry (env-gated, rate-limited).
 			// MECHOPAQUE-NOTE-RELOCATE-1: note fires at the real mech GPU draw
@@ -3326,6 +3475,9 @@ void MC_TextureManager::renderLists (void)
 	// MC2_TERRAIN_MASK_DISPATCH=1 AND MC2_TERRAIN_MASK_DISPATCH_SOLID != "0".
 	// Pass_Overlays = one coarse scope spanning Render.TerrainMask.Solid
 	// through Render.Decals (sub-zones stay Tracy-only).
+	// [RENDERLISTS_COST v1] manual span: the overlay region is a run of sibling
+	// blocks (mask-solid .. decals), not one lexical scope.
+	const unsigned long long _rlOv0 = rlcost::s_enabled ? rlcost::nowNs() : 0ULL;
 	gos_render_pass_timer::Begin(gos_render_pass_timer::Pass_Overlays);
 	{
 		ZoneScopedN("Render.TerrainMask.Solid");
@@ -3382,6 +3534,7 @@ void MC_TextureManager::renderLists (void)
 		gos_DrawDecals();
 	}
 	gos_render_pass_timer::End(gos_render_pass_timer::Pass_Overlays);
+	if (rlcost::s_enabled) rlcost::s_ns[rlcost::kOverlays] += rlcost::nowNs() - _rlOv0;
 	// ── End new world-space overlay batches ───────────────────────────────────
 
 	{
@@ -3401,6 +3554,7 @@ void MC_TextureManager::renderLists (void)
     // sebi: split in 2 parts, first draw objects which have alpha test off, then with alpha test on
 	{
 	ZoneScopedN("RenderLists.TerrainAlphaWaterLoops");
+	rlcost::Span _rl(rlcost::kWaterLoops);
 	gos_render_pass_timer::Begin(gos_render_pass_timer::Pass_Water);
     for(int states = 0; states < 2; ++states)
     {
@@ -3475,6 +3629,7 @@ void MC_TextureManager::renderLists (void)
 	//<< sebi: added this section to draw objects which do not have terrain underlayer (those are added in quad.cpp, see (*) there )
 	{ ZoneScopedN("Render.NoUnderlayer");
 	  TracyGpuZone("Render.NoUnderlayer");
+	  rlcost::Span _rl(rlcost::kNoUnderlayer);
 	if (Environment.Renderer != 3)
 	{
 		gos_SetRenderState( gos_State_ShadeMode, gos_ShadeGouraud);
@@ -3539,6 +3694,7 @@ void MC_TextureManager::renderLists (void)
 
 	{
 	ZoneScopedN("RenderLists.ShadowBlobs");
+	rlcost::Span _rl(rlcost::kShadowBlobs);
 	gos_render_pass_timer::Begin(gos_render_pass_timer::Pass_Blobs);
 	if (Environment.Renderer == 3)
 	{
@@ -3611,6 +3767,7 @@ void MC_TextureManager::renderLists (void)
 
 	{
 	ZoneScopedN("RenderLists.NonTerrainAlphaLoops");
+	rlcost::Span _rl(rlcost::kAlphaLoops);
 	gos_render_pass_timer::Begin(gos_render_pass_timer::Pass_AlphaVfx);
 	gos_SetRenderState( gos_State_ZCompare, 1);
 	if (Environment.Renderer != 3)
@@ -3685,6 +3842,7 @@ void MC_TextureManager::renderLists (void)
 
 	{
 	ZoneScopedN("RenderLists.VfxHudSubmit");
+	rlcost::Span _rl(rlcost::kVfxHud);
 	gos_render_pass_timer::Begin(gos_render_pass_timer::Pass_Hud);
 	if (Environment.Renderer == 3)
 	{
@@ -4265,6 +4423,30 @@ DWORD MC_TextureManager::loadTexture (const char *textureFullPathName, gos_Textu
 	}
 	gosASSERT(textureFileOpenResult == NO_ERR);
 
+	// ENCYCLO-3D-2 diagnostic: for TGL preview textures, record where the
+	// bytes actually came from at load time (loose disk vs fastfile), the
+	// open result, and a few header bytes — separates "loaded garbage/zeros"
+	// from "loaded real pixels but never uploaded".
+	if ( getenv("MC2_LOG_PREVIEW") && strstr(textureFullPathName, "tgl") )
+	{
+		if ( FILE* f = fopen("preview_debug.log","a") )
+		{
+			unsigned char hdr[18] = {0};
+			long fsz = (textureFileOpenResult == NO_ERR) ? textureFile.fileSize() : -1;
+			if ( textureFileOpenResult == NO_ERR && fsz >= (long)sizeof(hdr) )
+			{
+				textureFile.read(hdr, sizeof(hdr));
+				textureFile.seek(0);
+			}
+			fprintf(f,"[PREVIEW-LOAD] open=%ld size=%ld disk=%d name=%s tgaType=%u dims=%ux%u bpp=%u\n",
+				textureFileOpenResult, fsz,
+				(int)((textureFileOpenResult == NO_ERR) ? textureFile.isLoadedFromDisk() : -1),
+				textureFullPathName,
+				hdr[2], hdr[12] | (hdr[13]<<8), hdr[14] | (hdr[15]<<8), hdr[16]);
+			fclose(f);
+		}
+	}
+
 	if (textureFile.isLoadedFromDisk())
 	{
 		// Disk TGAs are 4x-upscaled gameplay textures (logical = physical/4). But some
@@ -4356,6 +4538,103 @@ DWORD MC_TextureManager::loadTexture (const char *textureFullPathName, gos_Textu
 
  	//-------------------
 	return(i);
+}
+
+//----------------------------------------------------------------------
+// DEV-SHELL texture_refresh (see txmmgr.h). Mirrors the loadTexture disk
+// read/compress path byte-for-byte so the refreshed cache entry is exactly
+// what a fresh loadTexture of the same file would have produced; the node's
+// key/hints/uvScale/logical dims are untouched (same-format, same-size
+// replacement). GL work happens at the next get_gosTextureHandle() cache-in,
+// so this is safe anywhere on the main thread.
+long MC_TextureManager::refreshTexturesByName (const char *substring, long &skippedNoFile)
+{
+	skippedNoFile = 0;
+	if (!substring || !*substring)
+		return 0;
+
+	// case-insensitive substring match (nodeNames are stored lowercase, but
+	// don't rely on it)
+	auto containsNoCase = [](const char *hay, const char *needle) -> bool {
+		const size_t nlen = strlen(needle);
+		for (const char *p = hay; *p; ++p)
+		{
+			size_t k = 0;
+			while (k < nlen && p[k] && tolower((unsigned char)p[k]) == tolower((unsigned char)needle[k]))
+				++k;
+			if (k == nlen) return true;
+		}
+		return false;
+	};
+
+	long refreshed = 0;
+	for (long i = 0; i < MC_MAXTEXTURES; i++)
+	{
+		MC_TextureNode &node = masterTextureNodes[i];
+		if (!node.nodeName || node.gosTextureHandle == 0xffffffff)
+			continue;
+		if (!containsNoCase(node.nodeName, substring))
+			continue;
+
+		File textureFile;
+		if (textureFile.open(node.nodeName) != NO_ERR || !textureFile.isLoadedFromDisk())
+		{
+			// FST-only (or unopenable): no loose file to refresh from.
+			skippedNoFile++;
+			continue;
+		}
+
+		const long txmSize = textureFile.fileSize();
+		if (txmSize <= 0 || txmSize > MAX_LZ_BUFFER_SIZE)
+		{
+			skippedNoFile++;
+			textureFile.close();
+			continue;
+		}
+
+		if (!lzBuffer1)
+		{
+			lzBuffer1 = (MemoryPtr)textureCacheHeap->Malloc(MAX_LZ_BUFFER_SIZE);
+			gosASSERT(lzBuffer1 != NULL);
+			lzBuffer2 = (MemoryPtr)textureCacheHeap->Malloc(MAX_LZ_BUFFER_SIZE);
+			gosASSERT(lzBuffer2 != NULL);
+		}
+
+		textureFile.read(lzBuffer1, txmSize);
+		textureFile.close();
+
+		const bool storeRawFileData = (txmSize >= MC_TEXCACHE_RAW_THRESHOLD);
+		const DWORD cacheBytes = storeRawFileData
+			? (DWORD)txmSize
+			: LZCompress(lzBuffer2, lzBuffer1, txmSize);
+
+		DWORD *fresh = (DWORD *)textureCacheHeap->Malloc(cacheBytes);
+		if (!fresh)
+		{
+			skippedNoFile++;
+			continue;	// leave the old copy live rather than corrupt the node
+		}
+		memcpy(fresh, storeRawFileData ? lzBuffer1 : lzBuffer2, cacheBytes);
+
+		if (node.textureData)
+			textureCacheHeap->Free(node.textureData);
+		node.textureData = fresh;
+		node.lzCompSize = cacheBytes;
+		node.width = (storeRawFileData ? MC_TEXCACHE_FILE_RAW : MC_TEXCACHE_FILE_LZ) + txmSize;
+
+		// Force re-upload: destroy the resident gos texture (same cache-out
+		// dance as flushCache) so the next get_gosTextureHandle() re-creates
+		// it from the fresh bytes.
+		if (node.gosTextureHandle != CACHED_OUT_HANDLE && node.gosTextureHandle != 0)
+		{
+			gos_DestroyTexture(node.gosTextureHandle);
+			if (currentUsedTextures > 0)
+				currentUsedTextures--;
+		}
+		node.gosTextureHandle = CACHED_OUT_HANDLE;
+		refreshed++;
+	}
+	return refreshed;
 }
 
 //----------------------------------------------------------------------

@@ -10,6 +10,7 @@
 //     the stack — no resource file required.
 
 #include "gos_crashbundle.h"
+#include "build_fingerprint.h"  // MC2_BUILD_GIT_SHA (real macro; MC2_BUILD_HASH never defined)
 
 #ifndef _WIN32
 extern "C" void crashbundle_init(void) {}
@@ -223,13 +224,7 @@ static void write_profile_json(void)
     _snprintf_s(path, _countof(path), _TRUNCATE,
                 "%s\\profile.json", g_crash_folderA);
 
-    const char* build =
-#ifdef MC2_BUILD_HASH
-        MC2_BUILD_HASH
-#else
-        "UNKNOWN"
-#endif
-        ;
+    const char* build = MC2_BUILD_GIT_SHA;
 
     char mn[256];
     safe_copy_mission_name(mn, sizeof(mn));
@@ -284,11 +279,7 @@ static size_t format_crash_txt(EXCEPTION_POINTERS* ep, char* out, size_t cap)
     sbuff(out, cap, &pos, "MC2 Remastered Crash Report\n");
     sbuff(out, cap, &pos, "Time: %04u-%02u-%02u %02u:%02u:%02u\n",
           st.wYear, st.wMonth, st.wDay, st.wHour, st.wMinute, st.wSecond);
-#ifdef MC2_BUILD_HASH
-    sbuff(out, cap, &pos, "Build: %s\n", MC2_BUILD_HASH);
-#else
-    sbuff(out, cap, &pos, "Build: UNKNOWN\n");
-#endif
+    sbuff(out, cap, &pos, "Build: %s\n", MC2_BUILD_GIT_SHA);
     sbuff(out, cap, &pos, "Code: 0x%08lX  Flags: 0x%08lX  Addr: %p\n",
           ep->ExceptionRecord->ExceptionCode,
           ep->ExceptionRecord->ExceptionFlags,

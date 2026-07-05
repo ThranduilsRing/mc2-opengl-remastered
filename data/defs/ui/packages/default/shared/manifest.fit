@@ -1,0 +1,32 @@
+// MC2R shared legacy ImGui FIT conversion manifest
+// Generated from data/defs/ui/legacy/* using tools/gui_fit/convert_legacy_gos_fit_to_imgui.py
+// Generated: 2026-05-19
+
+GuiManifest {
+    package = "legacy_imgui"
+    key = "shared.legacy_imgui"
+    source = "legacy_ui_fit_batch_conversion"
+    layout = "absolute"
+    coordinateSpace = "screen_800x600"
+}
+
+GuiPageRef {
+    pageKey = "shared.cursors"
+    file = "cursors.fit"
+    sourceLegacyFit = "data/defs/ui/legacy/shared/cursors.fit"
+    mountOffset = "0,0"
+}
+
+GuiPageRef {
+    pageKey = "shared.cursorsa"
+    file = "cursorsa.fit"
+    sourceLegacyFit = "data/defs/ui/legacy/shared/cursorsA.fit"
+    mountOffset = "0,0"
+}
+
+GuiPageRef {
+    pageKey = "shared.scrollbar"
+    file = "scrollbar.fit"
+    sourceLegacyFit = "data/defs/ui/legacy/shared/ScrollBar.fit"
+    mountOffset = "0,0"
+}

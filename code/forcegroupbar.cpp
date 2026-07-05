@@ -166,6 +166,11 @@ void ForceGroupBar::renderOverviewIcons( Camera* eye, float alpha )
 	// boundary the cursor/dialogs are exempted from).
 	const bool prevHudExempt = gos_GetHudScaleExempt();
 	gos_SetHudScaleExempt( true );
+	// UI-ASPECT-ANCHOR-1: shrink-exempt but CANVAS-REMAPPED — this bar hit-tests
+	// via getMouseHudX, so it must live on the 16:9 canvas with the rest of the
+	// HUD chrome.
+	int prevCanvasMode = gos_GetHudCanvasExemptMode();
+	gos_SetHudCanvasExemptMode( 0 );
 
 	// Leader lines from the true unit position to displaced chips.
 	gos_SetRenderState( gos_State_Texture, 0 );
@@ -228,6 +233,7 @@ void ForceGroupBar::renderOverviewIcons( Camera* eye, float alpha )
 		}
 	}
 
+	gos_SetHudCanvasExemptMode( prevCanvasMode );
 	gos_SetHudScaleExempt( prevHudExempt );
 }
 
@@ -336,6 +342,11 @@ int ForceGroupBar::renderOverviewSquadCards( Camera* eye, float alpha,
 
 	bool prevExempt = gos_GetHudScaleExempt();
 	gos_SetHudScaleExempt( true );
+	// UI-ASPECT-ANCHOR-1: shrink-exempt but CANVAS-REMAPPED — this bar hit-tests
+	// via getMouseHudX, so it must live on the 16:9 canvas with the rest of the
+	// HUD chrome.
+	int prevCanvasMode = gos_GetHudCanvasExemptMode();
+	gos_SetHudCanvasExemptMode( 0 );
 
 	int nHits = 0;
 	for ( int i = 0; i < nCards; i++ )
@@ -411,6 +422,7 @@ int ForceGroupBar::renderOverviewSquadCards( Camera* eye, float alpha,
 		}
 	}
 
+	gos_SetHudCanvasExemptMode( prevCanvasMode );
 	gos_SetHudScaleExempt( prevExempt );
 	return nHits;
 }

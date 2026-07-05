@@ -529,6 +529,225 @@
         "TARGET_POLICY intent emitted",
         "commit calls setTargetPriority with resolved values"
       ]
+    },
+    {
+      "name": "alias-registry",
+      "file": "mc2_01_alias_specials.fit",
+      "mission": "mc2_01",
+      "format": "brace-block",
+      "gates_required": [
+        "MC2_BRAIN_DISPATCH=1",
+        "MC2_BRAIN_ALIAS=1"
+      ],
+      "expected_bodyHasCoreGuard": true,
+      "expected_bodyHasUnitRetreat": true,
+      "expected_bodyHasEffect": true,
+      "expected_trace_substrings": [
+        "[BRAIN_ALIAS_REG] alias=guardnow canonical=OPORD.CoreGuard",
+        "[BRAIN_DISPATCH] verb=guardnow",
+        "[BRAIN_DISPATCH] verb=unit.retreat",
+        "[BRAIN_DISPATCH_CALL] from=root to=LibProbe"
+      ],
+      "notes": "BRAINSPECIAL-ALIAS-1: Aliases{} registry rewrite (guardnow->GUARD), case-insensitive catalog shorthand (unit.retreat->WITHDRAW), Call resolution via per-block alias= field.",
+      "apply_expectation": {
+        "expected_order_code": "TACTICAL_ORDER_GUARD",
+        "expected_count": 2,
+        "notes": "guardnow -> GUARD first, unit.retreat -> WITHDRAW second. A/B identity."
+      },
+      "harness_proven": [
+        "Aliases{} block registered at parse",
+        "registry + shorthand resolution drives real effect dispatch",
+        "specialIndexFind resolves block alias= keys"
+      ]
+    },
+    {
+      "name": "scope-global-libfile",
+      "file": "global_specials.fit",
+      "mission": "(shared library)",
+      "format": "brace-block",
+      "gates_required": [
+        "MC2_BRAIN_DISPATCH=1",
+        "MC2_BRAIN_SCOPE_GLOBAL=1"
+      ],
+      "expected_trace_substrings": [
+        "[BRAIN_DISPATCH] parsed"
+      ],
+      "notes": "BRAINSPECIAL-SCOPE-GLOBAL-1: the GlobalSpecial library file itself. Parses standalone (self-merge shadows all keys, harmless); real proof is scope-global-call."
+    },
+    {
+      "name": "scope-global-call",
+      "file": "mc2_01_scopeglobal_specials.fit",
+      "mission": "mc2_01",
+      "format": "brace-block",
+      "gates_required": [
+        "MC2_BRAIN_DISPATCH=1",
+        "MC2_BRAIN_DISPATCH_CALL=1",
+        "MC2_BRAIN_SCOPE_GLOBAL=1"
+      ],
+      "expected_trace_substrings": [
+        "[BRAIN_SCOPE_GLOBAL] parsed 2 global special block(s)",
+        "[BRAIN_SCOPE_GLOBAL_SHADOWED] key=global.shadow.probe",
+        "[BRAIN_SCOPE_GLOBAL] merged=1 shadowed=1",
+        "[BRAIN_DISPATCH_CALL] from=root to=global.lib.guardprobe",
+        "depth=1 verb=Var.Set [global_probe] 7",
+        "depth=1 verb=Var.Set [from_mission] 1"
+      ],
+      "notes": "BRAINSPECIAL-SCOPE-GLOBAL-1: Call resolves a global-only key via the merged index; the colliding key resolves to the MISSION-LOCAL body (from_mission trace), proving mission-wins precedence.",
+      "harness_proven": [
+        "global_specials.fit merged into the mission index",
+        "mission-local key shadows the global key",
+        "TechSpecial.Call reaches a global library body"
+      ]
+    },
+    {
+      "name": "variantof-inherit",
+      "file": "mc2_01_variantof_specials.fit",
+      "mission": "mc2_01",
+      "format": "brace-block",
+      "gates_required": [
+        "MC2_BRAIN_DISPATCH=1",
+        "MC2_BRAIN_VARIANTOF=1"
+      ],
+      "expected_bodyHasCoreGuard": true,
+      "expected_bodyHasEffect": true,
+      "expected_trace_substrings": [
+        "[BRAIN_VARIANTOF] child=variant_scenario_main parent=base.guard.template inherited=",
+        "[BRAIN_VARIANTOF] entry body variant_scenario_main resolved to",
+        "[BRAIN_DISPATCH] verb=OPORD.CoreGuard"
+      ],
+      "notes": "BRAINSPECIAL-VARIANTOF-1: empty-body variant inherits the parent body wholesale; the inherited verb drives a real GUARD order.",
+      "apply_expectation": {
+        "expected_order_code": "TACTICAL_ORDER_GUARD",
+        "expected_count": 1,
+        "notes": "Inherited OPORD.CoreGuard -> exactly one GUARD. A/B identity."
+      },
+      "harness_proven": [
+        "variantOf= field parsed",
+        "empty-body child inherits parent verbs",
+        "entry body re-synced post-resolution"
+      ]
+    },
+    {
+      "name": "variantof-override",
+      "file": "mc2_01_variantof_override_specials.fit",
+      "mission": "mc2_01",
+      "format": "brace-block",
+      "gates_required": [
+        "MC2_BRAIN_DISPATCH=1",
+        "MC2_BRAIN_VARIANTOF=1"
+      ],
+      "expected_bodyHasCoreGuard": true,
+      "expected_bodyHasEffect": true,
+      "expected_trace_substrings": [
+        "[BRAIN_VARIANTOF_OVERRIDE] child=override_scenario_main parent=base.retreat.template (body re-declared)"
+      ],
+      "notes": "BRAINSPECIAL-VARIANTOF-1: re-declared Body overrides the parent entirely (spec-delta: Body-level override).",
+      "apply_expectation": {
+        "expected_order_code": "TACTICAL_ORDER_GUARD",
+        "expected_count": 1,
+        "notes": "Child's own GUARD only; parent's Retreat NOT inherited (count would be 2 on a merge bug)."
+      },
+      "harness_proven": [
+        "re-declared Body suppresses inheritance"
+      ]
+    },
+    {
+      "name": "variantof-cycle",
+      "file": "mc2_01_variantof_cycle_specials.fit",
+      "mission": "mc2_01",
+      "format": "brace-block",
+      "gates_required": [
+        "MC2_BRAIN_DISPATCH=1",
+        "MC2_BRAIN_VARIANTOF=1"
+      ],
+      "expected_trace_substrings": [
+        "[BRAIN_VARIANTOF_CYCLE] child=cycle.a",
+        "[BRAIN_VARIANTOF_CYCLE] child=cycle.b"
+      ],
+      "notes": "BRAINSPECIAL-VARIANTOF-1: cyclic chains trip the guard and are left as-authored.",
+      "harness_proven": [
+        "cycle guard fires on mutual variantOf"
+      ]
+    },
+    {
+      "name": "flow-wait",
+      "file": "mc2_01_flow_wait_specials.fit",
+      "mission": "mc2_01",
+      "format": "brace-block",
+      "gates_required": [
+        "MC2_BRAIN_DISPATCH=1",
+        "MC2_BRAIN_DISPATCH_APPLY=1",
+        "MC2_BRAIN_FLOW=1"
+      ],
+      "flow_sequential": true,
+      "expected_trace_substrings": [
+        "[BRAIN_FLOW_WAIT_ARM] idx=1 sec=5 deadline=5000 now=0",
+        "[BRAIN_FLOW_WAIT_DONE] idx=1 deadline=5000 now=6000",
+        "[BRAIN_FLOW_STOP] idx=3"
+      ],
+      "notes": "BRAINSPECIAL-FLOW-WAIT-1: WAIT 5 arms at t=0, gates the GUARD through t=1000, latches open at t=6000; GUARD fires exactly once (flowFired refire guard).",
+      "apply_expectation": {
+        "expected_order_code": "TACTICAL_ORDER_GUARD",
+        "expected_count": 1,
+        "notes": "Exactly one GUARD across 3 passes. A/B identity across intent-queue gates."
+      },
+      "harness_proven": [
+        "WAIT arms once and gates the body tail",
+        "deadline latch opens on sim time",
+        "flowFired guard prevents re-emission",
+        "STOP terminates the tick's execution"
+      ]
+    },
+    {
+      "name": "flow-wait-until",
+      "file": "mc2_01_flow_waituntil_specials.fit",
+      "mission": "mc2_01",
+      "format": "brace-block",
+      "gates_required": [
+        "MC2_BRAIN_DISPATCH=1",
+        "MC2_BRAIN_DISPATCH_APPLY=1",
+        "MC2_BRAIN_DISPATCH_VAR=1",
+        "MC2_BRAIN_FLOW=1"
+      ],
+      "flow_sequential": true,
+      "expected_trace_substrings": [
+        "[BRAIN_FLOW_WAIT_UNTIL_GATED] idx=0 key=go want=1 cur=0",
+        "[BRAIN_FLOW_WAIT_UNTIL_DONE] idx=0 key=go val=1"
+      ],
+      "notes": "BRAINSPECIAL-FLOW-WAIT-1: WAIT_UNTIL Var [go] == 1 gates until the setter body writes go=1 on pass 1; latches open on pass 2; exactly one GUARD.",
+      "apply_expectation": {
+        "expected_order_code": "TACTICAL_ORDER_GUARD",
+        "expected_count": 1,
+        "notes": "Exactly one GUARD across 3 passes."
+      },
+      "harness_proven": [
+        "WAIT_UNTIL evaluates the unit-scope Var condition per tick",
+        "condition latch opens once satisfied"
+      ]
+    },
+    {
+      "name": "flow-stop",
+      "file": "mc2_01_flow_stop_specials.fit",
+      "mission": "mc2_01",
+      "format": "brace-block",
+      "gates_required": [
+        "MC2_BRAIN_DISPATCH=1",
+        "MC2_BRAIN_DISPATCH_APPLY=1",
+        "MC2_BRAIN_FLOW=1"
+      ],
+      "flow_sequential": true,
+      "expected_trace_substrings": [
+        "[BRAIN_FLOW_STOP] idx=1"
+      ],
+      "notes": "BRAINSPECIAL-FLOW-WAIT-1: mid-body STOP terminates execution; the GUARD after it never fires.",
+      "apply_expectation": {
+        "expected_order_code": "NONE",
+        "expected_count": 0,
+        "notes": "0 orders across all 3 passes."
+      },
+      "harness_proven": [
+        "STOP prevents execution of subsequent verbs"
+      ]
     }
   ]
 }

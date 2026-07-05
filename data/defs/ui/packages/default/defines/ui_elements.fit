@@ -1,0 +1,89 @@
+/***************************************************************
+ * FILENAME: ui_elements.fit
+ * DESCRIPTION: UI element definitions for the legacy_imgui package.
+ *
+ * AUTHOR: Methuselas
+ * CREATED: 2026-05-25
+ *
+ * UPDATED BY: Methuselas
+ * UPDATED: 2026-05-25
+ *
+ * CHANGES:
+ * - Declared modern element semantics for legacy migrated controls.
+ ***************************************************************/
+
+UiElementDefine {
+    key = "ui.element.page"
+    blockType = "GuiPage"
+    role = "page"
+    rectModel = "legacy_imgui.modern_rect_v1"
+    notes = "Page controls describe source/runtime composition and package ownership."
+}
+
+UiElementDefine {
+    key = "ui.element.button"
+    blockType = "GuiButton"
+    role = "button"
+    controlModel = "composite_hit_art_text_v1"
+    layers = "hit,art,text"
+    rectFields = "controlRect,hitRect,artRect,textRect,textOffset"
+    defaultTextAlign = "center"
+    defaultTextAnchor = "center"
+    sourceRuntime = "aButton"
+    notes = "Buttons are linked controls with independently editable text placement."
+}
+
+UiElementDefine {
+    key = "ui.element.text"
+    blockType = "GuiText"
+    role = "text"
+    controlModel = "text_layer_v1"
+    rectFields = "controlRect,textRect,textOffset"
+    defaultTextAlign = "left"
+    defaultTextAnchor = "upper_left"
+    sourceRuntime = "aText"
+}
+
+UiElementDefine {
+    key = "ui.element.image"
+    blockType = "GuiImage"
+    role = "image"
+    controlModel = "art_layer_v1"
+    rectFields = "controlRect,artRect"
+    sourceRuntime = "aAnimGroup/static art"
+}
+
+UiElementDefine {
+    key = "ui.element.list"
+    blockType = "GuiList"
+    role = "list"
+    controlModel = "scrollable_text_list_v1"
+    rectFields = "controlRect,hitRect,textRect"
+    sourceRuntime = "aListBox"
+}
+
+UiElementDefine {
+    key = "ui.element.scrollbar"
+    blockType = "GuiScrollbar"
+    role = "scrollbar"
+    controlModel = "runtime_component_v1"
+    rectFields = "controlRect,hitRect,artRect"
+    sourceRuntime = "mcScrollBar"
+}
+
+UiElementDefine {
+    key = "ui.element.viewport_3d"
+    blockType = "Gui3DView"
+    role = "viewport"
+    controlModel = "runtime_viewport_v1"
+    rectFields = "controlRect,hitRect"
+    sourceRuntime = "MechCommander2 3D preview camera"
+}
+
+UiElementDefine {
+    key = "ui.element.redirect"
+    blockType = "GuiRedirect"
+    role = "redirect"
+    controlModel = "package_page_alias_v1"
+    notes = "Redirect pages keep old routes alive while the package points to one source truth."
+}

@@ -1,0 +1,847 @@
+﻿// MC2R ImGui FIT generated from legacy UI FIT.
+// Source: data/defs/ui/legacy/game/mcl_dialoglegal.fit
+// Legacy files remain source truth only; edit the generated ImGui FIT.
+
+GuiPage {
+    key = "game.mcl_dialoglegal"
+    title = "Game Mcl Dialoglegal"
+    sourceLegacyFit = "data/defs/ui/legacy/game/mcl_dialoglegal.fit"
+    sourceSystem = "game"
+    sourceScreen = "mcl_dialoglegal"
+    sourceKind = "legacy_screen"
+    layout = "absolute"
+    coordinateSpace = "screen_absolute"
+    localWidth = 800
+    localHeight = 600
+    mountOffset = "0,0"
+    editableSource = "generated_imgui_only"
+    overlayGameOS = true
+    renderMode = "gameos_overlay"
+    backgroundPolicy = "transparent_overlay"
+}
+
+GuiMetadata {
+    key = "game.mcl_dialoglegal.metadata.metadata"
+    pageKey = "game.mcl_dialoglegal"
+    legacySection = "Buttons"
+    legacyContext = "~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ | ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ | ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~"
+    role = "metadata"
+    layer = "metadata"
+    aliasOverride = "metadata"
+    sourceControlType = "Buttons"
+    rect = "0,0,0,0"
+    legacyLocalRect = "0,0,0,0"
+    legacyRectSource = "xywh"
+    visible = false
+}
+
+GuiButton {
+    key = "game.mcl_dialoglegal.button.accept_button"
+    pageKey = "game.mcl_dialoglegal"
+    legacySection = "Button0"
+    legacyComment = "accept button"
+    role = "button"
+    layer = "control"
+    aliasOverride = "accept button"
+    sourceControlType = "Button0"
+    rect = "666,536,128,59"
+    legacyLocalRect = "666,536,128,59"
+    legacyRectSource = "xywh"
+    texture = "data/art/gui/mcl_mp_param_2.png"
+    legacyTexture = "mcl_mp_param_2.tga"
+    uiPackage = "default"
+    rectModel = "legacy_imgui.modern_rect_v1"
+    controlRect = "666,536,128,59"
+    hitRect = "666,536,128,59"
+    artRect = "666,536,128,59"
+    artLayer = "control_art"
+    controlModel = "composite_hit_art_text_v1"
+    linkedLayers = "hit,art,text"
+    editMode = "linked_control_with_independent_text"
+    textRect = "680,550,100,30"
+    textRectMode = "explicit_legacy"
+    textLegacyId = 27209
+    textKey = "legacy.mc2res.27209"
+    visibleText = "ACCEPT"
+    textLegacySymbol = "IDS_PM_ACCEPT"
+    textSource = "mc2res"
+    textMissing = false
+    helpCaptionLegacyId = 0
+    helpCaptionKey = "legacy.strings.ids_undefined_string_sebi"
+    helpCaptionLegacySymbol = "IDS_undefined_string_sebi"
+    helpCaptionSource = "strings.res.h"
+    helpCaptionMissing = true
+    helpCaptionMissingReason = "symbol_only_from_strings_res_h"
+    helpDescLegacyId = 27210
+    helpDescKey = "legacy.mc2res.27210"
+    helpDescText = "ACCEPT     Keep your current selections and return to the 'Mech Bay."
+    helpDescLegacySymbol = "IDS_PM_ACCEPT_HELP"
+    helpDescSource = "mc2res"
+    helpDescMissing = false
+    legacyFontId = 27207
+    legacyFontComment = "use AgencyFB17"
+    font = "Agency Regular"
+    fontStyle = "Regular"
+    fontSize = 17
+    bold = false
+    italic = false
+    textAlign = "center"
+    textAnchor = "center"
+    legacyTextAlignmentSource = "aButton::init default Alignment=2"
+    wrapText = false
+    textX = 680
+    textY = 550
+    textWidth = 100
+    textHeight = 30
+    legacyTextRectSource = "XTextLocation/YTextLocation/TextWidth/TextHeight"
+    normalTextColorArgb = "0xff005392"
+    normalOverlayColorArgb = "0xff005392"
+    colorArgb = "0xff005392"
+    pressedTextColorArgb = "0xffffffff"
+    pressedOverlayColorArgb = "0xffffffff"
+    highlightTextColorArgb = "0xffffffff"
+    highlightOverlayColorArgb = "0xffffffff"
+    disabledTextColorArgb = "0xff373737"
+    disabledOverlayColorArgb = "0xff373737"
+    buttonOverlayEnabled = true
+    buttonOverlayAlpha = 0.30
+    pulseEnabled = true
+    pulseSpeed = 1.5
+    textEffect = "pulse"
+    legacyTextEffectSource = "AnimateText"
+    legacyId = 50
+    legacyColor = 0xff005392
+    legacyTextOutline = "TRUE"
+    legacyAnimateBmp = 0
+    legacyAnimateText = 1
+    uvX = 90
+    uvY = 0
+    uvWidth = 128
+    uvHeight = 59
+    uvPressedX = 90
+    uvPressedY = 59
+    uvHighlightX = 90
+    uvHighlightY = 0
+    uvDisabledX = 90
+    uvDisabledY = 59
+    legacyFontComment = "use AgencyFB17"
+    fillColorArgb = "0x00000000"
+    borderColorArgb = "0x00000000"
+    legacyNormalAnimationTimeStamps = 4
+    legacyNormalAnimationLoops = true
+    legacyNormalAnimTime0 = 0.0
+    legacyNormalAnimColor0 = 0xff005392
+    legacyNormalAnimTime1 = 7.0
+    legacyNormalAnimColor1 = 0xff005392
+    legacyNormalAnimTime2 = 7.5
+    legacyNormalAnimColor2 = 0xff5C96C2
+    legacyNormalAnimTime3 = 8.0
+    legacyNormalAnimColor3 = 0xff005392
+    legacyPressedAnimationTimeStamps = 2
+    legacyPressedAnimationLoops = false
+    legacyPressedAnimTime0 = 0.0
+    legacyPressedAnimColor0 = 0xffffffff
+    legacyPressedAnimTime1 = 0.5
+    legacyPressedAnimColor1 = 0xff5C96C2
+    legacyHighlightAnimationTimeStamps = 2
+    legacyHighlightAnimationLoops = false
+    legacyHighlightAnimTime0 = 0.0
+    legacyHighlightAnimColor0 = 0xffffffff
+    legacyHighlightAnimTime1 = 0.5
+    legacyHighlightAnimColor1 = 0xff5C96C2
+    legacyDisabledAnimationTimeStamps = 2
+    legacyDisabledAnimationLoops = true
+    legacyDisabledAnimTime0 = 0.0
+    legacyDisabledAnimColor0 = 0xff373737
+    legacyDisabledAnimTime1 = 15.0
+    legacyDisabledAnimColor1 = 0xff373737
+}
+
+GuiMetadata {
+    key = "game.mcl_dialoglegal.metadata.metadata_01"
+    pageKey = "game.mcl_dialoglegal"
+    legacySection = "Rects"
+    legacyContext = "~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ | ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ | ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~"
+    role = "metadata"
+    layer = "metadata"
+    aliasOverride = "metadata"
+    sourceControlType = "Rects"
+    rect = "0,0,0,0"
+    legacyLocalRect = "0,0,0,0"
+    legacyRectSource = "xywh"
+    visible = false
+}
+
+GuiRect {
+    key = "game.mcl_dialoglegal.rect.background_black"
+    pageKey = "game.mcl_dialoglegal"
+    legacySection = "Rect0"
+    legacyComment = "background black"
+    role = "rect"
+    layer = "layout"
+    aliasOverride = "background black"
+    sourceControlType = "Rect0"
+    rect = "115,101,568,370"
+    legacyLocalRect = "115,101,568,370"
+    legacyRectSource = "xywh"
+    uiPackage = "default"
+    rectModel = "legacy_imgui.modern_rect_v1"
+    controlRect = "115,101,568,370"
+    legacyColor = 0xff000000
+    outline = "FALSE"
+    filled = true
+    fillColorArgb = "0x00000000"
+    borderColorArgb = "0x00000000"
+    colorArgb = "0xffffffff"
+}
+
+GuiRect {
+    key = "game.mcl_dialoglegal.rect.main_header_background_black"
+    pageKey = "game.mcl_dialoglegal"
+    legacySection = "Rect1"
+    legacyComment = "main header background black"
+    role = "title"
+    layer = "text"
+    aliasOverride = "main header background black"
+    sourceControlType = "Rect1"
+    rect = "115,59,568,31"
+    legacyLocalRect = "115,59,568,31"
+    legacyRectSource = "xywh"
+    uiPackage = "default"
+    rectModel = "legacy_imgui.modern_rect_v1"
+    controlRect = "115,59,568,31"
+    legacyColor = 0xff000000
+    outline = "FALSE"
+    filled = true
+    fillColorArgb = "0x00000000"
+    borderColorArgb = "0x00000000"
+    colorArgb = "0xffffffff"
+}
+
+GuiRect {
+    key = "game.mcl_dialoglegal.rect.rect_around_text_area"
+    pageKey = "game.mcl_dialoglegal"
+    legacySection = "Rect2"
+    legacyComment = "rect around text area"
+    role = "rect"
+    layer = "layout"
+    aliasOverride = "rect around text area"
+    sourceControlType = "Rect2"
+    rect = "125,111,548,350"
+    legacyLocalRect = "125,111,548,350"
+    legacyRectSource = "xywh"
+    uiPackage = "default"
+    rectModel = "legacy_imgui.modern_rect_v1"
+    controlRect = "125,111,548,350"
+    legacyColor = 0xff43311C
+    outline = "TRUE"
+    filled = false
+    fillColorArgb = "0x00000000"
+    borderColorArgb = "0x00000000"
+    colorArgb = "0xffffffff"
+}
+
+GuiMetadata {
+    key = "game.mcl_dialoglegal.metadata.metadata_02"
+    pageKey = "game.mcl_dialoglegal"
+    legacySection = "Statics"
+    legacyContext = "~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ | ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ | ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~"
+    role = "metadata"
+    layer = "metadata"
+    aliasOverride = "metadata"
+    sourceControlType = "Statics"
+    rect = "0,0,0,0"
+    legacyLocalRect = "0,0,0,0"
+    legacyRectSource = "xywh"
+    visible = false
+}
+
+GuiImage {
+    key = "game.mcl_dialoglegal.image.mcl_mp_addai_1"
+    pageKey = "game.mcl_dialoglegal"
+    legacySection = "Static0"
+    role = "image"
+    layer = "art"
+    aliasOverride = "mcl_mp_addai_1"
+    sourceControlType = "Static0"
+    rect = "0,0,256,59"
+    legacyLocalRect = "0,0,256,59"
+    legacyRectSource = "xywh"
+    texture = "data/art/gui/mcl_mp_addai_1.png"
+    legacyTexture = "mcl_mp_addai_1.tga"
+    uiPackage = "default"
+    rectModel = "legacy_imgui.modern_rect_v1"
+    controlRect = "0,0,256,59"
+    artRect = "0,0,256,59"
+    artLayer = "control_art"
+    uvX = 0
+    uvY = 0
+    uvWidth = 256
+    uvHeight = 59
+}
+
+GuiImage {
+    key = "game.mcl_dialoglegal.image.mcl_mp_addai_1_01"
+    pageKey = "game.mcl_dialoglegal"
+    legacySection = "Static1"
+    role = "image"
+    layer = "art"
+    aliasOverride = "mcl_mp_addai_1"
+    sourceControlType = "Static1"
+    rect = "256,0,256,59"
+    legacyLocalRect = "256,0,256,59"
+    legacyRectSource = "xywh"
+    texture = "data/art/gui/mcl_mp_addai_1.png"
+    legacyTexture = "mcl_mp_addai_1.tga"
+    uiPackage = "default"
+    rectModel = "legacy_imgui.modern_rect_v1"
+    controlRect = "256,0,256,59"
+    artRect = "256,0,256,59"
+    artLayer = "control_art"
+    uvX = 0
+    uvY = 59
+    uvWidth = 256
+    uvHeight = 59
+}
+
+GuiImage {
+    key = "game.mcl_dialoglegal.image.mcl_mp_addai_1_02"
+    pageKey = "game.mcl_dialoglegal"
+    legacySection = "Static2"
+    role = "image"
+    layer = "art"
+    aliasOverride = "mcl_mp_addai_1"
+    sourceControlType = "Static2"
+    rect = "512,0,256,59"
+    legacyLocalRect = "512,0,256,59"
+    legacyRectSource = "xywh"
+    texture = "data/art/gui/mcl_mp_addai_1.png"
+    legacyTexture = "mcl_mp_addai_1.tga"
+    uiPackage = "default"
+    rectModel = "legacy_imgui.modern_rect_v1"
+    controlRect = "512,0,256,59"
+    artRect = "512,0,256,59"
+    artLayer = "control_art"
+    uvX = 0
+    uvY = 118
+    uvWidth = 256
+    uvHeight = 59
+}
+
+GuiImage {
+    key = "game.mcl_dialoglegal.image.mcl_mp_addai_5"
+    pageKey = "game.mcl_dialoglegal"
+    legacySection = "Static3"
+    role = "image"
+    layer = "art"
+    aliasOverride = "mcl_mp_addai_5"
+    sourceControlType = "Static3"
+    rect = "768,0,32,59"
+    legacyLocalRect = "768,0,32,59"
+    legacyRectSource = "xywh"
+    texture = "data/art/gui/mcl_mp_addai_5.png"
+    legacyTexture = "mcl_mp_addai_5.tga"
+    uiPackage = "default"
+    rectModel = "legacy_imgui.modern_rect_v1"
+    controlRect = "768,0,32,59"
+    artRect = "768,0,32,59"
+    artLayer = "control_art"
+    uvX = 33
+    uvY = 0
+    uvWidth = 32
+    uvHeight = 59
+}
+
+GuiImage {
+    key = "game.mcl_dialoglegal.image.mcl_mp_addai_1_03"
+    pageKey = "game.mcl_dialoglegal"
+    legacySection = "Static4"
+    role = "image"
+    layer = "art"
+    aliasOverride = "mcl_mp_addai_1"
+    sourceControlType = "Static4"
+    rect = "0,59,114,32"
+    legacyLocalRect = "0,59,114,32"
+    legacyRectSource = "xywh"
+    texture = "data/art/gui/mcl_mp_addai_1.png"
+    legacyTexture = "mcl_mp_addai_1.tga"
+    uiPackage = "default"
+    rectModel = "legacy_imgui.modern_rect_v1"
+    controlRect = "0,59,114,32"
+    artRect = "0,59,114,32"
+    artLayer = "control_art"
+    uvX = 0
+    uvY = 207
+    uvWidth = 114
+    uvHeight = 32
+}
+
+GuiImage {
+    key = "game.mcl_dialoglegal.image.mcl_mp_addai_1_04"
+    pageKey = "game.mcl_dialoglegal"
+    legacySection = "Static5"
+    role = "image"
+    layer = "art"
+    aliasOverride = "mcl_mp_addai_1"
+    sourceControlType = "Static5"
+    rect = "684,59,116,32"
+    legacyLocalRect = "684,59,116,32"
+    legacyRectSource = "xywh"
+    texture = "data/art/gui/mcl_mp_addai_1.png"
+    legacyTexture = "mcl_mp_addai_1.tga"
+    uiPackage = "default"
+    rectModel = "legacy_imgui.modern_rect_v1"
+    controlRect = "684,59,116,32"
+    artRect = "684,59,116,32"
+    artLayer = "control_art"
+    uvX = 114
+    uvY = 207
+    uvWidth = 116
+    uvHeight = 32
+}
+
+GuiImage {
+    key = "game.mcl_dialoglegal.image.mcl_mp_addai_1_05"
+    pageKey = "game.mcl_dialoglegal"
+    legacySection = "Static6"
+    role = "image"
+    layer = "art"
+    aliasOverride = "mcl_mp_addai_1"
+    sourceControlType = "Static6"
+    rect = "0,91,255,10"
+    legacyLocalRect = "0,91,255,10"
+    legacyRectSource = "xywh"
+    texture = "data/art/gui/mcl_mp_addai_1.png"
+    legacyTexture = "mcl_mp_addai_1.tga"
+    uiPackage = "default"
+    rectModel = "legacy_imgui.modern_rect_v1"
+    controlRect = "0,91,255,10"
+    artRect = "0,91,255,10"
+    artLayer = "control_art"
+    uvX = 0
+    uvY = 177
+    uvWidth = 255
+    uvHeight = 10
+}
+
+GuiImage {
+    key = "game.mcl_dialoglegal.image.mcl_mp_addai_1_06"
+    pageKey = "game.mcl_dialoglegal"
+    legacySection = "Static7"
+    role = "image"
+    layer = "art"
+    aliasOverride = "mcl_mp_addai_1"
+    sourceControlType = "Static7"
+    rect = "255,91,256,10"
+    legacyLocalRect = "255,91,256,10"
+    legacyRectSource = "xywh"
+    texture = "data/art/gui/mcl_mp_addai_1.png"
+    legacyTexture = "mcl_mp_addai_1.tga"
+    uiPackage = "default"
+    rectModel = "legacy_imgui.modern_rect_v1"
+    controlRect = "255,91,256,10"
+    artRect = "255,91,256,10"
+    artLayer = "control_art"
+    uvX = 0
+    uvY = 187
+    uvWidth = 256
+    uvHeight = 10
+}
+
+GuiImage {
+    key = "game.mcl_dialoglegal.image.mcl_mp_addai_1_07"
+    pageKey = "game.mcl_dialoglegal"
+    legacySection = "Static8"
+    role = "image"
+    layer = "art"
+    aliasOverride = "mcl_mp_addai_1"
+    sourceControlType = "Static8"
+    rect = "511,91,256,10"
+    legacyLocalRect = "511,91,256,10"
+    legacyRectSource = "xywh"
+    texture = "data/art/gui/mcl_mp_addai_1.png"
+    legacyTexture = "mcl_mp_addai_1.tga"
+    uiPackage = "default"
+    rectModel = "legacy_imgui.modern_rect_v1"
+    controlRect = "511,91,256,10"
+    artRect = "511,91,256,10"
+    artLayer = "control_art"
+    uvX = 0
+    uvY = 197
+    uvWidth = 256
+    uvHeight = 10
+}
+
+GuiImage {
+    key = "game.mcl_dialoglegal.image.mcl_mp_addai_5_01"
+    pageKey = "game.mcl_dialoglegal"
+    legacySection = "Static9"
+    role = "image"
+    layer = "art"
+    aliasOverride = "mcl_mp_addai_5"
+    sourceControlType = "Static9"
+    rect = "767,91,33,10"
+    legacyLocalRect = "767,91,33,10"
+    legacyRectSource = "xywh"
+    texture = "data/art/gui/mcl_mp_addai_5.png"
+    legacyTexture = "mcl_mp_addai_5.tga"
+    uiPackage = "default"
+    rectModel = "legacy_imgui.modern_rect_v1"
+    controlRect = "767,91,33,10"
+    artRect = "767,91,33,10"
+    artLayer = "control_art"
+    uvX = 33
+    uvY = 59
+    uvWidth = 33
+    uvHeight = 10
+}
+
+GuiImage {
+    key = "game.mcl_dialoglegal.image.mcl_mp_addai_4"
+    pageKey = "game.mcl_dialoglegal"
+    legacySection = "Static10"
+    role = "image"
+    layer = "art"
+    aliasOverride = "mcl_mp_addai_4"
+    sourceControlType = "Static10"
+    rect = "0,101,115,256"
+    legacyLocalRect = "0,101,115,256"
+    legacyRectSource = "xywh"
+    texture = "data/art/gui/mcl_mp_addai_4.png"
+    legacyTexture = "mcl_mp_addai_4.tga"
+    uiPackage = "default"
+    rectModel = "legacy_imgui.modern_rect_v1"
+    controlRect = "0,101,115,256"
+    artRect = "0,101,115,256"
+    artLayer = "control_art"
+    uvX = 0
+    uvY = 0
+    uvWidth = 115
+    uvHeight = 256
+}
+
+GuiImage {
+    key = "game.mcl_dialoglegal.image.mcl_mp_addai_4_01"
+    pageKey = "game.mcl_dialoglegal"
+    legacySection = "Static11"
+    role = "image"
+    layer = "art"
+    aliasOverride = "mcl_mp_addai_4"
+    sourceControlType = "Static11"
+    rect = "684,101,116,256"
+    legacyLocalRect = "684,101,116,256"
+    legacyRectSource = "xywh"
+    texture = "data/art/gui/mcl_mp_addai_4.png"
+    legacyTexture = "mcl_mp_addai_4.tga"
+    uiPackage = "default"
+    rectModel = "legacy_imgui.modern_rect_v1"
+    controlRect = "684,101,116,256"
+    artRect = "684,101,116,256"
+    artLayer = "control_art"
+    uvX = 115
+    uvY = 0
+    uvWidth = 116
+    uvHeight = 256
+}
+
+GuiImage {
+    key = "game.mcl_dialoglegal.image.mcl_mp_addai_3"
+    pageKey = "game.mcl_dialoglegal"
+    legacySection = "Static12"
+    role = "image"
+    layer = "art"
+    aliasOverride = "mcl_mp_addai_3"
+    sourceControlType = "Static12"
+    rect = "0,357,115,115"
+    legacyLocalRect = "0,357,115,115"
+    legacyRectSource = "xywh"
+    texture = "data/art/gui/mcl_mp_addai_3.png"
+    legacyTexture = "mcl_mp_addai_3.tga"
+    uiPackage = "default"
+    rectModel = "legacy_imgui.modern_rect_v1"
+    controlRect = "0,357,115,115"
+    artRect = "0,357,115,115"
+    artLayer = "control_art"
+    uvX = 0
+    uvY = 128
+    uvWidth = 115
+    uvHeight = 115
+}
+
+GuiImage {
+    key = "game.mcl_dialoglegal.image.mcl_mp_addai_3_01"
+    pageKey = "game.mcl_dialoglegal"
+    legacySection = "Static13"
+    role = "image"
+    layer = "art"
+    aliasOverride = "mcl_mp_addai_3"
+    sourceControlType = "Static13"
+    rect = "684,357,116,115"
+    legacyLocalRect = "684,357,116,115"
+    legacyRectSource = "xywh"
+    texture = "data/art/gui/mcl_mp_addai_3.png"
+    legacyTexture = "mcl_mp_addai_3.tga"
+    uiPackage = "default"
+    rectModel = "legacy_imgui.modern_rect_v1"
+    controlRect = "684,357,116,115"
+    artRect = "684,357,116,115"
+    artLayer = "control_art"
+    uvX = 115
+    uvY = 128
+    uvWidth = 116
+    uvHeight = 115
+}
+
+GuiImage {
+    key = "game.mcl_dialoglegal.image.mcl_mp_addai_2"
+    pageKey = "game.mcl_dialoglegal"
+    legacySection = "Static14"
+    role = "image"
+    layer = "art"
+    aliasOverride = "mcl_mp_addai_2"
+    sourceControlType = "Static14"
+    rect = "0,472,255,128"
+    legacyLocalRect = "0,472,255,128"
+    legacyRectSource = "xywh"
+    texture = "data/art/gui/mcl_mp_addai_2.png"
+    legacyTexture = "mcl_mp_addai_2.tga"
+    uiPackage = "default"
+    rectModel = "legacy_imgui.modern_rect_v1"
+    controlRect = "0,472,255,128"
+    artRect = "0,472,255,128"
+    artLayer = "control_art"
+    uvX = 0
+    uvY = 0
+    uvWidth = 255
+    uvHeight = 128
+}
+
+GuiImage {
+    key = "game.mcl_dialoglegal.image.mcl_mp_addai_2_01"
+    pageKey = "game.mcl_dialoglegal"
+    legacySection = "Static15"
+    role = "image"
+    layer = "art"
+    aliasOverride = "mcl_mp_addai_2"
+    sourceControlType = "Static15"
+    rect = "255,472,256,128"
+    legacyLocalRect = "255,472,256,128"
+    legacyRectSource = "xywh"
+    texture = "data/art/gui/mcl_mp_addai_2.png"
+    legacyTexture = "mcl_mp_addai_2.tga"
+    uiPackage = "default"
+    rectModel = "legacy_imgui.modern_rect_v1"
+    controlRect = "255,472,256,128"
+    artRect = "255,472,256,128"
+    artLayer = "control_art"
+    uvX = 0
+    uvY = 128
+    uvWidth = 256
+    uvHeight = 128
+}
+
+GuiImage {
+    key = "game.mcl_dialoglegal.image.mcl_mp_addai_3_02"
+    pageKey = "game.mcl_dialoglegal"
+    legacySection = "Static16"
+    role = "image"
+    layer = "art"
+    aliasOverride = "mcl_mp_addai_3"
+    sourceControlType = "Static16"
+    rect = "511,472,256,128"
+    legacyLocalRect = "511,472,256,128"
+    legacyRectSource = "xywh"
+    texture = "data/art/gui/mcl_mp_addai_3.png"
+    legacyTexture = "mcl_mp_addai_3.tga"
+    uiPackage = "default"
+    rectModel = "legacy_imgui.modern_rect_v1"
+    controlRect = "511,472,256,128"
+    artRect = "511,472,256,128"
+    artLayer = "control_art"
+    uvX = 0
+    uvY = 0
+    uvWidth = 256
+    uvHeight = 128
+}
+
+GuiImage {
+    key = "game.mcl_dialoglegal.image.mcl_mp_addai_5_02"
+    pageKey = "game.mcl_dialoglegal"
+    legacySection = "Static17"
+    role = "image"
+    layer = "art"
+    aliasOverride = "mcl_mp_addai_5"
+    sourceControlType = "Static17"
+    rect = "767,472,33,128"
+    legacyLocalRect = "767,472,33,128"
+    legacyRectSource = "xywh"
+    texture = "data/art/gui/mcl_mp_addai_5.png"
+    legacyTexture = "mcl_mp_addai_5.tga"
+    uiPackage = "default"
+    rectModel = "legacy_imgui.modern_rect_v1"
+    controlRect = "767,472,33,128"
+    artRect = "767,472,33,128"
+    artLayer = "control_art"
+    uvX = 0
+    uvY = 0
+    uvWidth = 33
+    uvHeight = 128
+}
+
+GuiImage {
+    key = "game.mcl_dialoglegal.image.cover_over_old_cancel_button"
+    pageKey = "game.mcl_dialoglegal"
+    legacySection = "Static18"
+    legacyComment = "cover over old cancel button"
+    role = "image"
+    layer = "art"
+    aliasOverride = "cover over old cancel button"
+    sourceControlType = "Static18"
+    rect = "5,536,128,59"
+    legacyLocalRect = "5,536,128,59"
+    legacyRectSource = "xywh"
+    texture = "data/art/gui/mcl_mp_addai_6.png"
+    legacyTexture = "mcl_mp_addai_6.tga"
+    uiPackage = "default"
+    rectModel = "legacy_imgui.modern_rect_v1"
+    controlRect = "5,536,128,59"
+    artRect = "5,536,128,59"
+    artLayer = "control_art"
+    uvX = 0
+    uvY = 0
+    uvWidth = 128
+    uvHeight = 59
+}
+
+GuiMetadata {
+    key = "game.mcl_dialoglegal.metadata.metadata_03"
+    pageKey = "game.mcl_dialoglegal"
+    legacySection = "Texts"
+    legacyContext = "~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ | ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ | ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~"
+    role = "metadata"
+    layer = "metadata"
+    aliasOverride = "metadata"
+    sourceControlType = "Texts"
+    rect = "0,0,0,0"
+    legacyLocalRect = "0,0,0,0"
+    legacyRectSource = "xywh"
+    visible = false
+}
+
+GuiText {
+    key = "game.mcl_dialoglegal.text.legal_info"
+    pageKey = "game.mcl_dialoglegal"
+    legacySection = "Text0"
+    legacyComment = "legal info"
+    role = "text"
+    layer = "text"
+    aliasOverride = "legal info"
+    sourceControlType = "Text0"
+    rect = "133,115,540,346"
+    legacyLocalRect = "133,115,540,346"
+    legacyRectSource = "xywh"
+    uiPackage = "default"
+    rectModel = "legacy_imgui.modern_rect_v1"
+    controlRect = "133,115,540,346"
+    textRect = "133,115,540,346"
+    textRectMode = "control_rect_fallback"
+    textLegacyId = 26252
+    textKey = "legacy.mc2res.26252"
+    visibleText = "NAME ENTRY"
+    textLegacySymbol = "IDS_STRING26252"
+    textSource = "mc2res"
+    textMissing = false
+    legacyFontId = 27656
+    legacyFontComment = "use agency fb 11"
+    font = "Agency Regular"
+    fontStyle = "Regular"
+    fontSize = 11
+    bold = false
+    italic = false
+    textAlign = "left"
+    textAnchor = "upper_left"
+    wrapText = true
+    colorArgb = "0xffc66600"
+    legacyColor = 0xffc66600
+    outline = "FALSE"
+    legacyAlignment = 0
+    legacyFontComment = "use agency fb 11"
+    borderColorArgb = "0x00000000"
+}
+
+GuiText {
+    key = "game.mcl_dialoglegal.text.main_header"
+    pageKey = "game.mcl_dialoglegal"
+    legacySection = "Text0"
+    legacyComment = "main header"
+    role = "title"
+    layer = "text"
+    aliasOverride = "main header"
+    sourceControlType = "Text0"
+    rect = "126,61,554,26"
+    legacyLocalRect = "126,61,554,26"
+    legacyRectSource = "xywh"
+    uiPackage = "default"
+    rectModel = "legacy_imgui.modern_rect_v1"
+    controlRect = "126,61,554,26"
+    textRect = "126,61,554,26"
+    textRectMode = "control_rect_fallback"
+    textLegacyId = 26250
+    textKey = "legacy.mc2res.26250"
+    visibleText = "ADD AI PLAYER"
+    textLegacySymbol = "IDS_STRING26250"
+    textSource = "mc2res"
+    textMissing = false
+    legacyFontId = 26251
+    legacyFontComment = "use agency fb 17"
+    font = "Agency Regular"
+    fontStyle = "Regular"
+    fontSize = 17
+    bold = false
+    italic = false
+    textAlign = "left"
+    textAnchor = "upper_left"
+    wrapText = false
+    colorArgb = "0xffff8a00"
+    legacyColor = 0xffff8a00
+    outline = "FALSE"
+    legacyAlignment = 0
+    legacyFontComment = "use agency fb 17"
+    borderColorArgb = "0x00000000"
+}
+
+GuiAnimation {
+    key = "game.mcl_dialoglegal.animation.enter_anim"
+    pageKey = "game.mcl_dialoglegal"
+    legacySection = "EnterAnim"
+    legacyComment = "use when dialog appears on screen"
+    role = "animation"
+    layer = "animation"
+    animType = "in_anim"
+    rect = "0,0,0,0"
+    animationKeyframes = 2
+    keyframe0Time = 0.0
+    keyframe0X = 0
+    keyframe0Y = -600
+    keyframe1Time = 0.23
+    keyframe1X = 0
+    keyframe1Y = 0
+}
+
+GuiAnimation {
+    key = "game.mcl_dialoglegal.animation.leave_anim"
+    pageKey = "game.mcl_dialoglegal"
+    legacySection = "LeaveAnim"
+    legacyComment = "use when dialog leaves after cancel or okay is pressed"
+    role = "animation"
+    layer = "animation"
+    animType = "out_anim"
+    rect = "0,0,0,0"
+    animationKeyframes = 2
+    keyframe0Time = 0.0
+    keyframe0X = 0
+    keyframe0Y = 0
+    keyframe1Time = 0.23
+    keyframe1X = 0
+    keyframe1Y = -600
+}

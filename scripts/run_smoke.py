@@ -240,6 +240,33 @@ def _running_mc2(target_exe: Path) -> list[tuple[int, str]]:
     return _same_path_mc2(_enum_mc2_processes(), target_exe)
 
 
+def _lane_lock_token(lease_folder: str | None, exe_path: str,
+                     short_name_fn) -> str:
+    """PURE: derive the filesystem-safe lane token used to name the per-lane
+    smoke.<token>.lock file (SMOKE-LATENCY-WINS-1 win #2).
+
+    lease_folder: the folder path we hold a lease on, or None (no lease --
+      --no-lease or lease system unavailable).
+    exe_path: args.exe (used as the fallback lane identity when there's no
+      lease, so two --no-lease invocations pointed at the SAME exe still
+      serialize against each other).
+    short_name_fn: deploy_lease._short_name (injected so this can be unit
+      tested without importing the real deploy_lease module's DEPLOY_FOLDERS
+      global state).
+
+    Two invocations resolving to the SAME lane token must serialize (same
+    lock file); two resolving to DIFFERENT tokens must run concurrently
+    (different lock files). Sanitizes to [A-Za-z0-9_-] so short names
+    containing '.' (e.g. "0.4") or an arbitrary directory name can't break
+    the lock filename.
+    """
+    if lease_folder is not None:
+        lane_key = short_name_fn(lease_folder)
+    else:
+        lane_key = Path(exe_path).resolve().parent.name or "default"
+    return "".join(c if c.isalnum() or c in "-_" else "_" for c in lane_key)
+
+
 def _taskkill_mc2(pids: list[int]):
     """Kill ONLY the given PIDs (never /IM image-name kill, which would also
     nuke foreign mc2.exe from a different deploy path)."""
@@ -434,6 +461,13 @@ def main():
     ap = argparse.ArgumentParser()
     ap.add_argument("--tier", choices=["tier1", "tier2", "tier3"])
     ap.add_argument("--mission", action="append", default=[])
+    ap.add_argument("--allow-any-mission", action="store_true",
+                    help="allow --mission stems not present in "
+                         "tests/smoke/smoke_missions.txt, as long as a matching "
+                         "<stem>.fit or <stem>.pak exists under the resolved "
+                         "deploy's data/missions dir. Prints a WARNING per "
+                         "auto-accepted stem. Default (no flag) behavior is "
+                         "unchanged: unknown stems still hard-error (exit 2).")
     ap.add_argument("--menu-canary", action="store_true")
     ap.add_argument("--with-menu-canary", action="store_true")
     ap.add_argument("--menu-script", default=str(DEFAULT_MENU_SCRIPT))
@@ -502,9 +536,43 @@ def main():
                          "debug_state/latest_render_state.json; exits non-zero if "
                          "counter is 0). Repeatable. Known gates: "
                          "MC2_FRAMEGRAPH_EXECUTOR, MC2_FRAMEGRAPH_DRYRUN.")
+    ap.add_argument("--skip-preflight-cache", action="store_true",
+                    help="SMOKE-LATENCY-WINS-1: skip the preflight result "
+                         "cache and always re-run the coherence/BOM checks "
+                         "(default: cache hit replays their prior output and "
+                         "skips both subprocesses when the deploy manifest + "
+                         "shader tree + HEAD are unchanged since the last "
+                         "cached run; the staleness check always runs fresh)")
     args = ap.parse_args()
     if args.gl_debug_fatal:
         os.environ["MC2_GL_DEBUG_FATAL"] = "1"
+
+    # SMOKE-LATENCY-WINS-1 win #1: --duration hard cap + quick-tier banner.
+    # CLAUDE.md rule: NEVER --duration > 30 (soak/parity tier is 30s fixed).
+    # 15s is a valid opt-in "does it still boot+run+not crash" inner-loop tier
+    # (see .claude/SMOKE-LATENCY-1-RECON.md §4) -- all duration-independent
+    # gates (crash_silent, crash_no_summary, engine_reported_fail, gl_error,
+    # pool_null, asset_oob, shader_error, missing_file) and the play-heartbeat
+    # freeze gate (3s threshold) are satisfied well within 15s. It intentionally
+    # loses soak coverage (mid-mission combat/FX/leak/hitch observation), so it
+    # must stay opt-in and never silently replace the 30s default.
+    if args.duration is not None:
+        if args.duration > 30:
+            print(f"[runner] ERROR: --duration {args.duration} exceeds the hard "
+                  f"cap of 30s. The 30s window is the soak/parity tier and must "
+                  f"never be exceeded (CLAUDE.md). Use the default (30) or a "
+                  f"shorter --duration for a quick inner-loop tier.",
+                  file=sys.stderr)
+            sys.exit(2)
+        if args.duration < 30:
+            print(f"[runner] [QUICK-TIER] --duration {args.duration} < 30s "
+                  f"default: this run has REDUCED SOAK COVERAGE (mid-mission "
+                  f"combat/FX/AI divergence, slow leaks, and late hitches get "
+                  f"a shorter observation window). Crash/heartbeat/summary "
+                  f"gates are still fully valid at this duration. Use for "
+                  f"inner-loop iteration only -- NOT a substitute for the 30s "
+                  f"soak/parity tier before landing a change.",
+                  file=sys.stderr)
 
     # ----- Deploy-folder lease / auto-selection --------------------------
     # Must run before any code that uses args.exe (coherence check, lock, etc.)
@@ -685,37 +753,100 @@ def main():
         except Exception as _ge:
             print(f"[runner] [DEPLOY_GUARD] check skipped: {_ge}", file=sys.stderr)
 
-    # Deploy-coherence advisory (scripts/check-deploy-coherence.py): detects
-    # a stale deployed exe (fix built but never copied to the run dir).
-    # STRICTLY advisory: never changes verdict, exit code, or gate behavior.
-    try:
-        _coh = subprocess.run(
-            [sys.executable, str(ROOT / "scripts" / "check-deploy-coherence.py"),
-             str(Path(args.exe).resolve().parent), "--worktree", str(ROOT)],
-            capture_output=True, text=True, timeout=30)
-        for _line in ((_coh.stdout or "") + (_coh.stderr or "")).splitlines():
+    # SMOKE-LATENCY-WINS-1 win #4: amortize the coherence + BOM preflights.
+    # Both re-hash/re-read the full deploy manifest / shader tree every
+    # invocation even though neither can change between two back-to-back
+    # `run_smoke` calls unless the deploy dir or worktree HEAD actually
+    # changed. Cache their (stdout, stderr, returncode) keyed on a cheap
+    # fingerprint (HEAD sha + manifest mtime/size + shader dir count/max-mtime;
+    # see scripts/smoke_lib/preflight_cache.py). A hit replays the prior
+    # output verbatim and skips both subprocesses; a miss (or
+    # --skip-preflight-cache) re-runs them and refreshes the cache. Purely an
+    # advisory-tier latency win -- BOM-check's hard sys.exit(2) on FAIL still
+    # fires identically whether the result came from cache or a fresh run.
+    from scripts.smoke_lib import preflight_cache as _pfcache
+    _pfcache_path = ARTIFACT_ROOT / ".preflight_cache.json"
+    _pfcache_fp = None
+    _pfcache_hit = None
+    if not args.skip_preflight_cache:
+        try:
+            _pfcache_fp = _pfcache.compute_fingerprint(
+                Path(args.exe).resolve().parent, ROOT)
+            _pfcache_hit = _pfcache.check_cache_hit(_pfcache_path, _pfcache_fp)
+        except Exception as _pce:
+            print(f"[runner] [PREFLIGHT-CACHE] lookup skipped: {_pce}",
+                  file=sys.stderr)
+
+    if _pfcache_hit is not None:
+        print("[runner] [PREFLIGHT-CACHE] HIT -- deploy manifest + shader tree "
+              "+ HEAD unchanged since last cached run; replaying coherence/BOM "
+              "results (pass --skip-preflight-cache to force a fresh check).",
+              file=sys.stderr)
+        _coh_out = _pfcache_hit.get("coherence", {})
+        for _line in (_coh_out.get("text") or "").splitlines():
             if _line.strip():
                 print(f"[runner] {_line}", file=sys.stderr)
-    except Exception as _e:
-        print(f"[runner] [DEPLOY_COHERENCE] check skipped: {_e}", file=sys.stderr)
-
-    # Shader BOM preflight: UTF-8 BOM in any shader = silent compile death
-    # (driver reports "unexpected token '€'" with no file name). Hard-fail
-    # so a BOM-infected deploy never silently passes the smoke gate.
-    try:
-        _bom = subprocess.run(
-            [sys.executable, str(ROOT / "scripts" / "check_shader_bom.py")],
-            capture_output=True, text=True, timeout=15)
-        for _line in ((_bom.stdout or "") + (_bom.stderr or "")).splitlines():
+        _bom_out = _pfcache_hit.get("bom", {})
+        for _line in (_bom_out.get("text") or "").splitlines():
             if _line.strip():
                 print(f"[runner] [BOM-CHECK] {_line}", file=sys.stderr)
-        if _bom.returncode != 0:
-            print("[runner] [BOM-CHECK] FATAL: BOM detected in shader source(s). "
-                  "Run `py -3 scripts/check_shader_bom.py --fix` to strip.",
-                  file=sys.stderr)
+        if _bom_out.get("returncode", 0) != 0:
+            print("[runner] [BOM-CHECK] FATAL (cached): BOM detected in shader "
+                  "source(s). Run `py -3 scripts/check_shader_bom.py --fix` "
+                  "to strip.", file=sys.stderr)
             sys.exit(2)
-    except Exception as _e:
-        print(f"[runner] [BOM-CHECK] check skipped: {_e}", file=sys.stderr)
+    else:
+        # Deploy-coherence advisory (scripts/check-deploy-coherence.py): detects
+        # a stale deployed exe (fix built but never copied to the run dir).
+        # STRICTLY advisory: never changes verdict, exit code, or gate behavior.
+        _coh_text = ""
+        try:
+            _coh = subprocess.run(
+                [sys.executable, str(ROOT / "scripts" / "check-deploy-coherence.py"),
+                 str(Path(args.exe).resolve().parent), "--worktree", str(ROOT)],
+                capture_output=True, text=True, timeout=30)
+            _coh_text = (_coh.stdout or "") + (_coh.stderr or "")
+            for _line in _coh_text.splitlines():
+                if _line.strip():
+                    print(f"[runner] {_line}", file=sys.stderr)
+        except Exception as _e:
+            print(f"[runner] [DEPLOY_COHERENCE] check skipped: {_e}", file=sys.stderr)
+
+        # Shader BOM preflight: UTF-8 BOM in any shader = silent compile death
+        # (driver reports "unexpected token '€'" with no file name). Hard-fail
+        # so a BOM-infected deploy never silently passes the smoke gate.
+        _bom_text = ""
+        _bom_rc = 0
+        try:
+            _bom = subprocess.run(
+                [sys.executable, str(ROOT / "scripts" / "check_shader_bom.py")],
+                capture_output=True, text=True, timeout=15)
+            _bom_text = (_bom.stdout or "") + (_bom.stderr or "")
+            _bom_rc = _bom.returncode
+            for _line in _bom_text.splitlines():
+                if _line.strip():
+                    print(f"[runner] [BOM-CHECK] {_line}", file=sys.stderr)
+            if _bom_rc != 0:
+                print("[runner] [BOM-CHECK] FATAL: BOM detected in shader source(s). "
+                      "Run `py -3 scripts/check_shader_bom.py --fix` to strip.",
+                      file=sys.stderr)
+                sys.exit(2)
+        except Exception as _e:
+            print(f"[runner] [BOM-CHECK] check skipped: {_e}", file=sys.stderr)
+        finally:
+            # Cache even a BOM-FAIL result: a real BOM defect stays cached as a
+            # fail until the shader tree's fingerprint changes (e.g. --fix
+            # strips it, which changes shaders_fingerprint), so a cache HIT can
+            # never mask a genuine, still-present BOM defect.
+            if _pfcache_fp is not None:
+                try:
+                    _pfcache.save_cache(_pfcache_path, _pfcache_fp, {
+                        "coherence": {"text": _coh_text},
+                        "bom": {"text": _bom_text, "returncode": _bom_rc},
+                    })
+                except Exception as _pse:
+                    print(f"[runner] [PREFLIGHT-CACHE] save skipped: {_pse}",
+                          file=sys.stderr)
 
     # F1 unified-projection: forbid MC2_DISABLE_GOSFX=0 in smoke runs.
     # Visual regression accepted only in dev-override sessions; smoke must
@@ -731,7 +862,29 @@ def main():
     # owned mc2.exe (image-name kill, not PID-specific), producing crash_silent
     # for whichever mission was in flight.  The lock is a flat file next to the
     # artifact root; open(..., 'x') is atomic on Windows (CreateFile CREATE_NEW).
-    _LOCK_PATH = ARTIFACT_ROOT / "smoke.lock"
+    #
+    # SMOKE-LATENCY-WINS-1 win #2: PER-LANE locking. The old lock was a single
+    # global smoke.lock, serializing ALL smoke runs regardless of deploy
+    # folder even though the lease system (scripts/smoke_lib/deploy_lease.py)
+    # already isolates concurrent runs onto distinct deploy folders (0.4,
+    # 0.4c, 0.4d-rc1, 0.5.0, 0.5-testing) and --kill-existing is already
+    # path-scoped (_same_path_mc2 above never cross-kills a different lane's
+    # exe). The lease itself would be a sufficient sole mutex EXCEPT it does
+    # not protect --no-lease callers or two --exe invocations pointed at the
+    # SAME folder without going through the lease at all -- so we still keep a
+    # lock file, just keyed per-lane instead of one file for the whole
+    # ARTIFACT_ROOT. Two runs on DIFFERENT lanes now take DIFFERENT lock files
+    # and never collide; two runs on the SAME lane still serialize exactly as
+    # before (same protection, narrower scope).
+    #
+    # Lane key: the leased folder's short name (e.g. "0.4", "0.5-testing") when
+    # a lease is held; otherwise the resolved exe's parent dir name (covers
+    # --no-lease / lease-unavailable, where no folder name is known but two
+    # invocations pointed at the same exe path should still serialize). Pure
+    # derivation lives in _lane_lock_token so it's unit-testable in isolation.
+    _short_name_fn = _deploy_lease._short_name if _lease_folder is not None else (lambda f: f)
+    _lane_token = _lane_lock_token(_lease_folder, args.exe, _short_name_fn)
+    _LOCK_PATH = ARTIFACT_ROOT / f"smoke.{_lane_token}.lock"
     _LOCK_PATH.parent.mkdir(parents=True, exist_ok=True)
     try:
         _lf = open(_LOCK_PATH, 'x')
@@ -758,8 +911,11 @@ def main():
             _still_alive = False
         if _still_alive:
             print(f"[runner] ERROR: another smoke run is already in progress "
-                  f"(PID {_stale_pid}); wait for it to finish or remove "
-                  f"{_LOCK_PATH} if it is stale.", file=sys.stderr)
+                  f"on lane '{_lane_token}' (PID {_stale_pid}); wait for it to "
+                  f"finish or remove {_LOCK_PATH} if it is stale. A different "
+                  f"lane (--deploy <name> or a distinct --exe) can run "
+                  f"concurrently -- this lock only serializes runs on the "
+                  f"SAME lane.", file=sys.stderr)
             sys.exit(5)
         # Stale lock — re-acquire.
         _LOCK_PATH.unlink(missing_ok=True)
@@ -814,12 +970,36 @@ def main():
     if args.mission:
         selected, unknown = select_missions(entries, args.mission)
         if unknown:
-            # Config-error class (exit 2, same as argparse / GOSFX fatal):
-            # a typo'd mission list must never read as PASS to a CI gate.
-            print(f"[runner] ERROR: unknown mission name(s) "
-                  f"{', '.join(unknown)} not found in {MANIFEST_PATH} "
-                  f"(or skip-tier).", file=sys.stderr)
-            sys.exit(2)
+            if args.allow_any_mission:
+                # --allow-any-mission: accept a stem not in smoke_missions.txt
+                # if <stem>.fit or <stem>.pak resolves under the deploy's
+                # data/missions dir. This exists so non-tier missions (e.g.
+                # freshly-baked terrain-gen output like gaea_mountain_01) can
+                # be smoke-tested without adding them to the curated manifest.
+                missions_dir = Path(args.exe).resolve().parent / "data" / "missions"
+                still_unknown = []
+                for stem in unknown:
+                    fit_path = missions_dir / f"{stem}.fit"
+                    pak_path = missions_dir / f"{stem}.pak"
+                    if fit_path.is_file() or pak_path.is_file():
+                        print(f"[runner] WARNING: --allow-any-mission auto-accepting "
+                              f"'{stem}' (not in {MANIFEST_PATH}, but found at "
+                              f"{fit_path if fit_path.is_file() else pak_path}). "
+                              "This mission is NOT part of the curated smoke tier "
+                              "and has no baseline/duration/heartbeat tuning — "
+                              "treat results as advisory.", file=sys.stderr)
+                        selected.append(manifest.Entry(tier="tier1", stem=stem))
+                    else:
+                        still_unknown.append(stem)
+                unknown = still_unknown
+            if unknown:
+                # Config-error class (exit 2, same as argparse / GOSFX fatal):
+                # a typo'd mission list must never read as PASS to a CI gate.
+                print(f"[runner] ERROR: unknown mission name(s) "
+                      f"{', '.join(unknown)} not found in {MANIFEST_PATH} "
+                      f"(or skip-tier), and not resolvable under data/missions "
+                      f"(--allow-any-mission checked).", file=sys.stderr)
+                sys.exit(2)
     elif args.tier:
         selected = [e for e in entries if e.tier == args.tier]
     else:
@@ -848,7 +1028,12 @@ def main():
     # lives in. Computed once; compared against the exe's startup banner.
     _fp_expected_sha = None
     _fp_hard_fail = False
-    _fp_require = os.environ.get("MC2_SMOKE_REQUIRE_FINGERPRINT") == "1"
+    # DEPLOY-FINGERPRINT-DEFAULT-ON-1 (Truth-First arc): default ON (opt-OUT via
+    # MC2_SMOKE_REQUIRE_FINGERPRINT=0). A smoke that ran a stale/wrong-lane exe
+    # (fingerprint mismatch) must NOT be allowed to report PASS — that is exactly
+    # the "passed on the wrong binary" failure this arc exists to kill. Escape
+    # hatch preserved for intentionally running a pre-built external exe.
+    _fp_require = os.environ.get("MC2_SMOKE_REQUIRE_FINGERPRINT", "1") != "0"
     if _fingerprint is not None:
         try:
             _fp_expected_sha = subprocess.check_output(
@@ -865,6 +1050,14 @@ def main():
     # MC2_SMOKE_REQUIRE_FRESH=1 gates it to a hard pre-mission abort. Reuses
     # deploy_payload.staleness_report (single-source sha256 — no reimplemented
     # hashing).
+    #
+    # SMOKE-LATENCY-WINS-1 win #4 scope note: this check is deliberately NOT
+    # cached (unlike coherence/BOM above). It's an in-process function call
+    # (no subprocess spawn), so it's cheaper per-run than the two subprocess
+    # checks, and it has a live hard-fail path (MC2_SMOKE_REQUIRE_FRESH=1 ->
+    # sys.exit(7)) rather than being purely advisory -- keeping it always-fresh
+    # avoids any cache-staleness risk on the one check that can actually abort
+    # the run.
     _fresh_require = os.environ.get("MC2_SMOKE_REQUIRE_FRESH") == "1"
     try:
         from scripts import deploy_payload as _dp
@@ -1061,6 +1254,22 @@ def main():
                             # OMT-1-OVERLAY-MISSING-TEXTURE-GUARD: overlay/decal
                             # resolve-fail counters + fallback-bind trace.
                             "MC2_OVERLAY_TEXTURE_TRACE",
+                            # MC2-VERIFY-LIVE-1: live data-contract guard mode
+                            # (log/fatal/off; default log). Must be allowlisted
+                            # or Popen drops it and the fatal-mode soak leg
+                            # silently runs in default log mode.
+                            "MC2_VERIFY_MODE",
+                            # OVERLAY-TILE-HIRES-1 -- hi-res overlay tile loader
+                            # (default OFF). Must be allowlisted or Popen drops it
+                            # and the gate-ON smoke runs the legacy 64px path.
+                            "MC2_OVERLAY_TILE_HIRES",
+                            # TEAM-COMMANDER-OWNERSHIP-1: in-process idempotency
+                            # probe. On mission teardown it re-runs the unified
+                            # resetTeamsAndCommanders() (the ex-double-free) and
+                            # MC2_VERIFYs it was a clean no-op with home NULL.
+                            # Must be allowlisted or Popen drops it and the
+                            # gate-ON cycle soak silently does nothing.
+                            "MC2_MISSION_CYCLE_TEST",
                             # FRAME-CURRENTNESS-GUARDS-1 gates
                             "MC2_REGFLUSH_GUARD2",
                             "MC2_TARGETING_GUARD",
@@ -1097,6 +1306,122 @@ def main():
                             # in the allowlist the gate-ON smoke does nothing.
                             "MC2_SHADOW_FOCUS_CENTER",
                             "MC2_SHADOW_FOCUS_DIST",
+                            # TERRAIN-CONTROLMAP-SAMPLE-1 — authored control-map
+                            # override (default OFF). Must be allowlisted or Popen
+                            # drops it and the gate-ON smoke does nothing.
+                            "MC2_TERRAIN_CONTROLMAP",
+                            "MC2_TERRAIN_CONTROLMAP_FILE",
+                            # TERRAIN-OVERLAY-V2-PARITY-1 -- authored cement/pad/
+                            # runway overlay sidecar override (default OFF). Must
+                            # be allowlisted or Popen drops it and the gate-ON
+                            # smoke does nothing.
+                            "MC2_TERRAIN_OVERLAY_V2",
+                            "MC2_TERRAIN_OVERLAY_V2_FILE",
+                            # TERRAIN-DECAL-SLICE-0A -- CLIFF_WALL mesh-decal
+                            # face-frame submit for cliff-wall decoration types
+                            # (default OFF). Must be allowlisted or Popen drops it
+                            # and the gate-ON smoke silently runs gate-OFF.
+                            "MC2_TERRAIN_DECAL",
+                            "MC2_TERRAIN_DECAL_TRACE",
+                            # TERRAIN-DECAL-SLICE-0B -- live CLIFF_WALL mesh-decal
+                            # placement knobs (default = Slice-0A byte-identical).
+                            "MC2_TERRAIN_DECAL_SCALE",
+                            "MC2_TERRAIN_DECAL_OFFSET",
+                            "MC2_TERRAIN_DECAL_LATERAL",
+                            "MC2_TERRAIN_DECAL_LIFT",
+                            "MC2_TERRAIN_DECAL_YAW",
+                            "MC2_TERRAIN_DECAL_PITCH",
+                            # TERRAIN-DECAL-FILL-1 -- shadow-side ambient/fill
+                            # floor for the cliff decal (default 0.20). Flag-gated
+                            # to the MarbleCliff decal only.
+                            "MC2_TERRAIN_DECAL_FILL",
+                            # TERRAIN-DECAL-COLORBLEND-1 -- RVT-style terrain-colormap
+                            # blend for the cliff decal (default 0.35). Flag-gated to
+                            # the MarbleCliff decal only; 0.0 = byte-identical OFF.
+                            "MC2_TERRAIN_DECAL_COLORBLEND",
+                            # TERRAIN-SHORELINE-MASK-1 -- authored land-side wet/foam
+                            # shoreline mask sidecar override (default OFF). Must be
+                            # allowlisted or Popen drops it and the gate-ON smoke
+                            # does nothing.
+                            "MC2_TERRAIN_SHORELINE",
+                            "MC2_TERRAIN_SHORELINE_FILE",
+                            # TERRAIN-SHORELINE-V3 one-shot band-vs-drawn-plane
+                            # probe (observe-only). Prints [SHORELINE_PROBE v1]
+                            # with u_waterElevation vs coarse terrain z-range vs
+                            # fine-minus-coarse band drift at shore cells. Must be
+                            # allowlisted or Popen drops it and the probe is silent.
+                            "MC2_TERRAIN_SHORELINE_PROBE",
+                            # TERRAIN-MATERIAL-LIB-1 — data-defined terrain material
+                            # tuning (default OFF). Must be allowlisted or Popen
+                            # drops it and the gate-ON smoke does nothing.
+                            "MC2_TERRAIN_MATERIAL_LIB",
+                            "MC2_TERRAIN_MATERIAL_LIB_FILE",
+                            # TERRAIN-CONTROLMAP-ALBEDO-1 -- lifts the control-map
+                            # weight-composed tint toward full albedo (default OFF).
+                            # Must be allowlisted or Popen drops it and the gate-ON
+                            # smoke does nothing.
+                            "MC2_TERRAIN_CONTROLMAP_ALBEDO",
+                            "MC2_TERRAIN_CONTROLMAP_ALBEDO_STRENGTH",
+                            # TERRAIN-MATERIAL-TEXTURES-1 -- per-layer BC7 sRGB
+                            # albedo array on the LOD-chunk terrain (default OFF)
+                            # + mix-strength knob. Must be allowlisted or Popen
+                            # drops them and the gate-ON smoke does nothing.
+                            "MC2_TERRAIN_MATERIAL_TEXTURES",
+                            "MC2_TERRAIN_MATERIAL_TEXTURES_STRENGTH",
+                            # TERRAIN-CLIFF-MATERIAL-TRIPLANAR-1 -- world-axis
+                            # triplanar rock NORMAL + relief on steep cells
+                            # (default OFF) + tilt-strength knob. Decoupled from
+                            # the albedo gate; samples the always-loaded terrain
+                            # normal array layer 5 (marble_cliff). Must be
+                            # allowlisted or Popen drops them and the gate-ON
+                            # capture does nothing.
+                            "MC2_TERRAIN_CLIFF_TRIPLANAR",
+                            "MC2_TERRAIN_CLIFF_TRIPLANAR_STRENGTH",
+                            # TERRAIN-CLIFF-HEIGHT-NORMAL-1 -- derive cliff shading
+                            # normal from the displacement height gradient (mat5
+                            # layer-5 alpha) so rock relief catches light. Tuning
+                            # knob (default 2.0). Must be allowlisted or Popen drops
+                            # it and the tuning capture does nothing.
+                            "MC2_TERRAIN_CLIFF_HEIGHT_NORMAL_STRENGTH",
+                            # TERRAIN-CLIFF-POM-1 -- triplanar Parallax Occlusion
+                            # Mapping on cliff faces (real marble_cliff disp in
+                            # mat5 alpha), gated on top of CLIFF_TRIPLANAR. Default
+                            # OFF; must be allowlisted or Popen drops them and the
+                            # gate-ON capture does nothing.
+                            "MC2_TERRAIN_CLIFF_POM",
+                            "MC2_TERRAIN_CLIFF_POM_DEPTH",
+                            "MC2_TERRAIN_CLIFF_POM_STEPS",
+                            # TERRAIN-CLIFF-DEBUG -- bounded cliff material debug-viz
+                            # (u_cliffDebug 1..4: cliffBlend / branch-taken / POM
+                            # offset / mat5 alpha). Default 0 (off). Must be
+                            # allowlisted or Popen drops it and the debug capture
+                            # does nothing.
+                            "MC2_TERRAIN_CLIFF_DEBUG",
+                            # TERRAIN-MATERIAL-TEXTURES-1-FIX (fix A): the LOD-chunk
+                            # diag bitmask drives the u_diag debug views, incl. bit
+                            # 16384 = the INDEX ORACLE (each albedo array LAYER as a
+                            # flat colour by array index). Allowlisted so the oracle
+                            # capture reaches mc2.exe; 0/unset = no visual change.
+                            "MC2_TERRAIN_LOD_CHUNK_DIAG",
+                            # TERRAIN-CHUNK-POM-1 -- real view-vector POM on the
+                            # LOD-chunk terrain (default OFF) + tuning knobs.
+                            # Must be allowlisted or Popen drops them and the
+                            # gate-ON smoke does nothing.
+                            "MC2_TERRAIN_POM",
+                            "MC2_TERRAIN_POM_SCALE",
+                            "MC2_TERRAIN_POM_STEPS",
+                            "MC2_TERRAIN_POM_NEAR",
+                            "MC2_TERRAIN_POM_FAR",
+                            # GROUND-CONTACT-BLOB-1 -- per-mover contact-darkening
+                            # disc under mechs/vehicles (default OFF). Must be
+                            # allowlisted or Popen drops it and the gate-ON smoke
+                            # does nothing.
+                            "MC2_GROUND_CONTACT_BLOB",
+                            # PROP-SHADOW-RECEIVE-1 -- static props receive the
+                            # dynamic CSM cascade (self/prop-on-prop shadow) in
+                            # shadow_screen.frag (default OFF). Must be allowlisted
+                            # or Popen drops it and the gate-ON smoke does nothing.
+                            "MC2_PROP_SHADOW_RECEIVE",
                             # Mask-dispatch (pre-bake-terrain merge)
                             "MC2_TERRAIN_MASK_DISPATCH",
                             "MC2_TERRAIN_MASK_DISPATCH_PARITY",
@@ -1105,6 +1430,15 @@ def main():
                             "MC2_TERRAIN_INDIRECT_OVERLAY_PARITY_CHECK",
                             "MC2_TERRAIN_COST_SPLIT",
                             "MC2_FX_COST_SPLIT",
+                            # GPU-GROUND-PICK-PARITY-1 (S1): GPU-vs-CPU ground-pick
+                            # oracle (default OFF). Requires MC2_OBJECT_ID_BUFFER=1
+                            # for a live depth+objectID attachment. Without these in
+                            # the allowlist Popen drops them and the [GPU_PICK_PARITY]
+                            # oracle is inert (no delta/timing/fallback data emitted).
+                            "MC2_GPU_GROUND_PICK_PARITY",
+                            "MC2_GPU_GROUND_PICK_PARITY_SAMPLE",
+                            "MC2_GPU_GROUND_PICK_PARITY_TAG",
+                            "MC2_OBJECT_ID_BUFFER",
                             # FX-FORCE-SPAWN fixture (code/warrior.cpp): forces up
                             # to 8 mechs to fire all weapons (PPC -> tube ribbons)
                             # so the otherwise-idle tier1 fly-throughs exercise the
@@ -1113,6 +1447,11 @@ def main():
                             # them and the fixture never fires.
                             "MC2_FX_FORCE_SPAWN",
                             "MC2_LOG",
+                            # FX-DEFS-SIDECAR-1: EffectDef JSON overlay master gate
+                            # (mclib/fx_def_registry.{h,cpp}, code/mechcmd2.cpp).
+                            # Must be allowlisted or Popen drops it and the gate-ON
+                            # smoke pass silently re-runs the gate-OFF path.
+                            "MC2_FX_DEFS",
                             # ABL-BAD-NATIVE-ARG-REPRO-1 gates — must be allowlisted so
                             # the repro hook and guard fire when set by the caller.
                             "MC2_ABL_ARG_GUARD",
@@ -1141,9 +1480,20 @@ def main():
                             # campaign launch in smoke (loads corebrain.abx + object2.pak).
                             "MC2_MOD_DEPS",
                             "MC2_LIGHT_COST_SPLIT",
-                            "MC2_SLIM_COST_SPLIT",
                             "MC2_TOBJ_COST_SPLIT",
                             "MC2_STATIC_PROP_FLUSH_COST_SPLIT",
+                            # GOM-UPDATE-COST-1 / TXMMGR-PERF (framebudget lane):
+                            # coarse per-phase CPU cost-split emitters + perf gates.
+                            # Without these allowlisted, Popen drops them and the
+                            # gate-ON measurement smoke is inert (no [*_COST v1]).
+                            "MC2_GOM_UPDATE_COST_SPLIT",
+                            "MC2_RENDERLISTS_COST_SPLIT",
+                            "MC2_LIGHT_PREFIX_GPU_COPY",
+                            "MC2_SHADOW_CASTER_CULL_CACHE",
+                            # SP-BATCHER-ALPHASCAN-GATE-1: skip the frame-constant
+                            # per-packet alpha-test re-resolve scan when no
+                            # destruction/damage-alpha event occurred since last flush.
+                            "MC2_SP_ALPHASCAN_GATE",
                             "MC2_STATIC_PROP_FLUSH_CACHED_BLOB",
                             "MC2_STATIC_PROP_FLUSH_CACHED_BLOB_COMPARE",
                             "MC2_STATIC_PROP_COLORS_FILL",
@@ -1238,6 +1588,15 @@ def main():
                             # (docs/testing-strategy.md). Forwarded so
                             # --gl-debug-fatal reaches the engine subprocess.
                             "MC2_GL_DEBUG_FATAL",
+                            # RENDER-BACKEND-IFACE / GPU-DEBUG-NAMES: render
+                            # backend interface seam + GPU object labeling gates.
+                            # MC2_GL_DEBUG must be forwarded so glObjectLabel is
+                            # available when exercising debug names. Without these
+                            # in the allowlist subprocess.Popen drops them and the
+                            # gate-ON smoke runs are inert.
+                            "MC2_GL_DEBUG",
+                            "MC2_RENDER_BACKEND_IFACE",
+                            "MC2_GPU_DEBUG_NAMES",
                             # Integrated gosFX-retirement / GPU-particles plan
                             # (2026-05-20-integrated-gosfx-retirement-*):
                             # MC2_FX_TRACE = neutral fx invocation counter
@@ -1423,6 +1782,20 @@ def main():
                             "MC2_QUADSETUP_ARMED_SKIP",
                             "MC2_GEOM_PHASE_SPLIT",
                             "MC2_MIF_SPLIT",
+                            # MISSION-INTERFACE-PERF-1: [IFACE_PERF v1] windowed
+                            # cost split of MissionInterfaceManager::update()
+                            # (default OFF). Must be allowlisted or Popen drops
+                            # it and the gate-ON smoke emits nothing.
+                            "MC2_IFACE_COST_SPLIT",
+                            # [PICK_CAP] per-walk numTiles/admitted/contained
+                            # trace in Camera::inverseProject (pre-existing,
+                            # default OFF) -- sizes the picker walk stages.
+                            "MC2_PICK_CAP_TRACE",
+                            # MISSION-INTERFACE-PERF-1: coarse-to-fine
+                            # closest-vertex fallback picker (default OFF).
+                            # Must be allowlisted or Popen drops it and the
+                            # gate-ON smoke measures the legacy brute force.
+                            "MC2_PICK_FALLBACK_COARSE",
                             "MC2_PICK_RECON",
                             # Diagnostic JSONL trace (diagnostic_trace.cpp).
                             # MC2_DIAGNOSTIC_TRACE_FILE is handled above (absolute
@@ -1462,6 +1835,15 @@ def main():
                             # FRAME-JOBS stable-light skip gate.
                             "MC2_LIGHTBRIDGE_STABLE_SKIP",
                             "MC2_LIGHTBRIDGE_COMMIT_TRACE",
+                            # STABLE-LIGHT-SKIP-BROADEN-1 (framebudget lane): broaden
+                            # the LBSS resubmit-skip to the legacy touch() Path-B
+                            # variants (live path in stock config). Requires
+                            # MC2_STABLE_LIGHT_SKIP armed for eligibility + the
+                            # TOUCH gate to take the skip. Without these allowlisted
+                            # the gate-ON A/B is inert.
+                            "MC2_STABLE_LIGHT_SKIP",
+                            "MC2_STABLE_LIGHT_SKIP_DIAG",
+                            "MC2_STABLE_LIGHT_SKIP_TOUCH",
                             # STATIC-SCENE-PROXY-RECON-1: proxy candidate classifier.
                             "MC2_STATIC_PROXY_RECON",
                             # STATIC-REGISTRY-COVERAGE-RECON-1: sub-classify rej_no_static_reg.
@@ -1514,7 +1896,110 @@ def main():
                             # gate-ON determinism smoke runs the CRT (gate-OFF) path,
                             # making the RNG trace non-reproducible.
                             "MC2_DETERMINISTIC_RNG",
-                            "MC2_RNG_SEED")},
+                            "MC2_RNG_SEED",
+                            # VULKAN-EDGE-FOG-ISLAND-2a: route the edge-fog
+                            # composite through the headless Vulkan island
+                            # (default-OFF; fail-soft to GL). MC2_VULKAN_SPV_DIR
+                            # optionally overrides the .spv search dir. Without
+                            # these in the allowlist Popen drops them and the
+                            # gate-ON island smoke silently runs the GL path.
+                            "MC2_VULKAN_EDGE_FOG_ISLAND",
+                            "MC2_VULKAN_SPV_DIR",
+                            # VULKAN-ISLAND-FALLBACK-PROOF-1: debug hook that forces
+                            # ensure-init to fail with a chosen fallback_reason so the
+                            # GL fail-soft path can be exercised deterministically
+                            # without uninstalling the Vulkan runtime. Without this in
+                            # the allowlist Popen drops it and the forced-fallback smoke
+                            # runs the real Vulkan (or default GL) path instead.
+                            "MC2_VULKAN_ISLAND_FORCE_FALLBACK",
+                            # VULKAN-OOB-FOG-ISLAND-1: the second offscreen Vulkan
+                            # island (OOB fog). Same allowlist rationale as the
+                            # edge-fog gate above -- without these Popen drops them
+                            # and the gate-ON / forced-fallback smoke silently runs
+                            # the GL OOB-fog path instead.
+                            "MC2_VULKAN_OOB_FOG_ISLAND",
+                            "MC2_VULKAN_OOB_FOG_ISLAND_FORCE_FALLBACK",
+                            # VULKAN-POSTPROCESS-SUBGRAPH-1: the fused Layer-4
+                            # subgraph (EdgeFog + OOB fog in ONE Vulkan render pass).
+                            # Same allowlist rationale -- without these Popen drops
+                            # them and the gate-ON / forced-fallback smoke silently
+                            # runs the GL edge+oob fog path instead.
+                            "MC2_VULKAN_POSTPROCESS_SUBGRAPH",
+                            "MC2_VULKAN_POSTPROCESS_SUBGRAPH_FORCE_FALLBACK",
+                            # RENDER-BACKEND-REGION-IFACE-1 (Layer-6 ENTRY): master
+                            # gate + backend sub-selector for the SELECTABLE
+                            # PostprocessFog region. Without these in the allowlist
+                            # Popen drops them and the gate-ON smoke silently runs
+                            # the original direct-GL fog sites (region iface inert).
+                            # _FORCE_FALLBACK forces the VK impl to decline so the
+                            # FallbackGL path is provable under smoke.
+                            "MC2_RENDER_BACKEND_REGION_IFACE",
+                            "MC2_POSTPROCESS_BACKEND",
+                            # SKYBOX-FOG-EXCLUDE-1: stencil-tag true sky pixels during
+                            # the HDRI skybox draw so runEdgeFog/runFogOob hard-exclude
+                            # them (default OFF -> byte-identical). Without this in the
+                            # allowlist Popen drops it and gate-ON smoke silently runs
+                            # the legacy worldDir.z-only fog path.
+                            "MC2_SKYBOX_FOG_EXCLUDE",
+                            # VULKAN-ISLAND-VALIDATION-WIRING-1: opt-in Vulkan
+                            # validation preset (off/core/sync/gpu-assisted/
+                            # best-practices/debug-printf). Without this in the
+                            # allowlist Popen drops it and the island's validation
+                            # layer never loads, so validation_errors stays 0 by
+                            # omission rather than by being genuinely clean.
+                            "MC2_VULKAN_VALIDATION",
+                            # VULKAN-SWAPCHAIN-PRESENT-1: Layer-5 gate. MC2_VULKAN_PROBE
+                            # runs the one-shot Vulkan probe suite at startup;
+                            # MC2_VULKAN_SWAPCHAIN_PRESENT additionally runs the
+                            # swapchain PRESENT path (own window, 16 frames, resize);
+                            # _HIDDEN makes that window headless for CI. Without these
+                            # in the allowlist Popen drops them and the present probe
+                            # never runs (no [VK_SWAPCHAIN_PRESENT_HEALTH] line).
+                            "MC2_VULKAN_PROBE",
+                            "MC2_VULKAN_SWAPCHAIN_PRESENT",
+                            "MC2_VULKAN_SWAPCHAIN_PRESENT_HIDDEN",
+                            # TERRAIN-VISUAL-HEIGHT-CONSUMER-1: visual-height
+                            # displacement gate (default-OFF; loader also
+                            # accepts MC2_TERRAIN_VISUAL_HEIGHT for load-only).
+                            # Without these in the allowlist Popen drops them
+                            # and the gate-ON smoke silently runs the coarse
+                            # (undisplaced) LOD0 path -- no [VISUAL_HEIGHT v1]
+                            # LOADED line, no SSBO upload.
+                            "MC2_TERRAIN_VISUAL_DISPLACE",
+                            "MC2_TERRAIN_VISUAL_HEIGHT",
+                            "MC2_TERRAIN_VISUAL_HEIGHT_FILE",
+                            # WATER-HDRI-REFL-PERF-1: MC2_WATER_HDRI_REFL_FULL=1
+                            # restores the old full-rate LOD-1.0 HDRI reflection
+                            # for A/B perf checks; MC2_WATER_HDRI_LOD overrides
+                            # the sample LOD directly. Without these in the
+                            # allowlist Popen drops them and the A/B smoke both
+                            # run at the new default (LOD 4.0).
+                            "MC2_WATER_HDRI_REFL_FULL",
+                            "MC2_WATER_HDRI_LOD",
+                            # WATER-REFLECTION-CLIP-1: MC2_WATER_REFLECTION_RT
+                            # arms the quarter-res terrain reflection RT fill
+                            # pass (default OFF); MC2_WATER_REFL_RT_PIXELPROOF
+                            # opts into the old whole-RT glReadPixels coverage
+                            # breakdown for deep debug (default: cheap
+                            # mirrored_cmd_count-only proof). Without these in
+                            # the allowlist Popen drops them and gate-ON smoke
+                            # silently runs with the RT pass off / the pixel
+                            # proof unreachable.
+                            "MC2_WATER_REFLECTION_RT",
+                            "MC2_WATER_REFL_RT_PIXELPROOF",
+                            # POST-FX-TONEMAP-V2 (SCOUR-1 #3): filmic tonemap
+                            # curve select (0 off / 1 agx / 2 hable / 3 reinhard,
+                            # default OFF). Visual-only. Without this in the
+                            # allowlist Popen drops it and a gate-ON A/B smoke
+                            # silently runs the OFF (byte-identical) branch --
+                            # every mode would capture identical frames.
+                            "MC2_TONEMAP_V2",
+                            # SLICE 3a: cliff tessellation plumbing gate + max-tess
+                            # knob (default OFF). Without these in the allowlist
+                            # Popen drops them and a gate-ON perf/parity smoke
+                            # silently runs the GL_TRIANGLES (gate-OFF) path.
+                            "MC2_TERRAIN_CLIFF_DISPLACE",
+                            "MC2_TERRAIN_CLIFF_DISPLACE_MAXTESS")},
             },
         )
         # SMOKE-GATE-GUARD-1: ENV-DROP WARNING.
@@ -1664,8 +2149,11 @@ def main():
     # MC2_SMOKE_REQUIRE_FINGERPRINT=1: promote fingerprint mismatch/absence to
     # a hard failure. Default (unset) keeps the verdict untouched (advisory).
     if _fp_require and _fp_hard_fail:
-        print("[runner] [DEPLOY_FINGERPRINT] HARD FAIL: fingerprint mismatch or "
-              "absent and MC2_SMOKE_REQUIRE_FINGERPRINT=1", file=sys.stderr)
+        print("[runner] [DEPLOY_FINGERPRINT] HARD FAIL: smoke ran an exe whose "
+              "fingerprint does not match this worktree HEAD (stale / wrong-lane "
+              "/ built-from-dirty). Deploy your build first, or set "
+              "MC2_SMOKE_REQUIRE_FINGERPRINT=0 to intentionally test an external "
+              "exe.", file=sys.stderr)
         passed = False
 
     # VISUAL advisory (S13+).  Summarises the most recent run_visual.py compare

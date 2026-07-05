@@ -881,7 +881,10 @@ void main(void)
     // both maps (e.g. a building in the world-fixed static map AND the
     // camera-fitted dynamic map): min(0.4,0.4)=0.4 vs the old 0.4*0.4=0.16.
     // Matches the screen-space/object receiver composition (shadow_screen.frag).
-    float shadow = min(staticShadow, dynShadow);
+    // CLIFF SHADOW FLOOR: steep faces fall to ~0 under CSM → near-black. Lift ONLY
+    // steep faces by a gated floor. Default 0.0 => no-op (byte-identical).
+    float cliffShadowBlend = smoothstep(0.85, 0.55, abs(WorldNorm.z));
+    float shadow = max(min(staticShadow, dynShadow), u_terrainCliffShadowFloor * cliffShadowBlend);
 
     // LIGHTING-DEBUG-VIEWS-1A: mode 44 = combined PCF shadow factor (grayscale,
     // 1=lit 0=occluded). Distinct from legacy modes 6/31 so the unified named

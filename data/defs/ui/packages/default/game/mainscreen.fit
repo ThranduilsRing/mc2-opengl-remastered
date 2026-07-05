@@ -1,0 +1,625 @@
+// MC2R ImGui FIT generated from legacy UI FIT.
+// Source: data/defs/ui/legacy/game/mainscreen.fit
+// Legacy files remain source truth only; edit the generated ImGui FIT.
+
+GuiPage {
+    key = "game.main_screen"
+    title = "Game Mainscreen"
+    sourceLegacyFit = "data/defs/ui/legacy/game/mainscreen.fit"
+    sourceSystem = "game"
+    sourceScreen = "main_screen"
+    sourceKind = "legacy_screen"
+    layout = "absolute"
+    coordinateSpace = "screen_absolute"
+    localWidth = 800
+    localHeight = 600
+    mountOffset = "0,0"
+    editableSource = "generated_imgui_only"
+    overlayGameOS = true
+    renderMode = "gameos_overlay"
+    backgroundPolicy = "transparent_overlay"
+}
+
+GuiMetadata {
+    key = "game.main_screen.metadata.metadata"
+    pageKey = "game.main_screen"
+    legacySection = "Elements"
+    role = "metadata"
+    layer = "metadata"
+    aliasOverride = "metadata"
+    sourceControlType = "Elements"
+    rect = "0,0,0,0"
+    legacyLocalRect = "0,0,0,0"
+    legacyRectSource = "xywh"
+    visible = false
+}
+
+GuiRect {
+    key = "game.main_screen.rect.rect"
+    pageKey = "game.main_screen"
+    legacySection = "Element0"
+    role = "rect"
+    layer = "layout"
+    aliasOverride = "rect"
+    sourceControlType = "Element0"
+    rect = "0,0,640,480"
+    legacyLocalRect = "0,0,640,480"
+    legacyRectSource = "xywh"
+    uiPackage = "default"
+    rectModel = "legacy_imgui.modern_rect_v1"
+    controlRect = "0,0,640,480"
+    filled = true
+    fillColorArgb = "0x00000000"
+    borderColorArgb = "0x00000000"
+    colorArgb = "0xffffffff"
+}
+
+GuiImage {
+    key = "game.main_screen.image.element0.plane0"
+    pageKey = "game.main_screen"
+    legacySection = "Element0"
+    role = "multiplane_art"
+    layer = "art"
+    aliasOverride = "Element0 plane 0"
+    sourceControlType = "Element0.Art0"
+    rect = "0,0,640,480"
+    legacyLocalRect = "0,0,640,480"
+    legacyRectSource = "multiplane_art_parent"
+    texture = "data/art/gui/master4.png"
+    legacyTexture = "master4"
+    uvLeft = 0.0
+    uvTop = 0.0
+    uvRight = 1.0
+    uvBottom = 1.0
+}
+
+GuiImage {
+    key = "game.main_screen.image.element0.plane1"
+    pageKey = "game.main_screen"
+    legacySection = "Element0"
+    role = "multiplane_art"
+    layer = "art"
+    aliasOverride = "Element0 plane 1"
+    sourceControlType = "Element0.Art1"
+    rect = "0,0,640,480"
+    legacyLocalRect = "0,0,640,480"
+    legacyRectSource = "multiplane_art_parent"
+    texture = "data/art/gui/master5.png"
+    legacyTexture = "master5"
+    uvLeft = 0.0
+    uvTop = 0.0
+    uvRight = 1.0
+    uvBottom = 1.0
+}
+
+GuiImage {
+    key = "game.main_screen.image.element0.plane2"
+    pageKey = "game.main_screen"
+    legacySection = "Element0"
+    role = "multiplane_art"
+    layer = "art"
+    aliasOverride = "Element0 plane 2"
+    sourceControlType = "Element0.Art2"
+    rect = "0,0,640,480"
+    legacyLocalRect = "0,0,640,480"
+    legacyRectSource = "multiplane_art_parent"
+    texture = "data/art/gui/master6.png"
+    legacyTexture = "master6"
+    uvLeft = 0.0
+    uvTop = 0.0
+    uvRight = 0.5
+    uvBottom = 1.0
+}
+
+GuiImage {
+    key = "game.main_screen.image.element0.plane3"
+    pageKey = "game.main_screen"
+    legacySection = "Element0"
+    role = "multiplane_art"
+    layer = "art"
+    aliasOverride = "Element0 plane 3"
+    sourceControlType = "Element0.Art3"
+    rect = "0,0,640,480"
+    legacyLocalRect = "0,0,640,480"
+    legacyRectSource = "multiplane_art_parent"
+    texture = "data/art/gui/master7.png"
+    legacyTexture = "master7"
+    uvLeft = 0.0
+    uvTop = 0.0
+    uvRight = 1.0
+    uvBottom = 0.875
+}
+
+GuiImage {
+    key = "game.main_screen.image.element0.plane4"
+    pageKey = "game.main_screen"
+    legacySection = "Element0"
+    role = "multiplane_art"
+    layer = "art"
+    aliasOverride = "Element0 plane 4"
+    sourceControlType = "Element0.Art4"
+    rect = "0,0,640,480"
+    legacyLocalRect = "0,0,640,480"
+    legacyRectSource = "multiplane_art_parent"
+    texture = "data/art/gui/master8.png"
+    legacyTexture = "master8"
+    uvLeft = 0.0
+    uvTop = 0.0
+    uvRight = 1.0
+    uvBottom = 0.875
+}
+
+GuiImage {
+    key = "game.main_screen.image.element0.plane5"
+    pageKey = "game.main_screen"
+    legacySection = "Element0"
+    role = "multiplane_art"
+    layer = "art"
+    aliasOverride = "Element0 plane 5"
+    sourceControlType = "Element0.Art5"
+    rect = "0,0,640,480"
+    legacyLocalRect = "0,0,640,480"
+    legacyRectSource = "multiplane_art_parent"
+    texture = "data/art/gui/master9.png"
+    legacyTexture = "master9"
+    uvLeft = 0.0
+    uvTop = 0.0
+    uvRight = 0.5
+    uvBottom = 0.875
+}
+
+GuiRect {
+    key = "game.main_screen.rect.rect_01"
+    pageKey = "game.main_screen"
+    legacySection = "Element1"
+    role = "rect"
+    layer = "layout"
+    aliasOverride = "rect"
+    sourceControlType = "Element1"
+    rect = "333,14,290,339"
+    legacyLocalRect = "333,14,290,339"
+    legacyRectSource = "xywh"
+    uiPackage = "default"
+    rectModel = "legacy_imgui.modern_rect_v1"
+    controlRect = "333,14,290,339"
+    filled = true
+    fillColorArgb = "0x00000000"
+    borderColorArgb = "0x00000000"
+    colorArgb = "0xffffffff"
+}
+
+GuiImage {
+    key = "game.main_screen.image.element1.plane0"
+    pageKey = "game.main_screen"
+    legacySection = "Element1"
+    role = "multiplane_art"
+    layer = "art"
+    aliasOverride = "Element1 plane 0"
+    sourceControlType = "Element1.Art0"
+    rect = "333,14,290,339"
+    legacyLocalRect = "333,14,290,339"
+    legacyRectSource = "multiplane_art_parent"
+    texture = "data/art/gui/master10.png"
+    legacyTexture = "master10"
+    uvLeft = 0.0
+    uvTop = 0.0
+    uvRight = 1.0
+    uvBottom = 1.0
+}
+
+GuiImage {
+    key = "game.main_screen.image.element1.plane1"
+    pageKey = "game.main_screen"
+    legacySection = "Element1"
+    role = "multiplane_art"
+    layer = "art"
+    aliasOverride = "Element1 plane 1"
+    sourceControlType = "Element1.Art1"
+    rect = "333,14,290,339"
+    legacyLocalRect = "333,14,290,339"
+    legacyRectSource = "multiplane_art_parent"
+    texture = "data/art/gui/master11.png"
+    legacyTexture = "master11"
+    uvLeft = 0.0
+    uvTop = 0.0
+    uvRight = 0.12890625
+    uvBottom = 1.0
+}
+
+GuiImage {
+    key = "game.main_screen.image.element1.plane2"
+    pageKey = "game.main_screen"
+    legacySection = "Element1"
+    role = "multiplane_art"
+    layer = "art"
+    aliasOverride = "Element1 plane 2"
+    sourceControlType = "Element1.Art2"
+    rect = "333,14,290,339"
+    legacyLocalRect = "333,14,290,339"
+    legacyRectSource = "multiplane_art_parent"
+    texture = "data/art/gui/master12.png"
+    legacyTexture = "master12"
+    uvLeft = 0.0
+    uvTop = 0.0
+    uvRight = 1.0
+    uvBottom = 0.3203125
+}
+
+GuiImage {
+    key = "game.main_screen.image.element1.plane3"
+    pageKey = "game.main_screen"
+    legacySection = "Element1"
+    role = "multiplane_art"
+    layer = "art"
+    aliasOverride = "Element1 plane 3"
+    sourceControlType = "Element1.Art3"
+    rect = "333,14,290,339"
+    legacyLocalRect = "333,14,290,339"
+    legacyRectSource = "multiplane_art_parent"
+    texture = "data/art/gui/master12.png"
+    legacyTexture = "master12"
+    uvLeft = 0.0
+    uvTop = 0.328125
+    uvRight = 0.12890625
+    uvBottom = 0.64453125
+}
+
+GuiButton {
+    key = "game.main_screen.button.element9"
+    pageKey = "game.main_screen"
+    legacySection = "Element9"
+    legacyComment = "new game button"
+    role = "button"
+    layer = "control"
+    aliasOverride = "new game button"
+    sourceControlType = "Element9"
+    rect = "389,56,173,26"
+    legacyLocalRect = "389,56,173,26"
+    legacyRectSource = "xywh"
+    uiPackage = "default"
+    rectModel = "legacy_imgui.modern_rect_v1"
+    controlRect = "389,56,173,26"
+    controlModel = "legacy_art_button_v1"
+    legacyMessage = 0
+    legacyOverSfx = 16
+    legacyPressSfx = 15
+    normalTexture = "data/art/gui/master1.png"
+    normalLegacyTexture = "master1"
+    normalUvLeft = 0.0
+    normalUvTop = 0.0
+    normalUvRight = 0.671875
+    normalUvBottom = 0.09765625
+    greyTexture = "data/art/gui/master1.png"
+    greyLegacyTexture = "master1"
+    greyUvLeft = 0.0
+    greyUvTop = 0.10546875
+    greyUvRight = 0.671875
+    greyUvBottom = 0.203125
+    pressTexture = "data/art/gui/master1.png"
+    pressLegacyTexture = "master1"
+    pressUvLeft = 0.0
+    pressUvTop = 0.2109375
+    pressUvRight = 0.671875
+    pressUvBottom = 0.30859375
+    overTexture = "data/art/gui/master1.png"
+    overLegacyTexture = "master1"
+    overUvLeft = 0.0
+    overUvTop = 0.0
+    overUvRight = 0.671875
+    overUvBottom = 0.09765625
+}
+
+GuiButton {
+    key = "game.main_screen.button.element3"
+    pageKey = "game.main_screen"
+    legacySection = "Element3"
+    legacyComment = "save button"
+    role = "button"
+    layer = "control"
+    aliasOverride = "save button"
+    sourceControlType = "Element3"
+    rect = "389,87,173,26"
+    legacyLocalRect = "389,87,173,26"
+    legacyRectSource = "xywh"
+    uiPackage = "default"
+    rectModel = "legacy_imgui.modern_rect_v1"
+    controlRect = "389,87,173,26"
+    controlModel = "legacy_art_button_v1"
+    legacyMessage = 2
+    legacyOverSfx = 16
+    legacyPressSfx = 15
+    normalTexture = "data/art/gui/master1.png"
+    normalLegacyTexture = "Master1"
+    normalUvLeft = 0.0
+    normalUvTop = 0.31640625
+    normalUvRight = 0.671875
+    normalUvBottom = 0.4140625
+    greyTexture = "data/art/gui/master1.png"
+    greyLegacyTexture = "Master1"
+    greyUvLeft = 0.0
+    greyUvTop = 0.421875
+    greyUvRight = 0.671875
+    greyUvBottom = 0.51953125
+    pressTexture = "data/art/gui/master1.png"
+    pressLegacyTexture = "Master1"
+    pressUvLeft = 0.0
+    pressUvTop = 0.52734375
+    pressUvRight = 0.671875
+    pressUvBottom = 0.625
+    overTexture = "data/art/gui/master1.png"
+    overLegacyTexture = "Master1"
+    overUvLeft = 0.0
+    overUvTop = 0.31640625
+    overUvRight = 0.671875
+    overUvBottom = 0.4140625
+}
+
+GuiButton {
+    key = "game.main_screen.button.element4"
+    pageKey = "game.main_screen"
+    legacySection = "Element4"
+    legacyComment = "load button"
+    role = "button"
+    layer = "control"
+    aliasOverride = "load button"
+    sourceControlType = "Element4"
+    rect = "389,118,173,26"
+    legacyLocalRect = "389,118,173,26"
+    legacyRectSource = "xywh"
+    uiPackage = "default"
+    rectModel = "legacy_imgui.modern_rect_v1"
+    controlRect = "389,118,173,26"
+    controlModel = "legacy_art_button_v1"
+    legacyMessage = 1
+    legacyOverSfx = 16
+    legacyPressSfx = 15
+    normalTexture = "data/art/gui/master1.png"
+    normalLegacyTexture = "Master1"
+    normalUvLeft = 0.0
+    normalUvTop = 0.6328125
+    normalUvRight = 0.671875
+    normalUvBottom = 0.73046875
+    greyTexture = "data/art/gui/master1.png"
+    greyLegacyTexture = "Master1"
+    greyUvLeft = 0.0
+    greyUvTop = 0.73828125
+    greyUvRight = 0.671875
+    greyUvBottom = 0.8359375
+    pressTexture = "data/art/gui/master1.png"
+    pressLegacyTexture = "Master1"
+    pressUvLeft = 0.0
+    pressUvTop = 0.84375
+    pressUvRight = 0.671875
+    pressUvBottom = 0.94140625
+    overTexture = "data/art/gui/master1.png"
+    overLegacyTexture = "Master1"
+    overUvLeft = 0.0
+    overUvTop = 0.6328125
+    overUvRight = 0.671875
+    overUvBottom = 0.73046875
+}
+
+GuiButton {
+    key = "game.main_screen.button.element5"
+    pageKey = "game.main_screen"
+    legacySection = "Element5"
+    legacyComment = "prefs button"
+    role = "button"
+    layer = "control"
+    aliasOverride = "prefs button"
+    sourceControlType = "Element5"
+    rect = "389,149,173,26"
+    legacyLocalRect = "389,149,173,26"
+    legacyRectSource = "xywh"
+    uiPackage = "default"
+    rectModel = "legacy_imgui.modern_rect_v1"
+    controlRect = "389,149,173,26"
+    controlModel = "legacy_art_button_v1"
+    legacyMessage = 4
+    legacyOverSfx = 16
+    legacyPressSfx = 15
+    normalTexture = "data/art/gui/master2.png"
+    normalLegacyTexture = "master2"
+    normalUvLeft = 0.0
+    normalUvTop = 0.0
+    normalUvRight = 0.671875
+    normalUvBottom = 0.09765625
+    greyTexture = "data/art/gui/master2.png"
+    greyLegacyTexture = "master2"
+    greyUvLeft = 0.0
+    greyUvTop = 0.10546875
+    greyUvRight = 0.671875
+    greyUvBottom = 0.203125
+    pressTexture = "data/art/gui/master2.png"
+    pressLegacyTexture = "master2"
+    pressUvLeft = 0.0
+    pressUvTop = 0.2109375
+    pressUvRight = 0.671875
+    pressUvBottom = 0.30859375
+    overTexture = "data/art/gui/master2.png"
+    overLegacyTexture = "master2"
+    overUvLeft = 0.0
+    overUvTop = 0.0
+    overUvRight = 0.671875
+    overUvBottom = 0.09765625
+}
+
+GuiButton {
+    key = "game.main_screen.button.element6"
+    pageKey = "game.main_screen"
+    legacySection = "Element6"
+    legacyComment = "multi-player button"
+    role = "button"
+    layer = "control"
+    aliasOverride = "multi-player button"
+    sourceControlType = "Element6"
+    rect = "389,180,173,26"
+    legacyLocalRect = "389,180,173,26"
+    legacyRectSource = "xywh"
+    uiPackage = "default"
+    rectModel = "legacy_imgui.modern_rect_v1"
+    controlRect = "389,180,173,26"
+    controlModel = "legacy_art_button_v1"
+    legacyMessage = 3
+    legacyOverSfx = 16
+    legacyPressSfx = 15
+    normalTexture = "data/art/gui/master2.png"
+    normalLegacyTexture = "Master2"
+    normalUvLeft = 0.0
+    normalUvTop = 0.31640625
+    normalUvRight = 0.671875
+    normalUvBottom = 0.4140625
+    greyTexture = "data/art/gui/master2.png"
+    greyLegacyTexture = "Master2"
+    greyUvLeft = 0.0
+    greyUvTop = 0.421875
+    greyUvRight = 0.671875
+    greyUvBottom = 0.51953125
+    pressTexture = "data/art/gui/master2.png"
+    pressLegacyTexture = "Master2"
+    pressUvLeft = 0.0
+    pressUvTop = 0.52734375
+    pressUvRight = 0.671875
+    pressUvBottom = 0.625
+    overTexture = "data/art/gui/master2.png"
+    overLegacyTexture = "Master2"
+    overUvLeft = 0.0
+    overUvTop = 0.31640625
+    overUvRight = 0.671875
+    overUvBottom = 0.4140625
+}
+
+GuiButton {
+    key = "game.main_screen.button.element7"
+    pageKey = "game.main_screen"
+    legacySection = "Element7"
+    legacyComment = "cinema button"
+    role = "button"
+    layer = "control"
+    aliasOverride = "cinema button"
+    sourceControlType = "Element7"
+    rect = "389,211,173,26"
+    legacyLocalRect = "389,211,173,26"
+    legacyRectSource = "xywh"
+    uiPackage = "default"
+    rectModel = "legacy_imgui.modern_rect_v1"
+    controlRect = "389,211,173,26"
+    controlModel = "legacy_art_button_v1"
+    legacyMessage = 5
+    legacyOverSfx = 16
+    legacyPressSfx = 15
+    normalTexture = "data/art/gui/master2.png"
+    normalLegacyTexture = "Master2"
+    normalUvLeft = 0.0
+    normalUvTop = 0.6328125
+    normalUvRight = 0.671875
+    normalUvBottom = 0.73046875
+    greyTexture = "data/art/gui/master2.png"
+    greyLegacyTexture = "Master2"
+    greyUvLeft = 0.0
+    greyUvTop = 0.73828125
+    greyUvRight = 0.671875
+    greyUvBottom = 0.8359375
+    pressTexture = "data/art/gui/master2.png"
+    pressLegacyTexture = "Master2"
+    pressUvLeft = 0.0
+    pressUvTop = 0.84375
+    pressUvRight = 0.671875
+    pressUvBottom = 0.94140625
+    overTexture = "data/art/gui/master2.png"
+    overLegacyTexture = "Master2"
+    overUvLeft = 0.0
+    overUvTop = 0.6328125
+    overUvRight = 0.671875
+    overUvBottom = 0.73046875
+}
+
+GuiButton {
+    key = "game.main_screen.button.element8"
+    pageKey = "game.main_screen"
+    legacySection = "Element8"
+    legacyComment = "return button"
+    role = "button"
+    layer = "control"
+    aliasOverride = "return button"
+    sourceControlType = "Element8"
+    rect = "389,242,173,26"
+    legacyLocalRect = "389,242,173,26"
+    legacyRectSource = "xywh"
+    uiPackage = "default"
+    rectModel = "legacy_imgui.modern_rect_v1"
+    controlRect = "389,242,173,26"
+    controlModel = "legacy_art_button_v1"
+    legacyMessage = 7
+    legacyOverSfx = 16
+    legacyPressSfx = 15
+    normalTexture = "data/art/gui/master3.png"
+    normalLegacyTexture = "master3"
+    normalUvLeft = 0.0
+    normalUvTop = 0.0
+    normalUvRight = 0.671875
+    normalUvBottom = 0.09765625
+    greyTexture = "data/art/gui/master3.png"
+    greyLegacyTexture = "master3"
+    greyUvLeft = 0.0
+    greyUvTop = 0.10546875
+    greyUvRight = 0.671875
+    greyUvBottom = 0.203125
+    pressTexture = "data/art/gui/master3.png"
+    pressLegacyTexture = "master3"
+    pressUvLeft = 0.0
+    pressUvTop = 0.2109375
+    pressUvRight = 0.671875
+    pressUvBottom = 0.30859375
+    overTexture = "data/art/gui/master3.png"
+    overLegacyTexture = "master3"
+    overUvLeft = 0.0
+    overUvTop = 0.0
+    overUvRight = 0.671875
+    overUvBottom = 0.09765625
+}
+
+GuiButton {
+    key = "game.main_screen.button.element2"
+    pageKey = "game.main_screen"
+    legacySection = "Element2"
+    legacyComment = "quit button"
+    role = "button"
+    layer = "control"
+    aliasOverride = "quit button"
+    sourceControlType = "Element2"
+    rect = "389,273,173,26"
+    legacyLocalRect = "389,273,173,26"
+    legacyRectSource = "xywh"
+    uiPackage = "default"
+    rectModel = "legacy_imgui.modern_rect_v1"
+    controlRect = "389,273,173,26"
+    controlModel = "legacy_art_button_v1"
+    legacyMessage = 6
+    legacyOverSfx = 16
+    legacyPressSfx = 15
+    normalTexture = "data/art/gui/master3.png"
+    normalLegacyTexture = "Master3"
+    normalUvLeft = 0.0
+    normalUvTop = 0.31640625
+    normalUvRight = 0.671875
+    normalUvBottom = 0.4140625
+    greyTexture = "data/art/gui/master3.png"
+    greyLegacyTexture = "Master3"
+    greyUvLeft = 0.0
+    greyUvTop = 0.421875
+    greyUvRight = 0.671875
+    greyUvBottom = 0.51953125
+    pressTexture = "data/art/gui/master3.png"
+    pressLegacyTexture = "Master3"
+    pressUvLeft = 0.0
+    pressUvTop = 0.52734375
+    pressUvRight = 0.671875
+    pressUvBottom = 0.625
+    overTexture = "data/art/gui/master3.png"
+    overLegacyTexture = "Master3"
+    overUvLeft = 0.0
+    overUvTop = 0.31640625
+    overUvRight = 0.671875
+    overUvBottom = 0.4140625
+}

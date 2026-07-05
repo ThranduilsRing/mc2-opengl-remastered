@@ -152,6 +152,16 @@ bool IsGpuPickHoverEnabled();
 // Logs attempts/hits/fallbacks from the hover pick block.
 bool IsGpuPickHoverTraceEnabled();
 
+// GPU-GROUND-PICK-PARITY-1 (S1): ground-pick parity oracle gate
+// (MC2_GPU_GROUND_PICK_PARITY=1). Requires MC2_OBJECT_ID_BUFFER=1 to have a
+// live depth+objectID attachment to read. When enabled, the missiongui hover
+// and per-click move paths run BOTH the CPU Camera::inverseProject ground pick
+// AND the GPU depth-unproject (lookupAtPixel worldX/Y/Z) at the same cursor
+// pixel, log the position delta + per-path timing, and RETURN the CPU result
+// unchanged (parity-only; GPU result never consumed). Mirrors the
+// MC2_TERRAIN_PICK_PARITY oracle discipline. Default OFF; restart to flip.
+bool IsGpuGroundPickParityEnabled();
+
 // M1.5 C1 fix: centralize Handle encoding. Returns 0 for invalid
 // recipeIndex (< 0). The producer in gos_static_prop_batcher.cpp
 // calls this with the result of GpuStaticPropRegistry::getRecipeIndexForType().

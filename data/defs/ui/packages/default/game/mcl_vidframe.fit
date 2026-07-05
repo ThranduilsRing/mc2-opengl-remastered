@@ -1,0 +1,93 @@
+// MC2R ImGui FIT generated from legacy UI FIT.
+// Source: data/defs/ui/legacy/game/mcl_vidframe.fit
+// Legacy files remain source truth only; edit the generated ImGui FIT.
+
+GuiPage {
+    key = "game.mcl_vidframe"
+    title = "Game Mcl Vidframe"
+    sourceLegacyFit = "data/defs/ui/legacy/game/mcl_vidframe.fit"
+    sourceSystem = "game"
+    sourceScreen = "mcl_vidframe"
+    sourceKind = "legacy_screen"
+    layout = "absolute"
+    coordinateSpace = "screen_absolute"
+    localWidth = 800
+    localHeight = 600
+    mountOffset = "0,0"
+    editableSource = "generated_imgui_only"
+}
+
+GuiMetadata {
+    key = "game.mcl_vidframe.metadata.metadata"
+    pageKey = "game.mcl_vidframe"
+    legacySection = "Rects"
+    legacyContext = "~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ | ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ | ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~"
+    role = "metadata"
+    layer = "metadata"
+    aliasOverride = "metadata"
+    sourceControlType = "Rects"
+    rect = "0,0,0,0"
+    legacyLocalRect = "0,0,0,0"
+    legacyRectSource = "xywh"
+    visible = false
+}
+
+GuiRect {
+    key = "game.mcl_vidframe.rect.video_goes_here"
+    pageKey = "game.mcl_vidframe"
+    legacySection = "Rect0"
+    legacyComment = "video goes here"
+    role = "video_mount"
+    layer = "video"
+    aliasOverride = "video goes here"
+    sourceControlType = "Rect0"
+    rect = "30,20,128,72"
+    legacyLocalRect = "30,20,128,72"
+    legacyRectSource = "xywh"
+    uiPackage = "legacy_imgui"
+    rectModel = "legacy_imgui.modern_rect_v1"
+    controlRect = "30,20,128,72"
+    legacyColor = 0xffffffff
+    outline = "FALSE"
+    filled = true
+}
+
+GuiMetadata {
+    key = "game.mcl_vidframe.metadata.metadata_01"
+    pageKey = "game.mcl_vidframe"
+    legacySection = "Statics"
+    legacyContext = "~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ | ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ | ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~"
+    role = "metadata"
+    layer = "metadata"
+    aliasOverride = "metadata"
+    sourceControlType = "Statics"
+    rect = "0,0,0,0"
+    legacyLocalRect = "0,0,0,0"
+    legacyRectSource = "xywh"
+    visible = false
+}
+
+GuiImage {
+    key = "game.mcl_vidframe.image.frame"
+    pageKey = "game.mcl_vidframe"
+    legacySection = "Static0"
+    legacyComment = "frame"
+    role = "image"
+    layer = "art"
+    aliasOverride = "frame"
+    sourceControlType = "Static0"
+    rect = "0,0,188,112"
+    legacyLocalRect = "0,0,188,112"
+    legacyRectSource = "xywh"
+    texture = "data/art/gui/mcl_vidframe.png"
+    legacyTexture = "mcl_vidframe.tga"
+    uiPackage = "legacy_imgui"
+    rectModel = "legacy_imgui.modern_rect_v1"
+    controlRect = "0,0,188,112"
+    artRect = "0,0,188,112"
+    artLayer = "control_art"
+    uvX = 0
+    uvY = 0
+    uvWidth = 188
+    uvHeight = 112
+}

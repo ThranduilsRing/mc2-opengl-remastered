@@ -23,6 +23,7 @@ static const bool s_cheatInfiniteMoney = (getenv("MC2_CHEAT_INFINITE_MONEY") != 
 #include"multplyr.h"
 extern bool useUnlimitedAmmo;
 #include"prefs.h"
+#include"../GuiRuntime/GuiRuntime.h"
 
 MechLabScreen* MechLabScreen::s_instance = 0;
 LogisticsVariantDialog* MechLabScreen::saveDlg = 0;
@@ -98,6 +99,7 @@ int MechLabScreen::init( FitIniFile& file )
 	ComponentListItem::init( file );
 
 	LogisticsScreen::init( file, "Static", "Text", "Rect", "Button" );
+	defsHelpTextKey = "game.mcl_mc.text.help_text";
 
 	componentListBox.init( rects[2].left(), rects[2].top(),
 							rects[2].width(), rects[2].height() );
@@ -373,6 +375,7 @@ void MechLabScreen::begin()
 	char text[32];
 	sprintf( text, "%ld ", LogisticsData::instance->getCBills() );
 	textObjects[1].setText( text );
+	setDefsElementText( "game.mcl_mc.text.cbills_text", text );
 
 
 	variantList.EditBox().getEntry(varName);
@@ -394,6 +397,58 @@ void MechLabScreen::end()
 }
 void MechLabScreen::update()
 {
+	// Mirror the legacy weapon-info / mech-name / cost / heat+armor-limit text
+	// objects into the defs page each frame (they're set across many branches of
+	// setComponent/update*, and the defs page suppresses the legacy textObjects).
+	// textObjects[N] <-> MechLabTextEntryN <-> the defs key below.
+	static const struct { int idx; const char* key; } s_textDefsMap[] = {
+		{  3, "game.mcl_mc.text.mech_name" },
+		{  5, "game.mcl_mc.text.cost_of_changes_readout" },
+		{  6, "game.mcl_mc.text.weapon_info_header" },
+		{  7, "game.mcl_mc.text.weapon_info_range_readout" },
+		{  8, "game.mcl_mc.text.weapon_info_damage_readout" },
+		{  9, "game.mcl_mc.text.weapon_info_recycle_readout" },
+		{ 10, "game.mcl_mc.text.weapon_info_heat_readout" },
+		{ 11, "game.mcl_mc.text.armor_limit_readout" },
+		{ 12, "game.mcl_mc.text.heat_limit_readout" },
+		{ 13, "game.mcl_mc.text.weapon_info_ammo_text_readout" },
+		{ 15, "game.mcl_mc.text.jump_jet_heat_readout" },
+	};
+	for ( const auto& m : s_textDefsMap )
+		if ( m.idx < textCount )
+			setDefsElementText( m.key, std::string( (const char*)textObjects[m.idx].text ) );
+
+	// Swap the weapon-info ICON set to match the selected component type, the way
+	// the legacy code toggled statics[] in setComponent()/showJumpJetItems(). The
+	// defs page suppresses those legacy statics and renders its own icon elements
+	// on top, so drive their visibility here. One icon set per type (no overlap):
+	//   weapon  -> range / damage / recycle / heat (+ ammo unless unlimited)
+	//   jump jet-> jump-range / jump-jet-heat
+	//   heat sink-> heat-sink
+	//   armor (bulk)-> armor
+	{
+		const int  t        = pCurComponent ? pCurComponent->getType() : -1;
+		const bool isJump   = ( t == COMPONENT_FORM_JUMPJET );
+		const bool isHeat   = ( t == COMPONENT_FORM_HEATSINK );
+		const bool isArmor  = ( t == COMPONENT_FORM_BULK );
+		const bool isWeapon = ( pCurComponent && !isJump && !isHeat && !isArmor );
+
+		setDefsElementVisible( "game.mcl_mc.image.icon_for_weapon_range", isWeapon );
+		setDefsElementVisible( "game.mcl_mc.image.icon_for_damage", isWeapon );
+		setDefsElementVisible( "game.mcl_mc.image.icon_for_recycle_rate", isWeapon );
+		setDefsElementVisible( "game.mcl_mc.image.icon_for_weapon_heat", isWeapon );
+		setDefsElementVisible(
+			"game.mcl_mc.image.icon_for_ammo_this_one_won_t_show_up_if_infinite_ammo_is_on_in_options",
+			isWeapon && !useUnlimitedAmmo );
+		setDefsElementVisible(
+			"game.mcl_mc.image.icon_for_jump_range_use_only_when_jump_jets_are_selected", isJump );
+		setDefsElementVisible(
+			"game.mcl_mc.image.icon_for_jump_jet_heat_use_only_when_jump_jets_are_selected", isJump );
+		setDefsElementVisible(
+			"game.mcl_mc.image.icon_for_heat_sink_heat_use_only_when_heat_sink_is_selected", isHeat );
+		setDefsElementVisible(
+			"game.mcl_mc.image.icon_for_armor_use_only_when_armor_is_selected", isArmor );
+	}
 
 	if ( bSaveDlg )
 	{
@@ -799,9 +854,17 @@ void MechLabScreen::render(int xOffset, int yOffset)
 
 
 	
+	// Legacy->display scale for the text bridge (crisp TTF on the component list +
+	// variant dropdown, matching the data/defs UI layer).
+	// UI-ASPECT-ANCHOR-1: canvas-aware transform (scale + pad origin).
+	float tbSx = 1.f, tbSy = 1.f, tbOx = 0.f, tbOy = 0.f;
+	aObject::getCanvasTransform( tbSx, tbSy, tbOx, tbOy );
+
+	aObject::beginTextBridge( tbSx, tbSy, 1.3f, tbOx, tbOy );
 	componentListBox.move( xOffset, yOffset );
 	componentListBox.render();
 	componentListBox.move( -xOffset, -yOffset );
+	aObject::endTextBridge();
 
 
 
@@ -810,13 +873,34 @@ void MechLabScreen::render(int xOffset, int yOffset)
 		attributeMeters[i].render(xOffset, yOffset);
 
 	if ( !xOffset && !yOffset )
+	{
+		// PREVIEW-FBO-FIXED-800x600-1: no defs/ImGui placement rect for this
+		// camera in mcl_mc.fit -- same situation as Mech Bay. Render offscreen
+		// (fixed 800x600, matches camera.bounds[]/init() unscaled legacy math
+		// unchanged) and composite via the same tbSx/tbSy real-resolution ratio
+		// already used for this screen's text bridge.
+		camera.setPreviewOffscreen( true );
 		camera.render();
+		camera.drawPreviewToPanel(
+			camera.bounds[0] * tbSx + tbOx, camera.bounds[1] * tbSy + tbOy,
+			(camera.bounds[2] - camera.bounds[0]) * tbSx,
+			(camera.bounds[3] - camera.bounds[1]) * tbSy );
+	}
 
 	LogisticsScreen::render(xOffset, yOffset );
 
 	if ( MPlayer && ChatWindow::instance() )
 		ChatWindow::instance()->render(xOffset, yOffset);
 
+	// Mech paperdoll background: the defs page suppresses these legacy statics, so
+	// draw them explicitly here -- on the GameOS layer, BEFORE the component slots
+	// below, so the paperdoll sits BEHIND the slots (not covering them).
+	for ( int i = 50; i < 54; i++ )
+	{
+		statics[i].move( xOffset, yOffset );
+		statics[i].render();
+		statics[i].move( -xOffset, -yOffset );
+	}
 
 	// figure where components go
 	if ( pVariant )
@@ -890,11 +974,13 @@ void MechLabScreen::render(int xOffset, int yOffset)
 		else
 			pSelectedComponent = 0;
 	}
-		
+
+	aObject::beginTextBridge( tbSx, tbSy, 1.3f, tbOx, tbOy );
 	variantList.move( xOffset, yOffset );
 	variantList.render();
 	variantList.move( -xOffset, -yOffset );
-	
+	aObject::endTextBridge();
+
 	if ( pDragComponent )
 	{
 		dragIcon.moveTo( userInput->getMouseX() - dragIcon.width() / 2, 

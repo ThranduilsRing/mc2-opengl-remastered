@@ -1,0 +1,46 @@
+{
+  "rock_tiling": 3.0,
+  "grass_tiling": 2.0,
+  "dirt_tiling": 1.0,
+  "concrete_tiling": 6.0,
+  "snow_tiling": 1.0,
+
+  "rock_normalBoost": 0.9,
+  "grass_normalBoost": 0.5,
+  "dirt_normalBoost": 1.1,
+  "concrete_normalBoost": 2.5,
+
+  "rock_tint_r": 0.36, "rock_tint_g": 0.37, "rock_tint_b": 0.40,
+  "grass_tint_r": 0.35, "grass_tint_g": 0.42, "grass_tint_b": 0.25,
+  "dirt_tint_r": 0.48, "dirt_tint_g": 0.42, "dirt_tint_b": 0.33,
+  "concrete_tint_r": 0.55, "concrete_tint_g": 0.53, "concrete_tint_b": 0.50,
+  "snow_tint_r": 0.75, "snow_tint_g": 0.78, "snow_tint_b": 0.84,
+
+  "rock_roughness": 1.0,
+  "grass_roughness": 1.0,
+  "dirt_roughness": 1.0,
+  "concrete_roughness": 1.0,
+
+  "rock_ao": 1.0,
+  "grass_ao": 1.0,
+  "dirt_ao": 1.0,
+  "concrete_ao": 1.0,
+
+  "detail_tiling": 1.0,
+  "detail_strength": 1.0,
+
+  "tintStrengthScale": 1.0,
+  "snow_brightnessDampen": 0.78,
+
+  "controlAlbedoStrength": 0.7,
+
+  "classify_grass_gMinusRLo": -0.02,
+  "classify_grass_gMinusRHi": 0.06,
+  "classify_grass_gBrightLo": 0.22,
+  "classify_grass_gBrightHi": 0.40,
+
+  "classify_dirt_rMinusGLo": -0.02,
+  "classify_dirt_rMinusGHi": 0.06,
+  "classify_dirt_rBrightLo": 0.22,
+  "classify_dirt_rBrightHi": 0.45
+}

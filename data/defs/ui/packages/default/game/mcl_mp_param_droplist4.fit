@@ -1,0 +1,384 @@
+// MC2R ImGui FIT generated from legacy UI FIT.
+// Source: data/defs/ui/legacy/game/mcl_mp_param_droplist4.fit
+// Legacy files remain source truth only; edit the generated ImGui FIT.
+
+GuiPage {
+    key = "game.mcl_mp_param_droplist4"
+    title = "Game Mcl Mp Param Droplist4"
+    sourceLegacyFit = "data/defs/ui/legacy/game/mcl_mp_param_droplist4.fit"
+    sourceSystem = "game"
+    sourceScreen = "mcl_mp_param_droplist4"
+    sourceKind = "legacy_component"
+    layout = "component_absolute"
+    coordinateSpace = "component_local"
+    localWidth = 353
+    localHeight = 141
+    mountOffset = "0,0"
+    editableSource = "generated_imgui_only"
+    overlayGameOS = true
+    renderMode = "gameos_overlay"
+    backgroundPolicy = "transparent_overlay"
+}
+
+GuiList {
+    key = "game.mcl_mp_param_droplist4.list.list"
+    pageKey = "game.mcl_mp_param_droplist4"
+    legacySection = "FactionTypeDropList"
+    role = "list"
+    layer = "control"
+    aliasOverride = "list"
+    sourceControlType = "FactionTypeDropList"
+    rect = "269,87,84,36"
+    legacyLocalRect = "269,87,84,36"
+    legacyRectSource = "xywh"
+    uiPackage = "default"
+    rectModel = "legacy_imgui.modern_rect_v1"
+    controlRect = "269,87,84,36"
+    hitRect = "269,87,84,36"
+    font = "Agency Regular"
+    fontStyle = "Regular"
+    fontSize = 14
+    bold = false
+    italic = false
+    textAlign = "left"
+    textAnchor = "upper_left"
+    wrapText = true
+}
+
+GuiButton {
+    key = "game.mcl_mp_param_droplist4.button.down_triangle"
+    pageKey = "game.mcl_mp_param_droplist4"
+    legacySection = "ExpandButton"
+    legacyComment = "down triangle"
+    role = "button"
+    layer = "control"
+    aliasOverride = "down triangle"
+    sourceControlType = "ExpandButton"
+    rect = "338,102,12,6"
+    legacyLocalRect = "338,102,12,6"
+    legacyRectSource = "child_relative_xywh"
+    texture = "data/art/gui/MCUI_Scroll.png"
+    legacyTexture = "MCUI_Scroll"
+    uiPackage = "default"
+    rectModel = "legacy_imgui.modern_rect_v1"
+    controlRect = "338,102,12,6"
+    hitRect = "338,102,12,6"
+    artRect = "338,102,12,6"
+    artLayer = "control_art"
+    controlModel = "composite_hit_art_text_v1"
+    linkedLayers = "hit,art,text"
+    editMode = "linked_control_with_independent_text"
+    font = "Agency Regular"
+    fontStyle = "Regular"
+    fontSize = 14
+    bold = false
+    italic = false
+    textAlign = "center"
+    textAnchor = "center"
+    legacyTextAlignmentSource = "aButton::init default Alignment=2"
+    wrapText = false
+    normalTextColorArgb = "0xffc66600"
+    normalOverlayColorArgb = "0xffc66600"
+    colorArgb = "0xffc66600"
+    pressedTextColorArgb = "0xffffffff"
+    pressedOverlayColorArgb = "0xffffffff"
+    highlightTextColorArgb = "0xffffffff"
+    highlightOverlayColorArgb = "0xffffffff"
+    disabledTextColorArgb = "0xff373737"
+    disabledOverlayColorArgb = "0xff373737"
+    buttonOverlayEnabled = true
+    buttonOverlayAlpha = 0.30
+    legacyId = "xxx"
+    uvX = 0
+    uvY = 18
+    uvWidth = 12
+    uvHeight = 6
+    uvPressedX = 0
+    uvPressedY = 18
+    uvHighlightX = 0
+    uvHighlightY = 18
+    uvDisabledX = 0
+    uvDisabledY = 18
+    legacyToggle = 0
+    legacyNormalAnimationTimeStamps = 4
+    legacyNormalAnimationLoops = true
+    legacyNormalAnimTime0 = 0.0
+    legacyNormalAnimColor0 = 0xffC66600
+    legacyNormalAnimTime1 = 15.0
+    legacyNormalAnimColor1 = 0xffC66600
+    legacyNormalAnimTime2 = 15.5
+    legacyNormalAnimColor2 = 0xffFFAE4D
+    legacyNormalAnimTime3 = 16.0
+    legacyNormalAnimColor3 = 0xffC66600
+    legacyPressedAnimationTimeStamps = 2
+    legacyPressedAnimationLoops = false
+    legacyPressedAnimTime0 = 0.0
+    legacyPressedAnimColor0 = 0xffffffff
+    legacyPressedAnimTime1 = 0.5
+    legacyPressedAnimColor1 = 0xffFFAE4D
+    legacyHighlightAnimationTimeStamps = 2
+    legacyHighlightAnimationLoops = true
+    legacyHighlightAnimTime0 = 0.0
+    legacyHighlightAnimColor0 = 0xffffffff
+    legacyHighlightAnimTime1 = 0.5
+    legacyHighlightAnimColor1 = 0xffFFAE4D
+    legacyDisabledAnimationTimeStamps = 2
+    legacyDisabledAnimationLoops = true
+    legacyDisabledAnimTime0 = 0.0
+    legacyDisabledAnimColor0 = 0xff373737
+    legacyDisabledAnimTime1 = 15.0
+    legacyDisabledAnimColor1 = 0xff373737
+    fillColorArgb = "0x00000000"
+    borderColorArgb = "0x00000000"
+}
+
+GuiMetadata {
+    key = "game.mcl_mp_param_droplist4.metadata.metadata"
+    pageKey = "game.mcl_mp_param_droplist4"
+    legacySection = "Rects"
+    legacyContext = "~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ | ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ | ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~"
+    role = "metadata"
+    layer = "metadata"
+    aliasOverride = "metadata"
+    sourceControlType = "Rects"
+    rect = "269,87,0,0"
+    legacyLocalRect = "269,87,0,0"
+    legacyRectSource = "child_relative_xywh"
+    visible = false
+}
+
+GuiMetadata {
+    key = "game.mcl_mp_param_droplist4.metadata.divider_between_down_triangle_and_s_in_drop_down_rect"
+    pageKey = "game.mcl_mp_param_droplist4"
+    legacySection = "Rect0"
+    legacyComment = "divider between down triangle and #'s in drop down rect"
+    role = "video"
+    layer = "video"
+    aliasOverride = "divider between down triangle and #'s in drop down rect"
+    sourceControlType = "Rect0"
+    rect = "335,88,0,34"
+    legacyLocalRect = "335,88,0,34"
+    legacyRectSource = "child_relative_xywh"
+    legacyColor = 0xff43311C
+    outline = "TRUE"
+    visible = false
+}
+
+GuiRect {
+    key = "game.mcl_mp_param_droplist4.rect.outline_for_team_number_drop_down_menu"
+    pageKey = "game.mcl_mp_param_droplist4"
+    legacySection = "Rect1"
+    legacyComment = "outline for team number drop down menu"
+    role = "rect"
+    layer = "layout"
+    aliasOverride = "outline for team number drop down menu"
+    sourceControlType = "Rect1"
+    rect = "269,87,84,35"
+    legacyLocalRect = "269,87,84,35"
+    legacyRectSource = "child_relative_xywh"
+    uiPackage = "default"
+    rectModel = "legacy_imgui.modern_rect_v1"
+    controlRect = "269,87,84,35"
+    legacyColor = 0xff43311C
+    outline = "TRUE"
+    filled = false
+    fillColorArgb = "0x00000000"
+    borderColorArgb = "0x00000000"
+    colorArgb = "0xffffffff"
+}
+
+GuiRect {
+    key = "game.mcl_mp_param_droplist4.rect.rectangle_for_list_box"
+    pageKey = "game.mcl_mp_param_droplist4"
+    legacySection = "Rect2"
+    legacyComment = "rectangle for list box"
+    role = "listbox_mount"
+    layer = "control"
+    aliasOverride = "rectangle for list box"
+    sourceControlType = "Rect2"
+    rect = "269,122,84,106"
+    legacyLocalRect = "269,122,84,106"
+    legacyRectSource = "child_relative_xywh"
+    uiPackage = "default"
+    rectModel = "legacy_imgui.modern_rect_v1"
+    controlRect = "269,122,84,106"
+    legacyColor = 0xff43311C
+    outline = "TRUE"
+    filled = false
+    fillColorArgb = "0x00000000"
+    borderColorArgb = "0x00000000"
+    colorArgb = "0xffffffff"
+}
+
+GuiScrollbar {
+    key = "game.mcl_mp_param_droplist4.scrollbar.rectangle_for_list_box"
+    pageKey = "game.mcl_mp_param_droplist4"
+    legacySection = "Rect2"
+    role = "listbox_scrollbar"
+    layer = "control"
+    aliasOverride = "listbox_scrollbar"
+    sourceControlType = "runtime mcScrollBar"
+    sourceStyle = "ScrollBar.fit"
+    sourceLine = "aListBox::init => scrollBar->init(w - 17, 2, 15, h - 4)"
+    rect = "336,124,15,102"
+    legacyLocalRect = "336,124,15,102"
+    legacyRectSource = "runtime_listbox_scrollbar"
+    runtimePlacement = "aListBox::mcScrollBar"
+    scrollbarTemplate = "data/defs/ui/packages/legacy_imgui/shared/scrollbar.fit"
+    scrollbarStyle = "orange"
+}
+
+GuiMetadata {
+    key = "game.mcl_mp_param_droplist4.metadata.metadata_01"
+    pageKey = "game.mcl_mp_param_droplist4"
+    legacySection = "Texts"
+    legacyContext = "~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ | ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ | ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~"
+    role = "metadata"
+    layer = "metadata"
+    aliasOverride = "metadata"
+    sourceControlType = "Texts"
+    rect = "269,87,0,0"
+    legacyLocalRect = "269,87,0,0"
+    legacyRectSource = "child_relative_xywh"
+    visible = false
+}
+
+GuiText {
+    key = "game.mcl_mp_param_droplist4.text.team_number_in_main_rect"
+    pageKey = "game.mcl_mp_param_droplist4"
+    legacySection = "Text0"
+    legacyComment = "team number in main rect"
+    role = "text"
+    layer = "text"
+    aliasOverride = "team number in main rect"
+    sourceControlType = "Text0"
+    rect = "274,94,63,32"
+    legacyLocalRect = "274,94,63,32"
+    legacyRectSource = "child_relative_xywh"
+    uiPackage = "default"
+    rectModel = "legacy_imgui.modern_rect_v1"
+    controlRect = "274,94,63,32"
+    textRect = "274,94,63,32"
+    textRectMode = "control_rect_fallback"
+    textLegacyId = 26051
+    textKey = "legacy.mc2res.26051"
+    visibleText = "HOST GAME"
+    textLegacySymbol = "IDS_STRING26051"
+    textSource = "mc2res"
+    textMissing = false
+    legacyFontId = 26213
+    legacyFontComment = "use agencyfb11"
+    font = "Agency Regular"
+    fontStyle = "Regular"
+    fontSize = 11
+    bold = false
+    italic = false
+    textAlign = "center"
+    textAnchor = "center"
+    wrapText = true
+    legacyColor = ""
+    outline = "FALSE"
+    legacyAlignment = 3
+    legacyFontComment = "use agencyfb11"
+    colorArgb = "0xffd6d6d6"
+    borderColorArgb = "0x00000000"
+}
+
+GuiText {
+    key = "game.mcl_mp_param_droplist4.text.team_number_for_list_box"
+    pageKey = "game.mcl_mp_param_droplist4"
+    legacySection = "Text1"
+    legacyComment = "team number for list box"
+    role = "text"
+    layer = "text"
+    aliasOverride = "team number for list box"
+    sourceControlType = "Text1"
+    rect = "274,124,63,17"
+    legacyLocalRect = "274,124,63,17"
+    legacyRectSource = "child_relative_xywh"
+    uiPackage = "default"
+    rectModel = "legacy_imgui.modern_rect_v1"
+    controlRect = "274,124,63,17"
+    textRect = "274,124,63,17"
+    textRectMode = "control_rect_fallback"
+    textLegacyId = 26051
+    textKey = "legacy.mc2res.26051"
+    visibleText = "HOST GAME"
+    textLegacySymbol = "IDS_STRING26051"
+    textSource = "mc2res"
+    textMissing = false
+    legacyFontId = 26213
+    legacyFontComment = "use agencyfb11"
+    font = "Agency Regular"
+    fontStyle = "Regular"
+    fontSize = 11
+    bold = false
+    italic = false
+    textAlign = "center"
+    textAnchor = "center"
+    wrapText = false
+    legacyColor = ""
+    outline = "FALSE"
+    legacyAlignment = 3
+    legacyFontComment = "use agencyfb11"
+    colorArgb = "0xffd6d6d6"
+    borderColorArgb = "0x00000000"
+}
+
+GuiMetadata {
+    key = "game.mcl_mp_param_droplist4.metadata.for_light_brown_text"
+    pageKey = "game.mcl_mp_param_droplist4"
+    legacySection = "Animation0"
+    legacyComment = "for light brown text"
+    legacyContext = "~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ | elements using the animations below are labeled | according to which they should use."
+    role = "metadata"
+    layer = "metadata"
+    aliasOverride = "for light brown text"
+    sourceControlType = "Animation0"
+    rect = "269,87,0,0"
+    legacyLocalRect = "269,87,0,0"
+    legacyRectSource = "child_relative_xywh"
+    visible = false
+    normalColorArgb = "0xff846643"
+    pressedColorArgb = "0xffC66600"
+    highlightColorArgb = "0xffC66600"
+    disabledColorArgb = "0xff373737"
+}
+
+GuiMetadata {
+    key = "game.mcl_mp_param_droplist4.metadata.for_dark_brown_rectangles"
+    pageKey = "game.mcl_mp_param_droplist4"
+    legacySection = "Animation1"
+    legacyComment = "for dark brown rectangles"
+    role = "metadata"
+    layer = "metadata"
+    aliasOverride = "for dark brown rectangles"
+    sourceControlType = "Animation1"
+    rect = "269,87,0,0"
+    legacyLocalRect = "269,87,0,0"
+    legacyRectSource = "child_relative_xywh"
+    visible = false
+    normalColorArgb = "0xff43311C"
+    pressedColorArgb = "0xff43311C"
+    highlightColorArgb = "0xff43311C"
+    disabledColorArgb = "0xff373737"
+}
+
+GuiMetadata {
+    key = "game.mcl_mp_param_droplist4.metadata.for_orange_button_static"
+    pageKey = "game.mcl_mp_param_droplist4"
+    legacySection = "Animation2"
+    legacyComment = "for orange button static"
+    role = "metadata"
+    layer = "metadata"
+    aliasOverride = "for orange button static"
+    sourceControlType = "Animation2"
+    rect = "269,87,0,0"
+    legacyLocalRect = "269,87,0,0"
+    legacyRectSource = "child_relative_xywh"
+    visible = false
+    normalColorArgb = "0xffC66600"
+    pressedColorArgb = "0xffC66600"
+    highlightColorArgb = "0xffC66600"
+    disabledColorArgb = "0xff373737"
+}

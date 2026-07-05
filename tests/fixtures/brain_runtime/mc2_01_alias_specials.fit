@@ -1,0 +1,32 @@
+FITini
+
+; BRAINSPECIAL-ALIAS-1 fixture: data-driven alias registry + shorthand + block-alias Call.
+;   1. Aliases{} block registers guardnow -> OPORD.CoreGuard (registry rewrite).
+;   2. "unit.retreat" exercises case-insensitive catalog shorthand -> Unit.Retreat.
+;   3. TechSpecial.Call "LibProbe" resolves the library block via its alias= field.
+; Expected (MC2_BRAIN_ALIAS=1): 2 orders (GUARD first, then WITHDRAW); Call resolves.
+
+Aliases {
+    guardnow = "OPORD.CoreGuard"
+}
+
+TechSpecial {
+    key = "alias_scenario_main"
+    type = "MissionSpecial"
+    Body {
+        DO guardnow
+        DO unit.retreat
+        DO TechSpecial.Call "LibProbe"
+        STOP
+    }
+}
+
+TechSpecial {
+    key = "alias.lib.probe"
+    alias = "LibProbe"
+    type = "MissionSpecial"
+    Body {
+        DO Var.Set [alias_probe] 1
+        STOP
+    }
+}

@@ -41,6 +41,82 @@ uniform sampler2D u_colormap;
 uniform float u_atlasTopLeftX;            // = Terrain::mapTopLeft3d.x
 uniform float u_atlasTopLeftY;            // = Terrain::mapTopLeft3d.y
 uniform float u_atlasOneOverWorldUnits;   // = Terrain::oneOverWorldUnitsMapSide
+
+// TERRAIN-CONTROLMAP-SAMPLE-1: authored override control map (unit 12). RGBA =
+// rock/grass/dirt/concrete weights, same semantics as chunkColorWeights() output.
+// v1 = OVERRIDE-ONLY PASSTHROUGH: only takes effect when a sidecar was loaded at
+// mission load AND the gate is on (MC2_TERRAIN_CONTROLMAP). Gate OFF -> driver
+// uploads u_useControlMap=0 -> this branch never taken -> byte-identical to the
+// pre-slice classifier path (chunkColorWeights(base)).
+uniform sampler2D u_controlMap;
+uniform int       u_useControlMap;
+
+// TERRAIN-OVERLAY-V2-PARITY-1: authored cement/pad/runway overlay sidecar
+// (unit TERRAIN_OVERLAY_SIDECAR_TEXUNIT). RGB = pre-tinted cement/overlay
+// diffuse, A = coverage/edge alpha. Sampled by WORLD XY via u_overlayBounds
+// -- NOT the 128wu cementWordsF tile grid -- so it is off-grid-correct.
+// u_overlayBounds = (topLeftX, topLeftY, sizeX, sizeY): topLeftX = MIN world X
+// (west edge), topLeftY = MAX world Y (north/top edge) -- SAME convention as
+// the colormap atlas uniforms (u_atlasTopLeftX/Y just above: uv.y = (topLeftY
+// - worldY) * oneOverSize), so PNG row 0 (top of image) == north edge, no
+// vertical flip, matching control_map_tool.py's documented row-0 convention.
+// v1 = ADDITIVE: legacy cement-word composite + separate overlay pass stay
+// verbatim; when a sidecar is loaded AND the gate is on (MC2_TERRAIN_OVERLAY_V2),
+// this composites OVER the legacy cement result using its alpha. Gate OFF or
+// no sidecar -> u_useOverlaySidecar=0 -> this branch never taken ->
+// byte-identical to the legacy composite.
+uniform sampler2D u_overlaySidecar;
+uniform int       u_useOverlaySidecar;
+uniform vec4      u_overlayBounds;  // topLeftX, topLeftY(=maxY), sizeX, sizeY (world units)
+
+// TERRAIN-SHORELINE-V3: band PLACEMENT is now driven by ELEVATION
+// (v_worldPos.z - u_waterElevation), not by the world-XY mask. Root cause of
+// v1/v2 zigzag+float-uphill: the mask EDT was cooked against a coarse or
+// smoothed height SOURCE that never exactly matches the RENDERED (bilinear-
+// interpolated) waterline, so a horizontal-distance mask either staircases
+// (faithful coarse source) or floats up-slope (smoothed source). Elevation
+// hugs the drawn waterline BY CONSTRUCTION -- v_worldPos.z is the same
+// interpolated height the rasterizer produced, so "am I within wetHeight of
+// the water surface" is exact at every fragment regardless of LOD/slope.
+// u_useShorelineMask==0 (gate OFF) -> the whole shoreline block below is
+// skipped -> byte-identical to the pre-slice composite (the legacy screen
+// runShoreline() pass stays active in that case; the C++ driver suppresses
+// it only when this gate is genuinely active -- see gos_postprocess.cpp
+// runShoreline()). NOTE: despite the name, u_useShorelineMask now gates the
+// elevation bands themselves; the mask (u_shorelineMask/u_hasShorelineMask)
+// is an OPTIONAL modulator applied on top (wide-beach falloff / basin
+// exclusion) -- absent mask still produces full elevation bands.
+uniform int       u_useShorelineMask;      // 1 = elevation bands active (MC2_TERRAIN_SHORELINE on)
+uniform float     u_waterElevation;        // Terrain::waterElevation (world units, same as water fast path)
+uniform sampler2D u_shorelineMask;         // OPTIONAL modulator: R=signed dist, G=wet, B=foam, A=valid
+uniform int       u_hasShorelineMask;      // 1 = sidecar loaded -> apply modulator; 0 -> pure elevation bands
+uniform vec4      u_shorelineBounds;       // topLeftX, topLeftY(=maxY), sizeX, sizeY (world units) -- for the modulator sample
+uniform float     u_shaderTime;      // f(worldPos,time)-only clock for foam animation (NOT camera)
+// TERRAIN-SHORELINE-MASK-1 (visual-quality pass): user-tunable overall
+// strength knobs (MC2_TERRAIN_SHORELINE_STRENGTH / _FOAM env vars, C++ side
+// clamps to [0,2], default 1.0 = the authored look below). Kept separate from
+// the mask's own G/B weights so art can dial intensity without a re-cook.
+uniform float     u_shorelineStrength;     // wet/damp darken multiplier
+uniform float     u_shorelineFoamStrength; // foam rim multiplier
+// TERRAIN-SHORELINE-V3 (horizontal-run fix): band widths, HORIZONTAL world-unit
+// runs from the drawn waterline (main() converts vertical rise -> horizontal
+// run via the macro slope). wetHeight is the outer wet/damp lobe; foamHeight
+// is the narrower bright rim hugging the exact waterline. The c1593a1f
+// horizontal conversion kept the old VERTICAL defaults (3.0/1.2wu) as runs --
+// ~1m of band, invisible at RTS zoom. Horizontal-native defaults: wet 16wu,
+// foam 5wu (MC2_TERRAIN_SHORELINE_WET_RUN / _FOAM_RUN; legacy _HEIGHT aliased).
+uniform float     u_shorelineWetHeight;    // default 16.0 wu horizontal run
+uniform float     u_shorelineFoamHeight;   // default 5.0 wu horizontal run
+// TERRAIN-SHORELINE-V4-STYLE (zigzag fix): STATIC world-XY fbm jitter (wu,
+// horizontal) added to the band's distance-from-waterline before the lobes
+// are shaped. The drawn waterline on the coarse/displaced mesh is a polyline
+// of long straight segments (the "diamond" zigzag); an un-jittered band traces
+// it faithfully, so the foam rim reads as a hard zigzag edge. Signed noise
+// breaks that contour into organic wisp clusters that cross the line
+// irregularly. f(worldPos) ONLY -- no time (placement must not swim), no
+// camera (advisor ruling). 0 = exact V3 contour behavior.
+uniform float     u_shorelineEdgeJitter;   // default 4.0 wu (MC2_TERRAIN_SHORELINE_EDGE_JITTER)
+
 uniform vec4  terrainLightDir;            // Phase 10 Step 1b: sun dir (same uniform as legacy)
 uniform int   u_shadowTier;               // Slice B: per-chunk shadow tier (0=high,1=low,2=static,3=none)
 uniform int   u_diag;                     // Bisection bitmask (MC2_TERRAIN_LOD_CHUNK_DIAG):
@@ -52,6 +128,23 @@ uniform int   u_diag;                     // Bisection bitmask (MC2_TERRAIN_LOD_
                                           //   32 = no material detail normals (Step 5a)
                                           //   64 = viz raw matNormalArray rock sample
                                           //  128 = viz v_terrainType (grey + red=concrete)
+                                          // 1024 = viz control-map weights (matWeights.rgb,
+                                          //        after selection): TERRAIN-CONTROLMAP-SAMPLE-1
+                                          // 2048 = viz shoreline mask channels (R=dist,G=wet,
+                                          //        B=foam as RGB): TERRAIN-SHORELINE-MASK-1
+                                          // 4096 = viz POM UV-offset heat (blue=0 .. red=scale):
+                                          //        TERRAIN-CHUNK-POM-1
+                                          // 8192 = viz frag->camera dir in MC2 world (R=east,
+                                          //        G=north remapped *0.5+0.5, B=up): POM view-
+                                          //        vector swizzle oracle (ruling R1)
+                                          // Exact-value escapes (not bitmask): 40 shadow-tier
+                                          // tint (Slice B); 41 LOD-band tint; 42 geomorph
+                                          // morph-factor heat (TERRAIN-LOD-GEOMORPH-1)
+
+// TERRAIN-LOD-GEOMORPH-1: per-block geomorph factor (0 = own band, 1 = parent
+// band). Same program-level uniform the vert consumes; read here ONLY by the
+// u_diag==42 heat view.
+uniform float u_morphFactor;
 
 // LIGHTING-DEBUG-VIEWS-1A-CHUNK: unified lighting debug channel, SAME enum as
 // static_prop / gos_terrain.frag. Separate from u_diag (bitmask) to avoid
@@ -140,20 +233,90 @@ uniform vec4  detailNormalStrength; // .x = overall detail-normal strength
 uniform vec3  tintRock;             // default (0.36, 0.37, 0.40)
 uniform vec3  tintGrass;            // default (0.35, 0.42, 0.25)
 uniform vec3  tintDirt;             // default (0.48, 0.42, 0.33)
+// TERRAIN-MATERIAL-LIB-1: these two were frag-literal consts; promoted to
+// uniforms so terrain_materials.json can cover them. Driver always uploads
+// them (no gate); default values are the EXACT former literals, so behavior
+// is unchanged unless the JSON edits them.
+uniform vec3  tintConcrete;         // default (0.55, 0.53, 0.50)
+uniform vec3  tintSnow;             // default (0.75, 0.78, 0.84)
 uniform float tintStrengthScale;   // 0 = colormap passthrough, 1 = full tint
+// TERRAIN-CONTROLMAP-ALBEDO-1: lifts tintStrength toward 1.0 so authored
+// matWeights (control map) can fully repaint the albedo instead of being
+// capped at the classifier-era 0.18-0.50 (0.85 under snow) ceiling. 0.0 =
+// exact current expression (byte-identical); 1.0 = baseColor==materialTint
+// (colormap fully replaced by weight-composed per-layer tints).
+uniform float u_controlAlbedoStrength; // default 0.0 (gate OFF -> identity)
 uniform float snowBrightnessDampen; // <1 darkens detected snow (snowWeight-gated); default 0.78
+// TERRAIN-MATERIAL-LIB-1: per-layer roughness/AO scalars (rock,grass,dirt,concrete).
+// Neutral (1,1,1,1) defaults. Only consumed when u_useMaterialLib != 0 -- gate
+// OFF -> driver uploads u_useMaterialLib=0 -> branch never taken -> byte-identical.
+uniform vec4  matRoughness;
+uniform vec4  matAO;
+uniform int   u_useMaterialLib;
+// TERRAIN-MATERIAL-TEXTURES-1: per-layer PBR albedo array (BC7 sRGB KTX2s from
+// data/terrain_layers/<channel>_albedo.ktx2; layer order = MAT_LAYER_* 0..4 +
+// MAT_LAYER_MARBLE_CLIFF at 5). Gate MC2_TERRAIN_MATERIAL_TEXTURES default OFF
+// -> driver uploads u_useMatAlbedo=0 -> the legacy colormap-tint composition
+// below runs VERBATIM (byte-identical). ON: real material albedo replaces the
+// flat per-layer tints while the colormap stays the MACRO tint (2x multiply
+// keeps burn-in shading + per-mission colour); u_matAlbedoStrength (JSON key
+// matAlbedoStrength / env MC2_TERRAIN_MATERIAL_TEXTURES_STRENGTH, default 0.7)
+// mixes legacy-tinted vs textured composite. sRGB decode is the sampler's job
+// (array is GL_COMPRESSED_SRGB_ALPHA_BPTC_UNORM -- the BC7 sRGB audit finding).
+uniform sampler2DArray u_matAlbedoArray;
+uniform int   u_useMatAlbedo;       // 0 = legacy tint path verbatim
+uniform float u_matAlbedoStrength;  // 0..1 mix toward textured composite
 
 // Remaining legacy tunables (copied with legacy defaults; driver replicates the
 // env gates so default == legacy default). cellBombParams is a DEAD uniform in
 // legacy (no shader consumer) -> not wired.
 uniform float terrainLightingV1Strength;       // hemisphere ambient; 0 = off (env-gated default off)
 uniform float terrainLightingV2ShadowFillFloor;// shadow-aware fill floor; 1 = no influence
+uniform float u_terrainCliffShadowFloor;// CLIFF SHADOW FLOOR: lifts steep faces off near-black; 0 = byte-identical
 uniform float terrainNormalsFromHeightStrength;// macro-slope strength scalar (default 1.0)
 uniform int   useRockSlopeBias;                 // TERRAIN-SLOPE-BIAS-VISUAL-1: 0=off (byte-identical)
 uniform float rockSlopeBiasStrength;            // rock-weight bias on steep slopes (default 1.0)
 uniform int   useTriplanarCliff;                // TERRAIN-CLIFF-MATERIAL-TRIPLANAR-1: 0=off (byte-identical)
 uniform float cliffTriplanarStrength;           // triplanar rock normal/relief strength (default 1.0)
+// TERRAIN-CLIFF-HEIGHT-NORMAL-1 (gate MC2_TERRAIN_CLIFF_HEIGHT_NORMAL_STRENGTH,
+// EnvVarKind::Trace, default 2.0): the marble_cliff RGB normal (mat5 .rgb) is a
+// smooth marble microsurface — it barely tilts N, so the RICH cooked cliff
+// DISPLACEMENT (mat5 layer-5 ALPHA, high-contrast rock relief) never catches
+// light and the lit cliff reads FLAT. This derives a SHADING normal from the
+// HEIGHT GRADIENT of that displacement (triplanar, forward-difference), and
+// mixes triTilt strongly toward it so the real rock structure lights up. Only
+// consumed inside the useTriplanarCliff block; strength 0.0 -> pure rgb-normal
+// behaviour == TRIPLANAR-1 (the gate-OFF byte-identical path is useTriplanarCliff==0).
+uniform float cliffHeightNormalStrength;         // 0=rgb-normal only; default 2.0
+// TERRAIN-CLIFF-DEBUG (gate MC2_TERRAIN_CLIFF_DEBUG, EnvVarKind::Trace): bounded
+// debug-viz to confirm the triplanar/POM cliff material path executes+contributes
+// on a given cliff. 0 = OFF (default, byte-identical). Non-zero writes directly to
+// the final color and returns early:
+//   1 = cliffBlend grayscale (steep-face test firing? black=0 .. white=1)
+//   2 = branch-taken coverage (green = useTriplanarCliff block entered, else red)
+//   3 = POM UV-offset magnitude as color (parallax march producing non-zero offset?)
+//   4 = sampled mat5 (MAT_LAYER_MARBLE_CLIFF) normal-array ALPHA grayscale (cooked
+//       displacement actually bound/sampled? black/uniform = blank/default)
+uniform int   u_cliffDebug;
+// TERRAIN-CLIFF-POM-1: triplanar Parallax Occlusion Mapping on cliff faces
+// (gate MC2_TERRAIN_CLIFF_POM). .x=gate(0/1), .y=depth (world-unit height scale
+// relative to the CLIFF tiling ts=256), .z=max march steps. Reuses `cameraPos`
+// for the world-space view vector (same MC2 world swizzle as the legacy POM).
+// Gated on useTriplanarCliff too (shares the triplanar sample setup); .x=0 ->
+// no march -> the triplanar block behaves exactly as TRIPLANAR-1 (byte-identical).
+uniform vec4  u_cliffPom;                        // .x=gate, .y=depth(wu), .z=maxSteps, .w=unused
 uniform vec4  pomParams;                        // .x=scale(0=off), .y=minLayers, .z=maxLayers
+// TERRAIN-CHUNK-POM-1: real view-vector POM (gate MC2_TERRAIN_POM, default OFF).
+// u_pomView.x=1 -> the POM march in chunkDetailNormal uses the REAL per-fragment
+// tangent-space view vector (distance-faded over .y=NEAR .. .z=FAR world units)
+// instead of the legacy faux constant vec3(0.15,0.85,0.15). x=0 -> the legacy
+// faux path runs VERBATIM (supervisor ruling: gate-OFF byte-identity INCLUDES
+// the faux shear; pomParams is NOT zeroed when the gate is off).
+// cameraPos: SAME uniform name + frame as legacy gos_terrain.frag — the
+// Stuff/MLR eye (.x=left, .y=elevation, .z=forward). MC2 world = (-x, z, y);
+// second live witness: the water reflection frame fix in gameos_graphics.cpp.
+uniform vec4  cameraPos;
+uniform vec4  u_pomView;                        // .x=gate(0/1), .y=fadeNear(wu), .z=fadeFar(wu), .w=unused
 uniform int   g_terrainMaterialProfile;         // 0=legacy, 1=sand(mc2_24 dirt-gate widen)
 uniform float macroVariationStrength;           // TERRAIN-MACRO-VARIATION-1: 0=off (byte-identical)
 uniform int   u_edgeFeather;                    // TERRAIN-EDGE-FEATHER-1: 0=off (byte-identical)
@@ -251,6 +414,49 @@ vec2 chunkParallax(vec2 uv, float scale, vec4 w) {
     return mix(curUV, prevUV, after / (after - before));
 }
 
+// TERRAIN-CHUNK-POM-1: POM march with a REAL view vector (gate-ON path only).
+// Deliberately a SEPARATE function from chunkParallax() above: the gate-OFF
+// path must stay byte-identical INCLUDING the compiler's const-folding of the
+// faux vector, so the legacy body is left untouched. Two gate-ON improvements,
+// both matching the dead-frag oracle (gos_terrain.frag parallaxMapping):
+//   - numLayers orientation: MORE layers at grazing view — mix(max,min,up) —
+//     the legacy chunk mix is inverted (moot under the faux up=0.85 constant).
+//   - epsilon denominator guard (AMD yields inf/nan silently, NVIDIA may trap).
+// UB2-01: chunkSampleDisplacement uses textureLod(...,0) — valid in the
+// data-dependent loop below and in the non-uniform caller branch.
+vec2 chunkParallaxView(vec2 uv, float scale, vec4 w, vec3 viewDirTS) {
+    float numLayers = mix(pomParams.z, pomParams.y, max(viewDirTS.y, 0.0));
+    numLayers = clamp(numLayers, 4.0, 16.0);
+    float layerDepth = 1.0 / numLayers;
+    float curLayer = 0.0;
+    vec2 P = viewDirTS.xz / max(viewDirTS.y, 0.001) * scale;
+    vec2 dUV = P / numLayers;
+    vec2 curUV = uv;
+    float curD = chunkSampleDisplacement(curUV, w);
+    for (int i = 0; i < 16; ++i) {   // hard compile-constant cap (recon §3)
+        if (curLayer >= curD) break;
+        curUV -= dUV;
+        curD = chunkSampleDisplacement(curUV, w);
+        curLayer += layerDepth;
+    }
+    vec2 prevUV = curUV + dUV;
+    float after  = curD - curLayer;
+    float before = chunkSampleDisplacement(prevUV, w) - curLayer + layerDepth;
+    return mix(curUV, prevUV, after / max(abs(after - before), 1.0e-6));
+}
+
+// TERRAIN-CHUNK-POM-1 debug: |pomOff| of this fragment, written by
+// chunkDetailNormal, consumed by the u_diag&4096 heat viz in main().
+vec2 g_pomOffDbg = vec2(0.0);
+
+// TERRAIN-CLIFF-DEBUG: set inside the useTriplanarCliff cliff block when it is
+// actually entered/executed (branch-taken), and captures the cliff POM UV-offset
+// magnitude + the sampled mat5 (MARBLE_CLIFF) displacement alpha for the debug
+// early-return in main(). All default-inert (u_cliffDebug!=0 gated).
+float g_cliffBranchTaken = 0.0;   // 1.0 iff the cliff triplanar block ran
+float g_cliffPomOffMag   = 0.0;   // max per-plane |POM UV offset| this fragment
+float g_cliffMat5Alpha   = 0.0;   // triplanar-blended MARBLE_CLIFF disp alpha
+
 // Material weights + snow from the colormap colour (computed once, shared by the
 // detail normal AND the colour tint). w = rock/grass/dirt/concrete (sums to 1).
 void chunkWeights(vec3 colAvg, out vec4 w, out float snowWeight) {
@@ -264,7 +470,11 @@ void chunkWeights(vec3 colAvg, out vec4 w, out float snowWeight) {
 }
 
 // Accumulated tangent-space (Z-up) detail normal from precomputed weights.
-vec3 chunkDetailNormal(vec4 w, float snowWeight, vec2 worldXY) {
+// TERRAIN-CHUNK-POM-1: macroNz = un-perturbed macro slope Z from the caller
+// (ruling R2: POM fades out over the same band the cliff/triplanar blend fades
+// in, so near-vertical walls stay triplanar-owned). Only the gate-ON path
+// reads it; gate-OFF is byte-identical to the pre-slice 3-arg behavior.
+vec3 chunkDetailNormal(vec4 w, float snowWeight, vec2 worldXY, float macroNz) {
     vec2 uv = worldXY * (detailNormalTiling.x / MAT_WORLD_UNITS_PER_TILE);  // per-tile, GL_REPEAT
     // Screen-space derivative AA (legacy fwRock/fwGrass/...): fade a layer to 0
     // as its tiling goes sub-pixel. WITHOUT this, far/zoomed-out detail collapses
@@ -283,12 +493,49 @@ vec3 chunkDetailNormal(vec4 w, float snowWeight, vec2 worldXY) {
 
     // POM: parallax-offset the material UVs (legacy pomParams.x>0). fwidth-gated
     // (near only) -> bounded cost on a default-on renderer. Off when scale<=0.
+    // TERRAIN-CHUNK-POM-1: u_pomView.x>0.5 (MC2_TERRAIN_POM) switches the march
+    // to the REAL per-fragment tangent-space view vector with a world-distance
+    // fade + slope/cement exclusions. Gate OFF keeps the legacy chunkParallax()
+    // call VERBATIM (supervisor ruling: byte-identity includes the faux shear).
     if (pomParams.x > 0.0 && fwRock > 0.4) {
         const vec4 pomScaleMat = vec4(1.0, 1.0, 2.5, 1.0);
         float pomScale = pomParams.x * dot(pomScaleMat, w) * fwRock;
         vec2  pomUV    = uv * dot(matTiling, w);
-        vec2  pomOff   = (chunkParallax(pomUV, pomScale, w) - pomUV) * fwRock;
+        vec2  pomOff   = vec2(0.0);
+        if (u_pomView.x > 0.5) {
+            // cameraPos is the Stuff/MLR eye; MC2 world = (-x, z, y). Same
+            // conversion as the live water reflection fix (gameos_graphics.cpp)
+            // and the dead-frag oracle comment (gos_terrain.frag:319-325).
+            vec3  camW     = vec3(-cameraPos.x, cameraPos.z, cameraPos.y);
+            // World-distance fade (the real cost governor, recon §3): camera
+            // ground distance + altitude boost, matching the dead frag's LOD
+            // distance semantics. Beyond FAR the march is skipped entirely.
+            float altBoost = max(camW.z - v_worldPos.z, 0.0) * 0.7;
+            float camDist  = distance(v_worldPos.xy, camW.xy) + altBoost;
+            float distFade = 1.0 - smoothstep(u_pomView.y, u_pomView.z, camDist);
+            // R2: cliffs stay triplanar-owned — fade POM out over the SAME
+            // slope band the cliff/triplanar blend fades in (|Nz| 0.85->0.55).
+            float slopeFade = 1.0 - smoothstep(0.85, 0.55, abs(macroNz));
+            // Cement/concrete excluded (runway slabs + decals must not tear):
+            // w is post-cement-mix, so pure cement has w.w=1 -> strength 0.
+            float pomStrength = distFade * slopeFade * (1.0 - w.w);
+            // LOD belt-and-suspenders: near bands only (LOD0/1), matching the
+            // detail-normal LOD fade tiers.
+            if (pomStrength > 0.001 && u_lodStep <= 2) {
+                vec3 Vw = normalize(camW - v_worldPos);   // fragment -> eye, MC2 world
+                // Detail UVs are top-down planar with NO y-flip (uv = worldXY*k,
+                // unlike the atlas/cement UVs), so tangent(u)=+east,
+                // bitangent(v)=+north, normal=+up. chunkParallaxView expects
+                // .xz = UV plane (x->u, z->v) and .y = up:
+                vec3 viewDirTS = vec3(Vw.x, Vw.z, Vw.y);
+                pomOff = (chunkParallaxView(pomUV, pomScale, w, viewDirTS) - pomUV)
+                       * fwRock * pomStrength;
+            }
+        } else {
+            pomOff = (chunkParallax(pomUV, pomScale, w) - pomUV) * fwRock;
+        }
         uvRock += pomOff; uvGrass += pomOff; uvDirt += pomOff; uvConcrete += pomOff;
+        g_pomOffDbg = pomOff;
     }
 
     // UB2-01: screen-space gradients of the FINAL (post-POM) per-layer UVs,
@@ -343,6 +590,43 @@ vec3 chunkDetailNormal(vec4 w, float snowWeight, vec2 worldXY) {
     return dN;
 }
 
+// TERRAIN-CLIFF-POM-1: Parallax Occlusion march in ONE world-axis triplanar
+// plane. `uv` is the plane's 2D coordinate (already /ts). `viewPlane` is the
+// view direction (fragment->eye, MC2 world) PROJECTED onto that plane's 2D
+// basis. `depth` scales the max UV displacement (world-unit height / ts). The
+// mat5 alpha carries the REAL marble_cliff displacement (1=peak, 0=deep). We
+// march from the surface INTO the rock: at each step step down in height and
+// forward along the (inverted) view offset until the ray falls below the
+// heightfield, then interpolate the crossing — standard POM. textureLod only
+// (loop => no implicit derivatives; UB2 discipline). No gl_FragDepth write.
+vec2 cliffParallaxPlane(vec2 uv, vec2 viewPlane, float depth, float steps) {
+    if (depth <= 0.0) return uv;
+    // more layers at grazing angles (small out-of-plane component -> long march).
+    float nSteps = clamp(steps, 8.0, 32.0);
+    float layerDepth = 1.0 / nSteps;
+    // total UV sweep for a full 0..1 height traversal. Negative view offset so the
+    // parallax shifts toward the eye (occlusion by nearer/higher rock).
+    vec2 P = -viewPlane * depth;
+    vec2 deltaUV = P * layerDepth;
+    float curDepth = 0.0;
+    vec2  curUV    = uv;
+    float curH = 1.0 - textureLod(matNormalArray, vec3(curUV, float(MAT_LAYER_MARBLE_CLIFF)), 0.0).a;
+    // bounded loop (compile-constant cap 32); break once the ray dips below rock.
+    for (int i = 0; i < 32; ++i) {
+        if (float(i) >= nSteps || curDepth >= curH) break;
+        curUV   += deltaUV;
+        curDepth += layerDepth;
+        curH = 1.0 - textureLod(matNormalArray, vec3(curUV, float(MAT_LAYER_MARBLE_CLIFF)), 0.0).a;
+    }
+    // interpolate between the last two samples where the ray crossed the surface.
+    vec2  prevUV = curUV - deltaUV;
+    float afterH = curH - curDepth;
+    float beforeH = (1.0 - textureLod(matNormalArray, vec3(prevUV, float(MAT_LAYER_MARBLE_CLIFF)), 0.0).a)
+                    - (curDepth - layerDepth);
+    float t = afterH / (afterH - beforeH + 1e-5);
+    return mix(curUV, prevUV, clamp(t, 0.0, 1.0));
+}
+
 void main() {
     // Depth: NO gl_FragDepth write. The -0.004 net terrain bias is applied
     // PRE-DIVIDE in the vert (clip.z += 2*FUDGE*clip.w). Writing gl_FragDepth here
@@ -365,6 +649,35 @@ void main() {
         else if (u_shadowTier == 2) tc = vec3(0.0, 0.0, 1.0);   // static-only (far)      blue
         else                        tc = vec3(0.5, 0.5, 0.5);   // none/culled            grey
         fragColor = vec4(tc, 1.0);
+        GBuffer1  = vec4(0.5, 0.5, 1.0, 1.0);
+        return;
+    }
+
+    // TERRAIN-LOD-GEOMORPH-1 debug: LOD-band tint (MC2_TERRAIN_LOD_CHUNK_DIAG=41).
+    // Flat color per band from u_lodStep (recon sec 6 palette, LOD0..5 =
+    // green/cyan/blue/yellow/orange/red). Mirrors the ==40 shadow-tier precedent.
+    if (u_diag == 41) {
+        vec3 bc;
+        if      (u_lodStep == 1)  bc = vec3(0.0, 1.0, 0.0);   // LOD0 green
+        else if (u_lodStep == 2)  bc = vec3(0.0, 1.0, 1.0);   // LOD1 cyan
+        else if (u_lodStep == 4)  bc = vec3(0.0, 0.3, 1.0);   // LOD2 blue
+        else if (u_lodStep == 5)  bc = vec3(1.0, 1.0, 0.0);   // LOD3 yellow
+        else if (u_lodStep == 10) bc = vec3(1.0, 0.55, 0.0);  // LOD4 orange
+        else                      bc = vec3(1.0, 0.0, 0.0);   // LOD5 red
+        fragColor = vec4(bc, 1.0);
+        GBuffer1  = vec4(0.5, 0.5, 1.0, 1.0);
+        return;
+    }
+
+    // TERRAIN-LOD-GEOMORPH-1 debug: morph-factor heat (MC2_TERRAIN_LOD_CHUNK_DIAG=42).
+    // Black (m=0, own band) -> red -> yellow -> white (m=1, riding the parent
+    // surface). Shows exactly where and how fast transitions slide.
+    if (u_diag == 42) {
+        float m = clamp(u_morphFactor, 0.0, 1.0);
+        vec3 heat = vec3(clamp(m * 3.0, 0.0, 1.0),
+                         clamp(m * 3.0 - 1.0, 0.0, 1.0),
+                         clamp(m * 3.0 - 2.0, 0.0, 1.0));
+        fragColor = vec4(heat, 1.0);
         GBuffer1  = vec4(0.5, 0.5, 1.0, 1.0);
         return;
     }
@@ -548,6 +861,32 @@ void main() {
         }
     }
 
+    // TERRAIN-OVERLAY-V2-PARITY-1: authored cement/pad/runway overlay sidecar
+    // composite. ADDITIVE v1 -- runs AFTER the legacy cement-word + diag-connect
+    // composite above (which stays verbatim), so gate-OFF or no-sidecar is
+    // byte-identical by construction (uniform else-branch: this whole block is
+    // skipped). World-XY sample (not the 128wu tile grid) is the off-grid fix;
+    // rides the terrain frag's displaced surface Z automatically (no z-fight
+    // vs the old flat-triangle overlay pass on sloped/displaced terrain).
+    // TERRAIN-OVERLAY-V2-SUPPRESS-1: coverage of the authored overlay sidecar at
+    // this pixel (0 = none, 1 = fully authored). Used below to stop the generic
+    // concrete material tint from being re-applied OVER the authored overlay
+    // (the "double cement": overlay paints authored cement/road, then cementHit
+    // forces matWeights=concrete -> materialTint=tintConcrete muddies it again).
+    // Stays 0 when OVERLAY_V2 is off -> byte-identical.
+    float overlayCoverage = 0.0;
+    if (u_useOverlaySidecar != 0) {
+        vec2 ovUV;
+        ovUV.x = (v_worldPos.x - u_overlayBounds.x) / max(u_overlayBounds.z, 1e-5);
+        ovUV.y = (u_overlayBounds.y - v_worldPos.y) / max(u_overlayBounds.w, 1e-5);
+        if (ovUV.x >= 0.0 && ovUV.x <= 1.0 && ovUV.y >= 0.0 && ovUV.y <= 1.0) {
+            vec4 ov = texture(u_overlaySidecar, ovUV);
+            base = mix(base, ov.rgb, ov.a);
+            overlayCoverage = ov.a;
+            if (ov.a > 0.5) cementHit = true;
+        }
+    }
+
     // DIAG bit 64: visualize the raw matNormalArray ROCK-layer sample as color
     // (no lighting). Bluish normal-map texture with visible detail => sampling
     // works (then the fault is the combine/strength). Flat/black/gray uniform =>
@@ -587,7 +926,42 @@ void main() {
 
     // Material weights + snow (shared by detail normal AND colour tint).
     vec4  matWeights; float snowWeight;
-    chunkWeights(base, matWeights, snowWeight);
+    if (u_useControlMap != 0) {
+        // TERRAIN-CONTROLMAP-SAMPLE-1: authored RGBA override replaces the
+        // colormap-colour classifier (chunkColorWeights). Snow stays HSV-
+        // derived from the colormap (control map has no snow channel in v1) —
+        // reuse the SAME HSV snow term chunkWeights() computes, applied to the
+        // overridden weights.
+        matWeights = texture(u_controlMap, uv);
+        vec3 hsv = rgb2hsvChunk(base);
+        float snowRaw = smoothstep(0.15, 0.03, hsv.y) * smoothstep(0.42, 0.62, hsv.z);
+        snowWeight = smoothstep(0.25, 0.55, snowRaw);
+        matWeights *= (1.0 - snowWeight);
+        float tot = matWeights.x + matWeights.y + matWeights.z + matWeights.w;
+        if (tot > 0.01) {
+            matWeights /= tot;
+        } else {
+            // TERRAIN-MATTEX-BLEND-1: an EMPTY / unbound control map must NOT
+            // collapse the whole surface to all-rock (1,0,0,0). That was the
+            // "100% rock, no colormap" bug when u_useControlMap is armed but no
+            // valid control-map sidecar is loaded (e.g. after the leaked test
+            // maps were quarantined). Fall back to the colormap-colour
+            // classifier — the same path used when the control map is off — so
+            // terrain reads correctly instead of turning to rock.
+            chunkWeights(base, matWeights, snowWeight);
+        }
+    } else {
+        chunkWeights(base, matWeights, snowWeight);
+    }
+
+    // DIAG bit 1024: visualize control-map/classified weights (rock=R,
+    // grass=G, dirt=B) AFTER selection so authored vs classified are directly
+    // comparable by toggling u_useControlMap. TERRAIN-CONTROLMAP-SAMPLE-1.
+    if ((u_diag & 1024) != 0) {
+        fragColor = vec4(matWeights.rgb, 1.0);
+        if ((u_diag & 1) == 0) GBuffer1 = vec4(0.5, 0.5, 1.0, 1.0);
+        return;
+    }
 
     // TERRAIN-SLOPE-BIAS-VISUAL-1 (B4a): optionally push material weights toward
     // rock on steep MACRO slopes so the rock detail normal + tint (not just the
@@ -637,7 +1011,7 @@ void main() {
         if ((u_diag & 32) != 0) {
             N = baseN;  // detail disabled (A/B)
         } else {
-            vec3 dN   = chunkDetailNormal(matWeights, snowWeight, v_worldPos.xy)
+            vec3 dN   = chunkDetailNormal(matWeights, snowWeight, v_worldPos.xy, macroNz)
                       * (1.0 - pureConcrete);  // suppress regular detail on cement
             // Cement normal: apply painted-concrete normal (MAT_LAYER_PAINTED_CONC) in the
             // cement-masked region so runways get real surface relief instead of flat shading.
@@ -673,20 +1047,113 @@ void main() {
         }
     }
 
+    // TERRAIN-CHUNK-POM-1 debug viz (early-return like the other diag blocks).
+    // 4096 = POM UV-offset heat: |pomOff| relative to pomParams.x (blue=0 ..
+    //        red=full scale). Skirts / non-POM fragments read solid blue.
+    if ((u_diag & 4096) != 0) {
+        float h = clamp(length(g_pomOffDbg) / max(pomParams.x, 1e-5), 0.0, 1.0);
+        fragColor = vec4(h, h * 0.25, 1.0 - h, 1.0);
+        if ((u_diag & 1) == 0) GBuffer1 = vec4(0.5, 0.5, 1.0, 1.0);
+        return;
+    }
+    // 8192 = view-vector swizzle oracle (ruling R1): RGB = MC2-world fragment->
+    //        camera direction, R=east*0.5+0.5, G=north*0.5+0.5, B=up. Decoded
+    //        pixels must point back toward the camera azimuth (screen gradient
+    //        tracks camera orbit) — numeric check on captures, not eyeballs.
+    if ((u_diag & 8192) != 0) {
+        vec3 camW = vec3(-cameraPos.x, cameraPos.z, cameraPos.y);
+        vec3 Vw = normalize(camW - v_worldPos);
+        fragColor = vec4(Vw.x * 0.5 + 0.5, Vw.y * 0.5 + 0.5, clamp(Vw.z, 0.0, 1.0), 1.0);
+        if ((u_diag & 1) == 0) GBuffer1 = vec4(0.5, 0.5, 1.0, 1.0);
+        return;
+    }
+
     // --- Colour mapping: mix the colormap toward per-material tints (legacy
     // TERRAIN-TINT-UI-1). Concrete tile colour blend needs per-vertex TerrainType
     // (deferred) so concreteColorBlend=0 here. ---
     const vec3  kLumaWeights = vec3(0.299, 0.587, 0.114);
-    const vec3  tintConcrete = vec3(0.55, 0.53, 0.50);
-    const vec3  tintSnow     = vec3(0.75, 0.78, 0.84);
+    // TERRAIN-MATERIAL-LIB-1: tintConcrete/tintSnow promoted to uniforms above
+    // (were const vec3 literals here); default upload == these exact values.
     vec3  materialTint = tintRock * matWeights.x + tintGrass * matWeights.y
                        + tintDirt * matWeights.z + tintConcrete * matWeights.w
                        + tintSnow * snowWeight;
     float colLum      = dot(base, kLumaWeights);
     float tintBase    = mix(0.18, 0.50, smoothstep(0.1, 0.6, colLum));
-    float tintStrength= mix(tintBase, 0.85, snowWeight) * tintStrengthScale;
+    // TERRAIN-CONTROLMAP-ALBEDO-1: u_controlAlbedoStrength==0.0 -> mix(x,1.0,0.0)
+    // == x -> algebraically identical to the pre-slice expression. >0 lifts the
+    // classifier-era cap toward full weight-composed albedo (materialTint).
+    float tintStrength= mix(mix(tintBase, 0.85, snowWeight) * tintStrengthScale,
+                             1.0, u_controlAlbedoStrength);
+    // TERRAIN-OVERLAY-V2-SUPPRESS-1: where the authored OVERLAY_V2 sidecar covers
+    // this pixel, keep its authored colour instead of muddying it toward the
+    // generic material tint (tintConcrete under the forced-concrete weights) —
+    // this is what caused cement/roads to look "doubled". Full coverage (ov.a=1)
+    // -> tintStrength 0 -> baseColor == authored overlay; edges feather. No-op
+    // when OVERLAY_V2 is off (overlayCoverage stays 0).
+    tintStrength *= (1.0 - overlayCoverage);
     vec3  baseColor   = mix(base, materialTint, tintStrength);
     if ((u_diag & 512) != 0) baseColor = base;   // DIAG 512: bypass material tint (A/B)
+
+    // TERRAIN-MATERIAL-TEXTURES-1: real per-layer albedo (gate ON only; OFF ->
+    // this block is skipped and everything below is the pre-slice path verbatim).
+    // Same per-layer world-space UV scheme as chunkDetailNormal (matTiling from
+    // the material-lib JSON; rock /3 matches the normal path) so albedo features
+    // line up with the detail normals. v1 samples the UNPERTURBED UVs (no POM
+    // offset -- that lives inside chunkDetailNormal; acceptable v1 drift, POM is
+    // default-OFF). Uniform control flow: u_useMatAlbedo is a uniform, so the
+    // implicit-LOD texture() calls here are well-defined (UB2 discipline).
+    if (u_useMatAlbedo != 0) {
+        // TERRAIN-MATERIAL-TEXTURES-1-FIX (fix C, cement exclusion): where a
+        // cement WORD is active (apron/runway/pad) the colormap `base` is already
+        // the authored cement tone and pureConcrete forced matWeights=(0,0,0,1).
+        // Compositing the CONCRETE albedo (Road004/marking source) here and then
+        // only PARTIALLY restoring it via concreteColorBlend below leaves a second,
+        // misaligned cement layer fighting the cement atlas on the apron. Hard-
+        // exclude the textured albedo on cement: cementAlbExcl==1 on a full cement
+        // hit -> the block is a no-op and `base` (the cement atlas colour) wins
+        // cleanly. cementTransAlpha feathers the transition-tile margin the same
+        // way concreteColorBlend already feathers it, so no seam is introduced.
+        float cementAlbExcl = cementHit ? 1.0 : max(concreteColorBlend, cementTransAlpha);
+        vec2 uvM = v_worldPos.xy * (detailNormalTiling.x / MAT_WORLD_UNITS_PER_TILE);
+        vec3 texAlb =
+              matWeights.x * texture(u_matAlbedoArray, vec3(uvM * (matTiling.x / 3.0), float(MAT_LAYER_ROCK))).rgb
+            + matWeights.y * texture(u_matAlbedoArray, vec3(uvM * matTiling.y, float(MAT_LAYER_GRASS))).rgb
+            + matWeights.z * texture(u_matAlbedoArray, vec3(uvM * matTiling.z, float(MAT_LAYER_DIRT))).rgb
+            + matWeights.w * texture(u_matAlbedoArray, vec3(uvM * matTiling.w, float(MAT_LAYER_CONCRETE))).rgb
+            + snowWeight   * texture(u_matAlbedoArray, vec3(uvM * matTilingSnow, float(MAT_LAYER_SNOW))).rgb;
+        // Colormap remains the MACRO tint: 2x multiply keeps burn-in lighting and
+        // per-mission colour zones on top of the tiled material albedo (weights
+        // matWeights+snowWeight sum to 1 after the normalizations above).
+        vec3 texComposed = texAlb * base * 2.0;
+        // Scale the textured contribution down to zero over cement so the cement
+        // atlas (restored into `base`, mixed in at line ~concreteColorBlend) is
+        // the ONE surface shown on the apron.
+        float albMix = clamp(u_matAlbedoStrength, 0.0, 1.0) * (1.0 - cementAlbExcl);
+        baseColor = mix(baseColor, texComposed, albMix);
+    }
+
+    // TERRAIN-MATERIAL-TEXTURES-1-FIX (fix A, INDEX ORACLE debug view): DIAG bit
+    // 16384 renders each albedo texture-array LAYER as a distinct flat colour keyed
+    // by ARRAY INDEX (the value the frag passes to texture()), weighted by the same
+    // matWeights/snowWeight used for the real composite. This makes channel->layer
+    // wiring provable by eye/capture WITHOUT trusting the texture content:
+    //   ROCK(0)=red  GRASS(1)=green  DIRT(2)=blue  CONCRETE(3)=yellow  SNOW(4)=white
+    // (this returns before the cliff block, so MARBLE_CLIFF(5) is proved separately
+    // by the loader's per-layer "[TERRAIN_MAT_TEX] layer 5 (cliff)" log line, not here.)
+    // If open dirt ground shows BLUE here, dirt->layer 2 is correct; if it shows
+    // yellow, the weight->layer mapping is wrong (the reported symptom's oracle).
+    if ((u_diag & 16384) != 0) {
+        vec3 idxCol =
+              matWeights.x * vec3(1.0, 0.0, 0.0)   // MAT_LAYER_ROCK     = 0
+            + matWeights.y * vec3(0.0, 1.0, 0.0)   // MAT_LAYER_GRASS    = 1
+            + matWeights.z * vec3(0.0, 0.0, 1.0)   // MAT_LAYER_DIRT     = 2
+            + matWeights.w * vec3(1.0, 1.0, 0.0)   // MAT_LAYER_CONCRETE = 3
+            + snowWeight   * vec3(1.0, 1.0, 1.0);  // MAT_LAYER_SNOW     = 4
+        fragColor = vec4(idxCol, 1.0);
+        if ((u_diag & 1) == 0) GBuffer1 = vec4(0.5, 0.5, 1.0, 1.0);
+        return;
+    }
+
     // Cement: restore the authored colormap tone (runway/apron) instead of the
     // generic concrete tint.
     baseColor = mix(baseColor, base, concreteColorBlend);
@@ -697,9 +1164,32 @@ void main() {
     // desaturated the whole map to grey (matches legacy using WorldNorm.z).
     {
         float cliffBlend = smoothstep(0.85, 0.55, abs(macroNz));
+        // TERRAIN-MATERIAL-TEXTURES-1: LOD for the cliff-albedo triplanar samples
+        // below, computed HERE in uniform flow (fwidth inside the non-uniform
+        // cliffBlend branch would be UB -- UB2 discipline). 2048 texels per
+        // CLIFF_ALB_TS world units; gate OFF leaves it unused (no output change).
+        const float CLIFF_ALB_TS = 256.0;   // world units per cliff-albedo repeat
+        float cliffAlbLod = log2(max(length(fwidth(v_worldPos.xy)) * (2048.0 / CLIFF_ALB_TS), 1.0));
         if (cliffBlend > 0.01) {
             float luma = dot(baseColor, vec3(0.299, 0.587, 0.114));
             vec3  cliffColor = mix(vec3(luma), tintRock, 0.6) * 0.8;
+            // TERRAIN-MATERIAL-TEXTURES-1: the "cliffs look like rock" payoff --
+            // gate ON swaps the flat desaturate-toward-tintRock cliff colour for
+            // the real CLIFF material albedo (marble_cliff, layer 5) projected
+            // from world axes (triplanar, same plane weighting as the cliff
+            // normal block below) so steep faces stop showing stretched top-down
+            // colormap. textureLod with the hoisted LOD is branch-safe. Gate OFF
+            // -> cliffColor untouched -> byte-identical.
+            if (u_useMatAlbedo != 0) {
+                vec3 wpc = v_worldPos;
+                vec3 mNc = smoothTerrainNormal(v_worldPos.xy);
+                vec3 wnc = abs(mNc); wnc /= (wnc.x + wnc.y + wnc.z + 1e-5);
+                vec3 cliffAlb =
+                      textureLod(u_matAlbedoArray, vec3(wpc.yz / CLIFF_ALB_TS, float(MAT_LAYER_MARBLE_CLIFF)), cliffAlbLod).rgb * wnc.x
+                    + textureLod(u_matAlbedoArray, vec3(wpc.xz / CLIFF_ALB_TS, float(MAT_LAYER_MARBLE_CLIFF)), cliffAlbLod).rgb * wnc.y
+                    + textureLod(u_matAlbedoArray, vec3(wpc.xy / CLIFF_ALB_TS, float(MAT_LAYER_MARBLE_CLIFF)), cliffAlbLod).rgb * wnc.z;
+                cliffColor = mix(cliffColor, cliffAlb * base * 2.0, clamp(u_matAlbedoStrength, 0.0, 1.0));
+            }
             baseColor = mix(baseColor, cliffColor, cliffBlend * 0.7 * (1.0 - pureConcrete));
         }
     }
@@ -712,28 +1202,169 @@ void main() {
     if (useTriplanarCliff != 0) {
         float cb = smoothstep(0.85, 0.55, abs(macroNz));
         if (cb > 0.01) {
+            g_cliffBranchTaken = 1.0;   // TERRAIN-CLIFF-DEBUG: block entered
             const float ts = 256.0;                 // world units per rock repeat
             vec3 wp = v_worldPos;
             // recompute the macro normal here (baseN is scoped to the normal block).
             vec3 mN = smoothTerrainNormal(v_worldPos.xy);
             vec3 wn = abs(mN); wn /= (wn.x + wn.y + wn.z + 1e-5);
-            // tangent-space rock normals sampled in each world plane.
-            // textureLod(...,0): explicit LOD is valid inside this non-uniform branch
-            // (implicit derivatives would be UB / vendor-divergent — UB2 discipline).
-            vec3 nX = textureLod(matNormalArray, vec3(wp.yz / ts, float(MAT_LAYER_MARBLE_CLIFF)), 0.0).rgb * 2.0 - 1.0;
-            vec3 nY = textureLod(matNormalArray, vec3(wp.xz / ts, float(MAT_LAYER_MARBLE_CLIFF)), 0.0).rgb * 2.0 - 1.0;
-            vec3 nZ = textureLod(matNormalArray, vec3(wp.xy / ts, float(MAT_LAYER_MARBLE_CLIFF)), 0.0).rgb * 2.0 - 1.0;
+
+            // Base per-plane UVs (before any parallax).
+            vec2 uvX = wp.yz / ts;   // YZ plane
+            vec2 uvY = wp.xz / ts;   // XZ plane
+            vec2 uvZ = wp.xy / ts;   // XY plane
+
+            // TERRAIN-CLIFF-POM-1: real triplanar Parallax Occlusion Mapping.
+            // World-space view vector (fragment -> eye). cameraPos is the Stuff/MLR
+            // eye; MC2 world = (-x, z, y) -- SAME swizzle the legacy chunk POM and
+            // water-reflection fix use (this file, ~L473/L991). Project Vw onto each
+            // plane's 2D basis and march that plane's heightfield for a UV offset.
+            if (u_cliffPom.x > 0.5) {
+                vec3  camW = vec3(-cameraPos.x, cameraPos.z, cameraPos.y);
+                vec3  Vw   = normalize(camW - wp);          // frag -> eye, world
+                // depth is a world-unit height expressed relative to the CLIFF
+                // tiling (ts); the plane view offset is divided by the out-of-plane
+                // view component so grazing angles sweep farther (true parallax).
+                float depth = u_cliffPom.y / ts;
+                float steps = u_cliffPom.z;
+                // per-plane: 2D view = the two in-plane components; divide by the
+                // out-of-plane component magnitude (clamped) for angle scaling.
+                vec2 vpX = Vw.yz / max(abs(Vw.x), 0.30);
+                vec2 vpY = Vw.xz / max(abs(Vw.y), 0.30);
+                vec2 vpZ = Vw.xy / max(abs(Vw.z), 0.30);
+                // weight the march by this plane's contribution so we don't pay for
+                // near-zero planes (also keeps offsets small where the plane barely
+                // shows). Blend offset toward base UV by wn.
+                vec2 uvX0 = uvX, uvY0 = uvY, uvZ0 = uvZ;
+                uvX = mix(uvX, cliffParallaxPlane(uvX, vpX, depth, steps), clamp(wn.x * 1.5, 0.0, 1.0));
+                uvY = mix(uvY, cliffParallaxPlane(uvY, vpY, depth, steps), clamp(wn.y * 1.5, 0.0, 1.0));
+                uvZ = mix(uvZ, cliffParallaxPlane(uvZ, vpZ, depth, steps), clamp(wn.z * 1.5, 0.0, 1.0));
+                // TERRAIN-CLIFF-DEBUG: max per-plane |POM UV offset| (post-blend).
+                g_cliffPomOffMag = max(max(length(uvX - uvX0), length(uvY - uvY0)),
+                                       length(uvZ - uvZ0));
+            }
+
+            // tangent-space rock normals sampled in each world plane (at the
+            // parallax-offset UVs when POM is on). textureLod(...,0): explicit LOD
+            // is valid inside this non-uniform branch (implicit derivatives would be
+            // UB / vendor-divergent — UB2 discipline).
+            vec3 nX = textureLod(matNormalArray, vec3(uvX, float(MAT_LAYER_MARBLE_CLIFF)), 0.0).rgb * 2.0 - 1.0;
+            vec3 nY = textureLod(matNormalArray, vec3(uvY, float(MAT_LAYER_MARBLE_CLIFF)), 0.0).rgb * 2.0 - 1.0;
+            vec3 nZ = textureLod(matNormalArray, vec3(uvZ, float(MAT_LAYER_MARBLE_CLIFF)), 0.0).rgb * 2.0 - 1.0;
             // reorient each plane's tangent normal into world space + blend by axis weight.
             vec3 triTilt = vec3(0.0, nX.x, nX.y) * wn.x
                          + vec3(nY.x, 0.0, nY.y) * wn.y
                          + vec3(nZ.x, nZ.y, 0.0) * wn.z;
+
+            // TERRAIN-CLIFF-HEIGHT-NORMAL-1: derive a SHADING normal from the HEIGHT
+            // GRADIENT of the cooked cliff displacement (mat5 layer-5 ALPHA) instead
+            // of relying on the smooth marble RGB normal above. The alpha channel is
+            // rich, high-contrast rock relief; its gradient is what should catch light.
+            // Per world-axis plane: sample the layer-5 alpha at the (POM-offset when
+            // POM is on) UV plus small +du/+dv steps and forward-difference to a
+            // tangent-space normal n=normalize(vec3(-dHdu*s,-dHdv*s,1)); reorient into
+            // world space with the SAME per-plane axis remap used for triTilt, weight
+            // by wn. textureLod(...,0): explicit LOD, valid in this non-uniform branch
+            // (UB2 — no implicit derivatives). Skipped when strength<=0 (== TRIPLANAR-1).
+            if (cliffHeightNormalStrength > 0.0) {
+                // step ~one texel of the layer-5 alpha (mat5 disp is 4k over ts wu);
+                // constant in world/UV so the gradient is scale-consistent per plane.
+                const float hEps = 1.0 / 2048.0;    // UV-space finite-difference step
+                // per-plane heights: center + du + dv.
+                float hX0 = textureLod(matNormalArray, vec3(uvX,                    float(MAT_LAYER_MARBLE_CLIFF)), 0.0).a;
+                float hXu = textureLod(matNormalArray, vec3(uvX + vec2(hEps, 0.0),  float(MAT_LAYER_MARBLE_CLIFF)), 0.0).a;
+                float hXv = textureLod(matNormalArray, vec3(uvX + vec2(0.0, hEps),  float(MAT_LAYER_MARBLE_CLIFF)), 0.0).a;
+                float hY0 = textureLod(matNormalArray, vec3(uvY,                    float(MAT_LAYER_MARBLE_CLIFF)), 0.0).a;
+                float hYu = textureLod(matNormalArray, vec3(uvY + vec2(hEps, 0.0),  float(MAT_LAYER_MARBLE_CLIFF)), 0.0).a;
+                float hYv = textureLod(matNormalArray, vec3(uvY + vec2(0.0, hEps),  float(MAT_LAYER_MARBLE_CLIFF)), 0.0).a;
+                float hZ0 = textureLod(matNormalArray, vec3(uvZ,                    float(MAT_LAYER_MARBLE_CLIFF)), 0.0).a;
+                float hZu = textureLod(matNormalArray, vec3(uvZ + vec2(hEps, 0.0),  float(MAT_LAYER_MARBLE_CLIFF)), 0.0).a;
+                float hZv = textureLod(matNormalArray, vec3(uvZ + vec2(0.0, hEps),  float(MAT_LAYER_MARBLE_CLIFF)), 0.0).a;
+                // forward-difference gradients -> tangent-space normals (z=1 base).
+                // scale by strength/hEps so `strength` reads as a relief multiplier
+                // independent of the finite-difference step.
+                float g = cliffHeightNormalStrength / hEps;
+                vec3 hnX = normalize(vec3(-(hXu - hX0) * g, -(hXv - hX0) * g, 1.0));
+                vec3 hnY = normalize(vec3(-(hYu - hY0) * g, -(hYv - hY0) * g, 1.0));
+                vec3 hnZ = normalize(vec3(-(hZu - hZ0) * g, -(hZv - hZ0) * g, 1.0));
+                // reorient each plane's height normal to world space with the SAME
+                // remap as triTilt and blend by axis weight (this is the tilt, so use
+                // .xy the way triTilt uses the rgb-normal .xy).
+                vec3 htTilt = vec3(0.0, hnX.x, hnX.y) * wn.x
+                            + vec3(hnY.x, 0.0, hnY.y) * wn.y
+                            + vec3(hnZ.x, hnZ.y, 0.0) * wn.z;
+                // Default to a STRONG mix toward the height-derived tilt (it carries
+                // the real cliff structure); the smooth rgb tilt is retained only as
+                // a fine microsurface floor. mix factor saturates with strength so
+                // larger values also lean harder on the height normal.
+                float hMix = clamp(cliffHeightNormalStrength * 0.5, 0.0, 1.0);
+                triTilt = mix(triTilt, htTilt, hMix);
+            }
+
             vec3 triN = normalize(mN + triTilt * cliffTriplanarStrength);
             N = normalize(mix(N, triN, cb));
-            // groove relief: darken by the rock displacement on the dominant wall plane.
-            float disp = textureLod(matNormalArray, vec3(wp.xy / ts, float(MAT_LAYER_MARBLE_CLIFF)), 0.0).a;
-            baseColor *= mix(1.0, 0.72 + 0.28 * disp, cb);
+
+            // groove relief: darken by the rock displacement, triplanar-blended over
+            // all three planes at the parallax UVs so side-plane occlusion (the real
+            // view-dependent depth) shows on vertical faces, not just the XY plane.
+            float dispX = textureLod(matNormalArray, vec3(uvX, float(MAT_LAYER_MARBLE_CLIFF)), 0.0).a;
+            float dispY = textureLod(matNormalArray, vec3(uvY, float(MAT_LAYER_MARBLE_CLIFF)), 0.0).a;
+            float dispZ = textureLod(matNormalArray, vec3(uvZ, float(MAT_LAYER_MARBLE_CLIFF)), 0.0).a;
+            float disp  = dispX * wn.x + dispY * wn.y + dispZ * wn.z;
+            g_cliffMat5Alpha = disp;   // TERRAIN-CLIFF-DEBUG: cooked mat5 disp alpha
+            baseColor *= mix(1.0, 0.62 + 0.38 * disp, cb);
+
+            // With POM on, also re-project the cliff ALBEDO at the parallax UVs so
+            // the rock colour occludes with depth (the albedo block above sampled
+            // at un-parallaxed UVs). Only when the material-albedo path is live.
+            if (u_cliffPom.x > 0.5 && u_useMatAlbedo != 0) {
+                vec3 cliffAlbP =
+                      textureLod(u_matAlbedoArray, vec3(uvX * (ts / 256.0), float(MAT_LAYER_MARBLE_CLIFF)), 0.0).rgb * wn.x
+                    + textureLod(u_matAlbedoArray, vec3(uvY * (ts / 256.0), float(MAT_LAYER_MARBLE_CLIFF)), 0.0).rgb * wn.y
+                    + textureLod(u_matAlbedoArray, vec3(uvZ * (ts / 256.0), float(MAT_LAYER_MARBLE_CLIFF)), 0.0).rgb * wn.z;
+                baseColor = mix(baseColor, cliffAlbP * base * 2.0,
+                                cb * clamp(u_matAlbedoStrength, 0.0, 1.0));
+            }
         }
     }
+
+    // TERRAIN-CLIFF-DEBUG (gate MC2_TERRAIN_CLIFF_DEBUG): bounded debug-viz that
+    // writes DIRECTLY to the final color and returns early so nothing below can
+    // overwrite it. Placed AFTER the useTriplanarCliff block so the branch-taken
+    // flag + POM offset + mat5 disp are already captured. u_cliffDebug==0 (default)
+    // -> this whole block is skipped -> byte-identical.
+    if (u_cliffDebug != 0) {
+        vec3 dbg;
+        if (u_cliffDebug == 1) {
+            // cliffBlend grayscale (steep-face test). Recompute from the MACRO
+            // slope exactly as the cliff blocks do (smoothstep(0.85,0.55,|macroNz|)).
+            float cbDbg = smoothstep(0.85, 0.55, abs(macroNz));
+            dbg = vec3(cbDbg);
+        } else if (u_cliffDebug == 2) {
+            // Branch-taken coverage: green where the cliff triplanar block ran,
+            // red otherwise.
+            dbg = (g_cliffBranchTaken > 0.5) ? vec3(0.0, 1.0, 0.0) : vec3(1.0, 0.0, 0.0);
+        } else if (u_cliffDebug == 3) {
+            // POM UV-offset magnitude as color (blue=0 .. red=large). Offset is a
+            // UV-space distance (mat UVs are worldXY/ts); scale for visibility.
+            float m = clamp(g_cliffPomOffMag * 8.0, 0.0, 1.0);
+            dbg = vec3(m, m * 0.25, 1.0 - m);
+        } else { // u_cliffDebug == 4
+            // Sampled mat5 (MARBLE_CLIFF) displacement alpha (grayscale). Use the
+            // triplanar-blended value captured in the block; if the block did not
+            // run for this fragment, sample the XY plane directly so the texture
+            // binding is still proven.
+            float a = (g_cliffBranchTaken > 0.5)
+                    ? g_cliffMat5Alpha
+                    : textureLod(matNormalArray,
+                                 vec3(v_worldPos.xy / 256.0, float(MAT_LAYER_MARBLE_CLIFF)), 0.0).a;
+            dbg = vec3(a);
+        }
+        fragColor = vec4(dbg, 1.0);
+        if ((u_diag & 1) == 0) GBuffer1 = vec4(0.5, 0.5, 1.0, 1.0);
+        return;
+    }
+
     // World-space two-octave break-up noise (non-snow).
     {
         float lowFreq  = fbm(v_worldPos.xy * 0.0035, 3) * 0.5 + 0.5;
@@ -778,6 +1409,11 @@ void main() {
         float staticS = calcShadow(v_worldPos, shadowN, terrainLightDir.xyz, 16);
         float dynS    = calcDynamicShadow(v_worldPos, shadowN, terrainLightDir.xyz, 8);
         shadow = min(staticS, dynS);
+        // CLIFF SHADOW FLOOR: steep faces fall to ~0 under CSM (calcDynamicShadow
+        // is unfloored) → near-black voids. Lift ONLY steep faces by a gated floor.
+        // Default 0.0 => no-op (byte-identical). macroNz is the MACRO slope Z.
+        float cliffShadowBlend = smoothstep(0.85, 0.55, abs(macroNz));
+        shadow = max(shadow, u_terrainCliffShadowFloor * cliffShadowBlend);
         // CEMENT-CLEAN-LIGHTING-1: concrete/cement is an authored flat slab. The
         // terrain STATIC self-shadow (calcShadow) lands as world-fixed blotches that
         // do not tile with the cement atlas (the "spots bleeding through" report).
@@ -858,6 +1494,230 @@ void main() {
     if (u_edgeFeather != 0 && u_halfMap > 0.0) {
         float haze = edgeHazeAmount(v_worldPos.xy, u_halfMap) * u_edgeFeatherStrength;
         lit = mix(lit, EDGE_HAZE_SKY, clamp(haze, 0.0, 1.0));
+    }
+
+    // TERRAIN-SHORELINE-V3: land-side wet-darken + foam band, PLACED BY
+    // ELEVATION (v_worldPos.z relative to u_waterElevation) instead of a
+    // world-XY mask. Gate OFF -> u_useShorelineMask==0 -> this whole block is
+    // skipped -> byte-identical (recon Sec.5 "byte-identity via uniform
+    // else-branch"). cement/concrete excluded from wet-darken (recon ruling
+    // #6 / open ruling 6: cementHit already computed above). Foam is
+    // f(v_worldPos, u_shaderTime) ONLY -- no view-dependent term anywhere in
+    // this block (advisor camera-independence ruling, recon landmine #2).
+    //
+    // V3 ROOT-CAUSE FIX (post v1/v2 "zigzag AND floats up-slope"): the mask
+    // EDT was cooked off a height SOURCE (coarse or 16x-smoothed) that never
+    // exactly equals the RENDERED waterline (the coarse mesh's bilinear-
+    // interpolated surface), so a horizontal-distance mask either staircases
+    // (faithful source) or floats above the true shoreline (smoothed source).
+    // Elevation sidesteps this entirely: wetness = smoothstep over
+    // (v_worldPos.z - u_waterElevation), and v_worldPos.z IS the exact height
+    // the rasterizer produced for this fragment -- the band hugs the drawn
+    // waterline BY CONSTRUCTION, at any LOD, on any source.
+    //
+    // Two mitigations carried over from v2 (both f(worldPos,time) only):
+    //   1. Slope guard -- an elevation band still runs along a contour line,
+    //      which on a steep bank is a near-vertical smear. Attenuate by the
+    //      terrain normal's slope angle (from N, already computed above):
+    //      full strength on ~flat beaches, fading to 0 by ~20 deg.
+    //   2. Noise-BROKEN foam coverage -- foam alpha is `band * fbm`
+    //      thresholded into a coverage mask (wisps), not a smooth brighten.
+    if (u_useShorelineMask != 0) {
+        // Elevation-relative height above the water surface (can be negative
+        // = submerged; terrain under the water plane still rasterizes here
+        // since this pass draws land. V4-STYLE: submerged fragments get ZERO
+        // band contribution -- see the aboveFade clamp below).
+        float aboveWater = v_worldPos.z - u_waterElevation;
+        // TERRAIN-SHORELINE-V3 FIX (measured): the band's ZERO crossing is at
+        // the drawn waterline by construction (u_waterElevation == the water
+        // fast path's plane Z; SHORELINE_PROBE measured the fine/coarse gap at
+        // the waterline = -0.004wu, i.e. exact). The user-visible "band ~6m up
+        // the bank" was NOT a placement drift but the band's fixed VERTICAL
+        // thickness (wet 3wu / foam 1.2wu) spread horizontally by a shallow
+        // shore slope: on a ~3wu-per-128wu beach, 1.2wu of vertical foam height
+        // maps to ~50wu (~15m) of horizontal run. Fix: measure the band as a
+        // HORIZONTAL distance from the waterline (perpendicular run along the
+        // surface), so it hugs the drawn waterline at a consistent narrow width
+        // on shallow AND steep shores. Convert vertical rise -> horizontal run
+        // via the MACRO terrain slope (coarse heightfield normal -- same height
+        // space the water plane draws in), tan(theta) = sin/cos = sqrt(1-Nz^2)/Nz:
+        //   run = rise / tan(theta) = rise * Nz / sqrt(1 - Nz^2).
+        // Clamp the slope so a near-flat basin floor (sin->0, run->inf) can't
+        // blow the band out to the whole map -- below ~1.7deg we fall back to a
+        // capped run so flats still show a bounded rim, not an infinite smear.
+        vec3  macroN   = smoothTerrainNormal(v_worldPos.xy);
+        float nzc      = clamp(abs(macroN.z), 0.0, 0.9995);
+        float sinSlope = sqrt(max(1.0 - nzc * nzc, 1e-6));
+        sinSlope       = max(sinSlope, 0.03);            // >= ~1.7deg -> bounded run
+        float horizDist = max(aboveWater, 0.0) * (nzc / sinSlope);
+        // TERRAIN-SHORELINE-V4-STYLE (zigzag fix, user verdict D): jitter the
+        // band distance with STATIC signed world-XY fbm so the lobes stop
+        // tracing the mesh waterline's straight diamond segments. Applied to
+        // the SHAPING distance only -- the strictly-above-water clamp below
+        // uses the un-jittered distance, so jitter can never push a band
+        // below the drawn waterline. fbm(p,2) ~ [-0.75,0.75] -> effective
+        // wander ~ +/-0.75*u_shorelineEdgeJitter wu.
+        float edgeJit    = fbm(v_worldPos.xy * 0.055, 2) * u_shorelineEdgeJitter;
+        float horizDistJ = max(horizDist + edgeJit, 0.0);
+        // Widths are HORIZONTAL world-units from the waterline (defaults now
+        // horizontal-native: wet 16wu / foam 5wu -- the c1593a1f conversion
+        // kept the vertical 3.0/1.2 defaults, ~1m of band, invisible at RTS
+        // zoom). On a shallow beach this holds the band to a consistent
+        // readable width instead of smearing 15m inland or vanishing.
+        float wetHeight  = max(u_shorelineWetHeight,  1e-4);
+        float foamHeight = max(u_shorelineFoamHeight,  1e-4);
+        // Wet lobe: strongest just above the waterline, fading to 0.0 by
+        // wetHeight (horizontal wu) inland. Mirrors the mask's old G channel.
+        float slWet  = 1.0 - smoothstep(0.0, wetHeight, horizDistJ);
+        // Foam rim: narrower band hugging the waterline (jittered inland edge).
+        float slFoam = 1.0 - smoothstep(0.0, foamHeight, horizDistJ);
+        // TERRAIN-SHORELINE-V4-STYLE (underwater-leak fix, user verdicts A+C):
+        // bands live STRICTLY ABOVE the drawn waterline. The V3 code FORCED
+        // slWet/slFoam to 1.0 on submerged land (aboveWater <= 0); the water
+        // pass is alpha-blended (WATER_MAX_ALPHA 0.87, transmittance-faded at
+        // the shore), so that painted the whole shallow shelf with white foam
+        // wisps + wet darken that ghosted through the teal water tint -- the
+        // "foam under the water surface" and the fluorescent green-teal rim
+        // hugging island edges (white foam under teal alpha = teal-green glow).
+        // horizDist is already 0 for all submerged fragments (max(aboveWater,0)),
+        // so a short fade-in over the first ~1.5 horizontal wu ABOVE the
+        // waterline zeroes both lobes at/below the water plane and feathers
+        // them in on land. Uses the UN-jittered distance (leak-proof bound).
+        const float kShoreEdgeFeatherWu = 1.5;  // horizontal wu fade-in above the waterline
+        float aboveFade = smoothstep(0.0, kShoreEdgeFeatherWu, horizDist);
+        slWet  *= aboveFade;
+        slFoam *= aboveFade;
+
+        // TERRAIN-SHORELINE-V3: optional mask MODULATOR. When a sidecar was
+        // loaded (u_hasShorelineMask!=0), its G/B channels scale the elevation
+        // bands (e.g. wide-beach falloff on flat shores, or basin exclusion)
+        // -- multiplicative, so absence of a mask (u_hasShorelineMask==0)
+        // leaves the pure elevation bands untouched (modulator == 1).
+        if (u_hasShorelineMask != 0) {
+            vec2 slUV;
+            slUV.x = (v_worldPos.x - u_shorelineBounds.x) / max(u_shorelineBounds.z, 1e-5);
+            slUV.y = (u_shorelineBounds.y - v_worldPos.y) / max(u_shorelineBounds.w, 1e-5);
+            if (slUV.x >= 0.0 && slUV.x <= 1.0 && slUV.y >= 0.0 && slUV.y <= 1.0) {
+                vec4 sl = texture(u_shorelineMask, slUV);
+                float slValid = sl.a;
+                // Modulator: mask-authored weight softly gates the elevation
+                // band (mix toward the mask weight instead of hard-multiply,
+                // so a low-res/blocky mask can only WIDEN or narrow the lobe,
+                // never introduce its own stair-step hard edge).
+                slWet  *= mix(1.0, clamp(sl.g, 0.0, 1.0), slValid);
+                slFoam *= mix(1.0, clamp(sl.b, 0.0, 1.0), slValid);
+            } else {
+                // Outside the authored mask's bounds: no modulation data ->
+                // treat as "no mask" (pure elevation bands) rather than 0, so
+                // shorelines outside the cooked extent still show a band.
+            }
+        }
+
+        // Slope guard: N.z == cos(slope angle) for a unit normal (N.z=1 on
+        // flat ground). Full band strength up to ~12 deg, linear falloff
+        // to 0 by ~20 deg, so steep hillsides never carry a wet/foam smear.
+        // KEPT under the horizontal-run measure (reasoned, not redundant):
+        // the horizontal conversion normalizes PLAN-VIEW width, but on a
+        // steep bank the band still climbs run*tan(slope) wu VERTICALLY up
+        // the face (16wu run @ 45 deg = 16wu-tall wet stripe on the cliff
+        // wall, prominent at oblique RTS view angles). The guard is the sole
+        // cliff-face suppression; it does not double-count on beaches
+        // (<12 deg = full strength, where the run measure does all the work).
+        const float kSlopeFullCos = 0.978; // cos(12 deg)
+        const float kSlopeZeroCos = 0.940; // cos(20 deg)
+        float slopeAtten = clamp((N.z - kSlopeZeroCos) / max(kSlopeFullCos - kSlopeZeroCos, 1e-5), 0.0, 1.0);
+
+        // TERRAIN-SHORELINE-V4-STYLE (material-aware shores, user verdict
+        // "this ain't it" -- thin white foam line on near-black rock reads
+        // wrong): the shore treatment must match what the shore already IS,
+        // not garnish every waterline uniformly.
+        //   - beachMat: material affinity from the SAME matWeights the splat
+        //     composite used (x=rock, snowWeight separate) -- sand/dirt/grass
+        //     shores read as beaches and take foam + wet-sand; rock (and
+        //     snow) coasts take near-none.
+        //   - brightGround: composited ground luminance gate -- a bright foam
+        //     line on near-black ground stands out at any material weight;
+        //     absence beats wrongness (coordinator ruling #3).
+        // slopeAtten above remains the third, geometric guard.
+        float litLuma       = dot(lit, vec3(0.299, 0.587, 0.114));
+        float brightGround  = smoothstep(0.08, 0.26, litLuma);
+        float beachMat      = clamp(1.0 - matWeights.x - snowWeight, 0.0, 1.0);
+        float shoreAffinity = brightGround * beachMat;
+
+        // Wet band (coordinator ruling #2): must produce a VISIBLE albedo
+        // response on gentle shores. Tint toward a warm wet-sand chroma held
+        // at ~90% of the ground's own luminance: on bright sand this is the
+        // classic slightly-darker wet-sand strip; on mid-tone soil it reads
+        // as a sandy wet-soil band (hue response, not extra darkening of
+        // already-dark ground). Dark/rock shores are excluded by
+        // shoreAffinity (ruling #3: nothing beats wrongness there).
+        // u_shorelineStrength scales overall intensity (art/runtime knob).
+        if (slWet > 0.001 && cementHit == false && slopeAtten > 0.0 && shoreAffinity > 0.001) {
+            float wetAmt = clamp(slWet, 0.0, 1.0) * (1.0 - pureConcrete) * slopeAtten
+                         * shoreAffinity * u_shorelineStrength;
+            vec3  wetSand = vec3(1.16, 1.06, 0.78) * (litLuma * 0.90);
+            lit = mix(lit, wetSand, clamp(wetAmt, 0.0, 1.0) * 0.85);
+        }
+        // Foam: procedural fBm, f(worldPos,time) ONLY (camera-INDEPENDENT
+        // by construction -- no view matrix/camera pos anywhere in this
+        // expression). Coverage is THRESHOLDED noise (wisps), not a smooth
+        // brighten of the whole lobe -- band*fbm decides WHERE foam shows,
+        // not just how bright it is. Scaled by shoreAffinity (ruling #1):
+        // full beach-foam on gentle sand/dirt shores, near-zero on rock/dark
+        // coasts.
+        if (slFoam > 0.001 && slopeAtten > 0.0 && shoreAffinity > 0.001) {
+            float foamScroll = fbm(v_worldPos.xy * 0.09 + u_shaderTime * 0.15, 3) * 0.5 + 0.5;
+            float foamPulse  = fbm(v_worldPos.xy * 0.20 - u_shaderTime * 0.22 + 19.0, 2) * 0.5 + 0.5;
+            float foamNoise  = clamp(mix(foamScroll, foamPulse, 0.5), 0.0, 1.0);
+            // Coverage threshold: the noise must clear a bar that rises as
+            // the band weight falls, so foam appears as broken wisps near
+            // the lobe's edge and near-solid only at the exact waterline.
+            float coverage  = smoothstep(1.0 - clamp(slFoam, 0.0, 1.0) * 0.85, 1.0, foamNoise + (1.0 - clamp(slFoam, 0.0, 1.0)) * 0.15);
+            float foamAmt   = coverage * slopeAtten * u_shorelineFoamStrength * shoreAffinity;
+            // V4-STYLE (user verdict C): hue-NEUTRAL desaturated white. The old
+            // (0.90,0.93,0.92) carried a faint green cast that read teal when
+            // composited near the water tint; foam must not shift hue.
+            lit = mix(lit, vec3(0.92), clamp(foamAmt, 0.0, 1.0) * (1.0 - pureConcrete));
+        }
+    }
+    // DIAG bit 2048: visualize the elevation-band weights as RGB (R=height
+    // above water clamped [0,1], G=wet weight, B=foam weight) so the V3
+    // placement is directly inspectable without needing a mask loaded.
+    if ((u_diag & 2048) != 0 && u_useShorelineMask != 0) {
+        // Mirror the horizontal-distance band measure used above.
+        float aboveWaterDbg = v_worldPos.z - u_waterElevation;
+        vec3  macroNDbg     = smoothTerrainNormal(v_worldPos.xy);
+        float nzcDbg        = clamp(abs(macroNDbg.z), 0.0, 0.9995);
+        float sinSlopeDbg   = max(sqrt(max(1.0 - nzcDbg * nzcDbg, 1e-6)), 0.03);
+        float horizDistDbg  = max(aboveWaterDbg, 0.0) * (nzcDbg / sinSlopeDbg);
+        // V4-STYLE: mirror the jitter + strictly-above-water fade so the debug
+        // view shows the weights the lit path actually applies.
+        float edgeJitDbg    = fbm(v_worldPos.xy * 0.055, 2) * u_shorelineEdgeJitter;
+        float horizDistJDbg = max(horizDistDbg + edgeJitDbg, 0.0);
+        float aboveFadeDbg  = smoothstep(0.0, 1.5, horizDistDbg);
+        float wetHeightDbg  = max(u_shorelineWetHeight,  1e-4);
+        float foamHeightDbg = max(u_shorelineFoamHeight, 1e-4);
+        vec3 dbgCol = vec3(
+            clamp(horizDistDbg / max(wetHeightDbg, 1e-4), 0.0, 1.0),
+            (1.0 - smoothstep(0.0, wetHeightDbg,  horizDistJDbg)) * aboveFadeDbg,
+            (1.0 - smoothstep(0.0, foamHeightDbg, horizDistJDbg)) * aboveFadeDbg);
+        fragColor = vec4(dbgCol, 1.0);
+        if ((u_diag & 1) == 0) GBuffer1 = vec4(0.5, 0.5, 1.0, 1.0);
+        return;
+    }
+
+    // TERRAIN-MATERIAL-LIB-1: per-layer roughness/AO scalars, weighted by the
+    // same matWeights used for tint/detail. Branch-gated (not a bare multiply)
+    // because a *1.0 expression is not guaranteed bit-identical in all compiler
+    // paths -- default OFF (u_useMaterialLib==0) takes the untouched `lit` path,
+    // exactly reproducing pre-slice output. Neutral (1,1,1,1) JSON defaults ON
+    // also reduce to weightedAO==weightedRoughness==1.0 -> lit unchanged.
+    if (u_useMaterialLib != 0) {
+        float weightedRoughness = dot(matWeights, matRoughness);
+        float weightedAO        = dot(matWeights, matAO);
+        // Rougher surfaces scatter more of the direct term into ambient-like
+        // falloff (cheap non-PBR approximation); AO is a straight multiplier.
+        lit *= mix(1.0, 0.85, clamp(weightedRoughness - 1.0, 0.0, 1.0)) * weightedAO;
     }
 
     fragColor = vec4(lit, 1.0);                                     // alpha forced 1.0

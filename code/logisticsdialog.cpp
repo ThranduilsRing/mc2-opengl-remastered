@@ -18,6 +18,7 @@ LogisticsDialog.cpp			: Implementation of the LogisticsDialog component.
 #include"missionbriefingscreen.h"
 #include"sounds.h"
 #include"gamesound.h"
+#include"UiDefs.h"
 
 LogisticsOKDialog* LogisticsOKDialog::s_instance = NULL;
 LogisticsSaveDialog* LogisticsSaveDialog::s_instance = NULL;
@@ -29,6 +30,18 @@ extern long SaveGameVersionNumber;
 
 #define DELETE_BUTTON 40
 #define MAP_STATIC 10
+
+// Keys for the v2 mcl_sm.fit page (LogisticsSaveDialog).
+static const char* const kSvEditKey =
+    "game.mcl_sm.editbox.editable_text_for_saved_game_name_goes_here";
+static const char* const kSvTitleKey =
+    "game.mcl_sm.text.main_header_text_save_game_should_say_load_game_for_load_game_dialog";
+static const char* const kSvActionBtnKey =
+    "game.mcl_sm.button.save_button_this_should_say_load_for_load_mission_dialog";
+static const char* const kSvInfoKey =
+    "game.mcl_sm.text.info_for_saved_game_goes_in_here";
+static const char* const kSvMapKey =
+    "game.mcl_sm.image.this_static_defines_the_area_that_the_tac_map_should_go_into";
 
 
 //-------------------------------------------------------------------------------------------------
@@ -152,11 +165,14 @@ void		LogisticsDialog::update()
 	userInput->mouseOn();
 	userInput->setMouseCursor( mState_NORMAL );
 
-	bool bFocus = 0;
-	for ( int i = 0; i < editCount; i++ )
+	bool bFocus = isAnyDefsEditBoxFocused();
+	if ( !bFocus )
 	{
-		if ( edits[i].hasFocus() )
-			bFocus = true;
+		for ( int i = 0; i < editCount; i++ )
+		{
+			if ( edits[i].hasFocus() )
+				bFocus = true;
+		}
 	}
 
 
@@ -416,7 +432,10 @@ int LogisticsSaveDialog::init( FitIniFile& file )
 void LogisticsSaveDialog::begin()
 {
 	beginFadeIn( 0 ); // turn off any fades...
-	edits[0].setFocus(true);
+	if ( hasDefsEditBox() )
+		requestDefsEditFocus( kSvEditKey );
+	else
+		edits[0].setFocus(true);
 	initDialog(savePath, 0);
 	status = RUNNING;
 	bPromptOverwrite = 0;
@@ -427,20 +446,32 @@ void LogisticsSaveDialog::begin()
 	// need to change all the texts
 	textObjects[0].setText( IDS_DIALOG_SAVE_GAME );
 	textObjects[1].setText( IDS_DIALOG_GAME_LIST );
-	textObjects[2].setText( "" );
+	setDefsElementText( kSvInfoKey, "" );
+	setDefsElementText( kSvTitleKey, "SAVE GAME" );
 
 	buttons[2].setText( IDS_DIALOG_SAVE );
+	setDefsElementText( kSvActionBtnKey, "SAVE" );
 
-	edits[0].setEntry( "" );
-	edits[0].limitEntry( 20 );
+	if ( hasDefsEditBox() )
+		setDefsEditText( kSvEditKey, "" );
+	else
+	{
+		edits[0].setEntry( "" );
+		edits[0].limitEntry( 20 );
+	}
 
+	setDefsElementTextureNode( kSvMapKey, 0 );
 	statics[MAP_STATIC].setTexture( ( unsigned long)0 );
 
 	aListItem* pItem = gameListBox.GetItem( 0 );
 	if ( pItem )
 	{
 		pItem->select();
-		edits[0].setEntry( ((aTextListItem*)pItem)->getText() );
+		const char* itemText = ((aTextListItem*)pItem)->getText();
+		if ( hasDefsEditBox() )
+			setDefsEditText( kSvEditKey, itemText ? itemText : "" );
+		else
+			edits[0].setEntry( itemText );
 		selectedName = ( ((aLocalizedListItem*)pItem)->getHiddenText() );
 	}
 
@@ -448,7 +479,7 @@ void LogisticsSaveDialog::begin()
 
 
 
-	
+
 	LogisticsDialog::begin();
 
 }
@@ -457,7 +488,13 @@ void LogisticsSaveDialog::begin()
 void LogisticsSaveDialog::beginLoad(bool bSkipSaveScan)
 {
 	beginFadeIn( 0 );
-	edits[0].setFocus(true);
+	// LOAD mode: the editbox is a read-only display of the selected save (driven
+	// by the list selection). Don't focus it -- an active ImGui InputText keeps
+	// its own buffer (ignoring external setEditText) and renders below the page's
+	// foreground rects. The EditBox pass draws the value in the foreground when
+	// the box is not actively being edited.
+	if ( !hasDefsEditBox() )
+		edits[0].setFocus(true);
 	status = RUNNING;
 	bPromptOverwrite = 0;
 	bDeletePrompt = 0;
@@ -467,12 +504,19 @@ void LogisticsSaveDialog::beginLoad(bool bSkipSaveScan)
 	// need to change all the texts...
 	textObjects[0].setText( IDS_DIALOG_LOAD_GAME );
 	textObjects[1].setText( IDS_DIALOG_GAME_LIST );
-	textObjects[2].setText( "" );
+	setDefsElementText( kSvInfoKey, "" );
+	setDefsElementText( kSvTitleKey, "LOAD GAME" );
 
 	buttons[2].setText( IDS_LOAD );
+	setDefsElementText( kSvActionBtnKey, "LOAD" );
 
-	edits[0].setEntry( "" );
-	edits[0].limitEntry( 20 );
+	if ( hasDefsEditBox() )
+		setDefsEditText( kSvEditKey, "" );
+	else
+	{
+		edits[0].setEntry( "" );
+		edits[0].limitEntry( 20 );
+	}
 
 	if (!bSkipSaveScan)
 	{
@@ -484,7 +528,11 @@ void LogisticsSaveDialog::beginLoad(bool bSkipSaveScan)
 		if ( pItem )
 		{
 			pItem->select();
-			edits[0].setEntry( ((aTextListItem*)pItem)->getText() );
+			const char* itemText = ((aTextListItem*)pItem)->getText();
+			if ( hasDefsEditBox() )
+				setDefsEditText( kSvEditKey, itemText ? itemText : "" );
+			else
+				edits[0].setEntry( itemText );
 			selectedName = ( ((aLocalizedListItem*)pItem)->getHiddenText() );
 		}
 
@@ -718,6 +766,7 @@ void LogisticsSaveDialog::readCampaignNameFromFile( const char* fileName, char* 
 
 void LogisticsSaveDialog::end()
 {
+	setDefsElementTextureNode( kSvMapKey, 0 );
 	statics[MAP_STATIC].setTexture( ( unsigned long)0 );
 	bCampaign = 0;
 	LogisticsDialog::end();
@@ -735,13 +784,27 @@ void LogisticsSaveDialog::update()
 	buttons[0].disable( 0 );
 
 	EString fileName;
-	edits[0].getEntry( fileName );
+	if ( hasDefsEditBox() )
+	{
+		std::string s;
+		getDefsEditText( kSvEditKey, s );
+		fileName = s.c_str();
+	}
+	else
+		edits[0].getEntry( fileName );
 
 	if (bCampaign)
 	{
 		fileName.Empty();
 		EString displayName;
-		edits[0].getEntry( displayName );
+		if ( hasDefsEditBox() )
+		{
+			std::string s;
+			getDefsEditText( kSvEditKey, s );
+			displayName = s.c_str();
+		}
+		else
+			edits[0].getEntry( displayName );
 		{
 			/*if there is a selected item and it matches the text in the editbox, then use that selected item*/
 			aLocalizedListItem* pSelectedItem = 0;
@@ -834,15 +897,29 @@ void LogisticsSaveDialog::update()
 				initDialog(bCampaign ? campaignPath : savePath, bCampaign ? 1 : 0 );
 				bDeletePrompt = 0;
 
-				edits[0].getEntry( selectedName );
-				edits[0].setEntry( "" );
+				if ( hasDefsEditBox() )
+				{
+					std::string s;
+					getDefsEditText( kSvEditKey, s );
+					selectedName = s.c_str();
+					setDefsEditText( kSvEditKey, "" );
+				}
+				else
+				{
+					edits[0].getEntry( selectedName );
+					edits[0].setEntry( "" );
+				}
 				selectedName = "";
 
 				aListItem* pItem = gameListBox.GetItem( 0 );
 				if ( pItem )
 				{
 					pItem->select();
-					edits[0].setEntry( ((aTextListItem*)pItem)->getText() );
+					const char* itemText = ((aTextListItem*)pItem)->getText();
+					if ( hasDefsEditBox() )
+						setDefsEditText( kSvEditKey, itemText ? itemText : "" );
+					else
+						edits[0].setEntry( itemText );
 					selectedName = ( ((aLocalizedListItem*)pItem)->getHiddenText() );
 				}
 
@@ -856,7 +933,52 @@ void LogisticsSaveDialog::update()
 	
 	gameListBox.update();
 
-	if ( userInput->isLeftClick()  )
+	if ( hasDefsUiPage() )
+	{
+		// Try to sync list selection from the v2 page (requires a GuiList element).
+		// mcl_sm.fit currently has no GuiList, so defsItem == -1 and we fall
+		// through to the legacy click block below.
+		const int defsItem = getDefsListSelection( "game.mcl_sm.list.game_list" );
+		if ( defsItem >= 0 && defsItem < gameListBox.GetItemCount() &&
+			 defsItem != gameListBox.GetSelectedItem() )
+		{
+			gameListBox.SelectItem( defsItem );
+			for ( int i = 0; i < gameListBox.GetItemCount(); i++ )
+				gameListBox.GetItem( i )->setColor( edits[0].getColor() );
+			gameListBox.GetItem( defsItem )->setColor( edits[0].getHighlightColor() );
+			const char* text = ((aTextListItem*)gameListBox.GetItem( defsItem ))->getText();
+			if ( hasDefsEditBox() )
+				setDefsEditText( kSvEditKey, text ? text : "" );
+			else
+				edits[0].setEntry( text );
+			selectedName = ((aLocalizedListItem*)gameListBox.GetItem( defsItem ))->getHiddenText();
+			updateMissionInfo();
+		}
+		else if ( userInput->isLeftClick() )
+		{
+			// No v2 list present — use legacy list-click path for item selection.
+			// Buttons are already handled by defsUiPage->update(), so there's no
+			// conflict with the v2 button routing.
+			if ( gameListBox.pointInside( userInput->getMouseX(), userInput->getMouseY() ) )
+			{
+				int item = gameListBox.GetSelectedItem();
+				if ( item != -1 )
+				{
+					for ( int i = 0; i < gameListBox.GetItemCount(); i++ )
+						gameListBox.GetItem( i )->setColor( edits[0].getColor() );
+					gameListBox.GetItem( item )->setColor( edits[0].getHighlightColor() );
+					const char* text = ((aTextListItem*)gameListBox.GetItem( item ))->getText();
+					if ( hasDefsEditBox() )
+						setDefsEditText( kSvEditKey, text ? text : "" );
+					else
+						edits[0].setEntry( text );
+					selectedName = ((aLocalizedListItem*)gameListBox.GetItem( item ))->getHiddenText();
+					updateMissionInfo();
+				}
+			}
+		}
+	}
+	else if ( userInput->isLeftClick()  )
 	{
 		if ( gameListBox.pointInside( userInput->getMouseX(), userInput->getMouseY() ) )
 		{
@@ -921,6 +1043,7 @@ void LogisticsSaveDialog::updateMissionInfo()
 {
 	if ( !selectedName.Length() )
 	{
+		setDefsElementTextureNode( kSvMapKey, 0 );
 		statics[MAP_STATIC].setColor( 0 );
 		return;
 	}
@@ -957,14 +1080,18 @@ void LogisticsSaveDialog::updateMissionInfo()
 
 		if ( NO_ERR == file.readIdString( "MissionFileName", tmp, 255 ) )
 		{
-			long textureHandle = MissionBriefingScreen::getMissionTGA( tmp );
+			long textureHandle = MissionBriefingScreen::getMissionTGA( tmp, true );
 
+			setDefsElementTextureNode( kSvMapKey, textureHandle );
 			statics[MAP_STATIC].setTexture( textureHandle );
 			statics[MAP_STATIC].setUVs( 0, 127, 127, 0 );
 			statics[MAP_STATIC].setColor( 0xffffffff );
 		}
 		else
+		{
+			setDefsElementTextureNode( kSvMapKey, 0 );
 			statics[MAP_STATIC].setColor( 0 );
+		}
 
 
 		long cBills;
@@ -986,11 +1113,14 @@ void LogisticsSaveDialog::updateMissionInfo()
 		strcat( real, tmp );
 
 
+		setDefsElementText( kSvInfoKey, real );
 		textObjects[2].setText( real );
 	}
 	else
 	{
+		setDefsElementText( kSvInfoKey, "" );
 		textObjects[2].setText( "" );
+		setDefsElementTextureNode( kSvMapKey, 0 );
 		statics[MAP_STATIC].setColor( 0 );
 	}
 
@@ -1002,8 +1132,9 @@ void LogisticsSaveDialog::setMission( const char* fileName)
 	if ( strlen( fileName ) )
 	{
 
-		long textureHandle = MissionBriefingScreen::getMissionTGA( fileName );
+		long textureHandle = MissionBriefingScreen::getMissionTGA( fileName, true );
 
+		setDefsElementTextureNode( kSvMapKey, textureHandle );
 		statics[MAP_STATIC].setTexture( textureHandle );
 		statics[MAP_STATIC].setUVs( 0, 127, 127, 0);
 		statics[MAP_STATIC].setColor( 0xffffffff );
@@ -1032,18 +1163,22 @@ void LogisticsSaveDialog::setMission( const char* fileName)
 				file.readIdString( "MissionName", missionName, 255 );
 			}
 
+			setDefsElementText( kSvInfoKey, missionName );
 			textObjects[2].setText( missionName );
 
 		}
 		else
 		{
+			setDefsElementText( kSvInfoKey, "" );
 			textObjects[2].setText( "" );
 		}
 
 	}
 	else
 	{
+		setDefsElementTextureNode( kSvMapKey, 0 );
 		statics[MAP_STATIC].setColor( 0 );
+		setDefsElementText( kSvInfoKey, "" );
 		textObjects[2].setText( "" );
 
 	}
@@ -1098,24 +1233,43 @@ void LogisticsSaveDialog::render()
 	drawRect( rect, color );
 
 
-	if ( xOffset || yOffset )
+	if ( hasDefsUiPage() )
 	{
-		gameListBox.move( xOffset, yOffset );
-		gameListBox.render();
-		gameListBox.move( -xOffset, -yOffset );
+		// Push current game list state into the defs page before it renders.
+		std::vector<std::string> items;
+		const long count = gameListBox.GetItemCount();
+		items.reserve( count > 0 ? (size_t)count : 0 );
+		for ( long i = 0; i < count; i++ )
+		{
+			aListItem* item = gameListBox.GetItem( i );
+			const aTextListItem* textItem = static_cast<const aTextListItem*>( item );
+			const char* text = textItem ? textItem->getText() : nullptr;
+			items.push_back( text ? text : "" );
+		}
+		setDefsListItems( "game.mcl_sm.list.game_list", items );
+		setDefsListSelection( "game.mcl_sm.list.game_list", (int)gameListBox.GetSelectedItem() );
 	}
 	else
 	{
-		gameListBox.render();
+		if ( xOffset || yOffset )
+		{
+			gameListBox.move( xOffset, yOffset );
+			gameListBox.render();
+			gameListBox.move( -xOffset, -yOffset );
+		}
+		else
+		{
+			gameListBox.render();
+		}
 	}
-	
+
 	LogisticsScreen::render( (int)xOffset, (int)yOffset );
-	
+
 	if ( bPromptOverwrite || bDeletePrompt )
 	{
 		LogisticsOKDialog::instance()->render();
 	}
-		
+
 }
 
 int	LogisticsSaveDialog::handleMessage( unsigned long what, unsigned long who )
@@ -1124,7 +1278,14 @@ int	LogisticsSaveDialog::handleMessage( unsigned long what, unsigned long who )
 	if ( YES == who )
 	{
 		EString str;
-		edits[0].getEntry(str);
+		if ( hasDefsEditBox() )
+		{
+			std::string s;
+			getDefsEditText( kSvEditKey, s );
+			str = s.c_str();
+		}
+		else
+			edits[0].getEntry(str);
 		bool bFound = 0;
 
 		// look and see if you are overwriting anything here...
@@ -1173,7 +1334,14 @@ int	LogisticsSaveDialog::handleMessage( unsigned long what, unsigned long who )
 		if (gameListBox.GetItemCount())
 		{
 			EString tmpName;
-			edits[0].getEntry(tmpName);
+			if ( hasDefsEditBox() )
+			{
+				std::string s;
+				getDefsEditText( kSvEditKey, s );
+				tmpName = s.c_str();
+			}
+			else
+				edits[0].getEntry(tmpName);
 			for ( int i = 0; i < gameListBox.GetItemCount(); i++ )
 			{
 				const char* pFileName = ((aLocalizedListItem*)gameListBox.GetItem(i))->getHiddenText();
@@ -1553,16 +1721,34 @@ void LogisticsVariantDialog::render()
 			bDone = true;
 	}
 
-	gameListBox.move( xOffset, yOffset );
-	gameListBox.render();
-	gameListBox.move( -xOffset, -yOffset );
+	if ( hasDefsUiPage() )
+	{
+		std::vector<std::string> items;
+		const long count = gameListBox.GetItemCount();
+		items.reserve( count > 0 ? (size_t)count : 0 );
+		for ( long i = 0; i < count; i++ )
+		{
+			aListItem* item = gameListBox.GetItem( i );
+			const aTextListItem* textItem = static_cast<const aTextListItem*>( item );
+			const char* text = textItem ? textItem->getText() : nullptr;
+			items.push_back( text ? text : "" );
+		}
+		setDefsListItems( "game.mcl_sm.list.game_list", items );
+		setDefsListSelection( "game.mcl_sm.list.game_list", (int)gameListBox.GetSelectedItem() );
+	}
+	else
+	{
+		gameListBox.move( xOffset, yOffset );
+		gameListBox.render();
+		gameListBox.move( -xOffset, -yOffset );
+	}
 	LogisticsScreen::render( (int)xOffset, (int)yOffset );
 
 	if ( bPromptOverwrite || bDeletePrompt )
 	{
 		LogisticsOKDialog::instance()->render();
 	}
-		
+
 }
 
 int	LogisticsVariantDialog::handleMessage ( unsigned long what, unsigned long who )

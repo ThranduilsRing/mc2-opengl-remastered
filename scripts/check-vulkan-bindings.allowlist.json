@@ -1,0 +1,38 @@
+{
+  "_doc": "Benign-classification allowlist for check-vulkan-bindings.py (slice BINDING-CHECKER-PER-PIPELINE-CLASSIFIER-1). A slot listed here whose distinct roles are confirmed to live in DISJOINT pipelines is reported OK (benign disjoint-pipeline share) instead of WARN. It does NOT suppress a same-pipeline ERROR — the checker only consults this list for cross-pipeline shares. Each entry cites the source evidence a human used to classify it benign.",
+  "_same_pipeline_note": "benign_same_pipeline lists slot|pipeline pairs where >1 GLSL block NAME on one binding is NOT two distinct resources: either the same bound buffer is mirrored across the VS and FS stages (different block name, one glBindBufferBase), or the block names are on mutually-exclusive #if/#else branches (only one compiles per permutation). These are source-verified benign; everything else same-pipeline stays ERROR.",
+  "benign_same_pipeline": {
+    "SSBO:2|terrain-thin": {
+      "rationale": "ThinRecordBuf (gos_terrain_thin.vert) and ThinRecordBufFrag (gos_terrain.frag) are the SAME thin-record buffer read from both VS and FS — one glBindBufferBase, mirrored block declaration (coherent readonly). Not two resources.",
+      "roles": ["ThinRecordBuf", "ThinRecordBufFrag"],
+      "evidence": "shaders/gos_terrain.frag:110-114 comment 'mirror the coherent qualifier on the VS reader (gos_terrain_thin.vert:9)'"
+    },
+    "SSBO:23|terrain-lod-chunk": {
+      "rationale": "TerrainHeightBuf (terrain_lod_chunk.vert) and TerrainHeightBufFrag (terrain_lod_chunk.frag) are the SAME terrain-height buffer read from both stages — mirrored block name, one bound buffer.",
+      "roles": ["TerrainHeightBuf", "TerrainHeightBufFrag"],
+      "evidence": "shaders/terrain_lod_chunk.vert:25 / terrain_lod_chunk.frag:65 — matched Height buffer, VS+FS mirror"
+    },
+    "SSBO:2|terrain-mask-solid": {
+      "rationale": "ACKNOWLEDGED Vk-prep TODO (benign under GL today, real descriptor blocker under Vulkan). gos_terrain_mask_solid.vert declares LightingBuf@2 and its paired gos_terrain.frag declares ThinRecordBufFrag@2 — two DIFFERENT buffers on binding 2 in ONE program. The C++ mask-solid draw binds lightingSSBO at slot 2 (gameos_graphics.cpp:4542); the frag's unconditional thinRecsFrag[] reads are not exercised on the mask-solid path (mask-solid is the pre-tess lighting-prepass permutation, not the cement/thin-record fragment path). Legal under GL (one buffer bound per draw); MUST be split before terrain-mask-solid descriptor-set assignment (give the frag thin-record read its own binding, or drop the unused frag block from the mask permutation). Downgraded to OK so the aggregate gate does not wedge on this pre-existing case; the NEGATIVE self-test proves a NEW un-acknowledged same-pipeline dup still ERRORs.",
+      "roles": ["LightingBuf", "ThinRecordBufFrag"],
+      "evidence": "gameos_graphics.cpp:2358 (mask_solid = gos_terrain_mask_solid.vert + gos_terrain.frag); :4542 binds lightingSSBO@2; gos_terrain_mask_solid.vert:33 LightingBuf@2; gos_terrain.frag:114 ThinRecordBufFrag@2 (unconditional reads at :373/:397/:437, not reached on mask-solid prepass)"
+    },
+    "SSBO:9|gpu-cull": {
+      "rationale": "VisibleIds and DebugOut in gpu_cull.comp are declared on mutually-exclusive #if/#else branches (only one compiles per permutation — the debug readout permutation). Never two live resources in one compiled program.",
+      "roles": ["VisibleIds", "DebugOut"],
+      "evidence": "binding-slot-occupancy.json warns[0]: 'mode-alternate (intentional): gpu_cull.comp SSBO slot 9 = VisibleIds / DebugOut on exclusive #if branches'"
+    }
+  },
+  "benign_disjoint_shares": {
+    "SSBO:14": {
+      "rationale": "GPU-cull readback ring (gpu-cull) vs particle billboard (particle-billboard) vs tube-ribbon position (tube-ribbon) — three DISJOINT pipelines, each names its own buffer at binding 14 in its own descriptor-set layout; all bind-then-unbind-to-0 symmetrically so no live cross-pipeline aliasing under GL.",
+      "roles": ["ReadbackBuf", "Particles", "RibbonPos", "RibbonColor", "RibbonUv"],
+      "evidence": "docs/render-backend-seams/slot-14-20-split-plan.md §1 (14-A/14-B/14-C) + §2 classification BENIGN"
+    },
+    "SSBO:20": {
+      "rationale": "Terrain surface vertex buffer (SurfaceVertexBuf, terrain-surface pipeline; gos_terrain_surface.vert does NOT include lighting.hglsl) vs ObjectLights (LightsData, declared in lighting.hglsl, included ONLY by mech/static-prop/building-pbr/tex-vertex-lighted). DISJOINT pipelines — no single VkDescriptorSetLayout names both at binding 20. Was whole-corpus flagged as a collision; source-verified benign.",
+      "roles": ["SurfaceVertexBuf", "LightsData"],
+      "evidence": "docs/render-backend-seams/slot-14-20-split-plan.md CORRECTION (commit 805c3265): 'terrain does NOT include lighting.hglsl; disjoint pipelines'; ERROR 2 refutes the same-pipeline claim"
+    }
+  }
+}

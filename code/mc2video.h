@@ -64,4 +64,9 @@ void          video_stop(VideoSession* s);
 void          video_restart(VideoSession* s);
 void          video_setRect(VideoSession* s, int x0, int y0, int w, int h);
 
+// gos texture handle (0 == none / no frame ready yet) holding the most recent
+// decoded frame, so a caller can composite the video through its own renderer
+// (e.g. the ImGui/defs UI layer) instead of video_render's built-in gos quad.
+unsigned int  video_get_texture(VideoSession* s);
+
 #endif // MC2VIDEO_H

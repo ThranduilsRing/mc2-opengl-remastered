@@ -1,0 +1,9 @@
+{
+  "schema": "mc2-mod/1",
+  "id": "sample_bad_mod",
+  "name": "fxlint sample: intentional failures",
+  "version": "1.0.0",
+  "type": "assets",
+  "dependencies": [],
+  "description": "fxlint fixture (tests/fxlint/): every def in data/effects/defs/ here is DELIBERATELY broken, one distinct mistake per file, so fxlint's error catalog (FXD_*) can be demonstrated and regression-tested end to end. Modeled on the MODDABILITY-REVIEW-1 'best artifact in the tree' pattern -- an intentional-failure mod proves the linter's file:line:key feedback is real, not aspirational. Do not fix these files; they are supposed to fail."
+}

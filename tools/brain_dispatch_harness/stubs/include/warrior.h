@@ -7,6 +7,7 @@
 
 #include "tacordr.h"
 #include "gameobj.h"
+#include "mover.h"                // HARNESS-STUB-REPAIR-1: MoverPtr for getVehicle()
 #include "mech_brain_runtime.h"   // VarStore, MechBrainRuntime (LEAF header)
 
 class MechWarrior {
@@ -33,6 +34,11 @@ public:
     // The harness exercises TraceOnly + Apply gate-OFF; stub returns nullptr so
     // s_intentQueueEnabled() path is always taken via the (runtime == nullptr) check.
     virtual MechBrainRuntime* getBrainRuntime() { return nullptr; }
+
+    // HARNESS-STUB-REPAIR-1: BRAIN-ENGAGE-1 vehicle accessor. Stub returns nullptr —
+    // tickEngageNearest/tickOpordMove early-return on the null vehicle, so the engage
+    // path never executes in the harness (and MC2_BRAIN_ENGAGE is never set anyway).
+    virtual MoverPtr getVehicle() { return nullptr; }
 
     // BRAIN-OPORD-COREPATROL-1: patrol arrival poll accessor.
     // Returns a stub TacticalOrder whose status() always returns TACORDER_RUNNING,

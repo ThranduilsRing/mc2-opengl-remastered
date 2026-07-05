@@ -1,0 +1,1374 @@
+// MC2R ImGui FIT generated from legacy UI FIT.
+// Source: data/defs/ui/legacy/game/mcl_mp_setup_droplist0.fit
+// Legacy files remain source truth only; edit the generated ImGui FIT.
+
+GuiPage {
+    key = "game.mcl_mp_setup_droplist0"
+    title = "Game Mcl Mp Setup Droplist0"
+    sourceLegacyFit = "data/defs/ui/legacy/game/mcl_mp_setup_droplist0.fit"
+    sourceSystem = "game"
+    sourceScreen = "mcl_mp_setup_droplist0"
+    sourceKind = "legacy_component"
+    layout = "component_absolute"
+    coordinateSpace = "component_local"
+    localWidth = 297
+    localHeight = 259
+    mountOffset = "0,0"
+    editableSource = "generated_imgui_only"
+    overlayGameOS = true
+    renderMode = "gameos_overlay"
+    backgroundPolicy = "transparent_overlay"
+}
+
+GuiMetadata {
+    key = "game.mcl_mp_setup_droplist0.metadata.metadata"
+    pageKey = "game.mcl_mp_setup_droplist0"
+    legacySection = "InsigniaDropList"
+    role = "metadata"
+    layer = "metadata"
+    aliasOverride = "metadata"
+    sourceControlType = "InsigniaDropList"
+    rect = "30,199,0,0"
+    legacyLocalRect = "30,199,0,0"
+    legacyRectSource = "xywh"
+    visible = false
+}
+
+GuiButton {
+    key = "game.mcl_mp_setup_droplist0.button.down_triangle"
+    pageKey = "game.mcl_mp_setup_droplist0"
+    legacySection = "ExpandButton"
+    legacyComment = "down triangle"
+    role = "button"
+    layer = "control"
+    aliasOverride = "down triangle"
+    sourceControlType = "ExpandButton"
+    rect = "312,207,12,6"
+    legacyLocalRect = "312,207,12,6"
+    legacyRectSource = "child_relative_xywh"
+    texture = "data/art/gui/MCUI_Scroll.png"
+    legacyTexture = "MCUI_Scroll"
+    uiPackage = "default"
+    rectModel = "legacy_imgui.modern_rect_v1"
+    controlRect = "312,207,12,6"
+    hitRect = "312,207,12,6"
+    artRect = "312,207,12,6"
+    artLayer = "control_art"
+    controlModel = "composite_hit_art_text_v1"
+    linkedLayers = "hit,art,text"
+    editMode = "linked_control_with_independent_text"
+    textRect = "312,207,12,6"
+    textRectMode = "control_rect_fallback"
+    textLegacyId = 0
+    visible = false
+    textKey = "legacy.strings.ids_undefined_string_sebi"
+    textLegacySymbol = "IDS_undefined_string_sebi"
+    textSource = "strings.res.h"
+    textMissing = true
+    textMissingReason = "symbol_only_from_strings_res_h"
+    helpCaptionLegacyId = 0
+    helpCaptionKey = "legacy.strings.ids_undefined_string_sebi"
+    helpCaptionLegacySymbol = "IDS_undefined_string_sebi"
+    helpCaptionSource = "strings.res.h"
+    helpCaptionMissing = true
+    helpCaptionMissingReason = "symbol_only_from_strings_res_h"
+    helpDescLegacyId = 0
+    helpDescKey = "legacy.strings.ids_undefined_string_sebi"
+    helpDescLegacySymbol = "IDS_undefined_string_sebi"
+    helpDescSource = "strings.res.h"
+    helpDescMissing = true
+    helpDescMissingReason = "symbol_only_from_strings_res_h"
+    font = "Agency Regular"
+    fontStyle = "Regular"
+    fontSize = 14
+    bold = false
+    italic = false
+    textAlign = "center"
+    textAnchor = "center"
+    legacyTextAlignmentSource = "aButton::init default Alignment=2"
+    wrapText = false
+    normalTextColorArgb = "0xffc66600"
+    normalOverlayColorArgb = "0xffc66600"
+    colorArgb = "0xffc66600"
+    pressedTextColorArgb = "0xffffffff"
+    pressedOverlayColorArgb = "0xffffffff"
+    highlightTextColorArgb = "0xffffffff"
+    highlightOverlayColorArgb = "0xffffffff"
+    disabledTextColorArgb = "0xff373737"
+    disabledOverlayColorArgb = "0xff373737"
+    buttonOverlayEnabled = true
+    buttonOverlayAlpha = 0.30
+    legacyId = "xxx"
+    legacyColor = "xxx"
+    uvX = 0
+    uvY = 18
+    uvWidth = 12
+    uvHeight = 6
+    uvPressedX = 0
+    uvPressedY = 18
+    uvHighlightX = 0
+    uvHighlightY = 18
+    uvDisabledX = 0
+    uvDisabledY = 18
+    fillColorArgb = "0x00000000"
+    borderColorArgb = "0x00000000"
+    legacyNormalAnimationTimeStamps = 4
+    legacyNormalAnimationLoops = true
+    legacyNormalAnimTime0 = 0.0
+    legacyNormalAnimColor0 = "0xffC66600"
+    legacyNormalAnimTime1 = 15.0
+    legacyNormalAnimColor1 = "0xffC66600"
+    legacyNormalAnimTime2 = 15.5
+    legacyNormalAnimColor2 = "0xffFFAE4D"
+    legacyNormalAnimTime3 = 16.0
+    legacyNormalAnimColor3 = "0xffC66600"
+    legacyPressedAnimationTimeStamps = 2
+    legacyPressedAnimationLoops = false
+    legacyPressedAnimTime0 = 0.0
+    legacyPressedAnimColor0 = "0xffffffff"
+    legacyPressedAnimTime1 = 0.5
+    legacyPressedAnimColor1 = "0xffFFAE4D"
+    legacyHighlightAnimationTimeStamps = 2
+    legacyHighlightAnimationLoops = true
+    legacyHighlightAnimTime0 = 0.0
+    legacyHighlightAnimColor0 = "0xffffffff"
+    legacyHighlightAnimTime1 = 0.5
+    legacyHighlightAnimColor1 = "0xff5C96C2"
+    legacyHighlightPressedAnimationTimeStamps = 2
+    legacyHighlightPressedAnimationLoops = true
+    legacyHighlightPressedAnimTime0 = 0.0
+    legacyHighlightPressedAnimColor0 = "0xffffffff"
+    legacyHighlightPressedAnimTime1 = 0.5
+    legacyHighlightPressedAnimColor1 = "0xffFFAE4D"
+    legacyDisabledAnimationTimeStamps = 2
+    legacyDisabledAnimationLoops = true
+    legacyDisabledAnimTime0 = 0.0
+    legacyDisabledAnimColor0 = "0xff373737"
+    legacyDisabledAnimTime1 = 15.0
+    legacyDisabledAnimColor1 = "0xff373737"
+}
+
+GuiMetadata {
+    key = "game.mcl_mp_setup_droplist0.metadata.metadata_01"
+    pageKey = "game.mcl_mp_setup_droplist0"
+    legacySection = "Statics"
+    role = "metadata"
+    layer = "metadata"
+    aliasOverride = "metadata"
+    sourceControlType = "Statics"
+    rect = "30,199,0,0"
+    legacyLocalRect = "30,199,0,0"
+    legacyRectSource = "child_relative_xywh"
+    visible = false
+}
+
+GuiImage {
+    key = "game.mcl_mp_setup_droplist0.image.unit_insignia_icon"
+    pageKey = "game.mcl_mp_setup_droplist0"
+    legacySection = "Static0"
+    legacyComment = "unit insignia icon"
+    role = "image"
+    layer = "art"
+    aliasOverride = "unit insignia icon"
+    sourceControlType = "Static0"
+    rect = "32,201,32,32"
+    legacyLocalRect = "32,201,32,32"
+    legacyRectSource = "child_relative_xywh"
+    texture = "data/art/gui/mcl_mp_uniticon00x.png"
+    legacyTexture = "mcl_mp_uniticon00x"
+    uiPackage = "default"
+    rectModel = "legacy_imgui.modern_rect_v1"
+    controlRect = "32,201,32,32"
+    artRect = "32,201,32,32"
+    artLayer = "control_art"
+    uvX = 0
+    uvY = 0
+    uvWidth = 32
+    uvHeight = 32
+}
+
+GuiMetadata {
+    key = "game.mcl_mp_setup_droplist0.metadata.metadata_02"
+    pageKey = "game.mcl_mp_setup_droplist0"
+    legacySection = "Rects"
+    legacyContext = "~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ | ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ | ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~"
+    role = "metadata"
+    layer = "metadata"
+    aliasOverride = "metadata"
+    sourceControlType = "Rects"
+    rect = "30,199,0,0"
+    legacyLocalRect = "30,199,0,0"
+    legacyRectSource = "child_relative_xywh"
+    visible = false
+}
+
+GuiRect {
+    key = "game.mcl_mp_setup_droplist0.rect.divider_between_down_triangle_and_text_in_drop_down_rect"
+    pageKey = "game.mcl_mp_setup_droplist0"
+    legacySection = "Rect0"
+    legacyComment = "divider between down triangle and text in drop down rect"
+    role = "video_mount"
+    layer = "video"
+    aliasOverride = "divider between down triangle and text in drop down rect"
+    sourceControlType = "Rect0"
+    rect = "309,200,1,34"
+    legacyLocalRect = "309,200,1,34"
+    legacyRectSource = "child_relative_xywh"
+    uiPackage = "default"
+    rectModel = "legacy_imgui.modern_rect_v1"
+    controlRect = "309,200,1,34"
+    legacyColor = -13031403
+    outline = "TRUE"
+    filled = false
+    fillColorArgb = "0x00000000"
+    borderColorArgb = "0x00000000"
+    colorArgb = "0xffffffff"
+}
+
+GuiRect {
+    key = "game.mcl_mp_setup_droplist0.rect.outline_for_variant_drop_down_menu"
+    pageKey = "game.mcl_mp_setup_droplist0"
+    legacySection = "Rect1"
+    legacyComment = "outline for variant drop down menu"
+    role = "rect"
+    layer = "layout"
+    aliasOverride = "outline for variant drop down menu"
+    sourceControlType = "Rect1"
+    rect = "30,199,297,36"
+    legacyLocalRect = "30,199,297,36"
+    legacyRectSource = "child_relative_xywh"
+    uiPackage = "default"
+    rectModel = "legacy_imgui.modern_rect_v1"
+    controlRect = "30,199,297,36"
+    legacyColor = -12373732
+    outline = "TRUE"
+    filled = false
+    fillColorArgb = "0x00000000"
+    borderColorArgb = "0x00000000"
+    colorArgb = "0xffffffff"
+}
+
+GuiRect {
+    key = "game.mcl_mp_setup_droplist0.rect.rect"
+    pageKey = "game.mcl_mp_setup_droplist0"
+    legacySection = "EditBox"
+    role = "rect"
+    layer = "layout"
+    aliasOverride = "rect"
+    sourceControlType = "EditBox"
+    rect = "30,199,297,36"
+    legacyLocalRect = "30,199,297,36"
+    legacyRectSource = "child_relative_xywh"
+    uiPackage = "default"
+    rectModel = "legacy_imgui.modern_rect_v1"
+    controlRect = "30,199,297,36"
+    legacyColor = -12373732
+    filled = true
+    fillColorArgb = "0x00000000"
+    borderColorArgb = "0x00000000"
+    colorArgb = "0xffffffff"
+}
+
+GuiRect {
+    key = "game.mcl_mp_setup_droplist0.rect.rectangle_for_list_box"
+    pageKey = "game.mcl_mp_setup_droplist0"
+    legacySection = "Rect2"
+    legacyComment = "rectangle for list box"
+    role = "listbox_mount"
+    layer = "control"
+    aliasOverride = "rectangle for list box"
+    sourceControlType = "Rect2"
+    rect = "30,219,297,239"
+    legacyLocalRect = "30,219,297,239"
+    legacyRectSource = "child_relative_xywh"
+    uiPackage = "default"
+    rectModel = "legacy_imgui.modern_rect_v1"
+    controlRect = "30,219,297,239"
+    legacyColor = -13031403
+    outline = "TRUE"
+    filled = false
+    fillColorArgb = "0x00000000"
+    borderColorArgb = "0x00000000"
+    colorArgb = "0xffffffff"
+}
+
+GuiScrollbar {
+    key = "game.mcl_mp_setup_droplist0.scrollbar.rectangle_for_list_box"
+    pageKey = "game.mcl_mp_setup_droplist0"
+    legacySection = "Rect2"
+    role = "listbox_scrollbar"
+    layer = "control"
+    aliasOverride = "listbox_scrollbar"
+    sourceControlType = "runtime mcScrollBar"
+    sourceStyle = "ScrollBar.fit"
+    sourceLine = "aListBox::init => scrollBar->init(w - 17, 2, 15, h - 4)"
+    rect = "310,221,15,235"
+    legacyLocalRect = "310,221,15,235"
+    legacyRectSource = "runtime_listbox_scrollbar"
+    runtimePlacement = "aListBox::mcScrollBar"
+    scrollbarTemplate = "data/defs/ui/packages/legacy_imgui/shared/scrollbar.fit"
+    scrollbarStyle = "orange"
+}
+
+GuiMetadata {
+    key = "game.mcl_mp_setup_droplist0.metadata.metadata_03"
+    pageKey = "game.mcl_mp_setup_droplist0"
+    legacySection = "ListItems"
+    legacyContext = "~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ | ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ | ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~"
+    role = "metadata"
+    layer = "metadata"
+    aliasOverride = "metadata"
+    sourceControlType = "ListItems"
+    rect = "30,199,0,0"
+    legacyLocalRect = "30,199,0,0"
+    legacyRectSource = "child_relative_xywh"
+    visible = false
+}
+
+GuiList {
+    key = "game.mcl_mp_setup_droplist0.list.list"
+    pageKey = "game.mcl_mp_setup_droplist0"
+    legacySection = "ListItem0"
+    role = "list"
+    layer = "control"
+    aliasOverride = "list"
+    sourceControlType = "ListItem0"
+    rect = "30,199,234,32"
+    legacyLocalRect = "30,199,234,32"
+    legacyRectSource = "child_relative_xywh"
+    uiPackage = "default"
+    rectModel = "legacy_imgui.modern_rect_v1"
+    controlRect = "30,199,234,32"
+    hitRect = "30,199,234,32"
+    font = "Agency Regular"
+    fontStyle = "Regular"
+    fontSize = 14
+    bold = false
+    italic = false
+    textAlign = "left"
+    textAnchor = "upper_left"
+    wrapText = true
+}
+
+GuiImage {
+    key = "game.mcl_mp_setup_droplist0.image.mcl_mp_uniticon000"
+    pageKey = "game.mcl_mp_setup_droplist0"
+    legacySection = "ListItem0Static"
+    role = "image"
+    layer = "art"
+    aliasOverride = "mcl_mp_uniticon000"
+    sourceControlType = "ListItem0Static"
+    rect = "30,199,32,32"
+    legacyLocalRect = "30,199,32,32"
+    legacyRectSource = "child_relative_xywh"
+    texture = "data/art/gui/mcl_mp_uniticon000.png"
+    legacyTexture = "mcl_mp_uniticon000"
+    uiPackage = "default"
+    rectModel = "legacy_imgui.modern_rect_v1"
+    controlRect = "30,199,32,32"
+    artRect = "30,199,32,32"
+    artLayer = "control_art"
+    uvX = 0
+    uvY = 0
+    uvWidth = 32
+    uvHeight = 32
+}
+
+GuiText {
+    key = "game.mcl_mp_setup_droplist0.text.text"
+    pageKey = "game.mcl_mp_setup_droplist0"
+    legacySection = "ListItem0Text"
+    role = "text"
+    layer = "text"
+    aliasOverride = "text"
+    sourceControlType = "ListItem0Text"
+    rect = "30,199,202,17"
+    legacyLocalRect = "30,199,202,17"
+    legacyRectSource = "child_relative_xywh"
+    uiPackage = "default"
+    rectModel = "legacy_imgui.modern_rect_v1"
+    controlRect = "30,199,202,17"
+    textRect = "30,199,202,17"
+    textRectMode = "control_rect_fallback"
+    textLegacyId = 27000
+    visible = false
+    textKey = "legacy.mc2res.27000"
+    visibleText = " "
+    textLegacySymbol = "IDS_STRING_FIRST_LOGISTICS"
+    textSource = "mc2res"
+    textMissing = false
+    legacyFontId = 40012
+    legacyFontComment = "use agencyfb11"
+    font = "Agency Regular"
+    fontStyle = "Regular"
+    fontSize = 11
+    bold = false
+    italic = false
+    textAlign = "left"
+    textAnchor = "upper_left"
+    wrapText = false
+    colorArgb = "0xff846643"
+    legacyColor = 0xFF846643
+    outline = "FALSE"
+    legacyAlignment = 0
+    legacyFontComment = "use agencyfb11"
+    borderColorArgb = "0x00000000"
+}
+
+GuiList {
+    key = "game.mcl_mp_setup_droplist0.list.list_01"
+    pageKey = "game.mcl_mp_setup_droplist0"
+    legacySection = "ListItem1"
+    role = "list"
+    layer = "control"
+    aliasOverride = "list"
+    sourceControlType = "ListItem1"
+    rect = "30,199,234,32"
+    legacyLocalRect = "30,199,234,32"
+    legacyRectSource = "child_relative_xywh"
+    uiPackage = "default"
+    rectModel = "legacy_imgui.modern_rect_v1"
+    controlRect = "30,199,234,32"
+    hitRect = "30,199,234,32"
+    font = "Agency Regular"
+    fontStyle = "Regular"
+    fontSize = 14
+    bold = false
+    italic = false
+    textAlign = "left"
+    textAnchor = "upper_left"
+    wrapText = true
+}
+
+GuiImage {
+    key = "game.mcl_mp_setup_droplist0.image.mcl_mp_uniticon001"
+    pageKey = "game.mcl_mp_setup_droplist0"
+    legacySection = "ListItem1Static"
+    role = "image"
+    layer = "art"
+    aliasOverride = "mcl_mp_uniticon001"
+    sourceControlType = "ListItem1Static"
+    rect = "30,199,32,32"
+    legacyLocalRect = "30,199,32,32"
+    legacyRectSource = "child_relative_xywh"
+    texture = "data/art/gui/mcl_mp_uniticon001.png"
+    legacyTexture = "mcl_mp_uniticon001"
+    uiPackage = "default"
+    rectModel = "legacy_imgui.modern_rect_v1"
+    controlRect = "30,199,32,32"
+    artRect = "30,199,32,32"
+    artLayer = "control_art"
+    uvX = 0
+    uvY = 0
+    uvWidth = 32
+    uvHeight = 32
+}
+
+GuiText {
+    key = "game.mcl_mp_setup_droplist0.text.text_01"
+    pageKey = "game.mcl_mp_setup_droplist0"
+    legacySection = "ListItem1Text"
+    role = "text"
+    layer = "text"
+    aliasOverride = "text"
+    sourceControlType = "ListItem1Text"
+    rect = "30,199,202,17"
+    legacyLocalRect = "30,199,202,17"
+    legacyRectSource = "child_relative_xywh"
+    uiPackage = "default"
+    rectModel = "legacy_imgui.modern_rect_v1"
+    controlRect = "30,199,202,17"
+    textRect = "30,199,202,17"
+    textRectMode = "control_rect_fallback"
+    textLegacyId = 27000
+    visible = false
+    textKey = "legacy.mc2res.27000"
+    visibleText = " "
+    textLegacySymbol = "IDS_STRING_FIRST_LOGISTICS"
+    textSource = "mc2res"
+    textMissing = false
+    legacyFontId = 40012
+    legacyFontComment = "use agencyfb11"
+    font = "Agency Regular"
+    fontStyle = "Regular"
+    fontSize = 11
+    bold = false
+    italic = false
+    textAlign = "left"
+    textAnchor = "upper_left"
+    wrapText = false
+    colorArgb = "0xff846643"
+    legacyColor = 0xFF846643
+    outline = "FALSE"
+    legacyAlignment = 0
+    legacyFontComment = "use agencyfb11"
+    borderColorArgb = "0x00000000"
+}
+
+GuiList {
+    key = "game.mcl_mp_setup_droplist0.list.list_02"
+    pageKey = "game.mcl_mp_setup_droplist0"
+    legacySection = "ListItem2"
+    role = "list"
+    layer = "control"
+    aliasOverride = "list"
+    sourceControlType = "ListItem2"
+    rect = "30,199,234,32"
+    legacyLocalRect = "30,199,234,32"
+    legacyRectSource = "child_relative_xywh"
+    uiPackage = "default"
+    rectModel = "legacy_imgui.modern_rect_v1"
+    controlRect = "30,199,234,32"
+    hitRect = "30,199,234,32"
+    font = "Agency Regular"
+    fontStyle = "Regular"
+    fontSize = 14
+    bold = false
+    italic = false
+    textAlign = "left"
+    textAnchor = "upper_left"
+    wrapText = true
+}
+
+GuiImage {
+    key = "game.mcl_mp_setup_droplist0.image.mcl_mp_uniticon002"
+    pageKey = "game.mcl_mp_setup_droplist0"
+    legacySection = "ListItem2Static"
+    role = "image"
+    layer = "art"
+    aliasOverride = "mcl_mp_uniticon002"
+    sourceControlType = "ListItem2Static"
+    rect = "30,199,32,32"
+    legacyLocalRect = "30,199,32,32"
+    legacyRectSource = "child_relative_xywh"
+    texture = "data/art/gui/mcl_mp_uniticon002.png"
+    legacyTexture = "mcl_mp_uniticon002"
+    uiPackage = "default"
+    rectModel = "legacy_imgui.modern_rect_v1"
+    controlRect = "30,199,32,32"
+    artRect = "30,199,32,32"
+    artLayer = "control_art"
+    uvX = 0
+    uvY = 0
+    uvWidth = 32
+    uvHeight = 32
+}
+
+GuiText {
+    key = "game.mcl_mp_setup_droplist0.text.text_02"
+    pageKey = "game.mcl_mp_setup_droplist0"
+    legacySection = "ListItem2Text"
+    role = "text"
+    layer = "text"
+    aliasOverride = "text"
+    sourceControlType = "ListItem2Text"
+    rect = "30,199,202,17"
+    legacyLocalRect = "30,199,202,17"
+    legacyRectSource = "child_relative_xywh"
+    uiPackage = "default"
+    rectModel = "legacy_imgui.modern_rect_v1"
+    controlRect = "30,199,202,17"
+    textRect = "30,199,202,17"
+    textRectMode = "control_rect_fallback"
+    textLegacyId = 27000
+    visible = false
+    textKey = "legacy.mc2res.27000"
+    visibleText = " "
+    textLegacySymbol = "IDS_STRING_FIRST_LOGISTICS"
+    textSource = "mc2res"
+    textMissing = false
+    legacyFontId = 40012
+    legacyFontComment = "use agencyfb11"
+    font = "Agency Regular"
+    fontStyle = "Regular"
+    fontSize = 11
+    bold = false
+    italic = false
+    textAlign = "left"
+    textAnchor = "upper_left"
+    wrapText = false
+    colorArgb = "0xff846643"
+    legacyColor = 0xFF846643
+    outline = "FALSE"
+    legacyAlignment = 0
+    legacyFontComment = "use agencyfb11"
+    borderColorArgb = "0x00000000"
+}
+
+GuiList {
+    key = "game.mcl_mp_setup_droplist0.list.list_03"
+    pageKey = "game.mcl_mp_setup_droplist0"
+    legacySection = "ListItem3"
+    role = "list"
+    layer = "control"
+    aliasOverride = "list"
+    sourceControlType = "ListItem3"
+    rect = "30,199,234,32"
+    legacyLocalRect = "30,199,234,32"
+    legacyRectSource = "child_relative_xywh"
+    uiPackage = "default"
+    rectModel = "legacy_imgui.modern_rect_v1"
+    controlRect = "30,199,234,32"
+    hitRect = "30,199,234,32"
+    font = "Agency Regular"
+    fontStyle = "Regular"
+    fontSize = 14
+    bold = false
+    italic = false
+    textAlign = "left"
+    textAnchor = "upper_left"
+    wrapText = true
+}
+
+GuiImage {
+    key = "game.mcl_mp_setup_droplist0.image.mcl_mp_uniticon003"
+    pageKey = "game.mcl_mp_setup_droplist0"
+    legacySection = "ListItem3Static"
+    role = "image"
+    layer = "art"
+    aliasOverride = "mcl_mp_uniticon003"
+    sourceControlType = "ListItem3Static"
+    rect = "30,199,32,32"
+    legacyLocalRect = "30,199,32,32"
+    legacyRectSource = "child_relative_xywh"
+    texture = "data/art/gui/mcl_mp_uniticon003.png"
+    legacyTexture = "mcl_mp_uniticon003"
+    uiPackage = "default"
+    rectModel = "legacy_imgui.modern_rect_v1"
+    controlRect = "30,199,32,32"
+    artRect = "30,199,32,32"
+    artLayer = "control_art"
+    uvX = 0
+    uvY = 0
+    uvWidth = 32
+    uvHeight = 32
+}
+
+GuiText {
+    key = "game.mcl_mp_setup_droplist0.text.text_03"
+    pageKey = "game.mcl_mp_setup_droplist0"
+    legacySection = "ListItem3Text"
+    role = "text"
+    layer = "text"
+    aliasOverride = "text"
+    sourceControlType = "ListItem3Text"
+    rect = "30,199,202,17"
+    legacyLocalRect = "30,199,202,17"
+    legacyRectSource = "child_relative_xywh"
+    uiPackage = "default"
+    rectModel = "legacy_imgui.modern_rect_v1"
+    controlRect = "30,199,202,17"
+    textRect = "30,199,202,17"
+    textRectMode = "control_rect_fallback"
+    textLegacyId = 27000
+    visible = false
+    textKey = "legacy.mc2res.27000"
+    visibleText = " "
+    textLegacySymbol = "IDS_STRING_FIRST_LOGISTICS"
+    textSource = "mc2res"
+    textMissing = false
+    legacyFontId = 40012
+    legacyFontComment = "use agencyfb11"
+    font = "Agency Regular"
+    fontStyle = "Regular"
+    fontSize = 11
+    bold = false
+    italic = false
+    textAlign = "left"
+    textAnchor = "upper_left"
+    wrapText = false
+    colorArgb = "0xff846643"
+    legacyColor = 0xFF846643
+    outline = "FALSE"
+    legacyAlignment = 0
+    legacyFontComment = "use agencyfb11"
+    borderColorArgb = "0x00000000"
+}
+
+GuiList {
+    key = "game.mcl_mp_setup_droplist0.list.list_04"
+    pageKey = "game.mcl_mp_setup_droplist0"
+    legacySection = "ListItem4"
+    role = "list"
+    layer = "control"
+    aliasOverride = "list"
+    sourceControlType = "ListItem4"
+    rect = "30,199,234,32"
+    legacyLocalRect = "30,199,234,32"
+    legacyRectSource = "child_relative_xywh"
+    uiPackage = "default"
+    rectModel = "legacy_imgui.modern_rect_v1"
+    controlRect = "30,199,234,32"
+    hitRect = "30,199,234,32"
+    font = "Agency Regular"
+    fontStyle = "Regular"
+    fontSize = 14
+    bold = false
+    italic = false
+    textAlign = "left"
+    textAnchor = "upper_left"
+    wrapText = true
+}
+
+GuiImage {
+    key = "game.mcl_mp_setup_droplist0.image.mcl_mp_uniticon004"
+    pageKey = "game.mcl_mp_setup_droplist0"
+    legacySection = "ListItem4Static"
+    role = "image"
+    layer = "art"
+    aliasOverride = "mcl_mp_uniticon004"
+    sourceControlType = "ListItem4Static"
+    rect = "30,199,32,32"
+    legacyLocalRect = "30,199,32,32"
+    legacyRectSource = "child_relative_xywh"
+    texture = "data/art/gui/mcl_mp_uniticon004.png"
+    legacyTexture = "mcl_mp_uniticon004"
+    uiPackage = "default"
+    rectModel = "legacy_imgui.modern_rect_v1"
+    controlRect = "30,199,32,32"
+    artRect = "30,199,32,32"
+    artLayer = "control_art"
+    uvX = 0
+    uvY = 0
+    uvWidth = 32
+    uvHeight = 32
+}
+
+GuiText {
+    key = "game.mcl_mp_setup_droplist0.text.text_04"
+    pageKey = "game.mcl_mp_setup_droplist0"
+    legacySection = "ListItem4Text"
+    role = "text"
+    layer = "text"
+    aliasOverride = "text"
+    sourceControlType = "ListItem4Text"
+    rect = "30,199,202,17"
+    legacyLocalRect = "30,199,202,17"
+    legacyRectSource = "child_relative_xywh"
+    uiPackage = "default"
+    rectModel = "legacy_imgui.modern_rect_v1"
+    controlRect = "30,199,202,17"
+    textRect = "30,199,202,17"
+    textRectMode = "control_rect_fallback"
+    textLegacyId = 27000
+    visible = false
+    textKey = "legacy.mc2res.27000"
+    visibleText = " "
+    textLegacySymbol = "IDS_STRING_FIRST_LOGISTICS"
+    textSource = "mc2res"
+    textMissing = false
+    legacyFontId = 40012
+    legacyFontComment = "use agencyfb11"
+    font = "Agency Regular"
+    fontStyle = "Regular"
+    fontSize = 11
+    bold = false
+    italic = false
+    textAlign = "left"
+    textAnchor = "upper_left"
+    wrapText = false
+    colorArgb = "0xff846643"
+    legacyColor = 0xFF846643
+    outline = "FALSE"
+    legacyAlignment = 0
+    legacyFontComment = "use agencyfb11"
+    borderColorArgb = "0x00000000"
+}
+
+GuiList {
+    key = "game.mcl_mp_setup_droplist0.list.list_05"
+    pageKey = "game.mcl_mp_setup_droplist0"
+    legacySection = "ListItem5"
+    role = "list"
+    layer = "control"
+    aliasOverride = "list"
+    sourceControlType = "ListItem5"
+    rect = "30,199,234,32"
+    legacyLocalRect = "30,199,234,32"
+    legacyRectSource = "child_relative_xywh"
+    uiPackage = "default"
+    rectModel = "legacy_imgui.modern_rect_v1"
+    controlRect = "30,199,234,32"
+    hitRect = "30,199,234,32"
+    font = "Agency Regular"
+    fontStyle = "Regular"
+    fontSize = 14
+    bold = false
+    italic = false
+    textAlign = "left"
+    textAnchor = "upper_left"
+    wrapText = true
+}
+
+GuiImage {
+    key = "game.mcl_mp_setup_droplist0.image.mcl_mp_uniticon005"
+    pageKey = "game.mcl_mp_setup_droplist0"
+    legacySection = "ListItem5Static"
+    role = "image"
+    layer = "art"
+    aliasOverride = "mcl_mp_uniticon005"
+    sourceControlType = "ListItem5Static"
+    rect = "30,199,32,32"
+    legacyLocalRect = "30,199,32,32"
+    legacyRectSource = "child_relative_xywh"
+    texture = "data/art/gui/mcl_mp_uniticon005.png"
+    legacyTexture = "mcl_mp_uniticon005"
+    uiPackage = "default"
+    rectModel = "legacy_imgui.modern_rect_v1"
+    controlRect = "30,199,32,32"
+    artRect = "30,199,32,32"
+    artLayer = "control_art"
+    uvX = 0
+    uvY = 0
+    uvWidth = 32
+    uvHeight = 32
+}
+
+GuiText {
+    key = "game.mcl_mp_setup_droplist0.text.text_05"
+    pageKey = "game.mcl_mp_setup_droplist0"
+    legacySection = "ListItem5Text"
+    role = "text"
+    layer = "text"
+    aliasOverride = "text"
+    sourceControlType = "ListItem5Text"
+    rect = "30,199,202,17"
+    legacyLocalRect = "30,199,202,17"
+    legacyRectSource = "child_relative_xywh"
+    uiPackage = "default"
+    rectModel = "legacy_imgui.modern_rect_v1"
+    controlRect = "30,199,202,17"
+    textRect = "30,199,202,17"
+    textRectMode = "control_rect_fallback"
+    textLegacyId = 27000
+    visible = false
+    textKey = "legacy.mc2res.27000"
+    visibleText = " "
+    textLegacySymbol = "IDS_STRING_FIRST_LOGISTICS"
+    textSource = "mc2res"
+    textMissing = false
+    legacyFontId = 40012
+    legacyFontComment = "use agencyfb11"
+    font = "Agency Regular"
+    fontStyle = "Regular"
+    fontSize = 11
+    bold = false
+    italic = false
+    textAlign = "left"
+    textAnchor = "upper_left"
+    wrapText = false
+    colorArgb = "0xff846643"
+    legacyColor = 0xFF846643
+    outline = "FALSE"
+    legacyAlignment = 0
+    legacyFontComment = "use agencyfb11"
+    borderColorArgb = "0x00000000"
+}
+
+GuiList {
+    key = "game.mcl_mp_setup_droplist0.list.list_06"
+    pageKey = "game.mcl_mp_setup_droplist0"
+    legacySection = "ListItem6"
+    role = "list"
+    layer = "control"
+    aliasOverride = "list"
+    sourceControlType = "ListItem6"
+    rect = "30,199,234,32"
+    legacyLocalRect = "30,199,234,32"
+    legacyRectSource = "child_relative_xywh"
+    uiPackage = "default"
+    rectModel = "legacy_imgui.modern_rect_v1"
+    controlRect = "30,199,234,32"
+    hitRect = "30,199,234,32"
+    font = "Agency Regular"
+    fontStyle = "Regular"
+    fontSize = 14
+    bold = false
+    italic = false
+    textAlign = "left"
+    textAnchor = "upper_left"
+    wrapText = true
+}
+
+GuiImage {
+    key = "game.mcl_mp_setup_droplist0.image.mcl_mp_uniticon006"
+    pageKey = "game.mcl_mp_setup_droplist0"
+    legacySection = "ListItem6Static"
+    role = "image"
+    layer = "art"
+    aliasOverride = "mcl_mp_uniticon006"
+    sourceControlType = "ListItem6Static"
+    rect = "30,199,32,32"
+    legacyLocalRect = "30,199,32,32"
+    legacyRectSource = "child_relative_xywh"
+    texture = "data/art/gui/mcl_mp_uniticon006.png"
+    legacyTexture = "mcl_mp_uniticon006"
+    uiPackage = "default"
+    rectModel = "legacy_imgui.modern_rect_v1"
+    controlRect = "30,199,32,32"
+    artRect = "30,199,32,32"
+    artLayer = "control_art"
+    uvX = 0
+    uvY = 0
+    uvWidth = 32
+    uvHeight = 32
+}
+
+GuiText {
+    key = "game.mcl_mp_setup_droplist0.text.text_06"
+    pageKey = "game.mcl_mp_setup_droplist0"
+    legacySection = "ListItem6Text"
+    role = "text"
+    layer = "text"
+    aliasOverride = "text"
+    sourceControlType = "ListItem6Text"
+    rect = "30,199,202,17"
+    legacyLocalRect = "30,199,202,17"
+    legacyRectSource = "child_relative_xywh"
+    uiPackage = "default"
+    rectModel = "legacy_imgui.modern_rect_v1"
+    controlRect = "30,199,202,17"
+    textRect = "30,199,202,17"
+    textRectMode = "control_rect_fallback"
+    textLegacyId = 27000
+    visible = false
+    textKey = "legacy.mc2res.27000"
+    visibleText = " "
+    textLegacySymbol = "IDS_STRING_FIRST_LOGISTICS"
+    textSource = "mc2res"
+    textMissing = false
+    legacyFontId = 40012
+    legacyFontComment = "use agencyfb11"
+    font = "Agency Regular"
+    fontStyle = "Regular"
+    fontSize = 11
+    bold = false
+    italic = false
+    textAlign = "left"
+    textAnchor = "upper_left"
+    wrapText = false
+    colorArgb = "0xff846643"
+    legacyColor = 0xFF846643
+    outline = "FALSE"
+    legacyAlignment = 0
+    legacyFontComment = "use agencyfb11"
+    borderColorArgb = "0x00000000"
+}
+
+GuiList {
+    key = "game.mcl_mp_setup_droplist0.list.list_07"
+    pageKey = "game.mcl_mp_setup_droplist0"
+    legacySection = "ListItem7"
+    role = "list"
+    layer = "control"
+    aliasOverride = "list"
+    sourceControlType = "ListItem7"
+    rect = "30,199,234,32"
+    legacyLocalRect = "30,199,234,32"
+    legacyRectSource = "child_relative_xywh"
+    uiPackage = "default"
+    rectModel = "legacy_imgui.modern_rect_v1"
+    controlRect = "30,199,234,32"
+    hitRect = "30,199,234,32"
+    font = "Agency Regular"
+    fontStyle = "Regular"
+    fontSize = 14
+    bold = false
+    italic = false
+    textAlign = "left"
+    textAnchor = "upper_left"
+    wrapText = true
+}
+
+GuiImage {
+    key = "game.mcl_mp_setup_droplist0.image.mcl_mp_uniticon007"
+    pageKey = "game.mcl_mp_setup_droplist0"
+    legacySection = "ListItem7Static"
+    role = "image"
+    layer = "art"
+    aliasOverride = "mcl_mp_uniticon007"
+    sourceControlType = "ListItem7Static"
+    rect = "30,199,32,32"
+    legacyLocalRect = "30,199,32,32"
+    legacyRectSource = "child_relative_xywh"
+    texture = "data/art/gui/mcl_mp_uniticon007.png"
+    legacyTexture = "mcl_mp_uniticon007"
+    uiPackage = "default"
+    rectModel = "legacy_imgui.modern_rect_v1"
+    controlRect = "30,199,32,32"
+    artRect = "30,199,32,32"
+    artLayer = "control_art"
+    uvX = 0
+    uvY = 0
+    uvWidth = 32
+    uvHeight = 32
+}
+
+GuiText {
+    key = "game.mcl_mp_setup_droplist0.text.text_07"
+    pageKey = "game.mcl_mp_setup_droplist0"
+    legacySection = "ListItem7Text"
+    role = "text"
+    layer = "text"
+    aliasOverride = "text"
+    sourceControlType = "ListItem7Text"
+    rect = "30,199,202,17"
+    legacyLocalRect = "30,199,202,17"
+    legacyRectSource = "child_relative_xywh"
+    uiPackage = "default"
+    rectModel = "legacy_imgui.modern_rect_v1"
+    controlRect = "30,199,202,17"
+    textRect = "30,199,202,17"
+    textRectMode = "control_rect_fallback"
+    textLegacyId = 27000
+    visible = false
+    textKey = "legacy.mc2res.27000"
+    visibleText = " "
+    textLegacySymbol = "IDS_STRING_FIRST_LOGISTICS"
+    textSource = "mc2res"
+    textMissing = false
+    legacyFontId = 40012
+    legacyFontComment = "use agencyfb11"
+    font = "Agency Regular"
+    fontStyle = "Regular"
+    fontSize = 11
+    bold = false
+    italic = false
+    textAlign = "left"
+    textAnchor = "upper_left"
+    wrapText = false
+    colorArgb = "0xff846643"
+    legacyColor = 0xFF846643
+    outline = "FALSE"
+    legacyAlignment = 0
+    legacyFontComment = "use agencyfb11"
+    borderColorArgb = "0x00000000"
+}
+
+GuiList {
+    key = "game.mcl_mp_setup_droplist0.list.list_08"
+    pageKey = "game.mcl_mp_setup_droplist0"
+    legacySection = "ListItem8"
+    role = "list"
+    layer = "control"
+    aliasOverride = "list"
+    sourceControlType = "ListItem8"
+    rect = "30,199,234,32"
+    legacyLocalRect = "30,199,234,32"
+    legacyRectSource = "child_relative_xywh"
+    uiPackage = "default"
+    rectModel = "legacy_imgui.modern_rect_v1"
+    controlRect = "30,199,234,32"
+    hitRect = "30,199,234,32"
+    font = "Agency Regular"
+    fontStyle = "Regular"
+    fontSize = 14
+    bold = false
+    italic = false
+    textAlign = "left"
+    textAnchor = "upper_left"
+    wrapText = true
+}
+
+GuiImage {
+    key = "game.mcl_mp_setup_droplist0.image.mcl_mp_uniticon008"
+    pageKey = "game.mcl_mp_setup_droplist0"
+    legacySection = "ListItem8Static"
+    role = "image"
+    layer = "art"
+    aliasOverride = "mcl_mp_uniticon008"
+    sourceControlType = "ListItem8Static"
+    rect = "30,199,32,32"
+    legacyLocalRect = "30,199,32,32"
+    legacyRectSource = "child_relative_xywh"
+    texture = "data/art/gui/mcl_mp_uniticon008.png"
+    legacyTexture = "mcl_mp_uniticon008"
+    uiPackage = "default"
+    rectModel = "legacy_imgui.modern_rect_v1"
+    controlRect = "30,199,32,32"
+    artRect = "30,199,32,32"
+    artLayer = "control_art"
+    uvX = 0
+    uvY = 0
+    uvWidth = 32
+    uvHeight = 32
+}
+
+GuiText {
+    key = "game.mcl_mp_setup_droplist0.text.text_08"
+    pageKey = "game.mcl_mp_setup_droplist0"
+    legacySection = "ListItem8Text"
+    role = "text"
+    layer = "text"
+    aliasOverride = "text"
+    sourceControlType = "ListItem8Text"
+    rect = "30,199,202,17"
+    legacyLocalRect = "30,199,202,17"
+    legacyRectSource = "child_relative_xywh"
+    uiPackage = "default"
+    rectModel = "legacy_imgui.modern_rect_v1"
+    controlRect = "30,199,202,17"
+    textRect = "30,199,202,17"
+    textRectMode = "control_rect_fallback"
+    textLegacyId = 27000
+    visible = false
+    textKey = "legacy.mc2res.27000"
+    visibleText = " "
+    textLegacySymbol = "IDS_STRING_FIRST_LOGISTICS"
+    textSource = "mc2res"
+    textMissing = false
+    legacyFontId = 40012
+    legacyFontComment = "use agencyfb11"
+    font = "Agency Regular"
+    fontStyle = "Regular"
+    fontSize = 11
+    bold = false
+    italic = false
+    textAlign = "left"
+    textAnchor = "upper_left"
+    wrapText = false
+    colorArgb = "0xff846643"
+    legacyColor = 0xFF846643
+    outline = "FALSE"
+    legacyAlignment = 0
+    legacyFontComment = "use agencyfb11"
+    borderColorArgb = "0x00000000"
+}
+
+GuiList {
+    key = "game.mcl_mp_setup_droplist0.list.list_09"
+    pageKey = "game.mcl_mp_setup_droplist0"
+    legacySection = "ListItem9"
+    role = "list"
+    layer = "control"
+    aliasOverride = "list"
+    sourceControlType = "ListItem9"
+    rect = "30,199,234,32"
+    legacyLocalRect = "30,199,234,32"
+    legacyRectSource = "child_relative_xywh"
+    uiPackage = "default"
+    rectModel = "legacy_imgui.modern_rect_v1"
+    controlRect = "30,199,234,32"
+    hitRect = "30,199,234,32"
+    font = "Agency Regular"
+    fontStyle = "Regular"
+    fontSize = 14
+    bold = false
+    italic = false
+    textAlign = "left"
+    textAnchor = "upper_left"
+    wrapText = true
+}
+
+GuiImage {
+    key = "game.mcl_mp_setup_droplist0.image.mcl_mp_uniticon009"
+    pageKey = "game.mcl_mp_setup_droplist0"
+    legacySection = "ListItem9Static"
+    role = "image"
+    layer = "art"
+    aliasOverride = "mcl_mp_uniticon009"
+    sourceControlType = "ListItem9Static"
+    rect = "30,199,32,32"
+    legacyLocalRect = "30,199,32,32"
+    legacyRectSource = "child_relative_xywh"
+    texture = "data/art/gui/mcl_mp_uniticon009.png"
+    legacyTexture = "mcl_mp_uniticon009"
+    uiPackage = "default"
+    rectModel = "legacy_imgui.modern_rect_v1"
+    controlRect = "30,199,32,32"
+    artRect = "30,199,32,32"
+    artLayer = "control_art"
+    uvX = 0
+    uvY = 0
+    uvWidth = 32
+    uvHeight = 32
+}
+
+GuiText {
+    key = "game.mcl_mp_setup_droplist0.text.text_09"
+    pageKey = "game.mcl_mp_setup_droplist0"
+    legacySection = "ListItem9Text"
+    role = "text"
+    layer = "text"
+    aliasOverride = "text"
+    sourceControlType = "ListItem9Text"
+    rect = "30,199,202,17"
+    legacyLocalRect = "30,199,202,17"
+    legacyRectSource = "child_relative_xywh"
+    uiPackage = "default"
+    rectModel = "legacy_imgui.modern_rect_v1"
+    controlRect = "30,199,202,17"
+    textRect = "30,199,202,17"
+    textRectMode = "control_rect_fallback"
+    textLegacyId = 27000
+    visible = false
+    textKey = "legacy.mc2res.27000"
+    visibleText = " "
+    textLegacySymbol = "IDS_STRING_FIRST_LOGISTICS"
+    textSource = "mc2res"
+    textMissing = false
+    legacyFontId = 40012
+    legacyFontComment = "use agencyfb11"
+    font = "Agency Regular"
+    fontStyle = "Regular"
+    fontSize = 11
+    bold = false
+    italic = false
+    textAlign = "left"
+    textAnchor = "upper_left"
+    wrapText = false
+    colorArgb = "0xff846643"
+    legacyColor = 0xFF846643
+    outline = "FALSE"
+    legacyAlignment = 0
+    legacyFontComment = "use agencyfb11"
+    borderColorArgb = "0x00000000"
+}
+
+GuiList {
+    key = "game.mcl_mp_setup_droplist0.list.list_10"
+    pageKey = "game.mcl_mp_setup_droplist0"
+    legacySection = "ListItem10"
+    role = "list"
+    layer = "control"
+    aliasOverride = "list"
+    sourceControlType = "ListItem10"
+    rect = "30,199,234,32"
+    legacyLocalRect = "30,199,234,32"
+    legacyRectSource = "child_relative_xywh"
+    uiPackage = "default"
+    rectModel = "legacy_imgui.modern_rect_v1"
+    controlRect = "30,199,234,32"
+    hitRect = "30,199,234,32"
+    font = "Agency Regular"
+    fontStyle = "Regular"
+    fontSize = 14
+    bold = false
+    italic = false
+    textAlign = "left"
+    textAnchor = "upper_left"
+    wrapText = true
+}
+
+GuiImage {
+    key = "game.mcl_mp_setup_droplist0.image.mcl_mp_uniticon010"
+    pageKey = "game.mcl_mp_setup_droplist0"
+    legacySection = "ListItem10Static"
+    role = "image"
+    layer = "art"
+    aliasOverride = "mcl_mp_uniticon010"
+    sourceControlType = "ListItem10Static"
+    rect = "30,199,32,32"
+    legacyLocalRect = "30,199,32,32"
+    legacyRectSource = "child_relative_xywh"
+    texture = "data/art/gui/mcl_mp_uniticon010.png"
+    legacyTexture = "mcl_mp_uniticon010"
+    uiPackage = "default"
+    rectModel = "legacy_imgui.modern_rect_v1"
+    controlRect = "30,199,32,32"
+    artRect = "30,199,32,32"
+    artLayer = "control_art"
+    uvX = 0
+    uvY = 0
+    uvWidth = 32
+    uvHeight = 32
+}
+
+GuiText {
+    key = "game.mcl_mp_setup_droplist0.text.text_10"
+    pageKey = "game.mcl_mp_setup_droplist0"
+    legacySection = "ListItem10Text"
+    role = "text"
+    layer = "text"
+    aliasOverride = "text"
+    sourceControlType = "ListItem10Text"
+    rect = "30,199,202,17"
+    legacyLocalRect = "30,199,202,17"
+    legacyRectSource = "child_relative_xywh"
+    uiPackage = "default"
+    rectModel = "legacy_imgui.modern_rect_v1"
+    controlRect = "30,199,202,17"
+    textRect = "30,199,202,17"
+    textRectMode = "control_rect_fallback"
+    textLegacyId = 27000
+    visible = false
+    textKey = "legacy.mc2res.27000"
+    visibleText = " "
+    textLegacySymbol = "IDS_STRING_FIRST_LOGISTICS"
+    textSource = "mc2res"
+    textMissing = false
+    legacyFontId = 40012
+    legacyFontComment = "use agencyfb11"
+    font = "Agency Regular"
+    fontStyle = "Regular"
+    fontSize = 11
+    bold = false
+    italic = false
+    textAlign = "left"
+    textAnchor = "upper_left"
+    wrapText = false
+    colorArgb = "0xff846643"
+    legacyColor = 0xFF846643
+    outline = "FALSE"
+    legacyAlignment = 0
+    legacyFontComment = "use agencyfb11"
+    borderColorArgb = "0x00000000"
+}
+
+GuiMetadata {
+    key = "game.mcl_mp_setup_droplist0.metadata.for_light_brown_text"
+    pageKey = "game.mcl_mp_setup_droplist0"
+    legacySection = "Animation0"
+    legacyComment = "for light brown text"
+    legacyContext = "~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ | elements using the animations below are labeled | according to which they should use."
+    role = "metadata"
+    layer = "metadata"
+    aliasOverride = "for light brown text"
+    sourceControlType = "Animation0"
+    rect = "30,199,0,0"
+    legacyLocalRect = "30,199,0,0"
+    legacyRectSource = "child_relative_xywh"
+    visible = false
+    normalColorArgb = "0xff846643"
+    pressedColorArgb = "0xffFFAE4D"
+    highlightColorArgb = "0xffFFAE4D"
+    disabledColorArgb = "0xff373737"
+}
+
+GuiMetadata {
+    key = "game.mcl_mp_setup_droplist0.metadata.for_dark_brown_rectangles"
+    pageKey = "game.mcl_mp_setup_droplist0"
+    legacySection = "Animation1"
+    legacyComment = "for dark brown rectangles"
+    role = "metadata"
+    layer = "metadata"
+    aliasOverride = "for dark brown rectangles"
+    sourceControlType = "Animation1"
+    rect = "30,199,0,0"
+    legacyLocalRect = "30,199,0,0"
+    legacyRectSource = "child_relative_xywh"
+    visible = false
+    normalColorArgb = "0xff43311C"
+    pressedColorArgb = "0xffFFAE4D"
+    highlightColorArgb = "0xffFFAE4D"
+    disabledColorArgb = "0xff373737"
+}
+
+GuiMetadata {
+    key = "game.mcl_mp_setup_droplist0.metadata.for_orange_button_static"
+    pageKey = "game.mcl_mp_setup_droplist0"
+    legacySection = "Animation2"
+    legacyComment = "for orange button static"
+    role = "metadata"
+    layer = "metadata"
+    aliasOverride = "for orange button static"
+    sourceControlType = "Animation2"
+    rect = "30,199,0,0"
+    legacyLocalRect = "30,199,0,0"
+    legacyRectSource = "child_relative_xywh"
+    visible = false
+    normalColorArgb = "0xffC66600"
+    pressedColorArgb = "0xffFFAE4D"
+    highlightColorArgb = "0xffFFAE4D"
+    disabledColorArgb = "0xff373737"
+}

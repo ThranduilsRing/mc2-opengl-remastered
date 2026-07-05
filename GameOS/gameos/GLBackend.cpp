@@ -26,6 +26,19 @@ public:
         // RENDER-BACKEND-IFACE-FBO-1.
         glBindFramebuffer(GL_FRAMEBUFFER, (GLuint)fbo);
     }
+
+    void setViewport(int x, int y, int w, int h) override {
+        // Verbatim the routed composite viewport's prior direct GL. No behavior
+        // change. RENDER-BACKEND-IFACE-VIEWPORT-1.
+        glViewport(x, y, w, h);
+    }
+
+    void clear(unsigned int mask, float r, float g, float b, float a) override {
+        // Verbatim the routed letterbox clear's prior direct GL. No behavior
+        // change. RENDER-BACKEND-IFACE-CLEAR-1.
+        glClearColor(r, g, b, a);
+        glClear((GLenum)mask);
+    }
 };
 
 }  // namespace

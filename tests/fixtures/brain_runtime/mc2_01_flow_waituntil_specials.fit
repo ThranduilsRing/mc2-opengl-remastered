@@ -1,0 +1,26 @@
+FITini
+
+; BRAINSPECIAL-FLOW-WAIT-1 fixture: WAIT_UNTIL gates on a Var condition.
+;   pass 1: entry body -> go="0" != "1" -> gated (0 orders); setter body sets go=1
+;   pass 2: condition holds -> latches open -> GUARD fires exactly once
+;   pass 3: latched + flowFired guard -> no re-fire
+; Total expected: 1 GUARD order.
+
+TechSpecial {
+    key = "flowuntil_scenario_main"
+    type = "MissionSpecial"
+    Body {
+        WAIT_UNTIL Var [go] == 1
+        DO OPORD.CoreGuard
+        STOP
+    }
+}
+
+TechSpecial {
+    key = "flow.until.setter"
+    type = "MissionSpecial"
+    Body {
+        DO Var.Set [go] 1
+        STOP
+    }
+}

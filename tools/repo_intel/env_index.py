@@ -23,7 +23,10 @@ _WALK_EXTENSIONS   = {".cpp", ".h", ".hpp", ".c"}
 
 _REGISTRY_ENTRY = re.compile(
     r'\{\s*'
-    r'"(MC2_FEATURE_[^"]+)",\s*'         # featureId
+    r'"(MC2_[A-Z0-9_]+)",\s*'            # featureId — kFeatureTable MC2_FEATURE_*
+                                         #  AND kAuxEnvVars MC2_DIAG_*/MC2_TUNE_*
+                                         #  (MCP-ANTI-CHURN-1: aux entries were
+                                         #  missed -> false "unregistered" verdicts)
     r'(nullptr|"MC2_[A-Z_0-9]+")\s*,\s*' # envVar (may be nullptr)
     r'EnvVarKind::(\w+)\s*,\s*'           # kind
     r'(true|false)\s*,\s*'                # defaultOn

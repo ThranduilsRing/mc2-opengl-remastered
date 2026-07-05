@@ -113,3 +113,38 @@ Restart mission or press **Reset to Profile** in Graphics Options.
 2. Call the existing `gos_Set*` function or write directly to the extern float.
 3. Add env var check via `envIsSet()` if a corresponding env var exists.
 4. Add a row to the table above.
+
+## Showcase graded pass — LIGHTING-STAGE1 SHOWCASE-TUNING-1 (2026-07-01)
+
+Deliberate per-mission grade across all of tier1 (`mc2_01/03/10/17/24`) plus the
+`gaea_peaks_01` generated-terrain showcase mission, seeded from the `mc2_17`
+profile that shipped with GROUND-CONTACT-BLOB-1. Goal per
+`.claude/LIGHTING-MODERNIZATION-PROPOSAL-1.md` Stage 1: floor lifts (kill
+shadow black-crush at RTS camera distance), a small IBL/exposure dial per
+mission's dominant lighting mood, and mech ambient fill consistent with the
+terrain floor bump — all data-only, no code changes, no gate flips.
+
+**Global `defaults` change:** `terrainLightingV2Floor` 0.3 -> 0.32 and
+`staticPropIblStrength` 0.5 -> 0.55. Small baseline lift so *every* mission
+without an explicit override (not just the 6 curated ones) gets a touch less
+crush in fully-shadowed terrain and a touch more prop IBL fill — the two
+cheapest, safest global levers per the proposal's "calibrate" framing.
+
+Per-mission intent (all values additive tweaks off the new defaults; keys not
+listed for a mission fall back to `defaults`):
+
+| Mission | `terrainLightingV2Floor` | `shadowSoftness` | `staticPropIblStrength` | `mechAmbientStrength` | `exposure` | Why |
+|---|---|---|---|---|---|---|
+| `mc2_01` | 0.36 | 1.1 | 0.6 | 0.24 | (default 1.0) | Dense-forest mission (see `run_smoke.py` instance-count note) — canopy casts heavy terrain shadow; floor lift keeps undergrowth readable, softness+IBL bump lift the shadowed forest floor without flattening it. |
+| `mc2_03` | 0.34 | 1.0 | 0.55 | 0.22 | (default 1.0) | Mildest bump of the set — used as the "restrained" reference point between the unlifted baseline and the more dramatic missions. |
+| `mc2_10` | 0.4 | 1.2 | 0.6 | 0.26 | 1.05 | Bigger floor lift + slight exposure bump — mission reads darker/more enclosed at default; the pair keeps shadowed geometry legible at top-down RTS zoom. |
+| `mc2_17` | 0.45 | 1.4 | (default 0.55) | 0.28 | (default 1.0) | Unchanged seed values (GROUND-CONTACT-BLOB-1 origin) — the most aggressive floor+softness pairing in the set, kept as the upper reference point the other missions grade toward. |
+| `mc2_24` | 0.38 | 1.15 | 0.6 | 0.25 | 1.1 | Existing `exposure: 1.1` override kept; floor/softness/IBL/mech keys added so the mission's shadow floor and prop fill match its already-brighter exposure instead of exposure being the only lever pulling it apart from its neighbors. |
+| `gaea_peaks_01` | 0.4 | 1.25 | 0.65 | 0.26 | 1.05 | Generated mountain terrain (`tools/terrain_gen/`) — tallest relief in the set, so cast shadows are longest; highest IBL of the pass compensates for large permanently-shadowed slope faces reading pure black. |
+
+This is a "calibrate" pass, not a final grade: values are chosen to be visibly
+different from the pre-2026-07-01 flat profile (only `mc2_24.exposure` and the
+`mc2_17` seed existed before) without touching any gate, shader, or C++ file.
+Stage 2+ (`TERRAIN-SH-AMBIENT-1` etc., see the proposal doc) is where the
+underlying lighting model changes; this pass only re-points the existing
+dials.

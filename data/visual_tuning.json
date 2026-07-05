@@ -3,24 +3,51 @@
     "exposure": 1.0,
     "shadowSoftness": 0.9,
     "terrainLightingV1Strength": 1.0,
-    "terrainLightingV2Floor": 0.3,
-    "staticPropIblStrength": 0.5,
+    "terrainLightingV2Floor": 0.32,
+    "staticPropIblStrength": 0.55,
     "waterSkyTintStrength": 0.0,
     "vfxBrightness": 1.0,
     "vfxAdditiveBrightness": 1.0,
     "mechSpecularStrength": 0.05
   },
   "missions": {
-    "mc2_24": {
-      "exposure": 1.1
-    },
     "mc2_01": {
+      "terrainLightingV2Floor": 0.36,
+      "shadowSoftness": 1.1,
+      "staticPropIblStrength": 0.6,
+      "mechAmbientStrength": 0.24
     },
     "mc2_03": {
+      "terrainLightingV2Floor": 0.34,
+      "shadowSoftness": 1.0,
+      "staticPropIblStrength": 0.55,
+      "mechAmbientStrength": 0.22
     },
     "mc2_10": {
+      "terrainLightingV2Floor": 0.4,
+      "shadowSoftness": 1.2,
+      "staticPropIblStrength": 0.6,
+      "mechAmbientStrength": 0.26,
+      "exposure": 1.05
     },
     "mc2_17": {
+      "terrainLightingV2Floor": 0.45,
+      "mechAmbientStrength": 0.28,
+      "shadowSoftness": 1.4
+    },
+    "mc2_24": {
+      "exposure": 1.1,
+      "terrainLightingV2Floor": 0.38,
+      "shadowSoftness": 1.15,
+      "staticPropIblStrength": 0.6,
+      "mechAmbientStrength": 0.25
+    },
+    "gaea_peaks_01": {
+      "terrainLightingV2Floor": 0.4,
+      "shadowSoftness": 1.25,
+      "staticPropIblStrength": 0.65,
+      "mechAmbientStrength": 0.26,
+      "exposure": 1.05
     }
   }
 }

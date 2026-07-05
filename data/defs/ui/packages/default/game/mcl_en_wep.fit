@@ -1,0 +1,597 @@
+// MC2R ImGui FIT generated from legacy UI FIT.
+// Source: data/defs/ui/legacy/game/mcl_en_wep.fit
+// Legacy files remain source truth only; edit the generated ImGui FIT.
+
+GuiPage {
+    key = "game.mcl_en_wep"
+    title = "Game Mcl En Wep"
+    sourceLegacyFit = "data/defs/ui/legacy/game/mcl_en_wep.fit"
+    sourceSystem = "game"
+    sourceScreen = "mcl_en_wep"
+    sourceKind = "legacy_screen"
+    layout = "absolute"
+    coordinateSpace = "screen_absolute"
+    localWidth = 800
+    localHeight = 600
+    mountOffset = "285,58"
+    runtimeMountAppliedBy = "GuiPage.mountOffset"
+    editableSource = "generated_imgui_only"
+    overlayGameOS = true
+    renderMode = "gameos_overlay"
+    backgroundPolicy = "transparent_overlay"
+}
+
+GuiMetadata {
+    key = "game.mcl_en_wep.metadata.metadata"
+    pageKey = "game.mcl_en_wep"
+    legacySection = "Rects"
+    legacyContext = "~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ | ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ | ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~"
+    role = "metadata"
+    layer = "metadata"
+    aliasOverride = "metadata"
+    sourceControlType = "Rects"
+    rect = "0,0,0,0"
+    legacyLocalRect = "0,0,0,0"
+    legacyRectSource = "xywh"
+    mountOffset = "285,58"
+    visible = false
+}
+
+GuiRect {
+    key = "game.mcl_en_wep.rect.weapon_description_scroll_box"
+    pageKey = "game.mcl_en_wep"
+    legacySection = "Rect0"
+    legacyComment = "weapon description scroll box"
+    role = "listbox_mount"
+    layer = "control"
+    aliasOverride = "weapon description scroll box"
+    sourceControlType = "Rect0"
+    rect = "284,35,209,207"
+    legacyLocalRect = "284,35,209,207"
+    legacyRectSource = "xywh"
+    mountOffset = "285,58"
+    uiPackage = "default"
+    rectModel = "legacy_imgui.modern_rect_v1"
+    controlRect = "284,35,209,207"
+    legacyColor = -16765099
+    outline = "TRUE"
+    filled = false
+    fillColorArgb = "0x00000000"
+    borderColorArgb = "0x00000000"
+    colorArgb = "0xffffffff"
+}
+
+GuiScrollbar {
+    key = "game.mcl_en_wep.scrollbar.weapon_description_scroll_box"
+    visible = false
+    pageKey = "game.mcl_en_wep"
+    legacySection = "Rect0"
+    role = "description_scrollbar"
+    layer = "control"
+    aliasOverride = "description_scrollbar"
+    sourceControlType = "runtime mcScrollBar"
+    sourceStyle = "ScrollBar.fit"
+    sourceLine = "aListBox::init => scrollBar->init(w - 17, 2, 15, h - 4)"
+    rect = "476,37,15,203"
+    legacyLocalRect = "476,37,15,203"
+    legacyRectSource = "runtime_listbox_scrollbar"
+    runtimePlacement = "aListBox::mcScrollBar"
+    scrollbarTemplate = "data/defs/ui/packages/legacy_imgui/shared/scrollbar.fit"
+    scrollbarStyle = "orange"
+}
+
+GuiRect {
+    key = "game.mcl_en_wep.rect.static_weapon_icon_outline"
+    pageKey = "game.mcl_en_wep"
+    legacySection = "Rect1"
+    legacyComment = "static weapon icon outline"
+    role = "rect"
+    layer = "layout"
+    aliasOverride = "static weapon icon outline"
+    sourceControlType = "Rect1"
+    rect = "10,272,117,180"
+    legacyLocalRect = "10,272,117,180"
+    legacyRectSource = "xywh"
+    mountOffset = "285,58"
+    uiPackage = "default"
+    rectModel = "legacy_imgui.modern_rect_v1"
+    controlRect = "10,272,117,180"
+    legacyColor = -16634027
+    outline = "TRUE"
+    filled = false
+    fillColorArgb = "0x00000000"
+    borderColorArgb = "0x00000000"
+    colorArgb = "0xffffffff"
+}
+
+GuiRect {
+    key = "game.mcl_en_wep.rect.weapon_stats_scroll_box"
+    pageKey = "game.mcl_en_wep"
+    legacySection = "Rect2"
+    legacyComment = "weapon stats scroll box"
+    role = "listbox_mount"
+    layer = "control"
+    aliasOverride = "weapon stats scroll box"
+    sourceControlType = "Rect2"
+    rect = "137,272,356,180"
+    legacyLocalRect = "137,272,356,180"
+    legacyRectSource = "xywh"
+    mountOffset = "285,58"
+    uiPackage = "default"
+    rectModel = "legacy_imgui.modern_rect_v1"
+    controlRect = "137,272,356,180"
+    legacyColor = -16699563
+    outline = "TRUE"
+    filled = false
+    fillColorArgb = "0x00000000"
+    borderColorArgb = "0x00000000"
+    colorArgb = "0xffffffff"
+}
+
+GuiScrollbar {
+    key = "game.mcl_en_wep.scrollbar.weapon_stats_scroll_box"
+    visible = false
+    pageKey = "game.mcl_en_wep"
+    legacySection = "Rect2"
+    role = "weapon_stats_scrollbar"
+    layer = "control"
+    aliasOverride = "weapon_stats_scrollbar"
+    sourceControlType = "runtime mcScrollBar"
+    sourceStyle = "ScrollBar.fit"
+    sourceLine = "aListBox::init => scrollBar->init(w - 17, 2, 15, h - 4)"
+    rect = "476,274,15,176"
+    legacyLocalRect = "476,274,15,176"
+    legacyRectSource = "runtime_listbox_scrollbar"
+    runtimePlacement = "aListBox::mcScrollBar"
+    scrollbarTemplate = "data/defs/ui/packages/legacy_imgui/shared/scrollbar.fit"
+    scrollbarStyle = "orange"
+}
+
+GuiMetadata {
+    key = "game.mcl_en_wep.metadata.metadata_01"
+    pageKey = "game.mcl_en_wep"
+    legacySection = "Rect3"
+    role = "metadata"
+    layer = "metadata"
+    aliasOverride = "metadata"
+    sourceControlType = "Rect3"
+    rect = "18,241,247,0"
+    legacyLocalRect = "18,241,247,0"
+    legacyRectSource = "xywh"
+    mountOffset = "285,58"
+    legacyColor = 0xff002F55
+    outline = "TRUE"
+    visible = false
+}
+
+GuiMetadata {
+    key = "game.mcl_en_wep.metadata.metadata_02"
+    pageKey = "game.mcl_en_wep"
+    legacySection = "Rect4"
+    role = "metadata"
+    layer = "metadata"
+    aliasOverride = "metadata"
+    sourceControlType = "Rect4"
+    rect = "273,43,0,190"
+    legacyLocalRect = "273,43,0,190"
+    legacyRectSource = "xywh"
+    mountOffset = "285,58"
+    legacyColor = 0xff002F55
+    outline = "TRUE"
+    visible = false
+}
+
+GuiMetadata {
+    key = "game.mcl_en_wep.metadata.metadata_03"
+    pageKey = "game.mcl_en_wep"
+    legacySection = "Rect5"
+    role = "metadata"
+    layer = "metadata"
+    aliasOverride = "metadata"
+    sourceControlType = "Rect5"
+    rect = "10,43,0,190"
+    legacyLocalRect = "10,43,0,190"
+    legacyRectSource = "xywh"
+    mountOffset = "285,58"
+    legacyColor = 0xff002F55
+    outline = "TRUE"
+    visible = false
+}
+
+GuiMetadata {
+    key = "game.mcl_en_wep.metadata.metadata_04"
+    pageKey = "game.mcl_en_wep"
+    legacySection = "Rect6"
+    role = "metadata"
+    layer = "metadata"
+    aliasOverride = "metadata"
+    sourceControlType = "Rect6"
+    rect = "18,35,247,0"
+    legacyLocalRect = "18,35,247,0"
+    legacyRectSource = "xywh"
+    mountOffset = "285,58"
+    legacyColor = 0xff002F55
+    outline = "TRUE"
+    visible = false
+}
+
+GuiMetadata {
+    key = "game.mcl_en_wep.metadata.metadata_05"
+    pageKey = "game.mcl_en_wep"
+    legacySection = "Statics"
+    legacyContext = "~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ | ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ | ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~"
+    role = "metadata"
+    layer = "metadata"
+    aliasOverride = "metadata"
+    sourceControlType = "Statics"
+    rect = "0,0,0,0"
+    legacyLocalRect = "0,0,0,0"
+    legacyRectSource = "xywh"
+    mountOffset = "285,58"
+    visible = false
+}
+
+GuiImage {
+    key = "game.mcl_en_wep.image.mcl_en_2"
+    pageKey = "game.mcl_en_wep"
+    legacySection = "Static0"
+    role = "image"
+    layer = "art"
+    aliasOverride = "MCL_EN_2"
+    sourceControlType = "Static0"
+    rect = "10,35,7,7"
+    legacyLocalRect = "10,35,7,7"
+    legacyRectSource = "xywh"
+    mountOffset = "285,58"
+    texture = "data/art/gui/MCL_EN_2.png"
+    legacyTexture = "mcl_en_2.tga"
+    uiPackage = "default"
+    rectModel = "legacy_imgui.modern_rect_v1"
+    controlRect = "10,35,7,7"
+    artRect = "10,35,7,7"
+    artLayer = "control_art"
+    uvX = 202
+    uvY = 80
+    uvWidth = 7
+    uvHeight = 7
+}
+
+GuiImage {
+    key = "game.mcl_en_wep.image.mcl_en_2_01"
+    pageKey = "game.mcl_en_wep"
+    legacySection = "Static1"
+    role = "image"
+    layer = "art"
+    aliasOverride = "MCL_EN_2"
+    sourceControlType = "Static1"
+    rect = "18,35,248,1"
+    legacyLocalRect = "18,35,248,1"
+    legacyRectSource = "xywh"
+    mountOffset = "285,58"
+    texture = "data/art/gui/MCL_EN_2.png"
+    legacyTexture = "mcl_en_2.tga"
+    uiPackage = "default"
+    rectModel = "legacy_imgui.modern_rect_v1"
+    controlRect = "18,35,248,1"
+    artRect = "18,35,248,1"
+    artLayer = "control_art"
+    uvX = 216
+    uvY = 80
+    uvWidth = 1
+    uvHeight = 1
+}
+
+GuiImage {
+    key = "game.mcl_en_wep.image.mcl_en_2_02"
+    pageKey = "game.mcl_en_wep"
+    legacySection = "Static2"
+    role = "image"
+    layer = "art"
+    aliasOverride = "MCL_EN_2"
+    sourceControlType = "Static2"
+    rect = "267,35,7,7"
+    legacyLocalRect = "267,35,7,7"
+    legacyRectSource = "xywh"
+    mountOffset = "285,58"
+    texture = "data/art/gui/MCL_EN_2.png"
+    legacyTexture = "mcl_en_2.tga"
+    uiPackage = "default"
+    rectModel = "legacy_imgui.modern_rect_v1"
+    controlRect = "267,35,7,7"
+    artRect = "267,35,7,7"
+    artLayer = "control_art"
+    uvX = 209
+    uvY = 80
+    uvWidth = 7
+    uvHeight = 7
+}
+
+GuiImage {
+    key = "game.mcl_en_wep.image.mcl_en_2_03"
+    pageKey = "game.mcl_en_wep"
+    legacySection = "Static3"
+    role = "image"
+    layer = "art"
+    aliasOverride = "MCL_EN_2"
+    sourceControlType = "Static3"
+    rect = "10,43,1,191"
+    legacyLocalRect = "10,43,1,191"
+    legacyRectSource = "xywh"
+    mountOffset = "285,58"
+    texture = "data/art/gui/MCL_EN_2.png"
+    legacyTexture = "mcl_en_2.tga"
+    uiPackage = "default"
+    rectModel = "legacy_imgui.modern_rect_v1"
+    controlRect = "10,43,1,191"
+    artRect = "10,43,1,191"
+    artLayer = "control_art"
+    uvX = 222
+    uvY = 80
+    uvWidth = 1
+    uvHeight = 1
+}
+
+GuiImage {
+    key = "game.mcl_en_wep.image.rotating_view_of_weapon_is_centered_here"
+    pageKey = "game.mcl_en_wep"
+    legacySection = "Static4"
+    legacyComment = "rotating view of weapon is centered here"
+    role = "image"
+    layer = "art"
+    aliasOverride = "rotating view of weapon is centered here"
+    sourceControlType = "Static4"
+    rect = "12,43,260,191"
+    legacyLocalRect = "12,43,260,191"
+    legacyRectSource = "xywh"
+    mountOffset = "285,58"
+    uiPackage = "default"
+    rectModel = "legacy_imgui.modern_rect_v1"
+    controlRect = "12,43,260,191"
+}
+
+GuiImage {
+    key = "game.mcl_en_wep.image.mcl_en_2_04"
+    pageKey = "game.mcl_en_wep"
+    legacySection = "Static5"
+    role = "image"
+    layer = "art"
+    aliasOverride = "MCL_EN_2"
+    sourceControlType = "Static5"
+    rect = "273,43,1,191"
+    legacyLocalRect = "273,43,1,191"
+    legacyRectSource = "xywh"
+    mountOffset = "285,58"
+    texture = "data/art/gui/MCL_EN_2.png"
+    legacyTexture = "mcl_en_2.tga"
+    uiPackage = "default"
+    rectModel = "legacy_imgui.modern_rect_v1"
+    controlRect = "273,43,1,191"
+    artRect = "273,43,1,191"
+    artLayer = "control_art"
+    uvX = 218
+    uvY = 80
+    uvWidth = 1
+    uvHeight = 1
+}
+
+GuiImage {
+    key = "game.mcl_en_wep.image.mcl_en_2_05"
+    pageKey = "game.mcl_en_wep"
+    legacySection = "Static6"
+    role = "image"
+    layer = "art"
+    aliasOverride = "MCL_EN_2"
+    sourceControlType = "Static6"
+    rect = "10,235,7,7"
+    legacyLocalRect = "10,235,7,7"
+    legacyRectSource = "xywh"
+    mountOffset = "285,58"
+    texture = "data/art/gui/MCL_EN_2.png"
+    legacyTexture = "mcl_en_2.tga"
+    uiPackage = "default"
+    rectModel = "legacy_imgui.modern_rect_v1"
+    controlRect = "10,235,7,7"
+    artRect = "10,235,7,7"
+    artLayer = "control_art"
+    uvX = 202
+    uvY = 87
+    uvWidth = 7
+    uvHeight = 7
+}
+
+GuiImage {
+    key = "game.mcl_en_wep.image.mcl_en_2_06"
+    pageKey = "game.mcl_en_wep"
+    legacySection = "Static7"
+    role = "image"
+    layer = "art"
+    aliasOverride = "MCL_EN_2"
+    sourceControlType = "Static7"
+    rect = "267,235,7,7"
+    legacyLocalRect = "267,235,7,7"
+    legacyRectSource = "xywh"
+    mountOffset = "285,58"
+    texture = "data/art/gui/MCL_EN_2.png"
+    legacyTexture = "mcl_en_2.tga"
+    uiPackage = "default"
+    rectModel = "legacy_imgui.modern_rect_v1"
+    controlRect = "267,235,7,7"
+    artRect = "267,235,7,7"
+    artLayer = "control_art"
+    uvX = 209
+    uvY = 87
+    uvWidth = 7
+    uvHeight = 7
+}
+
+GuiImage {
+    key = "game.mcl_en_wep.image.mcl_en_2_07"
+    pageKey = "game.mcl_en_wep"
+    legacySection = "Static8"
+    role = "image"
+    layer = "art"
+    aliasOverride = "MCL_EN_2"
+    sourceControlType = "Static8"
+    rect = "18,241,248,1"
+    legacyLocalRect = "18,241,248,1"
+    legacyRectSource = "xywh"
+    mountOffset = "285,58"
+    texture = "data/art/gui/MCL_EN_2.png"
+    legacyTexture = "mcl_en_2.tga"
+    uiPackage = "default"
+    rectModel = "legacy_imgui.modern_rect_v1"
+    controlRect = "18,241,248,1"
+    artRect = "18,241,248,1"
+    artLayer = "control_art"
+    uvX = 220
+    uvY = 80
+    uvWidth = 1
+    uvHeight = 1
+}
+
+GuiImage {
+    key = "game.mcl_en_wep.image.static_icon_of_weapon_gets_centered_here"
+    pageKey = "game.mcl_en_wep"
+    legacySection = "Static9"
+    legacyComment = "static icon of weapon gets centered here"
+    role = "image"
+    layer = "art"
+    aliasOverride = "static icon of weapon gets centered here"
+    sourceControlType = "Static9"
+    rect = "20,282,96,160"
+    legacyLocalRect = "20,282,96,160"
+    legacyRectSource = "xywh"
+    mountOffset = "285,58"
+    uiPackage = "default"
+    rectModel = "legacy_imgui.modern_rect_v1"
+    controlRect = "20,282,96,160"
+}
+
+GuiMetadata {
+    key = "game.mcl_en_wep.metadata.metadata_06"
+    pageKey = "game.mcl_en_wep"
+    legacySection = "Texts"
+    legacyContext = "~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ | ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ | ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~"
+    role = "metadata"
+    layer = "metadata"
+    aliasOverride = "metadata"
+    sourceControlType = "Texts"
+    rect = "0,0,0,0"
+    legacyLocalRect = "0,0,0,0"
+    legacyRectSource = "xywh"
+    mountOffset = "285,58"
+    visible = false
+}
+
+GuiText {
+    key = "game.mcl_en_wep.text.weapon_name"
+    pageKey = "game.mcl_en_wep"
+    legacySection = "Text0"
+    legacyComment = "weapon name"
+    role = "text"
+    layer = "text"
+    aliasOverride = "weapon name"
+    sourceControlType = "Text0"
+    rect = "10,9,483,22"
+    legacyLocalRect = "10,9,483,22"
+    legacyRectSource = "xywh"
+    mountOffset = "285,58"
+    uiPackage = "default"
+    rectModel = "legacy_imgui.modern_rect_v1"
+    controlRect = "10,9,483,22"
+    textRect = "10,9,483,22"
+    textRectMode = "control_rect_fallback"
+    textLegacyId = 0
+    visible = false
+    textKey = "legacy.strings.ids_undefined_string_sebi"
+    textLegacySymbol = "IDS_undefined_string_sebi"
+    textSource = "strings.res.h"
+    textMissing = true
+    textMissingReason = "symbol_only_from_strings_res_h"
+    legacyFontId = 27724
+    legacyFontComment = "use agency fb 14"
+    font = "Agency Regular"
+    fontStyle = "Regular"
+    fontSize = 14
+    bold = false
+    italic = false
+    textAlign = "left"
+    textAnchor = "upper_left"
+    wrapText = false
+    colorArgb = "0xff5c96c3"
+    legacyColor = -10709309
+    outline = "FALSE"
+    legacyAlignment = 0
+    legacyFontComment = "use agency fb 14"
+    borderColorArgb = "0x00000000"
+}
+
+GuiText {
+    key = "game.mcl_en_wep.text.weapon_stats_header"
+    pageKey = "game.mcl_en_wep"
+    legacySection = "Text1"
+    legacyComment = "weapon stats header"
+    role = "title"
+    layer = "text"
+    aliasOverride = "weapon stats header"
+    sourceControlType = "Text1"
+    rect = "137,248,356,22"
+    legacyLocalRect = "137,248,356,22"
+    legacyRectSource = "xywh"
+    mountOffset = "285,58"
+    uiPackage = "default"
+    rectModel = "legacy_imgui.modern_rect_v1"
+    controlRect = "137,248,356,22"
+    textRect = "137,248,356,22"
+    textRectMode = "control_rect_fallback"
+    textLegacyId = 27723
+    textKey = "legacy.mc2res.27723"
+    visibleText = "WEAPON STATS"
+    textLegacySymbol = "IDS_EN_WEAPONS_HEADER"
+    textSource = "mc2res"
+    textMissing = false
+    legacyFontId = 27724
+    legacyFontComment = "use agency fb 14"
+    font = "Agency Regular"
+    fontStyle = "Regular"
+    fontSize = 14
+    bold = false
+    italic = false
+    textAlign = "left"
+    textAnchor = "upper_left"
+    wrapText = false
+    colorArgb = "0xff5c96c3"
+    legacyColor = -10709309
+    outline = "FALSE"
+    legacyAlignment = 0
+    legacyFontComment = "use agency fb 14"
+    borderColorArgb = "0x00000000"
+}
+
+GuiText {
+    key = "game.mcl_en_wep.text.description"
+    pageKey = "game.mcl_en_wep"
+    rect = "289,38,199,201"
+    mountOffset = "285,58"
+    font = "Agency Regular"
+    fontStyle = "Regular"
+    fontSize = 12
+    textAlign = "left"
+    wrapText = true
+    colorArgb = "0xff005392"
+}
+
+GuiList {
+    key = "game.mcl_en_wep.list.stats"
+    pageKey = "game.mcl_en_wep"
+    legacySection = "Rect2"
+    rect = "137,272,356,180"
+    mountOffset = "285,58"
+    font = "Agency Regular"
+    fontStyle = "Regular"
+    fontSize = 12
+    textAlign = "left"
+    textAnchor = "upper_left"
+    wrapText = false
+    colorArgb = "0xff5c96c2"
+}

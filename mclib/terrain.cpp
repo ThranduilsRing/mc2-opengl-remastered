@@ -61,6 +61,10 @@
 // Externals from quad.cpp / mapdata.cpp / mechcmd2.cpp used by the water fast path.
 extern float MaxMinUV;
 extern float cloudScrollX;
+
+// TERRAIN-CONTROLMAP-SAMPLE-1: stb_image PNG decode wrapper (mclib/control_map_png_decode.cpp).
+extern "C" unsigned char* ControlMapPng_DecodeRGBA(const unsigned char* data, int dataLen, int* outW, int* outH);
+extern "C" void ControlMapPng_FreePixels(unsigned char* px);
 extern float cloudScrollY;
 extern long  sprayFrame;
 extern bool  useWaterInterestTexture;
@@ -230,28 +234,50 @@ static std::vector<uint32_t> s_stitchStepVec;
 // MC2_TERRAIN_LOD_CHUNK_DIAG=40 tier-tint; does NOT change shadow sampling.
 static std::vector<int> s_shadowTierVec;
 
-// Choose LOD level (0-5) for a block given squared distance and previous level.
-// Promotion (going finer) is immediate; demotion (going coarser) uses 10%
-// hysteresis in linear distance (= 1.21x in distSq) to prevent flickering.
-static uint8_t chooseLodLevel(float distSq, uint8_t prevLevel)
+// TERRAIN-LOD-GEOMORPH-1: per-draw-command geomorph factor m in [0,1]. Parallel
+// to s_drawCmds; written in Pass 3 in lockstep with s_cmdCount from the block's
+// FINAL lodLevel (post cement/neighbor clamps) + its center distance. Fed to the
+// vert as u_morphFactor; only consumed when the bake shipped max mips.
+static std::vector<float> s_morphFactorVec;
+
+// Camera-isolation diagnostic: MC2_TERRAIN_LOD_CHUNK_FORCE_LOD=k forces every
+// block to LOD k (0=finest). With FORCE_LOD=0 + NO_CULL + NO_SKIRTS, rotation
+// in place MUST be stable — if it still breaks, the defect is in the
+// shader/worldToClip/camera convention, NOT LOD/cull/skirt policy.
+// (Shared by chooseLodLevel and computeMorphFactor — a forced LOD also forces
+// morphFactor=0 so FORCE_LOD A/B captures show the PURE band surface.)
+static int lodForceLevel()
 {
-    // Camera-isolation diagnostic: MC2_TERRAIN_LOD_CHUNK_FORCE_LOD=k forces every
-    // block to LOD k (0=finest). With FORCE_LOD=0 + NO_CULL + NO_SKIRTS, rotation
-    // in place MUST be stable — if it still breaks, the defect is in the
-    // shader/worldToClip/camera convention, NOT LOD/cull/skirt policy.
     static const int s_forceLod = []() -> int {
         const char* v = getenv("MC2_TERRAIN_LOD_CHUNK_FORCE_LOD");
         return v ? atoi(v) : -1;
     }();
-    if (s_forceLod >= 0)
-        return (uint8_t)(s_forceLod > 5 ? 5 : s_forceLod);
+    return s_forceLod;
+}
 
-    // Runtime distance scale (default 1.0). >1 pushes LOD transitions farther.
+// Runtime distance scale (default 1.0). >1 pushes LOD transitions farther.
+// MC2_TERRAIN_LOD_CHUNK_DIST_SCALE — shared by band selection and geomorph
+// factor so the morph window tracks the scaled thresholds exactly.
+static float lodDistScale()
+{
     static const float s_distScale = []() -> float {
         const char* v = getenv("MC2_TERRAIN_LOD_CHUNK_DIST_SCALE");
         float s = v ? (float)atof(v) : 1.0f;
         return (s > 0.05f) ? s : 1.0f;
     }();
+    return s_distScale;
+}
+
+// Choose LOD level (0-5) for a block given squared distance and previous level.
+// Promotion (going finer) is immediate; demotion (going coarser) uses 10%
+// hysteresis in linear distance (= 1.21x in distSq) to prevent flickering.
+static uint8_t chooseLodLevel(float distSq, uint8_t prevLevel)
+{
+    const int forceLod = lodForceLevel();
+    if (forceLod >= 0)
+        return (uint8_t)(forceLod > 5 ? 5 : forceLod);
+
+    const float s_distScale = lodDistScale();
 
     uint8_t desired = 5;
     for (int k = 0; k < 5; ++k) {
@@ -268,6 +294,39 @@ static uint8_t chooseLodLevel(float distSq, uint8_t prevLevel)
             return prevLevel; // stay fine
     }
     return desired;
+}
+
+// TERRAIN-LOD-GEOMORPH-1 rung a: per-block geomorph factor m in [0,1].
+// m=0 at band entry (pure own-band max-mip surface), ramping to 1 over the
+// OUTER (1 - MORPH_START) fraction of the band so the block's interior verts
+// slide onto the parent band's surface BEFORE the demotion threshold — the
+// band switch then lands on geometry that already matches (no one-frame snap).
+// Promotion mirrors it: a freshly promoted block enters at m~1 (== the surface
+// it just left) and slides down as the camera approaches. Levels 0 (mode-1
+// fine path) and 5 (no coarser parent) never morph. Under FORCE_LOD the factor
+// is pinned to 0 so A/B captures isolate the pure band surface. Consumed by
+// the vert only when mips are resident (u_geomorphMips) — no mips, no morph.
+static float computeMorphFactor(float distSq, uint8_t level)
+{
+    if (level == 0 || level >= 5) return 0.0f;
+    if (lodForceLevel() >= 0)     return 0.0f;
+    static const float s_morphStart = []() -> float {
+        const char* v = getenv("MC2_TERRAIN_LOD_MORPH_START");
+        float s = v ? (float)atof(v) : 0.6f;
+        if (s < 0.0f) s = 0.0f;
+        if (s > 0.95f) s = 0.95f;
+        return s;
+    }();
+    const float sc = lodDistScale();
+    const float lo = LOD_DIST_THRESH[level - 1] * sc;
+    const float hi = LOD_DIST_THRESH[level] * sc;
+    if (hi <= lo) return 0.0f;
+    const float d = sqrtf(distSq);
+    float r = (d - lo) / (hi - lo);            // 0..1 across the band (may exceed under hysteresis/clamps)
+    float m = (r - s_morphStart) / (1.0f - s_morphStart);
+    if (m < 0.0f) m = 0.0f;
+    if (m > 1.0f) m = 1.0f;
+    return m;
 }
 
 bool 						drawTerrainGrid = false;		//Override locally in editor so game don't come with these please!  Love -fs
@@ -816,6 +875,348 @@ long Terrain::init( unsigned long verticesPerMapSide, PacketFile* pakFile, unsig
 			gos_TerrainLodChunk_UploadHeightFull(elev.data(), (int)realVerticesMapSide);
 			gos_TerrainLodChunk_UploadTerrainTypeFull(ttype.data(), (int)realVerticesMapSide);
 
+			// TERRAIN-CONTROLMAP-SAMPLE-1: v1 = OVERRIDE-ONLY PASSTHROUGH. Gate
+			// MC2_TERRAIN_CONTROLMAP default OFF (mirrors MC2_TERRAIN_LOD_CHUNK's
+			// read pattern above). When ON, load an authored sidecar PNG (RGBA8,
+			// vertex-resolution side*side) if present; when absent or gate OFF,
+			// no texture is created and u_useControlMap uploads 0 at draw ->
+			// byte-identical to the legacy chunkColorWeights() classifier path.
+			// MC2_TERRAIN_CONTROLMAP_FILE overrides the sidecar path (precedent:
+			// MC2_TERRAIN_VISUAL_HEIGHT_FILE above).
+			{
+				static const bool s_controlMapGate = []() {
+					const char* v = getenv("MC2_TERRAIN_CONTROLMAP");
+					return (v && v[0] && v[0] != '0');
+				}();
+				const int mapSide = (int)realVerticesMapSide;
+				if (s_controlMapGate && mapSide > 1)
+				{
+					char cmPath[600];
+					if (const char* ov = getenv("MC2_TERRAIN_CONTROLMAP_FILE"))
+					{
+						strncpy(cmPath, ov, sizeof(cmPath) - 1);
+						cmPath[sizeof(cmPath) - 1] = '\0';
+					}
+					else
+					{
+						const char* nm = terrainName ? terrainName : "";
+						const char* bs = strrchr(nm, '\\');
+						const char* fs = strrchr(nm, '/');
+						const char* slash = (fs > bs) ? fs : bs;
+						char stem[160];
+						strncpy(stem, slash ? slash + 1 : nm, sizeof(stem) - 1);
+						stem[sizeof(stem) - 1] = '\0';
+						if (char* dot = strrchr(stem, '.')) *dot = '\0';
+						snprintf(cmPath, sizeof(cmPath),
+						         "data/missions/%s.beauty/control_map.png", stem);
+					}
+					FILE* cf = fopen(cmPath, "rb");
+					if (!cf)
+					{
+						printf("[TERRAIN_CONTROLMAP v1] sidecar NOT FOUND path=%s (gate on, mapSide=%d)"
+						       " -- passthrough (legacy classifier)\n", cmPath, mapSide);
+						fflush(stdout);
+					}
+					else
+					{
+						fseek(cf, 0, SEEK_END);
+						long cFileSize = ftell(cf);
+						fseek(cf, 0, SEEK_SET);
+						if (cFileSize <= 0)
+						{
+							fclose(cf);
+							printf("[TERRAIN_CONTROLMAP v1] EMPTY FILE path=%s\n", cmPath);
+							fflush(stdout);
+						}
+						else
+						{
+							std::vector<unsigned char> pngBytes((size_t)cFileSize);
+							size_t rd = fread(pngBytes.data(), 1, (size_t)cFileSize, cf);
+							fclose(cf);
+							if (rd != (size_t)cFileSize)
+							{
+								printf("[TERRAIN_CONTROLMAP v1] READ FAIL path=%s read=%zu want=%ld\n",
+								       cmPath, rd, cFileSize);
+								fflush(stdout);
+							}
+							else
+							{
+								int pw = 0, ph = 0;
+								unsigned char* rgba = ControlMapPng_DecodeRGBA(
+									pngBytes.data(), (int)cFileSize, &pw, &ph);
+								if (!rgba)
+								{
+									printf("[TERRAIN_CONTROLMAP v1] PNG DECODE FAILED path=%s\n", cmPath);
+									fflush(stdout);
+								}
+								else if (pw != mapSide || ph != mapSide)
+								{
+									printf("[TERRAIN_CONTROLMAP v1] SIZE MISMATCH path=%s got=%dx%d want=%dx%d"
+									       " -- passthrough (legacy classifier)\n",
+									       cmPath, pw, ph, mapSide, mapSide);
+									fflush(stdout);
+									ControlMapPng_FreePixels(rgba);
+								}
+								else
+								{
+									gos_TerrainLodChunk_UploadControlMap(rgba, mapSide);
+									printf("[TERRAIN_CONTROLMAP v1] LOADED path=%s side=%d\n", cmPath, mapSide);
+									fflush(stdout);
+									ControlMapPng_FreePixels(rgba);
+								}
+							}
+						}
+					}
+				}
+			}
+
+			// TERRAIN-OVERLAY-V2-PARITY-1: v1 = ADDITIVE sidecar composite (legacy
+			// cement-word + overlay pass stays verbatim). Gate MC2_TERRAIN_OVERLAY_V2
+			// default OFF (mirrors MC2_TERRAIN_CONTROLMAP's read pattern above). When
+			// ON, load an authored bounds-aware overlay sidecar PNG (RGBA8, arbitrary
+			// WxH -- NOT vertex-resolution) if present; when absent or gate OFF, no
+			// texture is created and u_useOverlaySidecar uploads 0 at draw ->
+			// byte-identical to the legacy cement-word + separate overlay-pass
+			// composite. Sidecar carries world bounds via a companion
+			// "<name>.bounds.txt" (4 whitespace-separated floats: topLeftX topLeftY
+			// sizeX sizeY, world units; topLeftX=MIN world X, topLeftY=MAX world Y
+			// -- same convention as the colormap atlas uniforms, PNG row 0 = north
+			// edge, no flip) -- absent bounds file falls back to the full-map extent.
+			// MC2_TERRAIN_OVERLAY_V2_FILE overrides the sidecar path (precedent:
+			// MC2_TERRAIN_CONTROLMAP_FILE above).
+			{
+				static const bool s_overlayV2Gate = []() {
+					const char* v = getenv("MC2_TERRAIN_OVERLAY_V2");
+					return (v && v[0] && v[0] != '0');
+				}();
+				if (s_overlayV2Gate)
+				{
+					char ovPath[600];
+					if (const char* ov = getenv("MC2_TERRAIN_OVERLAY_V2_FILE"))
+					{
+						strncpy(ovPath, ov, sizeof(ovPath) - 1);
+						ovPath[sizeof(ovPath) - 1] = '\0';
+					}
+					else
+					{
+						const char* nm = terrainName ? terrainName : "";
+						const char* bs = strrchr(nm, '\\');
+						const char* fs = strrchr(nm, '/');
+						const char* slash = (fs > bs) ? fs : bs;
+						char stem[160];
+						strncpy(stem, slash ? slash + 1 : nm, sizeof(stem) - 1);
+						stem[sizeof(stem) - 1] = '\0';
+						if (char* dot = strrchr(stem, '.')) *dot = '\0';
+						snprintf(ovPath, sizeof(ovPath),
+						         "data/missions/%s.beauty/overlay_v2.png", stem);
+					}
+					FILE* of = fopen(ovPath, "rb");
+					if (!of)
+					{
+						printf("[TERRAIN_OVERLAY_V2 v1] sidecar NOT FOUND path=%s (gate on)"
+						       " -- passthrough (legacy cement-word + overlay pass)\n", ovPath);
+						fflush(stdout);
+					}
+					else
+					{
+						fseek(of, 0, SEEK_END);
+						long oFileSize = ftell(of);
+						fseek(of, 0, SEEK_SET);
+						if (oFileSize <= 0)
+						{
+							fclose(of);
+							printf("[TERRAIN_OVERLAY_V2 v1] EMPTY FILE path=%s\n", ovPath);
+							fflush(stdout);
+						}
+						else
+						{
+							std::vector<unsigned char> pngBytes((size_t)oFileSize);
+							size_t rd = fread(pngBytes.data(), 1, (size_t)oFileSize, of);
+							fclose(of);
+							if (rd != (size_t)oFileSize)
+							{
+								printf("[TERRAIN_OVERLAY_V2 v1] READ FAIL path=%s read=%zu want=%ld\n",
+								       ovPath, rd, oFileSize);
+								fflush(stdout);
+							}
+							else
+							{
+								int ow = 0, oh = 0;
+								unsigned char* orgba = ControlMapPng_DecodeRGBA(
+									pngBytes.data(), (int)oFileSize, &ow, &oh);
+								if (!orgba)
+								{
+									printf("[TERRAIN_OVERLAY_V2 v1] PNG DECODE FAILED path=%s\n", ovPath);
+									fflush(stdout);
+								}
+								else
+								{
+									// World bounds: default = full map extent, using the
+									// SAME (topLeftX, topLeftY=maxY) convention as the
+									// colormap atlas uniforms (u_atlasTopLeftX/Y) so PNG
+									// row 0 (top) == north edge == vertex row 0, no flip
+									// (matches control_map_tool.py's documented convention).
+									// Companion bounds file overrides for a tighter
+									// authored region: "topLeftX topLeftY sizeX sizeY".
+									float halfMapOv = Terrain::worldUnitsMapSide * 0.5f;
+									float bTLX = -halfMapOv, bTLY = halfMapOv;
+									float bSizeX = 2.0f * halfMapOv, bSizeY = 2.0f * halfMapOv;
+									char boundsPath[620];
+									snprintf(boundsPath, sizeof(boundsPath), "%s", ovPath);
+									size_t plen = strlen(boundsPath);
+									if (plen > 4 && strcmp(boundsPath + plen - 4, ".png") == 0)
+										boundsPath[plen - 4] = '\0';
+									strncat(boundsPath, ".bounds.txt", sizeof(boundsPath) - strlen(boundsPath) - 1);
+									FILE* bf = fopen(boundsPath, "r");
+									if (bf)
+									{
+										float bx, by, bw, bh;
+										if (fscanf(bf, "%f %f %f %f", &bx, &by, &bw, &bh) == 4)
+										{
+											bTLX = bx; bTLY = by; bSizeX = bw; bSizeY = bh;
+											printf("[TERRAIN_OVERLAY_V2 v1] bounds override path=%s (%.1f,%.1f,%.1f,%.1f)\n",
+											       boundsPath, bTLX, bTLY, bSizeX, bSizeY);
+											fflush(stdout);
+										}
+										fclose(bf);
+									}
+									gos_TerrainLodChunk_UploadOverlaySidecar(orgba, ow, oh,
+									                                          bTLX, bTLY, bSizeX, bSizeY);
+									printf("[TERRAIN_OVERLAY_V2 v1] LOADED path=%s size=%dx%d bounds=(%.1f,%.1f,%.1f,%.1f)\n",
+									       ovPath, ow, oh, bTLX, bTLY, bSizeX, bSizeY);
+									fflush(stdout);
+									ControlMapPng_FreePixels(orgba);
+								}
+							}
+						}
+					}
+				}
+			}
+
+			// TERRAIN-SHORELINE-V3: terrain-side wet/foam band. Gate
+			// MC2_TERRAIN_SHORELINE default OFF (mirrors MC2_TERRAIN_OVERLAY_V2's
+			// read pattern above). As of V3 the band's PLACEMENT is computed in
+			// the frag from ELEVATION (v_worldPos.z vs u_waterElevation) and
+			// needs no sidecar at all -- gate ON alone is enough to show
+			// full elevation bands. This load block is now OPTIONAL: when
+			// present, an authored bounds-aware shoreline mask PNG (RGBA8,
+			// arbitrary WxH -- offline-cooked by
+			// tools/terrain_beautify/cook_shoreline.py) is loaded and applied
+			// as a MODULATOR (wide-beach falloff / basin exclusion) on top of
+			// the elevation bands; when absent, no texture is created and
+			// u_hasShorelineMask uploads 0 at draw -> pure elevation bands (no
+			// modulation, not "no band"). Gate OFF -> u_useShorelineMask
+			// uploads 0 -> byte-identical (no wet/foam band; legacy screen
+			// runShoreline() stays active). Companion "<name>.bounds.txt" --
+			// SAME convention as overlay_v2.bounds.txt (topLeftX topLeftY
+			// sizeX sizeY, world units; absent -> full map extent).
+			// MC2_TERRAIN_SHORELINE_FILE overrides the sidecar path
+			// (precedent: MC2_TERRAIN_OVERLAY_V2_FILE above).
+			{
+				static const bool s_shorelineGate = []() {
+					const char* v = getenv("MC2_TERRAIN_SHORELINE");
+					return (v && v[0] && v[0] != '0');
+				}();
+				if (s_shorelineGate)
+				{
+					char slPath[600];
+					if (const char* ov = getenv("MC2_TERRAIN_SHORELINE_FILE"))
+					{
+						strncpy(slPath, ov, sizeof(slPath) - 1);
+						slPath[sizeof(slPath) - 1] = '\0';
+					}
+					else
+					{
+						const char* nm = terrainName ? terrainName : "";
+						const char* bs = strrchr(nm, '\\');
+						const char* fs = strrchr(nm, '/');
+						const char* slash = (fs > bs) ? fs : bs;
+						char stem[160];
+						strncpy(stem, slash ? slash + 1 : nm, sizeof(stem) - 1);
+						stem[sizeof(stem) - 1] = '\0';
+						if (char* dot = strrchr(stem, '.')) *dot = '\0';
+						snprintf(slPath, sizeof(slPath),
+						         "data/missions/%s.beauty/shoreline_mask.png", stem);
+					}
+					FILE* sf = fopen(slPath, "rb");
+					if (!sf)
+					{
+						printf("[TERRAIN_SHORELINE v1] sidecar NOT FOUND path=%s (gate on)"
+						       " -- pure elevation bands, no mask modulator\n", slPath);
+						fflush(stdout);
+					}
+					else
+					{
+						fseek(sf, 0, SEEK_END);
+						long sFileSize = ftell(sf);
+						fseek(sf, 0, SEEK_SET);
+						if (sFileSize <= 0)
+						{
+							fclose(sf);
+							printf("[TERRAIN_SHORELINE v1] EMPTY FILE path=%s\n", slPath);
+							fflush(stdout);
+						}
+						else
+						{
+							std::vector<unsigned char> pngBytes((size_t)sFileSize);
+							size_t rd = fread(pngBytes.data(), 1, (size_t)sFileSize, sf);
+							fclose(sf);
+							if (rd != (size_t)sFileSize)
+							{
+								printf("[TERRAIN_SHORELINE v1] READ FAIL path=%s read=%zu want=%ld\n",
+								       slPath, rd, sFileSize);
+								fflush(stdout);
+							}
+							else
+							{
+								int sw = 0, sh = 0;
+								unsigned char* srgba = ControlMapPng_DecodeRGBA(
+									pngBytes.data(), (int)sFileSize, &sw, &sh);
+								if (!srgba)
+								{
+									printf("[TERRAIN_SHORELINE v1] PNG DECODE FAILED path=%s\n", slPath);
+									fflush(stdout);
+								}
+								else
+								{
+									// World bounds: default = full map extent, SAME
+									// (topLeftX, topLeftY=maxY) convention as
+									// overlay-V2. Companion bounds file overrides.
+									float halfMapSl = Terrain::worldUnitsMapSide * 0.5f;
+									float sTLX = -halfMapSl, sTLY = halfMapSl;
+									float sSizeX = 2.0f * halfMapSl, sSizeY = 2.0f * halfMapSl;
+									char sBoundsPath[620];
+									snprintf(sBoundsPath, sizeof(sBoundsPath), "%s", slPath);
+									size_t splen = strlen(sBoundsPath);
+									if (splen > 4 && strcmp(sBoundsPath + splen - 4, ".png") == 0)
+										sBoundsPath[splen - 4] = '\0';
+									strncat(sBoundsPath, ".bounds.txt", sizeof(sBoundsPath) - strlen(sBoundsPath) - 1);
+									FILE* sbf = fopen(sBoundsPath, "r");
+									if (sbf)
+									{
+										float sbx, sby, sbw, sbh;
+										if (fscanf(sbf, "%f %f %f %f", &sbx, &sby, &sbw, &sbh) == 4)
+										{
+											sTLX = sbx; sTLY = sby; sSizeX = sbw; sSizeY = sbh;
+											printf("[TERRAIN_SHORELINE v1] bounds override path=%s (%.1f,%.1f,%.1f,%.1f)\n",
+											       sBoundsPath, sTLX, sTLY, sSizeX, sSizeY);
+											fflush(stdout);
+										}
+										fclose(sbf);
+									}
+									gos_TerrainLodChunk_UploadShorelineMask(srgba, sw, sh,
+									                                         sTLX, sTLY, sSizeX, sSizeY);
+									printf("[TERRAIN_SHORELINE v1] LOADED path=%s size=%dx%d bounds=(%.1f,%.1f,%.1f,%.1f)\n",
+									       slPath, sw, sh, sTLX, sTLY, sSizeX, sSizeY);
+									fflush(stdout);
+									ControlMapPng_FreePixels(srgba);
+								}
+							}
+						}
+					}
+				}
+			}
+
 			// TERRAIN-VISUAL-HEIGHT-SAMPLE-1 Stage 1 (loader, log-only). Gate
 			// MC2_TERRAIN_VISUAL_HEIGHT default-OFF -> no load, no SSBO
 			// (byte-identical). Loads the 4x VISUAL heightfield bake into SSBO
@@ -885,11 +1286,259 @@ long Terrain::init( unsigned long verticesPerMapSide, PacketFile* pakFile, unsig
 							}
 							else
 							{
-								gos_TerrainLodChunk_UploadVisualHeightFull(vh.data(), V);
+								// TERRAIN-LOD-GEOMORPH-1: optional max-mip sidecar
+								// (visual_height_mips.r32, sibling of the fine bake):
+								// 5 levels (strides 2,4,5,10,20) x mapSide^2 floats,
+								// max of the fine bake over each coarse vertex's
+								// +/- stride/2 footprint. Appended to the binding-26
+								// SSBO by the upload below. Absent/mis-sized -> no
+								// mips (legacy layout; coarse bands behave as S2).
+								std::vector<float> vmips;
+								{
+									char mipPath[600];
+									strncpy(mipPath, vhPath, sizeof(mipPath) - 1);
+									mipPath[sizeof(mipPath) - 1] = '\0';
+									char* mbs = strrchr(mipPath, '\\');
+									char* mfs = strrchr(mipPath, '/');
+									char* mSlash = (mfs > mbs) ? mfs : mbs;
+									if (mSlash)
+									{
+										size_t dirLen = (size_t)(mSlash + 1 - mipPath);
+										snprintf(mipPath + dirLen, sizeof(mipPath) - dirLen,
+										         "visual_height_mips.r32");
+										FILE* mf = fopen(mipPath, "rb");
+										if (mf)
+										{
+											fseek(mf, 0, SEEK_END);
+											long msz = ftell(mf);
+											fseek(mf, 0, SEEK_SET);
+											const size_t mipWant =
+												5u * (size_t)mapSide * (size_t)mapSide * sizeof(float);
+											if ((size_t)msz == mipWant)
+											{
+												vmips.resize(mipWant / sizeof(float));
+												if (fread(vmips.data(), sizeof(float), vmips.size(), mf)
+												    != vmips.size())
+													vmips.clear();
+											}
+											else
+											{
+												printf("[VISUAL_HEIGHT v1] mips SIZE MISMATCH path=%s "
+												       "got=%ld want=%zu (5 x %d^2 floats) -- ignored\n",
+												       mipPath, msz, mipWant, mapSide);
+												fflush(stdout);
+											}
+											// TERRAIN-LOD-GEOMORPH-1 STALENESS GUARD
+											// (GEOMORPH-NEXT-SLICES.md coordination ruling):
+											// the mips sidecar is regenerated SEPARATELY
+											// from the fine bake, so a stale
+											// visual_height_mips.r32 that still matches
+											// mapSide (right SIZE, wrong DATA) was silently
+											// accepted -> coarse bands morph to a surface
+											// that no longer exists. Catch it with a
+											// zero-cost data invariant (no hash / new file):
+											// every mip level is a MAX over a footprint that
+											// INCLUDES the coarse vertex's own fine sample,
+											// so mip[L][v] >= fineCorner[v] must hold for a
+											// consistent bake; a stale bake violates it. On
+											// any violation DROP the mips and fall back to
+											// the known-safe legacy S2 layout (+ loud warn)
+											// rather than morph to a dead surface. Fresh
+											// bakes are unaffected (default path stays
+											// byte-identical).
+											if (!vmips.empty())
+											{
+												const int mipFactor = (mapSide > 1)
+													? (V - 1) / (mapSide - 1) : 1;
+												const float kFloorTol = 0.05f; // wu; f32 max round headroom
+												const size_t plane =
+													(size_t)mapSide * (size_t)mapSide;
+												const size_t nLevels =
+													plane ? (vmips.size() / plane) : 0;
+												size_t viol = 0;
+												float worstDeficit = 0.0f;
+												for (int r = 0; r < mapSide && viol == 0; ++r)
+												{
+													for (int c = 0; c < mapSide; ++c)
+													{
+														const float corner = vh[
+															(size_t)(r * mipFactor) * (size_t)V
+															+ (size_t)(c * mipFactor)];
+														for (size_t L = 0; L < nLevels; ++L)
+														{
+															const float m = vmips[
+																L * plane
+																+ (size_t)r * (size_t)mapSide
+																+ (size_t)c];
+															const float deficit = corner - m;
+															if (deficit > kFloorTol)
+															{
+																worstDeficit = deficit;
+																++viol;
+																break;
+															}
+														}
+														if (viol) break;
+													}
+												}
+												if (viol > 0)
+												{
+													printf("[VISUAL_HEIGHT v1] mips STALE path=%s "
+													       "(mip < fine corner, worst deficit "
+													       "%.2f wu) -- built from a DIFFERENT "
+													       "fine bake; DROPPING mips, coarse "
+													       "bands fall back to legacy S2. "
+													       "Regenerate the .beauty bake.\n",
+													       mipPath, worstDeficit);
+													fflush(stdout);
+													vmips.clear();
+												}
+											}
+											fclose(mf);
+										}
+									}
+								}
+								gos_TerrainLodChunk_UploadVisualHeightFull(
+									vh.data(), V,
+									vmips.empty() ? nullptr : vmips.data(),
+									(int)vmips.size());
+								// TERRAIN-DISPLACEMENT-TRUTH-1: report the REAL state, not
+								// the stale Stage-1 lie. Stage 2 shipped: when
+								// MC2_TERRAIN_VISUAL_DISPLACE is on the vert shader
+								// (terrain_lod_chunk.vert) samples binding 26 and MOVES
+								// geometry (proven by a checkerboard pixel oracle). The old
+								// "(Stage 1: SSBO only, geometry unchanged)" text is FALSE
+								// under the displace gate and caused the pipeline to be
+								// repeatedly (mis)diagnosed as broken. Also surface the
+								// actual displacement amplitude vs the coarse gameplay grid
+								// so an invisible-because-too-subtle bake is obvious at load
+								// time instead of after four viewing runs.
+								const char* dv = getenv("MC2_TERRAIN_VISUAL_DISPLACE");
+								const bool displaceOn = (dv && dv[0] && dv[0] != '0');
+								double maxAbs = 0.0, sumAbs = 0.0;
+								size_t moved5 = 0, moved50 = 0, cnt = 0;
+								// Compare every fine bake vertex to the coarse gameplay
+								// elevation at its containing coarse cell (the "blocky"
+								// baseline the displacement smooths away). elev[] is the
+								// mapSide*mapSide coarse grid loaded above (row-major).
+								for (int fy = 0; fy < V; ++fy)
+									for (int fx = 0; fx < V; ++fx)
+									{
+										int cx = fx / 4; if (cx > mapSide - 1) cx = mapSide - 1;
+										int cy = fy / 4; if (cy > mapSide - 1) cy = mapSide - 1;
+										double d = fabs((double)vh[(size_t)fx + (size_t)fy * V]
+										                - (double)elev[(size_t)cx + (size_t)cy * mapSide]);
+										if (d > maxAbs) maxAbs = d;
+										sumAbs += d; ++cnt;
+										if (d > 5.0)  ++moved5;
+										if (d > 50.0) ++moved50;
+									}
+								const double meanAbs = cnt ? sumAbs / (double)cnt : 0.0;
+								const double frac5  = cnt ? (100.0 * (double)moved5  / (double)cnt) : 0.0;
+								const double frac50 = cnt ? (100.0 * (double)moved50 / (double)cnt) : 0.0;
 								printf("[VISUAL_HEIGHT v1] LOADED path=%s V=%d mapSide=%d bytes=%zu "
-								       "(Stage 1: SSBO only, geometry unchanged)\n",
-								       vhPath, V, mapSide, want);
+								       "(Stage 2: geometry %s when MC2_TERRAIN_VISUAL_DISPLACE on)\n",
+								       vhPath, V, mapSide, want,
+								       displaceOn ? "DISPLACED" : "will displace");
+								printf("[VISUAL_HEIGHT v1] displacement-amplitude vs coarse grid: "
+								       "max=%.1fwu mean=%.2fwu moved>5wu=%.1f%% moved>50wu=%.2f%% "
+								       "(vertex spacing=128wu; if mean<~5wu the reshape is near-invisible "
+								       "-- re-bake with visual_heightfield.py --reshape)\n",
+								       maxAbs, meanAbs, frac5, frac50);
 								fflush(stdout);
+
+								// TERRAIN-REAUTH-UNPIN-1 Half B: near-object displacement
+								// fade (objfade). Load the static damp sidecar
+								// (visual_damp.r32, mapSide^2 floats, 0 = displacement OFF
+								// on/near building footprints) from the same .beauty dir;
+								// absent -> all-ones (movers-only fade). Gate
+								// MC2_TERRAIN_VISUAL_DISPLACE_OBJFADE default ON when
+								// displacing (it is the safety). Also logs the
+								// grounding-drift evidence: p99 EFFECTIVE displacement
+								// (|bake - gameplay| * damp) at coarse cells, split into
+								// the inner (damp==0) zone — must be exactly 0 — and the
+								// fade annulus.
+								{
+									static const bool s_objfadeGate = []() {
+										const char* v = getenv("MC2_TERRAIN_VISUAL_DISPLACE_OBJFADE");
+										return !(v && v[0] == '0');
+									}();
+									if (s_objfadeGate)
+									{
+										char dampPath[600];
+										snprintf(dampPath, sizeof(dampPath), "%s", vhPath);
+										char* bs2 = strrchr(dampPath, '\\');
+										char* fs2 = strrchr(dampPath, '/');
+										char* slash2 = (fs2 > bs2) ? fs2 : bs2;
+										if (slash2)
+											snprintf(slash2 + 1,
+											         sizeof(dampPath) - (size_t)(slash2 + 1 - dampPath),
+											         "visual_damp.r32");
+										std::vector<float> damp((size_t)mapSide * (size_t)mapSide, 1.0f);
+										bool haveSidecar = false;
+										if (FILE* df = fopen(dampPath, "rb"))
+										{
+											fseek(df, 0, SEEK_END);
+											long dsz = ftell(df);
+											fseek(df, 0, SEEK_SET);
+											if ((size_t)dsz == damp.size() * sizeof(float))
+											{
+												haveSidecar =
+													(fread(damp.data(), sizeof(float), damp.size(), df)
+													 == damp.size());
+											}
+											fclose(df);
+											if (!haveSidecar)
+											{
+												printf("[VISUAL_DAMP v1] SIZE/READ MISMATCH path=%s got=%ld "
+												       "want=%zu -- movers-only fade\n",
+												       dampPath, dsz, damp.size() * sizeof(float));
+												std::fill(damp.begin(), damp.end(), 1.0f);
+											}
+										}
+										else
+										{
+											printf("[VISUAL_DAMP v1] sidecar NOT FOUND path=%s "
+											       "-- movers-only fade\n", dampPath);
+										}
+										gos_TerrainLodChunk_UploadVisualDampStatic(damp.data(), mapSide);
+										// Grounding-drift evidence (the objfade acceptance
+										// number): effective displacement per coarse cell.
+										std::vector<double> inner, annulus;
+										double innerMax = 0.0;
+										for (int cy = 0; cy < mapSide; ++cy)
+											for (int cx = 0; cx < mapSide; ++cx)
+											{
+												const size_t ci = (size_t)cx + (size_t)cy * mapSide;
+												const size_t fi = (size_t)(cx * 4)
+													+ (size_t)(cy * 4) * (size_t)V;
+												const double full = fabs((double)vh[fi] - (double)elev[ci]);
+												const double d = (double)damp[ci];
+												const double eff = full * d;
+												if (d <= 0.0)
+												{
+													inner.push_back(eff);
+													if (eff > innerMax) innerMax = eff;
+												}
+												else if (d < 0.999)
+													annulus.push_back(eff);
+											}
+										auto p99 = [](std::vector<double>& v2) -> double {
+											if (v2.empty()) return 0.0;
+											std::sort(v2.begin(), v2.end());
+											return v2[(size_t)((double)(v2.size() - 1) * 0.99)];
+										};
+										const double innerP99 = p99(inner);
+										const double annP99 = p99(annulus);
+										printf("[VISUAL_DAMP v1] %s side=%d objfade drift-near-objects: "
+										       "inner(damp==0) cells=%zu p99=%.3fwu max=%.3fwu (must be ~0) "
+										       "fade-annulus cells=%zu p99=%.2fwu\n",
+										       haveSidecar ? "LOADED" : "ALL-ONES (no sidecar)",
+										       mapSide, inner.size(), innerP99, innerMax,
+										       annulus.size(), annP99);
+										fflush(stdout);
+									}
+								}
 							}
 						}
 					}
@@ -1690,6 +2339,8 @@ long Terrain::update (void)
 				s_stitchStepVec.resize(need, 0);
 			if (s_shadowTierVec.size() < need)  // Slice B
 				s_shadowTierVec.resize(need, 0);
+			if (s_morphFactorVec.size() < need) // TERRAIN-LOD-GEOMORPH-1
+				s_morphFactorVec.resize(need, 0.0f);
 		}
 
 		// Cache frustum planes once for this frame (eye->cacheFrustumPlanes()
@@ -2067,6 +2718,18 @@ long Terrain::update (void)
 				else if (stDist < shadowR1 * shadowMidFarMult)  shadowTier = 1; // full-map cascade mid -> coarse dynamic
 				else                                            shadowTier = 2; // far -> static-only candidate
 				s_shadowTierVec[s_cmdCount] = shadowTier;
+				// TERRAIN-LOD-GEOMORPH-1: geomorph factor from the block's FINAL
+				// lodLevel (post cement/neighbor clamps) + center distance to the
+				// SAME eye the band selection used (eyeX/eyeY, camera origin).
+				// A block clamped finer than distance suggests simply rides at
+				// m=1 (already on its parent surface) — still seam-safe because
+				// perimeter verts never morph.
+				{
+					const float mfDx = chunkCenterX - eyeX;
+					const float mfDy = chunkCenterY - eyeY;
+					s_morphFactorVec[s_cmdCount] =
+						computeMorphFactor(mfDx * mfDx + mfDy * mfDy, bm.lodLevel);
+				}
 				tierChunks[shadowTier]++;
 				// World-area of this chunk = quads * (128*128) world-units^2.
 				tierArea[shadowTier] +=
@@ -2691,7 +3354,9 @@ void Terrain::flushDrawCommands (void)
 		gos_TerrainLodChunk_SubmitDrawCommands(s_drawCmds, s_skirtDepths,
 			s_skirtEdgeMaskVec.empty() ? nullptr : s_skirtEdgeMaskVec.data(),
 			s_stitchStepVec.empty() ? nullptr : s_stitchStepVec.data(),
-			s_shadowTierVec.empty() ? nullptr : s_shadowTierVec.data(), s_cmdCount);
+			s_shadowTierVec.empty() ? nullptr : s_shadowTierVec.data(),
+			s_morphFactorVec.empty() ? nullptr : s_morphFactorVec.data(),  // TERRAIN-LOD-GEOMORPH-1
+			s_cmdCount);
 		gos_render_pass_timer::End(gos_render_pass_timer::Pass_TerrainChunk);
 	}
 }
@@ -3054,50 +3719,14 @@ float cosineEyeHalfFOV = 0.0f;
 
 extern bool InEditor;
 
-// --- [SLIMSPLIT v1] -------------------------------------------------------
-// RDTSC sub-decomposition of the "Terrain::geometry slimReduce" per-vertex
-// loop. Distinct env gate MC2_SLIM_COST_SPLIT -- NOT the observer-effect-
-// dominated MC2_TERRAIN_COST_SPLIT chrono scopes (memory/cost_split_
-// instrumentation_is_observer_effect_dominated.md). __rdtsc() per-leaf
-// bracket, no Tracy zone by design (a per-vertex hot loop busts the 100ns
-// floor; same sanctioned exception as [LIGHT_COST_SPLIT v1] in tgl.cpp).
-// Isolates the three independent costs the single slimReduce Tracy zone
-// conflates, so the elimination campaign cuts in ROI order:
-//   PROJ : eye->projectForTerrainAdmission (survives for cull + raster)
-//   CULL : clipInfo + setObjBlock/VertexActive + solid-window append
-//   RED  : leastZ/mostZ/leastW/mostW reduction (retired Phase 4 2026-05-19; bracket retained as dead-instrumentation envelope until SLIMSPLIT demote/delete)
-// "front/other" (onScreenR sphere/cone math + raster px/pz write) =
-// Tracy slimReduce total - (PROJ+CULL+RED); not separately bracketed to
-// hold the per-vertex rdtsc-pair count at 3. Demote-not-delete after the
-// attribution lands (debug_instrumentation_rule.md).
-#include <intrin.h>
+// [SLIMSPLIT v1] RDTSC cost-split instrumentation (env MC2_SLIM_COST_SPLIT)
+// deleted by 8Z-DEADCODE-SWEEP-1: the slimReduce per-vertex loop it bracketed was
+// removed in 8z-A3, leaving SlimSplitOn()/SlimSplitRollAndMaybeEmit() and the g_ss*
+// counters with zero live callers. This is the "separate cleanup pass" the geometry()
+// comment named. The live [8Z_VESTIGIAL]/[8Z_RETIRED_ENV] opt-out warn stubs and the
+// still-wired GeoScope/MC2_GEOM_PHASE_SPLIT instrumentation below are retained.
 #include <stdlib.h>
 #include <stdio.h>
-namespace {
-	bool               g_ssInit = false, g_ssOn = false;
-	unsigned long long g_ssProjCyc = 0, g_ssCullCyc = 0, g_ssRedCyc = 0;
-	unsigned long long g_ssProjCall = 0, g_ssVtx = 0, g_ssFrames = 0;
-	bool SlimSplitOn()
-	{
-		if (!g_ssInit) { g_ssOn = (getenv("MC2_SLIM_COST_SPLIT") != nullptr); g_ssInit = true; }
-		return g_ssOn;
-	}
-	void SlimSplitRollAndMaybeEmit()
-	{
-		if (!g_ssOn) return;
-		++g_ssFrames;
-		if (g_ssFrames % 600ULL != 0ULL) return;
-		const double f = 600.0;
-		fprintf(stderr,
-			"[SLIMSPLIT v1] event=summary frames=600 "
-			"vtx_per_frame=%.0f proj_cyc_per_frame=%.0f proj_calls_per_frame=%.0f "
-			"cull_cyc_per_frame=%.0f red_cyc_per_frame=%.0f\n",
-			(double)g_ssVtx / f, (double)g_ssProjCyc / f, (double)g_ssProjCall / f,
-			(double)g_ssCullCyc / f, (double)g_ssRedCyc / f);
-		g_ssProjCyc = g_ssCullCyc = g_ssRedCyc = 0;
-		g_ssProjCall = g_ssVtx = 0;
-	}
-}  // namespace
 
 // ---- MC2_GEOM_PHASE_SPLIT: wall-ns split of Terrain::geometry() phases -------
 // Locate the 1K-map geometry() spike (avg ~2.25ms / max ~236ms) by phase.
@@ -3298,8 +3927,8 @@ void Terrain::geometry (void)
 	// 8z-A3: slimReduce per-vertex loop deleted. Under chunk=ON, makeLists is
 	// skipped (numberVertices==0) so this loop was a no-op. Production
 	// objBlockInfo.active/objVertexActive/solid-window written by s_lodChunkProd
-	// (Phase 8c). The SlimSplit RDTSC machinery above is now dead; left in place
-	// until a separate cleanup pass removes the GeoScope/SlimSplit helpers.
+	// (Phase 8c). The dead SlimSplit RDTSC machinery was removed by
+	// 8Z-DEADCODE-SWEEP-1; the live GeoScope/MC2_GEOM_PHASE_SPLIT helpers remain.
 
 	// MC2_BLOCK_FRUSTUM_FALLBACK: post-slimReduce block-level frustum AABB pass.
 	// Widens object-block admission for cameras where the per-vertex angular cull

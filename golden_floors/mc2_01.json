@@ -1,0 +1,822 @@
+{
+  "_note": "GOLDEN-SCENE-PARITY-1 mc2_01 noise floor. Built N=3 OFF captures, v0.4 deploy exe_md5=b1597c01e2602a0fc97e0a37066a215e, MC2_SMOKE_FIXED_TIMESTEP=1. Rebuild if the deployed exe changes (exe_md5 is an EXACT field and will fail parity otherwise). 195 exact fields incl. 4 pixel-sha fields; 3 drift (occupancy sample counts); see docs/testing/golden-scene-parity.md.",
+  "fields": {
+    "build_config": {
+      "kind": "exact",
+      "value": "Release"
+    },
+    "exe_md5": {
+      "kind": "exact",
+      "value": "b1597c01e2602a0fc97e0a37066a215e"
+    },
+    "gate_name": {
+      "kind": "exact",
+      "value": ""
+    },
+    "gate_set.MC2_FRAMEGRAPH_DRYRUN": {
+      "kind": "exact",
+      "value": null
+    },
+    "gate_set.MC2_FRAMEGRAPH_EXECUTOR": {
+      "kind": "exact",
+      "value": null
+    },
+    "gate_set.MC2_FRAMEGRAPH_REORDER_SPMECH": {
+      "kind": "exact",
+      "value": null
+    },
+    "gate_set.MC2_MATERIAL_GPU": {
+      "kind": "exact",
+      "value": null
+    },
+    "gate_set.MC2_RENDER_BACKEND_IFACE": {
+      "kind": "exact",
+      "value": null
+    },
+    "gate_set.MC2_SHADOW_CSM": {
+      "kind": "exact",
+      "value": null
+    },
+    "gate_set.MC2_STATIC_PROP_IBL_SH": {
+      "kind": "exact",
+      "value": null
+    },
+    "gate_set.MC2_STATIC_PROP_PBR_V1": {
+      "kind": "exact",
+      "value": null
+    },
+    "gate_set.MC2_TERRAIN_INDIRECT": {
+      "kind": "exact",
+      "value": null
+    },
+    "gate_set.MC2_VEGETATION_CARDS": {
+      "kind": "exact",
+      "value": null
+    },
+    "gate_set.MC2_WATER_GPU_FULL_RECIPE_AUTHORITATIVE": {
+      "kind": "exact",
+      "value": null
+    },
+    "gate_value": {
+      "kind": "exact",
+      "value": null
+    },
+    "generated_at_epoch": {
+      "kind": "ignore"
+    },
+    "golden_scene_manifest": {
+      "kind": "ignore",
+      "reason": "non-numeric-drift"
+    },
+    "label": {
+      "kind": "ignore",
+      "reason": "non-numeric-drift"
+    },
+    "pass_counters.mechBatchInstances": {
+      "kind": "exact",
+      "value": 0
+    },
+    "pass_counters.passes[0].blend": {
+      "kind": "exact",
+      "value": true
+    },
+    "pass_counters.passes[0].cull": {
+      "kind": "exact",
+      "value": false
+    },
+    "pass_counters.passes[0].depthMask": {
+      "kind": "exact",
+      "value": true
+    },
+    "pass_counters.passes[0].depthTest": {
+      "kind": "exact",
+      "value": false
+    },
+    "pass_counters.passes[0].drawCount": {
+      "kind": "exact",
+      "value": 13
+    },
+    "pass_counters.passes[0].fbo": {
+      "kind": "exact",
+      "value": 1
+    },
+    "pass_counters.passes[0].instanceCount": {
+      "kind": "exact",
+      "value": 13
+    },
+    "pass_counters.passes[0].pass": {
+      "kind": "exact",
+      "value": "shadowDyn"
+    },
+    "pass_counters.passes[0].viewportH": {
+      "kind": "exact",
+      "value": 600
+    },
+    "pass_counters.passes[0].viewportW": {
+      "kind": "exact",
+      "value": 800
+    },
+    "pass_counters.passes[10].blend": {
+      "kind": "exact",
+      "value": false
+    },
+    "pass_counters.passes[10].cull": {
+      "kind": "exact",
+      "value": true
+    },
+    "pass_counters.passes[10].depthMask": {
+      "kind": "exact",
+      "value": true
+    },
+    "pass_counters.passes[10].depthTest": {
+      "kind": "exact",
+      "value": true
+    },
+    "pass_counters.passes[10].drawCount": {
+      "kind": "exact",
+      "value": 0
+    },
+    "pass_counters.passes[10].fbo": {
+      "kind": "exact",
+      "value": 1
+    },
+    "pass_counters.passes[10].instanceCount": {
+      "kind": "exact",
+      "value": 0
+    },
+    "pass_counters.passes[10].pass": {
+      "kind": "exact",
+      "value": "hud"
+    },
+    "pass_counters.passes[10].viewportH": {
+      "kind": "exact",
+      "value": 600
+    },
+    "pass_counters.passes[10].viewportW": {
+      "kind": "exact",
+      "value": 800
+    },
+    "pass_counters.passes[11].blend": {
+      "kind": "exact",
+      "value": true
+    },
+    "pass_counters.passes[11].cull": {
+      "kind": "exact",
+      "value": false
+    },
+    "pass_counters.passes[11].depthMask": {
+      "kind": "exact",
+      "value": false
+    },
+    "pass_counters.passes[11].depthTest": {
+      "kind": "exact",
+      "value": false
+    },
+    "pass_counters.passes[11].drawCount": {
+      "kind": "exact",
+      "value": 0
+    },
+    "pass_counters.passes[11].fbo": {
+      "kind": "exact",
+      "value": 1
+    },
+    "pass_counters.passes[11].instanceCount": {
+      "kind": "exact",
+      "value": 0
+    },
+    "pass_counters.passes[11].pass": {
+      "kind": "exact",
+      "value": "post"
+    },
+    "pass_counters.passes[11].viewportH": {
+      "kind": "exact",
+      "value": 600
+    },
+    "pass_counters.passes[11].viewportW": {
+      "kind": "exact",
+      "value": 800
+    },
+    "pass_counters.passes[1].blend": {
+      "kind": "exact",
+      "value": true
+    },
+    "pass_counters.passes[1].cull": {
+      "kind": "exact",
+      "value": false
+    },
+    "pass_counters.passes[1].depthMask": {
+      "kind": "exact",
+      "value": true
+    },
+    "pass_counters.passes[1].depthTest": {
+      "kind": "exact",
+      "value": false
+    },
+    "pass_counters.passes[1].drawCount": {
+      "kind": "exact",
+      "value": 0
+    },
+    "pass_counters.passes[1].fbo": {
+      "kind": "exact",
+      "value": 1
+    },
+    "pass_counters.passes[1].instanceCount": {
+      "kind": "exact",
+      "value": 0
+    },
+    "pass_counters.passes[1].pass": {
+      "kind": "exact",
+      "value": "obj3d"
+    },
+    "pass_counters.passes[1].viewportH": {
+      "kind": "exact",
+      "value": 600
+    },
+    "pass_counters.passes[1].viewportW": {
+      "kind": "exact",
+      "value": 800
+    },
+    "pass_counters.passes[2].blend": {
+      "kind": "exact",
+      "value": true
+    },
+    "pass_counters.passes[2].cull": {
+      "kind": "exact",
+      "value": false
+    },
+    "pass_counters.passes[2].depthMask": {
+      "kind": "exact",
+      "value": true
+    },
+    "pass_counters.passes[2].depthTest": {
+      "kind": "exact",
+      "value": false
+    },
+    "pass_counters.passes[2].drawCount": {
+      "kind": "exact",
+      "value": 6
+    },
+    "pass_counters.passes[2].fbo": {
+      "kind": "exact",
+      "value": 1
+    },
+    "pass_counters.passes[2].instanceCount": {
+      "kind": "exact",
+      "value": 0
+    },
+    "pass_counters.passes[2].pass": {
+      "kind": "exact",
+      "value": "terrainChunk"
+    },
+    "pass_counters.passes[2].viewportH": {
+      "kind": "exact",
+      "value": 600
+    },
+    "pass_counters.passes[2].viewportW": {
+      "kind": "exact",
+      "value": 800
+    },
+    "pass_counters.passes[3].blend": {
+      "kind": "exact",
+      "value": false
+    },
+    "pass_counters.passes[3].cull": {
+      "kind": "exact",
+      "value": false
+    },
+    "pass_counters.passes[3].depthMask": {
+      "kind": "exact",
+      "value": true
+    },
+    "pass_counters.passes[3].depthTest": {
+      "kind": "exact",
+      "value": false
+    },
+    "pass_counters.passes[3].drawCount": {
+      "kind": "exact",
+      "value": 0
+    },
+    "pass_counters.passes[3].fbo": {
+      "kind": "exact",
+      "value": 1
+    },
+    "pass_counters.passes[3].instanceCount": {
+      "kind": "exact",
+      "value": 0
+    },
+    "pass_counters.passes[3].pass": {
+      "kind": "exact",
+      "value": "terrainSolid"
+    },
+    "pass_counters.passes[3].viewportH": {
+      "kind": "exact",
+      "value": 600
+    },
+    "pass_counters.passes[3].viewportW": {
+      "kind": "exact",
+      "value": 800
+    },
+    "pass_counters.passes[4].blend": {
+      "kind": "exact",
+      "value": false
+    },
+    "pass_counters.passes[4].cull": {
+      "kind": "exact",
+      "value": false
+    },
+    "pass_counters.passes[4].depthMask": {
+      "kind": "exact",
+      "value": true
+    },
+    "pass_counters.passes[4].depthTest": {
+      "kind": "exact",
+      "value": false
+    },
+    "pass_counters.passes[4].drawCount": {
+      "kind": "exact",
+      "value": 132
+    },
+    "pass_counters.passes[4].fbo": {
+      "kind": "exact",
+      "value": 1
+    },
+    "pass_counters.passes[4].instanceCount": {
+      "kind": "exact",
+      "value": 132
+    },
+    "pass_counters.passes[4].pass": {
+      "kind": "exact",
+      "value": "spColor"
+    },
+    "pass_counters.passes[4].viewportH": {
+      "kind": "exact",
+      "value": 600
+    },
+    "pass_counters.passes[4].viewportW": {
+      "kind": "exact",
+      "value": 800
+    },
+    "pass_counters.passes[5].blend": {
+      "kind": "exact",
+      "value": false
+    },
+    "pass_counters.passes[5].cull": {
+      "kind": "exact",
+      "value": true
+    },
+    "pass_counters.passes[5].depthMask": {
+      "kind": "exact",
+      "value": true
+    },
+    "pass_counters.passes[5].depthTest": {
+      "kind": "exact",
+      "value": true
+    },
+    "pass_counters.passes[5].drawCount": {
+      "kind": "exact",
+      "value": 0
+    },
+    "pass_counters.passes[5].fbo": {
+      "kind": "exact",
+      "value": 1
+    },
+    "pass_counters.passes[5].instanceCount": {
+      "kind": "exact",
+      "value": 0
+    },
+    "pass_counters.passes[5].pass": {
+      "kind": "exact",
+      "value": "mechs"
+    },
+    "pass_counters.passes[5].viewportH": {
+      "kind": "exact",
+      "value": 600
+    },
+    "pass_counters.passes[5].viewportW": {
+      "kind": "exact",
+      "value": 800
+    },
+    "pass_counters.passes[6].blend": {
+      "kind": "exact",
+      "value": false
+    },
+    "pass_counters.passes[6].cull": {
+      "kind": "exact",
+      "value": true
+    },
+    "pass_counters.passes[6].depthMask": {
+      "kind": "exact",
+      "value": true
+    },
+    "pass_counters.passes[6].depthTest": {
+      "kind": "exact",
+      "value": true
+    },
+    "pass_counters.passes[6].drawCount": {
+      "kind": "exact",
+      "value": 0
+    },
+    "pass_counters.passes[6].fbo": {
+      "kind": "exact",
+      "value": 1
+    },
+    "pass_counters.passes[6].instanceCount": {
+      "kind": "exact",
+      "value": 0
+    },
+    "pass_counters.passes[6].pass": {
+      "kind": "exact",
+      "value": "overlays"
+    },
+    "pass_counters.passes[6].viewportH": {
+      "kind": "exact",
+      "value": 600
+    },
+    "pass_counters.passes[6].viewportW": {
+      "kind": "exact",
+      "value": 800
+    },
+    "pass_counters.passes[7].blend": {
+      "kind": "exact",
+      "value": false
+    },
+    "pass_counters.passes[7].cull": {
+      "kind": "exact",
+      "value": true
+    },
+    "pass_counters.passes[7].depthMask": {
+      "kind": "exact",
+      "value": true
+    },
+    "pass_counters.passes[7].depthTest": {
+      "kind": "exact",
+      "value": true
+    },
+    "pass_counters.passes[7].drawCount": {
+      "kind": "exact",
+      "value": 0
+    },
+    "pass_counters.passes[7].fbo": {
+      "kind": "exact",
+      "value": 1
+    },
+    "pass_counters.passes[7].instanceCount": {
+      "kind": "exact",
+      "value": 0
+    },
+    "pass_counters.passes[7].pass": {
+      "kind": "exact",
+      "value": "water"
+    },
+    "pass_counters.passes[7].viewportH": {
+      "kind": "exact",
+      "value": 600
+    },
+    "pass_counters.passes[7].viewportW": {
+      "kind": "exact",
+      "value": 800
+    },
+    "pass_counters.passes[8].blend": {
+      "kind": "exact",
+      "value": false
+    },
+    "pass_counters.passes[8].cull": {
+      "kind": "exact",
+      "value": true
+    },
+    "pass_counters.passes[8].depthMask": {
+      "kind": "exact",
+      "value": true
+    },
+    "pass_counters.passes[8].depthTest": {
+      "kind": "exact",
+      "value": true
+    },
+    "pass_counters.passes[8].drawCount": {
+      "kind": "exact",
+      "value": 0
+    },
+    "pass_counters.passes[8].fbo": {
+      "kind": "exact",
+      "value": 1
+    },
+    "pass_counters.passes[8].instanceCount": {
+      "kind": "exact",
+      "value": 0
+    },
+    "pass_counters.passes[8].pass": {
+      "kind": "exact",
+      "value": "blobs"
+    },
+    "pass_counters.passes[8].viewportH": {
+      "kind": "exact",
+      "value": 600
+    },
+    "pass_counters.passes[8].viewportW": {
+      "kind": "exact",
+      "value": 800
+    },
+    "pass_counters.passes[9].blend": {
+      "kind": "exact",
+      "value": false
+    },
+    "pass_counters.passes[9].cull": {
+      "kind": "exact",
+      "value": true
+    },
+    "pass_counters.passes[9].depthMask": {
+      "kind": "exact",
+      "value": true
+    },
+    "pass_counters.passes[9].depthTest": {
+      "kind": "exact",
+      "value": true
+    },
+    "pass_counters.passes[9].drawCount": {
+      "kind": "exact",
+      "value": 0
+    },
+    "pass_counters.passes[9].fbo": {
+      "kind": "exact",
+      "value": 1
+    },
+    "pass_counters.passes[9].instanceCount": {
+      "kind": "exact",
+      "value": 0
+    },
+    "pass_counters.passes[9].pass": {
+      "kind": "exact",
+      "value": "alphaVfx"
+    },
+    "pass_counters.passes[9].viewportH": {
+      "kind": "exact",
+      "value": 600
+    },
+    "pass_counters.passes[9].viewportW": {
+      "kind": "exact",
+      "value": 800
+    },
+    "pass_counters.staticPropBatches": {
+      "kind": "exact",
+      "value": 132
+    },
+    "pass_counters.version": {
+      "kind": "exact",
+      "value": 1
+    },
+    "pass_counters.vfxCount": {
+      "kind": "exact",
+      "value": 0
+    },
+    "pass_counters.visibleTerrainChunks": {
+      "kind": "exact",
+      "value": 6
+    },
+    "pixel_any_nondeterministic": {
+      "kind": "exact",
+      "value": false
+    },
+    "pixel_sha_all": {
+      "kind": "exact",
+      "value": "highangle_wide=9f068e5c2063d5cfcaf7bb33c1443ee2829d21a1ac5c9f7fe2d7d42a31c91838|overview_center=db97b978a3cd76ac3ad6c5fa69778db15d39b0febeb3c62b717ebb8ceb618200|ridge_lowangle=c8361226196377006373c60fde97c015701b34ad0c94a135fcd06da697d82549"
+    },
+    "pixel_shas.highangle_wide": {
+      "kind": "exact",
+      "value": "9f068e5c2063d5cfcaf7bb33c1443ee2829d21a1ac5c9f7fe2d7d42a31c91838"
+    },
+    "pixel_shas.overview_center": {
+      "kind": "exact",
+      "value": "db97b978a3cd76ac3ad6c5fa69778db15d39b0febeb3c62b717ebb8ceb618200"
+    },
+    "pixel_shas.ridge_lowangle": {
+      "kind": "exact",
+      "value": "c8361226196377006373c60fde97c015701b34ad0c94a135fcd06da697d82549"
+    },
+    "registry_hash": {
+      "kind": "exact",
+      "value": "9c32cc32bd3bc7a9"
+    },
+    "registry_resource_count": {
+      "kind": "exact",
+      "value": 17
+    },
+    "render_health.frame_graph.ambient_probe_mismatches": {
+      "kind": "exact",
+      "value": 0
+    },
+    "render_health.frame_graph.ambient_probe_samples": {
+      "kind": "drift",
+      "max": 25273,
+      "min": 10453
+    },
+    "render_health.frame_graph.executor_apply_state_by_pass.MechOpaque": {
+      "kind": "exact",
+      "value": 0
+    },
+    "render_health.frame_graph.executor_apply_state_by_pass.PostProcessCloudShadow": {
+      "kind": "exact",
+      "value": 0
+    },
+    "render_health.frame_graph.executor_apply_state_by_pass.PostProcessEdgeFog": {
+      "kind": "exact",
+      "value": 0
+    },
+    "render_health.frame_graph.executor_apply_state_by_pass.PostProcessFogOob": {
+      "kind": "exact",
+      "value": 0
+    },
+    "render_health.frame_graph.executor_apply_state_by_pass.PostProcessScreenShadow": {
+      "kind": "exact",
+      "value": 0
+    },
+    "render_health.frame_graph.executor_apply_state_by_pass.PostProcessShoreline": {
+      "kind": "exact",
+      "value": 0
+    },
+    "render_health.frame_graph.executor_apply_state_by_pass.Shadow": {
+      "kind": "exact",
+      "value": 0
+    },
+    "render_health.frame_graph.executor_apply_state_by_pass.StaticPropOpaque": {
+      "kind": "exact",
+      "value": 0
+    },
+    "render_health.frame_graph.executor_apply_state_by_pass.TerrainDecal": {
+      "kind": "exact",
+      "value": 0
+    },
+    "render_health.frame_graph.executor_apply_state_by_pass.TerrainOverlay": {
+      "kind": "exact",
+      "value": 0
+    },
+    "render_health.frame_graph.executor_apply_state_by_pass.Water": {
+      "kind": "exact",
+      "value": 0
+    },
+    "render_health.frame_graph.executor_apply_state_passes": {
+      "kind": "exact",
+      "value": 0
+    },
+    "render_health.frame_graph.executor_owned_passes": {
+      "kind": "exact",
+      "value": 0
+    },
+    "render_health.frame_graph.executor_owned_wrappers": {
+      "kind": "exact",
+      "value": 0
+    },
+    "render_health.frame_graph.executor_scheduled_passes": {
+      "kind": "exact",
+      "value": 0
+    },
+    "render_health.frame_graph.executor_skipped_deferred_passes": {
+      "kind": "exact",
+      "value": 0
+    },
+    "render_health.frame_graph.executor_validated_top_level_passes": {
+      "kind": "exact",
+      "value": 0
+    },
+    "render_health.frame_graph.executor_validation_failures": {
+      "kind": "exact",
+      "value": 0
+    },
+    "render_health.frame_graph.fbo_mismatches": {
+      "kind": "exact",
+      "value": 0
+    },
+    "render_health.frame_graph.fbo_samples": {
+      "kind": "drift",
+      "max": 29484,
+      "min": 12194
+    },
+    "render_health.frame_graph.frame_graph_dryrun.enabled": {
+      "kind": "exact",
+      "value": false
+    },
+    "render_health.frame_graph.frame_graph_dryrun.frames": {
+      "kind": "exact",
+      "value": 0
+    },
+    "render_health.frame_graph.frame_graph_dryrun.known_early_suppressed": {
+      "kind": "exact",
+      "value": 0
+    },
+    "render_health.frame_graph.frame_graph_dryrun.latch_miss_frames": {
+      "kind": "exact",
+      "value": 0
+    },
+    "render_health.frame_graph.frame_graph_dryrun.observed_pass_count": {
+      "kind": "exact",
+      "value": 0
+    },
+    "render_health.frame_graph.frame_graph_dryrun.out_of_order": {
+      "kind": "exact",
+      "value": 0
+    },
+    "render_health.frame_graph.frame_graph_dryrun.terrain_mutex_violations": {
+      "kind": "exact",
+      "value": 0
+    },
+    "render_health.frame_graph.frame_graph_dryrun.unobserved_total": {
+      "kind": "exact",
+      "value": 0
+    },
+    "render_health.frame_graph.missing_resource": {
+      "kind": "exact",
+      "value": 0
+    },
+    "render_health.frame_graph.offending_pass": {
+      "kind": "exact",
+      "value": 0
+    },
+    "render_health.frame_graph.unknown_pass": {
+      "kind": "exact",
+      "value": false
+    },
+    "render_health.frame_graph.valid": {
+      "kind": "exact",
+      "value": true
+    },
+    "render_health.frame_graph.viewport_probe_mismatches": {
+      "kind": "exact",
+      "value": 0
+    },
+    "render_health.frame_graph.viewport_probe_samples": {
+      "kind": "drift",
+      "max": 25273,
+      "min": 10453
+    },
+    "render_health.renderPasses.screenShadow": {
+      "kind": "exact",
+      "value": true
+    },
+    "render_health.renderPasses.shadow": {
+      "kind": "exact",
+      "value": true
+    },
+    "render_health.renderSnapshot.arenaOverflow": {
+      "kind": "exact",
+      "value": false
+    },
+    "render_health.renderSnapshot.ok": {
+      "kind": "exact",
+      "value": true
+    },
+    "render_health.renderSnapshot.spBuildAttempted": {
+      "kind": "exact",
+      "value": 1
+    },
+    "render_health.renderSnapshot.spBuildCountMismatch": {
+      "kind": "exact",
+      "value": 0
+    },
+    "render_health.renderSnapshot.spBuildFallback": {
+      "kind": "exact",
+      "value": 0
+    },
+    "render_health.renderSnapshot.spBuildMetaMismatch": {
+      "kind": "exact",
+      "value": 0
+    },
+    "render_health.renderSnapshot.spBuildPacketMismatch": {
+      "kind": "exact",
+      "value": 0
+    },
+    "render_health.renderSnapshot.spBuildRetired": {
+      "kind": "exact",
+      "value": 1
+    },
+    "render_health.renderSnapshot.staticPropPacketInvalid": {
+      "kind": "exact",
+      "value": 0
+    },
+    "render_health.renderSnapshot.staticPropPacketRangesFail": {
+      "kind": "exact",
+      "value": 0
+    },
+    "render_health.renderSnapshot.staticPropValidationFail": {
+      "kind": "exact",
+      "value": 0
+    },
+    "scene": {
+      "kind": "exact",
+      "value": "mc2_01"
+    },
+    "schema": {
+      "kind": "exact",
+      "value": "GOLDEN_PARITY_COMBINED_V1"
+    },
+    "viscap_manifest": {
+      "kind": "ignore",
+      "reason": "non-numeric-drift"
+    }
+  },
+  "sample_count": 3,
+  "sample_sources": [
+    "floor0_combined.json",
+    "floor1_combined.json",
+    "floor2_combined.json"
+  ],
+  "schema": "GOLDEN_NOISE_FLOOR_V1"
+}

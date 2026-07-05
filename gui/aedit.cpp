@@ -391,16 +391,27 @@ void aEdit::render()
 
 		if ( textToDraw.Length() )
 		{
-			font.render( &textToDraw[startChar], 
-				(int)(globalX() + ENTRY_MARGIN), 
-				(int)globalY(), (int)width(), (int)height(), 
-				textColor, 0, 0 );
+			// When a screen wraps this widget in aObject::beginTextBridge (e.g. the
+			// Mech Lab variant combo box), route the collapsed display text through
+			// the TTF bridge so it matches the rest of the converted UI instead of
+			// rendering as the legacy bitmap font.  Falls back to font.render when
+			// no bridge is active, so every other aEdit use is unchanged.
+			if ( !aObject::renderTextBridged( font, &textToDraw[startChar],
+					(float)(globalX() + ENTRY_MARGIN), (float)globalY(),
+					(float)(globalX() + width()), (float)(globalY() + height()),
+					textColor, 0 ) )
+			{
+				font.render( &textToDraw[startChar],
+					(int)(globalX() + ENTRY_MARGIN),
+					(int)globalY(), (int)width(), (int)height(),
+					textColor, 0, 0 );
+			}
 		}
 		else
 		{
-			font.render( "", 
-				(int)(globalX() + ENTRY_MARGIN), 
-				(int)globalY(), (int)width(), (int)height(), 
+			font.render( "",
+				(int)(globalX() + ENTRY_MARGIN),
+				(int)globalY(), (int)width(), (int)height(),
 				textColor, 0, 0 );
 		}
 	}

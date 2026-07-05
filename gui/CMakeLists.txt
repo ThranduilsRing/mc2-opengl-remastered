@@ -10,6 +10,7 @@ set(SOURCES ${SOURCES}
     ascroll.cpp
     asystem.cpp
     logisticsscreen.cpp
+    UiDefs.cpp
     )
 
 include_directories(${COMMON_INCLUDE_DIRS} "../mclib" "../Code")

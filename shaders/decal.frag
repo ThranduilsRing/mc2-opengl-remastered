@@ -13,6 +13,11 @@
 //   location=1  GBuffer1.alpha  = 1.0  → shadow_screen.frag skips this pixel
 //                                  (decal handles its own shadow inline; opt out
 //                                  of post-shadow to avoid double-shadowing).
+//
+// GROUND-CONTACT-BLOB-1: Texcoord.y < -0.5 marks a quad that provides its OWN
+// darkening (a contact-shadow disc under a mover) and must SKIP the inline sun
+// shadow multiply below — the disc already IS the darkening; applying calcShadow
+// on top would double-darken it where a cast shadow overlaps the blob.
 
 #define PREC highp
 
@@ -64,11 +69,15 @@ void main()
 
     // Cloud shadows moved to the fullscreen cloud pass (cloud.frag).
 
+    // GROUND-CONTACT-BLOB-1: Texcoord.y < -0.5 = self-darkening quad, skip the
+    // inline sun-shadow multiply entirely (see file header comment).
+    bool skipInlineShadow = (Texcoord.y < -0.5);
+
     // SHADOW-DECAL-SINGLE: apply sun shadow ONCE here. Opaque decals fully cover
     // the shadowed terrain underneath (alpha-blend, no depth write) and are skipped
     // by shadow_screen.frag (GBuffer1.a=1, shadowHandled). The earlier "double"
     // claim was a distribution math error: base*sh*(1-a)+decal*sh*a = sh once.
-    {
+    if (!skipInlineShadow) {
         const PREC vec3 shadowN = vec3(0.0, 0.0, 1.0);   // flat-up, matches terrain
         float staticShadow = calcShadow(WorldPos, shadowN, terrainLightDir.xyz, 8);
         float dynShadow    = calcDynamicShadow(WorldPos, shadowN, terrainLightDir.xyz, 4);

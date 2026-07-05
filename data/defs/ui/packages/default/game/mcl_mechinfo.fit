@@ -1,0 +1,1170 @@
+// MC2R ImGui FIT generated from legacy UI FIT.
+// Source: data/defs/ui/legacy/game/mcl_mechinfo.fit
+// Legacy files remain source truth only; edit the generated ImGui FIT.
+
+GuiPage {
+    key = "game.mcl_mechinfo"
+    title = "Game Mcl Mechinfo"
+    sourceLegacyFit = "data/defs/ui/legacy/game/mcl_mechinfo.fit"
+    sourceSystem = "game"
+    sourceScreen = "mcl_mechinfo"
+    sourceKind = "legacy_screen"
+    layout = "absolute"
+    coordinateSpace = "screen_absolute"
+    localWidth = 800
+    localHeight = 600
+    mountOffset = "0,0"
+    editableSource = "generated_imgui_only"
+    overlayGameOS = true
+    renderMode = "gameos_overlay"
+    backgroundPolicy = "transparent_overlay"
+}
+
+GuiMetadata {
+    key = "game.mcl_mechinfo.metadata.metadata"
+    pageKey = "game.mcl_mechinfo"
+    legacySection = "Rects"
+    legacyContext = "~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ | ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ | ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~"
+    role = "metadata"
+    layer = "metadata"
+    aliasOverride = "metadata"
+    sourceControlType = "Rects"
+    rect = "0,0,0,0"
+    legacyLocalRect = "0,0,0,0"
+    legacyRectSource = "xywh"
+    visible = false
+}
+
+GuiRect {
+    key = "game.mcl_mechinfo.rect.rect_for_component_info_scroll_area"
+    pageKey = "game.mcl_mechinfo"
+    legacySection = "Rect0"
+    legacyComment = "rect for component info scroll area"
+    role = "rect"
+    layer = "layout"
+    aliasOverride = "rect for component info scroll area"
+    sourceControlType = "Rect0"
+    rect = "491,345,227,165"
+    legacyLocalRect = "491,345,227,165"
+    legacyRectSource = "xywh"
+    uiPackage = "default"
+    rectModel = "legacy_imgui.modern_rect_v1"
+    controlRect = "491,345,227,165"
+    legacyColor = -16765099
+    outline = "TRUE"
+    filled = false
+    fillColorArgb = "0x00000000"
+    borderColorArgb = "0x00000000"
+    colorArgb = "0xffffffff"
+}
+
+GuiMetadata {
+    key = "game.mcl_mechinfo.metadata.left_vert_line_for_mech_animation"
+    pageKey = "game.mcl_mechinfo"
+    legacySection = "Rect1"
+    legacyComment = "left vert. line for mech animation"
+    role = "metadata"
+    layer = "metadata"
+    aliasOverride = "left vert. line for mech animation"
+    sourceControlType = "Rect1"
+    rect = "337,353,0,148"
+    legacyLocalRect = "337,353,0,148"
+    legacyRectSource = "xywh"
+    legacyColor = -16765099
+    outline = "TRUE"
+    visible = false
+}
+
+GuiMetadata {
+    key = "game.mcl_mechinfo.metadata.right_vert_line_for_mech_animation"
+    pageKey = "game.mcl_mechinfo"
+    legacySection = "Rect2"
+    legacyComment = "right vert. line for mech animation"
+    role = "metadata"
+    layer = "metadata"
+    aliasOverride = "right vert. line for mech animation"
+    sourceControlType = "Rect2"
+    rect = "462,353,0,148"
+    legacyLocalRect = "462,353,0,148"
+    legacyRectSource = "xywh"
+    legacyColor = -16765099
+    outline = "TRUE"
+    visible = false
+}
+
+GuiRect {
+    key = "game.mcl_mechinfo.rect.rect_to_fit_mech_animation_into"
+    pageKey = "game.mcl_mechinfo"
+    legacySection = "Rect3"
+    legacyComment = "rect to fit mech animation into"
+    role = "rect"
+    layer = "layout"
+    aliasOverride = "rect to fit mech animation into"
+    sourceControlType = "Rect3"
+    rect = "338,346,124,162"
+    legacyLocalRect = "338,346,124,162"
+    legacyRectSource = "xywh"
+    uiPackage = "default"
+    rectModel = "legacy_imgui.modern_rect_v1"
+    controlRect = "338,346,124,162"
+    legacyColor = 0x00000000
+    outline = "FALSE"
+    filled = true
+    fillColorArgb = "0x00000000"
+    borderColorArgb = "0x00000000"
+    colorArgb = "0xffffffff"
+}
+
+GuiMetadata {
+    key = "game.mcl_mechinfo.metadata.thin_line"
+    pageKey = "game.mcl_mechinfo"
+    legacySection = "Rect4"
+    legacyComment = "thin line"
+    role = "metadata"
+    layer = "metadata"
+    aliasOverride = "thin line"
+    sourceControlType = "Rect4"
+    rect = "477,515,246,0"
+    legacyLocalRect = "477,515,246,0"
+    legacyRectSource = "xywh"
+    legacyColor = 0xff002f55
+    outline = 1
+    visible = false
+}
+
+GuiMetadata {
+    key = "game.mcl_mechinfo.metadata.thin_line_01"
+    pageKey = "game.mcl_mechinfo"
+    legacySection = "Rect5"
+    legacyComment = "thin line"
+    role = "metadata"
+    layer = "metadata"
+    aliasOverride = "thin line"
+    sourceControlType = "Rect5"
+    rect = "76,316,235,0"
+    legacyLocalRect = "76,316,235,0"
+    legacyRectSource = "xywh"
+    legacyColor = 0xff002f55
+    outline = 1
+    visible = false
+}
+
+GuiMetadata {
+    key = "game.mcl_mechinfo.metadata.thin_line_02"
+    pageKey = "game.mcl_mechinfo"
+    legacySection = "Rect6"
+    legacyComment = "thin line"
+    role = "metadata"
+    layer = "metadata"
+    aliasOverride = "thin line"
+    sourceControlType = "Rect6"
+    rect = "76,316,0,199"
+    legacyLocalRect = "76,316,0,199"
+    legacyRectSource = "xywh"
+    legacyColor = 0xff002f55
+    outline = 1
+    visible = false
+}
+
+GuiMetadata {
+    key = "game.mcl_mechinfo.metadata.thin_line_03"
+    pageKey = "game.mcl_mechinfo"
+    legacySection = "Rect7"
+    legacyComment = "thin line"
+    role = "metadata"
+    layer = "metadata"
+    aliasOverride = "thin line"
+    sourceControlType = "Rect7"
+    rect = "76,515,246,0"
+    legacyLocalRect = "76,515,246,0"
+    legacyRectSource = "xywh"
+    legacyColor = 0xff002f55
+    outline = 1
+    visible = false
+}
+
+GuiMetadata {
+    key = "game.mcl_mechinfo.metadata.thin_line_04"
+    pageKey = "game.mcl_mechinfo"
+    legacySection = "Rect8"
+    legacyComment = "thin line"
+    role = "metadata"
+    layer = "metadata"
+    aliasOverride = "thin line"
+    sourceControlType = "Rect8"
+    rect = "488,316,235,0"
+    legacyLocalRect = "488,316,235,0"
+    legacyRectSource = "xywh"
+    legacyColor = 0xff002f55
+    outline = 1
+    visible = false
+}
+
+GuiMetadata {
+    key = "game.mcl_mechinfo.metadata.thin_line_05"
+    pageKey = "game.mcl_mechinfo"
+    legacySection = "Rect9"
+    legacyComment = "thin line"
+    role = "metadata"
+    layer = "metadata"
+    aliasOverride = "thin line"
+    sourceControlType = "Rect9"
+    rect = "723,316,0,199"
+    legacyLocalRect = "723,316,0,199"
+    legacyRectSource = "xywh"
+    legacyColor = 0xff002f55
+    outline = 1
+    visible = false
+}
+
+GuiRect {
+    key = "game.mcl_mechinfo.rect.help_rect_for_currently_selected_mech_name_and_pic"
+    pageKey = "game.mcl_mechinfo"
+    legacySection = "Rect10"
+    legacyComment = "help rect for currently selected mech name and pic"
+    role = "help"
+    layer = "help"
+    aliasOverride = "help rect for currently selected mech name and pic"
+    sourceControlType = "Rect10"
+    rect = "339,311,125,198"
+    legacyLocalRect = "339,311,125,198"
+    legacyRectSource = "xywh"
+    uiPackage = "default"
+    rectModel = "legacy_imgui.modern_rect_v1"
+    controlRect = "339,311,125,198"
+    helpDescLegacyId = 29051
+    helpDescKey = "legacy.mc2res.29051"
+    helpDescText = "CURRENT SELECTION     The name and animation of the currently selected 'Mech."
+    helpDescLegacySymbol = "IDS_HELP_PM_MECH_NAME"
+    helpDescSource = "mc2res"
+    helpDescMissing = false
+    legacyColor = 0
+    outline = "FALSE"
+    filled = true
+    fillColorArgb = "0x00000000"
+    borderColorArgb = "0x00000000"
+    colorArgb = "0xffffffff"
+}
+
+GuiRect {
+    key = "game.mcl_mechinfo.rect.help_rect_for_all_tonnage_parts"
+    pageKey = "game.mcl_mechinfo"
+    legacySection = "Rect11"
+    legacyComment = "help rect for all tonnage parts"
+    role = "help"
+    layer = "help"
+    aliasOverride = "help rect for all tonnage parts"
+    sourceControlType = "Rect11"
+    rect = "85,322,222,30"
+    legacyLocalRect = "85,322,222,30"
+    legacyRectSource = "xywh"
+    uiPackage = "default"
+    rectModel = "legacy_imgui.modern_rect_v1"
+    controlRect = "85,322,222,30"
+    helpDescLegacyId = 29055
+    helpDescKey = "legacy.mc2res.29055"
+    helpDescText = "TONNAGE     The weight, in tons, and class of the selected 'Mech."
+    helpDescLegacySymbol = "IDS_HELP_PM_TONNAGE"
+    helpDescSource = "mc2res"
+    helpDescMissing = false
+    legacyColor = 0
+    outline = "FALSE"
+    filled = true
+    fillColorArgb = "0x00000000"
+    borderColorArgb = "0x00000000"
+    colorArgb = "0xffffffff"
+}
+
+GuiRect {
+    key = "game.mcl_mechinfo.rect.help_rect_for_all_range_parts"
+    pageKey = "game.mcl_mechinfo"
+    legacySection = "Rect12"
+    legacyComment = "help rect for all range parts"
+    role = "help"
+    layer = "help"
+    aliasOverride = "help rect for all range parts"
+    sourceControlType = "Rect12"
+    rect = "85,360,222,32"
+    legacyLocalRect = "85,360,222,32"
+    legacyRectSource = "xywh"
+    uiPackage = "default"
+    rectModel = "legacy_imgui.modern_rect_v1"
+    controlRect = "85,360,222,32"
+    helpDescLegacyId = 29056
+    helpDescKey = "legacy.mc2res.29056"
+    helpDescText = "RANGE     The dominant weapons range of the selected 'Mech."
+    helpDescLegacySymbol = "IDS_HELP_PM_RANGE"
+    helpDescSource = "mc2res"
+    helpDescMissing = false
+    legacyColor = 0
+    outline = "FALSE"
+    filled = true
+    fillColorArgb = "0x00000000"
+    borderColorArgb = "0x00000000"
+    colorArgb = "0xffffffff"
+}
+
+GuiRect {
+    key = "game.mcl_mechinfo.rect.help_rect_for_all_armor_parts"
+    pageKey = "game.mcl_mechinfo"
+    legacySection = "Rect13"
+    legacyComment = "help rect for all armor parts"
+    role = "help"
+    layer = "help"
+    aliasOverride = "help rect for all armor parts"
+    sourceControlType = "Rect13"
+    rect = "85,400,222,30"
+    legacyLocalRect = "85,400,222,30"
+    legacyRectSource = "xywh"
+    uiPackage = "default"
+    rectModel = "legacy_imgui.modern_rect_v1"
+    controlRect = "85,400,222,30"
+    helpDescLegacyId = 29057
+    helpDescKey = "legacy.mc2res.29057"
+    helpDescText = "ARMOR     The amount of armor on the selected 'Mech."
+    helpDescLegacySymbol = "IDS_HELP_PM_ARMOR"
+    helpDescSource = "mc2res"
+    helpDescMissing = false
+    legacyColor = 0
+    outline = "FALSE"
+    filled = true
+    fillColorArgb = "0x00000000"
+    borderColorArgb = "0x00000000"
+    colorArgb = "0xffffffff"
+}
+
+GuiRect {
+    key = "game.mcl_mechinfo.rect.help_rect_for_all_speed_parts"
+    pageKey = "game.mcl_mechinfo"
+    legacySection = "Rect14"
+    legacyComment = "help rect for all speed parts"
+    role = "help"
+    layer = "help"
+    aliasOverride = "help rect for all speed parts"
+    sourceControlType = "Rect14"
+    rect = "85,438,222,30"
+    legacyLocalRect = "85,438,222,30"
+    legacyRectSource = "xywh"
+    uiPackage = "default"
+    rectModel = "legacy_imgui.modern_rect_v1"
+    controlRect = "85,438,222,30"
+    helpDescLegacyId = 29058
+    helpDescKey = "legacy.mc2res.29058"
+    helpDescText = "SPEED     The speed, in kilometers per hour, of the selected 'Mech."
+    helpDescLegacySymbol = "IDS_HELP_PM_SPEED"
+    helpDescSource = "mc2res"
+    helpDescMissing = false
+    legacyColor = 0
+    outline = "FALSE"
+    filled = true
+    fillColorArgb = "0x00000000"
+    borderColorArgb = "0x00000000"
+    colorArgb = "0xffffffff"
+}
+
+GuiRect {
+    key = "game.mcl_mechinfo.rect.rect"
+    pageKey = "game.mcl_mechinfo"
+    legacySection = "Rect15"
+    role = "rect"
+    layer = "layout"
+    aliasOverride = "rect"
+    sourceControlType = "Rect15"
+    rect = "85,476,222,32"
+    legacyLocalRect = "85,476,222,32"
+    legacyRectSource = "xywh"
+    uiPackage = "default"
+    rectModel = "legacy_imgui.modern_rect_v1"
+    controlRect = "85,476,222,32"
+    helpDescLegacyId = 29059
+    helpDescKey = "legacy.mc2res.29059"
+    helpDescText = "JUMP     The distance, in meters, the selected 'Mech can jump."
+    helpDescLegacySymbol = "IDS_HELP_PM_JUMP"
+    helpDescSource = "mc2res"
+    helpDescMissing = false
+    legacyColor = 0
+    outline = "FALSE"
+    filled = true
+    fillColorArgb = "0x00000000"
+    borderColorArgb = "0x00000000"
+    colorArgb = "0xffffffff"
+}
+
+GuiRect {
+    key = "game.mcl_mechinfo.rect.mask_rect_for_mech_animation"
+    pageKey = "game.mcl_mechinfo"
+    legacySection = "Rect16"
+    legacyComment = "mask rect for mech animation"
+    role = "rect"
+    layer = "layout"
+    aliasOverride = "mask rect for mech animation"
+    sourceControlType = "Rect16"
+    rect = "327,346,10,162"
+    legacyLocalRect = "327,346,10,162"
+    legacyRectSource = "xywh"
+    uiPackage = "default"
+    rectModel = "legacy_imgui.modern_rect_v1"
+    controlRect = "327,346,10,162"
+    helpDescLegacyId = 29965
+    helpDescKey = "legacy.mc2res.29965"
+    helpDescText = "JUMP JETS     The distance, in meters, that the selected 'Mech can jump."
+    helpDescLegacySymbol = "IDS_HELP_MB_JUMP"
+    helpDescSource = "mc2res"
+    helpDescMissing = false
+    legacyColor = 0xff000000
+    outline = "FALSE"
+    filled = true
+    fillColorArgb = "0x00000000"
+    borderColorArgb = "0x00000000"
+    colorArgb = "0xffffffff"
+}
+
+GuiMetadata {
+    key = "game.mcl_mechinfo.metadata.metadata_01"
+    pageKey = "game.mcl_mechinfo"
+    legacySection = "Statics"
+    legacyContext = "~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ | ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ | ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~"
+    role = "metadata"
+    layer = "metadata"
+    aliasOverride = "metadata"
+    sourceControlType = "Statics"
+    rect = "0,0,0,0"
+    legacyLocalRect = "0,0,0,0"
+    legacyRectSource = "xywh"
+    visible = false
+}
+
+GuiImage {
+    key = "game.mcl_mechinfo.image.icon_for_range"
+    pageKey = "game.mcl_mechinfo"
+    legacySection = "Static0"
+    legacyComment = "icon for range"
+    role = "image"
+    layer = "art"
+    aliasOverride = "icon for range"
+    sourceControlType = "Static0"
+    rect = "82,361,96,32"
+    legacyLocalRect = "82,361,96,32"
+    legacyRectSource = "xywh"
+    texture = "data/art/gui/mcl_m$_3.png"
+    legacyTexture = "mcl_m$_3.tga"
+    uiPackage = "default"
+    rectModel = "legacy_imgui.modern_rect_v1"
+    controlRect = "82,361,96,32"
+    artRect = "82,361,96,32"
+    artLayer = "control_art"
+    uvX = 72
+    uvY = 139
+    uvWidth = 96
+    uvHeight = 32
+}
+
+GuiImage {
+    key = "game.mcl_mechinfo.image.top_static_for_mech_animation_box"
+    pageKey = "game.mcl_mechinfo"
+    legacySection = "Static1"
+    legacyComment = "top static for mech animation box"
+    role = "image"
+    layer = "art"
+    aliasOverride = "top static for mech animation box"
+    sourceControlType = "Static1"
+    rect = "337,345,126,7"
+    legacyLocalRect = "337,345,126,7"
+    legacyRectSource = "xywh"
+    texture = "data/art/gui/mcl_m$_1.png"
+    legacyTexture = "mcl_m$_1.tga"
+    uiPackage = "default"
+    rectModel = "legacy_imgui.modern_rect_v1"
+    controlRect = "337,345,126,7"
+    artRect = "337,345,126,7"
+    artLayer = "control_art"
+    uvX = 0
+    uvY = 222
+    uvWidth = 126
+    uvHeight = 7
+}
+
+GuiImage {
+    key = "game.mcl_mechinfo.image.icon_for_tonnage"
+    pageKey = "game.mcl_mechinfo"
+    legacySection = "Static2"
+    legacyComment = "icon for tonnage"
+    role = "image"
+    layer = "art"
+    aliasOverride = "icon for tonnage"
+    sourceControlType = "Static2"
+    rect = "82,322,96,32"
+    legacyLocalRect = "82,322,96,32"
+    legacyRectSource = "xywh"
+    texture = "data/art/gui/mcl_m$_3.png"
+    legacyTexture = "mcl_m$_3.tga"
+    uiPackage = "default"
+    rectModel = "legacy_imgui.modern_rect_v1"
+    controlRect = "82,322,96,32"
+    artRect = "82,322,96,32"
+    artLayer = "control_art"
+    uvX = 72
+    uvY = 171
+    uvWidth = 96
+    uvHeight = 32
+}
+
+GuiImage {
+    key = "game.mcl_mechinfo.image.icon_for_armor"
+    pageKey = "game.mcl_mechinfo"
+    legacySection = "Static3"
+    legacyComment = "icon for armor"
+    role = "image"
+    layer = "art"
+    aliasOverride = "icon for armor"
+    sourceControlType = "Static3"
+    rect = "82,400,96,32"
+    legacyLocalRect = "82,400,96,32"
+    legacyRectSource = "xywh"
+    texture = "data/art/gui/mcl_m$_3.png"
+    legacyTexture = "mcl_m$_3.tga"
+    uiPackage = "default"
+    rectModel = "legacy_imgui.modern_rect_v1"
+    controlRect = "82,400,96,32"
+    artRect = "82,400,96,32"
+    artLayer = "control_art"
+    uvX = 0
+    uvY = 208
+    uvWidth = 96
+    uvHeight = 32
+}
+
+GuiImage {
+    key = "game.mcl_mechinfo.image.icon_for_speed"
+    pageKey = "game.mcl_mechinfo"
+    legacySection = "Static4"
+    legacyComment = "icon for speed"
+    role = "image"
+    layer = "art"
+    aliasOverride = "icon for speed"
+    sourceControlType = "Static4"
+    rect = "82,439,96,32"
+    legacyLocalRect = "82,439,96,32"
+    legacyRectSource = "xywh"
+    texture = "data/art/gui/mcl_m$_3.png"
+    legacyTexture = "mcl_m$_3.tga"
+    uiPackage = "default"
+    rectModel = "legacy_imgui.modern_rect_v1"
+    controlRect = "82,439,96,32"
+    artRect = "82,439,96,32"
+    artLayer = "control_art"
+    uvX = 96
+    uvY = 208
+    uvWidth = 96
+    uvHeight = 32
+}
+
+GuiImage {
+    key = "game.mcl_mechinfo.image.icon_for_jump"
+    pageKey = "game.mcl_mechinfo"
+    legacySection = "Static5"
+    legacyComment = "icon for jump"
+    role = "image"
+    layer = "art"
+    aliasOverride = "icon for jump"
+    sourceControlType = "Static5"
+    rect = "82,478,96,32"
+    legacyLocalRect = "82,478,96,32"
+    legacyRectSource = "xywh"
+    texture = "data/art/gui/mcl_m$_2.png"
+    legacyTexture = "mcl_m$_2.tga"
+    uiPackage = "default"
+    rectModel = "legacy_imgui.modern_rect_v1"
+    controlRect = "82,478,96,32"
+    artRect = "82,478,96,32"
+    artLayer = "control_art"
+    uvX = 129
+    uvY = 208
+    uvWidth = 96
+    uvHeight = 32
+}
+
+GuiImage {
+    key = "game.mcl_mechinfo.image.bottom_static_for_mech_animation_box"
+    pageKey = "game.mcl_mechinfo"
+    legacySection = "Static6"
+    legacyComment = "bottom static for mech animation box"
+    role = "image"
+    layer = "art"
+    aliasOverride = "bottom static for mech animation box"
+    sourceControlType = "Static6"
+    rect = "337,502,126,7"
+    legacyLocalRect = "337,502,126,7"
+    legacyRectSource = "xywh"
+    texture = "data/art/gui/mcl_m$_1.png"
+    legacyTexture = "mcl_m$_1.tga"
+    uiPackage = "default"
+    rectModel = "legacy_imgui.modern_rect_v1"
+    controlRect = "337,502,126,7"
+    artRect = "337,502,126,7"
+    artLayer = "control_art"
+    uvX = 0
+    uvY = 229
+    uvWidth = 126
+    uvHeight = 7
+}
+
+GuiImage {
+    key = "game.mcl_mechinfo.image.mechinfo_corner_left_uppper"
+    pageKey = "game.mcl_mechinfo"
+    legacySection = "Static7"
+    legacyComment = "mechinfo corner left uppper"
+    role = "image"
+    layer = "art"
+    aliasOverride = "mechinfo corner left uppper"
+    sourceControlType = "Static7"
+    rect = "313,316,24,30"
+    legacyLocalRect = "313,316,24,30"
+    legacyRectSource = "xywh"
+    texture = "data/art/gui/mcl_mb_4.png"
+    legacyTexture = "mcl_mb_4.tga"
+    uiPackage = "default"
+    rectModel = "legacy_imgui.modern_rect_v1"
+    controlRect = "313,316,24,30"
+    artRect = "313,316,24,30"
+    artLayer = "control_art"
+    uvX = 38
+    uvY = 208
+    uvWidth = 24
+    uvHeight = 30
+}
+
+GuiImage {
+    key = "game.mcl_mechinfo.image.mechinfo_corner_right_uppper"
+    pageKey = "game.mcl_mechinfo"
+    legacySection = "Static8"
+    legacyComment = "mechinfo corner right uppper"
+    role = "image"
+    layer = "art"
+    aliasOverride = "mechinfo corner right uppper"
+    sourceControlType = "Static8"
+    rect = "463,316,24,30"
+    legacyLocalRect = "463,316,24,30"
+    legacyRectSource = "xywh"
+    texture = "data/art/gui/mcl_mb_4.png"
+    legacyTexture = "mcl_mb_4.tga"
+    uiPackage = "default"
+    rectModel = "legacy_imgui.modern_rect_v1"
+    controlRect = "463,316,24,30"
+    artRect = "463,316,24,30"
+    artLayer = "control_art"
+    uvX = 62
+    uvY = 208
+    uvWidth = 24
+    uvHeight = 30
+}
+
+GuiImage {
+    key = "game.mcl_mechinfo.image.mechinfo_corner_left_lower"
+    pageKey = "game.mcl_mechinfo"
+    legacySection = "Static9"
+    legacyComment = "mechinfo corner left lower"
+    role = "image"
+    layer = "art"
+    aliasOverride = "mechinfo corner left lower"
+    sourceControlType = "Static9"
+    rect = "324,509,13,7"
+    legacyLocalRect = "324,509,13,7"
+    legacyRectSource = "xywh"
+    texture = "data/art/gui/mcl_mb_4.png"
+    legacyTexture = "mcl_mb_4.tga"
+    uiPackage = "default"
+    rectModel = "legacy_imgui.modern_rect_v1"
+    controlRect = "324,509,13,7"
+    artRect = "324,509,13,7"
+    artLayer = "control_art"
+    uvX = 86
+    uvY = 208
+    uvWidth = 13
+    uvHeight = 7
+}
+
+GuiImage {
+    key = "game.mcl_mechinfo.image.mechinfo_corner_rightlower"
+    pageKey = "game.mcl_mechinfo"
+    legacySection = "Static10"
+    legacyComment = "mechinfo corner rightlower"
+    role = "image"
+    layer = "art"
+    aliasOverride = "mechinfo corner rightlower"
+    sourceControlType = "Static10"
+    rect = "463,509,13,7"
+    legacyLocalRect = "463,509,13,7"
+    legacyRectSource = "xywh"
+    texture = "data/art/gui/mcl_mb_4.png"
+    legacyTexture = "mcl_mb_4.tga"
+    uiPackage = "default"
+    rectModel = "legacy_imgui.modern_rect_v1"
+    controlRect = "463,509,13,7"
+    artRect = "463,509,13,7"
+    artLayer = "control_art"
+    uvX = 86
+    uvY = 222
+    uvWidth = 13
+    uvHeight = 7
+}
+
+GuiMetadata {
+    key = "game.mcl_mechinfo.metadata.metadata_02"
+    pageKey = "game.mcl_mechinfo"
+    legacySection = "Texts"
+    legacyContext = "~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ | ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ | ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~"
+    role = "metadata"
+    layer = "metadata"
+    aliasOverride = "metadata"
+    sourceControlType = "Texts"
+    rect = "0,0,0,0"
+    legacyLocalRect = "0,0,0,0"
+    legacyRectSource = "xywh"
+    visible = false
+}
+
+GuiText {
+    key = "game.mcl_mechinfo.text.mech_info_name_header_above_mech_animation"
+    pageKey = "game.mcl_mechinfo"
+    legacySection = "Text0"
+    legacyComment = "mech info name header - above mech animation"
+    role = "title"
+    layer = "text"
+    aliasOverride = "mech info name header - above mech animation"
+    sourceControlType = "Text0"
+    rect = "337,317,126,27"
+    legacyLocalRect = "337,317,126,27"
+    legacyRectSource = "xywh"
+    uiPackage = "default"
+    rectModel = "legacy_imgui.modern_rect_v1"
+    controlRect = "337,317,126,27"
+    textRect = "337,317,126,27"
+    textRectMode = "control_rect_fallback"
+    textLegacyId = 0
+    visible = false
+    textKey = "legacy.strings.ids_undefined_string_sebi"
+    textLegacySymbol = "IDS_undefined_string_sebi"
+    textSource = "strings.res.h"
+    textMissing = true
+    textMissingReason = "symbol_only_from_strings_res_h"
+    legacyFontId = 27219
+    legacyFontComment = "agencyfb17"
+    font = "Agency Regular"
+    fontStyle = "Regular"
+    fontSize = 18
+    bold = false
+    italic = false
+    textAlign = "center"
+    textAnchor = "center"
+    wrapText = false
+    colorArgb = "0xff5c96c2"
+    legacyColor = -10709310
+    outline = "FALSE"
+    legacyAlignment = 3
+    legacyFontComment = "agencyfb17"
+    borderColorArgb = "0x00000000"
+}
+
+GuiText {
+    key = "game.mcl_mechinfo.text.variant_name_header_above_weapon_rect"
+    pageKey = "game.mcl_mechinfo"
+    legacySection = "Text1"
+    legacyComment = "variant name header- above weapon rect"
+    role = "title"
+    layer = "text"
+    aliasOverride = "variant name header- above weapon rect"
+    sourceControlType = "Text1"
+    rect = "491,322,227,22"
+    legacyLocalRect = "491,322,227,22"
+    legacyRectSource = "xywh"
+    uiPackage = "default"
+    rectModel = "legacy_imgui.modern_rect_v1"
+    controlRect = "491,322,227,22"
+    textRect = "491,322,227,22"
+    textRectMode = "control_rect_fallback"
+    textLegacyId = 0
+    visible = false
+    textKey = "legacy.strings.ids_undefined_string_sebi"
+    textLegacySymbol = "IDS_undefined_string_sebi"
+    textSource = "strings.res.h"
+    textMissing = true
+    textMissingReason = "symbol_only_from_strings_res_h"
+    helpDescLegacyId = 29052
+    helpDescKey = "legacy.mc2res.29052"
+    helpDescText = "'MECH VARIANT     The variant of the selected 'Mech. Variants can be customized in the 'Mech Bay."
+    helpDescLegacySymbol = "IDS_HELP_PM_MECH_VARIANT"
+    helpDescSource = "mc2res"
+    helpDescMissing = false
+    legacyFontId = 27220
+    legacyFontComment = "agencyfb14"
+    font = "Agency Regular"
+    fontStyle = "Regular"
+    fontSize = 18
+    bold = false
+    italic = false
+    textAlign = "left"
+    textAnchor = "upper_left"
+    wrapText = false
+    colorArgb = "0xff005392"
+    legacyColor = -16755822
+    outline = "FALSE"
+    legacyAlignment = 0
+    legacyFontComment = "agencyfb14"
+    borderColorArgb = "0x00000000"
+}
+
+GuiText {
+    key = "game.mcl_mechinfo.text.for_mech_range"
+    pageKey = "game.mcl_mechinfo"
+    legacySection = "Text2"
+    legacyComment = "for mech range"
+    role = "text"
+    layer = "text"
+    aliasOverride = "for mech range"
+    sourceControlType = "Text2"
+    rect = "183,376,146,22"
+    legacyLocalRect = "183,376,146,22"
+    legacyRectSource = "xywh"
+    uiPackage = "default"
+    rectModel = "legacy_imgui.modern_rect_v1"
+    controlRect = "183,376,146,22"
+    textRect = "183,376,146,22"
+    textRectMode = "control_rect_fallback"
+    textLegacyId = 0
+    visible = false
+    textKey = "legacy.strings.ids_undefined_string_sebi"
+    textLegacySymbol = "IDS_undefined_string_sebi"
+    textSource = "strings.res.h"
+    textMissing = true
+    textMissingReason = "symbol_only_from_strings_res_h"
+    legacyFontId = 27221
+    legacyFontComment = "agencyfb14"
+    font = "Agency Regular"
+    fontStyle = "Regular"
+    fontSize = 18
+    bold = false
+    italic = false
+    textAlign = "left"
+    textAnchor = "upper_left"
+    wrapText = false
+    colorArgb = "0xff005392"
+    legacyColor = -16755822
+    outline = "FALSE"
+    legacyAlignment = 0
+    legacyFontComment = "agencyfb14"
+    borderColorArgb = "0x00000000"
+}
+
+GuiText {
+    key = "game.mcl_mechinfo.text.for_mech_weight"
+    pageKey = "game.mcl_mechinfo"
+    legacySection = "Text3"
+    legacyComment = "for mech weight"
+    role = "text"
+    layer = "text"
+    aliasOverride = "for mech weight"
+    sourceControlType = "Text3"
+    rect = "183,337,146,22"
+    legacyLocalRect = "183,337,146,22"
+    legacyRectSource = "xywh"
+    uiPackage = "default"
+    rectModel = "legacy_imgui.modern_rect_v1"
+    controlRect = "183,337,146,22"
+    textRect = "183,337,146,22"
+    textRectMode = "control_rect_fallback"
+    textLegacyId = 0
+    visible = false
+    textKey = "legacy.strings.ids_undefined_string_sebi"
+    textLegacySymbol = "IDS_undefined_string_sebi"
+    textSource = "strings.res.h"
+    textMissing = true
+    textMissingReason = "symbol_only_from_strings_res_h"
+    legacyFontId = 27221
+    legacyFontComment = "agencyfb14"
+    font = "Agency Regular"
+    fontStyle = "Regular"
+    fontSize = 18
+    bold = false
+    italic = false
+    textAlign = "left"
+    textAnchor = "upper_left"
+    wrapText = false
+    colorArgb = "0xff005392"
+    legacyColor = -16755822
+    outline = "FALSE"
+    legacyAlignment = 0
+    legacyFontComment = "agencyfb14"
+    borderColorArgb = "0x00000000"
+}
+
+GuiText {
+    key = "game.mcl_mechinfo.text.for_mech_armor"
+    pageKey = "game.mcl_mechinfo"
+    legacySection = "Text4"
+    legacyComment = "for mech armor"
+    role = "text"
+    layer = "text"
+    aliasOverride = "for mech armor"
+    sourceControlType = "Text4"
+    rect = "280,414,47,22"
+    legacyLocalRect = "280,414,47,22"
+    legacyRectSource = "xywh"
+    uiPackage = "default"
+    rectModel = "legacy_imgui.modern_rect_v1"
+    controlRect = "280,414,47,22"
+    textRect = "280,414,47,22"
+    textRectMode = "control_rect_fallback"
+    textLegacyId = 0
+    visible = false
+    textKey = "legacy.strings.ids_undefined_string_sebi"
+    textLegacySymbol = "IDS_undefined_string_sebi"
+    textSource = "strings.res.h"
+    textMissing = true
+    textMissingReason = "symbol_only_from_strings_res_h"
+    legacyFontId = 27221
+    legacyFontComment = "agencyfb14"
+    font = "Agency Regular"
+    fontStyle = "Regular"
+    fontSize = 18
+    bold = false
+    italic = false
+    textAlign = "left"
+    textAnchor = "upper_left"
+    wrapText = false
+    colorArgb = "0xff005392"
+    legacyColor = -16755822
+    outline = "FALSE"
+    legacyAlignment = 0
+    legacyFontComment = "agencyfb14"
+    borderColorArgb = "0x00000000"
+}
+
+GuiText {
+    key = "game.mcl_mechinfo.text.for_mech_speed"
+    pageKey = "game.mcl_mechinfo"
+    legacySection = "Text5"
+    legacyComment = "for mech speed"
+    role = "text"
+    layer = "text"
+    aliasOverride = "for mech speed"
+    sourceControlType = "Text5"
+    rect = "280,454,47,22"
+    legacyLocalRect = "280,454,47,22"
+    legacyRectSource = "xywh"
+    uiPackage = "default"
+    rectModel = "legacy_imgui.modern_rect_v1"
+    controlRect = "280,454,47,22"
+    textRect = "280,454,47,22"
+    textRectMode = "control_rect_fallback"
+    textLegacyId = 0
+    visible = false
+    textKey = "legacy.strings.ids_undefined_string_sebi"
+    textLegacySymbol = "IDS_undefined_string_sebi"
+    textSource = "strings.res.h"
+    textMissing = true
+    textMissingReason = "symbol_only_from_strings_res_h"
+    legacyFontId = 27221
+    legacyFontComment = "agencyfb14"
+    font = "Agency Regular"
+    fontStyle = "Regular"
+    fontSize = 18
+    bold = false
+    italic = false
+    textAlign = "left"
+    textAnchor = "upper_left"
+    wrapText = false
+    colorArgb = "0xff005392"
+    legacyColor = -16755822
+    outline = "FALSE"
+    legacyAlignment = 0
+    legacyFontComment = "agencyfb14"
+    borderColorArgb = "0x00000000"
+}
+
+GuiText {
+    key = "game.mcl_mechinfo.text.for_mech_jump_range"
+    pageKey = "game.mcl_mechinfo"
+    legacySection = "Text6"
+    legacyComment = "for mech jump range"
+    role = "text"
+    layer = "text"
+    aliasOverride = "for mech jump range"
+    sourceControlType = "Text6"
+    rect = "280,493,47,22"
+    legacyLocalRect = "280,493,47,22"
+    legacyRectSource = "xywh"
+    uiPackage = "default"
+    rectModel = "legacy_imgui.modern_rect_v1"
+    controlRect = "280,493,47,22"
+    textRect = "280,493,47,22"
+    textRectMode = "control_rect_fallback"
+    textLegacyId = 0
+    visible = false
+    textKey = "legacy.strings.ids_undefined_string_sebi"
+    textLegacySymbol = "IDS_undefined_string_sebi"
+    textSource = "strings.res.h"
+    textMissing = true
+    textMissingReason = "symbol_only_from_strings_res_h"
+    legacyFontId = 27221
+    legacyFontComment = "agencyfb14"
+    font = "Agency Regular"
+    fontStyle = "Regular"
+    fontSize = 18
+    bold = false
+    italic = false
+    textAlign = "left"
+    textAnchor = "upper_left"
+    wrapText = false
+    colorArgb = "0xff005392"
+    legacyColor = -16755822
+    outline = "FALSE"
+    legacyAlignment = 0
+    legacyFontComment = "agencyfb14"
+    borderColorArgb = "0x00000000"
+}
+
+GuiText {
+    key = "game.mcl_mechinfo.text.help_text"
+    pageKey = "game.mcl_mechinfo"
+    legacySection = "Text7"
+    legacyComment = "help text"
+    role = "help"
+    layer = "help"
+    aliasOverride = "help text"
+    sourceControlType = "Text7"
+    rect = "146,542,463,55"
+    legacyLocalRect = "146,542,463,55"
+    legacyRectSource = "xywh"
+    uiPackage = "default"
+    rectModel = "legacy_imgui.modern_rect_v1"
+    controlRect = "146,542,463,55"
+    textRect = "146,542,463,55"
+    textRectMode = "control_rect_fallback"
+    textLegacyId = 0
+    visible = false
+    textKey = "legacy.strings.ids_undefined_string_sebi"
+    textLegacySymbol = "IDS_undefined_string_sebi"
+    textSource = "strings.res.h"
+    textMissing = true
+    textMissingReason = "symbol_only_from_strings_res_h"
+    legacyFontId = 27322
+    legacyFontComment = "arialnarrow8"
+    font = "Agency Regular"
+    fontStyle = "Regular"
+    fontSize = 8
+    bold = false
+    italic = false
+    textAlign = "left"
+    textAnchor = "upper_left"
+    wrapText = true
+    colorArgb = "0xffffffff"
+    legacyColor = -1
+    outline = "FALSE"
+    legacyAlignment = 0
+    legacyFontComment = "arialnarrow8"
+    borderColorArgb = "0x00000000"
+}
+
+GuiMetadata {
+    key = "game.mcl_mechinfo.metadata.meters_for_the_mech_info_area_of_mech_purchasing"
+    pageKey = "game.mcl_mechinfo"
+    legacySection = "AttributeMeters"
+    legacyComment = "meters for the mech info area of mech purchasing"
+    legacyContext = "~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ | ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ | ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~"
+    role = "metadata"
+    layer = "metadata"
+    aliasOverride = "meters for the mech info area of mech purchasing"
+    sourceControlType = "AttributeMeters"
+    rect = "0,0,0,0"
+    legacyLocalRect = "0,0,0,0"
+    legacyRectSource = "xywh"
+    visible = false
+}
+
+GuiMeter {
+    key = "game.mcl_mechinfo.meter.for_armor"
+    pageKey = "game.mcl_mechinfo"
+    legacySection = "AttributeMeter0"
+    legacyComment = "for armor"
+    role = "meter"
+    layer = "control"
+    aliasOverride = "for armor"
+    sourceControlType = "AttributeMeter0"
+    rect = "182,400,92,31"
+    legacyLocalRect = "182,400,92,31"
+    legacyRectSource = "ltrb"
+    uiPackage = "default"
+    rectModel = "legacy_imgui.modern_rect_v1"
+    controlRect = "182,400,92,31"
+    legacyColor = 0xff002F55
+    legacyColorMin = 0xff005392
+    legacyColorMax = 0xffC9E5FF
+    legacyUnitWidth = 4
+    legacyUnitSkip = 1
+    legacyNumberUnits = 18
+}
+
+GuiMeter {
+    key = "game.mcl_mechinfo.meter.for_speed"
+    pageKey = "game.mcl_mechinfo"
+    legacySection = "AttributeMeter1"
+    legacyComment = "for speed"
+    role = "meter"
+    layer = "control"
+    aliasOverride = "for speed"
+    sourceControlType = "AttributeMeter1"
+    rect = "182,439,92,31"
+    legacyLocalRect = "182,439,92,31"
+    legacyRectSource = "ltrb"
+    uiPackage = "default"
+    rectModel = "legacy_imgui.modern_rect_v1"
+    controlRect = "182,439,92,31"
+    legacyColor = 0xff002F55
+    legacyColorMin = 0xff005392
+    legacyColorMax = 0xffC9E5FF
+    legacyUnitWidth = 4
+    legacyUnitSkip = 1
+    legacyNumberUnits = 18
+}
+
+GuiMeter {
+    key = "game.mcl_mechinfo.meter.for_jump_distance"
+    pageKey = "game.mcl_mechinfo"
+    legacySection = "AttributeMeter2"
+    legacyComment = "for jump distance"
+    role = "meter"
+    layer = "control"
+    aliasOverride = "for jump distance"
+    sourceControlType = "AttributeMeter2"
+    rect = "182,478,92,31"
+    legacyLocalRect = "182,478,92,31"
+    legacyRectSource = "ltrb"
+    uiPackage = "default"
+    rectModel = "legacy_imgui.modern_rect_v1"
+    controlRect = "182,478,92,31"
+    legacyColor = 0xff002F55
+    legacyColorMin = 0xff005392
+    legacyColorMax = 0xffC9E5FF
+    legacyUnitWidth = 4
+    legacyUnitSkip = 1
+    legacyNumberUnits = 18
+}
+GuiList {
+    key = "game.mcl_mechinfo.list.loadout"
+    pageKey = "game.mcl_mechinfo"
+    rect = "491,345,227,165"
+    font = "Agency Regular"
+    fontStyle = "Regular"
+    fontSize = 14
+    itemHeight = 16
+    itemOffsetX = 4
+    itemOffsetY = 2
+    textAlign = "left"
+    textAnchor = "upper_left"
+    wrapText = false
+    colorArgb = "0xff5c96c2"
+    selectedColorArgb = "0xff5c96c2"
+    fillColorArgb = "0xff000000"
+    borderColorArgb = "0xff2d6ca6"
+}

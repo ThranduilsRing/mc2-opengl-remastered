@@ -11,7 +11,15 @@ namespace gos { namespace screenshot {
 
 bool writeTGA(const char* path, int w, int h) {
     unsigned char* pixels = new unsigned char[w * h * 3];
+    // FREE-RESIZE-1: GL_PACK_ALIGNMENT defaults to 4; a 3-byte-per-pixel read
+    // at a width whose row size is not 4-aligned (any free-resized window)
+    // gets per-row padding the tight TGA write then misinterprets — the
+    // classic diagonal-shear screenshot. Force tight packing, restore after.
+    GLint prevPack = 4;
+    glGetIntegerv(GL_PACK_ALIGNMENT, &prevPack);
+    glPixelStorei(GL_PACK_ALIGNMENT, 1);
     glReadPixels(0, 0, w, h, GL_BGR, GL_UNSIGNED_BYTE, pixels);
+    glPixelStorei(GL_PACK_ALIGNMENT, prevPack);
 
     FILE* f = fopen(path, "wb");
     if (!f) {

@@ -34,6 +34,8 @@ PREC vec4 rc_gbuffer1_screenShadowEligible(PREC vec3 normal) {
 // terminator looks wrong on flat low-poly facets. Encoded as a THIRD mask
 // class at a=0.25 — distinct from terrain (a=1.0) and mechs (a=0.0) with a
 // comfortable float-precision margin on both sides.
+// PROP-SHADOW-RECEIVE-1: MC2_PROP_SHADOW_RECEIVE=1 (default OFF) opts this
+// class back into the (softened) dynamic CSM sample in shadow_screen.frag.
 PREC vec4 rc_gbuffer1_screenShadowEligible_noSelfShadow(PREC vec3 normal) {
     return vec4(normal * 0.5 + 0.5, 0.25);
 }

@@ -1,4 +1,5 @@
 .ccls-cache/
+_harness_out/
 .claude/settings.local.json
 tags
 CMakeCache.txt
@@ -28,6 +29,7 @@ data/*
 !data/defs/
 !data/hdr/
 !data/visual_tuning.json
+!data/terrain_materials.json
 !data/vegetation/
 !data/vegetation/**
 unpacked_data

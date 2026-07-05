@@ -103,7 +103,11 @@ def run_one(cfg: RunConfig) -> RunResult:
     if sys.platform == "win32":
         startupinfo = subprocess.STARTUPINFO()
         startupinfo.dwFlags |= subprocess.STARTF_USESHOWWINDOW
-        startupinfo.wShowWindow = 7  # SW_SHOWMINNOACTIVE
+        # Default SW_SHOWMINNOACTIVE(7): minimized, no focus steal -- but SDL
+        # then throttles to ~100fps, so Avg FPS is NOT GPU throughput.
+        # MC2_SMOKE_VISIBLE=1 -> SW_SHOWNOACTIVATE(4): visible + non-throttled so
+        # a perf A/B measures real frame rate, still without stealing focus.
+        startupinfo.wShowWindow = 4 if os.environ.get("MC2_SMOKE_VISIBLE") else 7
     # t0 must be captured BEFORE spawning the reader thread so both the reader
     # and the main loop share the same monotonic reference point.
     t0 = time.monotonic()

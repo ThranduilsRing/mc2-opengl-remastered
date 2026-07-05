@@ -50,6 +50,42 @@ long tileCacheMiss = 0;
 
 int TERRAIN_TXM_SIZE = 64;
 
+//---------------------------------------------------------------------------
+// OVERLAY-TILE-HIRES-1 (gate MC2_OVERLAY_TILE_HIRES, default OFF).
+// Historically initOverlay() hard-assumed 64x64 (TERRAIN_TXM_SIZE) and never
+// resynced to the TGA header the way initTexture() does, so upscaled overlay
+// tiles could not be read (wrong stride + loadTGATexture header assert). This
+// helper is the single gate read: 0 = legacy path (byte-identical), else the
+// preferred hi-res tile edge. "1" is shorthand for 256. Values must be
+// power-of-two squares in [128,1024]; anything else disables the gate with a
+// one-shot warning (never crash on a bad env var).
+int MC2_OverlayTileHiresSize (void)
+{
+	static int s_size = -1;
+	if (s_size < 0)
+	{
+		s_size = 0;
+		const char* v = getenv("MC2_OVERLAY_TILE_HIRES");
+		if (v && v[0] && !(v[0] == '0' && v[1] == 0))
+		{
+			long req = (v[0] == '1' && v[1] == 0) ? 256 : atol(v);
+			const bool pow2 = (req > 0) && ((req & (req - 1)) == 0);
+			if (pow2 && req >= 128 && req <= 1024)
+			{
+				s_size = (int)req;
+				printf("[OVERLAY_TILE_HIRES v1] enabled tileEdge=%d dir=%dOverlays (per-file fallback to %dOverlays)\n",
+					s_size, s_size, TERRAIN_TXM_SIZE);
+			}
+			else
+			{
+				printf("[OVERLAY_TILE_HIRES v1] IGNORED MC2_OVERLAY_TILE_HIRES='%s' (want 1 or pow2 in [128,1024]) -- legacy 64px path\n", v);
+			}
+			fflush(stdout);
+		}
+	}
+	return s_size;
+}
+
 #define MAX_MASK_NUM		14
 
 #define USE_TRANSITIONS
@@ -327,6 +363,7 @@ long TerrainTextures::init (const char *fileName, const char *baseName)
    		gosASSERT(result == NO_ERR);
 		
  		overlays[i].overlayData = NULL;		//Contains MLR shape or TerrainTXM Data
+ 		overlays[i].overlayDataSizes = NULL;	//OVERLAY-TILE-HIRES-1: per-tile edge sizes
 	}
 
 	//--------------------------------------------------------------
@@ -335,8 +372,16 @@ long TerrainTextures::init (const char *fileName, const char *baseName)
 	{
 		overlays[i].overlayData = (MemoryPtr *)tileRAMHeap->Malloc(sizeof(MemoryPtr) * overlays[i].numTextures * MC_MAX_MIP_LEVELS);
 		gosASSERT(overlays[i].overlayData != NULL);
-		
+
 		memset(overlays[i].overlayData,0,sizeof(MemoryPtr) * overlays[i].numTextures * MC_MAX_MIP_LEVELS);
+
+		// OVERLAY-TILE-HIRES-1: parallel per-tile edge-size table. Default every
+		// slot to the legacy TERRAIN_TXM_SIZE; initOverlay() overwrites per file
+		// when the hires gate resyncs a tile to its actual TGA dimensions.
+		overlays[i].overlayDataSizes = (long *)tileRAMHeap->Malloc(sizeof(long) * overlays[i].numTextures * MC_MAX_MIP_LEVELS);
+		gosASSERT(overlays[i].overlayDataSizes != NULL);
+		for (long s=0;s<overlays[i].numTextures * MC_MAX_MIP_LEVELS;s++)
+			overlays[i].overlayDataSizes[s] = TERRAIN_TXM_SIZE;
 
 		for (long j=0;j<overlays[i].numTextures;j++)
 		{
@@ -754,14 +799,74 @@ long TerrainTextures::initOverlay (long overlayNum, long txmNum, char *txmName)
 		FullPathFileName fileName;
 		fileName.init(mipPath,tmpy,".tga");
 
+		// OVERLAY-TILE-HIRES-1 (gate MC2_OVERLAY_TILE_HIRES, default OFF -> this
+		// block is dead and the legacy path below is byte-identical).
+		// (1) Folder-by-size selection: the "%dOverlays" convention above IS the
+		//     engine's intended res-folder mechanism (same TerrainTextureRes pref
+		//     scheme as the base "%d"/"%dmask" folders) but TERRAIN_TXM_SIZE is
+		//     clamped to 64 at startup, so 128Overlays/ has been dead weight.
+		//     Under the gate, probe <hires>Overlays/ first, per-file fallback to
+		//     the legacy folder — partial hi-res tile sets are legal.
+		// (2) Header resync: mirror initTexture() (see "mipSize != header.width"
+		//     above) so the sysRAM copy is read at the file's true stride instead
+		//     of hard-assuming 64 (the old garble/assert failure).
+		const int hiresEdge = (j == 0) ? MC2_OverlayTileHiresSize() : 0;
+		FullPathFileName hiresName;
+		bool useHires = false;
+		if (hiresEdge > 0)
+		{
+			char hiresPath[512];
+			sprintf(hiresPath,"%s%dOverlays" PATH_SEPARATOR,texturePath,hiresEdge);
+			hiresName.init(hiresPath,tmpy,".tga");
+
+			File probe;
+			if (probe.open(hiresName) == NO_ERR)
+			{
+				useHires = true;
+				probe.close();
+			}
+		}
+		const char* chosenName = useHires ? (const char*)hiresName : (const char*)fileName;
+
+		// OVERLAY-TILE-HIRES-1 DIAG: settle "is 256 actually loading or falling
+		// back to 64?" -- when the hires gate is armed, count hires-hits vs
+		// legacy-fallbacks and print a running tally + the first few chosen paths
+		// to stderr. Gated on hiresEdge>0 so default (gate off) is byte-identical.
+		if (hiresEdge > 0)
+		{
+			static int s_hiresHit = 0, s_hiresMiss = 0, s_hiresLogged = 0;
+			if (useHires) ++s_hiresHit; else ++s_hiresMiss;
+			if (s_hiresLogged < 8) {
+				++s_hiresLogged;
+				printf("[OVERLAY_TILE_HIRES v1] tile chose %s path=%s (hits=%d misses=%d)\n",
+				       useHires ? "HIRES" : "fallback64", chosenName, s_hiresHit, s_hiresMiss);
+				fflush(stdout);
+			}
+		}
+
 		long result = 0;
 		//------------------------------------------------------------
 		if (InEditor || !quickLoad)
 		{
 			File tgaFile;
 
-			result = tgaFile.open(fileName);
+			result = tgaFile.open(chosenName);
 			gosASSERT(result == NO_ERR);
+
+			if (hiresEdge > 0)
+			{
+				// Resync to the TGA header like initTexture() does. Accept only
+				// sane square power-of-two tiles; otherwise keep the declared
+				// size (legacy behavior, incl. its loadTGATexture size assert).
+				struct TGAFileHeader header;
+				tgaFile.read((MemoryPtr)&header,sizeof(TGAFileHeader));
+				tgaFile.seek(0);
+
+				const long hw = header.width;
+				const bool pow2 = (hw > 0) && ((hw & (hw - 1)) == 0);
+				if ((hw == header.height) && pow2 && (hw >= 16) && (hw <= 1024) && (mipSize != hw))
+					mipSize = hw;
+			}
 
 			MemoryPtr ourRAM = (MemoryPtr)tileRAMHeap->Malloc(mipSize * mipSize * sizeof(DWORD));
 			gosASSERT(ourRAM != NULL);
@@ -769,11 +874,13 @@ long TerrainTextures::initOverlay (long overlayNum, long txmNum, char *txmName)
 			loadTGATexture(&tgaFile,ourRAM,mipSize,mipSize);
 
 			overlays[overlayNum].overlayData[txmNum] = ourRAM;
+			if ((j == 0) && overlays[overlayNum].overlayDataSizes)
+				overlays[overlayNum].overlayDataSizes[txmNum] = mipSize;
 
 			tgaFile.close();
 		}
 		//------------------------------------------------------------
-		result = loadOverlayMemory(fileName);
+		result = loadOverlayMemory(chosenName);
 
 		if (j==0)
 			txmResult = result;
@@ -1049,7 +1156,7 @@ void TerrainTextures::combineOverlayTxm (MemoryPtr dest, long type, long mipLeve
 	{
 		case 0:
 			mipSize = (TERRAIN_TXM_SIZE>>0);
-			break;	
+			break;
 
 		case 1:
 			mipSize = (TERRAIN_TXM_SIZE>>1);
@@ -1062,6 +1169,50 @@ void TerrainTextures::combineOverlayTxm (MemoryPtr dest, long type, long mipLeve
 		case 3:
 			mipSize = (TERRAIN_TXM_SIZE>>3);
 			break;
+	}
+
+	// OVERLAY-TILE-HIRES-1: when the gated hires loader resynced this overlay
+	// tile to a different edge size than the 64px transition-bake dest, the
+	// legacy lock-step pointer walk below would read the wrong stride. Resample
+	// the overlay (nearest, exact for the pow2/pow2 ratio) down/up to the dest
+	// grid instead. Gate OFF => overlayDataSizes[] is always TERRAIN_TXM_SIZE
+	// => ovSize == mipSize at mip 0 and this branch never runs (mips 1-3 are
+	// dead: MC_MAX_MIP_LEVELS == 1).
+	const long ovSize = (overlays[oType].overlayDataSizes && mipLevel == 0)
+		? overlays[oType].overlayDataSizes[oIndx] : mipSize;
+	if (ovSize != mipSize && ovSize > 0)
+	{
+		for (long y = 0; y < mipSize; ++y)
+		{
+			const long sy = y * ovSize / mipSize;
+			for (long x = 0; x < mipSize; ++x)
+			{
+				const long sx = x * ovSize / mipSize;
+				const unsigned char* src = combineRAM + ((sy * ovSize + sx) << 2);
+				unsigned char* dst = dest + ((y * mipSize + x) << 2);
+
+				const float combPercent = float(src[3]) / 255.0f;
+				if (combPercent == 0.0f)
+					continue;
+				if (combPercent == 1.0f)
+				{
+					dst[0] = src[0];
+					dst[1] = src[1];
+					dst[2] = src[2];
+				}
+				else
+				{
+					const float destPercent = 1.0f - combPercent;
+					dst[0] = (unsigned char)(combPercent * float(src[0]) + destPercent * float(dst[0]));
+					dst[1] = (unsigned char)(combPercent * float(src[1]) + destPercent * float(dst[1]));
+					dst[2] = (unsigned char)(combPercent * float(src[2]) + destPercent * float(dst[2]));
+				}
+				//Alpha: DO NOT COMBINE (match the legacy loop) — keep the max.
+				if (dst[3] < src[3])
+					dst[3] = src[3];
+			}
+		}
+		return;
 	}
 
 	for (int i=0;i<(mipSize * mipSize);i++)

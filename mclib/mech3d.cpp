@@ -2061,6 +2061,22 @@ void Mech3DAppearance::setPaintScheme (void)
 		TEXTUREPTR textureData;
 		gos_LockTexture(gosHandle, 0, 0, &textureData);
 
+		// ENCYCLO-3D-2 diagnostic: is the locked readback real pixels or zeros?
+		// A zeroed lock buffer here means the paint pass writes black back up.
+		if ( getenv("MC2_LOG_PREVIEW") )
+		{
+			if ( FILE* f = fopen("preview_debug.log","a") )
+			{
+				DWORD* p = textureData.pTexture;
+				fprintf(f,"[PREVIEW-PAINT] lock gosHandle=%lu %ldx%ld pitch=%ld px0=%08lX px1=%08lX pxMid=%08lX\n",
+					(unsigned long)gosHandle,
+					(long)textureData.Width,(long)textureData.Height,(long)textureData.Pitch,
+					(unsigned long)p[0],(unsigned long)p[1],
+					(unsigned long)p[(textureData.Height/2)*textureData.Width + textureData.Width/2]);
+				fclose(f);
+			}
+		}
+
 		//-------------------------------------------------------
 		// Dominant-channel paint classifier. A pixel belongs to a paint slot
 		// iff its R/G/B dominates the other two by at least kRatio. Boundary

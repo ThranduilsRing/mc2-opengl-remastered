@@ -91,7 +91,6 @@ These write counters to stderr or Tracy. Useful when profiling a specific subsys
 | `MC2_LIGHT_COST_SPLIT` | off | Light SSBO cost breakdown |
 | `MC2_TERRAIN_COST_SPLIT` | off | Terrain pass cost breakdown |
 | `MC2_TOBJ_COST_SPLIT` | off | TerrainObj cost breakdown |
-| `MC2_SLIM_COST_SPLIT` | off | Slim-reduce loop cost breakdown |
 
 ---
 

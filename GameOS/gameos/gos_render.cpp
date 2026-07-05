@@ -303,8 +303,23 @@ RenderWindow* create_window(const char* pwinname, int width, int height)
     //fullscreen_mode.refresh_rate = state->refresh_rate;
 
     {
+        // FREE-RESIZE-1 (UI-ASPECT-ANCHOR meta-fix): in windowed mode the
+        // window is user-resizable — every consumer (postprocess FBOs, UI
+        // canvas box, mouse normalize, camera aspect) re-derives from
+        // Environment.drawableWidth/Height each frame, so a live resize just
+        // works once the SIZE_CHANGED handler refreshes those values.
+        // MC2_WINDOW_RESIZABLE=0 restores a fixed window.
+        Uint32 winFlags = SDL_WINDOW_OPENGL | SDL_WINDOW_ALLOW_HIGHDPI;
+        {
+            const char* wenv = getenv("MC2_WINDOWED");
+            const char* renv = getenv("MC2_WINDOW_RESIZABLE");
+            const bool windowed = (wenv && wenv[0] && wenv[0] != '0');
+            const bool resizable = !(renv && renv[0] == '0');
+            if (windowed && resizable)
+                winFlags |= SDL_WINDOW_RESIZABLE;
+        }
         window = SDL_CreateWindow(pwinname ? pwinname : "--", 
-                SDL_WINDOWPOS_CENTERED, SDL_WINDOWPOS_CENTERED, width, height, SDL_WINDOW_OPENGL|SDL_WINDOW_ALLOW_HIGHDPI);
+                SDL_WINDOWPOS_CENTERED, SDL_WINDOWPOS_CENTERED, width, height, winFlags);
 
         if (!window) {
             fprintf(stderr, "Couldn't create window: %s\n", SDL_GetError());

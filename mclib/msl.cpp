@@ -1202,6 +1202,12 @@ long TG_TypeMultiShape::SetTextureAlpha (DWORD textureNum, bool alphaFlag)
 	if (textureNum >= numTextures)
 		return(-1);
 
+	// SP-BATCHER-ALPHASCAN-GATE-1: bump the global alpha generation ONLY when the
+	// bit actually flips, so the batcher's per-frame alpha re-resolve scan can
+	// early-out on the (overwhelmingly common) no-event case. Cheap relaxed atomic.
+	if (listOfTextures[textureNum].textureAlpha != alphaFlag)
+		g_staticPropAlphaGeneration.fetch_add(1, std::memory_order_relaxed);
+
 	listOfTextures[textureNum].textureAlpha = alphaFlag;
 
 	// 2026-05-11 leaf propagation: TG_TypeShape leaves carry their own

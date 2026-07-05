@@ -1,0 +1,76 @@
+// MC2R ImGui FIT generated from legacy UI FIT.
+// Source: data/defs/ui/legacy/editor/editorGUI.fit
+// Legacy files remain source truth only; edit the generated ImGui FIT.
+
+GuiPage {
+    key = "editor.editor_shell"
+    title = "Editor Editorgui"
+    sourceLegacyFit = "data/defs/ui/legacy/editor/editorGUI.fit"
+    sourceSystem = "editor"
+    sourceScreen = "editor_shell"
+    sourceKind = "legacy_screen"
+    layout = "absolute"
+    coordinateSpace = "screen_absolute"
+    localWidth = 800
+    localHeight = 600
+    mountOffset = "0,0"
+    editableSource = "generated_imgui_only"
+}
+
+GuiMetadata {
+    key = "editor.editor_shell.metadata.metadata"
+    pageKey = "editor.editor_shell"
+    legacySection = "CameraData"
+    role = "metadata"
+    layer = "metadata"
+    aliasOverride = "metadata"
+    sourceControlType = "CameraData"
+    rect = "0,0,0,0"
+    legacyLocalRect = "0,0,0,0"
+    legacyRectSource = "xywh"
+    visible = false
+}
+
+GuiMetadata {
+    key = "editor.editor_shell.metadata.metadata_01"
+    pageKey = "editor.editor_shell"
+    legacySection = "Elements"
+    role = "metadata"
+    layer = "metadata"
+    aliasOverride = "metadata"
+    sourceControlType = "Elements"
+    rect = "0,0,0,0"
+    legacyLocalRect = "0,0,0,0"
+    legacyRectSource = "xywh"
+    visible = false
+}
+
+GuiText {
+    key = "editor.editor_shell.text.text"
+    pageKey = "editor.editor_shell"
+    legacySection = "Element0"
+    role = "text"
+    layer = "text"
+    aliasOverride = "text"
+    sourceControlType = "Element0"
+    rect = "0,0,220,24"
+    legacyLocalRect = "0,0,220,24"
+    legacyRectSource = "xywh"
+    uiPackage = "legacy_imgui"
+    rectModel = "legacy_imgui.modern_rect_v1"
+    controlRect = "0,0,220,24"
+    runtimeTextBinding = "legacy.blank_or_runtime_placeholder"
+    runtimeTextSource = "legacy text rectangle has no TextID"
+    textMissing = false
+    font = "Agency Regular"
+    fontStyle = "Regular"
+    fontSize = 14
+    bold = false
+    italic = false
+    textAlign = "left"
+    textAnchor = "upper_left"
+    wrapText = false
+    colorArgb = "0xff9f9f9f"
+    legacyId = 1
+    legacyColor = 0xff9f9f9f
+}

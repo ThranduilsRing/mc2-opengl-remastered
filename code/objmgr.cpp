@@ -2306,9 +2306,77 @@ void GameObjectManager::renderShadows (bool terrain, bool movers, bool other) {
 
 //---------------------------------------------------------------------------
 
+// [GOM_UPDATE_COST v1] — GOM-UPDATE-COST-1 coarse per-phase CPU cost split of
+// GameObjectManager::update(). Smoke-visible complement of the GameLogic.Units.*
+// Tracy zones (smoke runs cannot take user-driven Tracy captures). Pattern =
+// [RENDERLISTS_COST v1] (txmmgr.cpp): env-gated, window-averaged, default OFF
+// (zero overhead beyond one cached-bool test per phase when unset; ~2
+// steady_clock reads per coarse phase per frame when set — the four whole-block
+// spans only, per the 100ns-floor rule, NEVER per-object).
+// Enable: MC2_GOM_UPDATE_COST_SPLIT=1 -> one [GOM_UPDATE_COST v1] stderr summary
+// every 60 frames: per-frame mean µs per phase. self_us = total minus the sum
+// of instrumented phases (unattributed gaps: framesSinceActive sweep, captureList,
+// FRAME-JOBS prepass, etc.).
+namespace gomcost {
+static const bool s_enabled = []() {
+    const char* v = getenv("MC2_GOM_UPDATE_COST_SPLIT");
+    return v && v[0] != '0';
+}();
+enum Phase {
+    kStaticTouch = 0, kMoverUpdate, kOtherFx, kSubstrateFlush, kTotal, kPhaseCount
+};
+static const char* kName[kPhaseCount] = {
+    "static_touch", "mover_update", "other_fx", "substrate_flush", "total"
+};
+static unsigned long long s_ns[kPhaseCount] = {};
+static int s_frames = 0;
+static inline unsigned long long nowNs() {
+    return static_cast<unsigned long long>(
+        std::chrono::duration_cast<std::chrono::nanoseconds>(
+            std::chrono::steady_clock::now().time_since_epoch()).count());
+}
+// Lexical phase span. Zero-cost (two branch-predicted tests) when disabled.
+struct Span {
+    int p; unsigned long long t0;
+    explicit Span(int phase) : p(phase), t0(s_enabled ? nowNs() : 0ULL) {}
+    ~Span() { if (s_enabled) s_ns[p] += nowNs() - t0; }
+};
+// Whole-function span + window emit. Construct FIRST so its dtor runs LAST.
+struct TotalSpan {
+    unsigned long long t0;
+    TotalSpan() : t0(s_enabled ? nowNs() : 0ULL) {}
+    ~TotalSpan() {
+        if (!s_enabled) return;
+        s_ns[kTotal] += nowNs() - t0;
+        if (++s_frames < 60) return;
+        const double wf = static_cast<double>(s_frames);
+        double phaseSumUs = 0.0;
+        char line[512]; int off = 0;
+        off += snprintf(line + off, sizeof(line) - off,
+            "[GOM_UPDATE_COST v1] event=summary frames=%d", s_frames);
+        for (int p = 0; p < kPhaseCount; ++p) {
+            const double us = static_cast<double>(s_ns[p]) / 1000.0 / wf;
+            if (p != kTotal) phaseSumUs += us;
+            if (off < static_cast<int>(sizeof(line)))
+                off += snprintf(line + off, sizeof(line) - off,
+                                " %s_us=%.1f", kName[p], us);
+        }
+        const double selfUs =
+            static_cast<double>(s_ns[kTotal]) / 1000.0 / wf - phaseSumUs;
+        if (off < static_cast<int>(sizeof(line)))
+            snprintf(line + off, sizeof(line) - off, " self_us=%.1f", selfUs);
+        fprintf(stderr, "%s\n", line);
+        fflush(stderr);
+        memset(s_ns, 0, sizeof(s_ns));
+        s_frames = 0;
+    }
+};
+} // namespace gomcost
+
 void GameObjectManager::update (bool terrain, bool movers, bool other)
 {
 	ZoneScopedN("GameObjectManager::update");
+	gomcost::TotalSpan _gomTotalSpan;  // [GOM_UPDATE_COST v1] first-constructed => dtor last
 	//----------------------------
 	// Now, update game objects...
 
@@ -2597,6 +2665,7 @@ void GameObjectManager::update (bool terrain, bool movers, bool other)
 		// ── end FRAME-JOBS-1 pre-pass ────────────────────────────────────────────────
 
 		ZoneScopedN("GameLogic.Units.TerrainObjects");
+		gomcost::Span _gomStaticTouch(gomcost::kStaticTouch); // [GOM_UPDATE_COST v1]
 		// ── FRAME-JOBS-2G: Path B terrain-loop touch cost instrumentation ────────────
 		// Gate: MC2_FRAME_JOBS_PATHB_DIAG=1. Diagnostic-only; zero behavior change.
 		// Times the outer terrain block loop and classifies appearance types per candidate.
@@ -3220,9 +3289,9 @@ void GameObjectManager::update (bool terrain, bool movers, bool other)
 		    curFrame != g_staticUpdateLastSummaryFrame_get()) {
 			g_staticUpdateEmitSummary(curFrame);
 		}
-		// [TOBJSPLIT v1] once-per-frame roll + 600-frame summary (mirrors
-		// terrain.cpp:1822 SlimSplitRollAndMaybeEmit() placement at the
-		// end of the per-frame loop; frame counter lives in terrobj.cpp).
+		// [TOBJSPLIT v1] once-per-frame roll + 600-frame summary, placed at the
+		// end of the per-frame loop (frame counter lives in terrobj.cpp). The
+		// analogous terrain SlimSplit roll was removed by 8Z-DEADCODE-SWEEP-1.
 		g_tobjSplitRollAndMaybeEmit();
 		// [TOBJPARITY v1] once-per-frame roll + 120-frame summary for the
 		// superset-parity counter probe (proof-gate #2). Called here at the
@@ -3244,6 +3313,7 @@ void GameObjectManager::update (bool terrain, bool movers, bool other)
 		static MoverPtr removeList[MAX_MOVERS];
 		long numRemoved = 0;
 
+		{ gomcost::Span _gomMoverUpdate(gomcost::kMoverUpdate); // [GOM_UPDATE_COST v1] mechs+vehicles update() walk
 		if (mechs)
 		{
 			ZoneScopedN("GameLogic.Units.Mechs");
@@ -3292,6 +3362,7 @@ void GameObjectManager::update (bool terrain, bool movers, bool other)
 
 		for (long i = 0; i < numRemoved; i++)
 			mission->removeMover(removeList[i]);
+		} // [GOM_UPDATE_COST v1] end mover_update span
 
 		// BRAIN-COMMIT-PHASE-1: deferred intent commit phase (MC2_BRAIN_COMMIT_PHASE=1).
 		// Runs AFTER all mechs and vehicles have called update() (runBrain/updateActions).
@@ -3346,6 +3417,7 @@ void GameObjectManager::update (bool terrain, bool movers, bool other)
 	}
 
 	if (other) {
+		gomcost::Span _gomOtherFx(gomcost::kOtherFx); // [GOM_UPDATE_COST v1] turrets/weapons/carnage/lights/artillery
 		//---------------------------------------
 		// All other objects should be updated...
 
@@ -3415,7 +3487,9 @@ void GameObjectManager::update (bool terrain, bool movers, bool other)
 
 	// C0-3: finalize GPU cull substrate SSBO for this frame.
 	// Called unconditionally — substrate_flushUpload internally checks isEnabled().
-	{ ZoneScopedN("GOM.substrateFlushUpload"); gpu_cull::substrate_flushUpload(); }
+	{ ZoneScopedN("GOM.substrateFlushUpload");
+	  gomcost::Span _gomSubstrate(gomcost::kSubstrateFlush); // [GOM_UPDATE_COST v1]
+	  gpu_cull::substrate_flushUpload(); }
 
 	// MC2_MOVE_RECON: per-frame tick (lazy init, atexit register, periodic emit).
 	moveReconFrameTick();

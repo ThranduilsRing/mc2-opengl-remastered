@@ -1,0 +1,585 @@
+// MC2R ImGui FIT generated from legacy UI FIT.
+// Source: data/defs/ui/legacy/game/MCL_GN_AvailableMechEntry.fit
+// Legacy files remain source truth only; edit the generated ImGui FIT.
+
+GuiPage {
+    key = "game.mcl_gn_availablemechentry"
+    title = "Game Mcl Gn Availablemechentry"
+    sourceLegacyFit = "data/defs/ui/legacy/game/MCL_GN_AvailableMechEntry.fit"
+    sourceSystem = "game"
+    sourceScreen = "mcl_gn_availablemechentry"
+    sourceKind = "legacy_component"
+    layout = "component_absolute"
+    coordinateSpace = "component_local"
+    localWidth = 207
+    localHeight = 37
+    mountOffset = "0,0"
+    editableSource = "generated_imgui_only"
+    overlayGameOS = true
+    renderMode = "gameos_overlay"
+    backgroundPolicy = "transparent_overlay"
+}
+
+GuiMetadata {
+    key = "game.mcl_gn_availablemechentry.metadata.entry_box_layout"
+    pageKey = "game.mcl_gn_availablemechentry"
+    legacySection = "TopLevel"
+    legacyComment = "ENTRY BOX FOR MECHS IN LOGISTICS"
+    role = "metadata"
+    layer = "metadata"
+    aliasOverride = "entry box layout"
+    sourceControlType = "TopLevel"
+    rect = "0,0,0,0"
+    legacyLocalRect = "0,0,0,0"
+    legacyRectSource = "xywh"
+    visible = false
+    legacyYskip = 5
+}
+
+GuiMetadata {
+    key = "game.mcl_gn_availablemechentry.metadata.metadata"
+    pageKey = "game.mcl_gn_availablemechentry"
+    legacySection = "Rects"
+    legacyContext = "~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ | ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ | ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~"
+    role = "metadata"
+    layer = "metadata"
+    aliasOverride = "metadata"
+    sourceControlType = "Rects"
+    rect = "0,0,0,0"
+    legacyLocalRect = "0,0,0,0"
+    legacyRectSource = "xywh"
+    visible = false
+}
+
+GuiRect {
+    key = "game.mcl_gn_availablemechentry.rect.rect_for_mech_entry"
+    pageKey = "game.mcl_gn_availablemechentry"
+    legacySection = "Rect0"
+    legacyComment = "rect for mech entry"
+    role = "rect"
+    layer = "layout"
+    aliasOverride = "rect for mech entry"
+    sourceControlType = "Rect0"
+    rect = "2,2,205,35"
+    legacyLocalRect = "2,2,205,35"
+    legacyRectSource = "xywh"
+    uiPackage = "default"
+    rectModel = "legacy_imgui.modern_rect_v1"
+    controlRect = "2,2,205,35"
+    legacyColor = -12440041
+    outline = "TRUE"
+    filled = false
+    fillColorArgb = "0x00000000"
+    borderColorArgb = "0x00000000"
+    colorArgb = "0xffffffff"
+}
+
+GuiMetadata {
+    key = "game.mcl_gn_availablemechentry.metadata.single_pixel_divider_between_icon_and_names"
+    pageKey = "game.mcl_gn_availablemechentry"
+    legacySection = "Rect1"
+    legacyComment = "single pixel divider between icon and names"
+    role = "video"
+    layer = "video"
+    aliasOverride = "single pixel divider between icon and names"
+    sourceControlType = "Rect1"
+    rect = "40,3,0,33"
+    legacyLocalRect = "40,3,0,33"
+    legacyRectSource = "xywh"
+    legacyColor = "Oxffffffff"
+    outline = "TRUE"
+    visible = false
+}
+
+GuiMetadata {
+    key = "game.mcl_gn_availablemechentry.metadata.metadata_01"
+    pageKey = "game.mcl_gn_availablemechentry"
+    legacySection = "Statics"
+    legacyContext = "~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ | ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ | ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~"
+    role = "metadata"
+    layer = "metadata"
+    aliasOverride = "metadata"
+    sourceControlType = "Statics"
+    rect = "0,0,0,0"
+    legacyLocalRect = "0,0,0,0"
+    legacyRectSource = "xywh"
+    visible = false
+}
+
+GuiImage {
+    key = "game.mcl_gn_availablemechentry.image.weight_icon"
+    pageKey = "game.mcl_gn_availablemechentry"
+    legacySection = "Static0"
+    legacyComment = "weight icon"
+    role = "image"
+    layer = "art"
+    aliasOverride = "weight icon"
+    sourceControlType = "Static0"
+    rect = "191,4,15,15"
+    legacyLocalRect = "191,4,15,15"
+    legacyRectSource = "xywh"
+    texture = "data/art/gui/MCL_GN_SmallIcons.png"
+    legacyTexture = "MCL_GN_SmallIcons"
+    uiPackage = "default"
+    rectModel = "legacy_imgui.modern_rect_v1"
+    controlRect = "191,4,15,15"
+    artRect = "191,4,15,15"
+    artLayer = "control_art"
+    uvX = 0
+    uvY = 0
+    uvWidth = 15
+    uvHeight = 15
+}
+
+GuiImage {
+    key = "game.mcl_gn_availablemechentry.image.mech_icon_take_from_mcui_gn_mechicons_tga"
+    pageKey = "game.mcl_gn_availablemechentry"
+    legacySection = "Static1"
+    legacyComment = "mech icon- take from MCUI_GN_MechIcons.tga"
+    role = "image"
+    layer = "art"
+    aliasOverride = "mech icon- take from MCUI_GN_MechIcons.tga"
+    sourceControlType = "Static1"
+    rect = "4,5,25,30"
+    legacyLocalRect = "4,5,25,30"
+    legacyRectSource = "xywh"
+    texture = "data/art/gui/MCUI_GN_MechIcons.png"
+    legacyTexture = "MCUI_GN_MechIcons.tga"
+    uiPackage = "default"
+    rectModel = "legacy_imgui.modern_rect_v1"
+    controlRect = "4,5,25,30"
+    artRect = "4,5,25,30"
+    artLayer = "control_art"
+}
+
+GuiImage {
+    key = "game.mcl_gn_availablemechentry.image.cbills_icon"
+    pageKey = "game.mcl_gn_availablemechentry"
+    legacySection = "Static2"
+    legacyComment = "cbills icon"
+    role = "image"
+    layer = "art"
+    aliasOverride = "cbills icon"
+    sourceControlType = "Static2"
+    rect = "191,21,15,15"
+    legacyLocalRect = "191,21,15,15"
+    legacyRectSource = "xywh"
+    texture = "data/art/gui/MCL_GN_SmallIcons.png"
+    legacyTexture = "MCL_GN_SmallIcons"
+    uiPackage = "default"
+    rectModel = "legacy_imgui.modern_rect_v1"
+    controlRect = "191,21,15,15"
+    artRect = "191,21,15,15"
+    artLayer = "control_art"
+    uvX = 0
+    uvY = 15
+    uvWidth = 15
+    uvHeight = 15
+}
+
+GuiMetadata {
+    key = "game.mcl_gn_availablemechentry.metadata.metadata_02"
+    pageKey = "game.mcl_gn_availablemechentry"
+    legacySection = "Texts"
+    legacyContext = "~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ | ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ | ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~"
+    role = "metadata"
+    layer = "metadata"
+    aliasOverride = "metadata"
+    sourceControlType = "Texts"
+    rect = "0,0,0,0"
+    legacyLocalRect = "0,0,0,0"
+    legacyRectSource = "xywh"
+    visible = false
+}
+
+GuiText {
+    key = "game.mcl_gn_availablemechentry.text.mech_name"
+    pageKey = "game.mcl_gn_availablemechentry"
+    legacySection = "Text0"
+    legacyComment = "mech name"
+    role = "text"
+    layer = "text"
+    aliasOverride = "mech name"
+    sourceControlType = "Text0"
+    rect = "45,5,105,18"
+    legacyLocalRect = "45,5,105,18"
+    legacyRectSource = "xywh"
+    uiPackage = "default"
+    rectModel = "legacy_imgui.modern_rect_v1"
+    controlRect = "45,5,105,18"
+    textRect = "45,5,105,18"
+    textRectMode = "control_rect_fallback"
+    textLegacyId = 27000
+    legacyTemplateTextKey = "legacy.mc2res.27000"
+    legacyTemplateVisibleText = " "
+    legacyTemplateTextLegacySymbol = "IDS_STRING_FIRST_LOGISTICS"
+    legacyTemplateTextSource = "mc2res"
+    legacyTemplateTextMissing = false
+    runtimeOverridesText = true
+    runtimeTextBinding = "mechbay.availableMech.name"
+    runtimeTextSource = "legacy runtime populates this entry/list text after the template FIT loads"
+    visibleText = "<mech name>"
+    runtimeTextPreviewMissing = true
+    textMissing = false
+    legacyFontId = 27850
+    legacyFontComment = "use agencyfb11"
+    font = "Agency Regular"
+    fontStyle = "Regular"
+    fontSize = 11
+    bold = false
+    italic = false
+    textAlign = "left"
+    textAnchor = "upper_left"
+    wrapText = false
+    colorArgb = "0xffc66600"
+    legacyColor = -3774976
+    outline = "FALSE"
+    legacyAlignment = 0
+    legacyFontComment = "use agencyfb11"
+    textKey = "game.mcl_gn_availablemechentry.string.mech_name"
+    borderColorArgb = "0x00000000"
+}
+
+GuiText {
+    key = "game.mcl_gn_availablemechentry.text.weight_of_mech_text"
+    pageKey = "game.mcl_gn_availablemechentry"
+    legacySection = "Text1"
+    legacyComment = "weight  of mech text"
+    role = "text"
+    layer = "text"
+    aliasOverride = "weight  of mech text"
+    sourceControlType = "Text1"
+    rect = "155,8,34,12"
+    legacyLocalRect = "155,8,34,12"
+    legacyRectSource = "xywh"
+    uiPackage = "default"
+    rectModel = "legacy_imgui.modern_rect_v1"
+    controlRect = "155,8,34,12"
+    textRect = "155,8,34,12"
+    textRectMode = "control_rect_fallback"
+    textLegacyId = 27000
+    legacyTemplateTextKey = "legacy.mc2res.27000"
+    legacyTemplateVisibleText = " "
+    legacyTemplateTextLegacySymbol = "IDS_STRING_FIRST_LOGISTICS"
+    legacyTemplateTextSource = "mc2res"
+    legacyTemplateTextMissing = false
+    runtimeOverridesText = true
+    runtimeTextBinding = "mechbay.availableMech.weight"
+    runtimeTextSource = "legacy runtime populates this entry/list text after the template FIT loads"
+    visibleText = "<tons>"
+    runtimeTextPreviewMissing = true
+    textMissing = false
+    legacyFontId = 27851
+    legacyFontComment = "ArialNarrow8"
+    font = "Agency Regular"
+    fontStyle = "Regular"
+    fontSize = 8
+    bold = false
+    italic = false
+    textAlign = "right"
+    textAnchor = "upper_right"
+    wrapText = false
+    colorArgb = "0xffc66600"
+    legacyColor = -3774976
+    outline = "FALSE"
+    legacyAlignment = 1
+    legacyFontComment = "ArialNarrow8"
+    textKey = "game.mcl_gn_availablemechentry.string.weight_of_mech_text"
+    borderColorArgb = "0x00000000"
+}
+
+GuiText {
+    key = "game.mcl_gn_availablemechentry.text.number_of_mechs_available"
+    pageKey = "game.mcl_gn_availablemechentry"
+    legacySection = "Text2"
+    legacyComment = "Number of mechs available"
+    role = "text"
+    layer = "text"
+    aliasOverride = "Number of mechs available"
+    sourceControlType = "Text2"
+    rect = "28,24,12,12"
+    legacyLocalRect = "28,24,12,12"
+    legacyRectSource = "xywh"
+    uiPackage = "default"
+    rectModel = "legacy_imgui.modern_rect_v1"
+    controlRect = "28,24,12,12"
+    textRect = "28,24,12,12"
+    textRectMode = "control_rect_fallback"
+    textLegacyId = 27000
+    legacyTemplateTextKey = "legacy.mc2res.27000"
+    legacyTemplateVisibleText = " "
+    legacyTemplateTextLegacySymbol = "IDS_STRING_FIRST_LOGISTICS"
+    legacyTemplateTextSource = "mc2res"
+    legacyTemplateTextMissing = false
+    runtimeOverridesText = true
+    runtimeTextBinding = "mechbay.availableMech.count"
+    runtimeTextSource = "legacy runtime populates this entry/list text after the template FIT loads"
+    visibleText = "<count>"
+    runtimeTextPreviewMissing = true
+    textMissing = false
+    legacyFontId = 27852
+    legacyFontComment = "ArialNarrow8"
+    font = "Agency Regular"
+    fontStyle = "Regular"
+    fontSize = 8
+    bold = false
+    italic = false
+    textAlign = "right"
+    textAnchor = "upper_right"
+    wrapText = false
+    colorArgb = "0xffffffff"
+    legacyColor = -1
+    outline = "FALSE"
+    legacyAlignment = 1
+    legacyFontComment = "ArialNarrow8"
+    textKey = "game.mcl_gn_availablemechentry.string.number_of_mechs_available"
+    borderColorArgb = "0x00000000"
+}
+
+GuiText {
+    key = "game.mcl_gn_availablemechentry.text.variant_name"
+    pageKey = "game.mcl_gn_availablemechentry"
+    legacySection = "Text3"
+    legacyComment = "variant name"
+    role = "text"
+    layer = "text"
+    aliasOverride = "variant name"
+    sourceControlType = "Text3"
+    rect = "45,24,105,12"
+    legacyLocalRect = "45,24,105,12"
+    legacyRectSource = "xywh"
+    uiPackage = "default"
+    rectModel = "legacy_imgui.modern_rect_v1"
+    controlRect = "45,24,105,12"
+    textRect = "45,24,105,12"
+    textRectMode = "control_rect_fallback"
+    textLegacyId = 27000
+    legacyTemplateTextKey = "legacy.mc2res.27000"
+    legacyTemplateVisibleText = " "
+    legacyTemplateTextLegacySymbol = "IDS_STRING_FIRST_LOGISTICS"
+    legacyTemplateTextSource = "mc2res"
+    legacyTemplateTextMissing = false
+    runtimeOverridesText = true
+    runtimeTextBinding = "mechbay.availableMech.variant"
+    runtimeTextSource = "legacy runtime populates this entry/list text after the template FIT loads"
+    visibleText = "<variant>"
+    runtimeTextPreviewMissing = true
+    textMissing = false
+    legacyFontId = 27853
+    legacyFontComment = "ArialNarrow8"
+    font = "Agency Regular"
+    fontStyle = "Regular"
+    fontSize = 8
+    bold = false
+    italic = false
+    textAlign = "left"
+    textAnchor = "upper_left"
+    wrapText = false
+    colorArgb = "0xff846643"
+    legacyColor = -8100285
+    outline = "FALSE"
+    legacyAlignment = 0
+    legacyFontComment = "ArialNarrow8"
+    textKey = "game.mcl_gn_availablemechentry.string.variant_name"
+    borderColorArgb = "0x00000000"
+}
+
+GuiText {
+    key = "game.mcl_gn_availablemechentry.text.cost_of_mech"
+    pageKey = "game.mcl_gn_availablemechentry"
+    legacySection = "Text4"
+    legacyComment = "cost of mech"
+    role = "text"
+    layer = "text"
+    aliasOverride = "cost of mech"
+    sourceControlType = "Text4"
+    rect = "155,24,34,12"
+    legacyLocalRect = "155,24,34,12"
+    legacyRectSource = "xywh"
+    uiPackage = "default"
+    rectModel = "legacy_imgui.modern_rect_v1"
+    controlRect = "155,24,34,12"
+    textRect = "155,24,34,12"
+    textRectMode = "control_rect_fallback"
+    textLegacyId = 27000
+    legacyTemplateTextKey = "legacy.mc2res.27000"
+    legacyTemplateVisibleText = " "
+    legacyTemplateTextLegacySymbol = "IDS_STRING_FIRST_LOGISTICS"
+    legacyTemplateTextSource = "mc2res"
+    legacyTemplateTextMissing = false
+    runtimeOverridesText = true
+    runtimeTextBinding = "mechbay.availableMech.cost"
+    runtimeTextSource = "legacy runtime populates this entry/list text after the template FIT loads"
+    visibleText = "<cost>"
+    runtimeTextPreviewMissing = true
+    textMissing = false
+    legacyFontId = 27854
+    legacyFontComment = "ArialNarrow8"
+    font = "Agency Regular"
+    fontStyle = "Regular"
+    fontSize = 8
+    bold = false
+    italic = false
+    textAlign = "right"
+    textAnchor = "upper_right"
+    wrapText = false
+    colorArgb = "0xff846643"
+    legacyColor = -8100285
+    outline = "FALSE"
+    legacyAlignment = 1
+    legacyFontComment = "ArialNarrow8"
+    textKey = "game.mcl_gn_availablemechentry.string.cost_of_mech"
+    borderColorArgb = "0x00000000"
+}
+
+GuiMetadata {
+    key = "game.mcl_gn_availablemechentry.metadata.bright_green"
+    pageKey = "game.mcl_gn_availablemechentry"
+    legacySection = "Animation0"
+    legacyComment = "bright green"
+    role = "metadata"
+    layer = "metadata"
+    aliasOverride = "bright green"
+    sourceControlType = "Animation0"
+    rect = "0,0,0,0"
+    legacyLocalRect = "0,0,0,0"
+    legacyRectSource = "xywh"
+    visible = false
+    normalColorArgb = "0xffC8E100"
+    pressedColorArgb = "0xffC8E100"
+    highlightColorArgb = "0xffC8E100"
+    disabledColorArgb = "0xff6b6b6b"
+}
+
+GuiMetadata {
+    key = "game.mcl_gn_availablemechentry.metadata.medium_green"
+    pageKey = "game.mcl_gn_availablemechentry"
+    legacySection = "Animation1"
+    legacyComment = "medium green"
+    role = "metadata"
+    layer = "metadata"
+    aliasOverride = "medium green"
+    sourceControlType = "Animation1"
+    rect = "0,0,0,0"
+    legacyLocalRect = "0,0,0,0"
+    legacyRectSource = "xywh"
+    visible = false
+    normalColorArgb = "0xff6E7C00"
+    pressedColorArgb = "0xff6E7C00"
+    highlightColorArgb = "0xff6E7C00"
+    disabledColorArgb = "0xff6b6b6b"
+}
+
+GuiMetadata {
+    key = "game.mcl_gn_availablemechentry.metadata.dark_green"
+    pageKey = "game.mcl_gn_availablemechentry"
+    legacySection = "Animation2"
+    legacyComment = "dark green"
+    role = "metadata"
+    layer = "metadata"
+    aliasOverride = "dark green"
+    sourceControlType = "Animation2"
+    rect = "0,0,0,0"
+    legacyLocalRect = "0,0,0,0"
+    legacyRectSource = "xywh"
+    visible = false
+    normalColorArgb = "0xff313700"
+    pressedColorArgb = "0xff313700"
+    highlightColorArgb = "0xff313700"
+    disabledColorArgb = "0xff6b6b6b"
+}
+
+GuiMetadata {
+    key = "game.mcl_gn_availablemechentry.metadata.desaturated_green"
+    pageKey = "game.mcl_gn_availablemechentry"
+    legacySection = "Animation3"
+    legacyComment = "desaturated green"
+    role = "metadata"
+    layer = "metadata"
+    aliasOverride = "desaturated green"
+    sourceControlType = "Animation3"
+    rect = "0,0,0,0"
+    legacyLocalRect = "0,0,0,0"
+    legacyRectSource = "xywh"
+    visible = false
+    normalColorArgb = "0xff676A50"
+    pressedColorArgb = "0xff676A50"
+    highlightColorArgb = "0xff676A50"
+    disabledColorArgb = "0xff6b6b6b"
+}
+
+GuiMetadata {
+    key = "game.mcl_gn_availablemechentry.metadata.bright_orange"
+    pageKey = "game.mcl_gn_availablemechentry"
+    legacySection = "OrangeAnimation0"
+    legacyComment = "bright orange"
+    role = "metadata"
+    layer = "metadata"
+    aliasOverride = "bright orange"
+    sourceControlType = "OrangeAnimation0"
+    rect = "0,0,0,0"
+    legacyLocalRect = "0,0,0,0"
+    legacyRectSource = "xywh"
+    visible = false
+    normalColorArgb = "0xffFF8A00"
+    pressedColorArgb = "0xffFF8A00"
+    highlightColorArgb = "0xffFF8A00"
+    disabledColorArgb = "0xff6b6b6b"
+}
+
+GuiMetadata {
+    key = "game.mcl_gn_availablemechentry.metadata.medium_orange"
+    pageKey = "game.mcl_gn_availablemechentry"
+    legacySection = "OrangeAnimation1"
+    legacyComment = "medium orange"
+    role = "metadata"
+    layer = "metadata"
+    aliasOverride = "medium orange"
+    sourceControlType = "OrangeAnimation1"
+    rect = "0,0,0,0"
+    legacyLocalRect = "0,0,0,0"
+    legacyRectSource = "xywh"
+    visible = false
+    normalColorArgb = "0xffC66600"
+    pressedColorArgb = "0xffC66600"
+    highlightColorArgb = "0xffC66600"
+    disabledColorArgb = "0xff6b6b6b"
+}
+
+GuiMetadata {
+    key = "game.mcl_gn_availablemechentry.metadata.dark_orange"
+    pageKey = "game.mcl_gn_availablemechentry"
+    legacySection = "OrangeAnimation2"
+    legacyComment = "dark orange"
+    role = "metadata"
+    layer = "metadata"
+    aliasOverride = "dark orange"
+    sourceControlType = "OrangeAnimation2"
+    rect = "0,0,0,0"
+    legacyLocalRect = "0,0,0,0"
+    legacyRectSource = "xywh"
+    visible = false
+    normalColorArgb = "0xff43311C"
+    pressedColorArgb = "0xff43311C"
+    highlightColorArgb = "0xff43311C"
+    disabledColorArgb = "0xff6b6b6b"
+}
+
+GuiMetadata {
+    key = "game.mcl_gn_availablemechentry.metadata.desaturated_orange"
+    pageKey = "game.mcl_gn_availablemechentry"
+    legacySection = "OrangeAnimation3"
+    legacyComment = "desaturated orange"
+    role = "metadata"
+    layer = "metadata"
+    aliasOverride = "desaturated orange"
+    sourceControlType = "OrangeAnimation3"
+    rect = "0,0,0,0"
+    legacyLocalRect = "0,0,0,0"
+    legacyRectSource = "xywh"
+    visible = false
+    normalColorArgb = "0xff846643"
+    pressedColorArgb = "0xff846643"
+    highlightColorArgb = "0xff846643"
+    disabledColorArgb = "0xff6b6b6b"
+}

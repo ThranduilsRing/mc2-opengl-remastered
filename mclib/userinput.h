@@ -652,6 +652,12 @@ class UserInput
 		void update (void);
 		
 		void render (void);						//Last thing rendered.  Draws Mouse.
+		// UI-ASPECT-ANCHOR-1: the post-ImGui z-order re-draw of the cursor
+		// (CURSOR-ON-TOP-OF-IMGUI-1) runs AFTER flushHUDBatch, so it misses
+		// the menu 16:9 canvas vertex remap and drew a second cursor at the
+		// un-remapped position. This wrapper applies the same canvas
+		// transform to the cursor position for that one invocation.
+		void renderForImGuiOverlay (void);
 };
 
 extern UserInput *userInput;

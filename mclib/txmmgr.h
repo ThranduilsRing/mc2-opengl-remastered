@@ -572,8 +572,18 @@ class MC_TextureManager
 		void removeTexture (DWORD gosTextureHandle);
 		
 		//------------------------------------------------------
-		// Frees a specific textureNode. 
+		// Frees a specific textureNode.
 		void removeTextureNode (DWORD textureNode);
+
+		//------------------------------------------------------
+		// DEV-SHELL texture_refresh: re-read the source file from disk for
+		// every named node whose nodeName contains `substring`
+		// (case-insensitive), replace the system-RAM copy, and destroy the
+		// resident gos texture so the next get_gosTextureHandle() re-uploads
+		// the fresh pixels. Node INDEX is stable (widgets keep their ids).
+		// FST-only textures (no loose disk file) are skipped and counted in
+		// skippedNoFile. Returns number of nodes refreshed.
+		long refreshTexturesByName (const char *substring, long &skippedNoFile);
 
 		
         void resetLightData();

@@ -1,0 +1,26 @@
+volk meta-loader — vendored for VULKAN-VOLK-LOADER-1
+
+Files: volk.h + volk.c (the complete volk distribution; volk is header + one .c).
+
+VOLK_HEADER_VERSION: 343   (grep '#define VOLK_HEADER_VERSION' volk.h)
+
+Source on disk (copied verbatim, no network fetch):
+  C:/Users/Joe/AppData/Local/rdc/renderdoc-build/renderdoc/util/test/demos/3rdparty/volk/
+  (a vendored volk copy inside the local RenderDoc build tree; timestamped 2026-05-25)
+
+Version reconciliation with the installed Vulkan SDK:
+  Vulkan SDK: 1.4.350.0  (C:/VulkanSDK/1.4.350.0), VK_HEADER_VERSION = 350.
+  volk VOLK_HEADER_VERSION = 343 (< 350).
+  volk includes the Vulkan headers itself. An OLDER volk against NEWER Vulkan
+  headers is the safe/supported direction: volk 343 references a subset of the
+  entrypoints the SDK-350 headers declare, so it compiles cleanly. It simply
+  does not expose entrypoints added in header revisions 344..350 — none of which
+  the MC2 Vulkan skeleton/probes use. (The reverse — newer volk vs older headers —
+  is what breaks.)
+
+Why this pair (not the SDK's volk.lib): the SDK ships only ARM64 volk*.lib and
+no volk source; we need volk.c to compile it into the x64 Vulkan targets and,
+crucially, to expose vmaImportVulkanFunctionsFromVolk (VMA compiles that helper
+only when VOLK_HEADER_VERSION is visible, i.e. volk.h is included in the VMA TU).
+
+Compiled ONLY under MC2_VULKAN (default OFF). Not part of the normal GL build.

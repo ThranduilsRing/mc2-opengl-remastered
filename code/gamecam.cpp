@@ -39,6 +39,8 @@
 #include"weather.h"
 #endif
 
+#include "ground_contact_blob.h"  // GROUND-CONTACT-BLOB-1
+
 #include<mlr/mlr.hpp>
 #include <tracy/Tracy.hpp>
 #include "cpu_proj_cost_split.h"  // F3 CPU projection cost-baseline (RAII scope)
@@ -466,6 +468,16 @@ void GameCamera::render (void)
 			ZoneScopedN("GameCamera::render terrain");
 			GameAdapters::StaticProp::frameBegin();  // Stage 3.C: reset live-instance list
 			land->render();								//render the Terrain
+		}
+
+		if (Environment.Renderer != 3)
+		{
+			// GROUND-CONTACT-BLOB-1: submitted BEFORE craterManager->render() so
+			// blobs land first (under) in the shared un-depth-sorted TerrainDecal
+			// batch -- footprints/craters composite on top of the contact disc,
+			// not the other way around (recon landmine 2). Gate-off: no-op.
+			ZoneScopedN("GameCamera::render groundContactBlobs");
+			renderGroundContactBlobs();
 		}
 
 		if (Environment.Renderer != 3)

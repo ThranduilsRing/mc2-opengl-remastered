@@ -1,0 +1,8 @@
+{
+  "effects": [
+    { "index": 0, "effectID": 0, "classID": 30, "name": "Fireball" },
+    { "index": 1, "effectID": 1, "classID": 26, "name": "PPC_Trail" },
+    { "index": 2, "effectID": 2, "classID": 26, "name": "LRM_Smoke" },
+    { "index": 3, "effectID": 3, "classID": 26, "name": "Gauss_trail" }
+  ]
+}

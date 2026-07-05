@@ -1,0 +1,428 @@
+﻿// MC2R ImGui FIT generated from legacy UI FIT.
+// Source: data/defs/ui/legacy/game/mcl_mp_chatwidget_up.fit
+// Legacy files remain source truth only; edit the generated ImGui FIT.
+
+GuiPage {
+    key = "game.mcl_mp_chatwidget_up"
+    title = "Game Mcl Mp Chatwidget Up"
+    sourceLegacyFit = "data/defs/ui/legacy/game/mcl_mp_chatwidget_up.fit"
+    sourceSystem = "game"
+    sourceScreen = "mcl_mp_chatwidget_up"
+    sourceKind = "legacy_screen"
+    layout = "absolute"
+    coordinateSpace = "screen_absolute"
+    localWidth = 800
+    localHeight = 600
+    mountOffset = "0,0"
+    editableSource = "generated_imgui_only"
+    overlayGameOS = true
+    renderMode = "gameos_overlay"
+    backgroundPolicy = "transparent_overlay"
+}
+
+GuiMetadata {
+    key = "game.mcl_mp_chatwidget_up.metadata.metadata"
+    pageKey = "game.mcl_mp_chatwidget_up"
+    legacySection = "Rects"
+    legacyContext = "~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ | ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ | ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~"
+    role = "metadata"
+    layer = "metadata"
+    aliasOverride = "metadata"
+    sourceControlType = "Rects"
+    rect = "0,0,0,0"
+    legacyLocalRect = "0,0,0,0"
+    legacyRectSource = "xywh"
+    visible = false
+}
+
+GuiRect {
+    key = "game.mcl_mp_chatwidget_up.rect.background_to_obscure_help_area"
+    pageKey = "game.mcl_mp_chatwidget_up"
+    legacySection = "Rect0"
+    legacyComment = "background to obscure help area"
+    role = "help"
+    layer = "help"
+    aliasOverride = "background to obscure help area"
+    sourceControlType = "Rect0"
+    rect = "143,446,462,134"
+    legacyLocalRect = "143,446,462,134"
+    legacyRectSource = "xywh"
+    uiPackage = "default"
+    rectModel = "legacy_imgui.modern_rect_v1"
+    controlRect = "143,446,462,134"
+    legacyColor = 0x00000000
+    outline = "FALSE"
+    filled = true
+    fillColorArgb = "0x00000000"
+    borderColorArgb = "0x00000000"
+    colorArgb = "0xffffffff"
+}
+
+GuiRect {
+    key = "game.mcl_mp_chatwidget_up.rect.second_background_to_obscure_help_area"
+    pageKey = "game.mcl_mp_chatwidget_up"
+    legacySection = "Rect1"
+    legacyComment = "second background to obscure help area"
+    role = "help"
+    layer = "help"
+    aliasOverride = "second background to obscure help area"
+    sourceControlType = "Rect1"
+    rect = "606,540,49,54"
+    legacyLocalRect = "606,540,49,54"
+    legacyRectSource = "xywh"
+    uiPackage = "default"
+    rectModel = "legacy_imgui.modern_rect_v1"
+    controlRect = "606,540,49,54"
+    legacyColor = 0x00000000
+    outline = "TRUE"
+    filled = false
+    fillColorArgb = "0x00000000"
+    borderColorArgb = "0x00000000"
+    colorArgb = "0xffffffff"
+}
+
+GuiRect {
+    key = "game.mcl_mp_chatwidget_up.rect.list_box_for_player_names_chat_text_etc"
+    pageKey = "game.mcl_mp_chatwidget_up"
+    legacySection = "Rect2"
+    legacyComment = "list box for player names, chat text, etc"
+    role = "listbox_mount"
+    layer = "control"
+    aliasOverride = "list box for player names, chat text, etc"
+    sourceControlType = "Rect2"
+    rect = "145,447,459,131"
+    legacyLocalRect = "145,447,459,131"
+    legacyRectSource = "xywh"
+    uiPackage = "default"
+    rectModel = "legacy_imgui.modern_rect_v1"
+    controlRect = "145,447,459,131"
+    legacyColor = 0x00000000
+    outline = "TRUE"
+    filled = false
+    fillColorArgb = "0x00000000"
+    borderColorArgb = "0x00000000"
+    colorArgb = "0xffffffff"
+}
+
+GuiScrollbar {
+    key = "game.mcl_mp_chatwidget_up.scrollbar.list_box_for_player_names_chat_text_etc"
+    pageKey = "game.mcl_mp_chatwidget_up"
+    legacySection = "Rect2"
+    role = "listbox_scrollbar"
+    layer = "control"
+    aliasOverride = "listbox_scrollbar"
+    sourceControlType = "runtime mcScrollBar"
+    sourceStyle = "ScrollBar.fit"
+    sourceLine = "aListBox::init => scrollBar->init(w - 17, 2, 15, h - 4)"
+    rect = "587,449,15,127"
+    legacyLocalRect = "587,449,15,127"
+    legacyRectSource = "runtime_listbox_scrollbar"
+    runtimePlacement = "aListBox::mcScrollBar"
+    scrollbarTemplate = "data/defs/ui/packages/legacy_imgui/shared/scrollbar.fit"
+    scrollbarStyle = "orange"
+}
+
+GuiMetadata {
+    key = "game.mcl_mp_chatwidget_up.metadata.line_between_chat_text_and_edit_box"
+    pageKey = "game.mcl_mp_chatwidget_up"
+    legacySection = "Rect3"
+    legacyComment = "line between chat text and edit box"
+    role = "metadata"
+    layer = "metadata"
+    aliasOverride = "line between chat text and edit box"
+    sourceControlType = "Rect3"
+    rect = "147,578,455,0"
+    legacyLocalRect = "147,578,455,0"
+    legacyRectSource = "xywh"
+    legacyColor = 0xff002f55
+    outline = "TRUE"
+    visible = false
+}
+
+GuiRect {
+    key = "game.mcl_mp_chatwidget_up.rect.vertical_thin_rect_1_to_obscure_original_screen"
+    pageKey = "game.mcl_mp_chatwidget_up"
+    legacySection = "Rect4"
+    legacyComment = "vertical thin rect 1  to obscure original screen"
+    role = "rect"
+    layer = "layout"
+    aliasOverride = "vertical thin rect 1  to obscure original screen"
+    sourceControlType = "Rect4"
+    rect = "143,446,2,149"
+    legacyLocalRect = "143,446,2,149"
+    legacyRectSource = "xywh"
+    uiPackage = "default"
+    rectModel = "legacy_imgui.modern_rect_v1"
+    controlRect = "143,446,2,149"
+    legacyColor = 0xff000000
+    outline = "FALSE"
+    filled = true
+    fillColorArgb = "0x00000000"
+    borderColorArgb = "0x00000000"
+    colorArgb = "0xffffffff"
+}
+
+GuiRect {
+    key = "game.mcl_mp_chatwidget_up.rect.horizontal_thin_rect_to_obscure_original_screen"
+    pageKey = "game.mcl_mp_chatwidget_up"
+    legacySection = "Rect5"
+    legacyComment = "horizontal thin rect to obscure original screen"
+    role = "rect"
+    layer = "layout"
+    aliasOverride = "horizontal thin rect to obscure original screen"
+    sourceControlType = "Rect5"
+    rect = "145,446,461,1"
+    legacyLocalRect = "145,446,461,1"
+    legacyRectSource = "xywh"
+    uiPackage = "default"
+    rectModel = "legacy_imgui.modern_rect_v1"
+    controlRect = "145,446,461,1"
+    legacyColor = 0xff000000
+    outline = "FALSE"
+    filled = true
+    fillColorArgb = "0x00000000"
+    borderColorArgb = "0x00000000"
+    colorArgb = "0xffffffff"
+}
+
+GuiRect {
+    key = "game.mcl_mp_chatwidget_up.rect.vertical_thin_rect_2_to_obscure_original_screen"
+    pageKey = "game.mcl_mp_chatwidget_up"
+    legacySection = "Rect6"
+    legacyComment = "vertical thin rect 2 to obscure original screen"
+    role = "rect"
+    layer = "layout"
+    aliasOverride = "vertical thin rect 2 to obscure original screen"
+    sourceControlType = "Rect6"
+    rect = "604,447,2,148"
+    legacyLocalRect = "604,447,2,148"
+    legacyRectSource = "xywh"
+    uiPackage = "default"
+    rectModel = "legacy_imgui.modern_rect_v1"
+    controlRect = "604,447,2,148"
+    legacyColor = 0xff000000
+    outline = "FALSE"
+    filled = true
+    fillColorArgb = "0x00000000"
+    borderColorArgb = "0x00000000"
+    colorArgb = "0xffffffff"
+}
+
+GuiMetadata {
+    key = "game.mcl_mp_chatwidget_up.metadata.metadata_01"
+    pageKey = "game.mcl_mp_chatwidget_up"
+    legacySection = "Statics"
+    legacyContext = "~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ | ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ | ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~"
+    role = "metadata"
+    layer = "metadata"
+    aliasOverride = "metadata"
+    sourceControlType = "Statics"
+    rect = "0,0,0,0"
+    legacyLocalRect = "0,0,0,0"
+    legacyRectSource = "xywh"
+    visible = false
+}
+
+GuiImage {
+    key = "game.mcl_mp_chatwidget_up.image.mcl_mp_chatwidget_01"
+    pageKey = "game.mcl_mp_chatwidget_up"
+    legacySection = "Static0"
+    role = "image"
+    layer = "art"
+    aliasOverride = "mcl_mp_chatwidget_01"
+    sourceControlType = "Static0"
+    rect = "133,436,256,10"
+    legacyLocalRect = "133,436,256,10"
+    legacyRectSource = "xywh"
+    texture = "data/art/gui/mcl_mp_chatwidget_01.png"
+    legacyTexture = "mcl_mp_chatwidget_01.tga"
+    uiPackage = "default"
+    rectModel = "legacy_imgui.modern_rect_v1"
+    controlRect = "133,436,256,10"
+    artRect = "133,436,256,10"
+    artLayer = "control_art"
+    uvX = 0
+    uvY = 0
+    uvWidth = 256
+    uvHeight = 10
+}
+
+GuiImage {
+    key = "game.mcl_mp_chatwidget_up.image.mcl_mp_chatwidget_01_01"
+    pageKey = "game.mcl_mp_chatwidget_up"
+    legacySection = "Static1"
+    role = "image"
+    layer = "art"
+    aliasOverride = "mcl_mp_chatwidget_01"
+    sourceControlType = "Static1"
+    rect = "389,436,227,10"
+    legacyLocalRect = "389,436,227,10"
+    legacyRectSource = "xywh"
+    texture = "data/art/gui/mcl_mp_chatwidget_01.png"
+    legacyTexture = "mcl_mp_chatwidget_01.tga"
+    uiPackage = "default"
+    rectModel = "legacy_imgui.modern_rect_v1"
+    controlRect = "389,436,227,10"
+    artRect = "389,436,227,10"
+    artLayer = "control_art"
+    uvX = 0
+    uvY = 10
+    uvWidth = 227
+    uvHeight = 10
+}
+
+GuiImage {
+    key = "game.mcl_mp_chatwidget_up.image.mcl_mp_chatwidget_01_02"
+    pageKey = "game.mcl_mp_chatwidget_up"
+    legacySection = "Static2"
+    role = "image"
+    layer = "art"
+    aliasOverride = "mcl_mp_chatwidget_01"
+    sourceControlType = "Static2"
+    rect = "133,446,10,149"
+    legacyLocalRect = "133,446,10,149"
+    legacyRectSource = "xywh"
+    texture = "data/art/gui/mcl_mp_chatwidget_01.png"
+    legacyTexture = "mcl_mp_chatwidget_01.tga"
+    uiPackage = "default"
+    rectModel = "legacy_imgui.modern_rect_v1"
+    controlRect = "133,446,10,149"
+    artRect = "133,446,10,149"
+    artLayer = "control_art"
+    uvX = 0
+    uvY = 30
+    uvWidth = 10
+    uvHeight = 149
+}
+
+GuiImage {
+    key = "game.mcl_mp_chatwidget_up.image.mcl_mp_chatwidget_01_03"
+    pageKey = "game.mcl_mp_chatwidget_up"
+    legacySection = "Static3"
+    role = "image"
+    layer = "art"
+    aliasOverride = "mcl_mp_chatwidget_01"
+    sourceControlType = "Static3"
+    rect = "606,446,10,84"
+    legacyLocalRect = "606,446,10,84"
+    legacyRectSource = "xywh"
+    texture = "data/art/gui/mcl_mp_chatwidget_01.png"
+    legacyTexture = "mcl_mp_chatwidget_01.tga"
+    uiPackage = "default"
+    rectModel = "legacy_imgui.modern_rect_v1"
+    controlRect = "606,446,10,84"
+    artRect = "606,446,10,84"
+    artLayer = "control_art"
+    uvX = 10
+    uvY = 30
+    uvWidth = 10
+    uvHeight = 84
+}
+
+GuiImage {
+    key = "game.mcl_mp_chatwidget_up.image.mcl_mp_chatwidget_01_04"
+    pageKey = "game.mcl_mp_chatwidget_up"
+    legacySection = "Static4"
+    role = "image"
+    layer = "art"
+    aliasOverride = "mcl_mp_chatwidget_01"
+    sourceControlType = "Static4"
+    rect = "606,530,60,70"
+    legacyLocalRect = "606,530,60,70"
+    legacyRectSource = "xywh"
+    texture = "data/art/gui/mcl_mp_chatwidget_01.png"
+    legacyTexture = "mcl_mp_chatwidget_01.tga"
+    uiPackage = "default"
+    rectModel = "legacy_imgui.modern_rect_v1"
+    controlRect = "606,530,60,70"
+    artRect = "606,530,60,70"
+    artLayer = "control_art"
+    uvX = 20
+    uvY = 30
+    uvWidth = 60
+    uvHeight = 70
+}
+
+GuiImage {
+    key = "game.mcl_mp_chatwidget_up.image.mcl_mp_chatwidget_01_05"
+    pageKey = "game.mcl_mp_chatwidget_up"
+    legacySection = "Static5"
+    role = "image"
+    layer = "art"
+    aliasOverride = "mcl_mp_chatwidget_01"
+    sourceControlType = "Static5"
+    rect = "133,595,256,5"
+    legacyLocalRect = "133,595,256,5"
+    legacyRectSource = "xywh"
+    texture = "data/art/gui/mcl_mp_chatwidget_01.png"
+    legacyTexture = "mcl_mp_chatwidget_01.tga"
+    uiPackage = "default"
+    rectModel = "legacy_imgui.modern_rect_v1"
+    controlRect = "133,595,256,5"
+    artRect = "133,595,256,5"
+    artLayer = "control_art"
+    uvX = 0
+    uvY = 20
+    uvWidth = 256
+    uvHeight = 5
+}
+
+GuiImage {
+    key = "game.mcl_mp_chatwidget_up.image.mcl_mp_chatwidget_01_06"
+    pageKey = "game.mcl_mp_chatwidget_up"
+    legacySection = "Static6"
+    role = "image"
+    layer = "art"
+    aliasOverride = "mcl_mp_chatwidget_01"
+    sourceControlType = "Static6"
+    rect = "389,595,256,5"
+    legacyLocalRect = "389,595,256,5"
+    legacyRectSource = "xywh"
+    texture = "data/art/gui/mcl_mp_chatwidget_01.png"
+    legacyTexture = "mcl_mp_chatwidget_01.tga"
+    uiPackage = "default"
+    rectModel = "legacy_imgui.modern_rect_v1"
+    controlRect = "389,595,256,5"
+    artRect = "389,595,256,5"
+    artLayer = "control_art"
+    uvX = 0
+    uvY = 25
+    uvWidth = 256
+    uvHeight = 5
+}
+
+GuiAnimation {
+    key = "game.mcl_mp_chatwidget_up.animation.enter_anim"
+    pageKey = "game.mcl_mp_chatwidget_up"
+    legacySection = "EnterAnim"
+    legacyComment = "use when chat appears on screen"
+    role = "animation"
+    layer = "animation"
+    animType = "in_anim"
+    rect = "0,0,0,0"
+    animationKeyframes = 2
+    keyframe0Time = 0.0
+    keyframe0X = 0
+    keyframe0Y = -133
+    keyframe1Time = 0.15
+    keyframe1X = 0
+    keyframe1Y = 0
+}
+
+GuiAnimation {
+    key = "game.mcl_mp_chatwidget_up.animation.leave_anim"
+    pageKey = "game.mcl_mp_chatwidget_up"
+    legacySection = "LeaveAnim"
+    legacyComment = "use when chat leaves"
+    role = "animation"
+    layer = "animation"
+    animType = "out_anim"
+    rect = "0,0,0,0"
+    animationKeyframes = 2
+    keyframe0Time = 0.0
+    keyframe0X = 0
+    keyframe0Y = 0
+    keyframe1Time = 0.15
+    keyframe1X = 0
+    keyframe1Y = -133
+}

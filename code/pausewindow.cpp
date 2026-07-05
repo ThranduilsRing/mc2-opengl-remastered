@@ -97,8 +97,13 @@ void PauseWindow::update()
 		
 	}
 	
-	long mouseX = userInput->getMouseX();
-	long mouseY = userInput->getMouseY();
+	// UI-ASPECT-ANCHOR-1: the pause menu is HUD chrome — drawn canvas-remapped
+	// by flushHUDBatch — so hit-test in the same space (getMouseHudX/Y inverts
+	// the canvas remap; the bottom-band shrink inverse is a no-op up here).
+	// Raw getMouseX left the click rects at the pre-remap screen position
+	// (clicks landed right of the drawn buttons on wide displays).
+	long mouseX = userInput->getMouseHudX();
+	long mouseY = userInput->getMouseHudY();
 
 	gosEnum_KeyIndex key;
 	bool bShift, bCtrl, bAlt;

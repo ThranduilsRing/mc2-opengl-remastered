@@ -30,6 +30,29 @@
 //   MC2_BRAIN_DISPATCH_VAR=1 alone                → warns + is inert (DISPATCH required)
 //   MC2_BRAIN_DISPATCH=1 + MC2_BRAIN_DISPATCH_CALL=1 → TechSpecial.Call chaining; index + recurse + trace
 //   MC2_BRAIN_DISPATCH_CALL=1 alone               → warns + is inert (DISPATCH required)
+//   MC2_BRAIN_ALIAS=1 (BRAINSPECIAL-ALIAS-1)      → data-driven alias registry active:
+//       built-in seeds + Aliases{} block entries + per-block alias= keys + case-insensitive
+//       catalog shorthand. OFF (default): only the 5 hardcoded aliasToCanonical mappings
+//       apply (pre-slice behavior, byte-identical).
+//   MC2_BRAIN_SCOPE_GLOBAL=1 (BRAINSPECIAL-SCOPE-GLOBAL-1) → global_specials.fit (same
+//       directory as the mission specials) merged into the special index as a shared
+//       Call-target library. Mission-local keys win on collision. Globals never provide
+//       the entry body. OFF (default): no global parse — byte-identical.
+//   MC2_BRAIN_VARIANTOF=1 (BRAINSPECIAL-VARIANTOF-1) → variantOf= inheritance resolved
+//       after parse + global merge: empty-body child inherits the parent chain's verbs;
+//       a re-declared Body overrides (Body-level override; spec-delta documented in
+//       .claude/TECHSCRIPT-GAP-CLOSURE-1.md #14). Depth<=8 + cycle guard.
+//       OFF (default): variantOf fields parsed but ignored — byte-identical.
+//   MC2_BRAIN_FLOW=1 (BRAINSPECIAL-FLOW-WAIT-1) → WAIT / WAIT_UNTIL / STOP flow verbs.
+//       SPEC-DELTA: WAIT is a LATCHED SEQUENCE GATE, not VM blocking — the body
+//       re-executes every deterministic brain tick; verbs after an unsatisfied
+//       WAIT (sim-time deadline) / WAIT_UNTIL (Var == value condition) are skipped
+//       until it latches open. STOP ends the tick's body execution. Root body only.
+//       Flow-bearing bodies re-dispatch every tick (warrior.cpp skips the class-level
+//       once-guard pre-set); per-verb-index flowFired guards prevent order re-emission.
+//       GOTO/LABEL are NOT implemented (determinism ruling — see gap ledger #9).
+//       OFF (default): scanner drops WAIT lines + STOP stays a skipped sentinel —
+//       byte-identical.
 //
 // FORBIDDEN-CALL GUARD (1A — executeSpecialBody_TraceOnly / executeSpecialBody_TraceOnlyChained):
 //   MUST NOT call ANY of: setGeneralTacOrder, setPlayerTacOrder, setAlarmTacOrder,
@@ -110,6 +133,16 @@ struct BrainSpecialBody {
 //   Documented here and in brain_special_dispatch.cpp.
 struct SpecialIndexEntry {
     std::string     key;   // from key= field in TechSpecial block
+    // BRAINSPECIAL-ALIAS-1: per-block alias= field (carver: alias = "Scenario.Main").
+    // Resolved by specialIndexFind as a fallback when MC2_BRAIN_ALIAS=1; unused otherwise.
+    std::string     alias;
+    // BRAINSPECIAL-VARIANTOF-1: per-block variantOf= field (parent Special key).
+    // Resolved after parse+global-merge when MC2_BRAIN_VARIANTOF=1:
+    //   child with EMPTY Body inherits the parent chain's verbs wholesale;
+    //   child that re-declares a Body overrides it (spec-delta: Body-level override —
+    //   engine blocks have exactly one overridable section).
+    // Unused (parsed but ignored) when the gate is OFF.
+    std::string     variantOf;
     BrainSpecialBody body; // verbs collected from that block's Body { DO ... } section
 };
 
@@ -144,6 +177,14 @@ bool bodyHasUnitRetreat(const BrainSpecialBody& body);
 // DISPATCH-EFFECT-UNITRETREAT-1: Returns true if body has ANY GENERAL-slot-claiming effect verb.
 // (currently: POWERDOWN || EJECT || GUARD || MOVETO || ATTACK || RETREAT)
 bool bodyHasEffect(const BrainSpecialBody& body);
+
+// BRAINSPECIAL-FLOW-WAIT-1: Returns true if the body carries WAIT/WAIT_UNTIL/STOP verbs.
+// (The scanner only emits these when MC2_BRAIN_FLOW=1.)
+bool bodyHasFlowControl(const BrainSpecialBody& body);
+
+// BRAINSPECIAL-FLOW-WAIT-1: gate + flow-verb check combined — warrior.cpp switches to
+// every-tick re-dispatch (skipping the class-level once-guard pre-set) when true.
+bool brainFlowActiveForBody(const BrainSpecialBody& body);
 
 // TRACE ONLY. Zero effects. No orders. No state writes.
 // Gate: MC2_BRAIN_DISPATCH=1.

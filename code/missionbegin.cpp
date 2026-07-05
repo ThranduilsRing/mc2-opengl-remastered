@@ -32,7 +32,10 @@ MissionBegin.cpp			: Implementation of the MissionBegin component.
 #include"chatwindow.h"
 #include"logisticsmechicon.h"
 #include"../GameOS/gameos/gos_profiler.h"
+#include"../GuiRuntime/GuiRuntime.h"   // MENU-STALE-CLEAR-2: ImGui-layer dim rect
+#include"../GameOS/gameos/gos_dev_shell.h"   // DEV-SHELL-1: ui_reload command registration
 #include <cstdlib>
+#include <string>
 #include"platform_str.h"   // S_stricmp (MC2_BOOT_TO_SCREEN parse, LINUX_BUILD-safe)
 
 #include"prefs.h"
@@ -50,8 +53,13 @@ void closeABL (void);
 bool	MissionBegin::FirstTimePurchase = true;
 bool	MissionBegin::FirstTimeMechLab = true;
 
+// DEV-SHELL-1 ui_reload: the front-end instance the shell command targets.
+// Set on construction, cleared on destruction — a plain lifetime mirror.
+static MissionBegin* s_devShellMissionBegin = nullptr;
+
 MissionBegin::MissionBegin()
 {
+	s_devShellMissionBegin = this;
 	memset( screens, 0, sizeof( screens));
 	memset( singlePlayerScreens, 0, sizeof(singlePlayerScreens));
 	memset( multiplayerScreens, 0, sizeof( multiplayerScreens));
@@ -70,6 +78,8 @@ MissionBegin::MissionBegin()
 
 MissionBegin::~MissionBegin()
 {
+	if ( s_devShellMissionBegin == this )
+		s_devShellMissionBegin = nullptr;
 	for ( int i = 0; i < 5; i++ )
 	{
 		for ( int j = 0; j < 3; j++ )
@@ -98,6 +108,102 @@ MissionBegin::~MissionBegin()
 		delete mainMenu;
 		mainMenu = NULL;
 	}
+}
+
+// DEV-SHELL-1 ui_reload implementation. Re-reads the active screen's loose
+// .fit from data/art/ and re-inits the screen object in place. Safe because
+// LogisticsScreen::init() calls clear() first (delete[] + recount). Textures
+// come back from the txmmgr filename cache — .fit layout edits (positions,
+// rects, text, button defs) reload; changed .tga pixels need a restart
+// (texture-cache refresh is a separate slice).
+bool MissionBegin::reloadCurrentScreenLayout( std::string& infoOut, std::string& errOut )
+{
+	char path[256];
+	FitIniFile file;
+
+	if ( bSplash )
+	{
+		if ( !mainMenu ) { errOut = "main menu not constructed"; return false; }
+		strcpy( path, artPath );
+		strcat( path, "mcl_mm.fit" );
+		if ( NO_ERR != file.open( path ) ) { errOut = std::string("open failed: ") + path; return false; }
+		mainMenu->init( file );
+		file.close();
+		mainMenu->setDrawBackground( true );
+		infoOut = "{\"screen\":\"main_menu\",\"fit\":\"mcl_mm.fit\"}";
+		return true;
+	}
+
+	if ( curScreenX < 0 || curScreenY < 0 )
+	{
+		errOut = "no active front-end screen (in mission?)";
+		return false;
+	}
+	if ( bMultiplayer )
+	{
+		errOut = "multiplayer screens not supported by ui_reload v0";
+		return false;
+	}
+	// skipLogistics reroutes substitute grid cells (e.g. screens[3][1] becomes
+	// MissionSelection) — the static_cast per cell below would then be wrong.
+	if ( screens[curScreenX][curScreenY] != singlePlayerScreens[curScreenX][curScreenY] )
+	{
+		errOut = "active cell is substituted (skipLogistics reroute); reload unsupported";
+		return false;
+	}
+
+	const long id = 10 * curScreenX + curScreenY;
+	const char* fitName = nullptr;
+	const char* screenName = nullptr;
+	switch ( id )
+	{
+		case 1:  fitName = "mcl_cm_layout.fit";    screenName = "campaign_select";    break;
+		case 11: fitName = "mcl_mn.fit";           screenName = "mission_briefing";   break;
+		case 21: fitName = "mcl_mb_layout.fit";    screenName = "mech_bay";           break;
+		case 31: fitName = "mcl_pr_layout.fit";    screenName = "pilot_ready_launch"; break;
+		case 20: fitName = "mcl_m$.fit";           screenName = "mech_purchase";      break;
+		case 22: fitName = "mcl_mc.fit";           screenName = "mech_lab_loadout";   break;
+		case 41: fitName = "mcl_loadingscreen.fit"; screenName = "load";              break;
+		default: errOut = "unknown screen id " + std::to_string( id ); return false;
+	}
+
+	strcpy( path, artPath );
+	strcat( path, fitName );
+	if ( NO_ERR != file.open( path ) ) { errOut = std::string("open failed: ") + path; return false; }
+
+	// init overloads are per-derived-class and NOT virtual — dispatch by grid
+	// cell (cell types are fixed at construction, guarded above).
+	LogisticsScreen* scr = screens[curScreenX][curScreenY];
+	switch ( id )
+	{
+		case 1:  static_cast<MissionSelectionScreen*>(scr)->init( &file ); break;
+		case 11: static_cast<MissionBriefingScreen*>(scr)->init( &file );  break;
+		case 21: static_cast<MechBayScreen*>(scr)->init( &file );          break;
+		case 31: static_cast<PilotReadyScreen*>(scr)->init( &file );       break;
+		case 20: static_cast<MechPurchaseScreen*>(scr)->init( file );      break;
+		case 22: static_cast<MechLabScreen*>(scr)->init( file );           break;
+		case 41: static_cast<LoadScreenWrapper*>(scr)->init( file );       break;
+	}
+	file.close();
+
+	// Re-enter the screen so per-visit population (icons, lists) rebuilds
+	// against the fresh widget layout.
+	scr->begin();
+
+	infoOut = std::string("{\"screen\":\"") + screenName + "\",\"fit\":\"" + fitName + "\"}";
+	return true;
+}
+
+// gos_dev_shell extension handler (plain fn ptr, main-thread at poll point).
+static bool devShellUiReload( const char* /*paramsJson*/,
+                              std::string& dataJsonOut, std::string& errorOut )
+{
+	if ( !s_devShellMissionBegin )
+	{
+		errorOut = "front-end not active";
+		return false;
+	}
+	return s_devShellMissionBegin->reloadCurrentScreenLayout( dataJsonOut, errorOut );
 }
 
 bool MissionBegin::startAnimation (long bId, bool isButton, float scrollTime, long nFlashes)
@@ -166,6 +272,16 @@ static const bool s_soakCheckScreens =
 // byte-identical to prior behaviour.
 static const bool s_soakAutoPurchase =
 	( std::getenv("MC2_SOAK_AUTO_PURCHASE") != nullptr );
+
+// SOAK-STOP-AT-BAY-1 (MC2_SOAK_STOP_AT_BAY). For validation harnesses that only
+// need to auto-win ONE mission to reach the bay and then sit there (e.g. to
+// screenshot a logistics-screen fix) without running a full campaign soak.
+// When set (with MC2_SOAK_AUTOWIN), suppresses the normal autowin advance
+// (soakForceNext) the first time curScreenX==2 && curScreenY==1 (mech bay) is
+// reached, so the soak parks there instead of clicking NEXT into
+// purchase/loadout/launch/mission2. Default OFF = byte-identical.
+static const bool s_soakStopAtBay =
+	( std::getenv("MC2_SOAK_STOP_AT_BAY") != nullptr );
 
 // SOAK-LANCE-RANDOM-1 (MC2_SOAK_LANCE_RANDOM). Requires MC2_SOAK_AUTO_PURCHASE.
 // When set, REPLACES the single-mech buy with a full random-sized lance purchase:
@@ -557,6 +673,9 @@ void MissionBegin::begin()
 
 void MissionBegin::init()
 {
+	// DEV-SHELL-1: register the ui_reload shell command (inert when
+	// MC2_DEV_SHELL is unset; re-registration on re-init just replaces).
+	gos_dev_shell::registerCommand( "ui_reload", devShellUiReload );
 
 	begin();
 }
@@ -1385,6 +1504,18 @@ const char* MissionBegin::update()
 				if ( curScreenX != s_soakLastAdvX || curScreenY != s_soakLastAdvY )
 				{
 					s_soakSettleTimer += frameLength;
+					// SOAK-STOP-AT-BAY-1: park here instead of advancing. Still latch
+					// s_soakLastAdvX/Y so this doesn't re-fire/spam every frame, and
+					// skip the soakForceNext assignment (leave it false).
+					if ( s_soakStopAtBay && curScreenX == 2 && curScreenY == 1 )
+					{
+						s_soakLastAdvX = curScreenX;
+						s_soakLastAdvY = curScreenY;
+						s_soakSettleTimer = 0.0f;
+						printf("[SOAK] parked screen=bay (MC2_SOAK_STOP_AT_BAY)\n");
+						fflush(stdout);
+					}
+					else
 					if ( s_soakSettleTimer >= 0.5f )
 					{
 						soakForceNext = true;
@@ -1554,6 +1685,9 @@ const char* MissionBegin::update()
 
 void MissionBegin::render()
 {
+	// UI-ASPECT-ANCHOR-1: front-end frame — draw the UI on the 16:9 canvas
+	// (re-asserted every frame; auto-cleared at flushHUDBatch).
+	gos_SetUiCanvasActive( true );
 
 	long xOffset = 0;
 	long yOffset = 0;
@@ -1573,12 +1707,51 @@ void MissionBegin::render()
 	{
 		if ( pCurScreen )
 		{
-			if ( !MainMenu::bDrawMechlopedia)
-				pCurScreen->render();
-			else
+			if ( MainMenu::bDrawMechlopedia )
 				pCurScreen->beginFadeIn(1.0);
+			else if ( !mainMenu->occludesLogisticsScreens() )
+			{
+				// Only render the screen behind the menu when it can actually
+				// be seen (menu slide animations).  The defs UI path draws
+				// through ImGui, which composites AFTER the menu's GameOS
+				// movie/background draws -- rendering here while the menu is
+				// opaque would put this screen ON TOP of the movie and menu
+				// background instead of behind them.
+				pCurScreen->render();
+				// MENU-STALE-CLEAR-2: OG dimmed the logistics screen behind the
+				// in-logistics menu with a fullscreen rect; the defs menu page
+				// has no backdrop, so the screen's ImGui page bled through
+				// wherever the menu art didn't cover (bottom third — any panel).
+				// Submit the dim IN THE IMGUI LAYER between the screen page
+				// (submitted above) and the menu page (submitted below).
+				{
+					float dw = 0.f, dh = 0.f;
+					if ( GuiRuntime::GetDisplaySize( dw, dh ) && dw > 0.f )
+						GuiRuntime::DrawUiRect( 0.f, 0.f, dw, dh, 0xE6000000, true );
+				}
+			}
+			else
+			{
+				// MENU-STALE-CLEAR-1: with the defs menu page active the legacy
+				// menu background no longer repaints the backbuffer, so backing
+				// out of a logistics screen left its last frame visible beneath
+				// the ImGui menu. Paint the GameOS layer black first (same
+				// pattern as Mechlopedia::render).
+				GUI_RECT rect = { 0, 0, Environment.screenWidth, Environment.screenHeight };
+				drawRect( rect, 0xff000000 );
+				// MENU-STALE-CLEAR-2: the GameOS clear killed the top-2/3 ghost
+				// but ImGui-layer remnants (any panel's defs page submitted
+				// earlier this frame) survived in the bottom third. Submit an
+				// opaque ImGui-layer backdrop BEFORE the menu page so the menu
+				// composites over black, not over the previous screen.
+				{
+					float dw = 0.f, dh = 0.f;
+					if ( GuiRuntime::GetDisplaySize( dw, dh ) && dw > 0.f )
+						GuiRuntime::DrawUiRect( 0.f, 0.f, dw, dh, 0xff000000, true );
+				}
+			}
 		}
-		mainMenu->render();		
+		mainMenu->render();
 		return;
 	}
 

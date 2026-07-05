@@ -145,6 +145,35 @@ uniform int   u_lightingDebugView;
 
 uniform int   u_pathTint;  // MC2_SHADER_PATH_TINT: 1 = solid signature colour (debug); 0 = normal
 
+// TERRAIN-DECAL-FILL-1: ambient/fill floor for the cliff-wall mesh-decal's
+// shadow side. The static-prop vertex lighting is max(N·L,0) with no ambient
+// floor, so a face pointing away from the sun goes to ~0 (black void). This
+// uniform is applied as a per-fragment floor ONLY to fragments whose instance
+// carries kFlagDecalFill (bit 3, set solely on MarbleCliff decal instances in
+// bdactor.cpp). Default 0.0 upload + bit-unset = byte-identical for every other
+// static prop AND (when unset) for the decal itself. CPU default is 0.20.
+uniform float u_terrainDecalFill;
+const uint kFlagDecalFill = (1u << 3);
+
+// TERRAIN-DECAL-COLORBLEND-1: RVT-style terrain-color match for the cliff mesh
+// decal. Blends the decal's sampled albedo toward the TERRAIN COLORMAP sampled
+// at the decal's world-XY position, so the cliff mesh melts into its
+// surroundings instead of reading as raw light-marble. Uses the SAME colormap
+// texture + world->UV transform as terrain_lod_chunk.frag (u_colormap /
+// u_atlasTopLeftX/Y / u_atlasOneOverWorldUnits): the batcher binds the merged
+// colormap atlas to kColormapTexUnit and uploads the atlas params.
+//   - Applied ONLY to fragments carrying kFlagDecalFill (bit 3).
+//   - u_terrainDecalColorBlend == 0.0 (default upload when MC2_TERRAIN_DECAL_
+//     COLORBLEND unset) OR flag-unset -> the whole block is skipped -> every
+//     other static prop (and the decal itself) is byte-identical.
+//   - Requires v_worldPos (MC2/terrain world frame, same as the chunk shader),
+//     which only exists under MC2_USE_VIEW_UNIFORMS; guarded accordingly.
+uniform sampler2D u_terrainColormap;    // merged colormap atlas (kColormapTexUnit)
+uniform float     u_decalAtlasTLX;      // = Terrain::mapTopLeft3d.x
+uniform float     u_decalAtlasTLY;      // = Terrain::mapTopLeft3d.y
+uniform float     u_decalAtlasOOW;      // = Terrain::oneOverWorldUnitsMapSide
+uniform float     u_terrainDecalColorBlend;  // 0 = off (byte-identical)
+
 layout(location = 0) out vec4 FragColor;
 layout(location = 1) out vec4 GBuffer1;
 #ifdef MC2_OBJECT_ID_BUFFER
@@ -342,8 +371,41 @@ void main() {
         // Keep their lighting variation, but cap the darkest side at ~50%.
         litRgb = max(litRgb, vec3(0.5));
     }
+    // TERRAIN-DECAL-FILL-1 (v2): raise the cliff-decal's shadow-side brightness.
+    // NOTE: the old max(litRgb, fill) was a visual no-op -- the baked per-vertex
+    // light v_argb.rgb is scaled to a bright band and never drops below the
+    // slider's operative range on visible faces, so max() returned litRgb every
+    // time. Fixed below (post-texture): an ADDITIVE ambient weighted by how
+    // UNlit the fragment is, applied to the final color so the slider always
+    // moves shadow-side pixels while the lit side (shadowW~0) is untouched.
+    // Applied after the tex_color multiply -- see the c.rgb block below.
+
+    // TERRAIN-DECAL-COLORBLEND-1: mix the cliff-decal albedo toward the terrain
+    // colormap sampled at this fragment's world-XY (same atlas-UV reconstruction
+    // as terrain_lod_chunk.frag). Flag-gated + blend>0 gated -> non-decal props
+    // and the blend==0 default are byte-identical. v_worldPos is the MC2/terrain
+    // world frame (static_prop.vert world_mc2 = (-x,z,y)), identical to the
+    // frame the colormap UV transform expects.
+#if defined(MC2_USE_VIEW_UNIFORMS)
+    if ((v_flags & kFlagDecalFill) != 0u && u_terrainDecalColorBlend > 0.0) {
+        vec2 cmUV;
+        cmUV.x = (v_worldPos.x - u_decalAtlasTLX) * u_decalAtlasOOW;
+        cmUV.y = (u_decalAtlasTLY - v_worldPos.y) * u_decalAtlasOOW;
+        vec3 cmColor = texture(u_terrainColormap, cmUV).rgb;
+        tex_color.rgb = mix(tex_color.rgb, cmColor, clamp(u_terrainDecalColorBlend, 0.0, 1.0));
+    }
+#endif
 
     vec4 c = tex_color * vec4(litRgb, v_argb.a);
+    // TERRAIN-DECAL-FILL-1 (v2): additive shadow-side ambient (see note above).
+    // shadowW ~ 1 where the baked light is dark, ~0 where bright -> only the
+    // shadow side lifts. Scaled by tex_color so the fill stays rock-colored.
+    // Flag-gated + fill>0 gated -> non-decal props / default stay byte-identical.
+    if ((v_flags & kFlagDecalFill) != 0u && u_terrainDecalFill > 0.0) {
+        float litMax = max(litRgb.r, max(litRgb.g, litRgb.b));
+        float shadowW = 1.0 - clamp(litMax, 0.0, 1.0);
+        c.rgb += u_terrainDecalFill * tex_color.rgb * shadowW;
+    }
     c.rgb += v_highlight.rgb * v_highlight.a;
 
 #if defined(MC2_USE_VIEW_UNIFORMS)
@@ -494,6 +556,9 @@ void main() {
     // Static props receive the static shadow map but NOT the dynamic-cascade
     // self-shadow (CPU never self-shadowed buildings; hard terminator on flat
     // facets looks wrong). a=0.25 routes to the no-self-shadow object path.
+    // PROP-SHADOW-RECEIVE-1: MC2_PROP_SHADOW_RECEIVE=1 opts the a=0.25 class
+    // back INTO the dynamic CSM sample inside shadow_screen.frag (softened,
+    // floor 0.4) — the mask class here is unchanged either way.
     GBuffer1  = rc_gbuffer1_screenShadowEligible_noSelfShadow(normalize(v_normal));
 #ifdef MC2_OBJECT_ID_BUFFER
     // M1.5: emit handle.raw() to attachment-2. Alpha-tested fragments

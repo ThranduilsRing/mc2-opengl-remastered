@@ -139,13 +139,14 @@ zero matches). The table below records the active units observed.
 | Unit | Purpose                                            | C++ activate site (representative)                                                       | Shader uniform name(s) |
 |-----:|----------------------------------------------------|------------------------------------------------------------------------------------------|------------------------|
 | 0    | Primary albedo / colormap / scene color            | `GameOS/gameos/gameos_graphics.cpp:2007` and many; `gos_postprocess.cpp:677`             | `tex1`, `sceneTex`, `u_tex`, `uAtlas`, `image`, `u_hdri` (skybox via FBO sampler) |
-| 1    | Secondary detail / bloom                           | `gameos_graphics.cpp:2501/2535`; `gos_postprocess.cpp:679/736`                            | `tex2`, `bloomTex`, `matNormal*` (terrain frag uses non-explicit-binding samplers) |
+| 1    | Secondary detail / bloom; (chunk-program-scoped, own uniform namespace) Terrain LOD chunk authored cement/pad/runway overlay sidecar (`MC2_TERRAIN_OVERLAY_V2`, default OFF) | `gameos_graphics.cpp:2501/2535`; `gos_postprocess.cpp:679/736`; `GameOS/gameos/gos_terrain_lod_chunk.cpp` (`TERRAIN_OVERLAY_SIDECAR_TEXUNIT`) | `tex2`, `bloomTex`, `matNormal*` (terrain frag uses non-explicit-binding samplers); `u_overlaySidecar` (`shaders/terrain_lod_chunk.frag`) — TERRAIN-OVERLAY-V2-PARITY-1 |
 | 2    | Tertiary detail / reflection atlas (water)         | `gos_postprocess.cpp:681`                                                                 | `tex3`, `reflTex` |
 | 3    | Shadow map (sometimes diffuse)                     | `gameos_graphics.cpp:3055/3223/3365/3428`; `gos_postprocess.cpp:683`                      | (varies) |
 | 5    | Mine sprite array; HDRI lookup                     | `gameos_graphics.cpp:3624/3665/3687`                                                       | `mineSpriteArray` (`shaders/gos_terrain_mine_static.frag:16` — "bound at unit 5") |
 | 7    | Post-process input variant                         | `gameos_graphics.cpp:4890`                                                                 | (varies) |
 | 9    | Shadow / scene auxiliary                           | `gameos_graphics.cpp:4810/5164/5278/5402`, `:7076`, `:7500`                                | `shadowMap` (`shaders/include/shadow.hglsl:4`) — typically unit 9 |
 | 10   | Dynamic shadow / scene normal                      | `gameos_graphics.cpp:5028/5174/5289/5413`, `:7092`, `:7512`                                | `dynamicShadowMap` (`shaders/include/shadow.hglsl:87`), `sceneNormalTex` |
+| 12   | Terrain LOD chunk authored control map (RGBA rock/grass/dirt/concrete weights, override-only, `MC2_TERRAIN_CONTROLMAP`) | `GameOS/gameos/gos_terrain_lod_chunk.cpp` (`TERRAIN_CONTROLMAP_TEXUNIT`, `gos_terrain_lod_chunk.h`) | `u_controlMap` (`shaders/terrain_lod_chunk.frag`) — TERRAIN-CONTROLMAP-SAMPLE-1 |
 
 Note: terrain `matNormal0..matNormal4` samplers (`shaders/gos_terrain.frag:44-48`)
 are assigned units via runtime `glUniform1i` at program-link rebind time; the

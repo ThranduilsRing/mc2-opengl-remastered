@@ -1,0 +1,116 @@
+// MC2R ImGui FIT generated from legacy UI FIT.
+// Source: data/defs/ui/legacy/game/mcui_keyref_entry.fit
+// Legacy files remain source truth only; edit the generated ImGui FIT.
+
+GuiPage {
+    key = "game.mcui_keyref_entry"
+    title = "Game Mcui Keyref Entry"
+    sourceLegacyFit = "data/defs/ui/legacy/game/mcui_keyref_entry.fit"
+    sourceSystem = "game"
+    sourceScreen = "mcui_keyref_entry"
+    sourceKind = "legacy_component"
+    layout = "component_absolute"
+    coordinateSpace = "component_local"
+    localWidth = 557
+    localHeight = 28
+    mountOffset = "0,0"
+    editableSource = "generated_imgui_only"
+}
+
+GuiMetadata {
+    key = "game.mcui_keyref_entry.metadata.coordinates_are_relative_to_scroll_box"
+    pageKey = "game.mcui_keyref_entry"
+    legacySection = "Texts"
+    legacyComment = "coordinates are relative to scroll box"
+    legacyContext = "~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ | ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ | ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~"
+    role = "metadata"
+    layer = "metadata"
+    aliasOverride = "coordinates are relative to scroll box"
+    sourceControlType = "Texts"
+    rect = "0,0,0,0"
+    legacyLocalRect = "0,0,0,0"
+    legacyRectSource = "xywh"
+    visible = false
+}
+
+GuiText {
+    key = "game.mcui_keyref_entry.text.key_s_all_caps"
+    pageKey = "game.mcui_keyref_entry"
+    legacySection = "Text0"
+    legacyComment = "key (s) - all caps"
+    role = "text"
+    layer = "text"
+    aliasOverride = "key (s) - all caps"
+    sourceControlType = "Text0"
+    rect = "7,6,182,21"
+    legacyLocalRect = "7,6,182,21"
+    legacyRectSource = "xywh"
+    uiPackage = "legacy_imgui"
+    rectModel = "legacy_imgui.modern_rect_v1"
+    controlRect = "7,6,182,21"
+    textRect = "7,6,182,21"
+    textRectMode = "control_rect_fallback"
+    textOffset = "0,0"
+    textLegacyId = 27660
+    textKey = "legacy.mc2res.27660"
+    visibleText = "SAVE GAME"
+    textLegacySymbol = "IDS_DIALOG_SAVE_GAME"
+    textSource = "mc2res"
+    textMissing = false
+    legacyFontId = 27655
+    legacyFontComment = "use agency fb 11"
+    font = "Agency Regular"
+    fontStyle = "Regular"
+    fontSize = 11
+    bold = false
+    italic = false
+    textAlign = "right"
+    textAnchor = "upper_right"
+    wrapText = false
+    colorArgb = "0xff5c96c2"
+    legacyColor = 0xff5C96C2
+    outline = "FALSE"
+    legacyAlignment = 1
+    legacyFontComment = "use agency fb 11"
+}
+
+GuiText {
+    key = "game.mcui_keyref_entry.text.description_of_result"
+    pageKey = "game.mcui_keyref_entry"
+    legacySection = "Text1"
+    legacyComment = "description of result"
+    role = "text"
+    layer = "text"
+    aliasOverride = "description of result"
+    sourceControlType = "Text1"
+    rect = "203,6,354,22"
+    legacyLocalRect = "203,6,354,22"
+    legacyRectSource = "xywh"
+    uiPackage = "legacy_imgui"
+    rectModel = "legacy_imgui.modern_rect_v1"
+    controlRect = "203,6,354,22"
+    textRect = "203,6,354,22"
+    textRectMode = "control_rect_fallback"
+    textOffset = "0,0"
+    textLegacyId = 27662
+    textKey = "legacy.mc2res.27662"
+    visibleText = "GAME LIST"
+    textLegacySymbol = "IDS_DIALOG_GAME_LIST"
+    textSource = "mc2res"
+    textMissing = false
+    legacyFontId = 27655
+    legacyFontComment = "use agency fb 11"
+    font = "Agency Regular"
+    fontStyle = "Regular"
+    fontSize = 11
+    bold = false
+    italic = false
+    textAlign = "left"
+    textAnchor = "upper_left"
+    wrapText = false
+    colorArgb = "0xff005392"
+    legacyColor = 0xff005392
+    outline = "FALSE"
+    legacyAlignment = 0
+    legacyFontComment = "use agency fb 11"
+}

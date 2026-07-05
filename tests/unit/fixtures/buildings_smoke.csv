@@ -1,0 +1,6 @@
+Name,Notes,NameID,Type,FitID,Armor,Heat,Speed,Tonnage,Pilot,Scale
+madcat,timberwolf,101,MECH,5001,120,30,54,75,,1.0
+ranger,scout,102,VEHICLE,5002,40,0,86,20,,0.75
+depot,,103,BUILDING,5003,,,,,,2.5
+turret,"has, comma inside",104,BUILDING,5004,60,,,,,1.5
+// trailing comment row (skippable)

@@ -1,0 +1,28 @@
+{
+  "schema_version": "1.0",
+  "generated_by": "classify_materials.py",
+  "asset": "military",
+  "slots": [
+    {
+      "slot": 0,
+      "material_name": "GenericMilitary",
+      "legacy_texture": "A_GenericMilitary.tga",
+      "suggested_class": "concrete",
+      "guessed_class": "concrete",
+      "auto_confidence": 0.85,
+      "needs_review": true,
+      "reviewed": false,
+      "reason": "keywords ['genericmilitary', 'military'] in material name 'GenericMilitary' and texture 'A_GenericMilitary.tga' \u2192 concrete",
+      "profile_defaults": {
+        "metallic": 0.0,
+        "roughness": 0.85,
+        "tile_scale": 1.5,
+        "normal_tex": null,
+        "orm_tex": null,
+        "paint_color": null,
+        "wear": 0.0
+      }
+    }
+  ],
+  "ini_asset_class": "building"
+}

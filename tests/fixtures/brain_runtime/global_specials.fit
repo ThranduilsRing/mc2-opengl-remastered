@@ -1,0 +1,24 @@
+FITini
+
+; BRAINSPECIAL-SCOPE-GLOBAL-1: shared GlobalSpecial library fixture.
+; Merged into EVERY mission-fixture parse in this directory when
+; MC2_BRAIN_SCOPE_GLOBAL=1 (keys are namespaced global.* so no mission fixture
+; is shadowed except the deliberate global.shadow.probe collision test).
+
+TechSpecial {
+    key = "global.lib.guardprobe"
+    type = "GlobalSpecial"
+    Body {
+        DO Var.Set [global_probe] 7
+        STOP
+    }
+}
+
+TechSpecial {
+    key = "global.shadow.probe"
+    type = "GlobalSpecial"
+    Body {
+        DO Var.Set [from_global] 1
+        STOP
+    }
+}

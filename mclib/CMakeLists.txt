@@ -78,10 +78,12 @@ set(SOURCES ${SOURCES}
     terrtxm.cpp
     terrtxm2.cpp
     burnin_jpeg_decode.cpp
+    control_map_png_decode.cpp
     txmconv.cpp
     appear.cpp
     apprtype.cpp
     bdactor.cpp
+    cliff_decal_tuning.cpp
     genactor.cpp
     gvactor.cpp
     mech3d.cpp
@@ -95,6 +97,7 @@ set(SOURCES ${SOURCES}
     utilities.cpp
     model_override_registry.cpp
     anim_override_registry.cpp
+    fx_def_registry.cpp
     # LINK-CONFIG-FIX: msl.cpp (this lib) references isFrameJobsWorkerThread()
     # -> g_isFrameJobsWorker, whose only definition lived in code/frame_jobs.cpp
     # (compiled only into mc2.exe). Carrying it in mclib resolves every target

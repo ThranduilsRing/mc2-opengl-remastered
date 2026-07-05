@@ -1,0 +1,9 @@
+Vulkan Memory Allocator (VMA)
+Version: 3.3.0
+Source: C:/VulkanSDK/1.4.350.0/Include/vma/vk_mem_alloc.h
+(LunarG Vulkan SDK 1.4.350.0 bundled copy)
+License: MIT (Copyright (c) 2017-2025 Advanced Micro Devices, Inc.)
+Vendored: 2026-07-01 for slice VULKAN-VMA-INTEGRATION-1
+
+Header-only. Exactly one TU (GameOS/gameos/vma_impl.cpp) defines
+VMA_IMPLEMENTATION. Used only under MC2_VULKAN=ON (default OFF).

@@ -1,0 +1,20 @@
+FITini
+
+; BRAINSPECIAL-VARIANTOF-1 fixture: empty-body variant INHERITS the parent body.
+; variant_scenario_main declares NO Body -> inherits base.guard.template's verbs.
+; Expected (MC2_BRAIN_VARIANTOF=1): entry body = 1 inherited verb -> 1 GUARD order.
+
+TechSpecial {
+    key = "base.guard.template"
+    type = "MissionSpecial"
+    Body {
+        DO OPORD.CoreGuard
+        STOP
+    }
+}
+
+TechSpecial {
+    key = "variant_scenario_main"
+    type = "MissionSpecial"
+    variantOf = "base.guard.template"
+}

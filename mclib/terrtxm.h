@@ -44,6 +44,16 @@
 #define END_CEMENT_TYPE				20
 
 extern int TERRAIN_TXM_SIZE;
+
+// OVERLAY-TILE-HIRES-1: opt-in high-resolution overlay tiles.
+// MC2_OVERLAY_TILE_HIRES unset/"0" -> returns 0 (legacy 64px path, byte-identical).
+// "1" -> 256. Any other value -> that size if a power-of-two square in [128,1024],
+// else 0 (off, with a one-shot console warning). When non-zero, initOverlay()
+// probes data/textures/<size>Overlays/ first (per-file fallback to the legacy
+// 64Overlays tile) and resyncs the load to the TGA header dimensions the way
+// initTexture() does (terrtxm.cpp:629). Cached after first call.
+int MC2_OverlayTileHiresSize (void);
+
 //---------------------------------------------------------------------------
 // Class Definitions
 extern long tileCacheReqs;
@@ -91,7 +101,11 @@ struct MC_OverlayType
 	long			numTextures;
 	long			oldOverlayId;
 	bool			isMLRAppearance;
-	MemoryPtr		*overlayData;				
+	MemoryPtr		*overlayData;
+	long			*overlayDataSizes;			//OVERLAY-TILE-HIRES-1: per-tile edge size (texels) of each
+												//overlayData[] buffer. Always TERRAIN_TXM_SIZE when the
+												//MC2_OVERLAY_TILE_HIRES gate is off; per-TGA-header when on
+												//(mixed sizes are legal — combineOverlayTxm resamples).
 	long			baseTXMIndex;
 	unsigned long	terrainMapRGB;
 };

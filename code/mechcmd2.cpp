@@ -79,6 +79,8 @@ extern CPrefs prefs;
 #include<stuff/stuff.hpp>
 #include<mlr/mlr.hpp>
 #include<gosfx/gosfxheaders.hpp>
+#include "particles/spec_library.h"
+#include "fx_def_registry.h"
 
 #include "platform_str.h"
 #include "gos_validate.h"
@@ -86,6 +88,9 @@ extern CPrefs prefs;
 #include "../GameOS/gameos/gos_smoke.h"
 #include "../GameOS/gameos/MC2Strings.h"
 #include "tacticaloverview.h"  // Tactical Overview F6 toggle (main-loop input)
+#ifdef MC2_IMGUI
+#include "../GuiRuntime/GuiRuntime.h"
+#endif
 
 //------------------------------------------------------------------------------------------------------------
 // MechCmdr2 Global Instances of Things
@@ -777,6 +782,18 @@ void __stdcall UpdateRenderers()
 			gos_SetRenderState( gos_State_IsHUD, 1 );
 			userInput->render();
 			gos_SetRenderState( gos_State_IsHUD, 0 );
+#ifdef MC2_IMGUI
+			// CURSOR-ON-TOP-OF-IMGUI-1: the custom MC2 cursor sprite drawn just
+			// above is part of the normal HUD batch, which flushes BEFORE
+			// GuiRuntime::Render() (the ui-phase1 defs/ImGui pages draw later,
+			// same frame) -- so the cursor was hidden behind every ImGui panel
+			// (Main Screen, Mission pages, popups). Re-draw it again as a
+			// post-ImGui callback (same mechanism SimpleCamera preview panels
+			// use) so it composites on top instead. Cheap: one extra sprite
+			// draw per frame, only fires if GuiRuntime actually rendered a
+			// frame (no-op otherwise).
+			GuiRuntime::RegisterPostImGuiRender( []() { userInput->renderForImGuiOverlay(); } );
+#endif
 		}
 
 		{
@@ -1452,7 +1469,7 @@ void __stdcall InitializeGameEngine()
                 
 				result = optsFile->readIdLong("ResolutionY",resolutionY);
 				if (result != NO_ERR)
-					resolutionX = 600;
+					resolutionY = 600;
 	
 				result = optsFile->readIdBoolean("FullScreen",fullScreen);
 				if (result != NO_ERR)
@@ -1716,7 +1733,17 @@ void __stdcall InitializeGameEngine()
 		
 		effectStream = new Stuff::MemoryStream(effectsData,effectsSize);
 		gosFX::EffectLibrary::Instance->Load(effectStream);
-		
+
+		// FX-DEFS-SIDECAR-1: overlay data/effects/defs/<Name>.fxdef.json (+
+		// active mod's own defs/) onto the just-loaded SpecLibrary. Gate
+		// MC2_FX_DEFS (default OFF); parsing itself is always cheap/free so
+		// [FXDEF] diagnostics are available under MC2_LOG regardless, but the
+		// spec-mutating apply only runs when the gate is on. When OFF or no
+		// defs exist, the loaded blob is byte-identical to stock.
+		if (getenv("MC2_FX_DEFS")) {
+			mc2fxdefs::EffectDefRegistry::instance().applyAll(mc2::particles::SpecLibrary::Instance());
+		}
+
 		gosFX::LightManager::Instance = new gosFX::LightManager();
 	
 		gos_PopCurrentHeap();
@@ -1925,7 +1952,8 @@ void __stdcall InitializeGameEngine()
 			curDevice++;
 
 		if (curDevice < gos_GetMachineInformation( gos_Info_NumberDevices ))
-			gos_SetScreenMode(800,600,16,curDevice,0,0,0,true,0,0,0,0);
+			gos_SetScreenMode(Environment.screenWidth, Environment.screenHeight, 16, curDevice, 0, 0, 0,
+			                  Environment.fullScreen ? 1 : 0, 0, Environment.fullScreen ? 0 : 1, 0, 0);
 
 		//Create about a thousand textured random triangles.
 		testVertex = (gos_VERTEX *)malloc(sizeof(gos_VERTEX) * 3000);

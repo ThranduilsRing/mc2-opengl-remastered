@@ -1,0 +1,12 @@
+# check-gated-layout-macros.allowlist
+# Acknowledged partial-coverage layout-macro guards. Format: "header:MACRO".
+# One entry per line; text after '#' is a comment. Add an entry ONLY with a
+# justification and after MANUAL layout analysis. See
+# docs/render-backend-seams/gated-layout-macro-guard.md.
+
+# VULKAN-EDGE-FOG-ISLAND-2a/2b residual RESOLVED by VULKAN-ISLAND-ODR-HARDEN-1:
+# MC2_VULKAN_ISLAND is now propagated to every target whose TUs include
+# gos_postprocess.h (gameos, gameos_main, mc2, mclib, renderworld, gameadapters,
+# gui_runtime) inside the if(MC2_VULKAN_ISLAND) block in CMakeLists.txt. Coverage
+# is complete -> no ACK needed. Default-OFF build64 stays byte-identical (the
+# define reaches no target when the option is OFF).

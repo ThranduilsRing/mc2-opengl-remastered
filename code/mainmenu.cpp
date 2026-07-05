@@ -68,7 +68,7 @@ void SplashIntro::init()
 		Assert(0,0,errorStr );
 	}
 
-	LogisticsScreen::init( file, "Static", "Text", "Rect", "Button" );
+	LogisticsScreen::init( file, "Static", "Text", "Rect", "Button", NULL, "AnimObject" );
 }
 
 MainMenu::MainMenu(  )
@@ -101,7 +101,7 @@ int MainMenu::init( FitIniFile& file )
 	file.seekBlock("Tunes");
 	file.readIdLong("TuneId",tuneId);
 
-	LogisticsScreen::init( file, "Static", "Text", "Rect", "Button" );
+	LogisticsScreen::init( file, "Static", "Text", "Rect", "Button", NULL, "AnimObject" );
 
 	FullPathFileName name;
 	name.init( artPath, "mcl_sp", ".fit" );
@@ -455,6 +455,28 @@ void MainMenu::update()
 		}
 	}
 
+	// MC2_BOOT_TO_SCREEN=encyclopedia: headless boot straight into the
+	// Mechlopedia from the main menu (mirrors MM_MSG_ENCYCLOPEDIA, no fade so
+	// captures start immediately). One-shot; harness-capturable without clicks.
+	{
+		static bool s_bootToEncycloFired = false;
+		const char* bootScr = std::getenv("MC2_BOOT_TO_SCREEN");
+		// prefix match: "encyclopedia" or "encyclopedia_<tab>" (tab handled in
+		// Mechlopedia::begin)
+		if ( !s_bootToEncycloFired && bootScr && !S_strnicmp(bootScr, "encyclopedia", 12)
+			&& !std::getenv("MC2_BOOT_TO_BAY") && !introMovie )
+		{
+			s_bootToEncycloFired = true;
+			bDrawMechlopedia = true;
+			if ( !mechlopedia )
+			{
+				mechlopedia = new Mechlopedia;
+				mechlopedia->init();
+			}
+			mechlopedia->begin();
+		}
+	}
+
 	if ( bDrawBackground || MPlayer || LogisticsData::instance->isSingleMission() )
 	{
 		getButton( MM_MSG_SAVE )->disable( true );
@@ -710,7 +732,7 @@ void MainMenu::update()
 	{
 		if ( bDrawBackground  )
 		{
-			if ( !intro.animObjects[0].isDone() )
+			if ( !intro.allAnimObjectsDone() )
 			{
 				intro.update();
 				background.update();
@@ -747,8 +769,30 @@ void MainMenu::update()
 	}
 }
 
+bool MainMenu::occludesLogisticsScreens() const
+{
+	// Bink intro plays as a fullscreen GameOS quad; anything routed through
+	// the ImGui HUD would composite on top of it.
+	if ( introMovie )
+		return true;
+
+	// Splash-mode menu (bDrawBackground): render() covers the screen with an
+	// opaque fullscreen rect plus the splash background, so the logistics
+	// screen behind is never meant to be visible.  NOTE: aAnimation's
+	// isAnimating() means "begin() was called and end() was not" -- it stays
+	// true for the menu's whole lifetime after the slide-in starts -- so it
+	// cannot be used to detect the transition window.  bDrawBackground alone
+	// is the correct gate: MissionBegin sets it true for the entire splash
+	// and false for the in-logistics ESC menu, where the screen behind the
+	// semi-transparent dim is supposed to show.
+	return bDrawBackground;
+}
+
 void MainMenu::render()
 {
+	// UI-ASPECT-ANCHOR-1: front-end frame — draw the UI on the 16:9 canvas
+	// (re-asserted every frame; auto-cleared at flushHUDBatch).
+	gos_SetUiCanvasActive( true );
 
 	if (introMovie)
 	{
@@ -809,9 +853,9 @@ void MainMenu::render()
 
 		if ( bDrawBackground )
 		{
-			background.render();
+			background.renderLegacy();
 			intro.render();
-			if ( !intro.animObjects[0].isDone() && !introOver && !bHostLeftDlg )
+			if ( !intro.allAnimObjectsDone() && !introOver && !bHostLeftDlg )
 				return;
 
 
@@ -823,9 +867,12 @@ void MainMenu::render()
 		drawRect( rect, color );
 	}
 
-	if ( !xDelta && !yDelta )
+	if ( !xDelta && !yDelta && !hasDefsUiPage() )
 	{
-		drawShadowText( 0xffc66600, 0xff000000, textObjects[1].font.getTempHandle(), 
+		// Legacy GameOS copyright line.  When the data/defs UI page is
+		// active it renders this text itself through ImGui; drawing it here
+		// too produces a second, GameOS-scaled copy across the screen.
+		drawShadowText( 0xffc66600, 0xff000000, textObjects[1].font.getTempHandle(),
 			textObjects[1].globalX(), textObjects[1].globalTop(),
 			textObjects[1].globalRight(), textObjects[1].globalBottom(),
 			true, textObjects[1].text, false, textObjects[1].font.getSize(), 1, 1 );

@@ -73,12 +73,15 @@ const char* toString(RenderResourceId id) {
         case RenderResourceId::StaticPropMaterialGpuBuffer: return "StaticPropMaterialGpuBuffer";
         case RenderResourceId::MechProfileMaterialGpuBuffer: return "MechProfileMaterialGpuBuffer";
         case RenderResourceId::TerrainVisualHeightSsbo: return "TerrainVisualHeightSsbo";
+        case RenderResourceId::TerrainVisualDampSsbo:   return "TerrainVisualDampSsbo";
         case RenderResourceId::TerrainLightVertexInputSsbo:   return "TerrainLightVertexInputSsbo";
         case RenderResourceId::TerrainLightInputSsbo:         return "TerrainLightInputSsbo";
         case RenderResourceId::TerrainLightComputeOutputSsbo: return "TerrainLightComputeOutputSsbo";
         case RenderResourceId::LightDataSsbo:        return "LightDataSsbo";
         case RenderResourceId::DynamicFullMapFbo:    return "DynamicFullMapFbo";
         case RenderResourceId::DynamicPropShadowSsbo: return "DynamicPropShadowSsbo";
+        case RenderResourceId::PostprocessSubgraphColor: return "PostprocessSubgraphColor";
+        case RenderResourceId::PostprocessSubgraphDepth: return "PostprocessSubgraphDepth";
         case RenderResourceId::Count:                return "Count";
     }
     return "unknown";

@@ -1,0 +1,31 @@
+{
+  "schema_v": 1,
+  "mission": "mc2_24",
+  "_note": "TERRAIN-CHUNK-POM-1 close-up liveness set: low-altitude framings so the detail fwidth gate (fwRock>0.4) is active and LOD0/1 chunks fill the frame. Two opposed azimuths at the same point prove the parallax offset tracks the real camera vector (the legacy faux constant is rotation-invariant). Desert map on purpose: no water/reflection compositing to confound numeric pixel decodes (mc2_01's center frame is ocean).",
+  "bookmarks": [
+    {
+      "name": "pom_close_rot45",
+      "pos": [-400.0, -400.0, 0.0],
+      "rot": 45.0,
+      "proj": 32.0,
+      "alt": 300.0,
+      "covers": ["terrain_lod_chunk_pom"]
+    },
+    {
+      "name": "pom_close_rot225",
+      "pos": [-400.0, -400.0, 0.0],
+      "rot": 225.0,
+      "proj": 32.0,
+      "alt": 300.0,
+      "covers": ["terrain_lod_chunk_pom"]
+    },
+    {
+      "name": "pom_close_rot45_graze",
+      "pos": [-400.0, -400.0, 0.0],
+      "rot": 45.0,
+      "proj": 16.0,
+      "alt": 300.0,
+      "covers": ["terrain_lod_chunk_pom"]
+    }
+  ]
+}

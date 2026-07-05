@@ -152,6 +152,23 @@ static constexpr VkResourceContract kVkResourceContracts[] = {
     { RenderResourceId::ShadowDynamicMap, RenderResourceKind::Texture2D,
       VkDescriptorClass::CombinedImageSampler, VkResourceFreq::PerFrame,
       "dynamic shadow depth; sampled by StaticProp/Terrain/Mech/PostProcess (compare sampler)" },
+
+    // --- POSTPROCESS-VK-IMAGE-OWNERSHIP-1: Layer-4 subgraph owned intermediate images ---
+    // The subgraph owns a COLOR and a DEPTH intermediate. Only the DEPTH image is a
+    // descriptor-bound resource:
+    //   PostprocessSubgraphDepth — copied-in from GL sceneDepth, then SAMPLED (read-only) by
+    //     both fog passes -> CombinedImageSampler. PerFrame (rebuilt every frame from GL depth).
+    // PostprocessSubgraphColor is DELIBERATELY EXCLUDED from this descriptor table: it is a
+    //   pure COLOR ATTACHMENT that is also a transfer src/dst (copy-in / blend / copy-out). It
+    //   is bound as a render-target attachment (VkRenderingAttachmentInfo / framebuffer), NOT via
+    //   a descriptor set, and it is never sampled. Forcing it into a descriptor class (Combined-
+    //   ImageSampler / StorageImage / InputAttachment) would be WRONG — there is no descriptor
+    //   binding for it. Its ownership is instead modeled by the enum id + the layout-transition
+    //   chain (kVkImageTransitionChains in vulkan_layout_chain.h), which is the correct home for
+    //   attachment/transfer-only images. (Mirrors how pure VBO/IBO vertex input is excluded.)
+    { RenderResourceId::PostprocessSubgraphDepth, RenderResourceKind::Texture2D,
+      VkDescriptorClass::CombinedImageSampler, VkResourceFreq::PerFrame,
+      "subgraph owned depth (D32_SFLOAT); copy-in from GL sceneDepth, sampled by both fog passes" },
 };
 
 static constexpr int kVkResourceContractCount =
@@ -197,6 +214,10 @@ constexpr bool vkKindConsistent(RenderResourceKind kind, VkDescriptorClass cls) 
 // ---------------------------------------------------------------------------
 constexpr bool vkContractRowOk(const VkResourceContract& r) {
     return r.id   != RenderResourceId::Unknown
+        // ENUM-ID-GUARD-EXPAND-1: Count is the past-the-end sentinel, never a real
+        // resource; a row keyed on it would index out of bounds in dense-index consumers.
+        && r.id   != RenderResourceId::Count
+        && static_cast<int>(r.id) < static_cast<int>(RenderResourceId::Count)
         && r.kind != RenderResourceKind::Unknown
         && r.cls  != VkDescriptorClass::None
         && r.freq != VkResourceFreq::None
@@ -234,8 +255,10 @@ constexpr int vkCountByClass(VkDescriptorClass c) {
 // Compile-time guards (fire at build time, not just test run) — mirrors
 // RenderPassContract.h's static_assert(kRenderPassContractCount == ...).
 // ---------------------------------------------------------------------------
-static_assert(kVkResourceContractCount == 16,
-              "kVkResourceContracts row count changed; update the slice-1 total or re-review");
+static_assert(kVkResourceContractCount == 17,
+              "kVkResourceContracts row count changed; update the slice-1 total or re-review "
+              "(POSTPROCESS-VK-IMAGE-OWNERSHIP-1 added PostprocessSubgraphDepth; the sibling "
+              "PostprocessSubgraphColor is intentionally NOT a descriptor row — see note above)");
 static_assert(vkContractsCoverageOk(),
               "I1/I2: a vulkan_contract row has no class, no freq, or a class inconsistent with its kind");
 static_assert(vkContractsNoDuplicateIds(),
@@ -244,7 +267,8 @@ static_assert(vkCountByClass(VkDescriptorClass::UniformBuffer) == 1,
               "expected 1 UniformBuffer row (ViewUniformsUbo; CullUBO not enum-backed)");
 static_assert(vkCountByClass(VkDescriptorClass::StorageBuffer) == 11,
               "expected 11 StorageBuffer rows (inventory Part-1 live owned SSBOs, enum-backed)");
-static_assert(vkCountByClass(VkDescriptorClass::CombinedImageSampler) == 4,
-              "expected 4 CombinedImageSampler rows (inventory Part-2 sampled FBO images, enum-backed)");
+static_assert(vkCountByClass(VkDescriptorClass::CombinedImageSampler) == 5,
+              "expected 5 CombinedImageSampler rows (inventory Part-2 sampled FBO images + "
+              "the subgraph-owned PostprocessSubgraphDepth, enum-backed)");
 
 }} // namespace RenderCore::vulkan

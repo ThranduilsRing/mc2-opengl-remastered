@@ -24,6 +24,7 @@ MPLoadMap.h			: Interface for the MPLoadMap component.
 
 class aButton;
 
+namespace UiDefs { class GameOSPage; }
 
 
 class MPLoadMap : public LogisticsDialog
@@ -60,6 +61,13 @@ private:
 
 	aListBox				mapList;
 	aLocalizedListItem	templateItem;
+
+	// New-pipeline mirror of mapList for the ImGui defs renderer (see
+	// UiDefs::GameOSPage::setListItems). Read-only mirror for now: mapList
+	// remains the source of truth for selection/clicks; this just makes
+	// the same items+selection visible through the new List element.
+	UiDefs::GameOSPage*	mapListPage;
+	void					syncMapListPage();
 
 	EString					selMapName;
 

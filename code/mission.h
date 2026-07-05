@@ -260,6 +260,15 @@ class Mission
 
 		void init (const char *missionName, long loadType, long dropZoneID, Stuff::Vector3D* dropZoneList, char commandersToLoad[8][3], long numMoversPerCommander);
 
+		// TEAM-COMMANDER-OWNERSHIP-1: single teardown authority for the
+		// Team::teams[]/Commander::commanders[] static arrays. Idempotent,
+		// null-safe; frees every live slot, resets numTeams/numCommanders to 0,
+		// and nulls the Team::home/Commander::home raw aliases into those slots.
+		// Called by BOTH Mission::init's re-init path AND Mission::destroy so the
+		// two can never diverge (was duplicated inline -> dual-free / dangling
+		// home alias risk across mission cycles). Save/load-neutral.
+		static void resetTeamsAndCommanders();
+
 		static void initBareMinimum();
 		
 		static void initTGLForMission();

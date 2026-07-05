@@ -2468,6 +2468,40 @@ bool  gos_GetHudScaleExempt();
 // the HUD element. No-op when scale == 1.0. Safe to call every frame.
 void  gos_HudInverseMousePoint(float& x, float& y);
 
+// UI-ASPECT-ANCHOR-1: 16:9 UI canvas. Front-end screens (MainMenu /
+// MissionBegin render) assert per frame; auto-latched at flushHUDBatch.
+// gos_ComputeUiCanvasBox mirrors gos_Compute43Box: fills the centered 16:9
+// canvas rect within a w x h surface, returns true only when active AND the
+// canvas differs from the full surface. Killswitch MC2_UI_ASPECT_ANCHOR=0.
+void __stdcall gos_SetUiCanvasActive(bool on);
+bool __stdcall gos_ComputeUiCanvasBox(int w, int h, int* ox, int* oy, int* obw, int* obh);
+
+// UI-ASPECT-ANCHOR-1, in-mission HUD variant. mission.cpp asserts
+// gos_SetHudCanvasActive(true/false) alongside gos_SetHudScaleActive at
+// mission start/end. While active, flushHUDBatch remaps all NON-scaleExempt
+// HUD draw calls into the centered 16:9 canvas (wider displays show extra
+// terrain in the flanks); the cursor sprite + modal dialogs (scaleExempt)
+// and the world-pick mouse stay full-surface. Hit-tests for remapped HUD
+// chrome must use userInput->getMouseHudX/Y (gos_HudInverseMousePoint
+// inverts canvas + shrink), NOT raw getMouseX/Y.
+//
+// NOTE for the ImGui HUD port: when converting an in-mission HUD panel to
+// ImGui, query gos_ComputeHudCanvasBox(Environment.drawableWidth,
+// Environment.drawableHeight, ...) and lay the panel out inside that box in
+// display pixels (scale authored 800x600 coords by bw/800, bh/600 and add
+// bx, by) -- that is the exact rect the legacy HUD chrome is remapped into,
+// so mixed legacy+ImGui HUD stays aligned during the migration. Front-end
+// (menu) pages instead assert gos_SetUiCanvasActive and get this for free
+// via UiDefs PageScale.
+void __stdcall gos_SetHudCanvasActive(bool on);
+// Per-call canvas exemption bracket: -1 (default) = follow the shrink-exempt
+// bracket (cursor / modal dialogs / world-anchored overlays stay full-surface);
+// 0 = force canvas remap (force-group bar: shrink-exempt but hits via
+// getMouseHudX); 1 = force exemption. Save/restore around draws.
+void __stdcall gos_SetHudCanvasExemptMode(int mode);
+int  __stdcall gos_GetHudCanvasExemptMode();
+bool __stdcall gos_ComputeHudCanvasBox(int w, int h, int* ox, int* oy, int* obw, int* obh);
+
 // Shadow mode — render terrain depth to shadow FBO
 void gos_SetShadowMode(bool enable);
 
@@ -2922,6 +2956,19 @@ void __stdcall gos_SetScreenMode( DWORD Width, DWORD Height, DWORD bitDepth=16, 
 // aligned with the MFC window/mouse space. Runtime (not #ifdef MC2_IS_EDITOR)
 // because gameos_graphics.cpp compiles into the gameos_editor lib without it.
 void __stdcall gos_SetHudResClampEnabled( bool enabled );
+
+// PREVIEW-FBO-FIXED-800x600-1: offscreen mech-preview render target, fixed at
+// 800x600 (the legacy 2D UI's native virtual canvas -- Environment.screenWidth
+// stays 800x600 by design, see gos_SetHudResClampEnabled above). Bind/unbind
+// around the legacy CPU MLR preview draw (SimpleCamera::render()) so it keeps
+// using its existing 800x600-relative math completely unchanged; the caller
+// then draws gos_GetCameraPreviewTexture() as a normal ImGui image (via
+// GuiRuntime::DrawUiImage), UV-cropped to just the small preview rect and
+// scaled to fit the real-resolution defs UI panel. No resolution/scale math
+// needed at the call site -- ImGui's own image draw handles that.
+void __stdcall gos_BeginCameraPreviewRender();
+void __stdcall gos_EndCameraPreviewRender();
+unsigned int __stdcall gos_GetCameraPreviewTexture();   // GLuint, avoids a GL include here
 
 //
 // This API sets the current gamma correction value. The default value is 1.0 (no correction applied). All color values are effected by (value/255 ^ (1.0/gamma)).

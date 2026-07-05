@@ -1,0 +1,914 @@
+// MC2R game legacy ImGui FIT conversion manifest
+// Generated from data/defs/ui/legacy/* using tools/gui_fit/convert_legacy_gos_fit_to_imgui.py
+// Generated: 2026-05-19
+
+GuiManifest {
+    package = "legacy_imgui"
+    key = "game.legacy_imgui"
+    source = "legacy_ui_fit_batch_conversion"
+    layout = "absolute"
+    coordinateSpace = "screen_800x600"
+}
+
+GuiPageRef {
+    pageKey = "game.buttonlayout1024"
+    file = "buttonlayout1024.fit"
+    sourceLegacyFit = "data/defs/ui/legacy/game/buttonLayout1024.fit"
+    mountOffset = "0,0"
+}
+
+GuiPageRef {
+    pageKey = "game.buttonlayout1280"
+    file = "buttonlayout1280.fit"
+    sourceLegacyFit = "data/defs/ui/legacy/game/buttonlayout1280.fit"
+    mountOffset = "0,0"
+}
+
+GuiPageRef {
+    pageKey = "game.buttonlayout1600"
+    file = "buttonlayout1600.fit"
+    sourceLegacyFit = "data/defs/ui/legacy/game/buttonlayout1600.fit"
+    mountOffset = "0,0"
+}
+
+GuiPageRef {
+    pageKey = "game.buttonlayout640"
+    file = "buttonlayout640.fit"
+    sourceLegacyFit = "data/defs/ui/legacy/game/buttonLayout640.fit"
+    mountOffset = "0,0"
+}
+
+GuiPageRef {
+    pageKey = "game.buttonlayout800"
+    file = "buttonlayout800.fit"
+    sourceLegacyFit = "data/defs/ui/legacy/game/buttonLayout800.fit"
+    mountOffset = "0,0"
+}
+
+GuiPageRef {
+    pageKey = "game.mainscreen"
+    file = "mainscreen.fit"
+    sourceLegacyFit = "data/defs/ui/legacy/game/mainscreen.fit"
+    mountOffset = "0,0"
+}
+
+GuiPageRef {
+    pageKey = "game.mcl_choosecampaign"
+    file = "mcl_choosecampaign.fit"
+    sourceLegacyFit = "data/defs/ui/legacy/game/mcl_choosecampaign.fit"
+    mountOffset = "0,0"
+}
+
+GuiPageRef {
+    pageKey = "game.mcl_cm_layout"
+    file = "mcl_cm_layout.fit"
+    sourceLegacyFit = "data/defs/ui/legacy/game/MCL_CM_Layout.fit"
+    mountOffset = "0,0"
+}
+
+GuiPageRef {
+    pageKey = "game.mcl_cm_op1_1"
+    file = "mcl_cm_op1_1.fit"
+    sourceLegacyFit = "data/defs/ui/legacy/game/MCL_CM_Op1_1.fit"
+    mountOffset = "0,0"
+}
+
+GuiPageRef {
+    pageKey = "game.mcl_cm_op1_2"
+    file = "mcl_cm_op1_2.fit"
+    sourceLegacyFit = "data/defs/ui/legacy/game/MCL_CM_Op1_2.fit"
+    mountOffset = "0,0"
+}
+
+GuiPageRef {
+    pageKey = "game.mcl_cm_op1_3"
+    file = "mcl_cm_op1_3.fit"
+    sourceLegacyFit = "data/defs/ui/legacy/game/MCL_CM_Op1_3.fit"
+    mountOffset = "0,0"
+}
+
+GuiPageRef {
+    pageKey = "game.mcl_cm_op1_4"
+    file = "mcl_cm_op1_4.fit"
+    sourceLegacyFit = "data/defs/ui/legacy/game/MCL_CM_Op1_4.fit"
+    mountOffset = "0,0"
+}
+
+GuiPageRef {
+    pageKey = "game.mcl_cm_op1_5"
+    file = "mcl_cm_op1_5.fit"
+    sourceLegacyFit = "data/defs/ui/legacy/game/MCL_CM_Op1_5.fit"
+    mountOffset = "0,0"
+}
+
+GuiPageRef {
+    pageKey = "game.mcl_cm_op1_6"
+    file = "mcl_cm_op1_6.fit"
+    sourceLegacyFit = "data/defs/ui/legacy/game/MCL_CM_Op1_6.fit"
+    mountOffset = "0,0"
+}
+
+GuiPageRef {
+    pageKey = "game.mcl_cm_op2_1"
+    file = "mcl_cm_op2_1.fit"
+    sourceLegacyFit = "data/defs/ui/legacy/game/MCL_CM_Op2_1.fit"
+    mountOffset = "0,0"
+}
+
+GuiPageRef {
+    pageKey = "game.mcl_cm_op2_2"
+    file = "mcl_cm_op2_2.fit"
+    sourceLegacyFit = "data/defs/ui/legacy/game/MCL_CM_Op2_2.fit"
+    mountOffset = "0,0"
+}
+
+GuiPageRef {
+    pageKey = "game.mcl_cm_op2_3"
+    file = "mcl_cm_op2_3.fit"
+    sourceLegacyFit = "data/defs/ui/legacy/game/MCL_CM_Op2_3.fit"
+    mountOffset = "0,0"
+}
+
+GuiPageRef {
+    pageKey = "game.mcl_cm_op3_1"
+    file = "mcl_cm_op3_1.fit"
+    sourceLegacyFit = "data/defs/ui/legacy/game/MCL_CM_Op3_1.fit"
+    mountOffset = "0,0"
+}
+
+GuiPageRef {
+    pageKey = "game.mcl_cm_op3_2"
+    file = "mcl_cm_op3_2.fit"
+    sourceLegacyFit = "data/defs/ui/legacy/game/MCL_CM_Op3_2.fit"
+    mountOffset = "0,0"
+}
+
+GuiPageRef {
+    pageKey = "game.mcl_cm_op3_3"
+    file = "mcl_cm_op3_3.fit"
+    sourceLegacyFit = "data/defs/ui/legacy/game/MCL_CM_Op3_3.fit"
+    mountOffset = "0,0"
+}
+
+GuiPageRef {
+    pageKey = "game.mcl_cm_op3_4"
+    file = "mcl_cm_op3_4.fit"
+    sourceLegacyFit = "data/defs/ui/legacy/game/MCL_CM_Op3_4.fit"
+    mountOffset = "0,0"
+}
+
+GuiPageRef {
+    pageKey = "game.mcl_cm_op_sample"
+    file = "mcl_cm_op_sample.fit"
+    sourceLegacyFit = "data/defs/ui/legacy/game/mcl_cm_op_sample.fit"
+    mountOffset = "0,0"
+}
+
+GuiPageRef {
+    pageKey = "game.mcl_cm_op_sample_1_mission"
+    file = "mcl_cm_op_sample_1_mission.fit"
+    sourceLegacyFit = "data/defs/ui/legacy/game/mcl_cm_op_sample_1_mission.fit"
+    mountOffset = "0,0"
+}
+
+GuiPageRef {
+    pageKey = "game.mcl_cm_op_sample_2_missions"
+    file = "mcl_cm_op_sample_2_missions.fit"
+    sourceLegacyFit = "data/defs/ui/legacy/game/mcl_cm_op_sample_2_missions.fit"
+    mountOffset = "0,0"
+}
+
+GuiPageRef {
+    pageKey = "game.mcl_cm_op_sample_3_missions"
+    file = "mcl_cm_op_sample_3_missions.fit"
+    sourceLegacyFit = "data/defs/ui/legacy/game/mcl_cm_op_sample_3_missions.fit"
+    mountOffset = "0,0"
+}
+
+GuiPageRef {
+    pageKey = "game.mcl_cm_op_sample_4_missions"
+    file = "mcl_cm_op_sample_4_missions.fit"
+    sourceLegacyFit = "data/defs/ui/legacy/game/mcl_cm_op_sample_4_missions.fit"
+    mountOffset = "0,0"
+}
+
+GuiPageRef {
+    pageKey = "game.mcl_cm_opgeneric_1"
+    file = "mcl_cm_opgeneric_1.fit"
+    sourceLegacyFit = "data/defs/ui/legacy/game/mcl_cm_opgeneric_1.fit"
+    mountOffset = "0,0"
+}
+
+GuiPageRef {
+    pageKey = "game.mcl_cm_opgeneric_2"
+    file = "mcl_cm_opgeneric_2.fit"
+    sourceLegacyFit = "data/defs/ui/legacy/game/mcl_cm_opgeneric_2.fit"
+    mountOffset = "0,0"
+}
+
+GuiPageRef {
+    pageKey = "game.mcl_cm_opgeneric_3"
+    file = "mcl_cm_opgeneric_3.fit"
+    sourceLegacyFit = "data/defs/ui/legacy/game/mcl_cm_opgeneric_3.fit"
+    mountOffset = "0,0"
+}
+
+GuiPageRef {
+    pageKey = "game.mcl_cm_opgeneric_4"
+    file = "mcl_cm_opgeneric_4.fit"
+    sourceLegacyFit = "data/defs/ui/legacy/game/mcl_cm_opgeneric_4.fit"
+    mountOffset = "0,0"
+}
+
+GuiPageRef {
+    pageKey = "game.mcl_cm_opplayer"
+    file = "mcl_cm_opplayer.fit"
+    sourceLegacyFit = "data/defs/ui/legacy/game/MCL_CM_OpPlayer.fit"
+    mountOffset = "0,0"
+}
+
+GuiPageRef {
+    pageKey = "game.mcl_cm_optutorials"
+    file = "mcl_cm_optutorials.fit"
+    sourceLegacyFit = "data/defs/ui/legacy/game/MCL_CM_OpTutorials.fit"
+    mountOffset = "0,0"
+}
+
+GuiPageRef {
+    pageKey = "game.mcl_cm_standinop"
+    file = "mcl_cm_standinop.fit"
+    sourceLegacyFit = "data/defs/ui/legacy/game/MCL_CM_StandinOp.fit"
+    mountOffset = "0,0"
+}
+
+GuiPageRef {
+    pageKey = "game.mcl_dialog"
+    file = "mcl_dialog.fit"
+    sourceLegacyFit = "data/defs/ui/legacy/game/mcl_dialog.fit"
+    mountOffset = "0,0"
+}
+
+GuiPageRef {
+    pageKey = "game.mcl_dialog_edit"
+    file = "mcl_dialog_edit.fit"
+    sourceLegacyFit = "data/defs/ui/legacy/game/mcl_dialog_edit.fit"
+    mountOffset = "0,0"
+}
+
+GuiPageRef {
+    pageKey = "game.mcl_dialog_onebutton"
+    file = "mcl_dialog_onebutton.fit"
+    sourceLegacyFit = "data/defs/ui/legacy/game/mcl_dialog_onebutton.fit"
+    mountOffset = "0,0"
+}
+
+GuiPageRef {
+    pageKey = "game.mcl_dialoglegal"
+    file = "mcl_dialoglegal.fit"
+    sourceLegacyFit = "data/defs/ui/legacy/game/mcl_dialoglegal.fit"
+    mountOffset = "0,0"
+}
+
+GuiPageRef {
+    pageKey = "game.mcl_en"
+    file = "mcl_en.fit"
+    sourceLegacyFit = "data/defs/ui/legacy/game/mcl_en.fit"
+    mountOffset = "0,0"
+}
+
+GuiPageRef {
+    pageKey = "game.mcl_en_bldg"
+    file = "mcl_en_bldg.fit"
+    sourceLegacyFit = "data/defs/ui/legacy/game/mcl_en_bldg.fit"
+    mountOffset = "0,0"
+}
+
+GuiPageRef {
+    pageKey = "game.mcl_en_mechs"
+    file = "mcl_en_mechs.fit"
+    sourceLegacyFit = "data/defs/ui/legacy/game/mcl_en_mechs.fit"
+    mountOffset = "0,0"
+}
+
+GuiPageRef {
+    pageKey = "game.mcl_en_person"
+    file = "mcl_en_person.fit"
+    sourceLegacyFit = "data/defs/ui/legacy/game/mcl_en_person.fit"
+    mountOffset = "0,0"
+}
+
+GuiPageRef {
+    pageKey = "game.mcl_en_sub"
+    file = "mcl_en_sub.fit"
+    sourceLegacyFit = "data/defs/ui/legacy/game/mcl_en_sub.fit"
+    mountOffset = "0,0"
+}
+
+GuiPageRef {
+    pageKey = "game.mcl_en_wep"
+    file = "mcl_en_wep.fit"
+    sourceLegacyFit = "data/defs/ui/legacy/game/mcl_en_wep.fit"
+    mountOffset = "0,0"
+}
+
+GuiPageRef {
+    pageKey = "game.mcl_gn_availablemechentry"
+    file = "mcl_gn_availablemechentry.fit"
+    sourceLegacyFit = "data/defs/ui/legacy/game/MCL_GN_AvailableMechEntry.fit"
+    mountOffset = "0,0"
+}
+
+GuiPageRef {
+    pageKey = "game.mcl_gn_deploymentteams"
+    file = "mcl_gn_deploymentteams.fit"
+    sourceLegacyFit = "data/defs/ui/legacy/game/MCL_GN_DeploymentTeams.fit"
+    mountOffset = "0,0"
+}
+
+GuiPageRef {
+    pageKey = "game.mcl_loadingscreen"
+    file = "mcl_loadingscreen.fit"
+    sourceLegacyFit = "data/defs/ui/legacy/game/mcl_loadingscreen.fit"
+    mountOffset = "0,0"
+}
+
+GuiPageRef {
+    pageKey = "game.mcl_loadingscreen_1024"
+    file = "mcl_loadingscreen_1024.fit"
+    sourceLegacyFit = "data/defs/ui/legacy/game/mcl_loadingscreen_1024.fit"
+    mountOffset = "0,0"
+}
+
+GuiPageRef {
+    pageKey = "game.mcl_loadingscreen_1280"
+    file = "mcl_loadingscreen_1280.fit"
+    sourceLegacyFit = "data/defs/ui/legacy/game/mcl_loadingscreen_1280.fit"
+    mountOffset = "0,0"
+}
+
+GuiPageRef {
+    pageKey = "game.mcl_loadingscreen_1600"
+    file = "mcl_loadingscreen_1600.fit"
+    sourceLegacyFit = "data/defs/ui/legacy/game/mcl_loadingscreen_1600.fit"
+    mountOffset = "0,0"
+}
+
+GuiPageRef {
+    pageKey = "game.mcl_loadingscreen_640"
+    file = "mcl_loadingscreen_640.fit"
+    sourceLegacyFit = "data/defs/ui/legacy/game/mcl_loadingscreen_640.fit"
+    mountOffset = "0,0"
+}
+
+GuiPageRef {
+    pageKey = "game.mcl_mdollar"
+    file = "mcl_mdollar.fit"
+    sourceLegacyFit = "data/defs/ui/legacy/game/mcl_m$.fit"
+    mountOffset = "0,0"
+}
+
+GuiPageRef {
+    pageKey = "game.mcl_mb_layout"
+    file = "mcl_mb_layout.fit"
+    sourceLegacyFit = "data/defs/ui/legacy/game/MCL_MB_Layout.fit"
+    mountOffset = "0,0"
+}
+
+GuiPageRef {
+    pageKey = "game.mcl_mc"
+    file = "mcl_mc.fit"
+    sourceLegacyFit = "data/defs/ui/legacy/game/mcl_mc.fit"
+    mountOffset = "0,0"
+}
+
+GuiPageRef {
+    pageKey = "game.mcl_mc_combobox0"
+    file = "mcl_mc_combobox0.fit"
+    sourceLegacyFit = "data/defs/ui/legacy/game/mcl_mc_combobox0.fit"
+    mountOffset = "0,0"
+}
+
+GuiPageRef {
+    pageKey = "game.mcl_mechinfo"
+    file = "mcl_mechinfo.fit"
+    sourceLegacyFit = "data/defs/ui/legacy/game/mcl_mechinfo.fit"
+    mountOffset = "0,0"
+}
+
+GuiPageRef {
+    pageKey = "game.mcl_mm"
+    file = "mcl_mm.fit"
+    sourceLegacyFit = "data/defs/ui/legacy/game/mcl_mm.fit"
+    mountOffset = "0,0"
+}
+
+GuiPageRef {
+    pageKey = "game.mcl_mn"
+    file = "mcl_mn.fit"
+    sourceLegacyFit = "data/defs/ui/legacy/game/mcl_mn.fit"
+    mountOffset = "0,0"
+}
+
+GuiPageRef {
+    pageKey = "game.mcl_mp_addai"
+    file = "mcl_mp_addai.fit"
+    sourceLegacyFit = "data/defs/ui/legacy/game/mcl_mp_addai.fit"
+    mountOffset = "0,0"
+}
+
+GuiPageRef {
+    pageKey = "game.mcl_mp_addai_combobox0"
+    file = "mcl_mp_addai_combobox0.fit"
+    sourceLegacyFit = "data/defs/ui/legacy/game/mcl_mp_addai_combobox0.fit"
+    mountOffset = "0,0"
+}
+
+GuiPageRef {
+    pageKey = "game.mcl_mp_addai_combobox1"
+    file = "mcl_mp_addai_combobox1.fit"
+    sourceLegacyFit = "data/defs/ui/legacy/game/mcl_mp_addai_combobox1.fit"
+    mountOffset = "0,0"
+}
+
+GuiPageRef {
+    pageKey = "game.mcl_mp_addai_combobox2"
+    file = "mcl_mp_addai_combobox2.fit"
+    sourceLegacyFit = "data/defs/ui/legacy/game/mcl_mp_addai_combobox2.fit"
+    mountOffset = "0,0"
+}
+
+GuiPageRef {
+    pageKey = "game.mcl_mp_addai_combobox3"
+    file = "mcl_mp_addai_combobox3.fit"
+    sourceLegacyFit = "data/defs/ui/legacy/game/mcl_mp_addai_combobox3.fit"
+    mountOffset = "0,0"
+}
+
+GuiPageRef {
+    pageKey = "game.mcl_mp_chatwidget"
+    file = "mcl_mp_chatwidget.fit"
+    sourceLegacyFit = "data/defs/ui/legacy/game/mcl_mp_chatwidget.fit"
+    mountOffset = "0,0"
+}
+
+GuiPageRef {
+    pageKey = "game.mcl_mp_chatwidget_up"
+    file = "mcl_mp_chatwidget_up.fit"
+    sourceLegacyFit = "data/defs/ui/legacy/game/mcl_mp_chatwidget_up.fit"
+    mountOffset = "0,0"
+}
+
+GuiPageRef {
+    pageKey = "game.mcl_mp_connectiontype"
+    file = "mcl_mp_connectiontype.fit"
+    sourceLegacyFit = "data/defs/ui/legacy/game/mcl_mp_connectiontype.fit"
+    mountOffset = "0,0"
+}
+
+GuiPageRef {
+    pageKey = "game.mcl_mp_contype_lan"
+    file = "mcl_mp_contype_lan.fit"
+    sourceLegacyFit = "data/defs/ui/legacy/game/mcl_mp_contype_lan.fit"
+    mountOffset = "0,0"
+}
+
+GuiPageRef {
+    pageKey = "game.mcl_mp_contype_modem"
+    file = "mcl_mp_contype_modem.fit"
+    sourceLegacyFit = "data/defs/ui/legacy/game/mcl_mp_contype_modem.fit"
+    mountOffset = "0,0"
+}
+
+GuiPageRef {
+    pageKey = "game.mcl_mp_contype_tcpip"
+    file = "mcl_mp_contype_tcpip.fit"
+    sourceLegacyFit = "data/defs/ui/legacy/game/mcl_mp_contype_tcpip.fit"
+    mountOffset = "0,0"
+}
+
+GuiPageRef {
+    pageKey = "game.mcl_mp_contype_zone"
+    file = "mcl_mp_contype_zone.fit"
+    sourceLegacyFit = "data/defs/ui/legacy/game/mcl_mp_contype_zone.fit"
+    mountOffset = "0,0"
+}
+
+GuiPageRef {
+    pageKey = "game.mcl_mp_hostgame"
+    file = "mcl_mp_hostgame.fit"
+    sourceLegacyFit = "data/defs/ui/legacy/game/mcl_mp_hostgame.fit"
+    mountOffset = "0,0"
+}
+
+GuiPageRef {
+    pageKey = "game.mcl_mp_hostgamedialog"
+    file = "mcl_mp_hostgamedialog.fit"
+    sourceLegacyFit = "data/defs/ui/legacy/game/mcl_mp_hostgamedialog.fit"
+    mountOffset = "0,0"
+}
+
+GuiPageRef {
+    pageKey = "game.mcl_mp_hostgamedialog_combobox0"
+    file = "mcl_mp_hostgamedialog_combobox0.fit"
+    sourceLegacyFit = "data/defs/ui/legacy/game/mcl_mp_hostgamedialog_combobox0.fit"
+    mountOffset = "0,0"
+}
+
+GuiPageRef {
+    pageKey = "game.mcl_mp_hostgami_droplist0"
+    file = "mcl_mp_hostgami_droplist0.fit"
+    sourceLegacyFit = "data/defs/ui/legacy/game/mcl_mp_hostgami_droplist0.fit"
+    mountOffset = "0,0"
+}
+
+GuiPageRef {
+    pageKey = "game.mcl_mp_lanbrowser"
+    file = "mcl_mp_lanbrowser.fit"
+    sourceLegacyFit = "data/defs/ui/legacy/game/mcl_mp_lanbrowser.fit"
+    mountOffset = "0,0"
+}
+
+GuiPageRef {
+    pageKey = "game.mcl_mp_lanbrowsercombobox0"
+    file = "mcl_mp_lanbrowsercombobox0.fit"
+    sourceLegacyFit = "data/defs/ui/legacy/game/mcl_mp_lanbrowsercombobox0.fit"
+    mountOffset = "0,0"
+}
+
+GuiPageRef {
+    pageKey = "game.mcl_mp_loadmap"
+    file = "mcl_mp_loadmap.fit"
+    sourceLegacyFit = "data/defs/ui/legacy/game/mcl_mp_loadmap.fit"
+    mountOffset = "0,0"
+}
+
+GuiPageRef {
+    pageKey = "game.mcl_mp_loadmap_list0"
+    file = "mcl_mp_loadmap_list0.fit"
+    sourceLegacyFit = "data/defs/ui/legacy/game/mcl_mp_loadmap_list0.fit"
+    mountOffset = "0,0"
+}
+
+GuiPageRef {
+    pageKey = "game.mcl_mp_mapinfo"
+    file = "mcl_mp_mapinfo.fit"
+    sourceLegacyFit = "data/defs/ui/legacy/game/mcl_mp_mapinfo.fit"
+    mountOffset = "0,0"
+}
+
+GuiPageRef {
+    pageKey = "game.mcl_mp_modem"
+    file = "mcl_mp_modem.fit"
+    sourceLegacyFit = "data/defs/ui/legacy/game/mcl_mp_modem.fit"
+    mountOffset = "0,0"
+}
+
+GuiPageRef {
+    pageKey = "game.mcl_mp_modem_combobox0"
+    file = "mcl_mp_modem_combobox0.fit"
+    sourceLegacyFit = "data/defs/ui/legacy/game/mcl_mp_modem_combobox0.fit"
+    mountOffset = "0,0"
+}
+
+GuiPageRef {
+    pageKey = "game.mcl_mp_modem_combobox1"
+    file = "mcl_mp_modem_combobox1.fit"
+    sourceLegacyFit = "data/defs/ui/legacy/game/mcl_mp_modem_combobox1.fit"
+    mountOffset = "0,0"
+}
+
+GuiPageRef {
+    pageKey = "game.mcl_mp_param"
+    file = "mcl_mp_param.fit"
+    sourceLegacyFit = "data/defs/ui/legacy/game/mcl_mp_param.fit"
+    mountOffset = "0,0"
+}
+
+GuiPageRef {
+    pageKey = "game.mcl_mp_param_combobox0"
+    file = "mcl_mp_param_combobox0.fit"
+    sourceLegacyFit = "data/defs/ui/legacy/game/mcl_mp_param_combobox0.fit"
+    mountOffset = "0,0"
+}
+
+GuiPageRef {
+    pageKey = "game.mcl_mp_param_combobox1"
+    file = "mcl_mp_param_combobox1.fit"
+    sourceLegacyFit = "data/defs/ui/legacy/game/mcl_mp_param_combobox1.fit"
+    mountOffset = "0,0"
+}
+
+GuiPageRef {
+    pageKey = "game.mcl_mp_param_droplist0"
+    file = "mcl_mp_param_droplist0.fit"
+    sourceLegacyFit = "data/defs/ui/legacy/game/mcl_mp_param_droplist0.fit"
+    mountOffset = "0,0"
+}
+
+GuiPageRef {
+    pageKey = "game.mcl_mp_param_droplist1"
+    file = "mcl_mp_param_droplist1.fit"
+    sourceLegacyFit = "data/defs/ui/legacy/game/mcl_mp_param_droplist1.fit"
+    mountOffset = "0,0"
+}
+
+GuiPageRef {
+    pageKey = "game.mcl_mp_param_droplist2"
+    file = "mcl_mp_param_droplist2.fit"
+    sourceLegacyFit = "data/defs/ui/legacy/game/mcl_mp_param_droplist2.fit"
+    mountOffset = "0,0"
+}
+
+GuiPageRef {
+    pageKey = "game.mcl_mp_param_droplist3"
+    file = "mcl_mp_param_droplist3.fit"
+    sourceLegacyFit = "data/defs/ui/legacy/game/mcl_mp_param_droplist3.fit"
+    mountOffset = "0,0"
+}
+
+GuiPageRef {
+    pageKey = "game.mcl_mp_param_droplist4"
+    file = "mcl_mp_param_droplist4.fit"
+    sourceLegacyFit = "data/defs/ui/legacy/game/mcl_mp_param_droplist4.fit"
+    mountOffset = "0,0"
+}
+
+GuiPageRef {
+    pageKey = "game.mcl_mp_paramplay"
+    file = "mcl_mp_paramplay.fit"
+    sourceLegacyFit = "data/defs/ui/legacy/game/mcl_mp_paramplay.fit"
+    mountOffset = "0,0"
+}
+
+GuiPageRef {
+    pageKey = "game.mcl_mp_playerprefs"
+    file = "mcl_mp_playerprefs.fit"
+    sourceLegacyFit = "data/defs/ui/legacy/game/mcl_mp_playerprefs.fit"
+    mountOffset = "0,0"
+}
+
+GuiPageRef {
+    pageKey = "game.mcl_mp_playerprefs_combobox1"
+    file = "mcl_mp_playerprefs_combobox1.fit"
+    sourceLegacyFit = "data/defs/ui/legacy/game/mcl_mp_playerprefs_combobox1.fit"
+    mountOffset = "0,0"
+}
+
+GuiPageRef {
+    pageKey = "game.mcl_mp_playerprefs_combobox2"
+    file = "mcl_mp_playerprefs_combobox2.fit"
+    sourceLegacyFit = "data/defs/ui/legacy/game/mcl_mp_playerprefs_combobox2.fit"
+    mountOffset = "0,0"
+}
+
+GuiPageRef {
+    pageKey = "game.mcl_mp_playerprefs_combobox3"
+    file = "mcl_mp_playerprefs_combobox3.fit"
+    sourceLegacyFit = "data/defs/ui/legacy/game/mcl_mp_playerprefs_combobox3.fit"
+    mountOffset = "0,0"
+}
+
+GuiPageRef {
+    pageKey = "game.mcl_mp_scoreboard"
+    file = "mcl_mp_scoreboard.fit"
+    sourceLegacyFit = "data/defs/ui/legacy/game/mcl_mp_scoreboard.fit"
+    mountOffset = "0,0"
+}
+
+GuiPageRef {
+    pageKey = "game.mcl_mp_setup_combobox0"
+    file = "mcl_mp_setup_combobox0.fit"
+    sourceLegacyFit = "data/defs/ui/legacy/game/mcl_mp_setup_combobox0.fit"
+    mountOffset = "0,0"
+}
+
+GuiPageRef {
+    pageKey = "game.mcl_mp_setup_combobox1"
+    file = "mcl_mp_setup_combobox1.fit"
+    sourceLegacyFit = "data/defs/ui/legacy/game/mcl_mp_setup_combobox1.fit"
+    mountOffset = "0,0"
+}
+
+GuiPageRef {
+    pageKey = "game.mcl_mp_setup_droplist0"
+    file = "mcl_mp_setup_droplist0.fit"
+    sourceLegacyFit = "data/defs/ui/legacy/game/mcl_mp_setup_droplist0.fit"
+    mountOffset = "0,0"
+}
+
+GuiPageRef {
+    pageKey = "game.mcl_mp_setuplayout"
+    file = "mcl_mp_setuplayout.fit"
+    sourceLegacyFit = "data/defs/ui/legacy/game/MCL_MP_SetupLayout.fit"
+    mountOffset = "0,0"
+}
+
+GuiPageRef {
+    pageKey = "game.mcl_mp_stats"
+    file = "mcl_mp_stats.fit"
+    sourceLegacyFit = "data/defs/ui/legacy/game/mcl_mp_stats.fit"
+    mountOffset = "0,0"
+}
+
+GuiPageRef {
+    pageKey = "game.mcl_mp_stats_entry"
+    file = "mcl_mp_stats_entry.fit"
+    sourceLegacyFit = "data/defs/ui/legacy/game/mcl_mp_stats_entry.fit"
+    mountOffset = "0,0"
+}
+
+GuiPageRef {
+    pageKey = "game.mcl_mp_tcpip"
+    file = "mcl_mp_tcpip.fit"
+    sourceLegacyFit = "data/defs/ui/legacy/game/mcl_mp_tcpip.fit"
+    mountOffset = "0,0"
+}
+
+GuiPageRef {
+    pageKey = "game.mcl_mp_tcpip_combobox0"
+    file = "mcl_mp_tcpip_combobox0.fit"
+    sourceLegacyFit = "data/defs/ui/legacy/game/mcl_mp_tcpip_combobox0.fit"
+    mountOffset = "0,0"
+}
+
+GuiPageRef {
+    pageKey = "game.mcl_options"
+    file = "mcl_options.fit"
+    sourceLegacyFit = "data/defs/ui/legacy/game/mcl_options.fit"
+    mountOffset = "0,0"
+}
+
+GuiPageRef {
+    pageKey = "game.mcl_options_combobox0"
+    file = "mcl_options_combobox0.fit"
+    sourceLegacyFit = "data/defs/ui/legacy/game/mcl_options_combobox0.fit"
+    mountOffset = "0,0"
+}
+
+GuiPageRef {
+    pageKey = "game.mcl_options_combobox1"
+    file = "mcl_options_combobox1.fit"
+    sourceLegacyFit = "data/defs/ui/legacy/game/mcl_options_combobox1.fit"
+    mountOffset = "0,0"
+}
+
+GuiPageRef {
+    pageKey = "game.mcl_options_combobox2"
+    file = "mcl_options_combobox2.fit"
+    sourceLegacyFit = "data/defs/ui/legacy/game/mcl_options_combobox2.fit"
+    mountOffset = "0,0"
+}
+
+GuiPageRef {
+    pageKey = "game.mcl_optionsaudio"
+    file = "mcl_optionsaudio.fit"
+    sourceLegacyFit = "data/defs/ui/legacy/game/mcl_optionsaudio.fit"
+    mountOffset = "0,0"
+}
+
+GuiPageRef {
+    pageKey = "game.mcl_optionsgameplay"
+    file = "mcl_optionsgameplay.fit"
+    sourceLegacyFit = "data/defs/ui/legacy/game/mcl_optionsgameplay.fit"
+    mountOffset = "0,0"
+}
+
+GuiPageRef {
+    pageKey = "game.mcl_optionsgraphics"
+    file = "mcl_optionsgraphics.fit"
+    sourceLegacyFit = "data/defs/ui/legacy/game/mcl_optionsgraphics.fit"
+    mountOffset = "0,0"
+}
+
+GuiPageRef {
+    pageKey = "game.mcl_optionshotkeys"
+    file = "mcl_optionshotkeys.fit"
+    sourceLegacyFit = "data/defs/ui/legacy/game/mcl_optionshotkeys.fit"
+    mountOffset = "0,0"
+}
+
+GuiPageRef {
+    pageKey = "game.mcl_pr_availablepilotentry"
+    file = "mcl_pr_availablepilotentry.fit"
+    sourceLegacyFit = "data/defs/ui/legacy/game/MCL_PR_AvailablePilotEntry.fit"
+    mountOffset = "0,0"
+}
+
+GuiPageRef {
+    pageKey = "game.mcl_pr_layout"
+    file = "mcl_pr_layout.fit"
+    sourceLegacyFit = "data/defs/ui/legacy/game/MCL_PR_Layout.fit"
+    mountOffset = "0,0"
+}
+
+GuiPageRef {
+    pageKey = "game.mcl_sm"
+    file = "mcl_sm.fit"
+    sourceLegacyFit = "data/defs/ui/legacy/game/mcl_sm.fit"
+    mountOffset = "0,0"
+}
+
+GuiPageRef {
+    pageKey = "game.mcl_sp"
+    file = "mcl_sp.fit"
+    sourceLegacyFit = "data/defs/ui/legacy/game/mcl_sp.fit"
+    mountOffset = "0,0"
+}
+
+GuiPageRef {
+    pageKey = "game.mcl_splashscreenintro"
+    file = "mcl_splashscreenintro.fit"
+    sourceLegacyFit = "data/defs/ui/legacy/game/mcl_splashscreenintro.fit"
+    mountOffset = "0,0"
+}
+
+GuiPageRef {
+    pageKey = "game.mcl_sv"
+    file = "mcl_sv.fit"
+    sourceLegacyFit = "data/defs/ui/legacy/game/mcl_sv.fit"
+    mountOffset = "0,0"
+}
+
+GuiPageRef {
+    pageKey = "game.mcl_sv_acceptchanges"
+    file = "mcl_sv_acceptchanges.fit"
+    sourceLegacyFit = "data/defs/ui/legacy/game/mcl_sv_acceptchanges.fit"
+    mountOffset = "0,0"
+}
+
+GuiPageRef {
+    pageKey = "game.mcl_vidframe"
+    file = "mcl_vidframe.fit"
+    sourceLegacyFit = "data/defs/ui/legacy/game/mcl_vidframe.fit"
+    mountOffset = "0,0"
+}
+
+GuiPageRef {
+    pageKey = "game.mcui_keyref_1024"
+    file = "mcui_keyref_1024.fit"
+    sourceLegacyFit = "data/defs/ui/legacy/game/mcui_keyref_1024.fit"
+    mountOffset = "0,0"
+}
+
+GuiPageRef {
+    pageKey = "game.mcui_keyref_1280"
+    file = "mcui_keyref_1280.fit"
+    sourceLegacyFit = "data/defs/ui/legacy/game/mcui_keyref_1280.fit"
+    mountOffset = "0,0"
+}
+
+GuiPageRef {
+    pageKey = "game.mcui_keyref_1600"
+    file = "mcui_keyref_1600.fit"
+    sourceLegacyFit = "data/defs/ui/legacy/game/mcui_keyref_1600.fit"
+    mountOffset = "0,0"
+}
+
+GuiPageRef {
+    pageKey = "game.mcui_keyref_640"
+    file = "mcui_keyref_640.fit"
+    sourceLegacyFit = "data/defs/ui/legacy/game/mcui_keyref_640.fit"
+    mountOffset = "0,0"
+}
+
+GuiPageRef {
+    pageKey = "game.mcui_keyref_800"
+    file = "mcui_keyref_800.fit"
+    sourceLegacyFit = "data/defs/ui/legacy/game/mcui_keyref_800.fit"
+    mountOffset = "0,0"
+}
+
+GuiPageRef {
+    pageKey = "game.mcui_keyref_entry"
+    file = "mcui_keyref_entry.fit"
+    sourceLegacyFit = "data/defs/ui/legacy/game/mcui_keyref_entry.fit"
+    mountOffset = "0,0"
+}
+
+GuiPageRef {
+    pageKey = "game.mcui_mr_layout"
+    file = "mcui_mr_layout.fit"
+    sourceLegacyFit = "data/defs/ui/legacy/game/MCUI_MR_Layout.fit"
+    mountOffset = "0,0"
+}
+
+GuiPageRef {
+    pageKey = "game.mcui_mr_salvageareaentrybox"
+    file = "mcui_mr_salvageareaentrybox.fit"
+    sourceLegacyFit = "data/defs/ui/legacy/game/MCUI_MR_SalvageAreaEntryBox.fit"
+    mountOffset = "0,0"
+}
+
+GuiPageRef {
+    pageKey = "game.mcui_mr_specialtyskillsentrybox"
+    file = "mcui_mr_specialtyskillsentrybox.fit"
+    sourceLegacyFit = "data/defs/ui/legacy/game/MCUI_MR_SpecialtySkillsEntryBox.fit"
+    mountOffset = "0,0"
+}
+
+GuiPageRef {
+    pageKey = "game.options_layout"
+    file = "options_layout.fit"
+    sourceLegacyFit = "data/defs/ui/legacy/game/Options_Layout.fit"
+    mountOffset = "0,0"
+}

@@ -50,13 +50,33 @@ TEST_CASE("coverage aggregate + no duplicate ids (matches the header static_asse
 }
 
 TEST_CASE("descriptor-class totals match the inventory (Part-1/Part-2 enum-backed live set)") {
-    CHECK(kVkResourceContractCount == 16);
+    CHECK(kVkResourceContractCount == 17);
     CHECK(vkCountByClass(VkDescriptorClass::UniformBuffer) == 1);
     CHECK(vkCountByClass(VkDescriptorClass::StorageBuffer) == 11);
-    CHECK(vkCountByClass(VkDescriptorClass::CombinedImageSampler) == 4);
+    // 4 FBO-backed samplers + POSTPROCESS-VK-IMAGE-OWNERSHIP-1 subgraph depth = 5.
+    CHECK(vkCountByClass(VkDescriptorClass::CombinedImageSampler) == 5);
     // Nothing live today lands in these classes (spec §"Totals by descriptor type").
     CHECK(vkCountByClass(VkDescriptorClass::StorageImage) == 0);
     CHECK(vkCountByClass(VkDescriptorClass::InputAttachment) == 0);
+}
+
+TEST_CASE("POSTPROCESS-VK-IMAGE-OWNERSHIP-1: subgraph depth is a sampler row; color is excluded") {
+    // The subgraph-owned DEPTH image IS a descriptor-bound sampler.
+    bool depthPresent = false;
+    for (int i = 0; i < kVkResourceContractCount; ++i)
+        if (kVkResourceContracts[i].id == RenderResourceId::PostprocessSubgraphDepth) {
+            depthPresent = true;
+            CHECK(kVkResourceContracts[i].cls == VkDescriptorClass::CombinedImageSampler);
+        }
+    CHECK(depthPresent);
+
+    // The subgraph-owned COLOR image is DELIBERATELY EXCLUDED: it is a pure color
+    // attachment + transfer src/dst, never sampled, never bound via a descriptor set.
+    // Modeling it as any descriptor class would be wrong; its ownership lives in the
+    // enum id + the transition-chain table (vulkan_layout_chain.h) instead.
+    for (int i = 0; i < kVkResourceContractCount; ++i)
+        CHECK(static_cast<unsigned>(kVkResourceContracts[i].id)
+              != static_cast<unsigned>(RenderResourceId::PostprocessSubgraphColor));
 }
 
 TEST_CASE("negative: the consistency predicate REJECTS a mismatched kind/class") {

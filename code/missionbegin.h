@@ -18,6 +18,7 @@ MissionBegin:
 #include"alistbox.h"
 #include"aanim.h"
 #include"abl.h"
+#include <string>
 
 class LogisticsScreen;
 class MainMenu;
@@ -61,6 +62,12 @@ class MissionBegin
 		}
 
 		void beginAtConnectionScreen();
+
+		// DEV-SHELL-1 ui_reload: re-read the ACTIVE front-end screen's .fit
+		// layout from disk and re-init the screen in place (LogisticsScreen::
+		// init calls clear() first — idempotent). Single-player grid + main
+		// menu only; substituted cells (skipLogistics reroutes) refuse.
+		bool reloadCurrentScreenLayout( std::string& infoOut, std::string& errOut );
 
 		void restartMPlayer( const char* playerName);
 

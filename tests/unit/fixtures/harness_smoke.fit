@@ -1,0 +1,11 @@
+FITini
+
+[TestBlock]
+l TestLong = 42
+f TestFloat = 3.5
+st TestString = "hello harness"
+
+[SecondBlock]
+l Another = 7
+
+FITend

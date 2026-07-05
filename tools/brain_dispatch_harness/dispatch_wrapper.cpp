@@ -12,6 +12,12 @@
 #include "gameobj.h"    // stub GameObject, GameObjectPtr
 #include "objmgr.h"     // stub ObjectManager global
 #include "inifile.h"    // stub FitIniFile
+// HARNESS-STUB-REPAIR-1: BRAIN-ENGAGE-1 added mover/dcontact/contact includes to the
+// dispatch TU. Pull the stubs first so MOVER_H/DCONTACT_H/CONTACT_H are defined and the
+// engine headers (which drag mclib.h) are skipped.
+#include "mover.h"      // stub Mover/MoverPtr
+#include "dcontact.h"   // MAX_CONTACTS_PER_SENSOR, CONTACT_SORT_*
+#include "contact.h"    // guard-only (SensorSystem not referenced by the TU)
 
 // Now include-and-compile the real dispatch TU.
 // The #include guards in the engine headers (WARRIOR_H, TACORDR_H, etc.) are now

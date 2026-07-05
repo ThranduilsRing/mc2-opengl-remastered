@@ -10,9 +10,11 @@ for f in $hits; do
   case "$f" in
     mclib/model_override_registry.cpp) ;;
     mclib/anim_override_registry.cpp) ;;
+    mclib/fx_def_registry.cpp) ;;
     tests/model_override/test_model_override_registry.cpp) ;;
     */model_override_registry.cpp) ;;
     */anim_override_registry.cpp) ;;
+    */fx_def_registry.cpp) ;;
     */test_model_override_registry.cpp) ;;
     *) echo "json isolation violated: $f"; status=1 ;;
   esac

@@ -1,0 +1,125 @@
+// Shared Mechlopedia dynamic content text styles.
+// These styles are used by the Viewer ImGui content binding pass.
+// Font names resolve through data/defs/ui/packages/legacy_imgui/shared/fonts.fit.
+
+MechlopediaContentStyle {
+    role = "list"
+    font = "Agency Bold"
+    fontSize = 14
+    bold = false
+    italic = false
+    uppercase = true
+    wrap = false
+    colorArgb = "0xffff8a00"
+    selectedColorArgb = "0xffffffff"
+    lineSpacing = 2
+    paddingX = 6
+    paddingY = 3
+    scrollbarWidth = 14
+}
+
+MechlopediaContentStyle {
+    role = "list.history"
+    font = "Agency Bold"
+    fontSize = 12
+    bold = false
+    italic = false
+    uppercase = true
+    wrap = false
+    colorArgb = "0xffff8a00"
+    selectedColorArgb = "0xffffffff"
+    lineSpacing = 2
+    paddingX = 6
+    paddingY = 3
+    scrollbarWidth = 14
+}
+
+MechlopediaContentStyle {
+    role = "title"
+    font = "Agency Bold"
+    fontSize = 17
+    bold = false
+    italic = false
+    uppercase = false
+    wrap = false
+    colorArgb = "0xffff8a00"
+    lineSpacing = 2
+    paddingX = 0
+    paddingY = 0
+    scrollbarWidth = 0
+}
+
+MechlopediaContentStyle {
+    role = "title.history"
+    font = "Agency Bold"
+    fontSize = 15
+    bold = false
+    italic = false
+    uppercase = false
+    wrap = false
+    colorArgb = "0xffff8a00"
+    lineSpacing = 2
+    paddingX = 0
+    paddingY = 0
+    scrollbarWidth = 0
+}
+
+MechlopediaContentStyle {
+    role = "body"
+    font = "Liberation Sans"
+    fontSize = 12
+    bold = false
+    italic = false
+    uppercase = false
+    wrap = true
+    colorArgb = "0xff0078b9"
+    lineSpacing = 3
+    paddingX = 6
+    paddingY = 6
+    scrollbarWidth = 14
+}
+
+MechlopediaContentStyle {
+    role = "body.history"
+    font = "Liberation Sans"
+    fontSize = 11
+    bold = false
+    italic = false
+    uppercase = false
+    wrap = true
+    colorArgb = "0xff0078b9"
+    lineSpacing = 2
+    paddingX = 6
+    paddingY = 6
+    scrollbarWidth = 14
+}
+
+MechlopediaContentStyle {
+    role = "body.component"
+    font = "Liberation Sans"
+    fontSize = 11
+    bold = false
+    italic = false
+    uppercase = false
+    wrap = true
+    colorArgb = "0xff0078b9"
+    lineSpacing = 2
+    paddingX = 6
+    paddingY = 6
+    scrollbarWidth = 14
+}
+
+MechlopediaContentStyle {
+    role = "body.personality"
+    font = "Liberation Sans"
+    fontSize = 11
+    bold = false
+    italic = false
+    uppercase = false
+    wrap = true
+    colorArgb = "0xff0078b9"
+    lineSpacing = 2
+    paddingX = 6
+    paddingY = 6
+    scrollbarWidth = 0
+}

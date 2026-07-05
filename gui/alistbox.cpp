@@ -139,6 +139,24 @@ void aListBox::update()
 			::helpTextID = helpID;
 		}
 
+		// Mouse-wheel scrolling when the cursor is over the list.  wheel > 0 =
+		// scroll down (matches the defs GuiList).  scroll()'s own guards prevent
+		// running past the top/bottom, so the GetScrollMax clamp is a backstop.
+		if ( bInside && scrollBar )
+		{
+			long wheel = userInput->getMouseWheelDelta();
+			if ( wheel != 0 )
+			{
+				const float step = 40.f;
+				float newPos = scrollBar->GetScrollPos() + ( wheel > 0 ? step : -step );
+				if ( newPos < 0.f )
+					newPos = 0.f;
+				if ( newPos > scrollBar->GetScrollMax() )
+					newPos = scrollBar->GetScrollMax();
+				setScrollPos( (int)newPos );
+			}
+		}
+
 		for ( int i = 0; i < itemCount; i++ )
 		{
 			if ( bInside &&
@@ -1296,6 +1314,13 @@ const char* aTextListItem::getText() const
 void aTextListItem::render()
 {
 	if ( !isShowing() )
+		return;
+
+	// Text bridge: route the row label to crisp TTF (matches the data/defs UI)
+	// when a legacy widget is being drawn over a defs page.
+	if ( aObject::renderTextBridged( font, (const char*)text,
+		location[0].x, location[0].y, location[2].x, location[2].y,
+		location[0].argb, alignment ) )
 		return;
 
 	float y = location[2].y - location[0].y;

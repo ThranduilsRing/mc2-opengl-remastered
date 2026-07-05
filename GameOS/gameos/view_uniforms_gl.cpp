@@ -16,6 +16,7 @@
 
 #include "../../RenderCore/GpuBufferOwner.h"
 #include "../../RenderCore/RenderResourceRegistry.h"
+#include "utils/gpu_debug_labels.h"  // VULKAN-DEBUG-NAMES-1
 
 // TERRAIN-VIEW-UBO-OWNER-1: the view-uniforms UBO is no longer a bare GLuint.
 // It is now narrowed behind a GpuBufferOwner identity record (logical id +
@@ -44,6 +45,9 @@ void RenderCore::initViewUniformsUbo() {
                     GL_DYNAMIC_STORAGE_BIT);
     glBindBuffer(GL_UNIFORM_BUFFER, 0);
     glBindBufferBase(GL_UNIFORM_BUFFER, RenderCore::kViewUniformsBinding, ubo);
+
+    // VULKAN-DEBUG-NAMES-1: gated (MC2_GPU_DEBUG_NAMES) glObjectLabel proof site.
+    setGpuBufferDebugLabel(ubo, s_viewUniformsUbo.debugName);
 
     // TERRAIN-VIEW-UBO-OWNER-1: register the live view-uniforms UBO at creation
     // (observe-only metadata; never read by the draw path). Mirrors the

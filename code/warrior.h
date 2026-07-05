@@ -521,6 +521,7 @@ typedef struct _SaveableMoveOrders {
 		memcpy(wayPath,orders.wayPath,sizeof(Stuff::Vector3D) * MAX_WAYPTS);
 		numWayPts = orders.numWayPts;
 		curWayPt = orders.curWayPt;
+		curWayDir = orders.curWayDir;	// SAVE/LOAD-CURWAYDIR-1: was omitted -> patrol dir lost across save/load
 		pathType = orders.pathType;
 		originalGlobalGoal[0] = orders.originalGlobalGoal[0];
 		originalGlobalGoal[1] = orders.originalGlobalGoal[1];
@@ -556,6 +557,7 @@ typedef struct _SaveableMoveOrders {
 		memcpy(orders.wayPath,wayPath,sizeof(Stuff::Vector3D) * MAX_WAYPTS);
 		orders.numWayPts = numWayPts;
 		orders.curWayPt = curWayPt;
+		orders.curWayDir = curWayDir;	// SAVE/LOAD-CURWAYDIR-1: was omitted -> patrol dir lost across save/load
 		orders.pathType = pathType;
 		orders.originalGlobalGoal[0] = originalGlobalGoal[0];
 		orders.originalGlobalGoal[1] = originalGlobalGoal[1];

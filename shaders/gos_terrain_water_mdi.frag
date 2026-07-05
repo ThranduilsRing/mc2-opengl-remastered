@@ -58,7 +58,7 @@ uniform float u_waterReflStrength;     // WATER-SKY-REFLECTION-1: 0 = exact no-o
 // u_waterHdriLod < 0 => HDRI unavailable, fall back to SH-L2 only.
 uniform sampler2D u_hdri;        // HDRI equirect (unit 3, with mipmaps)
 uniform float     u_skyYaw;      // azimuth rotation (rad) matching renderHdriSkyboxInvVP
-uniform float     u_waterHdriLod; // sample LOD; MC2_WATER_HDRI_LOD env (default 2.5)
+uniform float     u_waterHdriLod; // sample LOD; C++ default 2.0 (WATER-HDRI-REFL-SHARPEN-1), MC2_WATER_HDRI_LOD env overrides
 
 // water-v1 style params. WATER-TUNING-UI-1: the user-tunable subset is promoted
 // from compile-time const to uniform (live ImGui control in Graphics Options >
@@ -195,9 +195,13 @@ void main(void)
                        + waterCol * SKY_AMBIENT * 0.5;
         // Camera-INDEPENDENT granular wave detail (dual counter-scroll fBm).
         // BRIGHTEN-only (no darkening) + sharpened reflective crest shimmer ->
-        // reads as light catching the ripples. No Fresnel/specular: MC2 has no
-        // sun "for now"; the ONLY camera-dependent term will be S3 terrain
-        // planar reflection (deferred).
+        // reads as light catching the ripples. STALE NOTE (superseded, kept for
+        // history): this comment used to say "no Fresnel/specular... camera-
+        // dependent term deferred to S3." That is no longer true — camera-
+        // dependent SH-sky + HDRI + terrain-RT reflection (Fresnel-mixed) is
+        // implemented and live below (WATER-SKY-REFLECTION-1 / WATER-HDRI-REFL-1 /
+        // WATER-REFLECTION-SAMPLE-1). Don't trust this block's wording over the
+        // code that follows it.
         PREC float crest = max(nz, 0.0);                       // troughs stay at base
         col *= 1.0 + RIPPLE_GAIN * waveLOD * crest;            // brighten only
         PREC float glint = smoothstep(GLINT_THRESH, 0.80, nz); // sharp crest sparkle

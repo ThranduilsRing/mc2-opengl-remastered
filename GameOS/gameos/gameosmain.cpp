@@ -6,6 +6,7 @@
 #include "draw_packet_emitter.h"       // DrawPacket v0
 #include "gos_static_prop_batcher.h"   // batcher_getSortedPacketCount — explicit, do not rely on transitive
 #include "../../RenderCore/MaterialGpu.h"  // RenderCore::MaterialGpu for g_dpSelProp albedoTex fill
+#include "build_fingerprint.h"          // MC2_BUILD_GIT_SHA (real macro; MC2_BUILD_HASH never defined)
 #include <stdio.h>
 #include <stdlib.h>
 #include <vector>
@@ -139,6 +140,7 @@ static LONG WINAPI mc2_unhandled_exception_filter(EXCEPTION_POINTERS* ep)
 #include "gos_postprocess.h"
 #include "gos_validate.h"
 #include "gos_screenshot.h"   // deterministic backbuffer->TGA capture (oracle)
+#include "gos_dev_shell.h"    // DEV-SHELL-1: localhost dev command socket (MC2_DEV_SHELL)
 #include "gos_visual_capture.h"  // [VISUAL_CAPTURE v1] S9 PNG+sidecar + bookmark replay
 #include "gos_static_prop_killswitch.h"
 #include "gos_static_prop_registry.h"  // Stage 3.C: isEnabled() for [INSTR v1]
@@ -450,6 +452,25 @@ static void process_events( void ) {
                 float w = (float)event.window.data1;
                 float h = (float)event.window.data2;
                 glViewport(0, 0, (GLsizei)w, (GLsizei)h);
+                // FREE-RESIZE-1: refresh the physical drawable size — every
+                // per-frame consumer (postprocess FBO resize in draw_screen,
+                // UI canvas box, mouse normalize, camera aspect) keys off
+                // Environment.drawableWidth/Height, so updating them + the
+                // ImGui display size is the whole live-resize story. The
+                // logical 800x600 canvas (Environment.screenWidth) stays
+                // untouched by design.
+                {
+                    extern SDL_Window* g_sdl_window;
+                    if (g_sdl_window) {
+                        SDL_GL_GetDrawableSize(g_sdl_window,
+                            &Environment.drawableWidth, &Environment.drawableHeight);
+#ifdef MC2_IMGUI
+                        GuiRuntime::NotifyResize(
+                            Environment.drawableWidth, Environment.drawableHeight,
+                            Environment.screenWidth, Environment.screenHeight);
+#endif
+                    }
+                }
                 graphics::refresh_mouse_grab();
                 SPEW(("INPUT", "resize event: w: %f h:%f\n", w, h));
                 break;
@@ -624,6 +645,13 @@ static void draw_screen( void )
     drainGLErrors("hud");
     //CHECK_GL_ERROR;
 #ifdef MC2_IMGUI
+    // FB 0 depth starts at 1.0 (GL default); only sceneFBO_ gets cleared during
+    // draw_screen().  Post-ImGui 3D camera renders (encyclopedia mech viewer) use
+    // GL_GEQUAL (reverse-Z), so fragments at depth 0.x all fail "0.x >= 1.0".
+    // Clear to 0.0 (reverse-Z far) once per frame so the depth test passes.
+    glDepthMask(GL_TRUE);
+    glClearDepth(0.0);
+    glClear(GL_DEPTH_BUFFER_BIT);
     GuiRuntime::Render();
 #endif
 }
@@ -696,6 +724,20 @@ namespace {
 // without a new header. Pattern mirrors the startup timing above.
 static Uint64 g_mission_t0 = 0;
 
+// LOAD-PHASE-FACTS-1: coarse wall-clock phase breakdown for the mission-load
+// critical path (FST/pak parse, texture prewarm, object/actor spawn, etc).
+// Cheap fixed-size ring of (name, elapsed_ms) pairs recorded by every
+// mission_phase_mark() call; overhead is a handful of printf-equivalent
+// stores per mission load (~microseconds total) so this stays always-on,
+// no gate needed. Consolidated into one [LOAD_PHASES v1] line at
+// mission_phase_report(), called from Mission::start() right after
+// mission_ready is marked.
+namespace {
+    struct LoadPhaseSample { const char* name; double t_ms; };
+    static const int kMaxLoadPhaseSamples = 16;
+    static LoadPhaseSample g_loadPhaseSamples[kMaxLoadPhaseSamples];
+    static int g_loadPhaseCount = 0;
+}
 
 extern "C" void mission_phase_begin()
 {
@@ -703,6 +745,7 @@ extern "C" void mission_phase_begin()
     const double freq = (double)SDL_GetPerformanceFrequency();
     (void)freq; // suppress unused-var if compiler gets clever
     printf("[MISSION] t=  0.00s  phase=mission_load_start\n");
+    g_loadPhaseCount = 0;
 }
 
 extern "C" void mission_phase_mark(const char* name)
@@ -711,6 +754,34 @@ extern "C" void mission_phase_mark(const char* name)
     const double freq = (double)SDL_GetPerformanceFrequency();
     const double elapsed = (double)(now - g_mission_t0) / freq;
     printf("[MISSION] t=%6.2fs  phase=%s\n", elapsed, name);
+
+    if (g_loadPhaseCount < kMaxLoadPhaseSamples) {
+        g_loadPhaseSamples[g_loadPhaseCount].name = name;
+        g_loadPhaseSamples[g_loadPhaseCount].t_ms = elapsed * 1000.0;
+        g_loadPhaseCount++;
+    }
+}
+
+// LOAD-PHASE-FACTS-1: emit one consolidated line summarizing the phase
+// breakdown recorded since mission_phase_begin(). Each phaseN=NAME:MS is
+// the wall-clock delta since the PREVIOUS mark (or since mission_load_start
+// for the first mark), so the numbers sum to the final mark's total.
+extern "C" void mission_phase_report()
+{
+    char buf[1024];
+    int off = 0;
+    double prev_ms = 0.0;
+    const double total_ms = (g_loadPhaseCount > 0) ? g_loadPhaseSamples[g_loadPhaseCount - 1].t_ms : 0.0;
+
+    off += snprintf(buf + off, sizeof(buf) - off, "[LOAD_PHASES v1] total=%.1fms", total_ms);
+    for (int i = 0; i < g_loadPhaseCount && off < (int)sizeof(buf); i++) {
+        const double delta_ms = g_loadPhaseSamples[i].t_ms - prev_ms;
+        off += snprintf(buf + off, sizeof(buf) - off, " phase%d=%s:%.1fms",
+                         i + 1, g_loadPhaseSamples[i].name, delta_ms);
+        prev_ms = g_loadPhaseSamples[i].t_ms;
+    }
+    printf("%s\n", buf);
+    fflush(stdout);
 }
 
 //typedef void (GLAPIENTRY *GLDEBUGPROCARB)(GLenum source, GLenum type, GLuint id, GLenum severity, GLsizei length, const GLchar* message, const void* userParam);
@@ -783,6 +854,83 @@ int main(int argc, char** argv)
                     CloseHandle(pi.hThread);
                     CloseHandle(pi.hProcess);
                     return 0;  // launcher will relaunch us with MC2_LAUNCHED=1
+                }
+            }
+        }
+    }
+
+    // [LAUNCHER_ENV v1] MC2_NO_LAUNCHER launches skip the launcher GUI — and
+    // with it the launcher's env injection built from launcher_env.json next
+    // to the exe (CSM radius, cloud shadows, prop PBR/ambient, tex tier,
+    // shadow map size, fps cap, ...). Users following the CMD launch recipe
+    // therefore silently lost every launcher-curated gate. Fix: on the
+    // explicit MC2_NO_LAUNCHER path, read the same launcher_env.json directly
+    // and apply its MC2_* string keys to this process's environment.
+    // Precedence: a var already set in the shell ALWAYS wins (never
+    // overridden); empty values are skipped (launcher semantics: "" = unset);
+    // non-MC2_ keys (tex_pack_mod / last_*) are ignored. Scope guards: runs
+    // ONLY when MC2_NO_LAUNCHER is set and MC2_LAUNCHED is not — launcher
+    // launches (which already injected + stripped) and smoke/diagnostic
+    // launches (MC2_SMOKE_MODE / MC2_DEBUG_STATE_DUMP / MC2_LOG without
+    // MC2_NO_LAUNCHER) are untouched, so smoke baselines cannot drift.
+    // Kill-switch: MC2_LAUNCHER_ENV_JSON=0 restores the pure-shell-env launch.
+    {
+        const char* noLauncher = std::getenv("MC2_NO_LAUNCHER");
+        const bool  fromLauncher = std::getenv("MC2_LAUNCHED") != nullptr;
+        const char* jsGate = std::getenv("MC2_LAUNCHER_ENV_JSON");
+        const bool  jsOff = (jsGate && jsGate[0] == '0' && jsGate[1] == '\0');
+        if (noLauncher && !fromLauncher && !jsOff) {
+            char exePath[MAX_PATH] = {0};
+            char jsonPath[MAX_PATH] = {0};
+            DWORD n = GetModuleFileNameA(NULL, exePath, MAX_PATH);
+            if (n > 0 && n < MAX_PATH) {
+                strncpy(jsonPath, exePath, MAX_PATH); jsonPath[MAX_PATH-1] = '\0';
+                char* slash = strrchr(jsonPath, '\\');
+                if (!slash) slash = strrchr(jsonPath, '/');
+                if (slash) *(slash + 1) = '\0'; else jsonPath[0] = '\0';
+                strncat(jsonPath, "launcher_env.json", MAX_PATH - strlen(jsonPath) - 1);
+            }
+            FILE* jf = jsonPath[0] ? fopen(jsonPath, "rb") : NULL;
+            if (jf) {
+                // launcher_env.json is a small flat string map (<1 KB today);
+                // 64 KB bound keeps a corrupt/hostile file from ballooning.
+                static char jbuf[65536];
+                size_t got = fread(jbuf, 1, sizeof(jbuf) - 1, jf);
+                fclose(jf);
+                jbuf[got] = '\0';
+                int applied = 0, shellWins = 0;
+                const char* p = jbuf;
+                while ((p = strstr(p, "\"MC2_")) != NULL) {
+                    const char* keyStart = p + 1;
+                    const char* keyEnd = strchr(keyStart, '"');
+                    if (!keyEnd) break;
+                    p = keyEnd + 1;
+                    char key[128];
+                    size_t klen = (size_t)(keyEnd - keyStart);
+                    if (klen == 0 || klen >= sizeof(key)) continue;
+                    memcpy(key, keyStart, klen); key[klen] = '\0';
+                    const char* c = p;
+                    while (*c == ' ' || *c == '\t' || *c == ':') c++;
+                    if (*c != '"') continue;      // non-string value: skip
+                    const char* valStart = c + 1;
+                    const char* valEnd = strchr(valStart, '"');
+                    if (!valEnd) break;
+                    p = valEnd + 1;
+                    char val[256];
+                    size_t vlen = (size_t)(valEnd - valStart);
+                    if (vlen >= sizeof(val)) continue;
+                    memcpy(val, valStart, vlen); val[vlen] = '\0';
+                    if (!val[0]) continue;        // "" = unset (launcher semantics)
+                    if (std::getenv(key)) { shellWins++; continue; }  // shell wins
+                    if (_putenv_s(key, val) == 0) applied++;
+                }
+                // stderr is still live here (the MC2_LOG NUL-redirect below has
+                // not run yet) — gate on MC2_LOG so a plain double-click-style
+                // console stays quiet.
+                if (std::getenv("MC2_LOG")) {
+                    fprintf(stderr,
+                        "[LAUNCHER_ENV v1] applied=%d shell_override=%d src=%s\n",
+                        applied, shellWins, jsonPath);
                 }
             }
         }
@@ -906,13 +1054,7 @@ int main(int argc, char** argv)
         // new TG_Light registration path is the unconditional production
         // behavior. MC2_SPOTLIGHT_REAL_TRACE counters remain (Debug
         // Instrumentation Rule: demote, don't delete) for future diagnostics.
-        const char* build  =
-#ifdef MC2_BUILD_HASH
-            MC2_BUILD_HASH
-#else
-            "UNKNOWN"
-#endif
-            ;
+        const char* build  = MC2_BUILD_GIT_SHA;
         // Grew 384 -> 512 -> 640 to absorb terrain_indirect{,_parity}
         // and gpu_objects fields without truncation.
         // Grew 640 -> 720 to absorb gpu_cull_substrate and gpu_cull_aabb_parity.
@@ -1060,17 +1202,125 @@ int main(int argc, char** argv)
     // fills in Environment structure
     GetGameOSEnvironment(cmdline);
 
+    // Pre-window resolution bootstrap (ui-phase1: supersedes [HUD-RES-CLAMP v1]).
+    //
+    // GetGameOSEnvironment (mechcmd2.cpp) hardcodes 800x600.  prefs.load()
+    // + gos_SetScreenMode run inside InitializeGameEngine — after the window
+    // is already created — so the window and all UI coordinate math start
+    // with the wrong dimensions.
+    //
+    // Fix: read ResolutionX/Y (and FullScreen) from options.cfg here, before
+    // create_window, so the window is sized correctly from the first frame.
+    // Uses a simple line scanner to avoid pulling in the full FitIniFile stack
+    // before the GL context exists.  Falls back to 800x600 if the file is
+    // absent or the keys are missing.
+    //
+    // Env var overrides (highest priority, useful for CI/smoke/debugging):
+    //   MC2_WIDTH=<px>   MC2_HEIGHT=<px>
+    //
+    // The old [HUD-RES-CLAMP v1] hardcoded 800x600 unconditionally to keep the
+    // legacy 2D HUD's layout correct; that was a stopgap for the pre-ImGui HUD
+    // and is retired now that the defs/ImGui UI drives real-resolution layout.
+    {
+        const char* envW = std::getenv("MC2_WIDTH");
+        const char* envH = std::getenv("MC2_HEIGHT");
+        if (envW && atoi(envW) > 0)
+            Environment.screenWidth = atoi(envW);
+        if (envH && atoi(envH) > 0)
+            Environment.screenHeight = atoi(envH);
+
+        // If no env override, try options.cfg.
+        if (!envW && !envH)
+        {
+            FILE* f = std::fopen("options.cfg", "r");
+            if (f)
+            {
+                char line[256];
+                bool inBlock = false;
+                int foundW = 0, foundH = 0;
+                bool foundFS = false;
+                bool fullscreenVal = false;
+
+                while (std::fgets(line, sizeof(line), f))
+                {
+                    // Strip CR/LF
+                    char* nl = std::strrchr(line, '\n');
+                    if (nl) *nl = '\0';
+                    nl = std::strrchr(line, '\r');
+                    if (nl) *nl = '\0';
+
+                    if (std::strstr(line, "[MechCommander2]"))
+                    {
+                        inBlock = true;
+                        continue;
+                    }
+                    // Any new block ends the section we want
+                    if (inBlock && line[0] == '[')
+                        break;
+                    if (!inBlock)
+                        continue;
+
+                    // Lines look like: "lg ResolutionX = 1920"
+                    const char* eq = std::strchr(line, '=');
+                    if (!eq)
+                        continue;
+
+                    char key[64] = {};
+                    // Copy everything before '=' and find the last word (the key name)
+                    std::ptrdiff_t beforeEq = eq - line;
+                    if (beforeEq <= 0 || beforeEq >= 63)
+                        continue;
+                    char before[64] = {};
+                    std::strncpy(before, line, (size_t)beforeEq);
+
+                    // The key is the last whitespace-delimited token before '='
+                    char* tok = std::strtok(before, " \t");
+                    char* lastTok = tok;
+                    while (tok) { lastTok = tok; tok = std::strtok(nullptr, " \t"); }
+                    if (!lastTok)
+                        continue;
+
+                    const int val = std::atoi(eq + 1);
+                    if      (std::strcmp(lastTok, "ResolutionX") == 0 && val > 0) foundW = val;
+                    else if (std::strcmp(lastTok, "ResolutionY") == 0 && val > 0) foundH = val;
+                    else if (std::strcmp(lastTok, "FullScreen")  == 0)
+                    {
+                        foundFS = true;
+                        // FitIniFile booleans: "1" or "true"
+                        fullscreenVal = (val != 0 || std::strstr(eq + 1, "true") != nullptr);
+                    }
+                }
+                std::fclose(f);
+
+                if (foundW > 0) Environment.screenWidth  = foundW;
+                if (foundH > 0) Environment.screenHeight = foundH;
+                if (foundFS)    Environment.fullScreen   = fullscreenVal ? 1 : 0;
+
+                printf("[RESOLUTION] Pre-window: %dx%d fullscreen=%d (from options.cfg)\n",
+                       Environment.screenWidth, Environment.screenHeight,
+                       Environment.fullScreen);
+            }
+            else
+            {
+                printf("[RESOLUTION] Pre-window: %dx%d (options.cfg not found, using defaults)\n",
+                       Environment.screenWidth, Environment.screenHeight);
+            }
+        }
+        else
+        {
+            printf("[RESOLUTION] Pre-window: %dx%d (from MC2_WIDTH/MC2_HEIGHT env)\n",
+                   Environment.screenWidth, Environment.screenHeight);
+        }
+    }
+
     delete[] cmdline;
     cmdline = NULL;
 
-    // [HUD-RES-CLAMP v1] Force the startup render base to the canonical 800x600
-    // regardless of options.cfg ResolutionX/Y. The legacy 2D HUD only lays out
-    // correctly at the discrete tuned widths; a non-tuned options value breaks
-    // it. 800x600 + FULLSCREEN_DESKTOP upscale matches the known-good shipped 4K
-    // config and is immune to the options-menu resolution rewrite. Mirrors the
-    // runtime clamp in gos_SetScreenMode. Memory: hud_scene_resolution_separation.
-    Environment.screenWidth  = 800;
-    Environment.screenHeight = 600;
+    // WINDOWED-8006-1: explicit windowed-mode override (launcher "Windowed
+    // mode" checkbox). Wins over options.cfg fullscreen.
+    if (const char* wenv = std::getenv("MC2_WINDOWED")) {
+        if (wenv[0] && wenv[0] != '0') Environment.fullScreen = 0;
+    }
 
     int w = Environment.screenWidth;
     int h = Environment.screenHeight;
@@ -1078,6 +1328,18 @@ int main(int argc, char** argv)
     graphics::RenderWindowHandle win = graphics::create_window("mc2", w, h);
     if(!win)
         return 1;
+
+    // [HUD-RES-CLAMP v1] (IN-MISSION-DETACH-1 restore): the WINDOW above is
+    // created at the real options.cfg resolution (crisp ImGui/defs UI wants a
+    // real-res drawable), but the legacy game logic's canvas goes back to the
+    // canonical 800x600 — the legacy 2D HUD and the in-mission viewport/MVP
+    // plumbing only lay out correctly at the tuned base. The UI-phase1 merge
+    // dropped this clamp, which (a) reverted the HUD-scale fix and (b) fed
+    // real-res Environment values into legacy in-mission math. Real drawable
+    // size stays available via Environment.drawableWidth/Height and
+    // GuiRuntime::GetDisplaySize. Memory: hud_scene_resolution_separation.
+    Environment.screenWidth  = 800;
+    Environment.screenHeight = 600;
 
     startup_phase("window_created");
 
@@ -1174,6 +1436,14 @@ int main(int argc, char** argv)
     startup_phase("renderer_created");
 #ifdef MC2_IMGUI
     GuiRuntime::Init();
+    // SDL_ImplSDL2_NewFrame sets DisplaySize from SDL_GetWindowSize (logical pixels).
+    // Set it explicitly here as well so the very first frame is correct even before
+    // the first NewFrame call, and FramebufferScale is initialised for HiDPI paths.
+    {
+        int fbW = 0, fbH = 0;
+        graphics::get_drawable_size(win, &fbW, &fbH);
+        GuiRuntime::NotifyResize(fbW, fbH, Environment.screenWidth, Environment.screenHeight);
+    }
 #endif
     if(!gos_CreateAudio())
     {   // not an error
@@ -1256,6 +1526,11 @@ int main(int argc, char** argv)
             ZoneScopedN("Frame.RendererHandleEvents");
 		    gos_RendererHandleEvents();
         }
+
+        // DEV-SHELL-1: dev command socket poll. Single static-bool check when
+        // MC2_DEV_SHELL unset. Commands run here, on the GL-owning main thread.
+        if (gos_dev_shell::pollCommands(g_mc2FrameCounter))
+            g_exit = true;
 
         // RenderSnapshot is a shallow struct — spans are (ptr, count) into the
         // ping-pong arena. Copy is safe: arena is not reset until the next
@@ -1647,8 +1922,35 @@ int main(int argc, char** argv)
             static const long  s_ssFrame = getenv("MC2_SCREENSHOT_AT_FRAME")
                 ? atol(getenv("MC2_SCREENSHOT_AT_FRAME")) : -1L;
             static bool s_ssDone = false;
+            // MC2_SCREENSHOT_SOURCE=backbuffer: capture FBO 0 (the real, finished
+            // present-ready framebuffer -- includes the legacy 2D HUD/logistics
+            // draws AND GuiRuntime::Render()'s ImGui compositing) instead of the
+            // mission-only offscreen scene FBO below. Needed for validating
+            // logistics/menu UI (Mech Bay, Mechlopedia, etc.) headlessly -- those
+            // screens never touch sceneFBO_ at all, so the default sceneFBO
+            // capture always shows stale/unrelated mission terrain for them.
+            // Requires a non-minimized window (driver only composites to FBO 0
+            // then); the default (unset) sceneFBO path remains the robust
+            // works-when-minimized oracle for mission/terrain visual diffs.
+            static const bool s_ssBackbuffer = []{
+                const char* v = getenv("MC2_SCREENSHOT_SOURCE");
+                return v && !_stricmp(v, "backbuffer");
+            }();
             if (s_ssPath && s_ssFrame >= 0 && !s_ssDone
                 && (long)g_mc2FrameCounter >= s_ssFrame) {
+                if (s_ssBackbuffer) {
+                    const int ssW = Environment.drawableWidth  > 0 ? Environment.drawableWidth  : Environment.screenWidth;
+                    const int ssH = Environment.drawableHeight > 0 ? Environment.drawableHeight : Environment.screenHeight;
+                    if (ssW > 0 && ssH > 0) {
+                        glBindFramebuffer(GL_READ_FRAMEBUFFER, 0);
+                        glReadBuffer(GL_BACK);
+                        gos::screenshot::writeTGA(s_ssPath, ssW, ssH);
+                        s_ssDone = true;
+                        fprintf(stderr, "[SCREENSHOT v1] frame=%u wrote %s (%dx%d, backbuffer)\n",
+                                g_mc2FrameCounter, s_ssPath, ssW, ssH);
+                        fflush(stderr);
+                    }
+                } else {
                 // Capture the offscreen post-process scene FBO, NOT the window
                 // backbuffer (FBO 0) — when the window is minimized the driver
                 // never composites to FBO 0 (it reads black), but sceneFBO_ is
@@ -1671,7 +1973,10 @@ int main(int argc, char** argv)
                             g_mc2FrameCounter, s_ssPath, ssW, ssH);
                     fflush(stderr);
                 }
+                }
             }
+            // DEV-SHELL-1: pending shell screenshot, same sceneFBO source.
+            gos_dev_shell::capturePendingScreenshot(g_mc2FrameCounter);
         }
 
         {

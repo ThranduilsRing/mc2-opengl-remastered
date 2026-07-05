@@ -1,0 +1,5 @@
+# MINIMAL-VIABLE-HARNESS-2: buildings_smoke.csv is deliberately CRLF -- the CSV
+# reader (mclib/csvfile.cpp via File::readLine) only skips a trailing '\r'
+# before '\n', so an LF-only CSV produces phantom empty rows. Pin the line
+# endings so a checkout on any platform preserves the tested contract.
+buildings_smoke.csv -text eol=crlf

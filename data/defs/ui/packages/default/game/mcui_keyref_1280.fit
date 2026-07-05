@@ -1,0 +1,334 @@
+// MC2R ImGui FIT generated from legacy UI FIT.
+// Source: data/defs/ui/legacy/game/mcui_keyref_1280.fit
+// Legacy files remain source truth only; edit the generated ImGui FIT.
+
+GuiPage {
+    key = "game.mcui_keyref_1280"
+    title = "Game Mcui Keyref 1280"
+    sourceLegacyFit = "data/defs/ui/legacy/game/mcui_keyref_1280.fit"
+    sourceSystem = "game"
+    sourceScreen = "mcui_keyref_1280"
+    sourceKind = "legacy_screen"
+    layout = "absolute"
+    coordinateSpace = "screen_absolute"
+    localWidth = 1280
+    localHeight = 1024
+    mountOffset = "0,0"
+    editableSource = "generated_imgui_only"
+    overlayGameOS = true
+    renderMode = "gameos_overlay"
+    backgroundPolicy = "transparent_overlay"
+}
+
+GuiMetadata {
+    key = "game.mcui_keyref_1280.metadata.metadata"
+    pageKey = "game.mcui_keyref_1280"
+    legacySection = "Buttons"
+    legacyContext = "~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ | ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ | ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~"
+    role = "metadata"
+    layer = "metadata"
+    aliasOverride = "metadata"
+    sourceControlType = "Buttons"
+    rect = "0,0,0,0"
+    legacyLocalRect = "0,0,0,0"
+    legacyRectSource = "xywh"
+    visible = false
+}
+
+GuiButton {
+    key = "game.mcui_keyref_1280.button.close_keyref_close_reference"
+    pageKey = "game.mcui_keyref_1280"
+    legacySection = "Button0"
+    legacyComment = "close keyref \"CLOSE REFERENCE\""
+    role = "button"
+    layer = "control"
+    aliasOverride = "close keyref \"CLOSE REFERENCE\""
+    sourceControlType = "Button0"
+    rect = "991,960,256,32"
+    legacyLocalRect = "991,960,256,32"
+    legacyRectSource = "xywh"
+    texture = "data/art/gui/mcl_mm_12.png"
+    legacyTexture = "mcl_mm_12.tga"
+    uiPackage = "default"
+    rectModel = "legacy_imgui.modern_rect_v1"
+    controlRect = "991,960,256,32"
+    hitRect = "991,960,256,32"
+    artRect = "991,960,256,32"
+    artLayer = "control_art"
+    controlModel = "composite_hit_art_text_v1"
+    linkedLayers = "hit,art,text"
+    editMode = "linked_control_with_independent_text"
+    textRect = "996,965,245,21"
+    textRectMode = "explicit_legacy"
+    textLegacyId = 27708
+    textKey = "legacy.mc2res.27708"
+    visibleText = "CLOSE"
+    textLegacySymbol = "IDS_EN_CLOSE"
+    textSource = "mc2res"
+    textMissing = false
+    helpCaptionLegacyId = 0
+    helpCaptionKey = "legacy.strings.ids_undefined_string_sebi"
+    helpCaptionLegacySymbol = "IDS_undefined_string_sebi"
+    helpCaptionSource = "strings.res.h"
+    helpCaptionMissing = true
+    helpCaptionMissingReason = "symbol_only_from_strings_res_h"
+    helpDescLegacyId = 27609
+    helpDescKey = "legacy.mc2res.27609"
+    helpDescText = "Load a previously saved mission."
+    helpDescLegacySymbol = "IDS_MM_LOAD_HELP"
+    helpDescSource = "mc2res"
+    helpDescMissing = false
+    legacyFontId = 27621
+    legacyFontComment = "use AgencyFB17"
+    font = "Agency Regular"
+    fontStyle = "Regular"
+    fontSize = 17
+    bold = false
+    italic = false
+    textAlign = "center"
+    textAnchor = "center"
+    legacyTextAlignmentSource = "aButton::init default Alignment=2"
+    wrapText = false
+    textX = 996
+    textY = 965
+    textWidth = 245
+    textHeight = 21
+    legacyTextRectSource = "XTextLocation/YTextLocation/TextWidth/TextHeight"
+    normalTextColorArgb = "0xd3ff8a00"
+    normalOverlayColorArgb = "0xd3ff8a00"
+    colorArgb = "0xd3ff8a00"
+    pressedTextColorArgb = "0xffffffff"
+    pressedOverlayColorArgb = "0xffffffff"
+    highlightTextColorArgb = "0xffffffff"
+    highlightOverlayColorArgb = "0xffffffff"
+    disabledTextColorArgb = "0xff373737"
+    disabledOverlayColorArgb = "0xff373737"
+    buttonOverlayEnabled = true
+    buttonOverlayAlpha = 0.30
+    pulseEnabled = true
+    pulseSpeed = 1.5
+    textEffect = "pulse"
+    legacyTextEffectSource = "AnimateText"
+    legacyId = 91
+    legacyTextOutline = "FALSE"
+    legacyAnimateBmp = 1
+    legacyAnimateText = 1
+    uvX = 0
+    uvY = 0
+    uvWidth = 256
+    uvHeight = 32
+    uvPressedX = 0
+    uvPressedY = 32
+    uvHighlightX = 0
+    uvHighlightY = 64
+    uvDisabledX = 0
+    uvDisabledY = 0
+    legacyFontComment = "use AgencyFB17"
+    fillColorArgb = "0x00000000"
+    borderColorArgb = "0x00000000"
+    legacyNormalAnimationTimeStamps = 4
+    legacyNormalAnimationLoops = true
+    legacyNormalAnimTime0 = 0.0
+    legacyNormalAnimColor0 = 0xD3FF8A00
+    legacyNormalAnimTime1 = 15.0
+    legacyNormalAnimColor1 = 0xD3FF8A00
+    legacyNormalAnimTime2 = 15.5
+    legacyNormalAnimColor2 = 0xD3FF8A00
+    legacyNormalAnimTime3 = 16.0
+    legacyNormalAnimColor3 = 0xD3FF8A00
+    legacyPressedAnimationTimeStamps = 2
+    legacyPressedAnimationLoops = false
+    legacyPressedAnimTime0 = 0.0
+    legacyPressedAnimColor0 = 0xffffffff
+    legacyPressedAnimTime1 = 0.4
+    legacyPressedAnimColor1 = 0xffFFAE4D
+    legacyHighlightAnimationTimeStamps = 3
+    legacyHighlightAnimationLoops = true
+    legacyHighlightAnimTime0 = 0.0
+    legacyHighlightAnimColor0 = 0xffffffff
+    legacyHighlightAnimTime1 = 0.4
+    legacyHighlightAnimColor1 = 0xffFF8A00
+    legacyHighlightAnimTime2 = 0.75
+    legacyHighlightAnimColor2 = 0xffffffff
+    legacyDisabledAnimationTimeStamps = 2
+    legacyDisabledAnimationLoops = true
+    legacyDisabledAnimTime0 = 0.0
+    legacyDisabledAnimColor0 = 0xff373737
+    legacyDisabledAnimTime1 = 15.0
+    legacyDisabledAnimColor1 = 0xff373737
+}
+
+GuiMetadata {
+    key = "game.mcui_keyref_1280.metadata.metadata_01"
+    pageKey = "game.mcui_keyref_1280"
+    legacySection = "Rects"
+    legacyContext = "~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ | ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ | ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~"
+    role = "metadata"
+    layer = "metadata"
+    aliasOverride = "metadata"
+    sourceControlType = "Rects"
+    rect = "0,0,0,0"
+    legacyLocalRect = "0,0,0,0"
+    legacyRectSource = "xywh"
+    visible = false
+}
+
+GuiRect {
+    key = "game.mcui_keyref_1280.rect.full_background"
+    pageKey = "game.mcui_keyref_1280"
+    legacySection = "Rect0"
+    legacyComment = "full background"
+    role = "rect"
+    layer = "layout"
+    aliasOverride = "full background"
+    sourceControlType = "Rect0"
+    rect = "0,0,1280,1024"
+    legacyLocalRect = "0,0,1280,1024"
+    legacyRectSource = "xywh"
+    uiPackage = "default"
+    rectModel = "legacy_imgui.modern_rect_v1"
+    controlRect = "0,0,1280,1024"
+    legacyColor = 0x00000000
+    outline = "FALSE"
+    filled = true
+    fillColorArgb = "0x00000000"
+    borderColorArgb = "0x00000000"
+    colorArgb = "0xffffffff"
+}
+
+GuiRect {
+    key = "game.mcui_keyref_1280.rect.outline_rect_for_whole_keyref"
+    pageKey = "game.mcui_keyref_1280"
+    legacySection = "Rect1"
+    legacyComment = "outline rect for whole keyref"
+    role = "rect"
+    layer = "layout"
+    aliasOverride = "outline rect for whole keyref"
+    sourceControlType = "Rect1"
+    rect = "19,19,1238,982"
+    legacyLocalRect = "19,19,1238,982"
+    legacyRectSource = "xywh"
+    uiPackage = "default"
+    rectModel = "legacy_imgui.modern_rect_v1"
+    controlRect = "19,19,1238,982"
+    legacyColor = 0xff002f55
+    outline = "TRUE"
+    filled = false
+    fillColorArgb = "0x00000000"
+    borderColorArgb = "0x00000000"
+    colorArgb = "0xffffffff"
+}
+
+GuiRect {
+    key = "game.mcui_keyref_1280.rect.keyref_scroll_box_outline"
+    pageKey = "game.mcui_keyref_1280"
+    legacySection = "Rect2"
+    legacyComment = "keyref scroll box outline"
+    role = "listbox_mount"
+    layer = "control"
+    aliasOverride = "keyref scroll box outline"
+    sourceControlType = "Rect2"
+    rect = "30,50,1217,900"
+    legacyLocalRect = "30,50,1217,900"
+    legacyRectSource = "xywh"
+    uiPackage = "default"
+    rectModel = "legacy_imgui.modern_rect_v1"
+    controlRect = "30,50,1217,900"
+    legacyColor = 0xff002f55
+    outline = "TRUE"
+    filled = false
+    fillColorArgb = "0x00000000"
+    borderColorArgb = "0x00000000"
+    colorArgb = "0xffffffff"
+}
+
+GuiScrollbar {
+    key = "game.mcui_keyref_1280.scrollbar.keyref_scroll_box_outline"
+    pageKey = "game.mcui_keyref_1280"
+    legacySection = "Rect2"
+    role = "listbox_scrollbar"
+    layer = "control"
+    aliasOverride = "listbox_scrollbar"
+    sourceControlType = "runtime mcScrollBar"
+    sourceStyle = "ScrollBar.fit"
+    sourceLine = "aListBox::init => scrollBar->init(w - 17, 2, 15, h - 4)"
+    rect = "1230,52,15,896"
+    legacyLocalRect = "1230,52,15,896"
+    legacyRectSource = "runtime_listbox_scrollbar"
+    runtimePlacement = "aListBox::mcScrollBar"
+    scrollbarTemplate = "data/defs/ui/packages/legacy_imgui/shared/scrollbar.fit"
+    scrollbarStyle = "orange"
+}
+
+GuiMetadata {
+    key = "game.mcui_keyref_1280.metadata.divider_between_keys_and_description"
+    pageKey = "game.mcui_keyref_1280"
+    legacySection = "Rect3"
+    legacyComment = "divider between keys and description"
+    role = "video"
+    layer = "video"
+    aliasOverride = "divider between keys and description"
+    sourceControlType = "Rect3"
+    rect = "226,51,0,900"
+    legacyLocalRect = "226,51,0,900"
+    legacyRectSource = "xywh"
+    legacyColor = 0xff002f55
+    outline = "TRUE"
+    visible = false
+}
+
+GuiMetadata {
+    key = "game.mcui_keyref_1280.metadata.metadata_02"
+    pageKey = "game.mcui_keyref_1280"
+    legacySection = "Texts"
+    legacyContext = "~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ | ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ | ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~"
+    role = "metadata"
+    layer = "metadata"
+    aliasOverride = "metadata"
+    sourceControlType = "Texts"
+    rect = "0,0,0,0"
+    legacyLocalRect = "0,0,0,0"
+    legacyRectSource = "xywh"
+    visible = false
+}
+
+GuiText {
+    key = "game.mcui_keyref_1280.text.main_header_text_keyboard_reference"
+    pageKey = "game.mcui_keyref_1280"
+    legacySection = "Text0"
+    legacyComment = "main header text \"KEYBOARD REFERENCE\""
+    role = "title"
+    layer = "text"
+    aliasOverride = "main header text \"KEYBOARD REFERENCE\""
+    sourceControlType = "Text0"
+    rect = "30,26,578,20"
+    legacyLocalRect = "30,26,578,20"
+    legacyRectSource = "xywh"
+    uiPackage = "default"
+    rectModel = "legacy_imgui.modern_rect_v1"
+    controlRect = "30,26,578,20"
+    textRect = "30,26,578,20"
+    textRectMode = "control_rect_fallback"
+    textLegacyId = 43231
+    textKey = "legacy.mc2res.43231"
+    visibleText = "KEYBOARD REFERENCE"
+    textLegacySymbol = "IDS_HOTKEY_HEADER"
+    textSource = "mc2res"
+    textMissing = false
+    legacyFontId = 27655
+    legacyFontComment = "use agency fb 14"
+    font = "Agency Regular"
+    fontStyle = "Regular"
+    fontSize = 14
+    bold = false
+    italic = false
+    textAlign = "left"
+    textAnchor = "upper_left"
+    wrapText = false
+    colorArgb = "0xff005392"
+    legacyColor = 0xff005392
+    outline = "FALSE"
+    legacyAlignment = 0
+    legacyFontComment = "use agency fb 14"
+    borderColorArgb = "0x00000000"
+}

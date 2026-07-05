@@ -1,0 +1,378 @@
+// MC2R ImGui FIT generated from legacy UI FIT.
+// Source: data/defs/ui/legacy/game/mcl_mp_scoreboard.fit
+// Legacy files remain source truth only; edit the generated ImGui FIT.
+
+GuiPage {
+    key = "game.mcl_mp_scoreboard"
+    title = "Game Mcl Mp Scoreboard"
+    sourceLegacyFit = "data/defs/ui/legacy/game/mcl_mp_scoreboard.fit"
+    sourceSystem = "game"
+    sourceScreen = "mcl_mp_scoreboard"
+    sourceKind = "legacy_screen"
+    layout = "absolute"
+    coordinateSpace = "screen_absolute"
+    localWidth = 800
+    localHeight = 600
+    mountOffset = "0,0"
+    editableSource = "generated_imgui_only"
+}
+
+GuiMetadata {
+    key = "game.mcl_mp_scoreboard.metadata.metadata"
+    pageKey = "game.mcl_mp_scoreboard"
+    legacySection = "Rects"
+    legacyContext = "~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ | ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ | ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~"
+    role = "metadata"
+    layer = "metadata"
+    aliasOverride = "metadata"
+    sourceControlType = "Rects"
+    rect = "0,0,0,0"
+    legacyLocalRect = "0,0,0,0"
+    legacyRectSource = "xywh"
+    visible = false
+}
+
+GuiRect {
+    key = "game.mcl_mp_scoreboard.rect.player_color_rect"
+    pageKey = "game.mcl_mp_scoreboard"
+    legacySection = "Rect0"
+    legacyComment = "player color rect"
+    role = "rect"
+    layer = "layout"
+    aliasOverride = "player color rect"
+    sourceControlType = "Rect0"
+    rect = "38,96,10,18"
+    legacyLocalRect = "38,96,10,18"
+    legacyRectSource = "xywh"
+    uiPackage = "legacy_imgui"
+    rectModel = "legacy_imgui.modern_rect_v1"
+    controlRect = "38,96,10,18"
+    legacyColor = ""
+    outline = "FALSE"
+    filled = true
+}
+
+GuiRect {
+    key = "game.mcl_mp_scoreboard.rect.rect_behind_player_name"
+    pageKey = "game.mcl_mp_scoreboard"
+    legacySection = "Rect1"
+    legacyComment = "rect behind player name"
+    role = "rect"
+    layer = "layout"
+    aliasOverride = "rect behind player name"
+    sourceControlType = "Rect1"
+    rect = "50,96,129,18"
+    legacyLocalRect = "50,96,129,18"
+    legacyRectSource = "xywh"
+    uiPackage = "legacy_imgui"
+    rectModel = "legacy_imgui.modern_rect_v1"
+    controlRect = "50,96,129,18"
+    legacyColor = "Oxff000000"
+    outline = "FALSE"
+    filled = true
+}
+
+GuiRect {
+    key = "game.mcl_mp_scoreboard.rect.rect_behind_team_text"
+    pageKey = "game.mcl_mp_scoreboard"
+    legacySection = "Rect2"
+    legacyComment = "rect behind team text"
+    role = "rect"
+    layer = "layout"
+    aliasOverride = "rect behind team text"
+    sourceControlType = "Rect2"
+    rect = "19,96,17,18"
+    legacyLocalRect = "19,96,17,18"
+    legacyRectSource = "xywh"
+    uiPackage = "legacy_imgui"
+    rectModel = "legacy_imgui.modern_rect_v1"
+    controlRect = "19,96,17,18"
+    legacyColor = "Oxff000000"
+    outline = "FALSE"
+    filled = true
+}
+
+GuiRect {
+    key = "game.mcl_mp_scoreboard.rect.rect_behind_score_text"
+    pageKey = "game.mcl_mp_scoreboard"
+    legacySection = "Rect3"
+    legacyComment = "rect behind score text"
+    role = "rect"
+    layer = "layout"
+    aliasOverride = "rect behind score text"
+    sourceControlType = "Rect3"
+    rect = "183,96,70,18"
+    legacyLocalRect = "183,96,70,18"
+    legacyRectSource = "xywh"
+    uiPackage = "legacy_imgui"
+    rectModel = "legacy_imgui.modern_rect_v1"
+    controlRect = "183,96,70,18"
+    legacyColor = "Oxff000000"
+    outline = "FALSE"
+    filled = true
+}
+
+GuiRect {
+    key = "game.mcl_mp_scoreboard.rect.rect_behind_kills_text"
+    pageKey = "game.mcl_mp_scoreboard"
+    legacySection = "Rect4"
+    legacyComment = "rect behind kills text"
+    role = "rect"
+    layer = "layout"
+    aliasOverride = "rect behind kills text"
+    sourceControlType = "Rect4"
+    rect = "257,96,70,18"
+    legacyLocalRect = "257,96,70,18"
+    legacyRectSource = "xywh"
+    uiPackage = "legacy_imgui"
+    rectModel = "legacy_imgui.modern_rect_v1"
+    controlRect = "257,96,70,18"
+    legacyColor = "Oxff000000"
+    outline = "FALSE"
+    filled = true
+}
+
+GuiRect {
+    key = "game.mcl_mp_scoreboard.rect.rect_behind_losses_text"
+    pageKey = "game.mcl_mp_scoreboard"
+    legacySection = "Rect5"
+    legacyComment = "rect behind losses text"
+    role = "rect"
+    layer = "layout"
+    aliasOverride = "rect behind losses text"
+    sourceControlType = "Rect5"
+    rect = "331,96,70,18"
+    legacyLocalRect = "331,96,70,18"
+    legacyRectSource = "xywh"
+    uiPackage = "legacy_imgui"
+    rectModel = "legacy_imgui.modern_rect_v1"
+    controlRect = "331,96,70,18"
+    legacyColor = "Oxff000000"
+    outline = "FALSE"
+    filled = true
+}
+
+GuiMetadata {
+    key = "game.mcl_mp_scoreboard.metadata.metadata_01"
+    pageKey = "game.mcl_mp_scoreboard"
+    legacySection = "Texts"
+    legacyContext = "~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ | ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ | ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~"
+    role = "metadata"
+    layer = "metadata"
+    aliasOverride = "metadata"
+    sourceControlType = "Texts"
+    rect = "0,0,0,0"
+    legacyLocalRect = "0,0,0,0"
+    legacyRectSource = "xywh"
+    visible = false
+}
+
+GuiText {
+    key = "game.mcl_mp_scoreboard.text.player"
+    pageKey = "game.mcl_mp_scoreboard"
+    legacySection = "Text0"
+    legacyComment = "player"
+    role = "text"
+    layer = "text"
+    aliasOverride = "player"
+    sourceControlType = "Text0"
+    rect = "53,98,129,18"
+    legacyLocalRect = "53,98,129,18"
+    legacyRectSource = "xywh"
+    uiPackage = "legacy_imgui"
+    rectModel = "legacy_imgui.modern_rect_v1"
+    controlRect = "53,98,129,18"
+    textRect = "53,98,129,18"
+    textRectMode = "control_rect_fallback"
+    textOffset = "0,0"
+    textLegacyId = 27000
+    visible = false
+    textKey = "legacy.mc2res.27000"
+    visibleText = " "
+    textLegacySymbol = "IDS_STRING_FIRST_LOGISTICS"
+    textSource = "mc2res"
+    textMissing = false
+    legacyFontId = 26354
+    legacyFontComment = "use agencyfb11"
+    font = "Agency Regular"
+    fontStyle = "Regular"
+    fontSize = 11
+    bold = false
+    italic = false
+    textAlign = "left"
+    textAnchor = "upper_left"
+    wrapText = false
+    colorArgb = "0xffffffff"
+    legacyColor = 0xffffffff
+    outline = "FALSE"
+    legacyAlignment = 0
+    legacyFontComment = "use agencyfb11"
+}
+
+GuiText {
+    key = "game.mcl_mp_scoreboard.text.team"
+    pageKey = "game.mcl_mp_scoreboard"
+    legacySection = "Text1"
+    legacyComment = "team"
+    role = "text"
+    layer = "text"
+    aliasOverride = "team"
+    sourceControlType = "Text1"
+    rect = "19,98,17,18"
+    legacyLocalRect = "19,98,17,18"
+    legacyRectSource = "xywh"
+    uiPackage = "legacy_imgui"
+    rectModel = "legacy_imgui.modern_rect_v1"
+    controlRect = "19,98,17,18"
+    textRect = "19,98,17,18"
+    textRectMode = "control_rect_fallback"
+    textOffset = "0,0"
+    textLegacyId = 27000
+    visible = false
+    textKey = "legacy.mc2res.27000"
+    visibleText = " "
+    textLegacySymbol = "IDS_STRING_FIRST_LOGISTICS"
+    textSource = "mc2res"
+    textMissing = false
+    legacyFontId = 26354
+    legacyFontComment = "use agencyfb11"
+    font = "Agency Regular"
+    fontStyle = "Regular"
+    fontSize = 11
+    bold = false
+    italic = false
+    textAlign = "center"
+    textAnchor = "center"
+    wrapText = false
+    colorArgb = "0xffffffff"
+    legacyColor = 0xffffffff
+    outline = "FALSE"
+    legacyAlignment = 2
+    legacyFontComment = "use agencyfb11"
+}
+
+GuiText {
+    key = "game.mcl_mp_scoreboard.text.score"
+    pageKey = "game.mcl_mp_scoreboard"
+    legacySection = "Text2"
+    legacyComment = "score"
+    role = "text"
+    layer = "text"
+    aliasOverride = "score"
+    sourceControlType = "Text2"
+    rect = "183,98,70,18"
+    legacyLocalRect = "183,98,70,18"
+    legacyRectSource = "xywh"
+    uiPackage = "legacy_imgui"
+    rectModel = "legacy_imgui.modern_rect_v1"
+    controlRect = "183,98,70,18"
+    textRect = "183,98,70,18"
+    textRectMode = "control_rect_fallback"
+    textOffset = "0,0"
+    textLegacyId = 27000
+    visible = false
+    textKey = "legacy.mc2res.27000"
+    visibleText = " "
+    textLegacySymbol = "IDS_STRING_FIRST_LOGISTICS"
+    textSource = "mc2res"
+    textMissing = false
+    legacyFontId = 26354
+    legacyFontComment = "use agencyfb11"
+    font = "Agency Regular"
+    fontStyle = "Regular"
+    fontSize = 11
+    bold = false
+    italic = false
+    textAlign = "center"
+    textAnchor = "center"
+    wrapText = false
+    colorArgb = "0xffffffff"
+    legacyColor = 0xffffffff
+    outline = "FALSE"
+    legacyAlignment = 2
+    legacyFontComment = "use agencyfb11"
+}
+
+GuiText {
+    key = "game.mcl_mp_scoreboard.text.kills"
+    pageKey = "game.mcl_mp_scoreboard"
+    legacySection = "Text3"
+    legacyComment = "kills"
+    role = "text"
+    layer = "text"
+    aliasOverride = "kills"
+    sourceControlType = "Text3"
+    rect = "257,98,70,18"
+    legacyLocalRect = "257,98,70,18"
+    legacyRectSource = "xywh"
+    uiPackage = "legacy_imgui"
+    rectModel = "legacy_imgui.modern_rect_v1"
+    controlRect = "257,98,70,18"
+    textRect = "257,98,70,18"
+    textRectMode = "control_rect_fallback"
+    textOffset = "0,0"
+    textLegacyId = 27000
+    visible = false
+    textKey = "legacy.mc2res.27000"
+    visibleText = " "
+    textLegacySymbol = "IDS_STRING_FIRST_LOGISTICS"
+    textSource = "mc2res"
+    textMissing = false
+    legacyFontId = 26354
+    legacyFontComment = "use agencyfb11"
+    font = "Agency Regular"
+    fontStyle = "Regular"
+    fontSize = 11
+    bold = false
+    italic = false
+    textAlign = "center"
+    textAnchor = "center"
+    wrapText = false
+    colorArgb = "0xffffffff"
+    legacyColor = 0xffffffff
+    outline = "FALSE"
+    legacyAlignment = 2
+    legacyFontComment = "use agencyfb11"
+}
+
+GuiText {
+    key = "game.mcl_mp_scoreboard.text.losses"
+    pageKey = "game.mcl_mp_scoreboard"
+    legacySection = "Text4"
+    legacyComment = "losses"
+    role = "text"
+    layer = "text"
+    aliasOverride = "losses"
+    sourceControlType = "Text4"
+    rect = "331,98,70,18"
+    legacyLocalRect = "331,98,70,18"
+    legacyRectSource = "xywh"
+    uiPackage = "legacy_imgui"
+    rectModel = "legacy_imgui.modern_rect_v1"
+    controlRect = "331,98,70,18"
+    textRect = "331,98,70,18"
+    textRectMode = "control_rect_fallback"
+    textOffset = "0,0"
+    textLegacyId = 27000
+    visible = false
+    textKey = "legacy.mc2res.27000"
+    visibleText = " "
+    textLegacySymbol = "IDS_STRING_FIRST_LOGISTICS"
+    textSource = "mc2res"
+    textMissing = false
+    legacyFontId = 26354
+    legacyFontComment = "use agencyfb11"
+    font = "Agency Regular"
+    fontStyle = "Regular"
+    fontSize = 11
+    bold = false
+    italic = false
+    textAlign = "center"
+    textAnchor = "center"
+    wrapText = false
+    colorArgb = "0xffffffff"
+    legacyColor = 0xffffffff
+    outline = "FALSE"
+    legacyAlignment = 2
+    legacyFontComment = "use agencyfb11"
+}

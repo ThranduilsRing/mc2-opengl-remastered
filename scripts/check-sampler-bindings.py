@@ -98,6 +98,66 @@ HARD_ANCHORS = {
     "ssaoTex":  (0, "shaders/ssao_apply.frag",  "ssaoApplyProg_"),
 }
 
+# ---------------------------------------------------------------------------
+# Vulkan descriptor-contract cross-reference (SAMPLER-UNIT-MANIFEST-1)
+# ---------------------------------------------------------------------------
+# RenderCore/vulkan_contract.h enumerates exactly 4 CombinedImageSampler rows —
+# FBO-backed images the enum-registry OWNS and that are sampled downstream. Each
+# GLSL sampler NAME that samples one of those owned resources is tagged with its
+# RenderResourceId here, so the sampler occupancy manifest links to the Vulkan
+# descriptor contract (a combined image-sampler's future (set,binding) descriptor
+# grounds against a KNOWN resource, not just a bare unit literal).
+#
+# Every sampler here has VkDescriptorClass::CombinedImageSampler by construction
+# (that is the only image-descriptor class the contract enumerates today; the
+# other ~40 samplers bind textures the registry does NOT yet enum-own — asset
+# atlases, splat-material arrays, PBR maps — so they are left resourceId=null,
+# descriptorClass="CombinedImageSampler?" i.e. "will be a CIS post-port but the
+# resource is not yet enum-backed").
+#
+# Mapping derived from the vulkan_contract.h row DESCRIPTIONS (verified below at
+# runtime against the header text so this table cannot silently drift):
+#   MainColor        "scene HDR color (sceneFBO_ attach0); sampled by PostProcess"
+#   MainDepth        "scene depth; sampled by VFX/Water/Veg/PostProcess"
+#   MainNormal       "GBuffer1 normal (attach1); sampled by SSAO/Shoreline/ScreenShadow/BoxDecals"
+#   ShadowDynamicMap "dynamic shadow depth; sampled by StaticProp/Terrain/Mech/PostProcess"
+VULKAN_SAMPLER_RESOURCE = {
+    # sampler name -> RenderResourceId
+    "sceneTex":            "MainColor",
+    "u_sceneColor":        "MainColor",
+    "sceneDepthTex":       "MainDepth",
+    "depthTex":            "MainDepth",
+    "u_sceneDepth":        "MainDepth",
+    "u_sceneDepthTex":     "MainDepth",
+    "sceneNormalTex":      "MainNormal",
+    "u_sceneNormalTex":    "MainNormal",
+    "dynamicShadowArray":  "ShadowDynamicMap",
+    "dynamicShadowMap":    "ShadowDynamicMap",
+    "dynamicFullMapShadow":"ShadowDynamicMap",
+}
+# The set of RenderResourceIds this table claims are CombinedImageSampler; the
+# runtime check verifies these are exactly the CIS rows present in the header.
+VULKAN_CIS_EXPECTED = {"MainColor", "MainDepth", "MainNormal", "ShadowDynamicMap"}
+VULKAN_CONTRACT_H = os.path.join("RenderCore", "vulkan_contract.h")
+
+
+def scan_vulkan_cis(root):
+    """Parse RenderCore/vulkan_contract.h for the RenderResourceIds tagged
+    VkDescriptorClass::CombinedImageSampler. Returns (set_of_ids, note). Used to
+    self-check VULKAN_SAMPLER_RESOURCE against the header so the map cannot drift
+    silently when the contract adds/removes a CIS resource."""
+    p = os.path.join(root, VULKAN_CONTRACT_H)
+    if not os.path.isfile(p):
+        return set(), f"{VULKAN_CONTRACT_H} not found"
+    text = read(p)
+    # match:  { RenderResourceId::NAME, RenderResourceKind::...,\n  VkDescriptorClass::CombinedImageSampler,
+    rx = re.compile(
+        r"RenderResourceId::([A-Za-z_]\w*)\s*,\s*RenderResourceKind::[A-Za-z0-9_]+\s*,"
+        r"\s*VkDescriptorClass::CombinedImageSampler\b")
+    ids = set(rx.findall(text))
+    return ids, (f"parsed {len(ids)} CombinedImageSampler rows from "
+                 f"{VULKAN_CONTRACT_H.replace(os.sep, '/')}")
+
 
 def walk(root, dirs, exts):
     for d in dirs:
@@ -176,6 +236,23 @@ def main():
     assigns, n_uniform1i, n_activetex = scan_cpp(root, set(glsl))
 
     fails, warns = [], []
+
+    # Vulkan contract self-check: the CIS rows in vulkan_contract.h must match
+    # what VULKAN_SAMPLER_RESOURCE claims to map to. Drift here means the
+    # contract changed and this cross-reference table is stale -> FAIL loudly.
+    vk_cis_ids, vk_note = scan_vulkan_cis(root)
+    if vk_cis_ids:
+        claimed = set(VULKAN_SAMPLER_RESOURCE.values())
+        if not claimed <= vk_cis_ids:
+            fails.append(f"vulkan-contract drift: sampler->resourceId map references "
+                         f"{sorted(claimed - vk_cis_ids)} which are NOT CombinedImageSampler "
+                         f"rows in {VULKAN_CONTRACT_H} (rows present: {sorted(vk_cis_ids)})")
+        if vk_cis_ids != VULKAN_CIS_EXPECTED:
+            warns.append(f"vulkan-contract CIS set changed: header has {sorted(vk_cis_ids)}, "
+                         f"table expected {sorted(VULKAN_CIS_EXPECTED)} — review "
+                         f"VULKAN_SAMPLER_RESOURCE for new/removed sampled resources")
+    else:
+        warns.append(f"vulkan-contract cross-ref skipped: {vk_note}")
 
     # index assignments by name and by receiver
     by_name = {}
@@ -281,26 +358,57 @@ def main():
                 f"setInt/setSamplerUnit assignment (dynamic helper, dormant "
                 f"path, or literal glUniform1i loc-cache)")
 
+    # Vulkan descriptor-class / resourceId tag helper. Every GLSL sampler is a
+    # combined image-sampler post-port; only the ones sampling an enum-OWNED
+    # resource get a resourceId (grounded in vulkan_contract.h). The rest are
+    # "CombinedImageSampler?" (will be a CIS, resource not yet enum-backed).
+    def vk_tag(name):
+        rid = VULKAN_SAMPLER_RESOURCE.get(name)
+        return {
+            "descriptorClass": "CombinedImageSampler" if rid else "CombinedImageSampler?",
+            "resourceId": rid,
+        }
+
     # occupancy: unit -> name/source rows (cross-pass reuse is informational)
     occ = {}
     for a in assigns:
-        occ.setdefault(a["unit"], []).append({
+        row = {
             "name": a["name"], "side": "cpp", "via": a["via"],
-            "receiver": a["receiver"], "file": a["file"], "line": a["line"]})
+            "receiver": a["receiver"], "file": a["file"], "line": a["line"]}
+        row.update(vk_tag(a["name"]))
+        occ.setdefault(a["unit"], []).append(row)
     for name, decls in glsl.items():
         for d in decls:
             u = d["comment_unit"]
             if u is None:
                 continue
-            occ.setdefault(u, []).append({
+            row = {
                 "name": name, "side": "glsl", "target": d["target"],
-                "file": d["file"], "line": d["line"]})
+                "file": d["file"], "line": d["line"]}
+            row.update(vk_tag(name))
+            occ.setdefault(u, []).append(row)
     for unit, rows in occ.items():
         names = {r["name"] for r in rows}
         if len(names) > 1:
             warns.append(
                 f"cross-pass reuse: unit {unit} carries {sorted(names)} "
                 f"(expected — multiplexed)")
+
+    # Vulkan-linked samplers (those mapping to an enum-owned CombinedImageSampler)
+    vk_linked = sorted(
+        {n for n in glsl if n in VULKAN_SAMPLER_RESOURCE})
+    vk_by_resource = {}
+    for n in vk_linked:
+        vk_by_resource.setdefault(VULKAN_SAMPLER_RESOURCE[n], []).append(n)
+
+    samplers_out = {}
+    for n in sorted(glsl):
+        rid = VULKAN_SAMPLER_RESOURCE.get(n)
+        samplers_out[n] = {
+            "decls": glsl[n],
+            "descriptorClass": "CombinedImageSampler" if rid else "CombinedImageSampler?",
+            "resourceId": rid,
+        }
 
     report = {
         "summary": {
@@ -310,13 +418,21 @@ def main():
             "glActiveTexture_sites": n_activetex,
             "hard_anchors": len(anchors),
             "anchors_drift": sum(1 for a in anchors if a["status"] == "drift"),
+            "vulkan_cis_rows": len(vk_cis_ids),
+            "vulkan_linked_samplers": len(vk_linked),
             "fails": len(fails),
             "warns": len(warns),
+        },
+        "vulkan": {
+            "contract_header": VULKAN_CONTRACT_H.replace("\\", "/"),
+            "note": vk_note,
+            "cis_rows_in_header": sorted(vk_cis_ids),
+            "sampler_by_resource": {k: sorted(v) for k, v in sorted(vk_by_resource.items())},
         },
         "fails": fails,
         "warns": warns,
         "anchors": anchors,
-        "samplers": {n: glsl[n] for n in sorted(glsl)},
+        "samplers": samplers_out,
         "assignments": sorted(assigns, key=lambda a: (a["unit"], a["name"], a["file"])),
         "occupancy": {str(u): occ[u] for u in sorted(occ)},
     }
@@ -333,6 +449,9 @@ def main():
         print(f"  glActiveTexture sites      : {n_activetex}")
         print(f"  hard anchors               : {len(anchors)} "
               f"({sum(1 for a in anchors if a['status']=='drift')} drift)")
+        print(f"  vulkan CIS rows (contract) : {len(vk_cis_ids)}")
+        print(f"  vulkan-linked samplers     : {len(vk_linked)} "
+              f"-> {', '.join(f'{k}:{len(v)}' for k, v in sorted(vk_by_resource.items()))}")
         for w in warns:
             print(f"  WARN: {w}")
         for fl in fails:

@@ -1,0 +1,560 @@
+// MC2R ImGui FIT generated from legacy UI FIT.
+// Source: data/defs/ui/legacy/game/mcl_en_mechs.fit
+// Legacy files remain source truth only; edit the generated ImGui FIT.
+
+GuiPage {
+    key = "game.mcl_en_mechs"
+    title = "Game Mcl En Mechs"
+    sourceLegacyFit = "data/defs/ui/legacy/game/mcl_en_mechs.fit"
+    sourceSystem = "game"
+    sourceScreen = "mcl_en_mechs"
+    sourceKind = "legacy_screen"
+    layout = "absolute"
+    coordinateSpace = "screen_absolute"
+    localWidth = 800
+    localHeight = 600
+    mountOffset = "285,58"
+    runtimeMountAppliedBy = "GuiPage.mountOffset"
+    editableSource = "generated_imgui_only"
+    overlayGameOS = true
+    renderMode = "gameos_overlay"
+    backgroundPolicy = "transparent_overlay"
+}
+
+GuiMetadata {
+    key = "game.mcl_en_mechs.metadata.metadata"
+    pageKey = "game.mcl_en_mechs"
+    legacySection = "Rects"
+    legacyContext = "~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ | ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ | ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~"
+    role = "metadata"
+    layer = "metadata"
+    aliasOverride = "metadata"
+    sourceControlType = "Rects"
+    rect = "0,0,0,0"
+    legacyLocalRect = "0,0,0,0"
+    legacyRectSource = "xywh"
+    mountOffset = "285,58"
+    visible = false
+}
+
+GuiRect {
+    key = "game.mcl_en_mechs.rect.mech_description_scroll_box"
+    pageKey = "game.mcl_en_mechs"
+    legacySection = "Rect0"
+    legacyComment = "mech description scroll box"
+    role = "listbox_mount"
+    layer = "control"
+    aliasOverride = "mech description scroll box"
+    sourceControlType = "Rect0"
+    rect = "178,35,315,207"
+    legacyLocalRect = "178,35,315,207"
+    legacyRectSource = "xywh"
+    mountOffset = "285,58"
+    uiPackage = "default"
+    rectModel = "legacy_imgui.modern_rect_v1"
+    controlRect = "178,35,315,207"
+    legacyColor = -16765099
+    outline = "TRUE"
+    filled = false
+    fillColorArgb = "0x00000000"
+    borderColorArgb = "0x00000000"
+    colorArgb = "0xffffffff"
+}
+
+GuiScrollbar {
+    key = "game.mcl_en_mechs.scrollbar.mech_description_scroll_box"
+    visible = false
+    pageKey = "game.mcl_en_mechs"
+    legacySection = "Rect0"
+    role = "description_scrollbar"
+    layer = "control"
+    aliasOverride = "description_scrollbar"
+    sourceControlType = "runtime mcScrollBar"
+    sourceStyle = "ScrollBar.fit"
+    sourceLine = "aListBox::init => scrollBar->init(w - 17, 2, 15, h - 4)"
+    rect = "476,37,15,203"
+    legacyLocalRect = "476,37,15,203"
+    legacyRectSource = "runtime_listbox_scrollbar"
+    runtimePlacement = "aListBox::mcScrollBar"
+    scrollbarTemplate = "data/defs/ui/packages/legacy_imgui/shared/scrollbar.fit"
+    scrollbarStyle = "orange"
+}
+
+GuiRect {
+    key = "game.mcl_en_mechs.rect.mech_stats_scroll_box"
+    pageKey = "game.mcl_en_mechs"
+    legacySection = "Rect1"
+    legacyComment = "mech stats scroll box"
+    role = "listbox_mount"
+    layer = "control"
+    aliasOverride = "mech stats scroll box"
+    sourceControlType = "Rect1"
+    rect = "10,272,236,180"
+    legacyLocalRect = "10,272,236,180"
+    legacyRectSource = "xywh"
+    mountOffset = "285,58"
+    uiPackage = "default"
+    rectModel = "legacy_imgui.modern_rect_v1"
+    controlRect = "10,272,236,180"
+    legacyColor = -16699563
+    outline = "TRUE"
+    filled = false
+    fillColorArgb = "0x00000000"
+    borderColorArgb = "0x00000000"
+    colorArgb = "0xffffffff"
+}
+
+GuiScrollbar {
+    key = "game.mcl_en_mechs.scrollbar.mech_stats_scroll_box"
+    visible = false
+    pageKey = "game.mcl_en_mechs"
+    legacySection = "Rect1"
+    role = "stats_scrollbar"
+    layer = "control"
+    aliasOverride = "stats_scrollbar"
+    sourceControlType = "runtime mcScrollBar"
+    sourceStyle = "ScrollBar.fit"
+    sourceLine = "aListBox::init => scrollBar->init(w - 17, 2, 15, h - 4)"
+    rect = "229,274,15,176"
+    legacyLocalRect = "229,274,15,176"
+    legacyRectSource = "runtime_listbox_scrollbar"
+    runtimePlacement = "aListBox::mcScrollBar"
+    scrollbarTemplate = "data/defs/ui/packages/legacy_imgui/shared/scrollbar.fit"
+    scrollbarStyle = "orange"
+}
+
+GuiRect {
+    key = "game.mcl_en_mechs.rect.weapons_loadout_scroll_box"
+    pageKey = "game.mcl_en_mechs"
+    legacySection = "Rect2"
+    legacyComment = "weapons loadout scroll box"
+    role = "listbox_mount"
+    layer = "control"
+    aliasOverride = "weapons loadout scroll box"
+    sourceControlType = "Rect2"
+    rect = "256,272,237,180"
+    legacyLocalRect = "256,272,237,180"
+    legacyRectSource = "xywh"
+    mountOffset = "285,58"
+    uiPackage = "default"
+    rectModel = "legacy_imgui.modern_rect_v1"
+    controlRect = "256,272,237,180"
+    legacyColor = -16634027
+    outline = "TRUE"
+    filled = false
+    fillColorArgb = "0x00000000"
+    borderColorArgb = "0x00000000"
+    colorArgb = "0xffffffff"
+}
+
+GuiScrollbar {
+    key = "game.mcl_en_mechs.scrollbar.weapons_loadout_scroll_box"
+    visible = false
+    pageKey = "game.mcl_en_mechs"
+    legacySection = "Rect2"
+    role = "weapons_scrollbar"
+    layer = "control"
+    aliasOverride = "weapons_scrollbar"
+    sourceControlType = "runtime mcScrollBar"
+    sourceStyle = "ScrollBar.fit"
+    sourceLine = "aListBox::init => scrollBar->init(w - 17, 2, 15, h - 4)"
+    rect = "476,274,15,176"
+    legacyLocalRect = "476,274,15,176"
+    legacyRectSource = "runtime_listbox_scrollbar"
+    runtimePlacement = "aListBox::mcScrollBar"
+    scrollbarTemplate = "data/defs/ui/packages/legacy_imgui/shared/scrollbar.fit"
+    scrollbarStyle = "orange"
+}
+
+GuiMetadata {
+    key = "game.mcl_en_mechs.metadata.metadata_01"
+    pageKey = "game.mcl_en_mechs"
+    legacySection = "Rect3"
+    role = "metadata"
+    layer = "metadata"
+    aliasOverride = "metadata"
+    sourceControlType = "Rect3"
+    rect = "18,35,141,0"
+    legacyLocalRect = "18,35,141,0"
+    legacyRectSource = "xywh"
+    mountOffset = "285,58"
+    legacyColor = 0xff002F55
+    outline = "TRUE"
+    visible = false
+}
+
+GuiMetadata {
+    key = "game.mcl_en_mechs.metadata.metadata_02"
+    pageKey = "game.mcl_en_mechs"
+    legacySection = "Rect4"
+    role = "metadata"
+    layer = "metadata"
+    aliasOverride = "metadata"
+    sourceControlType = "Rect4"
+    rect = "10,43,0,190"
+    legacyLocalRect = "10,43,0,190"
+    legacyRectSource = "xywh"
+    mountOffset = "285,58"
+    legacyColor = 0xff002F55
+    outline = "TRUE"
+    visible = false
+}
+
+GuiMetadata {
+    key = "game.mcl_en_mechs.metadata.metadata_03"
+    pageKey = "game.mcl_en_mechs"
+    legacySection = "Rect5"
+    role = "metadata"
+    layer = "metadata"
+    aliasOverride = "metadata"
+    sourceControlType = "Rect5"
+    rect = "167,43,0,190"
+    legacyLocalRect = "167,43,0,190"
+    legacyRectSource = "xywh"
+    mountOffset = "285,58"
+    legacyColor = 0xff002F55
+    outline = "TRUE"
+    visible = false
+}
+
+GuiMetadata {
+    key = "game.mcl_en_mechs.metadata.metadata_04"
+    pageKey = "game.mcl_en_mechs"
+    legacySection = "Rect6"
+    role = "metadata"
+    layer = "metadata"
+    aliasOverride = "metadata"
+    sourceControlType = "Rect6"
+    rect = "18,241,141,0"
+    legacyLocalRect = "18,241,141,0"
+    legacyRectSource = "xywh"
+    mountOffset = "285,58"
+    legacyColor = 0xff002F55
+    outline = "TRUE"
+    visible = false
+}
+
+GuiMetadata {
+    key = "game.mcl_en_mechs.metadata.metadata_05"
+    pageKey = "game.mcl_en_mechs"
+    legacySection = "Statics"
+    legacyContext = "~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ | ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ | ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~"
+    role = "metadata"
+    layer = "metadata"
+    aliasOverride = "metadata"
+    sourceControlType = "Statics"
+    rect = "0,0,0,0"
+    legacyLocalRect = "0,0,0,0"
+    legacyRectSource = "xywh"
+    mountOffset = "285,58"
+    visible = false
+}
+
+GuiImage {
+    key = "game.mcl_en_mechs.image.mcl_en_2"
+    pageKey = "game.mcl_en_mechs"
+    legacySection = "Static0"
+    role = "image"
+    layer = "art"
+    aliasOverride = "MCL_EN_2"
+    sourceControlType = "Static0"
+    rect = "10,35,7,7"
+    legacyLocalRect = "10,35,7,7"
+    legacyRectSource = "xywh"
+    mountOffset = "285,58"
+    texture = "data/art/gui/MCL_EN_2.png"
+    legacyTexture = "mcl_en_2.tga"
+    uiPackage = "default"
+    rectModel = "legacy_imgui.modern_rect_v1"
+    controlRect = "10,35,7,7"
+    artRect = "10,35,7,7"
+    artLayer = "control_art"
+    uvX = 202
+    uvY = 80
+    uvWidth = 7
+    uvHeight = 7
+}
+
+GuiImage {
+    key = "game.mcl_en_mechs.image.mcl_en_2_01"
+    pageKey = "game.mcl_en_mechs"
+    legacySection = "Static1"
+    role = "image"
+    layer = "art"
+    aliasOverride = "MCL_EN_2"
+    sourceControlType = "Static1"
+    rect = "161,235,7,7"
+    legacyLocalRect = "161,235,7,7"
+    legacyRectSource = "xywh"
+    mountOffset = "285,58"
+    texture = "data/art/gui/MCL_EN_2.png"
+    legacyTexture = "mcl_en_2.tga"
+    uiPackage = "default"
+    rectModel = "legacy_imgui.modern_rect_v1"
+    controlRect = "161,235,7,7"
+    artRect = "161,235,7,7"
+    artLayer = "control_art"
+    uvX = 209
+    uvY = 87
+    uvWidth = 7
+    uvHeight = 7
+}
+
+GuiImage {
+    key = "game.mcl_en_mechs.image.mcl_en_2_02"
+    pageKey = "game.mcl_en_mechs"
+    legacySection = "Static2"
+    role = "image"
+    layer = "art"
+    aliasOverride = "MCL_EN_2"
+    sourceControlType = "Static2"
+    rect = "161,35,7,7"
+    legacyLocalRect = "161,35,7,7"
+    legacyRectSource = "xywh"
+    mountOffset = "285,58"
+    texture = "data/art/gui/MCL_EN_2.png"
+    legacyTexture = "mcl_en_2.tga"
+    uiPackage = "default"
+    rectModel = "legacy_imgui.modern_rect_v1"
+    controlRect = "161,35,7,7"
+    artRect = "161,35,7,7"
+    artLayer = "control_art"
+    uvX = 209
+    uvY = 80
+    uvWidth = 7
+    uvHeight = 7
+}
+
+GuiImage {
+    key = "game.mcl_en_mechs.image.mcl_en_2_03"
+    pageKey = "game.mcl_en_mechs"
+    legacySection = "Static3"
+    role = "image"
+    layer = "art"
+    aliasOverride = "MCL_EN_2"
+    sourceControlType = "Static3"
+    rect = "10,235,7,7"
+    legacyLocalRect = "10,235,7,7"
+    legacyRectSource = "xywh"
+    mountOffset = "285,58"
+    texture = "data/art/gui/MCL_EN_2.png"
+    legacyTexture = "mcl_en_2.tga"
+    uiPackage = "default"
+    rectModel = "legacy_imgui.modern_rect_v1"
+    controlRect = "10,235,7,7"
+    artRect = "10,235,7,7"
+    artLayer = "control_art"
+    uvX = 202
+    uvY = 87
+    uvWidth = 7
+    uvHeight = 7
+}
+
+Gui3DView {
+    key = "game.mcl_en_mechs.3dview.walking_mech_should_be_centered_here"
+    pageKey = "game.mcl_en_mechs"
+    legacySection = "Static4"
+    legacyComment = "walking mech should be centered here"
+    role = "3d_view"
+    layer = "viewport"
+    aliasOverride = "walking mech should be centered here"
+    sourceControlType = "Static4"
+    rect = "12,43,154,191"
+    legacyLocalRect = "12,43,154,191"
+    legacyRectSource = "xywh"
+    mountOffset = "285,58"
+    uiPackage = "default"
+    rectModel = "legacy_imgui.modern_rect_v1"
+    controlRect = "12,43,154,191"
+    hitRect = "12,43,154,191"
+    viewportKind = "legacy_3d_model"
+    runtimeOwner = "Mechlopedia camera"
+    sourceLine = "camera.init(...) / camera.render()"
+    visible = false
+}
+
+GuiMetadata {
+    key = "game.mcl_en_mechs.metadata.metadata_06"
+    pageKey = "game.mcl_en_mechs"
+    legacySection = "Texts"
+    legacyContext = "~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ | ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ | ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~"
+    role = "metadata"
+    layer = "metadata"
+    aliasOverride = "metadata"
+    sourceControlType = "Texts"
+    rect = "0,0,0,0"
+    legacyLocalRect = "0,0,0,0"
+    legacyRectSource = "xywh"
+    mountOffset = "285,58"
+    visible = false
+}
+
+GuiText {
+    key = "game.mcl_en_mechs.text.mech_or_vehicle_name_header"
+    pageKey = "game.mcl_en_mechs"
+    legacySection = "Text0"
+    legacyComment = "mech or vehicle name header"
+    role = "title"
+    layer = "text"
+    aliasOverride = "mech or vehicle name header"
+    sourceControlType = "Text0"
+    rect = "10,9,483,22"
+    legacyLocalRect = "10,9,483,22"
+    legacyRectSource = "xywh"
+    mountOffset = "285,58"
+    uiPackage = "default"
+    rectModel = "legacy_imgui.modern_rect_v1"
+    controlRect = "10,9,483,22"
+    textRect = "10,9,483,22"
+    textRectMode = "control_rect_fallback"
+    textLegacyId = 0
+    visible = false
+    textKey = "legacy.strings.ids_undefined_string_sebi"
+    textLegacySymbol = "IDS_undefined_string_sebi"
+    textSource = "strings.res.h"
+    textMissing = true
+    textMissingReason = "symbol_only_from_strings_res_h"
+    legacyFontId = 27712
+    legacyFontComment = "use agency fb 14"
+    font = "Agency Regular"
+    fontStyle = "Regular"
+    fontSize = 14
+    bold = false
+    italic = false
+    textAlign = "left"
+    textAnchor = "upper_left"
+    wrapText = false
+    colorArgb = "0xff5c96c2"
+    legacyColor = -10709310
+    outline = "FALSE"
+    legacyAlignment = 0
+    legacyFontComment = "use agency fb 14"
+    borderColorArgb = "0x00000000"
+}
+
+GuiText {
+    key = "game.mcl_en_mechs.text.mech_stats_header"
+    pageKey = "game.mcl_en_mechs"
+    legacySection = "Text1"
+    legacyComment = "mech stats header"
+    role = "title"
+    layer = "text"
+    aliasOverride = "mech stats header"
+    sourceControlType = "Text1"
+    rect = "10,248,236,22"
+    legacyLocalRect = "10,248,236,22"
+    legacyRectSource = "xywh"
+    mountOffset = "285,58"
+    uiPackage = "default"
+    rectModel = "legacy_imgui.modern_rect_v1"
+    controlRect = "10,248,236,22"
+    textRect = "10,248,236,22"
+    textRectMode = "control_rect_fallback"
+    textLegacyId = 27713
+    textKey = "legacy.mc2res.27713"
+    visibleText = "'MECH STATS"
+    textLegacySymbol = "IDS_MECH_STATS"
+    textSource = "mc2res"
+    textMissing = false
+    legacyFontId = 27714
+    legacyFontComment = "use agency fb 14"
+    font = "Agency Regular"
+    fontStyle = "Regular"
+    fontSize = 14
+    bold = false
+    italic = false
+    textAlign = "left"
+    textAnchor = "upper_left"
+    wrapText = false
+    colorArgb = "0xff5c96c3"
+    legacyColor = -10709309
+    outline = "FALSE"
+    legacyAlignment = 0
+    legacyFontComment = "use agency fb 14"
+    borderColorArgb = "0x00000000"
+}
+
+GuiText {
+    key = "game.mcl_en_mechs.text.weapons_loadout_header"
+    pageKey = "game.mcl_en_mechs"
+    legacySection = "Text2"
+    legacyComment = "weapons loadout header"
+    role = "title"
+    layer = "text"
+    aliasOverride = "weapons loadout header"
+    sourceControlType = "Text2"
+    rect = "256,248,236,22"
+    legacyLocalRect = "256,248,236,22"
+    legacyRectSource = "xywh"
+    mountOffset = "285,58"
+    uiPackage = "default"
+    rectModel = "legacy_imgui.modern_rect_v1"
+    controlRect = "256,248,236,22"
+    textRect = "256,248,236,22"
+    textRectMode = "control_rect_fallback"
+    textLegacyId = 27715
+    textKey = "legacy.mc2res.27715"
+    visibleText = "WEAPONS LOADOUT"
+    textLegacySymbol = "IDS_MECH_LOADOUT"
+    textSource = "mc2res"
+    textMissing = false
+    legacyFontId = 27716
+    legacyFontComment = "use agency fb 14"
+    font = "Agency Regular"
+    fontStyle = "Regular"
+    fontSize = 14
+    bold = false
+    italic = false
+    textAlign = "left"
+    textAnchor = "upper_left"
+    wrapText = false
+    colorArgb = "0xff5c96c4"
+    legacyColor = -10709308
+    outline = "FALSE"
+    legacyAlignment = 0
+    legacyFontComment = "use agency fb 14"
+    borderColorArgb = "0x00000000"
+}
+
+GuiText {
+    key = "game.mcl_en_mechs.text.description"
+    pageKey = "game.mcl_en_mechs"
+    rect = "183,38,305,201"
+    mountOffset = "285,58"
+    font = "Agency Regular"
+    fontStyle = "Regular"
+    fontSize = 12
+    textAlign = "left"
+    wrapText = true
+    colorArgb = "0xff005392"
+}
+
+GuiList {
+    key = "game.mcl_en_mechs.list.stats"
+    pageKey = "game.mcl_en_mechs"
+    legacySection = "Rect1"
+    rect = "10,272,236,180"
+    mountOffset = "285,58"
+    font = "Agency Regular"
+    fontStyle = "Regular"
+    fontSize = 12
+    textAlign = "left"
+    textAnchor = "upper_left"
+    wrapText = false
+    colorArgb = "0xff5c96c2"
+}
+
+GuiList {
+    key = "game.mcl_en_mechs.list.weapons"
+    pageKey = "game.mcl_en_mechs"
+    legacySection = "Rect2"
+    rect = "256,272,237,180"
+    mountOffset = "285,58"
+    font = "Agency Regular"
+    fontStyle = "Regular"
+    fontSize = 12
+    textAlign = "left"
+    textAnchor = "upper_left"
+    wrapText = false
+    colorArgb = "0xff5c96c2"
+}

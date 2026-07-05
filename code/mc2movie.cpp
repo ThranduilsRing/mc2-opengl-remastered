@@ -198,3 +198,8 @@ void MC2Movie::render (void)
 {
     if (m_session) video_render(m_session);
 }
+
+unsigned int MC2Movie::getTextureHandle (void)
+{
+    return m_session ? video_get_texture(m_session) : 0;
+}

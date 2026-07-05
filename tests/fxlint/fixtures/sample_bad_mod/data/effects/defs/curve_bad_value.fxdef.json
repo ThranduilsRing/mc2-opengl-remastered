@@ -1,0 +1,6 @@
+{
+  "effect": "Fireball",
+  "curves": {
+    "alpha": "bright"
+  }
+}

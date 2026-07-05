@@ -68,6 +68,19 @@ add_executable(mc2_tests
     test_weapon_presentation_resolve.cpp  # ONE-WEAPON-PRESENTATION-PROOF-1 (E8): pure OnFire/OnMuzzleFlash data-vs-legacy effect-id resolution + asset->id parse (offline)
     test_unit_source_flip.cpp  # UNIT-SOURCE-FLIP-SWITCH-1: MC2_UNIT_DEFINITION_SOURCE gate parse + variant-slug + generated-token facet apply (offline)
     test_equipment_source_flip.cpp  # EQUIPMENT-SOURCE-FLIP-SWITCH-1: MC2_EQUIPMENT_DEFINITION_SOURCE gate parse + range-bucket->ordinal + per-field overlay fallback (offline)
+    test_vulkan_layout_chain.cpp  # VULKAN-LAYOUT-CHAIN-VALIDATOR-2: sampled-image layout-chain coverage/producer (offline)
+    test_subgraph_contiguity.cpp  # SUBGRAPH-CONTIGUITY-GUARD-1: postprocess sub-pass contiguity rule (offline)
+    test_file_inifile.cpp   # MINIMAL-VIABLE-HARNESS-1: real file/inifile/packet stack, game-free
+    test_csvfile.cpp        # MINIMAL-VIABLE-HARNESS-2: real csvfile.cpp (Buildings.csv-shaped)
+    test_fst_roundtrip.cpp  # MINIMAL-VIABLE-HARNESS-2: FST create/writeFast -> loose-vs-FST ladder
+    test_paths_mod.cpp      # MINIMAL-VIABLE-HARNESS-2: paths.cpp globals + mod-index (TryModOpen) resolution
+
+    # MINIMAL-VIABLE-HARNESS-1: malloc-backed heap + GameOS-global shim.
+    # Replaces heap.cpp (won't compile standalone -- see
+    # docs/testing/fitini-inmem-harness-bootstrap-recon-1.md) and
+    # gameos.cpp/gameos_debugging.cpp (Environment / InternalFunctionStop).
+    # heap.cpp MUST NOT be added below while this shim is linked (ODR).
+    heap_shim.cpp
 
     # Leaf-TU engine sources (no transitive engine include drag).
     ${MC2_WORKTREE_ROOT}/mclib/fst_hash.cpp
@@ -77,6 +90,29 @@ add_executable(mc2_tests
     ${MC2_WORKTREE_ROOT}/HostServices/DefaultHostServices.cpp  # ENGINE-HOST-SERVICES-0
     ${MC2_WORKTREE_ROOT}/code/tacticaloverview_state.cpp  # TACTICAL-OVERVIEW-1
     ${MC2_WORKTREE_ROOT}/code/unitprofile.cpp   # UNIT-PROFILE-SEAM-1
+
+    # MINIMAL-VIABLE-HARNESS-1: the real file/ini/packet stack. This is the
+    # measured dependency frontier for file.cpp + inifile.cpp (every TU below
+    # is required at link time; nothing else from mclib/GameOS is):
+    ${MC2_WORKTREE_ROOT}/mclib/file.cpp       # File base: disk/FST/in-RAM backends
+    ${MC2_WORKTREE_ROOT}/mclib/inifile.cpp    # FitIniFile block/var parser
+    ${MC2_WORKTREE_ROOT}/mclib/packet.cpp     # PacketFile (.pak container)
+    ${MC2_WORKTREE_ROOT}/mclib/ffile.cpp      # FastFile (FST archive) -- File::open FST branch
+    ${MC2_WORKTREE_ROOT}/mclib/fastfile.cpp   # FastFileFind + fastFiles registry
+    ${MC2_WORKTREE_ROOT}/mclib/lzdecomp.cpp   # LZDecomp (ffile+packet read path)
+    ${MC2_WORKTREE_ROOT}/mclib/lzcomp.cpp     # LZCompress (ffile writeFast path)
+    ${MC2_WORKTREE_ROOT}/mclib/err.cpp        # Fatal/Assert -> STOP (inifile error paths)
+    ${MC2_WORKTREE_ROOT}/GameOS/src/platform_str.cpp  # S_strlwr/S_stricmp/S_strnicmp
+
+    # MINIMAL-VIABLE-HARNESS-2: csvfile.cpp is a File subclass -> zero new link
+    # frontier (same shim, same base class). Completes the data-ingest spine.
+    ${MC2_WORKTREE_ROOT}/mclib/csvfile.cpp    # CSVFile (Excel-CSV reader, Buildings.csv)
+
+    # MINIMAL-VIABLE-HARNESS-2: paths.cpp is a pure leaf TU (path string globals
+    # only -- no TryModOpen/mod-index; that logic lives in file.cpp, already
+    # linked above). Linking it lets tests reference the engine's real path
+    # globals (objectPath/artPath/...) instead of stand-ins.
+    ${MC2_WORKTREE_ROOT}/mclib/paths.cpp      # path string globals (leaf)
 )
 
 target_include_directories(mc2_tests PRIVATE
@@ -89,7 +125,14 @@ target_include_directories(mc2_tests PRIVATE
     ${MC2_WORKTREE_ROOT}/RenderCore
     ${MC2_WORKTREE_ROOT}/HostServices
     ${MC2_WORKTREE_ROOT}/code     # UNIT-PROFILE-SEAM-1: capability.h / unitprofile.h
+    ${MC2_WORKTREE_ROOT}/3rdparty/include  # MINIMAL-VIABLE-HARNESS-1: zlib.h (ffile/packet)
     ${CMAKE_CURRENT_SOURCE_DIR}
+)
+
+# MINIMAL-VIABLE-HARNESS-1: ffile.cpp/packet.cpp call zlib (compress2/uncompress).
+# 3rdparty/lib/x64/zlib.lib is the static build -- no zlib1.dll needed at run time.
+target_link_libraries(mc2_tests PRIVATE
+    ${MC2_WORKTREE_ROOT}/3rdparty/lib/x64/zlib.lib
 )
 
 # Match main build's preprocessor environment so engine headers parse the
@@ -106,6 +149,8 @@ target_compile_definitions(mc2_tests PRIVATE
     # (CMakeLists.txt:62,136). Header-include only; no GL context is created.
     PLATFORM_WINDOWS
     USE_ASSEMBLER_CODE=0
+    # MINIMAL-VIABLE-HARNESS-1: on-disk fixtures for the file-stack tests.
+    MC2_TEST_FIXTURE_DIR="${CMAKE_CURRENT_SOURCE_DIR}/fixtures"
 )
 
 if(MSVC)

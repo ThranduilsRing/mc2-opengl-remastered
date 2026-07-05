@@ -1,0 +1,37 @@
+vk-bootstrap (charles-lunarg/vk-bootstrap)
+Version tag: v1.4.350
+Commit:      aee321c75021c082165f1be6df3412ac5a5b3bc0
+Source:      https://github.com/charles-lunarg/vk-bootstrap  (git clone --depth 1 --branch v1.4.350)
+Vendored:    2026-07-01 for slice VK-BOOTSTRAP-INTEGRATE-1
+
+Why v1.4.350: matches the installed LunarG Vulkan SDK (1.4.350.0, VK_HEADER_VERSION=350)
+and the vendored VMA 3.3.0. vk-bootstrap tracks VK_HEADER_VERSION, so pinning to the
+SDK's exact minor keeps its VkBootstrapDispatch / feature-chain tables aligned with the
+headers we compile against. (Requested tag v1.3.297 does not exist upstream; v1.4.350 is
+the SDK-matched stable tag.)
+
+Files vendored (NOT header-only -- ships a .cpp):
+  VkBootstrap.h                 -- public API
+  VkBootstrap.cpp               -- implementation (compiled into the Vulkan targets)
+  VkBootstrapDispatch.h         -- generated per-object dispatch tables (included by VkBootstrap.h)
+  VkBootstrapFeatureChain.h     -- feature-chain declarations (included by VkBootstrap.h)
+  VkBootstrapFeatureChain.inl   -- feature-chain impl (included by VkBootstrap.cpp)
+The last two are new-in-1.4 support files #included transitively by the header/impl above;
+all five are required to compile.
+
+License: MIT (Copyright (c) 2020 Charles Giessen).
+
+volk reconciliation (VK-BOOTSTRAP-INTEGRATE-1):
+  vk-bootstrap is fully SELF-DISPATCHING. It never calls a bare vkXxx entry point --
+  every Vulkan call goes through its own internal detail::vulkan_functions() dispatch
+  table, which it populates by LoadLibrary("vulkan-1.dll") + vkGetInstanceProcAddr /
+  vkGetDeviceProcAddr. It therefore coexists with volk (VK_NO_PROTOTYPES) with ZERO
+  symbol conflicts and needs NO Vulkan loader import lib (link Vulkan::Headers only).
+  To share ONE loader with volk we pass volk's vkGetInstanceProcAddr into
+  vkb::InstanceBuilder(fp) so both use the same vkGetInstanceProcAddr; the resulting
+  vkb::Instance has had init_instance_funcs() run, which primes fp_vkGetDeviceProcAddr
+  -- the one thing vkb::SwapchainBuilder::build() needs. We still create the logical
+  device bespoke (devs[0]) and hand SwapchainBuilder raw (phys, device, surface, gfx,
+  present) handles; vk-bootstrap is used ONLY for the SwapchainBuilder.
+
+Compiled ONLY under MC2_VULKAN (default OFF). Not part of the normal GL build.

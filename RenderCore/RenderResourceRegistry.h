@@ -45,8 +45,41 @@ enum class RenderResourceId : uint16_t {
     LightDataSsbo        = 34,  // LIGHTDATA-SSBO-OWNER-1: per-frame light-data SSBO (s_lightDataSsbo, GL binding LIGHT_DATA_SSBO_BINDING, gameos_graphics.cpp); LIVE default-path, grow-once/realloc (handle recreated on grow → re-registered). Persistent lifetime (lazy-created on first upload, destroyed in txmmgr.cpp mcTextureManager teardown). GL binding unrelated to id numbering.
     DynamicFullMapFbo    = 35,  // FBO-LEDGER-EXTEND-1: dynamic full-map render FBO (dynamicFullMapFbo_, gos_postprocess.cpp); registered observe-only in the FboLedger. No prior id (SsaoOcclusion=19/HzbPyramid=18 reused for the other two unaccounted FBOs).
     DynamicPropShadowSsbo = 36, // SCENE-SSBO-OWNER-SWEEP-1: dynamic prop-shadow caster instance SSBO (s_dynamicPropShadowSsbo, GL binding 0, gos_static_prop_batcher.cpp drawDynamicPropShadows); LIVE default-path (gate MC2_SHADOW_DYNAMIC_PROP_CASTERS default-ON, inside the always-on dynamic shadow pass). Mission lifetime: handle glGen'd once per map, per-frame orphan-on-write bufferData, freed on onMapUnload. GL binding 0 unrelated to id numbering. COMPLETENESS-SWEEP gap B#5. Siblings (s_staticBldgShadowSsbo, s_blockVisSsbo, particle s_ssbo/tube SSBOs) DEFERRED to exclusion ledger — created only under default-OFF gates.
+    PostprocessSubgraphColor = 37, // POSTPROCESS-VK-IMAGE-OWNERSHIP-1: Layer-4 subgraph OWNED intermediate COLOR image (R16G16B16A16_SFLOAT). Copied-in from GL sceneColor, blended by BOTH fog passes (edge then oob) in ONE render pass, copied-out to GL. Layout chain UNDEFINED->TRANSFER_DST->COLOR_ATTACHMENT->TRANSFER_SRC. Runtime VkImage handle lives in the future subgraph .cpp, NOT here. Proof-only enum id.
+    PostprocessSubgraphDepth = 38, // POSTPROCESS-VK-IMAGE-OWNERSHIP-1: Layer-4 subgraph OWNED intermediate DEPTH image (D32_SFLOAT). Copied-in from GL sceneDepth, SAMPLED (read-only) by both fog passes. Layout chain UNDEFINED->TRANSFER_DST->SHADER_READ_ONLY. Runtime VkImage handle lives in the future subgraph .cpp, NOT here. Proof-only enum id.
+    TerrainVisualDampSsbo = 39, // TERRAIN-REAUTH-UNPIN-1 Half B: coarse object-proximity displacement damp SSBO (s_visualDampSsbo, GL binding 27, gos_terrain_lod_chunk.cpp); Mission lifetime. CREATE gated upstream (MC2_TERRAIN_VISUAL_DISPLACE + objfade gate + visual_damp.r32 sidecar); static half uploaded at mission load, per-frame mover stamps via BufferSubData. GL binding 27 unrelated to id numbering.
     Count
 };
+
+// ENUM-ID-GUARD-EXPAND-1: DENSE-INDEX SAFETY.
+// Several consumers allocate a fixed array `T arr[int(RenderResourceId::Count)]`
+// and index it by `int(id)` WITHOUT a bounds check (frame_graph_validate.h,
+// postprocess_subgraph.h). That is memory-safe iff every enumerator's numeric
+// value lies in [0, Count) AND Count is exactly the number of real slots (i.e.
+// the enum is a dense 0..Count-1 run with Count last). These compile-time guards
+// prove both, so a future misnumber / gap / forgotten-Count-bump breaks the build
+// here instead of silently writing out of bounds at runtime. GL-free, zero cost.
+
+// (a) Count sits above every real id: an int(id) index is always < Count. Each
+//     real enumerator is listed; adding one WITHOUT extending this list, or giving
+//     an id a value >= Count, fails to compile.
+static_assert(static_cast<int>(RenderResourceId::Unknown)                       < static_cast<int>(RenderResourceId::Count), "id >= Count would index out of bounds");
+static_assert(static_cast<int>(RenderResourceId::DynamicPropShadowSsbo)         < static_cast<int>(RenderResourceId::Count), "id >= Count would index out of bounds");
+static_assert(static_cast<int>(RenderResourceId::PostprocessSubgraphColor)      < static_cast<int>(RenderResourceId::Count), "id >= Count would index out of bounds");
+static_assert(static_cast<int>(RenderResourceId::PostprocessSubgraphDepth)      < static_cast<int>(RenderResourceId::Count), "id >= Count would index out of bounds");
+static_assert(static_cast<int>(RenderResourceId::TerrainVisualDampSsbo)         < static_cast<int>(RenderResourceId::Count), "id >= Count would index out of bounds");
+
+// (b) The run is DENSE: Count == number-of-real-slots. TerrainVisualDampSsbo is the
+//     last real id (value 39) and Count follows it, so Count must be 40. If a new id
+//     is inserted, or an existing one renumbered leaving a hole, this breaks — forcing
+//     a review of the dense-index consumers.
+static_assert(static_cast<int>(RenderResourceId::TerrainVisualDampSsbo) + 1
+                  == static_cast<int>(RenderResourceId::Count),
+              "RenderResourceId is not a dense 0..Count-1 run (Count must immediately "
+              "follow the last real id); dense-index consumers assume no holes above Count");
+static_assert(static_cast<int>(RenderResourceId::Count) == 40,
+              "RenderResourceId::Count changed; update dense-index consumers "
+              "(frame_graph_validate.h, postprocess_subgraph.h) and this guard");
 
 // REGISTRY-LIFETIME-CLASS-1: how long a registered resource stays valid.
 // Observe-only metadata — the bridge to a future scheduler/backend that needs to

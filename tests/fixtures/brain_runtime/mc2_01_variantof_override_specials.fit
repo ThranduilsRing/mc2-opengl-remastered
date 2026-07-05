@@ -1,0 +1,24 @@
+FITini
+
+; BRAINSPECIAL-VARIANTOF-1 fixture: re-declared Body OVERRIDES the parent body.
+; override_scenario_main declares its own Body (GUARD) -> parent's Retreat is NOT
+; inherited. Expected: 1 GUARD order (and no WITHDRAW).
+
+TechSpecial {
+    key = "base.retreat.template"
+    type = "MissionSpecial"
+    Body {
+        DO Unit.Retreat
+        STOP
+    }
+}
+
+TechSpecial {
+    key = "override_scenario_main"
+    type = "MissionSpecial"
+    variantOf = "base.retreat.template"
+    Body {
+        DO OPORD.CoreGuard
+        STOP
+    }
+}

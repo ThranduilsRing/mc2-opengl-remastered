@@ -16,12 +16,13 @@
 #   check-shader-schema.sh   -- requires glslangValidator + compiled goldens
 #   check-debug-state-json.py -- requires a live engine JSON snapshot
 #
-# Deliberately NOT wired here (report, not a gate):
-#   check-vulkan-bindings.py -- Vk-prep shared-binding report (VULKAN-BINDINGS-CHECK-1).
-#     Known collisions (SSBO slot-14/20) are PRESENT and not yet split, so it is
-#     report-only (exit 0) by default; wiring it here would false-fail the
-#     aggregator. Run standalone: `py -3 scripts/check-vulkan-bindings.py`.
-#     Its `--strict` flag becomes the gate once the slots are split.
+# check-vulkan-bindings.py IS wired below (vulkan_bindings + vulkan_bindings_selftest).
+#   Per-pipeline classifier (BINDING-CHECKER-PER-PIPELINE-CLASSIFIER-1): it ERRORs
+#   (exit nonzero) ONLY on a same-pipeline distinct-resource share; disjoint-pipeline
+#   shares are OK (allowlisted) or WARN (exit 0). Pre-existing acknowledged cases
+#   (SSBO 14/20/23 disjoint, mask-solid slot-2) are in the allowlist, so the default
+#   run is exit 0. The self-test proves a NEW same-pipeline dup still fails.
+#   `--strict` additionally fails on any un-allowlisted WARN (future tightening).
 
 set -euo pipefail
 
@@ -121,6 +122,8 @@ run_check "buffer_lifetime"        "py -3 scripts/check-buffer-lifetime-ownershi
 run_check "gpu_buffer_owners"      "py -3 scripts/check-gpu-buffer-owners.py --quiet"
 run_check "texture_owners"         "py -3 scripts/check-texture-owners.py --quiet"
 run_check "render_resource_ids"    "py -3 scripts/check-render-resource-ids.py"
+run_check "vulkan_bindings"        "py -3 scripts/check-vulkan-bindings.py --quiet"
+run_check "vulkan_bindings_selftest" "py -3 scripts/check-vulkan-bindings.py --self-test"
 run_check "shader_variant"         "py -3 scripts/check-shader-variant.py --quiet"
 run_check "spirv_artifacts"        "py -3 scripts/check-spirv-artifacts.py --quiet"
 run_check "spirv_reflection"       "py -3 scripts/check-spirv-reflection-contract.py --quiet"
@@ -134,6 +137,7 @@ run_check "deploy_data_parity"     "py -3 scripts/check-deploy-data-parity.py --
 run_check "pass_coverage"          "py -3 scripts/check-pass-coverage.py --quiet"
 run_check "render_ctx_parity"      "py -3 scripts/check-editor-game-render-context-parity.py --quiet"
 run_check "editor_pass_parity"     "py -3 scripts/check-editor-pass-contract-parity.py --quiet"
+run_check "gated_layout_macros"    "py -3 scripts/check-gated-layout-macros.py --quiet"
 
 # ---------------------------------------------------------------------------
 # Summary table

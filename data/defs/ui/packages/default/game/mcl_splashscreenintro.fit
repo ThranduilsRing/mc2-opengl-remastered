@@ -1,0 +1,166 @@
+// MC2R ImGui FIT generated from legacy UI FIT.
+// Source: data/defs/ui/legacy/game/mcl_splashscreenintro.fit
+// Legacy files remain source truth only; edit the generated ImGui FIT.
+
+GuiPage {
+    key = "game.mcl_splashscreenintro"
+    title = "Game Mcl Splashscreenintro"
+    sourceLegacyFit = "data/defs/ui/legacy/game/mcl_splashscreenintro.fit"
+    sourceSystem = "game"
+    sourceScreen = "mcl_splashscreenintro"
+    sourceKind = "legacy_screen"
+    layout = "absolute"
+    coordinateSpace = "screen_absolute"
+    localWidth = 801
+    localHeight = 601
+    mountOffset = "0,0"
+    editableSource = "generated_imgui_only"
+    overlayGameOS = true
+    renderMode = "gameos_overlay"
+    backgroundPolicy = "transparent_overlay"
+}
+
+GuiMetadata {
+    key = "game.mcl_splashscreenintro.metadata.metadata"
+    pageKey = "game.mcl_splashscreenintro"
+    legacySection = "AnimObjects"
+    legacyContext = "~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ | ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ | ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~"
+    role = "metadata"
+    layer = "metadata"
+    aliasOverride = "metadata"
+    sourceControlType = "AnimObjects"
+    rect = "0,0,0,0"
+    legacyLocalRect = "0,0,0,0"
+    legacyRectSource = "xywh"
+    visible = false
+}
+
+GuiAnimation {
+    key = "game.mcl_splashscreenintro.animation.rectfade"
+    pageKey = "game.mcl_splashscreenintro"
+    legacySection = "AnimObject0"
+    role = "animation"
+    layer = "art"
+    aliasOverride = "rectfade"
+    sourceControlType = "AnimObject0"
+    rect = "0,0,801,601"
+    legacyLocalRect = "0,0,801,601"
+    legacyRectSource = "xywh"
+    uiPackage = "default"
+    rectModel = "legacy_imgui.modern_rect_v1"
+    controlRect = "0,0,801,601"
+    legacyAnimation = "rectfade"
+    animationKeyframes = 6
+    animationLoops = false
+    animationInitialPos = "-1,-1"
+    previewFrame = 0
+    legacyColor = 0xff000000
+    keyframe0Time = 0.0
+    keyframe0X = -1
+    keyframe0Y = -1
+    keyframe0Color = "0xff000000"
+    keyframe1Time = 3.5
+    keyframe1X = -1
+    keyframe1Y = -1
+    keyframe1Color = "0xff000000"
+    keyframe2Time = 5.5
+    keyframe2X = -1
+    keyframe2Y = -1
+    keyframe2Color = "0xff000000"
+    keyframe3Time = 8.0
+    keyframe3X = -1
+    keyframe3Y = -1
+    keyframe3Color = "0xff000000"
+    keyframe4Time = 11.0
+    keyframe4X = -1
+    keyframe4Y = -1
+    keyframe4Color = "0x00000000"
+    keyframe5Time = 12.0
+    keyframe5X = -1
+    keyframe5Y = -1
+    keyframe5Color = "0x00000000"
+}
+
+GuiAnimation {
+    key = "game.mcl_splashscreenintro.animation.logofade0"
+    pageKey = "game.mcl_splashscreenintro"
+    legacySection = "AnimObject1"
+    legacyComment = "logo"
+    role = "animation"
+    layer = "art"
+    aliasOverride = "logofade0"
+    sourceControlType = "AnimObject1"
+    rect = "0,0,256,256"
+    legacyLocalRect = "0,0,256,256"
+    legacyRectSource = "xywh"
+    texture = "data/art/gui/mcl_splashscreenintro_1.png"
+    legacyTexture = "mcl_splashscreenintro_1.tga"
+    uiPackage = "default"
+    rectModel = "legacy_imgui.modern_rect_v1"
+    controlRect = "0,0,256,256"
+    artRect = "0,0,256,256"
+    artLayer = "control_art"
+    legacyAnimation = "logofade0"
+    animationKeyframes = 5
+    animationLoops = false
+    animationInitialPos = "272,172"
+    previewFrame = 0
+    uvX = 0
+    uvY = 0
+    uvWidth = 256
+    uvHeight = 256
+    keyframe0Time = 0.0
+    keyframe0X = 272
+    keyframe0Y = 172
+    keyframe0Color = "0x00ffffff"
+    keyframe1Time = 3.5
+    keyframe1X = 272
+    keyframe1Y = 172
+    keyframe1Color = "0x00ffffff"
+    keyframe2Time = 5.5
+    keyframe2X = 272
+    keyframe2Y = 172
+    keyframe2Color = "0xffffffff"
+    keyframe3Time = 8.0
+    keyframe3X = 272
+    keyframe3Y = 172
+    keyframe3Color = "0xffffffff"
+    keyframe4Time = 11.0
+    keyframe4X = 272
+    keyframe4Y = 172
+    keyframe4Color = "0x00ffffff"
+    keyframe5Time = 12.0
+    keyframe5X = 272
+    keyframe5Y = 172
+    keyframe5Color = "0x00ffffff"
+}
+
+GuiAnimation {
+    key = "game.mcl_splashscreenintro.animation.rect2fade"
+    pageKey = "game.mcl_splashscreenintro"
+    legacySection = "AnimObject2"
+    role = "animation"
+    layer = "art"
+    aliasOverride = "rect2fade"
+    sourceControlType = "AnimObject2"
+    rect = "0,0,801,601"
+    legacyLocalRect = "0,0,801,601"
+    legacyRectSource = "xywh"
+    uiPackage = "default"
+    rectModel = "legacy_imgui.modern_rect_v1"
+    controlRect = "0,0,801,601"
+    legacyAnimation = "rect2fade"
+    animationKeyframes = 2
+    animationLoops = false
+    animationInitialPos = "-1,-1"
+    previewFrame = 0
+    legacyColor = 0xff000000
+    keyframe0Time = 0.0
+    keyframe0X = -1
+    keyframe0Y = -1
+    keyframe0Color = "0xffffffff"
+    keyframe1Time = 3.0
+    keyframe1X = -1
+    keyframe1Y = -1
+    keyframe1Color = "0x00ffffff"
+}

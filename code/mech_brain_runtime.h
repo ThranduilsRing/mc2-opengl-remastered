@@ -76,6 +76,22 @@ struct VarStore {
     }
 };
 
+// ---------------------------------------------------------------------------
+// BRAINSPECIAL-FLOW-WAIT-1 (gate MC2_BRAIN_FLOW): latched sequence-gate state.
+// One entry per WAIT / WAIT_UNTIL verb (keyed by its position in the ROOT body).
+// SPEC-DELTA vs discussion #18: WAIT is NOT VM-blocking — the body re-executes
+// every deterministic brain tick; an unsatisfied WAIT closes a sequence gate for
+// the verbs after it, then LATCHES OPEN once the sim-time deadline (WAIT) or the
+// Var condition (WAIT_UNTIL) is met. No instruction pointer exists or is saved.
+// Mission-ephemeral, NOT serialized (same policy as the rest of this struct;
+// BRAIN-SAVELOAD-1 scope explicitly includes these latches).
+struct BrainWaitState {
+    uint16_t verbIndex  = 0;   // verb position in the root body
+    uint8_t  armed      = 0;   // WAIT: deadline computed; WAIT_UNTIL: gated-trace emitted
+    uint8_t  satisfied  = 0;   // latched open
+    uint32_t deadlineMs = 0;   // WAIT only: getBrainTimeMs() deadline
+};
+
 enum class BrainRuntimeMode : uint8_t {
     Legacy   = 0,  // ABL owns all slots exclusively; runtime inert
     Hybrid   = 1,  // ABL owns GENERAL; runtime would-own PLAYER+ALARM (NOT applied in 1A)
@@ -183,6 +199,18 @@ struct MechBrainRuntime {
     // the caller's target and will engage it regardless of its own EngageRadius (it was summoned).
     // Cleared once the target is no longer a live contact. Localized reinforcement (no map swarm).
     unsigned long helpTargetWID       = 0;              // 0 = not answering a help call
+
+    // BRAINSPECIAL-FLOW-WAIT-1: WAIT/WAIT_UNTIL latches + per-verb-index effect refire
+    // guard. flowFiredIdx records ROOT-body verb indexes whose GENERAL-slot effect already
+    // fired while flow gating is active (the body re-dispatches every tick under
+    // MC2_BRAIN_FLOW, so the class-level once-guards in warrior.cpp are bypassed and
+    // this per-verb guard prevents order re-emission). Zeroed by default ctor.
+    static constexpr int kBrainWaitCap      = 8;
+    static constexpr int kBrainFlowFiredCap = 16;
+    BrainWaitState waitStates[kBrainWaitCap];
+    uint8_t        waitStateCount = 0;
+    uint16_t       flowFiredIdx[kBrainFlowFiredCap] = {};
+    uint8_t        flowFiredCount = 0;
 
     // BRAIN-DECISION-INTENT-QUEUE-1: per-warrior pending intent buffer.
     // Gate: MC2_BRAIN_INTENT_QUEUE (default OFF).

@@ -745,6 +745,11 @@ bool IsGpuPickHoverTraceEnabled() {
     return s_enabled;
 }
 
+bool IsGpuGroundPickParityEnabled() {
+    static const bool s_enabled = envFlag("MC2_GPU_GROUND_PICK_PARITY");
+    return s_enabled;
+}
+
 uint32_t objectIdRawForStaticPropRecipe(int32_t recipeIndex) {
     // M1.5 C1: centralized Handle bit encoding for the batcher
     // producer. Mirrors the recipeIndex -> Handle convention used by

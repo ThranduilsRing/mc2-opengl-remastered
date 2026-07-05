@@ -43,6 +43,8 @@ uniform PREC float terrainLightingV1Strength;
 // CPU force-uploads 1.0 when env MC2_TERRAIN_LIGHTING_V2 is unset →
 // mix(floor, 1.0, shadow) collapses to 1.0 → V1 behavior preserved.
 uniform PREC float terrainLightingV2ShadowFillFloor;
+// CLIFF SHADOW FLOOR: lifts shadow-side steep terrain faces off near-black; 0 = byte-identical.
+uniform PREC float u_terrainCliffShadowFloor;
 
 // Maps a fragment's worldspace XY back to (col, row) in the per-mission
 // height texture, samples 4 axial neighbours with edge-clamp, and returns

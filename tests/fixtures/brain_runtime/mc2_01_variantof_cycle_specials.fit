@@ -1,0 +1,26 @@
+FITini
+
+; BRAINSPECIAL-VARIANTOF-1 fixture: cyclic variantOf chain is guarded.
+; cycle.a <-> cycle.b (both empty bodies) -> [BRAIN_VARIANTOF_CYCLE] traces, both
+; left as-authored (empty). The scenario_main body keeps the fixture loadable.
+
+TechSpecial {
+    key = "cycle.a"
+    type = "MissionSpecial"
+    variantOf = "cycle.b"
+}
+
+TechSpecial {
+    key = "cycle.b"
+    type = "MissionSpecial"
+    variantOf = "cycle.a"
+}
+
+TechSpecial {
+    key = "vcycle_scenario_main"
+    type = "MissionSpecial"
+    Body {
+        DO Var.Set [cycle_probe] 1
+        STOP
+    }
+}

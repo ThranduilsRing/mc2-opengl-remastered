@@ -1,0 +1,27 @@
+FITini
+
+; BRAINSPECIAL-SCOPE-GLOBAL-1 fixture: mission calls into the global library.
+;   1. Call "global.lib.guardprobe" resolves ONLY via the merged global index.
+;   2. Call "global.shadow.probe"  resolves to the MISSION-LOCAL block below
+;      (mission-local wins; the global block of the same key is shadowed).
+; Expected (MC2_BRAIN_SCOPE_GLOBAL=1): merged=1 shadowed=1; chained traces show
+; the global probe body AND the mission-local shadow body.
+
+TechSpecial {
+    key = "scopeglobal_scenario_main"
+    type = "MissionSpecial"
+    Body {
+        DO TechSpecial.Call "global.lib.guardprobe"
+        DO TechSpecial.Call "global.shadow.probe"
+        STOP
+    }
+}
+
+TechSpecial {
+    key = "global.shadow.probe"
+    type = "MissionSpecial"
+    Body {
+        DO Var.Set [from_mission] 1
+        STOP
+    }
+}

@@ -95,6 +95,7 @@ Run as a ledger, not a cleanup binge: `docs/render-backend-seams/opengl-correctn
 | STARTUP-INIT-ASYNC-1: bg-thread LogisticsData::init + null guard | `4da59f21` | **SHIPPED** | `std::async` in `Logistics::start(log_SPLASH)`; blocking join before menu; `getCurrentABLScript()` null guard |
 | STARTUP-PARALLEL-VARIANTS-1: parallel mech CSV reads | `8ede25b5` | **SHIPPED** | `std::async` per mech job inside `initVariants()`; serial scan + parallel read + serial merge |
 | SMART-LOAD-1: defer mech-bay Phase B until first accessor | `bcc6359d` `27768580` | **SHIPPED** | Phase A (campaign.fit only) on bg thread; Phase B (components/pilots/variants + updateAvailability) lazy on first mech-bay call. Gate `MC2_SMART_LOAD=1` default OFF. Smoke mc2_01 PASS gate-OFF + gate-ON. |
+| SMART-LOAD-DEFAULT-ON-1: flip `MC2_SMART_LOAD` default OFF->ON | (this branch) | **SHIPPED** | Kill-switch preserved: `MC2_SMART_LOAD=0` restores legacy eager `LogisticsData::init()`. Caveat: only affects the interactive splash->logistics->mech-bay flow (`Logistics::initializeLogData()`); smoke/tier1's `justStartMission` fast-path calls `Mission::init()` directly and never touches `LogisticsData`, so this flip does not move smoke `mission_ready_ms` -- the win is on the real player-facing load path. |
 
 ---
 
@@ -168,13 +169,13 @@ Tier1 5/5 PASS. Item 8 fires when NVIDIA hardware available.
 **Outstanding work items:**
 - WATER-REFLECTION-CLIP-1: terrain-RT empty at 20° camera (reflected projection + Lengyel oblique near-plane)
 - VFX GPU sim: PARITY-ID-1 (per-particle IDs + forces)
-- Shadow cherry-pick to nifty (v0.4 crashes shadow-on at batcher.cpp:4778)
+- ~~Shadow cherry-pick to nifty (v0.4 crashes shadow-on at batcher.cpp:4778)~~ [CORRECTED 2026-07-01: obsolete — shadow lane long since landed on nifty; CSM default-ON since 2026-06-18]
 - Colormap: delete dead helpers in mapdata.cpp + .burnin files after soak
 
 ## Infrastructure / permanent decisions
 
 - **Track V post+grounding** (merged d8ccd032): MC2_HDR_POST/BLOOM/TONEMAP_ACES/SSAO all default-OFF. Soak doc: `docs/trackv-post-grounding-soak-1.md`.
-- **Shadow lane** (merged 69522900; default-ON since c0525b27): dynamic shadows + 733 prop casters working. Kill-switch MC2_SHADOW_ENABLE=0.
+- **Shadow lane** (merged 69522900; default-ON since c0525b27): dynamic shadows + 733 prop casters working. Kill-switch MC2_SHADOW_ENABLE=0. [CORRECTED 2026-07-01: current shadow architecture is cascaded shadow maps — gate `MC2_SHADOW_CSM`, default **ON** since 2026-06-18 (`8ff13a36`), kill-switch `MC2_SHADOW_CSM=0` (code `gos_postprocess.cpp mc2ShadowCsmEnabled()`); `MC2_SHADOW_ENABLE=0` remains a batcher-level kill-switch]
 - **ViewUniforms UBO** (default-ON): binding=3, kill-switch MC2_VIEW_UNIFORMS=0.
 - **MaterialGpu** (default-ON): MC2_MATERIAL_GPU / MC2_MATERIAL_GPU_SAMPLE.
 - **DrawPacket v7** (default-ON): kill-switch MC2_STATIC_PROP_LEGACY_DISPATCH=1.
@@ -194,15 +195,15 @@ H-series is recon/diagnostic only — no behavior changes. Must complete before 
 |---|---|---|
 | H1a — GL/resource attribution | **SHIPPED** `30dfd015` | `[HITCH]` / `[HITCH_GL]` / `[HITCH_TERRAIN_TEX]` / `[HITCH_STATIC_FLUSH]` / `[HITCH_WATER]` |
 | H1b — WaterFastPath CPU sub-scopes | **SHIPPED** (2026-06-09) | `[HITCH_WATER_DETAIL]` guards/recipe/buildWindow/upload/dispatch sub-times |
-| H1c — Broad frame-phase attribution | **QUEUED** | `[HITCH_PHASE]` logic/render/present/sleep/unknown; explains Category 5 unattributed hitches |
-| H2 — Fast-path disruption / setupTextures guard | **RECON** | See `docs/superpowers/specs/2026-06-09-h2-fastpath-disruption-recon.md` |
+| H1c — Broad frame-phase attribution | **PARTIAL** [corrected 2026-07-01] | `[HITCH_PHASE]` tag exists (`GameOS/gameos/mc2_hitch_trace.cpp:190`); full frame-phase breakdown not yet complete |
+| H2 — Fast-path disruption / setupTextures guard | **SHIPPED** [corrected 2026-07-01] | `setupTextures` gated to `#ifdef MC2_IS_EDITOR` (`mclib/quad.cpp:706-1337`); game build compiled out |
 
-**H2 priority:** run before Phase 8z (legacy terrain deletion). Reason: 8z deletes `setupTextures`/makeLists; H2 must confirm no runtime path still depends on them being resurrected, especially water and editor fallback.
+**H2 priority:** ~~run before Phase 8z (legacy terrain deletion)~~ [CORRECTED 2026-07-01: H2 SHIPPED — setupTextures is editor-build-only; Phase 8z blocker cleared. Remaining 8z work: formally delete unreachable `makeLists` (skipped under chunk-ON but not deleted).]
 
 ## Unstarted campaigns (queued)
 
 - **Terrain continuous surface** (all forks ruled 2026-05-18, design complete): see `terrain_continuous_surface_forks_ruled_option1_killlegacy.md`
-- **DrawPass retirement Slice B**: conjunction gate implemented but not shipped (`terrain.cpp`)
+- ~~**DrawPass retirement Slice B**: conjunction gate implemented but not shipped (`terrain.cpp`)~~ [CORRECTED 2026-07-01: SHIPPED — drawPass loop is gated off under `MC2_TERRAIN_LOD_CHUNK=1` (default ON); `mclib/terrain.cpp` "Terrain::render drawPass" zone ~empty on armed frames, one-shot retired log present]
 - **Unified-projection F1**: plan at `docs/superpowers/plans/2026-05-22-unified-projection-v2-f1-atomic-plan.md`
 - **VFX GPU sim Cardcloud parity**: `docs/vfx-gpu-sim-spec.md`
 - **HZB static-prop cull consumer**: first draw-affecting slice, spec needed

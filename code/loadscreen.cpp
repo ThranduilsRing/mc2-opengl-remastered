@@ -556,8 +556,40 @@ void LoadScreen::render( int x, int y )
 void ProgressTimer(	RECT& WinRect,DDSURFACEDESC2& mouseSurfaceDesc )
 {
 
+	// LOAD-BANNER-RESIDUE-1: this async mouse-thread blit is a DDraw-era
+	// remnant. On the GL port the load screen renders its own progress bar
+	// every pump, while this overlay composited the progress art over
+	// WHATEVER was on screen whenever loadProgress sat in (0,100) — the
+	// world-floating blue banner at mission start, and the same art flashing
+	// behind the pilot-ready screen during campaign save/load ops
+	// (Mission::save/load arm it around near-instant file IO). Retired by
+	// default; MC2_LEGACY_LOAD_BANNER=1 restores the old overlay if some
+	// genuinely blocking path turns out to need it.
+	{
+		static const bool s_legacyBanner = (getenv("MC2_LEGACY_LOAD_BANNER") != nullptr);
+		if ( !s_legacyBanner )
+			return;
+	}
+
 	if ( !LoadScreen::progressBackground )
 		return;
+
+	// LOAD-BANNER-RESIDUE-1 probe (MC2_LOG_PREVIEW): whenever this async blit
+	// is about to composite the progress art, log the progress value — pins
+	// down WHICH lingering state draws the world-floating banner at mission
+	// start. Throttled; file-based per probe discipline.
+	if ( getenv("MC2_LOG_PREVIEW") && ( (loadProgress > 0 && loadProgress < 100) || loadProgress == 1000 ) )
+	{
+		static int s_bannerTick = 0;
+		if ( (s_bannerTick++ % 30) == 0 )
+		{
+			if ( FILE* f = fopen("preview_debug.log","a") )
+			{
+				fprintf(f,"[LOAD-BANNER] ProgressTimer draw loadProgress=%.1f\n", loadProgress);
+				fclose(f);
+			}
+		}
+	}
 
 	long destX = 0;
 	long destY = 0;

@@ -1,0 +1,133 @@
+{
+  "_comment": "TERRAIN-MATERIAL-TEXTURE-REMAP-1 prep. Data-driven layer -> source-pack -> cooked-map mapping. Consumed by cook_terrain_layers.py. Source packs live under C:/Users/Joe/Downloads/GameAsset/Terrain (AmbientCG + PolyHaven, alpine-biased picks). Output size is fixed at 2048 (engine requires all mat<N>_normal array layers share one square arrayWidth, terrtxm2.cpp:2491-2492). rough/ao are NOT cooked in this pass (scalars-v2 ruling: data/terrain_materials.json *_roughness / *_ao keys stay authoritative) -- fields are recorded per-entry for provenance/future-ORM only.",
+  "schema_version": 1,
+  "output_size": 2048,
+  "output_dir": "data/terrain_layers",
+  "naming_convention": "<channel>_<map>.ktx2",
+  "maps_cooked": ["albedo", "normal"],
+  "maps_noted_not_cooked": ["roughness", "ao", "height_standalone"],
+  "packing_convention": "normal.ktx2 is BC7 linear RGBA: rgb=tangent-space normal (NormalGL/nor_gl convention, matches existing matNormalArray .rgb), a=height/displacement packed from the pack's _Displacement/_disp/_height map (matches matNormalArray .a convention read in terrain_lod_chunk.frag:274-276,827 and terrtxm2.cpp:2566-2571 cpuDispAlphaSize retention). albedo.ktx2 is BC7 sRGB RGBA, alpha unused (255).",
+  "layers": {
+    "rock": {
+      "source_pack": "rocks_ground_02_4k.blend.zip",
+      "source_dir": "C:/Users/Joe/Downloads/GameAsset/Terrain/rocks_ground_02_4k.blend.zip",
+      "format": "polyhaven",
+      "maps": {
+        "albedo":    "textures/rocks_ground_02_col_4k.jpg",
+        "normal":    "textures/rocks_ground_02_nor_gl_4k.exr",
+        "height":    "textures/rocks_ground_02_height_4k.png",
+        "roughness": "textures/rocks_ground_02_rough_4k.jpg",
+        "ao": null
+      },
+      "mat_slot_hint": "MAT_LAYER_ROCK (0)",
+      "provenance": "PolyHaven rocks_ground_02, 4K. Alpine bias: generic granite/scree rock face, matches alpine reference shots better than the 2K/6 variants.",
+      "license": "CC0 (PolyHaven convention). No license file on disk in this download -- provenance assumed, not verified from an on-disk LICENSE."
+    },
+    "grass": {
+      "source_pack": "Grass001_2K-PNG.zip",
+      "source_dir": "C:/Users/Joe/Downloads/GameAsset/Terrain/Grass001_2K-PNG.zip",
+      "format": "ambientcg",
+      "maps": {
+        "albedo":    "Grass001_2K-PNG_Color.png",
+        "normal":    "Grass001_2K-PNG_NormalGL.png",
+        "height":    "Grass001_2K-PNG_Displacement.png",
+        "roughness": "Grass001_2K-PNG_Roughness.png",
+        "ao":        "Grass001_2K-PNG_AmbientOcclusion.png"
+      },
+      "mat_slot_hint": "MAT_LAYER_GRASS (1)",
+      "provenance": "AmbientCG Grass001, 2K. Short alpine-meadow-style grass blade texture -- reads well at mid/far LOD without a distracting flower pattern.",
+      "license": "CC0 (AmbientCG convention). No license file on disk in this download -- provenance assumed, not verified from an on-disk LICENSE."
+    },
+    "dirt": {
+      "source_pack": "dirt_aerial_03_2k.blend.zip",
+      "source_dir": "C:/Users/Joe/Downloads/GameAsset/Terrain/dirt_aerial_03_2k.blend.zip",
+      "format": "polyhaven",
+      "maps": {
+        "albedo":    "textures/dirt_aerial_03_diff_2k.jpg",
+        "normal":    "textures/dirt_aerial_03_nor_gl_2k.exr",
+        "height":    "textures/dirt_aerial_03_disp_2k.png",
+        "roughness": "textures/dirt_aerial_03_rough_2k.jpg",
+        "ao": null
+      },
+      "mat_slot_hint": "MAT_LAYER_DIRT (2)",
+      "provenance": "PolyHaven dirt_aerial_03, 2K. Neutral packed-earth dirt, alpine trail color (not desert-red) -- best match among dirt_aerial_03/rocky_trail/ganges_river_pebbles for alpine reference shots.",
+      "license": "CC0 (PolyHaven convention). No license file on disk in this download -- provenance assumed, not verified from an on-disk LICENSE."
+    },
+    "concrete": {
+      "source_pack": "concrete_layers_02_2k.blend.zip",
+      "source_dir": "C:/Users/Joe/Downloads/GameAsset/Terrain/concrete_layers_02_2k.blend.zip",
+      "format": "polyhaven",
+      "maps": {
+        "albedo":    "textures/concrete_layers_02_diff_2k.jpg",
+        "normal":    "textures/concrete_layers_02_nor_gl_2k.exr",
+        "height":    "textures/concrete_layers_02_disp_2k.png",
+        "roughness": "textures/concrete_layers_02_rough_2k.exr",
+        "ao": null
+      },
+      "mat_slot_hint": "MAT_LAYER_CONCRETE (3)",
+      "provenance": "TERRAIN-MATERIAL-TEXTURES-1-FIX (fix B, CONCRETE SWAP): SWAPPED FROM Road004 -> concrete_layers_02 (PolyHaven, 2K). Road004 had painted LANE MARKINGS baked into the albedo (white dashed lines) which tiled across every concrete/cement surface (apron, runway) -- wrong for a generic mat3 CONCRETE channel. concrete_layers_02 is a neutral, marking-free poured-concrete slab (measured meanRGB~(125,122,116), avgSat~9 = genuinely grey, no colour cast, no dashes) -- the correct plain surface for aprons/pads. cracked_concrete_2k was the other candidate (meanRGB~(120,105,88), warm tan cast) -- rejected for the primary channel because the tan cast pushes the apron off-grey; kept as a future distressed variant. Both have full diff/nor_gl/disp so the normal(+height) sidecar still cooks.",
+      "license": "CC0 (PolyHaven convention). No license file on disk in this download -- provenance assumed, not verified from an on-disk LICENSE."
+    },
+    "snow": {
+      "source_pack": "snow_field_aerial_2k.blend.zip",
+      "source_dir": "C:/Users/Joe/Downloads/GameAsset/Terrain/snow_field_aerial_2k.blend.zip",
+      "format": "polyhaven",
+      "maps": {
+        "albedo":    "textures/snow_field_aerial_col_2k.jpg",
+        "normal":    "textures/snow_field_aerial_nor_gl_2k.exr",
+        "height":    "textures/snow_field_aerial_height_2k.png",
+        "roughness": "textures/snow_field_aerial_rough_2k.jpg",
+        "ao": null
+      },
+      "mat_slot_hint": "MAT_LAYER_SNOW (4, HSV-derived -- see recon R4)",
+      "provenance": "PolyHaven snow_field_aerial, 2K. Only snow candidate in the pack set; alpine wind-packed snow texture with visible sastrugi detail in the height map.",
+      "license": "CC0 (PolyHaven convention). No license file on disk in this download -- provenance assumed, not verified from an on-disk LICENSE."
+    },
+    "cliff": {
+      "source_pack": "marble_cliff_01_2k.gltf.zip",
+      "source_dir": "C:/Users/Joe/Downloads/GameAsset/Terrain/marble_cliff_01_2k.gltf.zip",
+      "format": "polyhaven_arm",
+      "maps": {
+        "albedo":    "textures/marble_cliff_01_diff_2k.jpg",
+        "normal":    "textures/marble_cliff_01_nor_gl_2k.jpg",
+        "height":    null,
+        "roughness_packed_in": "textures/marble_cliff_01_arm_2k.jpg (ARM: R=AO G=Rough B=Metal)",
+        "ao_packed_in": "textures/marble_cliff_01_arm_2k.jpg (ARM: R=AO G=Rough B=Metal)"
+      },
+      "mat_slot_hint": "MAT_LAYER_MARBLE_CLIFF (5), already named in shaders/include/terrain_mat_layers.hglsl:10 -- this manifest just cooks the source, does not change the slot wiring.",
+      "provenance": "PolyHaven marble_cliff_01, 2K. Already the intended mat5 triplanar cliff source per the existing shader comment; no height/displacement map shipped for this pack (cliff path uses triplanar sampling, not POM, per recon 3b/POM-synergy note) -- height left null.",
+      "license": "CC0 (PolyHaven convention). No license file on disk in this download -- provenance assumed, not verified from an on-disk LICENSE."
+    },
+    "shore_sand": {
+      "source_pack": "aerial_beach_01_2k.blend.zip",
+      "source_dir": "C:/Users/Joe/Downloads/GameAsset/Terrain/aerial_beach_01_2k.blend.zip",
+      "format": "polyhaven",
+      "maps": {
+        "albedo":    "textures/aerial_beach_01_diff_2k.jpg",
+        "normal":    "textures/aerial_beach_01_nor_gl_2k.exr",
+        "height":    "textures/aerial_beach_01_disp_2k.png",
+        "roughness": "textures/aerial_beach_01_rough_2k.jpg",
+        "ao": null
+      },
+      "mat_slot_hint": "OPTIONAL -- shoreline arc, no MAT_LAYER_* slot allocated yet",
+      "provenance": "PolyHaven aerial_beach_01, 2K. Only true sand/beach candidate in the pack set -- good direct match for a shoreline arc, no substitution needed.",
+      "license": "CC0 (PolyHaven convention). No license file on disk in this download -- provenance assumed, not verified from an on-disk LICENSE."
+    },
+    "wet_rock": {
+      "source_pack": "dry_riverbed_rock_2k.blend.zip",
+      "source_dir": "C:/Users/Joe/Downloads/GameAsset/Terrain/dry_riverbed_rock_2k.blend.zip",
+      "format": "polyhaven",
+      "maps": {
+        "albedo":    "textures/dry_riverbed_rock_diff_2k.jpg",
+        "normal":    "textures/dry_riverbed_rock_nor_gl_2k.exr",
+        "height":    "textures/dry_riverbed_rock_disp_2k.png",
+        "roughness": "textures/dry_riverbed_rock_rough_2k.exr",
+        "ao": null
+      },
+      "mat_slot_hint": "OPTIONAL -- shoreline arc, no MAT_LAYER_* slot allocated yet",
+      "provenance": "NO GOOD MATCH FOUND. Best available candidate is dry_riverbed_rock (smooth water-tumbled river stone) -- geometry/shape reads close to a wet-rock shoreline but the pack is explicitly DRY (no wet-look darkening/specular baked in); ganges_river_pebbles considered as an alternate (also dry, smaller pebble scale). A true wet-rock/tide-pool AmbientCG or PolyHaven pack is NOT present anywhere under GameAsset and should be downloaded before shipping this channel for real.",
+      "license": "CC0 (PolyHaven convention). No license file on disk in this download -- provenance assumed, not verified from an on-disk LICENSE.",
+      "needs_better_source": true
+    }
+  }
+}

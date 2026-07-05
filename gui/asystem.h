@@ -173,6 +173,44 @@ public:
 	void			setHelpID( int newID ) { helpID = newID; }
 	int				getHelpID() const { return helpID; }
 
+	// data/defs UI bridge: while active, aObject::render routes its quad to
+	// the ImGui HUD layer (GuiRuntime) instead of the GameOS draw path, with
+	// coordinates scaled from legacy Environment space to the ImGui display.
+	// Used by LogisticsScreen to draw live legacy animObjects (with their
+	// real keyframe playback) on top of data/defs UI pages, which composite
+	// AFTER all GameOS draws and would otherwise hide them.
+	static void			beginGuiBridge(float scaleX, float scaleY);
+	// UI-LAYER-CONTRACT-2: bridge with a display-pixel origin offset (the
+	// 16:9 canvas pads). Plain beginGuiBridge keeps offset (0,0).
+	static void			beginGuiBridge(float scaleX, float scaleY, float offX, float offY);
+	// Computes the canvas-aware transform (display size + 16:9 canvas box)
+	// and begins the bridge with it -- ALL legacy->ImGui bridge sites should
+	// use this so bridged widgets land on the same canvas as the defs page.
+	static void			beginGuiBridgeCanvas();
+	// The canvas transform itself (scale legacy->display + pad origin), for
+	// callers that composite manually (drawPreviewToPanel panel rects, text
+	// bridge). Falls back to full-stretch when no canvas is active.
+	static void			getCanvasTransform(float& sx, float& sy, float& ox, float& oy);
+	static void			endGuiBridge();
+
+	// Text-only bridge: while active, aText::render draws its label through the
+	// ImGui TTF path (GuiRuntime::DrawUiText) instead of the GameOS bitmap font,
+	// with coordinates scaled from legacy Environment space to the ImGui display.
+	// Unlike beginGuiBridge it does NOT reroute aObject quads, so legacy widgets
+	// (mech-bay deployment icons, mech-storage list items) keep drawing their art
+	// on the GameOS layer while their text upgrades to crisp TTF on the HUD layer.
+	static void			beginTextBridge(float scaleX, float scaleY, float fontScale = 1.0f, float offX = 0.0f, float offY = 0.0f);
+	static void			endTextBridge();
+
+	// Shared TTF-bridge draw for legacy text widgets (aText, aTextListItem, ...).
+	// If a text/gui bridge is active, draws the label through GuiRuntime::DrawUiText
+	// (crisp TTF, scaled legacy->display) and returns true; otherwise returns false
+	// and the caller falls back to its GameOS bitmap-font path.  rect is the widget's
+	// local rect in Environment space (x0,y0 = top-left, x1,y1 = bottom-right).
+	static bool			renderTextBridged(aFont& font, const char* text,
+										  float x0, float y0, float x1, float y1,
+										  unsigned long argb, long alignment);
+
 
 	float		left()
 	{

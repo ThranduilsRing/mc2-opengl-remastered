@@ -136,20 +136,25 @@ EditorData::EditorData()
 
 EditorData::~EditorData()
 {
-	if ( land )
-		delete land;
-
-	land = NULL;
+	// EDITOR-EXIT-CRASH-1 (#1): route through the SAME S2 mission-unload chain
+	// clear() runs (GpuStaticPropBatcher/GpuMechBatcher onMapUnload, cull
+	// substrate/readback shutdown, EditorObjectMgr::clear(), land->destroy()+
+	// delete). Historically this destructor only did `delete land`, so any
+	// exit path that reached ~EditorData WITHOUT a prior explicit clear() call
+	// (no map loaded, or a generator-path exit where beginMissionRenderResources
+	// armed the batchers but the happy-path clear() never re-ran) left GPU
+	// batcher state (SSBOs/textures/VAOs) unfreed while the GL context was
+	// still alive to free it, and any lingering batcher pointer into a
+	// just-freed actor TG_MultiShape became a UAF at context teardown.
+	// clear() is idempotent by construction (every step below is null/instance
+	// guarded), so calling it again here when Editor::destroy() already called
+	// it is a cheap no-op, not a double-free. Must run BEFORE `instance = NULL`
+	// below: clear() dereferences EditorData::instance throughout.
+	EditorDataTrace("[EDITOR_SHUTDOWN] phase=~EditorData_enter");
+	clear();
 
 	instance = NULL;
-
-	if ( tacMapBmp )
-		free( tacMapBmp );
-
-	tacMapBmp = NULL;
-
-
-		
+	EditorDataTrace("[EDITOR_SHUTDOWN] phase=~EditorData_exit");
 }
 //-------------------------------------------------------------------------------------------------
 bool EditorData::clear()
@@ -164,23 +169,29 @@ bool EditorData::clear()
 	if (ActionUndoMgr::instance)
 		ActionUndoMgr::instance->Reset();
 
+	EditorDataTrace("[EDITOR_SHUTDOWN] phase=clear_enter land=%p", land);
+
 	if ( land )
 	{
 		land->destroy();
 		delete land;
 		land = NULL;
 	}
+	EditorDataTrace("[EDITOR_SHUTDOWN] phase=land_destroyed");
 
 	// S2 mission-unload chain — mirrors code/mission.cpp:3272-3283.
 	// Canonical order locked by docs/superpowers/plans/2026-05-25-editor-rebuild-S0-contract.md.
 	// Must run BEFORE EditorObjectMgr::clear() so batcher state tears down
 	// while actor TG_MultiShape pointers are still valid.
 	EditorBridge::endMissionRenderResources();                 // steps 1-6 — game lines 3272-3283
+	EditorDataTrace("[EDITOR_SHUTDOWN] phase=gpu_batchers_unloaded");
 	GameAdapters::StaticProp::endMission();
 	GameAdapters::Mech::endMission();
+	EditorDataTrace("[EDITOR_SHUTDOWN] phase=render_adapters_ended");
 
 	if ( EditorObjectMgr::instance() )
 		EditorObjectMgr::instance()->clear();
+	EditorDataTrace("[EDITOR_SHUTDOWN] phase=object_mgr_cleared");
 
 	EditorData::instance->MissionName(_T(""));
 	EditorData::instance->MissionNameUseResourceString(false);
@@ -243,9 +254,11 @@ bool EditorData::clear()
 	EditorData::instance->WaterDetailTextureNeedsSaving(false);
 
 	if (mcTextureManager)
-		mcTextureManager->flush();		//Toss the textures we aren't using anymore!	
-	
+		mcTextureManager->flush();		//Toss the textures we aren't using anymore!
+
 	//TG_Shape::tglHeap->dumpRecordLog();	//Anything left in heap at this point is a leak!
+
+	EditorDataTrace("[EDITOR_SHUTDOWN] phase=clear_exit");
 
 	return true;
 }

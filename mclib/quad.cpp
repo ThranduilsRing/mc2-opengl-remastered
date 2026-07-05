@@ -1404,6 +1404,27 @@ void TerrainQuad::draw (void)
 		float oldminV = 0.0078125f;
 		float oldmaxV = 0.9921875f;
 
+		// OVERLAY-TILE-HIRES-1 (gated, default OFF => constants above unchanged).
+		// oldmin/oldmax feed ONLY the overlay tile emits in this function and are
+		// the half-texel inset for a 64px tile (0.5/64). A resynced hi-res tile
+		// sampled with the 64px inset crops its outer texel ring (2 texels at
+		// 256) and breaks road continuity across tile seams, so derive the inset
+		// from the actual overlay texture edge (physical = logical * uvScale;
+		// disk-loaded 4x-upscale TGAs store logical = physical/4).
+		if (MC2_OverlayTileHiresSize() > 0 && overlayHandle != 0xffffffff)
+		{
+			DWORD ovLogicalW = 0, ovLogicalH = 0;
+			if (mcTextureManager->tryGetTextureLogicalSize(overlayHandle, ovLogicalW, ovLogicalH))
+			{
+				const DWORD ovEdge = ovLogicalW * mcTextureManager->getUVScale(overlayHandle);
+				if (ovEdge > 0)
+				{
+					oldminU = oldminV = 0.5f / (float)ovEdge;
+					oldmaxU = oldmaxV = 1.0f - 0.5f / (float)ovEdge;
+				}
+			}
+		}
+
 		if (Terrain::terrainTextures2 && !(overlayHandle == 0xffffffff && isCement))
 		{
 			minU = uvData.minU;

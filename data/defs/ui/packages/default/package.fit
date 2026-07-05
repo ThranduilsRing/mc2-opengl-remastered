@@ -1,0 +1,106 @@
+/***************************************************************
+ * FILENAME: package.fit
+ * DESCRIPTION: Default legacy_imgui UI package manifest.
+ *
+ * AUTHOR: Methuselas
+ * CREATED: 2026-05-25
+ *
+ * UPDATED BY: Methuselas
+ * UPDATED: 2026-05-25
+ *
+ * CHANGES:
+ * - Added package manifest for the default GameOS-derived ImGui UI.
+ * - Kept the current data/art/gui asset root instead of moving UI graphics again.
+ * - Consolidated Editor, Game, Viewer, Mechlopedia, and Shared UI under this package root.
+ ***************************************************************/
+
+UiPackage {
+    key = "legacy_imgui"
+    labelKey = "ui.package.legacy_imgui.name"
+    descriptionKey = "ui.package.legacy_imgui.desc"
+    default = true
+    status = "default_shippable"
+    sourceKind = "gameos_legacy_to_imgui"
+    targetRuntime = "imgui_fit"
+    coordinateSpace = "screen_absolute"
+    assetRoot = "data/art/gui"
+    packageRoot = "data/defs/ui/packages/legacy_imgui"
+    notes = "Legacy means source provenance only. This package is the current default UI until a newer package exists."
+}
+
+UiPackageSurface {
+    key = "legacy_imgui.game"
+    surface = "game"
+    pageRoot = "data/defs/ui/packages/legacy_imgui/game"
+    manifest = "data/defs/ui/packages/legacy_imgui/game/manifest.fit"
+    priority = "default"
+}
+
+UiPackageSurface {
+    key = "legacy_imgui.multiplayer"
+    surface = "multiplayer"
+    pageRoot = "data/defs/ui/packages/legacy_imgui/game"
+    manifest = "data/defs/ui/packages/legacy_imgui/game/manifest.fit"
+    pageFilter = "mcl_mp_*"
+    priority = "planned_golden_truth"
+}
+
+UiPackageSurface {
+    key = "legacy_imgui.viewer"
+    surface = "viewer"
+    pageRoot = "data/defs/ui/packages/legacy_imgui/viewer"
+    manifest = "data/defs/ui/packages/legacy_imgui/viewer/manifest.fit"
+    priority = "shared_with_game_where_possible"
+}
+
+UiPackageSurface {
+    key = "legacy_imgui.mechlopedia"
+    surface = "mechlopedia"
+    pageRoot = "data/defs/ui/packages/legacy_imgui/mechlopedia"
+    manifest = "data/defs/ui/packages/legacy_imgui/mechlopedia/manifest.fit"
+    priority = "shared_with_game_where_possible"
+}
+
+UiPackageSurface {
+    key = "legacy_imgui.editor"
+    surface = "editor"
+    pageRoot = "data/defs/ui/packages/legacy_imgui/editor"
+    manifest = "data/defs/ui/packages/legacy_imgui/editor/editor_ui_replacement_manifest.fit"
+    priority = "tooling"
+}
+
+UiPackageSurface {
+    key = "legacy_imgui.shared"
+    surface = "shared"
+    pageRoot = "data/defs/ui/packages/legacy_imgui/shared"
+    manifest = "data/defs/ui/packages/legacy_imgui/shared/manifest.fit"
+    priority = "runtime_components"
+}
+
+UiPackageDefineSet {
+    key = "legacy_imgui.defines.rects"
+    path = "data/defs/ui/packages/legacy_imgui/defines/ui_rects.fit"
+}
+
+UiPackageDefineSet {
+    key = "legacy_imgui.defines.elements"
+    path = "data/defs/ui/packages/legacy_imgui/defines/ui_elements.fit"
+}
+
+UiPackageDefineSet {
+    key = "legacy_imgui.defines.actions"
+    path = "data/defs/ui/packages/legacy_imgui/defines/ui_actions.fit"
+}
+
+UiPackageDefineSet {
+    key = "legacy_imgui.defines.fonts"
+    path = "data/defs/ui/packages/legacy_imgui/defines/ui_fonts.fit"
+}
+
+UiPackageOptionBinding {
+    key = "legacy_imgui.options.package_selector"
+    futurePage = "game.mcl_options"
+    settingKey = "ui.activePackage"
+    defaultValue = "legacy_imgui"
+    notes = "Options UI selector is not active yet; this declares the data target."
+}

@@ -1,7 +1,7 @@
 {
   "schema_v": 1,
   "mission": "mc2_01",
-  "_note": "S9 v1 PROVISIONAL poses. The MC2 game camera is map-centered at world origin; setPosition clamps to the map interior. pos = [x,y,z] world units (z is overridden to terrain elevation by setPosition's land-follow). rot = cameraRotation degrees, proj = projectionAngle degrees, alt = camera altitude. These framings were picked for stability (map-interior, looking across terrain) but should be re-authored from a [BOOKMARK v1] in-game dump once the authoring hotkey lands (owner doc 2.1b). Animation clock is UNPINNED in v1 (water/FX phase): these framings minimize water in view; residual scroll phase is a known v2 mask item.",
+  "_note": "SHARED MASTER bookmark repo (canonical). All sessions/worktrees read this one set via MC2_VISUAL_BOOKMARK_DIR pointed at this nifty tests/visual/bookmarks/ dir. Base poses = S9 v1 provisional (map-interior, stability-picked). The 6 oblique/topdown poses below are USER-AUTHORED (saved_view.txt 2026-07-02) from in-game [BOOKMARK v1] dumps. pos = [x,y,z] world units (z overridden to terrain elevation by setPosition land-follow). rot = cameraRotation deg, proj = projectionAngle deg, alt = camera altitude. Keep >=2 bookmarks (single-pose files silently fail).",
   "bookmarks": [
     {
       "name": "overview_center",
@@ -26,6 +26,85 @@
       "proj": 42.0,
       "alt": 1800.0,
       "covers": ["terrain_splat", "static_prop_pbr"]
+    },
+    {
+      "name": "edge_fog_boundary_south",
+      "pos": [0.0, -900.0, 0.0],
+      "rot": 0.0,
+      "proj": 22.0,
+      "alt": 1200.0,
+      "covers": ["edge_fog"]
+    },
+    {
+      "name": "edge_fog_corner_southwest",
+      "pos": [-800.0, -800.0, 0.0],
+      "rot": 45.0,
+      "proj": 35.0,
+      "alt": 1500.0,
+      "covers": ["edge_fog"]
+    },
+    {
+      "name": "oblique_fog",
+      "pos": [5376.0, -5376.0, 0.0],
+      "rot": -80.0,
+      "proj": 14.75,
+      "alt": 5639.5659,
+      "covers": ["edge_fog", "oob_fog", "water", "sky", "invviewproj_transpose_repro"],
+      "_note": "TRANSPOSE-REVEALING pose (user-authored, saved_view.txt 2026-07-02). Oblique low-pitch across the SE map edge: water/terrain/OOB-fog boundary with NONZERO fog alpha. Top-down bookmarks gate edge_fog to vec4(0) and hide the invViewProj transpose; this one exercises the matrix."
+    },
+    {
+      "name": "oblique_horizon",
+      "pos": [5376.0, -5376.0, 0.0],
+      "rot": -78.875,
+      "proj": -25.0,
+      "alt": 5639.5659,
+      "covers": ["oob_fog", "sky", "hdri_skybox"],
+      "_note": "Edge-on horizon pose (user-authored) — sees HDRI/skybox + OOB fog. proj=-25 may clamp to MIN_PERSPECTIVE; clamp applies equally to GL and vk so parity is unaffected."
+    },
+    {
+      "name": "runway_overview",
+      "pos": [3571.5442, -872.0615, 0.0],
+      "rot": -135.125,
+      "proj": 86.875,
+      "alt": 5490.0234,
+      "covers": ["terrain_splat", "runway_decal"],
+      "_note": "User-authored 2026-07-02. Near top-down (proj 86.9) over the runway."
+    },
+    {
+      "name": "cliff_side_on",
+      "pos": [55.7989, 628.6685, 0.0],
+      "rot": -127.25,
+      "proj": 9.25,
+      "alt": 1596.366,
+      "covers": ["terrain_cliff", "edge_fog", "invviewproj_transpose_repro"],
+      "_note": "User-authored 2026-07-02. Very low pitch (proj 9.25) side-on at a cliff — oblique, transpose-revealing."
+    },
+    {
+      "name": "pyramid_islands_topdown",
+      "pos": [910.1816, -2934.218, 0.0],
+      "rot": 25.75,
+      "proj": 86.875,
+      "alt": 3692.2559,
+      "covers": ["terrain_splat", "water"],
+      "_note": "User-authored 2026-07-02. Top-down (proj 86.9) over the pyramid islands."
+    },
+    {
+      "name": "cross_map_view",
+      "pos": [-5376.0, -5376.0, 0.0],
+      "rot": 134.875,
+      "proj": 14.875,
+      "alt": 5775.7979,
+      "covers": ["edge_fog", "oob_fog", "water", "sky", "invviewproj_transpose_repro"],
+      "_note": "User-authored 2026-07-02. Oblique cross-map (proj 14.9) from the NW corner — water/terrain/OOB-fog, transpose-revealing."
+    },
+    {
+      "name": "cliff_wall_sideon",
+      "pos": [-365.7485, 43.0450, 359.8353],
+      "rot": -28.25,
+      "proj": 18.125,
+      "alt": 2944.5066,
+      "covers": ["terrain_cliff", "terrain_decal"],
+      "_note": "User-authored 2026-07-03. Low-angle (proj 18.1) SIDE-ON view of the mc2_01 cliff for judging the cliff-wall mesh-decal lean/shadow/silhouette."
     }
   ]
 }

@@ -1,0 +1,528 @@
+// MC2R ImGui FIT generated from legacy UI FIT.
+// Source: data/defs/ui/legacy/editor/EditorCursors.fit
+// Legacy files remain source truth only; edit the generated ImGui FIT.
+
+GuiPage {
+    key = "editor.editorcursors"
+    title = "Editor Editorcursors"
+    sourceLegacyFit = "data/defs/ui/legacy/editor/EditorCursors.fit"
+    sourceSystem = "editor"
+    sourceScreen = "editorcursors"
+    sourceKind = "legacy_screen"
+    layout = "absolute"
+    coordinateSpace = "screen_absolute"
+    localWidth = 800
+    localHeight = 600
+    mountOffset = "0,0"
+    editableSource = "generated_imgui_only"
+}
+
+GuiMetadata {
+    key = "editor.editorcursors.metadata.metadata"
+    pageKey = "editor.editorcursors"
+    legacySection = "Main"
+    role = "metadata"
+    layer = "metadata"
+    aliasOverride = "metadata"
+    sourceControlType = "Main"
+    rect = "0,0,0,0"
+    legacyLocalRect = "0,0,0,0"
+    legacyRectSource = "xywh"
+    visible = false
+}
+
+GuiMetadata {
+    key = "editor.editorcursors.metadata.metadata_01"
+    pageKey = "editor.editorcursors"
+    legacySection = "Cursor0"
+    role = "metadata"
+    layer = "metadata"
+    aliasOverride = "metadata"
+    sourceControlType = "Cursor0"
+    rect = "0,0,0,0"
+    legacyLocalRect = "0,0,0,0"
+    legacyRectSource = "xywh"
+    visible = false
+}
+
+GuiMetadata {
+    key = "editor.editorcursors.metadata.metadata_02"
+    pageKey = "editor.editorcursors"
+    legacySection = "Cursor1"
+    role = "metadata"
+    layer = "metadata"
+    aliasOverride = "metadata"
+    sourceControlType = "Cursor1"
+    rect = "0,0,0,0"
+    legacyLocalRect = "0,0,0,0"
+    legacyRectSource = "xywh"
+    visible = false
+}
+
+GuiMetadata {
+    key = "editor.editorcursors.metadata.metadata_03"
+    pageKey = "editor.editorcursors"
+    legacySection = "Cursor2"
+    role = "metadata"
+    layer = "metadata"
+    aliasOverride = "metadata"
+    sourceControlType = "Cursor2"
+    rect = "0,0,0,0"
+    legacyLocalRect = "0,0,0,0"
+    legacyRectSource = "xywh"
+    visible = false
+}
+
+GuiMetadata {
+    key = "editor.editorcursors.metadata.the_eraser"
+    pageKey = "editor.editorcursors"
+    legacySection = "Cursor3"
+    legacyComment = "the eraser"
+    role = "metadata"
+    layer = "metadata"
+    aliasOverride = "the eraser"
+    sourceControlType = "Cursor3"
+    rect = "0,0,0,0"
+    legacyLocalRect = "0,0,0,0"
+    legacyRectSource = "xywh"
+    visible = false
+}
+
+GuiMetadata {
+    key = "editor.editorcursors.metadata.terrains_for_the_next_12"
+    pageKey = "editor.editorcursors"
+    legacySection = "Cursor4"
+    legacyComment = "terrains for the next 12"
+    role = "metadata"
+    layer = "metadata"
+    aliasOverride = "terrains for the next 12"
+    sourceControlType = "Cursor4"
+    rect = "0,0,0,0"
+    legacyLocalRect = "0,0,0,0"
+    legacyRectSource = "xywh"
+    visible = false
+}
+
+GuiMetadata {
+    key = "editor.editorcursors.metadata.metadata_04"
+    pageKey = "editor.editorcursors"
+    legacySection = "Cursor5"
+    role = "metadata"
+    layer = "metadata"
+    aliasOverride = "metadata"
+    sourceControlType = "Cursor5"
+    rect = "0,0,0,0"
+    legacyLocalRect = "0,0,0,0"
+    legacyRectSource = "xywh"
+    visible = false
+}
+
+GuiMetadata {
+    key = "editor.editorcursors.metadata.metadata_05"
+    pageKey = "editor.editorcursors"
+    legacySection = "Cursor6"
+    role = "metadata"
+    layer = "metadata"
+    aliasOverride = "metadata"
+    sourceControlType = "Cursor6"
+    rect = "0,0,0,0"
+    legacyLocalRect = "0,0,0,0"
+    legacyRectSource = "xywh"
+    visible = false
+}
+
+GuiMetadata {
+    key = "editor.editorcursors.metadata.metadata_06"
+    pageKey = "editor.editorcursors"
+    legacySection = "Cursor7"
+    role = "metadata"
+    layer = "metadata"
+    aliasOverride = "metadata"
+    sourceControlType = "Cursor7"
+    rect = "0,0,0,0"
+    legacyLocalRect = "0,0,0,0"
+    legacyRectSource = "xywh"
+    visible = false
+}
+
+GuiMetadata {
+    key = "editor.editorcursors.metadata.metadata_07"
+    pageKey = "editor.editorcursors"
+    legacySection = "Cursor8"
+    role = "metadata"
+    layer = "metadata"
+    aliasOverride = "metadata"
+    sourceControlType = "Cursor8"
+    rect = "0,0,0,0"
+    legacyLocalRect = "0,0,0,0"
+    legacyRectSource = "xywh"
+    visible = false
+}
+
+GuiMetadata {
+    key = "editor.editorcursors.metadata.metadata_08"
+    pageKey = "editor.editorcursors"
+    legacySection = "Cursor9"
+    role = "metadata"
+    layer = "metadata"
+    aliasOverride = "metadata"
+    sourceControlType = "Cursor9"
+    rect = "0,0,0,0"
+    legacyLocalRect = "0,0,0,0"
+    legacyRectSource = "xywh"
+    visible = false
+}
+
+GuiMetadata {
+    key = "editor.editorcursors.metadata.metadata_09"
+    pageKey = "editor.editorcursors"
+    legacySection = "Cursor10"
+    role = "metadata"
+    layer = "metadata"
+    aliasOverride = "metadata"
+    sourceControlType = "Cursor10"
+    rect = "0,0,0,0"
+    legacyLocalRect = "0,0,0,0"
+    legacyRectSource = "xywh"
+    visible = false
+}
+
+GuiMetadata {
+    key = "editor.editorcursors.metadata.metadata_10"
+    pageKey = "editor.editorcursors"
+    legacySection = "Cursor11"
+    role = "metadata"
+    layer = "metadata"
+    aliasOverride = "metadata"
+    sourceControlType = "Cursor11"
+    rect = "0,0,0,0"
+    legacyLocalRect = "0,0,0,0"
+    legacyRectSource = "xywh"
+    visible = false
+}
+
+GuiMetadata {
+    key = "editor.editorcursors.metadata.metadata_11"
+    pageKey = "editor.editorcursors"
+    legacySection = "Cursor12"
+    role = "metadata"
+    layer = "metadata"
+    aliasOverride = "metadata"
+    sourceControlType = "Cursor12"
+    rect = "0,0,0,0"
+    legacyLocalRect = "0,0,0,0"
+    legacyRectSource = "xywh"
+    visible = false
+}
+
+GuiMetadata {
+    key = "editor.editorcursors.metadata.metadata_12"
+    pageKey = "editor.editorcursors"
+    legacySection = "Cursor13"
+    role = "metadata"
+    layer = "metadata"
+    aliasOverride = "metadata"
+    sourceControlType = "Cursor13"
+    rect = "0,0,0,0"
+    legacyLocalRect = "0,0,0,0"
+    legacyRectSource = "xywh"
+    visible = false
+}
+
+GuiMetadata {
+    key = "editor.editorcursors.metadata.metadata_13"
+    pageKey = "editor.editorcursors"
+    legacySection = "Cursor14"
+    role = "metadata"
+    layer = "metadata"
+    aliasOverride = "metadata"
+    sourceControlType = "Cursor14"
+    rect = "0,0,0,0"
+    legacyLocalRect = "0,0,0,0"
+    legacyRectSource = "xywh"
+    visible = false
+}
+
+GuiMetadata {
+    key = "editor.editorcursors.metadata.metadata_14"
+    pageKey = "editor.editorcursors"
+    legacySection = "Cursor15"
+    role = "metadata"
+    layer = "metadata"
+    aliasOverride = "metadata"
+    sourceControlType = "Cursor15"
+    rect = "0,0,0,0"
+    legacyLocalRect = "0,0,0,0"
+    legacyRectSource = "xywh"
+    visible = false
+}
+
+GuiMetadata {
+    key = "editor.editorcursors.metadata.metadata_15"
+    pageKey = "editor.editorcursors"
+    legacySection = "Cursor16"
+    role = "metadata"
+    layer = "metadata"
+    aliasOverride = "metadata"
+    sourceControlType = "Cursor16"
+    rect = "0,0,0,0"
+    legacyLocalRect = "0,0,0,0"
+    legacyRectSource = "xywh"
+    visible = false
+}
+
+GuiMetadata {
+    key = "editor.editorcursors.metadata.overlays_for_the_next_10"
+    pageKey = "editor.editorcursors"
+    legacySection = "Cursor17"
+    legacyComment = "overlays for the next 10"
+    role = "metadata"
+    layer = "metadata"
+    aliasOverride = "overlays for the next 10"
+    sourceControlType = "Cursor17"
+    rect = "0,0,0,0"
+    legacyLocalRect = "0,0,0,0"
+    legacyRectSource = "xywh"
+    visible = false
+}
+
+GuiMetadata {
+    key = "editor.editorcursors.metadata.metadata_16"
+    pageKey = "editor.editorcursors"
+    legacySection = "Cursor18"
+    role = "metadata"
+    layer = "metadata"
+    aliasOverride = "metadata"
+    sourceControlType = "Cursor18"
+    rect = "0,0,0,0"
+    legacyLocalRect = "0,0,0,0"
+    legacyRectSource = "xywh"
+    visible = false
+}
+
+GuiMetadata {
+    key = "editor.editorcursors.metadata.metadata_17"
+    pageKey = "editor.editorcursors"
+    legacySection = "Cursor19"
+    role = "metadata"
+    layer = "metadata"
+    aliasOverride = "metadata"
+    sourceControlType = "Cursor19"
+    rect = "0,0,0,0"
+    legacyLocalRect = "0,0,0,0"
+    legacyRectSource = "xywh"
+    visible = false
+}
+
+GuiMetadata {
+    key = "editor.editorcursors.metadata.metadata_18"
+    pageKey = "editor.editorcursors"
+    legacySection = "Cursor20"
+    role = "metadata"
+    layer = "metadata"
+    aliasOverride = "metadata"
+    sourceControlType = "Cursor20"
+    rect = "0,0,0,0"
+    legacyLocalRect = "0,0,0,0"
+    legacyRectSource = "xywh"
+    visible = false
+}
+
+GuiMetadata {
+    key = "editor.editorcursors.metadata.metadata_19"
+    pageKey = "editor.editorcursors"
+    legacySection = "Cursor21"
+    role = "metadata"
+    layer = "metadata"
+    aliasOverride = "metadata"
+    sourceControlType = "Cursor21"
+    rect = "0,0,0,0"
+    legacyLocalRect = "0,0,0,0"
+    legacyRectSource = "xywh"
+    visible = false
+}
+
+GuiMetadata {
+    key = "editor.editorcursors.metadata.metadata_20"
+    pageKey = "editor.editorcursors"
+    legacySection = "Cursor22"
+    role = "metadata"
+    layer = "metadata"
+    aliasOverride = "metadata"
+    sourceControlType = "Cursor22"
+    rect = "0,0,0,0"
+    legacyLocalRect = "0,0,0,0"
+    legacyRectSource = "xywh"
+    visible = false
+}
+
+GuiMetadata {
+    key = "editor.editorcursors.metadata.metadata_21"
+    pageKey = "editor.editorcursors"
+    legacySection = "Cursor23"
+    role = "metadata"
+    layer = "metadata"
+    aliasOverride = "metadata"
+    sourceControlType = "Cursor23"
+    rect = "0,0,0,0"
+    legacyLocalRect = "0,0,0,0"
+    legacyRectSource = "xywh"
+    visible = false
+}
+
+GuiMetadata {
+    key = "editor.editorcursors.metadata.metadata_22"
+    pageKey = "editor.editorcursors"
+    legacySection = "Cursor24"
+    role = "metadata"
+    layer = "metadata"
+    aliasOverride = "metadata"
+    sourceControlType = "Cursor24"
+    rect = "0,0,0,0"
+    legacyLocalRect = "0,0,0,0"
+    legacyRectSource = "xywh"
+    visible = false
+}
+
+GuiMetadata {
+    key = "editor.editorcursors.metadata.metadata_23"
+    pageKey = "editor.editorcursors"
+    legacySection = "Cursor25"
+    role = "metadata"
+    layer = "metadata"
+    aliasOverride = "metadata"
+    sourceControlType = "Cursor25"
+    rect = "0,0,0,0"
+    legacyLocalRect = "0,0,0,0"
+    legacyRectSource = "xywh"
+    visible = false
+}
+
+GuiMetadata {
+    key = "editor.editorcursors.metadata.metadata_24"
+    pageKey = "editor.editorcursors"
+    legacySection = "Cursor26"
+    role = "metadata"
+    layer = "metadata"
+    aliasOverride = "metadata"
+    sourceControlType = "Cursor26"
+    rect = "0,0,0,0"
+    legacyLocalRect = "0,0,0,0"
+    legacyRectSource = "xywh"
+    visible = false
+}
+
+GuiMetadata {
+    key = "editor.editorcursors.metadata.metadata_25"
+    pageKey = "editor.editorcursors"
+    legacySection = "Cursor27"
+    role = "metadata"
+    layer = "metadata"
+    aliasOverride = "metadata"
+    sourceControlType = "Cursor27"
+    rect = "0,0,0,0"
+    legacyLocalRect = "0,0,0,0"
+    legacyRectSource = "xywh"
+    visible = false
+}
+
+GuiMetadata {
+    key = "editor.editorcursors.metadata.flatten"
+    pageKey = "editor.editorcursors"
+    legacySection = "Cursor28"
+    legacyComment = "flatten"
+    role = "metadata"
+    layer = "metadata"
+    aliasOverride = "flatten"
+    sourceControlType = "Cursor28"
+    rect = "0,0,0,0"
+    legacyLocalRect = "0,0,0,0"
+    legacyRectSource = "xywh"
+    visible = false
+}
+
+GuiMetadata {
+    key = "editor.editorcursors.metadata.drag_smooth"
+    pageKey = "editor.editorcursors"
+    legacySection = "Cursor29"
+    legacyComment = "drag smooth"
+    role = "metadata"
+    layer = "metadata"
+    aliasOverride = "drag smooth"
+    sourceControlType = "Cursor29"
+    rect = "0,0,0,0"
+    legacyLocalRect = "0,0,0,0"
+    legacyRectSource = "xywh"
+    visible = false
+}
+
+GuiMetadata {
+    key = "editor.editorcursors.metadata.drag_rough"
+    pageKey = "editor.editorcursors"
+    legacySection = "Cursor30"
+    legacyComment = "drag rough"
+    role = "metadata"
+    layer = "metadata"
+    aliasOverride = "drag rough"
+    sourceControlType = "Cursor30"
+    rect = "0,0,0,0"
+    legacyLocalRect = "0,0,0,0"
+    legacyRectSource = "xywh"
+    visible = false
+}
+
+GuiMetadata {
+    key = "editor.editorcursors.metadata.metadata_26"
+    pageKey = "editor.editorcursors"
+    legacySection = "Cursor31"
+    role = "metadata"
+    layer = "metadata"
+    aliasOverride = "metadata"
+    sourceControlType = "Cursor31"
+    rect = "0,0,0,0"
+    legacyLocalRect = "0,0,0,0"
+    legacyRectSource = "xywh"
+    visible = false
+}
+
+GuiMetadata {
+    key = "editor.editorcursors.metadata.metadata_27"
+    pageKey = "editor.editorcursors"
+    legacySection = "Cursor32"
+    role = "metadata"
+    layer = "metadata"
+    aliasOverride = "metadata"
+    sourceControlType = "Cursor32"
+    rect = "0,0,0,0"
+    legacyLocalRect = "0,0,0,0"
+    legacyRectSource = "xywh"
+    visible = false
+}
+
+GuiMetadata {
+    key = "editor.editorcursors.metadata.metadata_28"
+    pageKey = "editor.editorcursors"
+    legacySection = "Cursor33"
+    role = "metadata"
+    layer = "metadata"
+    aliasOverride = "metadata"
+    sourceControlType = "Cursor33"
+    rect = "0,0,0,0"
+    legacyLocalRect = "0,0,0,0"
+    legacyRectSource = "xywh"
+    visible = false
+}
+
+GuiMetadata {
+    key = "editor.editorcursors.metadata.metadata_29"
+    pageKey = "editor.editorcursors"
+    legacySection = "Cursor34"
+    role = "metadata"
+    layer = "metadata"
+    aliasOverride = "metadata"
+    sourceControlType = "Cursor34"
+    rect = "0,0,0,0"
+    legacyLocalRect = "0,0,0,0"
+    legacyRectSource = "xywh"
+    visible = false
+}

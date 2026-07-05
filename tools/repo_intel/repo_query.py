@@ -32,6 +32,7 @@ Example full preflight:
 import json
 import os
 import re
+import csv
 import subprocess
 import sys
 from pathlib import Path
@@ -670,6 +671,141 @@ def _parse_flags(args):
     return remaining, expect_branch, expect_root
 
 
+CANONICAL_BRANCH = "claude/nifty-mendeleev"
+_MANIFEST_NAME = ".deployed_manifest.csv"
+
+
+def _short(sha, n=12):
+    return sha[:n] if sha else sha
+
+
+def _worktrees():
+    """Parse `git worktree list --porcelain` -> [{path, head, branch}]."""
+    out, rc = git(["worktree", "list", "--porcelain"])
+    if rc != 0:
+        return []
+    trees, cur = [], {}
+    for line in out.splitlines():
+        if line.startswith("worktree "):
+            if cur:
+                trees.append(cur)
+            cur = {"path": line[len("worktree "):].strip()}
+        elif line.startswith("HEAD "):
+            cur["head"] = line[len("HEAD "):].strip()
+        elif line.startswith("branch "):
+            cur["branch"] = line[len("branch "):].strip().replace("refs/heads/", "")
+        elif line.startswith("detached"):
+            cur["branch"] = "(detached)"
+    if cur:
+        trees.append(cur)
+    return trees
+
+
+def _manifest_commit(install_dir: str):
+    """Read src_commit (data-row col 'src_commit') from a deployed install."""
+    path = Path(install_dir) / _MANIFEST_NAME
+    if not path.is_file():
+        return None
+    try:
+        rows = list(csv.reader(path.open(newline="", encoding="utf-8")))
+    except Exception:  # noqa: BLE001
+        return None
+    if len(rows) < 3:
+        return None
+    header = rows[1]
+    if "src_commit" not in header:
+        return None
+    idx = header.index("src_commit")
+    commits = {r[idx].strip() for r in rows[2:] if len(r) > idx and r[idx].strip()}
+    if len(commits) == 1:
+        return next(iter(commits))
+    return "MIXED" if commits else None
+
+
+def canonical_tip(repo_root: Path, branch: str = CANONICAL_BRANCH, install: str = None):
+    """Report the real current viewing tip: the canonical worktree's HEAD +
+    dirty state, and (if --install given) whether that deploy is at the tip."""
+    result = {"canonical_branch": branch}
+    sha, rc = git(["rev-parse", branch])
+    if rc != 0:
+        result["error"] = f"branch not found: {branch}"
+        return result
+    result["tip"] = _short(sha)
+    result["tip_full"] = sha
+    subj, _ = git(["log", "-1", "--format=%s", branch])
+    result["tip_subject"] = subj
+    # locate the canonical worktree + its dirty state
+    for wt in _worktrees():
+        if wt.get("branch") == branch:
+            result["worktree"] = wt["path"]
+            porc, _ = git(["status", "--porcelain"], cwd=wt["path"])
+            result["dirty"] = bool(porc.strip())
+            break
+    if install:
+        mc = _manifest_commit(install)
+        result["install"] = install
+        result["deployed_commit"] = _short(mc) if mc and mc != "MIXED" else mc
+        if mc and mc != "MIXED":
+            n = min(len(mc), len(sha))
+            result["deploy_at_tip"] = mc[:n].lower() == sha[:n].lower()
+        else:
+            result["deploy_at_tip"] = None
+    return result
+
+
+def lane_status(repo_root: Path, canonical: str = CANONICAL_BRANCH,
+                base: str = None):
+    """Classify every lane worktree vs the canonical tip + flag deploy-slot
+    contention. Verdicts: current | ancestor(behind) | ahead | diverged |
+    wrong-base | canonical."""
+    tip, rc = git(["rev-parse", canonical])
+    if rc != 0:
+        return {"error": f"canonical branch not found: {canonical}"}
+    lanes = []
+    slot_map = {}
+    for wt in _worktrees():
+        br = wt.get("branch", "(detached)")
+        head = wt.get("head", "")
+        entry = {"path": wt["path"], "branch": br, "head": _short(head)}
+        if br == canonical:
+            entry["verdict"] = "canonical"
+        elif not head:
+            entry["verdict"] = "unknown"
+        else:
+            # relationship of lane HEAD to canonical tip
+            _, anc_rc = git(["merge-base", "--is-ancestor", head, tip])
+            _, desc_rc = git(["merge-base", "--is-ancestor", tip, head])
+            if head.lower() == tip.lower():
+                entry["verdict"] = "current"
+            elif anc_rc == 0:
+                entry["verdict"] = "ancestor"      # lane behind canonical
+                cnt, _ = git(["rev-list", "--count", f"{head}..{tip}"])
+                entry["behind"] = cnt
+            elif desc_rc == 0:
+                entry["verdict"] = "ahead"          # lane ahead of canonical
+                cnt, _ = git(["rev-list", "--count", f"{tip}..{head}"])
+                entry["ahead"] = cnt
+            else:
+                entry["verdict"] = "diverged"
+            if base:
+                _, base_rc = git(["merge-base", "--is-ancestor", base, head])
+                if base_rc != 0:
+                    entry["verdict"] = "wrong-base"
+                    entry["expected_base"] = _short(base)
+        # deploy-slot contention: does a sibling install dir mention this lane?
+        slot_map.setdefault(br, []).append(wt["path"])
+        lanes.append(entry)
+    # contention = two worktrees on the same branch name (shared-branch hazard)
+    contention = {b: paths for b, paths in slot_map.items() if len(paths) > 1}
+    return {
+        "canonical_branch": canonical,
+        "tip": _short(tip),
+        "lane_count": len(lanes),
+        "lanes": lanes,
+        "shared_branch_contention": contention,
+    }
+
+
 def main():
     raw_args = sys.argv[1:]
     if not raw_args:
@@ -855,8 +991,36 @@ def main():
         out_json(query_env(repo_root, name=name, domain=domain,
                            undocumented=undocumented, show_all=show_all))
 
+    elif cmd in ("canonical-tip", "canonical_tip"):
+        rest = args[1:]
+        branch = CANONICAL_BRANCH
+        install = None
+        i = 0
+        while i < len(rest):
+            a = rest[i]
+            if a.startswith("--branch"):
+                branch = a.split("=", 1)[1] if "=" in a else (rest[i := i + 1])
+            elif a.startswith("--install"):
+                install = a.split("=", 1)[1] if "=" in a else (rest[i := i + 1])
+            i += 1
+        out_json(canonical_tip(repo_root, branch=branch, install=install))
+
+    elif cmd in ("lane-status", "lane_status"):
+        rest = args[1:]
+        canonical = CANONICAL_BRANCH
+        base = None
+        i = 0
+        while i < len(rest):
+            a = rest[i]
+            if a.startswith("--canonical"):
+                canonical = a.split("=", 1)[1] if "=" in a else (rest[i := i + 1])
+            elif a.startswith("--base"):
+                base = a.split("=", 1)[1] if "=" in a else (rest[i := i + 1])
+            i += 1
+        out_json(lane_status(repo_root, canonical=canonical, base=base))
+
     else:
-        out_json({"error": f"Unknown command '{cmd}'. Valid: dirty, harness, preflight, slice-preflight, commit-plan, env, binding, dead-gate-scan"})
+        out_json({"error": f"Unknown command '{cmd}'. Valid: dirty, harness, preflight, slice-preflight, commit-plan, env, binding, dead-gate-scan, canonical-tip, lane-status"})
         sys.exit(1)
 
 

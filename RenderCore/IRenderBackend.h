@@ -18,11 +18,28 @@
 
 #pragma once
 
+#include "RenderRegionId.h"   // RENDER-BACKEND-REGION-IFACE-1 (GL-free contract)
+
 namespace RenderCore {
 
 // Abstract render backend. Pure virtual; no state, no GL.
 struct IRenderBackend {
     virtual ~IRenderBackend() = default;
+
+    // RENDER-BACKEND-REGION-IFACE-1 (Layer-6 ENTRY): run a SELECTABLE render
+    // region. The context is BACKEND-NEUTRAL (RenderResourceId + params + dims,
+    // no raw handles); the impl resolves ids -> handles via ctx.resolver. Writes
+    // which impl ran / fallback reason / equivalence counters into *out.
+    //
+    // Returns false if this backend is unavailable/failed for the region -> the
+    // CALLER falls back to GL. A GL backend that succeeds returns true with
+    // out->impl = GLInline. A Vulkan backend that can't run returns false (out
+    // carries the fallback reason) so the caller runs GL. Default impl declines.
+    virtual bool runRegion(RenderRegionId /*id*/,
+                           const PostprocessFogRegionContext& /*ctx*/,
+                           RegionOutput* /*out*/) {
+        return false;
+    }
 
     // Bind the window's default framebuffer (the backbuffer) as the current
     // render target for the composite output edge. GL impl == glBindFramebuffer
@@ -36,6 +53,17 @@ struct IRenderBackend {
     // RENDER-BACKEND-IFACE-FBO-1 to route one more PostProcess FBO-bind edge; the
     // interface grows one edge at a time.
     virtual void bindFramebuffer(unsigned int fbo) = 0;
+
+    // Set the current viewport rectangle. GL impl == glViewport(x, y, w, h).
+    // Plain ints keep this file GL-free. Added by
+    // RENDER-BACKEND-IFACE-VIEWPORT-1 to route the composite-edge viewport ops.
+    virtual void setViewport(int x, int y, int w, int h) = 0;   // RENDER-BACKEND-IFACE-VIEWPORT-1
+
+    // Clear the current render target. `mask` is a plain uint (the GL buffer-bit
+    // mask) so this file stays GL-free; GL impl == glClearColor(r,g,b,a);
+    // glClear(mask). Added by RENDER-BACKEND-IFACE-CLEAR-1 to route the
+    // letterbox clear on the composite edge.
+    virtual void clear(unsigned int mask, float r, float g, float b, float a) = 0;  // RENDER-BACKEND-IFACE-CLEAR-1
 };
 
 }  // namespace RenderCore

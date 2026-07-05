@@ -1,0 +1,295 @@
+/***************************************************************
+ * FILENAME: editor_ui_replacement_manifest.fit
+ * DESCRIPTION: Editor UI replacement source manifest.
+ *
+ * AUTHOR: Methuselas
+ * CREATED: 2026-05-23
+ *
+ * UPDATED BY: Methuselas
+ * UPDATED: 2026-05-23
+ *
+ * CHANGES:
+ * - Registered legacy_imgui editor pages and converted MFC dialog pages.
+ * - Marks MFC as extraction source only; FIT/ImGui is the replacement target.
+ ***************************************************************/
+
+UiReplacementManifest {
+    key = "editor.ui.replacement"
+    title = "Editor UI Replacement"
+    target = "fit_imgui"
+    mfcStatus = "extraction_source_only"
+    notes = "Load these pages in the UI Editor; do not build new runtime work around MFC."
+}
+
+UiReplacementSource {
+    key = "editor.legacy_imgui.editorcursors"
+    sourceKind = "legacy_gameos_fit"
+    path = "data/defs/ui/packages/legacy_imgui/editor/editorcursors.fit"
+    priority = "reference"
+}
+
+UiReplacementSource {
+    key = "editor.legacy_imgui.editorgui"
+    sourceKind = "legacy_gameos_fit"
+    path = "data/defs/ui/packages/legacy_imgui/editor/editorgui.fit"
+    priority = "reference"
+}
+
+UiReplacementSource {
+    key = "editor.legacy_imgui.missionscrn"
+    sourceKind = "legacy_gameos_fit"
+    path = "data/defs/ui/packages/legacy_imgui/editor/missionscrn.fit"
+    priority = "reference"
+}
+
+UiReplacementSource {
+    key = "editor.mfc.buildingsettings"
+    sourceKind = "mfc_resource_dialog_conversion"
+    path = "data/defs/ui/packages/legacy_imgui/editor/mfc_dialogs/buildingsettings.fit"
+    priority = "replacement_layout_seed"
+}
+
+UiReplacementSource {
+    key = "editor.mfc.campaign"
+    sourceKind = "mfc_resource_dialog_conversion"
+    path = "data/defs/ui/packages/legacy_imgui/editor/mfc_dialogs/campaign.fit"
+    priority = "replacement_layout_seed"
+}
+
+UiReplacementSource {
+    key = "editor.mfc.choose_building"
+    sourceKind = "mfc_resource_dialog_conversion"
+    path = "data/defs/ui/packages/legacy_imgui/editor/mfc_dialogs/choose_building.fit"
+    priority = "replacement_layout_seed"
+}
+
+UiReplacementSource {
+    key = "editor.mfc.choose_unit"
+    sourceKind = "mfc_resource_dialog_conversion"
+    path = "data/defs/ui/packages/legacy_imgui/editor/mfc_dialogs/choose_unit.fit"
+    priority = "replacement_layout_seed"
+}
+
+UiReplacementSource {
+    key = "editor.mfc.fileopen"
+    sourceKind = "mfc_resource_dialog_conversion"
+    path = "data/defs/ui/packages/legacy_imgui/editor/mfc_dialogs/fileopen.fit"
+    priority = "replacement_layout_seed"
+}
+
+UiReplacementSource {
+    key = "editor.mfc.flag_is_set_dialog"
+    sourceKind = "mfc_resource_dialog_conversion"
+    path = "data/defs/ui/packages/legacy_imgui/editor/mfc_dialogs/flag_is_set_dialog.fit"
+    priority = "replacement_layout_seed"
+}
+
+UiReplacementSource {
+    key = "editor.mfc.fog"
+    sourceKind = "mfc_resource_dialog_conversion"
+    path = "data/defs/ui/packages/legacy_imgui/editor/mfc_dialogs/fog.fit"
+    priority = "replacement_layout_seed"
+}
+
+UiReplacementSource {
+    key = "editor.mfc.forest_dlg"
+    sourceKind = "mfc_resource_dialog_conversion"
+    path = "data/defs/ui/packages/legacy_imgui/editor/mfc_dialogs/forest_dlg.fit"
+    priority = "replacement_layout_seed"
+}
+
+UiReplacementSource {
+    key = "editor.mfc.forest_list"
+    sourceKind = "mfc_resource_dialog_conversion"
+    path = "data/defs/ui/packages/legacy_imgui/editor/mfc_dialogs/forest_list.fit"
+    priority = "replacement_layout_seed"
+}
+
+UiReplacementSource {
+    key = "editor.mfc.fractal"
+    sourceKind = "mfc_resource_dialog_conversion"
+    path = "data/defs/ui/packages/legacy_imgui/editor/mfc_dialogs/fractal.fit"
+    priority = "replacement_layout_seed"
+}
+
+UiReplacementSource {
+    key = "editor.mfc.group"
+    sourceKind = "mfc_resource_dialog_conversion"
+    path = "data/defs/ui/packages/legacy_imgui/editor/mfc_dialogs/group.fit"
+    priority = "replacement_layout_seed"
+}
+
+UiReplacementSource {
+    key = "editor.mfc.height_dlg"
+    sourceKind = "mfc_resource_dialog_conversion"
+    path = "data/defs/ui/packages/legacy_imgui/editor/mfc_dialogs/height_dlg.fit"
+    priority = "replacement_layout_seed"
+}
+
+UiReplacementSource {
+    key = "editor.mfc.idr_editor_menu"
+    sourceKind = "mfc_resource_dialog_conversion"
+    path = "data/defs/ui/packages/legacy_imgui/editor/mfc_dialogs/idr_editor_menu.fit"
+    priority = "replacement_layout_seed"
+}
+
+UiReplacementSource {
+    key = "editor.mfc.light"
+    sourceKind = "mfc_resource_dialog_conversion"
+    path = "data/defs/ui/packages/legacy_imgui/editor/mfc_dialogs/light.fit"
+    priority = "replacement_layout_seed"
+}
+
+UiReplacementSource {
+    key = "editor.mfc.mapsize"
+    sourceKind = "mfc_resource_dialog_conversion"
+    path = "data/defs/ui/packages/legacy_imgui/editor/mfc_dialogs/mapsize.fit"
+    priority = "replacement_layout_seed"
+}
+
+UiReplacementSource {
+    key = "editor.mfc.mbok"
+    sourceKind = "mfc_resource_dialog_conversion"
+    path = "data/defs/ui/packages/legacy_imgui/editor/mfc_dialogs/mbok.fit"
+    priority = "replacement_layout_seed"
+}
+
+UiReplacementSource {
+    key = "editor.mfc.mission_dialog"
+    sourceKind = "mfc_resource_dialog_conversion"
+    path = "data/defs/ui/packages/legacy_imgui/editor/mfc_dialogs/mission_dialog.fit"
+    priority = "replacement_layout_seed"
+}
+
+UiReplacementSource {
+    key = "editor.mfc.mission_settings"
+    sourceKind = "mfc_resource_dialog_conversion"
+    path = "data/defs/ui/packages/legacy_imgui/editor/mfc_dialogs/mission_settings.fit"
+    priority = "replacement_layout_seed"
+}
+
+UiReplacementSource {
+    key = "editor.mfc.new_singleplayer"
+    sourceKind = "mfc_resource_dialog_conversion"
+    path = "data/defs/ui/packages/legacy_imgui/editor/mfc_dialogs/new_singleplayer.fit"
+    priority = "replacement_layout_seed"
+}
+
+UiReplacementSource {
+    key = "editor.mfc.objective"
+    sourceKind = "mfc_resource_dialog_conversion"
+    path = "data/defs/ui/packages/legacy_imgui/editor/mfc_dialogs/objective.fit"
+    priority = "replacement_layout_seed"
+}
+
+UiReplacementSource {
+    key = "editor.mfc.objectives"
+    sourceKind = "mfc_resource_dialog_conversion"
+    path = "data/defs/ui/packages/legacy_imgui/editor/mfc_dialogs/objectives.fit"
+    priority = "replacement_layout_seed"
+}
+
+UiReplacementSource {
+    key = "editor.mfc.player_settings"
+    sourceKind = "mfc_resource_dialog_conversion"
+    path = "data/defs/ui/packages/legacy_imgui/editor/mfc_dialogs/player_settings.fit"
+    priority = "replacement_layout_seed"
+}
+
+UiReplacementSource {
+    key = "editor.mfc.pointer_select_object"
+    sourceKind = "mfc_resource_dialog_conversion"
+    path = "data/defs/ui/packages/legacy_imgui/editor/mfc_dialogs/pointer_select_object.fit"
+    priority = "replacement_layout_seed"
+}
+
+UiReplacementSource {
+    key = "editor.mfc.resource_string_selection"
+    sourceKind = "mfc_resource_dialog_conversion"
+    path = "data/defs/ui/packages/legacy_imgui/editor/mfc_dialogs/resource_string_selection.fit"
+    priority = "replacement_layout_seed"
+}
+
+UiReplacementSource {
+    key = "editor.mfc.select_slope_dialog"
+    sourceKind = "mfc_resource_dialog_conversion"
+    path = "data/defs/ui/packages/legacy_imgui/editor/mfc_dialogs/select_slope_dialog.fit"
+    priority = "replacement_layout_seed"
+}
+
+UiReplacementSource {
+    key = "editor.mfc.select_terrain_type"
+    sourceKind = "mfc_resource_dialog_conversion"
+    path = "data/defs/ui/packages/legacy_imgui/editor/mfc_dialogs/select_terrain_type.fit"
+    priority = "replacement_layout_seed"
+}
+
+UiReplacementSource {
+    key = "editor.mfc.tacmap"
+    sourceKind = "mfc_resource_dialog_conversion"
+    path = "data/defs/ui/packages/legacy_imgui/editor/mfc_dialogs/tacmap.fit"
+    priority = "replacement_layout_seed"
+}
+
+UiReplacementSource {
+    key = "editor.mfc.target_area"
+    sourceKind = "mfc_resource_dialog_conversion"
+    path = "data/defs/ui/packages/legacy_imgui/editor/mfc_dialogs/target_area.fit"
+    priority = "replacement_layout_seed"
+}
+
+UiReplacementSource {
+    key = "editor.mfc.terrains"
+    sourceKind = "mfc_resource_dialog_conversion"
+    path = "data/defs/ui/packages/legacy_imgui/editor/mfc_dialogs/terrains.fit"
+    priority = "replacement_layout_seed"
+}
+
+UiReplacementSource {
+    key = "editor.mfc.text_message"
+    sourceKind = "mfc_resource_dialog_conversion"
+    path = "data/defs/ui/packages/legacy_imgui/editor/mfc_dialogs/text_message.fit"
+    priority = "replacement_layout_seed"
+}
+
+UiReplacementSource {
+    key = "editor.mfc.tiling_factors_dialog"
+    sourceKind = "mfc_resource_dialog_conversion"
+    path = "data/defs/ui/packages/legacy_imgui/editor/mfc_dialogs/tiling_factors_dialog.fit"
+    priority = "replacement_layout_seed"
+}
+
+UiReplacementSource {
+    key = "editor.mfc.unitsettings"
+    sourceKind = "mfc_resource_dialog_conversion"
+    path = "data/defs/ui/packages/legacy_imgui/editor/mfc_dialogs/unitsettings.fit"
+    priority = "replacement_layout_seed"
+}
+
+UiReplacementSource {
+    key = "editor.mfc.user_text_edit_dialog"
+    sourceKind = "mfc_resource_dialog_conversion"
+    path = "data/defs/ui/packages/legacy_imgui/editor/mfc_dialogs/user_text_edit_dialog.fit"
+    priority = "replacement_layout_seed"
+}
+
+UiReplacementSource {
+    key = "editor.mfc.value"
+    sourceKind = "mfc_resource_dialog_conversion"
+    path = "data/defs/ui/packages/legacy_imgui/editor/mfc_dialogs/value.fit"
+    priority = "replacement_layout_seed"
+}
+
+UiReplacementSource {
+    key = "editor.mfc.view_condition_or_action"
+    sourceKind = "mfc_resource_dialog_conversion"
+    path = "data/defs/ui/packages/legacy_imgui/editor/mfc_dialogs/view_condition_or_action.fit"
+    priority = "replacement_layout_seed"
+}
+
+UiReplacementSource {
+    key = "editor.mfc.waves"
+    sourceKind = "mfc_resource_dialog_conversion"
+    path = "data/defs/ui/packages/legacy_imgui/editor/mfc_dialogs/waves.fit"
+    priority = "replacement_layout_seed"
+}

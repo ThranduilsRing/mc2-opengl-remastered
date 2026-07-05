@@ -9,6 +9,7 @@
 ****************************************************************/
 
 #include <cstdio>
+#include <cstdarg>
 #include <string>
 #include "stdafx.h"
 #include "EditorInterface.h"
@@ -226,8 +227,37 @@ static inline void EditorRttClientToViewport(int&, int&) {}
 #include "EditForestDlg.h"
 
 #include "CampaignDialog.h"
+#include "../GameOS/gameos/gos_crashbundle.h"  // EDITOR-EXIT-CRASH-1: shutdown breadcrumbs
 
 extern bool silentMode;
+
+// ---------------------------------------------------------------------------
+// EDITOR-EXIT-CRASH-1 shutdown breadcrumbs.
+// Mirrors EditorData.cpp's EditorDataTrace: always feeds the crashbundle ring
+// buffer (so the last ~64KB of activity lands in crashes/<ts>/last_trace.txt
+// on any CTD, including one during exit), and additionally logs to
+// editor-startup.log when MC2_EDITOR_TRACE is set for interactive debugging.
+// ---------------------------------------------------------------------------
+static void EditorShutdownTrace(const char* fmt, ...)
+{
+	char buf[512];
+	va_list args;
+	va_start(args, fmt);
+	vsnprintf(buf, sizeof(buf), fmt, args);
+	va_end(args);
+
+	crashbundle_append(buf);
+
+	if (getenv("MC2_EDITOR_TRACE") == NULL)
+		return;
+
+	FILE* f = fopen("editor-startup.log", "a");
+	if (!f)
+		return;
+	fputs(buf, f);
+	fputc('\n', f);
+	fclose(f);
+}
 
 // ARM
 #include "../ARM/Microsoft.Xna.Arm.h"
@@ -571,7 +601,9 @@ void Editor::init( char* loader )
 
 
 void Editor::destroy (void)
-{ 
+{
+	EditorShutdownTrace("[EDITOR_SHUTDOWN] phase=Editor_destroy_enter");
+
 	if (EditorInterface::instance())
 	{
 		EditorInterface::instance()->terminate();
@@ -585,10 +617,12 @@ void Editor::destroy (void)
 	among other things
 	*/
 	EditorData::clear();
+	EditorShutdownTrace("[EDITOR_SHUTDOWN] phase=Editor_destroy_data_cleared");
 
-	if ( eye ) 
-		delete eye; 
+	if ( eye )
+		delete eye;
 	eye = NULL;
+	EditorShutdownTrace("[EDITOR_SHUTDOWN] phase=Editor_destroy_exit");
 }
 
 void Editor::resaveAll (void)
@@ -961,6 +995,7 @@ EditorInterface::EditorInterface()
 
 	bObjectSelectOnlyMode = false;
 	menus = NULL;
+	menusAllocatedCount = 0;
 	m_hAccelTable = LoadAccelerators(AfxGetInstanceHandle(), MAKEINTRESOURCE(IDR_ACCELERATOR1));
 
 	m_hSplashBitMap = NULL;
@@ -994,24 +1029,33 @@ void EditorInterface::terminate()
 	if (bThisIsInitialized)
 	{
 		bThisIsInitialized = false;
+		EditorShutdownTrace("[EDITOR_SHUTDOWN] phase=terminate_enter menus=%p menusAllocatedCount=%d", menus, menusAllocatedCount);
 
 		if ( curBrush )
 			delete curBrush; curBrush = NULL;
 
-		if (EditorObjectMgr::instance())
+		// EDITOR-EXIT-CRASH-1 (#2): menus is NULL whenever addBuildingsToNewMenu()
+		// was skipped (init() only calls it when land != NULL — the map-generator
+		// path defers it to postTerrainInit() and can reach terminate() first on
+		// a no-map/generator-aborted exit). Guard on menus != NULL, and free
+		// exactly menusAllocatedCount entries (recorded at alloc time) instead of
+		// re-querying getBuildingGroupCount(), which walks OOB/garbage if menus
+		// was never allocated or the group count has since changed.
+		if ( menus )
 		{
-			int count = EditorObjectMgr:: instance()->getBuildingGroupCount();
-
-			for ( int i = 0; i < count+1; ++i )
+			for ( int i = 0; i < menusAllocatedCount; ++i )
 			{
 				delete menus[i]; menus[i] = NULL;
 			}
-		}
 
-		free( menus );
-		menus = NULL;
+			free( menus );
+			menus = NULL;
+		}
+		menusAllocatedCount = 0;
+		EditorShutdownTrace("[EDITOR_SHUTDOWN] phase=terminate_menus_freed");
 
 		objectivesEditState.Clear();
+		EditorShutdownTrace("[EDITOR_SHUTDOWN] phase=terminate_exit");
 	}
 }
 
@@ -1109,6 +1153,13 @@ void EditorInterface::addBuildingsToNewMenu()
 	pMgr->getBuildingGroupNames( pNames, groupCount );
 
 	menus = (CMenu**) malloc( sizeof( CMenu* ) * (groupCount + 2) );
+	// EDITOR-EXIT-CRASH-1 (#2): record exactly how many entries were allocated
+	// (indices 0..groupCount+1 are written below: pMenu, groupCount child
+	// menus, and the trailing terrain popup menu). terminate() frees this
+	// many, not a re-queried getBuildingGroupCount()+1 which can both under-
+	// free (leak) if the group count changed, or walk NULL/garbage entirely
+	// if menus was never allocated.
+	menusAllocatedCount = groupCount + 2;
 	menus[0] = pMenu;
 
 	int id = IDS_OBJECT_200;
@@ -7054,7 +7105,7 @@ void EditorInterface::OnUpdateMissionTeamTeam8(CCmdUI* pCmdUI)
 	UpdateMissionTeamTeam(8, pCmdUI);
 }
 
-void EditorInterface::OnDestroy() 
+void EditorInterface::OnDestroy()
 {
 	CWnd ::OnDestroy();
 
@@ -7064,7 +7115,13 @@ void EditorInterface::OnDestroy()
 	}
 	else
 	{
-		gosASSERT(false);
+		// EDITOR-EXIT-CRASH-1 (#4): gosASSERT is a dead no-op in RelWithDebInfo
+		// (see mclib review), so gosASSERT(false) here silently did nothing —
+		// a null tacMap.m_hWnd at WM_DESTROY was neither logged nor handled.
+		// Make the signal live: log it (crashbundle ring + optional file) and
+		// continue: tacMap.DestroyWindow() would be a no-op on a null HWND
+		// anyway, so there's nothing unsafe left to do here.
+		EditorShutdownTrace("[EDITOR_SHUTDOWN] phase=OnDestroy_null_tacmap_hwnd");
 	}
 }
 

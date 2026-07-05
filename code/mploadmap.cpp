@@ -7,6 +7,7 @@ MPLoadMap.cpp			: Implementation of the MPLoadMap component.
 \*************************************************************************************************/
 
 #include"mploadmap.h"
+#include"UiDefs.h"
 #include"prefs.h"
 #include"inifile.h"
 #include"userinput.h"
@@ -26,17 +27,26 @@ static const int FIRST_BUTTON_ID = 1000010;
 static const int OK_BUTTON_ID = 1000001;
 static const int CANCEL_BUTTON_ID = 1000002;
 
+// Keys for the v2 mcl_mp_loadmap.fit page text elements (map info panel).
+static const char* const kMpMaxPlayersKey  = "game.mcl_mp_loadmap.text.maximum_players";
+static const char* const kMpMapNameKey     = "game.mcl_mp_loadmap.text.map_name_header";
+static const char* const kMpMissionTypeKey = "game.mcl_mp_loadmap.text.mission_type";
+static const char* const kMpMapInfoKey      = "game.mcl_mp_loadmap.text.map_info";
+static const char* const kMpMapKey          = "game.mcl_mp_loadmap.image.this_static_is_for_the_tac_map";
+
 MPLoadMap::MPLoadMap()
 {
 	bDone = 0;
 
 	status = RUNNING;
 	helpTextArrayID = 6;
+	mapListPage = NULL;
 }
 
 MPLoadMap::~MPLoadMap()
 {
 	mapList.destroy();
+	delete mapListPage;
 }
 
 int MPLoadMap::indexOfButtonWithID(int id)
@@ -95,6 +105,22 @@ void MPLoadMap::init(FitIniFile* file)
 	}
 
 	mapList.setOrange( true );
+
+	// Mirror mapList into the new ImGui defs renderer (game.mcl_mp_loadmap_list0,
+	// converted from mcl_mp_loadmap_list0.fit). See syncMapListPage().
+	if ( UiDefs::gameOsUiDefsEnabled() )
+	{
+		const std::string replacementPath = UiDefs::replacementPathForLegacyFit( "mcl_mp_loadmap_list0.fit" );
+		if ( !replacementPath.empty() )
+		{
+			mapListPage = new UiDefs::GameOSPage();
+			if ( !mapListPage->load( replacementPath.c_str() ) )
+			{
+				delete mapListPage;
+				mapListPage = NULL;
+			}
+		}
+	}
 }
 
 void MPLoadMap::begin()
@@ -153,7 +179,7 @@ void MPLoadMap::seedDialog( bool bSeedSingle )
 		seedFromFile( "Multi" );
 	}
 
-	statics[18].setTexture( (unsigned long)NULL );
+	setDefsElementTextureNode( kMpMapKey, 0 );
 	if ( bSeedSingle )
 		mapList.SelectItem( 0);
 	else
@@ -391,8 +417,8 @@ void MPLoadMap::seedFromCampaign()
 void MPLoadMap::end()
 {
 	LogisticsDialog::end();
-	statics[18].setTexture( ( unsigned long)NULL );
-	statics[18].setColor( 0 );
+	setDefsElementTextureNode( kMpMapKey, 0 );
+	setDefsElementTextureNode( kMpMapKey, 0 );
 }
 
 void MPLoadMap::render(int, int )
@@ -426,7 +452,11 @@ void MPLoadMap::render(int, int )
 	GUI_RECT rect = { 0, 0, Environment.screenWidth, Environment.screenHeight };
 	drawRect( rect, color );
 
-	if ((!enterAnim.isAnimating() || enterAnim.isDone() ) && !exitAnim.isAnimating() )
+	// The ImGui mapListPage (rendered below) owns the visible list when loaded;
+	// the legacy aListBox stays only for input/selection, so don't draw it here
+	// or its offset selection box shows under the ImGui list.
+	if ((!enterAnim.isAnimating() || enterAnim.isDone() ) && !exitAnim.isAnimating()
+		&& !(mapListPage && mapListPage->isLoaded()) )
 	{
 		mapList.render();
 	}
@@ -446,7 +476,11 @@ void MPLoadMap::render(int, int )
 
 	LogisticsScreen::render( (int)xOffset, (int)yOffset );
 
-
+	if ( mapListPage && mapListPage->isLoaded() )
+	{
+		syncMapListPage();
+		mapListPage->render( globalX() + (int)xOffset, globalY() + (int)yOffset );
+	}
 
 }
 
@@ -498,7 +532,21 @@ void MPLoadMap::update()
 {
 	LogisticsDialog::update();
 	int oldSel = mapList.GetSelectedItem();
-	mapList.update();
+	if ( mapListPage && mapListPage->isLoaded() )
+	{
+		// Clicks land on the visible ImGui list, so drive selection from it and
+		// mirror into the legacy list (still the source of truth for map data).
+		// The legacy list must NOT also hit-test, or it selects a different row
+		// (its geometry differs from the displayed ImGui list).
+		mapListPage->update( this, globalX(), globalY() );
+		const int sel = mapListPage->getListSelection( "game.mcl_mp_loadmap_list0.list.map" );
+		if ( sel >= 0 && sel < mapList.GetItemCount() )
+			mapList.SelectItem( sel );
+	}
+	else
+	{
+		mapList.update();
+	}
 	int newSel = mapList.GetSelectedItem();
 	if ( oldSel != newSel )
 		updateMapInfo();
@@ -555,14 +603,12 @@ void MPLoadMap::updateMapInfo()
 				file.readIdString( "MissionName", missionName, 255 );
 			}
 
-			long textureHandle = MissionBriefingScreen::getMissionTGA( selMapName );
-			statics[18].setTexture( textureHandle );
-			statics[18].setUVs( 0, 127, 127, 0 );
-			statics[18].setColor( 0xffffffff );
+			long textureHandle = MissionBriefingScreen::getMissionTGA( selMapName, true );
+			setDefsElementTextureNode( kMpMapKey, textureHandle );
  
 			cLoadString( IDS_MP_LM_MAP_LIST_MAP_NAME, text, 255 );
 			sprintf( text2, text, missionName );
-			textObjects[3].setText( text2 );
+			setDefsElementText( kMpMapNameKey, text2 );
 
 			if ( !bIsSingle )
 			{
@@ -573,7 +619,7 @@ void MPLoadMap::updateMapInfo()
 				cLoadString( IDS_MP_LM_TYPE0 + type, mType, 127 );
 				
 				sprintf( text2, text, mType );
-				textObjects[4].setText( text2 );
+				setDefsElementText( kMpMissionTypeKey, text2 );
 			
 	
 				unsigned long numPlayers = 0;
@@ -581,7 +627,7 @@ void MPLoadMap::updateMapInfo()
 
 				cLoadString( IDS_MP_LM_MAP_LIST_MAX_PLAYERS, text, 255 );
 				sprintf( text2, text, numPlayers );
-				textObjects[2].setText( text2 );
+				setDefsElementText( kMpMaxPlayersKey, text2 );
 			}
 			else
 			{
@@ -605,7 +651,7 @@ void MPLoadMap::updateMapInfo()
 				}
 			}
 
-			textObjects[5].setText( blurb );
+			setDefsElementText( kMpMapInfoKey, blurb );
 
   
 
@@ -618,10 +664,36 @@ void MPLoadMap::updateMapInfo()
 		textObjects[3].setText( "" );
 		textObjects[2].setText( "" );
 		textObjects[5].setText( "" );
-		statics[18].setColor( 0 );
+		setDefsElementTextureNode( kMpMapKey, 0 );
 
 
 	}
+}
+
+// Mirrors mapList's current items and selection into the new ImGui defs
+// renderer's List element (game.mcl_mp_loadmap_list0.list.map). mapList
+// items are always aLocalizedListItem (an aTextListItem), including the
+// disabled "type" header rows -- those get mirrored too, just as plain
+// rows for now; mapList remains the source of truth for what is
+// selectable, this is display-only.
+void MPLoadMap::syncMapListPage()
+{
+	if ( !mapListPage || !mapListPage->isLoaded() )
+		return;
+
+	std::vector<std::string> items;
+	const long count = mapList.GetItemCount();
+	items.reserve( count > 0 ? count : 0 );
+	for ( long i = 0; i < count; i++ )
+	{
+		aListItem* item = mapList.GetItem( i );
+		const aTextListItem* textItem = static_cast<const aTextListItem*>( item );
+		const char* text = textItem ? textItem->getText() : NULL;
+		items.push_back( text ? text : "" );
+	}
+
+	mapListPage->setListItems( "game.mcl_mp_loadmap_list0.list.map", items );
+	mapListPage->setListSelection( "game.mcl_mp_loadmap_list0.list.map", (int)mapList.GetSelectedItem() );
 }
 
 void MPLoadMap::getMapNameFromFile( const char* pFileName, char* missionName, long bufferLength )

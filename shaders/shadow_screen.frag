@@ -99,6 +99,11 @@ uniform float objNormalBiasScale;
 // MECH self-shadow softening (mech pixels only). 1.0 default, 0 = legacy hard.
 // Scales the extra PCF penumbra radius and the terminator smoothstep width.
 uniform float mechSoft;
+// PROP-SHADOW-RECEIVE-1 (MC2_PROP_SHADOW_RECEIVE, default OFF): when 1, static
+// prop pixels (GBuffer1.a=0.25 class) ALSO sample the dynamic CSM cascades ->
+// building self-shadow + prop-on-prop reception (the cascades already carry the
+// full prop caster set). 0 = legacy: props take the static map only.
+uniform int propShadowReceive;
 
 const vec2 poissonDisk[8] = vec2[](
     vec2(-0.94201624, -0.39906216),
@@ -268,8 +273,9 @@ void main()
             float shadow = 1.0;
             if (enableShadows == 1)
                 shadow = min(shadow, sampleShadowMap(shadowMap, worldPos, lightSpaceMatrix, 8));
-            if (enableDynamicShadows == 1 && !isProp)
-                shadow = min(shadow, sampleDynamicShadow(worldPos, N, mechSoft, 0.55));
+            if (enableDynamicShadows == 1 && (!isProp || propShadowReceive != 0))
+                shadow = min(shadow, sampleDynamicShadow(worldPos, N, mechSoft,
+                                                         isProp ? 0.4 : 0.55));
 
             if (shadow < 0.99) {
                 FragColor = vec4(0.0, 0.0, shadow, 1.0);  // blue = shadowed
@@ -306,6 +312,7 @@ void main()
     //   a > 0.5         -> terrain/decal (early-out above, never reaches here)
     //   a in (0.1,0.5]  -> STATIC PROP (building): static map OK, NO dynamic
     //                      self-shadow (CPU never self-shadowed buildings)
+    //                      UNLESS propShadowReceive=1 (PROP-SHADOW-RECEIVE-1)
     //   a <= 0.1        -> MECH: keep dynamic self-shadow, SOFTENED
     bool isStaticProp = rc_isStaticPropNoSelfShadow(normalData);
 
@@ -323,10 +330,22 @@ void main()
         // low-poly facets fade across the terminator instead of popping.
         float dynShadow = sampleDynamicShadow(worldPos, objN, mechSoft, 0.55);
         shadow = min(shadow, dynShadow);
+    } else if (enableDynamicShadows == 1 && propShadowReceive != 0) {
+        // PROP-SHADOW-RECEIVE-1 (gate MC2_PROP_SHADOW_RECEIVE, default OFF):
+        // static props sample the dynamic CSM cascades too -> self-shadow +
+        // prop-on-prop (cascades already contain the full prop caster set;
+        // see txmmgr.cpp DynShadowCSM replay). Shares the existing PCF ledger
+        // (shadowSoftness / objNormalBiasScale) and reuses the mechSoft
+        // terminator smoothstep so flat low-poly facets fade, not pop.
+        // Floor 0.4 = the PRESERVE screen-shadow floor (matches the static
+        // map's mix(0.4,1.0)); min()-combine (NOT multiply) with the static
+        // map caps the combined floor at 0.4 -> no double-darken stacking.
+        float dynShadow = sampleDynamicShadow(worldPos, objN, mechSoft, 0.4);
+        shadow = min(shadow, dynShadow);
     }
-    // Static props: dynamic path skipped entirely -> shadow stays 1.0 from the
-    // dynamic cascade (matches CPU: no building self-shadow). They keep N·L
-    // diffuse (in static_prop.frag) and cloud shadow (separate cloud.frag pass).
+    // Static props (gate OFF): dynamic path skipped entirely -> shadow stays 1.0
+    // from the dynamic cascade (matches CPU: no building self-shadow). They keep
+    // N·L diffuse (in static_prop.frag) and cloud shadow (separate cloud.frag pass).
 
     float combined = shadow;
     FragColor = vec4(combined, combined, combined, 1.0);

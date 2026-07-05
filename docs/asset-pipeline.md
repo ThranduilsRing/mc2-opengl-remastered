@@ -138,6 +138,7 @@ resolution ladder; only tiers present on disk are offered.
 | **HangarGLB.glb building** | Source `hangar.ase` | ✅ `a_hangar.ktx2` BC7 deployed rc1 `data/tgl/128/` |
 | **CorrugatedSteel006A PBR** | CC0 ambientCG sources | ✅ albedo/normal/orm BC7 KTX2 in `gameassets/materials/`; NOT yet engine-wired |
 | Terrain detail/overlay | ✅ | 64/128/256 |
+| **Terrain overlay tiles (roads/runways/crossings/bridges)** | ✅ 256² UltraSharpV2 via `tools/overlay_upscale/overlay_tile_upscale.py` (469 tiles, 17 families; cementpattern/scorch excluded) | ✅ `data/textures/256Overlays/` in 0.5-testing, read by gated loader `MC2_OVERLAY_TILE_HIRES` (OVERLAY-TILE-HIRES-1); legacy `64Overlays` untouched, per-file fallback |
 | UI/menu art | ✅ 1024/512 (`mc2-art.zip`) | loose TGA/PNG (no BC7 tier yet) |
 | VFX / fonts / heightmap / movies / audio | n/a | n/a |
 

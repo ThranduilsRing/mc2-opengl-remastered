@@ -1,0 +1,521 @@
+// MC2R ImGui FIT generated from legacy UI FIT.
+// Source: data/defs/ui/legacy/game/mcl_mp_stats_entry.fit
+// Legacy files remain source truth only; edit the generated ImGui FIT.
+
+GuiPage {
+    key = "game.mcl_mp_stats_entry"
+    title = "Game Mcl Mp Stats Entry"
+    sourceLegacyFit = "data/defs/ui/legacy/game/mcl_mp_stats_entry.fit"
+    sourceSystem = "game"
+    sourceScreen = "mcl_mp_stats_entry"
+    sourceKind = "legacy_component"
+    layout = "component_absolute"
+    coordinateSpace = "component_local"
+    localWidth = 488
+    localHeight = 37
+    mountOffset = "0,0"
+    editableSource = "generated_imgui_only"
+}
+
+GuiMetadata {
+    key = "game.mcl_mp_stats_entry.metadata.metadata"
+    pageKey = "game.mcl_mp_stats_entry"
+    legacySection = "Rects"
+    legacyContext = "~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ | ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ | ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~"
+    role = "metadata"
+    layer = "metadata"
+    aliasOverride = "metadata"
+    sourceControlType = "Rects"
+    rect = "0,0,0,0"
+    legacyLocalRect = "0,0,0,0"
+    legacyRectSource = "xywh"
+    visible = false
+}
+
+GuiRect {
+    key = "game.mcl_mp_stats_entry.rect.outline_around_player_info_name_icon_and_colors"
+    pageKey = "game.mcl_mp_stats_entry"
+    legacySection = "Rect0"
+    legacyComment = "outline around player info name, icon, and colors"
+    legacyContext = "PLAYERSTATSROW"
+    role = "rect"
+    layer = "layout"
+    aliasOverride = "outline around player info name, icon, and colors"
+    sourceControlType = "Rect0"
+    rect = "20,0,195,35"
+    legacyLocalRect = "20,0,195,35"
+    legacyRectSource = "xywh"
+    uiPackage = "legacy_imgui"
+    rectModel = "legacy_imgui.modern_rect_v1"
+    controlRect = "20,0,195,35"
+    legacyColor = -12373732
+    outline = "TRUE"
+    filled = false
+}
+
+GuiMetadata {
+    key = "game.mcl_mp_stats_entry.metadata.divider_between_player_unit_icon_and_player_color"
+    pageKey = "game.mcl_mp_stats_entry"
+    legacySection = "Rect1"
+    legacyComment = "divider between player unit icon and player color"
+    legacyContext = "PLAYERSTATSROW"
+    role = "video"
+    layer = "video"
+    aliasOverride = "divider between player unit icon and player color"
+    sourceControlType = "Rect1"
+    rect = "55,0,0,34"
+    legacyLocalRect = "55,0,0,34"
+    legacyRectSource = "xywh"
+    legacyColor = -12373730
+    outline = "TRUE"
+    visible = false
+}
+
+GuiRect {
+    key = "game.mcl_mp_stats_entry.rect.player_color"
+    pageKey = "game.mcl_mp_stats_entry"
+    legacySection = "Rect2"
+    legacyComment = "player color"
+    legacyContext = "PLAYERSTATSROW"
+    role = "rect"
+    layer = "layout"
+    aliasOverride = "player color"
+    sourceControlType = "Rect2"
+    rect = "57,2,14,32"
+    legacyLocalRect = "57,2,14,32"
+    legacyRectSource = "xywh"
+    uiPackage = "legacy_imgui"
+    rectModel = "legacy_imgui.modern_rect_v1"
+    controlRect = "57,2,14,32"
+    legacyColor = -65536
+    outline = "FALSE"
+    filled = true
+}
+
+GuiMetadata {
+    key = "game.mcl_mp_stats_entry.metadata.divider_between_player_color_and_team_color"
+    pageKey = "game.mcl_mp_stats_entry"
+    legacySection = "Rect3"
+    legacyComment = "divider between player color and team color"
+    legacyContext = "PLAYERSTATSROW"
+    role = "video"
+    layer = "video"
+    aliasOverride = "divider between player color and team color"
+    sourceControlType = "Rect3"
+    rect = "72,0,0,34"
+    legacyLocalRect = "72,0,0,34"
+    legacyRectSource = "xywh"
+    legacyColor = -12373728
+    outline = "TRUE"
+    visible = false
+}
+
+GuiRect {
+    key = "game.mcl_mp_stats_entry.rect.team_color"
+    pageKey = "game.mcl_mp_stats_entry"
+    legacySection = "Rect4"
+    legacyComment = "team color"
+    legacyContext = "PLAYERSTATSROW"
+    role = "rect"
+    layer = "layout"
+    aliasOverride = "team color"
+    sourceControlType = "Rect4"
+    rect = "74,2,140,32"
+    legacyLocalRect = "74,2,140,32"
+    legacyRectSource = "xywh"
+    uiPackage = "legacy_imgui"
+    rectModel = "legacy_imgui.modern_rect_v1"
+    controlRect = "74,2,140,32"
+    legacyColor = -65534
+    outline = "FALSE"
+    filled = true
+}
+
+GuiMetadata {
+    key = "game.mcl_mp_stats_entry.metadata.horizontal_divider"
+    pageKey = "game.mcl_mp_stats_entry"
+    legacySection = "Rect5"
+    legacyComment = "horizontal divider"
+    legacyContext = "PLAYERSTATSROW"
+    role = "video"
+    layer = "video"
+    aliasOverride = "horizontal divider"
+    sourceControlType = "Rect5"
+    rect = "217,35,251,0"
+    legacyLocalRect = "217,35,251,0"
+    legacyRectSource = "xywh"
+    legacyColor = -12373732
+    outline = "TRUE"
+    visible = false
+}
+
+GuiMetadata {
+    key = "game.mcl_mp_stats_entry.metadata.horizontal_divider_01"
+    pageKey = "game.mcl_mp_stats_entry"
+    legacySection = "Rect6"
+    legacyComment = "horizontal divider"
+    legacyContext = "PLAYERSTATSROW"
+    role = "video"
+    layer = "video"
+    aliasOverride = "horizontal divider"
+    sourceControlType = "Rect6"
+    rect = "0,35,17,0"
+    legacyLocalRect = "0,35,17,0"
+    legacyRectSource = "xywh"
+    legacyColor = -12373732
+    outline = "TRUE"
+    visible = false
+}
+
+GuiRect {
+    key = "game.mcl_mp_stats_entry.rect.rect_for_rank_status_gold_for_winner_silver_for_secondary"
+    pageKey = "game.mcl_mp_stats_entry"
+    legacySection = "Rect7"
+    legacyComment = "rect for rank status: gold for winner, silver for secondary"
+    legacyContext = "PLAYERSTATSROW"
+    role = "rect"
+    layer = "layout"
+    aliasOverride = "rect for rank status: gold for winner, silver for secondary"
+    sourceControlType = "Rect7"
+    rect = "-2,-2,472,39"
+    legacyLocalRect = "-2,-2,472,39"
+    legacyRectSource = "xywh"
+    uiPackage = "legacy_imgui"
+    rectModel = "legacy_imgui.modern_rect_v1"
+    controlRect = "-2,-2,472,39"
+    legacyColor = 0xff785E00
+    outline = "TRUE"
+    filled = false
+}
+
+GuiMetadata {
+    key = "game.mcl_mp_stats_entry.metadata.metadata_01"
+    pageKey = "game.mcl_mp_stats_entry"
+    legacySection = "Statics"
+    legacyContext = "~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ | ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ | ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~"
+    role = "metadata"
+    layer = "metadata"
+    aliasOverride = "metadata"
+    sourceControlType = "Statics"
+    rect = "0,0,0,0"
+    legacyLocalRect = "0,0,0,0"
+    legacyRectSource = "xywh"
+    visible = false
+}
+
+GuiImage {
+    key = "game.mcl_mp_stats_entry.image.unit_icon"
+    pageKey = "game.mcl_mp_stats_entry"
+    legacySection = "Static0"
+    legacyComment = "unit icon"
+    legacyContext = "PLAYERSTATSROW"
+    role = "image"
+    layer = "art"
+    aliasOverride = "unit icon"
+    sourceControlType = "Static0"
+    rect = "22,2,32,32"
+    legacyLocalRect = "22,2,32,32"
+    legacyRectSource = "xywh"
+    uiPackage = "legacy_imgui"
+    rectModel = "legacy_imgui.modern_rect_v1"
+    controlRect = "22,2,32,32"
+}
+
+GuiImage {
+    key = "game.mcl_mp_stats_entry.image.laurels_for_winners"
+    pageKey = "game.mcl_mp_stats_entry"
+    legacySection = "Static1"
+    legacyComment = "laurels for  winners"
+    legacyContext = "PLAYERSTATSROW"
+    role = "image"
+    layer = "art"
+    aliasOverride = "laurels for  winners"
+    sourceControlType = "Static1"
+    rect = "220,0,220,16"
+    legacyLocalRect = "220,0,220,16"
+    legacyRectSource = "xywh"
+    texture = "data/art/gui/mcl_mp_stats_4.png"
+    legacyTexture = "mcl_mp_stats_4.tga"
+    uiPackage = "legacy_imgui"
+    rectModel = "legacy_imgui.modern_rect_v1"
+    controlRect = "220,0,220,16"
+    artRect = "220,0,220,16"
+    artLayer = "control_art"
+    uvX = 35
+    uvY = 198
+    uvWidth = 220
+    uvHeight = 16
+}
+
+GuiMetadata {
+    key = "game.mcl_mp_stats_entry.metadata.metadata_02"
+    pageKey = "game.mcl_mp_stats_entry"
+    legacySection = "Texts"
+    legacyContext = "~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ | ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ | ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~"
+    role = "metadata"
+    layer = "metadata"
+    aliasOverride = "metadata"
+    sourceControlType = "Texts"
+    rect = "0,0,0,0"
+    legacyLocalRect = "0,0,0,0"
+    legacyRectSource = "xywh"
+    visible = false
+}
+
+GuiText {
+    key = "game.mcl_mp_stats_entry.text.score_number"
+    pageKey = "game.mcl_mp_stats_entry"
+    legacySection = "Text0"
+    legacyComment = "SCORE number"
+    legacyContext = "PLAYERSTATSROW"
+    role = "text"
+    layer = "text"
+    aliasOverride = "SCORE number"
+    sourceControlType = "Text0"
+    rect = "226,16,83,17"
+    legacyLocalRect = "226,16,83,17"
+    legacyRectSource = "xywh"
+    uiPackage = "legacy_imgui"
+    rectModel = "legacy_imgui.modern_rect_v1"
+    controlRect = "226,16,83,17"
+    textRect = "226,16,83,17"
+    textRectMode = "control_rect_fallback"
+    textOffset = "0,0"
+    textLegacyId = 27000
+    visible = false
+    textKey = "legacy.mc2res.27000"
+    visibleText = " "
+    textLegacySymbol = "IDS_STRING_FIRST_LOGISTICS"
+    textSource = "mc2res"
+    textMissing = false
+    legacyFontId = 26368
+    legacyFontComment = "use agency fb 11"
+    font = "Agency Regular"
+    fontStyle = "Regular"
+    fontSize = 11
+    bold = false
+    italic = false
+    textAlign = "center"
+    textAnchor = "center"
+    wrapText = false
+    colorArgb = "0xffc66601"
+    legacyColor = -3774975
+    outline = "FALSE"
+    legacyAlignment = 2
+    legacyFontComment = "use agency fb 11"
+}
+
+GuiText {
+    key = "game.mcl_mp_stats_entry.text.kills_number"
+    pageKey = "game.mcl_mp_stats_entry"
+    legacySection = "Text1"
+    legacyComment = "kills number"
+    legacyContext = "PLAYERSTATSROW"
+    role = "text"
+    layer = "text"
+    aliasOverride = "kills number"
+    sourceControlType = "Text1"
+    rect = "315,16,83,17"
+    legacyLocalRect = "315,16,83,17"
+    legacyRectSource = "xywh"
+    uiPackage = "legacy_imgui"
+    rectModel = "legacy_imgui.modern_rect_v1"
+    controlRect = "315,16,83,17"
+    textRect = "315,16,83,17"
+    textRectMode = "control_rect_fallback"
+    textOffset = "0,0"
+    textLegacyId = 27000
+    visible = false
+    textKey = "legacy.mc2res.27000"
+    visibleText = " "
+    textLegacySymbol = "IDS_STRING_FIRST_LOGISTICS"
+    textSource = "mc2res"
+    textMissing = false
+    legacyFontId = 26368
+    legacyFontComment = "use agency fb 11"
+    font = "Agency Regular"
+    fontStyle = "Regular"
+    fontSize = 11
+    bold = false
+    italic = false
+    textAlign = "left"
+    textAnchor = "upper_left"
+    wrapText = false
+    colorArgb = "0xffc66605"
+    legacyColor = -3774971
+    outline = "FALSE"
+    legacyAlignment = 0
+    legacyFontComment = "use agency fb 11"
+}
+
+GuiText {
+    key = "game.mcl_mp_stats_entry.text.losses_number"
+    pageKey = "game.mcl_mp_stats_entry"
+    legacySection = "Text2"
+    legacyComment = "losses number"
+    legacyContext = "PLAYERSTATSROW"
+    role = "text"
+    layer = "text"
+    aliasOverride = "losses number"
+    sourceControlType = "Text2"
+    rect = "405,16,83,17"
+    legacyLocalRect = "405,16,83,17"
+    legacyRectSource = "xywh"
+    uiPackage = "legacy_imgui"
+    rectModel = "legacy_imgui.modern_rect_v1"
+    controlRect = "405,16,83,17"
+    textRect = "405,16,83,17"
+    textRectMode = "control_rect_fallback"
+    textOffset = "0,0"
+    textLegacyId = 27000
+    visible = false
+    textKey = "legacy.mc2res.27000"
+    visibleText = " "
+    textLegacySymbol = "IDS_STRING_FIRST_LOGISTICS"
+    textSource = "mc2res"
+    textMissing = false
+    legacyFontId = 26368
+    legacyFontComment = "use agency fb 11"
+    font = "Agency Regular"
+    fontStyle = "Regular"
+    fontSize = 11
+    bold = false
+    italic = false
+    textAlign = "left"
+    textAnchor = "upper_left"
+    wrapText = false
+    colorArgb = "0xffc66602"
+    legacyColor = -3774974
+    outline = "FALSE"
+    legacyAlignment = 0
+    legacyFontComment = "use agency fb 11"
+}
+
+GuiText {
+    key = "game.mcl_mp_stats_entry.text.player_name"
+    pageKey = "game.mcl_mp_stats_entry"
+    legacySection = "Text3"
+    legacyComment = "Player name"
+    legacyContext = "PLAYERSTATSROW"
+    role = "text"
+    layer = "text"
+    aliasOverride = "Player name"
+    sourceControlType = "Text3"
+    rect = "77,3,132,17"
+    legacyLocalRect = "77,3,132,17"
+    legacyRectSource = "xywh"
+    uiPackage = "legacy_imgui"
+    rectModel = "legacy_imgui.modern_rect_v1"
+    controlRect = "77,3,132,17"
+    textRect = "77,3,132,17"
+    textRectMode = "control_rect_fallback"
+    textOffset = "0,0"
+    textLegacyId = 27000
+    visible = false
+    textKey = "legacy.mc2res.27000"
+    visibleText = " "
+    textLegacySymbol = "IDS_STRING_FIRST_LOGISTICS"
+    textSource = "mc2res"
+    textMissing = false
+    legacyFontId = 26368
+    legacyFontComment = "use agency fb 11, with black drop shadow"
+    font = "Agency Regular"
+    fontStyle = "Regular"
+    fontSize = 11
+    bold = false
+    italic = false
+    textAlign = "left"
+    textAnchor = "upper_left"
+    wrapText = false
+    colorArgb = "0xffffffff"
+    legacyColor = 0xffffffff
+    outline = "FALSE"
+    legacyAlignment = 0
+    legacyFontComment = "use agency fb 11, with black drop shadow"
+}
+
+GuiText {
+    key = "game.mcl_mp_stats_entry.text.unit_name_text"
+    pageKey = "game.mcl_mp_stats_entry"
+    legacySection = "Text4"
+    legacyComment = "unit name text"
+    legacyContext = "PLAYERSTATSROW"
+    role = "text"
+    layer = "text"
+    aliasOverride = "unit name text"
+    sourceControlType = "Text4"
+    rect = "77,21,132,12"
+    legacyLocalRect = "77,21,132,12"
+    legacyRectSource = "xywh"
+    uiPackage = "legacy_imgui"
+    rectModel = "legacy_imgui.modern_rect_v1"
+    controlRect = "77,21,132,12"
+    textRect = "77,21,132,12"
+    textRectMode = "control_rect_fallback"
+    textOffset = "0,0"
+    textLegacyId = 27000
+    visible = false
+    textKey = "legacy.mc2res.27000"
+    visibleText = " "
+    textLegacySymbol = "IDS_STRING_FIRST_LOGISTICS"
+    textSource = "mc2res"
+    textMissing = false
+    legacyFontId = 26377
+    legacyFontComment = "use arial narrow 8, with black drop shadow"
+    font = "Agency Regular"
+    fontStyle = "Regular"
+    fontSize = 8
+    bold = false
+    italic = false
+    textAlign = "left"
+    textAnchor = "upper_left"
+    wrapText = false
+    colorArgb = "0xffffffff"
+    legacyColor = -1
+    outline = "FALSE"
+    legacyAlignment = 0
+    legacyFontComment = "use arial narrow 8, with black drop shadow"
+}
+
+GuiText {
+    key = "game.mcl_mp_stats_entry.text.ranking_number"
+    pageKey = "game.mcl_mp_stats_entry"
+    legacySection = "Text5"
+    legacyComment = "RANKING number"
+    legacyContext = "PLAYERSTATSROW"
+    role = "text"
+    layer = "text"
+    aliasOverride = "RANKING number"
+    sourceControlType = "Text5"
+    rect = "1,15,16,17"
+    legacyLocalRect = "1,15,16,17"
+    legacyRectSource = "xywh"
+    uiPackage = "legacy_imgui"
+    rectModel = "legacy_imgui.modern_rect_v1"
+    controlRect = "1,15,16,17"
+    textRect = "1,15,16,17"
+    textRectMode = "control_rect_fallback"
+    textOffset = "0,0"
+    textLegacyId = 27000
+    visible = false
+    textKey = "legacy.mc2res.27000"
+    visibleText = " "
+    textLegacySymbol = "IDS_STRING_FIRST_LOGISTICS"
+    textSource = "mc2res"
+    textMissing = false
+    legacyFontId = 26368
+    legacyFontComment = "use agency fb 11"
+    font = "Agency Regular"
+    fontStyle = "Regular"
+    fontSize = 11
+    bold = false
+    italic = false
+    textAlign = "left"
+    textAnchor = "upper_left"
+    wrapText = false
+    colorArgb = "0xffc66601"
+    legacyColor = -3774975
+    outline = "FALSE"
+    legacyAlignment = 0
+    legacyFontComment = "use agency fb 11"
+}

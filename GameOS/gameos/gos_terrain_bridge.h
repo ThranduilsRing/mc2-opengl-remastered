@@ -12,15 +12,9 @@
 // Forward decls for opaque pointer types used in signatures.
 class gosRenderMaterial;
 
-// Returns the active terrain material (retired terrainDrawIndexedPatches formerly used this;
-// now used by bridge/LOD-chunk paths). Live pointer — do NOT cache across frames.
-gosRenderMaterial* gos_terrain_bridge_getMaterial();
-
-// Returns the GL program ID of the terrain material's currently-applied
-// shader. Used by flush() to look up worldPos / worldNorm attribute
-// locations once and cache them, avoiding the per-draw glGetAttribLocation
-// stall. Returns 0 if no terrain material is resident yet.
-unsigned int gos_terrain_bridge_getShaderProgram();
+// gos_terrain_bridge_getMaterial and gos_terrain_bridge_getShaderProgram deleted by
+// DEAD-BRIDGE-DELETE-1: zero external callers tree-wide (dead public wrappers around
+// live gosRenderer members).
 
 // Sets every direct uniform + texture bind for the terrain material
 // (mirrors what the retired terrainDrawIndexedPatches set) EXCEPT the per-batch VBO upload. Call once per flush() before
@@ -54,12 +48,8 @@ unsigned int gos_terrain_bridge_glTextureForGosHandle(unsigned int gosHandle);
 // gos_terrain.frag). Returns 0 if not yet loaded or failed to compile.
 unsigned int gos_terrain_bridge_getThinShaderProgram();
 
-// Switches the active GL program to the thin terrain program and sets all uniforms
-// (projection, cameraPos, shadow maps, PBR params — same as the tessellation path minus tess-only).
-// Returns the ssboRecordBase uniform location in the thin program (for per-bucket setting),
-// or -1 if the thin program is not ready.
-// IMPORTANT: call gos_terrain_bridge_beginBucketLoop() first to dirty the Z/blend states.
-int gos_terrain_bridge_bindThinUniforms();
+// gos_terrain_bridge_bindThinUniforms deleted by DEAD-BRIDGE-DELETE-1: zero external
+// callers (the internal terrainBindThinUniformsForPatchStream IS live; this wrapper is not).
 
 // gos_terrain_bridge_drawSingleBucketTriangles deleted by TERRAIN-BRIDGE-BODY-DELETE-2:
 // callerless after TerrainPatchStream::flush() retired (TERRAIN-BRIDGE-BODY-DELETE-1).
@@ -70,9 +60,8 @@ int gos_terrain_bridge_bindThinUniforms();
 // Recipe SSBO: GameOS/gameos/gos_terrain_water_stream.h.
 // Shader pair: gos_terrain_water_fast.vert + gos_tex_vertex.frag.
 
-// Returns GL program ID for the water-fast VS + gos_tex_vertex.frag shader.
-// Returns 0 if not loaded or failed to compile.
-unsigned int gos_terrain_bridge_getWaterFastShaderProgram();
+// gos_terrain_bridge_getWaterFastShaderProgram deleted by DEAD-BRIDGE-DELETE-1:
+// zero external callers tree-wide (dead wrapper around live getWaterFastProgram()).
 
 // Issue the water fast path. Bumps the active program to the water-fast
 // shader, sets all uniforms (projection chain, mission-stable + per-frame),

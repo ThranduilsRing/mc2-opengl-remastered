@@ -120,6 +120,9 @@ struct ModEntry {
     CompatKind needs;       // auto-detected compat for a campaign
     char radioGroup[64];    // mod.json "radioGroup" — routes to a mutually-exclusive radio bank
     char desc[1024];        // mod.json "description" — shown in the launcher description pane
+    char envKeys[8][64];    // mod.json "env" — KEY names, applied to the child env when this mod is active
+    char envVals[8][256];   // mod.json "env" — matching VALUEs
+    int  envCount;
 };
 
 static ModEntry s_campaigns[MAX_MODS];
@@ -167,11 +170,15 @@ static const EnvVarDef k_envVars[] = {
     { "MC2_SHADOW_CSM",              "Cascaded shadow maps (CSM)",           true,  "1",    "Rendering" },
     { "MC2_CLOUD_SHADOW",            "Cloud shadows (default ON)",            true,  "1",    "Rendering" },
     { "MC2_SHADOW_BOUNDED_NEAR_FIT", "Crisp near shadows",                    true,  "",     "Rendering" },
+    { "MC2_PROP_SHADOW_RECEIVE",     "Building self/prop-on-prop shadows",    true,  "",     "Rendering" },
     { "MC2_STATIC_PROP_PBR_V1",      "Static prop PBR specular",              true,  "1",    "Rendering" },
     { "MC2_STATIC_PROP_AMBIENT_V1",  "Static prop hemisphere ambient",        true,  "1",    "Rendering" },
     { "MC2_STATIC_PROP_IBL_SH",      "Static prop SH-L2 IBL ambient (ON)",    true,  "1",    "Rendering" },
     // --- Display ---
     { "MC2_FORCE_43",                "Force 4:3 aspect (pillarbox widescreen)", true, "",    "Display"   },
+    { "MC2_WINDOWED",                "Windowed mode",                          true,  "",    "Display"   },
+    { "MC2_WIDTH",                   "Window width (blank = options.cfg)",     false, "",    "Display"   },
+    { "MC2_HEIGHT",                  "Window height (blank = options.cfg)",    false, "",    "Display"   },
     // --- Terrain ---
     { "MC2_TERRAIN_LOD_CHUNK",       "Chunk terrain LOD renderer (default ON)", true, "1",   "Terrain"   },
     { "MC2_COLORMAP_KTX2",           "BC7 KTX2 colormap atlas (default ON)",  true,  "1",    "Terrain"   },
@@ -528,6 +535,109 @@ static bool JsonGetString(const char* json, const char* key, char* out, int outS
     memcpy(out, p, len);
     out[len] = '\0';
     return true;
+}
+
+// Parse a flat mod.json "env": { "KEY": "VALUE", ... } object into parallel
+// key/value arrays. Only string values are supported (matches every other
+// mod.json field); a malformed or absent "env" block yields count 0 — a mod
+// with no env needs is unaffected. Bracket-scoped so keys/values elsewhere in
+// the file (e.g. inside "description") can't be mistaken for env entries.
+static int JsonGetEnvBlock(const char* json, char outKeys[][64], char outVals[][256], int maxEntries) {
+    // Anchor on `"env"` followed (past whitespace) by `:` then `{` — a bare
+    // strstr for `"env"` would also match that literal token inside e.g. a
+    // "description" string that happens to mention it.
+    const char* p = json;
+    const char* brace = NULL;
+    while ((p = strstr(p, "\"env\"")) != NULL) {
+        const char* q = p + 5;
+        while (*q == ' ' || *q == '\t' || *q == '\r' || *q == '\n') q++;
+        if (*q == ':') {
+            q++;
+            while (*q == ' ' || *q == '\t' || *q == '\r' || *q == '\n') q++;
+            if (*q == '{') { brace = q; break; }
+        }
+        p += 5;
+    }
+    if (!brace) return 0;
+    const char* start = brace + 1;
+
+    // Depth-aware scan for the matching close brace — a bare strchr for '}'
+    // would stop early if a value string itself contains a literal '}'.
+    // Quote-tracking so a `{`/`}` inside a string value doesn't affect depth.
+    int depth = 1;
+    bool inStr = false;
+    const char* end = NULL;
+    for (const char* s = start; *s; s++) {
+        if (inStr) {
+            if (*s == '\\' && s[1]) { s++; continue; }
+            if (*s == '"') inStr = false;
+            continue;
+        }
+        if (*s == '"') { inStr = true; continue; }
+        if (*s == '{') depth++;
+        else if (*s == '}') { depth--; if (depth == 0) { end = s; break; } }
+    }
+    if (!end) return 0;
+
+    char block[2048];
+    int blockLen = (int)(end - start);
+    if (blockLen >= (int)sizeof(block)) blockLen = sizeof(block) - 1;
+    memcpy(block, start, blockLen);
+    block[blockLen] = '\0';
+
+    int count = 0;
+    const char* cursor = block;
+    while (count < maxEntries) {
+        const char* keyStart = strchr(cursor, '"');
+        if (!keyStart) break;
+        const char* keyEnd = strchr(keyStart + 1, '"');
+        if (!keyEnd) break;
+        const char* colon = strchr(keyEnd + 1, ':');
+        if (!colon) break;
+        const char* valStart = strchr(colon + 1, '"');
+        if (!valStart) break;
+        const char* valEnd = strchr(valStart + 1, '"');
+        if (!valEnd) break;
+
+        int keyLen = (int)(keyEnd - (keyStart + 1));
+        if (keyLen == 0) { cursor = valEnd + 1; continue; }  // skip empty-key entries (malformed mod.json)
+        if (keyLen >= 64) keyLen = 63;
+        memcpy(outKeys[count], keyStart + 1, keyLen);
+        outKeys[count][keyLen] = '\0';
+
+        int valLen = (int)(valEnd - (valStart + 1));
+        if (valLen >= 256) valLen = 255;
+        memcpy(outVals[count], valStart + 1, valLen);
+        outVals[count][valLen] = '\0';
+
+        count++;
+        cursor = valEnd + 1;
+    }
+    return count;
+}
+
+// Apply a ModEntry's mod.json-declared env vars to the child process
+// environment (SetEnvironmentVariableA mutates the launcher's own env block,
+// which CreateProcessA's NULL lpEnvironment then inherits — same mechanism as
+// every other env var DoLaunch sets).
+static void ApplyModEnv(const ModEntry& e) {
+    for (int i = 0; i < e.envCount; i++)
+        SetEnvironmentVariableA(e.envKeys[i], e.envVals[i]);
+}
+
+// Unset every mod.json-declared env key across ALL scanned mods (all 4
+// buckets), regardless of whether that mod is currently checked/selected.
+// Must run before ApplyModEnv for the active set each launch — otherwise a
+// var set by a mod that was checked on a PREVIOUS launch (same launcher
+// session) bleeds into a launch where that mod is no longer active, since
+// SetEnvironmentVariableA persists in the launcher's own process.
+static void ClearAllModEnv() {
+    ModEntry* buckets[] = { s_campaigns, s_addons, s_bases, s_texQual };
+    int counts[] = { s_campCount, s_addonCount, s_baseCount, s_texQualCount };
+    for (int b = 0; b < 4; b++)
+        for (int i = 0; i < counts[b]; i++)
+            for (int j = 0; j < buckets[b][i].envCount; j++)
+                SetEnvironmentVariableA(buckets[b][i].envKeys[j], NULL);
 }
 
 // ---- Env-var persistence: launcher_env.json ----------------------------------
@@ -1334,6 +1444,7 @@ static void ScanMods(const char* modsPath) {
 
         // Optional mod.json for nicer names / explicit type / radioGroup.
         char name[256] = "", type[32] = "", radioGroup[64] = "", desc[1024] = "";
+        char envKeys[8][64] = {}; char envVals[8][256] = {}; int envCount = 0;
         HANDLE fh = CreateFileA(jsonPath, GENERIC_READ, FILE_SHARE_READ, NULL,
                                 OPEN_EXISTING, FILE_ATTRIBUTE_NORMAL, NULL);
         if (fh != INVALID_HANDLE_VALUE) {
@@ -1343,6 +1454,7 @@ static void ScanMods(const char* modsPath) {
             JsonGetString(buf, "type", type, sizeof(type));
             JsonGetString(buf, "radioGroup", radioGroup, sizeof(radioGroup));
             JsonGetString(buf, "description", desc, sizeof(desc));
+            envCount = JsonGetEnvBlock(buf, envKeys, envVals, 8);
         }
         if (!name[0]) _snprintf(name, sizeof(name), "%s", fd.cFileName);
 
@@ -1380,6 +1492,7 @@ static void ScanMods(const char* modsPath) {
                 _snprintf(e.folderName, sizeof(e.folderName), "%s", fd.cFileName);
                 _snprintf(e.name, sizeof(e.name), "%s", name);
                 _snprintf(e.desc, sizeof(e.desc), "%s", desc);
+                e.envCount = envCount; memcpy(e.envKeys, envKeys, sizeof(envKeys)); memcpy(e.envVals, envVals, sizeof(envVals));
                 e.isCompat = true; e.isCampaign = false; e.needs = CK_UNKNOWN;
                 e.radioGroup[0] = '\0';
             } else if (isTexQual) {
@@ -1388,6 +1501,7 @@ static void ScanMods(const char* modsPath) {
                 _snprintf(e.folderName, sizeof(e.folderName), "%s", fd.cFileName);
                 _snprintf(e.name, sizeof(e.name), "%s", name);
                 _snprintf(e.desc, sizeof(e.desc), "%s", desc);
+                e.envCount = envCount; memcpy(e.envKeys, envKeys, sizeof(envKeys)); memcpy(e.envVals, envVals, sizeof(envVals));
                 e.isCompat = false; e.isCampaign = false; e.needs = CK_UNKNOWN;
                 _snprintf(e.radioGroup, sizeof(e.radioGroup), "%s", radioGroup);
             } else {
@@ -1396,6 +1510,7 @@ static void ScanMods(const char* modsPath) {
                 _snprintf(e.folderName, sizeof(e.folderName), "%s", fd.cFileName);
                 _snprintf(e.name, sizeof(e.name), "%s", name);
                 _snprintf(e.desc, sizeof(e.desc), "%s", desc);
+                e.envCount = envCount; memcpy(e.envKeys, envKeys, sizeof(envKeys)); memcpy(e.envVals, envVals, sizeof(envVals));
                 e.isCompat = true; e.isCampaign = false; e.needs = CK_UNKNOWN;
                 e.radioGroup[0] = '\0';
             }
@@ -1406,6 +1521,7 @@ static void ScanMods(const char* modsPath) {
             _snprintf(e.folderName, sizeof(e.folderName), "%s", fd.cFileName);
             _snprintf(e.name, sizeof(e.name), "%s", name);
             _snprintf(e.desc, sizeof(e.desc), "%s", desc);
+            e.envCount = envCount; memcpy(e.envKeys, envKeys, sizeof(envKeys)); memcpy(e.envVals, envVals, sizeof(envVals));
             e.isCompat = false; e.isCampaign = true;
             e.needs = CK_PENDING;   // lazy: detected on first selection, not at startup
             e.radioGroup[0] = '\0';
@@ -1759,12 +1875,15 @@ static void DoLaunch(HWND hwnd) {
     // file.cpp treats MC2_MOD_DEPS as highest-priority-FIRST, so add-ons are
     // listed BEFORE the base and thus override it. The base (mco/mc2x-compat),
     // if not "None", goes last.
+    ClearAllModEnv();
+
     char deps[1024] = "";
     int addonChecked = 0;
     for (int i = 0; i < s_addonCount; i++) {
         if (s_hAddonList && ListView_GetCheckState(s_hAddonList, i)) {
             if (deps[0]) strncat(deps, ",", sizeof(deps)-strlen(deps)-1);
             strncat(deps, s_addons[i].folderName, sizeof(deps)-strlen(deps)-1);
+            ApplyModEnv(s_addons[i]);
             addonChecked++;
         }
     }
@@ -1772,11 +1891,13 @@ static void DoLaunch(HWND hwnd) {
     if (s_gfxTexPackIdx > 0 && (s_gfxTexPackIdx - 1) < s_texQualCount) {
         if (deps[0]) strncat(deps, ",", sizeof(deps)-strlen(deps)-1);
         strncat(deps, s_texQual[s_gfxTexPackIdx - 1].folderName, sizeof(deps)-strlen(deps)-1);
+        ApplyModEnv(s_texQual[s_gfxTexPackIdx - 1]);
     }
     int baseSlot = SelectedBaseSlot();   // 0 = None; slot i -> s_bases[i-1]
     if (baseSlot > 0 && (baseSlot - 1) < s_baseCount) {
         if (deps[0]) strncat(deps, ",", sizeof(deps)-strlen(deps)-1);
         strncat(deps, s_bases[baseSlot-1].folderName, sizeof(deps)-strlen(deps)-1);
+        ApplyModEnv(s_bases[baseSlot-1]);
     }
 
     if (sel == 0) {
@@ -1806,6 +1927,7 @@ static void DoLaunch(HWND hwnd) {
         }
         SetEnvironmentVariableA("MC2_ACTIVE_MOD", camp.folderName);
         SetEnvironmentVariableA("MC2_MOD_DEPS", deps[0] ? deps : NULL);
+        ApplyModEnv(camp);
     }
 
     // Gameplay "Faster weapons" toggle (NOT a mod): drive engine env vars in the

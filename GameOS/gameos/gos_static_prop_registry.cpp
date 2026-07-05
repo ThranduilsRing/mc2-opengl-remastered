@@ -169,7 +169,19 @@ static const bool s_perInstanceLight =
 
 // STATICPROP-REGISTRY-FLUSH-CACHED-BLOB-2A: build cached immutable instance +
 // per-recipe actor-record content once and bulk-append per frame instead of
-// per-leaf rebuild. Default OFF until Tracy-proven; =1 enables.
+// per-leaf rebuild.
+//
+// STATUS 2026-07-01 (TXMMGR-PERF-EASYWINS-1 audit): SUBSUMED by
+// MC2_STATIC_PROP_PERSISTENT_BUCKETS (default-ON since 2026-06-03, soaked
+// tier1 5/5) — the cached-record branch keys on
+// (s_flushCachedBlob || s_persistentBuckets) below, so the cached path IS the
+// default path already. Do NOT flip this default: with PERSISTENT_BUCKETS=0
+// (the soaked kill-switch restoring the legacy per-leaf path) a default-ON
+// here would silently re-engage the cached bulk path (submitCachedInstanceRange
+// branch), a config that was never the soaked default. Kill-switch matrix:
+//   BUCKETS=1 (default)              -> cached records + persistent store
+//   BUCKETS=0                        -> legacy per-leaf path (full revert)
+//   BUCKETS=0 + CACHED_BLOB=1        -> cached records + per-frame bulk submit
 static const bool s_flushCachedBlob =
     parseEnvBoolWithDefault("MC2_STATIC_PROP_FLUSH_CACHED_BLOB", false);
 // Diagnostic compare (patch 8): when the cached path is active, ALSO build the
@@ -506,7 +518,15 @@ uint64_t getLastFlushLiveCount() {
     return s_lastFlushLiveCount;
 }
 
+// TERRAIN-DECAL-SLICE-0C: clear any captured live cliff-decal context at mission
+// (re)init so a recycled recipe slot from a prior mission can't be live-written by
+// the ImGui panel. Defined in mclib/cliff_decal_tuning.cpp; resolved at mc2 link.
+extern "C" void CliffDecalTuning_clearOnMissionReset();
+
 void init() {
+    // TERRAIN-DECAL-SLICE-0C: new mission -> drop stale decal capture (re-captured
+    // by BldgAppearance::registerStatic if this mission places a MarbleCliff).
+    CliffDecalTuning_clearOnMissionReset();
     // Env flags already parsed at file scope. init() reserves memory.
     if (s_enabled) {
         s_recipes.reserve(20000);
@@ -1802,6 +1822,25 @@ bool staticPropGetTypeId(int32_t recipeIndex, uint32_t* out) {
     if (!recipeValid(recipeIndex)) return false;
     const RecipeRange& rng = s_recipeRanges[static_cast<size_t>(recipeIndex)];
     *out = s_recipes[rng.first].typeID;
+    return true;
+}
+
+// TERRAIN-DECAL-SLICE-0C: live per-frame modelMatrix overwrite for interactive
+// placement tuning. Overwrites EVERY leaf's modelMatrix (all leaves of a mesh-decal
+// recipe share the same face-frame transform), invalidates the cached cull records
+// so the GPU cull position is rebuilt, and bumps the registry generation so the
+// persistent-static store re-uploads next flush (same dirty mechanism markVisible
+// uses for light/extent writes). Cheap: one memcpy per leaf + a generation bump.
+// Returns false for an invalid/tombstoned recipe. Intended for a handful of decals
+// under human ImGui tuning — do NOT call per-frame for thousands of props.
+bool staticPropSetAllLeafMatrices(int32_t recipeIndex, const float in[16]) {
+    if (!recipeValid(recipeIndex)) return false;
+    const RecipeRange& rng = s_recipeRanges[static_cast<size_t>(recipeIndex)];
+    for (uint32_t i = 0; i < rng.count; ++i) {
+        memcpy(s_recipes[rng.first + i].modelMatrix, in, sizeof(float) * 16);
+        invalidateCachedFlushRecord(rng.first + i);
+    }
+    ++s_registryGeneration;   // force persistent-static store rebuild next flush
     return true;
 }
 

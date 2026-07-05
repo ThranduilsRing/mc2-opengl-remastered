@@ -1,0 +1,30 @@
+{
+  "schema_version": "1.0",
+  "work_dir": "_work",
+  "jobs": [
+    {
+      "name": "quonset_hd",
+      "recipe": "upscale_mesh",
+      "asset_class": "building",
+      "source": {
+        "ase": "A:/Games/mc2-opengl-src/mc2srcdata/tgl/quonset.ase",
+        "ini": "A:/Games/mc2-opengl-src/mc2srcdata/tgl/quonset.ini"
+      },
+      "params": {"subdiv": 1, "crease_angle": 40.0},
+      "out": {"kind": "tgl_ini", "dir": "out/quonset", "source_name": "QuonsetHD"}
+    },
+    {
+      "name": "quonset_lods",
+      "recipe": "decimate_lods",
+      "asset_class": "prop",
+      "source": {"glb": "../../../data/tgl/QuonsetGLB.glb"},
+      "params": {"ratios": [0.5, 0.2], "distances": [600, 1200]},
+      "out": {
+        "kind": "models_json",
+        "dir": "out/quonset_lods",
+        "override_class": "staticprop",
+        "appearance_name": "quonset"
+      }
+    }
+  ]
+}

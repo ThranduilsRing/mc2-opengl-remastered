@@ -2,6 +2,7 @@
 
 #include <cstdint>
 #include <cstddef>
+#include <atomic>
 #include <vector>
 #include <unordered_map>
 #include <GL/glew.h>
@@ -505,6 +506,14 @@ void batcher_unbindBaseInstanceByCmdSsboForPatch();
 void batcher_prepareBaseInstanceTable();
 
 extern int g_lightProbeSetupPath;  // [GPUPROPS v1]
+
+// SP-BATCHER-ALPHASCAN-GATE-1: monotonic generation bumped whenever a static-prop
+// type's per-texture alpha bit actually flips (TG_TypeMultiShape::SetTextureAlpha,
+// msl.cpp). Consumed by the batcher's per-frame alpha-test re-resolve scan in
+// flush() so it can early-out when no destruction/damage-texture-alpha event has
+// occurred since the last scan (the flags are otherwise frame-constant). Atomic
+// because SetTextureAlpha can run on FRAME-JOBS workers via the touch/update split.
+extern std::atomic<uint64_t> g_staticPropAlphaGeneration;
 
 // MaterialGpu-3: look up an entry from the per-mission material table by index.
 // Returns true and fills *out if MC2_MATERIAL_GPU=1, geometry is finalized,

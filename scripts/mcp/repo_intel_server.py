@@ -1,10 +1,10 @@
 #!/usr/bin/env python3
 """
-REPO-INTEL-MCP-1: repo_intel_server.py
-Read-only MCP wrapper around tools/repo_intel/repo_query.py.
+REPO-INTEL-MCP-1 (+ MCP-ANTI-CHURN-1): repo_intel_server.py
+Read-only MCP wrapper around tools/repo_intel/*.
 
 Exposes tools:
-  repo.preflight      — branch + root guard + harness summary
+  repo.preflight      — branch + root guard + harness summary (+ lane overlap)
   repo.slice_preflight— anti-rediscovery / stale-base gate (PASS/WARN/STOP)
   repo.dirty          — dirty-file classification with optional guards
   repo.env_var        — env var index query (MC2_* variables)
@@ -12,12 +12,20 @@ Exposes tools:
   repo.harness        — canonical build/deploy/smoke command lookup
   repo.grep           — lexical pattern search with sane default excludes
   repo.symbol         — best-effort definition/reference split (lexical, not AST)
+  MCP-ANTI-CHURN-1:
+  repo.register_lane / list_lanes / check_conflict — cross-worktree lane
+      coordination (JSON store under the MAIN repo's .claude/)
+  repo.mission_facts  — pak grid geometry + water elev + per-lane sidecars
+  repo.gate_status    — one-verdict MC2_* gate audit (registry + tier1 doc +
+      smoke allowlist + check-env-registry allowlist)
+  repo.deploy_status  — deploy-lane fingerprint/staleness/lock/lease health
 
-No new indexing logic. No writes. No build/deploy execution.
-Read-only.
+No build/deploy execution. Read-only EXCEPT the lane registry tools, which
+write coordination metadata (.claude/lane_registry.json) — never repo content.
 
 Configuration:
-  REPO_INTEL_ROOT  — override worktree root (default: two parents above this file)
+  REPO_INTEL_ROOT        — override worktree root (default: two parents above this file)
+  MC2_LANE_REGISTRY_PATH — override the shared lane-registry JSON store
 """
 
 import json
@@ -48,6 +56,10 @@ import env_index   as ei
 import binding_index as bi
 import grep_tool   as gt
 import dead_gate_scan as dgs
+import lane_registry as lreg
+import mission_facts as mfacts
+import gate_status as gstat
+import deploy_status as dstat
 
 # ---------------------------------------------------------------------------
 # Server
@@ -58,10 +70,21 @@ mcp = FastMCP(
     instructions=(
         "Read-only codebase intelligence for the MC2 OpenGL source repo. "
         "Always call preflight() first — it checks branch, worktree root, dirty state, "
-        "and canonical harness commands in one shot. "
+        "canonical harness commands, and lane-claim overlap in one shot. "
         "If preflight returns branch_ok=false or root_ok=false, STOP and report to user. "
         "If safe_to_touch=false, report elevated dirty files and wait for direction. "
-        "All tools return JSON. No mutations, no build/deploy execution."
+        "ANTI-CHURN tools (use these instead of re-deriving facts): "
+        "register_lane()/list_lanes()/check_conflict() = cross-worktree lane "
+        "coordination — register your lane at session start (name, worktree, files "
+        "claimed, deploy lane) so parallel agents stop stepping on each other; "
+        "mission_facts(stem) = pak side/verts, water elevation, deployed sidecars "
+        "per lane — no pak/dir spelunking; "
+        "gate_status(var) = one verdict for registered/allowlisted/documented/default "
+        "— catches ENV-DROP and unregistered gates BEFORE a wasted smoke; "
+        "deploy_status(lane) = exe fingerprint vs your HEAD, manifest staleness, "
+        "lane-lock + smoke-lease holder — call BEFORE deploy/smoke. "
+        "All tools return JSON. No repo-content mutation, no build/deploy execution "
+        "(lane registry writes coordination metadata only)."
     ),
 )
 
@@ -175,6 +198,23 @@ def preflight(expect_branch: str = "", expect_root: str = "") -> str:
         expect_branch = expect_branch or None,
         expect_root   = expect_root   or None,
     )
+    # MCP-ANTI-CHURN-1: warn when this worktree's dirty files overlap another
+    # registered lane's claims (S2-scoop / half-built-deploy failure class).
+    try:
+        dirty_files = [f.get("path") for f in result.get("dirty", {}).get("files", [])
+                       if isinstance(f, dict) and f.get("path")]
+        if dirty_files:
+            overlap = lreg.check_conflict(root, dirty_files)
+            if overlap.get("conflicts"):
+                result["lane_overlap"] = overlap["conflicts"]
+                result["summary"] += (
+                    f" lane_overlap={len(overlap['conflicts'])}"
+                    " (dirty files claimed by another lane — see lane_overlap)")
+        lanes = lreg.list_lanes(root)
+        result["lanes_registered"] = sum(1 for l in lanes.get("lanes", [])
+                                         if not l.get("stale"))
+    except Exception as exc:  # lane registry must never break preflight
+        result["lane_overlap_error"] = str(exc)
     return _j(result)
 
 
@@ -472,6 +512,209 @@ def repo_symbol(
         def_context = def_context,
     )
     return _j(result)
+
+
+@mcp.tool()
+def canonical_tip(branch: str = "", install: str = "") -> str:
+    """
+    Report the REAL current viewing tip — the canonical worktree's HEAD, its
+    subject + dirty state, and (optionally) whether a deployed install is at
+    that tip. Truth-First provenance tool: answers "what is current?" without
+    guessing.
+
+    Args:
+      branch  — canonical branch (default claude/nifty-mendeleev).
+      install — optional deployed install dir; if given, reads its
+                .deployed_manifest.csv src_commit and reports deploy_at_tip
+                (true/false) so a STALE deploy is caught immediately.
+
+    Returns JSON: {canonical_branch, tip, tip_full, tip_subject, worktree,
+    dirty, install?, deployed_commit?, deploy_at_tip?}.
+    """
+    branch = branch or rq.CANONICAL_BRANCH
+    return _j(rq.canonical_tip(_repo(), branch=branch, install=(install or None)))
+
+
+@mcp.tool()
+def lane_status(canonical: str = "", base: str = "") -> str:
+    """
+    Classify every lane worktree against the canonical tip and flag deploy-slot
+    (shared-branch) contention. Truth-First provenance tool for "which lanes are
+    stale / diverged / wrong-base?" before trusting or merging a lane.
+
+    Per-lane verdict:
+      canonical  — the canonical worktree itself
+      current    — HEAD == canonical tip
+      ancestor   — lane behind canonical (adds behind=N)
+      ahead      — lane ahead of canonical (adds ahead=N)
+      diverged   — neither is an ancestor of the other
+      wrong-base — (only with base=) lane does NOT descend from the required base
+
+    Args:
+      canonical — canonical branch (default claude/nifty-mendeleev).
+      base      — optional required-base ref; lanes not descending from it are
+                  marked wrong-base (e.g. base=9cfdc7aa for terrain executors).
+
+    Returns JSON: {canonical_branch, tip, lane_count, lanes:[...],
+    shared_branch_contention:{branch:[paths]}}.
+    """
+    canonical = canonical or rq.CANONICAL_BRANCH
+    return _j(rq.lane_status(_repo(), canonical=canonical, base=(base or None)))
+
+
+# ---------------------------------------------------------------------------
+# MCP-ANTI-CHURN-1 tools — lane registry / mission facts / gate status /
+# deploy status. Grounded in 2026-07-01 incidents: wrong-lane deploys +
+# stale-exe smokes (x3), S2 cross-lane commit scoop, ENV-DROPped gates (x2),
+# 11 unregistered vars, re-derived mission facts, zombie double-implementation.
+# ---------------------------------------------------------------------------
+
+@mcp.tool()
+def register_lane(name: str, worktree: str = "", files_claimed: Optional[list] = None,
+                  deploy_lane: str = "", note: str = "") -> str:
+    """
+    Register (or re-touch) THIS session's lane in the cross-worktree lane
+    registry, and get immediate conflict warnings.
+
+    Call at session start before editing. A lane = one concurrent agent
+    session. The store is ONE shared JSON under the MAIN repo's .claude/
+    (.claude/lane_registry.json) so every worktree sees the same registry.
+
+    Args:
+      name          — unique lane name; use your slice name (e.g. "MCP-ANTI-CHURN-1").
+      worktree      — absolute worktree path (default: this server's repo root).
+      files_claimed — repo-relative paths/globs you intend to touch
+                      (e.g. ["mclib/tgl.*", "scripts/mcp/"]). Dir claims end with "/".
+      deploy_lane   — deploy dir name you'll smoke against (e.g. "0.4", "0.5-testing").
+      note          — free text (what the lane is doing).
+
+    Returns JSON: {registered, store, file_conflicts, deploy_lane_clash, warnings}.
+    Re-registering the same name refreshes last_touch (entries go stale after
+    MC2_LANE_TTL_SECS, default 12h). Release by registering with a done note
+    or ignore — stale entries stop counting.
+
+    Writes coordination metadata ONLY (never repo content).
+    """
+    root = _repo()
+    return _j(lreg.register_lane(root, name, worktree=worktree,
+                                 files_claimed=files_claimed,
+                                 deploy_lane=deploy_lane, note=note))
+
+
+@mcp.tool()
+def release_lane(name: str) -> str:
+    """
+    Remove a lane entry from the cross-worktree lane registry (end of session
+    / slice landed). No-op if the name is not registered.
+    """
+    root = _repo()
+    return _j(lreg.release_lane(root, name))
+
+
+@mcp.tool()
+def list_lanes() -> str:
+    """
+    List all registered lanes (fresh + stale-flagged) from the shared
+    cross-worktree registry: name, worktree, branch, deploy_lane,
+    files_claimed, note, age. Use to see who else is working before claiming
+    files or a deploy lane.
+    """
+    root = _repo()
+    return _j(lreg.list_lanes(root))
+
+
+@mcp.tool()
+def check_conflict(paths: list) -> str:
+    """
+    Check proposed repo-relative paths against OTHER fresh lanes' claims.
+
+    Args:
+      paths — repo-relative paths you intend to edit (globs OK).
+
+    Returns JSON {conflicts:[{path, lane, claim, worktree, deploy_lane}], clear}.
+    A conflict means a parallel agent claimed that file — coordinate before
+    editing (this is how the S2 commit-scoop / double-implementation class of
+    failure gets caught up front).
+    """
+    root = _repo()
+    return _j(lreg.check_conflict(root, paths))
+
+
+@mcp.tool()
+def mission_facts(stem: str, pak_path: str = "") -> str:
+    """
+    One-call mission ground truth — replaces repeated pak/dir spelunking.
+
+    Args:
+      stem     — mission stem, e.g. "mc2_01", "gaea_peaks_01".
+      pak_path — optional explicit .pak path (else the first deploy lane /
+                 worktree copy found is parsed).
+
+    Returns JSON:
+      geometry        — {side, verts, world_size_wu, elev_min, elev_max, packets}
+                        parsed straight from the .pak MapData packet
+                        (side in {60,80,100,120}, 128 world units per vertex).
+      water_elevation — [Water] Elevation from the mission .fit (engine default 0).
+      lanes           — per deploy lane: pak/fit presence + which beauty
+                        sidecars are deployed (control_map.png,
+                        shoreline_mask.png, visual_height_4x.r32, sidecar.json)
+                        with sizes + mtimes.
+    Note: missions still packed inside FST archives report geometry=null with
+    a note — deploy the loose pak or pass pak_path.
+    """
+    root = _repo()
+    return _j(mfacts.mission_facts(root, stem, pak_path=pak_path))
+
+
+@mcp.tool()
+def gate_status(var: str) -> str:
+    """
+    ONE verdict for an MC2_* env gate: registered? smoke-allowlisted?
+    documented? default? readers? — merges four drift-prone sources
+    (RendererFeatureRegistry.h, docs/tier1_env_vars.md, the run_smoke.py
+    passthrough allowlist, and the check-env-registry.sh ALLOWLIST).
+
+    Call BEFORE relying on a gate in a smoke run and AFTER adding a new gate.
+
+    Flags returned (each maps to an observed failure class):
+      ENV_DROP_RISK — read by code but not in the run_smoke passthrough
+                      allowlist: your gate-ON smoke silently runs gate-OFF.
+      UNREGISTERED  — check-env-registry.sh CI gate will fail.
+      UNDOCUMENTED  — no docs/tier1_env_vars.md entry.
+      GHOST         — registered/documented but no code reader found.
+
+    Returns JSON: {var, verdict OK|GAPS, flags, default, registered,
+    registry_entry, tier1_documented, smoke_allowlisted,
+    registry_check_allowlisted, reader_count, readers}.
+    """
+    root = _repo()
+    return _j(gstat.gate_status(root, var))
+
+
+@mcp.tool()
+def deploy_status(lane: str, expected_sha: str = "") -> str:
+    """
+    Deploy-lane health in one call — run BEFORE deploy/smoke to avoid smoking
+    a stale exe or fighting another lane (DEPLOY_FINGERPRINT mismatch class).
+
+    Args:
+      lane         — canonical name ("0.4", "0.4d-rc1", "0.5-testing", ...) or an
+                     absolute deploy dir path.
+      expected_sha — HEAD the exe/manifest must carry (default: this
+                     worktree's HEAD).
+
+    Returns JSON with verdict OK | CONTENDED | BROKEN-TREE | STALE |
+    FINGERPRINT-MISMATCH | NO-EXE | MISSING + action, plus:
+      fingerprint — sha/branch embedded in the on-disk exe vs expected
+      manifest    — .deployed_manifest.csv src_commit vs expected
+      lane_lock   — .mc2_deploy_lane.json holder (fresh? foreign?)
+      smoke_lease — .smoke_leases.json holder (pid, worktree, age, stale)
+
+    READ-ONLY: never writes the lane lock (unlike check-deploy-target.py's
+    default) — claiming a dir stays the smoking session's job.
+    """
+    root = _repo()
+    return _j(dstat.deploy_status(root, lane, expected_sha=expected_sha))
 
 
 # ---------------------------------------------------------------------------

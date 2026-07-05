@@ -924,6 +924,16 @@ void UserInput::setMouseScale (float scaleFactor)
 }
 
 //---------------------------------------------------------------------------
+// UI-ASPECT-ANCHOR-1: see header note on renderForImGuiOverlay().
+static bool s_cursorCanvasOverlayDraw = false;
+void UserInput::renderForImGuiOverlay (void)
+{
+	s_cursorCanvasOverlayDraw = true;
+	render();
+	s_cursorCanvasOverlayDraw = false;
+}
+
+//---------------------------------------------------------------------------
 void UserInput::render (void)						//Last thing rendered.  Draws Mouse.
 {
 	// ---- MC2_LOG_CURSOR diagnostics (instrumentation only, no behavior change) ----
@@ -968,7 +978,24 @@ void UserInput::render (void)						//Last thing rendered.  Draws Mouse.
 			// HUD-inverse transform belongs only on the click-reception side.
 			long mouseX = getRawMouseX();
 			long mouseY = getRawMouseY();
-	
+
+			// UI-ASPECT-ANCHOR-1: post-ImGui invocation runs after the HUD
+			// batch flush, so apply the menu 16:9 canvas remap here (the
+			// in-batch copy gets it from flushHUDBatch). Same math as the
+			// flush: logical' = logical * bw/dw + logicalW * bx/dw.
+			if ( s_cursorCanvasOverlayDraw )
+			{
+				int bx = 0, by = 0, bw = 0, bh = 0;
+				if ( gos_ComputeUiCanvasBox( Environment.drawableWidth, Environment.drawableHeight,
+				                             &bx, &by, &bw, &bh ) )
+				{
+					const float dw = (float)Environment.drawableWidth;
+					const float dh = (float)Environment.drawableHeight;
+					mouseX = (long)(mouseX * ((float)bw / dw) + Environment.screenWidth  * ((float)bx / dw));
+					mouseY = (long)(mouseY * ((float)bh / dh) + Environment.screenHeight * ((float)by / dh));
+				}
+			}
+
 			mouseX -= cursors->getMouseHSX( mouseState );
 			mouseY -= cursors->getMouseHSY( mouseState );
 	

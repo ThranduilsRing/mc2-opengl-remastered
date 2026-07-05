@@ -690,6 +690,13 @@ bool video_update(VideoSession* s)
     }
 }
 
+unsigned int video_get_texture(VideoSession* s)
+{
+    if (!s || !s->frameReady || s->texHandle == 0)
+        return 0;
+    return (unsigned int)s->texHandle;
+}
+
 void video_render(VideoSession* s)
 {
     if (!s || !s->frameReady || s->texHandle == 0) {

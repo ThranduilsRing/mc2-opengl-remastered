@@ -1,0 +1,43 @@
+/***************************************************************
+ * FILENAME: ui_fonts.fit
+ * DESCRIPTION: Font binding rules for legacy_imgui UI text.
+ *
+ * AUTHOR: Methuselas
+ * CREATED: 2026-05-25
+ *
+ * UPDATED BY: Methuselas
+ * UPDATED: 2026-05-25
+ *
+ * CHANGES:
+ * - Declared package-level TrueType font binding rule for migrated legacy UI.
+ ***************************************************************/
+
+UiFontBindingRule {
+    key = "legacy_imgui.fonts"
+    source = "data/defs/ui/fonts/shared/fonts.fit"
+    runtime = "imgui"
+    purpose = "Resolve migrated bitmap-font IDs to sourced TrueType clones with the correct family/style/size."
+}
+
+UiFontStyleField {
+    key = "ui.font.family"
+    field = "font"
+}
+
+UiFontStyleField {
+    key = "ui.font.style"
+    field = "fontStyle"
+    values = "Regular,Bold,Italic,Bold Italic"
+}
+
+UiFontStyleField {
+    key = "ui.font.size"
+    field = "fontSize"
+    unit = "pixels"
+}
+
+UiFontAuditStatus {
+    key = "legacy_imgui.font_audit"
+    auditCsv = "data/defs/ui/_audit/font_usage_audit.csv"
+    currentNeedsReview = 0
+}

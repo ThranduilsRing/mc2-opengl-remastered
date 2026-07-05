@@ -77,6 +77,11 @@ class MC2Movie
 			return m_MC2Name;
 		}
 
+		// gos texture handle (0 == none) of the current decoded frame, for callers
+		// that composite the video themselves (e.g. the defs UI layer) instead of
+		// the built-in gos render().
+		unsigned int getTextureHandle (void);
+
 	protected:
 
 		RECT		MC2Rect;			//Physical Location on screen for MC2 movie.

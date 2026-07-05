@@ -1,0 +1,7117 @@
+// MC2R ImGui FIT generated from legacy UI FIT.
+// Source: data/defs/ui/legacy/shared/cursors.fit
+// Legacy files remain source truth only; edit the generated ImGui FIT.
+
+GuiPage {
+    key = "shared.cursors"
+    title = "Shared Cursors"
+    sourceLegacyFit = "data/defs/ui/legacy/shared/cursors.fit"
+    sourceSystem = "shared"
+    sourceScreen = "cursors"
+    sourceKind = "legacy_component"
+    layout = "component_absolute"
+    coordinateSpace = "component_local"
+    localWidth = 640
+    localHeight = 640
+    previewLayout = "cursor_grid"
+    cursorAtlasPixels = 1024
+    legacyCursorAtlasPixels = 128
+    cursorAtlasUvScale = 8
+    cursorDisplayScale = 1.0
+    mountOffset = "0,0"
+    editableSource = "generated_imgui_only"
+}
+
+GuiMetadata {
+    key = "shared.cursors.metadata.metadata"
+    pageKey = "shared.cursors"
+    legacySection = "Main"
+    role = "metadata"
+    layer = "metadata"
+    aliasOverride = "metadata"
+    sourceControlType = "Main"
+    rect = "0,0,0,0"
+    legacyLocalRect = "0,0,0,0"
+    legacyRectSource = "xywh"
+    visible = false
+}
+
+GuiImage {
+    key = "shared.cursors.image.walk"
+    pageKey = "shared.cursors"
+    legacySection = "Cursor0"
+    legacyComment = "walk"
+    role = "image"
+    layer = "art"
+    aliasOverride = "walk"
+    sourceControlType = "Cursor0"
+    rect = "0,0,31,31"
+    legacyLocalRect = "0,0,31,31"
+    legacyRectSource = "cursor_catalog_grid_preview"
+    texture = "data/art/gui/Cursors1.png"
+    legacyTexture = "Cursors1"
+    uiPackage = "legacy_imgui"
+    rectModel = "legacy_imgui.modern_rect_v1"
+    controlRect = "0,0,31,31"
+    artRect = "0,0,31,31"
+    artLayer = "control_art"
+    legacyUvX = 0
+    uvX = 0
+    legacyUvY = 0
+    uvY = 0
+    legacyUvWidth = 32
+    uvWidth = 256
+    legacyUvHeight = 32
+    uvHeight = 256
+}
+
+GuiImage {
+    key = "shared.cursors.image.walk_los"
+    pageKey = "shared.cursors"
+    legacySection = "Cursor1"
+    legacyComment = "Walk LOS"
+    role = "image"
+    layer = "art"
+    aliasOverride = "Walk LOS"
+    sourceControlType = "Cursor1"
+    rect = "40,0,32,32"
+    legacyLocalRect = "40,0,32,32"
+    legacyRectSource = "cursor_catalog_grid_preview"
+    texture = "data/art/gui/Cursors1.png"
+    legacyTexture = "Cursors1"
+    uiPackage = "legacy_imgui"
+    rectModel = "legacy_imgui.modern_rect_v1"
+    controlRect = "40,0,32,32"
+    artRect = "40,0,32,32"
+    artLayer = "control_art"
+    legacyUvX = 32
+    uvX = 256
+    legacyUvY = 0
+    uvY = 0
+    legacyUvWidth = 32
+    uvWidth = 256
+    legacyUvHeight = 32
+    uvHeight = 256
+}
+
+GuiImage {
+    key = "shared.cursors.image.run"
+    pageKey = "shared.cursors"
+    legacySection = "Cursor2"
+    legacyComment = "Run"
+    role = "image"
+    layer = "art"
+    aliasOverride = "Run"
+    sourceControlType = "Cursor2"
+    rect = "80,0,32,32"
+    legacyLocalRect = "80,0,32,32"
+    legacyRectSource = "cursor_catalog_grid_preview"
+    texture = "data/art/gui/Cursors1.png"
+    legacyTexture = "Cursors1"
+    uiPackage = "legacy_imgui"
+    rectModel = "legacy_imgui.modern_rect_v1"
+    controlRect = "80,0,32,32"
+    artRect = "80,0,32,32"
+    artLayer = "control_art"
+    legacyUvX = 0
+    uvX = 0
+    legacyUvY = 96
+    uvY = 768
+    legacyUvWidth = 32
+    uvWidth = 256
+    legacyUvHeight = 32
+    uvHeight = 256
+}
+
+GuiImage {
+    key = "shared.cursors.image.run_los"
+    pageKey = "shared.cursors"
+    legacySection = "Cursor3"
+    legacyComment = "Run LOS"
+    role = "image"
+    layer = "art"
+    aliasOverride = "Run LOS"
+    sourceControlType = "Cursor3"
+    rect = "120,0,32,32"
+    legacyLocalRect = "120,0,32,32"
+    legacyRectSource = "cursor_catalog_grid_preview"
+    texture = "data/art/gui/Cursors1.png"
+    legacyTexture = "Cursors1"
+    uiPackage = "legacy_imgui"
+    rectModel = "legacy_imgui.modern_rect_v1"
+    controlRect = "120,0,32,32"
+    artRect = "120,0,32,32"
+    artLayer = "control_art"
+    legacyUvX = 96
+    uvX = 768
+    legacyUvY = 0
+    uvY = 0
+    legacyUvWidth = 32
+    uvWidth = 256
+    legacyUvHeight = 32
+    uvHeight = 256
+}
+
+GuiImage {
+    key = "shared.cursors.image.jump"
+    pageKey = "shared.cursors"
+    legacySection = "Cursor4"
+    legacyComment = "jump"
+    role = "image"
+    layer = "art"
+    aliasOverride = "jump"
+    sourceControlType = "Cursor4"
+    rect = "160,0,32,32"
+    legacyLocalRect = "160,0,32,32"
+    legacyRectSource = "cursor_catalog_grid_preview"
+    texture = "data/art/gui/Cursors1.png"
+    legacyTexture = "Cursors1"
+    uiPackage = "legacy_imgui"
+    rectModel = "legacy_imgui.modern_rect_v1"
+    controlRect = "160,0,32,32"
+    artRect = "160,0,32,32"
+    artLayer = "control_art"
+    legacyUvX = 0
+    uvX = 0
+    legacyUvY = 32
+    uvY = 256
+    legacyUvWidth = 32
+    uvWidth = 256
+    legacyUvHeight = 32
+    uvHeight = 256
+}
+
+GuiImage {
+    key = "shared.cursors.image.jump_los"
+    pageKey = "shared.cursors"
+    legacySection = "Cursor5"
+    legacyComment = "jump LOS"
+    role = "image"
+    layer = "art"
+    aliasOverride = "jump LOS"
+    sourceControlType = "Cursor5"
+    rect = "200,0,32,32"
+    legacyLocalRect = "200,0,32,32"
+    legacyRectSource = "cursor_catalog_grid_preview"
+    texture = "data/art/gui/Cursors1.png"
+    legacyTexture = "Cursors1"
+    uiPackage = "legacy_imgui"
+    rectModel = "legacy_imgui.modern_rect_v1"
+    controlRect = "200,0,32,32"
+    artRect = "200,0,32,32"
+    artLayer = "control_art"
+    legacyUvX = 32
+    uvX = 256
+    legacyUvY = 32
+    uvY = 256
+    legacyUvWidth = 32
+    uvWidth = 256
+    legacyUvHeight = 32
+    uvHeight = 256
+}
+
+GuiImage {
+    key = "shared.cursors.image.walk_waypoint"
+    pageKey = "shared.cursors"
+    legacySection = "Cursor6"
+    legacyComment = "walk waypoint"
+    role = "image"
+    layer = "art"
+    aliasOverride = "walk waypoint"
+    sourceControlType = "Cursor6"
+    rect = "240,0,31,31"
+    legacyLocalRect = "240,0,31,31"
+    legacyRectSource = "cursor_catalog_grid_preview"
+    texture = "data/art/gui/Cursors1.png"
+    legacyTexture = "Cursors1"
+    uiPackage = "legacy_imgui"
+    rectModel = "legacy_imgui.modern_rect_v1"
+    controlRect = "240,0,31,31"
+    artRect = "240,0,31,31"
+    artLayer = "control_art"
+    legacyUvX = 64
+    uvX = 512
+    legacyUvY = 32
+    uvY = 256
+    legacyUvWidth = 31
+    uvWidth = 248
+    legacyUvHeight = 31
+    uvHeight = 248
+}
+
+GuiImage {
+    key = "shared.cursors.image.walk_wp_los"
+    pageKey = "shared.cursors"
+    legacySection = "Cursor7"
+    legacyComment = "WALK WP LOS"
+    role = "image"
+    layer = "art"
+    aliasOverride = "WALK WP LOS"
+    sourceControlType = "Cursor7"
+    rect = "280,0,31,31"
+    legacyLocalRect = "280,0,31,31"
+    legacyRectSource = "cursor_catalog_grid_preview"
+    texture = "data/art/gui/Cursors1.png"
+    legacyTexture = "Cursors1"
+    uiPackage = "legacy_imgui"
+    rectModel = "legacy_imgui.modern_rect_v1"
+    controlRect = "280,0,31,31"
+    artRect = "280,0,31,31"
+    artLayer = "control_art"
+    legacyUvX = 96
+    uvX = 768
+    legacyUvY = 32
+    uvY = 256
+    legacyUvWidth = 31
+    uvWidth = 248
+    legacyUvHeight = 31
+    uvHeight = 248
+}
+
+GuiImage {
+    key = "shared.cursors.image.run_wp"
+    pageKey = "shared.cursors"
+    legacySection = "Cursor8"
+    legacyComment = "Run WP"
+    role = "image"
+    layer = "art"
+    aliasOverride = "Run WP"
+    sourceControlType = "Cursor8"
+    rect = "320,0,31,31"
+    legacyLocalRect = "320,0,31,31"
+    legacyRectSource = "cursor_catalog_grid_preview"
+    texture = "data/art/gui/Cursors1.png"
+    legacyTexture = "Cursors1"
+    uiPackage = "legacy_imgui"
+    rectModel = "legacy_imgui.modern_rect_v1"
+    controlRect = "320,0,31,31"
+    artRect = "320,0,31,31"
+    artLayer = "control_art"
+    legacyUvX = 0
+    uvX = 0
+    legacyUvY = 64
+    uvY = 512
+    legacyUvWidth = 31
+    uvWidth = 248
+    legacyUvHeight = 31
+    uvHeight = 248
+}
+
+GuiImage {
+    key = "shared.cursors.image.run_wp_los"
+    pageKey = "shared.cursors"
+    legacySection = "Cursor9"
+    legacyComment = "RUN WP LOS"
+    role = "image"
+    layer = "art"
+    aliasOverride = "RUN WP LOS"
+    sourceControlType = "Cursor9"
+    rect = "360,0,31,31"
+    legacyLocalRect = "360,0,31,31"
+    legacyRectSource = "cursor_catalog_grid_preview"
+    texture = "data/art/gui/Cursors1.png"
+    legacyTexture = "Cursors1"
+    uiPackage = "legacy_imgui"
+    rectModel = "legacy_imgui.modern_rect_v1"
+    controlRect = "360,0,31,31"
+    artRect = "360,0,31,31"
+    artLayer = "control_art"
+    legacyUvX = 32
+    uvX = 256
+    legacyUvY = 64
+    uvY = 512
+    legacyUvWidth = 31
+    uvWidth = 248
+    legacyUvHeight = 31
+    uvHeight = 248
+}
+
+GuiImage {
+    key = "shared.cursors.image.jump_wp"
+    pageKey = "shared.cursors"
+    legacySection = "Cursor10"
+    legacyComment = "JUMP WP"
+    role = "image"
+    layer = "art"
+    aliasOverride = "JUMP WP"
+    sourceControlType = "Cursor10"
+    rect = "400,0,31,31"
+    legacyLocalRect = "400,0,31,31"
+    legacyRectSource = "cursor_catalog_grid_preview"
+    texture = "data/art/gui/Cursors1.png"
+    legacyTexture = "Cursors1"
+    uiPackage = "legacy_imgui"
+    rectModel = "legacy_imgui.modern_rect_v1"
+    controlRect = "400,0,31,31"
+    artRect = "400,0,31,31"
+    artLayer = "control_art"
+    legacyUvX = 64
+    uvX = 512
+    legacyUvY = 64
+    uvY = 512
+    legacyUvWidth = 31
+    uvWidth = 248
+    legacyUvHeight = 31
+    uvHeight = 248
+}
+
+GuiImage {
+    key = "shared.cursors.image.jump_wp_los"
+    pageKey = "shared.cursors"
+    legacySection = "Cursor11"
+    legacyComment = "JUMP WP LOS"
+    role = "image"
+    layer = "art"
+    aliasOverride = "JUMP WP LOS"
+    sourceControlType = "Cursor11"
+    rect = "440,0,31,31"
+    legacyLocalRect = "440,0,31,31"
+    legacyRectSource = "cursor_catalog_grid_preview"
+    texture = "data/art/gui/Cursors1.png"
+    legacyTexture = "Cursors1"
+    uiPackage = "legacy_imgui"
+    rectModel = "legacy_imgui.modern_rect_v1"
+    controlRect = "440,0,31,31"
+    artRect = "440,0,31,31"
+    artLayer = "control_art"
+    legacyUvX = 96
+    uvX = 768
+    legacyUvY = 64
+    uvY = 512
+    legacyUvWidth = 31
+    uvWidth = 248
+    legacyUvHeight = 31
+    uvHeight = 248
+}
+
+GuiImage {
+    key = "shared.cursors.image.link_patrol_path"
+    pageKey = "shared.cursors"
+    legacySection = "Cursor12"
+    legacyComment = "Link Patrol Path"
+    role = "image"
+    layer = "art"
+    aliasOverride = "Link Patrol Path"
+    sourceControlType = "Cursor12"
+    rect = "480,0,31,31"
+    legacyLocalRect = "480,0,31,31"
+    legacyRectSource = "cursor_catalog_grid_preview"
+    texture = "data/art/gui/Cursors1.png"
+    legacyTexture = "Cursors1"
+    uiPackage = "legacy_imgui"
+    rectModel = "legacy_imgui.modern_rect_v1"
+    controlRect = "480,0,31,31"
+    artRect = "480,0,31,31"
+    artLayer = "control_art"
+    legacyUvX = 0
+    uvX = 0
+    legacyUvY = 96
+    uvY = 768
+    legacyUvWidth = 31
+    uvWidth = 248
+    legacyUvHeight = 31
+    uvHeight = 248
+}
+
+GuiImage {
+    key = "shared.cursors.image.attack"
+    pageKey = "shared.cursors"
+    legacySection = "Cursor13"
+    legacyComment = "Attack"
+    role = "image"
+    layer = "art"
+    aliasOverride = "Attack"
+    sourceControlType = "Cursor13"
+    rect = "520,0,31,31"
+    legacyLocalRect = "520,0,31,31"
+    legacyRectSource = "cursor_catalog_grid_preview"
+    texture = "data/art/gui/Cursors1.png"
+    legacyTexture = "Cursors1"
+    uiPackage = "legacy_imgui"
+    rectModel = "legacy_imgui.modern_rect_v1"
+    controlRect = "520,0,31,31"
+    artRect = "520,0,31,31"
+    artLayer = "control_art"
+    legacyUvX = 32
+    uvX = 256
+    legacyUvY = 96
+    uvY = 768
+    legacyUvWidth = 31
+    uvWidth = 248
+    legacyUvHeight = 31
+    uvHeight = 248
+}
+
+GuiImage {
+    key = "shared.cursors.image.attack_los"
+    pageKey = "shared.cursors"
+    legacySection = "Cursor14"
+    legacyComment = "attack LOS"
+    role = "image"
+    layer = "art"
+    aliasOverride = "attack LOS"
+    sourceControlType = "Cursor14"
+    rect = "560,0,32,32"
+    legacyLocalRect = "560,0,32,32"
+    legacyRectSource = "cursor_catalog_grid_preview"
+    texture = "data/art/gui/Cursors3.png"
+    legacyTexture = "Cursors3"
+    uiPackage = "legacy_imgui"
+    rectModel = "legacy_imgui.modern_rect_v1"
+    controlRect = "560,0,32,32"
+    artRect = "560,0,32,32"
+    artLayer = "control_art"
+    legacyUvX = 0
+    uvX = 0
+    legacyUvY = 96
+    uvY = 768
+    legacyUvWidth = 32
+    uvWidth = 256
+    legacyUvHeight = 32
+    uvHeight = 256
+}
+
+GuiImage {
+    key = "shared.cursors.image.attack_from_currentpos"
+    pageKey = "shared.cursors"
+    legacySection = "Cursor15"
+    legacyComment = "attack from currentPos"
+    role = "image"
+    layer = "art"
+    aliasOverride = "attack from currentPos"
+    sourceControlType = "Cursor15"
+    rect = "600,0,31,31"
+    legacyLocalRect = "600,0,31,31"
+    legacyRectSource = "cursor_catalog_grid_preview"
+    texture = "data/art/gui/Cursors1.png"
+    legacyTexture = "Cursors1"
+    uiPackage = "legacy_imgui"
+    rectModel = "legacy_imgui.modern_rect_v1"
+    controlRect = "600,0,31,31"
+    artRect = "600,0,31,31"
+    artLayer = "control_art"
+    legacyUvX = 96
+    uvX = 768
+    legacyUvY = 96
+    uvY = 768
+    legacyUvWidth = 31
+    uvWidth = 248
+    legacyUvHeight = 31
+    uvHeight = 248
+}
+
+GuiImage {
+    key = "shared.cursors.image.fire_from_currentpos_los"
+    pageKey = "shared.cursors"
+    legacySection = "Cursor16"
+    legacyComment = "Fire from currentPos LOS"
+    role = "image"
+    layer = "art"
+    aliasOverride = "Fire from currentPos LOS"
+    sourceControlType = "Cursor16"
+    rect = "0,40,32,32"
+    legacyLocalRect = "0,40,32,32"
+    legacyRectSource = "cursor_catalog_grid_preview"
+    texture = "data/art/gui/Cursors5.png"
+    legacyTexture = "Cursors5"
+    uiPackage = "legacy_imgui"
+    rectModel = "legacy_imgui.modern_rect_v1"
+    controlRect = "0,40,32,32"
+    artRect = "0,40,32,32"
+    artLayer = "control_art"
+    legacyUvX = 0
+    uvX = 0
+    legacyUvY = 0
+    uvY = 0
+    legacyUvWidth = 32
+    uvWidth = 256
+    legacyUvHeight = 32
+    uvHeight = 256
+}
+
+GuiImage {
+    key = "shared.cursors.image.energy_weapons_only"
+    pageKey = "shared.cursors"
+    legacySection = "Cursor17"
+    legacyComment = "Energy Weapons only ?"
+    role = "image"
+    layer = "art"
+    aliasOverride = "Energy Weapons only ?"
+    sourceControlType = "Cursor17"
+    rect = "40,40,31,31"
+    legacyLocalRect = "40,40,31,31"
+    legacyRectSource = "cursor_catalog_grid_preview"
+    texture = "data/art/gui/Cursors2.png"
+    legacyTexture = "Cursors2"
+    uiPackage = "legacy_imgui"
+    rectModel = "legacy_imgui.modern_rect_v1"
+    controlRect = "40,40,31,31"
+    artRect = "40,40,31,31"
+    artLayer = "control_art"
+    legacyUvX = 32
+    uvX = 256
+    legacyUvY = 0
+    uvY = 0
+    legacyUvWidth = 31
+    uvWidth = 248
+    legacyUvHeight = 31
+    uvHeight = 248
+}
+
+GuiImage {
+    key = "shared.cursors.image.energy_weapons_los"
+    pageKey = "shared.cursors"
+    legacySection = "Cursor18"
+    legacyComment = "Energy Weapons LOS"
+    role = "image"
+    layer = "art"
+    aliasOverride = "Energy Weapons LOS"
+    sourceControlType = "Cursor18"
+    rect = "80,40,32,32"
+    legacyLocalRect = "80,40,32,32"
+    legacyRectSource = "cursor_catalog_grid_preview"
+    texture = "data/art/gui/Cursors5.png"
+    legacyTexture = "Cursors5"
+    uiPackage = "legacy_imgui"
+    rectModel = "legacy_imgui.modern_rect_v1"
+    controlRect = "80,40,32,32"
+    artRect = "80,40,32,32"
+    artLayer = "control_art"
+    legacyUvX = 0
+    uvX = 0
+    legacyUvY = 64
+    uvY = 512
+    legacyUvWidth = 32
+    uvWidth = 256
+    legacyUvHeight = 32
+    uvHeight = 256
+}
+
+GuiImage {
+    key = "shared.cursors.image.called_shot"
+    pageKey = "shared.cursors"
+    legacySection = "Cursor19"
+    legacyComment = "Called Shot"
+    role = "image"
+    layer = "art"
+    aliasOverride = "Called Shot"
+    sourceControlType = "Cursor19"
+    rect = "120,40,31,31"
+    legacyLocalRect = "120,40,31,31"
+    legacyRectSource = "cursor_catalog_grid_preview"
+    texture = "data/art/gui/Cursors2.png"
+    legacyTexture = "Cursors2"
+    uiPackage = "legacy_imgui"
+    rectModel = "legacy_imgui.modern_rect_v1"
+    controlRect = "120,40,31,31"
+    artRect = "120,40,31,31"
+    artLayer = "control_art"
+    legacyUvX = 0
+    uvX = 0
+    legacyUvY = 0
+    uvY = 0
+    legacyUvWidth = 31
+    uvWidth = 248
+    legacyUvHeight = 31
+    uvHeight = 248
+}
+
+GuiImage {
+    key = "shared.cursors.image.called_shot_los"
+    pageKey = "shared.cursors"
+    legacySection = "Cursor20"
+    legacyComment = "Called Shot LOS"
+    role = "image"
+    layer = "art"
+    aliasOverride = "Called Shot LOS"
+    sourceControlType = "Cursor20"
+    rect = "160,40,32,32"
+    legacyLocalRect = "160,40,32,32"
+    legacyRectSource = "cursor_catalog_grid_preview"
+    texture = "data/art/gui/Cursors5.png"
+    legacyTexture = "Cursors5"
+    uiPackage = "legacy_imgui"
+    rectModel = "legacy_imgui.modern_rect_v1"
+    controlRect = "160,40,32,32"
+    artRect = "160,40,32,32"
+    artLayer = "control_art"
+    legacyUvX = 0
+    uvX = 0
+    legacyUvY = 32
+    uvY = 256
+    legacyUvWidth = 32
+    uvWidth = 256
+    legacyUvHeight = 32
+    uvHeight = 256
+}
+
+GuiImage {
+    key = "shared.cursors.image.pointer"
+    pageKey = "shared.cursors"
+    legacySection = "Cursor21"
+    legacyComment = "pointer"
+    role = "image"
+    layer = "art"
+    aliasOverride = "pointer"
+    sourceControlType = "Cursor21"
+    rect = "200,40,31,31"
+    legacyLocalRect = "200,40,31,31"
+    legacyRectSource = "cursor_catalog_grid_preview"
+    texture = "data/art/gui/Cursors2.png"
+    legacyTexture = "Cursors2"
+    uiPackage = "legacy_imgui"
+    rectModel = "legacy_imgui.modern_rect_v1"
+    controlRect = "200,40,31,31"
+    artRect = "200,40,31,31"
+    artLayer = "control_art"
+    legacyUvX = 32
+    uvX = 256
+    legacyUvY = 32
+    uvY = 256
+    legacyUvWidth = 31
+    uvWidth = 248
+    legacyUvHeight = 31
+    uvHeight = 248
+}
+
+GuiImage {
+    key = "shared.cursors.image.get_info"
+    pageKey = "shared.cursors"
+    legacySection = "Cursor22"
+    legacyComment = "get Info"
+    role = "image"
+    layer = "art"
+    aliasOverride = "get Info"
+    sourceControlType = "Cursor22"
+    rect = "240,40,31,31"
+    legacyLocalRect = "240,40,31,31"
+    legacyRectSource = "cursor_catalog_grid_preview"
+    texture = "data/art/gui/Cursors2.png"
+    legacyTexture = "Cursors2"
+    uiPackage = "legacy_imgui"
+    rectModel = "legacy_imgui.modern_rect_v1"
+    controlRect = "240,40,31,31"
+    artRect = "240,40,31,31"
+    artLayer = "control_art"
+    legacyUvX = 64
+    uvX = 512
+    legacyUvY = 32
+    uvY = 256
+    legacyUvWidth = 31
+    uvWidth = 248
+    legacyUvHeight = 31
+    uvHeight = 248
+}
+
+GuiImage {
+    key = "shared.cursors.image.lay_mines"
+    pageKey = "shared.cursors"
+    legacySection = "Cursor23"
+    legacyComment = "lay mines"
+    role = "image"
+    layer = "art"
+    aliasOverride = "lay mines"
+    sourceControlType = "Cursor23"
+    rect = "280,40,31,31"
+    legacyLocalRect = "280,40,31,31"
+    legacyRectSource = "cursor_catalog_grid_preview"
+    texture = "data/art/gui/Cursors2.png"
+    legacyTexture = "Cursors2"
+    uiPackage = "legacy_imgui"
+    rectModel = "legacy_imgui.modern_rect_v1"
+    controlRect = "280,40,31,31"
+    artRect = "280,40,31,31"
+    artLayer = "control_art"
+    legacyUvX = 96
+    uvX = 768
+    legacyUvY = 32
+    uvY = 256
+    legacyUvWidth = 31
+    uvWidth = 248
+    legacyUvHeight = 31
+    uvHeight = 248
+}
+
+Gui3DView {
+    key = "shared.cursors.3dview.rotate_camera"
+    pageKey = "shared.cursors"
+    legacySection = "Cursor24"
+    legacyComment = "rotate camera"
+    role = "3d_view"
+    layer = "viewport"
+    aliasOverride = "rotate camera"
+    sourceControlType = "Cursor24"
+    rect = "320,40,31,31"
+    legacyLocalRect = "320,40,31,31"
+    legacyRectSource = "cursor_catalog_grid_preview"
+    texture = "data/art/gui/Cursors2.png"
+    legacyTexture = "Cursors2"
+    uiPackage = "legacy_imgui"
+    rectModel = "legacy_imgui.modern_rect_v1"
+    controlRect = "320,40,31,31"
+    hitRect = "320,40,31,31"
+    artRect = "320,40,31,31"
+    artLayer = "control_art"
+    legacyUvX = 0
+    uvX = 0
+    legacyUvY = 64
+    uvY = 512
+    legacyUvWidth = 31
+    uvWidth = 248
+    legacyUvHeight = 31
+    uvHeight = 248
+    viewportKind = "legacy_3d_model"
+    runtimeOwner = "Mechlopedia camera"
+    sourceLine = "camera.init(...) / camera.render()"
+}
+
+GuiImage {
+    key = "shared.cursors.image.airstrike"
+    pageKey = "shared.cursors"
+    legacySection = "Cursor25"
+    legacyComment = "airStrike"
+    role = "image"
+    layer = "art"
+    aliasOverride = "airStrike"
+    sourceControlType = "Cursor25"
+    rect = "360,40,31,31"
+    legacyLocalRect = "360,40,31,31"
+    legacyRectSource = "cursor_catalog_grid_preview"
+    texture = "data/art/gui/Cursors2.png"
+    legacyTexture = "Cursors2"
+    uiPackage = "legacy_imgui"
+    rectModel = "legacy_imgui.modern_rect_v1"
+    controlRect = "360,40,31,31"
+    artRect = "360,40,31,31"
+    artLayer = "control_art"
+    legacyUvX = 96
+    uvX = 768
+    legacyUvY = 0
+    uvY = 0
+    legacyUvWidth = 31
+    uvWidth = 248
+    legacyUvHeight = 31
+    uvHeight = 248
+}
+
+GuiImage {
+    key = "shared.cursors.image.airstrike_los"
+    pageKey = "shared.cursors"
+    legacySection = "Cursor26"
+    legacyComment = "airStrike LOS"
+    role = "image"
+    layer = "art"
+    aliasOverride = "airStrike LOS"
+    sourceControlType = "Cursor26"
+    rect = "400,40,32,32"
+    legacyLocalRect = "400,40,32,32"
+    legacyRectSource = "cursor_catalog_grid_preview"
+    texture = "data/art/gui/Cursors4.png"
+    legacyTexture = "Cursors4"
+    uiPackage = "legacy_imgui"
+    rectModel = "legacy_imgui.modern_rect_v1"
+    controlRect = "400,40,32,32"
+    artRect = "400,40,32,32"
+    artLayer = "control_art"
+    legacyUvX = 0
+    uvX = 0
+    legacyUvY = 0
+    uvY = 0
+    legacyUvWidth = 32
+    uvWidth = 256
+    legacyUvHeight = 32
+    uvHeight = 256
+}
+
+GuiImage {
+    key = "shared.cursors.image.sensorstrike"
+    pageKey = "shared.cursors"
+    legacySection = "Cursor27"
+    legacyComment = "sensorStrike"
+    role = "image"
+    layer = "art"
+    aliasOverride = "sensorStrike"
+    sourceControlType = "Cursor27"
+    rect = "440,40,32,32"
+    legacyLocalRect = "440,40,32,32"
+    legacyRectSource = "cursor_catalog_grid_preview"
+    texture = "data/art/gui/Cursors4.png"
+    legacyTexture = "Cursors4"
+    uiPackage = "legacy_imgui"
+    rectModel = "legacy_imgui.modern_rect_v1"
+    controlRect = "440,40,32,32"
+    artRect = "440,40,32,32"
+    artLayer = "control_art"
+    legacyUvX = 0
+    uvX = 0
+    legacyUvY = 64
+    uvY = 512
+    legacyUvWidth = 32
+    uvWidth = 256
+    legacyUvHeight = 32
+    uvHeight = 256
+}
+
+GuiImage {
+    key = "shared.cursors.image.call_vehicle"
+    pageKey = "shared.cursors"
+    legacySection = "Cursor28"
+    legacyComment = "call Vehicle"
+    role = "image"
+    layer = "art"
+    aliasOverride = "call Vehicle"
+    sourceControlType = "Cursor28"
+    rect = "480,40,31,31"
+    legacyLocalRect = "480,40,31,31"
+    legacyRectSource = "cursor_catalog_grid_preview"
+    texture = "data/art/gui/Cursors2.png"
+    legacyTexture = "Cursors2"
+    uiPackage = "legacy_imgui"
+    rectModel = "legacy_imgui.modern_rect_v1"
+    controlRect = "480,40,31,31"
+    artRect = "480,40,31,31"
+    artLayer = "control_art"
+    legacyUvX = 0
+    uvX = 0
+    legacyUvY = 96
+    uvY = 768
+    legacyUvWidth = 31
+    uvWidth = 248
+    legacyUvHeight = 31
+    uvHeight = 248
+}
+
+GuiImage {
+    key = "shared.cursors.image.can_t_call_vehicle"
+    pageKey = "shared.cursors"
+    legacySection = "Cursor29"
+    legacyComment = "can't call Vehicle"
+    role = "image"
+    layer = "art"
+    aliasOverride = "can't call Vehicle"
+    sourceControlType = "Cursor29"
+    rect = "520,40,31,31"
+    legacyLocalRect = "520,40,31,31"
+    legacyRectSource = "cursor_catalog_grid_preview"
+    texture = "data/art/gui/Cursors2.png"
+    legacyTexture = "Cursors2"
+    uiPackage = "legacy_imgui"
+    rectModel = "legacy_imgui.modern_rect_v1"
+    controlRect = "520,40,31,31"
+    artRect = "520,40,31,31"
+    artLayer = "control_art"
+    legacyUvX = 32
+    uvX = 256
+    legacyUvY = 96
+    uvY = 768
+    legacyUvWidth = 31
+    uvWidth = 248
+    legacyUvHeight = 31
+    uvHeight = 248
+}
+
+GuiImage {
+    key = "shared.cursors.image.can_t_do_that"
+    pageKey = "shared.cursors"
+    legacySection = "Cursor30"
+    legacyComment = "can't do that"
+    role = "image"
+    layer = "art"
+    aliasOverride = "can't do that"
+    sourceControlType = "Cursor30"
+    rect = "560,40,31,31"
+    legacyLocalRect = "560,40,31,31"
+    legacyRectSource = "cursor_catalog_grid_preview"
+    texture = "data/art/gui/Cursors2.png"
+    legacyTexture = "Cursors2"
+    uiPackage = "legacy_imgui"
+    rectModel = "legacy_imgui.modern_rect_v1"
+    controlRect = "560,40,31,31"
+    artRect = "560,40,31,31"
+    artLayer = "control_art"
+    legacyUvX = 64
+    uvX = 512
+    legacyUvY = 96
+    uvY = 768
+    legacyUvWidth = 31
+    uvWidth = 248
+    legacyUvHeight = 31
+    uvHeight = 248
+}
+
+GuiImage {
+    key = "shared.cursors.image.repair"
+    pageKey = "shared.cursors"
+    legacySection = "Cursor31"
+    legacyComment = "Repair"
+    role = "image"
+    layer = "art"
+    aliasOverride = "Repair"
+    sourceControlType = "Cursor31"
+    rect = "600,40,31,31"
+    legacyLocalRect = "600,40,31,31"
+    legacyRectSource = "cursor_catalog_grid_preview"
+    texture = "data/art/gui/Cursors2.png"
+    legacyTexture = "Cursors2"
+    uiPackage = "legacy_imgui"
+    rectModel = "legacy_imgui.modern_rect_v1"
+    controlRect = "600,40,31,31"
+    artRect = "600,40,31,31"
+    artLayer = "control_art"
+    legacyUvX = 96
+    uvX = 768
+    legacyUvY = 96
+    uvY = 768
+    legacyUvWidth = 31
+    uvWidth = 248
+    legacyUvHeight = 31
+    uvHeight = 248
+}
+
+GuiImage {
+    key = "shared.cursors.image.can_t_repair"
+    pageKey = "shared.cursors"
+    legacySection = "Cursor32"
+    legacyComment = "Can't Repair"
+    role = "image"
+    layer = "art"
+    aliasOverride = "Can't Repair"
+    sourceControlType = "Cursor32"
+    rect = "0,80,31,31"
+    legacyLocalRect = "0,80,31,31"
+    legacyRectSource = "cursor_catalog_grid_preview"
+    texture = "data/art/gui/Cursors3.png"
+    legacyTexture = "Cursors3"
+    uiPackage = "legacy_imgui"
+    rectModel = "legacy_imgui.modern_rect_v1"
+    controlRect = "0,80,31,31"
+    artRect = "0,80,31,31"
+    artLayer = "control_art"
+    legacyUvX = 0
+    uvX = 0
+    legacyUvY = 0
+    uvY = 0
+    legacyUvWidth = 31
+    uvWidth = 248
+    legacyUvHeight = 31
+    uvHeight = 248
+}
+
+GuiImage {
+    key = "shared.cursors.image.eject"
+    pageKey = "shared.cursors"
+    legacySection = "Cursor33"
+    legacyComment = "Eject"
+    role = "image"
+    layer = "art"
+    aliasOverride = "Eject"
+    sourceControlType = "Cursor33"
+    rect = "40,80,31,31"
+    legacyLocalRect = "40,80,31,31"
+    legacyRectSource = "cursor_catalog_grid_preview"
+    texture = "data/art/gui/Cursors3.png"
+    legacyTexture = "Cursors3"
+    uiPackage = "legacy_imgui"
+    rectModel = "legacy_imgui.modern_rect_v1"
+    controlRect = "40,80,31,31"
+    artRect = "40,80,31,31"
+    artLayer = "control_art"
+    legacyUvX = 32
+    uvX = 256
+    legacyUvY = 0
+    uvY = 0
+    legacyUvWidth = 31
+    uvWidth = 248
+    legacyUvHeight = 31
+    uvHeight = 248
+}
+
+GuiImage {
+    key = "shared.cursors.image.can_t_eject"
+    pageKey = "shared.cursors"
+    legacySection = "Cursor34"
+    legacyComment = "can't Eject"
+    role = "image"
+    layer = "art"
+    aliasOverride = "can't Eject"
+    sourceControlType = "Cursor34"
+    rect = "80,80,31,31"
+    legacyLocalRect = "80,80,31,31"
+    legacyRectSource = "cursor_catalog_grid_preview"
+    texture = "data/art/gui/Cursors3.png"
+    legacyTexture = "Cursors3"
+    uiPackage = "legacy_imgui"
+    rectModel = "legacy_imgui.modern_rect_v1"
+    controlRect = "80,80,31,31"
+    artRect = "80,80,31,31"
+    artLayer = "control_art"
+    legacyUvX = 64
+    uvX = 512
+    legacyUvY = 0
+    uvY = 0
+    legacyUvWidth = 31
+    uvWidth = 248
+    legacyUvHeight = 31
+    uvHeight = 248
+}
+
+GuiImage {
+    key = "shared.cursors.image.capture"
+    pageKey = "shared.cursors"
+    legacySection = "Cursor35"
+    legacyComment = "Capture"
+    role = "image"
+    layer = "art"
+    aliasOverride = "Capture"
+    sourceControlType = "Cursor35"
+    rect = "120,80,32,32"
+    legacyLocalRect = "120,80,32,32"
+    legacyRectSource = "cursor_catalog_grid_preview"
+    texture = "data/art/gui/Cursors3.png"
+    legacyTexture = "Cursors3"
+    uiPackage = "legacy_imgui"
+    rectModel = "legacy_imgui.modern_rect_v1"
+    controlRect = "120,80,32,32"
+    artRect = "120,80,32,32"
+    artLayer = "control_art"
+    legacyUvX = 0
+    uvX = 0
+    legacyUvY = 64
+    uvY = 512
+    legacyUvWidth = 32
+    uvWidth = 256
+    legacyUvHeight = 32
+    uvHeight = 256
+}
+
+GuiImage {
+    key = "shared.cursors.image.can_t_capture"
+    pageKey = "shared.cursors"
+    legacySection = "Cursor36"
+    legacyComment = "can't capture"
+    role = "image"
+    layer = "art"
+    aliasOverride = "can't capture"
+    sourceControlType = "Cursor36"
+    rect = "160,80,31,31"
+    legacyLocalRect = "160,80,31,31"
+    legacyRectSource = "cursor_catalog_grid_preview"
+    texture = "data/art/gui/Cursors3.png"
+    legacyTexture = "Cursors3"
+    uiPackage = "legacy_imgui"
+    rectModel = "legacy_imgui.modern_rect_v1"
+    controlRect = "160,80,31,31"
+    artRect = "160,80,31,31"
+    artLayer = "control_art"
+    legacyUvX = 0
+    uvX = 0
+    legacyUvY = 32
+    uvY = 256
+    legacyUvWidth = 31
+    uvWidth = 248
+    legacyUvHeight = 31
+    uvHeight = 248
+}
+
+GuiImage {
+    key = "shared.cursors.image.recover_mech"
+    pageKey = "shared.cursors"
+    legacySection = "Cursor37"
+    legacyComment = "recover mech"
+    role = "image"
+    layer = "art"
+    aliasOverride = "recover mech"
+    sourceControlType = "Cursor37"
+    rect = "200,80,31,31"
+    legacyLocalRect = "200,80,31,31"
+    legacyRectSource = "cursor_catalog_grid_preview"
+    texture = "data/art/gui/Cursors3.png"
+    legacyTexture = "Cursors3"
+    uiPackage = "legacy_imgui"
+    rectModel = "legacy_imgui.modern_rect_v1"
+    controlRect = "200,80,31,31"
+    artRect = "200,80,31,31"
+    artLayer = "control_art"
+    legacyUvX = 32
+    uvX = 256
+    legacyUvY = 32
+    uvY = 256
+    legacyUvWidth = 31
+    uvWidth = 248
+    legacyUvHeight = 31
+    uvHeight = 248
+}
+
+GuiImage {
+    key = "shared.cursors.image.can_t_recover"
+    pageKey = "shared.cursors"
+    legacySection = "Cursor38"
+    legacyComment = "can't recover"
+    role = "image"
+    layer = "art"
+    aliasOverride = "can't recover"
+    sourceControlType = "Cursor38"
+    rect = "240,80,31,31"
+    legacyLocalRect = "240,80,31,31"
+    legacyRectSource = "cursor_catalog_grid_preview"
+    texture = "data/art/gui/Cursors3.png"
+    legacyTexture = "Cursors3"
+    uiPackage = "legacy_imgui"
+    rectModel = "legacy_imgui.modern_rect_v1"
+    controlRect = "240,80,31,31"
+    artRect = "240,80,31,31"
+    artLayer = "control_art"
+    legacyUvX = 64
+    uvX = 512
+    legacyUvY = 32
+    uvY = 256
+    legacyUvWidth = 31
+    uvWidth = 248
+    legacyUvHeight = 31
+    uvHeight = 248
+}
+
+GuiImage {
+    key = "shared.cursors.image.guard"
+    pageKey = "shared.cursors"
+    legacySection = "Cursor39"
+    legacyComment = "guard"
+    role = "image"
+    layer = "art"
+    aliasOverride = "guard"
+    sourceControlType = "Cursor39"
+    rect = "280,80,31,31"
+    legacyLocalRect = "280,80,31,31"
+    legacyRectSource = "cursor_catalog_grid_preview"
+    texture = "data/art/gui/Cursors3.png"
+    legacyTexture = "Cursors3"
+    uiPackage = "legacy_imgui"
+    rectModel = "legacy_imgui.modern_rect_v1"
+    controlRect = "280,80,31,31"
+    artRect = "280,80,31,31"
+    artLayer = "control_art"
+    legacyUvX = 96
+    uvX = 768
+    legacyUvY = 32
+    uvY = 256
+    legacyUvWidth = 31
+    uvWidth = 248
+    legacyUvHeight = 31
+    uvHeight = 248
+}
+
+GuiImage {
+    key = "shared.cursors.image.suppression_fire"
+    pageKey = "shared.cursors"
+    legacySection = "Cursor40"
+    legacyComment = "suppression fire"
+    role = "image"
+    layer = "art"
+    aliasOverride = "suppression fire"
+    sourceControlType = "Cursor40"
+    rect = "320,80,31,31"
+    legacyLocalRect = "320,80,31,31"
+    legacyRectSource = "cursor_catalog_grid_preview"
+    texture = "data/art/gui/Cursors1.png"
+    legacyTexture = "Cursors1"
+    uiPackage = "legacy_imgui"
+    rectModel = "legacy_imgui.modern_rect_v1"
+    controlRect = "320,80,31,31"
+    artRect = "320,80,31,31"
+    artLayer = "control_art"
+    legacyUvX = 64
+    uvX = 512
+    legacyUvY = 96
+    uvY = 768
+    legacyUvWidth = 31
+    uvWidth = 248
+    legacyUvHeight = 31
+    uvHeight = 248
+}
+
+GuiImage {
+    key = "shared.cursors.image.suppression_fire_los"
+    pageKey = "shared.cursors"
+    legacySection = "Cursor41"
+    legacyComment = "suppression fire LOS"
+    role = "image"
+    layer = "art"
+    aliasOverride = "suppression fire LOS"
+    sourceControlType = "Cursor41"
+    rect = "360,80,32,32"
+    legacyLocalRect = "360,80,32,32"
+    legacyRectSource = "cursor_catalog_grid_preview"
+    texture = "data/art/gui/Cursors5.png"
+    legacyTexture = "Cursors5"
+    uiPackage = "legacy_imgui"
+    rectModel = "legacy_imgui.modern_rect_v1"
+    controlRect = "360,80,32,32"
+    artRect = "360,80,32,32"
+    artLayer = "control_art"
+    legacyUvX = 0
+    uvX = 0
+    legacyUvY = 96
+    uvY = 768
+    legacyUvWidth = 32
+    uvWidth = 256
+    legacyUvHeight = 32
+    uvHeight = 256
+}
+
+GuiImage {
+    key = "shared.cursors.image.suppression_fire_los_01"
+    pageKey = "shared.cursors"
+    legacySection = "Cursor41"
+    legacyComment = "suppression fire LOS"
+    role = "image"
+    layer = "art"
+    aliasOverride = "suppression fire LOS"
+    sourceControlType = "Cursor41"
+    rect = "360,80,32,32"
+    legacyLocalRect = "360,80,32,32"
+    legacyRectSource = "cursor_catalog_grid_preview"
+    texture = "data/art/gui/Cursors5.png"
+    legacyTexture = "Cursors5"
+    uiPackage = "legacy_imgui"
+    rectModel = "legacy_imgui.modern_rect_v1"
+    controlRect = "360,80,32,32"
+    artRect = "360,80,32,32"
+    artLayer = "control_art"
+    legacyUvX = 0
+    uvX = 0
+    legacyUvY = 96
+    uvY = 768
+    legacyUvWidth = 32
+    uvWidth = 256
+    legacyUvHeight = 32
+    uvHeight = 256
+}
+
+GuiImage {
+    key = "shared.cursors.image.can_t_lay_mines"
+    pageKey = "shared.cursors"
+    legacySection = "Cursor42"
+    legacyComment = "can't lay mines"
+    role = "image"
+    layer = "art"
+    aliasOverride = "can't lay mines"
+    sourceControlType = "Cursor42"
+    rect = "400,80,31,31"
+    legacyLocalRect = "400,80,31,31"
+    legacyRectSource = "cursor_catalog_grid_preview"
+    texture = "data/art/gui/Cursors2.png"
+    legacyTexture = "Cursors2"
+    uiPackage = "legacy_imgui"
+    rectModel = "legacy_imgui.modern_rect_v1"
+    controlRect = "400,80,31,31"
+    artRect = "400,80,31,31"
+    artLayer = "control_art"
+    legacyUvX = 0
+    uvX = 0
+    legacyUvY = 32
+    uvY = 256
+    legacyUvWidth = 31
+    uvWidth = 248
+    legacyUvHeight = 31
+    uvHeight = 248
+}
+
+GuiImage {
+    key = "shared.cursors.image.logistics"
+    pageKey = "shared.cursors"
+    legacySection = "Cursor43"
+    legacyComment = "LOGISTICS"
+    role = "image"
+    layer = "art"
+    aliasOverride = "LOGISTICS"
+    sourceControlType = "Cursor43"
+    rect = "440,80,31,31"
+    legacyLocalRect = "440,80,31,31"
+    legacyRectSource = "cursor_catalog_grid_preview"
+    texture = "data/art/gui/Cursors2.png"
+    legacyTexture = "Cursors2"
+    uiPackage = "legacy_imgui"
+    rectModel = "legacy_imgui.modern_rect_v1"
+    controlRect = "440,80,31,31"
+    artRect = "440,80,31,31"
+    artLayer = "control_art"
+    legacyUvX = 64
+    uvX = 512
+    legacyUvY = 0
+    uvY = 0
+    legacyUvWidth = 31
+    uvWidth = 248
+    legacyUvHeight = 31
+    uvHeight = 248
+}
+
+GuiImage {
+    key = "shared.cursors.image.tutorial"
+    pageKey = "shared.cursors"
+    legacySection = "Cursor44"
+    legacyComment = "tutorial"
+    role = "image"
+    layer = "art"
+    aliasOverride = "tutorial"
+    sourceControlType = "Cursor44"
+    rect = "480,80,31,31"
+    legacyLocalRect = "480,80,31,31"
+    legacyRectSource = "cursor_catalog_grid_preview"
+    texture = "data/art/gui/Cursors3.png"
+    legacyTexture = "Cursors3"
+    uiPackage = "legacy_imgui"
+    rectModel = "legacy_imgui.modern_rect_v1"
+    controlRect = "480,80,31,31"
+    artRect = "480,80,31,31"
+    artLayer = "control_art"
+    legacyUvX = 96
+    uvX = 768
+    legacyUvY = 0
+    uvY = 0
+    legacyUvWidth = 31
+    uvWidth = 248
+    legacyUvHeight = 31
+    uvHeight = 248
+}
+
+GuiImage {
+    key = "shared.cursors.image.long_range"
+    pageKey = "shared.cursors"
+    legacySection = "Cursor45"
+    legacyComment = "long range"
+    role = "image"
+    layer = "art"
+    aliasOverride = "long range"
+    sourceControlType = "Cursor45"
+    rect = "520,80,31,31"
+    legacyLocalRect = "520,80,31,31"
+    legacyRectSource = "cursor_catalog_grid_preview"
+    texture = "data/art/gui/Cursors2.png"
+    legacyTexture = "Cursors2"
+    uiPackage = "legacy_imgui"
+    rectModel = "legacy_imgui.modern_rect_v1"
+    controlRect = "520,80,31,31"
+    artRect = "520,80,31,31"
+    artLayer = "control_art"
+    legacyUvX = 96
+    uvX = 768
+    legacyUvY = 64
+    uvY = 512
+    legacyUvWidth = 31
+    uvWidth = 248
+    legacyUvHeight = 31
+    uvHeight = 248
+}
+
+GuiImage {
+    key = "shared.cursors.image.shortrange"
+    pageKey = "shared.cursors"
+    legacySection = "Cursor46"
+    legacyComment = "shortrange"
+    role = "image"
+    layer = "art"
+    aliasOverride = "shortrange"
+    sourceControlType = "Cursor46"
+    rect = "560,80,31,31"
+    legacyLocalRect = "560,80,31,31"
+    legacyRectSource = "cursor_catalog_grid_preview"
+    texture = "data/art/gui/Cursors2.png"
+    legacyTexture = "Cursors2"
+    uiPackage = "legacy_imgui"
+    rectModel = "legacy_imgui.modern_rect_v1"
+    controlRect = "560,80,31,31"
+    artRect = "560,80,31,31"
+    artLayer = "control_art"
+    legacyUvX = 32
+    uvX = 256
+    legacyUvY = 64
+    uvY = 512
+    legacyUvWidth = 31
+    uvWidth = 248
+    legacyUvHeight = 31
+    uvHeight = 248
+}
+
+GuiImage {
+    key = "shared.cursors.image.medium_range"
+    pageKey = "shared.cursors"
+    legacySection = "Cursor47"
+    legacyComment = "medium range"
+    role = "image"
+    layer = "art"
+    aliasOverride = "medium range"
+    sourceControlType = "Cursor47"
+    rect = "600,80,31,31"
+    legacyLocalRect = "600,80,31,31"
+    legacyRectSource = "cursor_catalog_grid_preview"
+    texture = "data/art/gui/Cursors2.png"
+    legacyTexture = "Cursors2"
+    uiPackage = "legacy_imgui"
+    rectModel = "legacy_imgui.modern_rect_v1"
+    controlRect = "600,80,31,31"
+    artRect = "600,80,31,31"
+    artLayer = "control_art"
+    legacyUvX = 64
+    uvX = 512
+    legacyUvY = 64
+    uvY = 512
+    legacyUvWidth = 31
+    uvWidth = 248
+    legacyUvHeight = 31
+    uvHeight = 248
+}
+
+GuiImage {
+    key = "shared.cursors.image.walk_1"
+    pageKey = "shared.cursors"
+    legacySection = "Cursor48"
+    legacyComment = "walk 1"
+    role = "image"
+    layer = "art"
+    aliasOverride = "walk 1"
+    sourceControlType = "Cursor48"
+    rect = "0,120,32,32"
+    legacyLocalRect = "0,120,32,32"
+    legacyRectSource = "cursor_catalog_grid_preview"
+    texture = "data/art/gui/walk.png"
+    legacyTexture = "walk"
+    uiPackage = "legacy_imgui"
+    rectModel = "legacy_imgui.modern_rect_v1"
+    controlRect = "0,120,32,32"
+    artRect = "0,120,32,32"
+    artLayer = "control_art"
+    legacyUvX = 0
+    uvX = 0
+    legacyUvY = 0
+    uvY = 0
+    legacyUvWidth = 32
+    uvWidth = 256
+    legacyUvHeight = 32
+    uvHeight = 256
+}
+
+GuiImage {
+    key = "shared.cursors.image.walk_2"
+    pageKey = "shared.cursors"
+    legacySection = "Cursor49"
+    legacyComment = "walk 2"
+    role = "image"
+    layer = "art"
+    aliasOverride = "walk 2"
+    sourceControlType = "Cursor49"
+    rect = "40,120,32,32"
+    legacyLocalRect = "40,120,32,32"
+    legacyRectSource = "cursor_catalog_grid_preview"
+    texture = "data/art/gui/walk.png"
+    legacyTexture = "walk"
+    uiPackage = "legacy_imgui"
+    rectModel = "legacy_imgui.modern_rect_v1"
+    controlRect = "40,120,32,32"
+    artRect = "40,120,32,32"
+    artLayer = "control_art"
+    legacyUvX = 32
+    uvX = 256
+    legacyUvY = 0
+    uvY = 0
+    legacyUvWidth = 32
+    uvWidth = 256
+    legacyUvHeight = 32
+    uvHeight = 256
+}
+
+GuiImage {
+    key = "shared.cursors.image.walk_3"
+    pageKey = "shared.cursors"
+    legacySection = "Cursor50"
+    legacyComment = "walk 3"
+    role = "image"
+    layer = "art"
+    aliasOverride = "walk 3"
+    sourceControlType = "Cursor50"
+    rect = "80,120,32,32"
+    legacyLocalRect = "80,120,32,32"
+    legacyRectSource = "cursor_catalog_grid_preview"
+    texture = "data/art/gui/walk.png"
+    legacyTexture = "walk"
+    uiPackage = "legacy_imgui"
+    rectModel = "legacy_imgui.modern_rect_v1"
+    controlRect = "80,120,32,32"
+    artRect = "80,120,32,32"
+    artLayer = "control_art"
+    legacyUvX = 64
+    uvX = 512
+    legacyUvY = 0
+    uvY = 0
+    legacyUvWidth = 32
+    uvWidth = 256
+    legacyUvHeight = 32
+    uvHeight = 256
+}
+
+GuiImage {
+    key = "shared.cursors.image.walk_4"
+    pageKey = "shared.cursors"
+    legacySection = "Cursor51"
+    legacyComment = "walk 4"
+    role = "image"
+    layer = "art"
+    aliasOverride = "walk 4"
+    sourceControlType = "Cursor51"
+    rect = "120,120,32,32"
+    legacyLocalRect = "120,120,32,32"
+    legacyRectSource = "cursor_catalog_grid_preview"
+    texture = "data/art/gui/walk.png"
+    legacyTexture = "walk"
+    uiPackage = "legacy_imgui"
+    rectModel = "legacy_imgui.modern_rect_v1"
+    controlRect = "120,120,32,32"
+    artRect = "120,120,32,32"
+    artLayer = "control_art"
+    legacyUvX = 96
+    uvX = 768
+    legacyUvY = 0
+    uvY = 0
+    legacyUvWidth = 32
+    uvWidth = 256
+    legacyUvHeight = 32
+    uvHeight = 256
+}
+
+GuiImage {
+    key = "shared.cursors.image.walk_5"
+    pageKey = "shared.cursors"
+    legacySection = "Cursor52"
+    legacyComment = "walk 5"
+    role = "image"
+    layer = "art"
+    aliasOverride = "walk 5"
+    sourceControlType = "Cursor52"
+    rect = "160,120,32,32"
+    legacyLocalRect = "160,120,32,32"
+    legacyRectSource = "cursor_catalog_grid_preview"
+    texture = "data/art/gui/walk.png"
+    legacyTexture = "walk"
+    uiPackage = "legacy_imgui"
+    rectModel = "legacy_imgui.modern_rect_v1"
+    controlRect = "160,120,32,32"
+    artRect = "160,120,32,32"
+    artLayer = "control_art"
+    legacyUvX = 128
+    uvX = 1024
+    legacyUvY = 0
+    uvY = 0
+    legacyUvWidth = 32
+    uvWidth = 256
+    legacyUvHeight = 32
+    uvHeight = 256
+}
+
+GuiImage {
+    key = "shared.cursors.image.walk_6"
+    pageKey = "shared.cursors"
+    legacySection = "Cursor53"
+    legacyComment = "walk 6"
+    role = "image"
+    layer = "art"
+    aliasOverride = "walk 6"
+    sourceControlType = "Cursor53"
+    rect = "200,120,32,32"
+    legacyLocalRect = "200,120,32,32"
+    legacyRectSource = "cursor_catalog_grid_preview"
+    texture = "data/art/gui/walk.png"
+    legacyTexture = "walk"
+    uiPackage = "legacy_imgui"
+    rectModel = "legacy_imgui.modern_rect_v1"
+    controlRect = "200,120,32,32"
+    artRect = "200,120,32,32"
+    artLayer = "control_art"
+    legacyUvX = 160
+    uvX = 1280
+    legacyUvY = 0
+    uvY = 0
+    legacyUvWidth = 32
+    uvWidth = 256
+    legacyUvHeight = 32
+    uvHeight = 256
+}
+
+GuiImage {
+    key = "shared.cursors.image.walk_7"
+    pageKey = "shared.cursors"
+    legacySection = "Cursor54"
+    legacyComment = "walk 7"
+    role = "image"
+    layer = "art"
+    aliasOverride = "walk 7"
+    sourceControlType = "Cursor54"
+    rect = "240,120,32,32"
+    legacyLocalRect = "240,120,32,32"
+    legacyRectSource = "cursor_catalog_grid_preview"
+    texture = "data/art/gui/walk.png"
+    legacyTexture = "walk"
+    uiPackage = "legacy_imgui"
+    rectModel = "legacy_imgui.modern_rect_v1"
+    controlRect = "240,120,32,32"
+    artRect = "240,120,32,32"
+    artLayer = "control_art"
+    legacyUvX = 192
+    uvX = 1536
+    legacyUvY = 0
+    uvY = 0
+    legacyUvWidth = 32
+    uvWidth = 256
+    legacyUvHeight = 32
+    uvHeight = 256
+}
+
+GuiImage {
+    key = "shared.cursors.image.walk_8"
+    pageKey = "shared.cursors"
+    legacySection = "Cursor55"
+    legacyComment = "walk 8"
+    role = "image"
+    layer = "art"
+    aliasOverride = "walk 8"
+    sourceControlType = "Cursor55"
+    rect = "280,120,32,32"
+    legacyLocalRect = "280,120,32,32"
+    legacyRectSource = "cursor_catalog_grid_preview"
+    texture = "data/art/gui/walk.png"
+    legacyTexture = "walk"
+    uiPackage = "legacy_imgui"
+    rectModel = "legacy_imgui.modern_rect_v1"
+    controlRect = "280,120,32,32"
+    artRect = "280,120,32,32"
+    artLayer = "control_art"
+    legacyUvX = 224
+    uvX = 1792
+    legacyUvY = 0
+    uvY = 0
+    legacyUvWidth = 32
+    uvWidth = 256
+    legacyUvHeight = 32
+    uvHeight = 256
+}
+
+GuiImage {
+    key = "shared.cursors.image.walk_9"
+    pageKey = "shared.cursors"
+    legacySection = "Cursor56"
+    legacyComment = "walk 9"
+    role = "image"
+    layer = "art"
+    aliasOverride = "walk 9"
+    sourceControlType = "Cursor56"
+    rect = "320,120,32,32"
+    legacyLocalRect = "320,120,32,32"
+    legacyRectSource = "cursor_catalog_grid_preview"
+    texture = "data/art/gui/walk.png"
+    legacyTexture = "walk"
+    uiPackage = "legacy_imgui"
+    rectModel = "legacy_imgui.modern_rect_v1"
+    controlRect = "320,120,32,32"
+    artRect = "320,120,32,32"
+    artLayer = "control_art"
+    legacyUvX = 0
+    uvX = 0
+    legacyUvY = 32
+    uvY = 256
+    legacyUvWidth = 32
+    uvWidth = 256
+    legacyUvHeight = 32
+    uvHeight = 256
+}
+
+GuiImage {
+    key = "shared.cursors.image.walk_10"
+    pageKey = "shared.cursors"
+    legacySection = "Cursor57"
+    legacyComment = "walk 10"
+    role = "image"
+    layer = "art"
+    aliasOverride = "walk 10"
+    sourceControlType = "Cursor57"
+    rect = "360,120,32,32"
+    legacyLocalRect = "360,120,32,32"
+    legacyRectSource = "cursor_catalog_grid_preview"
+    texture = "data/art/gui/walk.png"
+    legacyTexture = "walk"
+    uiPackage = "legacy_imgui"
+    rectModel = "legacy_imgui.modern_rect_v1"
+    controlRect = "360,120,32,32"
+    artRect = "360,120,32,32"
+    artLayer = "control_art"
+    legacyUvX = 32
+    uvX = 256
+    legacyUvY = 32
+    uvY = 256
+    legacyUvWidth = 32
+    uvWidth = 256
+    legacyUvHeight = 32
+    uvHeight = 256
+}
+
+GuiImage {
+    key = "shared.cursors.image.walk_11"
+    pageKey = "shared.cursors"
+    legacySection = "Cursor58"
+    legacyComment = "walk 11"
+    role = "image"
+    layer = "art"
+    aliasOverride = "walk 11"
+    sourceControlType = "Cursor58"
+    rect = "400,120,32,32"
+    legacyLocalRect = "400,120,32,32"
+    legacyRectSource = "cursor_catalog_grid_preview"
+    texture = "data/art/gui/walk.png"
+    legacyTexture = "walk"
+    uiPackage = "legacy_imgui"
+    rectModel = "legacy_imgui.modern_rect_v1"
+    controlRect = "400,120,32,32"
+    artRect = "400,120,32,32"
+    artLayer = "control_art"
+    legacyUvX = 64
+    uvX = 512
+    legacyUvY = 32
+    uvY = 256
+    legacyUvWidth = 32
+    uvWidth = 256
+    legacyUvHeight = 32
+    uvHeight = 256
+}
+
+GuiImage {
+    key = "shared.cursors.image.walk_12"
+    pageKey = "shared.cursors"
+    legacySection = "Cursor59"
+    legacyComment = "walk 12"
+    role = "image"
+    layer = "art"
+    aliasOverride = "walk 12"
+    sourceControlType = "Cursor59"
+    rect = "440,120,32,32"
+    legacyLocalRect = "440,120,32,32"
+    legacyRectSource = "cursor_catalog_grid_preview"
+    texture = "data/art/gui/walk.png"
+    legacyTexture = "walk"
+    uiPackage = "legacy_imgui"
+    rectModel = "legacy_imgui.modern_rect_v1"
+    controlRect = "440,120,32,32"
+    artRect = "440,120,32,32"
+    artLayer = "control_art"
+    legacyUvX = 96
+    uvX = 768
+    legacyUvY = 32
+    uvY = 256
+    legacyUvWidth = 32
+    uvWidth = 256
+    legacyUvHeight = 32
+    uvHeight = 256
+}
+
+GuiImage {
+    key = "shared.cursors.image.walk_13"
+    pageKey = "shared.cursors"
+    legacySection = "Cursor60"
+    legacyComment = "walk 13"
+    role = "image"
+    layer = "art"
+    aliasOverride = "walk 13"
+    sourceControlType = "Cursor60"
+    rect = "480,120,32,32"
+    legacyLocalRect = "480,120,32,32"
+    legacyRectSource = "cursor_catalog_grid_preview"
+    texture = "data/art/gui/walk.png"
+    legacyTexture = "walk"
+    uiPackage = "legacy_imgui"
+    rectModel = "legacy_imgui.modern_rect_v1"
+    controlRect = "480,120,32,32"
+    artRect = "480,120,32,32"
+    artLayer = "control_art"
+    legacyUvX = 128
+    uvX = 1024
+    legacyUvY = 32
+    uvY = 256
+    legacyUvWidth = 32
+    uvWidth = 256
+    legacyUvHeight = 32
+    uvHeight = 256
+}
+
+GuiImage {
+    key = "shared.cursors.image.walk_14"
+    pageKey = "shared.cursors"
+    legacySection = "Cursor61"
+    legacyComment = "walk 14"
+    role = "image"
+    layer = "art"
+    aliasOverride = "walk 14"
+    sourceControlType = "Cursor61"
+    rect = "520,120,32,32"
+    legacyLocalRect = "520,120,32,32"
+    legacyRectSource = "cursor_catalog_grid_preview"
+    texture = "data/art/gui/walk.png"
+    legacyTexture = "walk"
+    uiPackage = "legacy_imgui"
+    rectModel = "legacy_imgui.modern_rect_v1"
+    controlRect = "520,120,32,32"
+    artRect = "520,120,32,32"
+    artLayer = "control_art"
+    legacyUvX = 160
+    uvX = 1280
+    legacyUvY = 32
+    uvY = 256
+    legacyUvWidth = 32
+    uvWidth = 256
+    legacyUvHeight = 32
+    uvHeight = 256
+}
+
+GuiImage {
+    key = "shared.cursors.image.walk_15"
+    pageKey = "shared.cursors"
+    legacySection = "Cursor62"
+    legacyComment = "walk 15"
+    role = "image"
+    layer = "art"
+    aliasOverride = "walk 15"
+    sourceControlType = "Cursor62"
+    rect = "560,120,32,32"
+    legacyLocalRect = "560,120,32,32"
+    legacyRectSource = "cursor_catalog_grid_preview"
+    texture = "data/art/gui/walk.png"
+    legacyTexture = "walk"
+    uiPackage = "legacy_imgui"
+    rectModel = "legacy_imgui.modern_rect_v1"
+    controlRect = "560,120,32,32"
+    artRect = "560,120,32,32"
+    artLayer = "control_art"
+    legacyUvX = 192
+    uvX = 1536
+    legacyUvY = 32
+    uvY = 256
+    legacyUvWidth = 32
+    uvWidth = 256
+    legacyUvHeight = 32
+    uvHeight = 256
+}
+
+GuiImage {
+    key = "shared.cursors.image.walk_16"
+    pageKey = "shared.cursors"
+    legacySection = "Cursor63"
+    legacyComment = "walk 16"
+    role = "image"
+    layer = "art"
+    aliasOverride = "walk 16"
+    sourceControlType = "Cursor63"
+    rect = "600,120,32,32"
+    legacyLocalRect = "600,120,32,32"
+    legacyRectSource = "cursor_catalog_grid_preview"
+    texture = "data/art/gui/walk.png"
+    legacyTexture = "walk"
+    uiPackage = "legacy_imgui"
+    rectModel = "legacy_imgui.modern_rect_v1"
+    controlRect = "600,120,32,32"
+    artRect = "600,120,32,32"
+    artLayer = "control_art"
+    legacyUvX = 224
+    uvX = 1792
+    legacyUvY = 32
+    uvY = 256
+    legacyUvWidth = 32
+    uvWidth = 256
+    legacyUvHeight = 32
+    uvHeight = 256
+}
+
+GuiImage {
+    key = "shared.cursors.image.walk_17"
+    pageKey = "shared.cursors"
+    legacySection = "Cursor64"
+    legacyComment = "walk 17"
+    role = "image"
+    layer = "art"
+    aliasOverride = "walk 17"
+    sourceControlType = "Cursor64"
+    rect = "0,160,32,32"
+    legacyLocalRect = "0,160,32,32"
+    legacyRectSource = "cursor_catalog_grid_preview"
+    texture = "data/art/gui/walk.png"
+    legacyTexture = "walk"
+    uiPackage = "legacy_imgui"
+    rectModel = "legacy_imgui.modern_rect_v1"
+    controlRect = "0,160,32,32"
+    artRect = "0,160,32,32"
+    artLayer = "control_art"
+    legacyUvX = 0
+    uvX = 0
+    legacyUvY = 64
+    uvY = 512
+    legacyUvWidth = 32
+    uvWidth = 256
+    legacyUvHeight = 32
+    uvHeight = 256
+}
+
+GuiImage {
+    key = "shared.cursors.image.walk_18"
+    pageKey = "shared.cursors"
+    legacySection = "Cursor65"
+    legacyComment = "walk 18"
+    role = "image"
+    layer = "art"
+    aliasOverride = "walk 18"
+    sourceControlType = "Cursor65"
+    rect = "40,160,32,32"
+    legacyLocalRect = "40,160,32,32"
+    legacyRectSource = "cursor_catalog_grid_preview"
+    texture = "data/art/gui/walk.png"
+    legacyTexture = "walk"
+    uiPackage = "legacy_imgui"
+    rectModel = "legacy_imgui.modern_rect_v1"
+    controlRect = "40,160,32,32"
+    artRect = "40,160,32,32"
+    artLayer = "control_art"
+    legacyUvX = 32
+    uvX = 256
+    legacyUvY = 64
+    uvY = 512
+    legacyUvWidth = 32
+    uvWidth = 256
+    legacyUvHeight = 32
+    uvHeight = 256
+}
+
+GuiImage {
+    key = "shared.cursors.image.walk_19"
+    pageKey = "shared.cursors"
+    legacySection = "Cursor66"
+    legacyComment = "walk 19"
+    role = "image"
+    layer = "art"
+    aliasOverride = "walk 19"
+    sourceControlType = "Cursor66"
+    rect = "80,160,32,32"
+    legacyLocalRect = "80,160,32,32"
+    legacyRectSource = "cursor_catalog_grid_preview"
+    texture = "data/art/gui/walk.png"
+    legacyTexture = "walk"
+    uiPackage = "legacy_imgui"
+    rectModel = "legacy_imgui.modern_rect_v1"
+    controlRect = "80,160,32,32"
+    artRect = "80,160,32,32"
+    artLayer = "control_art"
+    legacyUvX = 64
+    uvX = 512
+    legacyUvY = 64
+    uvY = 512
+    legacyUvWidth = 32
+    uvWidth = 256
+    legacyUvHeight = 32
+    uvHeight = 256
+}
+
+GuiImage {
+    key = "shared.cursors.image.walk_20"
+    pageKey = "shared.cursors"
+    legacySection = "Cursor67"
+    legacyComment = "walk 20"
+    role = "image"
+    layer = "art"
+    aliasOverride = "walk 20"
+    sourceControlType = "Cursor67"
+    rect = "120,160,32,32"
+    legacyLocalRect = "120,160,32,32"
+    legacyRectSource = "cursor_catalog_grid_preview"
+    texture = "data/art/gui/walk.png"
+    legacyTexture = "walk"
+    uiPackage = "legacy_imgui"
+    rectModel = "legacy_imgui.modern_rect_v1"
+    controlRect = "120,160,32,32"
+    artRect = "120,160,32,32"
+    artLayer = "control_art"
+    legacyUvX = 96
+    uvX = 768
+    legacyUvY = 64
+    uvY = 512
+    legacyUvWidth = 32
+    uvWidth = 256
+    legacyUvHeight = 32
+    uvHeight = 256
+}
+
+GuiImage {
+    key = "shared.cursors.image.walk_21"
+    pageKey = "shared.cursors"
+    legacySection = "Cursor68"
+    legacyComment = "walk 21"
+    role = "image"
+    layer = "art"
+    aliasOverride = "walk 21"
+    sourceControlType = "Cursor68"
+    rect = "160,160,32,32"
+    legacyLocalRect = "160,160,32,32"
+    legacyRectSource = "cursor_catalog_grid_preview"
+    texture = "data/art/gui/walk.png"
+    legacyTexture = "walk"
+    uiPackage = "legacy_imgui"
+    rectModel = "legacy_imgui.modern_rect_v1"
+    controlRect = "160,160,32,32"
+    artRect = "160,160,32,32"
+    artLayer = "control_art"
+    legacyUvX = 128
+    uvX = 1024
+    legacyUvY = 64
+    uvY = 512
+    legacyUvWidth = 32
+    uvWidth = 256
+    legacyUvHeight = 32
+    uvHeight = 256
+}
+
+GuiImage {
+    key = "shared.cursors.image.walk_22"
+    pageKey = "shared.cursors"
+    legacySection = "Cursor69"
+    legacyComment = "walk 22"
+    role = "image"
+    layer = "art"
+    aliasOverride = "walk 22"
+    sourceControlType = "Cursor69"
+    rect = "200,160,32,32"
+    legacyLocalRect = "200,160,32,32"
+    legacyRectSource = "cursor_catalog_grid_preview"
+    texture = "data/art/gui/walk.png"
+    legacyTexture = "walk"
+    uiPackage = "legacy_imgui"
+    rectModel = "legacy_imgui.modern_rect_v1"
+    controlRect = "200,160,32,32"
+    artRect = "200,160,32,32"
+    artLayer = "control_art"
+    legacyUvX = 160
+    uvX = 1280
+    legacyUvY = 64
+    uvY = 512
+    legacyUvWidth = 32
+    uvWidth = 256
+    legacyUvHeight = 32
+    uvHeight = 256
+}
+
+GuiImage {
+    key = "shared.cursors.image.walk_23"
+    pageKey = "shared.cursors"
+    legacySection = "Cursor70"
+    legacyComment = "walk 23"
+    role = "image"
+    layer = "art"
+    aliasOverride = "walk 23"
+    sourceControlType = "Cursor70"
+    rect = "240,160,32,32"
+    legacyLocalRect = "240,160,32,32"
+    legacyRectSource = "cursor_catalog_grid_preview"
+    texture = "data/art/gui/walk.png"
+    legacyTexture = "walk"
+    uiPackage = "legacy_imgui"
+    rectModel = "legacy_imgui.modern_rect_v1"
+    controlRect = "240,160,32,32"
+    artRect = "240,160,32,32"
+    artLayer = "control_art"
+    legacyUvX = 192
+    uvX = 1536
+    legacyUvY = 64
+    uvY = 512
+    legacyUvWidth = 32
+    uvWidth = 256
+    legacyUvHeight = 32
+    uvHeight = 256
+}
+
+GuiImage {
+    key = "shared.cursors.image.walk_24"
+    pageKey = "shared.cursors"
+    legacySection = "Cursor71"
+    legacyComment = "walk 24"
+    role = "image"
+    layer = "art"
+    aliasOverride = "walk 24"
+    sourceControlType = "Cursor71"
+    rect = "280,160,32,32"
+    legacyLocalRect = "280,160,32,32"
+    legacyRectSource = "cursor_catalog_grid_preview"
+    texture = "data/art/gui/walk.png"
+    legacyTexture = "walk"
+    uiPackage = "legacy_imgui"
+    rectModel = "legacy_imgui.modern_rect_v1"
+    controlRect = "280,160,32,32"
+    artRect = "280,160,32,32"
+    artLayer = "control_art"
+    legacyUvX = 224
+    uvX = 1792
+    legacyUvY = 64
+    uvY = 512
+    legacyUvWidth = 32
+    uvWidth = 256
+    legacyUvHeight = 32
+    uvHeight = 256
+}
+
+GuiImage {
+    key = "shared.cursors.image.walk_25"
+    pageKey = "shared.cursors"
+    legacySection = "Cursor72"
+    legacyComment = "walk 25"
+    role = "image"
+    layer = "art"
+    aliasOverride = "walk 25"
+    sourceControlType = "Cursor72"
+    rect = "320,160,32,32"
+    legacyLocalRect = "320,160,32,32"
+    legacyRectSource = "cursor_catalog_grid_preview"
+    texture = "data/art/gui/walk.png"
+    legacyTexture = "walk"
+    uiPackage = "legacy_imgui"
+    rectModel = "legacy_imgui.modern_rect_v1"
+    controlRect = "320,160,32,32"
+    artRect = "320,160,32,32"
+    artLayer = "control_art"
+    legacyUvX = 0
+    uvX = 0
+    legacyUvY = 96
+    uvY = 768
+    legacyUvWidth = 32
+    uvWidth = 256
+    legacyUvHeight = 32
+    uvHeight = 256
+}
+
+GuiImage {
+    key = "shared.cursors.image.walk_26"
+    pageKey = "shared.cursors"
+    legacySection = "Cursor73"
+    legacyComment = "walk 26"
+    role = "image"
+    layer = "art"
+    aliasOverride = "walk 26"
+    sourceControlType = "Cursor73"
+    rect = "360,160,32,32"
+    legacyLocalRect = "360,160,32,32"
+    legacyRectSource = "cursor_catalog_grid_preview"
+    texture = "data/art/gui/walk.png"
+    legacyTexture = "walk"
+    uiPackage = "legacy_imgui"
+    rectModel = "legacy_imgui.modern_rect_v1"
+    controlRect = "360,160,32,32"
+    artRect = "360,160,32,32"
+    artLayer = "control_art"
+    legacyUvX = 32
+    uvX = 256
+    legacyUvY = 96
+    uvY = 768
+    legacyUvWidth = 32
+    uvWidth = 256
+    legacyUvHeight = 32
+    uvHeight = 256
+}
+
+GuiImage {
+    key = "shared.cursors.image.walk_27"
+    pageKey = "shared.cursors"
+    legacySection = "Cursor74"
+    legacyComment = "walk 27"
+    role = "image"
+    layer = "art"
+    aliasOverride = "walk 27"
+    sourceControlType = "Cursor74"
+    rect = "400,160,32,32"
+    legacyLocalRect = "400,160,32,32"
+    legacyRectSource = "cursor_catalog_grid_preview"
+    texture = "data/art/gui/walk.png"
+    legacyTexture = "walk"
+    uiPackage = "legacy_imgui"
+    rectModel = "legacy_imgui.modern_rect_v1"
+    controlRect = "400,160,32,32"
+    artRect = "400,160,32,32"
+    artLayer = "control_art"
+    legacyUvX = 64
+    uvX = 512
+    legacyUvY = 96
+    uvY = 768
+    legacyUvWidth = 32
+    uvWidth = 256
+    legacyUvHeight = 32
+    uvHeight = 256
+}
+
+GuiImage {
+    key = "shared.cursors.image.walk_28"
+    pageKey = "shared.cursors"
+    legacySection = "Cursor75"
+    legacyComment = "walk 28"
+    role = "image"
+    layer = "art"
+    aliasOverride = "walk 28"
+    sourceControlType = "Cursor75"
+    rect = "440,160,32,32"
+    legacyLocalRect = "440,160,32,32"
+    legacyRectSource = "cursor_catalog_grid_preview"
+    texture = "data/art/gui/walk.png"
+    legacyTexture = "walk"
+    uiPackage = "legacy_imgui"
+    rectModel = "legacy_imgui.modern_rect_v1"
+    controlRect = "440,160,32,32"
+    artRect = "440,160,32,32"
+    artLayer = "control_art"
+    legacyUvX = 96
+    uvX = 768
+    legacyUvY = 96
+    uvY = 768
+    legacyUvWidth = 32
+    uvWidth = 256
+    legacyUvHeight = 32
+    uvHeight = 256
+}
+
+GuiImage {
+    key = "shared.cursors.image.walk_29"
+    pageKey = "shared.cursors"
+    legacySection = "Cursor76"
+    legacyComment = "walk 29"
+    role = "image"
+    layer = "art"
+    aliasOverride = "walk 29"
+    sourceControlType = "Cursor76"
+    rect = "480,160,32,32"
+    legacyLocalRect = "480,160,32,32"
+    legacyRectSource = "cursor_catalog_grid_preview"
+    texture = "data/art/gui/walk.png"
+    legacyTexture = "walk"
+    uiPackage = "legacy_imgui"
+    rectModel = "legacy_imgui.modern_rect_v1"
+    controlRect = "480,160,32,32"
+    artRect = "480,160,32,32"
+    artLayer = "control_art"
+    legacyUvX = 128
+    uvX = 1024
+    legacyUvY = 96
+    uvY = 768
+    legacyUvWidth = 32
+    uvWidth = 256
+    legacyUvHeight = 32
+    uvHeight = 256
+}
+
+GuiImage {
+    key = "shared.cursors.image.walk_30"
+    pageKey = "shared.cursors"
+    legacySection = "Cursor77"
+    legacyComment = "walk 30"
+    role = "image"
+    layer = "art"
+    aliasOverride = "walk 30"
+    sourceControlType = "Cursor77"
+    rect = "520,160,32,32"
+    legacyLocalRect = "520,160,32,32"
+    legacyRectSource = "cursor_catalog_grid_preview"
+    texture = "data/art/gui/walk.png"
+    legacyTexture = "walk"
+    uiPackage = "legacy_imgui"
+    rectModel = "legacy_imgui.modern_rect_v1"
+    controlRect = "520,160,32,32"
+    artRect = "520,160,32,32"
+    artLayer = "control_art"
+    legacyUvX = 160
+    uvX = 1280
+    legacyUvY = 96
+    uvY = 768
+    legacyUvWidth = 32
+    uvWidth = 256
+    legacyUvHeight = 32
+    uvHeight = 256
+}
+
+GuiImage {
+    key = "shared.cursors.image.walk_31"
+    pageKey = "shared.cursors"
+    legacySection = "Cursor78"
+    legacyComment = "walk 31"
+    role = "image"
+    layer = "art"
+    aliasOverride = "walk 31"
+    sourceControlType = "Cursor78"
+    rect = "560,160,32,32"
+    legacyLocalRect = "560,160,32,32"
+    legacyRectSource = "cursor_catalog_grid_preview"
+    texture = "data/art/gui/walk.png"
+    legacyTexture = "walk"
+    uiPackage = "legacy_imgui"
+    rectModel = "legacy_imgui.modern_rect_v1"
+    controlRect = "560,160,32,32"
+    artRect = "560,160,32,32"
+    artLayer = "control_art"
+    legacyUvX = 192
+    uvX = 1536
+    legacyUvY = 96
+    uvY = 768
+    legacyUvWidth = 32
+    uvWidth = 256
+    legacyUvHeight = 32
+    uvHeight = 256
+}
+
+GuiImage {
+    key = "shared.cursors.image.walk_32"
+    pageKey = "shared.cursors"
+    legacySection = "Cursor79"
+    legacyComment = "walk 32"
+    role = "image"
+    layer = "art"
+    aliasOverride = "walk 32"
+    sourceControlType = "Cursor79"
+    rect = "600,160,32,32"
+    legacyLocalRect = "600,160,32,32"
+    legacyRectSource = "cursor_catalog_grid_preview"
+    texture = "data/art/gui/walk.png"
+    legacyTexture = "walk"
+    uiPackage = "legacy_imgui"
+    rectModel = "legacy_imgui.modern_rect_v1"
+    controlRect = "600,160,32,32"
+    artRect = "600,160,32,32"
+    artLayer = "control_art"
+    legacyUvX = 224
+    uvX = 1792
+    legacyUvY = 96
+    uvY = 768
+    legacyUvWidth = 32
+    uvWidth = 256
+    legacyUvHeight = 32
+    uvHeight = 256
+}
+
+GuiImage {
+    key = "shared.cursors.image.walk_los_1"
+    pageKey = "shared.cursors"
+    legacySection = "Cursor80"
+    legacyComment = "walk LOS 1"
+    role = "image"
+    layer = "art"
+    aliasOverride = "walk LOS 1"
+    sourceControlType = "Cursor80"
+    rect = "0,200,32,32"
+    legacyLocalRect = "0,200,32,32"
+    legacyRectSource = "cursor_catalog_grid_preview"
+    texture = "data/art/gui/walk.png"
+    legacyTexture = "walk"
+    uiPackage = "legacy_imgui"
+    rectModel = "legacy_imgui.modern_rect_v1"
+    controlRect = "0,200,32,32"
+    artRect = "0,200,32,32"
+    artLayer = "control_art"
+    legacyUvX = 0
+    uvX = 0
+    legacyUvY = 128
+    uvY = 1024
+    legacyUvWidth = 32
+    uvWidth = 256
+    legacyUvHeight = 32
+    uvHeight = 256
+}
+
+GuiImage {
+    key = "shared.cursors.image.walk_los_2"
+    pageKey = "shared.cursors"
+    legacySection = "Cursor81"
+    legacyComment = "walk LOS 2"
+    role = "image"
+    layer = "art"
+    aliasOverride = "walk LOS 2"
+    sourceControlType = "Cursor81"
+    rect = "40,200,32,32"
+    legacyLocalRect = "40,200,32,32"
+    legacyRectSource = "cursor_catalog_grid_preview"
+    texture = "data/art/gui/walk.png"
+    legacyTexture = "walk"
+    uiPackage = "legacy_imgui"
+    rectModel = "legacy_imgui.modern_rect_v1"
+    controlRect = "40,200,32,32"
+    artRect = "40,200,32,32"
+    artLayer = "control_art"
+    legacyUvX = 32
+    uvX = 256
+    legacyUvY = 128
+    uvY = 1024
+    legacyUvWidth = 32
+    uvWidth = 256
+    legacyUvHeight = 32
+    uvHeight = 256
+}
+
+GuiImage {
+    key = "shared.cursors.image.walk_los_3"
+    pageKey = "shared.cursors"
+    legacySection = "Cursor82"
+    legacyComment = "walk LOS 3"
+    role = "image"
+    layer = "art"
+    aliasOverride = "walk LOS 3"
+    sourceControlType = "Cursor82"
+    rect = "80,200,32,32"
+    legacyLocalRect = "80,200,32,32"
+    legacyRectSource = "cursor_catalog_grid_preview"
+    texture = "data/art/gui/walk.png"
+    legacyTexture = "walk"
+    uiPackage = "legacy_imgui"
+    rectModel = "legacy_imgui.modern_rect_v1"
+    controlRect = "80,200,32,32"
+    artRect = "80,200,32,32"
+    artLayer = "control_art"
+    legacyUvX = 64
+    uvX = 512
+    legacyUvY = 128
+    uvY = 1024
+    legacyUvWidth = 32
+    uvWidth = 256
+    legacyUvHeight = 32
+    uvHeight = 256
+}
+
+GuiImage {
+    key = "shared.cursors.image.walk_los_4"
+    pageKey = "shared.cursors"
+    legacySection = "Cursor83"
+    legacyComment = "walk LOS 4"
+    role = "image"
+    layer = "art"
+    aliasOverride = "walk LOS 4"
+    sourceControlType = "Cursor83"
+    rect = "120,200,32,32"
+    legacyLocalRect = "120,200,32,32"
+    legacyRectSource = "cursor_catalog_grid_preview"
+    texture = "data/art/gui/walk.png"
+    legacyTexture = "walk"
+    uiPackage = "legacy_imgui"
+    rectModel = "legacy_imgui.modern_rect_v1"
+    controlRect = "120,200,32,32"
+    artRect = "120,200,32,32"
+    artLayer = "control_art"
+    legacyUvX = 96
+    uvX = 768
+    legacyUvY = 128
+    uvY = 1024
+    legacyUvWidth = 32
+    uvWidth = 256
+    legacyUvHeight = 32
+    uvHeight = 256
+}
+
+GuiImage {
+    key = "shared.cursors.image.walk_los_5"
+    pageKey = "shared.cursors"
+    legacySection = "Cursor84"
+    legacyComment = "walk LOS 5"
+    role = "image"
+    layer = "art"
+    aliasOverride = "walk LOS 5"
+    sourceControlType = "Cursor84"
+    rect = "160,200,32,32"
+    legacyLocalRect = "160,200,32,32"
+    legacyRectSource = "cursor_catalog_grid_preview"
+    texture = "data/art/gui/walk.png"
+    legacyTexture = "walk"
+    uiPackage = "legacy_imgui"
+    rectModel = "legacy_imgui.modern_rect_v1"
+    controlRect = "160,200,32,32"
+    artRect = "160,200,32,32"
+    artLayer = "control_art"
+    legacyUvX = 128
+    uvX = 1024
+    legacyUvY = 128
+    uvY = 1024
+    legacyUvWidth = 32
+    uvWidth = 256
+    legacyUvHeight = 32
+    uvHeight = 256
+}
+
+GuiImage {
+    key = "shared.cursors.image.walk_los_6"
+    pageKey = "shared.cursors"
+    legacySection = "Cursor85"
+    legacyComment = "walk LOS 6"
+    role = "image"
+    layer = "art"
+    aliasOverride = "walk LOS 6"
+    sourceControlType = "Cursor85"
+    rect = "200,200,32,32"
+    legacyLocalRect = "200,200,32,32"
+    legacyRectSource = "cursor_catalog_grid_preview"
+    texture = "data/art/gui/walk.png"
+    legacyTexture = "walk"
+    uiPackage = "legacy_imgui"
+    rectModel = "legacy_imgui.modern_rect_v1"
+    controlRect = "200,200,32,32"
+    artRect = "200,200,32,32"
+    artLayer = "control_art"
+    legacyUvX = 160
+    uvX = 1280
+    legacyUvY = 128
+    uvY = 1024
+    legacyUvWidth = 32
+    uvWidth = 256
+    legacyUvHeight = 32
+    uvHeight = 256
+}
+
+GuiImage {
+    key = "shared.cursors.image.walk_los_7"
+    pageKey = "shared.cursors"
+    legacySection = "Cursor86"
+    legacyComment = "walk LOS 7"
+    role = "image"
+    layer = "art"
+    aliasOverride = "walk LOS 7"
+    sourceControlType = "Cursor86"
+    rect = "240,200,32,32"
+    legacyLocalRect = "240,200,32,32"
+    legacyRectSource = "cursor_catalog_grid_preview"
+    texture = "data/art/gui/walk.png"
+    legacyTexture = "walk"
+    uiPackage = "legacy_imgui"
+    rectModel = "legacy_imgui.modern_rect_v1"
+    controlRect = "240,200,32,32"
+    artRect = "240,200,32,32"
+    artLayer = "control_art"
+    legacyUvX = 192
+    uvX = 1536
+    legacyUvY = 128
+    uvY = 1024
+    legacyUvWidth = 32
+    uvWidth = 256
+    legacyUvHeight = 32
+    uvHeight = 256
+}
+
+GuiImage {
+    key = "shared.cursors.image.walk_los_8"
+    pageKey = "shared.cursors"
+    legacySection = "Cursor87"
+    legacyComment = "walk LOS 8"
+    role = "image"
+    layer = "art"
+    aliasOverride = "walk LOS 8"
+    sourceControlType = "Cursor87"
+    rect = "280,200,32,32"
+    legacyLocalRect = "280,200,32,32"
+    legacyRectSource = "cursor_catalog_grid_preview"
+    texture = "data/art/gui/walk.png"
+    legacyTexture = "walk"
+    uiPackage = "legacy_imgui"
+    rectModel = "legacy_imgui.modern_rect_v1"
+    controlRect = "280,200,32,32"
+    artRect = "280,200,32,32"
+    artLayer = "control_art"
+    legacyUvX = 224
+    uvX = 1792
+    legacyUvY = 128
+    uvY = 1024
+    legacyUvWidth = 32
+    uvWidth = 256
+    legacyUvHeight = 32
+    uvHeight = 256
+}
+
+GuiImage {
+    key = "shared.cursors.image.walk_los_9"
+    pageKey = "shared.cursors"
+    legacySection = "Cursor88"
+    legacyComment = "walk LOS 9"
+    role = "image"
+    layer = "art"
+    aliasOverride = "walk LOS 9"
+    sourceControlType = "Cursor88"
+    rect = "320,200,32,32"
+    legacyLocalRect = "320,200,32,32"
+    legacyRectSource = "cursor_catalog_grid_preview"
+    texture = "data/art/gui/walk.png"
+    legacyTexture = "walk"
+    uiPackage = "legacy_imgui"
+    rectModel = "legacy_imgui.modern_rect_v1"
+    controlRect = "320,200,32,32"
+    artRect = "320,200,32,32"
+    artLayer = "control_art"
+    legacyUvX = 0
+    uvX = 0
+    legacyUvY = 160
+    uvY = 1280
+    legacyUvWidth = 32
+    uvWidth = 256
+    legacyUvHeight = 32
+    uvHeight = 256
+}
+
+GuiImage {
+    key = "shared.cursors.image.walk_los_10"
+    pageKey = "shared.cursors"
+    legacySection = "Cursor89"
+    legacyComment = "walk LOS 10"
+    role = "image"
+    layer = "art"
+    aliasOverride = "walk LOS 10"
+    sourceControlType = "Cursor89"
+    rect = "360,200,32,32"
+    legacyLocalRect = "360,200,32,32"
+    legacyRectSource = "cursor_catalog_grid_preview"
+    texture = "data/art/gui/walk.png"
+    legacyTexture = "walk"
+    uiPackage = "legacy_imgui"
+    rectModel = "legacy_imgui.modern_rect_v1"
+    controlRect = "360,200,32,32"
+    artRect = "360,200,32,32"
+    artLayer = "control_art"
+    legacyUvX = 32
+    uvX = 256
+    legacyUvY = 160
+    uvY = 1280
+    legacyUvWidth = 32
+    uvWidth = 256
+    legacyUvHeight = 32
+    uvHeight = 256
+}
+
+GuiImage {
+    key = "shared.cursors.image.walk_los_11"
+    pageKey = "shared.cursors"
+    legacySection = "Cursor90"
+    legacyComment = "walk LOS 11"
+    role = "image"
+    layer = "art"
+    aliasOverride = "walk LOS 11"
+    sourceControlType = "Cursor90"
+    rect = "400,200,32,32"
+    legacyLocalRect = "400,200,32,32"
+    legacyRectSource = "cursor_catalog_grid_preview"
+    texture = "data/art/gui/walk.png"
+    legacyTexture = "walk"
+    uiPackage = "legacy_imgui"
+    rectModel = "legacy_imgui.modern_rect_v1"
+    controlRect = "400,200,32,32"
+    artRect = "400,200,32,32"
+    artLayer = "control_art"
+    legacyUvX = 64
+    uvX = 512
+    legacyUvY = 160
+    uvY = 1280
+    legacyUvWidth = 32
+    uvWidth = 256
+    legacyUvHeight = 32
+    uvHeight = 256
+}
+
+GuiImage {
+    key = "shared.cursors.image.walk_los_12"
+    pageKey = "shared.cursors"
+    legacySection = "Cursor91"
+    legacyComment = "walk LOS 12"
+    role = "image"
+    layer = "art"
+    aliasOverride = "walk LOS 12"
+    sourceControlType = "Cursor91"
+    rect = "440,200,32,32"
+    legacyLocalRect = "440,200,32,32"
+    legacyRectSource = "cursor_catalog_grid_preview"
+    texture = "data/art/gui/walk.png"
+    legacyTexture = "walk"
+    uiPackage = "legacy_imgui"
+    rectModel = "legacy_imgui.modern_rect_v1"
+    controlRect = "440,200,32,32"
+    artRect = "440,200,32,32"
+    artLayer = "control_art"
+    legacyUvX = 96
+    uvX = 768
+    legacyUvY = 160
+    uvY = 1280
+    legacyUvWidth = 32
+    uvWidth = 256
+    legacyUvHeight = 32
+    uvHeight = 256
+}
+
+GuiImage {
+    key = "shared.cursors.image.walk_los_13"
+    pageKey = "shared.cursors"
+    legacySection = "Cursor92"
+    legacyComment = "walk LOS 13"
+    role = "image"
+    layer = "art"
+    aliasOverride = "walk LOS 13"
+    sourceControlType = "Cursor92"
+    rect = "480,200,32,32"
+    legacyLocalRect = "480,200,32,32"
+    legacyRectSource = "cursor_catalog_grid_preview"
+    texture = "data/art/gui/walk.png"
+    legacyTexture = "walk"
+    uiPackage = "legacy_imgui"
+    rectModel = "legacy_imgui.modern_rect_v1"
+    controlRect = "480,200,32,32"
+    artRect = "480,200,32,32"
+    artLayer = "control_art"
+    legacyUvX = 128
+    uvX = 1024
+    legacyUvY = 160
+    uvY = 1280
+    legacyUvWidth = 32
+    uvWidth = 256
+    legacyUvHeight = 32
+    uvHeight = 256
+}
+
+GuiImage {
+    key = "shared.cursors.image.walk_los_14"
+    pageKey = "shared.cursors"
+    legacySection = "Cursor93"
+    legacyComment = "walk LOS 14"
+    role = "image"
+    layer = "art"
+    aliasOverride = "walk LOS 14"
+    sourceControlType = "Cursor93"
+    rect = "520,200,32,32"
+    legacyLocalRect = "520,200,32,32"
+    legacyRectSource = "cursor_catalog_grid_preview"
+    texture = "data/art/gui/walk.png"
+    legacyTexture = "walk"
+    uiPackage = "legacy_imgui"
+    rectModel = "legacy_imgui.modern_rect_v1"
+    controlRect = "520,200,32,32"
+    artRect = "520,200,32,32"
+    artLayer = "control_art"
+    legacyUvX = 160
+    uvX = 1280
+    legacyUvY = 160
+    uvY = 1280
+    legacyUvWidth = 32
+    uvWidth = 256
+    legacyUvHeight = 32
+    uvHeight = 256
+}
+
+GuiImage {
+    key = "shared.cursors.image.walk_los_15"
+    pageKey = "shared.cursors"
+    legacySection = "Cursor94"
+    legacyComment = "walk LOS 15"
+    role = "image"
+    layer = "art"
+    aliasOverride = "walk LOS 15"
+    sourceControlType = "Cursor94"
+    rect = "560,200,32,32"
+    legacyLocalRect = "560,200,32,32"
+    legacyRectSource = "cursor_catalog_grid_preview"
+    texture = "data/art/gui/walk.png"
+    legacyTexture = "walk"
+    uiPackage = "legacy_imgui"
+    rectModel = "legacy_imgui.modern_rect_v1"
+    controlRect = "560,200,32,32"
+    artRect = "560,200,32,32"
+    artLayer = "control_art"
+    legacyUvX = 192
+    uvX = 1536
+    legacyUvY = 160
+    uvY = 1280
+    legacyUvWidth = 32
+    uvWidth = 256
+    legacyUvHeight = 32
+    uvHeight = 256
+}
+
+GuiImage {
+    key = "shared.cursors.image.walk_los_16"
+    pageKey = "shared.cursors"
+    legacySection = "Cursor95"
+    legacyComment = "walk LOS 16"
+    role = "image"
+    layer = "art"
+    aliasOverride = "walk LOS 16"
+    sourceControlType = "Cursor95"
+    rect = "600,200,32,32"
+    legacyLocalRect = "600,200,32,32"
+    legacyRectSource = "cursor_catalog_grid_preview"
+    texture = "data/art/gui/walk.png"
+    legacyTexture = "walk"
+    uiPackage = "legacy_imgui"
+    rectModel = "legacy_imgui.modern_rect_v1"
+    controlRect = "600,200,32,32"
+    artRect = "600,200,32,32"
+    artLayer = "control_art"
+    legacyUvX = 224
+    uvX = 1792
+    legacyUvY = 160
+    uvY = 1280
+    legacyUvWidth = 32
+    uvWidth = 256
+    legacyUvHeight = 32
+    uvHeight = 256
+}
+
+GuiImage {
+    key = "shared.cursors.image.walk_los_17"
+    pageKey = "shared.cursors"
+    legacySection = "Cursor96"
+    legacyComment = "walk LOS 17"
+    role = "image"
+    layer = "art"
+    aliasOverride = "walk LOS 17"
+    sourceControlType = "Cursor96"
+    rect = "0,240,32,32"
+    legacyLocalRect = "0,240,32,32"
+    legacyRectSource = "cursor_catalog_grid_preview"
+    texture = "data/art/gui/walk.png"
+    legacyTexture = "walk"
+    uiPackage = "legacy_imgui"
+    rectModel = "legacy_imgui.modern_rect_v1"
+    controlRect = "0,240,32,32"
+    artRect = "0,240,32,32"
+    artLayer = "control_art"
+    legacyUvX = 0
+    uvX = 0
+    legacyUvY = 192
+    uvY = 1536
+    legacyUvWidth = 32
+    uvWidth = 256
+    legacyUvHeight = 32
+    uvHeight = 256
+}
+
+GuiImage {
+    key = "shared.cursors.image.walk_los_18"
+    pageKey = "shared.cursors"
+    legacySection = "Cursor97"
+    legacyComment = "walk LOS 18"
+    role = "image"
+    layer = "art"
+    aliasOverride = "walk LOS 18"
+    sourceControlType = "Cursor97"
+    rect = "40,240,32,32"
+    legacyLocalRect = "40,240,32,32"
+    legacyRectSource = "cursor_catalog_grid_preview"
+    texture = "data/art/gui/walk.png"
+    legacyTexture = "walk"
+    uiPackage = "legacy_imgui"
+    rectModel = "legacy_imgui.modern_rect_v1"
+    controlRect = "40,240,32,32"
+    artRect = "40,240,32,32"
+    artLayer = "control_art"
+    legacyUvX = 32
+    uvX = 256
+    legacyUvY = 192
+    uvY = 1536
+    legacyUvWidth = 32
+    uvWidth = 256
+    legacyUvHeight = 32
+    uvHeight = 256
+}
+
+GuiImage {
+    key = "shared.cursors.image.walk_los_19"
+    pageKey = "shared.cursors"
+    legacySection = "Cursor98"
+    legacyComment = "walk LOS 19"
+    role = "image"
+    layer = "art"
+    aliasOverride = "walk LOS 19"
+    sourceControlType = "Cursor98"
+    rect = "80,240,32,32"
+    legacyLocalRect = "80,240,32,32"
+    legacyRectSource = "cursor_catalog_grid_preview"
+    texture = "data/art/gui/walk.png"
+    legacyTexture = "walk"
+    uiPackage = "legacy_imgui"
+    rectModel = "legacy_imgui.modern_rect_v1"
+    controlRect = "80,240,32,32"
+    artRect = "80,240,32,32"
+    artLayer = "control_art"
+    legacyUvX = 64
+    uvX = 512
+    legacyUvY = 192
+    uvY = 1536
+    legacyUvWidth = 32
+    uvWidth = 256
+    legacyUvHeight = 32
+    uvHeight = 256
+}
+
+GuiImage {
+    key = "shared.cursors.image.walk_los_20"
+    pageKey = "shared.cursors"
+    legacySection = "Cursor99"
+    legacyComment = "walk LOS 20"
+    role = "image"
+    layer = "art"
+    aliasOverride = "walk LOS 20"
+    sourceControlType = "Cursor99"
+    rect = "120,240,32,32"
+    legacyLocalRect = "120,240,32,32"
+    legacyRectSource = "cursor_catalog_grid_preview"
+    texture = "data/art/gui/walk.png"
+    legacyTexture = "walk"
+    uiPackage = "legacy_imgui"
+    rectModel = "legacy_imgui.modern_rect_v1"
+    controlRect = "120,240,32,32"
+    artRect = "120,240,32,32"
+    artLayer = "control_art"
+    legacyUvX = 96
+    uvX = 768
+    legacyUvY = 192
+    uvY = 1536
+    legacyUvWidth = 32
+    uvWidth = 256
+    legacyUvHeight = 32
+    uvHeight = 256
+}
+
+GuiImage {
+    key = "shared.cursors.image.walk_los_21"
+    pageKey = "shared.cursors"
+    legacySection = "Cursor100"
+    legacyComment = "walk LOS 21"
+    role = "image"
+    layer = "art"
+    aliasOverride = "walk LOS 21"
+    sourceControlType = "Cursor100"
+    rect = "160,240,32,32"
+    legacyLocalRect = "160,240,32,32"
+    legacyRectSource = "cursor_catalog_grid_preview"
+    texture = "data/art/gui/walk.png"
+    legacyTexture = "walk"
+    uiPackage = "legacy_imgui"
+    rectModel = "legacy_imgui.modern_rect_v1"
+    controlRect = "160,240,32,32"
+    artRect = "160,240,32,32"
+    artLayer = "control_art"
+    legacyUvX = 128
+    uvX = 1024
+    legacyUvY = 192
+    uvY = 1536
+    legacyUvWidth = 32
+    uvWidth = 256
+    legacyUvHeight = 32
+    uvHeight = 256
+}
+
+GuiImage {
+    key = "shared.cursors.image.walk_los_22"
+    pageKey = "shared.cursors"
+    legacySection = "Cursor101"
+    legacyComment = "walk LOS 22"
+    role = "image"
+    layer = "art"
+    aliasOverride = "walk LOS 22"
+    sourceControlType = "Cursor101"
+    rect = "200,240,32,32"
+    legacyLocalRect = "200,240,32,32"
+    legacyRectSource = "cursor_catalog_grid_preview"
+    texture = "data/art/gui/walk.png"
+    legacyTexture = "walk"
+    uiPackage = "legacy_imgui"
+    rectModel = "legacy_imgui.modern_rect_v1"
+    controlRect = "200,240,32,32"
+    artRect = "200,240,32,32"
+    artLayer = "control_art"
+    legacyUvX = 160
+    uvX = 1280
+    legacyUvY = 192
+    uvY = 1536
+    legacyUvWidth = 32
+    uvWidth = 256
+    legacyUvHeight = 32
+    uvHeight = 256
+}
+
+GuiImage {
+    key = "shared.cursors.image.walk_los_23"
+    pageKey = "shared.cursors"
+    legacySection = "Cursor102"
+    legacyComment = "walk LOS 23"
+    role = "image"
+    layer = "art"
+    aliasOverride = "walk LOS 23"
+    sourceControlType = "Cursor102"
+    rect = "240,240,32,32"
+    legacyLocalRect = "240,240,32,32"
+    legacyRectSource = "cursor_catalog_grid_preview"
+    texture = "data/art/gui/walk.png"
+    legacyTexture = "walk"
+    uiPackage = "legacy_imgui"
+    rectModel = "legacy_imgui.modern_rect_v1"
+    controlRect = "240,240,32,32"
+    artRect = "240,240,32,32"
+    artLayer = "control_art"
+    legacyUvX = 192
+    uvX = 1536
+    legacyUvY = 192
+    uvY = 1536
+    legacyUvWidth = 32
+    uvWidth = 256
+    legacyUvHeight = 32
+    uvHeight = 256
+}
+
+GuiImage {
+    key = "shared.cursors.image.walk_los_24"
+    pageKey = "shared.cursors"
+    legacySection = "Cursor103"
+    legacyComment = "walk LOS 24"
+    role = "image"
+    layer = "art"
+    aliasOverride = "walk LOS 24"
+    sourceControlType = "Cursor103"
+    rect = "280,240,32,32"
+    legacyLocalRect = "280,240,32,32"
+    legacyRectSource = "cursor_catalog_grid_preview"
+    texture = "data/art/gui/walk.png"
+    legacyTexture = "walk"
+    uiPackage = "legacy_imgui"
+    rectModel = "legacy_imgui.modern_rect_v1"
+    controlRect = "280,240,32,32"
+    artRect = "280,240,32,32"
+    artLayer = "control_art"
+    legacyUvX = 224
+    uvX = 1792
+    legacyUvY = 192
+    uvY = 1536
+    legacyUvWidth = 32
+    uvWidth = 256
+    legacyUvHeight = 32
+    uvHeight = 256
+}
+
+GuiImage {
+    key = "shared.cursors.image.walk_los_25"
+    pageKey = "shared.cursors"
+    legacySection = "Cursor104"
+    legacyComment = "walk LOS 25"
+    role = "image"
+    layer = "art"
+    aliasOverride = "walk LOS 25"
+    sourceControlType = "Cursor104"
+    rect = "320,240,32,32"
+    legacyLocalRect = "320,240,32,32"
+    legacyRectSource = "cursor_catalog_grid_preview"
+    texture = "data/art/gui/walk.png"
+    legacyTexture = "walk"
+    uiPackage = "legacy_imgui"
+    rectModel = "legacy_imgui.modern_rect_v1"
+    controlRect = "320,240,32,32"
+    artRect = "320,240,32,32"
+    artLayer = "control_art"
+    legacyUvX = 0
+    uvX = 0
+    legacyUvY = 224
+    uvY = 1792
+    legacyUvWidth = 32
+    uvWidth = 256
+    legacyUvHeight = 32
+    uvHeight = 256
+}
+
+GuiImage {
+    key = "shared.cursors.image.walk_los_26"
+    pageKey = "shared.cursors"
+    legacySection = "Cursor105"
+    legacyComment = "walk LOS 26"
+    role = "image"
+    layer = "art"
+    aliasOverride = "walk LOS 26"
+    sourceControlType = "Cursor105"
+    rect = "360,240,32,32"
+    legacyLocalRect = "360,240,32,32"
+    legacyRectSource = "cursor_catalog_grid_preview"
+    texture = "data/art/gui/walk.png"
+    legacyTexture = "walk"
+    uiPackage = "legacy_imgui"
+    rectModel = "legacy_imgui.modern_rect_v1"
+    controlRect = "360,240,32,32"
+    artRect = "360,240,32,32"
+    artLayer = "control_art"
+    legacyUvX = 32
+    uvX = 256
+    legacyUvY = 224
+    uvY = 1792
+    legacyUvWidth = 32
+    uvWidth = 256
+    legacyUvHeight = 32
+    uvHeight = 256
+}
+
+GuiImage {
+    key = "shared.cursors.image.walk_los_27"
+    pageKey = "shared.cursors"
+    legacySection = "Cursor106"
+    legacyComment = "walk LOS 27"
+    role = "image"
+    layer = "art"
+    aliasOverride = "walk LOS 27"
+    sourceControlType = "Cursor106"
+    rect = "400,240,32,32"
+    legacyLocalRect = "400,240,32,32"
+    legacyRectSource = "cursor_catalog_grid_preview"
+    texture = "data/art/gui/walk.png"
+    legacyTexture = "walk"
+    uiPackage = "legacy_imgui"
+    rectModel = "legacy_imgui.modern_rect_v1"
+    controlRect = "400,240,32,32"
+    artRect = "400,240,32,32"
+    artLayer = "control_art"
+    legacyUvX = 64
+    uvX = 512
+    legacyUvY = 224
+    uvY = 1792
+    legacyUvWidth = 32
+    uvWidth = 256
+    legacyUvHeight = 32
+    uvHeight = 256
+}
+
+GuiImage {
+    key = "shared.cursors.image.walk_los_28"
+    pageKey = "shared.cursors"
+    legacySection = "Cursor107"
+    legacyComment = "walk LOS 28"
+    role = "image"
+    layer = "art"
+    aliasOverride = "walk LOS 28"
+    sourceControlType = "Cursor107"
+    rect = "440,240,32,32"
+    legacyLocalRect = "440,240,32,32"
+    legacyRectSource = "cursor_catalog_grid_preview"
+    texture = "data/art/gui/walk.png"
+    legacyTexture = "walk"
+    uiPackage = "legacy_imgui"
+    rectModel = "legacy_imgui.modern_rect_v1"
+    controlRect = "440,240,32,32"
+    artRect = "440,240,32,32"
+    artLayer = "control_art"
+    legacyUvX = 96
+    uvX = 768
+    legacyUvY = 224
+    uvY = 1792
+    legacyUvWidth = 32
+    uvWidth = 256
+    legacyUvHeight = 32
+    uvHeight = 256
+}
+
+GuiImage {
+    key = "shared.cursors.image.walk_los_29"
+    pageKey = "shared.cursors"
+    legacySection = "Cursor108"
+    legacyComment = "walk LOS 29"
+    role = "image"
+    layer = "art"
+    aliasOverride = "walk LOS 29"
+    sourceControlType = "Cursor108"
+    rect = "480,240,32,32"
+    legacyLocalRect = "480,240,32,32"
+    legacyRectSource = "cursor_catalog_grid_preview"
+    texture = "data/art/gui/walk.png"
+    legacyTexture = "walk"
+    uiPackage = "legacy_imgui"
+    rectModel = "legacy_imgui.modern_rect_v1"
+    controlRect = "480,240,32,32"
+    artRect = "480,240,32,32"
+    artLayer = "control_art"
+    legacyUvX = 128
+    uvX = 1024
+    legacyUvY = 224
+    uvY = 1792
+    legacyUvWidth = 32
+    uvWidth = 256
+    legacyUvHeight = 32
+    uvHeight = 256
+}
+
+GuiImage {
+    key = "shared.cursors.image.walk_los_30"
+    pageKey = "shared.cursors"
+    legacySection = "Cursor109"
+    legacyComment = "walk LOS 30"
+    role = "image"
+    layer = "art"
+    aliasOverride = "walk LOS 30"
+    sourceControlType = "Cursor109"
+    rect = "520,240,32,32"
+    legacyLocalRect = "520,240,32,32"
+    legacyRectSource = "cursor_catalog_grid_preview"
+    texture = "data/art/gui/walk.png"
+    legacyTexture = "walk"
+    uiPackage = "legacy_imgui"
+    rectModel = "legacy_imgui.modern_rect_v1"
+    controlRect = "520,240,32,32"
+    artRect = "520,240,32,32"
+    artLayer = "control_art"
+    legacyUvX = 160
+    uvX = 1280
+    legacyUvY = 224
+    uvY = 1792
+    legacyUvWidth = 32
+    uvWidth = 256
+    legacyUvHeight = 32
+    uvHeight = 256
+}
+
+GuiImage {
+    key = "shared.cursors.image.walk_los_31"
+    pageKey = "shared.cursors"
+    legacySection = "Cursor110"
+    legacyComment = "walk LOS 31"
+    role = "image"
+    layer = "art"
+    aliasOverride = "walk LOS 31"
+    sourceControlType = "Cursor110"
+    rect = "560,240,32,32"
+    legacyLocalRect = "560,240,32,32"
+    legacyRectSource = "cursor_catalog_grid_preview"
+    texture = "data/art/gui/walk.png"
+    legacyTexture = "walk"
+    uiPackage = "legacy_imgui"
+    rectModel = "legacy_imgui.modern_rect_v1"
+    controlRect = "560,240,32,32"
+    artRect = "560,240,32,32"
+    artLayer = "control_art"
+    legacyUvX = 192
+    uvX = 1536
+    legacyUvY = 224
+    uvY = 1792
+    legacyUvWidth = 32
+    uvWidth = 256
+    legacyUvHeight = 32
+    uvHeight = 256
+}
+
+GuiImage {
+    key = "shared.cursors.image.walk_los_32"
+    pageKey = "shared.cursors"
+    legacySection = "Cursor111"
+    legacyComment = "walk LOS 32"
+    role = "image"
+    layer = "art"
+    aliasOverride = "walk LOS 32"
+    sourceControlType = "Cursor111"
+    rect = "600,240,32,32"
+    legacyLocalRect = "600,240,32,32"
+    legacyRectSource = "cursor_catalog_grid_preview"
+    texture = "data/art/gui/walk.png"
+    legacyTexture = "walk"
+    uiPackage = "legacy_imgui"
+    rectModel = "legacy_imgui.modern_rect_v1"
+    controlRect = "600,240,32,32"
+    artRect = "600,240,32,32"
+    artLayer = "control_art"
+    legacyUvX = 224
+    uvX = 1792
+    legacyUvY = 224
+    uvY = 1792
+    legacyUvWidth = 32
+    uvWidth = 256
+    legacyUvHeight = 32
+    uvHeight = 256
+}
+
+GuiImage {
+    key = "shared.cursors.image.run_1"
+    pageKey = "shared.cursors"
+    legacySection = "Cursor112"
+    legacyComment = "Run 1"
+    role = "image"
+    layer = "art"
+    aliasOverride = "Run 1"
+    sourceControlType = "Cursor112"
+    rect = "0,280,32,32"
+    legacyLocalRect = "0,280,32,32"
+    legacyRectSource = "cursor_catalog_grid_preview"
+    texture = "data/art/gui/run.png"
+    legacyTexture = "run"
+    uiPackage = "legacy_imgui"
+    rectModel = "legacy_imgui.modern_rect_v1"
+    controlRect = "0,280,32,32"
+    artRect = "0,280,32,32"
+    artLayer = "control_art"
+    legacyUvX = 0
+    uvX = 0
+    legacyUvY = 0
+    uvY = 0
+    legacyUvWidth = 32
+    uvWidth = 256
+    legacyUvHeight = 32
+    uvHeight = 256
+}
+
+GuiImage {
+    key = "shared.cursors.image.run_2"
+    pageKey = "shared.cursors"
+    legacySection = "Cursor113"
+    legacyComment = "run 2"
+    role = "image"
+    layer = "art"
+    aliasOverride = "run 2"
+    sourceControlType = "Cursor113"
+    rect = "40,280,32,32"
+    legacyLocalRect = "40,280,32,32"
+    legacyRectSource = "cursor_catalog_grid_preview"
+    texture = "data/art/gui/run.png"
+    legacyTexture = "run"
+    uiPackage = "legacy_imgui"
+    rectModel = "legacy_imgui.modern_rect_v1"
+    controlRect = "40,280,32,32"
+    artRect = "40,280,32,32"
+    artLayer = "control_art"
+    legacyUvX = 32
+    uvX = 256
+    legacyUvY = 0
+    uvY = 0
+    legacyUvWidth = 32
+    uvWidth = 256
+    legacyUvHeight = 32
+    uvHeight = 256
+}
+
+GuiImage {
+    key = "shared.cursors.image.run_3"
+    pageKey = "shared.cursors"
+    legacySection = "Cursor114"
+    legacyComment = "run 3"
+    role = "image"
+    layer = "art"
+    aliasOverride = "run 3"
+    sourceControlType = "Cursor114"
+    rect = "80,280,32,32"
+    legacyLocalRect = "80,280,32,32"
+    legacyRectSource = "cursor_catalog_grid_preview"
+    texture = "data/art/gui/run.png"
+    legacyTexture = "run"
+    uiPackage = "legacy_imgui"
+    rectModel = "legacy_imgui.modern_rect_v1"
+    controlRect = "80,280,32,32"
+    artRect = "80,280,32,32"
+    artLayer = "control_art"
+    legacyUvX = 64
+    uvX = 512
+    legacyUvY = 0
+    uvY = 0
+    legacyUvWidth = 32
+    uvWidth = 256
+    legacyUvHeight = 32
+    uvHeight = 256
+}
+
+GuiImage {
+    key = "shared.cursors.image.run_4"
+    pageKey = "shared.cursors"
+    legacySection = "Cursor115"
+    legacyComment = "run 4"
+    role = "image"
+    layer = "art"
+    aliasOverride = "run 4"
+    sourceControlType = "Cursor115"
+    rect = "120,280,32,32"
+    legacyLocalRect = "120,280,32,32"
+    legacyRectSource = "cursor_catalog_grid_preview"
+    texture = "data/art/gui/run.png"
+    legacyTexture = "run"
+    uiPackage = "legacy_imgui"
+    rectModel = "legacy_imgui.modern_rect_v1"
+    controlRect = "120,280,32,32"
+    artRect = "120,280,32,32"
+    artLayer = "control_art"
+    legacyUvX = 96
+    uvX = 768
+    legacyUvY = 0
+    uvY = 0
+    legacyUvWidth = 32
+    uvWidth = 256
+    legacyUvHeight = 32
+    uvHeight = 256
+}
+
+GuiImage {
+    key = "shared.cursors.image.run_5"
+    pageKey = "shared.cursors"
+    legacySection = "Cursor116"
+    legacyComment = "run 5"
+    role = "image"
+    layer = "art"
+    aliasOverride = "run 5"
+    sourceControlType = "Cursor116"
+    rect = "160,280,32,32"
+    legacyLocalRect = "160,280,32,32"
+    legacyRectSource = "cursor_catalog_grid_preview"
+    texture = "data/art/gui/run.png"
+    legacyTexture = "run"
+    uiPackage = "legacy_imgui"
+    rectModel = "legacy_imgui.modern_rect_v1"
+    controlRect = "160,280,32,32"
+    artRect = "160,280,32,32"
+    artLayer = "control_art"
+    legacyUvX = 128
+    uvX = 1024
+    legacyUvY = 0
+    uvY = 0
+    legacyUvWidth = 32
+    uvWidth = 256
+    legacyUvHeight = 32
+    uvHeight = 256
+}
+
+GuiImage {
+    key = "shared.cursors.image.run_6"
+    pageKey = "shared.cursors"
+    legacySection = "Cursor117"
+    legacyComment = "run 6"
+    role = "image"
+    layer = "art"
+    aliasOverride = "run 6"
+    sourceControlType = "Cursor117"
+    rect = "200,280,32,32"
+    legacyLocalRect = "200,280,32,32"
+    legacyRectSource = "cursor_catalog_grid_preview"
+    texture = "data/art/gui/run.png"
+    legacyTexture = "run"
+    uiPackage = "legacy_imgui"
+    rectModel = "legacy_imgui.modern_rect_v1"
+    controlRect = "200,280,32,32"
+    artRect = "200,280,32,32"
+    artLayer = "control_art"
+    legacyUvX = 160
+    uvX = 1280
+    legacyUvY = 0
+    uvY = 0
+    legacyUvWidth = 32
+    uvWidth = 256
+    legacyUvHeight = 32
+    uvHeight = 256
+}
+
+GuiImage {
+    key = "shared.cursors.image.run_7"
+    pageKey = "shared.cursors"
+    legacySection = "Cursor118"
+    legacyComment = "run 7"
+    role = "image"
+    layer = "art"
+    aliasOverride = "run 7"
+    sourceControlType = "Cursor118"
+    rect = "240,280,32,32"
+    legacyLocalRect = "240,280,32,32"
+    legacyRectSource = "cursor_catalog_grid_preview"
+    texture = "data/art/gui/run.png"
+    legacyTexture = "run"
+    uiPackage = "legacy_imgui"
+    rectModel = "legacy_imgui.modern_rect_v1"
+    controlRect = "240,280,32,32"
+    artRect = "240,280,32,32"
+    artLayer = "control_art"
+    legacyUvX = 192
+    uvX = 1536
+    legacyUvY = 0
+    uvY = 0
+    legacyUvWidth = 32
+    uvWidth = 256
+    legacyUvHeight = 32
+    uvHeight = 256
+}
+
+GuiImage {
+    key = "shared.cursors.image.run_8"
+    pageKey = "shared.cursors"
+    legacySection = "Cursor119"
+    legacyComment = "run 8"
+    role = "image"
+    layer = "art"
+    aliasOverride = "run 8"
+    sourceControlType = "Cursor119"
+    rect = "280,280,32,32"
+    legacyLocalRect = "280,280,32,32"
+    legacyRectSource = "cursor_catalog_grid_preview"
+    texture = "data/art/gui/run.png"
+    legacyTexture = "run"
+    uiPackage = "legacy_imgui"
+    rectModel = "legacy_imgui.modern_rect_v1"
+    controlRect = "280,280,32,32"
+    artRect = "280,280,32,32"
+    artLayer = "control_art"
+    legacyUvX = 224
+    uvX = 1792
+    legacyUvY = 0
+    uvY = 0
+    legacyUvWidth = 32
+    uvWidth = 256
+    legacyUvHeight = 32
+    uvHeight = 256
+}
+
+GuiImage {
+    key = "shared.cursors.image.run_9"
+    pageKey = "shared.cursors"
+    legacySection = "Cursor120"
+    legacyComment = "run 9"
+    role = "image"
+    layer = "art"
+    aliasOverride = "run 9"
+    sourceControlType = "Cursor120"
+    rect = "320,280,32,32"
+    legacyLocalRect = "320,280,32,32"
+    legacyRectSource = "cursor_catalog_grid_preview"
+    texture = "data/art/gui/run.png"
+    legacyTexture = "run"
+    uiPackage = "legacy_imgui"
+    rectModel = "legacy_imgui.modern_rect_v1"
+    controlRect = "320,280,32,32"
+    artRect = "320,280,32,32"
+    artLayer = "control_art"
+    legacyUvX = 0
+    uvX = 0
+    legacyUvY = 32
+    uvY = 256
+    legacyUvWidth = 32
+    uvWidth = 256
+    legacyUvHeight = 32
+    uvHeight = 256
+}
+
+GuiImage {
+    key = "shared.cursors.image.run_10"
+    pageKey = "shared.cursors"
+    legacySection = "Cursor121"
+    legacyComment = "run 10"
+    role = "image"
+    layer = "art"
+    aliasOverride = "run 10"
+    sourceControlType = "Cursor121"
+    rect = "360,280,32,32"
+    legacyLocalRect = "360,280,32,32"
+    legacyRectSource = "cursor_catalog_grid_preview"
+    texture = "data/art/gui/run.png"
+    legacyTexture = "run"
+    uiPackage = "legacy_imgui"
+    rectModel = "legacy_imgui.modern_rect_v1"
+    controlRect = "360,280,32,32"
+    artRect = "360,280,32,32"
+    artLayer = "control_art"
+    legacyUvX = 32
+    uvX = 256
+    legacyUvY = 32
+    uvY = 256
+    legacyUvWidth = 32
+    uvWidth = 256
+    legacyUvHeight = 32
+    uvHeight = 256
+}
+
+GuiImage {
+    key = "shared.cursors.image.run_11"
+    pageKey = "shared.cursors"
+    legacySection = "Cursor122"
+    legacyComment = "run 11"
+    role = "image"
+    layer = "art"
+    aliasOverride = "run 11"
+    sourceControlType = "Cursor122"
+    rect = "400,280,32,32"
+    legacyLocalRect = "400,280,32,32"
+    legacyRectSource = "cursor_catalog_grid_preview"
+    texture = "data/art/gui/run.png"
+    legacyTexture = "run"
+    uiPackage = "legacy_imgui"
+    rectModel = "legacy_imgui.modern_rect_v1"
+    controlRect = "400,280,32,32"
+    artRect = "400,280,32,32"
+    artLayer = "control_art"
+    legacyUvX = 64
+    uvX = 512
+    legacyUvY = 32
+    uvY = 256
+    legacyUvWidth = 32
+    uvWidth = 256
+    legacyUvHeight = 32
+    uvHeight = 256
+}
+
+GuiImage {
+    key = "shared.cursors.image.run_12"
+    pageKey = "shared.cursors"
+    legacySection = "Cursor123"
+    legacyComment = "run 12"
+    role = "image"
+    layer = "art"
+    aliasOverride = "run 12"
+    sourceControlType = "Cursor123"
+    rect = "440,280,32,32"
+    legacyLocalRect = "440,280,32,32"
+    legacyRectSource = "cursor_catalog_grid_preview"
+    texture = "data/art/gui/run.png"
+    legacyTexture = "run"
+    uiPackage = "legacy_imgui"
+    rectModel = "legacy_imgui.modern_rect_v1"
+    controlRect = "440,280,32,32"
+    artRect = "440,280,32,32"
+    artLayer = "control_art"
+    legacyUvX = 96
+    uvX = 768
+    legacyUvY = 32
+    uvY = 256
+    legacyUvWidth = 32
+    uvWidth = 256
+    legacyUvHeight = 32
+    uvHeight = 256
+}
+
+GuiImage {
+    key = "shared.cursors.image.run_13"
+    pageKey = "shared.cursors"
+    legacySection = "Cursor124"
+    legacyComment = "run 13"
+    role = "image"
+    layer = "art"
+    aliasOverride = "run 13"
+    sourceControlType = "Cursor124"
+    rect = "480,280,32,32"
+    legacyLocalRect = "480,280,32,32"
+    legacyRectSource = "cursor_catalog_grid_preview"
+    texture = "data/art/gui/run.png"
+    legacyTexture = "run"
+    uiPackage = "legacy_imgui"
+    rectModel = "legacy_imgui.modern_rect_v1"
+    controlRect = "480,280,32,32"
+    artRect = "480,280,32,32"
+    artLayer = "control_art"
+    legacyUvX = 128
+    uvX = 1024
+    legacyUvY = 32
+    uvY = 256
+    legacyUvWidth = 32
+    uvWidth = 256
+    legacyUvHeight = 32
+    uvHeight = 256
+}
+
+GuiImage {
+    key = "shared.cursors.image.run_14"
+    pageKey = "shared.cursors"
+    legacySection = "Cursor125"
+    legacyComment = "run 14"
+    role = "image"
+    layer = "art"
+    aliasOverride = "run 14"
+    sourceControlType = "Cursor125"
+    rect = "520,280,32,32"
+    legacyLocalRect = "520,280,32,32"
+    legacyRectSource = "cursor_catalog_grid_preview"
+    texture = "data/art/gui/run.png"
+    legacyTexture = "run"
+    uiPackage = "legacy_imgui"
+    rectModel = "legacy_imgui.modern_rect_v1"
+    controlRect = "520,280,32,32"
+    artRect = "520,280,32,32"
+    artLayer = "control_art"
+    legacyUvX = 160
+    uvX = 1280
+    legacyUvY = 32
+    uvY = 256
+    legacyUvWidth = 32
+    uvWidth = 256
+    legacyUvHeight = 32
+    uvHeight = 256
+}
+
+GuiImage {
+    key = "shared.cursors.image.run_15"
+    pageKey = "shared.cursors"
+    legacySection = "Cursor126"
+    legacyComment = "run 15"
+    role = "image"
+    layer = "art"
+    aliasOverride = "run 15"
+    sourceControlType = "Cursor126"
+    rect = "560,280,32,32"
+    legacyLocalRect = "560,280,32,32"
+    legacyRectSource = "cursor_catalog_grid_preview"
+    texture = "data/art/gui/run.png"
+    legacyTexture = "run"
+    uiPackage = "legacy_imgui"
+    rectModel = "legacy_imgui.modern_rect_v1"
+    controlRect = "560,280,32,32"
+    artRect = "560,280,32,32"
+    artLayer = "control_art"
+    legacyUvX = 192
+    uvX = 1536
+    legacyUvY = 32
+    uvY = 256
+    legacyUvWidth = 32
+    uvWidth = 256
+    legacyUvHeight = 32
+    uvHeight = 256
+}
+
+GuiImage {
+    key = "shared.cursors.image.run_16"
+    pageKey = "shared.cursors"
+    legacySection = "Cursor127"
+    legacyComment = "run 16"
+    role = "image"
+    layer = "art"
+    aliasOverride = "run 16"
+    sourceControlType = "Cursor127"
+    rect = "600,280,32,32"
+    legacyLocalRect = "600,280,32,32"
+    legacyRectSource = "cursor_catalog_grid_preview"
+    texture = "data/art/gui/run.png"
+    legacyTexture = "run"
+    uiPackage = "legacy_imgui"
+    rectModel = "legacy_imgui.modern_rect_v1"
+    controlRect = "600,280,32,32"
+    artRect = "600,280,32,32"
+    artLayer = "control_art"
+    legacyUvX = 224
+    uvX = 1792
+    legacyUvY = 32
+    uvY = 256
+    legacyUvWidth = 32
+    uvWidth = 256
+    legacyUvHeight = 32
+    uvHeight = 256
+}
+
+GuiImage {
+    key = "shared.cursors.image.run_17"
+    pageKey = "shared.cursors"
+    legacySection = "Cursor128"
+    legacyComment = "run 17"
+    role = "image"
+    layer = "art"
+    aliasOverride = "run 17"
+    sourceControlType = "Cursor128"
+    rect = "0,320,32,32"
+    legacyLocalRect = "0,320,32,32"
+    legacyRectSource = "cursor_catalog_grid_preview"
+    texture = "data/art/gui/run.png"
+    legacyTexture = "run"
+    uiPackage = "legacy_imgui"
+    rectModel = "legacy_imgui.modern_rect_v1"
+    controlRect = "0,320,32,32"
+    artRect = "0,320,32,32"
+    artLayer = "control_art"
+    legacyUvX = 0
+    uvX = 0
+    legacyUvY = 64
+    uvY = 512
+    legacyUvWidth = 32
+    uvWidth = 256
+    legacyUvHeight = 32
+    uvHeight = 256
+}
+
+GuiImage {
+    key = "shared.cursors.image.run_18"
+    pageKey = "shared.cursors"
+    legacySection = "Cursor129"
+    legacyComment = "run 18"
+    role = "image"
+    layer = "art"
+    aliasOverride = "run 18"
+    sourceControlType = "Cursor129"
+    rect = "40,320,32,32"
+    legacyLocalRect = "40,320,32,32"
+    legacyRectSource = "cursor_catalog_grid_preview"
+    texture = "data/art/gui/run.png"
+    legacyTexture = "run"
+    uiPackage = "legacy_imgui"
+    rectModel = "legacy_imgui.modern_rect_v1"
+    controlRect = "40,320,32,32"
+    artRect = "40,320,32,32"
+    artLayer = "control_art"
+    legacyUvX = 32
+    uvX = 256
+    legacyUvY = 64
+    uvY = 512
+    legacyUvWidth = 32
+    uvWidth = 256
+    legacyUvHeight = 32
+    uvHeight = 256
+}
+
+GuiImage {
+    key = "shared.cursors.image.run_19"
+    pageKey = "shared.cursors"
+    legacySection = "Cursor130"
+    legacyComment = "run 19"
+    role = "image"
+    layer = "art"
+    aliasOverride = "run 19"
+    sourceControlType = "Cursor130"
+    rect = "80,320,32,32"
+    legacyLocalRect = "80,320,32,32"
+    legacyRectSource = "cursor_catalog_grid_preview"
+    texture = "data/art/gui/run.png"
+    legacyTexture = "run"
+    uiPackage = "legacy_imgui"
+    rectModel = "legacy_imgui.modern_rect_v1"
+    controlRect = "80,320,32,32"
+    artRect = "80,320,32,32"
+    artLayer = "control_art"
+    legacyUvX = 64
+    uvX = 512
+    legacyUvY = 64
+    uvY = 512
+    legacyUvWidth = 32
+    uvWidth = 256
+    legacyUvHeight = 32
+    uvHeight = 256
+}
+
+GuiImage {
+    key = "shared.cursors.image.run_20"
+    pageKey = "shared.cursors"
+    legacySection = "Cursor131"
+    legacyComment = "run 20"
+    role = "image"
+    layer = "art"
+    aliasOverride = "run 20"
+    sourceControlType = "Cursor131"
+    rect = "120,320,32,32"
+    legacyLocalRect = "120,320,32,32"
+    legacyRectSource = "cursor_catalog_grid_preview"
+    texture = "data/art/gui/run.png"
+    legacyTexture = "run"
+    uiPackage = "legacy_imgui"
+    rectModel = "legacy_imgui.modern_rect_v1"
+    controlRect = "120,320,32,32"
+    artRect = "120,320,32,32"
+    artLayer = "control_art"
+    legacyUvX = 96
+    uvX = 768
+    legacyUvY = 64
+    uvY = 512
+    legacyUvWidth = 32
+    uvWidth = 256
+    legacyUvHeight = 32
+    uvHeight = 256
+}
+
+GuiImage {
+    key = "shared.cursors.image.run_21"
+    pageKey = "shared.cursors"
+    legacySection = "Cursor132"
+    legacyComment = "run 21"
+    role = "image"
+    layer = "art"
+    aliasOverride = "run 21"
+    sourceControlType = "Cursor132"
+    rect = "160,320,32,32"
+    legacyLocalRect = "160,320,32,32"
+    legacyRectSource = "cursor_catalog_grid_preview"
+    texture = "data/art/gui/run.png"
+    legacyTexture = "run"
+    uiPackage = "legacy_imgui"
+    rectModel = "legacy_imgui.modern_rect_v1"
+    controlRect = "160,320,32,32"
+    artRect = "160,320,32,32"
+    artLayer = "control_art"
+    legacyUvX = 128
+    uvX = 1024
+    legacyUvY = 64
+    uvY = 512
+    legacyUvWidth = 32
+    uvWidth = 256
+    legacyUvHeight = 32
+    uvHeight = 256
+}
+
+GuiImage {
+    key = "shared.cursors.image.run_22"
+    pageKey = "shared.cursors"
+    legacySection = "Cursor133"
+    legacyComment = "run 22"
+    role = "image"
+    layer = "art"
+    aliasOverride = "run 22"
+    sourceControlType = "Cursor133"
+    rect = "200,320,32,32"
+    legacyLocalRect = "200,320,32,32"
+    legacyRectSource = "cursor_catalog_grid_preview"
+    texture = "data/art/gui/run.png"
+    legacyTexture = "run"
+    uiPackage = "legacy_imgui"
+    rectModel = "legacy_imgui.modern_rect_v1"
+    controlRect = "200,320,32,32"
+    artRect = "200,320,32,32"
+    artLayer = "control_art"
+    legacyUvX = 160
+    uvX = 1280
+    legacyUvY = 64
+    uvY = 512
+    legacyUvWidth = 32
+    uvWidth = 256
+    legacyUvHeight = 32
+    uvHeight = 256
+}
+
+GuiImage {
+    key = "shared.cursors.image.run_23"
+    pageKey = "shared.cursors"
+    legacySection = "Cursor134"
+    legacyComment = "run 23"
+    role = "image"
+    layer = "art"
+    aliasOverride = "run 23"
+    sourceControlType = "Cursor134"
+    rect = "240,320,32,32"
+    legacyLocalRect = "240,320,32,32"
+    legacyRectSource = "cursor_catalog_grid_preview"
+    texture = "data/art/gui/run.png"
+    legacyTexture = "run"
+    uiPackage = "legacy_imgui"
+    rectModel = "legacy_imgui.modern_rect_v1"
+    controlRect = "240,320,32,32"
+    artRect = "240,320,32,32"
+    artLayer = "control_art"
+    legacyUvX = 192
+    uvX = 1536
+    legacyUvY = 64
+    uvY = 512
+    legacyUvWidth = 32
+    uvWidth = 256
+    legacyUvHeight = 32
+    uvHeight = 256
+}
+
+GuiImage {
+    key = "shared.cursors.image.run_24"
+    pageKey = "shared.cursors"
+    legacySection = "Cursor135"
+    legacyComment = "run 24"
+    role = "image"
+    layer = "art"
+    aliasOverride = "run 24"
+    sourceControlType = "Cursor135"
+    rect = "280,320,32,32"
+    legacyLocalRect = "280,320,32,32"
+    legacyRectSource = "cursor_catalog_grid_preview"
+    texture = "data/art/gui/run.png"
+    legacyTexture = "run"
+    uiPackage = "legacy_imgui"
+    rectModel = "legacy_imgui.modern_rect_v1"
+    controlRect = "280,320,32,32"
+    artRect = "280,320,32,32"
+    artLayer = "control_art"
+    legacyUvX = 224
+    uvX = 1792
+    legacyUvY = 64
+    uvY = 512
+    legacyUvWidth = 32
+    uvWidth = 256
+    legacyUvHeight = 32
+    uvHeight = 256
+}
+
+GuiImage {
+    key = "shared.cursors.image.run_25"
+    pageKey = "shared.cursors"
+    legacySection = "Cursor136"
+    legacyComment = "run 25"
+    role = "image"
+    layer = "art"
+    aliasOverride = "run 25"
+    sourceControlType = "Cursor136"
+    rect = "320,320,32,32"
+    legacyLocalRect = "320,320,32,32"
+    legacyRectSource = "cursor_catalog_grid_preview"
+    texture = "data/art/gui/run.png"
+    legacyTexture = "run"
+    uiPackage = "legacy_imgui"
+    rectModel = "legacy_imgui.modern_rect_v1"
+    controlRect = "320,320,32,32"
+    artRect = "320,320,32,32"
+    artLayer = "control_art"
+    legacyUvX = 0
+    uvX = 0
+    legacyUvY = 96
+    uvY = 768
+    legacyUvWidth = 32
+    uvWidth = 256
+    legacyUvHeight = 32
+    uvHeight = 256
+}
+
+GuiImage {
+    key = "shared.cursors.image.run_26"
+    pageKey = "shared.cursors"
+    legacySection = "Cursor137"
+    legacyComment = "run 26"
+    role = "image"
+    layer = "art"
+    aliasOverride = "run 26"
+    sourceControlType = "Cursor137"
+    rect = "360,320,32,32"
+    legacyLocalRect = "360,320,32,32"
+    legacyRectSource = "cursor_catalog_grid_preview"
+    texture = "data/art/gui/run.png"
+    legacyTexture = "run"
+    uiPackage = "legacy_imgui"
+    rectModel = "legacy_imgui.modern_rect_v1"
+    controlRect = "360,320,32,32"
+    artRect = "360,320,32,32"
+    artLayer = "control_art"
+    legacyUvX = 32
+    uvX = 256
+    legacyUvY = 96
+    uvY = 768
+    legacyUvWidth = 32
+    uvWidth = 256
+    legacyUvHeight = 32
+    uvHeight = 256
+}
+
+GuiImage {
+    key = "shared.cursors.image.run_27"
+    pageKey = "shared.cursors"
+    legacySection = "Cursor138"
+    legacyComment = "run 27"
+    role = "image"
+    layer = "art"
+    aliasOverride = "run 27"
+    sourceControlType = "Cursor138"
+    rect = "400,320,32,32"
+    legacyLocalRect = "400,320,32,32"
+    legacyRectSource = "cursor_catalog_grid_preview"
+    texture = "data/art/gui/run.png"
+    legacyTexture = "run"
+    uiPackage = "legacy_imgui"
+    rectModel = "legacy_imgui.modern_rect_v1"
+    controlRect = "400,320,32,32"
+    artRect = "400,320,32,32"
+    artLayer = "control_art"
+    legacyUvX = 64
+    uvX = 512
+    legacyUvY = 96
+    uvY = 768
+    legacyUvWidth = 32
+    uvWidth = 256
+    legacyUvHeight = 32
+    uvHeight = 256
+}
+
+GuiImage {
+    key = "shared.cursors.image.run_28"
+    pageKey = "shared.cursors"
+    legacySection = "Cursor139"
+    legacyComment = "run 28"
+    role = "image"
+    layer = "art"
+    aliasOverride = "run 28"
+    sourceControlType = "Cursor139"
+    rect = "440,320,32,32"
+    legacyLocalRect = "440,320,32,32"
+    legacyRectSource = "cursor_catalog_grid_preview"
+    texture = "data/art/gui/run.png"
+    legacyTexture = "run"
+    uiPackage = "legacy_imgui"
+    rectModel = "legacy_imgui.modern_rect_v1"
+    controlRect = "440,320,32,32"
+    artRect = "440,320,32,32"
+    artLayer = "control_art"
+    legacyUvX = 96
+    uvX = 768
+    legacyUvY = 96
+    uvY = 768
+    legacyUvWidth = 32
+    uvWidth = 256
+    legacyUvHeight = 32
+    uvHeight = 256
+}
+
+GuiImage {
+    key = "shared.cursors.image.run_29"
+    pageKey = "shared.cursors"
+    legacySection = "Cursor140"
+    legacyComment = "run 29"
+    role = "image"
+    layer = "art"
+    aliasOverride = "run 29"
+    sourceControlType = "Cursor140"
+    rect = "480,320,32,32"
+    legacyLocalRect = "480,320,32,32"
+    legacyRectSource = "cursor_catalog_grid_preview"
+    texture = "data/art/gui/run.png"
+    legacyTexture = "run"
+    uiPackage = "legacy_imgui"
+    rectModel = "legacy_imgui.modern_rect_v1"
+    controlRect = "480,320,32,32"
+    artRect = "480,320,32,32"
+    artLayer = "control_art"
+    legacyUvX = 128
+    uvX = 1024
+    legacyUvY = 96
+    uvY = 768
+    legacyUvWidth = 32
+    uvWidth = 256
+    legacyUvHeight = 32
+    uvHeight = 256
+}
+
+GuiImage {
+    key = "shared.cursors.image.run_30"
+    pageKey = "shared.cursors"
+    legacySection = "Cursor141"
+    legacyComment = "run 30"
+    role = "image"
+    layer = "art"
+    aliasOverride = "run 30"
+    sourceControlType = "Cursor141"
+    rect = "520,320,32,32"
+    legacyLocalRect = "520,320,32,32"
+    legacyRectSource = "cursor_catalog_grid_preview"
+    texture = "data/art/gui/run.png"
+    legacyTexture = "run"
+    uiPackage = "legacy_imgui"
+    rectModel = "legacy_imgui.modern_rect_v1"
+    controlRect = "520,320,32,32"
+    artRect = "520,320,32,32"
+    artLayer = "control_art"
+    legacyUvX = 160
+    uvX = 1280
+    legacyUvY = 96
+    uvY = 768
+    legacyUvWidth = 32
+    uvWidth = 256
+    legacyUvHeight = 32
+    uvHeight = 256
+}
+
+GuiImage {
+    key = "shared.cursors.image.run_31"
+    pageKey = "shared.cursors"
+    legacySection = "Cursor142"
+    legacyComment = "run 31"
+    role = "image"
+    layer = "art"
+    aliasOverride = "run 31"
+    sourceControlType = "Cursor142"
+    rect = "560,320,32,32"
+    legacyLocalRect = "560,320,32,32"
+    legacyRectSource = "cursor_catalog_grid_preview"
+    texture = "data/art/gui/run.png"
+    legacyTexture = "run"
+    uiPackage = "legacy_imgui"
+    rectModel = "legacy_imgui.modern_rect_v1"
+    controlRect = "560,320,32,32"
+    artRect = "560,320,32,32"
+    artLayer = "control_art"
+    legacyUvX = 192
+    uvX = 1536
+    legacyUvY = 96
+    uvY = 768
+    legacyUvWidth = 32
+    uvWidth = 256
+    legacyUvHeight = 32
+    uvHeight = 256
+}
+
+GuiImage {
+    key = "shared.cursors.image.run_32"
+    pageKey = "shared.cursors"
+    legacySection = "Cursor143"
+    legacyComment = "run 32"
+    role = "image"
+    layer = "art"
+    aliasOverride = "run 32"
+    sourceControlType = "Cursor143"
+    rect = "600,320,32,32"
+    legacyLocalRect = "600,320,32,32"
+    legacyRectSource = "cursor_catalog_grid_preview"
+    texture = "data/art/gui/walk.png"
+    legacyTexture = "walk"
+    uiPackage = "legacy_imgui"
+    rectModel = "legacy_imgui.modern_rect_v1"
+    controlRect = "600,320,32,32"
+    artRect = "600,320,32,32"
+    artLayer = "control_art"
+    legacyUvX = 224
+    uvX = 1792
+    legacyUvY = 96
+    uvY = 768
+    legacyUvWidth = 32
+    uvWidth = 256
+    legacyUvHeight = 32
+    uvHeight = 256
+}
+
+GuiImage {
+    key = "shared.cursors.image.run_los_1"
+    pageKey = "shared.cursors"
+    legacySection = "Cursor144"
+    legacyComment = "run LOS 1"
+    role = "image"
+    layer = "art"
+    aliasOverride = "run LOS 1"
+    sourceControlType = "Cursor144"
+    rect = "0,360,32,32"
+    legacyLocalRect = "0,360,32,32"
+    legacyRectSource = "cursor_catalog_grid_preview"
+    texture = "data/art/gui/run.png"
+    legacyTexture = "run"
+    uiPackage = "legacy_imgui"
+    rectModel = "legacy_imgui.modern_rect_v1"
+    controlRect = "0,360,32,32"
+    artRect = "0,360,32,32"
+    artLayer = "control_art"
+    legacyUvX = 0
+    uvX = 0
+    legacyUvY = 128
+    uvY = 1024
+    legacyUvWidth = 32
+    uvWidth = 256
+    legacyUvHeight = 32
+    uvHeight = 256
+}
+
+GuiImage {
+    key = "shared.cursors.image.run_los_2"
+    pageKey = "shared.cursors"
+    legacySection = "Cursor145"
+    legacyComment = "run LOS 2"
+    role = "image"
+    layer = "art"
+    aliasOverride = "run LOS 2"
+    sourceControlType = "Cursor145"
+    rect = "40,360,32,32"
+    legacyLocalRect = "40,360,32,32"
+    legacyRectSource = "cursor_catalog_grid_preview"
+    texture = "data/art/gui/run.png"
+    legacyTexture = "run"
+    uiPackage = "legacy_imgui"
+    rectModel = "legacy_imgui.modern_rect_v1"
+    controlRect = "40,360,32,32"
+    artRect = "40,360,32,32"
+    artLayer = "control_art"
+    legacyUvX = 32
+    uvX = 256
+    legacyUvY = 128
+    uvY = 1024
+    legacyUvWidth = 32
+    uvWidth = 256
+    legacyUvHeight = 32
+    uvHeight = 256
+}
+
+GuiImage {
+    key = "shared.cursors.image.run_los_3"
+    pageKey = "shared.cursors"
+    legacySection = "Cursor146"
+    legacyComment = "run LOS 3"
+    role = "image"
+    layer = "art"
+    aliasOverride = "run LOS 3"
+    sourceControlType = "Cursor146"
+    rect = "80,360,32,32"
+    legacyLocalRect = "80,360,32,32"
+    legacyRectSource = "cursor_catalog_grid_preview"
+    texture = "data/art/gui/run.png"
+    legacyTexture = "run"
+    uiPackage = "legacy_imgui"
+    rectModel = "legacy_imgui.modern_rect_v1"
+    controlRect = "80,360,32,32"
+    artRect = "80,360,32,32"
+    artLayer = "control_art"
+    legacyUvX = 64
+    uvX = 512
+    legacyUvY = 128
+    uvY = 1024
+    legacyUvWidth = 32
+    uvWidth = 256
+    legacyUvHeight = 32
+    uvHeight = 256
+}
+
+GuiImage {
+    key = "shared.cursors.image.run_los_4"
+    pageKey = "shared.cursors"
+    legacySection = "Cursor147"
+    legacyComment = "run LOS 4"
+    role = "image"
+    layer = "art"
+    aliasOverride = "run LOS 4"
+    sourceControlType = "Cursor147"
+    rect = "120,360,32,32"
+    legacyLocalRect = "120,360,32,32"
+    legacyRectSource = "cursor_catalog_grid_preview"
+    texture = "data/art/gui/run.png"
+    legacyTexture = "run"
+    uiPackage = "legacy_imgui"
+    rectModel = "legacy_imgui.modern_rect_v1"
+    controlRect = "120,360,32,32"
+    artRect = "120,360,32,32"
+    artLayer = "control_art"
+    legacyUvX = 96
+    uvX = 768
+    legacyUvY = 128
+    uvY = 1024
+    legacyUvWidth = 32
+    uvWidth = 256
+    legacyUvHeight = 32
+    uvHeight = 256
+}
+
+GuiImage {
+    key = "shared.cursors.image.run_los_5"
+    pageKey = "shared.cursors"
+    legacySection = "Cursor148"
+    legacyComment = "run LOS 5"
+    role = "image"
+    layer = "art"
+    aliasOverride = "run LOS 5"
+    sourceControlType = "Cursor148"
+    rect = "160,360,32,32"
+    legacyLocalRect = "160,360,32,32"
+    legacyRectSource = "cursor_catalog_grid_preview"
+    texture = "data/art/gui/run.png"
+    legacyTexture = "run"
+    uiPackage = "legacy_imgui"
+    rectModel = "legacy_imgui.modern_rect_v1"
+    controlRect = "160,360,32,32"
+    artRect = "160,360,32,32"
+    artLayer = "control_art"
+    legacyUvX = 128
+    uvX = 1024
+    legacyUvY = 128
+    uvY = 1024
+    legacyUvWidth = 32
+    uvWidth = 256
+    legacyUvHeight = 32
+    uvHeight = 256
+}
+
+GuiImage {
+    key = "shared.cursors.image.run_los_6"
+    pageKey = "shared.cursors"
+    legacySection = "Cursor149"
+    legacyComment = "run LOS 6"
+    role = "image"
+    layer = "art"
+    aliasOverride = "run LOS 6"
+    sourceControlType = "Cursor149"
+    rect = "200,360,32,32"
+    legacyLocalRect = "200,360,32,32"
+    legacyRectSource = "cursor_catalog_grid_preview"
+    texture = "data/art/gui/run.png"
+    legacyTexture = "run"
+    uiPackage = "legacy_imgui"
+    rectModel = "legacy_imgui.modern_rect_v1"
+    controlRect = "200,360,32,32"
+    artRect = "200,360,32,32"
+    artLayer = "control_art"
+    legacyUvX = 160
+    uvX = 1280
+    legacyUvY = 128
+    uvY = 1024
+    legacyUvWidth = 32
+    uvWidth = 256
+    legacyUvHeight = 32
+    uvHeight = 256
+}
+
+GuiImage {
+    key = "shared.cursors.image.run_los_7"
+    pageKey = "shared.cursors"
+    legacySection = "Cursor150"
+    legacyComment = "run LOS 7"
+    role = "image"
+    layer = "art"
+    aliasOverride = "run LOS 7"
+    sourceControlType = "Cursor150"
+    rect = "240,360,32,32"
+    legacyLocalRect = "240,360,32,32"
+    legacyRectSource = "cursor_catalog_grid_preview"
+    texture = "data/art/gui/run.png"
+    legacyTexture = "run"
+    uiPackage = "legacy_imgui"
+    rectModel = "legacy_imgui.modern_rect_v1"
+    controlRect = "240,360,32,32"
+    artRect = "240,360,32,32"
+    artLayer = "control_art"
+    legacyUvX = 192
+    uvX = 1536
+    legacyUvY = 128
+    uvY = 1024
+    legacyUvWidth = 32
+    uvWidth = 256
+    legacyUvHeight = 32
+    uvHeight = 256
+}
+
+GuiImage {
+    key = "shared.cursors.image.run_los_8"
+    pageKey = "shared.cursors"
+    legacySection = "Cursor151"
+    legacyComment = "run LOS 8"
+    role = "image"
+    layer = "art"
+    aliasOverride = "run LOS 8"
+    sourceControlType = "Cursor151"
+    rect = "280,360,32,32"
+    legacyLocalRect = "280,360,32,32"
+    legacyRectSource = "cursor_catalog_grid_preview"
+    texture = "data/art/gui/run.png"
+    legacyTexture = "run"
+    uiPackage = "legacy_imgui"
+    rectModel = "legacy_imgui.modern_rect_v1"
+    controlRect = "280,360,32,32"
+    artRect = "280,360,32,32"
+    artLayer = "control_art"
+    legacyUvX = 224
+    uvX = 1792
+    legacyUvY = 128
+    uvY = 1024
+    legacyUvWidth = 32
+    uvWidth = 256
+    legacyUvHeight = 32
+    uvHeight = 256
+}
+
+GuiImage {
+    key = "shared.cursors.image.run_los_9"
+    pageKey = "shared.cursors"
+    legacySection = "Cursor152"
+    legacyComment = "run LOS 9"
+    role = "image"
+    layer = "art"
+    aliasOverride = "run LOS 9"
+    sourceControlType = "Cursor152"
+    rect = "320,360,32,32"
+    legacyLocalRect = "320,360,32,32"
+    legacyRectSource = "cursor_catalog_grid_preview"
+    texture = "data/art/gui/run.png"
+    legacyTexture = "run"
+    uiPackage = "legacy_imgui"
+    rectModel = "legacy_imgui.modern_rect_v1"
+    controlRect = "320,360,32,32"
+    artRect = "320,360,32,32"
+    artLayer = "control_art"
+    legacyUvX = 0
+    uvX = 0
+    legacyUvY = 160
+    uvY = 1280
+    legacyUvWidth = 32
+    uvWidth = 256
+    legacyUvHeight = 32
+    uvHeight = 256
+}
+
+GuiImage {
+    key = "shared.cursors.image.run_los_10"
+    pageKey = "shared.cursors"
+    legacySection = "Cursor153"
+    legacyComment = "run LOS 10"
+    role = "image"
+    layer = "art"
+    aliasOverride = "run LOS 10"
+    sourceControlType = "Cursor153"
+    rect = "360,360,32,32"
+    legacyLocalRect = "360,360,32,32"
+    legacyRectSource = "cursor_catalog_grid_preview"
+    texture = "data/art/gui/run.png"
+    legacyTexture = "run"
+    uiPackage = "legacy_imgui"
+    rectModel = "legacy_imgui.modern_rect_v1"
+    controlRect = "360,360,32,32"
+    artRect = "360,360,32,32"
+    artLayer = "control_art"
+    legacyUvX = 32
+    uvX = 256
+    legacyUvY = 160
+    uvY = 1280
+    legacyUvWidth = 32
+    uvWidth = 256
+    legacyUvHeight = 32
+    uvHeight = 256
+}
+
+GuiImage {
+    key = "shared.cursors.image.run_los_11"
+    pageKey = "shared.cursors"
+    legacySection = "Cursor154"
+    legacyComment = "run LOS 11"
+    role = "image"
+    layer = "art"
+    aliasOverride = "run LOS 11"
+    sourceControlType = "Cursor154"
+    rect = "400,360,32,32"
+    legacyLocalRect = "400,360,32,32"
+    legacyRectSource = "cursor_catalog_grid_preview"
+    texture = "data/art/gui/run.png"
+    legacyTexture = "run"
+    uiPackage = "legacy_imgui"
+    rectModel = "legacy_imgui.modern_rect_v1"
+    controlRect = "400,360,32,32"
+    artRect = "400,360,32,32"
+    artLayer = "control_art"
+    legacyUvX = 64
+    uvX = 512
+    legacyUvY = 160
+    uvY = 1280
+    legacyUvWidth = 32
+    uvWidth = 256
+    legacyUvHeight = 32
+    uvHeight = 256
+}
+
+GuiImage {
+    key = "shared.cursors.image.run_los_12"
+    pageKey = "shared.cursors"
+    legacySection = "Cursor155"
+    legacyComment = "run LOS 12"
+    role = "image"
+    layer = "art"
+    aliasOverride = "run LOS 12"
+    sourceControlType = "Cursor155"
+    rect = "440,360,32,32"
+    legacyLocalRect = "440,360,32,32"
+    legacyRectSource = "cursor_catalog_grid_preview"
+    texture = "data/art/gui/run.png"
+    legacyTexture = "run"
+    uiPackage = "legacy_imgui"
+    rectModel = "legacy_imgui.modern_rect_v1"
+    controlRect = "440,360,32,32"
+    artRect = "440,360,32,32"
+    artLayer = "control_art"
+    legacyUvX = 96
+    uvX = 768
+    legacyUvY = 160
+    uvY = 1280
+    legacyUvWidth = 32
+    uvWidth = 256
+    legacyUvHeight = 32
+    uvHeight = 256
+}
+
+GuiImage {
+    key = "shared.cursors.image.run_los_13"
+    pageKey = "shared.cursors"
+    legacySection = "Cursor156"
+    legacyComment = "run LOS 13"
+    role = "image"
+    layer = "art"
+    aliasOverride = "run LOS 13"
+    sourceControlType = "Cursor156"
+    rect = "480,360,32,32"
+    legacyLocalRect = "480,360,32,32"
+    legacyRectSource = "cursor_catalog_grid_preview"
+    texture = "data/art/gui/run.png"
+    legacyTexture = "run"
+    uiPackage = "legacy_imgui"
+    rectModel = "legacy_imgui.modern_rect_v1"
+    controlRect = "480,360,32,32"
+    artRect = "480,360,32,32"
+    artLayer = "control_art"
+    legacyUvX = 128
+    uvX = 1024
+    legacyUvY = 160
+    uvY = 1280
+    legacyUvWidth = 32
+    uvWidth = 256
+    legacyUvHeight = 32
+    uvHeight = 256
+}
+
+GuiImage {
+    key = "shared.cursors.image.run_los_14"
+    pageKey = "shared.cursors"
+    legacySection = "Cursor157"
+    legacyComment = "run LOS 14"
+    role = "image"
+    layer = "art"
+    aliasOverride = "run LOS 14"
+    sourceControlType = "Cursor157"
+    rect = "520,360,32,32"
+    legacyLocalRect = "520,360,32,32"
+    legacyRectSource = "cursor_catalog_grid_preview"
+    texture = "data/art/gui/run.png"
+    legacyTexture = "run"
+    uiPackage = "legacy_imgui"
+    rectModel = "legacy_imgui.modern_rect_v1"
+    controlRect = "520,360,32,32"
+    artRect = "520,360,32,32"
+    artLayer = "control_art"
+    legacyUvX = 160
+    uvX = 1280
+    legacyUvY = 160
+    uvY = 1280
+    legacyUvWidth = 32
+    uvWidth = 256
+    legacyUvHeight = 32
+    uvHeight = 256
+}
+
+GuiImage {
+    key = "shared.cursors.image.run_los_15"
+    pageKey = "shared.cursors"
+    legacySection = "Cursor158"
+    legacyComment = "run LOS 15"
+    role = "image"
+    layer = "art"
+    aliasOverride = "run LOS 15"
+    sourceControlType = "Cursor158"
+    rect = "560,360,32,32"
+    legacyLocalRect = "560,360,32,32"
+    legacyRectSource = "cursor_catalog_grid_preview"
+    texture = "data/art/gui/run.png"
+    legacyTexture = "run"
+    uiPackage = "legacy_imgui"
+    rectModel = "legacy_imgui.modern_rect_v1"
+    controlRect = "560,360,32,32"
+    artRect = "560,360,32,32"
+    artLayer = "control_art"
+    legacyUvX = 192
+    uvX = 1536
+    legacyUvY = 160
+    uvY = 1280
+    legacyUvWidth = 32
+    uvWidth = 256
+    legacyUvHeight = 32
+    uvHeight = 256
+}
+
+GuiImage {
+    key = "shared.cursors.image.run_los_16"
+    pageKey = "shared.cursors"
+    legacySection = "Cursor159"
+    legacyComment = "run LOS 16"
+    role = "image"
+    layer = "art"
+    aliasOverride = "run LOS 16"
+    sourceControlType = "Cursor159"
+    rect = "600,360,32,32"
+    legacyLocalRect = "600,360,32,32"
+    legacyRectSource = "cursor_catalog_grid_preview"
+    texture = "data/art/gui/run.png"
+    legacyTexture = "run"
+    uiPackage = "legacy_imgui"
+    rectModel = "legacy_imgui.modern_rect_v1"
+    controlRect = "600,360,32,32"
+    artRect = "600,360,32,32"
+    artLayer = "control_art"
+    legacyUvX = 224
+    uvX = 1792
+    legacyUvY = 160
+    uvY = 1280
+    legacyUvWidth = 32
+    uvWidth = 256
+    legacyUvHeight = 32
+    uvHeight = 256
+}
+
+GuiImage {
+    key = "shared.cursors.image.run_los_17"
+    pageKey = "shared.cursors"
+    legacySection = "Cursor160"
+    legacyComment = "run LOS 17"
+    role = "image"
+    layer = "art"
+    aliasOverride = "run LOS 17"
+    sourceControlType = "Cursor160"
+    rect = "0,400,32,32"
+    legacyLocalRect = "0,400,32,32"
+    legacyRectSource = "cursor_catalog_grid_preview"
+    texture = "data/art/gui/run.png"
+    legacyTexture = "run"
+    uiPackage = "legacy_imgui"
+    rectModel = "legacy_imgui.modern_rect_v1"
+    controlRect = "0,400,32,32"
+    artRect = "0,400,32,32"
+    artLayer = "control_art"
+    legacyUvX = 0
+    uvX = 0
+    legacyUvY = 192
+    uvY = 1536
+    legacyUvWidth = 32
+    uvWidth = 256
+    legacyUvHeight = 32
+    uvHeight = 256
+}
+
+GuiImage {
+    key = "shared.cursors.image.run_los_18"
+    pageKey = "shared.cursors"
+    legacySection = "Cursor161"
+    legacyComment = "run LOS 18"
+    role = "image"
+    layer = "art"
+    aliasOverride = "run LOS 18"
+    sourceControlType = "Cursor161"
+    rect = "40,400,32,32"
+    legacyLocalRect = "40,400,32,32"
+    legacyRectSource = "cursor_catalog_grid_preview"
+    texture = "data/art/gui/run.png"
+    legacyTexture = "run"
+    uiPackage = "legacy_imgui"
+    rectModel = "legacy_imgui.modern_rect_v1"
+    controlRect = "40,400,32,32"
+    artRect = "40,400,32,32"
+    artLayer = "control_art"
+    legacyUvX = 32
+    uvX = 256
+    legacyUvY = 192
+    uvY = 1536
+    legacyUvWidth = 32
+    uvWidth = 256
+    legacyUvHeight = 32
+    uvHeight = 256
+}
+
+GuiImage {
+    key = "shared.cursors.image.run_los_19"
+    pageKey = "shared.cursors"
+    legacySection = "Cursor162"
+    legacyComment = "run LOS 19"
+    role = "image"
+    layer = "art"
+    aliasOverride = "run LOS 19"
+    sourceControlType = "Cursor162"
+    rect = "80,400,32,32"
+    legacyLocalRect = "80,400,32,32"
+    legacyRectSource = "cursor_catalog_grid_preview"
+    texture = "data/art/gui/run.png"
+    legacyTexture = "run"
+    uiPackage = "legacy_imgui"
+    rectModel = "legacy_imgui.modern_rect_v1"
+    controlRect = "80,400,32,32"
+    artRect = "80,400,32,32"
+    artLayer = "control_art"
+    legacyUvX = 64
+    uvX = 512
+    legacyUvY = 192
+    uvY = 1536
+    legacyUvWidth = 32
+    uvWidth = 256
+    legacyUvHeight = 32
+    uvHeight = 256
+}
+
+GuiImage {
+    key = "shared.cursors.image.run_los_20"
+    pageKey = "shared.cursors"
+    legacySection = "Cursor163"
+    legacyComment = "run LOS 20"
+    role = "image"
+    layer = "art"
+    aliasOverride = "run LOS 20"
+    sourceControlType = "Cursor163"
+    rect = "120,400,32,32"
+    legacyLocalRect = "120,400,32,32"
+    legacyRectSource = "cursor_catalog_grid_preview"
+    texture = "data/art/gui/run.png"
+    legacyTexture = "run"
+    uiPackage = "legacy_imgui"
+    rectModel = "legacy_imgui.modern_rect_v1"
+    controlRect = "120,400,32,32"
+    artRect = "120,400,32,32"
+    artLayer = "control_art"
+    legacyUvX = 96
+    uvX = 768
+    legacyUvY = 192
+    uvY = 1536
+    legacyUvWidth = 32
+    uvWidth = 256
+    legacyUvHeight = 32
+    uvHeight = 256
+}
+
+GuiImage {
+    key = "shared.cursors.image.run_los_21"
+    pageKey = "shared.cursors"
+    legacySection = "Cursor164"
+    legacyComment = "run LOS 21"
+    role = "image"
+    layer = "art"
+    aliasOverride = "run LOS 21"
+    sourceControlType = "Cursor164"
+    rect = "160,400,32,32"
+    legacyLocalRect = "160,400,32,32"
+    legacyRectSource = "cursor_catalog_grid_preview"
+    texture = "data/art/gui/run.png"
+    legacyTexture = "run"
+    uiPackage = "legacy_imgui"
+    rectModel = "legacy_imgui.modern_rect_v1"
+    controlRect = "160,400,32,32"
+    artRect = "160,400,32,32"
+    artLayer = "control_art"
+    legacyUvX = 128
+    uvX = 1024
+    legacyUvY = 192
+    uvY = 1536
+    legacyUvWidth = 32
+    uvWidth = 256
+    legacyUvHeight = 32
+    uvHeight = 256
+}
+
+GuiImage {
+    key = "shared.cursors.image.run_los_22"
+    pageKey = "shared.cursors"
+    legacySection = "Cursor165"
+    legacyComment = "run LOS 22"
+    role = "image"
+    layer = "art"
+    aliasOverride = "run LOS 22"
+    sourceControlType = "Cursor165"
+    rect = "200,400,32,32"
+    legacyLocalRect = "200,400,32,32"
+    legacyRectSource = "cursor_catalog_grid_preview"
+    texture = "data/art/gui/run.png"
+    legacyTexture = "run"
+    uiPackage = "legacy_imgui"
+    rectModel = "legacy_imgui.modern_rect_v1"
+    controlRect = "200,400,32,32"
+    artRect = "200,400,32,32"
+    artLayer = "control_art"
+    legacyUvX = 160
+    uvX = 1280
+    legacyUvY = 192
+    uvY = 1536
+    legacyUvWidth = 32
+    uvWidth = 256
+    legacyUvHeight = 32
+    uvHeight = 256
+}
+
+GuiImage {
+    key = "shared.cursors.image.run_los_23"
+    pageKey = "shared.cursors"
+    legacySection = "Cursor166"
+    legacyComment = "run LOS 23"
+    role = "image"
+    layer = "art"
+    aliasOverride = "run LOS 23"
+    sourceControlType = "Cursor166"
+    rect = "240,400,32,32"
+    legacyLocalRect = "240,400,32,32"
+    legacyRectSource = "cursor_catalog_grid_preview"
+    texture = "data/art/gui/run.png"
+    legacyTexture = "run"
+    uiPackage = "legacy_imgui"
+    rectModel = "legacy_imgui.modern_rect_v1"
+    controlRect = "240,400,32,32"
+    artRect = "240,400,32,32"
+    artLayer = "control_art"
+    legacyUvX = 192
+    uvX = 1536
+    legacyUvY = 192
+    uvY = 1536
+    legacyUvWidth = 32
+    uvWidth = 256
+    legacyUvHeight = 32
+    uvHeight = 256
+}
+
+GuiImage {
+    key = "shared.cursors.image.run_los_24"
+    pageKey = "shared.cursors"
+    legacySection = "Cursor167"
+    legacyComment = "run LOS 24"
+    role = "image"
+    layer = "art"
+    aliasOverride = "run LOS 24"
+    sourceControlType = "Cursor167"
+    rect = "280,400,32,32"
+    legacyLocalRect = "280,400,32,32"
+    legacyRectSource = "cursor_catalog_grid_preview"
+    texture = "data/art/gui/run.png"
+    legacyTexture = "run"
+    uiPackage = "legacy_imgui"
+    rectModel = "legacy_imgui.modern_rect_v1"
+    controlRect = "280,400,32,32"
+    artRect = "280,400,32,32"
+    artLayer = "control_art"
+    legacyUvX = 224
+    uvX = 1792
+    legacyUvY = 192
+    uvY = 1536
+    legacyUvWidth = 32
+    uvWidth = 256
+    legacyUvHeight = 32
+    uvHeight = 256
+}
+
+GuiImage {
+    key = "shared.cursors.image.run_los_25"
+    pageKey = "shared.cursors"
+    legacySection = "Cursor168"
+    legacyComment = "run LOS 25"
+    role = "image"
+    layer = "art"
+    aliasOverride = "run LOS 25"
+    sourceControlType = "Cursor168"
+    rect = "320,400,32,32"
+    legacyLocalRect = "320,400,32,32"
+    legacyRectSource = "cursor_catalog_grid_preview"
+    texture = "data/art/gui/run.png"
+    legacyTexture = "run"
+    uiPackage = "legacy_imgui"
+    rectModel = "legacy_imgui.modern_rect_v1"
+    controlRect = "320,400,32,32"
+    artRect = "320,400,32,32"
+    artLayer = "control_art"
+    legacyUvX = 0
+    uvX = 0
+    legacyUvY = 224
+    uvY = 1792
+    legacyUvWidth = 32
+    uvWidth = 256
+    legacyUvHeight = 32
+    uvHeight = 256
+}
+
+GuiImage {
+    key = "shared.cursors.image.run_los_26"
+    pageKey = "shared.cursors"
+    legacySection = "Cursor169"
+    legacyComment = "run LOS 26"
+    role = "image"
+    layer = "art"
+    aliasOverride = "run LOS 26"
+    sourceControlType = "Cursor169"
+    rect = "360,400,32,32"
+    legacyLocalRect = "360,400,32,32"
+    legacyRectSource = "cursor_catalog_grid_preview"
+    texture = "data/art/gui/run.png"
+    legacyTexture = "run"
+    uiPackage = "legacy_imgui"
+    rectModel = "legacy_imgui.modern_rect_v1"
+    controlRect = "360,400,32,32"
+    artRect = "360,400,32,32"
+    artLayer = "control_art"
+    legacyUvX = 32
+    uvX = 256
+    legacyUvY = 224
+    uvY = 1792
+    legacyUvWidth = 32
+    uvWidth = 256
+    legacyUvHeight = 32
+    uvHeight = 256
+}
+
+GuiImage {
+    key = "shared.cursors.image.run_los_27"
+    pageKey = "shared.cursors"
+    legacySection = "Cursor170"
+    legacyComment = "run LOS 27"
+    role = "image"
+    layer = "art"
+    aliasOverride = "run LOS 27"
+    sourceControlType = "Cursor170"
+    rect = "400,400,32,32"
+    legacyLocalRect = "400,400,32,32"
+    legacyRectSource = "cursor_catalog_grid_preview"
+    texture = "data/art/gui/run.png"
+    legacyTexture = "run"
+    uiPackage = "legacy_imgui"
+    rectModel = "legacy_imgui.modern_rect_v1"
+    controlRect = "400,400,32,32"
+    artRect = "400,400,32,32"
+    artLayer = "control_art"
+    legacyUvX = 64
+    uvX = 512
+    legacyUvY = 224
+    uvY = 1792
+    legacyUvWidth = 32
+    uvWidth = 256
+    legacyUvHeight = 32
+    uvHeight = 256
+}
+
+GuiImage {
+    key = "shared.cursors.image.run_los_28"
+    pageKey = "shared.cursors"
+    legacySection = "Cursor171"
+    legacyComment = "run LOS 28"
+    role = "image"
+    layer = "art"
+    aliasOverride = "run LOS 28"
+    sourceControlType = "Cursor171"
+    rect = "440,400,32,32"
+    legacyLocalRect = "440,400,32,32"
+    legacyRectSource = "cursor_catalog_grid_preview"
+    texture = "data/art/gui/run.png"
+    legacyTexture = "run"
+    uiPackage = "legacy_imgui"
+    rectModel = "legacy_imgui.modern_rect_v1"
+    controlRect = "440,400,32,32"
+    artRect = "440,400,32,32"
+    artLayer = "control_art"
+    legacyUvX = 96
+    uvX = 768
+    legacyUvY = 224
+    uvY = 1792
+    legacyUvWidth = 32
+    uvWidth = 256
+    legacyUvHeight = 32
+    uvHeight = 256
+}
+
+GuiImage {
+    key = "shared.cursors.image.run_los_29"
+    pageKey = "shared.cursors"
+    legacySection = "Cursor172"
+    legacyComment = "run LOS 29"
+    role = "image"
+    layer = "art"
+    aliasOverride = "run LOS 29"
+    sourceControlType = "Cursor172"
+    rect = "480,400,32,32"
+    legacyLocalRect = "480,400,32,32"
+    legacyRectSource = "cursor_catalog_grid_preview"
+    texture = "data/art/gui/run.png"
+    legacyTexture = "run"
+    uiPackage = "legacy_imgui"
+    rectModel = "legacy_imgui.modern_rect_v1"
+    controlRect = "480,400,32,32"
+    artRect = "480,400,32,32"
+    artLayer = "control_art"
+    legacyUvX = 128
+    uvX = 1024
+    legacyUvY = 224
+    uvY = 1792
+    legacyUvWidth = 32
+    uvWidth = 256
+    legacyUvHeight = 32
+    uvHeight = 256
+}
+
+GuiImage {
+    key = "shared.cursors.image.run_los_30"
+    pageKey = "shared.cursors"
+    legacySection = "Cursor173"
+    legacyComment = "run LOS 30"
+    role = "image"
+    layer = "art"
+    aliasOverride = "run LOS 30"
+    sourceControlType = "Cursor173"
+    rect = "520,400,32,32"
+    legacyLocalRect = "520,400,32,32"
+    legacyRectSource = "cursor_catalog_grid_preview"
+    texture = "data/art/gui/run.png"
+    legacyTexture = "run"
+    uiPackage = "legacy_imgui"
+    rectModel = "legacy_imgui.modern_rect_v1"
+    controlRect = "520,400,32,32"
+    artRect = "520,400,32,32"
+    artLayer = "control_art"
+    legacyUvX = 160
+    uvX = 1280
+    legacyUvY = 224
+    uvY = 1792
+    legacyUvWidth = 32
+    uvWidth = 256
+    legacyUvHeight = 32
+    uvHeight = 256
+}
+
+GuiImage {
+    key = "shared.cursors.image.run_los_31"
+    pageKey = "shared.cursors"
+    legacySection = "Cursor174"
+    legacyComment = "run LOS 31"
+    role = "image"
+    layer = "art"
+    aliasOverride = "run LOS 31"
+    sourceControlType = "Cursor174"
+    rect = "560,400,32,32"
+    legacyLocalRect = "560,400,32,32"
+    legacyRectSource = "cursor_catalog_grid_preview"
+    texture = "data/art/gui/run.png"
+    legacyTexture = "run"
+    uiPackage = "legacy_imgui"
+    rectModel = "legacy_imgui.modern_rect_v1"
+    controlRect = "560,400,32,32"
+    artRect = "560,400,32,32"
+    artLayer = "control_art"
+    legacyUvX = 192
+    uvX = 1536
+    legacyUvY = 224
+    uvY = 1792
+    legacyUvWidth = 32
+    uvWidth = 256
+    legacyUvHeight = 32
+    uvHeight = 256
+}
+
+GuiImage {
+    key = "shared.cursors.image.run_los_32"
+    pageKey = "shared.cursors"
+    legacySection = "Cursor175"
+    legacyComment = "run LOS 32"
+    role = "image"
+    layer = "art"
+    aliasOverride = "run LOS 32"
+    sourceControlType = "Cursor175"
+    rect = "600,400,32,32"
+    legacyLocalRect = "600,400,32,32"
+    legacyRectSource = "cursor_catalog_grid_preview"
+    texture = "data/art/gui/run.png"
+    legacyTexture = "run"
+    uiPackage = "legacy_imgui"
+    rectModel = "legacy_imgui.modern_rect_v1"
+    controlRect = "600,400,32,32"
+    artRect = "600,400,32,32"
+    artLayer = "control_art"
+    legacyUvX = 224
+    uvX = 1792
+    legacyUvY = 224
+    uvY = 1792
+    legacyUvWidth = 32
+    uvWidth = 256
+    legacyUvHeight = 32
+    uvHeight = 256
+}
+
+GuiImage {
+    key = "shared.cursors.image.jump_1"
+    pageKey = "shared.cursors"
+    legacySection = "Cursor176"
+    legacyComment = "jump 1"
+    role = "image"
+    layer = "art"
+    aliasOverride = "jump 1"
+    sourceControlType = "Cursor176"
+    rect = "0,440,32,32"
+    legacyLocalRect = "0,440,32,32"
+    legacyRectSource = "cursor_catalog_grid_preview"
+    texture = "data/art/gui/jump.png"
+    legacyTexture = "jump"
+    uiPackage = "legacy_imgui"
+    rectModel = "legacy_imgui.modern_rect_v1"
+    controlRect = "0,440,32,32"
+    artRect = "0,440,32,32"
+    artLayer = "control_art"
+    legacyUvX = 0
+    uvX = 0
+    legacyUvY = 0
+    uvY = 0
+    legacyUvWidth = 32
+    uvWidth = 256
+    legacyUvHeight = 32
+    uvHeight = 256
+}
+
+GuiImage {
+    key = "shared.cursors.image.jump_2"
+    pageKey = "shared.cursors"
+    legacySection = "Cursor177"
+    legacyComment = "jump 2"
+    role = "image"
+    layer = "art"
+    aliasOverride = "jump 2"
+    sourceControlType = "Cursor177"
+    rect = "40,440,32,32"
+    legacyLocalRect = "40,440,32,32"
+    legacyRectSource = "cursor_catalog_grid_preview"
+    texture = "data/art/gui/jump.png"
+    legacyTexture = "jump"
+    uiPackage = "legacy_imgui"
+    rectModel = "legacy_imgui.modern_rect_v1"
+    controlRect = "40,440,32,32"
+    artRect = "40,440,32,32"
+    artLayer = "control_art"
+    legacyUvX = 32
+    uvX = 256
+    legacyUvY = 0
+    uvY = 0
+    legacyUvWidth = 32
+    uvWidth = 256
+    legacyUvHeight = 32
+    uvHeight = 256
+}
+
+GuiImage {
+    key = "shared.cursors.image.jump_3"
+    pageKey = "shared.cursors"
+    legacySection = "Cursor178"
+    legacyComment = "jump 3"
+    role = "image"
+    layer = "art"
+    aliasOverride = "jump 3"
+    sourceControlType = "Cursor178"
+    rect = "80,440,32,32"
+    legacyLocalRect = "80,440,32,32"
+    legacyRectSource = "cursor_catalog_grid_preview"
+    texture = "data/art/gui/jump.png"
+    legacyTexture = "jump"
+    uiPackage = "legacy_imgui"
+    rectModel = "legacy_imgui.modern_rect_v1"
+    controlRect = "80,440,32,32"
+    artRect = "80,440,32,32"
+    artLayer = "control_art"
+    legacyUvX = 64
+    uvX = 512
+    legacyUvY = 0
+    uvY = 0
+    legacyUvWidth = 32
+    uvWidth = 256
+    legacyUvHeight = 32
+    uvHeight = 256
+}
+
+GuiImage {
+    key = "shared.cursors.image.jump_4"
+    pageKey = "shared.cursors"
+    legacySection = "Cursor179"
+    legacyComment = "jump 4"
+    role = "image"
+    layer = "art"
+    aliasOverride = "jump 4"
+    sourceControlType = "Cursor179"
+    rect = "120,440,32,32"
+    legacyLocalRect = "120,440,32,32"
+    legacyRectSource = "cursor_catalog_grid_preview"
+    texture = "data/art/gui/jump.png"
+    legacyTexture = "jump"
+    uiPackage = "legacy_imgui"
+    rectModel = "legacy_imgui.modern_rect_v1"
+    controlRect = "120,440,32,32"
+    artRect = "120,440,32,32"
+    artLayer = "control_art"
+    legacyUvX = 96
+    uvX = 768
+    legacyUvY = 0
+    uvY = 0
+    legacyUvWidth = 32
+    uvWidth = 256
+    legacyUvHeight = 32
+    uvHeight = 256
+}
+
+GuiImage {
+    key = "shared.cursors.image.jump_5"
+    pageKey = "shared.cursors"
+    legacySection = "Cursor180"
+    legacyComment = "jump 5"
+    role = "image"
+    layer = "art"
+    aliasOverride = "jump 5"
+    sourceControlType = "Cursor180"
+    rect = "160,440,32,32"
+    legacyLocalRect = "160,440,32,32"
+    legacyRectSource = "cursor_catalog_grid_preview"
+    texture = "data/art/gui/jump.png"
+    legacyTexture = "jump"
+    uiPackage = "legacy_imgui"
+    rectModel = "legacy_imgui.modern_rect_v1"
+    controlRect = "160,440,32,32"
+    artRect = "160,440,32,32"
+    artLayer = "control_art"
+    legacyUvX = 128
+    uvX = 1024
+    legacyUvY = 0
+    uvY = 0
+    legacyUvWidth = 32
+    uvWidth = 256
+    legacyUvHeight = 32
+    uvHeight = 256
+}
+
+GuiImage {
+    key = "shared.cursors.image.jump_6"
+    pageKey = "shared.cursors"
+    legacySection = "Cursor181"
+    legacyComment = "jump 6"
+    role = "image"
+    layer = "art"
+    aliasOverride = "jump 6"
+    sourceControlType = "Cursor181"
+    rect = "200,440,32,32"
+    legacyLocalRect = "200,440,32,32"
+    legacyRectSource = "cursor_catalog_grid_preview"
+    texture = "data/art/gui/jump.png"
+    legacyTexture = "jump"
+    uiPackage = "legacy_imgui"
+    rectModel = "legacy_imgui.modern_rect_v1"
+    controlRect = "200,440,32,32"
+    artRect = "200,440,32,32"
+    artLayer = "control_art"
+    legacyUvX = 160
+    uvX = 1280
+    legacyUvY = 0
+    uvY = 0
+    legacyUvWidth = 32
+    uvWidth = 256
+    legacyUvHeight = 32
+    uvHeight = 256
+}
+
+GuiImage {
+    key = "shared.cursors.image.jump_7"
+    pageKey = "shared.cursors"
+    legacySection = "Cursor182"
+    legacyComment = "jump 7"
+    role = "image"
+    layer = "art"
+    aliasOverride = "jump 7"
+    sourceControlType = "Cursor182"
+    rect = "240,440,32,32"
+    legacyLocalRect = "240,440,32,32"
+    legacyRectSource = "cursor_catalog_grid_preview"
+    texture = "data/art/gui/jump.png"
+    legacyTexture = "jump"
+    uiPackage = "legacy_imgui"
+    rectModel = "legacy_imgui.modern_rect_v1"
+    controlRect = "240,440,32,32"
+    artRect = "240,440,32,32"
+    artLayer = "control_art"
+    legacyUvX = 192
+    uvX = 1536
+    legacyUvY = 0
+    uvY = 0
+    legacyUvWidth = 32
+    uvWidth = 256
+    legacyUvHeight = 32
+    uvHeight = 256
+}
+
+GuiImage {
+    key = "shared.cursors.image.jump_8"
+    pageKey = "shared.cursors"
+    legacySection = "Cursor183"
+    legacyComment = "jump 8"
+    role = "image"
+    layer = "art"
+    aliasOverride = "jump 8"
+    sourceControlType = "Cursor183"
+    rect = "280,440,32,32"
+    legacyLocalRect = "280,440,32,32"
+    legacyRectSource = "cursor_catalog_grid_preview"
+    texture = "data/art/gui/jump.png"
+    legacyTexture = "jump"
+    uiPackage = "legacy_imgui"
+    rectModel = "legacy_imgui.modern_rect_v1"
+    controlRect = "280,440,32,32"
+    artRect = "280,440,32,32"
+    artLayer = "control_art"
+    legacyUvX = 224
+    uvX = 1792
+    legacyUvY = 0
+    uvY = 0
+    legacyUvWidth = 32
+    uvWidth = 256
+    legacyUvHeight = 32
+    uvHeight = 256
+}
+
+GuiImage {
+    key = "shared.cursors.image.jump_9"
+    pageKey = "shared.cursors"
+    legacySection = "Cursor184"
+    legacyComment = "jump 9"
+    role = "image"
+    layer = "art"
+    aliasOverride = "jump 9"
+    sourceControlType = "Cursor184"
+    rect = "320,440,32,32"
+    legacyLocalRect = "320,440,32,32"
+    legacyRectSource = "cursor_catalog_grid_preview"
+    texture = "data/art/gui/jump.png"
+    legacyTexture = "jump"
+    uiPackage = "legacy_imgui"
+    rectModel = "legacy_imgui.modern_rect_v1"
+    controlRect = "320,440,32,32"
+    artRect = "320,440,32,32"
+    artLayer = "control_art"
+    legacyUvX = 0
+    uvX = 0
+    legacyUvY = 32
+    uvY = 256
+    legacyUvWidth = 32
+    uvWidth = 256
+    legacyUvHeight = 32
+    uvHeight = 256
+}
+
+GuiImage {
+    key = "shared.cursors.image.jump_10"
+    pageKey = "shared.cursors"
+    legacySection = "Cursor185"
+    legacyComment = "jump 10"
+    role = "image"
+    layer = "art"
+    aliasOverride = "jump 10"
+    sourceControlType = "Cursor185"
+    rect = "360,440,32,32"
+    legacyLocalRect = "360,440,32,32"
+    legacyRectSource = "cursor_catalog_grid_preview"
+    texture = "data/art/gui/jump.png"
+    legacyTexture = "jump"
+    uiPackage = "legacy_imgui"
+    rectModel = "legacy_imgui.modern_rect_v1"
+    controlRect = "360,440,32,32"
+    artRect = "360,440,32,32"
+    artLayer = "control_art"
+    legacyUvX = 32
+    uvX = 256
+    legacyUvY = 32
+    uvY = 256
+    legacyUvWidth = 32
+    uvWidth = 256
+    legacyUvHeight = 32
+    uvHeight = 256
+}
+
+GuiImage {
+    key = "shared.cursors.image.jump_11"
+    pageKey = "shared.cursors"
+    legacySection = "Cursor186"
+    legacyComment = "jump 11"
+    role = "image"
+    layer = "art"
+    aliasOverride = "jump 11"
+    sourceControlType = "Cursor186"
+    rect = "400,440,32,32"
+    legacyLocalRect = "400,440,32,32"
+    legacyRectSource = "cursor_catalog_grid_preview"
+    texture = "data/art/gui/jump.png"
+    legacyTexture = "jump"
+    uiPackage = "legacy_imgui"
+    rectModel = "legacy_imgui.modern_rect_v1"
+    controlRect = "400,440,32,32"
+    artRect = "400,440,32,32"
+    artLayer = "control_art"
+    legacyUvX = 64
+    uvX = 512
+    legacyUvY = 32
+    uvY = 256
+    legacyUvWidth = 32
+    uvWidth = 256
+    legacyUvHeight = 32
+    uvHeight = 256
+}
+
+GuiImage {
+    key = "shared.cursors.image.jump_12"
+    pageKey = "shared.cursors"
+    legacySection = "Cursor187"
+    legacyComment = "jump 12"
+    role = "image"
+    layer = "art"
+    aliasOverride = "jump 12"
+    sourceControlType = "Cursor187"
+    rect = "440,440,32,32"
+    legacyLocalRect = "440,440,32,32"
+    legacyRectSource = "cursor_catalog_grid_preview"
+    texture = "data/art/gui/jump.png"
+    legacyTexture = "jump"
+    uiPackage = "legacy_imgui"
+    rectModel = "legacy_imgui.modern_rect_v1"
+    controlRect = "440,440,32,32"
+    artRect = "440,440,32,32"
+    artLayer = "control_art"
+    legacyUvX = 96
+    uvX = 768
+    legacyUvY = 32
+    uvY = 256
+    legacyUvWidth = 32
+    uvWidth = 256
+    legacyUvHeight = 32
+    uvHeight = 256
+}
+
+GuiImage {
+    key = "shared.cursors.image.jump_13"
+    pageKey = "shared.cursors"
+    legacySection = "Cursor188"
+    legacyComment = "jump 13"
+    role = "image"
+    layer = "art"
+    aliasOverride = "jump 13"
+    sourceControlType = "Cursor188"
+    rect = "480,440,32,32"
+    legacyLocalRect = "480,440,32,32"
+    legacyRectSource = "cursor_catalog_grid_preview"
+    texture = "data/art/gui/jump.png"
+    legacyTexture = "jump"
+    uiPackage = "legacy_imgui"
+    rectModel = "legacy_imgui.modern_rect_v1"
+    controlRect = "480,440,32,32"
+    artRect = "480,440,32,32"
+    artLayer = "control_art"
+    legacyUvX = 128
+    uvX = 1024
+    legacyUvY = 32
+    uvY = 256
+    legacyUvWidth = 32
+    uvWidth = 256
+    legacyUvHeight = 32
+    uvHeight = 256
+}
+
+GuiImage {
+    key = "shared.cursors.image.jump_14"
+    pageKey = "shared.cursors"
+    legacySection = "Cursor189"
+    legacyComment = "jump 14"
+    role = "image"
+    layer = "art"
+    aliasOverride = "jump 14"
+    sourceControlType = "Cursor189"
+    rect = "520,440,32,32"
+    legacyLocalRect = "520,440,32,32"
+    legacyRectSource = "cursor_catalog_grid_preview"
+    texture = "data/art/gui/jump.png"
+    legacyTexture = "jump"
+    uiPackage = "legacy_imgui"
+    rectModel = "legacy_imgui.modern_rect_v1"
+    controlRect = "520,440,32,32"
+    artRect = "520,440,32,32"
+    artLayer = "control_art"
+    legacyUvX = 160
+    uvX = 1280
+    legacyUvY = 32
+    uvY = 256
+    legacyUvWidth = 32
+    uvWidth = 256
+    legacyUvHeight = 32
+    uvHeight = 256
+}
+
+GuiImage {
+    key = "shared.cursors.image.jump_15"
+    pageKey = "shared.cursors"
+    legacySection = "Cursor190"
+    legacyComment = "jump 15"
+    role = "image"
+    layer = "art"
+    aliasOverride = "jump 15"
+    sourceControlType = "Cursor190"
+    rect = "560,440,32,32"
+    legacyLocalRect = "560,440,32,32"
+    legacyRectSource = "cursor_catalog_grid_preview"
+    texture = "data/art/gui/jump.png"
+    legacyTexture = "jump"
+    uiPackage = "legacy_imgui"
+    rectModel = "legacy_imgui.modern_rect_v1"
+    controlRect = "560,440,32,32"
+    artRect = "560,440,32,32"
+    artLayer = "control_art"
+    legacyUvX = 192
+    uvX = 1536
+    legacyUvY = 32
+    uvY = 256
+    legacyUvWidth = 32
+    uvWidth = 256
+    legacyUvHeight = 32
+    uvHeight = 256
+}
+
+GuiImage {
+    key = "shared.cursors.image.jump_16"
+    pageKey = "shared.cursors"
+    legacySection = "Cursor191"
+    legacyComment = "jump 16"
+    role = "image"
+    layer = "art"
+    aliasOverride = "jump 16"
+    sourceControlType = "Cursor191"
+    rect = "600,440,32,32"
+    legacyLocalRect = "600,440,32,32"
+    legacyRectSource = "cursor_catalog_grid_preview"
+    texture = "data/art/gui/jump.png"
+    legacyTexture = "jump"
+    uiPackage = "legacy_imgui"
+    rectModel = "legacy_imgui.modern_rect_v1"
+    controlRect = "600,440,32,32"
+    artRect = "600,440,32,32"
+    artLayer = "control_art"
+    legacyUvX = 224
+    uvX = 1792
+    legacyUvY = 32
+    uvY = 256
+    legacyUvWidth = 32
+    uvWidth = 256
+    legacyUvHeight = 32
+    uvHeight = 256
+}
+
+GuiImage {
+    key = "shared.cursors.image.jump_17"
+    pageKey = "shared.cursors"
+    legacySection = "Cursor192"
+    legacyComment = "jump 17"
+    role = "image"
+    layer = "art"
+    aliasOverride = "jump 17"
+    sourceControlType = "Cursor192"
+    rect = "0,480,32,32"
+    legacyLocalRect = "0,480,32,32"
+    legacyRectSource = "cursor_catalog_grid_preview"
+    texture = "data/art/gui/jump.png"
+    legacyTexture = "jump"
+    uiPackage = "legacy_imgui"
+    rectModel = "legacy_imgui.modern_rect_v1"
+    controlRect = "0,480,32,32"
+    artRect = "0,480,32,32"
+    artLayer = "control_art"
+    legacyUvX = 0
+    uvX = 0
+    legacyUvY = 64
+    uvY = 512
+    legacyUvWidth = 32
+    uvWidth = 256
+    legacyUvHeight = 32
+    uvHeight = 256
+}
+
+GuiImage {
+    key = "shared.cursors.image.jump_18"
+    pageKey = "shared.cursors"
+    legacySection = "Cursor193"
+    legacyComment = "jump 18"
+    role = "image"
+    layer = "art"
+    aliasOverride = "jump 18"
+    sourceControlType = "Cursor193"
+    rect = "40,480,32,32"
+    legacyLocalRect = "40,480,32,32"
+    legacyRectSource = "cursor_catalog_grid_preview"
+    texture = "data/art/gui/jump.png"
+    legacyTexture = "jump"
+    uiPackage = "legacy_imgui"
+    rectModel = "legacy_imgui.modern_rect_v1"
+    controlRect = "40,480,32,32"
+    artRect = "40,480,32,32"
+    artLayer = "control_art"
+    legacyUvX = 32
+    uvX = 256
+    legacyUvY = 64
+    uvY = 512
+    legacyUvWidth = 32
+    uvWidth = 256
+    legacyUvHeight = 32
+    uvHeight = 256
+}
+
+GuiImage {
+    key = "shared.cursors.image.jump_19"
+    pageKey = "shared.cursors"
+    legacySection = "Cursor194"
+    legacyComment = "jump 19"
+    role = "image"
+    layer = "art"
+    aliasOverride = "jump 19"
+    sourceControlType = "Cursor194"
+    rect = "80,480,32,32"
+    legacyLocalRect = "80,480,32,32"
+    legacyRectSource = "cursor_catalog_grid_preview"
+    texture = "data/art/gui/jump.png"
+    legacyTexture = "jump"
+    uiPackage = "legacy_imgui"
+    rectModel = "legacy_imgui.modern_rect_v1"
+    controlRect = "80,480,32,32"
+    artRect = "80,480,32,32"
+    artLayer = "control_art"
+    legacyUvX = 64
+    uvX = 512
+    legacyUvY = 64
+    uvY = 512
+    legacyUvWidth = 32
+    uvWidth = 256
+    legacyUvHeight = 32
+    uvHeight = 256
+}
+
+GuiImage {
+    key = "shared.cursors.image.jump_20"
+    pageKey = "shared.cursors"
+    legacySection = "Cursor195"
+    legacyComment = "jump 20"
+    role = "image"
+    layer = "art"
+    aliasOverride = "jump 20"
+    sourceControlType = "Cursor195"
+    rect = "120,480,32,32"
+    legacyLocalRect = "120,480,32,32"
+    legacyRectSource = "cursor_catalog_grid_preview"
+    texture = "data/art/gui/jump.png"
+    legacyTexture = "jump"
+    uiPackage = "legacy_imgui"
+    rectModel = "legacy_imgui.modern_rect_v1"
+    controlRect = "120,480,32,32"
+    artRect = "120,480,32,32"
+    artLayer = "control_art"
+    legacyUvX = 96
+    uvX = 768
+    legacyUvY = 64
+    uvY = 512
+    legacyUvWidth = 32
+    uvWidth = 256
+    legacyUvHeight = 32
+    uvHeight = 256
+}
+
+GuiImage {
+    key = "shared.cursors.image.jump_21"
+    pageKey = "shared.cursors"
+    legacySection = "Cursor196"
+    legacyComment = "jump 21"
+    role = "image"
+    layer = "art"
+    aliasOverride = "jump 21"
+    sourceControlType = "Cursor196"
+    rect = "160,480,32,32"
+    legacyLocalRect = "160,480,32,32"
+    legacyRectSource = "cursor_catalog_grid_preview"
+    texture = "data/art/gui/jump.png"
+    legacyTexture = "jump"
+    uiPackage = "legacy_imgui"
+    rectModel = "legacy_imgui.modern_rect_v1"
+    controlRect = "160,480,32,32"
+    artRect = "160,480,32,32"
+    artLayer = "control_art"
+    legacyUvX = 128
+    uvX = 1024
+    legacyUvY = 64
+    uvY = 512
+    legacyUvWidth = 32
+    uvWidth = 256
+    legacyUvHeight = 32
+    uvHeight = 256
+}
+
+GuiImage {
+    key = "shared.cursors.image.jump_22"
+    pageKey = "shared.cursors"
+    legacySection = "Cursor197"
+    legacyComment = "jump 22"
+    role = "image"
+    layer = "art"
+    aliasOverride = "jump 22"
+    sourceControlType = "Cursor197"
+    rect = "200,480,32,32"
+    legacyLocalRect = "200,480,32,32"
+    legacyRectSource = "cursor_catalog_grid_preview"
+    texture = "data/art/gui/jump.png"
+    legacyTexture = "jump"
+    uiPackage = "legacy_imgui"
+    rectModel = "legacy_imgui.modern_rect_v1"
+    controlRect = "200,480,32,32"
+    artRect = "200,480,32,32"
+    artLayer = "control_art"
+    legacyUvX = 160
+    uvX = 1280
+    legacyUvY = 64
+    uvY = 512
+    legacyUvWidth = 32
+    uvWidth = 256
+    legacyUvHeight = 32
+    uvHeight = 256
+}
+
+GuiImage {
+    key = "shared.cursors.image.jump_23"
+    pageKey = "shared.cursors"
+    legacySection = "Cursor198"
+    legacyComment = "jump 23"
+    role = "image"
+    layer = "art"
+    aliasOverride = "jump 23"
+    sourceControlType = "Cursor198"
+    rect = "240,480,32,32"
+    legacyLocalRect = "240,480,32,32"
+    legacyRectSource = "cursor_catalog_grid_preview"
+    texture = "data/art/gui/jump.png"
+    legacyTexture = "jump"
+    uiPackage = "legacy_imgui"
+    rectModel = "legacy_imgui.modern_rect_v1"
+    controlRect = "240,480,32,32"
+    artRect = "240,480,32,32"
+    artLayer = "control_art"
+    legacyUvX = 192
+    uvX = 1536
+    legacyUvY = 64
+    uvY = 512
+    legacyUvWidth = 32
+    uvWidth = 256
+    legacyUvHeight = 32
+    uvHeight = 256
+}
+
+GuiImage {
+    key = "shared.cursors.image.jump_24"
+    pageKey = "shared.cursors"
+    legacySection = "Cursor199"
+    legacyComment = "jump 24"
+    role = "image"
+    layer = "art"
+    aliasOverride = "jump 24"
+    sourceControlType = "Cursor199"
+    rect = "280,480,32,32"
+    legacyLocalRect = "280,480,32,32"
+    legacyRectSource = "cursor_catalog_grid_preview"
+    texture = "data/art/gui/jump.png"
+    legacyTexture = "jump"
+    uiPackage = "legacy_imgui"
+    rectModel = "legacy_imgui.modern_rect_v1"
+    controlRect = "280,480,32,32"
+    artRect = "280,480,32,32"
+    artLayer = "control_art"
+    legacyUvX = 224
+    uvX = 1792
+    legacyUvY = 64
+    uvY = 512
+    legacyUvWidth = 32
+    uvWidth = 256
+    legacyUvHeight = 32
+    uvHeight = 256
+}
+
+GuiImage {
+    key = "shared.cursors.image.jump_25"
+    pageKey = "shared.cursors"
+    legacySection = "Cursor200"
+    legacyComment = "jump 25"
+    role = "image"
+    layer = "art"
+    aliasOverride = "jump 25"
+    sourceControlType = "Cursor200"
+    rect = "320,480,32,32"
+    legacyLocalRect = "320,480,32,32"
+    legacyRectSource = "cursor_catalog_grid_preview"
+    texture = "data/art/gui/jump.png"
+    legacyTexture = "jump"
+    uiPackage = "legacy_imgui"
+    rectModel = "legacy_imgui.modern_rect_v1"
+    controlRect = "320,480,32,32"
+    artRect = "320,480,32,32"
+    artLayer = "control_art"
+    legacyUvX = 0
+    uvX = 0
+    legacyUvY = 96
+    uvY = 768
+    legacyUvWidth = 32
+    uvWidth = 256
+    legacyUvHeight = 32
+    uvHeight = 256
+}
+
+GuiImage {
+    key = "shared.cursors.image.jump_26"
+    pageKey = "shared.cursors"
+    legacySection = "Cursor201"
+    legacyComment = "jump 26"
+    role = "image"
+    layer = "art"
+    aliasOverride = "jump 26"
+    sourceControlType = "Cursor201"
+    rect = "360,480,32,32"
+    legacyLocalRect = "360,480,32,32"
+    legacyRectSource = "cursor_catalog_grid_preview"
+    texture = "data/art/gui/jump.png"
+    legacyTexture = "jump"
+    uiPackage = "legacy_imgui"
+    rectModel = "legacy_imgui.modern_rect_v1"
+    controlRect = "360,480,32,32"
+    artRect = "360,480,32,32"
+    artLayer = "control_art"
+    legacyUvX = 32
+    uvX = 256
+    legacyUvY = 96
+    uvY = 768
+    legacyUvWidth = 32
+    uvWidth = 256
+    legacyUvHeight = 32
+    uvHeight = 256
+}
+
+GuiImage {
+    key = "shared.cursors.image.jump_27"
+    pageKey = "shared.cursors"
+    legacySection = "Cursor202"
+    legacyComment = "jump 27"
+    role = "image"
+    layer = "art"
+    aliasOverride = "jump 27"
+    sourceControlType = "Cursor202"
+    rect = "400,480,32,32"
+    legacyLocalRect = "400,480,32,32"
+    legacyRectSource = "cursor_catalog_grid_preview"
+    texture = "data/art/gui/jump.png"
+    legacyTexture = "jump"
+    uiPackage = "legacy_imgui"
+    rectModel = "legacy_imgui.modern_rect_v1"
+    controlRect = "400,480,32,32"
+    artRect = "400,480,32,32"
+    artLayer = "control_art"
+    legacyUvX = 64
+    uvX = 512
+    legacyUvY = 96
+    uvY = 768
+    legacyUvWidth = 32
+    uvWidth = 256
+    legacyUvHeight = 32
+    uvHeight = 256
+}
+
+GuiImage {
+    key = "shared.cursors.image.jump_28"
+    pageKey = "shared.cursors"
+    legacySection = "Cursor203"
+    legacyComment = "jump 28"
+    role = "image"
+    layer = "art"
+    aliasOverride = "jump 28"
+    sourceControlType = "Cursor203"
+    rect = "440,480,32,32"
+    legacyLocalRect = "440,480,32,32"
+    legacyRectSource = "cursor_catalog_grid_preview"
+    texture = "data/art/gui/jump.png"
+    legacyTexture = "jump"
+    uiPackage = "legacy_imgui"
+    rectModel = "legacy_imgui.modern_rect_v1"
+    controlRect = "440,480,32,32"
+    artRect = "440,480,32,32"
+    artLayer = "control_art"
+    legacyUvX = 96
+    uvX = 768
+    legacyUvY = 96
+    uvY = 768
+    legacyUvWidth = 32
+    uvWidth = 256
+    legacyUvHeight = 32
+    uvHeight = 256
+}
+
+GuiImage {
+    key = "shared.cursors.image.jump_29"
+    pageKey = "shared.cursors"
+    legacySection = "Cursor204"
+    legacyComment = "jump 29"
+    role = "image"
+    layer = "art"
+    aliasOverride = "jump 29"
+    sourceControlType = "Cursor204"
+    rect = "480,480,32,32"
+    legacyLocalRect = "480,480,32,32"
+    legacyRectSource = "cursor_catalog_grid_preview"
+    texture = "data/art/gui/jump.png"
+    legacyTexture = "jump"
+    uiPackage = "legacy_imgui"
+    rectModel = "legacy_imgui.modern_rect_v1"
+    controlRect = "480,480,32,32"
+    artRect = "480,480,32,32"
+    artLayer = "control_art"
+    legacyUvX = 128
+    uvX = 1024
+    legacyUvY = 96
+    uvY = 768
+    legacyUvWidth = 32
+    uvWidth = 256
+    legacyUvHeight = 32
+    uvHeight = 256
+}
+
+GuiImage {
+    key = "shared.cursors.image.jump_30"
+    pageKey = "shared.cursors"
+    legacySection = "Cursor205"
+    legacyComment = "jump 30"
+    role = "image"
+    layer = "art"
+    aliasOverride = "jump 30"
+    sourceControlType = "Cursor205"
+    rect = "520,480,32,32"
+    legacyLocalRect = "520,480,32,32"
+    legacyRectSource = "cursor_catalog_grid_preview"
+    texture = "data/art/gui/jump.png"
+    legacyTexture = "jump"
+    uiPackage = "legacy_imgui"
+    rectModel = "legacy_imgui.modern_rect_v1"
+    controlRect = "520,480,32,32"
+    artRect = "520,480,32,32"
+    artLayer = "control_art"
+    legacyUvX = 160
+    uvX = 1280
+    legacyUvY = 96
+    uvY = 768
+    legacyUvWidth = 32
+    uvWidth = 256
+    legacyUvHeight = 32
+    uvHeight = 256
+}
+
+GuiImage {
+    key = "shared.cursors.image.jump_31"
+    pageKey = "shared.cursors"
+    legacySection = "Cursor206"
+    legacyComment = "jump 31"
+    role = "image"
+    layer = "art"
+    aliasOverride = "jump 31"
+    sourceControlType = "Cursor206"
+    rect = "560,480,32,32"
+    legacyLocalRect = "560,480,32,32"
+    legacyRectSource = "cursor_catalog_grid_preview"
+    texture = "data/art/gui/jump.png"
+    legacyTexture = "jump"
+    uiPackage = "legacy_imgui"
+    rectModel = "legacy_imgui.modern_rect_v1"
+    controlRect = "560,480,32,32"
+    artRect = "560,480,32,32"
+    artLayer = "control_art"
+    legacyUvX = 192
+    uvX = 1536
+    legacyUvY = 96
+    uvY = 768
+    legacyUvWidth = 32
+    uvWidth = 256
+    legacyUvHeight = 32
+    uvHeight = 256
+}
+
+GuiImage {
+    key = "shared.cursors.image.jump_32"
+    pageKey = "shared.cursors"
+    legacySection = "Cursor207"
+    legacyComment = "jump 32"
+    role = "image"
+    layer = "art"
+    aliasOverride = "jump 32"
+    sourceControlType = "Cursor207"
+    rect = "600,480,32,32"
+    legacyLocalRect = "600,480,32,32"
+    legacyRectSource = "cursor_catalog_grid_preview"
+    texture = "data/art/gui/jump.png"
+    legacyTexture = "jump"
+    uiPackage = "legacy_imgui"
+    rectModel = "legacy_imgui.modern_rect_v1"
+    controlRect = "600,480,32,32"
+    artRect = "600,480,32,32"
+    artLayer = "control_art"
+    legacyUvX = 224
+    uvX = 1792
+    legacyUvY = 96
+    uvY = 768
+    legacyUvWidth = 32
+    uvWidth = 256
+    legacyUvHeight = 32
+    uvHeight = 256
+}
+
+GuiImage {
+    key = "shared.cursors.image.jump_los_1"
+    pageKey = "shared.cursors"
+    legacySection = "Cursor208"
+    legacyComment = "jump LOS 1"
+    role = "image"
+    layer = "art"
+    aliasOverride = "jump LOS 1"
+    sourceControlType = "Cursor208"
+    rect = "0,520,32,32"
+    legacyLocalRect = "0,520,32,32"
+    legacyRectSource = "cursor_catalog_grid_preview"
+    texture = "data/art/gui/jump.png"
+    legacyTexture = "jump"
+    uiPackage = "legacy_imgui"
+    rectModel = "legacy_imgui.modern_rect_v1"
+    controlRect = "0,520,32,32"
+    artRect = "0,520,32,32"
+    artLayer = "control_art"
+    legacyUvX = 0
+    uvX = 0
+    legacyUvY = 128
+    uvY = 1024
+    legacyUvWidth = 32
+    uvWidth = 256
+    legacyUvHeight = 32
+    uvHeight = 256
+}
+
+GuiImage {
+    key = "shared.cursors.image.jump_los_2"
+    pageKey = "shared.cursors"
+    legacySection = "Cursor209"
+    legacyComment = "jump LOS 2"
+    role = "image"
+    layer = "art"
+    aliasOverride = "jump LOS 2"
+    sourceControlType = "Cursor209"
+    rect = "40,520,32,32"
+    legacyLocalRect = "40,520,32,32"
+    legacyRectSource = "cursor_catalog_grid_preview"
+    texture = "data/art/gui/jump.png"
+    legacyTexture = "jump"
+    uiPackage = "legacy_imgui"
+    rectModel = "legacy_imgui.modern_rect_v1"
+    controlRect = "40,520,32,32"
+    artRect = "40,520,32,32"
+    artLayer = "control_art"
+    legacyUvX = 32
+    uvX = 256
+    legacyUvY = 128
+    uvY = 1024
+    legacyUvWidth = 32
+    uvWidth = 256
+    legacyUvHeight = 32
+    uvHeight = 256
+}
+
+GuiImage {
+    key = "shared.cursors.image.jump_los_3"
+    pageKey = "shared.cursors"
+    legacySection = "Cursor210"
+    legacyComment = "jump LOS 3"
+    role = "image"
+    layer = "art"
+    aliasOverride = "jump LOS 3"
+    sourceControlType = "Cursor210"
+    rect = "80,520,32,32"
+    legacyLocalRect = "80,520,32,32"
+    legacyRectSource = "cursor_catalog_grid_preview"
+    texture = "data/art/gui/jump.png"
+    legacyTexture = "jump"
+    uiPackage = "legacy_imgui"
+    rectModel = "legacy_imgui.modern_rect_v1"
+    controlRect = "80,520,32,32"
+    artRect = "80,520,32,32"
+    artLayer = "control_art"
+    legacyUvX = 64
+    uvX = 512
+    legacyUvY = 128
+    uvY = 1024
+    legacyUvWidth = 32
+    uvWidth = 256
+    legacyUvHeight = 32
+    uvHeight = 256
+}
+
+GuiImage {
+    key = "shared.cursors.image.jump_los_4"
+    pageKey = "shared.cursors"
+    legacySection = "Cursor211"
+    legacyComment = "jump LOS 4"
+    role = "image"
+    layer = "art"
+    aliasOverride = "jump LOS 4"
+    sourceControlType = "Cursor211"
+    rect = "120,520,32,32"
+    legacyLocalRect = "120,520,32,32"
+    legacyRectSource = "cursor_catalog_grid_preview"
+    texture = "data/art/gui/jump.png"
+    legacyTexture = "jump"
+    uiPackage = "legacy_imgui"
+    rectModel = "legacy_imgui.modern_rect_v1"
+    controlRect = "120,520,32,32"
+    artRect = "120,520,32,32"
+    artLayer = "control_art"
+    legacyUvX = 96
+    uvX = 768
+    legacyUvY = 128
+    uvY = 1024
+    legacyUvWidth = 32
+    uvWidth = 256
+    legacyUvHeight = 32
+    uvHeight = 256
+}
+
+GuiImage {
+    key = "shared.cursors.image.jump_los_5"
+    pageKey = "shared.cursors"
+    legacySection = "Cursor212"
+    legacyComment = "jump LOS 5"
+    role = "image"
+    layer = "art"
+    aliasOverride = "jump LOS 5"
+    sourceControlType = "Cursor212"
+    rect = "160,520,32,32"
+    legacyLocalRect = "160,520,32,32"
+    legacyRectSource = "cursor_catalog_grid_preview"
+    texture = "data/art/gui/jump.png"
+    legacyTexture = "jump"
+    uiPackage = "legacy_imgui"
+    rectModel = "legacy_imgui.modern_rect_v1"
+    controlRect = "160,520,32,32"
+    artRect = "160,520,32,32"
+    artLayer = "control_art"
+    legacyUvX = 128
+    uvX = 1024
+    legacyUvY = 128
+    uvY = 1024
+    legacyUvWidth = 32
+    uvWidth = 256
+    legacyUvHeight = 32
+    uvHeight = 256
+}
+
+GuiImage {
+    key = "shared.cursors.image.jump_los_6"
+    pageKey = "shared.cursors"
+    legacySection = "Cursor213"
+    legacyComment = "jump LOS 6"
+    role = "image"
+    layer = "art"
+    aliasOverride = "jump LOS 6"
+    sourceControlType = "Cursor213"
+    rect = "200,520,32,32"
+    legacyLocalRect = "200,520,32,32"
+    legacyRectSource = "cursor_catalog_grid_preview"
+    texture = "data/art/gui/jump.png"
+    legacyTexture = "jump"
+    uiPackage = "legacy_imgui"
+    rectModel = "legacy_imgui.modern_rect_v1"
+    controlRect = "200,520,32,32"
+    artRect = "200,520,32,32"
+    artLayer = "control_art"
+    legacyUvX = 160
+    uvX = 1280
+    legacyUvY = 128
+    uvY = 1024
+    legacyUvWidth = 32
+    uvWidth = 256
+    legacyUvHeight = 32
+    uvHeight = 256
+}
+
+GuiImage {
+    key = "shared.cursors.image.jump_los_7"
+    pageKey = "shared.cursors"
+    legacySection = "Cursor214"
+    legacyComment = "jump LOS 7"
+    role = "image"
+    layer = "art"
+    aliasOverride = "jump LOS 7"
+    sourceControlType = "Cursor214"
+    rect = "240,520,32,32"
+    legacyLocalRect = "240,520,32,32"
+    legacyRectSource = "cursor_catalog_grid_preview"
+    texture = "data/art/gui/jump.png"
+    legacyTexture = "jump"
+    uiPackage = "legacy_imgui"
+    rectModel = "legacy_imgui.modern_rect_v1"
+    controlRect = "240,520,32,32"
+    artRect = "240,520,32,32"
+    artLayer = "control_art"
+    legacyUvX = 192
+    uvX = 1536
+    legacyUvY = 128
+    uvY = 1024
+    legacyUvWidth = 32
+    uvWidth = 256
+    legacyUvHeight = 32
+    uvHeight = 256
+}
+
+GuiImage {
+    key = "shared.cursors.image.jump_los_8"
+    pageKey = "shared.cursors"
+    legacySection = "Cursor215"
+    legacyComment = "jump LOS 8"
+    role = "image"
+    layer = "art"
+    aliasOverride = "jump LOS 8"
+    sourceControlType = "Cursor215"
+    rect = "280,520,32,32"
+    legacyLocalRect = "280,520,32,32"
+    legacyRectSource = "cursor_catalog_grid_preview"
+    texture = "data/art/gui/jump.png"
+    legacyTexture = "jump"
+    uiPackage = "legacy_imgui"
+    rectModel = "legacy_imgui.modern_rect_v1"
+    controlRect = "280,520,32,32"
+    artRect = "280,520,32,32"
+    artLayer = "control_art"
+    legacyUvX = 224
+    uvX = 1792
+    legacyUvY = 128
+    uvY = 1024
+    legacyUvWidth = 32
+    uvWidth = 256
+    legacyUvHeight = 32
+    uvHeight = 256
+}
+
+GuiImage {
+    key = "shared.cursors.image.jump_los_9"
+    pageKey = "shared.cursors"
+    legacySection = "Cursor216"
+    legacyComment = "jump LOS 9"
+    role = "image"
+    layer = "art"
+    aliasOverride = "jump LOS 9"
+    sourceControlType = "Cursor216"
+    rect = "320,520,32,32"
+    legacyLocalRect = "320,520,32,32"
+    legacyRectSource = "cursor_catalog_grid_preview"
+    texture = "data/art/gui/jump.png"
+    legacyTexture = "jump"
+    uiPackage = "legacy_imgui"
+    rectModel = "legacy_imgui.modern_rect_v1"
+    controlRect = "320,520,32,32"
+    artRect = "320,520,32,32"
+    artLayer = "control_art"
+    legacyUvX = 0
+    uvX = 0
+    legacyUvY = 160
+    uvY = 1280
+    legacyUvWidth = 32
+    uvWidth = 256
+    legacyUvHeight = 32
+    uvHeight = 256
+}
+
+GuiImage {
+    key = "shared.cursors.image.jump_los_10"
+    pageKey = "shared.cursors"
+    legacySection = "Cursor217"
+    legacyComment = "jump LOS 10"
+    role = "image"
+    layer = "art"
+    aliasOverride = "jump LOS 10"
+    sourceControlType = "Cursor217"
+    rect = "360,520,32,32"
+    legacyLocalRect = "360,520,32,32"
+    legacyRectSource = "cursor_catalog_grid_preview"
+    texture = "data/art/gui/jump.png"
+    legacyTexture = "jump"
+    uiPackage = "legacy_imgui"
+    rectModel = "legacy_imgui.modern_rect_v1"
+    controlRect = "360,520,32,32"
+    artRect = "360,520,32,32"
+    artLayer = "control_art"
+    legacyUvX = 32
+    uvX = 256
+    legacyUvY = 160
+    uvY = 1280
+    legacyUvWidth = 32
+    uvWidth = 256
+    legacyUvHeight = 32
+    uvHeight = 256
+}
+
+GuiImage {
+    key = "shared.cursors.image.jump_los_11"
+    pageKey = "shared.cursors"
+    legacySection = "Cursor218"
+    legacyComment = "jump LOS 11"
+    role = "image"
+    layer = "art"
+    aliasOverride = "jump LOS 11"
+    sourceControlType = "Cursor218"
+    rect = "400,520,32,32"
+    legacyLocalRect = "400,520,32,32"
+    legacyRectSource = "cursor_catalog_grid_preview"
+    texture = "data/art/gui/jump.png"
+    legacyTexture = "jump"
+    uiPackage = "legacy_imgui"
+    rectModel = "legacy_imgui.modern_rect_v1"
+    controlRect = "400,520,32,32"
+    artRect = "400,520,32,32"
+    artLayer = "control_art"
+    legacyUvX = 64
+    uvX = 512
+    legacyUvY = 160
+    uvY = 1280
+    legacyUvWidth = 32
+    uvWidth = 256
+    legacyUvHeight = 32
+    uvHeight = 256
+}
+
+GuiImage {
+    key = "shared.cursors.image.jump_los_12"
+    pageKey = "shared.cursors"
+    legacySection = "Cursor219"
+    legacyComment = "jump LOS 12"
+    role = "image"
+    layer = "art"
+    aliasOverride = "jump LOS 12"
+    sourceControlType = "Cursor219"
+    rect = "440,520,32,32"
+    legacyLocalRect = "440,520,32,32"
+    legacyRectSource = "cursor_catalog_grid_preview"
+    texture = "data/art/gui/jump.png"
+    legacyTexture = "jump"
+    uiPackage = "legacy_imgui"
+    rectModel = "legacy_imgui.modern_rect_v1"
+    controlRect = "440,520,32,32"
+    artRect = "440,520,32,32"
+    artLayer = "control_art"
+    legacyUvX = 96
+    uvX = 768
+    legacyUvY = 160
+    uvY = 1280
+    legacyUvWidth = 32
+    uvWidth = 256
+    legacyUvHeight = 32
+    uvHeight = 256
+}
+
+GuiImage {
+    key = "shared.cursors.image.jump_los_13"
+    pageKey = "shared.cursors"
+    legacySection = "Cursor220"
+    legacyComment = "jump LOS 13"
+    role = "image"
+    layer = "art"
+    aliasOverride = "jump LOS 13"
+    sourceControlType = "Cursor220"
+    rect = "480,520,32,32"
+    legacyLocalRect = "480,520,32,32"
+    legacyRectSource = "cursor_catalog_grid_preview"
+    texture = "data/art/gui/jump.png"
+    legacyTexture = "jump"
+    uiPackage = "legacy_imgui"
+    rectModel = "legacy_imgui.modern_rect_v1"
+    controlRect = "480,520,32,32"
+    artRect = "480,520,32,32"
+    artLayer = "control_art"
+    legacyUvX = 128
+    uvX = 1024
+    legacyUvY = 160
+    uvY = 1280
+    legacyUvWidth = 32
+    uvWidth = 256
+    legacyUvHeight = 32
+    uvHeight = 256
+}
+
+GuiImage {
+    key = "shared.cursors.image.jump_los_14"
+    pageKey = "shared.cursors"
+    legacySection = "Cursor221"
+    legacyComment = "jump LOS 14"
+    role = "image"
+    layer = "art"
+    aliasOverride = "jump LOS 14"
+    sourceControlType = "Cursor221"
+    rect = "520,520,32,32"
+    legacyLocalRect = "520,520,32,32"
+    legacyRectSource = "cursor_catalog_grid_preview"
+    texture = "data/art/gui/jump.png"
+    legacyTexture = "jump"
+    uiPackage = "legacy_imgui"
+    rectModel = "legacy_imgui.modern_rect_v1"
+    controlRect = "520,520,32,32"
+    artRect = "520,520,32,32"
+    artLayer = "control_art"
+    legacyUvX = 160
+    uvX = 1280
+    legacyUvY = 160
+    uvY = 1280
+    legacyUvWidth = 32
+    uvWidth = 256
+    legacyUvHeight = 32
+    uvHeight = 256
+}
+
+GuiImage {
+    key = "shared.cursors.image.jump_los_15"
+    pageKey = "shared.cursors"
+    legacySection = "Cursor222"
+    legacyComment = "jump LOS 15"
+    role = "image"
+    layer = "art"
+    aliasOverride = "jump LOS 15"
+    sourceControlType = "Cursor222"
+    rect = "560,520,32,32"
+    legacyLocalRect = "560,520,32,32"
+    legacyRectSource = "cursor_catalog_grid_preview"
+    texture = "data/art/gui/jump.png"
+    legacyTexture = "jump"
+    uiPackage = "legacy_imgui"
+    rectModel = "legacy_imgui.modern_rect_v1"
+    controlRect = "560,520,32,32"
+    artRect = "560,520,32,32"
+    artLayer = "control_art"
+    legacyUvX = 192
+    uvX = 1536
+    legacyUvY = 160
+    uvY = 1280
+    legacyUvWidth = 32
+    uvWidth = 256
+    legacyUvHeight = 32
+    uvHeight = 256
+}
+
+GuiImage {
+    key = "shared.cursors.image.jump_los_16"
+    pageKey = "shared.cursors"
+    legacySection = "Cursor223"
+    legacyComment = "jump LOS 16"
+    role = "image"
+    layer = "art"
+    aliasOverride = "jump LOS 16"
+    sourceControlType = "Cursor223"
+    rect = "600,520,32,32"
+    legacyLocalRect = "600,520,32,32"
+    legacyRectSource = "cursor_catalog_grid_preview"
+    texture = "data/art/gui/jump.png"
+    legacyTexture = "jump"
+    uiPackage = "legacy_imgui"
+    rectModel = "legacy_imgui.modern_rect_v1"
+    controlRect = "600,520,32,32"
+    artRect = "600,520,32,32"
+    artLayer = "control_art"
+    legacyUvX = 224
+    uvX = 1792
+    legacyUvY = 160
+    uvY = 1280
+    legacyUvWidth = 32
+    uvWidth = 256
+    legacyUvHeight = 32
+    uvHeight = 256
+}
+
+GuiImage {
+    key = "shared.cursors.image.jump_los_17"
+    pageKey = "shared.cursors"
+    legacySection = "Cursor224"
+    legacyComment = "jump LOS 17"
+    role = "image"
+    layer = "art"
+    aliasOverride = "jump LOS 17"
+    sourceControlType = "Cursor224"
+    rect = "0,560,32,32"
+    legacyLocalRect = "0,560,32,32"
+    legacyRectSource = "cursor_catalog_grid_preview"
+    texture = "data/art/gui/jump.png"
+    legacyTexture = "jump"
+    uiPackage = "legacy_imgui"
+    rectModel = "legacy_imgui.modern_rect_v1"
+    controlRect = "0,560,32,32"
+    artRect = "0,560,32,32"
+    artLayer = "control_art"
+    legacyUvX = 0
+    uvX = 0
+    legacyUvY = 192
+    uvY = 1536
+    legacyUvWidth = 32
+    uvWidth = 256
+    legacyUvHeight = 32
+    uvHeight = 256
+}
+
+GuiImage {
+    key = "shared.cursors.image.jump_los_18"
+    pageKey = "shared.cursors"
+    legacySection = "Cursor225"
+    legacyComment = "jump LOS 18"
+    role = "image"
+    layer = "art"
+    aliasOverride = "jump LOS 18"
+    sourceControlType = "Cursor225"
+    rect = "40,560,32,32"
+    legacyLocalRect = "40,560,32,32"
+    legacyRectSource = "cursor_catalog_grid_preview"
+    texture = "data/art/gui/jump.png"
+    legacyTexture = "jump"
+    uiPackage = "legacy_imgui"
+    rectModel = "legacy_imgui.modern_rect_v1"
+    controlRect = "40,560,32,32"
+    artRect = "40,560,32,32"
+    artLayer = "control_art"
+    legacyUvX = 32
+    uvX = 256
+    legacyUvY = 192
+    uvY = 1536
+    legacyUvWidth = 32
+    uvWidth = 256
+    legacyUvHeight = 32
+    uvHeight = 256
+}
+
+GuiImage {
+    key = "shared.cursors.image.jump_los_19"
+    pageKey = "shared.cursors"
+    legacySection = "Cursor226"
+    legacyComment = "jump LOS 19"
+    role = "image"
+    layer = "art"
+    aliasOverride = "jump LOS 19"
+    sourceControlType = "Cursor226"
+    rect = "80,560,32,32"
+    legacyLocalRect = "80,560,32,32"
+    legacyRectSource = "cursor_catalog_grid_preview"
+    texture = "data/art/gui/jump.png"
+    legacyTexture = "jump"
+    uiPackage = "legacy_imgui"
+    rectModel = "legacy_imgui.modern_rect_v1"
+    controlRect = "80,560,32,32"
+    artRect = "80,560,32,32"
+    artLayer = "control_art"
+    legacyUvX = 64
+    uvX = 512
+    legacyUvY = 192
+    uvY = 1536
+    legacyUvWidth = 32
+    uvWidth = 256
+    legacyUvHeight = 32
+    uvHeight = 256
+}
+
+GuiImage {
+    key = "shared.cursors.image.jump_los_20"
+    pageKey = "shared.cursors"
+    legacySection = "Cursor227"
+    legacyComment = "jump LOS 20"
+    role = "image"
+    layer = "art"
+    aliasOverride = "jump LOS 20"
+    sourceControlType = "Cursor227"
+    rect = "120,560,32,32"
+    legacyLocalRect = "120,560,32,32"
+    legacyRectSource = "cursor_catalog_grid_preview"
+    texture = "data/art/gui/jump.png"
+    legacyTexture = "jump"
+    uiPackage = "legacy_imgui"
+    rectModel = "legacy_imgui.modern_rect_v1"
+    controlRect = "120,560,32,32"
+    artRect = "120,560,32,32"
+    artLayer = "control_art"
+    legacyUvX = 96
+    uvX = 768
+    legacyUvY = 192
+    uvY = 1536
+    legacyUvWidth = 32
+    uvWidth = 256
+    legacyUvHeight = 32
+    uvHeight = 256
+}
+
+GuiImage {
+    key = "shared.cursors.image.jump_los_21"
+    pageKey = "shared.cursors"
+    legacySection = "Cursor228"
+    legacyComment = "jump LOS 21"
+    role = "image"
+    layer = "art"
+    aliasOverride = "jump LOS 21"
+    sourceControlType = "Cursor228"
+    rect = "160,560,32,32"
+    legacyLocalRect = "160,560,32,32"
+    legacyRectSource = "cursor_catalog_grid_preview"
+    texture = "data/art/gui/jump.png"
+    legacyTexture = "jump"
+    uiPackage = "legacy_imgui"
+    rectModel = "legacy_imgui.modern_rect_v1"
+    controlRect = "160,560,32,32"
+    artRect = "160,560,32,32"
+    artLayer = "control_art"
+    legacyUvX = 128
+    uvX = 1024
+    legacyUvY = 192
+    uvY = 1536
+    legacyUvWidth = 32
+    uvWidth = 256
+    legacyUvHeight = 32
+    uvHeight = 256
+}
+
+GuiImage {
+    key = "shared.cursors.image.jump_los_22"
+    pageKey = "shared.cursors"
+    legacySection = "Cursor229"
+    legacyComment = "jump LOS 22"
+    role = "image"
+    layer = "art"
+    aliasOverride = "jump LOS 22"
+    sourceControlType = "Cursor229"
+    rect = "200,560,32,32"
+    legacyLocalRect = "200,560,32,32"
+    legacyRectSource = "cursor_catalog_grid_preview"
+    texture = "data/art/gui/jump.png"
+    legacyTexture = "jump"
+    uiPackage = "legacy_imgui"
+    rectModel = "legacy_imgui.modern_rect_v1"
+    controlRect = "200,560,32,32"
+    artRect = "200,560,32,32"
+    artLayer = "control_art"
+    legacyUvX = 160
+    uvX = 1280
+    legacyUvY = 192
+    uvY = 1536
+    legacyUvWidth = 32
+    uvWidth = 256
+    legacyUvHeight = 32
+    uvHeight = 256
+}
+
+GuiImage {
+    key = "shared.cursors.image.jump_los_23"
+    pageKey = "shared.cursors"
+    legacySection = "Cursor230"
+    legacyComment = "jump LOS 23"
+    role = "image"
+    layer = "art"
+    aliasOverride = "jump LOS 23"
+    sourceControlType = "Cursor230"
+    rect = "240,560,32,32"
+    legacyLocalRect = "240,560,32,32"
+    legacyRectSource = "cursor_catalog_grid_preview"
+    texture = "data/art/gui/jump.png"
+    legacyTexture = "jump"
+    uiPackage = "legacy_imgui"
+    rectModel = "legacy_imgui.modern_rect_v1"
+    controlRect = "240,560,32,32"
+    artRect = "240,560,32,32"
+    artLayer = "control_art"
+    legacyUvX = 192
+    uvX = 1536
+    legacyUvY = 192
+    uvY = 1536
+    legacyUvWidth = 32
+    uvWidth = 256
+    legacyUvHeight = 32
+    uvHeight = 256
+}
+
+GuiImage {
+    key = "shared.cursors.image.jump_los_24"
+    pageKey = "shared.cursors"
+    legacySection = "Cursor231"
+    legacyComment = "jump LOS 24"
+    role = "image"
+    layer = "art"
+    aliasOverride = "jump LOS 24"
+    sourceControlType = "Cursor231"
+    rect = "280,560,32,32"
+    legacyLocalRect = "280,560,32,32"
+    legacyRectSource = "cursor_catalog_grid_preview"
+    texture = "data/art/gui/jump.png"
+    legacyTexture = "jump"
+    uiPackage = "legacy_imgui"
+    rectModel = "legacy_imgui.modern_rect_v1"
+    controlRect = "280,560,32,32"
+    artRect = "280,560,32,32"
+    artLayer = "control_art"
+    legacyUvX = 224
+    uvX = 1792
+    legacyUvY = 192
+    uvY = 1536
+    legacyUvWidth = 32
+    uvWidth = 256
+    legacyUvHeight = 32
+    uvHeight = 256
+}
+
+GuiImage {
+    key = "shared.cursors.image.jump_los_25"
+    pageKey = "shared.cursors"
+    legacySection = "Cursor232"
+    legacyComment = "jump LOS 25"
+    role = "image"
+    layer = "art"
+    aliasOverride = "jump LOS 25"
+    sourceControlType = "Cursor232"
+    rect = "320,560,32,32"
+    legacyLocalRect = "320,560,32,32"
+    legacyRectSource = "cursor_catalog_grid_preview"
+    texture = "data/art/gui/jump.png"
+    legacyTexture = "jump"
+    uiPackage = "legacy_imgui"
+    rectModel = "legacy_imgui.modern_rect_v1"
+    controlRect = "320,560,32,32"
+    artRect = "320,560,32,32"
+    artLayer = "control_art"
+    legacyUvX = 0
+    uvX = 0
+    legacyUvY = 224
+    uvY = 1792
+    legacyUvWidth = 32
+    uvWidth = 256
+    legacyUvHeight = 32
+    uvHeight = 256
+}
+
+GuiImage {
+    key = "shared.cursors.image.jump_los_26"
+    pageKey = "shared.cursors"
+    legacySection = "Cursor233"
+    legacyComment = "jump LOS 26"
+    role = "image"
+    layer = "art"
+    aliasOverride = "jump LOS 26"
+    sourceControlType = "Cursor233"
+    rect = "360,560,32,32"
+    legacyLocalRect = "360,560,32,32"
+    legacyRectSource = "cursor_catalog_grid_preview"
+    texture = "data/art/gui/jump.png"
+    legacyTexture = "jump"
+    uiPackage = "legacy_imgui"
+    rectModel = "legacy_imgui.modern_rect_v1"
+    controlRect = "360,560,32,32"
+    artRect = "360,560,32,32"
+    artLayer = "control_art"
+    legacyUvX = 32
+    uvX = 256
+    legacyUvY = 224
+    uvY = 1792
+    legacyUvWidth = 32
+    uvWidth = 256
+    legacyUvHeight = 32
+    uvHeight = 256
+}
+
+GuiImage {
+    key = "shared.cursors.image.jump_los_27"
+    pageKey = "shared.cursors"
+    legacySection = "Cursor234"
+    legacyComment = "jump LOS 27"
+    role = "image"
+    layer = "art"
+    aliasOverride = "jump LOS 27"
+    sourceControlType = "Cursor234"
+    rect = "400,560,32,32"
+    legacyLocalRect = "400,560,32,32"
+    legacyRectSource = "cursor_catalog_grid_preview"
+    texture = "data/art/gui/jump.png"
+    legacyTexture = "jump"
+    uiPackage = "legacy_imgui"
+    rectModel = "legacy_imgui.modern_rect_v1"
+    controlRect = "400,560,32,32"
+    artRect = "400,560,32,32"
+    artLayer = "control_art"
+    legacyUvX = 64
+    uvX = 512
+    legacyUvY = 224
+    uvY = 1792
+    legacyUvWidth = 32
+    uvWidth = 256
+    legacyUvHeight = 32
+    uvHeight = 256
+}
+
+GuiImage {
+    key = "shared.cursors.image.jump_los_28"
+    pageKey = "shared.cursors"
+    legacySection = "Cursor235"
+    legacyComment = "jump LOS 28"
+    role = "image"
+    layer = "art"
+    aliasOverride = "jump LOS 28"
+    sourceControlType = "Cursor235"
+    rect = "440,560,32,32"
+    legacyLocalRect = "440,560,32,32"
+    legacyRectSource = "cursor_catalog_grid_preview"
+    texture = "data/art/gui/jump.png"
+    legacyTexture = "jump"
+    uiPackage = "legacy_imgui"
+    rectModel = "legacy_imgui.modern_rect_v1"
+    controlRect = "440,560,32,32"
+    artRect = "440,560,32,32"
+    artLayer = "control_art"
+    legacyUvX = 96
+    uvX = 768
+    legacyUvY = 224
+    uvY = 1792
+    legacyUvWidth = 32
+    uvWidth = 256
+    legacyUvHeight = 32
+    uvHeight = 256
+}
+
+GuiImage {
+    key = "shared.cursors.image.jump_los_29"
+    pageKey = "shared.cursors"
+    legacySection = "Cursor236"
+    legacyComment = "jump LOS 29"
+    role = "image"
+    layer = "art"
+    aliasOverride = "jump LOS 29"
+    sourceControlType = "Cursor236"
+    rect = "480,560,32,32"
+    legacyLocalRect = "480,560,32,32"
+    legacyRectSource = "cursor_catalog_grid_preview"
+    texture = "data/art/gui/jump.png"
+    legacyTexture = "jump"
+    uiPackage = "legacy_imgui"
+    rectModel = "legacy_imgui.modern_rect_v1"
+    controlRect = "480,560,32,32"
+    artRect = "480,560,32,32"
+    artLayer = "control_art"
+    legacyUvX = 128
+    uvX = 1024
+    legacyUvY = 224
+    uvY = 1792
+    legacyUvWidth = 32
+    uvWidth = 256
+    legacyUvHeight = 32
+    uvHeight = 256
+}
+
+GuiImage {
+    key = "shared.cursors.image.jump_los_30"
+    pageKey = "shared.cursors"
+    legacySection = "Cursor237"
+    legacyComment = "jump LOS 30"
+    role = "image"
+    layer = "art"
+    aliasOverride = "jump LOS 30"
+    sourceControlType = "Cursor237"
+    rect = "520,560,32,32"
+    legacyLocalRect = "520,560,32,32"
+    legacyRectSource = "cursor_catalog_grid_preview"
+    texture = "data/art/gui/jump.png"
+    legacyTexture = "jump"
+    uiPackage = "legacy_imgui"
+    rectModel = "legacy_imgui.modern_rect_v1"
+    controlRect = "520,560,32,32"
+    artRect = "520,560,32,32"
+    artLayer = "control_art"
+    legacyUvX = 160
+    uvX = 1280
+    legacyUvY = 224
+    uvY = 1792
+    legacyUvWidth = 32
+    uvWidth = 256
+    legacyUvHeight = 32
+    uvHeight = 256
+}
+
+GuiImage {
+    key = "shared.cursors.image.jump_los_31"
+    pageKey = "shared.cursors"
+    legacySection = "Cursor238"
+    legacyComment = "jump LOS 31"
+    role = "image"
+    layer = "art"
+    aliasOverride = "jump LOS 31"
+    sourceControlType = "Cursor238"
+    rect = "560,560,32,32"
+    legacyLocalRect = "560,560,32,32"
+    legacyRectSource = "cursor_catalog_grid_preview"
+    texture = "data/art/gui/jump.png"
+    legacyTexture = "jump"
+    uiPackage = "legacy_imgui"
+    rectModel = "legacy_imgui.modern_rect_v1"
+    controlRect = "560,560,32,32"
+    artRect = "560,560,32,32"
+    artLayer = "control_art"
+    legacyUvX = 192
+    uvX = 1536
+    legacyUvY = 224
+    uvY = 1792
+    legacyUvWidth = 32
+    uvWidth = 256
+    legacyUvHeight = 32
+    uvHeight = 256
+}
+
+GuiImage {
+    key = "shared.cursors.image.jump_los_32"
+    pageKey = "shared.cursors"
+    legacySection = "Cursor239"
+    legacyComment = "jump LOS 32"
+    role = "image"
+    layer = "art"
+    aliasOverride = "jump LOS 32"
+    sourceControlType = "Cursor239"
+    rect = "600,560,32,32"
+    legacyLocalRect = "600,560,32,32"
+    legacyRectSource = "cursor_catalog_grid_preview"
+    texture = "data/art/gui/jump.png"
+    legacyTexture = "jump"
+    uiPackage = "legacy_imgui"
+    rectModel = "legacy_imgui.modern_rect_v1"
+    controlRect = "600,560,32,32"
+    artRect = "600,560,32,32"
+    artLayer = "control_art"
+    legacyUvX = 224
+    uvX = 1792
+    legacyUvY = 224
+    uvY = 1792
+    legacyUvWidth = 32
+    uvWidth = 256
+    legacyUvHeight = 32
+    uvHeight = 256
+}
+
+GuiImage {
+    key = "shared.cursors.image.long_range_los"
+    pageKey = "shared.cursors"
+    legacySection = "Cursor240"
+    legacyComment = "long range LOS"
+    role = "image"
+    layer = "art"
+    aliasOverride = "long range LOS"
+    sourceControlType = "Cursor240"
+    rect = "0,600,32,32"
+    legacyLocalRect = "0,600,32,32"
+    legacyRectSource = "cursor_catalog_grid_preview"
+    texture = "data/art/gui/Cursors6.png"
+    legacyTexture = "Cursors6"
+    uiPackage = "legacy_imgui"
+    rectModel = "legacy_imgui.modern_rect_v1"
+    controlRect = "0,600,32,32"
+    artRect = "0,600,32,32"
+    artLayer = "control_art"
+    legacyUvX = 0
+    uvX = 0
+    legacyUvY = 0
+    uvY = 0
+    legacyUvWidth = 32
+    uvWidth = 256
+    legacyUvHeight = 32
+    uvHeight = 256
+}
+
+GuiImage {
+    key = "shared.cursors.image.medium_range_los"
+    pageKey = "shared.cursors"
+    legacySection = "Cursor241"
+    legacyComment = "medium range LOS"
+    role = "image"
+    layer = "art"
+    aliasOverride = "medium range LOS"
+    sourceControlType = "Cursor241"
+    rect = "40,600,32,32"
+    legacyLocalRect = "40,600,32,32"
+    legacyRectSource = "cursor_catalog_grid_preview"
+    texture = "data/art/gui/Cursors6.png"
+    legacyTexture = "Cursors6"
+    uiPackage = "legacy_imgui"
+    rectModel = "legacy_imgui.modern_rect_v1"
+    controlRect = "40,600,32,32"
+    artRect = "40,600,32,32"
+    artLayer = "control_art"
+    legacyUvX = 0
+    uvX = 0
+    legacyUvY = 32
+    uvY = 256
+    legacyUvWidth = 32
+    uvWidth = 256
+    legacyUvHeight = 32
+    uvHeight = 256
+}
+
+GuiImage {
+    key = "shared.cursors.image.short_range_los"
+    pageKey = "shared.cursors"
+    legacySection = "Cursor242"
+    legacyComment = "short range LOS"
+    role = "image"
+    layer = "art"
+    aliasOverride = "short range LOS"
+    sourceControlType = "Cursor242"
+    rect = "80,600,32,32"
+    legacyLocalRect = "80,600,32,32"
+    legacyRectSource = "cursor_catalog_grid_preview"
+    texture = "data/art/gui/Cursors6.png"
+    legacyTexture = "Cursors6"
+    uiPackage = "legacy_imgui"
+    rectModel = "legacy_imgui.modern_rect_v1"
+    controlRect = "80,600,32,32"
+    artRect = "80,600,32,32"
+    artLayer = "control_art"
+    legacyUvX = 0
+    uvX = 0
+    legacyUvY = 64
+    uvY = 512
+    legacyUvWidth = 32
+    uvWidth = 256
+    legacyUvHeight = 32
+    uvHeight = 256
+}

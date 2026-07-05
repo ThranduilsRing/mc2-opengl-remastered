@@ -1,0 +1,14 @@
+FITini
+
+; BRAINSPECIAL-FLOW-WAIT-1 fixture: mid-body STOP ends the tick's execution.
+; The GUARD after STOP must NEVER fire (0 orders across all 3 passes).
+
+TechSpecial {
+    key = "flowstop_scenario_main"
+    type = "MissionSpecial"
+    Body {
+        DO Var.Set [pre_stop] 1
+        STOP
+        DO OPORD.CoreGuard
+    }
+}

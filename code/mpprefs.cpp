@@ -7,6 +7,7 @@ mpprefs.cpp			: Implementation of the mpprefs component.ef
 \*************************************************************************************************/
 
 #include"mpprefs.h"
+#include "../GuiRuntime/GuiRuntime.h"
 #include"mclib.h"
 #include"mechbayscreen.h"
 #include"prefs.h"
@@ -481,7 +482,18 @@ void MPPrefs ::render(int OffsetX, int OffsetY )
 	if ( OffsetX == 0 && OffsetY == 0 )
 	{
 
-		camera.render();
+		// PREVIEW-FBO-FIXED-800x600-1: composite via real-resolution ratio.
+		{
+			// UI-ASPECT-ANCHOR-1: canvas-aware composite transform (see aObject).
+			float sx = 1.f, sy = 1.f, cox = 0.f, coy = 0.f;
+			aObject::getCanvasTransform( sx, sy, cox, coy );
+			camera.setPreviewOffscreen( true );
+			camera.render();
+			camera.drawPreviewToPanel(
+				camera.bounds[0] * sx + cox, camera.bounds[1] * sy + coy,
+				(camera.bounds[2] - camera.bounds[0]) * sx,
+				(camera.bounds[3] - camera.bounds[1]) * sy );
+		}
 
 		for ( int i = 0; i < 3; i++ )
 		{

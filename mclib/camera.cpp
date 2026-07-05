@@ -1450,24 +1450,99 @@ unsigned long Camera::inverseProject (Stuff::Vector2DOf<long> &screenPos, Stuff:
 			}
 		}*/
 
-		for ( int column = 0; column < land->realVerticesMapSide; column ++ )
-		{
-			for ( int row = 0; row < land->realVerticesMapSide; row++/*row += land->realVerticesMapSide - 1*/ )
-			{
-				tmpWorld.x = land->tileColToWorldCoord[column];
-				tmpWorld.y = land->tileRowToWorldCoord[row];
-				tmpWorld.z = land->getTerrainElevation( row, column );
+		// MISSION-INTERFACE-PERF-1: this "off map" fallback is the PRODUCTION
+		// ground picker whenever the quadList is empty (LOD-chunk terrain path:
+		// numTiles=0 -> closestTile never set -> every cache-miss cursor
+		// unproject lands here). The legacy loop below brute-force-projects ALL
+		// realVerticesMapSide^2 map vertices (getTerrainElevation +
+		// projectForSelectionPicking each) = ~890us/frame on mc2_24, 85-95% of
+		// the GameLogic.Mission.Interface zone ([IFACE_PERF v1] 2026-07-01).
+		//
+		// MC2_PICK_FALLBACK_COARSE=1 (default OFF): coarse-to-fine argmin over
+		// the same screen-distance field -- stride-8 coarse pass, then full-res
+		// refine in a +/-9 window around the coarse winner. Same
+		// nearest-projected-vertex result in practice (the screen-distance
+		// basin spans many vertices at any playable zoom); the fallback is
+		// already vertex-resolution approximate (return 1 below). With
+		// MC2_PICK_CAP_TRACE=1 also set, every 32nd walk re-runs the full
+		// brute force and logs a [PICK_FALLBACK] parity line.
+		static const bool s_fallbackCoarse =
+			(std::getenv("MC2_PICK_FALLBACK_COARSE") != nullptr);
 
-				// [PROJECTZ:SelectionPicking id=picking_closest_vertex_fallback]
-				PROJECTZ_SITE("picking_closest_vertex_fallback", "SelectionPicking");
-				projectForSelectionPicking( tmpWorld, tmpScreen );
-				
-				float tmpDis = (tmpScreen.x - screenPos.x) * (tmpScreen.x - screenPos.x ) + (tmpScreen.y - screenPos.y) * (tmpScreen.y - screenPos.y );
-				if ( tmpDis < dis )
+		const long side = land->realVerticesMapSide;
+		auto sampleVertex = [&](long row, long col, float& bestDis,
+		                        int& bestRow, int& bestCol) {
+			tmpWorld.x = land->tileColToWorldCoord[col];
+			tmpWorld.y = land->tileRowToWorldCoord[row];
+			tmpWorld.z = land->getTerrainElevation( row, col );
+
+			// [PROJECTZ:SelectionPicking id=picking_closest_vertex_fallback]
+			PROJECTZ_SITE("picking_closest_vertex_fallback", "SelectionPicking");
+			projectForSelectionPicking( tmpWorld, tmpScreen );
+
+			float tmpDis = (tmpScreen.x - screenPos.x) * (tmpScreen.x - screenPos.x ) + (tmpScreen.y - screenPos.y) * (tmpScreen.y - screenPos.y );
+			if ( tmpDis < bestDis )
+			{
+				bestRow = (int)row;
+				bestCol = (int)col;
+				bestDis = tmpDis;
+			}
+		};
+
+		if (s_fallbackCoarse)
+		{
+			// Coarse pass: stride 8, plus the last row/col so map edges are
+			// always sampled regardless of side % 8.
+			const long stride = 8;
+			for ( long column = 0; column < side; column += stride )
+				for ( long row = 0; row < side; row += stride )
+					sampleVertex(row, column, dis, closeRow, closeCol);
+			if ((side - 1) % stride != 0)
+			{
+				for ( long row = 0; row < side; row += stride )
+					sampleVertex(row, side - 1, dis, closeRow, closeCol);
+				for ( long column = 0; column < side; column += stride )
+					sampleVertex(side - 1, column, dis, closeRow, closeCol);
+				sampleVertex(side - 1, side - 1, dis, closeRow, closeCol);
+			}
+			// Full-res refine around the coarse winner.
+			const long r0 = (closeRow - 9 > 0) ? (closeRow - 9) : 0;
+			const long r1 = (closeRow + 9 < side - 1) ? (closeRow + 9) : (side - 1);
+			const long c0 = (closeCol - 9 > 0) ? (closeCol - 9) : 0;
+			const long c1 = (closeCol + 9 < side - 1) ? (closeCol + 9) : (side - 1);
+			for ( long column = c0; column <= c1; column++ )
+				for ( long row = r0; row <= r1; row++ )
+					sampleVertex(row, column, dis, closeRow, closeCol);
+
+			// Sampled parity vs the legacy brute force (every 32nd walk,
+			// only when the pre-existing pick trace is also enabled).
+			if (s_capTrace)
+			{
+				static unsigned long s_fbWalk = 0;
+				if ((++s_fbWalk & 31) == 0)
 				{
-					closeRow = row;
-					closeCol = column;
-					dis = tmpDis;
+					float bfDis = 999999999.f;
+					int bfRow = 0, bfCol = 0;
+					for ( long column = 0; column < side; column++ )
+						for ( long row = 0; row < side; row++ )
+							sampleVertex(row, column, bfDis, bfRow, bfCol);
+					fprintf(stderr, "[PICK_FALLBACK] parity=%s coarse=(%d,%d) brute=(%d,%d) "
+						"coarse_dsq=%.1f brute_dsq=%.1f cursor=(%ld,%ld)\n",
+						(bfRow == closeRow && bfCol == closeCol) ? "ok" : "DIFF",
+						closeRow, closeCol, bfRow, bfCol, dis, bfDis,
+						(long)screenPos.x, (long)screenPos.y);
+					// Keep the brute-force answer on divergence (trace mode only).
+					if (bfDis < dis) { dis = bfDis; closeRow = bfRow; closeCol = bfCol; }
+				}
+			}
+		}
+		else
+		{
+			for ( long column = 0; column < side; column ++ )
+			{
+				for ( long row = 0; row < side; row++/*row += land->realVerticesMapSide - 1*/ )
+				{
+					sampleVertex(row, column, dis, closeRow, closeCol);
 				}
 			}
 		}
@@ -2635,7 +2710,24 @@ void Camera::setOrthogonal(void)
 			far_clip = editorFar;
 
 		float horizontal_fov = camera_fov * DEGREES_TO_RADS;
+		// UI-ASPECT-ANCHOR-1 (camera): build the projection with the REAL
+		// display aspect, not the HUD-clamped 800x600 (4:3). The clamped ratio
+		// baked a 4:3 frustum that the full-window stretch then distorted at
+		// any other aspect (16:9 = fat mechs; 25:9 = squashed scene). Pick math
+		// shares this matrix (project/inverse through the same constants), so
+		// screen<->world stays consistent. MC2_CAMERA_ASPECT_NATIVE=0 restores
+		// the legacy stretched look.
 		float height2width = ((float)Environment.screenHeight / (float)Environment.screenWidth);
+		{
+			static const bool s_nativeAspect =
+				[]{ const char* e = getenv("MC2_CAMERA_ASPECT_NATIVE"); return !(e && e[0] == '0'); }();
+			// Panel previews (SimpleCamera -> fixed 800x600 FBO) must keep the
+			// clamped ratio: their render target IS 4:3, not the window.
+			extern int g_mechPreviewRenderDepth;
+			if (s_nativeAspect && g_mechPreviewRenderDepth == 0
+				&& Environment.drawableWidth > 0 && Environment.drawableHeight > 0)
+				height2width = (float)Environment.drawableHeight / (float)Environment.drawableWidth;
+		}
 
 		//
 		//-------------------------------------------------------

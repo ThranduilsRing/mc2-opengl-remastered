@@ -17,6 +17,9 @@ MissionResults.cpp			: Implementation of the MissionResults component.
 #include"pilotreviewarea.h"
 #include"gamesound.h"
 #include "../resource.h"
+#include"../GuiRuntime/GuiRuntime.h"   // GetDisplaySize (MECH-ICON-BLANK-1 gui bridge)
+#include"../GameOS/gameos/gos_dev_shell.h"   // RESULTS-CAPTURE-1
+#include <cstdlib>
 #include <cstdlib>   // std::getenv (MC2_SOAK_AUTOWIN results auto-dismiss)
 
 bool MissionResults::FirstTimeResults = true;
@@ -232,6 +235,11 @@ void MissionResults::update()
 
 void MissionResults::render()
 {
+	// NOTE (MECH-ICON-BLANK-1): do NOT blanket-wrap this stack in the gui
+	// bridge — tried 2026-07-04 and it mixed scale spaces (bridged widgets vs
+	// non-aObject legacy draws), compressing the salvage/promotion layout.
+	// The after-action screens need a per-widget bridge pass with harness
+	// captures, as their own slice.
 
 	if ( MPlayer )
 	{
@@ -240,6 +248,19 @@ void MissionResults::render()
 
 	else if ( pSalvageScreen )
 	{
+		// RESULTS-CAPTURE-1 (MC2_SHOT_RESULTS + MC2_DEV_SHELL=1): deterministic
+		// AAR captures — schedule an end-of-frame screenshot after the screen
+		// has settled (30 frames), once per screen per process. Replaces
+		// blind-timed harness screenshots.
+		{
+			static const bool s_shotResults = (getenv("MC2_SHOT_RESULTS") != nullptr);
+			static int s_salvageFrames = 0;
+			if ( s_shotResults && s_salvageFrames >= 0 && ++s_salvageFrames == 30 )
+			{
+				gos_dev_shell::scheduleScreenshot( "results_salvage", true );
+				s_salvageFrames = -1;
+			}
+		}
 		pSalvageScreen->render();
 
 		//Tutorial -- ONLY do first time we get into the salvage screen.
@@ -251,7 +272,19 @@ void MissionResults::render()
 	}
 
 	if ( pPilotScreen && bPilotStarted )
+	{
+		// RESULTS-CAPTURE-1: same one-shot for the pilot-promotion screen.
+		{
+			static const bool s_shotResults = (getenv("MC2_SHOT_RESULTS") != nullptr);
+			static int s_promoteFrames = 0;
+			if ( s_shotResults && s_promoteFrames >= 0 && ++s_promoteFrames == 30 )
+			{
+				gos_dev_shell::scheduleScreenshot( "results_promote", true );
+				s_promoteFrames = -1;
+			}
+		}
 		pPilotScreen->render();
+	}
 }
 
 void MissionResults::setHostLeftDlg( const char* pName )

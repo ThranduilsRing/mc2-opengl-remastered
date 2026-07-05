@@ -1,0 +1,1507 @@
+﻿// MC2R ImGui FIT generated from legacy UI FIT.
+// Source: data/defs/ui/legacy/game/mcl_mp_hostgame.fit
+// Legacy files remain source truth only; edit the generated ImGui FIT.
+
+GuiPage {
+    key = "game.mcl_mp_hostgame"
+    title = "Game Mcl Mp Hostgame"
+    sourceLegacyFit = "data/defs/ui/legacy/game/mcl_mp_hostgame.fit"
+    sourceSystem = "game"
+    sourceScreen = "mcl_mp_hostgame"
+    sourceKind = "legacy_screen"
+    layout = "absolute"
+    coordinateSpace = "screen_absolute"
+    localWidth = 800
+    localHeight = 600
+    mountOffset = "0,0"
+    editableSource = "generated_imgui_only"
+    overlayGameOS = true
+    renderMode = "gameos_overlay"
+    backgroundPolicy = "transparent_overlay"
+}
+
+GuiMetadata {
+    key = "game.mcl_mp_hostgame.metadata.metadata"
+    pageKey = "game.mcl_mp_hostgame"
+    legacySection = "Buttons"
+    legacyContext = "~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ | ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ | ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~"
+    role = "metadata"
+    layer = "metadata"
+    aliasOverride = "metadata"
+    sourceControlType = "Buttons"
+    rect = "0,0,0,0"
+    legacyLocalRect = "0,0,0,0"
+    legacyRectSource = "xywh"
+    visible = false
+}
+
+GuiButton {
+    key = "game.mcl_mp_hostgame.button.cancel_button"
+    pageKey = "game.mcl_mp_hostgame"
+    legacySection = "Button0"
+    legacyComment = "cancel button"
+    role = "button"
+    layer = "control"
+    aliasOverride = "cancel button"
+    sourceControlType = "Button0"
+    rect = "115,481,128,64"
+    legacyLocalRect = "115,481,128,64"
+    legacyRectSource = "xywh"
+    texture = "data/art/gui/mcl_mp_addai_4.png"
+    legacyTexture = "mcl_mp_addai_4.tga"
+    uiPackage = "default"
+    rectModel = "legacy_imgui.modern_rect_v1"
+    controlRect = "115,481,128,64"
+    hitRect = "115,481,128,64"
+    artRect = "115,481,128,64"
+    artLayer = "control_art"
+    controlModel = "composite_hit_art_text_v1"
+    linkedLayers = "hit,art,text"
+    editMode = "linked_control_with_independent_text"
+    textRect = "124,498,110,30"
+    textRectMode = "explicit_legacy"
+    textLegacyId = 27651
+    textKey = "legacy.mc2res.27651"
+    visibleText = "CANCEL"
+    textLegacySymbol = "IDS_DIALOG_CANCEL"
+    textSource = "mc2res"
+    textMissing = false
+    helpCaptionLegacyId = 0
+    helpCaptionKey = "legacy.strings.ids_undefined_string_sebi"
+    helpCaptionLegacySymbol = "IDS_undefined_string_sebi"
+    helpCaptionSource = "strings.res.h"
+    helpCaptionMissing = true
+    helpCaptionMissingReason = "symbol_only_from_strings_res_h"
+    helpDescLegacyId = 27508
+    helpDescKey = "legacy.mc2res.27508"
+    helpDescText = "BACK     Return to the Mission Selection screen."
+    helpDescLegacySymbol = "IDS_MN_BACK_HELP"
+    helpDescSource = "mc2res"
+    helpDescMissing = false
+    legacyFontId = 26104
+    legacyFontComment = "use AgencyFB17"
+    font = "Agency Regular"
+    fontStyle = "Regular"
+    fontSize = 17
+    bold = false
+    italic = false
+    textAlign = "center"
+    textAnchor = "center"
+    legacyTextAlignmentSource = "aButton::init default Alignment=2"
+    wrapText = false
+    textX = 124
+    textY = 498
+    textWidth = 110
+    textHeight = 30
+    legacyTextRectSource = "XTextLocation/YTextLocation/TextWidth/TextHeight"
+    normalTextColorArgb = "0xff005392"
+    normalOverlayColorArgb = "0xff005392"
+    colorArgb = "0xff005392"
+    pressedTextColorArgb = "0xffffffff"
+    pressedOverlayColorArgb = "0xffffffff"
+    highlightTextColorArgb = "0xffffffff"
+    highlightOverlayColorArgb = "0xffffffff"
+    disabledTextColorArgb = "0xff373737"
+    disabledOverlayColorArgb = "0xff373737"
+    buttonOverlayEnabled = true
+    buttonOverlayAlpha = 0.30
+    pulseEnabled = true
+    pulseSpeed = 1.5
+    textEffect = "pulse"
+    legacyTextEffectSource = "AnimateText"
+    legacyId = 51
+    legacyColor = 0xff005392
+    legacyTextOutline = "TRUE"
+    legacyAnimateBmp = 0
+    legacyAnimateText = 1
+    uvX = 116
+    uvY = 114
+    uvWidth = 128
+    uvHeight = 64
+    uvPressedX = 116
+    uvPressedY = 178
+    uvHighlightX = 116
+    uvHighlightY = 114
+    uvDisabledX = 116
+    uvDisabledY = 178
+    legacyFontComment = "use AgencyFB17"
+    fillColorArgb = "0x00000000"
+    borderColorArgb = "0x00000000"
+    legacyNormalAnimationTimeStamps = 4
+    legacyNormalAnimationLoops = true
+    legacyNormalAnimTime0 = 0.0
+    legacyNormalAnimColor0 = 0xff005392
+    legacyNormalAnimTime1 = 7.0
+    legacyNormalAnimColor1 = 0xff005392
+    legacyNormalAnimTime2 = 7.5
+    legacyNormalAnimColor2 = 0xff5C96C2
+    legacyNormalAnimTime3 = 8.0
+    legacyNormalAnimColor3 = 0xff005392
+    legacyPressedAnimationTimeStamps = 2
+    legacyPressedAnimationLoops = false
+    legacyPressedAnimTime0 = 0.0
+    legacyPressedAnimColor0 = 0xffffffff
+    legacyPressedAnimTime1 = 0.5
+    legacyPressedAnimColor1 = 0xff5C96C2
+    legacyHighlightAnimationTimeStamps = 2
+    legacyHighlightAnimationLoops = false
+    legacyHighlightAnimTime0 = 0.0
+    legacyHighlightAnimColor0 = 0xffffffff
+    legacyHighlightAnimTime1 = 0.5
+    legacyHighlightAnimColor1 = 0xff5C96C2
+    legacyDisabledAnimationTimeStamps = 2
+    legacyDisabledAnimationLoops = true
+    legacyDisabledAnimTime0 = 0.0
+    legacyDisabledAnimColor0 = 0xff373737
+    legacyDisabledAnimTime1 = 15.0
+    legacyDisabledAnimColor1 = 0xff373737
+}
+
+GuiButton {
+    key = "game.mcl_mp_hostgame.button.accept_button"
+    pageKey = "game.mcl_mp_hostgame"
+    legacySection = "Button1"
+    legacyComment = "accept button"
+    role = "button"
+    layer = "control"
+    aliasOverride = "accept button"
+    sourceControlType = "Button1"
+    rect = "556,481,128,64"
+    legacyLocalRect = "556,481,128,64"
+    legacyRectSource = "xywh"
+    texture = "data/art/gui/mcl_mp_addai_4.png"
+    legacyTexture = "mcl_mp_addai_4.tga"
+    uiPackage = "default"
+    rectModel = "legacy_imgui.modern_rect_v1"
+    controlRect = "556,481,128,64"
+    hitRect = "556,481,128,64"
+    artRect = "556,481,128,64"
+    artLayer = "control_art"
+    controlModel = "composite_hit_art_text_v1"
+    linkedLayers = "hit,art,text"
+    editMode = "linked_control_with_independent_text"
+    textRect = "565,498,110,30"
+    textRectMode = "explicit_legacy"
+    textLegacyId = 27209
+    textKey = "legacy.mc2res.27209"
+    visibleText = "ACCEPT"
+    textLegacySymbol = "IDS_PM_ACCEPT"
+    textSource = "mc2res"
+    textMissing = false
+    helpCaptionLegacyId = 0
+    helpCaptionKey = "legacy.strings.ids_undefined_string_sebi"
+    helpCaptionLegacySymbol = "IDS_undefined_string_sebi"
+    helpCaptionSource = "strings.res.h"
+    helpCaptionMissing = true
+    helpCaptionMissingReason = "symbol_only_from_strings_res_h"
+    helpDescLegacyId = 27508
+    helpDescKey = "legacy.mc2res.27508"
+    helpDescText = "BACK     Return to the Mission Selection screen."
+    helpDescLegacySymbol = "IDS_MN_BACK_HELP"
+    helpDescSource = "mc2res"
+    helpDescMissing = false
+    legacyFontId = 26105
+    legacyFontComment = "use AgencyFB17"
+    font = "Agency Regular"
+    fontStyle = "Regular"
+    fontSize = 17
+    bold = false
+    italic = false
+    textAlign = "center"
+    textAnchor = "center"
+    legacyTextAlignmentSource = "aButton::init default Alignment=2"
+    wrapText = false
+    textX = 565
+    textY = 498
+    textWidth = 110
+    textHeight = 30
+    legacyTextRectSource = "XTextLocation/YTextLocation/TextWidth/TextHeight"
+    normalTextColorArgb = "0xff005392"
+    normalOverlayColorArgb = "0xff005392"
+    colorArgb = "0xff005392"
+    pressedTextColorArgb = "0xffffffff"
+    pressedOverlayColorArgb = "0xffffffff"
+    highlightTextColorArgb = "0xffffffff"
+    highlightOverlayColorArgb = "0xffffffff"
+    disabledTextColorArgb = "0xff373737"
+    disabledOverlayColorArgb = "0xff373737"
+    buttonOverlayEnabled = true
+    buttonOverlayAlpha = 0.30
+    pulseEnabled = true
+    pulseSpeed = 1.5
+    textEffect = "pulse"
+    legacyTextEffectSource = "AnimateText"
+    legacyId = 50
+    legacyColor = 0xff005392
+    legacyTextOutline = "TRUE"
+    legacyAnimateBmp = 0
+    legacyAnimateText = 1
+    uvX = 116
+    uvY = 114
+    uvWidth = 128
+    uvHeight = 64
+    uvPressedX = 116
+    uvPressedY = 178
+    uvHighlightX = 116
+    uvHighlightY = 114
+    uvDisabledX = 116
+    uvDisabledY = 178
+    legacyFontComment = "use AgencyFB17"
+    fillColorArgb = "0x00000000"
+    borderColorArgb = "0x00000000"
+    legacyNormalAnimationTimeStamps = 4
+    legacyNormalAnimationLoops = true
+    legacyNormalAnimTime0 = 0.0
+    legacyNormalAnimColor0 = 0xff005392
+    legacyNormalAnimTime1 = 7.0
+    legacyNormalAnimColor1 = 0xff005392
+    legacyNormalAnimTime2 = 7.5
+    legacyNormalAnimColor2 = 0xff5C96C2
+    legacyNormalAnimTime3 = 8.0
+    legacyNormalAnimColor3 = 0xff005392
+    legacyPressedAnimationTimeStamps = 2
+    legacyPressedAnimationLoops = false
+    legacyPressedAnimTime0 = 0.0
+    legacyPressedAnimColor0 = 0xffffffff
+    legacyPressedAnimTime1 = 0.5
+    legacyPressedAnimColor1 = 0xff5C96C2
+    legacyHighlightAnimationTimeStamps = 2
+    legacyHighlightAnimationLoops = false
+    legacyHighlightAnimTime0 = 0.0
+    legacyHighlightAnimColor0 = 0xffffffff
+    legacyHighlightAnimTime1 = 0.5
+    legacyHighlightAnimColor1 = 0xff5C96C2
+    legacyDisabledAnimationTimeStamps = 2
+    legacyDisabledAnimationLoops = true
+    legacyDisabledAnimTime0 = 0.0
+    legacyDisabledAnimColor0 = 0xff373737
+    legacyDisabledAnimTime1 = 15.0
+    legacyDisabledAnimColor1 = 0xff373737
+}
+
+GuiButton {
+    key = "game.mcl_mp_hostgame.button.check_box_for_allow_all_technologies"
+    pageKey = "game.mcl_mp_hostgame"
+    legacySection = "Button2"
+    legacyComment = "check box for allow all technologies"
+    role = "button"
+    layer = "control"
+    aliasOverride = "check box for allow all technologies"
+    sourceControlType = "Button2"
+    rect = "126,190,24,24"
+    legacyLocalRect = "126,190,24,24"
+    legacyRectSource = "xywh"
+    texture = "data/art/gui/mcl_mp_param_2.png"
+    legacyTexture = "mcl_mp_param_2.tga"
+    uiPackage = "default"
+    rectModel = "legacy_imgui.modern_rect_v1"
+    controlRect = "126,190,24,24"
+    hitRect = "126,190,24,24"
+    artRect = "126,190,24,24"
+    artLayer = "control_art"
+    controlModel = "composite_hit_art_text_v1"
+    linkedLayers = "hit,art,text"
+    editMode = "linked_control_with_independent_text"
+    font = "Agency Regular"
+    fontStyle = "Regular"
+    fontSize = 14
+    bold = false
+    italic = false
+    textAlign = "center"
+    textAnchor = "center"
+    legacyTextAlignmentSource = "aButton::init default Alignment=2"
+    wrapText = false
+    normalTextColorArgb = "0xff43311c"
+    normalOverlayColorArgb = "0xff43311c"
+    colorArgb = "0xff43311c"
+    pressedTextColorArgb = "0xffffffff"
+    pressedOverlayColorArgb = "0xffffffff"
+    highlightTextColorArgb = "0xffffffff"
+    highlightOverlayColorArgb = "0xffffffff"
+    disabledTextColorArgb = "0xff373737"
+    disabledOverlayColorArgb = "0xff373737"
+    buttonOverlayEnabled = true
+    buttonOverlayAlpha = 0.30
+    uvX = 60
+    uvY = 226
+    uvWidth = 24
+    uvHeight = 24
+    uvPressedX = 84
+    uvPressedY = 226
+    uvHighlightX = 60
+    uvHighlightY = 226
+    uvHighlightPressedX = 84
+    uvHighlightPressedY = 226
+    uvDisabledX = 84
+    uvDisabledY = 226
+    legacyToggle = 1
+    legacyNormalAnimationTimeStamps = 2
+    legacyNormalAnimationLoops = true
+    legacyNormalAnimTime0 = 0.0
+    legacyNormalAnimColor0 = 0xff43311C
+    legacyNormalAnimTime1 = 15.0
+    legacyNormalAnimColor1 = 0xff43311C
+    legacyPressedAnimationTimeStamps = 2
+    legacyPressedAnimationLoops = false
+    legacyPressedAnimTime0 = 0.0
+    legacyPressedAnimColor0 = 0xffffffff
+    legacyPressedAnimTime1 = 0.4
+    legacyPressedAnimColor1 = 0xffFF8A00
+    legacyHighlightAnimationTimeStamps = 3
+    legacyHighlightAnimationLoops = false
+    legacyHighlightAnimTime0 = 0.0
+    legacyHighlightAnimColor0 = 0xffffffff
+    legacyHighlightAnimTime1 = 0.4
+    legacyHighlightAnimColor1 = 0xff43311C
+    legacyHighlightAnimTime2 = 0.75
+    legacyHighlightAnimColor2 = 0xffffffff
+    legacyHighlightPressedAnimationTimeStamps = 3
+    legacyHighlightPressedAnimationLoops = true
+    legacyHighlightPressedAnimTime0 = 0.0
+    legacyHighlightPressedAnimColor0 = 0xffffffff
+    legacyHighlightPressedAnimTime1 = 0.4
+    legacyHighlightPressedAnimColor1 = 0xffFF8A00
+    legacyHighlightPressedAnimTime2 = 0.75
+    legacyHighlightPressedAnimColor2 = 0xffffffff
+    legacyDisabledAnimationTimeStamps = 2
+    legacyDisabledAnimationLoops = true
+    legacyDisabledAnimTime0 = 0.0
+    legacyDisabledAnimColor0 = 0xff373737
+    legacyDisabledAnimTime1 = 15.0
+    legacyDisabledAnimColor1 = 0xff373737
+    fillColorArgb = "0x00000000"
+    borderColorArgb = "0x00000000"
+}
+
+GuiMetadata {
+    key = "game.mcl_mp_hostgame.metadata.metadata_01"
+    pageKey = "game.mcl_mp_hostgame"
+    legacySection = "Rects"
+    legacyContext = "~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ | ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ | ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~"
+    role = "metadata"
+    layer = "metadata"
+    aliasOverride = "metadata"
+    sourceControlType = "Rects"
+    rect = "0,0,0,0"
+    legacyLocalRect = "0,0,0,0"
+    legacyRectSource = "xywh"
+    visible = false
+}
+
+GuiRect {
+    key = "game.mcl_mp_hostgame.rect.background_black"
+    pageKey = "game.mcl_mp_hostgame"
+    legacySection = "Rect0"
+    legacyComment = "background black"
+    role = "rect"
+    layer = "layout"
+    aliasOverride = "background black"
+    sourceControlType = "Rect0"
+    rect = "115,102,568,368"
+    legacyLocalRect = "115,102,568,368"
+    legacyRectSource = "xywh"
+    uiPackage = "default"
+    rectModel = "legacy_imgui.modern_rect_v1"
+    controlRect = "115,102,568,368"
+    legacyColor = "Oxff000000"
+    outline = "TRUE"
+    filled = false
+    fillColorArgb = "0x00000000"
+    borderColorArgb = "0x00000000"
+    colorArgb = "0xffffffff"
+}
+
+GuiRect {
+    key = "game.mcl_mp_hostgame.rect.main_header_background_black"
+    pageKey = "game.mcl_mp_hostgame"
+    legacySection = "Rect1"
+    legacyComment = "main header background black"
+    role = "title"
+    layer = "text"
+    aliasOverride = "main header background black"
+    sourceControlType = "Rect1"
+    rect = "108,59,575,31"
+    legacyLocalRect = "108,59,575,31"
+    legacyRectSource = "xywh"
+    uiPackage = "default"
+    rectModel = "legacy_imgui.modern_rect_v1"
+    controlRect = "108,59,575,31"
+    legacyColor = "Oxff000000"
+    outline = "TRUE"
+    filled = false
+    fillColorArgb = "0x00000000"
+    borderColorArgb = "0x00000000"
+    colorArgb = "0xffffffff"
+}
+
+GuiMetadata {
+    key = "game.mcl_mp_hostgame.metadata.metadata_02"
+    pageKey = "game.mcl_mp_hostgame"
+    legacySection = "Statics"
+    legacyContext = "~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ | ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ | ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~"
+    role = "metadata"
+    layer = "metadata"
+    aliasOverride = "metadata"
+    sourceControlType = "Statics"
+    rect = "0,0,0,0"
+    legacyLocalRect = "0,0,0,0"
+    legacyRectSource = "xywh"
+    visible = false
+}
+
+GuiImage {
+    key = "game.mcl_mp_hostgame.image.mcl_mp_addai_1"
+    pageKey = "game.mcl_mp_hostgame"
+    legacySection = "Static0"
+    role = "image"
+    layer = "art"
+    aliasOverride = "mcl_mp_addai_1"
+    sourceControlType = "Static0"
+    rect = "0,0,256,59"
+    legacyLocalRect = "0,0,256,59"
+    legacyRectSource = "xywh"
+    texture = "data/art/gui/mcl_mp_addai_1.png"
+    legacyTexture = "mcl_mp_addai_1.tga"
+    uiPackage = "default"
+    rectModel = "legacy_imgui.modern_rect_v1"
+    controlRect = "0,0,256,59"
+    artRect = "0,0,256,59"
+    artLayer = "control_art"
+    uvX = 0
+    uvY = 0
+    uvWidth = 256
+    uvHeight = 59
+}
+
+GuiImage {
+    key = "game.mcl_mp_hostgame.image.mcl_mp_addai_1_01"
+    pageKey = "game.mcl_mp_hostgame"
+    legacySection = "Static1"
+    role = "image"
+    layer = "art"
+    aliasOverride = "mcl_mp_addai_1"
+    sourceControlType = "Static1"
+    rect = "256,0,256,59"
+    legacyLocalRect = "256,0,256,59"
+    legacyRectSource = "xywh"
+    texture = "data/art/gui/mcl_mp_addai_1.png"
+    legacyTexture = "mcl_mp_addai_1.tga"
+    uiPackage = "default"
+    rectModel = "legacy_imgui.modern_rect_v1"
+    controlRect = "256,0,256,59"
+    artRect = "256,0,256,59"
+    artLayer = "control_art"
+    uvX = 0
+    uvY = 59
+    uvWidth = 256
+    uvHeight = 59
+}
+
+GuiImage {
+    key = "game.mcl_mp_hostgame.image.mcl_mp_addai_1_02"
+    pageKey = "game.mcl_mp_hostgame"
+    legacySection = "Static2"
+    role = "image"
+    layer = "art"
+    aliasOverride = "mcl_mp_addai_1"
+    sourceControlType = "Static2"
+    rect = "512,0,256,59"
+    legacyLocalRect = "512,0,256,59"
+    legacyRectSource = "xywh"
+    texture = "data/art/gui/mcl_mp_addai_1.png"
+    legacyTexture = "mcl_mp_addai_1.tga"
+    uiPackage = "default"
+    rectModel = "legacy_imgui.modern_rect_v1"
+    controlRect = "512,0,256,59"
+    artRect = "512,0,256,59"
+    artLayer = "control_art"
+    uvX = 0
+    uvY = 118
+    uvWidth = 256
+    uvHeight = 59
+}
+
+GuiImage {
+    key = "game.mcl_mp_hostgame.image.mcl_mp_addai_4"
+    pageKey = "game.mcl_mp_hostgame"
+    legacySection = "Static3"
+    role = "image"
+    layer = "art"
+    aliasOverride = "mcl_mp_addai_4"
+    sourceControlType = "Static3"
+    rect = "768,0,32,59"
+    legacyLocalRect = "768,0,32,59"
+    legacyRectSource = "xywh"
+    texture = "data/art/gui/mcl_mp_addai_4.png"
+    legacyTexture = "mcl_mp_addai_4.tga"
+    uiPackage = "default"
+    rectModel = "legacy_imgui.modern_rect_v1"
+    controlRect = "768,0,32,59"
+    artRect = "768,0,32,59"
+    artLayer = "control_art"
+    uvX = 32
+    uvY = 146
+    uvWidth = 32
+    uvHeight = 59
+}
+
+GuiImage {
+    key = "game.mcl_mp_hostgame.image.mcl_mp_addai_4_01"
+    pageKey = "game.mcl_mp_hostgame"
+    legacySection = "Static4"
+    role = "image"
+    layer = "art"
+    aliasOverride = "mcl_mp_addai_4"
+    sourceControlType = "Static4"
+    rect = "0,59,108,32"
+    legacyLocalRect = "0,59,108,32"
+    legacyRectSource = "xywh"
+    texture = "data/art/gui/mcl_mp_addai_4.png"
+    legacyTexture = "mcl_mp_addai_4.tga"
+    uiPackage = "default"
+    rectModel = "legacy_imgui.modern_rect_v1"
+    controlRect = "0,59,108,32"
+    artRect = "0,59,108,32"
+    artLayer = "control_art"
+    uvX = 0
+    uvY = 205
+    uvWidth = 108
+    uvHeight = 32
+}
+
+GuiImage {
+    key = "game.mcl_mp_hostgame.image.mcl_mp_addai_4_02"
+    pageKey = "game.mcl_mp_hostgame"
+    legacySection = "Static5"
+    role = "image"
+    layer = "art"
+    aliasOverride = "mcl_mp_addai_4"
+    sourceControlType = "Static5"
+    rect = "684,59,116,32"
+    legacyLocalRect = "684,59,116,32"
+    legacyRectSource = "xywh"
+    texture = "data/art/gui/mcl_mp_addai_4.png"
+    legacyTexture = "mcl_mp_addai_4.tga"
+    uiPackage = "default"
+    rectModel = "legacy_imgui.modern_rect_v1"
+    controlRect = "684,59,116,32"
+    artRect = "684,59,116,32"
+    artLayer = "control_art"
+    uvX = 0
+    uvY = 114
+    uvWidth = 116
+    uvHeight = 32
+}
+
+GuiImage {
+    key = "game.mcl_mp_hostgame.image.mcl_mp_addai_1_03"
+    pageKey = "game.mcl_mp_hostgame"
+    legacySection = "Static6"
+    role = "image"
+    layer = "art"
+    aliasOverride = "mcl_mp_addai_1"
+    sourceControlType = "Static6"
+    rect = "0,91,255,10"
+    legacyLocalRect = "0,91,255,10"
+    legacyRectSource = "xywh"
+    texture = "data/art/gui/mcl_mp_addai_1.png"
+    legacyTexture = "mcl_mp_addai_1.tga"
+    uiPackage = "default"
+    rectModel = "legacy_imgui.modern_rect_v1"
+    controlRect = "0,91,255,10"
+    artRect = "0,91,255,10"
+    artLayer = "control_art"
+    uvX = 0
+    uvY = 177
+    uvWidth = 255
+    uvHeight = 10
+}
+
+GuiImage {
+    key = "game.mcl_mp_hostgame.image.mcl_mp_addai_1_04"
+    pageKey = "game.mcl_mp_hostgame"
+    legacySection = "Static7"
+    role = "image"
+    layer = "art"
+    aliasOverride = "mcl_mp_addai_1"
+    sourceControlType = "Static7"
+    rect = "255,91,256,10"
+    legacyLocalRect = "255,91,256,10"
+    legacyRectSource = "xywh"
+    texture = "data/art/gui/mcl_mp_addai_1.png"
+    legacyTexture = "mcl_mp_addai_1.tga"
+    uiPackage = "default"
+    rectModel = "legacy_imgui.modern_rect_v1"
+    controlRect = "255,91,256,10"
+    artRect = "255,91,256,10"
+    artLayer = "control_art"
+    uvX = 0
+    uvY = 187
+    uvWidth = 256
+    uvHeight = 10
+}
+
+GuiImage {
+    key = "game.mcl_mp_hostgame.image.mcl_mp_addai_1_05"
+    pageKey = "game.mcl_mp_hostgame"
+    legacySection = "Static8"
+    role = "image"
+    layer = "art"
+    aliasOverride = "mcl_mp_addai_1"
+    sourceControlType = "Static8"
+    rect = "511,91,256,10"
+    legacyLocalRect = "511,91,256,10"
+    legacyRectSource = "xywh"
+    texture = "data/art/gui/mcl_mp_addai_1.png"
+    legacyTexture = "mcl_mp_addai_1.tga"
+    uiPackage = "default"
+    rectModel = "legacy_imgui.modern_rect_v1"
+    controlRect = "511,91,256,10"
+    artRect = "511,91,256,10"
+    artLayer = "control_art"
+    uvX = 0
+    uvY = 197
+    uvWidth = 256
+    uvHeight = 10
+}
+
+GuiImage {
+    key = "game.mcl_mp_hostgame.image.mcl_mp_addai_2"
+    pageKey = "game.mcl_mp_hostgame"
+    legacySection = "Static9"
+    role = "image"
+    layer = "art"
+    aliasOverride = "mcl_mp_addai_2"
+    sourceControlType = "Static9"
+    rect = "767,91,33,10"
+    legacyLocalRect = "767,91,33,10"
+    legacyRectSource = "xywh"
+    texture = "data/art/gui/mcl_mp_addai_2.png"
+    legacyTexture = "mcl_mp_addai_2.tga"
+    uiPackage = "default"
+    rectModel = "legacy_imgui.modern_rect_v1"
+    controlRect = "767,91,33,10"
+    artRect = "767,91,33,10"
+    artLayer = "control_art"
+    uvX = 0
+    uvY = 239
+    uvWidth = 33
+    uvHeight = 10
+}
+
+GuiImage {
+    key = "game.mcl_mp_hostgame.image.mcl_mp_addai_3"
+    pageKey = "game.mcl_mp_hostgame"
+    legacySection = "Static10"
+    role = "image"
+    layer = "art"
+    aliasOverride = "mcl_mp_addai_3"
+    sourceControlType = "Static10"
+    rect = "0,101,115,256"
+    legacyLocalRect = "0,101,115,256"
+    legacyRectSource = "xywh"
+    texture = "data/art/gui/mcl_mp_addai_3.png"
+    legacyTexture = "mcl_mp_addai_3.tga"
+    uiPackage = "default"
+    rectModel = "legacy_imgui.modern_rect_v1"
+    controlRect = "0,101,115,256"
+    artRect = "0,101,115,256"
+    artLayer = "control_art"
+    uvX = 1
+    uvY = 0
+    uvWidth = 115
+    uvHeight = 256
+}
+
+GuiImage {
+    key = "game.mcl_mp_hostgame.image.mcl_mp_addai_3_01"
+    pageKey = "game.mcl_mp_hostgame"
+    legacySection = "Static11"
+    role = "image"
+    layer = "art"
+    aliasOverride = "mcl_mp_addai_3"
+    sourceControlType = "Static11"
+    rect = "684,101,116,256"
+    legacyLocalRect = "684,101,116,256"
+    legacyRectSource = "xywh"
+    texture = "data/art/gui/mcl_mp_addai_3.png"
+    legacyTexture = "mcl_mp_addai_3.tga"
+    uiPackage = "default"
+    rectModel = "legacy_imgui.modern_rect_v1"
+    controlRect = "684,101,116,256"
+    artRect = "684,101,116,256"
+    artLayer = "control_art"
+    uvX = 116
+    uvY = 0
+    uvWidth = 116
+    uvHeight = 256
+}
+
+GuiImage {
+    key = "game.mcl_mp_hostgame.image.mcl_mp_addai_4_03"
+    pageKey = "game.mcl_mp_hostgame"
+    legacySection = "Static12"
+    role = "image"
+    layer = "art"
+    aliasOverride = "mcl_mp_addai_4"
+    sourceControlType = "Static12"
+    rect = "0,357,115,114"
+    legacyLocalRect = "0,357,115,114"
+    legacyRectSource = "xywh"
+    texture = "data/art/gui/mcl_mp_addai_4.png"
+    legacyTexture = "mcl_mp_addai_4.tga"
+    uiPackage = "default"
+    rectModel = "legacy_imgui.modern_rect_v1"
+    controlRect = "0,357,115,114"
+    artRect = "0,357,115,114"
+    artLayer = "control_art"
+    uvX = 116
+    uvY = 0
+    uvWidth = 115
+    uvHeight = 114
+}
+
+GuiImage {
+    key = "game.mcl_mp_hostgame.image.mcl_mp_addai_4_04"
+    pageKey = "game.mcl_mp_hostgame"
+    legacySection = "Static13"
+    role = "image"
+    layer = "art"
+    aliasOverride = "mcl_mp_addai_4"
+    sourceControlType = "Static13"
+    rect = "684,357,116,114"
+    legacyLocalRect = "684,357,116,114"
+    legacyRectSource = "xywh"
+    texture = "data/art/gui/mcl_mp_addai_4.png"
+    legacyTexture = "mcl_mp_addai_4.tga"
+    uiPackage = "default"
+    rectModel = "legacy_imgui.modern_rect_v1"
+    controlRect = "684,357,116,114"
+    artRect = "684,357,116,114"
+    artLayer = "control_art"
+    uvX = 0
+    uvY = 0
+    uvWidth = 116
+    uvHeight = 114
+}
+
+GuiImage {
+    key = "game.mcl_mp_hostgame.image.mcl_mp_addai_1_06"
+    pageKey = "game.mcl_mp_hostgame"
+    legacySection = "Static14"
+    role = "image"
+    layer = "art"
+    aliasOverride = "mcl_mp_addai_1"
+    sourceControlType = "Static14"
+    rect = "0,471,255,10"
+    legacyLocalRect = "0,471,255,10"
+    legacyRectSource = "xywh"
+    texture = "data/art/gui/mcl_mp_addai_1.png"
+    legacyTexture = "mcl_mp_addai_1.tga"
+    uiPackage = "default"
+    rectModel = "legacy_imgui.modern_rect_v1"
+    controlRect = "0,471,255,10"
+    artRect = "0,471,255,10"
+    artLayer = "control_art"
+    uvX = 0
+    uvY = 207
+    uvWidth = 255
+    uvHeight = 10
+}
+
+GuiImage {
+    key = "game.mcl_mp_hostgame.image.mcl_mp_addai_1_07"
+    pageKey = "game.mcl_mp_hostgame"
+    legacySection = "Static15"
+    role = "image"
+    layer = "art"
+    aliasOverride = "mcl_mp_addai_1"
+    sourceControlType = "Static15"
+    rect = "255,471,256,10"
+    legacyLocalRect = "255,471,256,10"
+    legacyRectSource = "xywh"
+    texture = "data/art/gui/mcl_mp_addai_1.png"
+    legacyTexture = "mcl_mp_addai_1.tga"
+    uiPackage = "default"
+    rectModel = "legacy_imgui.modern_rect_v1"
+    controlRect = "255,471,256,10"
+    artRect = "255,471,256,10"
+    artLayer = "control_art"
+    uvX = 0
+    uvY = 217
+    uvWidth = 256
+    uvHeight = 10
+}
+
+GuiImage {
+    key = "game.mcl_mp_hostgame.image.mcl_mp_addai_1_08"
+    pageKey = "game.mcl_mp_hostgame"
+    legacySection = "Static16"
+    role = "image"
+    layer = "art"
+    aliasOverride = "mcl_mp_addai_1"
+    sourceControlType = "Static16"
+    rect = "511,471,256,10"
+    legacyLocalRect = "511,471,256,10"
+    legacyRectSource = "xywh"
+    texture = "data/art/gui/mcl_mp_addai_1.png"
+    legacyTexture = "mcl_mp_addai_1.tga"
+    uiPackage = "default"
+    rectModel = "legacy_imgui.modern_rect_v1"
+    controlRect = "511,471,256,10"
+    artRect = "511,471,256,10"
+    artLayer = "control_art"
+    uvX = 0
+    uvY = 227
+    uvWidth = 256
+    uvHeight = 10
+}
+
+GuiImage {
+    key = "game.mcl_mp_hostgame.image.mcl_mp_addai_2_01"
+    pageKey = "game.mcl_mp_hostgame"
+    legacySection = "Static17"
+    role = "image"
+    layer = "art"
+    aliasOverride = "mcl_mp_addai_2"
+    sourceControlType = "Static17"
+    rect = "767,471,33,10"
+    legacyLocalRect = "767,471,33,10"
+    legacyRectSource = "xywh"
+    texture = "data/art/gui/mcl_mp_addai_2.png"
+    legacyTexture = "mcl_mp_addai_2.tga"
+    uiPackage = "default"
+    rectModel = "legacy_imgui.modern_rect_v1"
+    controlRect = "767,471,33,10"
+    artRect = "767,471,33,10"
+    artLayer = "control_art"
+    uvX = 33
+    uvY = 239
+    uvWidth = 33
+    uvHeight = 10
+}
+
+GuiImage {
+    key = "game.mcl_mp_hostgame.image.mcl_mp_addai_2_02"
+    pageKey = "game.mcl_mp_hostgame"
+    legacySection = "Static18"
+    role = "image"
+    layer = "art"
+    aliasOverride = "mcl_mp_addai_2"
+    sourceControlType = "Static18"
+    rect = "0,481,115,64"
+    legacyLocalRect = "0,481,115,64"
+    legacyRectSource = "xywh"
+    texture = "data/art/gui/mcl_mp_addai_2.png"
+    legacyTexture = "mcl_mp_addai_2.tga"
+    uiPackage = "default"
+    rectModel = "legacy_imgui.modern_rect_v1"
+    controlRect = "0,481,115,64"
+    artRect = "0,481,115,64"
+    artLayer = "control_art"
+    uvX = 0
+    uvY = 175
+    uvWidth = 115
+    uvHeight = 64
+}
+
+GuiImage {
+    key = "game.mcl_mp_hostgame.image.mcl_mp_addai_2_03"
+    pageKey = "game.mcl_mp_hostgame"
+    legacySection = "Static19"
+    role = "image"
+    layer = "art"
+    aliasOverride = "mcl_mp_addai_2"
+    sourceControlType = "Static19"
+    rect = "243,481,10,64"
+    legacyLocalRect = "243,481,10,64"
+    legacyRectSource = "xywh"
+    texture = "data/art/gui/mcl_mp_addai_2.png"
+    legacyTexture = "mcl_mp_addai_2.tga"
+    uiPackage = "default"
+    rectModel = "legacy_imgui.modern_rect_v1"
+    controlRect = "243,481,10,64"
+    artRect = "243,481,10,64"
+    artLayer = "control_art"
+    uvX = 231
+    uvY = 175
+    uvWidth = 10
+    uvHeight = 64
+}
+
+GuiImage {
+    key = "game.mcl_mp_hostgame.image.mcl_mp_addai_1_09"
+    pageKey = "game.mcl_mp_hostgame"
+    legacySection = "Static20"
+    role = "image"
+    layer = "art"
+    aliasOverride = "mcl_mp_addai_1"
+    sourceControlType = "Static20"
+    rect = "253,481,256,10"
+    legacyLocalRect = "253,481,256,10"
+    legacyRectSource = "xywh"
+    texture = "data/art/gui/mcl_mp_addai_1.png"
+    legacyTexture = "mcl_mp_addai_1.tga"
+    uiPackage = "default"
+    rectModel = "legacy_imgui.modern_rect_v1"
+    controlRect = "253,481,256,10"
+    artRect = "253,481,256,10"
+    artLayer = "control_art"
+    uvX = 0
+    uvY = 237
+    uvWidth = 256
+    uvHeight = 10
+}
+
+GuiImage {
+    key = "game.mcl_mp_hostgame.image.mcl_mp_addai_2_04"
+    pageKey = "game.mcl_mp_hostgame"
+    legacySection = "Static21"
+    role = "image"
+    layer = "art"
+    aliasOverride = "mcl_mp_addai_2"
+    sourceControlType = "Static21"
+    rect = "509,481,37,10"
+    legacyLocalRect = "509,481,37,10"
+    legacyRectSource = "xywh"
+    texture = "data/art/gui/mcl_mp_addai_2.png"
+    legacyTexture = "mcl_mp_addai_2.tga"
+    uiPackage = "default"
+    rectModel = "legacy_imgui.modern_rect_v1"
+    controlRect = "509,481,37,10"
+    artRect = "509,481,37,10"
+    artLayer = "control_art"
+    uvX = 66
+    uvY = 239
+    uvWidth = 37
+    uvHeight = 10
+}
+
+GuiImage {
+    key = "game.mcl_mp_hostgame.image.mcl_mp_addai_2_05"
+    pageKey = "game.mcl_mp_hostgame"
+    legacySection = "Static22"
+    role = "image"
+    layer = "art"
+    aliasOverride = "mcl_mp_addai_2"
+    sourceControlType = "Static22"
+    rect = "546,481,10,64"
+    legacyLocalRect = "546,481,10,64"
+    legacyRectSource = "xywh"
+    texture = "data/art/gui/mcl_mp_addai_2.png"
+    legacyTexture = "mcl_mp_addai_2.tga"
+    uiPackage = "default"
+    rectModel = "legacy_imgui.modern_rect_v1"
+    controlRect = "546,481,10,64"
+    artRect = "546,481,10,64"
+    artLayer = "control_art"
+    uvX = 241
+    uvY = 175
+    uvWidth = 10
+    uvHeight = 64
+}
+
+GuiImage {
+    key = "game.mcl_mp_hostgame.image.mcl_mp_addai_2_06"
+    pageKey = "game.mcl_mp_hostgame"
+    legacySection = "Static23"
+    role = "image"
+    layer = "art"
+    aliasOverride = "mcl_mp_addai_2"
+    sourceControlType = "Static23"
+    rect = "684,481,116,64"
+    legacyLocalRect = "684,481,116,64"
+    legacyRectSource = "xywh"
+    texture = "data/art/gui/mcl_mp_addai_2.png"
+    legacyTexture = "mcl_mp_addai_2.tga"
+    uiPackage = "default"
+    rectModel = "legacy_imgui.modern_rect_v1"
+    controlRect = "684,481,116,64"
+    artRect = "684,481,116,64"
+    artLayer = "control_art"
+    uvX = 115
+    uvY = 175
+    uvWidth = 116
+    uvHeight = 64
+}
+
+GuiImage {
+    key = "game.mcl_mp_hostgame.image.mcl_mp_addai_2_07"
+    pageKey = "game.mcl_mp_hostgame"
+    legacySection = "Static24"
+    role = "image"
+    layer = "art"
+    aliasOverride = "mcl_mp_addai_2"
+    sourceControlType = "Static24"
+    rect = "253,535,256,10"
+    legacyLocalRect = "253,535,256,10"
+    legacyRectSource = "xywh"
+    texture = "data/art/gui/mcl_mp_addai_2.png"
+    legacyTexture = "mcl_mp_addai_2.tga"
+    uiPackage = "default"
+    rectModel = "legacy_imgui.modern_rect_v1"
+    controlRect = "253,535,256,10"
+    artRect = "253,535,256,10"
+    artLayer = "control_art"
+    uvX = 0
+    uvY = 165
+    uvWidth = 256
+    uvHeight = 10
+}
+
+GuiImage {
+    key = "game.mcl_mp_hostgame.image.mcl_mp_addai_2_08"
+    pageKey = "game.mcl_mp_hostgame"
+    legacySection = "Static25"
+    role = "image"
+    layer = "art"
+    aliasOverride = "mcl_mp_addai_2"
+    sourceControlType = "Static25"
+    rect = "509,535,37,10"
+    legacyLocalRect = "509,535,37,10"
+    legacyRectSource = "xywh"
+    texture = "data/art/gui/mcl_mp_addai_2.png"
+    legacyTexture = "mcl_mp_addai_2.tga"
+    uiPackage = "default"
+    rectModel = "legacy_imgui.modern_rect_v1"
+    controlRect = "509,535,37,10"
+    artRect = "509,535,37,10"
+    artLayer = "control_art"
+    uvX = 103
+    uvY = 239
+    uvWidth = 37
+    uvHeight = 10
+}
+
+GuiImage {
+    key = "game.mcl_mp_hostgame.image.mcl_mp_addai_2_09"
+    pageKey = "game.mcl_mp_hostgame"
+    legacySection = "Static26"
+    role = "image"
+    layer = "art"
+    aliasOverride = "mcl_mp_addai_2"
+    sourceControlType = "Static26"
+    rect = "0,545,256,55"
+    legacyLocalRect = "0,545,256,55"
+    legacyRectSource = "xywh"
+    texture = "data/art/gui/mcl_mp_addai_2.png"
+    legacyTexture = "mcl_mp_addai_2.tga"
+    uiPackage = "default"
+    rectModel = "legacy_imgui.modern_rect_v1"
+    controlRect = "0,545,256,55"
+    artRect = "0,545,256,55"
+    artLayer = "control_art"
+    uvX = 0
+    uvY = 0
+    uvWidth = 256
+    uvHeight = 55
+}
+
+GuiImage {
+    key = "game.mcl_mp_hostgame.image.mcl_mp_addai_2_10"
+    pageKey = "game.mcl_mp_hostgame"
+    legacySection = "Static27"
+    role = "image"
+    layer = "art"
+    aliasOverride = "mcl_mp_addai_2"
+    sourceControlType = "Static27"
+    rect = "256,545,256,55"
+    legacyLocalRect = "256,545,256,55"
+    legacyRectSource = "xywh"
+    texture = "data/art/gui/mcl_mp_addai_2.png"
+    legacyTexture = "mcl_mp_addai_2.tga"
+    uiPackage = "default"
+    rectModel = "legacy_imgui.modern_rect_v1"
+    controlRect = "256,545,256,55"
+    artRect = "256,545,256,55"
+    artLayer = "control_art"
+    uvX = 0
+    uvY = 55
+    uvWidth = 256
+    uvHeight = 55
+}
+
+GuiImage {
+    key = "game.mcl_mp_hostgame.image.mcl_mp_addai_2_11"
+    pageKey = "game.mcl_mp_hostgame"
+    legacySection = "Static28"
+    role = "image"
+    layer = "art"
+    aliasOverride = "mcl_mp_addai_2"
+    sourceControlType = "Static28"
+    rect = "512,545,256,55"
+    legacyLocalRect = "512,545,256,55"
+    legacyRectSource = "xywh"
+    texture = "data/art/gui/mcl_mp_addai_2.png"
+    legacyTexture = "mcl_mp_addai_2.tga"
+    uiPackage = "default"
+    rectModel = "legacy_imgui.modern_rect_v1"
+    controlRect = "512,545,256,55"
+    artRect = "512,545,256,55"
+    artLayer = "control_art"
+    uvX = 0
+    uvY = 110
+    uvWidth = 256
+    uvHeight = 55
+}
+
+GuiImage {
+    key = "game.mcl_mp_hostgame.image.mcl_mp_addai_4_05"
+    pageKey = "game.mcl_mp_hostgame"
+    legacySection = "Static29"
+    role = "image"
+    layer = "art"
+    aliasOverride = "mcl_mp_addai_4"
+    sourceControlType = "Static29"
+    rect = "768,545,32,55"
+    legacyLocalRect = "768,545,32,55"
+    legacyRectSource = "xywh"
+    texture = "data/art/gui/mcl_mp_addai_4.png"
+    legacyTexture = "mcl_mp_addai_4.tga"
+    uiPackage = "default"
+    rectModel = "legacy_imgui.modern_rect_v1"
+    controlRect = "768,545,32,55"
+    artRect = "768,545,32,55"
+    artLayer = "control_art"
+    uvX = 0
+    uvY = 146
+    uvWidth = 32
+    uvHeight = 55
+}
+
+GuiMetadata {
+    key = "game.mcl_mp_hostgame.metadata.metadata_03"
+    pageKey = "game.mcl_mp_hostgame"
+    legacySection = "Texts"
+    legacyContext = "~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ | ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ | ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~"
+    role = "metadata"
+    layer = "metadata"
+    aliasOverride = "metadata"
+    sourceControlType = "Texts"
+    rect = "0,0,0,0"
+    legacyLocalRect = "0,0,0,0"
+    legacyRectSource = "xywh"
+    visible = false
+}
+
+GuiText {
+    key = "game.mcl_mp_hostgame.text.main_header"
+    pageKey = "game.mcl_mp_hostgame"
+    legacySection = "Text0"
+    legacyComment = "main header"
+    role = "title"
+    layer = "text"
+    aliasOverride = "main header"
+    sourceControlType = "Text0"
+    rect = "114,61,567,27"
+    legacyLocalRect = "114,61,567,27"
+    legacyRectSource = "xywh"
+    uiPackage = "default"
+    rectModel = "legacy_imgui.modern_rect_v1"
+    controlRect = "114,61,567,27"
+    textRect = "114,61,567,27"
+    textRectMode = "control_rect_fallback"
+    textLegacyId = 26100
+    textKey = "legacy.mc2res.26100"
+    visibleText = "HOST GAME"
+    textLegacySymbol = "IDS_STRING26100"
+    textSource = "mc2res"
+    textMissing = false
+    legacyFontId = 26106
+    legacyFontComment = "use agency fb 17"
+    font = "Agency Regular"
+    fontStyle = "Regular"
+    fontSize = 17
+    bold = false
+    italic = false
+    textAlign = "left"
+    textAnchor = "upper_left"
+    wrapText = false
+    colorArgb = "0xffff8a00"
+    legacyColor = -30208
+    outline = "FALSE"
+    legacyAlignment = 0
+    legacyFontComment = "use agency fb 17"
+    borderColorArgb = "0x00000000"
+}
+
+GuiText {
+    key = "game.mcl_mp_hostgame.text.name_entry_header"
+    pageKey = "game.mcl_mp_hostgame"
+    legacySection = "Text1"
+    legacyComment = "name entry header"
+    role = "title"
+    layer = "text"
+    aliasOverride = "name entry header"
+    sourceControlType = "Text1"
+    rect = "126,110,122,18"
+    legacyLocalRect = "126,110,122,18"
+    legacyRectSource = "xywh"
+    uiPackage = "default"
+    rectModel = "legacy_imgui.modern_rect_v1"
+    controlRect = "126,110,122,18"
+    textRect = "126,110,122,18"
+    textRectMode = "control_rect_fallback"
+    textLegacyId = 26101
+    textKey = "legacy.mc2res.26101"
+    visibleText = "New Game Name"
+    textLegacySymbol = "IDS_STRING26101"
+    textSource = "mc2res"
+    textMissing = false
+    legacyFontId = 26107
+    legacyFontComment = "use agency fb 14"
+    font = "Agency Regular"
+    fontStyle = "Regular"
+    fontSize = 14
+    bold = false
+    italic = false
+    textAlign = "left"
+    textAnchor = "upper_left"
+    wrapText = false
+    colorArgb = "0xffff8a00"
+    legacyColor = -30208
+    outline = "FALSE"
+    legacyAlignment = 0
+    legacyFontComment = "use agency fb 14"
+    borderColorArgb = "0x00000000"
+}
+
+GuiText {
+    key = "game.mcl_mp_hostgame.text.allow_all_technologies"
+    pageKey = "game.mcl_mp_hostgame"
+    legacySection = "Text2"
+    legacyComment = "Allow All Technologies"
+    role = "text"
+    layer = "text"
+    aliasOverride = "Allow All Technologies"
+    sourceControlType = "Text2"
+    rect = "126,170,122,18"
+    legacyLocalRect = "126,170,122,18"
+    legacyRectSource = "xywh"
+    uiPackage = "default"
+    rectModel = "legacy_imgui.modern_rect_v1"
+    controlRect = "126,170,122,18"
+    textRect = "126,170,122,18"
+    textRectMode = "control_rect_fallback"
+    textLegacyId = 26102
+    textKey = "legacy.mc2res.26102"
+    visibleText = "Allow All Technologies"
+    textLegacySymbol = "IDS_STRING26102"
+    textSource = "mc2res"
+    textMissing = false
+    legacyFontId = 26108
+    legacyFontComment = "use agency fb 14"
+    font = "Agency Regular"
+    fontStyle = "Regular"
+    fontSize = 14
+    bold = false
+    italic = false
+    textAlign = "left"
+    textAnchor = "upper_left"
+    wrapText = false
+    colorArgb = "0xffff8a00"
+    legacyColor = -30208
+    outline = "FALSE"
+    legacyAlignment = 0
+    legacyFontComment = "use agency fb 14"
+    borderColorArgb = "0x00000000"
+}
+
+GuiText {
+    key = "game.mcl_mp_hostgame.text.maximum_number_of_players"
+    pageKey = "game.mcl_mp_hostgame"
+    legacySection = "Text3"
+    legacyComment = "Maximum Number of Players"
+    role = "text"
+    layer = "text"
+    aliasOverride = "Maximum Number of Players"
+    sourceControlType = "Text3"
+    rect = "126,231,122,18"
+    legacyLocalRect = "126,231,122,18"
+    legacyRectSource = "xywh"
+    uiPackage = "default"
+    rectModel = "legacy_imgui.modern_rect_v1"
+    controlRect = "126,231,122,18"
+    textRect = "126,231,122,18"
+    textRectMode = "control_rect_fallback"
+    textLegacyId = 26103
+    textKey = "legacy.mc2res.26103"
+    visibleText = "Maximum Number of Players"
+    textLegacySymbol = "IDS_STRING26103"
+    textSource = "mc2res"
+    textMissing = false
+    legacyFontId = 26109
+    legacyFontComment = "use agency fb 14"
+    font = "Agency Regular"
+    fontStyle = "Regular"
+    fontSize = 14
+    bold = false
+    italic = false
+    textAlign = "left"
+    textAnchor = "upper_left"
+    wrapText = false
+    colorArgb = "0xffff8a00"
+    legacyColor = -30208
+    outline = "FALSE"
+    legacyAlignment = 0
+    legacyFontComment = "use agency fb 14"
+    borderColorArgb = "0x00000000"
+}
+
+GuiText {
+    key = "game.mcl_mp_hostgame.text.help_text"
+    pageKey = "game.mcl_mp_hostgame"
+    legacySection = "Text4"
+    legacyComment = "help text"
+    role = "help"
+    layer = "help"
+    aliasOverride = "help text"
+    sourceControlType = "Text4"
+    rect = "257,494,286,39"
+    legacyLocalRect = "257,494,286,39"
+    legacyRectSource = "xywh"
+    uiPackage = "default"
+    rectModel = "legacy_imgui.modern_rect_v1"
+    controlRect = "257,494,286,39"
+    textRect = "257,494,286,39"
+    textRectMode = "control_rect_fallback"
+    textLegacyId = 26051
+    textKey = "legacy.mc2res.26051"
+    visibleText = "HOST GAME"
+    textLegacySymbol = "IDS_STRING26051"
+    textSource = "mc2res"
+    textMissing = false
+    legacyFontId = 26110
+    legacyFontComment = "use arial narrow 8"
+    font = "Agency Regular"
+    fontStyle = "Regular"
+    fontSize = 8
+    bold = false
+    italic = false
+    textAlign = "left"
+    textAnchor = "upper_left"
+    wrapText = true
+    colorArgb = "0xffffffff"
+    legacyColor = -1
+    outline = "FALSE"
+    legacyAlignment = 0
+    legacyFontComment = "use arial narrow 8"
+    borderColorArgb = "0x00000000"
+}
+
+GuiRect {
+    key = "game.mcl_mp_hostgame.rect.name_entry_edit_box"
+    pageKey = "game.mcl_mp_hostgame"
+    legacySection = "EditBox0"
+    legacyComment = "name entry edit box"
+    role = "rect"
+    layer = "layout"
+    aliasOverride = "name entry edit box"
+    sourceControlType = "EditBox0"
+    rect = "126,130,122,32"
+    legacyLocalRect = "126,130,122,32"
+    legacyRectSource = "xywh"
+    uiPackage = "default"
+    rectModel = "legacy_imgui.modern_rect_v1"
+    controlRect = "126,130,122,32"
+    legacyColor = 0xff43311C
+    filled = true
+    fillColorArgb = "0x00000000"
+    borderColorArgb = "0x00000000"
+    colorArgb = "0xffffffff"
+}
+
+GuiRect {
+    key = "game.mcl_mp_hostgame.rect.outline_for_dd"
+    pageKey = "game.mcl_mp_hostgame"
+    legacySection = "EditBoxRect0"
+    legacyComment = "outline for dd"
+    role = "rect"
+    layer = "layout"
+    aliasOverride = "outline for dd"
+    sourceControlType = "EditBoxRect0"
+    rect = "126,130,122,32"
+    legacyLocalRect = "126,130,122,32"
+    legacyRectSource = "xywh"
+    uiPackage = "default"
+    rectModel = "legacy_imgui.modern_rect_v1"
+    controlRect = "126,130,122,32"
+    legacyColor = 0xff43311C
+    outline = "TRUE"
+    filled = false
+    fillColorArgb = "0x00000000"
+    borderColorArgb = "0x00000000"
+    colorArgb = "0xffffffff"
+}
+
+GuiMetadata {
+    key = "game.mcl_mp_hostgame.metadata.num_players_drop_down"
+    pageKey = "game.mcl_mp_hostgame"
+    legacySection = "DropList0"
+    legacyComment = "num players drop down"
+    role = "metadata"
+    layer = "metadata"
+    aliasOverride = "num players drop down"
+    sourceControlType = "DropList0"
+    rect = "126,251,0,0"
+    legacyLocalRect = "126,251,0,0"
+    legacyRectSource = "xywh"
+    texture = "data/art/gui/mcl_mp_hostgame_droplist0.fit"
+    legacyTexture = "mcl_mp_hostgame_droplist0.fit"
+    visible = false
+}
+
+GuiAnimation {
+    key = "game.mcl_mp_hostgame.animation.enter_anim"
+    pageKey = "game.mcl_mp_hostgame"
+    legacySection = "EnterAnim"
+    legacyComment = "use when dialog appears on screen"
+    role = "animation"
+    layer = "animation"
+    animType = "in_anim"
+    rect = "0,0,0,0"
+    animationKeyframes = 2
+    keyframe0Time = 0.0
+    keyframe0X = 800
+    keyframe0Y = 0
+    keyframe1Time = 0.23
+    keyframe1X = 0
+    keyframe1Y = 0
+}
+
+GuiAnimation {
+    key = "game.mcl_mp_hostgame.animation.leave_anim"
+    pageKey = "game.mcl_mp_hostgame"
+    legacySection = "LeaveAnim"
+    legacyComment = "use when dialog leaves after cancel or okay is pressed"
+    role = "animation"
+    layer = "animation"
+    animType = "out_anim"
+    rect = "0,0,0,0"
+    animationKeyframes = 2
+    keyframe0Time = 0.0
+    keyframe0X = 0
+    keyframe0Y = 0
+    keyframe1Time = 0.23
+    keyframe1X = 800
+    keyframe1Y = 0
+}
+
+GuiMetadata {
+    key = "game.mcl_mp_hostgame.metadata.for_dark_brown_rectangles"
+    pageKey = "game.mcl_mp_hostgame"
+    legacySection = "Animation1"
+    legacyComment = "for dark brown rectangles"
+    role = "metadata"
+    layer = "metadata"
+    aliasOverride = "for dark brown rectangles"
+    sourceControlType = "Animation1"
+    rect = "0,0,0,0"
+    legacyLocalRect = "0,0,0,0"
+    legacyRectSource = "xywh"
+    visible = false
+    normalColorArgb = "0xff43311C"
+    pressedColorArgb = "0xffffffff"
+    highlightColorArgb = "0xffFFAE4D"
+    disabledColorArgb = "0xff373737"
+}

@@ -1,17 +1,50 @@
 {
   "summary": {
-    "glsl_samplers": 40,
-    "cpp_name_resolvable_binds": 22,
-    "glUniform1i_sites": 237,
-    "glActiveTexture_sites": 201,
+    "glsl_samplers": 49,
+    "cpp_name_resolvable_binds": 24,
+    "glUniform1i_sites": 243,
+    "glActiveTexture_sites": 228,
     "hard_anchors": 3,
     "anchors_drift": 0,
+    "vulkan_cis_rows": 4,
+    "vulkan_linked_samplers": 11,
     "fails": 0,
-    "warns": 36
+    "warns": 45
+  },
+  "vulkan": {
+    "contract_header": "RenderCore/vulkan_contract.h",
+    "note": "parsed 4 CombinedImageSampler rows from RenderCore/vulkan_contract.h",
+    "cis_rows_in_header": [
+      "MainColor",
+      "MainDepth",
+      "MainNormal",
+      "ShadowDynamicMap"
+    ],
+    "sampler_by_resource": {
+      "MainColor": [
+        "sceneTex",
+        "u_sceneColor"
+      ],
+      "MainDepth": [
+        "depthTex",
+        "sceneDepthTex",
+        "u_sceneDepth",
+        "u_sceneDepthTex"
+      ],
+      "MainNormal": [
+        "sceneNormalTex",
+        "u_sceneNormalTex"
+      ],
+      "ShadowDynamicMap": [
+        "dynamicFullMapShadow",
+        "dynamicShadowArray",
+        "dynamicShadowMap"
+      ]
+    }
   },
   "fails": [],
   "warns": [
-    "multiplexed comment/code mismatch (not auto-FAIL \u2014 verify per-program): sampler 'u_hdri' bound to unit 0 in C++ but GLSL shaders/gos_terrain_water_mdi.frag:48 comments unit 3",
+    "multiplexed comment/code mismatch (not auto-FAIL \u2014 verify per-program): sampler 'u_hdri' bound to unit 0 in C++ but GLSL shaders/gos_terrain_water_mdi.frag:59 comments unit 3",
     "mode-alternate (intentional): receiver 'screenShadowProg_' unit 3 = ['dynamicShadowArray', 'dynamicShadowMap']",
     "shared-unit: receiver 'shadowDebugProg_' unit 0 = ['shadowDebugArray', 'shadowDebugMap']",
     "UNKNOWN binder: sampler 'matNormal0' declared in ['shaders/gos_terrain.frag', 'shaders/gos_terrain.tese'] has no setInt/setSamplerUnit assignment (dynamic helper, dormant path, or literal glUniform1i loc-cache)",
@@ -19,16 +52,20 @@
     "UNKNOWN binder: sampler 'matNormal2' declared in ['shaders/gos_terrain.frag', 'shaders/gos_terrain.tese', 'shaders/shadow_terrain.tese'] has no setInt/setSamplerUnit assignment (dynamic helper, dormant path, or literal glUniform1i loc-cache)",
     "UNKNOWN binder: sampler 'matNormal3' declared in ['shaders/gos_terrain.frag', 'shaders/gos_terrain.tese'] has no setInt/setSamplerUnit assignment (dynamic helper, dormant path, or literal glUniform1i loc-cache)",
     "UNKNOWN binder: sampler 'matNormal4' declared in ['shaders/gos_terrain.frag'] has no setInt/setSamplerUnit assignment (dynamic helper, dormant path, or literal glUniform1i loc-cache)",
-    "UNKNOWN binder: sampler 'matNormalArray' declared in ['shaders/gos_terrain.frag', 'shaders/gos_terrain.tese', 'shaders/shadow_terrain.tese', 'shaders/terrain_lod_chunk.frag'] has no setInt/setSamplerUnit assignment (dynamic helper, dormant path, or literal glUniform1i loc-cache)",
+    "UNKNOWN binder: sampler 'matNormalArray' declared in ['shaders/gos_terrain.frag', 'shaders/gos_terrain.tese', 'shaders/shadow_terrain.tese', 'shaders/terrain_lod_chunk.frag', 'shaders/terrain_overlay.frag'] has no setInt/setSamplerUnit assignment (dynamic helper, dormant path, or literal glUniform1i loc-cache)",
     "UNKNOWN binder: sampler 'mineSpriteArray' declared in ['shaders/gos_terrain_mine_static.frag'] has no setInt/setSamplerUnit assignment (dynamic helper, dormant path, or literal glUniform1i loc-cache)",
     "UNKNOWN binder: sampler 'terrainHeightTex' declared in ['shaders/include/terrain_height_normal.hglsl'] has no setInt/setSamplerUnit assignment (dynamic helper, dormant path, or literal glUniform1i loc-cache)",
     "UNKNOWN binder: sampler 'tex1' declared in ['shaders/building_pbr.frag', 'shaders/decal.frag', 'shaders/gos_grass.geom', 'shaders/gos_terrain.frag', 'shaders/gos_terrain.tese', 'shaders/gos_terrain_water_mdi.frag', 'shaders/gos_tex_vertex.frag', 'shaders/gos_tex_vertex_lighted.frag', 'shaders/gos_text.frag', 'shaders/gos_vertex.frag', 'shaders/gos_vertex_lighted.frag', 'shaders/shadow_terrain.tese', 'shaders/terrain_overlay.frag'] has no setInt/setSamplerUnit assignment (dynamic helper, dormant path, or literal glUniform1i loc-cache)",
     "UNKNOWN binder: sampler 'tex2' declared in ['shaders/gos_terrain.frag', 'shaders/gos_terrain_water_mdi.frag', 'shaders/gos_vertex.frag', 'shaders/gos_vertex_lighted.frag'] has no setInt/setSamplerUnit assignment (dynamic helper, dormant path, or literal glUniform1i loc-cache)",
     "UNKNOWN binder: sampler 'tex3' declared in ['shaders/gos_terrain.frag', 'shaders/gos_vertex.frag', 'shaders/gos_vertex_lighted.frag'] has no setInt/setSamplerUnit assignment (dynamic helper, dormant path, or literal glUniform1i loc-cache)",
     "UNKNOWN binder: sampler 'uAtlas' declared in ['shaders/particle_billboard.frag', 'shaders/tube_ribbon.frag', 'shaders/vfx_mesh.frag'] has no setInt/setSamplerUnit assignment (dynamic helper, dormant path, or literal glUniform1i loc-cache)",
+    "UNKNOWN binder: sampler 'u_asphaltAlbedo' declared in ['shaders/terrain_overlay.frag'] has no setInt/setSamplerUnit assignment (dynamic helper, dormant path, or literal glUniform1i loc-cache)",
     "UNKNOWN binder: sampler 'u_atlas' declared in ['shaders/gos_vegetation_card.frag'] has no setInt/setSamplerUnit assignment (dynamic helper, dormant path, or literal glUniform1i loc-cache)",
     "UNKNOWN binder: sampler 'u_cementAtlas' declared in ['shaders/terrain_lod_chunk.frag'] has no setInt/setSamplerUnit assignment (dynamic helper, dormant path, or literal glUniform1i loc-cache)",
     "UNKNOWN binder: sampler 'u_colormap' declared in ['shaders/terrain_lod_chunk.frag'] has no setInt/setSamplerUnit assignment (dynamic helper, dormant path, or literal glUniform1i loc-cache)",
+    "UNKNOWN binder: sampler 'u_gravelAlbedo' declared in ['shaders/terrain_overlay.frag'] has no setInt/setSamplerUnit assignment (dynamic helper, dormant path, or literal glUniform1i loc-cache)",
+    "UNKNOWN binder: sampler 'u_mechAoTex' declared in ['shaders/mech.frag'] has no setInt/setSamplerUnit assignment (dynamic helper, dormant path, or literal glUniform1i loc-cache)",
+    "UNKNOWN binder: sampler 'u_mechNormalTex' declared in ['shaders/mech.frag'] has no setInt/setSamplerUnit assignment (dynamic helper, dormant path, or literal glUniform1i loc-cache)",
     "UNKNOWN binder: sampler 'u_normalTex' declared in ['shaders/building_pbr.frag'] has no setInt/setSamplerUnit assignment (dynamic helper, dormant path, or literal glUniform1i loc-cache)",
     "UNKNOWN binder: sampler 'u_ormTex' declared in ['shaders/building_pbr.frag'] has no setInt/setSamplerUnit assignment (dynamic helper, dormant path, or literal glUniform1i loc-cache)",
     "UNKNOWN binder: sampler 'u_ormTexArr' declared in ['shaders/static_prop.frag', 'shaders/static_prop_depth.frag'] has no setInt/setSamplerUnit assignment (dynamic helper, dormant path, or literal glUniform1i loc-cache)",
@@ -36,17 +73,22 @@
     "UNKNOWN binder: sampler 'u_pbrOrmTex' declared in ['shaders/mech.frag'] has no setInt/setSamplerUnit assignment (dynamic helper, dormant path, or literal glUniform1i loc-cache)",
     "UNKNOWN binder: sampler 'u_pbrPaintNormalTex' declared in ['shaders/mech.frag'] has no setInt/setSamplerUnit assignment (dynamic helper, dormant path, or literal glUniform1i loc-cache)",
     "UNKNOWN binder: sampler 'u_pbrPaintOrmTex' declared in ['shaders/mech.frag'] has no setInt/setSamplerUnit assignment (dynamic helper, dormant path, or literal glUniform1i loc-cache)",
-    "UNKNOWN binder: sampler 'u_sceneDepth' declared in ['shaders/particle_billboard.frag'] has no setInt/setSamplerUnit assignment (dynamic helper, dormant path, or literal glUniform1i loc-cache)",
+    "UNKNOWN binder: sampler 'u_sceneColor' declared in ['shaders/particle_billboard.frag'] has no setInt/setSamplerUnit assignment (dynamic helper, dormant path, or literal glUniform1i loc-cache)",
+    "UNKNOWN binder: sampler 'u_sceneDepth' declared in ['shaders/cluster_depth_pyramid.comp', 'shaders/particle_billboard.frag'] has no setInt/setSamplerUnit assignment (dynamic helper, dormant path, or literal glUniform1i loc-cache)",
+    "UNKNOWN binder: sampler 'u_src' declared in ['shaders/postprocess_blur.comp'] has no setInt/setSamplerUnit assignment (dynamic helper, dormant path, or literal glUniform1i loc-cache)",
     "UNKNOWN binder: sampler 'u_tex' declared in ['shaders/mech.frag', 'shaders/shadow_static_prop.frag', 'shaders/static_prop.frag', 'shaders/static_prop_depth.frag'] has no setInt/setSamplerUnit assignment (dynamic helper, dormant path, or literal glUniform1i loc-cache)",
     "UNKNOWN binder: sampler 'u_texArr' declared in ['shaders/static_prop.frag', 'shaders/static_prop_depth.frag'] has no setInt/setSamplerUnit assignment (dynamic helper, dormant path, or literal glUniform1i loc-cache)",
+    "UNKNOWN binder: sampler 'u_tileMinMax' declared in ['shaders/lightgrid_build.comp'] has no setInt/setSamplerUnit assignment (dynamic helper, dormant path, or literal glUniform1i loc-cache)",
     "UNKNOWN binder: sampler 'u_transitionMaskArray' declared in ['shaders/gos_terrain.frag', 'shaders/terrain_lod_chunk.frag'] has no setInt/setSamplerUnit assignment (dynamic helper, dormant path, or literal glUniform1i loc-cache)",
     "UNKNOWN binder: sampler 'u_waterReflRT' declared in ['shaders/gos_terrain_water_mdi.frag'] has no setInt/setSamplerUnit assignment (dynamic helper, dormant path, or literal glUniform1i loc-cache)",
-    "cross-pass reuse: unit 0 carries ['depthTex', 'sceneDepthTex', 'sceneTex', 'shadowDebugArray', 'shadowDebugMap', 'ssaoTex', 'tex1', 'uSrc', 'u_hdri'] (expected \u2014 multiplexed)",
-    "cross-pass reuse: unit 1 carries ['sceneNormalTex', 'u_pbrNormalTex'] (expected \u2014 multiplexed)",
+    "cross-pass reuse: unit 0 carries ['depthTex', 'sceneDepthTex', 'sceneTex', 'shadowDebugArray', 'shadowDebugMap', 'ssaoTex', 'tex1', 'uSrc', 'u_hdri', 'u_sceneDepthTex'] (expected \u2014 multiplexed)",
+    "cross-pass reuse: unit 1 carries ['sceneNormalTex', 'u_pbrNormalTex', 'u_sceneNormalTex'] (expected \u2014 multiplexed)",
     "cross-pass reuse: unit 2 carries ['shadowMap', 'u_pbrOrmTex'] (expected \u2014 multiplexed)",
     "cross-pass reuse: unit 3 carries ['dynamicShadowArray', 'dynamicShadowMap', 'u_hdri', 'u_pbrPaintNormalTex'] (expected \u2014 multiplexed)",
     "cross-pass reuse: unit 4 carries ['dynamicFullMapShadow', 'u_pbrPaintOrmTex', 'u_transitionMaskArray'] (expected \u2014 multiplexed)",
-    "cross-pass reuse: unit 5 carries ['matNormal0', 'mineSpriteArray'] (expected \u2014 multiplexed)"
+    "cross-pass reuse: unit 5 carries ['matNormal0', 'mineSpriteArray'] (expected \u2014 multiplexed)",
+    "cross-pass reuse: unit 6 carries ['matNormal1', 'u_mechAoTex'] (expected \u2014 multiplexed)",
+    "cross-pass reuse: unit 7 carries ['matNormal2', 'u_mechNormalTex'] (expected \u2014 multiplexed)"
   ],
   "anchors": [
     {
@@ -69,590 +111,876 @@
     }
   ],
   "samplers": {
-    "depthTex": [
-      {
-        "file": "shaders/edge_fog.frag",
-        "line": 24,
-        "target": "sampler2D",
-        "comment_unit": null
-      },
-      {
-        "file": "shaders/fog_oob.frag",
-        "line": 15,
-        "target": "sampler2D",
-        "comment_unit": null
-      }
-    ],
-    "dynamicFullMapShadow": [
-      {
-        "file": "shaders/shadow_screen.frag",
-        "line": 81,
-        "target": "sampler2DShadow",
-        "comment_unit": null
-      },
-      {
-        "file": "shaders/include/shadow.hglsl",
-        "line": 113,
-        "target": "sampler2DShadow",
-        "comment_unit": null
-      }
-    ],
-    "dynamicShadowArray": [
-      {
-        "file": "shaders/shadow_screen.frag",
-        "line": 74,
-        "target": "sampler2DArrayShadow",
-        "comment_unit": null
-      },
-      {
-        "file": "shaders/include/shadow.hglsl",
-        "line": 104,
-        "target": "sampler2DArrayShadow",
-        "comment_unit": null
-      }
-    ],
-    "dynamicShadowMap": [
-      {
-        "file": "shaders/shadow_screen.frag",
-        "line": 84,
-        "target": "sampler2DShadow",
-        "comment_unit": null
-      },
-      {
-        "file": "shaders/include/shadow.hglsl",
-        "line": 242,
-        "target": "sampler2DShadow",
-        "comment_unit": null
-      }
-    ],
-    "matNormal0": [
-      {
-        "file": "shaders/gos_terrain.frag",
-        "line": 46,
-        "target": "sampler2D",
-        "comment_unit": 5
-      },
-      {
-        "file": "shaders/gos_terrain.tese",
-        "line": 28,
-        "target": "sampler2D",
-        "comment_unit": null
-      }
-    ],
-    "matNormal1": [
-      {
-        "file": "shaders/gos_terrain.frag",
-        "line": 47,
-        "target": "sampler2D",
-        "comment_unit": 6
-      },
-      {
-        "file": "shaders/gos_terrain.tese",
-        "line": 29,
-        "target": "sampler2D",
-        "comment_unit": null
-      }
-    ],
-    "matNormal2": [
-      {
-        "file": "shaders/gos_terrain.frag",
-        "line": 48,
-        "target": "sampler2D",
-        "comment_unit": 7
-      },
-      {
-        "file": "shaders/gos_terrain.tese",
-        "line": 30,
-        "target": "sampler2D",
-        "comment_unit": null
-      },
-      {
-        "file": "shaders/shadow_terrain.tese",
-        "line": 14,
-        "target": "sampler2D",
-        "comment_unit": null
-      }
-    ],
-    "matNormal3": [
-      {
-        "file": "shaders/gos_terrain.frag",
-        "line": 49,
-        "target": "sampler2D",
-        "comment_unit": 8
-      },
-      {
-        "file": "shaders/gos_terrain.tese",
-        "line": 31,
-        "target": "sampler2D",
-        "comment_unit": null
-      }
-    ],
-    "matNormal4": [
-      {
-        "file": "shaders/gos_terrain.frag",
-        "line": 50,
-        "target": "sampler2D",
-        "comment_unit": 12
-      }
-    ],
-    "matNormalArray": [
-      {
-        "file": "shaders/gos_terrain.frag",
-        "line": 56,
-        "target": "sampler2DArray",
-        "comment_unit": null
-      },
-      {
-        "file": "shaders/gos_terrain.tese",
-        "line": 35,
-        "target": "sampler2DArray",
-        "comment_unit": null
-      },
-      {
-        "file": "shaders/shadow_terrain.tese",
-        "line": 18,
-        "target": "sampler2DArray",
-        "comment_unit": null
-      },
-      {
-        "file": "shaders/terrain_lod_chunk.frag",
-        "line": 120,
-        "target": "sampler2DArray",
-        "comment_unit": null
-      }
-    ],
-    "mineSpriteArray": [
-      {
-        "file": "shaders/gos_terrain_mine_static.frag",
-        "line": 16,
-        "target": "sampler2DArray",
-        "comment_unit": 5
-      }
-    ],
-    "sceneDepthTex": [
-      {
-        "file": "shaders/cloud.frag",
-        "line": 59,
-        "target": "sampler2D",
-        "comment_unit": null
-      },
-      {
-        "file": "shaders/shadow_screen.frag",
-        "line": 62,
-        "target": "sampler2D",
-        "comment_unit": null
-      },
-      {
-        "file": "shaders/shoreline.frag",
-        "line": 10,
-        "target": "sampler2D",
-        "comment_unit": null
-      },
-      {
-        "file": "shaders/ssao.frag",
-        "line": 19,
-        "target": "sampler2D",
-        "comment_unit": 0
-      }
-    ],
-    "sceneNormalTex": [
-      {
-        "file": "shaders/shadow_screen.frag",
-        "line": 63,
-        "target": "sampler2D",
-        "comment_unit": null
-      },
-      {
-        "file": "shaders/shoreline.frag",
-        "line": 11,
-        "target": "sampler2D",
-        "comment_unit": null
-      },
-      {
-        "file": "shaders/ssao.frag",
-        "line": 20,
-        "target": "sampler2D",
-        "comment_unit": 1
-      }
-    ],
-    "sceneTex": [
-      {
-        "file": "shaders/postprocess.frag",
-        "line": 6,
-        "target": "sampler2D",
-        "comment_unit": 0
-      }
-    ],
-    "shadowDebugArray": [
-      {
-        "file": "shaders/shadow_debug.frag",
-        "line": 8,
-        "target": "sampler2DArray",
-        "comment_unit": null
-      }
-    ],
-    "shadowDebugMap": [
-      {
-        "file": "shaders/shadow_debug.frag",
-        "line": 12,
-        "target": "sampler2D",
-        "comment_unit": null
-      }
-    ],
-    "shadowMap": [
-      {
-        "file": "shaders/shadow_screen.frag",
-        "line": 64,
-        "target": "sampler2DShadow",
-        "comment_unit": null
-      },
-      {
-        "file": "shaders/include/shadow.hglsl",
-        "line": 4,
-        "target": "sampler2DShadow",
-        "comment_unit": null
-      }
-    ],
-    "ssaoTex": [
-      {
-        "file": "shaders/ssao_apply.frag",
-        "line": 15,
-        "target": "sampler2D",
-        "comment_unit": 0
-      }
-    ],
-    "terrainHeightTex": [
-      {
-        "file": "shaders/include/terrain_height_normal.hglsl",
-        "line": 30,
-        "target": "sampler2D",
-        "comment_unit": null
-      }
-    ],
-    "tex1": [
-      {
-        "file": "shaders/building_pbr.frag",
-        "line": 16,
-        "target": "sampler2D",
-        "comment_unit": null
-      },
-      {
-        "file": "shaders/decal.frag",
-        "line": 43,
-        "target": "sampler2D",
-        "comment_unit": null
-      },
-      {
-        "file": "shaders/gos_grass.geom",
-        "line": 21,
-        "target": "sampler2D",
-        "comment_unit": 0
-      },
-      {
-        "file": "shaders/gos_terrain.frag",
-        "line": 35,
-        "target": "sampler2D",
-        "comment_unit": null
-      },
-      {
-        "file": "shaders/gos_terrain.tese",
-        "line": 27,
-        "target": "sampler2D",
-        "comment_unit": null
-      },
-      {
-        "file": "shaders/gos_terrain_water_mdi.frag",
-        "line": 27,
-        "target": "sampler2D",
-        "comment_unit": null
-      },
-      {
-        "file": "shaders/gos_text.frag",
-        "line": 11,
-        "target": "sampler2D",
-        "comment_unit": null
-      },
-      {
-        "file": "shaders/gos_tex_vertex.frag",
-        "line": 22,
-        "target": "sampler2D",
-        "comment_unit": null
-      },
-      {
-        "file": "shaders/gos_tex_vertex_lighted.frag",
-        "line": 32,
-        "target": "sampler2D",
-        "comment_unit": null
-      },
-      {
-        "file": "shaders/gos_vertex.frag",
-        "line": 17,
-        "target": "sampler2D",
-        "comment_unit": null
-      },
-      {
-        "file": "shaders/gos_vertex_lighted.frag",
-        "line": 16,
-        "target": "sampler2D",
-        "comment_unit": null
-      },
-      {
-        "file": "shaders/shadow_terrain.tese",
-        "line": 13,
-        "target": "sampler2D",
-        "comment_unit": null
-      },
-      {
-        "file": "shaders/terrain_overlay.frag",
-        "line": 43,
-        "target": "sampler2D",
-        "comment_unit": null
-      }
-    ],
-    "tex2": [
-      {
-        "file": "shaders/gos_terrain.frag",
-        "line": 36,
-        "target": "sampler2D",
-        "comment_unit": null
-      },
-      {
-        "file": "shaders/gos_terrain_water_mdi.frag",
-        "line": 28,
-        "target": "sampler2D",
-        "comment_unit": null
-      },
-      {
-        "file": "shaders/gos_vertex.frag",
-        "line": 19,
-        "target": "sampler2D",
-        "comment_unit": null
-      },
-      {
-        "file": "shaders/gos_vertex_lighted.frag",
-        "line": 18,
-        "target": "sampler2D",
-        "comment_unit": null
-      }
-    ],
-    "tex3": [
-      {
-        "file": "shaders/gos_terrain.frag",
-        "line": 37,
-        "target": "sampler2D",
-        "comment_unit": null
-      },
-      {
-        "file": "shaders/gos_vertex.frag",
-        "line": 20,
-        "target": "sampler2D",
-        "comment_unit": null
-      },
-      {
-        "file": "shaders/gos_vertex_lighted.frag",
-        "line": 19,
-        "target": "sampler2D",
-        "comment_unit": null
-      }
-    ],
-    "uAtlas": [
-      {
-        "file": "shaders/particle_billboard.frag",
-        "line": 17,
-        "target": "sampler2D",
-        "comment_unit": null
-      },
-      {
-        "file": "shaders/tube_ribbon.frag",
-        "line": 19,
-        "target": "sampler2D",
-        "comment_unit": null
-      },
-      {
-        "file": "shaders/vfx_mesh.frag",
-        "line": 14,
-        "target": "sampler2D",
-        "comment_unit": null
-      }
-    ],
-    "uSrc": [
-      {
-        "file": "shaders/hzb_reduce.frag",
-        "line": 28,
-        "target": "sampler2D",
-        "comment_unit": 0
-      }
-    ],
-    "u_atlas": [
-      {
-        "file": "shaders/gos_vegetation_card.frag",
-        "line": 29,
-        "target": "sampler2D",
-        "comment_unit": null
-      }
-    ],
-    "u_cementAtlas": [
-      {
-        "file": "shaders/terrain_lod_chunk.frag",
-        "line": 22,
-        "target": "sampler2D",
-        "comment_unit": null
-      }
-    ],
-    "u_colormap": [
-      {
-        "file": "shaders/terrain_lod_chunk.frag",
-        "line": 35,
-        "target": "sampler2D",
-        "comment_unit": null
-      }
-    ],
-    "u_hdri": [
-      {
-        "file": "shaders/gos_terrain_water_mdi.frag",
-        "line": 48,
-        "target": "sampler2D",
-        "comment_unit": 3
-      },
-      {
-        "file": "shaders/hdri_skybox.frag",
-        "line": 12,
-        "target": "sampler2D",
-        "comment_unit": null
-      }
-    ],
-    "u_normalTex": [
-      {
-        "file": "shaders/building_pbr.frag",
-        "line": 17,
-        "target": "sampler2D",
-        "comment_unit": null
-      }
-    ],
-    "u_ormTex": [
-      {
-        "file": "shaders/building_pbr.frag",
-        "line": 18,
-        "target": "sampler2D",
-        "comment_unit": null
-      }
-    ],
-    "u_ormTexArr": [
-      {
-        "file": "shaders/static_prop.frag",
-        "line": 105,
-        "target": "sampler2DArray",
-        "comment_unit": null
-      },
-      {
-        "file": "shaders/static_prop_depth.frag",
-        "line": 68,
-        "target": "sampler2DArray",
-        "comment_unit": null
-      }
-    ],
-    "u_pbrNormalTex": [
-      {
-        "file": "shaders/mech.frag",
-        "line": 46,
-        "target": "sampler2D",
-        "comment_unit": 1
-      }
-    ],
-    "u_pbrOrmTex": [
-      {
-        "file": "shaders/mech.frag",
-        "line": 47,
-        "target": "sampler2D",
-        "comment_unit": 2
-      }
-    ],
-    "u_pbrPaintNormalTex": [
-      {
-        "file": "shaders/mech.frag",
-        "line": 48,
-        "target": "sampler2D",
-        "comment_unit": 3
-      }
-    ],
-    "u_pbrPaintOrmTex": [
-      {
-        "file": "shaders/mech.frag",
-        "line": 49,
-        "target": "sampler2D",
-        "comment_unit": 4
-      }
-    ],
-    "u_sceneDepth": [
-      {
-        "file": "shaders/particle_billboard.frag",
-        "line": 48,
-        "target": "sampler2D",
-        "comment_unit": null
-      }
-    ],
-    "u_tex": [
-      {
-        "file": "shaders/mech.frag",
-        "line": 42,
-        "target": "sampler2D",
-        "comment_unit": null
-      },
-      {
-        "file": "shaders/shadow_static_prop.frag",
-        "line": 33,
-        "target": "sampler2D",
-        "comment_unit": null
-      },
-      {
-        "file": "shaders/static_prop.frag",
-        "line": 110,
-        "target": "sampler2D",
-        "comment_unit": null
-      },
-      {
-        "file": "shaders/static_prop_depth.frag",
-        "line": 73,
-        "target": "sampler2D",
-        "comment_unit": null
-      }
-    ],
-    "u_texArr": [
-      {
-        "file": "shaders/static_prop.frag",
-        "line": 91,
-        "target": "sampler2DArray",
-        "comment_unit": null
-      },
-      {
-        "file": "shaders/static_prop_depth.frag",
-        "line": 54,
-        "target": "sampler2DArray",
-        "comment_unit": null
-      }
-    ],
-    "u_transitionMaskArray": [
-      {
-        "file": "shaders/gos_terrain.frag",
-        "line": 95,
-        "target": "sampler2DArray",
-        "comment_unit": 4
-      },
-      {
-        "file": "shaders/terrain_lod_chunk.frag",
-        "line": 27,
-        "target": "sampler2DArray",
-        "comment_unit": null
-      }
-    ],
-    "u_waterReflRT": [
-      {
-        "file": "shaders/gos_terrain_water_mdi.frag",
-        "line": 29,
-        "target": "sampler2D",
-        "comment_unit": null
-      }
-    ]
+    "depthTex": {
+      "decls": [
+        {
+          "file": "shaders/edge_fog.frag",
+          "line": 24,
+          "target": "sampler2D",
+          "comment_unit": null
+        },
+        {
+          "file": "shaders/fog_oob.frag",
+          "line": 15,
+          "target": "sampler2D",
+          "comment_unit": null
+        },
+        {
+          "file": "shaders/vulkan/edge_fog.frag",
+          "line": 23,
+          "target": "sampler2D",
+          "comment_unit": null
+        }
+      ],
+      "descriptorClass": "CombinedImageSampler",
+      "resourceId": "MainDepth"
+    },
+    "dynamicFullMapShadow": {
+      "decls": [
+        {
+          "file": "shaders/shadow_screen.frag",
+          "line": 81,
+          "target": "sampler2DShadow",
+          "comment_unit": null
+        },
+        {
+          "file": "shaders/include/shadow.hglsl",
+          "line": 113,
+          "target": "sampler2DShadow",
+          "comment_unit": null
+        }
+      ],
+      "descriptorClass": "CombinedImageSampler",
+      "resourceId": "ShadowDynamicMap"
+    },
+    "dynamicShadowArray": {
+      "decls": [
+        {
+          "file": "shaders/shadow_screen.frag",
+          "line": 74,
+          "target": "sampler2DArrayShadow",
+          "comment_unit": null
+        },
+        {
+          "file": "shaders/include/shadow.hglsl",
+          "line": 104,
+          "target": "sampler2DArrayShadow",
+          "comment_unit": null
+        }
+      ],
+      "descriptorClass": "CombinedImageSampler",
+      "resourceId": "ShadowDynamicMap"
+    },
+    "dynamicShadowMap": {
+      "decls": [
+        {
+          "file": "shaders/shadow_screen.frag",
+          "line": 84,
+          "target": "sampler2DShadow",
+          "comment_unit": null
+        },
+        {
+          "file": "shaders/include/shadow.hglsl",
+          "line": 242,
+          "target": "sampler2DShadow",
+          "comment_unit": null
+        }
+      ],
+      "descriptorClass": "CombinedImageSampler",
+      "resourceId": "ShadowDynamicMap"
+    },
+    "matNormal0": {
+      "decls": [
+        {
+          "file": "shaders/gos_terrain.frag",
+          "line": 46,
+          "target": "sampler2D",
+          "comment_unit": 5
+        },
+        {
+          "file": "shaders/gos_terrain.tese",
+          "line": 28,
+          "target": "sampler2D",
+          "comment_unit": null
+        }
+      ],
+      "descriptorClass": "CombinedImageSampler?",
+      "resourceId": null
+    },
+    "matNormal1": {
+      "decls": [
+        {
+          "file": "shaders/gos_terrain.frag",
+          "line": 47,
+          "target": "sampler2D",
+          "comment_unit": 6
+        },
+        {
+          "file": "shaders/gos_terrain.tese",
+          "line": 29,
+          "target": "sampler2D",
+          "comment_unit": null
+        }
+      ],
+      "descriptorClass": "CombinedImageSampler?",
+      "resourceId": null
+    },
+    "matNormal2": {
+      "decls": [
+        {
+          "file": "shaders/gos_terrain.frag",
+          "line": 48,
+          "target": "sampler2D",
+          "comment_unit": 7
+        },
+        {
+          "file": "shaders/gos_terrain.tese",
+          "line": 30,
+          "target": "sampler2D",
+          "comment_unit": null
+        },
+        {
+          "file": "shaders/shadow_terrain.tese",
+          "line": 14,
+          "target": "sampler2D",
+          "comment_unit": null
+        }
+      ],
+      "descriptorClass": "CombinedImageSampler?",
+      "resourceId": null
+    },
+    "matNormal3": {
+      "decls": [
+        {
+          "file": "shaders/gos_terrain.frag",
+          "line": 49,
+          "target": "sampler2D",
+          "comment_unit": 8
+        },
+        {
+          "file": "shaders/gos_terrain.tese",
+          "line": 31,
+          "target": "sampler2D",
+          "comment_unit": null
+        }
+      ],
+      "descriptorClass": "CombinedImageSampler?",
+      "resourceId": null
+    },
+    "matNormal4": {
+      "decls": [
+        {
+          "file": "shaders/gos_terrain.frag",
+          "line": 50,
+          "target": "sampler2D",
+          "comment_unit": 12
+        }
+      ],
+      "descriptorClass": "CombinedImageSampler?",
+      "resourceId": null
+    },
+    "matNormalArray": {
+      "decls": [
+        {
+          "file": "shaders/gos_terrain.frag",
+          "line": 56,
+          "target": "sampler2DArray",
+          "comment_unit": null
+        },
+        {
+          "file": "shaders/gos_terrain.tese",
+          "line": 35,
+          "target": "sampler2DArray",
+          "comment_unit": null
+        },
+        {
+          "file": "shaders/shadow_terrain.tese",
+          "line": 18,
+          "target": "sampler2DArray",
+          "comment_unit": null
+        },
+        {
+          "file": "shaders/terrain_lod_chunk.frag",
+          "line": 125,
+          "target": "sampler2DArray",
+          "comment_unit": null
+        },
+        {
+          "file": "shaders/terrain_overlay.frag",
+          "line": 62,
+          "target": "sampler2DArray",
+          "comment_unit": null
+        }
+      ],
+      "descriptorClass": "CombinedImageSampler?",
+      "resourceId": null
+    },
+    "mineSpriteArray": {
+      "decls": [
+        {
+          "file": "shaders/gos_terrain_mine_static.frag",
+          "line": 16,
+          "target": "sampler2DArray",
+          "comment_unit": 5
+        }
+      ],
+      "descriptorClass": "CombinedImageSampler?",
+      "resourceId": null
+    },
+    "sceneDepthTex": {
+      "decls": [
+        {
+          "file": "shaders/cloud.frag",
+          "line": 60,
+          "target": "sampler2D",
+          "comment_unit": null
+        },
+        {
+          "file": "shaders/shadow_screen.frag",
+          "line": 62,
+          "target": "sampler2D",
+          "comment_unit": null
+        },
+        {
+          "file": "shaders/shoreline.frag",
+          "line": 10,
+          "target": "sampler2D",
+          "comment_unit": null
+        },
+        {
+          "file": "shaders/ssao.frag",
+          "line": 19,
+          "target": "sampler2D",
+          "comment_unit": 0
+        }
+      ],
+      "descriptorClass": "CombinedImageSampler",
+      "resourceId": "MainDepth"
+    },
+    "sceneNormalTex": {
+      "decls": [
+        {
+          "file": "shaders/shadow_screen.frag",
+          "line": 63,
+          "target": "sampler2D",
+          "comment_unit": null
+        },
+        {
+          "file": "shaders/shoreline.frag",
+          "line": 11,
+          "target": "sampler2D",
+          "comment_unit": null
+        },
+        {
+          "file": "shaders/ssao.frag",
+          "line": 20,
+          "target": "sampler2D",
+          "comment_unit": 1
+        }
+      ],
+      "descriptorClass": "CombinedImageSampler",
+      "resourceId": "MainNormal"
+    },
+    "sceneTex": {
+      "decls": [
+        {
+          "file": "shaders/postprocess.frag",
+          "line": 6,
+          "target": "sampler2D",
+          "comment_unit": 0
+        }
+      ],
+      "descriptorClass": "CombinedImageSampler",
+      "resourceId": "MainColor"
+    },
+    "shadowDebugArray": {
+      "decls": [
+        {
+          "file": "shaders/shadow_debug.frag",
+          "line": 8,
+          "target": "sampler2DArray",
+          "comment_unit": null
+        }
+      ],
+      "descriptorClass": "CombinedImageSampler?",
+      "resourceId": null
+    },
+    "shadowDebugMap": {
+      "decls": [
+        {
+          "file": "shaders/shadow_debug.frag",
+          "line": 12,
+          "target": "sampler2D",
+          "comment_unit": null
+        }
+      ],
+      "descriptorClass": "CombinedImageSampler?",
+      "resourceId": null
+    },
+    "shadowMap": {
+      "decls": [
+        {
+          "file": "shaders/shadow_screen.frag",
+          "line": 64,
+          "target": "sampler2DShadow",
+          "comment_unit": null
+        },
+        {
+          "file": "shaders/include/shadow.hglsl",
+          "line": 4,
+          "target": "sampler2DShadow",
+          "comment_unit": null
+        }
+      ],
+      "descriptorClass": "CombinedImageSampler?",
+      "resourceId": null
+    },
+    "ssaoTex": {
+      "decls": [
+        {
+          "file": "shaders/ssao_apply.frag",
+          "line": 15,
+          "target": "sampler2D",
+          "comment_unit": 0
+        }
+      ],
+      "descriptorClass": "CombinedImageSampler?",
+      "resourceId": null
+    },
+    "terrainHeightTex": {
+      "decls": [
+        {
+          "file": "shaders/include/terrain_height_normal.hglsl",
+          "line": 30,
+          "target": "sampler2D",
+          "comment_unit": null
+        }
+      ],
+      "descriptorClass": "CombinedImageSampler?",
+      "resourceId": null
+    },
+    "tex1": {
+      "decls": [
+        {
+          "file": "shaders/building_pbr.frag",
+          "line": 16,
+          "target": "sampler2D",
+          "comment_unit": null
+        },
+        {
+          "file": "shaders/decal.frag",
+          "line": 43,
+          "target": "sampler2D",
+          "comment_unit": null
+        },
+        {
+          "file": "shaders/gos_grass.geom",
+          "line": 21,
+          "target": "sampler2D",
+          "comment_unit": 0
+        },
+        {
+          "file": "shaders/gos_terrain.frag",
+          "line": 35,
+          "target": "sampler2D",
+          "comment_unit": null
+        },
+        {
+          "file": "shaders/gos_terrain.tese",
+          "line": 27,
+          "target": "sampler2D",
+          "comment_unit": null
+        },
+        {
+          "file": "shaders/gos_terrain_water_mdi.frag",
+          "line": 38,
+          "target": "sampler2D",
+          "comment_unit": null
+        },
+        {
+          "file": "shaders/gos_text.frag",
+          "line": 11,
+          "target": "sampler2D",
+          "comment_unit": null
+        },
+        {
+          "file": "shaders/gos_tex_vertex.frag",
+          "line": 22,
+          "target": "sampler2D",
+          "comment_unit": null
+        },
+        {
+          "file": "shaders/gos_tex_vertex_lighted.frag",
+          "line": 32,
+          "target": "sampler2D",
+          "comment_unit": null
+        },
+        {
+          "file": "shaders/gos_vertex.frag",
+          "line": 17,
+          "target": "sampler2D",
+          "comment_unit": null
+        },
+        {
+          "file": "shaders/gos_vertex_lighted.frag",
+          "line": 16,
+          "target": "sampler2D",
+          "comment_unit": null
+        },
+        {
+          "file": "shaders/shadow_terrain.tese",
+          "line": 13,
+          "target": "sampler2D",
+          "comment_unit": null
+        },
+        {
+          "file": "shaders/terrain_overlay.frag",
+          "line": 47,
+          "target": "sampler2D",
+          "comment_unit": null
+        }
+      ],
+      "descriptorClass": "CombinedImageSampler?",
+      "resourceId": null
+    },
+    "tex2": {
+      "decls": [
+        {
+          "file": "shaders/gos_terrain.frag",
+          "line": 36,
+          "target": "sampler2D",
+          "comment_unit": null
+        },
+        {
+          "file": "shaders/gos_terrain_water_mdi.frag",
+          "line": 39,
+          "target": "sampler2D",
+          "comment_unit": null
+        },
+        {
+          "file": "shaders/gos_vertex.frag",
+          "line": 19,
+          "target": "sampler2D",
+          "comment_unit": null
+        },
+        {
+          "file": "shaders/gos_vertex_lighted.frag",
+          "line": 18,
+          "target": "sampler2D",
+          "comment_unit": null
+        }
+      ],
+      "descriptorClass": "CombinedImageSampler?",
+      "resourceId": null
+    },
+    "tex3": {
+      "decls": [
+        {
+          "file": "shaders/gos_terrain.frag",
+          "line": 37,
+          "target": "sampler2D",
+          "comment_unit": null
+        },
+        {
+          "file": "shaders/gos_vertex.frag",
+          "line": 20,
+          "target": "sampler2D",
+          "comment_unit": null
+        },
+        {
+          "file": "shaders/gos_vertex_lighted.frag",
+          "line": 19,
+          "target": "sampler2D",
+          "comment_unit": null
+        }
+      ],
+      "descriptorClass": "CombinedImageSampler?",
+      "resourceId": null
+    },
+    "uAtlas": {
+      "decls": [
+        {
+          "file": "shaders/particle_billboard.frag",
+          "line": 17,
+          "target": "sampler2D",
+          "comment_unit": null
+        },
+        {
+          "file": "shaders/tube_ribbon.frag",
+          "line": 19,
+          "target": "sampler2D",
+          "comment_unit": null
+        },
+        {
+          "file": "shaders/vfx_mesh.frag",
+          "line": 14,
+          "target": "sampler2D",
+          "comment_unit": null
+        }
+      ],
+      "descriptorClass": "CombinedImageSampler?",
+      "resourceId": null
+    },
+    "uSrc": {
+      "decls": [
+        {
+          "file": "shaders/hzb_reduce.frag",
+          "line": 28,
+          "target": "sampler2D",
+          "comment_unit": 0
+        }
+      ],
+      "descriptorClass": "CombinedImageSampler?",
+      "resourceId": null
+    },
+    "u_asphaltAlbedo": {
+      "decls": [
+        {
+          "file": "shaders/terrain_overlay.frag",
+          "line": 60,
+          "target": "sampler2D",
+          "comment_unit": null
+        }
+      ],
+      "descriptorClass": "CombinedImageSampler?",
+      "resourceId": null
+    },
+    "u_atlas": {
+      "decls": [
+        {
+          "file": "shaders/gos_vegetation_card.frag",
+          "line": 29,
+          "target": "sampler2D",
+          "comment_unit": null
+        }
+      ],
+      "descriptorClass": "CombinedImageSampler?",
+      "resourceId": null
+    },
+    "u_cementAtlas": {
+      "decls": [
+        {
+          "file": "shaders/terrain_lod_chunk.frag",
+          "line": 23,
+          "target": "sampler2D",
+          "comment_unit": null
+        }
+      ],
+      "descriptorClass": "CombinedImageSampler?",
+      "resourceId": null
+    },
+    "u_colormap": {
+      "decls": [
+        {
+          "file": "shaders/terrain_lod_chunk.frag",
+          "line": 40,
+          "target": "sampler2D",
+          "comment_unit": null
+        }
+      ],
+      "descriptorClass": "CombinedImageSampler?",
+      "resourceId": null
+    },
+    "u_gravelAlbedo": {
+      "decls": [
+        {
+          "file": "shaders/terrain_overlay.frag",
+          "line": 61,
+          "target": "sampler2D",
+          "comment_unit": null
+        }
+      ],
+      "descriptorClass": "CombinedImageSampler?",
+      "resourceId": null
+    },
+    "u_hdri": {
+      "decls": [
+        {
+          "file": "shaders/gos_terrain_water_mdi.frag",
+          "line": 59,
+          "target": "sampler2D",
+          "comment_unit": 3
+        },
+        {
+          "file": "shaders/hdri_skybox.frag",
+          "line": 12,
+          "target": "sampler2D",
+          "comment_unit": null
+        }
+      ],
+      "descriptorClass": "CombinedImageSampler?",
+      "resourceId": null
+    },
+    "u_mechAoTex": {
+      "decls": [
+        {
+          "file": "shaders/mech.frag",
+          "line": 49,
+          "target": "sampler2D",
+          "comment_unit": 6
+        }
+      ],
+      "descriptorClass": "CombinedImageSampler?",
+      "resourceId": null
+    },
+    "u_mechNormalTex": {
+      "decls": [
+        {
+          "file": "shaders/mech.frag",
+          "line": 54,
+          "target": "sampler2D",
+          "comment_unit": 7
+        }
+      ],
+      "descriptorClass": "CombinedImageSampler?",
+      "resourceId": null
+    },
+    "u_normalTex": {
+      "decls": [
+        {
+          "file": "shaders/building_pbr.frag",
+          "line": 17,
+          "target": "sampler2D",
+          "comment_unit": null
+        }
+      ],
+      "descriptorClass": "CombinedImageSampler?",
+      "resourceId": null
+    },
+    "u_ormTex": {
+      "decls": [
+        {
+          "file": "shaders/building_pbr.frag",
+          "line": 18,
+          "target": "sampler2D",
+          "comment_unit": null
+        }
+      ],
+      "descriptorClass": "CombinedImageSampler?",
+      "resourceId": null
+    },
+    "u_ormTexArr": {
+      "decls": [
+        {
+          "file": "shaders/static_prop.frag",
+          "line": 105,
+          "target": "sampler2DArray",
+          "comment_unit": null
+        },
+        {
+          "file": "shaders/static_prop_depth.frag",
+          "line": 68,
+          "target": "sampler2DArray",
+          "comment_unit": null
+        }
+      ],
+      "descriptorClass": "CombinedImageSampler?",
+      "resourceId": null
+    },
+    "u_pbrNormalTex": {
+      "decls": [
+        {
+          "file": "shaders/mech.frag",
+          "line": 63,
+          "target": "sampler2D",
+          "comment_unit": 1
+        }
+      ],
+      "descriptorClass": "CombinedImageSampler?",
+      "resourceId": null
+    },
+    "u_pbrOrmTex": {
+      "decls": [
+        {
+          "file": "shaders/mech.frag",
+          "line": 64,
+          "target": "sampler2D",
+          "comment_unit": 2
+        }
+      ],
+      "descriptorClass": "CombinedImageSampler?",
+      "resourceId": null
+    },
+    "u_pbrPaintNormalTex": {
+      "decls": [
+        {
+          "file": "shaders/mech.frag",
+          "line": 65,
+          "target": "sampler2D",
+          "comment_unit": 3
+        }
+      ],
+      "descriptorClass": "CombinedImageSampler?",
+      "resourceId": null
+    },
+    "u_pbrPaintOrmTex": {
+      "decls": [
+        {
+          "file": "shaders/mech.frag",
+          "line": 66,
+          "target": "sampler2D",
+          "comment_unit": 4
+        }
+      ],
+      "descriptorClass": "CombinedImageSampler?",
+      "resourceId": null
+    },
+    "u_sceneColor": {
+      "decls": [
+        {
+          "file": "shaders/particle_billboard.frag",
+          "line": 78,
+          "target": "sampler2D",
+          "comment_unit": null
+        }
+      ],
+      "descriptorClass": "CombinedImageSampler",
+      "resourceId": "MainColor"
+    },
+    "u_sceneDepth": {
+      "decls": [
+        {
+          "file": "shaders/cluster_depth_pyramid.comp",
+          "line": 29,
+          "target": "sampler2D",
+          "comment_unit": null
+        },
+        {
+          "file": "shaders/particle_billboard.frag",
+          "line": 48,
+          "target": "sampler2D",
+          "comment_unit": null
+        }
+      ],
+      "descriptorClass": "CombinedImageSampler",
+      "resourceId": "MainDepth"
+    },
+    "u_sceneDepthTex": {
+      "decls": [
+        {
+          "file": "shaders/box_decal.frag",
+          "line": 18,
+          "target": "sampler2D",
+          "comment_unit": 0
+        }
+      ],
+      "descriptorClass": "CombinedImageSampler",
+      "resourceId": "MainDepth"
+    },
+    "u_sceneNormalTex": {
+      "decls": [
+        {
+          "file": "shaders/box_decal.frag",
+          "line": 19,
+          "target": "sampler2D",
+          "comment_unit": 1
+        }
+      ],
+      "descriptorClass": "CombinedImageSampler",
+      "resourceId": "MainNormal"
+    },
+    "u_src": {
+      "decls": [
+        {
+          "file": "shaders/postprocess_blur.comp",
+          "line": 38,
+          "target": "sampler2D",
+          "comment_unit": null
+        }
+      ],
+      "descriptorClass": "CombinedImageSampler?",
+      "resourceId": null
+    },
+    "u_tex": {
+      "decls": [
+        {
+          "file": "shaders/mech.frag",
+          "line": 59,
+          "target": "sampler2D",
+          "comment_unit": null
+        },
+        {
+          "file": "shaders/shadow_static_prop.frag",
+          "line": 33,
+          "target": "sampler2D",
+          "comment_unit": null
+        },
+        {
+          "file": "shaders/static_prop.frag",
+          "line": 110,
+          "target": "sampler2D",
+          "comment_unit": null
+        },
+        {
+          "file": "shaders/static_prop_depth.frag",
+          "line": 73,
+          "target": "sampler2D",
+          "comment_unit": null
+        }
+      ],
+      "descriptorClass": "CombinedImageSampler?",
+      "resourceId": null
+    },
+    "u_texArr": {
+      "decls": [
+        {
+          "file": "shaders/static_prop.frag",
+          "line": 91,
+          "target": "sampler2DArray",
+          "comment_unit": null
+        },
+        {
+          "file": "shaders/static_prop_depth.frag",
+          "line": 54,
+          "target": "sampler2DArray",
+          "comment_unit": null
+        }
+      ],
+      "descriptorClass": "CombinedImageSampler?",
+      "resourceId": null
+    },
+    "u_tileMinMax": {
+      "decls": [
+        {
+          "file": "shaders/lightgrid_build.comp",
+          "line": 163,
+          "target": "sampler2D",
+          "comment_unit": null
+        }
+      ],
+      "descriptorClass": "CombinedImageSampler?",
+      "resourceId": null
+    },
+    "u_transitionMaskArray": {
+      "decls": [
+        {
+          "file": "shaders/gos_terrain.frag",
+          "line": 95,
+          "target": "sampler2DArray",
+          "comment_unit": 4
+        },
+        {
+          "file": "shaders/terrain_lod_chunk.frag",
+          "line": 32,
+          "target": "sampler2DArray",
+          "comment_unit": null
+        }
+      ],
+      "descriptorClass": "CombinedImageSampler?",
+      "resourceId": null
+    },
+    "u_waterReflRT": {
+      "decls": [
+        {
+          "file": "shaders/gos_terrain_water_mdi.frag",
+          "line": 40,
+          "target": "sampler2D",
+          "comment_unit": null
+        }
+      ],
+      "descriptorClass": "CombinedImageSampler?",
+      "resourceId": null
+    }
   },
   "assignments": [
     {
@@ -660,7 +988,7 @@
       "unit": 0,
       "receiver": "edgeFogProg_",
       "file": "GameOS/gameos/gos_postprocess.cpp",
-      "line": 2029,
+      "line": 2512,
       "via": "setInt"
     },
     {
@@ -668,7 +996,7 @@
       "unit": 0,
       "receiver": "fogOobProg_",
       "file": "GameOS/gameos/gos_postprocess.cpp",
-      "line": 2097,
+      "line": 2598,
       "via": "setInt"
     },
     {
@@ -676,7 +1004,7 @@
       "unit": 0,
       "receiver": "ssaoProg_",
       "file": "GameOS/gameos/gos_postprocess.cpp",
-      "line": 1680,
+      "line": 2123,
       "via": "setInt"
     },
     {
@@ -684,7 +1012,7 @@
       "unit": 0,
       "receiver": "screenShadowProg_",
       "file": "GameOS/gameos/gos_postprocess.cpp",
-      "line": 1781,
+      "line": 2234,
       "via": "setInt"
     },
     {
@@ -692,7 +1020,7 @@
       "unit": 0,
       "receiver": "cloudProg_",
       "file": "GameOS/gameos/gos_postprocess.cpp",
-      "line": 1921,
+      "line": 2385,
       "via": "setInt"
     },
     {
@@ -700,7 +1028,7 @@
       "unit": 0,
       "receiver": "shorelineProg_",
       "file": "GameOS/gameos/gos_postprocess.cpp",
-      "line": 1976,
+      "line": 2446,
       "via": "setInt"
     },
     {
@@ -708,7 +1036,7 @@
       "unit": 0,
       "receiver": "compositeProg_",
       "file": "GameOS/gameos/gos_postprocess.cpp",
-      "line": 2193,
+      "line": 2809,
       "via": "setInt"
     },
     {
@@ -716,7 +1044,7 @@
       "unit": 0,
       "receiver": "shadowDebugProg_",
       "file": "GameOS/gameos/gos_postprocess.cpp",
-      "line": 2338,
+      "line": 2964,
       "via": "setInt"
     },
     {
@@ -724,7 +1052,7 @@
       "unit": 0,
       "receiver": "shadowDebugProg_",
       "file": "GameOS/gameos/gos_postprocess.cpp",
-      "line": 2334,
+      "line": 2960,
       "via": "setInt"
     },
     {
@@ -732,7 +1060,7 @@
       "unit": 0,
       "receiver": "ssaoApplyProg_",
       "file": "GameOS/gameos/gos_postprocess.cpp",
-      "line": 1716,
+      "line": 2163,
       "via": "setInt"
     },
     {
@@ -740,7 +1068,7 @@
       "unit": 0,
       "receiver": "hzbReduceProg_",
       "file": "GameOS/gameos/gos_postprocess.cpp",
-      "line": 1241,
+      "line": 1684,
       "via": "setInt"
     },
     {
@@ -748,7 +1076,7 @@
       "unit": 0,
       "receiver": "hzbReduceProg_",
       "file": "GameOS/gameos/gos_postprocess.cpp",
-      "line": 1255,
+      "line": 1698,
       "via": "setInt"
     },
     {
@@ -756,7 +1084,7 @@
       "unit": 0,
       "receiver": "hdriSkyboxProg_",
       "file": "GameOS/gameos/gos_postprocess.cpp",
-      "line": 2554,
+      "line": 3185,
       "via": "setInt"
     },
     {
@@ -764,7 +1092,7 @@
       "unit": 0,
       "receiver": "hdriSkyboxProg_",
       "file": "GameOS/gameos/gos_postprocess.cpp",
-      "line": 2749,
+      "line": 3380,
       "via": "setInt"
     },
     {
@@ -772,7 +1100,15 @@
       "unit": 0,
       "receiver": "hdriSkyboxProg_",
       "file": "GameOS/gameos/gos_postprocess.cpp",
-      "line": 2932,
+      "line": 3563,
+      "via": "setInt"
+    },
+    {
+      "name": "u_sceneDepthTex",
+      "unit": 0,
+      "receiver": "boxDecalProg_",
+      "file": "GameOS/gameos/gos_postprocess.cpp",
+      "line": 1542,
       "via": "setInt"
     },
     {
@@ -780,7 +1116,7 @@
       "unit": 1,
       "receiver": "ssaoProg_",
       "file": "GameOS/gameos/gos_postprocess.cpp",
-      "line": 1681,
+      "line": 2124,
       "via": "setInt"
     },
     {
@@ -788,7 +1124,7 @@
       "unit": 1,
       "receiver": "screenShadowProg_",
       "file": "GameOS/gameos/gos_postprocess.cpp",
-      "line": 1782,
+      "line": 2235,
       "via": "setInt"
     },
     {
@@ -796,7 +1132,15 @@
       "unit": 1,
       "receiver": "shorelineProg_",
       "file": "GameOS/gameos/gos_postprocess.cpp",
-      "line": 1977,
+      "line": 2447,
+      "via": "setInt"
+    },
+    {
+      "name": "u_sceneNormalTex",
+      "unit": 1,
+      "receiver": "boxDecalProg_",
+      "file": "GameOS/gameos/gos_postprocess.cpp",
+      "line": 1543,
       "via": "setInt"
     },
     {
@@ -804,7 +1148,7 @@
       "unit": 2,
       "receiver": "screenShadowProg_",
       "file": "GameOS/gameos/gos_postprocess.cpp",
-      "line": 1783,
+      "line": 2236,
       "via": "setInt"
     },
     {
@@ -812,7 +1156,7 @@
       "unit": 3,
       "receiver": "screenShadowProg_",
       "file": "GameOS/gameos/gos_postprocess.cpp",
-      "line": 1785,
+      "line": 2238,
       "via": "setInt"
     },
     {
@@ -820,7 +1164,7 @@
       "unit": 3,
       "receiver": "screenShadowProg_",
       "file": "GameOS/gameos/gos_postprocess.cpp",
-      "line": 1789,
+      "line": 2242,
       "via": "setInt"
     },
     {
@@ -828,19 +1172,21 @@
       "unit": 4,
       "receiver": "screenShadowProg_",
       "file": "GameOS/gameos/gos_postprocess.cpp",
-      "line": 1787,
+      "line": 2240,
       "via": "setInt"
     }
   ],
   "occupancy": {
     "0": [
       {
-        "name": "uSrc",
+        "name": "u_sceneDepthTex",
         "side": "cpp",
         "via": "setInt",
-        "receiver": "hzbReduceProg_",
+        "receiver": "boxDecalProg_",
         "file": "GameOS/gameos/gos_postprocess.cpp",
-        "line": 1241
+        "line": 1542,
+        "descriptorClass": "CombinedImageSampler",
+        "resourceId": "MainDepth"
       },
       {
         "name": "uSrc",
@@ -848,7 +1194,19 @@
         "via": "setInt",
         "receiver": "hzbReduceProg_",
         "file": "GameOS/gameos/gos_postprocess.cpp",
-        "line": 1255
+        "line": 1684,
+        "descriptorClass": "CombinedImageSampler?",
+        "resourceId": null
+      },
+      {
+        "name": "uSrc",
+        "side": "cpp",
+        "via": "setInt",
+        "receiver": "hzbReduceProg_",
+        "file": "GameOS/gameos/gos_postprocess.cpp",
+        "line": 1698,
+        "descriptorClass": "CombinedImageSampler?",
+        "resourceId": null
       },
       {
         "name": "sceneDepthTex",
@@ -856,7 +1214,9 @@
         "via": "setInt",
         "receiver": "ssaoProg_",
         "file": "GameOS/gameos/gos_postprocess.cpp",
-        "line": 1680
+        "line": 2123,
+        "descriptorClass": "CombinedImageSampler",
+        "resourceId": "MainDepth"
       },
       {
         "name": "ssaoTex",
@@ -864,7 +1224,9 @@
         "via": "setInt",
         "receiver": "ssaoApplyProg_",
         "file": "GameOS/gameos/gos_postprocess.cpp",
-        "line": 1716
+        "line": 2163,
+        "descriptorClass": "CombinedImageSampler?",
+        "resourceId": null
       },
       {
         "name": "sceneDepthTex",
@@ -872,7 +1234,9 @@
         "via": "setInt",
         "receiver": "screenShadowProg_",
         "file": "GameOS/gameos/gos_postprocess.cpp",
-        "line": 1781
+        "line": 2234,
+        "descriptorClass": "CombinedImageSampler",
+        "resourceId": "MainDepth"
       },
       {
         "name": "sceneDepthTex",
@@ -880,7 +1244,9 @@
         "via": "setInt",
         "receiver": "cloudProg_",
         "file": "GameOS/gameos/gos_postprocess.cpp",
-        "line": 1921
+        "line": 2385,
+        "descriptorClass": "CombinedImageSampler",
+        "resourceId": "MainDepth"
       },
       {
         "name": "sceneDepthTex",
@@ -888,7 +1254,9 @@
         "via": "setInt",
         "receiver": "shorelineProg_",
         "file": "GameOS/gameos/gos_postprocess.cpp",
-        "line": 1976
+        "line": 2446,
+        "descriptorClass": "CombinedImageSampler",
+        "resourceId": "MainDepth"
       },
       {
         "name": "depthTex",
@@ -896,7 +1264,9 @@
         "via": "setInt",
         "receiver": "edgeFogProg_",
         "file": "GameOS/gameos/gos_postprocess.cpp",
-        "line": 2029
+        "line": 2512,
+        "descriptorClass": "CombinedImageSampler",
+        "resourceId": "MainDepth"
       },
       {
         "name": "depthTex",
@@ -904,7 +1274,9 @@
         "via": "setInt",
         "receiver": "fogOobProg_",
         "file": "GameOS/gameos/gos_postprocess.cpp",
-        "line": 2097
+        "line": 2598,
+        "descriptorClass": "CombinedImageSampler",
+        "resourceId": "MainDepth"
       },
       {
         "name": "sceneTex",
@@ -912,7 +1284,9 @@
         "via": "setInt",
         "receiver": "compositeProg_",
         "file": "GameOS/gameos/gos_postprocess.cpp",
-        "line": 2193
+        "line": 2809,
+        "descriptorClass": "CombinedImageSampler",
+        "resourceId": "MainColor"
       },
       {
         "name": "shadowDebugMap",
@@ -920,7 +1294,9 @@
         "via": "setInt",
         "receiver": "shadowDebugProg_",
         "file": "GameOS/gameos/gos_postprocess.cpp",
-        "line": 2334
+        "line": 2960,
+        "descriptorClass": "CombinedImageSampler?",
+        "resourceId": null
       },
       {
         "name": "shadowDebugArray",
@@ -928,7 +1304,9 @@
         "via": "setInt",
         "receiver": "shadowDebugProg_",
         "file": "GameOS/gameos/gos_postprocess.cpp",
-        "line": 2338
+        "line": 2964,
+        "descriptorClass": "CombinedImageSampler?",
+        "resourceId": null
       },
       {
         "name": "u_hdri",
@@ -936,7 +1314,9 @@
         "via": "setInt",
         "receiver": "hdriSkyboxProg_",
         "file": "GameOS/gameos/gos_postprocess.cpp",
-        "line": 2554
+        "line": 3185,
+        "descriptorClass": "CombinedImageSampler?",
+        "resourceId": null
       },
       {
         "name": "u_hdri",
@@ -944,7 +1324,9 @@
         "via": "setInt",
         "receiver": "hdriSkyboxProg_",
         "file": "GameOS/gameos/gos_postprocess.cpp",
-        "line": 2749
+        "line": 3380,
+        "descriptorClass": "CombinedImageSampler?",
+        "resourceId": null
       },
       {
         "name": "u_hdri",
@@ -952,52 +1334,85 @@
         "via": "setInt",
         "receiver": "hdriSkyboxProg_",
         "file": "GameOS/gameos/gos_postprocess.cpp",
-        "line": 2932
+        "line": 3563,
+        "descriptorClass": "CombinedImageSampler?",
+        "resourceId": null
+      },
+      {
+        "name": "u_sceneDepthTex",
+        "side": "glsl",
+        "target": "sampler2D",
+        "file": "shaders/box_decal.frag",
+        "line": 18,
+        "descriptorClass": "CombinedImageSampler",
+        "resourceId": "MainDepth"
       },
       {
         "name": "tex1",
         "side": "glsl",
         "target": "sampler2D",
         "file": "shaders/gos_grass.geom",
-        "line": 21
+        "line": 21,
+        "descriptorClass": "CombinedImageSampler?",
+        "resourceId": null
       },
       {
         "name": "sceneDepthTex",
         "side": "glsl",
         "target": "sampler2D",
         "file": "shaders/ssao.frag",
-        "line": 19
+        "line": 19,
+        "descriptorClass": "CombinedImageSampler",
+        "resourceId": "MainDepth"
       },
       {
         "name": "uSrc",
         "side": "glsl",
         "target": "sampler2D",
         "file": "shaders/hzb_reduce.frag",
-        "line": 28
+        "line": 28,
+        "descriptorClass": "CombinedImageSampler?",
+        "resourceId": null
       },
       {
         "name": "sceneTex",
         "side": "glsl",
         "target": "sampler2D",
         "file": "shaders/postprocess.frag",
-        "line": 6
+        "line": 6,
+        "descriptorClass": "CombinedImageSampler",
+        "resourceId": "MainColor"
       },
       {
         "name": "ssaoTex",
         "side": "glsl",
         "target": "sampler2D",
         "file": "shaders/ssao_apply.frag",
-        "line": 15
+        "line": 15,
+        "descriptorClass": "CombinedImageSampler?",
+        "resourceId": null
       }
     ],
     "1": [
+      {
+        "name": "u_sceneNormalTex",
+        "side": "cpp",
+        "via": "setInt",
+        "receiver": "boxDecalProg_",
+        "file": "GameOS/gameos/gos_postprocess.cpp",
+        "line": 1543,
+        "descriptorClass": "CombinedImageSampler",
+        "resourceId": "MainNormal"
+      },
       {
         "name": "sceneNormalTex",
         "side": "cpp",
         "via": "setInt",
         "receiver": "ssaoProg_",
         "file": "GameOS/gameos/gos_postprocess.cpp",
-        "line": 1681
+        "line": 2124,
+        "descriptorClass": "CombinedImageSampler",
+        "resourceId": "MainNormal"
       },
       {
         "name": "sceneNormalTex",
@@ -1005,7 +1420,9 @@
         "via": "setInt",
         "receiver": "screenShadowProg_",
         "file": "GameOS/gameos/gos_postprocess.cpp",
-        "line": 1782
+        "line": 2235,
+        "descriptorClass": "CombinedImageSampler",
+        "resourceId": "MainNormal"
       },
       {
         "name": "sceneNormalTex",
@@ -1013,21 +1430,36 @@
         "via": "setInt",
         "receiver": "shorelineProg_",
         "file": "GameOS/gameos/gos_postprocess.cpp",
-        "line": 1977
+        "line": 2447,
+        "descriptorClass": "CombinedImageSampler",
+        "resourceId": "MainNormal"
+      },
+      {
+        "name": "u_sceneNormalTex",
+        "side": "glsl",
+        "target": "sampler2D",
+        "file": "shaders/box_decal.frag",
+        "line": 19,
+        "descriptorClass": "CombinedImageSampler",
+        "resourceId": "MainNormal"
       },
       {
         "name": "u_pbrNormalTex",
         "side": "glsl",
         "target": "sampler2D",
         "file": "shaders/mech.frag",
-        "line": 46
+        "line": 63,
+        "descriptorClass": "CombinedImageSampler?",
+        "resourceId": null
       },
       {
         "name": "sceneNormalTex",
         "side": "glsl",
         "target": "sampler2D",
         "file": "shaders/ssao.frag",
-        "line": 20
+        "line": 20,
+        "descriptorClass": "CombinedImageSampler",
+        "resourceId": "MainNormal"
       }
     ],
     "2": [
@@ -1037,14 +1469,18 @@
         "via": "setInt",
         "receiver": "screenShadowProg_",
         "file": "GameOS/gameos/gos_postprocess.cpp",
-        "line": 1783
+        "line": 2236,
+        "descriptorClass": "CombinedImageSampler?",
+        "resourceId": null
       },
       {
         "name": "u_pbrOrmTex",
         "side": "glsl",
         "target": "sampler2D",
         "file": "shaders/mech.frag",
-        "line": 47
+        "line": 64,
+        "descriptorClass": "CombinedImageSampler?",
+        "resourceId": null
       }
     ],
     "3": [
@@ -1054,7 +1490,9 @@
         "via": "setInt",
         "receiver": "screenShadowProg_",
         "file": "GameOS/gameos/gos_postprocess.cpp",
-        "line": 1785
+        "line": 2238,
+        "descriptorClass": "CombinedImageSampler",
+        "resourceId": "ShadowDynamicMap"
       },
       {
         "name": "dynamicShadowMap",
@@ -1062,21 +1500,27 @@
         "via": "setInt",
         "receiver": "screenShadowProg_",
         "file": "GameOS/gameos/gos_postprocess.cpp",
-        "line": 1789
+        "line": 2242,
+        "descriptorClass": "CombinedImageSampler",
+        "resourceId": "ShadowDynamicMap"
       },
       {
         "name": "u_hdri",
         "side": "glsl",
         "target": "sampler2D",
         "file": "shaders/gos_terrain_water_mdi.frag",
-        "line": 48
+        "line": 59,
+        "descriptorClass": "CombinedImageSampler?",
+        "resourceId": null
       },
       {
         "name": "u_pbrPaintNormalTex",
         "side": "glsl",
         "target": "sampler2D",
         "file": "shaders/mech.frag",
-        "line": 48
+        "line": 65,
+        "descriptorClass": "CombinedImageSampler?",
+        "resourceId": null
       }
     ],
     "4": [
@@ -1086,21 +1530,27 @@
         "via": "setInt",
         "receiver": "screenShadowProg_",
         "file": "GameOS/gameos/gos_postprocess.cpp",
-        "line": 1787
+        "line": 2240,
+        "descriptorClass": "CombinedImageSampler",
+        "resourceId": "ShadowDynamicMap"
       },
       {
         "name": "u_transitionMaskArray",
         "side": "glsl",
         "target": "sampler2DArray",
         "file": "shaders/gos_terrain.frag",
-        "line": 95
+        "line": 95,
+        "descriptorClass": "CombinedImageSampler?",
+        "resourceId": null
       },
       {
         "name": "u_pbrPaintOrmTex",
         "side": "glsl",
         "target": "sampler2D",
         "file": "shaders/mech.frag",
-        "line": 49
+        "line": 66,
+        "descriptorClass": "CombinedImageSampler?",
+        "resourceId": null
       }
     ],
     "5": [
@@ -1109,14 +1559,18 @@
         "side": "glsl",
         "target": "sampler2D",
         "file": "shaders/gos_terrain.frag",
-        "line": 46
+        "line": 46,
+        "descriptorClass": "CombinedImageSampler?",
+        "resourceId": null
       },
       {
         "name": "mineSpriteArray",
         "side": "glsl",
         "target": "sampler2DArray",
         "file": "shaders/gos_terrain_mine_static.frag",
-        "line": 16
+        "line": 16,
+        "descriptorClass": "CombinedImageSampler?",
+        "resourceId": null
       }
     ],
     "6": [
@@ -1125,7 +1579,18 @@
         "side": "glsl",
         "target": "sampler2D",
         "file": "shaders/gos_terrain.frag",
-        "line": 47
+        "line": 47,
+        "descriptorClass": "CombinedImageSampler?",
+        "resourceId": null
+      },
+      {
+        "name": "u_mechAoTex",
+        "side": "glsl",
+        "target": "sampler2D",
+        "file": "shaders/mech.frag",
+        "line": 49,
+        "descriptorClass": "CombinedImageSampler?",
+        "resourceId": null
       }
     ],
     "7": [
@@ -1134,7 +1599,18 @@
         "side": "glsl",
         "target": "sampler2D",
         "file": "shaders/gos_terrain.frag",
-        "line": 48
+        "line": 48,
+        "descriptorClass": "CombinedImageSampler?",
+        "resourceId": null
+      },
+      {
+        "name": "u_mechNormalTex",
+        "side": "glsl",
+        "target": "sampler2D",
+        "file": "shaders/mech.frag",
+        "line": 54,
+        "descriptorClass": "CombinedImageSampler?",
+        "resourceId": null
       }
     ],
     "8": [
@@ -1143,7 +1619,9 @@
         "side": "glsl",
         "target": "sampler2D",
         "file": "shaders/gos_terrain.frag",
-        "line": 49
+        "line": 49,
+        "descriptorClass": "CombinedImageSampler?",
+        "resourceId": null
       }
     ],
     "12": [
@@ -1152,7 +1630,9 @@
         "side": "glsl",
         "target": "sampler2D",
         "file": "shaders/gos_terrain.frag",
-        "line": 50
+        "line": 50,
+        "descriptorClass": "CombinedImageSampler?",
+        "resourceId": null
       }
     ]
   }

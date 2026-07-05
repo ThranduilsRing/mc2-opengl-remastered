@@ -1,0 +1,46 @@
+// MC2R ImGui FIT generated from legacy UI FIT.
+// Source: data/defs/ui/legacy/editor/missionscrn.fit
+// Legacy files remain source truth only; edit the generated ImGui FIT.
+
+GuiPage {
+    key = "editor.mission_editor"
+    title = "Editor Missionscrn"
+    sourceLegacyFit = "data/defs/ui/legacy/editor/missionscrn.fit"
+    sourceSystem = "editor"
+    sourceScreen = "mission_editor"
+    sourceKind = "legacy_screen"
+    layout = "absolute"
+    coordinateSpace = "screen_absolute"
+    localWidth = 800
+    localHeight = 600
+    mountOffset = "0,0"
+    editableSource = "generated_imgui_only"
+}
+
+GuiMetadata {
+    key = "editor.mission_editor.metadata.metadata"
+    pageKey = "editor.mission_editor"
+    legacySection = "CameraData"
+    role = "metadata"
+    layer = "metadata"
+    aliasOverride = "metadata"
+    sourceControlType = "CameraData"
+    rect = "0,0,0,0"
+    legacyLocalRect = "0,0,0,0"
+    legacyRectSource = "xywh"
+    visible = false
+}
+
+GuiMetadata {
+    key = "editor.mission_editor.metadata.metadata_01"
+    pageKey = "editor.mission_editor"
+    legacySection = "Elements"
+    role = "metadata"
+    layer = "metadata"
+    aliasOverride = "metadata"
+    sourceControlType = "Elements"
+    rect = "0,0,0,0"
+    legacyLocalRect = "0,0,0,0"
+    legacyRectSource = "xywh"
+    visible = false
+}

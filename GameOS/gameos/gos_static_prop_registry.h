@@ -162,6 +162,12 @@ bool staticPropGetModelMatrix(int32_t recipeIndex, float out[16]);
 // Returns the typeID field from the first instance of the recipe.
 bool staticPropGetTypeId(int32_t recipeIndex, uint32_t* out);
 
+// TERRAIN-DECAL-SLICE-0C: overwrite every leaf's modelMatrix (row-major mat4)
+// and mark the persistent-static store dirty so the new transform re-uploads next
+// flush. Used by the live cliff mesh-decal ImGui tuning panel. Returns false if
+// recipeIndex is out of range / tombstoned. See gos_static_prop_registry.cpp.
+bool staticPropSetAllLeafMatrices(int32_t recipeIndex, const float in[16]);
+
 // SHADOW-STATIC-BUILDINGS-2: tag a recipe's population (Building/Tree) at
 // registration. Lets the world-fixed static shadow map replay buildings only,
 // visibility-independent (NOT per-frame markVisible buckets).

@@ -1,6 +1,7 @@
 #!/usr/bin/env python3
 """
-MC2 Render-State MCP Server (MC2-MCP-WRAPPER-1 + MC2-MCP-WRAPPER-2)
+MC2 Render-State MCP Server (MC2-MCP-WRAPPER-1 + MC2-MCP-WRAPPER-2
++ MCP-ANTI-CHURN-1: get_runtime_gate / get_mission_sidecars)
 
 Read-only bridge between Claude agents and the running MC2 engine.
 Reads JSON snapshots written by MC2_DEBUG_STATE_DUMP=1.
@@ -56,6 +57,10 @@ mcp = FastMCP(
         "State: engine needs MC2_DEBUG_STATE_DUMP=1. Use get_render_health() to check liveness. "
         "Smoke: use get_latest_smoke_report() for structured results. "
         "Diagnostics: use get_diagnostic_events(tag) to query JSONL trace. "
+        "ANTI-CHURN: get_runtime_gate(name) answers 'is gate X actually on in "
+        "the running/last exe?' from the state dump — no game launch, no log "
+        "tailing; get_mission_sidecars() shows the loaded mission's beauty "
+        "sidecars on disk + related gates in one call. "
         "All tools are read-only — no gameplay or renderer mutation."
     ),
 )
@@ -1155,6 +1160,120 @@ def get_executor_health() -> str:
     lines.append(f"live:     {liveness['live']}")
 
     return "\n".join(lines)
+
+
+# ---------------------------------------------------------------------------
+# MCP-ANTI-CHURN-1: runtime gate + sidecar queries from the last state dump.
+# Kills the "is displacement actually on?" class of question without a game
+# launch or log tailing.
+# ---------------------------------------------------------------------------
+
+_SIDECAR_FILES = ("control_map.png", "shoreline_mask.png",
+                  "visual_height_4x.r32", "sidecar.json")
+# Gate-name substrings related to sidecar-driven visuals, surfaced alongside
+# the on-disk sidecar check so "file present but gate off" is visible at once.
+_SIDECAR_GATE_HINTS = ("CONTROL_MAP", "SHORELINE", "VISUAL_HEIGHT",
+                       "DISPLACE", "BEAUTY")
+
+
+@mcp.tool()
+def get_runtime_gate(name: str) -> str:
+    """
+    Answer "is gate X actually on in the running (or last-run) exe?" from the
+    latest MC2_DEBUG_STATE_DUMP snapshot — no game launch, no log tailing.
+
+    name: exact MC2_* gate name, or a substring ("DISPLACE", "SHADOW") to list
+    every sampled gate containing it (case-insensitive).
+
+    Returns JSON: {query, exact_match, matches:[{gate, active}], frame, live,
+    stale_note}. Gates are sampled once at process start — this reflects the
+    LAUNCH env of that exe, not your current shell. A gate absent from the
+    dump means the running exe does not sample it into the features block
+    (older build, or var read outside the registry) — absence is NOT "off".
+    """
+    data = _latest()
+    if data is None:
+        return _not_available()
+
+    features = data.get("features", {})
+    q = (name or "").strip()
+    if not q:
+        return json.dumps({"error": "gate name (or substring) required"}, indent=2)
+
+    exact = q in features
+    if exact:
+        matches = [{"gate": q, "active": features[q]}]
+    else:
+        ql = q.lower()
+        matches = [{"gate": k, "active": v} for k, v in features.items()
+                   if ql in k.lower()]
+
+    liveness = _get_liveness()
+    return json.dumps({
+        "query": q,
+        "exact_match": exact,
+        "matches": matches,
+        "match_count": len(matches),
+        "sampled_gates_total": len(features),
+        "frame": data.get("frame"),
+        "live": liveness["live"],
+        "stale_note": _stale_banner().strip() or None,
+        "note": ("gates are sampled at process start from the exe's launch env; "
+                 "absence from the dump is NOT 'off' — it means unsampled"),
+    }, indent=2)
+
+
+@mcp.tool()
+def get_mission_sidecars() -> str:
+    """
+    One call: which beauty sidecars exist on disk for the CURRENTLY LOADED
+    mission (from the last state dump), in both the game and editor deploy
+    dirs, plus any sampled gates related to sidecar-driven visuals.
+
+    Checks <deploy>/data/missions/<stem>.{pak,fit} and
+    <stem>.beauty/{control_map.png, shoreline_mask.png, visual_height_4x.r32,
+    sidecar.json}. Answers "is the sidecar deployed AND is its gate on?"
+    without a launch (kills the pak/dir spelunking loop).
+    """
+    data = _latest()
+    if data is None:
+        return _not_available()
+
+    stem = (data.get("mission", {}) or {}).get("name") or ""
+    stem = str(stem).strip()
+    if not stem:
+        return json.dumps({"error": "no mission name in the latest dump"}, indent=2)
+
+    def _scan(root: Path) -> dict:
+        md = root / "data" / "missions"
+        beauty = md / f"{stem}.beauty"
+        present = {}
+        for fname in _SIDECAR_FILES:
+            p = beauty / fname
+            if p.is_file():
+                present[fname] = p.stat().st_size
+        return {
+            "deploy_dir": str(root),
+            "pak": (md / f"{stem}.pak").is_file(),
+            "fit": (md / f"{stem}.fit").is_file(),
+            "beauty_dir": beauty.is_dir(),
+            "sidecars_present": present,
+        }
+
+    features = data.get("features", {})
+    related = {k: v for k, v in features.items()
+               if any(h in k.upper() for h in _SIDECAR_GATE_HINTS)}
+
+    return json.dumps({
+        "mission": stem,
+        "frame": data.get("frame"),
+        "game_deploy": _scan(_DEPLOY_DIR),
+        "editor_deploy": _scan(_EDITOR_DEPLOY_DIR),
+        "related_gates": related,
+        "stale_note": _stale_banner().strip() or None,
+        "convention": "data/missions/<stem>.beauty/ (control_map_tool.py / "
+                      "cook_shoreline.py install; mclib/terrain.cpp load)",
+    }, indent=2)
 
 
 # ---------------------------------------------------------------------------

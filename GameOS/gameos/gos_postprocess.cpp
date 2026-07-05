@@ -34,8 +34,9 @@
 #include "../../RenderCore/frame_executor.h"  // FRAME-GRAPH-EXECUTOR-ISLAND-1 IslandContract
 
 // === Item 1: Cascaded Shadow Maps gate (dynamic shadow path) ==============
-// MC2_SHADOW_CSM  : master gate, DEFAULT OFF. OFF => legacy single dynamic
-//                   map path is byte-identical (none of the CSM code runs).
+// MC2_SHADOW_CSM  : master gate, DEFAULT ON (reworked 2026-06-18, `8ff13a36`;
+//                   see docs/tier1_env_vars.md "Dynamic CSM"). Set "=0" to opt
+//                   out to the legacy single dynamic map path.
 // MC2_SHADOW_CSM_COUNT  : cascade count, default 3, clamp [1,3].
 // MC2_SHADOW_CSM_LAMBDA : log/uniform split blend, default 0.5, clamp [0,1].
 bool mc2ShadowCsmEnabled()
@@ -192,6 +193,20 @@ float mc2ShadowMechSoft()
     return s_s;
 }
 
+// PROP-SHADOW-RECEIVE-1: static props RECEIVE the dynamic CSM cascade shadow
+// (building self-shadow + prop-on-prop) in shadow_screen.frag instead of the
+// static map only. MC2_PROP_SHADOW_RECEIVE, DEFAULT OFF; =1 enables. OFF =
+// legacy: the GBuffer1.a=0.25 prop class skips sampleDynamicShadow entirely
+// (uniform uploads 0 -> shader branch unreachable -> pixel-identical).
+int mc2PropShadowReceive()
+{
+    static const int s_v = []() {
+        const char* v = getenv("MC2_PROP_SHADOW_RECEIVE");
+        return (v && v[0]) ? atoi(v) : 0;   // DEFAULT 0 (off)
+    }();
+    return s_v;
+}
+
 // Cloud-shadow master gate. MC2_CLOUD_SHADOW, DEFAULT ON (preserves the legacy
 // inline-cloud behavior that this fullscreen pass replaces). =0 disables the
 // whole pass (and the C++ early-return skips it entirely).
@@ -261,6 +276,24 @@ static void setSceneDrawBuffers(SceneDrawBufferMode mode,
 }
 
 } // namespace
+
+// SKYBOX-FOG-EXCLUDE-1: gate helper (read once).
+// SKYBOX-FOG-EXCLUDE-DEFAULT-ON-1: flipped default OFF->ON. The gate is inert
+// on non-HDRI missions -- renderHdriSkybox() early-returns before the stencil-
+// tag pass ("black sky baseline"), so no stencil is ever tagged, the fog frags'
+// stencil branch is a no-op, and fog_oob.frag's worldDir.z<-0.22 band fallback
+// is retained (byte-identical to legacy there). On HDRI missions it excludes
+// fog from true-sky pixels so the skybox is visible instead of being painted
+// over by the OOB cloud bank (the user-reported "can't see the skybox").
+// Kill-switch preserved: MC2_SKYBOX_FOG_EXCLUDE=0 restores the legacy OFF path.
+static bool skyboxFogExcludeEnabled()
+{
+    static const bool s_on = []() {
+        const char* v = ::getenv("MC2_SKYBOX_FOG_EXCLUDE");
+        return !(v && v[0] == '0');   // default ON; explicit "0" disables.
+    }();
+    return s_on;
+}
 
 static gosPostProcess* s_postProcess = nullptr;
 
@@ -626,6 +659,39 @@ void gosPostProcess::init(int w, int h)
                      fxEnv ? fxEnv : "(unset)");
     }
 
+    // POST-FX-CAS-1: AMD FidelityFX Contrast Adaptive Sharpening gate + sharpness,
+    // resolved once from env. Default OFF -> composite uploads u_casEnabled=0 ->
+    // CAS skipped in the shader (byte-identical). Sharpness clamped 0..1, default
+    // 0.5. Applied to the final graded LDR color, after FXAA/grade, before UI.
+    {
+        const char* casEnv = getenv("MC2_POST_CAS");
+        casEnabled_   = (casEnv && casEnv[0] && casEnv[0] != '0');
+        casSharpness_ = 0.5f;
+        if (const char* s = getenv("MC2_POST_CAS_SHARPNESS")) {
+            float v = (float)atof(s);
+            casSharpness_ = (v < 0.0f) ? 0.0f : (v > 1.0f ? 1.0f : v);
+        }
+        std::fprintf(stderr, "[CAS v1] enabled=%d sharpness=%.3f (MC2_POST_CAS=%s)\n",
+                     casEnabled_ ? 1 : 0, casSharpness_,
+                     casEnv ? casEnv : "(unset)");
+    }
+
+    // POST-FX-TONEMAP-V2 (SCOUR-1 #3): optional filmic tonemap curve on the final
+    // composited colour. Resolved once from env. Default OFF (mode 0) -> composite
+    // uploads u_tonemapMode=0 -> shader no-op branch -> byte-identical.
+    // MC2_TONEMAP_V2 = 0/unset off, 1=AgX, 2=Hable, 3=Reinhard (also accepts the
+    // names agx/hable/reinhard). Visual-only; no geometry/depth/object-id effect.
+    {
+        tonemapMode_ = 0;
+        if (const char* v = getenv("MC2_TONEMAP_V2")) {
+            if      (v[0]=='1' || !strcmp(v,"agx"))      tonemapMode_ = 1;
+            else if (v[0]=='2' || !strcmp(v,"hable"))    tonemapMode_ = 2;
+            else if (v[0]=='3' || !strcmp(v,"reinhard")) tonemapMode_ = 3;
+        }
+        std::fprintf(stderr, "[TONEMAP v2] mode=%d (MC2_TONEMAP_V2=%s)\n",
+                     tonemapMode_, getenv("MC2_TONEMAP_V2") ? getenv("MC2_TONEMAP_V2") : "(unset)");
+    }
+
     // OOB-FOG-1: far-plane fog over the out-of-bounds region. Default ON.
     {
         fogOobProg_ = glsl_program::makeProgram("fog_oob",
@@ -659,6 +725,36 @@ void gosPostProcess::init(int w, int h)
         if (const char* v = getenv("MC2_EDGE_FOG_MAX"))    edgeFogMax_    = std::atof(v);
         std::fprintf(stderr, "[EDGE_FOG v3] enabled=%d start=%.0f height=%.0f max=%.2f\n",
             edgeFogEnabled_ ? 1 : 0, edgeFogStart_, edgeFogHeight_, edgeFogMax_);
+    }
+
+    // FOG-HORIZON-CLAMP-1: elevation profile shared by OOB + edge fog. Rides the
+    // existing (default-ON) fog gates -- this is a tuning of the fog's SHAPE, not
+    // a new feature. Kill-switch MC2_FOG_HORIZON_CLAMP=0 restores the previous
+    // worldDir.z 0.22 exclusion band. Knobs are in DEGREES of elevation above the
+    // horizon; we precompute their sines here so the frag stays trig-free
+    // (elevSin = -worldDir.z for a normalized view ray).
+    {
+        if (const char* v = getenv("MC2_FOG_HORIZON_CLAMP"))
+            fogHorizonClampEnabled_ = !(v[0] == '0' && v[1] == '\0');
+        if (const char* v = getenv("MC2_FOG_HORIZON_FADE_START"))
+            fogHorizonFadeStartDeg_ = (float)std::atof(v);
+        if (const char* v = getenv("MC2_FOG_HORIZON_FADE_END"))
+            fogHorizonFadeEndDeg_   = (float)std::atof(v);
+        // Guard the ordering so smoothstep(edge0<edge1) always holds; a degenerate
+        // or inverted band would make the fade a hard step. Clamp to [-90,90].
+        auto clampDeg = [](float d) { return d < -90.0f ? -90.0f : (d > 90.0f ? 90.0f : d); };
+        fogHorizonFadeStartDeg_ = clampDeg(fogHorizonFadeStartDeg_);
+        fogHorizonFadeEndDeg_   = clampDeg(fogHorizonFadeEndDeg_);
+        if (fogHorizonFadeEndDeg_ <= fogHorizonFadeStartDeg_)
+            fogHorizonFadeEndDeg_ = fogHorizonFadeStartDeg_ + 0.5f; // minimum band
+        const float kDeg2Rad = 3.14159265358979323846f / 180.0f;
+        fogHorizonFadeStartSin_ = std::sin(fogHorizonFadeStartDeg_ * kDeg2Rad);
+        fogHorizonFadeEndSin_   = std::sin(fogHorizonFadeEndDeg_   * kDeg2Rad);
+        std::fprintf(stderr,
+            "[FOG_HORIZON v1] clamp=%d fadeStart=%.2fdeg(sin=%.4f) fadeEnd=%.2fdeg(sin=%.4f)\n",
+            fogHorizonClampEnabled_ ? 1 : 0,
+            fogHorizonFadeStartDeg_, fogHorizonFadeStartSin_,
+            fogHorizonFadeEndDeg_,   fogHorizonFadeEndSin_);
     }
 
     // HZB-DEPTH-PYRAMID-MVP-1: reduction shader. Gate (hzbEnabled_) is resolved
@@ -756,6 +852,16 @@ void gosPostProcess::destroy()
     destroyFullscreenQuad();
     destroyBoxDecalCube();   // BT2018-BOX-DECAL-1
 
+#ifdef MC2_VULKAN_ISLAND
+    // VULKAN-EDGE-FOG-ISLAND-2a: tear down the headless Vulkan device + all
+    // island resources (no-op if the island was never lazily initialized).
+    destroyVulkanEdgeFogIsland();
+    // VULKAN-OOB-FOG-ISLAND-1: same teardown for the OOB-fog island.
+    destroyVulkanOobFogIsland();
+    // VULKAN-POSTPROCESS-SUBGRAPH-1: same teardown for the fused subgraph.
+    destroyVulkanPostprocessSubgraph();
+#endif
+
     // CLUSTER-DEPTH-PYRAMID-NATIVE-1: release the gated pass's GL resources.
     // No-op when the gate was never enabled (nothing was allocated).
     cluster_depth_pyramid::Shutdown();
@@ -781,6 +887,10 @@ void gosPostProcess::destroy()
     if (hdriSkyboxProg_) {
         glsl_program::deleteProgram("hdri_skybox");
         hdriSkyboxProg_ = nullptr;
+    }
+    if (hdriSkyboxStencilTagProg_) {
+        glsl_program::deleteProgram("hdri_skybox_stencil_tag");
+        hdriSkyboxStencilTagProg_ = nullptr;
     }
     if (hdriTex_) {
         glDeleteTextures(1, &hdriTex_);
@@ -907,6 +1017,26 @@ void gosPostProcess::createFBOs(int w, int h)
     glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_CLAMP_TO_EDGE);
     glFramebufferTexture2D(GL_FRAMEBUFFER, GL_DEPTH_STENCIL_ATTACHMENT,
                            GL_TEXTURE_2D, sceneDepthTex_, 0);
+
+    // SKYBOX-FOG-EXCLUDE-1: stencil-only view onto sceneDepthTex_'s storage.
+    // glTextureView requires immutable storage (glTexStorage2D above), which
+    // sceneDepthTex_ already uses. GL_DEPTH_STENCIL_TEXTURE_MODE=GL_STENCIL_INDEX
+    // is baked into the view at creation, so runEdgeFog/runFogOob can sample
+    // depth (via sceneDepthTex_) and stencil (via this view) in the SAME draw
+    // without per-bind mode toggling on one shared object. Gated on
+    // MC2_SKYBOX_FOG_EXCLUDE=1 -- skipped entirely when OFF (zero cost OFF).
+    if (skyboxFogExcludeEnabled()) {
+        glGenTextures(1, &sceneStencilViewTex_);
+        glTextureView(sceneStencilViewTex_, GL_TEXTURE_2D, sceneDepthTex_,
+                      GL_DEPTH24_STENCIL8, 0, 1, 0, 1);
+        glBindTexture(GL_TEXTURE_2D, sceneStencilViewTex_);
+        glTexParameteri(GL_TEXTURE_2D, GL_DEPTH_STENCIL_TEXTURE_MODE, GL_STENCIL_INDEX);
+        glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_NEAREST);
+        glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_NEAREST);
+        glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_CLAMP_TO_EDGE);
+        glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_CLAMP_TO_EDGE);
+        glBindTexture(GL_TEXTURE_2D, 0);
+    }
 
     // Normal buffer: MRT attachment 1 (rgb=world normal encoded, a=shadow skip flag)
     // TEX-CLASS: render-target -- GBuffer normal (MRT1, FBO attach)
@@ -1300,6 +1430,15 @@ void gosPostProcess::destroyFBOs()
         RenderCore::RenderResourceDesc inv;
         inv.id = RenderCore::RenderResourceId::MainDepth; inv.valid = false;
         RenderCore::registerOrUpdateRenderResource(inv);
+    }
+    // SKYBOX-FOG-EXCLUDE-1: the stencil view is a texture-view onto
+    // sceneDepthTex_'s storage, not a separate allocation -- it must be
+    // deleted before/independently of the parent (view deletion never frees
+    // the parent's storage either way, but drop our handle so resize()
+    // re-creates a fresh view against the new sceneDepthTex_).
+    if (sceneStencilViewTex_) {
+        glDeleteTextures(1, &sceneStencilViewTex_);
+        sceneStencilViewTex_ = 0;
     }
     if (sceneNormalTex_) {
         glDeleteTextures(1, &sceneNormalTex_);
@@ -2244,6 +2383,8 @@ void gosPostProcess::runScreenShadow()
     screenShadowProg_->setFloat("shadowSoftness", mc2ShadowCsmSoftness());  // match terrain default
     screenShadowProg_->setFloat("objNormalBiasScale", mc2ShadowObjNormalBias());
     screenShadowProg_->setFloat("mechSoft", mc2ShadowMechSoft());
+    // PROP-SHADOW-RECEIVE-1: default 0 (gate OFF) -> shader prop branch inert.
+    screenShadowProg_->setInt("propShadowReceive", mc2PropShadowReceive());
     {
         // SCREEN-SHADOW-LIGHTDIR-FRAME-FIX: the back-face guard + normal-offset
         // dot objN against lightDir. objN in shadow_screen.frag is the SAME
@@ -2416,7 +2557,11 @@ void gosPostProcess::runShoreline()
     ZoneScopedN("Render.Shoreline");
     TracyGpuZone("Render.Shoreline");
 
-    if (!shorelineEnabled_ || !sceneHasTerrain_ || !shorelineProg_ || !shorelineProg_->is_valid()) return;
+    // TERRAIN-SHORELINE-MASK-1: yield to the terrain-side wet/foam band when
+    // active (recon landmine #6 "double-shore" -- avoid brightening the seam
+    // twice). Default false -> byte-identical to the pre-slice gate.
+    if (!shorelineEnabled_ || !sceneHasTerrain_ || !shorelineProg_ || !shorelineProg_->is_valid()
+        || shorelineSuppressedByTerrainMask_) return;
 
     // APPLY-STATE-REDUNDANT-BODY-REMOVE-2: skip the 4 setup calls when the executor
     // already applied them (MC2_FRAMEGRAPH_EXECUTOR ON). Reset one-shot before draw.
@@ -2514,12 +2659,48 @@ void gosPostProcess::runEdgeFog()
     edgeFogProg_->setFloat("u_fogMax",           edgeFogMax_);
     edgeFogProg_->setFloat("u_waterElevation",   waterElevation_);
 
+    // FOG-HORIZON-CLAMP-1: same elevation profile as the OOB pass. The edge-fog
+    // frag already refuses fog for rays looking up/horizontal (dz >= -0.001), so
+    // this narrows the surviving small-downward-elevation band toward the horizon
+    // exactly like fog_oob, keeping upward bleed out of the sky.
+    edgeFogProg_->setInt("u_horizonClampEnabled", fogHorizonClampEnabled_ ? 1 : 0);
+    edgeFogProg_->setFloat("u_horizonFadeStartSin", fogHorizonFadeStartSin_);
+    edgeFogProg_->setFloat("u_horizonFadeEndSin",   fogHorizonFadeEndSin_);
+
+    // SKYBOX-FOG-EXCLUDE-1: gate-ON only; default OFF -> u_skyExcludeEnabled=0,
+    // stencilTex left unbound (unit 1 stays whatever it was -- shader never
+    // reads it when the uniform is 0, so this is byte-identical OFF).
+    const bool skyExclude = skyboxFogExcludeEnabled() && sceneStencilViewTex_ != 0;
+    edgeFogProg_->setInt("u_skyExcludeEnabled", skyExclude ? 1 : 0);
+    if (skyExclude) {
+        edgeFogProg_->setInt("stencilTex", 1);
+        glActiveTexture(GL_TEXTURE1);
+        glBindTexture(GL_TEXTURE_2D, sceneStencilViewTex_);
+
+        // SKYBOX-FOG-EXCLUDE-1 review fix: this pass samples the stencil
+        // view of the shared depth-stencil attachment while GL_STENCIL_TEST
+        // may still be enabled (left ON by the skybox stencil-tag pass, and
+        // PipelineRegistry's PostProcessEdgeFog desc has no stencil fields --
+        // stencil state is never part of the state-guard idiom here, only
+        // inherited). Sampling a texture that aliases the currently-bound
+        // stencil attachment while stencil writes are possible is exactly
+        // the feedback case GL disallows; force test off + write mask 0 so
+        // this pass never writes stencil regardless of inherited state.
+        glDisable(GL_STENCIL_TEST);
+        glStencilMask(0x00);
+    }
+
     glActiveTexture(GL_TEXTURE0);
     glBindTexture(GL_TEXTURE_2D, sceneDepthTex_);
 
     glBindVertexArray(quadVAO_);
     glDrawArrays(GL_TRIANGLES, 0, 6);
     glBindVertexArray(0);
+
+    if (skyExclude) {
+        glActiveTexture(GL_TEXTURE1);
+        glBindTexture(GL_TEXTURE_2D, 0);
+    }
 
     glDisable(GL_BLEND);
     glDepthMask(GL_TRUE);
@@ -2595,6 +2776,32 @@ void gosPostProcess::runFogOob()
     fogOobProg_->setFloat("u_fogOpacity", oobFogOpacity_);
     fogOobProg_->setFloat("u_time", fogTime);
 
+    // FOG-HORIZON-CLAMP-1: elevation profile. clamp=1 (default) selects the new
+    // shape (full at/below horizon, fade to zero in [startSin,endSin]); clamp=0
+    // restores the legacy worldDir.z 0.22 band in-shader.
+    fogOobProg_->setInt("u_horizonClampEnabled", fogHorizonClampEnabled_ ? 1 : 0);
+    fogOobProg_->setFloat("u_horizonFadeStartSin", fogHorizonFadeStartSin_);
+    fogOobProg_->setFloat("u_horizonFadeEndSin",   fogHorizonFadeEndSin_);
+
+    // SKYBOX-FOG-EXCLUDE-1: gate-ON only; default OFF -> u_skyExcludeEnabled=0,
+    // stencilTex left unbound (shader never reads it when the uniform is 0,
+    // so this is byte-identical OFF).
+    const bool skyExclude = skyboxFogExcludeEnabled() && sceneStencilViewTex_ != 0;
+    fogOobProg_->setInt("u_skyExcludeEnabled", skyExclude ? 1 : 0);
+    if (skyExclude) {
+        fogOobProg_->setInt("stencilTex", 1);
+        glActiveTexture(GL_TEXTURE1);
+        glBindTexture(GL_TEXTURE_2D, sceneStencilViewTex_);
+
+        // SKYBOX-FOG-EXCLUDE-1 review fix: same reasoning as runEdgeFog() --
+        // this pass samples the stencil view of the shared depth-stencil
+        // attachment; force stencil test off + write mask 0 so the GL
+        // feedback-exception rule (no writes to a resource being sampled)
+        // can never be violated regardless of inherited stencil state.
+        glDisable(GL_STENCIL_TEST);
+        glStencilMask(0x00);
+    }
+
     glActiveTexture(GL_TEXTURE0);
     glBindTexture(GL_TEXTURE_2D, sceneDepthTex_);
 
@@ -2602,10 +2809,252 @@ void gosPostProcess::runFogOob()
     glDrawArrays(GL_TRIANGLES, 0, 6);
     glBindVertexArray(0);
 
+    if (skyExclude) {
+        glActiveTexture(GL_TEXTURE1);
+        glBindTexture(GL_TEXTURE_2D, 0);
+    }
+
     glDisable(GL_BLEND);
     glDepthMask(GL_TRUE);
     glEnable(GL_DEPTH_TEST);
     glActiveTexture(GL_TEXTURE0);
+}
+
+// ===========================================================================
+// RENDER-BACKEND-REGION-IFACE-1 (Layer-6 ENTRY): PostprocessFog region.
+// ===========================================================================
+//
+// 1A: the extracted GL fog region wrapper. Calls the UNCHANGED runEdgeFog() +
+// runFogOob() inline bodies, in the same order the endScene() sites call them.
+// No interface, no Vulkan: this is a pure code-move. Under the master gate OFF
+// this wrapper is never entered (endScene() runs the original direct sites);
+// under gate ON, the GL backend calls this so its output == the old inline path.
+int gosPostProcess::runFogRegionGL()
+{
+    runEdgeFog();
+    runFogOob();
+    // Both GL fog sites ran (each may per-effect early-return internally, exactly
+    // as the original inline sites did — that behavior is unchanged). The region
+    // contract is "the two GL fog passes", so the equivalence count is 2.
+    return 2;
+}
+
+// Master-gate read (once). MC2_RENDER_BACKEND_REGION_IFACE==1 -> route the fog
+// region through IRenderBackend; else the original direct-GL sites run.
+bool gosPostProcess::regionIfaceEnabled() const
+{
+    static const bool s_on = []() {
+        const char* v = getenv("MC2_RENDER_BACKEND_REGION_IFACE");
+        return v && v[0] == '1';
+    }();
+    return s_on;
+}
+
+// Resolver: gosPostProcess owns the scene textures, so it maps the neutral ids
+// to the concrete GL handles. Keeps handles OUT of the region context.
+unsigned int gosPostProcess::resolveRegionResource(RenderCore::RenderResourceId id) const
+{
+    switch (id) {
+        case RenderCore::RenderResourceId::MainColor: return (unsigned int)sceneColorTex_;
+        case RenderCore::RenderResourceId::MainDepth: return (unsigned int)sceneDepthTex_;
+        default: return 0u;
+    }
+}
+
+#ifdef MC2_VULKAN_ISLAND
+// 1C: Vulkan impl of the PostprocessFog region. Reuses the shipped, parity-proven
+// subgraph. POSTPROCESS-VULKAN-BACKEND-OPT-IN: the region-iface routing backend=vk
+// IS the enable signal for Vulkan -- so this DECOUPLES from the standalone subgraph
+// gate. It invokes postprocessSubgraphReadyForRegion() (lazy init + fail-soft, NO
+// MC2_VULKAN_POSTPROCESS_SUBGRAPH check), NOT vulkanPostprocessSubgraphEnabled().
+// Fail-soft: readiness returns false ONLY on a genuine device/init failure (and
+// self-disables), so we return false -> caller runs GL (FallbackGL = real failure,
+// not "gate off"). The standalone MC2_VULKAN_POSTPROCESS_SUBGRAPH path stays
+// independently runnable (that gate still routes through the same readiness half).
+// The neutral ctx values already equal the subgraph's EXACT member-sourced uploads,
+// so no data is threaded through here — the ctx is carried for contract symmetry
+// and resolver exercise.
+bool gosPostProcess::runFogRegionVulkanBackend(
+    const RenderCore::PostprocessFogRegionContext& ctx,
+    RenderCore::RegionOutput* out)
+{
+    if (ctx.resolver) {
+        (void)ctx.resolver->resolve(ctx.color);
+        (void)ctx.resolver->resolve(ctx.depth);
+    }
+    if (!postprocessSubgraphReadyForRegion()) {
+        if (out) { out->impl = RenderCore::RenderRegionImpl::None;
+                   out->fallbackReason = "vk_device_init_failed";
+                   out->glPassesRun = 0; out->vkDraws = 0; }
+        return false;
+    }
+    runPostprocessSubgraph();   // does BOTH fog effects in ONE Vulkan render pass
+    if (out) { out->impl = RenderCore::RenderRegionImpl::VulkanSubgraph;
+               out->fallbackReason = ""; out->glPassesRun = 0; out->vkDraws = 2; }
+    return true;
+}
+#endif
+
+// ---------------------------------------------------------------------------
+// 1B: region routing — selector + backend impls + health snapshot.
+// ---------------------------------------------------------------------------
+namespace {
+
+// Process-lifetime region-selection health, surfaced in the debug-state dump so
+// backend_region_selected = gl|vk|fallback_gl is catchable. Distinct from the
+// subgraph's own g_sub health (that one is the Vulkan device/perf report).
+struct RegionSelectHealth {
+    int         ifaceGateOn      = 0;    // MC2_RENDER_BACKEND_REGION_IFACE==1
+    char        requestedBackend[8] = "gl";  // MC2_POSTPROCESS_BACKEND (gl|vk)
+    int         lastImpl         = 0;    // RenderRegionImpl (None/GLInline/VulkanSubgraph/FallbackGL)
+    char        lastFallbackReason[64] = {0};
+    int         lastGlPassesRun  = 0;    // GL fog passes actually run (0 or 2)
+    int         lastVkDraws      = 0;    // Vulkan fog draws (0 or 2)
+    unsigned long routedFrames   = 0;    // frames routed through runRegion
+};
+RegionSelectHealth g_region;
+
+void region_set_fallback_reason(const char* r) {
+    std::strncpy(g_region.lastFallbackReason, r ? r : "",
+                 sizeof(g_region.lastFallbackReason) - 1);
+    g_region.lastFallbackReason[sizeof(g_region.lastFallbackReason) - 1] = '\0';
+}
+
+// Neutral-context resolver adaptor wrapping gosPostProcess::resolveRegionResource.
+struct GosResourceResolver final : RenderCore::IResourceResolver {
+    const gosPostProcess* pp = nullptr;
+    unsigned int resolve(RenderCore::RenderResourceId id) const override {
+        return pp ? pp->resolveRegionResource(id) : 0u;
+    }
+};
+
+// GL impl of runRegion for the PostprocessFog region: resolves color/depth from
+// the neutral context (proving the id->handle path is exercised even though the
+// GL fog bodies read the members directly today) and runs the extracted GL
+// wrapper. Always succeeds -> out->impl = GLInline. Delegates to the owner.
+struct GlFogRegionBackend final : RenderCore::IRenderBackend {
+    gosPostProcess* pp = nullptr;
+    void bindBackbuffer() override {}
+    void bindFramebuffer(unsigned int) override {}
+    void setViewport(int, int, int, int) override {}
+    void clear(unsigned int, float, float, float, float) override {}
+    bool runRegion(RenderCore::RenderRegionId id,
+                   const RenderCore::PostprocessFogRegionContext& ctx,
+                   RenderCore::RegionOutput* out) override {
+        if (id != RenderCore::RenderRegionId::PostprocessFog || !pp) return false;
+        // Exercise the id->handle resolve so the neutral-context contract is real
+        // (a bad resolver would surface as 0 handles here, not a silent divergence).
+        if (ctx.resolver) {
+            (void)ctx.resolver->resolve(ctx.color);
+            (void)ctx.resolver->resolve(ctx.depth);
+        }
+        int gl = pp->runFogRegionGL();
+        if (out) { out->impl = RenderCore::RenderRegionImpl::GLInline;
+                   out->glPassesRun = gl; out->vkDraws = 0; out->fallbackReason = ""; }
+        return true;
+    }
+};
+
+} // namespace
+
+// C-linkage accessor for the debug-state dump (region-selection health). Mirrors
+// the mc2_vulkan_postprocess_subgraph_health pattern; always compiled (no #ifdef)
+// because the region iface exists on every build.
+extern "C" void mc2_render_backend_region_health(
+    int* ifaceGateOn, const char** requestedBackend, int* lastImpl,
+    const char** lastFallbackReason, int* lastGlPassesRun, int* lastVkDraws,
+    unsigned long* routedFrames) {
+    if (ifaceGateOn)         *ifaceGateOn         = g_region.ifaceGateOn;
+    if (requestedBackend)    *requestedBackend    = g_region.requestedBackend;
+    if (lastImpl)            *lastImpl            = g_region.lastImpl;
+    if (lastFallbackReason)  *lastFallbackReason  = g_region.lastFallbackReason;
+    if (lastGlPassesRun)     *lastGlPassesRun     = g_region.lastGlPassesRun;
+    if (lastVkDraws)         *lastVkDraws         = g_region.lastVkDraws;
+    if (routedFrames)        *routedFrames        = g_region.routedFrames;
+}
+
+// The routed entry (master gate ON). Builds the neutral context, selects the
+// backend, calls runRegion; falls back to GL on false. Never double-applies:
+// exactly ONE of {GL wrapper, Vulkan subgraph} runs, and the GL fog sites in
+// endScene() are skipped whenever this routed path is taken.
+void gosPostProcess::runFogRegionThroughBackend()
+{
+    ++g_region.routedFrames;
+    g_region.ifaceGateOn = 1;
+
+    // Sub-selector: MC2_POSTPROCESS_BACKEND = gl | vk (default gl).
+    static const bool s_wantVk = []() {
+        const char* v = getenv("MC2_POSTPROCESS_BACKEND");
+        return v && (v[0] == 'v' || v[0] == 'V');   // "vk"
+    }();
+    std::strncpy(g_region.requestedBackend, s_wantVk ? "vk" : "gl",
+                 sizeof(g_region.requestedBackend) - 1);
+
+    // Build the BACKEND-NEUTRAL context (RenderResourceId + params + dims; NO
+    // raw handles). Values pulled EXACTLY from the GL runEdgeFog()/runFogOob().
+    GosResourceResolver resolver;
+    resolver.pp = this;
+    RenderCore::PostprocessFogRegionContext ctx;
+    ctx.color  = RenderCore::RenderResourceId::MainColor;
+    ctx.depth  = RenderCore::RenderResourceId::MainDepth;
+    ctx.width  = width_;
+    ctx.height = height_;
+    ctx.resolver = &resolver;
+    // EdgeFog params (row-major invViewProj as the GL path uploads with GL_FALSE).
+    std::memcpy(ctx.edgeFog.invViewProj, inverseViewProj_, 16 * sizeof(float));
+    ctx.edgeFog.color[0] = edgeFogColor_[0];
+    ctx.edgeFog.color[1] = edgeFogColor_[1];
+    ctx.edgeFog.color[2] = edgeFogColor_[2];
+    ctx.edgeFog.halfExtent     = mapHalfExtent_;
+    ctx.edgeFog.fogStart       = edgeFogStart_;
+    ctx.edgeFog.fogHeight      = edgeFogHeight_;
+    ctx.edgeFog.fogMax         = edgeFogMax_;
+    ctx.edgeFog.waterElevation = waterElevation_;
+    // OOB params.
+    std::memcpy(ctx.oobFog.invViewProj, inverseViewProj_, 16 * sizeof(float));
+    ctx.oobFog.color[0] = oobFogColor_[0];
+    ctx.oobFog.color[1] = oobFogColor_[1];
+    ctx.oobFog.color[2] = oobFogColor_[2];
+    ctx.oobFog.opacity  = oobFogOpacity_;
+    ctx.oobFog.time     = SmokeMode::fixedTimestepEnabled()
+                              ? (float)SmokeMode::fixedClockSeconds()
+                              : (float)SDL_GetTicks() / 1000.0f;
+
+    RenderCore::RegionOutput out;
+    bool ran = false;
+
+#ifdef MC2_VULKAN_ISLAND
+    if (s_wantVk) {
+        // Route through the Vulkan subgraph backend (1C). On false the caller
+        // (this function) runs GL below with impl=FallbackGL.
+        ran = runFogRegionVulkanBackend(ctx, &out);
+        if (!ran) {
+            region_set_fallback_reason(out.fallbackReason && out.fallbackReason[0]
+                                           ? out.fallbackReason : "vk_declined");
+        }
+    }
+#endif
+
+    if (!ran) {
+        GlFogRegionBackend gl;
+        gl.pp = this;
+        bool okGl = gl.runRegion(RenderCore::RenderRegionId::PostprocessFog, ctx, &out);
+        if (s_wantVk) {
+            // requested vk but GL actually ran -> FallbackGL (not plain GLInline).
+            out.impl = RenderCore::RenderRegionImpl::FallbackGL;
+        }
+        (void)okGl;
+    }
+
+    g_region.lastImpl        = (int)out.impl;
+    g_region.lastGlPassesRun = out.glPassesRun;
+    g_region.lastVkDraws     = out.vkDraws;
+    if (out.impl != RenderCore::RenderRegionImpl::FallbackGL)
+        region_set_fallback_reason("");
+
+    render_frame_plan::trace(render_frame_plan::Phase::PostProcess, "PostprocessFogRegion",
+        render_frame_plan::PathKind::ApplyPipeline, 1,
+        RenderCore::region_impl_to_string(out.impl));
 }
 
 // Forward declarations for ISLAND-2 sub-stage wrappers (defined below the executor section).
@@ -2691,14 +3140,63 @@ void gosPostProcess::endScene()
     // After SSAO so AO-darkening is preserved under the fog.
     // FRAME-GRAPH-EXECUTOR-ISLAND-2: validate->call-unchanged->validate (default-OFF).
     executorOwnBeginSub(this, RenderCore::framegraph::ExecutorIslandId::EdgeFog);
-    runEdgeFog();
+    // RENDER-BACKEND-REGION-IFACE-1 (Layer-6 ENTRY): when the master gate is ON,
+    // route the WHOLE fog region (edge + oob) through IRenderBackend::runRegion
+    // ONCE here, and skip BOTH original fog sites (guard below). Selector
+    // MC2_POSTPROCESS_BACKEND=gl|vk picks the impl; VK falls back to the GL
+    // wrapper on failure. Gate OFF -> the original direct sites run verbatim
+    // (byte-identical). Precedence when ON: region-iface > (subgraph > island > GL
+    // inside the GL/VK impls). The region-iface path is mutually exclusive with
+    // the legacy in-site subgraph/island paths (which stay reachable gate-OFF).
+    const bool regionRouted = regionIfaceEnabled();
+    bool subgraphRanThisFrame = false;   // scope spans to the FogOob site below
+    (void)subgraphRanThisFrame;          // read only under MC2_VULKAN_ISLAND
+    if (regionRouted) {
+        runFogRegionThroughBackend();   // does BOTH edge + oob (GL wrapper or VK subgraph)
+    } else {
+#ifdef MC2_VULKAN_ISLAND
+    // VULKAN-POSTPROCESS-SUBGRAPH-1: gate precedence (correctness-critical). When
+    // MC2_VULKAN_POSTPROCESS_SUBGRAPH=1 and lazy init succeeded, run the FUSED
+    // subgraph ONCE here (it does BOTH edge fog AND oob fog in one Vulkan render
+    // pass), and set subgraphRanThisFrame so the OOB-fog site below SKIPS entirely
+    // (no GL, no island) -- otherwise oob would double-apply. The subgraph, the
+    // EdgeFog island, and the OOB island must NEVER all fire; precedence is:
+    //   subgraph  >  per-pass island  >  GL.
+    // VULKAN-EDGE-FOG-ISLAND-2a: else route the edge-fog composite through the
+    // per-pass Vulkan island when MC2_VULKAN_EDGE_FOG_ISLAND=1. Otherwise GL.
+    if (vulkanPostprocessSubgraphEnabled()) {
+        runPostprocessSubgraph();       // does BOTH fog effects
+        subgraphRanThisFrame = true;    // -> OOB site is skipped below (no double-apply)
+    } else if (vulkanEdgeFogIslandEnabled()) { runEdgeFogVulkan(); } else
+#endif
+    { runEdgeFog(); }
+    }
     executorOwnEndSub(this, RenderCore::framegraph::ExecutorIslandId::EdgeFog);
 
     // OOB fog: applies fog color to far-plane pixels pointing toward ground.
     // After edge fog so the two cloud colors match seamlessly.
     // FRAME-GRAPH-EXECUTOR-ISLAND-2: validate->call-unchanged->validate (default-OFF).
     executorOwnBeginSub(this, RenderCore::framegraph::ExecutorIslandId::FogOob);
-    runFogOob();
+    // RENDER-BACKEND-REGION-IFACE-1: when the fog region was routed through the
+    // backend above, it ALREADY did the oob fog -> skip this site ENTIRELY (no GL,
+    // no island). Explicit no-double-apply guard, symmetric with subgraphRanThisFrame.
+    if (regionRouted) {
+        // region iface did edge+oob; nothing to do here.
+    } else {
+#ifdef MC2_VULKAN_ISLAND
+    // VULKAN-POSTPROCESS-SUBGRAPH-1: if the fused subgraph already ran this frame it
+    // ALSO did the oob fog, so this site is skipped ENTIRELY (no GL, no island) --
+    // the explicit, unmissable no-double-apply guard.
+    if (subgraphRanThisFrame) {
+        // subgraph did edge+oob; nothing to do here.
+    } else
+    // VULKAN-OOB-FOG-ISLAND-1: route the OOB-fog composite through the Vulkan
+    // island when MC2_VULKAN_OOB_FOG_ISLAND=1 and lazy init succeeded. Otherwise
+    // (gate off, or init fail-soft) fall through to the unchanged GL path.
+    if (vulkanOobFogIslandEnabled()) { runFogOobVulkan(); } else
+#endif
+    { runFogOob(); }
+    }
     executorOwnEndSub(this, RenderCore::framegraph::ExecutorIslandId::FogOob);
 
     // Bind default framebuffer (the backbuffer) for the composite output edge.
@@ -2741,18 +3239,35 @@ void gosPostProcess::endScene()
         if (s_oobLetterbox) {
             const GLboolean prevScissor = glIsEnabled(GL_SCISSOR_TEST);
             if (prevScissor) glDisable(GL_SCISSOR_TEST);
-            glClearColor(0.0f, 0.0f, 0.0f, 1.0f);
-            glClear(GL_COLOR_BUFFER_BIT);
+            // RENDER-BACKEND-IFACE-CLEAR-1: route the OOB letterbox clear.
+            if (s_backendIface) {
+                RenderCore::getGLBackend().clear(GL_COLOR_BUFFER_BIT, 0.0f, 0.0f, 0.0f, 1.0f);
+            } else {
+                glClearColor(0.0f, 0.0f, 0.0f, 1.0f);
+                glClear(GL_COLOR_BUFFER_BIT);
+            }
             if (prevScissor) glEnable(GL_SCISSOR_TEST);
         }
         int bx, by, bw, bh;
         if (gos_Compute43Box(width_, height_, &bx, &by, &bw, &bh)) {
-            glViewport(0, 0, width_, height_);
-            glClearColor(0.0f, 0.0f, 0.0f, 1.0f);
-            glClear(GL_COLOR_BUFFER_BIT);
-            glViewport(bx, by, bw, bh);
+            // RENDER-BACKEND-IFACE-VIEWPORT-1 / -CLEAR-1: route FORCE-43 pillarbox.
+            if (s_backendIface) {
+                RenderCore::getGLBackend().setViewport(0, 0, width_, height_);
+                RenderCore::getGLBackend().clear(GL_COLOR_BUFFER_BIT, 0.0f, 0.0f, 0.0f, 1.0f);
+                RenderCore::getGLBackend().setViewport(bx, by, bw, bh);
+            } else {
+                glViewport(0, 0, width_, height_);
+                glClearColor(0.0f, 0.0f, 0.0f, 1.0f);
+                glClear(GL_COLOR_BUFFER_BIT);
+                glViewport(bx, by, bw, bh);
+            }
         } else {
-            glViewport(0, 0, width_, height_);
+            // RENDER-BACKEND-IFACE-VIEWPORT-1: route the non-pillarbox composite viewport.
+            if (s_backendIface) {
+                RenderCore::getGLBackend().setViewport(0, 0, width_, height_);
+            } else {
+                glViewport(0, 0, width_, height_);
+            }
         }
     }
 
@@ -2791,6 +3306,13 @@ void gosPostProcess::endScene()
         compositeProg_->setFloat("u_fxaaSubpix",         fxaaSubpix_);
         compositeProg_->setFloat("u_fxaaEdgeThreshold",  fxaaEdgeThreshold_);
         compositeProg_->setFloat("u_fxaaEdgeThresholdMin", fxaaEdgeThresholdMin_);
+
+        // POST-FX-CAS-1: gate + sharpness. enabled=0 -> shader skips CAS entirely
+        // (byte-identical). Set before apply() like the others.
+        compositeProg_->setInt  ("u_casEnabled",   casEnabled_ ? 1 : 0);
+        compositeProg_->setFloat("u_casSharpness", casSharpness_);
+        // POST-FX-TONEMAP-V2: 0 = no-op branch in the shader (byte-identical).
+        compositeProg_->setInt  ("u_tonemapMode",  tonemapMode_);
 
         // VIEWMODE-POSTPROCESS-PRESENTATION-1: resolve effective view mode.
         // Gate OFF -> forced 0 (Visual). ObjectIdDebug requires sceneObjectIdTex_;
@@ -3037,6 +3559,26 @@ void gosPostProcess::renderHdriSkybox(const float* viewMat, const float* projMat
     GLint     prevVAO        = 0;
     glGetIntegerv(GL_VERTEX_ARRAY_BINDING, &prevVAO);
 
+    // SKYBOX-FOG-EXCLUDE-1: gate ON only. Save stencil state so the write
+    // below cannot leak into any pass downstream of the sky draw. sceneFBO_'s
+    // depth attachment is GL_DEPTH24_STENCIL8 (real stencil bits available --
+    // see createFBOs() sceneDepthTex_ alloc), so no fallback design is needed.
+    const bool skyExclude = skyboxFogExcludeEnabled();
+    GLboolean prevStencilTest = GL_FALSE;
+    GLint     prevStencilFunc = GL_ALWAYS, prevStencilRef = 0, prevStencilValueMask = 0xFF;
+    GLint     prevStencilFail = GL_KEEP, prevStencilZFail = GL_KEEP, prevStencilZPass = GL_KEEP;
+    GLint     prevStencilWriteMask = 0xFF;
+    if (skyExclude) {
+        prevStencilTest = glIsEnabled(GL_STENCIL_TEST);
+        glGetIntegerv(GL_STENCIL_FUNC,       &prevStencilFunc);
+        glGetIntegerv(GL_STENCIL_REF,        &prevStencilRef);
+        glGetIntegerv(GL_STENCIL_VALUE_MASK, &prevStencilValueMask);
+        glGetIntegerv(GL_STENCIL_FAIL,       &prevStencilFail);
+        glGetIntegerv(GL_STENCIL_PASS_DEPTH_FAIL, &prevStencilZFail);
+        glGetIntegerv(GL_STENCIL_PASS_DEPTH_PASS, &prevStencilZPass);
+        glGetIntegerv(GL_STENCIL_WRITEMASK,  &prevStencilWriteMask);
+    }
+
     // Save per-attachment color masks for whichever attachments exist.
     GLboolean prevMask[3][4] = {
         { GL_TRUE, GL_TRUE, GL_TRUE, GL_TRUE },
@@ -3164,6 +3706,79 @@ void gosPostProcess::renderHdriSkybox(const float* viewMat, const float* projMat
     }
     glDrawArrays(GL_TRIANGLES, 0, 3);
 
+    // SKYBOX-FOG-EXCLUDE-1: second, stencil-only pass. Tags stencil=1 for
+    // pixels the fog passes must exclude (deep sky -- SKYBOX-FOG-EXCLUDE-2:
+    // elevation test worldDir.y > 0.22 in the skybox frame; equivalent to
+    // fog_oob's fog-frame worldDir.z < -0.22 band top, see the frag shader's
+    // fix note). Pixels at/below that
+    // band (horizon + OOB void) are `discard`ed by the frag shader, leaving
+    // their stencil at the frame-clear value (0) so fog behavior there is
+    // unchanged. Color writes are masked off; only the stencil buffer is
+    // touched. Ordering note: terrain/props may later redraw over the same
+    // screen pixels -- that is harmless, because the fog passes only ever
+    // consult stencil for pixels where rawDepth is still the clear value
+    // (nothing drew there); terrain pixels have rawDepth != 0 and never
+    // reach the stencil check regardless of what stencil holds underneath.
+    if (skyExclude) {
+        if (!hdriSkyboxStencilTagProg_) {
+            static const char* kStencilTagPrefix = "#version 430\n";
+            hdriSkyboxStencilTagProg_ = glsl_program::makeProgram(
+                "hdri_skybox_stencil_tag",
+                "shaders/hdri_skybox.vert",
+                "shaders/hdri_skybox_stencil_tag.frag",
+                kStencilTagPrefix);
+            if (!hdriSkyboxStencilTagProg_ || !hdriSkyboxStencilTagProg_->is_valid()) {
+                std::fprintf(stderr,
+                    "[SKYBOX_FOG_EXCLUDE v1] stencil-tag shader failed to compile; "
+                    "gate stays ON but exclusion pass is skipped this/every frame\n");
+            }
+        }
+        if (hdriSkyboxStencilTagProg_ && hdriSkyboxStencilTagProg_->is_valid()) {
+            glEnable(GL_STENCIL_TEST);
+            glStencilFunc(GL_ALWAYS, 1, 0xFF);
+            glStencilOp(GL_KEEP, GL_KEEP, GL_REPLACE);
+            glStencilMask(0xFF);
+            // Color writes off for every attachment -- this pass only tags stencil.
+            if (nAtt > 0) glColorMaski(0, GL_FALSE, GL_FALSE, GL_FALSE, GL_FALSE);
+            if (nAtt > 1) glColorMaski(1, GL_FALSE, GL_FALSE, GL_FALSE, GL_FALSE);
+            if (nAtt > 2) glColorMaski(2, GL_FALSE, GL_FALSE, GL_FALSE, GL_FALSE);
+
+            // SKYBOX-FOG-EXCLUDE-1 review fix: clear stencil once per frame
+            // before tagging. Without this, stencil=1 from a prior frame's
+            // deep-sky pixels persists on pixels the camera has since panned
+            // away from sky (nothing else in the renderer clears stencil),
+            // so fog would incorrectly stay excluded there. Cheap because
+            // it's a single clear of the currently-bound sceneFBO_'s stencil
+            // plane, gated behind skyExclude so gate-OFF has zero cost.
+            {
+                const GLint zero = 0;
+                glClearBufferiv(GL_STENCIL, 0, &zero);
+            }
+
+            hdriSkyboxStencilTagProg_->apply();
+            hdriSkyboxStencilTagProg_->setMat4("invProj", invProjArray);
+            hdriSkyboxStencilTagProg_->setMat3("invViewRot", invViewRot);
+            // SKYBOX-FOG-EXCLUDE-2: skyYaw upload removed. The tag test is
+            // now elevation-only (worldDir.y > 0.22), which the sun-sync yaw
+            // (an azimuth rotation) cannot affect. v1 uploaded it and
+            // thresholded worldDir.z -- a HORIZONTAL axis in this frame --
+            // tagging an azimuth wedge of sky and hard-excluding the fog
+            // inside it (the vertical-edged dark-sky artifact).
+
+            glBindVertexArray(quadVAO_ != 0 ? quadVAO_ : hdriDummyVao_);
+            glDrawArrays(GL_TRIANGLES, 0, 3);
+
+            static const bool s_tagLogOnce = []() {
+                std::fprintf(stderr,
+                    "[SKYBOX_FOG_EXCLUDE v2] enabled=1 stencil_tag_pass=active "
+                    "threshold=worldDir.y>0.22 (elevation; v1 wedge bug fixed)\n");
+                std::fflush(stderr);
+                return true;
+            }();
+            (void)s_tagLogOnce;
+        }
+    }
+
     // --- Restore state (exact) ---
     glBindVertexArray(prevVAO);
     glActiveTexture(GL_TEXTURE0);
@@ -3180,6 +3795,15 @@ void gosPostProcess::renderHdriSkybox(const float* viewMat, const float* projMat
     if (prevDepthTest) glEnable(GL_DEPTH_TEST); else glDisable(GL_DEPTH_TEST);
     if (prevBlend)     glEnable(GL_BLEND);      else glDisable(GL_BLEND);
     if (prevCull)      glEnable(GL_CULL_FACE);  else glDisable(GL_CULL_FACE);
+
+    // SKYBOX-FOG-EXCLUDE-1: restore stencil state exactly (mirrors the
+    // depth/blend/cull restore pattern above).
+    if (skyExclude) {
+        if (prevStencilTest) glEnable(GL_STENCIL_TEST); else glDisable(GL_STENCIL_TEST);
+        glStencilFunc((GLenum)prevStencilFunc, prevStencilRef, (GLuint)prevStencilValueMask);
+        glStencilOp((GLenum)prevStencilFail, (GLenum)prevStencilZFail, (GLenum)prevStencilZPass);
+        glStencilMask((GLuint)prevStencilWriteMask);
+    }
 
     // --- Phase 3: GL-state probe (read-only; never calls glDrawBuffers). ---
     // After the restore block above, every piece of state we touched must match
@@ -4813,8 +5437,9 @@ bool gosPostProcess::executorSceneDepthTexValid() const
 
 bool gosPostProcess::executorShorelineWillRun() const
 {
+    // TERRAIN-SHORELINE-MASK-1: mirrors runShoreline()'s suppression term.
     return shorelineEnabled_ && shorelineProg_ && shorelineProg_->is_valid()
-        && sceneHasTerrain_;
+        && sceneHasTerrain_ && !shorelineSuppressedByTerrainMask_;
 }
 
 bool gosPostProcess::executorCloudShadowWillRun() const

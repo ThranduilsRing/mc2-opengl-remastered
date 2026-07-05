@@ -54,7 +54,7 @@ done
 cd "<deploy-dir>"
 ./mc2.exe                          # normal gameplay
 ./mc2.exe -mission mc2_01          # skip menus, load mission directly
-./mc2.exe --validate --frames 60   # validation mode (see Section 7)
+./mc2.exe --validate --frames 60   # validation mode (see Section 8)
 ```
 
 ---
@@ -197,7 +197,28 @@ All debug toggles use Right Alt as modifier to avoid conflicts with game control
 
 ---
 
-## 5. Texture Upscaling
+## 5. Effects & Animations
+
+MC2 has two parallel content-modding paths that both hang off the same weapon-fire event:
+
+- **Effects** (muzzle flashes, explosions, smoke trails, sparks) -- retune or replace a stock
+  effect's texture/blend/color/scale via a per-effect JSON sidecar
+  (`data/effects/defs/<EffectName>.fxdef.json`), no engine rebuild, no whole-blob `mc2.fx` copy.
+  Ships with `fxlint` (offline validator, file:line:key findings) and a worked example
+  (`mods/my-explosions/` retunes the stock `Fireball`). See
+  **[modding-effects.md](modding-effects.md)** for the full field reference, validation loop,
+  and limits.
+- **Animations** (walk/run/idle/hit-reaction clips) -- replace a mech's gesture clips via direct
+  `.ase`/`.agl` drop-in or a declarative `anims.json` remap, no rebuild. See
+  **[modding-animations.md](modding-animations.md)**.
+- Binding an effect or an animation to a specific weapon/mech is a **separate, pre-existing data
+  edit** (`compbas.csv`/`effects.csv` for effects; mech name + gesture filename convention for
+  animations) -- see [gosfx-modder-dropin-path.md](gosfx-modder-dropin-path.md) Part 1 for the
+  effect binding chain.
+
+---
+
+## 6. Texture Upscaling
 
 ### Overview
 
@@ -234,7 +255,7 @@ Upscaled textures are larger and may exceed the default decompression buffer. If
 
 ---
 
-## 6. Known Issues and Driver Quirks
+## 7. Known Issues and Driver Quirks
 
 ### Known Issues
 
@@ -253,7 +274,7 @@ These quirks were discovered on AMD drivers and may affect other AMD GPUs:
 
 ---
 
-## 7. Autonomous Development
+## 8. Autonomous Development
 
 ### Validation Mode
 

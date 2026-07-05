@@ -184,6 +184,22 @@ uniform int  u_windowCount;
 uniform int  u_maxThinRecords;
 uniform int  u_mapSide;          // realVerticesMapSide
 uniform int  u_alphaOverride;    // 1 when Terrain::terrainTextures2 != nullptr
+// WATER-REFLECTION-CLIP-1: 1 while gos_terrain_indirect::RenderWaterReflectionPass()
+// is dispatching the mirrored-MVP cull/pack for the 1/4-res water reflection RT;
+// 0 (default) for the normal SOLID pass. Reflecting world-Z across the water
+// plane pushes far-camera corners' depth outward by ~2*eye_height*sin(pitch);
+// at the ~20 deg oblique gameplay camera this shoves mirrored quads past the
+// reverse-Z FAR plane (biasedZ >= clip.w), so the normal pzOk() gate culls
+// EVERY mirrored quad -> empty RT (recon landmine 4). Interim fix (recon-
+// sanctioned "relax pzOk" hack, NOT a full Lengyel oblique near-plane
+// reprojection): when armed, drop the FAR-side test so far mirrored terrain is
+// still admitted. The NEAR-side test (biasedZ >= 0, i.e. in front of the
+// mirrored eye) is kept — it still rejects genuinely behind-camera corners,
+// which is the only test that protects against divide-by-tiny-w blowups (see
+// Probe 4 below, unaffected). Zero cost / zero behavior change on the main
+// SOLID pass (uniform defaults to 0 when the location isn't set for that
+// dispatch — see C++ upload).
+uniform int  u_reflectionPass;
 // Step 2b (VPL retirement): bucket-header SSBO (binding 6) and the pad1_ /
 // pad2_ diagnostic atomicAdd writes are demoted behind
 // MC2_BUCKET_HEADER_TRACE.  When 0 the binding is unbound on the C++ side
@@ -214,6 +230,11 @@ vec4 projectClip(float wx, float wy, float wz) {
 bool pzOk(vec4 clip) {
     if (clip.w <= 1e-4) return false;
     float biasedZ = clip.z + TERRAIN_DEPTH_FUDGE * clip.w;
+    // WATER-REFLECTION-CLIP-1: the reflection pass's mirror-MVP legitimately
+    // pushes far mirrored terrain past the normal FAR bound (see u_reflectionPass
+    // comment above) -- drop the upper test only while that pass is armed. The
+    // NEAR bound stays in force in both passes.
+    if (u_reflectionPass != 0) return biasedZ >= 0.0;
     return biasedZ >= 0.0 && biasedZ < clip.w;
 }
 

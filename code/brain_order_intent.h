@@ -82,3 +82,8 @@ static constexpr int kBrainIntentCap = 8;
 // Used by the emit path to stamp each intent with the current tick index.
 // Declared here so brain_special_dispatch.cpp can call it without #include warrior.cpp.
 uint32_t getBrainTickIndex();
+
+// BRAINSPECIAL-FLOW-WAIT-1: deterministic sim-time in milliseconds (scenarioTime*1000).
+// Used for WAIT deadline arming/expiry. Defined in warrior.cpp (engine) and in
+// tools/brain_dispatch_harness/stubs/brain_tick_stub.cpp (harness, settable).
+uint32_t getBrainTimeMs();

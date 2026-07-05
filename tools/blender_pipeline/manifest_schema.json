@@ -1,0 +1,51 @@
+{
+  "$comment": "BLENDER-ASSET-PIPELINE-1 manifest schema v1.0 (documentation form — batch_driver.py validates in code, no jsonschema dependency). Relative paths resolve against the manifest's directory.",
+  "schema_version": "1.0",
+  "blender_exe": "OPTIONAL string — explicit blender.exe; else BLENDER_EXECUTABLE env, known installs, PATH",
+  "work_dir": "OPTIONAL string — intermediate dir (default '_work' next to manifest)",
+  "deploy_tgl_dir": "OPTIONAL string — deploy-lane data/tgl dir; tgl_ini outputs are also copied there (CLI --deploy-tgl-dir overrides)",
+  "jobs": [
+    {
+      "name": "REQUIRED unique job id",
+      "recipe": "REQUIRED — upscale_mesh | decimate_lods | rebake_pbr",
+      "asset_class": "OPTIONAL — mech | prop | building | vehicle | tree (default building; forwarded to ase_to_glb sidecar)",
+      "source": {
+        "$comment": "exactly ONE of: {ase+ini} (stock asset, extracted via tools/ase_to_glb.py) or {glb} (already-converted asset)",
+        "ase": "path/to/stock.ase",
+        "ini": "path/to/stock.ini  (REQUIRED with ase; also the template for tgl_ini injection)",
+        "glb": "path/to/asset.glb"
+      },
+      "params": {
+        "$comment": "recipe-specific; forwarded as --key=value (underscores become dashes)",
+        "upscale_mesh": {
+          "subdiv": 1,
+          "subdiv_type": "CATMULL_CLARK | SIMPLE",
+          "weld": 0.0001,
+          "crease_angle": 40.0,
+          "shade_smooth": true
+        },
+        "decimate_lods": {
+          "ratios": [0.5, 0.2],
+          "distances": [600, 1200],
+          "weld": 0.0001,
+          "min_tris": 8
+        },
+        "rebake_pbr": {
+          "res": 1024,
+          "samples": 16,
+          "margin": 4,
+          "uv": "smart | keep"
+        }
+      },
+      "out": {
+        "kind": "REQUIRED — tgl_ini | models_json | glb_only",
+        "dir": "REQUIRED output directory",
+        "source_name": "tgl_ini/glb_only: engine [Import] Source= base name; also the .glb filename",
+        "carry_textures": "tgl_ini only, default true — re-attach stock texture URIs lost in the Blender round-trip",
+        "override_class": "models_json: staticprop | tree",
+        "appearance_name": "models_json: engine appearance key (lowercase)",
+        "source_prefix": "models_json: path prefix written into models.json sources (default data/model_overrides/cooked)"
+      }
+    }
+  ]
+}

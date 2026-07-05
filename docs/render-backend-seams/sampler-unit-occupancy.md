@@ -77,7 +77,38 @@ checkable `(program, name, unit, target)`.
 - `multiplexed comment/code mismatch` — a multiplexed name whose comment disagrees
   with one of its C++ units; needs per-program manual verification, not auto-FAIL.
 
-Current tree: **PASS, 0 fail, 36 warn.**
+Current tree: **PASS, 0 fail, 45 warn** (49 GLSL samplers, 24 name-resolvable C++ binds, 243 `glUniform1i` / 228 `glActiveTexture` literal sites).
+
+## Vulkan descriptor-contract cross-reference (SAMPLER-UNIT-MANIFEST-1)
+
+`RenderCore/vulkan_contract.h` enumerates exactly **4** `CombinedImageSampler`
+rows — the FBO-backed images the enum registry OWNS and that are sampled
+downstream. Each GLSL sampler NAME that reads one of those owned resources is
+tagged in the manifest (`samplers[name].resourceId`, and every `occupancy` row)
+so a combined image-sampler's future `(set, binding)` descriptor grounds against
+a KNOWN `RenderResourceId`, not just a bare unit literal:
+
+| RenderResourceId | VkDescriptorClass | GLSL sampler names (this tree) |
+|---|---|---|
+| **MainColor** (scene HDR, sceneFBO attach0) | CombinedImageSampler | `sceneTex`, `u_sceneColor` |
+| **MainDepth** (scene depth) | CombinedImageSampler | `sceneDepthTex`, `depthTex`, `u_sceneDepth`, `u_sceneDepthTex` |
+| **MainNormal** (GBuffer1 normal attach1) | CombinedImageSampler | `sceneNormalTex`, `u_sceneNormalTex` |
+| **ShadowDynamicMap** (dynamic shadow depth) | CombinedImageSampler | `dynamicShadowArray`, `dynamicShadowMap`, `dynamicFullMapShadow` |
+
+**11 of 49** GLSL samplers link to an enum-owned resource. The other 38 are
+tagged `descriptorClass: "CombinedImageSampler?"` with `resourceId: null` — they
+WILL be combined image-samplers post-port, but the resource they sample (asset
+atlases, splat-material normal arrays, PBR maps, building/decal textures) is not
+yet enum-backed in the registry. That `?` suffix is the honest coverage marker:
+the sampler descriptor dimension is *visible* for all 49, *grounded to a Vulkan
+resource* for 11.
+
+**Self-checking:** `scan_vulkan_cis()` re-parses the 4 CIS rows out of
+`vulkan_contract.h` every run. If the map (`VULKAN_SAMPLER_RESOURCE`) references a
+resourceId that is no longer a CombinedImageSampler row → **FAIL** (stale
+cross-ref). If the header's CIS set changes membership → WARN (review the map for
+new/removed sampled resources). This keeps the manifest↔contract link from
+drifting silently, the same self-demoting discipline as the hard-anchor table.
 
 ## Known follow-ups (recorded, not fixed by this slice)
 

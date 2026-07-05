@@ -1,0 +1,47 @@
+{
+  "_doc": "PIPELINE-SHADER-MAP — declared pipeline -> shader-file grouping for check-vulkan-bindings.py per-pipeline binding classification (slice BINDING-CHECKER-PER-PIPELINE-CLASSIFIER-1).",
+  "_why": "A GL binding-base slot number is only semantic INSIDE one pipeline's descriptor-set layout. The binding-slot-occupancy census aggregates physical-slot reuse across the WHOLE shader corpus, so it flags benign disjoint-pipeline shares (e.g. SurfaceVertexBuf@20 in terrain-surface vs LightsData@20 in the lit pipelines) as if they were collisions. This manifest declares which shader files compose each pipeline so the checker can ask the ONLY question Vulkan cares about: do two DISTINCT resources share a (set,binding) inside the SAME pipeline's layout?",
+  "_how_built": "Authored (declared manifest, not inferred). Stage members = the directly-authored .vert/.frag/.tesc/.tese/.comp files that link into one program, taken from the shader-file list in binding-slot-occupancy.json and the pipeline enumeration in docs/render-backend-seams/slot-14-20-split-plan.md (commit 805c3265). 'includes' lists the binding-bearing .hglsl files each pipeline pulls (verified with grep '#include' on each stage file: mech/static_prop/building_pbr/gos_tex_vertex_lighted include lighting.hglsl; gos_terrain_surface.vert does NOT). A role declared in an include belongs to every pipeline that includes that file; an include is NOT itself a pipeline. C++ glBindBufferBase(literal) sites carry no GLSL role and are ignored for resource-distinctness.",
+  "_model": "For each physical slot, group its GLSL role-declarations by owning pipeline. A role declared in a stage file belongs to that file's pipeline(s); a role declared in an include belongs to every pipeline listing that include. If ONE pipeline ends up owning >1 DISTINCT role on a slot -> ERROR (real Vulkan (set,binding) collision). If the distinct roles live in DIFFERENT pipelines -> disjoint share: OK if allowlisted benign, else WARN.",
+
+  "includes_bearing_bindings": [
+    "shaders/include/lighting.hglsl",
+    "shaders/include/scene.hglsl",
+    "shaders/include/view_uniforms.hglsl"
+  ],
+
+  "pipelines": {
+    "terrain-surface":        { "stages": ["shaders/gos_terrain_surface.vert", "shaders/gos_terrain.frag"], "includes": [] },
+    "terrain-mask-solid":     { "stages": ["shaders/gos_terrain_mask_solid.vert", "shaders/gos_terrain.frag"], "includes": [] },
+    "terrain-mask-water":     { "stages": ["shaders/gos_terrain_mask_water.vert", "shaders/gos_tex_vertex.frag"], "includes": [] },
+    "terrain-thin":           { "stages": ["shaders/gos_terrain_thin.vert", "shaders/gos_terrain.frag"], "includes": [] },
+    "terrain-water-fast":     { "stages": ["shaders/gos_terrain_water_fast.vert", "shaders/gos_terrain.frag"], "includes": [] },
+    "terrain-water-fast-mdi": { "stages": ["shaders/gos_terrain_water_fast_mdi.vert", "shaders/gos_terrain.frag"], "includes": [] },
+    "terrain-lod-chunk":      { "stages": ["shaders/terrain_lod_chunk.vert", "shaders/terrain_lod_chunk.frag"], "includes": [] },
+
+    "terrain-lighting-comp":  { "stages": ["shaders/gos_terrain_lighting.comp"], "includes": [] },
+    "terrain-tessellation":   { "stages": ["shaders/gos_terrain.tesc"], "includes": [] },
+
+    "gpu-driven-cmd-patch":   { "stages": ["shaders/gpu_driven_cmd_patch.comp"], "includes": [] },
+    "gpu-driven-terrain-solid": { "stages": ["shaders/gpu_driven_terrain_solid.comp"], "includes": [] },
+    "gpu-driven-water":       { "stages": ["shaders/gpu_driven_water.comp"], "includes": [] },
+
+    "gpu-cull":               { "stages": ["shaders/gpu_cull.comp"], "includes": [] },
+    "gpu-cull-block-rollup":  { "stages": ["shaders/gpu_cull_block_rollup.comp"], "includes": [] },
+    "gpu-cull-patch":         { "stages": ["shaders/gpu_cull_patch.comp"], "includes": [] },
+
+    "mech":                   { "stages": ["shaders/mech.vert"], "includes": ["shaders/include/lighting.hglsl", "shaders/include/view_uniforms.hglsl"] },
+    "shadow-mech":            { "stages": ["shaders/shadow_mech.vert"], "includes": [] },
+    "static-prop":            { "stages": ["shaders/static_prop.vert", "shaders/static_prop.frag"], "includes": ["shaders/include/lighting.hglsl", "shaders/include/view_uniforms.hglsl"] },
+    "static-prop-depth":      { "stages": ["shaders/shadow_static_prop.vert", "shaders/static_prop_depth.frag"], "includes": [] },
+    "building-pbr":           { "stages": ["shaders/building_pbr.vert", "shaders/building_pbr.frag"], "includes": ["shaders/include/lighting.hglsl"] },
+    "tex-vertex-lighted":     { "stages": ["shaders/gos_tex_vertex_lighted.vert"], "includes": ["shaders/include/lighting.hglsl"] },
+
+    "vegetation-card":        { "stages": ["shaders/gos_vegetation_card.vert"], "includes": [] },
+    "cardcloud-sim":          { "stages": ["shaders/cardcloud_sim.comp"], "includes": [] },
+    "particle-billboard":     { "stages": ["shaders/particle_billboard.vert"], "includes": [] },
+    "tube-ribbon":            { "stages": ["shaders/tube_ribbon.vert"], "includes": [] }
+  },
+
+  "_unmodeled_note": "view_uniforms.hglsl declares ViewUniformsBlock (UBO:3) and is included broadly; it is single-occupant on its slot so it needs no pipeline attribution for collision purposes. scene.hglsl SceneData (UBO:1) shares a slot with mesh_data (building_pbr.vert / gos_tex_vertex_lighted.vert) — attributed via the 'includes' entries above. Any shader file appearing in binding-slot-occupancy.json but NOT covered by a pipeline here is reported by the checker as 'unmodeled' and its shares fall through to WARN, never silently OK."
+}

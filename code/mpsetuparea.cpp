@@ -7,6 +7,7 @@ MPSetupArea.cpp			: Implementation of the MPSetupArea component.
 \*************************************************************************************************/
 
 #include"mpsetuparea.h"
+#include "../GuiRuntime/GuiRuntime.h"
 #include"prefs.h"
 #include"inifile.h"
 #include"userinput.h"
@@ -256,7 +257,18 @@ void MPSetupXScreen::render(int xOffset, int yOffset )
 	{
 		colorPicker.render();
 
-		mechCamera.render();
+		// PREVIEW-FBO-FIXED-800x600-1: composite via real-resolution ratio.
+		{
+			// UI-ASPECT-ANCHOR-1: canvas-aware composite transform (see aObject).
+			float sx = 1.f, sy = 1.f, cox = 0.f, coy = 0.f;
+			aObject::getCanvasTransform( sx, sy, cox, coy );
+			mechCamera.setPreviewOffscreen( true );
+			mechCamera.render();
+			mechCamera.drawPreviewToPanel(
+				mechCamera.bounds[0] * sx + cox, mechCamera.bounds[1] * sy + coy,
+				(mechCamera.bounds[2] - mechCamera.bounds[0]) * sx,
+				(mechCamera.bounds[3] - mechCamera.bounds[1]) * sy );
+		}
 		if (!bPaintSchemeInitialized)
 		{
 			bPaintSchemeInitialized = true;

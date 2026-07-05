@@ -1,0 +1,19 @@
+FITini
+
+; BRAINSPECIAL-FLOW-WAIT-1 fixture: WAIT gates the tail of the body until the
+; sim-time deadline, then latches open. Harness runs 3 passes at t=0/1000/6000ms:
+;   pass 1 (t=0):    WAIT 5 arms (deadline 5000ms) -> GUARD gated, 0 orders
+;   pass 2 (t=1000): still waiting -> 0 orders
+;   pass 3 (t=6000): WAIT latches open -> GUARD fires exactly once -> STOP
+; Total expected: 1 GUARD order.
+
+TechSpecial {
+    key = "flowwait_scenario_main"
+    type = "MissionSpecial"
+    Body {
+        DO Var.Set [pre] 1
+        WAIT 5
+        DO OPORD.CoreGuard
+        STOP
+    }
+}

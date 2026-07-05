@@ -100,6 +100,33 @@ BUILDING_PBR_PAYLOAD = [
     "data/materials/pbr/corrugatedsteel006a_orm.ktx2",
 ]
 
+# Renderer config JSON read directly off "data/<name>.json" relative paths by
+# GameOS/gameos (terrain_material_lib.cpp, visual_tuning_profile.cpp) -- both
+# game AND editor installs load these (shared renderer core), so they must
+# ship even though neither is a build output. Missing file = silent no-op at
+# runtime (both readers tolerate absence), but shipping without them silently
+# drops per-mission/material tuning that was authored assuming the file loads.
+GAME_DATA_PAYLOAD = [
+    "data/terrain_materials.json",
+    "data/visual_tuning.json",
+]
+
+# TERRAIN-MATERIAL-TEXTURES-1: per-layer BC7 sRGB albedo KTX2s read off
+# "data/terrain_layers/<channel>_albedo.ktx2" by the LOD-chunk albedo-array
+# loader (gos_terrain_lod_chunk.cpp) when MC2_TERRAIN_MATERIAL_TEXTURES=1.
+# Loose cooked sidecars (gitignored; regenerate via
+# tools/mc2texcook/cook_terrain_layers.py -- must be mip-complete BC7 sRGB).
+# OPTIONAL at deploy time: a missing layer file only logs and skips (the
+# engine fail-softs to the legacy tint path), matching the runtime contract.
+TERRAIN_LAYER_PAYLOAD = [
+    "data/terrain_layers/rock_albedo.ktx2",
+    "data/terrain_layers/grass_albedo.ktx2",
+    "data/terrain_layers/dirt_albedo.ktx2",
+    "data/terrain_layers/concrete_albedo.ktx2",
+    "data/terrain_layers/snow_albedo.ktx2",
+    "data/terrain_layers/cliff_albedo.ktx2",
+]
+
 FFMPEG_DLLS = [
     "avcodec-61.dll",
     "avformat-61.dll",
@@ -124,6 +151,27 @@ def sha256_file(path):
         for chunk in iter(lambda: f.read(1024 * 1024), b""):
             h.update(chunk)
     return h.hexdigest()
+
+
+# TERRAIN-MATERIAL-TEXTURES-1-FIX (fix D): read a KTX2 file's levelCount from the
+# header. The KTX2 v2 layout is a 12-byte identifier followed by a fixed header:
+# vkFormat(u32) typeSize(u32) pixelWidth(u32) pixelHeight(u32) pixelDepth(u32)
+# layerCount(u32) faceCount(u32) levelCount(u32) ... -- so levelCount is the 8th
+# u32 after the identifier (byte offset 12 + 7*4 = 40). Returns the level count,
+# or None if the file is not a recognizable KTX2 (never blocks a non-KTX2 asset).
+def _ktx2_level_count(path):
+    import struct
+    KTX2_MAGIC = b"\xabKTX 20\xbb\r\n\x1a\n"
+    try:
+        with open(path, "rb") as f:
+            head = f.read(44)
+        if len(head) < 44 or head[:12] != KTX2_MAGIC:
+            return None
+        # 8 u32 fields at offset 12; levelCount is the 8th (index 7).
+        fields = struct.unpack("<8I", head[12:44])
+        return fields[7]
+    except OSError:
+        return None
 
 
 def repo_root():
@@ -313,7 +361,29 @@ def check_locks(target_dir, exe_name):
 # Payload enumeration
 # ---------------------------------------------------------------------------
 
-def check_exe_fresh(exe_src, build_dir, allow_stale_exe):
+def find_build_root(build_dir, explicit_root=None):
+    """Locate the build64-family root (holds out/mc2_launcher and mc2.dir).
+
+    Historically this walked up for an ancestor named literally 'build64', which
+    fails for sibling build dirs like build64_island / build64_editor. Now:
+      1. explicit_root (--build64-root) wins if given;
+      2. else walk up accepting any ancestor whose basename STARTS WITH 'build64'
+         (build64, build64_island, ...);
+      3. else '' (non-standard layout; callers skip the launcher/freshness guard).
+    """
+    if explicit_root:
+        return os.path.abspath(explicit_root).rstrip(os.sep)
+    bd = os.path.abspath(build_dir).rstrip(os.sep)
+    b64 = bd
+    while b64 and not os.path.basename(b64).startswith("build64"):
+        parent = os.path.dirname(b64)
+        if parent == b64:
+            return ""
+        b64 = parent
+    return b64
+
+
+def check_exe_fresh(exe_src, build_dir, allow_stale_exe, build64_root=None):
     """Mistake E: stale exe deployed because the source exe was not relinked.
 
     The linked exe must be NEWER than every compiled .obj that feeds it. An incremental build
@@ -327,13 +397,7 @@ def check_exe_fresh(exe_src, build_dir, allow_stale_exe):
     exe_m = os.path.getmtime(exe_src)
     bd = os.path.abspath(build_dir).rstrip(os.sep)
     cfg = os.path.basename(bd)                      # e.g. RelWithDebInfo
-    b64 = bd
-    while b64 and os.path.basename(b64) != "build64":
-        parent = os.path.dirname(b64)
-        if parent == b64:
-            b64 = ""
-            break
-        b64 = parent
+    b64 = find_build_root(build_dir, build64_root)
     if not b64:
         return                                      # non-standard layout; skip the guard
     objdir = os.path.join(b64, "mc2.dir", cfg)
@@ -356,7 +420,7 @@ def check_exe_fresh(exe_src, build_dir, allow_stale_exe):
 
 
 def enumerate_payload(src_root, build_dir, exe_name, pdb_name,
-                      require_build=True):
+                      require_build=True, build64_root=None):
     """Returns list of (src_abspath, target_relpath, kind).
 
     require_build=False (manifest-only): the build outputs may be gone; we
@@ -382,13 +446,7 @@ def enumerate_payload(src_root, build_dir, exe_name, pdb_name,
     # build64 root (walk up from build_dir) using this deploy's config name.
     bd = os.path.abspath(build_dir).rstrip(os.sep)
     cfg = os.path.basename(bd)  # e.g. RelWithDebInfo
-    b64 = bd
-    while b64 and os.path.basename(b64) != "build64":
-        parent = os.path.dirname(b64)
-        if parent == b64:
-            b64 = ""
-            break
-        b64 = parent
+    b64 = find_build_root(build_dir, build64_root)
     launcher_src = (os.path.join(b64, LAUNCHER_FROM_BUILD64, cfg, LAUNCHER_NAME)
                     if b64 else "")
     if launcher_src and os.path.isfile(launcher_src):
@@ -416,6 +474,19 @@ def enumerate_payload(src_root, build_dir, exe_name, pdb_name,
         dirs[:] = [d for d in dirs if d.lower() != "fixtures"]
         for fn in sorted(files):
             p = os.path.join(dirpath, fn)
+            # GUARD (2026-07-02): refuse to ship shader sources containing git
+            # conflict markers. A mid-merge deploy shipped a frag with <<<<<<<
+            # markers -> GLSL compile fail -> shader_error smoke FAIL on the
+            # user's viewing lane. Cheap scan; text shader sources only.
+            if fn.lower().endswith((".frag", ".vert", ".comp", ".glsl", ".hglsl",
+                                    ".tesc", ".tese", ".geom")):
+                try:
+                    with open(p, "rb") as fh:
+                        blob = fh.read()
+                    if b"<<<<<<<" in blob or b">>>>>>>" in blob:
+                        fail(f"shader source contains git conflict markers: {p}")
+                except OSError as e:
+                    fail(f"cannot read shader source {p}: {e}")
             rel = os.path.relpath(p, src_root).replace(os.sep, "/")
             items.append((p, rel, "shader"))
 
@@ -423,6 +494,31 @@ def enumerate_payload(src_root, build_dir, exe_name, pdb_name,
         p = os.path.join(src_root, rel)
         if require_build and not os.path.isfile(p):
             fail(f"building PBR payload missing in source: {p}")
+        items.append((p, rel, "support"))
+
+    for rel in GAME_DATA_PAYLOAD:
+        p = os.path.join(src_root, rel)
+        if require_build and not os.path.isfile(p):
+            fail(f"game data payload missing in source: {p}")
+        items.append((p, rel, "support"))
+
+    # TERRAIN-MATERIAL-TEXTURES-1: optional loose cooked sidecars -- skip (log)
+    # when absent instead of failing; the engine fail-softs without them.
+    # TERRAIN-MATERIAL-TEXTURES-1-FIX (fix D, MIPS ROOT CAUSE): the "levels=1
+    # deployed" bug was a stale pre-mip cook getting picked up because deploy just
+    # copies whatever _albedo.ktx2 is on disk. Guard it here: read the KTX2
+    # levelCount and HARD-FAIL if a present layer is mip-incomplete, so a stale
+    # cook can never reach the payload silently. Re-cook, then re-deploy.
+    for rel in TERRAIN_LAYER_PAYLOAD:
+        p = os.path.join(src_root, rel)
+        if not os.path.isfile(p):
+            log(f"terrain layer payload absent (skipped, engine fail-softs): {rel}")
+            continue
+        lvls = _ktx2_level_count(p)
+        if lvls is not None and lvls <= 1:
+            fail(f"terrain layer payload is mip-incomplete (levelCount={lvls}, expected >1): "
+                 f"{rel} -- re-cook with tools/mc2texcook/cook_terrain_layers.py (mips=True) "
+                 f"BEFORE deploying, or the engine ships a shimmering single-level albedo array.")
         items.append((p, rel, "support"))
 
     # Support payload: launch scripts (per target) + editor authoring trees.
@@ -464,15 +560,23 @@ def enumerate_payload(src_root, build_dir, exe_name, pdb_name,
 # Deploy + verify
 # ---------------------------------------------------------------------------
 
-def deploy(items, target_dir, allow_stale_pdb):
+def deploy(items, target_dir, allow_stale_pdb, preserve=()):
     src_hashes = {}
     shader_mismatches = []
     pdb_problem = None
+    preserve = {p.replace(os.sep, "/") for p in preserve}
 
     for src, rel, kind in items:
         dst = os.path.join(target_dir, rel)
         if kind == "pdb" and not os.path.isfile(src):
             pdb_problem = f"source PDB missing: {src}"
+            continue
+        if rel.replace(os.sep, "/") in preserve and os.path.isfile(dst):
+            # user-owned file at target (e.g. hand-edited run-with-log.bat):
+            # keep the deployed copy, record its hash so the manifest matches
+            # what's actually on disk.
+            src_hashes[rel] = (sha256_file(dst), os.path.getsize(dst))
+            log(f"preserved {rel} (existing target copy kept)")
             continue
         os.makedirs(os.path.dirname(dst) or target_dir, exist_ok=True)
         try:
@@ -551,7 +655,8 @@ def hash_present_payload(items, target_dir):
     return hashes
 
 
-def write_manifest_only(src_root, build_dir, exe_name, pdb_name, target_dir):
+def write_manifest_only(src_root, build_dir, exe_name, pdb_name, target_dir,
+                        build64_root=None):
     """Refresh <target>/.deployed_manifest.csv from files ALREADY in target.
 
     No copy, no lock check (we are not writing binaries — only the CSV).
@@ -562,7 +667,7 @@ def write_manifest_only(src_root, build_dir, exe_name, pdb_name, target_dir):
     if not os.path.isdir(target_dir):
         fail(f"target dir does not exist: {target_dir}")
     items = enumerate_payload(src_root, build_dir, exe_name, pdb_name,
-                              require_build=False)
+                              require_build=False, build64_root=build64_root)
     hashes = hash_present_payload(items, target_dir)
 
     # Merge: keep prior rows for payload files we did not just re-hash but
@@ -713,6 +818,11 @@ def main():
     ap.add_argument("--exe-name", default=None,
                     help="exe filename (default mc2.exe, or the preset's exe "
                     "with --target)")
+    ap.add_argument("--build64-root", default=None,
+                    help="explicit build64-family root that holds out/mc2_launcher "
+                    "and mc2.dir (e.g. an absolute path to build64_island). Default: "
+                    "walk up from --build-dir for an ancestor whose name starts with "
+                    "'build64' (so build64_island/build64_editor are auto-found).")
     ap.add_argument("--allow-stale-pdb", action="store_true",
                     help="downgrade PDB staleness to a warning")
     ap.add_argument("--allow-stale-exe", action="store_true",
@@ -731,6 +841,12 @@ def main():
                     help="DELIBERATELY deploy to a NON-canonical / new ~5GB install "
                          "(release cut, fresh install). Off by default — deploys are "
                          "forced to the canonical DEPLOY_ALLOWLIST to stop per-lane bloat.")
+    ap.add_argument("--preserve", action="append", default=[],
+                    metavar="RELPATH",
+                    help="payload file (repeatable) whose EXISTING target copy "
+                         "is kept instead of overwritten (e.g. a hand-edited "
+                         "run-with-log.bat). Only skips if the target copy "
+                         "exists; fresh targets still get the source file.")
     args = ap.parse_args()
 
     preset = TARGET_PRESETS.get(args.target) if args.target else None
@@ -754,7 +870,8 @@ def main():
     pdb_name = os.path.splitext(exe_name)[0] + ".pdb"
 
     if args.write_manifest_only:
-        write_manifest_only(src_root, build_dir, exe_name, pdb_name, target)
+        write_manifest_only(src_root, build_dir, exe_name, pdb_name, target,
+                            build64_root=args.build64_root)
         return
 
     # DEPLOY-TARGET-GUARD: force deploys to the canonical deploy folders; never create
@@ -780,13 +897,33 @@ def main():
     log(f"target:      {target}")
 
     check_locks(target, exe_name)
-    check_exe_fresh(os.path.join(build_dir, exe_name), build_dir, args.allow_stale_exe)
-    items = enumerate_payload(src_root, build_dir, exe_name, pdb_name)
+    check_exe_fresh(os.path.join(build_dir, exe_name), build_dir, args.allow_stale_exe,
+                    build64_root=args.build64_root)
+    items = enumerate_payload(src_root, build_dir, exe_name, pdb_name,
+                              build64_root=args.build64_root)
     log(f"payload: {len(items)} files "
         f"({sum(1 for *_x, k in items if k == 'shader')} shaders)")
-    hashes = deploy(items, target, args.allow_stale_pdb)
+    hashes = deploy(items, target, args.allow_stale_pdb, preserve=args.preserve)
     write_manifest(target, hashes, git_head(src_root))
     log("deploy COMPLETE — payload verified, manifest written")
+
+    # Post-deploy hygiene scan (Truth-First arc P1 #5/#7): the payload manifest
+    # is a COMPLETENESS gate and never walks data/missions/*.beauty/, so a
+    # generated-diagnostic sidecar that leaked into the target by MANUAL copy is
+    # invisible to it. Run the standalone hygiene gate as a non-fatal warning so
+    # every deploy surfaces leaked dev artifacts. Fully skippable / advisory.
+    try:
+        hygiene = os.path.join(os.path.dirname(os.path.abspath(__file__)),
+                               "check-deploy-hygiene.py")
+        if os.path.isfile(hygiene):
+            r = subprocess.run([sys.executable, hygiene, target],
+                               capture_output=True, text=True, timeout=120)
+            out = (r.stdout or "").strip()
+            if out:
+                for line in out.splitlines():
+                    log(f"hygiene: {line}")
+    except Exception as e:  # noqa: BLE001 — advisory only, never block a deploy
+        log(f"hygiene scan skipped ({e})")
 
 
 if __name__ == "__main__":

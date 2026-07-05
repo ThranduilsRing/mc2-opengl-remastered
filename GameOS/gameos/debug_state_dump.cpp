@@ -62,6 +62,43 @@ extern "C" unsigned long mc2_ui_pass_entry_drift();
 extern "C" unsigned long mc2_ui_pass_ambient_samples();     // UI-PASS-MODEL-1
 extern "C" unsigned long mc2_ui_pass_ambient_mismatches();  // UI-PASS-MODEL-1
 
+// RENDER-BACKEND-REGION-IFACE-1 (Layer-6 ENTRY): PostprocessFog region-selection
+// health (defined in GameOS/gameos/gos_postprocess.cpp). ALWAYS compiled — the
+// region interface exists on every build (no Vulkan needed for the GL path).
+extern "C" void mc2_render_backend_region_health(
+    int* ifaceGateOn, const char** requestedBackend, int* lastImpl,
+    const char** lastFallbackReason, int* lastGlPassesRun, int* lastVkDraws,
+    unsigned long* routedFrames);
+
+#ifdef MC2_VULKAN_ISLAND
+// VULKAN-ISLAND-HEALTH-DUMP-1: EdgeFog Vulkan island health snapshot (defined in
+// GameOS/gameos/vulkan_edge_fog_island.cpp, compiled only under MC2_VULKAN_ISLAND).
+extern "C" void mc2_vulkan_island_health(
+    int* vulkanAvailable, int* islandBuildEnabled, int* islandRuntimeGate,
+    const char** deviceName, unsigned long* validationErrors,
+    unsigned long* edgeFogAttempted, unsigned long* edgeFogUsedVulkan,
+    const char** fallbackReason,
+    double* readbackUs, double* copyDepthUs, double* renderUs);
+// VULKAN-OOB-FOG-ISLAND-1: OOB-fog Vulkan island health snapshot (defined in
+// GameOS/gameos/vulkan_oob_fog_island.cpp, same #ifdef MC2_VULKAN_ISLAND).
+extern "C" void mc2_vulkan_oob_island_health(
+    int* vulkanAvailable, int* islandBuildEnabled, int* islandRuntimeGate,
+    const char** deviceName, unsigned long* validationErrors,
+    unsigned long* oobFogAttempted, unsigned long* oobFogUsedVulkan,
+    const char** fallbackReason,
+    double* readbackUs, double* copyDepthUs, double* renderUs);
+// VULKAN-POSTPROCESS-SUBGRAPH-1: fused Layer-4 subgraph health snapshot (defined in
+// GameOS/gameos/vulkan_postprocess_subgraph.cpp, same #ifdef MC2_VULKAN_ISLAND).
+extern "C" void mc2_vulkan_postprocess_subgraph_health(
+    int* vulkanAvailable, int* buildEnabled, int* runtimeGate,
+    const char** deviceName, unsigned long* validationErrors,
+    unsigned long* attempted, unsigned long* usedVulkan,
+    const char** fallbackReason,
+    unsigned long* expectedGlReplaced, unsigned long* vkDraws, unsigned long* glSkipped,
+    double* copyDepthUs, double* copyColorInUs, double* edgeFogDrawUs,
+    double* oobFogDrawUs, double* colorOutUs, double* totalUs);
+#endif
+
 #include <chrono>
 #include <cstdlib>
 #include <filesystem>
@@ -746,6 +783,130 @@ std::string buildSnapshotJson(const RenderSnapshot& snap,
             s << "      }" << (i + 1 < nprev ? "," : "") << "\n";
         }
         s << "    ]\n";
+        s << "  }\n";
+    }
+#ifdef MC2_VULKAN_ISLAND
+    // VULKAN-ISLAND-HEALTH-DUMP-1: additive "vulkan_island" section, present ONLY in
+    // the build64_island build (compiled under MC2_VULKAN_ISLAND). Default build64 is
+    // byte-identical (this whole block is #ifdef'd out). Fields are process-lifetime
+    // counters/timers; when the island is compiled but the runtime gate is OFF they
+    // report island_build_enabled=1, island_runtime_gate_enabled=0, and zeros.
+    {
+        int va = 0, be = 0, rg = 0;
+        const char* dev = "";
+        const char* fbr = "";
+        unsigned long ve = 0, att = 0, used = 0;
+        double rbUs = 0.0, cdUs = 0.0, rUs = 0.0;
+        mc2_vulkan_island_health(&va, &be, &rg, &dev, &ve, &att, &used, &fbr,
+                                 &rbUs, &cdUs, &rUs);
+        s << "  ,\n";
+        s << "  \"vulkan_island\": {\n";
+        s << "    \"vulkan_available\": " << va << ",\n";
+        s << "    \"island_build_enabled\": " << be << ",\n";
+        s << "    \"island_runtime_gate_enabled\": " << rg << ",\n";
+        s << "    \"device_name\": \"" << jsonEscape(dev) << "\",\n";
+        s << "    \"validation_errors\": " << ve << ",\n";
+        s << "    \"edgefog_attempted\": " << att << ",\n";
+        s << "    \"edgefog_used_vulkan\": " << used << ",\n";
+        s << "    \"edgefog_fallback_reason\": \"" << jsonEscape(fbr) << "\",\n";
+        s << "    \"readback_us\": " << rbUs << ",\n";
+        s << "    \"copy_depth_us\": " << cdUs << ",\n";
+        s << "    \"render_us\": " << rUs << "\n";
+        s << "  }\n";
+    }
+    // VULKAN-OOB-FOG-ISLAND-1: additive "vulkan_oob_island" section (same
+    // build64_island-only discipline). Byte-identical when the whole block is
+    // #ifdef'd out; zeros when compiled but the runtime gate is OFF.
+    {
+        int va = 0, be = 0, rg = 0;
+        const char* dev = "";
+        const char* fbr = "";
+        unsigned long ve = 0, att = 0, used = 0;
+        double rbUs = 0.0, cdUs = 0.0, rUs = 0.0;
+        mc2_vulkan_oob_island_health(&va, &be, &rg, &dev, &ve, &att, &used, &fbr,
+                                     &rbUs, &cdUs, &rUs);
+        s << "  ,\n";
+        s << "  \"vulkan_oob_island\": {\n";
+        s << "    \"vulkan_available\": " << va << ",\n";
+        s << "    \"island_build_enabled\": " << be << ",\n";
+        s << "    \"island_runtime_gate_enabled\": " << rg << ",\n";
+        s << "    \"device_name\": \"" << jsonEscape(dev) << "\",\n";
+        s << "    \"validation_errors\": " << ve << ",\n";
+        s << "    \"oobfog_attempted\": " << att << ",\n";
+        s << "    \"oobfog_used_vulkan\": " << used << ",\n";
+        s << "    \"oobfog_fallback_reason\": \"" << jsonEscape(fbr) << "\",\n";
+        s << "    \"readback_us\": " << rbUs << ",\n";
+        s << "    \"copy_depth_us\": " << cdUs << ",\n";
+        s << "    \"render_us\": " << rUs << "\n";
+        s << "  }\n";
+    }
+    // VULKAN-POSTPROCESS-SUBGRAPH-1: additive "vulkan_postprocess_subgraph" section
+    // (same build64_island-only discipline). Byte-identical when the whole block is
+    // #ifdef'd out; zeros when compiled but the runtime gate is OFF. Includes the
+    // equivalence counters so a silent double-apply (vk_draws + a GL fog pass) is
+    // catchable, and the Layer-4 per-step timings.
+    {
+        int va = 0, be = 0, rg = 0;
+        const char* dev = "";
+        const char* fbr = "";
+        unsigned long ve = 0, att = 0, used = 0;
+        unsigned long expRepl = 0, vkDraws = 0, glSkip = 0;
+        double cdUs = 0.0, cciUs = 0.0, efUs = 0.0, ofUs = 0.0, coUs = 0.0, totUs = 0.0;
+        mc2_vulkan_postprocess_subgraph_health(&va, &be, &rg, &dev, &ve, &att, &used, &fbr,
+                                               &expRepl, &vkDraws, &glSkip,
+                                               &cdUs, &cciUs, &efUs, &ofUs, &coUs, &totUs);
+        s << "  ,\n";
+        s << "  \"vulkan_postprocess_subgraph\": {\n";
+        s << "    \"vulkan_available\": " << va << ",\n";
+        s << "    \"build_enabled\": " << be << ",\n";
+        s << "    \"runtime_gate_enabled\": " << rg << ",\n";
+        s << "    \"device_name\": \"" << jsonEscape(dev) << "\",\n";
+        s << "    \"validation_errors\": " << ve << ",\n";
+        s << "    \"subgraph_attempted\": " << att << ",\n";
+        s << "    \"subgraph_used_vulkan\": " << used << ",\n";
+        s << "    \"subgraph_fallback_reason\": \"" << jsonEscape(fbr) << "\",\n";
+        s << "    \"expected_gl_passes_replaced\": " << expRepl << ",\n";
+        s << "    \"actual_vk_draws\": " << vkDraws << ",\n";
+        s << "    \"actual_gl_fallback_passes_skipped\": " << glSkip << ",\n";
+        s << "    \"subgraph_draw_count\": " << vkDraws << ",\n";
+        s << "    \"copy_depth_us\": " << cdUs << ",\n";
+        s << "    \"copy_color_in_us\": " << cciUs << ",\n";
+        s << "    \"edgefog_draw_us\": " << efUs << ",\n";
+        s << "    \"oobfog_draw_us\": " << ofUs << ",\n";
+        s << "    \"color_out_us\": " << coUs << ",\n";
+        s << "    \"total_subgraph_us\": " << totUs << "\n";
+        s << "  }\n";
+    }
+#endif
+    // RENDER-BACKEND-REGION-IFACE-1 (Layer-6 ENTRY): PostprocessFog region-selection
+    // health. ALWAYS emitted (region iface exists on every build). Surfaces
+    // backend_region_selected = gl|vk|fallback_gl via region_impl + requested_backend.
+    {
+        int gateOn = 0, impl = 0, glPasses = 0, vkDraws = 0;
+        const char* reqBackend = "gl";
+        const char* fbReason = "";
+        unsigned long routed = 0;
+        mc2_render_backend_region_health(&gateOn, &reqBackend, &impl, &fbReason,
+                                         &glPasses, &vkDraws, &routed);
+        const char* implStr =
+            impl == 1 ? "GLInline" :
+            impl == 2 ? "VulkanSubgraph" :
+            impl == 3 ? "FallbackGL" : "None";
+        const char* selectedStr =
+            impl == 2 ? "vk" :
+            impl == 3 ? "fallback_gl" :
+            impl == 1 ? "gl" : "none";
+        s << "  ,\n";
+        s << "  \"render_backend_region\": {\n";
+        s << "    \"region_id\": \"PostprocessFog\",\n";
+        s << "    \"iface_gate_on\": " << gateOn << ",\n";
+        s << "    \"requested_backend\": \"" << jsonEscape(reqBackend) << "\",\n";
+        s << "    \"backend_region_selected\": \"" << selectedStr << "\",\n";
+        s << "    \"region_impl\": \"" << implStr << "\",\n";
+        s << "    \"fallback_reason\": \"" << jsonEscape(fbReason) << "\",\n";
+        s << "    \"gl_passes_run\": " << glPasses << ",\n";
+        s << "    \"vk_draws\": " << vkDraws << ",\n";
+        s << "    \"routed_frames\": " << routed << "\n";
         s << "  }\n";
     }
     s << "}\n";

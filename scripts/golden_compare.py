@@ -56,6 +56,43 @@ IGNORE_SUFFIXES = (
     "dump_source",
     "tga_source",
     "exe",  # absolute path string; exe_md5 is the load-bearing identity
+    # GOLDEN-SCENE-PARITY-1 combined-manifest bookkeeping: these fields
+    # INTENTIONALLY differ between the OFF (A) and ON (B) state and describe the
+    # harness run, not the render -- they must never fail a parity compare.
+    "label",
+    "gate_name",
+    "gate_value",
+    "viscap_manifest",
+    "golden_scene_manifest",
+    # BACKEND-COMPARE-HARNESS-1: in backend-compare mode A and B INTENTIONALLY
+    # differ by which backend implements the region. These describe the request /
+    # region-selection provenance, NOT render output -- the load-bearing oracle is
+    # still the per-bookmark pixel sha. (Fallback masquerade is caught separately
+    # by run_golden_parity's region_impl==FallbackGL detection, not here.)
+    "backend",
+    "region",
+    "region_impl",
+    "backend_region_selected",
+    "fallback_reason",
+    # GOLDEN-PARITY-FRAMECOUNT-NORMALIZE-1: cumulative per-frame occupancy-query
+    # counts. These probes fire once per pass per FRAME, so their absolute value
+    # is proportional to how many frames the run reached in the fixed 30s window.
+    # EVERY Vulkan island runs at a different framerate (islands add per-frame
+    # cost), so gate-ON reaches fewer frames than gate-OFF and every one of these
+    # counters scales down proportionally -- pure frame-count variance, NOT a
+    # render/layout signal. Observed real case (mc2_01, MC2_VULKAN_EDGE_FOG_ISLAND):
+    # OFF ~2400 frames, ON ~1735 frames; ambient/viewport 25267->14305,
+    # fbo 29477->16688, identical fbo:probe ratio 1.167 both -> byte-identical
+    # pixels yet a false BEYOND when the OFF floor's sampled range happened to be
+    # tight. They are occupancy COUNTS, not correctness. The paired CORRECTNESS
+    # signal in the same family is *_mismatches (a nonzero mismatch means a pass
+    # ran under the wrong ambient/fbo/viewport state) -- those stay EXACT and
+    # still gate. We ignore ONLY the frame-proportional sample counts, so a real
+    # regression (pixel sha / registry_hash / *_mismatches / per-pass stable
+    # counts) is unaffected. See docs/testing/golden-scene-parity.md.
+    "ambient_probe_samples",
+    "fbo_samples",
+    "viewport_probe_samples",
 )
 
 # Numeric drift fields get a small symmetric pad on the observed range so a
@@ -189,10 +226,93 @@ def _pixel_frame(manifest_path):
         return "?"
 
 
+def _selftest():
+    """GOLDEN-PARITY-FRAMECOUNT-NORMALIZE-1 regression guard (no GPU / no game).
+
+    Synthesizes an OFF baseline and three ON candidates that differ from it
+    ONLY in a controlled way, then asserts the classifier's verdict:
+
+      1. frame-count-only divergence (the *_samples counters scaled down as a
+         slower ON island would, pixels byte-identical) -> WITHIN  (was the
+         false-FAIL this slice fixes).
+      2. a real pixel-sha difference                    -> BEYOND  (signal kept).
+      3. a *_mismatches correctness bump (same family)  -> BEYOND  (signal kept).
+
+    A TIGHT floor (all three OFF samples clustered high) is used on purpose: it
+    is the exact condition under which the old `drift` classification produced a
+    false FAIL when an ON island ran at a lower framerate.
+    """
+    import tempfile
+
+    def combined(samples_scale=1.0, pixel="cafef00d", fbo_mismatches=0):
+        s = int(25000 * samples_scale)
+        return {
+            "schema": "GOLDEN_PARITY_COMBINED_V1",
+            "label": "X",
+            "registry_hash": "9c32cc32bd3bc7a9",
+            "exe_md5": "b1597c01e2602a0fc97e0a37066a215e",
+            "pass_counters": {"staticPropBatches": 12, "visibleTerrainChunks": 40},
+            "pixel_shas": {"overview": pixel * 8, "ridge": "1234" * 16},
+            "pixel_sha_all": "overview=%s|ridge=%s" % (pixel * 8, "1234" * 16),
+            "render_health": {"frame_graph": {
+                "valid": True,
+                "ambient_probe_mismatches": 0,
+                "fbo_mismatches": fbo_mismatches,
+                "viewport_probe_mismatches": 0,
+                "ambient_probe_samples": s,
+                "fbo_samples": int(s * 1.1666),
+                "viewport_probe_samples": s,
+            }},
+            "generated_at_epoch": 111,
+        }
+
+    with tempfile.TemporaryDirectory() as td:
+        td = Path(td)
+        # TIGHT OFF floor: three high-framerate OFF captures (~25000 samples).
+        floor_mans = []
+        for i, sc in enumerate((1.00, 1.004, 0.996)):
+            p = td / ("floor%d.json" % i)
+            p.write_text(json.dumps(combined(samples_scale=sc)), encoding="utf-8")
+            floor_mans.append(str(p))
+        floor = build_noise_floor(floor_mans)
+
+        off = td / "off.json"
+        off.write_text(json.dumps(combined()), encoding="utf-8")
+
+        cases = [
+            # (name, candidate manifest, expect_beyond)
+            ("frame-count-only (samples scaled ~0.57x, pixels identical)",
+             combined(samples_scale=0.57), False),
+            ("pixel-sha differs",
+             combined(pixel="deadbeef"), True),
+            ("fbo_mismatches correctness bump (same family, gates)",
+             combined(fbo_mismatches=3), True),
+        ]
+        ok = True
+        for name, cand, expect_beyond in cases:
+            cp = td / "cand.json"
+            cp.write_text(json.dumps(cand), encoding="utf-8")
+            beyond, _within, _ = compare(str(off), str(cp), floor)
+            got_beyond = bool(beyond)
+            passed = got_beyond == expect_beyond
+            ok = ok and passed
+            print("[selftest] %-58s -> %s [%s]"
+                  % (name,
+                     "BEYOND(%s)" % ",".join(k for k, *_ in beyond) if got_beyond
+                     else "WITHIN",
+                     "OK" if passed else "WRONG"))
+        print("[selftest] RESULT: %s" % ("ALL PASS" if ok else "FAILED"))
+        return 0 if ok else 1
+
+
 def main():
     ap = argparse.ArgumentParser(
         description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
     sub = ap.add_subparsers(dest="cmd", required=True)
+
+    sub.add_parser("self-test",
+                   help="regression guard: frame-count-only divergence PASSES, "
+                        "pixel/mismatch divergence FAILS (no GPU)")
 
     nf = sub.add_parser("noise-floor",
                         help="build a per-field noise floor from N same-scene manifests")
@@ -207,6 +327,9 @@ def main():
                          "non-ignored field is BEYOND")
 
     args = ap.parse_args()
+
+    if args.cmd == "self-test":
+        return _selftest()
 
     if args.cmd == "noise-floor":
         if len(args.manifests) < 2:

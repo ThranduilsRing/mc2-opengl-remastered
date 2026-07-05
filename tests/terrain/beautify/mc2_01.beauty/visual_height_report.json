@@ -1,0 +1,56 @@
+{
+  "mission": "mc2_01",
+  "coarse_side": 100,
+  "factor": 4,
+  "visual_side": 397,
+  "world_units_per_vertex_coarse": 128.0,
+  "world_units_per_vertex_visual": 32.0,
+  "corner_pinned": false,
+  "max_corner_error_wu": 26.33924421219149,
+  "reshape": null,
+  "reauth": {
+    "mode": "reauth",
+    "shape_tolerance": 0.1,
+    "max_drift_wu": 24.0,
+    "passes": 150,
+    "taubin_lambda": 0.5,
+    "taubin_mu": -0.52,
+    "min_prominence_wu": 4.0,
+    "landform_correlation": 0.9995804373402299,
+    "extrema": {
+      "count": 106,
+      "violations": 0,
+      "worst_move_frac_of_relief": 0.075,
+      "max_move_wu": 22.236178728841082
+    },
+    "corner_move_wu": {
+      "max": 26.33924421219149,
+      "mean": 0.8354700473477616
+    },
+    "facet_crease_energy": {
+      "bilinear_base": 16.613366139184517,
+      "smoothed": 4.882968649532922,
+      "reauth": 8.560670479584932
+    },
+    "drift_vs_bilinear_wu": {
+      "mean": 0.5605793720114433,
+      "p99": 9.218191407498994,
+      "max": 26.33924421219149
+    },
+    "mountainify": null,
+    "pyramid_top_score_before": 0.749,
+    "pyramid_top_score_after": 0.749,
+    "objfade_radius_wu": 256.0
+  },
+  "elevation_wu": {
+    "min": 200.0,
+    "max": 710.0
+  },
+  "visual_delta_wu": {
+    "max_abs": 244.87158638081746,
+    "mean_abs": 3.6840813723719217
+  },
+  "visual_height_file": "visual_height_4x.r32",
+  "visual_damp_file": "visual_damp.r32",
+  "note": "REAUTH (TERRAIN-REAUTH-UNPIN-1): corner-UNpinned Taubin band-pass smoothing; landform kept (extrema within shape_tolerance of local relief, drift tanh-bounded); overlay/footprints feather-pinned; visual_damp.r32 = static object displacement fade; render-only."
+}

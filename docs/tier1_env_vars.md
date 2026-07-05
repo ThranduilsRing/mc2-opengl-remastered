@@ -1,6 +1,10 @@
 # Tier-1 instrumentation env vars
 
-> **STATUS: Verified current as of 2026-06-19 (nifty HEAD, build pipeline). Includes MC2_TERRAIN_LOD_CHUNK (default ON), MC2_SHADOW_CSM (default ON), asset-mod payload vars (HDRI_BC6H, BUILDING_PBR), and diagnostic JSONL trace. Match against RendererFeatureRegistry.h for new feature gates.**
+> **STATUS: Verified current as of 2026-07-01 (nifty HEAD, build pipeline). Includes MC2_TERRAIN_LOD_CHUNK (default ON), MC2_SHADOW_CSM (default ON), asset-mod payload vars (HDRI_BC6H, BUILDING_PBR), diagnostic JSONL trace, and the Vulkan-prep / frame-graph-executor / render-backend-iface seam gates. Match against RendererFeatureRegistry.h for new feature gates.**
+
+## Live data-contract guards (MC2-VERIFY-LIVE-1)
+
+- `MC2_VERIFY_MODE` — mode for the live `MC2_VERIFY` guard family (`docs/verify-primitive.md`). `log` (**default**): shadow-log `[VERIFY]` lines to stderr + crash-bundle ring, continue; `[VERIFY] mission-end fires=N` counter at Mission::destroy. `fatal`: STOP with message + crash bundle + hard terminate (exit 0xE0564631). `off`: exactly-legacy (silent, guarded degradations skipped). Smoke-allowlisted.
 
 ## Crash-soak harness (MC2_SOAK_AUTOWIN)
 
@@ -38,15 +42,52 @@ All default-OFF/inert unless noted. See `docs/render-backend-seams/opengl-correc
 - `MC2_LIGHTGRID_PLANT=1` — **NEGATIVE TEST**, default **OFF**, requires `_VERIFY=1`. Corrupts one CPU reference tile's membership set before the comparison so the checker SHOULD report FAIL — proves the parity check can actually fail. Never set in production.
 - `MC2_GPUBUF_RING=1` — **default OFF** (VULKAN-CONTRACT-MANIFEST-ARC, GPU-BUFFER-WRAPPER-TIER0-HUD-1). Routes the fixed-capacity gosMesh HUD/2D meshes (`gameos_graphics.cpp` `gosMesh::draw`/`drawIndexed`) through a 3-frame **persistent-coherent FENCED ring** (`GameOS/gameos/utils/gpu_ring_buffer.h`) instead of the per-batch `glBufferData` orphan. Pilot of the `GpuRingBuffer<N>` shape (persistent-coherent map, per-slot base offset, `glClientWaitSync`-on-reuse, `glFenceSync`-after-draw, KHR_debug label) on the smallest/safest live buffer. **OFF = legacy orphan path, byte-identical GL stream + output** (one cached-bool branch). **ON =** the `[GPUBUF v1]` `hud` orphan call count drops to ~0 (the ring memcpys into the coherent map; no per-batch `glBufferData`). Fence discipline reuses `gos_mech_batcher.cpp`'s pattern. `uploadBuffers()` (used by terrain via direct `getVB()/getIB()` NULL-offset draws) intentionally stays on the legacy path — its draws are external and would not honor a slot offset. Ring buffers are lazily created on first ON-use and drained+unmapped+deleted in `gosMesh::destroy` (no leak across mission/device reset).
 - `MC2_GPUBUF_RING_FORCE_WRAP=1` — **NEGATIVE TEST**, default **OFF**, requires `MC2_GPUBUF_RING=1`. Deterministically advances the HUD ring twice (`beginFrame()` without an intervening `endFrame()`) so the one-`endFrame`-per-`beginFrame` / fence-per-frame invariant trips: logs `[GPUBUF v1] event=begin_without_end tag=… slot=…` (and `abort()`s under a debug build). Proves the safety guard is live rather than the happy path merely rendering. Never set in production.
+- `MC2_GPU_DEBUG_NAMES=1` — **presence-gated**, default **OFF** (VULKAN-DEBUG-NAMES-1). Attaches `glObjectLabel` KHR_debug names to GPU buffers so RenderDoc / RGP / Vulkan-prep captures show human-readable names instead of anonymous handles. Helper `GameOS/gameos/utils/gpu_debug_labels.h::setGpuBufferDebugLabel`; proof site labels the ViewUniforms UBO (`view_uniforms_gl.cpp`). Read once into a static bool; also null-checks `glObjectLabel` (only wired under `MC2_GL_DEBUG`, so it may be absent — a missing extension must never crash). **OFF = one predicted-false branch, no GL call, byte-identical GL stream + output.** Diagnostic/tooling only.
 - `MC2_GPUBUF_RESIDENCY=1` — default **OFF**. Once every ~300 frames lists the live HUD ring buffers: `[GPUBUF v1] residency tag=… kind=meshring frames=3 vbBytes=… ibBytes=… liveFences=…`. Diagnostic only.
 - `MC2_GPUBUF_COUNTER=1` — **measurement-only**, default **OFF** (VULKAN-CONTRACT-MANIFEST-ARC slice 4, GPU-UPDATE-BUFFER-COUNTER-1). Counts per-frame orphan-on-write `glBufferData` re-spec (full re-spec, no fence/ring) that is otherwise INVISIBLE in the hitch trace (which only emits on >threshold frames). Independent gate that OR-enables the existing `MC2_GL_BufferData` accountant + a per-owner tally for these orphan sites, WITHOUT forcing the rest of `MC2_HITCH_TRACE` on. Emits every frame: `[GPUBUF v1] frame=N orphan_calls=C orphan_bytes=B by_owner=gos_UpdateBuffer:c/b,hud:c/b,light:c/b,sp_shadow:c/b`. Instrumented sites: `gos_UpdateBuffer`, the gosMesh/HUD `updateBuffer` 5-arg overload, the light SSBO create/grow/orphan path, and the static/dynamic-prop transient shadow SSBOs. Zero behavior change when unset (one predicted-false cached-bool check; byte-identical GL stream + output).
 - `MC2_GPUBUF_LIGHT_GROWONCE=1` — **default OFF** (VULKAN-CONTRACT-MANIFEST-ARC, LIGHT-GROW-ONCE-SUBDATA-1). The **AMD-safe intermediate** for the light SSBO orphan churn — **NOT** the full `GpuStorageRing` (no ring, no N-buffer rotation). Keeps the single persistent light SSBO (same `s_lightDataSsbo` handle, slot-20 `glBindBufferBase`, std430 `LightsData` layout / shader contract — unchanged) but eliminates the per-frame FULL `glBufferData` orphan re-spec (1.85 MB/frame, the `LIGHTSSBO-ORPHAN-1` NVIDIA no-stall workaround). **ON =** per frame upload ONLY the live used bytes via `glBufferSubData` (routed through `MC2_GL_BufferSubData`, NOT the owner `glBufferData` macro); the GL buffer **grows ONLY when used bytes exceed current capacity** — rare, sized with **+128-record headroom** matching the CPU backing grow step (`txmmgr.cpp addLightDataStructure`), draining via `glFinish` before delete/recreate/rebind-to-slot-20 and logged **once per grow** (`[LIGHTSSBO v1] event=growonce_grow`, requires `MC2_LIGHTSSBO_TRACE`). The split (`_UploadSplit`) path is subsumed into the same full-live-bytes SubData when ON (the prefix/suffix optimization is moot without an orphan). **OFF = the existing `LIGHTSSBO-ORPHAN-1` orphan path runs completely UNCHANGED, byte-identical GL stream + output** (one cached-bool branch; kill switch). With `MC2_GPUBUF_COUNTER=1`, the `[GPUBUF v1]` **`light` owner orphan bytes drop to ~0** steady-state (only rare grow frames emit a `glBufferData`). ⚠️ **NVIDIA is a HARD BLOCKER before default-on:** `glBufferSubData` into the single live buffer that is read all-frame by every lit draw (and cross-phase by the mech/static-prop batchers) has a cross-frame in-flight-write hazard — on NVIDIA SubData-into-in-flight STALLS the CPU (exactly the stall the orphan dodged); AMD tolerates it. Default-OFF until NVIDIA is in the verification loop; the fix is the full ring (out of scope here), NOT an N-buffer rotation.
 
+- `MC2_TONEMAP_V2=0|1|2|3` — **default OFF (0)** (POST-FX-TONEMAP-V2, SCOUR-1 #3). Optional filmic curve on the final composited colour in `postprocess.frag::applyTonemap`, applied AFTER grade+CAS, before UI (visual-only; no geometry/depth/object-id effect). `0`/unset = OFF, byte-identical no-op branch. `1`/`agx` = AgX (Sobotka minimal), `2`/`hable` = Uncharted2 filmic, `3`/`reinhard` = Reinhard `c/(1+c)`. ⚠️ **Input is already-graded LDR** (`gradeColor` clamps to `[0,1]`), so `3` Reinhard globally halves brightness (no white point) — reject for RTS; `1`/`2` are the real A/B. Resolved once from env in `gos_postprocess.cpp` → `[TONEMAP v2] mode=N` log line. Allowlisted for smoke passthrough. Replaces the removed ACES path below. **VERDICT 2026-07-03 (eyes A/B, mc2_01): all three modes look WORSE than baseline OFF — the LDR-input curves crush/desaturate the RTS palette. Keep default OFF; not recommended. Retained for completeness, not deleted (unlike ACES) since it is a clean no-op gate.**
+
 **REMOVED 2026-06-22 (DEAD-POST-FX-CLEANUP-1 — features deleted as wrong-for-RTS):** `MC2_HDR_POST`, `MC2_BLOOM`, `MC2_TONEMAP_ACES` (now inert; RendererFeatureRegistry entries retained index-only, annotated `[REMOVED]`). God rays + bloom hotkeys (RAlt+6 / RAlt+F1) and the `bloomThreshold`/`bloomIntensity` profile keys are also gone.
+
+## Vulkan-prep seam (VULKAN-CONTRACT-MANIFEST-ARC)
+
+Headless Vulkan probe / backend-skeleton exercise gates. All read via bare `getenv` presence (any non-null value activates), all default **OFF** = no Vulkan code runs. Readers in `GameOS/gameos/vulkan_backend_skeleton.cpp`.
+
+- `MC2_VULKAN_PROBE=1` — run the one-shot headless Vulkan probe at startup (`mc2_vulkan_probe_if_env`): caps enumeration, SPIR-V shader-module load, fullscreen-triangle offscreen render, descriptor-set + sampled-image smoke. Default **OFF** = never runs (no instance/device created). Presence-gated (`getenv != null`).
+- `MC2_VULKAN_SPV_DIR=<path>` — override the compiled-`.spv` directory the probe loads from. Default = `shaders/vulkan`. Only consulted when `MC2_VULKAN_PROBE` is set.
+- `MC2_VULKAN_CACHE_DIR=<path>` — directory for the persistent `VkPipelineCache` blob the fullscreen-triangle probe seeds from / writes back (`triangle_pipeline.cache`), VULKAN-PIPELINE-CACHE-1. Default = `debug_state/vulkan_cache`. Fully fail-soft: a missing/unreadable file just means a cold pipeline build (`no prior cache`), and write/get failures are logged but never abort the probe. First run writes the cache; subsequent runs load it (visible as `loaded N bytes`). Only consulted when a triangle-probe path runs.
+- `MC2_VULKAN_VALIDATION=<preset>` — enable the `VK_LAYER_KHRONOS_validation` layer + debug-utils messenger inside the descriptor/probe paths, selecting a validation **preset** (VULKAN-VALIDATION-PRESETS-1). Default **OFF**. Only meaningful when a probe path runs. Presets:
+  - unset / `0` / `off` — validation OFF (unchanged legacy behavior).
+  - `1` / `core` / present-but-empty — core validation only (backward-compatible with the historical bare `=1`).
+  - `sync` — core + `VK_VALIDATION_FEATURE_ENABLE_SYNCHRONIZATION_VALIDATION_EXT`.
+  - `gpu-assisted` — core + `VK_VALIDATION_FEATURE_ENABLE_GPU_ASSISTED_EXT` (+ reserve-binding-slot). May need extra plumbing/extensions; fails soft if the layer can't honor it.
+  - `best-practices` — core + `VK_VALIDATION_FEATURE_ENABLE_BEST_PRACTICES_EXT`. May emit best-practice **warnings** (logged as `validation-warning:`, non-failing) — probe still passes.
+  - `debug-printf` — core + `VK_VALIDATION_FEATURE_ENABLE_DEBUG_PRINTF_EXT`. May need extra plumbing; fails soft.
+  Extra features chain into `VkInstanceCreateInfo.pNext` via `VkValidationFeaturesEXT`. Unknown value → falls back to `core` + warns. Resolved preset name is logged at startup. Only ERROR-severity validation messages fail a probe; WARNING-severity ones are visible but non-failing.
+- `MC2_VULKAN_EDGE_FOG_ISLAND=1` — Vulkan-native edge-fog island (`GameOS/gameos/vulkan_edge_fog_island.cpp`, VULKAN-CONTRACT-MANIFEST-ARC Layer 3): GL depth/color readback bridged into a Vulkan compute pass, pixel-parity-proven vs the GL path. Default **OFF**, presence-gated; falls back to GL if the probe device isn't viable. `MC2_VULKAN_ISLAND_FORCE_FALLBACK=1` forces the fallback for testing.
+- `MC2_VULKAN_SWAPCHAIN_PRESENT=1` — VULKAN-CONTRACT-MANIFEST-ARC Layer 5: engine-owned Vulkan swapchain create/present/resize (`vulkan_backend_skeleton.cpp`, `vulkan_swapchain_present.cpp`), validation-clean core+sync per the L5 proof. Default **OFF**, presence-gated. `MC2_VULKAN_SWAPCHAIN_PRESENT_HIDDEN=1` runs it against a hidden window for headless/CI use.
+
+## Frame-graph executor + backend-iface seam (RENDER-FRAME-GRAPH ARC)
+
+- `MC2_FRAMEGRAPH_EXECUTOR=1` — top-level frame-graph pass executor (`gos_postprocess.cpp` `executorEnabled()`, `mclib/render_contract.cpp`). Default **OFF**. Value must be `'1'`. Substrate — the reorderer below is NOT shipped; executor stays default-OFF.
+- `MC2_FRAMEGRAPH_REORDER_SPMECH` — **REJECTED experiment, default OFF, presence-gated** (`mclib/txmmgr.cpp`). Would swap the StaticProp-flush ↔ Mech-flush order (the one legal adjacent swap the reorder oracle proved). PARITY-FAILED on depth-EQUAL ties (mc2_24 overlapping opaque fragments resolve order-dependently); candidate rejected, kept only as an A/B lever. Never set in production. `=0`/unset = today's order verbatim (byte-identical).
+- `MC2_FRAMEGRAPH_DRYRUN=1` — frame-graph dry-run mode (`render_contract.cpp` `dryrunEnabled()`). Default **OFF**. Value must be `'1'`.
+- `MC2_FRAMEGRAPH_AMBIENT_GUARD` — ambient-handoff contract guard (colorMask / depthFunc / depthWrite axes; `render_contract.cpp`). **DEFAULT ON**; only `=0` disables. Companion CI check: `scripts/check-ambient-guard.py` (reads the dump counter).
+- `MC2_FRAMEGRAPH_AMBIENT_FATAL=1` — hard-`abort()` on an ambient-guard mismatch (CI/bisection teeth). Default **OFF**, presence-gated. Legacy alias `MC2_AMBIENT_ASSERT_FATAL` also honored.
+- `MC2_RENDER_BACKEND_IFACE=1` — route the scene-FBO bind through `IRenderBackend` / `GLBackend` instead of direct `glBindFramebuffer` (RENDER-BACKEND-IFACE-FBO-1; `gos_postprocess.cpp`). Default **OFF** = direct GL, byte-identical. ON = same GL call via the backend seam (proves the seam routes; output identical). Value must be `'1'`.
+- `MC2_RENDER_BACKEND_REGION_IFACE=1` — MASTER gate (RENDER-BACKEND-REGION-IFACE-1, Layer-6 ENTRY; `gos_postprocess.cpp`). Route the WHOLE PostprocessFog region (EdgeFog + OOB fog) through `IRenderBackend::runRegion()` with a backend-neutral context (`RenderResourceId` + params + dims, NO raw handles). Default **OFF** = the original direct-GL fog sites run, abstraction fully skipped, byte-identical. ON = one selectable region routed through the backend; BOTH original fog sites skipped (no double-apply). Value must be `'1'`.
+- `MC2_POSTPROCESS_BACKEND=gl|vk` — sub-selector for the region iface (only meaningful with the master gate `MC2_RENDER_BACKEND_REGION_IFACE=1` ON). `gl` (default, ships) = the extracted GL fog wrapper (`runFogRegionGL`, `runEdgeFog`+`runFogOob` unchanged); byte-identical to the original path (`region_impl=GLInline`). `vk` (opt-in only) = **the TRUE Vulkan opt-in** (POSTPROCESS-VULKAN-BACKEND-OPT-IN): selecting `vk` RUNS the Vulkan subgraph directly — the backend selection IS the enable signal, so it does **NOT** require `MC2_VULKAN_POSTPROCESS_SUBGRAPH=1` (requires `MC2_VULKAN_ISLAND` build only). Fail-soft: on a genuine Vulkan device/init/render failure the region falls back to the GL wrapper (`region_impl=FallbackGL`), no crash, output == GL. On success `region_impl=VulkanSubgraph`, `vk_draws=2`. NO default flip — `gl` ships. The standalone `MC2_VULKAN_POSTPROCESS_SUBGRAPH=1` gate + the per-island gates remain independently runnable for their own testing (both route through the same gate-free readiness half). Surfaced in the health dump as `render_backend_region.backend_region_selected` = `gl|vk|fallback_gl`.
 
 ## SPFLUSH cost-split decomposition (SPFLUSH-COST-SPLIT-1)
 
 - `MC2_STATIC_PROP_FLUSH_COST_SPLIT=1` — RDTSC cost-split of `StaticPropRegistryFlush`. Default **OFF**. Emits `[SPFLUSH_COST_SPLIT v1] event=summary` every 10 frames with per-bucket ns averages: `submit_loop`, `inst_build`, `map_lookup`, `color_fill`, `actor_record`, `world_to_block`, `substrate_append`, `baseinstance_upload`, plus lifetime + window dirty counters (`invalidates`, `registrations`, `rebuilds`, `light_writes`). TSC calibrated once on first flush (~1ms spin). Zero behavior change.
+
+## Mission interface cost-split (MISSION-INTERFACE-PERF-1)
+
+- `MC2_IFACE_COST_SPLIT=1` — chrono cost-split of `MissionInterfaceManager::update()` (the `GameLogic.Mission.Interface` Tracy zone). Default **OFF**, presence-gated. Emits one `[IFACE_PERF v1] event=window` stdout line every 900 frames + `event=mission_end` partial flush at mission teardown, with per-phase `{avg_us,max_us}`: `invProj`/`LOS`/`controlGui`/`updateTarget`/`postTarget`/`drawBars`/`rollovers` plus ControlGui sub-phases (`cg.pauseWnd`, `cg.btnHover`, `cg.rosterScan`, `cg.moverState`, `cg.tacMap`, `cg.infoWnd`, `cg.vehicleTab`, `cg.fgBar`) and `invProj_walks`/`invProj_cacheHits`. Superset of the older `MC2_MIF_SPLIT` (either env enables both; `MC2_MIF_SPLIT` keeps its shutdown-only `[MIF_SPLIT v1]` line). `code/missiongui.cpp` + `code/controlgui.cpp`. Zero behavior change.
+- `MC2_PICK_FALLBACK_COARSE=1` — coarse-to-fine closest-vertex fallback in `Camera::inverseProject` (`mclib/camera.cpp`). Default **OFF**, presence-gated. The "off map" fallback is the PRODUCTION ground picker whenever the terrain quadList is empty (LOD-chunk terrain path: `numTiles=0`); legacy code brute-force-projects ALL `realVerticesMapSide`² map vertices per cache-miss frame (~890µs/frame on mc2_24 = 85-95% of `Mission.Interface`). ON = stride-8 coarse pass + full-res ±9 refine around the coarse winner — same nearest-projected-vertex answer in practice at ~1/60th cost. With `MC2_PICK_CAP_TRACE=1` also set, every 32nd walk re-runs the brute force and logs a `[PICK_FALLBACK] parity=ok|DIFF` stderr line (and keeps the brute answer on divergence).
 
 ## TRACKV CPU perf kill-switches (2026-06-03)
 
@@ -80,6 +121,7 @@ All default-OFF/inert unless noted. See `docs/render-backend-seams/opengl-correc
 - `MC2_SHADOW_CSM_SOFTNESS` — PCF softness. Default **0.9**.
 - `MC2_SHADOW_OBJ_NORMAL_BIAS` — object self-shadow normal-offset bias (kills residual acne). Default **2.0**.
 - `MC2_SHADOW_MECH_SOFT` — mech self-shadow softness (wider PCF penumbra + terminator smoothstep so flat low-poly facets fade instead of flip + raised floor). Default **1.0**, clamp [0,4]. Object self-shadow is now per-type via GBuffer1.a mask: terrain skip / static-prop NO self-shadow / mech soft (`3253d582`).
+- `MC2_PROP_SHADOW_RECEIVE` — PROP-SHADOW-RECEIVE-1: static props RECEIVE the dynamic CSM cascade (building self-shadow + prop-on-prop) in `shadow_screen.frag`. Default **OFF**; `=1` enables. OFF = legacy static-map-only reception for the a=0.25 prop class (pixel-identical). Shares the CSM PCF ledger + `MC2_SHADOW_MECH_SOFT` terminator; floor 0.4 min-combined with the static map (no double-darken).
 - `MC2_SHADOW_PROP_ALPHA` — tree-foliage shadow alpha-test (`shadow_static_prop.frag`, legacy texture path only). Default **ON**.
 - `MC2_CLOUD_SHADOW` — cloud-shadow pass. Default **ON**.
 - **DEBUG-only:** `MC2_SHADER_PATH_TINT` (shader-path tint); `MC2_TERRAIN_DEBUG_MODE` / `MC2_TERRAIN_LOD_CHUNK_DIAG` = **30/31** = dynamic-shadow viz.
@@ -98,6 +140,17 @@ All default-OFF/inert unless noted. See `docs/render-backend-seams/opengl-correc
 - `MC2_REVERSE_Z_TRACE=1` — reverse-Z lifecycle prints
 - `MC2_GL_DEBUG_FATAL=1` — abort on GL_DEBUG_SEVERITY_HIGH
 - `MC2_XFORM_PARITY_FATAL=1` — abort when F1-3C clip-space parity probe fails (ViewUniforms.worldToClipGL vs legacy terrain MVP, max_diff>1e-5). Default **OFF** = log-only. Host counterpart: `tests/unit/test_xform_convention.cpp` (XFORM-CONVENTION-HARNESS-1).
+- `MC2_ANIM_CADENCE_FIX` — advance mech gait at most once per render frame; prevents a second same-frame gait step when `Mover::getLOSPosition()` (mover.cpp:3528) re-invokes `appearance->update()` for a weapon-node LOS refresh (`mclib/mech3d.cpp`). **Default ON** (user-confirmed fix, mc2_17 Catapult/Bushwacker); `=0` disables to A/B the double-step.
+- `MC2_STATIC_UPDATE_SKIP` — skip the per-frame static building/tree update walk when nothing is dirty (`gameosmain.cpp`, `code/terrobj.cpp`, `code/bldng.cpp`). **Default ON**; `=0` restores the legacy always-walk behavior.
+
+## Load-phase timing (LOAD-PHASE-FACTS-1)
+
+- Always-on, no gate — cheap wall-clock phase marks recorded during `Mission::init()`/`Mission::start()` (`code/mission.cpp`, `GameOS/gameos/gameosmain.cpp`). Emits per-phase `[MISSION] t=…s phase=…` lines plus one consolidated `[LOAD_PHASES v1] total=…ms phase1=name:ms …` line at `mission_ready`. Phases: `setup_tgl_ready` (TGL pool init), `terrain_ready` (FST/pak parse + terrain load/prime), `actor_spawn_ready` (mover/vehicle/part object init), `texture_prewarm_ready` (terrain-object load + static-prop residency prewarm), `gpu_finalize_ready` (geometry finalize + indirect-buffer build + light-bake prewarm), `mission_ready`.
+
+## Load-time / logistics gates
+
+- `MC2_SMART_LOAD` — **default ON** (SMART-LOAD-DEFAULT-ON-1). Defers mech-bay data (components/pilots/variants CSV + `Object2.pak` parse + first availability pass) until the first mech-bay accessor touches `LogisticsData`, instead of eagerly loading it as part of campaign init. Kill-switch: `MC2_SMART_LOAD=0` restores legacy eager `LogisticsData::init()` (byte-identical to pre-flip behavior). Only affects the interactive splash->logistics->mech-bay flow (`Logistics::initializeLogData()`, `code/logistics.cpp`); smoke/tier1's `justStartMission` direct-mission-start path never touches `LogisticsData`, so this gate has no effect on smoke `mission_ready_ms`.
+- `MC2_SMART_LOAD_TRACE=1` — `[SMART_LOAD]` phase-A/phase-B trace prints (`code/logisticsdata.cpp`).
 
 ## RenderWorld arc
 
@@ -109,6 +162,17 @@ All default-OFF/inert unless noted. See `docs/render-backend-seams/opengl-correc
 - `MC2_GAMEPLAY_PICK_SELFTEST=1` — M2-pre spine validator
 - `MC2_GPU_PICK_HOVER=1` — GPU hover pick for mechs/dynamic actors (GPU_PICK_HOVER_DYNAMIC-1). Requires `MC2_OBJECT_ID_BUFFER=1`. Only mech kind uses GPU result; static props fall through to CPU.
 - `MC2_GPU_PICK_HOVER_TRACE=1` — verbose hover-pick log (hit/miss/fallback per frame + session totals on exit).
+
+## Mech import, TechBrain, and misc arc gates
+
+- `MC2_ASSIMP_MECH_IMPORT=1` — BT2018 mech import 1A: route mech geometry through the Assimp GLTF/FBX importer (`mclib/mech3d.cpp`) instead of the legacy MSL loader. Default **OFF**.
+- `MC2_BRAIN_RUNTIME=1` — TechBrain declarative-brain runtime master gate (`code/warrior.cpp`). Default **OFF**. Companion `MC2_BRAIN_RUNTIME_APPLY` gates whether resolved intents are actually applied.
+- `MC2_BRAIN_RUNTIME_APPLY=1` — TechBrain runtime apply gate. Default **OFF**; requires `MC2_BRAIN_RUNTIME=1`.
+- `MC2_BRAIN_DISPATCH=1` — TechScript special-dispatch master gate (`code/mission.cpp`, `code/brain_special_dispatch.cpp`). Default **OFF**; requires `MC2_BRAIN_RUNTIME=1` + `MC2_BRAIN_RUNTIME_APPLY=1`.
+- `MC2_DYNAMIC_DECALS` — dynamic decal ring (`mclib/dynamic_decal_ring.cpp`); `spawn()`/`gatherToDecalBatch()` are no-ops when off. Default **OFF**; any non-`0` value enables.
+- `MC2_MOVE_RECON` — pathfinding cost instrumentation (`mclib/move_recon.cpp`). Default **OFF**, zero behavior change when unset. `MC2_MOVE_CHUNK_SHADOW` / `MC2_MOVE_PATH_CACHE_SHADOW` are alternate enables for the same instrumentation.
+- `MC2_SMART_LOAD=1` — SMART-LOAD startup/mission-load perf path (`code/logisticsdata.cpp`). Default **OFF**. `MC2_SMART_LOAD_TRACE=1` logs the load-time breakdown.
+- `MC2_UNIT_PROFILE_DATA` — UNIT-PROFILE-ARC data-driven unit+equipment definition source (`code/unitprofile.cpp`). Default **LEGACY** (unset/`0` = legacy path); any non-`0` value switches to the generated `UnitProfileData` source.
 
 ## EditorBridge
 
@@ -129,6 +193,7 @@ All default-OFF/inert unless noted. See `docs/render-backend-seams/opengl-correc
 
 ## Material / static prop gates
 - `MC2_SKIP_STATIC_TREES` — pure static-natural update skip (R2b, ~4977→~145 terrain-object updates on dense maps). **Default ON** (opt-out: only `=0` disables; gameplay-critical gates/turrets/special-buildings are excluded from the skip set and still tick every frame).
+- `MC2_STATIC_PROXY_RECON` — StaticSceneProxy-arc recon instrumentation (`mclib/bdactor.cpp`); counts `touchSerialCommit` calls for building/tree appearances ahead of the per-frame static-prop-walk meta-fix. Default **OFF**, presence-gated.
 
 - `MC2_MATERIAL_KTX=1` — KTX2 sidecar loader for static-prop tex array. Default **OFF**.
 - `MC2_MATERIAL_GPU` — MaterialGpu table upload + SSBO bind. Default **ON**.
@@ -175,6 +240,60 @@ All default-OFF/inert unless noted. See `docs/render-backend-seams/opengl-correc
 - `MC2_DEBUG_STATE_DUMP_DIR=<path>` — override output dir.
 - `MC2_DEBUG_STATE_DUMP_HISTORY=1` — rolling 8-slot history ring. Requires `MC2_DEBUG_STATE_DUMP=1`.
 
+## Dev command socket (DEV-SHELL-1)
+
+- `MC2_DEV_SHELL=1` — localhost dev command socket 127.0.0.1:9877 (write half of the debug-state bridge). Default **OFF** (stock byte-identical). Commands: ping / reload_shaders / screenshot / last_screenshot / framegraph / texture_refresh / get_gate / set_gate / quit. Client: `tools/dev_shell/mc2_cmd.py`. Commands execute on the main thread at the frame-loop poll point.
+- `framegraph` command — JSON dump of the pass graph: contract table passes+declared reads/writes, derived producer→consumer edges, last-frame runtime rows (GL state, draw counts, GPU ms). `--collect true` flips the gos_frame_pass_stats + gos_render_pass_timer in-process collect flags live (no env restart).
+- `ui_reload` command — re-reads the ACTIVE front-end screen's loose `.fit` from `data/art/` and re-inits it in place (LogisticsScreen::init self-clears). Layout edits (positions/rects/buttons/text defs) apply live; changed `.tga` pixels reload via `texture_refresh`. Single-player grid + main menu; registered from MissionBegin via `gos_dev_shell::registerCommand` (the generic upper-layer extension seam).
+- `texture_refresh` command — `--name <substring>` re-reads the loose source file from disk for every txmmgr node whose path contains the substring (case-insensitive), replaces the system-RAM copy (same read/LZ path as loadTexture), and destroys the resident GL texture so the next use re-uploads fresh pixels. Node indices stay stable. Reply `{refreshed, skipped_no_file}`; FST-only textures are skipped — drop a loose copy (loose overrides FST) and refresh again. Caveat: a `.ktx2` BC7 sidecar next to the `.tga` still wins at re-upload (`MC2_TEXMGR_COMPRESSED_UPLOAD`).
+- `MC2_DEV_SHELL_PORT=<n>` — port override.
+
+## Front-end direct boot (pre-existing capture harness; pairs with dev shell)
+
+- `MC2_BOOT_TO_BAY=<campaign fit basename>` (e.g. `campaign`) — auto-start that campaign from the main menu, no clicks. Note: campaign mission 1 skips logistics (goes straight to mission); pair with `MC2_BOOT_TO_MISSION`.
+- `MC2_BOOT_TO_MISSION=<mission FileName>` (e.g. `mc2_03`) — jump to that mission's logistics stage.
+- `MC2_BOOT_TO_SCREEN=purchase|bay|loadout|launch` — which logistics grid cell to land on (default bay).
+- Verified combo for GUI iteration: `MC2_DEV_SHELL=1 MC2_NO_LAUNCHER=1 MC2_BOOT_TO_BAY=campaign MC2_BOOT_TO_MISSION=mc2_03 MC2_BOOT_TO_SCREEN=bay` then `mc2_cmd.py screenshot --source backbuffer`.
+## UI aspect anchor (UI-ASPECT-ANCHOR-1)
+
+- `MC2_UI_ASPECT_ANCHOR=0` — killswitch for the 16:9 UI canvas. Default **ON**
+  (ui-phase1 branch): front-end frames (MainMenu/MissionBegin render assert
+  `gos_SetUiCanvasActive`, auto-cleared at flushHUDBatch) draw the whole UI —
+  legacy HUD-batch layer AND defs/ImGui pages — into a centered 16:9 canvas.
+  Wider displays: black flanks. Narrower: letterbox, scaled down. Exactly 16:9:
+  identity. Mouse normalize (`gos_GetMouseInfo`) is canvas-relative on those
+  frames only; mission frames never assert, so world pick is untouched. `=0`
+  restores full-window stretch everywhere.
+  In-mission: `gos_SetHudCanvasActive` (mission.cpp, beside the HUD-shrink
+  toggle) remaps non-scaleExempt HUD chrome into the same canvas — wider
+  displays show extra terrain in the flanks; cursor, modal dialogs and world
+  pick stay full-surface. HUD hit-tests go through getMouseHudX/Y
+  (gos_HudInverseMousePoint inverts canvas + shrink). ImGui HUD port seam:
+  gos_ComputeHudCanvasBox (see gameos.hpp note).
+
+## Free window resize (FREE-RESIZE-1) + native camera aspect
+
+- `MC2_WINDOW_RESIZABLE=0` — kill the resizable window. Default **ON** with
+  `MC2_WINDOWED`: the SDL window is user-resizable; SIZE_CHANGED refreshes
+  `Environment.drawableWidth/Height` + ImGui display size, and every consumer
+  (postprocess FBOs, UI canvas box, mouse normalize, camera aspect) re-derives
+  from drawable per frame — drag to any size and shape, everything adapts.
+- `MC2_CAMERA_ASPECT_NATIVE=0` — restore the legacy stretched 4:3 frustum.
+  Default **ON**: the in-mission perspective projection uses the drawable
+  aspect (true proportions at any window shape); panel previews keep their
+  fixed 4:3 FBO ratio via the preview-scope guard.
+
+## Road PBR fail-soft (ROAD-PBR-FAILSOFT-1)
+
+- `MC2_ROAD_PBR=1` — opt IN to the high-res PBR asphalt/gravel road
+  materials (also requires `data/textures/asphalt_albedo.tga` /
+  `gravel_albedo.tga` to be present; the bake checks
+  `gos_TerrainRoadMaterialReady(matId)` per material). Default **OFF**
+  (USER RULING 2026-07-05: PBR asphalt look rejected) — every install
+  renders the original legacy 64Overlays road tiles. History: the PBR
+  slice originally baked the matId unconditionally, so installs without
+  the hand-placed TGAs sampled texture 0 -> black/invisible roads.
+
 ## Terrain fast-path drop log
 
 - `MC2_FASTPATH_DROP_LOG=1` — log terrain fast-path -> legacy setupTextures transitions (transition-only, `[FASTPATH_DROP]`). Default **OFF**.
@@ -211,6 +330,22 @@ call from inside a draw-bind path.
 - `MC2_TERRAIN_HEIGHT_RESAMPLE_FACTOR=N` — CPU bilinear resample (1/2/4). Default 1.
 - `MC2_TERRAIN_LIGHTING_V1=1` — hemisphere ambient fill on terrain. Default **OFF**.
 - `MC2_TERRAIN_LIGHTING_V2=1` — shadow-aware V1 modulation. Default **OFF**.
+- `MC2_TERRAIN_CLIFF_SHADOW_FLOOR=<float>` — CLIFF SHADOW FLOOR: lifts shadow-side steep terrain cliff faces off near-black by applying `shadow = max(shadow, floor * smoothstep(0.85,0.55,|normal.z|))` in `terrain_lod_chunk.frag` (LodChunk path, mc2_01) and `gos_terrain.frag` (legacy). ImGui-tunable 0..0.6 (Graphics Options → "Cliff Shadow Floor"). Default/unset/`0` = **byte-identical** (no-op). Only steep faces affected; flat terrain untouched.
+- `MC2_TERRAIN_DECAL=1` — TERRAIN-DECAL-SLICE-0A: terrain mesh-decal system. When ON, cliff-wall decoration types (currently the `MarbleCliff` appearance) are submitted to the GPU static-prop batcher with an explicit **CLIFF_WALL face-frame** mat4 (up=world vertical, facing=outward cliff normal from `getTerrainNormal` 4-corner avg, tangent=contour) + small outward offset, instead of the yaw-only building recipe (`mclib/bdactor.cpp` `BldgAppearance::registerStatic`). Uniform scale only. Default **OFF** = byte-identical. `MC2_TERRAIN_DECAL_TRACE=1` prints a one-line `[TERRAIN_DECAL v1] CLIFF_WALL …` frame trace. Mesh generated by `tools/gen_cliff_wall_glb.py`; placed on mc2_01 via `tools/place_cliffwall_mc2_01.py` (deploy-side).
+- `MC2_TERRAIN_MATERIAL_TEXTURES=1` — TERRAIN-MATERIAL-TEXTURES-1: per-layer PBR albedo on the LOD-chunk terrain. Loads `data/terrain_layers/<channel>_albedo.ktx2` (rock/grass/dirt/concrete/snow/cliff, BC7 **sRGB**, mip-complete) into a 6-layer `GL_TEXTURE_2D_ARRAY` (`GL_COMPRESSED_SRGB_ALPHA_BPTC_UNORM` — the sampler does the sRGB decode) and composes it world-space by matWeights/snow with the material-lib per-layer tiling; the colormap stays the MACRO tint (2× multiply). Steep slopes take the CLIFF layer triplanar (cliffs read as real rock). Default **OFF** = byte-identical (`u_useMatAlbedo=0`, tint path verbatim). Fail-soft: bad/missing layer files log `[TERRAIN_MAT_TEX]` and keep the legacy look. JSON (`terrain_materials.json`): `matAlbedoStrength`, `textureRoot`, `layers.<channel>.albedo` path overrides (TinyJson nested-layers extension). VRAM ≈ 32 MiB.
+- `MC2_TERRAIN_MATERIAL_TEXTURES_STRENGTH=F` — albedo mix strength override, clamped [0,1] (0 = legacy tinted colormap, 1 = full textured composite). Wins over JSON `matAlbedoStrength`; default chain env > JSON > **0.7**. Only consumed when the gate is on.
+- `MC2_TERRAIN_SHORELINE=1` — land-side wet/foam shoreline band (TERRAIN-SHORELINE-V3), placed by **elevation** in the frag (`v_worldPos.z` vs `u_waterElevation` — the same source the water fast path uses) so the band hugs the RENDERED waterline by construction, at any LOD/slope. No sidecar is required. Default **OFF**. Suppresses the legacy screen-space `runShoreline()` post pass whenever this gate is on.
+- `MC2_TERRAIN_SHORELINE_FILE=<path>` — override the OPTIONAL mask sidecar path (default `data/missions/<stem>.beauty/shoreline_mask.png`), offline-cooked by `tools/terrain_beautify/cook_shoreline.py`. When present, its G/B channels MODULATE the elevation bands (wide-beach falloff / basin exclusion); when absent, the gate alone still produces full elevation bands.
+- `MC2_TERRAIN_SHORELINE_STRENGTH=F` — wet/damp darken intensity multiplier, clamped [0,2]. Default 1.0.
+- `MC2_TERRAIN_SHORELINE_FOAM=F` — foam rim intensity multiplier, clamped [0,2]. Default 1.0.
+- `MC2_TERRAIN_SHORELINE_WET_RUN=F` — V3 wet-lobe width as a **horizontal** world-unit run inland from the drawn waterline (the frag converts vertical rise → horizontal run via the macro slope). Default 16.0 (~4.8 m). **UNIT CHANGE** vs the pre-horizontal-fix knob: values are horizontal runs, not vertical heights.
+- `MC2_TERRAIN_SHORELINE_FOAM_RUN=F` — V3 foam-rim width, horizontal world-unit run from the waterline. Default 5.0 (~1.5 m). Same unit change as `_WET_RUN`.
+- `MC2_TERRAIN_SHORELINE_WET_HEIGHT=F` / `MC2_TERRAIN_SHORELINE_FOAM_HEIGHT=F` — **legacy aliases** for `_WET_RUN` / `_FOAM_RUN` (consulted only when the `_RUN` name is unset). NOTE: since the horizontal-distance fix these values are interpreted as horizontal runs, not vertical heights — an old `_WET_HEIGHT=3.0` now means a 3 wu (~0.9 m) run, far narrower than the 16 wu default.
+- `MC2_TERRAIN_SHORELINE_EDGE_JITTER=F` — V4-STYLE static world-XY fbm jitter amplitude (horizontal wu) added to the band's distance-from-waterline, so the wet/foam lobes stop tracing the mesh waterline's straight diamond segments (the "zigzag" read). Placement-stable (no time term, camera-independent) and leak-proof (the strictly-above-water clamp uses the un-jittered distance — bands are ALWAYS zero at/below the drawn water plane as of V4). Clamped [0,32]; `0` = exact V3 contour. Default 4.0 (~±3 wu wander).
+- `MC2_TERRAIN_VISUAL_HEIGHT=1` — loads the 4x-res VISUAL heightfield bake into an SSBO (binding 26) for corner-pinned interior displacement (`mclib/terrain.cpp`). Default **OFF** = no load, no SSBO, byte-identical; also enabled implicitly by `MC2_TERRAIN_VISUAL_DISPLACE=1`. `MC2_TERRAIN_VISUAL_HEIGHT_FILE=<path>` overrides the bake file path.
+- `MC2_TERRAIN_LOD_GEOMORPH=0` — TERRAIN-LOD-GEOMORPH-1 killswitch. When the bake shipped `visual_height_mips.r32` (max-preserving per-stride mips appended to binding 26), coarse-band interior verts sample their OWN stride's max mip (silhouette keeps peaks) and geomorph-lerp toward the parent band near the demotion threshold. Rides `MC2_TERRAIN_VISUAL_DISPLACE` (displace OFF or mips absent = inactive, byte-identical); `=0` disables the mips+morph even when the sidecar is present.
+- `MC2_TERRAIN_LOD_MORPH_START=F` — geomorph ramp start as a fraction of the LOD band (default 0.6; morph runs over the outer 40% of the band). Clamped [0, 0.95].
+- `MC2_TERRAIN_LOD_CHUNK_DIAG=41` — LOD-band tint debug view (LOD0..5 = green/cyan/blue/yellow/orange/red). `=42` — geomorph morph-factor heat (black=own band -> white=parent surface). Exact-value escapes like `=40` (shadow tier).
 
 ## Water gates
 
