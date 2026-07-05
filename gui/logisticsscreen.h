@@ -90,6 +90,15 @@ class LogisticsScreen : public aObject
 	// (fail-soft: degraded but visible, never a black quad over nothing).
 	bool defsUiPageUsable() const;
 
+	// LEGACY-FRONTEND-COMPOSITE-1: true only when this screen's visible
+	// content is drawn in the ImGui layer (usable defs page, NOT legacy
+	// passthrough). Callers that submit ImGui-layer backdrops/dims beneath
+	// this screen's page (MissionBegin MENU-STALE-CLEAR-2) must gate on
+	// this: when false the screen renders through the legacy GameOS HUD
+	// layer, which composites UNDER ImGui, so an ImGui-layer backdrop
+	// would black out the whole screen.
+	bool rendersDefsPageOverlay() const;
+
 	// True when every legacy animObject's animation has finished (or the
 	// screen has none).  Sequenced intros gate on this rather than
 	// animObjects[0] alone, so closing fades that outlast the first

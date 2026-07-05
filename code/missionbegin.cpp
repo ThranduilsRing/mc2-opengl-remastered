@@ -1724,6 +1724,13 @@ void MissionBegin::render()
 				// wherever the menu art didn't cover (bottom third — any panel).
 				// Submit the dim IN THE IMGUI LAYER between the screen page
 				// (submitted above) and the menu page (submitted below).
+				// LEGACY-FRONTEND-COMPOSITE-1: only when the menu actually
+				// renders in the ImGui layer. A legacy-path menu (defs off /
+				// page fail-soft) composites in the GameOS HUD layer BELOW
+				// ImGui; this dim would sit on top of it and hide it. The
+				// legacy menu carries its own GameOS-layer dim (MainMenu::
+				// render's fullscreen color quad), matching the OG look.
+				if ( mainMenu->rendersDefsPageOverlay() )
 				{
 					float dw = 0.f, dh = 0.f;
 					if ( GuiRuntime::GetDisplaySize( dw, dh ) && dw > 0.f )
@@ -1744,6 +1751,15 @@ void MissionBegin::render()
 				// earlier this frame) survived in the bottom third. Submit an
 				// opaque ImGui-layer backdrop BEFORE the menu page so the menu
 				// composites over black, not over the previous screen.
+				// LEGACY-FRONTEND-COMPOSITE-1: ONLY when the menu renders as
+				// an ImGui defs page. When the menu is on the legacy GameOS
+				// path (MC2_GAMEOS_UI_DEFS=0, or the lockstep-harden zero-draw
+				// fail-soft), ALL its draws composite in the GameOS HUD layer,
+				// which flushes BEFORE ImGui — this opaque ImGui-layer quad
+				// then covers the entire legacy front-end (root cause of the
+				// "legacy menu renders black" regression: HUD replay put real
+				// menu pixels on FB0, GuiRuntime::Render painted them over).
+				if ( mainMenu->rendersDefsPageOverlay() )
 				{
 					float dw = 0.f, dh = 0.f;
 					if ( GuiRuntime::GetDisplaySize( dw, dh ) && dw > 0.f )

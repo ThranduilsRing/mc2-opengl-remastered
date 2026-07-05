@@ -441,6 +441,14 @@ bool LogisticsScreen::defsUiPageUsable() const
 		&& (defsUiPage->isLegacyPassthrough() || defsUiPage->lastRenderProducedOutput());
 }
 
+bool LogisticsScreen::rendersDefsPageOverlay() const
+{
+	// LEGACY-FRONTEND-COMPOSITE-1: see header. ImGui-layer content only when
+	// the page is usable AND not a passthrough (passthrough renders the
+	// legacy widget set in the GameOS layer beneath ImGui).
+	return defsUiPageUsable() && defsUiPage && !defsUiPage->isLegacyPassthrough();
+}
+
 bool LogisticsScreen::allAnimObjectsDone() const
 {
 	for ( int i = 0; i < animObjectsCount; i++ )
