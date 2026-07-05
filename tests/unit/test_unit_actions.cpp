@@ -356,9 +356,8 @@ TEST_CASE("locomotion facet: data-resolved model drives jump executor compatibil
 // only thing that decides can-jump is DATA: the CAP_JUMP capability + the
 // locomotion facet the executor registry checks. Prove it purely: hold the class
 // constant and flip ONLY the two data facets, showing the verdict tracks the data
-// and nothing else. (The engine glue drives the same two profile fields on a real
-// GroundVehicleType behind MC2_UNIT_PROFILE_VEHICLE_JUMP_PROOF; this is the logic
-// it exercises.)
+// and nothing else. (A `.fit [UnitProfile]` block drives the same two profile
+// fields on a real GroundVehicleType; this is the logic it exercises.)
 // ---------------------------------------------------------------------------
 
 TEST_CASE("vehicle-jump-proof: verdict follows data facets, not the C++ class") {

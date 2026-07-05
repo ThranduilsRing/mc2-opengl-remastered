@@ -1,12 +1,10 @@
 // tests/unit/test_nonmech_data_unit_proof.cpp
 // NON-MECH-DATA-UNIT-PROOF-1 (Phase 2, slice 9 — the Phase-2 CLOSER).
 //
-// Offline pure-logic coverage for the DATA-DRIVEN presentation/loadout stack the
-// slice-9 engine proof hook exercises end-to-end behind
-// MC2_UNIT_PROFILE_NONMECH_PROOF. The engine hook (BattleMech::
-// nonmechDataUnitMountProof) synthesizes exactly the DATA a hardpoint/UI source
-// would declare and drives the AUTHORITATIVE branches; here we prove those
-// branches' pure verdicts in isolation, GL/IO-free:
+// Offline pure-logic coverage for the DATA-DRIVEN presentation/loadout stack.
+// (The throwaway slice-9 engine proof hook that once exercised this end-to-end
+// was removed; the pure verdicts below are the real shipped branches.) Here we
+// prove those branches' pure verdicts in isolation, GL/IO-free:
 //
 //   1. Mount route (slices 2+4): a declared HardpointProfile whose socket names a
 //      REAL model node resolves to that node's INDEX, and chooseWeaponNode() picks

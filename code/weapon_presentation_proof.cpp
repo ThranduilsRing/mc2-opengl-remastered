@@ -18,36 +18,16 @@
 //     legacy effect id unchanged (no data path taken).
 //   * gate ON but the target def carries NO presentation asset (stock: none) ->
 //     resolver falls back to the legacy effect id (source=LEGACY-FALLBACK).
-//   * proof gate MC2_EQUIP_PRESENTATION_PROOF ON populates the target def's
-//     OnMuzzleFlash/Vfx with the SAME id the legacy path uses -> the data path
-//     resolves the (legacy-equal) asset (source=DATA) with NOTHING seen/heard
-//     changing. This proves data DRIVES it when present, legacy when absent.
 //
 // The pure resolution rule lives in weapon_presentation_resolve.h (offline
 // doctest-tested); this TU is the thin engine binding that knows the ONE target
-// weapon and does the one-shot proof logging.
+// weapon. (The throwaway MC2_EQUIP_PRESENTATION_PROOF parity-proof gate was
+// removed post-E8; a real content asset is the future data source here.)
 
 #include "weapon_presentation_resolve.h"   // resolveWeaponFireEffectType (pure)
 #include "equipment_definition.h"          // EquipmentDefinition + WeaponPresentationProfile
 #include "unitprofile.h"                   // mc2UnitProfileDataEnabled()
 #include "cmponent.h"                      // MasterComponent + masterList + getName
-
-#include <cstdlib>                         // getenv
-#include <cstdio>                          // printf
-
-// The ONE target weapon's canonical qualified id. Its legacy alias (compbas row
-// ordinal) is resolved at runtime by NAME so a row shift never mis-targets.
-static const char* kTargetWeaponQualifiedId = "core:ppc";
-
-// Throwaway proof gate: SEPARATE env from MC2_UNIT_PROFILE_DATA, default OFF.
-// When ON, the target weapon's EquipmentDefinition presentation is populated with
-// the SAME id the legacy path uses (parity-safe), so the data path can be proven
-// to drive the (identical) asset. Remove once the arc has a real content asset.
-static bool mc2EquipPresentationProofEnabled() {
-    static const bool on = mc2_unitprofile_parse_enabled(
-        getenv("MC2_EQUIP_PRESENTATION_PROOF"));
-    return on;
-}
 
 // Is `masterID` the ONE target weapon? Match by NAME (the identity), not ordinal:
 // slugify the loaded component's name and compare to core:ppc. Cheap + row-shift
@@ -76,19 +56,11 @@ static bool isTargetWeaponMasterId(long masterID) {
 }
 
 // Build the ONE target weapon's EquipmentDefinition presentation profile. Stock
-// carries NO populated presentation assets, so by default this is EMPTY (every
-// event unmapped) -> the resolver falls back to legacy. Under the proof gate the
-// OnMuzzleFlash/Vfx is populated with the caller's legacy id (parity-safe).
-static WeaponPresentationProfile targetWeaponPresentation(int legacyEffectType) {
-    WeaponPresentationProfile p;   // stock: nothing mapped -> legacy fallback
-    if (mc2EquipPresentationProofEnabled()) {
-        char idBuf[16];
-        std::snprintf(idBuf, sizeof(idBuf), "%d", legacyEffectType);
-        // Parity-safe: populate with the SAME id the legacy path uses, so the
-        // resolved asset is IDENTICAL -- data drives it, nothing changes visually.
-        p.setEventAsset(WeaponEvent::OnMuzzleFlash, WeaponAssetKind::Vfx, idBuf);
-    }
-    return p;
+// carries NO populated presentation assets, so this is EMPTY (every event
+// unmapped) -> the resolver falls back to legacy. A future content slice
+// populates it from real EquipmentDefinition data.
+static WeaponPresentationProfile targetWeaponPresentation() {
+    return WeaponPresentationProfile();   // stock: nothing mapped -> legacy fallback
 }
 
 // -------------------------------------------------------------------------
@@ -107,59 +79,7 @@ int resolveTargetWeaponFireEffectType(long masterID, int legacyEffectType) {
     if (!isTargetWeaponMasterId(masterID))
         return legacyEffectType;
 
-    WeaponPresentationProfile p = targetWeaponPresentation(legacyEffectType);
+    WeaponPresentationProfile p = targetWeaponPresentation();
     bool fromData = false;
-    int resolved = resolveWeaponFireEffectType(p, legacyEffectType, fromData);
-
-    // One-shot proof line (throttled to first fire) so a soak run isn't spammed.
-    static bool s_logged = false;
-    if (!s_logged) {
-        s_logged = true;
-        printf("[EQUIP-PRESENTATION-PROOF] %s OnMuzzleFlash vfx resolved from data = %d (source=%s)\n",
-               kTargetWeaponQualifiedId, resolved,
-               fromData ? "DATA" : "LEGACY-FALLBACK");
-    }
-
-    return resolved;
-}
-
-// -------------------------------------------------------------------------
-// Load-time proof dump (gated MC2_UNIT_PROFILE_DATA). Mirrors the E2/E7 proof
-// dumps: it exercises the SAME pure resolver on the SAME target weapon's data at
-// load, so the proof is deterministically observable without waiting for a live
-// PPC to fire in-mission. It resolves the target weapon's OnMuzzleFlash asset:
-//   * proof gate OFF (stock, no data asset) -> source=LEGACY-FALLBACK
-//   * proof gate ON  (parity-safe id populated) -> source=DATA (value identical)
-// This proves the data path DRIVES the asset when present and legacy when absent,
-// with NOTHING seen/heard changing (parity-safe id == legacy id). ★ Resolves an
-// ASSET id only; fires nothing, changes no firing/damage/heat/ammo/timing.
-// Gate-OFF: no-op -> byte-identical.
-// -------------------------------------------------------------------------
-void dumpPresentationProofIfEnabled() {
-    if (!mc2UnitProfileDataEnabled())
-        return;
-    if (!MasterComponent::masterList)
-        return;
-
-    // Find the ONE target weapon (core:ppc) by NAME among loaded components.
-    long targetOrd = -1;
-    for (long i = 0; i < MasterComponent::numComponents; ++i) {
-        if (isTargetWeaponMasterId(i)) { targetOrd = i; break; }
-    }
-    if (targetOrd < 0) {
-        printf("[EQUIP-PRESENTATION-PROOF] %s not found in loaded masterList (no proof)\n",
-               kTargetWeaponQualifiedId);
-        return;
-    }
-
-    // The legacy asset id the fire path would use for this weapon.
-    int legacyEffectType = (int)MasterComponent::masterList[targetOrd].getWeaponSpecialEffect();
-
-    WeaponPresentationProfile p = targetWeaponPresentation(legacyEffectType);
-    bool fromData = false;
-    int resolved = resolveWeaponFireEffectType(p, legacyEffectType, fromData);
-
-    printf("[EQUIP-PRESENTATION-PROOF] %s OnMuzzleFlash vfx resolved from data = %d (source=%s) [legacy=%d]\n",
-           kTargetWeaponQualifiedId, resolved,
-           fromData ? "DATA" : "LEGACY-FALLBACK", legacyEffectType);
+    return resolveWeaponFireEffectType(p, legacyEffectType, fromData);
 }

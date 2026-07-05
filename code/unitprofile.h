@@ -80,15 +80,6 @@ void dumpFireExecutorProofIfEnabled();
 // change. legacy firing stays authoritative. (weapon_presentation_proof.cpp)
 int resolveTargetWeaponFireEffectType(long masterID, int legacyEffectType);
 
-// ONE-WEAPON-PRESENTATION-PROOF-1 (E8): gated load-time proof that the target
-// weapon's OnFire/OnMuzzleFlash presentation asset resolves through the data
-// path (source=DATA when the parity-safe proof gate populates it, source=
-// LEGACY-FALLBACK for stock which carries no data asset). Deterministically
-// observable at load (no live fire needed). Called after
-// dumpFireExecutorProofIfEnabled(). Gate-OFF: no-op -> byte-identical. Resolves
-// an ASSET id only; legacy firing stays authoritative. (weapon_presentation_proof.cpp)
-void dumpPresentationProofIfEnabled();
-
 // LOADOUT-EQUIPMENT-ID-ALIAS-1 (equipment arc, engine slice E5). Accessor for
 // the process-global equipment registry populated by the E2 facade above. The
 // loadout parser queries it (gate-ON) to resolve an optional `core:<slug>`
@@ -154,17 +145,6 @@ bool sourceGeneratedChassisFacets(const char* chassisStem, UnitProfile& profile,
 // caller keeps the legacy numJumpJets derivation. No-op when the gate is legacy.
 bool sourceGeneratedVariantJump(const char* chassisStem, const char* variantName,
                                 bool* jumpOut);
-
-// VEHICLE-JUMP-PROOF-1 (slice 7, Phase-1 closer) — THROWAWAY/proof-only hook.
-// Gated behind MC2_UNIT_PROFILE_VEHICLE_JUMP_PROOF (default OFF, SEPARATE from
-// MC2_UNIT_PROFILE_DATA). When ON, a GroundVehicleType's profile is given
-// locomotion=LOCO_MECH_WALKER + CAP_JUMP via the SAME facet fields the .fit path
-// writes, so a non-BattleMech reports canPerform(Jump)=Available through the full
-// data->facet->registry->queryAction stack. This proves the jump DECISION is
-// data-driven and class-independent. It does NOT make the vehicle functionally
-// jump (no jump-movement executor runs for vehicles — that is the deferred
-// LOCOMOTION-DATA-1 work). Remove once the arc has a real data-unit proof.
-void mc2_unitprofile_vehicle_jump_proof(UnitProfile& profile);
 
 // UNITPROFILE-VALIDATOR-1 (slice 6): run the pure construction-rules validator
 // (unit_profile_validator.h) over a type's now-populated facets and REPORT each
