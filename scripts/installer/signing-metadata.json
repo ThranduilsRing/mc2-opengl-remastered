@@ -1,0 +1,5 @@
+{
+  "Endpoint": "https://eus.codesigning.azure.net",
+  "CodeSigningAccountName": "ThranduilsRing",
+  "CertificateProfileName": "FILL_ME_AFTER_IDENTITY_VALIDATION"
+}
