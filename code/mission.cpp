@@ -3304,6 +3304,13 @@ void Mission::init (const char *missionName, long loadType, long dropZoneID, Stu
 			char warriorFile[100];
 			result = missionFile->readIdString("Profile", warriorFile, 99);
 			Assert(result == NO_ERR, 0, " Could not find Warrior Profile in Warrior Number Block ");
+			// QUICKSTART-PILOT-DROP-RECON-1: an empty Profile means the warrior
+			// fit never loads and the pilot degrades to the silent "Bubba"
+			// default (portrait 0, no radio). Editor re-saves have shipped
+			// blanked profiles before — fail LOUD, not silent.
+			MC2_VERIFY(warriorFile[0] != '\0',
+				"Mission::init: %s has EMPTY Profile in %s — pilot will default to Bubba (blanked by an editor re-save?)",
+				warriorName, missionName);
 
 			MechWarriorPtr pilot = MechWarrior::newWarrior();
 			if (!pilot)
