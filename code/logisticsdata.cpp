@@ -22,6 +22,7 @@ LogisticsData.cpp			: Implementation of the LogisticsData component.
 #include"prefs.h"
 #include"comndr.h"
 #include"missionresults.h"
+#include"unitprofile.h"   // EQUIP-ENABLE-WIRE-1: applyEquipmentEnableWireIfEnabled
 #include<zlib.h>
 #include<vector>
 #include<string>
@@ -1983,6 +1984,29 @@ long LogisticsData::updateAvailability()
 		for ( long i = 0; i < pfCount && i < 1024; i++ )
 			appendAvailability( allPF[i], available );
 		LOG_LOGISTICS_UA( "updateAvailability: MC2_PURCHASE_ALL campaign-wide (%ld purchase files)", pfCount );
+	}
+
+	// EQUIP-ENABLE-WIRE-1 (equipment arc, ADD-ladder S1): first consumer of the
+	// E2 equipment registry `enabled` flag. ENABLE-ONLY union on top of the
+	// purchase.fit verdicts: a populated masterList row whose def sidecar declares
+	// `[Equipment] b Enabled=TRUE` is forced into available[] here, BEFORE the
+	// disable sweep and the [Mechs] variant loop below (so its components and any
+	// variants using them resolve normally). Gate MC2_UNIT_PROFILE_DATA; gate-OFF
+	// or zero mods -> returns 0 and this block is byte-identical no-op.
+	{
+		size_t enableWireForced = applyEquipmentEnableWireIfEnabled( available, 255 );
+		if ( enableWireForced > 0 )
+		{
+			LOG_LOGISTICS_UA( "updateAvailability: enable-wire forced %zu component(s)", enableWireForced );
+			for ( COMPONENT_LIST::EIterator cIter = components.Begin(); !cIter.IsDone(); cIter++ )
+			{
+				if ( available[(*cIter).getID()] && !(*cIter).isAvailable() )
+				{
+					bNewWeapons = true;
+					(*cIter).setAvailable( 1 );
+				}
+			}
+		}
 	}
 
 	// go through comonent list, and set 'em

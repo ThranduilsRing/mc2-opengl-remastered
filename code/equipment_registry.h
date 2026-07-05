@@ -373,4 +373,28 @@ inline int resolveLoadoutEquipmentRef(const EquipmentRegistry& reg,
     return (int)ord;
 }
 
+// -------------------------------------------------------------------------
+// EQUIP-ENABLE-WIRE-1 (equipment arc, ADD-ladder S1) -- the pure decision rule
+// for the enabled->purchase wire: should a def-declared enable FORCE a purchase
+// ordinal into the availability set?
+//
+// ENABLE-ONLY by design: the hook may only ADD availability (union with the
+// mission purchase.fit), never remove it -- purchase.fit stays the authoritative
+// gate and stock defs (which carry no Enabled key -> defEnabled=false) reproduce
+// stock availability EXACTLY. Rules:
+//   * defEnabled false              -> never force (stock / absent Enabled key)
+//   * legacyMasterId outside 0..254 -> never force (available[255] bound;
+//                                      255 = 0xff empty sentinel, E4-widen land)
+//   * row not populated             -> never force (an "undefined" compbas row
+//                                      has no stats/name; surfacing it is S2
+//                                      EQUIP-ADD-FILL-1's job, not S1's)
+// Pure + engine-free -> doctest target.
+// -------------------------------------------------------------------------
+inline bool equipmentEnableWireShouldForce(bool defEnabled, long legacyMasterId,
+                                           bool rowPopulated) {
+    if (!defEnabled) return false;
+    if (legacyMasterId < 0 || legacyMasterId >= 255) return false;
+    return rowPopulated;
+}
+
 #endif // EQUIPMENT_REGISTRY_H

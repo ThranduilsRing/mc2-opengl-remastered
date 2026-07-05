@@ -96,3 +96,33 @@ TEST_CASE("registry query API: byId / byOrdinal / round-trip") {
     reg.clear();
     CHECK(reg.count() == 0);
 }
+
+// ---------------------------------------------------------------------------
+// EQUIP-ENABLE-WIRE-1 (ADD-ladder S1): the pure enabled->purchase force rule.
+// Full (defEnabled, legacyMasterId, rowPopulated) combo grid: the ONLY combo
+// that flips available[] is enabled + in-range ordinal + populated row.
+// ---------------------------------------------------------------------------
+TEST_CASE("EQUIP-ENABLE-WIRE-1: equipmentEnableWireShouldForce combo grid") {
+    // The one forcing combo.
+    CHECK(equipmentEnableWireShouldForce(true, 113, true));
+    CHECK(equipmentEnableWireShouldForce(true, 0, true));      // low bound ok
+    CHECK(equipmentEnableWireShouldForce(true, 254, true));    // high bound ok
+
+    // Not def-enabled (stock defs: Enabled key absent -> false) -> never force,
+    // regardless of ordinal/population. Stock availability reproduced exactly.
+    CHECK_FALSE(equipmentEnableWireShouldForce(false, 113, true));
+    CHECK_FALSE(equipmentEnableWireShouldForce(false, 113, false));
+    CHECK_FALSE(equipmentEnableWireShouldForce(false, -1, true));
+
+    // Ordinal outside the 8-bit purchase array (available[255]) -> never force.
+    CHECK_FALSE(equipmentEnableWireShouldForce(true, -1, true));   // no alias
+    CHECK_FALSE(equipmentEnableWireShouldForce(true, 255, true));  // 0xff sentinel
+    CHECK_FALSE(equipmentEnableWireShouldForce(true, 300, true));  // E4-widen land
+
+    // Unpopulated ("undefined" compbas row): enabling it is S2's job, not S1's.
+    CHECK_FALSE(equipmentEnableWireShouldForce(true, 39, false));
+    CHECK_FALSE(equipmentEnableWireShouldForce(true, 254, false));
+
+    // ENABLE-ONLY contract: false result means "leave available[] alone", never
+    // "clear it" -- there is no disabling combo by construction (pure predicate).
+}

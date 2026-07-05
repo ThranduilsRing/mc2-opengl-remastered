@@ -275,3 +275,101 @@ size_t overlayGeneratedEquipmentStatsIfEnabled() {
            "(rows with no generated def kept legacy)\n", overlaid);
     return overlaid;
 }
+
+// ---------------------------------------------------------------------------
+// EQUIP-ENABLE-WIRE-1 (equipment arc, ADD-ladder S1) -- FIRST consumer of the
+// registry `enabled` flag: the enabled->purchase wire.
+//
+// Called at the availability seam in LogisticsData::updateAvailability, AFTER
+// the mission purchase.fit populated available[]. For each POPULATED masterList
+// row (registry entry with enabled=true, i.e. the load loop filled it) whose
+// generated/mod def sidecar (data/defs/equipment/core/<slug>/equipmentdef.fit,
+// served at mod precedence by the g_modIndex file-shadow) declares
+// `[Equipment] b Enabled=TRUE` with a matching LegacyMasterId, FORCE
+// available[ordinal]=true.
+//
+// ENABLE-ONLY (never disables): purchase.fit stays the authoritative gate; this
+// is a strict union on top. Stock generated defs carry NO Enabled key (the
+// converter emits it only when explicitly true), so zero mods = zero forces =
+// stock availability reproduced exactly. Gate: MC2_UNIT_PROFILE_DATA=1
+// (mc2UnitProfileDataEnabled); gate-OFF returns 0 with zero file I/O ->
+// byte-identical. The registry is lazily (re)built here if empty (logistics can
+// run before the first mission load builds it at the mission.cpp seam).
+//
+// The pure force decision (enabled x legacyMasterId-range x row-populated) is
+// equipmentEnableWireShouldForce() in equipment_registry.h (doctest-covered).
+// Returns the number of ordinals newly forced available.
+size_t applyEquipmentEnableWireIfEnabled(bool* available, long availableCount) {
+    if (!mc2UnitProfileDataEnabled())     // gate OFF (default) -> no-op
+        return 0;
+    if (!available || availableCount <= 0)
+        return 0;
+    if (!MasterComponent::masterList)     // no component table yet
+        return 0;
+
+    if (g_equipmentRegistry.count() == 0)
+        buildEquipmentRegistryFromMasterList();
+
+    size_t forced = 0;
+    for (const EquipmentRegistryEntry& e : g_equipmentRegistry.entries()) {
+        // e.enabled == "this masterList row is POPULATED" (the registry's
+        // enabled flag). Unpopulated rows are S2 EQUIP-ADD-FILL-1 territory.
+        if (!e.enabled)
+            continue;
+        if (e.legacyMasterId < 0 || e.legacyMasterId >= availableCount)
+            continue;
+
+        // Derive the def sidecar path exactly as the overlay pass does.
+        std::string slug = e.qualifiedId.substr(e.qualifiedId.find(':') + 1);
+        char path[256];
+        std::snprintf(path, sizeof(path), "%s%s/equipmentdef.fit",
+                      kGeneratedEquipmentRoot, slug.c_str());
+        if (!fileExists(path))            // no def -> purchase.fit verdict stands
+            continue;
+
+        FitIniFile gen;
+        if (gen.open(path) != NO_ERR)
+            continue;                     // unreadable def: overlay pass reports it
+        if (gen.seekBlock("Equipment") != NO_ERR)
+            continue;
+
+        bool defEnabled = false;
+        if (gen.readIdBoolean("Enabled", defEnabled) != NO_ERR)
+            continue;                     // absent Enabled key (all stock defs) -> no-op
+
+        // Key check: the def must claim THIS row's ordinal (same rule as the
+        // stat overlay) -- a mismatch is a modder error, surfaced not silent.
+        long genLegacyId = -1;
+        if (gen.readIdLong("LegacyMasterId", genLegacyId) != NO_ERR ||
+            genLegacyId != e.legacyMasterId) {
+            char expectedBuf[16], actualBuf[16];
+            std::snprintf(expectedBuf, sizeof(expectedBuf), "%ld", e.legacyMasterId);
+            std::snprintf(actualBuf, sizeof(actualBuf), "%ld", genLegacyId);
+            ModderFinding f;
+            f.message  = "equipment def declares Enabled but its LegacyMasterId does not match this compbas row";
+            f.source   = "enable-wire"; f.file = path; f.id = e.qualifiedId;
+            f.field    = "LegacyMasterId";
+            f.expected = expectedBuf;
+            f.actual   = actualBuf;
+            f.fallback = "purchase availability unchanged for this row";
+            printf("[EQUIP-ENABLE-WIRE-1] %s\n", formatModderFinding(f).c_str());
+            continue;
+        }
+
+        if (!equipmentEnableWireShouldForce(defEnabled, e.legacyMasterId,
+                                            /*rowPopulated=*/e.enabled))
+            continue;
+
+        if (!available[e.legacyMasterId]) {
+            available[e.legacyMasterId] = true;
+            ++forced;
+            printf("[EQUIP-ENABLE-WIRE-1] enabled %s (masterID=%ld) for purchase (def %s)\n",
+                   e.qualifiedId.c_str(), e.legacyMasterId, path);
+        }
+    }
+
+    if (forced > 0)
+        printf("[EQUIP-ENABLE-WIRE-1] enable wire forced %zu component(s) available\n",
+               forced);
+    return forced;
+}

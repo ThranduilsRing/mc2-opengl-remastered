@@ -60,6 +60,17 @@ void buildAndDumpEquipmentRegistryIfEnabled();
 // zero file I/O -> byte-identical. Returns the number of rows overlaid.
 size_t overlayGeneratedEquipmentStatsIfEnabled();
 
+// EQUIP-ENABLE-WIRE-1 (equipment arc, ADD-ladder S1). FIRST consumer of the E2
+// registry `enabled` flag: at the LogisticsData::updateAvailability seam, force
+// available[ordinal]=true for every POPULATED masterList row whose equipment def
+// sidecar (data/defs/equipment/core/<slug>/equipmentdef.fit, mod-shadowable)
+// declares `[Equipment] b Enabled=TRUE` (LegacyMasterId key-checked). ENABLE-ONLY:
+// never disables; the mission purchase.fit stays the authoritative gate. Gate
+// MC2_UNIT_PROFILE_DATA; gate-OFF -> returns 0, zero file I/O, byte-identical.
+// Stock defs carry no Enabled key -> zero mods = zero forces. Returns the number
+// of ordinals newly forced available.
+size_t applyEquipmentEnableWireIfEnabled(bool* available, long availableCount);
+
 // FIRE-EXECUTOR-REGISTRY-1 (equipment arc, engine slice E7). Gated proof that
 // the weapon fireExecutor lookup resolves end-to-end: for each weapon-form
 // MasterComponent it derives the converter's default fireExecutor id and
