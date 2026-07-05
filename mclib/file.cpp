@@ -58,6 +58,8 @@
 
 #include "platform_str.h"
 #include "fst_hash.h"   // fst_normalize_loose_key (mod-index key canonicalizer)
+#include "mod_conflict.h"  // MOD-LOAD-ORDER-CONFLICT-REPORT-1: pure conflict classifier
+#include <algorithm>
 
 //---------------------------------------------------------------------------
 // Mod overlay — session-scoped, single active mod.
@@ -797,6 +799,38 @@ void InitModSearchPaths(const char* modsRoot) {
             else { ++it; }
         }
         printf("[mod] stock-AI guard: dropped %zu dep ABL override(s) under data/missions/\n", erased);
+        fflush(stdout);
+    }
+
+    // MOD-LOAD-ORDER-CONFLICT-REPORT-1: never-silent conflict report.
+    // Runs ONLY when mods are indexed (zero mods returned earlier => zero new
+    // output; stock stays byte-identical). Facts gathered here, classification
+    // is the pure shared mclib/mod_conflict.h (mirrored offline by
+    // mc2_modlint --mod). Stock-existence probe is limited to data/defs/ keys
+    // (the def-override visibility contract) to keep init cheap.
+    {
+        std::vector<ModIndexedEntry> entries;
+        entries.reserve(g_modIndex.size());
+        for (const auto& kv : g_modIndex) {
+            ModIndexedEntry e;
+            e.key = kv.first;
+            e.winnerModId = kv.second.modId;
+            auto sit = g_shadowedBy.find(kv.first);
+            if (sit != g_shadowedBy.end()) e.shadowedModIds = sit->second;
+            if (kv.first.rfind("data/defs/", 0) == 0)
+                e.stockExists = (GetFileAttributesA(kv.first.c_str()) != INVALID_FILE_ATTRIBUTES);
+            // Skip clean non-def entries early — only entries that can produce a
+            // finding are classified (keeps the vector small on big mods).
+            if (e.shadowedModIds.empty() && !e.stockExists &&
+                !modKeyUsesReservedCoreNamespace(e.key))
+                continue;
+            entries.push_back(std::move(e));
+        }
+        std::sort(entries.begin(), entries.end(),
+                  [](const ModIndexedEntry& a, const ModIndexedEntry& b) { return a.key < b.key; });
+        std::vector<ModConflictFinding> findings = classifyModConflicts(entries);
+        for (const std::string& line : formatModConflictReport(findings))
+            printf("[mod] conflict: %s\n", line.c_str());
         fflush(stdout);
     }
 

@@ -83,3 +83,31 @@ Missing/malformed fields produce `MODMAN_*` findings (stable grep-able tokens,
 exit 1) so CI and modders catch manifest problems without launching the game.
 The `package.json` inside a packed `.mc2mod` zip is packer-GENERATED
 (`mc2-package/1`, with hashes) — never hand-author that one.
+
+## Load-order conflict report (MOD-LOAD-ORDER-CONFLICT-REPORT-1)
+
+Conflicts are NEVER silently resolved. At game load (only when mods are
+active — zero mods produce zero new output), the engine prints one
+`[mod] conflict: [MODCONFLICT_*] ...` line per finding (capped, plus a summary
+line):
+
+* `MODCONFLICT_DUPLICATE_DEF_ID` — two mods ship the same `data/defs/...` key
+  (same qualified id); the higher-priority mod wins and both are named.
+* `MODCONFLICT_DUPLICATE_FILE` — two mods ship the same non-def data file.
+* `MODCONFLICT_RESERVED_CORE_NAMESPACE` — a mod ships a def under the reserved
+  `core:` namespace (`data/defs/{units,equipment}/core/...`). That replaces
+  STOCK content — legitimate only as a deliberate override.
+* `MODCONFLICT_STOCK_OVERRIDE` — a mod def shadows a stock def (one visibility
+  line per override).
+
+The same checks run offline (same pure classifier, `mclib/mod_conflict.h`):
+
+```
+mc2_modlint --mod mods/<active> --mod mods/<dep0> ... [--stock-root <install>]
+```
+
+Pass mod dirs highest-priority-first (active mod, then deps in `MC2_MOD_DEPS`
+order) — the same precedence the engine loader uses. `--stock-root` (the game
+install root containing the loose `data/` tree) enables the stock-override
+check; without it only duplicate + reserved-namespace checks run. Exit 1 when
+findings are present.
