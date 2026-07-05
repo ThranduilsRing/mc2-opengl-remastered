@@ -42,6 +42,11 @@ def emit_equipment_fit(ed: "EM.EquipmentDefinition") -> str:
     lines.append(f'st Kind="{ed.kind}"')
     lines.append(f'st Tags="{",".join(ed.tags)}"')
     lines.append(f"l LegacyMasterId={ed.legacy_master_id}")
+    # EQUIP-ENABLE-WIRE-1: Enabled emitted ONLY when explicitly True. Absent =
+    # false (the stock converter never sets it), so stock-generated defs stay
+    # byte-identical and the engine enable wire is a no-op with zero mods.
+    if ed.enabled:
+        lines.append("b Enabled=TRUE")
     lines.append(f"f Heat={ed.heat}")
     lines.append(f"f Cost={ed.cost}")
     lines.append("")

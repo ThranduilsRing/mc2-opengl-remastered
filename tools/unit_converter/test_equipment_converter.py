@@ -199,3 +199,24 @@ def test_report_alias_map_matches_defs(converted):
     assert amap["145"] == "core:ppc"
     assert amap["10"] == "core:jump_jets"
     assert len(amap) == len(defs)
+
+
+# ---------------------------------------------------------------------------
+# EQUIP-ENABLE-WIRE-1: `enabled` emission contract.
+# ---------------------------------------------------------------------------
+
+def test_enabled_absent_by_default():
+    """Stock defs must carry NO Enabled key (absent = false -> engine wire no-op)."""
+    ed = EM.EquipmentDefinition(equip_id="core:er_ppc", display_name="ER PPC",
+                                legacy_master_id=146)
+    text = emit.emit_equipment_fit(ed)
+    assert "Enabled" not in text
+    assert "enabled" not in ed.to_report_dict()
+
+
+def test_enabled_true_emits_bool_key():
+    ed = EM.EquipmentDefinition(equip_id="core:er_ppc", display_name="ER PPC",
+                                legacy_master_id=146, enabled=True)
+    text = emit.emit_equipment_fit(ed)
+    assert "b Enabled=TRUE" in text
+    assert ed.to_report_dict()["enabled"] is True

@@ -115,6 +115,11 @@ class EquipmentDefinition:
     presentation: EquipmentPresentation = field(default_factory=EquipmentPresentation)
     heat: float = 0.0                # component metadata (EquipmentMetadata.heat)
     cost: float = 0.0               # RP / value metric (EquipmentMetadata.cost)
+    # EQUIP-ENABLE-WIRE-1: purchase enable-wire flag. Default False; the stock
+    # converter NEVER sets it (compbas has no such column), so stock-generated
+    # defs carry no Enabled key and the engine wire is a no-op on stock. A mod
+    # def sets it True to force its (populated) legacy ordinal purchasable.
+    enabled: bool = False
 
     def to_report_dict(self) -> dict:
         d = {
@@ -124,6 +129,8 @@ class EquipmentDefinition:
             "tags": list(self.tags),
             "legacy_master_id": self.legacy_master_id,
         }
+        if self.enabled:
+            d["enabled"] = True
         if self.weapon is not None:
             w = self.weapon
             d["weapon"] = {
