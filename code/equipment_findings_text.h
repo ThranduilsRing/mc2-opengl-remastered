@@ -43,6 +43,8 @@ inline const char* equipmentReasonToken(EquipmentReasonCode code) {
             return "EQV_WEAPON_HARDPOINT_REJECTED";
         case EQV_FIRE_EXECUTOR_UNBOUND:
             return "EQV_FIRE_EXECUTOR_UNBOUND";
+        case EQV_ENABLE_UNRESOLVED:
+            return "EQV_ENABLE_UNRESOLVED";
         case EQV__COUNT:
             break;   // not a real code; fall through to the unknown guard
     }
@@ -69,6 +71,8 @@ inline const char* equipmentReasonMessage(EquipmentReasonCode code) {
             return "Weapon requires a hardpoint that accepts its mount-class";
         case EQV_FIRE_EXECUTOR_UNBOUND:
             return "Weapon names a fire executor that is not registered (cannot fire)";
+        case EQV_ENABLE_UNRESOLVED:
+            return "Enabled=TRUE names no populated masterList row (purchase enable is a no-op)";
         case EQV__COUNT:
             break;
     }

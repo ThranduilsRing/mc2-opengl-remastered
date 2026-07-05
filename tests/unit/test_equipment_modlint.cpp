@@ -193,3 +193,38 @@ TEST_CASE("equipment modlint: converter roster surfaces a broken component (no e
     REQUIRE(bad.size() == 1);
     CHECK(bad[0].code == EQV_WEAPON_NO_FIRE_EXECUTOR);
 }
+
+// ---------------------------------------------------------------------------
+// EQUIP-ENABLE-WIRE-1 (ADD-ladder S1): facts-JSON drives EQV_ENABLE_UNRESOLVED.
+// ---------------------------------------------------------------------------
+
+TEST_CASE("equipment modlint: enabled=true with no legacy_master_id -> EQV_ENABLE_UNRESOLVED") {
+    auto f = lint(R"({
+        "equip_id":"core:er_ppc","kind":"Weapon","fire_executor":"beam_direct",
+        "category":"Energy","range_short":30,"range_med":120,"range_long":250,
+        "enabled":true
+    })");
+    REQUIRE(f.size() == 1);
+    CHECK(f[0].code == EQV_ENABLE_UNRESOLVED);
+}
+
+TEST_CASE("equipment modlint: enabled=true unpopulated ordinal (context) -> EQV_ENABLE_UNRESOLVED") {
+    auto f = lint(R"({
+        "equip_id":"core:er_ppc","kind":"Weapon","fire_executor":"beam_direct",
+        "category":"Energy","range_short":30,"range_med":120,"range_long":250,
+        "enabled":true,"legacy_master_id":39,
+        "populated_legacy_ordinals":[113,146,156]
+    })");
+    REQUIRE(f.size() == 1);
+    CHECK(f[0].code == EQV_ENABLE_UNRESOLVED);
+}
+
+TEST_CASE("equipment modlint: enabled=true resolving to a populated ordinal -> clean") {
+    auto f = lint(R"({
+        "equip_id":"core:er_ppc","kind":"Weapon","fire_executor":"beam_direct",
+        "category":"Energy","range_short":30,"range_med":120,"range_long":250,
+        "enabled":true,"legacy_master_id":146,
+        "populated_legacy_ordinals":[113,146,156]
+    })");
+    CHECK(f.empty());
+}

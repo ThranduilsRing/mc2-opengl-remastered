@@ -218,6 +218,60 @@ TEST_CASE("equip: every LIVE reason code is reachable + vocabulary-size lock") {
     // the vocabulary size so a future slice APPENDS (never renumbers).
     // EQV codes: NO_FIRE_EXECUTOR, PRESENTATION_ASSET_MISSING, NO_CATEGORY,
     // AMMO_CATEGORY_MISSING, RANGE_INVALID, KIND_FACET_MISMATCH, HARDPOINT_REJECTED,
-    // FIRE_EXECUTOR_UNBOUND (appended by FIRE-EXECUTOR-REGISTRY-1, E7).
-    CHECK(EQV__COUNT == 8);
+    // FIRE_EXECUTOR_UNBOUND (appended by FIRE-EXECUTOR-REGISTRY-1, E7),
+    // ENABLE_UNRESOLVED (appended by EQUIP-ENABLE-WIRE-1, ADD-ladder S1).
+    CHECK(EQV__COUNT == 9);
+}
+
+// -------------------------------------------------------------------------
+// EQUIP-ENABLE-WIRE-1 (ADD-ladder S1): EQV_ENABLE_UNRESOLVED.
+// -------------------------------------------------------------------------
+
+TEST_CASE("equip: Enabled with no legacyMasterId alias -> EQV_ENABLE_UNRESOLVED") {
+    EquipmentValidationInputs in;
+    in.def = goodEnergyWeapon();      // legacyMasterId defaults to -1 (no alias)
+    in.enableDeclared = true;
+    std::vector<EquipmentFinding> f = validateEquipmentDefinition(in);
+    REQUIRE(f.size() == 1);
+    CHECK(f[0].code == EQV_ENABLE_UNRESOLVED);
+}
+
+TEST_CASE("equip: Enabled with out-of-range ordinal (>=255) -> EQV_ENABLE_UNRESOLVED") {
+    EquipmentValidationInputs in;
+    in.def = goodEnergyWeapon();
+    in.def.legacyMasterId = 255;      // 0xff sentinel / E4-widen land
+    in.enableDeclared = true;
+    std::vector<EquipmentFinding> f = validateEquipmentDefinition(in);
+    REQUIRE(f.size() == 1);
+    CHECK(f[0].code == EQV_ENABLE_UNRESOLVED);
+}
+
+TEST_CASE("equip: Enabled naming an unpopulated ordinal (context supplied) -> EQV_ENABLE_UNRESOLVED") {
+    EquipmentValidationInputs in;
+    in.def = goodEnergyWeapon();
+    in.def.legacyMasterId = 39;       // a free/undefined compbas ordinal
+    in.enableDeclared = true;
+    in.populatedLegacyOrdinals = {113, 146, 156};
+    std::vector<EquipmentFinding> f = validateEquipmentDefinition(in);
+    REQUIRE(f.size() == 1);
+    CHECK(f[0].code == EQV_ENABLE_UNRESOLVED);
+}
+
+TEST_CASE("equip: Enabled resolving to a populated ordinal -> ZERO findings") {
+    EquipmentValidationInputs in;
+    in.def = goodEnergyWeapon();
+    in.def.legacyMasterId = 113;
+    in.enableDeclared = true;
+    in.populatedLegacyOrdinals = {113, 146, 156};
+    CHECK(validateEquipmentDefinition(in).empty());
+
+    // No populated context -> the in-range ordinal passes (range half only).
+    in.populatedLegacyOrdinals.clear();
+    CHECK(validateEquipmentDefinition(in).empty());
+}
+
+TEST_CASE("equip: Enabled absent (stock defs) -> enable check skipped entirely") {
+    EquipmentValidationInputs in;
+    in.def = goodEnergyWeapon();      // legacyMasterId -1, but enableDeclared false
+    CHECK(validateEquipmentDefinition(in).empty());
 }

@@ -177,6 +177,16 @@ equipmentFactsFromJson(const MlJson& root, std::string* label = nullptr) {
             in.hardpointContext.push_back(prof);
         }
 
+    // EQUIP-ENABLE-WIRE-1 facts: "enabled" (def declares Enabled=TRUE),
+    // "legacy_master_id" (the purchase ordinal alias), and the optional
+    // "populated_legacy_ordinals" context (ordinals the load loop populates;
+    // empty/absent -> only the range half of EQV_ENABLE_UNRESOLVED runs).
+    if (const MlJson* en = root.find("enabled")) in.enableDeclared = en->asBool(false);
+    if (const MlJson* lm = root.find("legacy_master_id")) e.legacyMasterId = (int)lm->n;
+    if (const MlJson* po = root.find("populated_legacy_ordinals"))
+        for (const MlJson& p : po->arr)
+            in.populatedLegacyOrdinals.push_back((long)p.n);
+
     return in;
 }
 
@@ -222,6 +232,11 @@ equipmentFromConverterEntry(const MlJson& c, std::string* label = nullptr) {
         setWeaponFacet(e, w);
     }
     e.kind = kind;   // explicit converter kind (drives kind/facet mismatch check)
+
+    // EQUIP-ENABLE-WIRE-1: converter report may carry legacy_master_id +
+    // enabled; wire them so roster runs get the enable-resolution check too.
+    if (const MlJson* lm = c.find("legacy_master_id")) e.legacyMasterId = (int)lm->n;
+    if (const MlJson* en = c.find("enabled")) in.enableDeclared = en->asBool(false);
 
     return in;
 }

@@ -88,6 +88,15 @@ enum EquipmentReasonCode {
     // nothing fires off this resolution; the classification feeds a finding.
     EQV_FIRE_EXECUTOR_UNBOUND,
 
+    // EQUIP-ENABLE-WIRE-1 (ADD-ladder S1): the def declares `Enabled=TRUE` (the
+    // enabled->purchase wire) but the enable cannot resolve to a populated
+    // masterList row: legacyMasterId is missing (-1) / outside the 8-bit purchase
+    // space (0..254), or -- when a populated-ordinal CONTEXT is supplied -- names
+    // an ordinal that is NOT a populated row. Such an enable is a silent no-op in
+    // the engine (the wire only ENABLES populated rows; filling an undefined row
+    // is S2 EQUIP-ADD-FILL-1's job), so modlint surfaces it. WARN, report-only.
+    EQV_ENABLE_UNRESOLVED,
+
     EQV__COUNT
 };
 
@@ -130,8 +139,17 @@ struct EquipmentValidationInputs {
     // schema can't distinguish an authored WTAG_ENERGY from the default). Default
     // true (schema always has a value); set false to exercise EQV_WEAPON_NO_CATEGORY.
     bool                            categoryAuthored;
+    // EQUIP-ENABLE-WIRE-1: the def declares `Enabled=TRUE` (purchase enable
+    // wire). Default false (Enabled key absent -- all stock defs) -> the enable
+    // check is skipped entirely.
+    bool                            enableDeclared;
+    // Optional populated-ordinal CONTEXT for the enable check (the set of
+    // compbas ordinals the load loop actually populates). Empty -> only the
+    // legacyMasterId range half of the check runs (matches the hardpointContext
+    // "no context, skip" pattern).
+    std::vector<long>               populatedLegacyOrdinals;
 
-    EquipmentValidationInputs() : categoryAuthored(true) {}
+    EquipmentValidationInputs() : categoryAuthored(true), enableDeclared(false) {}
 };
 
 // -------------------------------------------------------------------------
@@ -208,6 +226,23 @@ validateEquipmentDefinition(const EquipmentValidationInputs& in) {
                     EQV_WEAPON_HARDPOINT_REJECTED,
                     "weapon category not accepted by a supplied hardpoint"});
             }
+        }
+    }
+
+    // --- EQUIP-ENABLE-WIRE-1: declared enable must resolve to a populated row. ---
+    if (in.enableDeclared) {
+        const long ord = e.legacyMasterId;
+        bool unresolved = (ord < 0 || ord >= 255);
+        if (!unresolved && !in.populatedLegacyOrdinals.empty()) {
+            bool populated = false;
+            for (long p : in.populatedLegacyOrdinals)
+                if (p == ord) { populated = true; break; }
+            unresolved = !populated;
+        }
+        if (unresolved) {
+            findings.push_back(EquipmentFinding{
+                EQV_ENABLE_UNRESOLVED,
+                "Enabled=TRUE does not resolve to a populated masterList row (enable is a no-op)"});
         }
     }
 
