@@ -1,49 +1,64 @@
-# core_unlocks — re-surface ONE dormant stock component (honest v0 STUB)
+# core_unlocks — re-surface dormant stock gear via the clean enable wire
 
 ## Goal
 
-Enable one piece of dormant stock content — a component that exists in the data
-but is not offered for purchase — so it shows up in the logistics/purchase UI.
+Enable dormant stock content — components that exist fully populated in the
+component table but are not offered for purchase by (early) missions'
+`purchase.fit` — so they show up in the logistics/mechlab purchase UI.
 
-## Why this is a STUB (the honest part)
+## What it ships (EQUIP-ENABLE-WIRE-1, ADD-ladder S1)
 
-There is **no clean `enabled`-flag → purchase wire** in the engine yet. The E2
-equipment registry carries an `enabled` bit
-(`code/equipment_registry_engine.cpp`), but the purchase/availability layer
-(`code/logisticscomponent.cpp`) does not consume it — it reads id/stats/icon
-straight off `MasterComponent` rows. So "dormant" is not a flag you flip; it is a
-row that the purchase/availability catalog does not surface.
+Two enable-only def overrides, each a tiny `.fit` carrying just the wire fields:
 
-Re-surfacing therefore rides the **LEGACY whole-file overlay path** (the same
-mechanism `mods/magic-ballistic-weapons` uses): a mod ships its own copy of a
-stock data file at `data/objects/compbas.csv`, and the `g_modIndex` file-shadow
-serves the mod's copy at mod precedence (see `mclib/file.cpp`,
-`.claude/MOD-SYSTEM-RECON-1.md`). Because the overlay is **whole-file, not a
-row-merge**, the override must be a COMPLETE compbas.csv with the one dormant row
-edited to be purchasable — you cannot ship just the delta row.
+| component | compbas row | file |
+|---|---|---|
+| Clan Gauss Rifle | 113 | `data/defs/equipment/core/clan_gauss_rifle/equipmentdef.fit` |
+| ER PPC | 146 | `data/defs/equipment/core/er_ppc/equipmentdef.fit` |
 
-We do **not** vendor a full stock `compbas.csv` into this example (it is a large
-stock asset, and the task scope is to author mods as source without editing
-mc2srcdata). Hence this mod is shipped as a documented stub.
+Both rows are populated stock rows with valid logistics icons, but the early
+campaign purchase files never list them (e.g. `purchase01.fit` offers the plain
+PPC 145 and no Gauss at all) — so the effect is directly observable in the
+mission-1 mechlab.
 
-## How to produce the real one-row override (for a working install)
+## How the wire works
 
-1. Copy the stock `data/objects/compbas.csv` out of your install.
-2. Find the dormant component's row (e.g. a magic-ballistic component that ships
-   present-but-not-purchasable). Edit only that row's availability/cost fields so
-   the purchase catalog offers it — matching how `mods/magic-ballistic-weapons`
-   re-adds rows.
-3. Place the edited file at `mods/core_unlocks/data/objects/compbas.csv`.
-4. Drop `mods/core_unlocks/` into your staging install's `mods/` folder and tick
-   it in the launcher (or add `core_unlocks` to `MC2_MOD_DEPS`). The file-shadow
-   overlay serves your compbas.csv at mod precedence; the dormant component is now
-   purchasable.
+`applyEquipmentEnableWireIfEnabled()` (`code/equipment_registry_engine.cpp`)
+runs at the end of the purchase-file half of
+`LogisticsData::updateAvailability`. For each POPULATED masterList row (the E2
+registry's `enabled` flag) it probes
+`data/defs/equipment/core/<slug>/equipmentdef.fit` (mod file-shadow serves this
+mod's copy); a def declaring `[Equipment] b Enabled=TRUE` whose
+`l LegacyMasterId` key-checks against the row ordinal forces
+`available[ordinal]=true`.
 
-## The clean follow-on (not built)
+Properties:
 
-The MODDABILITY-phase target is a real `enabled` → purchase wire: a mod overrides
-an equipment def's `enabled` flag under `data/defs/equipment/…`, the purchase
-catalog consults the E2 registry's `enabled` bit, and re-surfacing needs no
-whole-file CSV override. That path replaces this legacy stub and is tracked in
-`docs/superpowers/plans/2026-07-01-unit-profile-arc-roadmap.md` (MODDABILITY
-phase). Until then, this stub documents the only honest v0 available.
+* **Gate**: `MC2_UNIT_PROFILE_DATA=1` (the unit/equipment data gate). Gate-OFF
+  → zero file I/O, byte-identical.
+* **Enable-only**: the wire ADDS to the mission `purchase.fit` verdicts, never
+  removes. Stock availability is reproduced exactly with the mod absent (stock
+  generated defs carry no `Enabled` key).
+* **Populated rows only**: enabling an undefined compbas ordinal is a no-op
+  (that is S2 EQUIP-ADD-FILL-1's job); modlint flags it
+  (`EQV_ENABLE_UNRESOLVED`).
+
+## Trying it
+
+1. Copy `examples/mods/core_unlocks/` into your install's `mods/` folder and
+   tick it in the launcher (or add `core_unlocks` to `MC2_MOD_DEPS`).
+2. Run with `MC2_UNIT_PROFILE_DATA=1`.
+3. Start the campaign, enter the mission-1 mechlab: Clan Gauss Rifle and ER PPC
+   appear for purchase. Console/log shows
+   `[EQUIP-ENABLE-WIRE-1] enabled core:clan_gauss_rifle (masterID=113) ...`.
+
+## Notes / honest caveats
+
+* The overrides live under the reserved `core:` namespace, so the load-order
+  conflict report prints `MODCONFLICT_RESERVED_CORE_NAMESPACE` for them — that
+  is the report doing its job; the override is deliberate.
+* The defs carry no `[WeaponCombatStats]`; if you also run
+  `MC2_EQUIPMENT_DEFINITION_SOURCE=generated`, the stat overlay reports "no
+  overlayable weapon stat fields" for these two rows and keeps legacy stats —
+  intended (this mod changes availability, not stats).
+* Validate offline: `mc2_modlint --equipment mods/core_unlocks/modlint/*.facts.json`
+  (facts include the wire fields `enabled` / `legacy_master_id`).

@@ -1,0 +1,11 @@
+{
+  "equip_id": "core:clan_gauss_rifle",
+  "kind": "Weapon",
+  "fire_executor": "projectile_ballistic",
+  "category": "Ballistic",
+  "ammo_per_shot": 1,
+  "ammo_category": "core:clan_gauss_rifle_ammo",
+  "enabled": true,
+  "legacy_master_id": 113,
+  "populated_legacy_ordinals": [113, 146]
+}

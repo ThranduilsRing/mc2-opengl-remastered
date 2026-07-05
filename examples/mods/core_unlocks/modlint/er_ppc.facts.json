@@ -1,0 +1,9 @@
+{
+  "equip_id": "core:er_ppc",
+  "kind": "Weapon",
+  "fire_executor": "beam_direct",
+  "category": "Energy",
+  "enabled": true,
+  "legacy_master_id": 146,
+  "populated_legacy_ordinals": [113, 146]
+}

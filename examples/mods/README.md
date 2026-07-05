@@ -17,7 +17,7 @@ with the mods absent, the game is byte-identical.
 | `sample_equipment` | a new `EquipmentDefinition` (qualified id `sample:hot_medium_laser`), generated-source `.fit`, modlint-clean |
 | `sample_variant`   | a new namespaced unit variant (`sample:atlas_laserboat`) on a stock chassis, 3-layer loadout join, modlint-clean |
 | `sample_bad_mod`   | INTENTIONAL failures the validator catches with modder-first messages (exit 1) |
-| `core_unlocks`     | re-surface ONE dormant stock component via the LEGACY compbas overlay path (honest v0; see its README) |
+| `core_unlocks`     | re-surface TWO dormant stock weapons (Clan Gauss Rifle 113, ER PPC 146) via the CLEAN enabled->purchase wire (EQUIP-ENABLE-WIRE-1: tiny `[Equipment] b Enabled=TRUE` def overrides, gate `MC2_UNIT_PROFILE_DATA=1`; enable-only, purchase.fit stays authoritative) |
 
 ## What "modlint-clean" means here (honest scope)
 
@@ -46,10 +46,12 @@ Consequence: a **new `sample:`-namespaced** def is not auto-instantiated by the
 current engine — nothing walks it, because there is no stock `masterList` row or
 spawned unit whose derived `core:<slug>` path points at it. So the load proof for
 a genuinely-new mod def is the **offline modlint roundtrip** (the def's facts
-resolve and validate), NOT a live in-mission spawn. The clean
-"enabled-flag → purchase → spawn" wire that would make a new namespaced def
-purchasable/spawnable is a documented follow-on (see the roadmap MODDABILITY
-phase and `core_unlocks/README.md`).
+resolve and validate), NOT a live in-mission spawn. The FIRST rung of the clean
+wire has landed: **EQUIP-ENABLE-WIRE-1** (`core_unlocks`) makes a POPULATED
+stock row purchasable via `[Equipment] b Enabled=TRUE` in its def — enable-only,
+gate `MC2_UNIT_PROFILE_DATA=1`. Making a genuinely-NEW def live (filling a free
+compbas ordinal) is the next rung, S2 EQUIP-ADD-FILL-1 (roadmap MODDABILITY
+phase).
 
 A mod that RE-STATS an EXISTING stock weapon (reusing the stock `core:<slug>`
 path + matching `LegacyMasterId`) IS picked up live by the overlay — that is the
