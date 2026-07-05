@@ -33,6 +33,7 @@
 #include <vector>
 #include <map>
 #include <cctype>
+#include <cstdio>                  // snprintf (EQUIP-ADD-FILL-1 CSV builder)
 #include <cstdlib>                 // strtol
 #include <cstring>                 // strchr
 
@@ -396,5 +397,240 @@ inline bool equipmentEnableWireShouldForce(bool defEnabled, long legacyMasterId,
     if (legacyMasterId < 0 || legacyMasterId >= 255) return false;
     return rowPopulated;
 }
+
+// -------------------------------------------------------------------------
+// EQUIP-ADD-FILL-1 (equipment arc, ADD-ladder S2) -- pure logic for the
+// new-equipment ADD path: a mod's NEW EquipmentDefinition with an EXPLICIT
+// LegacyMasterId naming an UNDEFINED compbas ordinal materializes as a live
+// MasterComponent row at load. Everything here is pure/engine-free (doctest
+// target); the impure fill pass lives in equipment_registry_engine.cpp.
+//
+// Gate: MC2_EQUIPMENT_ADD=any-non-"0" AND MC2_UNIT_PROFILE_DATA (family gate).
+// Both default OFF -> stock byte-identical.
+// -------------------------------------------------------------------------
+inline bool mc2_equipment_add_parse_enabled(const char* e) {
+    // Same rule as MC2_UNIT_PROFILE_DATA: unset/empty/"0" -> OFF; else ON.
+    if (!e || !e[0]) return false;
+    return !(e[0] == '0' && e[1] == '\0');
+}
+inline bool mc2EquipmentAddEnabled() {
+    static const bool s = mc2_equipment_add_parse_enabled(getenv("MC2_EQUIPMENT_ADD"));
+    return s;
+}
+
+// Def sidecar path for a qualified id, namespace-aware:
+//   "sample:plasma_rifle" -> "data/defs/equipment/sample/plasma_rifle/equipmentdef.fit"
+//   "core:laser"          -> "data/defs/equipment/core/laser/equipmentdef.fit"
+//   no ':' at all         -> treated as core/<ref> (defensive; ids always have one)
+inline std::string equipmentDefPathForQualifiedId(const std::string& qid) {
+    std::string ns = "core", slug = qid;
+    size_t colon = qid.find(':');
+    if (colon != std::string::npos) {
+        ns   = qid.substr(0, colon);
+        slug = qid.substr(colon + 1);
+    }
+    if (ns.empty()) ns = "core";
+    return "data/defs/equipment/" + ns + "/" + slug + "/equipmentdef.fit";
+}
+
+// The fill decision for one ADD-def. First-wins on duplicate ordinal claims; a
+// def targeting a POPULATED stock row is a conflict (overrides are the overlay/
+// enable-wire's job, keyed by the row's OWN core:<slug> id -- that self-override
+// case is a silent skip, not a finding).
+enum EquipmentAddFillDecision {
+    EQADD_FILL = 0,            // ordinal free -> populate the row
+    EQADD_SKIP_NO_ORDINAL,     // def carries no explicit LegacyMasterId (finding)
+    EQADD_SKIP_ORDINAL_RANGE,  // ordinal <0, >=numComponents, or ==255 sentinel (finding)
+    EQADD_SKIP_POPULATED,      // ordinal names a POPULATED stock row, not an override (finding)
+    EQADD_SKIP_SELF_OVERRIDE,  // def IS that populated row's own core def (silent -- S1/overlay land)
+    EQADD_SKIP_DUPLICATE       // another ADD-def already claimed this ordinal (first-wins finding)
+};
+
+inline EquipmentAddFillDecision
+equipmentAddFillDecide(bool hasOrdinal, long ord, long numComponents,
+                       bool rowPopulated, bool selfOverride, bool alreadyClaimed) {
+    if (!hasOrdinal)                       return EQADD_SKIP_NO_ORDINAL;
+    if (ord < 0 || ord >= numComponents ||
+        ord >= 255 /* 0xff sentinel */)    return EQADD_SKIP_ORDINAL_RANGE;
+    if (rowPopulated)
+        return selfOverride ? EQADD_SKIP_SELF_OVERRIDE : EQADD_SKIP_POPULATED;
+    if (alreadyClaimed)                    return EQADD_SKIP_DUPLICATE;
+    return EQADD_FILL;
+}
+
+// Def Kind (+ weapon Category) -> legacy ComponentFormType ordinal (the CFORM_*
+// values above; they index the on-disk ComponentFormString table). Mirrors the
+// converter's kind/category vocabulary. Unknown kind -> CFORM_SIMPLE.
+inline int equipmentAddKindToFormOrdinal(const char* kind, const char* category) {
+    auto ieq = [](const char* a, const char* b) {
+        if (!a || !b) return false;
+        for (;; ++a, ++b) {
+            char ca = (char)std::tolower((unsigned char)*a);
+            char cb = (char)std::tolower((unsigned char)*b);
+            if (ca != cb) return false;
+            if (ca == '\0') return true;
+        }
+    };
+    if (ieq(kind, "Weapon")) {
+        if (ieq(category, "Energy"))    return CFORM_WEAPON_ENERGY;
+        if (ieq(category, "Ballistic")) return CFORM_WEAPON_BALLISTIC;
+        if (ieq(category, "Missile"))   return CFORM_WEAPON_MISSILE;
+        return CFORM_WEAPON_ENERGY;    // category-less weapon: energy is the schema default
+    }
+    if (ieq(kind, "Ammo"))      return CFORM_AMMO;
+    if (ieq(kind, "Sensor"))    return CFORM_SENSOR;
+    if (ieq(kind, "ECM"))       return CFORM_ECM;
+    if (ieq(kind, "JumpJet"))   return CFORM_JUMPJET;
+    if (ieq(kind, "Heatsink"))  return CFORM_HEATSINK;
+    if (ieq(kind, "Structure")) return CFORM_BULK;
+    if (ieq(kind, "Cockpit"))   return CFORM_COCKPIT;
+    if (ieq(kind, "Actuator"))  return CFORM_ACTUATOR;
+    if (ieq(kind, "Engine"))    return CFORM_ENGINE;
+    return CFORM_SIMPLE;
+}
+
+// AllowedLocations token list ("CenterTorso,LeftArm,...") -> the 8 legacy crit
+// Yes/No columns in compbas column order: Head, CenterTorso, LeftTorso,
+// RightTorso, LeftArm, RightArm, LeftLeg, RightLeg. Empty/absent list -> the
+// permissive torso+arms default (matches most stock weapon rows). Pure.
+inline void equipmentAddAllowedLocationsToCrit(const char* list, bool out[8]) {
+    static const char* kNames[8] = {
+        "Head", "CenterTorso", "LeftTorso", "RightTorso",
+        "LeftArm", "RightArm", "LeftLeg", "RightLeg"
+    };
+    if (!list || !list[0]) {
+        // default: torso + arms yes, head/legs no
+        for (int i = 0; i < 8; ++i) out[i] = (i >= 1 && i <= 5);
+        return;
+    }
+    for (int i = 0; i < 8; ++i) out[i] = false;
+    std::string tok;
+    const char* p = list;
+    for (;; ++p) {
+        char c = *p;
+        if (c == ',' || c == '\0') {
+            if (!tok.empty()) {
+                for (int i = 0; i < 8; ++i) {
+                    // case-insensitive equal
+                    const char* n = kNames[i];
+                    size_t j = 0;
+                    for (; j < tok.size() && n[j]; ++j)
+                        if (std::tolower((unsigned char)tok[j]) !=
+                            std::tolower((unsigned char)n[j])) break;
+                    if (j == tok.size() && n[j] == '\0') { out[i] = true; break; }
+                }
+                tok.clear();
+            }
+            if (c == '\0') break;
+        } else if (c != ' ' && c != '\t') {
+            tok.push_back(c);
+        }
+    }
+}
+
+// The field set for one ADD row -- mirrors the shadow-compare field set (name/
+// damage/heat/recycle/range/CV/ammo/critSlots/icon/kind->form) plus the
+// logistics-consumer columns (icon/picture/stringID/iconXY).
+struct EquipmentAddRowFields {
+    long        ordinal        = -1;
+    int         formOrdinal    = CFORM_SIMPLE; // CFORM_* (ComponentFormString index)
+    std::string displayName;                   // def DisplayName (both consumers' UI name)
+    int         critSlots      = 1;            // size / crit spaces
+    float       recycle        = 0.f;
+    float       heat           = 0.f;
+    float       tonnage        = 0.f;
+    float       damage         = 0.f;
+    float       combatValue    = 0.f;          // CV
+    long        cost           = 0;            // resourcePoints / logistics cost
+    int         rangeOrdinal   = -1;           // 0/1/2 = short/medium/long; -1 = none
+    bool        crit[8]        = { false, true, true, true, true, true, false, false };
+    long        ammoMasterId   = 0;            // 0 = none/unlimited
+    int         specialEffect  = 0;            // legacy firing VFX cue
+    std::string iconFile;                      // MANDATORY (logistics skips row without it)
+    std::string pictureFile;                   // defaults to icon stem if empty
+    long        stringId       = 0;            // logistics name string (overridden by displayName)
+    long        helpStringId   = 0;
+    int         iconX          = 1;
+    int         iconY          = 1;
+};
+
+// Build the ONE synthesized compbas-format CSV line that BOTH consumers parse:
+//   MasterComponent::initEXCEL:  id,form,name,size,recycle,heat,tonnage,damage,
+//                                CV,cost,range,crit0..crit7,ammoTok,flags,
+//                                specialEffect,ammoMasterId
+//   LogisticsComponent::init:    id,type,name,(crit),recycle,heat,weight,damage,
+//                                (BR),cost,range,head,torso,(4),legs,(4)=the same
+//                                ammoTok/flags/specialEffect columns,Ammo=
+//                                ammoMasterId,icon,picture,stringID,helpID,
+//                                iconX,iconY
+// Column-order equality of the two parsers was verified against stock row 156.
+inline std::string buildEquipmentAddCsvLine(const EquipmentAddRowFields& f) {
+    // ComponentFormString spellings (cmponent.cpp table order == CFORM_*).
+    static const char* kFormNames[] = {
+        "Simple", "Cockpit", "Sensor", "Actuator", "Engine", "HeatSink",
+        "Weapon", "EnergyWeapon", "BallisticWeapon", "MissileWeapon", "Ammo",
+        "JumpJet", "Case", "LifeSupport", "Gyroscope", "PowerAmplifier",
+        "ECM", "Probe", "Jammer", "Bulk"
+    };
+    static const char* kRangeNames[] = { "short", "medium", "long" };
+    char num[64];
+    std::string line;
+    auto addF = [&](float v) {
+        std::snprintf(num, sizeof(num), "%.2f", (double)v);
+        line += num; line += ",";
+    };
+    auto addI = [&](long v) {
+        std::snprintf(num, sizeof(num), "%ld", v);
+        line += num; line += ",";
+    };
+    addI(f.ordinal);
+    line += (f.formOrdinal >= 0 && f.formOrdinal < 20) ? kFormNames[f.formOrdinal]
+                                                       : "Simple";
+    line += ",";
+    // Name column: initEXCEL ignores it (string table), logistics ignores it too
+    // (stringID); keep the display name for a human reading the log. Commas are
+    // stripped -- a ',' here would shift every following column.
+    for (char c : f.displayName) if (c != ',') line += c;
+    line += ",";
+    addI(f.critSlots);
+    addF(f.recycle);
+    addF(f.heat);
+    addF(f.tonnage);
+    addF(f.damage);
+    addF(f.combatValue);
+    addI(f.cost);
+    line += (f.rangeOrdinal >= 0 && f.rangeOrdinal <= 2) ? kRangeNames[f.rangeOrdinal]
+                                                         : "0";
+    line += ",";
+    for (int i = 0; i < 8; ++i) { line += f.crit[i] ? "Yes" : "No"; line += ","; }
+    // ammoType token: '1' = finite ammo when an ammo row is linked, else '0'.
+    line += (f.ammoMasterId > 0) ? "1" : "0"; line += ",";
+    line += "0,";                                  // flags (streak derived from ammoTok)
+    addI(f.specialEffect);
+    addI(f.ammoMasterId);
+    line += f.iconFile; line += ",";
+    line += f.pictureFile.empty()
+                ? (f.iconFile.size() > 4 ? f.iconFile.substr(0, f.iconFile.size() - 4)
+                                         : f.iconFile)
+                : f.pictureFile;
+    line += ",";
+    addI(f.stringId);
+    addI(f.helpStringId);
+    addI(f.iconX);
+    std::snprintf(num, sizeof(num), "%d", f.iconY);
+    line += num;
+    return line;
+}
+
+// One row the fill pass materialized -- consumed by the SECOND consumer
+// (LogisticsData::initComponents append) and by the registry rebuild (qualified
+// id override so the filled row keeps its namespaced mod id, not core:<slug>).
+struct EquipmentAddFillRow {
+    long        ordinal = -1;
+    std::string qualifiedId;   // e.g. "sample:hot_medium_laser"
+    std::string displayName;   // def DisplayName (UI-name fallback for new ids)
+    std::string csvLine;       // the dual-consumer synthesized compbas line
+    long        ammoMasterId = 0;
+};
 
 #endif // EQUIPMENT_REGISTRY_H

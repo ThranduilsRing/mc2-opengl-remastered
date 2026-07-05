@@ -97,6 +97,24 @@ enum EquipmentReasonCode {
     // is S2 EQUIP-ADD-FILL-1's job), so modlint surfaces it. WARN, report-only.
     EQV_ENABLE_UNRESOLVED,
 
+    // EQUIP-ADD-FILL-1 (ADD-ladder S2): the def is an ADD (declared via the
+    // add_fill fact) but its LegacyMasterId cannot claim a FREE ordinal: it is
+    // missing (-1, no auto-assign), outside 0..254 (255 = 0xff sentinel), or --
+    // when a populated-ordinal CONTEXT is supplied -- names an ordinal that IS
+    // a populated stock row (the engine refuses to clobber stock). WARN.
+    EQV_ADD_ORDINAL_UNAVAILABLE,
+
+    // EQUIP-ADD-FILL-1: an ADD def is missing a field BOTH row consumers need:
+    // DisplayName (new ids have no string-table entry -> nameless everywhere)
+    // or the [Presentation] Icon (the mechlab consumer DROPS icon-less rows ->
+    // a half-materialized item). WARN.
+    EQV_ADD_FIELDS_INCOMPLETE,
+
+    // EQUIP-ADD-FILL-1: an ADD weapon def links AmmoMasterId to an ordinal that
+    // is NOT a populated row (context-dependent, like the enable check) -- the
+    // weapon would carry a dangling ammo reference. WARN.
+    EQV_ADD_AMMO_UNRESOLVED,
+
     EQV__COUNT
 };
 
@@ -149,7 +167,19 @@ struct EquipmentValidationInputs {
     // "no context, skip" pattern).
     std::vector<long>               populatedLegacyOrdinals;
 
-    EquipmentValidationInputs() : categoryAuthored(true), enableDeclared(false) {}
+    // EQUIP-ADD-FILL-1 facts: the def is an ADD (targets a NEW row on a free
+    // ordinal). Default false (all stock/override defs) -> the ADD checks are
+    // skipped entirely. hasDisplayName/hasIcon assert field presence (the pure
+    // schema does not carry the icon/name strings); ammoMasterId is the def's
+    // linked ammo ordinal (0 = none).
+    bool                            addFill;
+    bool                            hasDisplayName;
+    bool                            hasIcon;
+    long                            ammoMasterId;
+
+    EquipmentValidationInputs()
+        : categoryAuthored(true), enableDeclared(false),
+          addFill(false), hasDisplayName(true), hasIcon(true), ammoMasterId(0) {}
 };
 
 // -------------------------------------------------------------------------
@@ -233,7 +263,10 @@ validateEquipmentDefinition(const EquipmentValidationInputs& in) {
     if (in.enableDeclared) {
         const long ord = e.legacyMasterId;
         bool unresolved = (ord < 0 || ord >= 255);
-        if (!unresolved && !in.populatedLegacyOrdinals.empty()) {
+        // EQUIP-ADD-FILL-1: an ADD def's row is populated BY the fill pass
+        // before the enable wire runs, so the populated-context half of the
+        // check does not apply to it (the ADD checks below own that ordinal).
+        if (!unresolved && !in.addFill && !in.populatedLegacyOrdinals.empty()) {
             bool populated = false;
             for (long p : in.populatedLegacyOrdinals)
                 if (p == ord) { populated = true; break; }
@@ -243,6 +276,39 @@ validateEquipmentDefinition(const EquipmentValidationInputs& in) {
             findings.push_back(EquipmentFinding{
                 EQV_ENABLE_UNRESOLVED,
                 "Enabled=TRUE does not resolve to a populated masterList row (enable is a no-op)"});
+        }
+    }
+
+    // --- EQUIP-ADD-FILL-1: ADD-def checks (mirror of the engine fill pass). ---
+    if (in.addFill) {
+        const long ord = e.legacyMasterId;
+        // Ordinal must be explicit, in the 8-bit space, and FREE (not populated).
+        bool unavailable = (ord < 0 || ord >= 255);
+        if (!unavailable && !in.populatedLegacyOrdinals.empty()) {
+            for (long p : in.populatedLegacyOrdinals)
+                if (p == ord) { unavailable = true; break; }
+        }
+        if (unavailable) {
+            findings.push_back(EquipmentFinding{
+                EQV_ADD_ORDINAL_UNAVAILABLE,
+                "ADD def LegacyMasterId is missing, out of 0..254, or names a populated stock row"});
+        }
+        // Both consumers need a DisplayName and an icon to materialize the row.
+        if (!in.hasDisplayName || !in.hasIcon) {
+            findings.push_back(EquipmentFinding{
+                EQV_ADD_FIELDS_INCOMPLETE,
+                "ADD def is missing DisplayName and/or [Presentation] Icon"});
+        }
+        // A linked ammo ordinal must resolve to a populated row (context-gated).
+        if (in.ammoMasterId > 0 && !in.populatedLegacyOrdinals.empty()) {
+            bool ammoPopulated = false;
+            for (long p : in.populatedLegacyOrdinals)
+                if (p == in.ammoMasterId) { ammoPopulated = true; break; }
+            if (!ammoPopulated) {
+                findings.push_back(EquipmentFinding{
+                    EQV_ADD_AMMO_UNRESOLVED,
+                    "ADD def AmmoMasterId does not resolve to a populated ammo row"});
+            }
         }
     }
 

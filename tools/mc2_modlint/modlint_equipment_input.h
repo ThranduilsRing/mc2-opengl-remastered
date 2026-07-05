@@ -187,6 +187,16 @@ equipmentFactsFromJson(const MlJson& root, std::string* label = nullptr) {
         for (const MlJson& p : po->arr)
             in.populatedLegacyOrdinals.push_back((long)p.n);
 
+    // EQUIP-ADD-FILL-1 facts (ADD-ladder S2): "add_fill" declares the def as an
+    // ADD (targets a NEW row on a free ordinal; default false -> checks skipped);
+    // "has_display_name"/"has_icon" assert the two fields BOTH row consumers
+    // need (default true); "ammo_master_id" is the linked ammo ordinal (0=none),
+    // resolved against populated_legacy_ordinals when that context is present.
+    if (const MlJson* af = root.find("add_fill"))         in.addFill = af->asBool(false);
+    if (const MlJson* dn = root.find("has_display_name")) in.hasDisplayName = dn->asBool(true);
+    if (const MlJson* hi = root.find("has_icon"))         in.hasIcon = hi->asBool(true);
+    if (const MlJson* am = root.find("ammo_master_id"))   in.ammoMasterId = (long)am->n;
+
     return in;
 }
 

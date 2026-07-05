@@ -219,8 +219,10 @@ TEST_CASE("equip: every LIVE reason code is reachable + vocabulary-size lock") {
     // EQV codes: NO_FIRE_EXECUTOR, PRESENTATION_ASSET_MISSING, NO_CATEGORY,
     // AMMO_CATEGORY_MISSING, RANGE_INVALID, KIND_FACET_MISMATCH, HARDPOINT_REJECTED,
     // FIRE_EXECUTOR_UNBOUND (appended by FIRE-EXECUTOR-REGISTRY-1, E7),
-    // ENABLE_UNRESOLVED (appended by EQUIP-ENABLE-WIRE-1, ADD-ladder S1).
-    CHECK(EQV__COUNT == 9);
+    // ENABLE_UNRESOLVED (appended by EQUIP-ENABLE-WIRE-1, ADD-ladder S1),
+    // ADD_ORDINAL_UNAVAILABLE / ADD_FIELDS_INCOMPLETE / ADD_AMMO_UNRESOLVED
+    // (appended by EQUIP-ADD-FILL-1, ADD-ladder S2).
+    CHECK(EQV__COUNT == 12);
 }
 
 // -------------------------------------------------------------------------

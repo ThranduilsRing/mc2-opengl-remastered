@@ -45,6 +45,12 @@ inline const char* equipmentReasonToken(EquipmentReasonCode code) {
             return "EQV_FIRE_EXECUTOR_UNBOUND";
         case EQV_ENABLE_UNRESOLVED:
             return "EQV_ENABLE_UNRESOLVED";
+        case EQV_ADD_ORDINAL_UNAVAILABLE:
+            return "EQV_ADD_ORDINAL_UNAVAILABLE";
+        case EQV_ADD_FIELDS_INCOMPLETE:
+            return "EQV_ADD_FIELDS_INCOMPLETE";
+        case EQV_ADD_AMMO_UNRESOLVED:
+            return "EQV_ADD_AMMO_UNRESOLVED";
         case EQV__COUNT:
             break;   // not a real code; fall through to the unknown guard
     }
@@ -73,6 +79,12 @@ inline const char* equipmentReasonMessage(EquipmentReasonCode code) {
             return "Weapon names a fire executor that is not registered (cannot fire)";
         case EQV_ENABLE_UNRESOLVED:
             return "Enabled=TRUE names no populated masterList row (purchase enable is a no-op)";
+        case EQV_ADD_ORDINAL_UNAVAILABLE:
+            return "ADD def cannot claim a free ordinal (missing/out-of-range/populated LegacyMasterId)";
+        case EQV_ADD_FIELDS_INCOMPLETE:
+            return "ADD def lacks DisplayName and/or Icon (row cannot materialize in both consumers)";
+        case EQV_ADD_AMMO_UNRESOLVED:
+            return "ADD def links AmmoMasterId to an unpopulated row (dangling ammo reference)";
         case EQV__COUNT:
             break;
     }
