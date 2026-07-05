@@ -138,6 +138,7 @@
 #include "move_recon.h"  // MC2_MOVE_RECON per-frame pathfinding cost instrumentation
 #include "../GameOS/gameos/diagnostic_trace.h"  // COMBAT-TRACE-1: weapon-hit JSONL events
 #include "equipment_registry.h"  // LOADOUT-EQUIPMENT-ID-ALIAS-1 (E5): resolveLoadoutEquipmentRef
+#include "modder_finding.h"      // MODDER-FIRST-ERROR-SURFACE-1: shared context format
 
 // C3: env-gated lifecycle routing killswitch (same env var as objmgr.cpp).
 // MC2_GPU_CULL_LIFECYCLE=1 routes AI canBeSeen() combat gates to GPU-lagged visibility.
@@ -1511,15 +1512,35 @@ static int resolveOptionalEquipmentIdColumn(CSVFile* mechFile, long row)
 	if (refBuf[0] == '\0')
 		return -1;
 
+	// MODDER-FIRST-ERROR-SURFACE-1: context for both warnings — WHICH csv file,
+	// WHICH row, WHICH field, and the fallback taken. getFilename() is the loadout
+	// CSV being parsed (mods override it whole-file, so the winning path IS the
+	// modder's file).
+	auto idAliasContext = [&](const char* msg, const char* expected) -> std::string {
+		char fieldBuf[48];
+		std::snprintf(fieldBuf, sizeof(fieldBuf), "EquipmentId (csv col %d, row %ld)",
+		              (int)kEquipmentIdCsvColumn, row);
+		ModderFinding f;
+		f.message  = msg;
+		f.file     = mechFile->getFilename() ? mechFile->getFilename() : "";
+		f.id       = refBuf;
+		f.field    = fieldBuf;
+		f.expected = expected;
+		f.fallback = "legacy numeric masterID for this row";
+		return formatModderFinding(f);
+	};
+
 	int resolved = resolveLoadoutEquipmentRef(getEquipmentRegistry(), refBuf);
 	if (resolved == kEquipmentRefNeedsWiden) {
-		printf("[EQUIP-IDALIAS] WARNING: equipment ref \"%s\" resolves to an id "
-		       ">=255 (future-widen, E4) -- keeping legacy masterID\n", refBuf);
+		printf("[EQUIP-IDALIAS] WARNING: %s\n",
+		       idAliasContext("equipment ref resolves to an id >=255 (future-widen, E4) -- keeping legacy masterID",
+		                      "an equipment id resolving to a legacy ordinal 0..254").c_str());
 		return -1;
 	}
 	if (resolved == kEquipmentRefNotFound) {
-		printf("[EQUIP-IDALIAS] WARNING: unknown equipment ref \"%s\" -- keeping "
-		       "legacy masterID\n", refBuf);
+		printf("[EQUIP-IDALIAS] WARNING: %s\n",
+		       idAliasContext("unknown equipment ref -- keeping legacy masterID",
+		                      "a qualified id present in the equipment registry (is the owning mod loaded?)").c_str());
 		return -1;
 	}
 	return resolved;                  // 0..254: override the legacy masterID

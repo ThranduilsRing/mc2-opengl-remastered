@@ -18,6 +18,17 @@
 
 #include <cstdio>
 
+#include "modder_finding.h"   // MODDER-FIRST-ERROR-SURFACE-1: shared context format
+
+namespace {
+// One consistent emit for generated-equipment problems. Only reachable when
+// MC2_EQUIPMENT_DEFINITION_SOURCE=generated (caller gates first) -> stock
+// gate-OFF runs never print.
+void reportEquipSourceFinding(const ModderFinding& f) {
+    printf("[EQUIP-SOURCE=generated] %s\n", formatModderFinding(f).c_str());
+}
+} // namespace
+
 // Process-global registry (parallel index; queried by future slices, not by the
 // runtime firing/loadout path). Empty until buildEquipmentRegistryFromMasterList
 // runs under the gate.
@@ -168,20 +179,57 @@ size_t overlayGeneratedEquipmentStatsIfEnabled() {
             continue;
 
         FitIniFile gen;
-        if (gen.open(path) != NO_ERR)
+        if (gen.open(path) != NO_ERR) {
+            // MODDER-FIRST-ERROR-SURFACE-1: the def EXISTS but is unreadable —
+            // a silent `continue` here hid a broken mod/generated file.
+            ModderFinding f;
+            f.message  = "generated equipment def exists but could not be opened/parsed";
+            f.source   = "generated"; f.file = path; f.id = qid;
+            f.fallback = "legacy weapon stats for this row";
+            reportEquipSourceFinding(f);
             continue;
+        }
 
         // Key the overlay on legacyMasterId: require the def's LegacyMasterId to
         // equal this row's ordinal before touching any stat.
         long genLegacyId = -1;
         if (gen.seekBlock("Equipment") != NO_ERR ||
-            gen.readIdLong("LegacyMasterId", genLegacyId) != NO_ERR ||
-            genLegacyId != ord)
+            gen.readIdLong("LegacyMasterId", genLegacyId) != NO_ERR) {
+            ModderFinding f;
+            f.message  = "generated equipment def is missing [Equipment] LegacyMasterId";
+            f.source   = "generated"; f.file = path; f.id = qid;
+            f.field    = "LegacyMasterId";
+            f.expected = "[Equipment] block with l LegacyMasterId";
+            f.fallback = "legacy weapon stats for this row";
+            reportEquipSourceFinding(f);
             continue;
+        }
+        if (genLegacyId != ord) {
+            // The overlay key mismatched: the def claims a DIFFERENT legacy row.
+            char expectedBuf[16], actualBuf[16];
+            std::snprintf(expectedBuf, sizeof(expectedBuf), "%ld", ord);
+            std::snprintf(actualBuf, sizeof(actualBuf), "%ld", genLegacyId);
+            ModderFinding f;
+            f.message  = "generated equipment def LegacyMasterId does not match this compbas row";
+            f.source   = "generated"; f.file = path; f.id = qid;
+            f.field    = "LegacyMasterId";
+            f.expected = expectedBuf;
+            f.actual   = actualBuf;
+            f.fallback = "legacy weapon stats for this row (overlay skipped)";
+            reportEquipSourceFinding(f);
+            continue;
+        }
 
         GeneratedWeaponStats gs;
-        if (!readGeneratedWeaponStats(gen, gs))
+        if (!readGeneratedWeaponStats(gen, gs)) {
+            ModderFinding f;
+            f.message  = "generated equipment def carries no overlayable weapon stat fields";
+            f.source   = "generated"; f.file = path; f.id = qid;
+            f.expected = "[WeaponCombatStats] Damage/Heat/Recycle/RangeBucket/CombatValue or [WeaponAmmo] AmmoMasterId";
+            f.fallback = "legacy weapon stats for this row";
+            reportEquipSourceFinding(f);
             continue;
+        }
 
         // Capture legacy values (for the match-legacy log) then OVERWRITE only
         // present green fields. Firing reads these getters unchanged.

@@ -19,6 +19,7 @@
 #include <cstdlib>                       // getenv (throwaway test hook)
 #include <cstring>                        // strncpy (chassis stem copy)
 #include <cctype>                         // tolower (UNIT-SOURCE-FLIP-SWITCH-1)
+#include "modder_finding.h"              // MODDER-FIRST-ERROR-SURFACE-1: shared context format
 
 void populateProfileFromFit(FitIniFile& fit, UnitProfile& p) {
     // Optional, additive (grant-only, never clears). Stock .fits have no
@@ -108,6 +109,13 @@ void lowerCopy(char* dst, unsigned long cap, const char* src) {
         dst[n++] = (char)tolower((unsigned char)*p);
     dst[n] = '\0';
 }
+
+// MODDER-FIRST-ERROR-SURFACE-1: one consistent emit for generated-def problems.
+// Only reachable when MC2_UNIT_DEFINITION_SOURCE=generated (callers gate first),
+// so stock gate-OFF runs never print.
+void reportUnitSourceFinding(const ModderFinding& f) {
+    printf("[UNIT-SOURCE=generated] %s\n", formatModderFinding(f).c_str());
+}
 } // namespace
 
 bool sourceGeneratedChassisFacets(const char* chassisStem, UnitProfile& p,
@@ -127,19 +135,63 @@ bool sourceGeneratedChassisFacets(const char* chassisStem, UnitProfile& p,
     if (!fileExists(path))
         return false;
 
+    // MODDER-FIRST-ERROR-SURFACE-1: from here on the def EXISTS, so a failure is
+    // a modder-facing problem — say which file/field failed and that legacy stood.
+    const std::string qid = std::string("core:") + stem;
+
     FitIniFile gen;
-    if (gen.open(path) != NO_ERR)
+    if (gen.open(path) != NO_ERR) {
+        ModderFinding f;
+        f.message  = "generated chassis def exists but could not be opened/parsed";
+        f.source   = "generated"; f.file = path; f.id = qid;
+        f.fallback = "legacy chassis facets (loco/dmg unchanged)";
+        reportUnitSourceFinding(f);
         return false;
-    if (gen.seekBlock("UnitProfile") != NO_ERR)
+    }
+    if (gen.seekBlock("UnitProfile") != NO_ERR) {
+        ModderFinding f;
+        f.message  = "generated chassis def is missing its [UnitProfile] block";
+        f.source   = "generated"; f.file = path; f.id = qid;
+        f.expected = "[UnitProfile] block";
+        f.fallback = "legacy chassis facets (loco/dmg unchanged)";
+        reportUnitSourceFinding(f);
         return false;
+    }
 
     bool locoOk = false, dmgOk = false;
     char loco[64] = {0};
-    if (gen.readIdString("Locomotion", loco, sizeof(loco)) == NO_ERR)
-        locoOk = mc2ApplyGeneratedLocomotion(loco, p);
+    if (gen.readIdString("Locomotion", loco, sizeof(loco)) == NO_ERR) {
+        if (!locomotionTokenKnown(loco)) {
+            // Silent-fallback killer: the parse would keep the legacy value; SAY so.
+            ModderFinding f;
+            f.message  = "unknown Locomotion token in generated def";
+            f.source   = "generated"; f.file = path; f.id = qid;
+            f.field    = "Locomotion";
+            f.expected = locomotionTokenVocabulary();
+            f.actual   = loco;
+            f.fallback = std::string("legacy locomotion '")
+                       + locomotionModelName(p.locomotion) + "'";
+            reportUnitSourceFinding(f);
+        } else {
+            locoOk = mc2ApplyGeneratedLocomotion(loco, p);
+        }
+    }
     char dmg[64] = {0};
-    if (gen.readIdString("DamageSchema", dmg, sizeof(dmg)) == NO_ERR)
-        dmgOk = mc2ApplyGeneratedDamageSchema(dmg, p);
+    if (gen.readIdString("DamageSchema", dmg, sizeof(dmg)) == NO_ERR) {
+        if (!damageSchemaTokenKnown(dmg)) {
+            ModderFinding f;
+            f.message  = "unknown DamageSchema token in generated def";
+            f.source   = "generated"; f.file = path; f.id = qid;
+            f.field    = "DamageSchema";
+            f.expected = damageSchemaTokenVocabulary();
+            f.actual   = dmg;
+            f.fallback = std::string("legacy damage schema '")
+                       + damageSchemaName(p.damageSchema) + "'";
+            reportUnitSourceFinding(f);
+        } else {
+            dmgOk = mc2ApplyGeneratedDamageSchema(dmg, p);
+        }
+    }
 
     if (locoOk || dmgOk) {
         // The shadow-compare (roster GREEN 63/63) proved generated facet VALUES ==
@@ -169,15 +221,40 @@ bool sourceGeneratedVariantJump(const char* chassisStem, const char* variantName
     if (!fileExists(path))
         return false;
 
+    // MODDER-FIRST-ERROR-SURFACE-1: the variant def exists — failures are modder-
+    // facing from here (which file / which id / what fell back).
+    const std::string qid = std::string("core:") + stem + "_" + slug;
+
     FitIniFile gen;
-    if (gen.open(path) != NO_ERR)
+    if (gen.open(path) != NO_ERR) {
+        ModderFinding f;
+        f.message  = "generated variant def exists but could not be opened/parsed";
+        f.source   = "generated"; f.file = path; f.id = qid;
+        f.fallback = "legacy variant jump flag";
+        reportUnitSourceFinding(f);
         return false;
-    if (gen.seekBlock("UnitProfile") != NO_ERR)
+    }
+    if (gen.seekBlock("UnitProfile") != NO_ERR) {
+        ModderFinding f;
+        f.message  = "generated variant def is missing its [UnitProfile] block";
+        f.source   = "generated"; f.file = path; f.id = qid;
+        f.expected = "[UnitProfile] block";
+        f.fallback = "legacy variant jump flag";
+        reportUnitSourceFinding(f);
         return false;
+    }
 
     bool jump = false;
-    if (gen.readIdBoolean("Jump", jump) != NO_ERR)
+    if (gen.readIdBoolean("Jump", jump) != NO_ERR) {
+        ModderFinding f;
+        f.message  = "generated variant def [UnitProfile] has no readable Jump key";
+        f.source   = "generated"; f.file = path; f.id = qid;
+        f.field    = "Jump";
+        f.expected = "b Jump = TRUE|FALSE";
+        f.fallback = "legacy variant jump flag";
+        reportUnitSourceFinding(f);
         return false;
+    }
     *jumpOut = jump;
     printf("[UNIT-SOURCE=generated] core:%s_%s jump=%s from generated "
            "(match-legacy=YES)\n", stem, slug, jump ? "TRUE" : "FALSE");
