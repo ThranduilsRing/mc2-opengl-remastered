@@ -327,8 +327,9 @@ TEST_CASE("RenderDebugView out-of-range returns false") {
 // RendererFeatureRegistry
 // ---------------------------------------------------------------------------
 
-TEST_CASE("RendererFeatureRegistry COUNT is 45") {
-    CHECK(static_cast<int>(RendererFeature::COUNT) == 45);
+TEST_CASE("RendererFeatureRegistry COUNT is 46") {
+    // 46 since 65bae0f6 (CLIFF_WALL mesh-decal feature append).
+    CHECK(static_cast<int>(RendererFeature::COUNT) == 46);
 }
 
 TEST_CASE("RendererFeatureRegistry kFeatureTable length matches COUNT") {
