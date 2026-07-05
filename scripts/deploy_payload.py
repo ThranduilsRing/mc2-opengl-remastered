@@ -1,12 +1,12 @@
 #!/usr/bin/env python3
-"""deploy_payload.py — deploy payload completeness gate (slice S8 seed, manifest v1).
+"""deploy_payload.py -- deploy payload completeness gate (slice S8 seed, manifest v1).
 
 Wraps/validates a deploy of the MC2 runtime payload from a source worktree
 build to a runtime target dir (e.g. A:/Games/mc2-opengl/mc2-win64-v0.4 or
 .../mc2-win64-0.4c). Payload, by target:
   both    : exe + pdb + ffmpeg DLLs + shaders/ + run-with-log.bat
   game    : + run-mc2.bat
-  editor  : + run-editor.bat + tools/terrain_gen/** (authoring support — the
+  editor  : + run-editor.bat + tools/terrain_gen/** (authoring support -- the
             editor's Generate-Mission / -gen-map path shells `py -3
             tools\\terrain_gen\\terrain_gen.py`; without it the editor builds
             and launches but every gen/mission-load smoke case fails)
@@ -66,7 +66,7 @@ SUPPORT_SCRIPTS = {
     "editor": ["run-editor.bat", "run-with-log.bat"],
 }
 
-# mc2-launcher.exe — the install front-door (campaign mod-picker GUI that
+# mc2-launcher.exe -- the install front-door (campaign mod-picker GUI that
 # launches mc2.exe with MC2_ACTIVE_MOD). A separate build target
 # (tools/mc2_launcher -> build64/out/mc2_launcher/<cfg>/mc2-launcher.exe), so
 # it lives outside build_dir; we locate it from the build64 root. Ships with
@@ -83,8 +83,8 @@ EDITOR_SUPPORT_TREES = ["tools/terrain_gen"]
 
 # Cook tools shipped with BOTH game and editor installs so modders/users can
 # re-cook or inspect assets without a full source checkout.
-#   tools/cook_bc6h_hdri.py  — EXR -> BC6H KTX2 via texconv+ktx (HDRI baking)
-#   tools/examples/          — asset inspection helpers (list_mission_assets etc.)
+#   tools/cook_bc6h_hdri.py  -- EXR -> BC6H KTX2 via texconv+ktx (HDRI baking)
+#   tools/examples/          -- asset inspection helpers (list_mission_assets etc.)
 GAME_COOK_TOOLS = ["tools/cook_bc6h_hdri.py", "tools/examples"]
 
 # P1-G building PBR runtime payload. These files are source-tracked so HangarGLB
@@ -126,6 +126,111 @@ TERRAIN_LAYER_PAYLOAD = [
     "data/terrain_layers/snow_albedo.ktx2",
     "data/terrain_layers/cliff_albedo.ktx2",
 ]
+
+# EXAMPLE-MODS-1: worked example checkbox mods, source-tracked under
+# examples/mods/. Ship to <target>/mods/<id>/ so the launcher enumerates them
+# as add-on checkboxes (a mods/ folder needs mod.json AND a data/ overlay dir
+# to count as a stackable add-on; data-less examples like sample_bad_mod /
+# core_unlocks are lint/doc fixtures and are NOT shipped).
+EXAMPLE_MODS_SRC = "examples/mods"
+
+# UNIT/EQUIPMENT-DEFS deploy: generated definition sidecars consumed by the
+# source-flip loaders (MC2_UNIT_DEFINITION_SOURCE=generated reads
+# data/defs/units/core/..., MC2_EQUIPMENT_DEFINITION_SOURCE=generated reads
+# data/defs/equipment/core/...). NOT committed in the repo -- regenerated at
+# deploy time by the offline converters (tools/unit_converter/) from stock
+# mc2srcdata, into <build64>/generated_defs/, then shipped like any payload.
+# Converters are deterministic (tested); stock srcdata is the single source of
+# truth, so deploy-time generation cannot drift from the converter the way a
+# committed snapshot could. Soft-skips (with a loud log) when mc2srcdata or
+# python is unavailable, since the engine defaults to the legacy path anyway.
+GENERATED_DEFS = [
+    # (converter script, extra args, out subdir, target rel root)
+    ("tools/unit_converter/unit_converter.py", ["--batch"], "units",
+     "data/defs/units"),
+    ("tools/unit_converter/equipment_converter.py", [], "equipment",
+     "data/defs/equipment"),
+]
+
+def find_srcdata(src_root):
+    """Locate the stock mc2srcdata root (untracked, lives at the main repo
+    root, not inside worktrees). Candidates, first hit wins:
+    $MC2_SRCDATA, <src_root>/mc2srcdata, <src_root>/../../../mc2srcdata
+    (worktree layout: .claude/worktrees/<name>), A:/Games/mc2-opengl-src/mc2srcdata."""
+    cands = []
+    env = os.environ.get("MC2_SRCDATA")
+    if env:
+        cands.append(env)
+    cands.append(os.path.join(src_root, "mc2srcdata"))
+    cands.append(os.path.abspath(os.path.join(src_root, "..", "..", "..",
+                                              "mc2srcdata")))
+    cands.append("A:/Games/mc2-opengl-src/mc2srcdata")
+    for c in cands:
+        if os.path.isdir(c):
+            return os.path.abspath(c)
+    return None
+
+
+def generate_defs_payload(src_root, build64_root):
+    """Run the offline converters --batch into <build64>/generated_defs/ and
+    return payload items [(abs, rel, 'support')]. Empty list (loud log) when
+    srcdata is missing or a converter fails -- the engine default is the legacy
+    path, so a defs-less install still works; only the generated-source toggle
+    goes inert."""
+    srcdata = find_srcdata(src_root)
+    if not srcdata:
+        log("generated defs SKIPPED: mc2srcdata not found (set MC2_SRCDATA); "
+            "the launcher's 'Data-driven definitions' toggle will be inert")
+        return []
+    gen_root = os.path.join(build64_root or os.path.join(src_root, "build64"),
+                            "generated_defs")
+    items = []
+    for script, extra, sub, rel_root in GENERATED_DEFS:
+        out_dir = os.path.join(gen_root, sub)
+        cmd = [sys.executable, os.path.join(src_root, script),
+               "--srcdata", srcdata, "--out", out_dir] + extra
+        r = subprocess.run(cmd, capture_output=True, text=True, timeout=600)
+        if r.returncode != 0:
+            log(f"generated defs SKIPPED: {script} failed rc={r.returncode}\n"
+                f"{(r.stderr or r.stdout or '').strip()[:2000]}")
+            return []
+        n = 0
+        for dirpath, _dirs, files in os.walk(out_dir):
+            for fn in sorted(files):
+                sp = os.path.join(dirpath, fn)
+                rel = rel_root + "/" + os.path.relpath(sp, out_dir).replace(os.sep, "/")
+                items.append((sp, rel, "support"))
+                n += 1
+        log(f"generated defs: {script} -> {n} files under {rel_root}/")
+    return items
+
+
+def example_mods_payload(src_root):
+    """Enumerate shippable example mods (mod.json + data/ overlay) from
+    examples/mods/ -> <target>/mods/<id>/ payload items."""
+    root = os.path.join(src_root, EXAMPLE_MODS_SRC)
+    items = []
+    if not os.path.isdir(root):
+        return items
+    for entry in sorted(os.listdir(root)):
+        mod_dir = os.path.join(root, entry)
+        if not os.path.isdir(mod_dir):
+            continue
+        if not os.path.isfile(os.path.join(mod_dir, "mod.json")):
+            continue
+        if not os.path.isdir(os.path.join(mod_dir, "data")):
+            log(f"example mod '{entry}' has no data/ overlay (lint/doc fixture) -- not shipped")
+            continue
+        n = 0
+        for dirpath, _dirs, files in os.walk(mod_dir):
+            for fn in sorted(files):
+                sp = os.path.join(dirpath, fn)
+                rel = "mods/" + entry + "/" + os.path.relpath(sp, mod_dir).replace(os.sep, "/")
+                items.append((sp, rel, "support"))
+                n += 1
+        log(f"example mod '{entry}': {n} files -> mods/{entry}/")
+    return items
+
 
 FFMPEG_DLLS = [
     "avcodec-61.dll",
@@ -314,10 +419,10 @@ def _check_running_processes(target_exe_resolved, exe_name):
 
     for pid in unreadable:
         log(f"WARNING: running process PID {pid} ({exe_name}) path unreadable "
-            "(access denied / zombie) — not blocking deploy")
+            "(access denied / zombie) -- not blocking deploy")
     for pid, path in other:
         log(f"INFO: running {exe_name} PID {pid} from OTHER folder "
-            f"({path}) — deploy continues")
+            f"({path}) -- deploy continues")
 
     if blocking:
         lines = "\n".join(f"  PID {pid}: {path}" for pid, path in blocking)
@@ -387,7 +492,7 @@ def check_exe_fresh(exe_src, build_dir, allow_stale_exe, build64_root=None):
     """Mistake E: stale exe deployed because the source exe was not relinked.
 
     The linked exe must be NEWER than every compiled .obj that feeds it. An incremental build
-    that compiled objects but did not relink the exe — or a deploy racing a still-running build —
+    that compiled objects but did not relink the exe -- or a deploy racing a still-running build --
     leaves the exe OLDER than its objects, so deploy faithfully copies a stale binary (this
     actually happened: a deploy shipped a pre-slice exe ~2.5 KB smaller than the rebuilt one).
     Compare exe mtime against the newest .obj under build64/mc2.dir/<config>/.
@@ -411,7 +516,7 @@ def check_exe_fresh(exe_src, build_dir, allow_stale_exe, build64_root=None):
     if newest_p and newest_m > exe_m + 1.0:         # 1s slack for filesystem timestamp jitter
         msg = (f"STALE EXE (Mistake E): {exe_src}\n"
                f"  exe mtime {exe_m:.0f} is OLDER than object {newest_p}\n"
-               f"  obj mtime {newest_m:.0f} — the build did not relink (incremental skip or a\n"
+               f"  obj mtime {newest_m:.0f} -- the build did not relink (incremental skip or a\n"
                f"  deploy racing an in-flight build). Rebuild the exe before deploying.")
         if allow_stale_exe:
             log(f"WARNING (--allow-stale-exe): {msg}")
@@ -542,6 +647,17 @@ def enumerate_payload(src_root, build_dir, exe_name, pdb_name,
                     sp = os.path.join(dirpath, fn)
                     rel = os.path.relpath(sp, src_root).replace(os.sep, "/")
                     items.append((sp, rel, "support"))
+    # Example mods (EXAMPLE-MODS-1) -> <target>/mods/<id>/ (launcher add-on
+    # checkboxes). Ships with both game and editor installs.
+    items.extend(example_mods_payload(src_root))
+
+    # Generated unit/equipment definitions -> <target>/data/defs/{units,equipment}/
+    # so MC2_*_DEFINITION_SOURCE=generated works from a normal install. Converter
+    # runs are skipped on manifest-only passes (require_build=False): no fresh
+    # generation side effects, existing target copies keep their hashes.
+    if require_build:
+        items.extend(generate_defs_payload(src_root, b64))
+
     # Cook tools ship with both game and editor installs (modder/user asset pipeline).
     for entry in GAME_COOK_TOOLS:
         entry_abs = os.path.join(src_root, entry)
@@ -639,7 +755,7 @@ def hash_present_payload(items, target_dir):
     them in the SAME .deployed_manifest.csv that --verify-only checks, so
     the CSV does not go stale behind the JSON manifest.
     Files missing from the target are skipped (not every payload item is
-    present in every target — e.g. an editor-only deploy has no mc2.exe).
+    present in every target -- e.g. an editor-only deploy has no mc2.exe).
     """
     hashes = {}
     present, absent = 0, 0
@@ -659,7 +775,7 @@ def write_manifest_only(src_root, build_dir, exe_name, pdb_name, target_dir,
                         build64_root=None):
     """Refresh <target>/.deployed_manifest.csv from files ALREADY in target.
 
-    No copy, no lock check (we are not writing binaries — only the CSV).
+    No copy, no lock check (we are not writing binaries -- only the CSV).
     Merges with an existing CSV so a partial deploy (editor-only into a
     shared install) does not drop the game's rows, mirroring the JSON
     manifest's --merge behaviour.
@@ -692,15 +808,15 @@ def write_manifest_only(src_root, build_dir, exe_name, pdb_name, target_dir,
             log(f"WARNING: could not merge existing CSV manifest ({e}); replacing")
 
     if not hashes:
-        fail("no payload files present in target — nothing to record")
+        fail("no payload files present in target -- nothing to record")
     write_manifest(target_dir, hashes, git_head(src_root))
-    log("manifest-only COMPLETE — .deployed_manifest.csv refreshed (no copy)")
+    log("manifest-only COMPLETE -- .deployed_manifest.csv refreshed (no copy)")
 
 
 def staleness_report(target_dir):
     """Pure: compare a deployed tree against its .deployed_manifest.csv by
-    re-hashing every listed file (single-source sha256_file). Returns a dict —
-    NO printing, NO sys.exit — so callers other than the CLI (run_smoke) can
+    re-hashing every listed file (single-source sha256_file). Returns a dict --
+    NO printing, NO sys.exit -- so callers other than the CLI (run_smoke) can
     surface drift without reimplementing the hashing/compare:
 
       {has_manifest, version_ok, ok (int), stale [rel...], missing [rel...],
@@ -736,7 +852,7 @@ def staleness_report(target_dir):
 def verify_only(target_dir, strict):
     rep = staleness_report(target_dir)
     if not rep["has_manifest"]:
-        msg = (f"no manifest at {rep['manifest_path']} — target never deployed "
+        msg = (f"no manifest at {rep['manifest_path']} -- target never deployed "
                "via this tool")
         if strict:
             fail(msg)
@@ -782,7 +898,7 @@ TARGET_PRESETS = {
 # install is ~5GB; spinning up a per-lane/per-experiment deploy folder (e.g.
 # mc2-<lane>-test) bloats A:/Games/mc2-opengl by tens of GB. Deploy is REFUSED to any
 # target not in this set unless --allow-new-target is passed (deliberate new install /
-# release cut). The 5 folders below are the shared dev deploy targets — pick a free one
+# release cut). The 5 folders below are the shared dev deploy targets -- pick a free one
 # (md5-verify after; a sibling may hold the lease).
 DEPLOY_ALLOWLIST = {
     "mc2-win64-v0.4",
@@ -839,7 +955,7 @@ def main():
                     help="with --verify-only: drift = nonzero exit")
     ap.add_argument("--allow-new-target", action="store_true",
                     help="DELIBERATELY deploy to a NON-canonical / new ~5GB install "
-                         "(release cut, fresh install). Off by default — deploys are "
+                         "(release cut, fresh install). Off by default -- deploys are "
                          "forced to the canonical DEPLOY_ALLOWLIST to stop per-lane bloat.")
     ap.add_argument("--preserve", action="append", default=[],
                     metavar="RELPATH",
@@ -882,14 +998,14 @@ def main():
             fail(f"deploy target '{target}'\n"
                  f"  basename '{base}' is NOT a canonical deploy folder.\n"
                  f"  Deploy ONLY to: {sorted(DEPLOY_ALLOWLIST)}\n"
-                 f"  (under A:/Games/mc2-opengl). Each full install is ~5GB — do NOT spin "
+                 f"  (under A:/Games/mc2-opengl). Each full install is ~5GB -- do NOT spin "
                  f"up per-lane/per-experiment deploy folders; pick a FREE canonical folder "
                  f"and md5-verify after.\n"
                  f"  If you REALLY need a new install (release cut), pass --allow-new-target.")
 
     if not os.path.isdir(target):
         fail(f"target dir does not exist: {target} (refusing to create deploy "
-             "targets — wrong-target trap, Mistake C). Pass --allow-new-target only "
+             "targets -- wrong-target trap, Mistake C). Pass --allow-new-target only "
              "for a deliberate new install.")
 
     log(f"source root: {src_root}")
@@ -905,7 +1021,7 @@ def main():
         f"({sum(1 for *_x, k in items if k == 'shader')} shaders)")
     hashes = deploy(items, target, args.allow_stale_pdb, preserve=args.preserve)
     write_manifest(target, hashes, git_head(src_root))
-    log("deploy COMPLETE — payload verified, manifest written")
+    log("deploy COMPLETE -- payload verified, manifest written")
 
     # Post-deploy hygiene scan (Truth-First arc P1 #5/#7): the payload manifest
     # is a COMPLETENESS gate and never walks data/missions/*.beauty/, so a
@@ -922,7 +1038,7 @@ def main():
             if out:
                 for line in out.splitlines():
                     log(f"hygiene: {line}")
-    except Exception as e:  # noqa: BLE001 — advisory only, never block a deploy
+    except Exception as e:  # noqa: BLE001 -- advisory only, never block a deploy
         log(f"hygiene scan skipped ({e})")
 
 
