@@ -92,6 +92,19 @@ size_t applyEquipmentAddFillIfEnabled(float baseSensorRange);
 struct EquipmentAddFillRow;
 const std::vector<EquipmentAddFillRow>& equipmentAddFillRows();
 
+// EQUIP-ADD-UI-NAME-1 (equipment arc, ADD-ladder S3). UI-name/description
+// fallback for ADD-filled rows: several UI surfaces compute a component string
+// id from the masterID ordinal AT DISPLAY TIME (32000+name / 33000+abbrev /
+// 34000+encyclopedia-desc / 46000+hover-help); a NEW ADD id has no string-table
+// entry -> missing-string garbage. This resolves such an id to the ADD def's
+// DisplayName (name/abbrev) or Description (desc blocks; falls back to
+// DisplayName). Returns nullptr for anything that is NOT an ADD row's string --
+// callers then run the stock cLoadString path unchanged, so gates-OFF (rows
+// empty) is byte-identical. gui/-layer consumers reach this via the
+// gEquipmentUiTextHook function pointer (gui/logisticsscreen.h) which the S2
+// fill pass installs; the hook stays null in EditRel/tools.
+const char* equipmentAddUiTextForStringId(long stringId);
+
 // FIRE-EXECUTOR-REGISTRY-1 (equipment arc, engine slice E7). Gated proof that
 // the weapon fireExecutor lookup resolves end-to-end: for each weapon-form
 // MasterComponent it derives the converter's default fireExecutor id and

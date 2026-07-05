@@ -655,8 +655,75 @@ struct EquipmentAddFillRow {
     long        ordinal = -1;
     std::string qualifiedId;   // e.g. "sample:hot_medium_laser"
     std::string displayName;   // def DisplayName (UI-name fallback for new ids)
+    std::string description;   // optional def Description (UI desc fallback; S3)
     std::string csvLine;       // the dual-consumer synthesized compbas line
     long        ammoMasterId = 0;
 };
+
+// -------------------------------------------------------------------------
+// EQUIP-ADD-UI-NAME-1 (equipment arc, ADD-ladder S3) -- pure resolution of the
+// legacy component STRING-TABLE id blocks for ADD-filled rows.
+//
+// Several UI surfaces compute a string id from the masterID ordinal AT DISPLAY
+// TIME (they never read MasterComponent::name, which S2 already fixed):
+//   32000 + id  component name          (COMPONENT_NAME_START, cmponent.cpp)
+//   33000 + id  component abbreviation  (COMPONENT_ABBR_START, infowindow)
+//   34000 + id  encyclopedia description (LogisticsComponent helpStringID)
+//   46000 + id  mechlab/purchase hover help (IDS_HELP_COMP0, resource.h)
+// A NEW ADD id has no entry in any block -> "missing string" marker garbage.
+// These helpers decode such an id back to (kind, ordinal) and resolve the text
+// from the ADD fill rows. A miss returns nullptr and the caller MUST fall back
+// to the legacy cLoadString path -- so with the gates OFF (rows empty) every
+// surface is byte-identical to stock. Pure -> doctest target.
+// -------------------------------------------------------------------------
+enum EquipmentUiStringKind {
+    EQUISTR_NONE = 0,   // id not in any component string block
+    EQUISTR_NAME,       // 32000..32254
+    EQUISTR_ABBREV,     // 33000..33254
+    EQUISTR_DESC        // 34000..34254 or 46000..46254 (both are descriptions)
+};
+
+inline EquipmentUiStringKind equipmentUiStringDecode(long stringId, long* ordOut) {
+    // masterID space is 0..254 (255 = 0xff sentinel, never a component).
+    struct Block { long base; EquipmentUiStringKind kind; };
+    static const Block kBlocks[] = {
+        { 32000, EQUISTR_NAME   },   // COMPONENT_NAME_START
+        { 33000, EQUISTR_ABBREV },   // COMPONENT_ABBR_START / IDS_COMP_ABBR0
+        { 34000, EQUISTR_DESC   },   // encyclopedia helpStringID block
+        { 46000, EQUISTR_DESC   },   // IDS_HELP_COMP0 hover-help block
+    };
+    for (const Block& b : kBlocks) {
+        if (stringId >= b.base && stringId <= b.base + 254) {
+            if (ordOut) *ordOut = stringId - b.base;
+            return b.kind;
+        }
+    }
+    if (ordOut) *ordOut = -1;
+    return EQUISTR_NONE;
+}
+
+inline const EquipmentAddFillRow*
+equipmentAddFindRow(const std::vector<EquipmentAddFillRow>& rows, long ordinal) {
+    for (const EquipmentAddFillRow& r : rows)
+        if (r.ordinal == ordinal) return &r;
+    return nullptr;
+}
+
+// nullptr = "not an ADD row's string" -> caller uses legacy cLoadString.
+// DESC falls back to displayName when the def carries no Description so the
+// info window never shows the missing-string marker for an ADD row.
+inline const char*
+equipmentAddUiTextForStringIdPure(const std::vector<EquipmentAddFillRow>& rows,
+                                  long stringId) {
+    long ord = -1;
+    EquipmentUiStringKind kind = equipmentUiStringDecode(stringId, &ord);
+    if (kind == EQUISTR_NONE) return nullptr;
+    const EquipmentAddFillRow* row = equipmentAddFindRow(rows, ord);
+    if (!row) return nullptr;
+    if (kind == EQUISTR_DESC)
+        return row->description.empty() ? row->displayName.c_str()
+                                        : row->description.c_str();
+    return row->displayName.c_str();   // NAME/ABBREV both show the DisplayName
+}
 
 #endif // EQUIPMENT_REGISTRY_H

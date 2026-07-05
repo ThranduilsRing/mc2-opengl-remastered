@@ -21,6 +21,7 @@
 
 #include "modder_finding.h"   // MODDER-FIRST-ERROR-SURFACE-1: shared context format
 #include "platform_str.h"     // S_stricmp (EQUIP-ADD-FILL-1 def-leaf filter)
+#include "logisticsscreen.h"  // EQUIP-ADD-UI-NAME-1 (S3): gEquipmentUiTextHook
 
 namespace {
 // One consistent emit for generated-equipment problems. Only reachable when
@@ -45,6 +46,14 @@ static std::map<long, std::string>       g_addFillQualifiedIds;
 
 const std::vector<EquipmentAddFillRow>& equipmentAddFillRows() {
     return g_addFillRows;
+}
+
+// EQUIP-ADD-UI-NAME-1 (S3): resolve a legacy component string-table id
+// (32000/33000/34000/46000 + masterID) to the ADD def's DisplayName/Description
+// when that masterID is an ADD-filled row. nullptr -> caller uses cLoadString
+// unchanged. Gates OFF -> g_addFillRows empty -> always nullptr (byte-identical).
+const char* equipmentAddUiTextForStringId(long stringId) {
+    return equipmentAddUiTextForStringIdPure(g_addFillRows, stringId);
 }
 
 const EquipmentRegistry& getEquipmentRegistry() {
@@ -440,6 +449,11 @@ size_t applyEquipmentAddFillIfEnabled(float baseSensorRange) {
     g_addFillRows.clear();
     g_addFillQualifiedIds.clear();
 
+    // EQUIP-ADD-UI-NAME-1 (S3): install the gui-layer help-text resolver hook.
+    // Gate-guarded (we are past both gate checks); rows-empty lookups return
+    // null so installing before the fill walk is harmless.
+    gEquipmentUiTextHook = equipmentAddUiTextForStringId;
+
     std::vector<std::string> defPaths;
     EnumerateModFitFiles("data/defs/equipment/", collectEquipDefPath, &defPaths);
     if (defPaths.empty())
@@ -460,9 +474,11 @@ size_t applyEquipmentAddFillIfEnabled(float baseSensorRange) {
             continue;                      // not an equipment def shape
 
         char idBuf[128] = {0}, nameBuf[128] = {0}, kindBuf[32] = {0};
+        char descBuf[1024] = {0};   // S3: optional UI description passthrough
         gen.readIdString("EquipmentId", idBuf, sizeof(idBuf) - 1);
         gen.readIdString("DisplayName", nameBuf, sizeof(nameBuf) - 1);
         gen.readIdString("Kind", kindBuf, sizeof(kindBuf) - 1);
+        gen.readIdString("Description", descBuf, sizeof(descBuf) - 1);
         std::string qid = idBuf;
 
         long ord = -1;
@@ -614,6 +630,7 @@ size_t applyEquipmentAddFillIfEnabled(float baseSensorRange) {
         out.ordinal      = ord;
         out.qualifiedId  = qid;
         out.displayName  = rf.displayName;
+        out.description  = descBuf;    // may be empty -> UI falls back to name
         out.csvLine      = csv;
         out.ammoMasterId = rf.ammoMasterId;
         g_addFillRows.push_back(out);

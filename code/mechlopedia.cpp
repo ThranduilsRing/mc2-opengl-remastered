@@ -11,6 +11,7 @@ Mechlopedia.cpp			: Implementation of the Mechlopedia component.
 #include"inifile.h"
 #include"mclib.h"
 #include"logisticsdata.h"
+#include"unitprofile.h"   // EQUIP-ADD-UI-NAME-1 (S3): equipmentAddUiTextForStringId
 #include"mission.h"   // ENCYCLO-LAZYLOAD-1: initTGLForLogistics
 #include <cstdlib>    // ENCYCLO-3D-2: std::getenv (boot-tab harness target)
 #include"platform_str.h"   // S_stricmp (encyclopedia_<tab> parse)
@@ -1085,7 +1086,13 @@ void Mechlopedia::WeaponScreen::setWeapon ( LogisticsComponent* pComponent )
 
 		pEntry = new aTextListItem( IDS_EN_WEAPON_FONT );
 		pEntry->setColor( 0xff005392 );
-		pEntry->setText( pComponent->getHelpID() );
+		// EQUIP-ADD-UI-NAME-1 (S3): ADD-filled component descriptions come
+		// from the def, not the string table. Miss -> stock path.
+		const char* addDesc = equipmentAddUiTextForStringId( pComponent->getHelpID() );
+		if ( addDesc )
+			pEntry->setText( addDesc );
+		else
+			pEntry->setText( pComponent->getHelpID() );
 		pEntry->resize( descriptionListBox.width() - descriptionListBox.getScrollBarWidth() - 16, pEntry->height() );
 		pEntry->sizeToText();
 		pEntry->forceToTop( true );
@@ -1214,7 +1221,14 @@ void Mechlopedia::WeaponScreen::setWeapon ( LogisticsComponent* pComponent )
 	if ( hasDefsUiPage() )
 	{
 		char descText[4096] = {};
-		cLoadString( pComponent->getHelpID(), descText, sizeof(descText) - 1 );
+		// EQUIP-ADD-UI-NAME-1 (S3): def-sourced description for ADD rows.
+		const char* addDesc = equipmentAddUiTextForStringId( pComponent->getHelpID() );
+		if ( addDesc )
+		{
+			strncpy( descText, addDesc, sizeof(descText) - 1 );
+		}
+		else
+			cLoadString( pComponent->getHelpID(), descText, sizeof(descText) - 1 );
 		cleanLegacyDescription( descText );
 		setDefsElementText( "game.mcl_en_wep.text.description", descText );
 

@@ -7,6 +7,7 @@ controlGui.cpp			: Implementation of the controlGui component.
 
 #include <cstdlib>   // std::getenv (MC2_BOOT_TO_BAY video-skip gate)
 #include"controlgui.h"
+#include"unitprofile.h"   // EQUIP-ADD-UI-NAME-1 (S3): equipmentAddUiTextForStringId
 #include"tacticaloverview.h"  // Tactical Overview: strategic-icon overlay
 #include"contact.h"           // Tactical Overview: friendly sensor coverage tint
 #include"objmgr.h"            // Tactical Overview: enemy/contact marker scan
@@ -2813,7 +2814,16 @@ void ControlGui::renderHelpText()
 	if ( helpTextID )
 	{
 		char buffer[1024];
-		cLoadString( helpTextID, buffer, 1024 );
+		// EQUIP-ADD-UI-NAME-1 (S3): ADD-filled component help ids have no
+		// string-table entry; resolve from the def. Miss -> stock path.
+		const char* addHelpText = equipmentAddUiTextForStringId( helpTextID );
+		if ( addHelpText )
+		{
+			strncpy( buffer, addHelpText, 1023 );
+			buffer[1023] = 0;
+		}
+		else
+			cLoadString( helpTextID, buffer, 1024 );
 
 		DWORD width, height;
 		width = helpFont.width( buffer );

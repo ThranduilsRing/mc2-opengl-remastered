@@ -21,6 +21,9 @@ extern long helpTextID;
 extern long helpTextHeaderID;
 extern float frameLength;
 
+// EQUIP-ADD-UI-NAME-1 (S3): see logisticsscreen.h. Default null = stock path.
+const char* (*gEquipmentUiTextHook)(long stringId) = nullptr;
+
 
 LogisticsScreen::LogisticsScreen()
 {
@@ -380,7 +383,18 @@ void LogisticsScreen::update()
 		//		helpText += '\n';
 		//	}
 
-			cLoadString( helpTextID, tmp, 1024 );
+			// EQUIP-ADD-UI-NAME-1 (S3): an ADD-filled component's help id has no
+			// string-table entry; the hook (installed by the game, null in
+			// EditRel) resolves it from the def. Miss -> stock path unchanged.
+			const char* addText =
+				gEquipmentUiTextHook ? gEquipmentUiTextHook( helpTextID ) : nullptr;
+			if ( addText )
+			{
+				strncpy( tmp, addText, 1023 );
+				tmp[1023] = 0;
+			}
+			else
+				cLoadString( helpTextID, tmp, 1024 );
 			helpText = tmp;
 			textObjects[helpTextArrayID].setText( helpText );
 			if ( !defsHelpTextKey.empty() )

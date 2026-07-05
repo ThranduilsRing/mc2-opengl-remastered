@@ -16,6 +16,9 @@ FITini
 [Equipment]
 st EquipmentId="sample:hot_medium_laser"
 st DisplayName="Hot Medium Laser"
+// EQUIP-ADD-UI-NAME-1 (S3): optional UI description; shown in the mechlab
+// component info window / hover help / encyclopedia. Absent -> DisplayName.
+st Description="An overtuned medium laser running hot focusing coils. Hits harder than the stock model at the price of severe waste heat per pulse."
 st Kind="Weapon"
 st Tags="energy"
 l LegacyMasterId=40

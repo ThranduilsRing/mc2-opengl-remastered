@@ -232,3 +232,66 @@ TEST_CASE("validator EQV_ADD_* mirrors the engine fill rules") {
     CHECK(std::string(equipmentReasonToken(EQV_ADD_FIELDS_INCOMPLETE)) == "EQV_ADD_FIELDS_INCOMPLETE");
     CHECK(std::string(equipmentReasonToken(EQV_ADD_AMMO_UNRESOLVED)) == "EQV_ADD_AMMO_UNRESOLVED");
 }
+
+// ---------------------------------------------------------------------------
+// EQUIP-ADD-UI-NAME-1 (S3): string-table id decode + ADD-row UI text resolver.
+// ---------------------------------------------------------------------------
+TEST_CASE("equip-add-ui-name: equipmentUiStringDecode block mapping") {
+    long ord = -99;
+    // the four component blocks, base + top-of-range (ordinal 254)
+    CHECK(equipmentUiStringDecode(32000, &ord) == EQUISTR_NAME);   CHECK(ord == 0);
+    CHECK(equipmentUiStringDecode(32254, &ord) == EQUISTR_NAME);   CHECK(ord == 254);
+    CHECK(equipmentUiStringDecode(33040, &ord) == EQUISTR_ABBREV); CHECK(ord == 40);
+    CHECK(equipmentUiStringDecode(34040, &ord) == EQUISTR_DESC);   CHECK(ord == 40);
+    CHECK(equipmentUiStringDecode(46040, &ord) == EQUISTR_DESC);   CHECK(ord == 40);
+
+    // 255 = 0xff sentinel -> NOT a component string (block width is 0..254)
+    CHECK(equipmentUiStringDecode(32255, &ord) == EQUISTR_NONE);   CHECK(ord == -1);
+    CHECK(equipmentUiStringDecode(46255, &ord) == EQUISTR_NONE);
+    // outside every block
+    CHECK(equipmentUiStringDecode(0, &ord) == EQUISTR_NONE);
+    CHECK(equipmentUiStringDecode(31999, &ord) == EQUISTR_NONE);
+    CHECK(equipmentUiStringDecode(35000, &ord) == EQUISTR_NONE);
+    CHECK(equipmentUiStringDecode(45999, &ord) == EQUISTR_NONE);
+    CHECK(equipmentUiStringDecode(47000, &ord) == EQUISTR_NONE);
+    // null ordOut is allowed
+    CHECK(equipmentUiStringDecode(33001, nullptr) == EQUISTR_ABBREV);
+}
+
+TEST_CASE("equip-add-ui-name: pure resolver over fill rows") {
+    std::vector<EquipmentAddFillRow> rows;
+    EquipmentAddFillRow r;
+    r.ordinal = 40;
+    r.qualifiedId = "sample:hot_medium_laser";
+    r.displayName = "Hot Medium Laser";
+    r.description = "Runs hot.";
+    rows.push_back(r);
+    EquipmentAddFillRow r2;               // no description -> name fallback
+    r2.ordinal = 44;
+    r2.displayName = "Plain Thing";
+    rows.push_back(r2);
+
+    // name + abbrev blocks -> DisplayName
+    CHECK(std::string(equipmentAddUiTextForStringIdPure(rows, 32040)) == "Hot Medium Laser");
+    CHECK(std::string(equipmentAddUiTextForStringIdPure(rows, 33040)) == "Hot Medium Laser");
+    // both description blocks -> Description
+    CHECK(std::string(equipmentAddUiTextForStringIdPure(rows, 34040)) == "Runs hot.");
+    CHECK(std::string(equipmentAddUiTextForStringIdPure(rows, 46040)) == "Runs hot.");
+    // description absent -> DisplayName fallback (never the missing marker)
+    CHECK(std::string(equipmentAddUiTextForStringIdPure(rows, 46044)) == "Plain Thing");
+
+    // NOT an ADD ordinal -> nullptr (caller keeps legacy cLoadString path)
+    CHECK(equipmentAddUiTextForStringIdPure(rows, 32156) == nullptr);
+    CHECK(equipmentAddUiTextForStringIdPure(rows, 46156) == nullptr);
+    // not a component-block id at all -> nullptr
+    CHECK(equipmentAddUiTextForStringIdPure(rows, 12345) == nullptr);
+
+    // gates OFF <=> rows empty -> ALWAYS nullptr (byte-identical stock path)
+    std::vector<EquipmentAddFillRow> empty;
+    CHECK(equipmentAddUiTextForStringIdPure(empty, 32040) == nullptr);
+    CHECK(equipmentAddUiTextForStringIdPure(empty, 46040) == nullptr);
+
+    // find helper directly
+    CHECK(equipmentAddFindRow(rows, 40) == &rows[0]);
+    CHECK(equipmentAddFindRow(rows, 41) == nullptr);
+}
