@@ -41,6 +41,7 @@
 
 #include "modlint_manifest.h"
 #include "mod_conflict.h"   // MOD-LOAD-ORDER-CONFLICT-REPORT-1: pure classifier shared with the engine
+#include "modder_finding.h" // MODDER-FIRST-ERROR-SURFACE-1: shared modder-finding context format
 
 static void usage() {
     std::fprintf(stderr,
@@ -145,7 +146,9 @@ static int lintModConflicts(const std::vector<std::string>& modDirs,
 
     auto modIdOf = [](const fs::path& dir) -> std::string {
         std::string text;
-        if (readAll((dir / "mod.json").string(), &text)) {
+        const std::string jsonPath = (dir / "mod.json").string();
+        bool readable = readAll(jsonPath, &text);
+        if (readable) {
             bool ok = true;
             MlJson root = parseModlintJson(text, &ok);
             if (ok) {
@@ -153,6 +156,17 @@ static int lintModConflicts(const std::vector<std::string>& modDirs,
                 if (!f.id.empty()) return f.id;
             }
         }
+        // MODDER-FIRST-ERROR-SURFACE-1: the loader-mirroring fallback (folder
+        // name as id) is never silent — say which mod.json failed and why.
+        ModderFinding f;
+        f.message  = readable
+            ? "mod.json is malformed or missing \"id\""
+            : "mod.json not found/readable";
+        f.file     = jsonPath;
+        f.field    = "id";
+        f.expected = "mc2-mod/1 manifest with a lowercase \"id\" token";
+        f.fallback = "folder name '" + dir.filename().string() + "' used as mod id";
+        std::fprintf(stderr, "mc2_modlint: %s\n", formatModderFinding(f).c_str());
         return dir.filename().string();   // loader fallback: folder name as id
     };
 
@@ -258,7 +272,14 @@ int main(int argc, char** argv) {
     }
 
     if (!parseOk) {
-        std::fprintf(stderr, "mc2_modlint: malformed JSON input\n");
+        // MODDER-FIRST-ERROR-SURFACE-1: say WHICH file failed to parse and that
+        // nothing was validated (the fallback), one consistent context format.
+        ModderFinding f;
+        f.message  = "malformed JSON input — file could not be parsed";
+        f.file     = (path == "-") ? "<stdin>" : path;
+        f.expected = "valid JSON (facts/report/manifest)";
+        f.fallback = "nothing validated (exit 2)";
+        std::fprintf(stderr, "mc2_modlint: %s\n", formatModderFinding(f).c_str());
         return 2;
     }
 
