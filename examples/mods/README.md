@@ -14,7 +14,7 @@ with the mods absent, the game is byte-identical.
 
 | mod | proves |
 |---|---|
-| `sample_equipment` | a new `EquipmentDefinition` (qualified id `sample:hot_medium_laser`), generated-source `.fit`, modlint-clean |
+| `sample_equipment` | a genuinely NEW weapon (`sample:hot_medium_laser`) that goes LIVE via EQUIP-ADD-FILL-1: explicit `LegacyMasterId=40` fills a FREE compbas ordinal at load (both consumers: in-sim MasterComponent + mechlab row), `Enabled=TRUE` rides the S1 enable wire; gates `MC2_UNIT_PROFILE_DATA=1 MC2_EQUIPMENT_ADD=1`; modlint-clean |
 | `sample_variant`   | a new namespaced unit variant (`sample:atlas_laserboat`) on a stock chassis, 3-layer loadout join, modlint-clean |
 | `sample_bad_mod`   | INTENTIONAL failures the validator catches with modder-first messages (exit 1) |
 | `core_unlocks`     | re-surface TWO dormant stock weapons (Clan Gauss Rifle 113, ER PPC 146) via the CLEAN enabled->purchase wire (EQUIP-ENABLE-WIRE-1: tiny `[Equipment] b Enabled=TRUE` def overrides, gate `MC2_UNIT_PROFILE_DATA=1`; enable-only, purchase.fit stays authoritative) |
@@ -42,16 +42,22 @@ The shipped source-flip is an **OVERLAY, not an ADD**:
   (code/unitprofile.cpp, code/mech.cpp) overlay facets onto units the mission
   ALREADY spawns, keyed by chassis stem + variant name.
 
-Consequence: a **new `sample:`-namespaced** def is not auto-instantiated by the
-current engine — nothing walks it, because there is no stock `masterList` row or
-spawned unit whose derived `core:<slug>` path points at it. So the load proof for
-a genuinely-new mod def is the **offline modlint roundtrip** (the def's facts
-resolve and validate), NOT a live in-mission spawn. The FIRST rung of the clean
-wire has landed: **EQUIP-ENABLE-WIRE-1** (`core_unlocks`) makes a POPULATED
-stock row purchasable via `[Equipment] b Enabled=TRUE` in its def — enable-only,
-gate `MC2_UNIT_PROFILE_DATA=1`. Making a genuinely-NEW def live (filling a free
-compbas ordinal) is the next rung, S2 EQUIP-ADD-FILL-1 (roadmap MODDABILITY
-phase).
+TWO rungs of the clean wire have now landed on top of the overlay:
+
+* **S1 EQUIP-ENABLE-WIRE-1** (`core_unlocks`): a POPULATED stock row becomes
+  purchasable via `[Equipment] b Enabled=TRUE` in its def — enable-only, gate
+  `MC2_UNIT_PROFILE_DATA=1`.
+* **S2 EQUIP-ADD-FILL-1** (`sample_equipment`): a NEW equipment def with an
+  EXPLICIT `LegacyMasterId` naming an UNDEFINED compbas ordinal is materialized
+  at load as a live `MasterComponent` row AND a mechlab `LogisticsComponent`
+  (ONE synthesized compbas line feeds BOTH consumers; `[Presentation] Icon` is
+  mandatory or the mechlab consumer drops the row). Conflicts are first-wins +
+  `[EQUIP-ADD]` findings, never silent; populated stock ordinals are never
+  filled; NO auto-assign of ordinals. Gates `MC2_UNIT_PROFILE_DATA=1` +
+  `MC2_EQUIPMENT_ADD=1`, both default OFF — gates off is byte-identical.
+
+New-UNIT (chassis) ADD remains future work (S4/S5); the in-mission info window's
+`IDS_COMP_ABBR0+masterID` label for new ids is the S3 UI-name rung.
 
 A mod that RE-STATS an EXISTING stock weapon (reusing the stock `core:<slug>`
 path + matching `LegacyMasterId`) IS picked up live by the overlay — that is the

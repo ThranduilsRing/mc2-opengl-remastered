@@ -12,5 +12,11 @@
   "ammo_per_shot": 0,
   "ammo_category": "",
   "claimed_events": [],
-  "presented_events": []
+  "presented_events": [],
+  "enabled": true,
+  "legacy_master_id": 40,
+  "add_fill": true,
+  "has_display_name": true,
+  "has_icon": true,
+  "ammo_master_id": 0
 }

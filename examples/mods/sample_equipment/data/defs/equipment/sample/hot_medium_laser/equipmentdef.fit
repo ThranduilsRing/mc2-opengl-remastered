@@ -3,16 +3,23 @@ FITini
 // EXAMPLE-MODS-1 hand-authored EquipmentDefinition (mod: sample_equipment).
 // Cloned from the stock Medium Laser (core:laser, legacyMasterId 156) with a
 // hotter/harder-hitting profile. Namespaced id 'sample:hot_medium_laser' so it
-// ADDS a new component rather than overriding the stock laser. LegacyMasterId is
-// kept in 0..254 (no E4 id-widen) purely as an addressable alias; because the id
-// is namespaced (sample:) it never aliases a real stock masterList row.
+// ADDS a new component rather than overriding the stock laser.
+//
+// EQUIP-ADD-FILL-1 (S2): LegacyMasterId=40 claims an UNDEFINED stock compbas
+// ordinal (free ordinals include 39/40/41/44...; ids stay in 0..254, no E4
+// widen; 255 = 0xff sentinel is never used). With MC2_UNIT_PROFILE_DATA=1
+// MC2_EQUIPMENT_ADD=1 and this mod active, the engine materializes row 40 as a
+// live MasterComponent AND a mechlab LogisticsComponent at load; Enabled=TRUE
+// then rides the S1 enable wire so it is purchasable without touching any
+// purchase.fit.
 
 [Equipment]
 st EquipmentId="sample:hot_medium_laser"
 st DisplayName="Hot Medium Laser"
 st Kind="Weapon"
 st Tags="energy"
-l LegacyMasterId=200
+l LegacyMasterId=40
+b Enabled=TRUE
 f Heat=4.5
 f Cost=2100.0
 
@@ -38,7 +45,12 @@ st AllowedLocations="CenterTorso,LeftTorso,RightTorso,LeftArm,RightArm"
 
 [Presentation]
 st Icon="MCL_MC_Laser.tga"
+st Picture="MCL_MC_Laser"
 l UINameStringId=32156
+// SpecialEffect 12 = the stock laser firing VFX cue (compbas row 156 column).
+l SpecialEffect=12
+l IconX=1
+l IconY=1
 // event-based presentation cues WAIVED (not derivable from compbas)
 
 FITend
