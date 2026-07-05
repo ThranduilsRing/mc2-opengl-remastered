@@ -38,6 +38,25 @@
 
 #include "resource.h"
 
+#include "PilotProfilePreserve.h"
+
+// PILOT-PROFILE-PRESERVE-1: loud, unconditional data-loss warning (rare;
+// fires only when a save would blank a [WarriorN] Profile). Same log file
+// as the MC2_EDITOR_TRACE probes, but NOT gated -- data loss must be seen.
+static void PilotDataLossWarn( const char* msg )
+{
+	OutputDebugStringA( msg );
+	OutputDebugStringA( "\n" );
+	FILE* f = fopen( "editor-startup.log", "a" );
+	if ( f )
+	{
+		fputs( "[PILOT-PROFILE-PRESERVE-1] WARNING: ", f );
+		fputs( msg, f );
+		fputc( '\n', f );
+		fclose( f );
+	}
+}
+
 // ARM
 #include "../ARM/Microsoft.Xna.Arm.h"
 
@@ -1032,10 +1051,22 @@ Brain& Brain::operator=( const Brain& src )
 
 void Pilot::save( FitIniFile* file, int bGoodGuy )
 {
-	// info is NULL when the unit was loaded from a pak/fit without calling
-	// pilot.load() (the editor's Unit::load() never calls it).  Write an
-	// empty profile string rather than crashing on info->fileName.
-	const char* profileName = (info && info->fileName) ? info->fileName : "";
+	// PILOT-PROFILE-PRESERVE-1 (QUICKSTART-PILOT-DROP-RECON-1): never silently
+	// blank a Profile that existed on disk. When initPilots() loads zero
+	// pilots (pilots.csv zlib-compressed inside the FST / warriors/*.fit
+	// missing), every Pilot::load falls back to s_GoodPilots[0] whose
+	// fileName is NULL and the old code wrote "" for EVERY warrior (the
+	// Bubba x3 quickstart data loss). rawProfile carries the string read
+	// from the mission .fit and wins; the catalog match covers freshly
+	// placed units; "" remains the crash-safe last resort (42d4aa9e), but
+	// now with a loud warning.
+	bool dataLoss = false;
+	const char* profileName =
+		PilotProfileForSave( rawProfile, info ? info->fileName : 0, &dataLoss );
+	if ( dataLoss )
+		PilotDataLossWarn(
+			"Pilot::save: writing empty Profile (no raw string from load, no "
+			"pilots.csv catalog match) -- possible editor data loss" );
 	file->writeIdString( "Profile", profileName );
 
 	// ARM
@@ -1054,6 +1085,18 @@ void Pilot::load( FitIniFile* file, int bGoodGuy )
 	long result = 0;
 	char buffer[256];
 	result = file->readIdString( "Profile", buffer, 256 );
+
+	// PILOT-PROFILE-PRESERVE-1: stash the raw on-disk string so save can
+	// round-trip it even when the catalog match below fails (see
+	// Pilot::save). Cleared on read failure so a fresh unit stays empty.
+	if ( NO_ERR == result )
+	{
+		strncpy( rawProfile, buffer, sizeof( rawProfile ) - 1 );
+		rawProfile[sizeof( rawProfile ) - 1] = 0;
+	}
+	else
+		rawProfile[0] = 0;
+
 	bool bFound = 0;
 	if (NO_ERR == result)
 	{
@@ -1212,12 +1255,15 @@ void Pilot::initPilots()
 
 void Pilot::setName( const char* newName )
 {
+	// PILOT-PROFILE-PRESERVE-1: a user reassignment must beat the stashed
+	// on-disk string in Pilot::save, so sync rawProfile with the new match.
 	int i = 0;
 	for ( i = 0; i < goodCount; i++ )
 	{
 		if ( stricmp( newName, s_GoodPilots[i].name ) == 0 )
 		{
 			info = &s_GoodPilots[i];
+			syncRawProfile();
 			return;
 		}
 	}
@@ -1227,6 +1273,7 @@ void Pilot::setName( const char* newName )
 		if ( stricmp( newName, s_BadPilots[i].name ) == 0 )
 		{
 			info = &s_BadPilots[i];
+			syncRawProfile();
 			return;
 		}
 	}

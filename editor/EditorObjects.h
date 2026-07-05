@@ -16,6 +16,7 @@ class FitIniFile;
 #include "ObjectAppearance.h"
 
 #include <vector>
+#include <string.h> // PILOT-PROFILE-PRESERVE-1: strncpy in Pilot::syncRawProfile
 
 #ifndef HEAP_H
 #include <heap.h>
@@ -134,7 +135,7 @@ class Pilot
 
 public:
 
-	Pilot(){info = 0;}
+	Pilot(){info = 0; rawProfile[0] = 0;}
 
 	static void initPilots();
 
@@ -152,12 +153,29 @@ public:
 	const char* 		getName() const { return info->name; }
 	void	setName( const char* );
 
+	// PILOT-PROFILE-PRESERVE-1: mirror the current catalog match into
+	// rawProfile (used after a deliberate reassignment via setName).
+	void	syncRawProfile()
+	{
+		const char* fn = ( info && info->fileName ) ? info->fileName : "";
+		strncpy( rawProfile, fn, sizeof( rawProfile ) - 1 );
+		rawProfile[sizeof( rawProfile ) - 1] = 0;
+	}
+
 	void	save( FitIniFile* file, int bGoodGuy );
 	void	load( FitIniFile* file, int bGoodGuy );
 
 	PilotInfo* info;
 	/*note: The value of info should always be NULL or a pointer to static data. So the default
 	assignment/copy operator (shallow copy) is valid. */
+
+	// PILOT-PROFILE-PRESERVE-1 (QUICKSTART-PILOT-DROP-RECON-1): the raw Profile
+	// string as read from the mission .fit. Pilot::save prefers this over the
+	// pilots.csv catalog match so a broken catalog environment (initPilots
+	// loads zero pilots -> info->fileName == NULL) can no longer silently
+	// blank every [WarriorN] Profile on re-save. Kept in sync by setName.
+	// Array member -> the shallow copy above stays valid.
+	char rawProfile[64];
 	
 };
 

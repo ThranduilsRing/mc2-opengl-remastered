@@ -52,6 +52,7 @@ add_executable(mc2_tests
     test_csvfile.cpp        # MINIMAL-VIABLE-HARNESS-2: real csvfile.cpp (Buildings.csv-shaped)
     test_fst_roundtrip.cpp  # MINIMAL-VIABLE-HARNESS-2: FST create/writeFast -> loose-vs-FST ladder
     test_paths_mod.cpp      # MINIMAL-VIABLE-HARNESS-2: paths.cpp globals + mod-index (TryModOpen) resolution
+    test_pilot_profile_preserve.cpp  # PILOT-PROFILE-PRESERVE-1: editor Profile save decision kernel (offline)
 
     # MINIMAL-VIABLE-HARNESS-1: malloc-backed heap + GameOS-global shim.
     # Replaces heap.cpp (won't compile standalone -- see
