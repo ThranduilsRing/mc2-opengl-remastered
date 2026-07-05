@@ -282,63 +282,62 @@ static void IndexModData(
 // a single sequential file read on repeat runs.
 //
 // Cache file: mods/<modId>/.modindex-cache  (plain text, tab-separated)
-// Invalidation: cache mtime vs max mtime of data/ + each immediate subdir.
+// Invalidation (MOD-INDEX-CACHE-MTIME-1, v2): a validity SIGNATURE stored in
+//   the cache -- non-dot file count + max mtime over all non-dot files AND
+//   dirs from ONE full recursive walk of data/ -- recomputed and compared on
+//   load. (v1 compared cache mtime vs 2-level dir mtimes, which missed content
+//   edits and deep adds: new def files stayed invisible until the cache was
+//   hand-deleted.) A v1 cache has no sig line -> rebuilds once.
 // Force rebuild: MC2_REBUILD_MOD_CACHE=1
 //
 // Cache format:
-//   MC2MODIDX 1\n
+//   MC2MODIDX 2\n
 //   modid <id>\n
+//   sig <fileCount> <maxMtimeU64>\n
 //   count <N>\n
 //   <key>\t<absPath>\t<modId>\n   (N lines)
 // ---------------------------------------------------------------------------
+#include "mod_cache_sig.h"   // pure sig parse/format/match (doctest-covered)
 
-static const char* kCacheHeader = "MC2MODIDX 1";
-static const int   kCacheVersion = 1;
+static const char* kCacheHeader = "MC2MODIDX 2";
+static const int   kCacheVersion = 2;
 
-// Get max FILETIME from a directory and its immediate subdirs (two-level sweep).
-// Avoids a full recursive walk while still catching the common case where a
-// user adds/removes files inside a named subdir like data/tgl/ or data/art/.
-static FILETIME GetModDataMtime(const char* dataDir) {
-    FILETIME latest = {};
+// One full recursive metadata walk of the mod's data/ tree: count non-dot
+// files, track max last-write time over non-dot files AND directories (dir
+// mtimes catch renames, which keep file mtimes + count unchanged). Skip rule
+// mirrors IndexModData (ruling C4: any '.'-prefixed entry is invisible).
+// Load-time only -- metadata reads, no content I/O.
+static void ComputeModDataSignature(const char* dataDir, ModCacheSignature* sig) {
     WIN32_FILE_ATTRIBUTE_DATA da;
-    if (GetFileAttributesExA(dataDir, GetFileExInfoStandard, &da))
-        if (CompareFileTime(&da.ftLastWriteTime, &latest) > 0)
-            latest = da.ftLastWriteTime;
+    if (GetFileAttributesExA(dataDir, GetFileExInfoStandard, &da)) {
+        ULARGE_INTEGER t;
+        t.LowPart = da.ftLastWriteTime.dwLowDateTime;
+        t.HighPart = da.ftLastWriteTime.dwHighDateTime;
+        if (t.QuadPart > sig->maxMtime) sig->maxMtime = t.QuadPart;
+    }
 
     char pat[MAX_PATH];
     _snprintf(pat, sizeof(pat), "%s*", dataDir);
     pat[sizeof(pat)-1] = '\0';
     WIN32_FIND_DATAA fd;
     HANDLE h = FindFirstFileA(pat, &fd);
-    if (h == INVALID_HANDLE_VALUE) return latest;
+    if (h == INVALID_HANDLE_VALUE) return;
     do {
-        if (fd.cFileName[0] == '.') continue;
-        if (!(fd.dwFileAttributes & FILE_ATTRIBUTE_DIRECTORY)) continue;
-        if (CompareFileTime(&fd.ftLastWriteTime, &latest) > 0)
-            latest = fd.ftLastWriteTime;
-        // one level deeper
-        char subPat[MAX_PATH];
-        _snprintf(subPat, sizeof(subPat), "%s%s/*", dataDir, fd.cFileName);
-        subPat[sizeof(subPat)-1] = '\0';
-        WIN32_FIND_DATAA fd2;
-        HANDLE h2 = FindFirstFileA(subPat, &fd2);
-        if (h2 == INVALID_HANDLE_VALUE) continue;
-        do {
-            if (fd2.cFileName[0] == '.') continue;
-            if (!(fd2.dwFileAttributes & FILE_ATTRIBUTE_DIRECTORY)) continue;
-            if (CompareFileTime(&fd2.ftLastWriteTime, &latest) > 0)
-                latest = fd2.ftLastWriteTime;
-        } while (FindNextFileA(h2, &fd2));
-        FindClose(h2);
+        if (fd.cFileName[0] == '.') continue;   // same skip rule as the indexer
+        ULARGE_INTEGER t;
+        t.LowPart = fd.ftLastWriteTime.dwLowDateTime;
+        t.HighPart = fd.ftLastWriteTime.dwHighDateTime;
+        if (t.QuadPart > sig->maxMtime) sig->maxMtime = t.QuadPart;
+        if (fd.dwFileAttributes & FILE_ATTRIBUTE_DIRECTORY) {
+            char sub[MAX_PATH];
+            _snprintf(sub, sizeof(sub), "%s%s/", dataDir, fd.cFileName);
+            sub[sizeof(sub)-1] = '\0';
+            ComputeModDataSignature(sub, sig);
+        } else {
+            sig->fileCount++;
+        }
     } while (FindNextFileA(h, &fd));
     FindClose(h);
-    return latest;
-}
-
-static FILETIME GetFileMtime(const char* path) {
-    WIN32_FILE_ATTRIBUTE_DATA da;
-    if (!GetFileAttributesExA(path, GetFileExInfoStandard, &da)) { FILETIME z={}; return z; }
-    return da.ftLastWriteTime;
 }
 
 // Write g_modIndex (filtered to entries with matching modId, for one mod layer) to cache.
@@ -347,12 +346,16 @@ static FILETIME GetFileMtime(const char* path) {
 static void WriteModIndexCache(
     const char* cachePath,
     const std::string& modId,
+    const ModCacheSignature& sig,
     const std::vector<std::pair<std::string,ModFileEntry>>& entries
 ) {
     FILE* f = fopen(cachePath, "wb");
     if (!f) return;
+    char sigLine[64];
+    formatModCacheSigLine(sig, sigLine, sizeof(sigLine));
     fprintf(f, "%s\n", kCacheHeader);
     fprintf(f, "modid %s\n", modId.c_str());
+    fprintf(f, "%s\n", sigLine);
     fprintf(f, "count %zu\n", entries.size());
     for (auto& e : entries)
         fprintf(f, "%s\t%s\t%s\n", e.first.c_str(), e.second.path.c_str(), e.second.modId.c_str());
@@ -364,13 +367,16 @@ static void WriteModIndexCache(
 static int LoadModIndexCache(
     std::unordered_map<std::string, ModFileEntry>& idx,
     const char* cachePath,
-    const char* expectedModId
+    const char* expectedModId,
+    const ModCacheSignature& expectedSig,
+    bool* sigMismatch   // out: header/modid ok but signature differs (stale)
 ) {
+    if (sigMismatch) *sigMismatch = false;
     FILE* f = fopen(cachePath, "rb");
     if (!f) return -1;
 
     char line[MAX_PATH * 3];
-    // header
+    // header (a v1 cache fails here -> one-time rebuild after this change)
     if (!fgets(line, sizeof(line), f)) { fclose(f); return -1; }
     line[strcspn(line, "\r\n")] = '\0';
     if (strcmp(line, kCacheHeader) != 0) { fclose(f); return -1; }
@@ -379,6 +385,17 @@ static int LoadModIndexCache(
     line[strcspn(line, "\r\n")] = '\0';
     if (strncmp(line, "modid ", 6) != 0) { fclose(f); return -1; }
     if (strcmp(line + 6, expectedModId) != 0) { fclose(f); return -1; }
+    // sig (MOD-INDEX-CACHE-MTIME-1): stored tree signature vs the one just
+    // recomputed from disk -- ANY mismatch means files changed since index time.
+    if (!fgets(line, sizeof(line), f)) { fclose(f); return -1; }
+    line[strcspn(line, "\r\n")] = '\0';
+    ModCacheSignature storedSig;
+    if (!parseModCacheSigLine(line, &storedSig)) { fclose(f); return -1; }
+    if (!modCacheSignatureMatches(storedSig, expectedSig)) {
+        if (sigMismatch) *sigMismatch = true;
+        fclose(f);
+        return -1;
+    }
     // count
     if (!fgets(line, sizeof(line), f)) { fclose(f); return -1; }
     line[strcspn(line, "\r\n")] = '\0';
@@ -415,27 +432,38 @@ static bool TryLoadModCache(
     const char* modId,        // e.g. "mc2x-pbr"
     const char* dataDir       // e.g. "...mods/mc2x-pbr/data/"
 ) {
-    if (getenv("MC2_REBUILD_MOD_CACHE")) return false;
+    if (getenv("MC2_REBUILD_MOD_CACHE")) {
+        printf("[mod-cache] refresh modid='%s' reason=MC2_REBUILD_MOD_CACHE\n", modId);
+        fflush(stdout);
+        return false;
+    }
 
     char cachePath[MAX_PATH];
     _snprintf(cachePath, sizeof(cachePath), "%s%s/.modindex-cache", absModRoot, modId);
     cachePath[sizeof(cachePath)-1] = '\0';
 
-    FILETIME cacheMtime = GetFileMtime(cachePath);
-    // cache doesn't exist
-    ULARGE_INTEGER cmt; cmt.LowPart = cacheMtime.dwLowDateTime; cmt.HighPart = cacheMtime.dwHighDateTime;
-    if (cmt.QuadPart == 0) return false;
+    // MOD-INDEX-CACHE-MTIME-1: recompute the tree signature (one recursive
+    // metadata walk, load-time only) and compare against the one stored in
+    // the cache. Catches content edits, deep adds/removes, and renames --
+    // the v1 "dir mtimes, 2 levels" rule missed all three.
+    ModCacheSignature diskSig;
+    ComputeModDataSignature(dataDir, &diskSig);
 
-    FILETIME dataMtime = GetModDataMtime(dataDir);
-    if (CompareFileTime(&dataMtime, &cacheMtime) > 0) return false; // data newer than cache
+    bool sigMismatch = false;
+    int loaded = LoadModIndexCache(idx, cachePath, modId, diskSig, &sigMismatch);
+    if (loaded < 0) {
+        printf("[mod-cache] refresh modid='%s' reason=%s (files=%llu maxMtime=%llu)\n",
+               modId,
+               sigMismatch ? "signature-mismatch (mod files changed)"
+                           : "cache missing/stale-format",
+               diskSig.fileCount, diskSig.maxMtime);
+        fflush(stdout);
+        return false;
+    }
 
-    size_t before = idx.size();
-    int loaded = LoadModIndexCache(idx, cachePath, modId);
-    if (loaded < 0) return false; // parse error
-
-    printf("[mod-cache] hit modid='%s' loaded=%d files\n", modId, loaded);
+    printf("[mod-cache] hit modid='%s' loaded=%d files (sig files=%llu maxMtime=%llu)\n",
+           modId, loaded, diskSig.fileCount, diskSig.maxMtime);
     fflush(stdout);
-    (void)before;
     return true;
 }
 
@@ -470,8 +498,14 @@ static void IndexModDataCached(
     char cachePath[MAX_PATH];
     _snprintf(cachePath, sizeof(cachePath), "%s%s/.modindex-cache", absModRoot, modId);
     cachePath[sizeof(cachePath)-1] = '\0';
-    WriteModIndexCache(cachePath, modId, fresh);
-    printf("[mod-cache] miss modid='%s' indexed=%zu wrote cache\n", modId, fresh.size());
+    // Signature is taken AFTER the index walk so it reflects the exact tree
+    // state the entries were built from (the cache file itself is dot-named ->
+    // invisible to the signature walk, so writing it never dirties the sig).
+    ModCacheSignature sig;
+    ComputeModDataSignature(dataDir, &sig);
+    WriteModIndexCache(cachePath, modId, sig, fresh);
+    printf("[mod-cache] miss modid='%s' indexed=%zu wrote cache (sig files=%llu maxMtime=%llu)\n",
+           modId, fresh.size(), sig.fileCount, sig.maxMtime);
     if (logFileResolve >= 1 && skippedDot > 0)
         printf("[mod] [%s] skipped %d dot-entr%s (ruling C4)\n",
                modId, skippedDot, skippedDot == 1 ? "y" : "ies");

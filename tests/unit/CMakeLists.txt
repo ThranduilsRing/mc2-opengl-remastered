@@ -73,6 +73,7 @@ add_executable(mc2_tests
     test_unit_source_flip.cpp  # UNIT-SOURCE-FLIP-SWITCH-1: MC2_UNIT_DEFINITION_SOURCE gate parse + variant-slug + generated-token facet apply (offline)
     test_equipment_source_flip.cpp  # EQUIPMENT-SOURCE-FLIP-SWITCH-1: MC2_EQUIPMENT_DEFINITION_SOURCE gate parse + range-bucket->ordinal + per-field overlay fallback (offline)
     test_equipment_add_fill.cpp  # EQUIP-ADD-FILL-1 (S2): gate parse + ns-aware def path + fill decision matrix + kind->form + AllowedLocations->crit + dual-consumer CSV line lock + EQV_ADD_* validator mirrors (offline)
+    test_mod_cache_sig.cpp       # MOD-INDEX-CACHE-MTIME-1: mod-index cache validity-signature kernel (sig-line parse/format + match rule, offline)
     test_vulkan_layout_chain.cpp  # VULKAN-LAYOUT-CHAIN-VALIDATOR-2: sampled-image layout-chain coverage/producer (offline)
     test_subgraph_contiguity.cpp  # SUBGRAPH-CONTIGUITY-GUARD-1: postprocess sub-pass contiguity rule (offline)
     test_file_inifile.cpp   # MINIMAL-VIABLE-HARNESS-1: real file/inifile/packet stack, game-free
