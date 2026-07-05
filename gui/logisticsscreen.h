@@ -85,6 +85,11 @@ class LogisticsScreen : public aObject
 	// composited UNDER the ImGui layer and double-drawn.
 	bool hasDefsUiPage() const;
 
+	// UI-DEFS-LOCKSTEP-HARDEN-1: loaded AND actually producing draw output
+	// (or legacy-passthrough). False => render/update use the legacy path
+	// (fail-soft: degraded but visible, never a black quad over nothing).
+	bool defsUiPageUsable() const;
+
 	// True when every legacy animObject's animation has finished (or the
 	// screen has none).  Sequenced intros gate on this rather than
 	// animObjects[0] alone, so closing fades that outlast the first

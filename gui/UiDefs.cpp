@@ -15,6 +15,7 @@
  ***************************************************************/
 
 #include "UiDefs.h"
+#include "UiDefsLockstep.h"
 
 #include "logisticsscreen.h"
 #include "abutton.h"
@@ -45,6 +46,7 @@ extern long helpTextID;
 #include <cstdio>
 #include <filesystem>
 #include <fstream>
+#include <sstream>
 #include <memory>
 #include <string>
 #include <unordered_map>
@@ -116,6 +118,21 @@ static void uiDefsTrace(const char* fmt, ...)
     std::vfprintf(stderr, fmt, args);
     va_end(args);
     std::fprintf(stderr, "\n");
+}
+
+// UI-DEFS-LOCKSTEP-HARDEN-1: ALWAYS-ON log line for defs/ui page-load and
+// render failures. BLACK-MENU-BISECT-1: a version-skewed defs/ui package
+// produced a black screen with ZERO log output even under MC2_LOG=1 -- every
+// failure path must emit exactly one clear [UI-DEFS] line, unconditionally.
+static void uiDefsLog(const char* fmt, ...)
+{
+    std::printf("[UI-DEFS] ");
+    va_list args;
+    va_start(args, fmt);
+    std::vprintf(fmt, args);
+    va_end(args);
+    std::printf("\n");
+    std::fflush(stdout);
 }
 
 static std::string stripLineComment(const std::string& line)
@@ -342,6 +359,52 @@ static bool fileExistsPath(const std::filesystem::path& p)
 {
     std::error_code ec;
     return std::filesystem::exists(p, ec);
+}
+
+// UI-DEFS-LOCKSTEP-HARDEN-1: defs/ui package version gate. The package ships
+// a tiny manifest (data/defs/ui/PACKAGE.fit, "Version = N"); the exe carries
+// kExpectedUiPackageVersion (gui/UiDefsLockstep.h). Missing or mismatched =>
+// every page load is treated as a failure => LogisticsScreen renders the
+// legacy screens (visible, degraded) instead of a silent black quad.
+// Checked once per process; result cached. MC2_UI_DEFS_IGNORE_PACKAGE_VERSION=1
+// bypasses the gate (modder iteration escape hatch).
+static bool uiPackageVersionCheckPassed()
+{
+    static int s_verdict = -1;   // -1 unknown, 0 fail, 1 pass
+    if (s_verdict >= 0)
+        return s_verdict == 1;
+
+    const char* skip = std::getenv("MC2_UI_DEFS_IGNORE_PACKAGE_VERSION");
+    if (skip && skip[0] && !envValueIsFalse(skip)) {
+        uiDefsLog("package version check BYPASSED (MC2_UI_DEFS_IGNORE_PACKAGE_VERSION set)");
+        s_verdict = 1;
+        return true;
+    }
+
+    const std::filesystem::path manifest = defsRoot() / "ui" / "PACKAGE.fit";
+    std::ifstream in(manifest);
+    if (!in.is_open()) {
+        uiDefsLog("package manifest MISSING: %s (exe expects version %d) -- "
+                  "treating data/defs/ui as version-skewed; front-end falls back to legacy UI. "
+                  "Deploy matching data/defs with this exe (scripts/deploy_payload.py).",
+                  manifest.string().c_str(), UiDefs::kExpectedUiPackageVersion);
+        s_verdict = 0;
+        return false;
+    }
+    std::stringstream ss;
+    ss << in.rdbuf();
+    const std::string text = ss.str();
+    const int found = UiDefs::parseUiPackageVersionText(text.c_str());
+    if (!UiDefs::uiPackageVersionOk(found, UiDefs::kExpectedUiPackageVersion)) {
+        uiDefsLog("package version %d, expected %d (%s) -- version-skewed defs/ui package; "
+                  "front-end falls back to legacy UI. Deploy matching data/defs with this exe.",
+                  found, UiDefs::kExpectedUiPackageVersion, manifest.string().c_str());
+        s_verdict = 0;
+        return false;
+    }
+    uiDefsLog("package version %d OK (%s)", found, manifest.string().c_str());
+    s_verdict = 1;
+    return true;
 }
 
 static std::filesystem::path resolveCaseInsensitive(const std::filesystem::path& raw)
@@ -1625,6 +1688,12 @@ struct UiDefs::GameOSPage::Impl {
     int lastRenderYOffset = 0;
     bool suppressAnimationElements = false;
     bool legacyPassthrough = false;
+    // UI-DEFS-LOCKSTEP-HARDEN-1: draw-output telemetry for the zero-draw
+    // fail-soft (LogisticsScreen falls back to legacy when a rendered
+    // non-passthrough page emitted no draw commands).
+    bool hasRendered = false;
+    int  lastRenderDrawCount = 0;
+    bool zeroDrawLogged = false;
     std::vector<UiElement> elements;
 };
 
@@ -1734,9 +1803,21 @@ bool UiDefs::GameOSPage::load(const char* path)
     if (!path || !path[0])
         return false;
 
+    // UI-DEFS-LOCKSTEP-HARDEN-1: version-skewed package => refuse every page
+    // (loud, once) so the caller falls back to the legacy screen path.
+    if (!uiPackageVersionCheckPassed()) {
+        uiDefsTrace("page load refused (package version gate): %s", path);
+        return false;
+    }
+
+    if (!fileExistsPath(std::filesystem::path(path))) {
+        uiDefsLog("page load FAILED (file missing): %s -- falling back to legacy screen", path);
+        return false;
+    }
+
     const std::vector<Block> blocks = parseTypedFit(path);
     if (blocks.empty()) {
-        uiDefsTrace("load failed, no typed blocks: %s", path);
+        uiDefsLog("page load FAILED (parse failure / no typed blocks): %s -- falling back to legacy screen", path);
         return false;
     }
 
@@ -1773,6 +1854,16 @@ bool UiDefs::GameOSPage::load(const char* path)
         // is routed in. Dropping them here made those keys unreachable at runtime.
         if (e.rect.w >= 0 && e.rect.h >= 0)
             impl->elements.push_back(e);
+    }
+
+    // UI-DEFS-LOCKSTEP-HARDEN-1: a page with zero elements can never draw
+    // anything; accepting it would arm the black-clear over an empty page
+    // (BLACK-MENU-BISECT-1). Fail loud so the legacy screen renders instead.
+    if (!pageElementCountAcceptable(impl->elements.size())) {
+        uiDefsLog("page load FAILED (zero elements): key=%s path=%s -- falling back to legacy screen",
+                  impl->key.empty() ? "<none>" : impl->key.c_str(), path);
+        clear();
+        return false;
     }
 
     impl->loaded = true;
@@ -2289,6 +2380,17 @@ void UiDefs::GameOSPage::render(int xOffset, int yOffset)
     //   6. text
     // Reproduce that here; within a pass, file order holds.
     enum Pass { OpaqueFills, Images, Outlines, TransparentFills, Buttons, Texts, Popups, PassCount };
+    // UI-DEFS-LOCKSTEP-HARDEN-1: count draw-emitting element visits this frame.
+    // Suppressed animation elements count as output: their content IS on
+    // screen, drawn by the live legacy animObject twins through the aObject
+    // GUI bridge (e.g. the splash intro page is ONLY animation elements --
+    // without this it would false-positive the zero-draw fail-soft).
+    int drawn = 0;
+    if (impl->suppressAnimationElements) {
+        for (const UiElement& e : impl->elements)
+            if (e.visible && e.fromAnimation)
+                ++drawn;
+    }
     for (int pass = 0; pass < PassCount; ++pass) {
         for (UiElement& e : impl->elements) {
             if (!e.visible)
@@ -2300,17 +2402,23 @@ void UiDefs::GameOSPage::render(int xOffset, int yOffset)
             case OpaqueFills:
                 if ((e.fillColor & 0xff000000) == 0xff000000 &&
                     ((e.kind == UiElement::RectElement && !e.outline) ||
-                      e.kind == UiElement::Text))
+                      e.kind == UiElement::Text)) {
                     drawUiRectElement(scaledRect(e.rect, xOffset, yOffset, s), e.fillColor, true);
+                    ++drawn;
+                }
                 break;
             case Images:
                 if (e.kind == UiElement::Image) {
                     drawUiImageElement(e, xOffset, yOffset, s);
+                    ++drawn;
                 } else if (e.kind == UiElement::List) {
                     drawUiListElement(e, xOffset, yOffset, s);
+                    ++drawn;
                 } else if (e.kind == UiElement::Slider) {
                     drawUiSliderElement(e, xOffset, yOffset, s);
+                    ++drawn;
                 } else if (e.kind == UiElement::Combo) {
+                    ++drawn;
                     // Collapsed header: fill, border, arrow indicator, selected item text.
                     const FRect r = scaledRect(e.rect, xOffset, yOffset, s);
                     drawUiRectElement(r, e.fillColor, true);
@@ -2337,25 +2445,32 @@ void UiDefs::GameOSPage::render(int xOffset, int yOffset)
                     drawUiRectElement(r, e.fillColor ? e.fillColor : 0x30000000, true);
                     drawUiRectElement(r, e.borderColor, false);
                     renderTextElement(e, xOffset, yOffset, e.textColor, s);
+                    ++drawn;
                 }
                 break;
             case Outlines:
                 if (e.kind == UiElement::RectElement &&
-                    (e.outline || (e.borderColor & 0xff000000)))
+                    (e.outline || (e.borderColor & 0xff000000))) {
                     drawUiRectElement(scaledRect(e.rect, xOffset, yOffset, s), e.borderColor, false);
+                    ++drawn;
+                }
                 break;
             case TransparentFills:
                 if (e.kind == UiElement::RectElement && !e.outline &&
                     (e.fillColor & 0xff000000) != 0 &&
-                    (e.fillColor & 0xff000000) != 0xff000000)
+                    (e.fillColor & 0xff000000) != 0xff000000) {
                     drawUiRectElement(scaledRect(e.rect, xOffset, yOffset, s), e.fillColor, true);
+                    ++drawn;
+                }
                 break;
             case Buttons: {
                 if (e.kind == UiElement::Button &&
                     e.buttonStyle != UiElement::ButtonStyle::Normal) {
                     // Modern checkbox/radio glyph + stable label (no flash).
                     drawUiCheckRadioElement(e, xOffset, yOffset, s);
+                    ++drawn;
                 } else if (e.kind == UiElement::Button) {
+                    ++drawn;
                     unsigned int artTint;
                     unsigned int textCol;
                     int stateUvX = e.uvX;
@@ -2483,12 +2598,15 @@ void UiDefs::GameOSPage::render(int xOffset, int yOffset)
                 break;
             }
             case Texts:
-                if (e.kind == UiElement::Text)
+                if (e.kind == UiElement::Text) {
                     renderTextElement(e, xOffset, yOffset, e.textColor, s);
+                    ++drawn;
+                }
                 break;
             case Popups:
                 // Expanded GuiCombo popup renders last so it appears above all other elements.
                 if (e.kind == UiElement::Combo && e.expanded && !e.items.empty()) {
+                    ++drawn;
                     const Rect savedRect = e.rect;
                     e.rect = { savedRect.x, savedRect.y + savedRect.h, savedRect.w, e.popupHeight };
                     drawUiListElement(e, xOffset, yOffset, s);
@@ -2507,6 +2625,7 @@ void UiDefs::GameOSPage::render(int xOffset, int yOffset)
     for (UiElement& e : impl->elements) {
         if (e.kind != UiElement::EditBox || !e.visible)
             continue;
+        ++drawn;
         const FRect sr = scaledRect(e.rect, xOffset, yOffset, s);
         e.editBoxActive = GuiRuntime::DrawUiEditBox(
             e.key.c_str(),
@@ -2529,6 +2648,27 @@ void UiDefs::GameOSPage::render(int xOffset, int yOffset)
             renderTextElement(disp, xOffset, yOffset, e.textColor, s);
         }
     }
+
+    // UI-DEFS-LOCKSTEP-HARDEN-1: commit draw-output telemetry. A loaded
+    // non-passthrough page that emitted zero draw commands means the owning
+    // screen would show only the black-clear -- log once, loud; the owning
+    // LogisticsScreen consults lastRenderProducedOutput() next frame and
+    // fail-softs to the legacy screen.
+    impl->hasRendered = true;
+    impl->lastRenderDrawCount = drawn;
+    if (drawn == 0 && !impl->legacyPassthrough && !impl->zeroDrawLogged) {
+        impl->zeroDrawLogged = true;
+        uiDefsLog("page '%s' rendered ZERO draw commands (elements=%zu) -- fail-soft to legacy screen next frame",
+                  impl->key.empty() ? "<none>" : impl->key.c_str(), impl->elements.size());
+    }
+}
+
+bool UiDefs::GameOSPage::lastRenderProducedOutput() const
+{
+    if (!impl)
+        return false;
+    return !UiDefs::pageShouldFailSoftToLegacy(
+        impl->loaded, impl->legacyPassthrough, impl->hasRendered, impl->lastRenderDrawCount);
 }
 
 bool UiDefs::GameOSPage::inside(int x, int y, int xOffset, int yOffset) const

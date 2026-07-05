@@ -48,6 +48,12 @@ public:
     // draws the real content (options sub-tabs, planet background, etc.).
     bool isLegacyPassthrough() const;
 
+    // UI-DEFS-LOCKSTEP-HARDEN-1: false when the page has rendered at least
+    // once and emitted zero draw commands (non-passthrough). Owning screens
+    // must then fail-soft to the legacy render path instead of black-clearing
+    // over an empty page (BLACK-MENU-BISECT-1). True before the first render.
+    bool lastRenderProducedOutput() const;
+
     // Overrides the display text of the element with the given key at runtime.
     // Works for GuiText and GuiButton elements. Returns false if key not found.
     bool setElementText(const std::string& key, const std::string& text);

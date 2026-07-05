@@ -342,7 +342,7 @@ void LogisticsScreen::update()
 		statics[i].update();
 	}
 
-	if (defsUiPage && defsUiPage->isLoaded())
+	if (defsUiPageUsable())
 	{
 		// Sub-pages mounted inside a parent screen (e.g. options tabs inside
 		// OptionsScreenWrapper) live at a non-zero global offset; the hit-test
@@ -431,6 +431,16 @@ bool LogisticsScreen::hasDefsUiPage() const
 	return defsUiPage && defsUiPage->isLoaded();
 }
 
+// UI-DEFS-LOCKSTEP-HARDEN-1: a loaded page that rendered zero draw commands
+// (version-skewed defs/ui package, BLACK-MENU-BISECT-1) must not own the
+// screen -- render()/update() fall back to the legacy path. The page renders
+// once to be measured (first frame), then yields.
+bool LogisticsScreen::defsUiPageUsable() const
+{
+	return defsUiPage && defsUiPage->isLoaded()
+		&& (defsUiPage->isLegacyPassthrough() || defsUiPage->lastRenderProducedOutput());
+}
+
 bool LogisticsScreen::allAnimObjectsDone() const
 {
 	for ( int i = 0; i < animObjectsCount; i++ )
@@ -503,7 +513,10 @@ void LogisticsScreen::render()
 	if ( !isShowing() )
 		return;
 
-	if (defsUiPage && defsUiPage->isLoaded())
+	// UI-DEFS-LOCKSTEP-HARDEN-1: defsUiPageUsable() (not just isLoaded()) --
+	// a page that rendered zero draw commands yields the screen back to the
+	// legacy path below instead of black-clearing over nothing.
+	if (defsUiPageUsable())
 	{
 		// Passthrough: render the full legacy element set first so legacy
 		// content (options controls, planet art, etc.) shows beneath the overlay.
@@ -712,7 +725,8 @@ void LogisticsScreen::render( int xOffset, int yOffset )
 	if ( !isShowing() )
 		return;
 
-	if (defsUiPage && defsUiPage->isLoaded())
+	// UI-DEFS-LOCKSTEP-HARDEN-1: same zero-draw fail-soft as render() above.
+	if (defsUiPageUsable())
 	{
 		// Passthrough: render legacy first so it appears beneath the overlay.
 		if (defsUiPage->isLegacyPassthrough()) {

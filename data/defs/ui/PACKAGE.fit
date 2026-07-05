@@ -1,0 +1,15 @@
+FITini
+
+// UI-DEFS-LOCKSTEP-HARDEN-1: defs/ui package version manifest.
+// The exe carries an expected version (gui/UiDefsLockstep.h,
+// kExpectedUiPackageVersion). On mismatch (or when this file is missing)
+// the exe logs a loud [UI-DEFS] line and falls back to the legacy
+// (pre-ImGui) front-end screens instead of rendering a black quad
+// (BLACK-MENU-BISECT-1). Bump BOTH sides together when the page .fit
+// schema changes incompatibly. data/defs must always deploy in lockstep
+// with the exe (scripts/deploy_payload.py enforces this).
+
+[UiPackage]
+l Version = 1
+
+FITend
