@@ -1286,8 +1286,17 @@ int main(int argc, char** argv)
                     else if (std::strcmp(lastTok, "FullScreen")  == 0)
                     {
                         foundFS = true;
-                        // FitIniFile booleans: "1" or "true"
-                        fullscreenVal = (val != 0 || std::strstr(eq + 1, "true") != nullptr);
+                        // FitIniFile booleans: "1" or "true". UI-DEFS-LOCKSTEP-
+                        // HARDEN-1 latent fix: the game itself writes
+                        // "b FullScreen = TRUE" -- match case-insensitively, or
+                        // a game-written cfg boots windowed (fullscreen=0).
+                        bool sawTrue = false;
+                        for (const char* s = eq + 1; *s && !sawTrue; ++s)
+                            sawTrue = (s[0] == 't' || s[0] == 'T') &&
+                                      (s[1] == 'r' || s[1] == 'R') &&
+                                      (s[2] == 'u' || s[2] == 'U') &&
+                                      (s[3] == 'e' || s[3] == 'E');
+                        fullscreenVal = (val != 0 || sawTrue);
                     }
                 }
                 std::fclose(f);
