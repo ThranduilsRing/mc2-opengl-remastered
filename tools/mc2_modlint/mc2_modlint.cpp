@@ -40,6 +40,7 @@
 #include "modlint_equipment_report.h"
 
 #include "modlint_manifest.h"
+#include "modlint_variant_csv.h" // UNIT-VARIANT-ADD-1: legacy chassis-CSV variant-block validator
 #include "mod_conflict.h"   // MOD-LOAD-ORDER-CONFLICT-REPORT-1: pure classifier shared with the engine
 #include "modder_finding.h" // MODDER-FIRST-ERROR-SURFACE-1: shared modder-finding context format
 
@@ -51,6 +52,10 @@ static void usage() {
         "  mc2_modlint --equipment <facts.json>          lint one EquipmentDefinition\n"
         "  mc2_modlint --equipment-roster <report.json>  lint an equipment converter --json report\n"
         "  mc2_modlint --manifest <mod.json>             lint a mod package manifest (mods/<id>/mod.json)\n"
+        "  mc2_modlint --variant-csv <mech.csv> [--compbas <compbas.csv>]\n"
+        "                                                lint a legacy chassis CSV's 23+97*n variant\n"
+        "                                                blocks (ADDed variants); --compbas enables the\n"
+        "                                                loadout-ref resolution check\n"
         "  mc2_modlint --mod <dir> [--mod <dir> ...] [--stock-root <dir>]\n"
         "                                                offline load-order conflict report; pass mods\n"
         "                                                highest-priority-first (active mod, then deps),\n"
@@ -134,6 +139,22 @@ static int lintManifest(const std::string& text, bool* parseOk, const std::strin
     return (int)findings.size();
 }
 
+// --variant-csv: one legacy chassis CSV -> VARC_ findings (UNIT-VARIANT-ADD-1).
+// compbasText empty = skip loadout-ref resolution (structure checks still run).
+static int lintVariantCsv(const std::string& text, const std::string& compbasText,
+                          const std::string& src, const std::string& modId) {
+    VariantCsvTable t = parseVariantCsv(text);
+    std::set<int> ids;
+    const std::set<int>* pIds = nullptr;
+    if (!compbasText.empty()) {
+        ids = parseCompbasPopulatedIds(compbasText);
+        pIds = &ids;
+    }
+    std::vector<ModderFinding> findings = validateVariantCsvAdd(t, src, modId, pIds);
+    std::cout << formatVariantCsvFindings(src, findings, modId);
+    return (int)findings.size();
+}
+
 // --mod: offline mirror of the engine's load-time conflict report.
 // Walks each mod dir's data/ tree (dirs given highest-priority-first, matching
 // the loader's active > dep[0] > ... precedence), builds the same first-wins
@@ -170,7 +191,7 @@ static int lintModConflicts(const std::vector<std::string>& modDirs,
         return dir.filename().string();   // loader fallback: folder name as id
     };
 
-    struct Slot { std::string winner; std::vector<std::string> losers; };
+    struct Slot { std::string winner; std::string winnerPath; std::vector<std::string> losers; };
     std::unordered_map<std::string, Slot> index;   // first-wins, like g_modIndex
 
     for (const std::string& d : modDirs) {
@@ -195,7 +216,7 @@ static int lintModConflicts(const std::vector<std::string>& modDirs,
             std::transform(key.begin(), key.end(), key.begin(),
                            [](unsigned char c) { return (char)std::tolower(c); });
             auto existing = index.find(key);
-            if (existing == index.end()) index[key] = { modId, {} };
+            if (existing == index.end()) index[key] = { modId, it->path().generic_string(), {} };
             else existing->second.losers.push_back(modId);
         }
     }
@@ -218,20 +239,54 @@ static int lintModConflicts(const std::vector<std::string>& modDirs,
     std::vector<ModConflictFinding> findings = classifyModConflicts(entries);
     for (const std::string& line : formatModConflictReport(findings))
         std::cout << line << "\n";
-    std::cout << (findings.empty() ? "RESULT: clean\n" : "RESULT: findings present\n");
-    return findings.empty() ? 0 : 1;
+
+    // UNIT-VARIANT-ADD-1: any shadowed legacy chassis CSV (data/objects/<mech>.csv
+    // carrying a "VariantName" label) gets its 23+97*n variant blocks validated.
+    // compbas for the loadout-ref check: the mods' own shadowed compbas wins,
+    // else <stockRoot>/data/objects/compbas.csv, else the check is skipped.
+    int variantFindings = 0;
+    {
+        std::string compbasText;
+        auto cb = index.find("data/objects/compbas.csv");
+        if (cb != index.end()) readAll(cb->second.winnerPath, &compbasText);
+        else if (!stockRoot.empty())
+            readAll((fs::path(stockRoot) / "data/objects/compbas.csv").string(), &compbasText);
+
+        for (const auto& kv : index) {
+            const std::string& key = kv.first;
+            if (key.rfind("data/objects/", 0) != 0) continue;
+            if (key.size() < 4 || key.compare(key.size() - 4, 4, ".csv") != 0) continue;
+            std::string text;
+            if (!readAll(kv.second.winnerPath, &text)) continue;
+            VariantCsvTable t = parseVariantCsv(text);
+            if (!looksLikeChassisCsv(t)) continue;   // compbas/pilots/buildings etc.
+            std::set<int> ids;
+            const std::set<int>* pIds = nullptr;
+            if (!compbasText.empty()) { ids = parseCompbasPopulatedIds(compbasText); pIds = &ids; }
+            std::vector<ModderFinding> vf = validateVariantCsvAdd(t, key, kv.second.winner, pIds);
+            std::cout << formatVariantCsvFindings(key, vf, kv.second.winner);
+            variantFindings += (int)vf.size();
+        }
+    }
+
+    const bool clean = findings.empty() && variantFindings == 0;
+    std::cout << (clean ? "RESULT: clean\n" : "RESULT: findings present\n");
+    return clean ? 0 : 1;
 }
 
 int main(int argc, char** argv) {
     std::string mode, path;
     std::vector<std::string> modDirs;
     std::string stockRoot;
+    std::string compbasPath;
     for (int i = 1; i < argc; ++i) {
         std::string a = argv[i];
         if ((a == "--unit" || a == "--roster" ||
              a == "--equipment" || a == "--equipment-roster" ||
-             a == "--manifest") && i + 1 < argc) {
+             a == "--manifest" || a == "--variant-csv") && i + 1 < argc) {
             mode = a; path = argv[++i];
+        } else if (a == "--compbas" && i + 1 < argc) {
+            compbasPath = argv[++i];
         } else if (a == "--mod" && i + 1 < argc) {
             mode = a; modDirs.push_back(argv[++i]);
         } else if (a == "--stock-root" && i + 1 < argc) {
@@ -266,6 +321,14 @@ int main(int argc, char** argv) {
     } else if (mode == "--manifest") {
         noun = "manifest";
         findings = lintManifest(text, &parseOk, src);
+    } else if (mode == "--variant-csv") {
+        noun = "chassis-csv";
+        std::string compbasText;
+        if (!compbasPath.empty() && !readAll(compbasPath, &compbasText)) {
+            std::fprintf(stderr, "mc2_modlint: cannot read compbas '%s'\n", compbasPath.c_str());
+            return 2;
+        }
+        findings = lintVariantCsv(text, compbasText, src, "");
     } else {  // --equipment-roster
         noun = "component";
         findings = lintEquipmentRoster(text, &parseOk, &count, src);
