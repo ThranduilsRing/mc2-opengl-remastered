@@ -502,6 +502,35 @@ def enumerate_payload(src_root, build_dir, exe_name, pdb_name,
             fail(f"game data payload missing in source: {p}")
         items.append((p, rel, "support"))
 
+    # UI-DEFS-LOCKSTEP-HARDEN-1 (BLACK-MENU-BISECT-1): data/defs/** ships in
+    # lockstep with the exe, exactly like shaders/. Since the ui-phase1 merge
+    # the front-end menus ARE defs/ui pages; an exe running against a
+    # version-skewed defs/ui package rendered an opaque black menu, silently.
+    # Hard requirements:
+    #   - data/defs/ must exist in source (else FAIL -- an exe without its
+    #     defs is a broken deploy, not an optional extra)
+    #   - data/defs/ui/PACKAGE.fit must exist (the runtime version key the
+    #     exe checks at boot; a deploy without it fail-softs every menu to
+    #     the legacy path on arrival)
+    #   - post-copy byte diff hard-fails on mismatch (kind "defs" falls into
+    #     the same hard-fail bucket as shaders in deploy())
+    defs_dir = os.path.join(src_root, "data", "defs")
+    if not os.path.isdir(defs_dir):
+        fail(f"source data/defs dir not found: {defs_dir}\n"
+             "  The front-end UI is defs/ui pages; an exe deployed without "
+             "matching data/defs shows legacy-fallback menus at best.")
+    pkg_fit = os.path.join(defs_dir, "ui", "PACKAGE.fit")
+    if not os.path.isfile(pkg_fit):
+        fail(f"data/defs/ui/PACKAGE.fit missing in source: {pkg_fit}\n"
+             "  The exe checks this version key at boot (UI-DEFS-LOCKSTEP-"
+             "HARDEN-1); deploying without it makes every defs/ui page load "
+             "fail-soft to legacy on the target.")
+    for dirpath, _dirs, files in os.walk(defs_dir):
+        for fn in sorted(files):
+            sp = os.path.join(dirpath, fn)
+            rel = os.path.relpath(sp, src_root).replace(os.sep, "/")
+            items.append((sp, rel, "defs"))
+
     # TERRAIN-MATERIAL-TEXTURES-1: optional loose cooked sidecars -- skip (log)
     # when absent instead of failing; the engine fail-softs without them.
     # TERRAIN-MATERIAL-TEXTURES-1-FIX (fix D, MIPS ROOT CAUSE): the "levels=1
@@ -902,7 +931,8 @@ def main():
     items = enumerate_payload(src_root, build_dir, exe_name, pdb_name,
                               build64_root=args.build64_root)
     log(f"payload: {len(items)} files "
-        f"({sum(1 for *_x, k in items if k == 'shader')} shaders)")
+        f"({sum(1 for *_x, k in items if k == 'shader')} shaders, "
+        f"{sum(1 for *_x, k in items if k == 'defs')} defs)")
     hashes = deploy(items, target, args.allow_stale_pdb, preserve=args.preserve)
     write_manifest(target, hashes, git_head(src_root))
     log("deploy COMPLETE — payload verified, manifest written")
