@@ -24,7 +24,7 @@
 // stock MC2 weapons are rows in compbas.csv loaded into MasterComponent::masterList,
 // with the ROW ORDINAL as identity (masterID = the CSV line number), a hardcoded
 // 255-component cap (mission.cpp:2451 / saveload.cpp:846), ammo linked by raw
-// index + WEAPON_AMMO_OFFSET=65 arithmetic, and the "EnergyWeapon/BallisticWeapon/
+// index arithmetic (the legacy +65 ammo offset), and the "EnergyWeapon/BallisticWeapon/
 // MissileWeapon" category matched to a FORM enum then DISCARDED. Insert or reorder
 // a row and every loadout / ammo id / IDS string offset shifts. A modder cannot
 // add a weapon without renumbering, and there is no surviving category a validator
@@ -138,7 +138,7 @@ struct WeaponStringId {
 // -------------------------------------------------------------------------
 
 // Ammo linkage by NAMED CATEGORY, not by index/offset. Replaces the stock
-// `ammoMasterId` raw index + WEAPON_AMMO_OFFSET=65 arithmetic (cmponent.h:50).
+// `ammoMasterId` raw index arithmetic (the legacy +65 ammo offset, since removed).
 // A weapon NAMES an ammo category (`core:ammo_ac5`); the ammo component declares
 // the same category id (BT2018 AmmoCategory <-> ammoCategoryID). Empty category
 // = self-powered / no ammo (energy weapons). ammoPerShot is a plain number.

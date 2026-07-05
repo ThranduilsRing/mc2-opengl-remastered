@@ -58,7 +58,7 @@ def build_report(defs, waivers) -> dict:
             "legacy-vs-generated facet diff is WEAPON-SHADOW-COMPARE-1 (next "
             "slice), not performed here. It will diff per WeaponFacet: category, "
             "combat (damage/heat/recycle/range_bucket/combat_value), ammo "
-            "(ammo_category vs stock ammoMasterId+WEAPON_AMMO_OFFSET), fit "
+            "(ammo_category vs stock ammoMasterId+65-offset), fit "
             "(crit_slots/tonnage/allowed_locations), plus kind and "
             "legacyMasterId->id alias stability."
         ),

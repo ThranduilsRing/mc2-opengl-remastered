@@ -47,8 +47,6 @@
 #define	COMPONENT_USE_CLAN			16
 #define	COMPONENT_USE_INNERSPHERE	32
 
-#define	WEAPON_AMMO_OFFSET			65		// Master Component Index Offset from weapon
-
 typedef enum {
 	COMPONENT_FORM_SIMPLE = 0,
 	COMPONENT_FORM_COCKPIT,

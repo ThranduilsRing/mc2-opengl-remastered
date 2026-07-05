@@ -21,7 +21,7 @@ Per-component COMPARED fields (engine-authoritative for stock):
   damage/heat/recycle : weapon combat stats — weapons only
   range_bucket  : short/medium/long/"" — weapons only
   combat_value  : MasterComponent CV vs converter BR column
-  ammo_master_id: stock ammo master-id column (WEAPON_AMMO_OFFSET provenance)
+  ammo_master_id: stock ammo master-id column (legacy +65 ammo-offset provenance)
   crit_slots    : InventorySize (size) vs converter crit_slots
 
 WAIVED (not engine-authoritative / best-effort / presentation):

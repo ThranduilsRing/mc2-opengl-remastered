@@ -66,7 +66,7 @@ class WeaponCombatStats:
 class WeaponAmmoFacet:
     """Mirror WeaponAmmoFacet: ammo linkage by NAMED category, not raw offset.
     ammo_category empty == self-powered (energy). ammo_master_id kept as
-    provenance of the stock WEAPON_AMMO_OFFSET arithmetic for the shadow slice."""
+    provenance of the stock +65 ammo-offset arithmetic for the shadow slice."""
     ammo_category: str = ""          # named category id (empty = none)
     ammo_master_id: int = 0          # stock ammo master-id column (provenance)
 
