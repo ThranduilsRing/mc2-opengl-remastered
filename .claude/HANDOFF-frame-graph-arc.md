@@ -974,6 +974,11 @@ candidate REJECTED, gate default-OFF permanently** → oracle strengthened to 0 
 NORTH-STAR block below; this SUPERSEDES further reorder experiments as the primary thrust.
 
 ## ★★ NEXT-SESSION NORTH-STAR — GPU-BUFFER-OWNER-RECON-1 (raw-global minimization)
+> **STATUS 2026-07-05: cheap entries (1) view-UBO and (2) LOD-chunk type/cement SSBOs are DONE**
+> (TERRAIN-VIEW-UBO-OWNER-1 / TERRAIN-LODCHUNK-SSBO-OWNER-1; 14 owner sites, check-gpu-buffer-owners.py
+> exit 0, dead-indirect inversion closed). Identity-registration saturated. NEXT REAL SLICE =
+> **TIER0-LODCHUNK RAII adoption** (thin owning GpuBuffer .cpp for the 9 lod-chunk statics — the
+> "LATER slice" flagged in GpuBufferOwner.h:15), then TIER0-HUD (needs OD-4 decision).
 **Goal:** not enumerate/register, but **MINIMIZE the ~70% of GPU resources that are raw file-static `GLuint`
 globals** by bringing them under registry/owner ownership: `s_heightSsbo`, `g_recipeSSBO`,
 `s_mechMaterialSsbo`, ring buffers, batcher instance SSBOs, view UBO, etc.
