@@ -933,6 +933,22 @@ bool audit_height(TerrainIsland* s, const Mc2TerrainTier1Feed& feed) {
         ++s_reported;
         return false;
     }
+    // POSITIVE WITNESS (rate-limited): prove the audit actually EXECUTED and matched
+    // against LIVE re-read GL heights this frame — not merely absent. Emits the live
+    // checksum so a soak/deform run can show the audit is reading live data (the value
+    // tracks g_terrainHeightVersion: it changes iff the GL heightfield is re-uploaded).
+    {
+        static unsigned long s_ok = 0;
+        static uint64_t s_lastLive = 0;
+        if (s_ok == 0 || liveSum != s_lastLive || (s_ok % 600) == 0) {
+            vlog("[HEIGHT_AUDIT] OK: live GL heights match VK snapshot "
+                 "(live_fnv=0x%016llx bytes=%llu ver=%llu).",
+                 (unsigned long long)liveSum, (unsigned long long)feed.heightBytes,
+                 (unsigned long long)s->heightVersionCopied);
+            s_lastLive = liveSum;
+        }
+        ++s_ok;
+    }
     return true;
 }
 

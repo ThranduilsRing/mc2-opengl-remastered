@@ -102,3 +102,45 @@ if __name__ == "__main__":
         print(f"  GL hist={dict(Counter(glseq))}")
         print(f"  VK hist={dict(Counter(vkseq))}")
         pair_unmasked("WHOLE-FRAME GL vs VK (all regions ON)", gl, vk)
+    elif mode == "footprint":
+        # MECH+PROP CO-COVERED FOOTPRINT ISOLATION (doc pre-flip #3 acceptance metric).
+        # Footprint = pixels the VK mech+prop islands actually paint = where VK-all
+        # differs from VK with mech+prop islands OFF (terrain-only VK). Then report
+        # GL-vs-VK-all restricted to that footprint -> the mech+prop parity number,
+        # decoupled from the terrain near-detail residual. Reproduces the doc's 14.92/max32.
+        # MECH-ONLY footprint: VK_all vs VK_all-with-MECH-islands-OFF (props stay ON),
+        # exactly the doc's isolation that yielded 14.92/max32. (A separate prop-only
+        # footprint is available by flipping which island is dropped.)
+        which = sys.argv[2] if len(sys.argv) > 2 else "mech"
+        VK_MINUS = dict(VK_ALL)
+        if which == "mech":
+            for k in ("MC2_VK_MECH_TIER1","MC2_VK_MECH_MATERIAL","MC2_VK_MECH_LIGHTING"):
+                VK_MINUS[k] = "0"
+        else:  # prop
+            for k in ("MC2_VK_PROP_COLOR_INTEROP","MC2_VK_PROP_COLOR_TIER1","MC2_VK_PROP_MATERIAL"):
+                VK_MINUS[k] = "0"
+        print(f"[footprint] isolating {which.upper()} island (VK_all vs VK_all-minus-{which})")
+        gl  = T.run("fp_gl",       GL_ALL)[0]
+        vka = T.run("fp_vk_all",   VK_ALL)[0]
+        vkt = T.run(f"fp_vk_no{which}", VK_MINUS)[0]
+        names = sorted(set(p.name for p in gl.glob(f"{T.MISSION}_*.png"))
+                       & set(p.name for p in vka.glob(f"{T.MISSION}_*.png"))
+                       & set(p.name for p in vkt.glob(f"{T.MISSION}_*.png")))
+        print("\n== MECH+PROP CO-COVERED FOOTPRINT (GL vs VK on VK-object pixels) ==")
+        print("   footprint = |VK_all - VK_terrainOnly| > thr ; report |GL - VK_all| there")
+        for n in names:
+            a  = T.load(gl/n).astype(np.int64)
+            va = T.load(vka/n).astype(np.int64)
+            vt = T.load(vkt/n).astype(np.int64)
+            h = min(a.shape[0],va.shape[0],vt.shape[0]); w = min(a.shape[1],va.shape[1],vt.shape[1])
+            a,va,vt = a[:h,:w], va[:h,:w], vt[:h,:w]
+            fp = (np.abs(va-vt).max(axis=2) > 8)          # VK object footprint
+            nfp = int(fp.sum())
+            if nfp == 0:
+                print(f"  {n}: footprint EMPTY (no VK object pixels)"); continue
+            gd = np.abs(a-va)                              # GL vs VK-all
+            gdm = gd.max(axis=2)
+            fp_vals = gd[fp]                                # per-channel abs diffs on footprint
+            print(f"  {n}: footprint_px={nfp:>6} "
+                  f"mean/ch={fp_vals.mean():6.3f} max={int(gdm[fp].max()):3d} "
+                  f"p99/ch={np.percentile(fp_vals,99):5.1f}")
