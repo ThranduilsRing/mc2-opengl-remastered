@@ -260,7 +260,7 @@ struct TerrainFrameUBO {
     int32_t csmEnabled;              // off 352: MC2_VK_TERRAIN_CSM near-cascade path armed+valid this frame
     int32_t csmCount;                // off 356: 1..MC2_SHADOW_CSM_MAX (mirrors GL dynamicCsmCount)
     float   csmDepthSpan;            // off 360: (farP-nearP) of the shared CSM ortho z-row
-    int32_t _csmPad2;                // off 364
+    int32_t csmDebugMode;             // off 364: CSM-BLACKOUT-RECON-1 one-shot debug viz (0=off)
     float   csmCascadeMatrices[16 * 3]; // off 368: dynamicCascadeMatrices[MC2_SHADOW_CSM_MAX] (mat4 x3)
     float   csmCascadeTexelWorld[4];    // off 560: per-cascade world-texel footprint (vec3 used + pad)
     float   csmFullMapTexelWorld;    // off 576: dynamicFullMapTexelWorld (separate lower-res full-map tex)
@@ -2255,6 +2255,15 @@ extern "C" int mc2_vk_terrain_island_run(int w, int h) {
                                 && s->csmArrayReady && s->csmFullMapReady) ? 1 : 0;
                 u.csmCount     = feed.csmCount;
                 u.csmDepthSpan = feed.csmDepthSpan;
+                // CSM-BLACKOUT-RECON-1: one-shot debug viz, env-gated (no perf/behavior
+                // impact when unset). See MC2_VK_TERRAIN_CSM_DEBUG in mc2vkgate.
+                {
+                    static const int dbgMode = [](){
+                        const char* v = getenv("MC2_VK_TERRAIN_CSM_DEBUG");
+                        return v ? atoi(v) : 0;
+                    }();
+                    u.csmDebugMode = dbgMode;
+                }
                 std::memcpy(u.csmCascadeMatrices, feed.csmCascadeMatrices, sizeof(u.csmCascadeMatrices));
                 u.csmCascadeTexelWorld[0] = feed.csmCascadeTexelWorld[0];
                 u.csmCascadeTexelWorld[1] = feed.csmCascadeTexelWorld[1];

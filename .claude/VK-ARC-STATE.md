@@ -212,6 +212,51 @@ composited pixels remain a valid VK oracle.
   CSM sample itself is the zero. Artifacts:
   `.claude/mech-parity/csm_near_field/farband_realfix/`,
   `.claude/mech-parity/csm_near_field/oobfog_isolate/` (bisection captures).
+
+- **CSM-BLACKOUT-RECON-1 (this session) — BLOCKED on a broken deploy lane,
+  root cause NOT isolated live.** Coordinator's UBO-write-collision hypothesis
+  (terrain UBO grew 512->1024B, maybe two feed paths stomp each other) was
+  checked FIRST as instructed and RULED OUT by static read: the per-patch UBO
+  populate loop (`vulkan_terrain_island.cpp` ~2193-2264) zero-inits a fresh
+  `TerrainFrameUBO u{}` every patch and does a full `slots[i]=u` struct
+  assignment (no partial memcpy/stale-size aliasing); `sizeof(TerrainFrameUBO)`
+  is used consistently for the descriptor range, `ensure_ubo_capacity`, and the
+  dynamic-offset stride — no collision found. `check_ubo_layout.py` still
+  passes (44 fields). Built the planned one-shot debug-viz instrumentation
+  instead: a new UBO field `csmDebugMode` (int, repurposed the `_csmPad2` slot
+  at UBO off 364, fed from env `MC2_VK_TERRAIN_CSM_DEBUG=1..5`) that early-outs
+  `terrain_tier1.frag`'s lit compose to show `normalLight`(1) / `lightDir`(2) /
+  `staticS`(3) / `dynS`(4) / `shadow`(5) in isolation
+  (`GameOS/gameos/vulkan_terrain_island.cpp` UBO struct + populate site,
+  `shaders/vulkan/terrain_tier1.frag` struct mirror + branch after the
+  `lit = base*normalLight*shadow` line). Builds clean, `check_vk_shaders.py`
+  34/34, `check_ubo_layout.py` OK, full mc2 build succeeds, deployed to 0.4c.
+  **BLOCKED**: every VK launch this session (both the new debug probe and a
+  vanilla re-run of the existing `field_oracle.py`, 3 attempts) hit
+  `[VK_PRESENT] init: vkCreateSwapchainKHR failed. fail-soft.` ->
+  `[RENDER_BACKEND] fail-soft: forcing GL for the session` — the whole run
+  silently became a GL capture, invalidating all screenshots taken (the
+  earlier "reproduction" in `.claude/mech-parity/csm_near_field/blackout_debug/`
+  is GL, not VK; disregard those PNGs). `mcp__mc2-repo-intel__deploy_status`
+  on `A:/Games/mc2-opengl/mc2-win64-0.4c` independently confirms
+  `verdict=BROKEN-TREE`: "0.4c is a BROKEN tree (stock + modified exe both
+  crash_silent / PAUSE-loop, 0 frames). Smoking it yields FALSE crash
+  reports." — this is a pre-existing lane-health problem, not caused by this
+  session's edits (confirmed by retrying the untouched `field_oracle.py`
+  recipe with identical failure). Exe fingerprint DID match HEAD (7f396c2e)
+  each time — the deploy itself was clean; the swapchain failure is
+  environmental/lane-state, not a stale-exe issue. **NEXT SESSION**: get (or
+  wait for) a healthy 0.4c (or a fresh, uncontended deploy dir) before
+  re-running this probe; the instrumentation above is ready to use
+  immediately — just set `MC2_VK_TERRAIN_CSM_DEBUG=1` (normalLight) first
+  against a working VK backend at `overview_center`/`oblique_horizon` and
+  read the pixel values (should be mid-gray `mix(0.35,1.20,NdotL)`, achromatic
+  — any color tint or near-0 reading means the debug branch itself isn't
+  executing on VK, which would point back at UBO wiring after all). Debug
+  field is fully gated (env-off = 0 = zero behavior/perf change) — safe to
+  leave in tree. Shadow-saga status: UNCHANGED from before this session — the
+  deeper CSM-near-armed blackout defect is still open, now with ready-to-use
+  instrumentation blocked only by lane health.
 - **BUG 6? prop texture scramble** — coordinator saw live (pink slabs, floating
   textures, trunkless trees) DURING mc2_24 load on the Bug1+Bug4 exe. NOT
   reproduced at settled capture (props clean: walls/trees/buildings textured).

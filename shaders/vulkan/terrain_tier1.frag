@@ -105,7 +105,7 @@ layout(set = 0, binding = 0, std140) uniform TerrainFrameUBO {
     int   csmEnabled;                             // off 352: near-cascade path armed+valid this frame
     int   csmCount;                               // off 356: 1..MC2_VK_SHADOW_CSM_MAX
     float csmDepthSpan;                           // off 360
-    int   _csmPad2;                               // off 364
+    int   csmDebugMode;                            // off 364: CSM-BLACKOUT-RECON-1 one-shot viz (0=off)
     mat4  csmCascadeMatrices[3];                  // off 368 (MC2_VK_SHADOW_CSM_MAX; literal for check_ubo_layout.py's regex)
     vec4  csmCascadeTexelWorld;                   // off 560 (xyz used, w pad)
     float csmFullMapTexelWorld;                   // off 576
@@ -706,6 +706,15 @@ void main() {
         float shadow = min(staticS, dynS);
         shadow = mix(shadow, dynS, pureConcrete ? 1.0 : 0.0);  // concrete: dynamic only
         lit = base * normalLight * shadow;
+
+        // CSM-BLACKOUT-RECON-1: one-shot debug viz (env MC2_VK_TERRAIN_CSM_DEBUG=N).
+        // Bypasses the normal composite entirely so each channel can be inspected in
+        // isolation on a live capture. No effect when uT.csmDebugMode==0.
+        if (uT.csmDebugMode == 1)      { fragColor = vec4(vec3(normalLight), 1.0); GBuffer1 = vec4(0.5,0.5,1.0,1.0); return; }
+        else if (uT.csmDebugMode == 2) { fragColor = vec4(lightDir * 0.5 + 0.5, 1.0); GBuffer1 = vec4(0.5,0.5,1.0,1.0); return; }
+        else if (uT.csmDebugMode == 3) { fragColor = vec4(vec3(staticS), 1.0); GBuffer1 = vec4(0.5,0.5,1.0,1.0); return; }
+        else if (uT.csmDebugMode == 4) { fragColor = vec4(vec3(dynS), 1.0); GBuffer1 = vec4(0.5,0.5,1.0,1.0); return; }
+        else if (uT.csmDebugMode == 5) { fragColor = vec4(vec3(shadow), 1.0); GBuffer1 = vec4(0.5,0.5,1.0,1.0); return; }
     }
 
     fragColor = vec4(lit, 1.0);   // opaque in-place (a=1, NOT premult)
