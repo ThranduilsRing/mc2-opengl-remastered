@@ -98,7 +98,7 @@ bool beginPanel( const char* id, float hudLeft, float hudTop,
 	if ( !g_imguiInitialized || !ImGui::GetCurrentContext() )
 	{
 		// ImGui never came up — pin so we stop probing every frame.
-		SPEW(( 0, "HudImGui: ImGui unavailable, pinning HUD panels to legacy\n" ));
+		SPEWALWAYS(( 0, "HudImGui: ImGui unavailable, pinning HUD panels to legacy\n" ));
 		s_pinnedToLegacy = true;
 		return false;
 	}
@@ -122,7 +122,7 @@ bool beginPanel( const char* id, float hudLeft, float hudTop,
 	if ( !ImGui::Begin( id, &open, flags ) )
 	{
 		ImGui::End();
-		SPEW(( 0, "HudImGui: Begin('%s') failed, pinning HUD panels to legacy\n", id ));
+		SPEWALWAYS(( 0, "HudImGui: Begin('%s') failed, pinning HUD panels to legacy\n", id ));
 		s_pinnedToLegacy = true;
 		return false;
 	}
