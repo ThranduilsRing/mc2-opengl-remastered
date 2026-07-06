@@ -159,6 +159,26 @@ unsigned int mc2_vk_shadow_island_run(
     const void* instances, unsigned int instanceCount,
     float biasFactor, float biasUnits);
 
+// VK-SHADOW-DIRECT-CONSUME-1: raw VK-side accessors for a same-process, same-device
+// VK consumer (the terrain island) to bind the shadow island's depth image directly —
+// no GL round-trip at all (neither the GL copy-to-VK-image the terrain island does
+// today, nor a GL sample). Valid ONLY for the frame just produced by
+// mc2_vk_shadow_island_run() (mc2_vk_shadow_island_dyn_shadow_ready()!=0 iff that
+// call produced+signalled+fenced this frame). The returned view/sampler are owned by
+// the shadow island; the caller must NOT destroy them. Opaque void* to keep this
+// header GL/Vulkan-type-free for non-VK TUs; real type is VkImageView / VkSampler,
+// reinterpret_cast in the (VK-only) consumer TU. Same VkDevice as the terrain island
+// (both borrow the one shared engine VulkanContext) — the handles are valid VK
+// objects on that device already, no export/import ceremony (VK->VK, not VK->GL).
+// Same-queue ordering: the shadow island's vkWaitForFences() inside run() fully
+// retires its submit before returning, and the terrain island runs strictly later in
+// the frame (after GL terrain draws) -- so by the time the terrain island samples
+// this view, the depth write is already complete and visible; no extra barrier needed
+// on the terrain island's read side beyond the descriptor's SHADER_READ_ONLY layout.
+void* mc2_vk_shadow_island_get_dyn_shadow_view();
+void* mc2_vk_shadow_island_get_dyn_shadow_sampler();
+int   mc2_vk_shadow_island_dyn_shadow_ready();
+
 // Health accessor (mirrors mc2_render_backend_water_region_health).
 void mc2_render_backend_shadow_region_health(
     int* vulkanAvailable, int* buildEnabled, const char** deviceName,

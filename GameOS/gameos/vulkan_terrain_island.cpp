@@ -55,6 +55,7 @@
 #include "vulkan_shared_scene_color.h"
 #define MC2_VULKAN_SHARED_SCENE_DEPTH_IMPL_ISLAND
 #include "vulkan_shared_scene_depth.h"
+#include "vulkan_shadow_island_live.h"  // VK-SHADOW-DIRECT-CONSUME-1: direct dyn-shadow view accessors
 
 #include <cstdio>
 #include <cstdlib>
@@ -318,6 +319,16 @@ struct TerrainIsland {
     VkBuffer      dynShadowStage = VK_NULL_HANDLE; VmaAllocation dynShadowStageAlloc = VK_NULL_HANDLE;
     VkDeviceSize  dynShadowStageBytes = 0;
 
+    // VK-SHADOW-DIRECT-CONSUME-1: when the VK shadow island produced+fenced this
+    // frame's dynamic shadow depth (mc2_vk_shadow_island_dyn_shadow_ready()), binding 7
+    // is repointed at ITS VkImageView directly (no glGetTexImage copy at all) instead of
+    // this island's own dynShadowView. Reset to null every frame before the decision;
+    // write_descriptors() must be called whenever this changes (the view handle itself
+    // varies frame to frame, unlike the stable owned dynShadowView the copy path reuses).
+    VkImageView   dynShadowExternalView = VK_NULL_HANDLE;
+    bool          dynShadowDirect = false;   // true this frame -> binding 7 used the external view
+    VkImageView   dynShadowBoundView = VK_NULL_HANDLE;   // what binding 7 was last vkUpdateDescriptorSets'd with
+
     // VK-TERRAIN-DETAIL sub-slice: the material detail-normal ARRAY. A VK copy-once
     // import of the GL terrain_normal_array_tex_ (9-layer RGBA8 GL_TEXTURE_2D_ARRAY,
     // GL_REPEAT wrap). Sampled at binding 6 (sampler2DArray, REPEAT/LINEAR). Dummy 1x1
@@ -479,9 +490,16 @@ void write_descriptors(TerrainIsland* s) {
     }
     // VK-TERRAIN-DYNSHADOW: binding 7 dynamic shadow sampler2DShadow — always written once
     // the (dummy or real) depth-compare image exists (uT.enableDynShadows gates use).
+    // VK-SHADOW-DIRECT-CONSUME-1: prefer the shadow island's own view (zero-copy) when
+    // it produced+fenced this frame; falls back to this island's own copy-updated image
+    // (dynShadowView) otherwise. Layout is DEPTH_STENCIL_READ_ONLY_OPTIMAL on the direct
+    // path (see vulkan_shadow_island_live.cpp render-pass finalLayout) which is a valid
+    // sampled-read layout for a combined-image-sampler descriptor.
     VkDescriptorImageInfo dshInfo{};
-    if (s->dynShadowView != VK_NULL_HANDLE && s->shadowSamp != VK_NULL_HANDLE) {
-        dshInfo.sampler = s->shadowSamp; dshInfo.imageView = s->dynShadowView;
+    const VkImageView dshView = (s->dynShadowExternalView != VK_NULL_HANDLE)
+        ? s->dynShadowExternalView : s->dynShadowView;
+    if (dshView != VK_NULL_HANDLE && s->shadowSamp != VK_NULL_HANDLE) {
+        dshInfo.sampler = s->shadowSamp; dshInfo.imageView = dshView;
         dshInfo.imageLayout = VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL;
         w[n].sType = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET; w[n].dstSet = s->set;
         w[n].dstBinding = 7; w[n].descriptorCount = 1;
@@ -1535,9 +1553,33 @@ bool copy_static_shadow(TerrainIsland* s, const Mc2TerrainTier1Feed& feed) {
 
 // Per-frame copy of the GL DYNAMIC (building/mech) shadow depth texture into the 2nd VK
 // D32 image (binding 7). Same mechanism as static; gated by MC2_VK_TERRAIN_DYNSHADOW feed.
+//
+// VK-SHADOW-DIRECT-CONSUME-1: when the VK shadow island (MC2_VK_SHADOW_INTEROP) produced
+// this frame's dynamic shadow depth, skip the glGetTexImage+vkCmdCopyBufferToImage
+// round-trip entirely and point binding 7 at the shadow island's own VkImageView
+// (dynShadowExternalView; write_descriptors() picks it up). Falls back to the existing
+// GL-copy mechanism whenever the shadow island declined this frame (fail-soft, never a
+// hole — matches the umbrella's existing per-frame fail-soft convention). This is a
+// dyn-shadow-CONSUME optimization only; the interop gate + producer are unchanged.
 bool copy_dynamic_shadow(TerrainIsland* s, const Mc2TerrainTier1Feed& feed) {
     s->dynShadowReady = false;
+    s->dynShadowExternalView = VK_NULL_HANDLE;
+    s->dynShadowDirect = false;
     if (!feed.lightingEnabled || !feed.dynShadowsEnabled) return false;
+
+    // Direct path: the shadow island already produced+fenced a VK-native depth image
+    // this exact frame (same-queue, already retired -- see accessor doc comment).
+    if (mc2_vk_shadow_island_dyn_shadow_ready()) {
+        void* rawView = mc2_vk_shadow_island_get_dyn_shadow_view();
+        if (rawView != nullptr) {
+            s->dynShadowExternalView = reinterpret_cast<VkImageView>(rawView);
+            s->dynShadowDirect = true;
+            s->dynShadowReady = true;
+            return true;
+        }
+    }
+
+    // Fallback: existing GL-copy mechanism (unchanged).
     if (feed.glDynamicShadowTex == 0 || feed.dynamicShadowSize <= 0) return false;
     const uint32_t dim = (uint32_t)feed.dynamicShadowSize;
     if (!ensure_shadow_image_slot(s, dim, &s->dynShadowImg, &s->dynShadowAlloc,
@@ -1672,6 +1714,20 @@ extern "C" int mc2_vk_terrain_island_run(int w, int h) {
     // sub-gate is off or the GL dynamic map isn't live -> VK terrain has no dynamic
     // shadow (fail-soft, never a hole). Same mechanism as the static copy above.
     copy_dynamic_shadow(s, feed);
+
+    // VK-SHADOW-DIRECT-CONSUME-1: the direct view's underlying VkImageView handle is
+    // stable across frames (owned by the shadow island's persistent ShadowIsland), but
+    // binding 7 must still be refreshed via write_descriptors() the FIRST frame it
+    // switches to/from the direct view (the descriptor set otherwise still points at
+    // whatever was last written -- unlike the owned dynShadowView image, whose CONTENTS
+    // change per-frame via copy_shadow_slot without needing a new descriptor write).
+    {
+        const VkImageView wantView = s->dynShadowDirect ? s->dynShadowExternalView : s->dynShadowView;
+        if (wantView != s->dynShadowBoundView) {
+            write_descriptors(s);
+            s->dynShadowBoundView = wantView;
+        }
+    }
 
     // VK-TERRAIN-DETAIL: copy-once import of the GL material detail-normal 2D_ARRAY. No-op
     // once imported / while the gate is off (feed.glMatNormalArrayTex==0). Fail-soft: leaves

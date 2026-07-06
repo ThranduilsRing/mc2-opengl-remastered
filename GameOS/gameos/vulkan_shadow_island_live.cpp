@@ -83,6 +83,12 @@ struct ShadowIslandHealth {
     double stageInstUs = 0.0, drawUs = 0.0, totalUs = 0.0;
 };
 ShadowIslandHealth g_health;
+// VK-SHADOW-DIRECT-CONSUME-1: true only between a successful mc2_vk_shadow_island_run()
+// (fence-waited, layout-transitioned) and the next call to mc2_vk_shadow_island_run()
+// (which resets it before doing any work) -- so a same-frame-later VK consumer (the
+// terrain island) can tell "is this frame's depth ready right now" without racing a
+// stale prior-frame flag into a later frame where the shadow island declined.
+bool g_dynShadowReadyThisFrame = false;
 
 void setFallback(const char* reason) {
     std::strncpy(g_health.fallbackReason, reason ? reason : "",
@@ -651,6 +657,7 @@ extern "C" unsigned int mc2_vk_shadow_island_run(
     int size, const float* lightSpace16,
     const void* instances, unsigned int instanceCount,
     float biasFactor, float biasUnits) {
+    g_dynShadowReadyThisFrame = false;   // VK-SHADOW-DIRECT-CONSUME-1: reset; set true only at the tail on success
     if (!shadowInteropGateRequested()) return 0;
     if (size <= 0 || !lightSpace16 || !instances || instanceCount == 0) return 0;
 
@@ -854,9 +861,33 @@ extern "C" unsigned int mc2_vk_shadow_island_run(
              "VK-produced D32 via calcShadow).", instanceCount, g_health.typeRuns, s->depthGlView.glTex);
         s_firstOk = true;
     }
+    // VK-SHADOW-DIRECT-CONSUME-1: fence-waited above, layout already transitioned to
+    // DEPTH_STENCIL_READ_ONLY_OPTIMAL by the render pass -- safe for a same-frame-later
+    // VK consumer (the terrain island) to sample s->depthResource.view directly.
+    g_dynShadowReadyThisFrame = true;
     // Return the GL texture handle of the VK-produced shadow map so the caller binds
     // it in place of getDynamicShadowTexture().
     return s->depthGlView.glTex;
+}
+
+// VK-SHADOW-DIRECT-CONSUME-1: raw VK-side view/ready accessors for the terrain
+// island. g_dynShadowReadyThisFrame is set true at the tail of a successful
+// mc2_vk_shadow_island_run() (after the fence wait retired the submit, i.e. the
+// depth image content + layout transition to DEPTH_STENCIL_READ_ONLY_OPTIMAL are
+// already complete) and reset false at the top of every call (including a failed/
+// declined one), so a stale prior-frame view is never reported ready this frame.
+extern "C" void* mc2_vk_shadow_island_get_dyn_shadow_view() {
+    return (g_island && g_health.usedInterop && g_dynShadowReadyThisFrame)
+        ? reinterpret_cast<void*>(g_island->depthResource.view) : nullptr;
+}
+extern "C" void* mc2_vk_shadow_island_get_dyn_shadow_sampler() {
+    // The shadow island itself has no VkSampler (GL owned all sampling before this
+    // slice); the terrain island's own compare-mode PCF sampler is reused by the
+    // caller instead. Kept as a stub for API symmetry / future direct-VK sampler use.
+    return nullptr;
+}
+extern "C" int mc2_vk_shadow_island_dyn_shadow_ready() {
+    return (g_island && g_dynShadowReadyThisFrame) ? 1 : 0;
 }
 
 // Health accessor (mirrors mc2_render_backend_water_region_health).
