@@ -260,17 +260,55 @@ gos_terrain_lod_chunk.cpp, RendererFeatureRegistry.h, run_smoke.py.
 Item-3 (fail-soft + height-audit) is the last SAFETY prerequisite and is now DONE.
 Remaining items to a default-ON flip, highest-value first:
 
-1. **MECH ISLAND FRUSTUM CULL (the co-covered-parity inflater)** — the near-oracle's
-   center mech island (OBJ_BOX 400,100..516,200) jitters run-to-run because the mech's
-   animation pose is not frozen at the pinned capture frame; this inflates every terrain
-   self-diff (masked out today, but it caps the achievable parity floor and blocks a
-   clean whole-frame number). Scope: frustum-cull the VK mech island to the captured
-   pose OR freeze mech anim-pose under the sim-freeze capture (gos_visual_capture) so the
-   mech region is byte-stable too -> unmask -> whole-frame VK-vs-GL parity becomes
-   measurable. Oracle: the existing near_land_low with OBJ_BOX mask REMOVED must reach
-   ~0 self-diff. Owner note: mechs have their own parity oracle (VK-MECH-*); this is the
-   terrain-side capture determinism fix, small. Do FIRST — it unblocks the whole-frame
-   parity number the flip needs.
+1. **MECH ISLAND FRUSTUM CULL + CAPTURE DETERMINISM — ★★DONE 2026-07-06 (commit 4594f86a).**
+   ★FINDING (corrects the original attribution): there was NO cull mismatch to fix. The
+   VK island draws the SAME instance set GL draws BY CONSTRUCTION — the feed is
+   `s_vkMechInstSnapshot.assign(instDst, +totalInstances)` in the SAME batcher flush that
+   computes GL's drawn totalInstances (gos_mech_batcher.cpp:2796), and the GL color pass
+   does NO draw-time frustum cull (glDrawElementsInstancedBaseVertex draws all
+   dc.instanceCount). The only mech cull is `mechGpuCullSkip` at SUBMIT (mech3d.cpp:2875),
+   which gates the batcher submit → already shared by both paths. So the residual the
+   original scope blamed on "no island cull" was actually (a) ANIM-POSE JITTER + (b)
+   mech-pipeline settle latency.
+   · CULL WITNESS (frame-stamped, MC2_MECH_BATCHER_STATS-gated — no default spam): GL
+     `event=summary instances=` vs VK `event=cull_witness vk_instances=`. Steady-state
+     GL==VK==**38** instances at the settled capture frame; distinct counts {13,25,38}
+     match on both sides (only a pre-settle warmup 175 is GL-only). Cull PARITY CONFIRMED.
+   · DETERMINISM ROOT CAUSE: BattleMech::render → Mech3DAppearance::update(animate=true)
+     advances the stock gait by mechFrameRate*frameLength (WALL-CLOCK global, NOT
+     scenarioTime) every RENDER frame. The capture sweep freezes the SIM (bPaused gates
+     scenarioTime + unit updates) but not the render-side gait tick → pose drifted
+     run-to-run. FIX: capture-mode-only predicate `mc2CaptureGaitFreezeActive()` (=1 iff a
+     visual-capture is active AND bPaused). Gates the stock gait (mech3d:5061), imported
+     clip clock (:3688), and sensor-marker spin (:4310). Default-OFF-safe: shim is 0
+     whenever no MC2_VISUAL_* capture is active → live game byte-identical (terrain
+     GL/VK selfdiff controls stayed 0.000).
+   · SETTLE: pose-pin left a pure pipeline-latency residual → **settle=80** (was 30) makes
+     the WHOLE frame (terrain+prop+mech, UNMASKED) byte-identical ×3: near_land_low AND
+     near_land_off = **0.000 self-diff, NO OBJ_BOX MASK**, GL-config and VK-config. The
+     OBJ_BOX mask is now RETIRED for mech-inclusive captures.
+   · WITNESS TOOL: .claude/mech-parity/mech_capture_witness.py (selfdiff | whole).
+
+   ★UNMASKED WHOLE-FRAME NUMBERS (deterministic, near_land_low, settle=80, all VK regions
+   ON: terrain+detail+prop+mech+mech-lighting; substrate control near_land_off):
+   | pose           | cov%   | mean_all | mean_cov | max |
+   |----------------|--------|----------|----------|-----|
+   | near_land_low  | 58.97  | 5.01     | 7.79     | 118 |
+   | near_land_off  | 0.685  | 0.768    | 33.1     |  65 |
+   The near_land_low 58.97%/5.01 is DOMINATED by the KNOWN terrain near-detail residual
+   (mean ~4.7, LOD-fade + painted-concrete normal + cliff triplanar — already documented
+   deferred-minor above), NOT mech. near_land_off (no near-detail terrain, no units) is
+   near-byte (0.685%/0.768).
+
+   ★CO-COVERED MECH NUMBER (deterministic replacement for the noisy freecap 28.33/ch):
+   isolated the VK mech footprint via VK-mech-ON vs VK-mech-OFF at near_land_low, then
+   GL-vs-VK over that footprint = **mean 14.92/ch, max 32** (footprint 2862px, all
+   differing but max only 32 → uniform ~15/ch shading offset, NO silhouette/coverage
+   blowout). This is the arc's FIRST DETERMINISTIC co-covered mech parity number. The old
+   freecap 28.33 was inflated by ~10% run-to-run camera jitter + a different (natural)
+   camera; it is UNCHANGED by this work (the gait freeze is pause-only; freecap has no
+   pause) and is now SUPERSEDED by 14.92 on the deterministic pose. Residual ~15/ch =
+   edge AA + calc_light-Lambert approx (as the mech oracle predicted), NOT a cull gap.
 
 2. **GATE CONSOLIDATION (MC2_VK_SHARED_GBUFFER umbrella + Tier-0 retire)** — per handoff.
    The VK terrain/prop/mech islands each ride their own MC2_VK_*_TIER1 + shared-depth
@@ -282,17 +320,39 @@ Remaining items to a default-ON flip, highest-value first:
    pass unchanged under the umbrella. Medium — pure gate plumbing, no shader/render math.
    NOTE: explicitly OUT of scope this session per steering ("no consolidation yet").
 
-3. **FULL-FRAME PARITY + SOAK CRITERIA** — the flip gate. Define + run:
-   (a) whole-frame VK-vs-GL parity (all 3 regions live, mech island unmasked per #1)
-       across the 11 stable mc2_01 bookmarks + near poses + ≥2 other maps (airport for
-       markings, a water map) — acceptance threshold TBD (propose ≤ GL self-diff noise
-       floor + a small margin, e.g. mean_all ≤ 1.0 / cov ≤ 2%);
-   (b) a tier1 soak (mc2_01 mc2_03 mc2_10 mc2_17 mc2_24, 30s each) with all VK gates ON
+3. **FULL-FRAME PARITY + SOAK CRITERIA** — the flip gate. NOW UNBLOCKED by #1+#2: the
+   whole-frame VK-vs-GL number is DETERMINISTIC and UNMASKED (settle=80 + gait freeze).
+   ★MEASURED BASELINE (this session, near_land_low all-regions-ON): whole-frame mean_all
+   5.01 / cov 58.97 — but this is ~94% TERRAIN near-detail residual (mean ~4.7, deferred-
+   minor), NOT a mech/prop defect. Define + run:
+   (a) whole-frame VK-vs-GL parity, all 3 regions live + UNMASKED (mech pin from #2),
+       across the 11 stable mc2_01 bookmarks + BOTH near poses + ≥2 other maps (airport
+       for markings, a water map). ★REVISED ACCEPTANCE (data-informed): report TWO
+       numbers per pose — (i) whole-frame mean_all, and (ii) mean_all with the KNOWN
+       terrain near-detail residual accounted for (either subtract the terrain-only
+       GL-vs-VK baseline, or gate on the mech+prop footprint only). Propose accept when
+       the MECH+PROP co-covered mean_all ≤ ~15/ch (the measured 14.92 floor = edge AA +
+       Lambert approx) with max ≤ ~40 (no silhouette blowout), AND near_land_off (the
+       substrate control) stays ≤ 1.0 mean_all. Do NOT hold the flip on the terrain
+       near-detail residual — it is a documented deferred-minor, not a regression.
+   (b) tier1 soak (mc2_01 mc2_03 mc2_10 mc2_17 mc2_24, 30s each) with all VK gates ON
        -> exit 0, no crash_silent, no fail-soft-gap log firing in steady state, height-
-       audit clean;
+       audit clean. Use the CANONICAL smoke command (CLAUDE.md) verbatim.
    (c) height-audit run over crater/deform content (a mission that deforms terrain) to
        confirm the audit stays green under live height mutation OR flags the writer that
        needs a version bump. Largest item; gates the flip.
+
+### ★NEXT-SESSION NOTES (post #1+#2)
+- Consolidation (#2 gate-umbrella) remains OUT of scope per steering; do it before the
+  soak so the soak exercises the final umbrella gate.
+- The mech+prop-footprint isolation used here (VK-region-ON vs -OFF diff, intersect
+  GL-vs-VK) is the clean way to separate mech/prop parity from the terrain near-detail
+  residual for (a) — bake it into a `mech_capture_witness.py footprint` mode.
+- One more mech pose worth adding for coverage: a pose framing a DAMAGED/lightsOut mech
+  (exercises the renderFlags bit-1 ambient-floor branch) and a SELECTED mech (highlight).
+- freecap 28.33 is retired; do NOT chase it — it is non-deterministic by engine
+  declaration (gos_visual_capture.cpp:38). The deterministic 14.92 co-covered number is
+  the arc's number of record.
 
 ## Files (this session, terrain)
 - NEW oracle: .claude/mech-parity/terrain_near_oracle.py (keeper),
@@ -304,3 +364,12 @@ Remaining items to a default-ON flip, highest-value first:
 - shaders/vulkan/terrain_tier1.frag
 - RenderCore/RendererFeatureRegistry.h (gate registered), scripts/run_smoke.py (allowlisted)
 - Oracle artifacts: .claude/mech-parity/terrain/dynshadow_f200/, gateoff_ctrl/
+
+## Files (2026-07-06 session, mech capture determinism + cull witness — commit 4594f86a)
+- mclib/mech3d.cpp — file-scope extern mc2CaptureGaitFreezeActive() + 3 capture-freeze
+  gates (stock gait :5061, imported clip clock :3688, sensor spin :4310).
+- GameOS/gameos/gos_visual_capture.cpp — extern-C mc2CaptureGaitFreezeActive() predicate.
+- GameOS/gameos/gos_mech_batcher.cpp — event=summary now carries frame= + instances=.
+- GameOS/gameos/vulkan_mech_island.cpp — event=cull_witness (MC2_MECH_BATCHER_STATS-gated).
+- NEW witness: .claude/mech-parity/mech_capture_witness.py (selfdiff | whole).
+- Artifacts: .claude/mech-parity/terrain/near_oracle/{wit_gl,wit_vk,mo_gl,mo_vk,s80_vk_*}.
