@@ -106,3 +106,27 @@ This directly extends the existing `UiDefs::replacementPathForLegacyFit` auto-lo
 
 - No dedicated `MessageArea` class — searched `code/controlgui.cpp`, `code/missiongui.cpp` for "MessageArea"/"messagearea"/"message log"; message/log text appears to be drawn inline in the command-bar render pass, not a separate component.
 - `docs/active_campaigns.md` and `docs/renderworld_arc_status.md` — grepped for "HUD", "command bar", "tac map", "info window", "pause menu", "objectives"; no hits in either file (searched via Grep tool; both files' content is renderer-arc-focused, not UI). No in-flight duplicate work found there.
+
+## SLICE E SHIPPED (2026-07-05) — MC2_HUD_IMGUI_TACMAP + ARC CLOSE-OUT
+
+Slice E landed (tac-map panel -> ImGui, default OFF): map texture via new
+`HudImGui::gosTextureGLName` bridge, overlays (blips/rings/objective markers)
+through the legacy `worldToTacMap` + shared `GameTacMap::collectBlips`,
+ImGui-native click/drag -> `tacMapToWorld` -> same camera/doMove dispatch,
+`[HUD-TACMAP v1]` click witness line. Frustum wedge intentionally absent
+(legacy carve-out parity). Wheel-capture guard (`setImguiHoversMouse`) fixed
+slice D's deferred wheel-zoom conflict globally.
+
+Slices A–E all landed. REMAINING before the arc can be called DONE:
+1. USER CONFIRM pass — eyes on all panels (pause/info/tabs/tacmap) across
+   missions + aspect ratios; scrollbar/drag feel on info window is a UX
+   judgment call flagged in slice 2's hazards.
+2. Deferred polish: sensor-ring texture parity (ImGui ring is a solid circle,
+   legacy is a dotted texture ring); slice-D icon polish (bridge now exists);
+   tab-strip icon art for buttonCommand<0 tabs; drag-pan tuning.
+3. MP-visibility smoke for tacmap (tier1 is SP-only; fog-of-war/ally blips).
+4. Default-flip criteria: per-gate flip only after (a) user confirm, (b) one
+   full tier1 with gate ON clean, (c) no pin-to-legacy events in logs across
+   a soak, (d) known_issues entry for any accepted visual deltas. Flip order:
+   PAUSE -> INFOWINDOW -> TABS -> TACMAP (blast-radius ascending).
+5. Legacy-path retirement is a SEPARATE future decision after flips soak.
