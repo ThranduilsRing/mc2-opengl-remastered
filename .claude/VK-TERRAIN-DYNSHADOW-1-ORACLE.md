@@ -94,7 +94,55 @@ yet still the LOD-driving camera). Either unblocks anti-tile + POM together (bot
 near-camera detail-normal path, terrain_lod_chunk.frag chunkDetailNormal, fwidth-gated). Est: the
 oracle-tooling slice is the real work; the two feature ports are small once it exists.
 
+## ★★UNBLOCKED (2026-07-05 session 2 — deterministic near-camera oracle SHIPPED)
+Commit `9326febb`. The oracle blocker above is RESOLVED.
+
+**Root cause of the free-cap non-determinism (the 10.68% VK self-diff):** NOT a VK
+path bug and NOT terrain. Under the sim-frozen bookmark sweep the VK terrain co-write
+is byte-deterministic. The residual is an in-world MECH whose animation pose is not
+frozen at the pinned frame — a tight center island; terrain OUTSIDE it is byte-identical
+run-to-run. The old 10.68% was whole-frame LIVE-CAMERA drift (free-cap has no fixed pose
++ live sim), not a terrain/VK-timing defect. VK's residual read ~2× GL's only because the
+VK mech path draws more of that same jittering mech.
+
+**Oracle = option (b) hybrid:** bookmark sweep (deterministic sim-freeze + hard-set pose,
+gos_visual_capture.cpp) + `MC2_TERRAIN_LOD_CHUNK_FORCE_LOD=0` (a LOD POLICY applied to BOTH
+GL and VK — terrain.cpp:246 chooseLodLevel — NOT a VK gate) so every drawn block is
+lodStep==1 → the VK island co-writes a large region (SubmitDrawCommands captures all patches).
+Two scripted poses in `tests/visual/bookmarks/mc2_01_terrain_near.json`:
+- `near_land_off` (pos 4200,-3600 alt 320, no units): byte-perfect 0.000 self-diff UNMASKED.
+- `near_land_low` (pos 2496,-1941 alt 300): 56% VK co-write COVERAGE; mech island
+  (box x400-516 y100-200, measured union of 6 self-diff pairs) masked → 0.000 terrain self-diff.
+
+**Acceptance (all green, `terrain_near_oracle.py selfdiff`):**
+ (i)  self-diff = 0.000 across 3 runs, GL-config AND VK-config, both poses.
+ (ii) VKon-vs-VKoff = 56.15% terrain coverage (269541 px) → LOD0 co-write proven.
+ (iii) one command re-runs it; poses are named JSON.
+
+## ★ANTI-TILE / POM / DETAIL BASELINE (captured this session, near_land_low pose)
+Decomposition via MC2_VK_TERRAIN_DETAIL 0/1 (terrain_near_oracle.py detail):
+- GL vs VK(detail OFF):        cov 66.61%  mean_all 8.97  — full near-detail gap
+- GL vs VK(detail ON=current): cov 56.28%  mean_all 4.96  — current mv_detailNormal closes ~45%
+- VK detail OFF vs ON:         cov 37.37%  mean_all 4.70  — what partial detail already adds
+→ Remaining GL gap (56% / mean 4.96) = anti-tile (sampleAntiTileArr) + per-layer fwidth
+  fades + POM. These are the DEFERRED near-detail features, now VERIFIABLE.
+
+**PORT SCOPE (next session — small, SHADER-ONLY):** all constants already compile-time in
+terrain_tier1.frag (MATV_TILING/MATV_NORMAL_BOOST/MATV_TILING_SNOW) → NO new UBO fields.
+Port the WHOLE chunkDetailNormal near-path VERBATIM into mv_detailNormal: (1) add
+mv_hash22 + mv_sampleAntiTileArr (texture()-based, not textureGrad — VK's mv_detailNormal
+runs in UNIFORM control flow so implicit LOD is valid; the ddx/ddy plumbing GL needs is only
+for its non-uniform weight branches), (2) per-layer fwRock/fwGrass/fwDirt/fwConcrete/fwSnow
+fades (GL terrain_lod_chunk.frag:353-357), (3) route each layer sample through anti-tile
+gated by `fw* > 0.5 && ats* > 0.01` EXACTLY as GL :392-415. Own gate riding
+MC2_VK_TERRAIN_LIGHTING (e.g. reuse detailEnabled tier or a new detailAntiTile flag),
+byte-OFF control = the 11 stable mc2_01 bookmarks + near_land_off. Requires SPIR-V recompile
+(glslangValidator) + deploy 0.4c + smoke. POM is the same near path (chunkParallax) — port
+after anti-tile lands, same oracle. Markings-sidecar remains N/A (no map ships an overlay).
+
 ## Files (this session, terrain)
+- NEW oracle: .claude/mech-parity/terrain_near_oracle.py (keeper),
+  tests/visual/bookmarks/mc2_01_terrain_near.json. Artifacts .claude/mech-parity/terrain/near_oracle/.
 - Diagnosis tooling (this session): .claude/mech-parity/terrain_freecap.py (natural-cam GL-vs-VK),
   terrain_oracle.py (existing bookmark sweep). Artifacts under .claude/mech-parity/terrain/
   (antitile_baseline_f200, gl_repeat, vk_repeat, airport_lowobl — the self-diff + VKon/off probes).
