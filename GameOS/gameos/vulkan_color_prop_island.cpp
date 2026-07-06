@@ -47,6 +47,7 @@
 #include "vulkan_context.h"
 #include "vulkan_shadow_island_live.h"   // Mc2ShadowGeomFeed + Mc2ColorPropFeed contracts
 #include "vulkan_color_prop_island.h"
+#include "vk_shared_gbuffer_gate.h"      // VK-P14 GATE-CONSOLIDATION-1 umbrella resolver
 #define MC2_VULKAN_SHARED_SCENE_COLOR_IMPL_ISLAND
 #include "vulkan_shared_scene_color.h"   // TIER-1: fetch shared scene color/normal images
 #define MC2_VULKAN_SHARED_SCENE_DEPTH_IMPL_ISLAND
@@ -117,6 +118,13 @@ void vlog(const char* fmt, ...) {
     va_end(ap);
 }
 
+// [RETIRED — VK-P14 GATE-CONSOLIDATION-1] MC2_VK_PROP_COLOR_INTEROP is the Tier-0
+// side-image+composite PROOF path, SUPERSEDED by the Tier-1 in-place shared-GBuffer
+// co-write (propColorTier1Requested / MC2_VK_PROP_COLOR_TIER1). It is intentionally
+// NOT a member of the MC2_VK_SHARED_GBUFFER umbrella and NOT on the default-flip path.
+// The code path is PARKED (kept intact behind this dedicated raw gate) for debug/
+// regression, not deleted — the Tier-1 island shares this TU and the Tier-0 buildup/run
+// branches are load-bearing scaffolding for it. Default-OFF, byte-identical when unset.
 bool colorPropGateRequested() {
     static int state = -1;
     if (state == -1) {
@@ -133,10 +141,10 @@ bool colorPropGateRequested() {
 bool propColorTier1Requested() {
     static int state = -1;
     if (state == -1) {
-        const char* e = std::getenv("MC2_VK_PROP_COLOR_TIER1");
-        const char* d = std::getenv("MC2_VK_SHARED_SCENE_DEPTH");
-        const bool tier1 = e && e[0] == '1' && e[1] == '\0';
-        const bool depth = d && d[0] == '1' && d[1] == '\0';
+        // Umbrella members: MC2_VK_SHARED_GBUFFER=1 arms both; explicit
+        // MC2_VK_PROP_COLOR_TIER1 / MC2_VK_SHARED_SCENE_DEPTH =0/1 override.
+        const bool tier1 = mc2vkgate::subGate("MC2_VK_PROP_COLOR_TIER1");
+        const bool depth = mc2vkgate::subGate("MC2_VK_SHARED_SCENE_DEPTH");
         state = (tier1 && depth) ? 1 : 0;  // require shared depth
     }
     return state == 1;
@@ -145,11 +153,11 @@ bool propColorTier1Requested() {
 // VK-P11 STATIC-PROP MATERIAL: real lit textured props (albedo 2D_ARRAY sample +
 // shared computePBR). Requires the Tier-1 gate (shared-GBuffer co-write). Default-OFF.
 bool propMaterialRequested() {
+    // Umbrella member: MC2_VK_SHARED_GBUFFER=1 arms it; explicit
+    // MC2_VK_PROP_MATERIAL=0/1 overrides. (Precondition = propColorTier1Requested,
+    // enforced at the call site.)
     static int state = -1;
-    if (state == -1) {
-        const char* e = std::getenv("MC2_VK_PROP_MATERIAL");
-        state = (e && e[0] == '1' && e[1] == '\0') ? 1 : 0;
-    }
+    if (state == -1) state = mc2vkgate::subGate("MC2_VK_PROP_MATERIAL") ? 1 : 0;
     return state == 1;
 }
 

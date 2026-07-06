@@ -21,6 +21,7 @@
 
 #ifdef MC2_VULKAN_ISLAND
 #include "vulkan_terrain_island.h"   // VK-P10 TERRAIN TIER-1: LOD0 shared-GBuffer co-write
+#include "vk_shared_gbuffer_gate.h"  // VK-P14 GATE-CONSOLIDATION-1 umbrella resolver
 #endif
 
 // GlStateGuard slice 2 kill-switch. Default-ON: when set, the terrain chunk
@@ -841,8 +842,9 @@ extern "C" int mc2_terrain_tier1_get_frame_feed(Mc2TerrainTier1Feed* out)
     // NdotL relief band + baked static PCF shadow (terrain_lod_chunk.frag:889-928). Gate
     // MC2_VK_TERRAIN_LIGHTING (default-off -> lightingEnabled=0 -> VK stays flat, byte-safe).
     {
-        int lightingOn = 0;
-        if (const char* e = getenv("MC2_VK_TERRAIN_LIGHTING")) lightingOn = (e[0] == '1' && e[1] == '\0') ? 1 : 0;
+        // Umbrella family member: MC2_VK_SHARED_GBUFFER=1 arms it; explicit
+        // MC2_VK_TERRAIN_LIGHTING=0/1 overrides.
+        int lightingOn = mc2vkgate::subGate("MC2_VK_TERRAIN_LIGHTING") ? 1 : 0;
         out->lightingEnabled = lightingOn;
         float lx = 0.f, ly = 0.f, lz = 1.f;
         gos_GetTerrainLightDir(&lx, &ly, &lz);
@@ -874,11 +876,10 @@ extern "C" int mc2_terrain_tier1_get_frame_feed(Mc2TerrainTier1Feed* out)
         out->glDynamicShadowTex = 0;
         out->dynamicShadowSize = 0;
         std::memset(out->dynamicLightSpaceMatrix, 0, sizeof(out->dynamicLightSpaceMatrix));
+        // Umbrella member; requires lighting (its own precondition) + subGate.
         int dynShadowGate = 0;
-        if (out->lightingEnabled) {
-            if (const char* e = getenv("MC2_VK_TERRAIN_DYNSHADOW"))
-                dynShadowGate = (e[0] == '1' && e[1] == '\0') ? 1 : 0;
-        }
+        if (out->lightingEnabled)
+            dynShadowGate = mc2vkgate::subGate("MC2_VK_TERRAIN_DYNSHADOW") ? 1 : 0;
         if (dynShadowGate && pp && pp->shadowsEnabled_ && pp->getDynamicShadowFBO()
             && !mc2ShadowCsmEnabled()) {
             const GLuint dTex = pp->getDynamicShadowTextureRaw();
@@ -900,11 +901,10 @@ extern "C" int mc2_terrain_tier1_get_frame_feed(Mc2TerrainTier1Feed* out)
     // Gate MC2_VK_TERRAIN_DETAIL (requires MC2_VK_TERRAIN_LIGHTING; default-off ->
     // detailEnabled=0 -> VK N stays flat-up, byte-identical to the lighting-only frame).
     {
+        // Umbrella member; requires lighting (its own precondition) + subGate.
         int detailOn = 0;
-        if (out->lightingEnabled) {
-            if (const char* e = getenv("MC2_VK_TERRAIN_DETAIL"))
-                detailOn = (e[0] == '1' && e[1] == '\0') ? 1 : 0;
-        }
+        if (out->lightingEnabled)
+            detailOn = mc2vkgate::subGate("MC2_VK_TERRAIN_DETAIL") ? 1 : 0;
         out->detailEnabled       = detailOn;
         out->glMatNormalArrayTex = detailOn ? (uint32_t)gos_GetTerrainNormalArrayTex() : 0u;
         // GL uniform values (gameos_graphics.cpp member defaults; all 1.0). The VK frag

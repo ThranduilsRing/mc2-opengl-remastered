@@ -131,16 +131,17 @@ bool g_drawMechs = true;
 bool g_useGpuMechs = envFlagDefaultOn("MC2_GPU_MECHS");
 
 #ifdef MC2_VULKAN_ISLAND
+#include "vk_shared_gbuffer_gate.h"  // VK-P14 GATE-CONSOLIDATION-1 umbrella resolver
 // VK-P14 MECH TIER-1 (gate MC2_VK_MECH_TIER1, requires MC2_VK_SHARED_SCENE_DEPTH,
 // default-OFF): when armed, the flush() below still BUILDS the instance/bone SSBOs
 // and the feed snapshot, but SKIPS its own GL color draws; the caller (txmmgr) runs
 // mc2_vk_mech_island_run() to co-write the mechs IN-PLACE into the shared GBuffer.
 // Gate OFF -> s_vkMechGateOn stays false -> GL flush() byte-identical.
 static bool s_vkMechGateOn = [] {
-    const char* e = std::getenv("MC2_VK_MECH_TIER1");
-    const char* d = std::getenv("MC2_VK_SHARED_SCENE_DEPTH");
-    const bool on  = e && e[0] == '1' && e[1] == '\0';
-    const bool dep = d && d[0] == '1' && d[1] == '\0';
+    // Umbrella members: MC2_VK_SHARED_GBUFFER=1 arms both; explicit
+    // MC2_VK_MECH_TIER1 / MC2_VK_SHARED_SCENE_DEPTH =0/1 override.
+    const bool on  = mc2vkgate::subGate("MC2_VK_MECH_TIER1");
+    const bool dep = mc2vkgate::subGate("MC2_VK_SHARED_SCENE_DEPTH");
     return on && dep;   // require shared depth (the co-write depth-tests against it)
 }();
 

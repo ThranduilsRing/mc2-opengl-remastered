@@ -50,6 +50,7 @@
 #include "gl_interop_view.h"
 #include "vulkan_context.h"
 #include "vulkan_terrain_island.h"
+#include "vk_shared_gbuffer_gate.h"     // VK-P14 GATE-CONSOLIDATION-1 umbrella resolver
 #define MC2_VULKAN_SHARED_SCENE_COLOR_IMPL_ISLAND
 #include "vulkan_shared_scene_color.h"
 #define MC2_VULKAN_SHARED_SCENE_DEPTH_IMPL_ISLAND
@@ -119,10 +120,10 @@ void vlog(const char* fmt, ...) {
 bool terrainTier1Requested() {
     static int state = -1;
     if (state == -1) {
-        const char* e = std::getenv("MC2_VK_TERRAIN_TIER1");
-        const char* d = std::getenv("MC2_VK_SHARED_SCENE_DEPTH");
-        const bool t1    = e && e[0] == '1' && e[1] == '\0';
-        const bool depth = d && d[0] == '1' && d[1] == '\0';
+        // Umbrella members: MC2_VK_SHARED_GBUFFER=1 arms both; explicit
+        // MC2_VK_TERRAIN_TIER1 / MC2_VK_SHARED_SCENE_DEPTH =0/1 override.
+        const bool t1    = mc2vkgate::subGate("MC2_VK_TERRAIN_TIER1");
+        const bool depth = mc2vkgate::subGate("MC2_VK_SHARED_SCENE_DEPTH");
         state = (t1 && depth) ? 1 : 0;
     }
     return state == 1;

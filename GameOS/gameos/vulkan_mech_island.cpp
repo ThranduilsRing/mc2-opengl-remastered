@@ -46,6 +46,7 @@
 #include "gl_interop_view.h"
 #include "vulkan_context.h"
 #include "vulkan_mech_island.h"
+#include "vk_shared_gbuffer_gate.h"      // VK-P14 GATE-CONSOLIDATION-1 umbrella resolver
 #define MC2_VULKAN_SHARED_SCENE_COLOR_IMPL_ISLAND
 #include "vulkan_shared_scene_color.h"   // shared scene color/normal images
 #define MC2_VULKAN_SHARED_SCENE_DEPTH_IMPL_ISLAND
@@ -104,10 +105,10 @@ void vlog(const char* fmt, ...) {
 bool mechGateRequested() {
     static int state = -1;
     if (state == -1) {
-        const char* e = std::getenv("MC2_VK_MECH_TIER1");
-        const char* d = std::getenv("MC2_VK_SHARED_SCENE_DEPTH");
-        const bool on  = e && e[0] == '1' && e[1] == '\0';
-        const bool dep = d && d[0] == '1' && d[1] == '\0';
+        // Umbrella members: MC2_VK_SHARED_GBUFFER=1 arms both; explicit
+        // MC2_VK_MECH_TIER1 / MC2_VK_SHARED_SCENE_DEPTH =0/1 override.
+        const bool on  = mc2vkgate::subGate("MC2_VK_MECH_TIER1");
+        const bool dep = mc2vkgate::subGate("MC2_VK_SHARED_SCENE_DEPTH");
         state = (on && dep) ? 1 : 0;   // require shared depth
     }
     return state == 1;
@@ -117,11 +118,9 @@ bool mechGateRequested() {
 // stock mech type. DEFERRED general case = per-frame slot0 handle -> VK-descriptor
 // cache. Default-OFF -> flat color.
 bool mechMaterialRequested() {
+    // Umbrella member; explicit MC2_VK_MECH_MATERIAL=0/1 overrides.
     static int state = -1;
-    if (state == -1) {
-        const char* e = std::getenv("MC2_VK_MECH_MATERIAL");
-        state = (e && e[0] == '1' && e[1] == '\0') ? 1 : 0;
-    }
+    if (state == -1) state = mc2vkgate::subGate("MC2_VK_MECH_MATERIAL") ? 1 : 0;
     return state == 1;
 }
 
@@ -129,11 +128,9 @@ bool mechMaterialRequested() {
 // default mech path). Default-OFF -> flat-white lit (v_litColor = 1). Independent of
 // MC2_VK_MECH_MATERIAL, but only visible when material is on (albedo * litColor).
 bool mechLightingRequested() {
+    // Umbrella member; explicit MC2_VK_MECH_LIGHTING=0/1 overrides.
     static int state = -1;
-    if (state == -1) {
-        const char* e = std::getenv("MC2_VK_MECH_LIGHTING");
-        state = (e && e[0] == '1' && e[1] == '\0') ? 1 : 0;
-    }
+    if (state == -1) state = mc2vkgate::subGate("MC2_VK_MECH_LIGHTING") ? 1 : 0;
     return state == 1;
 }
 

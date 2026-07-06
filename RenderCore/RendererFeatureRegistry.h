@@ -667,12 +667,43 @@ static constexpr EnvVarDesc kAuxEnvVars[] = {
         "[VK_SHADOW_INTEROP] health. Gate OFF -> GL shadow path byte-identical. P8a = opaque "
         "static props, single map (foliage-alpha + terrain casters = P8b, mechs = P12)."
     },
+    // VK-P14 GATE-CONSOLIDATION-1: the ONE umbrella for the shared-GBuffer scene path.
+    {
+        "MC2_FEATURE_VK_SHARED_GBUFFER",
+        "MC2_VK_SHARED_GBUFFER",
+        EnvVarKind::Feature,
+        false,
+        "VK-P14 GATE-CONSOLIDATION-1: presence-gated =1, default OFF. THE UMBRELLA that "
+        "arms the whole VK shared-GBuffer scene path at once — when ON, every member "
+        "sub-gate DEFAULTS to ON: MC2_VK_SHARED_SCENE_DEPTH, MC2_VK_PROP_COLOR_TIER1, "
+        "MC2_VK_PROP_MATERIAL, MC2_VK_TERRAIN_TIER1, MC2_VK_TERRAIN_LIGHTING, "
+        "MC2_VK_TERRAIN_DETAIL, MC2_VK_TERRAIN_DYNSHADOW, MC2_VK_MECH_TIER1, "
+        "MC2_VK_MECH_MATERIAL, MC2_VK_MECH_LIGHTING (resolved by mc2vkgate::subGate in "
+        "GameOS/gameos/vk_shared_gbuffer_gate.h). Explicit sub-gate env ALWAYS wins as a "
+        "debug OVERRIDE (=1 force-on, =0 force-off) over the umbrella default. The eventual "
+        "default FLIP toggles EXACTLY this one name. Requires MC2_RENDER_BACKEND=vulkan (the "
+        "shared engine VulkanContext); fail-soft to GL when absent. INDEPENDENT: the safety "
+        "gates (MC2_VK_TERRAIN_HEIGHT_AUDIT verification-only + structural island fail-soft) "
+        "and the debug/negative knobs (MC2_VK_PROP_MATERIAL_DEBUG, *_HEIGHT_AUDIT_CORRUPT) are "
+        "NOT umbrella members. RETIRED/parked (NOT a member, NOT on the flip path): "
+        "MC2_VK_PROP_COLOR_INTEROP (Tier-0). Umbrella unset/!=1 with no sub-gate forced = "
+        "pure GL, byte-identical to today (near_land_off self-diff 0.000)."
+    },
+    // [RETIRED — VK-P14 GATE-CONSOLIDATION-1] Tier-0 side-image+composite PROOF path,
+    // SUPERSEDED by Tier-1 in-place co-write (MC2_VK_PROP_COLOR_TIER1). NOT an umbrella
+    // member, NOT on the default-flip path. Code path PARKED (kept intact behind this
+    // dedicated gate — the Tier-1 island shares the TU + Tier-0 scaffolding), not deleted.
     // VK-P11 STATIC-PROP COLOR: the FIRST VK-native COLOR geometry region gate.
     {
         "MC2_FEATURE_VK_PROP_COLOR_INTEROP",
         "MC2_VK_PROP_COLOR_INTEROP",
-        EnvVarKind::Feature,
+        EnvVarKind::Retired,
         false,
+        "[RETIRED 2026-07-06 VK-P14 GATE-CONSOLIDATION-1: Tier-0 side-image+composite proof, "
+        "SUPERSEDED by the Tier-1 in-place shared-GBuffer co-write MC2_VK_PROP_COLOR_TIER1. "
+        "NOT a MC2_VK_SHARED_GBUFFER umbrella member; NOT on the default-flip path. Parked "
+        "behind this gate (code kept — Tier-1 shares the TU/scaffolding), default-OFF, "
+        "byte-identical when unset.] "
         "VK-P11 STATIC-PROP COLOR: presence-gated =1, default OFF. Renders the VISIBLE "
         "static-prop COLOR instances in Vulkan (the FIRST VK-native color region drawing "
         "REAL static-prop triangle geometry -- the keystone the terrain/mech color regions "
@@ -718,6 +749,22 @@ static constexpr EnvVarDesc kAuxEnvVars[] = {
         "reason) -> gate-ON with no interop degrades to the GL path, never crashes. Rebuilt on "
         "resize (destroyFBOs tears down + createFBOs rebuilds). Surfaced in [VK_SHARED_SCENE_DEPTH] "
         "log line. Gate OFF (or island not compiled) = byte-identical GL scene-depth path."
+    },
+    // VK-P11 TIER-1 PROP COLOR: in-place shared-GBuffer co-write (Tier-1, supersedes Tier-0).
+    {
+        "MC2_FEATURE_VK_PROP_COLOR_TIER1",
+        "MC2_VK_PROP_COLOR_TIER1",
+        EnvVarKind::Feature,
+        false,
+        "VK-P11 TIER-1 PROP COLOR: presence-gated =1, default OFF; REQUIRES "
+        "MC2_VK_SHARED_SCENE_DEPTH. Umbrella family member (armed by MC2_VK_SHARED_GBUFFER=1; "
+        "explicit =0/1 overrides). Co-writes the VISIBLE static-prop color instances IN-PLACE "
+        "into the SHARED scene color(MRT0)+normal(MRT1)+depth GBuffer (GEQUAL reverse-Z, no "
+        "composite) instead of the Tier-0 side-image path (which it REPLACES/supersedes). "
+        "sceneColorTex_/sceneNormalTex_ become GL<->VK interop-shared exportable RGBA16F images "
+        "at their single scene-FBO alloc site (gos_postprocess createFBOs). BORROWS the shared "
+        "engine VulkanContext; FAIL-SOFT to the GL flush() prop path when the shared GBuffer/"
+        "context is unavailable. Gate OFF (or require missing) = byte-identical GL prop color path."
     },
     // VK-P10 TERRAIN TIER-1: the terrain in-place shared-GBuffer co-write region.
     {
@@ -842,6 +889,21 @@ static constexpr EnvVarDesc kAuxEnvVars[] = {
         "first mech run's live slot-0 paint texture (single 2D, un-lit) so the VK mech is textured instead of "
         "flat. Per-frame per-actor paint-scheme handle->VK-descriptor cache DEFERRED (probe = one static "
         "actor). Gate OFF = flat probe color."
+    },
+    {
+        "MC2_FEATURE_VK_MECH_LIGHTING",
+        "MC2_VK_MECH_LIGHTING",
+        EnvVarKind::Feature,
+        false,
+        "VK-MECH-MATERIAL-LIGHTING-1: presence-gated =1, default OFF; REQUIRES MC2_VK_MECH_TIER1 "
+        "(visible only with MC2_VK_MECH_MATERIAL=1). Umbrella family member (armed by "
+        "MC2_VK_SHARED_GBUFFER=1; explicit =0/1 overrides). Ports the GL DEFAULT mech shading into "
+        "the VK mech island: per-vertex calc_light Lambert (verbatim lighting.hglsl 4-param kernel) "
+        "+ albedo*v_litColor+highlight + per-actor haze. The live GL LightsData SSBO (binding 20) is "
+        "copied per-frame into a VK SSBO (glGetBufferSubData buffer-copy, forbidden_* stay 0). NOT the "
+        "PBR/StandardLit-GGX path (needs MC2_MECH_VIEWUNIFORMS+MC2_STANDARD_LIT_V1, both default-OFF) "
+        "-> matches the default deploy mech look. FAIL-SOFT: LightsData unavailable -> flat-white lit. "
+        "Gate OFF = un-lit albedo (or flat, per material gate)."
     },
     // GOSFX-TUBE-RIBBON-1: gosFX Tube swept-quad ribbon oracle.
     {

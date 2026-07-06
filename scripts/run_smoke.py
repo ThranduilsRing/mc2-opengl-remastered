@@ -1655,6 +1655,12 @@ def main():
                             # Popen drops it and the gate-ON smoke silently runs the GL
                             # flush() prop color path (gate inert).
                             "MC2_VK_PROP_COLOR_INTEROP",
+                            # VK-P14 GATE-CONSOLIDATION-1: THE UMBRELLA. =1 arms the
+                            # whole shared-GBuffer scene family at once (all sub-gates
+                            # below default ON; explicit sub-gate env still overrides).
+                            # The eventual default flip toggles EXACTLY this one name, so
+                            # the soak must pass it through to exercise the final gate.
+                            "MC2_VK_SHARED_GBUFFER",
                             # VK-TIER1 SHARED SCENE DEPTH: backs sceneDepthTex_ with a
                             # VK-built exportable D32S8 image imported into GL as
                             # GL_DEPTH24_STENCIL8 at the scene-FBO depth alloc+attach

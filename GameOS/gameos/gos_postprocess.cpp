@@ -24,6 +24,7 @@
 #include "gos_postprocess_blur.h"        // POSTPROCESS-COMPUTE-BLUR-1 (gated substrate)
 #include "../../mclib/dynamic_decal_ring.h"  // DECAL-INTEGRATE-1: ring-fed projected decals
 #ifdef MC2_VULKAN_ISLAND
+#include "vk_shared_gbuffer_gate.h"     // VK-P14 GATE-CONSOLIDATION-1 umbrella resolver
 #include "vulkan_shared_scene_depth.h"  // VK-TIER1 SHARED SCENE DEPTH substrate (gated)
 #include "vulkan_shared_scene_color.h"  // VK-P11 TIER-1 SHARED SCENE COLOR/NORMAL (gated)
 #endif
@@ -75,10 +76,9 @@ int mc2ShaderPathTint()
 // (or island not compiled) = byte-identical to today.
 static bool mc2VkSharedSceneDepthEnabled()
 {
-    static const bool s_on = []() {
-        const char* v = getenv("MC2_VK_SHARED_SCENE_DEPTH");
-        return v && v[0] == '1' && v[1] == '\0';   // DEFAULT OFF; only "1" enables
-    }();
+    // Umbrella family member: MC2_VK_SHARED_GBUFFER=1 arms it; explicit
+    // MC2_VK_SHARED_SCENE_DEPTH=0/1 overrides. Default OFF (pure GL).
+    static const bool s_on = mc2vkgate::subGate("MC2_VK_SHARED_SCENE_DEPTH");
     return s_on;
 }
 
@@ -93,11 +93,8 @@ static bool mc2VkSharedSceneDepthEnabled()
 // or island not compiled) = byte-identical to today.
 static bool mc2VkPropColorTier1Enabled()
 {
-    static const bool s_on = []() {
-        const char* v = getenv("MC2_VK_PROP_COLOR_TIER1");
-        const bool tier1 = v && v[0] == '1' && v[1] == '\0';   // DEFAULT OFF; only "1"
-        return tier1 && mc2VkSharedSceneDepthEnabled();        // require shared depth
-    }();
+    static const bool s_on =
+        mc2vkgate::subGate("MC2_VK_PROP_COLOR_TIER1") && mc2VkSharedSceneDepthEnabled();
     return s_on;
 }
 
@@ -110,22 +107,16 @@ static bool mc2VkPropColorTier1Enabled()
 // Gate OFF / require missing / island not compiled = byte-identical.
 static bool mc2VkTerrainTier1Enabled()
 {
-    static const bool s_on = []() {
-        const char* v = getenv("MC2_VK_TERRAIN_TIER1");
-        const bool tier1 = v && v[0] == '1' && v[1] == '\0';   // DEFAULT OFF; only "1"
-        return tier1 && mc2VkSharedSceneDepthEnabled();        // require shared depth
-    }();
+    static const bool s_on =
+        mc2vkgate::subGate("MC2_VK_TERRAIN_TIER1") && mc2VkSharedSceneDepthEnabled();
     return s_on;
 }
 
 // VK mech Tier-1 in-place co-write also renders into the shared scene GBuffer.
 static bool mc2VkMechTier1Enabled()
 {
-    static const bool s_on = []() {
-        const char* v = getenv("MC2_VK_MECH_TIER1");
-        const bool tier1 = v && v[0] == '1' && v[1] == '\0';   // DEFAULT OFF; only "1"
-        return tier1 && mc2VkSharedSceneDepthEnabled();        // require shared depth
-    }();
+    static const bool s_on =
+        mc2vkgate::subGate("MC2_VK_MECH_TIER1") && mc2VkSharedSceneDepthEnabled();
     return s_on;
 }
 
