@@ -157,3 +157,22 @@ Key prompt-construction rules:
   already baked into the authoritative source
 - Encode `analysis-paralysis-guard` verbatim in long-running dispatches:
   "5+ consecutive Read/Grep/Glob without Edit/Write/Bash = STOP"
+
+## Agent-efficiency tools (deterministic, replace in-context re-derivation)
+
+Four tools subagents should NAME instead of rebuilding (AGENT-EFFICIENCY-TOOLS-1):
+
+- **`tools/menu_oracle.py`** — visual menu-visibility oracle:
+  `py -3 tools/menu_oracle.py --exe <mc2.exe> [--env MC2_NO_LAUNCHER=1] [--wait 18] [--threshold 10] [--shot out.png]`
+  → JSON `{mean, nonblack_frac, verdict}`; exit 0 VISIBLE / 1 BLACK / 2 INCONCLUSIVE.
+  Caveat: sparse text-on-black menus can read mean <1 while visible — threshold is the caller's judgment.
+- **`tools/witness_smoke.py`** — deploy+smoke+log-grep verdict in one call:
+  `py -3 tools/witness_smoke.py --install <dir> [--deploy] --mission mc2_01 --expect "<regex>" [--forbid "<regex>"]`
+  → smoke table + per-expect FOUND/MISSING; exit 0 only if smoke passed + all expects + no forbids.
+- **`tools/build_quiet.py`** — VS CMake build with spew swallowed:
+  `py -3 tools/build_quiet.py [--target mc2] [--config RelWithDebInfo]`
+  → errors verbatim, warning COUNT, final `vcxproj ->` line, elapsed; exit = cmake exit.
+- **`tools/list_free_ordinals.py`** — free (undefined) compbas ordinals for modding:
+  `py -3 tools/list_free_ordinals.py --compbas <compbas.csv | install-dir>`
+  (install dir → auto-extracts from misc.fst via `tools/mc2x_import/fst.py`, whose
+  LZW decoder is now asm-faithful to `mclib/lzdecomp.cpp` and sniffs zlib-per-entry).
