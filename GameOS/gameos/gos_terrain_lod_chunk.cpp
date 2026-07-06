@@ -1653,9 +1653,29 @@ void gos_TerrainLodChunk_SubmitDrawCommands(
             p.quadCountX   = maxOffX;
             p.quadCountY   = maxOffY;
             p.lodStep      = cmd.lodStep;
+            // VK-TERRAIN-SKIRT (rung 4): snapshot this block's skirt inputs into the
+            // SAME record so the VK island can draw the skirt in the same co-write pass
+            // as the main patch, with no extra GL state read on the VK side. Only
+            // populated when the skirt sub-gate is armed; else 0/0 (island draws no
+            // skirt for this patch, matching today's GL-owns-all-skirts fallback --
+            // the GL skip below is ALSO gated on the same predicate so GL keeps drawing
+            // the skirt whenever the VK island isn't going to).
+            const bool s_vkSkirtsActive = mc2_vk_terrain_skirts_enabled() != 0;
+            p.skirtDepth    = (s_vkSkirtsActive && skirtDepths)    ? skirtDepths[i]    : 0.0f;
+            p.skirtEdgeMask = (s_vkSkirtsActive && skirtEdgeMasks) ? skirtEdgeMasks[i] : 0u;
             s_vkTerrainPatches.push_back(p);
             s_vkTerrainFeedValid = true;
-            continue;   // GL skips this patch's main + skirt draws; VK owns it
+            continue;   // GL skips this patch's main + skirt draws unconditionally (this
+                        // was already true pre-rung-4: VK-owned patches never got a GL
+                        // skirt draw, since `continue` fires before the skirt-draw code
+                        // below runs). Pre-rung-4 that meant VK-owned patches had NO
+                        // skirt at all -- a latent crack risk masked only by rung-3's
+                        // narrow scope (bands still matched GL neighbor geometry closely
+                        // enough per the ladder doc). This rung closes that gap: when the
+                        // skirts sub-gate is armed, skirtDepth/skirtEdgeMask above are
+                        // populated and the VK island draws the skirt itself; when the
+                        // sub-gate is off, behavior is UNCHANGED from rung-3 (0/0 ->
+                        // island draws no skirt for this patch).
         }
 #endif
 

@@ -323,7 +323,11 @@ if(MC2_VULKAN)
     # VK-P14 MECH TIER-1: bake mech_tier1.{vert,frag} (skinned mech co-write VS reading
     # the instance + bone-palette SSBOs + 2-output GBuffer FS with a=0.0). SPIR-V loaded
     # at runtime by vulkan_mech_island.cpp via load_spv(spv_dir()+"mech_tier1.*.spv").
-    set(MC2_VK_SHADER_BASENAMES fullscreen edge_fog fog_oob ssao ssao_apply hzb_reduce compare_shadow csm_array_shadow shadow_depth water_mvp water_geom shadow_prop color_prop color_prop_tier1 terrain_tier1 mech_tier1)
+    # VK-TERRAIN-SKIRT (rung 4): bake terrain_tier1_skirt.{vert,frag} (skirt-strip VS
+    # applying the u_skirtDepth pull-down + a byte-identical copy of terrain_tier1.frag,
+    # since GL uses the same frag program for skirts as the main patch). SPIR-V loaded
+    # at runtime by vulkan_terrain_island.cpp via load_spv(spv_dir()+"terrain_tier1_skirt.*.spv").
+    set(MC2_VK_SHADER_BASENAMES fullscreen edge_fog fog_oob ssao ssao_apply hzb_reduce compare_shadow csm_array_shadow shadow_depth water_mvp water_geom shadow_prop color_prop color_prop_tier1 terrain_tier1 terrain_tier1_skirt mech_tier1)
     set(MC2_VK_SPV_OUTPUTS "")
     if(MC2_GLSLANG_VALIDATOR OR MC2_GLSLC)
         foreach(_base ${MC2_VK_SHADER_BASENAMES})

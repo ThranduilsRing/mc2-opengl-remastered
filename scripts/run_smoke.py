@@ -1699,6 +1699,11 @@ def main():
                             # extension, requires MC2_VK_TERRAIN_TIER1. Bands only, no
                             # skirts/stitch this rung. Default-OFF.
                             "MC2_VK_TERRAIN_ALL_LODS",
+                            # VK-TERRAIN-SKIRTS (rung 4): skirt/edge-stitch geometry
+                            # port, requires MC2_VK_TERRAIN_ALL_LODS. Independent
+                            # kill-switch from ALL_LODS so a bad skirt port can be
+                            # isolated without losing the rung-3 band win. Default-OFF.
+                            "MC2_VK_TERRAIN_SKIRTS",
                             "MC2_VK_TERRAIN_LIGHTING",
                             "MC2_VK_TERRAIN_DETAIL",
                             "MC2_VK_TERRAIN_LODFADE",

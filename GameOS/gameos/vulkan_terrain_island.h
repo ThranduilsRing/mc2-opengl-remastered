@@ -41,6 +41,14 @@ struct Mc2TerrainTier1Patch {
     // `p += lodStep`) so the vert shader's un-scaled `blockOriginX + localOffset.x`
     // math stays IDENTICAL to the LOD0 path.
     int32_t lodStep;
+    // VK-TERRAIN-SKIRT sub-slice (rung 4): mirrors the GL per-block skirt inputs
+    // (gos_terrain_lod_chunk.cpp skirtDepths[i]/skirtEdgeMasks[i]) captured at the SAME
+    // site as the main-patch record so the VK island can draw this patch's skirt strips
+    // in the SAME frame with NO extra GL state read. skirtDepth<=0 or skirtEdgeMask==0
+    // -> island draws no skirt for this patch (mirrors GL's `if (skirtDepth > 0.0f)` /
+    // per-edge mask-bit gate, gos_terrain_lod_chunk.cpp:1736,1755).
+    float    skirtDepth;      // world-unit pull-down depth (0 = no skirt, mirrors GL skirtDepths[i])
+    uint32_t skirtEdgeMask;   // bit0=N,1=S,2=W,3=E (mirrors GL skirtEdgeMasks[i], 0xF = all four)
 };
 
 // Per-frame terrain feed (mirrors Mc2ColorPropFeed). Populated by the GL LOD-chunk
@@ -138,6 +146,18 @@ int mc2_vk_terrain_island_enabled();
 // captures lodStep>1 non-displaced, non-stitched patches (bands only -- skirts/stitch stay
 // GL-owned this rung). Default-OFF -> capture unchanged (LOD0 only).
 int mc2_vk_terrain_all_lods_enabled();
+
+// VK-TERRAIN-SKIRTS (rung 4): true when the skirt/edge-stitch sub-gate
+// (MC2_VK_TERRAIN_SKIRTS, requires MC2_VK_TERRAIN_ALL_LODS) is armed. Independent
+// kill-switch from ALL_LODS/TIER1 because skirts are the crack-risk surface for this
+// rung (VK-band-vs-VK-band AND VK-band-vs-GL-neighbour seams) -- being able to run
+// "VK owns bands, GL still draws all skirts" isolates a bad skirt port from a bad
+// band port during the oracle sweep. When true, the GL capture site ALSO snapshots
+// skirtDepth/skirtEdgeMask into each captured patch's record and SKIPS drawing that
+// patch's GL skirt strips (the same continue-pattern as the main-patch skip); the VK
+// island then draws the skirt geometry itself in the same co-write pass. Default-OFF
+// -> GL keeps drawing all skirts (today's shipped rung-3 state), byte-identical.
+int mc2_vk_terrain_skirts_enabled();
 
 // FAIL-SOFT ready predicate. True only when the gate is on AND the island is in a state
 // where run() is expected to co-write this frame's LOD0 patches (born, inited, not

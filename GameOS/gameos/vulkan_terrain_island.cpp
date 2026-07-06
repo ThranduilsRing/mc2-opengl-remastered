@@ -148,6 +148,23 @@ bool terrainAllLodsRequested() {
     return state == 1;
 }
 
+// VK-TERRAIN-SKIRTS sub-slice (rung 4): extend VK terrain ownership to skirt/edge-
+// stitch geometry for VK-owned patches. Requires ALL_LODS (skirts only matter once
+// coarse bands are VK-owned -- LOD0-only skirts were already excluded from GL draw
+// by the TIER1 capture, see the "LOD0 skirts excluded from probe" comment at the
+// capture site). Independent explicit opt-in (own env var, NOT chained silently onto
+// ALL_LODS) so the oracle can isolate "VK bands, GL skirts" (today's shipped state)
+// from "VK bands, VK skirts" (this rung) -- if skirts crack, flip this OFF alone and
+// keep the rung-3 band win. Same envTriState pattern as ALL_LODS (unset -> OFF
+// regardless of umbrella state).
+bool terrainSkirtsRequested() {
+    static int state = -1;
+    if (state == -1) {
+        state = (terrainAllLodsRequested() && mc2vkgate::envTriState("MC2_VK_TERRAIN_SKIRTS") == 1) ? 1 : 0;
+    }
+    return state == 1;
+}
+
 std::string spv_dir() {
     const char* env = std::getenv("MC2_VULKAN_SPV_DIR");
     std::string d = (env && *env) ? env : "shaders/vulkan";
@@ -228,7 +245,14 @@ struct TerrainFrameUBO {
     // the 512B dynamic-alignment slot does NOT grow. LOCKSTEP with terrain_tier1.frag.
     float   cameraPosMC2[4];        // off 320: gos_GetTerrainCameraPos(), .w pad
     int32_t lodFadeEnabled;         // off 336
-    int32_t _pad[43];               // off 340..511: remaining pad
+    // VK-TERRAIN-SKIRT sub-slice (rung 4): skirt pull-down depth, mirrors GL
+    // u_skirtDepth (gos_terrain_lod_chunk.cpp skirtDepths[i]). Read by
+    // terrain_tier1_skirt.vert only (the main-patch vert never reads it — main
+    // patches always draw with skirtDepth conceptually 0, same as GL's "draw main
+    // patch (skirtDepth=0)" comment). Packed into the existing pad tail so the 512B
+    // dynamic-alignment slot does NOT grow. LOCKSTEP with terrain_tier1_skirt.vert.
+    float   skirtDepth;              // off 340
+    int32_t _pad[42];                // off 344..511: remaining pad
 };
 static_assert(sizeof(TerrainFrameUBO) == 512, "UBO slot must be 512B (dynamic alignment)");
 
@@ -243,6 +267,21 @@ struct PatchMesh {
     VkBuffer      ibo = VK_NULL_HANDLE; VmaAllocation iboAlloc = VK_NULL_HANDLE;
     uint32_t      indexCount = 0;
 };
+
+// VK-TERRAIN-SKIRT (rung 4): a cached skirt-strip mesh (VK-owned VBO/IBO), keyed by
+// (quadCountX,quadCountY,lodStep) same as the main PatchMesh -- mirrors GL's
+// per-patch skirtVbo/skirtIbo built alongside the main grid (getOrBuildPatch,
+// gos_terrain_lod_chunk.cpp:459-518). Per-edge offset/count (N,S,W,E) let the draw
+// loop honor the per-block skirt edge mask exactly like GL's mask-bit loop.
+struct SkirtMesh {
+    VkBuffer      vbo = VK_NULL_HANDLE; VmaAllocation vboAlloc = VK_NULL_HANDLE;
+    VkBuffer      ibo = VK_NULL_HANDLE; VmaAllocation iboAlloc = VK_NULL_HANDLE;
+    uint32_t      edgeOffset[4] = {0,0,0,0};   // 0=N,1=S,2=W,3=E (index offsets, in indices)
+    uint32_t      edgeCount[4]  = {0,0,0,0};
+};
+
+// VK-TERRAIN-SKIRT vertex: mirrors GL's SkirtVertex { int16 lx, ly, isSkirt, _pad }.
+struct SkirtVertex { int16_t lx, ly, isSkirt, _pad; };
 
 struct TerrainIsland {
     bool disabled = false;
@@ -278,6 +317,16 @@ struct TerrainIsland {
     VkPipeline        pipe   = VK_NULL_HANDLE;
     VkShaderModule    vert   = VK_NULL_HANDLE;
     VkShaderModule    frag   = VK_NULL_HANDLE;
+
+    // VK-TERRAIN-SKIRT (rung 4): second pipeline for skirt strips (2-attribute vertex
+    // input: ivec2 localOffset + int isSkirtFlag, mirrors GL's skirt VAO). Shares the
+    // SAME descriptor set / pipeline layout / renderpass as the main pipeline (only
+    // the vertex-input state + shader modules differ) -- cull/depth/blend state is
+    // IDENTICAL (double-sided, reverse-Z GEQUAL, opaque), matching GL's skirt draw
+    // which reuses the same terrain program + GL state, just a different VAO/attribs.
+    VkPipeline        skirtPipe = VK_NULL_HANDLE;
+    VkShaderModule    skirtVert = VK_NULL_HANDLE;
+    VkShaderModule    skirtFrag = VK_NULL_HANDLE;
 
     // VK-owned snapshot of the GL height SSBO (binding 23 -> here binding 1).
     VkBuffer      heightBuf = VK_NULL_HANDLE; VmaAllocation heightAlloc = VK_NULL_HANDLE;
@@ -363,6 +412,7 @@ struct TerrainIsland {
     VkDeviceSize  uboCapBytes = 0;
 
     std::unordered_map<uint32_t, PatchMesh> patchCache;
+    std::unordered_map<uint32_t, SkirtMesh> skirtCache;  // VK-TERRAIN-SKIRT (rung 4)
 
     VkCommandPool     cpool  = VK_NULL_HANDLE;
     VkCommandBuffer   cbuf[2] = {VK_NULL_HANDLE, VK_NULL_HANDLE};
@@ -458,6 +508,73 @@ const PatchMesh* getOrBuildPatch(TerrainIsland* s, int qcX, int qcY, int lodStep
           std::memcpy(p, indices.data(), (size_t)iboBytes); vmaUnmapMemory(s->allocator, pm.iboAlloc); } }
 
     auto res = s->patchCache.emplace(key, pm);
+    return &res.first->second;
+}
+
+// VK-TERRAIN-SKIRT (rung 4): build (or fetch cached) a skirt-strip mesh for
+// (qcX,qcY,lodStep), keyed the SAME way as getOrBuildPatch. Reproduces GL's skirt
+// builder BIT-FOR-BIT (gos_terrain_lod_chunk.cpp:459-500 buildEdge lambda + the
+// N,S,W,E per-edge offset/count bookkeeping) using the identical xs/ys sample-position
+// construction getOrBuildPatch uses (mirrors GL's makeSamplePositions(quadCount,lodStep)
+// call sharing the same coarse-line sample points as the main patch, so skirt verts
+// land exactly on the main patch's edge verts -- no seam between skirt-top and
+// main-patch-edge).
+const SkirtMesh* getOrBuildSkirtMesh(TerrainIsland* s, int qcX, int qcY, int lodStep) {
+    if (lodStep <= 0) lodStep = 1;
+    const uint32_t key = ((uint32_t)(qcX & 0xFFFF)) | (((uint32_t)(qcY & 0xFFFF)) << 16)
+                        ^ ((uint32_t)(lodStep & 0xFF) << 24);
+    auto it = s->skirtCache.find(key);
+    if (it != s->skirtCache.end()) return &it->second;
+    if (qcX <= 0 || qcY <= 0) return nullptr;
+
+    std::vector<int> xs, ys;
+    for (int p = 0; p <= qcX; p += lodStep) xs.push_back(p);
+    if (xs.empty() || xs.back() != qcX) xs.push_back(qcX);
+    for (int p = 0; p <= qcY; p += lodStep) ys.push_back(p);
+    if (ys.empty() || ys.back() != qcY) ys.push_back(qcY);
+
+    std::vector<SkirtVertex> skirtVerts;
+    std::vector<uint16_t>    skirtIdx;
+
+    // Mirrors GL's buildEdge lambda exactly (gos_terrain_lod_chunk.cpp:477-494).
+    auto buildEdge = [&](const std::vector<int>& uPos, int fixedCoord, bool fixedIsY) {
+        int base = (int)skirtVerts.size();
+        int n    = (int)uPos.size();
+        for (int i = 0; i < n; ++i) {
+            int16_t lx = fixedIsY ? (int16_t)uPos[i] : (int16_t)fixedCoord;
+            int16_t ly = fixedIsY ? (int16_t)fixedCoord : (int16_t)uPos[i];
+            skirtVerts.push_back({lx, ly, 0, 0});  // surface
+            skirtVerts.push_back({lx, ly, 1, 0});  // below
+        }
+        for (int i = 0; i < n - 1; ++i) {
+            uint16_t t0 = (uint16_t)(base + 2*i);
+            uint16_t b0 = (uint16_t)(base + 2*i + 1);
+            uint16_t t1 = (uint16_t)(base + 2*(i+1));
+            uint16_t b1 = (uint16_t)(base + 2*(i+1) + 1);
+            skirtIdx.insert(skirtIdx.end(), {t0, b0, b1, t0, b1, t1});
+        }
+    };
+
+    SkirtMesh sm;
+    sm.edgeOffset[0] = (uint32_t)skirtIdx.size(); buildEdge(xs, (int)ys.front(), false); sm.edgeCount[0] = (uint32_t)skirtIdx.size() - sm.edgeOffset[0]; // North
+    sm.edgeOffset[1] = (uint32_t)skirtIdx.size(); buildEdge(xs, (int)ys.back(),  false); sm.edgeCount[1] = (uint32_t)skirtIdx.size() - sm.edgeOffset[1]; // South
+    sm.edgeOffset[2] = (uint32_t)skirtIdx.size(); buildEdge(ys, (int)xs.front(), true ); sm.edgeCount[2] = (uint32_t)skirtIdx.size() - sm.edgeOffset[2]; // West
+    sm.edgeOffset[3] = (uint32_t)skirtIdx.size(); buildEdge(ys, (int)xs.back(),  true ); sm.edgeCount[3] = (uint32_t)skirtIdx.size() - sm.edgeOffset[3]; // East
+
+    if (skirtVerts.empty() || skirtIdx.empty()) return nullptr;
+
+    const VkDeviceSize vboBytes = skirtVerts.size() * sizeof(SkirtVertex);
+    const VkDeviceSize iboBytes = skirtIdx.size() * sizeof(uint16_t);
+    if (!make_buffer(s, vboBytes, VK_BUFFER_USAGE_VERTEX_BUFFER_BIT, &sm.vbo, &sm.vboAlloc, true)) return nullptr;
+    if (!make_buffer(s, iboBytes, VK_BUFFER_USAGE_INDEX_BUFFER_BIT,  &sm.ibo, &sm.iboAlloc, true)) return nullptr;
+    { void* p = nullptr;
+      if (vmaMapMemory(s->allocator, sm.vboAlloc, &p) == VK_SUCCESS) {
+          std::memcpy(p, skirtVerts.data(), (size_t)vboBytes); vmaUnmapMemory(s->allocator, sm.vboAlloc); } }
+    { void* p = nullptr;
+      if (vmaMapMemory(s->allocator, sm.iboAlloc, &p) == VK_SUCCESS) {
+          std::memcpy(p, skirtIdx.data(), (size_t)iboBytes); vmaUnmapMemory(s->allocator, sm.iboAlloc); } }
+
+    auto res = s->skirtCache.emplace(key, sm);
     return &res.first->second;
 }
 
@@ -582,6 +699,15 @@ void destroy_island(TerrainIsland* s) {
         if (kv.second.ibo) vmaDestroyBuffer(s->allocator, kv.second.ibo, kv.second.iboAlloc);
     }
     s->patchCache.clear();
+    // VK-TERRAIN-SKIRT (rung 4): mirror the main-patch teardown for skirt resources.
+    for (auto& kv : s->skirtCache) {
+        if (kv.second.vbo) vmaDestroyBuffer(s->allocator, kv.second.vbo, kv.second.vboAlloc);
+        if (kv.second.ibo) vmaDestroyBuffer(s->allocator, kv.second.ibo, kv.second.iboAlloc);
+    }
+    s->skirtCache.clear();
+    if (s->skirtPipe) vkDestroyPipeline(d, s->skirtPipe, nullptr);
+    if (s->skirtVert) vkDestroyShaderModule(d, s->skirtVert, nullptr);
+    if (s->skirtFrag) vkDestroyShaderModule(d, s->skirtFrag, nullptr);
     if (s->pipe)    vkDestroyPipeline(d, s->pipe, nullptr);
     if (s->playout) vkDestroyPipelineLayout(d, s->playout, nullptr);
     if (s->vert)    vkDestroyShaderModule(d, s->vert, nullptr);
@@ -891,6 +1017,44 @@ bool init_island(TerrainIsland* s, int w, int h) {
         gp.layout = s->playout; gp.renderPass = s->rpass; gp.subpass = 0;
         if (vkCreateGraphicsPipelines(s->device, VK_NULL_HANDLE, 1, &gp, nullptr, &s->pipe) != VK_SUCCESS) {
             vlog("vkCreateGraphicsPipelines failed."); setFallback("pipeline_failed"); return false;
+        }
+
+        // VK-TERRAIN-SKIRT (rung 4): second pipeline, same layout/renderpass/raster/
+        // depth/blend state as above -- only the shader modules + vertex-input state
+        // differ (2 attributes: ivec2 localOffset + int isSkirtFlag, mirrors GL's
+        // skirt VAO glVertexAttribIPointer calls, gos_terrain_lod_chunk.cpp:1744-1748).
+        s->skirtVert = load_spv(s->device, spv_dir() + "terrain_tier1_skirt.vert.spv");
+        s->skirtFrag = load_spv(s->device, spv_dir() + "terrain_tier1_skirt.frag.spv");
+        if (s->skirtVert == VK_NULL_HANDLE || s->skirtFrag == VK_NULL_HANDLE) {
+            setFallback("spv_load_failed"); return false;
+        }
+
+        VkVertexInputBindingDescription svib{};
+        svib.binding = 0; svib.stride = sizeof(SkirtVertex); svib.inputRate = VK_VERTEX_INPUT_RATE_VERTEX;
+        VkVertexInputAttributeDescription svia[2]{};
+        svia[0].location = 0; svia[0].binding = 0; svia[0].format = VK_FORMAT_R16G16_SINT;  svia[0].offset = 0;
+        svia[1].location = 1; svia[1].binding = 0; svia[1].format = VK_FORMAT_R16_SINT;      svia[1].offset = 4;
+        VkPipelineVertexInputStateCreateInfo svin{};
+        svin.sType = VK_STRUCTURE_TYPE_PIPELINE_VERTEX_INPUT_STATE_CREATE_INFO;
+        svin.vertexBindingDescriptionCount = 1; svin.pVertexBindingDescriptions = &svib;
+        svin.vertexAttributeDescriptionCount = 2; svin.pVertexAttributeDescriptions = svia;
+
+        VkPipelineShaderStageCreateInfo sstages[2]{};
+        sstages[0].sType = VK_STRUCTURE_TYPE_PIPELINE_SHADER_STAGE_CREATE_INFO;
+        sstages[0].stage = VK_SHADER_STAGE_VERTEX_BIT; sstages[0].module = s->skirtVert; sstages[0].pName = "main";
+        sstages[1].sType = VK_STRUCTURE_TYPE_PIPELINE_SHADER_STAGE_CREATE_INFO;
+        sstages[1].stage = VK_SHADER_STAGE_FRAGMENT_BIT; sstages[1].module = s->skirtFrag; sstages[1].pName = "main";
+
+        VkGraphicsPipelineCreateInfo sgp{};
+        sgp.sType = VK_STRUCTURE_TYPE_GRAPHICS_PIPELINE_CREATE_INFO;
+        sgp.stageCount = 2; sgp.pStages = sstages;
+        sgp.pVertexInputState = &svin; sgp.pInputAssemblyState = &ia;
+        sgp.pViewportState = &vps; sgp.pRasterizationState = &rs;
+        sgp.pMultisampleState = &ms; sgp.pDepthStencilState = &ds; sgp.pColorBlendState = &cb;
+        sgp.pDynamicState = &dsci;
+        sgp.layout = s->playout; sgp.renderPass = s->rpass; sgp.subpass = 0;
+        if (vkCreateGraphicsPipelines(s->device, VK_NULL_HANDLE, 1, &sgp, nullptr, &s->skirtPipe) != VK_SUCCESS) {
+            vlog("vkCreateGraphicsPipelines (skirt) failed."); setFallback("pipeline_failed"); return false;
         }
     }
 
@@ -1637,6 +1801,10 @@ extern "C" int mc2_vk_terrain_all_lods_enabled() {
     return terrainAllLodsRequested() ? 1 : 0;
 }
 
+extern "C" int mc2_vk_terrain_skirts_enabled() {
+    return terrainSkirtsRequested() ? 1 : 0;
+}
+
 // FAIL-SOFT ISLAND-READY predicate. True only when the gate is on AND the island is in a
 // state where run() is expected to co-write this frame's LOD0 patches. The GL LOD-chunk
 // loop gates its SPECULATIVE LOD0-skip on this: if the island can NOT render (SPV/pipeline
@@ -1846,6 +2014,10 @@ extern "C" int mc2_vk_terrain_island_run(int w, int h) {
                 u.cameraPosMC2[2] = feed.cameraPosMC2[2];
                 u.cameraPosMC2[3] = 0.0f;
                 u.lodFadeEnabled  = (u.detailEnabled && feed.lodFadeEnabled) ? 1 : 0;
+                // VK-TERRAIN-SKIRT (rung 4): per-patch skirt pull-down depth (0 = this
+                // patch's skirt sub-gate was off at capture, or GL reported no skirt for
+                // this block -- island draws no skirt strips for it, see the draw loop).
+                u.skirtDepth = feed.patches[i].skirtDepth;
                 slots[i] = u;
             }
             vmaUnmapMemory(s->allocator, s->uboAlloc);
@@ -1887,17 +2059,39 @@ extern "C" int mc2_vk_terrain_island_run(int w, int h) {
     vkCmdBindPipeline(cb, VK_PIPELINE_BIND_POINT_GRAPHICS, s->pipe);
 
     unsigned long drawn = 0;
+    unsigned long skirtDrawn = 0;  // VK-TERRAIN-SKIRT (rung 4): skirt edge-strip draw count
     for (uint32_t i = 0; i < patchCount; ++i) {
         const Mc2TerrainTier1Patch& pr = feed.patches[i];
         const PatchMesh* pm = getOrBuildPatch(s, pr.quadCountX, pr.quadCountY, pr.lodStep);
         if (!pm || pm->indexCount == 0) continue;
         const uint32_t dynOff = i * (uint32_t)sizeof(TerrainFrameUBO);
         vkCmdBindDescriptorSets(cb, VK_PIPELINE_BIND_POINT_GRAPHICS, s->playout, 0, 1, &s->set, 1, &dynOff);
+        vkCmdBindPipeline(cb, VK_PIPELINE_BIND_POINT_GRAPHICS, s->pipe);
         VkDeviceSize vboOff = 0;
         vkCmdBindVertexBuffers(cb, 0, 1, &pm->vbo, &vboOff);
         vkCmdBindIndexBuffer(cb, pm->ibo, 0, VK_INDEX_TYPE_UINT16);
         vkCmdDrawIndexed(cb, pm->indexCount, 1, 0, 0, 0);
         ++drawn;
+
+        // VK-TERRAIN-SKIRT (rung 4): draw this patch's skirt strips, gated per-block
+        // exactly like GL (skirtDepth>0 AND per-edge mask bit set,
+        // gos_terrain_lod_chunk.cpp:1736,1753-1758). pr.skirtDepth/skirtEdgeMask are
+        // 0 whenever the GL-side skirts sub-gate wasn't armed at capture -- no-op then.
+        if (pr.skirtDepth > 0.0f && pr.skirtEdgeMask != 0u) {
+            const SkirtMesh* sm = getOrBuildSkirtMesh(s, pr.quadCountX, pr.quadCountY, pr.lodStep);
+            if (sm) {
+                vkCmdBindPipeline(cb, VK_PIPELINE_BIND_POINT_GRAPHICS, s->skirtPipe);
+                VkDeviceSize svboOff = 0;
+                vkCmdBindVertexBuffers(cb, 0, 1, &sm->vbo, &svboOff);
+                vkCmdBindIndexBuffer(cb, sm->ibo, 0, VK_INDEX_TYPE_UINT16);
+                for (int e = 0; e < 4; ++e) {
+                    if (((pr.skirtEdgeMask >> e) & 1u) == 0u) continue;
+                    if (sm->edgeCount[e] == 0) continue;
+                    vkCmdDrawIndexed(cb, sm->edgeCount[e], 1, sm->edgeOffset[e], 0, 0);
+                    ++skirtDrawn;
+                }
+            }
+        }
     }
 
     vkCmdEndRenderPass(cb);
@@ -1944,14 +2138,14 @@ extern "C" int mc2_vk_terrain_island_run(int w, int h) {
         setFallback("interop_did_readback"); s->disabled = true; return 0;
     }
 
-    g_health.vkDraws = drawn;
+    g_health.vkDraws = drawn + skirtDrawn;  // VK-TERRAIN-SKIRT: include skirt edge-strip draws
     ++g_health.usedVulkan;
     g_health.totalUs = usSince(tTotal0);
     static bool s_firstOk = false;
     if (!s_firstOk) {
-        vlog("first TIER-1 in-place terrain GBuffer co-write: lod0Patches=%u drawn=%lu "
+        vlog("first TIER-1 in-place terrain GBuffer co-write: lod0Patches=%u drawn=%lu skirtDrawn=%lu "
              "(color(MRT0)+normal(MRT1 a=1.0)+depth co-written; no composite).",
-             patchCount, drawn);
+             patchCount, drawn, skirtDrawn);
         s_firstOk = true;
     }
     return 1;

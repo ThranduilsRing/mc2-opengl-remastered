@@ -1,0 +1,34 @@
+{
+  "schema_v": 1,
+  "mission": "mc2_01",
+  "_note": "VK-TERRAIN-SKIRT (rung 4) crack-check seam poses. Author-new closeups across three seam classes the ladder doc calls out: (1) LOD0-band boundary (near_land_low's ground area pulled back just past the LOD0 patch edge so the frame straddles a lodStep==1/lodStep>1 seam), (2) band-band boundary between two different lodStep coarse bands (further pullback, same XY), (3) map edge (existing mc2_01 corner poses reused via mc2_01.json edge_fog_corner_southwest / cross_map_view cover map-boundary chunks already -- this file adds a LOWER-altitude closeup at the SW map corner specifically to inspect skirt/edge-stitch geometry at the map boundary, where GL's edge chunks have partial quad extents). Run with BOTH MC2_VK_TERRAIN_ALL_LODS=1 and MC2_VK_TERRAIN_SKIRTS=1 on the VK side; compare against GL (gate off) same-camera.",
+  "bookmarks": [
+    {
+      "name": "lod0_band_seam_close",
+      "_note": "Same ground XY as mc2_01_terrain_near.json near_land_low but framed low/oblique to put the LOD0-patch/coarse-band boundary near screen center (LOD0 patches are the innermost ring around the camera footprint; this altitude pulls just outside that ring).",
+      "pos": [2496.0, -1941.0, 0.0],
+      "rot": 30.0,
+      "proj": 22.0,
+      "alt": 900.0,
+      "covers": ["terrain_lod0", "coarse_band", "lod_seam"]
+    },
+    {
+      "name": "band_band_seam_far",
+      "_note": "Further pullback from the same ground area: at this altitude the visible near-camera ring is already coarse (lodStep>1) and the frame spans into a SECOND, coarser band (lodStep steps again further out) -- the band/band seam class the ladder doc flags as the crack-risk case this rung didn't have before (VK now owns bands on both sides of that seam, where rung-3 had GL own everything past LOD0).",
+      "pos": [2496.0, -1941.0, 0.0],
+      "rot": 30.0,
+      "proj": 16.0,
+      "alt": 2600.0,
+      "covers": ["coarse_band", "band_band_seam"]
+    },
+    {
+      "name": "map_edge_skirt_closeup",
+      "_note": "Reuses mc2_01.json's proven 'runway_overview' XY/rot/proj framing (known to show terrain + map-edge chunks, not open water) but lowered to a closer ground-level altitude to inspect skirt/edge-stitch geometry at partial-quad-extent map-boundary chunks.",
+      "pos": [3571.5442, -872.0615, 0.0],
+      "rot": -135.125,
+      "proj": 40.0,
+      "alt": 1400.0,
+      "covers": ["map_edge", "terrain_lod_chunk_skirts"]
+    }
+  ]
+}
