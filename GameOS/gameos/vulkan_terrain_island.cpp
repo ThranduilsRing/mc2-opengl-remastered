@@ -1533,6 +1533,37 @@ extern "C" int mc2_vk_terrain_island_ready() {
     return 1;
 }
 
+// Birth/(re)init the island for the given scene target size, independent of any
+// per-frame feed. Returns true when g_island is live (inited, not disabled). Must run
+// on the GL/render thread (init touches the shared VK context / GL interop). This is
+// FACTORED OUT of run() so the GL loop can PREPARE the island BEFORE deciding to skip
+// LOD0 — without this the skip would gate on ready, ready would gate on a born island,
+// and the island would only be born from a non-empty feed produced by the skip
+// (chicken-egg deadlock -> island never births -> LOD0 always GL-drawn).
+static bool ensure_island_ready(int w, int h) {
+    if (!terrainTier1Requested()) return false;
+    if (w <= 0 || h <= 0) return false;
+    if (g_island && (g_island->w != w || g_island->h != h)) {
+        destroy_island(g_island); delete g_island; g_island = nullptr;
+    }
+    if (!g_island) {
+        g_island = new TerrainIsland();
+        if (!init_island(g_island, w, h)) {
+            vlog("init failed (%s) — GL fallback.", g_health.fallbackReason);
+            destroy_island(g_island); delete g_island; g_island = nullptr;
+            return false;
+        }
+    }
+    return g_island && g_island->inited && !g_island->disabled;
+}
+
+// FAIL-SOFT prepare: the GL loop calls this at loop-top (GL context current) so the
+// island is born BEFORE the skip decision. Returns 1 iff the island is ready to co-write
+// this frame -> the GL loop then commits the LOD0 skip. 0 -> GL draws LOD0 (no hole).
+extern "C" int mc2_vk_terrain_island_prepare(int w, int h) {
+    return ensure_island_ready(w, h) ? 1 : 0;
+}
+
 extern "C" int mc2_vk_terrain_island_run(int w, int h) {
     if (!terrainTier1Requested()) return 0;
     if (w <= 0 || h <= 0) return 0;
@@ -1547,17 +1578,7 @@ extern "C" int mc2_vk_terrain_island_run(int w, int h) {
     if (!feed.patches || feed.patchCount == 0) { setFallback("no_lod0_patches"); return 0; }
     if (feed.mapSide <= 0) { setFallback("bad_mapside"); return 0; }
 
-    if (g_island && (g_island->w != w || g_island->h != h)) {
-        destroy_island(g_island); delete g_island; g_island = nullptr;
-    }
-    if (!g_island) {
-        g_island = new TerrainIsland();
-        if (!init_island(g_island, w, h)) {
-            vlog("init failed (%s) — GL fallback.", g_health.fallbackReason);
-            destroy_island(g_island); delete g_island; g_island = nullptr;
-            return 0;
-        }
-    }
+    if (!ensure_island_ready(w, h)) return 0;
     TerrainIsland* s = g_island;
     if (s->disabled || !s->inited) return 0;
 

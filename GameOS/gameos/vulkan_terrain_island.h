@@ -124,6 +124,13 @@ int mc2_vk_terrain_island_enabled();
 // frame; the first successful run flips it ready).
 int mc2_vk_terrain_island_ready();
 
+// FAIL-SOFT prepare: births/(re)inits the island for the scene target size (w/h),
+// independent of any per-frame feed, so the GL loop can decide the LOD0-skip BEFORE
+// the feed is populated (breaks the skip<->ready<->feed chicken-egg deadlock). Must be
+// called on the GL/render thread. Returns 1 iff the island is ready to co-write this
+// frame (GL then commits the skip); 0 -> GL draws LOD0 (no hole).
+int mc2_vk_terrain_island_prepare(int w, int h);
+
 // Per-frame entry. Co-writes the LOD0 terrain patches IN-PLACE into the shared
 // scene color(MRT0)+normal(MRT1)+depth GBuffer (LOAD-preserve, reverse-Z GEQUAL,
 // double-sided, opaque). w/h = scene target size (getWidth()/getHeight()).

@@ -1528,8 +1528,17 @@ void gos_TerrainLodChunk_SubmitDrawCommands(
     // successful run flips ready for the next frame (one-frame GL-draw then VK takeover,
     // never a hole).
     const bool s_vkTerrainEnabled = (mc2_vk_terrain_island_enabled() != 0);
-    const bool s_vkTerrainActive  = s_vkTerrainEnabled &&
-                                    (mc2_vk_terrain_island_ready() != 0);
+    // PREPARE the island NOW (GL context current) so the skip decision below can gate on
+    // real readiness — this births the island independent of the feed, breaking the
+    // skip<->ready<->feed deadlock. On any failure prepare()==0 -> GL draws LOD0.
+    bool s_vkTerrainReady = false;
+    if (s_vkTerrainEnabled) {
+        if (gosPostProcess* ppPrep = getGosPostProcess()) {
+            s_vkTerrainReady =
+                (mc2_vk_terrain_island_prepare(ppPrep->getWidth(), ppPrep->getHeight()) != 0);
+        }
+    }
+    const bool s_vkTerrainActive = s_vkTerrainEnabled && s_vkTerrainReady;
     static bool s_vkTerrainFailSoftLogged = false;
     if (s_vkTerrainEnabled && !s_vkTerrainActive && !s_vkTerrainFailSoftLogged) {
         fprintf(stderr, "[VK_TERRAIN_ISLAND] FAIL-SOFT: gate ON but island not ready this "
