@@ -71,6 +71,10 @@ struct Mc2MechFrameFeed {
     uint32_t     runCount;
     float        worldToClipGL[16]; // kAxisSwapMC2toGL * worldToClip (row-major, GL_FALSE)
     float        objectDepthBias;    // OBJECT_DEPTH_BIAS
+    // VK-MECH-MATERIAL-LIGHTING-1: calc_light + fog parity feed.
+    uint32_t     lightDataGlSsbo;    // live LightsData GL SSBO name (binding 20) to copy
+    uint64_t     lightDataBytes;     // its byte size (ObjectLights[] * 3600B, grow-once)
+    float        fogColorRGB[3];     // g_scene.fogColor.rgb (mech.frag fog mix source)
 };
 
 // Filled by gos_mech_batcher.cpp. Return 0 when geometry/gate not ready.

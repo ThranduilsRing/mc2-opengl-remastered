@@ -1682,6 +1682,11 @@ def main():
                             # paint-scheme albedo (single-material probe).
                             "MC2_VK_MECH_TIER1",
                             "MC2_VK_MECH_MATERIAL",
+                            # MC2_VK_MECH_LIGHTING: per-vertex calc_light Lambert +
+                            # per-actor fog, ported from the GL default mech path
+                            # (albedo * v_litColor + highlight, fogged). Requires
+                            # MC2_VK_MECH_MATERIAL for the visible albedo multiply.
+                            "MC2_VK_MECH_LIGHTING",
                             # VK terrain in-place shared-GBuffer region + lighting + detail.
                             "MC2_VK_TERRAIN_TIER1",
                             "MC2_VK_TERRAIN_LIGHTING",

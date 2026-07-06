@@ -1599,6 +1599,14 @@ void mc2LightBakeStabilityObserve(int32_t recipeIndex, uint32_t lightDataIndex)
     }
 }
 
+#ifdef MC2_VULKAN_ISLAND
+// VK-MECH-MATERIAL-LIGHTING-1: global fog-color snapshot (RGB, GL scene-UBO order),
+// set once per frame at the scene-UBO upload site. Read by the VK mech island feed.
+static float s_vkSceneFogRGB[3] = {0.0f, 0.0f, 0.0f};
+void mc2SetSceneFogColorRGB(float r, float g, float b) { s_vkSceneFogRGB[0]=r; s_vkSceneFogRGB[1]=g; s_vkSceneFogRGB[2]=b; }
+extern "C" void mc2GetSceneFogColorRGB(float out[3]) { out[0]=s_vkSceneFogRGB[0]; out[1]=s_vkSceneFogRGB[1]; out[2]=s_vkSceneFogRGB[2]; }
+#endif
+
 bool mc2GetBakedStaticLight(int32_t recipeIndex, TG_HWLightsData& out)
 {
     if (recipeIndex < 0) return false;
@@ -2470,6 +2478,14 @@ void MC_TextureManager::renderLists (void)
         sceneData_->fog_color[1] = fc.y;
         sceneData_->fog_color[2] = fc.x;
         sceneData_->fog_color[3] = fc.w;
+#ifdef MC2_VULKAN_ISLAND
+        // VK-MECH-MATERIAL-LIGHTING-1: cache the RGB fog color the mech VS reads as
+        // g_scene.fogColor.rgb so the VK mech island can feed the same value into its
+        // per-frame UBO (parity with mech.frag's fog mix). Snapshotted at the SAME site
+        // GL uploads the scene UBO — no phase drift. Accessor: mc2GetSceneFogColorRGB().
+        extern void mc2SetSceneFogColorRGB(float, float, float);
+        mc2SetSceneFogColorRGB(sceneData_->fog_color[0], sceneData_->fog_color[1], sceneData_->fog_color[2]);
+#endif
         sceneData_->baseVertexColor = uint32_to_vec4(BaseVertexColor).zyxw();
         gos_UpdateBuffer(sceneDataBuffer_, sceneData_, 0, sizeof(TG_HWSceneData));
     }

@@ -125,6 +125,18 @@ bool mechMaterialRequested() {
     return state == 1;
 }
 
+// MC2_VK_MECH_LIGHTING (follow-on): per-vertex calc_light Lambert (matches the GL
+// default mech path). Default-OFF -> flat-white lit (v_litColor = 1). Independent of
+// MC2_VK_MECH_MATERIAL, but only visible when material is on (albedo * litColor).
+bool mechLightingRequested() {
+    static int state = -1;
+    if (state == -1) {
+        const char* e = std::getenv("MC2_VK_MECH_LIGHTING");
+        state = (e && e[0] == '1' && e[1] == '\0') ? 1 : 0;
+    }
+    return state == 1;
+}
+
 std::string spv_dir() {
     const char* env = std::getenv("MC2_VULKAN_SPV_DIR");
     std::string d = (env && *env) ? env : "shaders/vulkan";
@@ -159,8 +171,9 @@ struct MechFrameUBO {
     float   worldToClipGL[16]; // gos_GetMechFixBMVPMat4() — GL_FALSE (off 0)
     float   objectDepthBias;   //                            (off 64)
     int32_t materialReady;     // 1 = sample the copy-once albedo (off 68)
-    int32_t _pad0;             //                            (off 72)
+    int32_t lightingReady;     // 1 = LightsData copied -> calc_light valid (off 72)
     int32_t _pad1;             //                            (off 76)
+    float   fogColorRGB[4];    // g_scene.fogColor.rgb (.a unused) — vec4-aligned (off 80)
 };
 
 const VkFormat kColorFmt = VK_FORMAT_R16G16B16A16_SFLOAT;
@@ -204,7 +217,12 @@ struct MechIsland {
     VkBuffer boneBuf = VK_NULL_HANDLE; VmaAllocation boneAlloc = VK_NULL_HANDLE; VkDeviceSize boneCap = 0;
     VkBuffer ubo     = VK_NULL_HANDLE; VmaAllocation uboAlloc  = VK_NULL_HANDLE;
 
-    // Descriptors: 0=UBO(VS), 1=instance SSBO(VS), 2=bone SSBO(VS), 3=albedo(FS,dummy).
+    // VK-MECH-MATERIAL-LIGHTING-1: per-frame LightsData SSBO copy (binding 4) for calc_light.
+    VkBuffer lightBuf = VK_NULL_HANDLE; VmaAllocation lightAlloc = VK_NULL_HANDLE; VkDeviceSize lightCap = 0;
+    bool     wantLighting  = false;   // MC2_VK_MECH_LIGHTING gate
+    bool     lightingReady = false;   // LightsData copied this frame (>=1 ObjectLights)
+
+    // Descriptors: 0=UBO(VS/FS), 1=instance SSBO(VS), 2=bone SSBO(VS), 3=albedo(FS), 4=LightsData(VS).
     VkDescriptorSetLayout dsl = VK_NULL_HANDLE;
     VkDescriptorPool  pool   = VK_NULL_HANDLE;
     VkDescriptorSet   set    = VK_NULL_HANDLE;
@@ -244,7 +262,8 @@ void write_descriptors(MechIsland* s) {
     VkDescriptorBufferInfo uboInfo { s->ubo,     0, VK_WHOLE_SIZE };
     VkDescriptorBufferInfo instInfo{ s->instBuf, 0, VK_WHOLE_SIZE };
     VkDescriptorBufferInfo boneInfo{ s->boneBuf, 0, VK_WHOLE_SIZE };
-    VkWriteDescriptorSet w[4]{}; uint32_t n = 0;
+    VkDescriptorBufferInfo lightInfo{ s->lightBuf, 0, VK_WHOLE_SIZE };
+    VkWriteDescriptorSet w[5]{}; uint32_t n = 0;
     w[n].sType = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET; w[n].dstSet = s->set;
     w[n].dstBinding = 0; w[n].descriptorCount = 1;
     w[n].descriptorType = VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER; w[n].pBufferInfo = &uboInfo; ++n;
@@ -254,6 +273,11 @@ void write_descriptors(MechIsland* s) {
     w[n].sType = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET; w[n].dstSet = s->set;
     w[n].dstBinding = 2; w[n].descriptorCount = 1;
     w[n].descriptorType = VK_DESCRIPTOR_TYPE_STORAGE_BUFFER; w[n].pBufferInfo = &boneInfo; ++n;
+    if (s->lightBuf != VK_NULL_HANDLE) {
+        w[n].sType = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET; w[n].dstSet = s->set;
+        w[n].dstBinding = 4; w[n].descriptorCount = 1;
+        w[n].descriptorType = VK_DESCRIPTOR_TYPE_STORAGE_BUFFER; w[n].pBufferInfo = &lightInfo; ++n;
+    }
     VkDescriptorImageInfo albInfo{};
     if (s->wantMaterial && s->albedoView != VK_NULL_HANDLE && s->albedoSamp != VK_NULL_HANDLE) {
         albInfo.sampler = s->albedoSamp; albInfo.imageView = s->albedoView;
@@ -409,6 +433,7 @@ void destroy_island(MechIsland* s) {
     if (s->ibo)     vmaDestroyBuffer(s->allocator, s->ibo, s->iboAlloc);
     if (s->instBuf) vmaDestroyBuffer(s->allocator, s->instBuf, s->instAlloc);
     if (s->boneBuf) vmaDestroyBuffer(s->allocator, s->boneBuf, s->boneAlloc);
+    if (s->lightBuf) vmaDestroyBuffer(s->allocator, s->lightBuf, s->lightAlloc);
     if (s->ubo)     vmaDestroyBuffer(s->allocator, s->ubo, s->uboAlloc);
     if (s->albedoView) vkDestroyImageView(d, s->albedoView, nullptr);
     if (s->albedoImg)  vmaDestroyImage(s->allocator, s->albedoImg, s->albedoAlloc);
@@ -439,6 +464,7 @@ bool init_island(MechIsland* s, int w, int h) {
     }
 
     s->wantMaterial = mechMaterialRequested();
+    s->wantLighting = mechLightingRequested();
 
     // Fetch the SHARED scene color/normal/depth exportable images the GL scene renders
     // terrain into. Fail-soft: any missing => GL fallback (the GL mech flush runs).
@@ -457,6 +483,9 @@ bool init_island(MechIsland* s, int w, int h) {
     // Instance + bone + UBO buffers.
     if (!ensure_buf_capacity(s, &s->instBuf, &s->instAlloc, &s->instCap, 256 * 1024)) return false;
     if (!ensure_buf_capacity(s, &s->boneBuf, &s->boneAlloc, &s->boneCap, 256 * 1024)) return false;
+    // LightsData copy buffer — valid before the first frame so binding4 is always bound
+    // (one ObjectLights record is 3600B; start with a few slots).
+    if (!ensure_buf_capacity(s, &s->lightBuf, &s->lightAlloc, &s->lightCap, 32 * 1024)) return false;
     if (!make_buffer(s, sizeof(MechFrameUBO), VK_BUFFER_USAGE_UNIFORM_BUFFER_BIT, &s->ubo, &s->uboAlloc, true)) return false;
 
     // Command pool + 2 command buffers (parity).
@@ -531,7 +560,7 @@ bool init_island(MechIsland* s, int w, int h) {
 
     // Descriptor layout: 0=UBO(VS/FS), 1=instance SSBO(VS), 2=bone SSBO(VS), 3=albedo(FS).
     {
-        VkDescriptorSetLayoutBinding b[4]{};
+        VkDescriptorSetLayoutBinding b[5]{};
         b[0].binding = 0; b[0].descriptorType = VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER;
         b[0].descriptorCount = 1; b[0].stageFlags = VK_SHADER_STAGE_VERTEX_BIT | VK_SHADER_STAGE_FRAGMENT_BIT;
         b[1].binding = 1; b[1].descriptorType = VK_DESCRIPTOR_TYPE_STORAGE_BUFFER;
@@ -540,13 +569,15 @@ bool init_island(MechIsland* s, int w, int h) {
         b[2].descriptorCount = 1; b[2].stageFlags = VK_SHADER_STAGE_VERTEX_BIT;
         b[3].binding = 3; b[3].descriptorType = VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER;
         b[3].descriptorCount = 1; b[3].stageFlags = VK_SHADER_STAGE_FRAGMENT_BIT;
+        b[4].binding = 4; b[4].descriptorType = VK_DESCRIPTOR_TYPE_STORAGE_BUFFER;   // LightsData
+        b[4].descriptorCount = 1; b[4].stageFlags = VK_SHADER_STAGE_VERTEX_BIT;
         VkDescriptorSetLayoutCreateInfo lci{};
         lci.sType = VK_STRUCTURE_TYPE_DESCRIPTOR_SET_LAYOUT_CREATE_INFO;
-        lci.bindingCount = 4; lci.pBindings = b;
+        lci.bindingCount = 5; lci.pBindings = b;
         if (vkCreateDescriptorSetLayout(s->device, &lci, nullptr, &s->dsl) != VK_SUCCESS) { vlog("dsl failed."); return false; }
         VkDescriptorPoolSize sizes[3]{};
         sizes[0].type = VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER; sizes[0].descriptorCount = 1;
-        sizes[1].type = VK_DESCRIPTOR_TYPE_STORAGE_BUFFER; sizes[1].descriptorCount = 2;
+        sizes[1].type = VK_DESCRIPTOR_TYPE_STORAGE_BUFFER; sizes[1].descriptorCount = 3;  // inst+bone+lights
         sizes[2].type = VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER; sizes[2].descriptorCount = 1;
         VkDescriptorPoolCreateInfo pci{};
         pci.sType = VK_STRUCTURE_TYPE_DESCRIPTOR_POOL_CREATE_INFO;
@@ -650,8 +681,8 @@ bool init_island(MechIsland* s, int w, int h) {
     s->inited = true;
     setFallback("");
     vlog("island initialized %dx%d (borrowed shared device; skinned mech co-write into "
-         "shared color(MRT0)+normal(MRT1)+depth; GEQUAL reverse-Z; material=%d).",
-         w, h, s->wantMaterial ? 1 : 0);
+         "shared color(MRT0)+normal(MRT1)+depth; GEQUAL reverse-Z; material=%d lighting=%d).",
+         w, h, s->wantMaterial ? 1 : 0, s->wantLighting ? 1 : 0);
     return true;
 }
 
@@ -754,11 +785,36 @@ extern "C" int mc2_vk_mech_island_run(int w, int h) {
     g_health.instRecords = feed.instanceCount;
     g_health.boneRecords = feed.boneCount;
 
+    // VK-MECH-MATERIAL-LIGHTING-1: per-frame copy of the live GL LightsData SSBO into
+    // the VK SSBO (binding 4) so calc_light reads the same ObjectLights[] the GL mech VS
+    // does. Copy-per-frame (light cache is per-actor/per-frame). glGetBufferSubData is a
+    // buffer readback, NOT a color-surface readback — does NOT touch g_forbidden (mirrors
+    // the once/frame geometry+bone copies already on this path).
+    s->lightingReady = false;
+    if (s->wantLighting && feed.lightDataGlSsbo != 0 && feed.lightDataBytes >= 3600ull) {
+        const VkDeviceSize lbytes = (VkDeviceSize)feed.lightDataBytes;
+        if (ensure_buf_capacity(s, &s->lightBuf, &s->lightAlloc, &s->lightCap, lbytes)) {
+            void* p = nullptr;
+            if (vmaMapMemory(s->allocator, s->lightAlloc, &p) == VK_SUCCESS) {
+                glBindBuffer(GL_SHADER_STORAGE_BUFFER, (GLuint)feed.lightDataGlSsbo);
+                glGetBufferSubData(GL_SHADER_STORAGE_BUFFER, 0, (GLsizeiptr)lbytes, p);
+                glBindBuffer(GL_SHADER_STORAGE_BUFFER, 0);
+                vmaUnmapMemory(s->allocator, s->lightAlloc);
+                s->lightingReady = true;
+            }
+        }
+    }
+
     // Upload UBO.
     { MechFrameUBO u{};
       std::memcpy(u.worldToClipGL, feed.worldToClipGL, sizeof(u.worldToClipGL));
       u.objectDepthBias = feed.objectDepthBias;
       u.materialReady = (s->wantMaterial && s->materialReady) ? 1 : 0;
+      u.lightingReady = s->lightingReady ? 1 : 0;
+      u.fogColorRGB[0] = feed.fogColorRGB[0];
+      u.fogColorRGB[1] = feed.fogColorRGB[1];
+      u.fogColorRGB[2] = feed.fogColorRGB[2];
+      u.fogColorRGB[3] = 0.0f;
       void* p = nullptr;
       if (vmaMapMemory(s->allocator, s->uboAlloc, &p) == VK_SUCCESS) { std::memcpy(p, &u, sizeof(u)); vmaUnmapMemory(s->allocator, s->uboAlloc); } }
     g_health.stageUs = usSince(tStage0);

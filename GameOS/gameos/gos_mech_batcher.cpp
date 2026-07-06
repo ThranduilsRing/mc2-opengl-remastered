@@ -2873,6 +2873,10 @@ uint64_t batcher_getLastFlushSubmitCount() {
 // includes this batcher). Geometry is copy-once; the per-frame feed points at
 // the persistent snapshots built at flush() end. Return 0 if not ready.
 // ---------------------------------------------------------------------------
+// VK-MECH-MATERIAL-LIGHTING-1: GL-owner accessors for the calc_light + fog feed.
+extern "C" void gos_LightDataSsbo_GetInterop(unsigned int* glName, unsigned long long* bytes);
+extern "C" void mc2GetSceneFogColorRGB(float out[3]);
+
 extern "C" int mc2_mech_island_get_geometry_feed(Mc2MechGeomFeed* out) {
     if (!out) return 0;
     if (!s_vkMechGateOn || !s_geometryFinalized || s_sharedVbo == 0 || s_sharedIbo == 0)
@@ -2901,6 +2905,14 @@ extern "C" int mc2_mech_island_get_frame_feed(Mc2MechFrameFeed* out) {
     out->runCount      = (uint32_t)s_vkMechRunSnapshot.size();
     std::memcpy(out->worldToClipGL, s_vkMechWorldToClipGL, sizeof(out->worldToClipGL));
     out->objectDepthBias = s_vkMechObjectDepthBias;
+    // VK-MECH-MATERIAL-LIGHTING-1: LightsData SSBO name/size + fog color for the
+    // island's calc_light + fog port. Both from GL owners (this runs in GL context).
+    out->lightDataGlSsbo = 0; out->lightDataBytes = 0;
+    { unsigned int nm = 0; unsigned long long by = 0;
+      gos_LightDataSsbo_GetInterop(&nm, &by);
+      out->lightDataGlSsbo = nm; out->lightDataBytes = by; }
+    out->fogColorRGB[0] = out->fogColorRGB[1] = out->fogColorRGB[2] = 0.0f;
+    mc2GetSceneFogColorRGB(out->fogColorRGB);
     return 1;
 }
 #endif // MC2_VULKAN_ISLAND
