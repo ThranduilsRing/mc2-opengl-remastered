@@ -144,6 +144,33 @@ extern "C" void mc2_render_backend_water_region_health(
     unsigned long* forbiddenGetTexImage, unsigned long* forbiddenTexSubImage,
     unsigned long* depthInGetTexImage, unsigned long* depthInCopyBufToImg,
     double* copyColorInUs, double* copyDepthInUs, double* drawUs, double* colorOutUs, double* totalUs);
+// VK-FLIP-TIMING-DUMP-1: shared-gbuffer trio (terrain/props/mech) health snapshots,
+// defined in vulkan_terrain_island.cpp / vulkan_color_prop_island.cpp / vulkan_mech_island.cpp
+// (same #ifdef MC2_VULKAN_ISLAND). Additive dump wiring only — accessors already existed.
+extern "C" void mc2_render_backend_terrain_region_health(
+    int* vulkanAvailable, int* buildEnabled, const char** deviceName,
+    unsigned long* attempted, unsigned long* usedVulkan, const char** fallbackReason,
+    unsigned long* vkDraws, int* interopActive, int* vk2glSemActive,
+    unsigned long* patchRecords, unsigned long* heightSnapshots,
+    unsigned long* forbiddenGetTexImage, unsigned long* forbiddenReadPixels,
+    double* stageUs, double* drawUs, double* totalUs);
+extern "C" void mc2_render_backend_color_prop_region_health(
+    int* vulkanAvailable, int* buildEnabled, const char** deviceName,
+    unsigned long* validationErrors, unsigned long* attempted, unsigned long* usedVulkan,
+    const char** fallbackReason, unsigned long* vkDraws,
+    int* interopActive, int* vk2glSemActive, unsigned long* usedInterop,
+    unsigned long* instRecords, unsigned long* typeRuns, unsigned long* geomVerts,
+    unsigned long* forbiddenCopyImgToBuf, unsigned long* forbiddenGetTexImage,
+    unsigned long* forbiddenReadPixels,
+    double* stageInstUs, double* drawUs, double* totalUs);
+extern "C" void mc2_render_backend_mech_region_health(
+    int* vulkanAvailable, int* buildEnabled, const char** deviceName,
+    unsigned long* attempted, unsigned long* usedVulkan, const char** fallbackReason,
+    unsigned long* vkDraws, int* interopActive, int* vk2glSemActive,
+    unsigned long* instRecords, unsigned long* boneRecords, unsigned long* runs,
+    unsigned long* geomVerts,
+    unsigned long* forbiddenGetTexImage, unsigned long* forbiddenReadPixels,
+    double* stageUs, double* drawUs, double* totalUs);
 // VK-REGION-HZB-1: HZB Vulkan island health snapshot (defined in
 // GameOS/gameos/vulkan_hzb_island.cpp, same #ifdef MC2_VULKAN_ISLAND).
 extern "C" void mc2_vulkan_hzb_island_health(
@@ -906,6 +933,104 @@ std::string buildSnapshotJson(const RenderSnapshot& snap,
         s << "    \"copy_depth_in_us\": " << cdiUs << ",\n";
         s << "    \"draw_us\": " << drUs << ",\n";
         s << "    \"color_out_us\": " << coUs << ",\n";
+        s << "    \"total_us\": " << totUs << "\n";
+        s << "  }\n";
+    }
+    // VK-FLIP-TIMING-DUMP-1: additive "vulkan_terrain_island" section (build64_island-only).
+    // Zeros when compiled but the terrain region isn't routed to Vulkan (gate off / GL path).
+    {
+        int va = 0, be = 0, ia = 0, v2g = 0;
+        const char* dev = ""; const char* fbr = "";
+        unsigned long att = 0, used = 0, vkDraws = 0, patchN = 0, heightN = 0, fGti = 0, fRp = 0;
+        double stUs = 0.0, drUs = 0.0, totUs = 0.0;
+        mc2_render_backend_terrain_region_health(&va, &be, &dev, &att, &used, &fbr, &vkDraws,
+                                                  &ia, &v2g, &patchN, &heightN, &fGti, &fRp,
+                                                  &stUs, &drUs, &totUs);
+        s << "  ,\n";
+        s << "  \"vulkan_terrain_island\": {\n";
+        s << "    \"vulkan_available\": " << va << ",\n";
+        s << "    \"build_enabled\": " << be << ",\n";
+        s << "    \"device_name\": \"" << jsonEscape(dev) << "\",\n";
+        s << "    \"attempted\": " << att << ",\n";
+        s << "    \"used_vulkan\": " << used << ",\n";
+        s << "    \"fallback_reason\": \"" << jsonEscape(fbr) << "\",\n";
+        s << "    \"vk_draws\": " << vkDraws << ",\n";
+        s << "    \"interop_active\": " << ia << ",\n";
+        s << "    \"vk2gl_sem_active\": " << v2g << ",\n";
+        s << "    \"patch_records\": " << patchN << ",\n";
+        s << "    \"height_snapshots\": " << heightN << ",\n";
+        s << "    \"forbidden_get_tex_image\": " << fGti << ",\n";
+        s << "    \"forbidden_read_pixels\": " << fRp << ",\n";
+        s << "    \"stage_us\": " << stUs << ",\n";
+        s << "    \"draw_us\": " << drUs << ",\n";
+        s << "    \"total_us\": " << totUs << "\n";
+        s << "  }\n";
+    }
+    // VK-FLIP-TIMING-DUMP-1: additive "vulkan_color_prop_island" section (build64_island-only).
+    // Zeros when compiled but the prop region isn't routed to Vulkan (gate off / GL path).
+    {
+        int va = 0, be = 0, ia = 0, v2g = 0;
+        const char* dev = ""; const char* fbr = "";
+        unsigned long ve = 0, att = 0, used = 0, vkDraws = 0, usedInterop = 0;
+        unsigned long instN = 0, typeN = 0, geomN = 0, fCib = 0, fGti = 0, fRp = 0;
+        double stUs = 0.0, drUs = 0.0, totUs = 0.0;
+        mc2_render_backend_color_prop_region_health(&va, &be, &dev, &ve, &att, &used, &fbr, &vkDraws,
+                                                     &ia, &v2g, &usedInterop, &instN, &typeN, &geomN,
+                                                     &fCib, &fGti, &fRp, &stUs, &drUs, &totUs);
+        s << "  ,\n";
+        s << "  \"vulkan_color_prop_island\": {\n";
+        s << "    \"vulkan_available\": " << va << ",\n";
+        s << "    \"build_enabled\": " << be << ",\n";
+        s << "    \"device_name\": \"" << jsonEscape(dev) << "\",\n";
+        s << "    \"validation_errors\": " << ve << ",\n";
+        s << "    \"attempted\": " << att << ",\n";
+        s << "    \"used_vulkan\": " << used << ",\n";
+        s << "    \"fallback_reason\": \"" << jsonEscape(fbr) << "\",\n";
+        s << "    \"vk_draws\": " << vkDraws << ",\n";
+        s << "    \"interop_active\": " << ia << ",\n";
+        s << "    \"vk2gl_sem_active\": " << v2g << ",\n";
+        s << "    \"used_interop\": " << usedInterop << ",\n";
+        s << "    \"inst_records\": " << instN << ",\n";
+        s << "    \"type_runs\": " << typeN << ",\n";
+        s << "    \"geom_verts\": " << geomN << ",\n";
+        s << "    \"forbidden_copy_img_to_buf\": " << fCib << ",\n";
+        s << "    \"forbidden_get_tex_image\": " << fGti << ",\n";
+        s << "    \"forbidden_read_pixels\": " << fRp << ",\n";
+        s << "    \"stage_inst_us\": " << stUs << ",\n";
+        s << "    \"draw_us\": " << drUs << ",\n";
+        s << "    \"total_us\": " << totUs << "\n";
+        s << "  }\n";
+    }
+    // VK-FLIP-TIMING-DUMP-1: additive "vulkan_mech_island" section (build64_island-only).
+    // Zeros when compiled but the mech region isn't routed to Vulkan (gate off / GL path).
+    {
+        int va = 0, be = 0, ia = 0, v2g = 0;
+        const char* dev = ""; const char* fbr = "";
+        unsigned long att = 0, used = 0, vkDraws = 0, instN = 0, boneN = 0, runsN = 0, geomN = 0;
+        unsigned long fGti = 0, fRp = 0;
+        double stUs = 0.0, drUs = 0.0, totUs = 0.0;
+        mc2_render_backend_mech_region_health(&va, &be, &dev, &att, &used, &fbr, &vkDraws,
+                                               &ia, &v2g, &instN, &boneN, &runsN, &geomN,
+                                               &fGti, &fRp, &stUs, &drUs, &totUs);
+        s << "  ,\n";
+        s << "  \"vulkan_mech_island\": {\n";
+        s << "    \"vulkan_available\": " << va << ",\n";
+        s << "    \"build_enabled\": " << be << ",\n";
+        s << "    \"device_name\": \"" << jsonEscape(dev) << "\",\n";
+        s << "    \"attempted\": " << att << ",\n";
+        s << "    \"used_vulkan\": " << used << ",\n";
+        s << "    \"fallback_reason\": \"" << jsonEscape(fbr) << "\",\n";
+        s << "    \"vk_draws\": " << vkDraws << ",\n";
+        s << "    \"interop_active\": " << ia << ",\n";
+        s << "    \"vk2gl_sem_active\": " << v2g << ",\n";
+        s << "    \"inst_records\": " << instN << ",\n";
+        s << "    \"bone_records\": " << boneN << ",\n";
+        s << "    \"runs\": " << runsN << ",\n";
+        s << "    \"geom_verts\": " << geomN << ",\n";
+        s << "    \"forbidden_get_tex_image\": " << fGti << ",\n";
+        s << "    \"forbidden_read_pixels\": " << fRp << ",\n";
+        s << "    \"stage_us\": " << stUs << ",\n";
+        s << "    \"draw_us\": " << drUs << ",\n";
         s << "    \"total_us\": " << totUs << "\n";
         s << "  }\n";
     }
