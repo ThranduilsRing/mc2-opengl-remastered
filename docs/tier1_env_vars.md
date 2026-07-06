@@ -117,6 +117,7 @@ Headless Vulkan probe / backend-skeleton exercise gates. All read via bare `gete
 - `MC2_STATIC_PROP_BUILDING_SHADOW=1` — replay all buildings into world-fixed static shadow map. Default **OFF**. `=2` adds trace.
 - `MC2_SHADOW_DYNAMIC_PROP_CASTERS` — feed dynamic caster pass from registry. Default **ON**. Kill=`=0`.
 - `MC2_SHADOW_ROBUST_BASIS` — light-basis singularity guard + AABB corner-scarcity fallback (SHADOW-ROBUST-BASIS-1). Default **ON**. `=0` restores legacy (byte-identical for normal suns; can go singular).
+- `MC2_SHADOW_STATIC_BANDFIX` — STATIC-SHADOW-BANDING-1: raises the static-shadow LOD tap floor in `gos_terrain.frag` (16/8/4 → 16/12/8) so shadow.hglsl's gradient-adaptive PCF doesn't undersample its Poisson disk at the wide radius used on flat terrain (root cause of the reported grass/rolling-terrain shadow banding — NOT a map-resolution or depth-precision issue). Default **OFF** (byte-identical). `=1` enables; one-time cost (static map built once/mission), not per-frame.
 
 ### Dynamic CSM (reworked 2026-06-16 `8d36b37d`/`b8f764b6`/`13e96cc9`/`ead760df`)
 

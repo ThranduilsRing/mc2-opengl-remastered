@@ -871,7 +871,21 @@ void main(void)
     // some pixels escape shadow while neighbors received it. Overlays already pass
     // vec3(0,0,1) for the same reason.
     const PREC vec3 shadowN = vec3(0.0, 0.0, 1.0);
+#ifdef MC2_SHADOW_STATIC_BANDFIX
+    // STATIC-SHADOW-BANDING-1 (gate MC2_SHADOW_STATIC_BANDFIX, default OFF):
+    // the LOD tap ladder below existed purely for perf, but on FLAT terrain
+    // shadow.hglsl's gradient-adaptive PCF widens its radius toward 3.2x at
+    // the exact same distances this ladder drops taps to 8/4 -- wide radius +
+    // few Poisson taps is textbook disk-undersampling banding/ringing, most
+    // visible on smoothly-varying receivers (rolling grass near water; A/B
+    // verified in-engine: forcing 16 taps at all distances visibly smooths the
+    // grain in MC2_LIGHTING_DEBUG_VIEW=shadow). Raise the floor only for the
+    // STATIC map (world-fixed, built once/mission -- cost is one-time per
+    // pixel, not per-frame like the dynamic camera-fitted map).
+    int shadowTaps = (lodNear > 0.5) ? 16 : (lodMid > 0.5) ? 12 : 8;
+#else
     int shadowTaps = (lodNear > 0.5) ? 16 : (lodMid > 0.5) ? 8 : 4;
+#endif
     float staticShadow = calcShadow(WorldPos, shadowN, terrainLightDir.xyz, shadowTaps);
     int dynTaps = (lodNear > 0.5) ? 8 : 4;
     float dynShadow = calcDynamicShadow(WorldPos, shadowN, terrainLightDir.xyz, dynTaps);
