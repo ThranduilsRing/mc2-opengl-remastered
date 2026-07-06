@@ -777,6 +777,20 @@ static constexpr EnvVarDesc kAuxEnvVars[] = {
         "(still a win), no hole. Gate OFF = byte-identical to lighting-only VK frame."
     },
     {
+        "MC2_FEATURE_VK_TERRAIN_DYNSHADOW",
+        "MC2_VK_TERRAIN_DYNSHADOW",
+        EnvVarKind::Feature,
+        false,
+        "VK-TERRAIN-DYNSHADOW: presence-gated =1, default OFF (requires MC2_VK_TERRAIN_LIGHTING). Adds the GL "
+        "DYNAMIC (building/mech) sun shadow onto the VK terrain (legacy single-map path, non-CSM). Per-frame "
+        "copies pp->getDynamicShadowTexture()+getDynamicLightSpaceMatrix() into a 2nd VK D32 depth-compare "
+        "image (binding 7), then composes exactly as GL (terrain_lod_chunk.frag:896-907): shadow = "
+        "min(static, dyn); on pureConcrete shadow = dyn (static dropped, dynamic kept so structures still "
+        "cast onto roads/pads). Reuses computeBakedShadow (VERBATIM legacy calcDynamicShadow: adaptiveScale "
+        "2.4->0.8, mix(0.4,1.0,shadow), 8 taps). FAIL-SOFT: GL dynamic map not live / CSM active -> no "
+        "dynamic term (lit-only), no hole. Gate OFF = byte-identical to the pre-dynshadow VK frame."
+    },
+    {
         "MC2_FEATURE_VK_PROP_MATERIAL",
         "MC2_VK_PROP_MATERIAL",
         EnvVarKind::Feature,

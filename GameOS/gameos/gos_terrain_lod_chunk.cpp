@@ -864,6 +864,33 @@ extern "C" int mc2_terrain_tier1_get_frame_feed(Mc2TerrainTier1Feed* out)
                             sizeof(out->staticLightSpaceMatrix));
             }
         }
+
+        // VK-TERRAIN-DYNSHADOW: the DYNAMIC (building/mech) shadow map. Mirrors the GL
+        // LOD-chunk enable gate (gos_terrain_lod_chunk.cpp:1120,1131): shadowsEnabled_
+        // && getDynamicShadowFBO(). Non-CSM legacy single-map path only (CSM array path
+        // deferred — matches the mechanism-proven shadow-compare spike). Copy source is
+        // the RAW engine GL texture so we never toggle compare-mode on a VK interop tex.
+        out->dynShadowsEnabled = 0;
+        out->glDynamicShadowTex = 0;
+        out->dynamicShadowSize = 0;
+        std::memset(out->dynamicLightSpaceMatrix, 0, sizeof(out->dynamicLightSpaceMatrix));
+        int dynShadowGate = 0;
+        if (out->lightingEnabled) {
+            if (const char* e = getenv("MC2_VK_TERRAIN_DYNSHADOW"))
+                dynShadowGate = (e[0] == '1' && e[1] == '\0') ? 1 : 0;
+        }
+        if (dynShadowGate && pp && pp->shadowsEnabled_ && pp->getDynamicShadowFBO()
+            && !mc2ShadowCsmEnabled()) {
+            const GLuint dTex = pp->getDynamicShadowTextureRaw();
+            const int    dSize = pp->getDynamicShadowMapSize();
+            if (dTex != 0 && dSize > 0) {
+                out->dynShadowsEnabled = 1;
+                out->glDynamicShadowTex = static_cast<uint32_t>(dTex);
+                out->dynamicShadowSize = dSize;
+                std::memcpy(out->dynamicLightSpaceMatrix, pp->getDynamicLightSpaceMatrix(),
+                            sizeof(out->dynamicLightSpaceMatrix));
+            }
+        }
     }
 
     // VK-TERRAIN-DETAIL sub-slice: hand the material detail-normal ARRAY tex + the GL

@@ -197,9 +197,15 @@ struct TerrainFrameUBO {
     float   nfhStrength;            // off 232: terrainNormalsFromHeightStrength (GL default 1.0)
     float   detailTiling;           // off 236: detailNormalTiling.x (GL default 1.0)
     float   detailStrength;         // off 240: detailNormalStrength.x (GL default 1.0)
-    int32_t _pad[3];                // pad the slot up to 256B (dynamic UBO alignment)
+    // VK-TERRAIN-DYNSHADOW sub-slice: dynamic (building/mech) shadow. LOCKSTEP with frag.
+    // std140: pad the dynamic light-space mat4 to a 16B boundary (off 256).
+    int32_t enableDynShadows;       // off 244: dynamic shadow map imported+valid this frame
+    int32_t _dynPad0;               // off 248
+    int32_t _dynPad1;               // off 252
+    float   dynamicLightSpaceMatrix[16]; // off 256..319 (mat4)
+    int32_t _pad[48];               // off 320..511: pad the slot up to 512B (mult of 256 align)
 };
-static_assert(sizeof(TerrainFrameUBO) == 256, "UBO slot must be 256B (dynamic alignment)");
+static_assert(sizeof(TerrainFrameUBO) == 512, "UBO slot must be 512B (dynamic alignment)");
 
 // int16 local-offset vertex (mirrors terrain_lod_chunk.cpp LocalVertex { int16 lx,ly }).
 struct LocalVertex { int16_t lx, ly; };
@@ -284,11 +290,20 @@ struct TerrainIsland {
     // GL map is DEPTH_COMPONENT24 but the readback is normalized float, so D32 is exact.
     VkImage       shadowImg   = VK_NULL_HANDLE; VmaAllocation shadowAlloc = VK_NULL_HANDLE;
     VkImageView   shadowView  = VK_NULL_HANDLE;
-    VkSampler     shadowSamp  = VK_NULL_HANDLE;  // depth-compare, LESS_OR_EQUAL, LINEAR
+    VkSampler     shadowSamp  = VK_NULL_HANDLE;  // depth-compare, LESS_OR_EQUAL, LINEAR (shared)
     uint32_t      shadowDim   = 0;               // current VK shadow image edge (texels)
     bool          shadowReady = false;           // a real GL map was copied this frame
     VkBuffer      shadowStage = VK_NULL_HANDLE; VmaAllocation shadowStageAlloc = VK_NULL_HANDLE;
     VkDeviceSize  shadowStageBytes = 0;
+
+    // VK-TERRAIN-DYNSHADOW: second D32 depth-COMPARE image for the DYNAMIC (building/mech)
+    // shadow map at binding 7 (shares shadowSamp). Same copy-per-frame mechanism as static.
+    VkImage       dynShadowImg  = VK_NULL_HANDLE; VmaAllocation dynShadowAlloc = VK_NULL_HANDLE;
+    VkImageView   dynShadowView = VK_NULL_HANDLE;
+    uint32_t      dynShadowDim  = 0;
+    bool          dynShadowReady = false;
+    VkBuffer      dynShadowStage = VK_NULL_HANDLE; VmaAllocation dynShadowStageAlloc = VK_NULL_HANDLE;
+    VkDeviceSize  dynShadowStageBytes = 0;
 
     // VK-TERRAIN-DETAIL sub-slice: the material detail-normal ARRAY. A VK copy-once
     // import of the GL terrain_normal_array_tex_ (9-layer RGBA8 GL_TEXTURE_2D_ARRAY,
@@ -301,7 +316,8 @@ struct TerrainIsland {
     uint32_t      matNormalLayers = 0;               // layer count of the imported array
     bool          matNormalReady = false;            // set once the real array is live
 
-    // Per-patch dynamic UBO (one 256B slot per LOD0 patch this frame).
+    // Per-patch dynamic UBO (one 512B slot per LOD0 patch this frame; 512 is a multiple
+    // of the 256B minUniformBufferOffsetAlignment — grew from 256 for the dynshadow mat4).
     VkBuffer      ubo = VK_NULL_HANDLE; VmaAllocation uboAlloc = VK_NULL_HANDLE;
     VkDeviceSize  uboCapBytes = 0;
 
@@ -322,6 +338,7 @@ bool snapshot_cement(TerrainIsland* s, const Mc2TerrainTier1Feed& feed);
 bool ensure_shadow_sampler(TerrainIsland* s);
 bool ensure_dummy_shadow(TerrainIsland* s);
 bool copy_static_shadow(TerrainIsland* s, const Mc2TerrainTier1Feed& feed);
+bool copy_dynamic_shadow(TerrainIsland* s, const Mc2TerrainTier1Feed& feed);
 bool ensure_dummy_matnormal(TerrainIsland* s);
 void import_matnormal(TerrainIsland* s, const Mc2TerrainTier1Feed& feed);
 
@@ -394,7 +411,7 @@ void write_descriptors(TerrainIsland* s) {
     // binding 3 = cement combined-image-sampler (dummy/real); binding 4 = cement-word SSBO.
     VkDescriptorBufferInfo uboInfo{ s->ubo, 0, sizeof(TerrainFrameUBO) }; // range = one slot
     VkDescriptorBufferInfo hInfo{ s->heightBuf, 0, VK_WHOLE_SIZE };
-    VkWriteDescriptorSet w[7]{};
+    VkWriteDescriptorSet w[8]{};
     uint32_t n = 0;
     w[n].sType = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET; w[n].dstSet = s->set;
     w[n].dstBinding = 0; w[n].descriptorCount = 1;
@@ -446,6 +463,16 @@ void write_descriptors(TerrainIsland* s) {
         w[n].sType = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET; w[n].dstSet = s->set;
         w[n].dstBinding = 6; w[n].descriptorCount = 1;
         w[n].descriptorType = VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER; w[n].pImageInfo = &mnInfo; ++n;
+    }
+    // VK-TERRAIN-DYNSHADOW: binding 7 dynamic shadow sampler2DShadow — always written once
+    // the (dummy or real) depth-compare image exists (uT.enableDynShadows gates use).
+    VkDescriptorImageInfo dshInfo{};
+    if (s->dynShadowView != VK_NULL_HANDLE && s->shadowSamp != VK_NULL_HANDLE) {
+        dshInfo.sampler = s->shadowSamp; dshInfo.imageView = s->dynShadowView;
+        dshInfo.imageLayout = VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL;
+        w[n].sType = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET; w[n].dstSet = s->set;
+        w[n].dstBinding = 7; w[n].descriptorCount = 1;
+        w[n].descriptorType = VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER; w[n].pImageInfo = &dshInfo; ++n;
     }
     vkUpdateDescriptorSets(s->device, n, w, 0, nullptr);
 }
@@ -511,6 +538,9 @@ void destroy_island(TerrainIsland* s) {
     if (s->shadowView) vkDestroyImageView(d, s->shadowView, nullptr);
     if (s->shadowImg)  vmaDestroyImage(s->allocator, s->shadowImg, s->shadowAlloc);
     if (s->shadowStage) vmaDestroyBuffer(s->allocator, s->shadowStage, s->shadowStageAlloc);
+    if (s->dynShadowView) vkDestroyImageView(d, s->dynShadowView, nullptr);
+    if (s->dynShadowImg)  vmaDestroyImage(s->allocator, s->dynShadowImg, s->dynShadowAlloc);
+    if (s->dynShadowStage) vmaDestroyBuffer(s->allocator, s->dynShadowStage, s->dynShadowStageAlloc);
     if (s->matNormalSamp) vkDestroySampler(d, s->matNormalSamp, nullptr);
     if (s->matNormalView) vkDestroyImageView(d, s->matNormalView, nullptr);
     if (s->matNormalImg)  vmaDestroyImage(s->allocator, s->matNormalImg, s->matNormalAlloc);
@@ -666,7 +696,7 @@ bool init_island(TerrainIsland* s, int w, int h) {
 
     // ---- Descriptor layout: binding0 dynamic UBO (VS+FS), binding1 height SSBO (VS). ----
     {
-        VkDescriptorSetLayoutBinding b[7]{};
+        VkDescriptorSetLayoutBinding b[8]{};
         b[0].binding = 0; b[0].descriptorType = VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER_DYNAMIC;
         b[0].descriptorCount = 1; b[0].stageFlags = VK_SHADER_STAGE_VERTEX_BIT | VK_SHADER_STAGE_FRAGMENT_BIT;
         // VK-TERRAIN-DETAIL: binding 1 (height SSBO) is now ALSO read by the FS
@@ -688,16 +718,19 @@ bool init_island(TerrainIsland* s, int w, int h) {
         // VK-TERRAIN-DETAIL: binding 6 = material detail-normal sampler2DArray (FS).
         b[6].binding = 6; b[6].descriptorType = VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER;
         b[6].descriptorCount = 1; b[6].stageFlags = VK_SHADER_STAGE_FRAGMENT_BIT;
+        // VK-TERRAIN-DYNSHADOW: binding 7 = dynamic shadow sampler2DShadow (FS).
+        b[7].binding = 7; b[7].descriptorType = VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER;
+        b[7].descriptorCount = 1; b[7].stageFlags = VK_SHADER_STAGE_FRAGMENT_BIT;
         VkDescriptorSetLayoutCreateInfo lci{};
         lci.sType = VK_STRUCTURE_TYPE_DESCRIPTOR_SET_LAYOUT_CREATE_INFO;
-        lci.bindingCount = 7; lci.pBindings = b;
+        lci.bindingCount = 8; lci.pBindings = b;
         if (vkCreateDescriptorSetLayout(s->device, &lci, nullptr, &s->dsl) != VK_SUCCESS) {
             vlog("vkCreateDescriptorSetLayout failed."); return false;
         }
         VkDescriptorPoolSize sizes[4]{};
         sizes[0].type = VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER_DYNAMIC;  sizes[0].descriptorCount = 1;
         sizes[1].type = VK_DESCRIPTOR_TYPE_STORAGE_BUFFER;          sizes[1].descriptorCount = 2; // height + cement
-        sizes[2].type = VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER;  sizes[2].descriptorCount = 4; // colormap + cement + shadow + matNormalArray
+        sizes[2].type = VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER;  sizes[2].descriptorCount = 5; // colormap + cement + static shadow + matNormalArray + dyn shadow
         VkDescriptorPoolCreateInfo pci{};
         pci.sType = VK_STRUCTURE_TYPE_DESCRIPTOR_POOL_CREATE_INFO;
         pci.maxSets = 1; pci.poolSizeCount = 3; pci.pPoolSizes = sizes;
@@ -1253,11 +1286,14 @@ bool ensure_shadow_sampler(TerrainIsland* s) {
 // (Re)create the VK D32 depth image at `dim` texels (idempotent when unchanged).
 // Leaves it in DEPTH SHADER_READ layout so binding 5 is always valid; the per-frame
 // copy re-transitions it. Frees the prior image on a size change.
-bool ensure_shadow_image(TerrainIsland* s, uint32_t dim) {
+// Slot-parameterized D32 depth-compare image ensure (static uses shadowImg/View/Dim,
+// dynamic uses dynShadow*). Leaves DEPTH SHADER_READ so the binding is always valid.
+bool ensure_shadow_image_slot(TerrainIsland* s, uint32_t dim,
+                              VkImage* img, VmaAllocation* alloc, VkImageView* view, uint32_t* curDim) {
     if (dim == 0) dim = 1;
-    if (s->shadowImg != VK_NULL_HANDLE && s->shadowDim == dim) return true;
-    if (s->shadowView) { vkDestroyImageView(s->device, s->shadowView, nullptr); s->shadowView = VK_NULL_HANDLE; }
-    if (s->shadowImg)  { vmaDestroyImage(s->allocator, s->shadowImg, s->shadowAlloc); s->shadowImg = VK_NULL_HANDLE; }
+    if (*img != VK_NULL_HANDLE && *curDim == dim) return true;
+    if (*view) { vkDestroyImageView(s->device, *view, nullptr); *view = VK_NULL_HANDLE; }
+    if (*img)  { vmaDestroyImage(s->allocator, *img, *alloc); *img = VK_NULL_HANDLE; }
 
     VkImageCreateInfo ici{};
     ici.sType = VK_STRUCTURE_TYPE_IMAGE_CREATE_INFO;
@@ -1267,26 +1303,24 @@ bool ensure_shadow_image(TerrainIsland* s, uint32_t dim) {
     ici.usage = VK_IMAGE_USAGE_SAMPLED_BIT | VK_IMAGE_USAGE_TRANSFER_DST_BIT;
     ici.initialLayout = VK_IMAGE_LAYOUT_UNDEFINED;
     VmaAllocationCreateInfo aci{}; aci.usage = VMA_MEMORY_USAGE_AUTO;
-    if (vmaCreateImage(s->allocator, &ici, &aci, &s->shadowImg, &s->shadowAlloc, nullptr) != VK_SUCCESS) {
-        s->shadowImg = VK_NULL_HANDLE; return false;
+    if (vmaCreateImage(s->allocator, &ici, &aci, img, alloc, nullptr) != VK_SUCCESS) {
+        *img = VK_NULL_HANDLE; return false;
     }
     VkImageViewCreateInfo vci{};
     vci.sType = VK_STRUCTURE_TYPE_IMAGE_VIEW_CREATE_INFO;
-    vci.image = s->shadowImg; vci.viewType = VK_IMAGE_VIEW_TYPE_2D; vci.format = VK_FORMAT_D32_SFLOAT;
+    vci.image = *img; vci.viewType = VK_IMAGE_VIEW_TYPE_2D; vci.format = VK_FORMAT_D32_SFLOAT;
     vci.subresourceRange = {VK_IMAGE_ASPECT_DEPTH_BIT, 0, 1, 0, 1};
-    if (vkCreateImageView(s->device, &vci, nullptr, &s->shadowView) != VK_SUCCESS) {
-        vmaDestroyImage(s->allocator, s->shadowImg, s->shadowAlloc); s->shadowImg = VK_NULL_HANDLE;
-        s->shadowView = VK_NULL_HANDLE; return false;
+    if (vkCreateImageView(s->device, &vci, nullptr, view) != VK_SUCCESS) {
+        vmaDestroyImage(s->allocator, *img, *alloc); *img = VK_NULL_HANDLE;
+        *view = VK_NULL_HANDLE; return false;
     }
-    s->shadowDim = dim;
-    // Prime the layout to DEPTH SHADER_READ (undefined contents; enableShadows gates use
-    // until the first real copy lands).
+    *curDim = dim;
     VkCommandBuffer cb = begin_oneshot(s);
     if (cb != VK_NULL_HANDLE) {
         VkImageMemoryBarrier bar{};
         bar.sType = VK_STRUCTURE_TYPE_IMAGE_MEMORY_BARRIER;
         bar.oldLayout = VK_IMAGE_LAYOUT_UNDEFINED; bar.newLayout = VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL;
-        bar.srcQueueFamilyIndex = bar.dstQueueFamilyIndex = VK_QUEUE_FAMILY_IGNORED; bar.image = s->shadowImg;
+        bar.srcQueueFamilyIndex = bar.dstQueueFamilyIndex = VK_QUEUE_FAMILY_IGNORED; bar.image = *img;
         bar.subresourceRange = {VK_IMAGE_ASPECT_DEPTH_BIT, 0, 1, 0, 1};
         bar.srcAccessMask = 0; bar.dstAccessMask = VK_ACCESS_SHADER_READ_BIT;
         vkCmdPipelineBarrier(cb, VK_PIPELINE_STAGE_TOP_OF_PIPE_BIT, VK_PIPELINE_STAGE_FRAGMENT_SHADER_BIT,
@@ -1297,54 +1331,53 @@ bool ensure_shadow_image(TerrainIsland* s, uint32_t dim) {
     return true;
 }
 
-// 1x1 dummy so binding 5 is a valid descriptor from frame 1 (shadowReady stays false ->
-// FS enableShadows=0 -> lit-only, no hole).
+bool ensure_shadow_image(TerrainIsland* s, uint32_t dim) {
+    return ensure_shadow_image_slot(s, dim, &s->shadowImg, &s->shadowAlloc, &s->shadowView, &s->shadowDim);
+}
+
+// 1x1 dummies so bindings 5 (static) and 7 (dynamic) are valid from frame 1.
 bool ensure_dummy_shadow(TerrainIsland* s) {
     if (!ensure_shadow_sampler(s)) return false;
-    if (s->shadowView != VK_NULL_HANDLE) return true;
-    if (!ensure_shadow_image(s, 1)) return false;
-    s->shadowReady = false;
+    if (s->shadowView == VK_NULL_HANDLE) {
+        if (!ensure_shadow_image(s, 1)) return false;
+        s->shadowReady = false;
+    }
+    if (s->dynShadowView == VK_NULL_HANDLE) {
+        if (!ensure_shadow_image_slot(s, 1, &s->dynShadowImg, &s->dynShadowAlloc,
+                                      &s->dynShadowView, &s->dynShadowDim)) return false;
+        s->dynShadowReady = false;
+    }
     return true;
 }
 
-// Per-frame copy of the GL static shadow depth texture into the VK D32 image. The GL
-// texture is DEPTH_COMPONENT24; glGetTexImage(GL_DEPTH_COMPONENT,GL_FLOAT) yields the
-// normalized [0,1] depth as float32, exact for a D32 target (same convention the shader
-// samples: z already [0,1], ZERO_TO_ONE light ortho). Sets shadowReady on success.
-bool copy_static_shadow(TerrainIsland* s, const Mc2TerrainTier1Feed& feed) {
-    s->shadowReady = false;
-    if (!feed.lightingEnabled || !feed.shadowsEnabled) return false;
-    if (feed.glStaticShadowTex == 0 || feed.staticShadowSize <= 0) return false;
-    const uint32_t dim = (uint32_t)feed.staticShadowSize;
-    if (!ensure_shadow_image(s, dim)) return false;
-
+// Slot-parameterized per-frame depth copy from a GL DEPTH_COMPONENT texture into a VK
+// D32 image. Shared by static (binding 5) and dynamic (binding 7) shadow maps. glGetTexImage
+// depth readback -> forbidden color counters untouched.
+bool copy_shadow_slot(TerrainIsland* s, uint32_t glTex, uint32_t dim,
+                      VkImage img, VkBuffer* stage, VmaAllocation* stageAlloc, VkDeviceSize* stageBytes) {
     const VkDeviceSize bytes = (VkDeviceSize)dim * (VkDeviceSize)dim * 4u;  // float32 per texel
-    if (s->shadowStage == VK_NULL_HANDLE || bytes > s->shadowStageBytes) {
-        if (s->shadowStage != VK_NULL_HANDLE) {
+    if (*stage == VK_NULL_HANDLE || bytes > *stageBytes) {
+        if (*stage != VK_NULL_HANDLE) {
             vkDeviceWaitIdle(s->device);
-            vmaDestroyBuffer(s->allocator, s->shadowStage, s->shadowStageAlloc);
-            s->shadowStage = VK_NULL_HANDLE;
+            vmaDestroyBuffer(s->allocator, *stage, *stageAlloc);
+            *stage = VK_NULL_HANDLE;
         }
-        if (!make_buffer(s, bytes, VK_BUFFER_USAGE_TRANSFER_SRC_BIT, &s->shadowStage, &s->shadowStageAlloc, true))
+        if (!make_buffer(s, bytes, VK_BUFFER_USAGE_TRANSFER_SRC_BIT, stage, stageAlloc, true))
             return false;
-        s->shadowStageBytes = bytes;
+        *stageBytes = bytes;
     }
-
-    // Pull the GL depth texels (depth readback, NOT a color pull -> forbidden counters
-    // untouched). Straight into the mapped staging buffer.
     void* p = nullptr;
-    if (vmaMapMemory(s->allocator, s->shadowStageAlloc, &p) != VK_SUCCESS) return false;
-    glBindTexture(GL_TEXTURE_2D, (GLuint)feed.glStaticShadowTex);
+    if (vmaMapMemory(s->allocator, *stageAlloc, &p) != VK_SUCCESS) return false;
+    glBindTexture(GL_TEXTURE_2D, (GLuint)glTex);
     glGetTexImage(GL_TEXTURE_2D, 0, GL_DEPTH_COMPONENT, GL_FLOAT, p);
     glBindTexture(GL_TEXTURE_2D, 0);
-    vmaUnmapMemory(s->allocator, s->shadowStageAlloc);
+    vmaUnmapMemory(s->allocator, *stageAlloc);
 
-    // staging -> image: SHADER_READ -> TRANSFER_DST -> copy -> SHADER_READ.
     VkCommandBuffer cb = begin_oneshot(s);
     if (cb == VK_NULL_HANDLE) return false;
     VkImageMemoryBarrier bar{};
     bar.sType = VK_STRUCTURE_TYPE_IMAGE_MEMORY_BARRIER;
-    bar.srcQueueFamilyIndex = bar.dstQueueFamilyIndex = VK_QUEUE_FAMILY_IGNORED; bar.image = s->shadowImg;
+    bar.srcQueueFamilyIndex = bar.dstQueueFamilyIndex = VK_QUEUE_FAMILY_IGNORED; bar.image = img;
     bar.subresourceRange = {VK_IMAGE_ASPECT_DEPTH_BIT, 0, 1, 0, 1};
     bar.oldLayout = VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL; bar.newLayout = VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL;
     bar.srcAccessMask = VK_ACCESS_SHADER_READ_BIT; bar.dstAccessMask = VK_ACCESS_TRANSFER_WRITE_BIT;
@@ -1353,14 +1386,40 @@ bool copy_static_shadow(TerrainIsland* s, const Mc2TerrainTier1Feed& feed) {
     VkBufferImageCopy rgn{};
     rgn.imageSubresource = {VK_IMAGE_ASPECT_DEPTH_BIT, 0, 0, 1};
     rgn.imageExtent = {dim, dim, 1};
-    vkCmdCopyBufferToImage(cb, s->shadowStage, s->shadowImg, VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL, 1, &rgn);
+    vkCmdCopyBufferToImage(cb, *stage, img, VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL, 1, &rgn);
     bar.oldLayout = VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL; bar.newLayout = VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL;
     bar.srcAccessMask = VK_ACCESS_TRANSFER_WRITE_BIT; bar.dstAccessMask = VK_ACCESS_SHADER_READ_BIT;
     vkCmdPipelineBarrier(cb, VK_PIPELINE_STAGE_TRANSFER_BIT, VK_PIPELINE_STAGE_FRAGMENT_SHADER_BIT,
                          0, 0, nullptr, 0, nullptr, 1, &bar);
     end_oneshot(s, cb);
+    return true;
+}
 
+// Per-frame copy of the GL STATIC shadow depth texture into the VK D32 image (binding 5).
+bool copy_static_shadow(TerrainIsland* s, const Mc2TerrainTier1Feed& feed) {
+    s->shadowReady = false;
+    if (!feed.lightingEnabled || !feed.shadowsEnabled) return false;
+    if (feed.glStaticShadowTex == 0 || feed.staticShadowSize <= 0) return false;
+    const uint32_t dim = (uint32_t)feed.staticShadowSize;
+    if (!ensure_shadow_image(s, dim)) return false;
+    if (!copy_shadow_slot(s, feed.glStaticShadowTex, dim, s->shadowImg,
+                          &s->shadowStage, &s->shadowStageAlloc, &s->shadowStageBytes)) return false;
     s->shadowReady = true;
+    return true;
+}
+
+// Per-frame copy of the GL DYNAMIC (building/mech) shadow depth texture into the 2nd VK
+// D32 image (binding 7). Same mechanism as static; gated by MC2_VK_TERRAIN_DYNSHADOW feed.
+bool copy_dynamic_shadow(TerrainIsland* s, const Mc2TerrainTier1Feed& feed) {
+    s->dynShadowReady = false;
+    if (!feed.lightingEnabled || !feed.dynShadowsEnabled) return false;
+    if (feed.glDynamicShadowTex == 0 || feed.dynamicShadowSize <= 0) return false;
+    const uint32_t dim = (uint32_t)feed.dynamicShadowSize;
+    if (!ensure_shadow_image_slot(s, dim, &s->dynShadowImg, &s->dynShadowAlloc,
+                                  &s->dynShadowView, &s->dynShadowDim)) return false;
+    if (!copy_shadow_slot(s, feed.glDynamicShadowTex, dim, s->dynShadowImg,
+                          &s->dynShadowStage, &s->dynShadowStageAlloc, &s->dynShadowStageBytes)) return false;
+    s->dynShadowReady = true;
     return true;
 }
 
@@ -1427,6 +1486,12 @@ extern "C" int mc2_vk_terrain_island_run(int w, int h) {
     // terrain is lit but unshadowed (fail-soft, never a hole). Runs on the GL/render thread.
     copy_static_shadow(s, feed);
 
+    // VK-TERRAIN-DYNSHADOW: per-frame copy of the GL DYNAMIC (building/mech) shadow map
+    // into the 2nd VK D32 depth-compare image. No-op (dynShadowReady=false) when the
+    // sub-gate is off or the GL dynamic map isn't live -> VK terrain has no dynamic
+    // shadow (fail-soft, never a hole). Same mechanism as the static copy above.
+    copy_dynamic_shadow(s, feed);
+
     // VK-TERRAIN-DETAIL: copy-once import of the GL material detail-normal 2D_ARRAY. No-op
     // once imported / while the gate is off (feed.glMatNormalArrayTex==0). Fail-soft: leaves
     // the flat-normal dummy bound (matNormalReady=false) -> FS uses macro-slope-only normal.
@@ -1480,6 +1545,12 @@ extern "C" int mc2_vk_terrain_island_run(int w, int h) {
                 u.nfhStrength    = feed.nfhStrength;
                 u.detailTiling   = feed.detailTiling;
                 u.detailStrength = feed.detailStrength;
+                // VK-TERRAIN-DYNSHADOW: enable only when the sub-gate is on AND a real GL
+                // dynamic map was copied this frame (s->dynShadowReady). Else 0 -> no
+                // dynamic shadow term (byte-identical to the pre-dynshadow frame).
+                u.enableDynShadows = (feed.lightingEnabled && feed.dynShadowsEnabled && s->dynShadowReady) ? 1 : 0;
+                std::memcpy(u.dynamicLightSpaceMatrix, feed.dynamicLightSpaceMatrix,
+                            sizeof(u.dynamicLightSpaceMatrix));
                 slots[i] = u;
             }
             vmaUnmapMemory(s->allocator, s->uboAlloc);

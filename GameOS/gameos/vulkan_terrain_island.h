@@ -83,6 +83,16 @@ struct Mc2TerrainTier1Feed {
     int32_t                     staticShadowSize;      // shadowMapSize_ (edge in texels, 4096)
     float                       staticLightSpaceMatrix[16]; // pp->getLightSpaceMatrix()
     float                       shadowSoftness;        // GL default 2.5
+    // VK-TERRAIN-DYNSHADOW sub-slice: the DYNAMIC (building/mech) shadow map — the GL
+    // depth texture pp->getDynamicShadowTexture() (legacy single-map, non-CSM path) the
+    // island copies PER FRAME into a 2nd VK D32 depth-COMPARE image, plus its light-space
+    // matrix pp->getDynamicLightSpaceMatrix(). GL: shadow = min(static, dyn), and on
+    // pure concrete shadow = dyn (static dropped, dynamic kept). Gate MC2_VK_TERRAIN_DYNSHADOW
+    // (requires MC2_VK_TERRAIN_LIGHTING). 0/false -> no dynamic shadow (lit-only), no hole.
+    int32_t                     dynShadowsEnabled;     // pp->shadowsEnabled_ && getDynamicShadowFBO() && !CSM
+    uint32_t                    glDynamicShadowTex;    // GL name of pp->getDynamicShadowTexture() (0 = not ready)
+    int32_t                     dynamicShadowSize;     // dynamic shadow map edge in texels
+    float                       dynamicLightSpaceMatrix[16]; // pp->getDynamicLightSpaceMatrix()
     // VK-TERRAIN-DETAIL sub-slice: perturb the terrain normal (macro slope + material
     // detail normal) like GL (terrain_lod_chunk.frag:740-808) so grass gets NdotL relief
     // -> closes the "grass ~3 levels darker" residual. Gate MC2_VK_TERRAIN_DETAIL

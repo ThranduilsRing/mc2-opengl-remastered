@@ -82,6 +82,12 @@ layout(set = 0, binding = 0, std140) uniform TerrainFrameUBO {
     float nfhStrength;      // off 232: terrainNormalsFromHeightStrength (GL default 1.0)
     float detailTiling;     // off 236: detailNormalTiling.x (GL default 1.0)
     float detailStrength;   // off 240: detailNormalStrength.x (GL default 1.0)
+    // VK-TERRAIN-DYNSHADOW sub-slice: dynamic (building/mech) shadow. std140 pads the
+    // dynamic light-space mat4 to off 256 (matches vulkan_terrain_island.cpp TerrainFrameUBO).
+    int   enableDynShadows; // off 244: dynamic shadow map imported+valid this frame
+    int   _dynPad0;         // off 248
+    int   _dynPad1;         // off 252
+    mat4  dynamicLightSpaceMatrix; // off 256
 } uT;
 
 // VK-TERRAIN-DETAIL: the height SSBO (VK-owned snapshot; same buffer the VS reads at
@@ -208,6 +214,11 @@ layout(set = 0, binding = 4, std430) readonly buffer TerrainCementBuf {
 // (matches GL sampler2DShadow). Always a valid descriptor (1x1 dummy until imported);
 // uT.enableShadows gates whether it is actually sampled.
 layout(set = 0, binding = 5) uniform sampler2DShadow u_staticShadow;
+// VK-TERRAIN-DYNSHADOW: the DYNAMIC (building/mech) sun shadow map — a VK-owned per-frame
+// copy of the GL dynamic shadow depth texture (pp->getDynamicShadowTexture(), legacy
+// single-map path). Same D32 depth-COMPARE format/sampler as static. Always a valid
+// descriptor (1x1 dummy until imported); uT.enableDynShadows gates the sample.
+layout(set = 0, binding = 7) uniform sampler2DShadow u_dynamicShadow;
 
 void main() {
     vec3 base;
@@ -387,14 +398,28 @@ void main() {
         float normalLight = computeNdotLBand(N, lightDir);
         if (pureConcrete) normalLight = 1.0;                     // cement: flat-lit slab
 
-        float shadow = 1.0;
-        if (uT.enableShadows != 0 && !pureConcrete) {            // static shadow dropped on cement
-            // GL calcShadow uses shadowN = flat-up (shadow.hglsl caller passes (0,0,1)),
-            // NOT the perturbed N. Keep parity: sample the shadow with flat-up.
-            shadow = computeBakedShadow(v_worldPos, vec3(0.0, 0.0, 1.0), lightDir,
-                                        u_staticShadow, uT.staticLightSpaceMatrix,
-                                        uT.shadowSoftness, 16);
+        // Shadow compose — mirrors terrain_lod_chunk.frag:896-907 EXACTLY:
+        //   staticS = calcShadow(...16);  dynS = calcDynamicShadow(...8);
+        //   shadow  = min(staticS, dynS);
+        //   shadow  = mix(shadow, dynS, pureConcrete);   // concrete: dyn only, static dropped
+        // GL callers pass shadowN = flat-up (0,0,1), NOT the perturbed N. computeBakedShadow
+        // is a VERBATIM match of the legacy calcDynamicShadow body (adaptiveScale 2.4->0.8,
+        // mix(0.4,1.0,shadow)); the GL static calcShadow uses the same PCF core here too.
+        const vec3 shadowN = vec3(0.0, 0.0, 1.0);
+        float staticS = 1.0;
+        if (uT.enableShadows != 0) {
+            staticS = computeBakedShadow(v_worldPos, shadowN, lightDir,
+                                         u_staticShadow, uT.staticLightSpaceMatrix,
+                                         uT.shadowSoftness, 16);
         }
+        float dynS = 1.0;
+        if (uT.enableDynShadows != 0) {
+            dynS = computeBakedShadow(v_worldPos, shadowN, lightDir,
+                                      u_dynamicShadow, uT.dynamicLightSpaceMatrix,
+                                      uT.shadowSoftness, 8);
+        }
+        float shadow = min(staticS, dynS);
+        shadow = mix(shadow, dynS, pureConcrete ? 1.0 : 0.0);  // concrete: dynamic only
         lit = base * normalLight * shadow;
     }
 

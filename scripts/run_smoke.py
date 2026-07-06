@@ -1691,6 +1691,7 @@ def main():
                             "MC2_VK_TERRAIN_TIER1",
                             "MC2_VK_TERRAIN_LIGHTING",
                             "MC2_VK_TERRAIN_DETAIL",
+                            "MC2_VK_TERRAIN_DYNSHADOW",
                             # VK-P9a WATER-INTEROP proof: the bookmark-capture sweep
                             # env, so a smoke run (which reliably reaches steady render,
                             # unlike the standalone capture harness on some setups) can
