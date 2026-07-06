@@ -278,6 +278,11 @@ struct ColorPropIsland {
 
     std::vector<Mc2ShadowPacket> packets;
     std::vector<TypeRun>         typeRuns;
+    // VK-FLIP-FIELD-REPORT-2 BLACK-FENCE FIX: per-packet (not per-type) albedo layer,
+    // group-relative (same array as typeAlbedoLayer/typeAlbedoLayerOn). Indexed by
+    // global packet index (same indexing as `packets` above). -1 = no texture.
+    std::vector<int32_t>        packetLayerOff;
+    std::vector<int32_t>        packetLayerOn;
 
     VkBuffer      instBuf = VK_NULL_HANDLE; VmaAllocation instAlloc = VK_NULL_HANDLE;
     VkDeviceSize  instCapBytes = 0;
@@ -1092,9 +1097,25 @@ bool init_island(ColorPropIsland* s, int w, int h) {
         s->t1_frag = load_spv(s->device, spv_dir() + "color_prop_tier1.frag.spv");
         if (s->t1_vert == VK_NULL_HANDLE || s->t1_frag == VK_NULL_HANDLE) { setFallback("tier1_spv_load_failed"); return false; }
 
+        // VK-FLIP-FIELD-REPORT-2 BLACK-FENCE FIX: per-PACKET albedo layer push constant
+        // (2x int32 = layerOff, layerOn). GL's coalesce path samples texArrayLayer per
+        // DRAW (PerDrawEntry), not per typeID — a multi-packet type (e.g. a fence type
+        // with separate "post"/"arch" sub-mesh packets) can have DIFFERENT textures per
+        // packet. The prior per-type SSBO lookup (by inst.typeID) forced every packet
+        // of a type to reuse one ("first-valid-wins") layer, so non-first packets
+        // sampled the WRONG BC7 layer/UV combination — this is what produced solid-black
+        // fragments (wrong layer decodes to a black margin block, alpha>=0.5 so no
+        // alpha-test discard masked it). Fixed here: each vkCmdDrawIndexed for a packet
+        // now pushes THAT packet's own layer, consumed directly by vert/frag instead of
+        // the SSBO-by-typeID path.
+        VkPushConstantRange pcr{};
+        pcr.stageFlags = VK_SHADER_STAGE_VERTEX_BIT | VK_SHADER_STAGE_FRAGMENT_BIT;
+        pcr.offset = 0; pcr.size = 8; // int32 packetLayerOff, int32 packetLayerOn
+
         VkPipelineLayoutCreateInfo plci{};
         plci.sType = VK_STRUCTURE_TYPE_PIPELINE_LAYOUT_CREATE_INFO;
         plci.setLayoutCount = 1; plci.pSetLayouts = &s->dsl;
+        plci.pushConstantRangeCount = 1; plci.pPushConstantRanges = &pcr;
         if (vkCreatePipelineLayout(s->device, &plci, nullptr, &s->playout) != VK_SUCCESS) {
             vlog("TIER-1 vkCreatePipelineLayout failed."); return false;
         }
@@ -1409,6 +1430,25 @@ extern "C" int mc2_vk_color_prop_island_run(int w, int h) {
                          mf.typeCount, s->terrainSunMC2[0], s->terrainSunMC2[1], s->terrainSunMC2[2]);
                 }
             }
+            // VK-FLIP-FIELD-REPORT-2 BLACK-FENCE FIX: snapshot the per-packet layer
+            // tables (both groups) once the packet feed is available, regardless of
+            // which group's SSBO import just ran — the push-constant draw path reads
+            // these every frame, not gated by materialReady/materialReadyOn latches.
+            if (mf.packetAlbedoLayer && mf.packetCount > 0) {
+                s->packetLayerOff.assign(mf.packetCount, -1);
+                s->packetLayerOn.assign(mf.packetCount, -1);
+                for (uint32_t t = 0; t < mf.typeCount && t < s->typeRuns.size(); ++t) {
+                    const TypeRun& tr = s->typeRuns[t];
+                    const bool isOn = (mf.typeAlphaClass[t] == 1);
+                    for (uint32_t p = 0; p < tr.packetCount; ++p) {
+                        const uint32_t pk = tr.firstPacket + p;
+                        if (pk >= mf.packetCount) break;
+                        const int32_t layer = mf.packetAlbedoLayer[pk];
+                        if (isOn) s->packetLayerOn[pk]  = layer;
+                        else      s->packetLayerOff[pk] = layer;
+                    }
+                }
+            }
             // ---- alpha-ON (class 1): the alpha-MIXED buildings. typeAlbedoLayer[t] is
             // ALREADY group-relative into s_texArrayOn for class-1 types, so the same
             // table shape works with the alpha-ON array + a 0.5 alpha-test in the FS. ----
@@ -1548,6 +1588,15 @@ extern "C" int mc2_vk_color_prop_island_run(int w, int h) {
                     const uint32_t pk = tr.firstPacket + p;
                     if (pk >= s->packets.size()) break;
                     const Mc2ShadowPacket& pkt = s->packets[pk];
+                    // VK-FLIP-FIELD-REPORT-2 BLACK-FENCE FIX: push THIS packet's own
+                    // group-relative albedo layer (off/on), not the type's shared
+                    // "first-valid-wins" layer — see packetLayerOff/On comment above.
+                    int32_t pc[2] = {
+                        (pk < s->packetLayerOff.size()) ? s->packetLayerOff[pk] : -1,
+                        (pk < s->packetLayerOn.size())  ? s->packetLayerOn[pk]  : -1,
+                    };
+                    vkCmdPushConstants(cb, s->playout, VK_SHADER_STAGE_VERTEX_BIT | VK_SHADER_STAGE_FRAGMENT_BIT,
+                                        0, sizeof(pc), pc);
                     vkCmdDrawIndexed(cb, pkt.indexCount, instCount,
                                      pkt.firstIndex, (int32_t)pkt.baseVertex, i);
                 }

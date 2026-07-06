@@ -106,6 +106,22 @@ struct Mc2ColorPropMaterialFeed {
     // glTexArrayOn), so no second layer table is needed on the feed side. 0 = alpha-ON
     // array not built (island imports/routes class-1 types only when non-zero).
     uint32_t        glTexArrayOn;    // GL name of s_texArrayOn (alpha-ON 2D_ARRAY)
+
+    // VK-FLIP-FIELD-REPORT-2 BLACK-FENCE FIX: per-PACKET (not per-type) albedo layer.
+    // A single typeID can own multiple packets (sub-mesh ranges) that each target a
+    // DIFFERENT texture within the same group array (e.g. a fence type's "post" and
+    // "arch" sub-meshes) — GL's coalesce path samples per-DRAW (PerDrawEntry.
+    // texArrayLayer), never per-type. The island's prior per-TYPE-only layer
+    // (typeAlbedoLayer, "first-valid-wins") forced every packet of a multi-packet
+    // type to reuse packet 0's layer, so any non-first packet sampled the WRONG
+    // texture layer/UV combination — for BC7 this reliably lands on a black margin
+    // block (opaque alpha, so no alpha-test discard masked it), which is the
+    // observed "every-other-post is black" symptom. This array is indexed by the
+    // GLOBAL packet index (same indexing as Mc2ShadowPacket / typeFirstPacket +
+    // typePacketCount), length packetCount, group-relative (same array as
+    // typeAlbedoLayer). -1 = no texture for this packet (island keeps teal for it).
+    const int32_t*  packetAlbedoLayer;
+    uint32_t        packetCount;
 };
 int mc2_color_prop_island_get_material_feed(Mc2ColorPropMaterialFeed* out);
 

@@ -26,6 +26,19 @@ layout(set = 0, binding = 0, std140) uniform ColorFrameUBO {
     vec4  terrainSunMC2;    // surface->sun (MC2 world); .w pad
 } uFrame;
 
+// VK-FLIP-FIELD-REPORT-2 BLACK-FENCE FIX: per-PACKET (not per-type) albedo layer,
+// pushed fresh before each vkCmdDrawIndexed. GL's coalesce path samples texArrayLayer
+// per-DRAW (PerDrawEntry), never per-type — a multi-packet type (e.g. a fence type's
+// separate "post"/"arch" sub-mesh packets) can have DIFFERENT textures per packet.
+// The prior per-type SSBO-by-typeID lookup forced every packet of a type to reuse
+// one ("first-valid-wins") layer, so non-first packets sampled the WRONG BC7 layer —
+// this produced solid-black fragments (wrong layer's black margin block, alpha>=0.5
+// so no alpha-test discard caught it). -1 = no texture for this packet (teal fallback).
+layout(push_constant) uniform PacketLayerPC {
+    int packetLayerOff;
+    int packetLayerOn;
+} uPacket;
+
 struct Instance {
     mat4  modelMatrix;       // off 0
     uint  typeID;            // off 64
@@ -76,16 +89,12 @@ void main() {
     vec3 worldNormalStuff = a_normal * mat3(inst.modelMatrix);
     vNormalStuff = worldNormalStuff;
 
-    // VK-P11 STATIC-PROP MATERIAL: albedo layer for this type (bounded read).
-    int layer = -1;
-    if (uFrame.materialReady != 0 && inst.typeID < uint(uTypeLayer.layer.length()))
-        layer = uTypeLayer.layer[inst.typeID];
-    vLayer = layer;
-    // alpha-ON layer for this type (bounded read); -1 for non-class-1 types.
-    int layerOn = -1;
-    if (uFrame.materialReadyOn != 0 && inst.typeID < uint(uTypeLayerOn.layer.length()))
-        layerOn = uTypeLayerOn.layer[inst.typeID];
-    vLayerOn = layerOn;
+    // VK-FLIP-FIELD-REPORT-2 BLACK-FENCE FIX: albedo layer now comes from the
+    // per-PACKET push constant (this draw's own layer), not a per-type SSBO lookup
+    // by inst.typeID. Fixes multi-packet types (e.g. fences) where sub-mesh packets
+    // target different texture layers within the same group array.
+    vLayer   = (uFrame.materialReady   != 0) ? uPacket.packetLayerOff : -1;
+    vLayerOn = (uFrame.materialReadyOn != 0) ? uPacket.packetLayerOn  : -1;
 
     // -------------------------------------------------------------------------
     // VK-P11 VERTEX-BAKED LIGHTING (replaces the earlier computePBR path).
@@ -167,7 +176,12 @@ void main() {
     // roofs/hedges (mid pose 49->55/ch) and washed shaded faces, so these sit just above
     // GL's raw V-AMBIENT to cover the fill gap without a flat wash. Normal-dependent
     // (rooftops brighter than shadowed walls) — matches the GL hangar-roof tint.
-    const vec3 kAmbientSky    = vec3(0.30, 0.32, 0.38);   // upward faces (sky bounce)
+    // VK-FLIP-FIELD-REPORT-2 WASHOUT FIX: round-1 (9b63ab6d) tuning was still too hot on
+    // near-flat-up faces (measured +45/255 mean over GL on the mc2_01 hangar roof at the
+    // airport_bldgs_mid oracle pose, byte-for-byte pixel compare vs GL). Reduced the sky
+    // (near-up-facing) tint by the measured delta; ground tint left as-is (shadowed/
+    // downward faces were not over-lit in the same measurement).
+    const vec3 kAmbientSky    = vec3(0.00, 0.02, 0.08);   // upward faces (sky bounce)
     const vec3 kAmbientGround = vec3(0.14, 0.13, 0.11);   // downward faces (ground bounce)
     float hemi_t = 0.5 + 0.5 * worldNormalStuff.y;        // Stuff-space .y = up
     vec3  kAmbient = mix(kAmbientGround, kAmbientSky, clamp(hemi_t, 0.0, 1.0));

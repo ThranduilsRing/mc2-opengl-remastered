@@ -8436,6 +8436,12 @@ extern "C" int mc2_color_prop_island_get_material_feed(Mc2ColorPropMaterialFeed*
     out->typeAlbedoLayer = s_typeAlbedoLayer.data();
     out->typeAlphaClass  = s_typeAlphaClass.data();
     out->typeCount       = (uint32_t)s_typeAlbedoLayer.size();
+    // VK-FLIP-FIELD-REPORT-2 BLACK-FENCE FIX: per-packet layer (see header comment).
+    // s_packetTexArrayLayer is populated in finalizeGeometry() from the SAME
+    // per-packet, group-relative layerForPacket[] GL's coalesce PerDrawEntry table
+    // uses — it is the correct source, unlike the per-type "first-valid-wins" table.
+    out->packetAlbedoLayer = s_packetTexArrayLayer.empty() ? nullptr : s_packetTexArrayLayer.data();
+    out->packetCount       = (uint32_t)s_packetTexArrayLayer.size();
 
     // Terrain sun (MC2 world, surface->sun) — same vector the GL prop VS uses for the
     // directional term (STATIC-PROP-TERRAIN-SUN-DIFFUSE). Provides computePBR's L.
