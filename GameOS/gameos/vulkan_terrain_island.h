@@ -129,6 +129,25 @@ struct Mc2TerrainTier1Feed {
     // to the pre-fade frame).
     int32_t                     lodFadeEnabled;        // 1 iff MC2_VK_TERRAIN_LODFADE gate on
     float                       cameraPosMC2[3];       // gos_GetTerrainCameraPos() (Stuff/MLR space)
+
+    // VK-TERRAIN-CSM-NEAR-1 sub-slice: near-cascade-array dynamic shadow (ports GL's
+    // calcDynamicShadow cascade-select into VK instead of the coarse FULLMAP_EXPERIMENTAL
+    // subset). Gate MC2_VK_TERRAIN_CSM (requires MC2_VK_TERRAIN_LIGHTING; independent of
+    // the FULLMAP_EXPERIMENTAL escape hatch, which still feeds dynShadowsEnabled above
+    // when armed). Source: GL's dynShadowArrayTex_ (GL_TEXTURE_2D_ARRAY depth, near
+    // cascades 0..N-2) + the separate dynamicFullMapTex_ (last cascade, lower-res 2D).
+    // csmEnabled=0 -> VK frag skips the CSM path entirely (falls back to the legacy
+    // single-map dynShadowsEnabled path above, unchanged).
+    int32_t                     csmEnabled;            // 1 iff gate on AND GL CSM is actually active+ready
+    uint32_t                    glCsmArrayTex;         // GL name of dynShadowArrayTex_ (0 = not ready)
+    int32_t                     csmArraySize;           // dynShadowMapSize_ (near-cascade array edge, texels)
+    int32_t                     csmCount;               // pp->getDynamicShadowCascadeCount() (1..3)
+    float                       csmCascadeMatrices[16 * 3]; // pp->getDynamicCascadeMatrices() (row-major GL_FALSE)
+    float                       csmCascadeTexelWorld[3];    // pp->getDynamicCascadeTexelWorld()
+    float                       csmDepthSpan;           // pp->getCsmDepthSpan()
+    uint32_t                    glCsmFullMapTex;        // GL name of dynamicFullMapTex_ (0 = not ready)
+    int32_t                     csmFullMapSize;         // pp->getDynamicFullMapSize()
+    float                       csmFullMapTexelWorld;   // pp->getDynamicFullMapTexelWorld()
 };
 
 // Provided BY the GL terrain path (gos_terrain_lod_chunk.cpp). The island calls this

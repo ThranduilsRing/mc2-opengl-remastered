@@ -944,6 +944,42 @@ extern "C" int mc2_terrain_tier1_get_frame_feed(Mc2TerrainTier1Feed* out)
                             sizeof(out->dynamicLightSpaceMatrix));
             }
         }
+
+        // VK-TERRAIN-CSM-NEAR-1: the REAL cure. Feed the near-cascade array + separate
+        // full-map cascade so the VK frag can port GL's calcDynamicShadow cascade-select
+        // verbatim (near cascade up close, coarse full-map only past its range) instead
+        // of the FULLMAP_EXPERIMENTAL subset's "always coarse" wash. Independent of the
+        // two paths above: MC2_VK_TERRAIN_CSM alone (no FULLMAP_EXPERIMENTAL) now means
+        // THIS implementation. GL must actually have CSM active+built this frame.
+        out->csmEnabled = 0;
+        out->glCsmArrayTex = 0;
+        out->csmArraySize = 0;
+        out->csmCount = 0;
+        std::memset(out->csmCascadeMatrices, 0, sizeof(out->csmCascadeMatrices));
+        std::memset(out->csmCascadeTexelWorld, 0, sizeof(out->csmCascadeTexelWorld));
+        out->csmDepthSpan = 1.0f;
+        out->glCsmFullMapTex = 0;
+        out->csmFullMapSize = 0;
+        out->csmFullMapTexelWorld = 0.0f;
+        if (dynShadowGate && pp && pp->shadowsEnabled_ && mc2ShadowCsmEnabled()) {
+            const GLuint arrTex  = pp->getDynamicShadowArrayTexture();
+            const GLuint fmTex   = pp->getDynamicFullMapTexture();
+            const int    ccount2 = pp->getDynamicShadowCascadeCount();
+            const float* mats2   = pp->getDynamicCascadeMatrices();
+            const float* texelW  = pp->getDynamicCascadeTexelWorld();
+            if (arrTex != 0 && fmTex != 0 && ccount2 > 0 && ccount2 <= 3 && mats2 && texelW) {
+                out->csmEnabled = 1;
+                out->glCsmArrayTex = static_cast<uint32_t>(arrTex);
+                out->csmArraySize  = pp->getDynamicShadowMapSize();
+                out->csmCount      = ccount2;
+                std::memcpy(out->csmCascadeMatrices, mats2, sizeof(float) * 16 * ccount2);
+                std::memcpy(out->csmCascadeTexelWorld, texelW, sizeof(float) * ccount2);
+                out->csmDepthSpan  = pp->getCsmDepthSpan();
+                out->glCsmFullMapTex = static_cast<uint32_t>(fmTex);
+                out->csmFullMapSize  = pp->getDynamicFullMapSize();
+                out->csmFullMapTexelWorld = pp->getDynamicFullMapTexelWorld();
+            }
+        }
     }
 
     // VK-TERRAIN-DETAIL sub-slice: hand the material detail-normal ARRAY tex + the GL

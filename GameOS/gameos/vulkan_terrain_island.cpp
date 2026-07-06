@@ -252,9 +252,21 @@ struct TerrainFrameUBO {
     // patch (skirtDepth=0)" comment). Packed into the existing pad tail so the 512B
     // dynamic-alignment slot does NOT grow. LOCKSTEP with terrain_tier1_skirt.vert.
     float   skirtDepth;              // off 340
-    int32_t _pad[42];                // off 344..511: remaining pad
+    // VK-TERRAIN-CSM-NEAR-1 sub-slice: near-cascade-array dynamic shadow (ports GL's
+    // calcDynamicShadow cascade-select VERBATIM). LOCKSTEP with terrain_tier1.frag.
+    // Slot grew 512->1024B to fit N cascade matrices; pad to a 16B boundary first.
+    int32_t _csmPad0;                // off 344
+    int32_t _csmPad1;                // off 348
+    int32_t csmEnabled;              // off 352: MC2_VK_TERRAIN_CSM near-cascade path armed+valid this frame
+    int32_t csmCount;                // off 356: 1..MC2_SHADOW_CSM_MAX (mirrors GL dynamicCsmCount)
+    float   csmDepthSpan;            // off 360: (farP-nearP) of the shared CSM ortho z-row
+    int32_t _csmPad2;                // off 364
+    float   csmCascadeMatrices[16 * 3]; // off 368: dynamicCascadeMatrices[MC2_SHADOW_CSM_MAX] (mat4 x3)
+    float   csmCascadeTexelWorld[4];    // off 560: per-cascade world-texel footprint (vec3 used + pad)
+    float   csmFullMapTexelWorld;    // off 576: dynamicFullMapTexelWorld (separate lower-res full-map tex)
+    int32_t _pad[111];               // off 580..1023: remaining pad
 };
-static_assert(sizeof(TerrainFrameUBO) == 512, "UBO slot must be 512B (dynamic alignment)");
+static_assert(sizeof(TerrainFrameUBO) == 1024, "UBO slot must be 1024B (dynamic alignment, grew for CSM-NEAR-1)");
 
 // int16 local-offset vertex (mirrors terrain_lod_chunk.cpp LocalVertex { int16 lx,ly }).
 struct LocalVertex { int16_t lx, ly; };
@@ -395,6 +407,27 @@ struct TerrainIsland {
     bool          dynShadowDirect = false;   // true this frame -> binding 7 used the external view
     VkImageView   dynShadowBoundView = VK_NULL_HANDLE;   // what binding 7 was last vkUpdateDescriptorSets'd with
 
+    // VK-TERRAIN-CSM-NEAR-1: near-cascade D32 depth-COMPARE ARRAY (binding 8) + the
+    // separate lower-res full-map D32 depth-COMPARE 2D image (binding 9). Copied per
+    // frame via glGetTexImage (GL_TEXTURE_2D_ARRAY has no zero-copy producer yet — the
+    // VK shadow island only produces the single legacy map — so this is the fallback
+    // GL-copy path, same mechanism as static/dynamic single-map). Layers = csmCount-1
+    // (near cascades only; the last cascade lives in the separate full-map image).
+    VkImage       csmArrayImg  = VK_NULL_HANDLE; VmaAllocation csmArrayAlloc = VK_NULL_HANDLE;
+    VkImageView   csmArrayView = VK_NULL_HANDLE;
+    uint32_t      csmArrayDim  = 0;
+    uint32_t      csmArrayLayers = 0;
+    bool          csmArrayReady = false;
+    VkBuffer      csmArrayStage = VK_NULL_HANDLE; VmaAllocation csmArrayStageAlloc = VK_NULL_HANDLE;
+    VkDeviceSize  csmArrayStageBytes = 0;
+
+    VkImage       csmFullMapImg  = VK_NULL_HANDLE; VmaAllocation csmFullMapAlloc = VK_NULL_HANDLE;
+    VkImageView   csmFullMapView = VK_NULL_HANDLE;
+    uint32_t      csmFullMapDim  = 0;
+    bool          csmFullMapReady = false;
+    VkBuffer      csmFullMapStage = VK_NULL_HANDLE; VmaAllocation csmFullMapStageAlloc = VK_NULL_HANDLE;
+    VkDeviceSize  csmFullMapStageBytes = 0;
+
     // VK-TERRAIN-DETAIL sub-slice: the material detail-normal ARRAY. A VK copy-once
     // import of the GL terrain_normal_array_tex_ (9-layer RGBA8 GL_TEXTURE_2D_ARRAY,
     // GL_REPEAT wrap). Sampled at binding 6 (sampler2DArray, REPEAT/LINEAR). Dummy 1x1
@@ -430,6 +463,10 @@ bool ensure_shadow_sampler(TerrainIsland* s);
 bool ensure_dummy_shadow(TerrainIsland* s);
 bool copy_static_shadow(TerrainIsland* s, const Mc2TerrainTier1Feed& feed);
 bool copy_dynamic_shadow(TerrainIsland* s, const Mc2TerrainTier1Feed& feed);
+bool ensure_dummy_csm(TerrainIsland* s);
+bool copy_csm_shadows(TerrainIsland* s, const Mc2TerrainTier1Feed& feed);
+bool copy_shadow_slot(TerrainIsland* s, uint32_t glTex, uint32_t dim,
+                      VkImage img, VkBuffer* stage, VmaAllocation* stageAlloc, VkDeviceSize* stageBytes);
 bool ensure_dummy_matnormal(TerrainIsland* s);
 void import_matnormal(TerrainIsland* s, const Mc2TerrainTier1Feed& feed);
 
@@ -585,7 +622,7 @@ void write_descriptors(TerrainIsland* s) {
     // binding 3 = cement combined-image-sampler (dummy/real); binding 4 = cement-word SSBO.
     VkDescriptorBufferInfo uboInfo{ s->ubo, 0, sizeof(TerrainFrameUBO) }; // range = one slot
     VkDescriptorBufferInfo hInfo{ s->heightBuf, 0, VK_WHOLE_SIZE };
-    VkWriteDescriptorSet w[8]{};
+    VkWriteDescriptorSet w[10]{};
     uint32_t n = 0;
     w[n].sType = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET; w[n].dstSet = s->set;
     w[n].dstBinding = 0; w[n].descriptorCount = 1;
@@ -654,6 +691,24 @@ void write_descriptors(TerrainIsland* s) {
         w[n].sType = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET; w[n].dstSet = s->set;
         w[n].dstBinding = 7; w[n].descriptorCount = 1;
         w[n].descriptorType = VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER; w[n].pImageInfo = &dshInfo; ++n;
+    }
+    // VK-TERRAIN-CSM-NEAR-1: binding 8 near-cascade array, binding 9 full-map cascade —
+    // always written once the (dummy or real) images + shared shadowSamp exist.
+    VkDescriptorImageInfo csmArrInfo{};
+    if (s->csmArrayView != VK_NULL_HANDLE && s->shadowSamp != VK_NULL_HANDLE) {
+        csmArrInfo.sampler = s->shadowSamp; csmArrInfo.imageView = s->csmArrayView;
+        csmArrInfo.imageLayout = VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL;
+        w[n].sType = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET; w[n].dstSet = s->set;
+        w[n].dstBinding = 8; w[n].descriptorCount = 1;
+        w[n].descriptorType = VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER; w[n].pImageInfo = &csmArrInfo; ++n;
+    }
+    VkDescriptorImageInfo csmFmInfo{};
+    if (s->csmFullMapView != VK_NULL_HANDLE && s->shadowSamp != VK_NULL_HANDLE) {
+        csmFmInfo.sampler = s->shadowSamp; csmFmInfo.imageView = s->csmFullMapView;
+        csmFmInfo.imageLayout = VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL;
+        w[n].sType = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET; w[n].dstSet = s->set;
+        w[n].dstBinding = 9; w[n].descriptorCount = 1;
+        w[n].descriptorType = VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER; w[n].pImageInfo = &csmFmInfo; ++n;
     }
     vkUpdateDescriptorSets(s->device, n, w, 0, nullptr);
 }
@@ -732,6 +787,12 @@ void destroy_island(TerrainIsland* s) {
     if (s->dynShadowView) vkDestroyImageView(d, s->dynShadowView, nullptr);
     if (s->dynShadowImg)  vmaDestroyImage(s->allocator, s->dynShadowImg, s->dynShadowAlloc);
     if (s->dynShadowStage) vmaDestroyBuffer(s->allocator, s->dynShadowStage, s->dynShadowStageAlloc);
+    if (s->csmArrayView) vkDestroyImageView(d, s->csmArrayView, nullptr);
+    if (s->csmArrayImg)  vmaDestroyImage(s->allocator, s->csmArrayImg, s->csmArrayAlloc);
+    if (s->csmArrayStage) vmaDestroyBuffer(s->allocator, s->csmArrayStage, s->csmArrayStageAlloc);
+    if (s->csmFullMapView) vkDestroyImageView(d, s->csmFullMapView, nullptr);
+    if (s->csmFullMapImg)  vmaDestroyImage(s->allocator, s->csmFullMapImg, s->csmFullMapAlloc);
+    if (s->csmFullMapStage) vmaDestroyBuffer(s->allocator, s->csmFullMapStage, s->csmFullMapStageAlloc);
     if (s->matNormalSamp) vkDestroySampler(d, s->matNormalSamp, nullptr);
     if (s->matNormalView) vkDestroyImageView(d, s->matNormalView, nullptr);
     if (s->matNormalImg)  vmaDestroyImage(s->allocator, s->matNormalImg, s->matNormalAlloc);
@@ -884,10 +945,15 @@ bool init_island(TerrainIsland* s, int w, int h) {
     // descriptor from frame 1 (matNormalReady stays false until MC2_VK_TERRAIN_DETAIL is on
     // AND the GL array is live -> FS uses macro-slope-only normal, no hole).
     if (!ensure_dummy_matnormal(s)) { setFallback("matnormal_dummy_failed"); return false; }
+    // VK-TERRAIN-CSM-NEAR-1: dummy 1x1(x1) near-cascade array + full-map depth-compare
+    // (bindings 8/9) so both are valid descriptors from frame 1 (csmArrayReady/csmFullMapReady
+    // stay false until MC2_VK_TERRAIN_CSM is armed AND GL CSM is actually built -> FS
+    // csmEnabled=0 -> falls back to the legacy single-map path, no hole).
+    if (!ensure_dummy_csm(s)) { setFallback("csm_dummy_failed"); return false; }
 
     // ---- Descriptor layout: binding0 dynamic UBO (VS+FS), binding1 height SSBO (VS). ----
     {
-        VkDescriptorSetLayoutBinding b[8]{};
+        VkDescriptorSetLayoutBinding b[10]{};
         b[0].binding = 0; b[0].descriptorType = VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER_DYNAMIC;
         b[0].descriptorCount = 1; b[0].stageFlags = VK_SHADER_STAGE_VERTEX_BIT | VK_SHADER_STAGE_FRAGMENT_BIT;
         // VK-TERRAIN-DETAIL: binding 1 (height SSBO) is now ALSO read by the FS
@@ -912,16 +978,22 @@ bool init_island(TerrainIsland* s, int w, int h) {
         // VK-TERRAIN-DYNSHADOW: binding 7 = dynamic shadow sampler2DShadow (FS).
         b[7].binding = 7; b[7].descriptorType = VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER;
         b[7].descriptorCount = 1; b[7].stageFlags = VK_SHADER_STAGE_FRAGMENT_BIT;
+        // VK-TERRAIN-CSM-NEAR-1: binding 8 = near-cascade array sampler2DArrayShadow (FS);
+        // binding 9 = full-map cascade sampler2DShadow (FS).
+        b[8].binding = 8; b[8].descriptorType = VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER;
+        b[8].descriptorCount = 1; b[8].stageFlags = VK_SHADER_STAGE_FRAGMENT_BIT;
+        b[9].binding = 9; b[9].descriptorType = VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER;
+        b[9].descriptorCount = 1; b[9].stageFlags = VK_SHADER_STAGE_FRAGMENT_BIT;
         VkDescriptorSetLayoutCreateInfo lci{};
         lci.sType = VK_STRUCTURE_TYPE_DESCRIPTOR_SET_LAYOUT_CREATE_INFO;
-        lci.bindingCount = 8; lci.pBindings = b;
+        lci.bindingCount = 10; lci.pBindings = b;
         if (vkCreateDescriptorSetLayout(s->device, &lci, nullptr, &s->dsl) != VK_SUCCESS) {
             vlog("vkCreateDescriptorSetLayout failed."); return false;
         }
         VkDescriptorPoolSize sizes[4]{};
         sizes[0].type = VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER_DYNAMIC;  sizes[0].descriptorCount = 1;
         sizes[1].type = VK_DESCRIPTOR_TYPE_STORAGE_BUFFER;          sizes[1].descriptorCount = 2; // height + cement
-        sizes[2].type = VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER;  sizes[2].descriptorCount = 5; // colormap + cement + static shadow + matNormalArray + dyn shadow
+        sizes[2].type = VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER;  sizes[2].descriptorCount = 7; // colormap + cement + static shadow + matNormalArray + dyn shadow + csm array + csm fullmap
         VkDescriptorPoolCreateInfo pci{};
         pci.sType = VK_STRUCTURE_TYPE_DESCRIPTOR_POOL_CREATE_INFO;
         pci.maxSets = 1; pci.poolSizeCount = 3; pci.pPoolSizes = sizes;
@@ -1660,6 +1732,134 @@ bool ensure_shadow_image(TerrainIsland* s, uint32_t dim) {
     return ensure_shadow_image_slot(s, dim, &s->shadowImg, &s->shadowAlloc, &s->shadowView, &s->shadowDim);
 }
 
+// VK-TERRAIN-CSM-NEAR-1: (Re)create a D32 depth-COMPARE ARRAY image at dim x layers
+// (idempotent when unchanged). Mirrors ensure_shadow_image_slot but with arrayLayers>1
+// and a 2D_ARRAY view (so the frag can bind it as sampler2DArrayShadow).
+bool ensure_csm_array_image(TerrainIsland* s, uint32_t dim, uint32_t layers) {
+    if (dim == 0) dim = 1;
+    if (layers == 0) layers = 1;
+    if (s->csmArrayImg != VK_NULL_HANDLE && s->csmArrayDim == dim && s->csmArrayLayers == layers)
+        return true;
+    if (s->csmArrayView) { vkDestroyImageView(s->device, s->csmArrayView, nullptr); s->csmArrayView = VK_NULL_HANDLE; }
+    if (s->csmArrayImg)  { vmaDestroyImage(s->allocator, s->csmArrayImg, s->csmArrayAlloc); s->csmArrayImg = VK_NULL_HANDLE; }
+
+    VkImageCreateInfo ici{};
+    ici.sType = VK_STRUCTURE_TYPE_IMAGE_CREATE_INFO;
+    ici.imageType = VK_IMAGE_TYPE_2D; ici.format = VK_FORMAT_D32_SFLOAT;
+    ici.extent = {dim, dim, 1}; ici.mipLevels = 1; ici.arrayLayers = layers;
+    ici.samples = VK_SAMPLE_COUNT_1_BIT; ici.tiling = VK_IMAGE_TILING_OPTIMAL;
+    ici.usage = VK_IMAGE_USAGE_SAMPLED_BIT | VK_IMAGE_USAGE_TRANSFER_DST_BIT;
+    ici.initialLayout = VK_IMAGE_LAYOUT_UNDEFINED;
+    VmaAllocationCreateInfo aci{}; aci.usage = VMA_MEMORY_USAGE_AUTO;
+    if (vmaCreateImage(s->allocator, &ici, &aci, &s->csmArrayImg, &s->csmArrayAlloc, nullptr) != VK_SUCCESS) {
+        s->csmArrayImg = VK_NULL_HANDLE; return false;
+    }
+    VkImageViewCreateInfo vci{};
+    vci.sType = VK_STRUCTURE_TYPE_IMAGE_VIEW_CREATE_INFO;
+    vci.image = s->csmArrayImg; vci.viewType = VK_IMAGE_VIEW_TYPE_2D_ARRAY; vci.format = VK_FORMAT_D32_SFLOAT;
+    vci.subresourceRange = {VK_IMAGE_ASPECT_DEPTH_BIT, 0, 1, 0, layers};
+    if (vkCreateImageView(s->device, &vci, nullptr, &s->csmArrayView) != VK_SUCCESS) {
+        vmaDestroyImage(s->allocator, s->csmArrayImg, s->csmArrayAlloc); s->csmArrayImg = VK_NULL_HANDLE;
+        s->csmArrayView = VK_NULL_HANDLE; return false;
+    }
+    s->csmArrayDim = dim; s->csmArrayLayers = layers;
+    VkCommandBuffer cb = begin_oneshot(s);
+    if (cb != VK_NULL_HANDLE) {
+        VkImageMemoryBarrier bar{};
+        bar.sType = VK_STRUCTURE_TYPE_IMAGE_MEMORY_BARRIER;
+        bar.oldLayout = VK_IMAGE_LAYOUT_UNDEFINED; bar.newLayout = VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL;
+        bar.srcQueueFamilyIndex = bar.dstQueueFamilyIndex = VK_QUEUE_FAMILY_IGNORED; bar.image = s->csmArrayImg;
+        bar.subresourceRange = {VK_IMAGE_ASPECT_DEPTH_BIT, 0, 1, 0, layers};
+        bar.srcAccessMask = 0; bar.dstAccessMask = VK_ACCESS_SHADER_READ_BIT;
+        vkCmdPipelineBarrier(cb, VK_PIPELINE_STAGE_TOP_OF_PIPE_BIT, VK_PIPELINE_STAGE_FRAGMENT_SHADER_BIT,
+                             0, 0, nullptr, 0, nullptr, 1, &bar);
+        end_oneshot(s, cb);
+    }
+    write_descriptors(s);
+    return true;
+}
+
+bool ensure_dummy_csm(TerrainIsland* s) {
+    if (!ensure_shadow_sampler(s)) return false;
+    if (s->csmArrayView == VK_NULL_HANDLE) {
+        if (!ensure_csm_array_image(s, 1, 1)) return false;
+        s->csmArrayReady = false;
+    }
+    if (s->csmFullMapView == VK_NULL_HANDLE) {
+        if (!ensure_shadow_image_slot(s, 1, &s->csmFullMapImg, &s->csmFullMapAlloc,
+                                      &s->csmFullMapView, &s->csmFullMapDim)) return false;
+        s->csmFullMapReady = false;
+    }
+    return true;
+}
+
+// Per-frame copy of the GL near-cascade array (GL_TEXTURE_2D_ARRAY depth) into the VK
+// D32 depth-COMPARE array, one glGetTexImage covering all layers (matches copy_shadow_slot's
+// single-image approach but reads the whole array in one call — GL_TEXTURE_2D_ARRAY
+// glGetTexImage returns all layers contiguously).
+bool copy_csm_array(TerrainIsland* s, uint32_t glTex, uint32_t dim, uint32_t layers) {
+    const VkDeviceSize bytes = (VkDeviceSize)dim * (VkDeviceSize)dim * (VkDeviceSize)layers * 4u;
+    if (s->csmArrayStage == VK_NULL_HANDLE || bytes > s->csmArrayStageBytes) {
+        if (s->csmArrayStage != VK_NULL_HANDLE) {
+            vkDeviceWaitIdle(s->device);
+            vmaDestroyBuffer(s->allocator, s->csmArrayStage, s->csmArrayStageAlloc);
+            s->csmArrayStage = VK_NULL_HANDLE;
+        }
+        if (!make_buffer(s, bytes, VK_BUFFER_USAGE_TRANSFER_SRC_BIT, &s->csmArrayStage, &s->csmArrayStageAlloc, true))
+            return false;
+        s->csmArrayStageBytes = bytes;
+    }
+    void* p = nullptr;
+    if (vmaMapMemory(s->allocator, s->csmArrayStageAlloc, &p) != VK_SUCCESS) return false;
+    glBindTexture(GL_TEXTURE_2D_ARRAY, (GLuint)glTex);
+    glGetTexImage(GL_TEXTURE_2D_ARRAY, 0, GL_DEPTH_COMPONENT, GL_FLOAT, p);
+    glBindTexture(GL_TEXTURE_2D_ARRAY, 0);
+    vmaUnmapMemory(s->allocator, s->csmArrayStageAlloc);
+
+    VkCommandBuffer cb = begin_oneshot(s);
+    if (cb == VK_NULL_HANDLE) return false;
+    VkImageMemoryBarrier bar{};
+    bar.sType = VK_STRUCTURE_TYPE_IMAGE_MEMORY_BARRIER;
+    bar.srcQueueFamilyIndex = bar.dstQueueFamilyIndex = VK_QUEUE_FAMILY_IGNORED; bar.image = s->csmArrayImg;
+    bar.subresourceRange = {VK_IMAGE_ASPECT_DEPTH_BIT, 0, 1, 0, layers};
+    bar.oldLayout = VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL; bar.newLayout = VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL;
+    bar.srcAccessMask = VK_ACCESS_SHADER_READ_BIT; bar.dstAccessMask = VK_ACCESS_TRANSFER_WRITE_BIT;
+    vkCmdPipelineBarrier(cb, VK_PIPELINE_STAGE_FRAGMENT_SHADER_BIT, VK_PIPELINE_STAGE_TRANSFER_BIT,
+                         0, 0, nullptr, 0, nullptr, 1, &bar);
+    VkBufferImageCopy rgn{};
+    rgn.imageSubresource = {VK_IMAGE_ASPECT_DEPTH_BIT, 0, 0, layers};
+    rgn.imageExtent = {dim, dim, 1};
+    vkCmdCopyBufferToImage(cb, s->csmArrayStage, s->csmArrayImg, VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL, 1, &rgn);
+    bar.oldLayout = VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL; bar.newLayout = VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL;
+    bar.srcAccessMask = VK_ACCESS_TRANSFER_WRITE_BIT; bar.dstAccessMask = VK_ACCESS_SHADER_READ_BIT;
+    vkCmdPipelineBarrier(cb, VK_PIPELINE_STAGE_TRANSFER_BIT, VK_PIPELINE_STAGE_FRAGMENT_SHADER_BIT,
+                         0, 0, nullptr, 0, nullptr, 1, &bar);
+    end_oneshot(s, cb);
+    return true;
+}
+
+// VK-TERRAIN-CSM-NEAR-1: import both the near-cascade array + the full-map cascade for
+// this frame. Fail-soft: on any failure, csmArrayReady/csmFullMapReady stay false and the
+// UBO's csmEnabled is forced 0 by the caller -> frag falls back to the legacy single-map
+// path (or unshadowed), never a hole/crash.
+bool copy_csm_shadows(TerrainIsland* s, const Mc2TerrainTier1Feed& feed) {
+    s->csmArrayReady = false;
+    s->csmFullMapReady = false;
+    if (!feed.csmEnabled || feed.glCsmArrayTex == 0 || feed.csmArraySize <= 0
+        || feed.glCsmFullMapTex == 0 || feed.csmFullMapSize <= 0 || feed.csmCount <= 1)
+        return false;
+    const uint32_t layers = (uint32_t)(feed.csmCount - 1);  // near cascades only (last = full-map, separate tex)
+    if (!ensure_csm_array_image(s, (uint32_t)feed.csmArraySize, layers)) return false;
+    if (!copy_csm_array(s, feed.glCsmArrayTex, (uint32_t)feed.csmArraySize, layers)) return false;
+    if (!ensure_shadow_image_slot(s, (uint32_t)feed.csmFullMapSize, &s->csmFullMapImg,
+                                  &s->csmFullMapAlloc, &s->csmFullMapView, &s->csmFullMapDim)) return false;
+    if (!copy_shadow_slot(s, feed.glCsmFullMapTex, (uint32_t)feed.csmFullMapSize, s->csmFullMapImg,
+                          &s->csmFullMapStage, &s->csmFullMapStageAlloc, &s->csmFullMapStageBytes)) return false;
+    s->csmArrayReady = true;
+    s->csmFullMapReady = true;
+    return true;
+}
+
 // 1x1 dummies so bindings 5 (static) and 7 (dynamic) are valid from frame 1.
 bool ensure_dummy_shadow(TerrainIsland* s) {
     if (!ensure_shadow_sampler(s)) return false;
@@ -1920,6 +2120,12 @@ extern "C" int mc2_vk_terrain_island_run(int w, int h) {
     // shadow (fail-soft, never a hole). Same mechanism as the static copy above.
     copy_dynamic_shadow(s, feed);
 
+    // VK-TERRAIN-CSM-NEAR-1: per-frame copy of the GL near-cascade array + full-map
+    // cascade. No-op (csmArrayReady/csmFullMapReady=false) when the gate is off or GL
+    // CSM isn't actually built this frame -> UBO csmEnabled forced 0 below -> frag falls
+    // back to the legacy single-map path (fail-soft, never a hole).
+    copy_csm_shadows(s, feed);
+
     // VK-SHADOW-DIRECT-CONSUME-1: the direct view's underlying VkImageView handle is
     // stable across frames (owned by the shadow island's persistent ShadowIsland), but
     // binding 7 must still be refreshed via write_descriptors() the FIRST frame it
@@ -2018,6 +2224,20 @@ extern "C" int mc2_vk_terrain_island_run(int w, int h) {
                 // patch's skirt sub-gate was off at capture, or GL reported no skirt for
                 // this block -- island draws no skirt strips for it, see the draw loop).
                 u.skirtDepth = feed.patches[i].skirtDepth;
+                // VK-TERRAIN-CSM-NEAR-1: enable only when the gate armed AND both the near
+                // array + full-map copies succeeded this frame (s->csmArrayReady/
+                // csmFullMapReady). Else 0 -> frag falls back to the legacy single-map
+                // dynamic-shadow path (u.enableDynShadows above), never a hole.
+                u.csmEnabled = (feed.lightingEnabled && feed.csmEnabled
+                                && s->csmArrayReady && s->csmFullMapReady) ? 1 : 0;
+                u.csmCount     = feed.csmCount;
+                u.csmDepthSpan = feed.csmDepthSpan;
+                std::memcpy(u.csmCascadeMatrices, feed.csmCascadeMatrices, sizeof(u.csmCascadeMatrices));
+                u.csmCascadeTexelWorld[0] = feed.csmCascadeTexelWorld[0];
+                u.csmCascadeTexelWorld[1] = feed.csmCascadeTexelWorld[1];
+                u.csmCascadeTexelWorld[2] = feed.csmCascadeTexelWorld[2];
+                u.csmCascadeTexelWorld[3] = 0.0f;
+                u.csmFullMapTexelWorld = feed.csmFullMapTexelWorld;
                 slots[i] = u;
             }
             vmaUnmapMemory(s->allocator, s->uboAlloc);

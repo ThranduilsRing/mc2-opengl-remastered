@@ -28,6 +28,7 @@ REGISTRY = [
     ("calc_light", "shaders/include/lighting.hglsl", "shaders/vulkan/mech_tier1.vert"),
     ("lodNear", "shaders/gos_terrain.frag", "shaders/vulkan/terrain_tier1.frag"),
     ("skirtVertMath", "shaders/terrain_lod_chunk.vert", "shaders/vulkan/terrain_tier1_skirt.vert"),
+    ("calcDynamicShadowCsm", "shaders/include/shadow.hglsl", "shaders/vulkan/terrain_tier1.frag"),
 ]
 
 

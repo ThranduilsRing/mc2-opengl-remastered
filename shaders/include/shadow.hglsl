@@ -197,6 +197,7 @@ float calcDynamicShadow(vec3 worldPos, vec3 normal, vec3 lightDir, int numTaps)
 
     int count = clamp(dynamicCsmCount, 1, MC2_SHADOW_CSM_MAX);
 
+    //PORT-BEGIN:calcDynamicShadowCsm
     // Select the first (tightest) cascade that contains worldPos. Cascade 0 is
     // the near/highest-resolution slice; fall through to coarser ones. When the
     // sample lands inside the OVERLAP toward the next cascade's near edge, blend
@@ -235,6 +236,7 @@ float calcDynamicShadow(vec3 worldPos, vec3 normal, vec3 lightDir, int numTaps)
 
     // Outside every cascade -> fully lit (static map covers the far field).
     return 1.0;
+    //PORT-END:calcDynamicShadowCsm
 }
 
 #else  // ---- legacy single dynamic shadow map (default, byte-identical) ----

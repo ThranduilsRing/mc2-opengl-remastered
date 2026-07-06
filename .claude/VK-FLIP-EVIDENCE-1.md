@@ -350,3 +350,29 @@ lighting), NOT the wash. CSM-OFF was visually pixel-clean vs GL.
 **Recommendation:** field-config parity for terrain/shadow/mech-pan is now GREEN;
 sim-speed + far-band remain before a field-config flip. Keep
 MC2_VK_TERRAIN_HEIGHT_AUDIT=1 first release as before.
+
+### VK-TERRAIN-CSM-NEAR-1 (2026-07-06, this session) — real cascade cure, landed unverified
+
+Prior state above (5.1-5.8 MAD "post-fix") used the `MC2_VK_TERRAIN_CSM_FULLMAP_
+EXPERIMENTAL` full-map-only subset — CSM was effectively OFF for VK's dynamic
+object shadow (coarse full-map catch-all suppressed, no near shadow at all up
+close). This session ported GL's real near-cascade-array `calcDynamicShadow`
+into `terrain_tier1.frag` (see VK-ARC-STATE.md for the full mechanism writeup):
+new bindings 8/9 (`sampler2DArrayShadow` near array + `sampler2DShadow`
+full-map), `TerrainFrameUBO` grew 512B->1024B for N cascade matrices, verbatim
+port registered in `glsl_port_diff.py`.
+
+**Verification done this session:** build64_island clean build,
+`check_vk_shaders.py` 34/34 clean, `check_ubo_layout.py` 44-field cross-check
+OK, `glsl_port_diff.py` shows only identifier-rename diffs (same structure).
+
+**Verification NOT done (blocks flip claim):** live `tracy-vk-compare.bat`
+field capture — the shared field deploy target `mc2-win64-0.4c` had a
+different lane's exe running concurrently (fingerprint mismatch,
+`claude/cliff-dress-1` sha `8b125050f380` vs this session's `bf8e4385`-based
+build) so no before/after MAD numbers were collected for
+`MC2_VK_TERRAIN_CSM=1` (near-cascade path) this session. **Do NOT treat this
+as flip evidence** until a field run with an uncontended deploy target
+confirms: (a) building-shadow-on-terrain pose shows a tight near-cascade
+shadow (not absent, not the old blob), (b) airport overview bookmarks stay
+~5 MAD (the a50c6033 wash must not return under the new path either).

@@ -95,6 +95,20 @@ layout(set = 0, binding = 0, std140) uniform TerrainFrameUBO {
     // at the lodNear computation site below for the verbatim formula.
     vec4  cameraPosMC2;     // off 320: gos_terrain.frag's `cameraPos` (Stuff/MLR space)
     int   lodFadeEnabled;   // off 336: MC2_VK_TERRAIN_LODFADE gate (0 -> lodNear==1.0 always)
+    float skirtDepth;       // off 340: VK-TERRAIN-SKIRT (read by the skirt vert only)
+    // VK-TERRAIN-CSM-NEAR-1 sub-slice: near-cascade-array dynamic shadow. Ports GL's
+    // calcDynamicShadow cascade-select VERBATIM (shadow.hglsl:191-238). LOCKSTEP with
+    // vulkan_terrain_island.cpp TerrainFrameUBO (slot grew 512->1024B for this).
+#define MC2_VK_SHADOW_CSM_MAX 3
+    int   _csmPad0;                              // off 344
+    int   _csmPad1;                               // off 348
+    int   csmEnabled;                             // off 352: near-cascade path armed+valid this frame
+    int   csmCount;                               // off 356: 1..MC2_VK_SHADOW_CSM_MAX
+    float csmDepthSpan;                           // off 360
+    int   _csmPad2;                               // off 364
+    mat4  csmCascadeMatrices[3];                  // off 368 (MC2_VK_SHADOW_CSM_MAX; literal for check_ubo_layout.py's regex)
+    vec4  csmCascadeTexelWorld;                   // off 560 (xyz used, w pad)
+    float csmFullMapTexelWorld;                   // off 576
 } uT;
 
 // VK-TERRAIN-DETAIL: the height SSBO (VK-owned snapshot; same buffer the VS reads at
@@ -359,6 +373,126 @@ layout(set = 0, binding = 5) uniform sampler2DShadow u_staticShadow;
 // single-map path). Same D32 depth-COMPARE format/sampler as static. Always a valid
 // descriptor (1x1 dummy until imported); uT.enableDynShadows gates the sample.
 layout(set = 0, binding = 7) uniform sampler2DShadow u_dynamicShadow;
+// VK-TERRAIN-CSM-NEAR-1: near-cascade array (D32 depth-COMPARE, VK_IMAGE_VIEW_TYPE_2D_ARRAY,
+// layers = csmCount-1) + the separate lower-res full-map catch-all cascade (last cascade).
+// Both always valid descriptors (1x1/1x1x1 dummies until imported); uT.csmEnabled gates use.
+layout(set = 0, binding = 8) uniform sampler2DArrayShadow u_dynamicShadowArray;
+layout(set = 0, binding = 9) uniform sampler2DShadow u_dynamicFullMapShadow;
+
+// VK-TERRAIN-CSM-NEAR-1: verbatim port of GL's csmSampleLayer/csmSampleFullMap/csmProject/
+// calcDynamicShadow cascade-select (shadow.hglsl). Same Poisson-16 disk, gradient-adaptive
+// PCF, slope+texel bias, and cascade-select+overlap-blend math; only the uniform NAMES
+// differ (uT.csm* / u_dynamicShadowArray / u_dynamicFullMapShadow vs GL's dynamic*).
+const vec2 mv_poissonDisk[16] = vec2[](
+    vec2(-0.94201624, -0.39906216), vec2( 0.94558609, -0.76890725),
+    vec2(-0.09418410, -0.92938870), vec2( 0.34495938,  0.29387760),
+    vec2(-0.91588581,  0.45771432), vec2(-0.81544232, -0.87912464),
+    vec2(-0.38277543,  0.27676845), vec2( 0.97484398,  0.75648379),
+    vec2( 0.44323325, -0.97511554), vec2( 0.53742981, -0.47373420),
+    vec2(-0.26496911, -0.41893023), vec2( 0.79197514,  0.19090188),
+    vec2(-0.24188840,  0.99706507), vec2(-0.81409955,  0.91437590),
+    vec2( 0.19984126,  0.78641367), vec2( 0.14383161, -0.14100790)
+);
+
+float mv_csmSampleLayer(vec3 projCoords, int layer, vec3 worldPos, float NdotL, int numTaps) {
+    float slope = max(1.0 - NdotL, 0.0);
+    float texelBias = 1.5 * uT.csmCascadeTexelWorld[layer] / max(uT.csmDepthSpan, 1.0);
+    float bias = max(0.0012 * slope, 0.0004) + texelBias;
+    float currentDepth = projCoords.z - bias;
+
+    float angle = 6.2831853 * fract(sin(dot(worldPos.xz, vec2(12.9898, 78.233))) * 43758.5453);
+    float ca = cos(angle), sa = sin(angle);
+    mat2 rot = mat2(ca, sa, -sa, ca);
+
+    float depthGradient = length(vec2(dFdx(projCoords.z), dFdy(projCoords.z)));
+    float hardness = clamp(depthGradient * 180.0, 0.0, 1.0);
+    float adaptiveScale = mix(2.4, 0.8, hardness);
+
+    vec2 texelSize = 1.0 / vec2(textureSize(u_dynamicShadowArray, 0).xy);
+    float radius = max(uT.shadowSoftness, 0.5) * adaptiveScale;
+    float shadow = 0.0;
+    int taps = clamp(numTaps, 1, 16);
+    for (int i = 0; i < taps; i++) {
+        vec2 offset = rot * mv_poissonDisk[i] * radius * texelSize;
+        shadow += texture(u_dynamicShadowArray, vec4(projCoords.xy + offset, float(layer), currentDepth));
+    }
+    shadow /= float(taps);
+    return shadow;
+}
+
+float mv_csmSampleFullMap(vec3 projCoords, vec3 worldPos, float NdotL, int numTaps) {
+    float slope = max(1.0 - NdotL, 0.0);
+    float texelBias = 1.5 * uT.csmFullMapTexelWorld / max(uT.csmDepthSpan, 1.0);
+    float bias = max(0.0012 * slope, 0.0004) + texelBias;
+    float currentDepth = projCoords.z - bias;
+
+    float angle = 6.2831853 * fract(sin(dot(worldPos.xz, vec2(12.9898, 78.233))) * 43758.5453);
+    float ca = cos(angle), sa = sin(angle);
+    mat2 rot = mat2(ca, sa, -sa, ca);
+
+    float depthGradient = length(vec2(dFdx(projCoords.z), dFdy(projCoords.z)));
+    float hardness = clamp(depthGradient * 180.0, 0.0, 1.0);
+    float adaptiveScale = mix(2.4, 0.8, hardness);
+
+    vec2 texelSize = 1.0 / vec2(textureSize(u_dynamicFullMapShadow, 0));
+    float radius = max(uT.shadowSoftness, 0.5) * adaptiveScale;
+    float shadow = 0.0;
+    int taps = clamp(numTaps, 1, 16);
+    for (int i = 0; i < taps; i++) {
+        vec2 offset = rot * mv_poissonDisk[i] * radius * texelSize;
+        shadow += texture(u_dynamicFullMapShadow, vec3(projCoords.xy + offset, currentDepth));
+    }
+    shadow /= float(taps);
+    return shadow;
+}
+
+bool mv_csmProject(vec3 worldPos, int layer, out vec3 projCoords) {
+    mat4 M = uT.csmCascadeMatrices[layer];
+    vec4 lsPos = M * vec4(worldPos, 1.0);
+    projCoords = lsPos.xyz / lsPos.w;
+    projCoords.xy = projCoords.xy * 0.5 + 0.5;
+    if (projCoords.z > 1.0 || projCoords.z < 0.0) return false;
+    if (projCoords.xy != clamp(projCoords.xy, 0.0, 1.0)) return false;
+    return true;
+}
+
+// calcDynamicShadow (near-cascade path). Mirrors GL calcDynamicShadow's early-outs
+// (enableDynamicShadows/NdotL) via the caller (see main()); this is just the cascade
+// loop, verbatim-diffed against shadow.hglsl's PORT-BEGIN/END:calcDynamicShadowCsm block.
+float mv_calcDynamicShadowCsm(vec3 worldPos, float NdotL, int numTaps) {
+    int count = clamp(uT.csmCount, 1, MC2_VK_SHADOW_CSM_MAX);
+
+    //PORT-BEGIN:calcDynamicShadowCsm
+    for (int c = 0; c < count; ++c) {
+        vec3 pc;
+        if (!mv_csmProject(worldPos, c, pc)) continue;
+
+        float vis = (c == count - 1)
+                  ? mv_csmSampleFullMap(pc, worldPos, NdotL, numTaps)
+                  : mv_csmSampleLayer(pc, c, worldPos, NdotL, numTaps);
+
+        if (c + 1 < count) {
+            vec2 d = min(pc.xy, 1.0 - pc.xy);
+            float edge = min(d.x, d.y);
+            const float band = 0.06;
+            if (edge < band) {
+                vec3 pc2;
+                if (mv_csmProject(worldPos, c + 1, pc2)) {
+                    float vis2 = (c + 1 == count - 1)
+                               ? mv_csmSampleFullMap(pc2, worldPos, NdotL, numTaps)
+                               : mv_csmSampleLayer(pc2, c + 1, worldPos, NdotL, numTaps);
+                    float t = smoothstep(0.0, band, edge);
+                    vis = mix(vis2, vis, t);
+                }
+            }
+        }
+
+        return mix(0.4, 1.0, vis);
+    }
+
+    return 1.0;
+    //PORT-END:calcDynamicShadowCsm
+}
 
 void main() {
     vec3 base;
@@ -555,8 +689,16 @@ void main() {
                                          u_staticShadow, uT.staticLightSpaceMatrix,
                                          uT.shadowSoftness, 16);
         }
+        // VK-TERRAIN-CSM-NEAR-1: when the near-cascade-array path is armed+valid this
+        // frame (uT.csmEnabled), use the ported cascade-select (mirrors GL sampling the
+        // near cascade up close instead of the coarse full-map wash). Falls back to the
+        // legacy single dynamic map otherwise (unchanged; MC2_VK_TERRAIN_CSM_FULLMAP_
+        // EXPERIMENTAL escape hatch is untouched — it feeds enableDynShadows, not csmEnabled).
         float dynS = 1.0;
-        if (uT.enableDynShadows != 0) {
+        if (uT.csmEnabled != 0) {
+            float NdotLdyn = max(dot(shadowN, lightDir), 0.0);
+            dynS = (NdotLdyn < 0.05) ? 1.0 : mv_calcDynamicShadowCsm(v_worldPos, NdotLdyn, 8);
+        } else if (uT.enableDynShadows != 0) {
             dynS = computeBakedShadow(v_worldPos, shadowN, lightDir,
                                       u_dynamicShadow, uT.dynamicLightSpaceMatrix,
                                       uT.shadowSoftness, 8);

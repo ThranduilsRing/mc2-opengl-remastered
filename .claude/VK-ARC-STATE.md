@@ -95,12 +95,37 @@ zero surface extent = VK present fail-softs to GL and silently invalidates the
 run. Islands (terrain/shadow/prop/mech) still render under present-fail-soft, so
 composited pixels remain a valid VK oracle.
 
-- **BUG 1 (terrain shadow wash) FIXED** — MC2_VK_TERRAIN_CSM full-map subset is
-  net-negative at play distance (coarse full-map cascade vs GL's near cascade =
-  camera-swimming blobs). Field GL-vs-VK MAD 28-31 (wash) -> ~5 (clean) on
-  airport bookmarks. Double-gated: now also needs
-  `MC2_VK_TERRAIN_CSM_FULLMAP_EXPERIMENTAL=1`. Real cure (near-cascade-array
-  interop) still DEFERRED.
+- **BUG 1 (terrain shadow wash) FIXED (interim)** — MC2_VK_TERRAIN_CSM full-map
+  subset is net-negative at play distance (coarse full-map cascade vs GL's near
+  cascade = camera-swimming blobs). Field GL-vs-VK MAD 28-31 (wash) -> ~5
+  (clean) on airport bookmarks. Double-gated behind
+  `MC2_VK_TERRAIN_CSM_FULLMAP_EXPERIMENTAL=1` (parked escape hatch).
+- **VK-TERRAIN-CSM-NEAR-1 (real cure, LANDED, NOT field-verified)** — ports
+  GL's `calcDynamicShadow` near-cascade cascade-select VERBATIM into
+  `terrain_tier1.frag` (`//PORT-BEGIN/END:calcDynamicShadowCsm`, registered in
+  `tools/glsl_port_diff.py`). Imports GL's near-cascade array
+  (`dynShadowArrayTex_`, GL_TEXTURE_2D_ARRAY depth) as a VK D32 depth-COMPARE
+  `VK_IMAGE_VIEW_TYPE_2D_ARRAY` (`sampler2DArrayShadow`, binding 8) + the
+  separate full-map catch-all cascade (binding 9) + all cascade
+  matrices/texel-world/csmDepthSpan into `TerrainFrameUBO` (grew 512B->1024B,
+  `check_ubo_layout.py` passes, 44 fields cross-checked). Copy mechanism:
+  glGetTexImage per frame (no zero-copy producer for the array exists yet —
+  the VK shadow island only produces the single legacy map) — documented as a
+  known cost, not hidden. Gate `MC2_VK_TERRAIN_CSM` now means THIS
+  implementation (requires MC2_VK_TERRAIN_DYNSHADOW chain + GL
+  MC2_SHADOW_CSM=1); FULLMAP_EXPERIMENTAL untouched as a fallback escape
+  hatch, mutually exclusive C++ population (no collision). Build clean
+  (build64_island), `check_vk_shaders.py` 34/34 clean, `check_ubo_layout.py`
+  OK, `glsl_port_diff.py` block is a verbatim structural match (only
+  identifier renames, e.g. `mv_` prefix — same operators/order/control-flow).
+  ⚠ **NOT YET FIELD-VERIFIED**: the shared field deploy target
+  (`mc2-win64-0.4c`) was mid-run occupied by a different concurrent lane
+  (`claude/cliff-dress-1`, exe fingerprint mismatch on smoke) so a live
+  GL-vs-VK MAD comparison under `tracy-vk-compare.bat` was not obtained this
+  session. NEXT SESSION: claim/lease the field deploy target, run the
+  building-shadow-on-terrain pose (before/after), confirm near cascade shows
+  a tight building/mech shadow up close (not the old blob) and airport
+  overview bookmarks stay ~5 MAD (the a50c6033 wash must not return).
 - **BUG 4 (mech screen-space freeze on pan) FIXED** — feed now uses live
   gos_GetMechFixBMVPMat4() not the flush-time snapshot. Static-capture cannot
   pan; verified by code-trace + no static regression. USER RE-TEST on live pan.
