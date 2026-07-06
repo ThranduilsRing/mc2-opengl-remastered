@@ -1722,7 +1722,7 @@ extern "C" int mc2_vk_terrain_island_run(int w, int h) {
     glInteropSignalToVk(*s->depthView,  GL_LAYOUT_DEPTH_STENCIL_ATTACHMENT_EXT, fsD.parity);
 
     const clk::time_point tRender0 = clk::now();
-    ZoneScopedN("VK-terrain-record-submit");   // VK-FLIP-FIELD-REPORT-1: CPU record+queue-submit (to fn return)
+    ZoneNamedN(zTerrRec, "VK-terrain-record-submit", true);   // VK-FLIP-FIELD-REPORT-1: CPU record+queue-submit (to fn return)
     vkResetCommandBuffer(cb, 0);
     VkCommandBufferBeginInfo bi{};
     bi.sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_BEGIN_INFO;

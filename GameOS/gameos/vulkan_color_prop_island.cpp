@@ -1509,7 +1509,7 @@ extern "C" int mc2_vk_color_prop_island_run(int w, int h) {
         glInteropSignalToVk(*depthView,  GL_LAYOUT_DEPTH_STENCIL_ATTACHMENT_EXT,  fsD.parity);
 
         const clk::time_point tRender0 = clk::now();
-        ZoneScopedN("VK-props-record-submit");   // VK-FLIP-FIELD-REPORT-1: CPU record+queue-submit (to tier1-block end)
+        ZoneNamedN(zPropRec, "VK-props-record-submit", true);   // VK-FLIP-FIELD-REPORT-1: CPU record+queue-submit (to tier1-block end)
         vkResetCommandBuffer(cb, 0);
         VkCommandBufferBeginInfo bi{};
         bi.sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_BEGIN_INFO;

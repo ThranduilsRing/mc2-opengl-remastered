@@ -892,6 +892,42 @@ extern "C" int mc2_terrain_tier1_get_frame_feed(Mc2TerrainTier1Feed* out)
                             sizeof(out->dynamicLightSpaceMatrix));
             }
         }
+        // VK-FLIP-FIELD-REPORT-1 CSM SUBSET: when CSM IS enabled (launcher default), the
+        // single-map dyn path above is skipped (!mc2ShadowCsmEnabled), so VK terrain got
+        // NO object shadow up close. GL LOD0 terrain samples calcDynamicShadow's CSM
+        // cascades (near array + full-map catch-all). Full near-cascade-array interop is a
+        // large lift (sampler2DArrayShadow import + N matrices) and is DEFERRED. The
+        // BIGGEST-SAFE-SUBSET: feed the CSM FULL-MAP cascade (the last cascade — a single
+        // GL_TEXTURE_2D DEPTH_COMPONENT texture, byte-shape-identical to the single dyn map
+        // this island already imports) through the SAME binding-7 slot + computeBakedShadow.
+        // Result: VK terrain gets whole-map object shadows (coarser than GL's near cascade
+        // near the camera, but present) — closes the "no shadows at all" gap with the
+        // proven single-map mechanism, zero new interop surface. Gate MC2_VK_TERRAIN_CSM
+        // (requires the dynshadow gate chain; default-OFF -> byte-identical to today).
+        // MC2_VK_TERRAIN_CSM is PRESENCE-GATED (explicit "=1" only, does NOT follow the
+        // umbrella) because the full-map subset is not yet parity-proven default-on. Once
+        // the oracle blesses it, it can join the umbrella family. Kept independent of
+        // subGate() so the umbrella flip does NOT silently arm it.
+        auto csmSubsetOn = []() {
+            const char* v = std::getenv("MC2_VK_TERRAIN_CSM");
+            return v && v[0] == '1';
+        };
+        if (dynShadowGate && !out->dynShadowsEnabled && pp && pp->shadowsEnabled_
+            && mc2ShadowCsmEnabled()
+            && csmSubsetOn()) {
+            const GLuint fTex  = pp->getDynamicFullMapTexture();
+            const int    fSize = pp->getDynamicFullMapSize();
+            const int    ccount = pp->getDynamicShadowCascadeCount();
+            const float* mats  = pp->getDynamicCascadeMatrices();
+            if (fTex != 0 && fSize > 0 && ccount > 0 && mats) {
+                out->dynShadowsEnabled = 1;
+                out->glDynamicShadowTex = static_cast<uint32_t>(fTex);
+                out->dynamicShadowSize = fSize;
+                // Full-map cascade = the LAST cascade; its matrix is row (ccount-1).
+                std::memcpy(out->dynamicLightSpaceMatrix, mats + (ccount - 1) * 16,
+                            sizeof(out->dynamicLightSpaceMatrix));
+            }
+        }
     }
 
     // VK-TERRAIN-DETAIL sub-slice: hand the material detail-normal ARRAY tex + the GL

@@ -838,6 +838,19 @@ static constexpr EnvVarDesc kAuxEnvVars[] = {
         "dynamic term (lit-only), no hole. Gate OFF = byte-identical to the pre-dynshadow VK frame."
     },
     {
+        "MC2_FEATURE_VK_TERRAIN_CSM",
+        "MC2_VK_TERRAIN_CSM",
+        EnvVarKind::Feature,
+        false,
+        "VK-TERRAIN-CSM (biggest-safe-subset): presence-gated =1, default OFF (requires MC2_VK_TERRAIN_DYNSHADOW "
+        "chain + CSM active). When MC2_SHADOW_CSM is ON (launcher default) the single-map dynshadow path is "
+        "skipped, so VK terrain had NO object shadow up close. This feeds the CSM FULL-MAP cascade (the last "
+        "cascade — a single GL_TEXTURE_2D DEPTH_COMPONENT tex, byte-shape-identical to the single dyn map) "
+        "through the existing binding-7 slot + computeBakedShadow, giving VK terrain whole-map object shadows. "
+        "The near-cascade ARRAY (sampler2DArrayShadow + N matrices) is DEFERRED. FAIL-SOFT: full-map tex not "
+        "live -> no dynamic term, no hole. Gate OFF = byte-identical (single-map dynshadow path unchanged)."
+    },
+    {
         "MC2_FEATURE_VK_PROP_MATERIAL",
         "MC2_VK_PROP_MATERIAL",
         EnvVarKind::Feature,
