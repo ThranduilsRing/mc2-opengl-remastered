@@ -319,9 +319,11 @@ bool PauseWindow::renderImGui()
 
 		if ( ImGui::Button( idbuf, ImVec2( buttonW, 0.f ) ) )
 		{
-			// SPEWALWAYS: SPEW compiles out without _ARMOR; this proof line
-			// must exist in RelWithDebInfo (gate is default-OFF anyway).
-			SPEWALWAYS(( 0, "HudImGui[pause]: dispatch handleClick ID=%ld ('%s')\n", buttons[i].ID, label ));
+			// Proof line on stderr (SPEW is compiled out without _ARMOR and
+			// SPEWALWAYS goes to OutputDebugString on Windows — invisible to
+			// smoke/witness logs). Same pattern as the [SCREENSHOT v1] line.
+			fprintf( stderr, "[HUD-IMGUI-PAUSE v1] dispatch handleClick ID=%ld ('%s')\n", buttons[i].ID, label );
+			fflush( stderr );
 			handleClick( buttons[i].ID );
 		}
 
