@@ -2906,7 +2906,20 @@ extern "C" int mc2_mech_island_get_frame_feed(Mc2MechFrameFeed* out) {
     out->boneCount     = (uint32_t)s_vkMechBoneSnapshot.size();
     out->runs          = s_vkMechRunSnapshot.data();
     out->runCount      = (uint32_t)s_vkMechRunSnapshot.size();
-    std::memcpy(out->worldToClipGL, s_vkMechWorldToClipGL, sizeof(out->worldToClipGL));
+    // VK-FLIP-FIELD-BUG4-1: use the LIVE camera MVP, not the flush-time snapshot.
+    // s_vkMechWorldToClipGL is captured only inside GpuMechBatcher::flush() (batcher
+    // submit path). On frames where the batcher skips its flush (mech instance data
+    // unchanged — units idle), that snapshot is STALE, but a camera PAN still changes
+    // the view/proj. The island then draws mechs with last frame's MVP -> mechs FREEZE
+    // in screen space while the terrain (which re-projects live) pans beneath them.
+    // This accessor runs in the GL context (see gos_LightDataSsbo_GetInterop below), so
+    // gos_GetMechFixBMVPMat4() returns the current-frame MVP here. Instances may be one
+    // frame stale (imperceptible when idle); the PROJECTION is always current -> no
+    // screen-space stick. Falls back to the snapshot if the live accessor returns null.
+    if (const float* liveMvp = gos_GetMechFixBMVPMat4())
+        std::memcpy(out->worldToClipGL, liveMvp, sizeof(out->worldToClipGL));
+    else
+        std::memcpy(out->worldToClipGL, s_vkMechWorldToClipGL, sizeof(out->worldToClipGL));
     out->objectDepthBias = s_vkMechObjectDepthBias;
     // VK-MECH-MATERIAL-LIGHTING-1: LightsData SSBO name/size + fog color for the
     // island's calc_light + fog port. Both from GL owners (this runs in GL context).

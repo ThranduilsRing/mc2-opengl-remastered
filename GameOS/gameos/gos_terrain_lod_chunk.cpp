@@ -905,15 +905,28 @@ extern "C" int mc2_terrain_tier1_get_frame_feed(Mc2TerrainTier1Feed* out)
         // this island already imports) through the SAME binding-7 slot + computeBakedShadow.
         // Result: VK terrain gets whole-map object shadows (coarser than GL's near cascade
         // near the camera, but present) — closes the "no shadows at all" gap with the
-        // proven single-map mechanism, zero new interop surface. Gate MC2_VK_TERRAIN_CSM
-        // (requires the dynshadow gate chain; default-OFF -> byte-identical to today).
-        // MC2_VK_TERRAIN_CSM is PRESENCE-GATED (explicit "=1" only, does NOT follow the
-        // umbrella) because the full-map subset is not yet parity-proven default-on. Once
-        // the oracle blesses it, it can join the umbrella family. Kept independent of
-        // subGate() so the umbrella flip does NOT silently arm it.
+        // proven single-map mechanism, zero new interop surface.
+        //
+        // VK-FLIP-FIELD-BUG1-1 (field oracle 2026-07-06, mc2_01 overview_center): the
+        // full-map subset is NET-NEGATIVE at normal play distance. GL LOD0 terrain samples
+        // the NEAR cascade up close; the full-map cascade projects tall building/mech
+        // occluders as huge soft blobs that swim with the camera = the user's
+        // "camera-dependent garbage shadow wash". CSM-OFF was PIXEL-CLEAN vs GL on the same
+        // bookmark; CSM-ON washed the whole airport. The matrix/texture ARE consistent
+        // (island renders full-map, UBO carries the full-map cascade matrix) — the wash is
+        // inherent to the coarse subset, NOT a binding mismatch. The real cure is near-
+        // cascade-array interop (sampler2DArrayShadow + N matrices), still DEFERRED.
+        //
+        // Therefore this subset is now DOUBLE-GATED: MC2_VK_TERRAIN_CSM=1 (presence) is no
+        // longer sufficient — it additionally requires MC2_VK_TERRAIN_CSM_FULLMAP_EXPERIMENTAL=1.
+        // The launcher/field bat sets MC2_VK_TERRAIN_CSM=1 as part of the umbrella family;
+        // that alone must NOT re-introduce the wash. Off by default -> VK terrain draws with
+        // NO dynamic object shadow under CSM (matches the clean CSM-OFF capture), which is
+        // strictly better than the wash until the near-cascade port lands.
         auto csmSubsetOn = []() {
             const char* v = std::getenv("MC2_VK_TERRAIN_CSM");
-            return v && v[0] == '1';
+            const char* x = std::getenv("MC2_VK_TERRAIN_CSM_FULLMAP_EXPERIMENTAL");
+            return v && v[0] == '1' && x && x[0] == '1';
         };
         if (dynShadowGate && !out->dynShadowsEnabled && pp && pp->shadowsEnabled_
             && mc2ShadowCsmEnabled()
