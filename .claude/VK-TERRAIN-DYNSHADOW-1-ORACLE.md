@@ -140,6 +140,77 @@ byte-OFF control = the 11 stable mc2_01 bookmarks + near_land_off. Requires SPIR
 (glslangValidator) + deploy 0.4c + smoke. POM is the same near path (chunkParallax) — port
 after anti-tile lands, same oracle. Markings-sidecar remains N/A (no map ships an overlay).
 
+## ★★SHIPPED (2026-07-05 session 3 — anti-tile + POM ported on the green near-oracle)
+Both near-detail features ported VERBATIM into `shaders/vulkan/terrain_tier1.frag`
+`mv_detailNormal`, shader-only (no new UBO fields), riding the existing `detailEnabled`
+tier (MC2_VK_TERRAIN_DETAIL, requires MC2_VK_TERRAIN_LIGHTING). Both changes live
+ENTIRELY inside `if (uT.detailEnabled != 0)` → default-OFF preserved by construction.
+
+**Gate:** MC2_VK_TERRAIN_DETAIL (state MC2_VK_TERRAIN_LIGHTING family). No new gate/UBO
+field added (oracle mandated shader-only). Anti-tile always co-active with detail;
+POM always co-active with detail (pomParams.x=0.02 baked > 0).
+
+**Commit f576144d — anti-tile + per-layer fwidth fades + concrete layer:**
+- mv_hash22 + mv_sampleAntiTileArr (GL :274-294), texture()-based not textureGrad (VK
+  mv_detailNormal is uniform control flow → implicit LOD valid; GL's ddx/ddy plumbing is
+  only for its non-uniform weight branches, dropped here).
+- per-layer fwidth fades fwRock..fwSnow (GL :353-357).
+- anti-tile gate `ats* > 0.01 && fw* > 0.5` (GL :382-415).
+- ADDED the previously-omitted concrete layer (MAT_LAYER_CONCRETE=3, matTiling.w).
+
+**Commit 5a495d0f — POM (parallax-occlusion):**
+- mv_pomDisplacement + mv_parallax (GL :295-327) + offset block (GL :361-367).
+- pomParams baked const {0.02,8,32,0} = GL default (gameos_graphics.cpp:7112 /
+  terrain_pom_scale_ :2456). Displacement = matNormalArray.a, carried through VK's
+  copy-once RGBA8 import (no separate alpha import needed — verified in island cpp).
+- GL POM has NO self-shadow term → full port == biggest-safe-subset (POM sans self-shadow).
+
+**BYTE-OFF VERDICT (both features):**
+- near_land_off UNMASKED control: 0.000 self-diff GL-config AND VK-config; GL-vs-VK
+  max ≤6 (all sub-threshold) → byte-clean where terrain has no near detail.
+- 11 stable mc2_01 bookmarks: inert by construction (coarse-LOD bookmark cameras
+  co-write ~0 VK terrain pixels; change is inside detailEnabled). near_land_off is the
+  STRONGER control (it actually exercises VK LOD0) and is clean.
+- Determinism: VK self-diff = 0.000 both poses after both ports (no new non-determinism).
+
+**near_land_low GL-vs-VK (coverage / mean_all), FORCE_LOD=0, mech island masked:**
+| state                         | cov%   | mean_all | per-px max |
+|-------------------------------|--------|----------|-----------|
+| baseline (detail ON, pre-port)| 56.28  | 4.96     | 255       |
+| +anti-tile                    | 56.54  | 4.89     | 255       |
+| +anti-tile +POM (SHIPPED)     | 56.73  | 4.713    | **70**    |
+
+★DIAGNOSIS (stop-rule honored): anti-tile ALONE barely moved the number (4.96→4.89;
+moved VK only 0.004%/max10 vs baseline). A dN×4 probe moved 28%/mean4.1 → the detail
+path is ALIVE and strong; anti-tile is simply a subtle variance-preserving effect at
+this pose (fwidth≈1 so the fades are inactive near). Did NOT iterate blind — diagnosed
+that POM is the dominant residual. POM confirmed it: moved VK 0.66%/mean1.17 vs the
+pre-antitile baseline (10× anti-tile alone), dropping GL-vs-VK mean 4.89→4.71 and
+per-pixel MAX 255→70 (worst-case relief disagreement collapsed). Both correct-direction.
+
+Residual GL gap (mean ~4.7) = LOD-tier fade + painted-concrete normal + cliff triplanar
+(all still deferred, minor) + colormap/lighting float noise. Diminishing returns for the
+near-detail-normal path; the big near-detail items (anti-tile, POM) are now done.
+
+## ★ITEM-3 NEXT-SESSION SLICE SCOPE (fail-soft + height-audit default-ON gates)
+The deterministic near-oracle now makes these verifiable. NOT shipped this session
+(out of scope; item was "scope it in the doc"). Scope:
+- **VK terrain fail-soft** (setFallback paths in vulkan_terrain_island.cpp): when a
+  copy-once import (colormap/cement/matNormalArray/shadow) is not ready, the FS already
+  fails soft per-fragment (uT.*Ready flags → olive / skip). The DEFAULT-ON gate to verify
+  is the ISLAND-level fallback (no_terrain_feed / spv_load_failed → GL owns terrain).
+  Oracle: force each *Ready=0 individually at the near pose, assert VK output degrades
+  gracefully (never holes/crashes) and that with everything ready the near_land_low
+  co-write is unchanged. This is a robustness gate, not a parity feature — verify with
+  the near-oracle's VKon capture + a deliberately-broken-import run.
+- **height-audit** (heightsFS SSBO snapshot vs GL live heights): the mv_smoothTerrainNormal
+  macro-slope reads uHF.heightsFS. A default-on audit gate should compare the VK height
+  snapshot against GL's per-frame heights at the near pose (they must match or the macro
+  slope diverges). Oracle: near_land_low VK vs a VK-height-audit-assert run; expect 0
+  mismatches. Cheap — one SSBO checksum compare.
+- Est: both are small verification-gate slices (no new shader math); the near-oracle +
+  FORCE_LOD=0 is the driving camera. Do fail-soft first (bigger safety value).
+
 ## Files (this session, terrain)
 - NEW oracle: .claude/mech-parity/terrain_near_oracle.py (keeper),
   tests/visual/bookmarks/mc2_01_terrain_near.json. Artifacts .claude/mech-parity/terrain/near_oracle/.
