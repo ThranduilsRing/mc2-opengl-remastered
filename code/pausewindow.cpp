@@ -17,6 +17,10 @@ PauseWindow.cpp			: Implementation of the PauseWindow component.
 #include"logisticsdata.h"
 #include"multplyr.h"
 
+// IN-MISSION-HUD-IMGUI-SCOPE-1 slice B (MC2_HUD_IMGUI_PAUSE)
+#include"hudimguipanel.h"
+#include "imgui.h"
+
 extern float frameLength;
 
 extern bool bInvokeOptionsScreenFlag;
@@ -166,6 +170,10 @@ void PauseWindow::update()
 
 
 
+	// slice B: when the ImGui panel owns rendering, its widgets own hover +
+	// click too — skip the legacy invisible-rect hit-test loop so a click
+	// can't dispatch twice (once via ImGui::Button, once here).
+	if ( !usingImGui() )
 	for ( int i = 0; i < buttonCount; i++ )
 	{
 		if ( buttons[i].location[0].x <= mouseX && mouseX <= buttons[i].location[2].x
@@ -258,10 +266,86 @@ void PauseWindow::update()
 	
 }
 
+bool PauseWindow::usingImGui() const
+{
+	return HudImGui::envGateOn( "MC2_HUD_IMGUI_PAUSE" ) && !HudImGui::pinnedToLegacy();
+}
+
+// slice B: ImGui pause panel. Laid out over the legacy window's live rects
+// (backgrounds[0] = body, backgrounds[1] = header) so the slide-in animation,
+// missiongui's pauseWnd->inRect click-swallow test, and the canvas-box
+// alignment all keep working unchanged. Command dispatch goes through the
+// existing handleClick — no command logic is reimplemented here.
+bool PauseWindow::renderImGui()
+{
+	// panel = union of header + body rects (header sits above the body)
+	const float hudL = (float)( backgrounds[0].left < backgrounds[1].left ? backgrounds[0].left : backgrounds[1].left );
+	const float hudT = (float)( backgrounds[0].top < backgrounds[1].top ? backgrounds[0].top : backgrounds[1].top );
+	const float hudR = (float)( backgrounds[0].right > backgrounds[1].right ? backgrounds[0].right : backgrounds[1].right );
+	const float hudB = (float)( backgrounds[0].bottom > backgrounds[1].bottom ? backgrounds[0].bottom : backgrounds[1].bottom );
+
+	float fontScale = 1.f;
+	if ( !HudImGui::beginPanel( "##hud_pause", hudL, hudT, hudR, hudB, &fontScale ) )
+		return false;
+
+	ImGui::SetWindowFontScale( fontScale );
+
+	char buffer[256];
+	cLoadString( IDS_GAMEPAUSED, buffer, 256 );
+	// legacy header color 0xff5c96c2 (ARGB) -> ImGui ABGR
+	ImGui::TextColored( ImColor( 0x5c, 0x96, 0xc2, 0xff ).Value, "%s", buffer );
+	ImGui::Separator();
+
+	const float buttonW = ImGui::GetContentRegionAvail().x;
+	for ( int i = 0; i < buttonCount; i++ )
+	{
+		const bool enabled = buttons[i].isEnabled();
+		const bool pressed = ( buttons[i].state == ControlButton::PRESSED );
+
+		char label[300];
+		label[0] = 0;
+		if ( buttonData[i].textID )
+			cLoadString( buttonData[i].textID, label, 256 );
+		if ( !label[0] )
+			sprintf( label, "cmd %ld", buttons[i].ID );
+		// stable ImGui id even with duplicate labels
+		char idbuf[320];
+		sprintf( idbuf, "%s##pausebtn%d", label, i );
+
+		if ( !enabled )
+			ImGui::BeginDisabled();
+		if ( pressed )
+			ImGui::PushStyleColor( ImGuiCol_Button, ImGui::GetStyleColorVec4( ImGuiCol_ButtonActive ) );
+
+		if ( ImGui::Button( idbuf, ImVec2( buttonW, 0.f ) ) )
+		{
+			SPEW(( 0, "HudImGui[pause]: dispatch handleClick ID=%ld ('%s')\n", buttons[i].ID, label ));
+			handleClick( buttons[i].ID );
+		}
+
+		if ( pressed )
+			ImGui::PopStyleColor();
+		if ( !enabled )
+			ImGui::EndDisabled();
+	}
+
+	HudImGui::endPanel();
+	return true;
+}
+
 void PauseWindow::render()
 {
 	if ( !currentTime )
 		return;
+
+	if ( usingImGui() && renderImGui() )
+	{
+		// modal quit/abort prompts stay on the legacy (scaleExempt) path
+		if ( bPromptToQuit || bPromptToAbort )
+			LogisticsOKDialog::instance()->render();
+		return;
+	}
+
 	drawRect( backgrounds[0], 0xff000000 );
 	drawRect( backgrounds[1], 0xff000000 );
 

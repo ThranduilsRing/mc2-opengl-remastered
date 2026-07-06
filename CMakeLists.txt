@@ -470,6 +470,7 @@ set(SOURCES
     "code/optionsarea.cpp"
     "code/optionsscreenwrapper.cpp"
     "code/pausewindow.cpp"
+    "code/hudimguipanel.cpp"
     "code/prefs.cpp"
     "code/simplecamera.cpp"
     "code/componentlistbox.cpp"

@@ -40,6 +40,12 @@ class PauseWindow
 		void update();
 		void render();
 
+		// MC2_HUD_IMGUI_PAUSE (IN-MISSION-HUD-IMGUI-SCOPE-1 slice B):
+		// true when the gated ImGui render path owns this window this
+		// session (gate ON and not pinned-to-legacy). Legacy render AND
+		// the legacy hover/click hit-test loop are skipped while true.
+		bool usingImGui() const;
+
 		void init( FitIniFile& file );
 
 		void handleClick( int ID );
@@ -84,6 +90,10 @@ class PauseWindow
 
 		bool		bPromptToQuit;
 		bool		bPromptToAbort;
+
+		// slice B: ImGui render body; returns false -> render legacy this
+		// frame (helper pins the session to legacy on hard failure).
+		bool renderImGui();
 
 };
 
