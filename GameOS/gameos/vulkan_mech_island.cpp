@@ -228,14 +228,24 @@ struct MechIsland {
     VkDescriptorSet   set    = VK_NULL_HANDLE;
     VkPipelineLayout  playout = VK_NULL_HANDLE;
 
-    // MC2_VK_MECH_MATERIAL (follow-on): single copy-once albedo + sampler. Dummy 1x1
-    // bound at init so binding3 is always valid; materialReady gates real sampling.
+    // MC2_VK_MECH_MATERIAL: per-actor paint-scheme VK-descriptor cache. Each distinct
+    // slot-0 GL paint texture gets its own copy-once VkImage/view + a descriptor set
+    // (all 5 bindings; only binding-3 albedo differs). The draw loop binds the set that
+    // matches run.slot0GlTex, so a mission with >1 distinct scheme shows the right
+    // scheme on each mech (the single-slot-0 probe showed the FIRST scheme on all).
+    // A dummy 1x1 white scheme (glTex sentinel 0) backs runs with no paint texture.
     bool        wantMaterial  = false;
-    bool        materialReady = false;
-    uint32_t    albedoGlTexImported = 0;
-    VkImage     albedoImg  = VK_NULL_HANDLE; VmaAllocation albedoAlloc = VK_NULL_HANDLE;
-    VkImageView albedoView = VK_NULL_HANDLE;
+    bool        materialReady = false;   // >=1 real scheme imported
     VkSampler   albedoSamp = VK_NULL_HANDLE;
+    struct SchemeEntry {
+        uint32_t      glTex = 0;                 // 0 = dummy white
+        VkImage       img   = VK_NULL_HANDLE;
+        VmaAllocation alloc = VK_NULL_HANDLE;
+        VkImageView   view  = VK_NULL_HANDLE;
+        VkDescriptorSet set = VK_NULL_HANDLE;
+    };
+    std::vector<SchemeEntry> schemes;    // [0] = dummy white, always present
+    static const uint32_t    kMaxSchemes = 32;   // descriptor-pool budget
 
     VkCommandPool   cpool  = VK_NULL_HANDLE;
     VkCommandBuffer cbuf[2] = {VK_NULL_HANDLE, VK_NULL_HANDLE};
@@ -257,36 +267,50 @@ bool make_buffer(MechIsland* s, VkDeviceSize size, VkBufferUsageFlags usage,
     return true;
 }
 
-void write_descriptors(MechIsland* s) {
-    if (s->set == VK_NULL_HANDLE) return;
+// Write the four per-frame BUFFER bindings (0 UBO / 1 inst / 2 bone / 4 lights) into
+// ONE descriptor set. binding-3 (albedo) is written separately per scheme by
+// bind_scheme_albedo — this keeps buffer-grow and albedo-import independent.
+void write_buffer_bindings(MechIsland* s, VkDescriptorSet set) {
+    if (set == VK_NULL_HANDLE) return;
     VkDescriptorBufferInfo uboInfo { s->ubo,     0, VK_WHOLE_SIZE };
     VkDescriptorBufferInfo instInfo{ s->instBuf, 0, VK_WHOLE_SIZE };
     VkDescriptorBufferInfo boneInfo{ s->boneBuf, 0, VK_WHOLE_SIZE };
     VkDescriptorBufferInfo lightInfo{ s->lightBuf, 0, VK_WHOLE_SIZE };
-    VkWriteDescriptorSet w[5]{}; uint32_t n = 0;
-    w[n].sType = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET; w[n].dstSet = s->set;
+    VkWriteDescriptorSet w[4]{}; uint32_t n = 0;
+    w[n].sType = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET; w[n].dstSet = set;
     w[n].dstBinding = 0; w[n].descriptorCount = 1;
     w[n].descriptorType = VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER; w[n].pBufferInfo = &uboInfo; ++n;
-    w[n].sType = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET; w[n].dstSet = s->set;
+    w[n].sType = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET; w[n].dstSet = set;
     w[n].dstBinding = 1; w[n].descriptorCount = 1;
     w[n].descriptorType = VK_DESCRIPTOR_TYPE_STORAGE_BUFFER; w[n].pBufferInfo = &instInfo; ++n;
-    w[n].sType = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET; w[n].dstSet = s->set;
+    w[n].sType = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET; w[n].dstSet = set;
     w[n].dstBinding = 2; w[n].descriptorCount = 1;
     w[n].descriptorType = VK_DESCRIPTOR_TYPE_STORAGE_BUFFER; w[n].pBufferInfo = &boneInfo; ++n;
     if (s->lightBuf != VK_NULL_HANDLE) {
-        w[n].sType = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET; w[n].dstSet = s->set;
+        w[n].sType = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET; w[n].dstSet = set;
         w[n].dstBinding = 4; w[n].descriptorCount = 1;
         w[n].descriptorType = VK_DESCRIPTOR_TYPE_STORAGE_BUFFER; w[n].pBufferInfo = &lightInfo; ++n;
     }
-    VkDescriptorImageInfo albInfo{};
-    if (s->wantMaterial && s->albedoView != VK_NULL_HANDLE && s->albedoSamp != VK_NULL_HANDLE) {
-        albInfo.sampler = s->albedoSamp; albInfo.imageView = s->albedoView;
-        albInfo.imageLayout = VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL;
-        w[n].sType = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET; w[n].dstSet = s->set;
-        w[n].dstBinding = 3; w[n].descriptorCount = 1;
-        w[n].descriptorType = VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER; w[n].pImageInfo = &albInfo; ++n;
-    }
     vkUpdateDescriptorSets(s->device, n, w, 0, nullptr);
+}
+
+// Re-write buffer bindings into EVERY cached scheme set (after a buffer grow swaps a
+// VkBuffer handle). Albedo binding-3 in each set is untouched (per-scheme, stable).
+void write_buffer_bindings_all(MechIsland* s) {
+    for (auto& e : s->schemes) write_buffer_bindings(s, e.set);
+}
+
+// Point a scheme set's binding-3 at its own albedo image + the shared sampler.
+void bind_scheme_albedo(MechIsland* s, VkDescriptorSet set, VkImageView view) {
+    if (set == VK_NULL_HANDLE || view == VK_NULL_HANDLE || s->albedoSamp == VK_NULL_HANDLE) return;
+    VkDescriptorImageInfo albInfo{};
+    albInfo.sampler = s->albedoSamp; albInfo.imageView = view;
+    albInfo.imageLayout = VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL;
+    VkWriteDescriptorSet w{};
+    w.sType = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET; w.dstSet = set;
+    w.dstBinding = 3; w.descriptorCount = 1;
+    w.descriptorType = VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER; w.pImageInfo = &albInfo;
+    vkUpdateDescriptorSets(s->device, 1, &w, 0, nullptr);
 }
 
 bool ensure_buf_capacity(MechIsland* s, VkBuffer* buf, VmaAllocation* alloc, VkDeviceSize* cap,
@@ -300,7 +324,7 @@ bool ensure_buf_capacity(MechIsland* s, VkBuffer* buf, VmaAllocation* alloc, VkD
     VkDeviceSize c = bytes + bytes / 2 + 4096;
     if (!make_buffer(s, c, VK_BUFFER_USAGE_STORAGE_BUFFER_BIT, buf, alloc, true)) return false;
     *cap = c;
-    write_descriptors(s);
+    write_buffer_bindings_all(s);
     return true;
 }
 
@@ -335,10 +359,10 @@ bool make_albedo_sampler(MechIsland* s) {
     return vkCreateSampler(s->device, &sci, nullptr, &s->albedoSamp) == VK_SUCCESS;
 }
 
-// Upload a single 2D RGBA8 image (w*h*4 bytes) into s->albedo*.
-bool upload_albedo_2d(MechIsland* s, uint32_t w, uint32_t h, const void* bytes, VkDeviceSize byteCount) {
-    if (s->albedoView) { vkDestroyImageView(s->device, s->albedoView, nullptr); s->albedoView = VK_NULL_HANDLE; }
-    if (s->albedoImg)  { vmaDestroyImage(s->allocator, s->albedoImg, s->albedoAlloc); s->albedoImg = VK_NULL_HANDLE; }
+// Upload a single 2D RGBA8 image (w*h*4 bytes) into a fresh VkImage+view stored in the
+// given SchemeEntry (per-actor paint-scheme cache slot).
+bool upload_scheme_image(MechIsland* s, MechIsland::SchemeEntry& e,
+                         uint32_t w, uint32_t h, const void* bytes, VkDeviceSize byteCount) {
     VkBuffer stg = VK_NULL_HANDLE; VmaAllocation stgAlloc = VK_NULL_HANDLE;
     if (!make_buffer(s, byteCount, VK_BUFFER_USAGE_TRANSFER_SRC_BIT, &stg, &stgAlloc, true)) return false;
     { void* p = nullptr;
@@ -353,7 +377,7 @@ bool upload_albedo_2d(MechIsland* s, uint32_t w, uint32_t h, const void* bytes, 
     ici.usage = VK_IMAGE_USAGE_SAMPLED_BIT | VK_IMAGE_USAGE_TRANSFER_DST_BIT;
     ici.initialLayout = VK_IMAGE_LAYOUT_UNDEFINED;
     VmaAllocationCreateInfo aci{}; aci.usage = VMA_MEMORY_USAGE_AUTO;
-    if (vmaCreateImage(s->allocator, &ici, &aci, &s->albedoImg, &s->albedoAlloc, nullptr) != VK_SUCCESS) {
+    if (vmaCreateImage(s->allocator, &ici, &aci, &e.img, &e.alloc, nullptr) != VK_SUCCESS) {
         vmaDestroyBuffer(s->allocator, stg, stgAlloc); return false;
     }
     VkCommandBuffer cb = cp_begin(s);
@@ -361,7 +385,7 @@ bool upload_albedo_2d(MechIsland* s, uint32_t w, uint32_t h, const void* bytes, 
     VkImageMemoryBarrier bar{};
     bar.sType = VK_STRUCTURE_TYPE_IMAGE_MEMORY_BARRIER;
     bar.oldLayout = VK_IMAGE_LAYOUT_UNDEFINED; bar.newLayout = VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL;
-    bar.srcQueueFamilyIndex = bar.dstQueueFamilyIndex = VK_QUEUE_FAMILY_IGNORED; bar.image = s->albedoImg;
+    bar.srcQueueFamilyIndex = bar.dstQueueFamilyIndex = VK_QUEUE_FAMILY_IGNORED; bar.image = e.img;
     bar.subresourceRange = {VK_IMAGE_ASPECT_COLOR_BIT, 0, 1, 0, 1};
     bar.srcAccessMask = 0; bar.dstAccessMask = VK_ACCESS_TRANSFER_WRITE_BIT;
     vkCmdPipelineBarrier(cb, VK_PIPELINE_STAGE_TOP_OF_PIPE_BIT, VK_PIPELINE_STAGE_TRANSFER_BIT,
@@ -369,7 +393,7 @@ bool upload_albedo_2d(MechIsland* s, uint32_t w, uint32_t h, const void* bytes, 
     VkBufferImageCopy r{};
     r.imageSubresource = {VK_IMAGE_ASPECT_COLOR_BIT, 0, 0, 1};
     r.imageExtent = {w, h, 1};
-    vkCmdCopyBufferToImage(cb, stg, s->albedoImg, VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL, 1, &r);
+    vkCmdCopyBufferToImage(cb, stg, e.img, VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL, 1, &r);
     bar.oldLayout = VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL; bar.newLayout = VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL;
     bar.srcAccessMask = VK_ACCESS_TRANSFER_WRITE_BIT; bar.dstAccessMask = VK_ACCESS_SHADER_READ_BIT;
     vkCmdPipelineBarrier(cb, VK_PIPELINE_STAGE_TRANSFER_BIT, VK_PIPELINE_STAGE_FRAGMENT_SHADER_BIT,
@@ -379,42 +403,73 @@ bool upload_albedo_2d(MechIsland* s, uint32_t w, uint32_t h, const void* bytes, 
 
     VkImageViewCreateInfo vci{};
     vci.sType = VK_STRUCTURE_TYPE_IMAGE_VIEW_CREATE_INFO;
-    vci.image = s->albedoImg; vci.viewType = VK_IMAGE_VIEW_TYPE_2D; vci.format = VK_FORMAT_R8G8B8A8_UNORM;
+    vci.image = e.img; vci.viewType = VK_IMAGE_VIEW_TYPE_2D; vci.format = VK_FORMAT_R8G8B8A8_UNORM;
     vci.subresourceRange = {VK_IMAGE_ASPECT_COLOR_BIT, 0, 1, 0, 1};
-    return vkCreateImageView(s->device, &vci, nullptr, &s->albedoView) == VK_SUCCESS;
+    return vkCreateImageView(s->device, &vci, nullptr, &e.view) == VK_SUCCESS;
 }
 
-bool ensure_dummy_albedo(MechIsland* s) {
+// Allocate a descriptor set for a scheme (all 5 bindings), write buffer bindings + its
+// albedo. Returns the set or VK_NULL_HANDLE on failure.
+VkDescriptorSet alloc_scheme_set(MechIsland* s, VkImageView view) {
+    VkDescriptorSetAllocateInfo dsai{};
+    dsai.sType = VK_STRUCTURE_TYPE_DESCRIPTOR_SET_ALLOCATE_INFO;
+    dsai.descriptorPool = s->pool; dsai.descriptorSetCount = 1; dsai.pSetLayouts = &s->dsl;
+    VkDescriptorSet set = VK_NULL_HANDLE;
+    if (vkAllocateDescriptorSets(s->device, &dsai, &set) != VK_SUCCESS) return VK_NULL_HANDLE;
+    write_buffer_bindings(s, set);
+    bind_scheme_albedo(s, set, view);
+    return set;
+}
+
+// Create the always-present dummy white scheme (glTex sentinel 0). schemes[0].
+bool ensure_dummy_scheme(MechIsland* s) {
     if (!make_albedo_sampler(s)) return false;
-    if (s->albedoView != VK_NULL_HANDLE) return true;
+    if (!s->schemes.empty()) return true;
+    MechIsland::SchemeEntry e; e.glTex = 0;
     const uint8_t px[4] = {255, 255, 255, 255};   // white -> flat FS uses vArgb only
-    return upload_albedo_2d(s, 1, 1, px, sizeof(px));
+    if (!upload_scheme_image(s, e, 1, 1, px, sizeof(px))) return false;
+    e.set = alloc_scheme_set(s, e.view);
+    if (e.set == VK_NULL_HANDLE) { vkDestroyImageView(s->device, e.view, nullptr);
+                                   vmaDestroyImage(s->allocator, e.img, e.alloc); return false; }
+    s->schemes.push_back(e);
+    return true;
 }
 
-// Copy-once import the run's slot-0 paint scheme (single GL_TEXTURE_2D) into the VK
-// albedo image. SINGLE-MATERIAL probe: a stock actor's paint scheme is static across
-// the mission, so one import is representative. DEFERRED general case = a per-actor
-// slot0 GL-handle -> VK-descriptor cache (multiple paint schemes / per-frame handles).
-// This is a once-per-map material import, NOT the per-frame zero-copy color surface,
-// so it does NOT touch g_forbidden.
-bool import_albedo_2d(MechIsland* s, uint32_t glTex) {
-    if (glTex == 0) return false;
-    if (glTex == s->albedoGlTexImported && s->materialReady) return false;
+// Per-actor paint-scheme cache lookup. Returns the descriptor set to bind for a run's
+// slot-0 GL paint texture, importing it copy-once on first sight. Keyed on the GL handle
+// so a mission with >1 distinct scheme gets one VK image + descriptor set per scheme.
+// Copy-once GL->VK texture import (glGetTexImage on a MATERIAL texture, NOT a color
+// surface) — does NOT touch g_forbidden, mirrors the terrain/prop material imports.
+VkDescriptorSet get_scheme_set(MechIsland* s, uint32_t glTex) {
+    // 0 or unresolved -> dummy white (schemes[0]).
+    if (glTex == 0) return s->schemes.empty() ? VK_NULL_HANDLE : s->schemes[0].set;
+    for (auto& e : s->schemes) if (e.glTex == glTex) return e.set;
+    if (s->schemes.size() >= MechIsland::kMaxSchemes) {
+        // Budget exhausted — fall back to dummy so the mech still draws (unlit-ish).
+        return s->schemes.empty() ? VK_NULL_HANDLE : s->schemes[0].set;
+    }
     glBindTexture(GL_TEXTURE_2D, (GLuint)glTex);
     GLint w = 0, h = 0;
     glGetTexLevelParameteriv(GL_TEXTURE_2D, 0, GL_TEXTURE_WIDTH, &w);
     glGetTexLevelParameteriv(GL_TEXTURE_2D, 0, GL_TEXTURE_HEIGHT, &h);
-    if (w <= 0 || h <= 0 || w > 8192 || h > 8192) { glBindTexture(GL_TEXTURE_2D, 0); return false; }
+    if (w <= 0 || h <= 0 || w > 8192 || h > 8192) { glBindTexture(GL_TEXTURE_2D, 0);
+        return s->schemes.empty() ? VK_NULL_HANDLE : s->schemes[0].set; }
     std::vector<uint8_t> blob((size_t)w * (size_t)h * 4u);
     glGetTexImage(GL_TEXTURE_2D, 0, GL_RGBA, GL_UNSIGNED_BYTE, blob.data());
     glBindTexture(GL_TEXTURE_2D, 0);
-    if (!make_albedo_sampler(s)) return false;
-    if (!upload_albedo_2d(s, (uint32_t)w, (uint32_t)h, blob.data(), (VkDeviceSize)blob.size())) return false;
-    s->albedoGlTexImported = glTex;
+    MechIsland::SchemeEntry e; e.glTex = glTex;
+    if (!upload_scheme_image(s, e, (uint32_t)w, (uint32_t)h, blob.data(), (VkDeviceSize)blob.size())) {
+        return s->schemes.empty() ? VK_NULL_HANDLE : s->schemes[0].set;
+    }
+    e.set = alloc_scheme_set(s, e.view);
+    if (e.set == VK_NULL_HANDLE) { vkDestroyImageView(s->device, e.view, nullptr);
+        vmaDestroyImage(s->allocator, e.img, e.alloc);
+        return s->schemes.empty() ? VK_NULL_HANDLE : s->schemes[0].set; }
+    s->schemes.push_back(e);
     s->materialReady = true;
-    vlog("copy-once paint-scheme albedo imported: %dx%d glTex=%u (single-material probe; "
-         "per-actor cache DEFERRED).", w, h, glTex);
-    return true;
+    vlog("paint-scheme cached: %dx%d glTex=%u (scheme %zu/%u).", w, h, glTex,
+         s->schemes.size() - 1, MechIsland::kMaxSchemes);
+    return e.set;
 }
 
 void destroy_island(MechIsland* s) {
@@ -435,8 +490,11 @@ void destroy_island(MechIsland* s) {
     if (s->boneBuf) vmaDestroyBuffer(s->allocator, s->boneBuf, s->boneAlloc);
     if (s->lightBuf) vmaDestroyBuffer(s->allocator, s->lightBuf, s->lightAlloc);
     if (s->ubo)     vmaDestroyBuffer(s->allocator, s->ubo, s->uboAlloc);
-    if (s->albedoView) vkDestroyImageView(d, s->albedoView, nullptr);
-    if (s->albedoImg)  vmaDestroyImage(s->allocator, s->albedoImg, s->albedoAlloc);
+    for (auto& e : s->schemes) {
+        if (e.view) vkDestroyImageView(d, e.view, nullptr);
+        if (e.img)  vmaDestroyImage(s->allocator, e.img, e.alloc);
+    }
+    s->schemes.clear();
     if (s->albedoSamp) vkDestroySampler(d, s->albedoSamp, nullptr);
     if (s->cpool) vkDestroyCommandPool(d, s->cpool, nullptr);
     // instance/phys/device/queue/allocator + shared images are BORROWED.
@@ -487,6 +545,10 @@ bool init_island(MechIsland* s, int w, int h) {
     // (one ObjectLights record is 3600B; start with a few slots).
     if (!ensure_buf_capacity(s, &s->lightBuf, &s->lightAlloc, &s->lightCap, 32 * 1024)) return false;
     if (!make_buffer(s, sizeof(MechFrameUBO), VK_BUFFER_USAGE_UNIFORM_BUFFER_BIT, &s->ubo, &s->uboAlloc, true)) return false;
+    // Pre-create tiny inst/bone SSBOs so scheme descriptor sets never bind a null buffer
+    // (they grow in run() via ensure_buf_capacity, which rewrites all cached sets).
+    if (!ensure_buf_capacity(s, &s->instBuf, &s->instAlloc, &s->instCap, 64)) return false;
+    if (!ensure_buf_capacity(s, &s->boneBuf, &s->boneAlloc, &s->boneCap, 64)) return false;
 
     // Command pool + 2 command buffers (parity).
     {
@@ -501,8 +563,8 @@ bool init_island(MechIsland* s, int w, int h) {
         if (vkAllocateCommandBuffers(s->device, &cai, s->cbuf) != VK_SUCCESS) { vlog("cmd bufs failed."); return false; }
     }
 
-    // Dummy albedo so binding3 is valid before the first frame (materialReady gates real sampling).
-    if (!ensure_dummy_albedo(s)) { setFallback("albedo_dummy_failed"); return false; }
+    // The per-scheme descriptor sets (incl. the dummy white schemes[0]) are created in
+    // the descriptor-pool block below (needs s->pool). binding3 is always valid there.
 
     // Render pass: 2 color LOAD (preserve GL terrain in shared color/normal) + shared
     // depth LOAD (D32S8, GEQUAL test+write). NO clear. Same shape as the prop island Tier-1.
@@ -575,19 +637,20 @@ bool init_island(MechIsland* s, int w, int h) {
         lci.sType = VK_STRUCTURE_TYPE_DESCRIPTOR_SET_LAYOUT_CREATE_INFO;
         lci.bindingCount = 5; lci.pBindings = b;
         if (vkCreateDescriptorSetLayout(s->device, &lci, nullptr, &s->dsl) != VK_SUCCESS) { vlog("dsl failed."); return false; }
+        // Pool sized for kMaxSchemes descriptor sets (one per distinct paint scheme):
+        // each set = 1 UBO + 3 SSBO (inst/bone/lights) + 1 sampler.
+        const uint32_t N = MechIsland::kMaxSchemes;
         VkDescriptorPoolSize sizes[3]{};
-        sizes[0].type = VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER; sizes[0].descriptorCount = 1;
-        sizes[1].type = VK_DESCRIPTOR_TYPE_STORAGE_BUFFER; sizes[1].descriptorCount = 3;  // inst+bone+lights
-        sizes[2].type = VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER; sizes[2].descriptorCount = 1;
+        sizes[0].type = VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER; sizes[0].descriptorCount = 1 * N;
+        sizes[1].type = VK_DESCRIPTOR_TYPE_STORAGE_BUFFER; sizes[1].descriptorCount = 3 * N;  // inst+bone+lights
+        sizes[2].type = VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER; sizes[2].descriptorCount = 1 * N;
         VkDescriptorPoolCreateInfo pci{};
         pci.sType = VK_STRUCTURE_TYPE_DESCRIPTOR_POOL_CREATE_INFO;
-        pci.maxSets = 1; pci.poolSizeCount = 3; pci.pPoolSizes = sizes;
+        pci.maxSets = N; pci.poolSizeCount = 3; pci.pPoolSizes = sizes;
         if (vkCreateDescriptorPool(s->device, &pci, nullptr, &s->pool) != VK_SUCCESS) { vlog("pool failed."); return false; }
-        VkDescriptorSetAllocateInfo dsai{};
-        dsai.sType = VK_STRUCTURE_TYPE_DESCRIPTOR_SET_ALLOCATE_INFO;
-        dsai.descriptorPool = s->pool; dsai.descriptorSetCount = 1; dsai.pSetLayouts = &s->dsl;
-        if (vkAllocateDescriptorSets(s->device, &dsai, &s->set) != VK_SUCCESS) { vlog("alloc set failed."); return false; }
-        write_descriptors(s);
+        // Always-present dummy white scheme (schemes[0]) = binding-3 fallback for runs
+        // with no slot-0 paint texture (and the material-OFF flat-fill path).
+        if (!ensure_dummy_scheme(s)) { setFallback("dummy_scheme_failed"); return false; }
     }
 
     // Pipeline: mech 48B vertex stream, instanced, GEQUAL reverse-Z test+write, cull NONE,
@@ -762,11 +825,13 @@ extern "C" int mc2_vk_mech_island_run(int w, int h) {
 
     if (!upload_geometry_once(s)) { setFallback("geometry_not_ready"); return 0; }
 
-    // MC2_VK_MECH_MATERIAL (follow-on): copy-once import the FIRST run's slot-0 paint
-    // scheme (single-material probe). DEFERRED = per-actor slot0 -> VK-descriptor cache.
-    if (s->wantMaterial && !s->materialReady && feed.runCount > 0 && feed.runs[0].slot0GlTex != 0) {
-        import_albedo_2d(s, feed.runs[0].slot0GlTex);
-        write_descriptors(s);
+    // MC2_VK_MECH_MATERIAL: per-actor paint-scheme cache. Import each distinct run's
+    // slot-0 paint scheme copy-once here (before recording), so get_scheme_set in the
+    // draw loop is a pure cache lookup (no GL calls inside the VK command buffer).
+    if (s->wantMaterial) {
+        for (uint32_t r = 0; r < feed.runCount; ++r) {
+            if (feed.runs[r].slot0GlTex != 0) get_scheme_set(s, feed.runs[r].slot0GlTex);
+        }
     }
 
     const unsigned long f0b = g_forbidden.glGetTexImage;
@@ -856,18 +921,26 @@ extern "C" int mc2_vk_mech_island_run(int w, int h) {
     vkCmdSetScissor(cb, 0, 1, &scissor);
 
     vkCmdBindPipeline(cb, VK_PIPELINE_BIND_POINT_GRAPHICS, s->pipe);
-    vkCmdBindDescriptorSets(cb, VK_PIPELINE_BIND_POINT_GRAPHICS, s->playout, 0, 1, &s->set, 0, nullptr);
     VkDeviceSize vboOff = 0;
     vkCmdBindVertexBuffers(cb, 0, 1, &s->vbo, &vboOff);
     vkCmdBindIndexBuffer(cb, s->ibo, 0, VK_INDEX_TYPE_UINT32);
 
     // One indexed instanced draw per run. firstInstance = run.instanceBase so the VS's
     // gl_InstanceIndex indexes the instance SSBO snapshot exactly as the GL VS's
-    // u_instanceBase + gl_InstanceID did.
+    // u_instanceBase + gl_InstanceID did. Per run: bind the descriptor set for this run's
+    // paint scheme (per-actor cache) so the right albedo (binding 3) is sampled.
+    VkDescriptorSet dummySet = s->schemes.empty() ? VK_NULL_HANDLE : s->schemes[0].set;
+    VkDescriptorSet boundSet = VK_NULL_HANDLE;
     unsigned long runs = 0;
     for (uint32_t r = 0; r < feed.runCount; ++r) {
         const Mc2MechDrawRun& run = feed.runs[r];
         if (run.indexCount == 0 || run.instanceCount == 0) continue;
+        VkDescriptorSet set = s->wantMaterial ? get_scheme_set(s, run.slot0GlTex) : dummySet;
+        if (set == VK_NULL_HANDLE) set = dummySet;
+        if (set != boundSet) {
+            vkCmdBindDescriptorSets(cb, VK_PIPELINE_BIND_POINT_GRAPHICS, s->playout, 0, 1, &set, 0, nullptr);
+            boundSet = set;
+        }
         vkCmdDrawIndexed(cb, run.indexCount, run.instanceCount, run.firstIndex,
                          run.baseVertex, run.instanceBase);
         ++runs;
