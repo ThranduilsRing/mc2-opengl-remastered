@@ -2310,6 +2310,9 @@ void gos_SetWaterElevation(float elevation);  // sea-level world Z for edge-fog 
 bool gos_StaticLightMatrixBuilt();
 void gos_BuildStaticLightMatrix();  // builds matrix once (idempotent)
 void gos_MarkStaticLightMatrixBuilt();
+// VK-SHADOW-COPY-ONCE-1: generation counter bumped on each (re)build; lets
+// consumers (VK terrain interop) copy-once per generation instead of per-frame.
+uint64_t gos_GetStaticShadowGeneration();
 // VPL-#shadow C-1: per-mission re-arm of the one-shot full-map static
 // shadow (Terrain::destroy -> rebuild next mission vs frozen prior one).
 void gos_ResetStaticLightMatrix();

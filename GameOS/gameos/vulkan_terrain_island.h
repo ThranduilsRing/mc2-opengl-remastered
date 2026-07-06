@@ -75,12 +75,16 @@ struct Mc2TerrainTier1Feed {
     int32_t                     lightingEnabled;       // 1 iff MC2_VK_TERRAIN_LIGHTING gate on
     float                       terrainLightDir[3];    // gos_GetTerrainLightDir() (sun dir)
     // STATIC sun shadow map: the GL depth texture (gos_postprocess getShadowTexture(),
-    // GL_DEPTH_COMPONENT24) the island copies PER FRAME into a VK D32 depth-COMPARE image,
-    // plus the static light-space matrix (pp->getLightSpaceMatrix(), row-major GL_FALSE,
-    // z already [0,1]). All 0/false when shadows are off -> VK terrain is lit but unshadowed.
+    // GL_DEPTH_COMPONENT24). VK-SHADOW-COPY-ONCE-1: the GL map is built ONCE per mission
+    // (gos_StaticLightMatrixBuilt() latch, gos_MarkStaticLightMatrixBuilt() bumps
+    // staticShadowGeneration below) -- NOT per-frame -- so the island copy-once-per-
+    // generation instead of copying every frame. staticLightSpaceMatrix
+    // (pp->getLightSpaceMatrix(), row-major GL_FALSE, z already [0,1]). All 0/false when
+    // shadows are off -> VK terrain is lit but unshadowed.
     int32_t                     shadowsEnabled;        // pp->shadowsEnabled_ (1 -> map is valid to sample)
     uint32_t                    glStaticShadowTex;     // GL name of shadowDepthTex_ (0 = not ready)
     int32_t                     staticShadowSize;      // shadowMapSize_ (edge in texels, 4096)
+    uint64_t                    staticShadowGeneration; // gos_GetStaticShadowGeneration() (bumps on rebuild only)
     float                       staticLightSpaceMatrix[16]; // pp->getLightSpaceMatrix()
     float                       shadowSoftness;        // GL default 2.5
     // VK-TERRAIN-DYNSHADOW sub-slice: the DYNAMIC (building/mech) shadow map — the GL

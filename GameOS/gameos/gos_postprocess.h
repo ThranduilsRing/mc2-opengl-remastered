@@ -1,6 +1,7 @@
 #ifndef GOS_POSTPROCESS_H
 #define GOS_POSTPROCESS_H
 
+#include <cstdint>
 #include "utils/gl_utils.h"
 
 #include "../../RenderCore/RenderRegionId.h"   // RENDER-BACKEND-REGION-IFACE-1 (relative: reachable from every TU that includes this header, incl. RenderWorld)
@@ -164,7 +165,12 @@ public:
     void buildStaticLightMatrix(float sunDirX, float sunDirY, float sunDirZ,
                                 float mapHalfExtent);
     bool staticLightMatrixBuilt() const { return staticLightMatrixBuilt_; }
-    void markStaticLightMatrixBuilt() { staticLightMatrixBuilt_ = true; }
+    // VK-SHADOW-COPY-ONCE-1: bump a generation counter each time the static
+    // shadow map is (re)built (mission load / Terrain::destroy re-arm). The VK
+    // interop copy path uses this to copy-once per generation instead of every
+    // frame -- the static map only changes on this event, never per-frame.
+    void markStaticLightMatrixBuilt() { staticLightMatrixBuilt_ = true; ++staticShadowGeneration_; }
+    uint64_t staticShadowGeneration() const { return staticShadowGeneration_; }
     // VPL-#shadow C-1: per-mission re-arm so the one-shot full-map static
     // shadow rebuilds on the next mission (against fresh blocks[]) instead
     // of freezing the previous mission's shadow. Called from Terrain::destroy.
@@ -735,6 +741,7 @@ private:
     int savedViewport_[4];
     float staticLightSpaceMatrix_[16]; // world-fixed ortho, built once at map load
     bool staticLightMatrixBuilt_;      // true after light matrix is built (first frame)
+    uint64_t staticShadowGeneration_ = 0; // VK-SHADOW-COPY-ONCE-1: bumped each (re)build
     float mapHalfExtent_;              // half the map size in world units
     float waterElevation_ = 0.0f;     // sea-level world Z (Terrain::waterElevation)
 

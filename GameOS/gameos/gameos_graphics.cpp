@@ -9829,6 +9829,12 @@ void gos_MarkStaticLightMatrixBuilt() {
     gosPostProcess* pp = getGosPostProcess();
     if (pp) pp->markStaticLightMatrixBuilt();
 }
+// VK-SHADOW-COPY-ONCE-1: generation counter bumped each time the static
+// shadow map is (re)built (mission load / re-arm). 0 while never built.
+uint64_t gos_GetStaticShadowGeneration() {
+    gosPostProcess* pp = getGosPostProcess();
+    return pp ? pp->staticShadowGeneration() : 0;
+}
 bool gos_BeginShadowPrePass(bool clearDepth) {
     // Report whether the prepass actually binds the shadow FBO + sets state.
     // beginShadowPrePass early-returns when shadows are disabled at runtime

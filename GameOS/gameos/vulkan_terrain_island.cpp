@@ -299,6 +299,10 @@ struct TerrainIsland {
     bool          shadowReady = false;           // a real GL map was copied this frame
     VkBuffer      shadowStage = VK_NULL_HANDLE; VmaAllocation shadowStageAlloc = VK_NULL_HANDLE;
     VkDeviceSize  shadowStageBytes = 0;
+    // VK-SHADOW-COPY-ONCE-1: last feed.staticShadowGeneration actually copied. The GL
+    // static map only changes when this generation bumps (mission load / re-arm), so we
+    // skip the glGetTexImage+VK-upload entirely on frames where it is unchanged.
+    uint64_t      shadowGenCopied = UINT64_MAX;  // sentinel: never copied yet
 
     // VK-TERRAIN-DYNSHADOW: second D32 depth-COMPARE image for the DYNAMIC (building/mech)
     // shadow map at binding 7 (shares shadowSamp). Same copy-per-frame mechanism as static.
@@ -1356,10 +1360,13 @@ bool snapshot_cement(TerrainIsland* s, const Mc2TerrainTier1Feed& feed) {
 }
 
 // ---------------------------------------------------------------------------
-// VK-TERRAIN-LIGHTING sub-slice: STATIC sun shadow map. Per-frame copy of the GL
-// static shadow depth texture into a VK D32 depth-COMPARE image (decision path (a):
-// simplest correctness-first probe; the shadow maps update per frame under GL, so a
-// copy-once like the colormap would be WRONG). glGetTexImage on a DEPTH texture is
+// VK-TERRAIN-LIGHTING sub-slice: STATIC sun shadow map. VK-SHADOW-COPY-ONCE-1 UPDATE:
+// the GL static shadow map is built ONCE PER MISSION (gos_StaticLightMatrixBuilt()
+// latch), not per frame -- the original "GL map updates every frame" premise below was
+// wrong for the STATIC map (it is correct for the DYNAMIC map, which is genuinely
+// re-rendered every frame from moving mechs/buildings and stays copy-per-frame). The
+// static copy is now gated on feed.staticShadowGeneration so it only re-copies when the
+// GL side actually rebuilt (mission load / re-arm). glGetTexImage on a DEPTH texture is
 // NOT a color readback, so it does not trip the co-write path's forbidden-readback
 // assert (that counts glGetTexImage/glReadPixels via g_forbidden, which this does not
 // bump — it is a distinct depth pull on the shadow FBO's texture, endorsed for a probe).
@@ -1493,15 +1500,30 @@ bool copy_shadow_slot(TerrainIsland* s, uint32_t glTex, uint32_t dim,
     return true;
 }
 
-// Per-frame copy of the GL STATIC shadow depth texture into the VK D32 image (binding 5).
+// VK-SHADOW-COPY-ONCE-1: copy-once-per-generation of the GL STATIC shadow depth texture
+// into the VK D32 image (binding 5). The GL static map is built ONCE per mission
+// (gos_StaticLightMatrixBuilt() latch; see gos_postprocess.h/.cpp), not per frame, so
+// feed.staticShadowGeneration only bumps on a real (re)build. Skipping the
+// glGetTexImage(4096^2 float)->staging->VK-upload on unchanged frames removes a fixed
+// per-frame tax with zero pixel change (same bytes end up in the VK image either way).
 bool copy_static_shadow(TerrainIsland* s, const Mc2TerrainTier1Feed& feed) {
-    s->shadowReady = false;
-    if (!feed.lightingEnabled || !feed.shadowsEnabled) return false;
-    if (feed.glStaticShadowTex == 0 || feed.staticShadowSize <= 0) return false;
+    if (!feed.lightingEnabled || !feed.shadowsEnabled) { s->shadowReady = false; return false; }
+    if (feed.glStaticShadowTex == 0 || feed.staticShadowSize <= 0) { s->shadowReady = false; return false; }
     const uint32_t dim = (uint32_t)feed.staticShadowSize;
-    if (!ensure_shadow_image(s, dim)) return false;
+    if (!ensure_shadow_image(s, dim)) { s->shadowReady = false; return false; }
+
+    // Already have this generation's content in the VK image (and dim unchanged, else
+    // ensure_shadow_image would have recreated it and shadowReady/shadowGenCopied must be
+    // re-synced below since a size change invalidates the copied image contents).
+    if (s->shadowReady && s->shadowGenCopied == feed.staticShadowGeneration && s->shadowDim == dim)
+        return true;
+
     if (!copy_shadow_slot(s, feed.glStaticShadowTex, dim, s->shadowImg,
-                          &s->shadowStage, &s->shadowStageAlloc, &s->shadowStageBytes)) return false;
+                          &s->shadowStage, &s->shadowStageAlloc, &s->shadowStageBytes)) {
+        s->shadowReady = false;
+        return false;
+    }
+    s->shadowGenCopied = feed.staticShadowGeneration;
     s->shadowReady = true;
     return true;
 }
@@ -1616,7 +1638,9 @@ extern "C" int mc2_vk_terrain_island_run(int w, int h) {
     audit_height(s, feed);
 
     // VK-FLIP-FIELD-REPORT-1: atlas + per-frame shadow-map interop copies grouped in
-    // one coarse zone (colormap/cement copy-once; static+dyn shadow copy-per-frame).
+    // one coarse zone (colormap/cement copy-once; static copy-once-per-generation since
+    // VK-SHADOW-COPY-ONCE-1; dyn shadow copy-per-frame).
+    const clk::time_point tCopies0 = clk::now();
     {
     ZoneScopedN("VK-terrain-interop-copies");
     // COLORMAP-BASE: copy-once import of the GL colormap atlas (no-op once imported;
@@ -1630,10 +1654,12 @@ extern "C" int mc2_vk_terrain_island_run(int w, int h) {
     import_cement(s, feed);
     snapshot_cement(s, feed);
 
-    // VK-TERRAIN-LIGHTING: per-frame copy of the GL static sun shadow map into the VK D32
-    // depth-compare image (the GL map updates every frame, so this is NOT copy-once). No-op
-    // (shadowReady=false) when the lighting gate is off or the GL map isn't live -> VK
-    // terrain is lit but unshadowed (fail-soft, never a hole). Runs on the GL/render thread.
+    // VK-TERRAIN-LIGHTING: copy-once-per-generation of the GL static sun shadow map into
+    // the VK D32 depth-compare image (VK-SHADOW-COPY-ONCE-1: the GL map is built once per
+    // mission, so this call is a cheap no-op on unchanged frames -- see
+    // feed.staticShadowGeneration / copy_static_shadow above). No-op (shadowReady=false)
+    // when the lighting gate is off or the GL map isn't live -> VK terrain is lit but
+    // unshadowed (fail-soft, never a hole). Runs on the GL/render thread.
     copy_static_shadow(s, feed);
 
     // VK-TERRAIN-DYNSHADOW: per-frame copy of the GL DYNAMIC (building/mech) shadow map
@@ -1647,6 +1673,19 @@ extern "C" int mc2_vk_terrain_island_run(int w, int h) {
     // the flat-normal dummy bound (matNormalReady=false) -> FS uses macro-slope-only normal.
     import_matnormal(s, feed);
     }   // VK-FLIP-FIELD-REPORT-1: close VK-terrain-interop-copies zone
+
+    // VK-SHADOW-COPY-ONCE-1 evidence: optional per-frame ms log for the interop-copies
+    // zone, gated the same way as MC2_MECH_BATCHER_STATS (env-presence, off by default,
+    // zero cost when unset). Lets a smoke run produce before/after timing without a
+    // Tracy capture tool in the loop.
+    {
+        static const bool s_statsOn = (getenv("MC2_VK_TERRAIN_COPY_STATS") != nullptr);
+        if (s_statsOn) {
+            const double ms = usSince(tCopies0) / 1000.0;
+            fprintf(stderr, "[VK_TERRAIN_COPY_STATS] copies_ms=%.4f staticGen=%llu shadowReady=%d dynReady=%d\n",
+                    ms, (unsigned long long)feed.staticShadowGeneration, s->shadowReady ? 1 : 0, s->dynShadowReady ? 1 : 0);
+        }
+    }
 
     // Fill one dynamic-UBO slot per LOD0 patch (shared MVP/mapSide/halfMap + per-patch
     // blockOrigin). quadCount comes from the patch record (drives grid rebuild).

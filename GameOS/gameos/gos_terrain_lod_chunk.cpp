@@ -853,6 +853,7 @@ extern "C" int mc2_terrain_tier1_get_frame_feed(Mc2TerrainTier1Feed* out)
         out->shadowsEnabled     = 0;
         out->glStaticShadowTex  = 0;
         out->staticShadowSize   = 0;
+        out->staticShadowGeneration = 0;
         out->shadowSoftness     = 2.5f;   // shadow.hglsl default
         std::memset(out->staticLightSpaceMatrix, 0, sizeof(out->staticLightSpaceMatrix));
         gosPostProcess* pp = getGosPostProcess();
@@ -862,6 +863,7 @@ extern "C" int mc2_terrain_tier1_get_frame_feed(Mc2TerrainTier1Feed* out)
                 out->shadowsEnabled    = 1;
                 out->glStaticShadowTex = static_cast<uint32_t>(sTex);
                 out->staticShadowSize  = 4096;   // gos_postprocess.cpp:5113 shadowMapSize_
+                out->staticShadowGeneration = gos_GetStaticShadowGeneration();
                 std::memcpy(out->staticLightSpaceMatrix, pp->getLightSpaceMatrix(),
                             sizeof(out->staticLightSpaceMatrix));
             }

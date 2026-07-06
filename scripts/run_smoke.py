@@ -1701,6 +1701,9 @@ def main():
                             "MC2_VK_TERRAIN_CSM",
                             "MC2_VK_TERRAIN_HEIGHT_AUDIT",
                             "MC2_VK_TERRAIN_HEIGHT_AUDIT_CORRUPT",
+                            # VK-SHADOW-COPY-ONCE-1: diagnostic-only per-frame ms log for
+                            # the VK-terrain-interop-copies zone (stderr line, default OFF).
+                            "MC2_VK_TERRAIN_COPY_STATS",
                             # VK-P9a WATER-INTEROP proof: the bookmark-capture sweep
                             # env, so a smoke run (which reliably reaches steady render,
                             # unlike the standalone capture harness on some setups) can
