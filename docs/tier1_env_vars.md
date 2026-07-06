@@ -432,6 +432,26 @@ call from inside a draw-bind path.
   so frame N renders identically every run. Makes sim speed fps-proportional → it is a
   CAPTURE/DETERMINISM knob, **NOT** for full-duration regression smokes.
 
+## Sim clock speed + trace (SIM-CLOCK-SPEED-1 — 2026-07-06)
+
+- `MC2_SIM_SPEED=<float>` — sim-speed multiplier, default **1.0**, clamped `[0.25, 4.0]`.
+  Applied at both drivers of gameplay time: `scenarioTime` advance (`code/mission.cpp`,
+  wall-clock-driven mission timer) and `frameLength` (`code/mechcmd2.cpp:2217`, drives
+  mover/object/GOSFX motion+animation). The two are kept in lockstep so mission timers
+  and on-screen motion speed up/slow down together. Opt-in feature seam for a
+  user-facing "2x speed" knob (UI button follow-up); unset env = no-op (`*1.0`).
+  Allowlisted in `scripts/run_smoke.py` (Popen drops non-allowlisted env).
+- `MC2_SIM_CLOCK_TRACE=1` — once-per-second stderr diagnostic line comparing
+  wall-elapsed vs scenarioTime-elapsed vs frame count vs live `frameLength`:
+  `[SIM-CLOCK-TRACE] wall=Xs sim=Ys ratio(sim/wall)=Z frames=N frameLength=F`.
+  Opt-in, zero cost when unset (single cached `getenv` check). Was added to
+  root-cause a field report of sim running ~2x wall time; investigation found
+  no reproduction (ratio measured 1.000 across field/minimal env configs at
+  40-80+ fps — no floor-clamp on `frameLength` exists in the timing chain, only
+  a max-clamp at `0.25f` protecting against stall/debugger-pause teleport).
+  Kept permanently gated for future field diagnosis. Allowlisted in
+  `scripts/run_smoke.py`.
+
 ## Diagnostic JSONL trace (diagnostic_trace.cpp — 2026-06-17)
 
 Structured per-event JSONL output replacing env-gated stderr prints.

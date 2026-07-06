@@ -2246,6 +2246,23 @@ void __stdcall DoGameLogic()
 		if (frameLength > 0.25f)
 			frameLength = 0.25f;
 
+		// SIM-CLOCK-SPEED-1: gated sim-speed multiplier (MC2_SIM_SPEED, default
+		// 1.0, clamped [0.25,4.0]) applied at the frameLength site so mover /
+		// object / GOSFX motion (all frameLength-driven) tracks the same
+		// multiplier as scenarioTime (mission.cpp). Cached, OFF path (unset env)
+		// is a no-op multiply by 1.0.
+		{
+			static const float s_simSpeed = []() -> float {
+				const char* env = getenv("MC2_SIM_SPEED");
+				if (!env) return 1.0f;
+				float v = (float)atof(env);
+				if (v < 0.25f) v = 0.25f;
+				if (v > 4.0f) v = 4.0f;
+				return v;
+			}();
+			frameLength *= s_simSpeed;
+		}
+
 		//Calc out the average frame rate so we can decide if we should use the
 		// movie Video or Just the Audio Track!
 		currentFrameNum++;

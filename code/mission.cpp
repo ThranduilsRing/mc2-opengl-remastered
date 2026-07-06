@@ -45,6 +45,63 @@
 extern void visualTuning_applyProfile(const char*);  // MISSION-VISUAL-TUNING-1
 extern void terrainMaterials_apply(const char*);     // TERRAIN-MATERIAL-LIB-1
 
+// SIM-CLOCK-SPEED-1: gated sim-speed multiplier + once-per-second wall/sim
+// clock trace. Diagnostic for the "sim runs ~2x wall time" field report.
+// simSpeedMultiplier(): MC2_SIM_SPEED=<float>, default 1.0, clamped [0.25,4.0].
+// simClockTraceTick(): MC2_SIM_CLOCK_TRACE=1 arms a once-per-second stderr
+// line comparing wall-elapsed vs scenarioTime-elapsed vs frame count vs the
+// live frameLength value (extern, mechcmd2.cpp).
+extern float frameLength;
+
+static float simSpeedMultiplier()
+{
+	static const float s_mult = []() -> float {
+		const char* env = getenv("MC2_SIM_SPEED");
+		if (!env) return 1.0f;
+		float v = (float)atof(env);
+		if (v < 0.25f) v = 0.25f;
+		if (v > 4.0f) v = 4.0f;
+		return v;
+	}();
+	return s_mult;
+}
+
+static void simClockTraceTick(float scenarioTimeNow)
+{
+	static const bool s_traceEnabled = (getenv("MC2_SIM_CLOCK_TRACE") != nullptr);
+	if (!s_traceEnabled)
+		return;
+
+	static bool s_seeded = false;
+	static uint64_t s_wallStartMs = 0;
+	static float s_scenarioStart = 0.0f;
+	static uint64_t s_frameCount = 0;
+	static uint64_t s_lastEmitWallMs = 0;
+
+	uint64_t nowMs = (uint64_t)timeGetTime();
+	if (!s_seeded)
+	{
+		s_wallStartMs = nowMs;
+		s_scenarioStart = scenarioTimeNow;
+		s_lastEmitWallMs = nowMs;
+		s_seeded = true;
+	}
+	++s_frameCount;
+
+	if (nowMs - s_lastEmitWallMs >= 1000)
+	{
+		double wallElapsedSec = (double)(nowMs - s_wallStartMs) / 1000.0;
+		double simElapsedSec = (double)(scenarioTimeNow - s_scenarioStart);
+		double ratio = (wallElapsedSec > 0.0) ? (simElapsedSec / wallElapsedSec) : 0.0;
+		fprintf(stderr,
+			"[SIM-CLOCK-TRACE] wall=%.3fs sim=%.3fs ratio(sim/wall)=%.3f frames=%llu frameLength=%.5f\n",
+			wallElapsedSec, simElapsedSec, ratio,
+			(unsigned long long)s_frameCount, (double)frameLength);
+		fflush(stderr);
+		s_lastEmitWallMs = nowMs;
+	}
+}
+
 #include "brain_special_dispatch.h"  // TECHSCRIPT-SPECIAL-DISPATCH-1A: parseBrainSpecialBody
 #include "brain_missionfit_oporbd.h"  // BRAIN-MISSIONFIT-OPORD-CONSUMER-1: declarative mission.fit OPORD parser
 #include "brain_archetype.h"  // BRAIN-ARCHETYPE-1
@@ -739,10 +796,17 @@ long Mission::update (void)
 				if (LastTimeGetTime != 0xffffffff)
 				{
 					float milliseconds = currentTimeGetTime - LastTimeGetTime;
-					scenarioTime += (milliseconds / 1000.0f);
+					// MC2_SIM_SPEED: optional gated sim-speed multiplier (default 1.0,
+					// clamped 0.25-4.0). Applied here (scenarioTime, wall-clock-driven)
+					// so mission timers and frameLength-driven motion (mechcmd2.cpp)
+					// advance in lockstep under the same multiplier. NOT applied on the
+					// MC2_SMOKE_FIXED_TIMESTEP branch above — smoke determinism keeps 1x.
+					scenarioTime += (milliseconds / 1000.0f) * simSpeedMultiplier();
 				}
 				LastTimeGetTime = currentTimeGetTime;
 			}
+
+			simClockTraceTick(scenarioTime);
 
 			soundSystem->clearIsPaused();
 		}
