@@ -22,7 +22,7 @@ unzip 3rdparty.zip                # or right-click -> Extract Here
 Configure and build (note the **absolute** path to the 3rdparty folder -- relative paths won't resolve correctly at compile time):
 
 ```bash
-cmake -G "Visual Studio 17 2022" -DCMAKE_PREFIX_PATH=C:/absolute/path/to/repo/3rdparty -DCMAKE_LIBRARY_ARCHITECTURE=x64 -B build64
+cmake -G "Visual Studio 17 2022" -DCMAKE_PREFIX_PATH=C:/absolute/path/to/repo/3rdparty -DCMAKE_LIBRARY_ARCHITECTURE=x64 -DMC2_IMGUI=ON -B build64
 cmake --build build64 --config RelWithDebInfo --target mc2
 ```
 
