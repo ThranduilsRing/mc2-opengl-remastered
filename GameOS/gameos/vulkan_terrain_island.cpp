@@ -856,9 +856,32 @@ bool init_island(TerrainIsland* s, int w, int h) {
         att[1].stencilLoadOp = VK_ATTACHMENT_LOAD_OP_DONT_CARE; att[1].stencilStoreOp = VK_ATTACHMENT_STORE_OP_DONT_CARE;
         att[1].initialLayout = VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL;
         att[1].finalLayout   = VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL;
+        // FAR-BAND-BLACK-1 FIX: depth uses CLEAR, not LOAD. The shared depth image is
+        // exported as VK_FORMAT_D32_SFLOAT_S8_UINT (D24_UNORM_S8_UINT export is
+        // unsupported on this device -- see vulkan_shared_scene_depth.cpp), while GL's
+        // per-frame glClearDepth(0.0f)/glClear(GL_DEPTH_BUFFER_BIT) writes through a
+        // GL_DEPTH24_STENCIL8 *reinterpretation* of the SAME bytes. 0.0f happens to be
+        // bit-identical (0x00000000) in both encodings, so the GL clear alone would be
+        // safe in isolation -- but terrain (this island) is the FIRST GL/VK writer each
+        // frame and LOAD_OP_LOAD makes its GEQUAL depth test trust whatever is already
+        // in the image at that instant, which depends on GL/VK submission-order
+        // interleaving with the shared image's cross-API layout transitions; any
+        // non-zero residue read through the wrong format's bit-layout is garbage, and
+        // reverse-Z GEQUAL against garbage fails almost everywhere on a hard camera cut
+        // (root cause of FAR-BAND-BLACK: overview_center/oblique_horizon divergence).
+        // A native VK CLEAR here is unambiguous -- vkCmdClearDepthStencilImage/
+        // VK_ATTACHMENT_LOAD_OP_CLEAR writes through the image's OWN declared format
+        // (D32_SFLOAT_S8_UINT), so terrain always starts its depth test from a
+        // guaranteed-correct reverse-Z-far value, independent of what GL's differently-
+        // interpreted clear wrote to the same memory. Terrain runs first in the frame
+        // (Terrain::flushDrawCommands() before mcTextureManager->renderLists() --
+        // code/gamecam.cpp:530,535), so clearing here does not discard anything real:
+        // nothing else has written scene depth yet this frame. STORE_OP_STORE (below)
+        // still hands the correct depth downstream to props/mech Tier-1 (LOAD-preserve,
+        // unaffected by this change) and to GL's own post-process reads.
         att[2].format = s->depthRes->format; att[2].samples = VK_SAMPLE_COUNT_1_BIT;
-        att[2].loadOp = VK_ATTACHMENT_LOAD_OP_LOAD; att[2].storeOp = VK_ATTACHMENT_STORE_OP_STORE;
-        att[2].stencilLoadOp = VK_ATTACHMENT_LOAD_OP_LOAD; att[2].stencilStoreOp = VK_ATTACHMENT_STORE_OP_STORE;
+        att[2].loadOp = VK_ATTACHMENT_LOAD_OP_CLEAR; att[2].storeOp = VK_ATTACHMENT_STORE_OP_STORE;
+        att[2].stencilLoadOp = VK_ATTACHMENT_LOAD_OP_CLEAR; att[2].stencilStoreOp = VK_ATTACHMENT_STORE_OP_STORE;
         att[2].initialLayout = VK_IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT_OPTIMAL;
         att[2].finalLayout   = VK_IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT_OPTIMAL;
 
@@ -2265,11 +2288,20 @@ extern "C" int mc2_vk_terrain_island_run(int w, int h) {
     bi.flags = VK_COMMAND_BUFFER_USAGE_ONE_TIME_SUBMIT_BIT;
     if (vkBeginCommandBuffer(cb, &bi) != VK_SUCCESS) { setFallback("record_failed"); s->disabled = true; return 0; }
 
+    // FAR-BAND-BLACK-1 FIX: attachment 2 (shared depth) is now LOAD_OP_CLEAR (see the
+    // render-pass-creation comment above) -- color(0)/normal(1) stay LOAD (no clear
+    // values needed for those slots; VkClearValue is ignored for LOAD attachments) and
+    // depth(2) clears to reverse-Z far (depth=0.0, stencil=0), bit-exact in the shared
+    // image's own D32_SFLOAT_S8_UINT format regardless of what GL's
+    // GL_DEPTH24_STENCIL8-reinterpreted clear wrote to the same bytes this frame.
+    VkClearValue clears[3]{};
+    clears[2].depthStencil = {0.0f, 0u};
+
     VkRenderPassBeginInfo rbi{};
     rbi.sType = VK_STRUCTURE_TYPE_RENDER_PASS_BEGIN_INFO;
     rbi.renderPass = s->rpass; rbi.framebuffer = s->fb;
     rbi.renderArea = {{0, 0}, {(uint32_t)w, (uint32_t)h}};
-    rbi.clearValueCount = 0; rbi.pClearValues = nullptr; // all attachments LOAD
+    rbi.clearValueCount = 3; rbi.pClearValues = clears;
     vkCmdBeginRenderPass(cb, &rbi, VK_SUBPASS_CONTENTS_INLINE);
 
     VkViewport vp{0.0f, 0.0f, (float)w, (float)h, 0.0f, 1.0f};

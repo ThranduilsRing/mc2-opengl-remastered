@@ -88,28 +88,55 @@ Mc2SharedSceneDepth* mc2SharedSceneDepthCreate(int w, int h, GLuint* outGlTex,
     if (!d) return bail("alloc_failed");
     d->device = device;
 
-    // Exportable D32_SFLOAT_S8_UINT: DEPTH_STENCIL_ATTACHMENT (GL renders scene
-    // depth into it) + SAMPLED (42 depth consumers) + TRANSFER_SRC/DST (the
-    // glCopyImageSubData snapshot path). Same usage the depth-test spike used.
+    // FAR-BAND-BLACK-1 FIX: prefer VK_FORMAT_D24_UNORM_S8_UINT -- this is a
+    // bit-exact match for GL_DEPTH24_STENCIL8 (24-bit UNORM depth + 8-bit
+    // stencil packed the same way both APIs define it), so GL's per-frame
+    // glClear(GL_DEPTH_BUFFER_BIT)/glClearDepth(0.0f) and any GL-side depth
+    // write land as the SAME bits VK's terrain-island GEQUAL depth test reads.
+    // The prior D32_SFLOAT_S8_UINT export interpreted those same GL-written
+    // UNORM24 bits as an IEEE-754 float32 depth on the VK side -- correct only
+    // for the exact bit pattern 0x00000000 (GL clear-to-0.0), and GARBAGE for
+    // every other depth GL or a prior VK frame wrote, so the terrain island's
+    // GEQUAL depth test failed almost everywhere on any large camera jump
+    // (bookmark teleport / hard cut), producing an almost-empty co-written
+    // frame (root cause of FAR-BAND-BLACK: overview_center/oblique_horizon
+    // mean~32-34/ch cov~97% GL-vs-VK divergence, isolated via
+    // MC2_VK_TERRAIN_TIER1=0 A/B -- terrain returns instantly with props/mech
+    // Tier-1 co-write left ON). Falls back to the old D32_SFLOAT_S8_UINT
+    // export if the driver won't export D24_UNORM_S8_UINT (fail-soft, keeps
+    // today's behavior on GPUs that don't support it as exportable).
     const VkImageUsageFlags usage =
         VK_IMAGE_USAGE_SAMPLED_BIT |
         VK_IMAGE_USAGE_DEPTH_STENCIL_ATTACHMENT_BIT |
         VK_IMAGE_USAGE_TRANSFER_SRC_BIT |
         VK_IMAGE_USAGE_TRANSFER_DST_BIT;
-    if (!vkImageResourceCreate(&d->res, device, phys,
-                               (uint32_t)w, (uint32_t)h,
-                               VK_FORMAT_D32_SFLOAT_S8_UINT,
-                               usage, /*exportable*/ true)) {
+    VkFormat chosenFmt = VK_FORMAT_D24_UNORM_S8_UINT;
+    bool created = vkImageResourceCreate(&d->res, device, phys,
+                                         (uint32_t)w, (uint32_t)h,
+                                         chosenFmt, usage, /*exportable*/ true);
+    if (!created) {
+        slog("D24_UNORM_S8_UINT not exportable on this device -- falling back "
+             "to D32_SFLOAT_S8_UINT (bit-reinterpretation risk; see "
+             "FAR-BAND-BLACK-1 comment above).");
+        chosenFmt = VK_FORMAT_D32_SFLOAT_S8_UINT;
+        created = vkImageResourceCreate(&d->res, device, phys,
+                                        (uint32_t)w, (uint32_t)h,
+                                        chosenFmt, usage, /*exportable*/ true);
+    }
+    if (!created) {
         mc2SharedSceneDepthDestroy(d);
         return bail("vk_image_resource_create_failed");
     }
     d->resValid = true;
 
-    // Import into GL as GL_DEPTH24_STENCIL8 (LUID match runs inside). The P5-T0
-    // spike proved the DEPTH aspect of a D32S8 image imported under this GL enum
-    // samples exactly, so the substitution is transparent to sceneDepthTex_'s
-    // consumers. GL wrap/filter default to CLAMP/NEAREST inside the view; the
-    // engine's own glTexParameteri calls at the seam re-assert the same state.
+    // Import into GL as GL_DEPTH24_STENCIL8 (LUID match runs inside). When
+    // chosenFmt is D24_UNORM_S8_UINT this is a byte-exact reinterpretation (no
+    // value-conversion risk). When it fell back to D32_SFLOAT_S8_UINT this
+    // keeps the pre-fix behavior (P5-T0 spike proved the DEPTH aspect samples
+    // exactly for that case too, just not depth-test-safe across cross-API
+    // writes -- see the FAR-BAND-BLACK-1 comment above). GL wrap/filter
+    // default to CLAMP/NEAREST inside the view; the engine's own
+    // glTexParameteri calls at the seam re-assert the same state.
     if (!glInteropViewCreate(&d->view, &d->res, phys, GL_DEPTH24_STENCIL8)) {
         mc2SharedSceneDepthDestroy(d);
         return bail("gl_interop_view_create_failed");
@@ -124,8 +151,9 @@ Mc2SharedSceneDepth* mc2SharedSceneDepthCreate(int w, int h, GLuint* outGlTex,
     *outGlTex = d->view.glTex;
     if (outReason) *outReason = "active";
     g_activeSharedDepth = d;
-    slog("active: VK D32S8 %dx%d imported to GL_DEPTH24_STENCIL8 tex=%u", w, h,
-         (unsigned)d->view.glTex);
+    slog("active: VK %s %dx%d imported to GL_DEPTH24_STENCIL8 tex=%u",
+         (chosenFmt == VK_FORMAT_D24_UNORM_S8_UINT) ? "D24S8" : "D32S8(fallback)",
+         w, h, (unsigned)d->view.glTex);
     return d;
 }
 

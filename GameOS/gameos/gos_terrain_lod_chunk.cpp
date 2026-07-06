@@ -951,6 +951,22 @@ extern "C" int mc2_terrain_tier1_get_frame_feed(Mc2TerrainTier1Feed* out)
         // of the FULLMAP_EXPERIMENTAL subset's "always coarse" wash. Independent of the
         // two paths above: MC2_VK_TERRAIN_CSM alone (no FULLMAP_EXPERIMENTAL) now means
         // THIS implementation. GL must actually have CSM active+built this frame.
+        //
+        // FAR-BAND-BLACK-1 FIX: this block was gated on dynShadowGate alone, NOT on
+        // mc2vkgate::subGate("MC2_VK_TERRAIN_CSM") as the comment above claims -- so
+        // setting MC2_VK_TERRAIN_DYNSHADOW=1 with GL CSM active (MC2_SHADOW_CSM=1,
+        // default ON) fed CSM cascade data to the VK terrain frag even with
+        // MC2_VK_TERRAIN_CSM=0 (or unset with the umbrella off). The field launcher bat
+        // sets exactly this combination (DYNSHADOW+CSM both umbrella members, CSM only
+        // gets explicitly forced off in isolation tests) -- the resulting csmEnabled=1
+        // fragments made the VK terrain frag's CSM cascade-select path run in a
+        // configuration nobody exercises intentionally, collapsing shading to
+        // near-black over most of the screen (root cause of FAR-BAND-BLACK; isolated
+        // via bisecting MC2_VK_TERRAIN_LIGHTING/DETAIL/DYNSHADOW/CSM one at a time --
+        // DYNSHADOW alone reproduces, and disabling GL CSM instead of the VK gate also
+        // clears it, confirming the CSM feed itself is the trigger, not depth/format).
+        // Now requires the CSM sub-gate explicitly, matching the documented contract.
+        const bool csmNearGate = mc2vkgate::subGate("MC2_VK_TERRAIN_CSM");
         out->csmEnabled = 0;
         out->glCsmArrayTex = 0;
         out->csmArraySize = 0;
@@ -961,7 +977,7 @@ extern "C" int mc2_terrain_tier1_get_frame_feed(Mc2TerrainTier1Feed* out)
         out->glCsmFullMapTex = 0;
         out->csmFullMapSize = 0;
         out->csmFullMapTexelWorld = 0.0f;
-        if (dynShadowGate && pp && pp->shadowsEnabled_ && mc2ShadowCsmEnabled()) {
+        if (csmNearGate && dynShadowGate && pp && pp->shadowsEnabled_ && mc2ShadowCsmEnabled()) {
             const GLuint arrTex  = pp->getDynamicShadowArrayTexture();
             const GLuint fmTex   = pp->getDynamicFullMapTexture();
             const int    ccount2 = pp->getDynamicShadowCascadeCount();

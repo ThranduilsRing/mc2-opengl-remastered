@@ -171,9 +171,47 @@ composited pixels remain a valid VK oracle.
   request, do NOT implement yet): the clean knob is `frameLength`
   (mclib/timing.cpp:20, set mechcmd2.cpp:2217) — a future MC2_SIM_SPEED/UI
   button scales it.
-- **FAR-BAND BLACK** — far terrain band renders black/unlit silhouette under
-  field env (confirmed in mc2_01 oblique_horizon, mc2_24 overview_center). Known
-  far-band/lighting-state or a 5th interaction; recorded only.
+- **FAR-BAND BLACK — PARTIAL FIX this session (`gos_terrain_lod_chunk.cpp` gate
+  bug fixed; deeper CSM-near shading defect still OPEN).** Root-caused via
+  bisection (MC2_VK_TERRAIN_LIGHTING/DETAIL/DYNSHADOW/CSM toggled one at a time
+  on overview_center): the VK-TERRAIN-CSM-NEAR-1 feed-population block
+  (`gos_terrain_lod_chunk.cpp` ~line 964, `out->csmEnabled=1` path) was gated on
+  `dynShadowGate` (the DYNSHADOW sub-gate) ONLY — despite its own comment
+  claiming "MC2_VK_TERRAIN_CSM alone... now means THIS implementation", the code
+  never actually checked `mc2vkgate::subGate("MC2_VK_TERRAIN_CSM")`. Since GL
+  CSM defaults ON (`MC2_SHADOW_CSM` default-ON) and the umbrella defaults
+  DYNSHADOW ON too, this fed real CSM cascade data to the VK terrain frag any
+  time DYNSHADOW was armed, REGARDLESS of the CSM sub-gate's own value — a
+  real, provable gating bug, now FIXED (added the missing `csmNearGate` check).
+  Verified: bare-umbrella-minus-explicit-CSM-off now renders terrain correctly
+  (`.claude/mech-parity/csm_near_field/farband_realfix/vk_umbrella_csmoff/`).
+  **HOWEVER** the FIELD launcher recipe (and bare umbrella with no overrides)
+  legitimately ARMS both DYNSHADOW and CSM together (by design), and the
+  overview_center/oblique_horizon black-out STILL reproduces in that
+  configuration post-fix (`vk_final/mc2_01_overview_center.png`) — so a SECOND,
+  deeper defect lives inside the CSM-near shading path itself
+  (`mv_calcDynamicShadowCsm`/`mv_csmProject`/`mv_csmSampleLayer` in
+  `shaders/vulkan/terrain_tier1.frag`, or the C++ feed populated at
+  `gos_terrain_lod_chunk.cpp` lines 964-982) when the near-cascade path is
+  legitimately active — most likely `normalLight`/`uT.terrainLightDir`
+  collapsing near-zero (line 708 `lit = base * normalLight * shadow` would
+  blacken the WHOLE fragment, not just the shadow term, matching the
+  near-total-blackout symptom rather than a milder shadow-only darkening).
+  NOT YET ISOLATED further this session (ruled out: depth format
+  D32_SFLOAT_S8_UINT vs GL_DEPTH24_STENCIL8 reinterpretation — tried both a
+  D24_UNORM_S8_UINT export swap [driver rejects it, falls back to D32S8, no
+  change] and a native-VK-clear fix on the shared depth attachment [no change]
+  — depth is NOT the mechanism; isolating LIGHTING/DETAIL/DYNSHADOW-without-CSM
+  all render terrain correctly, only CSM-near-armed reproduces the blackout).
+  Overview MAD: unable to compute a numeric MAD this session (no golden/
+  byte-identical GL reference existed for this exact bookmark+camera-jump
+  timing; visual A/B via screenshots only). NEXT SESSION: instrument
+  `computeNdotLBand`/`uT.terrainLightDir` and the CSM UBO fields with a
+  one-shot stderr dump inside `terrain_tier1.frag` (or add a
+  MC2_VK_TERRAIN_CSM_DEBUG viz mode) to see whether lightDir/normalLight or the
+  CSM sample itself is the zero. Artifacts:
+  `.claude/mech-parity/csm_near_field/farband_realfix/`,
+  `.claude/mech-parity/csm_near_field/oobfog_isolate/` (bisection captures).
 - **BUG 6? prop texture scramble** — coordinator saw live (pink slabs, floating
   textures, trunkless trees) DURING mc2_24 load on the Bug1+Bug4 exe. NOT
   reproduced at settled capture (props clean: walls/trees/buildings textured).
