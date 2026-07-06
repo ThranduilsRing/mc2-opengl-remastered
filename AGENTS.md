@@ -8,7 +8,7 @@ here; do not invent alternatives to the canonical commands.
 
 ## Where you are
 
-- Canonical source worktree: `A:/Games/mc2-opengl-src/.claude/worktrees/nifty-mendeleev/`
+- Canonical source worktree: `A:/Games/mc2-main/`
   (branch `claude/nifty-mendeleev`; `main` is kept pointed at its tip).
 - The ROOT repo checkout (`A:/Games/mc2-opengl-src/`) is a coordination shell —
   its `build64/` is STALE; do not build or edit there.

@@ -1,4 +1,4 @@
-# MC2 OpenGL — nifty-mendeleev (canonical worktree)
+# MC2 OpenGL — mc2-main (canonical worktree, branch claude/nifty-mendeleev)
 
 MC2 OpenGL port: tessellated terrain, PBR splatting, shadow maps, post-processing. Active branch `claude/nifty-mendeleev` (0.4 gpu-driven-rendering arc merged 2026-05-18). Root `terrain-pbr-mod` = STALE.
 
@@ -13,7 +13,7 @@ py -3 tools\repo_intel\repo_query.py preflight --expect-branch <branch> --expect
 - Never share a physical worktree between parallel agents. A separate branch is not sufficient isolation.
 - **Recon-derived fix slice?** Also run `repo_query.py slice-preflight --base <ref> --slice <NAME> --paths <files> --symbols <syms>` first. `verdict=STOP` (symbol changed on base..nifty) → re-recon, do NOT code. Mandatory for shared-recon-queue work. See `docs/disciplines.md`.
 
-Lane → root map: nifty-mendeleev=`…/worktrees/nifty-mendeleev` · renderpass-contract-3=`…/worktrees/renderpass-contract-3` · veg-schema-dense=`…/worktrees/veg-schema-dense`
+Lane → root map: canonical (branch claude/nifty-mendeleev)=`A:/Games/mc2-main` · renderpass-contract-3=`…/worktrees/renderpass-contract-3` · veg-schema-dense=`…/worktrees/veg-schema-dense`
 
 ## Topic tree
 
@@ -28,8 +28,8 @@ Lane → root map: nifty-mendeleev=`…/worktrees/nifty-mendeleev` · renderpass
 
 ## Key paths
 
-- Source: `A:/Games/mc2-opengl-src/.claude/worktrees/nifty-mendeleev/`
-- Build: `…/nifty-mendeleev/build64/` — root `build64/` is STALE
+- Source: `A:/Games/mc2-main/`
+- Build: `A:/Games/mc2-main/build64/` — root `build64/` is STALE
 - Deploy: `A:/Games/mc2-opengl/mc2-win64-v0.4/`
 - CMake: `C:/Program Files (x86)/Microsoft Visual Studio/2022/BuildTools/Common7/IDE/CommonExtensions/Microsoft/CMake/CMake/bin/cmake.exe`
 
@@ -45,7 +45,7 @@ Lane → root map: nifty-mendeleev=`…/worktrees/nifty-mendeleev` · renderpass
 **Canonical invocation (verbatim; subagents must copy-paste):**
 
 ```powershell
-$env:MC2_DEBUG_STATE_DUMP="1"; $env:MC2_DIAGNOSTIC_TRACE_FILE="debug_state/diagnostic_trace.jsonl"; $env:MC2_DIAG_TAGS="CONFIG,BUILD,DEVICE"; py -3 A:\Games\mc2-opengl-src\.claude\worktrees\nifty-mendeleev\scripts\run_smoke.py --tier tier1 --duration 30 --keep-logs
+$env:MC2_DEBUG_STATE_DUMP="1"; $env:MC2_DIAGNOSTIC_TRACE_FILE="debug_state/diagnostic_trace.jsonl"; $env:MC2_DIAG_TAGS="CONFIG,BUILD,DEVICE"; py -3 A:\Games\mc2-main\scripts\run_smoke.py --tier tier1 --duration 30 --keep-logs
 ```
 
 `tier1` = mc2_01/03/10/17/24, 30s each. Inner-loop: `--mission mc2_01 --mission mc2_24`. Exit 0 = pass.

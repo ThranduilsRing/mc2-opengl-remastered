@@ -20,7 +20,7 @@ from PIL import Image
 HERE = Path(__file__).resolve().parent
 TOOL = HERE / "cook_markings.py"
 CARVER5_MISSIONS = Path("A:/Games/Carver5-feasibility/data/missions")
-STOCK_OVERLAYS = Path("A:/Games/mc2-opengl-src/mc2srcdata/textures/64Overlays")
+STOCK_OVERLAYS = Path("A:/Games/mc2-srcdata/textures/64Overlays")
 
 sys.path.insert(0, str(HERE))
 import marking_glyphs as mg  # noqa: E402

@@ -4,7 +4,7 @@
 Sums *MESH_NUMVERTEX / *MESH_NUMFACES across all GEOMOBJECTs per .ase, categorizes
 by filename, and prints a per-category summary + heaviest meshes. Read-only.
 
-Usage: py -3 ase_geo_audit.py [--dir A:/Games/mc2-opengl-src/mc2srcdata/tgl]
+Usage: py -3 ase_geo_audit.py [--dir A:/Games/mc2-srcdata/tgl]
 """
 import argparse, re, statistics
 from pathlib import Path
@@ -39,7 +39,7 @@ def parse(p: Path):
 
 def main():
     ap = argparse.ArgumentParser()
-    ap.add_argument("--dir", default=r"A:/Games/mc2-opengl-src/mc2srcdata/tgl")
+    ap.add_argument("--dir", default=r"A:/Games/mc2-srcdata/tgl")
     ap.add_argument("--top", type=int, default=12)
     a = ap.parse_args()
     files = sorted(Path(a.dir).glob("*.ase"))

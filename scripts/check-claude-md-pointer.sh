@@ -41,7 +41,7 @@ fi
 SENTINELS=(
     "DO NOT EDIT"
     "root CLAUDE.md placeholder"
-    ".claude/worktrees/nifty-mendeleev/CLAUDE.md"
+    "../mc2-main/CLAUDE.md"
     "must remain a thin pointer"
     "check-claude-md-pointer.sh"
 )

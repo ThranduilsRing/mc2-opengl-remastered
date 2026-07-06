@@ -10,7 +10,7 @@
 # mclib/mech3d.cpp is editing a STALE copy -- the change never lands
 # in the lane and silently diverges (documented incident: root
 # mclib/mech3d.cpp edited while the lane lived in
-# .claude/worktrees/nifty-mendeleev).
+# ../mc2-main).
 #
 # This script reports, from ANY cwd inside the repo or a worktree:
 #   1. where you are (root vs which worktree) + current branch
@@ -86,7 +86,7 @@ if [ "$TOPLEVEL" = "$MAIN_ROOT" ]; then
         done
         echo "$TAG    Root edits are LIKELY WRONG -- lane work belongs in its worktree" >&2
         echo "$TAG    (incident class: root mclib/mech3d.cpp edited while lane lived in" >&2
-        echo "$TAG     .claude/worktrees/nifty-mendeleev). cd into the lane worktree first." >&2
+        echo "$TAG     ../mc2-main). cd into the lane worktree first." >&2
         # Cheap stale-edit cross-check: root-dirty tracked files that also
         # differ in a lane worktree (same path modified both places).
         git -C "$MAIN_ROOT" status --porcelain | awk '{print $2}' | while read -r f; do

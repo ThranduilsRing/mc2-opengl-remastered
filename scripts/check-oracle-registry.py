@@ -30,9 +30,7 @@ REPO_ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 # The golden artifact dir may live in the nifty-mendeleev worktree (the
 # canonical smoke-artifact store) rather than this worktree's tests/ tree.
 # We probe both locations and fall back gracefully.
-_NIFTY_WORKTREE = os.path.join(
-    os.path.dirname(REPO_ROOT), "nifty-mendeleev"
-)
+_NIFTY_WORKTREE = "A:/Games/mc2-main"  # canonical worktree (moved 2026-07-05)
 _GOLDEN_STEM = os.path.join("tests", "smoke", "artifacts", "2026-06-09T19-27-36")
 
 def _find_default_artifact_dir():

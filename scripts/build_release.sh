@@ -19,7 +19,7 @@
 # Inputs:
 #   $DEPLOY  — full deployed install (mc2.exe + data/ + *.fst). Default:
 #              A:/Games/mc2-opengl/mc2-win64-v0.2
-#   $SRCDATA — mc2srcdata tree. Default: A:/Games/mc2-opengl-src/mc2srcdata
+#   $SRCDATA — mc2srcdata tree. Default: A:/Games/mc2-srcdata
 #   $OUTDIR  — where zips land. Default: <repo>/release_assets
 #
 # Re-running is safe: zips are rewritten in place.
@@ -28,7 +28,7 @@ set -euo pipefail
 
 REPO="$(cd "$(dirname "$0")/.." && pwd)"
 DEPLOY="${DEPLOY:-A:/Games/mc2-opengl/mc2-win64-v0.4}"
-SRCDATA="${SRCDATA:-A:/Games/mc2-opengl-src/mc2srcdata}"
+SRCDATA="${SRCDATA:-A:/Games/mc2-srcdata}"
 OUTDIR="${OUTDIR:-$REPO/release_assets}"
 SEVENZIP="${SEVENZIP:-/c/Program Files/7-Zip/7z.exe}"
 

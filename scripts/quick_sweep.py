@@ -11,7 +11,7 @@ MISSION = sys.argv[1] if len(sys.argv) > 1 else "mc2_10"
 LABEL   = sys.argv[2] if len(sys.argv) > 2 else "sweep"
 TIMES   = [float(x) for x in (sys.argv[3] if len(sys.argv) > 3 else "8,14,20,26").split(",")]
 EXE = Path(r"A:/Games/mc2-opengl/mc2-win64-v0.3/mc2.exe")
-OUT_DIR = Path(r"A:/Games/mc2-opengl-src/.claude/worktrees/nifty-mendeleev/tests/smoke/artifacts/diag-shots")
+OUT_DIR = Path(r"A:/Games/mc2-main/tests/smoke/artifacts/diag-shots")
 OUT_DIR.mkdir(parents=True, exist_ok=True)
 
 DURATION = int(max(TIMES) + 10)

@@ -39,7 +39,7 @@ import sys
 # ---------------------------------------------------------------------------
 REPO_ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 
-_NIFTY_WORKTREE = os.path.join(os.path.dirname(REPO_ROOT), "nifty-mendeleev")
+_NIFTY_WORKTREE = "A:/Games/mc2-main"  # canonical worktree (moved 2026-07-05)
 _GOLDEN_STEM = os.path.join("tests", "smoke", "artifacts", "2026-06-09T19-27-36")
 
 

@@ -6,7 +6,7 @@ MISSION = sys.argv[1] if len(sys.argv) > 1 else "mc2_10"
 WAIT_SEC = int(sys.argv[2]) if len(sys.argv) > 2 else 60
 LABEL = sys.argv[3] if len(sys.argv) > 3 else "current"
 EXE = Path(r"A:/Games/mc2-opengl/mc2-win64-v0.3/mc2.exe")
-OUT_DIR = Path(r"A:/Games/mc2-opengl-src/.claude/worktrees/nifty-mendeleev/tests/smoke/artifacts/diag-shots")
+OUT_DIR = Path(r"A:/Games/mc2-main/tests/smoke/artifacts/diag-shots")
 OUT_DIR.mkdir(parents=True, exist_ok=True)
 
 def kill():

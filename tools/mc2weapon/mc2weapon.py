@@ -52,14 +52,14 @@ COMPBAS_FIELDS = [
 # Candidate locations for the loose source CSVs (first existing wins).
 COMPBAS_CANDIDATES = [
     "data/objects/compbas.csv",
-    "A:/Games/mc2-opengl-src/mc2srcdata/objects/compbas.csv",
+    "A:/Games/mc2-srcdata/objects/compbas.csv",
     "A:/Games/mc2-opengl/mc2-win64-v0.4/data/objects/compbas.csv",
     "A:/Games/mc2-opengl/mc2srcdata-fresh/objects/compbas.csv",
 ]
 EFFECTS_CANDIDATES = [
     "data/objects/effects.csv",
     "A:/Games/mc2-opengl/mc2-win64-v0.4/data/objects/effects.csv",
-    "A:/Games/mc2-opengl-src/mc2srcdata/objects/effects.csv",
+    "A:/Games/mc2-srcdata/objects/effects.csv",
 ]
 
 

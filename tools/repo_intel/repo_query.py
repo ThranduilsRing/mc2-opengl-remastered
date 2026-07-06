@@ -26,7 +26,7 @@ Guards (apply to dirty + preflight):
 Example full preflight:
     py -3 tools\\repo_intel\\repo_query.py preflight \\
         --expect-branch claude/nifty-mendeleev \\
-        --expect-root A:\\Games\\mc2-opengl-src\\.claude\\worktrees\\nifty-mendeleev
+        --expect-root A:\Games\mc2-main
 """
 
 import json
@@ -818,7 +818,7 @@ def main():
             "Example full preflight:\n"
             r"  py -3 tools\repo_intel\repo_query.py preflight"
             " --expect-branch claude/nifty-mendeleev"
-            r" --expect-root A:\Games\mc2-opengl-src\.claude\worktrees\nifty-mendeleev",
+            r" --expect-root A:\Games\mc2-main",
             file=sys.stderr,
         )
         sys.exit(1)
