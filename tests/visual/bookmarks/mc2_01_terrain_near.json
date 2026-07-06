@@ -18,6 +18,15 @@
       "proj": 45.0,
       "alt": 320.0,
       "covers": ["terrain_lod0", "near_detail", "no_units"]
+    },
+    {
+      "name": "lodfade_midband",
+      "_note": "VK-TERRAIN-LODFADE seam-pose: camDist (ground distance + 0.7*altBoost, terrain_tier1.frag mv_computeLodNear) placed near the middle of the fade band [LODFADE_NEAR=4000, LODFADE_NEAR_FADE=4500]. Same XY area as near_land_low/near_land_off (known height-stable ground on mc2_01 -- avoids the mc2_24 land-follow altitude-divergence pitfall) but pulled back+up so camDist ~= 4250wu, i.e. lodNear ~= 0.5 (mid-fade) when MC2_VK_TERRAIN_LODFADE=1.",
+      "pos": [2496.0, -5441.0, 0.0],
+      "rot": 30.0,
+      "proj": 45.0,
+      "alt": 1200.0,
+      "covers": ["terrain_lod0", "near_detail", "lodfade_seam"]
     }
   ]
 }

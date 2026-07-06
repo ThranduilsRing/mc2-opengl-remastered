@@ -152,6 +152,56 @@ the absence of a mismatch. Verification-only; never mutates render output.)
 
 ---
 
+## PERF LEDGER (post shadow-copy-tax kill + record-submit recon, 2026-07-06 @ dd26ceac)
+
+Shadow-copy taxes are DEAD (`abee4620`: 58ms/15.6ms → ~0.0005ms — terrain island
+direct-consumes the VK-produced dynamic shadow, zero-copy).
+
+### FPS re-baseline (mc2_01, canonical 30s smoke, minimized-window cap ~100fps)
+| state | avg FPS | p1% | frames |
+|-------|---------|-----|--------|
+| umbrella OFF (GL control) | **78** | 65 | 2339 |
+| umbrella ON (`MC2_VK_SHARED_GBUFFER=1 MC2_VK_SHADOW_INTEROP=1 MC2_VK_TERRAIN_CSM=1`) | **46** | 38 | 1383 |
+
+ON is up from the 28–32 of the pre-shadow-consume evidence run (same harness/cap). The
+remaining ON gap = record-submit + interop staging (user Tracy: VK-terrain-record-submit
+~3.5ms, VK-props ~1.35ms, VK-mech ~1.2ms).
+
+### Record-submit batching recon (per island, code-level)
+- **terrain** — per-patch `vkCmdBindDescriptorSets` is NOT redundant: it is the required
+  Vulkan form for varying a dynamic-UBO offset per draw (same set handle, only
+  `pDynamicOffsets` changes). Pipeline bound once. Already the cheap idiom → NO change.
+  Further reduction = per-patch SSBO + `gl_InstanceIndex` instanced merge (shader-contract
+  change), deferred until per-zone ms is measurable.
+- **props** — pipeline+set already bound ONCE outside the loop
+  (`vulkan_color_prop_island.cpp:1682-1686`); per-packet cost is an 8-byte
+  `vkCmdPushConstants` + `vkCmdDrawIndexed`. Instanced merging requires moving
+  packetLayerOff/On into a per-instance SSBO (vertex+fragment contract change) → real
+  byte-identity risk and unmeasurable this session (no Tracy capture CLI in repo) →
+  NOT shipped per the "<0.3ms isn't worth the risk" rule. Candidate for a Tracy-attached
+  session.
+- **mech** — pipeline+set bound once, per-run draws already instanced
+  (`vulkan_mech_island.cpp:940-961`). Nothing to batch.
+
+**Net: zero record-path code changes; byte-identity re-proven at dd26ceac** (terrain
+near-oracle self-diff x3: VK 0.000/0.000, GL 0.000 with one r0-r1 pair showing the
+documented GL mech-gait jitter artifact only).
+
+### LODFADE seam-pose oracle (new bookmark `lodfade_midband`, mc2_01_terrain_near.json)
+Mid-distance pose authored so camDist (ground dist + 0.7·altBoost, terrain_tier1.frag
+`mv_computeLodNear`) sits mid-band [LODFADE_NEAR=4000, LODFADE_NEAR_FADE=4500].
+Canonical-unit results @ dd26ceac:
+- Gate engagement PROVEN: `[VK_TERRAIN_LODFADE_DIAG] lodFadeEnabled=1 detailEnabled=1
+  lightingEnabled=1` (one-shot diag line; needs `MC2_VK_TERRAIN_COPY_STATS=1`).
+- VK fade-off vs fade-on delta: **0.000 at ALL poses including the band pose** — at
+  ≥4000wu the detail-normal term is already faded sub-pixel by the fwidth screen-space
+  AA, so the lodNear multiply is pixel-neutral at band distance. The LODFADE gate closes
+  the GL band seam without introducing any pixel change of its own → byte-safe to enable.
+- VK fade-ON self-diff x2: 0.000 (deterministic). COPY_STATS-only delta: 0.000.
+- GL-vs-VK at lodfade_midband: cov 0.000%, mean_all 0.591, max 5 (sub-threshold co-write).
+
+---
+
 ## MECHANICAL FIXES / ADDITIONS THIS SESSION
 1. `vulkan_terrain_island.cpp` `audit_height()` — added a rate-limited positive-witness
    `[HEIGHT_AUDIT] OK` log (live_fnv + bytes + ver). Verification-only, read-only, no render
