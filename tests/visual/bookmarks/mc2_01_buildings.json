@@ -1,0 +1,10 @@
+{
+  "schema_v": 1,
+  "mission": "mc2_01",
+  "_note": "VK-FLIP-FIELD-REPORT-1 prop green-glow / imported-washout oracle. Poses framing the mc2_01 AIRPORT structures (hangar + quonset variants + stock buildings) close-up so the static-prop island's lit color is the dominant scene content. Airport centered ~ (3571,-872). FORCE_LOD=0 keeps terrain LOD0 co-writing too.",
+  "bookmarks": [
+    { "name": "airport_bldgs_close",  "pos": [3571.0, -872.0, 0.0],  "rot": -135.0, "proj": 30.0, "alt": 600.0,  "covers": ["static_prop", "buildings", "hangar", "quonset"] },
+    { "name": "airport_bldgs_low",    "pos": [3571.0, -872.0, 0.0],  "rot": -135.0, "proj": 18.0, "alt": 350.0,  "covers": ["static_prop", "buildings", "wall_bases"] },
+    { "name": "airport_bldgs_mid",    "pos": [3200.0, -700.0, 0.0],  "rot": 45.0,   "proj": 26.0, "alt": 800.0,  "covers": ["static_prop", "buildings"] }
+  ]
+}
