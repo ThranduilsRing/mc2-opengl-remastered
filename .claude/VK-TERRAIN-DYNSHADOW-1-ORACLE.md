@@ -310,15 +310,43 @@ Remaining items to a default-ON flip, highest-value first:
    pause) and is now SUPERSEDED by 14.92 on the deterministic pose. Residual ~15/ch =
    edge AA + calc_light-Lambert approx (as the mech oracle predicted), NOT a cull gap.
 
-2. **GATE CONSOLIDATION (MC2_VK_SHARED_GBUFFER umbrella + Tier-0 retire)** — per handoff.
-   The VK terrain/prop/mech islands each ride their own MC2_VK_*_TIER1 + shared-depth
-   gates; consolidate the shared-GBuffer co-write family under ONE umbrella
-   MC2_VK_SHARED_GBUFFER (keep the per-region sub-gates as detail toggles), and retire
-   the Tier-0 (readback/present-region) proof gates that P14-native superseded. Scope:
-   registry entries + run_smoke allowlist + the presence checks in each island's
-   *Requested(); byte-OFF must stay byte-identical; each region's existing oracle must
-   pass unchanged under the umbrella. Medium — pure gate plumbing, no shader/render math.
-   NOTE: explicitly OUT of scope this session per steering ("no consolidation yet").
+2. **GATE CONSOLIDATION (MC2_VK_SHARED_GBUFFER umbrella + Tier-0 retire) — ★★DONE
+   2026-07-06 (commits `36d4a2da` + `3baf0cc2`).** ONE umbrella now arms the whole
+   shared-GBuffer scene family; the flip toggles EXACTLY `MC2_VK_SHARED_GBUFFER`.
+   · **Umbrella resolver** `GameOS/gameos/vk_shared_gbuffer_gate.h`
+     (`mc2vkgate::{umbrellaOn,subGate}`, pure stdlib): umbrella=1 defaults every member
+     ON; explicit sub-gate env is a debug OVERRIDE that always wins (=1 force-on, =0
+     force-off). Members (all read sites routed through subGate): SHARED_SCENE_DEPTH,
+     PROP_COLOR_TIER1, PROP_MATERIAL, TERRAIN_TIER1/LIGHTING/DETAIL/DYNSHADOW,
+     MECH_TIER1/MATERIAL/LIGHTING. Region preconditions kept (Tier-1 regions require
+     shared depth; terrain detail/dynshadow require terrain lighting).
+   · **Tier-0 RETIRED** = `MC2_VK_PROP_COLOR_INTEROP` (the side-image+composite proof,
+     superseded by the Tier-1 in-place co-write MC2_VK_PROP_COLOR_TIER1). Demoted to
+     `EnvVarKind::Retired`; NOT an umbrella member, NOT on the flip path. Code path
+     **PARKED not deleted** — the Tier-1 island SHARES the TU and the Tier-0 buildup/run
+     branches are load-bearing scaffolding (deleting = large risky surgery for no gain;
+     handoff itself said "Tier-0 kept intact behind its own gate"). Default-OFF, byte-
+     identical when unset.
+   · **Safety gates stay INDEPENDENT**: MC2_VK_TERRAIN_HEIGHT_AUDIT (verification-only)
+     + structural island fail-soft (no env). Debug knobs (PROP_MATERIAL_DEBUG,
+     HEIGHT_AUDIT_CORRUPT) also excluded.
+   · **Registry/docs/smoke**: registered MC2_VK_SHARED_GBUFFER + the two previously-
+     UNREGISTERED members it surfaced (MC2_VK_PROP_COLOR_TIER1, MC2_VK_MECH_LIGHTING —
+     latent CI drift, now closed); run_smoke allowlists the umbrella; tier1_env_vars.md
+     gained a "the VK gate model" section (umbrella/sub/safety/debug classes). No VK
+     scene gate left unregistered.
+   · **VERIFY (`.claude/mech-parity/umbrella_equiv.py`, md5-verified 0.4c exe):**
+     (i) GL control (umbrella OFF) self-diff = **0.000** both poses → byte-OFF clean.
+     (ii) umbrella-ON vs GL = **57.12%/mean 4.77** near_land_low (matches the arc's
+     all-regions-ON baseline 56–59%/~4.7–5.0) → umbrella truly arms the co-write;
+     near_land_off substrate 0.017%/0.53 (≈ doc 0.685/0.77). (iii) A(explicit) vs
+     B(umbrella): unit-free **near_land_off = 0.000** (settle=30) → byte-identical where
+     no mech; the near_land_low A-vs-B residual (~0.4%, max=255) sits INSIDE the config's
+     OWN run-to-run floor (B-self-diff same band, max=255 gait spikes) = the KNOWN
+     mech-capture nondeterminism (gait-freeze needs bPaused; this bookmark path doesn't
+     fully engage it), NOT umbrella divergence. Umbrella==explicit is byte-identical BY
+     CONSTRUCTION (same booleans → same paths). (iv) smoke mc2_01 PASS both umbrella
+     states. Build clean; env-registry check adds no new VK unknown.
 
 3. **FULL-FRAME PARITY + SOAK CRITERIA** — the flip gate. NOW UNBLOCKED by #1+#2: the
    whole-frame VK-vs-GL number is DETERMINISTIC and UNMASKED (settle=80 + gait freeze).
