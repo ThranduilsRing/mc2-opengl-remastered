@@ -1001,6 +1001,11 @@ def main():
                             # S9D deterministic fixed-timestep smoke clock
                             # (opt-in; Popen replaces env so it must be listed).
                             "MC2_SMOKE_FIXED_TIMESTEP",
+                            # SIM-CLOCK-SPEED-1: sim/wall clock trace + sim-speed
+                            # multiplier. Without these in the allowlist Popen
+                            # drops them and gate-ON smoke runs are inert.
+                            "MC2_SIM_CLOCK_TRACE",
+                            "MC2_SIM_SPEED",
                             "MC2_SCREENSHOT_AT_FRAME",
                             "MC2_SCREENSHOT_PATH",
                             "MC2_OBJECT_POLY_OFFSET",
