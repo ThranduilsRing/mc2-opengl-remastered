@@ -2759,11 +2759,12 @@ void GpuMechBatcher::flush() {
         };
         uint32_t fallbackTotal = 0;
         for (int i = 0; i < 5; ++i) fallbackTotal += s_fallbacksThisFrame[i];
+        extern uint32_t g_mc2FrameCounter;
         std::fprintf(stderr,
-            "[MECHBATCHER v1] event=summary eligible=%u submitted=%zu "
-            "buckets=%zu draw_calls=%u fallback_total=%u\n",
-            s_eligibleActorsThisFrame, s_pendingSubmits.size(),
-            buckets.size(), drawnCalls, fallbackTotal);
+            "[MECHBATCHER v1] event=summary frame=%u eligible=%u submitted=%zu "
+            "buckets=%zu draw_calls=%u instances=%zu fallback_total=%u\n",
+            g_mc2FrameCounter, s_eligibleActorsThisFrame, s_pendingSubmits.size(),
+            buckets.size(), drawnCalls, totalInstances, fallbackTotal);
         for (int i = 0; i < 5; ++i) {
             if (s_fallbacksThisFrame[i] > 0) {
                 std::fprintf(stderr,

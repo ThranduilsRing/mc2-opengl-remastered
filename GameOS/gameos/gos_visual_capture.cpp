@@ -526,6 +526,34 @@ bool active() {
     return capActive || replayActive;
 }
 
+}}  // namespace gos::visual_capture (reopened below)
+
+// VK-MECH-CAPTURE-DETERMINISM-1: capture-mode-only gait-freeze predicate.
+// The bookmark sweep freezes the SIM (bPaused via mc2VisualCaptureSetPaused) so
+// scenarioTime + all unit updates stop -> byte-deterministic capture. But the
+// RENDER path still calls Mech3DAppearance::update(animate=true) once per render
+// frame (BattleMech::render, mech.cpp), which advances the stock gait by
+// mechFrameRate * frameLength (a WALL-CLOCK global, NOT scenarioTime). So a mech's
+// animation pose kept drifting run-to-run during the frozen sweep -> the center
+// "mech island" jitter that forced OBJ_BOX masking in the near-oracle.
+//
+// This shim returns 1 iff a capture is ACTIVE *and* the sim is currently frozen
+// for the sweep (bPaused bit of the packed pause state). mech3d.cpp gates the
+// gait advance on !this, so:
+//   * capture unset            -> shim is 0 -> ZERO behavior change (byte-safe);
+//   * capture active, pre-sweep-> bPaused=0 -> gait runs, mechs reach their pose;
+//   * capture active, in sweep -> bPaused=1 -> gait frozen -> deterministic.
+// Purely capture-mode-only: live game (no capture env) never sees this.
+extern "C" int mc2CaptureGaitFreezeActive() {
+    if (!gos::visual_capture::active()) return 0;
+    extern int mc2VisualCaptureGetPauseState();   // missiongui.cpp shim
+    const int packed = mc2VisualCaptureGetPauseState();
+    if (packed < 0) return 0;                      // no mission interface yet
+    return (packed & 0x2) ? 1 : 0;                 // bPaused bit
+}
+
+namespace gos { namespace visual_capture {
+
 void onPostRenderFrame(unsigned int frame, int sceneW, int sceneH) {
     // FIX #1: when a bookmark file is configured the free-capture path is
     // ALWAYS inert -- before, during, AND after the sweep. The deterministic

@@ -809,6 +809,22 @@ extern "C" int mc2_vk_mech_island_run(int w, int h) {
         setFallback("no_mech_instances"); return 0;
     }
 
+    // VK-MECH-CAPTURE-DETERMINISM-1: frame-stamped cull-parity witness. feed.instanceCount
+    // is s_vkMechInstSnapshot.size() == the GL batcher's totalInstances for THIS frame
+    // (assigned in the same flush, gos_mech_batcher.cpp:2796) so it is directly comparable
+    // to GL's [MECHBATCHER v1] event=summary instances=. Gated by the same stats env so
+    // controls stay clean (no default-on spam). extern frame counter (tgl.cpp).
+    {
+        static const bool s_cullWitness = (getenv("MC2_MECH_BATCHER_STATS") != nullptr);
+        if (s_cullWitness) {
+            // Ordinal = per-drawn-frame (usedVulkan+1); the GL batcher builds one feed
+            // per frame the island draws, so the ordered sequence of vk_instances must
+            // equal the batcher's instances= sequence (equal every frame by construction).
+            std::fprintf(stderr, "[VK_MECH_ISLAND] event=cull_witness seq=%lu vk_instances=%u runs=%u\n",
+                         g_health.usedVulkan + 1, feed.instanceCount, feed.runCount);
+        }
+    }
+
     if (g_island && (g_island->w != w || g_island->h != h)) {
         destroy_island(g_island); delete g_island; g_island = nullptr;
     }
