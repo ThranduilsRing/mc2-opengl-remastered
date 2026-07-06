@@ -8482,6 +8482,28 @@ extern "C" int mc2_color_prop_island_get_material_feed(Mc2ColorPropMaterialFeed*
     }
     return 1;
 }
+
+// VK-PROP-AMBIENT-IBL-1: real ObjectLights ambient + IBL-SH feed. GL-owner accessors
+// (this runs in GL context, mirrors mc2_mech_island_get_frame_feed's LightsData copy
+// setup at gos_mech_batcher.cpp:2910-2915).
+extern "C" void gos_LightDataSsbo_GetInterop(unsigned int* glName, unsigned long long* bytes);
+
+extern "C" int mc2_color_prop_island_get_light_feed(Mc2ColorPropLightFeed* out) {
+    if (!out) return 0;
+    out->lightDataGlSsbo = 0; out->lightDataBytes = 0;
+    { unsigned int nm = 0; unsigned long long by = 0;
+      gos_LightDataSsbo_GetInterop(&nm, &by);
+      out->lightDataGlSsbo = nm; out->lightDataBytes = by; }
+    // s_currentShSet: the live per-mission SH-L2 set (RenderCore::IblShRegistry),
+    // same table the GL static-prop VS uniform upload uses (u_iblSh[9]).
+    std::memcpy(out->iblSh, s_currentShSet ? &s_currentShSet->coeffs[0][0]
+                                            : &RenderCore::kIblShCoeffs[0][0],
+                sizeof(out->iblSh));
+    // s_iblShEnabled: MC2_STATIC_PROP_IBL_SH=0 kill-switch (default-ON). Mirrors the
+    // GL per-frame upload rule exactly: env unset/1 -> g_iblShStrength; env=0 -> 0.0.
+    out->iblShStrength = s_iblShEnabled ? g_iblShStrength : 0.0f;
+    return 1;
+}
 #endif // MC2_VULKAN_ISLAND
 
 // ---------------------------------------------------------------------------

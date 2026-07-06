@@ -952,6 +952,23 @@ extern "C" int mc2_terrain_tier1_get_frame_feed(Mc2TerrainTier1Feed* out)
         out->detailTiling   = 1.0f;   // detailNormalTiling.x (terrain_detail_tiling_)
         out->detailStrength = 1.0f;   // detailNormalStrength.x (terrain_detail_strength_)
     }
+
+    // VK-TERRAIN-LODFADE sub-slice: camera-distance fade for detail-normal/POM, closing
+    // the VK LOD0-vs-GL-band color seam (GL gos_terrain.frag lodNear, :322-328,616-736).
+    // Gate MC2_VK_TERRAIN_LODFADE requires detailEnabled (fading a feature that's already
+    // off is a no-op, so keep the precondition chain: LIGHTING -> DETAIL -> LODFADE).
+    {
+        int lodFadeOn = 0;
+        if (out->detailEnabled)
+            lodFadeOn = mc2vkgate::subGate("MC2_VK_TERRAIN_LODFADE") ? 1 : 0;
+        out->lodFadeEnabled = lodFadeOn;
+        extern void gos_GetTerrainCameraPos(float*, float*, float*);
+        float cx = 0.0f, cy = 0.0f, cz = 0.0f;
+        gos_GetTerrainCameraPos(&cx, &cy, &cz);
+        out->cameraPosMC2[0] = cx;
+        out->cameraPosMC2[1] = cy;
+        out->cameraPosMC2[2] = cz;
+    }
     return 1;
 }
 #endif

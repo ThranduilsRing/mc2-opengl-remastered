@@ -1697,6 +1697,7 @@ def main():
                             "MC2_VK_TERRAIN_TIER1",
                             "MC2_VK_TERRAIN_LIGHTING",
                             "MC2_VK_TERRAIN_DETAIL",
+                            "MC2_VK_TERRAIN_LODFADE",
                             "MC2_VK_TERRAIN_DYNSHADOW",
                             "MC2_VK_TERRAIN_CSM",
                             "MC2_VK_TERRAIN_HEIGHT_AUDIT",

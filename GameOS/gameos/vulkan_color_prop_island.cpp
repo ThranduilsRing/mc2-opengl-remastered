@@ -211,6 +211,10 @@ static_assert(sizeof(GpuStaticPropInstanceMirror) == 112, "instance mirror must 
 // samples the real albedo array + shared computePBR when armed, else keeps teal.
 // The tail (sun/materialReady) is default-zero and IGNORED by the Tier-0 vert/frag
 // (they only read the first 20 bytes) so the Tier-0 path is byte-identical.
+// VK-PROP-AMBIENT-IBL-1: extends the tail with the IBL-SH coefficient table (9 vec4,
+// .w pad -- std140 array stride for vec3[] is 16B) + strength + a lightingReady flag
+// (LightsData SSBO copied this frame -> ambientTerm valid). Tier-0 never reads past
+// its first 20 bytes so this extension is byte-identical for that path.
 struct ColorFrameUBO {
     float   worldToClipGL[16]; // gos_GetObjectFixBMVPMat4() — GL_FALSE   (off 0)
     float   objectDepthBias;   //                                          (off 64)
@@ -218,6 +222,11 @@ struct ColorFrameUBO {
     int32_t materialReady;     // 1 = sample alpha-OFF albedo array         (off 72)
     int32_t materialReadyOn;   // 1 = sample alpha-ON albedo array (a-test) (off 76)
     float   terrainSunMC2[4];  // surface->sun (MC2 world); .w pad          (off 80)
+    // VK-PROP-AMBIENT-IBL-1 tail (off 96):
+    float   iblSh[9][4];       // RenderCore SH-L2 coeffs, .w pad each      (off 96..236)
+    float   iblShStrength;     // g_iblShStrength (0.0 = feature off)       (off 240)
+    int32_t lightingReady;     // 1 = LightsData copied -> ambientTerm real (off 244)
+    float   _pad[2];           // pad to 16B multiple                       (off 248..256)
 };
 
 const VkFormat kColorFmt = VK_FORMAT_R16G16B16A16_SFLOAT; // MainColor-compatible
@@ -288,6 +297,15 @@ struct ColorPropIsland {
     VkDeviceSize  instCapBytes = 0;
     VkBuffer      ubo = VK_NULL_HANDLE; VmaAllocation uboAlloc = VK_NULL_HANDLE;
 
+    // VK-PROP-AMBIENT-IBL-1: per-frame copy of the live GL LightsData SSBO (binding 4,
+    // Tier-1 only) so the vert shader's calc_light-style ambient sum reads the same
+    // ObjectLights[] the GL prop VS does. wantLighting = tier1 (no separate gate --
+    // this is a parity FIX, not a new opt-in feature; Tier-0 never declares binding4).
+    bool          wantLighting  = false;
+    bool          lightingReady = false;   // LightsData copied this frame
+    VkBuffer      lightBuf = VK_NULL_HANDLE; VmaAllocation lightAlloc = VK_NULL_HANDLE;
+    VkDeviceSize  lightCap = 0;
+
     // VK-P11 STATIC-PROP MATERIAL: copy-once albedo 2D_ARRAY import + per-type layer
     // table + terrain sun. All optional (Tier-1 + MC2_VK_PROP_MATERIAL); fail-soft to
     // teal when unavailable (materialReady stays false).
@@ -354,7 +372,8 @@ void write_descriptors(ColorPropIsland* s) {
     if (s->set == VK_NULL_HANDLE) return;
     VkDescriptorBufferInfo uboInfo{ s->ubo, 0, VK_WHOLE_SIZE };
     VkDescriptorBufferInfo instInfo{ s->instBuf, 0, VK_WHOLE_SIZE };
-    VkWriteDescriptorSet w[4]{};
+    VkDescriptorBufferInfo lightInfo{};
+    VkWriteDescriptorSet w[5]{};
     uint32_t n = 0;
     w[n].sType = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET; w[n].dstSet = s->set;
     w[n].dstBinding = 0; w[n].descriptorCount = 1;
@@ -362,6 +381,14 @@ void write_descriptors(ColorPropIsland* s) {
     w[n].sType = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET; w[n].dstSet = s->set;
     w[n].dstBinding = 1; w[n].descriptorCount = 1;
     w[n].descriptorType = VK_DESCRIPTOR_TYPE_STORAGE_BUFFER; w[n].pBufferInfo = &instInfo; ++n;
+    // VK-PROP-AMBIENT-IBL-1: binding4 LightsData SSBO (Tier-1 only, valid dummy-or-real
+    // buffer required whenever the DSL declared it -- see wantLighting bindingCount).
+    if (s->tier1 && s->wantLighting && s->lightBuf != VK_NULL_HANDLE) {
+        lightInfo = VkDescriptorBufferInfo{ s->lightBuf, 0, VK_WHOLE_SIZE };
+        w[n].sType = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET; w[n].dstSet = s->set;
+        w[n].dstBinding = 4; w[n].descriptorCount = 1;
+        w[n].descriptorType = VK_DESCRIPTOR_TYPE_STORAGE_BUFFER; w[n].pBufferInfo = &lightInfo; ++n;
+    }
     // VK-P11 STATIC-PROP MATERIAL: binding2 layer SSBO (VS) + binding3 albedo array (FS).
     // Only written when the layout declared them (wantMaterial) AND the objects exist
     // (dummy or real). A valid descriptor is required for binding3 even pre-import.
@@ -397,6 +424,25 @@ void write_descriptors(ColorPropIsland* s) {
     }
     if (n) vkUpdateDescriptorSets(s->device, n, w, 0, nullptr);
     if (m) vkUpdateDescriptorSets(s->device, m, wm, 0, nullptr);
+}
+
+// VK-PROP-AMBIENT-IBL-1: grow-once light-copy buffer (mirrors ensure_inst_capacity's
+// shape; separate because it needs no write_descriptors rebind tie-in until the
+// caller decides -- the binding4 descriptor is written once at init from the dummy
+// size, same convention as the mech island's lightBuf).
+bool ensure_light_capacity(ColorPropIsland* s, VkDeviceSize bytes) {
+    if (s->lightBuf != VK_NULL_HANDLE && bytes <= s->lightCap) return true;
+    if (s->lightBuf != VK_NULL_HANDLE) {
+        vkDeviceWaitIdle(s->device);
+        vmaDestroyBuffer(s->allocator, s->lightBuf, s->lightAlloc);
+        s->lightBuf = VK_NULL_HANDLE;
+    }
+    VkDeviceSize cap = bytes + bytes / 2 + 4096;
+    if (!make_buffer(s, cap, VK_BUFFER_USAGE_STORAGE_BUFFER_BIT, &s->lightBuf, &s->lightAlloc, true))
+        return false;
+    s->lightCap = cap;
+    write_descriptors(s);
+    return true;
 }
 
 bool ensure_inst_capacity(ColorPropIsland* s, VkDeviceSize bytes) {
@@ -442,6 +488,7 @@ void destroy_island(ColorPropIsland* s) {
     if (s->ibo)     vmaDestroyBuffer(s->allocator, s->ibo, s->iboAlloc);
     if (s->instBuf) vmaDestroyBuffer(s->allocator, s->instBuf, s->instAlloc);
     if (s->ubo)     vmaDestroyBuffer(s->allocator, s->ubo, s->uboAlloc);
+    if (s->lightBuf) vmaDestroyBuffer(s->allocator, s->lightBuf, s->lightAlloc);  // VK-PROP-AMBIENT-IBL-1
     // VK-P11 STATIC-PROP MATERIAL: copy-once albedo array + per-type layer SSBO.
     if (s->albedoView)  vkDestroyImageView(d, s->albedoView, nullptr);
     if (s->albedoImg)   vmaDestroyImage(s->allocator, s->albedoImg, s->albedoAlloc);
@@ -759,6 +806,10 @@ bool init_island(ColorPropIsland* s, int w, int h) {
     s->tier1 = propColorTier1Requested();
     // VK-P11 STATIC-PROP MATERIAL requires the Tier-1 shared-GBuffer co-write path.
     s->wantMaterial = s->tier1 && propMaterialRequested();
+    // VK-PROP-AMBIENT-IBL-1: real ambient/IBL feed also requires Tier-1 (Tier-0 is the
+    // parked flat-debug path, not the parity target). Not a separate opt-in gate --
+    // this closes a documented parity gap in the same tier the washout fix landed in.
+    s->wantLighting = s->tier1;
     if (!s->tier1 && !colorPropGateRequested()) { setFallback("gate_off"); return false; }
 
     if (s->tier1) {
@@ -951,32 +1002,45 @@ bool init_island(ColorPropIsland* s, int w, int h) {
     // Tier-1 shaders can always reference them; the shader gates real sampling on
     // uFrame.materialReady. Tier-0 keeps exactly 2 bindings (byte-identical). ----
     const bool materialBindings = s->tier1 && s->wantMaterial;
+    // VK-PROP-AMBIENT-IBL-1: binding4 LightsData SSBO, declared whenever tier1 (not
+    // gated on wantMaterial -- ambient/IBL parity is independent of the albedo import).
+    const bool lightBinding = s->tier1 && s->wantLighting;
     {
-        // Tier-0: bindings 0(UBO),1(inst SSBO). Material (tier1): +2(alpha-OFF layer
-        // SSBO VS), 3(alpha-OFF albedo FS), 5(alpha-ON layer SSBO VS), 6(alpha-ON
-        // albedo FS). Binding 4 is left unused (keeps 3/6 sampler indices readable).
-        VkDescriptorSetLayoutBinding b[6]{};
-        b[0].binding = 0; b[0].descriptorType = VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER;
-        b[0].descriptorCount = 1; b[0].stageFlags = VK_SHADER_STAGE_VERTEX_BIT | VK_SHADER_STAGE_FRAGMENT_BIT;
-        b[1].binding = 1; b[1].descriptorType = VK_DESCRIPTOR_TYPE_STORAGE_BUFFER;
-        b[1].descriptorCount = 1; b[1].stageFlags = VK_SHADER_STAGE_VERTEX_BIT;
-        b[2].binding = 2; b[2].descriptorType = VK_DESCRIPTOR_TYPE_STORAGE_BUFFER;
-        b[2].descriptorCount = 1; b[2].stageFlags = VK_SHADER_STAGE_VERTEX_BIT;
-        b[3].binding = 3; b[3].descriptorType = VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER;
-        b[3].descriptorCount = 1; b[3].stageFlags = VK_SHADER_STAGE_FRAGMENT_BIT;
-        b[4].binding = 5; b[4].descriptorType = VK_DESCRIPTOR_TYPE_STORAGE_BUFFER;
-        b[4].descriptorCount = 1; b[4].stageFlags = VK_SHADER_STAGE_VERTEX_BIT;
-        b[5].binding = 6; b[5].descriptorType = VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER;
-        b[5].descriptorCount = 1; b[5].stageFlags = VK_SHADER_STAGE_FRAGMENT_BIT;
+        // Tier-0: bindings 0(UBO),1(inst SSBO). Tier-1: +4(LightsData SSBO, VS). Material
+        // (tier1 + MC2_VK_PROP_MATERIAL): +2(alpha-OFF layer SSBO VS), 3(alpha-OFF albedo
+        // FS), 5(alpha-ON layer SSBO VS), 6(alpha-ON albedo FS).
+        VkDescriptorSetLayoutBinding b[7]{};
+        uint32_t nb = 0;
+        b[nb].binding = 0; b[nb].descriptorType = VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER;
+        b[nb].descriptorCount = 1; b[nb].stageFlags = VK_SHADER_STAGE_VERTEX_BIT | VK_SHADER_STAGE_FRAGMENT_BIT; ++nb;
+        b[nb].binding = 1; b[nb].descriptorType = VK_DESCRIPTOR_TYPE_STORAGE_BUFFER;
+        b[nb].descriptorCount = 1; b[nb].stageFlags = VK_SHADER_STAGE_VERTEX_BIT; ++nb;
+        if (materialBindings) {
+            b[nb].binding = 2; b[nb].descriptorType = VK_DESCRIPTOR_TYPE_STORAGE_BUFFER;
+            b[nb].descriptorCount = 1; b[nb].stageFlags = VK_SHADER_STAGE_VERTEX_BIT; ++nb;
+            b[nb].binding = 3; b[nb].descriptorType = VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER;
+            b[nb].descriptorCount = 1; b[nb].stageFlags = VK_SHADER_STAGE_FRAGMENT_BIT; ++nb;
+        }
+        if (lightBinding) {
+            b[nb].binding = 4; b[nb].descriptorType = VK_DESCRIPTOR_TYPE_STORAGE_BUFFER;
+            b[nb].descriptorCount = 1; b[nb].stageFlags = VK_SHADER_STAGE_VERTEX_BIT; ++nb;
+        }
+        if (materialBindings) {
+            b[nb].binding = 5; b[nb].descriptorType = VK_DESCRIPTOR_TYPE_STORAGE_BUFFER;
+            b[nb].descriptorCount = 1; b[nb].stageFlags = VK_SHADER_STAGE_VERTEX_BIT; ++nb;
+            b[nb].binding = 6; b[nb].descriptorType = VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER;
+            b[nb].descriptorCount = 1; b[nb].stageFlags = VK_SHADER_STAGE_FRAGMENT_BIT; ++nb;
+        }
         VkDescriptorSetLayoutCreateInfo lci{};
         lci.sType = VK_STRUCTURE_TYPE_DESCRIPTOR_SET_LAYOUT_CREATE_INFO;
-        lci.bindingCount = materialBindings ? 6u : 2u; lci.pBindings = b;
+        lci.bindingCount = nb; lci.pBindings = b;
         if (vkCreateDescriptorSetLayout(s->device, &lci, nullptr, &s->dsl) != VK_SUCCESS) {
             vlog("vkCreateDescriptorSetLayout failed."); return false;
         }
         VkDescriptorPoolSize sizes[3]{};
         sizes[0].type = VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER; sizes[0].descriptorCount = 1;
-        sizes[1].type = VK_DESCRIPTOR_TYPE_STORAGE_BUFFER; sizes[1].descriptorCount = materialBindings ? 3u : 1u;
+        sizes[1].type = VK_DESCRIPTOR_TYPE_STORAGE_BUFFER;
+        sizes[1].descriptorCount = 1u + (materialBindings ? 2u : 0u) + (lightBinding ? 1u : 0u);
         sizes[2].type = VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER; sizes[2].descriptorCount = materialBindings ? 2u : 1u;
         VkDescriptorPoolCreateInfo pci{};
         pci.sType = VK_STRUCTURE_TYPE_DESCRIPTOR_POOL_CREATE_INFO;
@@ -989,6 +1053,11 @@ bool init_island(ColorPropIsland* s, int w, int h) {
         dsai.descriptorPool = s->pool; dsai.descriptorSetCount = 1; dsai.pSetLayouts = &s->dsl;
         if (vkAllocateDescriptorSets(s->device, &dsai, &s->set) != VK_SUCCESS) {
             vlog("vkAllocateDescriptorSets failed."); return false;
+        }
+        // VK-PROP-AMBIENT-IBL-1: light buffer must exist BEFORE write_descriptors below
+        // (binding4 needs a valid buffer object). Dummy-sized (grows on first real copy).
+        if (lightBinding) {
+            if (!ensure_light_capacity(s, 3600)) { setFallback("light_buf_failed"); return false; }
         }
         write_descriptors(s);
     }
@@ -1472,6 +1541,30 @@ extern "C" int mc2_vk_color_prop_island_run(int w, int h) {
         }
     }
 
+    // VK-PROP-AMBIENT-IBL-1: per-frame copy of the live GL LightsData SSBO into the
+    // island's own SSBO (binding 4) so the vert shader's ambientTerm sum reads the same
+    // ObjectLights[] the GL prop VS does. Mirrors VK-MECH-MATERIAL-LIGHTING-1's copy
+    // exactly (glGetBufferSubData is a buffer readback, NOT a color-surface readback --
+    // does not touch g_forbidden). IBL-SH coeffs are a static per-mission table (no GL
+    // round-trip) fetched fresh each frame in case the mission's SH set changed.
+    Mc2ColorPropLightFeed lightFeed{};
+    const bool haveLightFeed = mc2_color_prop_island_get_light_feed(&lightFeed);
+    s->lightingReady = false;
+    if (s->tier1 && s->wantLighting && haveLightFeed &&
+        lightFeed.lightDataGlSsbo != 0 && lightFeed.lightDataBytes >= 3600ull) {
+        const VkDeviceSize lbytes = (VkDeviceSize)lightFeed.lightDataBytes;
+        if (ensure_light_capacity(s, lbytes)) {
+            void* p = nullptr;
+            if (vmaMapMemory(s->allocator, s->lightAlloc, &p) == VK_SUCCESS) {
+                glBindBuffer(GL_SHADER_STORAGE_BUFFER, (GLuint)lightFeed.lightDataGlSsbo);
+                glGetBufferSubData(GL_SHADER_STORAGE_BUFFER, 0, (GLsizeiptr)lbytes, p);
+                glBindBuffer(GL_SHADER_STORAGE_BUFFER, 0);
+                vmaUnmapMemory(s->allocator, s->lightAlloc);
+                s->lightingReady = true;
+            }
+        }
+    }
+
     const unsigned long f0a = g_forbidden.vkCmdCopyImageToBuffer;
     const unsigned long f0b = g_forbidden.glGetTexImage;
     const unsigned long f0c = g_forbidden.glReadPixels;
@@ -1506,6 +1599,23 @@ extern "C" int mc2_vk_color_prop_island_run(int w, int h) {
         u.terrainSunMC2[1] = s->terrainSunMC2[1];
         u.terrainSunMC2[2] = s->terrainSunMC2[2];
         u.terrainSunMC2[3] = 0.0f;
+        // VK-PROP-AMBIENT-IBL-1: IBL-SH coeffs (std140 vec3[9] tail, .w pad each) +
+        // strength + lightingReady. lightingReady gates the vert shader's real
+        // ObjectLights ambientTerm sum; iblShStrength==0.0 short-circuits evalShL2
+        // exactly like the GL guard (byte-identical when the feature/env is off).
+        if (haveLightFeed) {
+            for (int i = 0; i < 9; ++i) {
+                u.iblSh[i][0] = lightFeed.iblSh[i][0];
+                u.iblSh[i][1] = lightFeed.iblSh[i][1];
+                u.iblSh[i][2] = lightFeed.iblSh[i][2];
+                u.iblSh[i][3] = 0.0f;
+            }
+            u.iblShStrength = lightFeed.iblShStrength;
+        } else {
+            std::memset(u.iblSh, 0, sizeof(u.iblSh));
+            u.iblShStrength = 0.0f;
+        }
+        u.lightingReady = s->lightingReady ? 1 : 0;
         void* p = nullptr;
         if (vmaMapMemory(s->allocator, s->uboAlloc, &p) == VK_SUCCESS) {
             std::memcpy(p, &u, sizeof(u)); vmaUnmapMemory(s->allocator, s->uboAlloc);

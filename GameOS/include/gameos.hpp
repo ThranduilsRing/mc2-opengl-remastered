@@ -2301,6 +2301,10 @@ bool __stdcall gos_IsTerrainTessellationActive();
 // Shadow coordinate API (raw MC2 coordinates for shadow matrix)
 void gos_GetTerrainLightDir(float* x, float* y, float* z);
 
+// VK-TERRAIN-LODFADE: camera position (Stuff/MLR space) for the terrain island's
+// camera-distance LOD fade port. Mirrors gos_GetTerrainLightDir's free-function shape.
+void gos_GetTerrainCameraPos(float* x, float* y, float* z);
+
 // SCENE-LIGHTING-STATE-1: read-only current sky number (-1 = none/unset).
 int gos_GetSkyNumber();
 

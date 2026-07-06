@@ -205,7 +205,12 @@ struct TerrainFrameUBO {
     int32_t _dynPad0;               // off 248
     int32_t _dynPad1;               // off 252
     float   dynamicLightSpaceMatrix[16]; // off 256..319 (mat4)
-    int32_t _pad[48];               // off 320..511: pad the slot up to 512B (mult of 256 align)
+    // VK-TERRAIN-LODFADE sub-slice: camera world position (Stuff/MLR space) + the
+    // gate toggle, packed into the existing pad tail (was _pad[48], off 320..511) so
+    // the 512B dynamic-alignment slot does NOT grow. LOCKSTEP with terrain_tier1.frag.
+    float   cameraPosMC2[4];        // off 320: gos_GetTerrainCameraPos(), .w pad
+    int32_t lodFadeEnabled;         // off 336
+    int32_t _pad[43];               // off 340..511: remaining pad
 };
 static_assert(sizeof(TerrainFrameUBO) == 512, "UBO slot must be 512B (dynamic alignment)");
 
@@ -1741,6 +1746,13 @@ extern "C" int mc2_vk_terrain_island_run(int w, int h) {
                 u.enableDynShadows = (feed.lightingEnabled && feed.dynShadowsEnabled && s->dynShadowReady) ? 1 : 0;
                 std::memcpy(u.dynamicLightSpaceMatrix, feed.dynamicLightSpaceMatrix,
                             sizeof(u.dynamicLightSpaceMatrix));
+                // VK-TERRAIN-LODFADE: camera pos + gate, precondition-chained on detail
+                // being enabled (fading an already-off detail term is a no-op).
+                u.cameraPosMC2[0] = feed.cameraPosMC2[0];
+                u.cameraPosMC2[1] = feed.cameraPosMC2[1];
+                u.cameraPosMC2[2] = feed.cameraPosMC2[2];
+                u.cameraPosMC2[3] = 0.0f;
+                u.lodFadeEnabled  = (u.detailEnabled && feed.lodFadeEnabled) ? 1 : 0;
                 slots[i] = u;
             }
             vmaUnmapMemory(s->allocator, s->uboAlloc);

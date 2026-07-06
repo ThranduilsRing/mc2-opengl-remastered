@@ -24,7 +24,55 @@ layout(set = 0, binding = 0, std140) uniform ColorFrameUBO {
     int   materialReady;   // VK-P11 MATERIAL: 1 = sample alpha-OFF albedo array
     int   materialReadyOn; // VK-P11 MATERIAL alpha-ON: 1 = sample alpha-ON albedo array
     vec4  terrainSunMC2;    // surface->sun (MC2 world); .w pad
+    // VK-PROP-AMBIENT-IBL-1 tail: real ObjectLights ambient + IBL-SH feed (deferred
+    // item from VK-FLIP-FIELD-REPORT-2's washout fix). Must match
+    // vulkan_color_prop_island.cpp's ColorFrameUBO layout byte-for-byte.
+    vec4  iblSh[9];         // RenderCore SH-L2 coeffs (.w pad each)
+    float iblShStrength;    // 0.0 = feature off (env/mission gate) -> evalShL2 skipped
+    int   lightingReady;    // 1 = LightsData SSBO copied this frame -> ambientTerm real
 } uFrame;
+
+// VK-PROP-AMBIENT-IBL-1: LightsData SSBO (binding 4), verbatim mirror of
+// shaders/include/lighting.hglsl's ObjectLights layout (byte-identical std430/std140
+// per that header's note -- every member is mat4/vec4-array + ivec4 tail). Copied
+// per-frame from the live GL LightsData SSBO (binding 20) by the island. We only need
+// the AMBIENT-type sum here (matches static_prop.vert:414-429's ambientTerm scan) --
+// NOT the full calc_light dispatch; sun color/direction stay the island's existing
+// kSunColor/terrainSunMC2 approximation (out of scope for this fix).
+#define MAX_LIGHTS_IN_WORLD 32
+#define TG_LIGHT_AMBIENT 0
+struct ObjectLights {
+    mat4  light_to_world[MAX_LIGHTS_IN_WORLD];
+    vec4  light_dir[MAX_LIGHTS_IN_WORLD];     // w = light type
+    vec4  light_color[MAX_LIGHTS_IN_WORLD];
+    vec4  light_falloff[MAX_LIGHTS_IN_WORLD];
+    ivec4 numLights;
+};
+layout(set = 0, binding = 4, std430) readonly buffer LightsData {
+    ObjectLights light[];
+} lightsData_;
+
+// SH-L2 evaluator -- verbatim port of static_prop.vert::evalShL2 (Ramamoorthi-Hanrahan
+// diffuse-irradiance reconstruction). Coefficients arrive pre-convolved (see
+// RenderCore/IblShCoeffs.h header comment); do not re-apply the cosine kernel here.
+vec3 evalShL2(vec3 n, vec3 sh[9]) {
+    const float kSH_c1 = 0.429043;
+    const float kSH_c2 = 0.511664;
+    const float kSH_c3 = 0.743125;
+    const float kSH_c4 = 0.886227;
+    const float kSH_c5 = 0.247708;
+    return
+          kSH_c1 * sh[8] * (n.x * n.x - n.z * n.z)
+        + kSH_c3 * sh[6] * (n.y * n.y)
+        + kSH_c4 * sh[0]
+        - kSH_c5 * sh[6]
+        + 2.0 * kSH_c1 * sh[4] * (n.x * n.y)
+        + 2.0 * kSH_c1 * sh[5] * (n.y * n.z)
+        + 2.0 * kSH_c1 * sh[7] * (n.x * n.z)
+        + 2.0 * kSH_c2 * sh[3] * n.x
+        + 2.0 * kSH_c2 * sh[1] * n.y
+        + 2.0 * kSH_c2 * sh[2] * n.z;
+}
 
 // VK-FLIP-FIELD-REPORT-2 BLACK-FENCE FIX: per-PACKET (not per-type) albedo layer,
 // pushed fresh before each vkCmdDrawIndexed. GL's coalesce path samples texArrayLayer
@@ -184,7 +232,41 @@ void main() {
     const vec3 kAmbientSky    = vec3(0.00, 0.02, 0.08);   // upward faces (sky bounce)
     const vec3 kAmbientGround = vec3(0.14, 0.13, 0.11);   // downward faces (ground bounce)
     float hemi_t = 0.5 + 0.5 * worldNormalStuff.y;        // Stuff-space .y = up
-    vec3  kAmbient = mix(kAmbientGround, kAmbientSky, clamp(hemi_t, 0.0, 1.0));
+    vec3  kAmbientFallback = mix(kAmbientGround, kAmbientSky, clamp(hemi_t, 0.0, 1.0));
     const vec3 kSunColor = vec3(0.95, 0.93, 0.86);   // per-actor sun color not fed
-    vArgb = seed + kAmbient + kSunColor * ndl;
+
+    // VK-PROP-AMBIENT-IBL-1: real feed closes two of the three documented gaps above.
+    //   * ambientTerm: sum of TG_LIGHT_AMBIENT rows at this instance's ObjectLights
+    //     entry (identical scan to static_prop.vert:414-429), now that LightsData is
+    //     copied per-frame (uFrame.lightingReady).
+    //   * IBL-SH: real SH-L2 coefficients (uFrame.iblSh) evaluated with the SAME
+    //     evalShL2 kernel GL uses, gated by uFrame.iblShStrength (0.0 = short-circuit,
+    //     byte-identical contribution when the feature/env is off — mirrors GL's
+    //     `if (u_iblShStrength > 0.0)` guard).
+    // The hemisphere tint (kAmbientFallback, tuned at the WASHOUT FIX) remains as the
+    // fail-soft path when LightsData hasn't been copied yet (first frame / feed miss)
+    // so props never regress to flat/black ambient.
+    vec3 ambientTerm = vec3(0.0);
+    if (uFrame.lightingReady != 0) {
+        ObjectLights ld = lightsData_.light[int(inst.lightDataIndex)];
+        int n = min(ld.numLights.x, MAX_LIGHTS_IN_WORLD);
+        for (int i = 0; i < n; ++i) {
+            if (int(ld.light_dir[i].w) == TG_LIGHT_AMBIENT) {
+                ambientTerm += ld.light_color[i].xyz;
+            }
+        }
+    } else {
+        ambientTerm = kAmbientFallback;
+    }
+
+    vec3 iblTerm = vec3(0.0);
+    if (uFrame.iblShStrength > 0.0) {
+        vec3 shCoeffs[9];
+        for (int i = 0; i < 9; ++i) shCoeffs[i] = uFrame.iblSh[i].xyz;
+        // worldNormal is Stuff-space Y-up (un-swapped), matching static_prop.vert's
+        // evalShL2(normalize(worldNormal)) call (SH projector's axis convention).
+        iblTerm = evalShL2(normalize(worldNormalStuff), shCoeffs) * uFrame.iblShStrength;
+    }
+
+    vArgb = seed + ambientTerm + iblTerm + kSunColor * ndl;
 }

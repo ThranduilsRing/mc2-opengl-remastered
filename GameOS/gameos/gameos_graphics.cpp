@@ -9912,6 +9912,9 @@ void gos_GetTerrainLightDir(float* x, float* y, float* z) {
 void gos_SetTerrainLightDir(float x, float y, float z) {
     if (g_gos_renderer) g_gos_renderer->setTerrainLightDir(x, y, z);
 }
+// VK-TERRAIN-LODFADE: reuses the existing gos_GetTerrainCameraPos free function
+// (defined above at the gos_SetShadowMode block) for the camera-distance fade port --
+// no new accessor needed.
 void gos_SetTerrainDetailParams(float tiling, float strength) {
     if (g_gos_renderer) g_gos_renderer->setTerrainDetailParams(tiling, strength);
 }

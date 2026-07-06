@@ -107,6 +107,13 @@ struct Mc2TerrainTier1Feed {
     float                       nfhStrength;           // terrainNormalsFromHeightStrength (GL default 1.0)
     float                       detailTiling;          // detailNormalTiling.x (GL default 1.0)
     float                       detailStrength;        // detailNormalStrength.x (GL default 1.0)
+    // VK-TERRAIN-LODFADE sub-slice: fade detail-normal/POM to 0 across the LOD0/band
+    // boundary like GL (gos_terrain.frag lodNear, :322-328,616-736), closing the VK
+    // LOD0-vs-GL-band color seam. Gate MC2_VK_TERRAIN_LODFADE (requires
+    // MC2_VK_TERRAIN_DETAIL); 0 -> VK island's lodNear stays 1.0 always (byte-identical
+    // to the pre-fade frame).
+    int32_t                     lodFadeEnabled;        // 1 iff MC2_VK_TERRAIN_LODFADE gate on
+    float                       cameraPosMC2[3];       // gos_GetTerrainCameraPos() (Stuff/MLR space)
 };
 
 // Provided BY the GL terrain path (gos_terrain_lod_chunk.cpp). The island calls this

@@ -677,7 +677,7 @@ static constexpr EnvVarDesc kAuxEnvVars[] = {
         "arms the whole VK shared-GBuffer scene path at once — when ON, every member "
         "sub-gate DEFAULTS to ON: MC2_VK_SHARED_SCENE_DEPTH, MC2_VK_PROP_COLOR_TIER1, "
         "MC2_VK_PROP_MATERIAL, MC2_VK_TERRAIN_TIER1, MC2_VK_TERRAIN_LIGHTING, "
-        "MC2_VK_TERRAIN_DETAIL, MC2_VK_TERRAIN_DYNSHADOW, MC2_VK_MECH_TIER1, "
+        "MC2_VK_TERRAIN_DETAIL, MC2_VK_TERRAIN_LODFADE, MC2_VK_TERRAIN_DYNSHADOW, MC2_VK_MECH_TIER1, "
         "MC2_VK_MECH_MATERIAL, MC2_VK_MECH_LIGHTING (resolved by mc2vkgate::subGate in "
         "GameOS/gameos/vk_shared_gbuffer_gate.h). Explicit sub-gate env ALWAYS wins as a "
         "debug OVERRIDE (=1 force-on, =0 force-off) over the umbrella default. The eventual "
@@ -836,6 +836,19 @@ static constexpr EnvVarDesc kAuxEnvVars[] = {
         "cast onto roads/pads). Reuses computeBakedShadow (VERBATIM legacy calcDynamicShadow: adaptiveScale "
         "2.4->0.8, mix(0.4,1.0,shadow), 8 taps). FAIL-SOFT: GL dynamic map not live / CSM active -> no "
         "dynamic term (lit-only), no hole. Gate OFF = byte-identical to the pre-dynshadow VK frame."
+    },
+    {
+        "MC2_FEATURE_VK_TERRAIN_LODFADE",
+        "MC2_VK_TERRAIN_LODFADE",
+        EnvVarKind::Feature,
+        false,
+        "VK-TERRAIN-LODFADE: presence-gated =1, default OFF (requires MC2_VK_TERRAIN_DETAIL). Ports GL's "
+        "camera-distance lodNear fade (gos_terrain.frag:322-328,616-736: LOD_NEAR=4000/LOD_NEAR_FADE=4500 "
+        "smoothstep) so the VK terrain's detail-normal + POM fade to 0 across the same LOD0/band boundary GL "
+        "fades at, closing the VK-LOD0-vs-GL-band color seam. Feeds gos_GetTerrainCameraPos() (Stuff/MLR "
+        "space) into the UBO (existing pad tail, no slot growth) each frame; the frag recomputes camDist/"
+        "lodNear verbatim and multiplies the POM offset + the whole detail-normal contribution by it. FAIL-"
+        "SOFT: gate off -> lodNear==1.0 always (byte-identical to the pre-fade VK-TERRAIN-DETAIL frame)."
     },
     {
         "MC2_FEATURE_VK_TERRAIN_CSM",

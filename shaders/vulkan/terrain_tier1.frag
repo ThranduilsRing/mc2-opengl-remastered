@@ -88,6 +88,13 @@ layout(set = 0, binding = 0, std140) uniform TerrainFrameUBO {
     int   _dynPad0;         // off 248
     int   _dynPad1;         // off 252
     mat4  dynamicLightSpaceMatrix; // off 256
+    // VK-TERRAIN-LODFADE sub-slice: camera world position (MC2 space) + the
+    // lodFadeEnabled toggle, packed into the existing _pad[48] tail (off 320..511) so
+    // the 512B dynamic-alignment slot does NOT grow. Mirrors GL gos_terrain.frag's
+    // camDist/lodNear computation (:322-327) -- see terrain_tier1.vert/.frag comment
+    // at the lodNear computation site below for the verbatim formula.
+    vec4  cameraPosMC2;     // off 320: gos_terrain.frag's `cameraPos` (Stuff/MLR space)
+    int   lodFadeEnabled;   // off 336: MC2_VK_TERRAIN_LODFADE gate (0 -> lodNear==1.0 always)
 } uT;
 
 // VK-TERRAIN-DETAIL: the height SSBO (VK-owned snapshot; same buffer the VS reads at
@@ -247,7 +254,22 @@ vec2 mv_parallax(vec2 uv, float scale, vec4 w) {
 // (see mv_parallax below). DEFERRED vs GL (report): LOD-tier fade, painted-concrete normal, cliff
 // triplanar. Uses implicit-LOD texture()/mv_sampleAntiTileArr (uniform control flow
 // here — no non-uniform weight branch, so LOD is well-defined). -------------------
-vec3 mv_detailNormal(vec4 w, float snowWeight, vec2 worldXY) {
+// VK-TERRAIN-LODFADE: LOD_NEAR/LOD_NEAR_FADE constants verbatim from gos_terrain.frag
+// :163-164. camDist matches gos_terrain.frag :322-326 EXACTLY: ground-plane distance
+// from the camera (Stuff/MLR .x=left/right,.y=elevation,.z=forward) to WorldPos (MC2
+// .x=east,.y=north,.z=elevation), plus a zoom-out altitude boost.
+const float LODFADE_NEAR      = 4000.0;
+const float LODFADE_NEAR_FADE = 4500.0;
+float mv_computeLodNear(vec2 worldXY, float worldZ) {
+    if (uT.lodFadeEnabled == 0) return 1.0;   // gate off -> byte-identical (no fade)
+    vec2  camGround = vec2(-uT.cameraPosMC2.x, uT.cameraPosMC2.z);
+    float hDist      = distance(worldXY, camGround);
+    float altBoost   = max(uT.cameraPosMC2.y - worldZ, 0.0) * 0.7;
+    float camDist    = hDist + altBoost;
+    return 1.0 - smoothstep(LODFADE_NEAR, LODFADE_NEAR_FADE, camDist);
+}
+
+vec3 mv_detailNormal(vec4 w, float snowWeight, vec2 worldXY, float lodNear) {
     vec2 uv = worldXY * (uT.detailTiling / MATV_WU_PER_TILE);
     vec2 uvRock     = uv * (MATV_TILING.x / 3.0);
     vec2 uvGrass    = uv * MATV_TILING.y;
@@ -264,11 +286,14 @@ vec3 mv_detailNormal(vec4 w, float snowWeight, vec2 worldXY) {
 
     // ★POM: parallax-offset the material UVs (GL :361-367). fwidth-gated (near only)
     // -> bounded cost. pomParams.x (=0.02) > 0 always here; fwRock > 0.4 gate matches GL.
-    if (MATV_POM_PARAMS.x > 0.0 && fwRock > 0.4) {
+    // VK-TERRAIN-LODFADE: fade the POM offset by lodNear (GL gos_terrain.frag :617-624
+    // `pomOffset *= lodNear` -- prevents popping at the LOD0/band boundary GL fades
+    // across; lodNear==1.0 when the gate is off, so this is a no-op then).
+    if (MATV_POM_PARAMS.x > 0.0 && fwRock > 0.4 && lodNear > 0.01) {
         const vec4 pomScaleMat = vec4(1.0, 1.0, 2.5, 1.0);
-        float pomScale = MATV_POM_PARAMS.x * dot(pomScaleMat, w) * fwRock;
+        float pomScale = MATV_POM_PARAMS.x * dot(pomScaleMat, w) * fwRock * lodNear;
         vec2  pomUV    = uv * dot(MATV_TILING, w);
-        vec2  pomOff   = (mv_parallax(pomUV, pomScale, w) - pomUV) * fwRock;
+        vec2  pomOff   = (mv_parallax(pomUV, pomScale, w) - pomUV) * fwRock * lodNear;
         uvRock += pomOff; uvGrass += pomOff; uvDirt += pomOff; uvConcrete += pomOff;
     }
 
@@ -306,7 +331,11 @@ vec3 mv_detailNormal(vec4 w, float snowWeight, vec2 worldXY) {
     }
     dN += snowWeight * 0.9 * fwSnow *
           (texture(u_matNormalArray, vec3(uvSnow, float(MAT_LAYER_SNOW))).rgb * 2.0 - 1.0);
-    return dN;
+    // VK-TERRAIN-LODFADE: GL gos_terrain.frag :727-736 ties the WHOLE detail-normal
+    // contribution to lodNear (detailMul), not just the POM offset -- stops the
+    // detail-normal "carpet" from popping in/out at the LOD0/band boundary. lodNear
+    // is 1.0 when the gate is off (byte-identical).
+    return dN * lodNear;
 }
 
 // COLORMAP-BASE: the VK-owned copy-once import of the GL colormap atlas.
@@ -496,7 +525,10 @@ void main() {
             if (uT.detailReady != 0) {
                 vec4  matW; float snowW;
                 mv_weights(base, matW, snowW);                   // classify from colormap base
-                dN = mv_detailNormal(matW, snowW, v_worldPos.xy);
+                // VK-TERRAIN-LODFADE: fades detail-normal/POM to 0 across the LOD0/band
+                // boundary (GL gos_terrain.frag :326-328). Gate off -> lodNear==1.0.
+                float lodNear = mv_computeLodNear(v_worldPos.xy, v_worldPos.z);
+                dN = mv_detailNormal(matW, snowW, v_worldPos.xy, lodNear);
             }
             vec3 pert = vec3(baseN.xy / max(baseN.z, 0.2) * uT.nfhStrength
                              + dN.xy * uT.detailStrength, 1.0);

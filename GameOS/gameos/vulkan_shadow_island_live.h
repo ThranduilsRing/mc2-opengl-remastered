@@ -125,6 +125,23 @@ struct Mc2ColorPropMaterialFeed {
 };
 int mc2_color_prop_island_get_material_feed(Mc2ColorPropMaterialFeed* out);
 
+// VK-PROP-AMBIENT-IBL-1: real ObjectLights ambient + IBL-SH feed for the Tier-1
+// prop island (deferred item from VK-FLIP-FIELD-REPORT-2 washout fix). Mirrors the
+// VK-MECH-MATERIAL-LIGHTING-1 pattern: LightsData GL SSBO name/size (binding 20,
+// copy-per-frame into the island's own SSBO) + the static IBL-SH coefficient table
+// (header-only constexpr, no GL round-trip needed) + the live iblShStrength slider
+// value (0.0 when MC2_STATIC_PROP_IBL_SH=0 -> shader short-circuits, byte-identical
+// contribution). ambient_v1 hemisphere tints are NOT part of this feed (still a GL
+// constant the island approximates locally) -- only the ObjectLights AMBIENT-type
+// sum and the SH-L2 fill are real data now.
+struct Mc2ColorPropLightFeed {
+    uint32_t     lightDataGlSsbo;   // live LightsData GL SSBO name (binding 20) to copy
+    uint64_t     lightDataBytes;    // its byte size (ObjectLights[] * 3600B, grow-once)
+    float        iblSh[9][3];       // RenderCore::kIblShCoeffs (or current mission's set)
+    float        iblShStrength;     // g_iblShStrength if s_iblShEnabled else 0.0
+};
+int mc2_color_prop_island_get_light_feed(Mc2ColorPropLightFeed* out);
+
 // --- Island public API (implemented in vulkan_shadow_island_live.cpp) --------
 
 // True when MC2_VK_SHADOW_INTEROP requests the VK shadow region.
