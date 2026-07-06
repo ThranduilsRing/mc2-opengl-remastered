@@ -9,30 +9,51 @@ Everything else is byte-identical proven code.
 import struct, os, re, sys, shutil, zlib, argparse
 
 
-# ---- Classic variable-width LZW decompressor (from A:/tmp/fst_extract.py) ----
-# Direct port of LZDecompClassicLZW_ from lzdecomp.cpp (LINUX_BUILD path).
-# Bit stream: LSB-first across byte boundaries.
+# ---- Classic variable-width LZW decompressor ---------------------------------
+# Faithful port of the ORIGINAL Microsoft __asm LZDecomp in mclib/lzdecomp.cpp
+# (the non-LINUX_BUILD path — the decoder the shipped Windows engine actually
+# runs, and the one whose semantics the stock FST packer targets).
+#
+# The earlier version of this function ported the LINUX_BUILD C fallback
+# (LZDecompClassicLZW_) instead, which deviates from the asm in two ways and
+# failed with "invalid code 301" on stock misc.fst entries:
+#   1. The asm adds a dictionary entry for EVERY code, including the very
+#      first one of the stream (using initial old_chain=0 / old_suffix=0),
+#      so free_idx runs one ahead of the C-fallback's — every later
+#      dictionary code is off by one.
+#   2. After a CLEAR (256), the asm reads the next code, emits ONLY its low
+#      byte and records it as old_chain WITHOUT adding a dictionary entry.
+#   3. Codes >= free_idx are not an error in the asm: the entry at
+#      table[code] is written from (old_chain, old_suffix) and the walk
+#      continues from old_chain (generalized KwKwK).
+#   4. free_idx keeps incrementing past 4096 (table is 16384/3 = 5461
+#      entries); only code-width growth stops at 12 bits.
+#
+# Bit stream: LSB-first across byte boundaries, 9 -> 12 bit codes,
+# clear=256, eof=257, first dictionary code=258.
 
 HASH_CLEAR = 256
 HASH_EOF   = 257
 HASH_FREE  = 258
 MAX_BITS   = 12
 BASE_BITS  = 9
+_TABLE_LEN = 16384 // 3   # 5461 entries, same as the asm's LZHashBuffer[16384]
 
 
 def lzw_decomp(src: bytes, dest_max: int) -> bytes:
-    """Decompress Microsoft MC2 LZW-packed data.
+    """Decompress Microsoft MC2 LZW-packed data (asm-faithful).
 
-    Returns the decompressed bytes, or raises ValueError on corrupt input.
+    Returns the decompressed bytes (truncated at dest_max). Never raises on
+    stream oddities the asm tolerates; stops at EOF code / end of input.
     """
-    parent = [0] * 4096   # parentTbl: 16-bit parent code
-    suffix = [0] * 4096   # suffixTbl: 8-bit terminal byte
+    parent = [0] * _TABLE_LEN   # 16-bit parent code
+    suffix = [0] * _TABLE_LEN   # 8-bit terminal byte
 
     src_len = len(src)
-    src_pos  = 0
-    bit_buf  = 0
-    bits_in  = 0
-    dest     = bytearray()
+    src_pos = 0
+    bit_buf = 0
+    bits_in = 0
+    dest    = bytearray()
 
     def read_code(nbits):
         nonlocal src_pos, bit_buf, bits_in
@@ -49,48 +70,54 @@ def lzw_decomp(src: bytes, dest_max: int) -> bytes:
 
     code_width = BASE_BITS
     max_code   = 1 << code_width   # 512 initially
-    free_idx   = HASH_FREE          # 258
-    prev_code  = -1
-    prev_first = 0
-
-    stk = []
+    free_idx   = HASH_FREE         # 258
+    old_chain  = 0                 # asm: LZOldChain starts 0 (NOT "no prev")
+    old_suffix = 0                 # asm: LZOldSuffix starts 0
 
     while True:
         code = read_code(code_width)
         if code < 0 or code == HASH_EOF:
             break
+
         if code == HASH_CLEAR:
+            # asm ClearHash: reset, then consume the next code as a literal —
+            # emit its low byte, record it as old_chain, add NO entry.
             code_width = BASE_BITS
             max_code   = 1 << code_width
             free_idx   = HASH_FREE
-            prev_code  = -1
-            stk.clear()
+            code = read_code(code_width)
+            if code < 0:
+                break
+            old_chain  = code
+            old_suffix = code & 0xFF
+            if len(dest) >= dest_max:
+                return bytes(dest)
+            dest.append(code & 0xFF)
             continue
 
-        # Expand code to byte sequence onto stack
+        chain = code
+        stk = []
         c = code
-        stk.clear()
-
-        if c < free_idx:
-            # Code already in dictionary
-            while c >= HASH_FREE:
-                stk.append(suffix[c])
-                c = parent[c]
-            first_byte = c & 0xFF
-            stk.append(first_byte)
-        elif c == free_idx and prev_code >= 0:
-            # KwKwK special case: code == freeIdx
-            stk.append(prev_first)
-            pc = prev_code
-            while pc >= HASH_FREE:
-                stk.append(suffix[pc])
-                pc = parent[pc]
-            first_byte = pc & 0xFF
-            stk.append(first_byte)
-        else:
-            raise ValueError(
-                "LZW: invalid code {} (free_idx={}, prev_code={})".format(
-                    code, free_idx, prev_code))
+        if c >= free_idx:
+            # Not-in-table (KwKwK generalized): plant old_suffix, write the
+            # entry at table[code], continue the walk from old_chain.
+            stk.append(old_suffix)
+            if c < _TABLE_LEN:
+                suffix[c] = old_suffix
+                parent[c] = old_chain
+            c = old_chain
+        depth = 0
+        while c > 255:
+            stk.append(suffix[c])
+            c = parent[c]
+            depth += 1
+            if depth > _TABLE_LEN:
+                # Parent-chain cycle — cannot happen on a well-formed stream;
+                # means this data is NOT classic LZW (the asm would run off
+                # into garbage here; we fail loudly instead of hanging).
+                raise ValueError("LZW: parent-chain cycle (not an LZW stream?)")
+        old_suffix = c & 0xFF      # terminal char = first byte of the string
+        stk.append(old_suffix)
 
         # Emit in reverse (stack is LIFO -> actual order)
         while stk:
@@ -98,19 +125,18 @@ def lzw_decomp(src: bytes, dest_max: int) -> bytes:
                 return bytes(dest)
             dest.append(stk.pop())
 
-        # Add new dictionary entry
-        if prev_code >= 0 and free_idx < (1 << MAX_BITS):
-            parent[free_idx] = prev_code
-            suffix[free_idx] = first_byte
-            free_idx += 1
+        # Add new dictionary entry — UNCONDITIONALLY (even for the first code
+        # of the stream). free_idx keeps counting past 4096 like the asm.
+        if free_idx < _TABLE_LEN:
+            parent[free_idx] = old_chain
+            suffix[free_idx] = old_suffix
+        free_idx += 1
+        old_chain = chain
 
-            # Grow code width when dictionary is full
-            if free_idx >= max_code and code_width < MAX_BITS:
-                code_width += 1
-                max_code = 1 << code_width
-
-        prev_code  = code
-        prev_first = first_byte
+        # Grow code width when dictionary index reaches the current max
+        if free_idx >= max_code and code_width < MAX_BITS:
+            code_width += 1
+            max_code = 1 << code_width
 
     return bytes(dest)
 
@@ -146,13 +172,28 @@ def fst_entries(fst_path):
     return entries
 
 def decompress_entry(off, comp, real, is_lz, data):
+    """Decompress one FST entry, mirroring the engine's LZDecomp dispatch.
+
+    The FST magic (0xFADDECAF = "LZ") does NOT guarantee classic LZW per
+    entry: FSTs repacked by our LINUX_BUILD writer keep the LZ magic but
+    deflate each entry with zlib. The engine's LZDecomp sniffs the zlib
+    header per entry ((b0 & 0x0F) == 8 and (b0*256+b1) % 31 == 0) and tries
+    inflate first, falling back to classic LZW. Do the same here — feeding a
+    zlib entry to the LZW decoder is what produced "invalid code 301".
+    """
     raw = data[off:off+comp]
     if comp == real:
         return raw   # stored uncompressed
-    if is_lz:
-        return lzw_decomp(raw, real)
-    else:
+    if not is_lz:
         return zlib.decompress(raw)
+    looks_zlib = (len(raw) >= 2 and (raw[0] & 0x0F) == 0x08
+                  and (raw[0] * 256 + raw[1]) % 31 == 0)
+    if looks_zlib:
+        try:
+            return zlib.decompress(raw)
+        except zlib.error:
+            pass  # false-positive header — fall back to classic LZW
+    return lzw_decomp(raw, real)
 
 def extract_fst_file(fst_path, target_rel, out_path):
     """Extract a single file from an FST into out_path."""
