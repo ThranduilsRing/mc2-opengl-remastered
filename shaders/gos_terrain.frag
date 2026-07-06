@@ -870,7 +870,27 @@ void main(void)
     // terrain — bias flipped across neighboring detail-normal deflections, letting
     // some pixels escape shadow while neighbors received it. Overlays already pass
     // vec3(0,0,1) for the same reason.
-    const PREC vec3 shadowN = vec3(0.0, 0.0, 1.0);
+    PREC vec3 shadowN = vec3(0.0, 0.0, 1.0);
+#ifdef MC2_SHADOW_STATIC_BANDFIX_V2
+    // STATIC-SHADOW-BANDING-2 (gate MC2_SHADOW_STATIC_BANDFIX_V2, default OFF,
+    // additive on top of _BANDFIX/v1): round 1 raised the mid/far PCF tap floor
+    // but left calcShadow()'s bias computed against a FAKE flat-up normal
+    // (shadowN above), so slope-scaled bias (0.005*(1-NdotL)) never actually
+    // adapted to real terrain tilt. Root-cause measurement: the static map's
+    // world-per-texel (mapHalfExtent*sqrt(2)*1.05*2 / 4096, ~4.6 world units
+    // on mc2_01) divided by tan(slope) predicts self-shadow contour spacing
+    // of ~25-90 world units on gentle 3-10 deg grass/shoreline slopes --
+    // matching the user's smooth discrete diagonal bands (mechanism A:
+    // depth-texel quantization on sloping receivers, NOT PCF tap noise).
+    // Using the real height-derived slope normal for NdotL/bias here (still
+    // NOT for lighting -- N stays flat/detail as before, comment above)
+    // makes the bias track actual terrain tilt, killing the contour steps.
+    // Falls back to flat shadowN when the height-normal path is unavailable
+    // (terrainHeightParams.x <= 0) so behavior degrades to v1, not undefined.
+    if (terrainHeightParams.x > 0.5) {
+        shadowN = computeTerrainNormalFromHeight(WorldPos.xy);
+    }
+#endif
 #ifdef MC2_SHADOW_STATIC_BANDFIX
     // STATIC-SHADOW-BANDING-1 (gate MC2_SHADOW_STATIC_BANDFIX, default OFF):
     // the LOD tap ladder below existed purely for perf, but on FLAT terrain

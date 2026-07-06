@@ -118,6 +118,7 @@ Headless Vulkan probe / backend-skeleton exercise gates. All read via bare `gete
 - `MC2_SHADOW_DYNAMIC_PROP_CASTERS` — feed dynamic caster pass from registry. Default **ON**. Kill=`=0`.
 - `MC2_SHADOW_ROBUST_BASIS` — light-basis singularity guard + AABB corner-scarcity fallback (SHADOW-ROBUST-BASIS-1). Default **ON**. `=0` restores legacy (byte-identical for normal suns; can go singular).
 - `MC2_SHADOW_STATIC_BANDFIX` — STATIC-SHADOW-BANDING-1: raises the static-shadow LOD tap floor in `gos_terrain.frag` (16/8/4 → 16/12/8) so shadow.hglsl's gradient-adaptive PCF doesn't undersample its Poisson disk at the wide radius used on flat terrain (root cause of the reported grass/rolling-terrain shadow banding — NOT a map-resolution or depth-precision issue). Default **OFF** (byte-identical). `=1` enables; one-time cost (static map built once/mission), not per-frame.
+- `MC2_SHADOW_STATIC_BANDFIX_V2` — STATIC-SHADOW-BANDING-2: round-1 (taps) refuted as sufficient by field check (taps=16 still banded on grass/dirt slopes). Mechanism A measured: static map world-per-texel (~4.6 wu on mc2_01, 4096² ortho) / tan(slope) predicts the observed ~25–90 wu diagonal contour bands on 3–10° slopes. v2 feeds `calcShadow`/`calcDynamicShadow` bias the real height-derived slope normal (`computeTerrainNormalFromHeight`) instead of a fake flat-up normal — slope-scaled bias finally tracks actual tilt. Lighting normal untouched. Pair with v1. Default **OFF** (byte-identical).
 
 ### Dynamic CSM (reworked 2026-06-16 `8d36b37d`/`b8f764b6`/`13e96cc9`/`ead760df`)
 

@@ -997,6 +997,9 @@ void main() {
     // --- Surface normal (smooth macro slope + tangent-space detail) ---
     vec3  N;
     float macroNz = 1.0;   // MACRO (un-perturbed) slope Z — used for the cliff test
+    // STATIC-SHADOW-BANDING-2: full macro slope normal, hoisted for the shadow
+    // bias below (MC2_SHADOW_STATIC_BANDFIX_V2). Stays flat-up on skirts.
+    vec3  macroN  = vec3(0.0, 0.0, 1.0);
     if (u_skirtDepth > 0.0) {
         N = vec3(0.0, 0.0, 1.0);
     } else {
@@ -1008,6 +1011,7 @@ void main() {
             baseN = smoothTerrainNormal(v_worldPos.xy);  // smooth macro slope
         }
         macroNz = baseN.z;
+        macroN  = baseN;   // STATIC-SHADOW-BANDING-2
         if ((u_diag & 32) != 0) {
             N = baseN;  // detail disabled (A/B)
         } else {
@@ -1405,7 +1409,27 @@ void main() {
 
     float shadow = 1.0;
     if ((u_diag & 8) == 0) {
+        // STATIC-SHADOW-BANDING-2 (gate MC2_SHADOW_STATIC_BANDFIX_V2, default
+        // OFF): the LIVE terrain path (this frag — MC2_TERRAIN_LOD_CHUNK
+        // default ON) already ran 16 taps, matching the field report "taps=16
+        // still bands on grass/dirt slopes" that refuted round 1 (round 1
+        // patched gos_terrain.frag's tap ladder — the WRONG shader for this
+        // path). Measured mechanism A: static map world-per-texel
+        // (2*mapHalfExtent*sqrt(2)*1.05/4096 ≈ 4.6 wu on mc2_01) / tan(slope)
+        // predicts the observed ~25-90 wu diagonal contour bands on gentle
+        // 3-10 deg slopes — depth-texel quantization on sloping receivers,
+        // not PCF tap noise. Root cause: calcShadow()'s slope-scaled bias
+        // (shadow.hglsl, 0.005*(1-NdotL)) was fed a FAKE flat-up normal, so
+        // it never adapted to real terrain tilt. v2 feeds the MACRO slope
+        // normal (smoothTerrainNormal — smooth, not detail-perturbed, so the
+        // historical sprinkle/inverted-shadow failure mode of detail normals
+        // does not apply). Lighting normal N untouched. Default OFF =>
+        // byte-identical (flat shadowN).
+#ifdef MC2_SHADOW_STATIC_BANDFIX_V2
+        vec3 shadowN = macroN;
+#else
         const vec3 shadowN = vec3(0.0, 0.0, 1.0);
+#endif
         float staticS = calcShadow(v_worldPos, shadowN, terrainLightDir.xyz, 16);
         float dynS    = calcDynamicShadow(v_worldPos, shadowN, terrainLightDir.xyz, 8);
         shadow = min(staticS, dynS);
@@ -1425,14 +1449,25 @@ void main() {
     // DEBUG-VIZ (exact-value escape on u_diag; bitmask modes never reach 30/31):
     //   30 = dynamic-cast shadow only (isolates building dynamic shadow), 31 = min(static,dyn).
     if (u_diag == 30) {
+        // STATIC-SHADOW-BANDING-2: viz must mirror the real path's shadowN so
+        // the debug view stays an honest oracle for the banding fix.
+#ifdef MC2_SHADOW_STATIC_BANDFIX_V2
+        vec3 shadowN = macroN;
+#else
         const vec3 shadowN = vec3(0.0, 0.0, 1.0);
+#endif
         float dynVizS = calcDynamicShadow(v_worldPos, shadowN, terrainLightDir.xyz, 8);
         fragColor = vec4(vec3(dynVizS), 1.0);
         GBuffer1  = vec4(0.5, 0.5, 1.0, 1.0);
         return;
     }
     if (u_diag == 31) {
+        // STATIC-SHADOW-BANDING-2: mirror real path's shadowN (see u_diag==30).
+#ifdef MC2_SHADOW_STATIC_BANDFIX_V2
+        vec3 shadowN = macroN;
+#else
         const vec3 shadowN = vec3(0.0, 0.0, 1.0);
+#endif
         float staticVizS = calcShadow(v_worldPos, shadowN, terrainLightDir.xyz, 16);
         float dynVizS2   = calcDynamicShadow(v_worldPos, shadowN, terrainLightDir.xyz, 8);
         fragColor = vec4(vec3(min(staticVizS, dynVizS2)), 1.0);

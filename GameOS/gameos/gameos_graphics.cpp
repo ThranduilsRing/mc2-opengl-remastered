@@ -206,6 +206,27 @@ static bool mc2ShadowStaticBandFixEnabled() {
     return enabled;
 }
 
+// STATIC-SHADOW-BANDING-2: default OFF. Round 1 (BANDFIX v1) was refuted by
+// field check as insufficient -- taps=16 still banded on TERRAIN (grass/dirt
+// slopes; v1 verified mostly on concrete, the wrong receiver). Measurement:
+// static map world-per-texel (~4.6 world units on mc2_01, 4096^2 ortho over
+// the whole map) divided by tan(slope) predicts ~25-90 world-unit-spaced
+// diagonal contour bands on gentle 3-10 deg slopes -- matches the user's
+// "smooth discrete diagonal contour bands", not Poisson-tap noise. Root
+// cause: calcShadow()'s NdotL/bias in shadow.hglsl was computed against a
+// FAKE flat-up shadowN (gos_terrain.frag), so slope-scaled bias never
+// adapted to real terrain tilt. v2 swaps in the height-derived slope normal
+// for shadow bias ONLY (lighting normal N is untouched). Independent gate,
+// typically paired with v1 (taps) but not required to be. Default OFF =>
+// byte-identical (shadowN stays flat vec3(0,0,1)).
+static bool mc2ShadowStaticBandFixV2Enabled() {
+    static const bool enabled = []() {
+        const char* v = std::getenv("MC2_SHADOW_STATIC_BANDFIX_V2");
+        return v && v[0] && v[0] != '0';
+    }();
+    return enabled;
+}
+
 // TERRAIN-MATERIAL-LIB-1: default OFF. Drives u_useMaterialLib (chunk-path
 // roughness/AO branch). Evaluated once (static) -- matches terrainNormalArrayEnabled().
 static bool terrainMaterialLibEnabled() {
@@ -378,6 +399,8 @@ class gosMaterialVariationHelper {
                 defines_str.append("#define TERRAIN_NORMAL_ARRAY\n");
             if (mc2ShadowStaticBandFixEnabled())
                 defines_str.append("#define MC2_SHADOW_STATIC_BANDFIX 1\n");
+            if (mc2ShadowStaticBandFixV2Enabled())
+                defines_str.append("#define MC2_SHADOW_STATIC_BANDFIX_V2 1\n");
             // Item 1: Cascaded Shadow Maps. When the gate is ON, shadow.hglsl
             // compiles its sampler2DArrayShadow + mat4[N] variant of
             // calcDynamicShadow (signature frozen; no call-site changes).
@@ -4871,6 +4894,8 @@ void gosRenderer::init() {
             kThinPrefix += "#define TERRAIN_NORMAL_ARRAY\n";
         if (mc2ShadowStaticBandFixEnabled())
             kThinPrefix += "#define MC2_SHADOW_STATIC_BANDFIX 1\n";
+        if (mc2ShadowStaticBandFixV2Enabled())
+            kThinPrefix += "#define MC2_SHADOW_STATIC_BANDFIX_V2 1\n";
         thin_terrain_prog_ = glsl_program::makeProgram(
             "gos_terrain_thin",
             "shaders/gos_terrain_thin.vert",
@@ -4899,6 +4924,8 @@ void gosRenderer::init() {
             kSurfacePrefix += "#define TERRAIN_NORMAL_ARRAY\n";
         if (mc2ShadowStaticBandFixEnabled())
             kSurfacePrefix += "#define MC2_SHADOW_STATIC_BANDFIX 1\n";
+        if (mc2ShadowStaticBandFixV2Enabled())
+            kSurfacePrefix += "#define MC2_SHADOW_STATIC_BANDFIX_V2 1\n";
         terrain_surface_prog_ = glsl_program::makeProgram(
             "gos_terrain_surface",
             "shaders/gos_terrain_surface.vert",
@@ -4942,6 +4969,8 @@ void gosRenderer::init() {
             kMaskSolidPrefix += "#define TERRAIN_NORMAL_ARRAY\n";
         if (mc2ShadowStaticBandFixEnabled())
             kMaskSolidPrefix += "#define MC2_SHADOW_STATIC_BANDFIX 1\n";
+        if (mc2ShadowStaticBandFixV2Enabled())
+            kMaskSolidPrefix += "#define MC2_SHADOW_STATIC_BANDFIX_V2 1\n";
         mask_solid_prog_ = glsl_program::makeProgram(
             "gos_terrain_mask_solid",
             "shaders/gos_terrain_mask_solid.vert",

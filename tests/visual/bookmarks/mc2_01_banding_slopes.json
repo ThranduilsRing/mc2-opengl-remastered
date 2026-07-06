@@ -1,0 +1,11 @@
+{
+ "schema_v": 1,
+ "mission": "mc2_01",
+ "_note": "STATIC-SHADOW-BANDING-2 repro poses: low-alt grass slopes near water (pyramid islands + map interior).",
+ "bookmarks": [
+  {"name": "island_slope_low",  "pos": [910.0, -2934.0, 0.0], "rot": 25.75, "proj": 35.0, "alt": 700.0, "covers": ["terrain_splat", "shadow_static"]},
+  {"name": "island_slope_mid",  "pos": [700.0, -2700.0, 0.0], "rot": 120.0, "proj": 25.0, "alt": 900.0, "covers": ["terrain_splat", "shadow_static"]},
+  {"name": "interior_slope",    "pos": [-400.0, -400.0, 0.0], "rot": 135.0, "proj": 35.0, "alt": 700.0, "covers": ["terrain_splat", "shadow_static"]},
+  {"name": "interior_slope2",   "pos": [300.0, 300.0, 0.0],  "rot": 45.0,  "proj": 30.0, "alt": 800.0, "covers": ["terrain_splat", "shadow_static"]}
+ ]
+}

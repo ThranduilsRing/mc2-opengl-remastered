@@ -1075,6 +1075,13 @@ void gos_TerrainLodChunk_Init()
         // Item 1: inject MC2_SHADOW_CSM define so terrain_lod_chunk.frag (which
         // #includes shadow.hglsl) compiles the array-sampler variant when ON.
         std::string prefix = "#version 430\n";
+        // STATIC-SHADOW-BANDING-2: slope-normal shadow bias (see
+        // terrain_lod_chunk.frag). Default OFF => byte-identical.
+        {
+            const char* v = std::getenv("MC2_SHADOW_STATIC_BANDFIX_V2");
+            if (v && v[0] && v[0] != '0')
+                prefix += "#define MC2_SHADOW_STATIC_BANDFIX_V2 1\n";
+        }
         if (mc2ShadowCsmEnabled()) {
             char csmDef[64];
             snprintf(csmDef, sizeof(csmDef),

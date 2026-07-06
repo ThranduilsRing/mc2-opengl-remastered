@@ -34,6 +34,27 @@ float calcShadow(vec3 worldPos, vec3 normal, vec3 lightDir, int numTaps)
 {
     if (enableShadows == 0) return 1.0;
 
+#ifdef MC2_SHADOW_STATIC_BANDFIX_V2
+    // STATIC-SHADOW-BANDING-2: normal-offset shadow receiver. The static map's
+    // world-per-texel is large (~4.6 wu on mc2_01: full-map 4096^2 ortho), so a
+    // sloping receiver crosses depth-texel thresholds in coherent diagonal
+    // contour bands (measured: near-continuous grey levels => NOT PCF tap
+    // quantization; band pitch ~1-2 texels => texel-geometry mechanism A).
+    // Shift the sample point one texel along the receiver normal BEFORE
+    // projecting — the textbook normal-offset fix. Texel world size is derived
+    // from the light matrix itself: its xy rows scale by 1/orthoHalf, so
+    // texelWorld = 2*orthoHalf/mapSize. Callers compiled without the define
+    // are byte-identical.
+    {
+        float invR = length(vec3(lightSpaceMatrix[0][0],
+                                 lightSpaceMatrix[1][0],
+                                 lightSpaceMatrix[2][0]));
+        float texelWorld = (invR > 1e-8)
+                         ? 2.0 / (invR * float(textureSize(shadowMap, 0).x))
+                         : 0.0;
+        worldPos += normal * texelWorld;
+    }
+#endif
     vec4 lsPos = lightSpaceMatrix * vec4(worldPos, 1.0);
     vec3 projCoords = lsPos.xyz / lsPos.w;
     projCoords.xy = projCoords.xy * 0.5 + 0.5;  // z already [0,1] (ZERO_TO_ONE light ortho)
