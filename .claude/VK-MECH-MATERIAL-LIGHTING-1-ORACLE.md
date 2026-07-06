@@ -34,7 +34,27 @@ mech box x[410..755] y[150..240], `.claude/mech-parity/mech_before_after.png`):
 - **after**: yellow paint-scheme texture + calc_light directional Lambert (shaded torso,
   dark blue-black leg shadows) — reads as a correct GL mech.
 
-## ★ORACLE GAP (documented, carried in from the handoff — NOT resolved this session)
+## ★ORACLE GAP — RESOLVED 2026-07-05 (per-actor scheme cache session)
+The gap is CLOSED via the natural game-camera FREE-CAPTURE route (not a bookmark). At
+mission start the game camera centers on the PLAYER lance, which GL DOES draw. Running
+free-capture (`MC2_VISUAL_CAPTURE_FRAME=200`, no bookmark override, fixed-step + seed)
+on mc2_01 frames 4 player mechs GL draws — the FIRST co-covered GL-vs-VK mech frames.
+Driver: `.claude/mech-parity/freecap_driver.py`; diff: `.claude/mech-parity/diff_region.py`;
+captures in `.claude/mech-parity/freecap/mc2_01_f200/`.
+
+★HEADLINE — co-covered mech parity (mc2_01 f200, mech region x[400..620] y[100..200],
+same natural camera, substrate whole-frame control ~0 so this IS a shading number):
+- BEFORE (gl vs vk_flat):          6.91% covered, mean-over-covered ALL = **61.96**/ch (flat orange probe)
+- AFTER  (gl vs vk_mat+scheme):    5.03% covered, mean-over-covered ALL = **28.33**/ch (textured+lit+scheme-cache)
+- Whole-frame AFTER: 0.23% covered; substrate control (gl vs vk_flat non-mech) ~0.
+Material+lighting+scheme-cache HALVED per-covered-pixel error (61.96→28.33) and cut covered
+count (1521→1107). Residual ~28/ch = edge/silhouette AA + no island frustum cull (VK draws
+all submitted instances) + minor lighting approx — NOT a hue shift (visual confirms).
+Scheme cache PROVEN: log shows 2 distinct schemes cached (glTex=139 scheme1, glTex=138
+scheme2); stacked crop `stack_gl_flat_mat.png` shows VK-mat yellow paint + Lambert matching
+GL (was flat orange). Before this fix, only glTex=139 would show on all mechs.
+
+--- (historical gap description, now superseded by the free-capture route above) ---
 NO deterministic bookmark in the standard sets frames a mech that **GL also draws** at the
 frozen replay camera. The mc2_01/mc2_24 mechs are AI units the GL visibility path
 frustum-culls at the bookmark cameras (GL `mech_visible=0` for most sweep frames), while the
@@ -60,10 +80,13 @@ PARITY (matches GL default mech):
 - Per-actor haze fog `mix(c, g_scene.fogColor, fogRGB.a)`
 - lightsOut ambient-floor branch
 
+DONE 2026-07-05:
+- Per-actor paint-scheme VK-descriptor CACHE (commit c3f683f2). glTex-keyed cache of
+  {VkImage,view,descriptorSet}, kMaxSchemes=32, schemes[0]=dummy white. Draw loop binds
+  the set matching run.slot0GlTex. Proven: 2 distinct schemes cached + rendered on mc2_01
+  (glTex 139/138). See HEADLINE above. Full-population parity mechanism now shipped.
+
 STILL DEFERRED (all match the GL DEFAULT path being OFF too — so still parity vs default):
-- Per-actor paint-scheme VK-descriptor CACHE (currently single copy-once slot-0 material;
-  a mission with >1 distinct paint scheme would show the first scheme on all mechs).
-  ★Biggest remaining mechanism item for full-population parity. Mechanism note below.
 - StandardLit-GGX / MECH-SPECULAR / MECH-AMBIENT / IBL-SH / imported-BT normal+AO paths —
   all require `MC2_MECH_VIEWUNIFORMS` + `MC2_STANDARD_LIT_V1` (default-OFF); not the default
   deploy look. Only needed if the arc later flips those GL gates on by default.
