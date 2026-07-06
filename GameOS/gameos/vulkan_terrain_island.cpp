@@ -258,6 +258,8 @@ struct TerrainIsland {
     VkBuffer      heightBuf = VK_NULL_HANDLE; VmaAllocation heightAlloc = VK_NULL_HANDLE;
     VkDeviceSize  heightCapBytes = 0;
     uint64_t      heightVersionCopied = UINT64_MAX; // last snapshotted feed version
+    uint64_t      heightChecksum = 0;               // FNV-1a of the snapshot bytes (height-audit)
+    bool          heightChecksumValid = false;      // a real snapshot has been checksummed
 
     // COLORMAP-BASE sub-slice: VK-owned copy-once import of the GL colormap atlas
     // (g_atlasGLTex). Sampled image + view + sampler; binding 2. Keyed by the GL tex
@@ -489,6 +491,7 @@ bool ensure_height_capacity(TerrainIsland* s, VkDeviceSize bytes) {
         return false;
     s->heightCapBytes = cap;
     s->heightVersionCopied = UINT64_MAX; // force re-snapshot into the new buffer
+    s->heightChecksumValid = false;      // stale checksum until the re-snapshot runs
     write_descriptors(s);
     return true;
 }
@@ -836,6 +839,14 @@ bool init_island(TerrainIsland* s, int w, int h) {
     return true;
 }
 
+// FNV-1a 64 over a byte range (height-audit checksum; cheap, order-sensitive).
+static uint64_t fnv1a64(const void* data, size_t n) {
+    const uint8_t* p = reinterpret_cast<const uint8_t*>(data);
+    uint64_t h = 1469598103934665603ull;
+    for (size_t i = 0; i < n; ++i) { h ^= p[i]; h *= 1099511628211ull; }
+    return h;
+}
+
 // Snapshot the GL height SSBO into the VK-owned buffer when the feed version changes.
 // Map-load copy (glGetBufferSubData -> vmaMap), NOT a per-frame handoff readback.
 bool snapshot_height(TerrainIsland* s, const Mc2TerrainTier1Feed& feed) {
@@ -851,7 +862,76 @@ bool snapshot_height(TerrainIsland* s, const Mc2TerrainTier1Feed& feed) {
     std::memcpy(p, scratch.data(), (size_t)feed.heightBytes);
     vmaUnmapMemory(s->allocator, s->heightAlloc);
     s->heightVersionCopied = feed.heightVersion;
+    // HEIGHT-AUDIT: store the checksum of exactly the bytes we copied into the VK
+    // snapshot. The audit gate below re-reads GL live heights each frame and compares
+    // this checksum — a mismatch means GL heights changed WITHOUT a heightVersion bump
+    // (the g_terrainHeightVersion-only-in-UploadHeightFull staleness hazard) so the VK
+    // snapshot silently diverged from the terrain GL draws against.
+    s->heightChecksum = fnv1a64(scratch.data(), (size_t)feed.heightBytes);
+    s->heightChecksumValid = true;
     ++g_health.heightSnapshots;
+    return true;
+}
+
+// HEIGHT-AUDIT gate (MC2_VK_TERRAIN_HEIGHT_AUDIT, default-OFF presence gate). When on,
+// EVERY frame re-reads the GL height SSBO and re-checksums it, comparing against the
+// snapshot checksum stored at the last version-gated copy. Detects height-staleness:
+// GL heights mutated (crater/deform) without a heightVersion bump -> VK snapshot stale
+// -> macro-slope normal (mv_smoothTerrainNormal reads heightsFS) diverges from GL.
+// This is a VERIFICATION gate (read-only): it never mutates render output, only logs.
+static bool heightAuditRequested() {
+    static int state = -1;
+    if (state == -1) {
+        const char* e = std::getenv("MC2_VK_TERRAIN_HEIGHT_AUDIT");
+        state = (e && e[0] == '1' && e[1] == '\0') ? 1 : 0;
+    }
+    return state == 1;
+}
+
+// NEGATIVE-CONTROL hook: MC2_VK_TERRAIN_HEIGHT_AUDIT_CORRUPT=1 deliberately corrupts the
+// stored snapshot checksum right after a snapshot so the audit MUST fire on the next
+// frame — proves the audit has teeth (can actually detect divergence). Never on in prod.
+static bool heightAuditCorruptRequested() {
+    static int state = -1;
+    if (state == -1) {
+        const char* e = std::getenv("MC2_VK_TERRAIN_HEIGHT_AUDIT_CORRUPT");
+        state = (e && e[0] == '1' && e[1] == '\0') ? 1 : 0;
+    }
+    return state == 1;
+}
+
+// Runs each frame when the audit gate is on. Returns true if heights are consistent
+// (or audit inapplicable), false + LOUD log on a detected mismatch.
+bool audit_height(TerrainIsland* s, const Mc2TerrainTier1Feed& feed) {
+    if (!heightAuditRequested()) return true;
+    if (!s->heightChecksumValid) return true;           // no snapshot yet -> nothing to audit
+    if (feed.glHeightSsbo == 0 || feed.heightBytes == 0) return true;
+    // NEGATIVE CONTROL: poison the stored checksum so the compare below is guaranteed
+    // to mismatch on this frame's live GL heights. One-shot per process (latches).
+    static bool s_corrupted = false;
+    if (heightAuditCorruptRequested() && !s_corrupted) {
+        s->heightChecksum ^= 0xA5A5A5A5A5A5A5A5ull;
+        s_corrupted = true;
+        vlog("[HEIGHT_AUDIT] NEGATIVE CONTROL armed: snapshot checksum deliberately corrupted "
+             "-> next compare MUST report a mismatch.");
+    }
+    std::vector<uint8_t> live((size_t)feed.heightBytes);
+    glBindBuffer(GL_SHADER_STORAGE_BUFFER, (GLuint)feed.glHeightSsbo);
+    glGetBufferSubData(GL_SHADER_STORAGE_BUFFER, 0, (GLsizeiptr)feed.heightBytes, live.data());
+    glBindBuffer(GL_SHADER_STORAGE_BUFFER, 0);
+    const uint64_t liveSum = fnv1a64(live.data(), (size_t)feed.heightBytes);
+    if (liveSum != s->heightChecksum) {
+        static unsigned long s_reported = 0;
+        if (s_reported < 8 || (s_reported % 300) == 0) {  // loud but rate-limited
+            vlog("[HEIGHT_AUDIT] ★MISMATCH: VK height snapshot DIVERGED from GL live heights "
+                 "(snapshot_fnv=0x%016llx live_fnv=0x%016llx bytes=%llu ver=%llu). GL terrain "
+                 "heights mutated without a heightVersion bump -> VK macro-slope normal is stale.",
+                 (unsigned long long)s->heightChecksum, (unsigned long long)liveSum,
+                 (unsigned long long)feed.heightBytes, (unsigned long long)s->heightVersionCopied);
+        }
+        ++s_reported;
+        return false;
+    }
     return true;
 }
 
@@ -1433,6 +1513,26 @@ extern "C" int mc2_vk_terrain_island_enabled() {
     return terrainTier1Requested() ? 1 : 0;
 }
 
+// FAIL-SOFT ISLAND-READY predicate. True only when the gate is on AND the island is in a
+// state where run() is expected to co-write this frame's LOD0 patches. The GL LOD-chunk
+// loop gates its SPECULATIVE LOD0-skip on this: if the island can NOT render (SPV/pipeline
+// load failed, init failed, device/allocator missing, or a prior transient error latched
+// s->disabled), the GL path keeps drawing LOD0 so there is NEVER a terrain hole.
+//
+// This does NOT birth the island (that happens in run() on the render thread with GL
+// context current); if the island is not yet inited it is NOT ready this frame (GL draws
+// LOD0), and the first successful run() flips it ready for subsequent frames — a one-frame
+// GL-draw-then-VK-takeover with no hole.
+extern "C" int mc2_vk_terrain_island_ready() {
+    if (!terrainTier1Requested()) return 0;
+    if (!g_island) return 0;                 // not born yet -> GL owns LOD0 this frame
+    if (g_island->disabled) return 0;        // latched off by a prior fatal (spv/pipeline/device)
+    if (!g_island->inited) return 0;
+    if (g_island->vert == VK_NULL_HANDLE || g_island->frag == VK_NULL_HANDLE) return 0; // spv missing
+    if (g_island->pipe == VK_NULL_HANDLE) return 0;                                      // pipeline missing
+    return 1;
+}
+
 extern "C" int mc2_vk_terrain_island_run(int w, int h) {
     if (!terrainTier1Requested()) return 0;
     if (w <= 0 || h <= 0) return 0;
@@ -1468,6 +1568,11 @@ extern "C" int mc2_vk_terrain_island_run(int w, int h) {
 
     // Snapshot the height field (only re-copies when the feed version changes).
     if (!snapshot_height(s, feed)) { setFallback("height_snapshot_failed"); return 0; }
+
+    // HEIGHT-AUDIT (default-OFF gate): compare the VK snapshot checksum against GL live
+    // heights each frame. Detected mismatch is logged LOUDLY but does NOT fail the frame
+    // (verification-only) so the audit can run alongside a normal render for diagnosis.
+    audit_height(s, feed);
 
     // COLORMAP-BASE: copy-once import of the GL colormap atlas (no-op once imported;
     // no-op while the atlas isn't built -> FS falls back to olive). Must run while the

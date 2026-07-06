@@ -1518,8 +1518,25 @@ void gos_TerrainLodChunk_SubmitDrawCommands(
     // (lodStep==1) MAIN patches into the shared GBuffer. Capture them here and SKIP
     // their GL main+skirt draws (so the A/B reference and the VK path both exclude
     // LOD0 skirts — the probe compares LOD0 main-triangle pixels like-for-like).
-    // Default-OFF -> s_vkTerrainActive=false -> the loop below is byte-identical.
-    const bool s_vkTerrainActive = (mc2_vk_terrain_island_enabled() != 0);
+    // Default-OFF -> s_vkTerrainEnabled=false -> the loop below is byte-identical.
+    //
+    // FAIL-SOFT (DEFAULT-ON safety): the SKIP is gated on island-READY, not merely
+    // enabled. If the island can't co-write this frame (SPV/pipeline/init/device
+    // failure, or a latched transient — mc2_vk_terrain_island_ready()==0), GL keeps
+    // drawing LOD0 so there is NO terrain hole. run() is still called below whenever
+    // enabled (even when we did NOT skip) so the island can BIRTH/heal — the first
+    // successful run flips ready for the next frame (one-frame GL-draw then VK takeover,
+    // never a hole).
+    const bool s_vkTerrainEnabled = (mc2_vk_terrain_island_enabled() != 0);
+    const bool s_vkTerrainActive  = s_vkTerrainEnabled &&
+                                    (mc2_vk_terrain_island_ready() != 0);
+    static bool s_vkTerrainFailSoftLogged = false;
+    if (s_vkTerrainEnabled && !s_vkTerrainActive && !s_vkTerrainFailSoftLogged) {
+        fprintf(stderr, "[VK_TERRAIN_ISLAND] FAIL-SOFT: gate ON but island not ready this "
+                        "frame -> GL draws LOD0 (no hole). Will retry birth/heal via run().\n");
+        fflush(stderr);
+        s_vkTerrainFailSoftLogged = true;
+    }
     s_vkTerrainPatches.clear();
     s_vkTerrainFeedValid = false;
     if (s_vkTerrainActive) {
@@ -1720,12 +1737,31 @@ void gos_TerrainLodChunk_SubmitDrawCommands(
     // shared scene GBuffer (color MRT0 + normal MRT1 + shared depth), reverse-Z
     // depth-tested against what GL just authored. Default-OFF -> feed empty -> no-op.
     // markTerrainDrawn already fired above (GL owns it); the island also latches it
-    // for robustness if a frame is all-LOD0. Fail-soft: run()==0 leaves the GBuffer
-    // as GL authored it (but the LOD0 main patches were skipped above, so a fallback
-    // frame shows LOD0 gaps — acceptable for a default-OFF probe gate).
-    if (s_vkTerrainActive && s_vkTerrainFeedValid) {
+    // for robustness if a frame is all-LOD0.
+    //
+    // FAIL-SOFT: run() is called whenever the gate is ENABLED (not only when we skipped)
+    // so the island can BIRTH/heal even on a frame where we did NOT skip (ready==0 this
+    // frame -> GL drew LOD0 -> feed empty -> run births the island + returns 0 harmlessly;
+    // next frame ready==1 -> skip + VK draws). On a frame where we DID skip (ready was 1),
+    // a mid-frame run()==0 (a fresh transient) latches s->disabled inside the island, so
+    // ready flips 0 next frame (GL resumes LOD0) — at worst a single self-healing frame,
+    // and the fail-soft log above fires. No persistent hole.
+    if (s_vkTerrainEnabled) {
         if (gosPostProcess* ppVk = getGosPostProcess()) {
-            mc2_vk_terrain_island_run(ppVk->getWidth(), ppVk->getHeight());
+            const int ran = mc2_vk_terrain_island_run(ppVk->getWidth(), ppVk->getHeight());
+            if (s_vkTerrainActive && s_vkTerrainFeedValid && ran == 0) {
+                // We SKIPPED LOD0 this frame but VK failed to co-write -> this frame has a
+                // 1-frame LOD0 gap. Loud one-shot; the island latched disabled so ready
+                // will be 0 next frame and GL resumes drawing LOD0 (self-heal).
+                static bool s_gapLogged = false;
+                if (!s_gapLogged) {
+                    fprintf(stderr, "[VK_TERRAIN_ISLAND] FAIL-SOFT: run()==0 AFTER LOD0-skip "
+                                    "-> 1-frame LOD0 gap this frame; island latched off, GL "
+                                    "resumes LOD0 next frame (self-heal).\n");
+                    fflush(stderr);
+                    s_gapLogged = true;
+                }
+            }
         }
     }
 #endif

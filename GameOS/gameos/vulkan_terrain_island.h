@@ -115,6 +115,15 @@ int mc2_terrain_tier1_get_frame_feed(Mc2TerrainTier1Feed* out);
 // LOD0 skirts) — the island co-writes those into the shared GBuffer instead.
 int mc2_vk_terrain_island_enabled();
 
+// FAIL-SOFT ready predicate. True only when the gate is on AND the island is in a state
+// where run() is expected to co-write this frame's LOD0 patches (born, inited, not
+// disabled, SPV + pipeline live). The GL LOD-chunk loop gates its SPECULATIVE LOD0-skip
+// on THIS (not on _enabled): if the island can't render (SPV/pipeline/init/device
+// failure, or a latched transient), GL keeps drawing LOD0 so there is NEVER a terrain
+// hole. Does not birth the island — an unborn island returns 0 (GL draws LOD0 this
+// frame; the first successful run flips it ready).
+int mc2_vk_terrain_island_ready();
+
 // Per-frame entry. Co-writes the LOD0 terrain patches IN-PLACE into the shared
 // scene color(MRT0)+normal(MRT1)+depth GBuffer (LOAD-preserve, reverse-Z GEQUAL,
 // double-sided, opaque). w/h = scene target size (getWidth()/getHeight()).

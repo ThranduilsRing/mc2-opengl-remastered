@@ -1437,6 +1437,31 @@ static constexpr EnvVarDesc kAuxEnvVars[] = {
         "[VK_PP_SUBGRAPH_INTEROP] health line: interop_active, used_interop, "
         "forbidden_copyBufToImg/copyImgToBuf/getTexImage/texSubImage (all ==0 on interop)."
     },
+    {
+        "MC2_FEATURE_VK_TERRAIN_HEIGHT_AUDIT",
+        "MC2_VK_TERRAIN_HEIGHT_AUDIT",
+        EnvVarKind::Feature,
+        false,
+        "VK-TERRAIN HEIGHT-AUDIT (verification-only, default OFF; requires MC2_VK_TERRAIN_TIER1). Each frame "
+        "re-reads the GL height SSBO (binding 23) and FNV-1a-checksums it, comparing against the checksum "
+        "stored at the last version-gated snapshot_height() copy into the VK-owned height buffer. Detects "
+        "height-staleness: GL terrain heights mutated (crater/deform) WITHOUT a heightVersion bump "
+        "(g_terrainHeightVersion bumps only in UploadHeightFull) -> the VK snapshot silently diverges and "
+        "mv_smoothTerrainNormal's macro-slope goes stale. On mismatch logs a LOUD rate-limited "
+        "[HEIGHT_AUDIT] MISMATCH line (snapshot_fnv vs live_fnv); NEVER mutates render output. Gate OFF = "
+        "no readback, byte-identical. Negative control MC2_VK_TERRAIN_HEIGHT_AUDIT_CORRUPT=1 poisons the "
+        "stored checksum once so the audit MUST fire (proves it has teeth)."
+    },
+    {
+        "MC2_FEATURE_VK_TERRAIN_HEIGHT_AUDIT_CORRUPT",
+        "MC2_VK_TERRAIN_HEIGHT_AUDIT_CORRUPT",
+        EnvVarKind::Feature,
+        false,
+        "VK-TERRAIN HEIGHT-AUDIT NEGATIVE CONTROL (test-only, default OFF; requires "
+        "MC2_VK_TERRAIN_HEIGHT_AUDIT). Deliberately XOR-corrupts the stored height snapshot checksum once "
+        "after the first snapshot so the per-frame audit compare is GUARANTEED to report a mismatch -> "
+        "proves the audit can actually detect divergence (has teeth). NEVER on in production."
+    },
 };
 
 // ---------------------------------------------------------------------------
