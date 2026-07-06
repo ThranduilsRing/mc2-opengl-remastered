@@ -1631,20 +1631,28 @@ void gos_TerrainLodChunk_SubmitDrawCommands(
         if (qcX <= 0 || qcY <= 0) continue;
 
 #ifdef MC2_VULKAN_ISLAND
-        // VK-P10 TERRAIN TIER-1: hand LOD0 (lodStep==1) main patches to the VK island
-        // and skip their GL main+skirt draws. Only the non-displaced coarse LOD0 path
-        // is ported (visual-displace / edge-stitch are DEFERRED); if either is active
-        // for this patch, leave it on the GL path (do NOT capture) so nothing regresses.
-        if (s_vkTerrainActive && cmd.lodStep == 1 &&
-            !(visualDisplaceActive && cmd.lodStep == 1) &&
+        // VK-P10 TERRAIN TIER-1 (+ rung-3 VK-TERRAIN-ALL-LODS): hand main patches to
+        // the VK island and skip their GL main+skirt draws. LOD0 (lodStep==1) is the
+        // original probe scope; MC2_VK_TERRAIN_ALL_LODS extends capture to coarse bands
+        // (lodStep>1) too -- BANDS ONLY, still excluding visual-displace and edge-stitch
+        // patches (both stay GL-owned this rung; skirts are a separate follow-up sub-
+        // slice since stitching between VK-owned bands of different lodStep must stay
+        // crack-free and isn't ported yet). Default-OFF (MC2_VK_TERRAIN_ALL_LODS unset)
+        // -> capture predicate is IDENTICAL to before (lodStep==1 only).
+        const bool s_vkAllLodsActive = s_vkTerrainActive &&
+            (mc2_vk_terrain_all_lods_enabled() != 0);
+        const bool s_vkCaptureThisBand = (cmd.lodStep == 1) || s_vkAllLodsActive;
+        if (s_vkTerrainActive && s_vkCaptureThisBand &&
+            !visualDisplaceActive &&
             (edgeStitch == nullptr || edgeStitch[i] == 0)) {
-            const int maxOffX = qcX;  // (qcX/1)*1
-            const int maxOffY = qcY;
+            const int maxOffX = (cmd.lodStep > 0) ? (qcX / cmd.lodStep) * cmd.lodStep : qcX;
+            const int maxOffY = (cmd.lodStep > 0) ? (qcY / cmd.lodStep) * cmd.lodStep : qcY;
             Mc2TerrainTier1Patch p;
             p.blockOriginX = cmd.blockOriginX;
             p.blockOriginY = cmd.blockOriginY;
             p.quadCountX   = maxOffX;
             p.quadCountY   = maxOffY;
+            p.lodStep      = cmd.lodStep;
             s_vkTerrainPatches.push_back(p);
             s_vkTerrainFeedValid = true;
             continue;   // GL skips this patch's main + skirt draws; VK owns it
@@ -1824,6 +1832,21 @@ void gos_TerrainLodChunk_SubmitDrawCommands(
     // a mid-frame run()==0 (a fresh transient) latches s->disabled inside the island, so
     // ready flips 0 next frame (GL resumes LOD0) — at worst a single self-healing frame,
     // and the fail-soft log above fires. No persistent hole.
+    // VK-TERRAIN-ALL-LODS diagnostic (rung 3 oracle evidence): per-600-submit
+    // lodStep breakdown of what the VK island actually captured this submit,
+    // so a smoke log proves coarse bands (lodStep>1) are reaching the island
+    // (not just LOD0). Cheap (once per 600 submits), no gate needed.
+    if (s_submitCount % 600 == 0) {
+        int cnt1 = 0, cntCoarse = 0;
+        for (const auto& p : s_vkTerrainPatches) {
+            if (p.lodStep == 1) ++cnt1; else ++cntCoarse;
+        }
+        printf("[VK_TERRAIN_ALL_LODS] submit=%d feedValid=%d active=%d allLods=%d vkPatches=%zu lodStep1=%d coarse(lodStep>1)=%d\n",
+                s_submitCount, s_vkTerrainFeedValid ? 1 : 0, s_vkTerrainActive ? 1 : 0,
+                mc2_vk_terrain_all_lods_enabled(), s_vkTerrainPatches.size(), cnt1, cntCoarse);
+        fflush(stdout);
+    }
+
     if (s_vkTerrainEnabled) {
         if (gosPostProcess* ppVk = getGosPostProcess()) {
             const int ran = mc2_vk_terrain_island_run(ppVk->getWidth(), ppVk->getHeight());

@@ -131,6 +131,23 @@ bool terrainTier1Requested() {
     return state == 1;
 }
 
+// VK-TERRAIN-ALL-LODS sub-slice (rung 3): extend VK terrain ownership beyond LOD0
+// (lodStep==1) to all coarse bands (lodStep>1), non-displaced, non-stitched only.
+// Requires TIER1 (no coarse bands without the LOD0 island already live). Skirts and
+// edge-stitch remain GL-owned this rung (documented crack-check below).
+//
+// NOT a member of the MC2_VK_SHARED_GBUFFER umbrella family (unlike TIER1/LIGHTING/
+// DETAIL etc.) -- this is a standalone, explicit-opt-in rung-3 gate that stays OFF
+// even when the umbrella is armed, per the task's "new sub-gate, default OFF" ask.
+// envTriState (not subGate) so an unset env is OFF regardless of umbrella state.
+bool terrainAllLodsRequested() {
+    static int state = -1;
+    if (state == -1) {
+        state = (terrainTier1Requested() && mc2vkgate::envTriState("MC2_VK_TERRAIN_ALL_LODS") == 1) ? 1 : 0;
+    }
+    return state == 1;
+}
+
 std::string spv_dir() {
     const char* env = std::getenv("MC2_VULKAN_SPV_DIR");
     std::string d = (env && *env) ? env : "shaders/vulkan";
@@ -380,29 +397,45 @@ bool make_buffer(TerrainIsland* s, VkDeviceSize size, VkBufferUsageFlags usage,
     return true;
 }
 
-// Build (or fetch cached) a LOD0 patch grid for (qcX,qcY). LOD0 (lodStep==1) => the
-// sample positions are 0..qc contiguous, and the CCW two-triangles-per-quad split is
-// the FIXED (TL-BR) diagonal (checkerDiag is a separate default-off feature not
-// ported to the probe), matching getOrBuildPatch()'s bottomRight default.
-const PatchMesh* getOrBuildPatch(TerrainIsland* s, int qcX, int qcY) {
-    uint32_t key = ((uint32_t)(qcX & 0xFFFF)) | (((uint32_t)(qcY & 0xFFFF)) << 16);
+// Build (or fetch cached) a patch grid for (qcX,qcY,lodStep). qcX/qcY are the
+// max-offset SPAN in map-cells (feed.quadCountX/Y, already rounded down to a multiple
+// of lodStep by the GL capture site); lodStep strides the local-offset grid the same
+// way GL's makeSamplePositions() does (`p += lodStep`, p in [0,qc]) so the vert
+// shader's un-scaled `blockOriginX + localOffset.x` map-space math is IDENTICAL
+// whether lodStep==1 (LOD0) or >1 (coarse band, VK-TERRAIN-ALL-LODS rung). The CCW
+// two-triangles-per-quad split is the FIXED (TL-BR) diagonal (checkerDiag is a
+// separate default-off feature not ported to the probe), matching getOrBuildPatch()'s
+// bottomRight default.
+const PatchMesh* getOrBuildPatch(TerrainIsland* s, int qcX, int qcY, int lodStep) {
+    if (lodStep <= 0) lodStep = 1;
+    const uint32_t key = ((uint32_t)(qcX & 0xFFFF)) | (((uint32_t)(qcY & 0xFFFF)) << 16)
+                        ^ ((uint32_t)(lodStep & 0xFF) << 24);
     auto it = s->patchCache.find(key);
     if (it != s->patchCache.end()) return &it->second;
     if (qcX <= 0 || qcY <= 0) return nullptr;
 
-    // Vertices: (qcX+1) x (qcY+1) grid of int16 local offsets (lodStep==1).
+    // Sample positions: 0, lodStep, 2*lodStep, ... up to qc (mirrors GL
+    // makeSamplePositions(quadCount, lodStep)). nx/ny = number of grid POINTS.
+    std::vector<int> xs, ys;
+    for (int p = 0; p <= qcX; p += lodStep) xs.push_back(p);
+    if (xs.empty() || xs.back() != qcX) xs.push_back(qcX);
+    for (int p = 0; p <= qcY; p += lodStep) ys.push_back(p);
+    if (ys.empty() || ys.back() != qcY) ys.push_back(qcY);
+    const int nx = (int)xs.size(), ny = (int)ys.size();
+
+    // Vertices: nx x ny grid of int16 local offsets (map-cell units, lodStep-strided).
     std::vector<LocalVertex> verts;
-    verts.reserve((size_t)(qcX + 1) * (qcY + 1));
-    for (int yy = 0; yy <= qcY; ++yy)
-        for (int xx = 0; xx <= qcX; ++xx)
-            verts.push_back({(int16_t)xx, (int16_t)yy});
+    verts.reserve((size_t)nx * ny);
+    for (int yy = 0; yy < ny; ++yy)
+        for (int xx = 0; xx < nx; ++xx)
+            verts.push_back({(int16_t)xs[xx], (int16_t)ys[yy]});
 
     // Indices: two CCW triangles per quad, FIXED TL-BR diagonal (== getOrBuildPatch
     // bottomRight default): {TL,BL,BR} + {TL,BR,TR}.
     std::vector<uint16_t> indices;
-    const int W = qcX + 1;
-    for (int j = 0; j < qcY; ++j) {
-        for (int i = 0; i < qcX; ++i) {
+    const int W = nx;
+    for (int j = 0; j < ny - 1; ++j) {
+        for (int i = 0; i < nx - 1; ++i) {
             uint16_t tl = (uint16_t)(j * W + i);
             uint16_t tr = (uint16_t)(j * W + i + 1);
             uint16_t bl = (uint16_t)((j + 1) * W + i);
@@ -1600,6 +1633,10 @@ extern "C" int mc2_vk_terrain_island_enabled() {
     return terrainTier1Requested() ? 1 : 0;
 }
 
+extern "C" int mc2_vk_terrain_all_lods_enabled() {
+    return terrainAllLodsRequested() ? 1 : 0;
+}
+
 // FAIL-SOFT ISLAND-READY predicate. True only when the gate is on AND the island is in a
 // state where run() is expected to co-write this frame's LOD0 patches. The GL LOD-chunk
 // loop gates its SPECULATIVE LOD0-skip on this: if the island can NOT render (SPV/pipeline
@@ -1852,7 +1889,7 @@ extern "C" int mc2_vk_terrain_island_run(int w, int h) {
     unsigned long drawn = 0;
     for (uint32_t i = 0; i < patchCount; ++i) {
         const Mc2TerrainTier1Patch& pr = feed.patches[i];
-        const PatchMesh* pm = getOrBuildPatch(s, pr.quadCountX, pr.quadCountY);
+        const PatchMesh* pm = getOrBuildPatch(s, pr.quadCountX, pr.quadCountY, pr.lodStep);
         if (!pm || pm->indexCount == 0) continue;
         const uint32_t dynOff = i * (uint32_t)sizeof(TerrainFrameUBO);
         vkCmdBindDescriptorSets(cb, VK_PIPELINE_BIND_POINT_GRAPHICS, s->playout, 0, 1, &s->set, 1, &dynOff);

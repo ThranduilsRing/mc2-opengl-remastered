@@ -32,8 +32,15 @@ extern "C" {
 struct Mc2TerrainTier1Patch {
     int32_t blockOriginX;   // TerrainDrawCommand::blockOriginX
     int32_t blockOriginY;   // TerrainDrawCommand::blockOriginY
-    int32_t quadCountX;     // maxOffX = (qcX/1)*1 = qcX   (LOD0 -> lodStep==1)
-    int32_t quadCountY;     // maxOffY = qcY
+    int32_t quadCountX;     // maxOffX = (qcX/lodStep)*lodStep
+    int32_t quadCountY;     // maxOffY = (qcY/lodStep)*lodStep
+    // VK-TERRAIN-ALL-LODS sub-slice: lodStep for this patch (1,2,4,5,10,20). Always
+    // 1 when MC2_VK_TERRAIN_ALL_LODS is off (rung-3 feed capture only emits lodStep==1
+    // patches in that case) -- old callers/behavior unaffected. VK-side patch-grid
+    // generation must stride localOffset by this value (mirrors GL makeSamplePositions'
+    // `p += lodStep`) so the vert shader's un-scaled `blockOriginX + localOffset.x`
+    // math stays IDENTICAL to the LOD0 path.
+    int32_t lodStep;
 };
 
 // Per-frame terrain feed (mirrors Mc2ColorPropFeed). Populated by the GL LOD-chunk
@@ -125,6 +132,12 @@ int mc2_terrain_tier1_get_frame_feed(Mc2TerrainTier1Feed* out);
 // terrain region. When true the GL LOD-chunk loop SKIPS the LOD0 main draws (and
 // LOD0 skirts) — the island co-writes those into the shared GBuffer instead.
 int mc2_vk_terrain_island_enabled();
+
+// VK-TERRAIN-ALL-LODS (rung 3): true when the coarse-band sub-gate (MC2_VK_TERRAIN_ALL_LODS,
+// requires TIER1) is armed. When true the GL LOD-chunk loop's capture predicate below also
+// captures lodStep>1 non-displaced, non-stitched patches (bands only -- skirts/stitch stay
+// GL-owned this rung). Default-OFF -> capture unchanged (LOD0 only).
+int mc2_vk_terrain_all_lods_enabled();
 
 // FAIL-SOFT ready predicate. True only when the gate is on AND the island is in a state
 // where run() is expected to co-write this frame's LOD0 patches (born, inited, not

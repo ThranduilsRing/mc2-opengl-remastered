@@ -1695,6 +1695,10 @@ def main():
                             "MC2_VK_MECH_LIGHTING",
                             # VK terrain in-place shared-GBuffer region + lighting + detail.
                             "MC2_VK_TERRAIN_TIER1",
+                            # VK-TERRAIN-ALL-LODS (rung 3): coarse-band (lodStep>1) capture
+                            # extension, requires MC2_VK_TERRAIN_TIER1. Bands only, no
+                            # skirts/stitch this rung. Default-OFF.
+                            "MC2_VK_TERRAIN_ALL_LODS",
                             "MC2_VK_TERRAIN_LIGHTING",
                             "MC2_VK_TERRAIN_DETAIL",
                             "MC2_VK_TERRAIN_LODFADE",
