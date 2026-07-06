@@ -187,6 +187,71 @@ remaining ON gap = record-submit + interop staging (user Tracy: VK-terrain-recor
 near-oracle self-diff x3: VK 0.000/0.000, GL 0.000 with one r0-r1 pair showing the
 documented GL mech-gait jitter artifact only).
 
+### UPDATE 2026-07-06 @ 33b23c83 — dump fields wired, trio measured, merge NO-GO (pre-code)
+
+Wired `mc2_render_backend_{terrain,color_prop,mech}_region_health()` (accessors already
+existed, just weren't dumped) into `debug_state_dump.cpp` as new additive
+`vulkan_terrain_island` / `vulkan_color_prop_island` / `vulkan_mech_island` sections —
+schema-unchanged when islands off, permanent unblock for Tracy-CLI-less measurement.
+Commit `33b23c83`. Rebuilt build64_island clean, deployed 0.4c (manifest src_commit
+33b23c8300...).
+
+Live PID-tracked capture (mc2_01, umbrella ON, ~15s settle, two samples for stability):
+
+| island | stage_us | draw_us (record+submit) | total_us |
+|---|---|---|---|
+| terrain | 1.4 | 4414–4461 | 4655–4665 |
+| props | 4–4.9 (stage_inst_us) | 291–315 | 1908–2011 |
+| mech | 556–587 | 119–126 | 844–898 |
+
+vs user's Tracy per-zone numbers (3.5/1.35/1.2ms): terrain draw_us (~4.4ms) is in the
+same ballpark as Tracy's 3.5ms zone (record+submit dominates, matches prior recon —
+per-patch dynamic-UBO offset bind is the required VK idiom, not redundant). Mech draw_us
+(~0.12ms) is far below Tracy's 1.2ms — mech's *stage_us* (~0.57ms) plus draw_us covers
+less than half the Tracy zone, remainder likely GL-side interop wait not captured by
+this CPU-side timer. Props draw_us (~0.3ms) is well below Tracy's 1.35ms — same story,
+total_us (~1.9-2.0ms) is closer but includes fence-wait/interop, not pure record cost.
+
+**Props merge verdict: NO-GO, not attempted in code.** The per-packet record loop
+(vulkan_color_prop_island.cpp:1690-1716, pipeline+set bound once outside the loop,
+per-packet cost = 8B push-constant + `vkCmdDrawIndexed`) has a measured CPU draw_us
+ceiling of ~0.3ms **total for the whole prop pass**, not per-draw. Since draw_us is the
+absolute upper bound on what an instanced-merge could save (best case: entire draw-issue
+cost â†’ ~0), the maximum possible win is ~0.3ms, sitting right at — not clearing — the
+session's mandatory â‰¥0.3ms-win bar, before accounting for merge implementation risk
+(packetLayerOff/On â†’ per-instance SSBO is a vertex+fragment shader contract change with
+real byte-identity exposure). Verdict: revert-before-code — no merge patch was written;
+`MC2_VK_PROP_DRAW_MERGE` gate NOT added. Re-open only if a future capture shows draw_us
+materially higher (e.g. denser prop scene / more type-run fragmentation).
+
+FPS re-measured this session (engine frame-counter delta over wall-clock, PID-tracked
+launch/kill, mc2_01, no Tracy overlay):
+| state | frames/10s (frame-counter delta) |
+|---|---|
+| umbrella OFF | 3000 (~300 "fps") |
+| umbrella ON | 1200 (~120 "fps") |
+
+Ratio ON/OFF ~= 0.40, consistent with the priorly-reported "ON ~2x slower" shape, though
+absolute values don't match the canonical smoke-cap FPS table above (78/46) -- this
+session's numbers come from the engine tick counter via debug-state dump deltas, not the
+smoke harness's capped FPS meter; treat as a directional cross-check, not a replacement
+for the canonical 78/46 smoke row.
+
+**Rungs 3-6 go/no-go: props merge = NO-GO (measured, pre-code). No other candidate
+identified this session.** Terrain/mech record-submit remain the long poles per prior
+recon (shader-contract-changing instanced merges), unchanged from dd26ceac assessment.
+
+### Canonical smoke-cap FPS, this session (mc2_01, 30s, `--exe` 0.4c, `--no-lease`)
+| state | Avg FPS | p1% | frames |
+|---|---|---|---|
+| umbrella OFF | 78 | 62 | 2344 |
+| umbrella ON | 58 | 52 | 1749 |
+
+Both PASS. Both diag-state PASS (schema v2, dump_kind=shutdown, CONFIG startup event
+present). This session's OFF/78 matches the dd26ceac baseline exactly; ON/58 is up from
+dd26ceac's 46 (further shadow/interop tax reduction landing between sessions, or run
+variance — not re-attributed this session, no code changed on the record-submit path).
+
 ### LODFADE seam-pose oracle (new bookmark `lodfade_midband`, mc2_01_terrain_near.json)
 Mid-distance pose authored so camDist (ground dist + 0.7·altBoost, terrain_tier1.frag
 `mv_computeLodNear`) sits mid-band [LODFADE_NEAR=4000, LODFADE_NEAR_FADE=4500].
