@@ -777,6 +777,20 @@ if (justResaveAllMaps)
     FitIniFile loader;
     long result = loader.open(guiloader);
 
+    // EDITOR-PILOT-CATALOG-FST-1: this gate used to fail SILENTLY (empty else
+    // branches) -- if editorGui.fit doesn't resolve or the renderer is missing,
+    // editor->init() never runs (no pilot catalog, no object mgr). Log it.
+    {
+        FILE* f = fopen("editor-startup.log", "a");
+        if (f)
+        {
+            fprintf(f, "InitializeGameEngine: editorGui.fit open result=%ld renderer=%d -> editor->init %s\n",
+                result, getGosRenderer() ? 1 : 0,
+                (result == NO_ERR && getGosRenderer()) ? "RUNS" : "SKIPPED");
+            fclose(f);
+        }
+    }
+
     if (result == NO_ERR)
     {
 

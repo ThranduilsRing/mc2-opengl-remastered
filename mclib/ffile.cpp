@@ -542,9 +542,33 @@ long FastFile::readFast (DWORD fastFileHandle, void *bfr, DWORD size)
 				static const bool s_ffTrace = (getenv("MC2_FF_TRACE") != nullptr);
 				if (files[fastFileHandle].pfe->size == files[fastFileHandle].pfe->realSize)
 				{
-					// Raw-stored entry: copy verbatim.
-					if (s_ffTrace) { CB_PRINTF("[FF] RAW %s size=%u real=%u", files[fastFileHandle].pfe->name, files[fastFileHandle].pfe->size, files[fastFileHandle].pfe->realSize); }
-					memcpy(bfr, LZPacketBuffer, files[fastFileHandle].pfe->size);
+					// size == realSize is AMBIGUOUS: either a raw-stored entry
+					// (wolfman's FST tool) OR the rare stock case where the zlib
+					// stream is exactly as long as the raw data (the original -fs
+					// comment above; live example: misc.fst
+					// data/objects/badpilots.csv, 44 == 44, bytes 78 9c ...).
+					// EDITOR-PILOT-CATALOG-FST-1: sniff the zlib header and try to
+					// inflate; fall back to verbatim copy when it is not a valid
+					// zlib stream of exactly realSize.
+					bool copiedVerbatim = true;
+					const unsigned char zb0 = (unsigned char)LZPacketBuffer[0];
+					const unsigned char zb1 = (files[fastFileHandle].pfe->size > 1) ? (unsigned char)LZPacketBuffer[1] : 0;
+					if (files[fastFileHandle].pfe->size > 2 && zb0 == 0x78 && ((zb0 * 256 + zb1) % 31) == 0)
+					{
+						unsigned long tryLength = files[fastFileHandle].pfe->realSize;
+						if (Z_OK == uncompress((MemoryPtr)bfr, &tryLength, LZPacketBuffer, files[fastFileHandle].pfe->size)
+							&& tryLength == (unsigned long)files[fastFileHandle].pfe->realSize)
+						{
+							if (s_ffTrace) { CB_PRINTF("[FF] RAW-ZLIB %s size=%u real=%u (size==realSize but valid zlib; inflated)", files[fastFileHandle].pfe->name, files[fastFileHandle].pfe->size, files[fastFileHandle].pfe->realSize); }
+							copiedVerbatim = false;
+						}
+					}
+					if (copiedVerbatim)
+					{
+						// Raw-stored entry: copy verbatim.
+						if (s_ffTrace) { CB_PRINTF("[FF] RAW %s size=%u real=%u", files[fastFileHandle].pfe->name, files[fastFileHandle].pfe->size, files[fastFileHandle].pfe->realSize); }
+						memcpy(bfr, LZPacketBuffer, files[fastFileHandle].pfe->size);
+					}
 					decompLength = files[fastFileHandle].pfe->realSize;
 				}
 				else if (useLZCompress)

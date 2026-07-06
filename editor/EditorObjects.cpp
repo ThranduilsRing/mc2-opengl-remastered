@@ -1167,18 +1167,37 @@ void Pilot::initPilots()
 			if ( bytesRead < 2 )
 				break;
 
-			// Guard: pilots.csv may be zlib-compressed inside the FST and the
-			// FST reader returns raw deflate bytes.  Any non-printable byte in
-			// the filename means the data is corrupt/binary — stop loading.
+			// Guard: if the FST reader ever leaks compressed bytes (historic
+			// 78 9c deflate leak), a non-printable byte in the name means the
+			// data is corrupt/binary — stop loading.
+			// EDITOR-PILOT-CATALOG-FST-1: scan only up to the NUL terminator.
+			// File::readLine returns a count that INCLUDES the '\0' it appends,
+			// so the old `ci < bytesRead` loop always hit the terminator and
+			// rejected EVERY line (goodCount=0 -> empty pilot catalog).
 			{
 				bool validName = true;
-				for ( int ci = 0; ci < bytesRead; ++ci )
+				for ( int ci = 0; ci < bytesRead && pilotFileName[ci] != 0; ++ci )
 				{
 					unsigned char c = (unsigned char)pilotFileName[ci];
 					if ( c < 0x20 || c > 0x7e ) { validName = false; break; }
 				}
 				if ( !validName )
+				{
+					// EDITOR-PILOT-CATALOG-FST-1: loud witness — this used to fire
+					// on zlib bytes leaking through the FST reader (goodCount=0
+					// -> empty pilot picker -> PILOT-PROFILE-PRESERVE-1 fallbacks).
+					FILE* f = fopen( "editor-startup.log", "a" );
+					if ( f )
+					{
+						fprintf( f, "[PILOT-CATALOG] corrupt line (pass %d), first bytes %02x %02x %02x %02x -- aborting csv read\n",
+							i, (unsigned char)pilotFileName[0],
+							bytesRead > 1 ? (unsigned char)pilotFileName[1] : 0,
+							bytesRead > 2 ? (unsigned char)pilotFileName[2] : 0,
+							bytesRead > 3 ? (unsigned char)pilotFileName[3] : 0 );
+						fclose( f );
+					}
 					break;
+				}
 			}
 
 			CString postFix;
@@ -1250,6 +1269,17 @@ void Pilot::initPilots()
 		infos = s_BadPilots;
 		counter = &badCount;
 
+	}
+
+	// EDITOR-PILOT-CATALOG-FST-1: startup witness. good must be > 0 for the
+	// pilot picker / Pilot::load catalog matching to work at all.
+	{
+		FILE* f = fopen( "editor-startup.log", "a" );
+		if ( f )
+		{
+			fprintf( f, "[PILOT-CATALOG] good=%ld bad=%ld\n", goodCount, badCount );
+			fclose( f );
+		}
 	}
 }
 
