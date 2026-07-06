@@ -70,6 +70,15 @@ namespace HudImGui
 	bool beginPanel( const char* id, float hudLeft, float hudTop,
 					 float hudRight, float hudBottom, float* fontScaleOut = 0 );
 	void endPanel();
+
+	// gos texture handle -> GL texture name, for use as an ImTextureID
+	// (cast: (ImTextureID)(intptr_t)name — same convention as GuiRuntime's
+	// makeImTextureID). Returns 0 for an invalid/unresident handle; callers
+	// must skip the draw on 0. For mcTextureManager handles, resolve with
+	// get_gosTextureHandle() FIRST (that call also caches the texture in) and
+	// pass the resulting gos handle here. Built for slice E (tac-map texture);
+	// also unblocks slice-D icon polish.
+	unsigned int gosTextureGLName( unsigned long gosHandle );
 }
 
 #endif // HUDIMGUIPANEL_H

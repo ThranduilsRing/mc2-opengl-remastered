@@ -171,4 +171,11 @@ void endPanel()
 	ImGui::End();
 }
 
+unsigned int gosTextureGLName( unsigned long gosHandle )
+{
+	if ( !gosHandle )
+		return 0;
+	return gos_GetGLTextureName( (DWORD)gosHandle );
+}
+
 } // namespace HudImGui
