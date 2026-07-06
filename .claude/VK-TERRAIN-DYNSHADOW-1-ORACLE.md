@@ -211,6 +211,89 @@ The deterministic near-oracle now makes these verifiable. NOT shipped this sessi
 - Est: both are small verification-gate slices (no new shader math); the near-oracle +
   FORCE_LOD=0 is the driving camera. Do fail-soft first (bigger safety value).
 
+## ★★SHIPPED (2026-07-05 session 4 — item-3 fail-soft + height-audit DONE)
+Commits `61590207` (infra) + `4a14687a` (deadlock fix). Both DEFAULT-ON safety gates
+built + verified on the green near-oracle. Files: vulkan_terrain_island.{h,cpp},
+gos_terrain_lod_chunk.cpp, RendererFeatureRegistry.h, run_smoke.py.
+
+**FAIL-SOFT (island-level GL fallback, no LOD0 hole):**
+- The GL LOD0-skip is now gated on island-READY, not merely -enabled. New
+  `mc2_vk_terrain_island_prepare(w,h)` births the island at loop-top (GL ctx current)
+  BEFORE the skip decision, so ready reflects real state. `mc2_vk_terrain_island_ready()`
+  is the clean predicate (born+inited+!disabled+spv+pipeline). Any island failure ->
+  GL keeps drawing LOD0. Loud one-shot stderr on fail-soft entry + on a post-skip
+  run()==0 1-frame gap.
+- ★DEADLOCK CAUGHT+FIXED (first cut regressed VKon-vs-VKoff 56%->0%): skip gated on
+  ready, ready on a born island, island born only from the skip's feed. prepare()
+  births independent of feed -> broke it. Lesson: birth must NOT depend on the very
+  skip it gates.
+- ★VERIFIED per failure mode:
+  · **missing SPV** (MC2_VULKAN_SPV_DIR=empty): "cannot open spv" -> "init failed
+    (spv_load_failed) — GL fallback" -> my fail-soft log -> output == GL baseline
+    (near_land_low cov 0.169% = mech-jitter only; near_land_off 0.000). No hole, no
+    crash. FIRED / logged / recovered. ✅
+  · **no feed** (window-minimized harness -> VK present forced GL): fallback_reason
+    "no_terrain_feed", GL drew LOD0, no hole. FIRED / recovered. ✅
+  · pipeline/renderpass/framebuffer/device-null all route the same init-fail path ->
+    island destroyed -> prepare()==0 -> GL draws (covered by construction, same code
+    path as spv_load_failed).
+  · transient (height_snapshot_failed / submit_failed / fence_timeout) latch
+    s->disabled -> prepare()==0 next frame; at worst a single self-healing frame with
+    the loud gap log.
+
+**HEIGHT-AUDIT (MC2_VK_TERRAIN_HEIGHT_AUDIT, verification-only, default-OFF):**
+- FNV-1a checksum of the version-gated height snapshot; each frame re-reads GL live
+  heights + compares. Loud rate-limited [HEIGHT_AUDIT] MISMATCH on divergence
+  (crater/deform without a g_terrainHeightVersion bump -> stale VK macro-slope).
+  Never mutates render output.
+- ★VERIFIED both directions:
+  · POSITIVE (audit ON, green pose): **0 MISMATCH** + `first TIER-1` co-write fired.
+    Audit clean where heights consistent. ✅
+  · NEGATIVE (MC2_VK_TERRAIN_HEIGHT_AUDIT_CORRUPT=1 poisons the stored checksum once):
+    control-armed line + **★MISMATCH fires** (snapshot_fnv 0x4a8f… vs live_fnv
+    0xef2a…). Audit has teeth. ✅
+- Byte-OFF control: GL-config near-oracle run shows 0 VK-terrain / audit activity;
+  near_land_off byte-perfect. VKon-vs-VKoff back to 56.8% co-write (unchanged by the
+  item-3 infra — inert when ready).
+
+## ★★PRE-FLIP SCOPE (remaining, priority order — before any DEFAULT flip of MC2_VK_TERRAIN_TIER1)
+Item-3 (fail-soft + height-audit) is the last SAFETY prerequisite and is now DONE.
+Remaining items to a default-ON flip, highest-value first:
+
+1. **MECH ISLAND FRUSTUM CULL (the co-covered-parity inflater)** — the near-oracle's
+   center mech island (OBJ_BOX 400,100..516,200) jitters run-to-run because the mech's
+   animation pose is not frozen at the pinned capture frame; this inflates every terrain
+   self-diff (masked out today, but it caps the achievable parity floor and blocks a
+   clean whole-frame number). Scope: frustum-cull the VK mech island to the captured
+   pose OR freeze mech anim-pose under the sim-freeze capture (gos_visual_capture) so the
+   mech region is byte-stable too -> unmask -> whole-frame VK-vs-GL parity becomes
+   measurable. Oracle: the existing near_land_low with OBJ_BOX mask REMOVED must reach
+   ~0 self-diff. Owner note: mechs have their own parity oracle (VK-MECH-*); this is the
+   terrain-side capture determinism fix, small. Do FIRST — it unblocks the whole-frame
+   parity number the flip needs.
+
+2. **GATE CONSOLIDATION (MC2_VK_SHARED_GBUFFER umbrella + Tier-0 retire)** — per handoff.
+   The VK terrain/prop/mech islands each ride their own MC2_VK_*_TIER1 + shared-depth
+   gates; consolidate the shared-GBuffer co-write family under ONE umbrella
+   MC2_VK_SHARED_GBUFFER (keep the per-region sub-gates as detail toggles), and retire
+   the Tier-0 (readback/present-region) proof gates that P14-native superseded. Scope:
+   registry entries + run_smoke allowlist + the presence checks in each island's
+   *Requested(); byte-OFF must stay byte-identical; each region's existing oracle must
+   pass unchanged under the umbrella. Medium — pure gate plumbing, no shader/render math.
+   NOTE: explicitly OUT of scope this session per steering ("no consolidation yet").
+
+3. **FULL-FRAME PARITY + SOAK CRITERIA** — the flip gate. Define + run:
+   (a) whole-frame VK-vs-GL parity (all 3 regions live, mech island unmasked per #1)
+       across the 11 stable mc2_01 bookmarks + near poses + ≥2 other maps (airport for
+       markings, a water map) — acceptance threshold TBD (propose ≤ GL self-diff noise
+       floor + a small margin, e.g. mean_all ≤ 1.0 / cov ≤ 2%);
+   (b) a tier1 soak (mc2_01 mc2_03 mc2_10 mc2_17 mc2_24, 30s each) with all VK gates ON
+       -> exit 0, no crash_silent, no fail-soft-gap log firing in steady state, height-
+       audit clean;
+   (c) height-audit run over crater/deform content (a mission that deforms terrain) to
+       confirm the audit stays green under live height mutation OR flags the writer that
+       needs a version bump. Largest item; gates the flip.
+
 ## Files (this session, terrain)
 - NEW oracle: .claude/mech-parity/terrain_near_oracle.py (keeper),
   tests/visual/bookmarks/mc2_01_terrain_near.json. Artifacts .claude/mech-parity/terrain/near_oracle/.
