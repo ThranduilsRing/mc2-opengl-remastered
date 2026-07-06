@@ -732,6 +732,8 @@ public:
 	void PreviousPrimaryObjectiveMustBeComplete(bool previousPrimaryObjectiveMustBeComplete) { m_previousPrimaryObjectiveMustBeComplete = previousPrimaryObjectiveMustBeComplete; }
 	bool AllPreviousPrimaryObjectivesMustBeComplete() { return m_allPreviousPrimaryObjectivesMustBeComplete; }
 	void AllPreviousPrimaryObjectivesMustBeComplete(bool allPreviousPrimaryObjectivesMustBeComplete) { m_allPreviousPrimaryObjectivesMustBeComplete = allPreviousPrimaryObjectivesMustBeComplete; }
+	bool IsResolved() { return m_resolved; }                  // read-only (slice E ImGui tac map)
+	const char* MarkerText() const { return m_markerText; }  // read-only (slice E ImGui tac map)
 	int DisplayMarker() { return m_displayMarker; }
 	void DisplayMarker(int displayMarker) { m_displayMarker = displayMarker; }
 	float MarkerX() { return m_markerX; }

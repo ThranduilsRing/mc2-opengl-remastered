@@ -37,6 +37,14 @@ class GameTacMap: public TacMap
 	void update(); // do not call these two functions from editor
 	void render();
 
+	// MC2_HUD_IMGUI_TACMAP (IN-MISSION-HUD-IMGUI-SCOPE-1 slice E):
+	// ImGui panel replaces the legacy gos-batch tac-map draw AND its
+	// click/hover handling. render()/update() try these first when the
+	// gate is on; legacy path is untouched when the gate is off or
+	// renderImGui returns false (pin-to-legacy).
+	bool usingImGui() const;
+	bool renderImGui();
+
 	bool animate (long objectiveId, long nFlashes);
 
 	// if the world coords do not lie on the map, they will be changed.
@@ -69,6 +77,14 @@ class GameTacMap: public TacMap
 
 	void drawSensor( const Stuff::Vector3D& pos, float radius, long color);
 	void drawBlip( const Stuff::Vector3D& pos, long color, int shape  );
+
+	// shared blip/sensor collection (sensor towers + movers, colors by
+	// team/selection/contact) — factored verbatim from the legacy render()
+	// loops so the ImGui path draws from the SAME data (arrays sized
+	// MAX_MOVERS by the callers). Returns count.
+	int collectBlips( unsigned long* colors, unsigned long* ringColors,
+					  Stuff::Vector3D* positions, unsigned long* ranges,
+					  bool* selected );
 
 	const static float s_blinkLength;
 	static float		s_lastBlinkTime;
