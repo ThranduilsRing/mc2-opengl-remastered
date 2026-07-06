@@ -69,6 +69,11 @@ Headless Vulkan probe / backend-skeleton exercise gates. All read via bare `gete
 - `MC2_VULKAN_EDGE_FOG_ISLAND=1` — Vulkan-native edge-fog island (`GameOS/gameos/vulkan_edge_fog_island.cpp`, VULKAN-CONTRACT-MANIFEST-ARC Layer 3): GL depth/color readback bridged into a Vulkan compute pass, pixel-parity-proven vs the GL path. Default **OFF**, presence-gated; falls back to GL if the probe device isn't viable. `MC2_VULKAN_ISLAND_FORCE_FALLBACK=1` forces the fallback for testing.
 - `MC2_VULKAN_SWAPCHAIN_PRESENT=1` — VULKAN-CONTRACT-MANIFEST-ARC Layer 5: engine-owned Vulkan swapchain create/present/resize (`vulkan_backend_skeleton.cpp`, `vulkan_swapchain_present.cpp`), validation-clean core+sync per the L5 proof. Default **OFF**, presence-gated. `MC2_VULKAN_SWAPCHAIN_PRESENT_HIDDEN=1` runs it against a hidden window for headless/CI use.
 
+## In-mission HUD modernization (IN-MISSION-HUD-IMGUI-SCOPE-1)
+
+- `MC2_HUD_READABILITY_V1=1` — slice A, data-first HUD readability. Substitutes the next-size-up retail D3F font atlas at the single font-resolve choke point (`gui/afont.cpp` `aFont::loadFont`) for the worst-offender in-mission HUD fonts (help / objectives / info-window name+components / vehicle-tab costs / pause window / hotkey overlay), and brightens the disabled vehicle-tab label color (`code/controlgui.cpp` `renderVehicleTab`, stock `0xff7f7f7f`). Text code always renders at scale 1.0 — size lives in the atlas — so no layout/hit-test change. Default **OFF** = byte-identical.
+- `MC2_HUD_IMGUI_PAUSE=1` — slice B, pattern-prover ImGui port of the in-mission PauseWindow (`code/pausewindow.cpp` + the `code/hudimguipanel.cpp` helper). Panel laid out inside `gos_ComputeHudCanvasBox` (same rect legacy HUD chrome is remapped into); clicks dispatch to the existing `PauseWindow::handleClick`. Pin-to-legacy: any ImGui failure permanently falls back to the legacy render for the session. Default **OFF** = byte-identical legacy pause window.
+
 ## Frame-graph executor + backend-iface seam (RENDER-FRAME-GRAPH ARC)
 
 - `MC2_FRAMEGRAPH_EXECUTOR=1` — top-level frame-graph pass executor (`gos_postprocess.cpp` `executorEnabled()`, `mclib/render_contract.cpp`). Default **OFF**. Value must be `'1'`. Substrate — the reorderer below is NOT shipped; executor stays default-OFF.

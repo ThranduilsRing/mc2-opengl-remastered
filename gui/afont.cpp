@@ -14,6 +14,49 @@ aFont::aFont()
 	size = 1;
 }
 
+// MC2_HUD_READABILITY_V1 (default OFF): data-first HUD readability.
+// The in-mission HUD resolves its fonts through string-table resource IDs
+// (aFont::init(long) -> loadFont -> cLoadString -> "<basename>.d3f[,size]"),
+// so text size is baked into the D3F atlas that gets loaded — text code
+// always renders at scale 1.0 (gos_TextSetAttributes Size is ignored by the
+// renderer). This shim substitutes the next-size-up retail D3F atlas for the
+// worst-offender HUD fonts at the single resolve choke point. Gate OFF =>
+// zero behavior change (helper not consulted). No layout or hit-test change:
+// only the glyph atlas swaps.
+static bool mc2HudReadabilityV1()
+{
+	static int cached = -1;
+	if (cached < 0)
+	{
+		const char* v = getenv("MC2_HUD_READABILITY_V1");
+		cached = (v && v[0] && v[0] != '0') ? 1 : 0;
+	}
+	return cached == 1;
+}
+
+// Returns the replacement font file for a HUD font resource ID, or NULL to
+// keep the stock string. IDs from resource.h; stock string values from the
+// shipped string table (test_scripts/res_conv/strings.res.cpp). Only retail
+// atlases that exist in assets/graphics are targeted (agencyfb 11/14/17/20,
+// arialnarrow 6/8/9). Chat (IDS_CHAT_FONT = ArialNarrow9) has no larger
+// same-family atlas — left alone, deferred to the ImGui port slices.
+static const char* mc2HudReadabilityFontOverride(long resourceID)
+{
+	switch (resourceID)
+	{
+	case 40024: return "arialnarrow9.d3f"; // IDS_HELP_FONT_1024      (ArialNarrow8)
+	case 40025: return "arialnarrow9.d3f"; // IDS_OBJECTIVE_FONT_1024 (ArialNarrow8)
+	case 40026: return "agencyfb17.d3f";   // IDS_INFONAME_FONT_1024  (AgencyFB14)
+	case 40044: return "agencyfb17.d3f";   // IDS_COMPONENTS1024      (AgencyFB14)
+	case 40035: return "agencyfb14.d3f";   // IDS_VEHICLEFONT1024     (AgencyFB11)
+	case 40031: return "agencyfb14.d3f";   // IDS_PAUSEBUTTON800      (AgencyFB11)
+	case 40017: return "agencyfb17.d3f";   // IDS_PAUSEDFONT_800      (AgencyFB14)
+	case 43227: return "arialnarrow9.d3f"; // IDS_HOT_KEY_FONT        (ArialNarrow8)
+	case 43232: return "agencyfb14.d3f";   // IDS_HOT_KEY_HEADER_FONT (AgencyFB11)
+	default:    return 0;
+	}
+}
+
 long aFont::init( const char* newFontName )
 {
 	destroy();
@@ -291,6 +334,14 @@ HGOSFONT3D aFont::loadFont( long resourceID, long& size )
 	{
 		size = -atoi( pStr + 1 );
 		*pStr = '\0';
+	}
+
+	// MC2_HUD_READABILITY_V1: swap in the larger retail atlas for HUD fonts.
+	if ( mc2HudReadabilityV1() )
+	{
+		const char* repl = mc2HudReadabilityFontOverride( resourceID );
+		if ( repl )
+			strcpy( buffer, repl );
 	}
 
 	char path[256];

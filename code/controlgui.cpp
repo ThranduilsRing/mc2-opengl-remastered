@@ -2558,7 +2558,18 @@ void ControlGui::renderVehicleTab()
 	{
 		vehicleButtons[i].render();
 
-		long color = vehicleButtons[i].isEnabled() ?  0xff005392 : 0xff7f7f7f;
+		// MC2_HUD_READABILITY_V1 (default OFF): the stock disabled-label gray
+		// (0xff7f7f7f) is near-invisible against the dark vehicle-tab panel at
+		// 4K. Gate-on brightens ONLY the disabled color; enabled/pressed stay
+		// stock. Gate-off is byte-identical (same literal as before).
+		static int s_hudReadability = -1;
+		if ( s_hudReadability < 0 )
+		{
+			const char* v = getenv( "MC2_HUD_READABILITY_V1" );
+			s_hudReadability = ( v && v[0] && v[0] != '0' ) ? 1 : 0;
+		}
+		const long disabledColor = s_hudReadability ? 0xffb8c2cc : 0xff7f7f7f;
+		long color = vehicleButtons[i].isEnabled() ?  0xff005392 : disabledColor;
 
 		if ( vehicleButtons[i].state & ControlButton::PRESSED )
 		{

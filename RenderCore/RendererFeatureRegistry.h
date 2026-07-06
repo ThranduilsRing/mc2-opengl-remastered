@@ -1735,6 +1735,20 @@ static constexpr EnvVarDesc kAuxEnvVars[] = {
         false,
         "VULKAN-CONTRACT-MANIFEST-ARC Layer 5: engine-owned Vulkan swapchain (create/present/resize) (GameOS/gameos/vulkan_backend_skeleton.cpp, vulkan_swapchain_present.cpp). Default-OFF, presence-gated (=1 enables); validation-clean core+sync per L5 proof. See MEMORY handoff HANDOFF_2026_07_01_vulkan_lib_track."
     },
+    {
+        "MC2_FEATURE_HUD_READABILITY_V1",
+        "MC2_HUD_READABILITY_V1",
+        EnvVarKind::Feature,
+        false,
+        "IN-MISSION-HUD-IMGUI-SCOPE-1 slice A: data-first HUD readability. At the single font-resolve choke point (gui/afont.cpp aFont::loadFont) substitute the next-size-up retail D3F atlas for the worst-offender in-mission HUD fonts (help/objectives/info-window/components/vehicle-tab/pause/hotkey overlay); also brightens the disabled vehicle-tab label color (code/controlgui.cpp renderVehicleTab, stock 0xff7f7f7f gray-on-dark). No layout/hit-test change. Default-OFF => byte-identical."
+    },
+    {
+        "MC2_FEATURE_HUD_IMGUI_PAUSE",
+        "MC2_HUD_IMGUI_PAUSE",
+        EnvVarKind::Feature,
+        false,
+        "IN-MISSION-HUD-IMGUI-SCOPE-1 slice B: render the in-mission PauseWindow as an ImGui panel (code/pausewindow.cpp + code/hudimguipanel.cpp) laid out inside gos_ComputeHudCanvasBox; button clicks dispatch to the existing PauseWindow::handleClick. Pin-to-legacy: any failure (ImGui not initialized, Begin fails) permanently falls back to the legacy render for the session. Default-OFF => byte-identical legacy pause window."
+    },
 };
 
 // ---------------------------------------------------------------------------
