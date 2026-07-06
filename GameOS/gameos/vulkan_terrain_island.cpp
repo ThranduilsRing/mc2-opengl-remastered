@@ -65,6 +65,7 @@
 #include <string>
 #include <chrono>
 #include <unordered_map>
+#include <tracy/Tracy.hpp>   // VK-FLIP-FIELD-REPORT-1: coarse per-region frame zones
 
 #ifndef GL_COMPRESSED_RGBA_BPTC_UNORM
 #define GL_COMPRESSED_RGBA_BPTC_UNORM        0x8E8C
@@ -1582,6 +1583,7 @@ extern "C" int mc2_vk_terrain_island_prepare(int w, int h) {
 }
 
 extern "C" int mc2_vk_terrain_island_run(int w, int h) {
+    ZoneScopedN("VK-terrain-island");   // VK-FLIP-FIELD-REPORT-1 coarse region zone
     if (!terrainTier1Requested()) return 0;
     if (w <= 0 || h <= 0) return 0;
 
@@ -1605,13 +1607,18 @@ extern "C" int mc2_vk_terrain_island_run(int w, int h) {
     const clk::time_point tStage0 = clk::now();
 
     // Snapshot the height field (only re-copies when the feed version changes).
-    if (!snapshot_height(s, feed)) { setFallback("height_snapshot_failed"); return 0; }
+    { ZoneScopedN("VK-terrain-interop-height");   // VK-FLIP-FIELD-REPORT-1: GL->VK height copy
+    if (!snapshot_height(s, feed)) { setFallback("height_snapshot_failed"); return 0; } }
 
     // HEIGHT-AUDIT (default-OFF gate): compare the VK snapshot checksum against GL live
     // heights each frame. Detected mismatch is logged LOUDLY but does NOT fail the frame
     // (verification-only) so the audit can run alongside a normal render for diagnosis.
     audit_height(s, feed);
 
+    // VK-FLIP-FIELD-REPORT-1: atlas + per-frame shadow-map interop copies grouped in
+    // one coarse zone (colormap/cement copy-once; static+dyn shadow copy-per-frame).
+    {
+    ZoneScopedN("VK-terrain-interop-copies");
     // COLORMAP-BASE: copy-once import of the GL colormap atlas (no-op once imported;
     // no-op while the atlas isn't built -> FS falls back to olive). Must run while the
     // GL context is current (this entry point is called on the GL/render thread).
@@ -1639,6 +1646,7 @@ extern "C" int mc2_vk_terrain_island_run(int w, int h) {
     // once imported / while the gate is off (feed.glMatNormalArrayTex==0). Fail-soft: leaves
     // the flat-normal dummy bound (matNormalReady=false) -> FS uses macro-slope-only normal.
     import_matnormal(s, feed);
+    }   // VK-FLIP-FIELD-REPORT-1: close VK-terrain-interop-copies zone
 
     // Fill one dynamic-UBO slot per LOD0 patch (shared MVP/mapSide/halfMap + per-patch
     // blockOrigin). quadCount comes from the patch record (drives grid rebuild).
@@ -1714,6 +1722,7 @@ extern "C" int mc2_vk_terrain_island_run(int w, int h) {
     glInteropSignalToVk(*s->depthView,  GL_LAYOUT_DEPTH_STENCIL_ATTACHMENT_EXT, fsD.parity);
 
     const clk::time_point tRender0 = clk::now();
+    ZoneScopedN("VK-terrain-record-submit");   // VK-FLIP-FIELD-REPORT-1: CPU record+queue-submit (to fn return)
     vkResetCommandBuffer(cb, 0);
     VkCommandBufferBeginInfo bi{};
     bi.sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_BEGIN_INFO;

@@ -60,6 +60,7 @@
 #include <vector>
 #include <string>
 #include <chrono>
+#include <tracy/Tracy.hpp>   // VK-FLIP-FIELD-REPORT-1: coarse per-region frame zones
 
 namespace {
 
@@ -793,6 +794,7 @@ extern "C" int mc2_vk_mech_island_enabled() {
 }
 
 extern "C" int mc2_vk_mech_island_run(int w, int h) {
+    ZoneScopedN("VK-mech-island");   // VK-FLIP-FIELD-REPORT-1 coarse region zone
     if (!mechGateRequested()) return 0;
     if (w <= 0 || h <= 0) return 0;
 
@@ -856,10 +858,11 @@ extern "C" int mc2_vk_mech_island_run(int w, int h) {
     const VkDeviceSize boneBytes = (VkDeviceSize)(feed.boneCount ? feed.boneCount : 1) * 64ull; // GpuMechBone
     if (!ensure_buf_capacity(s, &s->instBuf, &s->instAlloc, &s->instCap, instBytes)) { s->disabled = true; return 0; }
     if (!ensure_buf_capacity(s, &s->boneBuf, &s->boneAlloc, &s->boneCap, boneBytes)) { s->disabled = true; return 0; }
+    { ZoneScopedN("VK-mech-instance-bone-upload");   // VK-FLIP-FIELD-REPORT-1: per-frame skinning feed staging
     { void* p = nullptr;
       if (vmaMapMemory(s->allocator, s->instAlloc, &p) == VK_SUCCESS) { std::memcpy(p, feed.instances64, (size_t)instBytes); vmaUnmapMemory(s->allocator, s->instAlloc); } }
     if (feed.boneCount) { void* p = nullptr;
-      if (vmaMapMemory(s->allocator, s->boneAlloc, &p) == VK_SUCCESS) { std::memcpy(p, feed.bones64, (size_t)(feed.boneCount * 64ull)); vmaUnmapMemory(s->allocator, s->boneAlloc); } }
+      if (vmaMapMemory(s->allocator, s->boneAlloc, &p) == VK_SUCCESS) { std::memcpy(p, feed.bones64, (size_t)(feed.boneCount * 64ull)); vmaUnmapMemory(s->allocator, s->boneAlloc); } } }
     g_health.instRecords = feed.instanceCount;
     g_health.boneRecords = feed.boneCount;
 
@@ -915,6 +918,7 @@ extern "C" int mc2_vk_mech_island_run(int w, int h) {
     glInteropSignalToVk(*depthView,  GL_LAYOUT_DEPTH_STENCIL_ATTACHMENT_EXT, fsD.parity);
 
     const clk::time_point tRender0 = clk::now();
+    ZoneScopedN("VK-mech-record-submit");   // VK-FLIP-FIELD-REPORT-1: CPU record+queue-submit (to fn return)
     vkResetCommandBuffer(cb, 0);
     VkCommandBufferBeginInfo bi{};
     bi.sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_BEGIN_INFO;

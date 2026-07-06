@@ -62,6 +62,7 @@
 #include <string>
 #include <chrono>
 #include <algorithm>
+#include <tracy/Tracy.hpp>   // VK-FLIP-FIELD-REPORT-1: coarse per-region frame zones
 
 // VK-P11 STATIC-PROP MATERIAL: BC7 internalformat enums (fallback if GLEW headers lack).
 #ifndef GL_COMPRESSED_RGBA_BPTC_UNORM
@@ -1354,6 +1355,7 @@ extern "C" int mc2_vk_color_prop_island_enabled() {
 }
 
 extern "C" int mc2_vk_color_prop_island_run(int w, int h) {
+    ZoneScopedN("VK-props-island");   // VK-FLIP-FIELD-REPORT-1 coarse region zone
     if (!colorPropGateRequested() && !propColorTier1Requested()) return 0;
     if (w <= 0 || h <= 0) return 0;
 
@@ -1440,6 +1442,7 @@ extern "C" int mc2_vk_color_prop_island_run(int w, int h) {
     const VkDeviceSize instBytes = (VkDeviceSize)instanceCount * sizeof(GpuStaticPropInstanceMirror);
     if (!ensure_inst_capacity(s, instBytes)) { s->disabled = true; return 0; }
     {
+        ZoneScopedN("VK-props-instance-upload");   // VK-FLIP-FIELD-REPORT-1: per-frame instance SSBO staging
         void* p = nullptr;
         if (vmaMapMemory(s->allocator, s->instAlloc, &p) == VK_SUCCESS) {
             std::memcpy(p, feed.instances112, (size_t)instBytes);
@@ -1469,6 +1472,9 @@ extern "C" int mc2_vk_color_prop_island_run(int w, int h) {
         }
     }
     g_health.stageInstUs = usSince(tStage0);
+    // VK-FLIP-FIELD-REPORT-1: the instance+UBO staging above is the per-frame prop
+    // upload cost (a coarse zone for it would nest cleanly; kept as the usSince metric
+    // to avoid an extra scope around the two vmaMap blocks).
 
     // The feed is already grouped by ascending typeID; build contiguous type-runs.
     const GpuStaticPropInstanceMirror* insts =
@@ -1503,6 +1509,7 @@ extern "C" int mc2_vk_color_prop_island_run(int w, int h) {
         glInteropSignalToVk(*depthView,  GL_LAYOUT_DEPTH_STENCIL_ATTACHMENT_EXT,  fsD.parity);
 
         const clk::time_point tRender0 = clk::now();
+        ZoneScopedN("VK-props-record-submit");   // VK-FLIP-FIELD-REPORT-1: CPU record+queue-submit (to tier1-block end)
         vkResetCommandBuffer(cb, 0);
         VkCommandBufferBeginInfo bi{};
         bi.sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_BEGIN_INFO;
