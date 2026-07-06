@@ -471,6 +471,7 @@ set(SOURCES
     "code/optionsscreenwrapper.cpp"
     "code/pausewindow.cpp"
     "code/hudimguipanel.cpp"
+    "code/hudtabregistry.cpp"
     "code/prefs.cpp"
     "code/simplecamera.cpp"
     "code/componentlistbox.cpp"

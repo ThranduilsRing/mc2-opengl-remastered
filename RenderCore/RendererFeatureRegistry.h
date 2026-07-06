@@ -1749,6 +1749,20 @@ static constexpr EnvVarDesc kAuxEnvVars[] = {
         false,
         "IN-MISSION-HUD-IMGUI-SCOPE-1 slice B: render the in-mission PauseWindow as an ImGui panel (code/pausewindow.cpp + code/hudimguipanel.cpp) laid out inside gos_ComputeHudCanvasBox; button clicks dispatch to the existing PauseWindow::handleClick. Pin-to-legacy: any failure (ImGui not initialized, Begin fails) permanently falls back to the legacy render for the session. Default-OFF => byte-identical legacy pause window."
     },
+    {
+        "MC2_FEATURE_HUD_IMGUI_TABS",
+        "MC2_HUD_IMGUI_TABS",
+        EnvVarKind::Feature,
+        false,
+        "IN-MISSION-HUD-IMGUI-SCOPE-1 slice C: data-driven command-bar tab registry (code/hudtabregistry.{h,cpp} + wiring in code/controlgui.cpp). Render/update dispatch, help text, isOverTacMap, click mutual-exclusion and the TAB-hotkey cycle route through the registry; the stock 3 tabs keep their legacy ControlButton chrome with synced PRESSED bits. Shares slice B's pin-to-legacy. Default-OFF => every legacy branch runs unchanged (registry registered but never consulted)."
+    },
+    {
+        "MC2_FEATURE_HUD_TABS_TEST",
+        "MC2_HUD_TABS_TEST",
+        EnvVarKind::Feature,
+        false,
+        "IN-MISSION-HUD-IMGUI-SCOPE-1 slice C witness: register a 4th 'test' tab (no legacy button; ImGui chrome via HudImGui::hudShrinkPoint + hudToDisplay, trivial ImGui body over the tac area). Only visible when MC2_HUD_IMGUI_TABS is also set — the modder's worked example, left in deliberately. Default-OFF."
+    },
 };
 
 // ---------------------------------------------------------------------------

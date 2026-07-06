@@ -69,10 +69,180 @@ namespace {
 	};
 }
 
-ControlGui* ControlGui::instance = 0;
-
+// ---- slice C: MC2_HUD_IMGUI_TABS data-driven tab registry (default OFF) ----
+#include"hudimguipanel.h"
+#include "imgui.h"
+extern bool g_imguiInitialized;
 extern long helpTextHeaderID;
 extern long helpTextID;
+
+ControlGui* ControlGui::instance = 0;
+
+bool ControlGui::hudTabsGateOn() const
+{
+	return HudImGui::envGateOn( "MC2_HUD_IMGUI_TABS" ) && !HudImGui::pinnedToLegacy();
+}
+
+// Registry thunks. Registration order == hotkey cycle order, which the legacy
+// switchTabs table defines as TACMAP -> VEHICLE -> INFO (direction > 0) — NOT
+// the Commands enum order.
+void ControlGui::hudTabRenderTacMap( void* user )	{ ((ControlGui*)user)->tacMap.render(); }
+void ControlGui::hudTabRenderInfo( void* user )		{ ((ControlGui*)user)->renderInfoTab(); }
+void ControlGui::hudTabRenderVehicle( void* user )	{ ((ControlGui*)user)->renderVehicleTab(); }
+void ControlGui::hudTabUpdateTacMap( void* user )	{ ((ControlGui*)user)->tacMap.update(); }
+void ControlGui::hudTabUpdateInfo( void* user )
+{
+	ControlGui* self = (ControlGui*)user;
+	if ( self->infoWnd )
+		self->infoWnd->update();
+}
+
+void ControlGui::initHudTabRegistry()
+{
+	hudTabRegistry.clear();
+
+	HudTabs::Tab t;
+
+	t.id = "tacmap";
+	t.buttonCommand = TACMAP_TAB;
+	t.render = &ControlGui::hudTabRenderTacMap;
+	t.update = &ControlGui::hudTabUpdateTacMap;
+	t.helpTextHeaderID = IDS_TACMAP;
+	t.helpTextID = IDS_TACMAP_DESC;
+	t.countsAsTacMap = true;
+	hudTabRegistry.add( t );
+
+	t.id = "vehicle";
+	t.buttonCommand = VEHICLE_TAB;
+	t.render = &ControlGui::hudTabRenderVehicle;
+	t.update = 0;   // updateVehicleTab runs unconditionally each frame (legacy shape)
+	t.helpTextHeaderID = IDS_VEHICLE_TAB;
+	t.helpTextID = IDS_VEHICLE_TAB_DESC;
+	t.countsAsTacMap = false;
+	hudTabRegistry.add( t );
+
+	t.id = "info";
+	t.buttonCommand = INFO_TAB;
+	t.render = &ControlGui::hudTabRenderInfo;
+	t.update = &ControlGui::hudTabUpdateInfo;
+	t.helpTextHeaderID = IDS_INFOTAB;
+	t.helpTextID = IDS_INFOTAB_DESC;
+	t.countsAsTacMap = false;
+	hudTabRegistry.add( t );
+
+	// Double-gated throwaway witness tab — the modder's worked example: no
+	// enum widening, no button-array surgery, chrome + body both ImGui.
+	if ( HudImGui::envGateOn( "MC2_HUD_TABS_TEST" ) )
+	{
+		t.id = "test";
+		t.buttonCommand = -1;   // no legacy ControlButton; chrome is ImGui-drawn
+		t.render = &ControlGui::hudTabRenderTest;
+		t.update = 0;
+		t.helpTextHeaderID = 0;
+		t.helpTextID = 0;
+		t.countsAsTacMap = false;
+		hudTabRegistry.add( t );
+	}
+}
+
+void ControlGui::setActiveHudTab( int index, const char* via )
+{
+	const HudTabs::Tab* t = hudTabRegistry.at( index );
+	if ( !t )
+		return;
+	// keep every legacy PRESSED-bit poller coherent: mutual-exclusion press,
+	// same effect as the old TACMAP_TAB..+3 loop for the stock 3
+	for ( int i = 0; i < hudTabRegistry.count(); ++i )
+	{
+		const HudTabs::Tab* o = hudTabRegistry.at( i );
+		if ( o->buttonCommand >= 0 )
+			getButton( o->buttonCommand )->press( false );
+	}
+	if ( t->buttonCommand >= 0 )
+		getButton( t->buttonCommand )->press( true );
+	hudTabRegistry.setActive( index );
+	fprintf( stderr, "[HUD-TABS v1] dispatch tab '%s' (index %d, via %s)\n", t->id, index, via );
+}
+
+// Witness-tab body: trivial panel over the tac area rect (rectInfos[0]),
+// positioned through the slice-B helper INCLUDING the bottom-band shrink
+// (the tac area is drawn shrunk by s_hud_scale — see the hit-test comment in
+// ControlGui::update).
+void ControlGui::hudTabRenderTest( void* user )
+{
+	ControlGui* self = (ControlGui*)user;
+	if ( !self->rectInfos )
+		return;
+	const GUI_RECT& r = self->rectInfos[0].rect;
+	float l = (float)r.left,  tY = (float)r.top;
+	float rt = (float)r.right, b = (float)r.bottom;
+	const float cy = 0.5f * ( tY + b );
+	HudImGui::hudShrinkPoint( l, tY, cy );
+	HudImGui::hudShrinkPoint( rt, b, cy );
+
+	float fontScale = 1.f;
+	if ( !HudImGui::beginPanel( "##hud_tab_test", l, tY, rt, b, &fontScale ) )
+		return;
+	ImGui::SetWindowFontScale( fontScale );
+	static unsigned long s_frame = 0;
+	++s_frame;
+	ImGui::TextUnformatted( "TEST tab (MC2_HUD_TABS_TEST)" );
+	ImGui::Text( "build: %s %s", __DATE__, __TIME__ );
+	ImGui::Text( "frame: %lu", s_frame );
+	HudImGui::endPanel();
+}
+
+// Tab-strip chrome for registry tabs with no legacy button (buttonCommand<0):
+// a small ImGui button placed just right of the last legacy tab button, in
+// authored HUD space, through shrink + canvas transform.
+void ControlGui::renderHudTabChromeImGui()
+{
+	int lastLegacy = -1;
+	for ( int i = 0; i < hudTabRegistry.count(); ++i )
+		if ( hudTabRegistry.at( i )->buttonCommand >= 0 )
+			lastLegacy = hudTabRegistry.at( i )->buttonCommand;
+
+	int slot = 0;
+	for ( int i = 0; i < hudTabRegistry.count(); ++i )
+	{
+		const HudTabs::Tab* t = hudTabRegistry.at( i );
+		if ( t->buttonCommand >= 0 )
+			continue;
+
+		// anchor off the INFO/VEHICLE-style legacy tab button quad:
+		// x span location[0]->[3], y span location[0]->[1]
+		float aL, aT, aR, aB;
+		if ( lastLegacy >= 0 )
+		{
+			ControlButton* btn = getButton( lastLegacy );
+			aL = btn->location[0].x; aT = btn->location[0].y;
+			aR = btn->location[3].x; aB = btn->location[1].y;
+		}
+		else
+		{
+			aL = 0.f; aT = 0.f; aR = 64.f; aB = 24.f;
+		}
+		const float w = aR - aL;
+		float l = aR + (float)slot * w, tY = aT, r = aR + (float)( slot + 1 ) * w, b = aB;
+		const float cy = 0.5f * ( tY + b );
+		HudImGui::hudShrinkPoint( l, tY, cy );
+		HudImGui::hudShrinkPoint( r, b, cy );
+
+		char wid[32];
+		sprintf( wid, "##hud_tab_chrome_%d", i );
+		if ( !HudImGui::beginPanel( wid, l, tY, r, b ) )
+			return;
+		const bool active = ( hudTabRegistry.activeIndex() == i );
+		if ( active )
+			ImGui::PushStyleColor( ImGuiCol_Button, ImVec4( 0.1f, 0.45f, 0.1f, 1.f ) );
+		if ( ImGui::Button( t->id, ImGui::GetContentRegionAvail() ) )
+			setActiveHudTab( i, "chrome-click" );
+		if ( active )
+			ImGui::PopStyleColor();
+		HudImGui::endPanel();
+		++slot;
+	}
+}
 
 extern bool neverEndingStory;
 
@@ -977,7 +1147,15 @@ void ControlGui::render( bool bPaused )
 					(*it)->RenderOverviewMarker( eye, markerA );
 		}
 
-		if ( getButton( TACMAP_TAB )->state & ControlButton::PRESSED )
+		// slice C site 1 (render dispatch): registry under MC2_HUD_IMGUI_TABS,
+		// legacy if/else chain byte-for-byte otherwise.
+		if ( hudTabsGateOn() && hudTabRegistry.activeTab() )
+		{
+			const HudTabs::Tab* activeT = hudTabRegistry.activeTab();
+			if ( activeT->render )
+				activeT->render( this );
+		}
+		else if ( getButton( TACMAP_TAB )->state & ControlButton::PRESSED )
 			tacMap.render();
 		else if ( getButton( VEHICLE_TAB )->state & ControlButton::PRESSED )
 			renderVehicleTab();
@@ -1001,6 +1179,20 @@ void ControlGui::render( bool bPaused )
 			buttons[i].render();
 
 		// want to draw the tab on top last
+		// slice C site 2 (top-draw): under the gate, iterate the registry
+		// (legacy-button tabs re-render their pressed button; buttonless tabs
+		// get ImGui chrome). Legacy hardcoded +3 loop otherwise.
+		if ( hudTabsGateOn() )
+		{
+			for ( int i = 0; i < hudTabRegistry.count(); i++ )
+			{
+				const int cmd = hudTabRegistry.at( i )->buttonCommand;
+				if ( cmd >= 0 && ( getButton( cmd )->state & ControlButton::PRESSED ) )
+					buttons[cmd].render();
+			}
+			renderHudTabChromeImGui();
+		}
+		else
 		for (int i = TACMAP_TAB; i < TACMAP_TAB + 3; i++ )
 		{
 			if ( (getButton( i )->state) & ControlButton::PRESSED )
@@ -1863,7 +2055,22 @@ void ControlGui::update( bool bPaused, bool bLOS )
 		bMouseInsideTacArea = true;
 	}
 
-	if ( getButton( TACMAP_TAB )->state & ControlButton::PRESSED )
+	// slice C site 3 (per-tab update + help text): registry dispatch under the
+	// gate (active tab's update fn + registered IDS_* help pair); legacy
+	// pressed-bit chain otherwise.
+	if ( hudTabsGateOn() && hudTabRegistry.activeTab() )
+	{
+		ZoneScopedN("CGui.HudTab");
+		const HudTabs::Tab* activeT = hudTabRegistry.activeTab();
+		if ( activeT->update )
+			activeT->update( this );
+		if ( bMouseInsideTacArea && activeT->helpTextHeaderID )
+		{
+			helpTextHeaderID = activeT->helpTextHeaderID;
+			helpTextID = activeT->helpTextID;
+		}
+	}
+	else if ( getButton( TACMAP_TAB )->state & ControlButton::PRESSED )
 	{
 		ZoneScopedN("CGui.TacMap"); CgScope _c(CG_TACMAP);
 		tacMap.update();
@@ -1920,6 +2127,11 @@ bool ControlGui::isOverTacMap()
 	{
 		bMouseInsideTacArea = true;
 	}
+
+	// slice C site 4: registry owns the "does the active tab count as the tac
+	// map" verdict under the gate.
+	if ( hudTabsGateOn() && hudTabRegistry.activeTab() )
+		return hudTabRegistry.activeTab()->countsAsTacMap;
 
 	if ( getButton( TACMAP_TAB )->state & ControlButton::PRESSED )
 		return true;
@@ -2273,12 +2485,22 @@ void ControlGui::handleClick( int ID )
 	case TACMAP_TAB:
 	case INFO_TAB:
 	case VEHICLE_TAB:
-		for ( i = TACMAP_TAB; i < TACMAP_TAB + 3; i ++ )
+		// slice C site 5 (click switcher): registry mutual-exclusion under the
+		// gate (setActiveHudTab presses/unpresses the same buttons the legacy
+		// +3 loop did, plus logs the dispatch); legacy loop otherwise.
+		if ( hudTabsGateOn() && hudTabRegistry.indexOfButton( ID ) >= 0 )
 		{
-			getButton( i )->press( false );
+			setActiveHudTab( hudTabRegistry.indexOfButton( ID ), "click" );
 		}
-		getButton( ID )->press( true );
-		
+		else
+		{
+			for ( i = TACMAP_TAB; i < TACMAP_TAB + 3; i ++ )
+			{
+				getButton( i )->press( false );
+			}
+			getButton( ID )->press( true );
+		}
+
 		if ( ID == VEHICLE_TAB )
 			LogisticsData::instance->rpJustAdded = 0;
 		break;
@@ -2432,9 +2654,16 @@ void ControlButton::makeUVs( gos_VERTEX* vertices, int State, ButtonData& data )
 
 void ControlGui::updateVehicleTab(int mouseX, int mouseY, bool bLOS )
 {
+	// slice C site 6: "is the vehicle tab active" comes from the registry
+	// under the gate; the legacy PRESSED-bit poll otherwise. Hoisted — button
+	// state cannot change inside this loop.
+	const bool vehicleTabActive = hudTabsGateOn() && hudTabRegistry.activeTab()
+		? ( hudTabRegistry.activeTab()->buttonCommand == VEHICLE_TAB )
+		: ( ( getButton( VEHICLE_TAB )->state & ControlButton::PRESSED ) != 0 );
+
 	for ( int i = LAST_VEHICLE - 1; i > -1 ; i-- )
 	{
-		if ( getButton( VEHICLE_TAB )->state & ControlButton::PRESSED )
+		if ( vehicleTabActive )
 		{
 			if ( vehicleButtons[i].state & ControlButton::PRESSED )
 			{
@@ -3568,6 +3797,13 @@ void ControlGui::swapResolutions( int resolutionX, int resolutionY )
 	
 	getButton( TACMAP_TAB )->press( true );
 
+	// slice C site 8 (default tab): (re)build the registry whenever the button
+	// set is (re)built — swapResolutions re-enters here. Registration is
+	// unconditional (cheap, inert when the gate is off); the registry is only
+	// CONSULTED under MC2_HUD_IMGUI_TABS. Active index resets to 0 ("tacmap"),
+	// matching the legacy default press above.
+	initHudTabRegistry();
+
 	initStatics( buttonFile );
 	initRects( buttonFile );
 
@@ -3592,6 +3828,15 @@ void ControlGui::endPause()
 
 void ControlGui::switchTabs(int direction)
 {
+	// slice C site 7 (hotkey cycle): registration order IS the cycle order
+	// (tacmap -> vehicle -> info == the legacy hand-written table), so cycle()
+	// replaces the 3-way if/else. Legacy table otherwise.
+	if ( hudTabsGateOn() && hudTabRegistry.count() > 0 )
+	{
+		setActiveHudTab( hudTabRegistry.cycle( direction ), "cycle" );
+		return;
+	}
+
 	int ID = TACMAP_TAB;
 		for ( int i = TACMAP_TAB; i < TACMAP_TAB + 3; i ++ )
 	{

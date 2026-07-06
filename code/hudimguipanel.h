@@ -25,11 +25,13 @@ Coordinate / exemption-bracket contract (the load-bearing part):
   scope for slice B (the pause window is canvas-remapped legacy chrome, see
   pausewindow.cpp:100).
 
-  NOTE: the bottom-band s_hud_scale shrink (MC2_HUD_SCALE) is NOT modeled
-  here — it only affects draws whose centroid is below 60% screen height.
-  The pause window sits above that band (its own hit-test comment calls the
-  shrink inverse "a no-op up here"). A future port of bottom-band chrome
-  (command bar, tac map) must add that transform before reusing this helper.
+  Bottom-band s_hud_scale shrink (MC2_HUD_SCALE): flushHUDBatch shrinks any
+  non-exempt draw whose centroid sits below 60% screen height toward the
+  bottom-center anchor (sw/2, sh), in AUTHORED HUD space, BEFORE the canvas
+  remap. Slice C models it here as hudShrinkPoint(): bottom-band chrome
+  (command bar / tab strip) must run its authored points through
+  hudShrinkPoint() (with the owning draw's centroid y) before hudToDisplay.
+  Panels above the band (pause window) skip it — the shrink is a no-op there.
 
 Failure contract (pin-to-legacy): if ImGui is unavailable or Begin fails,
 beginPanel returns false and pins ALL HudImGui panels to the legacy path for
@@ -46,6 +48,13 @@ namespace HudImGui
 	// True once any beginPanel has failed; all later beginPanel calls return
 	// false immediately (session-wide legacy fallback).
 	bool pinnedToLegacy();
+
+	// Model the bottom-band s_hud_scale shrink EXACTLY as flushHUDBatch does:
+	// no-op unless the shrink is active (gos_GetHudScaleActive) and the OWNING
+	// draw's centroid (HUD-space y, caller-supplied — the gate is per-draw,
+	// not per-point) is at/below the 60% band; otherwise shrink (hx,hy) toward
+	// the bottom-center anchor by gos_GetHudScale(). Call BEFORE hudToDisplay.
+	void hudShrinkPoint( float& hx, float& hy, float centroidHudY );
 
 	// Map an authored HUD-space point (Environment.screenWidth/Height space,
 	// non-exempt chrome) to ImGui logical display coords via the HUD canvas

@@ -47,6 +47,28 @@ bool pinnedToLegacy()
 	return s_pinnedToLegacy;
 }
 
+// Bottom-band shrink, same math + gate as flushHUDBatch (gameos_graphics.cpp):
+// band and anchor live in Environment.screenWidth/Height space, gate is the
+// owning draw's centroid y vs 60% of screen height, anchor is bottom-center.
+void hudShrinkPoint( float& hx, float& hy, float centroidHudY )
+{
+	if ( !gos_GetHudScaleActive() )
+		return;
+	const float scale = gos_GetHudScale();
+	if ( scale >= 0.999f )
+		return;
+
+	const float sw = ( Environment.screenWidth  > 0 ) ? (float)Environment.screenWidth  : 1.f;
+	const float sh = ( Environment.screenHeight > 0 ) ? (float)Environment.screenHeight : 1.f;
+	if ( centroidHudY < sh * 0.60f )
+		return;   // above the band: flushHUDBatch leaves these draws alone
+
+	const float ax = sw * 0.5f;
+	const float ay = sh;
+	hx = ax + ( hx - ax ) * scale;
+	hy = ay + ( hy - ay ) * scale;
+}
+
 // Authored HUD px -> display (drawable) px via the HUD canvas box, then
 // drawable px -> ImGui logical coords (io.DisplaySize may differ from the
 // drawable size on HiDPI).

@@ -54,6 +54,7 @@ add_executable(mc2_tests
     test_paths_mod.cpp      # MINIMAL-VIABLE-HARNESS-2: paths.cpp globals + mod-index (TryModOpen) resolution
     test_pilot_profile_preserve.cpp  # PILOT-PROFILE-PRESERVE-1: editor Profile save decision kernel (offline)
     test_ui_defs_lockstep.cpp  # UI-DEFS-LOCKSTEP-HARDEN-1: defs/ui package version + zero-element/zero-draw fail-soft (offline)
+    test_hud_tab_registry.cpp  # HUD-IMGUI slice C: tab registry order/cycle invariants (offline)
 
     # MINIMAL-VIABLE-HARNESS-1: malloc-backed heap + GameOS-global shim.
     # Replaces heap.cpp (won't compile standalone -- see
@@ -70,6 +71,7 @@ add_executable(mc2_tests
     ${MC2_WORKTREE_ROOT}/HostServices/DefaultHostServices.cpp  # ENGINE-HOST-SERVICES-0
     ${MC2_WORKTREE_ROOT}/code/tacticaloverview_state.cpp  # TACTICAL-OVERVIEW-1
     ${MC2_WORKTREE_ROOT}/code/unitprofile.cpp   # UNIT-PROFILE-SEAM-1
+    ${MC2_WORKTREE_ROOT}/code/hudtabregistry.cpp  # HUD-IMGUI slice C (pure leaf TU)
 
     # MINIMAL-VIABLE-HARNESS-1: the real file/ini/packet stack. This is the
     # measured dependency frontier for file.cpp + inifile.cpp (every TU below

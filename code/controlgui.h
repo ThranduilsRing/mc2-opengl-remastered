@@ -43,6 +43,10 @@ ControlGui.h			: Interface for the ControlGui component.  This thing holds the t
 #ifndef MPSTATS_H
 #include"mpstats.h"
 #endif
+
+#ifndef HUDTABREGISTRY_H
+#include"hudtabregistry.h"   // slice C: MC2_HUD_IMGUI_TABS tab registry
+#endif
 class CObjective;
 class InfoWindow;
 class PauseWindow;
@@ -240,6 +244,13 @@ class ControlGui
 		bool	getRepair();
 		bool	getGuardTower();
 		void	switchTabs( int direction );
+
+		// ---- slice C: data-driven tab registry (MC2_HUD_IMGUI_TABS, default OFF).
+		// Gate OFF -> registry never consulted, every legacy branch runs unchanged.
+		bool	hudTabsGateOn() const;           // main gate + not pinned-to-legacy
+		void	initHudTabRegistry();            // (re)registers the stock 3 (+TEST)
+		void	setActiveHudTab( int index, const char* via );  // syncs button PRESSED bits
+		HudTabs::Registry	hudTabRegistry;
 		void	renderObjective( CObjective* pObjective, long xPos, long yPos, bool bDrawTotal );
 		void	renderMissionStatus( bool bRender){ renderStatusInfo = bRender; }		
 		
@@ -401,6 +412,17 @@ class ControlGui
 		aEdit					personalEdit;
 
 		void handleClick( int ID );
+
+		// slice C: registry render/update thunks (static members so they can
+		// reach private renderInfoTab/renderVehicleTab; user == ControlGui*).
+		static void hudTabRenderTacMap( void* user );
+		static void hudTabRenderInfo( void* user );
+		static void hudTabRenderVehicle( void* user );
+		static void hudTabUpdateTacMap( void* user );
+		static void hudTabUpdateInfo( void* user );
+		static void hudTabRenderTest( void* user );   // MC2_HUD_TABS_TEST witness tab
+		void renderHudTabChromeImGui();               // tab-strip chrome for buttonCommand<0 tabs
+
 		void updateVehicleTab( int mouseX, int mouseY, bool bLOS );
 		void renderVehicleTab();
 		void RenderObjectives();
