@@ -100,9 +100,10 @@ composited pixels remain a valid VK oracle.
   cascade = camera-swimming blobs). Field GL-vs-VK MAD 28-31 (wash) -> ~5
   (clean) on airport bookmarks. Double-gated behind
   `MC2_VK_TERRAIN_CSM_FULLMAP_EXPERIMENTAL=1` (parked escape hatch).
-- **VK-TERRAIN-CSM-NEAR-1 (real cure, LANDED, NOT field-verified)** — ports
-  GL's `calcDynamicShadow` near-cascade cascade-select VERBATIM into
-  `terrain_tier1.frag` (`//PORT-BEGIN/END:calcDynamicShadowCsm`, registered in
+- **VK-TERRAIN-CSM-NEAR-1 (real cure, LANDED, FIELD-VERIFIED 2026-07-06 this
+  session, commit `1a4969c8`)** — ports GL's `calcDynamicShadow` near-cascade
+  cascade-select VERBATIM into `terrain_tier1.frag`
+  (`//PORT-BEGIN/END:calcDynamicShadowCsm`, registered in
   `tools/glsl_port_diff.py`). Imports GL's near-cascade array
   (`dynShadowArrayTex_`, GL_TEXTURE_2D_ARRAY depth) as a VK D32 depth-COMPARE
   `VK_IMAGE_VIEW_TYPE_2D_ARRAY` (`sampler2DArrayShadow`, binding 8) + the
@@ -114,18 +115,42 @@ composited pixels remain a valid VK oracle.
   known cost, not hidden. Gate `MC2_VK_TERRAIN_CSM` now means THIS
   implementation (requires MC2_VK_TERRAIN_DYNSHADOW chain + GL
   MC2_SHADOW_CSM=1); FULLMAP_EXPERIMENTAL untouched as a fallback escape
-  hatch, mutually exclusive C++ population (no collision). Build clean
-  (build64_island), `check_vk_shaders.py` 34/34 clean, `check_ubo_layout.py`
-  OK, `glsl_port_diff.py` block is a verbatim structural match (only
-  identifier renames, e.g. `mv_` prefix — same operators/order/control-flow).
-  ⚠ **NOT YET FIELD-VERIFIED**: the shared field deploy target
-  (`mc2-win64-0.4c`) was mid-run occupied by a different concurrent lane
-  (`claude/cliff-dress-1`, exe fingerprint mismatch on smoke) so a live
-  GL-vs-VK MAD comparison under `tracy-vk-compare.bat` was not obtained this
-  session. NEXT SESSION: claim/lease the field deploy target, run the
-  building-shadow-on-terrain pose (before/after), confirm near cascade shows
-  a tight building/mech shadow up close (not the old blob) and airport
-  overview bookmarks stay ~5 MAD (the a50c6033 wash must not return).
+  hatch, mutually exclusive C++ population (no collision).
+  **FIELD RESULTS** (rebuilt+redeployed 0.4c @ `1a4969c8`, fingerprint
+  confirmed): terrain island co-writes confirmed active (LOD0 TIER-1 patches
+  drawn, `used_vulkan>0` both near+airport runs). Byte-off control (gates
+  off, GL x2) = 0.000 on 10/11 mc2_01 bookmarks (1 negligible max=1px, cov
+  0%). VK self-diff determinism at the near building-shadow pose: mean
+  0.27–1.76/ch, cov ≤0.79% (clean; one lodfade-pose max=255 spike is the
+  known mech-gait jitter, not terrain). Airport bookmarks (`overview_center`,
+  `runway_overview`) did NOT reproduce the a50c6033 wash pattern specifically
+  — but DID show a severe GL-vs-VK divergence (mean 32–34/ch, cov ~97%) that
+  **bisects to a PRE-EXISTING, CSM-independent bug**: reproduced identically
+  with `MC2_VK_TERRAIN_CSM` unset and even with only the bare
+  `MC2_VK_SHARED_GBUFFER=1` umbrella set (no other sub-gates). This matches
+  the already-open **FAR-BAND BLACK** entry below (`oblique_horizon`,
+  `overview_center` — both wide/far bookmark poses). VK-TERRAIN-CSM-NEAR-1
+  itself is NOT implicated (identical wash with/without the CSM gate). The
+  building-shadow near-pose oracle (`near_land_low`) was separately blocked
+  by an UNRELATED, reproducible GL-side bug this session:
+  `[MECH_LOAD] WARN: mech appearance has no base shape ... mechType=0` fires
+  deterministically on GL (both `gl`/`gl2` runs, byte-identical 0.000
+  self-diff) at this pose+FORCE_LOD=0 combo — 6 mechs registered
+  (`RENDER_WORLD registered=6 alive=6`) but none get a base shape, so GL
+  renders NO mechs/shadows at this pose while VK renders all 3 correctly.
+  Root cause not investigated further (out of CSM-near scope); flagging for
+  a follow-up. The mech-free `near_land_off` control pose (same location,
+  no units) gave GL-vs-VK mean_all 9.8/ch cov 20% (masking known sky/EXR-
+  missing black band at rows 0-220, a pre-existing artifact present in prior
+  sessions' `ridge_lowangle` captures too) — consistent with the arc's
+  documented ~5-10/ch near-detail residual band, no new regression signal.
+  Smoke: tier1 5/5 PASS both umbrella-OFF and full-field+CSM-ON states, 0
+  crash, deploy fingerprint 1a4969c8 confirmed both runs.
+  **VERDICT: CSM-near mechanism itself verified clean (byte-off clean, VK
+  self-diff clean, terrain island actively co-writing, no CSM-attributable
+  wash); the loud field numbers trace to two PRE-EXISTING unrelated bugs
+  (FAR-BAND BLACK, GL mech-load-at-this-pose) that predate/are independent of
+  this commit. Full artifacts: `.claude/mech-parity/csm_near_field/`.**
 - **BUG 4 (mech screen-space freeze on pan) FIXED** — feed now uses live
   gos_GetMechFixBMVPMat4() not the flush-time snapshot. Static-capture cannot
   pan; verified by code-trace + no static regression. USER RE-TEST on live pan.

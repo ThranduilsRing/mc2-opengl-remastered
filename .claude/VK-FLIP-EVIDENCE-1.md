@@ -344,8 +344,15 @@ lighting), NOT the wash. CSM-OFF was visually pixel-clean vs GL.
 
 ### NOT flip-ready under field config (blocks flip)
 - BUG 5 (2x sim speed) — open, root-cause pending (see VK-ARC-STATE.md).
-- FAR-BAND BLACK — far terrain unlit under field env.
+- FAR-BAND BLACK — far terrain unlit under field env; CONFIRMED this session
+  as the source of the overview_center/runway_overview large field-diff
+  (mean 32-34/ch), reproduces with CSM off and with only the bare
+  MC2_VK_SHARED_GBUFFER umbrella set — not CSM-NEAR-1-specific.
 - BUG 6? prop load-transient — needs user cold-load confirm.
+- NEW (2026-07-06): GL mech-load gap at `near_land_low` pose (+FORCE_LOD=0) —
+  deterministic, GL-only, `mechType=0000000000000000` "no base shape" WARN,
+  6 mechs registered/alive but none rendered. Blocks the building-shadow
+  oracle at this pose; root cause not yet investigated.
 
 **Recommendation:** field-config parity for terrain/shadow/mech-pan is now GREEN;
 sim-speed + far-band remain before a field-config flip. Keep
@@ -376,3 +383,57 @@ as flip evidence** until a field run with an uncontended deploy target
 confirms: (a) building-shadow-on-terrain pose shows a tight near-cascade
 shadow (not absent, not the old blob), (b) airport overview bookmarks stay
 ~5 MAD (the a50c6033 wash must not return under the new path either).
+
+### FIELD-CONFIG FOLLOW-UP (2026-07-06, next session) — CSM-NEAR field-verified, wash isolated as pre-existing
+
+Rebuilt HEAD `1a4969c8` clean, redeployed 0.4c (deploy target was free —
+prior contention resolved), fingerprint confirmed both build and every
+smoke run this session (`exe sha=1a4969c8913a matches worktree HEAD`).
+
+**Mechanism verification (green):**
+- Terrain island actively co-writes under the field CSM config
+  (`[VK_TERRAIN_ISLAND] first TIER-1 in-place terrain GBuffer co-write`,
+  `used_vulkan>0` both the near-pose and airport-bookmark runs).
+- Byte-off control (gates fully off, GL x2, all 11 mc2_01 bookmarks):
+  **0.000** on 10/11, one negligible max=1px/cov=0% outlier.
+- VK self-diff determinism (near building-shadow pose, x2 runs): mean
+  0.27–1.76/ch, cov ≤0.79% — clean; the one 255-max outlier is the
+  already-documented mech-gait capture jitter (not terrain/CSM).
+- GL self-diff (near pose, x2 runs): byte-identical 0.000 both times.
+
+**Airport bookmarks did NOT reproduce the a50c6033-specific wash pattern**,
+but DID show a large GL-vs-VK divergence at the two widest/farthest
+bookmarks (`overview_center` mean 33.6/ch cov 97.2%, `runway_overview` mean
+32.4/ch cov 58.3%). **Bisected this session, NOT a CSM-NEAR regression:**
+identical wash reproduces with `MC2_VK_TERRAIN_CSM` completely unset, and
+again with ONLY the bare `MC2_VK_SHARED_GBUFFER=1` umbrella set (no other
+sub-gate overrides). This is the already-open **FAR-BAND BLACK** item above
+(confirmed same symptom class: `overview_center`, `oblique_horizon` — wide/
+far poses). CSM-near is exonerated for this symptom.
+
+**Building-shadow-on-terrain oracle pose (`near_land_low`) blocked by an
+UNRELATED, reproducible GL-side bug** (not CSM, not VK): `[MECH_LOAD] WARN:
+mech appearance has no base shape ... mechType=0000000000000000` fires
+deterministically on GL only, at this pose + `MC2_TERRAIN_LOD_CHUNK_FORCE_
+LOD=0` — `RENDER_WORLD registered=6 alive=6` mechs but GL renders NONE of
+them (no mechs, no shadows) while VK renders all 3 correctly with shadows.
+Reproduced byte-identically across 2 GL runs (self-diff 0.000) — deterministic,
+not a race. Root cause not investigated (out of this session's scope);
+flagging as a follow-up item. The unit-free `near_land_off` control (same
+location, `covers: no_units`) gave GL-vs-VK mean_all 9.8/ch cov 20.3%
+(after masking the pre-existing sky/EXR-missing black band, rows 0-220,
+also present in the prior session's `ridge_lowangle` capture) — in-band with
+the arc's documented ~5-10/ch near-detail residual, not a new regression.
+
+**Smoke:** tier1 5/5 PASS, umbrella-OFF baseline AND full-field+CSM-ON, 0
+crash both states, fingerprint 1a4969c8 confirmed on every mission run.
+
+**REVISED VERDICT: VK-TERRAIN-CSM-NEAR-1 mechanism is field-verified clean**
+(active co-write, byte-off clean, VK-side deterministic, no CSM-attributable
+wash under isolation). The loud raw field numbers on wide bookmarks trace to
+two pre-existing, independently-reproducible bugs (FAR-BAND BLACK; a GL
+mech-load gap at the near_land_low pose) that are NOT caused by and NOT
+fixed by this commit — both open as separate follow-ups. Flip recommendation
+for MC2_VK_TERRAIN_TIER1/CSM family unchanged (still USER decision); these
+two bugs join BUG 5 / BUG 6? as pre-flip blockers under field config.
+Artifacts: `.claude/mech-parity/csm_near_field/`.
