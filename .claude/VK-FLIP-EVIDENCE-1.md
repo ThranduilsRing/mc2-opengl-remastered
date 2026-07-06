@@ -312,3 +312,41 @@ are ready, keeping the independent safety gates (island fail-soft + `MC2_VK_TERR
 available, and treating the terrain near-detail residual and the mc2_24 pose authoring as
 post-flip polish. If you prefer a more conservative posture, ship the flip default-ON but
 leave `MC2_VK_TERRAIN_HEIGHT_AUDIT=1` on for the first release as a live tripwire.
+
+---
+
+## FIELD-CONFIG SECTION (2026-07-06, commit a50c6033) — supersedes per-gate sufficiency
+
+**Standing rule change:** prior per-gate oracle numbers (above) remain valid but
+are NO LONGER SUFFICIENT. The flip criterion now requires parity under the FULL
+launcher field stack simultaneously:
+`MC2_NO_LAUNCHER=1 MC2_DEBUG_STATE_DUMP=1 MC2_SHADOW_CSM=1
+MC2_STATIC_PROP_PBR_V1=1 MC2_STATIC_PROP_AMBIENT_V1=1 MC2_STATIC_PROP_IBL_SH=1
+MC2_STATICPROP_TEX_TIER=512 MC2_VK_SHARED_GBUFFER=1 MC2_VK_SHADOW_INTEROP=1
+MC2_VK_TERRAIN_CSM=1` (+ terrain island chain).
+
+Three field breaks that individual-gate oracles all called fixed were found and
+two fixed (a50c6033); see VK-ARC-STATE.md field section for full detail.
+
+### Field GL-vs-VK parity (mc2_01, native 3840x2160, same-run, post-fix)
+| bookmark            | MAD (pre-fix, wash) | MAD (post-fix) |
+|---------------------|---------------------|----------------|
+| overview_center     | ~28 (CSM wash)      | 5.8            |
+| runway_overview     | ~31 (CSM wash)      | 5.1            |
+| pyramid_topdown     | —                   | 2.2            |
+| cliff_side_on       | —                   | 3.4            |
+| highangle_wide      | —                   | 1.3            |
+| oblique_fog         | —                   | 1.9            |
+| edge_fog_* / ridge  | —                   | 0.6–0.8        |
+
+Residual ~5 MAD on airport = expected VK/GL delta (mech pose, water, minor
+lighting), NOT the wash. CSM-OFF was visually pixel-clean vs GL.
+
+### NOT flip-ready under field config (blocks flip)
+- BUG 5 (2x sim speed) — open, root-cause pending (see VK-ARC-STATE.md).
+- FAR-BAND BLACK — far terrain unlit under field env.
+- BUG 6? prop load-transient — needs user cold-load confirm.
+
+**Recommendation:** field-config parity for terrain/shadow/mech-pan is now GREEN;
+sim-speed + far-band remain before a field-config flip. Keep
+MC2_VK_TERRAIN_HEIGHT_AUDIT=1 first release as before.
