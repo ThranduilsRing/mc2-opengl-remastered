@@ -91,6 +91,7 @@ bool GetFalloff(float len, vec3 fd, out float falloff) {
 
 // mech.vert calls calc_light with MC2_STATIC_PROP_LIGHTING defined -> the
 // numLights==0 early-return preserves base_light (not vec3(1)). Match that.
+//PORT-BEGIN:calc_light
 vec3 calc_light(int idx, vec3 normal, vec3 wpos, vec3 base_light) {
     ObjectLights ld = uLights.light[idx];
     if (ld.numLights.x == 0) return base_light;   // MC2_STATIC_PROP_LIGHTING branch
@@ -131,6 +132,7 @@ vec3 calc_light(int idx, vec3 normal, vec3 wpos, vec3 base_light) {
     }
     return final + ambient;
 }
+//PORT-END:calc_light
 
 layout(location = 0) out vec2 vUv;
 layout(location = 1) out vec3 vNormalGL;   // MC2/GL-world normal (swapped), for GBuffer1

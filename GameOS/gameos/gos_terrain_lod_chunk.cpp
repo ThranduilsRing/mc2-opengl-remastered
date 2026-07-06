@@ -22,6 +22,7 @@
 #ifdef MC2_VULKAN_ISLAND
 #include "vulkan_terrain_island.h"   // VK-P10 TERRAIN TIER-1: LOD0 shared-GBuffer co-write
 #include "vk_shared_gbuffer_gate.h"  // VK-P14 GATE-CONSOLIDATION-1 umbrella resolver
+#include "vk_feed_dump.h"            // VK-OFFLINE-PROOFS-1: MC2_VK_FEED_DUMP golden dump
 #endif
 
 // GlStateGuard slice 2 kill-switch. Default-ON: when set, the terrain chunk
@@ -982,6 +983,35 @@ extern "C" int mc2_terrain_tier1_get_frame_feed(Mc2TerrainTier1Feed* out)
         out->cameraPosMC2[0] = cx;
         out->cameraPosMC2[1] = cy;
         out->cameraPosMC2[2] = cz;
+    }
+
+    // VK-OFFLINE-PROOFS-1: golden feed dump. Fires once per process (paired
+    // with the deterministic bookmark/sim-freeze capture so run-to-run this is
+    // the SAME frame). No-op unless MC2_VK_FEED_DUMP is set.
+    if (mc2vkfeeddump::enabled() && mc2vkfeeddump::readyToDump() && !mc2vkfeeddump::latch("terrain")) {
+        mc2vkfeeddump::resetOnce();
+        if (FILE* f = mc2vkfeeddump::openAppend(/*truncateFirst=*/false)) {
+            std::fprintf(f, "{\"island\":\"terrain\",\"patchCount\":%u,\"mapSide\":%d,"
+                "\"halfMap\":%.6f,\"heightVersion\":%llu,\"cementVersion\":%llu,"
+                "\"useCement\":%d,\"lightingEnabled\":%d,\"shadowsEnabled\":%d,"
+                "\"dynShadowsEnabled\":%d,\"detailEnabled\":%d,\"lodFadeEnabled\":%d,"
+                "\"patches\":[",
+                out->patchCount, out->mapSide, out->halfMap,
+                (unsigned long long)out->heightVersion, (unsigned long long)out->cementVersion,
+                out->useCement, out->lightingEnabled, out->shadowsEnabled,
+                out->dynShadowsEnabled, out->detailEnabled, out->lodFadeEnabled);
+            for (uint32_t i = 0; i < out->patchCount; ++i) {
+                const Mc2TerrainTier1Patch& p = out->patches[i];
+                std::fprintf(f, "%s{\"qcX\":%d,\"qcY\":%d,\"blockOriginX\":%d,"
+                    "\"blockOriginY\":%d,\"lodStep\":%d,\"skirtDepth\":%.6f,"
+                    "\"skirtEdgeMask\":%u}",
+                    i ? "," : "", p.quadCountX, p.quadCountY, p.blockOriginX,
+                    p.blockOriginY, p.lodStep, p.skirtDepth, p.skirtEdgeMask);
+            }
+            std::fprintf(f, "]}\n");
+            std::fclose(f);
+        }
+        mc2vkfeeddump::latch("terrain") = true;
     }
     return 1;
 }

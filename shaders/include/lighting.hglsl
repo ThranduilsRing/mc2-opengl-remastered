@@ -212,6 +212,7 @@ bool GetFalloff(float length, vec3 falloff_data, out float falloff)
 // and may call calc_light() through code paths that fire when no lights
 // are populated.
 //================================================================================
+//PORT-BEGIN:calc_light
 vec3 calc_light(in int lights_index, in vec3 normal, in vec3 vertex_world_pos, in vec3 base_light)
 {
     ObjectLights ld = light[lights_index];
@@ -293,4 +294,5 @@ vec3 calc_light(in int lights_index, in vec3 normal, in vec3 vertex_world_pos, i
 
     return final + ambient;
 }
+//PORT-END:calc_light
 

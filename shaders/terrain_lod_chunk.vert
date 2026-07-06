@@ -194,7 +194,9 @@ void main() {
     }
 
     // Phase 6: skirt bottom verts are pulled below the (possibly stitched) surface.
+    //PORT-BEGIN:skirtVertMath
     h -= float(isSkirtFlag) * u_skirtDepth;
+    //PORT-END:skirtVertMath
 
     float worldX = float(mapX) * 128.0 - u_halfMap;
     float worldY = u_halfMap - float(mapY) * 128.0;

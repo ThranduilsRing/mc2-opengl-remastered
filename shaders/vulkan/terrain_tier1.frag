@@ -260,6 +260,7 @@ vec2 mv_parallax(vec2 uv, float scale, vec4 w) {
 // .x=east,.y=north,.z=elevation), plus a zoom-out altitude boost.
 const float LODFADE_NEAR      = 4000.0;
 const float LODFADE_NEAR_FADE = 4500.0;
+//PORT-BEGIN:lodNear
 float mv_computeLodNear(vec2 worldXY, float worldZ) {
     if (uT.lodFadeEnabled == 0) return 1.0;   // gate off -> byte-identical (no fade)
     vec2  camGround = vec2(-uT.cameraPosMC2.x, uT.cameraPosMC2.z);
@@ -268,6 +269,7 @@ float mv_computeLodNear(vec2 worldXY, float worldZ) {
     float camDist    = hDist + altBoost;
     return 1.0 - smoothstep(LODFADE_NEAR, LODFADE_NEAR_FADE, camDist);
 }
+//PORT-END:lodNear
 
 vec3 mv_detailNormal(vec4 w, float snowWeight, vec2 worldXY, float lodNear) {
     vec2 uv = worldXY * (uT.detailTiling / MATV_WU_PER_TILE);

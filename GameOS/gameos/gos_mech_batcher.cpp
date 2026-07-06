@@ -1,5 +1,6 @@
 // GameOS/gameos/gos_mech_batcher.cpp — GPU mech batcher, Slice A.
 #include "gos_mech_batcher.h"
+#include "vk_feed_dump.h"        // VK-OFFLINE-PROOFS-1: MC2_VK_FEED_DUMP golden dump
 #include "gos_materials.h"       // Slice C1: named material profile SSBO (binding 7)
 #include "ibl_sh_runtime.h"     // PBR-IBL-MECH-1: g_iblShStrength (shared with static props)
 #include "../../RenderCore/IblShCoeffs.h"  // PBR-IBL-MECH-1: SH-L2 coefficients
@@ -2915,6 +2916,36 @@ extern "C" int mc2_mech_island_get_frame_feed(Mc2MechFrameFeed* out) {
       out->lightDataGlSsbo = nm; out->lightDataBytes = by; }
     out->fogColorRGB[0] = out->fogColorRGB[1] = out->fogColorRGB[2] = 0.0f;
     mc2GetSceneFogColorRGB(out->fogColorRGB);
+
+    // VK-OFFLINE-PROOFS-1: golden feed dump. Fires once per process (see
+    // vk_feed_dump.h). No-op unless MC2_VK_FEED_DUMP is set.
+    if (mc2vkfeeddump::enabled() && mc2vkfeeddump::readyToDump() && !mc2vkfeeddump::latch("mech")) {
+        if (FILE* f = mc2vkfeeddump::openAppend(/*truncateFirst=*/false)) {
+            std::fprintf(f, "{\"island\":\"mech\",\"instanceCount\":%u,\"boneCount\":%u,"
+                "\"runCount\":%u,\"objectDepthBias\":%.6f,\"instances\":[",
+                out->instanceCount, out->boneCount, out->runCount, out->objectDepthBias);
+            const GpuMechInstance* insts =
+                reinterpret_cast<const GpuMechInstance*>(out->instances64);
+            const GpuMechBone* bones =
+                reinterpret_cast<const GpuMechBone*>(out->bones64);
+            for (uint32_t i = 0; i < out->instanceCount; ++i) {
+                const GpuMechInstance& mi = insts[i];
+                float rootX = 0.f, rootY = 0.f, rootZ = 0.f;
+                if (bones && mi.baseBoneOffset < out->boneCount) {
+                    const GpuMechBone& b0 = bones[mi.baseBoneOffset];
+                    rootX = b0.row0[3]; rootY = b0.row1[3]; rootZ = b0.row2[3];
+                }
+                std::fprintf(f, "%s{\"typeLodRecordIndex\":%u,\"baseBoneOffset\":%u,"
+                    "\"objectIdRaw\":%u,\"materialIdx\":%u,\"rootBoneX\":%.4f,"
+                    "\"rootBoneY\":%.4f,\"rootBoneZ\":%.4f}",
+                    i ? "," : "", mi.typeLodRecordIndex, mi.baseBoneOffset,
+                    mi.objectIdRaw, mi.materialIdx, rootX, rootY, rootZ);
+            }
+            std::fprintf(f, "]}\n");
+            std::fclose(f);
+        }
+        mc2vkfeeddump::latch("mech") = true;
+    }
     return 1;
 }
 #endif // MC2_VULKAN_ISLAND

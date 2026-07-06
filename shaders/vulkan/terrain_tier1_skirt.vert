@@ -74,7 +74,9 @@ void main() {
     float h  = uH.heights[mapX + mapY * uT.mapSide];
 
     // Phase 6 parity: skirt bottom verts pulled below the surface.
+    //PORT-BEGIN:skirtVertMath
     h -= float(isSkirtFlag) * uT.skirtDepth;
+    //PORT-END:skirtVertMath
 
     float worldX = float(mapX) * 128.0 - uT.halfMap;
     float worldY = uT.halfMap - float(mapY) * 128.0;

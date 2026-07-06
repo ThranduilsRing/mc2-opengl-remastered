@@ -43,6 +43,7 @@
 #include <unordered_map>
 #include <unordered_set>
 #include <vector>
+#include "vk_feed_dump.h"  // VK-OFFLINE-PROOFS-1: MC2_VK_FEED_DUMP golden dump
 
 // Global runtime toggle for the GPU static-prop renderer. Defined here
 // (in the gameos lib) so every consumer — mc2.exe, aseconv, other data
@@ -8408,6 +8409,31 @@ extern "C" int mc2_color_prop_island_get_frame_feed(Mc2ColorPropFeed* out) {
     else     std::memset(out->worldToClipGL, 0, sizeof(out->worldToClipGL));
     // OBJECT_DEPTH_BIAS mirror (shaders/include/terrain_depth_bias.hglsl:62).
     out->objectDepthBias = 0.0001f;
+
+    // VK-OFFLINE-PROOFS-1: golden feed dump. Fires once per process (see
+    // vk_feed_dump.h). No-op unless MC2_VK_FEED_DUMP is set.
+    if (mc2vkfeeddump::enabled() && mc2vkfeeddump::readyToDump() && !mc2vkfeeddump::latch("prop")) {
+        if (FILE* f = mc2vkfeeddump::openAppend(/*truncateFirst=*/false)) {
+            std::fprintf(f, "{\"island\":\"prop\",\"count\":%u,\"objectDepthBias\":%.6f,"
+                "\"instances\":[", out->count, out->objectDepthBias);
+            const GpuStaticPropInstance* insts =
+                reinterpret_cast<const GpuStaticPropInstance*>(out->instances112);
+            for (uint32_t i = 0; i < out->count; ++i) {
+                const GpuStaticPropInstance& gi = insts[i];
+                // Translation lives in row 3 of a row-major 4x4 (col-major layout:
+                // indices 12,13,14 are the last column == translation for either
+                // convention used consistently across the island's mirror).
+                std::fprintf(f, "%s{\"typeID\":%u,\"posX\":%.4f,\"posY\":%.4f,"
+                    "\"posZ\":%.4f,\"flags\":%u}",
+                    i ? "," : "", gi.typeID,
+                    gi.modelMatrix[12], gi.modelMatrix[13], gi.modelMatrix[14],
+                    gi.flags);
+            }
+            std::fprintf(f, "]}\n");
+            std::fclose(f);
+        }
+        mc2vkfeeddump::latch("prop") = true;
+    }
     return 1;
 }
 
