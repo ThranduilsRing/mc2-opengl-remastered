@@ -1,0 +1,23 @@
+{
+  "schema_v": 1,
+  "mission": "mc2_01",
+  "_note": "VK-TERRAIN-NEAR-ORACLE-1: deterministic near-camera terrain oracle. Low-altitude ground-framing poses over the werewolf solid-terrain land region. Run with MC2_TERRAIN_LOD_CHUNK_FORCE_LOD=0 on BOTH GL and VK so every drawn block is lodStep==1 -> VK terrain island co-writes a large pixel region -> anti-tile/POM near-detail signal is exercised. Sim-frozen bookmark sweep => byte-stable across runs (both configs). FORCE_LOD is a LOD policy applied identically to GL and VK, NOT a VK gate, so the GL-vs-VK compare stays same-camera / like-for-like.",
+  "bookmarks": [
+    {
+      "name": "near_land_low",
+      "pos": [2496.0, -1941.0, 0.0],
+      "rot": 30.0,
+      "proj": 45.0,
+      "alt": 300.0,
+      "covers": ["terrain_lod0", "near_detail"]
+    },
+    {
+      "name": "near_land_off",
+      "pos": [4200.0, -3600.0, 0.0],
+      "rot": 30.0,
+      "proj": 45.0,
+      "alt": 320.0,
+      "covers": ["terrain_lod0", "near_detail", "no_units"]
+    }
+  ]
+}
