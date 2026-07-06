@@ -738,6 +738,10 @@ void GuiRuntime::NewFrame() {
 
     // Tell the game input layer whether ImGui has claimed the mouse this frame.
     input::setImguiWantsMouse(ImGui::GetIO().WantCaptureMouse);
+    // Wheel guard: spatial hover only (NOT WantCaptureMouse, which is tainted
+    // by mouse_any_down during viewport drags) — cursor over any ImGui window
+    // means the wheel scrolls ImGui, not the game camera. See gos_input.h.
+    input::setImguiHoversMouse(ImGui::IsWindowHovered(ImGuiHoveredFlags_AnyWindow));
 }
 
 // The Dear ImGui demo window is a developer affordance. It must NOT be one

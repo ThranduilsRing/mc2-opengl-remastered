@@ -56,6 +56,16 @@ void resetKeypress();
 // Set by the ImGui layer each frame after NewFrame(); gates game mouse input.
 void setImguiWantsMouse(bool v);
 
+// HUD-IMGUI wheel guard (IN-MISSION-HUD-IMGUI-SCOPE-1 slice E, fixes slice D's
+// deferred wheel-zoom conflict for ALL ImGui HUD panels): set per-frame from
+// ImGui::IsWindowHovered(AnyWindow). Purely spatial — deliberately NOT
+// WantCaptureMouse, which is tainted by mouse_any_down (true for the whole
+// duration of any click, even over the 3D viewport) and would eat wheel-zoom
+// during every drag. When true, SDL wheel events are not forwarded to the
+// game (camera zoom); ImGui still receives them through its own backend.
+// One frame of hover staleness is acceptable (hover is spatial/slow).
+void setImguiHoversMouse(bool v);
+
 // IMGUI-PAUSE-INPUT-FIX-1: set per-frame by the game; when true (pause menu up), the
 // ImGui mouse gate is bypassed so the pause menu stays clickable over ImGui windows.
 void setGameModalActive(bool v);

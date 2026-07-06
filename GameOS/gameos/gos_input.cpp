@@ -72,9 +72,23 @@ void handleMouseButton(const SDL_Event* event) {
     }
 }
 
+static bool s_imguiHoversMouse = false;
+void setImguiHoversMouse(bool v) { s_imguiHoversMouse = v; }
+
+// (hoisted above handleMouseWheel for the wheel guard; see comment at the
+// original site below for the IMGUI-PAUSE-INPUT-FIX-1 rationale)
+static bool s_gameModalActive = false;
+void setGameModalActive(bool v) { s_gameModalActive = v; }
+
 void handleMouseWheel(const SDL_Event* event) {
     assert(event);
-    
+
+    // HUD-IMGUI wheel guard (see gos_input.h): cursor over an ImGui window ->
+    // wheel belongs to ImGui, not the game camera. Game modal (pause menu)
+    // still wins, mirroring the button gate below.
+    if (s_imguiHoversMouse && !s_gameModalActive)
+        return;
+
     MouseInfo* mi = &g_mouse_info;
     mi->wheel_vert_ = (float)event->wheel.y;
     mi->wheel_hor_ = (float)event->wheel.x;
@@ -102,8 +116,7 @@ void setImguiWantsMouse(bool v) { s_imguiWantsMouse = v; }
 // state every frame, the pause menu's DOWN->UP click transition never fires, and the
 // RETURN/ABORT/EXIT buttons are dead (the "can't exit via menu" hang). Set per-frame
 // by MissionInterfaceManager::update from isPaused() && !isPausedWithoutMenu().
-static bool s_gameModalActive = false;
-void setGameModalActive(bool v) { s_gameModalActive = v; }
+// (definition hoisted above handleMouseWheel — shared with the wheel guard)
 
 void updateMouseState() {
     MouseInfo* mi = &g_mouse_info;
