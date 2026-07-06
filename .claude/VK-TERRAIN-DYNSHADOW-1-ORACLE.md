@@ -348,7 +348,25 @@ Remaining items to a default-ON flip, highest-value first:
      CONSTRUCTION (same booleans → same paths). (iv) smoke mc2_01 PASS both umbrella
      states. Build clean; env-registry check adds no new VK unknown.
 
-3. **FULL-FRAME PARITY + SOAK CRITERIA** — the flip gate. NOW UNBLOCKED by #1+#2: the
+3. **FULL-FRAME PARITY + SOAK CRITERIA — ★★DONE 2026-07-06 (commit 3eb09c68).**
+   EVIDENCE PACKAGE = `.claude/VK-FLIP-EVIDENCE-1.md`. ALL flip-gate criteria PASS:
+   (a) co-covered mech+prop footprint near_land_low = mean 14.92/ch max 32 (<=15/40);
+   substrate near_land_off 0.768 mean_all (<=1.0); 11 mc2_01 bookmarks (incl. the
+   runway_overview AIRPORT + water poses) + mc2_17 water map clean; mc2_24 fresh-pose
+   land-follow caveat documented (NOT a VK defect — pose-authoring follow-up).
+   (b) tier1 soak umbrella ON = 5/5 PASS, 0 crash, 0 height-audit mismatch, no island
+   fail-soft gap (present-layer GL fallback under minimized window is benign; islands
+   still co-write used_vulkan 842-955); umbrella OFF control 5/5 PASS.
+   (c) height-audit over combat FX audits LIVE 40000B GL height SSBO/frame, 0 mismatch;
+   corrupt negative control fires 11 mismatches (teeth). ★FINDING: stock MC2 never
+   runtime-deforms the heightfield (craters = decals; UploadHeightFull is load-only), so
+   the audit's value is catching a FUTURE no-version-bump writer — the corrupt control
+   simulates exactly that. Added a positive-witness [HEIGHT_AUDIT] OK log (verification-
+   only) so the audit's per-frame execution is observable.
+   ★FLIP RECOMMENDATION written FOR THE USER in the evidence doc; default NOT flipped
+   (user's decision). Independent safety gates (island fail-soft + HEIGHT_AUDIT) stay.
+
+### (superseded scope, kept for provenance)
    whole-frame VK-vs-GL number is DETERMINISTIC and UNMASKED (settle=80 + gait freeze).
    ★MEASURED BASELINE (this session, near_land_low all-regions-ON): whole-frame mean_all
    5.01 / cov 58.97 — but this is ~94% TERRAIN near-detail residual (mean ~4.7, deferred-
