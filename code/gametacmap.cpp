@@ -653,6 +653,16 @@ bool GameTacMap::renderImGui()
 		Stuff::Vector3D world;
 		tacMapToWorld( screen, (int)hudW, (int)hudH, world );
 
+		if ( leftClick || rightClick )
+		{
+			// witness line (slice discipline, cf. [HUD-TABS v1]): proves the
+			// ImGui hit-test -> tacMapToWorld -> dispatch chain fired
+			const Stuff::Vector3D camBefore = eye ? eye->getPosition() : Stuff::Vector3D( 0.f, 0.f, 0.f );
+			fprintf( stderr, "[HUD-TACMAP v1] %s-click panel=(%ld,%ld) -> world=(%.1f,%.1f) cam_before=(%.1f,%.1f)\n",
+					 leftClick ? "left" : "right", screen.x, screen.y,
+					 world.x, world.y, camBefore.x, camBefore.y );
+		}
+
 		const bool airstrike =
 			MissionInterfaceManager::instance()->getControlGui()->isAddingAirstrike()
 			&& MissionInterfaceManager::instance()->getControlGui()->isButtonPressed( ControlGui::SENSOR_PROBE );
