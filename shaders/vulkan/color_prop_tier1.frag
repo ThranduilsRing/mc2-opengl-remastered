@@ -67,7 +67,12 @@ void main() {
         // fragment leaves the LOADed terrain GBuffer pixel untouched (in-place co-write).
         vec4 texc = texture(uAlbedoOn, vec3(fract(vUv), float(vLayerOn)));
         if (texc.a < 0.5) discard;
-        rgb = texc.rgb * vArgb;
+        // ★VK-FLIP-FIELD-REPORT-1 BLACK-FENCE FIX: the alpha-ON group is the ALPHA_TEST
+        // class (tree cards / fences / foliage). GL static_prop.frag:339 floors their lit
+        // color at max(litRgb, vec3(0.5)) so the dark, light-facing-falloff side doesn't
+        // read pure black. VK omitted this -> alpha-test fences/cards rendered BLACK. Apply
+        // the SAME floor verbatim before multiplying the albedo.
+        rgb = texc.rgb * max(vArgb, vec3(0.5));
     } else if (uFrame.materialReady != 0 && vLayer >= 0) {
         // ALPHA-OFF group. Real albedo texture (GL_REPEAT restored via fract; the GL frag
         // uses fract(v_uv) with per-draw uvScale — uvScale is 1.0 for the common

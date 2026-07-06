@@ -161,6 +161,12 @@ void main() {
     // signature. Magnitudes are the GL V-AMBIENT-STATIC-1 tints scaled up to also
     // stand in for the (unfed) ObjectLights ambient + IBL-SH fills, so shadowed sides
     // are lit but not flat-bright.
+    // Magnitudes: the GL V-AMBIENT-STATIC-1 hemisphere tints, scaled modestly to also
+    // stand in for the (unfed) ObjectLights ambient + IBL-SH@0.5 fills. Kept MODERATE:
+    // an earlier higher bump (0.42/0.24) over-lit the whole-frame footprint on large
+    // roofs/hedges (mid pose 49->55/ch) and washed shaded faces, so these sit just above
+    // GL's raw V-AMBIENT to cover the fill gap without a flat wash. Normal-dependent
+    // (rooftops brighter than shadowed walls) — matches the GL hangar-roof tint.
     const vec3 kAmbientSky    = vec3(0.30, 0.32, 0.38);   // upward faces (sky bounce)
     const vec3 kAmbientGround = vec3(0.14, 0.13, 0.11);   // downward faces (ground bounce)
     float hemi_t = 0.5 + 0.5 * worldNormalStuff.y;        // Stuff-space .y = up

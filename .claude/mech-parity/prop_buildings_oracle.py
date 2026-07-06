@@ -23,10 +23,13 @@ T.BASE["MC2_VISUAL_BOOKMARK_CAPTURE"] = str(T.BOOK)
 T.BASE["MC2_VISUAL_SETTLE"] = "80"
 
 PROP_GATES = ["MC2_VK_PROP_COLOR_INTEROP", "MC2_VK_PROP_COLOR_TIER1", "MC2_VK_PROP_MATERIAL"]
+# NOTE: mech islands are DELIBERATELY OFF here. The airport poses put mechs in frame,
+# and GL/VK diverge on mech cull/pose (GL shows selection brackets where VK draws full
+# mechs) which SWAMPS the prop footprint number. With mechs OFF in BOTH GL and VK, the
+# prop footprint is pure static-prop parity. Mech parity is measured by its own oracle.
 VK_ALL = dict(T.VK_TERR,
               MC2_VK_PROP_COLOR_INTEROP="1", MC2_VK_PROP_COLOR_TIER1="1",
-              MC2_VK_PROP_MATERIAL="1",
-              MC2_VK_MECH_TIER1="1", MC2_VK_MECH_MATERIAL="1", MC2_VK_MECH_LIGHTING="1")
+              MC2_VK_PROP_MATERIAL="1")
 GL_ALL = dict(T.COMMON_VK)
 
 def footprint():
