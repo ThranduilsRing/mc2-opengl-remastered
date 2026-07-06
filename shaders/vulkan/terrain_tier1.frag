@@ -200,13 +200,51 @@ vec4 mv_sampleAntiTileArr(int layer, vec2 uv, float scale) {
     return (s0 + s1 * w1 + s2 * w2) / (1.0 + w1 + w2);
 }
 
+// VK-TERRAIN-POM sub-slice: port GL parallax-occlusion (terrain_lod_chunk.frag
+// chunkSampleDisplacement + chunkParallax, :295-327) VERBATIM. GL pomParams is
+// {terrain_pom_scale_, 8, 32, 0} = {0.02, 8, 32, 0} (gameos_graphics.cpp:7112 default,
+// scale member :2456). Baked const (no new UBO field). Displacement = matNormalArray
+// alpha channel (carried through VK's copy-once RGBA8 import). GL reads it via
+// textureLod(...,0.0) — base level (POM standard), valid in any control flow. This is
+// the full GL POM (fixed faux view dir, 16-layer bounded march); GL POM carries NO
+// self-shadow term, so this is already the biggest-safe-subset (POM sans self-shadow).
+const vec4 MATV_POM_PARAMS = vec4(0.02, 8.0, 32.0, 0.0);  // scale,minLayers,maxLayers,_
+float mv_pomDisplacement(vec2 uv, vec4 w) {
+    float d = 0.0;
+    if (w.x > 0.01) d += w.x * textureLod(u_matNormalArray, vec3(uv, float(MAT_LAYER_ROCK)),     0.0).a;
+    if (w.y > 0.01) d += w.y * textureLod(u_matNormalArray, vec3(uv, float(MAT_LAYER_GRASS)),    0.0).a;
+    if (w.w > 0.01) d += w.w * textureLod(u_matNormalArray, vec3(uv, float(MAT_LAYER_CONCRETE)), 0.0).a;
+    return 1.0 - d;
+}
+vec2 mv_parallax(vec2 uv, float scale, vec4 w) {
+    const vec3 viewDirTS = vec3(0.15, 0.85, 0.15);
+    float numLayers = mix(MATV_POM_PARAMS.y, MATV_POM_PARAMS.z, max(viewDirTS.y, 0.0));
+    numLayers = clamp(numLayers, 4.0, 16.0);
+    float layerDepth = 1.0 / numLayers;
+    float curLayer = 0.0;
+    vec2 P = viewDirTS.xz / max(viewDirTS.y, 0.001) * scale;
+    vec2 dUV = P / numLayers;
+    vec2 curUV = uv;
+    float curD = mv_pomDisplacement(curUV, w);
+    for (int i = 0; i < 16; ++i) {
+        if (curLayer >= curD) break;
+        curUV -= dUV;
+        curD = mv_pomDisplacement(curUV, w);
+        curLayer += layerDepth;
+    }
+    vec2 prevUV = curUV + dUV;
+    float after  = curD - curLayer;
+    float before = mv_pomDisplacement(prevUV, w) - curLayer + layerDepth;
+    return mix(curUV, prevUV, after / (after - before));
+}
+
 // --- GL detail-normal accumulation (terrain_lod_chunk.frag chunkDetailNormal,
 // :341-419). NOW PORTED (this sub-slice): per-layer weighted tangent-space normals
 // (rock /3 boost, grass, dirt, ★concrete, snow) + ★per-layer fwidth sub-pixel fades
 // (fwRock..fwSnow, GL :353-357) + ★anti-tile resample gated by `fw* > 0.5 && ats* >
 // 0.01` EXACTLY as GL :392-415. Concrete layer (MAT_LAYER_CONCRETE, matTiling.w) was
-// previously omitted — now included to match GL. DEFERRED vs GL (report): POM
-// (chunkParallax — next sub-slice), LOD-tier fade, painted-concrete normal, cliff
+// previously omitted — now included to match GL. ★POM (chunkParallax) NOW PORTED too
+// (see mv_parallax below). DEFERRED vs GL (report): LOD-tier fade, painted-concrete normal, cliff
 // triplanar. Uses implicit-LOD texture()/mv_sampleAntiTileArr (uniform control flow
 // here — no non-uniform weight branch, so LOD is well-defined). -------------------
 vec3 mv_detailNormal(vec4 w, float snowWeight, vec2 worldXY) {
@@ -223,6 +261,17 @@ vec3 mv_detailNormal(vec4 w, float snowWeight, vec2 worldXY) {
     float fwDirt     = clamp(1.0 - (length(fwidth(uvDirt))     - 0.5) * 2.0, 0.0, 1.0);
     float fwConcrete = clamp(1.0 - (length(fwidth(uvConcrete)) - 0.5) * 2.0, 0.0, 1.0);
     float fwSnow     = clamp(1.0 - (length(fwidth(uvSnow))     - 0.5) * 2.0, 0.0, 1.0);
+
+    // ★POM: parallax-offset the material UVs (GL :361-367). fwidth-gated (near only)
+    // -> bounded cost. pomParams.x (=0.02) > 0 always here; fwRock > 0.4 gate matches GL.
+    if (MATV_POM_PARAMS.x > 0.0 && fwRock > 0.4) {
+        const vec4 pomScaleMat = vec4(1.0, 1.0, 2.5, 1.0);
+        float pomScale = MATV_POM_PARAMS.x * dot(pomScaleMat, w) * fwRock;
+        vec2  pomUV    = uv * dot(MATV_TILING, w);
+        vec2  pomOff   = (mv_parallax(pomUV, pomScale, w) - pomUV) * fwRock;
+        uvRock += pomOff; uvGrass += pomOff; uvDirt += pomOff; uvConcrete += pomOff;
+    }
+
     // Anti-tile scale per material (GL :382-385: tiling>=4 full, <=1 off). Near only.
     float atsRock  = mix(0.0, 3.0, clamp((MATV_TILING.x - 1.0) / 3.0, 0.0, 1.0));
     float atsGrass = mix(0.0, 3.0, clamp((MATV_TILING.y - 1.0) / 3.0, 0.0, 1.0));
