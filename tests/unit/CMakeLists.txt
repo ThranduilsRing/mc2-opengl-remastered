@@ -55,6 +55,7 @@ add_executable(mc2_tests
     test_pilot_profile_preserve.cpp  # PILOT-PROFILE-PRESERVE-1: editor Profile save decision kernel (offline)
     test_ui_defs_lockstep.cpp  # UI-DEFS-LOCKSTEP-HARDEN-1: defs/ui package version + zero-element/zero-draw fail-soft (offline)
     test_hud_tab_registry.cpp  # HUD-IMGUI slice C: tab registry order/cycle invariants (offline)
+    test_infowindow_model.cpp  # HUD-IMGUI slice D: info-window component aggregation kernel (offline)
 
     # MINIMAL-VIABLE-HARNESS-1: malloc-backed heap + GameOS-global shim.
     # Replaces heap.cpp (won't compile standalone -- see

@@ -42,6 +42,14 @@ class InfoWindow
 
 	private:
 
+		// MC2_HUD_IMGUI_INFOWINDOW (IN-MISSION-HUD-IMGUI-SCOPE-1 slice D):
+		// ImGui panel over the authored info rect; ImGui-native scrolling
+		// replaces the hand-rolled scrollbar. Legacy path renders whenever the
+		// gate is off or renderImGui returns false (pin-to-legacy).
+		bool usingImGui() const;
+		bool renderImGui();
+		void renderImGuiContent( float fontScale );
+
 		float		scrollPos;
 		float		scrollLength;
 		float		infoLength;

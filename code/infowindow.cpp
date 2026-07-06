@@ -15,6 +15,11 @@ InfoWindow.cpp			: Implementation of the InfoWindow component.
 #include"txmmgr.h"
 #include"estring.h"
 
+// IN-MISSION-HUD-IMGUI-SCOPE-1 slice D (MC2_HUD_IMGUI_INFOWINDOW)
+#include"hudimguipanel.h"
+#include"infowindowmodel.h"
+#include "imgui.h"
+
 long InfoWindow::SCROLLLEFT = 0;
 long InfoWindow::SCROLLRIGHT = 0;
 long InfoWindow::SCROLLTOP = 0;
@@ -355,10 +360,223 @@ void InfoWindow::drawName( const char* name )
 	nameFont.render( name, NAMELEFT, NAMETOP, NAMERIGHT - NAMELEFT, NAMEBOTTOM - NAMETOP, 0xff5c96c2, 0, 3 );
 }
 
+bool InfoWindow::usingImGui() const
+{
+	return HudImGui::envGateOn( "MC2_HUD_IMGUI_INFOWINDOW" ) && !HudImGui::pinnedToLegacy();
+}
+
+// legacy ARGB constant -> ImGui color
+static ImVec4 argbToImVec4( unsigned long argb )
+{
+	return ImColor( (int)( ( argb >> 16 ) & 0xff ), (int)( ( argb >> 8 ) & 0xff ),
+					(int)( argb & 0xff ), (int)( ( argb >> 24 ) & 0xff ) ).Value;
+}
+
+// slice D: ImGui info panel. Positioned over the authored InfoWindow rect
+// (.fit statics), which lives in the bottom command-bar band -> corners go
+// through the bottom-band shrink like slice C's TEST tab body. Content reads
+// the SAME live data (pUnit / inventory / pilot) as the legacy path; the
+// hand-rolled scrollbar is replaced by an ImGui-native scroll child.
+bool InfoWindow::renderImGui()
+{
+	float l = (float)INFOLEFT, t = (float)INFOTOP;
+	float r = (float)( INFOLEFT + INFOWIDTH ), b = (float)( INFOTOP + INFOHEIGHT );
+	const float cy = 0.5f * ( t + b );
+	HudImGui::hudShrinkPoint( l, t, cy );
+	HudImGui::hudShrinkPoint( r, b, cy );
+
+	float fontScale = 1.f;
+	if ( !HudImGui::beginPanel( "##hud_infownd", l, t, r, b, &fontScale ) )
+		return false;
+
+	ImGui::SetWindowFontScale( fontScale );
+	renderImGuiContent( fontScale );
+	HudImGui::endPanel();
+	return true;
+}
+
+void InfoWindow::renderImGuiContent( float fontScale )
+{
+	// header: unit name (legacy drawName color 0xff5c96c2)
+	char noUnit[256];
+	const char* name = 0;
+	if ( pUnit )
+		name = pUnit->getIfaceName();
+	if ( !name )
+	{
+		cLoadString( IDS_NOUNIT, noUnit, 255 );
+		name = noUnit;
+	}
+	ImGui::TextColored( argbToImVec4( 0xff5c96c2 ), "%s", name );
+
+	if ( pUnit )
+	{
+		// health bar: legacy thresholds/colors (render():437-465)
+		float barStatus = pUnit->getAppearance()->barStatus;
+		if ( barStatus > 1.0f ) barStatus = 1.0f;
+		if ( barStatus < 0.f ) barStatus = 0.f;
+		unsigned long color;
+		if ( barStatus >= 0.5f )
+			color = SB_GREEN;
+		else if ( barStatus > 0.2f )
+			color = SB_YELLOW;
+		else
+			color = SB_RED;
+		ImGui::PushStyleColor( ImGuiCol_PlotHistogram, argbToImVec4( color | 0xff000000 ) );
+		ImGui::PushStyleColor( ImGuiCol_FrameBg, argbToImVec4( ( color & 0xff7f7f7f ) | 0xff000000 ) );
+		ImGui::ProgressBar( barStatus, ImVec2( -1.f, 6.f * fontScale ), "" );
+		ImGui::PopStyleColor( 2 );
+	}
+	ImGui::Separator();
+
+	// ImGui-native scrolling replaces the hand-rolled scrollbar (the slice win)
+	if ( ImGui::BeginChild( "##hud_infownd_scroll", ImVec2( 0.f, 0.f ), false ) )
+	{
+		if ( pUnit )
+		{
+			char tmpName[256];
+			char buffer[256];
+
+			// ---- component (weapon) list: same source data as drawScrollingStuff
+			enum { MAX_W = 60 };
+			InfoWindowModel::WeaponRec recs[MAX_W];
+			int n = 0;
+			for ( long curWeapon = pUnit->numOther;
+				  curWeapon < ( pUnit->numOther + pUnit->numWeapons ) && n < MAX_W; curWeapon++ )
+			{
+				InfoWindowModel::WeaponRec& rec = recs[n++];
+				rec.masterID = pUnit->inventory[curWeapon].masterID;
+				rec.working = !pUnit->inventory[curWeapon].disabled
+					&& ( pUnit->getWeaponShots( curWeapon ) > 0 )
+					&& pUnit->inventory[curWeapon].health > 0;
+				const bool noAmmo =
+					MasterComponent::masterList[pUnit->inventory[curWeapon].masterID].getWeaponAmmoType() == WEAPON_AMMO_NONE
+					|| useUnlimitedAmmo;
+				rec.ammo = noAmmo ? -1 : pUnit->getWeaponShots( curWeapon );
+				rec.range = MasterComponent::masterList[pUnit->inventory[curWeapon].masterID].getWeaponRange();
+			}
+			InfoWindowModel::ComponentRow rows[MAX_W];
+			const int rowCount = InfoWindowModel::aggregateWeapons( recs, n, rows, MAX_W );
+
+			// legacy per-range text colors (drawScrollingStuff:624)
+			const unsigned long textColors[3] = { 0xff6E7C00, 0xff005392, 0xffA21600 };
+			bool anyWeapon = false;
+			for ( int j = 0; j < 3; j++ )
+			{
+				for ( int i = 0; i < rowCount; i++ )
+				{
+					if ( rows[i].range != j )
+						continue;
+					anyWeapon = true;
+					const ImVec4 col = argbToImVec4( textColors[j] );
+					cLoadString( IDS_COMP_ABBR0 + rows[i].masterID, tmpName, 255 );
+					ImGui::TextColored( col, "%d/%d  %s", rows[i].workingCount,
+										rows[i].totalCount, tmpName );
+					if ( rows[i].ammo != -1 )
+					{
+						char fmt[64];
+						cLoadString( IDS_MISSION_SHOTSLEFT, fmt, 63 );
+						sprintf( buffer, fmt, rows[i].ammo );
+						ImGui::TextColored( col, "%s", buffer );
+					}
+				}
+			}
+			if ( anyWeapon )
+				ImGui::Separator();
+
+			// ---- non-weapon equipment: ecm / probe / jump jets / sensor
+			char count[4];
+			count[0] = pUnit->ecm;
+			count[1] = pUnit->probe;
+			count[2] = pUnit->jumpJets;
+			count[3] = pUnit->isMech() ? pUnit->sensor : (char)255;
+			bool anyEquip = false;
+			for ( int e = 0; e < 4; e++ )
+			{
+				if ( count[e] == (char)255 )
+					continue;
+				anyEquip = true;
+				cLoadString( IDS_COMP_ABBR0 + pUnit->inventory[count[e]].masterID, tmpName, 255 );
+				ImGui::TextColored( argbToImVec4( 0xffc29b00 ), "%s", tmpName );
+			}
+			if ( anyEquip )
+				ImGui::Separator();
+
+			// ---- pilot section: same gate as legacy (no enemy / destroyed / disabled)
+			if ( pUnit->getTeam() && !Team::home->isEnemy( pUnit->getTeam() )
+				 && pUnit->isMech() && !pUnit->isDisabled() && !pUnit->isDestroyed() )
+			{
+				MechWarrior* pWarrior = pUnit->getPilot();
+
+				char deadPilotName[256];
+				cLoadString( IDS_NOPILOT, deadPilotName, 255 );
+				ImGui::TextColored( argbToImVec4( 0xff005392 ), "%s",
+									pWarrior->active() ? pWarrior->getName() : deadPilotName );
+
+				const int rank = pWarrior->getRank();
+				// ACE not contiguous with other ranks (legacy comment)
+				if ( rank != 4 )
+					cLoadString( IDS_GREEN + rank, buffer, 255 );
+				else
+					cLoadString( IDS_ACE, buffer, 255 );
+				ImGui::TextColored( argbToImVec4( 0xff005392 ), "%s", buffer );
+
+				// gunnery / piloting skill bars: legacy segment count + gradient
+				const int skills[2] = { MWS_GUNNERY, MWS_PILOTING };
+				for ( int s = 0; s < 2; s++ )
+				{
+					const int skill = pWarrior->getSkill( skills[s] );
+					const int barCount = InfoWindowModel::skillBarCount( skill, NUMBERSKILLBARS );
+
+					int redIncrement = 0, greenIncrement = 0, blueIncrement = 0;
+					if ( barCount )
+					{
+						redIncrement = ( 205 / barCount ) << 16;
+						greenIncrement = ( ( 234 - 83 ) / barCount ) << 8;
+						blueIncrement = ( 255 - 146 ) / barCount;
+					}
+					unsigned long segColor = 0xff005392;
+
+					ImDrawList* dl = ImGui::GetWindowDrawList();
+					const ImVec2 p = ImGui::GetCursorScreenPos();
+					const float unitW = 5.f * fontScale;
+					const float segH = ImGui::GetTextLineHeight();
+					float x = p.x;
+					for ( int i = 0; i < barCount; i++ )
+					{
+						dl->AddRectFilled( ImVec2( x, p.y ), ImVec2( x + unitW, p.y + segH ),
+										   ImGui::ColorConvertFloat4ToU32( argbToImVec4( segColor ) ) );
+						segColor += redIncrement;
+						segColor += greenIncrement;
+						segColor += blueIncrement;
+						x += unitW + 1.f;
+					}
+					ImGui::Dummy( ImVec2( x - p.x, segH ) );
+					ImGui::SameLine();
+					ImGui::TextColored( argbToImVec4( 0xff005392 ), "%d", skill );
+				}
+
+				// specialty skills
+				for ( int i = 0; i < NUM_SPECIALTY_SKILLS; i++ )
+				{
+					if ( pWarrior->specialtySkills[i] )
+					{
+						cLoadString( IDS_SPECIALTY + i, buffer, 255 );
+						ImGui::TextColored( argbToImVec4( 0xff005392 ), "%s", buffer );
+					}
+				}
+			}
+		}
+	}
+	ImGui::EndChild();
+}
+
 void InfoWindow::render()
 {
+	if ( usingImGui() && renderImGui() )
+		return;
 
-	
+
 	drawScrollingStuff();
 
 	GUI_RECT tmpRect = { SCROLLBOXLEFT, SCROLLBOXBOTTOM, SCROLLBOXRIGHT, INFOTOP + INFOHEIGHT };
@@ -500,6 +718,12 @@ void InfoWindow::update()
 
 	if ( icon )
 		icon->update();
+
+	// slice D: ImGui panel owns its own hit-tests (native scroll/wheel/drag);
+	// skip the legacy scroll-button + thumb-drag math so ghost widgets that
+	// are not drawn under the gate can't swallow clicks.
+	if ( usingImGui() )
+		return;
 
 	for ( int i = 0; i < 2; i++ )
 	{	
