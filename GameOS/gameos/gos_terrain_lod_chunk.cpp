@@ -962,6 +962,20 @@ extern "C" int mc2_terrain_tier1_get_frame_feed(Mc2TerrainTier1Feed* out)
         if (out->detailEnabled)
             lodFadeOn = mc2vkgate::subGate("MC2_VK_TERRAIN_LODFADE") ? 1 : 0;
         out->lodFadeEnabled = lodFadeOn;
+        // VK-FLIP oracle-visible gate-state proof: one-shot diagnostic line so a smoke
+        // capture can confirm lodFadeEnabled's resolved value without a debugger attach.
+        // Gated on presence of MC2_VK_TERRAIN_COPY_STATS (same opt-in convention as the
+        // interop-copies stats line above) to stay silent by default.
+        {
+            static const bool s_diagOn = (getenv("MC2_VK_TERRAIN_COPY_STATS") != nullptr);
+            static bool s_logged = false;
+            if (s_diagOn && !s_logged) {
+                s_logged = true;
+                fprintf(stderr, "[VK_TERRAIN_LODFADE_DIAG] lodFadeEnabled=%d detailEnabled=%d "
+                        "lightingEnabled=%d\n", lodFadeOn, out->detailEnabled, out->lightingEnabled);
+                fflush(stderr);
+            }
+        }
         extern void gos_GetTerrainCameraPos(float*, float*, float*);
         float cx = 0.0f, cy = 0.0f, cz = 0.0f;
         gos_GetTerrainCameraPos(&cx, &cy, &cz);
