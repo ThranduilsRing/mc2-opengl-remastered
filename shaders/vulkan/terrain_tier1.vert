@@ -61,12 +61,41 @@ layout(set = 0, binding = 0, std140) uniform TerrainFrameUBO {
     float nfhStrength;
     float detailTiling;
     float detailStrength;
+    // Tail fields (declared to keep std140 offsets LOCKSTEP with the C++ mirror and
+    // terrain_tier1.frag; the VS only reads the visual* trio below).
+    int   enableDynShadows;
+    int   _dynPad0;
+    int   _dynPad1;
+    mat4  dynamicLightSpaceMatrix;
+    vec4  cameraPosMC2;
+    int   lodFadeEnabled;
+    float skirtDepth;
+    int   _csmPad0;
+    int   _csmPad1;
+    int   csmEnabled;
+    int   csmCount;
+    float csmDepthSpan;
+    int   csmDebugMode;
+    mat4  csmCascadeMatrices[3];
+    vec4  csmCascadeTexelWorld;
+    float csmFullMapTexelWorld;
+    // VK-TERRAIN-VISUALDISPLACE-FAR-1 (rung 5): far-band mode-2 Z-swap params.
+    int   visualSide;          // off 580: fine bake side V (0 = not snapshotted)
+    float visualDisplaceFar;   // off 584: MC2_TERRAIN_VISUAL_DISPLACE_FAR fade 0..1
+    int   visualMode;          // off 588: 0 = no displace, 2 = far-band Z-swap
 } uT;
 
 // Height SSBO (VK-owned snapshot of the GL height field, binding 23 semantics).
 layout(set = 0, binding = 1, std430) readonly buffer TerrainHeightBuf {
     float heights[];
 } uH;
+
+// VK-TERRAIN-VISUALDISPLACE-FAR-1: 4x visual heightfield bake (VK-owned snapshot of
+// the GL binding-26 SSBO). Anonymous instance so the ported block can reference
+// `heightsFine` textually identical to terrain_lod_chunk.vert.
+layout(set = 0, binding = 10, std430) readonly buffer TerrainVisualHeightBuf {
+    float heightsFine[];
+};
 
 layout(location = 0) out vec3 v_worldPos;
 
@@ -76,6 +105,29 @@ void main() {
     int mapX = clamp(uT.blockOriginX + localOffset.x, 0, uT.mapSide - 1);
     int mapY = clamp(uT.blockOriginY + localOffset.y, 0, uT.mapSide - 1);
     float h  = uH.heights[mapX + mapY * uT.mapSide];
+
+    // VK-TERRAIN-VISUALDISPLACE-FAR-1 (rung 5): coarser-band (LOD1+) far-band visual
+    // displacement -- pure Z-swap at the SAME vertex density (VERBATIM port of the GL
+    // terrain_lod_chunk.vert `u_visualDisplace == 2` non-stitched core). The stitched-
+    // edge re-derivation is NOT ported: the capture predicate excludes edge-stitched
+    // patches (they stay GL-owned), so it can never fire for a VK-owned patch. Skirt
+    // handling matches GL structurally: this is the main-patch VS (isSkirtFlag==0
+    // always); the skirt VS ports the same block for its top verts. Local u_* aliases
+    // keep the ported lines textually identical to the GL source.
+    if (uT.visualMode == 2) {
+        int u_visualSide = uT.visualSide;
+        float u_visualDisplaceFar = uT.visualDisplaceFar;
+        float hv;
+        int fxV, fyV;
+        {
+            //PORT-BEGIN:visualDisplaceFar
+            fxV = clamp(mapX * 4, 0, u_visualSide - 1);
+            fyV = clamp(mapY * 4, 0, u_visualSide - 1);
+            hv = heightsFine[fxV + fyV * u_visualSide];
+        }
+        h = mix(h, hv, clamp(u_visualDisplaceFar, 0.0, 1.0));
+        //PORT-END:visualDisplaceFar
+    }
 
     float worldX = float(mapX) * 128.0 - uT.halfMap;
     float worldY = uT.halfMap - float(mapY) * 128.0;

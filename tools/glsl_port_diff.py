@@ -29,6 +29,10 @@ REGISTRY = [
     ("lodNear", "shaders/gos_terrain.frag", "shaders/vulkan/terrain_tier1.frag"),
     ("skirtVertMath", "shaders/terrain_lod_chunk.vert", "shaders/vulkan/terrain_tier1_skirt.vert"),
     ("calcDynamicShadowCsm", "shaders/include/shadow.hglsl", "shaders/vulkan/terrain_tier1.frag"),
+    # VK-TERRAIN-VISUALDISPLACE-FAR-1 (rung 5): mode-2 far-band Z-swap non-stitched core,
+    # ported into BOTH the main and skirt VS (same GL block, same marker name).
+    ("visualDisplaceFar", "shaders/terrain_lod_chunk.vert", "shaders/vulkan/terrain_tier1.vert"),
+    ("visualDisplaceFar", "shaders/terrain_lod_chunk.vert", "shaders/vulkan/terrain_tier1_skirt.vert"),
 ]
 
 

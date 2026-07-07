@@ -186,11 +186,17 @@ void main() {
             }
             hv = mix(hv0, hv1, t2);
         } else {
+            // VK-TERRAIN-VISUALDISPLACE-FAR-1: the non-stitched mode-2 core (single bake
+            // sample + fade mix) is ported VERBATIM to the VK island verts. The stitched
+            // branch above is NOT ported -- the VK capture predicate excludes stitched
+            // patches (edgeStitch[i]!=0 stays GL-owned), so it can never fire there.
+            //PORT-BEGIN:visualDisplaceFar
             fxV = clamp(mapX * 4, 0, u_visualSide - 1);
             fyV = clamp(mapY * 4, 0, u_visualSide - 1);
             hv = heightsFine[fxV + fyV * u_visualSide];
         }
         h = mix(h, hv, clamp(u_visualDisplaceFar, 0.0, 1.0));
+        //PORT-END:visualDisplaceFar
     }
 
     // Phase 6: skirt bottom verts are pulled below the (possibly stitched) surface.

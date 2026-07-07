@@ -58,11 +58,30 @@ layout(set = 0, binding = 0, std140) uniform TerrainFrameUBO {
     // (was _pad[43], off 340..511) so the 512B dynamic-alignment slot does NOT grow.
     // LOCKSTEP with vulkan_terrain_island.cpp TerrainFrameUBO.skirtDepth.
     float skirtDepth;   // off 340
+    // Tail fields (LOCKSTEP with terrain_tier1.vert / .frag; skirt VS reads visual* only).
+    int   _csmPad0;
+    int   _csmPad1;
+    int   csmEnabled;
+    int   csmCount;
+    float csmDepthSpan;
+    int   csmDebugMode;
+    mat4  csmCascadeMatrices[3];
+    vec4  csmCascadeTexelWorld;
+    float csmFullMapTexelWorld;
+    // VK-TERRAIN-VISUALDISPLACE-FAR-1 (rung 5): far-band mode-2 Z-swap params.
+    int   visualSide;          // off 580
+    float visualDisplaceFar;   // off 584
+    int   visualMode;          // off 588
 } uT;
 
 layout(set = 0, binding = 1, std430) readonly buffer TerrainHeightBuf {
     float heights[];
 } uH;
+
+// VK-TERRAIN-VISUALDISPLACE-FAR-1: 4x visual heightfield bake (see terrain_tier1.vert).
+layout(set = 0, binding = 10, std430) readonly buffer TerrainVisualHeightBuf {
+    float heightsFine[];
+};
 
 layout(location = 0) out vec3 v_worldPos;
 
@@ -72,6 +91,26 @@ void main() {
     int mapX = clamp(uT.blockOriginX + localOffset.x, 0, uT.mapSide - 1);
     int mapY = clamp(uT.blockOriginY + localOffset.y, 0, uT.mapSide - 1);
     float h  = uH.heights[mapX + mapY * uT.mapSide];
+
+    // VK-TERRAIN-VISUALDISPLACE-FAR-1 (rung 5): GL's mode-2 branch runs for skirt TOP
+    // verts too (terrain_lod_chunk.vert:156 gates on `isSkirtFlag == 0`, and skirt-strip
+    // draws share that shader) so the skirt top tracks the DISPLACED surface while the
+    // bottom vert stays at the coarse height minus skirtDepth -- exactly what GL renders
+    // for a displaced block's skirt. Same VERBATIM non-stitched core as the main VS.
+    if (uT.visualMode == 2 && isSkirtFlag == 0) {
+        int u_visualSide = uT.visualSide;
+        float u_visualDisplaceFar = uT.visualDisplaceFar;
+        float hv;
+        int fxV, fyV;
+        {
+            //PORT-BEGIN:visualDisplaceFar
+            fxV = clamp(mapX * 4, 0, u_visualSide - 1);
+            fyV = clamp(mapY * 4, 0, u_visualSide - 1);
+            hv = heightsFine[fxV + fyV * u_visualSide];
+        }
+        h = mix(h, hv, clamp(u_visualDisplaceFar, 0.0, 1.0));
+        //PORT-END:visualDisplaceFar
+    }
 
     // Phase 6 parity: skirt bottom verts pulled below the surface.
     //PORT-BEGIN:skirtVertMath

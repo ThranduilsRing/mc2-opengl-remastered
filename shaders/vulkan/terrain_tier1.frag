@@ -109,6 +109,11 @@ layout(set = 0, binding = 0, std140) uniform TerrainFrameUBO {
     mat4  csmCascadeMatrices[3];                  // off 368 (MC2_VK_SHADOW_CSM_MAX; literal for check_ubo_layout.py's regex)
     vec4  csmCascadeTexelWorld;                   // off 560 (xyz used, w pad)
     float csmFullMapTexelWorld;                   // off 576
+    // VK-TERRAIN-VISUALDISPLACE-FAR-1 (rung 5): far-band mode-2 Z-swap params (read by
+    // the two VS stages only; declared here for the std140 LOCKSTEP + layout check).
+    int   visualSide;                             // off 580: fine bake side V (0 = not snapshotted)
+    float visualDisplaceFar;                      // off 584: MC2_TERRAIN_VISUAL_DISPLACE_FAR fade 0..1
+    int   visualMode;                             // off 588: 0 = no displace, 2 = far-band Z-swap
 } uT;
 
 // VK-TERRAIN-DETAIL: the height SSBO (VK-owned snapshot; same buffer the VS reads at
