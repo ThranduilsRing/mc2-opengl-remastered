@@ -564,6 +564,25 @@ public:
     struct VkPostFogNative;             // defined in vulkan_post_fog_native.cpp
     VkPostFogNative* vkPostFogNative_ = nullptr;
 
+    // VK-POST-SSAO-NATIVE-1 (rung 8.2, .claude/VK-RUNG8-LADDER-1.md): SSAO
+    // (gen + apply) rendered NATIVELY on the shared engine VulkanContext, sampling
+    // the SHARED scene depth + normal into a VK-OWNED half-res R16F occlusion image
+    // and MULTIPLYING into the SHARED scene color0 IN PLACE — zero copies, zero CPU
+    // readbacks, no private device (retires the old SSAO island's readback pattern
+    // when its gate is on; highest precedence at the SSAO site). Gate MC2_VK_POST_SSAO
+    // (envTriState opt-in, default-OFF; the rung-8 ladder's prescribed name).
+    // runVkPostSsaoNative() returns true only when both passes rendered via VK
+    // (caller skips the GL SSAO site); any not-ready condition (incl. ssaoDebug_!=0,
+    // an unported diagnostic mode) returns false -> unchanged region-iface/GL chain.
+    // destroyVkPostSsaoNative(): torn down from destroyFBOs() (resize; the shared
+    // GBuffer + GL half-res sizing it mirrors are rebuilt) and destroy(). Defined in
+    // vulkan_post_ssao_native.cpp (same #ifdef MC2_VULKAN_ISLAND discipline).
+    bool  vkPostSsaoNativeEnabled();
+    bool  runVkPostSsaoNative();
+    void  destroyVkPostSsaoNative();
+    struct VkPostSsaoNative;            // defined in vulkan_post_ssao_native.cpp
+    VkPostSsaoNative* vkPostSsaoNative_ = nullptr;
+
     // VK-REGION-SSAO-1: Vulkan impl of the PostprocessSSAO region -- the first
     // NEW region grown through runRegion (beyond fog). Two internal draws
     // (occlusion -> apply) across TWO Vulkan render passes (different targets

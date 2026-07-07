@@ -851,6 +851,8 @@ void gosPostProcess::destroy()
     // destroy() runs after destroyFBOs, so this is usually a no-op that also
     // prints the health line.)
     destroyVkPostFogNative();
+    // VK-POST-SSAO-NATIVE-1 (rung 8.2): same teardown for the native SSAO pass.
+    destroyVkPostSsaoNative();
     // VK-REGION-SSAO-1: same teardown for the SSAO island.
     destroyVulkanSSAOIsland();
     // VK-REGION-HZB-1: same teardown for the HZB island.
@@ -1528,6 +1530,9 @@ void gosPostProcess::destroyFBOs()
     // color0/depth resources destroyed below (framebuffer/view over their
     // VkImages must not outlive them). Rebuilt lazily at the next fog site.
     destroyVkPostFogNative();
+    // VK-POST-SSAO-NATIVE-1: same discipline — it borrows shared color0/normal/
+    // depth AND mirrors the GL half-res AO sizing rebuilt below.
+    destroyVkPostSsaoNative();
 #endif
     if (sceneFBO_) {
         glDeleteFramebuffers(1, &sceneFBO_);
@@ -3991,6 +3996,17 @@ void gosPostProcess::endScene()
     // IRenderBackend::runRegion (MC2_POSTPROCESS_BACKEND=gl|vk picks the impl, VK
     // falls back to GL on failure) instead of calling runSSAO() directly. Gate OFF ->
     // the original direct call runs verbatim (byte-identical).
+    // VK-POST-SSAO-NATIVE-1 (rung 8.2): HIGHEST precedence at the SSAO site. When
+    // MC2_VK_POST_SSAO=1 and the shared-GBuffer substrate is live, SSAO gen+apply
+    // render natively on the shared engine context (zero copies, zero readbacks)
+    // and the GL SSAO site is skipped. runVkPostSsaoNative() returns false on ANY
+    // not-ready condition (incl. ssaoDebug_!=0) -> the unchanged region-iface/GL
+    // chain below runs (fail-soft). Precedence: native > region-iface > GL.
+#ifdef MC2_VULKAN_ISLAND
+    if (vkPostSsaoNativeEnabled() && runVkPostSsaoNative()) {
+        // native path did gen+apply; GL SSAO site skipped (no double-apply).
+    } else
+#endif
     if (regionRouted) {
         runSSAORegionThroughBackend();
     } else {

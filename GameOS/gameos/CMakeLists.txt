@@ -151,6 +151,13 @@ if(MC2_VULKAN)
         # byte-identical. Layout-affecting header members under MC2_VULKAN_ISLAND
         # (same ODR discipline as the subgraph's).
         list(APPEND SOURCES vulkan_post_fog_native.cpp)
+        # VK-POST-SSAO-NATIVE-1 (rung 8.2): SSAO gen+apply natively on the shared
+        # engine context — samples the SHARED scene depth+normal into a VK-owned
+        # half-res R16F occlusion image, multiplies into the SHARED scene color0 in
+        # place (zero copies, zero CPU readbacks, no private device; retires the
+        # SSAO island's readback pattern when gated on). Gate MC2_VK_POST_SSAO
+        # default-OFF -> GL SSAO chain byte-identical.
+        list(APPEND SOURCES vulkan_post_ssao_native.cpp)
         # VK-P8a SHADOW-INTEROP: the shadow island — SECOND VK GEOMETRY region and
         # FIRST VK-PRODUCES-DEPTH region (water was GL-produces/VK-consumes; shadow
         # reverses it: VK renders the static-prop shadow-caster depth into an
