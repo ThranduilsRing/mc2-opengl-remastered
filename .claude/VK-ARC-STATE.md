@@ -1,8 +1,56 @@
 # VK-ARC-STATE — current state block (update every session)
 
-HEAD: rung 6 commits `06c4fe03` (island tier1) + `790388f8` (port markers) on
-branch `claude/vk-interop-bridge-1`, worktree `A:/Games/mc2-vk-interop-bridge`.
-Build dir `build64_island`. Deploy lane (literal): `A:/Games/mc2-opengl/mc2-win64-0.4c`.
+HEAD: rung 6.5 commits `f0de79c7` (reflection port) + `006e2115` (tool registration)
+on branch `claude/vk-interop-bridge-1`, worktree `A:/Games/mc2-vk-interop-bridge`.
+Build dir `build64_island`. Deploy lane (literal): `A:/Games/mc2-opengl/mc2-win64-0.4c`
+(deployed + fingerprint-verified at `006e2115`).
+
+## RUNG 6.5 — WATER REFLECTION PORT (2026-07-07) — SHIPPED (closes the rung-6 grazing gap)
+
+Commits `f0de79c7` (port) + `006e2115` (glsl_port_diff + check_ubo_layout
+registration). Ports GL's default-ON water reflection block
+(gameos_graphics.cpp:3100 area; strength 1.5, `MC2_WATER_REFLECTION=0` kills)
+VERBATIM into `shaders/vulkan/water_geom.frag`: SH-L2 sky coeffs + waterEvalHdri
+(equirect, skyYaw-rotated, Reinhard, LOD from mc2WaterHdriLodDefault(), default
+4.0) + waterEvalSkySh fallback + wave-normal/reflect setup + Schlick Fresnel mix
+(REFL_F0 0.02 / REFL_MAX 0.55). 5 PORT pairs, ALL VERBATIM per glsl_port_diff.
+- SKIPPED with evidence: (a) terrain-RT contact term — `MC2_WATER_REFLECTION_RT`
+  default-OFF (`g_waterRtStrength=0.0` unless env set) -> the GL sub-block is a
+  no-op in the field config; (b) sun-spec — `u_waterSpecIntensity` is uploaded
+  but consumed by NO shader (grep of shaders/ = zero hits; dead upload), and
+  defaults 0 anyway. Not RT ray-query — nothing MoltenVK-hostile added
+  (VK 1.1 core; BC feature queried, fail-soft to SH if absent).
+- Plumbing: WaterFsParams UBO +16B (f2.yzw = reflStrength/skyYaw/hdriLod, new
+  f3 = screen size; `check_ubo_layout.py` waterfs pair registered, 7 fields OK),
+  binding-2 combined image sampler, COPY-ONCE HDRI import from the GL texture
+  (BC6H .ktx2 sidecar mip0 in the field config — GL's own textureLod clamps to
+  mip 0 there, so 1-mip VK image is exact parity; RGBA16F+full-chain path for
+  the tinyexr fallback). Honest cost: one-time staging copy at first armed-water
+  frame (mc2_01 uses mud_road_puresky 16K BC6H = 128MB one-shot), ZERO per-frame
+  cost; receipt `[VK_WATER_ISLAND] hdri REAL import: 16384x8192 fmt=143 mips=1`.
+  Fail-soft = 1x1 dummy bound + fs UBO hdriLod patched to -1 -> SH-L2 fallback
+  (same semantics as GL `!isHdriReady()`). Gate parity: fs UBO feeds
+  `gos_GetWaterReflStrength()` -> `MC2_WATER_REFLECTION=0` skips the block on
+  BOTH sides (proved live below).
+- Offline: check_vk_shaders 34/34, check_ubo_layout 3/3 pairs OK,
+  glsl_port_diff --all: 8 VERBATIM (5 new water pairs) + the 4 pre-existing
+  recorded rename findings unchanged.
+- Live (mc2_01 water sweep, sacrificial-first-bookmark, receipts every run:
+  water island used_vulkan=488/472, thin=6167, recipes=9801; GL control
+  used_vulkan=0): water-only delta (vk_base vs vk_water, SAME VK scene,
+  single variable) at grazing oblique_low: **8.29/ch -> 3.64/ch full-image
+  (cov 98%->38%)** == the rung-6 refl-off floor (3.56/ch cov 39%) — the
+  reflection gap is CLOSED to the base-layer residual. overview_high 0.31/ch
+  (bar <=0.6 met). Single-variable execution proof: vk_water vs
+  vk_water_refloff (MC2_WATER_REFLECTION=0) = 9.35/ch cov 99% — the ported
+  block demonstrably executes and honors the GL gate. Artifacts:
+  `.claude/vk-water-tier1/cap/` (rung-6 baselines preserved in `cap_rung6/`),
+  driver `run_65.py`, analyzer `mad_65.py`.
+- Smoke: tier1 5/5 PASS both states (gates-OFF and full VK_BASE+WATER_TIER1),
+  +0 destroy-delta all missions, worktree run_smoke vs 0.4c exe.
+- Remaining rung-6 residual (unchanged, now the whole gap): base-layer 3.6/ch
+  cov ~38% at grazing not yet itemized (suspects: fog band, alpha/blend LSB,
+  detail layer); detail/spray layer (isWater==2) still GL-discarded both sides.
 
 ## RUNG 6 — VK-WATER-TIER1 (2026-07-07) — SHIPPED (base-layer, reflection-off subset)
 
