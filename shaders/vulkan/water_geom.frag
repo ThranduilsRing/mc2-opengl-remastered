@@ -73,6 +73,7 @@ void main(void)
     vec3  SHALLOW_COLOR = F.SHALLOW_COLOR.xyz;
 
     PREC vec3  viewVec = camPos - WorldPos;
+    //PORT-BEGIN:waterBaseColor
     PREC float waveLOD = 1.0 - smoothstep(WAVE_FADE_NEAR, WAVE_FADE_FAR, length(viewVec));
 
     PREC float sc = time * WAVE_SPEED * WAVE_FREQ;
@@ -94,6 +95,7 @@ void main(void)
     col *= 1.0 + RIPPLE_GAIN * waveLOD * crest;
     PREC float glint = smoothstep(GLINT_THRESH, 0.80, nz);
     col += glint * GLINT_GAIN * waveLOD * GLINT_TINT;
+    //PORT-END:waterBaseColor
     // sky-tint OFF (strength 0 default) -> no-op; reflection block OFF -> skipped.
 
     if (F.fog_color.x > 0.0 || F.fog_color.y > 0.0 || F.fog_color.z > 0.0 || F.fog_color.w > 0.0)

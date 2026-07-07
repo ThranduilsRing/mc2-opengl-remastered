@@ -33,6 +33,9 @@ REGISTRY = [
     # ported into BOTH the main and skirt VS (same GL block, same marker name).
     ("visualDisplaceFar", "shaders/terrain_lod_chunk.vert", "shaders/vulkan/terrain_tier1.vert"),
     ("visualDisplaceFar", "shaders/terrain_lod_chunk.vert", "shaders/vulkan/terrain_tier1_skirt.vert"),
+    # VK-WATER-TIER1 (rung 6): armed-water base-layer color math (waveLOD/fBm/
+    # absorption/shore/light/crest/glint), GL MDI water FS vs the VK water FS.
+    ("waterBaseColor", "shaders/gos_terrain_water_mdi.frag", "shaders/vulkan/water_geom.frag"),
 ]
 
 

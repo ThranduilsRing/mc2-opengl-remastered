@@ -169,6 +169,7 @@ void main(void)
         // ---- water-v1 stylized base layer ----
         // viewVec used ONLY for distance (waveLOD anti-alias) - NOT angle.
         PREC vec3  viewVec = cameraPos.xyz - WorldPos;
+        //PORT-BEGIN:waterBaseColor
         PREC float waveLOD = 1.0 - smoothstep(WAVE_FADE_NEAR, WAVE_FADE_FAR, length(viewVec));
 
         // BAR-style: TWO fBm layers scrolling in OPPOSITE directions -> organic
@@ -206,6 +207,7 @@ void main(void)
         col *= 1.0 + RIPPLE_GAIN * waveLOD * crest;            // brighten only
         PREC float glint = smoothstep(GLINT_THRESH, 0.80, nz); // sharp crest sparkle
         col += glint * GLINT_GAIN * waveLOD * GLINT_TINT;      // camera-INDEPENDENT shimmer
+        //PORT-END:waterBaseColor
         // WATER-VISUAL-FIRST-SLICE: gated camera-INDEPENDENT sky/horizon tint.
         // f(uniform color, strength) only — no view angle, no reflection. At
         // strength 0 (default) the mix returns col unchanged -> byte-identical.
