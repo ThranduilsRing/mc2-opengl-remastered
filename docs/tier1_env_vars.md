@@ -303,6 +303,34 @@ Headless Vulkan probe / backend-skeleton exercise gates. All read via bare `gete
   slice originally baked the matId unconditionally, so installs without
   the hand-placed TGAs sampled texture 0 -> black/invisible roads.
 
+## ENV-DROP registration sweep (2026-07-07)
+
+Gates found in source but missing from `scripts/check-env-registry.sh` (now allowlisted, batch 8). All default-OFF unless noted.
+
+- `MC2_GAMEOS_UI_DEFS=0` — force the legacy GameOS FIT UI path. Default **ON** (data/defs is the replacement path, not an opt-in). `gui/UiDefs.cpp`.
+- `MC2_EDITOR_UI_DEFS=0` — force the legacy pure-MFC editor shell. Default **ON** (editor shell overlay is data/defs-first).
+- `MC2_UI_DEFS_LOADSCREEN=1` / `MC2_UI_DEFS_RESULTS=1` — opt the loadscreen pages / mission-results page back into data/defs UI (both pinned to legacy by default until authored).
+- `MC2_UI_DEFS_IGNORE_PACKAGE_VERSION=1` — bypass the UI defs package version check (modder iteration escape hatch).
+- `MC2_UI_DEFS_TRACE=1` — UI defs resolve/replacement trace (`gui/UiDefs.cpp`, `GuiRuntime/GuiRuntime.cpp`).
+- `MC2_FORCE_43=1` — forced 4:3 letterbox composite box (launcher "Force 4:3" toggle; unset = full surface, byte-identical).
+- `MC2_HUD_SCALE=<0.2..1.0>` — HUD scale env seed; the ImGui slider wins after startup.
+- `MC2_PREVIEW_FBO_SCALE=<1..8>` — camera-preview FBO supersample factor (default **4** = 3200x2400).
+- `MC2_PREVIEW_NOCULL=1` — panel-preview force-disable `GL_CULL_FACE` (FBO winding-order debug).
+- `MC2_PNG_MAGENTA_KEY=0` — killswitch for PNG magenta→alpha keying at decode. Default **ON**.
+- `MC2_LEGACY_LOAD_BANNER=1` — restore the retired world-floating blue load banner overlay.
+- `MC2_SCREENSHOT_SOURCE=backbuffer` — `MC2_SCREENSHOT_AT_FRAME` capture reads FBO 0 backbuffer instead of sceneFBO (needed for logistics/menu screens; requires non-minimized window).
+- `MC2_SHOT_RESULTS=1` — RESULTS-CAPTURE-1: deterministic AAR screenshots of results screens after 30 settled frames (pairs with `MC2_DEV_SHELL=1`).
+- `MC2_SOAK_STOP_AT_BAY=1` — soak harness parks at the mech bay instead of auto-advancing (requires `MC2_SOAK_AUTOWIN`).
+- `MC2_DRAW_PACKET_V3=1` — static-prop DrawPacket v3 candidate→`RenderCore::DrawPacket[]` ABI promotion (no dispatch; legacy flush unchanged).
+- `MC2_DRAW_PACKET_COALESCE_V5=1` — DrawPacket v5 per-draw-call substitutive dispatch (requires ARB_base_instance). `_TRACE` variant logs.
+- `MC2_DRAW_PACKET_STATIC_PROP_V6_TRACE=1` — v7 canonical packet+meta dispatch trace (the v6 opt-in gate itself is retired; kill-switch is `MC2_STATIC_PROP_LEGACY_DISPATCH=1`).
+- `MC2_STATIC_C1B_DRAW=1` — re-enable the (architecturally buggy) C1b GPU indirect instance count for the per-type legacy static-prop draw loop.
+- `MC2_REGFLUSH_GUARD2=1` — static-registry persistent-vanish discriminator: per-typeID stale buckets + consecutive-stale streaks (streak ≥16 frames = real drop, not transient cull). Per-range map cost when on.
+- `MC2_M2D_PZ_PARITY=1` — quad `pz` clip-path vs legacy-formula parity probe (demoted-not-deleted after green).
+- `MC2_3DVIEW_DIAG=1` — one-shot 3D-view composite diagnostics (`gameos_graphics.cpp`).
+- `MC2_TERRAIN_DECAL_TRACE=1` — CLIFF_WALL mesh-decal placement trace (`mclib/bdactor.cpp`).
+- `MC2_WATER_S6_TRACE=1` / `MC2_WATER_S6_COST=1` — water S6 armed-skip ownership transitions / setupTextures QPC cost summary every 600 frames.
+
 ## Terrain fast-path drop log
 
 - `MC2_FASTPATH_DROP_LOG=1` — log terrain fast-path -> legacy setupTextures transitions (transition-only, `[FASTPATH_DROP]`). Default **OFF**.

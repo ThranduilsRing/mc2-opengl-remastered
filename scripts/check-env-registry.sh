@@ -716,6 +716,47 @@ ALLOWLIST=(
     MC2_WATER_NO_DEPTH_WRITE          # feature -- water no-depth-write gate
     MC2_WATER_SHINE                   # feature -- water shine gate
     MC2_WATER_THINRING_TRACE          # trace
+
+    # --- batch 8 (ENV-DROP sweep 2026-07-07: recent slices that skipped registration) ---
+    MC2_3DVIEW_DIAG                   # trace -- one-shot 3D-view composite diagnostics (gameos_graphics.cpp)
+    MC2_CAMERA_ASPECT_NATIVE          # feature -- native window-aspect camera projection (default ON; =0 restores legacy 4:3 stretch)
+    MC2_DRAW_PACKET_COALESCE_V5       # feature -- static-prop DrawPacket v5 per-draw substitutive dispatch (opt-in =1, needs ARB_base_instance)
+    MC2_DRAW_PACKET_COALESCE_V5_TRACE # trace
+    MC2_DRAW_PACKET_STATIC_PROP_V6_TRACE  # trace -- v7 canonical packet dispatch trace (v6 gate itself retired)
+    MC2_DRAW_PACKET_V3                # feature -- DrawPacket v3 candidate->ABI promotion, no dispatch (opt-in =1)
+    MC2_EDITOR_UI_DEFS                # feature -- editor shell data/defs UI path (default ON; =0 forces legacy pure-MFC shell)
+    MC2_FORCE_43                      # feature -- forced 4:3 letterbox composite box (launcher toggle; default OFF)
+    MC2_GAMEOS_UI_DEFS                # feature -- GameOS data/defs UI replacement path (default ON; =0 forces legacy FIT path)
+    MC2_HDRI_BC6H                     # feature -- HDRI sky BC6H .ktx2 sidecar upload (default ON; =0 forces RGBA16F fallback, documented tier1)
+    MC2_HUD_SCALE                     # override -- HUD scale env seed [0.2,1.0] (ImGui slider wins after)
+    MC2_LEGACY_LOAD_BANNER            # legacy -- restore retired world-floating load banner overlay (default OFF)
+    MC2_M2D_PZ_PARITY                 # parity -- quad pz clip-vs-legacy probe, demoted-not-deleted (default OFF)
+    MC2_PNG_MAGENTA_KEY               # feature -- PNG magenta->alpha keying at decode (default ON; =0 killswitch)
+    MC2_PREVIEW_FBO_SCALE             # override -- camera-preview FBO supersample factor 1-8 (default 4)
+    MC2_PREVIEW_NOCULL                # override -- panel-preview force-disable GL_CULL_FACE (FBO winding debug)
+    MC2_R2B_STATIC_NATURAL_TRACE      # trace -- documented tier1
+    MC2_R2B_TOUCH_PRESERVE            # feature -- R2b tree cachedFrame_ liveness stamp killswitch (default ON; =0 reproduces tree drop, documented tier1)
+    MC2_REGFLUSH_GUARD2               # trace -- static-registry persistent-vanish streak discriminator (default OFF, per-range map cost)
+    MC2_ROAD_PBR                      # feature -- PBR asphalt/gravel road materials opt-in (=1; USER RULING 2026-07-05 legacy tgl tiles are default)
+    MC2_SCREENSHOT_SOURCE             # infra -- screenshot capture source select (=backbuffer for logistics/menu screens)
+    MC2_SHADOW_CSM_R0                 # override -- CSM near cascade radius WU (default 512, min 64)
+    MC2_SHADOW_CSM_R1                 # override -- CSM mid cascade radius WU (default 4096, min 128)
+    MC2_SHADOW_STATIC_BANDFIX         # feature -- static-shadow Poisson-tap banding fix v1 (default OFF = byte-identical)
+    MC2_SHADOW_STATIC_BANDFIX_V2      # feature -- slope-normal shadow-bias banding fix v2 (default OFF = byte-identical)
+    MC2_SHOT_RESULTS                  # infra -- RESULTS-CAPTURE-1 deterministic AAR screenshots (pairs with MC2_DEV_SHELL)
+    MC2_SOAK_STOP_AT_BAY              # infra -- soak harness park at mech bay (requires MC2_SOAK_AUTOWIN)
+    MC2_STANDARD_LIT_V1               # feature -- mech StandardLit GGX gate (opt-in =1; temporary default-OFF)
+    MC2_STATIC_C1B_DRAW               # override -- re-enable (buggy) C1b GPU indirect instance count for static-prop draw (default OFF)
+    MC2_TERRAIN_CLIFF_SHADOW_FLOOR    # feature -- cliff shadow-side floor lift, env is authoritative arm (unset/=0 byte-identical no-op)
+    MC2_TERRAIN_DECAL_TRACE           # trace -- CLIFF_WALL mesh-decal placement trace
+    MC2_UI_ASPECT_ANCHOR              # feature -- centered 16:9 UI canvas anchor (default ON; =0 legacy full-surface, documented tier1)
+    MC2_UI_DEFS_IGNORE_PACKAGE_VERSION  # override -- bypass UI defs package version check (modder iteration escape hatch)
+    MC2_UI_DEFS_LOADSCREEN            # feature -- opt loadscreen pages back into data/defs UI (default OFF = pinned legacy)
+    MC2_UI_DEFS_RESULTS               # feature -- opt mission-results page into data/defs UI (default OFF = pinned legacy)
+    MC2_UI_DEFS_TRACE                 # trace
+    MC2_WATER_S6_COST                 # trace -- water S6 setupTextures QPC cost summary (600-frame idiom)
+    MC2_WATER_S6_TRACE                # trace -- water S6 armed-skip ownership transitions
+    MC2_WINDOW_RESIZABLE              # feature -- SDL resizable window when windowed (default ON with MC2_WINDOWED; =0 fixed)
 )
 
 if [[ $VERBOSE -eq 1 ]]; then
@@ -745,6 +786,7 @@ SOURCE_DIRS=(
     "$WORKTREE/code"
     "$WORKTREE/editor"
     "$WORKTREE/GuiRuntime"
+    "$WORKTREE/gui"
     "$WORKTREE/EditorBridge"
 )
 
