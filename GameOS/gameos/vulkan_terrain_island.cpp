@@ -165,6 +165,19 @@ bool terrainSkirtsRequested() {
     return state == 1;
 }
 
+// VK-TERRAIN-VISUALDISPLACE-FAR-1 (rung 5): far-band visual-displace mode-2 Z-swap
+// sub-gate. Requires ALL_LODS (mode-2 only exists on lodStep>1 bands). Same explicit
+// envTriState opt-in pattern as MC2_VK_TERRAIN_SKIRTS (unset -> OFF regardless of
+// umbrella) so the oracle can isolate "VK bands undisplaced (GL owns displaced)" from
+// "VK bands displaced" -- if the Z-swap diverges, flip this OFF alone and keep rung 3/4.
+bool terrainVisualDisplaceFarRequested() {
+    static int state = -1;
+    if (state == -1) {
+        state = (terrainAllLodsRequested() && mc2vkgate::envTriState("MC2_VK_TERRAIN_VISUALDISPLACE_FAR") == 1) ? 1 : 0;
+    }
+    return state == 1;
+}
+
 std::string spv_dir() {
     const char* env = std::getenv("MC2_VULKAN_SPV_DIR");
     std::string d = (env && *env) ? env : "shaders/vulkan";
@@ -264,7 +277,13 @@ struct TerrainFrameUBO {
     float   csmCascadeMatrices[16 * 3]; // off 368: dynamicCascadeMatrices[MC2_SHADOW_CSM_MAX] (mat4 x3)
     float   csmCascadeTexelWorld[4];    // off 560: per-cascade world-texel footprint (vec3 used + pad)
     float   csmFullMapTexelWorld;    // off 576: dynamicFullMapTexelWorld (separate lower-res full-map tex)
-    int32_t _pad[111];               // off 580..1023: remaining pad
+    // VK-TERRAIN-VISUALDISPLACE-FAR-1 (rung 5): mode-2 far-band Z-swap params, packed
+    // into the pad tail (slot does NOT grow). LOCKSTEP with terrain_tier1.vert /
+    // terrain_tier1_skirt.vert / terrain_tier1.frag.
+    int32_t visualSide;              // off 580: fine bake side V (0 = bake not snapshotted)
+    float   visualDisplaceFar;       // off 584: MC2_TERRAIN_VISUAL_DISPLACE_FAR fade 0..1
+    int32_t visualMode;              // off 588: 0 = no displace, 2 = far-band Z-swap (per patch)
+    int32_t _pad[108];               // off 592..1023: remaining pad
 };
 static_assert(sizeof(TerrainFrameUBO) == 1024, "UBO slot must be 1024B (dynamic alignment, grew for CSM-NEAR-1)");
 
@@ -346,6 +365,14 @@ struct TerrainIsland {
     uint64_t      heightVersionCopied = UINT64_MAX; // last snapshotted feed version
     uint64_t      heightChecksum = 0;               // FNV-1a of the snapshot bytes (height-audit)
     bool          heightChecksumValid = false;      // a real snapshot has been checksummed
+
+    // VK-TERRAIN-VISUALDISPLACE-FAR-1 (rung 5): VK-owned snapshot of the GL 4x visual
+    // heightfield bake (GL binding 26 -> here binding 10). Version-gated mission-load
+    // copy, mirrors the cement-word SSBO snapshot machinery.
+    VkBuffer      visualHeightBuf = VK_NULL_HANDLE; VmaAllocation visualHeightAlloc = VK_NULL_HANDLE;
+    VkDeviceSize  visualHeightCapBytes = 0;
+    uint64_t      visualHeightVersionCopied = UINT64_MAX;
+    bool          visualHeightReady = false;        // a real bake snapshot is live
 
     // COLORMAP-BASE sub-slice: VK-owned copy-once import of the GL colormap atlas
     // (g_atlasGLTex). Sampled image + view + sampler; binding 2. Keyed by the GL tex
@@ -631,7 +658,7 @@ void write_descriptors(TerrainIsland* s) {
     // binding 3 = cement combined-image-sampler (dummy/real); binding 4 = cement-word SSBO.
     VkDescriptorBufferInfo uboInfo{ s->ubo, 0, sizeof(TerrainFrameUBO) }; // range = one slot
     VkDescriptorBufferInfo hInfo{ s->heightBuf, 0, VK_WHOLE_SIZE };
-    VkWriteDescriptorSet w[10]{};
+    VkWriteDescriptorSet w[11]{};
     uint32_t n = 0;
     w[n].sType = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET; w[n].dstSet = s->set;
     w[n].dstBinding = 0; w[n].descriptorCount = 1;
@@ -719,6 +746,15 @@ void write_descriptors(TerrainIsland* s) {
         w[n].dstBinding = 9; w[n].descriptorCount = 1;
         w[n].descriptorType = VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER; w[n].pImageInfo = &csmFmInfo; ++n;
     }
+    // VK-TERRAIN-VISUALDISPLACE-FAR-1: binding 10 visual-height (fine bake) SSBO —
+    // always written (dummy 16B until the first bake snapshot; uT.visualMode==0 gates use).
+    VkDescriptorBufferInfo vhBuf{};
+    if (s->visualHeightBuf != VK_NULL_HANDLE) {
+        vhBuf.buffer = s->visualHeightBuf; vhBuf.offset = 0; vhBuf.range = VK_WHOLE_SIZE;
+        w[n].sType = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET; w[n].dstSet = s->set;
+        w[n].dstBinding = 10; w[n].descriptorCount = 1;
+        w[n].descriptorType = VK_DESCRIPTOR_TYPE_STORAGE_BUFFER; w[n].pBufferInfo = &vhBuf; ++n;
+    }
     vkUpdateDescriptorSets(s->device, n, w, 0, nullptr);
 }
 
@@ -781,6 +817,7 @@ void destroy_island(TerrainIsland* s) {
     if (s->fb)      vkDestroyFramebuffer(d, s->fb, nullptr);
     if (s->rpass)   vkDestroyRenderPass(d, s->rpass, nullptr);
     if (s->heightBuf) vmaDestroyBuffer(s->allocator, s->heightBuf, s->heightAlloc);
+    if (s->visualHeightBuf) vmaDestroyBuffer(s->allocator, s->visualHeightBuf, s->visualHeightAlloc);
     if (s->ubo)     vmaDestroyBuffer(s->allocator, s->ubo, s->uboAlloc);
     if (s->colormapSamp) vkDestroySampler(d, s->colormapSamp, nullptr);
     if (s->colormapView) vkDestroyImageView(d, s->colormapView, nullptr);
@@ -970,6 +1007,15 @@ bool init_island(TerrainIsland* s, int w, int h) {
         }
         s->cementCapBytes = 16;
     }
+    // VK-TERRAIN-VISUALDISPLACE-FAR-1: dummy 16B visual-height SSBO so binding 10 is a
+    // valid descriptor from frame 1 (visualHeightReady stays false until the sub-gate is
+    // on AND the fine bake snapshots -> UBO visualMode stays 0 -> VS never reads it).
+    if (s->visualHeightBuf == VK_NULL_HANDLE) {
+        if (!make_buffer(s, 16, VK_BUFFER_USAGE_STORAGE_BUFFER_BIT, &s->visualHeightBuf, &s->visualHeightAlloc, true)) {
+            setFallback("visual_height_dummy_ssbo_failed"); return false;
+        }
+        s->visualHeightCapBytes = 16;
+    }
     // VK-TERRAIN-LIGHTING: dummy 1x1 depth-compare shadow (binding 5) so binding 5 is a
     // valid descriptor from frame 1 (shadowReady stays false until MC2_VK_TERRAIN_LIGHTING
     // is on AND the GL static shadow map is live -> FS enableShadows=0 -> lit-only, no hole).
@@ -986,7 +1032,7 @@ bool init_island(TerrainIsland* s, int w, int h) {
 
     // ---- Descriptor layout: binding0 dynamic UBO (VS+FS), binding1 height SSBO (VS). ----
     {
-        VkDescriptorSetLayoutBinding b[10]{};
+        VkDescriptorSetLayoutBinding b[11]{};
         b[0].binding = 0; b[0].descriptorType = VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER_DYNAMIC;
         b[0].descriptorCount = 1; b[0].stageFlags = VK_SHADER_STAGE_VERTEX_BIT | VK_SHADER_STAGE_FRAGMENT_BIT;
         // VK-TERRAIN-DETAIL: binding 1 (height SSBO) is now ALSO read by the FS
@@ -1017,15 +1063,19 @@ bool init_island(TerrainIsland* s, int w, int h) {
         b[8].descriptorCount = 1; b[8].stageFlags = VK_SHADER_STAGE_FRAGMENT_BIT;
         b[9].binding = 9; b[9].descriptorType = VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER;
         b[9].descriptorCount = 1; b[9].stageFlags = VK_SHADER_STAGE_FRAGMENT_BIT;
+        // VK-TERRAIN-VISUALDISPLACE-FAR-1: binding 10 = visual-height fine-bake SSBO (VS,
+        // both main + skirt verts read it for the mode-2 Z-swap).
+        b[10].binding = 10; b[10].descriptorType = VK_DESCRIPTOR_TYPE_STORAGE_BUFFER;
+        b[10].descriptorCount = 1; b[10].stageFlags = VK_SHADER_STAGE_VERTEX_BIT;
         VkDescriptorSetLayoutCreateInfo lci{};
         lci.sType = VK_STRUCTURE_TYPE_DESCRIPTOR_SET_LAYOUT_CREATE_INFO;
-        lci.bindingCount = 10; lci.pBindings = b;
+        lci.bindingCount = 11; lci.pBindings = b;
         if (vkCreateDescriptorSetLayout(s->device, &lci, nullptr, &s->dsl) != VK_SUCCESS) {
             vlog("vkCreateDescriptorSetLayout failed."); return false;
         }
         VkDescriptorPoolSize sizes[4]{};
         sizes[0].type = VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER_DYNAMIC;  sizes[0].descriptorCount = 1;
-        sizes[1].type = VK_DESCRIPTOR_TYPE_STORAGE_BUFFER;          sizes[1].descriptorCount = 2; // height + cement
+        sizes[1].type = VK_DESCRIPTOR_TYPE_STORAGE_BUFFER;          sizes[1].descriptorCount = 3; // height + cement + visual-height
         sizes[2].type = VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER;  sizes[2].descriptorCount = 7; // colormap + cement + static shadow + matNormalArray + dyn shadow + csm array + csm fullmap
         VkDescriptorPoolCreateInfo pci{};
         pci.sType = VK_STRUCTURE_TYPE_DESCRIPTOR_POOL_CREATE_INFO;
@@ -1684,6 +1734,50 @@ bool snapshot_cement(TerrainIsland* s, const Mc2TerrainTier1Feed& feed) {
     return true;
 }
 
+// VK-TERRAIN-VISUALDISPLACE-FAR-1: snapshot the GL 4x visual-heightfield bake SSBO
+// (binding 26) into the VK-owned buffer when the feed version changes. Version-gated
+// mission-load copy (glGetBufferSubData -> vmaMap), mirroring snapshot_cement — the
+// bake is uploaded once per mission (gos_TerrainLodChunk_UploadVisualHeightFull), so
+// this is a cheap no-op on every other frame. Fail-soft: on any failure
+// visualHeightReady stays false -> UBO visualMode forced 0 -> VS draws undisplaced.
+bool snapshot_visual_height(TerrainIsland* s, const Mc2TerrainTier1Feed& feed) {
+    if (feed.glVisualHeightSsbo == 0 || feed.visualHeightBytes == 0) return false;  // bake not live
+    if (feed.visualHeightVersion == s->visualHeightVersionCopied && s->visualHeightReady) return true;
+    // Ensure capacity (grow-only, like the cement buffer).
+    if (s->visualHeightBuf == VK_NULL_HANDLE || (VkDeviceSize)feed.visualHeightBytes > s->visualHeightCapBytes) {
+        if (s->visualHeightBuf != VK_NULL_HANDLE) {
+            vkDeviceWaitIdle(s->device);
+            vmaDestroyBuffer(s->allocator, s->visualHeightBuf, s->visualHeightAlloc);
+            s->visualHeightBuf = VK_NULL_HANDLE;
+        }
+        VkDeviceSize cap = (VkDeviceSize)feed.visualHeightBytes + feed.visualHeightBytes / 4 + 4096;
+        if (!make_buffer(s, cap, VK_BUFFER_USAGE_STORAGE_BUFFER_BIT, &s->visualHeightBuf, &s->visualHeightAlloc, true))
+            return false;
+        s->visualHeightCapBytes = cap;
+        s->visualHeightVersionCopied = UINT64_MAX; // force re-snapshot into the new buffer
+        write_descriptors(s);
+    }
+    std::vector<uint8_t> scratch((size_t)feed.visualHeightBytes);
+    glBindBuffer(GL_SHADER_STORAGE_BUFFER, (GLuint)feed.glVisualHeightSsbo);
+    glGetBufferSubData(GL_SHADER_STORAGE_BUFFER, 0, (GLsizeiptr)feed.visualHeightBytes, scratch.data());
+    glBindBuffer(GL_SHADER_STORAGE_BUFFER, 0);
+    void* p = nullptr;
+    if (vmaMapMemory(s->allocator, s->visualHeightAlloc, &p) != VK_SUCCESS) return false;
+    std::memcpy(p, scratch.data(), (size_t)feed.visualHeightBytes);
+    vmaUnmapMemory(s->allocator, s->visualHeightAlloc);
+    s->visualHeightVersionCopied = feed.visualHeightVersion;
+    s->visualHeightReady = true;
+    static bool s_first = false;
+    if (!s_first) {
+        vlog("VK-TERRAIN-VISUALDISPLACE-FAR-1: snapshotted GL visual-height bake "
+             "(V=%d bytes=%llu ver=%llu); VK far bands now Z-swap like GL mode 2.",
+             feed.visualSide, (unsigned long long)feed.visualHeightBytes,
+             (unsigned long long)feed.visualHeightVersion);
+        s_first = true;
+    }
+    return true;
+}
+
 // ---------------------------------------------------------------------------
 // VK-TERRAIN-LIGHTING sub-slice: STATIC sun shadow map. VK-SHADOW-COPY-ONCE-1 UPDATE:
 // the GL static shadow map is built ONCE PER MISSION (gos_StaticLightMatrixBuilt()
@@ -2130,6 +2224,10 @@ extern "C" int mc2_vk_terrain_skirts_enabled() {
     return terrainSkirtsRequested() ? 1 : 0;
 }
 
+extern "C" int mc2_vk_terrain_visualdisplace_far_enabled() {
+    return terrainVisualDisplaceFarRequested() ? 1 : 0;
+}
+
 // FAIL-SOFT ISLAND-READY predicate. True only when the gate is on AND the island is in a
 // state where run() is expected to co-write this frame's LOD0 patches. The GL LOD-chunk
 // loop gates its SPECULATIVE LOD0-skip on this: if the island can NOT render (SPV/pipeline
@@ -2230,6 +2328,12 @@ extern "C" int mc2_vk_terrain_island_run(int w, int h) {
     // the GL/render thread (GL context current) — same as the colormap/height copies.
     import_cement(s, feed);
     snapshot_cement(s, feed);
+
+    // VK-TERRAIN-VISUALDISPLACE-FAR-1: version-gated mission-load snapshot of the GL 4x
+    // visual-height bake (no-op unless the sub-gate armed the feed fields AND the bake
+    // version changed). Fail-soft: not-ready -> UBO visualMode forced 0 (undisplaced).
+    if (feed.glVisualHeightSsbo != 0)
+        snapshot_visual_height(s, feed);
 
     // VK-TERRAIN-LIGHTING: copy-once-per-generation of the GL static sun shadow map into
     // the VK D32 depth-compare image (VK-SHADOW-COPY-ONCE-1: the GL map is built once per
@@ -2372,6 +2476,14 @@ extern "C" int mc2_vk_terrain_island_run(int w, int h) {
                 u.csmCascadeTexelWorld[2] = feed.csmCascadeTexelWorld[2];
                 u.csmCascadeTexelWorld[3] = 0.0f;
                 u.csmFullMapTexelWorld = feed.csmFullMapTexelWorld;
+                // VK-TERRAIN-VISUALDISPLACE-FAR-1: mode-2 far-band Z-swap. Per-patch
+                // visualMode (0 or 2, from the GL capture site) is only honored when the
+                // bake snapshot is live AND the side is sane -- else forced 0 (VS draws
+                // undisplaced; fail-soft, never a hole).
+                u.visualSide        = feed.visualSide;
+                u.visualDisplaceFar = feed.visualDisplaceFar;
+                u.visualMode        = (feed.patches[i].visualMode == 2
+                                       && s->visualHeightReady && feed.visualSide > 1) ? 2 : 0;
                 slots[i] = u;
             }
             vmaUnmapMemory(s->allocator, s->uboAlloc);

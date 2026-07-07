@@ -49,6 +49,11 @@ struct Mc2TerrainTier1Patch {
     // per-edge mask-bit gate, gos_terrain_lod_chunk.cpp:1736,1755).
     float    skirtDepth;      // world-unit pull-down depth (0 = no skirt, mirrors GL skirtDepths[i])
     uint32_t skirtEdgeMask;   // bit0=N,1=S,2=W,3=E (mirrors GL skirtEdgeMasks[i], 0xF = all four)
+    // VK-TERRAIN-VISUALDISPLACE-FAR-1 (rung 5): GL's per-patch visual-displace mode for
+    // this block (gos_terrain_lod_chunk.cpp visualMode). Only 0 (no displace) or 2
+    // (far-band pure Z-swap, lodStep>1) ever reach the island -- mode-1 (LOD0 4x-finer
+    // topology) patches stay GL-owned (excluded at capture, separate L slice later).
+    int32_t  visualMode;
 };
 
 // Per-frame terrain feed (mirrors Mc2ColorPropFeed). Populated by the GL LOD-chunk
@@ -148,6 +153,17 @@ struct Mc2TerrainTier1Feed {
     uint32_t                    glCsmFullMapTex;        // GL name of dynamicFullMapTex_ (0 = not ready)
     int32_t                     csmFullMapSize;         // pp->getDynamicFullMapSize()
     float                       csmFullMapTexelWorld;   // pp->getDynamicFullMapTexelWorld()
+    // VK-TERRAIN-VISUALDISPLACE-FAR-1 (rung 5): the 4x-finer VISUAL heightfield bake
+    // (GL binding 26, s_visualHeightSsbo) the island snapshots version-gated at mission
+    // load (mirrors the height SSBO snapshot machinery), plus the mode-2 params the GL
+    // vert reads (u_visualSide / u_visualDisplaceFar). All 0 when the sub-gate
+    // (MC2_VK_TERRAIN_VISUALDISPLACE_FAR) is off or the bake isn't loaded -> island
+    // draws undisplaced (fail-soft; GL also keeps displaced patches in that case).
+    uint32_t                    glVisualHeightSsbo;    // GL name of s_visualHeightSsbo (0 = not loaded)
+    uint64_t                    visualHeightBytes;     // visualSide*visualSide*sizeof(float)
+    uint64_t                    visualHeightVersion;   // bumps on UploadVisualHeightFull (snapshot key)
+    int32_t                     visualSide;            // V = (mapSide-1)*4+1 (0 = bake not loaded)
+    float                       visualDisplaceFar;     // MC2_TERRAIN_VISUAL_DISPLACE_FAR fade, 0..1 (GL default 1)
 };
 
 // Provided BY the GL terrain path (gos_terrain_lod_chunk.cpp). The island calls this
@@ -177,6 +193,16 @@ int mc2_vk_terrain_all_lods_enabled();
 // island then draws the skirt geometry itself in the same co-write pass. Default-OFF
 // -> GL keeps drawing all skirts (today's shipped rung-3 state), byte-identical.
 int mc2_vk_terrain_skirts_enabled();
+
+// VK-TERRAIN-VISUALDISPLACE-FAR-1 (rung 5): true when the far-band visual-displace
+// sub-gate (MC2_VK_TERRAIN_VISUALDISPLACE_FAR, requires MC2_VK_TERRAIN_ALL_LODS) is
+// armed. When true the GL capture predicate RELAXES the visualDisplaceActive
+// exclusion for mode-2 (lodStep>1, non-stitched) patches: the island captures them
+// with visualMode=2 and Z-swaps their heights from the fine bake exactly like GL's
+// terrain_lod_chunk.vert mode-2 branch. Mode-1 (LOD0 4x topology) and stitched
+// patches stay GL-owned. Same envTriState opt-in pattern as MC2_VK_TERRAIN_SKIRTS
+// (unset -> OFF regardless of umbrella state). Default-OFF -> capture unchanged.
+int mc2_vk_terrain_visualdisplace_far_enabled();
 
 // FAIL-SOFT ready predicate. True only when the gate is on AND the island is in a state
 // where run() is expected to co-write this frame's LOD0 patches (born, inited, not

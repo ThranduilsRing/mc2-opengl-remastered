@@ -1709,6 +1709,14 @@ def main():
                             # kill-switch from ALL_LODS so a bad skirt port can be
                             # isolated without losing the rung-3 band win. Default-OFF.
                             "MC2_VK_TERRAIN_SKIRTS",
+                            # VK-TERRAIN-VISUALDISPLACE-FAR-1 (rung 5): far-band mode-2
+                            # visual-displace Z-swap port, requires MC2_VK_TERRAIN_ALL_LODS.
+                            # Independent kill-switch (same pattern as SKIRTS). Default-OFF.
+                            "MC2_VK_TERRAIN_VISUALDISPLACE_FAR",
+                            # GL-side far-band fade knob (MC2_TERRAIN_VISUAL_DISPLACE
+                            # itself is already allowlisted in the TERRAIN-VISUAL-HEIGHT
+                            # block below; the _FAR fade knob was not).
+                            "MC2_TERRAIN_VISUAL_DISPLACE_FAR",
                             "MC2_VK_TERRAIN_LIGHTING",
                             "MC2_VK_TERRAIN_DETAIL",
                             "MC2_VK_TERRAIN_LODFADE",

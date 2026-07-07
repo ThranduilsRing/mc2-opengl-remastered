@@ -795,6 +795,31 @@ void gos_TerrainLodChunk_Destroy()
 // ---------------------------------------------------------------------------
 static uint64_t g_terrainHeightVersion = 0;  // bumps on UploadHeightFull
 static uint64_t g_terrainCementVersion = 0;  // bumps on UploadCementWordsFull
+static uint64_t g_terrainVisualHeightVersion = 0;  // bumps on UploadVisualHeightFull (rung 5)
+
+// VK-TERRAIN-VISUALDISPLACE-FAR-1: file-scope reads of the SAME env knobs the draw
+// path caches locally (MC2_TERRAIN_VISUAL_DISPLACE / _FAR at gos_terrain_lod_chunk.cpp
+// draw site) so the feed getter can report them without touching the draw statics.
+static bool terrainVisualDisplaceGateOn()
+{
+    static const bool s_on = []() {
+        const char* v = getenv("MC2_TERRAIN_VISUAL_DISPLACE");
+        return v && v[0] && v[0] != '0';
+    }();
+    return s_on;
+}
+static float terrainVisualDisplaceFarParam()
+{
+    static const float s_far = []() {
+        const char* v = getenv("MC2_TERRAIN_VISUAL_DISPLACE_FAR");
+        if (!v || !v[0]) return 1.0f;
+        float f = (float)atof(v);
+        if (f < 0.0f) f = 0.0f;
+        if (f > 1.0f) f = 1.0f;
+        return f;
+    }();
+    return s_far;
+}
 static std::vector<Mc2TerrainTier1Patch> s_vkTerrainPatches;  // this frame's LOD0 patches
 static float    s_vkTerrainMvp[16] = {0};
 static bool     s_vkTerrainFeedValid = false;
@@ -837,6 +862,24 @@ extern "C" int mc2_terrain_tier1_get_frame_feed(Mc2TerrainTier1Feed* out)
     out->glCementSsbo       = static_cast<uint32_t>(s_cementSsbo.backendHandle);
     out->cementBytes        = (uint64_t)s_mapSide * (uint64_t)s_mapSide * sizeof(unsigned int);
     out->cementVersion      = g_terrainCementVersion;
+
+    // VK-TERRAIN-VISUALDISPLACE-FAR-1 (rung 5): hand the 4x visual-height bake SSBO +
+    // mode-2 params to the island. Armed ONLY when the sub-gate is on AND the GL displace
+    // gate is on AND the bake is loaded -- else all-zero (island honors visualMode=0 only,
+    // and the capture predicate below never emits mode-2 patches in that case anyway).
+    out->glVisualHeightSsbo  = 0;
+    out->visualHeightBytes   = 0;
+    out->visualHeightVersion = 0;
+    out->visualSide          = 0;
+    out->visualDisplaceFar   = 0.0f;
+    if (mc2_vk_terrain_visualdisplace_far_enabled() && terrainVisualDisplaceGateOn()
+        && s_visualHeightSsbo.backendHandle != 0 && s_visualSide > 0) {
+        out->glVisualHeightSsbo  = static_cast<uint32_t>(s_visualHeightSsbo.backendHandle);
+        out->visualHeightBytes   = (uint64_t)s_visualSide * (uint64_t)s_visualSide * sizeof(float);
+        out->visualHeightVersion = g_terrainVisualHeightVersion;
+        out->visualSide          = s_visualSide;
+        out->visualDisplaceFar   = terrainVisualDisplaceFarParam();
+    }
 
     // VK-TERRAIN-LIGHTING sub-slice: hand the sun dir + the STATIC sun shadow map + the
     // static light-space matrix to the island so the VK terrain frag can reproduce the GL
@@ -1056,15 +1099,20 @@ extern "C" int mc2_terrain_tier1_get_frame_feed(Mc2TerrainTier1Feed* out)
     if (mc2vkfeeddump::enabled() && mc2vkfeeddump::readyToDump() && !mc2vkfeeddump::latch("terrain")) {
         mc2vkfeeddump::resetOnce();
         if (FILE* f = mc2vkfeeddump::openAppend(/*truncateFirst=*/false)) {
+            unsigned displacedPatches = 0;
+            for (uint32_t i = 0; i < out->patchCount; ++i)
+                if (out->patches[i].visualMode == 2) ++displacedPatches;
             std::fprintf(f, "{\"island\":\"terrain\",\"patchCount\":%u,\"mapSide\":%d,"
                 "\"halfMap\":%.6f,\"heightVersion\":%llu,\"cementVersion\":%llu,"
                 "\"useCement\":%d,\"lightingEnabled\":%d,\"shadowsEnabled\":%d,"
                 "\"dynShadowsEnabled\":%d,\"detailEnabled\":%d,\"lodFadeEnabled\":%d,"
+                "\"visualSide\":%d,\"visualDisplaceFar\":%.6f,\"displacedPatches\":%u,"
                 "\"patches\":[",
                 out->patchCount, out->mapSide, out->halfMap,
                 (unsigned long long)out->heightVersion, (unsigned long long)out->cementVersion,
                 out->useCement, out->lightingEnabled, out->shadowsEnabled,
-                out->dynShadowsEnabled, out->detailEnabled, out->lodFadeEnabled);
+                out->dynShadowsEnabled, out->detailEnabled, out->lodFadeEnabled,
+                out->visualSide, out->visualDisplaceFar, displacedPatches);
             for (uint32_t i = 0; i < out->patchCount; ++i) {
                 const Mc2TerrainTier1Patch& p = out->patches[i];
                 std::fprintf(f, "%s{\"qcX\":%d,\"qcY\":%d,\"blockOriginX\":%d,"
@@ -1221,10 +1269,14 @@ void gos_TerrainLodChunk_SubmitDrawCommands(
     // per frame. Active = MC2_TERRAIN_VISUAL_DISPLACE on AND the 4x bake loaded.
     // Bind binding 26 for the whole draw; the per-chunk u_visualDisplace gates the
     // near (LOD0) band only. Default OFF -> u_visualDisplace stays 0 -> byte-identical.
+#ifdef MC2_VULKAN_ISLAND
+    const bool s_visualDisplaceGate = terrainVisualDisplaceGateOn();  // rung 5: shared helper (same env read)
+#else
     static const bool s_visualDisplaceGate = []() {
         const char* v = getenv("MC2_TERRAIN_VISUAL_DISPLACE");
         return v && v[0] && v[0] != '0';
     }();
+#endif
     const bool visualDisplaceActive = s_visualDisplaceGate && s_visualHeightSsbo.backendHandle != 0 && s_visualSide > 0;
     if (visualDisplaceActive)
         glBindBufferBase(GL_SHADER_STORAGE_BUFFER, TERRAIN_VISUAL_HEIGHT_SSBO_BINDING, static_cast<GLuint>(s_visualHeightSsbo.backendHandle));
@@ -1233,6 +1285,9 @@ void gos_TerrainLodChunk_SubmitDrawCommands(
     // TERRAIN-VISUAL-HEIGHT-S2-ALLLOD: far-band displacement fade, 0..1, default 1
     // (full displacement). Only scales the coarser-band (u_visualDisplace==2) verts;
     // LOD0 (mode 1) is untouched by this knob.
+#ifdef MC2_VULKAN_ISLAND
+    const float s_visualDisplaceFar = terrainVisualDisplaceFarParam();  // rung 5: shared helper (same env read)
+#else
     static const float s_visualDisplaceFar = []() {
         const char* v = getenv("MC2_TERRAIN_VISUAL_DISPLACE_FAR");
         if (!v || !v[0]) return 1.0f;
@@ -1241,6 +1296,7 @@ void gos_TerrainLodChunk_SubmitDrawCommands(
         if (f > 1.0f) f = 1.0f;
         return f;
     }();
+#endif
     if (s_locVisualDisplaceFar >= 0)
         glUniform1f(s_locVisualDisplaceFar, s_visualDisplaceFar);
 
@@ -1737,8 +1793,17 @@ void gos_TerrainLodChunk_SubmitDrawCommands(
         const bool s_vkAllLodsActive = s_vkTerrainActive &&
             (mc2_vk_terrain_all_lods_enabled() != 0);
         const bool s_vkCaptureThisBand = (cmd.lodStep == 1) || s_vkAllLodsActive;
+        // VK-TERRAIN-VISUALDISPLACE-FAR-1 (rung 5): relax the visualDisplaceActive
+        // exclusion for mode-2 patches (lodStep>1, pure Z-swap, same vertex density)
+        // when the sub-gate is armed. Mode-1 patches (lodStep==1, 4x-finer topology +
+        // corner-pinned edges) stay GL-owned (separate L slice later); stitched patches
+        // stay excluded below regardless. Gate OFF -> predicate IDENTICAL to rung 4.
+        const bool s_vkVisDispFarActive = s_vkAllLodsActive &&
+            (mc2_vk_terrain_visualdisplace_far_enabled() != 0);
+        const bool s_vkOwnsDisplace = !visualDisplaceActive ||
+            (s_vkVisDispFarActive && cmd.lodStep != 1);
         if (s_vkTerrainActive && s_vkCaptureThisBand &&
-            !visualDisplaceActive &&
+            s_vkOwnsDisplace &&
             (edgeStitch == nullptr || edgeStitch[i] == 0)) {
             const int maxOffX = (cmd.lodStep > 0) ? (qcX / cmd.lodStep) * cmd.lodStep : qcX;
             const int maxOffY = (cmd.lodStep > 0) ? (qcY / cmd.lodStep) * cmd.lodStep : qcY;
@@ -1758,6 +1823,10 @@ void gos_TerrainLodChunk_SubmitDrawCommands(
             const bool s_vkSkirtsActive = mc2_vk_terrain_skirts_enabled() != 0;
             p.skirtDepth    = (s_vkSkirtsActive && skirtDepths)    ? skirtDepths[i]    : 0.0f;
             p.skirtEdgeMask = (s_vkSkirtsActive && skirtEdgeMasks) ? skirtEdgeMasks[i] : 0u;
+            // VK-TERRAIN-VISUALDISPLACE-FAR-1: mirror the GL displaceFar decision below
+            // (visualDisplaceActive && lodStep != 1 -> mode 2). Mode-1 patches never get
+            // here (s_vkOwnsDisplace excluded them), so this is only ever 0 or 2.
+            p.visualMode    = (visualDisplaceActive && cmd.lodStep != 1) ? 2 : 0;
             s_vkTerrainPatches.push_back(p);
             s_vkTerrainFeedValid = true;
             continue;   // GL skips this patch's main + skirt draws unconditionally (this
@@ -2073,6 +2142,12 @@ void gos_TerrainLodChunk_UploadVisualHeightFull(const float* visualHeights, int 
     glBufferData(GL_SHADER_STORAGE_BUFFER, bytes, visualHeights, GL_STATIC_DRAW);
     glBindBuffer(GL_SHADER_STORAGE_BUFFER, 0);
     s_visualSide = V;   // remembered for the displaced draw (u_visualSide)
+
+#ifdef MC2_VULKAN_ISLAND
+    // VK-TERRAIN-VISUALDISPLACE-FAR-1: the visual bake changed -> bump the snapshot key
+    // so the VK terrain island re-copies it (mission-load cadence, mirrors the height key).
+    ++g_terrainVisualHeightVersion;
+#endif
 
     // TERRAIN-VISUAL-HEIGHT-SSBO-OWNER-1: register the live visual-height SSBO
     // (observe-only metadata; never read by the draw path). Reached here only when
