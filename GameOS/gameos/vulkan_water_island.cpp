@@ -47,6 +47,17 @@
 #include "vulkan_context.h"
 #include "gos_terrain_water_stream.h"
 
+// RUNG 6 (VK-WATER-TIER1): in-place shared scene GBuffer co-write — the water
+// draw renders directly into the SAME scene color0(MRT0)+normal(MRT1)+depth
+// images GL authored (no offscreen water target, no GL composite pass, no
+// glGetTexImage depth readback). Same substrate + accessors the terrain/prop/
+// mech Tier-1 islands use.
+#define MC2_VULKAN_SHARED_SCENE_COLOR_IMPL_ISLAND
+#include "vulkan_shared_scene_color.h"
+#define MC2_VULKAN_SHARED_SCENE_DEPTH_IMPL_ISLAND
+#include "vulkan_shared_scene_depth.h"
+#include "vk_shared_gbuffer_gate.h"
+
 #include <cstdio>
 #include <cstdlib>
 #include <cstring>
@@ -116,6 +127,19 @@ bool waterInteropGateRequested() {
     return state == 1;
 }
 
+// MC2_VK_WATER_TIER1 (rung 6, VK full-ownership ladder): render the armed water
+// BASE layer IN-PLACE into the shared scene GBuffer (color0+normal+depth) like
+// the terrain/prop/mech Tier-1 islands — no offscreen target, no GL composite,
+// no depth readback. envTriState OPT-IN (unset -> OFF regardless of
+// MC2_VK_SHARED_GBUFFER; explicit "0" also OFF) — the same conservative
+// new-rung pattern as MC2_VK_TERRAIN_SKIRTS / MC2_VK_TERRAIN_VISUALDISPLACE_FAR
+// (rungs 4/5). Takes precedence over the legacy MC2_VK_WATER_INTEROP (P9a
+// offscreen+composite proof) when both are set.
+bool waterTier1Requested() {
+    static const bool s_on = (mc2vkgate::envTriState("MC2_VK_WATER_TIER1") == 1);
+    return s_on;
+}
+
 // MC2_VK_WATER_PERF — fine-grained per-sub-step microsecond breakdown of the VK
 // water interop path (additive diagnostic; zero cost when OFF). Emits a
 // [VK_WATER_PERF] line per frame with the readback/stage/depth-in/sem/submit/
@@ -183,6 +207,16 @@ struct WaterIsland {
     bool disabled = false;
     bool inited   = false;
     bool useInterop = false;
+    bool tier1    = false;   // rung 6: in-place shared scene GBuffer co-write
+
+    // Borrowed shared scene GBuffer (tier1 only; NOT owned — postprocess createFBOs
+    // owns lifetime; a resize rebuilds them AND resizes this island, which refetches).
+    VkImageResource* sColorRes  = nullptr;
+    VkImageResource* sNormalRes = nullptr;
+    VkImageResource* sDepthRes  = nullptr;
+    GlInteropView*   sColorView  = nullptr;
+    GlInteropView*   sNormalView = nullptr;
+    GlInteropView*   sDepthView  = nullptr;
 
     int w = 0, h = 0;
 
@@ -395,9 +429,35 @@ bool init_island(WaterIsland* s, int w, int h) {
         g_health.deviceName[sizeof(g_health.deviceName) - 1] = '\0';
     }
 
+    // ---- RUNG 6 (tier1): borrow the SHARED scene GBuffer (color0+normal+depth)
+    // the GL scene renders into — same accessors the terrain island uses
+    // (vulkan_terrain_island.cpp:879-888). Fail-soft: not ready => GL water draw. ----
+    s->tier1 = waterTier1Requested();
+    if (s->tier1) {
+        s->sColorRes  = mc2SharedSceneColorGetResource(MC2_SHARED_SCENE_COLOR0);
+        s->sNormalRes = mc2SharedSceneColorGetResource(MC2_SHARED_SCENE_NORMAL);
+        s->sDepthRes  = mc2SharedSceneDepthGetResource();
+        s->sColorView  = mc2SharedSceneColorGetGlView(MC2_SHARED_SCENE_COLOR0);
+        s->sNormalView = mc2SharedSceneColorGetGlView(MC2_SHARED_SCENE_NORMAL);
+        s->sDepthView  = mc2SharedSceneDepthGetGlView();
+        if (!s->sColorRes || !s->sNormalRes || !s->sDepthRes ||
+            !s->sColorView || !s->sNormalView || !s->sDepthView) {
+            setFallback("shared_gbuffer_not_ready");
+            return false;
+        }
+        s->useInterop = true;
+        g_health.interopActive = 1;
+        g_health.vk2glSemActive = s->sColorView->vkToGlImported ? 1 : 0;
+        vlog("TIER-1 shared scene GBuffer seam ACTIVE — in-place water co-write "
+             "(color0+normal+depth, no composite, no depth readback; vk2gl_sem=%d).",
+             g_health.vk2glSemActive);
+    }
+
     // ---- Exportable shared RGBA16F color (color attachment 0). ----
     const bool wantInterop = waterInteropGateRequested();
-    if (wantInterop) {
+    if (s->tier1) {
+        // tier1 owns no color surface; skip the P9a offscreen seam entirely.
+    } else if (wantInterop) {
         bool ok = vkImageResourceCreate(&s->colorResource, s->device, s->phys,
                                         (uint32_t)w, (uint32_t)h, kColorFmt,
                                         VK_IMAGE_USAGE_COLOR_ATTACHMENT_BIT | VK_IMAGE_USAGE_SAMPLED_BIT,
@@ -429,14 +489,18 @@ bool init_island(WaterIsland* s, int w, int h) {
     }
 
     // ---- GBuffer1 (color attachment 1, VK-owned local) + depth (imported). ----
-    if (!make_image(s, kColorFmt, VK_IMAGE_USAGE_COLOR_ATTACHMENT_BIT, &s->gbuf1Image, &s->gbuf1Alloc)) return false;
-    if (!make_view(s, s->gbuf1Image, kColorFmt, VK_IMAGE_ASPECT_COLOR_BIT, &s->gbuf1View)) return false;
-    if (!make_image(s, kDepthFmt, VK_IMAGE_USAGE_DEPTH_STENCIL_ATTACHMENT_BIT | VK_IMAGE_USAGE_TRANSFER_DST_BIT,
-                    &s->depthImage, &s->depthAlloc)) return false;
-    if (!make_view(s, s->depthImage, kDepthFmt, VK_IMAGE_ASPECT_DEPTH_BIT, &s->depthView)) return false;
-    const VkDeviceSize depthBytes = (VkDeviceSize)w * h * 4;
-    if (!make_buffer(s, depthBytes, VK_BUFFER_USAGE_TRANSFER_SRC_BIT, &s->depthStaging, &s->depthStagingAlloc)) return false;
-    s->depthScratch.resize((size_t)w * h);
+    // tier1 needs NONE of these: it attaches the shared scene normal + shared scene
+    // depth directly (LOAD-preserve) — no local gbuf1, no depth import staging.
+    if (!s->tier1) {
+        if (!make_image(s, kColorFmt, VK_IMAGE_USAGE_COLOR_ATTACHMENT_BIT, &s->gbuf1Image, &s->gbuf1Alloc)) return false;
+        if (!make_view(s, s->gbuf1Image, kColorFmt, VK_IMAGE_ASPECT_COLOR_BIT, &s->gbuf1View)) return false;
+        if (!make_image(s, kDepthFmt, VK_IMAGE_USAGE_DEPTH_STENCIL_ATTACHMENT_BIT | VK_IMAGE_USAGE_TRANSFER_DST_BIT,
+                        &s->depthImage, &s->depthAlloc)) return false;
+        if (!make_view(s, s->depthImage, kDepthFmt, VK_IMAGE_ASPECT_DEPTH_BIT, &s->depthView)) return false;
+        const VkDeviceSize depthBytes = (VkDeviceSize)w * h * 4;
+        if (!make_buffer(s, depthBytes, VK_BUFFER_USAGE_TRANSFER_SRC_BIT, &s->depthStaging, &s->depthStagingAlloc)) return false;
+        s->depthScratch.resize((size_t)w * h);
+    }
 
     // ---- UBOs. ----
     if (!make_buffer(s, sizeof(WaterVsParams), VK_BUFFER_USAGE_UNIFORM_BUFFER_BIT, &s->vsUbo, &s->vsUboAlloc)) return false;
@@ -457,6 +521,30 @@ bool init_island(WaterIsland* s, int w, int h) {
     // color1 (gbuffer1, CLEAR, STORE local) + depth (LOAD imported, GEQUAL, write). ----
     {
         VkAttachmentDescription att[3]{};
+        if (s->tier1) {
+        // RUNG 6 tier1: LOAD-preserve pass over the SHARED scene GBuffer (pattern:
+        // vulkan_terrain_island.cpp:895-974, EXCEPT depth is LOAD not CLEAR — water
+        // runs AFTER terrain/props/mechs wrote scene depth this frame and must
+        // GEQUAL-test against it, exactly like the GL water draw does).
+        att[0].format = s->sColorRes->format; att[0].samples = VK_SAMPLE_COUNT_1_BIT;
+        att[0].loadOp = VK_ATTACHMENT_LOAD_OP_LOAD; att[0].storeOp = VK_ATTACHMENT_STORE_OP_STORE;
+        att[0].stencilLoadOp = VK_ATTACHMENT_LOAD_OP_DONT_CARE; att[0].stencilStoreOp = VK_ATTACHMENT_STORE_OP_DONT_CARE;
+        att[0].initialLayout = VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL;
+        att[0].finalLayout   = VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL;
+        att[1].format = s->sNormalRes->format; att[1].samples = VK_SAMPLE_COUNT_1_BIT;
+        att[1].loadOp = VK_ATTACHMENT_LOAD_OP_LOAD; att[1].storeOp = VK_ATTACHMENT_STORE_OP_STORE;
+        att[1].stencilLoadOp = VK_ATTACHMENT_LOAD_OP_DONT_CARE; att[1].stencilStoreOp = VK_ATTACHMENT_STORE_OP_DONT_CARE;
+        att[1].initialLayout = VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL;
+        att[1].finalLayout   = VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL;
+        // Shared depth (D32_SFLOAT_S8_UINT export): LOAD both aspects (preserve the
+        // scene depth + whatever stencil GL holds), STORE both (water WRITES depth,
+        // matching GL — OOB-FOG-WATER-DEPTH-1 requires water depth writes).
+        att[2].format = s->sDepthRes->format; att[2].samples = VK_SAMPLE_COUNT_1_BIT;
+        att[2].loadOp = VK_ATTACHMENT_LOAD_OP_LOAD; att[2].storeOp = VK_ATTACHMENT_STORE_OP_STORE;
+        att[2].stencilLoadOp = VK_ATTACHMENT_LOAD_OP_LOAD; att[2].stencilStoreOp = VK_ATTACHMENT_STORE_OP_STORE;
+        att[2].initialLayout = VK_IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT_OPTIMAL;
+        att[2].finalLayout   = VK_IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT_OPTIMAL;
+        } else {
         // 0: shared color = WATER-ONLY contribution (composite option b). CLEAR to
         // TRANSPARENT (0,0,0,0) each frame; the water FS writes water color+alpha for
         // water fragments and discards non-water -> non-water pixels stay transparent.
@@ -483,6 +571,7 @@ bool init_island(WaterIsland* s, int w, int h) {
         att[2].stencilLoadOp = VK_ATTACHMENT_LOAD_OP_DONT_CARE; att[2].stencilStoreOp = VK_ATTACHMENT_STORE_OP_DONT_CARE;
         att[2].initialLayout = VK_IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT_OPTIMAL;
         att[2].finalLayout   = VK_IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT_OPTIMAL;
+        }
 
         VkAttachmentReference colorRefs[2]{
             {0, VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL},
@@ -525,7 +614,16 @@ bool init_island(WaterIsland* s, int w, int h) {
         if (vkCreateRenderPass(s->device, &rpci, nullptr, &s->rpass) != VK_SUCCESS) {
             vlog("vkCreateRenderPass failed."); return false;
         }
-        VkImageView fbViews[3] = { s->colorResource.view, s->gbuf1View, s->depthView };
+        VkImageView fbViews[3];
+        if (s->tier1) {
+            fbViews[0] = s->sColorRes->view;   // shared scene color0 (MRT0)
+            fbViews[1] = s->sNormalRes->view;  // shared scene normal (MRT1)
+            fbViews[2] = s->sDepthRes->view;   // shared scene depth
+        } else {
+            fbViews[0] = s->colorResource.view;
+            fbViews[1] = s->gbuf1View;
+            fbViews[2] = s->depthView;
+        }
         VkFramebufferCreateInfo fci{};
         fci.sType = VK_STRUCTURE_TYPE_FRAMEBUFFER_CREATE_INFO;
         fci.renderPass = s->rpass; fci.attachmentCount = 3; fci.pAttachments = fbViews;
@@ -614,6 +712,32 @@ bool init_island(WaterIsland* s, int w, int h) {
         // into transparent + SRC_ALPHA composite double-applied alpha (stored a², then
         // blended again) -> the warm R+10/B-5 tint. Premultiplied two-stage == one-stage.
         VkPipelineColorBlendAttachmentState cba[2];
+        if (s->tier1) {
+            // RUNG 6 tier1 blend — in-place over the LOADed scene color.
+            // The FS emits PREMULTIPLIED (col*a, a) (P9a composite-parity contract):
+            //   color = ONE / ONE_MINUS_SRC_ALPHA  -> dst.rgb = col*a + dst*(1-a),
+            //     the EXACT result of GL's straight-alpha SRC_ALPHA/OMSA one-stage
+            //     water blend (GL FS emits vec4(col, a)).
+            //   alpha = SRC_ALPHA / ONE_MINUS_SRC_ALPHA -> dst.a = a*a + dst.a*(1-a),
+            //     matching GL's alpha-channel arithmetic (src factor uses src.a=a).
+            cba[0] = {};
+            cba[0].blendEnable = VK_TRUE;
+            cba[0].srcColorBlendFactor = VK_BLEND_FACTOR_ONE;
+            cba[0].dstColorBlendFactor = VK_BLEND_FACTOR_ONE_MINUS_SRC_ALPHA;
+            cba[0].colorBlendOp = VK_BLEND_OP_ADD;
+            cba[0].srcAlphaBlendFactor = VK_BLEND_FACTOR_SRC_ALPHA;
+            cba[0].dstAlphaBlendFactor = VK_BLEND_FACTOR_ONE_MINUS_SRC_ALPHA;
+            cba[0].alphaBlendOp = VK_BLEND_OP_ADD;
+            cba[0].colorWriteMask = VK_COLOR_COMPONENT_R_BIT | VK_COLOR_COMPONENT_G_BIT |
+                                    VK_COLOR_COMPONENT_B_BIT | VK_COLOR_COMPONENT_A_BIT;
+            // Attachment 1 = the SHARED scene normal. GL's water GBuffer1 output has
+            // src.a == 0.0, so under GL's SRC_ALPHA blend it contributes NOTHING
+            // (dst unchanged). writeMask = 0 reproduces that exact no-op without
+            // relying on the independentBlend device feature.
+            cba[1] = {};
+            cba[1].blendEnable = VK_FALSE;
+            cba[1].colorWriteMask = 0;
+        } else {
         for (int i = 0; i < 2; ++i) {
             cba[i] = {};
             cba[i].blendEnable = VK_TRUE;
@@ -625,6 +749,7 @@ bool init_island(WaterIsland* s, int w, int h) {
             cba[i].alphaBlendOp = VK_BLEND_OP_ADD;
             cba[i].colorWriteMask = VK_COLOR_COMPONENT_R_BIT | VK_COLOR_COMPONENT_G_BIT |
                                     VK_COLOR_COMPONENT_B_BIT | VK_COLOR_COMPONENT_A_BIT;
+        }
         }
         VkPipelineColorBlendStateCreateInfo cb{};
         cb.sType = VK_STRUCTURE_TYPE_PIPELINE_COLOR_BLEND_STATE_CREATE_INFO;
@@ -821,7 +946,7 @@ extern "C" void mc2_render_backend_water_region_health(
 // True when the gate requests the VK water region (the caller then SKIPS the GL
 // MDI draw and calls mc2_vk_water_island_run instead — mutually exclusive).
 extern "C" int mc2_vk_water_island_enabled() {
-    return waterInteropGateRequested() ? 1 : 0;
+    return (waterTier1Requested() || waterInteropGateRequested()) ? 1 : 0;
 }
 
 // Per-frame entry. Inputs (all from the GL side, at water-render time):
@@ -837,8 +962,11 @@ extern "C" int mc2_vk_water_island_run(
     const void* thinRecords, unsigned int thinCount,
     const void* recipes, unsigned int recipeCount,
     const void* vsParams, const void* fsParams) {
-    if (!waterInteropGateRequested()) return 0;
-    if (thinCount == 0 || recipeCount == 0 || sceneColorTex == 0 || sceneDepthTex == 0 || w <= 0 || h <= 0) return 0;
+    if (!waterTier1Requested() && !waterInteropGateRequested()) return 0;
+    if (thinCount == 0 || recipeCount == 0 || w <= 0 || h <= 0) return 0;
+    // tier1 renders in-place into the shared GBuffer and never touches the GL
+    // scene textures; only the P9a path needs them.
+    if (!waterTier1Requested() && (sceneColorTex == 0 || sceneDepthTex == 0)) return 0;
 
     using clk = std::chrono::steady_clock;
     auto usSince = [](clk::time_point t0){ return std::chrono::duration<double, std::micro>(clk::now() - t0).count(); };
@@ -917,6 +1045,118 @@ extern "C" int mc2_vk_water_island_run(
             std::memcpy(p, fsParams, sizeof(WaterFsParams)); vmaUnmapMemory(s->allocator, s->fsUboAlloc);
         }
     }
+
+    // ============================ RUNG 6 TIER-1 PATH ============================
+    // In-place co-write into the SHARED scene GBuffer. No color/depth import, no
+    // composite. Frame-sync protocol COPIED from vulkan_terrain_island.cpp:2495-2603.
+    if (s->tier1) {
+        us_stage = usSince(tStage0);
+        g_health.copyColorInUs = 0.0;
+        g_health.copyDepthInUs = 0.0;
+
+        VkFrameSync fsC = vkImageResourceBeginFrame(s->sColorRes);
+        VkFrameSync fsN = vkImageResourceBeginFrame(s->sNormalRes);
+        VkFrameSync fsD = vkImageResourceBeginFrame(s->sDepthRes);
+        VkCommandBuffer cb = s->cbuf[fsC.parity & 1u];
+
+        glInteropSignalToVk(*s->sColorView,  GL_LAYOUT_COLOR_ATTACHMENT_EXT,         fsC.parity);
+        glInteropSignalToVk(*s->sNormalView, GL_LAYOUT_COLOR_ATTACHMENT_EXT,         fsN.parity);
+        glInteropSignalToVk(*s->sDepthView,  GL_LAYOUT_DEPTH_STENCIL_ATTACHMENT_EXT, fsD.parity);
+
+        const clk::time_point tRender0 = clk::now();
+        vkResetCommandBuffer(cb, 0);
+        VkCommandBufferBeginInfo bi{};
+        bi.sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_BEGIN_INFO;
+        bi.flags = VK_COMMAND_BUFFER_USAGE_ONE_TIME_SUBMIT_BIT;
+        if (vkBeginCommandBuffer(cb, &bi) != VK_SUCCESS) { setFallback("record_failed"); s->disabled = true; return 0; }
+
+        // All attachments LOAD -> clear values ignored (array must still cover them).
+        VkClearValue clears[3]{};
+        VkRenderPassBeginInfo rbi{};
+        rbi.sType = VK_STRUCTURE_TYPE_RENDER_PASS_BEGIN_INFO;
+        rbi.renderPass = s->rpass; rbi.framebuffer = s->fb;
+        rbi.renderArea = {{0, 0}, {(uint32_t)w, (uint32_t)h}};
+        rbi.clearValueCount = 3; rbi.pClearValues = clears;
+        vkCmdBeginRenderPass(cb, &rbi, VK_SUBPASS_CONTENTS_INLINE);
+        vkCmdBindPipeline(cb, VK_PIPELINE_BIND_POINT_GRAPHICS, s->pipe);
+        vkCmdBindDescriptorSets(cb, VK_PIPELINE_BIND_POINT_GRAPHICS, s->playout, 0, 1, &s->set, 0, nullptr);
+        vkCmdDraw(cb, thinCount * 6u, 1, 0, 0);
+        vkCmdEndRenderPass(cb);
+        if (vkEndCommandBuffer(cb) != VK_SUCCESS) { setFallback("record_failed"); s->disabled = true; return 0; }
+        us_record = usSince(tRender0);
+
+        // Submit: WAIT all three GL->VK sems; SIGNAL all three VK->GL sems + color fence.
+        VkSemaphore waitSems[3];   VkPipelineStageFlags waitStages[3];
+        VkSemaphore signalSems[3]; uint32_t waitN = 0, sigN = 0;
+        auto addWait = [&](VkSemaphore sem, VkPipelineStageFlags stage){
+            if (sem != VK_NULL_HANDLE) { waitSems[waitN] = sem; waitStages[waitN] = stage; ++waitN; } };
+        addWait(fsC.signal, VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT);
+        addWait(fsN.signal, VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT);
+        addWait(fsD.signal, VK_PIPELINE_STAGE_EARLY_FRAGMENT_TESTS_BIT);
+        const bool gpuC = s->sColorView->vkToGlImported  && fsC.vk2gl != VK_NULL_HANDLE;
+        const bool gpuN = s->sNormalView->vkToGlImported && fsN.vk2gl != VK_NULL_HANDLE;
+        const bool gpuD = s->sDepthView->vkToGlImported  && fsD.vk2gl != VK_NULL_HANDLE;
+        if (gpuC) signalSems[sigN++] = fsC.vk2gl;
+        if (gpuN) signalSems[sigN++] = fsN.vk2gl;
+        if (gpuD) signalSems[sigN++] = fsD.vk2gl;
+
+        VkSubmitInfo si{};
+        si.sType = VK_STRUCTURE_TYPE_SUBMIT_INFO;
+        si.waitSemaphoreCount = waitN; si.pWaitSemaphores = waitSems; si.pWaitDstStageMask = waitStages;
+        si.commandBufferCount = 1; si.pCommandBuffers = &cb;
+        si.signalSemaphoreCount = sigN; si.pSignalSemaphores = signalSems;
+        const clk::time_point tSubmit0 = clk::now();
+        if (vkQueueSubmit(s->queue, 1, &si, fsC.fence) != VK_SUCCESS) { setFallback("submit_failed"); s->disabled = true; return 0; }
+        us_submit = usSince(tSubmit0);
+
+        const clk::time_point tSem0 = clk::now();
+        if (gpuC) glInteropWaitFromVk(*s->sColorView,  GL_LAYOUT_COLOR_ATTACHMENT_EXT,         fsC.parity);
+        if (gpuN) glInteropWaitFromVk(*s->sNormalView, GL_LAYOUT_COLOR_ATTACHMENT_EXT,         fsN.parity);
+        if (gpuD) glInteropWaitFromVk(*s->sDepthView,  GL_LAYOUT_DEPTH_STENCIL_ATTACHMENT_EXT, fsD.parity);
+        us_sem_wait = usSince(tSem0);
+
+        const clk::time_point tFence0 = clk::now();
+        if (vkWaitForFences(s->device, 1, &fsC.fence, VK_TRUE, 5ull*1000*1000*1000) != VK_SUCCESS) {
+            setFallback("fence_timeout"); s->disabled = true; return 0;
+        }
+        us_fence_wait = usSince(tFence0);
+        g_health.drawUs = usSince(tRender0);
+        g_health.colorOutUs = 0.0;   // no composite in tier1
+
+        // HARD assert: no COLOR-side readback/copy fired (tier1 must be zero-copy on
+        // color AND depth — there is no expected depth-in either).
+        const bool tier1ReadbackFired =
+            (g_forbidden.vkCmdCopyBufferToImage != f0a) || (g_forbidden.vkCmdCopyImageToBuffer != f0b) ||
+            (g_forbidden.glGetTexImage != f0c) || (g_forbidden.glTexSubImage2D != f0d);
+        if (tier1ReadbackFired) {
+            vlog("FATAL: a COLOR-side readback/copy fired on the tier1 co-write path — "
+                 "zero-copy invariant violated; failing frame + disabling.");
+            setFallback("interop_did_readback"); s->disabled = true; return 0;
+        }
+
+        g_health.vkDraws = 1;
+        ++g_health.usedVulkan;
+        ++g_health.usedInterop;
+        g_health.totalUs = usSince(tTotal0);
+        static bool s_tier1FirstOk = false;
+        if (!s_tier1FirstOk) {
+            vlog("first TIER-1 in-place water GBuffer co-write: thin=%u recipes=%u "
+                 "(color0 premult-over blend, normal untouched (writemask 0, GL a=0 parity), "
+                 "shared depth GEQUAL test+write; no composite, no depth readback).",
+                 thinCount, recipeCount);
+            s_tier1FirstOk = true;
+        }
+        if (perf) {
+            std::fprintf(stderr,
+                "[VK_WATER_PERF] tier1=1 thin=%u recipes=%u stage_us=%.1f record_us=%.1f "
+                "submit_us=%.1f sem_wait_us=%.1f fence_wait_us=%.1f island_total_us=%.1f\n",
+                thinCount, recipeCount, us_stage, us_record, us_submit, us_sem_wait,
+                us_fence_wait, g_health.totalUs);
+            std::fflush(stderr);
+        }
+        return 1;
+    }
+    // ========================== END RUNG 6 TIER-1 PATH ==========================
 
     // ---- 4) COMPOSITE OPTION (b): NO scene-color copy-in. The VK pass renders WATER
     // ONLY into the shared image (CLEAR transparent + water fragments), and GL
