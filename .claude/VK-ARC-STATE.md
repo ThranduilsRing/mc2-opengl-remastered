@@ -1,9 +1,65 @@
 # VK-ARC-STATE — current state block (update every session)
 
-HEAD: rung 6.5 commits `f0de79c7` (reflection port) + `006e2115` (tool registration)
+HEAD: rung 7 commits `28fc0c9f` (feed-native) + `f1f49df4` (gate registration)
 on branch `claude/vk-interop-bridge-1`, worktree `A:/Games/mc2-vk-interop-bridge`.
 Build dir `build64_island`. Deploy lane (literal): `A:/Games/mc2-opengl/mc2-win64-0.4c`
-(deployed + fingerprint-verified at `006e2115`).
+(deployed + fingerprint-verified at `28fc0c9f`, exe sha `ec80fd62a10216cd`).
+
+## RUNG 7 -- VK-MECH-FEED-NATIVE-1 (2026-07-07) -- SHIPPED
+
+Commits `28fc0c9f` (code) + `f1f49df4` (gate registration). Gate
+`MC2_VK_MECH_FEED_NATIVE` (envTriState opt-in, default-OFF, new-rung pattern);
+safety gate `MC2_VK_MECH_FEED_AUDIT` (verification-only, HEIGHT_AUDIT class).
+Scope note vs recon doc: the recon ladder's rung 7 headline is "mech material/
+lighting full PBR" but material+lighting parity ALREADY landed pre-flip
+(VK-FLIP-EVIDENCE-1 Lambert+fog+paint+scheme-cache); the remaining substance was
+"kill the mech path's GL-object reads" (recon section A "Remaining interop
+copies" row: these die at the next mech ownership rung). This rung delivers
+exactly that subset:
+- GEOMETRY (copy-once): island memcpy's the batcher's CPU sources -- new
+  `s_vkVboNativeCopy` (the EXACT normals-recomputed `work` blob uploaded to
+  s_sharedVbo; s_stagingVbo alone is NOT the uploaded bytes when
+  s_mechNormalsMode!=0) + `s_stagingIbo` (uploaded verbatim). Kills both
+  copy-once glGetBufferSubData readbacks.
+- LIGHTSDATA (per-frame): island memcpy's `mcTextureManager->lightData_`
+  (new public accessors getLightDataPtr/getLightDataBytes; the CPU array IS the
+  byte source of the GL SSBO upload, txmmgr.cpp:2451-2459). Kills the ONLY
+  per-frame GPU readback (glGetBufferSubData) on the mech path.
+- Fail-soft: any missing CPU pointer (size-mismatch race, no texture manager)
+  -> GL-readback path unchanged. Gate OFF = byte-identical old feed path.
+- Feed struct additions: Mc2MechGeomFeed.vboCpu/iboCpu,
+  Mc2MechFrameFeed.lightDataCpu/lightDataCpuBytes (null unless armed).
+Evidence (oracle `.claude/vk-mech-feed-native/mech_feed_oracle.py`, caps under
+`cap/mc2_24/` + `cap/mc2_01/`):
+- AUDIT (byte-level golden-vs-native): FEED-AUDIT geometry mismatch_buffers=0 +
+  lights byte-identical EVERY frame, mc2_24+mc2_01 sweeps AND all 5 tier1
+  missions under gate-ON smoke (0 DIVERGES lines total). GL SSBO is
+  capacity-sized so cpu<=gl bytes; min-prefix compare.
+- Instance/cull parity: inst=122 bones=326 runs=60 geom_verts=14814 (mc2_24)
+  and 38/140/25/5220 (mc2_01) IDENTICAL old-vs-native; used_vulkan receipts
+  474/478/465 (VK runs), GL control used_vulkan=0.
+- vk_feed_diff.py old-feed vs native-feed dumps: exit 0 (122 instances both).
+- Single-variable MAD vk_old vs vk_native (mc2_24, sacrificial-first-bookmark):
+  0.027-0.120/ch cov<=0.44% max~235 == the GLxGL byte-off floor measured same
+  session (0.030-0.131/ch cov<=0.45%) -- transport change is pixel-neutral.
+- Smoke: tier1 5/5 PASS both states, +0 destroy-delta (gates-OFF and full
+  VK umbrella + FEED_NATIVE + FEED_AUDIT). Gate-ON FPS ~6 = the PRE-EXISTING
+  umbrella-under-smoke cost, not a feed regression.
+- TRAP (relearned): `run_smoke.py --deploy 0.4c` resolves to the STALE
+  `mc2-win64-v0.4c` (v-prefixed) lane, NOT `mc2-win64-0.4c`. First smoke pair
+  silently ran the old exe (log format betrayed it: no `source=` in the
+  geometry line). Use `--exe A:/Games/mc2-opengl/mc2-win64-0.4c/mc2.exe
+  --no-lease` for this lane.
+Residuals (honest, for rung 8 planning):
+- Paint-scheme textures (run.slot0GlTex) still GL-sourced: copy-once
+  glGetTexImage import keyed by live GL texture id (scheme cache). Making
+  these native = mcTextureManager CPU-texture feed slice.
+- Instance/bone/run snapshots are still BUILT by the GL batcher's flush()
+  (CPU code, no GL reads, but flush-time production inside the GL frame) --
+  full batcher-independence would mean reimplementing the skinning-palette/
+  instance build outside flush; not needed to kill interop copies.
+- GL-readback feed path retained as fail-soft (deletable at rung 8 when the
+  GL side disappears).
 
 ## RUNG 6.5 — WATER REFLECTION PORT (2026-07-07) — SHIPPED (closes the rung-6 grazing gap)
 
