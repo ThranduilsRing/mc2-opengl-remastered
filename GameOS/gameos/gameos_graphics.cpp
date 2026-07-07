@@ -3189,8 +3189,29 @@ extern "C" int mc2_vk_water_island_run(
     unsigned int sceneColorTex, unsigned int sceneDepthTex, int w, int h,
     const void* thinRecords, unsigned int thinCount,
     const void* recipes, unsigned int recipeCount,
-    const void* vsParams, const void* fsParams);
+    const void* vsParams, const void* fsParams,
+    unsigned int hdriGlTex);
 #endif
+
+// WATER-HDRI-REFL-PERF-1 LOD default, shared by the GL MDI bind block and the
+// VK water island fsParams pack (RUNG-6.5) so the two paths cannot drift.
+// MC2_WATER_HDRI_LOD (float) overrides; else MC2_WATER_HDRI_REFL_FULL=1 -> 1.0,
+// default 4.0 (256x128 mip of the 4K source — see the bind-block comment).
+static float mc2WaterHdriLodDefault()
+{
+    static float s_lod = -999.0f;
+    if (s_lod < -1.0f) {
+        const char* lv = getenv("MC2_WATER_HDRI_LOD");
+        if (lv && lv[0]) {
+            s_lod = (float)atof(lv);
+        } else {
+            const char* full = getenv("MC2_WATER_HDRI_REFL_FULL");
+            const bool fullRate = (full && full[0] && full[0] != '0');
+            s_lod = fullRate ? 1.0f : 4.0f;
+        }
+    }
+    return s_lod;
+}
 
 void gosRenderer::renderWaterFastPath(
     unsigned int recordCount,
@@ -3651,21 +3672,12 @@ void gosRenderer::renderWaterFastPath(
         // recon's own "keep-cheap" recommendation). MC2_WATER_HDRI_REFL_FULL=1
         // restores the old full-rate LOD 1.0 for A/B or regression checks.
         {
-            static float s_waterHdriLod = -999.0f;
-            if (s_waterHdriLod < -1.0f) {
-                const char* lv = getenv("MC2_WATER_HDRI_LOD");
-                if (lv && lv[0]) {
-                    s_waterHdriLod = (float)atof(lv);
-                } else {
-                    const char* full = getenv("MC2_WATER_HDRI_REFL_FULL");
-                    const bool fullRate = (full && full[0] && full[0] != '0');
-                    s_waterHdriLod = fullRate ? 1.0f : 4.0f;
-                }
-            }
+            // LOD env resolve hoisted to mc2WaterHdriLodDefault() (file scope) so
+            // the RUNG-6.5 VK island fsParams pack shares the exact same value.
             const bool hdriAvail = (ppRefl && ppRefl->isHdriReady());
             setMI("u_hdri", 3);
             setMF("u_skyYaw", hdriAvail ? ppRefl->getSkyYaw() : 0.0f);
-            setMF("u_waterHdriLod", hdriAvail ? s_waterHdriLod : -1.0f);
+            setMF("u_waterHdriLod", hdriAvail ? mc2WaterHdriLodDefault() : -1.0f);
         }
 
         // Bind SSBOs.
@@ -3755,7 +3767,7 @@ void gosRenderer::renderWaterFastPath(
             if (vkThinCount > 0 && vkThinPtr && vkRecipes && vkRecipeN > 0 && ppVk) {
                 // Pack VS/FS UBO params LOCKSTEP with water_geom.{vert,frag}.
                 struct VkWaterVsP { float m[16]; float p0[4],p1[4],p2[4],p3[4]; } vsP{};
-                struct VkWaterFsP { float fog[4],f0[4],f1[4],f2[4],deep[4],shallow[4]; } fsP{};
+                struct VkWaterFsP { float fog[4],f0[4],f1[4],f2[4],f3[4],deep[4],shallow[4]; } fsP{};
                 memcpy(vsP.m, wMvpWaterMdi, 16 * sizeof(float));
                 vsP.p0[0]=waterElevation; vsP.p0[1]=alphaDepth; vsP.p0[2]=mapTopLeftX; vsP.p0[3]=mapTopLeftY;
                 vsP.p1[0]=frameCos; vsP.p1[1]=maxMinUV; vsP.p1[2]=oneOverTF; vsP.p1[3]=cloudOffsetX;
@@ -3776,13 +3788,26 @@ void gosRenderer::renderWaterFastPath(
                 fsP.f1[0]=alphaDepth; fsP.f1[1]=g_waterAbsorptionDensity;
                 fsP.f1[2]=g_waterMaxAlpha; fsP.f1[3]=g_waterRippleGain;
                 fsP.f2[0]=g_waterGlintGain;
+                // RUNG-6.5 WATER-REFLECTION PORT: feed the reflection inputs with
+                // the EXACT values the GL MDI bind block uploads (gate parity:
+                // MC2_WATER_REFLECTION=0 -> strength 0.0 -> FS block skipped both
+                // sides; !isHdriReady -> lod -1 -> SH-L2 fallback both sides).
+                {
+                    const bool vkHdriAvail = ppVk->isHdriReady();
+                    fsP.f2[1] = gos_GetWaterReflStrength();                       // u_waterReflStrength
+                    fsP.f2[2] = vkHdriAvail ? ppVk->getSkyYaw() : 0.0f;           // u_skyYaw
+                    fsP.f2[3] = vkHdriAvail ? mc2WaterHdriLodDefault() : -1.0f;   // u_waterHdriLod
+                    fsP.f3[0] = (float)ppVk->getWidth();                          // u_waterScreenSize
+                    fsP.f3[1] = (float)ppVk->getHeight();
+                }
                 memcpy(fsP.deep,    g_waterDeepColor,    3*sizeof(float));
                 memcpy(fsP.shallow, g_waterShallowColor, 3*sizeof(float));
                 vkWaterHandled = (1 == mc2_vk_water_island_run(
                     (unsigned int)ppVk->getSceneColorTexture(),
                     (unsigned int)ppVk->getSceneDepthTexture(),
                     ppVk->getWidth(), ppVk->getHeight(),
-                    vkThinPtr, vkThinCount, vkRecipes, vkRecipeN, &vsP, &fsP));
+                    vkThinPtr, vkThinCount, vkRecipes, vkRecipeN, &vsP, &fsP,
+                    ppVk->isHdriReady() ? (unsigned int)ppVk->getHdriTex() : 0u));
             }
         }
 #endif

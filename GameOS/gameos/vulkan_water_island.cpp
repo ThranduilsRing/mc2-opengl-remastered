@@ -65,6 +65,7 @@
 #include <cstdint>
 #include <vector>
 #include <string>
+#include <functional>
 #include <chrono>
 
 // ---------------------------------------------------------------------------
@@ -191,12 +192,13 @@ struct WaterVsParams {
     float p3[4];             // alphaDeepByte, pad, pad, pad
 };
 struct WaterFsParams {
-    float fog_color[4];
-    float f0[4];             // time, camX, camY, camZ
-    float f1[4];             // alphaDepth, ABSORPTION_DENSITY, WATER_MAX_ALPHA, RIPPLE_GAIN
-    float f2[4];             // GLINT_GAIN, pad, pad, pad
-    float DEEP_COLOR[4];
-    float SHALLOW_COLOR[4];
+    float fog_color[4];      // off 0
+    float f0[4];             // off 16  time, camX, camY, camZ
+    float f1[4];             // off 32  alphaDepth, ABSORPTION_DENSITY, WATER_MAX_ALPHA, RIPPLE_GAIN
+    float f2[4];             // off 48  GLINT_GAIN, u_waterReflStrength, u_skyYaw, u_waterHdriLod
+    float f3[4];             // off 64  screenW, screenH, pad, pad (u_waterScreenSize)
+    float DEEP_COLOR[4];     // off 80
+    float SHALLOW_COLOR[4];  // off 96
 };
 
 const VkFormat kColorFmt = VK_FORMAT_R16G16B16A16_SFLOAT; // MainColor + GBuffer1
@@ -252,6 +254,19 @@ struct WaterIsland {
     VkBuffer      vsUbo     = VK_NULL_HANDLE; VmaAllocation vsUboAlloc = VK_NULL_HANDLE;
     VkBuffer      fsUbo     = VK_NULL_HANDLE; VmaAllocation fsUboAlloc = VK_NULL_HANDLE;
 
+    // RUNG-6.5 WATER-REFLECTION: copy-once HDRI equirect import (binding 2).
+    // Copied ONCE from the GL HDRI texture (BC6H mip0 sidecar in the field
+    // config, or RGBA16F + full mip chain on the tinyexr fallback path) — NOT a
+    // per-frame copy. hdriRealImported=false -> a 1x1 black dummy is bound and
+    // the island patches fsParams' u_waterHdriLod slot to -1 (SH-L2 fallback,
+    // same semantics GL uses when isHdriReady()==false).
+    VkImage       hdriImage = VK_NULL_HANDLE; VmaAllocation hdriAlloc = VK_NULL_HANDLE;
+    VkImageView   hdriView  = VK_NULL_HANDLE;
+    VkSampler     hdriSampler = VK_NULL_HANDLE;
+    bool          hdriRealImported = false;   // real GL HDRI bytes present (not dummy)
+    bool          hdriAttempted    = false;   // import tried once (success or fail)
+    unsigned int  hdriGlTexId      = 0;       // GL tex id the import came from
+
     VkRenderPass      rpass  = VK_NULL_HANDLE;
     VkFramebuffer     fb     = VK_NULL_HANDLE;
     VkDescriptorSetLayout dsl = VK_NULL_HANDLE;
@@ -290,6 +305,9 @@ void destroy_island(WaterIsland* s) {
     if (s->pool)    vkDestroyDescriptorPool(d, s->pool, nullptr);
     if (s->fb)      vkDestroyFramebuffer(d, s->fb, nullptr);
     if (s->rpass)   vkDestroyRenderPass(d, s->rpass, nullptr);
+    if (s->hdriSampler) vkDestroySampler(d, s->hdriSampler, nullptr);
+    if (s->hdriView)   vkDestroyImageView(d, s->hdriView, nullptr);
+    if (s->hdriImage)  vmaDestroyImage(s->allocator, s->hdriImage, s->hdriAlloc);
     if (s->gbuf1View)  vkDestroyImageView(d, s->gbuf1View, nullptr);
     if (s->gbuf1Image) vmaDestroyImage(s->allocator, s->gbuf1Image, s->gbuf1Alloc);
     if (s->depthView)  vkDestroyImageView(d, s->depthView, nullptr);
@@ -377,7 +395,19 @@ void write_descriptors(WaterIsland* s) {
     w[3].sType = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET; w[3].dstSet = s->set;
     w[3].dstBinding = 6; w[3].descriptorCount = 1;
     w[3].descriptorType = VK_DESCRIPTOR_TYPE_STORAGE_BUFFER; w[3].pBufferInfo = &thinInfo;
-    vkUpdateDescriptorSets(s->device, 4, w, 0, nullptr);
+    // Binding 2 (HDRI equirect) is written separately by ensure_hdri() once the
+    // image exists — it may not yet at init time (write of a NULL view is invalid).
+    uint32_t n = 4;
+    VkDescriptorImageInfo hdriInfo{};
+    VkWriteDescriptorSet w4{};
+    if (s->hdriView != VK_NULL_HANDLE && s->hdriSampler != VK_NULL_HANDLE) {
+        hdriInfo = { s->hdriSampler, s->hdriView, VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL };
+        w4.sType = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET; w4.dstSet = s->set;
+        w4.dstBinding = 2; w4.descriptorCount = 1;
+        w4.descriptorType = VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER; w4.pImageInfo = &hdriInfo;
+        vkUpdateDescriptorSets(s->device, 1, &w4, 0, nullptr);
+    }
+    vkUpdateDescriptorSets(s->device, n, w, 0, nullptr);
 }
 
 // Grow the thin SSBO to at least `bytes`; rewrite descriptor binding 6 on realloc.
@@ -393,6 +423,229 @@ bool ensure_thin_capacity(WaterIsland* s, VkDeviceSize bytes) {
         return false;
     s->thinCapBytes = cap;
     write_descriptors(s);
+    return true;
+}
+
+// RUNG-6.5: one-shot transient command submit (import-time only, fence-waited).
+bool submit_once(WaterIsland* s, const std::function<void(VkCommandBuffer)>& record) {
+    VkCommandBufferAllocateInfo cai{};
+    cai.sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_ALLOCATE_INFO;
+    cai.commandPool = s->cpool; cai.level = VK_COMMAND_BUFFER_LEVEL_PRIMARY; cai.commandBufferCount = 1;
+    VkCommandBuffer cb = VK_NULL_HANDLE;
+    if (vkAllocateCommandBuffers(s->device, &cai, &cb) != VK_SUCCESS) return false;
+    VkCommandBufferBeginInfo bi{};
+    bi.sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_BEGIN_INFO;
+    bi.flags = VK_COMMAND_BUFFER_USAGE_ONE_TIME_SUBMIT_BIT;
+    bool ok = (vkBeginCommandBuffer(cb, &bi) == VK_SUCCESS);
+    if (ok) { record(cb); ok = (vkEndCommandBuffer(cb) == VK_SUCCESS); }
+    if (ok) {
+        VkFenceCreateInfo fci{}; fci.sType = VK_STRUCTURE_TYPE_FENCE_CREATE_INFO;
+        VkFence f = VK_NULL_HANDLE;
+        ok = (vkCreateFence(s->device, &fci, nullptr, &f) == VK_SUCCESS);
+        if (ok) {
+            VkSubmitInfo si{}; si.sType = VK_STRUCTURE_TYPE_SUBMIT_INFO;
+            si.commandBufferCount = 1; si.pCommandBuffers = &cb;
+            ok = (vkQueueSubmit(s->queue, 1, &si, f) == VK_SUCCESS) &&
+                 (vkWaitForFences(s->device, 1, &f, VK_TRUE, 5ull*1000*1000*1000) == VK_SUCCESS);
+            vkDestroyFence(s->device, f, nullptr);
+        }
+    }
+    vkFreeCommandBuffers(s->device, s->cpool, 1, &cb);
+    return ok;
+}
+
+// RUNG-6.5 WATER-REFLECTION: COPY-ONCE HDRI equirect import (NOT per-frame).
+// Mirrors gos_hdri.cpp's two upload paths:
+//   - BC6H .ktx2 sidecar (field default, MC2_HDRI_BC6H on): single mip 0
+//     (GL_TEXTURE_MAX_LEVEL=0), byte-copied via glGetCompressedTexImage ->
+//     VK_FORMAT_BC6H_{U,S}FLOAT_BLOCK. GL's textureLod at LOD 4 clamps to mip 0
+//     on this texture, so a 1-mip VK image is exact parity.
+//   - RGBA16F tinyexr fallback: full glGenerateMipmap chain, each level
+//     byte-copied via glGetTexImage(GL_HALF_FLOAT) -> VK_FORMAT_R16G16B16A16_SFLOAT.
+// COST (honest): one-time ~24MB (BC6H 4K mip0) or ~85MB (RGBA16F 4K + chain) CPU
+// staging + one upload submit at first armed-water frame after HDRI ready. Zero
+// per-frame cost afterwards. Fail-soft: bind a 1x1 black dummy + patch the FS
+// UBO's u_waterHdriLod to -1 (SH-L2 fallback) — same semantics as GL !isHdriReady().
+// Not counted in g_forbidden: those counters guard per-frame scene-surface
+// copies; this is a one-time content-texture import (same class as the prop
+// island's copy-once albedo array).
+bool ensure_hdri(WaterIsland* s, unsigned int hdriGlTex) {
+    if (s->hdriAttempted && s->hdriGlTexId == hdriGlTex) return s->hdriView != VK_NULL_HANDLE;
+    s->hdriAttempted = true;
+    s->hdriGlTexId   = hdriGlTex;
+    s->hdriRealImported = false;
+    // Re-import (tex id changed, e.g. dummy -> real after late HDRI load):
+    // drop the old image first. Cheap + rare; idle the device so no pending
+    // command buffer still references the outgoing view.
+    if (s->hdriView != VK_NULL_HANDLE || s->hdriImage != VK_NULL_HANDLE) {
+        vkDeviceWaitIdle(s->device);
+        if (s->hdriView)  { vkDestroyImageView(s->device, s->hdriView, nullptr); s->hdriView = VK_NULL_HANDLE; }
+        if (s->hdriImage) { vmaDestroyImage(s->allocator, s->hdriImage, s->hdriAlloc); s->hdriImage = VK_NULL_HANDLE; }
+    }
+
+    if (s->hdriSampler == VK_NULL_HANDLE) {
+        VkSamplerCreateInfo sci{};
+        sci.sType = VK_STRUCTURE_TYPE_SAMPLER_CREATE_INFO;
+        sci.magFilter = VK_FILTER_LINEAR; sci.minFilter = VK_FILTER_LINEAR;
+        sci.mipmapMode = VK_SAMPLER_MIPMAP_MODE_LINEAR;
+        sci.addressModeU = VK_SAMPLER_ADDRESS_MODE_CLAMP_TO_EDGE;
+        sci.addressModeV = VK_SAMPLER_ADDRESS_MODE_CLAMP_TO_EDGE;
+        sci.addressModeW = VK_SAMPLER_ADDRESS_MODE_CLAMP_TO_EDGE;
+        sci.maxLod = VK_LOD_CLAMP_NONE;
+        if (vkCreateSampler(s->device, &sci, nullptr, &s->hdriSampler) != VK_SUCCESS) {
+            vlog("hdri: vkCreateSampler failed."); return false;
+        }
+    }
+
+    // Gather GL-side facts + bytes.
+    VkFormat fmt = VK_FORMAT_R16G16B16A16_SFLOAT;
+    int w = 1, h = 1;
+    uint32_t mips = 1;
+    std::vector<std::vector<unsigned char>> levels;   // per-mip raw bytes
+    std::vector<std::pair<int,int>> levelDims;
+    bool haveReal = false;
+    if (hdriGlTex != 0) {
+        GLint prevTex = 0; glGetIntegerv(GL_TEXTURE_BINDING_2D, &prevTex);
+        glBindTexture(GL_TEXTURE_2D, (GLuint)hdriGlTex);
+        GLint ifmt = 0, compressed = 0, w0 = 0, h0 = 0, maxLevel = 1000;
+        glGetTexLevelParameteriv(GL_TEXTURE_2D, 0, GL_TEXTURE_INTERNAL_FORMAT, &ifmt);
+        glGetTexLevelParameteriv(GL_TEXTURE_2D, 0, GL_TEXTURE_COMPRESSED, &compressed);
+        glGetTexLevelParameteriv(GL_TEXTURE_2D, 0, GL_TEXTURE_WIDTH,  &w0);
+        glGetTexLevelParameteriv(GL_TEXTURE_2D, 0, GL_TEXTURE_HEIGHT, &h0);
+        glGetTexParameteriv(GL_TEXTURE_2D, GL_TEXTURE_MAX_LEVEL, &maxLevel);
+        if (w0 > 0 && h0 > 0) {
+            if (compressed &&
+                (ifmt == GL_COMPRESSED_RGB_BPTC_UNSIGNED_FLOAT ||
+                 ifmt == GL_COMPRESSED_RGB_BPTC_SIGNED_FLOAT)) {
+                // BC6H path — respect the device feature (MoltenVK/Metal may lack BC).
+                VkPhysicalDeviceFeatures feats{};
+                vkGetPhysicalDeviceFeatures(s->phys, &feats);
+                if (feats.textureCompressionBC) {
+                    fmt = (ifmt == GL_COMPRESSED_RGB_BPTC_SIGNED_FLOAT)
+                        ? VK_FORMAT_BC6H_SFLOAT_BLOCK : VK_FORMAT_BC6H_UFLOAT_BLOCK;
+                    GLint sz = 0;
+                    glGetTexLevelParameteriv(GL_TEXTURE_2D, 0,
+                        GL_TEXTURE_COMPRESSED_IMAGE_SIZE, &sz);
+                    if (sz > 0) {
+                        levels.emplace_back((size_t)sz);
+                        glGetCompressedTexImage(GL_TEXTURE_2D, 0, levels[0].data());
+                        levelDims.emplace_back(w0, h0);
+                        w = w0; h = h0; mips = 1;
+                        haveReal = (glGetError() == GL_NO_ERROR);
+                    }
+                } else {
+                    vlog("hdri: device lacks textureCompressionBC — SH-L2 fallback.");
+                }
+            } else if (ifmt == GL_RGBA16F) {
+                // RGBA16F + full glGenerateMipmap chain.
+                fmt = VK_FORMAT_R16G16B16A16_SFLOAT;
+                w = w0; h = h0;
+                int lw = w0, lh = h0;
+                for (int lvl = 0; lvl <= maxLevel; ++lvl) {
+                    GLint tw = 0;
+                    glGetTexLevelParameteriv(GL_TEXTURE_2D, lvl, GL_TEXTURE_WIDTH, &tw);
+                    if (tw <= 0) break;
+                    lw = (w0 >> lvl) > 0 ? (w0 >> lvl) : 1;
+                    lh = (h0 >> lvl) > 0 ? (h0 >> lvl) : 1;
+                    levels.emplace_back((size_t)lw * lh * 8);
+                    glGetTexImage(GL_TEXTURE_2D, lvl, GL_RGBA, GL_HALF_FLOAT,
+                                  levels.back().data());
+                    levelDims.emplace_back(lw, lh);
+                    if (lw == 1 && lh == 1) break;
+                }
+                mips = (uint32_t)levels.size();
+                haveReal = (mips > 0) && (glGetError() == GL_NO_ERROR);
+            } else {
+                vlog("hdri: unexpected GL internal format 0x%x — SH-L2 fallback.", ifmt);
+            }
+        }
+        glBindTexture(GL_TEXTURE_2D, (GLuint)prevTex);
+    }
+    if (!haveReal) {
+        // 1x1 black RGBA16F dummy (keeps the statically-used binding valid;
+        // shader never reads it because the island patches u_waterHdriLod to -1).
+        fmt = VK_FORMAT_R16G16B16A16_SFLOAT;
+        w = 1; h = 1; mips = 1;
+        levels.assign(1, std::vector<unsigned char>(8, 0));
+        levelDims.assign(1, {1, 1});
+    }
+
+    // Create image + view.
+    {
+        VkImageCreateInfo ii{};
+        ii.sType = VK_STRUCTURE_TYPE_IMAGE_CREATE_INFO;
+        ii.imageType = VK_IMAGE_TYPE_2D; ii.format = fmt;
+        ii.extent = {(uint32_t)w, (uint32_t)h, 1};
+        ii.mipLevels = mips; ii.arrayLayers = 1;
+        ii.samples = VK_SAMPLE_COUNT_1_BIT; ii.tiling = VK_IMAGE_TILING_OPTIMAL;
+        ii.usage = VK_IMAGE_USAGE_TRANSFER_DST_BIT | VK_IMAGE_USAGE_SAMPLED_BIT;
+        ii.initialLayout = VK_IMAGE_LAYOUT_UNDEFINED;
+        VmaAllocationCreateInfo aci{}; aci.usage = VMA_MEMORY_USAGE_AUTO;
+        if (vmaCreateImage(s->allocator, &ii, &aci, &s->hdriImage, &s->hdriAlloc, nullptr) != VK_SUCCESS) {
+            vlog("hdri: vmaCreateImage failed."); return false;
+        }
+        VkImageViewCreateInfo vi{};
+        vi.sType = VK_STRUCTURE_TYPE_IMAGE_VIEW_CREATE_INFO;
+        vi.image = s->hdriImage; vi.viewType = VK_IMAGE_VIEW_TYPE_2D; vi.format = fmt;
+        vi.subresourceRange = {VK_IMAGE_ASPECT_COLOR_BIT, 0, mips, 0, 1};
+        if (vkCreateImageView(s->device, &vi, nullptr, &s->hdriView) != VK_SUCCESS) {
+            vlog("hdri: vkCreateImageView failed."); return false;
+        }
+    }
+
+    // Staging buffer (one allocation, all mips at 16B-aligned offsets).
+    std::vector<VkDeviceSize> offs(levels.size());
+    VkDeviceSize total = 0;
+    for (size_t i = 0; i < levels.size(); ++i) {
+        offs[i] = total;
+        total += (VkDeviceSize)((levels[i].size() + 15) & ~size_t(15));
+    }
+    VkBuffer staging = VK_NULL_HANDLE; VmaAllocation stagingAlloc = VK_NULL_HANDLE;
+    if (!make_buffer(s, total, VK_BUFFER_USAGE_TRANSFER_SRC_BIT, &staging, &stagingAlloc)) return false;
+    {
+        void* p = nullptr;
+        if (vmaMapMemory(s->allocator, stagingAlloc, &p) != VK_SUCCESS) {
+            vmaDestroyBuffer(s->allocator, staging, stagingAlloc); return false;
+        }
+        for (size_t i = 0; i < levels.size(); ++i)
+            std::memcpy((unsigned char*)p + offs[i], levels[i].data(), levels[i].size());
+        vmaUnmapMemory(s->allocator, stagingAlloc);
+    }
+
+    const bool ok = submit_once(s, [&](VkCommandBuffer cb) {
+        VkImageMemoryBarrier bar{};
+        bar.sType = VK_STRUCTURE_TYPE_IMAGE_MEMORY_BARRIER;
+        bar.srcAccessMask = 0; bar.dstAccessMask = VK_ACCESS_TRANSFER_WRITE_BIT;
+        bar.oldLayout = VK_IMAGE_LAYOUT_UNDEFINED;
+        bar.newLayout = VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL;
+        bar.srcQueueFamilyIndex = VK_QUEUE_FAMILY_IGNORED;
+        bar.dstQueueFamilyIndex = VK_QUEUE_FAMILY_IGNORED;
+        bar.image = s->hdriImage;
+        bar.subresourceRange = {VK_IMAGE_ASPECT_COLOR_BIT, 0, mips, 0, 1};
+        vkCmdPipelineBarrier(cb, VK_PIPELINE_STAGE_TOP_OF_PIPE_BIT,
+                             VK_PIPELINE_STAGE_TRANSFER_BIT, 0, 0, nullptr, 0, nullptr, 1, &bar);
+        for (uint32_t i = 0; i < mips; ++i) {
+            VkBufferImageCopy c{};
+            c.bufferOffset = offs[i];
+            c.imageSubresource = {VK_IMAGE_ASPECT_COLOR_BIT, i, 0, 1};
+            c.imageExtent = {(uint32_t)levelDims[i].first, (uint32_t)levelDims[i].second, 1};
+            vkCmdCopyBufferToImage(cb, staging, s->hdriImage,
+                                   VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL, 1, &c);
+        }
+        bar.srcAccessMask = VK_ACCESS_TRANSFER_WRITE_BIT;
+        bar.dstAccessMask = VK_ACCESS_SHADER_READ_BIT;
+        bar.oldLayout = VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL;
+        bar.newLayout = VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL;
+        vkCmdPipelineBarrier(cb, VK_PIPELINE_STAGE_TRANSFER_BIT,
+                             VK_PIPELINE_STAGE_FRAGMENT_SHADER_BIT, 0, 0, nullptr, 0, nullptr, 1, &bar);
+    });
+    vmaDestroyBuffer(s->allocator, staging, stagingAlloc);
+    if (!ok) { vlog("hdri: upload submit failed."); return false; }
+
+    s->hdriRealImported = haveReal;
+    write_descriptors(s);   // binding 2 now valid
+    vlog("hdri %s import: %dx%d fmt=%d mips=%u glTex=%u (copy-once, zero per-frame cost).",
+         haveReal ? "REAL" : "DUMMY", w, h, (int)fmt, mips, hdriGlTex);
     return true;
 }
 
@@ -635,7 +888,7 @@ bool init_island(WaterIsland* s, int w, int h) {
 
     // ---- Descriptor layout/pool/set (2 UBO + 2 SSBO), both stages. ----
     {
-        VkDescriptorSetLayoutBinding b[4]{};
+        VkDescriptorSetLayoutBinding b[5]{};
         b[0].binding = 0; b[0].descriptorType = VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER;
         b[0].descriptorCount = 1; b[0].stageFlags = VK_SHADER_STAGE_VERTEX_BIT;
         b[1].binding = 1; b[1].descriptorType = VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER;
@@ -644,18 +897,22 @@ bool init_island(WaterIsland* s, int w, int h) {
         b[2].descriptorCount = 1; b[2].stageFlags = VK_SHADER_STAGE_VERTEX_BIT;
         b[3].binding = 6; b[3].descriptorType = VK_DESCRIPTOR_TYPE_STORAGE_BUFFER;
         b[3].descriptorCount = 1; b[3].stageFlags = VK_SHADER_STAGE_VERTEX_BIT;
+        // RUNG-6.5: HDRI equirect (copy-once import), FS-only.
+        b[4].binding = 2; b[4].descriptorType = VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER;
+        b[4].descriptorCount = 1; b[4].stageFlags = VK_SHADER_STAGE_FRAGMENT_BIT;
         VkDescriptorSetLayoutCreateInfo lci{};
         lci.sType = VK_STRUCTURE_TYPE_DESCRIPTOR_SET_LAYOUT_CREATE_INFO;
-        lci.bindingCount = 4; lci.pBindings = b;
+        lci.bindingCount = 5; lci.pBindings = b;
         if (vkCreateDescriptorSetLayout(s->device, &lci, nullptr, &s->dsl) != VK_SUCCESS) {
             vlog("vkCreateDescriptorSetLayout failed."); return false;
         }
-        VkDescriptorPoolSize sizes[2]{};
+        VkDescriptorPoolSize sizes[3]{};
         sizes[0].type = VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER; sizes[0].descriptorCount = 2;
         sizes[1].type = VK_DESCRIPTOR_TYPE_STORAGE_BUFFER; sizes[1].descriptorCount = 2;
+        sizes[2].type = VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER; sizes[2].descriptorCount = 1;
         VkDescriptorPoolCreateInfo pci{};
         pci.sType = VK_STRUCTURE_TYPE_DESCRIPTOR_POOL_CREATE_INFO;
-        pci.maxSets = 1; pci.poolSizeCount = 2; pci.pPoolSizes = sizes;
+        pci.maxSets = 1; pci.poolSizeCount = 3; pci.pPoolSizes = sizes;
         if (vkCreateDescriptorPool(s->device, &pci, nullptr, &s->pool) != VK_SUCCESS) {
             vlog("vkCreateDescriptorPool failed."); return false;
         }
@@ -961,7 +1218,8 @@ extern "C" int mc2_vk_water_island_run(
     unsigned int sceneColorTex, unsigned int sceneDepthTex, int w, int h,
     const void* thinRecords, unsigned int thinCount,
     const void* recipes, unsigned int recipeCount,
-    const void* vsParams, const void* fsParams) {
+    const void* vsParams, const void* fsParams,
+    unsigned int hdriGlTex) {
     if (!waterTier1Requested() && !waterInteropGateRequested()) return 0;
     if (thinCount == 0 || recipeCount == 0 || w <= 0 || h <= 0) return 0;
     // tier1 renders in-place into the shared GBuffer and never touches the GL
@@ -996,6 +1254,16 @@ extern "C" int mc2_vk_water_island_run(
     }
     WaterIsland* s = g_island;
     if (s->disabled || !s->inited || !s->useInterop) return 0;
+
+    // RUNG-6.5: COPY-ONCE HDRI import (or 1x1 dummy) — the FS statically uses
+    // binding 2, so it must be valid before the first draw. Re-runs only if the
+    // GL HDRI texture id changes (e.g. late HDRI load: first frames import the
+    // dummy at glTex=0, then the real texture once ready). Safe to update the
+    // descriptor here: the previous frame's fence was waited inline, so no
+    // command buffer using the set is pending.
+    if (!ensure_hdri(s, hdriGlTex)) {
+        setFallback("hdri_binding_setup_failed"); s->disabled = true; return 0;
+    }
 
     // Snapshot forbidden COLOR counters (prove none fire on the interop path).
     const unsigned long f0a = g_forbidden.vkCmdCopyBufferToImage;
@@ -1042,7 +1310,12 @@ extern "C" int mc2_vk_water_island_run(
             std::memcpy(p, vsParams, sizeof(WaterVsParams)); vmaUnmapMemory(s->allocator, s->vsUboAlloc);
         }
         if (vmaMapMemory(s->allocator, s->fsUboAlloc, &p) == VK_SUCCESS) {
-            std::memcpy(p, fsParams, sizeof(WaterFsParams)); vmaUnmapMemory(s->allocator, s->fsUboAlloc);
+            std::memcpy(p, fsParams, sizeof(WaterFsParams));
+            // RUNG-6.5 fail-soft: if the real HDRI bytes aren't imported (dummy
+            // bound), force u_waterHdriLod (f2.w, offset 60) to -1 so the FS
+            // takes the SH-L2 fallback — same semantics as GL !isHdriReady().
+            if (!s->hdriRealImported) ((float*)p)[15] = -1.0f;
+            vmaUnmapMemory(s->allocator, s->fsUboAlloc);
         }
     }
 
