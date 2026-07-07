@@ -143,6 +143,14 @@ if(MC2_VULKAN)
         # (no second device). Gate MC2_VK_WATER_INTEROP default-OFF -> GL water unchanged.
         # No layout-affecting header members (extern "C" entry points only).
         list(APPEND SOURCES vulkan_water_island.cpp)
+        # VK-POST-FOG-NATIVE-1 (rung 8.1, VK-RUNG8-LADDER-1): the fog pair (edge+oob)
+        # rendered NATIVELY on the shared engine VulkanContext — samples the SHARED
+        # scene depth, blends into the SHARED scene color0 in place (zero copies,
+        # zero CPU readbacks, no private device; supersedes the subgraph path when
+        # gated on). Gate MC2_VK_POST_FOG_NATIVE default-OFF -> GL fog chain
+        # byte-identical. Layout-affecting header members under MC2_VULKAN_ISLAND
+        # (same ODR discipline as the subgraph's).
+        list(APPEND SOURCES vulkan_post_fog_native.cpp)
         # VK-P8a SHADOW-INTEROP: the shadow island — SECOND VK GEOMETRY region and
         # FIRST VK-PRODUCES-DEPTH region (water was GL-produces/VK-consumes; shadow
         # reverses it: VK renders the static-prop shadow-caster depth into an

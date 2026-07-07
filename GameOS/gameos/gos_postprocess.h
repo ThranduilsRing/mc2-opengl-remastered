@@ -547,6 +547,23 @@ public:
     struct VulkanPostprocessSubgraph;   // defined in vulkan_postprocess_subgraph.cpp
     VulkanPostprocessSubgraph* vkPostprocessSubgraph_ = nullptr;
 
+    // VK-POST-FOG-NATIVE-1 (rung 8.1, .claude/VK-RUNG8-LADDER-1.md): the fog pair
+    // (edge + oob) rendered NATIVELY on the shared engine VulkanContext, sampling
+    // the SHARED scene depth and blending into the SHARED scene color0 IN PLACE —
+    // zero copies, zero CPU readbacks, no private device (supersedes the subgraph
+    // when its gate is on; highest precedence at the fog site). Gate
+    // MC2_VK_POST_FOG_NATIVE (envTriState opt-in, default-OFF). runVkPostFogNative()
+    // returns true only when BOTH fogs rendered via VK (caller skips BOTH GL sites);
+    // any not-ready condition returns false -> unchanged subgraph/island/GL chain.
+    // destroyVkPostFogNative(): torn down from destroyFBOs() (resize; the shared
+    // GBuffer it borrows is rebuilt) and destroy(). Defined in
+    // vulkan_post_fog_native.cpp (same #ifdef MC2_VULKAN_ISLAND discipline).
+    bool  vkPostFogNativeEnabled();
+    bool  runVkPostFogNative();
+    void  destroyVkPostFogNative();
+    struct VkPostFogNative;             // defined in vulkan_post_fog_native.cpp
+    VkPostFogNative* vkPostFogNative_ = nullptr;
+
     // VK-REGION-SSAO-1: Vulkan impl of the PostprocessSSAO region -- the first
     // NEW region grown through runRegion (beyond fog). Two internal draws
     // (occlusion -> apply) across TWO Vulkan render passes (different targets

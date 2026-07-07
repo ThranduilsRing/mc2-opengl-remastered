@@ -846,6 +846,11 @@ void gosPostProcess::destroy()
     destroyVulkanOobFogIsland();
     // VULKAN-POSTPROCESS-SUBGRAPH-1: same teardown for the fused subgraph.
     destroyVulkanPostprocessSubgraph();
+    // VK-POST-FOG-NATIVE-1 (rung 8.1): same teardown for the native fog pass.
+    // (destroyFBOs also tears it down on resize; this covers final shutdown —
+    // destroy() runs after destroyFBOs, so this is usually a no-op that also
+    // prints the health line.)
+    destroyVkPostFogNative();
     // VK-REGION-SSAO-1: same teardown for the SSAO island.
     destroyVulkanSSAOIsland();
     // VK-REGION-HZB-1: same teardown for the HZB island.
@@ -1518,6 +1523,12 @@ void gosPostProcess::copySceneColorForVfx()
 
 void gosPostProcess::destroyFBOs()
 {
+#ifdef MC2_VULKAN_ISLAND
+    // VK-POST-FOG-NATIVE-1: torn down FIRST — it borrows the shared scene
+    // color0/depth resources destroyed below (framebuffer/view over their
+    // VkImages must not outlive them). Rebuilt lazily at the next fog site.
+    destroyVkPostFogNative();
+#endif
     if (sceneFBO_) {
         glDeleteFramebuffers(1, &sceneFBO_);
         sceneFBO_ = 0;
@@ -4018,6 +4029,15 @@ void gosPostProcess::endScene()
     //   subgraph  >  per-pass island  >  GL.
     // VULKAN-EDGE-FOG-ISLAND-2a: else route the edge-fog composite through the
     // per-pass Vulkan island when MC2_VULKAN_EDGE_FOG_ISLAND=1. Otherwise GL.
+    // VK-POST-FOG-NATIVE-1 (rung 8.1): HIGHEST precedence at the fog site. When
+    // MC2_VK_POST_FOG_NATIVE=1 and the shared-GBuffer substrate is live, BOTH fog
+    // effects render natively on the shared engine context (zero copies, zero
+    // readbacks) and BOTH GL sites are skipped. runVkPostFogNative() returns false
+    // on ANY not-ready condition -> the unchanged subgraph/island/GL chain below
+    // runs (fail-soft). Precedence: native > subgraph > per-pass island > GL.
+    if (vkPostFogNativeEnabled() && runVkPostFogNative()) {
+        subgraphRanThisFrame = true;    // -> OOB site is skipped below (no double-apply)
+    } else
     if (vulkanPostprocessSubgraphEnabled()) {
         runPostprocessSubgraph();       // does BOTH fog effects
         subgraphRanThisFrame = true;    // -> OOB site is skipped below (no double-apply)

@@ -118,6 +118,12 @@ extern "C" void mc2_vulkan_postprocess_subgraph_health(
     unsigned long* expectedGlReplaced, unsigned long* vkDraws, unsigned long* glSkipped,
     double* copyDepthUs, double* copyColorInUs, double* edgeFogDrawUs,
     double* oobFogDrawUs, double* colorOutUs, double* totalUs);
+// VK-POST-FOG-NATIVE-1 (rung 8.1): native fog pair health snapshot (defined in
+// GameOS/gameos/vulkan_post_fog_native.cpp, same #ifdef MC2_VULKAN_ISLAND).
+extern "C" void mc2_vk_post_fog_native_health(
+    int* runtimeGate, int* substrateLive,
+    unsigned long* attempted, unsigned long* usedVulkan, unsigned long* glSkipped,
+    const char** fallbackReason, double* renderUs);
 // VK-REGION-SSAO-1: SSAO Vulkan island health snapshot (defined in
 // GameOS/gameos/vulkan_ssao_island.cpp, same #ifdef MC2_VULKAN_ISLAND).
 extern "C" void mc2_vulkan_ssao_island_health(
@@ -850,6 +856,26 @@ std::string buildSnapshotJson(const RenderSnapshot& snap,
         s << "    \"oobfog_draw_us\": " << ofUs << ",\n";
         s << "    \"color_out_us\": " << coUs << ",\n";
         s << "    \"total_subgraph_us\": " << totUs << "\n";
+        s << "  }\n";
+    }
+    // VK-POST-FOG-NATIVE-1 (rung 8.1): additive "vk_post_fog_native" section —
+    // the used_vulkan receipt for the native fog pair (zero-copy, shared engine
+    // context). Zeros when compiled but the gate is OFF.
+    {
+        int rg = 0, sub = 0;
+        unsigned long att = 0, used = 0, glSkip = 0;
+        const char* fbr = "";
+        double rUs = 0.0;
+        mc2_vk_post_fog_native_health(&rg, &sub, &att, &used, &glSkip, &fbr, &rUs);
+        s << "  ,\n";
+        s << "  \"vk_post_fog_native\": {\n";
+        s << "    \"runtime_gate_enabled\": " << rg << ",\n";
+        s << "    \"substrate_live\": " << sub << ",\n";
+        s << "    \"postfog_attempted\": " << att << ",\n";
+        s << "    \"postfog_used_vulkan\": " << used << ",\n";
+        s << "    \"gl_fog_sites_skipped\": " << glSkip << ",\n";
+        s << "    \"postfog_fallback_reason\": \"" << jsonEscape(fbr) << "\",\n";
+        s << "    \"render_us\": " << rUs << "\n";
         s << "  }\n";
     }
     // VK-REGION-SSAO-1: additive "vulkan_ssao_island" section (same
