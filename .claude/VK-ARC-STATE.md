@@ -1,9 +1,52 @@
 # VK-ARC-STATE — current state block (update every session)
 
-HEAD: `49ba7f25` "feat(vk): VK-TERRAIN-VISUALDISPLACE-FAR-1 -- capture/feed/island
-wiring (rung 5)" on branch `claude/vk-interop-bridge-1`, worktree
-`A:/Games/mc2-vk-interop-bridge`.
+HEAD: rung 6 commits `06c4fe03` (island tier1) + `790388f8` (port markers) on
+branch `claude/vk-interop-bridge-1`, worktree `A:/Games/mc2-vk-interop-bridge`.
 Build dir `build64_island`. Deploy lane (literal): `A:/Games/mc2-opengl/mc2-win64-0.4c`.
+
+## RUNG 6 — VK-WATER-TIER1 (2026-07-07) — SHIPPED (base-layer, reflection-off subset)
+
+Commits `06c4fe03` (island tier1 mode + gate registration) + `790388f8`
+(waterBaseColor port markers). Gate `MC2_VK_WATER_TIER1` (default-OFF,
+envTriState opt-in like SKIRTS/VISUALDISPLACE_FAR; precedence over the P9a
+`MC2_VK_WATER_INTEROP`). `vulkan_water_island.cpp` tier1 mode renders the armed
+water base layer IN-PLACE into the shared scene GBuffer (color0+normal+depth
+LOAD-preserve, terrain-island sync protocol) — kills the P9a offscreen target,
+the GL composite pass, AND the per-frame glGetTexImage depth readback
+(receipts: depthin_getTexImage=0, depthin_copyBufToImg=0, forbidden_*=0 on the
+live gate-ON run). Blend: FS stays premultiplied; pipeline color ONE/OMSA +
+alpha SRC_ALPHA/OMSA == GL straight-alpha one-stage arithmetic; shared normal
+attachment writeMask=0 (GL water GBuffer1 a=0 no-op parity). Depth: shared
+depth LOAD (water runs after terrain), reverse-Z GEQUAL test+WRITE,
+WATER_DEPTH_FUDGE_FAST 0.00025 lockstep unchanged (same VS).
+- Offline: check_vk_shaders 34/34, check_ubo_layout OK; NEW port pair
+  `waterBaseColor` (GL MDI FS vs water_geom.frag) = **VERBATIM** (17 lines).
+- Byte-off control (gates unset, GL x2, mc2_01 water bookmarks): 0.000 /
+  0.003 MAD — clean.
+- Live gate-ON receipts (mc2_01, water bookmark sweep + sacrificial first
+  bookmark for VK-FIRST-BOOKMARK-POSE-1): water island used_vulkan=492,
+  vk_draws=1, thin=6167, recipes=9801; gate-OFF VK run: water used_vulkan=0.
+- Water-only delta (vk_base vs vk_water, SAME VK scene, single variable):
+  overview_high 0.54/ch cov 0.04%; oblique_low 8.29/ch cov 62%. ATTRIBUTED by
+  experiment: GL water reflection defaults ON (strength 1.5 + HDRI LOD4,
+  gameos_graphics.cpp:3100); with MC2_WATER_REFLECTION=0 the delta collapses
+  to 3.56/ch cov 10.5% (oblique) / 0.32 (high). The VK FS is the documented
+  reflection-OFF base-layer subset (P9a parity contract) — the dominant
+  divergence is the MISSING reflection/HDRI feature, not a port defect.
+- Depth discipline: shorelines correct, islands occlude water, no z-fight, no
+  water-vanish (visual check on gate-ON captures). GL-vs-VK whole-frame pose/
+  pillarbox framing difference at these bookmarks is the PRE-EXISTING VK-sweep
+  camera artifact (present identically in vk_base, independent of this rung).
+- Smoke: tier1 5/5 PASS both states (+0 destroys). Gate-ON smoke FPS ~7 is the
+  PRE-EXISTING umbrella-under-smoke cost (measured identical without the water
+  gate), not a water regression.
+- Residuals / next sub-rung: (1) port the reflection block (SH-L2 sky + HDRI +
+  RT sample + sun spec) into water_geom.frag + UBO to close the 3.6-8/ch
+  grazing-angle gap — this is the remaining rung-6 feature work; (2) detail/
+  spray layer (isWater==2 second MDI draw) still GL-discarded both sides, no
+  port needed today; (3) refl-off residual 3.56/ch cov 10.5% at grazing not yet
+  itemized (suspects: sun-spec default, fog band). Artifacts + oracle:
+  `.claude/vk-water-tier1/` (water_oracle.py, cap/*).
 
 ## RUNG 5 — VK-TERRAIN-VISUALDISPLACE-FAR-1 (2026-07-07) — MODE-2 DONE
 
