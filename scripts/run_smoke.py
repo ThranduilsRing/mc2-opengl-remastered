@@ -1742,6 +1742,12 @@ def main():
                             "MC2_VK_TERRAIN_CSM",
                             "MC2_VK_TERRAIN_HEIGHT_AUDIT",
                             "MC2_VK_TERRAIN_HEIGHT_AUDIT_CORRUPT",
+                            # VK-POST-FOG-NATIVE-1 (rung 8.1): edge+oob fog pair
+                            # rendered natively on the shared engine context (samples
+                            # shared scene depth, blends into shared scene color0 in
+                            # place; zero copies/readbacks). envTriState OPT-IN,
+                            # default-OFF (new-rung pattern as MC2_VK_TERRAIN_SKIRTS).
+                            "MC2_VK_POST_FOG_NATIVE",
                             # VK-SHADOW-COPY-ONCE-1: diagnostic-only per-frame ms log for
                             # the VK-terrain-interop-copies zone (stderr line, default OFF).
                             "MC2_VK_TERRAIN_COPY_STATS",

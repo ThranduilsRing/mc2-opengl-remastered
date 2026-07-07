@@ -36,6 +36,12 @@ REGISTRY = [
     # RUNG-6.5: water island FS params (grew for the reflection port).
     ("waterfs", "GameOS/gameos/vulkan_water_island.cpp", "WaterFsParams",
      "shaders/vulkan/water_geom.frag", "WaterFsParams"),
+    # RUNG-8.1 (VK-POST-FOG-NATIVE-1): the native fog pair reuses the subgraph's
+    # shaders verbatim; its UBO PODs must stay byte-identical to those blocks.
+    ("postfog_edge", "GameOS/gameos/vulkan_post_fog_native.cpp", "EdgeFogParams",
+     "shaders/vulkan/edge_fog.frag", "EdgeFogParams"),
+    ("postfog_oob", "GameOS/gameos/vulkan_post_fog_native.cpp", "FogOobParams",
+     "shaders/vulkan/fog_oob.frag", "FogOobParams"),
 ]
 
 STD140_BASE_ALIGN = {
