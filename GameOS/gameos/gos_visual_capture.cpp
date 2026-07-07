@@ -633,6 +633,10 @@ void onPostRenderFrame(unsigned int frame, int sceneW, int sceneH) {
                 g_replay.savePos = eye->getPosition();
                 g_replay.saveRot = eye->getRotation();
                 g_replay.saveAlt = eye->cameraAltitude;   // public member
+                fprintf(stderr, "[ADJUDICATION_POSE v1] pos=%.3f,%.3f,%.3f "
+                        "rot(proj=%.3f,rot=%.3f) alt=%.3f\n",
+                        g_replay.savePos.x, g_replay.savePos.y, g_replay.savePos.z,
+                        g_replay.saveRot.x, g_replay.saveRot.y, g_replay.saveAlt);
             }
             fprintf(stderr, "[VISUAL_CAPTURE v1.5] sweep triggered frame=%u "
                     "(triggerFrame=%ld) sim frozen, pauseState=%d\n",

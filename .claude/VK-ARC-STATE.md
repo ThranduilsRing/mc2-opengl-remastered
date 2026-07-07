@@ -262,3 +262,90 @@ composited pixels remain a valid VK oracle.
   reproduced at settled capture (props clean: walls/trees/buildings textured).
   Classified LOAD-TRANSIENT, not a static-reproducible regression; neither
   committed fix touches prop layers. USER cold-load re-check to confirm.
+
+## ADJUDICATION-1 (2026-07-06) — contamination-proof fence + washout verdict
+
+Method: deterministic bookmark-sweep capture (sim-frozen, fixed seed/timestep,
+SW_SHOWNOACTIVATE=4 visible window) at an authored **airport bookmark**
+(`c_rot110`: pos 3200,100,~400 / rot 110 / proj 28 / alt 1000 — frames hangar +
+perimeter fence + runway, the user's scene class). GL ('off' set) vs VK
+(canonical 'on' set = `MC2_VK_SHARED_GBUFFER=1 MC2_VK_SHADOW_INTEROP=1` +
+`MC2_SHADOW_CSM/STATIC_PROP_PBR_V1/AMBIENT_V1/IBL_SH=1`). Receipts printed per
+capture: **GL** vk_color_prop used_vulkan=0 (correct GL label); **VK**
+used_vulkan=400–411, vk_draws=1, interop_active=1, vk2gl_sem_active=1,
+inst_records=1006, type_runs=78, geom_verts=23628 (correct VK label — pixels
+ARE VK, no fail-soft). Artifacts: `.claude/adjudication/{gl,vk_probe}/`,
+`crop_{hangar,fence}_{gl,vk}.png`, `rdc/` (.rdc + XML), `vk_probe/packets.csv`.
+
+**RenderDoc finding (contamination class 3, DIRECTLY OBSERVED):** a
+`renderdoccmd capture -w` of the canonical VK-on config produced a capture whose
+header is `<driver>OpenGL</driver>` with ZERO vk* chunks. The VK prop island is
+HEADLESS (offscreen + vk2gl semaphore, no swapchain/present), so a present-based
+GL RenderDoc hook cannot see its `vkCmdDrawIndexed`s. **Lesson: RenderDoc-under-GL
+of a shared-gbuffer interop frame CANNOT prove the VK island — its draws are on
+the VK queue with no present. Draw-level VK facts must come from an in-record
+dump (added: `MC2_VK_PROP_PACKET_DUMP`) or a StartFrameCapture/EndFrameCapture
+device-scoped bracket, NOT TriggerCapture.**
+
+**FENCE — VERDICT: STILL BROKEN in canonical config (alternating panels).**
+Own GL/VK pair at identical pose: GL = continuous chain-link; VK = alternating
+panels (every other panel's mesh missing). Draw-level (`packets.csv`, 80 packets):
+EVERY packet draws non-degenerate with exactly one valid push-constant layer
+(`layerOff`/`layerOn`), zero "both -1", zero zero-count draws. **So the
+alternation is NOT dropped draws / -1 layers — the per-packet layer fix
+(b911bc0d / VK-FLIP-FIELD-REPORT-2) IS correct at the data level.** Root cause is
+the alpha-ON group's **0.5 alpha-test discard** (`color_prop_tier1.frag:69
+if (texc.a < 0.5) discard`) against the VK copy-once albedo ARRAY's mip/filter:
+the minified chain-link alpha aliases below 0.5 on alternate panels at this
+distance, where GL's LOD-chunk path keeps it. **INVALIDATES the prior "black-fence
+FIXED" claim's completeness** — the black→visible fix (`max(vArgb,0.5)`) and the
+per-packet-layer fix both landed, but neither addresses alpha-test panel dropout,
+which is what the user actually sees.
+
+**WASHOUT — VERDICT: STILL BROKEN, and it is NOT a fail-soft.** Hangar-crop mean
+brightness (0..255): GL 123.8 vs VK 171.1 = **+47.3** (MAD 66.3); scene-wide VK
++24.5. Engagement probe (`MC2_VK_PROP_LIGHT_PROBE`): `lightingReady=1
+haveLightFeed=1 iblShStrength=0.5 iblSh0=(1.71,1.77,1.65) lightDataBytes=3610800`
+— **the real IBL/ambient feed DID engage; the hemisphere fail-soft is NOT taken.**
+Kill-switch matrix (hangar bright): GL-on 123.8 / VK-on 171.1 / GL-off 121.2 /
+VK-off 146.9 → GL's IBL adds +2.7, VK's IBL adds +24.2 (≈9× too strong), AND VK
+is +25.7 over GL even with IBL OFF. Two stacked over-brightening bugs in the
+VK prop lighting math (`color_prop_tier1.vert`:
+`vArgb = seed + ambientTerm + iblTerm + kSunColor*ndl`): the real-feed branch
+(`lightingReady!=0`) sums raw ObjectLights ambient + `evalShL2*0.5` +
+hardcoded `kSunColor*ndl` with no exposure/weight matching GL. **INVALIDATES the
+prior "washout FIXED (feed parity 91051001)" claim:** the prior washout tuning
+targeted the FALLBACK hemisphere branch (comment in .vert), but canonical config
+hits the REAL-FEED branch, which was never washout-tuned. "Verified fixed but
+user still sees washout" = tuned the wrong branch.
+
+**Historical claims invalidated:** (1) "fence fixed" — only black→visible +
+layer-drop fixed; alpha-test panel dropout remains, user-visible. (2) "washout
+fixed / IBL feed parity" — parity was measured on the fallback branch; the
+engaged real-feed branch over-brightens hangar by +47. Both bugs reproduce in
+the EXACT canonical config with VK-labeled receipts, so they are real, not
+oracle artifacts.
+
+**Fixes:**
+- **Washout — PARTIAL fix landed, NOT cured.** `color_prop_tier1.vert` real-feed
+  branch now scans ObjectLights for the real per-actor sun color (GL parity,
+  static_prop.vert:414-438) instead of the hardcoded `kSunColor` stand-in.
+  Re-captured (VK used_vulkan=363): hangar +47.3 → **+43.5** vs GL. Only a 3.8/255
+  win — proves the phantom sun was NOT the dominant term (the real sun ≈ as bright
+  as the constant). **Dominant washout cause still open:** VK/GL apply the same
+  `albedo * vArgb` and the same summed terms, yet VK vArgb is +43 hotter. Leading
+  hypothesis: GL attenuates prop ambient/sun by CSM shadow (`MC2_SHADOW_CSM=1` ON),
+  the VK prop island does NOT shadow-attenuate its vertex-baked lighting → props
+  render unshadowed/brighter. Next: instrument whether GL's v_argb includes a
+  shadow factor the VK island drops (check static_prop.vert for calcShadow on the
+  ambient/sun term vs the VK island's shadow interop wiring).
+- **Fence — NOT fixed (root cause pinned).** Draw-level proven it's alpha-test
+  panel dropout (`color_prop_tier1.frag:69 if (texc.a<0.5) discard`) against the VK
+  copy-once array's mip chain, not a layer/draw drop. Fix path: alpha-to-coverage,
+  preserve alpha in the array mips, or match GL's effective coverage — NOT landed.
+
+Instrumentation left in tree, all env-gated default-off: `MC2_VK_PROP_PACKET_DUMP`
+(per-packet draw params CSV), `MC2_VK_PROP_LIGHT_PROBE` (UBO lighting engagement),
+`[ADJUDICATION_POSE v1]` one-shot pose dump in gos_visual_capture.cpp. Airport
+bookmark authored at `.claude/adjudication/airport_bookmark.json` (c_rot110 frames
+both bugs). Artifacts under `.claude/adjudication/`.

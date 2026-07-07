@@ -420,6 +420,15 @@ struct TerrainIsland {
     bool          csmArrayReady = false;
     VkBuffer      csmArrayStage = VK_NULL_HANDLE; VmaAllocation csmArrayStageAlloc = VK_NULL_HANDLE;
     VkDeviceSize  csmArrayStageBytes = 0;
+    // CSM-BLACKOUT-RECON-1 FIX: GL scratch depth array. glGetTexImage on the LIVE
+    // cascade array (an active FBO depth attachment re-rendered every frame) poisons
+    // subsequent GL rendering on this AMD driver (whole-frame near-black; proven by
+    // bisect: array-read-only reproduces, no-array-read is clean). We GPU-copy the live
+    // array into this never-attached scratch via glCopyImageSubData and CPU-read the
+    // scratch instead.
+    unsigned int  csmScratchTex = 0;      // GLuint; 0 = not created
+    uint32_t      csmScratchDim = 0;
+    uint32_t      csmScratchLayers = 0;
 
     VkImage       csmFullMapImg  = VK_NULL_HANDLE; VmaAllocation csmFullMapAlloc = VK_NULL_HANDLE;
     VkImageView   csmFullMapView = VK_NULL_HANDLE;
@@ -790,6 +799,7 @@ void destroy_island(TerrainIsland* s) {
     if (s->csmArrayView) vkDestroyImageView(d, s->csmArrayView, nullptr);
     if (s->csmArrayImg)  vmaDestroyImage(s->allocator, s->csmArrayImg, s->csmArrayAlloc);
     if (s->csmArrayStage) vmaDestroyBuffer(s->allocator, s->csmArrayStage, s->csmArrayStageAlloc);
+    if (s->csmScratchTex) { glDeleteTextures(1, &s->csmScratchTex); s->csmScratchTex = 0; }
     if (s->csmFullMapView) vkDestroyImageView(d, s->csmFullMapView, nullptr);
     if (s->csmFullMapImg)  vmaDestroyImage(s->allocator, s->csmFullMapImg, s->csmFullMapAlloc);
     if (s->csmFullMapStage) vmaDestroyBuffer(s->allocator, s->csmFullMapStage, s->csmFullMapStageAlloc);
@@ -1832,11 +1842,49 @@ bool copy_csm_array(TerrainIsland* s, uint32_t glTex, uint32_t dim, uint32_t lay
             return false;
         s->csmArrayStageBytes = bytes;
     }
+    // CSM-BLACKOUT-RECON-1 FIX: NEVER glGetTexImage the live cascade array (an active
+    // FBO depth attachment) — on this AMD driver that poisons subsequent GL rendering
+    // (whole-frame near-black; bisect-proven: array-read-only reproduces, fullmap-only
+    // and no-read are clean). GPU-copy the live array into a never-FBO-attached scratch
+    // texture first (glCopyImageSubData, same DEPTH_COMPONENT24 internal format), then
+    // CPU-read the scratch. Binding save/restore kept for hygiene.
+    if (s->csmScratchTex == 0 || s->csmScratchDim != dim || s->csmScratchLayers != layers) {
+        if (s->csmScratchTex) glDeleteTextures(1, &s->csmScratchTex);
+        glGenTextures(1, &s->csmScratchTex);
+        GLint prevA0 = 0;
+        glGetIntegerv(GL_TEXTURE_BINDING_2D_ARRAY, &prevA0);
+        glBindTexture(GL_TEXTURE_2D_ARRAY, s->csmScratchTex);
+        glTexImage3D(GL_TEXTURE_2D_ARRAY, 0, GL_DEPTH_COMPONENT24,
+                     (GLsizei)dim, (GLsizei)dim, (GLsizei)layers,
+                     0, GL_DEPTH_COMPONENT, GL_FLOAT, nullptr);
+        glTexParameteri(GL_TEXTURE_2D_ARRAY, GL_TEXTURE_MIN_FILTER, GL_NEAREST);
+        glTexParameteri(GL_TEXTURE_2D_ARRAY, GL_TEXTURE_MAG_FILTER, GL_NEAREST);
+        glBindTexture(GL_TEXTURE_2D_ARRAY, (GLuint)prevA0);
+        s->csmScratchDim = dim; s->csmScratchLayers = layers;
+    }
+    glCopyImageSubData((GLuint)glTex, GL_TEXTURE_2D_ARRAY, 0, 0, 0, 0,
+                       s->csmScratchTex, GL_TEXTURE_2D_ARRAY, 0, 0, 0, 0,
+                       (GLsizei)dim, (GLsizei)dim, (GLsizei)layers);
     void* p = nullptr;
     if (vmaMapMemory(s->allocator, s->csmArrayStageAlloc, &p) != VK_SUCCESS) return false;
-    glBindTexture(GL_TEXTURE_2D_ARRAY, (GLuint)glTex);
-    glGetTexImage(GL_TEXTURE_2D_ARRAY, 0, GL_DEPTH_COMPONENT, GL_FLOAT, p);
-    glBindTexture(GL_TEXTURE_2D_ARRAY, 0);
+    // CSM-BLACKOUT-RECON-1 isolation: MC2_VK_CSM_COPYMODE=noread skips the CPU readback
+    // (staging filled with 1.0f = fully lit) to discriminate glCopyImageSubData-from-live
+    // vs glGetTexImage-on-scratch as the poison trigger.
+    static const int s_noRead = [](){
+        const char* v = getenv("MC2_VK_CSM_COPYMODE");
+        return (v && strcmp(v, "noread") == 0) ? 1 : 0;
+    }();
+    if (s_noRead) {
+        float* f = reinterpret_cast<float*>(p);
+        const size_t n = (size_t)dim * dim * layers;
+        for (size_t i = 0; i < n; ++i) f[i] = 1.0f;
+    } else {
+        GLint prevArrayBind = 0;
+        glGetIntegerv(GL_TEXTURE_BINDING_2D_ARRAY, &prevArrayBind);
+        glBindTexture(GL_TEXTURE_2D_ARRAY, s->csmScratchTex);
+        glGetTexImage(GL_TEXTURE_2D_ARRAY, 0, GL_DEPTH_COMPONENT, GL_FLOAT, p);
+        glBindTexture(GL_TEXTURE_2D_ARRAY, (GLuint)prevArrayBind);
+    }
     vmaUnmapMemory(s->allocator, s->csmArrayStageAlloc);
 
     VkCommandBuffer cb = begin_oneshot(s);
@@ -1865,19 +1913,69 @@ bool copy_csm_array(TerrainIsland* s, uint32_t glTex, uint32_t dim, uint32_t lay
 // this frame. Fail-soft: on any failure, csmArrayReady/csmFullMapReady stay false and the
 // UBO's csmEnabled is forced 0 by the caller -> frag falls back to the legacy single-map
 // path (or unshadowed), never a hole/crash.
+// CSM-BLACKOUT-RECON-1 bisect: MC2_VK_CSM_BISECT=
+//   1 = copies run normally, but the UBO forces csmEnabled=0 (shader on legacy path)
+//   2 = glGetTexImage reads into a heap scratch only (no VMA map, no VK upload), shader off
+//   3 = skip the near-array copy only    4 = skip the full-map copy only
+static int csmBisectMode() {
+    static const int m = [](){
+        const char* v = getenv("MC2_VK_CSM_BISECT");
+        return v ? atoi(v) : 0;
+    }();
+    return m;
+}
+
 bool copy_csm_shadows(TerrainIsland* s, const Mc2TerrainTier1Feed& feed) {
     s->csmArrayReady = false;
     s->csmFullMapReady = false;
     if (!feed.csmEnabled || feed.glCsmArrayTex == 0 || feed.csmArraySize <= 0
         || feed.glCsmFullMapTex == 0 || feed.csmFullMapSize <= 0 || feed.csmCount <= 1)
         return false;
+    if (csmBisectMode() == 5) return false;  // null test: gates armed, NO reads, NO copies
+    if (csmBisectMode() == 2) {
+        // Scratch-read isolation: exercise ONLY the GL side (glGetTexImage), no VMA/VK.
+        static std::vector<float> scratch;
+        const size_t layers2 = (size_t)(feed.csmCount - 1);
+        scratch.resize((size_t)feed.csmArraySize * feed.csmArraySize * layers2
+                       + (size_t)feed.csmFullMapSize * feed.csmFullMapSize);
+        GLint prevA = 0, prev2 = 0;
+        glGetIntegerv(GL_TEXTURE_BINDING_2D_ARRAY, &prevA);
+        glBindTexture(GL_TEXTURE_2D_ARRAY, (GLuint)feed.glCsmArrayTex);
+        glGetTexImage(GL_TEXTURE_2D_ARRAY, 0, GL_DEPTH_COMPONENT, GL_FLOAT, scratch.data());
+        glBindTexture(GL_TEXTURE_2D_ARRAY, (GLuint)prevA);
+        glGetIntegerv(GL_TEXTURE_BINDING_2D, &prev2);
+        glBindTexture(GL_TEXTURE_2D, (GLuint)feed.glCsmFullMapTex);
+        glGetTexImage(GL_TEXTURE_2D, 0, GL_DEPTH_COMPONENT, GL_FLOAT,
+                      scratch.data() + (size_t)feed.csmArraySize * feed.csmArraySize * layers2);
+        glBindTexture(GL_TEXTURE_2D, (GLuint)prev2);
+        return false;  // ready flags stay false -> csmEnabled forced 0
+    }
     const uint32_t layers = (uint32_t)(feed.csmCount - 1);  // near cascades only (last = full-map, separate tex)
-    if (!ensure_csm_array_image(s, (uint32_t)feed.csmArraySize, layers)) return false;
-    if (!copy_csm_array(s, feed.glCsmArrayTex, (uint32_t)feed.csmArraySize, layers)) return false;
-    if (!ensure_shadow_image_slot(s, (uint32_t)feed.csmFullMapSize, &s->csmFullMapImg,
-                                  &s->csmFullMapAlloc, &s->csmFullMapView, &s->csmFullMapDim)) return false;
-    if (!copy_shadow_slot(s, feed.glCsmFullMapTex, (uint32_t)feed.csmFullMapSize, s->csmFullMapImg,
-                          &s->csmFullMapStage, &s->csmFullMapStageAlloc, &s->csmFullMapStageBytes)) return false;
+    // CSM-BLACKOUT-RECON-1: save/restore FBO bindings around the copies — any touch of
+    // the live cascade array (glGetTexImage OR glCopyImageSubData) blacked the frame,
+    // consistent with a driver-side FBO/state disturbance during the depth-array access.
+    GLint prevDrawFbo = 0, prevReadFbo = 0;
+    glGetIntegerv(GL_DRAW_FRAMEBUFFER_BINDING, &prevDrawFbo);
+    glGetIntegerv(GL_READ_FRAMEBUFFER_BINDING, &prevReadFbo);
+    struct FboRestore {
+        GLint d, r;
+        ~FboRestore() {
+            glBindFramebuffer(GL_DRAW_FRAMEBUFFER, (GLuint)d);
+            glBindFramebuffer(GL_READ_FRAMEBUFFER, (GLuint)r);
+        }
+    } fboRestore{prevDrawFbo, prevReadFbo};
+    const int bisect = csmBisectMode();
+    if (bisect != 3) {
+        if (!ensure_csm_array_image(s, (uint32_t)feed.csmArraySize, layers)) return false;
+        if (!copy_csm_array(s, feed.glCsmArrayTex, (uint32_t)feed.csmArraySize, layers)) return false;
+    }
+    if (bisect != 4) {
+        if (!ensure_shadow_image_slot(s, (uint32_t)feed.csmFullMapSize, &s->csmFullMapImg,
+                                      &s->csmFullMapAlloc, &s->csmFullMapView, &s->csmFullMapDim)) return false;
+        if (!copy_shadow_slot(s, feed.glCsmFullMapTex, (uint32_t)feed.csmFullMapSize, s->csmFullMapImg,
+                              &s->csmFullMapStage, &s->csmFullMapStageAlloc, &s->csmFullMapStageBytes)) return false;
+    }
+    if (bisect != 0) return false;  // bisect 1/3/4: shader stays on the legacy path
     s->csmArrayReady = true;
     s->csmFullMapReady = true;
     return true;
@@ -1916,9 +2014,13 @@ bool copy_shadow_slot(TerrainIsland* s, uint32_t glTex, uint32_t dim,
     }
     void* p = nullptr;
     if (vmaMapMemory(s->allocator, *stageAlloc, &p) != VK_SUCCESS) return false;
+    // CSM-BLACKOUT-RECON-1 FIX (same hazard class as copy_csm_array): save/restore the
+    // active unit's GL_TEXTURE_2D binding instead of stomping it to 0 mid-frame.
+    GLint prev2DBind = 0;
+    glGetIntegerv(GL_TEXTURE_BINDING_2D, &prev2DBind);
     glBindTexture(GL_TEXTURE_2D, (GLuint)glTex);
     glGetTexImage(GL_TEXTURE_2D, 0, GL_DEPTH_COMPONENT, GL_FLOAT, p);
-    glBindTexture(GL_TEXTURE_2D, 0);
+    glBindTexture(GL_TEXTURE_2D, (GLuint)prev2DBind);
     vmaUnmapMemory(s->allocator, *stageAlloc);
 
     VkCommandBuffer cb = begin_oneshot(s);

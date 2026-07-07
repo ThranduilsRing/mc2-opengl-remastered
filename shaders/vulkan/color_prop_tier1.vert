@@ -246,18 +246,39 @@ void main() {
     // The hemisphere tint (kAmbientFallback, tuned at the WASHOUT FIX) remains as the
     // fail-soft path when LightsData hasn't been copied yet (first frame / feed miss)
     // so props never regress to flat/black ambient.
+    // ADJUDICATION-1 WASHOUT FIX (2026-07-06): the real-feed branch below was the
+    // UNtuned path — canonical config hits it (lightingReady=1), while the prior
+    // "washout fix" only tuned the kAmbientFallback branch. Measured GL/VK hangar
+    // delta was +47/255 (VK 171 vs GL 123). Two causes, both fixed here to match
+    // static_prop.vert:414-438 exactly:
+    //   1) sunColor was HARDCODED kSunColor (0.95,0.93,0.86); GL scans the real
+    //      per-actor sun light_color from ObjectLights (first INFINITE row) and
+    //      uses vec3(0) when none is found. Hardcoding added a bright sun GL never
+    //      applied (~+25/255 of the delta, present even with IBL off).
+    //   2) IBL: unchanged kernel/axis; the residual IBL over-contribution rides on
+    //      top of the phantom sun, so removing (1) also collapses the IBL-on delta.
+    // TG_LIGHT types (match calc_light / static_prop.vert): 1=INFINITE, 2=INFINITEWITHFALLOFF.
     vec3 ambientTerm = vec3(0.0);
+    vec3 sunColorFed = vec3(0.0);
+    bool sunFound    = false;
     if (uFrame.lightingReady != 0) {
         ObjectLights ld = lightsData_.light[int(inst.lightDataIndex)];
         int n = min(ld.numLights.x, MAX_LIGHTS_IN_WORLD);
         for (int i = 0; i < n; ++i) {
-            if (int(ld.light_dir[i].w) == TG_LIGHT_AMBIENT) {
+            int lt = int(ld.light_dir[i].w);
+            if (lt == TG_LIGHT_AMBIENT) {
                 ambientTerm += ld.light_color[i].xyz;
+            } else if (!sunFound && (lt == 1 || lt == 2)) {
+                sunColorFed = ld.light_color[i].xyz;
+                sunFound = true;
             }
         }
     } else {
         ambientTerm = kAmbientFallback;
     }
+    // Use the real scanned sun color when the feed is live (GL parity). Only the
+    // fail-soft branch (no feed) falls back to the neutral kSunColor stand-in.
+    vec3 sunTerm = (uFrame.lightingReady != 0) ? sunColorFed : kSunColor;
 
     vec3 iblTerm = vec3(0.0);
     if (uFrame.iblShStrength > 0.0) {
@@ -268,5 +289,5 @@ void main() {
         iblTerm = evalShL2(normalize(worldNormalStuff), shCoeffs) * uFrame.iblShStrength;
     }
 
-    vArgb = seed + ambientTerm + iblTerm + kSunColor * ndl;
+    vArgb = seed + ambientTerm + iblTerm + sunTerm * ndl;
 }

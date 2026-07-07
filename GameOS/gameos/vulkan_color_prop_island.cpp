@@ -1616,6 +1616,28 @@ extern "C" int mc2_vk_color_prop_island_run(int w, int h) {
             u.iblShStrength = 0.0f;
         }
         u.lightingReady = s->lightingReady ? 1 : 0;
+        // ADJUDICATION-1 WASHOUT engagement probe: one-shot dump of the exact UBO
+        // lighting terms so we can tell fed-real from fail-soft-constant. If
+        // lightingReady==0, the VS ambientTerm falls back to a hemisphere constant
+        // (= washout). Prints WHY the LightsData copy did/didn't land.
+        {
+            static bool s_lit_dumped = false;
+            if (std::getenv("MC2_VK_PROP_LIGHT_PROBE") && !s_lit_dumped) {
+                s_lit_dumped = true;
+                std::fprintf(stderr,
+                    "[PROP_LIGHT_PROBE v1] lightingReady=%d haveLightFeed=%d tier1=%d "
+                    "wantLighting=%d wantMaterial=%d materialReady=%d "
+                    "iblShStrength=%.4f iblSh0=(%.4f,%.4f,%.4f) "
+                    "lightDataGlSsbo=%u lightDataBytes=%llu terrainSun=(%.3f,%.3f,%.3f)\n",
+                    u.lightingReady, haveLightFeed ? 1 : 0, s->tier1 ? 1 : 0,
+                    s->wantLighting ? 1 : 0, s->wantMaterial ? 1 : 0, u.materialReady,
+                    u.iblShStrength, u.iblSh[0][0], u.iblSh[0][1], u.iblSh[0][2],
+                    (unsigned)lightFeed.lightDataGlSsbo,
+                    (unsigned long long)lightFeed.lightDataBytes,
+                    u.terrainSunMC2[0], u.terrainSunMC2[1], u.terrainSunMC2[2]);
+                std::fflush(stderr);
+            }
+        }
         void* p = nullptr;
         if (vmaMapMemory(s->allocator, s->uboAlloc, &p) == VK_SUCCESS) {
             std::memcpy(p, &u, sizeof(u)); vmaUnmapMemory(s->allocator, s->uboAlloc);
@@ -1685,6 +1707,26 @@ extern "C" int mc2_vk_color_prop_island_run(int w, int h) {
         vkCmdBindVertexBuffers(cb, 0, 1, &s->vbo, &vboOff);
         vkCmdBindIndexBuffer(cb, s->ibo, 0, VK_INDEX_TYPE_UINT32);
 
+        // ADJUDICATION-1 draw-level dump: env-gated one-shot CSV of every packet's
+        // draw parameters + push-constant layers. This is the fence-fix ground truth
+        // (the exact per-packet data RenderDoc would show at a VK vkCmdDrawIndexed,
+        // which a GL-only RenderDoc capture cannot see for this headless-VK island).
+        // Gated on the same sim-freeze predicate the deterministic sweep uses.
+        FILE* s_pktDump = nullptr;
+        {
+            static bool s_dumped = false;
+            const char* dp = std::getenv("MC2_VK_PROP_PACKET_DUMP");
+            extern int mc2CaptureGaitFreezeActive();
+            const bool frozen = mc2CaptureGaitFreezeActive() != 0 ||
+                                std::getenv("MC2_VISUAL_BOOKMARK_CAPTURE") == nullptr;
+            if (dp && dp[0] && !s_dumped && frozen) {
+                s_dumped = true;
+                s_pktDump = std::fopen(dp, "w");
+                if (s_pktDump)
+                    std::fprintf(s_pktDump, "typeID,packet,layerOff,layerOn,indexCount,firstIndex,baseVertex,instCount,firstInstance\n");
+            }
+        }
+
         unsigned long typeRuns = 0;
         uint32_t i = 0;
         while (i < instanceCount) {
@@ -1705,6 +1747,10 @@ extern "C" int mc2_vk_color_prop_island_run(int w, int h) {
                         (pk < s->packetLayerOff.size()) ? s->packetLayerOff[pk] : -1,
                         (pk < s->packetLayerOn.size())  ? s->packetLayerOn[pk]  : -1,
                     };
+                    if (s_pktDump)
+                        std::fprintf(s_pktDump, "%u,%u,%d,%d,%u,%u,%d,%u,%u\n",
+                                     tid, pk, pc[0], pc[1], pkt.indexCount, pkt.firstIndex,
+                                     (int32_t)pkt.baseVertex, instCount, i);
                     vkCmdPushConstants(cb, s->playout, VK_SHADER_STAGE_VERTEX_BIT | VK_SHADER_STAGE_FRAGMENT_BIT,
                                         0, sizeof(pc), pc);
                     vkCmdDrawIndexed(cb, pkt.indexCount, instCount,
@@ -1714,6 +1760,7 @@ extern "C" int mc2_vk_color_prop_island_run(int w, int h) {
             }
             i = j;
         }
+        if (s_pktDump) { std::fclose(s_pktDump); s_pktDump = nullptr; }
         g_health.typeRuns = typeRuns;
 
         vkCmdEndRenderPass(cb);
