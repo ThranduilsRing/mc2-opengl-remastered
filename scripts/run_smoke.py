@@ -1748,6 +1748,13 @@ def main():
                             # place; zero copies/readbacks). envTriState OPT-IN,
                             # default-OFF (new-rung pattern as MC2_VK_TERRAIN_SKIRTS).
                             "MC2_VK_POST_FOG_NATIVE",
+                            # VK-POST-SSAO-NATIVE-1 (rung 8.2): SSAO gen+apply
+                            # rendered natively on the shared engine context (samples
+                            # shared scene depth+normal into a VK-owned half-res R16F
+                            # occlusion image, multiplies into shared scene color0 in
+                            # place; zero copies/readbacks). envTriState OPT-IN,
+                            # default-OFF (new-rung pattern as MC2_VK_POST_FOG_NATIVE).
+                            "MC2_VK_POST_SSAO",
                             # VK-SHADOW-COPY-ONCE-1: diagnostic-only per-frame ms log for
                             # the VK-terrain-interop-copies zone (stderr line, default OFF).
                             "MC2_VK_TERRAIN_COPY_STATS",
