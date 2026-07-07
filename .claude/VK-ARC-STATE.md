@@ -257,6 +257,39 @@ composited pixels remain a valid VK oracle.
   leave in tree. Shadow-saga status: UNCHANGED from before this session — the
   deeper CSM-near-armed blackout defect is still open, now with ready-to-use
   instrumentation blocked only by lane health.
+- **CSM-BLACKOUT-RECON-1 RESOLVED (2026-07-07 session) — blackout does NOT
+  reproduce at HEAD `cf91cba5`; the "deep CSM-near shading defect" was a
+  compound evidence artifact, not a shader bug.** Lane health CLEARED first:
+  rebuilt+redeployed 0.4c at `cf91cba5` (manifest src_commit confirmed), plain
+  VK launch on a visible window (wShowWindow=4) → `[VK_PRESENT] swapchain OK
+  images=3 extent=1707x960` + present path UP, no fail-soft (last session's
+  vkCreateSwapchainKHR failure was environmental, as suspected). Full
+  MC2_VK_TERRAIN_CSM_DEBUG=0..5 ladder run at all mc2_01 bookmarks, every run
+  with a used_vulkan receipt (488–496; GL control used_vulkan=0):
+  `.claude/mech-parity/csm_near_field/blackout_debug/vk_dbg{0..5}/` + `gl_ref/`.
+  FINDINGS: (1) the debug branch executes correctly on VK (achromatic grays →
+  UBO wiring at off 364 GOOD); (2) NO term collapses — at the oblique_horizon
+  "black band": normalLight=0.70, lightDir sane, staticS=0.67, dynS=1.00
+  (CSM sample fully LIT), shadow=0.67; (3) the oblique_horizon dark band is
+  PRESENT IN GL TOO (GL band mean 23/ch vs VK 17/ch — it is the stock look:
+  dark slope+baked-shadow band), terrain-only MAD GL-vs-VK = 3.79/ch at
+  oblique_horizon, 4.5–17/ch across all matched bookmarks — inside the
+  documented near-detail residual, NO blackout-class divergence; (4) the
+  "overview_center blackout" screenshots were captured at the WRONG CAMERA
+  POSE under VK configs — cross-matching VK captures against all GL bookmarks
+  shows VK's first bookmark (overview_center) lands on a water/fog-edge pose
+  (best-match = edge_fog_corner_southwest) while every subsequent bookmark
+  matches its own name; reproducible with settle=40 AND settle=80, VK-config
+  runs only, deterministic. The prior session's post-fix "blackout still
+  reproduces" capture (`vk_final/mc2_01_overview_center.png`) is this same
+  first-bookmark wrong-pose artifact (dark fog-edge water view misread as
+  terrain blackout). VERDICT: CSM-near path healthy at HEAD; no shader/feed
+  fix needed, nothing landed beyond probe-script receipts. NEW OPEN ITEM →
+  **VK-FIRST-BOOKMARK-POSE-1**: bookmark-sweep capture under VK gates captures
+  bookmark #1 at a stale/wrong camera pose (GL runs are correct). Any
+  single-bookmark VK evidence at "overview_center" from sweep captures is
+  suspect until this is fixed; use later-in-sweep bookmarks or
+  single-bookmark runs for VK evidence.
 - **BUG 6? prop texture scramble** — coordinator saw live (pink slabs, floating
   textures, trunkless trees) DURING mc2_24 load on the Bug1+Bug4 exe. NOT
   reproduced at settled capture (props clean: walls/trees/buildings textured).

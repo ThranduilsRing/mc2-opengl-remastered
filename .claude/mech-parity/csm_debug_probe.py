@@ -35,6 +35,8 @@ def run(tag, extra, out_dir, duration=70, trigger=140, settle=40):
     out_dir.mkdir(parents=True, exist_ok=True)
     env = os.environ.copy()
     env.update({
+        "MC2_DEBUG_STATE_DUMP": "1",
+        "MC2_DEBUG_STATE_DUMP_DIR": str(out_dir),
         "MC2_SMOKE_MODE": "1", "MC2_LOG": "1", "MC2_SMOKE_SEED": "0xC0FFEE",
         "MC2_SMOKE_FIXED_TIMESTEP": "1", "MC2_HEARTBEAT": "1",
         "MC2_VISUAL_BOOKMARK_CAPTURE": str(BOOK / f"{MISSION}.json"),
@@ -64,7 +66,16 @@ def run(tag, extra, out_dir, duration=70, trigger=140, settle=40):
             subprocess.run(["taskkill", "/F", "/PID", str(pid)], capture_output=True)
             p.wait(timeout=10)
     pngs = sorted(out_dir.glob(f"{MISSION}_*.png"))
-    print(f"[csm-debug-probe] {tag}: {len(pngs)} bookmark PNGs pid={pid}")
+    used = "?"
+    try:
+        import json
+        d = json.loads((out_dir / "latest_render_state.json").read_text(encoding="utf-8"))
+        used = d.get("vulkan_terrain_island", {}).get("used_vulkan", "absent")
+    except Exception as e:
+        used = f"dump-read-fail:{e}"
+    print(f"[csm-debug-probe] {tag}: {len(pngs)} bookmark PNGs pid={pid} used_vulkan={used}")
+    for p in pngs:
+        print(f"  {p}")
     return out_dir
 
 if __name__ == "__main__":
