@@ -1,8 +1,50 @@
 # VK-ARC-STATE — current state block (update every session)
 
-HEAD: `6c9e4372` "feat(vk): VK owns terrain skirt/edge-stitch geometry (rung 4)" on
-branch `claude/vk-interop-bridge-1`, worktree `A:/Games/mc2-vk-interop-bridge`.
+HEAD: `49ba7f25` "feat(vk): VK-TERRAIN-VISUALDISPLACE-FAR-1 -- capture/feed/island
+wiring (rung 5)" on branch `claude/vk-interop-bridge-1`, worktree
+`A:/Games/mc2-vk-interop-bridge`.
 Build dir `build64_island`. Deploy lane (literal): `A:/Games/mc2-opengl/mc2-win64-0.4c`.
+
+## RUNG 5 — VK-TERRAIN-VISUALDISPLACE-FAR-1 (2026-07-07) — MODE-2 DONE
+
+Commits `4c427cf9` (shaders) + `49ba7f25` (wiring). Gate
+`MC2_VK_TERRAIN_VISUALDISPLACE_FAR` (default-OFF, envTriState opt-in, requires
+ALL_LODS, smoke-allowlisted incl. GL `MC2_TERRAIN_VISUAL_DISPLACE_FAR` knob).
+Scope: mode-2 far-band (lodStep>1, non-stitched) pure Z-swap ONLY; mode-1 (LOD0
+4x topology) + stitched patches stay GL-owned (separate L slice later). VK skirt
+TOP verts displace like GL (GL's mode-2 branch runs for skirt tops); bottoms stay
+coarse-h - skirtDepth. New: binding-10 heightsFine SSBO (dummy 16B from frame 1),
+snapshot_visual_height version-gated mission-load copy, UBO visualSide/
+visualDisplaceFar/visualMode @ off 580/584/588 (1024B slot unchanged), per-patch
+visualMode in Mc2TerrainTier1Patch, feed-dump displacedPatches field.
+- Offline: check_vk_shaders 34/34, check_ubo_layout OK (47 fields), port pairs
+  `visualDisplaceFar` x2 (main + skirt VS) = **VERBATIM** (local u_* aliases +
+  anonymous SSBO instance keep the block textually identical to GL).
+- Byte-off: control GL x2 gates-unset = 0.000 on 10/11 mc2_01 bookmarks
+  (cross_map_view has PRE-EXISTING run-to-run drift, gates unset — excluded);
+  displace-ON + umbrella+ALL_LODS but new gate OFF vs GL = 0.000-class (max MAD
+  0.35/ch, cov <=1.4%) — predicate excludes everything, GL owns all pixels.
+- Displaced-capture evidence: GL band-count telemetry LOD1=5 (GL ref run) ->
+  LOD1=0 (VK gate-ON run) = VK captured exactly the 5 mode-2 patches; snapshot
+  receipt `V=397 bytes=630436 ver=1`; used_vulkan=739 (VK run), 0 (GL run).
+  NOTE: MC2_VK_FEED_DUMP produced no file this sweep (readyToDump gating) —
+  evidence via band counters instead.
+- Z-swap mechanism proof (single-variable): fade knob 1.0 vs 0.0, all else
+  identical -> MAD 0.00-0.78/ch, cov <=0.81%, localized far-band silhouettes.
+  The displacement math executes in VK and is small/localized as expected.
+- GL-vs-VK absolute MADs gate-ON (mc2_01, 11 bookmarks): 13.6-44.3/ch, cov
+  30-62%. ATTRIBUTION: dominated by the PRE-EXISTING bare-umbrella family
+  residual (measured baseline at same poses, NO displacement anywhere:
+  13.9-15.0/ch cov ~30%) — arming the gate flips far-band ownership to VK,
+  exposing the known VK terrain look-class divergence (sky-band fill + lighting)
+  on far surface. NOT a Z-swap defect (see fade-knob proof). Poses verified
+  self-matching (no VK-FIRST-BOOKMARK-POSE-1 hit this sweep).
+- Smoke: tier1 5/5 PASS both states (gates-OFF and displace+umbrella+ALL_LODS+
+  gate-ON), +0 destroy-delta all missions, worktree run_smoke vs 0.4c exe.
+- Residuals/deferred: mode-1 LOD0 port (L slice); stitched-patch ownership;
+  0.4c lane ships NO visual_height_4x.r32 bakes (only v0.4 does) — live tests
+  used MC2_TERRAIN_VISUAL_HEIGHT_FILE override; feed-dump readyToDump gating
+  under sweeps; artifacts `.claude/vk-visdisp-far/`.
 
 ## Gate inventory (umbrella + sub-gates)
 
