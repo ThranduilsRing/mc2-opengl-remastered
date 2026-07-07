@@ -719,6 +719,8 @@ ALLOWLIST=(
 
     # --- batch 8 (ENV-DROP sweep 2026-07-07: recent slices that skipped registration) ---
     MC2_3DVIEW_DIAG                   # trace -- one-shot 3D-view composite diagnostics (gameos_graphics.cpp)
+    MC2_BOOKMARK_SAVE_DIR             # override -- output dir for in-game Save Camera Bookmark button (default ./saved_bookmarks)
+    MC2_BOOKMARK_SAVE_TEST            # infra -- one-shot auto bookmark save ~120 frames after mission load (button round-trip proof)
     MC2_CAMERA_ASPECT_NATIVE          # feature -- native window-aspect camera projection (default ON; =0 restores legacy 4:3 stretch)
     MC2_DRAW_PACKET_COALESCE_V5       # feature -- static-prop DrawPacket v5 per-draw substitutive dispatch (opt-in =1, needs ARB_base_instance)
     MC2_DRAW_PACKET_COALESCE_V5_TRACE # trace

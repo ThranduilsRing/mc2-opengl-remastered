@@ -43,6 +43,8 @@
 
 #include<mlr/mlr.hpp>
 #include <tracy/Tracy.hpp>
+#include <direct.h>   // _mkdir (mc2_save_camera_bookmark output dir)
+#include <time.h>     // timestamped bookmark names
 #include "cpu_proj_cost_split.h"  // F3 CPU projection cost-baseline (RAII scope)
 #include "../GameAdapters/StaticPropRenderAdapter.h"  // M1 CI-gate: firewall bridge for frameBegin()
 #include "../GameAdapters/VegetationAdapter.h"         // vegetation card flush (post-renderLists)
@@ -1020,8 +1022,23 @@ inline GameObjectPtr getCamObject (long partId, bool existsOnly)
 long cameraLineChanged = 0;
 bool useLOSAngle = true;
 //---------------------------------------------------------------------------
+extern "C" void mc2_save_camera_bookmark(char* outPath, int outPathLen);
+
 long GameCamera::update (void)
 {
+	// BOOKMARK-SAVE-BUTTON-1 test hook: MC2_BOOKMARK_SAVE_TEST=1 triggers one
+	// bookmark save shortly after mission load (headless round-trip proof for
+	// the "Save Camera Bookmark" button path; same helper, no UI needed).
+	{
+		static int s_bookmarkTestFrames = -2;   // -2 = env unchecked
+		if (s_bookmarkTestFrames == -2) {
+			const char* t = getenv("MC2_BOOKMARK_SAVE_TEST");
+			s_bookmarkTestFrames = (t && t[0] == '1') ? 120 : -1;
+		}
+		if (s_bookmarkTestFrames > 0 && --s_bookmarkTestFrames == 0)
+			mc2_save_camera_bookmark(nullptr, 0);
+	}
+
 	if (lookTargetObject != -1)
 		targetObject = getCamObject(lookTargetObject,true);
 		
@@ -1355,6 +1372,84 @@ extern "C" void mc2_hzb_dump_camera_view(void)
 	} else {
 		fprintf(stderr, "[HZB_VIEW_DUMP v1] ERROR: cannot open '%s' for write\n", dumpPath);
 		fflush(stderr);
+	}
+}
+
+//---------------------------------------------------------------------------
+// mc2_save_camera_bookmark — C-linkage helper called from
+// GuiRuntime/EditorInspector.cpp ("Save Camera Bookmark" button). Writes a
+// COMPLETE bookmark-schema JSON (schema owner: visual-regression-lab
+// architecture doc section 2.1; consumer: gos_visual_capture.cpp
+// load_bookmarks/apply_bookmark — fields mission + bookmarks[{name,pos,rot,
+// proj,alt}]) so the file is directly consumable by
+// MC2_VISUAL_BOOKMARK_CAPTURE. Output dir: MC2_BOOKMARK_SAVE_DIR if set, else
+// "saved_bookmarks/" under the working dir (created if missing). Two
+// identical-pose entries are written because single-pose bookmark files are
+// documented as silently failing (see tests/visual/bookmarks/mc2_01.json
+// header note). Writes the produced path (or "") into outPath for UI display.
+extern "C" void mc2_save_camera_bookmark(char* outPath, int outPathLen)
+{
+	if (outPath && outPathLen > 0) outPath[0] = 0;
+	if (!eye) {
+		fprintf(stderr, "[BOOKMARK_SAVE v1] ERROR: eye is null\n");
+		fflush(stderr);
+		return;
+	}
+	const char* dir = getenv("MC2_BOOKMARK_SAVE_DIR");
+	if (!dir || !dir[0]) {
+		dir = "saved_bookmarks";
+		_mkdir(dir);   // best-effort create; EEXIST is fine
+	} else {
+		_mkdir(dir);
+	}
+	const char* stem = (mission && mission->getMissionFileName() &&
+	                    mission->getMissionFileName()[0])
+	                       ? mission->getMissionFileName() : "unknown";
+	time_t now = time(nullptr);
+	struct tm* lt = localtime(&now);
+	char stamp[16];
+	strftime(stamp, sizeof(stamp), "%H%M%S", lt);
+
+	char path[512];
+	snprintf(path, sizeof(path), "%s/%s_saved_%s.json", dir, stem, stamp);
+
+	Stuff::Vector3D pos = eye->getPosition();
+	float rot   = eye->getCameraRotation();
+	float proj  = eye->getProjectionAngle();
+	float alt   = eye->getCameraAltitude();
+
+	FILE* f = fopen(path, "w");
+	if (!f) {
+		fprintf(stderr, "[BOOKMARK_SAVE v1] ERROR: cannot open '%s' for write\n", path);
+		fflush(stderr);
+		return;
+	}
+	fprintf(f, "{\n  \"schema_v\": 1,\n  \"mission\": \"%s\",\n", stem);
+	fprintf(f, "  \"_note\": \"Saved in-game via Save Camera Bookmark button. "
+	           "Duplicate entry keeps >=2 bookmarks (single-pose files silently fail).\",\n");
+	fprintf(f, "  \"bookmarks\": [\n");
+	for (int i = 0; i < 2; ++i) {
+		fprintf(f,
+		    "    {\n"
+		    "      \"name\": \"saved_%s%s\",\n"
+		    "      \"pos\": [%.4f, %.4f, %.4f],\n"
+		    "      \"rot\": %.4f,\n"
+		    "      \"proj\": %.4f,\n"
+		    "      \"alt\": %.4f\n"
+		    "    }%s\n",
+		    stamp, (i == 0) ? "" : "_dup",
+		    pos.x, pos.y, pos.z, rot, proj, alt,
+		    (i == 0) ? "," : "");
+	}
+	fprintf(f, "  ]\n}\n");
+	fclose(f);
+	fprintf(stderr, "[BOOKMARK_SAVE v1] wrote %s (mission=%s pos=[%.2f,%.2f,%.2f] "
+	        "rot=%.2f proj=%.2f alt=%.2f)\n",
+	        path, stem, pos.x, pos.y, pos.z, rot, proj, alt);
+	fflush(stderr);
+	if (outPath && outPathLen > 0) {
+		strncpy(outPath, path, (size_t)outPathLen - 1);
+		outPath[outPathLen - 1] = 0;
 	}
 }
 

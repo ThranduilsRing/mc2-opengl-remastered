@@ -6,6 +6,8 @@
 // HZB camera-view dump: thin C helper defined in code/gamecam.cpp so we don't
 // have to pull the full camera.h -> terrain.h chain into GuiRuntime.
 extern "C" void mc2_hzb_dump_camera_view(void);
+// Bookmark-schema camera save (BOOKMARK-SAVE-BUTTON-1): same thin-C pattern.
+extern "C" void mc2_save_camera_bookmark(char* outPath, int outPathLen);
 #include "../GameOS/gameos/debug_renderer.h"  // IMG-INSPECT-3
 #include "../GameOS/gameos/gos_frame_pass_stats.h"  // FRAME-INSPECTOR-1
 #include "../GameOS/gameos/gos_render_pass_timer.h"  // FRAME-INSPECTOR-1 (ms col)
@@ -474,7 +476,18 @@ void EditorInspector::drawImGui() {
     // to avoid pulling the camera.h -> terrain.h header chain into GuiRuntime.
     {
         static bool s_hzbSaved = false;
+        static char s_bookmarkPath[512] = {0};
         ImGui::Spacing();
+        // Primary: bookmark-schema JSON save (BOOKMARK-SAVE-BUTTON-1).
+        // Directory = MC2_BOOKMARK_SAVE_DIR or ./saved_bookmarks; the file is
+        // directly consumable by MC2_VISUAL_BOOKMARK_CAPTURE.
+        if (ImGui::Button("Save Camera Bookmark")) {
+            mc2_save_camera_bookmark(s_bookmarkPath, (int)sizeof(s_bookmarkPath));
+        }
+        if (s_bookmarkPath[0]) {
+            ImGui::TextDisabled("wrote: %s", s_bookmarkPath);
+        }
+        // Secondary: legacy HZB text dump (MC2_HZB_VIEW_FILE replay format).
         if (ImGui::Button("Save Camera View (HZB)")) {
             mc2_hzb_dump_camera_view();
             s_hzbSaved = true;
