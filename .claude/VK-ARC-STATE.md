@@ -386,12 +386,34 @@ VK's mip chain is confirmed BYTE-COPIED from GL's own already-generated
 so VK samples the literal same BC7 bytes GL does, at the same LOD range, with the
 same CLAMP_TO_EDGE + LINEAR_MIPMAP_LINEAR sampler state, same `fract(vUv)` UV
 handling in both fragment shaders. With every concrete sampler/mip/UV divergence
-eliminated, the alternating-panel dropout is most likely genuine floating-point
-rasterization divergence (vertex clip-position rounding differences between the GL
-and VK pipelines shifting the rasterized UV footprint across the 0.5 alpha-test
-threshold on a periodic subset of panels) rather than a fixable state/config bug --
-NOT yet proven, no fix landed. Next step: dump actual `gl_FragCoord`/derivative-
-based computed LOD per-fragment on both backends at the SAME two adjacent
-alternating panels and diff the raw sampled texel alpha values before the discard,
-to confirm/refute the FP-divergence hypothesis with hard numbers instead of
-elimination-by-exhaustion.
+eliminated, a bisect experiment settled it (same session, later):
+
+**FENCE ALTERNATION — ROOT-CAUSED AND FIXED (same session, follow-up).**
+Bisect ladder, each step build+deploy+capture with VK receipts (used_vulkan
+409-420, GL reference unchanged):
+1. Coordinator's fract-seam-derivative hypothesis (`textureGrad` with smooth
+   gradients from the UNWRAPPED vUv): landed, deployed SPV verified to contain
+   `OpImageSampleExplicitLod ... Grad` -- alternation UNCHANGED. Hypothesis
+   DISPROVEN by direct experiment.
+2. Forced `textureLod(.., 0.0)` diag: EVERY dropped panel reappeared.
+   **Mechanism proven: the minified mip chain's alpha decays below the 0.5
+   test (naive glGenerateMipmap box filter halves thin chain-link coverage
+   per level), and VK's implicit LOD lands deep enough to cross it where GL's
+   does not.** (Mip BYTES are identical -- byte-copied -- so the divergence is
+   LOD selection, which is implementation-defined per API/compiler.)
+3. Final fix (landed, `shaders/vulkan/color_prop_tier1.frag` alpha-ON branch):
+   deterministic LOD computed from unwrapped-vUv gradients
+   (`0.5*log2(max(dot(dx,dx),dot(dy,dy)))` in texel units), clamped to <=1.0
+   for the alpha-test class (LOD<=1 proven panel-preserving by the bisect),
+   sampled via explicit `textureLod`. No driver-implicit LOD dependence left.
+   **Result: alternation GONE -- every panel present along the whole run at
+   c_rot110 (crop_fence_vk_final.png). Fence-region MAD 29.9 -> 27.1.**
+   Residual (documented, NOT the alpha bug): VK panels read slightly narrower
+   with gaps vs GL's continuous ribbon -- consistent with the KNOWN-DEFERRED
+   per-draw uvScale sub-region gap (VK samples with uvScale=1.0 assumed;
+   GL applies uvScaleX/Y per draw, static_prop.frag:206). NEXT CONCRETE STEP:
+   feed per-draw uvScaleX/Y through the packet push constant (same plumbing as
+   packetLayerOff/On) and apply in the island frag; expect the gaps to close
+   and fence MAD to drop to residual-class.
+Hangar regression guard re-measured on the same capture: delta -0.5/255 (fix
+intact). Smoke mc2_01 PASS both byte-off control and canonical VK-on state.

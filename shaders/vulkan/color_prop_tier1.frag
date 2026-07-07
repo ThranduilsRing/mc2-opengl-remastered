@@ -65,7 +65,34 @@ void main() {
         // SAME 0.5 alpha-test discard the GL producer uses (static_prop.frag:236:
         // (materialFlags & ALPHA_TEST_BIT) && tex_color.a < 0.5 -> discard). A discarded
         // fragment leaves the LOADed terrain GBuffer pixel untouched (in-place co-write).
-        vec4 texc = texture(uAlbedoOn, vec3(fract(vUv), float(vLayerOn)));
+        // ADJUDICATION-1 FENCE FIX: fract() BEFORE sampling destroys screen-space
+        // derivatives at the UV wrap seam (0.99->0.01 jump -> fwidth explodes ->
+        // implicit LOD slams toward the tiniest mip -> minified alpha aliases <0.5
+        // -> panel discards). At fence minification each panel spans only a few
+        // pixels, so one seam-crossing quad can kill a panel's entire footprint;
+        // whether a panel's pixels straddle a seam depends on UV phase -> the
+        // ALTERNATING panel dropout. GL shows the same fract() in text but its
+        // implicit-derivative behavior (coarse/fine choice, quad packing) is
+        // implementation-defined and its compiler path happens to survive; the VK
+        // path does not. Fix: gradients from the UNWRAPPED vUv (smooth everywhere),
+        // wrapped coord for addressing, via textureGrad — not a control-flow
+        // construct, so uniform control flow is preserved.
+        // Bisect proof (this session): forcing LOD 0 restored every dropped panel,
+        // while textureGrad with smooth gradients did NOT -> the kill mechanism is
+        // the minified mip chain's alpha decaying below the 0.5 test (naive
+        // glGenerateMipmap box filter halves thin-wire coverage per level), with
+        // VK's LOD selection landing deeper than GL's for the same footprint.
+        // Fix: deterministic LOD from the UNWRAPPED vUv gradients (no fract-seam
+        // spikes, no driver-implicit divergence), CLAMPED to <=1.0 for this
+        // alpha-test class so chain-link/foliage alpha coverage survives the test
+        // (LOD<=1 proven panel-preserving by the bisect). Uniform control flow
+        // preserved (explicit-LOD sample, no control-flow construct).
+        vec2  tsOn = vec2(textureSize(uAlbedoOn, 0).xy);
+        vec2  duv1 = dFdx(vUv) * tsOn;
+        vec2  duv2 = dFdy(vUv) * tsOn;
+        float lodOn = 0.5 * log2(max(max(dot(duv1, duv1), dot(duv2, duv2)), 1e-12));
+        lodOn = clamp(lodOn, 0.0, 1.0);
+        vec4 texc = textureLod(uAlbedoOn, vec3(fract(vUv), float(vLayerOn)), lodOn);
         if (texc.a < 0.5) discard;
         // ★VK-FLIP-FIELD-REPORT-1 BLACK-FENCE FIX: the alpha-ON group is the ALPHA_TEST
         // class (tree cards / fences / foliage). GL static_prop.frag:339 floors their lit
