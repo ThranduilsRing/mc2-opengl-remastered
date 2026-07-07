@@ -58,7 +58,7 @@ preview FBO (drawOldWay force), 4x supersample, bay/pilot icon bridge (beginGuiB
 - **★docs/ui-imgui-port-guide.md** = the modder's complete hook-in map (migration contract, canvas model, HUD seam, dev loop, editor/viewer hookups, fonts). Point him here first.
 - REMAINING for modder (all documented in the guide): Viewer polish, UI-Editor->GOS hookup, authoring the pinned pages (results/loadscreen).
 
-## NIFTY side (worktree .claude/worktrees/nifty-mendeleev)
+## NIFTY side (canonical worktree `A:/Games/mc2-main`)
 - DEV-SHELL complete (docs/dev-shell.md = playbook; ping/reload_shaders/screenshot/ui_reload/texture_refresh/framegraph). GAMEOS-SPLIT plan at docs/splits/gameos-graphics-split-1-plan.md — execute slice 1 (gosFont) when worktree free.
 
 ## CHURN-KILLERS (do first, ~1h, pays back immediately)

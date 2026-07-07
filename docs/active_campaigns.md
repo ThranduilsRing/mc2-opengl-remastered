@@ -2,6 +2,22 @@
 
 > Pointer doc. Detail in memory/ handoffs and docs/. Add new campaigns at top.
 
+## 2026-07-07 — SHIPPED-LEDGER BACKFILL (handoff audit) — arcs in git but previously missing here
+
+| Slice | Commit(s) | Status | Notes |
+|---|---|---|---|
+| HUD-IMGUI slices A–E | `ccdb1628` `49ef1e3b` `c7928d6d` `4f99d149` `d1811661` `db326915` | SHIPPED | in-mission HUD ImGui port (readability / pause / tabs / info window / tac-map); scope doc `65ab058c`; all gates default-OFF |
+| STATIC-SHADOW-BANDING-1 | `9c31e2bf` | SHIPPED | PCF undersampling banding fix on flat terrain |
+| STATIC-SHADOW-BANDING-2 | `5b0e488e` | SHIPPED | slope-normal bias + normal-offset receiver; gate `MC2_SHADOW_STATIC_BANDFIX_V2` default-OFF, awaiting user field check |
+| ROAD-PBR-OPTIN-1 | `63bb0832` | SHIPPED | legacy road tiles are the default everywhere; PBR roads opt-in |
+| ROAD-PBR-FAILSOFT-1 | `b59cced7` | SHIPPED | legacy road tiles when asphalt/gravel TGAs absent |
+| CLIFF-SHADOW-FLOOR | `52f12f9c` | SHIPPED | gated lift for shadow-side steep faces |
+| TERRAIN-DECAL-FILL-1 v2 | `7de56d52` | SHIPPED | cliff-decal shadow-side fill rework |
+| EDITOR-PILOT-CATALOG-FST-1 | `e91655fd` | SHIPPED | pilot catalog no longer empty in editor |
+| PILOT-PROFILE-PRESERVE-1 | `d99aaade` | SHIPPED | editor save can no longer blank `[WarriorN] Profile` |
+| Release: Azure signing wrapper | `47892d82` | SHIPPED | Azure Artifact Signing wrapper + account metadata (cert profile pending identity validation) |
+| Release: Inno Setup installer | `13d7959d` | SHIPPED | wizard install + disk-spanning under GitHub 2GB cap |
+
 ## 2026-06-27 — DEPTH/Z-FIGHT/FOG FOLLOWUPS — SHIPPED + MERGED nifty (`e0cd4ff5`)
 
 Three render bugs from `.claude/HANDOFF-depth-precision-fog-followups.md`, all user-confirmed

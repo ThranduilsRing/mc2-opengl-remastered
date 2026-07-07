@@ -11,7 +11,7 @@ inspecting MC2 assets, decoupled from the game. Sidebar asset types; a `PreviewS
 **Deferred (sidebar shows disabled):** Trees, Mechs, Vehicles, VFX, Terrain Materials, Mod Package.
 
 ## Current state
-- Branch/worktree: **`claude/nifty-mendeleev`** at `…/.claude/worktrees/nifty-mendeleev` (canonical). nifty HEAD ≈ `da214e59` (moves; another perf/engine session commits here too — always re-check + merge onto latest).
+- Branch/worktree: **`claude/nifty-mendeleev`** at `A:/Games/mc2-main` (canonical; moved from `…/.claude/worktrees/nifty-mendeleev`, commit `0dc3db2c`). nifty HEAD ≈ `da214e59` (moves; another perf/engine session commits here too — always re-check + merge onto latest).
 - Deployed: `A:/Games/mc2-opengl/mc2-win64-v0.4/mc2_asset_viewer.exe` (current).
 - All asset-viewer feature branches from the prior session are **merged + worktrees removed**. Only `claude/mc2-asset-viewer-shape-1` (pre-existing, unrelated) remains.
 
@@ -26,11 +26,11 @@ inspecting MC2 assets, decoupled from the game. Sidebar asset types; a `PreviewS
 - **cmake is NOT on PATH** → use `C:\mingw64\bin\cmake.exe` (the binary; compiler is MSVC VS2022 BuildTools).
 - Configure (needed on first build of a worktree, or after CMakeLists changes), PowerShell, **quote the -D args**:
   ```
-  & "C:\mingw64\bin\cmake.exe" -G "Visual Studio 17 2022" "-DCMAKE_PREFIX_PATH=A:/Games/mc2-opengl-src/3rdparty/3rdparty" "-DCMAKE_LIBRARY_ARCHITECTURE=x64" "-DCMAKE_POLICY_VERSION_MINIMUM=3.5" -B build64
+  & "C:\mingw64\bin\cmake.exe" -G "Visual Studio 17 2022" "-DCMAKE_PREFIX_PATH=A:/Games/mc2-main/3rdparty" "-DCMAKE_LIBRARY_ARCHITECTURE=x64" "-DCMAKE_POLICY_VERSION_MINIMUM=3.5" -B build64
   ```
   (`CMAKE_POLICY_VERSION_MINIMUM=3.5` is REQUIRED — mingw cmake is v4, the old SDL2 config needs it.)
 - Build: `& "C:\mingw64\bin\cmake.exe" --build build64 --config RelWithDebInfo --target mc2_asset_viewer`
-- Exe: `build64/out/tools/asset_viewer/RelWithDebInfo/mc2_asset_viewer.exe`. Needs `SDL2.dll`+`glew32.dll` beside it (copy from `A:/Games/mc2-opengl-src/3rdparty/3rdparty/lib/x64`).
+- Exe: `build64/out/tools/asset_viewer/RelWithDebInfo/mc2_asset_viewer.exe`. Needs `SDL2.dll`+`glew32.dll` beside it (copy from `A:/Games/mc2-main/3rdparty/lib/x64`).
 - Deploy: copy the exe to `A:/Games/mc2-opengl/mc2-win64-v0.4/`. **It locks while running** — if the user has the viewer open, `Copy-Item` fails; ask them to close it.
 - PowerShell gotchas: no `tail` (use `Select-Object -Last N`); `git ... | <unix>` breaks; `docs/superpowers` is gitignored → `git add -f` for spec/plan docs; the `tools/` dir has a broad gitignore → `git add -f` new fixture/binary files.
 

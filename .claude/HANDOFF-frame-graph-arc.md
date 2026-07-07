@@ -154,7 +154,7 @@ verify `git diff` is yours-only before staging. Do the same.
 ---
 
 ## Paths + commands
-- **Worktree root:** `A:/Games/mc2-opengl-src/.claude/worktrees/nifty-mendeleev/`
+- **Worktree root:** `A:/Games/mc2-main/` (canonical worktree moved from `mc2-opengl-src/.claude/worktrees/nifty-mendeleev`, commit `0dc3db2c`)
 - **Deploy target (this session):** `A:/Games/mc2-opengl/mc2-win64-0.4c` (game exe; a complete
   7GB install). NOTE: `0.4c` (no `v`) is non-standard — the smoke alias `--deploy 0.4c` resolves
   to the *editor* `v0.4c`, so deploy/smoke this build with explicit `--exe ... --no-lease`.

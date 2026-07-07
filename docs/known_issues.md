@@ -43,7 +43,7 @@ Known bugs that affect anyone running the game. Full detail in the beta doc:
 [docs/beta/known_issues.md](beta/known_issues.md)
 
 - **Shadow stutter** when the camera jumps more than ~500 units in one move. Panning is smooth; only large instant jumps trigger it.
-- **Shadow banding** shifts slightly with camera rotation due to view-dependent tessellation.
+- **Shadow banding** shifts slightly with camera rotation due to view-dependent tessellation. *Status:* STATIC-SHADOW-BANDING-1 (`9c31e2bf`, PCF undersampling fix, shipped) and STATIC-SHADOW-BANDING-2 (`5b0e488e`, slope-normal bias + normal-offset receiver, gate `MC2_SHADOW_STATIC_BANDFIX_V2` default-OFF, awaiting user field check) address this.
 - **Water shoreline z-fight** visible when zooming in or changing elevation (not on pan).
 - **First-launch black terrain** (intermittent) — relaunch the mission; second load is normal.
 - **Options menu writes bad resolution** to `options.cfg` on 4K displays. The render base is now force-clamped to 800×600 (`[HUD-RES-CLAMP v1]`, `gos_SetScreenMode` + `gameosmain` startup) so the HUD stays correct regardless — the legacy 2D HUD only lays out at the tuned widths {640,800,1024,1280,1600,1920}; a non-tuned value broke pause/loading/comms-video/bottom-bar. Whole frame renders at 800×600 + FULLSCREEN_DESKTOP upscale (scene therefore soft; sharp-native-scene + 800-HUD lane split deferred to the imgui UI). Memory: `hud_scene_resolution_separation`. `MC2_RES_DIAG=1` dumps the split.
@@ -65,7 +65,7 @@ them. Add new findings as new bullets; remove fixed ones outright (don't append
 ## Shadows
 
 - **Shadow re-render stutter when camera moves >500 units.** Fix: static world-fixed shadow map (design ready).
-- **Shadow banding shifts with camera rotation** (view-dependent terrain geometry).
+- **Shadow banding shifts with camera rotation** (view-dependent terrain geometry). *Status:* addressed by STATIC-SHADOW-BANDING-1 (`9c31e2bf`, shipped) + STATIC-SHADOW-BANDING-2 (`5b0e488e`, gate `MC2_SHADOW_STATIC_BANDFIX_V2` default-OFF, awaiting user field check).
 - **Dynamic prop shadows: no light-box cull yet** — with MC2_SHADOW_DYNAMIC_PROP_CASTERS=1 the dynamic pass draws ALL registered non-building props every frame (visibility-independent, depth-only) regardless of the light box. Cheap now; **HZB is the planned long-term fix**. Interim: CPU light-box AABB cull (must cull vs the LIGHT box, not the camera frustum). See `memory/shadow_dynamic_projection_and_caster_feed_fixed.md`.
 - **Static building shadow goes stale on destroy** — MC2_STATIC_PROP_BUILDING_SHADOW bakes the world-fixed building shadow map once per mission; destroyed buildings keep their shadow until reload.
 - **Dynamic CSM (`MC2_SHADOW_CSM`) is now default-ON** (2026-06-18, `8ff13a36`; was default-OFF). Reworked 2026-06-16 (`8d36b37d`): camera-target focus, 3 fixed cascades (R0=512 near / R1=4096 mid / full-map far), mech caster fix. Object self-shadow normal-offset bias kills residual acne (`13e96cc9`, `MC2_SHADOW_OBJ_NORMAL_BIAS=2.0`). Overlay/decal programs now also receive CSM shadows (`ead760df`). Opt out with `MC2_SHADOW_CSM=0`. Live runtime state queryable via the `"shadow"` block in the render state dump (`9d0556c0`).
