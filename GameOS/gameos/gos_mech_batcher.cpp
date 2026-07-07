@@ -154,6 +154,19 @@ static std::vector<Mc2MechDrawRun>  s_vkMechRunSnapshot;
 static float                        s_vkMechWorldToClipGL[16] = {0};
 static float                        s_vkMechObjectDepthBias   = 0.0f;
 static bool                         s_vkMechFrameReady        = false;
+
+// VK-MECH-FEED-NATIVE-1 (rung 7): envTriState OPT-IN, default OFF (same new-rung
+// pattern as MC2_VK_TERRAIN_SKIRTS / MC2_VK_WATER_TIER1: unset -> OFF regardless
+// of the umbrella; explicit 0 forces OFF). When armed, the feed carries the CPU
+// byte sources (exact uploaded VBO work blob, s_stagingIbo, mcTextureManager
+// lightData_) so the island never reads GL buffer objects back.
+static bool s_vkMechFeedNativeOn = [] {
+    return mc2vkgate::envTriState("MC2_VK_MECH_FEED_NATIVE") == 1;
+}();
+// Exact bytes uploaded to s_sharedVbo (the normals-recomputed `work` copy —
+// s_stagingVbo alone is NOT the uploaded bytes when s_mechNormalsMode != 0).
+// Refreshed by uploadMechGeometryVbo(); cleared with the staging on map load.
+static std::vector<uint8_t>         s_vkVboNativeCopy;
 #endif
 
 // SimpleCamera UI preview-render context depth (Mech Bay / Mech Purchase).
@@ -943,6 +956,9 @@ void GpuMechBatcher::onMapLoad() {
     s_typeLodIndex.clear();
     s_stagingVbo.clear();
     s_stagingIbo.clear();
+#ifdef MC2_VULKAN_ISLAND
+    s_vkVboNativeCopy.clear();   // VK-MECH-FEED-NATIVE-1: geometry rebuilt per map
+#endif
     s_nodeVboRanges.clear();   // MECH-NORMALS-FIX-1: per-node ranges are per-mission
     s_geometryFinalized = false;
     // S2.12: DO NOT reset s_programLoadTried / s_programLoadFailed here.
@@ -1630,6 +1646,13 @@ static void uploadMechGeometryVbo() {
     glBufferStorage(GL_ARRAY_BUFFER,
                     (GLsizeiptr)work.size(),
                     work.data(), 0);  // immutable, GPU-only
+
+#ifdef MC2_VULKAN_ISLAND
+    // VK-MECH-FEED-NATIVE-1: persist the EXACT uploaded bytes for the native
+    // geometry feed (copy-once per map / normals rebuild; gate-off = no copy).
+    if (s_vkMechFeedNativeOn && s_vkMechGateOn)
+        s_vkVboNativeCopy = work;
+#endif
 
     // Vertex attribute setup — 48-byte GpuMechVertex, 7 attributes.
     // glVertexAttribPointer binds each attrib to the currently bound GL_ARRAY_BUFFER
@@ -2893,6 +2916,16 @@ extern "C" int mc2_mech_island_get_geometry_feed(Mc2MechGeomFeed* out) {
     out->vboBytes     = vboBytes;
     out->iboBytes     = iboBytes;
     out->vertexStride = (uint32_t)sizeof(GpuMechVertex);   // 48
+    // VK-MECH-FEED-NATIVE-1: CPU byte sources (null unless the native gate is on
+    // AND the persisted copy matches the advertised size — size mismatch means a
+    // normals rebuild raced this accessor; fall back to the GL readback path).
+    out->vboCpu = nullptr;
+    out->iboCpu = nullptr;
+    if (s_vkMechFeedNativeOn) {
+        if ((uint64_t)s_vkVboNativeCopy.size() == vboBytes)
+            out->vboCpu = s_vkVboNativeCopy.data();
+        out->iboCpu = s_stagingIbo.data();   // uploaded verbatim to s_sharedIbo
+    }
     return 1;
 }
 
@@ -2929,6 +2962,14 @@ extern "C" int mc2_mech_island_get_frame_feed(Mc2MechFrameFeed* out) {
       out->lightDataGlSsbo = nm; out->lightDataBytes = by; }
     out->fogColorRGB[0] = out->fogColorRGB[1] = out->fogColorRGB[2] = 0.0f;
     mc2GetSceneFogColorRGB(out->fogColorRGB);
+    // VK-MECH-FEED-NATIVE-1: the game's CPU LightsData array (the byte source of
+    // the GL SSBO upload, txmmgr renderLists). Null unless the native gate is on.
+    out->lightDataCpu = nullptr;
+    out->lightDataCpuBytes = 0;
+    if (s_vkMechFeedNativeOn && mcTextureManager) {
+        out->lightDataCpu      = mcTextureManager->getLightDataPtr();
+        out->lightDataCpuBytes = mcTextureManager->getLightDataBytes();
+    }
 
     // VK-OFFLINE-PROOFS-1: golden feed dump. Fires once per process (see
     // vk_feed_dump.h). No-op unless MC2_VK_FEED_DUMP is set.

@@ -603,6 +603,11 @@ class MC_TextureManager
         // [LIGHTBAKE-PROOF v1] copy a light slot's full struct (parity trace).
         // Returns false if idx is beyond the allocated count.
         bool copyLightSlot(uint32_t idx, TG_HWLightsData& out) const;
+        // VK-MECH-FEED-NATIVE-1: read-only view of the CPU LightsData array
+        // (the byte source of the GL SSBO upload). Defined in txmmgr.cpp
+        // (needs complete TG_HWLightsData for sizeof).
+        const void* getLightDataPtr() const;
+        uint64_t    getLightDataBytes() const;
 
  		//-----------------------------------------------------------------
 		// Gets gosTextureHandle for Node ID.  Does all caching necessary.

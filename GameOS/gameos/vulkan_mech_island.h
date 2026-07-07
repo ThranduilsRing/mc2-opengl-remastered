@@ -52,12 +52,19 @@ struct Mc2MechDrawRun {
 };
 
 // Copy-ONCE geometry feed: the shared mech VBO/IBO GL names + 48B stride.
+// VK-MECH-FEED-NATIVE-1 (rung 7): vboCpu/iboCpu are the CPU-side byte sources of
+// the SAME buffers (vboCpu = the exact normals-recomputed `work` blob uploaded to
+// s_sharedVbo; iboCpu = s_stagingIbo, uploaded verbatim). Non-null ONLY when the
+// MC2_VK_MECH_FEED_NATIVE gate is armed; the island then copies from CPU memory
+// and never touches the GL buffer objects (no glGetBufferSubData).
 struct Mc2MechGeomFeed {
     uint32_t glVbo;         // s_sharedVbo (GpuMechVertex[])
     uint32_t glIbo;         // s_sharedIbo (uint32[])
     uint64_t vboBytes;
     uint64_t iboBytes;
     uint32_t vertexStride;  // sizeof(GpuMechVertex) == 48
+    const void* vboCpu;     // native feed: exact uploaded VBO bytes (or null)
+    const void* iboCpu;     // native feed: s_stagingIbo bytes (or null)
 };
 
 // Per-FRAME feed: the instance + bone snapshots the GL flush() just built, plus
@@ -75,6 +82,12 @@ struct Mc2MechFrameFeed {
     uint32_t     lightDataGlSsbo;    // live LightsData GL SSBO name (binding 20) to copy
     uint64_t     lightDataBytes;     // its byte size (ObjectLights[] * 3600B, grow-once)
     float        fogColorRGB[3];     // g_scene.fogColor.rgb (mech.frag fog mix source)
+    // VK-MECH-FEED-NATIVE-1 (rung 7): the game's CPU LightsData array
+    // (mcTextureManager->lightData_, the byte SOURCE of the GL SSBO upload).
+    // Non-null only when MC2_VK_MECH_FEED_NATIVE is armed; the island then
+    // memcpy's from CPU and skips the per-frame glGetBufferSubData readback.
+    const void*  lightDataCpu;       // TG_HWLightsData[count] (3600B each) or null
+    uint64_t     lightDataCpuBytes;  // count * 3600
 };
 
 // Filled by gos_mech_batcher.cpp. Return 0 when geometry/gate not ready.

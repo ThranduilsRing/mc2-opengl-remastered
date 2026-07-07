@@ -1937,6 +1937,21 @@ bool MC_TextureManager::copyLightSlot(uint32_t idx, TG_HWLightsData& out) const
     return true;
 }
 
+// VK-MECH-FEED-NATIVE-1: expose the CPU-side LightsData array (the byte SOURCE of
+// the GL SSBO — gos_LightDataSsbo_Upload(lightData_, ...) in renderLists below) so
+// the VK mech island can consume the game's light data directly instead of
+// glGetBufferSubData'ing it back out of the GL SSBO. Read-only view; valid for the
+// remainder of the frame after renderLists.
+const void* MC_TextureManager::getLightDataPtr() const
+{
+    return lightData_;
+}
+
+uint64_t MC_TextureManager::getLightDataBytes() const
+{
+    return (uint64_t)lightDataStructuresCount * sizeof(TG_HWLightsData);
+}
+
 // [LIGHTBAKE-PROOF v1] Slot-write INTEGRITY check (NOT an independent A/B parity —
 // M1 honesty fix, adversarial review 2026-06-03). Hashes the freshly-gathered leaf
 // (the CacheGpuLightData MISS-path result == the legacy transient gather) against

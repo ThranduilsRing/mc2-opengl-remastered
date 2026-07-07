@@ -135,6 +135,41 @@ bool mechLightingRequested() {
     return state == 1;
 }
 
+// VK-MECH-FEED-NATIVE-1 (rung 7): envTriState OPT-IN, default OFF (same new-rung
+// pattern as MC2_VK_TERRAIN_SKIRTS / MC2_VK_WATER_TIER1 -- unset -> OFF regardless
+// of the umbrella; explicit 0 forces OFF). When armed AND the batcher feed carries
+// CPU byte sources, the island copies mech geometry + LightsData from CPU memory
+// and never issues glGetBufferSubData against the GL buffer objects.
+bool mechFeedNativeRequested() {
+    static int state = -1;
+    if (state == -1) {
+        state = (mc2vkgate::envTriState("MC2_VK_MECH_FEED_NATIVE") == 1) ? 1 : 0;
+        if (state == 1) vlog("feed-native ARMED (MC2_VK_MECH_FEED_NATIVE=1): "
+                             "geometry + LightsData consumed from CPU sources.");
+    }
+    return state == 1;
+}
+
+// VK-MECH-FEED-AUDIT-1: verification-only (default-OFF, safety-gate class like
+// MC2_VK_TERRAIN_HEIGHT_AUDIT). With the native feed armed, ALSO read the GL
+// buffers back and byte-compare against the CPU sources -- proves the native
+// feed carries the exact bytes GL rendered with.
+bool mechFeedAuditRequested() {
+    static int state = -1;
+    if (state == -1)
+        state = (mc2vkgate::envTriState("MC2_VK_MECH_FEED_AUDIT") == 1) ? 1 : 0;
+    return state == 1;
+}
+
+// VK-MECH-FEED-AUDIT-1 tallies (reported via vlog; nonzero mismatch = feed bug).
+struct FeedNativeStats {
+    unsigned long nativeGeomCopies  = 0;   // geometry copied from CPU source
+    unsigned long nativeLightFrames = 0;   // LightsData frames copied from CPU source
+    unsigned long auditRuns         = 0;
+    unsigned long auditMismatches   = 0;
+};
+FeedNativeStats g_feedNative;
+
 std::string spv_dir() {
     const char* env = std::getenv("MC2_VULKAN_SPV_DIR");
     std::string d = (env && *env) ? env : "shaders/vulkan";
@@ -757,29 +792,65 @@ bool upload_geometry_once(MechIsland* s) {
 
     if (!make_buffer(s, feed.vboBytes, VK_BUFFER_USAGE_VERTEX_BUFFER_BIT, &s->vbo, &s->vboAlloc, true)) return false;
     if (!make_buffer(s, feed.iboBytes, VK_BUFFER_USAGE_INDEX_BUFFER_BIT,  &s->ibo, &s->iboAlloc, true)) return false;
+
+    // VK-MECH-FEED-NATIVE-1: prefer the CPU byte sources when armed + provided --
+    // no glGetBufferSubData against the GL buffer objects. Fail-soft: missing CPU
+    // pointer (gate off / size-mismatch fallback in the batcher) -> GL readback.
+    const bool nativeGeom = mechFeedNativeRequested() && feed.vboCpu && feed.iboCpu;
     std::vector<uint8_t> scratch;
     { void* p = nullptr;
       if (vmaMapMemory(s->allocator, s->vboAlloc, &p) == VK_SUCCESS) {
-          scratch.resize((size_t)feed.vboBytes);
-          glBindBuffer(GL_ARRAY_BUFFER, feed.glVbo);
-          glGetBufferSubData(GL_ARRAY_BUFFER, 0, (GLsizeiptr)feed.vboBytes, scratch.data());
-          glBindBuffer(GL_ARRAY_BUFFER, 0);
-          std::memcpy(p, scratch.data(), (size_t)feed.vboBytes);
+          if (nativeGeom) {
+              std::memcpy(p, feed.vboCpu, (size_t)feed.vboBytes);
+          } else {
+              scratch.resize((size_t)feed.vboBytes);
+              glBindBuffer(GL_ARRAY_BUFFER, feed.glVbo);
+              glGetBufferSubData(GL_ARRAY_BUFFER, 0, (GLsizeiptr)feed.vboBytes, scratch.data());
+              glBindBuffer(GL_ARRAY_BUFFER, 0);
+              std::memcpy(p, scratch.data(), (size_t)feed.vboBytes);
+          }
           vmaUnmapMemory(s->allocator, s->vboAlloc);
       } }
     { void* p = nullptr;
       if (vmaMapMemory(s->allocator, s->iboAlloc, &p) == VK_SUCCESS) {
-          scratch.resize((size_t)feed.iboBytes);
-          glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, feed.glIbo);
-          glGetBufferSubData(GL_ELEMENT_ARRAY_BUFFER, 0, (GLsizeiptr)feed.iboBytes, scratch.data());
-          glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, 0);
-          std::memcpy(p, scratch.data(), (size_t)feed.iboBytes);
+          if (nativeGeom) {
+              std::memcpy(p, feed.iboCpu, (size_t)feed.iboBytes);
+          } else {
+              scratch.resize((size_t)feed.iboBytes);
+              glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, feed.glIbo);
+              glGetBufferSubData(GL_ELEMENT_ARRAY_BUFFER, 0, (GLsizeiptr)feed.iboBytes, scratch.data());
+              glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, 0);
+              std::memcpy(p, scratch.data(), (size_t)feed.iboBytes);
+          }
           vmaUnmapMemory(s->allocator, s->iboAlloc);
       } }
+    if (nativeGeom) {
+        ++g_feedNative.nativeGeomCopies;
+        // VK-MECH-FEED-AUDIT-1: byte-compare CPU sources vs the GL buffers.
+        if (mechFeedAuditRequested()) {
+            ++g_feedNative.auditRuns;
+            unsigned long mism = 0;
+            scratch.resize((size_t)feed.vboBytes);
+            glBindBuffer(GL_ARRAY_BUFFER, feed.glVbo);
+            glGetBufferSubData(GL_ARRAY_BUFFER, 0, (GLsizeiptr)feed.vboBytes, scratch.data());
+            glBindBuffer(GL_ARRAY_BUFFER, 0);
+            if (std::memcmp(scratch.data(), feed.vboCpu, (size_t)feed.vboBytes) != 0) ++mism;
+            scratch.resize((size_t)feed.iboBytes);
+            glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, feed.glIbo);
+            glGetBufferSubData(GL_ELEMENT_ARRAY_BUFFER, 0, (GLsizeiptr)feed.iboBytes, scratch.data());
+            glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, 0);
+            if (std::memcmp(scratch.data(), feed.iboCpu, (size_t)feed.iboBytes) != 0) ++mism;
+            g_feedNative.auditMismatches += mism;
+            vlog("FEED-AUDIT geometry: vbo=%llu B ibo=%llu B mismatch_buffers=%lu %s",
+                 (unsigned long long)feed.vboBytes, (unsigned long long)feed.iboBytes,
+                 mism, mism ? "*** NATIVE FEED DIVERGES FROM GL ***" : "(byte-identical)");
+        }
+    }
     g_health.geomVerts = (unsigned long)(feed.vboBytes / (feed.vertexStride ? feed.vertexStride : 1));
     s->geomUploaded = true;
-    vlog("mech geometry uploaded once: vbo=%llu B ibo=%llu B stride=%u.",
-         (unsigned long long)feed.vboBytes, (unsigned long long)feed.iboBytes, feed.vertexStride);
+    vlog("mech geometry uploaded once: vbo=%llu B ibo=%llu B stride=%u source=%s.",
+         (unsigned long long)feed.vboBytes, (unsigned long long)feed.iboBytes, feed.vertexStride,
+         nativeGeom ? "cpu-native" : "gl-readback");
     return true;
 }
 
@@ -872,7 +943,50 @@ extern "C" int mc2_vk_mech_island_run(int w, int h) {
     // buffer readback, NOT a color-surface readback — does NOT touch g_forbidden (mirrors
     // the once/frame geometry+bone copies already on this path).
     s->lightingReady = false;
-    if (s->wantLighting && feed.lightDataGlSsbo != 0 && feed.lightDataBytes >= 3600ull) {
+    // VK-MECH-FEED-NATIVE-1: when armed + the batcher provided the CPU LightsData
+    // array (the byte source of the GL SSBO upload), memcpy from CPU -- kills the
+    // per-frame glGetBufferSubData GPU readback. Fail-soft to the GL readback.
+    const bool nativeLight = mechFeedNativeRequested()
+        && feed.lightDataCpu && feed.lightDataCpuBytes >= 3600ull;
+    if (s->wantLighting && nativeLight) {
+        const VkDeviceSize lbytes = (VkDeviceSize)feed.lightDataCpuBytes;
+        if (ensure_buf_capacity(s, &s->lightBuf, &s->lightAlloc, &s->lightCap, lbytes)) {
+            void* p = nullptr;
+            if (vmaMapMemory(s->allocator, s->lightAlloc, &p) == VK_SUCCESS) {
+                std::memcpy(p, feed.lightDataCpu, (size_t)lbytes);
+                vmaUnmapMemory(s->allocator, s->lightAlloc);
+                s->lightingReady = true;
+                ++g_feedNative.nativeLightFrames;
+            }
+        }
+        // VK-MECH-FEED-AUDIT-1: byte-compare the shared prefix of the CPU array vs
+        // the GL SSBO (sizes may differ: the GL SSBO is capacity-sized / uploaded at
+        // renderLists, the CPU count is live -- compare min()).
+        if (s->lightingReady && mechFeedAuditRequested()
+            && feed.lightDataGlSsbo != 0 && feed.lightDataBytes >= 3600ull) {
+            ++g_feedNative.auditRuns;
+            const unsigned long long cmp64 =
+                feed.lightDataCpuBytes < feed.lightDataBytes ? feed.lightDataCpuBytes
+                                                             : feed.lightDataBytes;
+            const size_t cmp = (size_t)cmp64;
+            std::vector<uint8_t> glCopy(cmp);
+            glBindBuffer(GL_SHADER_STORAGE_BUFFER, (GLuint)feed.lightDataGlSsbo);
+            glGetBufferSubData(GL_SHADER_STORAGE_BUFFER, 0, (GLsizeiptr)cmp, glCopy.data());
+            glBindBuffer(GL_SHADER_STORAGE_BUFFER, 0);
+            const bool diff = std::memcmp(glCopy.data(), feed.lightDataCpu, cmp) != 0;
+            if (diff) ++g_feedNative.auditMismatches;
+            static unsigned long s_auditLogged = 0;
+            if (diff || s_auditLogged < 3) {
+                ++s_auditLogged;
+                vlog("FEED-AUDIT lights: cpu=%llu B gl=%llu B cmp=%zu B %s "
+                     "(runs=%lu mismatches=%lu)",
+                     (unsigned long long)feed.lightDataCpuBytes,
+                     (unsigned long long)feed.lightDataBytes, cmp,
+                     diff ? "*** NATIVE FEED DIVERGES FROM GL ***" : "byte-identical",
+                     g_feedNative.auditRuns, g_feedNative.auditMismatches);
+            }
+        }
+    } else if (s->wantLighting && feed.lightDataGlSsbo != 0 && feed.lightDataBytes >= 3600ull) {
         const VkDeviceSize lbytes = (VkDeviceSize)feed.lightDataBytes;
         if (ensure_buf_capacity(s, &s->lightBuf, &s->lightAlloc, &s->lightCap, lbytes)) {
             void* p = nullptr;
