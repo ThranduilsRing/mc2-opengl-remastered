@@ -1,9 +1,61 @@
 # VK-ARC-STATE — current state block (update every session)
 
-HEAD: rung 7 commits `28fc0c9f` (feed-native) + `f1f49df4` (gate registration)
-on branch `claude/vk-interop-bridge-1`, worktree `A:/Games/mc2-vk-interop-bridge`.
+HEAD: rung 8.1 (VK-POST-FOG-NATIVE-1, see section below) on branch
+`claude/vk-interop-bridge-1`, worktree `A:/Games/mc2-vk-interop-bridge`.
 Build dir `build64_island`. Deploy lane (literal): `A:/Games/mc2-opengl/mc2-win64-0.4c`
-(deployed + fingerprint-verified at `28fc0c9f`, exe sha `ec80fd62a10216cd`).
+(deployed + fingerprint-verified at rung 8.1, exe sha `46e81cb1d9f2f7c1`).
+Rung-8 sub-ladder: `.claude/VK-RUNG8-LADDER-1.md` (8.1 SHIPPED; next = 8.2 SSAO native).
+
+## RUNG 8.1 — VK-POST-FOG-NATIVE-1 (2026-07-07) — SHIPPED
+
+First rung-8 (postprocess-tail ownership) sub-rung. New TU
+`GameOS/gameos/vulkan_post_fog_native.cpp`: BOTH postprocess fog passes
+(edge + oob) rendered natively on the SHARED ENGINE VulkanContext — samples the
+shared scene depth directly, alpha-blends into the shared scene color0 IN PLACE
+(water-tier1 sync protocol: dual BeginFrame + GL sems both directions, in-cb
+depth DS_ATTACHMENT<->SHADER_READ_ONLY barriers, layout-stable LOAD/STORE pass).
+Gate `MC2_VK_POST_FOG_NATIVE` (envTriState opt-in, default-OFF, new-rung
+pattern). Highest precedence at the fog site (native > subgraph > island > GL);
+parity guards fall through to GL when either GL fog pass would self-skip or
+`MC2_SKYBOX_FOG_EXCLUDE=1` (VK fog shaders have no stencil sky-exclude path —
+pre-existing subgraph limitation, now explicit). Shaders reused VERBATIM
+(edge_fog/fog_oob SPIR-V); UBO PODs offline-checked (check_ubo_layout labels
+postfog_edge 8 fields / postfog_oob 4 fields OK).
+
+KILLS (vs the old fog subgraph path): per-frame `glGetTexImage(DEPTH)` CPU
+readback + staging upload ("P5" finally closed), 2x per-frame
+`glCopyImageSubData` color round-trips, and the subgraph's PRIVATE
+VkInstance/VkDevice (which is provably UNUSABLE under `MC2_RENDER_BACKEND=vulkan`:
+R2 interlock coerces its interop OFF and the readback-mode run CRASHED in
+present swapchain rebuild — captured in `.claude/vk-post-fog/cap/vk_subgraph/`).
+
+Evidence (`.claude/vk-post-fog/` — fog_oracle.py + cap/*):
+- Offline trio: check_vk_shaders 34/34, check_ubo_layout 5/5 OK, glsl_port_diff
+  --all green (no new shader ports; fog SPIR-V pre-dates the tool, reused as-is).
+- Byte-off control (gl vs gl2, 5 fog poses mc2_01): 0.000 — clean.
+- Receipts: sweep used_vulkan=495/495 attempted, fallback_reason="";
+  gate-ON tier1 smoke mc2_01 used_vulkan=193/193; debug-state dump section
+  `vk_post_fog_native` (postfog_used_vulkan) added for future captures.
+- Single-variable MAD (vk_base vs vk_fog, SAME VK scene): oblique_fog
+  10.13/ch cov 19.0%, oblique_horizon 8.51/ch cov 40.6% — ATTRIBUTED: the GL
+  fog-impl-swap control (gl vs gl+subgraph, the parity-proven shipped VK fog)
+  shows the SAME signature (10.89/19.3%, 8.62/40.7%), i.e. the delta is the
+  KNOWN family fog-port residual, not a new defect. Remaining pose diffs
+  (boundary_south 3.66@16%, overview 2.37@0.8%) == vk_base SELF-noise
+  (base-vs-base2 3.69@15.2%, 2.34@0.7%); vk_fog itself is run-to-run
+  DETERMINISTIC (self-diff 0.000 all poses).
+- Smoke: canonical tier1 5/5 PASS both states, Δ destroys +0, manifest exe
+  sha `46e81cb1d9f2f7c1` == deployed build. Gate-ON ~6 FPS = the pre-existing
+  umbrella-under-smoke cost (identical without the fog gate; rung-6 note).
+
+Residuals / next: (1) known fog-port residual at oblique poses (~8-11/ch in
+the fog band) is inherited from the original island/subgraph port — if ever
+worth closing, diff edge_fog.frag GL-vs-VK math paths and register
+glsl_port_diff pairs; (2) sky-exclude (MC2_SKYBOX_FOG_EXCLUDE) unsupported
+natively — port the stencil sample if that gate ever defaults ON; (3) the
+subgraph + old fog islands become DELETE candidates at rung 8.7 (ladder), not
+before. NEXT SUB-RUNG: 8.2 SSAO native (same shape: shared depth in, shared
+color0 multiply out, engine context).
 
 ## RUNG 7 -- VK-MECH-FEED-NATIVE-1 (2026-07-07) -- SHIPPED
 
