@@ -122,6 +122,17 @@ struct Mc2ColorPropMaterialFeed {
     // typeAlbedoLayer). -1 = no texture for this packet (island keeps teal for it).
     const int32_t*  packetAlbedoLayer;
     uint32_t        packetCount;
+
+    // FENCE-UVSCALE-1: per-PACKET UV sub-region scale (same indexing as
+    // packetAlbedoLayer / packetCount above). GL's coalesce path crops each
+    // draw's sampled UV to (0..uvScaleX, 0..uvScaleY) inside the group's
+    // max-dims texture-array layer (static_prop.frag:206
+    // `fract(v_uv) * vec2(uvScaleX, uvScaleY)`); the island previously assumed
+    // 1.0 (full layer), which reads panels narrower/gapped vs GL wherever a
+    // packet's unique texture is smaller than the group's max dims (the fence
+    // chain-link post/arch sub-meshes). 1.0 = no crop (fills the layer).
+    const float*    packetUvScaleX;
+    const float*    packetUvScaleY;
 };
 int mc2_color_prop_island_get_material_feed(Mc2ColorPropMaterialFeed* out);
 

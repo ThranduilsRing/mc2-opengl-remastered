@@ -292,6 +292,12 @@ struct ColorPropIsland {
     // global packet index (same indexing as `packets` above). -1 = no texture.
     std::vector<int32_t>        packetLayerOff;
     std::vector<int32_t>        packetLayerOn;
+    // FENCE-UVSCALE-1: per-packet UV sub-region scale, same indexing as
+    // packetLayerOff/On above. Default 1.0 (no crop) until the feed populates
+    // it -- matches GL's PerDrawEntry.uvScaleX/Y default (gos_static_prop_batcher.cpp
+    // uvScaleXByPacket/uvScaleYByPacket init).
+    std::vector<float>          packetUvScaleX;
+    std::vector<float>          packetUvScaleY;
 
     VkBuffer      instBuf = VK_NULL_HANDLE; VmaAllocation instAlloc = VK_NULL_HANDLE;
     VkDeviceSize  instCapBytes = 0;
@@ -1193,9 +1199,13 @@ bool init_island(ColorPropIsland* s, int w, int h) {
         // alpha-test discard masked it). Fixed here: each vkCmdDrawIndexed for a packet
         // now pushes THAT packet's own layer, consumed directly by vert/frag instead of
         // the SSBO-by-typeID path.
+        // FENCE-UVSCALE-1: widened 8 -> 16 bytes (2x int32 layer + 2x float
+        // uvScale). Well inside the Vulkan-guaranteed minimum
+        // maxPushConstantsSize of 128 bytes (spec table 32.1) -- no need to
+        // pack into half floats or move to the per-instance SSBO path.
         VkPushConstantRange pcr{};
         pcr.stageFlags = VK_SHADER_STAGE_VERTEX_BIT | VK_SHADER_STAGE_FRAGMENT_BIT;
-        pcr.offset = 0; pcr.size = 8; // int32 packetLayerOff, int32 packetLayerOn
+        pcr.offset = 0; pcr.size = 16; // int32 packetLayerOff, int32 packetLayerOn, float uvScaleX, float uvScaleY
 
         VkPipelineLayoutCreateInfo plci{};
         plci.sType = VK_STRUCTURE_TYPE_PIPELINE_LAYOUT_CREATE_INFO;
@@ -1522,6 +1532,11 @@ extern "C" int mc2_vk_color_prop_island_run(int w, int h) {
             if (mf.packetAlbedoLayer && mf.packetCount > 0) {
                 s->packetLayerOff.assign(mf.packetCount, -1);
                 s->packetLayerOn.assign(mf.packetCount, -1);
+                // FENCE-UVSCALE-1: default 1.0 (no crop) so any packet the feed
+                // doesn't cover (or a stale/mismatched feed) behaves exactly as
+                // before this change -- fail-soft to the old full-layer sample.
+                s->packetUvScaleX.assign(mf.packetCount, 1.0f);
+                s->packetUvScaleY.assign(mf.packetCount, 1.0f);
                 for (uint32_t t = 0; t < mf.typeCount && t < s->typeRuns.size(); ++t) {
                     const TypeRun& tr = s->typeRuns[t];
                     const bool isOn = (mf.typeAlphaClass[t] == 1);
@@ -1531,6 +1546,10 @@ extern "C" int mc2_vk_color_prop_island_run(int w, int h) {
                         const int32_t layer = mf.packetAlbedoLayer[pk];
                         if (isOn) s->packetLayerOn[pk]  = layer;
                         else      s->packetLayerOff[pk] = layer;
+                        if (mf.packetUvScaleX && mf.packetUvScaleY) {
+                            s->packetUvScaleX[pk] = mf.packetUvScaleX[pk];
+                            s->packetUvScaleY[pk] = mf.packetUvScaleY[pk];
+                        }
                     }
                 }
             }
@@ -1812,7 +1831,7 @@ extern "C" int mc2_vk_color_prop_island_run(int w, int h) {
                 s_dumped = true;
                 s_pktDump = std::fopen(dp, "w");
                 if (s_pktDump)
-                    std::fprintf(s_pktDump, "typeID,packet,layerOff,layerOn,indexCount,firstIndex,baseVertex,instCount,firstInstance\n");
+                    std::fprintf(s_pktDump, "typeID,packet,layerOff,layerOn,uvScaleX,uvScaleY,indexCount,firstIndex,baseVertex,instCount,firstInstance\n");
             }
         }
 
@@ -1832,16 +1851,22 @@ extern "C" int mc2_vk_color_prop_island_run(int w, int h) {
                     // VK-FLIP-FIELD-REPORT-2 BLACK-FENCE FIX: push THIS packet's own
                     // group-relative albedo layer (off/on), not the type's shared
                     // "first-valid-wins" layer — see packetLayerOff/On comment above.
-                    int32_t pc[2] = {
-                        (pk < s->packetLayerOff.size()) ? s->packetLayerOff[pk] : -1,
-                        (pk < s->packetLayerOn.size())  ? s->packetLayerOn[pk]  : -1,
+                    // FENCE-UVSCALE-1: push this packet's own uvScaleX/Y alongside
+                    // its layer -- default 1.0 (no crop) matches pre-fix behavior
+                    // for any packet the feed didn't cover.
+                    struct { int32_t layerOff, layerOn; float uvScaleX, uvScaleY; } pc = {
+                        (pk < s->packetLayerOff.size())  ? s->packetLayerOff[pk]  : -1,
+                        (pk < s->packetLayerOn.size())   ? s->packetLayerOn[pk]   : -1,
+                        (pk < s->packetUvScaleX.size())  ? s->packetUvScaleX[pk]  : 1.0f,
+                        (pk < s->packetUvScaleY.size())  ? s->packetUvScaleY[pk]  : 1.0f,
                     };
                     if (s_pktDump)
-                        std::fprintf(s_pktDump, "%u,%u,%d,%d,%u,%u,%d,%u,%u\n",
-                                     tid, pk, pc[0], pc[1], pkt.indexCount, pkt.firstIndex,
+                        std::fprintf(s_pktDump, "%u,%u,%d,%d,%.4f,%.4f,%u,%u,%d,%u,%u\n",
+                                     tid, pk, pc.layerOff, pc.layerOn, pc.uvScaleX, pc.uvScaleY,
+                                     pkt.indexCount, pkt.firstIndex,
                                      (int32_t)pkt.baseVertex, instCount, i);
                     vkCmdPushConstants(cb, s->playout, VK_SHADER_STAGE_VERTEX_BIT | VK_SHADER_STAGE_FRAGMENT_BIT,
-                                        0, sizeof(pc), pc);
+                                        0, sizeof(pc), &pc);
                     vkCmdDrawIndexed(cb, pkt.indexCount, instCount,
                                      pkt.firstIndex, (int32_t)pkt.baseVertex, i);
                 }

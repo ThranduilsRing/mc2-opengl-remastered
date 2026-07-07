@@ -82,9 +82,18 @@ vec3 evalShL2(vec3 n, vec3 sh[9]) {
 // one ("first-valid-wins") layer, so non-first packets sampled the WRONG BC7 layer —
 // this produced solid-black fragments (wrong layer's black margin block, alpha>=0.5
 // so no alpha-test discard caught it). -1 = no texture for this packet (teal fallback).
+// FENCE-UVSCALE-1: uvScaleX/Y added alongside the layer fields (same push
+// constant range, widened 8->16 bytes). GL's coalesce path crops each draw's
+// sampled UV to this packet's sub-region within the group's max-dims array
+// layer (static_prop.frag:206 `fract(v_uv) * vec2(uvScaleX, uvScaleY)`);
+// forwarded to the FS via vUvScale (flat) so the FS applies the identical crop
+// right where GL does, instead of assuming 1.0 (full layer -> narrower/gapped
+// panels wherever a packet's unique texture is smaller than the group max).
 layout(push_constant) uniform PacketLayerPC {
-    int packetLayerOff;
-    int packetLayerOn;
+    int   packetLayerOff;
+    int   packetLayerOn;
+    float packetUvScaleX;
+    float packetUvScaleY;
 } uPacket;
 
 struct Instance {
@@ -117,6 +126,7 @@ layout(location = 1) out vec3 vNormalStuff;   // Stuff-space normal (un-swapped)
 flat layout(location = 2) out int  vLayer;    // alpha-OFF albedo array layer (-1 = none)
 layout(location = 3) out vec3 vArgb;          // VERTEX-BAKED lit color (GL default model)
 flat layout(location = 4) out int  vLayerOn;  // alpha-ON albedo array layer (-1 = none)
+flat layout(location = 5) out vec2 vUvScale;  // FENCE-UVSCALE-1: this packet's uvScaleX/Y
 
 void main() {
     Instance inst = uInstances.i[uFrame.instBase + gl_InstanceIndex];
@@ -143,6 +153,9 @@ void main() {
     // target different texture layers within the same group array.
     vLayer   = (uFrame.materialReady   != 0) ? uPacket.packetLayerOff : -1;
     vLayerOn = (uFrame.materialReadyOn != 0) ? uPacket.packetLayerOn  : -1;
+    // FENCE-UVSCALE-1: forward this packet's uvScale unconditionally (cheap;
+    // defaults to 1.0 from the CPU side when unavailable, so no gating needed).
+    vUvScale = vec2(uPacket.packetUvScaleX, uPacket.packetUvScaleY);
 
     // -------------------------------------------------------------------------
     // VK-P11 VERTEX-BAKED LIGHTING (replaces the earlier computePBR path).

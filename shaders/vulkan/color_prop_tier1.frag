@@ -54,6 +54,7 @@ layout(location = 1) in vec3 vNormalStuff;
 flat layout(location = 2) in int  vLayer;
 layout(location = 3) in vec3 vArgb;   // VERTEX-BAKED lit color (GL default prop model)
 flat layout(location = 4) in int  vLayerOn;  // alpha-ON albedo array layer (-1 = none)
+flat layout(location = 5) in vec2 vUvScale;  // FENCE-UVSCALE-1: this packet's uvScaleX/Y
 
 layout(location = 0) out vec4 oColor;     // MRT0 lit color
 layout(location = 1) out vec4 oGBuffer1;  // MRT1 normal + shadow class
@@ -87,12 +88,20 @@ void main() {
         // alpha-test class so chain-link/foliage alpha coverage survives the test
         // (LOD<=1 proven panel-preserving by the bisect). Uniform control flow
         // preserved (explicit-LOD sample, no control-flow construct).
+        // FENCE-UVSCALE-1: crop to this packet's sub-region within the group's
+        // max-dims array layer — mirrors GL's static_prop.frag:206
+        // `fract(v_uv) * vec2(uvScaleX, uvScaleY)` verbatim. Gradients are taken
+        // from the SCALED coordinate (uvSampledOn) so the deterministic-LOD calc
+        // below (ADJUDICATION-1 fence fix) measures the sub-region's actual texel
+        // footprint, not the full-layer one -- otherwise a narrow sub-region would
+        // get an under-estimated LOD and reintroduce alpha-test aliasing.
+        vec2  uvSampledOn = fract(vUv) * vUvScale;
         vec2  tsOn = vec2(textureSize(uAlbedoOn, 0).xy);
-        vec2  duv1 = dFdx(vUv) * tsOn;
-        vec2  duv2 = dFdy(vUv) * tsOn;
+        vec2  duv1 = dFdx(uvSampledOn) * tsOn;
+        vec2  duv2 = dFdy(uvSampledOn) * tsOn;
         float lodOn = 0.5 * log2(max(max(dot(duv1, duv1), dot(duv2, duv2)), 1e-12));
         lodOn = clamp(lodOn, 0.0, 1.0);
-        vec4 texc = textureLod(uAlbedoOn, vec3(fract(vUv), float(vLayerOn)), lodOn);
+        vec4 texc = textureLod(uAlbedoOn, vec3(uvSampledOn, float(vLayerOn)), lodOn);
         if (texc.a < 0.5) discard;
         // ★VK-FLIP-FIELD-REPORT-1 BLACK-FENCE FIX: the alpha-ON group is the ALPHA_TEST
         // class (tree cards / fences / foliage). GL static_prop.frag:339 floors their lit
@@ -101,11 +110,12 @@ void main() {
         // the SAME floor verbatim before multiplying the albedo.
         rgb = texc.rgb * max(vArgb, vec3(0.5));
     } else if (uFrame.materialReady != 0 && vLayer >= 0) {
-        // ALPHA-OFF group. Real albedo texture (GL_REPEAT restored via fract; the GL frag
-        // uses fract(v_uv) with per-draw uvScale — uvScale is 1.0 for the common
-        // single-texture types, so fract() alone reproduces the dominant case; sub-region
-        // uvScale is DEFERRED).
-        vec3 albedo = texture(uAlbedo, vec3(fract(vUv), float(vLayer))).rgb;
+        // ALPHA-OFF group. Real albedo texture (GL_REPEAT restored via fract, then
+        // cropped to this packet's sub-region -- FENCE-UVSCALE-1, mirrors GL's
+        // static_prop.frag:206 `fract(v_uv) * vec2(uvScaleX, uvScaleY)` verbatim;
+        // uvScale defaults to 1.0 for the common single-texture types so this is a
+        // no-op there).
+        vec3 albedo = texture(uAlbedo, vec3(fract(vUv) * vUvScale, float(vLayer))).rgb;
 
         // GL DEFAULT PROP MODEL (static_prop.frag:346): tex_color * v_argb, where v_argb
         // is the VERTEX-BAKED lit color (base_light seed + ambient + sun*NdotL). NOT PBR.

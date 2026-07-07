@@ -785,6 +785,14 @@ static std::vector<StaticPropMaterialInventoryEntry> s_materialInventory;
 // Copied from layerForPacket[] in finalizeGeometry() before that local is discarded.
 // Valid until next finalizeGeometry() or onMapUnload(). -1 for unavailable packets.
 static std::vector<int32_t> s_packetTexArrayLayer;
+// FENCE-UVSCALE-1: per-packet uvScaleX/Y sidecar, same indexing/lifetime as
+// s_packetTexArrayLayer above. Copied from uvScaleXByPacket/uvScaleYByPacket
+// in finalizeGeometry() (already computed there for the GL PerDrawEntry path,
+// gos_static_prop_batcher.h uvScaleX/Y) so the VK color-prop island can sample
+// the same texture sub-region GL does instead of assuming 1.0 (ADJUDICATION-1
+// FOLLOW-UP fence residual: narrow/gapped panels vs GL's continuous ribbon).
+static std::vector<float> s_packetUvScaleX;
+static std::vector<float> s_packetUvScaleY;
 // VK-P11 STATIC-PROP MATERIAL: per-type group-relative albedo layer + alpha-class,
 // persisted for mc2_color_prop_island_get_material_feed (the VK island copy-once
 // imports s_texArrayOff and samples at typeAlbedoLayer[typeID]). Populated in
@@ -2107,6 +2115,8 @@ const char* ibl_sh_runtime_currentSetName() {
 void GpuStaticPropBatcher::onMapUnload() {
     GpuStaticPropRegistry::staticPropRegistryClearMaterialCache();
     s_packetTexArrayLayer.clear();  // v2: sidecar is per-map; clear on unload
+    s_packetUvScaleX.clear();  // FENCE-UVSCALE-1: sidecar is per-map; clear on unload
+    s_packetUvScaleY.clear();
     s_typeInstanceCountPrevFrame.clear(); // v2.1: per-map; clear on unload
     s_typeDescTable.clear();        // v0: cross-seam mirror is per-map
     if (s_sharedVbo) { glDeleteBuffers(1, &s_sharedVbo); s_sharedVbo = 0; }
@@ -3859,6 +3869,11 @@ void GpuStaticPropBatcher::finalizeGeometry() {
     // layerForPacket is fully populated here; the PerDrawEntry loop below reads
     // but does not modify it. -1 entries = packets with unavailable textures.
     s_packetTexArrayLayer.assign(layerForPacket.begin(), layerForPacket.end());
+    // FENCE-UVSCALE-1: uvScaleXByPacket/uvScaleYByPacket are fully populated by
+    // the per-group loop above (same "packetsInGroup" pass that fills
+    // layerForPacket) -- persist alongside the layer sidecar for the VK feed.
+    s_packetUvScaleX.assign(uvScaleXByPacket.begin(), uvScaleXByPacket.end());
+    s_packetUvScaleY.assign(uvScaleYByPacket.begin(), uvScaleYByPacket.end());
 
     // VK-P11 STATIC-PROP MATERIAL: persist per-type group-relative albedo layer +
     // alpha-class for the VK color island's copy-once material feed. layerForType[]
@@ -8468,6 +8483,14 @@ extern "C" int mc2_color_prop_island_get_material_feed(Mc2ColorPropMaterialFeed*
     // uses — it is the correct source, unlike the per-type "first-valid-wins" table.
     out->packetAlbedoLayer = s_packetTexArrayLayer.empty() ? nullptr : s_packetTexArrayLayer.data();
     out->packetCount       = (uint32_t)s_packetTexArrayLayer.size();
+    // FENCE-UVSCALE-1: same per-packet indexing as packetAlbedoLayer, populated
+    // in finalizeGeometry() from uvScaleXByPacket/uvScaleYByPacket (the same
+    // source PerDrawEntry.uvScaleX/Y draws from on the GL side). nullptr if the
+    // sidecar size mismatches packetAlbedoLayer's -- island falls back to 1.0.
+    out->packetUvScaleX = (s_packetUvScaleX.size() == s_packetTexArrayLayer.size())
+                              ? s_packetUvScaleX.data() : nullptr;
+    out->packetUvScaleY = (s_packetUvScaleY.size() == s_packetTexArrayLayer.size())
+                              ? s_packetUvScaleY.data() : nullptr;
 
     // Terrain sun (MC2 world, surface->sun) — same vector the GL prop VS uses for the
     // directional term (STATIC-PROP-TERRAIN-SUN-DIFFUSE). Provides computePBR's L.

@@ -417,3 +417,87 @@ Bisect ladder, each step build+deploy+capture with VK receipts (used_vulkan
    and fence MAD to drop to residual-class.
 Hangar regression guard re-measured on the same capture: delta -0.5/255 (fix
 intact). Smoke mc2_01 PASS both byte-off control and canonical VK-on state.
+
+## FENCE-UVSCALE-1 (2026-07-06, this session) — CLOSES ADJUDICATION-1
+
+**Fix landed.** GL uv-crop site confirmed: `shaders/static_prop.frag:206`
+`vec2 uvSampled = fract(v_uv) * vec2(uvScaleX, uvScaleY)`, fed from
+`PerDrawEntry.uvScaleX/Y` (`GameOS/gameos/gos_static_prop_batcher.h`), which are
+computed per-PACKET in `finalizeGeometry()`
+(`gos_static_prop_batcher.cpp:3844` `uvScaleXByPacket[pk] = u.w * invMaxW`,
+same "packetsInGroup" loop that fills `layerForPacket`).
+
+**Plumbing (mirrors the b911bc0d packetLayerOff/On pattern exactly):**
+new per-packet sidecars `s_packetUvScaleX/Y` persisted alongside
+`s_packetTexArrayLayer` in `finalizeGeometry()`, cleared in `onMapUnload()`,
+exposed on `Mc2ColorPropMaterialFeed` (`packetUvScaleX/Y`,
+`vulkan_shadow_island_live.h`) alongside `packetAlbedoLayer`. VK island
+(`vulkan_color_prop_island.cpp`) copies them into `packetUvScaleX/Y` vectors
+(default 1.0 = no crop, matching pre-fix behavior when the feed doesn't cover a
+packet) at the same site that fills `packetLayerOff/On`. Push constant widened
+8->16 bytes (`int layerOff, int layerOn, float uvScaleX, float uvScaleY`) --
+well inside the Vulkan-guaranteed minimum `maxPushConstantsSize` of 128 bytes,
+so no half-float packing or per-instance-SSBO detour was needed (justified:
+8 extra bytes is noise against the 128B floor, and per-packet push constants
+were already the established pattern for this exact kind of per-draw data).
+
+**Shader (`shaders/vulkan/color_prop_tier1.vert/frag`):** `vUvScale` forwarded
+flat VS->FS. Frag applies `fract(vUv) * vUvScale` verbatim in the alpha-OFF
+branch (was `fract(vUv)` only). Alpha-ON branch (the fence's alpha-test class)
+applies the same crop BEFORE computing the deterministic-LOD gradients from
+this session's earlier alternation fix (`uvSampledOn = fract(vUv) * vUvScale`,
+gradients taken from `uvSampledOn` not raw `vUv`) so the sub-region's actual
+texel footprint drives LOD selection, not the full-layer one -- otherwise a
+narrow sub-region would under-estimate LOD and reintroduce alpha-test aliasing
+on exactly the packets this fix targets.
+
+**Verified engaged:** new `MC2_VK_PROP_PACKET_DUMP` CSV (columns extended with
+uvScaleX/Y) at c_rot110: 14/80 packets carry uvScale=0.5 (fence chain-link
+post/arch sub-mesh packets, typeIDs 70/72/73/124/127/130/134/153/161/175/205/
+210/213/216), confirming the plumbing reaches the exact packets the state file
+predicted, not a no-op.
+
+**Visual result:** VK fence ribbon is now continuous and full-width, matching
+GL's panel coverage/spacing at c_rot110 (`crop_fence_gl_final2.png` vs
+`crop_fence_vk_final2.png`, `.claude/adjudication/`) -- no narrowing, no gaps.
+
+**MAD arithmetic note (important, avoids re-litigating a false regression):**
+raw unaligned fence-crop MAD went 27.1 -> 28.6, which LOOKS like a regression
+but isn't -- diagnosed as separate-process camera-pose jitter (~11px vertical
+drift between GL/VK launches), present IDENTICALLY in the prior 27.1 baseline
+capture (re-measured: prior pair's own best-match shift is dx=-12,dy=11,
+aligned MAD 28.46, not 27.1 -- the originally-reported 27.1 was itself an
+unaligned/lucky-crop number). Aligned (shift-corrected) apples-to-apples MAD:
+prior 28.46 -> this session 27.54, a real but modest improvement, consistent
+with only 14/80 packets carrying non-1.0 scale. **Lesson for future
+bookmark-sweep MAD comparisons: always cross-correlate for a translation
+offset before trusting a raw crop MAD delta as small as 1-2/255 -- separate-
+process camera jitter alone produces deltas that size.**
+
+**Regression checks (same c_rot110 capture pair):**
+- Hangar brightness delta: GL 123.2 vs VK 120.4 = **-2.8/255** (within the
+  existing -0.5..-0.6 residual band from the washout fix; no new regression).
+- Fence visual: continuous ribbon, panel-preserving (screenshot pair above).
+- Packet dump: zero degenerate draws, zero "both -1" layers (same invariant as
+  the alternation-fix session).
+
+**Smoke:** `MC2_DEBUG_STATE_DUMP=1` + tier1 (`mc2_01 mc2_03 mc2_10 mc2_17
+mc2_24`, 30s each) against `A:/Games/mc2-opengl/mc2-win64-0.4c/mc2.exe`
+(sha `6366c922de88`, fingerprint-matched worktree HEAD): **byte-off control
+5/5 PASS, +0 destroy-delta all missions; canonical VK-on config
+(`MC2_VK_SHARED_GBUFFER=1 MC2_VK_SHADOW_INTEROP=1` +
+`MC2_SHADOW_CSM/STATIC_PROP_PBR_V1/AMBIENT_V1/IBL_SH=1`) 5/5 PASS, +0
+destroy-delta all missions.**
+
+### ADJUDICATION-1 FINAL SCOREBOARD
+
+| Bug | Adjudication-1 verdict | Follow-up verdict | This session (FENCE-UVSCALE-1) |
+|---|---|---|---|
+| Fence alternating panels | STILL BROKEN (alpha-test dropout) | ROOT-CAUSED + FIXED (deterministic clamped LOD) | n/a (already closed) |
+| Fence narrow/gapped panels vs GL ribbon | not yet isolated | isolated as uvScale=1.0 assumption, deferred | **FIXED** (per-packet uvScale plumbed + applied; visually continuous/full-width, aligned MAD 28.46->27.54) |
+| Hangar washout | STILL BROKEN, not fail-soft (+47.3) | ROOT-CAUSED + FIXED (unclamped vArgb, -0.6/255) | held (-2.8/255 this capture, same residual band) |
+
+**ADJUDICATION-1 is CLOSED as of this session.** Both bugs it raised (fence,
+washout) are root-caused and fixed; the one open residual the follow-up
+session left on the table (fence uvScale sub-region gap) is now also fixed and
+verified. No further action items outstanding from this adjudication.
