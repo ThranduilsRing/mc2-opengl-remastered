@@ -4,7 +4,69 @@ HEAD: rung 8.1 (VK-POST-FOG-NATIVE-1, see section below) on branch
 `claude/vk-interop-bridge-1`, worktree `A:/Games/mc2-vk-interop-bridge`.
 Build dir `build64_island`. Deploy lane (literal): `A:/Games/mc2-opengl/mc2-win64-0.4c`
 (deployed + fingerprint-verified at rung 8.1, exe sha `46e81cb1d9f2f7c1`).
-Rung-8 sub-ladder: `.claude/VK-RUNG8-LADDER-1.md` (8.1 SHIPPED; next = 8.2 SSAO native).
+Rung-8 sub-ladder: `.claude/VK-RUNG8-LADDER-1.md` (8.1 + 8.2 SHIPPED; next = 8.3 screen-fx / 8.4 HZB).
+
+## RUNG 8.2 -- VK-POST-SSAO-NATIVE-1 (2026-07-07) -- SHIPPED
+
+Commits `658107ae` (feature) + `786f6999` (gate registration). New TU
+`GameOS/gameos/vulkan_post_ssao_native.cpp`: SSAO gen+apply rendered natively on
+the SHARED ENGINE VulkanContext -- gen samples the shared scene DEPTH + NORMAL
+directly into a VK-OWNED half-res R16_SFLOAT occlusion image (the ladder's one
+intermediate; device-local, non-shared), apply 4-tap-box-upsamples it (LINEAR)
+and MULTIPLIES (DST_COLOR/ZERO) into the shared scene color0 IN PLACE. Sync =
+8.1 fog pattern extended to THREE shared resources (color0 + normal + depth
+BeginFrame/sems both directions; in-cb barriers depth DS<->SHADER_READ_ONLY and
+normal COLOR_ATTACHMENT<->SHADER_READ_ONLY around the gen pass). Gate
+`MC2_VK_POST_SSAO` (ladder's name; envTriState opt-in, default-OFF, new-rung
+pattern). Highest precedence at the SSAO site (native > region-iface > GL);
+parity guards mirror runSSAO()'s exact gate set (MC2_SSAO master gate,
+sceneHasTerrain, programs/FBO valid) + falls through to GL when
+`MC2_SSAO_DEBUG!=0` (grayscale-overwrite diagnostic NOT ported -- explicit
+limitation). SHADERS REUSED VERBATIM: the island's parity-proven
+ssao/ssao_apply SPIR-V (R16F format parity, LINEAR apply-sampler parity,
+column-major matrix parity all inherited).
+
+KILLS (vs the old vulkan_ssao_island readback pattern, measured live in the
+attribution run): per-frame glGetTexImage DEPTH + NORMAL readbacks + staging
+uploads, scene-color pull/preload + blended-color readback/writeback
+(island forbidden_* counters showed 2497 each per 2497-frame run,
+total_us ~15281/frame vs native render_us 300-680).
+
+Evidence (`.claude/vk-post-ssao/` -- ssao_oracle.py + cap/*; MC2_SSAO=1 in ALL
+configs; stock AO tunables are near-invisible at RTS poses, so parity was also
+proven under a boosted tuning profile `visual_tuning_aoboost.json`
+(aoRadius 24 / aoStrength 2.0 via MC2_VISUAL_TUNING_FILE) where the GL AO
+effect is measurable (0.03-0.48/ch cov 1-5%)):
+- Offline trio: check_vk_shaders 34/34, check_ubo_layout 7/7 pairs OK (new
+  ssaonat_occ 7 fields / ssaonat_apply 1 field), glsl_port_diff --all baseline
+  unchanged (no new ports; SPIR-V reuse).
+- Byte-off control (gl vs gl2, MC2_SSAO=1, stock AND boosted tunings, 5 AO
+  poses mc2_01): 0.000 all non-sacrificial poses.
+- Receipts: gate-ON sweeps attempted==used_vulkan (479-495), fallback_reason="";
+  gate-ON tier1 smoke used_vulkan=193-198/mission; debug-state JSON section
+  `vk_post_ssao_native` (postssao_used_vulkan) verified in
+  latest_render_state.json.
+- Single-variable MAD (vk_base vs vk_ssao, SAME VK scene, boosted): at the
+  deterministic poses 0.047-0.090/ch cov 2-5% -- SMALLER than the GL AO effect
+  itself (0.19-0.48/ch) and well INSIDE the impl-swap family residual measured
+  same session on the parity-proven OLD island (gl vs gl_island: up to
+  0.92/ch cov 11.8% at cliff_side_on). overview_center/ridge_lowangle diffs
+  (0.28/1.71) == the vk scene run-to-run SELF-noise at those poses (base
+  self-diff 0.27/1.64) -- scene noise, not SSAO.
+- vk_ssao self-diff determinism: 0.000 at all scene-deterministic poses.
+- Sacrificial first bookmark used every sweep (VK-FIRST-BOOKMARK-POSE-1).
+- Smoke: canonical tier1 5/5 PASS BOTH states on the fingerprint-verified exe
+  (sha 786f69990c17 == HEAD), +0 destroy-delta all missions. Gate-ON ~6 FPS =
+  the pre-existing umbrella-under-smoke cost (rung-6/7/8.1 note), not SSAO
+  (native render_us ~300).
+
+Residuals / next: (1) tiny impl-swap residual (<=0.09/ch boosted) inherited
+from the island port family (hash12 sin/fract precision class) -- far below
+the island's own accepted residual, not itemized; (2) MC2_SSAO_DEBUG
+grayscale mode unported (falls through to GL, documented); (3) old SSAO
+island + its readback taxes become DELETE candidates at rung 8.7. NEXT
+SUB-RUNG: 8.3 screen-shadow/cloud-shadow/shoreline (MC2_VK_POST_SCREENFX,
+needs verbatim shader ports + glsl_port_diff registration) or 8.4 HZB compute.
 
 ## RUNG 8.1 — VK-POST-FOG-NATIVE-1 (2026-07-07) — SHIPPED
 

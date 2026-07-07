@@ -43,5 +43,8 @@ no tessellation anywhere in the tail.
 
 ## Status
 
-- 8.1 — see VK-ARC-STATE.md "RUNG 8.1" section (this session).
-- 8.2+ — not started.
+- 8.1 — SHIPPED; see VK-ARC-STATE.md "RUNG 8.1" section.
+- 8.2 — SHIPPED (VK-POST-SSAO-NATIVE-1, commits 658107ae/786f6999, gate
+  `MC2_VK_POST_SSAO`); see VK-ARC-STATE.md "RUNG 8.2" section. Old SSAO island
+  becomes a DELETE candidate at 8.7.
+- 8.3 / 8.4 — not started (next; 8.3 ∥ 8.4 per sequencing).
