@@ -1705,6 +1705,17 @@ def main():
                             # (albedo * v_litColor + highlight, fogged). Requires
                             # MC2_VK_MECH_MATERIAL for the visible albedo multiply.
                             "MC2_VK_MECH_LIGHTING",
+                            # VK-MECH-FEED-NATIVE-1 (rung 7): mech island consumes the
+                            # game's CPU byte sources (exact uploaded VBO blob, staging
+                            # IBO, mcTextureManager lightData_) instead of reading the
+                            # GL buffer objects back (glGetBufferSubData). envTriState
+                            # OPT-IN, default-OFF (same new-rung pattern as
+                            # MC2_VK_TERRAIN_SKIRTS / MC2_VK_WATER_TIER1).
+                            "MC2_VK_MECH_FEED_NATIVE",
+                            # VK-MECH-FEED-AUDIT-1: verification-only (safety-gate class
+                            # like MC2_VK_TERRAIN_HEIGHT_AUDIT) -- byte-compares the CPU
+                            # sources vs the GL buffers on every native copy.
+                            "MC2_VK_MECH_FEED_AUDIT",
                             # VK terrain in-place shared-GBuffer region + lighting + detail.
                             "MC2_VK_TERRAIN_TIER1",
                             # VK-TERRAIN-ALL-LODS (rung 3): coarse-band (lodStep>1) capture
