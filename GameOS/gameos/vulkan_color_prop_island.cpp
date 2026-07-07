@@ -692,6 +692,22 @@ bool cp_import_albedo_array(ColorPropIsland* s, const AlbedoTarget& tgt, uint32_
     { GLint w1 = 0; glGetTexLevelParameteriv(GL_TEXTURE_2D_ARRAY, 1, GL_TEXTURE_WIDTH, &w1);
       if (w1 <= 0) mips = 1; }
 
+    // ADJUDICATION-1 FENCE-RECON: one-shot mip-count-parity verdict. GL's own
+    // GL_TEXTURE_MAX_LEVEL (set at gos_static_prop_batcher.cpp:3094 from the same
+    // w/h halving loop) vs this import's computed `mips` vs the sampler's maxLod
+    // that will be created below. Mismatch here would mean VK samples a mip level
+    // GL's own state clamps away (or vice versa).
+    if (std::getenv("MC2_VK_PROP_MIP_PROBE")) {
+        GLint glMaxLevel = -1;
+        glGetTexParameteriv(GL_TEXTURE_2D_ARRAY, GL_TEXTURE_MAX_LEVEL, &glMaxLevel);
+        std::fprintf(stderr,
+            "[PROP_MIP_PROBE v1] tag=%s glTexArray=%u w=%d h=%d layers=%d "
+            "glTexMaxLevel=%d vkComputedMips=%u vkSamplerMaxLod=%.1f\n",
+            tgt.tag, glTexArrayOff, (int)w, (int)h, (int)layers,
+            (int)glMaxLevel, mips, (mips > 0) ? (float)(mips - 1) : 0.0f);
+        std::fflush(stderr);
+    }
+
     const bool bc7 = (internalFmt == GL_COMPRESSED_RGBA_BPTC_UNORM ||
                       internalFmt == GL_COMPRESSED_SRGB_ALPHA_BPTC_UNORM);
     const VkFormat vkFmt = bc7
@@ -1558,6 +1574,79 @@ extern "C" int mc2_vk_color_prop_island_run(int w, int h) {
             if (vmaMapMemory(s->allocator, s->lightAlloc, &p) == VK_SUCCESS) {
                 glBindBuffer(GL_SHADER_STORAGE_BUFFER, (GLuint)lightFeed.lightDataGlSsbo);
                 glGetBufferSubData(GL_SHADER_STORAGE_BUFFER, 0, (GLsizeiptr)lbytes, p);
+                // ADJUDICATION-1 WASHOUT-RECON: one-shot CPU-side replica of the vert
+                // shader's ambientTerm/sunColor scan against the JUST-COPIED bytes (the
+                // exact bytes the VK vert shader will read this frame). If this ever
+                // disagrees with a live GL-side dump of the SAME ObjectLights[idx] taken
+                // at GL's own draw time, the copy is stale/racing GL's write. Probes
+                // entries 0..7 (first few ObjectLights rows) to catch whichever is
+                // actually populated for on-screen buildings this frame.
+                if (std::getenv("MC2_VK_PROP_LIGHT_VERTEX_PROBE")) {
+                    static bool s_vtx_dumped = false;
+                    if (!s_vtx_dumped) {
+                        s_vtx_dumped = true;
+                        struct ObjLightsMirror {
+                            float light_to_world[32][16];
+                            float light_dir[32][4];
+                            float light_color[32][4];
+                            float light_falloff[32][4];
+                            int32_t numLights[4];
+                        };
+                        const size_t stride = sizeof(ObjLightsMirror);
+                        const size_t maxEntries = (size_t)lbytes / stride;
+                        const uint8_t* base = (const uint8_t*)p;
+                        auto scanEntry = [&](size_t idx) {
+                            if (idx >= maxEntries) return;
+                            const ObjLightsMirror* ld = (const ObjLightsMirror*)(base + idx * stride);
+                            float ambient[3] = {0, 0, 0};
+                            float sunColor[3] = {0, 0, 0};
+                            bool sunFound = false;
+                            int n = ld->numLights[0];
+                            if (n > 32) n = 32;
+                            if (n < 0) n = 0;
+                            for (int i = 0; i < n; ++i) {
+                                int lt = (int)ld->light_dir[i][3];
+                                if (lt == 0) { // TG_LIGHT_AMBIENT
+                                    ambient[0] += ld->light_color[i][0];
+                                    ambient[1] += ld->light_color[i][1];
+                                    ambient[2] += ld->light_color[i][2];
+                                } else if (!sunFound && (lt == 1 || lt == 2)) {
+                                    sunColor[0] = ld->light_color[i][0];
+                                    sunColor[1] = ld->light_color[i][1];
+                                    sunColor[2] = ld->light_color[i][2];
+                                    sunFound = true;
+                                }
+                            }
+                            std::fprintf(stderr,
+                                "[PROP_LIGHT_VERTEX_PROBE v1] idx=%zu numLights=%d "
+                                "ambient=(%.4f,%.4f,%.4f) sunColor=(%.4f,%.4f,%.4f) sunFound=%d\n",
+                                idx, n, ambient[0], ambient[1], ambient[2],
+                                sunColor[0], sunColor[1], sunColor[2], sunFound ? 1 : 0);
+                        };
+                        // Real per-instance lightDataIndex values actually used this
+                        // frame (first few real props), instead of a blind 0..7 scan.
+                        {
+                            const GpuStaticPropInstanceMirror* insts =
+                                reinterpret_cast<const GpuStaticPropInstanceMirror*>(feed.instances112);
+                            std::fprintf(stderr, "[PROP_LIGHT_VERTEX_PROBE v1] real inst.lightDataIndex sample: ");
+                            for (uint32_t ii = 0; ii < feed.count && ii < 12; ++ii) {
+                                std::fprintf(stderr, "[%u]=%u typeID=%u ", ii, insts[ii].lightDataIndex, insts[ii].typeID);
+                            }
+                            std::fprintf(stderr, "\n");
+                            std::fflush(stderr);
+                            // Scan the ACTUAL indices these instances use (dedup small set).
+                            uint32_t seen[12]; int seenCount = 0;
+                            for (uint32_t ii = 0; ii < feed.count && ii < 200; ++ii) {
+                                uint32_t li = insts[ii].lightDataIndex;
+                                bool dup = false;
+                                for (int k = 0; k < seenCount; ++k) if (seen[k] == li) { dup = true; break; }
+                                if (!dup && seenCount < 12) { seen[seenCount++] = li; scanEntry((size_t)li); }
+                            }
+                        }
+                        for (size_t idx = 0; idx < maxEntries && idx < 8; ++idx) scanEntry(idx);
+                        std::fflush(stderr);
+                    }
+                }
                 glBindBuffer(GL_SHADER_STORAGE_BUFFER, 0);
                 vmaUnmapMemory(s->allocator, s->lightAlloc);
                 s->lightingReady = true;

@@ -289,5 +289,15 @@ void main() {
         iblTerm = evalShL2(normalize(worldNormalStuff), shCoeffs) * uFrame.iblShStrength;
     }
 
-    vArgb = seed + ambientTerm + iblTerm + sunTerm * ndl;
+    // ADJUDICATION-1 WASHOUT FIX (round 2): GL's static_prop.vert:524 clamps its
+    // final `lit` to [0,1] before handing it to the fragment (`lit = clamp(lit +
+    // aRGBHighlight, 0.0, 1.0)`). This island had NO clamp at all -- vArgb was
+    // passed raw (often >1.0: measured iblSh0 DC term alone, 1.71 * kSH_c4 * 0.5
+    // strength, already exceeds 1.0 before adding the 0.3 ambient fill) straight
+    // into the frag's `albedo * vArgb` multiply. An unclamped >1 vArgb multiplies
+    // the albedo brighter than GL's clamped-at-white equivalent on every bright
+    // material (hangar roofs measured GL 123.8 vs VK 171.1, +47/255) -- this is
+    // the dominant remaining washout term after the sun-color fix (91051001 /
+    // ADJUDICATION-1 sun fix landed +47.3->+43.5; the missing clamp is the rest).
+    vArgb = clamp(seed + ambientTerm + iblTerm + sunTerm * ndl, 0.0, 1.0);
 }

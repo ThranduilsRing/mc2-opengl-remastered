@@ -349,3 +349,49 @@ Instrumentation left in tree, all env-gated default-off: `MC2_VK_PROP_PACKET_DUM
 `[ADJUDICATION_POSE v1]` one-shot pose dump in gos_visual_capture.cpp. Airport
 bookmark authored at `.claude/adjudication/airport_bookmark.json` (c_rot110 frames
 both bugs). Artifacts under `.claude/adjudication/`.
+
+## ADJUDICATION-1 FOLLOW-UP (2026-07-06, this session)
+
+**WASHOUT — ROOT-CAUSED AND FIXED.** Per-vertex CPU-side probe
+(`MC2_VK_PROP_LIGHT_VERTEX_PROBE`, new, gated) dumped the REAL ObjectLights entries
+the hangar-area instances (typeID=38) actually use: `numLights=1, ambient=(0.3,0.3,0.3),
+sunFound=0` for every sampled instance — confirms no per-actor sun light feeds these
+props at all (matches the prior sun-fix's own +3.8/255 result: removing the phantom
+`kSunColor` barely moved the needle because GL's own scan also finds no sun here).
+`iblSh0` DC coefficient is 1.71 — `evalShL2`'s `kSH_c4*sh[0]` term alone
+(`0.886227*1.71≈1.51`) times `iblShStrength=0.5` is already ~0.76, and adding the 0.3
+ambient pushes the raw sum past 1.0 before any clamp. **Root cause: VK's
+`color_prop_tier1.vert` never clamped `vArgb`, unlike GL's `static_prop.vert:524
+lit = clamp(lit + aRGBHighlight, 0.0, 1.0)`.** An unclamped >1.0 vArgb multiplies the
+albedo brighter than GL's white-capped equivalent on every bright material (hangar
+roofs). Fix: added the matching `clamp(..., 0.0, 1.0)` to `vArgb`'s final assignment
+(`shaders/vulkan/color_prop_tier1.vert`). **Measured (canonical config, c_rot110,
+template-matched hangar crop, same box both before/after within this session):
+hangar delta +43.5 -> -0.6/255 (essentially matched); MAD 34.8 is structural/edge
+noise, not a brightness bias.** Receipts: GL used_vulkan=0 (correct), VK
+used_vulkan=420/421 frames (correct, real VK pixels, not fail-soft). Smoke: tier1 5/5
+PASS both byte-off control and full canonical VK-on config, 0 crash, +0 destroy-delta.
+Commit: (this session, see git log).
+
+**FENCE — STILL OPEN, mip/aniso hypotheses RULED OUT with live evidence.** New
+`MC2_VK_PROP_MIP_PROBE` diagnostic (gated, left in tree) confirms mip-count parity:
+alpha-ON array `glTexMaxLevel=7` (GL) == `vkComputedMips=8` levels / `maxLod=7.0`
+(VK) -- GL's own `GL_TEXTURE_MAX_LEVEL` and the VK import's computed chain length
+match exactly, both texture groups (alpha-OFF 21 layers, alpha-ON 34 layers). Grep
+of the entire renderer for `ANISOTROP*` returns zero hits on both the GL prop path
+(`gos_static_prop_batcher.cpp`) and the VK sampler (`vulkan_color_prop_island.cpp`)
+-- no anisotropic filtering anywhere, so aniso mismatch is not the cause either.
+VK's mip chain is confirmed BYTE-COPIED from GL's own already-generated
+`glGenerateMipmap` output (`glGetCompressedTexImage` per level, not re-derived) --
+so VK samples the literal same BC7 bytes GL does, at the same LOD range, with the
+same CLAMP_TO_EDGE + LINEAR_MIPMAP_LINEAR sampler state, same `fract(vUv)` UV
+handling in both fragment shaders. With every concrete sampler/mip/UV divergence
+eliminated, the alternating-panel dropout is most likely genuine floating-point
+rasterization divergence (vertex clip-position rounding differences between the GL
+and VK pipelines shifting the rasterized UV footprint across the 0.5 alpha-test
+threshold on a periodic subset of panels) rather than a fixable state/config bug --
+NOT yet proven, no fix landed. Next step: dump actual `gl_FragCoord`/derivative-
+based computed LOD per-fragment on both backends at the SAME two adjacent
+alternating panels and diff the raw sampled texel alpha values before the discard,
+to confirm/refute the FP-divergence hypothesis with hard numbers instead of
+elimination-by-exhaustion.
