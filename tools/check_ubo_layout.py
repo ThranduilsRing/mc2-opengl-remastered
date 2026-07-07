@@ -33,6 +33,9 @@ REGISTRY = [
      "shaders/vulkan/terrain_tier1.frag", "TerrainFrameUBO"),
     ("prop", "GameOS/gameos/vulkan_color_prop_island.cpp", "ColorFrameUBO",
      "shaders/vulkan/color_prop_tier1.frag", "ColorFrameUBO"),
+    # RUNG-6.5: water island FS params (grew for the reflection port).
+    ("waterfs", "GameOS/gameos/vulkan_water_island.cpp", "WaterFsParams",
+     "shaders/vulkan/water_geom.frag", "WaterFsParams"),
 ]
 
 STD140_BASE_ALIGN = {

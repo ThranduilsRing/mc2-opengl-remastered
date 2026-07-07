@@ -36,6 +36,14 @@ REGISTRY = [
     # VK-WATER-TIER1 (rung 6): armed-water base-layer color math (waveLOD/fBm/
     # absorption/shore/light/crest/glint), GL MDI water FS vs the VK water FS.
     ("waterBaseColor", "shaders/gos_terrain_water_mdi.frag", "shaders/vulkan/water_geom.frag"),
+    # RUNG 6.5: water reflection block (SH-L2 coeffs + HDRI equirect eval + SH eval
+    # + wave-normal/reflect setup + Fresnel mix). Terrain-RT contact sub-block NOT
+    # ported (MC2_WATER_REFLECTION_RT default-OFF -> GL no-op in the field config).
+    ("waterSkyShCoeffs", "shaders/gos_terrain_water_mdi.frag", "shaders/vulkan/water_geom.frag"),
+    ("waterEvalHdri", "shaders/gos_terrain_water_mdi.frag", "shaders/vulkan/water_geom.frag"),
+    ("waterEvalSkySh", "shaders/gos_terrain_water_mdi.frag", "shaders/vulkan/water_geom.frag"),
+    ("waterReflSetup", "shaders/gos_terrain_water_mdi.frag", "shaders/vulkan/water_geom.frag"),
+    ("waterReflMix", "shaders/gos_terrain_water_mdi.frag", "shaders/vulkan/water_geom.frag"),
 ]
 
 
