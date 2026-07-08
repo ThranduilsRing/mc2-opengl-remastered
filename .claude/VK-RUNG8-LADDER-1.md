@@ -201,6 +201,21 @@ no tessellation anywhere in the tail.
   validation_errors=0 fallback_reason=""`. Remaining HUD blocker: order-accurate
   full-batch replay validation, then skip GL replay only when every queued draw
   is representable.
+- 8.6j - HUD ORDERED NATIVE REPLAY PROOF (VK-HUD-ORDERED-REPLAY-1). The
+  present-tail HUD recorder now walks the queued GameOS draw records once and
+  emits a native command list in original order, switching between color-line,
+  color-tri, and mirrored-texture pipelines as needed. GL HUD replay remains
+  active. Visible proof `.claude/vk-hud-ordered-visible/` captured 11/11
+  deterministic `mc2_01` bookmarks under the full rung-8 env stack. Runtime
+  receipt: `[VK_PRESENT] present_frames=301 direct_fbo_grants=301
+  copy1_skip_frames=301 tail_hook_frames=301 composite_vk_frames=300
+  hud_vk_queued_frames=172 hud_vk_consumed_frames=172 hud_vk_draws_last=95
+  hud_vk_textured_last=69 hud_vk_serialized_last=69 hud_vk_color_frames=172
+  hud_vk_color_draws_last=87 hud_vk_textured_frames=172
+  hud_vk_textured_draws_last=69 hud_vk_texture_uploads=22 imgui_vk_ready=1
+  imgui_vk_frames=301 validation_errors=0 fallback_reason=""`. Remaining HUD
+  blocker: gated GL replay skip and parity proof with the native path as sole
+  HUD producer.
 - Combined rung-8 smoke with `MC2_VK_SHARED_GBUFFER=1` and gates 8.1-8.6
   forwarded PASS 2/2 at `tests/smoke/artifacts/2026-07-08T14-47-14`.
   It proves 8.1/8.2/8.3/8.4 native post paths execute together

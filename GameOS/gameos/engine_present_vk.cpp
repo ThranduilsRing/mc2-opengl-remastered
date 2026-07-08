@@ -1043,7 +1043,8 @@ uint32_t recordPendingHudColorProof(EnginePresentVk::Impl& s, VkCommandBuffer cb
     std::vector<HudColorGpuVertex> triVerts;
     std::vector<HudColorGpuVertex> lineVerts;
     std::vector<HudTexGpuVertex> texVerts;
-    struct TexDraw {
+    struct HudNativeCmd {
+        uint32_t stream = 0; // 0=tri color, 1=line color, 2=textured tri
         uint32_t first = 0;
         uint32_t count = 0;
         VkDescriptorSet set = VK_NULL_HANDLE;
@@ -1052,9 +1053,10 @@ uint32_t recordPendingHudColorProof(EnginePresentVk::Impl& s, VkCommandBuffer cb
         uint32_t textMode = 0;
         uint32_t foreground = 0;
     };
-    std::vector<TexDraw> texDraws;
+    std::vector<HudNativeCmd> commands;
     uint32_t triDraws = 0;
     uint32_t lineDraws = 0;
+    uint32_t texDraws = 0;
     uint32_t textureUploads = 0;
     for (const VkHudDraw& d : s.pendingHudDraws) {
         if (d.textureHandle != 0) {
@@ -1063,7 +1065,8 @@ uint32_t recordPendingHudColorProof(EnginePresentVk::Impl& s, VkCommandBuffer cb
             auto* mirror = ensureHudTextureMirror(s, d, &textureUploads);
             if (!mirror || !mirror->set)
                 continue;
-            TexDraw td;
+            HudNativeCmd td;
+            td.stream = 2;
             td.first = (uint32_t)texVerts.size();
             td.set = mirror->set;
             td.width = mirror->width;
@@ -1083,8 +1086,10 @@ uint32_t recordPendingHudColorProof(EnginePresentVk::Impl& s, VkCommandBuffer cb
                     addTex(v);
             }
             td.count = (uint32_t)texVerts.size() - td.first;
-            if (td.count != 0)
-                texDraws.push_back(td);
+            if (td.count != 0) {
+                commands.push_back(td);
+                ++texDraws;
+            }
             continue;
         }
         if (d.kind != 1 && d.kind != 2)
@@ -1094,8 +1099,14 @@ uint32_t recordPendingHudColorProof(EnginePresentVk::Impl& s, VkCommandBuffer cb
         dst.reserve(dst.size() + d.vertices.size());
         for (const VkHudVertex& v : d.vertices)
             dst.push_back({v.x, v.y, v.argb});
-        if (dst.size() != before)
+        if (dst.size() != before) {
+            HudNativeCmd cmd;
+            cmd.stream = (d.kind == 1) ? 1u : 0u;
+            cmd.first = (uint32_t)before;
+            cmd.count = (uint32_t)(dst.size() - before);
+            commands.push_back(cmd);
             (d.kind == 1) ? ++lineDraws : ++triDraws;
+        }
     }
 
     const size_t triBytes = triVerts.size() * sizeof(HudColorGpuVertex);
@@ -1146,22 +1157,34 @@ uint32_t recordPendingHudColorProof(EnginePresentVk::Impl& s, VkCommandBuffer cb
     const float extent[2] = {(float)s.imgW, (float)s.imgH};
     vkCmdPushConstants(cb, s.hudColorLayout, VK_SHADER_STAGE_VERTEX_BIT, 0, sizeof(extent), extent);
     VkDeviceSize offset = 0;
-    if (!triVerts.empty()) {
-        vkCmdBindPipeline(cb, VK_PIPELINE_BIND_POINT_GRAPHICS, s.hudColorTriPipe);
-        vkCmdBindVertexBuffers(cb, 0, 1, &s.hudColorVertexBuf, &offset);
-        vkCmdDraw(cb, (uint32_t)triVerts.size(), 1, 0, 0);
-    }
-    if (!lineVerts.empty()) {
-        offset = (VkDeviceSize)triBytes;
-        vkCmdBindPipeline(cb, VK_PIPELINE_BIND_POINT_GRAPHICS, s.hudColorLinePipe);
-        vkCmdBindVertexBuffers(cb, 0, 1, &s.hudColorVertexBuf, &offset);
-        vkCmdDraw(cb, (uint32_t)lineVerts.size(), 1, 0, 0);
-    }
-    if (!texDraws.empty()) {
-        VkDeviceSize texOffset = 0;
-        vkCmdBindPipeline(cb, VK_PIPELINE_BIND_POINT_GRAPHICS, s.hudTexPipe);
-        vkCmdBindVertexBuffers(cb, 0, 1, &s.hudTexVertexBuf, &texOffset);
-        for (const TexDraw& td : texDraws) {
+    VkPipeline boundPipe = VK_NULL_HANDLE;
+    VkBuffer boundBuffer = VK_NULL_HANDLE;
+    for (const HudNativeCmd& td : commands) {
+        if (td.stream == 0 || td.stream == 1) {
+            const VkPipeline pipe = (td.stream == 0) ? s.hudColorTriPipe : s.hudColorLinePipe;
+            if (boundPipe != pipe) {
+                vkCmdBindPipeline(cb, VK_PIPELINE_BIND_POINT_GRAPHICS, pipe);
+                boundPipe = pipe;
+            }
+            if (boundBuffer != s.hudColorVertexBuf) {
+                offset = 0;
+                vkCmdBindVertexBuffers(cb, 0, 1, &s.hudColorVertexBuf, &offset);
+                boundBuffer = s.hudColorVertexBuf;
+            }
+            const uint32_t first = (td.stream == 1)
+                ? (uint32_t)triVerts.size() + td.first
+                : td.first;
+            vkCmdDraw(cb, td.count, 1, first, 0);
+        } else {
+            if (boundPipe != s.hudTexPipe) {
+                vkCmdBindPipeline(cb, VK_PIPELINE_BIND_POINT_GRAPHICS, s.hudTexPipe);
+                boundPipe = s.hudTexPipe;
+            }
+            if (boundBuffer != s.hudTexVertexBuf) {
+                VkDeviceSize texOffset = 0;
+                vkCmdBindVertexBuffers(cb, 0, 1, &s.hudTexVertexBuf, &texOffset);
+                boundBuffer = s.hudTexVertexBuf;
+            }
             HudTexPush pc{};
             pc.extent[0] = (float)s.imgW;
             pc.extent[1] = (float)s.imgH;
@@ -1178,8 +1201,8 @@ uint32_t recordPendingHudColorProof(EnginePresentVk::Impl& s, VkCommandBuffer cb
         }
     }
     vkCmdEndRenderPass(cb);
-    if (nativeDraws) *nativeDraws = triDraws + lineDraws + (uint32_t)texDraws.size();
-    if (texturedDraws) *texturedDraws = (uint32_t)texDraws.size();
+    if (nativeDraws) *nativeDraws = triDraws + lineDraws + texDraws;
+    if (texturedDraws) *texturedDraws = texDraws;
     if (textureUploadsOut) *textureUploadsOut = textureUploads;
     s.pendingHudDraws.clear();
     return draws;
