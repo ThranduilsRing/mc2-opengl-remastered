@@ -1300,6 +1300,14 @@ def main():
                             # OFF; must be allowlisted or Popen drops it and the
                             # gate-ON present-parity run silently runs copy-1.
                             "MC2_VK_PRESENT_DIRECT_FBO",
+                            # VK-POST-COMPOSITE-NATIVE-1 prep: viewmode envs are
+                            # needed for ObjectIdDebug/Thermal/LowLight composite
+                            # parity coverage once MC2_VK_POST_COMPOSITE lands.
+                            "MC2_VIEWMODE_FRAMEWORK",
+                            "MC2_VIEW_MODE",
+                            "MC2_OBJECT_ID_BUFFER",
+                            "MC2_VIEWMODE_LOWLIGHT_GAIN",
+                            "MC2_VIEWMODE_LOWLIGHT_TINT",
                             "MC2_GPU_DEBUG_NAMES",
                             # Integrated gosFX-retirement / GPU-particles plan
                             # (2026-05-20-integrated-gosfx-retirement-*):
@@ -1811,6 +1819,11 @@ def main():
                             # Needs the build gate too; probe mode intentionally falls
                             # back to GL so the GL pyramid stays coherent for reads.
                             "MC2_VK_POST_HZB",
+                            # VK-POST-COMPOSITE-NATIVE-1 (rung 8.5b): native
+                            # composite/tonemap/FXAA/viewmode gate. Runtime hook
+                            # lands after shader asset prep; allowlisted now so
+                            # gate-on smoke cannot silently run the GL composite.
+                            "MC2_VK_POST_COMPOSITE",
                             "MC2_HZB_BUILD",
                             "MC2_HZB_PROBE",
                             # SKYBOX-FOG-EXCLUDE-1: stencil-tag true sky pixels during
