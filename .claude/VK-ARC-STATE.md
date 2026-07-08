@@ -1047,3 +1047,14 @@ Call-chain recon, now treated as the 8.6 hard ordering contract:
 Hard ban remains: native HUD/ImGui must not write into the shared present image
 before a real tail handoff split exists. The new query only prevents future code
 from guessing at `directFbo_` state.
+
+Verification:
+- Rebuilt `build64_island` with clean fingerprint
+  `sha=a96e1809f4f8 dirty=0`.
+- Deployed exact 0.4c lane:
+  `A:/Games/mc2-opengl/mc2-win64-0.4c`, manifest
+  `src_commit=a96e1809f4f84928387de2a5d65ebecd11524544`.
+- Vulkan/direct-FBO smoke:
+  `MC2_RENDER_BACKEND=vulkan MC2_VK_PRESENT_DIRECT_FBO=1 MC2_VK_PRESENT_VERIFY=1`
+  with `scripts/run_smoke.py --exe A:/Games/mc2-opengl/mc2-win64-0.4c/mc2.exe --mission mc2_01 --mission mc2_24 --duration 20 --keep-logs`
+  PASS 2/2, fingerprint OK, +0 destroys.
