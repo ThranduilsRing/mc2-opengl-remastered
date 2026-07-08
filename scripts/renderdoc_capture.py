@@ -156,7 +156,7 @@ def run_capture(args) -> Path:
     env.setdefault("MC2_SMOKE_SEED", "0xC0FFEE")
 
     rdoc_cmd = find_renderdoccmd(args.renderdoccmd)
-    exe = (DEPLOY / "mc2.exe").resolve()
+    exe = (Path(args.exe) if args.exe else DEPLOY / "mc2.exe").resolve()
     if not exe.is_file():
         raise SystemExit(f"mc2.exe missing at {exe}; deploy before capture")
 
@@ -275,7 +275,9 @@ def main(argv=None) -> int:
     cap.add_argument("--skip-convert", action="store_true",
                      help="produce only .rdc; skip JSON conversion")
     cap.add_argument("--renderdoccmd",
-                     help="explicit path to renderdoccmd.exe")
+                      help="explicit path to renderdoccmd.exe")
+    cap.add_argument("--exe",
+                     help="explicit mc2.exe path (default: canonical v0.4 deploy)")
     cap.set_defaults(func=cmd_capture)
 
     ds = sub.add_parser("diff-self",
@@ -285,6 +287,8 @@ def main(argv=None) -> int:
     ds.add_argument("--out", default="tests/smoke/captures/diff_self.rdc",
                     help="ignored; templates are auto-generated under tmpdir")
     ds.add_argument("--renderdoccmd")
+    ds.add_argument("--exe",
+                    help="explicit mc2.exe path (default: canonical v0.4 deploy)")
     ds.set_defaults(func=cmd_diff_self)
 
     args = p.parse_args(argv)
