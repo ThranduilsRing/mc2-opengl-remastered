@@ -409,3 +409,19 @@ no tessellation anywhere in the tail.
   with `forbidden_getTexImage=0 forbidden_readPixels=0`; native
   fog/SSAO/screenfx/HZB, water, prop, and mech health remained active with empty
   fallback reasons.
+- 8.7j follow-up - CSM DIRECT VISUAL PARITY FIX
+  (VK-CSM-DIRECT-VISUAL-1). Targeted bookmark A/B found the direct near-array
+  path visually wrong at first (`copy vs array_only`: aggregate coverage
+  ~90.355%, mean_all ~58.676). Split proof isolated full-map direct as near
+  neutral (`copy vs full_only`: aggregate coverage ~1.864%, with one exact
+  zero mid shot) and the near array as the failure. The actual fix was the CSM
+  array layer producer's Vulkan viewport convention: using a negative-height
+  viewport made the VK array layer match the GL shadow texture orientation.
+  Final proof on `tests/visual/bookmarks/mc2_01_buildings.json`: `copy vs
+  both_direct` aggregate coverage `0.000%`, mean_all `0.0000` (all three
+  building bookmarks exact zero). Tier1 smoke on explicit `0.4c` deploy passed
+  5/5 at `tests/smoke/artifacts/2026-07-08T18-26-37`; after adding
+  `MC2_SHADOW_CSM` to the smoke allowlist, CSM-enabled tier1 smoke passed 5/5 at
+  `tests/smoke/artifacts/2026-07-08T18-30-44`; clean post-commit build/deploy
+  (`sha=f10a87a2be3c dirty=0`) passed the same CSM-enabled tier1 gate at
+  `tests/smoke/artifacts/2026-07-08T18-36-40`.

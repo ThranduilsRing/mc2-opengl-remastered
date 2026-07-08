@@ -1677,6 +1677,7 @@ def main():
                             "MC2_VK_TERRAIN_DETAIL",
                             "MC2_VK_TERRAIN_LODFADE",
                             "MC2_VK_TERRAIN_DYNSHADOW",
+                            "MC2_SHADOW_CSM",
                             "MC2_VK_TERRAIN_CSM",
                             "MC2_VK_CSM_FULLMAP_INTEROP",
                             "MC2_VK_CSM_ARRAY_INTEROP",

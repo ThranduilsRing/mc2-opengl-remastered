@@ -1267,7 +1267,7 @@ extern "C" unsigned int mc2_vk_shadow_island_run_csm_array_layer(
     rbi.pClearValues = &clear;
     vkCmdBeginRenderPass(cb, &rbi, VK_SUBPASS_CONTENTS_INLINE);
 
-    VkViewport vp{0.0f, 0.0f, (float)size, (float)size, 0.0f, 1.0f};
+    VkViewport vp{0.0f, (float)size, (float)size, -(float)size, 0.0f, 1.0f};
     VkRect2D scissor{{0, 0}, {(uint32_t)size, (uint32_t)size}};
     vkCmdSetViewport(cb, 0, 1, &vp);
     vkCmdSetScissor(cb, 0, 1, &scissor);
