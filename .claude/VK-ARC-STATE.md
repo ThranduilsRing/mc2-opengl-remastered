@@ -1190,11 +1190,16 @@ Post-commit verification at clean HEAD `4ed1ca21db54`:
 
 Do not delete old interop scaffolding yet. The rung-8 ladder's final deletion
 bar is stricter than current code:
-- 8.5b native composite is not landed. `MC2_VK_POST_COMPOSITE` is documented and
-  smoke-forwarded, and `shaders/vulkan/postprocess.*` bake, but there is no
-  `gosPostProcess::runVkPostCompositeNative()` runtime hook. The live composite,
-  FORCE-43/OOB-letterbox clear, viewmode/object-id uniforms, and shadow-debug
-  overlay are still GL inside `gosPostProcess::endScene()`.
+- 8.5b native composite first runtime slice is landed, not complete. Under
+  `MC2_RENDER_BACKEND=vulkan MC2_VK_SHARED_GBUFFER=1
+  MC2_VK_PRESENT_DIRECT_FBO=1 MC2_VK_POST_COMPOSITE=1`, Visual mode with FXAA
+  off and a full drawable viewport now samples shared scene color0 in VK and
+  writes the shared present image. Visible proof:
+  `.claude/vk-post-composite-native-first-2/`, 11/11 deterministic `mc2_01`
+  bookmarks, `[VK_PRESENT] composite_vk_frames=300`, `copy1_blit_frames=0`,
+  `fallback_reason=""`; minimized smoke `tests/smoke/artifacts/2026-07-08T15-02-41`
+  PASS 2/2, +0 destroys. Remaining composite branches still fall back to GL:
+  FORCE-43/OOB-letterbox, FXAA, viewmode/object-id/debug paths.
 - 8.6 native ImGui is landed, but GameOS HUD (`gos_RendererFlushHUDBatch()`) is
   still legacy GL. Native HUD needs its own `MC2_VK_HUD`/batch replay port or a
   broader final-tail ownership split.
@@ -1208,7 +1213,8 @@ bar is stricter than current code:
   pixels.
 
 Next real coding slices:
-1. 8.5b native composite runtime hook.
+1. Complete the remaining native composite branches: FORCE-43/letterbox, FXAA,
+   viewmode/object-id/debug paths.
 2. 8.6f native GameOS HUD replay.
 3. 8.7 deletion after GL issues zero final-tail draws and shared-scene GL import
    halves are no longer needed.

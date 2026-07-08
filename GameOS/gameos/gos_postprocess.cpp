@@ -4160,6 +4160,7 @@ void gosPostProcess::endScene()
     } else {
         glBindFramebuffer(GL_FRAMEBUFFER, 0);
     }
+    int compositeVpX = 0, compositeVpY = 0, compositeVpW = width_, compositeVpH = height_;
     // [FORCE-43 v1] Pillarbox the final scene composite into a centered 4:3
     // rect with black bars. The scene FBO content (4:3 world stretched into the
     // 16:9 target) un-stretches when drawn into a 4:3 rect. Mouse is remapped
@@ -4207,6 +4208,7 @@ void gosPostProcess::endScene()
                 glClear(GL_COLOR_BUFFER_BIT);
                 glViewport(bx, by, bw, bh);
             }
+            compositeVpX = bx; compositeVpY = by; compositeVpW = bw; compositeVpH = bh;
         } else {
             // RENDER-BACKEND-IFACE-VIEWPORT-1: route the non-pillarbox composite viewport.
             if (s_backendIface) {
@@ -4214,6 +4216,7 @@ void gosPostProcess::endScene()
             } else {
                 glViewport(0, 0, width_, height_);
             }
+            compositeVpX = 0; compositeVpY = 0; compositeVpW = width_; compositeVpH = height_;
         }
     }
 
@@ -4235,8 +4238,17 @@ void gosPostProcess::endScene()
     render_frame_plan::trace(render_frame_plan::Phase::PostProcess, "Composite",
         render_frame_plan::PathKind::ApplyPipeline, 1, "PostProcessComposite");
 
+    bool nativeCompositeDone = false;
+#ifdef MC2_VULKAN
+    if (directFbo != 0 && mc2::renderBackend() == mc2::RenderBackend::Vulkan &&
+        gos_GetSelectedViewMode() == 0 && !fxaaEnabled_) {
+        nativeCompositeDone = mc2vk::getOrCreateEnginePresentVk().renderNativeCompositeVisual(
+            exposure_, compositeVpX, compositeVpY, compositeVpW, compositeVpH);
+    }
+#endif
+
     // Draw fullscreen quad with composite shader
-    if (compositeProg_ && compositeProg_->is_valid()) {
+    if (!nativeCompositeDone && compositeProg_ && compositeProg_->is_valid()) {
         // Set uniforms BEFORE apply() — apply() binds program + flushes dirty uniforms
         compositeProg_->setInt("sceneTex", 0);
         // The unconditional sunset grade + exposure in postprocess.frag are the

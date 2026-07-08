@@ -77,6 +77,21 @@ no tessellation anywhere in the tail.
   present-image split with a second GL->VK handoff after HUD/ImGui, or stage the
   first runtime hook against shared scene color. `CompositePresent` remains a
   separate-window test contract.
+- 8.5b - FIRST RUNTIME SLICE SHIPPED (VK-POST-COMPOSITE-VISUAL-1). Under
+  `MC2_RENDER_BACKEND=vulkan MC2_VK_SHARED_GBUFFER=1
+  MC2_VK_PRESENT_DIRECT_FBO=1 MC2_VK_POST_COMPOSITE=1`, Visual mode with FXAA
+  off and a full drawable viewport now renders the final composite in
+  EnginePresentVk: VK waits on the shared scene color, samples it, writes the
+  shared present image, CPU-waits that submit, then legacy GL HUD can continue.
+  This deliberately does not begin the shared present `VkImageResource` mid-tail;
+  `presentGLFrame()` still owns the final present handoff. FORCE-43, FXAA,
+  object-ID/viewmodes, and not-ready cases decline to the GL composite.
+  Visible proof: `.claude/vk-post-composite-native-first-2/`, 11/11
+  deterministic `mc2_01` bookmarks, `[VK_PRESENT] present_frames=301
+  direct_fbo_grants=301 copy1_blit_frames=0 copy1_skip_frames=301
+  composite_vk_frames=300 validation_errors=0 fallback_reason=""`. Minimized
+  smoke: `tests/smoke/artifacts/2026-07-08T15-02-41`, PASS 2/2, +0 destroys
+  (minimized present extent cannot exercise composite).
 - 8.6a - SHIPPED (VK-IMGUI-BACKEND-COMPILE-1). Behavior-neutral infrastructure:
   `imgui_impl_vulkan.cpp/.h` are aligned to the vendored ImGui 1.91.8 docking
   core and compile into `imgui` under `MC2_VULKAN=ON` using Volk +
@@ -99,10 +114,11 @@ no tessellation anywhere in the tail.
   (`substrate_live=1`, `used_vulkan>0`, no fallback) on `mc2_01` and `mc2_24`.
   Minimized smoke cannot prove present/ImGui execution because the surface extent
   is zero; use the visible proof above for that.
-- 8.7 - BLOCKED, not a safe deletion yet. Native ImGui is done, but native
-  composite (`MC2_VK_POST_COMPOSITE`) and native GameOS HUD (`MC2_VK_HUD`) are
-  not landed. Old postprocess islands are bypassed by shared-GBuffer native gates
-  but remain fallback/oracle code. Win32 GL interop primitives remain required
-  by shared scene color/depth/present while GL still produces composite/HUD
-  pixels. Delete only after 8.5b native composite and 8.6f native HUD are live
-  and verified.
+- 8.7 - BLOCKED, not a safe deletion yet. Native ImGui is done and native
+  composite has its first Visual/full-viewport slice, but native GameOS HUD
+  (`MC2_VK_HUD`) is not landed and composite still has GL fallback coverage for
+  FORCE-43, FXAA, object-ID/viewmodes, and diagnostics. Old postprocess islands
+  are bypassed by shared-GBuffer native gates but remain fallback/oracle code.
+  Win32 GL interop primitives remain required by shared scene color/depth/present
+  while GL continues to draw HUD and fallback composite pixels. Delete only after
+  native HUD plus the remaining composite branches are live and verified.

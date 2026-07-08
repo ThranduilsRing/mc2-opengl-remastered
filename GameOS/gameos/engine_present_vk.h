@@ -65,6 +65,7 @@ struct EnginePresentHealth {
     uint32_t    copy1_skip_frames   = 0;   // direct shared-FBO frames
     uint32_t    tail_hook_frames    = 0;   // gated VK final-tail hook executions
     uint32_t    imgui_vk_frames     = 0;   // native ImGui draw-data frames recorded
+    uint32_t    composite_vk_frames = 0;   // native composite frames recorded
     bool        imgui_vk_ready      = false;
     unsigned int last_direct_fbo    = 0;   // last shared FBO id granted
     std::string fallback_reason;           // empty == clean
@@ -129,6 +130,15 @@ public:
     bool renderImguiVulkanDrawData(ImDrawData* drawData);
     bool imguiVulkanReady() const;
     void shutdownImguiVulkanRenderer();
+
+    // Rung 8.5b first runtime slice: render the Visual-mode postprocess composite
+    // from the shared scene color image into the shared present image, then hand
+    // that image back to GL so legacy HUD can draw on it. Conservative: returns
+    // false unless the direct-present shared FBO is live and the caller is using
+    // the full drawable viewport.
+    bool renderNativeCompositeVisual(float exposure,
+                                     int viewportX, int viewportY,
+                                     int viewportW, int viewportH);
 
     // P13b: the visible GL game window we present onto (borrowed, not owned).
     SDL_Window* window() const { return glWindow_; }

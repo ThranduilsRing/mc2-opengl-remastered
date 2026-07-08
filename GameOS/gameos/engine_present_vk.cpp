@@ -26,6 +26,8 @@
 #include "vulkan_context.h"
 #include "vk_image_resource.h"
 #include "gl_interop_view.h"
+#define MC2_VULKAN_SHARED_SCENE_COLOR_IMPL_ISLAND
+#include "vulkan_shared_scene_color.h"
 
 #include "imgui.h"
 #include "imgui_impl_vulkan.h"
@@ -115,6 +117,18 @@ struct EnginePresentVk::Impl {
     VkRenderPass    imguiRenderPass = VK_NULL_HANDLE;
     VkFramebuffer   imguiFramebuffer = VK_NULL_HANDLE;
     ImDrawData*     pendingImguiDrawData = nullptr;
+
+    bool            compositeVkFailed = false;
+    VkRenderPass    compositeRenderPass = VK_NULL_HANDLE;
+    VkFramebuffer   compositeFramebuffer = VK_NULL_HANDLE;
+    VkSampler       compositeSampler = VK_NULL_HANDLE;
+    VkDescriptorSetLayout compositeDsl = VK_NULL_HANDLE;
+    VkDescriptorPool compositePool = VK_NULL_HANDLE;
+    VkDescriptorSet  compositeSet = VK_NULL_HANDLE;
+    VkPipelineLayout compositeLayout = VK_NULL_HANDLE;
+    VkPipeline       compositePipe = VK_NULL_HANDLE;
+    VkShaderModule   compositeVert = VK_NULL_HANDLE;
+    VkShaderModule   compositeFrag = VK_NULL_HANDLE;
 };
 
 namespace {
@@ -140,6 +154,41 @@ bool presentTailHookEnabled() {
         return v && v[0] == '1';
     }();
     return on;
+}
+
+bool nativeCompositeGateEnabled() {
+    static const bool on = []() {
+        const char* v = getenv("MC2_VK_POST_COMPOSITE");
+        return v && v[0] == '1';
+    }();
+    return on;
+}
+
+std::string spv_dir() {
+    const char* env = std::getenv("MC2_VULKAN_SPV_DIR");
+    std::string d = (env && *env) ? env : "shaders/vulkan";
+    if (!d.empty() && d.back() != '/' && d.back() != '\\') d += '/';
+    return d;
+}
+
+VkShaderModule loadSpv(VkDevice device, const std::string& path) {
+    std::FILE* f = std::fopen(path.c_str(), "rb");
+    if (!f) { plog("cannot open spv '%s'.", path.c_str()); return VK_NULL_HANDLE; }
+    std::fseek(f, 0, SEEK_END);
+    long len = std::ftell(f);
+    std::fseek(f, 0, SEEK_SET);
+    if (len <= 0 || (len % 4) != 0) { std::fclose(f); return VK_NULL_HANDLE; }
+    std::vector<uint32_t> code((size_t)len / 4);
+    size_t got = std::fread(code.data(), 1, (size_t)len, f);
+    std::fclose(f);
+    if (got != (size_t)len) return VK_NULL_HANDLE;
+    VkShaderModuleCreateInfo ci{VK_STRUCTURE_TYPE_SHADER_MODULE_CREATE_INFO};
+    ci.codeSize = (size_t)len;
+    ci.pCode = code.data();
+    VkShaderModule mod = VK_NULL_HANDLE;
+    if (vkCreateShaderModule(device, &ci, nullptr, &mod) != VK_SUCCESS)
+        return VK_NULL_HANDLE;
+    return mod;
 }
 
 // -------- swapchain (re)build against the SHARED device -------------------
@@ -312,6 +361,157 @@ void destroyImguiFramebuffer(EnginePresentVk::Impl& s) {
     }
 }
 
+void destroyCompositeFramebuffer(EnginePresentVk::Impl& s) {
+    if (s.compositeFramebuffer) {
+        vkDestroyFramebuffer(s.dev, s.compositeFramebuffer, nullptr);
+        s.compositeFramebuffer = VK_NULL_HANDLE;
+    }
+}
+
+bool ensureCompositeObjects(EnginePresentVk::Impl& s) {
+    if (s.compositePipe && s.compositeFramebuffer) return true;
+    if (s.compositeVkFailed || !s.dev || !s.sharedImg.view || s.imgW == 0 || s.imgH == 0)
+        return false;
+
+    VkImageResource* scene = mc2SharedSceneColorGetResource(MC2_SHARED_SCENE_COLOR0);
+    if (!scene || !scene->view) return false;
+
+    if (!s.compositeSampler) {
+        VkSamplerCreateInfo ci{VK_STRUCTURE_TYPE_SAMPLER_CREATE_INFO};
+        ci.magFilter = VK_FILTER_LINEAR;
+        ci.minFilter = VK_FILTER_LINEAR;
+        ci.mipmapMode = VK_SAMPLER_MIPMAP_MODE_NEAREST;
+        ci.addressModeU = VK_SAMPLER_ADDRESS_MODE_CLAMP_TO_EDGE;
+        ci.addressModeV = VK_SAMPLER_ADDRESS_MODE_CLAMP_TO_EDGE;
+        ci.addressModeW = VK_SAMPLER_ADDRESS_MODE_CLAMP_TO_EDGE;
+        if (vkCreateSampler(s.dev, &ci, nullptr, &s.compositeSampler) != VK_SUCCESS) {
+            s.compositeVkFailed = true; return false;
+        }
+    }
+    if (!s.compositeRenderPass) {
+        VkAttachmentDescription color{};
+        color.format = VK_FORMAT_R8G8B8A8_UNORM;
+        color.samples = VK_SAMPLE_COUNT_1_BIT;
+        color.loadOp = VK_ATTACHMENT_LOAD_OP_LOAD;
+        color.storeOp = VK_ATTACHMENT_STORE_OP_STORE;
+        color.stencilLoadOp = VK_ATTACHMENT_LOAD_OP_DONT_CARE;
+        color.stencilStoreOp = VK_ATTACHMENT_STORE_OP_DONT_CARE;
+        color.initialLayout = VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL;
+        color.finalLayout = VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL;
+        VkAttachmentReference ref{0, VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL};
+        VkSubpassDescription sub{};
+        sub.pipelineBindPoint = VK_PIPELINE_BIND_POINT_GRAPHICS;
+        sub.colorAttachmentCount = 1;
+        sub.pColorAttachments = &ref;
+        VkRenderPassCreateInfo rp{VK_STRUCTURE_TYPE_RENDER_PASS_CREATE_INFO};
+        rp.attachmentCount = 1; rp.pAttachments = &color;
+        rp.subpassCount = 1; rp.pSubpasses = &sub;
+        if (vkCreateRenderPass(s.dev, &rp, nullptr, &s.compositeRenderPass) != VK_SUCCESS) {
+            s.compositeVkFailed = true; return false;
+        }
+    }
+    if (!s.compositeFramebuffer) {
+        VkImageView att[] = { s.sharedImg.view };
+        VkFramebufferCreateInfo fb{VK_STRUCTURE_TYPE_FRAMEBUFFER_CREATE_INFO};
+        fb.renderPass = s.compositeRenderPass;
+        fb.attachmentCount = 1; fb.pAttachments = att;
+        fb.width = s.imgW; fb.height = s.imgH; fb.layers = 1;
+        if (vkCreateFramebuffer(s.dev, &fb, nullptr, &s.compositeFramebuffer) != VK_SUCCESS) {
+            s.compositeVkFailed = true; return false;
+        }
+    }
+    if (!s.compositeDsl) {
+        VkDescriptorSetLayoutBinding b{};
+        b.binding = 0;
+        b.descriptorType = VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER;
+        b.descriptorCount = 1;
+        b.stageFlags = VK_SHADER_STAGE_FRAGMENT_BIT;
+        VkDescriptorSetLayoutCreateInfo ci{VK_STRUCTURE_TYPE_DESCRIPTOR_SET_LAYOUT_CREATE_INFO};
+        ci.bindingCount = 1; ci.pBindings = &b;
+        if (vkCreateDescriptorSetLayout(s.dev, &ci, nullptr, &s.compositeDsl) != VK_SUCCESS) {
+            s.compositeVkFailed = true; return false;
+        }
+    }
+    if (!s.compositePool) {
+        VkDescriptorPoolSize size{VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER, 1};
+        VkDescriptorPoolCreateInfo pci{VK_STRUCTURE_TYPE_DESCRIPTOR_POOL_CREATE_INFO};
+        pci.maxSets = 1; pci.poolSizeCount = 1; pci.pPoolSizes = &size;
+        if (vkCreateDescriptorPool(s.dev, &pci, nullptr, &s.compositePool) != VK_SUCCESS) {
+            s.compositeVkFailed = true; return false;
+        }
+        VkDescriptorSetAllocateInfo ai{VK_STRUCTURE_TYPE_DESCRIPTOR_SET_ALLOCATE_INFO};
+        ai.descriptorPool = s.compositePool;
+        ai.descriptorSetCount = 1;
+        ai.pSetLayouts = &s.compositeDsl;
+        if (vkAllocateDescriptorSets(s.dev, &ai, &s.compositeSet) != VK_SUCCESS) {
+            s.compositeVkFailed = true; return false;
+        }
+    }
+    VkDescriptorImageInfo ii{};
+    ii.sampler = s.compositeSampler;
+    ii.imageView = scene->view;
+    ii.imageLayout = VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL;
+    VkWriteDescriptorSet wr{VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET};
+    wr.dstSet = s.compositeSet;
+    wr.dstBinding = 0;
+    wr.descriptorCount = 1;
+    wr.descriptorType = VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER;
+    wr.pImageInfo = &ii;
+    vkUpdateDescriptorSets(s.dev, 1, &wr, 0, nullptr);
+
+    if (!s.compositeLayout) {
+        VkPushConstantRange pc{};
+        pc.stageFlags = VK_SHADER_STAGE_FRAGMENT_BIT;
+        pc.size = sizeof(float) * 4;
+        VkPipelineLayoutCreateInfo ci{VK_STRUCTURE_TYPE_PIPELINE_LAYOUT_CREATE_INFO};
+        ci.setLayoutCount = 1; ci.pSetLayouts = &s.compositeDsl;
+        ci.pushConstantRangeCount = 1; ci.pPushConstantRanges = &pc;
+        if (vkCreatePipelineLayout(s.dev, &ci, nullptr, &s.compositeLayout) != VK_SUCCESS) {
+            s.compositeVkFailed = true; return false;
+        }
+    }
+    if (!s.compositePipe) {
+        s.compositeVert = loadSpv(s.dev, spv_dir() + "postprocess.vert.spv");
+        s.compositeFrag = loadSpv(s.dev, spv_dir() + "postprocess_visual.frag.spv");
+        if (!s.compositeVert || !s.compositeFrag) { s.compositeVkFailed = true; return false; }
+
+        VkPipelineShaderStageCreateInfo st[2]{};
+        st[0].sType = VK_STRUCTURE_TYPE_PIPELINE_SHADER_STAGE_CREATE_INFO;
+        st[0].stage = VK_SHADER_STAGE_VERTEX_BIT; st[0].module = s.compositeVert; st[0].pName = "main";
+        st[1].sType = VK_STRUCTURE_TYPE_PIPELINE_SHADER_STAGE_CREATE_INFO;
+        st[1].stage = VK_SHADER_STAGE_FRAGMENT_BIT; st[1].module = s.compositeFrag; st[1].pName = "main";
+        VkPipelineVertexInputStateCreateInfo vin{VK_STRUCTURE_TYPE_PIPELINE_VERTEX_INPUT_STATE_CREATE_INFO};
+        VkPipelineInputAssemblyStateCreateInfo ia{VK_STRUCTURE_TYPE_PIPELINE_INPUT_ASSEMBLY_STATE_CREATE_INFO};
+        ia.topology = VK_PRIMITIVE_TOPOLOGY_TRIANGLE_LIST;
+        VkPipelineViewportStateCreateInfo vp{VK_STRUCTURE_TYPE_PIPELINE_VIEWPORT_STATE_CREATE_INFO};
+        vp.viewportCount = 1; vp.scissorCount = 1;
+        VkPipelineRasterizationStateCreateInfo rs{VK_STRUCTURE_TYPE_PIPELINE_RASTERIZATION_STATE_CREATE_INFO};
+        rs.polygonMode = VK_POLYGON_MODE_FILL; rs.cullMode = VK_CULL_MODE_NONE;
+        rs.frontFace = VK_FRONT_FACE_COUNTER_CLOCKWISE; rs.lineWidth = 1.0f;
+        VkPipelineMultisampleStateCreateInfo ms{VK_STRUCTURE_TYPE_PIPELINE_MULTISAMPLE_STATE_CREATE_INFO};
+        ms.rasterizationSamples = VK_SAMPLE_COUNT_1_BIT;
+        VkPipelineColorBlendAttachmentState cba{};
+        cba.colorWriteMask = VK_COLOR_COMPONENT_R_BIT | VK_COLOR_COMPONENT_G_BIT |
+                             VK_COLOR_COMPONENT_B_BIT | VK_COLOR_COMPONENT_A_BIT;
+        VkPipelineColorBlendStateCreateInfo cb{VK_STRUCTURE_TYPE_PIPELINE_COLOR_BLEND_STATE_CREATE_INFO};
+        cb.attachmentCount = 1; cb.pAttachments = &cba;
+        VkDynamicState dyns[2] = {VK_DYNAMIC_STATE_VIEWPORT, VK_DYNAMIC_STATE_SCISSOR};
+        VkPipelineDynamicStateCreateInfo dyn{VK_STRUCTURE_TYPE_PIPELINE_DYNAMIC_STATE_CREATE_INFO};
+        dyn.dynamicStateCount = 2; dyn.pDynamicStates = dyns;
+        VkGraphicsPipelineCreateInfo gp{VK_STRUCTURE_TYPE_GRAPHICS_PIPELINE_CREATE_INFO};
+        gp.stageCount = 2; gp.pStages = st;
+        gp.pVertexInputState = &vin; gp.pInputAssemblyState = &ia;
+        gp.pViewportState = &vp; gp.pRasterizationState = &rs;
+        gp.pMultisampleState = &ms; gp.pColorBlendState = &cb;
+        gp.pDynamicState = &dyn; gp.layout = s.compositeLayout;
+        gp.renderPass = s.compositeRenderPass;
+        if (vkCreateGraphicsPipelines(s.dev, VK_NULL_HANDLE, 1, &gp, nullptr, &s.compositePipe) != VK_SUCCESS) {
+            s.compositeVkFailed = true; return false;
+        }
+    }
+    return true;
+}
+
 bool ensureImguiRenderPass(EnginePresentVk::Impl& s) {
     if (s.imguiRenderPass) return true;
 
@@ -408,6 +608,7 @@ bool recordPendingImgui(EnginePresentVk::Impl& s, VkCommandBuffer cb) {
 bool buildSharedImage(EnginePresentVk::Impl& s, uint32_t w, uint32_t h, std::string& reason) {
     // Tear down prior.
     destroyImguiFramebuffer(s);
+    destroyCompositeFramebuffer(s);
     if (s.copyFbo) { glDeleteFramebuffers(1, &s.copyFbo); s.copyFbo = 0; }
     if (s.glView.glTex) glInteropViewDestroy(&s.glView);
     if (s.sharedImg.image) vkImageResourceDestroy(&s.sharedImg, s.dev);
@@ -586,6 +787,88 @@ unsigned int EnginePresentVk::presentDirectFbo() {
     ++health_.direct_fbo_grants;
     health_.last_direct_fbo = directFbo_;
     return directFbo_;
+}
+
+bool EnginePresentVk::renderNativeCompositeVisual(float exposure,
+                                                  int viewportX, int viewportY,
+                                                  int viewportW, int viewportH) {
+    if (!nativeCompositeGateEnabled() || !created_ || !impl_ || directFbo_ == 0)
+        return false;
+    Impl& s = *impl_;
+    if (viewportX != 0 || viewportY != 0 ||
+        viewportW != (int)s.imgW || viewportH != (int)s.imgH) {
+        return false; // first slice is full-viewport only; FORCE-43 falls back to GL.
+    }
+    VkImageResource* scene = mc2SharedSceneColorGetResource(MC2_SHARED_SCENE_COLOR0);
+    GlInteropView* sceneView = mc2SharedSceneColorGetGlView(MC2_SHARED_SCENE_COLOR0);
+    if (!scene || !sceneView || !ensureCompositeObjects(s))
+        return false;
+
+    VkFrameSync fsScene = vkImageResourceBeginFrame(scene);
+    glInteropSignalToVk(*sceneView, GL_LAYOUT_COLOR_ATTACHMENT_EXT, fsScene.parity);
+
+    vkResetCommandBuffer(s.cbuf, 0);
+    VkCommandBufferBeginInfo bi{VK_STRUCTURE_TYPE_COMMAND_BUFFER_BEGIN_INFO};
+    bi.flags = VK_COMMAND_BUFFER_USAGE_ONE_TIME_SUBMIT_BIT;
+    if (vkBeginCommandBuffer(s.cbuf, &bi) != VK_SUCCESS)
+        return false;
+
+    barrier(s.cbuf, scene->image,
+            VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL, VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL,
+            VK_ACCESS_COLOR_ATTACHMENT_WRITE_BIT, VK_ACCESS_SHADER_READ_BIT,
+            VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT, VK_PIPELINE_STAGE_FRAGMENT_SHADER_BIT);
+
+    VkRenderPassBeginInfo rp{VK_STRUCTURE_TYPE_RENDER_PASS_BEGIN_INFO};
+    rp.renderPass = s.compositeRenderPass;
+    rp.framebuffer = s.compositeFramebuffer;
+    rp.renderArea.offset = {0, 0};
+    rp.renderArea.extent = {s.imgW, s.imgH};
+    vkCmdBeginRenderPass(s.cbuf, &rp, VK_SUBPASS_CONTENTS_INLINE);
+    VkViewport vp{0.0f, 0.0f, (float)s.imgW, (float)s.imgH, 0.0f, 1.0f};
+    VkRect2D sc{{0, 0}, {s.imgW, s.imgH}};
+    vkCmdSetViewport(s.cbuf, 0, 1, &vp);
+    vkCmdSetScissor(s.cbuf, 0, 1, &sc);
+    vkCmdBindPipeline(s.cbuf, VK_PIPELINE_BIND_POINT_GRAPHICS, s.compositePipe);
+    vkCmdBindDescriptorSets(s.cbuf, VK_PIPELINE_BIND_POINT_GRAPHICS, s.compositeLayout,
+                            0, 1, &s.compositeSet, 0, nullptr);
+    float pc[4] = { exposure, 0.0f, 0.0f, 0.0f };
+    vkCmdPushConstants(s.cbuf, s.compositeLayout, VK_SHADER_STAGE_FRAGMENT_BIT,
+                       0, sizeof(pc), pc);
+    vkCmdDraw(s.cbuf, 3, 1, 0, 0);
+    vkCmdEndRenderPass(s.cbuf);
+
+    barrier(s.cbuf, scene->image,
+            VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL, VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL,
+            VK_ACCESS_SHADER_READ_BIT, VK_ACCESS_COLOR_ATTACHMENT_WRITE_BIT,
+            VK_PIPELINE_STAGE_FRAGMENT_SHADER_BIT, VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT);
+
+    if (vkEndCommandBuffer(s.cbuf) != VK_SUCCESS)
+        return false;
+
+    VkSemaphore waitSems[1] = { fsScene.signal };
+    VkPipelineStageFlags waitStages[1] = { VK_PIPELINE_STAGE_FRAGMENT_SHADER_BIT };
+    VkSemaphore signalSems[1];
+    uint32_t sigN = 0;
+    if (sceneView->vkToGlImported && fsScene.vk2gl) signalSems[sigN++] = fsScene.vk2gl;
+
+    VkSubmitInfo si{VK_STRUCTURE_TYPE_SUBMIT_INFO};
+    si.waitSemaphoreCount = 1;
+    si.pWaitSemaphores = waitSems;
+    si.pWaitDstStageMask = waitStages;
+    si.commandBufferCount = 1;
+    si.pCommandBuffers = &s.cbuf;
+    si.signalSemaphoreCount = sigN;
+    si.pSignalSemaphores = signalSems;
+    if (vkQueueSubmit(s.gfxQ, 1, &si, fsScene.fence) != VK_SUCCESS)
+        return false;
+
+    if (sceneView->vkToGlImported && fsScene.vk2gl)
+        glInteropWaitFromVk(*sceneView, GL_LAYOUT_COLOR_ATTACHMENT_EXT, fsScene.parity);
+    if (vkWaitForFences(s.dev, 1, &fsScene.fence, VK_TRUE, 5ull * 1000 * 1000 * 1000) != VK_SUCCESS)
+        return false;
+
+    ++health_.composite_vk_frames;
+    return true;
 }
 
 bool EnginePresentVk::prepareImguiVulkanFrame() {
@@ -982,6 +1265,15 @@ void EnginePresentVk::destroy() {
         shutdownImguiVulkanRenderer();
         destroyImguiFramebuffer(s);
         if (s.imguiRenderPass) { vkDestroyRenderPass(s.dev, s.imguiRenderPass, nullptr); s.imguiRenderPass = VK_NULL_HANDLE; }
+        destroyCompositeFramebuffer(s);
+        if (s.compositePipe) { vkDestroyPipeline(s.dev, s.compositePipe, nullptr); s.compositePipe = VK_NULL_HANDLE; }
+        if (s.compositeLayout) { vkDestroyPipelineLayout(s.dev, s.compositeLayout, nullptr); s.compositeLayout = VK_NULL_HANDLE; }
+        if (s.compositeVert) { vkDestroyShaderModule(s.dev, s.compositeVert, nullptr); s.compositeVert = VK_NULL_HANDLE; }
+        if (s.compositeFrag) { vkDestroyShaderModule(s.dev, s.compositeFrag, nullptr); s.compositeFrag = VK_NULL_HANDLE; }
+        if (s.compositePool) { vkDestroyDescriptorPool(s.dev, s.compositePool, nullptr); s.compositePool = VK_NULL_HANDLE; }
+        if (s.compositeDsl) { vkDestroyDescriptorSetLayout(s.dev, s.compositeDsl, nullptr); s.compositeDsl = VK_NULL_HANDLE; }
+        if (s.compositeSampler) { vkDestroySampler(s.dev, s.compositeSampler, nullptr); s.compositeSampler = VK_NULL_HANDLE; }
+        if (s.compositeRenderPass) { vkDestroyRenderPass(s.dev, s.compositeRenderPass, nullptr); s.compositeRenderPass = VK_NULL_HANDLE; }
         if (s.readbackFence) { vkDestroyFence(s.dev, s.readbackFence, nullptr); s.readbackFence = VK_NULL_HANDLE; }
         if (s.readbackBuf)   { vkDestroyBuffer(s.dev, s.readbackBuf, nullptr); s.readbackBuf = VK_NULL_HANDLE; }
         if (s.readbackMem)   { vkFreeMemory(s.dev, s.readbackMem, nullptr); s.readbackMem = VK_NULL_HANDLE; }
@@ -1009,7 +1301,7 @@ void EnginePresentVk::logHealth() const {
         "validation_errors=%u extent=%ux%u present_mode=%s readback_changed=%d "
         "last_checksum=0x%llx direct_fbo_requests=%u direct_fbo_grants=%u "
         "copy1_blit_frames=%u copy1_skip_frames=%u tail_hook_frames=%u "
-        "imgui_vk_ready=%d imgui_vk_frames=%u "
+        "composite_vk_frames=%u imgui_vk_ready=%d imgui_vk_frames=%u "
         "last_direct_fbo=%u "
         "fallback_reason=\"%s\"\n",
         health_.created ? 1 : 0, health_.attempted ? 1 : 0,
@@ -1021,6 +1313,7 @@ void EnginePresentVk::logHealth() const {
         health_.direct_fbo_requests, health_.direct_fbo_grants,
         health_.copy1_blit_frames, health_.copy1_skip_frames,
         health_.tail_hook_frames,
+        health_.composite_vk_frames,
         health_.imgui_vk_ready ? 1 : 0, health_.imgui_vk_frames,
         health_.last_direct_fbo,
         health_.fallback_reason.empty() ? "" : health_.fallback_reason.c_str());
