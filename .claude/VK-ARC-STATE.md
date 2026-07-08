@@ -1168,3 +1168,47 @@ Verification:
   `[imgui-error]` in `.claude/vk-imgui-native-clean/mc2_01_capture.log`.
 - Visual delta vs the 8.6d tail-hook baseline: 9/11 byte-identical; only the
   known tiny unstable views differed (`cross_map_view`, `ridge_lowangle`).
+
+Post-commit verification at clean HEAD `4ed1ca21db54`:
+- Minimized two-mission smoke with
+  `MC2_RENDER_BACKEND=vulkan MC2_VK_PRESENT_DIRECT_FBO=1 MC2_VK_PRESENT_VERIFY=1 MC2_VK_PRESENT_TAIL_HOOK=1 MC2_VK_IMGUI=1`
+  PASS 2/2 (`tests/smoke/artifacts/2026-07-08T13-32-28`), fingerprint OK,
+  +0 destroys.
+- Combined rung-8 ownership smoke with
+  `MC2_RENDER_BACKEND=vulkan MC2_VK_SHARED_GBUFFER=1 MC2_VK_POST_FOG_NATIVE=1 MC2_VK_POST_SSAO=1 MC2_VK_POST_SCREENFX=1 MC2_VK_POST_HZB=1 MC2_VK_PRESENT_DIRECT_FBO=1 MC2_VK_PRESENT_TAIL_HOOK=1 MC2_VK_IMGUI=1 MC2_HZB_BUILD=1 MC2_SSAO=1`
+  PASS 2/2 (`tests/smoke/artifacts/2026-07-08T14-47-14`), fingerprint OK,
+  +0 destroys. Because smoke starts minimized, present and ImGui correctly
+  decline with `zero surface extent` / `vulkan_renderer_not_ready`; use the
+  visible proof above for present/ImGui.
+- Same combined smoke proves postprocess-native paths actually execute when
+  `MC2_VK_SHARED_GBUFFER=1`: `VK_POST_FOG_NATIVE`, `VK_POST_SSAO_NATIVE`,
+  `VK_POST_SCREENFX_NATIVE`, and `VK_POST_HZB_NATIVE` all report
+  `substrate_live=1`, `used_vulkan>0`, `fallback_reason=""` on both `mc2_01`
+  and `mc2_24`. HZB reports `copy_depth_ops=0 readback_ops=0`.
+
+## RUNG 8.7 READINESS - NOT YET DELETABLE
+
+Do not delete old interop scaffolding yet. The rung-8 ladder's final deletion
+bar is stricter than current code:
+- 8.5b native composite is not landed. `MC2_VK_POST_COMPOSITE` is documented and
+  smoke-forwarded, and `shaders/vulkan/postprocess.*` bake, but there is no
+  `gosPostProcess::runVkPostCompositeNative()` runtime hook. The live composite,
+  FORCE-43/OOB-letterbox clear, viewmode/object-id uniforms, and shadow-debug
+  overlay are still GL inside `gosPostProcess::endScene()`.
+- 8.6 native ImGui is landed, but GameOS HUD (`gos_RendererFlushHUDBatch()`) is
+  still legacy GL. Native HUD needs its own `MC2_VK_HUD`/batch replay port or a
+  broader final-tail ownership split.
+- `vulkan_postprocess_subgraph.cpp`, `vulkan_ssao_island.cpp`,
+  `vulkan_hzb_island.cpp`, and the edge/oob fog islands are now bypassed by the
+  native rung-8 gates during the verified shared-GBuffer smoke, but they still
+  compile as default-off fallback/oracle paths.
+- `gl_interop_view.*`, `gl_interop_buffer_view.*`, and the Win32 external
+  memory/semaphore extensions are still required by the shared scene
+  color/depth/present substrates while GL continues to produce composite/HUD
+  pixels.
+
+Next real coding slices:
+1. 8.5b native composite runtime hook.
+2. 8.6f native GameOS HUD replay.
+3. 8.7 deletion after GL issues zero final-tail draws and shared-scene GL import
+   halves are no longer needed.

@@ -84,3 +84,25 @@ no tessellation anywhere in the tail.
   HUD/ImGui Vulkan remains blocked on the same present-image handoff split noted
   for 8.5b; do not draw into the shared present image mid-frame until that split
   exists.
+- 8.6e - SHIPPED (VK-IMGUI-NATIVE-1, commit `4ed1ca21`). Native ImGui now
+  renders through `imgui_impl_vulkan` at the final-tail present seam when
+  `MC2_RENDER_BACKEND=vulkan MC2_VK_PRESENT_DIRECT_FBO=1
+  MC2_VK_PRESENT_TAIL_HOOK=1 MC2_VK_IMGUI=1`. Clean visible proof:
+  `.claude/vk-imgui-native-clean/`, 11/11 deterministic bookmarks,
+  `[VK_IMGUI] requested=1 used_vulkan=1 fallback_reason=""`, and final
+  `[VK_PRESENT] imgui_vk_ready=1 imgui_vk_frames=6301 validation_errors=0`.
+  Post-commit minimized smoke `tests/smoke/artifacts/2026-07-08T13-32-28`
+  PASS 2/2 at clean HEAD `4ed1ca21db54`.
+- Combined rung-8 smoke with `MC2_VK_SHARED_GBUFFER=1` and gates 8.1-8.6
+  forwarded PASS 2/2 at `tests/smoke/artifacts/2026-07-08T14-47-14`.
+  It proves 8.1/8.2/8.3/8.4 native post paths execute together
+  (`substrate_live=1`, `used_vulkan>0`, no fallback) on `mc2_01` and `mc2_24`.
+  Minimized smoke cannot prove present/ImGui execution because the surface extent
+  is zero; use the visible proof above for that.
+- 8.7 - BLOCKED, not a safe deletion yet. Native ImGui is done, but native
+  composite (`MC2_VK_POST_COMPOSITE`) and native GameOS HUD (`MC2_VK_HUD`) are
+  not landed. Old postprocess islands are bypassed by shared-GBuffer native gates
+  but remain fallback/oracle code. Win32 GL interop primitives remain required
+  by shared scene color/depth/present while GL still produces composite/HUD
+  pixels. Delete only after 8.5b native composite and 8.6f native HUD are live
+  and verified.
