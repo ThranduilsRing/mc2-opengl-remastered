@@ -999,3 +999,30 @@ allowlist/docs, and a visible-window proof path for present frames. Scout findin
 `run_smoke.py` still lacks allowlist entries for `MC2_VIEWMODE_FRAMEWORK`,
 `MC2_VIEW_MODE`, and `MC2_OBJECT_ID_BUFFER`, so viewmode parity coverage will need
 that harness fix when runtime testing ObjectIdDebug/Thermal/LowLight.
+
+## RUNG 8.6a - VK-IMGUI-BACKEND-COMPILE-1 SHIPPED
+
+Behavior-neutral first 8.6 slice. The Dear ImGui Vulkan renderer backend now
+compiles into the existing `imgui` static library when `MC2_VULKAN=ON`, using the
+project's existing Volk/Vulkan-Headers pattern (`IMGUI_IMPL_VULKAN_USE_VOLK` and
+`Vulkan::Headers`). `GuiRuntime` remains OpenGL-backed; no runtime selection,
+HUD path, or present ownership changed in this checkpoint.
+
+Important vendoring finding: the tracked Vulkan backend had drifted newer than
+the vendored core `imgui.h` (`IMGUI_VERSION_NUM 19180`) and referenced post-1.91.8
+texture APIs (`ImTextureData`, `ImGuiBackendFlags_RendererHasTextures`,
+`ImGuiPlatformIO::Textures`, renderer callback handlers). The fix was to align
+only `imgui_impl_vulkan.cpp/.h` to the official `v1.91.8-docking` backend, matching
+the core/vendor commit lineage instead of patching Dear ImGui internals.
+
+8.6 runtime scout ruling: do not draw native HUD/ImGui into the shared present
+image yet. The same mid-frame ownership issue documented in 8.5b applies:
+postprocess/composite happens before GL HUD/ImGui, while `presentGLFrame()` owns
+the single final GL->VK handoff. A safe runtime 8.6 slice needs either a proper
+present-image split / second sync handoff or an ordering change where Vulkan owns
+the full tail after composite.
+
+Verification:
+- `cmake --build build64_island --config RelWithDebInfo --target imgui` PASS.
+- `cmake --build build64_island --config RelWithDebInfo --target gui_runtime mc2`
+  PASS; only pre-existing C4267/C4996/LNK4199 warnings.

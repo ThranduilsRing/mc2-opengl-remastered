@@ -77,3 +77,10 @@ no tessellation anywhere in the tail.
   present-image split with a second GL->VK handoff after HUD/ImGui, or stage the
   first runtime hook against shared scene color. `CompositePresent` remains a
   separate-window test contract.
+- 8.6a - SHIPPED (VK-IMGUI-BACKEND-COMPILE-1). Behavior-neutral infrastructure:
+  `imgui_impl_vulkan.cpp/.h` are aligned to the vendored ImGui 1.91.8 docking
+  core and compile into `imgui` under `MC2_VULKAN=ON` using Volk +
+  `Vulkan::Headers`. `GuiRuntime` still uses SDL2/OpenGL3 at runtime. Runtime
+  HUD/ImGui Vulkan remains blocked on the same present-image handoff split noted
+  for 8.5b; do not draw into the shared present image mid-frame until that split
+  exists.
