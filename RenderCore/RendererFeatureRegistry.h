@@ -685,6 +685,19 @@ static constexpr EnvVarDesc kAuxEnvVars[] = {
         "NOT umbrella members. Umbrella unset/!=1 with no sub-gate forced = pure GL, "
         "byte-identical to today (near_land_off self-diff 0.000)."
     },
+    {
+        "MC2_FEATURE_VK_CSM_FULLMAP_INTEROP",
+        "MC2_VK_CSM_FULLMAP_INTEROP",
+        EnvVarKind::Feature,
+        false,
+        "VK-CSM-FULLMAP-DIRECT-1: presence-gated =1, default OFF. Companion to "
+        "MC2_VK_SHADOW_INTEROP that re-renders the CSM catch-all/full-map cascade into "
+        "a separate exportable D32 image on the shared Vulkan device, then lets VK terrain "
+        "bind that VkImageView directly at CSM binding 9. Deletes terrain's per-frame "
+        "glGetTexImage + vkCmdCopyBufferToImage full-map import when the producer succeeds; "
+        "the near cascade array remains on the existing copy path. Gate OFF or producer "
+        "decline -> existing GL full-map copy path unchanged."
+    },
     // VK-TIER1 SHARED SCENE DEPTH: the shared-depth substrate slice (step 2).
     {
         "MC2_FEATURE_VK_SHARED_SCENE_DEPTH",

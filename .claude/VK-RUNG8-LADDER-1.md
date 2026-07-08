@@ -375,3 +375,20 @@ no tessellation anywhere in the tail.
   counters zero, retired depth-in counters zero, and native post tail remained
   active. Grep for retired P9a symbols/resources in the water island returns no
   matches.
+- 8.7i - CSM FULL-MAP DIRECT VK CONSUME
+  (VK-CSM-FULLMAP-DIRECT-1). Added default-off `MC2_VK_CSM_FULLMAP_INTEROP`
+  companion to `MC2_VK_SHADOW_INTEROP`: the shadow island renders the CSM
+  catch-all/full-map cascade into a second exportable D32 target using the last
+  cascade matrix and same static-prop caster set. Terrain binding 9 now binds
+  that `VkImageView` directly when the same-frame producer succeeds, skipping
+  the full-map cascade's per-frame `glGetTexImage` + `vkCmdCopyBufferToImage`
+  import while leaving the near-cascade array copy path unchanged. Verification:
+  dirty-slice build/deploy/smoke PASS 1/1 at
+  `tests/smoke/artifacts/2026-07-08T17-51-19`; receipts show
+  `CSM full-map target initialized 4096x4096`, `first VK CSM full-map produced`,
+  and steady `VK_TERRAIN_COPY_STATS ... csmFullMapDirect=1`. Copy zone dropped
+  from the prior CSM baseline range (~124-130 ms after warm-up) to ~110-115 ms
+  after warm-up, consistent with full-map deletion while the large near-array
+  import remains the next ownership target. Native fog/SSAO/screenfx/HZB,
+  water, prop, terrain, and mech health remained active with empty fallback
+  reasons in the same smoke.

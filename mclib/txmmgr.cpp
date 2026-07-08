@@ -3002,6 +3002,19 @@ void MC_TextureManager::renderLists (void)
 							GpuStaticPropBatcher::instance().flushShadow(s_skipBldgInDynamic);
 						GpuMechBatcher::instance().flushShadow();
 						ppCsm->endDynamicShadowCascadePass();
+#ifdef MC2_VULKAN_ISLAND
+						if (ci == csmN - 1 && csmCasterSet && mc2_vk_shadow_island_enabled()) {
+							const float* mats = ppCsm->getDynamicCascadeMatrices();
+							const float* lastMat = mats ? (mats + (size_t)ci * 16u) : nullptr;
+							mc2_vk_shadow_island_run_csm_fullmap(
+								ppCsm->getDynamicFullMapSize(),
+								lastMat,
+								csmCasterSet->data(),
+								(unsigned int)csmCasterSet->size(),
+								ppCsm->getShadowBiasFactor(),
+								ppCsm->getShadowBiasUnits());
+						}
+#endif
 					}
 					// P5 headless log: layers + prop caster-set size fed to each
 					// cascade (per-cascade containment is decided GPU-side in the

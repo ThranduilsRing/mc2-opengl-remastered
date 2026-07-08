@@ -190,6 +190,20 @@ void* mc2_vk_shadow_island_get_dyn_shadow_view();
 void* mc2_vk_shadow_island_get_dyn_shadow_sampler();
 int   mc2_vk_shadow_island_dyn_shadow_ready();
 
+// VK-CSM-FULLMAP-DIRECT-1: default-off companion producer for the CSM catch-all
+// cascade. It reuses the shadow island's static-prop geometry/instance machinery,
+// but renders the last cascade matrix into a separate exportable D32 image whose
+// VkImageView can be bound directly by the terrain island at binding 9. The GL CSM
+// path still renders normally; this path only deletes terrain's per-frame
+// glGetTexImage+vkCmdCopyBufferToImage full-map import when
+// MC2_VK_CSM_FULLMAP_INTEROP=1.
+unsigned int mc2_vk_shadow_island_run_csm_fullmap(
+    int size, const float* lightSpace16,
+    const void* instances, unsigned int instanceCount,
+    float biasFactor, float biasUnits);
+void* mc2_vk_shadow_island_get_csm_fullmap_view();
+int   mc2_vk_shadow_island_csm_fullmap_ready();
+
 // Health accessor (mirrors mc2_render_backend_water_region_health).
 void mc2_render_backend_shadow_region_health(
     int* vulkanAvailable, int* buildEnabled, const char** deviceName,

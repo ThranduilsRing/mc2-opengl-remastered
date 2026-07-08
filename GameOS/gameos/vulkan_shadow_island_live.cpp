@@ -89,6 +89,7 @@ ShadowIslandHealth g_health;
 // terrain island) can tell "is this frame's depth ready right now" without racing a
 // stale prior-frame flag into a later frame where the shadow island declined.
 bool g_dynShadowReadyThisFrame = false;
+bool g_csmFullMapReadyThisFrame = false;
 
 void setFallback(const char* reason) {
     std::strncpy(g_health.fallbackReason, reason ? reason : "",
@@ -120,6 +121,15 @@ bool shadowInteropGateRequested() {
     static int state = -1;
     if (state == -1) {
         const char* e = std::getenv("MC2_VK_SHADOW_INTEROP");
+        state = (e && e[0] == '1') ? 1 : 0;
+    }
+    return state == 1;
+}
+
+bool csmFullMapInteropGateRequested() {
+    static int state = -1;
+    if (state == -1) {
+        const char* e = std::getenv("MC2_VK_CSM_FULLMAP_INTEROP");
         state = (e && e[0] == '1') ? 1 : 0;
     }
     return state == 1;
@@ -223,6 +233,11 @@ struct ShadowIsland {
     VkRenderPass      rpass  = VK_NULL_HANDLE;
     VkFramebuffer     fb     = VK_NULL_HANDLE;
     VkImageView       depthAttView = VK_NULL_HANDLE;  // depth-attachment view of the shared image
+    int               csmFullMapSize = 0;
+    VkImageResource   csmFullMapResource{};
+    GlInteropView     csmFullMapGlView{};
+    VkFramebuffer     csmFullMapFb = VK_NULL_HANDLE;
+    VkImageView       csmFullMapDepthAttView = VK_NULL_HANDLE;
     VkDescriptorSetLayout dsl = VK_NULL_HANDLE;
     VkDescriptorPool  pool   = VK_NULL_HANDLE;
     VkDescriptorSet   set    = VK_NULL_HANDLE;
@@ -289,6 +304,10 @@ void destroy_island(ShadowIsland* s) {
     glInteropViewDestroy(&s->depthGlView);
     if (d != VK_NULL_HANDLE) vkImageResourceDestroy(&s->depthResource, d);
     if (s->depthAttView) vkDestroyImageView(d, s->depthAttView, nullptr);
+    if (s->csmFullMapFb) vkDestroyFramebuffer(d, s->csmFullMapFb, nullptr);
+    glInteropViewDestroy(&s->csmFullMapGlView);
+    if (s->csmFullMapDepthAttView) vkDestroyImageView(d, s->csmFullMapDepthAttView, nullptr);
+    if (d != VK_NULL_HANDLE) vkImageResourceDestroy(&s->csmFullMapResource, d);
     if (s->pipe)    vkDestroyPipeline(d, s->pipe, nullptr);
     if (s->playout) vkDestroyPipelineLayout(d, s->playout, nullptr);
     if (s->vert)    vkDestroyShaderModule(d, s->vert, nullptr);
@@ -578,6 +597,73 @@ bool init_island(ShadowIsland* s, int size) {
     return true;
 }
 
+bool ensure_csm_fullmap_target(ShadowIsland* s, int size) {
+    if (!s || size <= 0 || s->rpass == VK_NULL_HANDLE) return false;
+    if (s->csmFullMapResource.image != VK_NULL_HANDLE && s->csmFullMapSize == size)
+        return true;
+
+    vkDeviceWaitIdle(s->device);
+    if (s->csmFullMapFb) vkDestroyFramebuffer(s->device, s->csmFullMapFb, nullptr);
+    glInteropViewDestroy(&s->csmFullMapGlView);
+    if (s->csmFullMapDepthAttView) vkDestroyImageView(s->device, s->csmFullMapDepthAttView, nullptr);
+    if (s->csmFullMapResource.image != VK_NULL_HANDLE)
+        vkImageResourceDestroy(&s->csmFullMapResource, s->device);
+    s->csmFullMapResource = {};
+    s->csmFullMapDepthAttView = VK_NULL_HANDLE;
+    s->csmFullMapFb = VK_NULL_HANDLE;
+    s->csmFullMapSize = 0;
+
+    bool ok = vkImageResourceCreate(&s->csmFullMapResource, s->device, s->phys,
+                                    (uint32_t)size, (uint32_t)size, kDepthFmt,
+                                    VK_IMAGE_USAGE_DEPTH_STENCIL_ATTACHMENT_BIT |
+                                    VK_IMAGE_USAGE_SAMPLED_BIT,
+                                    /*exportable*/ true);
+    if (ok) ok = glInteropViewCreate(&s->csmFullMapGlView, &s->csmFullMapResource, s->phys,
+                                     GL_DEPTH_COMPONENT32F);
+    if (!ok) {
+        glInteropViewDestroy(&s->csmFullMapGlView);
+        vkImageResourceDestroy(&s->csmFullMapResource, s->device);
+        setFallback("csm_fullmap_interop_setup_failed");
+        return false;
+    }
+    glBindTexture(GL_TEXTURE_2D, s->csmFullMapGlView.glTex);
+    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
+    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
+    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_CLAMP_TO_EDGE);
+    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_CLAMP_TO_EDGE);
+    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_COMPARE_MODE, GL_COMPARE_REF_TO_TEXTURE);
+    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_COMPARE_FUNC, GL_LEQUAL);
+    glBindTexture(GL_TEXTURE_2D, 0);
+
+    VkImageViewCreateInfo vi{};
+    vi.sType = VK_STRUCTURE_TYPE_IMAGE_VIEW_CREATE_INFO;
+    vi.image = s->csmFullMapResource.image;
+    vi.viewType = VK_IMAGE_VIEW_TYPE_2D;
+    vi.format = kDepthFmt;
+    vi.subresourceRange = {VK_IMAGE_ASPECT_DEPTH_BIT, 0, 1, 0, 1};
+    if (vkCreateImageView(s->device, &vi, nullptr, &s->csmFullMapDepthAttView) != VK_SUCCESS) {
+        setFallback("csm_fullmap_att_view_failed");
+        return false;
+    }
+
+    VkFramebufferCreateInfo fci{};
+    fci.sType = VK_STRUCTURE_TYPE_FRAMEBUFFER_CREATE_INFO;
+    fci.renderPass = s->rpass;
+    fci.attachmentCount = 1;
+    fci.pAttachments = &s->csmFullMapDepthAttView;
+    fci.width = (uint32_t)size;
+    fci.height = (uint32_t)size;
+    fci.layers = 1;
+    if (vkCreateFramebuffer(s->device, &fci, nullptr, &s->csmFullMapFb) != VK_SUCCESS) {
+        setFallback("csm_fullmap_framebuffer_failed");
+        return false;
+    }
+    s->csmFullMapSize = size;
+    vlog("CSM full-map target initialized %dx%d (exportable D32, direct terrain binding 9).",
+         size, size);
+    return true;
+}
+
 // Copy the shared static-prop VBO/IBO into VK-owned buffers ONCE per map (P8a
 // feed (B): VK owns a copy — simplest working feed). Also caches the per-type
 // packet ranges. Returns false if the geometry feed is unavailable this frame.
@@ -658,6 +744,7 @@ extern "C" unsigned int mc2_vk_shadow_island_run(
     const void* instances, unsigned int instanceCount,
     float biasFactor, float biasUnits) {
     g_dynShadowReadyThisFrame = false;   // VK-SHADOW-DIRECT-CONSUME-1: reset; set true only at the tail on success
+    g_csmFullMapReadyThisFrame = false;  // CSM full-map direct view must be same-frame fresh too
     if (!shadowInteropGateRequested()) return 0;
     if (size <= 0 || !lightSpace16 || !instances || instanceCount == 0) return 0;
 
@@ -870,6 +957,130 @@ extern "C" unsigned int mc2_vk_shadow_island_run(
     return s->depthGlView.glTex;
 }
 
+extern "C" unsigned int mc2_vk_shadow_island_run_csm_fullmap(
+    int size, const float* lightSpace16,
+    const void* instances, unsigned int instanceCount,
+    float biasFactor, float biasUnits) {
+    g_csmFullMapReadyThisFrame = false;
+    if (!shadowInteropGateRequested() || !csmFullMapInteropGateRequested()) return 0;
+    if (size <= 0 || !lightSpace16 || !instances || instanceCount == 0) return 0;
+    if (!g_island || g_island->disabled || !g_island->inited || !g_island->useInterop) return 0;
+    ShadowIsland* s = g_island;
+    if (!upload_geometry_once(s)) { setFallback("geometry_not_ready"); return 0; }
+    if (!ensure_csm_fullmap_target(s, size)) return 0;
+
+    const VkDeviceSize instBytes = (VkDeviceSize)instanceCount * sizeof(GpuStaticPropInstanceMirror);
+    if (!ensure_inst_capacity(s, instBytes)) { s->disabled = true; return 0; }
+    const GpuStaticPropInstanceMirror* insts =
+        reinterpret_cast<const GpuStaticPropInstanceMirror*>(instances);
+    std::vector<uint32_t> order(instanceCount);
+    for (uint32_t k = 0; k < instanceCount; ++k) order[k] = k;
+    std::sort(order.begin(), order.end(),
+        [insts](uint32_t a, uint32_t b){ return insts[a].typeID < insts[b].typeID; });
+    {
+        void* p = nullptr;
+        if (vmaMapMemory(s->allocator, s->instAlloc, &p) == VK_SUCCESS) {
+            GpuStaticPropInstanceMirror* dst = reinterpret_cast<GpuStaticPropInstanceMirror*>(p);
+            for (uint32_t k = 0; k < instanceCount; ++k) dst[k] = insts[order[k]];
+            vmaUnmapMemory(s->allocator, s->instAlloc);
+        }
+    }
+    {
+        ShadowFrameUBO u{};
+        std::memcpy(u.lightSpaceMatrix, lightSpace16, sizeof(u.lightSpaceMatrix));
+        u.instBase = 0;
+        void* p = nullptr;
+        if (vmaMapMemory(s->allocator, s->uboAlloc, &p) == VK_SUCCESS) {
+            std::memcpy(p, &u, sizeof(u));
+            vmaUnmapMemory(s->allocator, s->uboAlloc);
+        }
+    }
+
+    VkFrameSync fs = vkImageResourceBeginFrame(&s->csmFullMapResource);
+    VkCommandBuffer cb = s->cbuf[fs.parity & 1u];
+    vkResetCommandBuffer(cb, 0);
+    VkCommandBufferBeginInfo bi{};
+    bi.sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_BEGIN_INFO;
+    bi.flags = VK_COMMAND_BUFFER_USAGE_ONE_TIME_SUBMIT_BIT;
+    if (vkBeginCommandBuffer(cb, &bi) != VK_SUCCESS) { setFallback("csm_fullmap_record_failed"); s->disabled = true; return 0; }
+
+    VkClearValue clear{};
+    clear.depthStencil = {1.0f, 0};
+    VkRenderPassBeginInfo rbi{};
+    rbi.sType = VK_STRUCTURE_TYPE_RENDER_PASS_BEGIN_INFO;
+    rbi.renderPass = s->rpass;
+    rbi.framebuffer = s->csmFullMapFb;
+    rbi.renderArea = {{0, 0}, {(uint32_t)size, (uint32_t)size}};
+    rbi.clearValueCount = 1;
+    rbi.pClearValues = &clear;
+    vkCmdBeginRenderPass(cb, &rbi, VK_SUBPASS_CONTENTS_INLINE);
+
+    VkViewport vp{0.0f, 0.0f, (float)size, (float)size, 0.0f, 1.0f};
+    VkRect2D scissor{{0, 0}, {(uint32_t)size, (uint32_t)size}};
+    vkCmdSetViewport(cb, 0, 1, &vp);
+    vkCmdSetScissor(cb, 0, 1, &scissor);
+    vkCmdSetDepthBias(cb, biasUnits, 0.0f, biasFactor);
+    vkCmdBindPipeline(cb, VK_PIPELINE_BIND_POINT_GRAPHICS, s->pipe);
+    vkCmdBindDescriptorSets(cb, VK_PIPELINE_BIND_POINT_GRAPHICS, s->playout, 0, 1, &s->set, 0, nullptr);
+    VkDeviceSize vboOff = 0;
+    vkCmdBindVertexBuffers(cb, 0, 1, &s->vbo, &vboOff);
+    vkCmdBindIndexBuffer(cb, s->ibo, 0, VK_INDEX_TYPE_UINT32);
+
+    unsigned long typeRuns = 0;
+    uint32_t i = 0;
+    while (i < instanceCount) {
+        const uint32_t tid = insts[order[i]].typeID;
+        uint32_t j = i;
+        while (j < instanceCount && insts[order[j]].typeID == tid) ++j;
+        const uint32_t runCount = j - i;
+        if (tid < s->typeRuns.size()) {
+            const TypeRun& tr = s->typeRuns[tid];
+            for (uint32_t p = 0; p < tr.packetCount; ++p) {
+                const uint32_t pk = tr.firstPacket + p;
+                if (pk >= s->packets.size()) break;
+                const Mc2ShadowPacket& pkt = s->packets[pk];
+                vkCmdDrawIndexed(cb, pkt.indexCount, runCount,
+                                 pkt.firstIndex, (int32_t)pkt.baseVertex,
+                                 /*firstInstance*/ i);
+            }
+            ++typeRuns;
+        }
+        i = j;
+    }
+    vkCmdEndRenderPass(cb);
+    if (vkEndCommandBuffer(cb) != VK_SUCCESS) { setFallback("csm_fullmap_record_failed"); s->disabled = true; return 0; }
+
+    const bool useGpuVk2Gl = s->csmFullMapGlView.vkToGlImported && (fs.vk2gl != VK_NULL_HANDLE);
+    VkSubmitInfo si{};
+    si.sType = VK_STRUCTURE_TYPE_SUBMIT_INFO;
+    si.commandBufferCount = 1;
+    si.pCommandBuffers = &cb;
+    if (useGpuVk2Gl) {
+        si.signalSemaphoreCount = 1;
+        si.pSignalSemaphores = &fs.vk2gl;
+    }
+    if (vkQueueSubmit(s->queue, 1, &si, fs.fence) != VK_SUCCESS) { setFallback("csm_fullmap_submit_failed"); s->disabled = true; return 0; }
+    if (useGpuVk2Gl) {
+        glInteropWaitFromVk(s->csmFullMapGlView, GL_LAYOUT_DEPTH_STENCIL_READ_ONLY_EXT, fs.parity);
+    }
+    if (vkWaitForFences(s->device, 1, &fs.fence, VK_TRUE, 5ull*1000*1000*1000) != VK_SUCCESS) {
+        setFallback("csm_fullmap_fence_timeout"); s->disabled = true; return 0;
+    }
+
+    g_health.instRecords = instanceCount;
+    g_health.typeRuns = typeRuns;
+    ++g_health.usedVulkan;
+    ++g_health.usedInterop;
+    static bool s_firstOk = false;
+    if (!s_firstOk) {
+        vlog("first VK CSM full-map produced: instCount=%u typeRuns=%lu tex=%u.",
+             instanceCount, typeRuns, s->csmFullMapGlView.glTex);
+        s_firstOk = true;
+    }
+    g_csmFullMapReadyThisFrame = true;
+    return s->csmFullMapGlView.glTex;
+}
+
 // VK-SHADOW-DIRECT-CONSUME-1: raw VK-side view/ready accessors for the terrain
 // island. g_dynShadowReadyThisFrame is set true at the tail of a successful
 // mc2_vk_shadow_island_run() (after the fence wait retired the submit, i.e. the
@@ -888,6 +1099,14 @@ extern "C" void* mc2_vk_shadow_island_get_dyn_shadow_sampler() {
 }
 extern "C" int mc2_vk_shadow_island_dyn_shadow_ready() {
     return (g_island && g_dynShadowReadyThisFrame) ? 1 : 0;
+}
+
+extern "C" void* mc2_vk_shadow_island_get_csm_fullmap_view() {
+    return (g_island && g_csmFullMapReadyThisFrame)
+        ? reinterpret_cast<void*>(g_island->csmFullMapResource.view) : nullptr;
+}
+extern "C" int mc2_vk_shadow_island_csm_fullmap_ready() {
+    return (g_island && g_csmFullMapReadyThisFrame) ? 1 : 0;
 }
 
 // Health accessor (mirrors mc2_render_backend_water_region_health).

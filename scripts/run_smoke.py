@@ -1678,6 +1678,7 @@ def main():
                             "MC2_VK_TERRAIN_LODFADE",
                             "MC2_VK_TERRAIN_DYNSHADOW",
                             "MC2_VK_TERRAIN_CSM",
+                            "MC2_VK_CSM_FULLMAP_INTEROP",
                             "MC2_VK_TERRAIN_HEIGHT_AUDIT",
                             "MC2_VK_TERRAIN_HEIGHT_AUDIT_CORRUPT",
                             # VK-POST-FOG-NATIVE-1 (rung 8.1): edge+oob fog pair
