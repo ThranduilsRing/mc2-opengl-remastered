@@ -4,6 +4,7 @@
 // Simplex 2D noise — Ashima Arts / Ian McEwan (MIT license)
 // Reusable utility for water waves, tree sway, cloud shadows, etc.
 
+//PORT-BEGIN:shorelineNoise
 PREC vec3 mod289_3(PREC vec3 x) { return x - floor(x * (1.0 / 289.0)) * 289.0; }
 PREC vec2 mod289_2(PREC vec2 x) { return x - floor(x * (1.0 / 289.0)) * 289.0; }
 PREC vec3 permute(PREC vec3 x) { return mod289_3(((x * 34.0) + 1.0) * x); }
@@ -55,5 +56,6 @@ PREC float fbm(PREC vec2 p, int octaves) {
     }
     return value;
 }
+//PORT-END:shorelineNoise
 
 #endif

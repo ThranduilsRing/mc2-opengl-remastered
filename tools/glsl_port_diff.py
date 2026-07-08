@@ -44,6 +44,14 @@ REGISTRY = [
     ("waterEvalSkySh", "shaders/gos_terrain_water_mdi.frag", "shaders/vulkan/water_geom.frag"),
     ("waterReflSetup", "shaders/gos_terrain_water_mdi.frag", "shaders/vulkan/water_geom.frag"),
     ("waterReflMix", "shaders/gos_terrain_water_mdi.frag", "shaders/vulkan/water_geom.frag"),
+    # RUNG 8.3 (VK-POST-SCREENFX-NATIVE-1): cloud-shadow pass (inlined simplex fbm
+    # + world-reconstruct main) and shoreline-foam pass (noise.hglsl fbm the GL
+    # frag #includes + main). UBO plumbing differs by design (#define aliases);
+    # the marked math blocks must stay verbatim.
+    ("cloudShadowNoise", "shaders/cloud.frag", "shaders/vulkan/cloud_shadow.frag"),
+    ("cloudShadowMain", "shaders/cloud.frag", "shaders/vulkan/cloud_shadow.frag"),
+    ("shorelineNoise", "shaders/include/noise.hglsl", "shaders/vulkan/shoreline.frag"),
+    ("shorelineMain", "shaders/shoreline.frag", "shaders/vulkan/shoreline.frag"),
 ]
 
 

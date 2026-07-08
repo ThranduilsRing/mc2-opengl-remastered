@@ -130,6 +130,13 @@ extern "C" void mc2_vk_post_ssao_native_health(
     int* runtimeGate, int* substrateLive,
     unsigned long* attempted, unsigned long* usedVulkan, unsigned long* glSkipped,
     const char** fallbackReason, double* renderUs);
+
+// VK-POST-SCREENFX-NATIVE-1 (rung 8.3): native cloud-shadow + shoreline receipt.
+extern "C" void mc2_vk_post_screenfx_native_health(
+    int* runtimeGate, int* cloudGate, int* shoreGate, int* substrateLive,
+    unsigned long* attempted, unsigned long* usedVulkan,
+    unsigned long* cloudFrames, unsigned long* shoreFrames, unsigned long* glSkipped,
+    const char** fallbackReason, double* renderUs);
 // VK-REGION-SSAO-1: SSAO Vulkan island health snapshot (defined in
 // GameOS/gameos/vulkan_ssao_island.cpp, same #ifdef MC2_VULKAN_ISLAND).
 extern "C" void mc2_vulkan_ssao_island_health(
@@ -901,6 +908,31 @@ std::string buildSnapshotJson(const RenderSnapshot& snap,
         s << "    \"postssao_used_vulkan\": " << used << ",\n";
         s << "    \"gl_ssao_sites_skipped\": " << glSkip << ",\n";
         s << "    \"postssao_fallback_reason\": \"" << jsonEscape(fbr) << "\",\n";
+        s << "    \"render_us\": " << rUs << "\n";
+        s << "  }\n";
+    }
+    // VK-POST-SCREENFX-NATIVE-1 (rung 8.3): additive "vk_post_screenfx_native"
+    // section — the used_vulkan receipt for the native cloud-shadow + shoreline
+    // pair (zero-copy, shared engine context). Zeros when compiled but the gate
+    // is OFF.
+    {
+        int rg = 0, cg = 0, sg = 0, sub = 0;
+        unsigned long att = 0, used = 0, cf = 0, sf = 0, glSkip = 0;
+        const char* fbr = "";
+        double rUs = 0.0;
+        mc2_vk_post_screenfx_native_health(&rg, &cg, &sg, &sub, &att, &used, &cf, &sf, &glSkip, &fbr, &rUs);
+        s << "  ,\n";
+        s << "  \"vk_post_screenfx_native\": {\n";
+        s << "    \"runtime_gate_enabled\": " << rg << ",\n";
+        s << "    \"cloud_gate\": " << cg << ",\n";
+        s << "    \"shoreline_gate\": " << sg << ",\n";
+        s << "    \"substrate_live\": " << sub << ",\n";
+        s << "    \"postscreenfx_attempted\": " << att << ",\n";
+        s << "    \"postscreenfx_used_vulkan\": " << used << ",\n";
+        s << "    \"cloud_frames\": " << cf << ",\n";
+        s << "    \"shoreline_frames\": " << sf << ",\n";
+        s << "    \"gl_screenfx_sites_skipped\": " << glSkip << ",\n";
+        s << "    \"postscreenfx_fallback_reason\": \"" << jsonEscape(fbr) << "\",\n";
         s << "    \"render_us\": " << rUs << "\n";
         s << "  }\n";
     }

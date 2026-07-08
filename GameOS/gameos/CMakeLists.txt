@@ -158,6 +158,13 @@ if(MC2_VULKAN)
         # SSAO island's readback pattern when gated on). Gate MC2_VK_POST_SSAO
         # default-OFF -> GL SSAO chain byte-identical.
         list(APPEND SOURCES vulkan_post_ssao_native.cpp)
+        # VK-POST-SCREENFX-NATIVE-1 (rung 8.3): cloud-shadow + shoreline-foam
+        # natively on the shared engine context -- samples the SHARED scene
+        # depth (cloud) + normal (shoreline), multiplies into the SHARED scene
+        # color0 in place (zero copies, zero readbacks, no private device).
+        # Screen-shadow NOT ported (no zero-copy CSM-array producer until rung 2).
+        # Gate MC2_VK_POST_SCREENFX default-OFF -> GL passes byte-identical.
+        list(APPEND SOURCES vulkan_post_screenfx_native.cpp)
         # VK-P8a SHADOW-INTEROP: the shadow island — SECOND VK GEOMETRY region and
         # FIRST VK-PRODUCES-DEPTH region (water was GL-produces/VK-consumes; shadow
         # reverses it: VK renders the static-prop shadow-caster depth into an
@@ -342,7 +349,7 @@ if(MC2_VULKAN)
     # applying the u_skirtDepth pull-down + a byte-identical copy of terrain_tier1.frag,
     # since GL uses the same frag program for skirts as the main patch). SPIR-V loaded
     # at runtime by vulkan_terrain_island.cpp via load_spv(spv_dir()+"terrain_tier1_skirt.*.spv").
-    set(MC2_VK_SHADER_BASENAMES fullscreen edge_fog fog_oob ssao ssao_apply hzb_reduce compare_shadow csm_array_shadow shadow_depth water_mvp water_geom shadow_prop color_prop color_prop_tier1 terrain_tier1 terrain_tier1_skirt mech_tier1)
+    set(MC2_VK_SHADER_BASENAMES fullscreen edge_fog fog_oob ssao ssao_apply hzb_reduce compare_shadow csm_array_shadow shadow_depth water_mvp water_geom shadow_prop color_prop color_prop_tier1 terrain_tier1 terrain_tier1_skirt mech_tier1 cloud_shadow shoreline)
     set(MC2_VK_SPV_OUTPUTS "")
     if(MC2_GLSLANG_VALIDATOR OR MC2_GLSLC)
         foreach(_base ${MC2_VK_SHADER_BASENAMES})

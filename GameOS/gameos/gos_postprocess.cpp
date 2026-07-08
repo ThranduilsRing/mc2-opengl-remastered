@@ -7,6 +7,7 @@
 #include "gos_profiler.h"
 #include "gos_validate.h"  // drainGLErrors (Tier-1 instr §4)
 #include "gos_smoke.h"     // S9E: SmokeMode fixed deterministic render-shader clock
+#include "vk_shared_gbuffer_gate.h"
 #include "gameos.hpp"      // gos_InvalidateRenderStateCache (RENDER_STATES v1)
 #include "../../RenderWorld/RenderWorld.h"  // M1.5: IsObjectIdBufferEnabled
 #include "../../RenderCore/RenderResourceRegistry.h"
@@ -853,6 +854,9 @@ void gosPostProcess::destroy()
     destroyVkPostFogNative();
     // VK-POST-SSAO-NATIVE-1 (rung 8.2): same teardown for the native SSAO pass.
     destroyVkPostSsaoNative();
+    // VK-POST-SCREENFX-NATIVE-1 (rung 8.3): same teardown for the native
+    // cloud/shoreline pass pair.
+    destroyVkPostScreenFxNative();
     // VK-REGION-SSAO-1: same teardown for the SSAO island.
     destroyVulkanSSAOIsland();
     // VK-REGION-HZB-1: same teardown for the HZB island.
@@ -1533,6 +1537,10 @@ void gosPostProcess::destroyFBOs()
     // VK-POST-SSAO-NATIVE-1: same discipline — it borrows shared color0/normal/
     // depth AND mirrors the GL half-res AO sizing rebuilt below.
     destroyVkPostSsaoNative();
+    // VK-POST-SCREENFX-NATIVE-1: same discipline — borrows shared color0/
+    // normal/depth (framebuffer/views over their VkImages must not outlive
+    // them). Rebuilt lazily at the next cloud/shoreline site.
+    destroyVkPostScreenFxNative();
 #endif
     if (sceneFBO_) {
         glDeleteFramebuffers(1, &sceneFBO_);
@@ -3971,19 +3979,37 @@ void gosPostProcess::endScene()
     runScreenShadow();
     executorOwnEndSub(this, RenderCore::framegraph::ExecutorIslandId::ScreenShadow);
 
+    // VK-POST-SCREENFX-NATIVE-1 (rung 8.3): HIGHEST precedence at the cloud +
+    // shoreline sites. When MC2_VK_POST_SCREENFX=1 and the shared-GBuffer
+    // substrate is live, the armed subset of {cloud-shadow, shoreline} renders
+    // natively on the shared engine context (one submit, multiply into shared
+    // color0 in place) and EXACTLY those GL pass bodies are skipped (bitmask:
+    // bit0=cloud, bit1=shoreline). Any not-ready condition returns 0 -> the
+    // unchanged GL chain below runs (fail-soft). Screen-shadow above is NOT
+    // ported in this slice (no zero-copy CSM-array producer until rung 2).
+    unsigned vkScreenFxDone = 0;
+#ifdef MC2_VULKAN_ISLAND
+    if (vkPostScreenFxNativeEnabled())
+        vkScreenFxDone = runVkPostScreenFxNative();
+#endif
+
     // Procedural cloud shadows: single fullscreen multiplicative pass over all
     // non-sky pixels (replaces the four inline cloud blocks). After the screen
     // shadow so cloud darkens the already-shadowed scene color.
     // FRAME-GRAPH-EXECUTOR-ISLAND-3: validate->call-unchanged->validate (default-OFF).
-    executorOwnBeginSub(this, RenderCore::framegraph::ExecutorIslandId::CloudShadow);
-    runCloudShadow();
-    executorOwnEndSub(this, RenderCore::framegraph::ExecutorIslandId::CloudShadow);
+    if (!(vkScreenFxDone & 1u)) {
+        executorOwnBeginSub(this, RenderCore::framegraph::ExecutorIslandId::CloudShadow);
+        runCloudShadow();
+        executorOwnEndSub(this, RenderCore::framegraph::ExecutorIslandId::CloudShadow);
+    }
 
     // Shoreline foam pass (brightens water pixels adjacent to terrain)
     // FRAME-GRAPH-EXECUTOR-ISLAND-3: validate->call-unchanged->validate (default-OFF).
-    executorOwnBeginSub(this, RenderCore::framegraph::ExecutorIslandId::Shoreline);
-    runShoreline();
-    executorOwnEndSub(this, RenderCore::framegraph::ExecutorIslandId::Shoreline);
+    if (!(vkScreenFxDone & 2u)) {
+        executorOwnBeginSub(this, RenderCore::framegraph::ExecutorIslandId::Shoreline);
+        runShoreline();
+        executorOwnEndSub(this, RenderCore::framegraph::ExecutorIslandId::Shoreline);
+    }
 
     // RENDER-BACKEND-REGION-IFACE-1 (Layer-6 ENTRY): master gate read ONCE, shared by
     // the SSAO region below and the fog region further down (hoisted here so both

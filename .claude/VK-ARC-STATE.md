@@ -4,7 +4,62 @@ HEAD: rung 8.1 (VK-POST-FOG-NATIVE-1, see section below) on branch
 `claude/vk-interop-bridge-1`, worktree `A:/Games/mc2-vk-interop-bridge`.
 Build dir `build64_island`. Deploy lane (literal): `A:/Games/mc2-opengl/mc2-win64-0.4c`
 (deployed + fingerprint-verified at rung 8.1, exe sha `46e81cb1d9f2f7c1`).
-Rung-8 sub-ladder: `.claude/VK-RUNG8-LADDER-1.md` (8.1 + 8.2 SHIPPED; next = 8.3 screen-fx / 8.4 HZB).
+Rung-8 sub-ladder: `.claude/VK-RUNG8-LADDER-1.md` (8.1-8.3 SHIPPED; next = 8.4 HZB compute).
+
+## RUNG 8.3 -- VK-POST-SCREENFX-NATIVE-1 (2026-07-07) -- SHIPPED
+
+Dirty implementation recovered from the interrupted 8.3 agent and verified in-place.
+New TU `GameOS/gameos/vulkan_post_screenfx_native.cpp`: cloud-shadow +
+shoreline-foam render natively on the SHARED ENGINE VulkanContext, in one
+render pass / one submit, multiplying into shared scene color0 in place. Inputs:
+shared scene depth for cloud, shared scene normal/GBuffer1 for shoreline. Gate
+`MC2_VK_POST_SCREENFX` (envTriState opt-in, default-OFF) with per-pass bisect
+subgates `MC2_VK_POST_SCREENFX_CLOUD` and `MC2_VK_POST_SCREENFX_SHORELINE`.
+Return bitmask skips exactly the GL pass bodies that VK rendered. Screen-shadow
+is intentionally NOT ported in this rung because the CSM cascade array has no
+zero-copy VK producer yet; porting it now would add readbacks and violate the
+rung goal.
+
+Harness/code fixes during recovery:
+- Fixed malformed `debug_state_dump.cpp` raw JSON insertion for
+  `vk_post_screenfx_native`.
+- Added missing `vk_shared_gbuffer_gate.h` include in `gos_postprocess.cpp`.
+- Added `MC2_CLOUD_SHADOW` to `scripts/run_smoke.py` allowlist; without it,
+  cloud proof was impossible because Popen dropped the gate. Corrected docs to
+  match code: `MC2_CLOUD_SHADOW=1` is default-OFF.
+
+Evidence (`.claude/vk-post-screenfx/`):
+- Build: `build64_island` Vulkan target PASS; shader target PASS; deployed to
+  `A:/Games/mc2-opengl/mc2-win64-0.4c` with explicit `--exe` lane.
+- Offline: `check_ubo_layout.py --pair screenfx_cloud` PASS; `--pair
+  screenfx_shore` PASS. `glsl_port_diff.py --all` shows the 4 pre-existing
+  older divergences unchanged and the new pairs VERBATIM: `cloudShadowNoise`,
+  `cloudShadowMain`, `shorelineNoise`, `shorelineMain`.
+- Shoreline proof (`mc2_01`, water bookmark, gate ON both passes): capture
+  receipt `attempted=280 used_vulkan=280 cloud_frames=0 shore_frames=280
+  gl_skipped=280 fallback_reason=""`; base run had no native receipt. Visual
+  A/B vs gate-off showed expected shoreline effect concentrated on water poses
+  (oblique mean MAD 4.602/ch, overview 0.291/ch).
+- Cloud proof (`mc2_24`, `MC2_CLOUD_SHADOW=1`,
+  `MC2_VK_POST_SCREENFX_SHORELINE=0`): smoke receipt `attempted=113
+  used_vulkan=113 cloud_frames=113 shore_frames=0 gl_skipped=113
+  fallback_reason=""`. Visual A/B (`vk_cloud_base` vs `vk_cloud_native`) all
+  three bookmarks deterministic; `visual_diff.py` rollup PASS/WARN only
+  (2 pass, 1 warn, 0 fail). MAD: highangle 0.013/ch, overview 0.039/ch,
+  ridge 0.006/ch, changed <=0.090%. Full capture receipt:
+  `attempted=1044 used_vulkan=1044 cloud_frames=1044 shore_frames=0
+  fallback_reason=""`.
+- Smoke: `mc2_01` shoreline gate PASS; `mc2_24` cloud-only PASS. Canonical
+  tier1 both-state PASS on explicit `--exe A:/Games/mc2-opengl/mc2-win64-0.4c/mc2.exe`:
+  gate-off `2026-07-07T19-27-55` 5/5 PASS +0 destroys; gate-on
+  `2026-07-07T19-31-16` 5/5 PASS +0 destroys with `MC2_VK_POST_SCREENFX=1`
+  and `MC2_CLOUD_SHADOW=1`. Gate-on receipts across all tier1 missions:
+  attempted==used_vulkan, fallback_reason="", and both `cloud_frames` +
+  `shore_frames` incremented (`mc2_01` 112/112, `mc2_03` 114/114,
+  `mc2_10` 114/114, `mc2_17` 112/112, `mc2_24` 104/104).
+
+Residuals / next: advance to 8.4 HZB compute. Keep the old GL cloud/shoreline
+pass bodies until 8.7 deletion; they are the fail-soft path.
 
 ## RUNG 8.2 -- VK-POST-SSAO-NATIVE-1 (2026-07-07) -- SHIPPED
 

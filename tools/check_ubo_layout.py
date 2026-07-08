@@ -48,6 +48,11 @@ REGISTRY = [
      "shaders/vulkan/ssao.frag", "SSAOParams"),
     ("ssaonat_apply", "GameOS/gameos/vulkan_post_ssao_native.cpp", "SsaoNativeApplyParams",
      "shaders/vulkan/ssao_apply.frag", "SSAOApplyParams"),
+    # RUNG-8.3 (VK-POST-SCREENFX-NATIVE-1): native cloud-shadow + shoreline UBOs.
+    ("screenfx_cloud", "GameOS/gameos/vulkan_post_screenfx_native.cpp", "ScreenFxCloudParams",
+     "shaders/vulkan/cloud_shadow.frag", "CloudFxParams"),
+    ("screenfx_shore", "GameOS/gameos/vulkan_post_screenfx_native.cpp", "ScreenFxShoreParams",
+     "shaders/vulkan/shoreline.frag", "ShorelineFxParams"),
 ]
 
 STD140_BASE_ALIGN = {

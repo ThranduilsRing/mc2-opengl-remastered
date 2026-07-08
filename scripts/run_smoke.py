@@ -1755,6 +1755,16 @@ def main():
                             # place; zero copies/readbacks). envTriState OPT-IN,
                             # default-OFF (new-rung pattern as MC2_VK_POST_FOG_NATIVE).
                             "MC2_VK_POST_SSAO",
+                            # VK-POST-SCREENFX-NATIVE-1 (rung 8.3): cloud-shadow +
+                            # shoreline-foam rendered natively on the shared engine
+                            # context (samples shared scene depth+normal, multiplies
+                            # into shared scene color0 in place; zero copies/readbacks;
+                            # screen-shadow NOT ported -- stays GL until rung 2).
+                            # envTriState OPT-IN, default-OFF + per-pass bisect subs.
+                            "MC2_VK_POST_SCREENFX",
+                            "MC2_VK_POST_SCREENFX_CLOUD",
+                            "MC2_VK_POST_SCREENFX_SHORELINE",
+                            "MC2_CLOUD_SHADOW",
                             # VK-SHADOW-COPY-ONCE-1: diagnostic-only per-frame ms log for
                             # the VK-terrain-interop-copies zone (stderr line, default OFF).
                             "MC2_VK_TERRAIN_COPY_STATS",

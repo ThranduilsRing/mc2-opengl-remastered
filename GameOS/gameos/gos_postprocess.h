@@ -583,6 +583,27 @@ public:
     struct VkPostSsaoNative;            // defined in vulkan_post_ssao_native.cpp
     VkPostSsaoNative* vkPostSsaoNative_ = nullptr;
 
+    // VK-POST-SCREENFX-NATIVE-1 (rung 8.3, .claude/VK-RUNG8-LADDER-1.md):
+    // cloud-shadow + shoreline-foam rendered NATIVELY on the shared engine
+    // VulkanContext (one render pass / one submit, adjacent GL passes), sampling
+    // the SHARED scene depth (cloud) + normal (shoreline) and MULTIPLYING into
+    // the SHARED scene color0 IN PLACE -- zero copies, zero CPU readbacks, no
+    // private device. Screen-shadow is NOT ported (its CSM cascade array has no
+    // zero-copy VK producer until ladder rung 2 -- see the TU header). Gate
+    // MC2_VK_POST_SCREENFX (envTriState opt-in, default-OFF) + per-pass bisect
+    // sub-gates MC2_VK_POST_SCREENFX_CLOUD / _SHORELINE (explicit 0 forces that
+    // pass to GL). runVkPostScreenFxNative() returns a bitmask (bit0=cloud,
+    // bit1=shoreline rendered via VK) -- the caller skips EXACTLY those GL pass
+    // bodies; 0 -> the unchanged GL chain runs (fail-soft).
+    // destroyVkPostScreenFxNative(): torn down from destroyFBOs() (resize; the
+    // shared GBuffer it borrows is rebuilt) and destroy(). Defined in
+    // vulkan_post_screenfx_native.cpp (same #ifdef MC2_VULKAN_ISLAND discipline).
+    bool      vkPostScreenFxNativeEnabled();
+    unsigned  runVkPostScreenFxNative();
+    void      destroyVkPostScreenFxNative();
+    struct VkPostScreenFx;              // defined in vulkan_post_screenfx_native.cpp
+    VkPostScreenFx* vkPostScreenFx_ = nullptr;
+
     // VK-REGION-SSAO-1: Vulkan impl of the PostprocessSSAO region -- the first
     // NEW region grown through runRegion (beyond fog). Two internal draws
     // (occlusion -> apply) across TWO Vulkan render passes (different targets
