@@ -72,6 +72,8 @@ struct EnginePresentHealth {
     uint32_t    hud_vk_draws_last = 0;     // draw records in the last queued HUD batch
     uint32_t    hud_vk_textured_last = 0;  // draw records with texture metadata
     uint32_t    hud_vk_serialized_last = 0;// textured draw records with content serials
+    uint32_t    hud_vk_color_frames = 0;   // proof-only native untextured HUD frames
+    uint32_t    hud_vk_color_draws_last = 0;
     bool        imgui_vk_ready      = false;
     unsigned int last_direct_fbo    = 0;   // last shared FBO id granted
     std::string fallback_reason;           // empty == clean
