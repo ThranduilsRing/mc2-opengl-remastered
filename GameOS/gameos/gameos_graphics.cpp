@@ -7870,6 +7870,44 @@ static bool vkHudQueueEnabled()
     return enabled;
 }
 
+#ifdef MC2_VULKAN
+static bool vkHudSkipGlEnabled()
+{
+    static const bool enabled = []() {
+        const char* v = std::getenv("MC2_VK_HUD_SKIP_GL");
+        return v && v[0] == '1';
+    }();
+    return enabled;
+}
+
+static bool vkHudDrawRepresentable(const mc2vk::VkHudDraw& draw)
+{
+    if (draw.alphaMode != 1 && draw.alphaMode != 3)
+        return false;
+    const bool textured = draw.textureHandle != 0 && draw.textureHandle != INVALID_TEXTURE_ID;
+    if (textured) {
+        if (draw.glTextureId == 0 || draw.textureWidth == 0 || draw.textureHeight == 0 ||
+            draw.textureSerial == 0 || draw.textureRgba.empty())
+            return false;
+        if (draw.kind == kHudQuadBatch)
+            return draw.vertices.size() >= 4 && (draw.vertices.size() % 4) == 0;
+        if (draw.kind == kHudTextQuadBatch)
+            return draw.vertices.size() >= 4 &&
+                   (((draw.vertices.size() % 4) == 0) || ((draw.vertices.size() % 3) == 0));
+        if (draw.kind == kHudTriBatch)
+            return !draw.vertices.empty() && (draw.vertices.size() % 3) == 0;
+        return false;
+    }
+    if (draw.kind == kHudQuadBatch)
+        return draw.vertices.size() >= 4 && (draw.vertices.size() % 4) == 0;
+    if (draw.kind == kHudLineBatch)
+        return !draw.vertices.empty() && (draw.vertices.size() % 2) == 0;
+    if (draw.kind == kHudTriBatch)
+        return !draw.vertices.empty() && (draw.vertices.size() % 3) == 0;
+    return false;
+}
+#endif
+
 void gosRenderer::flushHUDBatch()
 {
     if (hudBatch_.empty()) {
@@ -7984,6 +8022,8 @@ void gosRenderer::flushHUDBatch()
     }
 
 #ifdef MC2_VULKAN
+    bool nativeHudQueued = false;
+    bool nativeHudCanSkipGl = vkHudSkipGlEnabled();
     if (vkHudQueueEnabled()) {
         std::vector<mc2vk::VkHudDraw> nativeDraws;
         nativeDraws.reserve(hudBatch_.size());
@@ -8022,9 +8062,22 @@ void gosRenderer::flushHUDBatch()
                 out.u = v.u; out.v = v.v;
                 draw.vertices.push_back(out);
             }
+            const bool drawRepresentable = vkHudDrawRepresentable(draw);
+            if (nativeHudCanSkipGl && !drawRepresentable) {
+                static unsigned s_nativeHudDeclineLogs = 0;
+                if (s_nativeHudDeclineLogs < 8) {
+                    std::fprintf(stderr,
+                        "[VK_HUD_SKIP_DECLINE v1] kind=%u tex=%u gl=%u wh=%ux%u serial=%u rgba=%zu alpha=%u verts=%zu\n",
+                        draw.kind, draw.textureHandle, draw.glTextureId,
+                        draw.textureWidth, draw.textureHeight, draw.textureSerial,
+                        draw.textureRgba.size(), draw.alphaMode, draw.vertices.size());
+                    ++s_nativeHudDeclineLogs;
+                }
+            }
+            nativeHudCanSkipGl = nativeHudCanSkipGl && drawRepresentable;
             nativeDraws.push_back(std::move(draw));
         }
-        mc2vk::getOrCreateEnginePresentVk().queueHudVulkanFrame(std::move(nativeDraws));
+        nativeHudQueued = mc2vk::getOrCreateEnginePresentVk().queueHudVulkanFrame(std::move(nativeDraws));
     }
 #endif
 
@@ -8034,6 +8087,23 @@ void gosRenderer::flushHUDBatch()
     // This closes the last DO_NOT_MODEL hole: the ambient guard checks UI entry state instead
     // of skipping it. Default-ON (not gated) — the check is cheap glGet + compare.
     mc2_ui_pass_check_ambient();
+
+#ifdef MC2_VULKAN
+    if (nativeHudQueued && nativeHudCanSkipGl) {
+        static unsigned s_nativeHudSkipFrames = 0;
+        ++s_nativeHudSkipFrames;
+        if (s_nativeHudSkipFrames <= 10 || (s_nativeHudSkipFrames % 120) == 0) {
+            std::fprintf(stderr,
+                "[VK_HUD_SKIP v1] frame=%u draws=%u reason=\"native_full_coverage\"\n",
+                s_nativeHudSkipFrames, (unsigned)hudBatch_.size());
+        }
+        hudFlushed_ = true;
+        s_hud_scale_exempt = false;
+        render_contract::endPassScope(render_contract::PassIdentity::UI,
+                                      "gosRenderer_flushHUDBatch");
+        return;
+    }
+#endif
 
     // Save pre-flush render state and projection
     uint32_t priorState[gos_MaxState];

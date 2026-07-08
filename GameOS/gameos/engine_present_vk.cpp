@@ -126,6 +126,8 @@ struct EnginePresentVk::Impl {
     VkPipelineLayout hudColorLayout = VK_NULL_HANDLE;
     VkPipeline      hudColorTriPipe = VK_NULL_HANDLE;
     VkPipeline      hudColorLinePipe = VK_NULL_HANDLE;
+    VkPipeline      hudColorTriOpaquePipe = VK_NULL_HANDLE;
+    VkPipeline      hudColorLineOpaquePipe = VK_NULL_HANDLE;
     VkShaderModule  hudColorVert = VK_NULL_HANDLE;
     VkShaderModule  hudColorFrag = VK_NULL_HANDLE;
     VkBuffer        hudColorVertexBuf = VK_NULL_HANDLE;
@@ -135,6 +137,7 @@ struct EnginePresentVk::Impl {
     VkDescriptorPool hudTexPool = VK_NULL_HANDLE;
     VkPipelineLayout hudTexLayout = VK_NULL_HANDLE;
     VkPipeline      hudTexPipe = VK_NULL_HANDLE;
+    VkPipeline      hudTexOpaquePipe = VK_NULL_HANDLE;
     VkShaderModule  hudTexVert = VK_NULL_HANDLE;
     VkShaderModule  hudTexFrag = VK_NULL_HANDLE;
     VkBuffer        hudTexVertexBuf = VK_NULL_HANDLE;
@@ -677,7 +680,9 @@ bool ensureHudTexVertexBuffer(EnginePresentVk::Impl& s, VkDeviceSize bytes) {
 }
 
 bool ensureHudColorObjects(EnginePresentVk::Impl& s) {
-    if (s.hudColorTriPipe && s.hudColorLinePipe && s.hudColorFramebuffer)
+    if (s.hudColorTriPipe && s.hudColorLinePipe &&
+        s.hudColorTriOpaquePipe && s.hudColorLineOpaquePipe &&
+        s.hudColorFramebuffer)
         return true;
     if (s.hudColorVkFailed || !s.dev || !s.sharedImg.view || s.imgW == 0 || s.imgH == 0)
         return false;
@@ -730,7 +735,7 @@ bool ensureHudColorObjects(EnginePresentVk::Impl& s) {
         if (!s.hudColorVert || !s.hudColorFrag) { s.hudColorVkFailed = true; return false; }
     }
 
-    auto makePipe = [&](VkPrimitiveTopology topology, VkPipeline* out) -> bool {
+    auto makePipe = [&](VkPrimitiveTopology topology, bool blend, VkPipeline* out) -> bool {
         if (*out) return true;
         VkPipelineShaderStageCreateInfo st[2]{};
         st[0].sType = VK_STRUCTURE_TYPE_PIPELINE_SHADER_STAGE_CREATE_INFO;
@@ -755,7 +760,7 @@ bool ensureHudColorObjects(EnginePresentVk::Impl& s) {
         VkPipelineMultisampleStateCreateInfo ms{VK_STRUCTURE_TYPE_PIPELINE_MULTISAMPLE_STATE_CREATE_INFO};
         ms.rasterizationSamples = VK_SAMPLE_COUNT_1_BIT;
         VkPipelineColorBlendAttachmentState cba{};
-        cba.blendEnable = VK_TRUE;
+        cba.blendEnable = blend ? VK_TRUE : VK_FALSE;
         cba.srcColorBlendFactor = VK_BLEND_FACTOR_SRC_ALPHA;
         cba.dstColorBlendFactor = VK_BLEND_FACTOR_ONE_MINUS_SRC_ALPHA;
         cba.colorBlendOp = VK_BLEND_OP_ADD;
@@ -779,8 +784,10 @@ bool ensureHudColorObjects(EnginePresentVk::Impl& s) {
         return vkCreateGraphicsPipelines(s.dev, VK_NULL_HANDLE, 1, &gp, nullptr, out) == VK_SUCCESS;
     };
 
-    if (!makePipe(VK_PRIMITIVE_TOPOLOGY_TRIANGLE_LIST, &s.hudColorTriPipe) ||
-        !makePipe(VK_PRIMITIVE_TOPOLOGY_LINE_LIST, &s.hudColorLinePipe)) {
+    if (!makePipe(VK_PRIMITIVE_TOPOLOGY_TRIANGLE_LIST, true, &s.hudColorTriPipe) ||
+        !makePipe(VK_PRIMITIVE_TOPOLOGY_LINE_LIST, true, &s.hudColorLinePipe) ||
+        !makePipe(VK_PRIMITIVE_TOPOLOGY_TRIANGLE_LIST, false, &s.hudColorTriOpaquePipe) ||
+        !makePipe(VK_PRIMITIVE_TOPOLOGY_LINE_LIST, false, &s.hudColorLineOpaquePipe)) {
         s.hudColorVkFailed = true; return false;
     }
     return true;
@@ -789,7 +796,7 @@ bool ensureHudColorObjects(EnginePresentVk::Impl& s) {
 bool ensureHudTexObjects(EnginePresentVk::Impl& s) {
     if (!ensureHudColorObjects(s))
         return false;
-    if (s.hudTexPipe)
+    if (s.hudTexPipe && s.hudTexOpaquePipe)
         return true;
     if (!s.hudTexDsl) {
         VkDescriptorSetLayoutBinding b{};
@@ -849,29 +856,33 @@ bool ensureHudTexObjects(EnginePresentVk::Impl& s) {
     rs.frontFace = VK_FRONT_FACE_COUNTER_CLOCKWISE; rs.lineWidth = 1.0f;
     VkPipelineMultisampleStateCreateInfo ms{VK_STRUCTURE_TYPE_PIPELINE_MULTISAMPLE_STATE_CREATE_INFO};
     ms.rasterizationSamples = VK_SAMPLE_COUNT_1_BIT;
-    VkPipelineColorBlendAttachmentState cba{};
-    cba.blendEnable = VK_TRUE;
-    cba.srcColorBlendFactor = VK_BLEND_FACTOR_SRC_ALPHA;
-    cba.dstColorBlendFactor = VK_BLEND_FACTOR_ONE_MINUS_SRC_ALPHA;
-    cba.colorBlendOp = VK_BLEND_OP_ADD;
-    cba.srcAlphaBlendFactor = VK_BLEND_FACTOR_ONE;
-    cba.dstAlphaBlendFactor = VK_BLEND_FACTOR_ONE_MINUS_SRC_ALPHA;
-    cba.alphaBlendOp = VK_BLEND_OP_ADD;
-    cba.colorWriteMask = VK_COLOR_COMPONENT_R_BIT | VK_COLOR_COMPONENT_G_BIT |
-                         VK_COLOR_COMPONENT_B_BIT | VK_COLOR_COMPONENT_A_BIT;
-    VkPipelineColorBlendStateCreateInfo cb{VK_STRUCTURE_TYPE_PIPELINE_COLOR_BLEND_STATE_CREATE_INFO};
-    cb.attachmentCount = 1; cb.pAttachments = &cba;
-    VkDynamicState dyns[2] = {VK_DYNAMIC_STATE_VIEWPORT, VK_DYNAMIC_STATE_SCISSOR};
-    VkPipelineDynamicStateCreateInfo dyn{VK_STRUCTURE_TYPE_PIPELINE_DYNAMIC_STATE_CREATE_INFO};
-    dyn.dynamicStateCount = 2; dyn.pDynamicStates = dyns;
-    VkGraphicsPipelineCreateInfo gp{VK_STRUCTURE_TYPE_GRAPHICS_PIPELINE_CREATE_INFO};
-    gp.stageCount = 2; gp.pStages = st;
-    gp.pVertexInputState = &vin; gp.pInputAssemblyState = &ia;
-    gp.pViewportState = &vp; gp.pRasterizationState = &rs;
-    gp.pMultisampleState = &ms; gp.pColorBlendState = &cb;
-    gp.pDynamicState = &dyn; gp.layout = s.hudTexLayout;
-    gp.renderPass = s.hudColorRenderPass;
-    if (vkCreateGraphicsPipelines(s.dev, VK_NULL_HANDLE, 1, &gp, nullptr, &s.hudTexPipe) != VK_SUCCESS) {
+    auto makeTexPipe = [&](bool blend, VkPipeline* out) -> bool {
+        if (*out) return true;
+        VkPipelineColorBlendAttachmentState cba{};
+        cba.blendEnable = blend ? VK_TRUE : VK_FALSE;
+        cba.srcColorBlendFactor = VK_BLEND_FACTOR_SRC_ALPHA;
+        cba.dstColorBlendFactor = VK_BLEND_FACTOR_ONE_MINUS_SRC_ALPHA;
+        cba.colorBlendOp = VK_BLEND_OP_ADD;
+        cba.srcAlphaBlendFactor = VK_BLEND_FACTOR_ONE;
+        cba.dstAlphaBlendFactor = VK_BLEND_FACTOR_ONE_MINUS_SRC_ALPHA;
+        cba.alphaBlendOp = VK_BLEND_OP_ADD;
+        cba.colorWriteMask = VK_COLOR_COMPONENT_R_BIT | VK_COLOR_COMPONENT_G_BIT |
+                             VK_COLOR_COMPONENT_B_BIT | VK_COLOR_COMPONENT_A_BIT;
+        VkPipelineColorBlendStateCreateInfo cb{VK_STRUCTURE_TYPE_PIPELINE_COLOR_BLEND_STATE_CREATE_INFO};
+        cb.attachmentCount = 1; cb.pAttachments = &cba;
+        VkDynamicState dyns[2] = {VK_DYNAMIC_STATE_VIEWPORT, VK_DYNAMIC_STATE_SCISSOR};
+        VkPipelineDynamicStateCreateInfo dyn{VK_STRUCTURE_TYPE_PIPELINE_DYNAMIC_STATE_CREATE_INFO};
+        dyn.dynamicStateCount = 2; dyn.pDynamicStates = dyns;
+        VkGraphicsPipelineCreateInfo gp{VK_STRUCTURE_TYPE_GRAPHICS_PIPELINE_CREATE_INFO};
+        gp.stageCount = 2; gp.pStages = st;
+        gp.pVertexInputState = &vin; gp.pInputAssemblyState = &ia;
+        gp.pViewportState = &vp; gp.pRasterizationState = &rs;
+        gp.pMultisampleState = &ms; gp.pColorBlendState = &cb;
+        gp.pDynamicState = &dyn; gp.layout = s.hudTexLayout;
+        gp.renderPass = s.hudColorRenderPass;
+        return vkCreateGraphicsPipelines(s.dev, VK_NULL_HANDLE, 1, &gp, nullptr, out) == VK_SUCCESS;
+    };
+    if (!makeTexPipe(true, &s.hudTexPipe) || !makeTexPipe(false, &s.hudTexOpaquePipe)) {
         s.hudColorVkFailed = true; return false;
     }
     return true;
@@ -1052,6 +1063,7 @@ uint32_t recordPendingHudColorProof(EnginePresentVk::Impl& s, VkCommandBuffer cb
         uint32_t height = 0;
         uint32_t textMode = 0;
         uint32_t foreground = 0;
+        bool opaque = false;
     };
     std::vector<HudNativeCmd> commands;
     uint32_t triDraws = 0;
@@ -1059,7 +1071,8 @@ uint32_t recordPendingHudColorProof(EnginePresentVk::Impl& s, VkCommandBuffer cb
     uint32_t texDraws = 0;
     uint32_t textureUploads = 0;
     for (const VkHudDraw& d : s.pendingHudDraws) {
-        if (d.textureHandle != 0) {
+        const bool hasTexture = d.textureHandle != 0 && d.textureHandle != 0xffffffffu;
+        if (hasTexture) {
             if (!ensureHudTexObjects(s))
                 continue;
             auto* mirror = ensureHudTextureMirror(s, d, &textureUploads);
@@ -1073,15 +1086,17 @@ uint32_t recordPendingHudColorProof(EnginePresentVk::Impl& s, VkCommandBuffer cb
             td.height = mirror->height;
             td.textMode = (d.kind == 3) ? 1u : 0u;
             td.foreground = d.foregroundColor;
+            td.opaque = (d.alphaMode == 1);
             auto addTex = [&](const VkHudVertex& v) {
                 texVerts.push_back({v.x, v.y, v.argb, v.u, v.v});
             };
-            if ((d.kind == 0 || d.kind == 3) && d.vertices.size() >= 4) {
+            if ((d.kind == 0 || d.kind == 3) && d.vertices.size() >= 4 &&
+                (d.vertices.size() % 4) == 0) {
                 for (size_t i = 0; i + 3 < d.vertices.size(); i += 4) {
                     addTex(d.vertices[i + 0]); addTex(d.vertices[i + 1]); addTex(d.vertices[i + 2]);
                     addTex(d.vertices[i + 0]); addTex(d.vertices[i + 2]); addTex(d.vertices[i + 3]);
                 }
-            } else if (d.kind == 2) {
+            } else if (d.kind == 2 || d.kind == 3) {
                 for (const VkHudVertex& v : d.vertices)
                     addTex(v);
             }
@@ -1092,18 +1107,35 @@ uint32_t recordPendingHudColorProof(EnginePresentVk::Impl& s, VkCommandBuffer cb
             }
             continue;
         }
-        if (d.kind != 1 && d.kind != 2)
+        if (d.kind != 0 && d.kind != 1 && d.kind != 2)
             continue;
         std::vector<HudColorGpuVertex>& dst = (d.kind == 1) ? lineVerts : triVerts;
         const size_t before = dst.size();
-        dst.reserve(dst.size() + d.vertices.size());
-        for (const VkHudVertex& v : d.vertices)
-            dst.push_back({v.x, v.y, v.argb});
+        if (d.kind == 0 && d.vertices.size() >= 4) {
+            dst.reserve(dst.size() + (d.vertices.size() / 4u) * 6u);
+            for (size_t i = 0; i + 3 < d.vertices.size(); i += 4) {
+                const VkHudVertex& v0 = d.vertices[i + 0];
+                const VkHudVertex& v1 = d.vertices[i + 1];
+                const VkHudVertex& v2 = d.vertices[i + 2];
+                const VkHudVertex& v3 = d.vertices[i + 3];
+                dst.push_back({v0.x, v0.y, v0.argb});
+                dst.push_back({v1.x, v1.y, v1.argb});
+                dst.push_back({v2.x, v2.y, v2.argb});
+                dst.push_back({v0.x, v0.y, v0.argb});
+                dst.push_back({v2.x, v2.y, v2.argb});
+                dst.push_back({v3.x, v3.y, v3.argb});
+            }
+        } else {
+            dst.reserve(dst.size() + d.vertices.size());
+            for (const VkHudVertex& v : d.vertices)
+                dst.push_back({v.x, v.y, v.argb});
+        }
         if (dst.size() != before) {
             HudNativeCmd cmd;
             cmd.stream = (d.kind == 1) ? 1u : 0u;
             cmd.first = (uint32_t)before;
             cmd.count = (uint32_t)(dst.size() - before);
+            cmd.opaque = (d.alphaMode == 1);
             commands.push_back(cmd);
             (d.kind == 1) ? ++lineDraws : ++triDraws;
         }
@@ -1161,7 +1193,9 @@ uint32_t recordPendingHudColorProof(EnginePresentVk::Impl& s, VkCommandBuffer cb
     VkBuffer boundBuffer = VK_NULL_HANDLE;
     for (const HudNativeCmd& td : commands) {
         if (td.stream == 0 || td.stream == 1) {
-            const VkPipeline pipe = (td.stream == 0) ? s.hudColorTriPipe : s.hudColorLinePipe;
+            const VkPipeline pipe = (td.stream == 0)
+                ? (td.opaque ? s.hudColorTriOpaquePipe : s.hudColorTriPipe)
+                : (td.opaque ? s.hudColorLineOpaquePipe : s.hudColorLinePipe);
             if (boundPipe != pipe) {
                 vkCmdBindPipeline(cb, VK_PIPELINE_BIND_POINT_GRAPHICS, pipe);
                 boundPipe = pipe;
@@ -1176,9 +1210,10 @@ uint32_t recordPendingHudColorProof(EnginePresentVk::Impl& s, VkCommandBuffer cb
                 : td.first;
             vkCmdDraw(cb, td.count, 1, first, 0);
         } else {
-            if (boundPipe != s.hudTexPipe) {
-                vkCmdBindPipeline(cb, VK_PIPELINE_BIND_POINT_GRAPHICS, s.hudTexPipe);
-                boundPipe = s.hudTexPipe;
+            const VkPipeline pipe = td.opaque ? s.hudTexOpaquePipe : s.hudTexPipe;
+            if (boundPipe != pipe) {
+                vkCmdBindPipeline(cb, VK_PIPELINE_BIND_POINT_GRAPHICS, pipe);
+                boundPipe = pipe;
             }
             if (boundBuffer != s.hudTexVertexBuf) {
                 VkDeviceSize texOffset = 0;
@@ -1981,12 +2016,15 @@ void EnginePresentVk::destroy() {
         destroyHudColorFramebuffer(s);
         if (s.hudColorTriPipe) { vkDestroyPipeline(s.dev, s.hudColorTriPipe, nullptr); s.hudColorTriPipe = VK_NULL_HANDLE; }
         if (s.hudColorLinePipe) { vkDestroyPipeline(s.dev, s.hudColorLinePipe, nullptr); s.hudColorLinePipe = VK_NULL_HANDLE; }
+        if (s.hudColorTriOpaquePipe) { vkDestroyPipeline(s.dev, s.hudColorTriOpaquePipe, nullptr); s.hudColorTriOpaquePipe = VK_NULL_HANDLE; }
+        if (s.hudColorLineOpaquePipe) { vkDestroyPipeline(s.dev, s.hudColorLineOpaquePipe, nullptr); s.hudColorLineOpaquePipe = VK_NULL_HANDLE; }
         if (s.hudColorLayout) { vkDestroyPipelineLayout(s.dev, s.hudColorLayout, nullptr); s.hudColorLayout = VK_NULL_HANDLE; }
         if (s.hudColorVert) { vkDestroyShaderModule(s.dev, s.hudColorVert, nullptr); s.hudColorVert = VK_NULL_HANDLE; }
         if (s.hudColorFrag) { vkDestroyShaderModule(s.dev, s.hudColorFrag, nullptr); s.hudColorFrag = VK_NULL_HANDLE; }
         if (s.hudColorVertexBuf) { vkDestroyBuffer(s.dev, s.hudColorVertexBuf, nullptr); s.hudColorVertexBuf = VK_NULL_HANDLE; }
         if (s.hudColorVertexMem) { vkFreeMemory(s.dev, s.hudColorVertexMem, nullptr); s.hudColorVertexMem = VK_NULL_HANDLE; }
         if (s.hudTexPipe) { vkDestroyPipeline(s.dev, s.hudTexPipe, nullptr); s.hudTexPipe = VK_NULL_HANDLE; }
+        if (s.hudTexOpaquePipe) { vkDestroyPipeline(s.dev, s.hudTexOpaquePipe, nullptr); s.hudTexOpaquePipe = VK_NULL_HANDLE; }
         if (s.hudTexLayout) { vkDestroyPipelineLayout(s.dev, s.hudTexLayout, nullptr); s.hudTexLayout = VK_NULL_HANDLE; }
         if (s.hudTexVert) { vkDestroyShaderModule(s.dev, s.hudTexVert, nullptr); s.hudTexVert = VK_NULL_HANDLE; }
         if (s.hudTexFrag) { vkDestroyShaderModule(s.dev, s.hudTexFrag, nullptr); s.hudTexFrag = VK_NULL_HANDLE; }

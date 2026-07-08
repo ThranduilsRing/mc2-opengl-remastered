@@ -216,6 +216,26 @@ no tessellation anywhere in the tail.
   imgui_vk_frames=301 validation_errors=0 fallback_reason=""`. Remaining HUD
   blocker: gated GL replay skip and parity proof with the native path as sole
   HUD producer.
+- 8.6k - HUD GL REPLAY SKIP (VK-HUD-SKIP-GL-1). Added
+  `MC2_VK_HUD_SKIP_GL=1`: `gosRenderer::flushHUDBatch()` now skips legacy GL HUD
+  replay only when the queued batch is fully representable by the ordered native
+  renderer and the present-tail queue handoff succeeds. Native renderer coverage
+  now includes invalid-texture/untextured quads, text records that arrive as
+  triangle lists, and both alpha-blend plus alpha-one/zero opaque pipeline
+  variants. Visible proof `.claude/vk-hud-skip-gl-visible-3/` captured 11/11
+  deterministic `mc2_01` bookmarks under the full rung-8 env stack with GL HUD
+  replay skipped. Runtime receipts: `[VK_HUD_SKIP v1] frame=120 draws=95
+  reason="native_full_coverage"` and `[VK_PRESENT] present_frames=301
+  direct_fbo_grants=301 copy1_skip_frames=301 tail_hook_frames=301
+  composite_vk_frames=300 hud_vk_queued_frames=170 hud_vk_consumed_frames=170
+  hud_vk_draws_last=95 hud_vk_textured_last=69 hud_vk_serialized_last=69
+  hud_vk_color_frames=170 hud_vk_color_draws_last=95
+  hud_vk_textured_frames=170 hud_vk_textured_draws_last=69
+  hud_vk_texture_uploads=22 imgui_vk_ready=1 imgui_vk_frames=301
+  validation_errors=0 fallback_reason=""`. This is the first verified native-only
+  GameOS HUD producer path. Remaining tail blocker: decide whether to keep the
+  CPU RGBA payload mirror as a proof-only bridge or replace it with mutation-time
+  retained CPU mirrors before interop deletion/perf finalization.
 - Combined rung-8 smoke with `MC2_VK_SHARED_GBUFFER=1` and gates 8.1-8.6
   forwarded PASS 2/2 at `tests/smoke/artifacts/2026-07-08T14-47-14`.
   It proves 8.1/8.2/8.3/8.4 native post paths execute together

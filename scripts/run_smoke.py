@@ -1840,6 +1840,9 @@ def main():
                             # proof renderer for untextured + mirrored textured
                             # records. Without this, smoke only proves queueing.
                             "MC2_VK_HUD_COLOR_PROOF",
+                            # VK-HUD-SKIP-GL-1: skip legacy GL HUD replay only
+                            # after the queued batch is fully native-representable.
+                            "MC2_VK_HUD_SKIP_GL",
                             # VK-IMGUI-NATIVE-1 (rung 8.6): ImGui Vulkan renderer
                             # gate. Current slice is observable-decline only until
                             # the final-tail present handoff is split; must be
