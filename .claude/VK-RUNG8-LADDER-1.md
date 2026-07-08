@@ -348,6 +348,7 @@ no tessellation anywhere in the tail.
   helper, offscreen color/depth resources, local renderpass/framebuffer/pipeline,
   `make_depth`, GL composite helper, and the dead post-Tier-1 frame tail. The
   health ABI and Tier-1 descriptor/material/light paths remain intact. The
-  retired `color_prop` shader bake was removed separately in `7d09867e`.
+  retired `color_prop` shader bake was removed separately in `7d09867e`, and
+  the retired source shader pair was deleted in the follow-up shader cleanup.
   Verification target: clean build/deploy/smoke after commit with Tier-1 prop
   receipts still showing shared-GBuffer co-write and zero forbidden readbacks.

@@ -1,6 +1,6 @@
 // VK-P11 STATIC-PROP COLOR — TIER-1 (parity) instanced static-prop VS.
 // =============================================================================
-// Identical world->clip transform to color_prop.vert (Tier-0), but ALSO forwards
+// Uses the same world->clip transform as the GL static-prop path and forwards
 // the Stuff-space normal to the FS so the GBuffer1 (MRT1) normal can be written
 // bit-adjacent to the GL producer (shaders/static_prop.frag):
 //   GBuffer1 = vec4(normalize(v_normal)*0.5+0.5, 0.25)

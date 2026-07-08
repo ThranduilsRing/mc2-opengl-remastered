@@ -8,7 +8,7 @@
 //
 //   location=0 lit color  -> sceneColorTex_  (MRT0, RGBA16F).
 //     * MC2_VK_PROP_MATERIAL OFF (or albedo not ready / vLayer<0): flat teal
-//       (matches Tier-0's debug albedo) — fail-soft, never crashes/holes.
+//       fail-soft teal placeholder, never crashes/holes.
 //     * ON: samples the REAL alpha-OFF albedo GL_TEXTURE_2D_ARRAY (VK copy-once
 //       import of s_texArrayOff) at float(vLayer) and multiplies it by the
 //       VERTEX-BAKED lit color vArgb (the ACTUAL GL default prop model — NOT PBR):
@@ -121,7 +121,7 @@ void main() {
         // is the VERTEX-BAKED lit color (base_light seed + ambient + sun*NdotL). NOT PBR.
         rgb = albedo * vArgb;
     } else {
-        // Fail-soft flat teal (matches color_prop.frag Tier-0). IN-PLACE opaque write.
+        // Fail-soft flat teal placeholder. IN-PLACE opaque write.
         rgb = vec3(0.35, 0.62, 0.68) * (0.6 + 0.4 * vUv.x);
     }
     oColor = vec4(rgb, 1.0);
