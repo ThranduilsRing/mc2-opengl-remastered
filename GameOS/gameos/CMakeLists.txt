@@ -317,9 +317,9 @@ if(MC2_VULKAN)
     # VK-P9a WATER-INTEROP: bake water_geom.{vert,frag} (procedural water mesh VS +
     # base-layer FS for the first VK GEOMETRY region). SPIR-V loaded at runtime by
     # vulkan_water_island.cpp via load_spv(spv_dir()+"water_geom.*.spv").
-    # VK-P11 STATIC-PROP COLOR: bake color_prop.{vert,frag} (instanced static-prop color
-    # VS + Tier-0 flat/debug FS). SPIR-V loaded at runtime by vulkan_color_prop_island.cpp
-    # via load_spv(spv_dir()+"color_prop.*.spv").
+    # VK-P11 STATIC-PROP COLOR: bake color_prop_tier1.{vert,frag} for the in-place
+    # shared-GBuffer prop path. The retired Tier-0 color_prop shaders are no longer
+    # baked or deployed.
     # VK-P10 TERRAIN TIER-1: bake terrain_tier1.{vert,frag} (LOD0 terrain co-write VS
     # reading the height SSBO snapshot + 2-output GBuffer FS with a=1.0). SPIR-V loaded
     # at runtime by vulkan_terrain_island.cpp via load_spv(spv_dir()+"terrain_tier1.*.spv").
@@ -330,7 +330,7 @@ if(MC2_VULKAN)
     # applying the u_skirtDepth pull-down + a byte-identical copy of terrain_tier1.frag,
     # since GL uses the same frag program for skirts as the main patch). SPIR-V loaded
     # at runtime by vulkan_terrain_island.cpp via load_spv(spv_dir()+"terrain_tier1_skirt.*.spv").
-    set(MC2_VK_SHADER_BASENAMES fullscreen edge_fog fog_oob ssao ssao_apply hzb_reduce compare_shadow csm_array_shadow shadow_depth water_mvp water_geom shadow_prop color_prop color_prop_tier1 terrain_tier1 terrain_tier1_skirt mech_tier1 cloud_shadow shoreline postprocess postprocess_visual hud_color hud_tex)
+    set(MC2_VK_SHADER_BASENAMES fullscreen edge_fog fog_oob ssao ssao_apply hzb_reduce compare_shadow csm_array_shadow shadow_depth water_mvp water_geom shadow_prop color_prop_tier1 terrain_tier1 terrain_tier1_skirt mech_tier1 cloud_shadow shoreline postprocess postprocess_visual hud_color hud_tex)
     set(MC2_VK_SPV_OUTPUTS "")
     if(MC2_GLSLANG_VALIDATOR OR MC2_GLSLC)
         foreach(_base ${MC2_VK_SHADER_BASENAMES})
