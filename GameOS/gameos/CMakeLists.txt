@@ -117,10 +117,10 @@ if(MC2_VULKAN)
     # to vulkan-1.dll). Only compiled when MC2_VULKAN=ON.
     list(APPEND SOURCES "${CMAKE_SOURCE_DIR}/3rdparty/volk/volk.c")
     if(MC2_VULKAN_ISLAND)
-        # VK-P9a WATER-INTEROP: the water island — FIRST Vulkan GEOMETRY region.
-        # Renders the armed water fast-path mesh (base layer) in VK into an exportable
-        # RGBA16F, GL composites into MainColor. Borrows the shared engine VulkanContext
-        # (no second device). Gate MC2_VK_WATER_INTEROP default-OFF -> GL water unchanged.
+        # VK-WATER-TIER1: the water island renders the armed water base layer in
+        # place into the shared scene GBuffer. The old P9a side-image gate is
+        # retired; no public raw water interop gate remains.
+        # No layout-affecting header members (extern "C" entry points only).
         # No layout-affecting header members (extern "C" entry points only).
         list(APPEND SOURCES vulkan_water_island.cpp)
         # VK-POST-FOG-NATIVE-1 (rung 8.1, VK-RUNG8-LADDER-1): the fog pair (edge+oob)

@@ -637,31 +637,6 @@ static constexpr EnvVarDesc kAuxEnvVars[] = {
         "exercised on demand. Only consulted when MC2_RENDER_BACKEND=vulkan. Diagnostic/proof "
         "only; no effect on the GL path or on a normal =vulkan run."
     },
-    // VK-P9a WATER-INTEROP: the first Vulkan GEOMETRY region gate.
-    {
-        "MC2_FEATURE_VK_WATER_INTEROP",
-        "MC2_VK_WATER_INTEROP",
-        EnvVarKind::Feature,
-        false,
-        "VK-P9a WATER-INTEROP: presence-gated =1, default OFF. Renders the armed water "
-        "fast-path BASE layer in Vulkan (the FIRST VK geometry region) into an exportable "
-        "RGBA16F VkImageResource that GL composites into MainColor, instead of the GL MDI "
-        "water draw (mutually exclusive; this gate is the single arbiter inside "
-        "gosRenderer::renderWaterFastPath). Feed (VK-P9a STEP 0): recipe SSBO copied ONCE "
-        "at load, per-frame thin records CPU-STAGED from g_thinStaging (byte-identical to the "
-        "GPU compute pack), GL scene depth CPU-imported as a read-only depth attachment "
-        "(GEQUAL reverse-Z, depth-write ON, per PipelineRegistry WaterArmed row), MRT "
-        "color0+GBuffer1, alpha-blend SRC_ALPHA/ONE_MINUS_SRC_ALPHA. Reflection/HDRI OFF. "
-        "MVP fudge (clip.z += 0.00025*clip.w) lives in the VS (water_geom.vert), byte-copied "
-        "from the GL water VS (WATER-MVP-ORACLE-1 column_major/GL_FALSE). It BORROWS the shared engine "
-        "VulkanContext (getOrCreateEngineVulkanContext) instead of creating its own device, so "
-        "there is NO volk process-global dispatch collision and it is NOT subject to the R2 "
-        "coerce-off interlock -- it REQUIRES the shared device, i.e. MC2_RENDER_BACKEND=vulkan "
-        "(fail-soft to the GL water draw when the context is absent/invalid). Color zero-copy; "
-        "forbidden COLOR-op counters hard-asserted ==0 (depth-IN copies EXPECTED, counted "
-        "separately). Surfaced in [VK_WATER_INTEROP] health. Gate OFF -> GL water draw as "
-        "before (byte-identical)."
-    },
     // VK-P8a SHADOW-INTEROP: the SECOND VK geometry region + FIRST VK-produces-depth gate.
     {
         "MC2_FEATURE_VK_SHADOW_INTEROP",

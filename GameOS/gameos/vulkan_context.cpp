@@ -389,7 +389,7 @@ bool engineVulkanContextValid() {
 
 // VK-P9a WATER-INTEROP: on-demand shared-context birth, DECOUPLED from present.
 // The shared engine VulkanContext is the first-class durable device (P13 T2);
-// present is just ONE consumer. A VK-interop-region gate (e.g. MC2_VK_WATER_INTEROP)
+// present is just ONE consumer; native regions can also borrow the shared context.
 // must be able to bring the SAME shared device up on the GL-present path, WITHOUT
 // MC2_RENDER_BACKEND=vulkan and WITHOUT a healthy present/window. Lazy + idempotent:
 //   - If the context is already valid (born by =vulkan in gameosmain, or a prior

@@ -3789,14 +3789,10 @@ void gosRenderer::renderWaterFastPath(
             glActiveTexture(GL_TEXTURE0);
         }
 
-        // VK-P9a WATER-INTEROP: when MC2_VK_WATER_INTEROP is ON, render the water
-        // BASE layer in Vulkan (first VK geometry region) into an exportable RGBA16F
-        // and composite into MainColor, instead of the GL MDI draw. Mutually exclusive
-        // with the GL draw (gate is the single arbiter). Feed = CPU-staged (STEP 0):
-        // run the CPU thin pack (byte-identical to the compute pack) to populate
-        // g_thinStaging, then hand its pointer/count + recipes + packed UBOs to the
-        // island. On success (returns 1) the GL MDI draw is SKIPPED. On any fail-soft
-        // (returns 0) fall through to the GL draw. Gate OFF -> GL MDI draw as before
+        // VK-WATER-TIER1: when the shared-GBuffer water island is armed, render the
+        // BASE layer in Vulkan in-place and skip the GL MDI draw. Feed remains the
+        // CPU-visible thin-record/readback path used by the island. On any fail-soft
+        // (returns 0), fall through to the GL draw. Gate OFF -> GL MDI draw as before
         // (byte-identical).
         bool vkWaterHandled = false;
 #ifdef MC2_VULKAN_ISLAND

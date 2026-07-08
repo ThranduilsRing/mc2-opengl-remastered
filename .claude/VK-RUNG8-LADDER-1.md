@@ -333,3 +333,12 @@ no tessellation anywhere in the tail.
   returns no active matches. Follow-up: mechanically delete the unreachable
   Tier-0 branch/resources from `vulkan_color_prop_island.cpp`, then retire the
   separate water P9a side-image gate.
+- 8.7e - RETIRED WATER P9a RAW GATE
+  (VK-RUNG8-WATER-P9A-GATE-DELETE-1). Removed active public exposure for
+  `MC2_VK_WATER_INTEROP` from smoke passthrough, registry, generated flag docs,
+  and tier docs. The water island now arms only through the Tier-1 shared-GBuffer
+  gate (`MC2_VK_WATER_TIER1`) and the old side-image gate returns false
+  internally, so callers cannot select the offscreen + GL-composite P9a proof
+  path. Runtime health was relabeled to `[VK_WATER_TIER1]`. Verification target:
+  clean build/deploy/smoke after commit; receipts should show the full native
+  tail unchanged and no active grep matches for the retired env/health name.

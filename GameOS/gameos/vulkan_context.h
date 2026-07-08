@@ -117,7 +117,7 @@ bool engineVulkanContextValid();
 // Lazy + idempotent: returns true if the shared context is already valid; else
 // brings it up once via init(wantInterop=true, wantPresent=false) -- the SAME
 // shared device (one volkLoadDevice), interop exts but no surface/swapchain, so a
-// VK-interop-region gate (MC2_VK_WATER_INTEROP) can run on the GL-present path
+// Native VK regions can run before the present path owns the backend.
 // WITHOUT MC2_RENDER_BACKEND=vulkan and without a healthy present/window. init()
 // is one-shot (no retry after failure). Fail-soft: false -> caller uses GL.
 bool ensureEngineVulkanContextForInterop();

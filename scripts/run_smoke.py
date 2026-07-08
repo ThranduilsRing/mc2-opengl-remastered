@@ -1587,20 +1587,11 @@ def main():
                             "MC2_DETERMINISTIC_RNG",
                             "MC2_RNG_SEED",
                             "MC2_VULKAN_SPV_DIR",
-                            # VK-P9a WATER-INTEROP: the first VK geometry region. Renders
-                            # the armed water base layer in Vulkan into an exportable RGBA16F
-                            # composited into MainColor. Default OFF; borrows the shared
-                            # engine VulkanContext so it REQUIRES MC2_RENDER_BACKEND=vulkan
-                            # (fail-soft to the GL water draw otherwise). Without this in the
-                            # allowlist Popen drops it and the gate-ON smoke silently runs the
-                            # GL water draw (gate inert).
-                            "MC2_VK_WATER_INTEROP",
                             # VK-WATER-TIER1 (rung 6): in-place shared-GBuffer water
                             # co-write (color0+normal+depth LOAD-preserve; premult-over
                             # blend == GL straight-alpha result; no composite, no depth
                             # readback). envTriState OPT-IN, default-OFF (same new-rung
                             # pattern as MC2_VK_TERRAIN_SKIRTS / _VISUALDISPLACE_FAR).
-                            # Takes precedence over MC2_VK_WATER_INTEROP when both set.
                             "MC2_VK_WATER_TIER1",
                             # MC2_VK_WATER_PERF: fine-grained per-sub-step us breakdown
                             # of the VK water interop path ([VK_WATER_PERF] lines).

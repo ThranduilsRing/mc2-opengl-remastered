@@ -1166,7 +1166,7 @@ int main(int argc, char** argv)
         // force it OFF before we volkLoadDevice the engine device, so the engine
         // device is the sole owner of the global table. (The alternative fail-soft
         // path is available if coercion is ever undesirable.)
-        // VK-P9a WATER-INTEROP: MC2_VK_WATER_INTEROP is DELIBERATELY NOT in this list.
+        // VK-WATER-TIER1 arms through the shared-GBuffer umbrella path; no raw water interop gate is listed here.
         // The water island borrows the SHARED engine device (no second volkLoadDevice),
         // so it does NOT hit the global-dispatch collision and must NOT be coerced off —
         // water + present coexist on the one shared device. Only add SELF-CREATING-device

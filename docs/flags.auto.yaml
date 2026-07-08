@@ -6498,14 +6498,6 @@ flags:
     registered: no
     in_smoke_passthrough: yes
     documented_in_tier1_env_vars: yes
-  - name: MC2_VK_WATER_INTEROP
-    default: unknown
-    declared_in: null
-    referenced_at:
-      - GameOS/gameos/vulkan_water_island.cpp:125
-    registered: no
-    in_smoke_passthrough: yes
-    documented_in_tier1_env_vars: yes
   - name: MC2_VK_WATER_PERF
     default: unknown
     declared_in: null

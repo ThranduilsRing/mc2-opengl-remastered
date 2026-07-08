@@ -1,8 +1,8 @@
-// vulkan_water_island.cpp — VK-P9a WATER-INTEROP: the FIRST Vulkan GEOMETRY region.
+// vulkan_water_island.cpp - Vulkan water island.
 // =============================================================================
-// Renders the MC2 armed water fast-path mesh (base layer) in Vulkan into an
-// exportable RGBA16F VkImageResource that GL composites into MainColor. Gate
-// MC2_VK_WATER_INTEROP (default-OFF -> GL water path unchanged, byte-identical).
+// Renders the MC2 armed water fast-path mesh (base layer) in Vulkan. Tier-1
+// renders in-place into the shared scene GBuffer; the old P9a side-image gate is
+// retired and unreachable.
 //
 // SHAPE (SSAO-island seam + a real geometry draw, per VK-P9a-STEP0 note):
 //   - Device: BORROWED from the shared engine VulkanContext
@@ -120,12 +120,7 @@ void vlog(const char* fmt, ...) {
 }
 
 bool waterInteropGateRequested() {
-    static int state = -1;
-    if (state == -1) {
-        const char* e = std::getenv("MC2_VK_WATER_INTEROP");
-        state = (e && e[0] == '1') ? 1 : 0;
-    }
-    return state == 1;
+    return false;
 }
 
 // MC2_VK_WATER_TIER1 (rung 6, VK full-ownership ladder): render the armed water
@@ -134,8 +129,7 @@ bool waterInteropGateRequested() {
 // no depth readback. envTriState OPT-IN (unset -> OFF regardless of
 // MC2_VK_SHARED_GBUFFER; explicit "0" also OFF) — the same conservative
 // new-rung pattern as MC2_VK_TERRAIN_SKIRTS / MC2_VK_TERRAIN_VISUALDISPLACE_FAR
-// (rungs 4/5). Takes precedence over the legacy MC2_VK_WATER_INTEROP (P9a
-// offscreen+composite proof) when both are set.
+// (rungs 4/5). The legacy P9a offscreen+composite proof gate is retired.
 bool waterTier1Requested() {
     static const bool s_on = (mc2vkgate::envTriState("MC2_VK_WATER_TIER1") == 1);
     return s_on;
@@ -1200,10 +1194,10 @@ extern "C" void mc2_render_backend_water_region_health(
     if (totalUs)          *totalUs          = g_health.totalUs;
 }
 
-// True when the gate requests the VK water region (the caller then SKIPS the GL
+// True when the Tier-1 gate requests the VK water region (the caller then SKIPS the GL
 // MDI draw and calls mc2_vk_water_island_run instead — mutually exclusive).
 extern "C" int mc2_vk_water_island_enabled() {
-    return (waterTier1Requested() || waterInteropGateRequested()) ? 1 : 0;
+    return waterTier1Requested() ? 1 : 0;
 }
 
 // Per-frame entry. Inputs (all from the GL side, at water-render time):
@@ -1220,7 +1214,7 @@ extern "C" int mc2_vk_water_island_run(
     const void* recipes, unsigned int recipeCount,
     const void* vsParams, const void* fsParams,
     unsigned int hdriGlTex) {
-    if (!waterTier1Requested() && !waterInteropGateRequested()) return 0;
+    if (!waterTier1Requested()) return 0;
     if (thinCount == 0 || recipeCount == 0 || w <= 0 || h <= 0) return 0;
     // tier1 renders in-place into the shared GBuffer and never touches the GL
     // scene textures; only the P9a path needs them.
@@ -1610,7 +1604,7 @@ extern "C" int mc2_vk_water_island_run(
 
 // Teardown (called from gosPostProcess::destroy or renderer shutdown).
 extern "C" void mc2_vk_water_island_destroy() {
-    vlog("[VK_WATER_INTEROP] vulkan_available=%d used_vulkan=%lu used_interop=%lu interop_active=%d "
+    vlog("[VK_WATER_TIER1] vulkan_available=%d used_vulkan=%lu used_interop=%lu interop_active=%d "
          "vk2gl_sem=%d validation_errors=%lu thin_records=%lu recipe_count=%lu fallback_reason=\"%s\" "
          "vk_draws=%lu forbidden_copyBufToImg=%lu forbidden_copyImgToBuf=%lu forbidden_getTexImage=%lu "
          "forbidden_texSubImage=%lu depthin_getTexImage=%lu depthin_copyBufToImg=%lu "
