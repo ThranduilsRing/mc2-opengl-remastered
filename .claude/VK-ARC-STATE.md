@@ -1234,8 +1234,13 @@ bar is stricter than current code:
   `copy1_blit_frames=0`, `fallback_reason=""`. Minimized Thermal smoke:
   `tests/smoke/artifacts/2026-07-08T15-28-36`, PASS 2/2, +0 destroys.
 - 8.6 native ImGui is landed, but GameOS HUD (`gos_RendererFlushHUDBatch()`) is
-  still legacy GL. Native HUD needs its own `MC2_VK_HUD`/batch replay port or a
-  broader final-tail ownership split.
+  still legacy GL. `MC2_UI_PASS_MEASURE=1` now emits `[VK_HUD_AUDIT v1]`
+  batch shape lines for the native HUD port. Focused `mc2_01` smoke
+  `tests/smoke/artifacts/2026-07-08T15-33-28` PASS 1/1 showed the tier1 HUD is
+  not an untextured micro-slice: steady frames are `calls=95 quads=56 lines=18
+  tris=14 text=7 textured=69 vertices=1106 alpha1=4 alpha3=91`. Native HUD
+  therefore needs ordered textured quad + text replay and a gosTexture mirror,
+  not just line/tri replay.
 - `vulkan_postprocess_subgraph.cpp`, `vulkan_ssao_island.cpp`,
   `vulkan_hzb_island.cpp`, and the edge/oob fog islands are now bypassed by the
   native rung-8 gates during the verified shared-GBuffer smoke, but they still
@@ -1246,7 +1251,11 @@ bar is stricter than current code:
   pixels.
 
 Next real coding slices:
-1. Complete the remaining native composite branch: shadow-debug overlay path.
-2. 8.6f native GameOS HUD replay.
+1. 8.6f native GameOS HUD replay: queue the scaled `hudBatch_` to
+   `EnginePresentVk`, mirror gosTexture/font atlas handles, render ordered
+   quad/line/tri/text calls before native ImGui, then skip GL replay only when
+   every call is representable.
+2. Complete the remaining native composite diagnostic branch: shadow-debug
+   overlay path.
 3. 8.7 deletion after GL issues zero final-tail draws and shared-scene GL import
    halves are no longer needed.

@@ -155,7 +155,11 @@ no tessellation anywhere in the tail.
   composite has its Visual + FXAA + FORCE-43 + LowLight + ObjectId/Thermal slice,
   but native GameOS HUD
   (`MC2_VK_HUD`) is not landed and composite still has GL fallback coverage for
-  diagnostics. Old postprocess islands
+  diagnostics. `MC2_UI_PASS_MEASURE=1` now prints `[VK_HUD_AUDIT v1]`; focused
+  `mc2_01` proof (`tests/smoke/artifacts/2026-07-08T15-33-28`, PASS 1/1)
+  showed steady HUD frames at `calls=95`, `textured=69`, `text=7`, so the native
+  port must preserve ordered textured quad/text replay and cannot retire GL with
+  an untextured-only slice. Old postprocess islands
   are bypassed by shared-GBuffer native gates but remain fallback/oracle code.
   Win32 GL interop primitives remain required by shared scene color/depth/present
   while GL continues to draw HUD and fallback composite pixels. Delete only after

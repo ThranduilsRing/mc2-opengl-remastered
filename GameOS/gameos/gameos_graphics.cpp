@@ -7929,6 +7929,34 @@ void gosRenderer::flushHUDBatch()
         mc2_ui_pass_sample_entry_ambient();
     }
 
+    if (s_uiPassMeasure) {
+        unsigned calls[4] = {};
+        unsigned textured = 0;
+        unsigned alphaModes[8] = {};
+        unsigned totalVertices = 0;
+        for (const HudDrawCall& call : hudBatch_) {
+            const unsigned kind = (unsigned)call.kind;
+            if (kind < 4) ++calls[kind];
+            if (call.stateSnapshot[gos_State_Texture] != 0 || call.kind == kHudTextQuadBatch)
+                ++textured;
+            const unsigned alpha = call.stateSnapshot[gos_State_AlphaMode];
+            if (alpha < 8) ++alphaModes[alpha];
+            totalVertices += (unsigned)call.vertices.size();
+        }
+
+        static unsigned s_hudMeasureFrames = 0;
+        ++s_hudMeasureFrames;
+        if (s_hudMeasureFrames <= 10 || (s_hudMeasureFrames % 120) == 0) {
+            std::fprintf(stderr,
+                "[VK_HUD_AUDIT v1] frame=%u calls=%u quads=%u lines=%u tris=%u text=%u "
+                "textured=%u vertices=%u alpha0=%u alpha1=%u alpha2=%u alpha3=%u\n",
+                s_hudMeasureFrames, (unsigned)hudBatch_.size(),
+                calls[0], calls[1], calls[2], calls[3],
+                textured, totalVertices,
+                alphaModes[0], alphaModes[1], alphaModes[2], alphaModes[3]);
+        }
+    }
+
     // UI-PASS-MODEL-1: UI is now MODELED (declared ambient row in kPassAmbient[]). Verify
     // the UI entry ambient against that row every frame — OBSERVE-ONLY (own counter,
     // non-fatal), read-only glGet, NO GL state change, so the HUD replay stays byte-identical.
