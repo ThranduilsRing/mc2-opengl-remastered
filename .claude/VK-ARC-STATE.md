@@ -1088,3 +1088,14 @@ Verification:
   `docs/flags.auto.yaml` regenerated. `check-env-allowlist.sh` remains advisory-dirty
   from pre-existing harness-only vars, but reports zero engine `getenv` vars missing
   from the smoke allowlist.
+- Visible-window proof at `2eecfdbf`:
+  `run_visual_capture.py --show-window --mission mc2_01 --bookmarks tests/visual/bookmarks/mc2_01.json`
+  with `MC2_RENDER_BACKEND=vulkan MC2_VK_PRESENT_DIRECT_FBO=1 MC2_VK_PRESENT_VERIFY=1 MC2_VK_IMGUI=1`
+  wrote 11/11 deterministic bookmark PNGs under
+  `.claude/vk-imgui-decline-visible-armed/`.
+  Present path stayed live (`present_frames=6301`, `validation_errors=0`,
+  `readback_changed=1`, `fallback_reason=""`) while ImGui emitted
+  `[VK_IMGUI] requested=1 used_vulkan=0 ... fallback_reason="tail_handoff_not_split"`.
+  The `direct_present_armed` field stayed 0 from the ImGui call site even with
+  live VK present, so it is a conservative predicate only; do not treat it as
+  proof that direct-FBO present was unavailable.
