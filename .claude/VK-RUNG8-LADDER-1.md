@@ -63,6 +63,17 @@ no tessellation anywhere in the tail.
   `2026-07-07T22-57-19` PASS 2/2. Vulkan-backend minimized smoke
   `2026-07-07T22-59-12` reached `MC2_RENDER_BACKEND=vulkan` and created the
   engine context, but present reported `fallback_reason="zero surface extent
-  (window minimized?)"`, `present_frames=0`; use a visible-window harness for
-  final present receipt. Next real coding slice = 8.5b native composite shader
-  port (`MC2_VK_POST_COMPOSITE`), not `CompositePresent` (separate-window only).
+  (window minimized?)"`, `present_frames=0`. Follow-up `cf02f587` added
+  `run_visual_capture.py --show-window`; visible exact-lane capture on
+  2026-07-08 (fingerprint `45afd60d7416`) wrote 11/11 `mc2_01` bookmarks and
+  reported `present_frames=11101`, `validation_errors=0`,
+  `readback_changed=1`, `fallback_reason=""`. RenderDoc harness proof landed
+  with `8fd4bea5`: `renderdoc_capture.py --exe ...0.4c/mc2.exe` produced
+  `.claude/vk-present-direct-visible/rdoc/direct_fbo_frame181.rdc` under
+  `MC2_RENDER_BACKEND=vulkan MC2_VK_PRESENT_DIRECT_FBO=1`.
+  Next real coding slice = 8.5b native composite, but NOT by naively beginning
+  the shared present `VkImageResource` inside postprocess: `presentGLFrame()`
+  owns its `vkImageResourceBeginFrame()` parity advance. Either design a proper
+  present-image split with a second GL->VK handoff after HUD/ImGui, or stage the
+  first runtime hook against shared scene color. `CompositePresent` remains a
+  separate-window test contract.

@@ -943,11 +943,37 @@ Evidence gathered on 2026-07-07:
   `fallback_reason="zero surface extent (window minimized?)"`,
   `present_frames=0`.
 
-Verdict: 8.5a meta path accepted as a documented checkpoint, but the final
-copy-1 receipt still needs a visible-window harness or manual visible run that
-reports `present_frames>0`, `validation_errors=0`, and `readback_changed=1`.
-Next real coding slice: 8.5b native composite shader port under
-`MC2_VK_POST_COMPOSITE` (shared color0 input, present/swapchain output).
+Follow-up evidence gathered on 2026-07-08:
+- `cf02f587` added `scripts/run_visual_capture.py --show-window` and absolute
+  bookmark-path handoff. Default remains minimized for ordinary visual baselines.
+- Rebuilt + deployed explicit 0.4c lane from HEAD `45afd60d7416`
+  (`build_fingerprint.h: dirty=0`, deploy manifest `src_commit=45afd60d7416`).
+- Visible exact-lane run:
+  `MC2_RENDER_BACKEND=vulkan MC2_VK_PRESENT_DIRECT_FBO=1 MC2_VK_PRESENT_VERIFY=1`
+  with `run_visual_capture.py --show-window --bookmarks tests/visual/bookmarks/mc2_01.json`
+  -> 11/11 PNGs present, deterministic sidecars, present receipt
+  `present_frames=11101`, `validation_errors=0`, `readback_changed=1`,
+  `fallback_reason=""`.
+- `8fd4bea5` added `scripts/renderdoc_capture.py --exe` so Tier-5 captures can
+  target the exact 0.4c lane instead of the hardcoded v0.4 deploy. RenderDoc 1.7
+  proof under the same direct-FBO Vulkan env produced
+  `.claude/vk-present-direct-visible/rdoc/direct_fbo_frame181.rdc`; engine hook
+  logged `api_resolved`, `trigger_capture local_frame=180`, and
+  `capture_complete local_frame=182`.
+
+Verdict: 8.5a is now fully proven, not blind: copy-1 is skipped on a live Vulkan
+present path with nonzero present frames and a RenderDoc capture.
+
+8.5b sync ruling: do NOT naively render native composite directly into
+EnginePresentVk's shared present image from `gosPostProcess::endScene()`.
+`presentGLFrame()` already owns `vkImageResourceBeginFrame(&sharedImg)` and the
+single GL->VK handoff for the final present. A native composite inserted before
+GL HUD/ImGui would need VK->GL for HUD, then a second GL->VK for present; the
+current `VkImageResource` semaphore/parity pair is not a safe two-handoff
+mid-frame protocol. Next implementation must either design an explicit
+present-image split with separate sync for composite->HUD and HUD->present, or
+land a safer first runtime slice that targets shared scene color and leaves
+present ownership unchanged.
 
 ## RUNG 8.5b-a - VK-POST-COMPOSITE shader asset prep
 
