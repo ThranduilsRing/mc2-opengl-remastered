@@ -183,6 +183,24 @@ no tessellation anywhere in the tail.
   hud_vk_color_draws_last=18 imgui_vk_ready=1 imgui_vk_frames=301
   validation_errors=0 fallback_reason=""`. Remaining HUD blocker: native
   textured quad/text mirror and GL replay skip.
+- 8.6i - HUD TEXTURE-PROOF NATIVE DRAW (VK-HUD-TEXTURE-PROOF-1). Added
+  `hud_tex` SPIR-V and a storage-buffer texture mirror keyed by HUD texture
+  handle + content serial. The GameOS queue carries RGBA8 payloads for textured
+  HUD records; the final-tail renderer expands textured quads/text to triangles,
+  uploads changed serials into host-visible VK buffers, and samples them
+  natively before Vulkan ImGui. GL HUD replay still remains active, so this is
+  a proof/coverage rung, not final HUD retirement. Visible proof
+  `.claude/vk-hud-texture-proof-visible/` captured 11/11 deterministic
+  `mc2_01` bookmarks under the full rung-8 env stack. Runtime receipt:
+  `[VK_PRESENT] present_frames=301 direct_fbo_grants=301 copy1_skip_frames=301
+  tail_hook_frames=301 composite_vk_frames=300 hud_vk_queued_frames=187
+  hud_vk_consumed_frames=187 hud_vk_draws_last=95 hud_vk_textured_last=69
+  hud_vk_serialized_last=69 hud_vk_color_frames=187 hud_vk_color_draws_last=87
+  hud_vk_textured_frames=187 hud_vk_textured_draws_last=69
+  hud_vk_texture_uploads=22 imgui_vk_ready=1 imgui_vk_frames=301
+  validation_errors=0 fallback_reason=""`. Remaining HUD blocker: order-accurate
+  full-batch replay validation, then skip GL replay only when every queued draw
+  is representable.
 - Combined rung-8 smoke with `MC2_VK_SHARED_GBUFFER=1` and gates 8.1-8.6
   forwarded PASS 2/2 at `tests/smoke/artifacts/2026-07-08T14-47-14`.
   It proves 8.1/8.2/8.3/8.4 native post paths execute together

@@ -1147,6 +1147,7 @@ class gosTexture {
 
         uint32_t getTextureId() const { return tex_.id; }
         TexType getTextureType() const { return tex_.type_; }
+        const Texture& getTexture() const { return tex_; }
         uint32_t getContentSerial() const { return content_serial_; }
         void markContentMutated() { ++content_serial_; }
 
@@ -8001,6 +8002,12 @@ void gosRenderer::flushHUDBatch()
                     draw.textureHeight = (uint32_t)ti.height_;
                     draw.textureFormat = (uint32_t)ti.format_;
                     draw.textureSerial = tex->getContentSerial();
+                    if (draw.textureWidth != 0 && draw.textureHeight != 0) {
+                        const size_t bytes = (size_t)draw.textureWidth * (size_t)draw.textureHeight * 4u;
+                        draw.textureRgba.resize(bytes);
+                        GlPixelStoreGuard pixelStoreGuard;
+                        getTextureData(tex->getTexture(), 0, draw.textureRgba.data(), TF_RGBA8);
+                    }
                 }
             }
             draw.alphaMode = call.stateSnapshot[gos_State_AlphaMode];

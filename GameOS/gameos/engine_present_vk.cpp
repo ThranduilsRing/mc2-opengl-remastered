@@ -42,6 +42,7 @@
 #include <cstdio>
 #include <cstdlib>
 #include <cstring>
+#include <unordered_map>
 #include <vector>
 
 namespace mc2vk {
@@ -130,6 +131,25 @@ struct EnginePresentVk::Impl {
     VkBuffer        hudColorVertexBuf = VK_NULL_HANDLE;
     VkDeviceMemory  hudColorVertexMem = VK_NULL_HANDLE;
     VkDeviceSize    hudColorVertexBytes = 0;
+    VkDescriptorSetLayout hudTexDsl = VK_NULL_HANDLE;
+    VkDescriptorPool hudTexPool = VK_NULL_HANDLE;
+    VkPipelineLayout hudTexLayout = VK_NULL_HANDLE;
+    VkPipeline      hudTexPipe = VK_NULL_HANDLE;
+    VkShaderModule  hudTexVert = VK_NULL_HANDLE;
+    VkShaderModule  hudTexFrag = VK_NULL_HANDLE;
+    VkBuffer        hudTexVertexBuf = VK_NULL_HANDLE;
+    VkDeviceMemory  hudTexVertexMem = VK_NULL_HANDLE;
+    VkDeviceSize    hudTexVertexBytes = 0;
+    struct HudTextureMirror {
+        uint32_t serial = 0;
+        uint32_t width = 0;
+        uint32_t height = 0;
+        VkBuffer buffer = VK_NULL_HANDLE;
+        VkDeviceMemory memory = VK_NULL_HANDLE;
+        VkDeviceSize bytes = 0;
+        VkDescriptorSet set = VK_NULL_HANDLE;
+    };
+    std::unordered_map<uint32_t, HudTextureMirror> hudTextureMirrors;
 
     bool            compositeVkFailed = false;
     VkRenderPass    compositeRenderPass = VK_NULL_HANDLE;
@@ -390,6 +410,20 @@ struct HudColorGpuVertex {
     uint32_t argb;
 };
 
+struct HudTexGpuVertex {
+    float x, y;
+    uint32_t argb;
+    float u, v;
+};
+
+struct HudTexPush {
+    float extent[2];
+    uint32_t texW;
+    uint32_t texH;
+    uint32_t textMode;
+    uint32_t foreground;
+};
+
 void destroyImguiFramebuffer(EnginePresentVk::Impl& s) {
     if (s.imguiFramebuffer) {
         vkDestroyFramebuffer(s.dev, s.imguiFramebuffer, nullptr);
@@ -600,6 +634,48 @@ bool ensureHudColorVertexBuffer(EnginePresentVk::Impl& s, VkDeviceSize bytes) {
     return true;
 }
 
+bool createHostBuffer(EnginePresentVk::Impl& s, VkDeviceSize bytes, VkBufferUsageFlags usage,
+                      VkBuffer* outBuf, VkDeviceMemory* outMem) {
+    VkBufferCreateInfo bci{VK_STRUCTURE_TYPE_BUFFER_CREATE_INFO};
+    bci.size = bytes;
+    bci.usage = usage;
+    bci.sharingMode = VK_SHARING_MODE_EXCLUSIVE;
+    if (vkCreateBuffer(s.dev, &bci, nullptr, outBuf) != VK_SUCCESS)
+        return false;
+    VkMemoryRequirements req{};
+    vkGetBufferMemoryRequirements(s.dev, *outBuf, &req);
+    const uint32_t memType = findMemoryType(s.phys, req.memoryTypeBits,
+                                            VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT |
+                                            VK_MEMORY_PROPERTY_HOST_COHERENT_BIT);
+    if (memType == UINT32_MAX)
+        return false;
+    VkMemoryAllocateInfo ai{VK_STRUCTURE_TYPE_MEMORY_ALLOCATE_INFO};
+    ai.allocationSize = req.size;
+    ai.memoryTypeIndex = memType;
+    if (vkAllocateMemory(s.dev, &ai, nullptr, outMem) != VK_SUCCESS)
+        return false;
+    return vkBindBufferMemory(s.dev, *outBuf, *outMem, 0) == VK_SUCCESS;
+}
+
+bool ensureHudTexVertexBuffer(EnginePresentVk::Impl& s, VkDeviceSize bytes) {
+    if (bytes == 0) return false;
+    if (s.hudTexVertexBuf && s.hudTexVertexBytes >= bytes)
+        return true;
+    if (s.hudTexVertexBuf) {
+        vkDestroyBuffer(s.dev, s.hudTexVertexBuf, nullptr);
+        s.hudTexVertexBuf = VK_NULL_HANDLE;
+    }
+    if (s.hudTexVertexMem) {
+        vkFreeMemory(s.dev, s.hudTexVertexMem, nullptr);
+        s.hudTexVertexMem = VK_NULL_HANDLE;
+    }
+    if (!createHostBuffer(s, bytes, VK_BUFFER_USAGE_VERTEX_BUFFER_BIT,
+                          &s.hudTexVertexBuf, &s.hudTexVertexMem))
+        return false;
+    s.hudTexVertexBytes = bytes;
+    return true;
+}
+
 bool ensureHudColorObjects(EnginePresentVk::Impl& s) {
     if (s.hudColorTriPipe && s.hudColorLinePipe && s.hudColorFramebuffer)
         return true;
@@ -710,6 +786,154 @@ bool ensureHudColorObjects(EnginePresentVk::Impl& s) {
     return true;
 }
 
+bool ensureHudTexObjects(EnginePresentVk::Impl& s) {
+    if (!ensureHudColorObjects(s))
+        return false;
+    if (s.hudTexPipe)
+        return true;
+    if (!s.hudTexDsl) {
+        VkDescriptorSetLayoutBinding b{};
+        b.binding = 0;
+        b.descriptorType = VK_DESCRIPTOR_TYPE_STORAGE_BUFFER;
+        b.descriptorCount = 1;
+        b.stageFlags = VK_SHADER_STAGE_FRAGMENT_BIT;
+        VkDescriptorSetLayoutCreateInfo ci{VK_STRUCTURE_TYPE_DESCRIPTOR_SET_LAYOUT_CREATE_INFO};
+        ci.bindingCount = 1; ci.pBindings = &b;
+        if (vkCreateDescriptorSetLayout(s.dev, &ci, nullptr, &s.hudTexDsl) != VK_SUCCESS) {
+            s.hudColorVkFailed = true; return false;
+        }
+    }
+    if (!s.hudTexPool) {
+        VkDescriptorPoolSize size{VK_DESCRIPTOR_TYPE_STORAGE_BUFFER, 512};
+        VkDescriptorPoolCreateInfo pci{VK_STRUCTURE_TYPE_DESCRIPTOR_POOL_CREATE_INFO};
+        pci.maxSets = 512; pci.poolSizeCount = 1; pci.pPoolSizes = &size;
+        if (vkCreateDescriptorPool(s.dev, &pci, nullptr, &s.hudTexPool) != VK_SUCCESS) {
+            s.hudColorVkFailed = true; return false;
+        }
+    }
+    if (!s.hudTexLayout) {
+        VkPushConstantRange pc{};
+        pc.stageFlags = VK_SHADER_STAGE_VERTEX_BIT | VK_SHADER_STAGE_FRAGMENT_BIT;
+        pc.size = sizeof(HudTexPush);
+        VkPipelineLayoutCreateInfo ci{VK_STRUCTURE_TYPE_PIPELINE_LAYOUT_CREATE_INFO};
+        ci.setLayoutCount = 1; ci.pSetLayouts = &s.hudTexDsl;
+        ci.pushConstantRangeCount = 1; ci.pPushConstantRanges = &pc;
+        if (vkCreatePipelineLayout(s.dev, &ci, nullptr, &s.hudTexLayout) != VK_SUCCESS) {
+            s.hudColorVkFailed = true; return false;
+        }
+    }
+    s.hudTexVert = loadSpv(s.dev, spv_dir() + "hud_tex.vert.spv");
+    s.hudTexFrag = loadSpv(s.dev, spv_dir() + "hud_tex.frag.spv");
+    if (!s.hudTexVert || !s.hudTexFrag) { s.hudColorVkFailed = true; return false; }
+
+    VkPipelineShaderStageCreateInfo st[2]{};
+    st[0].sType = VK_STRUCTURE_TYPE_PIPELINE_SHADER_STAGE_CREATE_INFO;
+    st[0].stage = VK_SHADER_STAGE_VERTEX_BIT; st[0].module = s.hudTexVert; st[0].pName = "main";
+    st[1].sType = VK_STRUCTURE_TYPE_PIPELINE_SHADER_STAGE_CREATE_INFO;
+    st[1].stage = VK_SHADER_STAGE_FRAGMENT_BIT; st[1].module = s.hudTexFrag; st[1].pName = "main";
+    VkVertexInputBindingDescription bind{};
+    bind.binding = 0; bind.stride = sizeof(HudTexGpuVertex); bind.inputRate = VK_VERTEX_INPUT_RATE_VERTEX;
+    VkVertexInputAttributeDescription attr[3]{};
+    attr[0].location = 0; attr[0].binding = 0; attr[0].format = VK_FORMAT_R32G32_SFLOAT; attr[0].offset = offsetof(HudTexGpuVertex, x);
+    attr[1].location = 1; attr[1].binding = 0; attr[1].format = VK_FORMAT_R32_UINT; attr[1].offset = offsetof(HudTexGpuVertex, argb);
+    attr[2].location = 2; attr[2].binding = 0; attr[2].format = VK_FORMAT_R32G32_SFLOAT; attr[2].offset = offsetof(HudTexGpuVertex, u);
+    VkPipelineVertexInputStateCreateInfo vin{VK_STRUCTURE_TYPE_PIPELINE_VERTEX_INPUT_STATE_CREATE_INFO};
+    vin.vertexBindingDescriptionCount = 1; vin.pVertexBindingDescriptions = &bind;
+    vin.vertexAttributeDescriptionCount = 3; vin.pVertexAttributeDescriptions = attr;
+    VkPipelineInputAssemblyStateCreateInfo ia{VK_STRUCTURE_TYPE_PIPELINE_INPUT_ASSEMBLY_STATE_CREATE_INFO};
+    ia.topology = VK_PRIMITIVE_TOPOLOGY_TRIANGLE_LIST;
+    VkPipelineViewportStateCreateInfo vp{VK_STRUCTURE_TYPE_PIPELINE_VIEWPORT_STATE_CREATE_INFO};
+    vp.viewportCount = 1; vp.scissorCount = 1;
+    VkPipelineRasterizationStateCreateInfo rs{VK_STRUCTURE_TYPE_PIPELINE_RASTERIZATION_STATE_CREATE_INFO};
+    rs.polygonMode = VK_POLYGON_MODE_FILL; rs.cullMode = VK_CULL_MODE_NONE;
+    rs.frontFace = VK_FRONT_FACE_COUNTER_CLOCKWISE; rs.lineWidth = 1.0f;
+    VkPipelineMultisampleStateCreateInfo ms{VK_STRUCTURE_TYPE_PIPELINE_MULTISAMPLE_STATE_CREATE_INFO};
+    ms.rasterizationSamples = VK_SAMPLE_COUNT_1_BIT;
+    VkPipelineColorBlendAttachmentState cba{};
+    cba.blendEnable = VK_TRUE;
+    cba.srcColorBlendFactor = VK_BLEND_FACTOR_SRC_ALPHA;
+    cba.dstColorBlendFactor = VK_BLEND_FACTOR_ONE_MINUS_SRC_ALPHA;
+    cba.colorBlendOp = VK_BLEND_OP_ADD;
+    cba.srcAlphaBlendFactor = VK_BLEND_FACTOR_ONE;
+    cba.dstAlphaBlendFactor = VK_BLEND_FACTOR_ONE_MINUS_SRC_ALPHA;
+    cba.alphaBlendOp = VK_BLEND_OP_ADD;
+    cba.colorWriteMask = VK_COLOR_COMPONENT_R_BIT | VK_COLOR_COMPONENT_G_BIT |
+                         VK_COLOR_COMPONENT_B_BIT | VK_COLOR_COMPONENT_A_BIT;
+    VkPipelineColorBlendStateCreateInfo cb{VK_STRUCTURE_TYPE_PIPELINE_COLOR_BLEND_STATE_CREATE_INFO};
+    cb.attachmentCount = 1; cb.pAttachments = &cba;
+    VkDynamicState dyns[2] = {VK_DYNAMIC_STATE_VIEWPORT, VK_DYNAMIC_STATE_SCISSOR};
+    VkPipelineDynamicStateCreateInfo dyn{VK_STRUCTURE_TYPE_PIPELINE_DYNAMIC_STATE_CREATE_INFO};
+    dyn.dynamicStateCount = 2; dyn.pDynamicStates = dyns;
+    VkGraphicsPipelineCreateInfo gp{VK_STRUCTURE_TYPE_GRAPHICS_PIPELINE_CREATE_INFO};
+    gp.stageCount = 2; gp.pStages = st;
+    gp.pVertexInputState = &vin; gp.pInputAssemblyState = &ia;
+    gp.pViewportState = &vp; gp.pRasterizationState = &rs;
+    gp.pMultisampleState = &ms; gp.pColorBlendState = &cb;
+    gp.pDynamicState = &dyn; gp.layout = s.hudTexLayout;
+    gp.renderPass = s.hudColorRenderPass;
+    if (vkCreateGraphicsPipelines(s.dev, VK_NULL_HANDLE, 1, &gp, nullptr, &s.hudTexPipe) != VK_SUCCESS) {
+        s.hudColorVkFailed = true; return false;
+    }
+    return true;
+}
+
+EnginePresentVk::Impl::HudTextureMirror* ensureHudTextureMirror(EnginePresentVk::Impl& s,
+                                                                const VkHudDraw& d,
+                                                                uint32_t* uploads) {
+    if (d.textureHandle == 0 || d.textureWidth == 0 || d.textureHeight == 0 || d.textureSerial == 0)
+        return nullptr;
+    auto& m = s.hudTextureMirrors[d.textureHandle];
+    const VkDeviceSize bytes = (VkDeviceSize)d.textureWidth * (VkDeviceSize)d.textureHeight * 4u;
+    const bool needsUpload = m.serial != d.textureSerial || m.width != d.textureWidth ||
+                             m.height != d.textureHeight || m.bytes != bytes || !m.buffer;
+    if (!needsUpload)
+        return &m;
+    if (d.textureRgba.size() < (size_t)bytes)
+        return nullptr;
+    if (m.buffer) { vkDestroyBuffer(s.dev, m.buffer, nullptr); m.buffer = VK_NULL_HANDLE; }
+    if (m.memory) { vkFreeMemory(s.dev, m.memory, nullptr); m.memory = VK_NULL_HANDLE; }
+    if (!createHostBuffer(s, bytes, VK_BUFFER_USAGE_STORAGE_BUFFER_BIT, &m.buffer, &m.memory))
+        return nullptr;
+    std::vector<uint32_t> packed((size_t)d.textureWidth * (size_t)d.textureHeight);
+    for (size_t i = 0; i < packed.size(); ++i) {
+        const size_t b = i * 4u;
+        packed[i] = (uint32_t)d.textureRgba[b] |
+                    ((uint32_t)d.textureRgba[b + 1] << 8) |
+                    ((uint32_t)d.textureRgba[b + 2] << 16) |
+                    ((uint32_t)d.textureRgba[b + 3] << 24);
+    }
+    void* mapped = nullptr;
+    if (vkMapMemory(s.dev, m.memory, 0, bytes, 0, &mapped) != VK_SUCCESS)
+        return nullptr;
+    std::memcpy(mapped, packed.data(), (size_t)bytes);
+    vkUnmapMemory(s.dev, m.memory);
+    if (!m.set) {
+        VkDescriptorSetAllocateInfo ai{VK_STRUCTURE_TYPE_DESCRIPTOR_SET_ALLOCATE_INFO};
+        ai.descriptorPool = s.hudTexPool;
+        ai.descriptorSetCount = 1;
+        ai.pSetLayouts = &s.hudTexDsl;
+        if (vkAllocateDescriptorSets(s.dev, &ai, &m.set) != VK_SUCCESS)
+            return nullptr;
+    }
+    VkDescriptorBufferInfo bi{};
+    bi.buffer = m.buffer;
+    bi.offset = 0;
+    bi.range = bytes;
+    VkWriteDescriptorSet wr{VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET};
+    wr.dstSet = m.set;
+    wr.dstBinding = 0;
+    wr.descriptorCount = 1;
+    wr.descriptorType = VK_DESCRIPTOR_TYPE_STORAGE_BUFFER;
+    wr.pBufferInfo = &bi;
+    vkUpdateDescriptorSets(s.dev, 1, &wr, 0, nullptr);
+    m.serial = d.textureSerial;
+    m.width = d.textureWidth;
+    m.height = d.textureHeight;
+    m.bytes = bytes;
+    if (uploads) ++(*uploads);
+    return &m;
+}
+
 bool ensureImguiRenderPass(EnginePresentVk::Impl& s) {
     if (s.imguiRenderPass) return true;
 
@@ -802,11 +1026,15 @@ bool recordPendingImgui(EnginePresentVk::Impl& s, VkCommandBuffer cb) {
 }
 
 uint32_t recordPendingHudColorProof(EnginePresentVk::Impl& s, VkCommandBuffer cb,
-                                    uint32_t* nativeDraws) {
+                                    uint32_t* nativeDraws,
+                                    uint32_t* texturedDraws,
+                                    uint32_t* textureUploadsOut) {
     if (s.pendingHudDraws.empty())
         return 0;
     const uint32_t draws = (uint32_t)s.pendingHudDraws.size();
     if (nativeDraws) *nativeDraws = 0;
+    if (texturedDraws) *texturedDraws = 0;
+    if (textureUploadsOut) *textureUploadsOut = 0;
     if (!nativeHudColorProofEnabled() || !ensureHudColorObjects(s)) {
         s.pendingHudDraws.clear();
         return draws;
@@ -814,11 +1042,51 @@ uint32_t recordPendingHudColorProof(EnginePresentVk::Impl& s, VkCommandBuffer cb
 
     std::vector<HudColorGpuVertex> triVerts;
     std::vector<HudColorGpuVertex> lineVerts;
+    std::vector<HudTexGpuVertex> texVerts;
+    struct TexDraw {
+        uint32_t first = 0;
+        uint32_t count = 0;
+        VkDescriptorSet set = VK_NULL_HANDLE;
+        uint32_t width = 0;
+        uint32_t height = 0;
+        uint32_t textMode = 0;
+        uint32_t foreground = 0;
+    };
+    std::vector<TexDraw> texDraws;
     uint32_t triDraws = 0;
     uint32_t lineDraws = 0;
+    uint32_t textureUploads = 0;
     for (const VkHudDraw& d : s.pendingHudDraws) {
-        if (d.textureHandle != 0)
+        if (d.textureHandle != 0) {
+            if (!ensureHudTexObjects(s))
+                continue;
+            auto* mirror = ensureHudTextureMirror(s, d, &textureUploads);
+            if (!mirror || !mirror->set)
+                continue;
+            TexDraw td;
+            td.first = (uint32_t)texVerts.size();
+            td.set = mirror->set;
+            td.width = mirror->width;
+            td.height = mirror->height;
+            td.textMode = (d.kind == 3) ? 1u : 0u;
+            td.foreground = d.foregroundColor;
+            auto addTex = [&](const VkHudVertex& v) {
+                texVerts.push_back({v.x, v.y, v.argb, v.u, v.v});
+            };
+            if ((d.kind == 0 || d.kind == 3) && d.vertices.size() >= 4) {
+                for (size_t i = 0; i + 3 < d.vertices.size(); i += 4) {
+                    addTex(d.vertices[i + 0]); addTex(d.vertices[i + 1]); addTex(d.vertices[i + 2]);
+                    addTex(d.vertices[i + 0]); addTex(d.vertices[i + 2]); addTex(d.vertices[i + 3]);
+                }
+            } else if (d.kind == 2) {
+                for (const VkHudVertex& v : d.vertices)
+                    addTex(v);
+            }
+            td.count = (uint32_t)texVerts.size() - td.first;
+            if (td.count != 0)
+                texDraws.push_back(td);
             continue;
+        }
         if (d.kind != 1 && d.kind != 2)
             continue;
         std::vector<HudColorGpuVertex>& dst = (d.kind == 1) ? lineVerts : triVerts;
@@ -832,19 +1100,35 @@ uint32_t recordPendingHudColorProof(EnginePresentVk::Impl& s, VkCommandBuffer cb
 
     const size_t triBytes = triVerts.size() * sizeof(HudColorGpuVertex);
     const size_t lineBytes = lineVerts.size() * sizeof(HudColorGpuVertex);
-    const VkDeviceSize totalBytes = (VkDeviceSize)(triBytes + lineBytes);
-    if (totalBytes == 0 || !ensureHudColorVertexBuffer(s, totalBytes)) {
+    const size_t texBytes = texVerts.size() * sizeof(HudTexGpuVertex);
+    const VkDeviceSize colorBytes = (VkDeviceSize)(triBytes + lineBytes);
+    if (colorBytes != 0 && !ensureHudColorVertexBuffer(s, colorBytes)) {
         s.pendingHudDraws.clear();
         return draws;
     }
-    void* mapped = nullptr;
-    if (vkMapMemory(s.dev, s.hudColorVertexMem, 0, totalBytes, 0, &mapped) != VK_SUCCESS) {
+    if (texBytes != 0 && !ensureHudTexVertexBuffer(s, (VkDeviceSize)texBytes)) {
         s.pendingHudDraws.clear();
         return draws;
     }
-    if (triBytes) std::memcpy(mapped, triVerts.data(), triBytes);
-    if (lineBytes) std::memcpy((uint8_t*)mapped + triBytes, lineVerts.data(), lineBytes);
-    vkUnmapMemory(s.dev, s.hudColorVertexMem);
+    if (colorBytes != 0) {
+        void* mapped = nullptr;
+        if (vkMapMemory(s.dev, s.hudColorVertexMem, 0, colorBytes, 0, &mapped) != VK_SUCCESS) {
+            s.pendingHudDraws.clear();
+            return draws;
+        }
+        if (triBytes) std::memcpy(mapped, triVerts.data(), triBytes);
+        if (lineBytes) std::memcpy((uint8_t*)mapped + triBytes, lineVerts.data(), lineBytes);
+        vkUnmapMemory(s.dev, s.hudColorVertexMem);
+    }
+    if (texBytes != 0) {
+        void* mapped = nullptr;
+        if (vkMapMemory(s.dev, s.hudTexVertexMem, 0, (VkDeviceSize)texBytes, 0, &mapped) != VK_SUCCESS) {
+            s.pendingHudDraws.clear();
+            return draws;
+        }
+        std::memcpy(mapped, texVerts.data(), texBytes);
+        vkUnmapMemory(s.dev, s.hudTexVertexMem);
+    }
 
     VkRenderPassBeginInfo rp{VK_STRUCTURE_TYPE_RENDER_PASS_BEGIN_INFO};
     rp.renderPass = s.hudColorRenderPass;
@@ -873,8 +1157,30 @@ uint32_t recordPendingHudColorProof(EnginePresentVk::Impl& s, VkCommandBuffer cb
         vkCmdBindVertexBuffers(cb, 0, 1, &s.hudColorVertexBuf, &offset);
         vkCmdDraw(cb, (uint32_t)lineVerts.size(), 1, 0, 0);
     }
+    if (!texDraws.empty()) {
+        VkDeviceSize texOffset = 0;
+        vkCmdBindPipeline(cb, VK_PIPELINE_BIND_POINT_GRAPHICS, s.hudTexPipe);
+        vkCmdBindVertexBuffers(cb, 0, 1, &s.hudTexVertexBuf, &texOffset);
+        for (const TexDraw& td : texDraws) {
+            HudTexPush pc{};
+            pc.extent[0] = (float)s.imgW;
+            pc.extent[1] = (float)s.imgH;
+            pc.texW = td.width;
+            pc.texH = td.height;
+            pc.textMode = td.textMode;
+            pc.foreground = td.foreground;
+            vkCmdBindDescriptorSets(cb, VK_PIPELINE_BIND_POINT_GRAPHICS, s.hudTexLayout,
+                                    0, 1, &td.set, 0, nullptr);
+            vkCmdPushConstants(cb, s.hudTexLayout,
+                               VK_SHADER_STAGE_VERTEX_BIT | VK_SHADER_STAGE_FRAGMENT_BIT,
+                               0, sizeof(pc), &pc);
+            vkCmdDraw(cb, td.count, 1, td.first, 0);
+        }
+    }
     vkCmdEndRenderPass(cb);
-    if (nativeDraws) *nativeDraws = triDraws + lineDraws;
+    if (nativeDraws) *nativeDraws = triDraws + lineDraws + (uint32_t)texDraws.size();
+    if (texturedDraws) *texturedDraws = (uint32_t)texDraws.size();
+    if (textureUploadsOut) *textureUploadsOut = textureUploads;
     s.pendingHudDraws.clear();
     return draws;
 }
@@ -1406,12 +1712,20 @@ bool EnginePresentVk::presentGLFrame(uint32_t glDrawableW, uint32_t glDrawableH,
                 VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT,
                 VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT);
         uint32_t hudColorDraws = 0;
-        if (uint32_t hudDraws = recordPendingHudColorProof(s, s.cbuf, &hudColorDraws)) {
+        uint32_t hudTexturedDraws = 0;
+        uint32_t hudTextureUploads = 0;
+        if (uint32_t hudDraws = recordPendingHudColorProof(s, s.cbuf, &hudColorDraws,
+                                                           &hudTexturedDraws,
+                                                           &hudTextureUploads)) {
             health_.hud_vk_draws_last = hudDraws;
             ++health_.hud_vk_consumed_frames;
             health_.hud_vk_color_draws_last = hudColorDraws;
             if (hudColorDraws != 0)
                 ++health_.hud_vk_color_frames;
+            health_.hud_vk_textured_draws_last = hudTexturedDraws;
+            if (hudTexturedDraws != 0)
+                ++health_.hud_vk_textured_frames;
+            health_.hud_vk_texture_uploads += hudTextureUploads;
         }
         if (recordPendingImgui(s, s.cbuf))
             ++health_.imgui_vk_frames;
@@ -1649,6 +1963,19 @@ void EnginePresentVk::destroy() {
         if (s.hudColorFrag) { vkDestroyShaderModule(s.dev, s.hudColorFrag, nullptr); s.hudColorFrag = VK_NULL_HANDLE; }
         if (s.hudColorVertexBuf) { vkDestroyBuffer(s.dev, s.hudColorVertexBuf, nullptr); s.hudColorVertexBuf = VK_NULL_HANDLE; }
         if (s.hudColorVertexMem) { vkFreeMemory(s.dev, s.hudColorVertexMem, nullptr); s.hudColorVertexMem = VK_NULL_HANDLE; }
+        if (s.hudTexPipe) { vkDestroyPipeline(s.dev, s.hudTexPipe, nullptr); s.hudTexPipe = VK_NULL_HANDLE; }
+        if (s.hudTexLayout) { vkDestroyPipelineLayout(s.dev, s.hudTexLayout, nullptr); s.hudTexLayout = VK_NULL_HANDLE; }
+        if (s.hudTexVert) { vkDestroyShaderModule(s.dev, s.hudTexVert, nullptr); s.hudTexVert = VK_NULL_HANDLE; }
+        if (s.hudTexFrag) { vkDestroyShaderModule(s.dev, s.hudTexFrag, nullptr); s.hudTexFrag = VK_NULL_HANDLE; }
+        if (s.hudTexVertexBuf) { vkDestroyBuffer(s.dev, s.hudTexVertexBuf, nullptr); s.hudTexVertexBuf = VK_NULL_HANDLE; }
+        if (s.hudTexVertexMem) { vkFreeMemory(s.dev, s.hudTexVertexMem, nullptr); s.hudTexVertexMem = VK_NULL_HANDLE; }
+        for (auto& kv : s.hudTextureMirrors) {
+            if (kv.second.buffer) vkDestroyBuffer(s.dev, kv.second.buffer, nullptr);
+            if (kv.second.memory) vkFreeMemory(s.dev, kv.second.memory, nullptr);
+        }
+        s.hudTextureMirrors.clear();
+        if (s.hudTexPool) { vkDestroyDescriptorPool(s.dev, s.hudTexPool, nullptr); s.hudTexPool = VK_NULL_HANDLE; }
+        if (s.hudTexDsl) { vkDestroyDescriptorSetLayout(s.dev, s.hudTexDsl, nullptr); s.hudTexDsl = VK_NULL_HANDLE; }
         if (s.hudColorRenderPass) { vkDestroyRenderPass(s.dev, s.hudColorRenderPass, nullptr); s.hudColorRenderPass = VK_NULL_HANDLE; }
         destroyCompositeFramebuffer(s);
         if (s.compositePipe) { vkDestroyPipeline(s.dev, s.compositePipe, nullptr); s.compositePipe = VK_NULL_HANDLE; }
@@ -1689,6 +2016,7 @@ void EnginePresentVk::logHealth() const {
         "composite_vk_frames=%u hud_vk_queued_frames=%u hud_vk_consumed_frames=%u "
         "hud_vk_draws_last=%u hud_vk_textured_last=%u hud_vk_serialized_last=%u "
         "hud_vk_color_frames=%u hud_vk_color_draws_last=%u "
+        "hud_vk_textured_frames=%u hud_vk_textured_draws_last=%u hud_vk_texture_uploads=%u "
         "imgui_vk_ready=%d imgui_vk_frames=%u "
         "last_direct_fbo=%u "
         "fallback_reason=\"%s\"\n",
@@ -1706,6 +2034,8 @@ void EnginePresentVk::logHealth() const {
         health_.hud_vk_draws_last, health_.hud_vk_textured_last,
         health_.hud_vk_serialized_last,
         health_.hud_vk_color_frames, health_.hud_vk_color_draws_last,
+        health_.hud_vk_textured_frames, health_.hud_vk_textured_draws_last,
+        health_.hud_vk_texture_uploads,
         health_.imgui_vk_ready ? 1 : 0, health_.imgui_vk_frames,
         health_.last_direct_fbo,
         health_.fallback_reason.empty() ? "" : health_.fallback_reason.c_str());
