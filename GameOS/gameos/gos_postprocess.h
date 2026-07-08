@@ -506,47 +506,15 @@ public:
     struct VulkanOobFogIsland;   // defined in vulkan_oob_fog_island.cpp
     VulkanOobFogIsland* vkOobFogIsland_ = nullptr;
 
-    // VULKAN-POSTPROCESS-SUBGRAPH-1: the Layer-4 milestone -- fuse the EdgeFog +
-    // OOB-fog islands into ONE native Vulkan subgraph. A Vulkan-owned intermediate
-    // color image is copied in from GL sceneColor ONCE, blended by BOTH fog passes
-    // (edge then oob) in ONE render pass / ONE subpass / TWO draws (NO CPU readback
-    // between the two passes, 2 fewer copies than running both islands), then copied
-    // back to GL ONCE. Opaque pointer only -- no Vulkan headers leak into this header.
-    //
-    // vulkanPostprocessSubgraphEnabled(): reads MC2_VULKAN_POSTPROCESS_SUBGRAPH once,
-    // lazily inits the device on first call; false on failure -> GL fallback (BOTH GL
-    // fog passes run). runPostprocessSubgraph(): per-frame fused GL->Vulkan->GL edge+
-    // oob composite (does BOTH fog effects). destroyVulkanPostprocessSubgraph(): torn
-    // down from destroy().
-    bool  vulkanPostprocessSubgraphEnabled();
-    // POSTPROCESS-VULKAN-BACKEND-OPT-IN: the env-gate-FREE half of
-    // vulkanPostprocessSubgraphEnabled() -- lazy init + size-match + device-validity,
-    // with NO MC2_VULKAN_POSTPROCESS_SUBGRAPH check. Returns true iff the subgraph is
-    // ready to render THIS frame. Both the standalone gate path (after its env check)
-    // and the region-iface Vulkan backend (whose backend=vk selection IS the enable
-    // signal) route through this, so backend=vk runs Vulkan without the subgraph gate.
-    bool  postprocessSubgraphReadyForRegion();
-    void  runPostprocessSubgraph();
-    // P2 (MC2_VULKAN_POSTPROCESS_SUBGRAPH_INTEROP): the zero-copy COLOR-boundary variant
-    // of runPostprocessSubgraph(). Dispatched from runPostprocessSubgraph() when the
-    // subgraph's shared exportable color VkImageResource + GlInteropView are active. The
-    // already-fused VK<->VK 2-draw/1-render-pass chain is UNCHANGED; only the INPUT (scene
-    // color in) and OUTPUT (fog result out) boundaries are on the interop seam instead of
-    // glGetTexImage/vkCmdCopyImageToBuffer/glTexSubImage2D. Depth stays readback (P5 scope).
-    void  runPostprocessSubgraphInterop();
-    void  destroyVulkanPostprocessSubgraph();
-
     // RENDER-BACKEND-REGION-IFACE-1 (1C): Vulkan impl of runRegion for the
-    // PostprocessFog region. Returns false (fail-soft) if the subgraph is
+    // PostprocessFog region. Returns false (fail-soft) if native fog is
     // unavailable/failed this frame -> caller runs the GL wrapper (FallbackGL).
-    // On success runs runPostprocessSubgraph() and reports impl=VulkanSubgraph
-    // with vkDraws=2. Never crashes. Defined in gos_postprocess.cpp under the
+    // On success runs runVkPostFogNative() and reports two VK fog draws. Never
+    // crashes. Defined in gos_postprocess.cpp under the
     // same #ifdef; the neutral context values already match the subgraph's
     // EXACT uploads (both pull from the same members).
     bool  runFogRegionVulkanBackend(const RenderCore::PostprocessFogRegionContext& ctx,
                                      RenderCore::RegionOutput* out);
-    struct VulkanPostprocessSubgraph;   // defined in vulkan_postprocess_subgraph.cpp
-    VulkanPostprocessSubgraph* vkPostprocessSubgraph_ = nullptr;
 
     // VK-POST-FOG-NATIVE-1 (rung 8.1, .claude/VK-RUNG8-LADDER-1.md): the fog pair
     // (edge + oob) rendered NATIVELY on the shared engine VulkanContext, sampling

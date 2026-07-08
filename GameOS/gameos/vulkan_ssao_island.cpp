@@ -1223,8 +1223,7 @@ bool build_island(gosPostProcess::VulkanSSAOIsland* s, int fullW, int fullH, int
 // ---------------------------------------------------------------------------
 // ssaoRegionVulkanReady(): POSTPROCESS-VULKAN-BACKEND-OPT-IN-style readiness --
 // lazy device init, size-match rebuild, fail-soft self-disable, NO env-gate
-// check (backend=vk selection IS the enable signal; mirrors
-// postprocessSubgraphReadyForRegion() exactly).
+// check (backend=vk selection IS the enable signal; mirrors`r`n// the region-backend fail-soft pattern).
 // ---------------------------------------------------------------------------
 bool gosPostProcess::ssaoRegionVulkanReady()
 {

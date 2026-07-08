@@ -133,8 +133,7 @@ VkShaderModule load_spv(VkDevice device, const std::string& path) {
     return mod;
 }
 
-// std140 PODs — BYTE-IDENTICAL to vulkan_postprocess_subgraph.cpp's (same shaders,
-// same offsets; offline-checked by check_ubo_layout.py postfog_edge/postfog_oob).
+// std140 PODs for the same edge/oob fog shaders as the retired subgraph path;`r`n// offsets are offline-checked by check_ubo_layout.py postfog_edge/postfog_oob.
 struct EdgeFogParams {
     float invViewProj[16];     // off 0  (same 16 floats the GL path uploads, GL_FALSE)
     float u_fogColor[3];       // off 64

@@ -1625,14 +1625,11 @@ def main():
                             # Same allowlist rationale -- without these Popen drops
                             # them and the gate-ON / forced-fallback smoke silently
                             # runs the GL edge+oob fog path instead.
-                            "MC2_VULKAN_POSTPROCESS_SUBGRAPH",
-                            "MC2_VULKAN_POSTPROCESS_SUBGRAPH_FORCE_FALLBACK",
                             # VK-INTEROP-BRIDGE-1 P2: the fused subgraph's COLOR
                             # boundaries on the zero-copy interop seam (default OFF,
                             # fail-soft to the subgraph readback path). Without this in
                             # the allowlist Popen drops it and the gate-ON interop smoke
                             # silently runs the subgraph readback path (gate inert).
-                            "MC2_VULKAN_POSTPROCESS_SUBGRAPH_INTEROP",
                             # VK-INTEROP-BRIDGE-1 P3: the SSAO island's COLOR I/O on the
                             # zero-copy interop seam (pass2 scene color + blended color;
                             # depth+normal stay readback = P5 scope). Default OFF, fail-soft

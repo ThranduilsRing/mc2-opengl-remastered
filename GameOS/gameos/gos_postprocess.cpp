@@ -845,8 +845,6 @@ void gosPostProcess::destroy()
     destroyVulkanEdgeFogIsland();
     // VULKAN-OOB-FOG-ISLAND-1: same teardown for the OOB-fog island.
     destroyVulkanOobFogIsland();
-    // VULKAN-POSTPROCESS-SUBGRAPH-1: same teardown for the fused subgraph.
-    destroyVulkanPostprocessSubgraph();
     // VK-POST-FOG-NATIVE-1 (rung 8.1): same teardown for the native fog pass.
     // (destroyFBOs also tears it down on resize; this covers final shutdown —
     // destroy() runs after destroyFBOs, so this is usually a no-op that also
@@ -3147,18 +3145,9 @@ unsigned int gosPostProcess::resolveRegionResource(RenderCore::RenderResourceId 
 }
 
 #ifdef MC2_VULKAN_ISLAND
-// 1C: Vulkan impl of the PostprocessFog region. Reuses the shipped, parity-proven
-// subgraph. POSTPROCESS-VULKAN-BACKEND-OPT-IN: the region-iface routing backend=vk
-// IS the enable signal for Vulkan -- so this DECOUPLES from the standalone subgraph
-// gate. It invokes postprocessSubgraphReadyForRegion() (lazy init + fail-soft, NO
-// MC2_VULKAN_POSTPROCESS_SUBGRAPH check), NOT vulkanPostprocessSubgraphEnabled().
-// Fail-soft: readiness returns false ONLY on a genuine device/init failure (and
-// self-disables), so we return false -> caller runs GL (FallbackGL = real failure,
-// not "gate off"). The standalone MC2_VULKAN_POSTPROCESS_SUBGRAPH path stays
-// independently runnable (that gate still routes through the same readiness half).
-// The neutral ctx values already equal the subgraph's EXACT member-sourced uploads,
-// so no data is threaded through here — the ctx is carried for contract symmetry
-// and resolver exercise.
+// 1C: Vulkan impl of the PostprocessFog region. The region iface's backend=vk
+// selector now routes to the rung-8.1 shared-GBuffer native fog path. Fail-soft:
+// any not-ready native condition returns false so the caller runs GL.
 bool gosPostProcess::runFogRegionVulkanBackend(
     const RenderCore::PostprocessFogRegionContext& ctx,
     RenderCore::RegionOutput* out)
@@ -3182,13 +3171,12 @@ bool gosPostProcess::runFogRegionVulkanBackend(
                    out->glPassesRun = 0; out->vkDraws = 0; }
         return false;
     }
-    if (!postprocessSubgraphReadyForRegion()) {
+    if (!runVkPostFogNative()) {
         if (out) { out->impl = RenderCore::RenderRegionImpl::None;
-                   out->fallbackReason = "vk_device_init_failed";
+                   out->fallbackReason = "vk_native_fog_not_ready";
                    out->glPassesRun = 0; out->vkDraws = 0; }
         return false;
     }
-    runPostprocessSubgraph();   // does BOTH fog effects in ONE Vulkan render pass
     if (out) { out->impl = RenderCore::RenderRegionImpl::VulkanSubgraph;
                out->fallbackReason = ""; out->glPassesRun = 0; out->vkDraws = 2; }
     return true;
@@ -3257,9 +3245,7 @@ struct GlFogRegionBackend final : RenderCore::IRenderBackend {
 
 } // namespace
 
-// C-linkage accessor for the debug-state dump (region-selection health). Mirrors
-// the mc2_vulkan_postprocess_subgraph_health pattern; always compiled (no #ifdef)
-// because the region iface exists on every build.
+// C-linkage accessor for the debug-state dump (region-selection health). Always`r`n// compiled because the region iface exists on every build.
 extern "C" void mc2_render_backend_region_health(
     int* ifaceGateOn, const char** requestedBackend, int* lastImpl,
     const char** lastFallbackReason, int* lastGlPassesRun, int* lastVkDraws,
@@ -4110,26 +4096,15 @@ void gosPostProcess::endScene()
         runFogRegionThroughBackend();   // does BOTH edge + oob (GL wrapper or VK subgraph)
     } else {
 #ifdef MC2_VULKAN_ISLAND
-    // VULKAN-POSTPROCESS-SUBGRAPH-1: gate precedence (correctness-critical). When
-    // MC2_VULKAN_POSTPROCESS_SUBGRAPH=1 and lazy init succeeded, run the FUSED
-    // subgraph ONCE here (it does BOTH edge fog AND oob fog in one Vulkan render
-    // pass), and set subgraphRanThisFrame so the OOB-fog site below SKIPS entirely
-    // (no GL, no island) -- otherwise oob would double-apply. The subgraph, the
-    // EdgeFog island, and the OOB island must NEVER all fire; precedence is:
-    //   subgraph  >  per-pass island  >  GL.
-    // VULKAN-EDGE-FOG-ISLAND-2a: else route the edge-fog composite through the
+    // VULKAN-EDGE-FOG-ISLAND-2a: route the edge-fog composite through the
     // per-pass Vulkan island when MC2_VULKAN_EDGE_FOG_ISLAND=1. Otherwise GL.
     // VK-POST-FOG-NATIVE-1 (rung 8.1): HIGHEST precedence at the fog site. When
     // MC2_VK_POST_FOG_NATIVE=1 and the shared-GBuffer substrate is live, BOTH fog
     // effects render natively on the shared engine context (zero copies, zero
     // readbacks) and BOTH GL sites are skipped. runVkPostFogNative() returns false
-    // on ANY not-ready condition -> the unchanged subgraph/island/GL chain below
-    // runs (fail-soft). Precedence: native > subgraph > per-pass island > GL.
+    // on ANY not-ready condition -> the unchanged island/GL chain below
+    // runs (fail-soft). Precedence: native > per-pass island > GL.
     if (vkPostFogNativeEnabled() && runVkPostFogNative()) {
-        subgraphRanThisFrame = true;    // -> OOB site is skipped below (no double-apply)
-    } else
-    if (vulkanPostprocessSubgraphEnabled()) {
-        runPostprocessSubgraph();       // does BOTH fog effects
         subgraphRanThisFrame = true;    // -> OOB site is skipped below (no double-apply)
     } else if (vulkanEdgeFogIslandEnabled()) { runEdgeFogVulkan(); } else
 #endif
@@ -4148,11 +4123,10 @@ void gosPostProcess::endScene()
         // region iface did edge+oob; nothing to do here.
     } else {
 #ifdef MC2_VULKAN_ISLAND
-    // VULKAN-POSTPROCESS-SUBGRAPH-1: if the fused subgraph already ran this frame it
-    // ALSO did the oob fog, so this site is skipped ENTIRELY (no GL, no island) --
-    // the explicit, unmissable no-double-apply guard.
+    // If native fog already ran this frame it ALSO did the oob fog, so this site
+    // is skipped entirely (no GL, no island).
     if (subgraphRanThisFrame) {
-        // subgraph did edge+oob; nothing to do here.
+        // native fog did edge+oob; nothing to do here.
     } else
     // VULKAN-OOB-FOG-ISLAND-1: route the OOB-fog composite through the Vulkan
     // island when MC2_VULKAN_OOB_FOG_ISLAND=1 and lazy init succeeded. Otherwise

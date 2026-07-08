@@ -1174,7 +1174,6 @@ int main(int argc, char** argv)
         {
             const char* kInteropGates[] = {
                 "MC2_VK_INTEROP_BRIDGE",
-                "MC2_VULKAN_POSTPROCESS_SUBGRAPH_INTEROP",
                 "MC2_VK_SSAO_INTEROP",
             };
             for (const char* g : kInteropGates) {

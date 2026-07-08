@@ -108,16 +108,6 @@ extern "C" void mc2_vulkan_oob_island_health(
     unsigned long* oobFogAttempted, unsigned long* oobFogUsedVulkan,
     const char** fallbackReason,
     double* readbackUs, double* copyDepthUs, double* renderUs);
-// VULKAN-POSTPROCESS-SUBGRAPH-1: fused Layer-4 subgraph health snapshot (defined in
-// GameOS/gameos/vulkan_postprocess_subgraph.cpp, same #ifdef MC2_VULKAN_ISLAND).
-extern "C" void mc2_vulkan_postprocess_subgraph_health(
-    int* vulkanAvailable, int* buildEnabled, int* runtimeGate,
-    const char** deviceName, unsigned long* validationErrors,
-    unsigned long* attempted, unsigned long* usedVulkan,
-    const char** fallbackReason,
-    unsigned long* expectedGlReplaced, unsigned long* vkDraws, unsigned long* glSkipped,
-    double* copyDepthUs, double* copyColorInUs, double* edgeFogDrawUs,
-    double* oobFogDrawUs, double* colorOutUs, double* totalUs);
 // VK-POST-FOG-NATIVE-1 (rung 8.1): native fog pair health snapshot (defined in
 // GameOS/gameos/vulkan_post_fog_native.cpp, same #ifdef MC2_VULKAN_ISLAND).
 extern "C" void mc2_vk_post_fog_native_health(
@@ -839,43 +829,6 @@ std::string buildSnapshotJson(const RenderSnapshot& snap,
         s << "    \"readback_us\": " << rbUs << ",\n";
         s << "    \"copy_depth_us\": " << cdUs << ",\n";
         s << "    \"render_us\": " << rUs << "\n";
-        s << "  }\n";
-    }
-    // VULKAN-POSTPROCESS-SUBGRAPH-1: additive "vulkan_postprocess_subgraph" section
-    // (same build64_island-only discipline). Byte-identical when the whole block is
-    // #ifdef'd out; zeros when compiled but the runtime gate is OFF. Includes the
-    // equivalence counters so a silent double-apply (vk_draws + a GL fog pass) is
-    // catchable, and the Layer-4 per-step timings.
-    {
-        int va = 0, be = 0, rg = 0;
-        const char* dev = "";
-        const char* fbr = "";
-        unsigned long ve = 0, att = 0, used = 0;
-        unsigned long expRepl = 0, vkDraws = 0, glSkip = 0;
-        double cdUs = 0.0, cciUs = 0.0, efUs = 0.0, ofUs = 0.0, coUs = 0.0, totUs = 0.0;
-        mc2_vulkan_postprocess_subgraph_health(&va, &be, &rg, &dev, &ve, &att, &used, &fbr,
-                                               &expRepl, &vkDraws, &glSkip,
-                                               &cdUs, &cciUs, &efUs, &ofUs, &coUs, &totUs);
-        s << "  ,\n";
-        s << "  \"vulkan_postprocess_subgraph\": {\n";
-        s << "    \"vulkan_available\": " << va << ",\n";
-        s << "    \"build_enabled\": " << be << ",\n";
-        s << "    \"runtime_gate_enabled\": " << rg << ",\n";
-        s << "    \"device_name\": \"" << jsonEscape(dev) << "\",\n";
-        s << "    \"validation_errors\": " << ve << ",\n";
-        s << "    \"subgraph_attempted\": " << att << ",\n";
-        s << "    \"subgraph_used_vulkan\": " << used << ",\n";
-        s << "    \"subgraph_fallback_reason\": \"" << jsonEscape(fbr) << "\",\n";
-        s << "    \"expected_gl_passes_replaced\": " << expRepl << ",\n";
-        s << "    \"actual_vk_draws\": " << vkDraws << ",\n";
-        s << "    \"actual_gl_fallback_passes_skipped\": " << glSkip << ",\n";
-        s << "    \"subgraph_draw_count\": " << vkDraws << ",\n";
-        s << "    \"copy_depth_us\": " << cdUs << ",\n";
-        s << "    \"copy_color_in_us\": " << cciUs << ",\n";
-        s << "    \"edgefog_draw_us\": " << efUs << ",\n";
-        s << "    \"oobfog_draw_us\": " << ofUs << ",\n";
-        s << "    \"color_out_us\": " << coUs << ",\n";
-        s << "    \"total_subgraph_us\": " << totUs << "\n";
         s << "  }\n";
     }
     // VK-POST-FOG-NATIVE-1 (rung 8.1): additive "vk_post_fog_native" section —
