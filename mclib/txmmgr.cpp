@@ -3348,13 +3348,13 @@ void MC_TextureManager::renderLists (void)
 				ZoneScopedN("GpuSP.BatcherFlush");
 				TracyGpuZone("GpuSP.BatcherFlush");
 #ifdef MC2_VULKAN_ISLAND
-				// VK-P11 STATIC-PROP COLOR (gate MC2_VK_PROP_COLOR_INTEROP, default-OFF):
-				// when armed, render the visible static-prop color instances in Vulkan into
-				// an exportable RGBA16F and GL-composite it over MainColor INSTEAD of the GL
-				// flush() color draws. The island pulls its per-frame instance feed from the
-				// batcher (s_bucketsByType still populated here because we skip flush()). On
-				// success skip the GL flush; on any fail-soft (0) fall through to GL so props
-				// still draw. Gate OFF -> enabled()==0 -> GL flush() as before (byte-identical).
+				// VK-P11 STATIC-PROP COLOR Tier-1 (gate MC2_VK_PROP_COLOR_TIER1):
+				// render visible static-prop color instances directly into the shared
+				// scene GBuffer in Vulkan instead of the GL flush() color draws. The
+				// island pulls its per-frame instance feed from the batcher
+				// (s_bucketsByType still populated here because we skip flush()). On
+				// success skip the GL flush; on any fail-soft (0) fall through to GL so
+				// props still draw. Gate OFF -> enabled()==0 -> GL flush() as before.
 				bool vkPropColorHandled = false;
 				if (mc2_vk_color_prop_island_enabled()) {
 					ZoneScopedN("GpuSP.VkColorPropInterop");
