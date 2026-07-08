@@ -1245,10 +1245,11 @@ bar is stricter than current code:
   `vulkan_hzb_island.cpp`, and the edge/oob fog islands are now bypassed by the
   native rung-8 gates during the verified shared-GBuffer smoke, but they still
   compile as default-off fallback/oracle paths.
-- `gl_interop_view.*`, `gl_interop_buffer_view.*`, and the Win32 external
-  memory/semaphore extensions are still required by the shared scene
-  color/depth/present substrates while GL continues to produce composite/HUD
-  pixels.
+- `gl_interop_view.*` and the Win32 external image memory/semaphore extensions
+  are still required by the shared scene color/depth/present substrates while
+  GL continues to produce composite/HUD pixels. The unused buffer interop seam
+  (`vk_gl_shared_buffer.*` / `gl_interop_buffer_view.*`) was deleted after rung
+  8.7j because no live path includes or calls it.
 
 Next real coding slices:
 1. 8.6f native GameOS HUD replay: render the queued scaled `hudBatch_` in

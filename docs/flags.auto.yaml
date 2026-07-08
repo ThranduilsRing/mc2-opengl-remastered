@@ -6441,14 +6441,6 @@ flags:
     registered: no
     in_smoke_passthrough: yes
     documented_in_tier1_env_vars: yes
-  - name: MC2_VK_SHARED_BUFFER_SELFTEST
-    default: unknown
-    declared_in: null
-    referenced_at:
-      - GameOS/gameos/gl_interop_buffer_view.h:68
-    registered: no
-    in_smoke_passthrough: no
-    documented_in_tier1_env_vars: no
   - name: MC2_VK_TERRAIN_COPY_STATS
     default: unknown
     declared_in: null
