@@ -1171,27 +1171,6 @@ int main(int argc, char** argv)
         // so it does NOT hit the global-dispatch collision and must NOT be coerced off —
         // water + present coexist on the one shared device. Only add SELF-CREATING-device
         // gates here.
-        {
-            const char* kInteropGates[] = {
-                "MC2_VK_SSAO_INTEROP",
-            };
-            for (const char* g : kInteropGates) {
-                const char* v = getenv(g);
-                const bool on = (v && v[0] && v[0] != '0');
-                if (on) {
-                    printf("[RENDER_BACKEND] R2 interlock: engine Vulkan context active; "
-                           "coercing postprocess-interop island gate %s=%s -> OFF "
-                           "(global volk dispatch collision guard).\n", g, v);
-                    fflush(stdout);
-#if defined(_MSC_VER)
-                    _putenv_s(g, "0");
-#else
-                    setenv(g, "0", 1);
-#endif
-                }
-            }
-        }
-
         // Interop-capable device: request the external-memory/-semaphore exts so
         // P6/P8/P14 can import/export shared images against this device.
         mc2vk::VulkanContext& vkctx = mc2vk::getOrCreateEngineVulkanContext();

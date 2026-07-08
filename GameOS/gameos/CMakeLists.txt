@@ -117,11 +117,6 @@ if(MC2_VULKAN)
     # to vulkan-1.dll). Only compiled when MC2_VULKAN=ON.
     list(APPEND SOURCES "${CMAKE_SOURCE_DIR}/3rdparty/volk/volk.c")
     if(MC2_VULKAN_ISLAND)
-        # VK-REGION-SSAO-1: the SSAO island (first NEW region through runRegion
-        # beyond fog). Same #ifdef MC2_VULKAN_ISLAND discipline; layout-affecting
-        # header members (vkSSAOIsland_ + method decls) added under the same
-        # macro, already propagated to all consumers by the root ODR-harden block.
-        list(APPEND SOURCES vulkan_ssao_island.cpp)
         # VK-P9a WATER-INTEROP: the water island — FIRST Vulkan GEOMETRY region.
         # Renders the armed water fast-path mesh (base layer) in VK into an exportable
         # RGBA16F, GL composites into MainColor. Borrows the shared engine VulkanContext
@@ -151,7 +146,7 @@ if(MC2_VULKAN)
         # Gate MC2_VK_POST_SCREENFX default-OFF -> GL passes byte-identical.
         list(APPEND SOURCES vulkan_post_screenfx_native.cpp)
         # VK-POST-HZB-NATIVE-1 (rung 8.4): native HZB pyramid on the shared
-        # engine context; the old HZB island stays as fallback/oracle.
+        # engine context.
         list(APPEND SOURCES vulkan_post_hzb_native.cpp)
         # VK-P8a SHADOW-INTEROP: the shadow island — SECOND VK GEOMETRY region and
         # FIRST VK-PRODUCES-DEPTH region (water was GL-produces/VK-consumes; shadow
@@ -189,11 +184,6 @@ if(MC2_VULKAN)
         # MC2_VK_SHARED_SCENE_DEPTH) -> GL mech color flush byte-identical. extern "C"
         # entry points only (no layout-affecting header members).
         list(APPEND SOURCES vulkan_mech_island.cpp)
-        # VK-REGION-HZB-1: the HZB reduce-chain island (third region). Same
-        # #ifdef MC2_VULKAN_ISLAND discipline; layout-affecting header members
-        # (vkHzbIsland_ + method decls) added under the same macro, already
-        # propagated to all consumers by the root ODR-harden block.
-        list(APPEND SOURCES vulkan_hzb_island.cpp)
         # VK-INTEROP-BRIDGE-1 / T1+T2: the composable zero-copy GL<->VK interop SEAM.
         # vk_image_resource = GL-free raw-allocated exportable VkImage + double-buffered
         # sync (survives the future VK<->VK chain slice); gl_interop_view = the GL-boundary

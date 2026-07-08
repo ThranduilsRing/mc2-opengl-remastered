@@ -852,10 +852,6 @@ void gosPostProcess::destroy()
     destroyVkPostScreenFxNative();
     // VK-POST-HZB-NATIVE-1 (rung 8.4): same teardown for the native HZB pyramid.
     destroyVkPostHzbNative();
-    // VK-REGION-SSAO-1: same teardown for the SSAO island.
-    destroyVulkanSSAOIsland();
-    // VK-REGION-HZB-1: same teardown for the HZB island.
-    destroyVulkanHzbIsland();
 #endif
 
     // CLUSTER-DEPTH-PYRAMID-NATIVE-1: release the gated pass's GL resources.
@@ -2590,16 +2586,12 @@ bool gosPostProcess::runSSAORegionVulkanBackend(
                    out->glPassesRun = 0; out->vkDraws = 0; }
         return false;
     }
-    if (!ssaoRegionVulkanReady()) {
+    if (!vkPostSsaoNativeEnabled() || !runVkPostSsaoNative()) {
         if (out) { out->impl = RenderCore::RenderRegionImpl::None;
-                   out->fallbackReason = "vk_device_init_failed";
+                   out->fallbackReason = "vk_native_ssao_unavailable";
                    out->glPassesRun = 0; out->vkDraws = 0; }
         return false;
     }
-    // runSSAORegionVulkanBackend is only reached when the region-iface routes
-    // SSAO through Vulkan; the actual per-frame render is driven from the
-    // island (vulkan_ssao_island.cpp) via runSSAOVulkan(), called below.
-    runSSAOVulkan();
     if (out) { out->impl = RenderCore::RenderRegionImpl::VulkanSubgraph;
                out->fallbackReason = ""; out->glPassesRun = 0; out->vkDraws = 2; }
     return true;
@@ -3639,13 +3631,12 @@ bool gosPostProcess::runHzbRegionVulkanBackend(
                    out->glPassesRun = 0; out->vkDraws = 0; }
         return false;
     }
-    if (!hzbRegionVulkanReady()) {
+    if (!vkPostHzbNativeEnabled() || !runVkPostHzbNative()) {
         if (out) { out->impl = RenderCore::RenderRegionImpl::None;
-                   out->fallbackReason = "vk_device_init_failed";
+                   out->fallbackReason = "vk_native_hzb_unavailable";
                    out->glPassesRun = 0; out->vkDraws = 0; }
         return false;
     }
-    runHzbVulkan();
     if (out) { out->impl = RenderCore::RenderRegionImpl::VulkanSubgraph;
                out->fallbackReason = ""; out->glPassesRun = 0;
                out->vkDraws = hzbMipCount_; }

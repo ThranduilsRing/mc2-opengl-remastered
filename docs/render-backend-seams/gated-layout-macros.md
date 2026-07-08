@@ -20,22 +20,6 @@ Rule: a compile define that toggles a class-LAYOUT-affecting member/vtable/base 
 - Consuming targets: gameadapters, gameos, gameos_editor, gameos_main, gui_runtime, mclib, renderworld
 - Reached by define: gameadapters[gameadapters(PRIVATE)], gameos[gameos(PUBLIC)], gameos_editor[gameos_editor(PRIVATE)], gameos_main[gameos_main(PRIVATE)], gui_runtime[gui_runtime(PRIVATE)], mclib[mclib(PRIVATE)], renderworld[renderworld(PRIVATE)]
 
-## PASS  (`MC2_VULKAN_ISLAND`)
-
-- Header: `GameOS/gameos/gos_postprocess.h:509`
-- Class: `gosPostProcess`  (data-member)
-- Member: `VulkanSSAOIsland* vkSSAOIsland_ = nullptr;`
-- Consuming targets: gameadapters, gameos, gameos_editor, gameos_main, gui_runtime, mclib, renderworld
-- Reached by define: gameadapters[gameadapters(PRIVATE)], gameos[gameos(PUBLIC)], gameos_editor[gameos_editor(PRIVATE)], gameos_main[gameos_main(PRIVATE)], gui_runtime[gui_runtime(PRIVATE)], mclib[mclib(PRIVATE)], renderworld[renderworld(PRIVATE)]
-
-## PASS  (`MC2_VULKAN_ISLAND`)
-
-- Header: `GameOS/gameos/gos_postprocess.h:529`
-- Class: `gosPostProcess`  (data-member)
-- Member: `VulkanHzbIsland* vkHzbIsland_ = nullptr;`
-- Consuming targets: gameadapters, gameos, gameos_editor, gameos_main, gui_runtime, mclib, renderworld
-- Reached by define: gameadapters[gameadapters(PRIVATE)], gameos[gameos(PUBLIC)], gameos_editor[gameos_editor(PRIVATE)], gameos_main[gameos_main(PRIVATE)], gui_runtime[gui_runtime(PRIVATE)], mclib[mclib(PRIVATE)], renderworld[renderworld(PRIVATE)]
-
 ## PASS  (`MC2_VULKAN`)
 
 - Header: `GameOS/gameos/vulkan_backend_skeleton.h:162`

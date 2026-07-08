@@ -550,51 +550,13 @@ public:
     struct VkPostHzbNative;             // defined in vulkan_post_hzb_native.cpp
     VkPostHzbNative* vkPostHzbNative_ = nullptr;
 
-    // VK-REGION-SSAO-1: Vulkan impl of the PostprocessSSAO region -- the first
-    // NEW region grown through runRegion (beyond fog). Two internal draws
-    // (occlusion -> apply) across TWO Vulkan render passes (different targets
-    // + resolutions, so unlike the fog subgraph they cannot share one render
-    // pass); the half-res occlusion image stays a Vulkan-owned intermediate
-    // between them (no GL round-trip mid-region). Ports shaders/vulkan/ssao.
-    // {vert,frag} + ssao_apply.{vert,frag} -- a HAND PORT, NOT the baked
-    // shaders/spv/ssao.frag.default.*.spv artifact: that artifact (compiled
-    // for the GL glShaderBinary consumer, no explicit layout(binding=) in the
-    // GLSL source) decorates BOTH its samplers to (set=0,binding=0) -- a
-    // genuine descriptor-set collision, unusable by a Vulkan pipeline
-    // (verified via spirv-dis). See vulkan_ssao_island.cpp header comment.
-    // Fail-soft: returns false on device/init failure -> caller runs GL
-    // (FallbackGL). Never crashes.
-    bool  ssaoRegionVulkanReady();
+    // Retained region-interface entry points. The old private-device SSAO/HZB
+    // islands were retired after native rung-8 ports took ownership; these
+    // methods now delegate to the shared-engine native implementations.
     bool  runSSAORegionVulkanBackend(const RenderCore::PostprocessSSAORegionContext& ctx,
                                       RenderCore::RegionOutput* out);
-    void  runSSAOVulkan();
-    // VK-INTEROP-BRIDGE-1 P3: the zero-copy COLOR I/O interop per-frame path (pass2
-    // scene color + blended color on the shared exportable VkImageResource seam; depth
-    // + normal stay readback = P5 scope). Reached from runSSAOVulkan() when useInterop.
-    void  runSSAOVulkanInterop();
-    void  destroyVulkanSSAOIsland();
-    struct VulkanSSAOIsland;   // defined in vulkan_ssao_island.cpp
-    VulkanSSAOIsland* vkSSAOIsland_ = nullptr;
-
-    // VK-REGION-HZB-1: Vulkan impl of the PostprocessHzb region -- the reverse-Z
-    // Hi-Z pyramid reduce chain. N sequential fullscreen draws (level 0 seeds
-    // from bridged scene depth; level k 2x2-MIN-reduces level k-1), one
-    // SEPARATE R32_SFLOAT Vulkan image per level (mirrors GL: the ceil ladder
-    // is deliberately mip-incomplete, and Vulkan's mip dims are floor-halved so
-    // a single mipped image CANNOT represent it). The per-level render pass's
-    // external subpass dependency (COLOR_ATTACHMENT_WRITE -> FRAGMENT_SHADER
-    // READ) is the B13 per-mip barrier; the whole chain readback bridges into
-    // hzbLevelTex_[] so the GL probe cross-checks Vulkan-produced data.
-    // Hand-ports shaders/vulkan/hzb_reduce.{vert,frag} (same stopgap as ssao).
-    // Fail-soft: returns false on device/init failure -> caller runs GL
-    // (FallbackGL). Never crashes.
-    bool  hzbRegionVulkanReady();
     bool  runHzbRegionVulkanBackend(const RenderCore::PostprocessHzbRegionContext& ctx,
                                      RenderCore::RegionOutput* out);
-    void  runHzbVulkan();
-    void  destroyVulkanHzbIsland();
-    struct VulkanHzbIsland;   // defined in vulkan_hzb_island.cpp
-    VulkanHzbIsland* vkHzbIsland_ = nullptr;
 
     // L6.6-COMPOSITE-PRESENT-SCAFFOLD: Vulkan impl of the CompositePresent region.
     // Drives the persistent mc2vk::VulkanPresentObject (own separate window) --

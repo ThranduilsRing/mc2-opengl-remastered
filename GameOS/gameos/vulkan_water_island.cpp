@@ -1163,7 +1163,7 @@ void composite_water_onto_maincolor(WaterIsland* s, int w, int h) {
 // gameos_graphics.cpp:renderWaterFastPath + debug_state_dump.cpp).
 // ===========================================================================
 
-// Health accessor (mirrors mc2_vulkan_ssao_island_health).
+// Health accessor for debug_state_dump.cpp.
 extern "C" void mc2_render_backend_water_region_health(
     int* vulkanAvailable, int* buildEnabled, const char** deviceName,
     unsigned long* validationErrors, unsigned long* attempted, unsigned long* usedVulkan,

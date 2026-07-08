@@ -1,7 +1,6 @@
 // VK-POST-HZB-NATIVE-1 (rung 8.4) -- the HZB pyramid rendered natively on the
 // shared engine VulkanContext, sampling the shared scene depth directly and
-// writing one separate R32F image per ceil-ladder level. The old
-// vulkan_hzb_island.cpp stays in-tree as the fallback/oracle path.
+// writing one separate R32F image per ceil-ladder level.
 //
 // GATE: MC2_VK_POST_HZB - envTriState OPT-IN, default-OFF. Highest precedence
 // at the HZB site when MC2_HZB_BUILD=1. The native path is fail-soft: on any

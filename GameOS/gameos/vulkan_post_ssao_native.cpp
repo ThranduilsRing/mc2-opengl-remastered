@@ -136,8 +136,8 @@ VkShaderModule load_spv(VkDevice device, const std::string& path) {
     return mod;
 }
 
-// std140 PODs — BYTE-IDENTICAL to vulkan_ssao_island.cpp's (same shaders, same
-// offsets; offline-checked by check_ubo_layout.py ssaonat_occ / ssaonat_apply).
+// std140 PODs: byte-identical to the GL SSAO uploads; offline-checked by
+// check_ubo_layout.py ssaonat_occ / ssaonat_apply.
 // Matrices: COLUMN-major raw memcpy of inverseViewProj_/viewProj_ — the GL SSAO
 // path uploads them with a single glUniformMatrix4fv(GL_FALSE) (column-major
 // read); the ssao.frag UBO is column_major (default). See VK-SSAO-PARITY-FAIL-1.

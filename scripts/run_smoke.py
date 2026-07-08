@@ -1587,14 +1587,6 @@ def main():
                             "MC2_DETERMINISTIC_RNG",
                             "MC2_RNG_SEED",
                             "MC2_VULKAN_SPV_DIR",
-                            # VK-INTEROP-BRIDGE-1 P3: the SSAO island's COLOR I/O on the
-                            # zero-copy interop seam (pass2 scene color + blended color;
-                            # depth+normal stay readback = P5 scope). Default OFF, fail-soft
-                            # to the SSAO readback path. Requires the SSAO Vulkan backend
-                            # (MC2_SSAO=1 + MC2_POSTPROCESS_BACKEND=vk). Without this in the
-                            # allowlist Popen drops it and the gate-ON interop smoke silently
-                            # runs the SSAO readback path (gate inert).
-                            "MC2_VK_SSAO_INTEROP",
                             # VK-P9a WATER-INTEROP: the first VK geometry region. Renders
                             # the armed water base layer in Vulkan into an exportable RGBA16F
                             # composited into MainColor. Default OFF; borrows the shared

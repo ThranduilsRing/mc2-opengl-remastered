@@ -299,3 +299,21 @@ no tessellation anywhere in the tail.
   `src_commit=de2ec973bb08`, full native-tail smoke PASS 1/1 at
   `2026-07-08T16-39-55`, and current-code grep for the retired gates/symbols
   returned no matches outside historical/template docs.
+- 8.7c - RETIRED OLD SSAO/HZB PRIVATE-DEVICE ISLANDS
+  (VK-RUNG8-SSAO-HZB-ISLAND-DELETE-1). Deleted `vulkan_ssao_island.cpp` and
+  `vulkan_hzb_island.cpp`, removed their CMake entries, `gosPostProcess`
+  members/teardown, debug-state health sections, smoke allowlist entries, and
+  active flag/env docs for `MC2_VK_SSAO_INTEROP`,
+  `MC2_VK_SSAO_DUMP_INPUTS`, `MC2_VULKAN_SSAO_ISLAND_FORCE_FALLBACK`, and
+  `MC2_VULKAN_HZB_ISLAND_FORCE_FALLBACK`. The optional region-interface hooks
+  are retained but now delegate to the shared-engine native SSAO/HZB paths
+  (`MC2_VK_POST_SSAO`, `MC2_VK_POST_HZB`) with unchanged GL fallback on
+  native decline. Shared scene interop primitives remain live and untouched for
+  current native geometry/post/present paths. Verification: clean build
+  (`dirty=0`) and clean deploy manifest for the slice commit, full native-tail
+  smoke PASS 1/1 at `tests/smoke/artifacts/2026-07-08T16-51-55`; runtime
+  receipts show native
+  fog/SSAO/screenfx/HZB all `runtime_gate=1 substrate_live=1 used_vulkan>0`,
+  HZB `copy_depth_ops=0 readback_ops=0`, `validation_errors=0`, and grep for
+  retired live-code/docs symbols returns no matches outside ladder/history
+  notes.

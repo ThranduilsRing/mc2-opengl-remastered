@@ -597,10 +597,9 @@ static constexpr EnvVarDesc kAuxEnvVars[] = {
         "(mc2vk::VulkanContext, GameOS/gameos/vulkan_context.*) at engine init for "
         "P6/P8/P9/P14 to reuse; present is still GL swap in P13 (VK present intercept "
         "is T3). Fail-soft: any VK bring-up failure forces the session back to GL. "
-        "R2 interlock: when =vulkan is active, the remaining self-owning "
-        "postprocess-interop island gate MC2_VK_SSAO_INTEROP is coerced OFF "
-        "(logged) to avoid the process-global "
-        "volk dispatch collision. On =gl/unset the accessor adds only one memoized "
+        "The old private-device postprocess interop islands have been retired, "
+        "so the shared engine Vulkan device is the only postprocess VkDevice. "
+        "On =gl/unset the accessor adds only one memoized "
         "getenv -> byte-identical GL behavior."
     },
     {
@@ -654,8 +653,7 @@ static constexpr EnvVarDesc kAuxEnvVars[] = {
         "(GEQUAL reverse-Z, depth-write ON, per PipelineRegistry WaterArmed row), MRT "
         "color0+GBuffer1, alpha-blend SRC_ALPHA/ONE_MINUS_SRC_ALPHA. Reflection/HDRI OFF. "
         "MVP fudge (clip.z += 0.00025*clip.w) lives in the VS (water_geom.vert), byte-copied "
-        "from the GL water VS (WATER-MVP-ORACLE-1 column_major/GL_FALSE). UNLIKE the older "
-        "postprocess-interop islands (MC2_VK_SSAO_INTEROP etc.) it BORROWS the shared engine "
+        "from the GL water VS (WATER-MVP-ORACLE-1 column_major/GL_FALSE). It BORROWS the shared engine "
         "VulkanContext (getOrCreateEngineVulkanContext) instead of creating its own device, so "
         "there is NO volk process-global dispatch collision and it is NOT subject to the R2 "
         "coerce-off interlock -- it REQUIRES the shared device, i.e. MC2_RENDER_BACKEND=vulkan "

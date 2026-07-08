@@ -118,20 +118,6 @@ extern "C" void mc2_vk_post_hzb_native_health(
     unsigned long* levels, unsigned long* vkDraws,
     unsigned long* copyDepthOps, unsigned long* readbackOps,
     const char** fallbackReason, double* renderUs);
-// VK-REGION-SSAO-1: SSAO Vulkan island health snapshot (defined in
-// GameOS/gameos/vulkan_ssao_island.cpp, same #ifdef MC2_VULKAN_ISLAND).
-extern "C" void mc2_vulkan_ssao_island_health(
-    int* vulkanAvailable, int* buildEnabled,
-    const char** deviceName, unsigned long* validationErrors,
-    unsigned long* attempted, unsigned long* usedVulkan,
-    const char** fallbackReason, unsigned long* vkDraws,
-    double* copyDepthUs, double* copyNormalUs, double* copyColorInUs,
-    double* occlusionUs, double* applyUs, double* colorOutUs, double* totalUs,
-    // VK-INTEROP-BRIDGE-1 P3: zero-copy COLOR I/O interop liveness + forbidden counters.
-    int* interopActive, int* vk2glSemActive, unsigned long* usedInterop,
-    unsigned long* forbiddenCopyBufToImg, unsigned long* forbiddenCopyImgToBuf,
-    unsigned long* forbiddenGetTexImage, unsigned long* forbiddenTexSubImage,
-    unsigned long* depthNormalCopyBufToImg, unsigned long* depthNormalGetTexImage);
 // VK-P9a WATER-INTEROP: water Vulkan island health snapshot (defined in
 // GameOS/gameos/vulkan_water_island.cpp, same #ifdef MC2_VULKAN_ISLAND).
 extern "C" void mc2_render_backend_water_region_health(
@@ -171,14 +157,6 @@ extern "C" void mc2_render_backend_mech_region_health(
     unsigned long* geomVerts,
     unsigned long* forbiddenGetTexImage, unsigned long* forbiddenReadPixels,
     double* stageUs, double* drawUs, double* totalUs);
-// VK-REGION-HZB-1: HZB Vulkan island health snapshot (defined in
-// GameOS/gameos/vulkan_hzb_island.cpp, same #ifdef MC2_VULKAN_ISLAND).
-extern "C" void mc2_vulkan_hzb_island_health(
-    int* vulkanAvailable, int* buildEnabled,
-    const char** deviceName, unsigned long* validationErrors,
-    unsigned long* attempted, unsigned long* usedVulkan,
-    const char** fallbackReason, unsigned long* vkDraws, unsigned long* levels,
-    double* copyDepthUs, double* buildUs, double* readbackOutUs, double* totalUs);
 #endif
 
 #include <chrono>
@@ -852,50 +830,6 @@ std::string buildSnapshotJson(const RenderSnapshot& snap,
         s << "    \"render_us\": " << rUs << "\n";
         s << "  }\n";
     }
-    // VK-REGION-SSAO-1: additive "vulkan_ssao_island" section (same
-    // build64_island-only discipline). Byte-identical when the whole block is
-    // #ifdef'd out; zeros when compiled but the region isn't routed to Vulkan.
-    {
-        int va = 0, be = 0;
-        const char* dev = "";
-        const char* fbr = "";
-        unsigned long ve = 0, att = 0, used = 0, vkDraws = 0;
-        double cdUs = 0.0, cnUs = 0.0, cciUs = 0.0, occUs = 0.0, apUs = 0.0, coUs = 0.0, totUs = 0.0;
-        int ia = 0, v2g = 0;
-        unsigned long usedInterop = 0, fCbi = 0, fCib = 0, fGti = 0, fTsi = 0, dnCbi = 0, dnGti = 0;
-        mc2_vulkan_ssao_island_health(&va, &be, &dev, &ve, &att, &used, &fbr, &vkDraws,
-                                      &cdUs, &cnUs, &cciUs, &occUs, &apUs, &coUs, &totUs,
-                                      &ia, &v2g, &usedInterop, &fCbi, &fCib, &fGti, &fTsi,
-                                      &dnCbi, &dnGti);
-        s << "  ,\n";
-        s << "  \"vulkan_ssao_island\": {\n";
-        s << "    \"vulkan_available\": " << va << ",\n";
-        s << "    \"build_enabled\": " << be << ",\n";
-        s << "    \"device_name\": \"" << jsonEscape(dev) << "\",\n";
-        s << "    \"validation_errors\": " << ve << ",\n";
-        s << "    \"ssao_attempted\": " << att << ",\n";
-        s << "    \"ssao_used_vulkan\": " << used << ",\n";
-        s << "    \"ssao_fallback_reason\": \"" << jsonEscape(fbr) << "\",\n";
-        s << "    \"vk_draws\": " << vkDraws << ",\n";
-        s << "    \"copy_depth_us\": " << cdUs << ",\n";
-        s << "    \"copy_normal_us\": " << cnUs << ",\n";
-        s << "    \"copy_color_in_us\": " << cciUs << ",\n";
-        s << "    \"occlusion_us\": " << occUs << ",\n";
-        s << "    \"apply_us\": " << apUs << ",\n";
-        s << "    \"color_out_us\": " << coUs << ",\n";
-        s << "    \"total_us\": " << totUs << ",\n";
-        // VK-INTEROP-BRIDGE-1 P3: zero-copy COLOR I/O interop liveness + forbidden counters.
-        s << "    \"interop_active\": " << ia << ",\n";
-        s << "    \"vk2gl_sem_active\": " << v2g << ",\n";
-        s << "    \"ssao_used_interop\": " << usedInterop << ",\n";
-        s << "    \"forbidden_copy_buf_to_img\": " << fCbi << ",\n";
-        s << "    \"forbidden_copy_img_to_buf\": " << fCib << ",\n";
-        s << "    \"forbidden_get_tex_image\": " << fGti << ",\n";
-        s << "    \"forbidden_tex_sub_image\": " << fTsi << ",\n";
-        s << "    \"depthnormal_copy_buf_to_img\": " << dnCbi << ",\n";
-        s << "    \"depthnormal_get_tex_image\": " << dnGti << "\n";
-        s << "  }\n";
-    }
     // VK-P9a WATER-INTEROP: additive "vulkan_water_island" section (build64_island-only).
     // Zeros when compiled but the water region isn't routed to Vulkan (gate off / GL path).
     {
@@ -1031,34 +965,6 @@ std::string buildSnapshotJson(const RenderSnapshot& snap,
         s << "    \"forbidden_read_pixels\": " << fRp << ",\n";
         s << "    \"stage_us\": " << stUs << ",\n";
         s << "    \"draw_us\": " << drUs << ",\n";
-        s << "    \"total_us\": " << totUs << "\n";
-        s << "  }\n";
-    }
-    // VK-REGION-HZB-1: additive "vulkan_hzb_island" section (same
-    // build64_island-only discipline). Byte-identical when the whole block is
-    // #ifdef'd out; zeros when compiled but the region isn't routed to Vulkan.
-    {
-        int va = 0, be = 0;
-        const char* dev = "";
-        const char* fbr = "";
-        unsigned long ve = 0, att = 0, used = 0, vkDraws = 0, levels = 0;
-        double cdUs = 0.0, bUs = 0.0, roUs = 0.0, totUs = 0.0;
-        mc2_vulkan_hzb_island_health(&va, &be, &dev, &ve, &att, &used, &fbr,
-                                     &vkDraws, &levels, &cdUs, &bUs, &roUs, &totUs);
-        s << "  ,\n";
-        s << "  \"vulkan_hzb_island\": {\n";
-        s << "    \"vulkan_available\": " << va << ",\n";
-        s << "    \"build_enabled\": " << be << ",\n";
-        s << "    \"device_name\": \"" << jsonEscape(dev) << "\",\n";
-        s << "    \"validation_errors\": " << ve << ",\n";
-        s << "    \"hzb_attempted\": " << att << ",\n";
-        s << "    \"hzb_used_vulkan\": " << used << ",\n";
-        s << "    \"hzb_fallback_reason\": \"" << jsonEscape(fbr) << "\",\n";
-        s << "    \"vk_draws\": " << vkDraws << ",\n";
-        s << "    \"levels\": " << levels << ",\n";
-        s << "    \"copy_depth_us\": " << cdUs << ",\n";
-        s << "    \"build_us\": " << bUs << ",\n";
-        s << "    \"readback_out_us\": " << roUs << ",\n";
         s << "    \"total_us\": " << totUs << "\n";
         s << "  }\n";
     }

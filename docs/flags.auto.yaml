@@ -6457,23 +6457,6 @@ flags:
     registered: no
     in_smoke_passthrough: no
     documented_in_tier1_env_vars: no
-  - name: MC2_VK_SSAO_DUMP_INPUTS
-    default: unknown
-    declared_in: null
-    referenced_at:
-      - GameOS/gameos/vulkan_ssao_island.cpp:1311
-      - GameOS/gameos/vulkan_ssao_island.cpp:1561
-    registered: no
-    in_smoke_passthrough: no
-    documented_in_tier1_env_vars: no
-  - name: MC2_VK_SSAO_INTEROP
-    default: unknown
-    declared_in: null
-    referenced_at:
-      - GameOS/gameos/vulkan_ssao_island.cpp:157
-    registered: no
-    in_smoke_passthrough: yes
-    documented_in_tier1_env_vars: yes
   - name: MC2_VK_TERRAIN_COPY_STATS
     default: unknown
     declared_in: null
@@ -6583,14 +6566,6 @@ flags:
     registered: no
     in_smoke_passthrough: no
     documented_in_tier1_env_vars: yes
-  - name: MC2_VULKAN_HZB_ISLAND_FORCE_FALLBACK
-    default: unknown
-    declared_in: null
-    referenced_at:
-      - GameOS/gameos/vulkan_hzb_island.cpp:373
-    registered: no
-    in_smoke_passthrough: no
-    documented_in_tier1_env_vars: no
   - name: MC2_VULKAN_PROBE
     default: unknown
     declared_in: null
@@ -6610,14 +6585,6 @@ flags:
     registered: no
     in_smoke_passthrough: yes
     documented_in_tier1_env_vars: yes
-  - name: MC2_VULKAN_SSAO_ISLAND_FORCE_FALLBACK
-    default: unknown
-    declared_in: null
-    referenced_at:
-      - GameOS/gameos/vulkan_ssao_island.cpp:512
-    registered: no
-    in_smoke_passthrough: no
-    documented_in_tier1_env_vars: no
   - name: MC2_VULKAN_SWAPCHAIN_PRESENT
     default: unknown
     declared_in: null
