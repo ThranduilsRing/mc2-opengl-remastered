@@ -6,12 +6,13 @@ layout(location = 0) in vec2 TexCoord;
 layout(location = 0) out vec4 FragColor;
 
 layout(set = 0, binding = 0) uniform sampler2D sceneTex;
+layout(set = 0, binding = 1) uniform usampler2D objectIdTex;
 
 layout(push_constant) uniform Params {
     vec4 p0; // exposure, invW, invH, fxaaEnabled
     vec4 p1; // fxaaSubpix, fxaaEdgeThreshold, fxaaEdgeThresholdMin, unused
     vec4 p2; // viewMode, lowLightGain, lowLightTint.r, lowLightTint.g
-    vec4 p3; // lowLightTint.b, unused, unused, unused
+    vec4 p3; // lowLightTint.b, engineIdxBase, unused, unused
 } u;
 
 float fxaaLuma(vec3 c) { return sqrt(dot(c, vec3(0.299, 0.587, 0.114))); }
@@ -77,7 +78,37 @@ void main() {
     float sunBias = pow(smoothstep(0.0, 1.0, 1.0 - TexCoord.y), 1.5);
     color = mix(color, color * vec3(1.10, 1.03, 0.92), sunBias * 0.25);
 
-    if (int(u.p2.x + 0.5) == 5) {
+    int viewMode = int(u.p2.x + 0.5);
+    if (viewMode == 1) {
+        uint id = texture(objectIdTex, TexCoord).r;
+        if (id == 0u) {
+            color = vec3(0.1);
+        } else {
+            color = vec3(
+                float((id       ) & 0xFFu) / 255.0,
+                float((id >>  8u) & 0xFFu) / 255.0,
+                float((id >> 16u) & 0xFFu) / 255.0);
+        }
+    } else if (viewMode == 3) {
+        float t = clamp(dot(color, vec3(0.299, 0.587, 0.114)), 0.0, 1.0);
+        int engineIdxBase = int(u.p3.y + 0.5);
+        if (engineIdxBase > 0) {
+            uint idx = texture(objectIdTex, TexCoord).r & 0xFFFFFu;
+            if (idx >= uint(engineIdxBase))
+                t = max(t, 0.9);
+        }
+        vec3 c0 = vec3(0.00, 0.00, 0.10);
+        vec3 c1 = vec3(0.30, 0.00, 0.40);
+        vec3 c2 = vec3(0.85, 0.10, 0.05);
+        vec3 c3 = vec3(1.00, 0.55, 0.00);
+        vec3 c4 = vec3(1.00, 0.95, 0.40);
+        vec3 c5 = vec3(1.00, 1.00, 1.00);
+        if      (t < 0.2) color = mix(c0, c1, t / 0.2);
+        else if (t < 0.4) color = mix(c1, c2, (t - 0.2) / 0.2);
+        else if (t < 0.6) color = mix(c2, c3, (t - 0.4) / 0.2);
+        else if (t < 0.8) color = mix(c3, c4, (t - 0.6) / 0.2);
+        else              color = mix(c4, c5, (t - 0.8) / 0.2);
+    } else if (viewMode == 5) {
         float lum = dot(color, vec3(0.299, 0.587, 0.114));
         float boosted = lum * u.p2.y;
         boosted = boosted / (1.0 + boosted * 0.3);

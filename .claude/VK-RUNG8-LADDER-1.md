@@ -119,6 +119,16 @@ no tessellation anywhere in the tail.
   copy1_skip_frames=301 composite_vk_frames=300 validation_errors=0
   fallback_reason=""`. Minimized smoke:
   `tests/smoke/artifacts/2026-07-08T15-20-02`, PASS 2/2, +0 destroys.
+- 8.5f - SHIPPED (VK-POST-COMPOSITE-OBJECTID-1). The shared scene substrate now
+  includes MRT2 object-id as `VK_FORMAT_R32_UINT` imported to `GL_R32UI`.
+  Native composite samples it for ObjectIdDebug (mode 1) and Thermal mech-hot
+  classification (mode 3). Visible proofs:
+  `.claude/vk-post-composite-objectid-native/` and
+  `.claude/vk-post-composite-thermal-native/`, each 11/11 deterministic
+  `mc2_01` bookmarks, `[VK_SHARED_SCENE_COLOR] objectId(MRT2) active: VK R32UI
+  ... imported to GL_R32UI`, and final `[VK_PRESENT] composite_vk_frames=300
+  copy1_blit_frames=0 fallback_reason=""`. Minimized Thermal smoke:
+  `tests/smoke/artifacts/2026-07-08T15-28-36`, PASS 2/2, +0 destroys.
 - 8.6a - SHIPPED (VK-IMGUI-BACKEND-COMPILE-1). Behavior-neutral infrastructure:
   `imgui_impl_vulkan.cpp/.h` are aligned to the vendored ImGui 1.91.8 docking
   core and compile into `imgui` under `MC2_VULKAN=ON` using Volk +
@@ -142,9 +152,10 @@ no tessellation anywhere in the tail.
   Minimized smoke cannot prove present/ImGui execution because the surface extent
   is zero; use the visible proof above for that.
 - 8.7 - BLOCKED, not a safe deletion yet. Native ImGui is done and native
-  composite has its Visual + FXAA + FORCE-43 + LowLight slice, but native GameOS HUD
+  composite has its Visual + FXAA + FORCE-43 + LowLight + ObjectId/Thermal slice,
+  but native GameOS HUD
   (`MC2_VK_HUD`) is not landed and composite still has GL fallback coverage for
-  object-ID/Thermal viewmodes and diagnostics. Old postprocess islands
+  diagnostics. Old postprocess islands
   are bypassed by shared-GBuffer native gates but remain fallback/oracle code.
   Win32 GL interop primitives remain required by shared scene color/depth/present
   while GL continues to draw HUD and fallback composite pixels. Delete only after

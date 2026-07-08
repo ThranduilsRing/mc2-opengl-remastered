@@ -53,7 +53,7 @@ namespace {
 
 // Active owners by slot (for the island to fetch the SAME shared image). Only one
 // gosPostProcess FBO exists, so a flat by-slot registry is sufficient.
-Mc2SharedSceneColor* g_activeBySlot[MC2_SHARED_SCENE_COLOR_SLOT_COUNT] = {nullptr, nullptr};
+Mc2SharedSceneColor* g_activeBySlot[MC2_SHARED_SCENE_COLOR_SLOT_COUNT] = {nullptr, nullptr, nullptr};
 
 void slog(const char* fmt, ...) {
     char buf[512];
@@ -65,7 +65,23 @@ void slog(const char* fmt, ...) {
 }
 
 const char* slotName(Mc2SharedSceneColorSlot slot) {
-    return slot == MC2_SHARED_SCENE_NORMAL ? "normal(MRT1)" : "color(MRT0)";
+    if (slot == MC2_SHARED_SCENE_NORMAL) return "normal(MRT1)";
+    if (slot == MC2_SHARED_SCENE_OBJECT_ID) return "objectId(MRT2)";
+    return "color(MRT0)";
+}
+
+VkFormat vkFormatForSlot(Mc2SharedSceneColorSlot slot) {
+    return slot == MC2_SHARED_SCENE_OBJECT_ID
+        ? VK_FORMAT_R32_UINT
+        : VK_FORMAT_R16G16B16A16_SFLOAT;
+}
+
+GLenum glFormatForSlot(Mc2SharedSceneColorSlot slot) {
+    return slot == MC2_SHARED_SCENE_OBJECT_ID ? GL_R32UI : GL_RGBA16F;
+}
+
+const char* formatNameForSlot(Mc2SharedSceneColorSlot slot) {
+    return slot == MC2_SHARED_SCENE_OBJECT_ID ? "R32UI" : "RGBA16F";
 }
 
 } // namespace
@@ -99,9 +115,9 @@ Mc2SharedSceneColor* mc2SharedSceneColorCreate(Mc2SharedSceneColorSlot slot,
     c->device = device;
     c->slot   = slot;
 
-    // Exportable RGBA16F: COLOR_ATTACHMENT (GL renders terrain into it AND VK
-    // co-writes props into it) + SAMPLED (the many post/gbuffer consumers) +
-    // TRANSFER_SRC/DST (the glCopyImageSubData scene-color snapshot path).
+    // Exportable GBuffer image: COLOR_ATTACHMENT (GL renders into it AND VK
+    // co-writes/samples it) + SAMPLED (post/native consumers) + TRANSFER_SRC/DST
+    // (the glCopyImageSubData scene-color snapshot path).
     const VkImageUsageFlags usage =
         VK_IMAGE_USAGE_SAMPLED_BIT |
         VK_IMAGE_USAGE_COLOR_ATTACHMENT_BIT |
@@ -109,18 +125,17 @@ Mc2SharedSceneColor* mc2SharedSceneColorCreate(Mc2SharedSceneColorSlot slot,
         VK_IMAGE_USAGE_TRANSFER_DST_BIT;
     if (!vkImageResourceCreate(&c->res, device, phys,
                                (uint32_t)w, (uint32_t)h,
-                               VK_FORMAT_R16G16B16A16_SFLOAT,
+                               vkFormatForSlot(slot),
                                usage, /*exportable*/ true)) {
         mc2SharedSceneColorDestroy(c);
         return bail("vk_image_resource_create_failed");
     }
     c->resValid = true;
 
-    // Import into GL as GL_RGBA16F (LUID match runs inside). Byte-compatible with the
-    // plain GL scene color/normal format, so the substitution is transparent to the
-    // GBuffer consumers. GL wrap/filter default to CLAMP/NEAREST inside the view; the
-    // engine's own glTexParameteri calls at the seam re-assert the same state.
-    if (!glInteropViewCreate(&c->view, &c->res, phys, GL_RGBA16F)) {
+    // Import into GL using the byte-compatible internal format for this slot.
+    // GL wrap/filter default to CLAMP/NEAREST inside the view; the engine's own
+    // glTexParameteri calls at the seam re-assert the same state.
+    if (!glInteropViewCreate(&c->view, &c->res, phys, glFormatForSlot(slot))) {
         mc2SharedSceneColorDestroy(c);
         return bail("gl_interop_view_create_failed");
     }
@@ -134,8 +149,8 @@ Mc2SharedSceneColor* mc2SharedSceneColorCreate(Mc2SharedSceneColorSlot slot,
     *outGlTex = c->view.glTex;
     if (outReason) *outReason = "active";
     g_activeBySlot[slot] = c;
-    slog("%s active: VK RGBA16F %dx%d imported to GL_RGBA16F tex=%u", slotName(slot),
-         w, h, (unsigned)c->view.glTex);
+    slog("%s active: VK %s %dx%d imported to GL_%s tex=%u", slotName(slot),
+         formatNameForSlot(slot), w, h, formatNameForSlot(slot), (unsigned)c->view.glTex);
     return c;
 }
 

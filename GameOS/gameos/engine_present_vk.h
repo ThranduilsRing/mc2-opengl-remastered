@@ -142,6 +142,7 @@ public:
                                      float fxaaEdgeThreshold,
                                      float fxaaEdgeThresholdMin,
                                      int viewMode,
+                                     int engineIdxBase,
                                      float lowLightGain,
                                      const float lowLightTint[3],
                                      int viewportX, int viewportY,

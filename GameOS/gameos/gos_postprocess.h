@@ -489,6 +489,7 @@ public:
     // vulkan_shared_scene_color.cpp.
     struct Mc2SharedSceneColor* sharedSceneColor_  = nullptr;   // MRT0 sceneColorTex_
     struct Mc2SharedSceneColor* sharedSceneNormal_ = nullptr;   // MRT1 sceneNormalTex_
+    struct Mc2SharedSceneColor* sharedSceneObjectId_ = nullptr; // MRT2 sceneObjectIdTex_
 
     // VULKAN-OOB-FOG-ISLAND-1: the SECOND offscreen Vulkan island (proves the
     // VULKAN-ISLAND-TEMPLATE-1 checklist repeats). When MC2_VULKAN_OOB_FOG_ISLAND=1

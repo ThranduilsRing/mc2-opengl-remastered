@@ -1223,6 +1223,16 @@ bar is stricter than current code:
   composite_vk_frames=300`, `copy1_blit_frames=0`, `fallback_reason=""`.
   Minimized smoke: `tests/smoke/artifacts/2026-07-08T15-20-02`, PASS 2/2,
   +0 destroys.
+- 8.5f native composite ObjectIdDebug/Thermal is landed. The shared scene
+  substrate now has `MC2_SHARED_SCENE_OBJECT_ID`, backed by `VK_FORMAT_R32_UINT`
+  imported to `GL_R32UI`; native composite binds it as a `usampler2D` for mode 1
+  and mode 3. Visible proofs:
+  `.claude/vk-post-composite-objectid-native/` and
+  `.claude/vk-post-composite-thermal-native/`, each 11/11 deterministic
+  `mc2_01` bookmarks, `[VK_SHARED_SCENE_COLOR] objectId(MRT2) active: VK R32UI
+  ... imported to GL_R32UI`, `[VK_PRESENT] composite_vk_frames=300`,
+  `copy1_blit_frames=0`, `fallback_reason=""`. Minimized Thermal smoke:
+  `tests/smoke/artifacts/2026-07-08T15-28-36`, PASS 2/2, +0 destroys.
 - 8.6 native ImGui is landed, but GameOS HUD (`gos_RendererFlushHUDBatch()`) is
   still legacy GL. Native HUD needs its own `MC2_VK_HUD`/batch replay port or a
   broader final-tail ownership split.
@@ -1236,8 +1246,7 @@ bar is stricter than current code:
   pixels.
 
 Next real coding slices:
-1. Complete the remaining native composite branches: ObjectIdDebug/Thermal
-   object-ID texture import and debug overlay paths.
+1. Complete the remaining native composite branch: shadow-debug overlay path.
 2. 8.6f native GameOS HUD replay.
 3. 8.7 deletion after GL issues zero final-tail draws and shared-scene GL import
    halves are no longer needed.

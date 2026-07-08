@@ -1177,17 +1177,46 @@ void gosPostProcess::createFBOs(int w, int h)
     // the FBO side. glTexImage2D matches the sceneNormalTex_ pattern
     // above (decision m4); glTexStorage2D migration deferred.
     if (RenderWorld::IsObjectIdBufferEnabled()) {
-        // TEX-CLASS: render-target -- objectID GBuffer (MRT2, FBO attach)
-        glGenTextures(1, &sceneObjectIdTex_);
-        glBindTexture(GL_TEXTURE_2D, sceneObjectIdTex_);
-        glTexImage2D(GL_TEXTURE_2D, 0, GL_R32UI, w, h, 0,
-                     GL_RED_INTEGER, GL_UNSIGNED_INT, nullptr);
-        glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_NEAREST);
-        glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_NEAREST);
-        glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_CLAMP_TO_EDGE);
-        glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_CLAMP_TO_EDGE);
-        glFramebufferTexture2D(GL_FRAMEBUFFER, GL_COLOR_ATTACHMENT2,
-                               GL_TEXTURE_2D, sceneObjectIdTex_, 0);
+        bool sceneObjectIdShared = false;
+#ifdef MC2_VULKAN_ISLAND
+        if (mc2VkSharedSceneColorNeeded()) {
+            GLuint importedObjectIdTex = 0;
+            const char* reason = "unset";
+            sharedSceneObjectId_ = mc2SharedSceneColorCreate(MC2_SHARED_SCENE_OBJECT_ID, w, h,
+                                                             &importedObjectIdTex, &reason);
+            if (sharedSceneObjectId_ && importedObjectIdTex != 0) {
+                sceneObjectIdTex_ = importedObjectIdTex;
+                sceneObjectIdShared = true;
+                glBindTexture(GL_TEXTURE_2D, sceneObjectIdTex_);
+                glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_NEAREST);
+                glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_NEAREST);
+                glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_CLAMP_TO_EDGE);
+                glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_CLAMP_TO_EDGE);
+                glFramebufferTexture2D(GL_FRAMEBUFFER, GL_COLOR_ATTACHMENT2,
+                                       GL_TEXTURE_2D, sceneObjectIdTex_, 0);
+                fprintf(stderr, "[VK_SHARED_SCENE_COLOR] objectId active tex=%u %dx%d "
+                                "(VK-backed GL_R32UI MRT2)\n",
+                        (unsigned)sceneObjectIdTex_, w, h);
+            } else {
+                sharedSceneObjectId_ = nullptr;
+                fprintf(stderr, "[VK_SHARED_SCENE_COLOR] objectId fallback reason=%s "
+                                "(plain GL_R32UI)\n", reason ? reason : "unknown");
+            }
+        }
+#endif
+        if (!sceneObjectIdShared) {
+            // TEX-CLASS: render-target -- objectID GBuffer (MRT2, FBO attach)
+            glGenTextures(1, &sceneObjectIdTex_);
+            glBindTexture(GL_TEXTURE_2D, sceneObjectIdTex_);
+            glTexImage2D(GL_TEXTURE_2D, 0, GL_R32UI, w, h, 0,
+                         GL_RED_INTEGER, GL_UNSIGNED_INT, nullptr);
+            glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_NEAREST);
+            glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_NEAREST);
+            glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_CLAMP_TO_EDGE);
+            glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_CLAMP_TO_EDGE);
+            glFramebufferTexture2D(GL_FRAMEBUFFER, GL_COLOR_ATTACHMENT2,
+                                   GL_TEXTURE_2D, sceneObjectIdTex_, 0);
+        }
     }
 
     // MRT: draw to color attachments via centralized policy. Helper
@@ -1621,8 +1650,17 @@ void gosPostProcess::destroyFBOs()
         RenderCore::registerOrUpdateRenderResource(inv);
     }
     if (sceneObjectIdTex_) {
-        glDeleteTextures(1, &sceneObjectIdTex_);
-        sceneObjectIdTex_ = 0;
+#ifdef MC2_VULKAN_ISLAND
+        if (sharedSceneObjectId_) {
+            mc2SharedSceneColorDestroy(sharedSceneObjectId_);
+            sharedSceneObjectId_ = nullptr;
+            sceneObjectIdTex_ = 0;
+        } else
+#endif
+        {
+            glDeleteTextures(1, &sceneObjectIdTex_);
+            sceneObjectIdTex_ = 0;
+        }
         // REGISTRY-POSTPROCESS-FBO-1: mark SceneObjectId unavailable on teardown.
         RenderCore::RenderResourceDesc inv;
         inv.id = RenderCore::RenderResourceId::SceneObjectId; inv.valid = false;
@@ -4244,10 +4282,13 @@ void gosPostProcess::endScene()
         effectiveModeForComposite = 0;
 #ifdef MC2_VULKAN
     if (directFbo != 0 && mc2::renderBackend() == mc2::RenderBackend::Vulkan &&
-        (effectiveModeForComposite == 0 || effectiveModeForComposite == 5)) {
+        (effectiveModeForComposite == 0 || effectiveModeForComposite == 1 ||
+         effectiveModeForComposite == 3 || effectiveModeForComposite == 5)) {
         nativeCompositeDone = mc2vk::getOrCreateEnginePresentVk().renderNativeCompositeVisual(
             exposure_, fxaaEnabled_, fxaaSubpix_, fxaaEdgeThreshold_, fxaaEdgeThresholdMin_,
-            effectiveModeForComposite, lowLightGain_, lowLightTint_,
+            effectiveModeForComposite,
+            sceneObjectIdTex_ != 0 ? (int)RenderWorld::MechHandleIndexBase() : 0,
+            lowLightGain_, lowLightTint_,
             compositeVpX, compositeVpY, compositeVpW, compositeVpH);
     }
 #endif

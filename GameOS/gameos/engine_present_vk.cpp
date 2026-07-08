@@ -421,19 +421,21 @@ bool ensureCompositeObjects(EnginePresentVk::Impl& s) {
         }
     }
     if (!s.compositeDsl) {
-        VkDescriptorSetLayoutBinding b{};
-        b.binding = 0;
-        b.descriptorType = VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER;
-        b.descriptorCount = 1;
-        b.stageFlags = VK_SHADER_STAGE_FRAGMENT_BIT;
+        VkDescriptorSetLayoutBinding b[2]{};
+        b[0].binding = 0;
+        b[0].descriptorType = VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER;
+        b[0].descriptorCount = 1;
+        b[0].stageFlags = VK_SHADER_STAGE_FRAGMENT_BIT;
+        b[1] = b[0];
+        b[1].binding = 1;
         VkDescriptorSetLayoutCreateInfo ci{VK_STRUCTURE_TYPE_DESCRIPTOR_SET_LAYOUT_CREATE_INFO};
-        ci.bindingCount = 1; ci.pBindings = &b;
+        ci.bindingCount = 2; ci.pBindings = b;
         if (vkCreateDescriptorSetLayout(s.dev, &ci, nullptr, &s.compositeDsl) != VK_SUCCESS) {
             s.compositeVkFailed = true; return false;
         }
     }
     if (!s.compositePool) {
-        VkDescriptorPoolSize size{VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER, 1};
+        VkDescriptorPoolSize size{VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER, 2};
         VkDescriptorPoolCreateInfo pci{VK_STRUCTURE_TYPE_DESCRIPTOR_POOL_CREATE_INFO};
         pci.maxSets = 1; pci.poolSizeCount = 1; pci.pPoolSizes = &size;
         if (vkCreateDescriptorPool(s.dev, &pci, nullptr, &s.compositePool) != VK_SUCCESS) {
@@ -447,17 +449,24 @@ bool ensureCompositeObjects(EnginePresentVk::Impl& s) {
             s.compositeVkFailed = true; return false;
         }
     }
-    VkDescriptorImageInfo ii{};
-    ii.sampler = s.compositeSampler;
-    ii.imageView = scene->view;
-    ii.imageLayout = VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL;
-    VkWriteDescriptorSet wr{VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET};
-    wr.dstSet = s.compositeSet;
-    wr.dstBinding = 0;
-    wr.descriptorCount = 1;
-    wr.descriptorType = VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER;
-    wr.pImageInfo = &ii;
-    vkUpdateDescriptorSets(s.dev, 1, &wr, 0, nullptr);
+    VkImageResource* objectId = mc2SharedSceneColorGetResource(MC2_SHARED_SCENE_OBJECT_ID);
+    VkDescriptorImageInfo ii[2]{};
+    ii[0].sampler = s.compositeSampler;
+    ii[0].imageView = scene->view;
+    ii[0].imageLayout = VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL;
+    ii[1].sampler = s.compositeSampler;
+    ii[1].imageView = objectId && objectId->view ? objectId->view : scene->view;
+    ii[1].imageLayout = VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL;
+    VkWriteDescriptorSet wr[2]{};
+    for (uint32_t i = 0; i < 2; ++i) {
+        wr[i].sType = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET;
+        wr[i].dstSet = s.compositeSet;
+        wr[i].dstBinding = i;
+        wr[i].descriptorCount = 1;
+        wr[i].descriptorType = VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER;
+        wr[i].pImageInfo = &ii[i];
+    }
+    vkUpdateDescriptorSets(s.dev, 2, wr, 0, nullptr);
 
     if (!s.compositeLayout) {
         VkPushConstantRange pc{};
@@ -795,6 +804,7 @@ bool EnginePresentVk::renderNativeCompositeVisual(float exposure,
                                                   float fxaaEdgeThreshold,
                                                   float fxaaEdgeThresholdMin,
                                                   int viewMode,
+                                                  int engineIdxBase,
                                                   float lowLightGain,
                                                   const float lowLightTint[3],
                                                   int viewportX, int viewportY,
@@ -809,11 +819,25 @@ bool EnginePresentVk::renderNativeCompositeVisual(float exposure,
         return false;
     VkImageResource* scene = mc2SharedSceneColorGetResource(MC2_SHARED_SCENE_COLOR0);
     GlInteropView* sceneView = mc2SharedSceneColorGetGlView(MC2_SHARED_SCENE_COLOR0);
+    const bool needsObjectId = (viewMode == 1 || viewMode == 3);
+    VkImageResource* objectId = needsObjectId
+        ? mc2SharedSceneColorGetResource(MC2_SHARED_SCENE_OBJECT_ID)
+        : nullptr;
+    GlInteropView* objectIdView = needsObjectId
+        ? mc2SharedSceneColorGetGlView(MC2_SHARED_SCENE_OBJECT_ID)
+        : nullptr;
+    if (needsObjectId && (!objectId || !objectIdView))
+        return false;
     if (!scene || !sceneView || !ensureCompositeObjects(s))
         return false;
 
     VkFrameSync fsScene = vkImageResourceBeginFrame(scene);
+    VkFrameSync fsObjectId{};
+    if (needsObjectId)
+        fsObjectId = vkImageResourceBeginFrame(objectId);
     glInteropSignalToVk(*sceneView, GL_LAYOUT_COLOR_ATTACHMENT_EXT, fsScene.parity);
+    if (needsObjectId)
+        glInteropSignalToVk(*objectIdView, GL_LAYOUT_COLOR_ATTACHMENT_EXT, fsObjectId.parity);
 
     vkResetCommandBuffer(s.cbuf, 0);
     VkCommandBufferBeginInfo bi{VK_STRUCTURE_TYPE_COMMAND_BUFFER_BEGIN_INFO};
@@ -825,6 +849,12 @@ bool EnginePresentVk::renderNativeCompositeVisual(float exposure,
             VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL, VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL,
             VK_ACCESS_COLOR_ATTACHMENT_WRITE_BIT, VK_ACCESS_SHADER_READ_BIT,
             VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT, VK_PIPELINE_STAGE_FRAGMENT_SHADER_BIT);
+    if (needsObjectId) {
+        barrier(s.cbuf, objectId->image,
+                VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL, VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL,
+                VK_ACCESS_COLOR_ATTACHMENT_WRITE_BIT, VK_ACCESS_SHADER_READ_BIT,
+                VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT, VK_PIPELINE_STAGE_FRAGMENT_SHADER_BIT);
+    }
 
     VkRenderPassBeginInfo rp{VK_STRUCTURE_TYPE_RENDER_PASS_BEGIN_INFO};
     rp.renderPass = s.compositeRenderPass;
@@ -858,7 +888,7 @@ bool EnginePresentVk::renderNativeCompositeVisual(float exposure,
         lowLightTint ? lowLightTint[0] : 0.7f,
         lowLightTint ? lowLightTint[1] : 1.0f,
         lowLightTint ? lowLightTint[2] : 0.6f,
-        0.0f,
+        (float)engineIdxBase,
         0.0f,
         0.0f
     };
@@ -871,18 +901,29 @@ bool EnginePresentVk::renderNativeCompositeVisual(float exposure,
             VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL, VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL,
             VK_ACCESS_SHADER_READ_BIT, VK_ACCESS_COLOR_ATTACHMENT_WRITE_BIT,
             VK_PIPELINE_STAGE_FRAGMENT_SHADER_BIT, VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT);
+    if (needsObjectId) {
+        barrier(s.cbuf, objectId->image,
+                VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL, VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL,
+                VK_ACCESS_SHADER_READ_BIT, VK_ACCESS_COLOR_ATTACHMENT_WRITE_BIT,
+                VK_PIPELINE_STAGE_FRAGMENT_SHADER_BIT, VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT);
+    }
 
     if (vkEndCommandBuffer(s.cbuf) != VK_SUCCESS)
         return false;
 
-    VkSemaphore waitSems[1] = { fsScene.signal };
-    VkPipelineStageFlags waitStages[1] = { VK_PIPELINE_STAGE_FRAGMENT_SHADER_BIT };
-    VkSemaphore signalSems[1];
+    VkSemaphore waitSems[2] = { fsScene.signal, fsObjectId.signal };
+    VkPipelineStageFlags waitStages[2] = {
+        VK_PIPELINE_STAGE_FRAGMENT_SHADER_BIT,
+        VK_PIPELINE_STAGE_FRAGMENT_SHADER_BIT
+    };
+    VkSemaphore signalSems[2];
     uint32_t sigN = 0;
     if (sceneView->vkToGlImported && fsScene.vk2gl) signalSems[sigN++] = fsScene.vk2gl;
+    if (needsObjectId && objectIdView->vkToGlImported && fsObjectId.vk2gl)
+        signalSems[sigN++] = fsObjectId.vk2gl;
 
     VkSubmitInfo si{VK_STRUCTURE_TYPE_SUBMIT_INFO};
-    si.waitSemaphoreCount = 1;
+    si.waitSemaphoreCount = needsObjectId ? 2u : 1u;
     si.pWaitSemaphores = waitSems;
     si.pWaitDstStageMask = waitStages;
     si.commandBufferCount = 1;
@@ -894,8 +935,17 @@ bool EnginePresentVk::renderNativeCompositeVisual(float exposure,
 
     if (sceneView->vkToGlImported && fsScene.vk2gl)
         glInteropWaitFromVk(*sceneView, GL_LAYOUT_COLOR_ATTACHMENT_EXT, fsScene.parity);
+    if (needsObjectId && objectIdView->vkToGlImported && fsObjectId.vk2gl)
+        glInteropWaitFromVk(*objectIdView, GL_LAYOUT_COLOR_ATTACHMENT_EXT, fsObjectId.parity);
     if (vkWaitForFences(s.dev, 1, &fsScene.fence, VK_TRUE, 5ull * 1000 * 1000 * 1000) != VK_SUCCESS)
         return false;
+    if (needsObjectId) {
+        VkSubmitInfo empty{VK_STRUCTURE_TYPE_SUBMIT_INFO};
+        if (vkQueueSubmit(s.gfxQ, 1, &empty, fsObjectId.fence) != VK_SUCCESS)
+            return false;
+        if (vkWaitForFences(s.dev, 1, &fsObjectId.fence, VK_TRUE, 5ull * 1000 * 1000 * 1000) != VK_SUCCESS)
+            return false;
+    }
 
     ++health_.composite_vk_frames;
     return true;

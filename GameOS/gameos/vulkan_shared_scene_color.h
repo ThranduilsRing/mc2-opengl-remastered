@@ -33,20 +33,20 @@
 enum Mc2SharedSceneColorSlot {
     MC2_SHARED_SCENE_COLOR0 = 0,   // sceneColorTex_  (MRT0 lit color)
     MC2_SHARED_SCENE_NORMAL = 1,   // sceneNormalTex_ (MRT1 GBuffer1 normal)
-    MC2_SHARED_SCENE_COLOR_SLOT_COUNT = 2
+    MC2_SHARED_SCENE_OBJECT_ID = 2, // sceneObjectIdTex_ (MRT2 R32UI object id)
+    MC2_SHARED_SCENE_COLOR_SLOT_COUNT = 3
 };
 
 // Opaque owner of one exportable RGBA16F VK image + its GL interop view. Body lives
 // in the .cpp so no Vulkan header leaks into GL TUs.
 struct Mc2SharedSceneColor;
 
-// Build a VK exportable R16G16B16A16_SFLOAT image on the SHARED engine Vulkan
-// context and import it into GL as GL_RGBA16F. On success *outGlTex is the imported
-// GL texture (GL_TEXTURE_2D, GL_RGBA16F) the caller substitutes for
-// sceneColorTex_/sceneNormalTex_ at its alloc+attach site, and the returned pointer
-// owns the lifetime. `slot` records which GBuffer slot this backs so the VK prop
-// island can look it up. FAIL-SOFT: returns nullptr (and leaves *outGlTex untouched)
-// on ANY failure; *outReason (if non-null) points to a short static string.
+// Build a VK exportable image on the SHARED engine Vulkan context and import it
+// into GL. Color/normal slots use R16G16B16A16_SFLOAT -> GL_RGBA16F; object-id
+// uses R32_UINT -> GL_R32UI. On success *outGlTex is the imported GL texture the
+// caller substitutes at its alloc+attach site, and the returned pointer owns the
+// lifetime. FAIL-SOFT: returns nullptr (and leaves *outGlTex untouched) on ANY
+// failure; *outReason (if non-null) points to a short static string.
 Mc2SharedSceneColor* mc2SharedSceneColorCreate(Mc2SharedSceneColorSlot slot,
                                                int w, int h, GLuint* outGlTex,
                                                const char** outReason);
