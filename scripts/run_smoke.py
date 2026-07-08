@@ -1824,6 +1824,11 @@ def main():
                             # lands after shader asset prep; allowlisted now so
                             # gate-on smoke cannot silently run the GL composite.
                             "MC2_VK_POST_COMPOSITE",
+                            # VK-IMGUI-NATIVE-1 (rung 8.6): ImGui Vulkan renderer
+                            # gate. Current slice is observable-decline only until
+                            # the final-tail present handoff is split; must be
+                            # allowlisted so smoke proves the gate reaches runtime.
+                            "MC2_VK_IMGUI",
                             "MC2_HZB_BUILD",
                             "MC2_HZB_PROBE",
                             # SKYBOX-FOG-EXCLUDE-1: stencil-tag true sky pixels during

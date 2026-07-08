@@ -14,6 +14,10 @@
 
 #include "../GameOS/gameos/gos_render.h"
 #include "../GameOS/gameos/gos_input.h"
+#ifdef MC2_VULKAN
+#include "../GameOS/gameos/engine_present_vk.h"
+#include "../GameOS/gameos/render_backend_select.h"
+#endif
 
 #ifdef PLATFORM_WINDOWS
 #include <windows.h>
@@ -364,8 +368,38 @@ static bool demoEnabled() {
     return cached == 1;
 }
 
+static bool vkImguiRequested() {
+    static int cached = -1;
+    if (cached < 0) {
+        const char* v = std::getenv("MC2_VK_IMGUI");
+        cached = (v && v[0] == '1') ? 1 : 0;
+    }
+    return cached == 1;
+}
+
+static void maybeTraceVkImguiDecline() {
+    if (!vkImguiRequested()) return;
+    static bool s_traced = false;
+    if (s_traced) return;
+    s_traced = true;
+
+    int directPresentArmed = 0;
+#ifdef MC2_VULKAN
+    if (mc2::renderBackend() == mc2::RenderBackend::Vulkan) {
+        mc2vk::EnginePresentVk& vkpres = mc2vk::getOrCreateEnginePresentVk();
+        directPresentArmed = vkpres.directPresentFrameArmed() ? 1 : 0;
+    }
+#endif
+    std::fprintf(stderr,
+        "[VK_IMGUI] requested=1 used_vulkan=0 direct_present_armed=%d "
+        "fallback_reason=\"tail_handoff_not_split\"\n",
+        directPresentArmed);
+    std::fflush(stderr);
+}
+
 void GuiRuntime::Render() {
     if (!g_imguiInitialized) return;
+    maybeTraceVkImguiDecline();
 
     // F toggles the ImGui demo window (dev only -- see demoEnabled()).
     if (demoEnabled()) {

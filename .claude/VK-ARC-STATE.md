@@ -1058,3 +1058,17 @@ Verification:
   `MC2_RENDER_BACKEND=vulkan MC2_VK_PRESENT_DIRECT_FBO=1 MC2_VK_PRESENT_VERIFY=1`
   with `scripts/run_smoke.py --exe A:/Games/mc2-opengl/mc2-win64-0.4c/mc2.exe --mission mc2_01 --mission mc2_24 --duration 20 --keep-logs`
   PASS 2/2, fingerprint OK, +0 destroys.
+
+## RUNG 8.6c - VK-IMGUI-DECLINE-GATE-1
+
+`MC2_VK_IMGUI=1` is now a real smoke-forwarded runtime gate, but still
+behavior-neutral: `GuiRuntime::Render()` emits one `[VK_IMGUI]` receipt with
+`requested=1`, `used_vulkan=0`, `direct_present_armed=<0|1>`, and
+`fallback_reason="tail_handoff_not_split"`, then falls through to the existing
+SDL2/OpenGL3 renderer. This proves the gate reaches the exact ImGui render site
+without beginning a Vulkan render pass or changing ordering.
+
+This is intentionally not a native renderer yet. The decline reason remains the
+8.5b/8.6b contract: `presentGLFrame()` owns the single final GL->VK handoff, so
+native ImGui cannot write the shared present image until the final-tail handoff is
+split.
