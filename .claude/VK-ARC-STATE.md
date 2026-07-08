@@ -948,3 +948,28 @@ copy-1 receipt still needs a visible-window harness or manual visible run that
 reports `present_frames>0`, `validation_errors=0`, and `readback_changed=1`.
 Next real coding slice: 8.5b native composite shader port under
 `MC2_VK_POST_COMPOSITE` (shared color0 input, present/swapchain output).
+
+## RUNG 8.5b-a - VK-POST-COMPOSITE shader asset prep
+
+Asset-only prep for the native composite port. Added `shaders/vulkan/postprocess.vert`
+and `shaders/vulkan/postprocess.frag` plus the CMake shader basename registration,
+so the Vulkan build now bakes `postprocess.vert.spv` and `postprocess.frag.spv`.
+The fragment shader ports the current GL composite semantics (scene sample,
+exposure, FXAA gate/tunables, warm grade, vignette, ObjectIdDebug, Thermal, and
+LowLight) into an explicit Vulkan descriptor layout:
+`sceneTex` at set 0 binding 0, optional `u_objectIdTex` at binding 1, and one
+std140 params block at binding 2.
+
+Verification:
+- `cmake --build build64_island --target mc2_vulkan_shaders --config RelWithDebInfo`
+  PASS; emitted `build64_island/shaders/vulkan/postprocess.vert.spv` and
+  `postprocess.frag.spv`.
+- `spirv-val` PASS for both SPIR-V files.
+- Full `mc2` RelWithDebInfo build PASS (only pre-existing C4267/LNK4199 warnings).
+
+No runtime hook yet. Next slice should add `vulkan_post_composite_native.cpp`,
+`gosPostProcess::runVkPostCompositeNative()`, debug-state health, `MC2_VK_POST_COMPOSITE`
+allowlist/docs, and a visible-window proof path for present frames. Scout finding:
+`run_smoke.py` still lacks allowlist entries for `MC2_VIEWMODE_FRAMEWORK`,
+`MC2_VIEW_MODE`, and `MC2_OBJECT_ID_BUFFER`, so viewmode parity coverage will need
+that harness fix when runtime testing ObjectIdDebug/Thermal/LowLight.
