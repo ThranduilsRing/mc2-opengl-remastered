@@ -165,6 +165,9 @@ if(MC2_VULKAN)
         # Screen-shadow NOT ported (no zero-copy CSM-array producer until rung 2).
         # Gate MC2_VK_POST_SCREENFX default-OFF -> GL passes byte-identical.
         list(APPEND SOURCES vulkan_post_screenfx_native.cpp)
+        # VK-POST-HZB-NATIVE-1 (rung 8.4): native HZB pyramid on the shared
+        # engine context; the old HZB island stays as fallback/oracle.
+        list(APPEND SOURCES vulkan_post_hzb_native.cpp)
         # VK-P8a SHADOW-INTEROP: the shadow island — SECOND VK GEOMETRY region and
         # FIRST VK-PRODUCES-DEPTH region (water was GL-produces/VK-consumes; shadow
         # reverses it: VK renders the static-prop shadow-caster depth into an
@@ -410,4 +413,3 @@ if(MC2_VULKAN_ISLAND)
 endif()
 
 add_library(gameos_main ${MAIN_SRC})
-

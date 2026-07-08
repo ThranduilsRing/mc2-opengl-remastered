@@ -604,6 +604,20 @@ public:
     struct VkPostScreenFx;              // defined in vulkan_post_screenfx_native.cpp
     VkPostScreenFx* vkPostScreenFx_ = nullptr;
 
+    // VK-POST-HZB-NATIVE-1 (rung 8.4, .claude/VK-RUNG8-LADDER-1.md): the HZB
+    // pyramid rendered NATIVELY on the shared engine VulkanContext, sampling the
+    // shared scene depth directly and writing one separate R32F image per ceil
+    // ladder level -- zero glGetTexImage depth ingress, zero readback/glTexSubImage2D
+    // egress on the normal path. Highest precedence at the HZB site: when the gate
+    // is on, it runs before the old region-iface path; if not ready, the caller
+    // falls back to the unchanged GL runHzbReduce() body. MC2_HZB_PROBE forces
+    // the native path to decline so the GL pyramid stays coherent for the probe.
+    bool  vkPostHzbNativeEnabled();
+    bool  runVkPostHzbNative();
+    void  destroyVkPostHzbNative();
+    struct VkPostHzbNative;             // defined in vulkan_post_hzb_native.cpp
+    VkPostHzbNative* vkPostHzbNative_ = nullptr;
+
     // VK-REGION-SSAO-1: Vulkan impl of the PostprocessSSAO region -- the first
     // NEW region grown through runRegion (beyond fog). Two internal draws
     // (occlusion -> apply) across TWO Vulkan render passes (different targets

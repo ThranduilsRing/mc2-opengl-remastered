@@ -47,4 +47,10 @@ no tessellation anywhere in the tail.
 - 8.2 — SHIPPED (VK-POST-SSAO-NATIVE-1, commits 658107ae/786f6999, gate
   `MC2_VK_POST_SSAO`); see VK-ARC-STATE.md "RUNG 8.2" section. Old SSAO island
   becomes a DELETE candidate at 8.7.
-- 8.3 / 8.4 — not started (next; 8.3 ∥ 8.4 per sequencing).
+- 8.3 — SHIPPED (VK-POST-SCREENFX-NATIVE-1, gate `MC2_VK_POST_SCREENFX`);
+  screen-shadow/cloud-shadow/shoreline native on shared engine context.
+- 8.4 — SHIPPED (VK-POST-HZB-NATIVE-1, gate `MC2_VK_POST_HZB`);
+  native HZB builds the ceil-ladder pyramid on the shared engine context, samples
+  shared depth in-place, preserves shared-GBuffer color/normal/depth parity by
+  acquiring the full triplet, and reports zero copy/readback ops. Probe mode
+  (`MC2_HZB_PROBE=1`) intentionally declines with `probe_enabled`.

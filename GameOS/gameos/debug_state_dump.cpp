@@ -137,6 +137,13 @@ extern "C" void mc2_vk_post_screenfx_native_health(
     unsigned long* attempted, unsigned long* usedVulkan,
     unsigned long* cloudFrames, unsigned long* shoreFrames, unsigned long* glSkipped,
     const char** fallbackReason, double* renderUs);
+// VK-POST-HZB-NATIVE-1 (rung 8.4): native HZB pyramid receipt.
+extern "C" void mc2_vk_post_hzb_native_health(
+    int* runtimeGate, int* substrateLive,
+    unsigned long* attempted, unsigned long* usedVulkan,
+    unsigned long* levels, unsigned long* vkDraws,
+    unsigned long* copyDepthOps, unsigned long* readbackOps,
+    const char** fallbackReason, double* renderUs);
 // VK-REGION-SSAO-1: SSAO Vulkan island health snapshot (defined in
 // GameOS/gameos/vulkan_ssao_island.cpp, same #ifdef MC2_VULKAN_ISLAND).
 extern "C" void mc2_vulkan_ssao_island_health(
@@ -933,6 +940,31 @@ std::string buildSnapshotJson(const RenderSnapshot& snap,
         s << "    \"shoreline_frames\": " << sf << ",\n";
         s << "    \"gl_screenfx_sites_skipped\": " << glSkip << ",\n";
         s << "    \"postscreenfx_fallback_reason\": \"" << jsonEscape(fbr) << "\",\n";
+        s << "    \"render_us\": " << rUs << "\n";
+        s << "  }\n";
+    }
+    // VK-POST-HZB-NATIVE-1 (rung 8.4): additive "vk_post_hzb_native" section —
+    // the used_vulkan receipt for the native HZB pyramid (shared engine context,
+    // zero depth ingress/readback egress on the normal path). Zeros when compiled
+    // but the gate is OFF.
+    {
+        int rg = 0, sub = 0;
+        unsigned long att = 0, used = 0, levels = 0, vkDraws = 0, copyDepth = 0, readback = 0;
+        const char* fbr = "";
+        double rUs = 0.0;
+        mc2_vk_post_hzb_native_health(&rg, &sub, &att, &used, &levels, &vkDraws,
+                                      &copyDepth, &readback, &fbr, &rUs);
+        s << "  ,\n";
+        s << "  \"vk_post_hzb_native\": {\n";
+        s << "    \"runtime_gate_enabled\": " << rg << ",\n";
+        s << "    \"substrate_live\": " << sub << ",\n";
+        s << "    \"hzb_attempted\": " << att << ",\n";
+        s << "    \"hzb_used_vulkan\": " << used << ",\n";
+        s << "    \"levels\": " << levels << ",\n";
+        s << "    \"vk_draws\": " << vkDraws << ",\n";
+        s << "    \"copy_depth_ops\": " << copyDepth << ",\n";
+        s << "    \"readback_ops\": " << readback << ",\n";
+        s << "    \"hzb_fallback_reason\": \"" << jsonEscape(fbr) << "\",\n";
         s << "    \"render_us\": " << rUs << "\n";
         s << "  }\n";
     }

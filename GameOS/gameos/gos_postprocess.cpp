@@ -857,6 +857,8 @@ void gosPostProcess::destroy()
     // VK-POST-SCREENFX-NATIVE-1 (rung 8.3): same teardown for the native
     // cloud/shoreline pass pair.
     destroyVkPostScreenFxNative();
+    // VK-POST-HZB-NATIVE-1 (rung 8.4): same teardown for the native HZB pyramid.
+    destroyVkPostHzbNative();
     // VK-REGION-SSAO-1: same teardown for the SSAO island.
     destroyVulkanSSAOIsland();
     // VK-REGION-HZB-1: same teardown for the HZB island.
@@ -1657,6 +1659,9 @@ void gosPostProcess::destroyFBOs()
 
     // HZB-DEPTH-PYRAMID-MVP-1: free the per-level pyramid textures + FBO
     // (resize re-allocates if the gate is on).
+#ifdef MC2_VULKAN_ISLAND
+    destroyVkPostHzbNative();
+#endif
     bool hzbHadBase = (hzbLevelTex_[0] != 0);
     for (int i = 0; i < kHzbMaxLevels; ++i) {
         if (hzbLevelTex_[i]) { glDeleteTextures(1, &hzbLevelTex_[i]); hzbLevelTex_[i] = 0; }
@@ -3933,13 +3938,18 @@ void gosPostProcess::endScene()
     // HZB-DEPTH-PYRAMID-MVP-1: build the reverse-Z Hi-Z pyramid from the
     // resolved scene depth before any post pass. Gated (MC2_HZB_BUILD), no
     // consumers, no draw suppression -> no-op + byte-identical when OFF.
-    // VK-REGION-HZB-1: when the region-iface master gate is ON, route through
-    // IRenderBackend::runRegion (MC2_POSTPROCESS_BACKEND=gl|vk picks the impl,
-    // VK falls back to GL on failure) instead of calling runHzbReduce()
-    // directly. Gate OFF -> the original direct call runs verbatim
-    // (byte-identical). The probe stays direct either way: it reads whatever
-    // pyramid the selected backend produced (a free CPU cross-check of the
-    // Vulkan-built pyramid when MC2_HZB_PROBE is also on).
+    // VK-POST-HZB-NATIVE-1 (rung 8.4): highest precedence at the HZB site.
+    // When MC2_VK_POST_HZB=1, the shared-engine Vulkan path tries first; on any
+    // decline/failure it falls straight back to the unchanged GL runHzbReduce()
+    // body so the HZB probe stays coherent. Only when the native gate is OFF do
+    // we consider the older region-iface route (VK-REGION-HZB-1) or direct GL.
+    // Precedence: native > region-iface > GL.
+#ifdef MC2_VULKAN_ISLAND
+    if (vkPostHzbNativeEnabled()) {
+        if (!runVkPostHzbNative())
+            runHzbReduce();
+    } else
+#endif
     if (regionIfaceEnabled()) {
         runHzbRegionThroughBackend();
     } else {

@@ -892,3 +892,28 @@ destroy-delta all missions.**
 washout) are root-caused and fixed; the one open residual the follow-up
 session left on the table (fence uvScale sub-region gap) is now also fixed and
 verified. No further action items outstanding from this adjudication.
+
+## RUNG 8.4 - VK-POST-HZB-NATIVE-1 SHIPPED
+
+Native HZB now builds the postprocess depth pyramid on the shared engine
+VulkanContext under `MC2_VK_POST_HZB=1` when `MC2_HZB_BUILD=1`. The path samples
+the shared scene depth directly and writes VK-owned R32F ceil-ladder pyramid
+levels; the old GL `runHzbReduce()` body remains the fail-soft fallback/oracle.
+
+Critical sync fix: the HZB pass must not advance only the shared depth resource
+parity. Doing so desynchronizes the shared GBuffer triplet from terrain/prop
+writers, whose submit retirement model is keyed off the color fence. The shipped
+implementation acquires/releases color0, normal, and depth together, but records
+barriers and samples only depth. Validation also required depth barriers to use
+`VK_IMAGE_ASPECT_DEPTH_BIT | VK_IMAGE_ASPECT_STENCIL_BIT` for the shared
+`D32_SFLOAT_S8_UINT` image.
+
+Receipts:
+- Focused native HZB smoke `mc2_01`: PASS, 168 frames, +0 destroys.
+- Focused validation smoke `mc2_01`: PASS, 79 frames, +0 destroys; no HZB VUIDs.
+- HZB health: attempted=79, used_vulkan=79, levels=11, vk_draws=11,
+  copy_depth_ops=0, readback_ops=0, fallback_reason="".
+- Probe path `MC2_HZB_PROBE=1`: PASS; native declined with
+  fallback_reason="probe_enabled", attempted=0, used_vulkan=0.
+- Tier1 native HZB (`mc2_01/mc2_03/mc2_10/mc2_17/mc2_24`, 20s): PASS 5/5,
+  +0 destroys.

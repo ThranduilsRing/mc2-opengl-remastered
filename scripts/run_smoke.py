@@ -1807,6 +1807,10 @@ def main():
                             # Popen drops it and the compare runs with HZB silently OFF
                             # (region_impl=None -- the compare proves nothing; same trap
                             # class as the MC2_SSAO gap fixed by 5cd3cc65).
+                            # VK-POST-HZB-NATIVE-1: the rung-8.4 native HZB gate.
+                            # Needs the build gate too; probe mode intentionally falls
+                            # back to GL so the GL pyramid stays coherent for reads.
+                            "MC2_VK_POST_HZB",
                             "MC2_HZB_BUILD",
                             "MC2_HZB_PROBE",
                             # SKYBOX-FOG-EXCLUDE-1: stencil-tag true sky pixels during
