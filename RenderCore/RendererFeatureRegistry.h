@@ -603,6 +603,18 @@ static constexpr EnvVarDesc kAuxEnvVars[] = {
         "volk dispatch collision. On =gl/unset the accessor adds only one memoized "
         "getenv -> byte-identical GL behavior."
     },
+    {
+        "MC2_FEATURE_VK_IMGUI",
+        "MC2_VK_IMGUI",
+        EnvVarKind::Feature,
+        false,
+        "VK-IMGUI-NATIVE-1 (rung 8.6): default-OFF ImGui Vulkan renderer gate. "
+        "Current implementation is observable-decline only: GuiRuntime::Render() "
+        "logs [VK_IMGUI] requested=1 used_vulkan=0 with fallback_reason="
+        "\"tail_handoff_not_split\" and then renders through the unchanged "
+        "SDL2/OpenGL3 backend. Native rendering stays blocked until the final-tail "
+        "present handoff is split."
+    },
     // VK-P13-SELECTOR-1 / T4: fail-soft proof knob for the engine VK context.
     {
         "MC2_FEATURE_VK_FORCE_FAIL",

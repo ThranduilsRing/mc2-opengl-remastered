@@ -1072,3 +1072,19 @@ This is intentionally not a native renderer yet. The decline reason remains the
 8.5b/8.6b contract: `presentGLFrame()` owns the single final GL->VK handoff, so
 native ImGui cannot write the shared present image until the final-tail handoff is
 split.
+
+Verification:
+- Build PASS at `7b4741ee` (`build64_island`, RelWithDebInfo), dirty=0 before deploy.
+- Deployed exact 0.4c lane with manifest `src_commit=7b4741eeed0e6cd3cc4134323a525ab07473428e`.
+- Gate-on minimized smoke:
+  `MC2_RENDER_BACKEND=vulkan MC2_VK_PRESENT_DIRECT_FBO=1 MC2_VK_PRESENT_VERIFY=1 MC2_VK_IMGUI=1`
+  with `scripts/run_smoke.py --exe A:/Games/mc2-opengl/mc2-win64-0.4c/mc2.exe --mission mc2_01 --mission mc2_24 --duration 20 --keep-logs`
+  PASS 2/2, fingerprint OK, +0 destroys.
+- Receipt in both mission logs:
+  `[VK_IMGUI] requested=1 used_vulkan=0 direct_present_armed=0 fallback_reason="tail_handoff_not_split"`.
+  `direct_present_armed=0` is expected for minimized smoke because VK present
+  fail-softs on zero surface extent; use visible capture for direct-FBO armed proof.
+- Follow-up hygiene: `MC2_VK_IMGUI` registered in `RendererFeatureRegistry.h`;
+  `docs/flags.auto.yaml` regenerated. `check-env-allowlist.sh` remains advisory-dirty
+  from pre-existing harness-only vars, but reports zero engine `getenv` vars missing
+  from the smoke allowlist.
