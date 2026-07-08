@@ -145,6 +145,17 @@ no tessellation anywhere in the tail.
   `[VK_PRESENT] imgui_vk_ready=1 imgui_vk_frames=6301 validation_errors=0`.
   Post-commit minimized smoke `tests/smoke/artifacts/2026-07-08T13-32-28`
   PASS 2/2 at clean HEAD `4ed1ca21db54`.
+- 8.6f - HUD TEXTURE METADATA CHECKPOINT (VK-HUD-TEXTURE-METADATA-1). The
+  `MC2_VK_HUD=1` queue path now carries GL texture id plus width/height/format
+  metadata into the final-tail batch and reports `hud_vk_textured_last`.
+  Visible proof `.claude/vk-hud-metadata-visible/` captured 11/11 deterministic
+  `mc2_01` bookmarks under the full rung-8 env stack. Runtime receipt:
+  `[VK_PRESENT] present_frames=301 direct_fbo_grants=301 copy1_skip_frames=301
+  tail_hook_frames=301 composite_vk_frames=300 hud_vk_queued_frames=174
+  hud_vk_consumed_frames=174 hud_vk_draws_last=95 hud_vk_textured_last=69
+  imgui_vk_ready=1 imgui_vk_frames=301 validation_errors=0 fallback_reason=""`.
+  Next HUD slice must add a content serial/mirror-ready signal because GL
+  texture names can stay stable across `glTexSubImage2D`/`Unlock()` mutations.
 - Combined rung-8 smoke with `MC2_VK_SHARED_GBUFFER=1` and gates 8.1-8.6
   forwarded PASS 2/2 at `tests/smoke/artifacts/2026-07-08T14-47-14`.
   It proves 8.1/8.2/8.3/8.4 native post paths execute together

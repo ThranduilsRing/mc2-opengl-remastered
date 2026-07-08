@@ -7979,6 +7979,16 @@ void gosRenderer::flushHUDBatch()
             draw.textureHandle = (call.kind == kHudTextQuadBatch)
                 ? (uint32_t)call.fontTexId
                 : (uint32_t)call.stateSnapshot[gos_State_Texture];
+            if (draw.textureHandle != 0 && draw.textureHandle != INVALID_TEXTURE_ID) {
+                if (gosTexture* tex = getTexture(draw.textureHandle)) {
+                    gosTextureInfo ti;
+                    tex->getTextureInfo(&ti);
+                    draw.glTextureId = tex->getTextureId();
+                    draw.textureWidth = (uint32_t)ti.width_;
+                    draw.textureHeight = (uint32_t)ti.height_;
+                    draw.textureFormat = (uint32_t)ti.format_;
+                }
+            }
             draw.alphaMode = call.stateSnapshot[gos_State_AlphaMode];
             draw.textureAddress = call.stateSnapshot[gos_State_TextureAddress];
             draw.filter = call.stateSnapshot[gos_State_Filter];

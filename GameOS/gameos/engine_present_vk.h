@@ -70,6 +70,7 @@ struct EnginePresentHealth {
     uint32_t    hud_vk_queued_frames = 0;  // HUD batches queued for native tail replay
     uint32_t    hud_vk_consumed_frames = 0;// queued HUD batches observed by the tail hook
     uint32_t    hud_vk_draws_last = 0;     // draw records in the last queued HUD batch
+    uint32_t    hud_vk_textured_last = 0;  // draw records with texture metadata
     bool        imgui_vk_ready      = false;
     unsigned int last_direct_fbo    = 0;   // last shared FBO id granted
     std::string fallback_reason;           // empty == clean
@@ -85,6 +86,10 @@ struct VkHudVertex {
 struct VkHudDraw {
     uint32_t kind = 0;
     uint32_t textureHandle = 0;
+    uint32_t glTextureId = 0;
+    uint32_t textureWidth = 0;
+    uint32_t textureHeight = 0;
+    uint32_t textureFormat = 0;
     uint32_t alphaMode = 0;
     uint32_t textureAddress = 0;
     uint32_t filter = 0;
