@@ -1824,6 +1824,10 @@ def main():
                             # lands after shader asset prep; allowlisted now so
                             # gate-on smoke cannot silently run the GL composite.
                             "MC2_VK_POST_COMPOSITE",
+                            # VK-TAIL-HOOK-1: behavior-neutral final-tail command
+                            # buffer seam; proves native HUD/ImGui can execute
+                            # after GL->VK handoff and before the swapchain blit.
+                            "MC2_VK_PRESENT_TAIL_HOOK",
                             # VK-IMGUI-NATIVE-1 (rung 8.6): ImGui Vulkan renderer
                             # gate. Current slice is observable-decline only until
                             # the final-tail present handoff is split; must be

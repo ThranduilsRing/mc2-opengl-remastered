@@ -615,6 +615,17 @@ static constexpr EnvVarDesc kAuxEnvVars[] = {
         "SDL2/OpenGL3 backend. Native rendering stays blocked until the final-tail "
         "present handoff is split."
     },
+    {
+        "MC2_FEATURE_VK_PRESENT_TAIL_HOOK",
+        "MC2_VK_PRESENT_TAIL_HOOK",
+        EnvVarKind::Feature,
+        false,
+        "VK-TAIL-HOOK-1 (rung 8.6): default-OFF present-command-buffer seam for "
+        "native final-tail rendering. When enabled, EnginePresentVk records a "
+        "behavior-neutral dependency in presentGLFrame() after the GL->VK handoff "
+        "and before the swapchain blit; [VK_PRESENT] tail_hook_frames proves the "
+        "native HUD/ImGui insertion point executes."
+    },
     // VK-P13-SELECTOR-1 / T4: fail-soft proof knob for the engine VK context.
     {
         "MC2_FEATURE_VK_FORCE_FAIL",

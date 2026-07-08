@@ -62,6 +62,7 @@ struct EnginePresentHealth {
     uint32_t    direct_fbo_grants   = 0;   // calls that returned the shared FBO
     uint32_t    copy1_blit_frames   = 0;   // legacy FBO-0 -> shared-image blit
     uint32_t    copy1_skip_frames   = 0;   // direct shared-FBO frames
+    uint32_t    tail_hook_frames    = 0;   // gated VK final-tail hook executions
     unsigned int last_direct_fbo    = 0;   // last shared FBO id granted
     std::string fallback_reason;           // empty == clean
 };

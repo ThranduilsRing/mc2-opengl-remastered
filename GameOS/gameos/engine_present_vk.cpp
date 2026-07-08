@@ -120,6 +120,17 @@ bool directFboGateEnabled() {
     return on;
 }
 
+// VK-TAIL-HOOK-1: opt-in proof seam for native final-tail commands. The hook is
+// behavior-neutral for now; it records a real command-buffer dependency at the
+// exact point future native HUD/ImGui rendering will attach.
+bool presentTailHookEnabled() {
+    static const bool on = []() {
+        const char* v = getenv("MC2_VK_PRESENT_TAIL_HOOK");
+        return v && v[0] == '1';
+    }();
+    return on;
+}
+
 // -------- swapchain (re)build against the SHARED device -------------------
 bool chooseQueuesAndPresentMode(EnginePresentVk::Impl& s, std::string& reason) {
     // The shared context picked gfxFamily; confirm it can present to our surface.
@@ -577,11 +588,25 @@ bool EnginePresentVk::presentGLFrame(uint32_t glDrawableW, uint32_t glDrawableH,
         return false;
     }
 
+    const bool tailHook = presentTailHookEnabled();
     VkImage scImg = s.scImages[imageIndex];
     vkResetCommandBuffer(s.cbuf, 0);
     VkCommandBufferBeginInfo bi{VK_STRUCTURE_TYPE_COMMAND_BUFFER_BEGIN_INFO};
     bi.flags = VK_COMMAND_BUFFER_USAGE_ONE_TIME_SUBMIT_BIT;
     vkBeginCommandBuffer(s.cbuf, &bi);
+
+    // VK-TAIL-HOOK-1: final native-tail seam. GL has signalled the shared image
+    // back to VK in COLOR_ATTACHMENT layout; future native HUD/ImGui commands
+    // attach here before the present blit consumes the final image.
+    if (tailHook) {
+        ++health_.tail_hook_frames;
+        barrier(s.cbuf, s.sharedImg.image,
+                VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL, VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL,
+                VK_ACCESS_COLOR_ATTACHMENT_WRITE_BIT,
+                VK_ACCESS_COLOR_ATTACHMENT_READ_BIT | VK_ACCESS_COLOR_ATTACHMENT_WRITE_BIT,
+                VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT,
+                VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT);
+    }
 
     // shared image: GL left it in COLOR_ATTACHMENT layout -> TRANSFER_SRC for blit.
     barrier(s.cbuf, s.sharedImg.image,
@@ -643,9 +668,12 @@ bool EnginePresentVk::presentGLFrame(uint32_t glDrawableW, uint32_t glDrawableH,
     // interop slot fence (fs.fence) alone guards safe re-signalling of glToVkSem.
     VkSemaphore imgRenderSem = s.renderSems[imageIndex];
     VkSemaphore waitSems[2]  = { s.acquireSem, fs.signal };
+    const VkPipelineStageFlags glReadyStages = tailHook
+        ? (VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT | VK_PIPELINE_STAGE_TRANSFER_BIT)
+        : VK_PIPELINE_STAGE_TRANSFER_BIT;
     VkPipelineStageFlags waitStages[2] = {
         VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT,
-        VK_PIPELINE_STAGE_TRANSFER_BIT,
+        glReadyStages,
     };
     VkSubmitInfo si{VK_STRUCTURE_TYPE_SUBMIT_INFO};
     si.waitSemaphoreCount   = 2;
@@ -827,7 +855,8 @@ void EnginePresentVk::logHealth() const {
         "[VK_PRESENT] created=%d attempted=%d present_frames=%u resize_count=%u "
         "validation_errors=%u extent=%ux%u present_mode=%s readback_changed=%d "
         "last_checksum=0x%llx direct_fbo_requests=%u direct_fbo_grants=%u "
-        "copy1_blit_frames=%u copy1_skip_frames=%u last_direct_fbo=%u "
+        "copy1_blit_frames=%u copy1_skip_frames=%u tail_hook_frames=%u "
+        "last_direct_fbo=%u "
         "fallback_reason=\"%s\"\n",
         health_.created ? 1 : 0, health_.attempted ? 1 : 0,
         health_.present_frames, health_.resize_count, health_.validation_errors,
@@ -837,6 +866,7 @@ void EnginePresentVk::logHealth() const {
         (unsigned long long)health_.last_readback_checksum,
         health_.direct_fbo_requests, health_.direct_fbo_grants,
         health_.copy1_blit_frames, health_.copy1_skip_frames,
+        health_.tail_hook_frames,
         health_.last_direct_fbo,
         health_.fallback_reason.empty() ? "" : health_.fallback_reason.c_str());
     std::fflush(stderr);

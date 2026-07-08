@@ -6,8 +6,8 @@
 generator_version: "1.0.0"
 registry_entry_count: 94
 registry_env_flag_count: 92
-sweep_flag_count: 788
-flag_count: 797
+sweep_flag_count: 789
+flag_count: 798
 flags:
   - name: MC2_ABL_ARG_GUARD
     default: unknown
@@ -6393,6 +6393,14 @@ flags:
     registered: no
     in_smoke_passthrough: yes
     documented_in_tier1_env_vars: yes
+  - name: MC2_VK_PRESENT_TAIL_HOOK
+    default: unknown
+    declared_in: null
+    referenced_at:
+      - GameOS/gameos/engine_present_vk.cpp:128
+    registered: no
+    in_smoke_passthrough: yes
+    documented_in_tier1_env_vars: yes
   - name: MC2_VK_PRESENT_VERIFY
     default: unknown
     declared_in: null
@@ -6576,7 +6584,7 @@ flags:
     default: unknown
     declared_in: null
     referenced_at:
-      - GameOS/gameos/engine_present_vk.cpp:168
+      - GameOS/gameos/engine_present_vk.cpp:179
       - GameOS/gameos/gos_render.cpp:376
       - editor/EditorGosRender.cpp:833
     referenced_at_more: 1

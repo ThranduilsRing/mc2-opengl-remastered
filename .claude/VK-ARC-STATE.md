@@ -1099,3 +1099,31 @@ Verification:
   The `direct_present_armed` field stayed 0 from the ImGui call site even with
   live VK present, so it is a conservative predicate only; do not treat it as
   proof that direct-FBO present was unavailable.
+
+## RUNG 8.6d - VK-TAIL-HOOK-1
+
+Behavior-neutral final-tail command-buffer seam landed. `MC2_VK_PRESENT_TAIL_HOOK=1`
+adds a no-op image memory dependency inside `EnginePresentVk::presentGLFrame()`
+after the final GL->VK handoff and before the swapchain blit. This is the exact
+place native HUD/ImGui rendering must attach: the shared present image is
+Vulkan-owned, still in `COLOR_ATTACHMENT_OPTIMAL`, and the existing present
+command buffer already owns the final submit/present cadence. The GL->VK
+semaphore wait stage expands to include `COLOR_ATTACHMENT_OUTPUT` only while
+the hook is enabled.
+
+Verification:
+- Build PASS at `d710e56c` + dirty hook changes (`build64_island`, RelWithDebInfo).
+- Deployed 0.4c lane; manifest `src_commit=d710e56c3622`.
+- Visible-window proof:
+  `MC2_RENDER_BACKEND=vulkan MC2_VK_PRESENT_DIRECT_FBO=1 MC2_VK_PRESENT_VERIFY=1 MC2_VK_PRESENT_TAIL_HOOK=1 MC2_VK_IMGUI=1`
+  with `run_visual_capture.py --show-window --mission mc2_01 --bookmarks tests/visual/bookmarks/mc2_01.json`
+  wrote 11/11 deterministic bookmark PNGs under `.claude/vk-present-tail-hook/`.
+- `[VK_PRESENT]` final health:
+  `present_frames=6301`, `direct_fbo_requests=6301`, `direct_fbo_grants=6301`,
+  `copy1_blit_frames=0`, `copy1_skip_frames=6301`, `tail_hook_frames=6301`,
+  `validation_errors=0`, `fallback_reason=""`.
+- No-hook vs hook PNG byte compare: 9/11 byte-identical; the two differences
+  were negligible (`cross_map_view`: 2 pixels / 1,638,720, max delta 9;
+  `ridge_lowangle`: 24 pixels / 1,638,720, max delta 1). Treat hook as visually
+  neutral. NEXT: replace the no-op dependency with the ImGui Vulkan draw-data
+  render pass at this seam; do not attempt a second handoff from `GuiRuntime`.
