@@ -379,9 +379,8 @@ static bool vkImguiRequested() {
 
 static void maybeTraceVkImguiDecline() {
     if (!vkImguiRequested()) return;
-    static bool s_traced = false;
-    if (s_traced) return;
-    s_traced = true;
+    static bool s_tracedInitial = false;
+    static bool s_tracedArmed = false;
 
     int directPresentArmed = 0;
 #ifdef MC2_VULKAN
@@ -390,6 +389,13 @@ static void maybeTraceVkImguiDecline() {
         directPresentArmed = vkpres.directPresentFrameArmed() ? 1 : 0;
     }
 #endif
+    if (directPresentArmed) {
+        if (s_tracedArmed) return;
+        s_tracedArmed = true;
+    } else {
+        if (s_tracedInitial) return;
+        s_tracedInitial = true;
+    }
     std::fprintf(stderr,
         "[VK_IMGUI] requested=1 used_vulkan=0 direct_present_armed=%d "
         "fallback_reason=\"tail_handoff_not_split\"\n",
