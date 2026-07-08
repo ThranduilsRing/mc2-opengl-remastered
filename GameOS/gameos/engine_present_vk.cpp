@@ -989,9 +989,13 @@ bool EnginePresentVk::queueHudVulkanFrame(std::vector<VkHudDraw>&& draws) {
     s.pendingHudDraws = std::move(draws);
     health_.hud_vk_draws_last = (uint32_t)s.pendingHudDraws.size();
     health_.hud_vk_textured_last = 0;
+    health_.hud_vk_serialized_last = 0;
     for (const VkHudDraw& d : s.pendingHudDraws) {
-        if (d.textureHandle != 0 && d.glTextureId != 0 && d.textureWidth != 0 && d.textureHeight != 0)
+        if (d.textureHandle != 0 && d.glTextureId != 0 && d.textureWidth != 0 && d.textureHeight != 0) {
             ++health_.hud_vk_textured_last;
+            if (d.textureSerial != 0)
+                ++health_.hud_vk_serialized_last;
+        }
     }
     ++health_.hud_vk_queued_frames;
     return true;
@@ -1411,7 +1415,8 @@ void EnginePresentVk::logHealth() const {
         "last_checksum=0x%llx direct_fbo_requests=%u direct_fbo_grants=%u "
         "copy1_blit_frames=%u copy1_skip_frames=%u tail_hook_frames=%u "
         "composite_vk_frames=%u hud_vk_queued_frames=%u hud_vk_consumed_frames=%u "
-        "hud_vk_draws_last=%u hud_vk_textured_last=%u imgui_vk_ready=%d imgui_vk_frames=%u "
+        "hud_vk_draws_last=%u hud_vk_textured_last=%u hud_vk_serialized_last=%u "
+        "imgui_vk_ready=%d imgui_vk_frames=%u "
         "last_direct_fbo=%u "
         "fallback_reason=\"%s\"\n",
         health_.created ? 1 : 0, health_.attempted ? 1 : 0,
@@ -1426,6 +1431,7 @@ void EnginePresentVk::logHealth() const {
         health_.composite_vk_frames,
         health_.hud_vk_queued_frames, health_.hud_vk_consumed_frames,
         health_.hud_vk_draws_last, health_.hud_vk_textured_last,
+        health_.hud_vk_serialized_last,
         health_.imgui_vk_ready ? 1 : 0, health_.imgui_vk_frames,
         health_.last_direct_fbo,
         health_.fallback_reason.empty() ? "" : health_.fallback_reason.c_str());

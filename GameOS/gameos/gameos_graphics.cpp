@@ -1072,6 +1072,7 @@ class gosTexture {
 
             is_locked_ = false;
             is_from_memory_ = from_memory;
+            content_serial_ = 0;
         }
 
         gosTexture(gos_TextureFormat fmt, DWORD hints, DWORD w, DWORD h, const char* texname)
@@ -1098,6 +1099,7 @@ class gosTexture {
 
             is_locked_ = false;
             is_from_memory_ = true;
+            content_serial_ = 0;
         }
 
         // TEXMGR-COMPRESSED-UPLOAD-1: wrap a pre-built (already GL-uploaded)
@@ -1122,6 +1124,7 @@ class gosTexture {
             tex_ = prebuilt;
             is_locked_ = false;
             is_from_memory_ = true;
+            content_serial_ = 1;
         }
 
         bool createHardwareTexture();
@@ -1144,6 +1147,8 @@ class gosTexture {
 
         uint32_t getTextureId() const { return tex_.id; }
         TexType getTextureType() const { return tex_.type_; }
+        uint32_t getContentSerial() const { return content_serial_; }
+        void markContentMutated() { ++content_serial_; }
 
         BYTE* Lock(int mipl_level, bool is_read_only, int* pitch) {
             gosASSERT(is_locked_ == false);
@@ -1211,6 +1216,7 @@ class gosTexture {
                 // Guard neutralises both so the recoloured texels actually land.
                 GlPixelStoreGuard pixelStoreGuard;
                 updateTexture(tex_, plocked_area_, TF_RGBA8);
+                markContentMutated();
             }
 
             delete[] plocked_area_;
@@ -1240,6 +1246,7 @@ class gosTexture {
         bool is_locked_;
         bool lock_type_read_only_;
         bool is_from_memory_; // not loaded from file
+        uint32_t content_serial_;
 };
 
 struct gosTextAttribs {
@@ -1328,6 +1335,8 @@ bool gosTexture::createHardwareTexture() {
         format_ = convertIfNecessary(img, format_);
 
         tex_ = create2DTexture(img.getWidth(), img.getHeight(), tf, img.getPixels(), wantMipmaps);
+        if(tex_.isValid())
+            markContentMutated();
         return tex_.isValid();
 
     } else if(pcompdata_ && size_ > 0) {
@@ -1351,6 +1360,8 @@ bool gosTexture::createHardwareTexture() {
         format_ = convertIfNecessary(img, format_);
 
         tex_ = create2DTexture(img.getWidth(), img.getHeight(), tf, img.getPixels(), wantMipmaps);
+        if(tex_.isValid())
+            markContentMutated();
         return tex_.isValid();
     } else {
         gosASSERT(tex_.w >0 && tex_.h > 0);
@@ -1386,6 +1397,8 @@ bool gosTexture::createHardwareTexture() {
             }
         }
         tex_ = create2DTexture(tex_.w, tex_.h, tf, (const uint8_t*)pdata, wantMipmaps);
+        if(tex_.isValid())
+            markContentMutated();
         delete[] pdata;
         return tex_.isValid();
     }
@@ -7987,6 +8000,7 @@ void gosRenderer::flushHUDBatch()
                     draw.textureWidth = (uint32_t)ti.width_;
                     draw.textureHeight = (uint32_t)ti.height_;
                     draw.textureFormat = (uint32_t)ti.format_;
+                    draw.textureSerial = tex->getContentSerial();
                 }
             }
             draw.alphaMode = call.stateSnapshot[gos_State_AlphaMode];
@@ -8255,6 +8269,8 @@ gosFont* gosFont::load(const char* fontFile) {
                                 GL_RGBA, GL_UNSIGNED_BYTE, rgba);
                 glPixelStorei(GL_UNPACK_ALIGNMENT, prev_unpack_alignment);
                 glBindTexture(GL_TEXTURE_2D, 0);
+                if(gosTexture* tex = g_gos_renderer->getTexture(tex_id))
+                    tex->markContentMutated();
                 delete[] rgba;
 
                 gosFont* font = new gosFont();
