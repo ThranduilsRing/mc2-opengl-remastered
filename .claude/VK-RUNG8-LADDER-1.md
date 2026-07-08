@@ -242,19 +242,36 @@ no tessellation anywhere in the tail.
   (`substrate_live=1`, `used_vulkan>0`, no fallback) on `mc2_01` and `mc2_24`.
   Minimized smoke cannot prove present/ImGui execution because the surface extent
   is zero; use the visible proof above for that.
-- 8.7 - BLOCKED, not a safe deletion yet. Native ImGui is done and native
-  composite has its Visual + FXAA + FORCE-43 + LowLight + ObjectId/Thermal slice,
-  but native GameOS HUD
-  (`MC2_VK_HUD`) is not landed and composite still has GL fallback coverage for
-  diagnostics. `MC2_UI_PASS_MEASURE=1` now prints `[VK_HUD_AUDIT v1]`; focused
-  `mc2_01` proof (`tests/smoke/artifacts/2026-07-08T15-33-28`, PASS 1/1)
-  showed steady HUD frames at `calls=95`, `textured=69`, `text=7`, so the native
-  port must preserve ordered textured quad/text replay and cannot retire GL with
-  an untextured-only slice. `MC2_VK_HUD=1` now queues that ordered batch to
-  `EnginePresentVk`; visible proof `.claude/vk-hud-queue-visible/` reached
-  `hud_vk_queued_frames=1 hud_vk_consumed_frames=1 hud_vk_draws_last=85`.
-  Rendering/textures and GL-replay skip are still pending. Old postprocess islands
-  are bypassed by shared-GBuffer native gates but remain fallback/oracle code.
-  Win32 GL interop primitives remain required by shared scene color/depth/present
-  while GL continues to draw HUD and fallback composite pixels. Delete only after
-  native HUD plus the remaining composite branches are live and verified.
+- 8.6l - HUD RETAINED CPU MIRROR (VK-HUD-CPU-MIRROR-1). `gosTexture` now retains
+  an RGBA8 CPU mirror at texture creation, writable `Unlock()`, and D3F font
+  atlas upload time. The native HUD queue copies texture payloads from that
+  retained mirror instead of issuing a replay-time GL `getTextureData()`
+  readback for every textured HUD draw. Visible proof
+  `.claude/vk-hud-mirror-visible/` captured 11/11 deterministic `mc2_01`
+  bookmarks under the full rung-8 stack with GL HUD replay skipped. Runtime
+  receipts: `[VK_HUD_SKIP v1] frame=120 draws=95 reason="native_full_coverage"`
+  and `[VK_PRESENT] present_frames=301 composite_vk_frames=300
+  hud_vk_queued_frames=174 hud_vk_consumed_frames=174 hud_vk_draws_last=95
+  hud_vk_textured_draws_last=69 hud_vk_texture_uploads=22 imgui_vk_frames=301
+  validation_errors=0 fallback_reason=""`. Smoke PASS 1/1 at
+  `2026-07-08T16-21-39`.
+- 8.7 - PARTIAL DELETE-READINESS, not a safe all-interop deletion yet. Native
+  ImGui, native composite Visual/FXAA/FORCE-43/LowLight/ObjectId/Thermal, and
+  native GameOS HUD are now live under the full rung-8 stack. With
+  `MC2_VK_HUD=1 MC2_VK_HUD_COLOR_PROOF=1 MC2_VK_HUD_SKIP_GL=1`, visible proof
+  `.claude/vk-hud-skip-gl-visible-3/` reached `[VK_HUD_SKIP v1] frame=120
+  draws=95 reason="native_full_coverage"` and `[VK_PRESENT] present_frames=301
+  composite_vk_frames=300 hud_vk_queued_frames=170 hud_vk_consumed_frames=170
+  hud_vk_draws_last=95 hud_vk_textured_draws_last=69 imgui_vk_frames=301
+  validation_errors=0 fallback_reason=""`. HUD is no longer the blocker for
+  GL draw retirement in the present tail.
+
+  Remaining blockers are narrower and concrete. The shared scene
+  color/depth/normal substrate still uses Win32 GL/VK external-memory and
+  semaphore handoffs for current native geometry/post paths, so
+  `gl_interop_view.*`, `vk_image_resource.*`, and `vulkan_shared_scene_*` are
+  not yet deletable. Old postprocess island/subgraph TUs and gates are bypassed
+  by the shared-GBuffer native gates and are candidates for a separate fallback
+  and oracle cleanup slice, but deletion must remove the CMake entries,
+  `gos_postprocess` routes, debug-dump health sections, smoke allowlist entries,
+  and docs together.

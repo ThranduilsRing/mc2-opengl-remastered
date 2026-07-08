@@ -1073,6 +1073,8 @@ class gosTexture {
             is_locked_ = false;
             is_from_memory_ = from_memory;
             content_serial_ = 0;
+            mirror_w_ = 0;
+            mirror_h_ = 0;
         }
 
         gosTexture(gos_TextureFormat fmt, DWORD hints, DWORD w, DWORD h, const char* texname)
@@ -1100,6 +1102,8 @@ class gosTexture {
             is_locked_ = false;
             is_from_memory_ = true;
             content_serial_ = 0;
+            mirror_w_ = 0;
+            mirror_h_ = 0;
         }
 
         // TEXMGR-COMPRESSED-UPLOAD-1: wrap a pre-built (already GL-uploaded)
@@ -1125,6 +1129,8 @@ class gosTexture {
             is_locked_ = false;
             is_from_memory_ = true;
             content_serial_ = 1;
+            mirror_w_ = 0;
+            mirror_h_ = 0;
         }
 
         bool createHardwareTexture();
@@ -1150,6 +1156,36 @@ class gosTexture {
         const Texture& getTexture() const { return tex_; }
         uint32_t getContentSerial() const { return content_serial_; }
         void markContentMutated() { ++content_serial_; }
+        const std::vector<uint8_t>& getRgbaMirror() const { return rgba_mirror_; }
+        bool hasRgbaMirror() const { return !rgba_mirror_.empty() && mirror_w_ == tex_.w && mirror_h_ == tex_.h; }
+
+        void setRgbaMirror(int w, int h, TexFormat format, const void* pixels) {
+            if(w <= 0 || h <= 0 || pixels == nullptr) {
+                rgba_mirror_.clear();
+                mirror_w_ = 0;
+                mirror_h_ = 0;
+                return;
+            }
+            const size_t pixelCount = (size_t)w * (size_t)h;
+            rgba_mirror_.resize(pixelCount * 4u);
+            mirror_w_ = w;
+            mirror_h_ = h;
+            if(format == TF_RGBA8) {
+                std::memcpy(rgba_mirror_.data(), pixels, rgba_mirror_.size());
+            } else if(format == TF_RGB8) {
+                const uint8_t* src = (const uint8_t*)pixels;
+                for(size_t i = 0; i < pixelCount; ++i) {
+                    rgba_mirror_[i * 4u + 0u] = src[i * 3u + 0u];
+                    rgba_mirror_[i * 4u + 1u] = src[i * 3u + 1u];
+                    rgba_mirror_[i * 4u + 2u] = src[i * 3u + 2u];
+                    rgba_mirror_[i * 4u + 3u] = 0xffu;
+                }
+            } else {
+                rgba_mirror_.clear();
+                mirror_w_ = 0;
+                mirror_h_ = 0;
+            }
+        }
 
         BYTE* Lock(int mipl_level, bool is_read_only, int* pitch) {
             gosASSERT(is_locked_ == false);
@@ -1217,6 +1253,7 @@ class gosTexture {
                 // Guard neutralises both so the recoloured texels actually land.
                 GlPixelStoreGuard pixelStoreGuard;
                 updateTexture(tex_, plocked_area_, TF_RGBA8);
+                setRgbaMirror(tex_.w, tex_.h, TF_RGBA8, plocked_area_);
                 markContentMutated();
             }
 
@@ -1248,6 +1285,9 @@ class gosTexture {
         bool lock_type_read_only_;
         bool is_from_memory_; // not loaded from file
         uint32_t content_serial_;
+        std::vector<uint8_t> rgba_mirror_;
+        int mirror_w_;
+        int mirror_h_;
 };
 
 struct gosTextAttribs {
@@ -1336,8 +1376,10 @@ bool gosTexture::createHardwareTexture() {
         format_ = convertIfNecessary(img, format_);
 
         tex_ = create2DTexture(img.getWidth(), img.getHeight(), tf, img.getPixels(), wantMipmaps);
-        if(tex_.isValid())
+        if(tex_.isValid()) {
+            setRgbaMirror(img.getWidth(), img.getHeight(), tf, img.getPixels());
             markContentMutated();
+        }
         return tex_.isValid();
 
     } else if(pcompdata_ && size_ > 0) {
@@ -1361,8 +1403,10 @@ bool gosTexture::createHardwareTexture() {
         format_ = convertIfNecessary(img, format_);
 
         tex_ = create2DTexture(img.getWidth(), img.getHeight(), tf, img.getPixels(), wantMipmaps);
-        if(tex_.isValid())
+        if(tex_.isValid()) {
+            setRgbaMirror(img.getWidth(), img.getHeight(), tf, img.getPixels());
             markContentMutated();
+        }
         return tex_.isValid();
     } else {
         gosASSERT(tex_.w >0 && tex_.h > 0);
@@ -1398,8 +1442,10 @@ bool gosTexture::createHardwareTexture() {
             }
         }
         tex_ = create2DTexture(tex_.w, tex_.h, tf, (const uint8_t*)pdata, wantMipmaps);
-        if(tex_.isValid())
+        if(tex_.isValid()) {
+            setRgbaMirror(tex_.w, tex_.h, tf, (const uint8_t*)pdata);
             markContentMutated();
+        }
         delete[] pdata;
         return tex_.isValid();
     }
@@ -8042,12 +8088,8 @@ void gosRenderer::flushHUDBatch()
                     draw.textureHeight = (uint32_t)ti.height_;
                     draw.textureFormat = (uint32_t)ti.format_;
                     draw.textureSerial = tex->getContentSerial();
-                    if (draw.textureWidth != 0 && draw.textureHeight != 0) {
-                        const size_t bytes = (size_t)draw.textureWidth * (size_t)draw.textureHeight * 4u;
-                        draw.textureRgba.resize(bytes);
-                        GlPixelStoreGuard pixelStoreGuard;
-                        getTextureData(tex->getTexture(), 0, draw.textureRgba.data(), TF_RGBA8);
-                    }
+                    if (draw.textureWidth != 0 && draw.textureHeight != 0 && tex->hasRgbaMirror())
+                        draw.textureRgba = tex->getRgbaMirror();
                 }
             }
             draw.alphaMode = call.stateSnapshot[gos_State_AlphaMode];
@@ -8346,8 +8388,10 @@ gosFont* gosFont::load(const char* fontFile) {
                                 GL_RGBA, GL_UNSIGNED_BYTE, rgba);
                 glPixelStorei(GL_UNPACK_ALIGNMENT, prev_unpack_alignment);
                 glBindTexture(GL_TEXTURE_2D, 0);
-                if(gosTexture* tex = g_gos_renderer->getTexture(tex_id))
+                if(gosTexture* tex = g_gos_renderer->getTexture(tex_id)) {
+                    tex->setRgbaMirror(atlas.width, atlas.height, TF_RGBA8, rgba);
                     tex->markContentMutated();
+                }
                 delete[] rgba;
 
                 gosFont* font = new gosFont();
