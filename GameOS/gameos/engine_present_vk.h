@@ -108,6 +108,12 @@ public:
     // any GL include; the impl casts to/from GLuint at the .cpp boundary.
     unsigned int presentDirectFbo();
 
+    // Rung 8.6b seam: true only after this frame's endScene() successfully armed
+    // the direct-present shared FBO. Future native HUD/ImGui tail work must use
+    // this as its precondition; it is not permission to begin a second VK write
+    // by itself, because presentGLFrame() still owns the GL->VK semaphore handoff.
+    bool directPresentFrameArmed() const { return created_ && directFbo_ != 0; }
+
     // P13b: the visible GL game window we present onto (borrowed, not owned).
     SDL_Window* window() const { return glWindow_; }
     const EnginePresentHealth& health() const { return health_; }

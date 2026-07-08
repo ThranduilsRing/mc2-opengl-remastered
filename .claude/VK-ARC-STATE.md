@@ -1026,3 +1026,24 @@ Verification:
 - `cmake --build build64_island --config RelWithDebInfo --target imgui` PASS.
 - `cmake --build build64_island --config RelWithDebInfo --target gui_runtime mc2`
   PASS; only pre-existing C4267/C4996/LNK4199 warnings.
+
+## RUNG 8.6b - VK-IMGUI-TAIL-SEAM-1 SHIPPED
+
+Behavior-neutral tail contract for the eventual native ImGui/HUD renderer.
+`EnginePresentVk::directPresentFrameArmed()` now exposes the only valid
+precondition for a final-tail VK overlay attempt: the current frame's
+`endScene()` successfully armed the direct-present shared FBO via
+`presentDirectFbo()`. This intentionally does not begin a Vulkan render pass,
+signal/wait semaphores, or move HUD/ImGui ordering; `presentGLFrame()` still owns
+the single GL->VK handoff for the frame.
+
+Call-chain recon, now treated as the 8.6 hard ordering contract:
+- `gosPostProcess::endScene()` binds either FBO-0 or the direct shared present
+  FBO.
+- `gameosmain.cpp` then flushes GameOS HUD and calls `GuiRuntime::Render()`.
+- The swap path later calls `EnginePresentVk::presentGLFrame()`, which performs
+  the GL->VK signal and swapchain blit/present.
+
+Hard ban remains: native HUD/ImGui must not write into the shared present image
+before a real tail handoff split exists. The new query only prevents future code
+from guessing at `directFbo_` state.
