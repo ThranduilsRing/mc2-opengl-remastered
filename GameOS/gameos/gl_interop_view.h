@@ -66,9 +66,8 @@ void glInteropWaitFromVk(const GlInteropView& v, GLenum glSrcLayout, uint32_t pa
 bool vkInteropSelfTest(VkDevice device, VkPhysicalDevice phys);
 
 // Standalone variant that spins up its OWN ext-enabled Vulkan instance+device so the
-// self-check can run BEFORE the island device carries the external exts (T3). Wired
-// behind MC2_VK_INTEROP_SELFTEST at island init. Needs a current GL context on the
-// calling thread (island frame-loop thread). Returns true iff clean.
+// self-check can run before a render path owns an ext-enabled Vulkan device. Needs
+// a current GL context on the calling thread. Returns true iff clean.
 bool vkInteropSelfTestStandalone();
 
 #endif // MC2_VULKAN_ISLAND

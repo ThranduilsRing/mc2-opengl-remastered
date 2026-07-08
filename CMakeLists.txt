@@ -123,13 +123,10 @@ if(MC2_VULKAN)
     message(STATUS "MC2_VULKAN=ON -- Vulkan found: ${Vulkan_LIBRARY} (include ${Vulkan_INCLUDE_DIR})")
 endif()
 
-# VULKAN-EDGE-FOG-ISLAND-2a: first REAL Vulkan render work in the frame loop.
-# Compiles GameOS/gameos/vulkan_edge_fog_island.cpp INTO gameos (the main mc2
-# target), gated behind #ifdef MC2_VULKAN_ISLAND. Default OFF -> byte-identical
-# to the non-island build. Requires MC2_VULKAN=ON (volk + VMA + headers). The
-# island is off at runtime too unless MC2_VULKAN_EDGE_FOG_ISLAND=1; on lazy-init
-# failure it fails soft to the GL edge-fog path.
-option(MC2_VULKAN_ISLAND "Compile the Vulkan edge-fog island into gameos (VULKAN-EDGE-FOG-ISLAND-2a)" OFF)
+# MC2_VULKAN_ISLAND: compile Vulkan-owned render-region implementations into
+# gameos. Default OFF -> byte-identical non-island build. Requires MC2_VULKAN=ON
+# (volk + VMA + headers); each runtime path remains separately gated/fail-soft.
+option(MC2_VULKAN_ISLAND "Compile Vulkan-owned render regions into gameos" OFF)
 if(MC2_VULKAN_ISLAND AND NOT MC2_VULKAN)
     message(FATAL_ERROR "MC2_VULKAN_ISLAND=ON requires MC2_VULKAN=ON (volk/VMA/Vulkan headers).")
 endif()

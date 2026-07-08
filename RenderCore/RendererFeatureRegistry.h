@@ -597,9 +597,9 @@ static constexpr EnvVarDesc kAuxEnvVars[] = {
         "(mc2vk::VulkanContext, GameOS/gameos/vulkan_context.*) at engine init for "
         "P6/P8/P9/P14 to reuse; present is still GL swap in P13 (VK present intercept "
         "is T3). Fail-soft: any VK bring-up failure forces the session back to GL. "
-        "R2 interlock: when =vulkan is active, self-owning postprocess-interop "
-        "island gates (MC2_VK_INTEROP_BRIDGE / MC2_VK_SSAO_INTEROP) are coerced "
-        "OFF (logged) to avoid the process-global "
+        "R2 interlock: when =vulkan is active, the remaining self-owning "
+        "postprocess-interop island gate MC2_VK_SSAO_INTEROP is coerced OFF "
+        "(logged) to avoid the process-global "
         "volk dispatch collision. On =gl/unset the accessor adds only one memoized "
         "getenv -> byte-identical GL behavior."
     },
@@ -1511,22 +1511,6 @@ static constexpr EnvVarDesc kAuxEnvVars[] = {
         ".spv (glShaderBinary reject / specialize failure) assert/abort instead "
         "of falling back to GLSL — used to surface artifact corruption in "
         "testing. Default-OFF = silent-but-logged GLSL fallback."
-    },
-    {
-        "MC2_FEATURE_VK_INTEROP_BRIDGE",
-        "MC2_VK_INTEROP_BRIDGE",
-        EnvVarKind::Feature,
-        false,
-        "VK-INTEROP-BRIDGE-1: zero-copy GL<->VK image interop SEAM proven live on the "
-        "EdgeFog color island (GameOS/gameos/vulkan_edge_fog_island.cpp). =1 repoints the "
-        "island's color attachment to an exportable VkImageResource imported into GL "
-        "(vk_image_resource.{h,cpp} + gl_interop_view.{h,cpp}); the per-frame COLOR "
-        "readback/upload (glGetTexImage/vkCmdCopyImageToBuffer/glTexSubImage2D) are gone "
-        "(hard-asserted ==0). Requires MC2_VULKAN_EDGE_FOG_ISLAND=1. DEFAULT-OFF, fail-soft "
-        "to the readback path on any negative (LUID mismatch / missing exts / import fail); "
-        "gate-OFF is byte-identical with zero external probes (blocker #6). Depth still "
-        "round-trips (color-only slice). Companion infra gate MC2_VK_INTEROP_SELFTEST runs "
-        "the standalone create/import/signal/wait self-check at island init."
     },
     {
         "MC2_FEATURE_VK_TERRAIN_HEIGHT_AUDIT",

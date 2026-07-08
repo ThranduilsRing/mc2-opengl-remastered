@@ -1983,7 +1983,7 @@ bool mc2_vulkan_probe_edgefog_fixture(const char* spvDir) {
     }
 
     // The std140 EdgeFogParams POD (mirrors shaders/vulkan/edge_fog.frag +
-    // vulkan_edge_fog_island.cpp: invViewProj @0, fogColor @64, _pad0 @76,
+    // the native fog layout: invViewProj @0, fogColor @64, _pad0 @76,
     // halfExtent @80, fogStart @84, fogHeight @88, fogMax @92, waterElev @96).
     struct EdgeFogParams {
         float invViewProj[16];

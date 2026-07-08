@@ -6,9 +6,9 @@
 // renderBackend()==Vulkan; fail-soft on any error. Device ownership lives HERE,
 // not in VulkanPresentObject (the T2 acceptance criterion).
 //
-// Whole TU is inert unless MC2_VULKAN is defined. Device bring-up mirrors the
-// proven raw-Vulkan path in vulkan_edge_fog_island.cpp (same volk + VMA +
-// validation-preset convention) so we do not re-litigate device selection.
+// Whole TU is inert unless MC2_VULKAN is defined. Device bring-up keeps the
+// proven volk + VMA + validation-preset convention used by earlier Vulkan
+// region probes, so we do not re-litigate device selection.
 
 #ifdef MC2_VULKAN
 
@@ -16,7 +16,7 @@
 // (VK_KHR_EXTERNAL_MEMORY_WIN32_EXTENSION_NAME etc.) are gated behind
 // VK_USE_PLATFORM_WIN32_KHR in volk/vulkan_core.h. Define it BEFORE the header
 // (which pulls in volk.h) so those identifiers are visible for the interop
-// device extensions. Matches vulkan_edge_fog_island.cpp.
+// device extensions.
 #ifndef VK_USE_PLATFORM_WIN32_KHR
 #define VK_USE_PLATFORM_WIN32_KHR
 #endif

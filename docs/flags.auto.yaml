@@ -6369,22 +6369,6 @@ flags:
     registered: no
     in_smoke_passthrough: yes
     documented_in_tier1_env_vars: yes
-  - name: MC2_VK_INTEROP_BRIDGE
-    default: unknown
-    declared_in: null
-    referenced_at:
-      - GameOS/gameos/vulkan_edge_fog_island.cpp:299
-    registered: no
-    in_smoke_passthrough: yes
-    documented_in_tier1_env_vars: yes
-  - name: MC2_VK_INTEROP_SELFTEST
-    default: unknown
-    declared_in: null
-    referenced_at:
-      - GameOS/gameos/vulkan_edge_fog_island.cpp:1029
-    registered: no
-    in_smoke_passthrough: yes
-    documented_in_tier1_env_vars: yes
   - name: MC2_VK_PRESENT_DIRECT_FBO
     default: unknown
     declared_in: null
@@ -6469,7 +6453,7 @@ flags:
     default: unknown
     declared_in: null
     referenced_at:
-      - GameOS/gameos/vulkan_edge_fog_island.cpp:1036
+      - GameOS/gameos/gl_interop_buffer_view.h:68
     registered: no
     in_smoke_passthrough: no
     documented_in_tier1_env_vars: no
@@ -6599,14 +6583,6 @@ flags:
     registered: no
     in_smoke_passthrough: no
     documented_in_tier1_env_vars: yes
-  - name: MC2_VULKAN_EDGE_FOG_ISLAND
-    default: unknown
-    declared_in: null
-    referenced_at:
-      - GameOS/gameos/vulkan_edge_fog_island.cpp:1015
-    registered: no
-    in_smoke_passthrough: yes
-    documented_in_tier1_env_vars: yes
   - name: MC2_VULKAN_HZB_ISLAND_FORCE_FALLBACK
     default: unknown
     declared_in: null
@@ -6614,30 +6590,6 @@ flags:
       - GameOS/gameos/vulkan_hzb_island.cpp:373
     registered: no
     in_smoke_passthrough: no
-    documented_in_tier1_env_vars: no
-  - name: MC2_VULKAN_ISLAND_FORCE_FALLBACK
-    default: unknown
-    declared_in: null
-    referenced_at:
-      - GameOS/gameos/vulkan_edge_fog_island.cpp:430
-    registered: no
-    in_smoke_passthrough: yes
-    documented_in_tier1_env_vars: no
-  - name: MC2_VULKAN_OOB_FOG_ISLAND
-    default: unknown
-    declared_in: null
-    referenced_at:
-      - GameOS/gameos/vulkan_oob_fog_island.cpp:762
-    registered: no
-    in_smoke_passthrough: yes
-    documented_in_tier1_env_vars: no
-  - name: MC2_VULKAN_OOB_FOG_ISLAND_FORCE_FALLBACK
-    default: unknown
-    declared_in: null
-    referenced_at:
-      - GameOS/gameos/vulkan_oob_fog_island.cpp:351
-    registered: no
-    in_smoke_passthrough: yes
     documented_in_tier1_env_vars: no
   - name: MC2_VULKAN_PROBE
     default: unknown
@@ -6688,7 +6640,6 @@ flags:
     referenced_at:
       - GameOS/gameos/vulkan_backend_skeleton.cpp:92
       - GameOS/gameos/vulkan_context.cpp:80
-      - GameOS/gameos/vulkan_edge_fog_island.cpp:164
     referenced_at_more: 5
     registered: no
     in_smoke_passthrough: yes

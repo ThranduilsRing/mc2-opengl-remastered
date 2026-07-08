@@ -1173,7 +1173,6 @@ int main(int argc, char** argv)
         // gates here.
         {
             const char* kInteropGates[] = {
-                "MC2_VK_INTEROP_BRIDGE",
                 "MC2_VK_SSAO_INTEROP",
             };
             for (const char* g : kInteropGates) {

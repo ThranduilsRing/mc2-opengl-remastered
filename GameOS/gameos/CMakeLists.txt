@@ -116,16 +116,7 @@ if(MC2_VULKAN)
     # VULKAN-VOLK-LOADER-1: volk meta-loader (dynamic Vulkan load; no hard link
     # to vulkan-1.dll). Only compiled when MC2_VULKAN=ON.
     list(APPEND SOURCES "${CMAKE_SOURCE_DIR}/3rdparty/volk/volk.c")
-    # VULKAN-EDGE-FOG-ISLAND-2a: the real edge-fog Vulkan render island (compiled
-    # into gameos, but entirely inert unless MC2_VULKAN_ISLAND is also defined --
-    # the whole TU is #ifdef MC2_VULKAN_ISLAND). Only added when MC2_VULKAN_ISLAND=ON.
     if(MC2_VULKAN_ISLAND)
-        list(APPEND SOURCES vulkan_edge_fog_island.cpp)
-        # VULKAN-OOB-FOG-ISLAND-1: the second offscreen Vulkan island (OOB fog).
-        # Same #ifdef MC2_VULKAN_ISLAND discipline; the layout-affecting header
-        # members are added under the same macro, already propagated to all
-        # consumers by the ODR-harden block in the root CMakeLists.
-        list(APPEND SOURCES vulkan_oob_fog_island.cpp)
         # VK-REGION-SSAO-1: the SSAO island (first NEW region through runRegion
         # beyond fog). Same #ifdef MC2_VULKAN_ISLAND discipline; layout-affecting
         # header members (vkSSAOIsland_ + method decls) added under the same
@@ -285,8 +276,8 @@ if(MC2_VULKAN)
     target_include_directories(gameos PRIVATE
         "${CMAKE_SOURCE_DIR}/3rdparty/imgui"
         "${CMAKE_SOURCE_DIR}/3rdparty/imgui/backends")
-    # VULKAN-EDGE-FOG-ISLAND-2a: define the island gate on gameos so
-    # vulkan_edge_fog_island.cpp compiles + the gos_postprocess.cpp seam is active.
+    # MC2_VULKAN_ISLAND: define the island/native-region gate on gameos so
+    # gos_postprocess.cpp's Vulkan-owned render paths are compiled.
     # MUST be PUBLIC: gos_postprocess.h adds a member (vkFogIsland_) + methods under
     # #ifdef MC2_VULKAN_ISLAND, so the gosPostProcess class LAYOUT depends on this
     # macro. Consumers of the header (e.g. gameosmain.cpp in the mc2 target) must

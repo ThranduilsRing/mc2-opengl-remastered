@@ -80,7 +80,7 @@ IGNORE_SUFFIXES = (
     # EVERY Vulkan island runs at a different framerate (islands add per-frame
     # cost), so gate-ON reaches fewer frames than gate-OFF and every one of these
     # counters scales down proportionally -- pure frame-count variance, NOT a
-    # render/layout signal. Observed real case (mc2_01, MC2_VULKAN_EDGE_FOG_ISLAND):
+    # render/layout signal. Observed real case (mc2_01, retired edge-fog island):
     # OFF ~2400 frames, ON ~1735 frames; ambient/viewport 25267->14305,
     # fbo 29477->16688, identical fbo:probe ratio 1.167 both -> byte-identical
     # pixels yet a false BEYOND when the OFF floor's sampled range happened to be

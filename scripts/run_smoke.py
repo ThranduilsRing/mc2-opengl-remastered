@@ -1586,50 +1586,7 @@ def main():
                             # making the RNG trace non-reproducible.
                             "MC2_DETERMINISTIC_RNG",
                             "MC2_RNG_SEED",
-                            # VULKAN-EDGE-FOG-ISLAND-2a: route the edge-fog
-                            # composite through the headless Vulkan island
-                            # (default-OFF; fail-soft to GL). MC2_VULKAN_SPV_DIR
-                            # optionally overrides the .spv search dir. Without
-                            # these in the allowlist Popen drops them and the
-                            # gate-ON island smoke silently runs the GL path.
-                            "MC2_VULKAN_EDGE_FOG_ISLAND",
                             "MC2_VULKAN_SPV_DIR",
-                            # VK-INTEROP-BRIDGE-1: zero-copy GL<->VK image interop
-                            # seam. MC2_VK_INTEROP_BRIDGE = the per-frame color
-                            # interop path (default OFF, fail-soft to readback);
-                            # MC2_VK_INTEROP_SELFTEST = the standalone T1/T2
-                            # create/import/signal/wait self-check at island init;
-                            # MC2_OOB_FOG isolates the byte-exact edge-fog oracle
-                            # from the non-byte-exact fog_oob pass. Without these in
-                            # the allowlist Popen drops them and the gate-ON interop
-                            # smoke silently runs the readback path (gate inert).
-                            "MC2_VK_INTEROP_BRIDGE",
-                            "MC2_VK_INTEROP_SELFTEST",
-                            "MC2_OOB_FOG",
-                            # VULKAN-ISLAND-FALLBACK-PROOF-1: debug hook that forces
-                            # ensure-init to fail with a chosen fallback_reason so the
-                            # GL fail-soft path can be exercised deterministically
-                            # without uninstalling the Vulkan runtime. Without this in
-                            # the allowlist Popen drops it and the forced-fallback smoke
-                            # runs the real Vulkan (or default GL) path instead.
-                            "MC2_VULKAN_ISLAND_FORCE_FALLBACK",
-                            # VULKAN-OOB-FOG-ISLAND-1: the second offscreen Vulkan
-                            # island (OOB fog). Same allowlist rationale as the
-                            # edge-fog gate above -- without these Popen drops them
-                            # and the gate-ON / forced-fallback smoke silently runs
-                            # the GL OOB-fog path instead.
-                            "MC2_VULKAN_OOB_FOG_ISLAND",
-                            "MC2_VULKAN_OOB_FOG_ISLAND_FORCE_FALLBACK",
-                            # VULKAN-POSTPROCESS-SUBGRAPH-1: the fused Layer-4
-                            # subgraph (EdgeFog + OOB fog in ONE Vulkan render pass).
-                            # Same allowlist rationale -- without these Popen drops
-                            # them and the gate-ON / forced-fallback smoke silently
-                            # runs the GL edge+oob fog path instead.
-                            # VK-INTEROP-BRIDGE-1 P2: the fused subgraph's COLOR
-                            # boundaries on the zero-copy interop seam (default OFF,
-                            # fail-soft to the subgraph readback path). Without this in
-                            # the allowlist Popen drops it and the gate-ON interop smoke
-                            # silently runs the subgraph readback path (gate inert).
                             # VK-INTEROP-BRIDGE-1 P3: the SSAO island's COLOR I/O on the
                             # zero-copy interop seam (pass2 scene color + blended color;
                             # depth+normal stay readback = P5 scope). Default OFF, fail-soft

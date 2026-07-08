@@ -447,28 +447,6 @@ public:
     unsigned int resolveRegionResource(RenderCore::RenderResourceId id) const;
 
 #ifdef MC2_VULKAN_ISLAND
-    // VULKAN-EDGE-FOG-ISLAND-2a: the first REAL Vulkan render work in the frame
-    // loop. When MC2_VULKAN_EDGE_FOG_ISLAND=1 AND lazy Vulkan init succeeds, the
-    // edge-fog composite runs on a headless Vulkan device instead of the GL path
-    // (see the seam in beginPostProcess()/composite). All Vulkan state is held in
-    // an opaque struct so the Vulkan headers never leak into this header.
-    //
-    // vulkanEdgeFogIslandEnabled(): reads MC2_VULKAN_EDGE_FOG_ISLAND once, lazily
-    // initializes the device on first call, and returns true only if init
-    // succeeded. On failure it logs once, disables itself, and returns false so
-    // the caller falls back to runEdgeFog() (the GL path). Never throws/crashes.
-    // runEdgeFogVulkan(): per-frame GL->Vulkan->GL edge-fog composite.
-    // destroyVulkanEdgeFogIsland(): torn down from destroy().
-    bool  vulkanEdgeFogIslandEnabled();
-    void  runEdgeFogVulkan();
-    // VK-INTEROP-BRIDGE-1 (T4): the zero-copy color interop per-frame path. Dispatched
-    // from runEdgeFogVulkan() when the interop seam is active (MC2_VK_INTEROP_BRIDGE + a
-    // successfully imported shared color image). Defined in vulkan_edge_fog_island.cpp.
-    void  runEdgeFogVulkanInterop();
-    void  destroyVulkanEdgeFogIsland();
-    struct VulkanEdgeFogIsland;   // defined in vulkan_edge_fog_island.cpp
-    VulkanEdgeFogIsland* vkFogIsland_ = nullptr;
-
     // VK-TIER1 SHARED SCENE DEPTH: when MC2_VK_SHARED_SCENE_DEPTH is ON and the
     // shared VK image was built + imported at createFBOs, this owns the VK
     // exportable D32S8 image + its GL import view; sceneDepthTex_ then points at
@@ -490,21 +468,6 @@ public:
     struct Mc2SharedSceneColor* sharedSceneColor_  = nullptr;   // MRT0 sceneColorTex_
     struct Mc2SharedSceneColor* sharedSceneNormal_ = nullptr;   // MRT1 sceneNormalTex_
     struct Mc2SharedSceneColor* sharedSceneObjectId_ = nullptr; // MRT2 sceneObjectIdTex_
-
-    // VULKAN-OOB-FOG-ISLAND-1: the SECOND offscreen Vulkan island (proves the
-    // VULKAN-ISLAND-TEMPLATE-1 checklist repeats). When MC2_VULKAN_OOB_FOG_ISLAND=1
-    // AND lazy Vulkan init succeeds, the OOB-fog composite runs on a headless Vulkan
-    // device instead of the GL runFogOob() path. Opaque pointer only -- no Vulkan
-    // headers leak into this header.
-    // vulkanOobFogIslandEnabled(): reads MC2_VULKAN_OOB_FOG_ISLAND once, lazily
-    // initializes the device on first call; false on failure -> GL fallback.
-    // runFogOobVulkan(): per-frame GL->Vulkan->GL OOB-fog composite.
-    // destroyVulkanOobFogIsland(): torn down from destroy().
-    bool  vulkanOobFogIslandEnabled();
-    void  runFogOobVulkan();
-    void  destroyVulkanOobFogIsland();
-    struct VulkanOobFogIsland;   // defined in vulkan_oob_fog_island.cpp
-    VulkanOobFogIsland* vkOobFogIsland_ = nullptr;
 
     // RENDER-BACKEND-REGION-IFACE-1 (1C): Vulkan impl of runRegion for the
     // PostprocessFog region. Returns false (fail-soft) if native fog is

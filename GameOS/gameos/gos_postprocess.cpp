@@ -840,11 +840,6 @@ void gosPostProcess::destroy()
     destroyBoxDecalCube();   // BT2018-BOX-DECAL-1
 
 #ifdef MC2_VULKAN_ISLAND
-    // VULKAN-EDGE-FOG-ISLAND-2a: tear down the headless Vulkan device + all
-    // island resources (no-op if the island was never lazily initialized).
-    destroyVulkanEdgeFogIsland();
-    // VULKAN-OOB-FOG-ISLAND-1: same teardown for the OOB-fog island.
-    destroyVulkanOobFogIsland();
     // VK-POST-FOG-NATIVE-1 (rung 8.1): same teardown for the native fog pass.
     // (destroyFBOs also tears it down on resize; this covers final shutdown —
     // destroy() runs after destroyFBOs, so this is usually a no-op that also
@@ -4096,17 +4091,14 @@ void gosPostProcess::endScene()
         runFogRegionThroughBackend();   // does BOTH edge + oob (GL wrapper or VK subgraph)
     } else {
 #ifdef MC2_VULKAN_ISLAND
-    // VULKAN-EDGE-FOG-ISLAND-2a: route the edge-fog composite through the
-    // per-pass Vulkan island when MC2_VULKAN_EDGE_FOG_ISLAND=1. Otherwise GL.
     // VK-POST-FOG-NATIVE-1 (rung 8.1): HIGHEST precedence at the fog site. When
     // MC2_VK_POST_FOG_NATIVE=1 and the shared-GBuffer substrate is live, BOTH fog
     // effects render natively on the shared engine context (zero copies, zero
     // readbacks) and BOTH GL sites are skipped. runVkPostFogNative() returns false
-    // on ANY not-ready condition -> the unchanged island/GL chain below
-    // runs (fail-soft). Precedence: native > per-pass island > GL.
+    // on ANY not-ready condition -> the unchanged GL chain below runs (fail-soft).
     if (vkPostFogNativeEnabled() && runVkPostFogNative()) {
         subgraphRanThisFrame = true;    // -> OOB site is skipped below (no double-apply)
-    } else if (vulkanEdgeFogIslandEnabled()) { runEdgeFogVulkan(); } else
+    } else
 #endif
     { runEdgeFog(); }
     }
@@ -4128,10 +4120,6 @@ void gosPostProcess::endScene()
     if (subgraphRanThisFrame) {
         // native fog did edge+oob; nothing to do here.
     } else
-    // VULKAN-OOB-FOG-ISLAND-1: route the OOB-fog composite through the Vulkan
-    // island when MC2_VULKAN_OOB_FOG_ISLAND=1 and lazy init succeeded. Otherwise
-    // (gate off, or init fail-soft) fall through to the unchanged GL path.
-    if (vulkanOobFogIslandEnabled()) { runFogOobVulkan(); } else
 #endif
     { runFogOob(); }
     }
