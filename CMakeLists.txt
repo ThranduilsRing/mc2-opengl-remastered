@@ -586,7 +586,11 @@ endif()
 # =vulkan selector fail-softs to GL via the #else path in gameosmain.cpp).
 if(MC2_VULKAN)
     target_compile_definitions(gameos_main PRIVATE MC2_VULKAN)
+    target_compile_definitions(gui_runtime PRIVATE MC2_VULKAN)
     target_include_directories(gameos_main PRIVATE
+        "${CMAKE_SOURCE_DIR}/3rdparty/volk"
+        ${Vulkan_INCLUDE_DIR})
+    target_include_directories(gui_runtime PRIVATE
         "${CMAKE_SOURCE_DIR}/3rdparty/volk"
         ${Vulkan_INCLUDE_DIR})
 endif()

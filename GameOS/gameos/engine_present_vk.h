@@ -37,6 +37,7 @@
 #include <string>
 
 struct SDL_Window;
+struct ImDrawData;
 
 namespace mc2vk {
 
@@ -63,6 +64,8 @@ struct EnginePresentHealth {
     uint32_t    copy1_blit_frames   = 0;   // legacy FBO-0 -> shared-image blit
     uint32_t    copy1_skip_frames   = 0;   // direct shared-FBO frames
     uint32_t    tail_hook_frames    = 0;   // gated VK final-tail hook executions
+    uint32_t    imgui_vk_frames     = 0;   // native ImGui draw-data frames recorded
+    bool        imgui_vk_ready      = false;
     unsigned int last_direct_fbo    = 0;   // last shared FBO id granted
     std::string fallback_reason;           // empty == clean
 };
@@ -119,6 +122,13 @@ public:
     // this as its precondition; it is not permission to begin a second VK write
     // by itself, because presentGLFrame() still owns the GL->VK semaphore handoff.
     bool directPresentFrameArmed() const { return created_ && directFbo_ != 0; }
+
+    // Rung 8.6 native ImGui renderer seam. These stay VK-header-free so
+    // GuiRuntime can hand draw data to the present owner without learning Vulkan.
+    bool prepareImguiVulkanFrame();
+    bool renderImguiVulkanDrawData(ImDrawData* drawData);
+    bool imguiVulkanReady() const;
+    void shutdownImguiVulkanRenderer();
 
     // P13b: the visible GL game window we present onto (borrowed, not owned).
     SDL_Window* window() const { return glWindow_; }

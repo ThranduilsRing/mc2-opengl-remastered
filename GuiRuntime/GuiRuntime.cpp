@@ -25,12 +25,22 @@
 #endif
 
 bool g_imguiInitialized = false;
+static bool s_openGlRendererInitialized = false;
 
 static bool isEnabled() {
     static int cached = -1;
     if (cached < 0) {
         const char* v = std::getenv("MC2_IMGUI");
         cached = (!v || v[0] != '0') ? 1 : 0;
+    }
+    return cached == 1;
+}
+
+static bool vkImguiRequested() {
+    static int cached = -1;
+    if (cached < 0) {
+        const char* v = std::getenv("MC2_VK_IMGUI");
+        cached = (v && v[0] == '1') ? 1 : 0;
     }
     return cached == 1;
 }
@@ -80,15 +90,29 @@ void GuiRuntime::Init() {
 
     ImGui::StyleColorsDark();
 
-    ImGui_ImplSDL2_InitForOpenGL(graphics::getSDLWindow(), graphics::getSDLGLContext());
-    ImGui_ImplOpenGL3_Init("#version 430");
+    if (vkImguiRequested()) {
+        ImGui_ImplSDL2_InitForVulkan(graphics::getSDLWindow());
+        io.Fonts->Build();
+    } else {
+        ImGui_ImplSDL2_InitForOpenGL(graphics::getSDLWindow(), graphics::getSDLGLContext());
+        ImGui_ImplOpenGL3_Init("#version 430");
+        s_openGlRendererInitialized = true;
+    }
 
     g_imguiInitialized = true;
 }
 
 void GuiRuntime::Shutdown() {
     if (!g_imguiInitialized) return;
-    ImGui_ImplOpenGL3_Shutdown();
+#ifdef MC2_VULKAN
+    if (vkImguiRequested() && mc2::renderBackend() == mc2::RenderBackend::Vulkan) {
+        mc2vk::getOrCreateEnginePresentVk().shutdownImguiVulkanRenderer();
+    }
+#endif
+    if (s_openGlRendererInitialized) {
+        ImGui_ImplOpenGL3_Shutdown();
+        s_openGlRendererInitialized = false;
+    }
     ImGui_ImplSDL2_Shutdown();
     ImGui::DestroyContext();
     g_imguiInitialized = false;
@@ -247,7 +271,14 @@ static void BuildEditorDockspace() {
 
 void GuiRuntime::NewFrame() {
     if (!g_imguiInitialized) return;
-    ImGui_ImplOpenGL3_NewFrame();
+    if (s_openGlRendererInitialized) {
+        ImGui_ImplOpenGL3_NewFrame();
+    } else if (vkImguiRequested()) {
+#ifdef MC2_VULKAN
+        if (mc2::renderBackend() == mc2::RenderBackend::Vulkan)
+            mc2vk::getOrCreateEnginePresentVk().prepareImguiVulkanFrame();
+#endif
+    }
     ImGui_ImplSDL2_NewFrame();
     // SDL_GL_GetDrawableSize returns 0 for SDL_CreateWindowFrom windows that
     // have no SDL GL context (editor uses WGL, not SDL_GL_CreateContext).
@@ -368,15 +399,6 @@ static bool demoEnabled() {
     return cached == 1;
 }
 
-static bool vkImguiRequested() {
-    static int cached = -1;
-    if (cached < 0) {
-        const char* v = std::getenv("MC2_VK_IMGUI");
-        cached = (v && v[0] == '1') ? 1 : 0;
-    }
-    return cached == 1;
-}
-
 static void maybeTraceVkImguiDecline() {
     if (!vkImguiRequested()) return;
     static bool s_tracedInitial = false;
@@ -398,14 +420,13 @@ static void maybeTraceVkImguiDecline() {
     }
     std::fprintf(stderr,
         "[VK_IMGUI] requested=1 used_vulkan=0 direct_present_armed=%d "
-        "fallback_reason=\"tail_handoff_not_split\"\n",
+        "fallback_reason=\"vulkan_renderer_not_ready\"\n",
         directPresentArmed);
     std::fflush(stderr);
 }
 
 void GuiRuntime::Render() {
     if (!g_imguiInitialized) return;
-    maybeTraceVkImguiDecline();
 
     // F toggles the ImGui demo window (dev only -- see demoEnabled()).
     if (demoEnabled()) {
@@ -427,7 +448,7 @@ void GuiRuntime::Render() {
 
     // One-shot diagnostic: dump ImDrawData stats and GL state to stderr.
     // editor-stderr.log captures this via run-editor.bat's 2> redirect.
-    {
+    if (s_openGlRendererInitialized) {
         static bool s_traced = false;
         if (!s_traced) {
             s_traced = true;
@@ -454,6 +475,24 @@ void GuiRuntime::Render() {
             }
             fflush(stderr);
         }
+    }
+
+    if (vkImguiRequested()) {
+#ifdef MC2_VULKAN
+        if (mc2::renderBackend() == mc2::RenderBackend::Vulkan &&
+            mc2vk::getOrCreateEnginePresentVk().renderImguiVulkanDrawData(ImGui::GetDrawData())) {
+            static bool s_tracedVkUsed = false;
+            if (!s_tracedVkUsed) {
+                s_tracedVkUsed = true;
+                std::fprintf(stderr,
+                    "[VK_IMGUI] requested=1 used_vulkan=1 fallback_reason=\"\"\n");
+                std::fflush(stderr);
+            }
+            return;
+        }
+#endif
+        maybeTraceVkImguiDecline();
+        return;
     }
 
     ImGui_ImplOpenGL3_RenderDrawData(ImGui::GetDrawData());

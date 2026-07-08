@@ -287,6 +287,10 @@ if(MC2_VULKAN)
     target_include_directories(gameos PRIVATE "${CMAKE_SOURCE_DIR}/3rdparty/volk")
     # VK-BOOTSTRAP-INTEGRATE-1: vendored vk-bootstrap (SwapchainBuilder).
     target_include_directories(gameos PRIVATE "${CMAKE_SOURCE_DIR}/3rdparty/vk_bootstrap")
+    # VK-IMGUI-NATIVE-1: engine_present_vk.cpp owns the Vulkan renderer backend.
+    target_include_directories(gameos PRIVATE
+        "${CMAKE_SOURCE_DIR}/3rdparty/imgui"
+        "${CMAKE_SOURCE_DIR}/3rdparty/imgui/backends")
     # VULKAN-EDGE-FOG-ISLAND-2a: define the island gate on gameos so
     # vulkan_edge_fog_island.cpp compiles + the gos_postprocess.cpp seam is active.
     # MUST be PUBLIC: gos_postprocess.h adds a member (vkFogIsland_) + methods under

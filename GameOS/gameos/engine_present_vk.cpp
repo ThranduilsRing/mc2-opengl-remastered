@@ -27,6 +27,9 @@
 #include "vk_image_resource.h"
 #include "gl_interop_view.h"
 
+#include "imgui.h"
+#include "imgui_impl_vulkan.h"
+
 #include <GL/glew.h>   // copy-1 GL blit (FBO-0 -> shared GL texture)
 #include <SDL2/SDL.h>
 #include <SDL2/SDL_vulkan.h>
@@ -104,6 +107,14 @@ struct EnginePresentVk::Impl {
     VkDeviceSize    readbackSize = 0;
     VkCommandBuffer readbackCbuf = VK_NULL_HANDLE;
     VkFence         readbackFence = VK_NULL_HANDLE;
+
+    // Rung 8.6 native ImGui renderer backend. GuiRuntime builds ImDrawData;
+    // presentGLFrame records it here after GL->VK handoff and before copy-2.
+    bool            imguiVkInited = false;
+    bool            imguiVkFailed = false;
+    VkRenderPass    imguiRenderPass = VK_NULL_HANDLE;
+    VkFramebuffer   imguiFramebuffer = VK_NULL_HANDLE;
+    ImDrawData*     pendingImguiDrawData = nullptr;
 };
 
 namespace {
@@ -294,10 +305,109 @@ void barrier(VkCommandBuffer cb, VkImage img, VkImageLayout oldL, VkImageLayout 
     vkCmdPipelineBarrier(cb, srcS, dstS, 0, 0, nullptr, 0, nullptr, 1, &b);
 }
 
+void destroyImguiFramebuffer(EnginePresentVk::Impl& s) {
+    if (s.imguiFramebuffer) {
+        vkDestroyFramebuffer(s.dev, s.imguiFramebuffer, nullptr);
+        s.imguiFramebuffer = VK_NULL_HANDLE;
+    }
+}
+
+bool ensureImguiRenderPass(EnginePresentVk::Impl& s) {
+    if (s.imguiRenderPass) return true;
+
+    VkAttachmentDescription color{};
+    color.format = VK_FORMAT_R8G8B8A8_UNORM;
+    color.samples = VK_SAMPLE_COUNT_1_BIT;
+    color.loadOp = VK_ATTACHMENT_LOAD_OP_LOAD;
+    color.storeOp = VK_ATTACHMENT_STORE_OP_STORE;
+    color.stencilLoadOp = VK_ATTACHMENT_LOAD_OP_DONT_CARE;
+    color.stencilStoreOp = VK_ATTACHMENT_STORE_OP_DONT_CARE;
+    color.initialLayout = VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL;
+    color.finalLayout = VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL;
+
+    VkAttachmentReference colorRef{};
+    colorRef.attachment = 0;
+    colorRef.layout = VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL;
+
+    VkSubpassDescription sub{};
+    sub.pipelineBindPoint = VK_PIPELINE_BIND_POINT_GRAPHICS;
+    sub.colorAttachmentCount = 1;
+    sub.pColorAttachments = &colorRef;
+
+    VkRenderPassCreateInfo rp{VK_STRUCTURE_TYPE_RENDER_PASS_CREATE_INFO};
+    rp.attachmentCount = 1;
+    rp.pAttachments = &color;
+    rp.subpassCount = 1;
+    rp.pSubpasses = &sub;
+    return vkCreateRenderPass(s.dev, &rp, nullptr, &s.imguiRenderPass) == VK_SUCCESS;
+}
+
+bool ensureImguiFramebuffer(EnginePresentVk::Impl& s) {
+    if (s.imguiFramebuffer) return true;
+    if (!ensureImguiRenderPass(s) || !s.sharedImg.view || s.imgW == 0 || s.imgH == 0)
+        return false;
+
+    VkImageView attachments[] = { s.sharedImg.view };
+    VkFramebufferCreateInfo fb{VK_STRUCTURE_TYPE_FRAMEBUFFER_CREATE_INFO};
+    fb.renderPass = s.imguiRenderPass;
+    fb.attachmentCount = 1;
+    fb.pAttachments = attachments;
+    fb.width = s.imgW;
+    fb.height = s.imgH;
+    fb.layers = 1;
+    return vkCreateFramebuffer(s.dev, &fb, nullptr, &s.imguiFramebuffer) == VK_SUCCESS;
+}
+
+bool ensureImguiVulkan(EnginePresentVk::Impl& s) {
+    if (s.imguiVkInited) return ensureImguiFramebuffer(s);
+    if (s.imguiVkFailed || !s.dev || !s.phys || !s.gfxQ || !s.imgW || !s.imgH)
+        return false;
+    if (!ensureImguiFramebuffer(s)) {
+        s.imguiVkFailed = true;
+        return false;
+    }
+
+    ImGui_ImplVulkan_InitInfo info{};
+    info.Instance = s.inst;
+    info.PhysicalDevice = s.phys;
+    info.Device = s.dev;
+    info.QueueFamily = s.gfxFamily;
+    info.Queue = s.gfxQ;
+    info.RenderPass = s.imguiRenderPass;
+    info.MinImageCount = 2;
+    info.ImageCount = s.scImages.size() >= 2 ? (uint32_t)s.scImages.size() : 2;
+    info.MSAASamples = VK_SAMPLE_COUNT_1_BIT;
+    info.DescriptorPoolSize = 16;
+    if (!ImGui_ImplVulkan_Init(&info)) {
+        s.imguiVkFailed = true;
+        return false;
+    }
+    s.imguiVkInited = true;
+    return true;
+}
+
+bool recordPendingImgui(EnginePresentVk::Impl& s, VkCommandBuffer cb) {
+    ImDrawData* drawData = s.pendingImguiDrawData;
+    s.pendingImguiDrawData = nullptr;
+    if (!drawData || !s.imguiVkInited || !ensureImguiFramebuffer(s))
+        return false;
+
+    VkRenderPassBeginInfo rp{VK_STRUCTURE_TYPE_RENDER_PASS_BEGIN_INFO};
+    rp.renderPass = s.imguiRenderPass;
+    rp.framebuffer = s.imguiFramebuffer;
+    rp.renderArea.offset = {0, 0};
+    rp.renderArea.extent = {s.imgW, s.imgH};
+    vkCmdBeginRenderPass(cb, &rp, VK_SUBPASS_CONTENTS_INLINE);
+    ImGui_ImplVulkan_RenderDrawData(drawData, cb);
+    vkCmdEndRenderPass(cb);
+    return true;
+}
+
 // Build (or rebuild) the shared exportable interop image + its GlInteropView +
 // the GL copy FBO, sized to (w,h). Destroys any prior instance first.
 bool buildSharedImage(EnginePresentVk::Impl& s, uint32_t w, uint32_t h, std::string& reason) {
     // Tear down prior.
+    destroyImguiFramebuffer(s);
     if (s.copyFbo) { glDeleteFramebuffers(1, &s.copyFbo); s.copyFbo = 0; }
     if (s.glView.glTex) glInteropViewDestroy(&s.glView);
     if (s.sharedImg.image) vkImageResourceDestroy(&s.sharedImg, s.dev);
@@ -478,6 +588,44 @@ unsigned int EnginePresentVk::presentDirectFbo() {
     return directFbo_;
 }
 
+bool EnginePresentVk::prepareImguiVulkanFrame() {
+    if (!created_ || !impl_ || !presentTailHookEnabled())
+        return false;
+    Impl& s = *impl_;
+    if (!ensureImguiVulkan(s))
+        return false;
+    health_.imgui_vk_ready = true;
+    ImGui_ImplVulkan_NewFrame();
+    return true;
+}
+
+bool EnginePresentVk::renderImguiVulkanDrawData(ImDrawData* drawData) {
+    if (!created_ || !impl_ || !presentTailHookEnabled() || !drawData)
+        return false;
+    Impl& s = *impl_;
+    if (!ensureImguiVulkan(s))
+        return false;
+    health_.imgui_vk_ready = true;
+    s.pendingImguiDrawData = drawData;
+    return true;
+}
+
+bool EnginePresentVk::imguiVulkanReady() const {
+    return created_ && impl_ && impl_->imguiVkInited && !impl_->imguiVkFailed;
+}
+
+void EnginePresentVk::shutdownImguiVulkanRenderer() {
+    if (!impl_) return;
+    Impl& s = *impl_;
+    if (s.dev) vkDeviceWaitIdle(s.dev);
+    if (s.imguiVkInited) {
+        ImGui_ImplVulkan_Shutdown();
+        s.imguiVkInited = false;
+    }
+    s.pendingImguiDrawData = nullptr;
+    health_.imgui_vk_ready = false;
+}
+
 // One frame: copy-1 (GL FBO-0 -> shared GL tex) + signal, then copy-2 (VK blit
 // shared -> swapchain) + present. Rebuild swapchain + shared image on resize.
 // VK-P14b: when endScene rendered straight into the shared image (directFbo_!=0),
@@ -606,6 +754,8 @@ bool EnginePresentVk::presentGLFrame(uint32_t glDrawableW, uint32_t glDrawableH,
                 VK_ACCESS_COLOR_ATTACHMENT_READ_BIT | VK_ACCESS_COLOR_ATTACHMENT_WRITE_BIT,
                 VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT,
                 VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT);
+        if (recordPendingImgui(s, s.cbuf))
+            ++health_.imgui_vk_frames;
     }
 
     // shared image: GL left it in COLOR_ATTACHMENT layout -> TRANSFER_SRC for blit.
@@ -829,6 +979,9 @@ void EnginePresentVk::destroy() {
     if (impl_) {
         Impl& s = *impl_;
         if (s.dev) vkDeviceWaitIdle(s.dev);
+        shutdownImguiVulkanRenderer();
+        destroyImguiFramebuffer(s);
+        if (s.imguiRenderPass) { vkDestroyRenderPass(s.dev, s.imguiRenderPass, nullptr); s.imguiRenderPass = VK_NULL_HANDLE; }
         if (s.readbackFence) { vkDestroyFence(s.dev, s.readbackFence, nullptr); s.readbackFence = VK_NULL_HANDLE; }
         if (s.readbackBuf)   { vkDestroyBuffer(s.dev, s.readbackBuf, nullptr); s.readbackBuf = VK_NULL_HANDLE; }
         if (s.readbackMem)   { vkFreeMemory(s.dev, s.readbackMem, nullptr); s.readbackMem = VK_NULL_HANDLE; }
@@ -856,6 +1009,7 @@ void EnginePresentVk::logHealth() const {
         "validation_errors=%u extent=%ux%u present_mode=%s readback_changed=%d "
         "last_checksum=0x%llx direct_fbo_requests=%u direct_fbo_grants=%u "
         "copy1_blit_frames=%u copy1_skip_frames=%u tail_hook_frames=%u "
+        "imgui_vk_ready=%d imgui_vk_frames=%u "
         "last_direct_fbo=%u "
         "fallback_reason=\"%s\"\n",
         health_.created ? 1 : 0, health_.attempted ? 1 : 0,
@@ -867,6 +1021,7 @@ void EnginePresentVk::logHealth() const {
         health_.direct_fbo_requests, health_.direct_fbo_grants,
         health_.copy1_blit_frames, health_.copy1_skip_frames,
         health_.tail_hook_frames,
+        health_.imgui_vk_ready ? 1 : 0, health_.imgui_vk_frames,
         health_.last_direct_fbo,
         health_.fallback_reason.empty() ? "" : health_.fallback_reason.c_str());
     std::fflush(stderr);

@@ -1127,3 +1127,44 @@ Verification:
   `ridge_lowangle`: 24 pixels / 1,638,720, max delta 1). Treat hook as visually
   neutral. NEXT: replace the no-op dependency with the ImGui Vulkan draw-data
   render pass at this seam; do not attempt a second handoff from `GuiRuntime`.
+
+## RUNG 8.6e - VK-IMGUI-NATIVE-1
+
+Native ImGui renderer landed on the final-tail seam. `GuiRuntime` still owns the
+ImGui context, SDL input backend, frame construction, and `ImGui::Render()`.
+When `MC2_VK_IMGUI=1`, it does not initialize or call the OpenGL3 renderer
+backend. Instead it uses the SDL2 Vulkan platform init, builds the CPU font
+atlas, calls `EnginePresentVk::prepareImguiVulkanFrame()` before `ImGui::NewFrame()`,
+then hands `ImGui::GetDrawData()` to `EnginePresentVk`. `EnginePresentVk`
+initializes `ImGui_ImplVulkan` lazily, creates a LOAD/STORE render pass and
+framebuffer over the shared present image (`VK_FORMAT_R8G8B8A8_UNORM`), and
+records `ImGui_ImplVulkan_RenderDrawData()` inside `presentGLFrame()` after the
+GL->VK handoff and before the swapchain blit.
+
+Important lifecycle rule: `GuiRuntime::Shutdown()` calls
+`EnginePresentVk::shutdownImguiVulkanRenderer()` before destroying the ImGui
+context. `EnginePresentVk::destroy()` remains a no-op-safe backup, so the
+renderer backend is not shut down after the context is gone.
+
+Verification:
+- Build PASS at `0be75ff2` + dirty native-ImGui changes (`build64_island`, RelWithDebInfo).
+- Deployed 0.4c lane; manifest `src_commit=0be75ff2221b`.
+- First native attempt crashed in `ImGui::NewFrame()` because the CPU font atlas
+  was not built without the GL renderer. Fixed by `io.Fonts->Build()` on the VK
+  renderer path.
+- Second native attempt rendered every frame but crashed on shutdown because the
+  ImGui context was destroyed before `ImGui_ImplVulkan_Shutdown()`. Fixed by the
+  explicit present-owned renderer shutdown from `GuiRuntime::Shutdown()`.
+- Clean visible proof:
+  `MC2_RENDER_BACKEND=vulkan MC2_VK_PRESENT_DIRECT_FBO=1 MC2_VK_PRESENT_VERIFY=1 MC2_VK_PRESENT_TAIL_HOOK=1 MC2_VK_IMGUI=1`
+  with `run_visual_capture.py --show-window --mission mc2_01 --bookmarks tests/visual/bookmarks/mc2_01.json`
+  wrote 11/11 deterministic bookmark PNGs under `.claude/vk-imgui-native-clean/`.
+- Proof lines:
+  `[VK_IMGUI] requested=1 used_vulkan=1 fallback_reason=""`;
+  final `[VK_PRESENT]` had `present_frames=6301`, `tail_hook_frames=6301`,
+  `imgui_vk_ready=1`, `imgui_vk_frames=6301`, `copy1_blit_frames=0`,
+  `copy1_skip_frames=6301`, `validation_errors=0`, `fallback_reason=""`.
+- Shutdown-clean: no `Crash`, no `Forgot to shutdown Renderer backend`, no
+  `[imgui-error]` in `.claude/vk-imgui-native-clean/mc2_01_capture.log`.
+- Visual delta vs the 8.6d tail-hook baseline: 9/11 byte-identical; only the
+  known tiny unstable views differed (`cross_map_view`, `ridge_lowangle`).
