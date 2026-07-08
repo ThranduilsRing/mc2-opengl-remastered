@@ -392,3 +392,20 @@ no tessellation anywhere in the tail.
   import remains the next ownership target. Native fog/SSAO/screenfx/HZB,
   water, prop, terrain, and mech health remained active with empty fallback
   reasons in the same smoke.
+- 8.7j - CSM NEAR-ARRAY DIRECT VK CONSUME
+  (VK-CSM-ARRAY-DIRECT-1). Added default-off `MC2_VK_CSM_ARRAY_INTEROP`
+  companion to `MC2_VK_SHADOW_INTEROP`: the shadow island renders each near CSM
+  cascade into a layer of a VK-owned D32 2D array, and terrain binding 8 binds
+  that array view directly when all near layers were produced in the same frame.
+  Combined with 8.7i full-map direct consume, this removes the remaining terrain
+  CSM CPU import path (`glCopyImageSubData` scratch + `glGetTexImage` +
+  `vkCmdCopyBufferToImage`) from the hot frame. Verification:
+  dirty-slice build/deploy/smoke PASS 1/1 at
+  `tests/smoke/artifacts/2026-07-08T17-57-45`; receipts show
+  `CSM array target initialized 8192x8192 layers=2`, `first VK CSM array
+  produced`, steady `VK_TERRAIN_COPY_STATS ... csmArrayDirect=1
+  csmFullMapDirect=1`, and post-warm-up `copies_ms` collapsing to ~0.001 ms.
+  Terrain health in the same run dropped to `stage_us=120.7 total_us=1374.3`
+  with `forbidden_getTexImage=0 forbidden_readPixels=0`; native
+  fog/SSAO/screenfx/HZB, water, prop, and mech health remained active with empty
+  fallback reasons.

@@ -698,6 +698,19 @@ static constexpr EnvVarDesc kAuxEnvVars[] = {
         "the near cascade array remains on the existing copy path. Gate OFF or producer "
         "decline -> existing GL full-map copy path unchanged."
     },
+    {
+        "MC2_FEATURE_VK_CSM_ARRAY_INTEROP",
+        "MC2_VK_CSM_ARRAY_INTEROP",
+        EnvVarKind::Feature,
+        false,
+        "VK-CSM-ARRAY-DIRECT-1: presence-gated =1, default OFF. Companion to "
+        "MC2_VK_SHADOW_INTEROP that re-renders the near CSM cascades into layers of "
+        "a VK-owned D32 2D array on the shared Vulkan device, then lets VK terrain "
+        "bind that array view directly at CSM binding 8. Deletes terrain's per-frame "
+        "GL_TEXTURE_2D_ARRAY scratch/cpu-readback/import path when all near layers "
+        "produce in the same frame; gate OFF or producer decline -> existing GL array "
+        "copy path unchanged."
+    },
     // VK-TIER1 SHARED SCENE DEPTH: the shared-depth substrate slice (step 2).
     {
         "MC2_FEATURE_VK_SHARED_SCENE_DEPTH",

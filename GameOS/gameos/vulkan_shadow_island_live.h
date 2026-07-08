@@ -204,6 +204,16 @@ unsigned int mc2_vk_shadow_island_run_csm_fullmap(
 void* mc2_vk_shadow_island_get_csm_fullmap_view();
 int   mc2_vk_shadow_island_csm_fullmap_ready();
 
+// VK-CSM-ARRAY-DIRECT-1: optional near-cascade companion. Renders each near CSM
+// cascade into a layer of a VK-owned D32 2D array; terrain can bind the array view
+// directly at binding 8 when all near layers were produced in the current frame.
+unsigned int mc2_vk_shadow_island_run_csm_array_layer(
+    int size, int layers, int layerIndex, const float* lightSpace16,
+    const void* instances, unsigned int instanceCount,
+    float biasFactor, float biasUnits);
+void* mc2_vk_shadow_island_get_csm_array_view();
+int   mc2_vk_shadow_island_csm_array_ready();
+
 // Health accessor (mirrors mc2_render_backend_water_region_health).
 void mc2_render_backend_shadow_region_health(
     int* vulkanAvailable, int* buildEnabled, const char** deviceName,

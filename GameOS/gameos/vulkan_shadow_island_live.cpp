@@ -90,6 +90,7 @@ ShadowIslandHealth g_health;
 // stale prior-frame flag into a later frame where the shadow island declined.
 bool g_dynShadowReadyThisFrame = false;
 bool g_csmFullMapReadyThisFrame = false;
+bool g_csmArrayReadyThisFrame = false;
 
 void setFallback(const char* reason) {
     std::strncpy(g_health.fallbackReason, reason ? reason : "",
@@ -130,6 +131,15 @@ bool csmFullMapInteropGateRequested() {
     static int state = -1;
     if (state == -1) {
         const char* e = std::getenv("MC2_VK_CSM_FULLMAP_INTEROP");
+        state = (e && e[0] == '1') ? 1 : 0;
+    }
+    return state == 1;
+}
+
+bool csmArrayInteropGateRequested() {
+    static int state = -1;
+    if (state == -1) {
+        const char* e = std::getenv("MC2_VK_CSM_ARRAY_INTEROP");
         state = (e && e[0] == '1') ? 1 : 0;
     }
     return state == 1;
@@ -238,6 +248,15 @@ struct ShadowIsland {
     GlInteropView     csmFullMapGlView{};
     VkFramebuffer     csmFullMapFb = VK_NULL_HANDLE;
     VkImageView       csmFullMapDepthAttView = VK_NULL_HANDLE;
+    int               csmArraySize = 0;
+    uint32_t          csmArrayLayers = 0;
+    VkImage           csmArrayImg = VK_NULL_HANDLE;
+    VmaAllocation     csmArrayAlloc = VK_NULL_HANDLE;
+    VkImageView       csmArrayView = VK_NULL_HANDLE;
+    std::vector<VkImageView> csmArrayLayerViews;
+    std::vector<VkFramebuffer> csmArrayFbs;
+    VkFence           csmArrayFence = VK_NULL_HANDLE;
+    uint32_t          csmArrayRenderedMask = 0;
     VkDescriptorSetLayout dsl = VK_NULL_HANDLE;
     VkDescriptorPool  pool   = VK_NULL_HANDLE;
     VkDescriptorSet   set    = VK_NULL_HANDLE;
@@ -308,6 +327,15 @@ void destroy_island(ShadowIsland* s) {
     glInteropViewDestroy(&s->csmFullMapGlView);
     if (s->csmFullMapDepthAttView) vkDestroyImageView(d, s->csmFullMapDepthAttView, nullptr);
     if (d != VK_NULL_HANDLE) vkImageResourceDestroy(&s->csmFullMapResource, d);
+    for (VkFramebuffer fbLayer : s->csmArrayFbs) {
+        if (fbLayer) vkDestroyFramebuffer(d, fbLayer, nullptr);
+    }
+    for (VkImageView viewLayer : s->csmArrayLayerViews) {
+        if (viewLayer) vkDestroyImageView(d, viewLayer, nullptr);
+    }
+    if (s->csmArrayView) vkDestroyImageView(d, s->csmArrayView, nullptr);
+    if (s->csmArrayImg) vmaDestroyImage(s->allocator, s->csmArrayImg, s->csmArrayAlloc);
+    if (s->csmArrayFence) vkDestroyFence(d, s->csmArrayFence, nullptr);
     if (s->pipe)    vkDestroyPipeline(d, s->pipe, nullptr);
     if (s->playout) vkDestroyPipelineLayout(d, s->playout, nullptr);
     if (s->vert)    vkDestroyShaderModule(d, s->vert, nullptr);
@@ -664,6 +692,96 @@ bool ensure_csm_fullmap_target(ShadowIsland* s, int size) {
     return true;
 }
 
+bool ensure_csm_array_target(ShadowIsland* s, int size, uint32_t layers) {
+    if (!s || size <= 0 || layers == 0 || layers > 31 || s->rpass == VK_NULL_HANDLE) return false;
+    if (s->csmArrayImg != VK_NULL_HANDLE && s->csmArraySize == size && s->csmArrayLayers == layers)
+        return true;
+
+    vkDeviceWaitIdle(s->device);
+    for (VkFramebuffer fbLayer : s->csmArrayFbs) {
+        if (fbLayer) vkDestroyFramebuffer(s->device, fbLayer, nullptr);
+    }
+    for (VkImageView viewLayer : s->csmArrayLayerViews) {
+        if (viewLayer) vkDestroyImageView(s->device, viewLayer, nullptr);
+    }
+    s->csmArrayFbs.clear();
+    s->csmArrayLayerViews.clear();
+    if (s->csmArrayView) { vkDestroyImageView(s->device, s->csmArrayView, nullptr); s->csmArrayView = VK_NULL_HANDLE; }
+    if (s->csmArrayImg) { vmaDestroyImage(s->allocator, s->csmArrayImg, s->csmArrayAlloc); s->csmArrayImg = VK_NULL_HANDLE; }
+    if (s->csmArrayFence) { vkDestroyFence(s->device, s->csmArrayFence, nullptr); s->csmArrayFence = VK_NULL_HANDLE; }
+    s->csmArraySize = 0;
+    s->csmArrayLayers = 0;
+    s->csmArrayRenderedMask = 0;
+
+    VkImageCreateInfo ici{};
+    ici.sType = VK_STRUCTURE_TYPE_IMAGE_CREATE_INFO;
+    ici.imageType = VK_IMAGE_TYPE_2D;
+    ici.format = kDepthFmt;
+    ici.extent = {(uint32_t)size, (uint32_t)size, 1};
+    ici.mipLevels = 1;
+    ici.arrayLayers = layers;
+    ici.samples = VK_SAMPLE_COUNT_1_BIT;
+    ici.tiling = VK_IMAGE_TILING_OPTIMAL;
+    ici.usage = VK_IMAGE_USAGE_DEPTH_STENCIL_ATTACHMENT_BIT | VK_IMAGE_USAGE_SAMPLED_BIT;
+    ici.initialLayout = VK_IMAGE_LAYOUT_UNDEFINED;
+    VmaAllocationCreateInfo aci{};
+    aci.usage = VMA_MEMORY_USAGE_AUTO;
+    if (vmaCreateImage(s->allocator, &ici, &aci, &s->csmArrayImg, &s->csmArrayAlloc, nullptr) != VK_SUCCESS) {
+        setFallback("csm_array_image_failed");
+        return false;
+    }
+
+    VkImageViewCreateInfo vci{};
+    vci.sType = VK_STRUCTURE_TYPE_IMAGE_VIEW_CREATE_INFO;
+    vci.image = s->csmArrayImg;
+    vci.viewType = VK_IMAGE_VIEW_TYPE_2D_ARRAY;
+    vci.format = kDepthFmt;
+    vci.subresourceRange = {VK_IMAGE_ASPECT_DEPTH_BIT, 0, 1, 0, layers};
+    if (vkCreateImageView(s->device, &vci, nullptr, &s->csmArrayView) != VK_SUCCESS) {
+        setFallback("csm_array_view_failed");
+        return false;
+    }
+
+    s->csmArrayLayerViews.resize(layers, VK_NULL_HANDLE);
+    s->csmArrayFbs.resize(layers, VK_NULL_HANDLE);
+    for (uint32_t layer = 0; layer < layers; ++layer) {
+        VkImageViewCreateInfo lvi{};
+        lvi.sType = VK_STRUCTURE_TYPE_IMAGE_VIEW_CREATE_INFO;
+        lvi.image = s->csmArrayImg;
+        lvi.viewType = VK_IMAGE_VIEW_TYPE_2D;
+        lvi.format = kDepthFmt;
+        lvi.subresourceRange = {VK_IMAGE_ASPECT_DEPTH_BIT, 0, 1, layer, 1};
+        if (vkCreateImageView(s->device, &lvi, nullptr, &s->csmArrayLayerViews[layer]) != VK_SUCCESS) {
+            setFallback("csm_array_layer_view_failed");
+            return false;
+        }
+        VkFramebufferCreateInfo fci{};
+        fci.sType = VK_STRUCTURE_TYPE_FRAMEBUFFER_CREATE_INFO;
+        fci.renderPass = s->rpass;
+        fci.attachmentCount = 1;
+        fci.pAttachments = &s->csmArrayLayerViews[layer];
+        fci.width = (uint32_t)size;
+        fci.height = (uint32_t)size;
+        fci.layers = 1;
+        if (vkCreateFramebuffer(s->device, &fci, nullptr, &s->csmArrayFbs[layer]) != VK_SUCCESS) {
+            setFallback("csm_array_framebuffer_failed");
+            return false;
+        }
+    }
+    VkFenceCreateInfo fci{};
+    fci.sType = VK_STRUCTURE_TYPE_FENCE_CREATE_INFO;
+    fci.flags = VK_FENCE_CREATE_SIGNALED_BIT;
+    if (vkCreateFence(s->device, &fci, nullptr, &s->csmArrayFence) != VK_SUCCESS) {
+        setFallback("csm_array_fence_failed");
+        return false;
+    }
+    s->csmArraySize = size;
+    s->csmArrayLayers = layers;
+    vlog("CSM array target initialized %dx%d layers=%u (VK D32 array, direct terrain binding 8).",
+         size, size, layers);
+    return true;
+}
+
 // Copy the shared static-prop VBO/IBO into VK-owned buffers ONCE per map (P8a
 // feed (B): VK owns a copy — simplest working feed). Also caches the per-type
 // packet ranges. Returns false if the geometry feed is unavailable this frame.
@@ -745,6 +863,7 @@ extern "C" unsigned int mc2_vk_shadow_island_run(
     float biasFactor, float biasUnits) {
     g_dynShadowReadyThisFrame = false;   // VK-SHADOW-DIRECT-CONSUME-1: reset; set true only at the tail on success
     g_csmFullMapReadyThisFrame = false;  // CSM full-map direct view must be same-frame fresh too
+    g_csmArrayReadyThisFrame = false;    // CSM array direct view must be same-frame fresh too
     if (!shadowInteropGateRequested()) return 0;
     if (size <= 0 || !lightSpace16 || !instances || instanceCount == 0) return 0;
 
@@ -1081,6 +1200,134 @@ extern "C" unsigned int mc2_vk_shadow_island_run_csm_fullmap(
     return s->csmFullMapGlView.glTex;
 }
 
+extern "C" unsigned int mc2_vk_shadow_island_run_csm_array_layer(
+    int size, int layers, int layerIndex, const float* lightSpace16,
+    const void* instances, unsigned int instanceCount,
+    float biasFactor, float biasUnits) {
+    if (layerIndex == 0) {
+        g_csmArrayReadyThisFrame = false;
+        if (g_island) g_island->csmArrayRenderedMask = 0;
+    }
+    if (!shadowInteropGateRequested() || !csmArrayInteropGateRequested()) return 0;
+    if (size <= 0 || layers <= 0 || layerIndex < 0 || layerIndex >= layers) return 0;
+    if (!lightSpace16 || !instances || instanceCount == 0) return 0;
+    if (!g_island || g_island->disabled || !g_island->inited || !g_island->useInterop) return 0;
+    ShadowIsland* s = g_island;
+    const uint32_t layerCount = (uint32_t)layers;
+    const uint32_t layer = (uint32_t)layerIndex;
+    if (!upload_geometry_once(s)) { setFallback("geometry_not_ready"); return 0; }
+    if (!ensure_csm_array_target(s, size, layerCount)) return 0;
+
+    const VkDeviceSize instBytes = (VkDeviceSize)instanceCount * sizeof(GpuStaticPropInstanceMirror);
+    if (!ensure_inst_capacity(s, instBytes)) { s->disabled = true; return 0; }
+    const GpuStaticPropInstanceMirror* insts =
+        reinterpret_cast<const GpuStaticPropInstanceMirror*>(instances);
+    std::vector<uint32_t> order(instanceCount);
+    for (uint32_t k = 0; k < instanceCount; ++k) order[k] = k;
+    std::sort(order.begin(), order.end(),
+        [insts](uint32_t a, uint32_t b){ return insts[a].typeID < insts[b].typeID; });
+    {
+        void* p = nullptr;
+        if (vmaMapMemory(s->allocator, s->instAlloc, &p) == VK_SUCCESS) {
+            GpuStaticPropInstanceMirror* dst = reinterpret_cast<GpuStaticPropInstanceMirror*>(p);
+            for (uint32_t k = 0; k < instanceCount; ++k) dst[k] = insts[order[k]];
+            vmaUnmapMemory(s->allocator, s->instAlloc);
+        }
+    }
+    {
+        ShadowFrameUBO u{};
+        std::memcpy(u.lightSpaceMatrix, lightSpace16, sizeof(u.lightSpaceMatrix));
+        u.instBase = 0;
+        void* p = nullptr;
+        if (vmaMapMemory(s->allocator, s->uboAlloc, &p) == VK_SUCCESS) {
+            std::memcpy(p, &u, sizeof(u));
+            vmaUnmapMemory(s->allocator, s->uboAlloc);
+        }
+    }
+
+    if (vkWaitForFences(s->device, 1, &s->csmArrayFence, VK_TRUE, UINT64_MAX) != VK_SUCCESS) {
+        setFallback("csm_array_fence_wait_failed"); s->disabled = true; return 0;
+    }
+    vkResetFences(s->device, 1, &s->csmArrayFence);
+    VkCommandBuffer cb = s->cbuf[layer & 1u];
+    vkResetCommandBuffer(cb, 0);
+    VkCommandBufferBeginInfo bi{};
+    bi.sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_BEGIN_INFO;
+    bi.flags = VK_COMMAND_BUFFER_USAGE_ONE_TIME_SUBMIT_BIT;
+    if (vkBeginCommandBuffer(cb, &bi) != VK_SUCCESS) { setFallback("csm_array_record_failed"); s->disabled = true; return 0; }
+
+    VkClearValue clear{};
+    clear.depthStencil = {1.0f, 0};
+    VkRenderPassBeginInfo rbi{};
+    rbi.sType = VK_STRUCTURE_TYPE_RENDER_PASS_BEGIN_INFO;
+    rbi.renderPass = s->rpass;
+    rbi.framebuffer = s->csmArrayFbs[layer];
+    rbi.renderArea = {{0, 0}, {(uint32_t)size, (uint32_t)size}};
+    rbi.clearValueCount = 1;
+    rbi.pClearValues = &clear;
+    vkCmdBeginRenderPass(cb, &rbi, VK_SUBPASS_CONTENTS_INLINE);
+
+    VkViewport vp{0.0f, 0.0f, (float)size, (float)size, 0.0f, 1.0f};
+    VkRect2D scissor{{0, 0}, {(uint32_t)size, (uint32_t)size}};
+    vkCmdSetViewport(cb, 0, 1, &vp);
+    vkCmdSetScissor(cb, 0, 1, &scissor);
+    vkCmdSetDepthBias(cb, biasUnits, 0.0f, biasFactor);
+    vkCmdBindPipeline(cb, VK_PIPELINE_BIND_POINT_GRAPHICS, s->pipe);
+    vkCmdBindDescriptorSets(cb, VK_PIPELINE_BIND_POINT_GRAPHICS, s->playout, 0, 1, &s->set, 0, nullptr);
+    VkDeviceSize vboOff = 0;
+    vkCmdBindVertexBuffers(cb, 0, 1, &s->vbo, &vboOff);
+    vkCmdBindIndexBuffer(cb, s->ibo, 0, VK_INDEX_TYPE_UINT32);
+
+    unsigned long typeRuns = 0;
+    uint32_t i = 0;
+    while (i < instanceCount) {
+        const uint32_t tid = insts[order[i]].typeID;
+        uint32_t j = i;
+        while (j < instanceCount && insts[order[j]].typeID == tid) ++j;
+        const uint32_t runCount = j - i;
+        if (tid < s->typeRuns.size()) {
+            const TypeRun& tr = s->typeRuns[tid];
+            for (uint32_t p = 0; p < tr.packetCount; ++p) {
+                const uint32_t pk = tr.firstPacket + p;
+                if (pk >= s->packets.size()) break;
+                const Mc2ShadowPacket& pkt = s->packets[pk];
+                vkCmdDrawIndexed(cb, pkt.indexCount, runCount,
+                                 pkt.firstIndex, (int32_t)pkt.baseVertex,
+                                 /*firstInstance*/ i);
+            }
+            ++typeRuns;
+        }
+        i = j;
+    }
+    vkCmdEndRenderPass(cb);
+    if (vkEndCommandBuffer(cb) != VK_SUCCESS) { setFallback("csm_array_record_failed"); s->disabled = true; return 0; }
+
+    VkSubmitInfo si{};
+    si.sType = VK_STRUCTURE_TYPE_SUBMIT_INFO;
+    si.commandBufferCount = 1;
+    si.pCommandBuffers = &cb;
+    if (vkQueueSubmit(s->queue, 1, &si, s->csmArrayFence) != VK_SUCCESS) {
+        setFallback("csm_array_submit_failed"); s->disabled = true; return 0;
+    }
+    if (vkWaitForFences(s->device, 1, &s->csmArrayFence, VK_TRUE, 5ull*1000*1000*1000) != VK_SUCCESS) {
+        setFallback("csm_array_fence_timeout"); s->disabled = true; return 0;
+    }
+
+    s->csmArrayRenderedMask |= (1u << layer);
+    const uint32_t readyMask = (1u << layerCount) - 1u;
+    g_csmArrayReadyThisFrame = ((s->csmArrayRenderedMask & readyMask) == readyMask);
+    g_health.instRecords = instanceCount;
+    g_health.typeRuns = typeRuns;
+    ++g_health.usedVulkan;
+    static bool s_firstOk = false;
+    if (g_csmArrayReadyThisFrame && !s_firstOk) {
+        vlog("first VK CSM array produced: layers=%u instCount=%u typeRuns=%lu.",
+             layerCount, instanceCount, typeRuns);
+        s_firstOk = true;
+    }
+    return g_csmArrayReadyThisFrame ? 1u : 0u;
+}
+
 // VK-SHADOW-DIRECT-CONSUME-1: raw VK-side view/ready accessors for the terrain
 // island. g_dynShadowReadyThisFrame is set true at the tail of a successful
 // mc2_vk_shadow_island_run() (after the fence wait retired the submit, i.e. the
@@ -1107,6 +1354,14 @@ extern "C" void* mc2_vk_shadow_island_get_csm_fullmap_view() {
 }
 extern "C" int mc2_vk_shadow_island_csm_fullmap_ready() {
     return (g_island && g_csmFullMapReadyThisFrame) ? 1 : 0;
+}
+
+extern "C" void* mc2_vk_shadow_island_get_csm_array_view() {
+    return (g_island && g_csmArrayReadyThisFrame)
+        ? reinterpret_cast<void*>(g_island->csmArrayView) : nullptr;
+}
+extern "C" int mc2_vk_shadow_island_csm_array_ready() {
+    return (g_island && g_csmArrayReadyThisFrame) ? 1 : 0;
 }
 
 // Health accessor (mirrors mc2_render_backend_water_region_health).

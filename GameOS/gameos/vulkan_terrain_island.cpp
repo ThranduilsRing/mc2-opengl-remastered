@@ -445,6 +445,9 @@ struct TerrainIsland {
     uint32_t      csmArrayDim  = 0;
     uint32_t      csmArrayLayers = 0;
     bool          csmArrayReady = false;
+    VkImageView   csmArrayExternalView = VK_NULL_HANDLE;
+    bool          csmArrayDirect = false;
+    VkImageView   csmArrayBoundView = VK_NULL_HANDLE;
     VkBuffer      csmArrayStage = VK_NULL_HANDLE; VmaAllocation csmArrayStageAlloc = VK_NULL_HANDLE;
     VkDeviceSize  csmArrayStageBytes = 0;
     // CSM-BLACKOUT-RECON-1 FIX: GL scratch depth array. glGetTexImage on the LIVE
@@ -734,8 +737,10 @@ void write_descriptors(TerrainIsland* s) {
     // VK-TERRAIN-CSM-NEAR-1: binding 8 near-cascade array, binding 9 full-map cascade —
     // always written once the (dummy or real) images + shared shadowSamp exist.
     VkDescriptorImageInfo csmArrInfo{};
-    if (s->csmArrayView != VK_NULL_HANDLE && s->shadowSamp != VK_NULL_HANDLE) {
-        csmArrInfo.sampler = s->shadowSamp; csmArrInfo.imageView = s->csmArrayView;
+    const VkImageView csmArrView = (s->csmArrayExternalView != VK_NULL_HANDLE)
+        ? s->csmArrayExternalView : s->csmArrayView;
+    if (csmArrView != VK_NULL_HANDLE && s->shadowSamp != VK_NULL_HANDLE) {
+        csmArrInfo.sampler = s->shadowSamp; csmArrInfo.imageView = csmArrView;
         csmArrInfo.imageLayout = VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL;
         w[n].sType = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET; w[n].dstSet = s->set;
         w[n].dstBinding = 8; w[n].descriptorCount = 1;
@@ -2027,6 +2032,8 @@ static int csmBisectMode() {
 bool copy_csm_shadows(TerrainIsland* s, const Mc2TerrainTier1Feed& feed) {
     s->csmArrayReady = false;
     s->csmFullMapReady = false;
+    s->csmArrayExternalView = VK_NULL_HANDLE;
+    s->csmArrayDirect = false;
     s->csmFullMapExternalView = VK_NULL_HANDLE;
     s->csmFullMapDirect = false;
     if (!feed.csmEnabled || feed.glCsmArrayTex == 0 || feed.csmArraySize <= 0
@@ -2067,8 +2074,17 @@ bool copy_csm_shadows(TerrainIsland* s, const Mc2TerrainTier1Feed& feed) {
     } fboRestore{prevDrawFbo, prevReadFbo};
     const int bisect = csmBisectMode();
     if (bisect != 3) {
-        if (!ensure_csm_array_image(s, (uint32_t)feed.csmArraySize, layers)) return false;
-        if (!copy_csm_array(s, feed.glCsmArrayTex, (uint32_t)feed.csmArraySize, layers)) return false;
+        if (mc2_vk_shadow_island_csm_array_ready()) {
+            void* rawView = mc2_vk_shadow_island_get_csm_array_view();
+            if (rawView != nullptr) {
+                s->csmArrayExternalView = reinterpret_cast<VkImageView>(rawView);
+                s->csmArrayDirect = true;
+            }
+        }
+        if (!s->csmArrayDirect) {
+            if (!ensure_csm_array_image(s, (uint32_t)feed.csmArraySize, layers)) return false;
+            if (!copy_csm_array(s, feed.glCsmArrayTex, (uint32_t)feed.csmArraySize, layers)) return false;
+        }
     }
     if (bisect != 4) {
         if (mc2_vk_shadow_island_csm_fullmap_ready()) {
@@ -2379,10 +2395,13 @@ extern "C" int mc2_vk_terrain_island_run(int w, int h) {
     // change per-frame via copy_shadow_slot without needing a new descriptor write).
     {
         const VkImageView wantView = s->dynShadowDirect ? s->dynShadowExternalView : s->dynShadowView;
+        const VkImageView wantCsmArrayView = s->csmArrayDirect ? s->csmArrayExternalView : s->csmArrayView;
         const VkImageView wantCsmFullMapView = s->csmFullMapDirect ? s->csmFullMapExternalView : s->csmFullMapView;
-        if (wantView != s->dynShadowBoundView || wantCsmFullMapView != s->csmFullMapBoundView) {
+        if (wantView != s->dynShadowBoundView || wantCsmArrayView != s->csmArrayBoundView
+            || wantCsmFullMapView != s->csmFullMapBoundView) {
             write_descriptors(s);
             s->dynShadowBoundView = wantView;
+            s->csmArrayBoundView = wantCsmArrayView;
             s->csmFullMapBoundView = wantCsmFullMapView;
         }
     }
@@ -2402,9 +2421,10 @@ extern "C" int mc2_vk_terrain_island_run(int w, int h) {
         if (s_statsOn) {
             const double ms = usSince(tCopies0) / 1000.0;
             fprintf(stderr,
-                    "[VK_TERRAIN_COPY_STATS] copies_ms=%.4f staticGen=%llu shadowReady=%d dynReady=%d csmArrayReady=%d csmFullMapReady=%d csmFullMapDirect=%d\n",
+                    "[VK_TERRAIN_COPY_STATS] copies_ms=%.4f staticGen=%llu shadowReady=%d dynReady=%d csmArrayReady=%d csmArrayDirect=%d csmFullMapReady=%d csmFullMapDirect=%d\n",
                     ms, (unsigned long long)feed.staticShadowGeneration, s->shadowReady ? 1 : 0,
-                    s->dynShadowReady ? 1 : 0, s->csmArrayReady ? 1 : 0, s->csmFullMapReady ? 1 : 0,
+                    s->dynShadowReady ? 1 : 0, s->csmArrayReady ? 1 : 0, s->csmArrayDirect ? 1 : 0,
+                    s->csmFullMapReady ? 1 : 0,
                     s->csmFullMapDirect ? 1 : 0);
         }
     }
