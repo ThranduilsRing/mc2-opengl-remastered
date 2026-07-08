@@ -917,3 +917,34 @@ Receipts:
   fallback_reason="probe_enabled", attempted=0, used_vulkan=0.
 - Tier1 native HZB (`mc2_01/mc2_03/mc2_10/mc2_17/mc2_24`, 20s): PASS 5/5,
   +0 destroys.
+
+## RUNG 8.5a - VK-PRESENT-DIRECT-FBO-1 META PATH CONFIRMED
+
+No code change in this checkpoint. The existing `MC2_VK_PRESENT_DIRECT_FBO`
+implementation is the correct first 8.5 slice: GL composite, FORCE-43,
+HUD, and ImGui stay unchanged but render into EnginePresentVk's shared present
+FBO, letting `presentGLFrame()` skip copy-1. `CompositePresent` is not the path;
+that region is explicitly a separate-window test contract.
+
+Evidence gathered on 2026-07-07:
+- Refreshed explicit deploy lane
+  `A:/Games/mc2-opengl/mc2-win64-0.4c` from `build64_island/RelWithDebInfo`,
+  manifest `src_commit=b52050ccdf71`.
+- Exact-lane baseline smoke:
+  `py -3 scripts/run_smoke.py --exe A:/Games/mc2-opengl/mc2-win64-0.4c/mc2.exe --mission mc2_01 --mission mc2_24 --duration 30 --keep-logs`
+  -> `2026-07-07T22-55-54`, PASS 2/2, fingerprint OK, +0 destroys.
+- Exact-lane gate-on smoke:
+  `MC2_VK_PRESENT_DIRECT_FBO=1 MC2_VK_PRESENT_VERIFY=1` with the same exe and
+  missions -> `2026-07-07T22-57-19`, PASS 2/2, fingerprint OK, +0 destroys.
+- Vulkan-backend minimized smoke:
+  `MC2_RENDER_BACKEND=vulkan MC2_VK_PRESENT_DIRECT_FBO=1 MC2_VK_PRESENT_VERIFY=1`
+  -> `2026-07-07T22-59-12`, PASS 2/2, engine context created on RX 7900 XTX,
+  but present receipt is blind because the smoke harness minimizes the window:
+  `fallback_reason="zero surface extent (window minimized?)"`,
+  `present_frames=0`.
+
+Verdict: 8.5a meta path accepted as a documented checkpoint, but the final
+copy-1 receipt still needs a visible-window harness or manual visible run that
+reports `present_frames>0`, `validation_errors=0`, and `readback_changed=1`.
+Next real coding slice: 8.5b native composite shader port under
+`MC2_VK_POST_COMPOSITE` (shared color0 input, present/swapchain output).

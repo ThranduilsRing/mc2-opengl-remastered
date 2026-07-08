@@ -54,3 +54,15 @@ no tessellation anywhere in the tail.
   shared depth in-place, preserves shared-GBuffer color/normal/depth parity by
   acquiring the full triplet, and reports zero copy/readback ops. Probe mode
   (`MC2_HZB_PROBE=1`) intentionally declines with `probe_enabled`.
+- 8.5a - META PATH CONFIRMED (VK-PRESENT-DIRECT-FBO-1, gate
+  `MC2_VK_PRESENT_DIRECT_FBO`). Existing implementation is the correct first
+  8.5 slice: keep GL composite/FORCE-43/HUD/ImGui unchanged, render them into
+  the shared present FBO, and skip copy-1. Exact-lane smoke on
+  `A:/Games/mc2-opengl/mc2-win64-0.4c/mc2.exe` at `b52050ccdf71`:
+  baseline `2026-07-07T22-55-54` PASS 2/2, gate-on
+  `2026-07-07T22-57-19` PASS 2/2. Vulkan-backend minimized smoke
+  `2026-07-07T22-59-12` reached `MC2_RENDER_BACKEND=vulkan` and created the
+  engine context, but present reported `fallback_reason="zero surface extent
+  (window minimized?)"`, `present_frames=0`; use a visible-window harness for
+  final present receipt. Next real coding slice = 8.5b native composite shader
+  port (`MC2_VK_POST_COMPOSITE`), not `CompositePresent` (separate-window only).
