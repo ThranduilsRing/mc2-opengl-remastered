@@ -392,7 +392,7 @@ bool ensureCompositeObjects(EnginePresentVk::Impl& s) {
         VkAttachmentDescription color{};
         color.format = VK_FORMAT_R8G8B8A8_UNORM;
         color.samples = VK_SAMPLE_COUNT_1_BIT;
-        color.loadOp = VK_ATTACHMENT_LOAD_OP_LOAD;
+        color.loadOp = VK_ATTACHMENT_LOAD_OP_CLEAR;
         color.storeOp = VK_ATTACHMENT_STORE_OP_STORE;
         color.stencilLoadOp = VK_ATTACHMENT_LOAD_OP_DONT_CARE;
         color.stencilStoreOp = VK_ATTACHMENT_STORE_OP_DONT_CARE;
@@ -799,10 +799,11 @@ bool EnginePresentVk::renderNativeCompositeVisual(float exposure,
     if (!nativeCompositeGateEnabled() || !created_ || !impl_ || directFbo_ == 0)
         return false;
     Impl& s = *impl_;
-    if (viewportX != 0 || viewportY != 0 ||
-        viewportW != (int)s.imgW || viewportH != (int)s.imgH) {
-        return false; // first slice is full-viewport only; FORCE-43 falls back to GL.
-    }
+    if (viewportW <= 0 || viewportH <= 0 ||
+        viewportX < 0 || viewportY < 0 ||
+        viewportX + viewportW > (int)s.imgW ||
+        viewportY + viewportH > (int)s.imgH)
+        return false;
     VkImageResource* scene = mc2SharedSceneColorGetResource(MC2_SHARED_SCENE_COLOR0);
     GlInteropView* sceneView = mc2SharedSceneColorGetGlView(MC2_SHARED_SCENE_COLOR0);
     if (!scene || !sceneView || !ensureCompositeObjects(s))
@@ -827,9 +828,14 @@ bool EnginePresentVk::renderNativeCompositeVisual(float exposure,
     rp.framebuffer = s.compositeFramebuffer;
     rp.renderArea.offset = {0, 0};
     rp.renderArea.extent = {s.imgW, s.imgH};
+    VkClearValue clear{};
+    clear.color = {{0.0f, 0.0f, 0.0f, 1.0f}};
+    rp.clearValueCount = 1;
+    rp.pClearValues = &clear;
     vkCmdBeginRenderPass(s.cbuf, &rp, VK_SUBPASS_CONTENTS_INLINE);
-    VkViewport vp{0.0f, 0.0f, (float)s.imgW, (float)s.imgH, 0.0f, 1.0f};
-    VkRect2D sc{{0, 0}, {s.imgW, s.imgH}};
+    VkViewport vp{(float)viewportX, (float)viewportY,
+                  (float)viewportW, (float)viewportH, 0.0f, 1.0f};
+    VkRect2D sc{{viewportX, viewportY}, {(uint32_t)viewportW, (uint32_t)viewportH}};
     vkCmdSetViewport(s.cbuf, 0, 1, &vp);
     vkCmdSetScissor(s.cbuf, 0, 1, &sc);
     vkCmdBindPipeline(s.cbuf, VK_PIPELINE_BIND_POINT_GRAPHICS, s.compositePipe);

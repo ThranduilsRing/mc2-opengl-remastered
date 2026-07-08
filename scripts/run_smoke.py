@@ -1828,6 +1828,7 @@ def main():
                             "MC2_FXAA_SUBPIX",
                             "MC2_FXAA_EDGE_THRESHOLD",
                             "MC2_FXAA_EDGE_THRESHOLD_MIN",
+                            "MC2_FORCE_43",
                             # VK-TAIL-HOOK-1: behavior-neutral final-tail command
                             # buffer seam; proves native HUD/ImGui can execute
                             # after GL->VK handoff and before the swapchain blit.

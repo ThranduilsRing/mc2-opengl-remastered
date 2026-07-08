@@ -1207,6 +1207,14 @@ bar is stricter than current code:
   composite_vk_frames=300`, `copy1_blit_frames=0`, `fallback_reason=""`.
   Minimized smoke with `MC2_FXAA=1` forwarded:
   `tests/smoke/artifacts/2026-07-08T15-12-17`, PASS 2/2, +0 destroys.
+- 8.5d native composite FORCE-43 is landed. The native Visual composite now
+  clears the shared present image black in VK and draws into the caller-supplied
+  pillarbox viewport. Visible proof:
+  `.claude/vk-post-composite-force43-native/`, `MC2_FORCE_43=1`, 11/11
+  deterministic `mc2_01` bookmarks, `[VK_PRESENT] composite_vk_frames=300`,
+  `copy1_blit_frames=0`, `fallback_reason=""`. Minimized smoke with
+  `MC2_FORCE_43=1` forwarded: `tests/smoke/artifacts/2026-07-08T15-16-01`,
+  PASS 2/2, +0 destroys.
 - 8.6 native ImGui is landed, but GameOS HUD (`gos_RendererFlushHUDBatch()`) is
   still legacy GL. Native HUD needs its own `MC2_VK_HUD`/batch replay port or a
   broader final-tail ownership split.
@@ -1220,8 +1228,8 @@ bar is stricter than current code:
   pixels.
 
 Next real coding slices:
-1. Complete the remaining native composite branches: FORCE-43/letterbox and
-   viewmode/object-id/debug paths.
+1. Complete the remaining native composite branches: viewmode/object-id/debug
+   paths.
 2. 8.6f native GameOS HUD replay.
 3. 8.7 deletion after GL issues zero final-tail draws and shared-scene GL import
    halves are no longer needed.

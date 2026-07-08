@@ -134,8 +134,8 @@ public:
     // Rung 8.5b first runtime slice: render the Visual-mode postprocess composite
     // from the shared scene color image into the shared present image, then hand
     // that image back to GL so legacy HUD can draw on it. Conservative: returns
-    // false unless the direct-present shared FBO is live and the caller is using
-    // the full drawable viewport.
+    // false unless the direct-present shared FBO is live. The caller supplies the
+    // composite viewport; narrower FORCE-43 viewports are drawn over a VK black clear.
     bool renderNativeCompositeVisual(float exposure,
                                      bool fxaaEnabled,
                                      float fxaaSubpix,
