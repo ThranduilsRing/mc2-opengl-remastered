@@ -10,6 +10,8 @@ layout(set = 0, binding = 0) uniform sampler2D sceneTex;
 layout(push_constant) uniform Params {
     vec4 p0; // exposure, invW, invH, fxaaEnabled
     vec4 p1; // fxaaSubpix, fxaaEdgeThreshold, fxaaEdgeThresholdMin, unused
+    vec4 p2; // viewMode, lowLightGain, lowLightTint.r, lowLightTint.g
+    vec4 p3; // lowLightTint.b, unused, unused, unused
 } u;
 
 float fxaaLuma(vec3 c) { return sqrt(dot(c, vec3(0.299, 0.587, 0.114))); }
@@ -74,6 +76,17 @@ void main() {
 
     float sunBias = pow(smoothstep(0.0, 1.0, 1.0 - TexCoord.y), 1.5);
     color = mix(color, color * vec3(1.10, 1.03, 0.92), sunBias * 0.25);
+
+    if (int(u.p2.x + 0.5) == 5) {
+        float lum = dot(color, vec3(0.299, 0.587, 0.114));
+        float boosted = lum * u.p2.y;
+        boosted = boosted / (1.0 + boosted * 0.3);
+        vec3 nv = boosted * vec3(u.p2.z, u.p2.w, u.p3.x);
+        vec2 vd = TexCoord - vec2(0.5);
+        float vdist = length(vd * vec2(1.0, 0.75));
+        float nvVignette = smoothstep(0.70, 0.20, vdist);
+        color = nv * mix(0.65, 1.0, nvVignette);
+    }
 
     FragColor = vec4(color, 1.0);
 }

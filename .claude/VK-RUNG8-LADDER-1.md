@@ -110,6 +110,15 @@ no tessellation anywhere in the tail.
   copy1_skip_frames=301 composite_vk_frames=300 validation_errors=0
   fallback_reason=""`. Minimized smoke with FORCE-43 forwarded:
   `tests/smoke/artifacts/2026-07-08T15-16-01`, PASS 2/2, +0 destroys.
+- 8.5e - SHIPPED (VK-POST-COMPOSITE-LOWLIGHT-1). LowLight/NightVision
+  viewmode (mode 5) now runs through the native composite; no object-ID import is
+  needed. Visible proof: `.claude/vk-post-composite-lowlight-native/`,
+  `MC2_VIEWMODE_FRAMEWORK=1 MC2_VIEW_MODE=5`, 11/11 deterministic `mc2_01`
+  bookmarks, `[VIEWMODE v1] framework=1 initialMode=5`, and final
+  `[VK_PRESENT] present_frames=301 direct_fbo_grants=301 copy1_blit_frames=0
+  copy1_skip_frames=301 composite_vk_frames=300 validation_errors=0
+  fallback_reason=""`. Minimized smoke:
+  `tests/smoke/artifacts/2026-07-08T15-20-02`, PASS 2/2, +0 destroys.
 - 8.6a - SHIPPED (VK-IMGUI-BACKEND-COMPILE-1). Behavior-neutral infrastructure:
   `imgui_impl_vulkan.cpp/.h` are aligned to the vendored ImGui 1.91.8 docking
   core and compile into `imgui` under `MC2_VULKAN=ON` using Volk +
@@ -133,9 +142,9 @@ no tessellation anywhere in the tail.
   Minimized smoke cannot prove present/ImGui execution because the surface extent
   is zero; use the visible proof above for that.
 - 8.7 - BLOCKED, not a safe deletion yet. Native ImGui is done and native
-  composite has its Visual + FXAA + FORCE-43 slice, but native GameOS HUD
+  composite has its Visual + FXAA + FORCE-43 + LowLight slice, but native GameOS HUD
   (`MC2_VK_HUD`) is not landed and composite still has GL fallback coverage for
-  object-ID/viewmodes and diagnostics. Old postprocess islands
+  object-ID/Thermal viewmodes and diagnostics. Old postprocess islands
   are bypassed by shared-GBuffer native gates but remain fallback/oracle code.
   Win32 GL interop primitives remain required by shared scene color/depth/present
   while GL continues to draw HUD and fallback composite pixels. Delete only after

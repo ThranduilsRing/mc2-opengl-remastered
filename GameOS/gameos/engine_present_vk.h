@@ -141,6 +141,9 @@ public:
                                      float fxaaSubpix,
                                      float fxaaEdgeThreshold,
                                      float fxaaEdgeThresholdMin,
+                                     int viewMode,
+                                     float lowLightGain,
+                                     const float lowLightTint[3],
                                      int viewportX, int viewportY,
                                      int viewportW, int viewportH);
 

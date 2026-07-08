@@ -4239,11 +4239,15 @@ void gosPostProcess::endScene()
         render_frame_plan::PathKind::ApplyPipeline, 1, "PostProcessComposite");
 
     bool nativeCompositeDone = false;
+    int effectiveModeForComposite = gos_GetSelectedViewMode();
+    if (effectiveModeForComposite == 1 && sceneObjectIdTex_ == 0)
+        effectiveModeForComposite = 0;
 #ifdef MC2_VULKAN
     if (directFbo != 0 && mc2::renderBackend() == mc2::RenderBackend::Vulkan &&
-        gos_GetSelectedViewMode() == 0) {
+        (effectiveModeForComposite == 0 || effectiveModeForComposite == 5)) {
         nativeCompositeDone = mc2vk::getOrCreateEnginePresentVk().renderNativeCompositeVisual(
             exposure_, fxaaEnabled_, fxaaSubpix_, fxaaEdgeThreshold_, fxaaEdgeThresholdMin_,
+            effectiveModeForComposite, lowLightGain_, lowLightTint_,
             compositeVpX, compositeVpY, compositeVpW, compositeVpH);
     }
 #endif
@@ -4270,7 +4274,7 @@ void gosPostProcess::endScene()
         // Gate OFF -> forced 0 (Visual). ObjectIdDebug requires sceneObjectIdTex_;
         // if it is 0 (MC2_OBJECT_ID_BUFFER not set) we fall back to Visual and
         // warn once so the caller knows why the debug view is blank.
-        int effectiveMode = gos_GetSelectedViewMode();
+        int effectiveMode = effectiveModeForComposite;
         if (effectiveMode == 1 && sceneObjectIdTex_ == 0) {
             static bool s_warnedOidMissing = false;
             if (!s_warnedOidMissing) {

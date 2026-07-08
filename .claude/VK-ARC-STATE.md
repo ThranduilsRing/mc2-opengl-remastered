@@ -1215,6 +1215,14 @@ bar is stricter than current code:
   `copy1_blit_frames=0`, `fallback_reason=""`. Minimized smoke with
   `MC2_FORCE_43=1` forwarded: `tests/smoke/artifacts/2026-07-08T15-16-01`,
   PASS 2/2, +0 destroys.
+- 8.5e native composite LowLight is landed. LowLight/NightVision mode 5 runs in
+  the native composite using the same gain/tint math; no object-ID texture is
+  needed. Visible proof: `.claude/vk-post-composite-lowlight-native/`,
+  `MC2_VIEWMODE_FRAMEWORK=1 MC2_VIEW_MODE=5`, 11/11 deterministic `mc2_01`
+  bookmarks, `[VIEWMODE v1] framework=1 initialMode=5`, `[VK_PRESENT]
+  composite_vk_frames=300`, `copy1_blit_frames=0`, `fallback_reason=""`.
+  Minimized smoke: `tests/smoke/artifacts/2026-07-08T15-20-02`, PASS 2/2,
+  +0 destroys.
 - 8.6 native ImGui is landed, but GameOS HUD (`gos_RendererFlushHUDBatch()`) is
   still legacy GL. Native HUD needs its own `MC2_VK_HUD`/batch replay port or a
   broader final-tail ownership split.
@@ -1228,8 +1236,8 @@ bar is stricter than current code:
   pixels.
 
 Next real coding slices:
-1. Complete the remaining native composite branches: viewmode/object-id/debug
-   paths.
+1. Complete the remaining native composite branches: ObjectIdDebug/Thermal
+   object-ID texture import and debug overlay paths.
 2. 8.6f native GameOS HUD replay.
 3. 8.7 deletion after GL issues zero final-tail draws and shared-scene GL import
    halves are no longer needed.
