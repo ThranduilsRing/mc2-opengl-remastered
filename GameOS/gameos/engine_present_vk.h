@@ -58,6 +58,11 @@ struct EnginePresentHealth {
     unsigned long long last_readback_checksum = 0;
     unsigned long long prev_readback_checksum = 0;
     bool        readback_changed  = false; // last != prev at least once
+    uint32_t    direct_fbo_requests = 0;   // presentDirectFbo() calls from endScene
+    uint32_t    direct_fbo_grants   = 0;   // calls that returned the shared FBO
+    uint32_t    copy1_blit_frames   = 0;   // legacy FBO-0 -> shared-image blit
+    uint32_t    copy1_skip_frames   = 0;   // direct shared-FBO frames
+    unsigned int last_direct_fbo    = 0;   // last shared FBO id granted
     std::string fallback_reason;           // empty == clean
 };
 

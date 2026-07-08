@@ -456,11 +456,14 @@ bool EnginePresentVk::init(VulkanContext& ctx, SDL_Window* glWindow, uint32_t w,
 // so the SAME frame's presentGLFrame skips copy-1 iff it handed one out. Called
 // once per frame from gosPostProcess::endScene, before the composite tail.
 unsigned int EnginePresentVk::presentDirectFbo() {
+    ++health_.direct_fbo_requests;
     if (!directFboGateEnabled() || !created_ || !impl_ || impl_->copyFbo == 0) {
         directFbo_ = 0;
         return 0;
     }
     directFbo_ = (unsigned int)impl_->copyFbo;
+    ++health_.direct_fbo_grants;
+    health_.last_direct_fbo = directFbo_;
     return directFbo_;
 }
 
@@ -518,6 +521,7 @@ bool EnginePresentVk::presentGLFrame(uint32_t glDrawableW, uint32_t glDrawableH,
     // always agree on which path ran.
     const bool copy1Skipped = (directFbo_ != 0);
     if (!copy1Skipped) {
+        ++health_.copy1_blit_frames;
         glGetError();
         glBindFramebuffer(GL_READ_FRAMEBUFFER, 0);
         glReadBuffer(GL_BACK);
@@ -533,6 +537,8 @@ bool EnginePresentVk::presentGLFrame(uint32_t glDrawableW, uint32_t glDrawableH,
             plog("%s. fail-soft.", health_.fallback_reason.c_str());
             return false;
         }
+    } else {
+        ++health_.copy1_skip_frames;
     }
 
     // ==== GL -> VK hand-off ================================================
@@ -820,13 +826,18 @@ void EnginePresentVk::logHealth() const {
     std::fprintf(stderr,
         "[VK_PRESENT] created=%d attempted=%d present_frames=%u resize_count=%u "
         "validation_errors=%u extent=%ux%u present_mode=%s readback_changed=%d "
-        "last_checksum=0x%llx fallback_reason=\"%s\"\n",
+        "last_checksum=0x%llx direct_fbo_requests=%u direct_fbo_grants=%u "
+        "copy1_blit_frames=%u copy1_skip_frames=%u last_direct_fbo=%u "
+        "fallback_reason=\"%s\"\n",
         health_.created ? 1 : 0, health_.attempted ? 1 : 0,
         health_.present_frames, health_.resize_count, health_.validation_errors,
         health_.extent_w, health_.extent_h,
         health_.present_mode_name.empty() ? "?" : health_.present_mode_name.c_str(),
         health_.readback_changed ? 1 : 0,
         (unsigned long long)health_.last_readback_checksum,
+        health_.direct_fbo_requests, health_.direct_fbo_grants,
+        health_.copy1_blit_frames, health_.copy1_skip_frames,
+        health_.last_direct_fbo,
         health_.fallback_reason.empty() ? "" : health_.fallback_reason.c_str());
     std::fflush(stderr);
 }
