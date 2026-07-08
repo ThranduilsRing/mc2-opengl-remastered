@@ -1199,7 +1199,14 @@ bar is stricter than current code:
   bookmarks, `[VK_PRESENT] composite_vk_frames=300`, `copy1_blit_frames=0`,
   `fallback_reason=""`; minimized smoke `tests/smoke/artifacts/2026-07-08T15-02-41`
   PASS 2/2, +0 destroys. Remaining composite branches still fall back to GL:
-  FORCE-43/OOB-letterbox, FXAA, viewmode/object-id/debug paths.
+  FORCE-43/OOB-letterbox and viewmode/object-id/debug paths.
+- 8.5c native composite FXAA is landed. The native Visual composite now ports
+  the existing GL FXAA filter and tunables. Visible proof:
+  `.claude/vk-post-composite-fxaa-native/`, `MC2_FXAA=1`, 11/11 deterministic
+  `mc2_01` bookmarks, `[FXAA v1] enabled=1`, `[VK_PRESENT]
+  composite_vk_frames=300`, `copy1_blit_frames=0`, `fallback_reason=""`.
+  Minimized smoke with `MC2_FXAA=1` forwarded:
+  `tests/smoke/artifacts/2026-07-08T15-12-17`, PASS 2/2, +0 destroys.
 - 8.6 native ImGui is landed, but GameOS HUD (`gos_RendererFlushHUDBatch()`) is
   still legacy GL. Native HUD needs its own `MC2_VK_HUD`/batch replay port or a
   broader final-tail ownership split.
@@ -1213,7 +1220,7 @@ bar is stricter than current code:
   pixels.
 
 Next real coding slices:
-1. Complete the remaining native composite branches: FORCE-43/letterbox, FXAA,
+1. Complete the remaining native composite branches: FORCE-43/letterbox and
    viewmode/object-id/debug paths.
 2. 8.6f native GameOS HUD replay.
 3. 8.7 deletion after GL issues zero final-tail draws and shared-scene GL import

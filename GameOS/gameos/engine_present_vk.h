@@ -137,6 +137,10 @@ public:
     // false unless the direct-present shared FBO is live and the caller is using
     // the full drawable viewport.
     bool renderNativeCompositeVisual(float exposure,
+                                     bool fxaaEnabled,
+                                     float fxaaSubpix,
+                                     float fxaaEdgeThreshold,
+                                     float fxaaEdgeThresholdMin,
                                      int viewportX, int viewportY,
                                      int viewportW, int viewportH);
 

@@ -1824,6 +1824,10 @@ def main():
                             # lands after shader asset prep; allowlisted now so
                             # gate-on smoke cannot silently run the GL composite.
                             "MC2_VK_POST_COMPOSITE",
+                            "MC2_FXAA",
+                            "MC2_FXAA_SUBPIX",
+                            "MC2_FXAA_EDGE_THRESHOLD",
+                            "MC2_FXAA_EDGE_THRESHOLD_MIN",
                             # VK-TAIL-HOOK-1: behavior-neutral final-tail command
                             # buffer seam; proves native HUD/ImGui can execute
                             # after GL->VK handoff and before the swapchain blit.

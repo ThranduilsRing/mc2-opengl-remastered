@@ -462,7 +462,7 @@ bool ensureCompositeObjects(EnginePresentVk::Impl& s) {
     if (!s.compositeLayout) {
         VkPushConstantRange pc{};
         pc.stageFlags = VK_SHADER_STAGE_FRAGMENT_BIT;
-        pc.size = sizeof(float) * 4;
+        pc.size = sizeof(float) * 8;
         VkPipelineLayoutCreateInfo ci{VK_STRUCTURE_TYPE_PIPELINE_LAYOUT_CREATE_INFO};
         ci.setLayoutCount = 1; ci.pSetLayouts = &s.compositeDsl;
         ci.pushConstantRangeCount = 1; ci.pPushConstantRanges = &pc;
@@ -790,6 +790,10 @@ unsigned int EnginePresentVk::presentDirectFbo() {
 }
 
 bool EnginePresentVk::renderNativeCompositeVisual(float exposure,
+                                                  bool fxaaEnabled,
+                                                  float fxaaSubpix,
+                                                  float fxaaEdgeThreshold,
+                                                  float fxaaEdgeThresholdMin,
                                                   int viewportX, int viewportY,
                                                   int viewportW, int viewportH) {
     if (!nativeCompositeGateEnabled() || !created_ || !impl_ || directFbo_ == 0)
@@ -831,7 +835,16 @@ bool EnginePresentVk::renderNativeCompositeVisual(float exposure,
     vkCmdBindPipeline(s.cbuf, VK_PIPELINE_BIND_POINT_GRAPHICS, s.compositePipe);
     vkCmdBindDescriptorSets(s.cbuf, VK_PIPELINE_BIND_POINT_GRAPHICS, s.compositeLayout,
                             0, 1, &s.compositeSet, 0, nullptr);
-    float pc[4] = { exposure, 0.0f, 0.0f, 0.0f };
+    float pc[8] = {
+        exposure,
+        1.0f / (float)s.imgW,
+        1.0f / (float)s.imgH,
+        fxaaEnabled ? 1.0f : 0.0f,
+        fxaaSubpix,
+        fxaaEdgeThreshold,
+        fxaaEdgeThresholdMin,
+        0.0f
+    };
     vkCmdPushConstants(s.cbuf, s.compositeLayout, VK_SHADER_STAGE_FRAGMENT_BIT,
                        0, sizeof(pc), pc);
     vkCmdDraw(s.cbuf, 3, 1, 0, 0);

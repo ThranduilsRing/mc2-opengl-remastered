@@ -4241,9 +4241,10 @@ void gosPostProcess::endScene()
     bool nativeCompositeDone = false;
 #ifdef MC2_VULKAN
     if (directFbo != 0 && mc2::renderBackend() == mc2::RenderBackend::Vulkan &&
-        gos_GetSelectedViewMode() == 0 && !fxaaEnabled_) {
+        gos_GetSelectedViewMode() == 0) {
         nativeCompositeDone = mc2vk::getOrCreateEnginePresentVk().renderNativeCompositeVisual(
-            exposure_, compositeVpX, compositeVpY, compositeVpW, compositeVpH);
+            exposure_, fxaaEnabled_, fxaaSubpix_, fxaaEdgeThreshold_, fxaaEdgeThresholdMin_,
+            compositeVpX, compositeVpY, compositeVpW, compositeVpH);
     }
 #endif
 
