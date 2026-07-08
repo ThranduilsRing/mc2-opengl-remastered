@@ -350,5 +350,28 @@ no tessellation anywhere in the tail.
   health ABI and Tier-1 descriptor/material/light paths remain intact. The
   retired `color_prop` shader bake was removed separately in `7d09867e`, and
   the retired source shader pair was deleted in the follow-up shader cleanup.
-  Verification target: clean build/deploy/smoke after commit with Tier-1 prop
-  receipts still showing shared-GBuffer co-write and zero forbidden readbacks.
+  Verification: `2e9a1868` clean build/deploy/smoke PASS 1/1 at
+  `tests/smoke/artifacts/2026-07-08T17-21-27`; Tier-1 prop stayed active with
+  zero forbidden readbacks. `6fb40818` then deleted the retired `color_prop`
+  shader pair and verified deploy no longer ships `color_prop.*`.
+- 8.7g - DELETED WATER P9a FRAME TAIL
+  (VK-RUNG8-WATER-P9A-FRAME-TAIL-DELETE-1). Removed the unreachable legacy
+  offscreen/depth-import/composite frame tail after the Tier-1 shared-GBuffer
+  water path returns in `vulkan_water_island.cpp`. Verification:
+  `e465d214` clean build/deploy/smoke PASS 1/1 at
+  `tests/smoke/artifacts/2026-07-08T17-30-33`; `[VK_WATER_TIER1]`
+  `used_vulkan=140 used_interop=140 validation_errors=0`, all forbidden color
+  counters zero, and retired depth-in counters zero. Native fog/SSAO/screenfx/HZB
+  remained live.
+- 8.7h - DELETED WATER P9a SCAFFOLDING
+  (VK-RUNG8-WATER-P9A-SCAFFOLD-DELETE-1). Removed the false raw P9a gate,
+  offscreen shared color/GL view/FBO state, local gbuffer/depth import resources,
+  non-Tier1 renderpass/framebuffer/blend branches, GL composite helper, and
+  orphaned local image helpers from `vulkan_water_island.cpp`. Tier-1 now has a
+  single shared-GBuffer init/render path. Verification: `2232b9be` clean
+  build/deploy/smoke PASS 1/1 at
+  `tests/smoke/artifacts/2026-07-08T17-35-19`; `[VK_WATER_TIER1]`
+  `used_vulkan=138 used_interop=138 validation_errors=0`, all forbidden color
+  counters zero, retired depth-in counters zero, and native post tail remained
+  active. Grep for retired P9a symbols/resources in the water island returns no
+  matches.
