@@ -275,3 +275,14 @@ no tessellation anywhere in the tail.
   and oracle cleanup slice, but deletion must remove the CMake entries,
   `gos_postprocess` routes, debug-dump health sections, smoke allowlist entries,
   and docs together.
+- 8.7a - RETIRED OLD POSTPROCESS SUBGRAPH (VK-RUNG8-SUBGRAPH-DELETE-1).
+  Deleted `vulkan_postprocess_subgraph.cpp` and removed its CMake entry,
+  standalone `MC2_VULKAN_POSTPROCESS_SUBGRAPH*` smoke/docs/registry exposure,
+  debug-state health section, `gos_postprocess` object/routes, and R2 interlock
+  entry. The optional region `MC2_POSTPROCESS_BACKEND=vk` selector now routes
+  directly to rung-8.1 shared-GBuffer native fog (`runVkPostFogNative`) instead
+  of the retired private-device subgraph. Shared interop substrate remains live
+  and untouched. Verification: clean build at `f4032772` (`dirty=0`), clean
+  deploy manifest `src_commit=f403277266b3`, full native-tail smoke PASS 1/1 at
+  `2026-07-08T16-31-02`, and audit grep for the retired subgraph gates/symbols
+  returned no matches.
