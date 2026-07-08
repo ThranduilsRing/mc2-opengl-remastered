@@ -286,3 +286,16 @@ no tessellation anywhere in the tail.
   deploy manifest `src_commit=f403277266b3`, full native-tail smoke PASS 1/1 at
   `2026-07-08T16-31-02`, and audit grep for the retired subgraph gates/symbols
   returned no matches.
+- 8.7b - RETIRED OLD PER-PASS FOG ISLANDS (VK-RUNG8-FOG-ISLAND-DELETE-1).
+  Deleted `vulkan_edge_fog_island.cpp` and `vulkan_oob_fog_island.cpp`, removed
+  their CMake entries, runtime routes, `gosPostProcess` members, debug-state
+  health sections, `MC2_VULKAN_EDGE_FOG_ISLAND` / `MC2_VULKAN_OOB_FOG_ISLAND`
+  / `MC2_VK_INTEROP_BRIDGE` / selftest smoke/docs/registry exposure, and the
+  now-obsolete engine-device R2 interlock entry. Fog precedence is now native
+  shared-GBuffer fog (`MC2_VK_POST_FOG_NATIVE`) when armed and ready, else the
+  original GL edge/oob fog chain. Shared scene interop primitives remain live
+  for current geometry/post/present paths. Verification: committed
+  `de2ec973`, clean build (`dirty=0`), clean deploy manifest
+  `src_commit=de2ec973bb08`, full native-tail smoke PASS 1/1 at
+  `2026-07-08T16-39-55`, and current-code grep for the retired gates/symbols
+  returned no matches outside historical/template docs.
