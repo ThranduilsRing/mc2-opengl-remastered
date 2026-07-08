@@ -35,6 +35,7 @@
 
 #include <cstdint>
 #include <string>
+#include <vector>
 
 struct SDL_Window;
 struct ImDrawData;
@@ -66,9 +67,29 @@ struct EnginePresentHealth {
     uint32_t    tail_hook_frames    = 0;   // gated VK final-tail hook executions
     uint32_t    imgui_vk_frames     = 0;   // native ImGui draw-data frames recorded
     uint32_t    composite_vk_frames = 0;   // native composite frames recorded
+    uint32_t    hud_vk_queued_frames = 0;  // HUD batches queued for native tail replay
+    uint32_t    hud_vk_consumed_frames = 0;// queued HUD batches observed by the tail hook
+    uint32_t    hud_vk_draws_last = 0;     // draw records in the last queued HUD batch
     bool        imgui_vk_ready      = false;
     unsigned int last_direct_fbo    = 0;   // last shared FBO id granted
     std::string fallback_reason;           // empty == clean
+};
+
+struct VkHudVertex {
+    float x = 0.0f, y = 0.0f, z = 0.0f, rhw = 1.0f;
+    uint32_t argb = 0xffffffffu;
+    uint32_t frgb = 0xffffffffu;
+    float u = 0.0f, v = 0.0f;
+};
+
+struct VkHudDraw {
+    uint32_t kind = 0;
+    uint32_t textureHandle = 0;
+    uint32_t alphaMode = 0;
+    uint32_t textureAddress = 0;
+    uint32_t filter = 0;
+    uint32_t foregroundColor = 0;
+    std::vector<VkHudVertex> vertices;
 };
 
 // The engine VK present object. Reuses the T2 shared VulkanContext device;
@@ -130,6 +151,12 @@ public:
     bool renderImguiVulkanDrawData(ImDrawData* drawData);
     bool imguiVulkanReady() const;
     void shutdownImguiVulkanRenderer();
+
+    // Rung 8.6f HUD seam: queue an owned, already-scaled GameOS HUD batch for
+    // present-tail native replay. Until the native renderer is complete, GL HUD
+    // replay remains the source of truth; this API proves ownership of the data
+    // shape and gives the final consumer an ordering-preserving handoff.
+    bool queueHudVulkanFrame(std::vector<VkHudDraw>&& draws);
 
     // Rung 8.5b first runtime slice: render the Visual-mode postprocess composite
     // from the shared scene color image into the shared present image, then hand

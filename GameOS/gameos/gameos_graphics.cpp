@@ -72,6 +72,9 @@ namespace gosFX { void DiagFrameTick(); }
 #include "gpu_driven_common.h"
 #include "mc2_hitch_trace.h"  // GPU-UPDATE-BUFFER-COUNTER-1: MC2_GL_BufferData_Owner (include LAST, after all GL headers)
 #include "utils/gpu_ring_buffer.h"  // GPU-BUFFER-WRAPPER-TIER0-HUD-1: gated HUD/gosMesh persistent-coherent ring
+#ifdef MC2_VULKAN
+#include "engine_present_vk.h"
+#endif
 
 class gosRenderer;
 class gosFont;
@@ -7844,6 +7847,15 @@ extern "C" void mc2_ui_pass_sample_entry_ambient();
 extern "C" void mc2_ui_pass_note_draw(unsigned kind);
 extern "C" void mc2_ui_pass_check_ambient();
 
+static bool vkHudQueueEnabled()
+{
+    static const bool enabled = []() {
+        const char* v = std::getenv("MC2_VK_HUD");
+        return v && v[0] == '1';
+    }();
+    return enabled;
+}
+
 void gosRenderer::flushHUDBatch()
 {
     if (hudBatch_.empty()) {
@@ -7956,6 +7968,34 @@ void gosRenderer::flushHUDBatch()
                 alphaModes[0], alphaModes[1], alphaModes[2], alphaModes[3]);
         }
     }
+
+#ifdef MC2_VULKAN
+    if (vkHudQueueEnabled()) {
+        std::vector<mc2vk::VkHudDraw> nativeDraws;
+        nativeDraws.reserve(hudBatch_.size());
+        for (const HudDrawCall& call : hudBatch_) {
+            mc2vk::VkHudDraw draw;
+            draw.kind = (uint32_t)call.kind;
+            draw.textureHandle = (call.kind == kHudTextQuadBatch)
+                ? (uint32_t)call.fontTexId
+                : (uint32_t)call.stateSnapshot[gos_State_Texture];
+            draw.alphaMode = call.stateSnapshot[gos_State_AlphaMode];
+            draw.textureAddress = call.stateSnapshot[gos_State_TextureAddress];
+            draw.filter = call.stateSnapshot[gos_State_Filter];
+            draw.foregroundColor = call.foregroundColor;
+            draw.vertices.reserve(call.vertices.size());
+            for (const gos_VERTEX& v : call.vertices) {
+                mc2vk::VkHudVertex out;
+                out.x = v.x; out.y = v.y; out.z = v.z; out.rhw = v.rhw;
+                out.argb = v.argb; out.frgb = v.frgb;
+                out.u = v.u; out.v = v.v;
+                draw.vertices.push_back(out);
+            }
+            nativeDraws.push_back(std::move(draw));
+        }
+        mc2vk::getOrCreateEnginePresentVk().queueHudVulkanFrame(std::move(nativeDraws));
+    }
+#endif
 
     // UI-PASS-MODEL-1: UI is now MODELED (declared ambient row in kPassAmbient[]). Verify
     // the UI entry ambient against that row every frame — OBSERVE-ONLY (own counter,

@@ -1251,7 +1251,7 @@ bar is stricter than current code:
   pixels.
 
 Next real coding slices:
-1. 8.6f native GameOS HUD replay: queue the scaled `hudBatch_` to
+1. 8.6f native GameOS HUD replay: render the queued scaled `hudBatch_` in
    `EnginePresentVk`, mirror gosTexture/font atlas handles, render ordered
    quad/line/tri/text calls before native ImGui, then skip GL replay only when
    every call is representable.
@@ -1259,3 +1259,24 @@ Next real coding slices:
    overlay path.
 3. 8.7 deletion after GL issues zero final-tail draws and shared-scene GL import
    halves are no longer needed.
+
+## RUNG 8.6f - VK-HUD-NATIVE-QUEUE-1
+
+`MC2_VK_HUD=1` now deep-copies the already-scaled ordered GameOS HUD batch from
+`gosRenderer::flushHUDBatch()` into `EnginePresentVk` for final-tail replay. The
+GL HUD replay remains active until the Vulkan consumer can render every call
+kind; this slice proves the ownership handoff and exact tail ordering before
+native ImGui.
+
+Verification:
+- Build: `cmake --build build64_island --config RelWithDebInfo --target mc2`
+  passed; only the known `mechcmd2.cpp` C4267 and delay-load LNK4199 warnings.
+- Minimized smoke with `MC2_VK_HUD=1`:
+  `tests/smoke/artifacts/2026-07-08T15-38-51`, PASS 1/1, +0 destroys. As
+  expected, present surface was zero extent, so queue counters stayed 0 there.
+- Visible bookmark run:
+  `.claude/vk-hud-queue-visible/`, 10/11 deterministic captures before the
+  duration window ended. Runtime proof line: `[VK_PRESENT] created=1 ...
+  tail_hook_frames=1 ... hud_vk_queued_frames=1 hud_vk_consumed_frames=1
+  hud_vk_draws_last=85 imgui_vk_ready=1 imgui_vk_frames=1 ... fallback_reason=""`.
+  Steady HUD audit remained `calls=95 ... textured=69 text=7`.

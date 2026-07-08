@@ -117,6 +117,7 @@ struct EnginePresentVk::Impl {
     VkRenderPass    imguiRenderPass = VK_NULL_HANDLE;
     VkFramebuffer   imguiFramebuffer = VK_NULL_HANDLE;
     ImDrawData*     pendingImguiDrawData = nullptr;
+    std::vector<VkHudDraw> pendingHudDraws;
 
     bool            compositeVkFailed = false;
     VkRenderPass    compositeRenderPass = VK_NULL_HANDLE;
@@ -612,6 +613,14 @@ bool recordPendingImgui(EnginePresentVk::Impl& s, VkCommandBuffer cb) {
     return true;
 }
 
+uint32_t consumePendingHud(EnginePresentVk::Impl& s) {
+    if (s.pendingHudDraws.empty())
+        return 0;
+    const uint32_t draws = (uint32_t)s.pendingHudDraws.size();
+    s.pendingHudDraws.clear();
+    return draws;
+}
+
 // Build (or rebuild) the shared exportable interop image + its GlInteropView +
 // the GL copy FBO, sized to (w,h). Destroys any prior instance first.
 bool buildSharedImage(EnginePresentVk::Impl& s, uint32_t w, uint32_t h, std::string& reason) {
@@ -973,6 +982,16 @@ bool EnginePresentVk::renderImguiVulkanDrawData(ImDrawData* drawData) {
     return true;
 }
 
+bool EnginePresentVk::queueHudVulkanFrame(std::vector<VkHudDraw>&& draws) {
+    if (!created_ || !impl_ || !presentTailHookEnabled() || draws.empty())
+        return false;
+    Impl& s = *impl_;
+    s.pendingHudDraws = std::move(draws);
+    health_.hud_vk_draws_last = (uint32_t)s.pendingHudDraws.size();
+    ++health_.hud_vk_queued_frames;
+    return true;
+}
+
 bool EnginePresentVk::imguiVulkanReady() const {
     return created_ && impl_ && impl_->imguiVkInited && !impl_->imguiVkFailed;
 }
@@ -986,6 +1005,7 @@ void EnginePresentVk::shutdownImguiVulkanRenderer() {
         s.imguiVkInited = false;
     }
     s.pendingImguiDrawData = nullptr;
+    s.pendingHudDraws.clear();
     health_.imgui_vk_ready = false;
 }
 
@@ -1117,6 +1137,10 @@ bool EnginePresentVk::presentGLFrame(uint32_t glDrawableW, uint32_t glDrawableH,
                 VK_ACCESS_COLOR_ATTACHMENT_READ_BIT | VK_ACCESS_COLOR_ATTACHMENT_WRITE_BIT,
                 VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT,
                 VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT);
+        if (uint32_t hudDraws = consumePendingHud(s)) {
+            health_.hud_vk_draws_last = hudDraws;
+            ++health_.hud_vk_consumed_frames;
+        }
         if (recordPendingImgui(s, s.cbuf))
             ++health_.imgui_vk_frames;
     }
@@ -1381,7 +1405,8 @@ void EnginePresentVk::logHealth() const {
         "validation_errors=%u extent=%ux%u present_mode=%s readback_changed=%d "
         "last_checksum=0x%llx direct_fbo_requests=%u direct_fbo_grants=%u "
         "copy1_blit_frames=%u copy1_skip_frames=%u tail_hook_frames=%u "
-        "composite_vk_frames=%u imgui_vk_ready=%d imgui_vk_frames=%u "
+        "composite_vk_frames=%u hud_vk_queued_frames=%u hud_vk_consumed_frames=%u "
+        "hud_vk_draws_last=%u imgui_vk_ready=%d imgui_vk_frames=%u "
         "last_direct_fbo=%u "
         "fallback_reason=\"%s\"\n",
         health_.created ? 1 : 0, health_.attempted ? 1 : 0,
@@ -1394,6 +1419,8 @@ void EnginePresentVk::logHealth() const {
         health_.copy1_blit_frames, health_.copy1_skip_frames,
         health_.tail_hook_frames,
         health_.composite_vk_frames,
+        health_.hud_vk_queued_frames, health_.hud_vk_consumed_frames,
+        health_.hud_vk_draws_last,
         health_.imgui_vk_ready ? 1 : 0, health_.imgui_vk_frames,
         health_.last_direct_fbo,
         health_.fallback_reason.empty() ? "" : health_.fallback_reason.c_str());

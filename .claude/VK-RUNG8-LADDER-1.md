@@ -159,7 +159,10 @@ no tessellation anywhere in the tail.
   `mc2_01` proof (`tests/smoke/artifacts/2026-07-08T15-33-28`, PASS 1/1)
   showed steady HUD frames at `calls=95`, `textured=69`, `text=7`, so the native
   port must preserve ordered textured quad/text replay and cannot retire GL with
-  an untextured-only slice. Old postprocess islands
+  an untextured-only slice. `MC2_VK_HUD=1` now queues that ordered batch to
+  `EnginePresentVk`; visible proof `.claude/vk-hud-queue-visible/` reached
+  `hud_vk_queued_frames=1 hud_vk_consumed_frames=1 hud_vk_draws_last=85`.
+  Rendering/textures and GL-replay skip are still pending. Old postprocess islands
   are bypassed by shared-GBuffer native gates but remain fallback/oracle code.
   Win32 GL interop primitives remain required by shared scene color/depth/present
   while GL continues to draw HUD and fallback composite pixels. Delete only after

@@ -1833,6 +1833,9 @@ def main():
                             # buffer seam; proves native HUD/ImGui can execute
                             # after GL->VK handoff and before the swapchain blit.
                             "MC2_VK_PRESENT_TAIL_HOOK",
+                            # VK-HUD-NATIVE-QUEUE-1 (rung 8.6f): queues the
+                            # ordered GameOS HUD batch to the Vulkan present tail.
+                            "MC2_VK_HUD",
                             # VK-IMGUI-NATIVE-1 (rung 8.6): ImGui Vulkan renderer
                             # gate. Current slice is observable-decline only until
                             # the final-tail present handoff is split; must be
