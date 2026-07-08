@@ -157,11 +157,10 @@ if(MC2_VULKAN)
         # -> GL shadow path byte-identical. extern "C" entry points only.
         list(APPEND SOURCES vulkan_shadow_island_live.cpp)
         # VK-P11 STATIC-PROP COLOR: the color island — FIRST VK-native COLOR geometry
-        # region rendering REAL static-prop triangle geometry into an exportable RGBA16F
-        # (VK-owned D32 depth for inter-prop occlusion) that GL composites over MainColor,
-        # instead of the GL GpuStaticPropBatcher::flush() color draws. Borrows the shared
+        # region rendering REAL static-prop triangle geometry in-place into the shared
+        # scene GBuffer instead of the GL GpuStaticPropBatcher::flush() color draws. Borrows the shared
         # engine VulkanContext (no second device) + reuses the shadow island's shared
-        # static-prop VBO/IBO feed. Gate MC2_VK_PROP_COLOR_INTEROP default-OFF -> GL prop
+        # static-prop VBO/IBO feed. Gate MC2_VK_PROP_COLOR_TIER1 default-OFF -> GL prop
         # color path byte-identical. extern "C" entry points only (no layout-affecting
         # header members).
         list(APPEND SOURCES vulkan_color_prop_island.cpp)

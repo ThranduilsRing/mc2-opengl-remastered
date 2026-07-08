@@ -317,3 +317,19 @@ no tessellation anywhere in the tail.
   HZB `copy_depth_ops=0 readback_ops=0`, `validation_errors=0`, and grep for
   retired live-code/docs symbols returns no matches outside ladder/history
   notes.
+- 8.7d - RETIRED PROP TIER-0 RAW GATE
+  (VK-RUNG8-PROP-TIER0-GATE-DELETE-1). Removed active public exposure for
+  `MC2_VK_PROP_COLOR_INTEROP` from smoke passthrough, registry, generated flag
+  docs, and tier docs. The color-prop island now arms only through the Tier-1
+  shared-GBuffer gate (`MC2_VK_PROP_COLOR_TIER1` / umbrella) and the old raw
+  gate returns false internally, so callers cannot select the side-image +
+  GL-composite proof path. Runtime health was relabeled to
+  `[VK_PROP_COLOR_TIER1]` to avoid confusing the live Tier-1 path with the
+  retired gate. Verification: dirty-slice build/deploy and full native-tail
+  smoke PASS 1/1 at `tests/smoke/artifacts/2026-07-08T17-02-44`; receipts show
+  `TIER-1 shared-GBuffer co-write ACTIVE`, `[VK_PROP_COLOR_TIER1]
+  used_vulkan=144 used_interop=144 interop_active=1 vk2gl_sem=1
+  validation_errors=0 fallback_reason=""`, and grep for the retired env name
+  returns no active matches. Follow-up: mechanically delete the unreachable
+  Tier-0 branch/resources from `vulkan_color_prop_island.cpp`, then retire the
+  separate water P9a side-image gate.

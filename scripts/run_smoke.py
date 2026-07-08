@@ -1614,13 +1614,6 @@ def main():
                             # in the allowlist Popen drops it and the gate-ON smoke
                             # silently runs the GL shadow path (gate inert).
                             "MC2_VK_SHADOW_INTEROP",
-                            # VK-P11 STATIC-PROP COLOR: VK renders the visible static-prop
-                            # color instances into an exportable RGBA16F, GL composites it
-                            # over MainColor. Requires the shared engine VulkanContext
-                            # (MC2_RENDER_BACKEND=vulkan). Without this in the allowlist
-                            # Popen drops it and the gate-ON smoke silently runs the GL
-                            # flush() prop color path (gate inert).
-                            "MC2_VK_PROP_COLOR_INTEROP",
                             # VK-P14 GATE-CONSOLIDATION-1: THE UMBRELLA. =1 arms the
                             # whole shared-GBuffer scene family at once (all sub-gates
                             # below default ON; explicit sub-gate env still overrides).

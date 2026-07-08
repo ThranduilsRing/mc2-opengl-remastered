@@ -119,20 +119,11 @@ void vlog(const char* fmt, ...) {
     va_end(ap);
 }
 
-// [RETIRED — VK-P14 GATE-CONSOLIDATION-1] MC2_VK_PROP_COLOR_INTEROP is the Tier-0
-// side-image+composite PROOF path, SUPERSEDED by the Tier-1 in-place shared-GBuffer
-// co-write (propColorTier1Requested / MC2_VK_PROP_COLOR_TIER1). It is intentionally
-// NOT a member of the MC2_VK_SHARED_GBUFFER umbrella and NOT on the default-flip path.
-// The code path is PARKED (kept intact behind this dedicated raw gate) for debug/
-// regression, not deleted — the Tier-1 island shares this TU and the Tier-0 buildup/run
-// branches are load-bearing scaffolding for it. Default-OFF, byte-identical when unset.
+// Retired Tier-0 side-image+composite proof gate. The public env flag was removed;
+// the remaining branch is unreachable scaffolding until the shared TU can be split.
+// Tier-1 in-place shared-GBuffer co-write is armed through propColorTier1Requested().
 bool colorPropGateRequested() {
-    static int state = -1;
-    if (state == -1) {
-        const char* e = std::getenv("MC2_VK_PROP_COLOR_INTEROP");
-        state = (e && e[0] == '1') ? 1 : 0;
-    }
-    return state == 1;
+    return false;
 }
 
 // TIER-1 (parity): co-write props IN-PLACE into the SHARED scene color+normal+depth
@@ -832,7 +823,7 @@ bool init_island(ColorPropIsland* s, int w, int h) {
     // parked flat-debug path, not the parity target). Not a separate opt-in gate --
     // this closes a documented parity gap in the same tier the washout fix landed in.
     s->wantLighting = s->tier1;
-    if (!s->tier1 && !colorPropGateRequested()) { setFallback("gate_off"); return false; }
+    if (!s->tier1) { setFallback("gate_off"); return false; }
 
     if (s->tier1) {
         // ---- TIER-1: fetch the SHARED scene color/normal/depth exportable images the
@@ -1467,12 +1458,12 @@ void composite_props_onto_maincolor(ColorPropIsland* s, int w, int h) {
 
 extern "C" int mc2_vk_color_prop_island_enabled() {
     // Either tier armed => the caller skips the GL prop color flush and calls run().
-    return (colorPropGateRequested() || propColorTier1Requested()) ? 1 : 0;
+    return propColorTier1Requested() ? 1 : 0;
 }
 
 extern "C" int mc2_vk_color_prop_island_run(int w, int h) {
     ZoneScopedN("VK-props-island");   // VK-FLIP-FIELD-REPORT-1 coarse region zone
-    if (!colorPropGateRequested() && !propColorTier1Requested()) return 0;
+    if (!propColorTier1Requested()) return 0;
     if (w <= 0 || h <= 0) return 0;
 
     using clk = std::chrono::steady_clock;
@@ -2090,7 +2081,7 @@ extern "C" void mc2_render_backend_color_prop_region_health(
 }
 
 extern "C" void mc2_vk_color_prop_island_destroy() {
-    vlog("[VK_PROP_COLOR_INTEROP] vulkan_available=%d used_vulkan=%lu used_interop=%lu interop_active=%d "
+    vlog("[VK_PROP_COLOR_TIER1] vulkan_available=%d used_vulkan=%lu used_interop=%lu interop_active=%d "
          "vk2gl_sem=%d validation_errors=%lu inst_records=%lu type_runs=%lu geom_verts=%lu "
          "fallback_reason=\"%s\" vk_draws=%lu forbidden_copyImgToBuf=%lu forbidden_getTexImage=%lu "
          "forbidden_readPixels=%lu stage_inst_us=%.1f draw_us=%.1f total_us=%.1f",

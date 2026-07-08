@@ -706,47 +706,9 @@ static constexpr EnvVarDesc kAuxEnvVars[] = {
         "shared engine VulkanContext); fail-soft to GL when absent. INDEPENDENT: the safety "
         "gates (MC2_VK_TERRAIN_HEIGHT_AUDIT verification-only + structural island fail-soft) "
         "and the debug/negative knobs (MC2_VK_PROP_MATERIAL_DEBUG, *_HEIGHT_AUDIT_CORRUPT) are "
-        "NOT umbrella members. RETIRED/parked (NOT a member, NOT on the flip path): "
-        "MC2_VK_PROP_COLOR_INTEROP (Tier-0). Umbrella unset/!=1 with no sub-gate forced = "
-        "pure GL, byte-identical to today (near_land_off self-diff 0.000)."
-    },
-    // [RETIRED — VK-P14 GATE-CONSOLIDATION-1] Tier-0 side-image+composite PROOF path,
-    // SUPERSEDED by Tier-1 in-place co-write (MC2_VK_PROP_COLOR_TIER1). NOT an umbrella
-    // member, NOT on the default-flip path. Code path PARKED (kept intact behind this
-    // dedicated gate — the Tier-1 island shares the TU + Tier-0 scaffolding), not deleted.
-    // VK-P11 STATIC-PROP COLOR: the FIRST VK-native COLOR geometry region gate.
-    {
-        "MC2_FEATURE_VK_PROP_COLOR_INTEROP",
-        "MC2_VK_PROP_COLOR_INTEROP",
-        EnvVarKind::Retired,
-        false,
-        "[RETIRED 2026-07-06 VK-P14 GATE-CONSOLIDATION-1: Tier-0 side-image+composite proof, "
-        "SUPERSEDED by the Tier-1 in-place shared-GBuffer co-write MC2_VK_PROP_COLOR_TIER1. "
-        "NOT a MC2_VK_SHARED_GBUFFER umbrella member; NOT on the default-flip path. Parked "
-        "behind this gate (code kept — Tier-1 shares the TU/scaffolding), default-OFF, "
-        "byte-identical when unset.] "
-        "VK-P11 STATIC-PROP COLOR: presence-gated =1, default OFF. Renders the VISIBLE "
-        "static-prop COLOR instances in Vulkan (the FIRST VK-native color region drawing "
-        "REAL static-prop triangle geometry -- the keystone the terrain/mech color regions "
-        "inherit) into an exportable RGBA16F VkImageResource, with a VK-OWNED (non-exported) "
-        "D32 depth (cleared to reverse-Z far each frame) for correct inter-prop occlusion. "
-        "GL alpha-composites (premultiplied-over, ONE/ONE_MINUS_SRC_ALPHA) the VK result over "
-        "MainColor at the GpuStaticPropBatcher::flush() call site (mclib/txmmgr.cpp runSpFlushUnit) "
-        "INSTEAD of the GL flush() prop color draws (mutually exclusive; this gate is the single "
-        "arbiter). Feed: the shared static-prop VBO/IBO copied ONCE per map (reuses the shadow "
-        "island's mc2_shadow_island_get_geometry_feed); per-frame the VISIBLE color instances the "
-        "GL flush() would draw (s_bucketsByType, still populated because flush() is skipped) are "
-        "flattened grouped by typeID (mc2_color_prop_island_get_frame_feed) and memcpy'd into a VK "
-        "instance SSBO. Pipeline: reverse-Z GEQUAL, depth-test+write ON, cull NONE, premult-over "
-        "color blend. VS (shaders/vulkan/color_prop.vert) reproduces static_prop.vert world->clip "
-        "(pos*M row-vector -> Stuff->MC2 swizzle -> u_worldToClipGL=gos_GetObjectFixBMVPMat4() "
-        "GL_FALSE -> clip.z += OBJECT_DEPTH_BIAS*clip.w). Tier-0 FS = flat/debug color (no texture-"
-        "array/MaterialGpu/lighting). BORROWS the shared engine VulkanContext "
-        "(ensureEngineVulkanContextForInterop), no second device; REQUIRES MC2_RENDER_BACKEND=vulkan "
-        "(fail-soft to the GL flush() when the context is absent/invalid). Color surface zero-copy; "
-        "forbidden COLOR-readback counters hard-asserted ==0. Surfaced in [VK_PROP_COLOR_INTEROP] "
-        "health. TIER-0 scope: props composite OVER the scene (prop-vs-terrain occlusion APPROXIMATE, "
-        "NOT pixel parity -- shared scene depth = Tier-1). Gate OFF = byte-identical GL prop color path."
+        "and the debug/negative knobs (MC2_VK_PROP_MATERIAL_DEBUG, *_HEIGHT_AUDIT_CORRUPT) are "
+        "NOT umbrella members. Umbrella unset/!=1 with no sub-gate forced = pure GL, "
+        "byte-identical to today (near_land_off self-diff 0.000)."
     },
     // VK-TIER1 SHARED SCENE DEPTH: the shared-depth substrate slice (step 2).
     {

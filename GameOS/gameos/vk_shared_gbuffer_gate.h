@@ -27,8 +27,6 @@
 //         verification/robustness gate must be togglable orthogonally to the feature.
 //
 //   * DEBUG / RETIRED gates — NOT in the umbrella, NOT in the flip path:
-//         MC2_VK_PROP_COLOR_INTEROP (Tier-0 side-image+composite proof, SUPERSEDED by
-//         the Tier-1 in-place co-write; parked behind its own gate, see registry),
 //         MC2_VK_PROP_MATERIAL_DEBUG, *_HEIGHT_AUDIT_CORRUPT (negative-test knobs).
 //
 // BYTE-IDENTICAL RULE: umbrella unset/!=1 AND no sub-gate forced -> every member is

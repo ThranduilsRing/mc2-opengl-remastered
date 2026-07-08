@@ -7,7 +7,7 @@
 // so the caller (mclib/txmmgr.cpp at the GpuStaticPropBatcher::flush() site) pulls in
 // NO Vulkan headers.
 //
-// Gate MC2_VK_PROP_COLOR_INTEROP default-OFF -> GL static-prop color path
+// Gate MC2_VK_PROP_COLOR_TIER1 default-OFF -> GL static-prop color path
 // byte-identical. Feed contract (per-frame color instances + shared VBO/IBO geometry)
 // is declared in vulkan_shadow_island_live.h (Mc2ColorPropFeed / Mc2ShadowGeomFeed);
 // the color island reuses the shadow feed's shared geometry buffers.
@@ -23,17 +23,15 @@
 extern "C" {
 #endif
 
-// True when MC2_VK_PROP_COLOR_INTEROP requests the VK color-prop region (the caller
+// True when MC2_VK_PROP_COLOR_TIER1 requests the VK color-prop region (the caller
 // then SKIPS the GL GpuStaticPropBatcher::flush() color draws and calls
 // mc2_vk_color_prop_island_run instead).
 int mc2_vk_color_prop_island_enabled();
 
-// Per-frame entry. Renders the visible static-prop color instances into an exportable
-// RGBA16F image (VK-owned D32 depth for inter-prop occlusion, reverse-Z GEQUAL) and
-// GL alpha-composites (premult-over) the result onto MainColor (the currently-bound
-// draw FBO at flush() time). Pulls its geometry/instance feed from the batcher.
+// Per-frame entry. Renders the visible static-prop color instances in-place into the
+// shared scene GBuffer. Pulls its geometry/instance feed from the batcher.
 //   w/h — the scene color target size (getWidth()/getHeight()).
-// Returns 1 if the VK color pass rendered+composited this frame; 0 = fell back
+// Returns 1 if the VK color pass rendered this frame; 0 = fell back
 // (caller must then run the GL flush() so props still draw).
 int mc2_vk_color_prop_island_run(int w, int h);
 
