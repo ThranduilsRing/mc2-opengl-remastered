@@ -10,6 +10,7 @@
 #include <cassert>
 #include <cstdarg>
 #include <cstdio>
+#include <cstdlib>
 #include <cstring>
 
 namespace {
@@ -27,6 +28,22 @@ bool glOk(const char* where) {
     GLenum e; bool bad = false;
     while ((e = glGetError()) != GL_NO_ERROR) { glog("GL error 0x%04X at %s", e, where); bad = true; }
     return !bad;
+}
+
+bool noGlInteropStrictEnabled() {
+    static int cached = -1;
+    if (cached < 0) {
+        const char* v = std::getenv("MC2_VK_NO_GL_INTEROP_STRICT");
+        cached = (v && v[0] == '1') ? 1 : 0;
+    }
+    return cached != 0;
+}
+
+void noGlInteropStrictAbort(const char* op) {
+    std::fprintf(stderr, "[VK_NO_GL_INTEROP_STRICT] abort op=%s\n",
+                 op ? op : "(unknown)");
+    std::fflush(stderr);
+    std::abort();
 }
 
 // blocker #2: match the VK physical-device LUID against the GL device LUID. Returns
@@ -169,6 +186,8 @@ void glInteropViewDestroy(GlInteropView* v) {
 
 // GL signals the slot's semaphore to hand the image to VK (spike 622-624).
 void glInteropSignalToVk(const GlInteropView& v, GLenum glDstLayout, uint32_t parity) {
+    if (noGlInteropStrictEnabled())
+        noGlInteropStrictAbort("glInteropSignalToVk");
     GLuint tex = v.glTex;
     glSignalSemaphoreEXT(v.glDoneSem[parity & 1u], 0, nullptr, 1, &tex, &glDstLayout);
     glFlush();  // ensure the signal is submitted to the GL server (spike 624)
@@ -181,6 +200,8 @@ void glInteropSignalToVk(const GlInteropView& v, GLenum glDstLayout, uint32_t pa
 // (it falls back to the CPU fence wait). Distinct from glDoneSem[] which is the GL->VK
 // hand-off (GL signals it, VK waits it) -- waiting that here would be a no-op / wrong.
 void glInteropWaitFromVk(const GlInteropView& v, GLenum glSrcLayout, uint32_t parity) {
+    if (noGlInteropStrictEnabled())
+        noGlInteropStrictAbort("glInteropWaitFromVk");
     GLuint tex = v.glTex;
     glWaitSemaphoreEXT(v.glVkToGlSem[parity & 1u], 0, nullptr, 1, &tex, &glSrcLayout);
     glOk("glInteropWaitFromVk");

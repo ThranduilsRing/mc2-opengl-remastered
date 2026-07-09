@@ -515,3 +515,17 @@ no tessellation anywhere in the tail.
   `composite_vk_frames=2700`, `hud_vk_consumed_frames=1975`,
   `imgui_vk_frames=2700`, `fallback_reason=""`. Post fog/SSAO/screenfx/HZB also
   reported `substrate_live=1`, `used_vulkan>0`, and `fallback_reason=""`.
+- 8.7r - NO-GL-INTEROP STRICT CANARY
+  (VK-NO-GL-INTEROP-STRICT-CANARY-1). Added default-off
+  `MC2_VK_NO_GL_INTEROP_STRICT=1`, a final Metal-gate canary wired at the
+  central `GlInteropView` adapter. When armed, any production
+  `glInteropSignalToVk` or `glInteropWaitFromVk` logs
+  `[VK_NO_GL_INTEROP_STRICT]` and aborts. This is expected to fail while the
+  hybrid shared-scene/static-shadow/present substrates are still live; it becomes
+  the hard pass/fail proof after the Win32 external-memory/semaphore family is
+  deleted. Positive verification with the canary unset: adhoc `mc2_01` smoke
+  PASS at `tests/smoke/artifacts/2026-07-08T20-41-00`. Negative verification
+  with `MC2_VK_NO_GL_INTEROP_STRICT=1`: expected FAIL at
+  `tests/smoke/artifacts/2026-07-08T20-41-34`; manifest contains the env var and
+  `mc2_01.log:363` / crash evidence report
+  `[VK_NO_GL_INTEROP_STRICT] abort op=glInteropSignalToVk`.

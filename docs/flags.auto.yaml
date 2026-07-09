@@ -6,8 +6,8 @@
 generator_version: "1.0.0"
 registry_entry_count: 94
 registry_env_flag_count: 92
-sweep_flag_count: 782
-flag_count: 791
+sweep_flag_count: 783
+flag_count: 792
 flags:
   - name: MC2_ABL_ARG_GUARD
     default: unknown
@@ -6412,6 +6412,14 @@ flags:
     registered: no
     in_smoke_passthrough: yes
     documented_in_tier1_env_vars: yes
+  - name: MC2_VK_NO_GL_INTEROP_STRICT
+    default: unknown
+    declared_in: null
+    referenced_at:
+      - GameOS/gameos/gl_interop_view.cpp:36
+    registered: no
+    in_smoke_passthrough: yes
+    documented_in_tier1_env_vars: no
   - name: MC2_VK_POST_COMPOSITE
     default: unknown
     declared_in: null

@@ -709,6 +709,18 @@ static constexpr EnvVarDesc kAuxEnvVars[] = {
         "failed to become VK-backed."
     },
     {
+        "MC2_TRACE_VK_NO_GL_INTEROP_STRICT",
+        "MC2_VK_NO_GL_INTEROP_STRICT",
+        EnvVarKind::Trace,
+        false,
+        "VK final Metal-gate canary. Default-OFF. When =1, any production "
+        "GL/VK interop boundary call through glInteropSignalToVk or "
+        "glInteropWaitFromVk logs [VK_NO_GL_INTEROP_STRICT] and aborts. This is "
+        "expected to fail while the hybrid shared-scene/present substrates are "
+        "still live, and becomes the hard proof that the Win32 external "
+        "memory/semaphore family has been removed."
+    },
+    {
         "MC2_FEATURE_VK_CSM_FULLMAP_INTEROP",
         "MC2_VK_CSM_FULLMAP_INTEROP",
         EnvVarKind::Feature,

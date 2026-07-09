@@ -1,8 +1,8 @@
 # VK-ARC-STATE — current state block (update every session)
 
-HEAD routing note (2026-07-08): current shipped tip is rung 8.7q
-`VK-PRESENT-NATIVE-STRICT-CANARY-1` plus the visible resize/direct-FBO interlock
-fix on branch `claude/vk-interop-bridge-1`, worktree
+HEAD routing note (2026-07-08): current shipped tip is rung 8.7r
+`VK-NO-GL-INTEROP-STRICT-CANARY-1` after the visible present-native strict proof
+on branch `claude/vk-interop-bridge-1`, worktree
 `A:/Games/mc2-vk-interop-bridge`, build dir `build64_island`.
 Always confirm the exact commit with `git log -1 --oneline` before launching
 agents; this file is append-heavy and older rung sections below are historical.
@@ -10,7 +10,7 @@ Deploy lane for Vulkan ownership work is the literal
 `A:/Games/mc2-opengl/mc2-win64-v0.4c/mc2.exe`; pass `--exe` explicitly for
 smoke, visual, and RenderDoc harnesses. Do not rely on default deploy/visual
 lanes (`v0.4`, `v0.4d-rc1`, or non-v-prefixed `0.4c` paths).
-Rung-8 sub-ladder: `.claude/VK-RUNG8-LADDER-1.md` (8.1-8.7q shipped). Visible
+Rung-8 sub-ladder: `.claude/VK-RUNG8-LADDER-1.md` (8.1-8.7r shipped). Visible
 strict proof for the full native final tail lives at
 `.claude/vk-present-native-strict-visible-clean/`: 3/3 deterministic
 `mc2_01_buildings` bookmarks, `present_frames=2700`, `copy1_blit_frames=0`,
@@ -19,6 +19,13 @@ strict proof for the full native final tail lives at
 it is remaining deletion readiness around `gl_interop_view.*`, shared scene
 color/depth/present substrates, and any diagnostic/non-CSM fallback paths still
 needed for the final Metal gate.
+
+Current final-gate canary: `MC2_VK_NO_GL_INTEROP_STRICT=1` aborts on any
+production `glInteropSignalToVk`/`glInteropWaitFromVk` call. It is expected to
+fail today; negative receipt `tests/smoke/artifacts/2026-07-08T20-41-34`
+logged `[VK_NO_GL_INTEROP_STRICT] abort op=glInteropSignalToVk`. The arc is not
+complete until this canary can be armed in a visible/full-tail proof without
+aborting.
 
 Verification guardrails:
 - Bracket every proof with lane hygiene: deployed exe fingerprint/manifest plus
@@ -1301,6 +1308,10 @@ Current tail status:
   `mc2_01_buildings` bookmarks, `copy1_blit_frames=0`,
   `gl_handoff_skip_frames=2700`, `composite_vk_frames=2700`,
   `imgui_vk_frames=2700`, `fallback_reason=""`.
+- Global GL/VK interop strict canary is live and currently fails as expected:
+  `MC2_VK_NO_GL_INTEROP_STRICT=1` aborts at the first
+  `glInteropSignalToVk` boundary. This is the next deletion-readiness proof to
+  turn green; until then the Win32 external-memory/semaphore family remains live.
 - Static shadow has a VK substrate gate: `MC2_VK_STATIC_SHADOW_MAP=1` backs
   `ShadowStaticMap` with exportable VK `D32_SFLOAT` imported into GL as
   `GL_DEPTH_COMPONENT32F`. GL still renders/samples it; native screen-shadow

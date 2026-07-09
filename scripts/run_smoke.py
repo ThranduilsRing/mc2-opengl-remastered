@@ -1789,6 +1789,11 @@ def main():
                             # native present path. Minimized smoke remains a
                             # non-proof and does not trip this canary.
                             "MC2_VK_PRESENT_NATIVE_STRICT",
+                            # VK final Metal-gate canary: hard-fails on any
+                            # glInteropSignalToVk/glInteropWaitFromVk boundary.
+                            # Expected to fail until full VK ownership deletes
+                            # the Win32 GL/VK interop substrate.
+                            "MC2_VK_NO_GL_INTEROP_STRICT",
                             # VK-HUD-NATIVE-QUEUE-1 (rung 8.6f): queues the
                             # ordered GameOS HUD batch to the Vulkan present tail.
                             "MC2_VK_HUD",
