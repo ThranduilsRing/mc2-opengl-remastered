@@ -1,10 +1,32 @@
 # VK-ARC-STATE — current state block (update every session)
 
-HEAD: rung 8.1 (VK-POST-FOG-NATIVE-1, see section below) on branch
-`claude/vk-interop-bridge-1`, worktree `A:/Games/mc2-vk-interop-bridge`.
-Build dir `build64_island`. Deploy lane (literal): `A:/Games/mc2-opengl/mc2-win64-0.4c`
-(deployed + fingerprint-verified at rung 8.1, exe sha `46e81cb1d9f2f7c1`).
-Rung-8 sub-ladder: `.claude/VK-RUNG8-LADDER-1.md` (8.1-8.3 SHIPPED; next = 8.4 HZB compute).
+HEAD routing note (2026-07-08): current shipped tip is rung 8.7o
+`VK-SCREEN-SHADOW-CSM-NATIVE-1` on branch `claude/vk-interop-bridge-1`,
+worktree `A:/Games/mc2-vk-interop-bridge`, build dir `build64_island`.
+Always confirm the exact commit with `git log -1 --oneline` before launching
+agents; this file is append-heavy and older rung sections below are historical.
+Deploy lane for Vulkan ownership work is the literal
+`A:/Games/mc2-opengl/mc2-win64-v0.4c/mc2.exe`; pass `--exe` explicitly for
+smoke, visual, and RenderDoc harnesses. Do not rely on default deploy/visual
+lanes (`v0.4`, `v0.4d-rc1`, or non-v-prefixed `0.4c` paths).
+Rung-8 sub-ladder: `.claude/VK-RUNG8-LADDER-1.md` (8.1-8.7o shipped). Next
+work is not 8.4/8.5 replay; it is remaining deletion readiness around
+`gl_interop_view.*`, shared scene color/depth/present substrates, and any
+diagnostic/non-CSM fallback paths still needed for the final Metal gate.
+
+Verification guardrails:
+- Bracket every proof with lane hygiene: deployed exe fingerprint/manifest plus
+  `[VK_*]` health lines showing `fallback_reason=""` for the feature under test.
+- Minimized smoke is valid for crash/telemetry but cannot prove direct present,
+  HUD/ImGui, or nonzero-surface final-tail behavior. Use visible bookmark
+  captures for those.
+- Bookmark sweep files must contain at least two entries; single-pose bookmark
+  files are parser canaries only.
+- RenderDoc capture is a separate lane; use `scripts/renderdoc_capture.py --exe`
+  against the same `mc2-win64-v0.4c/mc2.exe`.
+- Before deleting interop, add or use a canary mode that hard-fails on any
+  shared-scene GL fallback/import path, so a passing smoke cannot hide a GL
+  substrate rescue.
 
 ## RUNG 8.3 -- VK-POST-SCREENFX-NATIVE-1 (2026-07-07) -- SHIPPED
 
@@ -59,8 +81,10 @@ Evidence (`.claude/vk-post-screenfx/`):
   `shore_frames` incremented (`mc2_01` 112/112, `mc2_03` 114/114,
   `mc2_10` 114/114, `mc2_17` 112/112, `mc2_24` 104/104).
 
-Residuals / next: advance to 8.4 HZB compute. Keep the old GL cloud/shoreline
-pass bodies until 8.7 deletion; they are the fail-soft path.
+Historical residuals at time of 8.3: this previously said to advance to 8.4
+HZB compute. That work is now shipped; use the HEAD routing note above and
+`.claude/VK-RUNG8-LADDER-1.md` for current next work. Keep historical receipts
+below for provenance only.
 
 ## RUNG 8.2 -- VK-POST-SSAO-NATIVE-1 (2026-07-07) -- SHIPPED
 
