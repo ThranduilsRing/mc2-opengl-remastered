@@ -65,6 +65,7 @@ receipt reached `present_frames=8100`, `copy1_skip_frames=8100`,
 `hud_vk_textured_draws_last=69`, `imgui_vk_frames=8100`,
 `fallback_reason=""`, with `[VK_HUD_SKIP v1] ... reason="native_full_coverage"`
 and no `[VK_NO_GL_INTEROP_STRICT]` abort.
+Follow-up 8.7af present no-import proof (commit `3339ca20`) added `MC2_VK_PRESENT_NO_GL_IMPORT=1`: EnginePresentVk allocates the present target as VK-only/non-exportable when the strict native final-tail stack is armed, and `gosPostProcess::endScene()` uses a VK-only direct-present sentinel instead of a GL FBO. Clean proof `.claude/vk-nointerop-strict-visible-present-noimport-clean-final/` passed 11/11 deterministic `mc2_01` bookmarks on deployed binary `sha=3339ca203cb6 dirty=0`; final present receipt reached `present_frames=6300`, `copy1_blit_frames=0`, `copy1_skip_frames=6300`, `gl_handoff_skip_frames=6300`, `tail_hook_frames=6300`, `composite_vk_frames=6300`, `hud_vk_consumed_frames=5523`, `hud_vk_textured_draws_last=69`, `imgui_vk_frames=6300`, `fallback_reason=""`. Absence check: zero `[VK_NO_GL_INTEROP_STRICT]`, zero `glInteropSignalToVk`, zero `glInteropWaitFromVk`, zero `VK_SHARED_STATIC_SHADOW`, zero present resize/copy fallback strings. This removes the present-specific GL memory import; remaining resource-strict blockers are shared scene color/depth/object-id and other earlier-scene export/import substrates.
 Final exact-binary regression after reviewer fixes:
 `.claude/vk-nointerop-strict-visible-final-smoke/`, engine smoke PASS,
 7 deterministic bookmarks before duration, `composite_vk_frames=300`,
