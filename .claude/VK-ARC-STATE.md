@@ -1,7 +1,7 @@
 # VK-ARC-STATE — current state block (update every session)
 
-HEAD routing note (2026-07-08): current shipped tip is rung 8.7t
-`VK-PROP-DIRECT-CHAIN-1` after the visible present-native strict proof
+HEAD routing note (2026-07-08): current shipped tip is rung 8.7u
+`VK-MECH-DIRECT-CHAIN-1` after the visible present-native strict proof
 on branch `claude/vk-interop-bridge-1`, worktree
 `A:/Games/mc2-vk-interop-bridge`, build dir `build64_island`.
 Always confirm the exact commit with `git log -1 --oneline` before launching
@@ -10,7 +10,7 @@ Deploy lane for Vulkan ownership work is the literal
 `A:/Games/mc2-opengl/mc2-win64-v0.4c/mc2.exe`; pass `--exe` explicitly for
 smoke, visual, and RenderDoc harnesses. Do not rely on default deploy/visual
 lanes (`v0.4`, `v0.4d-rc1`, or non-v-prefixed `0.4c` paths).
-Rung-8 sub-ladder: `.claude/VK-RUNG8-LADDER-1.md` (8.1-8.7t shipped). Visible
+Rung-8 sub-ladder: `.claude/VK-RUNG8-LADDER-1.md` (8.1-8.7u shipped). Visible
 strict proof for the full native final tail lives at
 `.claude/vk-present-native-strict-visible-clean/`: 3/3 deterministic
 `mc2_01_buildings` bookmarks, `present_frames=2700`, `copy1_blit_frames=0`,
@@ -21,12 +21,13 @@ color/depth/present substrates, and any diagnostic/non-CSM fallback paths still
 needed for the final Metal gate.
 
 Current final-gate canary: `MC2_VK_NO_GL_INTEROP_STRICT=1` aborts on any
-production `glInteropSignalToVk`/`glInteropWaitFromVk` call. It is expected to
-fail today. Proof gates `MC2_VK_TERRAIN_NATIVE_PREFIX_CLEAR=1` and
-`MC2_VK_PROP_DIRECT_CHAIN=1` now advance the strict abort past terrain and prop;
-the current next blocker is `VK_MECH_ISLAND`
-(`tests/smoke/artifacts/2026-07-08T21-01-14`). The arc is not complete until
-this canary can be armed in a visible/full-tail proof without aborting.
+production `glInteropSignalToVk`/`glInteropWaitFromVk` call. Proof gates
+`MC2_VK_TERRAIN_NATIVE_PREFIX_CLEAR=1`, `MC2_VK_PROP_DIRECT_CHAIN=1`, and
+`MC2_VK_MECH_DIRECT_CHAIN=1` now make minimized `mc2_01` pass with the strict
+canary armed (`tests/smoke/artifacts/2026-07-08T21-04-20`). This is not final
+arc proof: minimized smoke has zero present extent and did not exercise water or
+visible full-tail behavior. Next work is visible/full-tail strict proof to expose
+the next remaining interop caller.
 
 Verification guardrails:
 - Bracket every proof with lane hygiene: deployed exe fingerprint/manifest plus

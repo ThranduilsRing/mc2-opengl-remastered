@@ -115,6 +115,17 @@ bool mechGateRequested() {
     return state == 1;
 }
 
+bool mechDirectChainRequested() {
+    static int state = -1;
+    if (state == -1) {
+        const bool mechGate = mechGateRequested();
+        const bool propDirect = mc2vkgate::envTriState("MC2_VK_PROP_DIRECT_CHAIN") == 1;
+        const bool mechDirect = mc2vkgate::envTriState("MC2_VK_MECH_DIRECT_CHAIN") == 1;
+        state = (mechGate && propDirect && mechDirect) ? 1 : 0;
+    }
+    return state == 1;
+}
+
 // MC2_VK_MECH_MATERIAL (follow-on): copy-once single 2D albedo for the covered
 // stock mech type. DEFERRED general case = per-frame slot0 handle -> VK-descriptor
 // cache. Default-OFF -> flat color.
@@ -1026,10 +1037,13 @@ extern "C" int mc2_vk_mech_island_run(int w, int h) {
     VkFrameSync fsN = vkImageResourceBeginFrame(normalRes);
     VkFrameSync fsD = vkImageResourceBeginFrame(depthRes);
     VkCommandBuffer cb = s->cbuf[fsC.parity & 1u];
+    const bool directChain = mechDirectChainRequested();
 
-    glInteropSignalToVk(*colorView,  GL_LAYOUT_COLOR_ATTACHMENT_EXT,         fsC.parity);
-    glInteropSignalToVk(*normalView, GL_LAYOUT_COLOR_ATTACHMENT_EXT,         fsN.parity);
-    glInteropSignalToVk(*depthView,  GL_LAYOUT_DEPTH_STENCIL_ATTACHMENT_EXT, fsD.parity);
+    if (!directChain) {
+        glInteropSignalToVk(*colorView,  GL_LAYOUT_COLOR_ATTACHMENT_EXT,         fsC.parity);
+        glInteropSignalToVk(*normalView, GL_LAYOUT_COLOR_ATTACHMENT_EXT,         fsN.parity);
+        glInteropSignalToVk(*depthView,  GL_LAYOUT_DEPTH_STENCIL_ATTACHMENT_EXT, fsD.parity);
+    }
 
     const clk::time_point tRender0 = clk::now();
     ZoneNamedN(zMechRec, "VK-mech-record-submit", true);   // VK-FLIP-FIELD-REPORT-1: CPU record+queue-submit (to fn return)
@@ -1085,15 +1099,19 @@ extern "C" int mc2_vk_mech_island_run(int w, int h) {
     VkSemaphore signalSems[3]; uint32_t waitN = 0, sigN = 0;
     auto addWait = [&](VkSemaphore sem, VkPipelineStageFlags stage){
         if (sem != VK_NULL_HANDLE) { waitSems[waitN] = sem; waitStages[waitN] = stage; ++waitN; } };
-    addWait(fsC.signal, VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT);
-    addWait(fsN.signal, VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT);
-    addWait(fsD.signal, VK_PIPELINE_STAGE_EARLY_FRAGMENT_TESTS_BIT);
+    if (!directChain) {
+        addWait(fsC.signal, VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT);
+        addWait(fsN.signal, VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT);
+        addWait(fsD.signal, VK_PIPELINE_STAGE_EARLY_FRAGMENT_TESTS_BIT);
+    }
     const bool gpuC = colorView->vkToGlImported  && fsC.vk2gl != VK_NULL_HANDLE;
     const bool gpuN = normalView->vkToGlImported && fsN.vk2gl != VK_NULL_HANDLE;
     const bool gpuD = depthView->vkToGlImported  && fsD.vk2gl != VK_NULL_HANDLE;
-    if (gpuC) signalSems[sigN++] = fsC.vk2gl;
-    if (gpuN) signalSems[sigN++] = fsN.vk2gl;
-    if (gpuD) signalSems[sigN++] = fsD.vk2gl;
+    if (!directChain) {
+        if (gpuC) signalSems[sigN++] = fsC.vk2gl;
+        if (gpuN) signalSems[sigN++] = fsN.vk2gl;
+        if (gpuD) signalSems[sigN++] = fsD.vk2gl;
+    }
 
     VkSubmitInfo si{};
     si.sType = VK_STRUCTURE_TYPE_SUBMIT_INFO;
@@ -1102,9 +1120,11 @@ extern "C" int mc2_vk_mech_island_run(int w, int h) {
     si.signalSemaphoreCount = sigN; si.pSignalSemaphores = signalSems;
     if (vkQueueSubmit(s->queue, 1, &si, fsC.fence) != VK_SUCCESS) { setFallback("submit_failed"); s->disabled = true; return 0; }
 
-    if (gpuC) glInteropWaitFromVk(*colorView,  GL_LAYOUT_COLOR_ATTACHMENT_EXT,         fsC.parity);
-    if (gpuN) glInteropWaitFromVk(*normalView, GL_LAYOUT_COLOR_ATTACHMENT_EXT,         fsN.parity);
-    if (gpuD) glInteropWaitFromVk(*depthView,  GL_LAYOUT_DEPTH_STENCIL_ATTACHMENT_EXT, fsD.parity);
+    if (!directChain) {
+        if (gpuC) glInteropWaitFromVk(*colorView,  GL_LAYOUT_COLOR_ATTACHMENT_EXT,         fsC.parity);
+        if (gpuN) glInteropWaitFromVk(*normalView, GL_LAYOUT_COLOR_ATTACHMENT_EXT,         fsN.parity);
+        if (gpuD) glInteropWaitFromVk(*depthView,  GL_LAYOUT_DEPTH_STENCIL_ATTACHMENT_EXT, fsD.parity);
+    }
 
     if (vkWaitForFences(s->device, 1, &fsC.fence, VK_TRUE, 5ull*1000*1000*1000) != VK_SUCCESS) {
         setFallback("fence_timeout"); s->disabled = true; return 0;

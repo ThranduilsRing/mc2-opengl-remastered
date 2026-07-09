@@ -1652,6 +1652,10 @@ def main():
                             # flat color; MC2_VK_MECH_MATERIAL adds the copy-once slot-0
                             # paint-scheme albedo (single-material probe).
                             "MC2_VK_MECH_TIER1",
+                            # VK-MECH-DIRECT-CHAIN: deletion-readiness proof gate
+                            # that keeps shared GBuffer ownership on Vulkan after
+                            # terrain+prop and skips mech interop semaphores.
+                            "MC2_VK_MECH_DIRECT_CHAIN",
                             "MC2_VK_MECH_MATERIAL",
                             # MC2_VK_MECH_LIGHTING: per-vertex calc_light Lambert +
                             # per-actor fog, ported from the GL default mech path

@@ -2572,7 +2572,7 @@ flags:
     declared_in: null
     referenced_at:
       - GameOS/gameos/gos_mech_batcher.cpp:1984
-      - GameOS/gameos/vulkan_mech_island.cpp:888
+      - GameOS/gameos/vulkan_mech_island.cpp:899
     registered: no
     in_smoke_passthrough: no
     documented_in_tier1_env_vars: no

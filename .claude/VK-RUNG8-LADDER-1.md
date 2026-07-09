@@ -560,3 +560,17 @@ no tessellation anywhere in the tail.
   `[VK_COLOR_PROP_ISLAND] first TIER-1...`, with the next abort in
   `VK_MECH_ISLAND`. Next deletion slice: chain mech shared-GBuffer co-write
   behind prop without GL interop semaphores.
+- 8.7u - MECH DIRECT CHAIN PROOF
+  (VK-MECH-DIRECT-CHAIN-1). Added default-off `MC2_VK_MECH_DIRECT_CHAIN=1`.
+  Requires `MC2_VK_PROP_DIRECT_CHAIN=1` and VK mech Tier-1. When armed, the
+  mech island treats shared scene color0/normal/depth as already Vulkan-owned by
+  terrain+prop, skips its GL->VK and VK->GL interop semaphore handoff, and still
+  CPU-waits its submit fence before the next island. Positive verification with
+  terrain+prop+mech direct-chain and strict canary unset: PASS
+  `tests/smoke/artifacts/2026-07-08T21-03-45`. Strict canary proof with
+  `MC2_VK_NO_GL_INTEROP_STRICT=1`: PASS
+  `tests/smoke/artifacts/2026-07-08T21-04-20`; manifest contains the strict env
+  var, terrain/prop/mech all render, prop reports `used_interop=0`, and no
+  `[VK_NO_GL_INTEROP_STRICT]` abort occurs. This is minimized-smoke proof only:
+  present extent is zero and water is inactive, so final proof still requires a
+  visible/full-tail strict run.
