@@ -197,6 +197,8 @@ struct gosPostProcess::VkPostFogNative {
     VkCommandBuffer  cbuf[2] = {VK_NULL_HANDLE, VK_NULL_HANDLE}; // per parity slot
 };
 
+static bool vkPostFogDirectChainEnabled();
+
 namespace {
 
 bool make_buffer(gosPostProcess::VkPostFogNative* s, VkDeviceSize size,
@@ -266,7 +268,9 @@ bool build_state(gosPostProcess::VkPostFogNative* s, int w, int h) {
     s->sColorView = mc2SharedSceneColorGetGlView(MC2_SHARED_SCENE_COLOR0);
     s->sDepthRes  = mc2SharedSceneDepthGetResource();
     s->sDepthView = mc2SharedSceneDepthGetGlView();
-    if (!s->sColorRes || !s->sColorView || !s->sDepthRes || !s->sDepthView) {
+    const bool directChain = vkPostFogDirectChainEnabled();
+    if (!s->sColorRes || !s->sDepthRes ||
+        (!directChain && (!s->sColorView || !s->sDepthView))) {
         setFallback("shared_gbuffer_not_ready"); return false;
     }
     if ((int)s->sColorRes->w != w || (int)s->sColorRes->h != h ||
