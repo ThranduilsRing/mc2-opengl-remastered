@@ -459,6 +459,8 @@ def main():
                          "path-aware)")
     ap.add_argument("--duration", type=int)
     ap.add_argument("--profile", default="stock")
+    ap.add_argument("--show-window", action="store_true",
+                    help="Start mission windows visible instead of minimized; use for FPS/perf runs.")
     ap.add_argument("--exe", default=None,
                     help="explicit path to mc2.exe; skips auto-selection but still "
                          "leases the folder (use --no-lease to bypass leasing)")
@@ -980,6 +982,7 @@ def main():
             heartbeat_timeout_play_s=e.heartbeat_timeout_play or 3,
             grace_s=60,
             allow_asset_oob=e.allow_asset_oob,
+            show_window=args.show_window,
             env_extra={
                 "MC2_SMOKE_SEED": "0xC0FFEE",
                 # SMOKE-MODMISSION-ENV-GUARDS-1: inject MC2_ACTIVE_MOD/MC2_MOD_DEPS
@@ -1280,6 +1283,11 @@ def main():
                             # in the allowlist subprocess.Popen drops them and the
                             # gate-ON smoke runs are inert.
                             "MC2_GL_DEBUG",
+                            # Perf A/B: let smoke runs explicitly disable the
+                            # frame cap and vsync. Defaults stay unchanged when
+                            # unset; minimized smoke FPS remains non-throughput.
+                            "MC2_FPS_CAP",
+                            "MC2_VSYNC",
                             "MC2_RENDER_BACKEND_IFACE",
                             # VK-P13-SELECTOR-1 / T1: top-level GL-vs-Vulkan
                             # backend selector (gl|vulkan). Must be allowlisted
@@ -1795,6 +1803,8 @@ def main():
                             # lands after shader asset prep; allowlisted now so
                             # gate-on smoke cannot silently run the GL composite.
                             "MC2_VK_POST_COMPOSITE",
+                            "MC2_VK_POST_COMPOSITE_DIRECT_CHAIN",
+                            "MC2_VK_OBJECTID_DIRECT_CHAIN",
                             "MC2_FXAA",
                             "MC2_FXAA_SUBPIX",
                             "MC2_FXAA_EDGE_THRESHOLD",
@@ -1844,6 +1854,18 @@ def main():
                             "MC2_VK_IMGUI",
                             "MC2_HZB_BUILD",
                             "MC2_HZB_PROBE",
+                            "MC2_VK_POST_HZB_DIRECT_CHAIN",
+                            "MC2_VK_POST_FOG_DIRECT_CHAIN",
+                            "MC2_VK_POST_SSAO_DIRECT_CHAIN",
+                            "MC2_VK_POST_SCREENFX_DIRECT_CHAIN",
+                            "MC2_VK_POST_SCREENFX_SHADOW",
+                            "MC2_SHADOW_ENABLE",
+                            "MC2_SHADOW_CSM",
+                            "MC2_VK_SHADOW_INTEROP",
+                            "MC2_VK_SHADOW_DIRECT_CHAIN",
+                            "MC2_VK_CSM_ARRAY_INTEROP",
+                            "MC2_VK_CSM_FULLMAP_INTEROP",
+                            "MC2_VK_STATIC_SHADOW_MAP",
                             # SKYBOX-FOG-EXCLUDE-1: stencil-tag true sky pixels during
                             # the HDRI skybox draw so runEdgeFog/runFogOob hard-exclude
                             # them (default OFF -> byte-identical). Without this in the
@@ -2018,11 +2040,13 @@ def main():
         import time as _t; _t.sleep(2)
 
     md = report.render_markdown(rows, tier=args.tier or "adhoc",
-                                 profile=args.profile, timestamp=timestamp)
+                                 profile=args.profile, timestamp=timestamp,
+                                 show_window=args.show_window)
     (artifact_dir / "report.md").write_text(md, encoding="utf-8")
     (artifact_dir / "report.json").write_text(
         json.dumps(report.render_json(rows, tier=args.tier or "adhoc",
-                                      profile=args.profile, timestamp=timestamp),
+                                      profile=args.profile, timestamp=timestamp,
+                                      show_window=args.show_window),
                    indent=2), encoding="utf-8")
 
     if args.baseline_update:

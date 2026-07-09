@@ -18,14 +18,20 @@ class Row:
 
 
 def render_markdown(rows: list[Row], *, tier: str, profile: str,
-                    timestamp: str) -> str:
+                    timestamp: str, show_window: bool = False) -> str:
     passed = sum(1 for r in rows if r.verdict.passed)
     total = len(rows)
+    fps_note = (
+        "window starts visible; FPS reflects foreground throughput subject to "
+        "the active MC2_FPS_CAP / MC2_VSYNC settings."
+        if show_window else
+        "game window starts minimized (SW_SHOWMINNOACTIVE). SDL throttles "
+        "rendering to ~100 fps when minimized; Avg FPS / p1% reflect that cap, "
+        "not GPU throughput. Not a perf regression."
+    )
     head = (f"# Smoke run {timestamp}  tier={tier}  profile={profile}  "
             f"result={'PASS' if passed == total else 'FAIL'} ({passed}/{total} passed)\n\n"
-            f"> **FPS note:** game window starts minimized (SW_SHOWMINNOACTIVE). "
-            f"SDL throttles rendering to ~100 fps when minimized; Avg FPS / p1% "
-            f"reflect that cap, not GPU throughput. Not a perf regression.\n\n")
+            f"> **FPS note:** {fps_note}\n\n")
     table = [
         "| Mission | Result | Bucket                 | Frames | Avg FPS | p1% | Load ms | Δ destroys |",
         "|---------|--------|------------------------|--------|---------|-----|---------|-----------|"
@@ -53,12 +59,14 @@ def render_markdown(rows: list[Row], *, tier: str, profile: str,
 
 
 def render_json(rows: list[Row], *, tier: str, profile: str,
-                timestamp: str) -> dict:
+                timestamp: str, show_window: bool = False) -> dict:
     return {
         "timestamp": timestamp,
         "tier": tier,
         "profile": profile,
-        "fps_note": "window minimized; SDL throttles rendering; fps reflects ~100fps cap not GPU throughput",
+        "fps_note": ("window visible; fps reflects foreground throughput subject to MC2_FPS_CAP/MC2_VSYNC"
+                     if show_window else
+                     "window minimized; SDL throttles rendering; fps reflects ~100fps cap not GPU throughput"),
         "rows": [
             {
                 "stem": r.stem,

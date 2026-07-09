@@ -4,6 +4,7 @@
 from __future__ import annotations
 
 import argparse
+import re
 from pathlib import Path
 
 
@@ -26,9 +27,20 @@ FORBIDDEN = [
 
 REQUIRED = [
     "[VK_PRESENT]",
-    "composite_vk_frames=",
-    "gl_handoff_skip_frames=",
-    "imgui_vk_frames=",
+]
+
+
+REQUIRED_POSITIVE_COUNTERS = [
+    "present_frames",
+    "copy1_skip_frames",
+    "gl_handoff_skip_frames",
+    "composite_vk_frames",
+    "imgui_vk_frames",
+]
+
+
+REQUIRED_ZERO_COUNTERS = [
+    "copy1_blit_frames",
 ]
 
 
@@ -62,6 +74,20 @@ def main() -> int:
         present = needle in text
         print(f"log required {needle}: {'yes' if present else 'NO'}")
         if not present:
+            failed = True
+
+    for name in REQUIRED_POSITIVE_COUNTERS:
+        values = [int(m.group(1)) for m in re.finditer(rf"\b{re.escape(name)}=(\d+)", text)]
+        max_value = max(values) if values else None
+        print(f"counter {name}: max={max_value if max_value is not None else 'missing'}")
+        if max_value is None or max_value <= 0:
+            failed = True
+
+    for name in REQUIRED_ZERO_COUNTERS:
+        values = [int(m.group(1)) for m in re.finditer(rf"\b{re.escape(name)}=(\d+)", text)]
+        max_value = max(values) if values else None
+        print(f"counter {name}: max={max_value if max_value is not None else 'missing'}")
+        if max_value is None or max_value != 0:
             failed = True
 
     if args.env_file:

@@ -45,6 +45,7 @@ class RunConfig:
     grace_s: int                        # walltime cap = duration + grace
     env_extra: dict
     allow_asset_oob: bool = False
+    show_window: bool = False
 
 
 @dataclass
@@ -98,12 +99,13 @@ def run_one(cfg: RunConfig) -> RunResult:
     # Start the game window minimized so smoke runs don't steal focus or
     # interrupt the user's desktop. The game detects SDL_WINDOW_MINIMIZED and
     # throttles to ~100 fps (10ms sleep) but game logic and stdout logging
-    # keep running, so heartbeat/ok gates are unaffected.
+    # keep running, so heartbeat/ok gates are unaffected. Perf runs can opt into
+    # a visible window to avoid that background throttle.
     startupinfo = None
     if sys.platform == "win32":
         startupinfo = subprocess.STARTUPINFO()
         startupinfo.dwFlags |= subprocess.STARTF_USESHOWWINDOW
-        startupinfo.wShowWindow = 7  # SW_SHOWMINNOACTIVE
+        startupinfo.wShowWindow = 5 if cfg.show_window else 7  # SW_SHOW / SW_SHOWMINNOACTIVE
     # t0 must be captured BEFORE spawning the reader thread so both the reader
     # and the main loop share the same monotonic reference point.
     t0 = time.monotonic()
