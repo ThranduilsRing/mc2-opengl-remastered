@@ -107,8 +107,10 @@ struct PostScreenFxHealth {
     int  shoreGate     = 0;
     int  shadowGate    = 0;
     int  substrateLive = 0;   // shared color0 + normal + depth present at init
+    int  directChain   = 0;   // MC2_VK_POST_SCREENFX_DIRECT_CHAIN resolved ON
     unsigned long attempted   = 0;  // frames the native path was entered
     unsigned long usedVulkan  = 0;  // frames at least one pass rendered via VK
+    unsigned long usedInterop = 0;  // frames that used GL<->VK semaphores
     unsigned long cloudFrames = 0;  // frames the cloud pass rendered via VK
     unsigned long shoreFrames = 0;  // frames the shoreline pass rendered via VK
     unsigned long shadowFrames = 0; // frames the static-only screen-shadow pass rendered via VK
@@ -719,6 +721,20 @@ bool gosPostProcess::vkPostScreenFxNativeEnabled()
     return state == 1;
 }
 
+static bool vkPostScreenFxDirectChainEnabled()
+{
+    static int state = -1;
+    if (state == -1) {
+        state = (mc2vkgate::envTriState("MC2_VK_POST_SCREENFX_DIRECT_CHAIN") == 1 &&
+                 mc2vkgate::postDirectChainUpstreamOn()) ? 1 : 0;
+        g_fx.directChain = state;
+        if (state == 1)
+            vlog("MC2_VK_POST_SCREENFX_DIRECT_CHAIN=1 - skipping screenfx GL<->VK handoff "
+                 "(full terrain->prop->mech->water chain armed).");
+    }
+    return state == 1;
+}
+
 bool gosPostProcess::runVkPostScreenShadowStaticNative()
 {
     const bool dynamicCasterActive = (mc2vkgate::envTriState("MC2_SHADOW_ENABLE") == 1);
@@ -823,15 +839,18 @@ bool gosPostProcess::runVkPostScreenShadowStaticNative()
     using clk = std::chrono::steady_clock;
     const clk::time_point t0 = clk::now();
 
+    const bool directChain = vkPostScreenFxDirectChainEnabled();
     VkFrameSync fsC = vkImageResourceBeginFrame(s->sColorRes);
     VkFrameSync fsN = vkImageResourceBeginFrame(s->sNormalRes);
     VkFrameSync fsD = vkImageResourceBeginFrame(s->sDepthRes);
     VkFrameSync fsS = vkImageResourceBeginFrame(s->sStaticShadowRes);
     VkCommandBuffer cb = s->cbuf[fsC.parity & 1u];
-    glInteropSignalToVk(*s->sColorView,  GL_LAYOUT_COLOR_ATTACHMENT_EXT, fsC.parity);
-    glInteropSignalToVk(*s->sNormalView, GL_LAYOUT_COLOR_ATTACHMENT_EXT, fsN.parity);
-    glInteropSignalToVk(*s->sDepthView,  GL_LAYOUT_DEPTH_STENCIL_ATTACHMENT_EXT, fsD.parity);
-    glInteropSignalToVk(*s->sStaticShadowView, GL_LAYOUT_DEPTH_STENCIL_ATTACHMENT_EXT, fsS.parity);
+    if (!directChain) {
+        glInteropSignalToVk(*s->sColorView,  GL_LAYOUT_COLOR_ATTACHMENT_EXT, fsC.parity);
+        glInteropSignalToVk(*s->sNormalView, GL_LAYOUT_COLOR_ATTACHMENT_EXT, fsN.parity);
+        glInteropSignalToVk(*s->sDepthView,  GL_LAYOUT_DEPTH_STENCIL_ATTACHMENT_EXT, fsD.parity);
+        glInteropSignalToVk(*s->sStaticShadowView, GL_LAYOUT_DEPTH_STENCIL_ATTACHMENT_EXT, fsS.parity);
+    }
 
     vkResetCommandBuffer(cb, 0);
     VkCommandBufferBeginInfo bi{};
@@ -901,10 +920,11 @@ bool gosPostProcess::runVkPostScreenShadowStaticNative()
     if (fsN.signal) { waitSems[waitN] = fsN.signal; waitStages[waitN++] = VK_PIPELINE_STAGE_FRAGMENT_SHADER_BIT; }
     if (fsD.signal) { waitSems[waitN] = fsD.signal; waitStages[waitN++] = VK_PIPELINE_STAGE_FRAGMENT_SHADER_BIT; }
     if (fsS.signal) { waitSems[waitN] = fsS.signal; waitStages[waitN++] = VK_PIPELINE_STAGE_FRAGMENT_SHADER_BIT; }
-    const bool gpuC = s->sColorView->vkToGlImported && fsC.vk2gl;
-    const bool gpuN = s->sNormalView->vkToGlImported && fsN.vk2gl;
-    const bool gpuD = s->sDepthView->vkToGlImported && fsD.vk2gl;
-    const bool gpuS = s->sStaticShadowView->vkToGlImported && fsS.vk2gl;
+    if (directChain) waitN = 0;
+    const bool gpuC = !directChain && s->sColorView->vkToGlImported && fsC.vk2gl;
+    const bool gpuN = !directChain && s->sNormalView->vkToGlImported && fsN.vk2gl;
+    const bool gpuD = !directChain && s->sDepthView->vkToGlImported && fsD.vk2gl;
+    const bool gpuS = !directChain && s->sStaticShadowView->vkToGlImported && fsS.vk2gl;
     if (gpuC) signalSems[sigN++] = fsC.vk2gl;
     if (gpuN) signalSems[sigN++] = fsN.vk2gl;
     if (gpuD) signalSems[sigN++] = fsD.vk2gl;
@@ -929,6 +949,7 @@ bool gosPostProcess::runVkPostScreenShadowStaticNative()
 
     g_fx.renderUs = std::chrono::duration<double, std::micro>(clk::now() - t0).count();
     ++g_fx.usedVulkan;
+    if (!directChain) ++g_fx.usedInterop;
     ++g_fx.shadowFrames;
     ++g_fx.glSkipped;
     setFallback("");
@@ -1007,14 +1028,17 @@ unsigned gosPostProcess::runVkPostScreenFxNative()
         }
     }
 
-    // ---- GL->VK hand-off on ALL THREE shared resources (8.2 pattern). ----
+    // ---- Shared resource ownership (handoff mode, or direct-chain skip). ----
+    const bool directChain = vkPostScreenFxDirectChainEnabled();
     VkFrameSync fsC = vkImageResourceBeginFrame(s->sColorRes);
     VkFrameSync fsN = vkImageResourceBeginFrame(s->sNormalRes);
     VkFrameSync fsD = vkImageResourceBeginFrame(s->sDepthRes);
     VkCommandBuffer cb = s->cbuf[fsC.parity & 1u];
-    glInteropSignalToVk(*s->sColorView,  GL_LAYOUT_COLOR_ATTACHMENT_EXT,         fsC.parity);
-    glInteropSignalToVk(*s->sNormalView, GL_LAYOUT_COLOR_ATTACHMENT_EXT,         fsN.parity);
-    glInteropSignalToVk(*s->sDepthView,  GL_LAYOUT_DEPTH_STENCIL_ATTACHMENT_EXT, fsD.parity);
+    if (!directChain) {
+        glInteropSignalToVk(*s->sColorView,  GL_LAYOUT_COLOR_ATTACHMENT_EXT,         fsC.parity);
+        glInteropSignalToVk(*s->sNormalView, GL_LAYOUT_COLOR_ATTACHMENT_EXT,         fsN.parity);
+        glInteropSignalToVk(*s->sDepthView,  GL_LAYOUT_DEPTH_STENCIL_ATTACHMENT_EXT, fsD.parity);
+    }
 
     vkResetCommandBuffer(cb, 0);
     VkCommandBufferBeginInfo bi{};
@@ -1098,24 +1122,24 @@ unsigned gosPostProcess::runVkPostScreenFxNative()
     // ---- Submit: wait ALL GL->VK sems; signal ALL VK->GL sems + color fence. ----
     VkSemaphore waitSems[3];   VkPipelineStageFlags waitStages[3];
     VkSemaphore signalSems[3]; uint32_t waitN = 0, sigN = 0;
-    if (fsC.signal != VK_NULL_HANDLE) {
+    if (!directChain && fsC.signal != VK_NULL_HANDLE) {
         waitSems[waitN] = fsC.signal;
         waitStages[waitN] = VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT; ++waitN;
     }
-    if (fsN.signal != VK_NULL_HANDLE) {
+    if (!directChain && fsN.signal != VK_NULL_HANDLE) {
         waitSems[waitN] = fsN.signal;
         waitStages[waitN] = VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT |
                             VK_PIPELINE_STAGE_FRAGMENT_SHADER_BIT; ++waitN;
     }
-    if (fsD.signal != VK_NULL_HANDLE) {
+    if (!directChain && fsD.signal != VK_NULL_HANDLE) {
         waitSems[waitN] = fsD.signal;
         waitStages[waitN] = VK_PIPELINE_STAGE_EARLY_FRAGMENT_TESTS_BIT |
                             VK_PIPELINE_STAGE_LATE_FRAGMENT_TESTS_BIT |
                             VK_PIPELINE_STAGE_FRAGMENT_SHADER_BIT; ++waitN;
     }
-    const bool gpuC = s->sColorView->vkToGlImported  && fsC.vk2gl != VK_NULL_HANDLE;
-    const bool gpuN = s->sNormalView->vkToGlImported && fsN.vk2gl != VK_NULL_HANDLE;
-    const bool gpuD = s->sDepthView->vkToGlImported  && fsD.vk2gl != VK_NULL_HANDLE;
+    const bool gpuC = !directChain && s->sColorView->vkToGlImported  && fsC.vk2gl != VK_NULL_HANDLE;
+    const bool gpuN = !directChain && s->sNormalView->vkToGlImported && fsN.vk2gl != VK_NULL_HANDLE;
+    const bool gpuD = !directChain && s->sDepthView->vkToGlImported  && fsD.vk2gl != VK_NULL_HANDLE;
     if (gpuC) signalSems[sigN++] = fsC.vk2gl;
     if (gpuN) signalSems[sigN++] = fsN.vk2gl;
     if (gpuD) signalSems[sigN++] = fsD.vk2gl;
@@ -1142,6 +1166,7 @@ unsigned gosPostProcess::runVkPostScreenFxNative()
 
     g_fx.renderUs = std::chrono::duration<double, std::micro>(clk::now() - t0).count();
     ++g_fx.usedVulkan;
+    if (!directChain) ++g_fx.usedInterop;
     unsigned mask = 0;
     if (wantCloud) { mask |= 1u; ++g_fx.cloudFrames; ++g_fx.glSkipped; }
     if (wantShore) { mask |= 2u; ++g_fx.shoreFrames; ++g_fx.glSkipped; }
@@ -1153,10 +1178,10 @@ void gosPostProcess::destroyVkPostScreenFxNative()
     if (g_fx.runtimeGate) {
         vlog("[HEALTH] runtime_gate=%d shadow_gate=%d cloud_gate=%d shore_gate=%d substrate_live=%d "
              "attempted=%lu used_vulkan=%lu shadow_frames=%lu cloud_frames=%lu shore_frames=%lu "
-             "gl_skipped=%lu fallback_reason=\"%s\" render_us_last=%.1f",
+             "direct_chain=%d used_interop=%lu gl_skipped=%lu fallback_reason=\"%s\" render_us_last=%.1f",
              g_fx.runtimeGate, g_fx.shadowGate, g_fx.cloudGate, g_fx.shoreGate, g_fx.substrateLive,
              g_fx.attempted, g_fx.usedVulkan, g_fx.shadowFrames, g_fx.cloudFrames, g_fx.shoreFrames,
-             g_fx.glSkipped, g_fx.fallbackReason, g_fx.renderUs);
+             g_fx.directChain, g_fx.usedInterop, g_fx.glSkipped, g_fx.fallbackReason, g_fx.renderUs);
     }
     if (!vkPostScreenFx_) return;
     destroy_state(vkPostScreenFx_);

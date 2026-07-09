@@ -56,8 +56,10 @@ void vlog(const char* fmt, ...) {
 struct HzbNativeHealth {
     int runtimeGate = 0;
     int substrateLive = 0;
+    int directChain = 0;
     unsigned long attempted = 0;
     unsigned long usedVulkan = 0;
+    unsigned long usedInterop = 0;
     unsigned long levels = 0;
     unsigned long vkDraws = 0;
     unsigned long copyDepthOps = 0;
@@ -607,6 +609,20 @@ bool gosPostProcess::vkPostHzbNativeEnabled()
     return state == 1;
 }
 
+static bool vkPostHzbDirectChainEnabled()
+{
+    static int state = -1;
+    if (state == -1) {
+        state = (mc2vkgate::envTriState("MC2_VK_POST_HZB_DIRECT_CHAIN") == 1 &&
+                 mc2vkgate::postDirectChainUpstreamOn()) ? 1 : 0;
+        g_health.directChain = state;
+        if (state == 1)
+            vlog("MC2_VK_POST_HZB_DIRECT_CHAIN=1 - skipping HZB GL<->VK handoff "
+                 "(full terrain->prop->mech->water chain armed).");
+    }
+    return state == 1;
+}
+
 bool gosPostProcess::runVkPostHzbNative()
 {
     if (!hzbEnabled_) return false;
@@ -616,6 +632,17 @@ bool gosPostProcess::runVkPostHzbNative()
     if (hzbProbeEnabled_) {
         setFallback("probe_enabled");
         return false;
+    }
+    {
+        static int seenW = -1;
+        static int seenH = -1;
+        static int seenMips = -1;
+        if (seenW != width_ || seenH != height_ || seenMips != hzbMipCount_) {
+            seenW = width_;
+            seenH = height_;
+            seenMips = hzbMipCount_;
+            return false;
+        }
     }
 
     if (!vkPostHzbNative_) vkPostHzbNative_ = new (std::nothrow) VkPostHzbNative();
@@ -640,13 +667,16 @@ bool gosPostProcess::runVkPostHzbNative()
     using clk = std::chrono::steady_clock;
     const clk::time_point t0 = clk::now();
 
+    const bool directChain = vkPostHzbDirectChainEnabled();
     VkFrameSync fsC = vkImageResourceBeginFrame(s->colorRes);
     VkFrameSync fsN = vkImageResourceBeginFrame(s->normalRes);
     VkFrameSync fsD = vkImageResourceBeginFrame(s->depthRes);
     VkCommandBuffer cb = s->cbuf[fsC.parity & 1u];
-    glInteropSignalToVk(*s->colorView, GL_LAYOUT_COLOR_ATTACHMENT_EXT, fsC.parity);
-    glInteropSignalToVk(*s->normalView, GL_LAYOUT_COLOR_ATTACHMENT_EXT, fsN.parity);
-    glInteropSignalToVk(*s->depthView, GL_LAYOUT_DEPTH_STENCIL_ATTACHMENT_EXT, fsD.parity);
+    if (!directChain) {
+        glInteropSignalToVk(*s->colorView, GL_LAYOUT_COLOR_ATTACHMENT_EXT, fsC.parity);
+        glInteropSignalToVk(*s->normalView, GL_LAYOUT_COLOR_ATTACHMENT_EXT, fsN.parity);
+        glInteropSignalToVk(*s->depthView, GL_LAYOUT_DEPTH_STENCIL_ATTACHMENT_EXT, fsD.parity);
+    }
 
     vkResetCommandBuffer(cb, 0);
     VkCommandBufferBeginInfo bi{};
@@ -722,14 +752,16 @@ bool gosPostProcess::runVkPostHzbNative()
             ++waitN;
         }
     };
-    addWait(fsC.signal, VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT);
-    addWait(fsN.signal, VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT);
-    addWait(fsD.signal, VK_PIPELINE_STAGE_EARLY_FRAGMENT_TESTS_BIT |
-                         VK_PIPELINE_STAGE_LATE_FRAGMENT_TESTS_BIT |
-                         VK_PIPELINE_STAGE_FRAGMENT_SHADER_BIT);
-    const bool gpuC = s->colorView->vkToGlImported && fsC.vk2gl != VK_NULL_HANDLE;
-    const bool gpuN = s->normalView->vkToGlImported && fsN.vk2gl != VK_NULL_HANDLE;
-    const bool gpuDepth = s->depthView->vkToGlImported && fsD.vk2gl != VK_NULL_HANDLE;
+    if (!directChain) {
+        addWait(fsC.signal, VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT);
+        addWait(fsN.signal, VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT);
+        addWait(fsD.signal, VK_PIPELINE_STAGE_EARLY_FRAGMENT_TESTS_BIT |
+                             VK_PIPELINE_STAGE_LATE_FRAGMENT_TESTS_BIT |
+                             VK_PIPELINE_STAGE_FRAGMENT_SHADER_BIT);
+    }
+    const bool gpuC = !directChain && s->colorView->vkToGlImported && fsC.vk2gl != VK_NULL_HANDLE;
+    const bool gpuN = !directChain && s->normalView->vkToGlImported && fsN.vk2gl != VK_NULL_HANDLE;
+    const bool gpuDepth = !directChain && s->depthView->vkToGlImported && fsD.vk2gl != VK_NULL_HANDLE;
     if (gpuC)
         signalSems[sigN++] = fsC.vk2gl;
     if (gpuN)
@@ -768,6 +800,7 @@ bool gosPostProcess::runVkPostHzbNative()
     g_health.readbackOps = 0;
     g_health.vkDraws = static_cast<unsigned long>(s->mipCount);
     ++g_health.usedVulkan;
+    if (!directChain) ++g_health.usedInterop;
     g_health.renderUs = std::chrono::duration<double, std::micro>(clk::now() - t0).count();
     return true;
 }
@@ -776,10 +809,11 @@ void gosPostProcess::destroyVkPostHzbNative()
 {
     if (g_health.runtimeGate) {
         vlog("[HEALTH] runtime_gate=%d substrate_live=%d attempted=%lu used_vulkan=%lu "
-             "levels=%lu vk_draws=%lu copy_depth_ops=%lu readback_ops=%lu "
+             "direct_chain=%d used_interop=%lu levels=%lu vk_draws=%lu copy_depth_ops=%lu readback_ops=%lu "
              "fallback_reason=\"%s\" render_us_last=%.1f",
              g_health.runtimeGate, g_health.substrateLive, g_health.attempted,
-             g_health.usedVulkan, g_health.levels, g_health.vkDraws,
+             g_health.usedVulkan, g_health.directChain, g_health.usedInterop,
+             g_health.levels, g_health.vkDraws,
              g_health.copyDepthOps, g_health.readbackOps, g_health.fallbackReason,
              g_health.renderUs);
     }

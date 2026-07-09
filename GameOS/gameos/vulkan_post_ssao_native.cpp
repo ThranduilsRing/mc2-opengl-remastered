@@ -684,14 +684,8 @@ static bool vkPostSsaoDirectChainEnabled()
 {
     static int state = -1;
     if (state == -1) {
-        const bool fullUpstreamChain =
-            mc2vkgate::envTriState("MC2_VK_TERRAIN_NATIVE_PREFIX_CLEAR") == 1 &&
-            mc2vkgate::envTriState("MC2_VK_PROP_DIRECT_CHAIN") == 1 &&
-            mc2vkgate::envTriState("MC2_VK_MECH_DIRECT_CHAIN") == 1 &&
-            mc2vkgate::envTriState("MC2_VK_WATER_TIER1") == 1 &&
-            mc2vkgate::envTriState("MC2_VK_WATER_DIRECT_CHAIN") == 1;
         state = (mc2vkgate::envTriState("MC2_VK_POST_SSAO_DIRECT_CHAIN") == 1 &&
-                 fullUpstreamChain) ? 1 : 0;
+                 mc2vkgate::postDirectChainUpstreamOn()) ? 1 : 0;
         g_ps.directChain = state;
         if (state == 1)
             vlog("MC2_VK_POST_SSAO_DIRECT_CHAIN=1 - skipping SSAO GL<->VK handoff "

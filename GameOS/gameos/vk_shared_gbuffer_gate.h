@@ -75,4 +75,16 @@ inline bool subGate(const char* name)
     return umbrellaOn();
 }
 
+// Shared post-pass direct-chain prerequisite: the scene producers have kept the
+// shared color/depth/normal chain Vulkan-owned through water. Individual post
+// passes still require their own direct-chain env gate on top of this.
+inline bool postDirectChainUpstreamOn()
+{
+    return envTriState("MC2_VK_TERRAIN_NATIVE_PREFIX_CLEAR") == 1 &&
+           envTriState("MC2_VK_PROP_DIRECT_CHAIN") == 1 &&
+           envTriState("MC2_VK_MECH_DIRECT_CHAIN") == 1 &&
+           envTriState("MC2_VK_WATER_TIER1") == 1 &&
+           envTriState("MC2_VK_WATER_DIRECT_CHAIN") == 1;
+}
+
 } // namespace mc2vkgate

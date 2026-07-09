@@ -676,3 +676,26 @@ no tessellation anywhere in the tail.
   `[VK_NO_GL_INTEROP_STRICT]` abort. The prior
   `.claude/vk-nointerop-strict-visible-postssao-direct-dirty/` run omitted
   `MC2_SSAO=1`, so `attempted=0`; keep it only as a crash regression, not proof.
+- 8.7aa - POST SCREENFX + HZB DIRECT CHAIN
+  (VK-POST-SCREENFX-HZB-DIRECT-CHAIN-1). Added shared helper
+  `mc2vkgate::postDirectChainUpstreamOn()` and default-off direct-chain gates
+  `MC2_VK_POST_SCREENFX_DIRECT_CHAIN=1` and
+  `MC2_VK_POST_HZB_DIRECT_CHAIN=1`. Screenfx now skips GL<->VK handoff at both
+  native screen-shadow and cloud/shoreline sites when the full upstream
+  terrain->prop->mech->water chain is armed; HZB does the same for color/normal/
+  depth resources. Fog and SSAO now reuse the shared helper instead of carrying
+  local copies of the upstream predicate. HZB also defers native execution for
+  the first observed extent/mip-count frame so present swapchain resize happens
+  before the HZB native allocation/render path. Verification:
+  `.claude/vk-nointerop-strict-visible-postscreenfx-hzb-direct-dirty-cleanrun/`,
+  11/11 deterministic `mc2_01` bookmarks; present `composite_vk_frames=600
+  gl_handoff_skip_frames=600`; screenfx `attempted=1324 used_vulkan=1324
+  shadow_frames=662 shore_frames=662 direct_chain=1 used_interop=0`; HZB
+  `attempted=662 used_vulkan=662 direct_chain=1 used_interop=0 levels=12
+  vk_draws=12 copy_depth_ops=0 readback_ops=0`; fog/SSAO/water/prop all
+  `used_interop=0`; no present fail-soft and no `[VK_NO_GL_INTEROP_STRICT]`
+  abort. Isolation receipts: screenfx-only clean at
+  `.claude/vk-nointerop-strict-visible-screenfx-direct-dirty-isolate/`; HZB
+  resize failure reproduced at `.claude/vk-nointerop-strict-visible-hzb-direct-dirty-isolate/`
+  before the defer, then passed at
+  `.claude/vk-nointerop-strict-visible-hzb-direct-dirty-defer/`.
