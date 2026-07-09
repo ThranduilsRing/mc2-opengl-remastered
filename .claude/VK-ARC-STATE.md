@@ -54,6 +54,17 @@ with no `VK_SHARED_STATIC_SHADOW` log lines and screenfx
 `shadow_frames=4687 direct_chain=1 used_interop=0 fallback_reason=""`. This
 removes the static-shadow export/import from the strict stack; resource-strict
 still fails earlier at shared scene color/depth/present.
+Follow-up 8.7ae harness proof
+`.claude/vk-nointerop-strict-visible-ui-tail-long-dirty/` added native UI tail
+gates to the strict stack: `MC2_VK_HUD=1`, `MC2_VK_HUD_COLOR_PROOF=1`,
+`MC2_VK_HUD_SKIP_GL=1`, and `MC2_VK_IMGUI=1`. It passed 11/11 deterministic
+bookmarks on clean deployed binary `sha=d5faad0feb69 dirty=0`; final present
+receipt reached `present_frames=8100`, `copy1_skip_frames=8100`,
+`gl_handoff_skip_frames=8100`, `tail_hook_frames=8100`,
+`composite_vk_frames=8100`, `hud_vk_consumed_frames=7258`,
+`hud_vk_textured_draws_last=69`, `imgui_vk_frames=8100`,
+`fallback_reason=""`, with `[VK_HUD_SKIP v1] ... reason="native_full_coverage"`
+and no `[VK_NO_GL_INTEROP_STRICT]` abort.
 Final exact-binary regression after reviewer fixes:
 `.claude/vk-nointerop-strict-visible-final-smoke/`, engine smoke PASS,
 7 deterministic bookmarks before duration, `composite_vk_frames=300`,

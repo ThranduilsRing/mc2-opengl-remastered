@@ -742,3 +742,20 @@ no tessellation anywhere in the tail.
   `[VK_NO_GL_INTEROP_STRICT]` abort. This removes one exportable Win32 image +
   GL memory-object import from the strict stack; shared scene color/depth/present
   remain the resource-strict blockers.
+- 8.7ae - STRICT HARNESS NOW COVERS NATIVE UI TAIL
+  (VK-NO-INTEROP-STRICT-UI-TAIL-1). Extended
+  `scripts/run_vk_nointerop_strict_visible.py` to arm `MC2_VK_HUD=1`,
+  `MC2_VK_HUD_COLOR_PROOF=1`, `MC2_VK_HUD_SKIP_GL=1`, and `MC2_VK_IMGUI=1`
+  alongside the existing post/composite/present direct-chain gates. This closes
+  the prior proof gap where strict no-interop visible runs proved the native post
+  stack but not the already-shipped native GameOS HUD and ImGui final-tail path.
+  Clean deployed binary proof at `d5faad0feb69`:
+  `.claude/vk-nointerop-strict-visible-ui-tail-long-dirty/`, 11/11 deterministic
+  `mc2_01`; `[VK_HUD_SKIP v1] ... reason="native_full_coverage"` throughout;
+  final present receipt reached `present_frames=8100`,
+  `copy1_skip_frames=8100`, `gl_handoff_skip_frames=8100`,
+  `tail_hook_frames=8100`, `composite_vk_frames=8100`,
+  `hud_vk_consumed_frames=7258`, `hud_vk_color_draws_last=95`,
+  `hud_vk_textured_draws_last=69`, `imgui_vk_ready=1`,
+  `imgui_vk_frames=8100`, `fallback_reason=""`; no
+  `[VK_NO_GL_INTEROP_STRICT]` abort and no `VK_SHARED_STATIC_SHADOW` lines.
