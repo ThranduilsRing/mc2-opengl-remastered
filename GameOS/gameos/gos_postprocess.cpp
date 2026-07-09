@@ -374,6 +374,15 @@ static bool skyboxFogExcludeEnabled()
     return s_on;
 }
 
+static bool sceneGlProducerQueryEnabled()
+{
+    static const bool s_on = []() {
+        const char* v = ::getenv("MC2_VK_SCENE_GL_PRODUCER_QUERY");
+        return v && v[0] == '1';
+    }();
+    return s_on;
+}
+
 static gosPostProcess* s_postProcess = nullptr;
 
 gosPostProcess* getGosPostProcess()
@@ -1945,6 +1954,12 @@ void gosPostProcess::beginScene()
     sceneHasTerrain_ = false;  // reset each frame; set by markTerrainDrawn()
 
     glBindFramebuffer(GL_FRAMEBUFFER, sceneFBO_);
+    if (sceneGlProducerQueryEnabled() && sceneGlProducerQuery_ == 0)
+        glGenQueries(1, &sceneGlProducerQuery_);
+    if (sceneGlProducerQuery_ != 0 && !sceneGlProducerQueryActive_) {
+        glBeginQuery(GL_ANY_SAMPLES_PASSED, sceneGlProducerQuery_);
+        sceneGlProducerQueryActive_ = true;
+    }
 
     // COLORMASK-ROLLOUT-1 (keystone): assert the steady-state color mask (all
     // attachments writable) at frame begin, before the clear + the first MRT scene
@@ -3950,6 +3965,16 @@ void gosPostProcess::endScene()
 
     if (!initialized_)
         return;
+
+    if (sceneGlProducerQueryActive_) {
+        glEndQuery(GL_ANY_SAMPLES_PASSED);
+        GLuint anySamples = 0;
+        glGetQueryObjectuiv(sceneGlProducerQuery_, GL_QUERY_RESULT, &anySamples);
+        std::fprintf(stderr,
+            "[VK_SCENE_GL_PRODUCER_QUERY v1] any_samples=%u frame_sceneFBO=%u\n",
+            (unsigned)anySamples, (unsigned)sceneFBO_);
+        sceneGlProducerQueryActive_ = false;
+    }
 
     // L6.6-COMPOSITE-PRESENT-SCAFFOLD (opt-in, default-OFF). MC2_VK_COMPOSITE_PRESENT
     // routes the CompositePresent region ONCE -> the persistent present object

@@ -630,6 +630,8 @@ private:
     GLuint sceneFBO_;
     GLuint sceneColorTex_;
     GLuint sceneDepthTex_;
+    GLuint sceneGlProducerQuery_ = 0;
+    bool sceneGlProducerQueryActive_ = false;
     // SKYBOX-FOG-EXCLUDE-1: stencil-only view onto sceneDepthTex_'s storage
     // (GL_DEPTH_STENCIL_TEXTURE_MODE=GL_STENCIL_INDEX baked in via glTextureView,
     // so it can be sampled in the same draw as the depth-mode sceneDepthTex_
