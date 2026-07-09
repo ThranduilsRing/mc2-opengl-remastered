@@ -110,6 +110,31 @@ static bool debugEnvEnabled(const char* name) {
     return value && value[0] != '\0' && std::strcmp(value, "0") != 0;
 }
 
+static bool vkScopedGlCanaryEnabled(const char* name) {
+    const char* value = std::getenv(name);
+    return value && value[0] == '1';
+}
+
+static GLuint vkScopedGlCanaryBegin(const char* name) {
+    if (!vkScopedGlCanaryEnabled(name))
+        return 0;
+    GLuint query = 0;
+    glGenQueries(1, &query);
+    glBeginQuery(GL_ANY_SAMPLES_PASSED, query);
+    return query;
+}
+
+static void vkScopedGlCanaryEnd(GLuint query, const char* tag, int draws) {
+    if (!query)
+        return;
+    glEndQuery(GL_ANY_SAMPLES_PASSED);
+    GLuint anySamples = 0;
+    glGetQueryObjectuiv(query, GL_QUERY_RESULT, &anySamples);
+    std::fprintf(stderr, "[VK_SCENE_GL_DRAW_CANARY v1] tag=%s any_samples=%u draws=%d\n",
+                 tag, (unsigned)anySamples, draws);
+    glDeleteQueries(1, &query);
+}
+
 static bool isAllConcreteTerrainBatch(const gos_VERTEX* vertices, int count) {
     if (!vertices || count <= 0)
         return false;
@@ -10707,6 +10732,8 @@ void gosRenderer::drawTerrainOverlays()
         GLint prevVao = 0;
         glGetIntegerv(GL_VERTEX_ARRAY_BINDING, &prevVao);
         glBindVertexArray(terrainOverlayBatch_.vao);
+        GLuint canary = vkScopedGlCanaryBegin("MC2_VK_TERRAIN_OVERLAY_GL_CANARY");
+        int canaryDraws = 0;
         for (const auto& entry : terrainOverlayBatch_.draws) {
             if (overlayLocs_.tex1 >= 0)
                 glUniform1i(overlayLocs_.tex1, 0);
@@ -10714,7 +10741,9 @@ void gosRenderer::drawTerrainOverlays()
             gosTexture* t = lookupBatchTextureOrWarn(textureList_, entry.texHandle, "terrainOverlayBatch");
             bindBatchTextureOrFallback(t, entry.texHandle, "terrainOverlayBatch");  // OMT-1: no bind-0 on resolve-fail
             glDrawArrays(GL_TRIANGLES, (GLint)entry.firstVert, (GLsizei)entry.vertCount);
+            ++canaryDraws;
         }
+        vkScopedGlCanaryEnd(canary, "terrain_overlay_batch", canaryDraws);
         glBindVertexArray((GLuint)prevVao);
     }  // texGuard: restores unit-0 binding + active texture unit before invalidate
 
@@ -10858,6 +10887,8 @@ bool gosRenderer::drawDecalStaticBatch(unsigned int vboGL,
     {
         mc2gl::GlScopedTextureUnit texGuard(0);  // GLSTATE-TEXTURE-UNIT0-RESTORE-1
         glBindVertexArray(s_decalStaticVAO);
+        GLuint canary = vkScopedGlCanaryBegin("MC2_VK_DECAL_STATIC_GL_CANARY");
+        int canaryDraws = 0;
         for (int i = 0; i < drawCount; ++i) {
             const struct GosDecalStaticDraw& entry = draws[i];
             if (overlayLocs_.tex1 >= 0)
@@ -10866,8 +10897,10 @@ bool gosRenderer::drawDecalStaticBatch(unsigned int vboGL,
             gosTexture* t = lookupBatchTextureOrWarn(textureList_, entry.texHandle, "decalStaticBatch");
             bindBatchTextureOrFallback(t, entry.texHandle, "decalStaticBatch");  // OMT-1: no bind-0 on resolve-fail
             glDrawArrays(GL_TRIANGLES, (GLint)entry.firstVert, (GLsizei)entry.vertCount);
+            ++canaryDraws;
             if (i == 0) DECAL_GLPROBE("after_first_drawarrays");
         }
+        vkScopedGlCanaryEnd(canary, "decal_static_batch", canaryDraws);
         DECAL_GLPROBE("after_all_drawarrays");
         glBindVertexArray((GLuint)prevVao);
         DECAL_GLPROBE("after_vao_restore");
@@ -10962,6 +10995,8 @@ void gosRenderer::drawDecals()
         GLint prevVao = 0;
         glGetIntegerv(GL_VERTEX_ARRAY_BINDING, &prevVao);
         glBindVertexArray(decalBatch_.vao);
+        GLuint canary = vkScopedGlCanaryBegin("MC2_VK_TERRAIN_DECAL_GL_CANARY");
+        int canaryDraws = 0;
         for (const auto& entry : decalBatch_.draws) {
             if (decalLocs_.tex1 >= 0)
                 glUniform1i(decalLocs_.tex1, 0);
@@ -10969,7 +11004,9 @@ void gosRenderer::drawDecals()
             gosTexture* t = lookupBatchTextureOrWarn(textureList_, entry.texHandle, "decalBatch");
             bindBatchTextureOrFallback(t, entry.texHandle, "decalBatch");  // OMT-1: no bind-0 on resolve-fail
             glDrawArrays(GL_TRIANGLES, (GLint)entry.firstVert, (GLsizei)entry.vertCount);
+            ++canaryDraws;
         }
+        vkScopedGlCanaryEnd(canary, "terrain_decal_batch", canaryDraws);
         glBindVertexArray((GLuint)prevVao);
     }  // texGuard: restores unit-0 binding + active texture unit before invalidate
 

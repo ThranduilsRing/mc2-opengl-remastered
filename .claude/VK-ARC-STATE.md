@@ -78,6 +78,25 @@ used deployed binary `sha=3339ca203cb6 dirty=0`, passed 11/11 deterministic
 `imgui_vk_frames=6300`, `fallback_reason=""`. Absence check stayed zero for
 `[VK_NO_GL_INTEROP_STRICT]`, `glInteropSignalToVk`, `glInteropWaitFromVk`,
 `VK_SHARED_STATIC_SHADOW`, and present resize/copy fallback strings.
+Follow-up 8.7 scene draw canaries added scoped GL `GL_ANY_SAMPLES_PASSED`
+queries around `gosRenderer::drawTerrainOverlays()`,
+`drawDecalStaticBatch()`, and `drawDecals()` with
+`MC2_VK_TERRAIN_OVERLAY_GL_CANARY=1`, `MC2_VK_DECAL_STATIC_GL_CANARY=1`, and
+`MC2_VK_TERRAIN_DECAL_GL_CANARY=1`. Dirty proof
+`.claude/vk-scene-draw-canaries-strict-dirty-rerun/` passed 11/11
+deterministic `mc2_01` bookmarks on deployed binary `sha=7a02638532cc
+dirty=1`; final present receipt reached `present_frames=6300`,
+`copy1_blit_frames=0`, `copy1_skip_frames=6300`,
+`gl_handoff_skip_frames=6300`, `tail_hook_frames=6300`,
+`composite_vk_frames=6300`, `hud_vk_consumed_frames=5522`,
+`imgui_vk_frames=6300`, `fallback_reason=""`. Absence check was zero for
+`[VK_NO_GL_INTEROP_STRICT]`, `glInteropSignalToVk`, `glInteropWaitFromVk`,
+`VK_SHARED_STATIC_SHADOW`, present resize/copy fallback strings, and
+`[VK_SCENE_GL_DRAW_CANARY v1]`. Interpretation: in the max-native strict stack,
+the overlay/static-decal/terrain-decal GL draw loops did not execute for the
+`mc2_01` sweep; the broader `MC2_VK_SCENE_GL_PRODUCER_QUERY` remains polluted by
+GL shadow-map work and should not be used as a sceneFBO producer proof by
+itself.
 Follow-up 8.7ah fog direct-resource init (commit `42cedc66`) made
 `vulkan_post_fog_native.cpp` require only shared `VkImageResource` handles when
 `MC2_VK_POST_FOG_DIRECT_CHAIN=1`; GL views remain mandatory only for handoff

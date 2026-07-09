@@ -1652,6 +1652,33 @@ static constexpr EnvVarDesc kAuxEnvVars[] = {
         "diagnostic only."
     },
     {
+        "MC2_TRACE_VK_TERRAIN_OVERLAY_GL_CANARY",
+        "MC2_VK_TERRAIN_OVERLAY_GL_CANARY",
+        EnvVarKind::Trace,
+        false,
+        "VK final-gate diagnostic: wraps gosRenderer::drawTerrainOverlays GL draw loop in "
+        "GL_ANY_SAMPLES_PASSED and logs [VK_SCENE_GL_DRAW_CANARY v1] tag=terrain_overlay_batch. "
+        "Default-OFF; diagnostic only."
+    },
+    {
+        "MC2_TRACE_VK_DECAL_STATIC_GL_CANARY",
+        "MC2_VK_DECAL_STATIC_GL_CANARY",
+        EnvVarKind::Trace,
+        false,
+        "VK final-gate diagnostic: wraps gosRenderer::drawDecalStaticBatch GL draw loop in "
+        "GL_ANY_SAMPLES_PASSED and logs [VK_SCENE_GL_DRAW_CANARY v1] tag=decal_static_batch. "
+        "Default-OFF; diagnostic only."
+    },
+    {
+        "MC2_TRACE_VK_TERRAIN_DECAL_GL_CANARY",
+        "MC2_VK_TERRAIN_DECAL_GL_CANARY",
+        EnvVarKind::Trace,
+        false,
+        "VK final-gate diagnostic: wraps gosRenderer::drawDecals GL draw loop in "
+        "GL_ANY_SAMPLES_PASSED and logs [VK_SCENE_GL_DRAW_CANARY v1] tag=terrain_decal_batch. "
+        "Default-OFF; diagnostic only."
+    },
+    {
         "MC2_FEATURE_VK_TERRAIN_HEIGHT_AUDIT",
         "MC2_VK_TERRAIN_HEIGHT_AUDIT",
         EnvVarKind::Feature,
