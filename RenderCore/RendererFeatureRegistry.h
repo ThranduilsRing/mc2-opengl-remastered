@@ -686,6 +686,18 @@ static constexpr EnvVarDesc kAuxEnvVars[] = {
         "byte-identical to today (near_land_off self-diff 0.000)."
     },
     {
+        "MC2_TRACE_VK_SHARED_SCENE_STRICT",
+        "MC2_VK_SHARED_SCENE_STRICT",
+        EnvVarKind::Trace,
+        false,
+        "VK shared-scene deletion-readiness canary. Default-OFF. When =1, any "
+        "fallback from a requested VK-backed shared scene color/depth/normal/objectId "
+        "slot to the plain GL allocation logs [VK_SHARED_SCENE_STRICT] and aborts, "
+        "so final-tail/Metal-gate proof runs cannot silently pass through a GL "
+        "substrate rescue. No effect unless a shared-scene slot was requested and "
+        "failed to become VK-backed."
+    },
+    {
         "MC2_FEATURE_VK_CSM_FULLMAP_INTEROP",
         "MC2_VK_CSM_FULLMAP_INTEROP",
         EnvVarKind::Feature,

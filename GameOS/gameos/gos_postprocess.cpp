@@ -131,6 +131,27 @@ static bool mc2VkSharedSceneColorNeeded()
         || mc2VkMechTier1Enabled();
 }
 
+static bool mc2VkSharedSceneStrictEnabled()
+{
+    static const bool s_on = []() {
+        const char* v = std::getenv("MC2_VK_SHARED_SCENE_STRICT");
+        return v && v[0] == '1' && v[1] == '\0';
+    }();
+    return s_on;
+}
+
+static void mc2VkSharedSceneStrictFallback(const char* slot, const char* reason)
+{
+    if (!mc2VkSharedSceneStrictEnabled())
+        return;
+    std::fprintf(stderr,
+                 "[VK_SHARED_SCENE_STRICT] abort slot=%s reason=%s\n",
+                 slot ? slot : "unknown",
+                 reason ? reason : "unknown");
+    std::fflush(stderr);
+    std::abort();
+}
+
 static bool mc2VkStaticShadowMapEnabled()
 {
     static const bool s_on = mc2vkgate::subGate("MC2_VK_STATIC_SHADOW_MAP");
@@ -1004,6 +1025,7 @@ void gosPostProcess::createFBOs(int w, int h)
             sharedSceneColor_ = nullptr;
             fprintf(stderr, "[VK_SHARED_SCENE_COLOR] color fallback reason=%s "
                             "(plain GL RGBA16F)\n", reason ? reason : "unknown");
+            mc2VkSharedSceneStrictFallback("color", reason);
         }
     }
 #endif
@@ -1088,6 +1110,7 @@ void gosPostProcess::createFBOs(int w, int h)
             fprintf(stderr, "[VK_SHARED_SCENE_DEPTH] fallback reason=%s "
                             "(plain GL GL_DEPTH24_STENCIL8)\n",
                     reason ? reason : "unknown");
+            mc2VkSharedSceneStrictFallback("depth", reason);
         }
     }
 #endif
@@ -1154,6 +1177,7 @@ void gosPostProcess::createFBOs(int w, int h)
             sharedSceneNormal_ = nullptr;
             fprintf(stderr, "[VK_SHARED_SCENE_COLOR] normal fallback reason=%s "
                             "(plain GL RGBA16F)\n", reason ? reason : "unknown");
+            mc2VkSharedSceneStrictFallback("normal", reason);
         }
     }
 #endif
@@ -1198,6 +1222,7 @@ void gosPostProcess::createFBOs(int w, int h)
                 sharedSceneObjectId_ = nullptr;
                 fprintf(stderr, "[VK_SHARED_SCENE_COLOR] objectId fallback reason=%s "
                                 "(plain GL_R32UI)\n", reason ? reason : "unknown");
+                mc2VkSharedSceneStrictFallback("objectId", reason);
             }
         }
 #endif

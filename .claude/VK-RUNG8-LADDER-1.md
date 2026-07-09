@@ -478,3 +478,18 @@ no tessellation anywhere in the tail.
   static shadow map plus the VK CSM array/full-map directly and skips the GL
   screen-shadow body. Debug classification and non-CSM dynamic remain GL
   fallback paths.
+- 8.7p - SHARED-SCENE STRICT CANARY
+  (VK-SHARED-SCENE-STRICT-CANARY-1). Added default-off
+  `MC2_VK_SHARED_SCENE_STRICT=1`, a verification-only deletion-readiness guard:
+  if a requested shared scene color/depth/normal/objectId slot falls back to
+  the plain GL allocation, the engine logs `[VK_SHARED_SCENE_STRICT]` and
+  aborts instead of silently continuing on a GL substrate. This does not delete
+  `gl_interop_view.*`; it prevents final-tail/Metal-gate proofs from passing
+  through a hidden shared-scene fallback. Verification: build/deploy to explicit
+  `mc2-win64-v0.4c` lane, strict full-tail minimized smoke PASS 1/1 at
+  `tests/smoke/artifacts/2026-07-08T20-21-36`; manifest includes
+  `MC2_VK_SHARED_SCENE_STRICT=1`, shared scene color/depth/normal/objectId are
+  VK-backed, post fog/SSAO/screenfx/HZB report `substrate_live=1`,
+  `used_vulkan>0`, and `fallback_reason=""`. Negative forced-fallback probe was
+  inconclusive (timeout, no strict abort), so keep this as a healthy-path canary
+  until a smaller deterministic fallback fixture exists.

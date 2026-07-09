@@ -1611,6 +1611,11 @@ def main():
                             # The eventual default flip toggles EXACTLY this one name, so
                             # the soak must pass it through to exercise the final gate.
                             "MC2_VK_SHARED_GBUFFER",
+                            # VK shared-scene deletion-readiness canary. When =1,
+                            # any requested shared scene color/depth/normal/objectId
+                            # slot that falls back to plain GL aborts, preventing
+                            # false-positive final-tail/Metal-gate proofs.
+                            "MC2_VK_SHARED_SCENE_STRICT",
                             # VK-TIER1 SHARED SCENE DEPTH: backs sceneDepthTex_ with a
                             # VK-built exportable D32S8 image imported into GL as
                             # GL_DEPTH24_STENCIL8 at the scene-FBO depth alloc+attach
