@@ -1,7 +1,7 @@
 # VK-ARC-STATE — current state block (update every session)
 
-HEAD routing note (2026-07-08): current shipped tip is rung 8.7w
-`VK-COMPOSITE-SCENE-DIRECT-ALT-MODES-1` after the visible no-interop strict proof
+HEAD routing note (2026-07-08): current shipped tip is rung 8.7y
+`VK-POST-FOG-DIRECT-CHAIN-1` after the visible no-interop strict proof
 on branch `claude/vk-interop-bridge-1`, worktree
 `A:/Games/mc2-vk-interop-bridge`, build dir `build64_island`.
 Always confirm the exact commit with `git log -1 --oneline` before launching
@@ -24,22 +24,25 @@ Current final-gate canary: `MC2_VK_NO_GL_INTEROP_STRICT=1` aborts on any
 production `glInteropSignalToVk`/`glInteropWaitFromVk` call. Proof gates
 `MC2_VK_TERRAIN_NATIVE_PREFIX_CLEAR=1`, `MC2_VK_PROP_DIRECT_CHAIN=1`,
 `MC2_VK_MECH_DIRECT_CHAIN=1`, `MC2_VK_WATER_TIER1=1`,
-`MC2_VK_WATER_DIRECT_CHAIN=1`, and `MC2_VK_POST_COMPOSITE_DIRECT_CHAIN=1`
-now make a visible `mc2_01` full bookmark sweep pass with the strict canary
-armed: `.claude/vk-nointerop-strict-visible-harness/`, 11/11 deterministic.
+`MC2_VK_WATER_DIRECT_CHAIN=1`, `MC2_VK_POST_FOG_NATIVE=1`,
+`MC2_VK_POST_FOG_DIRECT_CHAIN=1`, and
+`MC2_VK_POST_COMPOSITE_DIRECT_CHAIN=1` now make a visible `mc2_01` full
+bookmark sweep pass with the strict canary armed:
+`.claude/vk-nointerop-strict-visible-postfog-direct-clean/`, 11/11
+deterministic.
 Final exact-binary regression after reviewer fixes:
 `.claude/vk-nointerop-strict-visible-final-smoke/`, engine smoke PASS,
 7 deterministic bookmarks before duration, `composite_vk_frames=300`,
 `gl_handoff_skip_frames=300`, `VK_WATER_TIER1 used_interop=0`, no strict abort.
 LowLight alternate composite mode is also strict-clean at
 `.claude/vk-nointerop-strict-visible-lowlight/` (`MC2_VIEW_MODE=lowlight`,
-engine smoke PASS, `composite_vk_frames=300`, no strict abort). ObjectIdDebug is
-now the next confirmed visible-mode blocker: with `MC2_OBJECT_ID_BUFFER=1` and
-`MC2_VIEW_MODE=objectid`, `.claude/vk-nointerop-strict-visible-objectid-scene-direct/`
-aborts after water at the remaining objectId/MRT2 handoff. Next work is porting
-objectId ownership for the native prop/mech paths or explicitly retiring that
-view-mode dependency before deleting `gl_interop_view.*` and Win32
-external-memory plumbing.
+engine smoke PASS, `composite_vk_frames=300`, no strict abort). ObjectIdDebug
+strict is green under `MC2_VK_OBJECTID_DIRECT_CHAIN=1`; it is a deletion canary,
+not a pixel-parity port for native ObjectId MRT2 writes. Next direct-chain work
+is the optional native post shared-GBuffer passes that still call
+`glInteropSignalToVk`/`glInteropWaitFromVk` when armed: SSAO, screenfx, HZB, then
+shadow-specific VK->GL sampling paths before deleting `gl_interop_view.*` and
+Win32 external-memory plumbing.
 
 Verification guardrails:
 - Bracket every proof with lane hygiene: deployed exe fingerprint/manifest plus
@@ -1348,10 +1351,19 @@ Current tail status:
   `.claude/vk-nointerop-strict-visible-objectid-direct-clean/`, 11/11
   deterministic `mc2_01` bookmarks with `MC2_OBJECT_ID_BUFFER=1`,
   `MC2_VIEW_MODE=objectid`, `MC2_VK_NO_GL_INTEROP_STRICT=1`; log shows
-  `sha=cef4d095d920 dirty=0`, objectId VK `R32UI`, all
+  `sha=d890a2f2f1f0 dirty=0`, objectId VK `R32UI`, all
   terrain/prop/mech/water islands active, `composite_vk_frames=300`,
   `gl_handoff_skip_frames=300`, smoke PASS, and no strict abort. This is a
   deletion-readiness canary, not a full objectId MRT2 parity port.
+- Native fog direct-chain strict canary is green:
+  `.claude/vk-nointerop-strict-visible-postfog-direct-clean/`, 11/11
+  deterministic `mc2_01` bookmarks, Vulkan backend selected, fog initialized on
+  the shared engine context, `sha=35c56c4c362d dirty=0`,
+  `VK_POST_FOG_NATIVE [HEALTH] attempted=662 used_vulkan=662 direct_chain=1
+  used_interop=0 gl_skipped=1324`,
+  `VK_PRESENT composite_vk_frames=600 gl_handoff_skip_frames=600`, water/prop
+  `used_interop=0`, no fail-soft GL fallback and no `[VK_NO_GL_INTEROP_STRICT]`
+  abort.
 
 ## RUNG 8.6f - VK-HUD-NATIVE-QUEUE-1
 

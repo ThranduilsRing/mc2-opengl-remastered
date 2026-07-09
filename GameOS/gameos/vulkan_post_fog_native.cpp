@@ -29,12 +29,11 @@
 // (fail-soft, never crashes, gate-OFF byte-identical).
 //
 // SYNC (water-island tier1 pattern, vulkan_water_island.cpp:1330-1395): per frame
-// BeginFrame on BOTH shared resources, GL signals color in COLOR_ATTACHMENT layout +
-// depth in DEPTH_STENCIL_ATTACHMENT layout, VK submit waits both GL->VK sems,
-// in-cb barriers move the depth DEPTH_STENCIL_ATTACHMENT -> SHADER_READ_ONLY for
-// sampling and BACK after the pass (layout-stable across the API boundary), render
-// pass is LOAD/STORE color-attachment-stable, submit signals both VK->GL sems, GL
-// waits them; fence CPU-wait as the slot-recycle guard (same as water).
+// BeginFrame on BOTH shared resources. Default mode still uses the GL<->VK handoff
+// semaphores. MC2_VK_POST_FOG_DIRECT_CHAIN=1, guarded by the full upstream native
+// ownership chain, treats color/depth as already Vulkan-owned, skips those
+// handoffs, renders in place, and leaves both resources Vulkan-owned for later
+// post/composite work.
 //
 // The whole TU compiles to nothing unless MC2_VULKAN_ISLAND is defined.
 
@@ -91,8 +90,10 @@ void vlog(const char* fmt, ...) {
 struct PostFogNativeHealth {
     int  runtimeGate   = 0;   // MC2_VK_POST_FOG_NATIVE resolved ON
     int  substrateLive = 0;   // shared color0 + depth resources present at init
+    int  directChain   = 0;   // MC2_VK_POST_FOG_DIRECT_CHAIN resolved ON
     unsigned long attempted  = 0;  // frames the native path was entered
     unsigned long usedVulkan = 0;  // frames BOTH fogs actually rendered via VK
+    unsigned long usedInterop = 0; // frames that used GL<->VK semaphores
     unsigned long glSkipped  = 0;  // GL fog sites skipped (2 per used frame)
     char fallbackReason[64]  = {0};
     double renderUs = 0.0;         // record+submit+sem/fence wait, last frame
@@ -527,6 +528,26 @@ bool gosPostProcess::vkPostFogNativeEnabled()
     return state == 1;
 }
 
+static bool vkPostFogDirectChainEnabled()
+{
+    static int state = -1;
+    if (state == -1) {
+        const bool fullUpstreamChain =
+            mc2vkgate::envTriState("MC2_VK_TERRAIN_NATIVE_PREFIX_CLEAR") == 1 &&
+            mc2vkgate::envTriState("MC2_VK_PROP_DIRECT_CHAIN") == 1 &&
+            mc2vkgate::envTriState("MC2_VK_MECH_DIRECT_CHAIN") == 1 &&
+            mc2vkgate::envTriState("MC2_VK_WATER_TIER1") == 1 &&
+            mc2vkgate::envTriState("MC2_VK_WATER_DIRECT_CHAIN") == 1;
+        state = (mc2vkgate::envTriState("MC2_VK_POST_FOG_DIRECT_CHAIN") == 1 &&
+                 fullUpstreamChain) ? 1 : 0;
+        g_pf.directChain = state;
+        if (state == 1)
+            vlog("MC2_VK_POST_FOG_DIRECT_CHAIN=1 - skipping fog GL<->VK handoff "
+                 "(full terrain->prop->mech->water chain armed).");
+    }
+    return state == 1;
+}
+
 // ---------------------------------------------------------------------------
 // runVkPostFogNative(): render BOTH fog effects natively in VK. Returns true only
 // when both draws were submitted (caller skips BOTH GL fog sites); ANY not-ready
@@ -612,12 +633,15 @@ bool gosPostProcess::runVkPostFogNative()
         }
     }
 
-    // ---- GL->VK hand-off on BOTH shared resources (water tier1 pattern). ----
+    // ---- Shared resource ownership (water tier1 pattern, or direct-chain skip). ----
+    const bool directChain = vkPostFogDirectChainEnabled();
     VkFrameSync fsC = vkImageResourceBeginFrame(s->sColorRes);
     VkFrameSync fsD = vkImageResourceBeginFrame(s->sDepthRes);
     VkCommandBuffer cb = s->cbuf[fsC.parity & 1u];
-    glInteropSignalToVk(*s->sColorView, GL_LAYOUT_COLOR_ATTACHMENT_EXT,         fsC.parity);
-    glInteropSignalToVk(*s->sDepthView, GL_LAYOUT_DEPTH_STENCIL_ATTACHMENT_EXT, fsD.parity);
+    if (!directChain) {
+        glInteropSignalToVk(*s->sColorView, GL_LAYOUT_COLOR_ATTACHMENT_EXT,         fsC.parity);
+        glInteropSignalToVk(*s->sDepthView, GL_LAYOUT_DEPTH_STENCIL_ATTACHMENT_EXT, fsD.parity);
+    }
 
     vkResetCommandBuffer(cb, 0);
     VkCommandBufferBeginInfo bi{};
@@ -629,7 +653,8 @@ bool gosPostProcess::runVkPostFogNative()
 
     // Depth: DEPTH_STENCIL_ATTACHMENT (GL hand-off layout) -> SHADER_READ_ONLY for
     // sampling; BOTH aspects in the range (combined depth/stencil layout rules).
-    // Memory visibility of GL's depth writes rides the GL->VK semaphore.
+    // Memory visibility of GL's depth writes rides the GL->VK semaphore in
+    // handoff mode; direct-chain mode inherits Vulkan ownership from upstream.
     auto depthBarrier = [&](VkImageLayout oldL, VkImageLayout newL,
                             VkAccessFlags srcA, VkAccessFlags dstA,
                             VkPipelineStageFlags srcS, VkPipelineStageFlags dstS) {
@@ -672,14 +697,14 @@ bool gosPostProcess::runVkPostFogNative()
         setFallback("record_failed"); s->disabled = true; return false;
     }
 
-    // ---- Submit: wait BOTH GL->VK sems; signal BOTH VK->GL sems + color fence. ----
+    // ---- Submit: handoff mode waits/signals GL sems; direct-chain mode does not. ----
     VkSemaphore waitSems[2];   VkPipelineStageFlags waitStages[2];
     VkSemaphore signalSems[2]; uint32_t waitN = 0, sigN = 0;
-    if (fsC.signal != VK_NULL_HANDLE) {
+    if (!directChain && fsC.signal != VK_NULL_HANDLE) {
         waitSems[waitN] = fsC.signal;
         waitStages[waitN] = VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT; ++waitN;
     }
-    if (fsD.signal != VK_NULL_HANDLE) {
+    if (!directChain && fsD.signal != VK_NULL_HANDLE) {
         // The depth barrier executes at LATE_FRAGMENT_TESTS srcStage; block from
         // the earliest depth-touching stage so the sem-wait precedes the transition.
         waitSems[waitN] = fsD.signal;
@@ -687,8 +712,8 @@ bool gosPostProcess::runVkPostFogNative()
                             VK_PIPELINE_STAGE_LATE_FRAGMENT_TESTS_BIT |
                             VK_PIPELINE_STAGE_FRAGMENT_SHADER_BIT; ++waitN;
     }
-    const bool gpuC = s->sColorView->vkToGlImported && fsC.vk2gl != VK_NULL_HANDLE;
-    const bool gpuD = s->sDepthView->vkToGlImported && fsD.vk2gl != VK_NULL_HANDLE;
+    const bool gpuC = !directChain && s->sColorView->vkToGlImported && fsC.vk2gl != VK_NULL_HANDLE;
+    const bool gpuD = !directChain && s->sDepthView->vkToGlImported && fsD.vk2gl != VK_NULL_HANDLE;
     if (gpuC) signalSems[sigN++] = fsC.vk2gl;
     if (gpuD) signalSems[sigN++] = fsD.vk2gl;
 
@@ -701,7 +726,8 @@ bool gosPostProcess::runVkPostFogNative()
         setFallback("submit_failed"); s->disabled = true; return false;
     }
 
-    // GL re-acquires BOTH images in the layouts VK left them (layout-stable).
+    // GL re-acquires BOTH images in handoff mode. Direct-chain mode leaves them
+    // Vulkan-owned for the following native post/composite pass.
     if (gpuC) glInteropWaitFromVk(*s->sColorView, GL_LAYOUT_COLOR_ATTACHMENT_EXT,         fsC.parity);
     if (gpuD) glInteropWaitFromVk(*s->sDepthView, GL_LAYOUT_DEPTH_STENCIL_ATTACHMENT_EXT, fsD.parity);
 
@@ -713,6 +739,7 @@ bool gosPostProcess::runVkPostFogNative()
 
     g_pf.renderUs = std::chrono::duration<double, std::micro>(clk::now() - t0).count();
     ++g_pf.usedVulkan;
+    if (!directChain) ++g_pf.usedInterop;
     g_pf.glSkipped += 2;
     return true;
 }
@@ -721,9 +748,11 @@ void gosPostProcess::destroyVkPostFogNative()
 {
     if (g_pf.runtimeGate) {
         vlog("[HEALTH] runtime_gate=%d substrate_live=%d attempted=%lu used_vulkan=%lu "
-             "gl_skipped=%lu fallback_reason=\"%s\" render_us_last=%.1f",
+             "direct_chain=%d used_interop=%lu gl_skipped=%lu fallback_reason=\"%s\" "
+             "render_us_last=%.1f",
              g_pf.runtimeGate, g_pf.substrateLive, g_pf.attempted, g_pf.usedVulkan,
-             g_pf.glSkipped, g_pf.fallbackReason, g_pf.renderUs);
+             g_pf.directChain, g_pf.usedInterop, g_pf.glSkipped, g_pf.fallbackReason,
+             g_pf.renderUs);
     }
     if (!vkPostFogNative_) return;
     destroy_state(vkPostFogNative_);

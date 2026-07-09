@@ -632,7 +632,7 @@ no tessellation anywhere in the tail.
   `.claude/vk-nointerop-strict-visible-objectid-direct-clean/` captured 11/11
   deterministic `mc2_01` bookmarks with
   `MC2_OBJECT_ID_BUFFER=1`, `MC2_VIEW_MODE=objectid`, and
-  `MC2_VK_NO_GL_INTEROP_STRICT=1`. Log receipt: `sha=cef4d095d920 dirty=0`,
+  `MC2_VK_NO_GL_INTEROP_STRICT=1`. Log receipt: `sha=d890a2f2f1f0 dirty=0`,
   Vulkan backend selected,
   objectId(MRT2) active as VK `R32UI`, terrain/prop/mech/water islands all ran,
   `VK_WATER_TIER1 used_interop=0`, `VK_PROP_COLOR_TIER1 used_interop=0`,
@@ -641,3 +641,19 @@ no tessellation anywhere in the tail.
   abort. Correctness follow-up remains full native objectId MRT2 writes/clear in
   terrain/prop/mech/water if ObjectIdDebug pixel parity is promoted from canary to
   product requirement.
+- 8.7y - POST FOG DIRECT CHAIN
+  (VK-POST-FOG-DIRECT-CHAIN-1). Added default-off
+  `MC2_VK_POST_FOG_DIRECT_CHAIN=1`, guarded by the full
+  terrain->prop->mech->water direct-chain stack. When armed with
+  `MC2_VK_POST_FOG_NATIVE=1`, the fog pair treats shared scene color/depth as
+  already Vulkan-owned, skips both GL->VK and VK->GL handoffs, renders in place,
+  and leaves the resources Vulkan-owned for native composite/present. The strict
+  visible harness now includes both fog gates. Verification:
+  `.claude/vk-nointerop-strict-visible-postfog-direct-clean/`, 11/11
+  deterministic `mc2_01` bookmarks; Vulkan backend selected; fog initialized on
+  the shared engine context; clean receipt `sha=35c56c4c362d dirty=0`;
+  health receipt `attempted=662 used_vulkan=662 direct_chain=1 used_interop=0
+  gl_skipped=1324`; present
+  `composite_vk_frames=600 gl_handoff_skip_frames=600`; water/prop
+  `used_interop=0`; no fail-soft GL fallback and no `[VK_NO_GL_INTEROP_STRICT]`
+  abort. Next same-pattern candidates: SSAO, screenfx, HZB direct-chain gates.
