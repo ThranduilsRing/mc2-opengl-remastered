@@ -135,6 +135,20 @@ rasterizes through GL under the max-native strict stack. The scene producer quer
 still reports `any_samples=1`, so the next ownership slice is a non-terrain
 sceneFBO writer canary/port (likely overlays, decals, or another direct world
 draw), not resource-strict deletion yet.
+Clean proof `.claude/vk-terrain-edge-stitch-strict-clean/` reran the same gate
+on `sha=0aae033779b9 dirty=0` and preserved the same result: 11/11
+deterministic, terrain `gl_fallback=0` through frame 6300, no strict interop, and
+final present `present_frames=6300`, `copy1_blit_frames=0`,
+`gl_handoff_skip_frames=6300`, `composite_vk_frames=6300`,
+`hud_vk_consumed_frames=5600`, `imgui_vk_frames=6300`, `fallback_reason=""`.
+Follow-up scoped canary `.claude/vk-screenshadow-gl-canary-strict-dirty/`
+proved the broad `MC2_VK_SCENE_GL_PRODUCER_QUERY` is over-broad: it spans GL
+shadow-map rendering, so `any_samples=1` is not by itself evidence of a
+sceneFBO producer. The scoped `MC2_VK_SCREENSHADOW_GL_CANARY=1` wrapper around
+the legacy `runScreenShadow()` GL draw emitted no draw lines in the strict stack,
+while native screenfx health reported `shadow_frames=3245`, `gl_skipped=6490`,
+`direct_chain=1`, `used_interop=0`, `fallback_reason=""`. Next producer search
+must use scoped per-pass canaries, not the broad beginScene/endScene query.
 Final exact-binary regression after reviewer fixes:
 `.claude/vk-nointerop-strict-visible-final-smoke/`, engine smoke PASS,
 7 deterministic bookmarks before duration, `composite_vk_frames=300`,

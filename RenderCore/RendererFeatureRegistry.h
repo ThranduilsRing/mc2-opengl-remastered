@@ -1642,6 +1642,16 @@ static constexpr EnvVarDesc kAuxEnvVars[] = {
         "diagnostic only, no render behavior change."
     },
     {
+        "MC2_TRACE_VK_SCREENSHADOW_GL_CANARY",
+        "MC2_VK_SCREENSHADOW_GL_CANARY",
+        EnvVarKind::Trace,
+        false,
+        "VK final-gate diagnostic: wraps only the legacy GL runScreenShadow fullscreen draw in "
+        "GL_ANY_SAMPLES_PASSED and logs [VK_SCREENSHADOW_GL_CANARY v1]. Used after terrain GL fallback "
+        "reaches zero to prove whether screen-shadow is the next real sceneFBO GL writer. Default-OFF; "
+        "diagnostic only."
+    },
+    {
         "MC2_FEATURE_VK_TERRAIN_HEIGHT_AUDIT",
         "MC2_VK_TERRAIN_HEIGHT_AUDIT",
         EnvVarKind::Feature,

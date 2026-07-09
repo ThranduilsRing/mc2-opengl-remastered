@@ -383,6 +383,15 @@ static bool sceneGlProducerQueryEnabled()
     return s_on;
 }
 
+static bool screenShadowGlCanaryEnabled()
+{
+    static const bool s_on = []() {
+        const char* v = ::getenv("MC2_VK_SCREENSHADOW_GL_CANARY");
+        return v && v[0] == '1';
+    }();
+    return s_on;
+}
+
 static gosPostProcess* s_postProcess = nullptr;
 
 gosPostProcess* getGosPostProcess()
@@ -2789,8 +2798,23 @@ void gosPostProcess::runScreenShadow()
 
     // Draw fullscreen quad — pass 1: normal (skip terrain)
     // Draw fullscreen quad - single pass for terrain, objects, and overlays.
+    GLuint screenShadowCanaryQuery = 0;
+    const bool screenShadowCanary = screenShadowGlCanaryEnabled();
+    if (screenShadowCanary) {
+        glGenQueries(1, &screenShadowCanaryQuery);
+        glBeginQuery(GL_ANY_SAMPLES_PASSED, screenShadowCanaryQuery);
+    }
     glBindVertexArray(quadVAO_);
     glDrawArrays(GL_TRIANGLES, 0, 6);
+    if (screenShadowCanary) {
+        glEndQuery(GL_ANY_SAMPLES_PASSED);
+        GLuint anySamples = 0;
+        glGetQueryObjectuiv(screenShadowCanaryQuery, GL_QUERY_RESULT, &anySamples);
+        std::fprintf(stderr,
+            "[VK_SCREENSHADOW_GL_CANARY v1] any_samples=%u sceneFBO=%u csm=%d debug=%d\n",
+            (unsigned)anySamples, (unsigned)sceneFBO_, csmActive ? 1 : 0, screenShadowDebug_);
+        glDeleteQueries(1, &screenShadowCanaryQuery);
+    }
 
     glBindVertexArray(0);
 
