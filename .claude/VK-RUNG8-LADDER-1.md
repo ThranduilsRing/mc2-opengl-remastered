@@ -619,3 +619,25 @@ no tessellation anywhere in the tail.
   after water at the remaining `glInteropSignalToVk` in the objectId branch.
   Next deletion slice: native ownership/writes for objectId MRT2 in the prop/mech
   paths, or retirement of that view-mode dependency.
+- 8.7x - OBJECTID COMPOSITE DIRECT CANARY
+  (VK-OBJECTID-COMPOSITE-DIRECT-CANARY-1). Added default-off
+  `MC2_VK_OBJECTID_DIRECT_CHAIN=1`, guarded by the full composite direct-chain
+  stack. When armed for ObjectIdDebug/Thermal composite modes, the native visual
+  composite treats objectId MRT2 as already Vulkan-owned and skips the remaining
+  objectId GL->VK/VK->GL semaphore handoff. The strict visible harness now includes
+  the gate. Verification: first proof accidentally deployed the non-Vulkan
+  `build64` lane and fail-softed to GL, discarded. Correct Vulkan proof used
+  `build64_island/RelWithDebInfo` and deployed 266 files including
+  `shaders/vulkan/*.spv`; after commit/rebuild, the clean receipt
+  `.claude/vk-nointerop-strict-visible-objectid-direct-clean/` captured 11/11
+  deterministic `mc2_01` bookmarks with
+  `MC2_OBJECT_ID_BUFFER=1`, `MC2_VIEW_MODE=objectid`, and
+  `MC2_VK_NO_GL_INTEROP_STRICT=1`. Log receipt: `sha=cef4d095d920 dirty=0`,
+  Vulkan backend selected,
+  objectId(MRT2) active as VK `R32UI`, terrain/prop/mech/water islands all ran,
+  `VK_WATER_TIER1 used_interop=0`, `VK_PROP_COLOR_TIER1 used_interop=0`,
+  `composite_vk_frames=300`, `gl_handoff_skip_frames=300`,
+  `gpu_mech_id_writes=4143`, smoke PASS, and no `[VK_NO_GL_INTEROP_STRICT]`
+  abort. Correctness follow-up remains full native objectId MRT2 writes/clear in
+  terrain/prop/mech/water if ObjectIdDebug pixel parity is promoted from canary to
+  product requirement.

@@ -1341,6 +1341,17 @@ Current tail status:
   Debug classification and non-CSM dynamic stay GL fallback paths.
 - Remaining deletion blocker: shared scene color/depth/present substrates still
   rely on `gl_interop_view.*` while GL can produce earlier scene pixels.
+- ObjectIdDebug strict canary is green under the native final-tail stack:
+  `MC2_VK_OBJECTID_DIRECT_CHAIN=1` skips the native composite's objectId MRT2
+  interop handoff when the full composite direct-chain stack is armed. Correct
+  Vulkan proof (after discarding a non-Vulkan `build64` false positive):
+  `.claude/vk-nointerop-strict-visible-objectid-direct-clean/`, 11/11
+  deterministic `mc2_01` bookmarks with `MC2_OBJECT_ID_BUFFER=1`,
+  `MC2_VIEW_MODE=objectid`, `MC2_VK_NO_GL_INTEROP_STRICT=1`; log shows
+  `sha=cef4d095d920 dirty=0`, objectId VK `R32UI`, all
+  terrain/prop/mech/water islands active, `composite_vk_frames=300`,
+  `gl_handoff_skip_frames=300`, smoke PASS, and no strict abort. This is a
+  deletion-readiness canary, not a full objectId MRT2 parity port.
 
 ## RUNG 8.6f - VK-HUD-NATIVE-QUEUE-1
 

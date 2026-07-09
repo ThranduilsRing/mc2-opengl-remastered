@@ -238,6 +238,14 @@ bool compositeDirectChainGateEnabled() {
     return on;
 }
 
+bool objectIdDirectChainGateEnabled() {
+    static const bool on = []() {
+        const char* v = getenv("MC2_VK_OBJECTID_DIRECT_CHAIN");
+        return v && v[0] == '1' && compositeDirectChainGateEnabled();
+    }();
+    return on;
+}
+
 bool skipGlPresentHandoffGateEnabled() {
     static const bool on = []() {
         const char* v = getenv("MC2_VK_PRESENT_SKIP_GL_HANDOFF");
@@ -1682,9 +1690,10 @@ bool EnginePresentVk::renderNativeCompositeVisual(float exposure,
     if (needsObjectId)
         fsObjectId = vkImageResourceBeginFrame(objectId);
     const bool sceneDirectChain = compositeDirectChainGateEnabled();
+    const bool objectIdDirectChain = needsObjectId && objectIdDirectChainGateEnabled();
     if (!sceneDirectChain)
         glInteropSignalToVk(*sceneView, GL_LAYOUT_COLOR_ATTACHMENT_EXT, fsScene.parity);
-    if (needsObjectId)
+    if (needsObjectId && !objectIdDirectChain)
         glInteropSignalToVk(*objectIdView, GL_LAYOUT_COLOR_ATTACHMENT_EXT, fsObjectId.parity);
 
     vkResetCommandBuffer(s.cbuf, 0);
@@ -1771,14 +1780,14 @@ bool EnginePresentVk::renderNativeCompositeVisual(float exposure,
         waitStages[waitN] = VK_PIPELINE_STAGE_FRAGMENT_SHADER_BIT;
         ++waitN;
     }
-    if (needsObjectId && fsObjectId.signal != VK_NULL_HANDLE) {
+    if (needsObjectId && !objectIdDirectChain && fsObjectId.signal != VK_NULL_HANDLE) {
         waitSems[waitN] = fsObjectId.signal;
         waitStages[waitN] = VK_PIPELINE_STAGE_FRAGMENT_SHADER_BIT;
         ++waitN;
     }
     uint32_t sigN = 0;
     if (!sceneDirectChain && sceneView->vkToGlImported && fsScene.vk2gl) signalSems[sigN++] = fsScene.vk2gl;
-    if (needsObjectId && objectIdView->vkToGlImported && fsObjectId.vk2gl)
+    if (needsObjectId && !objectIdDirectChain && objectIdView->vkToGlImported && fsObjectId.vk2gl)
         signalSems[sigN++] = fsObjectId.vk2gl;
 
     VkSubmitInfo si{VK_STRUCTURE_TYPE_SUBMIT_INFO};
@@ -1794,7 +1803,7 @@ bool EnginePresentVk::renderNativeCompositeVisual(float exposure,
 
     if (!sceneDirectChain && sceneView->vkToGlImported && fsScene.vk2gl)
         glInteropWaitFromVk(*sceneView, GL_LAYOUT_COLOR_ATTACHMENT_EXT, fsScene.parity);
-    if (needsObjectId && objectIdView->vkToGlImported && fsObjectId.vk2gl)
+    if (needsObjectId && !objectIdDirectChain && objectIdView->vkToGlImported && fsObjectId.vk2gl)
         glInteropWaitFromVk(*objectIdView, GL_LAYOUT_COLOR_ATTACHMENT_EXT, fsObjectId.parity);
     if (vkWaitForFences(s.dev, 1, &fsScene.fence, VK_TRUE, 5ull * 1000 * 1000 * 1000) != VK_SUCCESS)
         return false;
