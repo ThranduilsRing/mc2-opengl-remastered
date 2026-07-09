@@ -271,6 +271,8 @@ struct gosPostProcess::VkPostScreenFx {
     VkCommandBuffer  cbuf[2] = {VK_NULL_HANDLE, VK_NULL_HANDLE}; // per parity slot
 };
 
+static bool vkPostScreenFxDirectChainEnabled();
+
 namespace {
 
 bool make_buffer(gosPostProcess::VkPostScreenFx* s, VkDeviceSize size,
@@ -355,8 +357,9 @@ bool build_state(gosPostProcess::VkPostScreenFx* s, int w, int h) {
     s->sDepthView  = mc2SharedSceneDepthGetGlView();
     s->sStaticShadowRes = mc2SharedStaticShadowGetResource();
     s->sStaticShadowView = mc2SharedStaticShadowGetGlView();
-    if (!s->sColorRes || !s->sColorView || !s->sNormalRes || !s->sNormalView ||
-        !s->sDepthRes || !s->sDepthView) {
+    const bool directChain = vkPostScreenFxDirectChainEnabled();
+    if (!s->sColorRes || !s->sNormalRes || !s->sDepthRes ||
+        (!directChain && (!s->sColorView || !s->sNormalView || !s->sDepthView))) {
         setFallback("shared_gbuffer_not_ready"); return false;
     }
     if ((int)s->sColorRes->w  != w || (int)s->sColorRes->h  != h ||
