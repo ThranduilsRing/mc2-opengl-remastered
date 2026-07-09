@@ -193,6 +193,18 @@ bool directFboGateEnabled() {
     return on;
 }
 
+bool presentNoGlImportGateEnabled() {
+    static const bool on = []() {
+        const char* v = getenv("MC2_VK_PRESENT_NO_GL_IMPORT");
+        if (v && v[0] == '1') {
+            plog("MC2_VK_PRESENT_NO_GL_IMPORT=1 -- present image uses a VK-only allocation.");
+            return true;
+        }
+        return false;
+    }();
+    return on;
+}
+
 // VK-TAIL-HOOK-1: opt-in proof seam for native final-tail commands. The hook is
 // behavior-neutral for now; it records a real command-buffer dependency at the
 // exact point future native HUD/ImGui rendering will attach.
@@ -417,8 +429,10 @@ bool buildSwapchain(EnginePresentVk::Impl& s, uint32_t w, uint32_t h,
     sci.presentMode      = s.presentMode;
     sci.clipped          = VK_TRUE;
     sci.oldSwapchain     = oldSwapchain;
-    if (vkCreateSwapchainKHR(s.dev, &sci, nullptr, &s.swapchain) != VK_SUCCESS) {
-        reason = "vkCreateSwapchainKHR failed"; return false;
+    VkResult createResult = vkCreateSwapchainKHR(s.dev, &sci, nullptr, &s.swapchain);
+    if (createResult != VK_SUCCESS) {
+        reason = "vkCreateSwapchainKHR failed (VkResult=" + std::to_string((int)createResult) + ")";
+        return false;
     }
     s.scFormat = chosen.format;
     s.scExtent = extent;
@@ -447,6 +461,14 @@ bool rebuildSwapchain(EnginePresentVk::Impl& s, uint32_t w, uint32_t h, std::str
     s.scImages.clear();
     s.swapchain = VK_NULL_HANDLE;
     bool ok = buildSwapchain(s, w, h, old, reason);
+    if (!ok && old) {
+        std::string firstReason = reason;
+        plog("swapchain rebuild with oldSwapchain failed (%s); retrying without oldSwapchain.",
+             firstReason.c_str());
+        ok = buildSwapchain(s, w, h, VK_NULL_HANDLE, reason);
+        if (!ok)
+            reason = firstReason + "; retry without oldSwapchain: " + reason;
+    }
     for (VkSemaphore sem : oldSems) if (sem) vkDestroySemaphore(s.dev, sem, nullptr);
     if (old) vkDestroySwapchainKHR(s.dev, old, nullptr);
     return ok;
@@ -1474,7 +1496,10 @@ bool buildSharedImage(EnginePresentVk::Impl& s, uint32_t w, uint32_t h, std::str
     if (s.glView.glTex) glInteropViewDestroy(&s.glView);
     if (s.sharedImg.image) vkImageResourceDestroy(&s.sharedImg, s.dev);
 
-    // RGBA8, exportable. COLOR_ATTACHMENT so GL can render/blit into it via an FBO;
+    const bool noGlImport = presentNoGlImportGateEnabled();
+
+    // RGBA8. COLOR_ATTACHMENT so native VK composite/HUD/ImGui can render into it
+    // and, unless noGlImport is armed, GL can render/blit into it via an imported FBO.
     // TRANSFER_SRC so VK can blit it into the swapchain; TRANSFER_DST for the initial
     // acquire barrier bookkeeping / robustness.
     if (!vkImageResourceCreate(&s.sharedImg, s.dev, s.phys, w, h,
@@ -1482,8 +1507,14 @@ bool buildSharedImage(EnginePresentVk::Impl& s, uint32_t w, uint32_t h, std::str
                                VK_IMAGE_USAGE_COLOR_ATTACHMENT_BIT |
                                VK_IMAGE_USAGE_TRANSFER_SRC_BIT |
                                VK_IMAGE_USAGE_TRANSFER_DST_BIT,
-                               /*exportable*/ true)) {
-        reason = "vkImageResourceCreate(exportable RGBA8) failed"; return false;
+                               /*exportable*/ !noGlImport)) {
+        reason = noGlImport ? "vkImageResourceCreate(VK-only RGBA8) failed"
+                            : "vkImageResourceCreate(exportable RGBA8) failed";
+        return false;
+    }
+    if (noGlImport) {
+        s.imgW = w; s.imgH = h;
+        return true;
     }
     if (!glInteropViewCreate(&s.glView, &s.sharedImg, s.phys, GL_RGBA8)) {
         reason = "glInteropViewCreate failed (LUID / ext / GL error)"; return false;
@@ -1640,7 +1671,8 @@ bool EnginePresentVk::init(VulkanContext& ctx, SDL_Window* glWindow, uint32_t w,
 // once per frame from gosPostProcess::endScene, before the composite tail.
 unsigned int EnginePresentVk::presentDirectFbo() {
     ++health_.direct_fbo_requests;
-    if (!directFboGateEnabled() || !created_ || !impl_ || impl_->copyFbo == 0) {
+    if (presentNoGlImportGateEnabled() ||
+        !directFboGateEnabled() || !created_ || !impl_ || impl_->copyFbo == 0) {
         directFbo_ = 0;
         presentImageVkOwned_ = false;
         return 0;
@@ -1650,6 +1682,21 @@ unsigned int EnginePresentVk::presentDirectFbo() {
     ++health_.direct_fbo_grants;
     health_.last_direct_fbo = directFbo_;
     return directFbo_;
+}
+
+bool EnginePresentVk::presentDirectVkOnly() {
+    if (!presentNoGlImportGateEnabled() || !directFboGateEnabled() ||
+        !nativeCompositeGateEnabled() || !created_ || !impl_ ||
+        impl_->copyFbo != 0 || impl_->sharedImg.image == VK_NULL_HANDLE) {
+        directFbo_ = 0;
+        presentImageVkOwned_ = false;
+        return false;
+    }
+    directFbo_ = 1u;
+    presentImageVkOwned_ = false;
+    ++health_.direct_fbo_grants;
+    health_.last_direct_fbo = directFbo_;
+    return true;
 }
 
 bool EnginePresentVk::renderNativeCompositeVisual(float exposure,

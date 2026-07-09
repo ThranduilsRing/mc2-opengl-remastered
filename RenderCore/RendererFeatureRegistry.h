@@ -626,6 +626,17 @@ static constexpr EnvVarDesc kAuxEnvVars[] = {
         "native HUD/ImGui insertion point executes."
     },
     {
+        "MC2_FEATURE_VK_PRESENT_NO_GL_IMPORT",
+        "MC2_VK_PRESENT_NO_GL_IMPORT",
+        EnvVarKind::Feature,
+        false,
+        "VK present-tail ownership gate. Default-OFF. With the strict native "
+        "present stack armed, EnginePresentVk allocates the shared present image "
+        "as a VK-only RGBA8 target instead of an exportable GL memory-object/FBO. "
+        "This proves native composite/HUD/ImGui can produce the present image "
+        "without the present-specific GL import."
+    },
+    {
         "MC2_TRACE_VK_PRESENT_NATIVE_STRICT",
         "MC2_VK_PRESENT_NATIVE_STRICT",
         EnvVarKind::Trace,

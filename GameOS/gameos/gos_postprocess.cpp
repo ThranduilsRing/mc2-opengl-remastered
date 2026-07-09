@@ -4177,9 +4177,13 @@ void gosPostProcess::endScene()
     // inherited glClear / glReadBuffer(GL_BACK is only used inside copy-1, which is
     // now skipped) all target this attachment correctly (see FBO-0-assumption scan).
     GLuint directFbo = 0;
+    bool directVkOnly = false;
 #ifdef MC2_VULKAN
     if (mc2::renderBackend() == mc2::RenderBackend::Vulkan) {
-        directFbo = (GLuint)mc2vk::getOrCreateEnginePresentVk().presentDirectFbo();
+        mc2vk::EnginePresentVk& present = mc2vk::getOrCreateEnginePresentVk();
+        directFbo = (GLuint)present.presentDirectFbo();
+        if (directFbo == 0)
+            directVkOnly = present.presentDirectVkOnly();
     }
 #endif
     if (directFbo != 0) {
@@ -4272,7 +4276,7 @@ void gosPostProcess::endScene()
     if (effectiveModeForComposite == 1 && sceneObjectIdTex_ == 0)
         effectiveModeForComposite = 0;
 #ifdef MC2_VULKAN
-    if (directFbo != 0 && mc2::renderBackend() == mc2::RenderBackend::Vulkan &&
+    if ((directFbo != 0 || directVkOnly) && mc2::renderBackend() == mc2::RenderBackend::Vulkan &&
         (effectiveModeForComposite == 0 || effectiveModeForComposite == 1 ||
          effectiveModeForComposite == 3 || effectiveModeForComposite == 5)) {
         nativeCompositeDone = mc2vk::getOrCreateEnginePresentVk().renderNativeCompositeVisual(

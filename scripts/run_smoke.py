@@ -1804,6 +1804,10 @@ def main():
                             # buffer seam; proves native HUD/ImGui can execute
                             # after GL->VK handoff and before the swapchain blit.
                             "MC2_VK_PRESENT_TAIL_HOOK",
+                            # VK present no-import proof gate: allocates the
+                            # present target as VK-only when the native strict
+                            # stack owns composite/HUD/ImGui.
+                            "MC2_VK_PRESENT_NO_GL_IMPORT",
                             # VK-PRESENT-SKIP-GL-HANDOFF-1: explicit proof that
                             # copy-2 can consume a VK-owned present image without
                             # a GL->VK semaphore signal when native composite ran.

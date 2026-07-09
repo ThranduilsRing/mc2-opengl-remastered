@@ -154,6 +154,12 @@ public:
     // any GL include; the impl casts to/from GLuint at the .cpp boundary.
     unsigned int presentDirectFbo();
 
+    // VK-only strict/native present path: arms the same copy-1-skip contract as
+    // presentDirectFbo(), but without exposing a GL FBO. Valid only when the
+    // present image was allocated without GL import and native composite/HUD/ImGui
+    // will produce all tail pixels.
+    bool presentDirectVkOnly();
+
     // Rung 8.6b seam: true only after this frame's endScene() successfully armed
     // the direct-present shared FBO. Future native HUD/ImGui tail work must use
     // this as its precondition; it is not permission to begin a second VK write
