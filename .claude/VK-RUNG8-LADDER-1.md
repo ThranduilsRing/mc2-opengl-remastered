@@ -453,3 +453,12 @@ no tessellation anywhere in the tail.
   `[VK_PRESENT] VK-owned present image consumed without GL handoff
   (gl_handoff_skip_frames=1)`, native ImGui `used_vulkan=1`, HUD skip
   `reason="native_full_coverage"`, and `fallback_reason=""`.
+- 8.7m - STATIC SHADOW VK SUBSTRATE
+  (VK-STATIC-SHADOW-MAP-1). Adds default-off `MC2_VK_STATIC_SHADOW_MAP`:
+  `shadowDepthTex_`/`ShadowStaticMap` can now be a VK-built exportable
+  `D32_SFLOAT` image imported into GL as `GL_DEPTH_COMPONENT32F`. GL still
+  renders the static shadow pass and GL screen-shadow still samples the same
+  texture with the old compare state; this only gives the next native
+  screen-shadow slice a same-image `VkImageResource` for static shadow sampling
+  without adding a readback/copy. Fail-soft falls back to the plain GL
+  `GL_DEPTH_COMPONENT24` allocation.

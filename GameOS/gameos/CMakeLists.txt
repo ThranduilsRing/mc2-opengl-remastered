@@ -206,6 +206,10 @@ if(MC2_VULKAN)
         # plain GL alloc (byte-identical). Layout-affecting header members
         # (sharedSceneColor_/sharedSceneNormal_) under #ifdef MC2_VULKAN_ISLAND.
         list(APPEND SOURCES vulkan_shared_scene_color.cpp)
+        # VK rung 8 screen-shadow substrate: back the static shadow map with a
+        # VK-built exportable D32F image imported into GL as GL_DEPTH_COMPONENT32F.
+        # GL still renders it; native screen-shadow can later sample the same image.
+        list(APPEND SOURCES vulkan_shared_static_shadow.cpp)
         # VK-P13-SELECTOR-1 / T3: the whole-frame GL->VK present intercept. Borrows
         # the T2 shared VulkanContext device (no second device); owns the hidden
         # present window + surface + swapchain + the exportable interop image. Uses

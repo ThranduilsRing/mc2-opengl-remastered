@@ -734,6 +734,20 @@ static constexpr EnvVarDesc kAuxEnvVars[] = {
         "resize (destroyFBOs tears down + createFBOs rebuilds). Surfaced in [VK_SHARED_SCENE_DEPTH] "
         "log line. Gate OFF (or island not compiled) = byte-identical GL scene-depth path."
     },
+    {
+        "MC2_FEATURE_VK_STATIC_SHADOW_MAP",
+        "MC2_VK_STATIC_SHADOW_MAP",
+        EnvVarKind::Feature,
+        false,
+        "VK-STATIC-SHADOW-MAP: presence-gated =1, default OFF. Backs the static sun shadow "
+        "map (ShadowStaticMap / shadowDepthTex_) with a VK-built exportable D32_SFLOAT image "
+        "imported into GL as GL_DEPTH_COMPONENT32F at initShadows. GL still renders the static "
+        "shadow pass and GL screen-shadow still samples the imported texture with the same "
+        "compare sampler state; this only provides a same-image VkImageResource for the later "
+        "native screen-shadow pass. FAIL-SOFT: shared Vulkan context or GL interop failure falls "
+        "back to the plain GL GL_DEPTH_COMPONENT24 allocation. Gate OFF = byte-identical GL "
+        "static shadow path."
+    },
     // VK-P11 TIER-1 PROP COLOR: in-place shared-GBuffer co-write (Tier-1, supersedes Tier-0).
     {
         "MC2_FEATURE_VK_PROP_COLOR_TIER1",

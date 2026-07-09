@@ -1619,6 +1619,12 @@ def main():
                             # allowlist Popen drops it and the gate-ON smoke silently
                             # runs the plain GL depth alloc (gate inert / fail-soft).
                             "MC2_VK_SHARED_SCENE_DEPTH",
+                            # VK-STATIC-SHADOW-MAP: backs ShadowStaticMap with a
+                            # VK-built exportable D32 image imported into GL. GL still
+                            # renders/samples it; native screen-shadow later can bind
+                            # the same VkImageResource. Must be allowlisted or the
+                            # substrate proof silently runs the plain GL allocation.
+                            "MC2_VK_STATIC_SHADOW_MAP",
                             # VK-P11 TIER-1 PROP COLOR: co-writes props IN-PLACE into
                             # the shared scene color(MRT0)+normal(MRT1)+depth GBuffer
                             # (no side-image/composite). Requires the shared engine

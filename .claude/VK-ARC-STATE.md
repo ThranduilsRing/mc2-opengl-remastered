@@ -1263,6 +1263,10 @@ Current tail status:
   shared present image was produced by VK. Visible proof captured 3/3 building
   bookmarks in `.claude/vk-present-skip-gl-handoff/` and logged
   `gl_handoff_skip_frames=1`.
+- Static shadow has a VK substrate gate: `MC2_VK_STATIC_SHADOW_MAP=1` backs
+  `ShadowStaticMap` with exportable VK `D32_SFLOAT` imported into GL as
+  `GL_DEPTH_COMPONENT32F`. GL still renders/samples it; native screen-shadow
+  can later bind the same image without a copy.
 - Remaining deletion blocker: shared scene color/depth/present substrates still
   rely on `gl_interop_view.*` while GL can produce earlier scene pixels.
 
