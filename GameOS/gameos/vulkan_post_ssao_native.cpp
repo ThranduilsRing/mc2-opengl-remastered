@@ -94,8 +94,10 @@ void vlog(const char* fmt, ...) {
 struct PostSsaoNativeHealth {
     int  runtimeGate   = 0;   // MC2_VK_POST_SSAO resolved ON
     int  substrateLive = 0;   // shared color0 + normal + depth present at init
+    int  directChain   = 0;   // MC2_VK_POST_SSAO_DIRECT_CHAIN resolved ON
     unsigned long attempted  = 0;  // frames the native path was entered
     unsigned long usedVulkan = 0;  // frames both passes actually rendered via VK
+    unsigned long usedInterop = 0; // frames that used GL<->VK semaphores
     unsigned long glSkipped  = 0;  // GL SSAO sites skipped (1 per used frame)
     char fallbackReason[64]  = {0};
     double renderUs = 0.0;         // record+submit+sem/fence wait, last frame
@@ -678,6 +680,26 @@ bool gosPostProcess::vkPostSsaoNativeEnabled()
     return state == 1;
 }
 
+static bool vkPostSsaoDirectChainEnabled()
+{
+    static int state = -1;
+    if (state == -1) {
+        const bool fullUpstreamChain =
+            mc2vkgate::envTriState("MC2_VK_TERRAIN_NATIVE_PREFIX_CLEAR") == 1 &&
+            mc2vkgate::envTriState("MC2_VK_PROP_DIRECT_CHAIN") == 1 &&
+            mc2vkgate::envTriState("MC2_VK_MECH_DIRECT_CHAIN") == 1 &&
+            mc2vkgate::envTriState("MC2_VK_WATER_TIER1") == 1 &&
+            mc2vkgate::envTriState("MC2_VK_WATER_DIRECT_CHAIN") == 1;
+        state = (mc2vkgate::envTriState("MC2_VK_POST_SSAO_DIRECT_CHAIN") == 1 &&
+                 fullUpstreamChain) ? 1 : 0;
+        g_ps.directChain = state;
+        if (state == 1)
+            vlog("MC2_VK_POST_SSAO_DIRECT_CHAIN=1 - skipping SSAO GL<->VK handoff "
+                 "(full terrain->prop->mech->water chain armed).");
+    }
+    return state == 1;
+}
+
 // ---------------------------------------------------------------------------
 // runVkPostSsaoNative(): render SSAO gen + apply natively in VK. Returns true only
 // when both passes were submitted (caller skips the GL SSAO site); ANY not-ready
@@ -745,15 +767,17 @@ bool gosPostProcess::runVkPostSsaoNative()
         }
     }
 
-    // ---- GL->VK hand-off on ALL THREE shared resources (fog-native pattern,
-    // plus the normal image the gen pass samples). ----
+    // ---- Shared resource ownership (handoff mode, or direct-chain skip). ----
+    const bool directChain = vkPostSsaoDirectChainEnabled();
     VkFrameSync fsC = vkImageResourceBeginFrame(s->sColorRes);
     VkFrameSync fsN = vkImageResourceBeginFrame(s->sNormalRes);
     VkFrameSync fsD = vkImageResourceBeginFrame(s->sDepthRes);
     VkCommandBuffer cb = s->cbuf[fsC.parity & 1u];
-    glInteropSignalToVk(*s->sColorView,  GL_LAYOUT_COLOR_ATTACHMENT_EXT,         fsC.parity);
-    glInteropSignalToVk(*s->sNormalView, GL_LAYOUT_COLOR_ATTACHMENT_EXT,         fsN.parity);
-    glInteropSignalToVk(*s->sDepthView,  GL_LAYOUT_DEPTH_STENCIL_ATTACHMENT_EXT, fsD.parity);
+    if (!directChain) {
+        glInteropSignalToVk(*s->sColorView,  GL_LAYOUT_COLOR_ATTACHMENT_EXT,         fsC.parity);
+        glInteropSignalToVk(*s->sNormalView, GL_LAYOUT_COLOR_ATTACHMENT_EXT,         fsN.parity);
+        glInteropSignalToVk(*s->sDepthView,  GL_LAYOUT_DEPTH_STENCIL_ATTACHMENT_EXT, fsD.parity);
+    }
 
     vkResetCommandBuffer(cb, 0);
     VkCommandBufferBeginInfo bi{};
@@ -845,28 +869,28 @@ bool gosPostProcess::runVkPostSsaoNative()
         setFallback("record_failed"); s->disabled = true; return false;
     }
 
-    // ---- Submit: wait ALL GL->VK sems; signal ALL VK->GL sems + color fence. ----
+    // ---- Submit: handoff mode waits/signals GL sems; direct-chain mode does not. ----
     VkSemaphore waitSems[3];   VkPipelineStageFlags waitStages[3];
     VkSemaphore signalSems[3]; uint32_t waitN = 0, sigN = 0;
-    if (fsC.signal != VK_NULL_HANDLE) {
+    if (!directChain && fsC.signal != VK_NULL_HANDLE) {
         waitSems[waitN] = fsC.signal;
         waitStages[waitN] = VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT; ++waitN;
     }
-    if (fsN.signal != VK_NULL_HANDLE) {
+    if (!directChain && fsN.signal != VK_NULL_HANDLE) {
         // The normal barrier's srcStage is COLOR_ATTACHMENT_OUTPUT; block sampling too.
         waitSems[waitN] = fsN.signal;
         waitStages[waitN] = VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT |
                             VK_PIPELINE_STAGE_FRAGMENT_SHADER_BIT; ++waitN;
     }
-    if (fsD.signal != VK_NULL_HANDLE) {
+    if (!directChain && fsD.signal != VK_NULL_HANDLE) {
         waitSems[waitN] = fsD.signal;
         waitStages[waitN] = VK_PIPELINE_STAGE_EARLY_FRAGMENT_TESTS_BIT |
                             VK_PIPELINE_STAGE_LATE_FRAGMENT_TESTS_BIT |
                             VK_PIPELINE_STAGE_FRAGMENT_SHADER_BIT; ++waitN;
     }
-    const bool gpuC = s->sColorView->vkToGlImported  && fsC.vk2gl != VK_NULL_HANDLE;
-    const bool gpuN = s->sNormalView->vkToGlImported && fsN.vk2gl != VK_NULL_HANDLE;
-    const bool gpuD = s->sDepthView->vkToGlImported  && fsD.vk2gl != VK_NULL_HANDLE;
+    const bool gpuC = !directChain && s->sColorView->vkToGlImported  && fsC.vk2gl != VK_NULL_HANDLE;
+    const bool gpuN = !directChain && s->sNormalView->vkToGlImported && fsN.vk2gl != VK_NULL_HANDLE;
+    const bool gpuD = !directChain && s->sDepthView->vkToGlImported  && fsD.vk2gl != VK_NULL_HANDLE;
     if (gpuC) signalSems[sigN++] = fsC.vk2gl;
     if (gpuN) signalSems[sigN++] = fsN.vk2gl;
     if (gpuD) signalSems[sigN++] = fsD.vk2gl;
@@ -893,6 +917,7 @@ bool gosPostProcess::runVkPostSsaoNative()
 
     g_ps.renderUs = std::chrono::duration<double, std::micro>(clk::now() - t0).count();
     ++g_ps.usedVulkan;
+    if (!directChain) ++g_ps.usedInterop;
     g_ps.glSkipped += 1;
     return true;
 }
@@ -901,9 +926,11 @@ void gosPostProcess::destroyVkPostSsaoNative()
 {
     if (g_ps.runtimeGate) {
         vlog("[HEALTH] runtime_gate=%d substrate_live=%d attempted=%lu used_vulkan=%lu "
-             "gl_skipped=%lu fallback_reason=\"%s\" render_us_last=%.1f",
+             "direct_chain=%d used_interop=%lu gl_skipped=%lu fallback_reason=\"%s\" "
+             "render_us_last=%.1f",
              g_ps.runtimeGate, g_ps.substrateLive, g_ps.attempted, g_ps.usedVulkan,
-             g_ps.glSkipped, g_ps.fallbackReason, g_ps.renderUs);
+             g_ps.directChain, g_ps.usedInterop, g_ps.glSkipped, g_ps.fallbackReason,
+             g_ps.renderUs);
     }
     if (!vkPostSsaoNative_) return;
     destroy_state(vkPostSsaoNative_);

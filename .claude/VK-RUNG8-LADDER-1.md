@@ -656,4 +656,23 @@ no tessellation anywhere in the tail.
   gl_skipped=1324`; present
   `composite_vk_frames=600 gl_handoff_skip_frames=600`; water/prop
   `used_interop=0`; no fail-soft GL fallback and no `[VK_NO_GL_INTEROP_STRICT]`
-  abort. Next same-pattern candidates: SSAO, screenfx, HZB direct-chain gates.
+  abort. Next same-pattern candidates were SSAO, then screenfx/HZB direct-chain gates.
+- 8.7z - POST SSAO DIRECT CHAIN
+  (VK-POST-SSAO-DIRECT-CHAIN-1). Added default-off
+  `MC2_VK_POST_SSAO_DIRECT_CHAIN=1`, guarded by the full
+  terrain->prop->mech->water direct-chain stack. When armed with
+  `MC2_SSAO=1` and `MC2_VK_POST_SSAO=1`, native SSAO treats shared scene
+  color/normal/depth as already Vulkan-owned, skips all GL->VK and VK->GL
+  handoffs, renders the VK-owned half-res AO intermediate, multiplies into
+  shared color0 in place, and leaves the resources Vulkan-owned for later
+  native fog/composite/present. The strict visible harness now includes the
+  SSAO master gate and both native SSAO gates. Verification:
+  `.claude/vk-nointerop-strict-visible-postssao-direct-dirty-ssaoon/`, 11/11
+  deterministic `mc2_01` bookmarks; `SSAO v1 enabled=1 debug=0`; native SSAO
+  initialized on the shared engine context; health receipt `attempted=661
+  used_vulkan=661 direct_chain=1 used_interop=0 gl_skipped=661`; fog stayed
+  direct-chain with `used_interop=0`; present `composite_vk_frames=600
+  gl_handoff_skip_frames=600`; water/prop `used_interop=0`; no
+  `[VK_NO_GL_INTEROP_STRICT]` abort. The prior
+  `.claude/vk-nointerop-strict-visible-postssao-direct-dirty/` run omitted
+  `MC2_SSAO=1`, so `attempted=0`; keep it only as a crash regression, not proof.
