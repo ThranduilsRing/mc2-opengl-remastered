@@ -1916,6 +1916,7 @@ bool EnginePresentVk::presentGLFrame(uint32_t glDrawableW, uint32_t glDrawableH,
     // Resize: if the GL drawable changed, rebuild the shared image + swapchain to
     // match the game window's new size (OS-driven resize / DPI change).
     if (glDrawableW != s.imgW || glDrawableH != s.imgH) {
+        const bool hadDirectFbo = (directFbo_ != 0);
         std::string r;
         if (!buildSharedImage(s, glDrawableW, glDrawableH, r)) {
             health_.fallback_reason = "resize: " + r; return false;
@@ -1926,6 +1927,11 @@ bool EnginePresentVk::presentGLFrame(uint32_t glDrawableW, uint32_t glDrawableH,
         ++health_.resize_count;
         health_.extent_w = s.scExtent.width;
         health_.extent_h = s.scExtent.height;
+        if (hadDirectFbo) {
+            directFbo_ = 0;
+            presentImageVkOwned_ = false;
+            return true;
+        }
     }
 
     // ==== COPY-1 (GL): FBO-0 -> shared exportable GL texture ================

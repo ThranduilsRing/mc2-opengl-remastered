@@ -1,18 +1,24 @@
 # VK-ARC-STATE — current state block (update every session)
 
 HEAD routing note (2026-07-08): current shipped tip is rung 8.7q
-`VK-PRESENT-NATIVE-STRICT-CANARY-1` on branch `claude/vk-interop-bridge-1`,
-worktree `A:/Games/mc2-vk-interop-bridge`, build dir `build64_island`.
+`VK-PRESENT-NATIVE-STRICT-CANARY-1` plus the visible resize/direct-FBO interlock
+fix on branch `claude/vk-interop-bridge-1`, worktree
+`A:/Games/mc2-vk-interop-bridge`, build dir `build64_island`.
 Always confirm the exact commit with `git log -1 --oneline` before launching
 agents; this file is append-heavy and older rung sections below are historical.
 Deploy lane for Vulkan ownership work is the literal
 `A:/Games/mc2-opengl/mc2-win64-v0.4c/mc2.exe`; pass `--exe` explicitly for
 smoke, visual, and RenderDoc harnesses. Do not rely on default deploy/visual
 lanes (`v0.4`, `v0.4d-rc1`, or non-v-prefixed `0.4c` paths).
-Rung-8 sub-ladder: `.claude/VK-RUNG8-LADDER-1.md` (8.1-8.7q shipped). Next
-work is not 8.4/8.5 replay; it is remaining deletion readiness around
-`gl_interop_view.*`, shared scene color/depth/present substrates, and any
-diagnostic/non-CSM fallback paths still needed for the final Metal gate.
+Rung-8 sub-ladder: `.claude/VK-RUNG8-LADDER-1.md` (8.1-8.7q shipped). Visible
+strict proof for the full native final tail lives at
+`.claude/vk-present-native-strict-visible-clean/`: 3/3 deterministic
+`mc2_01_buildings` bookmarks, `present_frames=2700`, `copy1_blit_frames=0`,
+`gl_handoff_skip_frames=2700`, `composite_vk_frames=2700`,
+`imgui_vk_frames=2700`, `fallback_reason=""`. Next work is not 8.4/8.5 replay;
+it is remaining deletion readiness around `gl_interop_view.*`, shared scene
+color/depth/present substrates, and any diagnostic/non-CSM fallback paths still
+needed for the final Metal gate.
 
 Verification guardrails:
 - Bracket every proof with lane hygiene: deployed exe fingerprint/manifest plus
@@ -1288,6 +1294,13 @@ Current tail status:
   shared present image was produced by VK. Visible proof captured 3/3 building
   bookmarks in `.claude/vk-present-skip-gl-handoff/` and logged
   `gl_handoff_skip_frames=1`.
+- Present native strict is now visible-proven across the full native final-tail
+  stack (`MC2_VK_POST_COMPOSITE=1`, direct FBO, tail hook, HUD skip, ImGui
+  Vulkan, skip GL handoff). Receipt:
+  `.claude/vk-present-native-strict-visible-clean/`, 3/3 deterministic
+  `mc2_01_buildings` bookmarks, `copy1_blit_frames=0`,
+  `gl_handoff_skip_frames=2700`, `composite_vk_frames=2700`,
+  `imgui_vk_frames=2700`, `fallback_reason=""`.
 - Static shadow has a VK substrate gate: `MC2_VK_STATIC_SHADOW_MAP=1` backs
   `ShadowStaticMap` with exportable VK `D32_SFLOAT` imported into GL as
   `GL_DEPTH_COMPONENT32F`. GL still renders/samples it; native screen-shadow

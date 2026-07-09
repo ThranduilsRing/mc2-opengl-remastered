@@ -502,4 +502,16 @@ no tessellation anywhere in the tail.
   `MC2_VK_PRESENT_SKIP_GL_HANDOFF` path. Minimized zero-extent smoke remains a
   non-proof and does not trip the canary. This does not delete the present
   `GlInteropView` yet; it gives future visible bookmark/RenderDoc proofs a hard
-  failure mode for hidden GL present-tail rescue.
+  failure mode for hidden GL present-tail rescue. Visible proof initially caught
+  a real resize/direct-FBO interlock bug: the first post-resize frame had a stale
+  direct-FBO arm and aborted with `present_image_not_vk_owned`. Fixed by dropping
+  exactly that resized direct-FBO present and requiring the next frame to re-arm
+  the rebuilt FBO. Clean-commit verification after the fix:
+  `.claude/vk-present-native-strict-visible-clean/`, 3/3
+  `mc2_01_buildings` bookmarks present and deterministic. Final health line:
+  `present_frames=2700`, `resize_count=1`, `direct_fbo_grants=2701`,
+  `copy1_blit_frames=0`, `copy1_skip_frames=2700`,
+  `gl_handoff_skip_frames=2700`, `tail_hook_frames=2700`,
+  `composite_vk_frames=2700`, `hud_vk_consumed_frames=1975`,
+  `imgui_vk_frames=2700`, `fallback_reason=""`. Post fog/SSAO/screenfx/HZB also
+  reported `substrate_live=1`, `used_vulkan>0`, and `fallback_reason=""`.
