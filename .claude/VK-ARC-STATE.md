@@ -1258,6 +1258,11 @@ Current tail status:
   ownership-relevant CSM dynamic case: `MC2_SHADOW_DEBUG_MODE=dynamic` uses a
   native VK overlay when the shadow island exposes a same-frame CSM array view.
   Static/non-ready debug sources intentionally retain GL fallback.
+- Present copy-2 has a VK-owned proof gate: `MC2_VK_PRESENT_SKIP_GL_HANDOFF=1`
+  skips the GL->VK semaphore signal/wait when direct present is armed and the
+  shared present image was produced by VK. Visible proof captured 3/3 building
+  bookmarks in `.claude/vk-present-skip-gl-handoff/` and logged
+  `gl_handoff_skip_frames=1`.
 - Remaining deletion blocker: shared scene color/depth/present substrates still
   rely on `gl_interop_view.*` while GL can produce earlier scene pixels.
 

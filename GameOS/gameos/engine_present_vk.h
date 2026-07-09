@@ -64,6 +64,7 @@ struct EnginePresentHealth {
     uint32_t    direct_fbo_grants   = 0;   // calls that returned the shared FBO
     uint32_t    copy1_blit_frames   = 0;   // legacy FBO-0 -> shared-image blit
     uint32_t    copy1_skip_frames   = 0;   // direct shared-FBO frames
+    uint32_t    gl_handoff_skip_frames = 0;// explicit VK-owned present-image frames
     uint32_t    tail_hook_frames    = 0;   // gated VK final-tail hook executions
     uint32_t    imgui_vk_frames     = 0;   // native ImGui draw-data frames recorded
     uint32_t    composite_vk_frames = 0;   // native composite frames recorded
@@ -216,6 +217,9 @@ private:
     // -> presentGLFrame runs copy-1 as usual; non-0 -> endScene rendered straight
     // into the shared image so presentGLFrame SKIPS copy-1 and Y-flips in copy-2).
     unsigned int directFbo_ = 0;
+    // True only when a native VK path wrote the shared present image after the
+    // current frame armed directFbo_. Cleared at each presentDirectFbo() grant.
+    bool presentImageVkOwned_ = false;
     // P13b: the existing visible GL game window we present onto via its HWND.
     // BORROWED (owned by gos_render / g_sdl_window) -- never destroyed here.
     SDL_Window* glWindow_ = nullptr;

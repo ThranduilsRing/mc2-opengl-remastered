@@ -6377,6 +6377,14 @@ flags:
     registered: no
     in_smoke_passthrough: yes
     documented_in_tier1_env_vars: yes
+  - name: MC2_VK_PRESENT_SKIP_GL_HANDOFF
+    default: unknown
+    declared_in: null
+    referenced_at:
+      - GameOS/gameos/engine_present_vk.cpp:225
+    registered: no
+    in_smoke_passthrough: yes
+    documented_in_tier1_env_vars: yes
   - name: MC2_VK_PRESENT_TAIL_HOOK
     default: unknown
     declared_in: null

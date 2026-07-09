@@ -438,3 +438,18 @@ no tessellation anywhere in the tail.
   building bookmarks. Runtime receipts: `[SHADOW_DEBUG] ... dynamic`,
   `first VK CSM array produced`, `[VK_PRESENT] created=1 ... copy1_skip_frames=5401
   composite_vk_frames=5400 shadow_debug_vk_frames=5400 ... fallback_reason=""`.
+- 8.7l - VK-OWNED PRESENT HANDOFF PROOF
+  (VK-PRESENT-SKIP-GL-HANDOFF-1). Added explicit default-off
+  `MC2_VK_PRESENT_SKIP_GL_HANDOFF`: when direct present is armed and a native VK
+  path produced the shared present image, `presentGLFrame()` skips the GL->VK
+  semaphore signal/wait pair and waits only on swapchain acquire before copy-2.
+  This proves the present blit can consume a VK-owned image without the GL
+  producer handoff; it does not delete `gl_interop_view.*` yet because GL can
+  still produce shared scene/present pixels on fallback paths. Verification:
+  build/deploy to `mc2-win64-v0.4c`, minimized smoke PASS 1/1 at
+  `tests/smoke/artifacts/2026-07-08T19-16-40` (env passthrough/stability; zero
+  surface extent), and visible bookmark proof in
+  `.claude/vk-present-skip-gl-handoff/` captured 3/3 building bookmarks with
+  `[VK_PRESENT] VK-owned present image consumed without GL handoff
+  (gl_handoff_skip_frames=1)`, native ImGui `used_vulkan=1`, HUD skip
+  `reason="native_full_coverage"`, and `fallback_reason=""`.

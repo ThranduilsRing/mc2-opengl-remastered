@@ -220,6 +220,19 @@ bool nativeCompositeGateEnabled() {
     return on;
 }
 
+bool skipGlPresentHandoffGateEnabled() {
+    static const bool on = []() {
+        const char* v = getenv("MC2_VK_PRESENT_SKIP_GL_HANDOFF");
+        if (v && v[0] == '1') {
+            plog("MC2_VK_PRESENT_SKIP_GL_HANDOFF=1 -- VK-owned present image "
+                 "proof gate ON.");
+            return true;
+        }
+        return false;
+    }();
+    return on;
+}
+
 std::string spv_dir() {
     const char* env = std::getenv("MC2_VULKAN_SPV_DIR");
     std::string d = (env && *env) ? env : "shaders/vulkan";
@@ -1586,9 +1599,11 @@ unsigned int EnginePresentVk::presentDirectFbo() {
     ++health_.direct_fbo_requests;
     if (!directFboGateEnabled() || !created_ || !impl_ || impl_->copyFbo == 0) {
         directFbo_ = 0;
+        presentImageVkOwned_ = false;
         return 0;
     }
     directFbo_ = (unsigned int)impl_->copyFbo;
+    presentImageVkOwned_ = false;
     ++health_.direct_fbo_grants;
     health_.last_direct_fbo = directFbo_;
     return directFbo_;
@@ -1744,6 +1759,7 @@ bool EnginePresentVk::renderNativeCompositeVisual(float exposure,
     }
 
     ++health_.composite_vk_frames;
+    presentImageVkOwned_ = true;
     return true;
 }
 
@@ -1932,10 +1948,21 @@ bool EnginePresentVk::presentGLFrame(uint32_t glDrawableW, uint32_t glDrawableH,
 
     // ==== GL -> VK hand-off ================================================
     // Begin the frame on the interop slot (waits the slot fence so its binary
-    // semaphore is safe to re-signal), then GL signals glToVkSem, leaving the
-    // image in COLOR_ATTACHMENT layout for VK to pick up.
+    // semaphore is safe to re-signal), then GL signals glToVkSem unless the
+    // explicit proof gate says the present image was produced by VK this frame
+    // and no GL signal is needed for copy-2 to consume it.
     VkFrameSync fs = vkImageResourceBeginFrame(&s.sharedImg);
-    glInteropSignalToVk(s.glView, GL_LAYOUT_COLOR_ATTACHMENT_EXT, fs.parity);
+    const bool skipGlHandoff =
+        copy1Skipped && presentImageVkOwned_ && skipGlPresentHandoffGateEnabled();
+    if (!skipGlHandoff) {
+        glInteropSignalToVk(s.glView, GL_LAYOUT_COLOR_ATTACHMENT_EXT, fs.parity);
+    } else {
+        ++health_.gl_handoff_skip_frames;
+        if (health_.gl_handoff_skip_frames == 1) {
+            plog("VK-owned present image consumed without GL handoff "
+                 "(gl_handoff_skip_frames=1).");
+        }
+    }
 
     // ==== COPY-2 (VK): blit shared image -> swapchain + present =============
     VkResult r = vkWaitForFences(s.dev, 1, &s.inFlight, VK_TRUE, UINT64_MAX);
@@ -2055,13 +2082,11 @@ bool EnginePresentVk::presentGLFrame(uint32_t glDrawableW, uint32_t glDrawableH,
             VK_PIPELINE_STAGE_TRANSFER_BIT, VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT);
     vkEndCommandBuffer(s.cbuf);
 
-    // Submit: WAIT the GL->VK semaphore (glToVkSem, GL signalled it) at TRANSFER
-    // (so the blit reads the image only after GL finished copy-1), AND the acquire
-    // semaphore at COLOR_ATTACHMENT_OUTPUT; SIGNAL only the per-image render sem
-    // (present-wait). We do NOT signal fs.vk2gl (the VK->GL back-channel): GL is
-    // a pure PRODUCER here (writes the shared tex, never waits on VK to read it),
-    // so signaling a binary semaphore GL never waits would be a reuse hazard. The
-    // interop slot fence (fs.fence) alone guards safe re-signalling of glToVkSem.
+    // Submit: normally WAIT the GL->VK semaphore (glToVkSem, GL signalled it) at
+    // TRANSFER, AND the acquire semaphore at COLOR_ATTACHMENT_OUTPUT. The
+    // explicit VK-owned proof gate skips the GL wait/signal pair and waits only
+    // on acquire; this is the first measured present path where copy-2 consumes
+    // a VK-written present image without a GL producer handoff.
     VkSemaphore imgRenderSem = s.renderSems[imageIndex];
     VkSemaphore waitSems[2]  = { s.acquireSem, fs.signal };
     const VkPipelineStageFlags glReadyStages = tailHook
@@ -2072,7 +2097,7 @@ bool EnginePresentVk::presentGLFrame(uint32_t glDrawableW, uint32_t glDrawableH,
         glReadyStages,
     };
     VkSubmitInfo si{VK_STRUCTURE_TYPE_SUBMIT_INFO};
-    si.waitSemaphoreCount   = 2;
+    si.waitSemaphoreCount   = skipGlHandoff ? 1u : 2u;
     si.pWaitSemaphores      = waitSems;
     si.pWaitDstStageMask    = waitStages;
     si.commandBufferCount   = 1;
@@ -2128,6 +2153,7 @@ bool EnginePresentVk::presentGLFrame(uint32_t glDrawableW, uint32_t glDrawableH,
     }
 
     if (s.ctx) health_.validation_errors = s.ctx->health().validationErrors;
+    presentImageVkOwned_ = false;
     return true;
 }
 
@@ -2297,7 +2323,8 @@ void EnginePresentVk::logHealth() const {
         "[VK_PRESENT] created=%d attempted=%d present_frames=%u resize_count=%u "
         "validation_errors=%u extent=%ux%u present_mode=%s readback_changed=%d "
         "last_checksum=0x%llx direct_fbo_requests=%u direct_fbo_grants=%u "
-        "copy1_blit_frames=%u copy1_skip_frames=%u tail_hook_frames=%u "
+        "copy1_blit_frames=%u copy1_skip_frames=%u gl_handoff_skip_frames=%u "
+        "tail_hook_frames=%u "
         "composite_vk_frames=%u shadow_debug_vk_frames=%u "
         "hud_vk_queued_frames=%u hud_vk_consumed_frames=%u "
         "hud_vk_draws_last=%u hud_vk_textured_last=%u hud_vk_serialized_last=%u "
@@ -2314,6 +2341,7 @@ void EnginePresentVk::logHealth() const {
         (unsigned long long)health_.last_readback_checksum,
         health_.direct_fbo_requests, health_.direct_fbo_grants,
         health_.copy1_blit_frames, health_.copy1_skip_frames,
+        health_.gl_handoff_skip_frames,
         health_.tail_hook_frames,
         health_.composite_vk_frames, health_.shadow_debug_vk_frames,
         health_.hud_vk_queued_frames, health_.hud_vk_consumed_frames,

@@ -1767,6 +1767,10 @@ def main():
                             # buffer seam; proves native HUD/ImGui can execute
                             # after GL->VK handoff and before the swapchain blit.
                             "MC2_VK_PRESENT_TAIL_HOOK",
+                            # VK-PRESENT-SKIP-GL-HANDOFF-1: explicit proof that
+                            # copy-2 can consume a VK-owned present image without
+                            # a GL->VK semaphore signal when native composite ran.
+                            "MC2_VK_PRESENT_SKIP_GL_HANDOFF",
                             # VK-HUD-NATIVE-QUEUE-1 (rung 8.6f): queues the
                             # ordered GameOS HUD batch to the Vulkan present tail.
                             "MC2_VK_HUD",
