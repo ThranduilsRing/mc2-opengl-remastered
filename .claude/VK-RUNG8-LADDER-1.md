@@ -729,3 +729,16 @@ no tessellation anywhere in the tail.
   `glInteropSignalToVk`/`glInteropWaitFromVk` handoff calls. It is expected to
   fail until shared scene color/depth/static shadow/present stop allocating
   Win32 external-memory resources and importing GL memory objects.
+- 8.7ad - STATIC SHADOW IMPORT OPTIONAL FOR CSM DIRECT STRICT STACK
+  (VK-STATIC-SHADOW-IMPORT-OPTIONAL-1). The strict visible harness now forces
+  `MC2_VK_STATIC_SHADOW_MAP=0` instead of letting the shared-GBuffer umbrella
+  arm the old VK-backed GL-imported static shadow texture. Native screen-shadow
+  now accepts `sStaticShadowRes == null` when CSM direct views are ready: binding
+  2 gets a valid depth descriptor, `enableShadows=0` disables the static branch,
+  and the CSM shader still samples direct VK CSM array/full-map views. Dirty
+  proof: `.claude/vk-nointerop-strict-visible-static-off-dirty/`, 11/11
+  deterministic `mc2_01`; no `VK_SHARED_STATIC_SHADOW` log lines; screenfx
+  `shadow_frames=4687 direct_chain=1 used_interop=0 fallback_reason=""`; no
+  `[VK_NO_GL_INTEROP_STRICT]` abort. This removes one exportable Win32 image +
+  GL memory-object import from the strict stack; shared scene color/depth/present
+  remain the resource-strict blockers.

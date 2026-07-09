@@ -32,7 +32,7 @@ production `glInteropSignalToVk`/`glInteropWaitFromVk` call, while
 `MC2_SHADOW_ENABLE=1`, `MC2_SHADOW_CSM=1`,
 `MC2_VK_SHADOW_INTEROP=1`, `MC2_VK_SHADOW_DIRECT_CHAIN=1`,
 `MC2_VK_CSM_ARRAY_INTEROP=1`, `MC2_VK_CSM_FULLMAP_INTEROP=1`,
-`MC2_VK_STATIC_SHADOW_MAP=1`, and `MC2_VK_POST_SCREENFX=1`,
+`MC2_VK_STATIC_SHADOW_MAP=0`, and `MC2_VK_POST_SCREENFX=1`,
 `MC2_VK_POST_SCREENFX_SHADOW=1`, `MC2_VK_POST_SCREENFX_DIRECT_CHAIN=1`,
 `MC2_HZB_BUILD=1`, `MC2_VK_POST_HZB=1`, `MC2_VK_POST_HZB_DIRECT_CHAIN=1`,
 `MC2_VK_POST_COMPOSITE_DIRECT_CHAIN=1` now make a visible `mc2_01` full
@@ -47,6 +47,13 @@ of `[VK_NO_GL_INTEROP_STRICT]`, `glInteropSignalToVk`, or
 dirty proof `.claude/vk-nointerop-strict-visible-shadow-direct-dirty-receipts/`
 with screenfx `shadow_frames=6629 direct_chain=1 used_interop=0` and
 HZB/fog/SSAO/water/prop all `used_interop=0`.
+Follow-up 8.7ad dirty proof
+`.claude/vk-nointerop-strict-visible-static-off-dirty/` forced
+`MC2_VK_STATIC_SHADOW_MAP=0`; it still passed 11/11 deterministic bookmarks
+with no `VK_SHARED_STATIC_SHADOW` log lines and screenfx
+`shadow_frames=4687 direct_chain=1 used_interop=0 fallback_reason=""`. This
+removes the static-shadow export/import from the strict stack; resource-strict
+still fails earlier at shared scene color/depth/present.
 Final exact-binary regression after reviewer fixes:
 `.claude/vk-nointerop-strict-visible-final-smoke/`, engine smoke PASS,
 7 deterministic bookmarks before duration, `composite_vk_frames=300`,

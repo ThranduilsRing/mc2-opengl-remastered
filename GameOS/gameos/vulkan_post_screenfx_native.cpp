@@ -534,7 +534,10 @@ bool build_state(gosPostProcess::VkPostScreenFx* s, int w, int h) {
         normalInfo.imageLayout = VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL;
         VkDescriptorImageInfo staticShadowInfo{};
         staticShadowInfo.sampler = s->shadowCompareSampler;
-        staticShadowInfo.imageView = s->sStaticShadowRes ? s->sStaticShadowRes->view : VK_NULL_HANDLE;
+        // Binding 2 is statically present in both shadow shaders. When the static
+        // GL-imported shadow substrate is absent but CSM direct-chain is available,
+        // bind a valid depth view and drive the static-shadow branch off via UBO.
+        staticShadowInfo.imageView = s->sStaticShadowRes ? s->sStaticShadowRes->view : s->depthSampleView;
         staticShadowInfo.imageLayout = VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL;
         VkDescriptorBufferInfo cloudUboInfo{ s->cloudUbo, 0, VK_WHOLE_SIZE };
         VkDescriptorBufferInfo shoreUboInfo{ s->shoreUbo, 0, VK_WHOLE_SIZE };
@@ -576,7 +579,7 @@ bool build_state(gosPostProcess::VkPostScreenFx* s, int w, int h) {
         writes[8].dstSet = s->shadowSet; writes[8].dstBinding = 3; writes[8].descriptorCount = 1;
         writes[8].descriptorType = VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER;
         writes[8].pBufferInfo = &shadowUboInfo;
-        vkUpdateDescriptorSets(s->device, s->sStaticShadowRes ? 9 : 5, writes, 0, nullptr);
+        vkUpdateDescriptorSets(s->device, 9, writes, 0, nullptr);
     }
 
     // Two pipelines — fullscreen tri, no vertex input, cull none, MULTIPLY
@@ -764,7 +767,8 @@ bool gosPostProcess::runVkPostScreenShadowStaticNative()
             return false;
         }
     }
-    if (!s->sStaticShadowRes || !s->sStaticShadowView || !s->shadowSet ||
+    const bool hasStaticShadow = s->sStaticShadowRes && s->sStaticShadowView;
+    if ((!hasStaticShadow && !csmDirectReady) || !s->shadowSet ||
         s->shadowPipe == VK_NULL_HANDLE || (csmDirectReady && s->shadowCsmPipe == VK_NULL_HANDLE)) {
         setFallback("static_shadow_substrate_not_ready");
         return false;
@@ -806,7 +810,7 @@ bool gosPostProcess::runVkPostScreenShadowStaticNative()
     }
     p.screenSize[0] = (float)width_;
     p.screenSize[1] = (float)height_;
-    p.enableShadows = 1;
+    p.enableShadows = hasStaticShadow ? 1 : 0;
     p.debugMode = 0;
     p.shadowSoftness = shadow_softness_default();
     void* m = nullptr;
@@ -843,13 +847,16 @@ bool gosPostProcess::runVkPostScreenShadowStaticNative()
     VkFrameSync fsC = vkImageResourceBeginFrame(s->sColorRes);
     VkFrameSync fsN = vkImageResourceBeginFrame(s->sNormalRes);
     VkFrameSync fsD = vkImageResourceBeginFrame(s->sDepthRes);
-    VkFrameSync fsS = vkImageResourceBeginFrame(s->sStaticShadowRes);
+    VkFrameSync fsS{};
+    if (hasStaticShadow)
+        fsS = vkImageResourceBeginFrame(s->sStaticShadowRes);
     VkCommandBuffer cb = s->cbuf[fsC.parity & 1u];
     if (!directChain) {
         glInteropSignalToVk(*s->sColorView,  GL_LAYOUT_COLOR_ATTACHMENT_EXT, fsC.parity);
         glInteropSignalToVk(*s->sNormalView, GL_LAYOUT_COLOR_ATTACHMENT_EXT, fsN.parity);
         glInteropSignalToVk(*s->sDepthView,  GL_LAYOUT_DEPTH_STENCIL_ATTACHMENT_EXT, fsD.parity);
-        glInteropSignalToVk(*s->sStaticShadowView, GL_LAYOUT_DEPTH_STENCIL_ATTACHMENT_EXT, fsS.parity);
+        if (hasStaticShadow)
+            glInteropSignalToVk(*s->sStaticShadowView, GL_LAYOUT_DEPTH_STENCIL_ATTACHMENT_EXT, fsS.parity);
     }
 
     vkResetCommandBuffer(cb, 0);
@@ -882,10 +889,12 @@ bool gosPostProcess::runVkPostScreenShadowStaticNative()
             VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL, VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL,
             VK_ACCESS_COLOR_ATTACHMENT_WRITE_BIT, VK_ACCESS_SHADER_READ_BIT,
             VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT, VK_PIPELINE_STAGE_FRAGMENT_SHADER_BIT);
-    barrier(s->sStaticShadowRes->image, VK_IMAGE_ASPECT_DEPTH_BIT,
-            VK_IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT_OPTIMAL, VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL,
-            VK_ACCESS_DEPTH_STENCIL_ATTACHMENT_WRITE_BIT, VK_ACCESS_SHADER_READ_BIT,
-            VK_PIPELINE_STAGE_LATE_FRAGMENT_TESTS_BIT, VK_PIPELINE_STAGE_FRAGMENT_SHADER_BIT);
+    if (hasStaticShadow) {
+        barrier(s->sStaticShadowRes->image, VK_IMAGE_ASPECT_DEPTH_BIT,
+                VK_IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT_OPTIMAL, VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL,
+                VK_ACCESS_DEPTH_STENCIL_ATTACHMENT_WRITE_BIT, VK_ACCESS_SHADER_READ_BIT,
+                VK_PIPELINE_STAGE_LATE_FRAGMENT_TESTS_BIT, VK_PIPELINE_STAGE_FRAGMENT_SHADER_BIT);
+    }
 
     VkRenderPassBeginInfo rbi{};
     rbi.sType = VK_STRUCTURE_TYPE_RENDER_PASS_BEGIN_INFO;
@@ -897,10 +906,12 @@ bool gosPostProcess::runVkPostScreenShadowStaticNative()
     vkCmdDraw(cb, 3, 1, 0, 0);
     vkCmdEndRenderPass(cb);
 
-    barrier(s->sStaticShadowRes->image, VK_IMAGE_ASPECT_DEPTH_BIT,
-            VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL, VK_IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT_OPTIMAL,
-            VK_ACCESS_SHADER_READ_BIT, 0,
-            VK_PIPELINE_STAGE_FRAGMENT_SHADER_BIT, VK_PIPELINE_STAGE_BOTTOM_OF_PIPE_BIT);
+    if (hasStaticShadow) {
+        barrier(s->sStaticShadowRes->image, VK_IMAGE_ASPECT_DEPTH_BIT,
+                VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL, VK_IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT_OPTIMAL,
+                VK_ACCESS_SHADER_READ_BIT, 0,
+                VK_PIPELINE_STAGE_FRAGMENT_SHADER_BIT, VK_PIPELINE_STAGE_BOTTOM_OF_PIPE_BIT);
+    }
     barrier(s->sDepthRes->image, VK_IMAGE_ASPECT_DEPTH_BIT | VK_IMAGE_ASPECT_STENCIL_BIT,
             VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL, VK_IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT_OPTIMAL,
             VK_ACCESS_SHADER_READ_BIT, 0,
@@ -919,12 +930,12 @@ bool gosPostProcess::runVkPostScreenShadowStaticNative()
     if (fsC.signal) { waitSems[waitN] = fsC.signal; waitStages[waitN++] = VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT; }
     if (fsN.signal) { waitSems[waitN] = fsN.signal; waitStages[waitN++] = VK_PIPELINE_STAGE_FRAGMENT_SHADER_BIT; }
     if (fsD.signal) { waitSems[waitN] = fsD.signal; waitStages[waitN++] = VK_PIPELINE_STAGE_FRAGMENT_SHADER_BIT; }
-    if (fsS.signal) { waitSems[waitN] = fsS.signal; waitStages[waitN++] = VK_PIPELINE_STAGE_FRAGMENT_SHADER_BIT; }
+    if (hasStaticShadow && fsS.signal) { waitSems[waitN] = fsS.signal; waitStages[waitN++] = VK_PIPELINE_STAGE_FRAGMENT_SHADER_BIT; }
     if (directChain) waitN = 0;
     const bool gpuC = !directChain && s->sColorView->vkToGlImported && fsC.vk2gl;
     const bool gpuN = !directChain && s->sNormalView->vkToGlImported && fsN.vk2gl;
     const bool gpuD = !directChain && s->sDepthView->vkToGlImported && fsD.vk2gl;
-    const bool gpuS = !directChain && s->sStaticShadowView->vkToGlImported && fsS.vk2gl;
+    const bool gpuS = hasStaticShadow && !directChain && s->sStaticShadowView->vkToGlImported && fsS.vk2gl;
     if (gpuC) signalSems[sigN++] = fsC.vk2gl;
     if (gpuN) signalSems[sigN++] = fsN.vk2gl;
     if (gpuD) signalSems[sigN++] = fsD.vk2gl;
