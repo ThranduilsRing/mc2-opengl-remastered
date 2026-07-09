@@ -96,6 +96,24 @@ dirty=0`; fog health reached `attempted=6503`, `used_vulkan=6503`,
 `[VK_NO_GL_INTEROP_STRICT]`, zero `glInteropSignalToVk`, zero
 `glInteropWaitFromVk`, zero `VK_SHARED_STATIC_SHADOW`, zero present
 resize/copy fallback strings.
+Follow-up 8.7ai post direct-resource init (commit `8d721188`) applied the same
+direct-chain readiness rule to SSAO and screenfx: `vulkan_post_ssao_native.cpp`
+and `vulkan_post_screenfx_native.cpp` require shared `VkImageResource` handles
+under their direct-chain gates, while GL views remain mandatory only for handoff
+mode. Clean proof `.claude/vk-nointerop-strict-visible-post-direct-resource-clean/`
+passed 11/11 deterministic `mc2_01` bookmarks on deployed binary
+`sha=8d7211888a2c dirty=0`; SSAO health reached `attempted=6493`,
+`used_vulkan=6493`, `direct_chain=1`, `used_interop=0`,
+`fallback_reason=""`; screenfx reached `attempted=12986`,
+`used_vulkan=12986`, `shadow_frames=6493`, `shore_frames=6493`,
+`direct_chain=1`, `used_interop=0`, `fallback_reason=""`. Final present
+reached `present_frames=6300`, `copy1_blit_frames=0`,
+`copy1_skip_frames=6300`, `gl_handoff_skip_frames=6300`,
+`tail_hook_frames=6300`, `composite_vk_frames=6300`,
+`hud_vk_consumed_frames=5519`, `imgui_vk_frames=6300`,
+`fallback_reason=""`. Absence check: zero `[VK_NO_GL_INTEROP_STRICT]`, zero
+`glInteropSignalToVk`, zero `glInteropWaitFromVk`, zero
+`VK_SHARED_STATIC_SHADOW`, zero present resize/copy fallback strings.
 Final exact-binary regression after reviewer fixes:
 `.claude/vk-nointerop-strict-visible-final-smoke/`, engine smoke PASS,
 7 deterministic bookmarks before duration, `composite_vk_frames=300`,
