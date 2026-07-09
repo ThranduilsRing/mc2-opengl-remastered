@@ -72,6 +72,9 @@ layout(set = 0, binding = 0, std140) uniform TerrainFrameUBO {
     int   visualSide;          // off 580
     float visualDisplaceFar;   // off 584
     int   visualMode;          // off 588
+    int   edgeStitch;          // off 592
+    int   quadCountX;          // off 596
+    int   quadCountY;          // off 600
 } uT;
 
 layout(set = 0, binding = 1, std430) readonly buffer TerrainHeightBuf {
@@ -87,10 +90,41 @@ layout(location = 0) out vec3 v_worldPos;
 
 const float TERRAIN_DEPTH_FUDGE = 0.0;
 
+float sampleH(int mx, int my) {
+    mx = clamp(mx, 0, uT.mapSide - 1);
+    my = clamp(my, 0, uT.mapSide - 1);
+    return uH.heights[mx + my * uT.mapSide];
+}
+
 void main() {
     int mapX = clamp(uT.blockOriginX + localOffset.x, 0, uT.mapSide - 1);
     int mapY = clamp(uT.blockOriginY + localOffset.y, 0, uT.mapSide - 1);
-    float h  = uH.heights[mapX + mapY * uT.mapSide];
+    float h  = sampleH(mapX, mapY);
+
+    if (isSkirtFlag == 0 && uT.edgeStitch != 0) {
+        int  Sc = 0, along = 0;
+        bool alongX = true;
+        if      (localOffset.y == 0             && ((uT.edgeStitch)       & 0xFF) > 0) { Sc = (uT.edgeStitch)       & 0xFF; along = localOffset.x; alongX = true;  }
+        else if (localOffset.y == uT.quadCountY && ((uT.edgeStitch >> 8)  & 0xFF) > 0) { Sc = (uT.edgeStitch >> 8)  & 0xFF; along = localOffset.x; alongX = true;  }
+        else if (localOffset.x == 0             && ((uT.edgeStitch >> 16) & 0xFF) > 0) { Sc = (uT.edgeStitch >> 16) & 0xFF; along = localOffset.y; alongX = false; }
+        else if (localOffset.x == uT.quadCountX && ((uT.edgeStitch >> 24) & 0xFF) > 0) { Sc = (uT.edgeStitch >> 24) & 0xFF; along = localOffset.y; alongX = false; }
+        if (Sc > 0 && (along % Sc) != 0) {
+            int   c0 = (along / Sc) * Sc;
+            int   c1 = c0 + Sc;
+            float t  = float(along - c0) / float(Sc);
+            float h0, h1;
+            if (alongX) {
+                int fy = uT.blockOriginY + localOffset.y;
+                h0 = sampleH(uT.blockOriginX + c0, fy);
+                h1 = sampleH(uT.blockOriginX + c1, fy);
+            } else {
+                int fx = uT.blockOriginX + localOffset.x;
+                h0 = sampleH(fx, uT.blockOriginY + c0);
+                h1 = sampleH(fx, uT.blockOriginY + c1);
+            }
+            h = mix(h0, h1, t);
+        }
+    }
 
     // VK-TERRAIN-VISUALDISPLACE-FAR-1 (rung 5): GL's mode-2 branch runs for skirt TOP
     // verts too (terrain_lod_chunk.vert:156 gates on `isSkirtFlag == 0`, and skirt-strip
@@ -102,7 +136,33 @@ void main() {
         float u_visualDisplaceFar = uT.visualDisplaceFar;
         float hv;
         int fxV, fyV;
-        {
+        int  Sc2 = 0, along2 = 0; bool alongX2 = true;
+        if      (localOffset.y == 0             && ((uT.edgeStitch)       & 0xFF) > 0) { Sc2 = (uT.edgeStitch)       & 0xFF; along2 = localOffset.x; alongX2 = true;  }
+        else if (localOffset.y == uT.quadCountY && ((uT.edgeStitch >> 8)  & 0xFF) > 0) { Sc2 = (uT.edgeStitch >> 8)  & 0xFF; along2 = localOffset.x; alongX2 = true;  }
+        else if (localOffset.x == 0             && ((uT.edgeStitch >> 16) & 0xFF) > 0) { Sc2 = (uT.edgeStitch >> 16) & 0xFF; along2 = localOffset.y; alongX2 = false; }
+        else if (localOffset.x == uT.quadCountX && ((uT.edgeStitch >> 24) & 0xFF) > 0) { Sc2 = (uT.edgeStitch >> 24) & 0xFF; along2 = localOffset.y; alongX2 = false; }
+        if (Sc2 > 0 && (along2 % Sc2) != 0) {
+            int c0 = (along2 / Sc2) * Sc2;
+            int c1 = c0 + Sc2;
+            float t2 = float(along2 - c0) / float(Sc2);
+            float hv0, hv1;
+            if (alongX2) {
+                int fyC = uT.blockOriginY + localOffset.y;
+                fxV = clamp((uT.blockOriginX + c0) * 4, 0, u_visualSide - 1);
+                int fyVc = clamp(fyC * 4, 0, u_visualSide - 1);
+                hv0 = heightsFine[fxV + fyVc * u_visualSide];
+                int fxV1 = clamp((uT.blockOriginX + c1) * 4, 0, u_visualSide - 1);
+                hv1 = heightsFine[fxV1 + fyVc * u_visualSide];
+            } else {
+                int fxC = uT.blockOriginX + localOffset.x;
+                int fxVc = clamp(fxC * 4, 0, u_visualSide - 1);
+                int fyV0 = clamp((uT.blockOriginY + c0) * 4, 0, u_visualSide - 1);
+                hv0 = heightsFine[fxVc + fyV0 * u_visualSide];
+                int fyV1 = clamp((uT.blockOriginY + c1) * 4, 0, u_visualSide - 1);
+                hv1 = heightsFine[fxVc + fyV1 * u_visualSide];
+            }
+            hv = mix(hv0, hv1, t2);
+        } else {
             //PORT-BEGIN:visualDisplaceFar
             fxV = clamp(mapX * 4, 0, u_visualSide - 1);
             fyV = clamp(mapY * 4, 0, u_visualSide - 1);

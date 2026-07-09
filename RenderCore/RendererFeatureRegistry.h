@@ -1622,6 +1622,26 @@ static constexpr EnvVarDesc kAuxEnvVars[] = {
         "testing. Default-OFF = silent-but-logged GLSL fallback."
     },
     {
+        "MC2_TRACE_VK_SCENE_GL_PRODUCER_QUERY",
+        "MC2_VK_SCENE_GL_PRODUCER_QUERY",
+        EnvVarKind::Trace,
+        false,
+        "VK final-gate diagnostic: wraps the sceneFBO producer phase in a GL_ANY_SAMPLES_PASSED query and logs "
+        "[VK_SCENE_GL_PRODUCER_QUERY v1] any_samples=... so resource-strict work can prove whether any GL scene "
+        "producer still rasterizes before attempting to delete shared scene GL interop resources. Default-OFF; "
+        "diagnostic only."
+    },
+    {
+        "MC2_TRACE_VK_TERRAIN_GL_FALLBACK_AUDIT",
+        "MC2_VK_TERRAIN_GL_FALLBACK_AUDIT",
+        EnvVarKind::Trace,
+        false,
+        "VK terrain ownership diagnostic: under the max-native terrain gates, counts terrain chunks captured by "
+        "the Vulkan feed vs chunks that still fall through to GL, bucketed by inactive, uncaptured LOD band, "
+        "visual-displace mode, edge-stitch, and other. Logs [VK_TERRAIN_GL_FALLBACK_AUDIT v1]. Default-OFF; "
+        "diagnostic only, no render behavior change."
+    },
+    {
         "MC2_FEATURE_VK_TERRAIN_HEIGHT_AUDIT",
         "MC2_VK_TERRAIN_HEIGHT_AUDIT",
         EnvVarKind::Feature,

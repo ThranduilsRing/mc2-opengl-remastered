@@ -88,6 +88,25 @@ static int    s_visualSide       = 0; // V = (mapSide-1)*4+1, fine grid side (0 
 // and logged once per submit alongside [TerrainLOD v1] so acceptance has hard
 // per-band numbers. Index = LOD level (0..5), same mapping as [TerrainLOD v1].
 static int s_visualDisplacedCounts[6] = {0, 0, 0, 0, 0, 0};
+#ifdef MC2_VULKAN_ISLAND
+static bool terrainGlFallbackAuditEnabled()
+{
+    static const bool on = (mc2vkgate::envTriState("MC2_VK_TERRAIN_GL_FALLBACK_AUDIT") == 1);
+    return on;
+}
+
+struct TerrainGlFallbackAudit {
+    int total = 0;
+    int captured = 0;
+    int glFallback = 0;
+    int inactive = 0;
+    int band = 0;
+    int displace = 0;
+    int edgeStitch = 0;
+    int other = 0;
+    int skirtEdges = 0;
+};
+#endif
 // TERRAIN-LODCHUNK-SSBO-OWNER-1: the LOD-chunk type/cement SSBOs are no longer
 // bare GLuints. Each is narrowed behind a GpuBufferOwner identity record (logical
 // id + lifetime + debug name + GLuint value). GL calls still happen at the same
@@ -1771,6 +1790,8 @@ void gos_TerrainLodChunk_SubmitDrawCommands(
     if (s_vkTerrainActive) {
         std::memcpy(s_vkTerrainMvp, mvp, sizeof(s_vkTerrainMvp)); // same MVP the GL draw uses
     }
+    TerrainGlFallbackAudit s_vkTerrainGlAudit;
+    const bool s_vkTerrainGlAuditOn = terrainGlFallbackAuditEnabled();
 #endif
 
     for (int i = 0; i < count; ++i)
@@ -1782,6 +1803,9 @@ void gos_TerrainLodChunk_SubmitDrawCommands(
         if (qcX <= 0 || qcY <= 0) continue;
 
 #ifdef MC2_VULKAN_ISLAND
+        if (s_vkTerrainGlAuditOn) {
+            ++s_vkTerrainGlAudit.total;
+        }
         // VK-P10 TERRAIN TIER-1 (+ rung-3 VK-TERRAIN-ALL-LODS): hand main patches to
         // the VK island and skip their GL main+skirt draws. LOD0 (lodStep==1) is the
         // original probe scope; MC2_VK_TERRAIN_ALL_LODS extends capture to coarse bands
@@ -1802,9 +1826,9 @@ void gos_TerrainLodChunk_SubmitDrawCommands(
             (mc2_vk_terrain_visualdisplace_far_enabled() != 0);
         const bool s_vkOwnsDisplace = !visualDisplaceActive ||
             (s_vkVisDispFarActive && cmd.lodStep != 1);
+        const bool s_vkNoEdgeStitch = (edgeStitch == nullptr || edgeStitch[i] == 0);
         if (s_vkTerrainActive && s_vkCaptureThisBand &&
-            s_vkOwnsDisplace &&
-            (edgeStitch == nullptr || edgeStitch[i] == 0)) {
+            s_vkOwnsDisplace) {
             const int maxOffX = (cmd.lodStep > 0) ? (qcX / cmd.lodStep) * cmd.lodStep : qcX;
             const int maxOffY = (cmd.lodStep > 0) ? (qcY / cmd.lodStep) * cmd.lodStep : qcY;
             Mc2TerrainTier1Patch p;
@@ -1827,8 +1851,12 @@ void gos_TerrainLodChunk_SubmitDrawCommands(
             // (visualDisplaceActive && lodStep != 1 -> mode 2). Mode-1 patches never get
             // here (s_vkOwnsDisplace excluded them), so this is only ever 0 or 2.
             p.visualMode    = (visualDisplaceActive && cmd.lodStep != 1) ? 2 : 0;
+            p.edgeStitch    = edgeStitch ? edgeStitch[i] : 0u;
             s_vkTerrainPatches.push_back(p);
             s_vkTerrainFeedValid = true;
+            if (s_vkTerrainGlAuditOn) {
+                ++s_vkTerrainGlAudit.captured;
+            }
             continue;   // GL skips this patch's main + skirt draws unconditionally (this
                         // was already true pre-rung-4: VK-owned patches never got a GL
                         // skirt draw, since `continue` fires before the skirt-draw code
@@ -1840,6 +1868,26 @@ void gos_TerrainLodChunk_SubmitDrawCommands(
                         // populated and the VK island draws the skirt itself; when the
                         // sub-gate is off, behavior is UNCHANGED from rung-3 (0/0 ->
                         // island draws no skirt for this patch).
+        }
+        if (s_vkTerrainGlAuditOn) {
+            ++s_vkTerrainGlAudit.glFallback;
+            if (!s_vkTerrainActive) {
+                ++s_vkTerrainGlAudit.inactive;
+            } else if (!s_vkCaptureThisBand) {
+                ++s_vkTerrainGlAudit.band;
+            } else if (!s_vkOwnsDisplace) {
+                ++s_vkTerrainGlAudit.displace;
+            } else if (!s_vkNoEdgeStitch) {
+                ++s_vkTerrainGlAudit.edgeStitch;
+            } else {
+                ++s_vkTerrainGlAudit.other;
+            }
+            if (skirtDepths && skirtEdgeMasks && skirtDepths[i] > 0.0f) {
+                unsigned int mask = skirtEdgeMasks[i];
+                s_vkTerrainGlAudit.skirtEdges +=
+                    ((mask & 1u) ? 1 : 0) + ((mask & 2u) ? 1 : 0) +
+                    ((mask & 4u) ? 1 : 0) + ((mask & 8u) ? 1 : 0);
+            }
         }
 #endif
 
@@ -1961,6 +2009,30 @@ void gos_TerrainLodChunk_SubmitDrawCommands(
             fflush(stdout);
         }
     }
+
+#ifdef MC2_VULKAN_ISLAND
+    if (s_vkTerrainGlAuditOn) {
+        static unsigned long s_auditFrame = 0;
+        ++s_auditFrame;
+        if (s_auditFrame <= 60 || (s_auditFrame % 180) == 0) {
+            fprintf(stderr,
+                    "[VK_TERRAIN_GL_FALLBACK_AUDIT v1] frame=%lu total=%d captured=%d "
+                    "gl_fallback=%d inactive=%d band=%d displace=%d edge_stitch=%d "
+                    "other=%d skirt_edges=%d\n",
+                    s_auditFrame,
+                    s_vkTerrainGlAudit.total,
+                    s_vkTerrainGlAudit.captured,
+                    s_vkTerrainGlAudit.glFallback,
+                    s_vkTerrainGlAudit.inactive,
+                    s_vkTerrainGlAudit.band,
+                    s_vkTerrainGlAudit.displace,
+                    s_vkTerrainGlAudit.edgeStitch,
+                    s_vkTerrainGlAudit.other,
+                    s_vkTerrainGlAudit.skirtEdges);
+            fflush(stderr);
+        }
+    }
+#endif
 
     // Terrain pixels are now on screen. Mark terrain drawn so the terrain-gated
     // post-process passes (runScreenShadow / runCloudShadow / runShoreline /

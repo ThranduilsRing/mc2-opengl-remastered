@@ -114,6 +114,9 @@ layout(set = 0, binding = 0, std140) uniform TerrainFrameUBO {
     int   visualSide;                             // off 580: fine bake side V (0 = not snapshotted)
     float visualDisplaceFar;                      // off 584: MC2_TERRAIN_VISUAL_DISPLACE_FAR fade 0..1
     int   visualMode;                             // off 588: 0 = no displace, 2 = far-band Z-swap
+    int   edgeStitch;                             // off 592: packed N/S/W/E coarser-neighbor stride bytes
+    int   quadCountX;                             // off 596: max local offset X for edge tests
+    int   quadCountY;                             // off 600: max local offset Y for edge tests
 } uT;
 
 // VK-TERRAIN-DETAIL: the height SSBO (VK-owned snapshot; same buffer the VS reads at

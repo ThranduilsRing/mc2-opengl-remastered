@@ -294,7 +294,10 @@ struct TerrainFrameUBO {
     int32_t visualSide;              // off 580: fine bake side V (0 = bake not snapshotted)
     float   visualDisplaceFar;       // off 584: MC2_TERRAIN_VISUAL_DISPLACE_FAR fade 0..1
     int32_t visualMode;              // off 588: 0 = no displace, 2 = far-band Z-swap (per patch)
-    int32_t _pad[108];               // off 592..1023: remaining pad
+    int32_t edgeStitch;              // off 592: VK-TERRAIN-EDGE-STITCH-1 packed N/S/W/E stride bytes
+    int32_t quadCountX;              // off 596: max local offset X for edge tests
+    int32_t quadCountY;              // off 600: max local offset Y for edge tests
+    int32_t _pad[105];               // off 604..1023: remaining pad
 };
 static_assert(sizeof(TerrainFrameUBO) == 1024, "UBO slot must be 1024B (dynamic alignment, grew for CSM-NEAR-1)");
 
@@ -2541,6 +2544,9 @@ extern "C" int mc2_vk_terrain_island_run(int w, int h) {
                 u.visualDisplaceFar = feed.visualDisplaceFar;
                 u.visualMode        = (feed.patches[i].visualMode == 2
                                        && s->visualHeightReady && feed.visualSide > 1) ? 2 : 0;
+                u.edgeStitch        = (int32_t)feed.patches[i].edgeStitch;
+                u.quadCountX        = feed.patches[i].quadCountX;
+                u.quadCountY        = feed.patches[i].quadCountY;
                 slots[i] = u;
             }
             vmaUnmapMemory(s->allocator, s->uboAlloc);

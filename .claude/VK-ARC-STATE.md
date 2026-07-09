@@ -114,6 +114,27 @@ reached `present_frames=6300`, `copy1_blit_frames=0`,
 `fallback_reason=""`. Absence check: zero `[VK_NO_GL_INTEROP_STRICT]`, zero
 `glInteropSignalToVk`, zero `glInteropWaitFromVk`, zero
 `VK_SHARED_STATIC_SHADOW`, zero present resize/copy fallback strings.
+Follow-up 8.7aj scene-producer audit added `MC2_VK_SCENE_GL_PRODUCER_QUERY`
+and `MC2_VK_TERRAIN_GL_FALLBACK_AUDIT`. Dirty proof
+`.claude/vk-terrain-gl-fallback-audit-strict-dirty/` passed 11/11 deterministic
+`mc2_01` bookmarks, kept no-interop strict absence at zero, and proved the live
+terrain GL residue was entirely edge-stitch fallback: steady audit lines had
+`inactive=0 band=0 displace=0 other=0` with `edge_stitch=3..4`; the scene query
+flipped to `any_samples=1` in the same phase.
+Follow-up 8.7ak terrain edge-stitch ownership ports the GL coarse stitch and
+mode-2 stitched-bake vertex math into `terrain_tier1.vert` and
+`terrain_tier1_skirt.vert`, adds packed `edgeStitch` plus `quadCountX/Y` to the
+terrain VK patch UBO tail, and removes edge-stitch from the GL fallback
+predicate. Dirty proof `.claude/vk-terrain-edge-stitch-strict-dirty/` passed
+11/11 deterministic bookmarks with final present `present_frames=6300`,
+`copy1_blit_frames=0`, `gl_handoff_skip_frames=6300`,
+`composite_vk_frames=6300`, `hud_vk_consumed_frames=5525`,
+`imgui_vk_frames=6300`, `fallback_reason=""`. Terrain audit stayed at
+`gl_fallback=0 edge_stitch=0` through frame 6300, proving terrain no longer
+rasterizes through GL under the max-native strict stack. The scene producer query
+still reports `any_samples=1`, so the next ownership slice is a non-terrain
+sceneFBO writer canary/port (likely overlays, decals, or another direct world
+draw), not resource-strict deletion yet.
 Final exact-binary regression after reviewer fixes:
 `.claude/vk-nointerop-strict-visible-final-smoke/`, engine smoke PASS,
 7 deterministic bookmarks before duration, `composite_vk_frames=300`,
