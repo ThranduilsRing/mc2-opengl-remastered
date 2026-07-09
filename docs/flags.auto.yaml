@@ -6,8 +6,8 @@
 generator_version: "1.0.0"
 registry_entry_count: 94
 registry_env_flag_count: 92
-sweep_flag_count: 783
-flag_count: 792
+sweep_flag_count: 784
+flag_count: 793
 flags:
   - name: MC2_ABL_ARG_GUARD
     default: unknown
@@ -808,7 +808,7 @@ flags:
     referenced_at:
       - GameOS/gameos/debug_state_dump.cpp:1113
       - GameOS/gameos/debug_state_dump.cpp:1144
-      - GameOS/gameos/gameosmain.cpp:793
+      - GameOS/gameos/gameosmain.cpp:822
     referenced_at_more: 1
     registered: yes
     in_smoke_passthrough: yes
@@ -900,7 +900,7 @@ flags:
     default: unknown
     declared_in: null
     referenced_at:
-      - GameOS/gameos/gameosmain.cpp:880
+      - GameOS/gameos/gameosmain.cpp:909
       - code/gameobj.cpp:106
     registered: no
     in_smoke_passthrough: yes
@@ -945,7 +945,7 @@ flags:
     default: unknown
     declared_in: null
     referenced_at:
-      - GameOS/gameos/gameosmain.cpp:1006
+      - GameOS/gameos/gameosmain.cpp:1035
       - GuiRuntime/GraphicsOptionsWindow.cpp:1450
       - mclib/mlr/mlr_gate.cpp:37
     registered: no
@@ -971,7 +971,7 @@ flags:
     default: unknown
     declared_in: null
     referenced_at:
-      - GameOS/gameos/gameosmain.cpp:1386
+      - GameOS/gameos/gameosmain.cpp:1415
     registered: no
     in_smoke_passthrough: yes
     documented_in_tier1_env_vars: no
@@ -1005,7 +1005,7 @@ flags:
     default: unknown
     declared_in: null
     referenced_at:
-      - GameOS/gameos/gameosmain.cpp:1397
+      - GameOS/gameos/gameosmain.cpp:1426
     registered: no
     in_smoke_passthrough: yes
     documented_in_tier1_env_vars: no
@@ -1014,7 +1014,7 @@ flags:
     declared_in: null
     referenced_at:
       - GameOS/gameos/draw_packet_emitter.cpp:53
-      - GameOS/gameos/gameosmain.cpp:1440
+      - GameOS/gameos/gameosmain.cpp:1469
     registered: no
     in_smoke_passthrough: no
     documented_in_tier1_env_vars: no
@@ -1301,7 +1301,7 @@ flags:
     default: unknown
     declared_in: null
     referenced_at:
-      - GameOS/gameos/gameosmain.cpp:1286
+      - GameOS/gameos/gameosmain.cpp:1315
     registered: no
     in_smoke_passthrough: no
     documented_in_tier1_env_vars: no
@@ -1309,7 +1309,7 @@ flags:
     default: unknown
     declared_in: null
     referenced_at:
-      - GameOS/gameos/gameosmain.cpp:1894
+      - GameOS/gameos/gameosmain.cpp:1923
       - code/mechcmd2.cpp:2369
     registered: no
     in_smoke_passthrough: no
@@ -1556,7 +1556,7 @@ flags:
     default: unknown
     declared_in: null
     referenced_at:
-      - GameOS/gameos/gameosmain.cpp:1217
+      - GameOS/gameos/gameosmain.cpp:1246
       - GameOS/gameos/gos_render.cpp:208
       - GameOS/gameos/gos_render.cpp:444
     referenced_at_more: 2
@@ -1567,7 +1567,7 @@ flags:
     default: unknown
     declared_in: null
     referenced_at:
-      - GameOS/gameos/gameosmain.cpp:766
+      - GameOS/gameos/gameosmain.cpp:795
     registered: no
     in_smoke_passthrough: yes
     documented_in_tier1_env_vars: yes
@@ -1575,7 +1575,7 @@ flags:
     default: unknown
     declared_in: null
     referenced_at:
-      - GameOS/gameos/gameosmain.cpp:882
+      - GameOS/gameos/gameosmain.cpp:911
       - GameOS/gameos/gos_validate.cpp:151
     registered: no
     in_smoke_passthrough: no
@@ -1656,8 +1656,8 @@ flags:
     default: unknown
     declared_in: null
     referenced_at:
-      - GameOS/gameos/gameosmain.cpp:926
-      - GameOS/gameos/gameosmain.cpp:926
+      - GameOS/gameos/gameosmain.cpp:955
+      - GameOS/gameos/gameosmain.cpp:955
       - GameOS/gameos/gpu_cull_parity.cpp:10
     referenced_at_more: 1
     registered: no
@@ -1786,7 +1786,7 @@ flags:
     default: unknown
     declared_in: null
     referenced_at:
-      - GameOS/gameos/gameosmain.cpp:924
+      - GameOS/gameos/gameosmain.cpp:953
       - GameOS/gameos/gpu_cull_substrate.cpp:87
     registered: no
     in_smoke_passthrough: yes
@@ -1905,7 +1905,7 @@ flags:
     declared_in: RenderCore/RendererFeatureRegistry.h (kFeatureTable)
     doc: "[RETIRED] Indirect-draw static-prop batcher (gos_static_prop_batcher). Superseded by RenderWorld::upsertStaticProp."
     referenced_at:
-      - GameOS/gameos/gameosmain.cpp:894
+      - GameOS/gameos/gameosmain.cpp:923
     registered: yes
     in_smoke_passthrough: yes
     documented_in_tier1_env_vars: no
@@ -2063,8 +2063,8 @@ flags:
     default: unknown
     declared_in: null
     referenced_at:
-      - GameOS/gameos/gameosmain.cpp:1865
-      - GameOS/gameos/gameosmain.cpp:792
+      - GameOS/gameos/gameosmain.cpp:1894
+      - GameOS/gameos/gameosmain.cpp:821
     registered: no
     in_smoke_passthrough: yes
     documented_in_tier1_env_vars: yes
@@ -2198,7 +2198,7 @@ flags:
     default: unknown
     declared_in: null
     referenced_at:
-      - GameOS/gameos/gameosmain.cpp:789
+      - GameOS/gameos/gameosmain.cpp:818
     registered: no
     in_smoke_passthrough: no
     documented_in_tier1_env_vars: no
@@ -2333,8 +2333,8 @@ flags:
     default: unknown
     declared_in: null
     referenced_at:
-      - GameOS/gameos/gameosmain.cpp:793
-      - GameOS/gameos/gameosmain.cpp:840
+      - GameOS/gameos/gameosmain.cpp:822
+      - GameOS/gameos/gameosmain.cpp:869
     registered: no
     in_smoke_passthrough: yes
     documented_in_tier1_env_vars: no
@@ -2496,7 +2496,7 @@ flags:
     declared_in: RenderCore/RendererFeatureRegistry.h (kFeatureTable)
     doc: "GPU material table upload/bind/compare for static props (default-ON as of v5, 2026-05-26). Set =0 to disable."
     referenced_at:
-      - GameOS/gameos/gameosmain.cpp:992
+      - GameOS/gameos/gameosmain.cpp:1021
       - GameOS/gameos/gos_materials.cpp:46
       - GameOS/gameos/gos_mech_batcher.cpp:638
     referenced_at_more: 1
@@ -2510,7 +2510,7 @@ flags:
     declared_in: RenderCore/RendererFeatureRegistry.h (kFeatureTable)
     doc: "GPU material albedo sampling in static_prop.frag (default-ON as of v7, 2026-05-26). Set =0 to fall back to texArrayLayer. Requires MC2_MATERIAL_GPU."
     referenced_at:
-      - GameOS/gameos/gameosmain.cpp:994
+      - GameOS/gameos/gameosmain.cpp:1023
       - GameOS/gameos/gos_static_prop_batcher.cpp:639
     registered: yes
     in_smoke_passthrough: yes
@@ -3045,7 +3045,7 @@ flags:
     default: unknown
     declared_in: null
     referenced_at:
-      - GameOS/gameos/gameosmain.cpp:791
+      - GameOS/gameos/gameosmain.cpp:820
     registered: no
     in_smoke_passthrough: yes
     documented_in_tier1_env_vars: no
@@ -3069,7 +3069,7 @@ flags:
     default: unknown
     declared_in: null
     referenced_at:
-      - GameOS/gameos/gameosmain.cpp:862
+      - GameOS/gameos/gameosmain.cpp:891
     registered: no
     in_smoke_passthrough: no
     documented_in_tier1_env_vars: no
@@ -3451,7 +3451,7 @@ flags:
     default: unknown
     declared_in: null
     referenced_at:
-      - GameOS/gameos/gameosmain.cpp:1804
+      - GameOS/gameos/gameosmain.cpp:1833
     registered: no
     in_smoke_passthrough: yes
     documented_in_tier1_env_vars: no
@@ -3687,7 +3687,7 @@ flags:
     default: unknown
     declared_in: null
     referenced_at:
-      - GameOS/gameos/gameosmain.cpp:596
+      - GameOS/gameos/gameosmain.cpp:625
     registered: no
     in_smoke_passthrough: no
     documented_in_tier1_env_vars: no
@@ -3760,7 +3760,7 @@ flags:
     default: unknown
     declared_in: null
     referenced_at:
-      - GameOS/gameos/gameosmain.cpp:1461
+      - GameOS/gameos/gameosmain.cpp:1490
       - GameOS/gameos/render_snapshot.cpp:673
     registered: no
     in_smoke_passthrough: yes
@@ -3769,7 +3769,7 @@ flags:
     default: unknown
     declared_in: null
     referenced_at:
-      - GameOS/gameos/gameosmain.cpp:884
+      - GameOS/gameos/gameosmain.cpp:913
       - mclib/terrain.cpp:3047
       - mclib/terrain.cpp:3251
     registered: no
@@ -3787,7 +3787,7 @@ flags:
     default: unknown
     declared_in: null
     referenced_at:
-      - GameOS/gameos/gameosmain.cpp:885
+      - GameOS/gameos/gameosmain.cpp:914
       - GameOS/gameos/gos_terrain_water_stream.cpp:942
     registered: no
     in_smoke_passthrough: yes
@@ -3834,7 +3834,7 @@ flags:
     default: unknown
     declared_in: null
     referenced_at:
-      - GameOS/gameos/gameosmain.cpp:928
+      - GameOS/gameos/gameosmain.cpp:957
       - mclib/camera.cpp:2694
     registered: no
     in_smoke_passthrough: yes
@@ -3886,8 +3886,8 @@ flags:
     default: unknown
     declared_in: null
     referenced_at:
-      - GameOS/gameos/gameosmain.cpp:1734
-      - GameOS/gameos/gameosmain.cpp:1735
+      - GameOS/gameos/gameosmain.cpp:1763
+      - GameOS/gameos/gameosmain.cpp:1764
     registered: no
     in_smoke_passthrough: yes
     documented_in_tier1_env_vars: no
@@ -3895,7 +3895,7 @@ flags:
     default: unknown
     declared_in: null
     referenced_at:
-      - GameOS/gameos/gameosmain.cpp:1733
+      - GameOS/gameos/gameosmain.cpp:1762
     registered: no
     in_smoke_passthrough: yes
     documented_in_tier1_env_vars: no
@@ -3941,7 +3941,7 @@ flags:
     declared_in: null
     referenced_at:
       - GameOS/gameos/gameos_graphics.cpp:6074
-      - GameOS/gameos/gameosmain.cpp:927
+      - GameOS/gameos/gameosmain.cpp:956
       - GameOS/gameos/utils/shader_builder.cpp:422
     registered: no
     in_smoke_passthrough: no
@@ -4329,8 +4329,8 @@ flags:
     default: unknown
     declared_in: null
     referenced_at:
-      - GameOS/gameos/gameosmain.cpp:792
-      - GameOS/gameos/gameosmain.cpp:883
+      - GameOS/gameos/gameosmain.cpp:821
+      - GameOS/gameos/gameosmain.cpp:912
       - GameOS/gameos/gos_smoke.cpp:49
     registered: no
     in_smoke_passthrough: yes
@@ -4347,7 +4347,7 @@ flags:
     default: unknown
     declared_in: null
     referenced_at:
-      - GameOS/gameos/gameosmain.cpp:791
+      - GameOS/gameos/gameosmain.cpp:820
       - GameOS/gameos/gos_smoke.cpp:61
     registered: no
     in_smoke_passthrough: yes
@@ -4625,7 +4625,7 @@ flags:
     default: unknown
     declared_in: null
     referenced_at:
-      - GameOS/gameos/gameosmain.cpp:1034
+      - GameOS/gameos/gameosmain.cpp:1063
     registered: no
     in_smoke_passthrough: no
     documented_in_tier1_env_vars: no
@@ -5770,7 +5770,7 @@ flags:
     default: unknown
     declared_in: null
     referenced_at:
-      - GameOS/gameos/gameosmain.cpp:879
+      - GameOS/gameos/gameosmain.cpp:908
       - mclib/tgl.cpp:3915
     registered: no
     in_smoke_passthrough: no
@@ -6009,7 +6009,7 @@ flags:
     default: unknown
     declared_in: null
     referenced_at:
-      - GameOS/gameos/gameosmain.cpp:886
+      - GameOS/gameos/gameosmain.cpp:915
     registered: no
     in_smoke_passthrough: yes
     documented_in_tier1_env_vars: no
@@ -6017,7 +6017,7 @@ flags:
     default: unknown
     declared_in: null
     referenced_at:
-      - GameOS/gameos/gameosmain.cpp:887
+      - GameOS/gameos/gameosmain.cpp:916
     registered: no
     in_smoke_passthrough: yes
     documented_in_tier1_env_vars: no
@@ -6344,7 +6344,7 @@ flags:
     default: unknown
     declared_in: null
     referenced_at:
-      - GameOS/gameos/vulkan_terrain_island.cpp:2026
+      - GameOS/gameos/vulkan_terrain_island.cpp:2042
     registered: no
     in_smoke_passthrough: no
     documented_in_tier1_env_vars: no
@@ -6352,7 +6352,7 @@ flags:
     default: unknown
     declared_in: null
     referenced_at:
-      - GameOS/gameos/vulkan_terrain_island.cpp:1978
+      - GameOS/gameos/vulkan_terrain_island.cpp:1994
     registered: no
     in_smoke_passthrough: no
     documented_in_tier1_env_vars: no
@@ -6464,7 +6464,7 @@ flags:
     default: unknown
     declared_in: null
     referenced_at:
-      - GameOS/gameos/gameosmain.cpp:1825
+      - GameOS/gameos/gameosmain.cpp:1854
     registered: no
     in_smoke_passthrough: yes
     documented_in_tier1_env_vars: no
@@ -6529,7 +6529,7 @@ flags:
     declared_in: null
     referenced_at:
       - GameOS/gameos/gos_terrain_lod_chunk.cpp:1079
-      - GameOS/gameos/vulkan_terrain_island.cpp:2420
+      - GameOS/gameos/vulkan_terrain_island.cpp:2436
     registered: no
     in_smoke_passthrough: yes
     documented_in_tier1_env_vars: no
@@ -6545,7 +6545,7 @@ flags:
     default: unknown
     declared_in: null
     referenced_at:
-      - GameOS/gameos/vulkan_terrain_island.cpp:2509
+      - GameOS/gameos/vulkan_terrain_island.cpp:2525
     registered: no
     in_smoke_passthrough: no
     documented_in_tier1_env_vars: no
@@ -6561,7 +6561,7 @@ flags:
     default: unknown
     declared_in: null
     referenced_at:
-      - GameOS/gameos/vulkan_terrain_island.cpp:1276
+      - GameOS/gameos/vulkan_terrain_island.cpp:1292
     registered: no
     in_smoke_passthrough: yes
     documented_in_tier1_env_vars: yes
@@ -6569,7 +6569,15 @@ flags:
     default: unknown
     declared_in: null
     referenced_at:
-      - GameOS/gameos/vulkan_terrain_island.cpp:1288
+      - GameOS/gameos/vulkan_terrain_island.cpp:1304
+    registered: no
+    in_smoke_passthrough: yes
+    documented_in_tier1_env_vars: no
+  - name: MC2_VK_TERRAIN_NATIVE_PREFIX_CLEAR
+    default: unknown
+    declared_in: null
+    referenced_at:
+      - GameOS/gameos/gameosmain.cpp:72
     registered: no
     in_smoke_passthrough: yes
     documented_in_tier1_env_vars: no

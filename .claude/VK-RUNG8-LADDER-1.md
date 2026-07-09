@@ -529,3 +529,21 @@ no tessellation anywhere in the tail.
   `tests/smoke/artifacts/2026-07-08T20-41-34`; manifest contains the env var and
   `mc2_01.log:363` / crash evidence report
   `[VK_NO_GL_INTEROP_STRICT] abort op=glInteropSignalToVk`.
+- 8.7s - TERRAIN NATIVE PREFIX CLEAR PROOF
+  (VK-TERRAIN-NATIVE-PREFIX-CLEAR-1). Added default-off
+  `MC2_VK_TERRAIN_NATIVE_PREFIX_CLEAR=1`. When armed with VK terrain Tier-1, the
+  frame-entry shared scene color0, normal, and depth initialization moves from
+  the legacy GL scene clear into the terrain render pass: color0 uses the same
+  gameplay/menu clear color, normal clears to the `clearGBuffer1` sentinel
+  `(0.5,0.5,1.0,0.0)`, and depth/stencil clear to reverse-Z far/0. The terrain
+  island then skips its GL->VK and VK->GL semaphore handoff for those first-owner
+  attachments. Verification: default full-tail smoke still PASS
+  `tests/smoke/artifacts/2026-07-08T20-51-05`; new gate without strict canary
+  PASS `tests/smoke/artifacts/2026-07-08T20-55-56`; new gate plus
+  `MC2_VK_NO_GL_INTEROP_STRICT=1` expected FAIL
+  `tests/smoke/artifacts/2026-07-08T20-56-29`, but after
+  `[VK_TERRAIN_ISLAND] first TIER-1...`, with the next abort in
+  `VK_COLOR_PROP_ISLAND`. Next deletion slice: make prop color a non-first
+  shared-GBuffer VK owner without requiring GL interop semaphores, or introduce a
+  shared-scene ownership scheduler that passes Vulkan ownership from terrain to
+  prop/mech/water/post passes directly.

@@ -31,6 +31,7 @@ extern "C" void mc2_vk_color_prop_island_destroy();
 // is alive. The shared GBuffer images it borrows are owned by the postprocess
 // registries. No-op if never born.
 extern "C" void mc2_vk_terrain_island_destroy();
+extern "C" void mc2_vk_terrain_set_native_prefix_clear_color(float r, float g, float b, float a);
 // VK-P14 MECH TIER-1: mech island shutdown teardown (defined in vulkan_mech_island.cpp
 // under the same #ifdef). Frees the VK renderpass/framebuffer/pipeline + instance/bone/
 // geometry buffers + copy-once albedo while the shared device is alive. The shared
@@ -62,6 +63,20 @@ extern "C" unsigned long long mc2_vfx_getRecordsFlushedTotal();
 extern "C" unsigned int       mc2_vfx_getRecordsPerFlushMax();
 extern "C" unsigned long long mc2_vfx_getTrailSpawnTotal();
 extern "C" unsigned long long mc2_vfx_getTrailHeadTotal();
+
+static bool mc2_vk_terrain_native_prefix_clear_requested()
+{
+#ifdef MC2_VULKAN_ISLAND
+    static int state = -1;
+    if (state == -1) {
+        const char* v = getenv("MC2_VK_TERRAIN_NATIVE_PREFIX_CLEAR");
+        state = (v && strcmp(v, "1") == 0) ? 1 : 0;
+    }
+    return state == 1;
+#else
+    return false;
+#endif
+}
 
 // sebi 2026-04-22: unhandled-exception filter that symbolizes the stack via
 // DbgHelp (PDB-based). Needed because release/RelWithDebInfo builds otherwise
@@ -541,10 +556,13 @@ static void draw_screen( void )
         pp->resize(viewport_w, viewport_h);
         pp->beginScene();
     }
+    const bool vkTerrainNativePrefixClear = mc2_vk_terrain_native_prefix_clear_requested();
 
     glViewport(0, 0, viewport_w, viewport_h);
-    glClearDepth(0.0f);   // reverse-Z (U2): far plane = depth 0
-    glClear( GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT );
+    if (!vkTerrainNativePrefixClear) {
+        glClearDepth(0.0f);   // reverse-Z (U2): far plane = depth 0
+        glClear( GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT );
+    }
 	/*
     glMatrixMode(GL_PROJECTION);
     glPushMatrix();
@@ -563,19 +581,30 @@ static void draw_screen( void )
     // Uses previous frame's terrain flag (set during rendering, cleared in beginScene)
     {
         gosPostProcess* ppClear = getGosPostProcess();
-        if (ppClear && ppClear->prevFrameHadTerrain_)
+        const bool blueGrey = ppClear && ppClear->prevFrameHadTerrain_;
+        if (blueGrey)
             glClearColor(0.55f, 0.62f, 0.72f, 1.0f);
         else
             glClearColor(0.0f, 0.0f, 0.0f, 1.0f);
+#ifdef MC2_VULKAN_ISLAND
+        if (vkTerrainNativePrefixClear) {
+            if (blueGrey)
+                mc2_vk_terrain_set_native_prefix_clear_color(0.55f, 0.62f, 0.72f, 1.0f);
+            else
+                mc2_vk_terrain_set_native_prefix_clear_color(0.0f, 0.0f, 0.0f, 1.0f);
+        }
+#endif
     }
-    glClearDepth(0.0f);   // reverse-Z (U2): far plane = depth 0
-    glClear( GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT | GL_STENCIL_BUFFER_BIT );
+    if (!vkTerrainNativePrefixClear) {
+        glClearDepth(0.0f);   // reverse-Z (U2): far plane = depth 0
+        glClear( GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT | GL_STENCIL_BUFFER_BIT );
+    }
 
     // F3: overwrite attachment 1 (GBuffer1) with the post-shadow-eligible sentinel.
     // glClearColor sets alpha=1.0 in both gameplay and menu paths, which would
     // otherwise leave non-overwritten pixels reading "shadow handled". This
     // sentinel ensures defense-in-depth coherence per F3 design v2 §5A.
-    if (pp) pp->clearGBuffer1();
+    if (pp && !vkTerrainNativePrefixClear) pp->clearGBuffer1();
 
     // Skybox disabled — terrain fog provides atmosphere, bright sky looked jarring
     // if (pp) pp->renderSkybox(0.3f, 0.7f, 0.2f);

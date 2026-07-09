@@ -1,7 +1,7 @@
 # VK-ARC-STATE — current state block (update every session)
 
-HEAD routing note (2026-07-08): current shipped tip is rung 8.7r
-`VK-NO-GL-INTEROP-STRICT-CANARY-1` after the visible present-native strict proof
+HEAD routing note (2026-07-08): current shipped tip is rung 8.7s
+`VK-TERRAIN-NATIVE-PREFIX-CLEAR-1` after the visible present-native strict proof
 on branch `claude/vk-interop-bridge-1`, worktree
 `A:/Games/mc2-vk-interop-bridge`, build dir `build64_island`.
 Always confirm the exact commit with `git log -1 --oneline` before launching
@@ -10,7 +10,7 @@ Deploy lane for Vulkan ownership work is the literal
 `A:/Games/mc2-opengl/mc2-win64-v0.4c/mc2.exe`; pass `--exe` explicitly for
 smoke, visual, and RenderDoc harnesses. Do not rely on default deploy/visual
 lanes (`v0.4`, `v0.4d-rc1`, or non-v-prefixed `0.4c` paths).
-Rung-8 sub-ladder: `.claude/VK-RUNG8-LADDER-1.md` (8.1-8.7r shipped). Visible
+Rung-8 sub-ladder: `.claude/VK-RUNG8-LADDER-1.md` (8.1-8.7s shipped). Visible
 strict proof for the full native final tail lives at
 `.claude/vk-present-native-strict-visible-clean/`: 3/3 deterministic
 `mc2_01_buildings` bookmarks, `present_frames=2700`, `copy1_blit_frames=0`,
@@ -22,10 +22,12 @@ needed for the final Metal gate.
 
 Current final-gate canary: `MC2_VK_NO_GL_INTEROP_STRICT=1` aborts on any
 production `glInteropSignalToVk`/`glInteropWaitFromVk` call. It is expected to
-fail today; negative receipt `tests/smoke/artifacts/2026-07-08T20-41-34`
-logged `[VK_NO_GL_INTEROP_STRICT] abort op=glInteropSignalToVk`. The arc is not
-complete until this canary can be armed in a visible/full-tail proof without
-aborting.
+fail today. New proof gate `MC2_VK_TERRAIN_NATIVE_PREFIX_CLEAR=1` moves the
+frame-entry shared color0/normal/depth clear into the terrain render pass and
+skips terrain's interop semaphores; with both gates armed the strict abort now
+advances past terrain and lands in `VK_COLOR_PROP_ISLAND`
+(`tests/smoke/artifacts/2026-07-08T20-56-29`). The arc is not complete until
+this canary can be armed in a visible/full-tail proof without aborting.
 
 Verification guardrails:
 - Bracket every proof with lane hygiene: deployed exe fingerprint/manifest plus

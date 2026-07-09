@@ -1667,6 +1667,10 @@ def main():
                             "MC2_VK_MECH_FEED_AUDIT",
                             # VK terrain in-place shared-GBuffer region + lighting + detail.
                             "MC2_VK_TERRAIN_TIER1",
+                            # VK-TERRAIN-NATIVE-PREFIX-CLEAR: diagnostic proof gate that
+                            # moves the terrain-prefix scene clear into the VK terrain pass
+                            # and skips terrain's GL interop semaphores. Default-OFF.
+                            "MC2_VK_TERRAIN_NATIVE_PREFIX_CLEAR",
                             # VK-TERRAIN-ALL-LODS (rung 3): coarse-band (lodStep>1) capture
                             # extension, requires MC2_VK_TERRAIN_TIER1. Bands only, no
                             # skirts/stitch this rung. Default-OFF.

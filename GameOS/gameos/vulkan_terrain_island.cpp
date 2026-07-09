@@ -131,6 +131,17 @@ bool terrainTier1Requested() {
     return state == 1;
 }
 
+bool terrainNativePrefixClearRequested() {
+    static int state = -1;
+    if (state == -1) {
+        state = (terrainTier1Requested() &&
+                 mc2vkgate::envTriState("MC2_VK_TERRAIN_NATIVE_PREFIX_CLEAR") == 1) ? 1 : 0;
+    }
+    return state == 1;
+}
+
+float g_prefixClearColor[4] = {0.0f, 0.0f, 0.0f, 1.0f};
+
 // VK-TERRAIN-ALL-LODS sub-slice (rung 3): extend VK terrain ownership beyond LOD0
 // (lodStep==1) to all coarse bands (lodStep>1), non-displaced, non-stitched only.
 // Requires TIER1 (no coarse bands without the LOD0 island already live). Skirts and
@@ -899,17 +910,22 @@ bool init_island(TerrainIsland* s, int w, int h) {
     g_health.interopActive = 1;
     g_health.vk2glSemActive = s->colorView->vkToGlImported ? 1 : 0;
 
-    // ---- LOAD-preserve renderpass (2 color LOAD + shared depth LOAD; no clears).
-    // COPIED from vulkan_color_prop_island.cpp:520-587 (tier1 renderpass) verbatim. ----
+    // ---- Shared-GBuffer renderpass. Default path preserves the GL-cleared color
+    // attachments. MC2_VK_TERRAIN_NATIVE_PREFIX_CLEAR makes terrain the native first
+    // owner of color0/normal/depth for the frame so the strict no-interop canary can
+    // advance past this island without a GL->VK semaphore handoff.
     {
+        const bool nativePrefixClear = terrainNativePrefixClearRequested();
         VkAttachmentDescription att[3]{};
         att[0].format = s->colorRes->format; att[0].samples = VK_SAMPLE_COUNT_1_BIT;
-        att[0].loadOp = VK_ATTACHMENT_LOAD_OP_LOAD; att[0].storeOp = VK_ATTACHMENT_STORE_OP_STORE;
+        att[0].loadOp = nativePrefixClear ? VK_ATTACHMENT_LOAD_OP_CLEAR : VK_ATTACHMENT_LOAD_OP_LOAD;
+        att[0].storeOp = VK_ATTACHMENT_STORE_OP_STORE;
         att[0].stencilLoadOp = VK_ATTACHMENT_LOAD_OP_DONT_CARE; att[0].stencilStoreOp = VK_ATTACHMENT_STORE_OP_DONT_CARE;
         att[0].initialLayout = VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL;
         att[0].finalLayout   = VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL;
         att[1].format = s->normalRes->format; att[1].samples = VK_SAMPLE_COUNT_1_BIT;
-        att[1].loadOp = VK_ATTACHMENT_LOAD_OP_LOAD; att[1].storeOp = VK_ATTACHMENT_STORE_OP_STORE;
+        att[1].loadOp = nativePrefixClear ? VK_ATTACHMENT_LOAD_OP_CLEAR : VK_ATTACHMENT_LOAD_OP_LOAD;
+        att[1].storeOp = VK_ATTACHMENT_STORE_OP_STORE;
         att[1].stencilLoadOp = VK_ATTACHMENT_LOAD_OP_DONT_CARE; att[1].stencilStoreOp = VK_ATTACHMENT_STORE_OP_DONT_CARE;
         att[1].initialLayout = VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL;
         att[1].finalLayout   = VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL;
@@ -2539,10 +2555,13 @@ extern "C" int mc2_vk_terrain_island_run(int w, int h) {
     VkFrameSync fsN = vkImageResourceBeginFrame(s->normalRes);
     VkFrameSync fsD = vkImageResourceBeginFrame(s->depthRes);
     VkCommandBuffer cb = s->cbuf[fsC.parity & 1u];
+    const bool nativePrefixClear = terrainNativePrefixClearRequested();
 
-    glInteropSignalToVk(*s->colorView,  GL_LAYOUT_COLOR_ATTACHMENT_EXT,         fsC.parity);
-    glInteropSignalToVk(*s->normalView, GL_LAYOUT_COLOR_ATTACHMENT_EXT,         fsN.parity);
-    glInteropSignalToVk(*s->depthView,  GL_LAYOUT_DEPTH_STENCIL_ATTACHMENT_EXT, fsD.parity);
+    if (!nativePrefixClear) {
+        glInteropSignalToVk(*s->colorView,  GL_LAYOUT_COLOR_ATTACHMENT_EXT,         fsC.parity);
+        glInteropSignalToVk(*s->normalView, GL_LAYOUT_COLOR_ATTACHMENT_EXT,         fsN.parity);
+        glInteropSignalToVk(*s->depthView,  GL_LAYOUT_DEPTH_STENCIL_ATTACHMENT_EXT, fsD.parity);
+    }
 
     const clk::time_point tRender0 = clk::now();
     ZoneNamedN(zTerrRec, "VK-terrain-record-submit", true);   // VK-FLIP-FIELD-REPORT-1: CPU record+queue-submit (to fn return)
@@ -2552,13 +2571,18 @@ extern "C" int mc2_vk_terrain_island_run(int w, int h) {
     bi.flags = VK_COMMAND_BUFFER_USAGE_ONE_TIME_SUBMIT_BIT;
     if (vkBeginCommandBuffer(cb, &bi) != VK_SUCCESS) { setFallback("record_failed"); s->disabled = true; return 0; }
 
-    // FAR-BAND-BLACK-1 FIX: attachment 2 (shared depth) is now LOAD_OP_CLEAR (see the
-    // render-pass-creation comment above) -- color(0)/normal(1) stay LOAD (no clear
-    // values needed for those slots; VkClearValue is ignored for LOAD attachments) and
-    // depth(2) clears to reverse-Z far (depth=0.0, stencil=0), bit-exact in the shared
-    // image's own D32_SFLOAT_S8_UINT format regardless of what GL's
-    // GL_DEPTH24_STENCIL8-reinterpreted clear wrote to the same bytes this frame.
+    // FAR-BAND-BLACK-1 FIX: attachment 2 clears to reverse-Z far. The native prefix
+    // clear path also clears color0 and normal here, matching the GL frame-entry
+    // clear plus clearGBuffer1 sentinel before terrain draws into the shared GBuffer.
     VkClearValue clears[3]{};
+    clears[0].color.float32[0] = g_prefixClearColor[0];
+    clears[0].color.float32[1] = g_prefixClearColor[1];
+    clears[0].color.float32[2] = g_prefixClearColor[2];
+    clears[0].color.float32[3] = g_prefixClearColor[3];
+    clears[1].color.float32[0] = 0.5f;
+    clears[1].color.float32[1] = 0.5f;
+    clears[1].color.float32[2] = 1.0f;
+    clears[1].color.float32[3] = 0.0f;
     clears[2].depthStencil = {0.0f, 0u};
 
     VkRenderPassBeginInfo rbi{};
@@ -2618,9 +2642,11 @@ extern "C" int mc2_vk_terrain_island_run(int w, int h) {
     VkSemaphore signalSems[3]; uint32_t waitN = 0, sigN = 0;
     auto addWait = [&](VkSemaphore sem, VkPipelineStageFlags stage){
         if (sem != VK_NULL_HANDLE) { waitSems[waitN] = sem; waitStages[waitN] = stage; ++waitN; } };
-    addWait(fsC.signal, VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT);
-    addWait(fsN.signal, VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT);
-    addWait(fsD.signal, VK_PIPELINE_STAGE_EARLY_FRAGMENT_TESTS_BIT);
+    if (!nativePrefixClear) {
+        addWait(fsC.signal, VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT);
+        addWait(fsN.signal, VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT);
+        addWait(fsD.signal, VK_PIPELINE_STAGE_EARLY_FRAGMENT_TESTS_BIT);
+    }
     const bool gpuC = s->colorView->vkToGlImported  && fsC.vk2gl != VK_NULL_HANDLE;
     const bool gpuN = s->normalView->vkToGlImported && fsN.vk2gl != VK_NULL_HANDLE;
     const bool gpuD = s->depthView->vkToGlImported  && fsD.vk2gl != VK_NULL_HANDLE;
@@ -2635,9 +2661,11 @@ extern "C" int mc2_vk_terrain_island_run(int w, int h) {
     si.signalSemaphoreCount = sigN; si.pSignalSemaphores = signalSems;
     if (vkQueueSubmit(s->queue, 1, &si, fsC.fence) != VK_SUCCESS) { setFallback("submit_failed"); s->disabled = true; return 0; }
 
-    if (gpuC) glInteropWaitFromVk(*s->colorView,  GL_LAYOUT_COLOR_ATTACHMENT_EXT,         fsC.parity);
-    if (gpuN) glInteropWaitFromVk(*s->normalView, GL_LAYOUT_COLOR_ATTACHMENT_EXT,         fsN.parity);
-    if (gpuD) glInteropWaitFromVk(*s->depthView,  GL_LAYOUT_DEPTH_STENCIL_ATTACHMENT_EXT, fsD.parity);
+    if (!nativePrefixClear) {
+        if (gpuC) glInteropWaitFromVk(*s->colorView,  GL_LAYOUT_COLOR_ATTACHMENT_EXT,         fsC.parity);
+        if (gpuN) glInteropWaitFromVk(*s->normalView, GL_LAYOUT_COLOR_ATTACHMENT_EXT,         fsN.parity);
+        if (gpuD) glInteropWaitFromVk(*s->depthView,  GL_LAYOUT_DEPTH_STENCIL_ATTACHMENT_EXT, fsD.parity);
+    }
 
     if (vkWaitForFences(s->device, 1, &fsC.fence, VK_TRUE, 5ull*1000*1000*1000) != VK_SUCCESS) {
         setFallback("fence_timeout"); s->disabled = true; return 0;
@@ -2703,6 +2731,14 @@ extern "C" void mc2_vk_terrain_island_destroy() {
     if (!g_island) return;
     destroy_island(g_island);
     delete g_island; g_island = nullptr;
+}
+
+extern "C" void mc2_vk_terrain_set_native_prefix_clear_color(float r, float g, float b, float a)
+{
+    g_prefixClearColor[0] = r;
+    g_prefixClearColor[1] = g;
+    g_prefixClearColor[2] = b;
+    g_prefixClearColor[3] = a;
 }
 
 #endif // MC2_VULKAN_ISLAND

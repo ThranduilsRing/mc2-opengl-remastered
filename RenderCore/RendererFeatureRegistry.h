@@ -822,6 +822,20 @@ static constexpr EnvVarDesc kAuxEnvVars[] = {
         "unavailable -> GL fallback. Surfaced in [VK_TERRAIN_TIER1] health/log. Gate OFF (or island "
         "not compiled) = byte-identical GL LOD-chunk terrain path."
     },
+    // VK-TERRAIN-NATIVE-PREFIX-CLEAR: proof slice for deleting terrain's frame-entry GL handoff.
+    {
+        "MC2_FEATURE_VK_TERRAIN_NATIVE_PREFIX_CLEAR",
+        "MC2_VK_TERRAIN_NATIVE_PREFIX_CLEAR",
+        EnvVarKind::Feature,
+        false,
+        "VK-TERRAIN-NATIVE-PREFIX-CLEAR: opt-in proof gate, default OFF (requires MC2_VK_TERRAIN_TIER1). "
+        "Moves the terrain-prefix frame initialization for shared scene color0, normal, and depth from "
+        "the legacy GL scene clear into the VK terrain render pass (color0 clear matches the gameplay/menu "
+        "clear color, normal clears to the clearGBuffer1 sentinel vec4(0.5,0.5,1.0,0.0), depth/stencil "
+        "clear to reverse-Z far/0). When ON, the terrain island skips its GL->VK/VK->GL semaphore handoff "
+        "for those first-owner attachments so MC2_VK_NO_GL_INTEROP_STRICT can advance to the next remaining "
+        "interop caller. Diagnostic deletion-readiness gate; OFF keeps the shipped LOAD-preserve path."
+    },
     // VK-TERRAIN-LIGHTING: make the VK Tier-1 terrain LIT (directional relief + baked static shadow).
     {
         "MC2_FEATURE_VK_TERRAIN_LIGHTING",
