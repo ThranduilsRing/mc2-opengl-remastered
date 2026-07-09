@@ -997,10 +997,10 @@ static constexpr EnvVarDesc kAuxEnvVars[] = {
         false,
         "VK-POST-COMPOSITE-DIRECT-CHAIN: opt-in deletion-readiness proof gate, default OFF. "
         "Requires MC2_VK_POST_COMPOSITE plus the full terrain->prop->mech->water direct-chain "
-        "gate stack. For the normal visual composite path, samples shared scene color0 as "
-        "already Vulkan-owned and skips the scene color GL->VK/VK->GL interop semaphore "
-        "handoff, while still CPU-waiting the submit fence before present consumes the "
-        "VK-owned present image."
+        "gate stack. Samples shared scene color0 as already Vulkan-owned and skips the scene "
+        "color GL->VK/VK->GL interop semaphore handoff, while still CPU-waiting the submit "
+        "fence before present consumes the VK-owned present image. ObjectId/thermal modes "
+        "still synchronize MRT2 separately until objectId ownership is ported."
     },
     {
         "MC2_FEATURE_VK_MECH_MATERIAL",

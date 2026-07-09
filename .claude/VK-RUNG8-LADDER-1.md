@@ -599,3 +599,23 @@ no tessellation anywhere in the tail.
   7 deterministic bookmarks before duration, `composite_vk_frames=300`,
   `gl_handoff_skip_frames=300`, `VK_WATER_TIER1 used_interop=0`,
   `validation_errors=0`, no strict abort.
+- 8.7w - COMPOSITE SCENE DIRECT FOR ALT MODES
+  (VK-COMPOSITE-SCENE-DIRECT-ALT-MODES-1). Split the composite direct-chain
+  decision so shared scene color0 skips its GL->VK/VK->GL handoff whenever the
+  full terrain->prop->mech->water stack is armed, even when the selected
+  composite view mode also needs objectId MRT2. The objectId attachment still
+  synchronizes separately; this intentionally advances the strict canary to the
+  real MRT2 ownership blocker instead of stopping on scene color first. Extended
+  `scripts/run_vk_nointerop_strict_visible.py` with `--view-mode` and repeated
+  `--env KEY=VALUE` so alternate-mode proofs are harnessed. Verification:
+  LowLight strict run `.claude/vk-nointerop-strict-visible-lowlight/` reached
+  engine smoke PASS with `MC2_VIEWMODE_FRAMEWORK=1`, `MC2_VIEW_MODE=lowlight`,
+  `composite_vk_frames=300`, `gl_handoff_skip_frames=300`, and no strict abort.
+  Normal visual strict regression after the split:
+  `.claude/vk-nointerop-strict-visible-scenedirect-final-smoke/`, engine smoke
+  PASS, 7 deterministic bookmarks before duration, no strict abort.
+  ObjectIdDebug probe with `MC2_OBJECT_ID_BUFFER=1`:
+  `.claude/vk-nointerop-strict-visible-objectid-scene-direct/`, expected FAIL
+  after water at the remaining `glInteropSignalToVk` in the objectId branch.
+  Next deletion slice: native ownership/writes for objectId MRT2 in the prop/mech
+  paths, or retirement of that view-mode dependency.

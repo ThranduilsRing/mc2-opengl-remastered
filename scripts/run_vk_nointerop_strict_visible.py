@@ -45,6 +45,9 @@ def main() -> int:
     ap.add_argument("--duration", type=int, default=210)
     ap.add_argument("--settle", type=int, default=80)
     ap.add_argument("--trigger", type=int, default=120)
+    ap.add_argument("--view-mode", help="Set MC2_VIEWMODE_FRAMEWORK=1 and MC2_VIEW_MODE to this value.")
+    ap.add_argument("--env", action="append", default=[],
+                    help="Additional KEY=VALUE environment override. May be passed multiple times.")
     ap.add_argument("--headless", action="store_true")
     ap.add_argument("--allow-partial", action="store_true")
     args = ap.parse_args()
@@ -54,6 +57,16 @@ def main() -> int:
 
     env = os.environ.copy()
     env.update(STRICT_ENV)
+    if args.view_mode:
+        env["MC2_VIEWMODE_FRAMEWORK"] = "1"
+        env["MC2_VIEW_MODE"] = args.view_mode
+    for item in args.env:
+        if "=" not in item:
+            ap.error("--env entries must be KEY=VALUE")
+        key, value = item.split("=", 1)
+        if not key:
+            ap.error("--env key must be non-empty")
+        env[key] = value
 
     cmd = [
         sys.executable,
@@ -77,7 +90,11 @@ def main() -> int:
         cmd.append("--allow-partial")
 
     print("[vk-strict-visible] out_dir=%s" % out_dir)
-    print("[vk-strict-visible] gates=%s" % ",".join(sorted(STRICT_ENV)))
+    extra = []
+    if args.view_mode:
+        extra.extend(["MC2_VIEWMODE_FRAMEWORK", "MC2_VIEW_MODE"])
+    extra.extend(item.split("=", 1)[0] for item in args.env)
+    print("[vk-strict-visible] gates=%s" % ",".join(sorted(set(STRICT_ENV) | set(extra))))
     return subprocess.call(cmd, cwd=str(root), env=env)
 
 

@@ -1,7 +1,7 @@
 # VK-ARC-STATE — current state block (update every session)
 
-HEAD routing note (2026-07-08): current shipped tip is rung 8.7v
-`VK-WATER-COMPOSITE-DIRECT-CHAIN-1` after the visible no-interop strict proof
+HEAD routing note (2026-07-08): current shipped tip is rung 8.7w
+`VK-COMPOSITE-SCENE-DIRECT-ALT-MODES-1` after the visible no-interop strict proof
 on branch `claude/vk-interop-bridge-1`, worktree
 `A:/Games/mc2-vk-interop-bridge`, build dir `build64_island`.
 Always confirm the exact commit with `git log -1 --oneline` before launching
@@ -10,7 +10,7 @@ Deploy lane for Vulkan ownership work is the literal
 `A:/Games/mc2-opengl/mc2-win64-v0.4c/mc2.exe`; pass `--exe` explicitly for
 smoke, visual, and RenderDoc harnesses. Do not rely on default deploy/visual
 lanes (`v0.4`, `v0.4d-rc1`, or non-v-prefixed `0.4c` paths).
-Rung-8 sub-ladder: `.claude/VK-RUNG8-LADDER-1.md` (8.1-8.7v shipped). Visible
+Rung-8 sub-ladder: `.claude/VK-RUNG8-LADDER-1.md` (8.1-8.7w shipped). Visible
 strict proof for the full native final tail lives at
 `.claude/vk-present-native-strict-visible-clean/`: 3/3 deterministic
 `mc2_01_buildings` bookmarks, `present_frames=2700`, `copy1_blit_frames=0`,
@@ -31,8 +31,15 @@ Final exact-binary regression after reviewer fixes:
 `.claude/vk-nointerop-strict-visible-final-smoke/`, engine smoke PASS,
 7 deterministic bookmarks before duration, `composite_vk_frames=300`,
 `gl_handoff_skip_frames=300`, `VK_WATER_TIER1 used_interop=0`, no strict abort.
-Next work is checking remaining non-visual/object-id/debug/post/shadow fallback
-routes before deleting `gl_interop_view.*` and Win32 external-memory plumbing.
+LowLight alternate composite mode is also strict-clean at
+`.claude/vk-nointerop-strict-visible-lowlight/` (`MC2_VIEW_MODE=lowlight`,
+engine smoke PASS, `composite_vk_frames=300`, no strict abort). ObjectIdDebug is
+now the next confirmed visible-mode blocker: with `MC2_OBJECT_ID_BUFFER=1` and
+`MC2_VIEW_MODE=objectid`, `.claude/vk-nointerop-strict-visible-objectid-scene-direct/`
+aborts after water at the remaining objectId/MRT2 handoff. Next work is porting
+objectId ownership for the native prop/mech paths or explicitly retiring that
+view-mode dependency before deleting `gl_interop_view.*` and Win32
+external-memory plumbing.
 
 Verification guardrails:
 - Bracket every proof with lane hygiene: deployed exe fingerprint/manifest plus

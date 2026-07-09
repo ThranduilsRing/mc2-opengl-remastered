@@ -1681,8 +1681,8 @@ bool EnginePresentVk::renderNativeCompositeVisual(float exposure,
     VkFrameSync fsObjectId{};
     if (needsObjectId)
         fsObjectId = vkImageResourceBeginFrame(objectId);
-    const bool directChain = compositeDirectChainGateEnabled() && !needsObjectId;
-    if (!directChain)
+    const bool sceneDirectChain = compositeDirectChainGateEnabled();
+    if (!sceneDirectChain)
         glInteropSignalToVk(*sceneView, GL_LAYOUT_COLOR_ATTACHMENT_EXT, fsScene.parity);
     if (needsObjectId)
         glInteropSignalToVk(*objectIdView, GL_LAYOUT_COLOR_ATTACHMENT_EXT, fsObjectId.parity);
@@ -1766,7 +1766,7 @@ bool EnginePresentVk::renderNativeCompositeVisual(float exposure,
     };
     VkSemaphore signalSems[2];
     uint32_t waitN = 0;
-    if (!directChain && fsScene.signal != VK_NULL_HANDLE) {
+    if (!sceneDirectChain && fsScene.signal != VK_NULL_HANDLE) {
         waitSems[waitN] = fsScene.signal;
         waitStages[waitN] = VK_PIPELINE_STAGE_FRAGMENT_SHADER_BIT;
         ++waitN;
@@ -1777,7 +1777,7 @@ bool EnginePresentVk::renderNativeCompositeVisual(float exposure,
         ++waitN;
     }
     uint32_t sigN = 0;
-    if (!directChain && sceneView->vkToGlImported && fsScene.vk2gl) signalSems[sigN++] = fsScene.vk2gl;
+    if (!sceneDirectChain && sceneView->vkToGlImported && fsScene.vk2gl) signalSems[sigN++] = fsScene.vk2gl;
     if (needsObjectId && objectIdView->vkToGlImported && fsObjectId.vk2gl)
         signalSems[sigN++] = fsObjectId.vk2gl;
 
@@ -1792,7 +1792,7 @@ bool EnginePresentVk::renderNativeCompositeVisual(float exposure,
     if (vkQueueSubmit(s.gfxQ, 1, &si, fsScene.fence) != VK_SUCCESS)
         return false;
 
-    if (!directChain && sceneView->vkToGlImported && fsScene.vk2gl)
+    if (!sceneDirectChain && sceneView->vkToGlImported && fsScene.vk2gl)
         glInteropWaitFromVk(*sceneView, GL_LAYOUT_COLOR_ATTACHMENT_EXT, fsScene.parity);
     if (needsObjectId && objectIdView->vkToGlImported && fsObjectId.vk2gl)
         glInteropWaitFromVk(*objectIdView, GL_LAYOUT_COLOR_ATTACHMENT_EXT, fsObjectId.parity);
