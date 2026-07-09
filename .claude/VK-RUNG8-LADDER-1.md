@@ -699,3 +699,24 @@ no tessellation anywhere in the tail.
   resize failure reproduced at `.claude/vk-nointerop-strict-visible-hzb-direct-dirty-isolate/`
   before the defer, then passed at
   `.claude/vk-nointerop-strict-visible-hzb-direct-dirty-defer/`.
+- 8.7ab - SHADOW DIRECT CHAIN STRICT PROOF
+  (VK-SHADOW-DIRECT-CHAIN-1). Added default-off
+  `MC2_VK_SHADOW_DIRECT_CHAIN=1`: when the VK shadow/CSM producers are armed
+  with same-frame native VK consumers, the shadow island skips its VK->GL
+  semaphore signal/wait and keeps shadow products VK-owned. The dynamic
+  single-map producer still renders/fences and exposes its direct `VkImageView`;
+  under this proof gate it returns no GL texture handle so no GL sampler can
+  silently consume the product. CSM array/full-map producers continue feeding
+  terrain and native CSM screen-shadow through direct VK views. The strict
+  visible harness now arms dynamic CSM shadows, static shadow substrate, native
+  CSM screen-shadow, and the shadow direct-chain gate. Verification:
+  `.claude/vk-nointerop-strict-visible-shadow-direct-clean/`, 11/11
+  deterministic `mc2_01` bookmarks; log receipt `sha=9848c91117fd dirty=0`,
+  `MC2_VK_SHADOW_DIRECT_CHAIN=1 -- VK shadow products stay VK-owned; GL
+  semaphore wait is skipped`; first VK shadow, CSM array, and CSM full-map
+  products produced; present `composite_vk_frames=6300
+  gl_handoff_skip_frames=6300`; zero occurrences of `[VK_NO_GL_INTEROP_STRICT]`,
+  `glInteropSignalToVk`, or `glInteropWaitFromVk`. Detailed post-health receipt:
+  `.claude/vk-nointerop-strict-visible-shadow-direct-dirty-receipts/`, screenfx
+  `shadow_frames=6629 direct_chain=1 used_interop=0`, HZB/fog/SSAO/water/prop
+  all `used_interop=0`.

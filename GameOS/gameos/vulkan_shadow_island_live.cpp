@@ -76,6 +76,7 @@ struct ShadowIslandHealth {
     unsigned long vkDraws     = 0;
     int   interopActive  = 0;
     int   vk2glSemActive = 0;
+    int   directChain    = 0;
     unsigned long usedInterop = 0;
     unsigned long instRecords = 0;   // caster instances fed this frame
     unsigned long typeRuns    = 0;   // per-type instanced draws this frame
@@ -143,6 +144,24 @@ bool csmArrayInteropGateRequested() {
         state = (e && e[0] == '1') ? 1 : 0;
     }
     return state == 1;
+}
+
+bool shadowDirectChainRequested() {
+    static int state = -1;
+    if (state == -1) {
+        const char* e = std::getenv("MC2_VK_SHADOW_DIRECT_CHAIN");
+        state = (e && e[0] == '1') ? 1 : 0;
+    }
+    return state == 1;
+}
+
+void noteShadowDirectChain() {
+    static bool logged = false;
+    g_health.directChain = shadowDirectChainRequested() ? 1 : 0;
+    if (g_health.directChain && !logged) {
+        vlog("MC2_VK_SHADOW_DIRECT_CHAIN=1 -- VK shadow products stay VK-owned; GL semaphore wait is skipped.");
+        logged = true;
+    }
 }
 
 std::string spv_dir() {
@@ -865,6 +884,7 @@ extern "C" unsigned int mc2_vk_shadow_island_run(
     g_csmFullMapReadyThisFrame = false;  // CSM full-map direct view must be same-frame fresh too
     g_csmArrayReadyThisFrame = false;    // CSM array direct view must be same-frame fresh too
     if (!shadowInteropGateRequested()) return 0;
+    noteShadowDirectChain();
     if (size <= 0 || !lightSpace16 || !instances || instanceCount == 0) return 0;
 
     using clk = std::chrono::steady_clock;
@@ -1027,9 +1047,11 @@ extern "C" unsigned int mc2_vk_shadow_island_run(
     vkCmdEndRenderPass(cb);
     if (vkEndCommandBuffer(cb) != VK_SUCCESS) { setFallback("record_failed"); s->disabled = true; return 0; }
 
-    // ---- 6) Submit: NO GL->VK wait (VK produces the depth; GL never wrote it);
-    // SIGNAL VK->GL sem (GL waits it before sampling) + fence (per-slot WAW retire). ----
-    const bool useGpuVk2Gl = s->depthGlView.vkToGlImported && (fs.vk2gl != VK_NULL_HANDLE);
+    // ---- 6) Submit: NO GL->VK wait (VK produces the depth; GL never wrote it).
+    // Legacy interop signals VK->GL and makes GL wait before sampling; direct-chain
+    // proof mode skips that handoff and exposes the same-frame VkImageView only.
+    const bool directChain = shadowDirectChainRequested();
+    const bool useGpuVk2Gl = !directChain && s->depthGlView.vkToGlImported && (fs.vk2gl != VK_NULL_HANDLE);
     VkSubmitInfo si{};
     si.sType = VK_STRUCTURE_TYPE_SUBMIT_INFO;
     si.waitSemaphoreCount = 0; si.pWaitSemaphores = nullptr; si.pWaitDstStageMask = nullptr;
@@ -1060,20 +1082,25 @@ extern "C" unsigned int mc2_vk_shadow_island_run(
 
     g_health.vkDraws = 1;
     ++g_health.usedVulkan;
-    ++g_health.usedInterop;
+    if (!directChain) ++g_health.usedInterop;
     g_health.totalUs = usSince(tTotal0);
     if (!s_firstOk) {
-        vlog("first VK shadow map produced: instCount=%u typeRuns=%lu tex=%u (GL now samples the "
-             "VK-produced D32 via calcShadow).", instanceCount, g_health.typeRuns, s->depthGlView.glTex);
+        if (directChain) {
+            vlog("first VK shadow map produced: instCount=%u typeRuns=%lu view=%p (direct VK consumers only).",
+                 instanceCount, g_health.typeRuns, (void*)s->depthResource.view);
+        } else {
+            vlog("first VK shadow map produced: instCount=%u typeRuns=%lu tex=%u (GL now samples the "
+                 "VK-produced D32 via calcShadow).", instanceCount, g_health.typeRuns, s->depthGlView.glTex);
+        }
         s_firstOk = true;
     }
     // VK-SHADOW-DIRECT-CONSUME-1: fence-waited above, layout already transitioned to
     // DEPTH_STENCIL_READ_ONLY_OPTIMAL by the render pass -- safe for a same-frame-later
     // VK consumer (the terrain island) to sample s->depthResource.view directly.
     g_dynShadowReadyThisFrame = true;
-    // Return the GL texture handle of the VK-produced shadow map so the caller binds
-    // it in place of getDynamicShadowTexture().
-    return s->depthGlView.glTex;
+    // Return the GL texture handle only for the legacy VK->GL consumer path. In
+    // direct-chain mode, native VK consumers use the ready view accessor instead.
+    return directChain ? 0u : s->depthGlView.glTex;
 }
 
 extern "C" unsigned int mc2_vk_shadow_island_run_csm_fullmap(
@@ -1082,6 +1109,7 @@ extern "C" unsigned int mc2_vk_shadow_island_run_csm_fullmap(
     float biasFactor, float biasUnits) {
     g_csmFullMapReadyThisFrame = false;
     if (!shadowInteropGateRequested() || !csmFullMapInteropGateRequested()) return 0;
+    noteShadowDirectChain();
     if (size <= 0 || !lightSpace16 || !instances || instanceCount == 0) return 0;
     if (!g_island || g_island->disabled || !g_island->inited || !g_island->useInterop) return 0;
     ShadowIsland* s = g_island;
@@ -1169,7 +1197,8 @@ extern "C" unsigned int mc2_vk_shadow_island_run_csm_fullmap(
     vkCmdEndRenderPass(cb);
     if (vkEndCommandBuffer(cb) != VK_SUCCESS) { setFallback("csm_fullmap_record_failed"); s->disabled = true; return 0; }
 
-    const bool useGpuVk2Gl = s->csmFullMapGlView.vkToGlImported && (fs.vk2gl != VK_NULL_HANDLE);
+    const bool directChain = shadowDirectChainRequested();
+    const bool useGpuVk2Gl = !directChain && s->csmFullMapGlView.vkToGlImported && (fs.vk2gl != VK_NULL_HANDLE);
     VkSubmitInfo si{};
     si.sType = VK_STRUCTURE_TYPE_SUBMIT_INFO;
     si.commandBufferCount = 1;
@@ -1189,7 +1218,7 @@ extern "C" unsigned int mc2_vk_shadow_island_run_csm_fullmap(
     g_health.instRecords = instanceCount;
     g_health.typeRuns = typeRuns;
     ++g_health.usedVulkan;
-    ++g_health.usedInterop;
+    if (!directChain) ++g_health.usedInterop;
     static bool s_firstOk = false;
     if (!s_firstOk) {
         vlog("first VK CSM full-map produced: instCount=%u typeRuns=%lu tex=%u.",
@@ -1209,6 +1238,7 @@ extern "C" unsigned int mc2_vk_shadow_island_run_csm_array_layer(
         if (g_island) g_island->csmArrayRenderedMask = 0;
     }
     if (!shadowInteropGateRequested() || !csmArrayInteropGateRequested()) return 0;
+    noteShadowDirectChain();
     if (size <= 0 || layers <= 0 || layerIndex < 0 || layerIndex >= layers) return 0;
     if (!lightSpace16 || !instances || instanceCount == 0) return 0;
     if (!g_island || g_island->disabled || !g_island->inited || !g_island->useInterop) return 0;
@@ -1335,7 +1365,7 @@ extern "C" unsigned int mc2_vk_shadow_island_run_csm_array_layer(
 // already complete) and reset false at the top of every call (including a failed/
 // declined one), so a stale prior-frame view is never reported ready this frame.
 extern "C" void* mc2_vk_shadow_island_get_dyn_shadow_view() {
-    return (g_island && g_health.usedInterop && g_dynShadowReadyThisFrame)
+    return (g_island && g_dynShadowReadyThisFrame)
         ? reinterpret_cast<void*>(g_island->depthResource.view) : nullptr;
 }
 extern "C" void* mc2_vk_shadow_island_get_dyn_shadow_sampler() {
@@ -1399,11 +1429,11 @@ extern "C" void mc2_render_backend_shadow_region_health(
 // Teardown (called from gosPostProcess::destroy or renderer shutdown).
 extern "C" void mc2_vk_shadow_island_destroy() {
     vlog("[VK_SHADOW_INTEROP] vulkan_available=%d used_vulkan=%lu used_interop=%lu interop_active=%d "
-         "vk2gl_sem=%d validation_errors=%lu inst_records=%lu type_runs=%lu geom_verts=%lu "
+         "vk2gl_sem=%d direct_chain=%d validation_errors=%lu inst_records=%lu type_runs=%lu geom_verts=%lu "
          "fallback_reason=\"%s\" vk_draws=%lu forbidden_copyImgToBuf=%lu forbidden_getTexImage=%lu "
          "forbidden_readPixels=%lu stage_inst_us=%.1f draw_us=%.1f total_us=%.1f",
          g_health.vulkanAvailable, g_health.usedVulkan, g_health.usedInterop, g_health.interopActive,
-         g_health.vk2glSemActive, g_health.validationErrors, g_health.instRecords, g_health.typeRuns,
+         g_health.vk2glSemActive, g_health.directChain, g_health.validationErrors, g_health.instRecords, g_health.typeRuns,
          g_health.geomVerts, g_health.fallbackReason, g_health.vkDraws,
          g_forbidden.vkCmdCopyImageToBuffer, g_forbidden.glGetTexImage, g_forbidden.glReadPixels,
          g_health.stageInstUs, g_health.drawUs, g_health.totalUs);

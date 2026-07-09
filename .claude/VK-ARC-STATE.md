@@ -1,7 +1,7 @@
 # VK-ARC-STATE — current state block (update every session)
 
-HEAD routing note (2026-07-08): current shipped tip is rung 8.7aa
-`VK-POST-SCREENFX-HZB-DIRECT-CHAIN-1` after the visible no-interop strict proof
+HEAD routing note (2026-07-08): current shipped tip is rung 8.7ab
+`VK-SHADOW-DIRECT-CHAIN-1` after the shadow-enabled visible no-interop strict proof
 on branch `claude/vk-interop-bridge-1`, worktree
 `A:/Games/mc2-vk-interop-bridge`, build dir `build64_island`.
 Always confirm the exact commit with `git log -1 --oneline` before launching
@@ -26,14 +26,25 @@ production `glInteropSignalToVk`/`glInteropWaitFromVk` call. Proof gates
 `MC2_VK_MECH_DIRECT_CHAIN=1`, `MC2_VK_WATER_TIER1=1`,
 `MC2_VK_WATER_DIRECT_CHAIN=1`, `MC2_VK_POST_FOG_NATIVE=1`,
 `MC2_VK_POST_FOG_DIRECT_CHAIN=1`, `MC2_SSAO=1`,
-`MC2_VK_POST_SSAO=1`, `MC2_VK_POST_SSAO_DIRECT_CHAIN=1`, and
-`MC2_VK_POST_SCREENFX=1`, `MC2_VK_POST_SCREENFX_DIRECT_CHAIN=1`,
+`MC2_VK_POST_SSAO=1`, `MC2_VK_POST_SSAO_DIRECT_CHAIN=1`,
+`MC2_SHADOW_ENABLE=1`, `MC2_SHADOW_CSM=1`,
+`MC2_VK_SHADOW_INTEROP=1`, `MC2_VK_SHADOW_DIRECT_CHAIN=1`,
+`MC2_VK_CSM_ARRAY_INTEROP=1`, `MC2_VK_CSM_FULLMAP_INTEROP=1`,
+`MC2_VK_STATIC_SHADOW_MAP=1`, and `MC2_VK_POST_SCREENFX=1`,
+`MC2_VK_POST_SCREENFX_SHADOW=1`, `MC2_VK_POST_SCREENFX_DIRECT_CHAIN=1`,
 `MC2_HZB_BUILD=1`, `MC2_VK_POST_HZB=1`, `MC2_VK_POST_HZB_DIRECT_CHAIN=1`,
 `MC2_VK_POST_COMPOSITE_DIRECT_CHAIN=1` now make a visible `mc2_01` full
 bookmark sweep pass with the strict canary armed:
-`.claude/vk-nointerop-strict-visible-postscreenfx-hzb-direct-dirty-cleanrun/`,
-11/11
-deterministic.
+`.claude/vk-nointerop-strict-visible-shadow-direct-clean/`, 11/11
+deterministic. Log shows `sha=9848c91117fd dirty=0`,
+`MC2_VK_SHADOW_DIRECT_CHAIN=1 -- VK shadow products stay VK-owned; GL
+semaphore wait is skipped`, first VK shadow/CSM products, present
+`composite_vk_frames=6300 gl_handoff_skip_frames=6300`, and zero occurrences
+of `[VK_NO_GL_INTEROP_STRICT]`, `glInteropSignalToVk`, or
+`glInteropWaitFromVk`. Detailed post-health receipt is in the immediately prior
+dirty proof `.claude/vk-nointerop-strict-visible-shadow-direct-dirty-receipts/`
+with screenfx `shadow_frames=6629 direct_chain=1 used_interop=0` and
+HZB/fog/SSAO/water/prop all `used_interop=0`.
 Final exact-binary regression after reviewer fixes:
 `.claude/vk-nointerop-strict-visible-final-smoke/`, engine smoke PASS,
 7 deterministic bookmarks before duration, `composite_vk_frames=300`,
@@ -1390,6 +1401,21 @@ Current tail status:
   no present fail-soft, and no `[VK_NO_GL_INTEROP_STRICT]` abort. The HZB path
   now defers native execution for the first observed extent/mip-count frame so
   the present swapchain handles resize before HZB allocates/renders.
+- Native shadow direct-chain strict canary is green:
+  `.claude/vk-nointerop-strict-visible-shadow-direct-clean/`, 11/11
+  deterministic `mc2_01` bookmarks with dynamic CSM shadows, static shadow
+  substrate, native CSM screen-shadow, post stack, HZB, composite, and native
+  present all armed under `MC2_VK_NO_GL_INTEROP_STRICT=1`; log shows
+  `sha=9848c91117fd dirty=0`, `MC2_VK_SHADOW_DIRECT_CHAIN=1 -- VK shadow
+  products stay VK-owned; GL semaphore wait is skipped`, `first VK shadow map
+  produced ... (direct VK consumers only)`, first VK CSM array/full-map
+  products, present `composite_vk_frames=6300 gl_handoff_skip_frames=6300`,
+  no present fail-soft, and zero occurrences of `[VK_NO_GL_INTEROP_STRICT]`,
+  `glInteropSignalToVk`, or `glInteropWaitFromVk`. Detailed post-health
+  receipt remains the dirty pre-commit proof
+  `.claude/vk-nointerop-strict-visible-shadow-direct-dirty-receipts/`, with
+  screenfx `shadow_frames=6629 direct_chain=1 used_interop=0` and
+  HZB/fog/SSAO/water/prop all `used_interop=0`.
 
 ## RUNG 8.6f - VK-HUD-NATIVE-QUEUE-1
 

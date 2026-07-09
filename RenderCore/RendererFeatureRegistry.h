@@ -674,6 +674,19 @@ static constexpr EnvVarDesc kAuxEnvVars[] = {
         "[VK_SHADOW_INTEROP] health. Gate OFF -> GL shadow path byte-identical. P8a = opaque "
         "static props, single map (foliage-alpha + terrain casters = P8b, mechs = P12)."
     },
+    {
+        "MC2_TRACE_VK_SHADOW_DIRECT_CHAIN",
+        "MC2_VK_SHADOW_DIRECT_CHAIN",
+        EnvVarKind::Trace,
+        false,
+        "VK shadow deletion-readiness proof gate. Default-OFF. When the VK shadow "
+        "and CSM producers are armed with same-frame VK consumers, skips the "
+        "VK->GL semaphore signal/wait and keeps the produced shadow images VK-owned. "
+        "The dynamic single-map producer exposes only its direct VkImageView under "
+        "this gate; GL texture-handle fallback remains disabled so no stale GL "
+        "sampling can pass a no-interop proof. Normal shadow interop behavior is "
+        "unchanged when unset."
+    },
     // VK-P14 GATE-CONSOLIDATION-1: the ONE umbrella for the shared-GBuffer scene path.
     {
         "MC2_FEATURE_VK_SHARED_GBUFFER",

@@ -1605,6 +1605,11 @@ def main():
                             # in the allowlist Popen drops it and the gate-ON smoke
                             # silently runs the GL shadow path (gate inert).
                             "MC2_VK_SHADOW_INTEROP",
+                            # VK-SHADOW-DIRECT-CHAIN: deletion-readiness proof gate
+                            # that keeps VK shadow/CSM products VK-owned and skips
+                            # the VK->GL semaphore handoff when native consumers are
+                            # armed.
+                            "MC2_VK_SHADOW_DIRECT_CHAIN",
                             # VK-P14 GATE-CONSOLIDATION-1: THE UMBRELLA. =1 arms the
                             # whole shared-GBuffer scene family at once (all sub-gates
                             # below default ON; explicit sub-gate env still overrides).
