@@ -468,5 +468,13 @@ no tessellation anywhere in the tail.
   `MC2_SHADOW_ENABLE` is off, the screen-shadow fullscreen multiply runs in VK
   before cloud/shoreline. It samples shared scene depth/normal plus the shared
   static shadow map and skips the GL screen-shadow body. It explicitly declines
-  while dynamic/CSM object shadows are active, leaving that full parity slice for
-  the dynamic shadow ownership follow-up.
+  while dynamic object shadows need a non-static path.
+- 8.7o - CSM SCREEN-SHADOW NATIVE
+  (VK-SCREEN-SHADOW-CSM-NATIVE-1). Added a separate `screen_shadow_csm` VK
+  shader/pipeline for the normal dynamic CSM screen-shadow path. When
+  `MC2_SHADOW_ENABLE=1`, `MC2_VK_SHADOW_INTEROP=1`,
+  `MC2_VK_CSM_ARRAY_INTEROP=1`, and `MC2_VK_CSM_FULLMAP_INTEROP=1` have produced
+  same-frame VK CSM views, the native screen-shadow pass samples the shared
+  static shadow map plus the VK CSM array/full-map directly and skips the GL
+  screen-shadow body. Debug classification and non-CSM dynamic remain GL
+  fallback paths.

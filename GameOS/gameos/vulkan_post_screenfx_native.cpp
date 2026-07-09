@@ -71,6 +71,7 @@
 #include "vulkan_shared_scene_depth.h"
 #define MC2_VULKAN_SHARED_STATIC_SHADOW_IMPL_ISLAND
 #include "vulkan_shared_static_shadow.h"
+#include "vulkan_shadow_island_live.h"
 #include "vk_shared_gbuffer_gate.h"
 
 // Fixed-timestep clock so the animated cloud/foam time matches the GL path under smoke.
@@ -84,6 +85,8 @@
 #include <chrono>
 #include <string>
 #include <vector>
+
+extern void gos_GetTerrainLightDir(float* x, float* y, float* z);
 
 namespace {
 
@@ -190,13 +193,23 @@ static_assert(sizeof(ScreenFxShoreParams) == 16, "ScreenFxShoreParams std140 off
 struct ScreenFxShadowStaticParams {
     float invViewProj[16];       // off 0
     float lightSpaceMatrix[16];  // off 64
-    float screenSize[2];         // off 128
-    int   enableShadows;         // off 136
-    int   debugMode;             // off 140
-    float shadowSoftness;        // off 144
-    float _pad0, _pad1, _pad2;   // off 148..156
+    float dynamicCascadeMatrices[16 * 3]; // off 128
+    float dynamicCascadeTexelWorld[4];    // off 320
+    float screenSize[2];         // off 336
+    int   enableShadows;         // off 344
+    int   enableDynamicShadows;  // off 348
+    int   dynamicCsmCount;       // off 352
+    int   debugMode;             // off 356
+    float shadowSoftness;        // off 360
+    float csmDepthSpan;          // off 364
+    float dynamicFullMapTexelWorld; // off 368
+    float objNormalBiasScale;    // off 372
+    float _padBeforeLight[2];    // off 376..380
+    float lightDir[4];           // off 384, xyz used
+    float mechSoft;              // off 400
+    float _pad0, _pad1, _pad2;   // off 404..412
 };
-static_assert(sizeof(ScreenFxShadowStaticParams) == 160, "ScreenFxShadowStaticParams std140 offsets drifted");
+static_assert(sizeof(ScreenFxShadowStaticParams) == 416, "ScreenFxShadowStaticParams std140 offsets drifted");
 
 } // namespace
 
@@ -219,6 +232,8 @@ struct gosPostProcess::VkPostScreenFx {
     VkImageResource* sNormalRes = nullptr;
     VkImageResource* sDepthRes  = nullptr;
     VkImageResource* sStaticShadowRes = nullptr;
+    VkImageView      csmArrayView = VK_NULL_HANDLE;    // borrowed; shadow island owns it
+    VkImageView      csmFullMapView = VK_NULL_HANDLE;  // borrowed; shadow island owns it
     GlInteropView*   sColorView  = nullptr;
     GlInteropView*   sNormalView = nullptr;
     GlInteropView*   sDepthView  = nullptr;
@@ -246,9 +261,10 @@ struct gosPostProcess::VkPostScreenFx {
     VkPipeline       cloudPipe = VK_NULL_HANDLE;
     VkPipeline       shorePipe = VK_NULL_HANDLE;
     VkPipeline       shadowPipe = VK_NULL_HANDLE;
+    VkPipeline       shadowCsmPipe = VK_NULL_HANDLE;
     VkShaderModule   cloudVert = VK_NULL_HANDLE, cloudFrag = VK_NULL_HANDLE;
     VkShaderModule   shoreVert = VK_NULL_HANDLE, shoreFrag = VK_NULL_HANDLE;
-    VkShaderModule   shadowVert = VK_NULL_HANDLE, shadowFrag = VK_NULL_HANDLE;
+    VkShaderModule   shadowVert = VK_NULL_HANDLE, shadowFrag = VK_NULL_HANDLE, shadowCsmFrag = VK_NULL_HANDLE;
     VkCommandPool    cpool = VK_NULL_HANDLE;
     VkCommandBuffer  cbuf[2] = {VK_NULL_HANDLE, VK_NULL_HANDLE}; // per parity slot
 };
@@ -277,6 +293,7 @@ void destroy_state(gosPostProcess::VkPostScreenFx* s) {
         if (s->cloudPipe) vkDestroyPipeline(d, s->cloudPipe, nullptr);
         if (s->shorePipe) vkDestroyPipeline(d, s->shorePipe, nullptr);
         if (s->shadowPipe) vkDestroyPipeline(d, s->shadowPipe, nullptr);
+        if (s->shadowCsmPipe) vkDestroyPipeline(d, s->shadowCsmPipe, nullptr);
         if (s->cloudPlayout) vkDestroyPipelineLayout(d, s->cloudPlayout, nullptr);
         if (s->shorePlayout) vkDestroyPipelineLayout(d, s->shorePlayout, nullptr);
         if (s->shadowPlayout) vkDestroyPipelineLayout(d, s->shadowPlayout, nullptr);
@@ -286,6 +303,7 @@ void destroy_state(gosPostProcess::VkPostScreenFx* s) {
         if (s->shoreFrag) vkDestroyShaderModule(d, s->shoreFrag, nullptr);
         if (s->shadowVert) vkDestroyShaderModule(d, s->shadowVert, nullptr);
         if (s->shadowFrag) vkDestroyShaderModule(d, s->shadowFrag, nullptr);
+        if (s->shadowCsmFrag) vkDestroyShaderModule(d, s->shadowCsmFrag, nullptr);
         if (s->pool)     vkDestroyDescriptorPool(d, s->pool, nullptr);
         if (s->cloudDsl) vkDestroyDescriptorSetLayout(d, s->cloudDsl, nullptr);
         if (s->shoreDsl) vkDestroyDescriptorSetLayout(d, s->shoreDsl, nullptr);
@@ -465,7 +483,7 @@ bool build_state(gosPostProcess::VkPostScreenFx* s, int w, int h) {
         r = vkCreateDescriptorSetLayout(s->device, &lci, nullptr, &s->shoreDsl);
         if (r != VK_SUCCESS) { vlog("vkCreateDescriptorSetLayout(shore) failed (%d).", (int)r); return false; }
 
-        VkDescriptorSetLayoutBinding shadowBinds[4]{};
+        VkDescriptorSetLayoutBinding shadowBinds[6]{};
         shadowBinds[0].binding = 0; shadowBinds[0].descriptorType = VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER;
         shadowBinds[0].descriptorCount = 1; shadowBinds[0].stageFlags = VK_SHADER_STAGE_FRAGMENT_BIT;
         shadowBinds[1].binding = 1; shadowBinds[1].descriptorType = VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER;
@@ -474,12 +492,16 @@ bool build_state(gosPostProcess::VkPostScreenFx* s, int w, int h) {
         shadowBinds[2].descriptorCount = 1; shadowBinds[2].stageFlags = VK_SHADER_STAGE_FRAGMENT_BIT;
         shadowBinds[3].binding = 3; shadowBinds[3].descriptorType = VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER;
         shadowBinds[3].descriptorCount = 1; shadowBinds[3].stageFlags = VK_SHADER_STAGE_FRAGMENT_BIT;
-        lci.bindingCount = 4; lci.pBindings = shadowBinds;
+        shadowBinds[4].binding = 4; shadowBinds[4].descriptorType = VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER;
+        shadowBinds[4].descriptorCount = 1; shadowBinds[4].stageFlags = VK_SHADER_STAGE_FRAGMENT_BIT;
+        shadowBinds[5].binding = 5; shadowBinds[5].descriptorType = VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER;
+        shadowBinds[5].descriptorCount = 1; shadowBinds[5].stageFlags = VK_SHADER_STAGE_FRAGMENT_BIT;
+        lci.bindingCount = 6; lci.pBindings = shadowBinds;
         r = vkCreateDescriptorSetLayout(s->device, &lci, nullptr, &s->shadowDsl);
         if (r != VK_SUCCESS) { vlog("vkCreateDescriptorSetLayout(shadow) failed (%d).", (int)r); return false; }
 
         VkDescriptorPoolSize sizes[2]{};
-        sizes[0].type = VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER; sizes[0].descriptorCount = 6;
+        sizes[0].type = VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER; sizes[0].descriptorCount = 8;
         sizes[1].type = VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER;         sizes[1].descriptorCount = 3;
         VkDescriptorPoolCreateInfo pci{};
         pci.sType = VK_STRUCTURE_TYPE_DESCRIPTOR_POOL_CREATE_INFO;
@@ -566,9 +588,11 @@ bool build_state(gosPostProcess::VkPostScreenFx* s, int w, int h) {
         s->shoreFrag = load_spv(s->device, spv_dir() + "shoreline.frag.spv");
         s->shadowVert = load_spv(s->device, spv_dir() + "screen_shadow_static.vert.spv");
         s->shadowFrag = load_spv(s->device, spv_dir() + "screen_shadow_static.frag.spv");
+        s->shadowCsmFrag = load_spv(s->device, spv_dir() + "screen_shadow_csm.frag.spv");
         if (s->cloudVert == VK_NULL_HANDLE || s->cloudFrag == VK_NULL_HANDLE ||
             s->shoreVert == VK_NULL_HANDLE || s->shoreFrag == VK_NULL_HANDLE ||
-            s->shadowVert == VK_NULL_HANDLE || s->shadowFrag == VK_NULL_HANDLE) {
+            s->shadowVert == VK_NULL_HANDLE || s->shadowFrag == VK_NULL_HANDLE ||
+            s->shadowCsmFrag == VK_NULL_HANDLE) {
             setFallback("spv_load_failed"); return false;
         }
         VkPipelineLayoutCreateInfo plci{};
@@ -642,6 +666,7 @@ bool build_state(gosPostProcess::VkPostScreenFx* s, int w, int h) {
         if (!make_pipeline(s->cloudVert, s->cloudFrag, s->cloudPlayout, &s->cloudPipe)) return false;
         if (!make_pipeline(s->shoreVert, s->shoreFrag, s->shorePlayout, &s->shorePipe)) return false;
         if (!make_pipeline(s->shadowVert, s->shadowFrag, s->shadowPlayout, &s->shadowPipe)) return false;
+        if (!make_pipeline(s->shadowVert, s->shadowCsmFrag, s->shadowPlayout, &s->shadowCsmPipe)) return false;
     }
 
     {
@@ -698,11 +723,16 @@ bool gosPostProcess::runVkPostScreenShadowStaticNative()
 {
     const bool dynamicCasterActive = (mc2vkgate::envTriState("MC2_SHADOW_ENABLE") == 1);
     const bool csmActive = dynamicCasterActive && (dynShadowArrayTex_ != 0);
+    const bool csmDirectReady = csmActive
+        && mc2_vk_shadow_island_csm_array_ready()
+        && mc2_vk_shadow_island_csm_fullmap_ready()
+        && mc2_vk_shadow_island_get_csm_array_view() != nullptr
+        && mc2_vk_shadow_island_get_csm_fullmap_view() != nullptr;
     const bool dynamicActive = dynamicCasterActive && (csmActive || dynShadowDepthTex_ != 0);
     const bool wantShadow = g_fx.shadowGate != 0
         && screenShadowEnabled_ && sceneHasTerrain_
         && screenShadowProg_ && screenShadowProg_->is_valid()
-        && shadowsEnabled_ && !dynamicActive && screenShadowDebug_ == 0;
+        && shadowsEnabled_ && (!dynamicActive || csmDirectReady) && screenShadowDebug_ == 0;
     if (!wantShadow || width_ <= 0 || height_ <= 0) return false;
 
     if (!vkPostScreenFx_) vkPostScreenFx_ = new VkPostScreenFx();
@@ -719,14 +749,45 @@ bool gosPostProcess::runVkPostScreenShadowStaticNative()
         }
     }
     if (!s->sStaticShadowRes || !s->sStaticShadowView || !s->shadowSet ||
-        s->shadowPipe == VK_NULL_HANDLE) {
+        s->shadowPipe == VK_NULL_HANDLE || (csmDirectReady && s->shadowCsmPipe == VK_NULL_HANDLE)) {
         setFallback("static_shadow_substrate_not_ready");
         return false;
     }
+    s->csmArrayView = csmDirectReady
+        ? reinterpret_cast<VkImageView>(mc2_vk_shadow_island_get_csm_array_view()) : VK_NULL_HANDLE;
+    s->csmFullMapView = csmDirectReady
+        ? reinterpret_cast<VkImageView>(mc2_vk_shadow_island_get_csm_fullmap_view()) : VK_NULL_HANDLE;
 
     ScreenFxShadowStaticParams p{};
     std::memcpy(p.invViewProj, inverseViewProj_, 16 * sizeof(float));
     std::memcpy(p.lightSpaceMatrix, staticLightSpaceMatrix_, 16 * sizeof(float));
+    if (csmDirectReady) {
+        std::memcpy(p.dynamicCascadeMatrices, dynamicCascadeMatrices_, 16 * 3 * sizeof(float));
+        std::memcpy(p.dynamicCascadeTexelWorld, dynamicCascadeTexelWorld_, 3 * sizeof(float));
+        p.dynamicCsmCount = csmCount_;
+        p.csmDepthSpan = csmDepthSpan_;
+        p.dynamicFullMapTexelWorld = dynamicFullMapTexelWorld_;
+        p.enableDynamicShadows = 1;
+        p.objNormalBiasScale = []() {
+            const char* v = std::getenv("MC2_SHADOW_OBJ_NORMAL_BIAS");
+            float s = (v && v[0]) ? (float)std::atof(v) : 2.0f;
+            if (s < 0.0f) s = 0.0f;
+            if (s > 20.0f) s = 20.0f;
+            return s;
+        }();
+        p.mechSoft = []() {
+            const char* v = std::getenv("MC2_SHADOW_MECH_SOFT");
+            float s = (v && v[0]) ? (float)std::atof(v) : 1.0f;
+            if (s < 0.0f) s = 0.0f;
+            if (s > 4.0f) s = 4.0f;
+            return s;
+        }();
+        float lx = 0.0f, ly = 0.0f, lz = 1.0f;
+        gos_GetTerrainLightDir(&lx, &ly, &lz);
+        float len = sqrtf(lx*lx + ly*ly + lz*lz);
+        if (len > 1e-6f) { lx /= len; ly /= len; lz /= len; }
+        p.lightDir[0] = -lx; p.lightDir[1] = -ly; p.lightDir[2] = -lz; p.lightDir[3] = 0.0f;
+    }
     p.screenSize[0] = (float)width_;
     p.screenSize[1] = (float)height_;
     p.enableShadows = 1;
@@ -736,6 +797,26 @@ bool gosPostProcess::runVkPostScreenShadowStaticNative()
     if (vmaMapMemory(s->allocator, s->shadowUboAlloc, &m) == VK_SUCCESS) {
         std::memcpy(m, &p, sizeof(p));
         vmaUnmapMemory(s->allocator, s->shadowUboAlloc);
+    }
+    if (csmDirectReady) {
+        VkDescriptorImageInfo csmArrayInfo{};
+        csmArrayInfo.sampler = s->shadowCompareSampler;
+        csmArrayInfo.imageView = s->csmArrayView;
+        csmArrayInfo.imageLayout = VK_IMAGE_LAYOUT_DEPTH_STENCIL_READ_ONLY_OPTIMAL;
+        VkDescriptorImageInfo csmFullMapInfo{};
+        csmFullMapInfo.sampler = s->shadowCompareSampler;
+        csmFullMapInfo.imageView = s->csmFullMapView;
+        csmFullMapInfo.imageLayout = VK_IMAGE_LAYOUT_DEPTH_STENCIL_READ_ONLY_OPTIMAL;
+        VkWriteDescriptorSet writes[2]{};
+        writes[0].sType = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET;
+        writes[0].dstSet = s->shadowSet; writes[0].dstBinding = 4; writes[0].descriptorCount = 1;
+        writes[0].descriptorType = VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER;
+        writes[0].pImageInfo = &csmArrayInfo;
+        writes[1].sType = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET;
+        writes[1].dstSet = s->shadowSet; writes[1].dstBinding = 5; writes[1].descriptorCount = 1;
+        writes[1].descriptorType = VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER;
+        writes[1].pImageInfo = &csmFullMapInfo;
+        vkUpdateDescriptorSets(s->device, 2, writes, 0, nullptr);
     }
 
     ++g_fx.attempted;
@@ -792,7 +873,7 @@ bool gosPostProcess::runVkPostScreenShadowStaticNative()
     rbi.renderPass = s->rpass; rbi.framebuffer = s->fb;
     rbi.renderArea = {{0, 0}, {(uint32_t)s->width, (uint32_t)s->height}};
     vkCmdBeginRenderPass(cb, &rbi, VK_SUBPASS_CONTENTS_INLINE);
-    vkCmdBindPipeline(cb, VK_PIPELINE_BIND_POINT_GRAPHICS, s->shadowPipe);
+    vkCmdBindPipeline(cb, VK_PIPELINE_BIND_POINT_GRAPHICS, csmDirectReady ? s->shadowCsmPipe : s->shadowPipe);
     vkCmdBindDescriptorSets(cb, VK_PIPELINE_BIND_POINT_GRAPHICS, s->shadowPlayout, 0, 1, &s->shadowSet, 0, nullptr);
     vkCmdDraw(cb, 3, 1, 0, 0);
     vkCmdEndRenderPass(cb);

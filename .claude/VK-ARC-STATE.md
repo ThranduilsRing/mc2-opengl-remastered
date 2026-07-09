@@ -1269,8 +1269,14 @@ Current tail status:
   `GL_DEPTH_COMPONENT32F`. GL still renders/samples it; native screen-shadow
   can later bind the same image without a copy.
 - Static-only screen-shadow can now render natively under `MC2_VK_POST_SCREENFX=1`
-  + `MC2_VK_STATIC_SHADOW_MAP=1`; it declines when `MC2_SHADOW_ENABLE=1`
-  because the dynamic/CSM leg remains GL-owned.
+  + `MC2_VK_STATIC_SHADOW_MAP=1`; it declines only when dynamic shadows require
+  a path that is not yet VK-readable.
+- CSM dynamic screen-shadow can now render natively when the direct VK CSM
+  producers are armed (`MC2_VK_SHADOW_INTEROP=1`,
+  `MC2_VK_CSM_ARRAY_INTEROP=1`, `MC2_VK_CSM_FULLMAP_INTEROP=1`). The
+  `screen_shadow_csm` pipeline samples the same-frame VK CSM array/full-map
+  views directly and skips the GL screen-shadow body under `MC2_SHADOW_ENABLE=1`.
+  Debug classification and non-CSM dynamic stay GL fallback paths.
 - Remaining deletion blocker: shared scene color/depth/present substrates still
   rely on `gl_interop_view.*` while GL can produce earlier scene pixels.
 
