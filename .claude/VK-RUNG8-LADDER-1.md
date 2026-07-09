@@ -547,3 +547,16 @@ no tessellation anywhere in the tail.
   shared-GBuffer VK owner without requiring GL interop semaphores, or introduce a
   shared-scene ownership scheduler that passes Vulkan ownership from terrain to
   prop/mech/water/post passes directly.
+- 8.7t - PROP DIRECT CHAIN PROOF
+  (VK-PROP-DIRECT-CHAIN-1). Added default-off `MC2_VK_PROP_DIRECT_CHAIN=1`.
+  Requires `MC2_VK_TERRAIN_NATIVE_PREFIX_CLEAR=1` and VK prop Tier-1. When
+  armed, prop color treats shared scene color0/normal/depth as already
+  Vulkan-owned by the native terrain prefix, skips its GL->VK and VK->GL
+  interop semaphore handoff, and still CPU-waits its submit fence before the
+  next island. Positive verification with terrain+prop direct-chain and strict
+  canary unset: PASS `tests/smoke/artifacts/2026-07-08T21-00-38`. Negative
+  proof with `MC2_VK_NO_GL_INTEROP_STRICT=1`: expected FAIL
+  `tests/smoke/artifacts/2026-07-08T21-01-14`, after
+  `[VK_COLOR_PROP_ISLAND] first TIER-1...`, with the next abort in
+  `VK_MECH_ISLAND`. Next deletion slice: chain mech shared-GBuffer co-write
+  behind prop without GL interop semaphores.

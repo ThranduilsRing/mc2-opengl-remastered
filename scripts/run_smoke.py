@@ -1637,6 +1637,10 @@ def main():
                             # in the allowlist Popen drops it and the gate-ON smoke
                             # silently runs the GL flush() prop path (gate inert).
                             "MC2_VK_PROP_COLOR_TIER1",
+                            # VK-PROP-DIRECT-CHAIN: deletion-readiness proof gate
+                            # that keeps shared GBuffer ownership on Vulkan after the
+                            # native terrain prefix and skips prop interop semaphores.
+                            "MC2_VK_PROP_DIRECT_CHAIN",
                             # VK-PROP-MATERIAL: real textured vertex-baked-lit prop
                             # materials (both albedo arrays). Requires MC2_VK_PROP_COLOR_TIER1.
                             "MC2_VK_PROP_MATERIAL",

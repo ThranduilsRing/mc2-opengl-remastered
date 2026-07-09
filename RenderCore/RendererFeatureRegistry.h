@@ -799,6 +799,19 @@ static constexpr EnvVarDesc kAuxEnvVars[] = {
         "engine VulkanContext; FAIL-SOFT to the GL flush() prop path when the shared GBuffer/"
         "context is unavailable. Gate OFF (or require missing) = byte-identical GL prop color path."
     },
+    // VK-PROP-DIRECT-CHAIN: proof slice for keeping prop color on the Vulkan-owned shared GBuffer.
+    {
+        "MC2_FEATURE_VK_PROP_DIRECT_CHAIN",
+        "MC2_VK_PROP_DIRECT_CHAIN",
+        EnvVarKind::Feature,
+        false,
+        "VK-PROP-DIRECT-CHAIN: opt-in deletion-readiness proof gate, default OFF. Requires "
+        "MC2_VK_PROP_COLOR_TIER1 plus MC2_VK_TERRAIN_NATIVE_PREFIX_CLEAR. When ON, the prop "
+        "color island treats the shared scene color0/normal/depth images as already Vulkan-owned "
+        "from the terrain prefix and skips its GL->VK/VK->GL interop semaphore handoff, while "
+        "still CPU-waiting its submit fence before the next island. Used with "
+        "MC2_VK_NO_GL_INTEROP_STRICT to advance the final Metal-gate canary beyond props."
+    },
     // VK-P10 TERRAIN TIER-1: the terrain in-place shared-GBuffer co-write region.
     {
         "MC2_FEATURE_VK_TERRAIN_TIER1",

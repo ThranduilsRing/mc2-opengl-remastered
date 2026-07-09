@@ -119,6 +119,19 @@ bool propColorTier1Requested() {
     return state == 1;
 }
 
+bool propDirectChainRequested() {
+    static int state = -1;
+    if (state == -1) {
+        const bool propGate = propColorTier1Requested();
+        const bool terrainNativePrefix =
+            mc2vkgate::envTriState("MC2_VK_TERRAIN_NATIVE_PREFIX_CLEAR") == 1;
+        const bool direct =
+            mc2vkgate::envTriState("MC2_VK_PROP_DIRECT_CHAIN") == 1;
+        state = (propGate && terrainNativePrefix && direct) ? 1 : 0;
+    }
+    return state == 1;
+}
+
 // VK-P11 STATIC-PROP MATERIAL: real lit textured props (albedo 2D_ARRAY sample +
 // shared computePBR). Requires the Tier-1 gate (shared-GBuffer co-write). Default-OFF.
 bool propMaterialRequested() {
@@ -1426,11 +1439,16 @@ extern "C" int mc2_vk_color_prop_island_run(int w, int h) {
         VkFrameSync fsN = vkImageResourceBeginFrame(normalRes);
         VkFrameSync fsD = vkImageResourceBeginFrame(depthRes);
         VkCommandBuffer cb = s->cbuf[fsC.parity & 1u];
+        const bool directChain = propDirectChainRequested();
 
-        // GL hands each shared image to VK in its attachment layout.
-        glInteropSignalToVk(*colorView,  GL_LAYOUT_COLOR_ATTACHMENT_EXT,          fsC.parity);
-        glInteropSignalToVk(*normalView, GL_LAYOUT_COLOR_ATTACHMENT_EXT,          fsN.parity);
-        glInteropSignalToVk(*depthView,  GL_LAYOUT_DEPTH_STENCIL_ATTACHMENT_EXT,  fsD.parity);
+        // Default: GL hands each shared image to VK in its attachment layout. Direct
+        // chain proof: terrain already left the shared GBuffer Vulkan-owned in the
+        // same attachment layouts, so no GL semaphore handoff is needed here.
+        if (!directChain) {
+            glInteropSignalToVk(*colorView,  GL_LAYOUT_COLOR_ATTACHMENT_EXT,          fsC.parity);
+            glInteropSignalToVk(*normalView, GL_LAYOUT_COLOR_ATTACHMENT_EXT,          fsN.parity);
+            glInteropSignalToVk(*depthView,  GL_LAYOUT_DEPTH_STENCIL_ATTACHMENT_EXT,  fsD.parity);
+        }
 
         const clk::time_point tRender0 = clk::now();
         ZoneNamedN(zPropRec, "VK-props-record-submit", true);   // VK-FLIP-FIELD-REPORT-1: CPU record+queue-submit (to tier1-block end)
@@ -1524,21 +1542,27 @@ extern "C" int mc2_vk_color_prop_island_run(int w, int h) {
         vkCmdEndRenderPass(cb);
         if (vkEndCommandBuffer(cb) != VK_SUCCESS) { setFallback("record_failed"); s->disabled = true; return 0; }
 
-        // Submit: WAIT all three GL->VK sems (GL owns all three targets); SIGNAL all
-        // three VK->GL sems + the color fence. GL then waits all three back.
+        // Submit: default path waits all three GL->VK sems (GL owns all three
+        // targets) and signals all three VK->GL sems. Direct-chain proof keeps the
+        // ownership on Vulkan and relies on the submit fence below for CPU ordering
+        // before the next Vulkan island records against these images.
         VkSemaphore waitSems[3];   VkPipelineStageFlags waitStages[3];
         VkSemaphore signalSems[3]; uint32_t waitN = 0, sigN = 0;
         auto addWait = [&](VkSemaphore sem, VkPipelineStageFlags stage){
             if (sem != VK_NULL_HANDLE) { waitSems[waitN] = sem; waitStages[waitN] = stage; ++waitN; } };
-        addWait(fsC.signal, VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT);
-        addWait(fsN.signal, VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT);
-        addWait(fsD.signal, VK_PIPELINE_STAGE_EARLY_FRAGMENT_TESTS_BIT);
+        if (!directChain) {
+            addWait(fsC.signal, VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT);
+            addWait(fsN.signal, VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT);
+            addWait(fsD.signal, VK_PIPELINE_STAGE_EARLY_FRAGMENT_TESTS_BIT);
+        }
         const bool gpuC = colorView->vkToGlImported  && fsC.vk2gl != VK_NULL_HANDLE;
         const bool gpuN = normalView->vkToGlImported && fsN.vk2gl != VK_NULL_HANDLE;
         const bool gpuD = depthView->vkToGlImported  && fsD.vk2gl != VK_NULL_HANDLE;
-        if (gpuC) signalSems[sigN++] = fsC.vk2gl;
-        if (gpuN) signalSems[sigN++] = fsN.vk2gl;
-        if (gpuD) signalSems[sigN++] = fsD.vk2gl;
+        if (!directChain) {
+            if (gpuC) signalSems[sigN++] = fsC.vk2gl;
+            if (gpuN) signalSems[sigN++] = fsN.vk2gl;
+            if (gpuD) signalSems[sigN++] = fsD.vk2gl;
+        }
 
         VkSubmitInfo si{};
         si.sType = VK_STRUCTURE_TYPE_SUBMIT_INFO;
@@ -1548,9 +1572,11 @@ extern "C" int mc2_vk_color_prop_island_run(int w, int h) {
         if (vkQueueSubmit(s->queue, 1, &si, fsC.fence) != VK_SUCCESS) { setFallback("submit_failed"); s->disabled = true; return 0; }
 
         // GL waits each shared image back in its attachment layout (GPU hand-off).
-        if (gpuC) glInteropWaitFromVk(*colorView,  GL_LAYOUT_COLOR_ATTACHMENT_EXT,         fsC.parity);
-        if (gpuN) glInteropWaitFromVk(*normalView, GL_LAYOUT_COLOR_ATTACHMENT_EXT,         fsN.parity);
-        if (gpuD) glInteropWaitFromVk(*depthView,  GL_LAYOUT_DEPTH_STENCIL_ATTACHMENT_EXT, fsD.parity);
+        if (!directChain) {
+            if (gpuC) glInteropWaitFromVk(*colorView,  GL_LAYOUT_COLOR_ATTACHMENT_EXT,         fsC.parity);
+            if (gpuN) glInteropWaitFromVk(*normalView, GL_LAYOUT_COLOR_ATTACHMENT_EXT,         fsN.parity);
+            if (gpuD) glInteropWaitFromVk(*depthView,  GL_LAYOUT_DEPTH_STENCIL_ATTACHMENT_EXT, fsD.parity);
+        }
 
         // Retire this frame's submit before the parity slot is reused (WAW).
         if (vkWaitForFences(s->device, 1, &fsC.fence, VK_TRUE, 5ull*1000*1000*1000) != VK_SUCCESS) {
@@ -1570,7 +1596,7 @@ extern "C" int mc2_vk_color_prop_island_run(int w, int h) {
 
         g_health.vkDraws = 1;
         ++g_health.usedVulkan;
-        ++g_health.usedInterop;
+        if (!directChain) ++g_health.usedInterop;
         g_health.totalUs = usSince(tTotal0);
         static bool s_t1FirstOk = false;
         if (!s_t1FirstOk) {
