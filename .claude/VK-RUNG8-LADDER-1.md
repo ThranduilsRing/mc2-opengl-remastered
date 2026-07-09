@@ -255,7 +255,7 @@ no tessellation anywhere in the tail.
   hud_vk_textured_draws_last=69 hud_vk_texture_uploads=22 imgui_vk_frames=301
   validation_errors=0 fallback_reason=""`. Smoke PASS 1/1 at
   `2026-07-08T16-21-39`.
-- 8.7 - PARTIAL DELETE-READINESS, not a safe all-interop deletion yet. Native
+- 8.7 - DELETE-READINESS CHECKPOINTS. Initial state: native
   ImGui, native composite Visual/FXAA/FORCE-43/LowLight/ObjectId/Thermal, and
   native GameOS HUD are now live under the full rung-8 stack. With
   `MC2_VK_HUD=1 MC2_VK_HUD_COLOR_PROOF=1 MC2_VK_HUD_SKIP_GL=1`, visible proof
@@ -266,15 +266,12 @@ no tessellation anywhere in the tail.
   validation_errors=0 fallback_reason=""`. HUD is no longer the blocker for
   GL draw retirement in the present tail.
 
-  Remaining blockers are narrower and concrete. The shared scene
-  color/depth/normal substrate still uses Win32 GL/VK external-memory and
-  semaphore handoffs for current native geometry/post paths, so
-  `gl_interop_view.*`, `vk_image_resource.*`, and `vulkan_shared_scene_*` are
-  not yet deletable. Old postprocess island/subgraph TUs and gates are bypassed
-  by the shared-GBuffer native gates and are candidates for a separate fallback
-  and oracle cleanup slice, but deletion must remove the CMake entries,
-  `gos_postprocess` routes, debug-dump health sections, smoke allowlist entries,
-  and docs together.
+  The following 8.7a+ slices retire old postprocess islands, add direct-chain
+  ownership for geometry/post/shadow/present/UI, and culminate in the
+  resource-strict 8.7af proof where the full native stack creates no exportable
+  Win32 interop resources and performs no GL/VK semaphore handoffs. Hybrid
+  fallback code remains for non-strict legacy gates, but it is outside the
+  proved final native stack.
 - 8.7a - RETIRED OLD POSTPROCESS SUBGRAPH (VK-RUNG8-SUBGRAPH-DELETE-1).
   Deleted `vulkan_postprocess_subgraph.cpp` and removed its CMake entry,
   standalone `MC2_VULKAN_POSTPROCESS_SUBGRAPH*` smoke/docs/registry exposure,
@@ -759,3 +756,19 @@ no tessellation anywhere in the tail.
   `hud_vk_textured_draws_last=69`, `imgui_vk_ready=1`,
   `imgui_vk_frames=8100`, `fallback_reason=""`; no
   `[VK_NO_GL_INTEROP_STRICT]` abort and no `VK_SHARED_STATIC_SHADOW` lines.
+- 8.7af - RESOURCE-STRICT FINAL STACK PROOF
+  (VK-NO-GL-INTEROP-RESOURCE-STRICT-PASS-1). The full native geometry/post/
+  composite/HUD/ImGui/present stack now passes the stronger resource-level
+  Metal-gate canary with `MC2_VK_NO_GL_INTEROP_RESOURCE_STRICT=1`,
+  `MC2_VK_PRESENT_NO_GL_IMPORT=1`, and native direct-chain gates armed. Shared
+  scene color/depth and present use VK-only allocations in this stack; static
+  shadow import remains disabled, and shadow/CSM products stay VK-owned.
+  Verification at clean deployed commit `04a15aec`: visible strict capture
+  `.claude/vk-nointerop-resource-strict-checker-automated/`, 11/11
+  deterministic `mc2_01` bookmarks. The reusable checker
+  `scripts/check_vk_nointerop_log.py` passed against the capture log and
+  harness-written `vk_strict_env.txt`: zero `[VK_NO_GL_INTEROP_STRICT]`,
+  `glInteropSignalToVk`, `glInteropWaitFromVk`, `glInteropViewCreate`,
+  `vkImageResourceCreate(exportable)`, present-native aborts, crash reports, or
+  device loss; runtime receipts include `[VK_PRESENT]`, `composite_vk_frames=`,
+  `gl_handoff_skip_frames=`, and `imgui_vk_frames=`.

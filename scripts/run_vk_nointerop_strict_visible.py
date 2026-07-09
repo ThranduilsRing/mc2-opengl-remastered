@@ -128,7 +128,12 @@ def main() -> int:
     if args.view_mode:
         extra.extend(["MC2_VIEWMODE_FRAMEWORK", "MC2_VIEW_MODE"])
     extra.extend(item.split("=", 1)[0] for item in args.env)
-    print("[vk-strict-visible] gates=%s" % ",".join(sorted(set(STRICT_ENV) | set(extra))))
+    gates = sorted(set(STRICT_ENV) | set(extra))
+    print("[vk-strict-visible] gates=%s" % ",".join(gates))
+    out_dir.mkdir(parents=True, exist_ok=True)
+    with (out_dir / "vk_strict_env.txt").open("w", encoding="utf-8") as f:
+        for key in gates:
+            f.write(f"{key}={env.get(key, '')}\n")
     return subprocess.call(cmd, cwd=str(root), env=env)
 
 
