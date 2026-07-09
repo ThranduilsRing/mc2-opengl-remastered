@@ -1656,6 +1656,14 @@ def main():
                             # that keeps shared GBuffer ownership on Vulkan after
                             # terrain+prop and skips mech interop semaphores.
                             "MC2_VK_MECH_DIRECT_CHAIN",
+                            # VK-WATER-DIRECT-CHAIN: deletion-readiness proof gate
+                            # that keeps shared GBuffer ownership on Vulkan after
+                            # terrain+prop+mech and skips water interop semaphores.
+                            "MC2_VK_WATER_DIRECT_CHAIN",
+                            # VK-POST-COMPOSITE-DIRECT-CHAIN: deletion-readiness
+                            # proof gate that consumes VK-owned shared scene color0
+                            # without a composite-stage GL interop handoff.
+                            "MC2_VK_POST_COMPOSITE_DIRECT_CHAIN",
                             "MC2_VK_MECH_MATERIAL",
                             # MC2_VK_MECH_LIGHTING: per-vertex calc_light Lambert +
                             # per-actor fog, ported from the GL default mech path

@@ -574,3 +574,28 @@ no tessellation anywhere in the tail.
   `[VK_NO_GL_INTEROP_STRICT]` abort occurs. This is minimized-smoke proof only:
   present extent is zero and water is inactive, so final proof still requires a
   visible/full-tail strict run.
+- 8.7v - WATER + COMPOSITE DIRECT CHAIN PROOF
+  (VK-WATER-COMPOSITE-DIRECT-CHAIN-1). Added default-off
+  `MC2_VK_WATER_DIRECT_CHAIN=1` and `MC2_VK_POST_COMPOSITE_DIRECT_CHAIN=1`.
+  Water requires `MC2_VK_WATER_TIER1=1` plus `MC2_VK_MECH_DIRECT_CHAIN=1`; when
+  armed, the water island treats shared scene color0/normal/depth as already
+  Vulkan-owned by terrain+prop+mech, skips its GL->VK/VK->GL semaphore handoff,
+  and still CPU-waits its submit fence before the composite. The visual
+  composite direct-chain gate requires the full upstream
+  terrain->prop->mech->water direct-chain env stack; for normal visual
+  composition (non object-id view), it samples shared scene color0 as already
+  Vulkan-owned, skips the scene-color GL interop handoff, and still CPU-waits
+  its submit fence before present consumes the VK-owned image. Added
+  `scripts/run_vk_nointerop_strict_visible.py` so the long gate stack is a
+  repeatable harness instead of a hand-built shell command. Sidecar review
+  caught an initial composite guard bug (checking only the water env flag);
+  fixed by requiring the full upstream stack. Proofs: first visible strict run
+  without `MC2_VK_WATER_TIER1=1` correctly aborted in legacy water; rerun with
+  water tier1 advanced to composite; after composite direct-chain, full harness
+  PASS at `.claude/vk-nointerop-strict-visible-harness/` with 11/11
+  deterministic bookmarks and no `[VK_NO_GL_INTEROP_STRICT]` abort. Final
+  exact-binary regression after the guard/pointer cleanup:
+  `.claude/vk-nointerop-strict-visible-final-smoke/`, engine smoke PASS,
+  7 deterministic bookmarks before duration, `composite_vk_frames=300`,
+  `gl_handoff_skip_frames=300`, `VK_WATER_TIER1 used_interop=0`,
+  `validation_errors=0`, no strict abort.

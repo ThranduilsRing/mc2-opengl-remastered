@@ -220,6 +220,24 @@ bool nativeCompositeGateEnabled() {
     return on;
 }
 
+bool compositeDirectChainGateEnabled() {
+    static const bool on = []() {
+        const char* v = getenv("MC2_VK_POST_COMPOSITE_DIRECT_CHAIN");
+        const char* terrain = getenv("MC2_VK_TERRAIN_NATIVE_PREFIX_CLEAR");
+        const char* prop = getenv("MC2_VK_PROP_DIRECT_CHAIN");
+        const char* mech = getenv("MC2_VK_MECH_DIRECT_CHAIN");
+        const char* waterTier1 = getenv("MC2_VK_WATER_TIER1");
+        const char* water = getenv("MC2_VK_WATER_DIRECT_CHAIN");
+        return v && v[0] == '1' &&
+               terrain && terrain[0] == '1' &&
+               prop && prop[0] == '1' &&
+               mech && mech[0] == '1' &&
+               waterTier1 && waterTier1[0] == '1' &&
+               water && water[0] == '1';
+    }();
+    return on;
+}
+
 bool skipGlPresentHandoffGateEnabled() {
     static const bool on = []() {
         const char* v = getenv("MC2_VK_PRESENT_SKIP_GL_HANDOFF");
@@ -1663,7 +1681,9 @@ bool EnginePresentVk::renderNativeCompositeVisual(float exposure,
     VkFrameSync fsObjectId{};
     if (needsObjectId)
         fsObjectId = vkImageResourceBeginFrame(objectId);
-    glInteropSignalToVk(*sceneView, GL_LAYOUT_COLOR_ATTACHMENT_EXT, fsScene.parity);
+    const bool directChain = compositeDirectChainGateEnabled() && !needsObjectId;
+    if (!directChain)
+        glInteropSignalToVk(*sceneView, GL_LAYOUT_COLOR_ATTACHMENT_EXT, fsScene.parity);
     if (needsObjectId)
         glInteropSignalToVk(*objectIdView, GL_LAYOUT_COLOR_ATTACHMENT_EXT, fsObjectId.parity);
 
@@ -1739,29 +1759,40 @@ bool EnginePresentVk::renderNativeCompositeVisual(float exposure,
     if (vkEndCommandBuffer(s.cbuf) != VK_SUCCESS)
         return false;
 
-    VkSemaphore waitSems[2] = { fsScene.signal, fsObjectId.signal };
+    VkSemaphore waitSems[2];
     VkPipelineStageFlags waitStages[2] = {
         VK_PIPELINE_STAGE_FRAGMENT_SHADER_BIT,
         VK_PIPELINE_STAGE_FRAGMENT_SHADER_BIT
     };
     VkSemaphore signalSems[2];
+    uint32_t waitN = 0;
+    if (!directChain && fsScene.signal != VK_NULL_HANDLE) {
+        waitSems[waitN] = fsScene.signal;
+        waitStages[waitN] = VK_PIPELINE_STAGE_FRAGMENT_SHADER_BIT;
+        ++waitN;
+    }
+    if (needsObjectId && fsObjectId.signal != VK_NULL_HANDLE) {
+        waitSems[waitN] = fsObjectId.signal;
+        waitStages[waitN] = VK_PIPELINE_STAGE_FRAGMENT_SHADER_BIT;
+        ++waitN;
+    }
     uint32_t sigN = 0;
-    if (sceneView->vkToGlImported && fsScene.vk2gl) signalSems[sigN++] = fsScene.vk2gl;
+    if (!directChain && sceneView->vkToGlImported && fsScene.vk2gl) signalSems[sigN++] = fsScene.vk2gl;
     if (needsObjectId && objectIdView->vkToGlImported && fsObjectId.vk2gl)
         signalSems[sigN++] = fsObjectId.vk2gl;
 
     VkSubmitInfo si{VK_STRUCTURE_TYPE_SUBMIT_INFO};
-    si.waitSemaphoreCount = needsObjectId ? 2u : 1u;
-    si.pWaitSemaphores = waitSems;
-    si.pWaitDstStageMask = waitStages;
+    si.waitSemaphoreCount = waitN;
+    si.pWaitSemaphores = waitN ? waitSems : nullptr;
+    si.pWaitDstStageMask = waitN ? waitStages : nullptr;
     si.commandBufferCount = 1;
     si.pCommandBuffers = &s.cbuf;
     si.signalSemaphoreCount = sigN;
-    si.pSignalSemaphores = signalSems;
+    si.pSignalSemaphores = sigN ? signalSems : nullptr;
     if (vkQueueSubmit(s.gfxQ, 1, &si, fsScene.fence) != VK_SUCCESS)
         return false;
 
-    if (sceneView->vkToGlImported && fsScene.vk2gl)
+    if (!directChain && sceneView->vkToGlImported && fsScene.vk2gl)
         glInteropWaitFromVk(*sceneView, GL_LAYOUT_COLOR_ATTACHMENT_EXT, fsScene.parity);
     if (needsObjectId && objectIdView->vkToGlImported && fsObjectId.vk2gl)
         glInteropWaitFromVk(*objectIdView, GL_LAYOUT_COLOR_ATTACHMENT_EXT, fsObjectId.parity);

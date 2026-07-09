@@ -6,8 +6,8 @@
 generator_version: "1.0.0"
 registry_entry_count: 94
 registry_env_flag_count: 92
-sweep_flag_count: 784
-flag_count: 793
+sweep_flag_count: 789
+flag_count: 798
 flags:
   - name: MC2_ABL_ARG_GUARD
     default: unknown
@@ -6412,6 +6412,14 @@ flags:
     registered: no
     in_smoke_passthrough: yes
     documented_in_tier1_env_vars: yes
+  - name: MC2_VK_MECH_DIRECT_CHAIN
+    default: unknown
+    declared_in: null
+    referenced_at:
+      - GameOS/gameos/engine_present_vk.cpp:228
+    registered: no
+    in_smoke_passthrough: yes
+    documented_in_tier1_env_vars: no
   - name: MC2_VK_NO_GL_INTEROP_STRICT
     default: unknown
     declared_in: null
@@ -6428,6 +6436,14 @@ flags:
     registered: no
     in_smoke_passthrough: yes
     documented_in_tier1_env_vars: yes
+  - name: MC2_VK_POST_COMPOSITE_DIRECT_CHAIN
+    default: unknown
+    declared_in: null
+    referenced_at:
+      - GameOS/gameos/engine_present_vk.cpp:225
+    registered: no
+    in_smoke_passthrough: yes
+    documented_in_tier1_env_vars: no
   - name: MC2_VK_PRESENT_DIRECT_FBO
     default: unknown
     declared_in: null
@@ -6440,7 +6456,7 @@ flags:
     default: unknown
     declared_in: null
     referenced_at:
-      - GameOS/gameos/engine_present_vk.cpp:238
+      - GameOS/gameos/engine_present_vk.cpp:256
     registered: no
     in_smoke_passthrough: yes
     documented_in_tier1_env_vars: no
@@ -6448,7 +6464,7 @@ flags:
     default: unknown
     declared_in: null
     referenced_at:
-      - GameOS/gameos/engine_present_vk.cpp:225
+      - GameOS/gameos/engine_present_vk.cpp:243
     registered: no
     in_smoke_passthrough: yes
     documented_in_tier1_env_vars: yes
@@ -6465,6 +6481,14 @@ flags:
     declared_in: null
     referenced_at:
       - GameOS/gameos/gameosmain.cpp:1854
+    registered: no
+    in_smoke_passthrough: yes
+    documented_in_tier1_env_vars: no
+  - name: MC2_VK_PROP_DIRECT_CHAIN
+    default: unknown
+    declared_in: null
+    referenced_at:
+      - GameOS/gameos/engine_present_vk.cpp:227
     registered: no
     in_smoke_passthrough: yes
     documented_in_tier1_env_vars: no
@@ -6577,7 +6601,16 @@ flags:
     default: unknown
     declared_in: null
     referenced_at:
+      - GameOS/gameos/engine_present_vk.cpp:226
       - GameOS/gameos/gameosmain.cpp:72
+    registered: no
+    in_smoke_passthrough: yes
+    documented_in_tier1_env_vars: no
+  - name: MC2_VK_WATER_DIRECT_CHAIN
+    default: unknown
+    declared_in: null
+    referenced_at:
+      - GameOS/gameos/engine_present_vk.cpp:230
     registered: no
     in_smoke_passthrough: yes
     documented_in_tier1_env_vars: no
@@ -6590,6 +6623,14 @@ flags:
     registered: no
     in_smoke_passthrough: yes
     documented_in_tier1_env_vars: no
+  - name: MC2_VK_WATER_TIER1
+    default: unknown
+    declared_in: null
+    referenced_at:
+      - GameOS/gameos/engine_present_vk.cpp:229
+    registered: no
+    in_smoke_passthrough: yes
+    documented_in_tier1_env_vars: yes
   - name: MC2_VPL_CULL
     default: unknown
     declared_in: null
@@ -6618,7 +6659,7 @@ flags:
     default: unknown
     declared_in: null
     referenced_at:
-      - GameOS/gameos/engine_present_vk.cpp:325
+      - GameOS/gameos/engine_present_vk.cpp:343
       - GameOS/gameos/gos_render.cpp:376
       - editor/EditorGosRender.cpp:833
     referenced_at_more: 1
@@ -6645,7 +6686,7 @@ flags:
     default: unknown
     declared_in: null
     referenced_at:
-      - GameOS/gameos/engine_present_vk.cpp:254
+      - GameOS/gameos/engine_present_vk.cpp:272
       - GameOS/gameos/gos_postprocess.cpp:3863
       - GameOS/gameos/vulkan_backend_skeleton.cpp:7602
     referenced_at_more: 9

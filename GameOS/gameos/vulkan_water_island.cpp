@@ -141,6 +141,19 @@ bool waterPerfGateRequested() {
     return state == 1;
 }
 
+// MC2_VK_WATER_DIRECT_CHAIN -- deletion-readiness proof gate. When the prior
+// terrain/prop/mech owners have kept the shared GBuffer Vulkan-owned, water can
+// render in-place without another GL/VK semaphore round trip.
+bool waterDirectChainRequested() {
+    static int state = -1;
+    if (state == -1) {
+        state = (waterTier1Requested() &&
+                 mc2vkgate::envTriState("MC2_VK_MECH_DIRECT_CHAIN") == 1 &&
+                 mc2vkgate::envTriState("MC2_VK_WATER_DIRECT_CHAIN") == 1) ? 1 : 0;
+    }
+    return state == 1;
+}
+
 std::string spv_dir() {
     const char* env = std::getenv("MC2_VULKAN_SPV_DIR");
     std::string d = (env && *env) ? env : "shaders/vulkan";
@@ -1042,10 +1055,13 @@ extern "C" int mc2_vk_water_island_run(
         VkFrameSync fsN = vkImageResourceBeginFrame(s->sNormalRes);
         VkFrameSync fsD = vkImageResourceBeginFrame(s->sDepthRes);
         VkCommandBuffer cb = s->cbuf[fsC.parity & 1u];
+        const bool directChain = waterDirectChainRequested();
 
-        glInteropSignalToVk(*s->sColorView,  GL_LAYOUT_COLOR_ATTACHMENT_EXT,         fsC.parity);
-        glInteropSignalToVk(*s->sNormalView, GL_LAYOUT_COLOR_ATTACHMENT_EXT,         fsN.parity);
-        glInteropSignalToVk(*s->sDepthView,  GL_LAYOUT_DEPTH_STENCIL_ATTACHMENT_EXT, fsD.parity);
+        if (!directChain) {
+            glInteropSignalToVk(*s->sColorView,  GL_LAYOUT_COLOR_ATTACHMENT_EXT,         fsC.parity);
+            glInteropSignalToVk(*s->sNormalView, GL_LAYOUT_COLOR_ATTACHMENT_EXT,         fsN.parity);
+            glInteropSignalToVk(*s->sDepthView,  GL_LAYOUT_DEPTH_STENCIL_ATTACHMENT_EXT, fsD.parity);
+        }
 
         const clk::time_point tRender0 = clk::now();
         vkResetCommandBuffer(cb, 0);
@@ -1074,29 +1090,35 @@ extern "C" int mc2_vk_water_island_run(
         VkSemaphore signalSems[3]; uint32_t waitN = 0, sigN = 0;
         auto addWait = [&](VkSemaphore sem, VkPipelineStageFlags stage){
             if (sem != VK_NULL_HANDLE) { waitSems[waitN] = sem; waitStages[waitN] = stage; ++waitN; } };
-        addWait(fsC.signal, VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT);
-        addWait(fsN.signal, VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT);
-        addWait(fsD.signal, VK_PIPELINE_STAGE_EARLY_FRAGMENT_TESTS_BIT);
+        if (!directChain) {
+            addWait(fsC.signal, VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT);
+            addWait(fsN.signal, VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT);
+            addWait(fsD.signal, VK_PIPELINE_STAGE_EARLY_FRAGMENT_TESTS_BIT);
+        }
         const bool gpuC = s->sColorView->vkToGlImported  && fsC.vk2gl != VK_NULL_HANDLE;
         const bool gpuN = s->sNormalView->vkToGlImported && fsN.vk2gl != VK_NULL_HANDLE;
         const bool gpuD = s->sDepthView->vkToGlImported  && fsD.vk2gl != VK_NULL_HANDLE;
-        if (gpuC) signalSems[sigN++] = fsC.vk2gl;
-        if (gpuN) signalSems[sigN++] = fsN.vk2gl;
-        if (gpuD) signalSems[sigN++] = fsD.vk2gl;
+        if (!directChain) {
+            if (gpuC) signalSems[sigN++] = fsC.vk2gl;
+            if (gpuN) signalSems[sigN++] = fsN.vk2gl;
+            if (gpuD) signalSems[sigN++] = fsD.vk2gl;
+        }
 
         VkSubmitInfo si{};
         si.sType = VK_STRUCTURE_TYPE_SUBMIT_INFO;
-        si.waitSemaphoreCount = waitN; si.pWaitSemaphores = waitSems; si.pWaitDstStageMask = waitStages;
+        si.waitSemaphoreCount = waitN; si.pWaitSemaphores = waitN ? waitSems : nullptr; si.pWaitDstStageMask = waitN ? waitStages : nullptr;
         si.commandBufferCount = 1; si.pCommandBuffers = &cb;
-        si.signalSemaphoreCount = sigN; si.pSignalSemaphores = signalSems;
+        si.signalSemaphoreCount = sigN; si.pSignalSemaphores = sigN ? signalSems : nullptr;
         const clk::time_point tSubmit0 = clk::now();
         if (vkQueueSubmit(s->queue, 1, &si, fsC.fence) != VK_SUCCESS) { setFallback("submit_failed"); s->disabled = true; return 0; }
         us_submit = usSince(tSubmit0);
 
         const clk::time_point tSem0 = clk::now();
-        if (gpuC) glInteropWaitFromVk(*s->sColorView,  GL_LAYOUT_COLOR_ATTACHMENT_EXT,         fsC.parity);
-        if (gpuN) glInteropWaitFromVk(*s->sNormalView, GL_LAYOUT_COLOR_ATTACHMENT_EXT,         fsN.parity);
-        if (gpuD) glInteropWaitFromVk(*s->sDepthView,  GL_LAYOUT_DEPTH_STENCIL_ATTACHMENT_EXT, fsD.parity);
+        if (!directChain) {
+            if (gpuC) glInteropWaitFromVk(*s->sColorView,  GL_LAYOUT_COLOR_ATTACHMENT_EXT,         fsC.parity);
+            if (gpuN) glInteropWaitFromVk(*s->sNormalView, GL_LAYOUT_COLOR_ATTACHMENT_EXT,         fsN.parity);
+            if (gpuD) glInteropWaitFromVk(*s->sDepthView,  GL_LAYOUT_DEPTH_STENCIL_ATTACHMENT_EXT, fsD.parity);
+        }
         us_sem_wait = usSince(tSem0);
 
         const clk::time_point tFence0 = clk::now();
@@ -1120,7 +1142,9 @@ extern "C" int mc2_vk_water_island_run(
 
         g_health.vkDraws = 1;
         ++g_health.usedVulkan;
-        ++g_health.usedInterop;
+        if (!directChain) {
+            ++g_health.usedInterop;
+        }
         g_health.totalUs = usSince(tTotal0);
         static bool s_tier1FirstOk = false;
         if (!s_tier1FirstOk) {
