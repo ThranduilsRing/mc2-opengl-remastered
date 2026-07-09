@@ -573,7 +573,7 @@ bool ensureCompositeObjects(EnginePresentVk::Impl& s) {
         color.storeOp = VK_ATTACHMENT_STORE_OP_STORE;
         color.stencilLoadOp = VK_ATTACHMENT_LOAD_OP_DONT_CARE;
         color.stencilStoreOp = VK_ATTACHMENT_STORE_OP_DONT_CARE;
-        color.initialLayout = VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL;
+        color.initialLayout = VK_IMAGE_LAYOUT_UNDEFINED;
         color.finalLayout = VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL;
         VkAttachmentReference ref{0, VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL};
         VkSubpassDescription sub{};
@@ -1718,6 +1718,8 @@ bool EnginePresentVk::renderNativeCompositeVisual(float exposure,
         viewportX + viewportW > (int)s.imgW ||
         viewportY + viewportH > (int)s.imgH)
         return false;
+    const bool sceneDirectChain = compositeDirectChainGateEnabled();
+    const bool objectIdDirectChainCandidate = objectIdDirectChainGateEnabled();
     VkImageResource* scene = mc2SharedSceneColorGetResource(MC2_SHARED_SCENE_COLOR0);
     GlInteropView* sceneView = mc2SharedSceneColorGetGlView(MC2_SHARED_SCENE_COLOR0);
     const bool needsObjectId = (viewMode == 1 || viewMode == 3);
@@ -1727,17 +1729,20 @@ bool EnginePresentVk::renderNativeCompositeVisual(float exposure,
     GlInteropView* objectIdView = needsObjectId
         ? mc2SharedSceneColorGetGlView(MC2_SHARED_SCENE_OBJECT_ID)
         : nullptr;
-    if (needsObjectId && (!objectId || !objectIdView))
+    const bool objectIdDirectChain = needsObjectId && objectIdDirectChainCandidate;
+    if (needsObjectId && (!objectId || (!objectIdDirectChain && !objectIdView)))
         return false;
-    if (!scene || !sceneView || !ensureCompositeObjects(s))
+    if (!scene || (!sceneDirectChain && !sceneView))
+        return false;
+    if (!ensureCompositeObjects(s))
         return false;
 
-    VkFrameSync fsScene = vkImageResourceBeginFrame(scene);
+    VkFrameSync fsScene{};
+    if (!sceneDirectChain)
+        fsScene = vkImageResourceBeginFrame(scene);
     VkFrameSync fsObjectId{};
-    if (needsObjectId)
+    if (needsObjectId && !objectIdDirectChain)
         fsObjectId = vkImageResourceBeginFrame(objectId);
-    const bool sceneDirectChain = compositeDirectChainGateEnabled();
-    const bool objectIdDirectChain = needsObjectId && objectIdDirectChainGateEnabled();
     if (!sceneDirectChain)
         glInteropSignalToVk(*sceneView, GL_LAYOUT_COLOR_ATTACHMENT_EXT, fsScene.parity);
     if (needsObjectId && !objectIdDirectChain)
@@ -1845,15 +1850,21 @@ bool EnginePresentVk::renderNativeCompositeVisual(float exposure,
     si.pCommandBuffers = &s.cbuf;
     si.signalSemaphoreCount = sigN;
     si.pSignalSemaphores = sigN ? signalSems : nullptr;
-    if (vkQueueSubmit(s.gfxQ, 1, &si, fsScene.fence) != VK_SUCCESS)
+    VkFence submitFence = sceneDirectChain ? VK_NULL_HANDLE : fsScene.fence;
+    if (vkQueueSubmit(s.gfxQ, 1, &si, submitFence) != VK_SUCCESS)
         return false;
 
     if (!sceneDirectChain && sceneView->vkToGlImported && fsScene.vk2gl)
         glInteropWaitFromVk(*sceneView, GL_LAYOUT_COLOR_ATTACHMENT_EXT, fsScene.parity);
     if (needsObjectId && !objectIdDirectChain && objectIdView->vkToGlImported && fsObjectId.vk2gl)
         glInteropWaitFromVk(*objectIdView, GL_LAYOUT_COLOR_ATTACHMENT_EXT, fsObjectId.parity);
-    if (vkWaitForFences(s.dev, 1, &fsScene.fence, VK_TRUE, 5ull * 1000 * 1000 * 1000) != VK_SUCCESS)
-        return false;
+    if (sceneDirectChain) {
+        if (vkQueueWaitIdle(s.gfxQ) != VK_SUCCESS)
+            return false;
+    } else {
+        if (vkWaitForFences(s.dev, 1, &fsScene.fence, VK_TRUE, 5ull * 1000 * 1000 * 1000) != VK_SUCCESS)
+            return false;
+    }
     if (needsObjectId) {
         VkSubmitInfo empty{VK_STRUCTURE_TYPE_SUBMIT_INFO};
         if (vkQueueSubmit(s.gfxQ, 1, &empty, fsObjectId.fence) != VK_SUCCESS)

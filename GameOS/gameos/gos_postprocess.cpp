@@ -131,6 +131,20 @@ static bool mc2VkSharedSceneColorNeeded()
         || mc2VkMechTier1Enabled();
 }
 
+static bool mc2VkSharedSceneDirectResourceEnabled()
+{
+    static const bool s_on =
+        mc2vkgate::postDirectChainUpstreamOn() &&
+        mc2vkgate::envTriState("MC2_VK_POST_FOG_DIRECT_CHAIN") == 1 &&
+        mc2vkgate::envTriState("MC2_VK_POST_SSAO_DIRECT_CHAIN") == 1 &&
+        mc2vkgate::envTriState("MC2_VK_POST_SCREENFX_DIRECT_CHAIN") == 1 &&
+        mc2vkgate::envTriState("MC2_VK_POST_HZB_DIRECT_CHAIN") == 1 &&
+        mc2vkgate::envTriState("MC2_VK_POST_COMPOSITE_DIRECT_CHAIN") == 1 &&
+        mc2vkgate::envTriState("MC2_VK_PRESENT_NO_GL_IMPORT") == 1 &&
+        mc2vkgate::envTriState("MC2_VK_PRESENT_SKIP_GL_HANDOFF") == 1;
+    return s_on;
+}
+
 static bool mc2VkSharedSceneStrictEnabled()
 {
     static const bool s_on = []() {
@@ -150,6 +164,34 @@ static void mc2VkSharedSceneStrictFallback(const char* slot, const char* reason)
                  reason ? reason : "unknown");
     std::fflush(stderr);
     std::abort();
+}
+
+static GLuint createSceneColorPlaceholderTex(int w, int h, GLint internalFormat,
+                                             GLenum format, GLenum type,
+                                             GLint minMagFilter)
+{
+    GLuint tex = 0;
+    glGenTextures(1, &tex);
+    glBindTexture(GL_TEXTURE_2D, tex);
+    glTexImage2D(GL_TEXTURE_2D, 0, internalFormat, w, h, 0, format, type, nullptr);
+    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, minMagFilter);
+    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, minMagFilter);
+    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_CLAMP_TO_EDGE);
+    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_CLAMP_TO_EDGE);
+    return tex;
+}
+
+static GLuint createSceneDepthPlaceholderTex(int w, int h)
+{
+    GLuint tex = 0;
+    glGenTextures(1, &tex);
+    glBindTexture(GL_TEXTURE_2D, tex);
+    glTexStorage2D(GL_TEXTURE_2D, 1, GL_DEPTH24_STENCIL8, w, h);
+    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_NEAREST);
+    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_NEAREST);
+    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_CLAMP_TO_EDGE);
+    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_CLAMP_TO_EDGE);
+    return tex;
 }
 
 static bool mc2VkStaticShadowMapEnabled()
@@ -1005,6 +1047,9 @@ void gosPostProcess::createFBOs(int w, int h)
     glGenFramebuffers(1, &sceneFBO_);
     RenderCore::framegraph::fboLedger().registerFbo(sceneFBO_, RenderCore::RenderResourceId::MainColor);  // FBO-LEDGER-1
     glBindFramebuffer(GL_FRAMEBUFFER, sceneFBO_);
+#ifdef MC2_VULKAN_ISLAND
+    const bool vkDirectSceneResources = mc2VkSharedSceneDirectResourceEnabled();
+#endif
 
     // Color attachment: RGBA16F
     // TEX-CLASS: render-target -- scene HDR color (MRT0, FBO attach)
@@ -1022,7 +1067,8 @@ void gosPostProcess::createFBOs(int w, int h)
         GLuint importedColorTex = 0;
         const char* reason = "unset";
         sharedSceneColor_ = mc2SharedSceneColorCreate(MC2_SHARED_SCENE_COLOR0, w, h,
-                                                      &importedColorTex, &reason);
+                                                      &importedColorTex, &reason,
+                                                      vkDirectSceneResources);
         if (sharedSceneColor_ && importedColorTex != 0) {
             sceneColorTex_ = importedColorTex;
             sceneColorShared = true;
@@ -1038,6 +1084,16 @@ void gosPostProcess::createFBOs(int w, int h)
                                    GL_TEXTURE_2D, sceneColorTex_, 0);
             fprintf(stderr, "[VK_SHARED_SCENE_COLOR] color active tex=%u %dx%d "
                             "(VK-backed GL_RGBA16F MRT0)\n",
+                    (unsigned)sceneColorTex_, w, h);
+        } else if (sharedSceneColor_ && vkDirectSceneResources) {
+            sceneColorTex_ = createSceneColorPlaceholderTex(w, h, GL_RGBA16F,
+                                                            GL_RGBA, GL_FLOAT,
+                                                            GL_LINEAR);
+            sceneColorShared = true;
+            glFramebufferTexture2D(GL_FRAMEBUFFER, GL_COLOR_ATTACHMENT0,
+                                   GL_TEXTURE_2D, sceneColorTex_, 0);
+            fprintf(stderr, "[VK_SHARED_SCENE_COLOR] color direct-resource active "
+                            "placeholder_tex=%u %dx%d (VK-only MRT0)\n",
                     (unsigned)sceneColorTex_, w, h);
         } else {
             sharedSceneColor_ = nullptr;
@@ -1104,7 +1160,8 @@ void gosPostProcess::createFBOs(int w, int h)
         GLuint importedDepthTex = 0;
         const char* reason = "unset";
         sharedSceneDepth_ =
-            mc2SharedSceneDepthCreate(w, h, &importedDepthTex, &reason);
+            mc2SharedSceneDepthCreate(w, h, &importedDepthTex, &reason,
+                                      vkDirectSceneResources);
         if (sharedSceneDepth_ && importedDepthTex != 0) {
             sceneDepthTex_ = importedDepthTex;
             sceneDepthShared = true;
@@ -1120,6 +1177,14 @@ void gosPostProcess::createFBOs(int w, int h)
                                    GL_TEXTURE_2D, sceneDepthTex_, 0);
             fprintf(stderr, "[VK_SHARED_SCENE_DEPTH] active tex=%u %dx%d "
                             "(VK-backed GL_DEPTH24_STENCIL8)\n",
+                    (unsigned)sceneDepthTex_, w, h);
+        } else if (sharedSceneDepth_ && vkDirectSceneResources) {
+            sceneDepthTex_ = createSceneDepthPlaceholderTex(w, h);
+            sceneDepthShared = true;
+            glFramebufferTexture2D(GL_FRAMEBUFFER, GL_DEPTH_STENCIL_ATTACHMENT,
+                                   GL_TEXTURE_2D, sceneDepthTex_, 0);
+            fprintf(stderr, "[VK_SHARED_SCENE_DEPTH] direct-resource active "
+                            "placeholder_tex=%u %dx%d (VK-only depth)\n",
                     (unsigned)sceneDepthTex_, w, h);
         } else {
             // Fail-soft: create() already logged the reason; drop the (null) owner
@@ -1177,7 +1242,8 @@ void gosPostProcess::createFBOs(int w, int h)
         GLuint importedNormalTex = 0;
         const char* reason = "unset";
         sharedSceneNormal_ = mc2SharedSceneColorCreate(MC2_SHARED_SCENE_NORMAL, w, h,
-                                                       &importedNormalTex, &reason);
+                                                       &importedNormalTex, &reason,
+                                                       vkDirectSceneResources);
         if (sharedSceneNormal_ && importedNormalTex != 0) {
             sceneNormalTex_ = importedNormalTex;
             sceneNormalShared = true;
@@ -1190,6 +1256,16 @@ void gosPostProcess::createFBOs(int w, int h)
                                    GL_TEXTURE_2D, sceneNormalTex_, 0);
             fprintf(stderr, "[VK_SHARED_SCENE_COLOR] normal active tex=%u %dx%d "
                             "(VK-backed GL_RGBA16F MRT1)\n",
+                    (unsigned)sceneNormalTex_, w, h);
+        } else if (sharedSceneNormal_ && vkDirectSceneResources) {
+            sceneNormalTex_ = createSceneColorPlaceholderTex(w, h, GL_RGBA16F,
+                                                             GL_RGBA, GL_FLOAT,
+                                                             GL_NEAREST);
+            sceneNormalShared = true;
+            glFramebufferTexture2D(GL_FRAMEBUFFER, GL_COLOR_ATTACHMENT1,
+                                   GL_TEXTURE_2D, sceneNormalTex_, 0);
+            fprintf(stderr, "[VK_SHARED_SCENE_COLOR] normal direct-resource active "
+                            "placeholder_tex=%u %dx%d (VK-only MRT1)\n",
                     (unsigned)sceneNormalTex_, w, h);
         } else {
             sharedSceneNormal_ = nullptr;
@@ -1222,7 +1298,8 @@ void gosPostProcess::createFBOs(int w, int h)
             GLuint importedObjectIdTex = 0;
             const char* reason = "unset";
             sharedSceneObjectId_ = mc2SharedSceneColorCreate(MC2_SHARED_SCENE_OBJECT_ID, w, h,
-                                                             &importedObjectIdTex, &reason);
+                                                             &importedObjectIdTex, &reason,
+                                                             vkDirectSceneResources);
             if (sharedSceneObjectId_ && importedObjectIdTex != 0) {
                 sceneObjectIdTex_ = importedObjectIdTex;
                 sceneObjectIdShared = true;
@@ -1235,6 +1312,17 @@ void gosPostProcess::createFBOs(int w, int h)
                                        GL_TEXTURE_2D, sceneObjectIdTex_, 0);
                 fprintf(stderr, "[VK_SHARED_SCENE_COLOR] objectId active tex=%u %dx%d "
                                 "(VK-backed GL_R32UI MRT2)\n",
+                        (unsigned)sceneObjectIdTex_, w, h);
+            } else if (sharedSceneObjectId_ && vkDirectSceneResources) {
+                sceneObjectIdTex_ = createSceneColorPlaceholderTex(w, h, GL_R32UI,
+                                                                   GL_RED_INTEGER,
+                                                                   GL_UNSIGNED_INT,
+                                                                   GL_NEAREST);
+                sceneObjectIdShared = true;
+                glFramebufferTexture2D(GL_FRAMEBUFFER, GL_COLOR_ATTACHMENT2,
+                                       GL_TEXTURE_2D, sceneObjectIdTex_, 0);
+                fprintf(stderr, "[VK_SHARED_SCENE_COLOR] objectId direct-resource active "
+                                "placeholder_tex=%u %dx%d (VK-only MRT2)\n",
                         (unsigned)sceneObjectIdTex_, w, h);
             } else {
                 sharedSceneObjectId_ = nullptr;
@@ -1623,6 +1711,8 @@ void gosPostProcess::destroyFBOs()
             // VK-P11 TIER-1: sceneColorTex_ is the GL interop view's texture owned by
             // sharedSceneColor_; destroying the owner deletes that GL texture + frees
             // the VK image, so we must NOT glDeleteTextures it here (double-free).
+            if (!mc2SharedSceneColorHasGlView(sharedSceneColor_) && sceneColorTex_)
+                glDeleteTextures(1, &sceneColorTex_);
             mc2SharedSceneColorDestroy(sharedSceneColor_);
             sharedSceneColor_ = nullptr;
             sceneColorTex_ = 0;
@@ -1646,6 +1736,8 @@ void gosPostProcess::destroyFBOs()
             // that GL texture (glInteropViewDestroy) + frees the VK image, so we
             // must NOT glDeleteTextures it here (double-free). Rebuilt by the next
             // createFBOs when the gate stays ON (resize).
+            if (!mc2SharedSceneDepthHasGlView(sharedSceneDepth_) && sceneDepthTex_)
+                glDeleteTextures(1, &sceneDepthTex_);
             mc2SharedSceneDepthDestroy(sharedSceneDepth_);
             sharedSceneDepth_ = nullptr;
             sceneDepthTex_ = 0;
@@ -1675,6 +1767,8 @@ void gosPostProcess::destroyFBOs()
         if (sharedSceneNormal_) {
             // VK-P11 TIER-1: owner-deletes the imported GL texture + VK image (as
             // above) — must NOT glDeleteTextures it here.
+            if (!mc2SharedSceneColorHasGlView(sharedSceneNormal_) && sceneNormalTex_)
+                glDeleteTextures(1, &sceneNormalTex_);
             mc2SharedSceneColorDestroy(sharedSceneNormal_);
             sharedSceneNormal_ = nullptr;
             sceneNormalTex_ = 0;
@@ -1692,6 +1786,8 @@ void gosPostProcess::destroyFBOs()
     if (sceneObjectIdTex_) {
 #ifdef MC2_VULKAN_ISLAND
         if (sharedSceneObjectId_) {
+            if (!mc2SharedSceneColorHasGlView(sharedSceneObjectId_) && sceneObjectIdTex_)
+                glDeleteTextures(1, &sceneObjectIdTex_);
             mc2SharedSceneColorDestroy(sharedSceneObjectId_);
             sharedSceneObjectId_ = nullptr;
             sceneObjectIdTex_ = 0;

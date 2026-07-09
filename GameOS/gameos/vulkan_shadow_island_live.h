@@ -202,6 +202,7 @@ unsigned int mc2_vk_shadow_island_run_csm_fullmap(
     const void* instances, unsigned int instanceCount,
     float biasFactor, float biasUnits);
 void* mc2_vk_shadow_island_get_csm_fullmap_view();
+void* mc2_vk_shadow_island_get_csm_fullmap_image();
 int   mc2_vk_shadow_island_csm_fullmap_ready();
 
 // VK-CSM-ARRAY-DIRECT-1: optional near-cascade companion. Renders each near CSM
@@ -212,6 +213,7 @@ unsigned int mc2_vk_shadow_island_run_csm_array_layer(
     const void* instances, unsigned int instanceCount,
     float biasFactor, float biasUnits);
 void* mc2_vk_shadow_island_get_csm_array_view();
+void* mc2_vk_shadow_island_get_csm_array_image();
 int   mc2_vk_shadow_island_csm_array_ready();
 
 // Health accessor (mirrors mc2_render_backend_water_region_health).

@@ -633,9 +633,9 @@ bool gosPostProcess::runVkPostFogNative()
 
     // ---- Shared resource ownership (water tier1 pattern, or direct-chain skip). ----
     const bool directChain = vkPostFogDirectChainEnabled();
-    VkFrameSync fsC = vkImageResourceBeginFrame(s->sColorRes);
-    VkFrameSync fsD = vkImageResourceBeginFrame(s->sDepthRes);
-    VkCommandBuffer cb = s->cbuf[fsC.parity & 1u];
+    VkFrameSync fsC = directChain ? VkFrameSync{} : vkImageResourceBeginFrame(s->sColorRes);
+    VkFrameSync fsD = directChain ? VkFrameSync{} : vkImageResourceBeginFrame(s->sDepthRes);
+    VkCommandBuffer cb = s->cbuf[directChain ? 0u : (fsC.parity & 1u)];
     if (!directChain) {
         glInteropSignalToVk(*s->sColorView, GL_LAYOUT_COLOR_ATTACHMENT_EXT,         fsC.parity);
         glInteropSignalToVk(*s->sDepthView, GL_LAYOUT_DEPTH_STENCIL_ATTACHMENT_EXT, fsD.parity);
@@ -720,7 +720,7 @@ bool gosPostProcess::runVkPostFogNative()
     si.waitSemaphoreCount = waitN; si.pWaitSemaphores = waitSems; si.pWaitDstStageMask = waitStages;
     si.commandBufferCount = 1; si.pCommandBuffers = &cb;
     si.signalSemaphoreCount = sigN; si.pSignalSemaphores = signalSems;
-    if (vkQueueSubmit(s->queue, 1, &si, fsC.fence) != VK_SUCCESS) {
+    if (vkQueueSubmit(s->queue, 1, &si, directChain ? VK_NULL_HANDLE : fsC.fence) != VK_SUCCESS) {
         setFallback("submit_failed"); s->disabled = true; return false;
     }
 
@@ -731,7 +731,11 @@ bool gosPostProcess::runVkPostFogNative()
 
     // Slot-recycle guard (water pattern): CPU-wait the color fence so the parity
     // slot's binary semaphores are retired before reuse two frames later.
-    if (vkWaitForFences(s->device, 1, &fsC.fence, VK_TRUE, 5ull * 1000 * 1000 * 1000) != VK_SUCCESS) {
+    if (directChain) {
+        if (vkQueueWaitIdle(s->queue) != VK_SUCCESS) {
+            setFallback("queue_wait_idle_failed"); s->disabled = true; return false;
+        }
+    } else if (vkWaitForFences(s->device, 1, &fsC.fence, VK_TRUE, 5ull * 1000 * 1000 * 1000) != VK_SUCCESS) {
         setFallback("fence_timeout"); s->disabled = true; return false;
     }
 

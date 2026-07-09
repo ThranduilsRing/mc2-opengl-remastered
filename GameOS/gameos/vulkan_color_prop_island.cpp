@@ -772,16 +772,18 @@ bool init_island(ColorPropIsland* s, int w, int h) {
         s->t1_colorView  = mc2SharedSceneColorGetGlView(MC2_SHARED_SCENE_COLOR0);
         s->t1_normalView = mc2SharedSceneColorGetGlView(MC2_SHARED_SCENE_NORMAL);
         s->t1_depthView  = mc2SharedSceneDepthGetGlView();
+        const bool directChain = propDirectChainRequested();
         if (!s->t1_colorRes || !s->t1_normalRes || !s->t1_depthRes ||
-            !s->t1_colorView || !s->t1_normalView || !s->t1_depthView) {
+            (!directChain && (!s->t1_colorView || !s->t1_normalView || !s->t1_depthView))) {
             setFallback("tier1_shared_gbuffer_not_ready");
             return false;
         }
-        s->useInterop = true;
-        g_health.interopActive = 1;
+        s->useInterop = !directChain;
+        g_health.interopActive = directChain ? 0 : 1;
         // vk2gl active if the shared color view imported its VK->GL semaphore.
         g_health.vk2glSemActive =
-            reinterpret_cast<GlInteropView*>(s->t1_colorView)->vkToGlImported ? 1 : 0;
+            (!directChain && s->t1_colorView &&
+             reinterpret_cast<GlInteropView*>(s->t1_colorView)->vkToGlImported) ? 1 : 0;
         vlog("TIER-1 shared-GBuffer co-write ACTIVE — in-place RGBA16F color(MRT0)+normal(MRT1) "
              "+ shared D32S8 depth (vk2gl_sem=%d).", g_health.vk2glSemActive);
     }
@@ -1435,11 +1437,11 @@ extern "C" int mc2_vk_color_prop_island_run(int w, int h) {
         // Begin a frame on EACH shared image (waits+resets its parity fence so its
         // binary semaphores are safe to re-signal). Drive all three on the color's
         // parity for a single coherent hand-off.
-        VkFrameSync fsC = vkImageResourceBeginFrame(colorRes);
-        VkFrameSync fsN = vkImageResourceBeginFrame(normalRes);
-        VkFrameSync fsD = vkImageResourceBeginFrame(depthRes);
-        VkCommandBuffer cb = s->cbuf[fsC.parity & 1u];
         const bool directChain = propDirectChainRequested();
+        VkFrameSync fsC = vkImageResourceBeginFrame(colorRes);
+        VkFrameSync fsN = directChain ? VkFrameSync{} : vkImageResourceBeginFrame(normalRes);
+        VkFrameSync fsD = directChain ? VkFrameSync{} : vkImageResourceBeginFrame(depthRes);
+        VkCommandBuffer cb = s->cbuf[fsC.parity & 1u];
 
         // Default: GL hands each shared image to VK in its attachment layout. Direct
         // chain proof: terrain already left the shared GBuffer Vulkan-owned in the
@@ -1555,9 +1557,12 @@ extern "C" int mc2_vk_color_prop_island_run(int w, int h) {
             addWait(fsN.signal, VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT);
             addWait(fsD.signal, VK_PIPELINE_STAGE_EARLY_FRAGMENT_TESTS_BIT);
         }
-        const bool gpuC = colorView->vkToGlImported  && fsC.vk2gl != VK_NULL_HANDLE;
-        const bool gpuN = normalView->vkToGlImported && fsN.vk2gl != VK_NULL_HANDLE;
-        const bool gpuD = depthView->vkToGlImported  && fsD.vk2gl != VK_NULL_HANDLE;
+        const bool gpuC = !directChain && colorView &&
+                          colorView->vkToGlImported && fsC.vk2gl != VK_NULL_HANDLE;
+        const bool gpuN = !directChain && normalView &&
+                          normalView->vkToGlImported && fsN.vk2gl != VK_NULL_HANDLE;
+        const bool gpuD = !directChain && depthView &&
+                          depthView->vkToGlImported && fsD.vk2gl != VK_NULL_HANDLE;
         if (!directChain) {
             if (gpuC) signalSems[sigN++] = fsC.vk2gl;
             if (gpuN) signalSems[sigN++] = fsN.vk2gl;

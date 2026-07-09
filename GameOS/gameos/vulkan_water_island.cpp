@@ -631,14 +631,16 @@ bool init_island(WaterIsland* s, int w, int h) {
     s->sColorView  = mc2SharedSceneColorGetGlView(MC2_SHARED_SCENE_COLOR0);
     s->sNormalView = mc2SharedSceneColorGetGlView(MC2_SHARED_SCENE_NORMAL);
     s->sDepthView  = mc2SharedSceneDepthGetGlView();
+    const bool directChain = waterDirectChainRequested();
     if (!s->sColorRes || !s->sNormalRes || !s->sDepthRes ||
-        !s->sColorView || !s->sNormalView || !s->sDepthView) {
+        (!directChain && (!s->sColorView || !s->sNormalView || !s->sDepthView))) {
         setFallback("shared_gbuffer_not_ready");
         return false;
     }
-    s->useInterop = true;
-    g_health.interopActive = 1;
-    g_health.vk2glSemActive = s->sColorView->vkToGlImported ? 1 : 0;
+    s->useInterop = !directChain;
+    g_health.interopActive = directChain ? 0 : 1;
+    g_health.vk2glSemActive =
+        (!directChain && s->sColorView && s->sColorView->vkToGlImported) ? 1 : 0;
     vlog("TIER-1 shared scene GBuffer seam ACTIVE - in-place water co-write "
          "(color0+normal+depth, no composite, no depth readback; vk2gl_sem=%d).",
          g_health.vk2glSemActive);
@@ -1051,11 +1053,11 @@ extern "C" int mc2_vk_water_island_run(
         g_health.copyColorInUs = 0.0;
         g_health.copyDepthInUs = 0.0;
 
-        VkFrameSync fsC = vkImageResourceBeginFrame(s->sColorRes);
-        VkFrameSync fsN = vkImageResourceBeginFrame(s->sNormalRes);
-        VkFrameSync fsD = vkImageResourceBeginFrame(s->sDepthRes);
-        VkCommandBuffer cb = s->cbuf[fsC.parity & 1u];
         const bool directChain = waterDirectChainRequested();
+        VkFrameSync fsC = vkImageResourceBeginFrame(s->sColorRes);
+        VkFrameSync fsN = directChain ? VkFrameSync{} : vkImageResourceBeginFrame(s->sNormalRes);
+        VkFrameSync fsD = directChain ? VkFrameSync{} : vkImageResourceBeginFrame(s->sDepthRes);
+        VkCommandBuffer cb = s->cbuf[fsC.parity & 1u];
 
         if (!directChain) {
             glInteropSignalToVk(*s->sColorView,  GL_LAYOUT_COLOR_ATTACHMENT_EXT,         fsC.parity);
@@ -1095,9 +1097,12 @@ extern "C" int mc2_vk_water_island_run(
             addWait(fsN.signal, VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT);
             addWait(fsD.signal, VK_PIPELINE_STAGE_EARLY_FRAGMENT_TESTS_BIT);
         }
-        const bool gpuC = s->sColorView->vkToGlImported  && fsC.vk2gl != VK_NULL_HANDLE;
-        const bool gpuN = s->sNormalView->vkToGlImported && fsN.vk2gl != VK_NULL_HANDLE;
-        const bool gpuD = s->sDepthView->vkToGlImported  && fsD.vk2gl != VK_NULL_HANDLE;
+        const bool gpuC = !directChain && s->sColorView &&
+                          s->sColorView->vkToGlImported && fsC.vk2gl != VK_NULL_HANDLE;
+        const bool gpuN = !directChain && s->sNormalView &&
+                          s->sNormalView->vkToGlImported && fsN.vk2gl != VK_NULL_HANDLE;
+        const bool gpuD = !directChain && s->sDepthView &&
+                          s->sDepthView->vkToGlImported && fsD.vk2gl != VK_NULL_HANDLE;
         if (!directChain) {
             if (gpuC) signalSems[sigN++] = fsC.vk2gl;
             if (gpuN) signalSems[sigN++] = fsN.vk2gl;

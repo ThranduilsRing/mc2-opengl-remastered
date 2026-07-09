@@ -847,13 +847,13 @@ bool gosPostProcess::runVkPostScreenShadowStaticNative()
     const clk::time_point t0 = clk::now();
 
     const bool directChain = vkPostScreenFxDirectChainEnabled();
-    VkFrameSync fsC = vkImageResourceBeginFrame(s->sColorRes);
-    VkFrameSync fsN = vkImageResourceBeginFrame(s->sNormalRes);
-    VkFrameSync fsD = vkImageResourceBeginFrame(s->sDepthRes);
+    VkFrameSync fsC = directChain ? VkFrameSync{} : vkImageResourceBeginFrame(s->sColorRes);
+    VkFrameSync fsN = directChain ? VkFrameSync{} : vkImageResourceBeginFrame(s->sNormalRes);
+    VkFrameSync fsD = directChain ? VkFrameSync{} : vkImageResourceBeginFrame(s->sDepthRes);
     VkFrameSync fsS{};
-    if (hasStaticShadow)
+    if (hasStaticShadow && !directChain)
         fsS = vkImageResourceBeginFrame(s->sStaticShadowRes);
-    VkCommandBuffer cb = s->cbuf[fsC.parity & 1u];
+    VkCommandBuffer cb = s->cbuf[directChain ? 0u : (fsC.parity & 1u)];
     if (!directChain) {
         glInteropSignalToVk(*s->sColorView,  GL_LAYOUT_COLOR_ATTACHMENT_EXT, fsC.parity);
         glInteropSignalToVk(*s->sNormalView, GL_LAYOUT_COLOR_ATTACHMENT_EXT, fsN.parity);
@@ -898,6 +898,20 @@ bool gosPostProcess::runVkPostScreenShadowStaticNative()
                 VK_ACCESS_DEPTH_STENCIL_ATTACHMENT_WRITE_BIT, VK_ACCESS_SHADER_READ_BIT,
                 VK_PIPELINE_STAGE_LATE_FRAGMENT_TESTS_BIT, VK_PIPELINE_STAGE_FRAGMENT_SHADER_BIT);
     }
+    if (csmDirectReady) {
+        if (void* csmArray = mc2_vk_shadow_island_get_csm_array_image()) {
+            barrier(reinterpret_cast<VkImage>(csmArray), VK_IMAGE_ASPECT_DEPTH_BIT,
+                    VK_IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT_OPTIMAL, VK_IMAGE_LAYOUT_DEPTH_STENCIL_READ_ONLY_OPTIMAL,
+                    VK_ACCESS_DEPTH_STENCIL_ATTACHMENT_WRITE_BIT, VK_ACCESS_SHADER_READ_BIT,
+                    VK_PIPELINE_STAGE_LATE_FRAGMENT_TESTS_BIT, VK_PIPELINE_STAGE_FRAGMENT_SHADER_BIT);
+        }
+        if (void* csmFullMap = mc2_vk_shadow_island_get_csm_fullmap_image()) {
+            barrier(reinterpret_cast<VkImage>(csmFullMap), VK_IMAGE_ASPECT_DEPTH_BIT,
+                    VK_IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT_OPTIMAL, VK_IMAGE_LAYOUT_DEPTH_STENCIL_READ_ONLY_OPTIMAL,
+                    VK_ACCESS_DEPTH_STENCIL_ATTACHMENT_WRITE_BIT, VK_ACCESS_SHADER_READ_BIT,
+                    VK_PIPELINE_STAGE_LATE_FRAGMENT_TESTS_BIT, VK_PIPELINE_STAGE_FRAGMENT_SHADER_BIT);
+        }
+    }
 
     VkRenderPassBeginInfo rbi{};
     rbi.sType = VK_STRUCTURE_TYPE_RENDER_PASS_BEGIN_INFO;
@@ -914,6 +928,20 @@ bool gosPostProcess::runVkPostScreenShadowStaticNative()
                 VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL, VK_IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT_OPTIMAL,
                 VK_ACCESS_SHADER_READ_BIT, 0,
                 VK_PIPELINE_STAGE_FRAGMENT_SHADER_BIT, VK_PIPELINE_STAGE_BOTTOM_OF_PIPE_BIT);
+    }
+    if (csmDirectReady) {
+        if (void* csmArray = mc2_vk_shadow_island_get_csm_array_image()) {
+            barrier(reinterpret_cast<VkImage>(csmArray), VK_IMAGE_ASPECT_DEPTH_BIT,
+                    VK_IMAGE_LAYOUT_DEPTH_STENCIL_READ_ONLY_OPTIMAL, VK_IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT_OPTIMAL,
+                    VK_ACCESS_SHADER_READ_BIT, 0,
+                    VK_PIPELINE_STAGE_FRAGMENT_SHADER_BIT, VK_PIPELINE_STAGE_BOTTOM_OF_PIPE_BIT);
+        }
+        if (void* csmFullMap = mc2_vk_shadow_island_get_csm_fullmap_image()) {
+            barrier(reinterpret_cast<VkImage>(csmFullMap), VK_IMAGE_ASPECT_DEPTH_BIT,
+                    VK_IMAGE_LAYOUT_DEPTH_STENCIL_READ_ONLY_OPTIMAL, VK_IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT_OPTIMAL,
+                    VK_ACCESS_SHADER_READ_BIT, 0,
+                    VK_PIPELINE_STAGE_FRAGMENT_SHADER_BIT, VK_PIPELINE_STAGE_BOTTOM_OF_PIPE_BIT);
+        }
     }
     barrier(s->sDepthRes->image, VK_IMAGE_ASPECT_DEPTH_BIT | VK_IMAGE_ASPECT_STENCIL_BIT,
             VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL, VK_IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT_OPTIMAL,
@@ -949,7 +977,7 @@ bool gosPostProcess::runVkPostScreenShadowStaticNative()
     si.waitSemaphoreCount = waitN; si.pWaitSemaphores = waitSems; si.pWaitDstStageMask = waitStages;
     si.commandBufferCount = 1; si.pCommandBuffers = &cb;
     si.signalSemaphoreCount = sigN; si.pSignalSemaphores = signalSems;
-    if (vkQueueSubmit(s->queue, 1, &si, fsC.fence) != VK_SUCCESS) {
+    if (vkQueueSubmit(s->queue, 1, &si, directChain ? VK_NULL_HANDLE : fsC.fence) != VK_SUCCESS) {
         setFallback("submit_failed"); return false;
     }
 
@@ -957,7 +985,11 @@ bool gosPostProcess::runVkPostScreenShadowStaticNative()
     if (gpuN) glInteropWaitFromVk(*s->sNormalView, GL_LAYOUT_COLOR_ATTACHMENT_EXT, fsN.parity);
     if (gpuD) glInteropWaitFromVk(*s->sDepthView, GL_LAYOUT_DEPTH_STENCIL_ATTACHMENT_EXT, fsD.parity);
     if (gpuS) glInteropWaitFromVk(*s->sStaticShadowView, GL_LAYOUT_DEPTH_STENCIL_ATTACHMENT_EXT, fsS.parity);
-    if (vkWaitForFences(s->device, 1, &fsC.fence, VK_TRUE, 5ull * 1000 * 1000 * 1000) != VK_SUCCESS) {
+    if (directChain) {
+        if (vkQueueWaitIdle(s->queue) != VK_SUCCESS) {
+            setFallback("queue_wait_idle_failed"); return false;
+        }
+    } else if (vkWaitForFences(s->device, 1, &fsC.fence, VK_TRUE, 5ull * 1000 * 1000 * 1000) != VK_SUCCESS) {
         setFallback("fence_timeout"); return false;
     }
 
@@ -1044,10 +1076,10 @@ unsigned gosPostProcess::runVkPostScreenFxNative()
 
     // ---- Shared resource ownership (handoff mode, or direct-chain skip). ----
     const bool directChain = vkPostScreenFxDirectChainEnabled();
-    VkFrameSync fsC = vkImageResourceBeginFrame(s->sColorRes);
-    VkFrameSync fsN = vkImageResourceBeginFrame(s->sNormalRes);
-    VkFrameSync fsD = vkImageResourceBeginFrame(s->sDepthRes);
-    VkCommandBuffer cb = s->cbuf[fsC.parity & 1u];
+    VkFrameSync fsC = directChain ? VkFrameSync{} : vkImageResourceBeginFrame(s->sColorRes);
+    VkFrameSync fsN = directChain ? VkFrameSync{} : vkImageResourceBeginFrame(s->sNormalRes);
+    VkFrameSync fsD = directChain ? VkFrameSync{} : vkImageResourceBeginFrame(s->sDepthRes);
+    VkCommandBuffer cb = s->cbuf[directChain ? 0u : (fsC.parity & 1u)];
     if (!directChain) {
         glInteropSignalToVk(*s->sColorView,  GL_LAYOUT_COLOR_ATTACHMENT_EXT,         fsC.parity);
         glInteropSignalToVk(*s->sNormalView, GL_LAYOUT_COLOR_ATTACHMENT_EXT,         fsN.parity);
@@ -1163,7 +1195,7 @@ unsigned gosPostProcess::runVkPostScreenFxNative()
     si.waitSemaphoreCount = waitN; si.pWaitSemaphores = waitSems; si.pWaitDstStageMask = waitStages;
     si.commandBufferCount = 1; si.pCommandBuffers = &cb;
     si.signalSemaphoreCount = sigN; si.pSignalSemaphores = signalSems;
-    if (vkQueueSubmit(s->queue, 1, &si, fsC.fence) != VK_SUCCESS) {
+    if (vkQueueSubmit(s->queue, 1, &si, directChain ? VK_NULL_HANDLE : fsC.fence) != VK_SUCCESS) {
         setFallback("submit_failed"); s->disabled = true; return 0;
     }
 
@@ -1174,7 +1206,11 @@ unsigned gosPostProcess::runVkPostScreenFxNative()
 
     // Slot-recycle guard (water pattern): CPU-wait the color fence so the parity
     // slot's binary semaphores are retired before reuse two frames later.
-    if (vkWaitForFences(s->device, 1, &fsC.fence, VK_TRUE, 5ull * 1000 * 1000 * 1000) != VK_SUCCESS) {
+    if (directChain) {
+        if (vkQueueWaitIdle(s->queue) != VK_SUCCESS) {
+            setFallback("queue_wait_idle_failed"); s->disabled = true; return 0;
+        }
+    } else if (vkWaitForFences(s->device, 1, &fsC.fence, VK_TRUE, 5ull * 1000 * 1000 * 1000) != VK_SUCCESS) {
         setFallback("fence_timeout"); s->disabled = true; return 0;
     }
 

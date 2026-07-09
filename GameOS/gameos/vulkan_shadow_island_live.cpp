@@ -404,13 +404,14 @@ bool init_island(ShadowIsland* s, int size) {
 
     // ---- Exportable shared D32 depth image. SAMPLED (GL samples it via
     // sampler2DShadow) + DEPTH_STENCIL_ATTACHMENT (VK renders into it). ----
+    const bool directChain = shadowDirectChainRequested();
     bool ok = vkImageResourceCreate(&s->depthResource, s->device, s->phys,
                                     (uint32_t)size, (uint32_t)size, kDepthFmt,
                                     VK_IMAGE_USAGE_DEPTH_STENCIL_ATTACHMENT_BIT |
                                     VK_IMAGE_USAGE_SAMPLED_BIT,
-                                    /*exportable*/ true);
-    if (ok) ok = glInteropViewCreate(&s->depthGlView, &s->depthResource, s->phys,
-                                     GL_DEPTH_COMPONENT32F);
+                                    /*exportable*/ !directChain);
+    if (ok && !directChain) ok = glInteropViewCreate(&s->depthGlView, &s->depthResource, s->phys,
+                                                     GL_DEPTH_COMPONENT32F);
     if (!ok) {
         glInteropViewDestroy(&s->depthGlView);
         vkImageResourceDestroy(&s->depthResource, s->device);
@@ -420,17 +421,19 @@ bool init_island(ShadowIsland* s, int size) {
     // Configure the imported GL depth texture for HARDWARE compare sampling — the
     // EXACT MC2 calcShadow convention (probe-proven over imported D32). GL consumers
     // then bind this texture as `dynamicShadowMap` and sample with texture(sampler2DShadow,...).
-    glBindTexture(GL_TEXTURE_2D, s->depthGlView.glTex);
-    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR);   // hardware 2x2 PCF (matches GL shadow tex)
-    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
-    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_CLAMP_TO_EDGE);
-    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_CLAMP_TO_EDGE);
-    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_COMPARE_MODE, GL_COMPARE_REF_TO_TEXTURE);
-    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_COMPARE_FUNC, GL_LEQUAL);
-    glBindTexture(GL_TEXTURE_2D, 0);
+    if (!directChain) {
+        glBindTexture(GL_TEXTURE_2D, s->depthGlView.glTex);
+        glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR);   // hardware 2x2 PCF (matches GL shadow tex)
+        glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
+        glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_CLAMP_TO_EDGE);
+        glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_CLAMP_TO_EDGE);
+        glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_COMPARE_MODE, GL_COMPARE_REF_TO_TEXTURE);
+        glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_COMPARE_FUNC, GL_LEQUAL);
+        glBindTexture(GL_TEXTURE_2D, 0);
+    }
 
-    s->useInterop = true;
-    g_health.interopActive = 1;
+    s->useInterop = !directChain;
+    g_health.interopActive = directChain ? 0 : 1;
     g_health.vk2glSemActive = s->depthGlView.vkToGlImported ? 1 : 0;
     vlog("depth interop seam ACTIVE — zero-copy exportable D32 shadow map (vk2gl_sem=%d).",
          g_health.vk2glSemActive);
@@ -660,27 +663,30 @@ bool ensure_csm_fullmap_target(ShadowIsland* s, int size) {
     s->csmFullMapFb = VK_NULL_HANDLE;
     s->csmFullMapSize = 0;
 
+    const bool directChain = shadowDirectChainRequested();
     bool ok = vkImageResourceCreate(&s->csmFullMapResource, s->device, s->phys,
                                     (uint32_t)size, (uint32_t)size, kDepthFmt,
                                     VK_IMAGE_USAGE_DEPTH_STENCIL_ATTACHMENT_BIT |
                                     VK_IMAGE_USAGE_SAMPLED_BIT,
-                                    /*exportable*/ true);
-    if (ok) ok = glInteropViewCreate(&s->csmFullMapGlView, &s->csmFullMapResource, s->phys,
-                                     GL_DEPTH_COMPONENT32F);
+                                    /*exportable*/ !directChain);
+    if (ok && !directChain) ok = glInteropViewCreate(&s->csmFullMapGlView, &s->csmFullMapResource, s->phys,
+                                                     GL_DEPTH_COMPONENT32F);
     if (!ok) {
         glInteropViewDestroy(&s->csmFullMapGlView);
         vkImageResourceDestroy(&s->csmFullMapResource, s->device);
         setFallback("csm_fullmap_interop_setup_failed");
         return false;
     }
-    glBindTexture(GL_TEXTURE_2D, s->csmFullMapGlView.glTex);
-    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
-    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
-    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_CLAMP_TO_EDGE);
-    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_CLAMP_TO_EDGE);
-    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_COMPARE_MODE, GL_COMPARE_REF_TO_TEXTURE);
-    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_COMPARE_FUNC, GL_LEQUAL);
-    glBindTexture(GL_TEXTURE_2D, 0);
+    if (!directChain) {
+        glBindTexture(GL_TEXTURE_2D, s->csmFullMapGlView.glTex);
+        glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
+        glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
+        glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_CLAMP_TO_EDGE);
+        glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_CLAMP_TO_EDGE);
+        glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_COMPARE_MODE, GL_COMPARE_REF_TO_TEXTURE);
+        glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_COMPARE_FUNC, GL_LEQUAL);
+        glBindTexture(GL_TEXTURE_2D, 0);
+    }
 
     VkImageViewCreateInfo vi{};
     vi.sType = VK_STRUCTURE_TYPE_IMAGE_VIEW_CREATE_INFO;
@@ -1382,6 +1388,10 @@ extern "C" void* mc2_vk_shadow_island_get_csm_fullmap_view() {
     return (g_island && g_csmFullMapReadyThisFrame)
         ? reinterpret_cast<void*>(g_island->csmFullMapResource.view) : nullptr;
 }
+extern "C" void* mc2_vk_shadow_island_get_csm_fullmap_image() {
+    return (g_island && g_csmFullMapReadyThisFrame)
+        ? reinterpret_cast<void*>(g_island->csmFullMapResource.image) : nullptr;
+}
 extern "C" int mc2_vk_shadow_island_csm_fullmap_ready() {
     return (g_island && g_csmFullMapReadyThisFrame) ? 1 : 0;
 }
@@ -1389,6 +1399,10 @@ extern "C" int mc2_vk_shadow_island_csm_fullmap_ready() {
 extern "C" void* mc2_vk_shadow_island_get_csm_array_view() {
     return (g_island && g_csmArrayReadyThisFrame)
         ? reinterpret_cast<void*>(g_island->csmArrayView) : nullptr;
+}
+extern "C" void* mc2_vk_shadow_island_get_csm_array_image() {
+    return (g_island && g_csmArrayReadyThisFrame)
+        ? reinterpret_cast<void*>(g_island->csmArrayImg) : nullptr;
 }
 extern "C" int mc2_vk_shadow_island_csm_array_ready() {
     return (g_island && g_csmArrayReadyThisFrame) ? 1 : 0;

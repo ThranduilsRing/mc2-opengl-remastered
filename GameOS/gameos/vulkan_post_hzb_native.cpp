@@ -245,8 +245,11 @@ bool build_state(gosPostProcess::VkPostHzbNative* s, int w, int h, int mipCount)
     s->normalView = mc2SharedSceneColorGetGlView(MC2_SHARED_SCENE_NORMAL);
     s->depthRes = mc2SharedSceneDepthGetResource();
     s->depthView = mc2SharedSceneDepthGetGlView();
-    if (!s->colorRes || !s->colorView || !s->normalRes || !s->normalView ||
-        !s->depthRes || !s->depthView) {
+    const bool directChain =
+        mc2vkgate::envTriState("MC2_VK_POST_HZB_DIRECT_CHAIN") == 1 &&
+        mc2vkgate::postDirectChainUpstreamOn();
+    if (!s->colorRes || !s->normalRes || !s->depthRes ||
+        (!directChain && (!s->colorView || !s->normalView || !s->depthView))) {
         setFallback("shared_scene_depth_not_ready");
         return false;
     }
@@ -668,10 +671,10 @@ bool gosPostProcess::runVkPostHzbNative()
     const clk::time_point t0 = clk::now();
 
     const bool directChain = vkPostHzbDirectChainEnabled();
-    VkFrameSync fsC = vkImageResourceBeginFrame(s->colorRes);
-    VkFrameSync fsN = vkImageResourceBeginFrame(s->normalRes);
-    VkFrameSync fsD = vkImageResourceBeginFrame(s->depthRes);
-    VkCommandBuffer cb = s->cbuf[fsC.parity & 1u];
+    VkFrameSync fsC = directChain ? VkFrameSync{} : vkImageResourceBeginFrame(s->colorRes);
+    VkFrameSync fsN = directChain ? VkFrameSync{} : vkImageResourceBeginFrame(s->normalRes);
+    VkFrameSync fsD = directChain ? VkFrameSync{} : vkImageResourceBeginFrame(s->depthRes);
+    VkCommandBuffer cb = s->cbuf[directChain ? 0u : (fsC.parity & 1u)];
     if (!directChain) {
         glInteropSignalToVk(*s->colorView, GL_LAYOUT_COLOR_ATTACHMENT_EXT, fsC.parity);
         glInteropSignalToVk(*s->normalView, GL_LAYOUT_COLOR_ATTACHMENT_EXT, fsN.parity);
@@ -759,9 +762,12 @@ bool gosPostProcess::runVkPostHzbNative()
                              VK_PIPELINE_STAGE_LATE_FRAGMENT_TESTS_BIT |
                              VK_PIPELINE_STAGE_FRAGMENT_SHADER_BIT);
     }
-    const bool gpuC = !directChain && s->colorView->vkToGlImported && fsC.vk2gl != VK_NULL_HANDLE;
-    const bool gpuN = !directChain && s->normalView->vkToGlImported && fsN.vk2gl != VK_NULL_HANDLE;
-    const bool gpuDepth = !directChain && s->depthView->vkToGlImported && fsD.vk2gl != VK_NULL_HANDLE;
+    const bool gpuC = !directChain && s->colorView &&
+                      s->colorView->vkToGlImported && fsC.vk2gl != VK_NULL_HANDLE;
+    const bool gpuN = !directChain && s->normalView &&
+                      s->normalView->vkToGlImported && fsN.vk2gl != VK_NULL_HANDLE;
+    const bool gpuDepth = !directChain && s->depthView &&
+                          s->depthView->vkToGlImported && fsD.vk2gl != VK_NULL_HANDLE;
     if (gpuC)
         signalSems[sigN++] = fsC.vk2gl;
     if (gpuN)
@@ -778,7 +784,7 @@ bool gosPostProcess::runVkPostHzbNative()
     si.pCommandBuffers = &cb;
     si.signalSemaphoreCount = sigN;
     si.pSignalSemaphores = signalSems;
-    if (vkQueueSubmit(s->queue, 1, &si, fsC.fence) != VK_SUCCESS) {
+    if (vkQueueSubmit(s->queue, 1, &si, directChain ? VK_NULL_HANDLE : fsC.fence) != VK_SUCCESS) {
         setFallback("submit_failed");
         s->disabled = true;
         return false;
@@ -790,7 +796,13 @@ bool gosPostProcess::runVkPostHzbNative()
         glInteropWaitFromVk(*s->normalView, GL_LAYOUT_COLOR_ATTACHMENT_EXT, fsN.parity);
     if (gpuDepth)
         glInteropWaitFromVk(*s->depthView, GL_LAYOUT_DEPTH_STENCIL_ATTACHMENT_EXT, fsD.parity);
-    if (vkWaitForFences(s->device, 1, &fsC.fence, VK_TRUE, 5ull * 1000 * 1000 * 1000) != VK_SUCCESS) {
+    if (directChain) {
+        if (vkQueueWaitIdle(s->queue) != VK_SUCCESS) {
+            setFallback("queue_wait_idle_failed");
+            s->disabled = true;
+            return false;
+        }
+    } else if (vkWaitForFences(s->device, 1, &fsC.fence, VK_TRUE, 5ull * 1000 * 1000 * 1000) != VK_SUCCESS) {
         setFallback("fence_timeout");
         s->disabled = true;
         return false;

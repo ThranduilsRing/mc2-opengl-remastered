@@ -906,19 +906,20 @@ bool init_island(TerrainIsland* s, int w, int h) {
     s->colorView  = mc2SharedSceneColorGetGlView(MC2_SHARED_SCENE_COLOR0);
     s->normalView = mc2SharedSceneColorGetGlView(MC2_SHARED_SCENE_NORMAL);
     s->depthView  = mc2SharedSceneDepthGetGlView();
-    if (!s->colorRes || !s->normalRes || !s->depthRes || !s->colorView || !s->normalView || !s->depthView) {
+    const bool nativePrefixClear = terrainNativePrefixClearRequested();
+    if (!s->colorRes || !s->normalRes || !s->depthRes ||
+        (!nativePrefixClear && (!s->colorView || !s->normalView || !s->depthView))) {
         setFallback("shared_gbuffer_not_ready");
         return false;
     }
-    g_health.interopActive = 1;
-    g_health.vk2glSemActive = s->colorView->vkToGlImported ? 1 : 0;
+    g_health.interopActive = nativePrefixClear ? 0 : 1;
+    g_health.vk2glSemActive = (!nativePrefixClear && s->colorView && s->colorView->vkToGlImported) ? 1 : 0;
 
     // ---- Shared-GBuffer renderpass. Default path preserves the GL-cleared color
     // attachments. MC2_VK_TERRAIN_NATIVE_PREFIX_CLEAR makes terrain the native first
     // owner of color0/normal/depth for the frame so the strict no-interop canary can
     // advance past this island without a GL->VK semaphore handoff.
     {
-        const bool nativePrefixClear = terrainNativePrefixClearRequested();
         VkAttachmentDescription att[3]{};
         att[0].format = s->colorRes->format; att[0].samples = VK_SAMPLE_COUNT_1_BIT;
         att[0].loadOp = nativePrefixClear ? VK_ATTACHMENT_LOAD_OP_CLEAR : VK_ATTACHMENT_LOAD_OP_LOAD;
@@ -2558,10 +2559,10 @@ extern "C" int mc2_vk_terrain_island_run(int w, int h) {
     // ---- Begin a frame on each shared image; GL hands them to VK in attachment
     // layouts. COPIED from vulkan_color_prop_island.cpp tier1 path. ----
     VkFrameSync fsC = vkImageResourceBeginFrame(s->colorRes);
-    VkFrameSync fsN = vkImageResourceBeginFrame(s->normalRes);
-    VkFrameSync fsD = vkImageResourceBeginFrame(s->depthRes);
-    VkCommandBuffer cb = s->cbuf[fsC.parity & 1u];
     const bool nativePrefixClear = terrainNativePrefixClearRequested();
+    VkFrameSync fsN = nativePrefixClear ? VkFrameSync{} : vkImageResourceBeginFrame(s->normalRes);
+    VkFrameSync fsD = nativePrefixClear ? VkFrameSync{} : vkImageResourceBeginFrame(s->depthRes);
+    VkCommandBuffer cb = s->cbuf[fsC.parity & 1u];
 
     if (!nativePrefixClear) {
         glInteropSignalToVk(*s->colorView,  GL_LAYOUT_COLOR_ATTACHMENT_EXT,         fsC.parity);
@@ -2653,9 +2654,12 @@ extern "C" int mc2_vk_terrain_island_run(int w, int h) {
         addWait(fsN.signal, VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT);
         addWait(fsD.signal, VK_PIPELINE_STAGE_EARLY_FRAGMENT_TESTS_BIT);
     }
-    const bool gpuC = s->colorView->vkToGlImported  && fsC.vk2gl != VK_NULL_HANDLE;
-    const bool gpuN = s->normalView->vkToGlImported && fsN.vk2gl != VK_NULL_HANDLE;
-    const bool gpuD = s->depthView->vkToGlImported  && fsD.vk2gl != VK_NULL_HANDLE;
+    const bool gpuC = !nativePrefixClear && s->colorView &&
+                      s->colorView->vkToGlImported && fsC.vk2gl != VK_NULL_HANDLE;
+    const bool gpuN = !nativePrefixClear && s->normalView &&
+                      s->normalView->vkToGlImported && fsN.vk2gl != VK_NULL_HANDLE;
+    const bool gpuD = !nativePrefixClear && s->depthView &&
+                      s->depthView->vkToGlImported && fsD.vk2gl != VK_NULL_HANDLE;
     if (gpuC) signalSems[sigN++] = fsC.vk2gl;
     if (gpuN) signalSems[sigN++] = fsN.vk2gl;
     if (gpuD) signalSems[sigN++] = fsD.vk2gl;

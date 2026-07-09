@@ -44,7 +44,12 @@ struct Mc2SharedSceneDepth;
 // to a short static string describing the fallback cause. The caller MUST then
 // fall back to the plain GL GL_DEPTH24_STENCIL8 alloc; nothing crashes.
 Mc2SharedSceneDepth* mc2SharedSceneDepthCreate(int w, int h, GLuint* outGlTex,
-                                               const char** outReason);
+                                               const char** outReason,
+                                               bool vkOnlyNoGlView = false);
+
+// True when the owner created a GL interop view and therefore owns the GL texture
+// returned through outGlTex. Direct VK-only owners return false.
+bool mc2SharedSceneDepthHasGlView(const Mc2SharedSceneDepth* d);
 
 // Destroy the GL interop view + the VK image (safe on nullptr). The GL texture
 // name returned by create() becomes invalid; the caller must have already

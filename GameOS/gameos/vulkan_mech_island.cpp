@@ -576,11 +576,15 @@ bool init_island(MechIsland* s, int w, int h) {
     s->colorView  = mc2SharedSceneColorGetGlView(MC2_SHARED_SCENE_COLOR0);
     s->normalView = mc2SharedSceneColorGetGlView(MC2_SHARED_SCENE_NORMAL);
     s->depthView  = mc2SharedSceneDepthGetGlView();
-    if (!s->colorRes || !s->normalRes || !s->depthRes || !s->colorView || !s->normalView || !s->depthView) {
+    const bool directChain = mechDirectChainRequested();
+    if (!s->colorRes || !s->normalRes || !s->depthRes ||
+        (!directChain && (!s->colorView || !s->normalView || !s->depthView))) {
         setFallback("shared_gbuffer_not_ready"); return false;
     }
-    g_health.interopActive = 1;
-    g_health.vk2glSemActive = reinterpret_cast<GlInteropView*>(s->colorView)->vkToGlImported ? 1 : 0;
+    g_health.interopActive = directChain ? 0 : 1;
+    g_health.vk2glSemActive =
+        (!directChain && s->colorView &&
+         reinterpret_cast<GlInteropView*>(s->colorView)->vkToGlImported) ? 1 : 0;
 
     // Instance + bone + UBO buffers.
     if (!ensure_buf_capacity(s, &s->instBuf, &s->instAlloc, &s->instCap, 256 * 1024)) return false;
@@ -1033,11 +1037,11 @@ extern "C" int mc2_vk_mech_island_run(int w, int h) {
     GlInteropView*   normalView = reinterpret_cast<GlInteropView*>(s->normalView);
     GlInteropView*   depthView  = reinterpret_cast<GlInteropView*>(s->depthView);
 
-    VkFrameSync fsC = vkImageResourceBeginFrame(colorRes);
-    VkFrameSync fsN = vkImageResourceBeginFrame(normalRes);
-    VkFrameSync fsD = vkImageResourceBeginFrame(depthRes);
-    VkCommandBuffer cb = s->cbuf[fsC.parity & 1u];
     const bool directChain = mechDirectChainRequested();
+    VkFrameSync fsC = vkImageResourceBeginFrame(colorRes);
+    VkFrameSync fsN = directChain ? VkFrameSync{} : vkImageResourceBeginFrame(normalRes);
+    VkFrameSync fsD = directChain ? VkFrameSync{} : vkImageResourceBeginFrame(depthRes);
+    VkCommandBuffer cb = s->cbuf[fsC.parity & 1u];
 
     if (!directChain) {
         glInteropSignalToVk(*colorView,  GL_LAYOUT_COLOR_ATTACHMENT_EXT,         fsC.parity);
@@ -1104,9 +1108,12 @@ extern "C" int mc2_vk_mech_island_run(int w, int h) {
         addWait(fsN.signal, VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT);
         addWait(fsD.signal, VK_PIPELINE_STAGE_EARLY_FRAGMENT_TESTS_BIT);
     }
-    const bool gpuC = colorView->vkToGlImported  && fsC.vk2gl != VK_NULL_HANDLE;
-    const bool gpuN = normalView->vkToGlImported && fsN.vk2gl != VK_NULL_HANDLE;
-    const bool gpuD = depthView->vkToGlImported  && fsD.vk2gl != VK_NULL_HANDLE;
+    const bool gpuC = !directChain && colorView &&
+                      colorView->vkToGlImported && fsC.vk2gl != VK_NULL_HANDLE;
+    const bool gpuN = !directChain && normalView &&
+                      normalView->vkToGlImported && fsN.vk2gl != VK_NULL_HANDLE;
+    const bool gpuD = !directChain && depthView &&
+                      depthView->vkToGlImported && fsD.vk2gl != VK_NULL_HANDLE;
     if (!directChain) {
         if (gpuC) signalSems[sigN++] = fsC.vk2gl;
         if (gpuN) signalSems[sigN++] = fsN.vk2gl;

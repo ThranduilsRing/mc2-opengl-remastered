@@ -64,7 +64,8 @@ void slog(const char* fmt, ...) {
 } // namespace
 
 Mc2SharedSceneDepth* mc2SharedSceneDepthCreate(int w, int h, GLuint* outGlTex,
-                                               const char** outReason) {
+                                               const char** outReason,
+                                               bool vkOnlyNoGlView) {
     auto bail = [&](const char* reason) -> Mc2SharedSceneDepth* {
         if (outReason) *outReason = reason;
         slog("fallback reason=%s (using plain GL GL_DEPTH24_STENCIL8)", reason);
@@ -110,10 +111,12 @@ Mc2SharedSceneDepth* mc2SharedSceneDepthCreate(int w, int h, GLuint* outGlTex,
         VK_IMAGE_USAGE_DEPTH_STENCIL_ATTACHMENT_BIT |
         VK_IMAGE_USAGE_TRANSFER_SRC_BIT |
         VK_IMAGE_USAGE_TRANSFER_DST_BIT;
-    VkFormat chosenFmt = VK_FORMAT_D24_UNORM_S8_UINT;
+    VkFormat chosenFmt = vkOnlyNoGlView
+        ? VK_FORMAT_D32_SFLOAT_S8_UINT
+        : VK_FORMAT_D24_UNORM_S8_UINT;
     bool created = vkImageResourceCreate(&d->res, device, phys,
                                          (uint32_t)w, (uint32_t)h,
-                                         chosenFmt, usage, /*exportable*/ true);
+                                         chosenFmt, usage, /*exportable*/ !vkOnlyNoGlView);
     if (!created) {
         slog("D24_UNORM_S8_UINT not exportable on this device -- falling back "
              "to D32_SFLOAT_S8_UINT (bit-reinterpretation risk; see "
@@ -121,13 +124,23 @@ Mc2SharedSceneDepth* mc2SharedSceneDepthCreate(int w, int h, GLuint* outGlTex,
         chosenFmt = VK_FORMAT_D32_SFLOAT_S8_UINT;
         created = vkImageResourceCreate(&d->res, device, phys,
                                         (uint32_t)w, (uint32_t)h,
-                                        chosenFmt, usage, /*exportable*/ true);
+                                        chosenFmt, usage, /*exportable*/ !vkOnlyNoGlView);
     }
     if (!created) {
         mc2SharedSceneDepthDestroy(d);
         return bail("vk_image_resource_create_failed");
     }
     d->resValid = true;
+
+    if (vkOnlyNoGlView) {
+        *outGlTex = 0;
+        if (outReason) *outReason = "active_vk_only";
+        g_activeSharedDepth = d;
+        slog("active: VK-only %s %dx%d (no GL import)",
+             (chosenFmt == VK_FORMAT_D24_UNORM_S8_UINT) ? "D24S8" : "D32S8",
+             w, h);
+        return d;
+    }
 
     // Import into GL as GL_DEPTH24_STENCIL8 (LUID match runs inside). When
     // chosenFmt is D24_UNORM_S8_UINT this is a byte-exact reinterpretation (no
@@ -155,6 +168,10 @@ Mc2SharedSceneDepth* mc2SharedSceneDepthCreate(int w, int h, GLuint* outGlTex,
          (chosenFmt == VK_FORMAT_D24_UNORM_S8_UINT) ? "D24S8" : "D32S8(fallback)",
          w, h, (unsigned)d->view.glTex);
     return d;
+}
+
+bool mc2SharedSceneDepthHasGlView(const Mc2SharedSceneDepth* d) {
+    return d && d->viewValid;
 }
 
 void mc2SharedSceneDepthDestroy(Mc2SharedSceneDepth* d) {

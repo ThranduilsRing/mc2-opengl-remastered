@@ -49,7 +49,12 @@ struct Mc2SharedSceneColor;
 // failure; *outReason (if non-null) points to a short static string.
 Mc2SharedSceneColor* mc2SharedSceneColorCreate(Mc2SharedSceneColorSlot slot,
                                                int w, int h, GLuint* outGlTex,
-                                               const char** outReason);
+                                               const char** outReason,
+                                               bool vkOnlyNoGlView = false);
+
+// True when the owner created a GL interop view and therefore owns the GL texture
+// returned through outGlTex. Direct VK-only owners return false.
+bool mc2SharedSceneColorHasGlView(const Mc2SharedSceneColor* c);
 
 // Destroy the GL interop view + VK image (safe on nullptr) and clear the island
 // registry entry for its slot. The GL texture name from create() becomes invalid.

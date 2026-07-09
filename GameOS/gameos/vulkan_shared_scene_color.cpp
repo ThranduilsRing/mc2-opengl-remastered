@@ -88,7 +88,8 @@ const char* formatNameForSlot(Mc2SharedSceneColorSlot slot) {
 
 Mc2SharedSceneColor* mc2SharedSceneColorCreate(Mc2SharedSceneColorSlot slot,
                                                int w, int h, GLuint* outGlTex,
-                                               const char** outReason) {
+                                               const char** outReason,
+                                               bool vkOnlyNoGlView) {
     auto bail = [&](const char* reason) -> Mc2SharedSceneColor* {
         if (outReason) *outReason = reason;
         slog("%s fallback reason=%s (using plain GL glTexImage2D RGBA16F)",
@@ -126,11 +127,20 @@ Mc2SharedSceneColor* mc2SharedSceneColorCreate(Mc2SharedSceneColorSlot slot,
     if (!vkImageResourceCreate(&c->res, device, phys,
                                (uint32_t)w, (uint32_t)h,
                                vkFormatForSlot(slot),
-                               usage, /*exportable*/ true)) {
+                               usage, /*exportable*/ !vkOnlyNoGlView)) {
         mc2SharedSceneColorDestroy(c);
         return bail("vk_image_resource_create_failed");
     }
     c->resValid = true;
+
+    if (vkOnlyNoGlView) {
+        *outGlTex = 0;
+        if (outReason) *outReason = "active_vk_only";
+        g_activeBySlot[slot] = c;
+        slog("%s active: VK-only %s %dx%d (no GL import)", slotName(slot),
+             formatNameForSlot(slot), w, h);
+        return c;
+    }
 
     // Import into GL using the byte-compatible internal format for this slot.
     // GL wrap/filter default to CLAMP/NEAREST inside the view; the engine's own
@@ -152,6 +162,10 @@ Mc2SharedSceneColor* mc2SharedSceneColorCreate(Mc2SharedSceneColorSlot slot,
     slog("%s active: VK %s %dx%d imported to GL_%s tex=%u", slotName(slot),
          formatNameForSlot(slot), w, h, formatNameForSlot(slot), (unsigned)c->view.glTex);
     return c;
+}
+
+bool mc2SharedSceneColorHasGlView(const Mc2SharedSceneColor* c) {
+    return c && c->viewValid;
 }
 
 void mc2SharedSceneColorDestroy(Mc2SharedSceneColor* c) {
