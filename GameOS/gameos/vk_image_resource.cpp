@@ -8,6 +8,7 @@
 
 #include <cstdarg>
 #include <cstdio>
+#include <cstdlib>
 #include <cstring>
 #include <vector>
 
@@ -20,6 +21,22 @@ void ilog(const char* fmt, ...) {
     va_end(ap);
     std::printf("[VK_IMAGE_RESOURCE] %s\n", buf);
     std::fflush(stdout);
+}
+
+bool noGlInteropResourceStrictEnabled() {
+    static int cached = -1;
+    if (cached < 0) {
+        const char* v = std::getenv("MC2_VK_NO_GL_INTEROP_RESOURCE_STRICT");
+        cached = (v && v[0] == '1') ? 1 : 0;
+    }
+    return cached != 0;
+}
+
+void noGlInteropStrictAbort(const char* op) {
+    std::fprintf(stderr, "[VK_NO_GL_INTEROP_STRICT] abort op=%s\n",
+                 op ? op : "(unknown)");
+    std::fflush(stderr);
+    std::abort();
 }
 
 // spike main.cpp:162-172
@@ -52,6 +69,9 @@ bool vkImageResourceCreate(VkImageResource* r, VkDevice device, VkPhysicalDevice
     *r = VkImageResource{};
     r->device = device;
     r->w = w; r->h = h; r->format = format; r->usage = usage; r->exportable = exportable;
+
+    if (exportable && noGlInteropResourceStrictEnabled())
+        noGlInteropStrictAbort("vkImageResourceCreate(exportable)");
 
     const VkExternalMemoryHandleTypeFlagBits memHandleType =
         VK_EXTERNAL_MEMORY_HANDLE_TYPE_OPAQUE_WIN32_BIT;

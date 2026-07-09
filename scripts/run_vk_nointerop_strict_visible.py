@@ -65,6 +65,8 @@ def main() -> int:
     ap.add_argument("--settle", type=int, default=80)
     ap.add_argument("--trigger", type=int, default=120)
     ap.add_argument("--view-mode", help="Set MC2_VIEWMODE_FRAMEWORK=1 and MC2_VIEW_MODE to this value.")
+    ap.add_argument("--resource-strict", action="store_true",
+                    help="Also abort on exportable Win32 resource creation / GL memory import.")
     ap.add_argument("--env", action="append", default=[],
                     help="Additional KEY=VALUE environment override. May be passed multiple times.")
     ap.add_argument("--headless", action="store_true")
@@ -76,6 +78,8 @@ def main() -> int:
 
     env = os.environ.copy()
     env.update(STRICT_ENV)
+    if args.resource_strict:
+        env["MC2_VK_NO_GL_INTEROP_RESOURCE_STRICT"] = "1"
     if args.view_mode:
         env["MC2_VIEWMODE_FRAMEWORK"] = "1"
         env["MC2_VIEW_MODE"] = args.view_mode
@@ -110,6 +114,8 @@ def main() -> int:
 
     print("[vk-strict-visible] out_dir=%s" % out_dir)
     extra = []
+    if args.resource_strict:
+        extra.append("MC2_VK_NO_GL_INTEROP_RESOURCE_STRICT")
     if args.view_mode:
         extra.extend(["MC2_VIEWMODE_FRAMEWORK", "MC2_VIEW_MODE"])
     extra.extend(item.split("=", 1)[0] for item in args.env)

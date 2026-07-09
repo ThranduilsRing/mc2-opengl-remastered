@@ -39,6 +39,15 @@ bool noGlInteropStrictEnabled() {
     return cached != 0;
 }
 
+bool noGlInteropResourceStrictEnabled() {
+    static int cached = -1;
+    if (cached < 0) {
+        const char* v = std::getenv("MC2_VK_NO_GL_INTEROP_RESOURCE_STRICT");
+        cached = (v && v[0] == '1') ? 1 : 0;
+    }
+    return cached != 0;
+}
+
 void noGlInteropStrictAbort(const char* op) {
     std::fprintf(stderr, "[VK_NO_GL_INTEROP_STRICT] abort op=%s\n",
                  op ? op : "(unknown)");
@@ -97,6 +106,9 @@ bool glInteropViewCreate(GlInteropView* v, const VkImageResource* src,
                          VkPhysicalDevice phys, GLenum glInternalFormat) {
     if (!v || !src) return false;
     *v = GlInteropView{};
+
+    if (noGlInteropResourceStrictEnabled())
+        noGlInteropStrictAbort("glInteropViewCreate");
 
     assert(src->exportable && "GlInteropView requires an exportable VkImageResource");
     if (!src->exportable) { glog("src not exportable -> decline."); return false; }

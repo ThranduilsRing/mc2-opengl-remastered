@@ -1819,6 +1819,10 @@ def main():
                             # Expected to fail until full VK ownership deletes
                             # the Win32 GL/VK interop substrate.
                             "MC2_VK_NO_GL_INTEROP_STRICT",
+                            # Stronger Metal-gate resource canary: hard-fails
+                            # exportable Win32 VkImageResource creation / GL
+                            # memory-object import, not just handoff calls.
+                            "MC2_VK_NO_GL_INTEROP_RESOURCE_STRICT",
                             # VK-HUD-NATIVE-QUEUE-1 (rung 8.6f): queues the
                             # ordered GameOS HUD batch to the Vulkan present tail.
                             "MC2_VK_HUD",

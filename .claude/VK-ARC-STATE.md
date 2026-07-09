@@ -20,8 +20,10 @@ it is remaining deletion readiness around `gl_interop_view.*`, shared scene
 color/depth/present substrates, and any diagnostic/non-CSM fallback paths still
 needed for the final Metal gate.
 
-Current final-gate canary: `MC2_VK_NO_GL_INTEROP_STRICT=1` aborts on any
-production `glInteropSignalToVk`/`glInteropWaitFromVk` call. Proof gates
+Current final-gate canaries: `MC2_VK_NO_GL_INTEROP_STRICT=1` aborts on any
+production `glInteropSignalToVk`/`glInteropWaitFromVk` call, while
+`MC2_VK_NO_GL_INTEROP_RESOURCE_STRICT=1` aborts on exportable Win32
+`VkImageResource` creation or `glInteropViewCreate`. Proof gates
 `MC2_VK_TERRAIN_NATIVE_PREFIX_CLEAR=1`, `MC2_VK_PROP_DIRECT_CHAIN=1`,
 `MC2_VK_MECH_DIRECT_CHAIN=1`, `MC2_VK_WATER_TIER1=1`,
 `MC2_VK_WATER_DIRECT_CHAIN=1`, `MC2_VK_POST_FOG_NATIVE=1`,
@@ -34,12 +36,12 @@ production `glInteropSignalToVk`/`glInteropWaitFromVk` call. Proof gates
 `MC2_VK_POST_SCREENFX_SHADOW=1`, `MC2_VK_POST_SCREENFX_DIRECT_CHAIN=1`,
 `MC2_HZB_BUILD=1`, `MC2_VK_POST_HZB=1`, `MC2_VK_POST_HZB_DIRECT_CHAIN=1`,
 `MC2_VK_POST_COMPOSITE_DIRECT_CHAIN=1` now make a visible `mc2_01` full
-bookmark sweep pass with the strict canary armed:
-`.claude/vk-nointerop-strict-visible-shadow-direct-clean/`, 11/11
-deterministic. Log shows `sha=9848c91117fd dirty=0`,
+bookmark sweep pass with the handoff strict canary armed:
+`.claude/vk-nointerop-strict-visible-shadow-direct-clean-final/`, 11/11
+deterministic. Log shows `sha=53311e5aced3 dirty=0`,
 `MC2_VK_SHADOW_DIRECT_CHAIN=1 -- VK shadow products stay VK-owned; GL
 semaphore wait is skipped`, first VK shadow/CSM products, present
-`composite_vk_frames=6300 gl_handoff_skip_frames=6300`, and zero occurrences
+`composite_vk_frames=6600 gl_handoff_skip_frames=6600`, and zero occurrences
 of `[VK_NO_GL_INTEROP_STRICT]`, `glInteropSignalToVk`, or
 `glInteropWaitFromVk`. Detailed post-health receipt is in the immediately prior
 dirty proof `.claude/vk-nointerop-strict-visible-shadow-direct-dirty-receipts/`
@@ -1402,14 +1404,14 @@ Current tail status:
   now defers native execution for the first observed extent/mip-count frame so
   the present swapchain handles resize before HZB allocates/renders.
 - Native shadow direct-chain strict canary is green:
-  `.claude/vk-nointerop-strict-visible-shadow-direct-clean/`, 11/11
+  `.claude/vk-nointerop-strict-visible-shadow-direct-clean-final/`, 11/11
   deterministic `mc2_01` bookmarks with dynamic CSM shadows, static shadow
   substrate, native CSM screen-shadow, post stack, HZB, composite, and native
   present all armed under `MC2_VK_NO_GL_INTEROP_STRICT=1`; log shows
-  `sha=9848c91117fd dirty=0`, `MC2_VK_SHADOW_DIRECT_CHAIN=1 -- VK shadow
+  `sha=53311e5aced3 dirty=0`, `MC2_VK_SHADOW_DIRECT_CHAIN=1 -- VK shadow
   products stay VK-owned; GL semaphore wait is skipped`, `first VK shadow map
   produced ... (direct VK consumers only)`, first VK CSM array/full-map
-  products, present `composite_vk_frames=6300 gl_handoff_skip_frames=6300`,
+  products, present `composite_vk_frames=6600 gl_handoff_skip_frames=6600`,
   no present fail-soft, and zero occurrences of `[VK_NO_GL_INTEROP_STRICT]`,
   `glInteropSignalToVk`, or `glInteropWaitFromVk`. Detailed post-health
   receipt remains the dirty pre-commit proof

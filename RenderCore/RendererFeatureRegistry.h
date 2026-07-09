@@ -734,6 +734,18 @@ static constexpr EnvVarDesc kAuxEnvVars[] = {
         "memory/semaphore family has been removed."
     },
     {
+        "MC2_TRACE_VK_NO_GL_INTEROP_RESOURCE_STRICT",
+        "MC2_VK_NO_GL_INTEROP_RESOURCE_STRICT",
+        EnvVarKind::Trace,
+        false,
+        "VK final Metal-gate resource canary. Default-OFF. When =1, creation of "
+        "exportable Win32 VkImageResource objects or GL memory-object import via "
+        "glInteropViewCreate logs [VK_NO_GL_INTEROP_STRICT] and aborts. This is "
+        "stricter than MC2_VK_NO_GL_INTEROP_STRICT, which only guards production "
+        "handoff signal/wait calls; use it to prove the hidden Win32 external-memory "
+        "substrate has been deleted."
+    },
+    {
         "MC2_FEATURE_VK_CSM_FULLMAP_INTEROP",
         "MC2_VK_CSM_FULLMAP_INTEROP",
         EnvVarKind::Feature,

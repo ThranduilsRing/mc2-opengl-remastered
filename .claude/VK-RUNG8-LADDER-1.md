@@ -710,13 +710,22 @@ no tessellation anywhere in the tail.
   terrain and native CSM screen-shadow through direct VK views. The strict
   visible harness now arms dynamic CSM shadows, static shadow substrate, native
   CSM screen-shadow, and the shadow direct-chain gate. Verification:
-  `.claude/vk-nointerop-strict-visible-shadow-direct-clean/`, 11/11
-  deterministic `mc2_01` bookmarks; log receipt `sha=9848c91117fd dirty=0`,
+  `.claude/vk-nointerop-strict-visible-shadow-direct-clean-final/`, 11/11
+  deterministic `mc2_01` bookmarks; log receipt `sha=53311e5aced3 dirty=0`,
   `MC2_VK_SHADOW_DIRECT_CHAIN=1 -- VK shadow products stay VK-owned; GL
   semaphore wait is skipped`; first VK shadow, CSM array, and CSM full-map
-  products produced; present `composite_vk_frames=6300
-  gl_handoff_skip_frames=6300`; zero occurrences of `[VK_NO_GL_INTEROP_STRICT]`,
+  products produced; present `composite_vk_frames=6600
+  gl_handoff_skip_frames=6600`; zero occurrences of `[VK_NO_GL_INTEROP_STRICT]`,
   `glInteropSignalToVk`, or `glInteropWaitFromVk`. Detailed post-health receipt:
   `.claude/vk-nointerop-strict-visible-shadow-direct-dirty-receipts/`, screenfx
   `shadow_frames=6629 direct_chain=1 used_interop=0`, HZB/fog/SSAO/water/prop
   all `used_interop=0`.
+- 8.7ac - RESOURCE-LEVEL NO-GL-INTEROP STRICT CANARY
+  (VK-NO-GL-INTEROP-RESOURCE-STRICT-1). Added default-off
+  `MC2_VK_NO_GL_INTEROP_RESOURCE_STRICT=1` plus
+  `scripts/run_vk_nointerop_strict_visible.py --resource-strict`. This is the
+  stronger Metal-gate canary: it aborts on exportable Win32 `VkImageResource`
+  creation and `glInteropViewCreate`, not only the production
+  `glInteropSignalToVk`/`glInteropWaitFromVk` handoff calls. It is expected to
+  fail until shared scene color/depth/static shadow/present stop allocating
+  Win32 external-memory resources and importing GL memory objects.
