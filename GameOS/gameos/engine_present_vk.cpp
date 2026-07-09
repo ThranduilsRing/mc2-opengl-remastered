@@ -165,6 +165,18 @@ struct EnginePresentVk::Impl {
     VkPipeline       compositePipe = VK_NULL_HANDLE;
     VkShaderModule   compositeVert = VK_NULL_HANDLE;
     VkShaderModule   compositeFrag = VK_NULL_HANDLE;
+
+    bool             shadowDebugVkFailed = false;
+    VkRenderPass     shadowDebugRenderPass = VK_NULL_HANDLE;
+    VkFramebuffer    shadowDebugFramebuffer = VK_NULL_HANDLE;
+    VkSampler        shadowDebugSampler = VK_NULL_HANDLE;
+    VkDescriptorSetLayout shadowDebugDsl = VK_NULL_HANDLE;
+    VkDescriptorPool shadowDebugPool = VK_NULL_HANDLE;
+    VkDescriptorSet  shadowDebugSet = VK_NULL_HANDLE;
+    VkPipelineLayout shadowDebugLayout = VK_NULL_HANDLE;
+    VkPipeline       shadowDebugPipe = VK_NULL_HANDLE;
+    VkShaderModule   shadowDebugVert = VK_NULL_HANDLE;
+    VkShaderModule   shadowDebugFrag = VK_NULL_HANDLE;
 };
 
 namespace {
@@ -448,6 +460,13 @@ void destroyCompositeFramebuffer(EnginePresentVk::Impl& s) {
     }
 }
 
+void destroyShadowDebugFramebuffer(EnginePresentVk::Impl& s) {
+    if (s.shadowDebugFramebuffer) {
+        vkDestroyFramebuffer(s.dev, s.shadowDebugFramebuffer, nullptr);
+        s.shadowDebugFramebuffer = VK_NULL_HANDLE;
+    }
+}
+
 bool ensureCompositeObjects(EnginePresentVk::Impl& s) {
     if (s.compositePipe && s.compositeFramebuffer) return true;
     if (s.compositeVkFailed || !s.dev || !s.sharedImg.view || s.imgW == 0 || s.imgH == 0)
@@ -596,6 +615,150 @@ bool ensureCompositeObjects(EnginePresentVk::Impl& s) {
         gp.renderPass = s.compositeRenderPass;
         if (vkCreateGraphicsPipelines(s.dev, VK_NULL_HANDLE, 1, &gp, nullptr, &s.compositePipe) != VK_SUCCESS) {
             s.compositeVkFailed = true; return false;
+        }
+    }
+    return true;
+}
+
+bool ensureShadowDebugOverlayObjects(EnginePresentVk::Impl& s, VkImageView csmArrayView) {
+    if (s.shadowDebugPipe && s.shadowDebugFramebuffer && csmArrayView != VK_NULL_HANDLE)
+        return true;
+    if (s.shadowDebugVkFailed || !s.dev || !s.sharedImg.view || csmArrayView == VK_NULL_HANDLE ||
+        s.imgW == 0 || s.imgH == 0)
+        return false;
+
+    if (!s.shadowDebugSampler) {
+        VkSamplerCreateInfo ci{VK_STRUCTURE_TYPE_SAMPLER_CREATE_INFO};
+        ci.magFilter = VK_FILTER_LINEAR;
+        ci.minFilter = VK_FILTER_LINEAR;
+        ci.mipmapMode = VK_SAMPLER_MIPMAP_MODE_NEAREST;
+        ci.addressModeU = VK_SAMPLER_ADDRESS_MODE_CLAMP_TO_EDGE;
+        ci.addressModeV = VK_SAMPLER_ADDRESS_MODE_CLAMP_TO_EDGE;
+        ci.addressModeW = VK_SAMPLER_ADDRESS_MODE_CLAMP_TO_EDGE;
+        ci.compareEnable = VK_FALSE;
+        if (vkCreateSampler(s.dev, &ci, nullptr, &s.shadowDebugSampler) != VK_SUCCESS) {
+            s.shadowDebugVkFailed = true; return false;
+        }
+    }
+    if (!s.shadowDebugRenderPass) {
+        VkAttachmentDescription color{};
+        color.format = VK_FORMAT_R8G8B8A8_UNORM;
+        color.samples = VK_SAMPLE_COUNT_1_BIT;
+        color.loadOp = VK_ATTACHMENT_LOAD_OP_LOAD;
+        color.storeOp = VK_ATTACHMENT_STORE_OP_STORE;
+        color.stencilLoadOp = VK_ATTACHMENT_LOAD_OP_DONT_CARE;
+        color.stencilStoreOp = VK_ATTACHMENT_STORE_OP_DONT_CARE;
+        color.initialLayout = VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL;
+        color.finalLayout = VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL;
+        VkAttachmentReference ref{0, VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL};
+        VkSubpassDescription sub{};
+        sub.pipelineBindPoint = VK_PIPELINE_BIND_POINT_GRAPHICS;
+        sub.colorAttachmentCount = 1;
+        sub.pColorAttachments = &ref;
+        VkRenderPassCreateInfo rp{VK_STRUCTURE_TYPE_RENDER_PASS_CREATE_INFO};
+        rp.attachmentCount = 1; rp.pAttachments = &color;
+        rp.subpassCount = 1; rp.pSubpasses = &sub;
+        if (vkCreateRenderPass(s.dev, &rp, nullptr, &s.shadowDebugRenderPass) != VK_SUCCESS) {
+            s.shadowDebugVkFailed = true; return false;
+        }
+    }
+    if (!s.shadowDebugFramebuffer) {
+        VkImageView att[] = { s.sharedImg.view };
+        VkFramebufferCreateInfo fb{VK_STRUCTURE_TYPE_FRAMEBUFFER_CREATE_INFO};
+        fb.renderPass = s.shadowDebugRenderPass;
+        fb.attachmentCount = 1; fb.pAttachments = att;
+        fb.width = s.imgW; fb.height = s.imgH; fb.layers = 1;
+        if (vkCreateFramebuffer(s.dev, &fb, nullptr, &s.shadowDebugFramebuffer) != VK_SUCCESS) {
+            s.shadowDebugVkFailed = true; return false;
+        }
+    }
+    if (!s.shadowDebugDsl) {
+        VkDescriptorSetLayoutBinding b{};
+        b.binding = 0;
+        b.descriptorType = VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER;
+        b.descriptorCount = 1;
+        b.stageFlags = VK_SHADER_STAGE_FRAGMENT_BIT;
+        VkDescriptorSetLayoutCreateInfo ci{VK_STRUCTURE_TYPE_DESCRIPTOR_SET_LAYOUT_CREATE_INFO};
+        ci.bindingCount = 1; ci.pBindings = &b;
+        if (vkCreateDescriptorSetLayout(s.dev, &ci, nullptr, &s.shadowDebugDsl) != VK_SUCCESS) {
+            s.shadowDebugVkFailed = true; return false;
+        }
+    }
+    if (!s.shadowDebugPool) {
+        VkDescriptorPoolSize size{VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER, 1};
+        VkDescriptorPoolCreateInfo pci{VK_STRUCTURE_TYPE_DESCRIPTOR_POOL_CREATE_INFO};
+        pci.maxSets = 1; pci.poolSizeCount = 1; pci.pPoolSizes = &size;
+        if (vkCreateDescriptorPool(s.dev, &pci, nullptr, &s.shadowDebugPool) != VK_SUCCESS) {
+            s.shadowDebugVkFailed = true; return false;
+        }
+        VkDescriptorSetAllocateInfo ai{VK_STRUCTURE_TYPE_DESCRIPTOR_SET_ALLOCATE_INFO};
+        ai.descriptorPool = s.shadowDebugPool;
+        ai.descriptorSetCount = 1;
+        ai.pSetLayouts = &s.shadowDebugDsl;
+        if (vkAllocateDescriptorSets(s.dev, &ai, &s.shadowDebugSet) != VK_SUCCESS) {
+            s.shadowDebugVkFailed = true; return false;
+        }
+    }
+    VkDescriptorImageInfo ii{};
+    ii.sampler = s.shadowDebugSampler;
+    ii.imageView = csmArrayView;
+    ii.imageLayout = VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL;
+    VkWriteDescriptorSet wr{VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET};
+    wr.dstSet = s.shadowDebugSet;
+    wr.dstBinding = 0;
+    wr.descriptorCount = 1;
+    wr.descriptorType = VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER;
+    wr.pImageInfo = &ii;
+    vkUpdateDescriptorSets(s.dev, 1, &wr, 0, nullptr);
+
+    if (!s.shadowDebugLayout) {
+        VkPushConstantRange pc{};
+        pc.stageFlags = VK_SHADER_STAGE_FRAGMENT_BIT;
+        pc.size = sizeof(int) * 4;
+        VkPipelineLayoutCreateInfo ci{VK_STRUCTURE_TYPE_PIPELINE_LAYOUT_CREATE_INFO};
+        ci.setLayoutCount = 1; ci.pSetLayouts = &s.shadowDebugDsl;
+        ci.pushConstantRangeCount = 1; ci.pPushConstantRanges = &pc;
+        if (vkCreatePipelineLayout(s.dev, &ci, nullptr, &s.shadowDebugLayout) != VK_SUCCESS) {
+            s.shadowDebugVkFailed = true; return false;
+        }
+    }
+    if (!s.shadowDebugPipe) {
+        s.shadowDebugVert = loadSpv(s.dev, spv_dir() + "shadow_debug_overlay.vert.spv");
+        s.shadowDebugFrag = loadSpv(s.dev, spv_dir() + "shadow_debug_overlay.frag.spv");
+        if (!s.shadowDebugVert || !s.shadowDebugFrag) { s.shadowDebugVkFailed = true; return false; }
+
+        VkPipelineShaderStageCreateInfo st[2]{};
+        st[0].sType = VK_STRUCTURE_TYPE_PIPELINE_SHADER_STAGE_CREATE_INFO;
+        st[0].stage = VK_SHADER_STAGE_VERTEX_BIT; st[0].module = s.shadowDebugVert; st[0].pName = "main";
+        st[1].sType = VK_STRUCTURE_TYPE_PIPELINE_SHADER_STAGE_CREATE_INFO;
+        st[1].stage = VK_SHADER_STAGE_FRAGMENT_BIT; st[1].module = s.shadowDebugFrag; st[1].pName = "main";
+        VkPipelineVertexInputStateCreateInfo vin{VK_STRUCTURE_TYPE_PIPELINE_VERTEX_INPUT_STATE_CREATE_INFO};
+        VkPipelineInputAssemblyStateCreateInfo ia{VK_STRUCTURE_TYPE_PIPELINE_INPUT_ASSEMBLY_STATE_CREATE_INFO};
+        ia.topology = VK_PRIMITIVE_TOPOLOGY_TRIANGLE_LIST;
+        VkPipelineViewportStateCreateInfo vp{VK_STRUCTURE_TYPE_PIPELINE_VIEWPORT_STATE_CREATE_INFO};
+        vp.viewportCount = 1; vp.scissorCount = 1;
+        VkPipelineRasterizationStateCreateInfo rs{VK_STRUCTURE_TYPE_PIPELINE_RASTERIZATION_STATE_CREATE_INFO};
+        rs.polygonMode = VK_POLYGON_MODE_FILL; rs.cullMode = VK_CULL_MODE_NONE;
+        rs.frontFace = VK_FRONT_FACE_COUNTER_CLOCKWISE; rs.lineWidth = 1.0f;
+        VkPipelineMultisampleStateCreateInfo ms{VK_STRUCTURE_TYPE_PIPELINE_MULTISAMPLE_STATE_CREATE_INFO};
+        ms.rasterizationSamples = VK_SAMPLE_COUNT_1_BIT;
+        VkPipelineColorBlendAttachmentState cba{};
+        cba.colorWriteMask = VK_COLOR_COMPONENT_R_BIT | VK_COLOR_COMPONENT_G_BIT |
+                             VK_COLOR_COMPONENT_B_BIT | VK_COLOR_COMPONENT_A_BIT;
+        VkPipelineColorBlendStateCreateInfo cb{VK_STRUCTURE_TYPE_PIPELINE_COLOR_BLEND_STATE_CREATE_INFO};
+        cb.attachmentCount = 1; cb.pAttachments = &cba;
+        VkDynamicState dyns[2] = {VK_DYNAMIC_STATE_VIEWPORT, VK_DYNAMIC_STATE_SCISSOR};
+        VkPipelineDynamicStateCreateInfo dyn{VK_STRUCTURE_TYPE_PIPELINE_DYNAMIC_STATE_CREATE_INFO};
+        dyn.dynamicStateCount = 2; dyn.pDynamicStates = dyns;
+        VkGraphicsPipelineCreateInfo gp{VK_STRUCTURE_TYPE_GRAPHICS_PIPELINE_CREATE_INFO};
+        gp.stageCount = 2; gp.pStages = st;
+        gp.pVertexInputState = &vin; gp.pInputAssemblyState = &ia;
+        gp.pViewportState = &vp; gp.pRasterizationState = &rs;
+        gp.pMultisampleState = &ms; gp.pColorBlendState = &cb;
+        gp.pDynamicState = &dyn; gp.layout = s.shadowDebugLayout;
+        gp.renderPass = s.shadowDebugRenderPass;
+        if (vkCreateGraphicsPipelines(s.dev, VK_NULL_HANDLE, 1, &gp, nullptr, &s.shadowDebugPipe) != VK_SUCCESS) {
+            s.shadowDebugVkFailed = true; return false;
         }
     }
     return true;
@@ -1250,6 +1413,7 @@ bool buildSharedImage(EnginePresentVk::Impl& s, uint32_t w, uint32_t h, std::str
     destroyImguiFramebuffer(s);
     destroyHudColorFramebuffer(s);
     destroyCompositeFramebuffer(s);
+    destroyShadowDebugFramebuffer(s);
     if (s.copyFbo) { glDeleteFramebuffers(1, &s.copyFbo); s.copyFbo = 0; }
     if (s.glView.glTex) glInteropViewDestroy(&s.glView);
     if (s.sharedImg.image) vkImageResourceDestroy(&s.sharedImg, s.dev);
@@ -1580,6 +1744,57 @@ bool EnginePresentVk::renderNativeCompositeVisual(float exposure,
     }
 
     ++health_.composite_vk_frames;
+    return true;
+}
+
+bool EnginePresentVk::renderNativeCsmShadowDebugOverlay(void* csmArrayView, int layer) {
+    if (!created_ || !impl_ || directFbo_ == 0 || !nativeCompositeGateEnabled())
+        return false;
+    Impl& s = *impl_;
+    VkImageView arrayView = reinterpret_cast<VkImageView>(csmArrayView);
+    if (!ensureShadowDebugOverlayObjects(s, arrayView))
+        return false;
+
+    vkResetCommandBuffer(s.cbuf, 0);
+    VkCommandBufferBeginInfo bi{VK_STRUCTURE_TYPE_COMMAND_BUFFER_BEGIN_INFO};
+    bi.flags = VK_COMMAND_BUFFER_USAGE_ONE_TIME_SUBMIT_BIT;
+    if (vkBeginCommandBuffer(s.cbuf, &bi) != VK_SUCCESS)
+        return false;
+
+    VkRenderPassBeginInfo rp{VK_STRUCTURE_TYPE_RENDER_PASS_BEGIN_INFO};
+    rp.renderPass = s.shadowDebugRenderPass;
+    rp.framebuffer = s.shadowDebugFramebuffer;
+    rp.renderArea.offset = {0, 0};
+    rp.renderArea.extent = {s.imgW, s.imgH};
+    vkCmdBeginRenderPass(s.cbuf, &rp, VK_SUBPASS_CONTENTS_INLINE);
+
+    const float quadSize = 256.0f;
+    const float margin = 16.0f;
+    VkViewport vp{margin, (float)s.imgH - quadSize - margin, quadSize, quadSize, 0.0f, 1.0f};
+    VkRect2D sc{{(int32_t)margin, (int32_t)((float)s.imgH - quadSize - margin)},
+                {(uint32_t)quadSize, (uint32_t)quadSize}};
+    vkCmdSetViewport(s.cbuf, 0, 1, &vp);
+    vkCmdSetScissor(s.cbuf, 0, 1, &sc);
+    vkCmdBindPipeline(s.cbuf, VK_PIPELINE_BIND_POINT_GRAPHICS, s.shadowDebugPipe);
+    vkCmdBindDescriptorSets(s.cbuf, VK_PIPELINE_BIND_POINT_GRAPHICS, s.shadowDebugLayout,
+                            0, 1, &s.shadowDebugSet, 0, nullptr);
+    int pc[4] = { layer < 0 ? 0 : layer, 0, 0, 0 };
+    vkCmdPushConstants(s.cbuf, s.shadowDebugLayout, VK_SHADER_STAGE_FRAGMENT_BIT,
+                       0, sizeof(pc), pc);
+    vkCmdDraw(s.cbuf, 3, 1, 0, 0);
+    vkCmdEndRenderPass(s.cbuf);
+
+    if (vkEndCommandBuffer(s.cbuf) != VK_SUCCESS)
+        return false;
+    VkSubmitInfo si{VK_STRUCTURE_TYPE_SUBMIT_INFO};
+    si.commandBufferCount = 1;
+    si.pCommandBuffers = &s.cbuf;
+    if (vkQueueSubmit(s.gfxQ, 1, &si, s.inFlight) != VK_SUCCESS)
+        return false;
+    if (vkWaitForFences(s.dev, 1, &s.inFlight, VK_TRUE, 5ull * 1000 * 1000 * 1000) != VK_SUCCESS)
+        return false;
+    vkResetFences(s.dev, 1, &s.inFlight);
+    ++health_.shadow_debug_vk_frames;
     return true;
 }
 
@@ -2047,6 +2262,15 @@ void EnginePresentVk::destroy() {
         if (s.compositeDsl) { vkDestroyDescriptorSetLayout(s.dev, s.compositeDsl, nullptr); s.compositeDsl = VK_NULL_HANDLE; }
         if (s.compositeSampler) { vkDestroySampler(s.dev, s.compositeSampler, nullptr); s.compositeSampler = VK_NULL_HANDLE; }
         if (s.compositeRenderPass) { vkDestroyRenderPass(s.dev, s.compositeRenderPass, nullptr); s.compositeRenderPass = VK_NULL_HANDLE; }
+        destroyShadowDebugFramebuffer(s);
+        if (s.shadowDebugPipe) { vkDestroyPipeline(s.dev, s.shadowDebugPipe, nullptr); s.shadowDebugPipe = VK_NULL_HANDLE; }
+        if (s.shadowDebugLayout) { vkDestroyPipelineLayout(s.dev, s.shadowDebugLayout, nullptr); s.shadowDebugLayout = VK_NULL_HANDLE; }
+        if (s.shadowDebugVert) { vkDestroyShaderModule(s.dev, s.shadowDebugVert, nullptr); s.shadowDebugVert = VK_NULL_HANDLE; }
+        if (s.shadowDebugFrag) { vkDestroyShaderModule(s.dev, s.shadowDebugFrag, nullptr); s.shadowDebugFrag = VK_NULL_HANDLE; }
+        if (s.shadowDebugPool) { vkDestroyDescriptorPool(s.dev, s.shadowDebugPool, nullptr); s.shadowDebugPool = VK_NULL_HANDLE; }
+        if (s.shadowDebugDsl) { vkDestroyDescriptorSetLayout(s.dev, s.shadowDebugDsl, nullptr); s.shadowDebugDsl = VK_NULL_HANDLE; }
+        if (s.shadowDebugSampler) { vkDestroySampler(s.dev, s.shadowDebugSampler, nullptr); s.shadowDebugSampler = VK_NULL_HANDLE; }
+        if (s.shadowDebugRenderPass) { vkDestroyRenderPass(s.dev, s.shadowDebugRenderPass, nullptr); s.shadowDebugRenderPass = VK_NULL_HANDLE; }
         if (s.readbackFence) { vkDestroyFence(s.dev, s.readbackFence, nullptr); s.readbackFence = VK_NULL_HANDLE; }
         if (s.readbackBuf)   { vkDestroyBuffer(s.dev, s.readbackBuf, nullptr); s.readbackBuf = VK_NULL_HANDLE; }
         if (s.readbackMem)   { vkFreeMemory(s.dev, s.readbackMem, nullptr); s.readbackMem = VK_NULL_HANDLE; }
@@ -2074,7 +2298,8 @@ void EnginePresentVk::logHealth() const {
         "validation_errors=%u extent=%ux%u present_mode=%s readback_changed=%d "
         "last_checksum=0x%llx direct_fbo_requests=%u direct_fbo_grants=%u "
         "copy1_blit_frames=%u copy1_skip_frames=%u tail_hook_frames=%u "
-        "composite_vk_frames=%u hud_vk_queued_frames=%u hud_vk_consumed_frames=%u "
+        "composite_vk_frames=%u shadow_debug_vk_frames=%u "
+        "hud_vk_queued_frames=%u hud_vk_consumed_frames=%u "
         "hud_vk_draws_last=%u hud_vk_textured_last=%u hud_vk_serialized_last=%u "
         "hud_vk_color_frames=%u hud_vk_color_draws_last=%u "
         "hud_vk_textured_frames=%u hud_vk_textured_draws_last=%u hud_vk_texture_uploads=%u "
@@ -2090,7 +2315,7 @@ void EnginePresentVk::logHealth() const {
         health_.direct_fbo_requests, health_.direct_fbo_grants,
         health_.copy1_blit_frames, health_.copy1_skip_frames,
         health_.tail_hook_frames,
-        health_.composite_vk_frames,
+        health_.composite_vk_frames, health_.shadow_debug_vk_frames,
         health_.hud_vk_queued_frames, health_.hud_vk_consumed_frames,
         health_.hud_vk_draws_last, health_.hud_vk_textured_last,
         health_.hud_vk_serialized_last,

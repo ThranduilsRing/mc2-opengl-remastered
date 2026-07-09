@@ -1251,15 +1251,15 @@ bar is stricter than current code:
   (`vk_gl_shared_buffer.*` / `gl_interop_buffer_view.*`) was deleted after rung
   8.7j because no live path includes or calls it.
 
-Next real coding slices:
-1. 8.6f native GameOS HUD replay: render the queued scaled `hudBatch_` in
-   `EnginePresentVk`, mirror gosTexture/font atlas handles, render ordered
-   quad/line/tri/text calls before native ImGui, then skip GL replay only when
-   every call is representable.
-2. Complete the remaining native composite diagnostic branch: shadow-debug
-   overlay path.
-3. 8.7 deletion after GL issues zero final-tail draws and shared-scene GL import
-   halves are no longer needed.
+Current tail status:
+- Native GameOS HUD replay and skip-GL proof are shipped; see
+  `VK-RUNG8-LADDER-1.md` 8.6f+ through 8.6j.
+- The remaining native composite diagnostic branch is now closed for the
+  ownership-relevant CSM dynamic case: `MC2_SHADOW_DEBUG_MODE=dynamic` uses a
+  native VK overlay when the shadow island exposes a same-frame CSM array view.
+  Static/non-ready debug sources intentionally retain GL fallback.
+- Remaining deletion blocker: shared scene color/depth/present substrates still
+  rely on `gl_interop_view.*` while GL can produce earlier scene pixels.
 
 ## RUNG 8.6f - VK-HUD-NATIVE-QUEUE-1
 

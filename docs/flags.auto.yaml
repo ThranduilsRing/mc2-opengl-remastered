@@ -4078,7 +4078,7 @@ flags:
     referenced_at:
       - GameOS/gameos/gos_postprocess.cpp:767
     registered: no
-    in_smoke_passthrough: no
+    in_smoke_passthrough: yes
     documented_in_tier1_env_vars: no
   - name: MC2_SHADOW_DIAG
     default: unknown

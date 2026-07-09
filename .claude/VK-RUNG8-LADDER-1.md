@@ -425,3 +425,16 @@ no tessellation anywhere in the tail.
   `tests/smoke/artifacts/2026-07-08T18-30-44`; clean post-commit build/deploy
   (`sha=f10a87a2be3c dirty=0`) passed the same CSM-enabled tier1 gate at
   `tests/smoke/artifacts/2026-07-08T18-36-40`.
+- 8.7k - NATIVE CSM SHADOW DEBUG OVERLAY
+  (VK-SHADOW-DEBUG-OVERLAY-NATIVE-1). Added a diagnostic-only native overlay
+  pass for `MC2_SHADOW_DEBUG_MODE=dynamic` when CSM is active and the shadow
+  island has a same-frame VK CSM array view. Static and non-ready debug sources
+  still fall back to the existing GL overlay, so the diagnostic never disappears
+  and no new readback path is introduced. Verification: correct `v0.4c` deploy
+  with `shadow_debug_overlay.{vert,frag}.spv`, diagnostic smoke PASS 1/1 at
+  `tests/smoke/artifacts/2026-07-08T19-02-11`, kept-log minimized smoke PASS
+  at `tests/smoke/artifacts/2026-07-08T19-04-37`, and visible bookmark proof
+  `.claude/mech-parity/shadow_debug_overlay_native_visible/` captured 3/3
+  building bookmarks. Runtime receipts: `[SHADOW_DEBUG] ... dynamic`,
+  `first VK CSM array produced`, `[VK_PRESENT] created=1 ... copy1_skip_frames=5401
+  composite_vk_frames=5400 shadow_debug_vk_frames=5400 ... fallback_reason=""`.

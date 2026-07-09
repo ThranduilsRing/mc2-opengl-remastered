@@ -28,6 +28,7 @@
 #include "vk_shared_gbuffer_gate.h"     // VK-P14 GATE-CONSOLIDATION-1 umbrella resolver
 #include "vulkan_shared_scene_depth.h"  // VK-TIER1 SHARED SCENE DEPTH substrate (gated)
 #include "vulkan_shared_scene_color.h"  // VK-P11 TIER-1 SHARED SCENE COLOR/NORMAL (gated)
+#include "vulkan_shadow_island_live.h"  // VK CSM direct shadow debug overlay view
 #endif
 #include "render_backend_select.h"      // VK-P14b: mc2::renderBackend() (GL-safe, no VK dep)
 #ifdef MC2_VULKAN
@@ -4380,6 +4381,19 @@ void gosPostProcess::drawShadowDebugOverlay()
     // (mode 1), the dynamic shadow is a GL_TEXTURE_2D_ARRAY -> sample a layer
     // (csmDebugLayer_) via the array sampler. Static map (mode 0) stays 2D.
     const bool csmDynamic = (mc2ShadowCsmEnabled() && dynShadowArrayTex_ != 0 && shadowDebugMode_ != 0);
+#if defined(MC2_VULKAN) && defined(MC2_VULKAN_ISLAND)
+    if (csmDynamic && mc2::renderBackend() == mc2::RenderBackend::Vulkan &&
+        mc2_vk_shadow_island_csm_array_ready()) {
+        int layer = csmDebugLayer_;
+        if (layer < 0) layer = 0;
+        if (layer >= csmCount_) layer = csmCount_ - 1;
+        void* rawView = mc2_vk_shadow_island_get_csm_array_view();
+        if (rawView &&
+            mc2vk::getOrCreateEnginePresentVk().renderNativeCsmShadowDebugOverlay(rawView, layer)) {
+            return;
+        }
+    }
+#endif
     const GLenum texTarget = csmDynamic ? GL_TEXTURE_2D_ARRAY : GL_TEXTURE_2D;
     GLuint tex = csmDynamic ? dynShadowArrayTex_
                             : ((shadowDebugMode_ == 0) ? shadowDepthTex_ : dynShadowDepthTex_);

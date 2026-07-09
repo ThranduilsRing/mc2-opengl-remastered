@@ -67,6 +67,7 @@ struct EnginePresentHealth {
     uint32_t    tail_hook_frames    = 0;   // gated VK final-tail hook executions
     uint32_t    imgui_vk_frames     = 0;   // native ImGui draw-data frames recorded
     uint32_t    composite_vk_frames = 0;   // native composite frames recorded
+    uint32_t    shadow_debug_vk_frames = 0;// native CSM shadow-debug overlay frames
     uint32_t    hud_vk_queued_frames = 0;  // HUD batches queued for native tail replay
     uint32_t    hud_vk_consumed_frames = 0;// queued HUD batches observed by the tail hook
     uint32_t    hud_vk_draws_last = 0;     // draw records in the last queued HUD batch
@@ -187,6 +188,10 @@ public:
                                      const float lowLightTint[3],
                                      int viewportX, int viewportY,
                                      int viewportW, int viewportH);
+
+    // Diagnostic-only native overlay for the CSM dynamic shadow debug view.
+    // `csmArrayView` is the same-frame VK image view from the shadow island.
+    bool renderNativeCsmShadowDebugOverlay(void* csmArrayView, int layer);
 
     // P13b: the visible GL game window we present onto (borrowed, not owned).
     SDL_Window* window() const { return glWindow_; }
