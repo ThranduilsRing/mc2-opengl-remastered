@@ -625,6 +625,17 @@ static constexpr EnvVarDesc kAuxEnvVars[] = {
         "and before the swapchain blit; [VK_PRESENT] tail_hook_frames proves the "
         "native HUD/ImGui insertion point executes."
     },
+    {
+        "MC2_TRACE_VK_PRESENT_NATIVE_STRICT",
+        "MC2_VK_PRESENT_NATIVE_STRICT",
+        EnvVarKind::Trace,
+        false,
+        "VK present-tail deletion-readiness canary. Default-OFF. On nonzero-surface "
+        "frames, aborts if the present path would use copy-1, consume a non-VK-owned "
+        "present image, or signal the GL->VK handoff instead of the native "
+        "MC2_VK_PRESENT_SKIP_GL_HANDOFF path. Minimized zero-extent frames remain "
+        "non-proofs and do not trip this canary."
+    },
     // VK-P13-SELECTOR-1 / T4: fail-soft proof knob for the engine VK context.
     {
         "MC2_FEATURE_VK_FORCE_FAIL",

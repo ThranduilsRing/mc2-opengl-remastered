@@ -1,7 +1,7 @@
 # VK-ARC-STATE — current state block (update every session)
 
-HEAD routing note (2026-07-08): current shipped tip is rung 8.7p
-`VK-SHARED-SCENE-STRICT-CANARY-1` on branch `claude/vk-interop-bridge-1`,
+HEAD routing note (2026-07-08): current shipped tip is rung 8.7q
+`VK-PRESENT-NATIVE-STRICT-CANARY-1` on branch `claude/vk-interop-bridge-1`,
 worktree `A:/Games/mc2-vk-interop-bridge`, build dir `build64_island`.
 Always confirm the exact commit with `git log -1 --oneline` before launching
 agents; this file is append-heavy and older rung sections below are historical.
@@ -9,7 +9,7 @@ Deploy lane for Vulkan ownership work is the literal
 `A:/Games/mc2-opengl/mc2-win64-v0.4c/mc2.exe`; pass `--exe` explicitly for
 smoke, visual, and RenderDoc harnesses. Do not rely on default deploy/visual
 lanes (`v0.4`, `v0.4d-rc1`, or non-v-prefixed `0.4c` paths).
-Rung-8 sub-ladder: `.claude/VK-RUNG8-LADDER-1.md` (8.1-8.7p shipped). Next
+Rung-8 sub-ladder: `.claude/VK-RUNG8-LADDER-1.md` (8.1-8.7q shipped). Next
 work is not 8.4/8.5 replay; it is remaining deletion readiness around
 `gl_interop_view.*`, shared scene color/depth/present substrates, and any
 diagnostic/non-CSM fallback paths still needed for the final Metal gate.

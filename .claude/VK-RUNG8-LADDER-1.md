@@ -493,3 +493,13 @@ no tessellation anywhere in the tail.
   `used_vulkan>0`, and `fallback_reason=""`. Negative forced-fallback probe was
   inconclusive (timeout, no strict abort), so keep this as a healthy-path canary
   until a smaller deterministic fallback fixture exists.
+- 8.7q - PRESENT NATIVE STRICT CANARY
+  (VK-PRESENT-NATIVE-STRICT-CANARY-1). Added default-off
+  `MC2_VK_PRESENT_NATIVE_STRICT=1`, a verification-only final-tail guard for
+  visible/nonzero-surface runs. When armed, `EnginePresentVk::presentGLFrame`
+  aborts if a nonzero-surface frame would run copy-1, consume a present image
+  not marked VK-owned, or signal the GL->VK handoff instead of using the
+  `MC2_VK_PRESENT_SKIP_GL_HANDOFF` path. Minimized zero-extent smoke remains a
+  non-proof and does not trip the canary. This does not delete the present
+  `GlInteropView` yet; it gives future visible bookmark/RenderDoc proofs a hard
+  failure mode for hidden GL present-tail rescue.

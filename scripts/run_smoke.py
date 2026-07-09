@@ -1783,6 +1783,12 @@ def main():
                             # copy-2 can consume a VK-owned present image without
                             # a GL->VK semaphore signal when native composite ran.
                             "MC2_VK_PRESENT_SKIP_GL_HANDOFF",
+                            # VK present-tail deletion-readiness canary. On
+                            # nonzero-surface frames, aborts if copy-1 or the
+                            # GL->VK handoff would run instead of the VK-owned
+                            # native present path. Minimized smoke remains a
+                            # non-proof and does not trip this canary.
+                            "MC2_VK_PRESENT_NATIVE_STRICT",
                             # VK-HUD-NATIVE-QUEUE-1 (rung 8.6f): queues the
                             # ordered GameOS HUD batch to the Vulkan present tail.
                             "MC2_VK_HUD",

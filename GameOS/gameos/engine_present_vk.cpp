@@ -233,6 +233,23 @@ bool skipGlPresentHandoffGateEnabled() {
     return on;
 }
 
+bool presentNativeStrictEnabled() {
+    static const bool on = []() {
+        const char* v = getenv("MC2_VK_PRESENT_NATIVE_STRICT");
+        return v && v[0] == '1';
+    }();
+    return on;
+}
+
+void presentNativeStrictAbort(const char* reason) {
+    if (!presentNativeStrictEnabled())
+        return;
+    plog("MC2_VK_PRESENT_NATIVE_STRICT abort reason=%s",
+         reason ? reason : "unknown");
+    std::fflush(stderr);
+    std::abort();
+}
+
 std::string spv_dir() {
     const char* env = std::getenv("MC2_VULKAN_SPV_DIR");
     std::string d = (env && *env) ? env : "shaders/vulkan";
@@ -1925,6 +1942,19 @@ bool EnginePresentVk::presentGLFrame(uint32_t glDrawableW, uint32_t glDrawableH,
     // presentDirectFbo() earlier this same frame from endScene -> the two sites
     // always agree on which path ran.
     const bool copy1Skipped = (directFbo_ != 0);
+    const bool skipGlHandoff =
+        copy1Skipped && presentImageVkOwned_ && skipGlPresentHandoffGateEnabled();
+    if (presentNativeStrictEnabled()) {
+        if (!copy1Skipped) {
+            presentNativeStrictAbort("copy1_would_blit");
+        }
+        if (!presentImageVkOwned_) {
+            presentNativeStrictAbort("present_image_not_vk_owned");
+        }
+        if (!skipGlHandoff) {
+            presentNativeStrictAbort("gl_handoff_would_signal");
+        }
+    }
     if (!copy1Skipped) {
         ++health_.copy1_blit_frames;
         glGetError();
@@ -1952,8 +1982,6 @@ bool EnginePresentVk::presentGLFrame(uint32_t glDrawableW, uint32_t glDrawableH,
     // explicit proof gate says the present image was produced by VK this frame
     // and no GL signal is needed for copy-2 to consume it.
     VkFrameSync fs = vkImageResourceBeginFrame(&s.sharedImg);
-    const bool skipGlHandoff =
-        copy1Skipped && presentImageVkOwned_ && skipGlPresentHandoffGateEnabled();
     if (!skipGlHandoff) {
         glInteropSignalToVk(s.glView, GL_LAYOUT_COLOR_ATTACHMENT_EXT, fs.parity);
     } else {
