@@ -2631,6 +2631,11 @@ void gosPostProcess::runScreenShadow()
     if (!screenShadowProg_ || !screenShadowProg_->is_valid()) return;
     if (!shadowsEnabled_) return;
 
+#ifdef MC2_VULKAN_ISLAND
+    if (vkPostScreenFxNativeEnabled() && runVkPostScreenShadowStaticNative())
+        return;
+#endif
+
     // APPLY-STATE-SCREENSHADOW-1: skip the 4 setup calls when the executor already
     // applied them (MC2_FRAMEGRAPH_EXECUTOR ON). Reset one-shot before draw.
     if (!screenShadowStateAppliedByExecutor_) {

@@ -14,7 +14,8 @@ shoreline-foam render natively on the SHARED ENGINE VulkanContext, in one
 render pass / one submit, multiplying into shared scene color0 in place. Inputs:
 shared scene depth for cloud, shared scene normal/GBuffer1 for shoreline. Gate
 `MC2_VK_POST_SCREENFX` (envTriState opt-in, default-OFF) with per-pass bisect
-subgates `MC2_VK_POST_SCREENFX_CLOUD` and `MC2_VK_POST_SCREENFX_SHORELINE`.
+subgates `MC2_VK_POST_SCREENFX_SHADOW`, `MC2_VK_POST_SCREENFX_CLOUD`, and
+`MC2_VK_POST_SCREENFX_SHORELINE`.
 Return bitmask skips exactly the GL pass bodies that VK rendered. Screen-shadow
 is intentionally NOT ported in this rung because the CSM cascade array has no
 zero-copy VK producer yet; porting it now would add readbacks and violate the
@@ -1267,6 +1268,9 @@ Current tail status:
   `ShadowStaticMap` with exportable VK `D32_SFLOAT` imported into GL as
   `GL_DEPTH_COMPONENT32F`. GL still renders/samples it; native screen-shadow
   can later bind the same image without a copy.
+- Static-only screen-shadow can now render natively under `MC2_VK_POST_SCREENFX=1`
+  + `MC2_VK_STATIC_SHADOW_MAP=1`; it declines when `MC2_SHADOW_ENABLE=1`
+  because the dynamic/CSM leg remains GL-owned.
 - Remaining deletion blocker: shared scene color/depth/present substrates still
   rely on `gl_interop_view.*` while GL can produce earlier scene pixels.
 

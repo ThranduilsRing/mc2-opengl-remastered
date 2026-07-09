@@ -532,6 +532,7 @@ public:
     // shared GBuffer it borrows is rebuilt) and destroy(). Defined in
     // vulkan_post_screenfx_native.cpp (same #ifdef MC2_VULKAN_ISLAND discipline).
     bool      vkPostScreenFxNativeEnabled();
+    bool      runVkPostScreenShadowStaticNative();
     unsigned  runVkPostScreenFxNative();
     void      destroyVkPostScreenFxNative();
     struct VkPostScreenFx;              // defined in vulkan_post_screenfx_native.cpp

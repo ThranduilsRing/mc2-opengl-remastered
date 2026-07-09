@@ -462,3 +462,11 @@ no tessellation anywhere in the tail.
   screen-shadow slice a same-image `VkImageResource` for static shadow sampling
   without adding a readback/copy. Fail-soft falls back to the plain GL
   `GL_DEPTH_COMPONENT24` allocation.
+- 8.7n - STATIC-ONLY SCREEN-SHADOW NATIVE
+  (VK-SCREEN-SHADOW-STATIC-NATIVE-1). `MC2_VK_POST_SCREENFX` now includes
+  subgate `MC2_VK_POST_SCREENFX_SHADOW`; when `MC2_VK_STATIC_SHADOW_MAP=1` and
+  `MC2_SHADOW_ENABLE` is off, the screen-shadow fullscreen multiply runs in VK
+  before cloud/shoreline. It samples shared scene depth/normal plus the shared
+  static shadow map and skips the GL screen-shadow body. It explicitly declines
+  while dynamic/CSM object shadows are active, leaving that full parity slice for
+  the dynamic shadow ownership follow-up.

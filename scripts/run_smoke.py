@@ -1707,9 +1707,10 @@ def main():
                             # shoreline-foam rendered natively on the shared engine
                             # context (samples shared scene depth+normal, multiplies
                             # into shared scene color0 in place; zero copies/readbacks;
-                            # screen-shadow NOT ported -- stays GL until rung 2).
+                            # Static screen-shadow/cloud/shoreline post-screenfx native path.
                             # envTriState OPT-IN, default-OFF + per-pass bisect subs.
                             "MC2_VK_POST_SCREENFX",
+                            "MC2_VK_POST_SCREENFX_SHADOW",
                             "MC2_VK_POST_SCREENFX_CLOUD",
                             "MC2_VK_POST_SCREENFX_SHORELINE",
                             "MC2_CLOUD_SHADOW",
