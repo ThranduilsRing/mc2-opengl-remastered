@@ -229,6 +229,13 @@ struct ShadowIsland {
     bool disabled = false;
     bool inited   = false;
     bool useInterop = false;
+    // VK-TERRAIN-STAGING-PERF-1: under MC2_VK_SHADOW_DIRECT_CHAIN the island renders
+    // VK-owned (non-exportable) products for direct VK consumers; useInterop stays
+    // false (no GL view/semaphore machinery) but the producers MUST still run. The
+    // run entry points gate on (useInterop || directChain). Without this, the
+    // resource-strict stack silently fell back to the terrain island's per-frame GL
+    // CSM depth readback (8192^2 x layers glGetTexImage ~= 125 ms/frame).
+    bool directChain = false;
 
     int size = 0;   // square shadow map side (getDynamicShadowMapSize())
 
@@ -433,6 +440,7 @@ bool init_island(ShadowIsland* s, int size) {
     }
 
     s->useInterop = !directChain;
+    s->directChain = directChain;
     g_health.interopActive = directChain ? 0 : 1;
     g_health.vk2glSemActive = s->depthGlView.vkToGlImported ? 1 : 0;
     vlog("depth interop seam ACTIVE — zero-copy exportable D32 shadow map (vk2gl_sem=%d).",
@@ -910,7 +918,9 @@ extern "C" unsigned int mc2_vk_shadow_island_run(
         }
     }
     ShadowIsland* s = g_island;
-    if (s->disabled || !s->inited || !s->useInterop) return 0;
+    // VK-TERRAIN-STAGING-PERF-1: direct-chain mode has no GL interop machinery
+    // (useInterop=false) but the VK producer must still run for direct consumers.
+    if (s->disabled || !s->inited || !(s->useInterop || s->directChain)) return 0;
 
     // Caster geometry must be resident (copied once per map). If the batcher's
     // geometry isn't finalized yet, decline this frame (GL path runs).
@@ -1117,7 +1127,8 @@ extern "C" unsigned int mc2_vk_shadow_island_run_csm_fullmap(
     if (!shadowInteropGateRequested() || !csmFullMapInteropGateRequested()) return 0;
     noteShadowDirectChain();
     if (size <= 0 || !lightSpace16 || !instances || instanceCount == 0) return 0;
-    if (!g_island || g_island->disabled || !g_island->inited || !g_island->useInterop) return 0;
+    if (!g_island || g_island->disabled || !g_island->inited
+        || !(g_island->useInterop || g_island->directChain)) return 0;
     ShadowIsland* s = g_island;
     if (!upload_geometry_once(s)) { setFallback("geometry_not_ready"); return 0; }
     if (!ensure_csm_fullmap_target(s, size)) return 0;
@@ -1247,7 +1258,8 @@ extern "C" unsigned int mc2_vk_shadow_island_run_csm_array_layer(
     noteShadowDirectChain();
     if (size <= 0 || layers <= 0 || layerIndex < 0 || layerIndex >= layers) return 0;
     if (!lightSpace16 || !instances || instanceCount == 0) return 0;
-    if (!g_island || g_island->disabled || !g_island->inited || !g_island->useInterop) return 0;
+    if (!g_island || g_island->disabled || !g_island->inited
+        || !(g_island->useInterop || g_island->directChain)) return 0;
     ShadowIsland* s = g_island;
     const uint32_t layerCount = (uint32_t)layers;
     const uint32_t layer = (uint32_t)layerIndex;

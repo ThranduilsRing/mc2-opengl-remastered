@@ -2368,6 +2368,10 @@ extern "C" int mc2_vk_terrain_island_run(int w, int h) {
     // one coarse zone (colormap/cement copy-once; static copy-once-per-generation since
     // VK-SHADOW-COPY-ONCE-1; dyn shadow copy-per-frame).
     const clk::time_point tCopies0 = clk::now();
+    // VK-TERRAIN-STAGING-PERF-1: per-step sub-timers inside the copies zone, only
+    // sampled when MC2_VK_TERRAIN_COPY_STATS is set (same gate as the summary line).
+    static const bool s_copyStatsOn = (getenv("MC2_VK_TERRAIN_COPY_STATS") != nullptr);
+    double subStaticUs = 0.0, subDynUs = 0.0, subCsmUs = 0.0;
     {
     ZoneScopedN("VK-terrain-interop-copies");
     // COLORMAP-BASE: copy-once import of the GL colormap atlas (no-op once imported;
@@ -2393,19 +2397,31 @@ extern "C" int mc2_vk_terrain_island_run(int w, int h) {
     // feed.staticShadowGeneration / copy_static_shadow above). No-op (shadowReady=false)
     // when the lighting gate is off or the GL map isn't live -> VK terrain is lit but
     // unshadowed (fail-soft, never a hole). Runs on the GL/render thread.
-    copy_static_shadow(s, feed);
+    {
+        const clk::time_point t0 = clk::now();
+        copy_static_shadow(s, feed);
+        if (s_copyStatsOn) subStaticUs = usSince(t0);
+    }
 
     // VK-TERRAIN-DYNSHADOW: per-frame copy of the GL DYNAMIC (building/mech) shadow map
     // into the 2nd VK D32 depth-compare image. No-op (dynShadowReady=false) when the
     // sub-gate is off or the GL dynamic map isn't live -> VK terrain has no dynamic
     // shadow (fail-soft, never a hole). Same mechanism as the static copy above.
-    copy_dynamic_shadow(s, feed);
+    {
+        const clk::time_point t0 = clk::now();
+        copy_dynamic_shadow(s, feed);
+        if (s_copyStatsOn) subDynUs = usSince(t0);
+    }
 
     // VK-TERRAIN-CSM-NEAR-1: per-frame copy of the GL near-cascade array + full-map
     // cascade. No-op (csmArrayReady/csmFullMapReady=false) when the gate is off or GL
     // CSM isn't actually built this frame -> UBO csmEnabled forced 0 below -> frag falls
     // back to the legacy single-map path (fail-soft, never a hole).
-    copy_csm_shadows(s, feed);
+    {
+        const clk::time_point t0 = clk::now();
+        copy_csm_shadows(s, feed);
+        if (s_copyStatsOn) subCsmUs = usSince(t0);
+    }
 
     // VK-SHADOW-DIRECT-CONSUME-1: the direct view's underlying VkImageView handle is
     // stable across frames (owned by the shadow island's persistent ShadowIsland), but
@@ -2437,13 +2453,14 @@ extern "C" int mc2_vk_terrain_island_run(int w, int h) {
     // zero cost when unset). Lets a smoke run produce before/after timing without a
     // Tracy capture tool in the loop.
     {
-        static const bool s_statsOn = (getenv("MC2_VK_TERRAIN_COPY_STATS") != nullptr);
-        if (s_statsOn) {
+        if (s_copyStatsOn) {
             const double ms = usSince(tCopies0) / 1000.0;
             fprintf(stderr,
-                    "[VK_TERRAIN_COPY_STATS] copies_ms=%.4f staticGen=%llu shadowReady=%d dynReady=%d csmArrayReady=%d csmArrayDirect=%d csmFullMapReady=%d csmFullMapDirect=%d\n",
-                    ms, (unsigned long long)feed.staticShadowGeneration, s->shadowReady ? 1 : 0,
-                    s->dynShadowReady ? 1 : 0, s->csmArrayReady ? 1 : 0, s->csmArrayDirect ? 1 : 0,
+                    "[VK_TERRAIN_COPY_STATS] copies_ms=%.4f static_us=%.1f dyn_us=%.1f csm_us=%.1f staticGen=%llu shadowReady=%d dynReady=%d dynDirect=%d csmArrayReady=%d csmArrayDirect=%d csmFullMapReady=%d csmFullMapDirect=%d\n",
+                    ms, subStaticUs, subDynUs, subCsmUs,
+                    (unsigned long long)feed.staticShadowGeneration, s->shadowReady ? 1 : 0,
+                    s->dynShadowReady ? 1 : 0, s->dynShadowDirect ? 1 : 0,
+                    s->csmArrayReady ? 1 : 0, s->csmArrayDirect ? 1 : 0,
                     s->csmFullMapReady ? 1 : 0,
                     s->csmFullMapDirect ? 1 : 0);
         }
