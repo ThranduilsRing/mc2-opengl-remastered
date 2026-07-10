@@ -47,6 +47,7 @@
 #include "vulkan_context.h"
 #include "vulkan_mech_island.h"
 #include "vk_shared_gbuffer_gate.h"      // VK-P14 GATE-CONSOLIDATION-1 umbrella resolver
+#include "vk_gpu_timestamps.h"           // VK-DRAW-PERF-1: MC2_VK_GPU_TIMESTAMPS GPU segment timers
 #define MC2_VULKAN_SHARED_SCENE_COLOR_IMPL_ISLAND
 #include "vulkan_shared_scene_color.h"   // shared scene color/normal images
 #define MC2_VULKAN_SHARED_SCENE_DEPTH_IMPL_ISLAND
@@ -293,6 +294,10 @@ struct MechIsland {
 
     VkCommandPool   cpool  = VK_NULL_HANDLE;
     VkCommandBuffer cbuf[2] = {VK_NULL_HANDLE, VK_NULL_HANDLE};
+
+    // VK-DRAW-PERF-1: per-pass GPU timestamp timer (3 stamps: pass-start / draws-start /
+    // pass-end). Gated + fail-soft inside init(); no-op unless MC2_VK_GPU_TIMESTAMPS set.
+    mc2vkts::GpuTimer gpuTimer;
 };
 
 MechIsland* g_island = nullptr;
@@ -609,6 +614,16 @@ bool init_island(MechIsland* s, int w, int h) {
         cai.sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_ALLOCATE_INFO;
         cai.commandPool = s->cpool; cai.level = VK_COMMAND_BUFFER_LEVEL_PRIMARY; cai.commandBufferCount = 2;
         if (vkAllocateCommandBuffers(s->device, &cai, s->cbuf) != VK_SUCCESS) { vlog("cmd bufs failed."); return false; }
+    }
+
+    // VK-DRAW-PERF-1: 3-stamp GPU timer (pass-start / draws-start / pass-end).
+    // No-op unless MC2_VK_GPU_TIMESTAMPS is set; fail-soft if timestamps unsupported.
+    if (mc2vkts::timestampsEnabled()) {
+        if (s->gpuTimer.init(s->device, s->phys, s->gfxFamily, 3))
+            vlog("GPU timestamps ON (period=%.2f ns): pass segments = setup / mech draws.",
+                 s->gpuTimer.periodNs);
+        else
+            vlog("GPU timestamps requested but unsupported on this queue (validBits=0 or period<=0).");
     }
 
     // The per-scheme descriptor sets (incl. the dummy white schemes[0]) are created in
@@ -1057,6 +1072,10 @@ extern "C" int mc2_vk_mech_island_run(int w, int h) {
     bi.flags = VK_COMMAND_BUFFER_USAGE_ONE_TIME_SUBMIT_BIT;
     if (vkBeginCommandBuffer(cb, &bi) != VK_SUCCESS) { setFallback("record_failed"); s->disabled = true; return 0; }
 
+    // VK-DRAW-PERF-1: reset the query pool (outside the render pass) + stamp pass-start.
+    s->gpuTimer.reset(cb);
+    s->gpuTimer.write(cb, 0);
+
     VkRenderPassBeginInfo rbi{};
     rbi.sType = VK_STRUCTURE_TYPE_RENDER_PASS_BEGIN_INFO;
     rbi.renderPass = s->rpass; rbi.framebuffer = s->fb;
@@ -1073,6 +1092,9 @@ extern "C" int mc2_vk_mech_island_run(int w, int h) {
     VkDeviceSize vboOff = 0;
     vkCmdBindVertexBuffers(cb, 0, 1, &s->vbo, &vboOff);
     vkCmdBindIndexBuffer(cb, s->ibo, 0, VK_INDEX_TYPE_UINT32);
+
+    // VK-DRAW-PERF-1: stamp draws-start (gap 0->1 = setup + binds).
+    s->gpuTimer.write(cb, 1);
 
     // One indexed instanced draw per run. firstInstance = run.instanceBase so the VS's
     // gl_InstanceIndex indexes the instance SSBO snapshot exactly as the GL VS's
@@ -1097,6 +1119,8 @@ extern "C" int mc2_vk_mech_island_run(int w, int h) {
     g_health.runs = runs;
 
     vkCmdEndRenderPass(cb);
+    // VK-DRAW-PERF-1: stamp pass-end (gap 1->2 = mech instanced draws).
+    s->gpuTimer.write(cb, 2);
     if (vkEndCommandBuffer(cb) != VK_SUCCESS) { setFallback("record_failed"); s->disabled = true; return 0; }
 
     VkSemaphore waitSems[3]; VkPipelineStageFlags waitStages[3];
@@ -1137,6 +1161,7 @@ extern "C" int mc2_vk_mech_island_run(int w, int h) {
         setFallback("fence_timeout"); s->disabled = true; return 0;
     }
     g_health.drawUs = usSince(tRender0);
+    s->gpuTimer.resolve();   // VK-DRAW-PERF-1: fence signalled -> fold GPU segment times
 
     const bool readbackFired = (g_forbidden.glGetTexImage != f0b) || (g_forbidden.glReadPixels != f0c);
     if (readbackFired) {
@@ -1194,7 +1219,19 @@ extern "C" void mc2_vk_mech_island_destroy() {
          g_health.instRecords, g_health.boneRecords, g_health.runs, g_health.geomVerts,
          g_health.fallbackReason, g_health.vkDraws, g_forbidden.glGetTexImage, g_forbidden.glReadPixels,
          g_health.stageUs, g_health.drawUs, g_health.totalUs);
+    // VK-DRAW-PERF-1: GPU-timestamp segment breakdown (only when MC2_VK_GPU_TIMESTAMPS
+    // armed and supported; gap1 = setup+binds, gap2 = mech instanced draws).
+    if (g_island && g_island->gpuTimer.supported && g_island->gpuTimer.samples > 0) {
+        vlog("GPU_TIMESTAMPS samples=%llu gpu_pass_us=%.1f gpu_setup_us=%.1f gpu_draw_us=%.1f "
+             "(cpu_draw_us=%.1f incl. record+submit+fence-wait)",
+             (unsigned long long)g_island->gpuTimer.samples,
+             g_island->gpuTimer.avgTotalUs(),
+             g_island->gpuTimer.avgGapUs(1),
+             g_island->gpuTimer.avgGapUs(2),
+             g_health.drawUs);
+    }
     if (!g_island) return;
+    g_island->gpuTimer.destroy();
     destroy_island(g_island);
     delete g_island; g_island = nullptr;
 }

@@ -48,6 +48,7 @@
 
 #include "vk_image_resource.h"
 #include "gl_interop_view.h"
+#include "vk_gpu_timestamps.h"   // VK-DRAW-PERF-1: MC2_VK_GPU_TIMESTAMPS GPU segment timers
 #include "vulkan_context.h"
 #include "vulkan_terrain_island.h"
 #include "vk_shared_gbuffer_gate.h"     // VK-P14 GATE-CONSOLIDATION-1 umbrella resolver
@@ -505,6 +506,10 @@ struct TerrainIsland {
 
     VkCommandPool     cpool  = VK_NULL_HANDLE;
     VkCommandBuffer   cbuf[2] = {VK_NULL_HANDLE, VK_NULL_HANDLE};
+
+    // VK-DRAW-PERF-1: per-pass GPU timestamp timer (3 stamps: pass-start / draws-start /
+    // pass-end). Gated + fail-soft inside init(); no-op unless MC2_VK_GPU_TIMESTAMPS set.
+    mc2vkts::GpuTimer gpuTimer;
 };
 
 TerrainIsland* g_island = nullptr;
@@ -1023,6 +1028,16 @@ bool init_island(TerrainIsland* s, int w, int h) {
         if (vkAllocateCommandBuffers(s->device, &cai, s->cbuf) != VK_SUCCESS) {
             vlog("vkAllocateCommandBuffers failed."); return false;
         }
+    }
+
+    // VK-DRAW-PERF-1: 3-stamp GPU timer (pass-start / draws-start / pass-end).
+    // No-op unless MC2_VK_GPU_TIMESTAMPS is set; fail-soft if timestamps unsupported.
+    if (mc2vkts::timestampsEnabled()) {
+        if (s->gpuTimer.init(s->device, s->phys, s->gfxFamily, 3))
+            vlog("GPU timestamps ON (period=%.2f ns): pass segments = setup+clear / draws.",
+                 s->gpuTimer.periodNs);
+        else
+            vlog("GPU timestamps requested but unsupported on this queue (validBits=0 or period<=0).");
     }
     // Bind a 1x1 dummy colormap so binding 2 is a valid descriptor from frame 1
     // (colormapReady stays false until the real atlas imports -> FS uses olive).
@@ -2595,6 +2610,10 @@ extern "C" int mc2_vk_terrain_island_run(int w, int h) {
     bi.flags = VK_COMMAND_BUFFER_USAGE_ONE_TIME_SUBMIT_BIT;
     if (vkBeginCommandBuffer(cb, &bi) != VK_SUCCESS) { setFallback("record_failed"); s->disabled = true; return 0; }
 
+    // VK-DRAW-PERF-1: reset the query pool (outside the render pass) + stamp pass-start.
+    s->gpuTimer.reset(cb);
+    s->gpuTimer.write(cb, 0);
+
     // FAR-BAND-BLACK-1 FIX: attachment 2 clears to reverse-Z far. The native prefix
     // clear path also clears color0 and normal here, matching the GL frame-entry
     // clear plus clearGBuffer1 sentinel before terrain draws into the shared GBuffer.
@@ -2621,6 +2640,9 @@ extern "C" int mc2_vk_terrain_island_run(int w, int h) {
     vkCmdSetViewport(cb, 0, 1, &vp);
     vkCmdSetScissor(cb, 0, 1, &scissor);
     vkCmdBindPipeline(cb, VK_PIPELINE_BIND_POINT_GRAPHICS, s->pipe);
+
+    // VK-DRAW-PERF-1: stamp draws-start (gap 0->1 = setup + clear/load).
+    s->gpuTimer.write(cb, 1);
 
     unsigned long drawn = 0;
     unsigned long skirtDrawn = 0;  // VK-TERRAIN-SKIRT (rung 4): skirt edge-strip draw count
@@ -2659,6 +2681,8 @@ extern "C" int mc2_vk_terrain_island_run(int w, int h) {
     }
 
     vkCmdEndRenderPass(cb);
+    // VK-DRAW-PERF-1: stamp pass-end (gap 1->2 = all patch/skirt draws).
+    s->gpuTimer.write(cb, 2);
     if (vkEndCommandBuffer(cb) != VK_SUCCESS) { setFallback("record_failed"); s->disabled = true; return 0; }
 
     // Submit: WAIT all three GL->VK sems; SIGNAL all three VK->GL sems + color fence.
@@ -2698,6 +2722,7 @@ extern "C" int mc2_vk_terrain_island_run(int w, int h) {
         setFallback("fence_timeout"); s->disabled = true; return 0;
     }
     g_health.drawUs = usSince(tRender0);
+    s->gpuTimer.resolve();   // VK-DRAW-PERF-1: fence signalled -> fold GPU segment times
 
     // HARD assert: no COLOR-side readback fired on the co-write path (the height
     // snapshot uses glGetBufferSubData on an SSBO — that is NOT a color/tex readback
@@ -2755,7 +2780,19 @@ extern "C" void mc2_vk_terrain_island_destroy() {
          g_health.patchRecords, g_health.heightSnapshots, g_health.fallbackReason, g_health.vkDraws,
          g_forbidden.glGetTexImage, g_forbidden.glReadPixels,
          g_health.stageUs, g_health.drawUs, g_health.totalUs);
+    // VK-DRAW-PERF-1: GPU-timestamp segment breakdown (only when MC2_VK_GPU_TIMESTAMPS
+    // armed and supported; gap1 = setup+clear/load, gap2 = patch+skirt draws).
+    if (g_island && g_island->gpuTimer.supported && g_island->gpuTimer.samples > 0) {
+        vlog("GPU_TIMESTAMPS samples=%llu gpu_pass_us=%.1f gpu_setup_us=%.1f gpu_draw_us=%.1f "
+             "(cpu_draw_us=%.1f incl. record+submit+fence-wait)",
+             (unsigned long long)g_island->gpuTimer.samples,
+             g_island->gpuTimer.avgTotalUs(),
+             g_island->gpuTimer.avgGapUs(1),
+             g_island->gpuTimer.avgGapUs(2),
+             g_health.drawUs);
+    }
     if (!g_island) return;
+    g_island->gpuTimer.destroy();
     destroy_island(g_island);
     delete g_island; g_island = nullptr;
 }

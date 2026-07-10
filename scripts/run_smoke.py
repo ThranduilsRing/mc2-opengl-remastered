@@ -1728,6 +1728,11 @@ def main():
                             "MC2_VK_CSM_ARRAY_INTEROP",
                             "MC2_VK_TERRAIN_HEIGHT_AUDIT",
                             "MC2_VK_TERRAIN_HEIGHT_AUDIT_CORRUPT",
+                            # VK-DRAW-PERF-1: verification-only GPU timestamp segment
+                            # timers on the terrain + mech island render passes (per-pass
+                            # setup/clear vs draw GPU cost via vkCmdWriteTimestamp).
+                            # Default-OFF; no-op + fail-soft when unset/unsupported.
+                            "MC2_VK_GPU_TIMESTAMPS",
                             # VK-POST-FOG-NATIVE-1 (rung 8.1): edge+oob fog pair
                             # rendered natively on the shared engine context (samples
                             # shared scene depth, blends into shared scene color0 in
