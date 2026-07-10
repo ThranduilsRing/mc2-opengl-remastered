@@ -136,7 +136,6 @@ Headless Vulkan probe / backend-skeleton exercise gates. All read via bare `gete
 - `MC2_SHADOW_PROP_ALPHA` — tree-foliage shadow alpha-test (`shadow_static_prop.frag`, legacy texture path only). Default **ON**.
 - `MC2_CLOUD_SHADOW` — cloud-shadow pass. Default **ON**.
 - **DEBUG-only:** `MC2_SHADER_PATH_TINT` (shader-path tint); `MC2_TERRAIN_DEBUG_MODE` / `MC2_TERRAIN_LOD_CHUNK_DIAG` = **30/31** = dynamic-shadow viz.
-- **RETIRED:** `MC2_SHADOW_CSM_FULLMAP_LAST`, `MC2_SHADOW_CSM_NEAR_MAX` (folded into the fixed-cascade rework).
 
 ## GPU cull readback diagnostics
 
@@ -409,8 +408,6 @@ call from inside a draw-bind path.
   2026-06-09 `a7b090be`); set `=0` to opt out (legacy tessellated path, e.g. editor).
   Single-source gate `mc2TerrainLodChunkEnabled()` (terrain.h). Replaces
   makeLists/geometry()/TerrainQuad::draw() + suppresses legacy DrawIndirect.
-- `MC2_TERRAIN_LOD_CHUNK_BRIDGE_OBJBLOCK=1` — bridge ObjBlockInfo.active from
-  blockMeta.inFrustum each frame. Default **OFF**. Phase 2 only; removed Phase 4. Runtime getenv().
 - `MC2_TERRAIN_LOD_CHUNK_FORCE_LOD=k` — force every chunk block to LOD k (diag).
 - `MC2_TERRAIN_LOD_CHUNK_NO_SKIRTS` / `_NO_APRON` / `_NO_STITCH` — disable skirt seal /
   1-ring draw apron / vertex edge-stitch (A/B).
