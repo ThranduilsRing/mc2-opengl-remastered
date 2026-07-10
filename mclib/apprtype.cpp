@@ -34,10 +34,28 @@
 
 #include<gameos.hpp>
 
+#include<cstdlib>
+#include<cstdio>
+
 //---------------------------------------------------------------------------
 // static Globals
 UserHeapPtr AppearanceTypeList::appearanceHeap = NULL;
 AppearanceTypeListPtr appearanceTypeList = NULL;
+
+//---------------------------------------------------------------------------
+// MC2_LOAD_RACE_TRACE: gated, one-shot mission-load residency-race diagnostics.
+// Default-OFF; produces zero output unless the gate is set. These globals are
+// the shared counters read by the per-run verdict in gameosmain.cpp and written
+// by the appearance (apprtype/mech3d) and terrain-residency (txmmgr) paths.
+// See docs/tier1_env_vars.md.
+bool g_loadRaceTrace                     = (getenv("MC2_LOAD_RACE_TRACE") != nullptr);
+long g_loadRaceApprNull                  = 0;    // getAppearance() NULL returns
+long g_loadRaceMechDegrade               = 0;    // Mech3DAppearance::init degrade-branch hits
+long g_loadRaceMechDegradeReal           = 0;    // ...of which real actors (obj != NULL)
+long g_loadRaceMechOkReal                = 0;    // real actors (obj != NULL) that built a shape
+long g_loadRaceMechOkPreview             = 0;    // preview/logistics (obj == NULL) built a shape
+long g_loadRaceTerrainFirstResidentFrame = -1;   // first frame all terrain textures GPU-resident
+bool g_loadRaceTerrainResidentNow        = false;// terrain fully resident as of last flush
 
 //---------------------------------------------------------------------------
 // Class AppearanceType
@@ -235,12 +253,29 @@ AppearanceTypePtr AppearanceTypeList::getAppearance (unsigned long apprNum, cons
 	//----------------------------------------------------
 	// If these top bits are wrong, return NULL
 	if (appearanceClass == 0)
+	{
+		if (g_loadRaceTrace && g_loadRaceApprNull < 50)
+		{
+			g_loadRaceApprNull++;
+			std::printf("[LOADRACE] getAppearance NULL: reason=class0 apprNum=0x%08lx "
+				"appearFile=%p(%s)\n", apprNum, (const void*)appearFile,
+				appearFile ? appearFile : "<null>");
+			std::fflush(stdout);
+		}
 		return(NULL);
+	}
 
 	//----------------------------------------------------
 	// If string passed in is NULL, return NULL
 	if (!appearFile)
 	{
+		if (g_loadRaceTrace && g_loadRaceApprNull < 50)
+		{
+			g_loadRaceApprNull++;
+			std::printf("[LOADRACE] getAppearance NULL: reason=appearFileNull "
+				"apprNum=0x%08lx class=%ld\n", apprNum, appearanceClass);
+			std::fflush(stdout);
+		}
 		return NULL;
 	}
 

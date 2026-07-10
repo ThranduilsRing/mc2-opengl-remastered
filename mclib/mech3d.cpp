@@ -1347,6 +1347,18 @@ void Mech3DAppearance::init (AppearanceTypePtr tree, GameObjectPtr obj)
 
 	if (mechType && mechType->mechShape[0])
 	{
+		// MC2_LOAD_RACE_TRACE: count successful shape builds, split by whether
+		// this is a real world actor (obj != NULL, e.g. BattleMech::init) or a
+		// preview/logistics instance (obj == NULL, e.g. SimpleCamera::setMech).
+		// Lets the verdict distinguish "mission mechs degraded" (the real bug)
+		// from "only previews degraded" (benign).
+		extern bool g_loadRaceTrace;
+		extern long g_loadRaceMechOkReal;
+		extern long g_loadRaceMechOkPreview;
+		if (g_loadRaceTrace) {
+			if (obj) g_loadRaceMechOkReal++; else g_loadRaceMechOkPreview++;
+		}
+
 		// Re-register all LODs with the GPU mech batcher. GpuMechBatcher::onMapLoad()
 		// clears s_typeLodIndex between sessions, but AppearanceTypeList caches the
 		// Mech3DAppearanceType so Mech3DAppearanceType::init() (which calls
@@ -1591,6 +1603,29 @@ void Mech3DAppearance::init (AppearanceTypePtr tree, GameObjectPtr obj)
 				"(missing/partial import) -- rendering nothing. mechType=%p\n",
 				(void*)mechType);
 			std::fflush(stdout);
+		}
+
+		// MC2_LOAD_RACE_TRACE: count + identify EVERY degraded instance (not
+		// one-shot) so the residency-race wave can tell which mech lost the race
+		// and how many instances were affected on this run.
+		extern bool g_loadRaceTrace;
+		extern long g_loadRaceMechDegrade;
+		extern long g_loadRaceMechDegradeReal;
+		if (g_loadRaceTrace)
+		{
+			g_loadRaceMechDegrade++;
+			if (obj) g_loadRaceMechDegradeReal++;
+			if (g_loadRaceMechDegrade <= 50)
+			{
+				std::printf("[LOADRACE] mech degrade #%ld: name=%s apprNum=0x%08lx "
+					"mechType=%p shape0=%p obj=%p actorHandle=%ld\n",
+					g_loadRaceMechDegrade,
+					(mechType && mechType->name) ? mechType->name : "<null>",
+					mechType ? mechType->appearanceNum : 0UL, (void*)mechType,
+					mechType ? (void*)mechType->mechShape[0] : nullptr,
+					(void*)obj, actorHandle_);
+				std::fflush(stdout);
+			}
 		}
 	}
 

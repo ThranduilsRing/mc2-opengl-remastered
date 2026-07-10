@@ -479,6 +479,8 @@ ALLOWLIST=(
     MC2_LIGHTBRIDGE_COMMIT_TRACE      # trace
     MC2_LIGHTING_DEBUG_VIEW           # trace
     MC2_LIGHTING_LINEAR_AUDIT         # trace
+    MC2_LOAD_RACE_TRACE               # trace -- mission-load residency-race one-shot diagnostics
+    MC2_LOAD_RACE_VERDICT_FRAME       # trace -- frame to emit LOADRACE verdict (defaults to MC2_SCREENSHOT_AT_FRAME)
     MC2_LOG_CURSOR                    # trace
     MC2_LOG_FILE_RESOLVE              # trace
     MC2_LOG_LOGISTICS                 # trace
@@ -804,8 +806,8 @@ for dir in "${SOURCE_DIRS[@]}"; do
         FOUND+=("$name")
     done < <(
         grep -rh --include='*.cpp' --include='*.h' \
-             -oE '(getenv|envFlag|selftestEnvFlag)\s*\(\s*"MC2_[A-Z_]+"' "$dir" 2>/dev/null \
-        | grep -oE '"MC2_[A-Z_]+"' \
+             -oE '(getenv|envFlag|selftestEnvFlag|envFlagDefaultOn)\s*\(\s*"MC2_[A-Z0-9_]+"' "$dir" 2>/dev/null \
+        | grep -oE '"MC2_[A-Z0-9_]+"' \
         | tr -d '"' \
         | sort -u
     )

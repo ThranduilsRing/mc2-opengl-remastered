@@ -1989,6 +1989,64 @@ int main(int argc, char** argv)
         }
 
         {
+            // MC2_LOAD_RACE_TRACE: one machine-parseable per-run verdict, emitted
+            // ONCE when the frame counter first reaches MC2_LOAD_RACE_VERDICT_FRAME
+            // (falls back to MC2_SCREENSHOT_AT_FRAME so the verdict + backbuffer
+            // screenshot are co-located at the same frame). The wave classifier
+            // greps this single line. Default-OFF, zero cost when the gate unset.
+            extern bool g_loadRaceTrace;
+            if (g_loadRaceTrace) {
+                extern long  g_loadRaceApprNull;
+                extern long  g_loadRaceMechDegrade;
+                extern long  g_loadRaceMechDegradeReal;
+                extern long  g_loadRaceMechOkReal;
+                extern long  g_loadRaceMechOkPreview;
+                extern long  g_loadRaceTerrainFirstResidentFrame;
+                extern bool  g_loadRaceTerrainResidentNow;
+                extern float scenarioTime;
+                static const long s_vFrame = []{
+                    const char* v = getenv("MC2_LOAD_RACE_VERDICT_FRAME");
+                    if (!v) v = getenv("MC2_SCREENSHOT_AT_FRAME");
+                    return v ? atol(v) : -1L;
+                }();
+                static bool s_vDone = false;
+                if (s_vFrame >= 0 && !s_vDone && (long)g_mc2FrameCounter >= s_vFrame) {
+                    s_vDone = true;
+                    // A run is "degraded" if a REAL world actor lost its shape
+                    // (mech_degrade_real>0) or terrain never became resident.
+                    // Preview-only degrades (obj==NULL) are benign and reported
+                    // separately.
+                    const bool degraded = (g_loadRaceMechDegradeReal > 0) ||
+                                          !g_loadRaceTerrainResidentNow;
+                    const char* fmt =
+                        "LOADRACE verdict: frame=%u scenarioTime=%.2f "
+                        "mech_degrade=%ld mech_degrade_real=%ld "
+                        "mech_ok_real=%ld mech_ok_preview=%ld appr_null=%ld "
+                        "terrain_resident=%s terrain_first_resident_frame=%ld "
+                        "degraded=%s\n";
+                    fprintf(stderr, fmt,
+                        g_mc2FrameCounter, scenarioTime,
+                        g_loadRaceMechDegrade, g_loadRaceMechDegradeReal,
+                        g_loadRaceMechOkReal, g_loadRaceMechOkPreview,
+                        g_loadRaceApprNull,
+                        g_loadRaceTerrainResidentNow ? "Y" : "N",
+                        g_loadRaceTerrainFirstResidentFrame,
+                        degraded ? "YES" : "no");
+                    fflush(stderr);
+                    printf(fmt,
+                        g_mc2FrameCounter, scenarioTime,
+                        g_loadRaceMechDegrade, g_loadRaceMechDegradeReal,
+                        g_loadRaceMechOkReal, g_loadRaceMechOkPreview,
+                        g_loadRaceApprNull,
+                        g_loadRaceTerrainResidentNow ? "Y" : "N",
+                        g_loadRaceTerrainFirstResidentFrame,
+                        degraded ? "YES" : "no");
+                    fflush(stdout);
+                }
+            }
+        }
+
+        {
             // [VISUAL_CAPTURE v1] S9: deterministic PNG + capture-tuple sidecar,
             // and bookmark teleport/settle/capture replay. Reuses the same
             // offscreen scene FBO source as [SCREENSHOT v1] above (robust to a

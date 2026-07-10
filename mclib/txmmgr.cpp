@@ -3093,6 +3093,43 @@ void MC_TextureManager::renderLists (void)
 		TracyGpuZone("Render.TerrainSolid");
 		gos_render_pass_timer::Begin(gos_render_pass_timer::Pass_TerrainSolid);
 
+		// MC2_LOAD_RACE_TRACE: terrain GPU-residency probe. The degraded
+		// mission-load state renders terrain flat/untextured; this latches the
+		// first frame on which EVERY terrain-solid node's texture is resident
+		// (non-mutating isTextureNodeResident, so it never forces an upload).
+		// Also refreshes g_loadRaceTerrainResidentNow each frame for the verdict.
+		{
+			extern bool     g_loadRaceTrace;
+			extern long     g_loadRaceTerrainFirstResidentFrame;
+			extern bool     g_loadRaceTerrainResidentNow;
+			extern uint32_t g_mc2FrameCounter;
+			if (g_loadRaceTrace)
+			{
+				long terrTotal = 0, terrResident = 0;
+				for (long ti = 0; ti < nextAvailableVertexNode; ++ti)
+				{
+					const DWORD tf = masterVertexNodes[ti].flags;
+					if ((tf & MC2_DRAWSOLID) && (tf & MC2_ISTERRAIN) &&
+						masterVertexNodes[ti].vertices)
+					{
+						++terrTotal;
+						if (isTextureNodeResident(masterVertexNodes[ti].textureIndex))
+							++terrResident;
+					}
+				}
+				const bool fully = (terrTotal > 0) && (terrResident == terrTotal);
+				g_loadRaceTerrainResidentNow = fully;
+				if (fully && g_loadRaceTerrainFirstResidentFrame < 0)
+				{
+					g_loadRaceTerrainFirstResidentFrame = (long)g_mc2FrameCounter;
+					std::printf("[LOADRACE] terrain first fully-resident frame=%ld "
+						"(terrainNodes=%ld)\n",
+						g_loadRaceTerrainFirstResidentFrame, terrTotal);
+					std::fflush(stdout);
+				}
+			}
+		}
+
 		// Modern path. flush() returns true on success and false on overflow
 		// / not-ready / not-killswitched. On false we fall through to the
 		// legacy loop for the WHOLE FRAME — never partial-frame. The legacy
