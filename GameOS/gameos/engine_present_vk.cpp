@@ -453,24 +453,78 @@ bool buildSwapchain(EnginePresentVk::Impl& s, uint32_t w, uint32_t h,
     return true;
 }
 
-bool rebuildSwapchain(EnginePresentVk::Impl& s, uint32_t w, uint32_t h, std::string& reason) {
+// VK-SWAPCHAIN-RESIZE-HARDEN-1: recreate the swapchain with proper oldSwapchain
+// chaining, bounded retry + backoff for genuinely-transient window states, and
+// resize_recreate_* receipts so future sessions can see recovery behavior.
+//
+// Root cause of the intermittent vkCreateSwapchainKHR -> VK_ERROR_NATIVE_WINDOW_
+// IN_USE (VkResult=-1000000001): the previous retry created a fresh swapchain with
+// oldSwapchain=VK_NULL_HANDLE WHILE the old swapchain was still alive on the same
+// surface (it was destroyed only after the retry). A surface that still owns a
+// live swapchain rejects a second create with NATIVE_WINDOW_IN_USE. The fix:
+// attempt 0 uses proper oldSwapchain chaining; on failure the old chain is
+// RETIRED before any oldSwapchain-free retry, so the surface is free.
+//
+// Only the error/retry path changed -- a first-try success is byte-for-byte the
+// old happy path (create with oldSwapchain=old, then destroy old) -> no gate.
+bool rebuildSwapchain(EnginePresentVk::Impl& s, uint32_t w, uint32_t h,
+                      EnginePresentHealth& health, std::string& reason) {
+    // Full quiesce: no present/blit submit may still reference the old swapchain
+    // when we retire it, and the surface must be settled before recreate.
     vkDeviceWaitIdle(s.dev);
+
     VkSwapchainKHR old = s.swapchain;
     std::vector<VkSemaphore> oldSems = s.renderSems;
     s.renderSems.clear();
     s.scImages.clear();
     s.swapchain = VK_NULL_HANDLE;
-    bool ok = buildSwapchain(s, w, h, old, reason);
-    if (!ok && old) {
-        std::string firstReason = reason;
-        plog("swapchain rebuild with oldSwapchain failed (%s); retrying without oldSwapchain.",
-             firstReason.c_str());
-        ok = buildSwapchain(s, w, h, VK_NULL_HANDLE, reason);
-        if (!ok)
-            reason = firstReason + "; retry without oldSwapchain: " + reason;
+
+    constexpr int kMaxAttempts = 3;
+    bool ok = false;
+    std::string firstReason;
+    for (int attempt = 0; attempt < kMaxAttempts && !ok; ++attempt) {
+        // Attempt 0: chain the live old swapchain (retire it inside the create).
+        // Retries run only AFTER `old` has been destroyed below, so they MUST pass
+        // VK_NULL_HANDLE -- a second swapchain on a surface that still owns a live
+        // one is exactly the NATIVE_WINDOW_IN_USE we are fixing.
+        VkSwapchainKHR chainArg = (attempt == 0) ? old : VK_NULL_HANDLE;
+        ok = buildSwapchain(s, w, h, chainArg, reason);
+        if (ok) {
+            if (attempt > 0) ++health.resize_recreate_retries;
+            break;
+        }
+        if (attempt == 0) {
+            firstReason = reason;
+            // Retire the old swapchain + its semaphores BEFORE any retry so the
+            // surface is free of a live swapchain for the VK_NULL_HANDLE create.
+            for (VkSemaphore sem : oldSems) if (sem) vkDestroySemaphore(s.dev, sem, nullptr);
+            oldSems.clear();
+            if (old) { vkDestroySwapchainKHR(s.dev, old, nullptr); old = VK_NULL_HANDLE; }
+            plog("swapchain rebuild with oldSwapchain failed (%s); retired old chain, "
+                 "retrying without oldSwapchain.", firstReason.c_str());
+        } else {
+            plog("swapchain rebuild retry %d failed (%s).", attempt, reason.c_str());
+        }
+        // Backoff for transient window states (live-resize / DWM transition can
+        // briefly hold the HWND): let the OS release it, then re-quiesce.
+        if (!ok && attempt + 1 < kMaxAttempts) {
+            SDL_Delay(4);
+            vkDeviceWaitIdle(s.dev);
+        }
     }
+
+    // Retire any survivors (the retry path may already have destroyed `old`).
     for (VkSemaphore sem : oldSems) if (sem) vkDestroySemaphore(s.dev, sem, nullptr);
     if (old) vkDestroySwapchainKHR(s.dev, old, nullptr);
+
+    if (ok) {
+        ++health.resize_recreate_ok;
+    } else {
+        ++health.resize_recreate_failsoft;
+        if (!firstReason.empty())
+            reason = firstReason + "; after " + std::to_string(kMaxAttempts) +
+                     " attempts: " + reason;
+    }
     return ok;
 }
 
@@ -2031,7 +2085,7 @@ bool EnginePresentVk::presentGLFrame(uint32_t glDrawableW, uint32_t glDrawableH,
         if (!buildSharedImage(s, glDrawableW, glDrawableH, r)) {
             health_.fallback_reason = "resize: " + r; return false;
         }
-        if (!rebuildSwapchain(s, glDrawableW, glDrawableH, r)) {
+        if (!rebuildSwapchain(s, glDrawableW, glDrawableH, health_, r)) {
             health_.fallback_reason = "resize: " + r; return false;
         }
         ++health_.resize_count;
@@ -2124,7 +2178,7 @@ bool EnginePresentVk::presentGLFrame(uint32_t glDrawableW, uint32_t glDrawableH,
         vkQueueSubmit(s.gfxQ, 1, &empty, s.inFlight);   // re-signal fence
         if (dw > 0 && dh > 0) {
             std::string rr;
-            if (!rebuildSwapchain(s, (uint32_t)dw, (uint32_t)dh, rr)) {
+            if (!rebuildSwapchain(s, (uint32_t)dw, (uint32_t)dh, health_, rr)) {
                 health_.fallback_reason = rr; return false;
             }
         }
@@ -2277,7 +2331,7 @@ bool EnginePresentVk::presentGLFrame(uint32_t glDrawableW, uint32_t glDrawableH,
         int dw = 0, dh = 0; SDL_GL_GetDrawableSize(glWindow_, &dw, &dh);
         if (dw > 0 && dh > 0) {
             std::string rr;
-            if (!rebuildSwapchain(s, (uint32_t)dw, (uint32_t)dh, rr)) {
+            if (!rebuildSwapchain(s, (uint32_t)dw, (uint32_t)dh, health_, rr)) {
                 health_.fallback_reason = rr; return false;
             }
         }
@@ -2465,6 +2519,7 @@ void EnginePresentVk::destroy() {
 void EnginePresentVk::logHealth() const {
     std::fprintf(stderr,
         "[VK_PRESENT] created=%d attempted=%d present_frames=%u resize_count=%u "
+        "resize_recreate_ok=%u resize_recreate_retries=%u resize_recreate_failsoft=%u "
         "validation_errors=%u extent=%ux%u present_mode=%s readback_changed=%d "
         "last_checksum=0x%llx direct_fbo_requests=%u direct_fbo_grants=%u "
         "copy1_blit_frames=%u copy1_skip_frames=%u gl_handoff_skip_frames=%u "
@@ -2478,7 +2533,9 @@ void EnginePresentVk::logHealth() const {
         "last_direct_fbo=%u "
         "fallback_reason=\"%s\"\n",
         health_.created ? 1 : 0, health_.attempted ? 1 : 0,
-        health_.present_frames, health_.resize_count, health_.validation_errors,
+        health_.present_frames, health_.resize_count,
+        health_.resize_recreate_ok, health_.resize_recreate_retries,
+        health_.resize_recreate_failsoft, health_.validation_errors,
         health_.extent_w, health_.extent_h,
         health_.present_mode_name.empty() ? "?" : health_.present_mode_name.c_str(),
         health_.readback_changed ? 1 : 0,

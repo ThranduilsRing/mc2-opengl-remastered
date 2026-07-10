@@ -50,6 +50,17 @@ struct EnginePresentHealth {
     bool        attempted         = false;
     uint32_t    present_frames    = 0;     // frames handed to vkQueuePresentKHR OK
     uint32_t    resize_count      = 0;
+    // Swapchain resize/recreate recovery receipts (VK-SWAPCHAIN-RESIZE-HARDEN-1).
+    // resize_recreate_ok   : successful swapchain (re)creates (first-try or retry).
+    // resize_recreate_retries : extra create attempts beyond the first that a
+    //                           single recreate needed (transient window states /
+    //                           the old-chain-alive NATIVE_WINDOW_IN_USE retry).
+    // resize_recreate_failsoft : recreates that exhausted all attempts and fell
+    //                            back to GL. Nonzero == the hardening did not fully
+    //                            cover some window state; investigate.
+    uint32_t    resize_recreate_ok       = 0;
+    uint32_t    resize_recreate_retries  = 0;
+    uint32_t    resize_recreate_failsoft = 0;
     uint32_t    validation_errors = 0;     // pulled from the engine ctx messenger
     uint32_t    extent_w          = 0;
     uint32_t    extent_h          = 0;
