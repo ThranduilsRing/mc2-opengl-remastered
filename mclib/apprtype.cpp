@@ -56,6 +56,13 @@ long g_loadRaceMechOkReal                = 0;    // real actors (obj != NULL) th
 long g_loadRaceMechOkPreview             = 0;    // preview/logistics (obj == NULL) built a shape
 long g_loadRaceTerrainFirstResidentFrame = -1;   // first frame all terrain textures GPU-resident
 bool g_loadRaceTerrainResidentNow        = false;// terrain fully resident as of last flush
+// S2b corrected-transient probes: latch the frames at which the indirect
+// terrain colormap atlas becomes GPU-resident and the GPU terrain path first
+// arms, plus the path actually taken on the most recent preflight. These
+// separate "atlas/arming came late" from "atlas + arming early, shading cool".
+long g_loadRaceAtlasFirstFrame           = -1;   // first frame g_atlasGLTex != 0
+long g_loadRaceArmFirstFrame             = -1;   // first frame ShouldArmGpuTerrain true (gpu path)
+long g_loadRaceLastTerrainPath           = 0;    // last preflight: 0=none 1=gpu-indirect 2=cpu-thin
 
 //---------------------------------------------------------------------------
 // Class AppearanceType

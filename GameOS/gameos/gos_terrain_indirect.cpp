@@ -78,6 +78,22 @@ extern float              g_cpuWaterProbeZ;
 extern bool               g_cpuWaterProbeAny;
 extern unsigned long long g_cpuWaterProbeStamp;
 
+// MC2_LOAD_RACE_TRACE (S2b corrected transient probes). Latches defined in
+// mclib/apprtype.cpp; g_mc2FrameCounter is the engine frame clock; scenarioTime
+// drives the negative-control atlas delay.
+extern bool     g_loadRaceTrace;
+extern long     g_loadRaceAtlasFirstFrame;
+extern long     g_loadRaceArmFirstFrame;
+extern long     g_loadRaceLastTerrainPath;
+extern uint32_t g_mc2FrameCounter;
+extern float    scenarioTime;
+// Negative control: when MC2_LOAD_RACE_DELAY_ATLAS is set, BuildColormapAtlas()
+// defers the real GL upload until scenarioTime >= 30s and ComputePreflight()
+// pumps it each frame. This makes the atlas GENUINELY absent for ~30s so the
+// reviewer can confirm the atlas/texel probes (a)/(b) actually FIRE when the
+// atlas is the cause.
+static const bool s_loadRaceDelayAtlas = (getenv("MC2_LOAD_RACE_DELAY_ATLAS") != nullptr);
+
 namespace gos_terrain_indirect {
 
 // ---------------------------------------------------------------------------
@@ -999,6 +1015,32 @@ static uint32_t g_concreteAllCornersThisFrame = 0;  // _wp0 == 3,3,3,3 (genuine 
 
 void BuildColormapAtlas() {
     ZoneScopedN("Terrain::IndirectAtlasUpload");
+    // Negative control (MC2_LOAD_RACE_DELAY_ATLAS): defer the real upload for
+    // ~30s of scenario time so the atlas is genuinely absent. ComputePreflight()
+    // re-invokes this each frame while g_atlasGLTex == 0. One-shot log on release.
+    if (s_loadRaceDelayAtlas) {
+        static bool s_delayReleased = false;
+        if (!s_delayReleased) {
+            if (scenarioTime < 30.0f) {
+                static bool s_deferLogged = false;
+                if (g_loadRaceTrace && !s_deferLogged) {
+                    s_deferLogged = true;
+                    fprintf(stderr, "[LOADRACE] NEG-CONTROL atlas upload DEFERRED "
+                            "(scenarioTime=%.2f < 30) frame=%u\n",
+                            scenarioTime, g_mc2FrameCounter);
+                    fflush(stderr);
+                }
+                return;   // leave g_atlasGLTex == 0
+            }
+            s_delayReleased = true;
+            if (g_loadRaceTrace) {
+                fprintf(stderr, "[LOADRACE] NEG-CONTROL atlas delay RELEASED "
+                        "(scenarioTime=%.2f) frame=%u -- uploading now\n",
+                        scenarioTime, g_mc2FrameCounter);
+                fflush(stderr);
+            }
+        }
+    }
     if (!Terrain::terrainTextures2) {
         if (traceOn()) printf("[TERRAIN_INDIRECT v1] event=atlas_skip reason=no_terrainTextures2\n");
         return;
@@ -1100,6 +1142,15 @@ void BuildColormapAtlas() {
                        "(%dx%d BGRA) after RGBA8 atlas upload\n",
                        atlasSizeCapture, atlasSizeCapture);
         }
+    }
+
+    // MC2_LOAD_RACE_TRACE: latch the frame the colormap atlas first exists.
+    if (g_loadRaceTrace && g_atlasGLTex != 0 && g_loadRaceAtlasFirstFrame < 0) {
+        g_loadRaceAtlasFirstFrame = (long)g_mc2FrameCounter;
+        fprintf(stderr, "[LOADRACE] atlas first-resident frame=%ld gltex=%u "
+                "scenarioTime=%.2f\n",
+                g_loadRaceAtlasFirstFrame, (unsigned)g_atlasGLTex, scenarioTime);
+        fflush(stderr);
     }
 
     g_atlasSize              = atlasSizeCapture;
@@ -2740,6 +2791,12 @@ bool ComputePreflight() {
     }
     if (InMissionTransition())    return false;
 
+    // MC2_LOAD_RACE_DELAY_ATLAS negative control: pump the deferred atlas upload
+    // once scenario time crosses the 30s threshold (BuildColormapAtlas self-gates).
+    if (s_loadRaceDelayAtlas && g_atlasGLTex == 0) {
+        BuildColormapAtlas();
+    }
+
     FlushDirtyRecipeSlotsToGPU();
 
     // Arm the GPU terrain path when this is a colormap (terrainTextures2) map.
@@ -2776,6 +2833,18 @@ bool ComputePreflight() {
         s_frameSolidCmdCount        = 1;    // PR1: always 1 indirect draw command
         s_frameSolidArmed           = true;
         s_everFrameSolidArmed       = true;
+        // MC2_LOAD_RACE_TRACE: latch first GPU-arm frame; mark path taken.
+        if (g_loadRaceTrace) {
+            g_loadRaceLastTerrainPath = 1;
+            if (g_loadRaceArmFirstFrame < 0) {
+                g_loadRaceArmFirstFrame = (long)g_mc2FrameCounter;
+                fprintf(stderr, "[LOADRACE] gpu terrain first-arm frame=%ld "
+                        "scenarioTime=%.2f atlasTex=%u nodeIds=%zu\n",
+                        g_loadRaceArmFirstFrame, scenarioTime,
+                        (unsigned)g_atlasGLTex, g_uniqueTerrainNodeIds.size());
+                fflush(stderr);
+            }
+        }
         {
             static bool s_firstArm = false;
             if (!s_firstArm) {
@@ -2807,6 +2876,7 @@ bool ComputePreflight() {
     s_frameSolidCmdCount        = cmdCount;
     s_frameSolidArmed           = true;
     s_everFrameSolidArmed       = true;
+    if (g_loadRaceTrace) g_loadRaceLastTerrainPath = 2;   // cpu-thin path
     {
         static bool s_firstArm = false;
         if (!s_firstArm) {

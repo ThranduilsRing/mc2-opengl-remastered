@@ -2047,6 +2047,124 @@ int main(int argc, char** argv)
         }
 
         {
+            // MC2_LOAD_RACE_TRACE (S2b corrected transient probes): at a fixed
+            // set of verdict frames, dump the terrain-path / atlas / arm state
+            // plus fixed-texel scene readbacks and a direct atlas-texel sample.
+            // This separates the three rival mechanisms for the "cool wash ->
+            // warms over ~20-40s" transient: (1) late indirect arming, (2) atlas
+            // content absent/wrong, (3) lighting/shading warm-up (atlas+arm early
+            // but shaded pixels start cool). One-shot per listed frame, GL context
+            // live (post-render, pre-swap). Default-OFF; zero cost when gate unset.
+            extern bool g_loadRaceTrace;
+            if (g_loadRaceTrace) {
+                extern long  g_loadRaceAtlasFirstFrame;
+                extern long  g_loadRaceArmFirstFrame;
+                extern long  g_loadRaceLastTerrainPath;
+                extern long  g_loadRaceTerrainFirstResidentFrame;
+                extern bool  g_loadRaceTerrainResidentNow;
+                extern long  g_loadRaceMechDegradeReal;
+                extern float scenarioTime;
+                extern GLuint gos_terrain_indirect_getAtlasGLTex();
+                // Frames to probe. Overridable via MC2_LOAD_RACE_PROBE_FRAMES
+                // (comma list) but defaults to the confirmed transient window.
+                static const std::vector<long> s_probeFrames = []{
+                    std::vector<long> v;
+                    if (const char* e = getenv("MC2_LOAD_RACE_PROBE_FRAMES")) {
+                        const char* p = e;
+                        while (*p) { v.push_back(atol(p)); const char* c = strchr(p, ','); if (!c) break; p = c + 1; }
+                    }
+                    if (v.empty()) v = {600, 1300, 2600, 4000, 6000};
+                    return v;
+                }();
+                static size_t s_nextProbe = 0;
+                if (s_nextProbe < s_probeFrames.size() &&
+                    (long)g_mc2FrameCounter >= s_probeFrames[s_nextProbe]) {
+                    const long pf = s_probeFrames[s_nextProbe];
+                    ++s_nextProbe;
+
+                    const GLuint atlasTex = gos_terrain_indirect_getAtlasGLTex();
+                    const char* pathStr = (g_loadRaceLastTerrainPath == 1) ? "gpu-indirect"
+                                        : (g_loadRaceLastTerrainPath == 2) ? "cpu-thin" : "none";
+
+                    // (b) Fixed-texel scene oracle: read 3 deterministic terrain
+                    // points from the offscreen scene FBO (robust to a minimized
+                    // window). Points are normalized so they track resolution.
+                    gosPostProcess* ppLr = getGosPostProcess();
+                    GLuint lrFbo = ppLr ? ppLr->getSceneFBO() : 0;
+                    int lrW = ppLr ? ppLr->getWidth()  : 0;
+                    int lrH = ppLr ? ppLr->getHeight() : 0;
+                    unsigned char px[3][4] = {{0,0,0,0},{0,0,0,0},{0,0,0,0}};
+                    const float ptsN[3][2] = {{0.5f,0.62f},{0.30f,0.72f},{0.70f,0.55f}};
+                    if (lrFbo && lrW > 0 && lrH > 0) {
+                        glBindFramebuffer(GL_READ_FRAMEBUFFER, lrFbo);
+                        glReadBuffer(GL_COLOR_ATTACHMENT0);
+                        for (int i = 0; i < 3; ++i) {
+                            int sx = (int)(ptsN[i][0] * lrW);
+                            int sy = (int)(ptsN[i][1] * lrH);
+                            glReadPixels(sx, sy, 1, 1, GL_RGBA, GL_UNSIGNED_BYTE, px[i]);
+                        }
+                        glBindFramebuffer(GL_READ_FRAMEBUFFER, 0);
+                    }
+
+                    // (b) Direct atlas-texel sample: attach the atlas to a scratch
+                    // FBO and read one texel. Skips (reports unreadable) when the
+                    // atlas is a compressed (BC7) format -- not color-renderable.
+                    unsigned char atlasTexel[4] = {0,0,0,0};
+                    const char* atlasTexelStatus = "absent";
+                    if (atlasTex != 0) {
+                        GLint prevFbo = 0;
+                        glGetIntegerv(GL_READ_FRAMEBUFFER_BINDING, &prevFbo);
+                        GLuint scratch = 0;
+                        glGenFramebuffers(1, &scratch);
+                        glBindFramebuffer(GL_READ_FRAMEBUFFER, scratch);
+                        glFramebufferTexture2D(GL_READ_FRAMEBUFFER, GL_COLOR_ATTACHMENT0,
+                                               GL_TEXTURE_2D, atlasTex, 0);
+                        if (glCheckFramebufferStatus(GL_READ_FRAMEBUFFER) == GL_FRAMEBUFFER_COMPLETE) {
+                            glReadBuffer(GL_COLOR_ATTACHMENT0);
+                            // Read a mid-atlas texel (content-bearing, not an edge).
+                            GLint aw = 0, ah = 0;
+                            glBindTexture(GL_TEXTURE_2D, atlasTex);
+                            glGetTexLevelParameteriv(GL_TEXTURE_2D, 0, GL_TEXTURE_WIDTH,  &aw);
+                            glGetTexLevelParameteriv(GL_TEXTURE_2D, 0, GL_TEXTURE_HEIGHT, &ah);
+                            int ax = aw > 2 ? aw / 2 : 0;
+                            int ay = ah > 2 ? ah / 2 : 0;
+                            glReadPixels(ax, ay, 1, 1, GL_RGBA, GL_UNSIGNED_BYTE, atlasTexel);
+                            atlasTexelStatus = "ok";
+                        } else {
+                            atlasTexelStatus = "unreadable_compressed";
+                        }
+                        glBindFramebuffer(GL_READ_FRAMEBUFFER, prevFbo);
+                        glDeleteFramebuffers(1, &scratch);
+                    }
+
+                    const char* fmt =
+                        "LOADRACE probe: frame=%u probeFrame=%ld scenarioTime=%.2f "
+                        "terrain_path=%s atlasTex=%u atlas_first_frame=%ld "
+                        "arm_first_frame=%ld terrain_first_resident_frame=%ld "
+                        "terrain_resident=%s mech_degrade_real=%ld "
+                        "scene_px0=%u,%u,%u scene_px1=%u,%u,%u scene_px2=%u,%u,%u "
+                        "atlas_texel[%s]=%u,%u,%u,%u\n";
+                    fprintf(stderr, fmt,
+                        g_mc2FrameCounter, pf, scenarioTime,
+                        pathStr, (unsigned)atlasTex, g_loadRaceAtlasFirstFrame,
+                        g_loadRaceArmFirstFrame, g_loadRaceTerrainFirstResidentFrame,
+                        g_loadRaceTerrainResidentNow ? "Y" : "N", g_loadRaceMechDegradeReal,
+                        px[0][0],px[0][1],px[0][2], px[1][0],px[1][1],px[1][2], px[2][0],px[2][1],px[2][2],
+                        atlasTexelStatus, atlasTexel[0],atlasTexel[1],atlasTexel[2],atlasTexel[3]);
+                    fflush(stderr);
+                    printf(fmt,
+                        g_mc2FrameCounter, pf, scenarioTime,
+                        pathStr, (unsigned)atlasTex, g_loadRaceAtlasFirstFrame,
+                        g_loadRaceArmFirstFrame, g_loadRaceTerrainFirstResidentFrame,
+                        g_loadRaceTerrainResidentNow ? "Y" : "N", g_loadRaceMechDegradeReal,
+                        px[0][0],px[0][1],px[0][2], px[1][0],px[1][1],px[1][2], px[2][0],px[2][1],px[2][2],
+                        atlasTexelStatus, atlasTexel[0],atlasTexel[1],atlasTexel[2],atlasTexel[3]);
+                    fflush(stdout);
+                }
+            }
+        }
+
+        {
             // [VISUAL_CAPTURE v1] S9: deterministic PNG + capture-tuple sidecar,
             // and bookmark teleport/settle/capture replay. Reuses the same
             // offscreen scene FBO source as [SCREENSHOT v1] above (robust to a
