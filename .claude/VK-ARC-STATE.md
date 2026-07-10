@@ -29,9 +29,22 @@ Hardened this session (checker + runner + engine):
   --porcelain -uno` (tracked-only), matching the engine build stamp; the manifest writer
   had been overcounting untracked scratch as dirty.
 
-Proof regenerated at `<SHA>` with the hardened checker + canary gates enabled (visible
-window, sacrificial first bookmark). Prior proof archived to
-`.claude/vk-nointerop-proof-archive-a7e3e5af/` (invalidated, not deleted).
+Proof regenerated at `7a5bf1fa` with the hardened checker + canary gates enabled (visible
+window, clean-exit after sweep). Two independent runs both **VERDICT PASS** (exit 0):
+all 5 island health lines present with `forbidden_*`/`depthin_*` == 0, zero PERFRAME_READBACK
+markers, terrain `stage_us`=7.4µs, canary GL-skip invariant (`gl_handoff_skip_frames`==
+`present_frames`==900, `copy1_blit_frames`==0), provenance dirty:false + sha match. Artifacts
+(untracked, matching the prior dir): `.claude/vk-nointerop-proof-7a5bf1fa/{run1,run2}/`.
+Prior proof archived to `.claude/vk-nointerop-proof-archive-a7e3e5af/` (invalidated, not deleted).
+
+Regen surfaced (and fixed) two real residuals the OLD dead-counter checker masked: a 2-frame
+terrain warmup CSM GL readback (`forbidden_getTexImage`=2, now fail-soft under strict) and a
+never-called `mc2_vk_shadow_island_destroy()` (leaked island + missing `[VK_SHADOW_INTEROP]`
+proof line, now torn down). Determinism receipt (`run1/determinism_hashes.json`): only 2/11
+bookmark PNGs are byte-identical across runs — the engine self-labels `deterministic=True`
+(fixed sim clock) but cross-run PIXELS are not byte-stable in the VK strict stack (warmup
+timing). The no-interop invariant itself IS deterministic (forbidden_*=0 on both runs); the
+pixel-determinism caveat the review flagged is now measured, not assumed.
 
 ## 2026-07-10 — VK-DRAW-PERF-1 phase 1: GPU-timestamp breakdown
 
