@@ -118,6 +118,27 @@ void vlog(const char* fmt, ...) {
     va_end(ap);
 }
 
+// VK-NOINTEROP-STRICT-REVIEW (H2b): record a PER-FRAME render-path GL depth readback.
+// The terrain island's shadow fallback (copy_shadow_slot / copy_csm_array) does a
+// glGetTexImage when the VK direct-chain producer declined -- exactly the fallback that
+// caused the 126 ms/frame CSM readback (killed by direct-chain in 62707331). Before this
+// fix the g_forbidden.glGetTexImage counter was DECLARED and printed but NEVER
+// incremented, so the run()-scope f0b/f0c snapshot check and the health-line counter were
+// always 0 (a realized false-pass). Copy-ONCE asset-feed imports (import_colormap /
+// import_cement / import_matnormal / copy_static_shadow, each guarded to fire once at
+// map/mission load) must NOT call this -- they are the allowed GL-dependent feed layer
+// documented in .claude/METAL-GATE-AUDIT-2.md. This bumps the counter the health line
+// asserts == 0 AND emits a one-time PERFRAME_READBACK trip-wire the hardened checker greps.
+void terrainPerFrameReadback(const char* fn) {
+    g_forbidden.glGetTexImage++;
+    static bool s_first = true;
+    if (s_first) {
+        s_first = false;
+        vlog("[VK_TERRAIN_PERFRAME_READBACK v1] fn=%s (forbidden per-frame GL depth "
+             "readback in render path -- direct-chain declined this frame)", fn);
+    }
+}
+
 // Gate: MC2_VK_TERRAIN_TIER1==1 AND MC2_VK_SHARED_SCENE_DEPTH==1 (the shared depth
 // the Tier-1 pass depth-tests against). Mirrors propColorTier1Requested().
 bool terrainTier1Requested() {
@@ -527,7 +548,8 @@ bool copy_dynamic_shadow(TerrainIsland* s, const Mc2TerrainTier1Feed& feed);
 bool ensure_dummy_csm(TerrainIsland* s);
 bool copy_csm_shadows(TerrainIsland* s, const Mc2TerrainTier1Feed& feed);
 bool copy_shadow_slot(TerrainIsland* s, uint32_t glTex, uint32_t dim,
-                      VkImage img, VkBuffer* stage, VmaAllocation* stageAlloc, VkDeviceSize* stageBytes);
+                      VkImage img, VkBuffer* stage, VmaAllocation* stageAlloc, VkDeviceSize* stageBytes,
+                      bool perFrame);
 bool ensure_dummy_matnormal(TerrainIsland* s);
 void import_matnormal(TerrainIsland* s, const Mc2TerrainTier1Feed& feed);
 
@@ -2022,6 +2044,7 @@ bool copy_csm_array(TerrainIsland* s, uint32_t glTex, uint32_t dim, uint32_t lay
         glGetIntegerv(GL_TEXTURE_BINDING_2D_ARRAY, &prevArrayBind);
         glBindTexture(GL_TEXTURE_2D_ARRAY, s->csmScratchTex);
         glGetTexImage(GL_TEXTURE_2D_ARRAY, 0, GL_DEPTH_COMPONENT, GL_FLOAT, p);
+        terrainPerFrameReadback("copy_csm_array");  // H2b: per-frame near-cascade fallback
         glBindTexture(GL_TEXTURE_2D_ARRAY, (GLuint)prevArrayBind);
     }
     vmaUnmapMemory(s->allocator, s->csmArrayStageAlloc);
@@ -2085,11 +2108,13 @@ bool copy_csm_shadows(TerrainIsland* s, const Mc2TerrainTier1Feed& feed) {
         glGetIntegerv(GL_TEXTURE_BINDING_2D_ARRAY, &prevA);
         glBindTexture(GL_TEXTURE_2D_ARRAY, (GLuint)feed.glCsmArrayTex);
         glGetTexImage(GL_TEXTURE_2D_ARRAY, 0, GL_DEPTH_COMPONENT, GL_FLOAT, scratch.data());
+        terrainPerFrameReadback("copy_csm_shadows/bisect2");  // H2b: debug-mode per-frame scratch read
         glBindTexture(GL_TEXTURE_2D_ARRAY, (GLuint)prevA);
         glGetIntegerv(GL_TEXTURE_BINDING_2D, &prev2);
         glBindTexture(GL_TEXTURE_2D, (GLuint)feed.glCsmFullMapTex);
         glGetTexImage(GL_TEXTURE_2D, 0, GL_DEPTH_COMPONENT, GL_FLOAT,
                       scratch.data() + (size_t)feed.csmArraySize * feed.csmArraySize * layers2);
+        terrainPerFrameReadback("copy_csm_shadows/bisect2");  // H2b: debug-mode per-frame scratch read
         glBindTexture(GL_TEXTURE_2D, (GLuint)prev2);
         return false;  // ready flags stay false -> csmEnabled forced 0
     }
@@ -2133,7 +2158,8 @@ bool copy_csm_shadows(TerrainIsland* s, const Mc2TerrainTier1Feed& feed) {
             if (!ensure_shadow_image_slot(s, (uint32_t)feed.csmFullMapSize, &s->csmFullMapImg,
                                           &s->csmFullMapAlloc, &s->csmFullMapView, &s->csmFullMapDim)) return false;
             if (!copy_shadow_slot(s, feed.glCsmFullMapTex, (uint32_t)feed.csmFullMapSize, s->csmFullMapImg,
-                                  &s->csmFullMapStage, &s->csmFullMapStageAlloc, &s->csmFullMapStageBytes)) return false;
+                                  &s->csmFullMapStage, &s->csmFullMapStageAlloc, &s->csmFullMapStageBytes,
+                                  /*perFrame=*/true)) return false;  // H2b: per-frame fallback (direct-chain declined)
         }
     }
     if (bisect != 0) return false;  // bisect 1/3/4: shader stays on the legacy path
@@ -2161,7 +2187,8 @@ bool ensure_dummy_shadow(TerrainIsland* s) {
 // D32 image. Shared by static (binding 5) and dynamic (binding 7) shadow maps. glGetTexImage
 // depth readback -> forbidden color counters untouched.
 bool copy_shadow_slot(TerrainIsland* s, uint32_t glTex, uint32_t dim,
-                      VkImage img, VkBuffer* stage, VmaAllocation* stageAlloc, VkDeviceSize* stageBytes) {
+                      VkImage img, VkBuffer* stage, VmaAllocation* stageAlloc, VkDeviceSize* stageBytes,
+                      bool perFrame) {
     const VkDeviceSize bytes = (VkDeviceSize)dim * (VkDeviceSize)dim * 4u;  // float32 per texel
     if (*stage == VK_NULL_HANDLE || bytes > *stageBytes) {
         if (*stage != VK_NULL_HANDLE) {
@@ -2181,6 +2208,7 @@ bool copy_shadow_slot(TerrainIsland* s, uint32_t glTex, uint32_t dim,
     glGetIntegerv(GL_TEXTURE_BINDING_2D, &prev2DBind);
     glBindTexture(GL_TEXTURE_2D, (GLuint)glTex);
     glGetTexImage(GL_TEXTURE_2D, 0, GL_DEPTH_COMPONENT, GL_FLOAT, p);
+    if (perFrame) terrainPerFrameReadback("copy_shadow_slot");  // H2b: dynamic/csm-fullmap fallback only
     glBindTexture(GL_TEXTURE_2D, (GLuint)prev2DBind);
     vmaUnmapMemory(s->allocator, *stageAlloc);
 
@@ -2225,7 +2253,8 @@ bool copy_static_shadow(TerrainIsland* s, const Mc2TerrainTier1Feed& feed) {
         return true;
 
     if (!copy_shadow_slot(s, feed.glStaticShadowTex, dim, s->shadowImg,
-                          &s->shadowStage, &s->shadowStageAlloc, &s->shadowStageBytes)) {
+                          &s->shadowStage, &s->shadowStageAlloc, &s->shadowStageBytes,
+                          /*perFrame=*/false)) {  // copy-once per generation (guarded above)
         s->shadowReady = false;
         return false;
     }
@@ -2268,7 +2297,8 @@ bool copy_dynamic_shadow(TerrainIsland* s, const Mc2TerrainTier1Feed& feed) {
     if (!ensure_shadow_image_slot(s, dim, &s->dynShadowImg, &s->dynShadowAlloc,
                                   &s->dynShadowView, &s->dynShadowDim)) return false;
     if (!copy_shadow_slot(s, feed.glDynamicShadowTex, dim, s->dynShadowImg,
-                          &s->dynShadowStage, &s->dynShadowStageAlloc, &s->dynShadowStageBytes)) return false;
+                          &s->dynShadowStage, &s->dynShadowStageAlloc, &s->dynShadowStageBytes,
+                          /*perFrame=*/true)) return false;  // H2b: per-frame fallback (direct-chain declined)
     s->dynShadowReady = true;
     return true;
 }

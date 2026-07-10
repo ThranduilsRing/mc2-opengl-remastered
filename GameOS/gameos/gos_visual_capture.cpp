@@ -83,6 +83,11 @@ extern "C" {
     void mc2VisualCaptureRestorePauseState(int packed);
 }
 
+// Global-scope game-quit flag (code/mechcmd2.cpp etc.); the mission main loop polls it
+// and calls gos_TerminateApplication(). Declared here so MC2_VISUAL_CAPTURE_EXIT_AFTER
+// can request a clean shutdown after the bookmark sweep.
+extern bool quitGame;
+
 namespace {
 
 // ---------------------------------------------------------------------------
@@ -652,6 +657,19 @@ void onPostRenderFrame(unsigned int frame, int sceneW, int sceneH) {
             g_replay.finished = true;
             fprintf(stderr, "[VISUAL_CAPTURE v1.5] sweep complete, camera + "
                     "pause-state restored\n");
+            // VK-NOINTEROP-STRICT-REVIEW: opt-in clean shutdown after the sweep so the
+            // VK island destroy lines (forbidden_* counters) + the final [VK_PRESENT]
+            // logHealth are emitted to the capture log. Without this the harness kills
+            // the still-running game on timeout and those shutdown-only lines never
+            // appear -- the exact reason the prior no-interop proof log lacked island
+            // counters. Sets the same quitGame flag a window-close would; the mission
+            // main loop polls it and calls gos_TerminateApplication() -> ordered VK
+            // teardown (gameosmain.cpp mc2_vk_*_island_destroy). Off by default.
+            if (::getenv("MC2_VISUAL_CAPTURE_EXIT_AFTER")) {
+                ::quitGame = true;
+                fprintf(stderr, "[VISUAL_CAPTURE v1.5] MC2_VISUAL_CAPTURE_EXIT_AFTER=1 "
+                        "-> requesting clean shutdown (quitGame=true)\n");
+            }
             return;
         }
         if (!g_replay.teleported) {
