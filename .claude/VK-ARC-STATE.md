@@ -1,5 +1,32 @@
 # VK-ARC-STATE — current state block (update every session)
 
+## 2026-07-10 — VK-DRAW-PERF-1 phase 1: GPU-timestamp breakdown (LATEST)
+
+`721088fa` perf(vk): `MC2_VK_GPU_TIMESTAMPS` island GPU segment timers
+(header-only `GameOS/gameos/vk_gpu_timestamps.h`, default-OFF, verification-only
+class, smoke-allowlisted + tier1_env_vars documented + flags.auto.yaml regenerated).
+`vkCmdWriteTimestamp` (VK 1.1 core, no device feature — queue timestampValidBits +
+limits.timestampPeriod only, MoltenVK-clean) brackets the terrain + mech island
+render passes with 3 stamps (pass-start / draws-start / pass-end). Emits a
+`[VK_TERRAIN_ISLAND]`/`[VK_MECH_TIER1] GPU_TIMESTAMPS ...` line at island teardown.
+Gate OFF = zero query commands, byte-identical.
+
+Strict-native measured breakdown (800x600, EMA; full table in `.claude/VK-OPT-BACKLOG.md`):
+- **terrain = GPU FRAGMENT-bound** — gpu_draw 1026µs (mc2_01) / 817µs (mc2_24) =
+  67-73% of cpu_draw_us; setup 5µs negligible; ~2ns/px, scales to ≈4400µs at 1080p
+  (matches the reported baseline). Vertex/bind cost is trivial (20-32 patches).
+- **mech is NOT GPU-draw-bound** — gpu_draw only 17-25µs even at 122 inst/14814 verts.
+  The "mech ~5000µs draw" premise is a misdiagnosis; mech cost is `stage_us`
+  (SSBO build/upload 150-522µs) + submit/fence-wait, not the GPU pass.
+
+Phase 2 ships NO fix: the VK terrain frag is byte-matched to GL (dyn CSM 8 taps,
+static 16 taps, POM early-exit break all = GL) so there is no parity-safe fragment
+reduction — a cut would violate the parity mandate; GL pays the same cost
+(features-not-perf, not a regression). Verification: two strict-native visible
+captures gate-ON, 11/11 deterministic bookmarks each, no validation errors / strict
+abort / crash; `.claude/vk-drawperf/mc2_01/` + `.claude/vk-drawperf/mc2_24/`.
+Honest next lever = per-island submit/fence-wait serialization (structural, deferred).
+
 ## 2026-07-10 — VK-SWAPCHAIN-RESIZE-HARDEN-1 (LATEST — closes the NATIVE_WINDOW_IN_USE follow-up)
 
 `5207a070` fix(vk): swapchain resize recreate hardening. **Root-caused** the
