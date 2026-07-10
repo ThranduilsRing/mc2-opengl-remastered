@@ -1979,7 +1979,19 @@ void EnginePresentVk::shutdownImguiVulkanRenderer() {
     Impl& s = *impl_;
     if (s.dev) vkDeviceWaitIdle(s.dev);
     if (s.imguiVkInited) {
-        ImGui_ImplVulkan_Shutdown();
+        // VK-IMGUI-SHUTDOWN-GUARD-1: this can be reached twice at teardown —
+        // once from GuiRuntime::Shutdown() (which then calls ImGui::DestroyContext())
+        // and once from EnginePresentVk::destroy(). It can also be reached with
+        // imguiVkInited still true after a present-init failure that left the ImGui
+        // renderer backend torn down. ImGui_ImplVulkan_Shutdown()/DestroyDeviceObjects
+        // dereference the backend data unconditionally, so once the context or its
+        // BackendRendererUserData is gone the call faults with a null read at
+        // offset 0x88 (VulkanInitInfo). Mirror ImGui_ImplVulkan_GetBackendData()'s
+        // own null contract here so the call is idempotent regardless of ordering.
+        if (ImGui::GetCurrentContext() != nullptr &&
+            ImGui::GetIO().BackendRendererUserData != nullptr) {
+            ImGui_ImplVulkan_Shutdown();
+        }
         s.imguiVkInited = false;
     }
     s.pendingImguiDrawData = nullptr;
