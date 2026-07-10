@@ -1,6 +1,39 @@
 # VK-ARC-STATE — current state block (update every session)
 
-## 2026-07-10 — VK-DRAW-PERF-1 phase 1: GPU-timestamp breakdown (LATEST)
+## 2026-07-10 — VK-NOINTEROP-STRICT-REVIEW: proof regenerated, prior proof invalidated (LATEST)
+
+The checked-in no-interop proof (`.claude/vk-nointerop-resource-strict-review-current/`,
+untracked, built dirty at `a7e3e5af`, 7 commits behind) was a **realized false-pass**:
+`check_vk_nointerop_log.py` exited 0 while the 126 ms/frame 8192² glGetTexImage CSM
+readback was active (later killed by `62707331`). Adversarial review found the checker
+FORBIDDEN[] greped only trace/present strings (never GL-readback/interop entry points),
+the islands' `forbidden_*` counters were **declared and printed but never incremented**
+(terrain fallback readback bumped nothing — H1/H2), `max()`-over-frames let one good
+frame pass (H3), the GL canaries were emitted-but-never-asserted and their gates weren't
+even set (H4), `MC2_VK_*_INTEROP=1` sat unreconciled in a "no-interop" proof (H5), and
+there was no dirty/sha provenance gate (H6).
+
+Hardened this session (checker + runner + engine):
+- Checker rewrite: per-frame `[VK_*_PERFRAME_READBACK]` marker in FORBIDDEN; every island
+  health line REQUIRED present with all `forbidden_*`/`depthin_*` == 0 (missing = FAIL);
+  frame-consistency from the single `[VK_PRESENT]` line (≥ min-frames AND ≥ 0.5·present);
+  canary lines REQUIRED with draws=0/any_samples=0; `MC2_VK_SHADOW_DIRECT_CHAIN=1` required
+  when any interop name set; `--expect-sha` provenance (manifest git + per-bookmark build
+  stamps, dirty:false + sha match) + terrain `stage_us` ceiling.
+- Engine: terrain island now increments `g_forbidden.glGetTexImage` + emits a one-time
+  `[VK_TERRAIN_PERFRAME_READBACK v1]` marker at the per-frame shadow-readback fallback
+  sites (`copy_shadow_slot` perFrame callers, `copy_csm_array`, bisect-2); copy-once
+  asset-feed imports stay unwired (allowed, per METAL-GATE-AUDIT-2). `MC2_VISUAL_CAPTURE_EXIT_AFTER`
+  requests a clean shutdown after the sweep so island destroy + final logHealth reach the log.
+- Fingerprint contradiction fixed: `manifest_schema.git_block` now uses `git status
+  --porcelain -uno` (tracked-only), matching the engine build stamp; the manifest writer
+  had been overcounting untracked scratch as dirty.
+
+Proof regenerated at `<SHA>` with the hardened checker + canary gates enabled (visible
+window, sacrificial first bookmark). Prior proof archived to
+`.claude/vk-nointerop-proof-archive-a7e3e5af/` (invalidated, not deleted).
+
+## 2026-07-10 — VK-DRAW-PERF-1 phase 1: GPU-timestamp breakdown
 
 `721088fa` perf(vk): `MC2_VK_GPU_TIMESTAMPS` island GPU segment timers
 (header-only `GameOS/gameos/vk_gpu_timestamps.h`, default-OFF, verification-only
