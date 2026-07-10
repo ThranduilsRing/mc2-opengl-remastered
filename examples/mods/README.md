@@ -15,7 +15,7 @@ with the mods absent, the game is byte-identical.
 | mod | proves |
 |---|---|
 | `sample_equipment` | a genuinely NEW weapon (`sample:hot_medium_laser`) that goes LIVE via EQUIP-ADD-FILL-1: explicit `LegacyMasterId=40` fills a FREE compbas ordinal at load (both consumers: in-sim MasterComponent + mechlab row), `Enabled=TRUE` rides the S1 enable wire; gates `MC2_UNIT_PROFILE_DATA=1 MC2_EQUIPMENT_ADD=1`; modlint-clean |
-| `sample_variant`   | a new namespaced unit variant (`sample:atlas_laserboat`) on a stock chassis, 3-layer loadout join, modlint-clean |
+| `sample_variant`   | the generated `unit.fit` format + 3-layer loadout join for `sample:atlas_laserboat` on a stock chassis, modlint-clean. **OVERLAY-only — does NOT live-spawn a new variant today** (see the variant-path note below); for a spawnable variant use `sample_new_variant` |
 | `sample_new_variant` | the LEGACY zero-code variant ADD (UNIT-VARIANT-ADD-1 / S4): whole-file-shadows `data/objects/atlas.csv` with an appended 4th variant block at row 314 = 23+97×3 (`Atlas AS7-X Sampler`, distinct loadout); no gate, no engine change; `mc2_modlint --mod` now lints shadowed chassis CSVs (VARC_ rules: stride, unreachable blocks, duplicate names, loadout refs, truncation) |
 | `sample_bad_mod`   | INTENTIONAL failures the validator catches with modder-first messages (exit 1) |
 | `core_unlocks`     | re-surface TWO dormant stock weapons (Clan Gauss Rifle 113, ER PPC 146) via the CLEAN enabled->purchase wire (EQUIP-ENABLE-WIRE-1: tiny `[Equipment] b Enabled=TRUE` def overrides, gate `MC2_UNIT_PROFILE_DATA=1`; enable-only, purchase.fit stays authoritative) |
@@ -34,6 +34,21 @@ All gates default OFF → with them unset the game is byte-identical stock.
 
 Activate any mod with EITHER the launcher / `MC2_ACTIVE_MOD=<id>` OR
 `MC2_MOD_DEPS=<abs path>` (alternative paths — do not set both).
+
+## Which variant-add path? (READ before picking sample_variant vs sample_new_variant)
+
+There are TWO variant examples and they are NOT interchangeable:
+
+* **`sample_new_variant` — LIVE, spawnable (use this to actually add a variant).**
+  Legacy zero-code CSV-shadow ADD (S4 / UNIT-VARIANT-ADD-1): whole-file-shadows a
+  stock chassis CSV (`data/objects/<mech>.csv`) with an appended variant block.
+  No engine gate. The variant appears in the mech bay and is purchasable. This is
+  the supported add-a-variant path today.
+* **`sample_variant` — OVERLAY-only, NOT spawnable yet.** Ships a generated
+  `unit.fit`; the shipped generated-unit path only *overlays facets* onto units a
+  mission already spawns (`sourceGeneratedVariantJump`). It is a format /
+  round-trip reference, not a live spawn. Registry-side variant ADD from a
+  generated def is the documented CLEAN follow-on (not implemented).
 
 ## What "modlint-clean" means here (honest scope)
 

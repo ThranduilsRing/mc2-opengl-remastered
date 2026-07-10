@@ -1,4 +1,24 @@
-# sample_variant — a new unit variant on a stock chassis
+# sample_variant — generated unit.fit (OVERLAY, not yet live-spawnable)
+
+> ## ⚠ STATUS: overlay-only — does NOT spawn a new variant in-game today
+>
+> This mod ships a **generated `unit.fit`** under `data/defs/units/`. The shipped
+> engine path for generated unit defs is an **OVERLAY**
+> (`sourceGeneratedVariantJump` / `sourceGeneratedChassisFacets`,
+> `code/unitprofile_fit.cpp` / `code/mech.cpp`): it patches facets onto units a
+> mission **already spawns**, keyed by chassis stem + variant name. It does
+> **NOT** add a new selectable/spawnable variant. Load this mod and you will see
+> no new mech in the bay list.
+>
+> **Want a variant that actually appears and is purchasable?** Use
+> **`sample_new_variant`** (the S4 legacy CSV-shadow ADD path) instead — that one
+> spawns. Registry-side variant ADD (synthesizing a LogisticsVariant from a
+> generated unit def, no whole-CSV shadow) is the documented CLEAN follow-on and
+> is not implemented yet.
+>
+> What this example DOES prove: the generated unit-def format, the namespaced
+> unit id, the 3-layer loadout join shape, and modlint-clean validation — a
+> useful authoring/round-trip reference, just not a live spawn.
 
 Adds `sample:atlas_laserboat`, an energy-heavy variant on the EXISTING stock
 Atlas chassis (`core:atlas`) — no new art. Its loadout mounts
