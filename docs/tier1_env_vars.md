@@ -486,8 +486,6 @@ Crash handlers still write to stderr as the last-resort path.
 | `ANIM_GATE` | Animation eligibility summary | `MC2_BLDG_TYPE_ANIM_STATIC_ELIGIBLE` stderr |
 | `SPFLUSH_COST_SPLIT` | Static prop flush perf | `MC2_STATIC_PROP_FLUSH_COST_SPLIT=1` stderr |
 | `TerrainLOD_prod` | Terrain chunk production telemetry | `[TerrainLOD prod]` stderr |
-| `TERRAIN_ACTIVE_AB` | A/B false-negative counts | `MC2_TERRAIN_ACTIVE_AB` stderr |
-| `TERRAIN_SOLID_AB` | Solid window A/B counts | `MC2_TERRAIN_SOLID_AB` stderr |
 | `CONFIG` | Feature gate snapshot at startup | (new) |
 | `BUILD` | Build identity at startup | (new) |
 | `DEVICE` | GPU/driver info at startup | (new) |

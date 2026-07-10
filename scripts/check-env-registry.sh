@@ -632,7 +632,6 @@ ALLOWLIST=(
     MC2_TACTIC_WEIGHTS                # feature -- brain tactic-weights gate
     MC2_TACTIC_WEIGHTS_B              # feature -- brain tactic-weights-B gate
     MC2_TARGETING_GUARD               # feature -- targeting guard gate
-    MC2_TERRAIN_ACTIVE_AB             # parity
     MC2_TERRAIN_CAM_DIAG              # trace
     MC2_TERRAIN_CEMENT_DIAG_CONNECT   # trace
     MC2_TERRAIN_CLIFF_POM             # feature -- terrain cliff triplanar POM gate
@@ -673,7 +672,6 @@ ALLOWLIST=(
     MC2_TERRAIN_SLOPE_BIAS            # feature -- terrain slope-bias gate
     MC2_TERRAIN_SLOPE_BIAS_STRENGTH   # override -- terrain slope-bias strength tuning
     MC2_TERRAIN_SNOW_BRIGHTNESS_DAMPEN  # override -- terrain snow-brightness-dampen tuning
-    MC2_TERRAIN_SOLID_AB              # parity
     MC2_TERRAIN_VISUAL_HEIGHT_FILE    # override -- terrain visual-height file override
     MC2_TEXMGR_KTX_PRIMARY            # feature -- texture-manager KTX-primary gate
     MC2_TEXMGR_LOAD_TRACE             # trace

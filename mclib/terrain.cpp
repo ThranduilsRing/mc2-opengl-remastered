@@ -2302,13 +2302,8 @@ long Terrain::update (void)
 	// Terrain LOD chunk Phase 4: skip legacy vertex/quad list build when chunk
 	// path owns rendering. makeLists populates vertexList/quadList used by the
 	// per-quad draw() loop; that loop is suppressed under the same env gate.
-	// 8z-A1: MC2_TERRAIN_ACTIVE_AB retired (8a/8b/8c shipped, FN=0 validated).
-	static const bool s_8zWarnedAB = []() {
-		if (getenv("MC2_TERRAIN_ACTIVE_AB") || getenv("MC2_TERRAIN_SOLID_AB"))
-			printf("[8Z_RETIRED_ENV] MC2_TERRAIN_ACTIVE_AB / MC2_TERRAIN_SOLID_AB have no effect (8a/8b/8c shipped)\n");
-		return true;
-	}();
-	(void)s_8zWarnedAB;
+	// 8z-A1: MC2_TERRAIN_ACTIVE_AB / MC2_TERRAIN_SOLID_AB retired (8a/8b/8c shipped,
+	// FN=0 validated); retirement-warn reader removed by GATE-RETIRE-1.
 	if (!mc2TerrainLodChunkEnabled())
 	{
 		ZoneScopedN("Terrain::update makeLists");
