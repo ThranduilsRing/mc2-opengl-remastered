@@ -58,7 +58,9 @@ add_library(mc2_tglloader STATIC
     # loader lib must carry them too. render_contract.cpp's GL calls are runtime-
     # gated and resolve against the GLEW/OpenGL the viewer exe links.
     "${CMAKE_SOURCE_DIR}/mclib/render_contract.cpp"
-    "${CMAKE_SOURCE_DIR}/code/frame_jobs.cpp"
+    # MC2-JOBS-CORE-1: frame_jobs.cpp -> job_system.cpp (+ jobs_fatal.cpp).
+    "${CMAKE_SOURCE_DIR}/code/job_system.cpp"
+    "${CMAKE_SOURCE_DIR}/code/jobs_fatal.cpp"
     # --- Stuff library TUs (game-free math + containers) ---
     "${CMAKE_SOURCE_DIR}/mclib/stuff/affinematrix.cpp"
     "${CMAKE_SOURCE_DIR}/mclib/stuff/angle.cpp"

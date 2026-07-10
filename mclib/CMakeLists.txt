@@ -104,7 +104,14 @@ set(SOURCES ${SOURCES}
     # that links mclib but builds its own main (EditRel, data_tools). The TU is
     # self-contained (stdlib only). Removed from mc2's own SOURCES to avoid a
     # duplicate definition.
-    ../code/frame_jobs.cpp
+    #
+    # MC2-JOBS-CORE-1: code/frame_jobs.cpp was evolved into code/job_system.cpp
+    # (keeps the legacy free-function API AND adds the dormant mc2::jobs API) +
+    # the always-compiled fatal-check TU code/jobs_fatal.cpp. Both are
+    # self-contained (stdlib only). frame_jobs.h remains as a back-compat shim
+    # header; the .cpp is gone.
+    ../code/job_system.cpp
+    ../code/jobs_fatal.cpp
     )
 
 # Track D — Assimp-backed FBX/GLB mech importer.

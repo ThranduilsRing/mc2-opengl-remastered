@@ -1,8 +1,19 @@
 // code/frame_jobs.h
 // FRAME-JOBS-1: Fixed worker pool for batched CPU-only prep passes.
 // Workers must not call GL, gos_*, txmmgr, or ObjectManager mutation.
-// Gates: MC2_FRAME_JOBS=1  MC2_FRAME_JOBS_WORKERS=N (1-8)
-//        MC2_FRAME_JOBS_BATCH=N (default 128)  MC2_FRAME_JOBS_TRACE=1
+// Gates: MC2_FRAME_JOBS=1  MC2_FRAME_JOBS_WORKERS=N (1..hw_concurrency)
+//        MC2_FRAME_JOBS_BATCH=N (default 64)  MC2_FRAME_JOBS_TRACE=1
+//
+// MC2-JOBS-CORE-1: this header is now the BACK-COMPAT SHIM. The pool was
+// evolved into code/job_system.{h,cpp} (the new domain-tagged `mc2::jobs` API);
+// this file keeps the exact FRAME-JOBS-1 free-function surface so existing
+// callers (objmgr.cpp, terrobj.cpp, mission.cpp, msl.cpp) compile unchanged and
+// with ZERO behavior change. The implementation lives in job_system.cpp. New
+// code should prefer the `mc2::jobs` API in job_system.h.
+//
+// Header-drift note (CORE-1 fix): the comment previously claimed workers "1-8"
+// and batch default 128; the code clamps to hw_concurrency and defaults batch
+// to 64. The code wins — corrected above.
 #pragma once
 #include <functional>
 #include <cstdint>
