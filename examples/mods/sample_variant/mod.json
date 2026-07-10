@@ -5,6 +5,6 @@
   "version": "1.0.0",
   "author": "MC2 remaster examples",
   "type": "assets",
-  "dependencies": [],
+  "dependencies": ["sample_equipment"],
   "description": "Worked example: adds a new unit variant sample:atlas_laserboat on the EXISTING stock Atlas chassis (no new art). An energy-heavy loadout mounting sample:hot_medium_laser (from the sample_equipment mod) plus stock lasers. Ships a generated unit.fit under data/defs/units/ plus a modlint facts-JSON. Proves: namespaced unit id + 3-layer loadout join (loadout->hardpoint->socket) + generated unit source + modlint-clean."
 }

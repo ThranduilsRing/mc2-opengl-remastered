@@ -342,6 +342,39 @@ TracyGpuZone("MyGPUZone");      // GPU zone (timer query)
 
 ---
 
+## 9. Modding gameplay content (units / weapons / variants)
+
+Everything above is *engine/asset* modding (shaders, effects, textures). To mod
+**gameplay content** — new weapons, new mech variants, enabling dormant stock
+equipment — use the shipped mod system (`mod.json` / `MC2_MOD_DEPS`) plus the
+generated-definition overlay/ADD paths. Start here:
+
+- **`examples/mods/README.md`** — five worked, real mods (equipment ADD, variant
+  ADD, dormant-weapon enable, a validator fixture) with the per-mod env-gate
+  table, conflict semantics, and the `mod.json` manifest reference.
+- **`docs/modding-weapons.md`** — annotated `equipmentdef.fit` field reference
+  (every block/token, the `FireExecutor`/`RangeBucket` vocabularies, the
+  facts-JSON schema, and the `EQV_*` validator codes).
+- **`.claude/ADD-PATH-RECON-1.md`** — the design recon behind the ADD paths
+  (S1 enable wire, S2 equipment ADD, S4 variant ADD, S5 chassis-add future work).
+
+### Env-gate quick table
+
+All default OFF → unset = byte-identical stock. Activate a mod with EITHER the
+launcher / `MC2_ACTIVE_MOD=<id>` OR `MC2_MOD_DEPS=<abs path>` (alternatives).
+
+| goal | gates |
+|---|---|
+| add a NEW weapon (free ordinal, live + purchasable) | `MC2_UNIT_PROFILE_DATA=1` `MC2_EQUIPMENT_ADD=1` |
+| enable a DORMANT stock weapon | `MC2_UNIT_PROFILE_DATA=1` |
+| re-stat an EXISTING stock weapon (overlay) | `MC2_UNIT_PROFILE_DATA=1` `MC2_EQUIPMENT_DEFINITION_SOURCE=generated` |
+| add a NEW spawnable variant (CSV shadow) | *(none — pure data)* |
+
+Validate any mod offline before launching: `mc2_modlint --manifest`,
+`--equipment`, `--unit`, or `--mod` (see `examples/mods/README.md`).
+
+---
+
 ## Appendix: Coordinate Spaces
 
 MC2 uses two coordinate spaces that must not be mixed:

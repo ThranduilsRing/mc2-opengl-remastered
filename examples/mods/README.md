@@ -150,3 +150,23 @@ order) — the same precedence the engine loader uses. `--stock-root` (the game
 install root containing the loose `data/` tree) enables the stock-override
 check; without it only duplicate + reserved-namespace checks run. Exit 1 when
 findings are present.
+
+### Conflict consequences (what actually happens at runtime)
+
+The report NAMES conflicts; here is what each one MEANS for your content
+(classifier: `mclib/mod_conflict.h`, loader: `mclib/file.cpp`):
+
+| finding | runtime outcome |
+|---|---|
+| `MODCONFLICT_DUPLICATE_FILE` | The overlay is **whole-file, first-wins**: the higher-priority mod's copy of that file is used and the lower-priority mod's copy is **dropped entirely** — not merged. If two mods both shadow `data/objects/atlas.csv`, only the winner's variants exist; the loser's appended blocks vanish silently were it not for this report. |
+| `MODCONFLICT_DUPLICATE_DEF_ID` | Two mods ship the same `data/defs/...` qualified id (e.g. both define `sample:hot_medium_laser`). Higher-priority def wins; the loser's def is ignored. |
+| `MODCONFLICT_STOCK_OVERRIDE` | A mod def key also exists in stock loose `data/` — the mod **replaces** that stock def. One visibility line per override (legitimate, but flagged so it is never a surprise). |
+| `MODCONFLICT_RESERVED_CORE_NAMESPACE` | A mod ships a def under `core:` (`data/defs/{units,equipment}/core/...`). That is the deliberate stock-override channel; surfaced, never silent. |
+
+**EQUIP-ADD ordinal conflict (separate from the file-level report):** two ADD
+defs claiming the SAME `LegacyMasterId`, or a def targeting a POPULATED stock
+ordinal that is not that row's own core def, is **first-wins with an
+`[EQUIP-ADD]` finding and NO fill** — the second claimant's row is not
+materialized (never silent, never auto-reassigned). Offline the same case is
+`EQV_ADD_ORDINAL_UNAVAILABLE`. Keep every ADD weapon on its own free ordinal in
+`0..254`.

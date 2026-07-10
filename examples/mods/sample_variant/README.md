@@ -24,6 +24,17 @@ Adds `sample:atlas_laserboat`, an energy-heavy variant on the EXISTING stock
 Atlas chassis (`core:atlas`) — no new art. Its loadout mounts
 `sample:hot_medium_laser` (from the `sample_equipment` mod) plus stock lasers.
 
+## Dependency on sample_equipment
+
+The `[Loadout*]` blocks mount `sample:hot_medium_laser`, which is defined by the
+`sample_equipment` mod — so `mod.json` declares `"dependencies":
+["sample_equipment"]`. The engine loader honors that (load order: active mod >
+dep[0] > … > base), so `sample_equipment` loads first and the id resolves. Note
+this mount is **forward-looking**: because this variant is overlay-only (banner
+above), the loadout is not consumed by a live spawn today — the declared
+dependency states intent and keeps the example coherent for when the registry
+variant-ADD path lands.
+
 ## Files
 
 * `data/defs/units/sample/atlas/laserboat/unit.fit` — the generated mechdef.

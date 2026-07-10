@@ -21,6 +21,31 @@ mech bay list, purchase (chassis is already in the mission's `purchase.fit
 post-mission save recovery (mod-variant recovery is already hardened in
 `code/logisticsdata.cpp`).
 
+## How to produce the shadowed `atlas.csv` (for YOUR variant)
+
+The stock `atlas.csv` is NOT in this repo — it lives inside the game install
+(loose under `data/objects/`, or extracted from the object FST). To build your
+own shadowed copy:
+
+1. **Get the stock file.** Copy `<install>/data/objects/atlas.csv` (or extract it
+   from the FST with the game's asset tools). This is your base — keep it
+   byte-identical below the append point.
+2. **Find the append row.** Variant blocks are 97 rows; block `n`'s `VariantName`
+   sits at 1-based row `23 + 97 × n`. The stock Atlas has 3 blocks (n=0,1,2), so
+   the next name lands at row **314 = 23 + 97 × 3**. Pad with blank filler rows up
+   to the block start if the stock file ends short (this example adds one filler
+   at row 310).
+3. **Append your 97-row block.** New `VariantID`, `VariantName`, and the loadout
+   component ids (all must be stock-available compbas ids unless you also ship a
+   `sample_equipment`-style ADD). NEVER insert between existing blocks — mission
+   `.fit` files reference variants by row index (`VariantNumber`).
+4. **Lint it** (next section). `mc2_modlint` computes the expected rows and points
+   at the exact off-stride / truncated / duplicate-name row.
+
+There is no dedicated CSV generator script — the file is authored by hand from
+the stock base and validated by `mc2_modlint`. A one-off helper is left as a
+follow-up; the lint step is the safety net.
+
 ## The layout is FRAGILE — lint it
 
 Rows are 1-based; a block is 97 rows; the name MUST sit at `23 + 97n`; the
