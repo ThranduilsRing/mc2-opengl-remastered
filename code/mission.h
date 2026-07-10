@@ -146,6 +146,17 @@ struct Objective
 typedef Objective *ObjectivePtr;
 
 //----------------------------------------------------------------------------------
+// SIM-SPEED-BUTTON-1 (mission.cpp): runtime-settable sim-speed multiplier,
+// seeded from MC2_SIM_SPEED (default 1.0), clamped [0.25, 4.0]. Applied at the
+// two drivers of gameplay time in lockstep: scenarioTime advance (mission.cpp)
+// and frameLength (mechcmd2.cpp). Setters log a [SIM-SPEED v1] stderr line.
+// Reset to the env seed at every Mission::init so a HUD-set speed is scoped to
+// the mission that set it (logistics / next mission start back at the seed).
+float simSpeedGetMultiplier();
+void  simSpeedSetMultiplier( float v );
+void  simSpeedResetToSeed();
+
+//----------------------------------------------------------------------------------
 // To operate, simply call init with the filename of the mission.
 // that's all she wrote.  update and render return the mission completion status.
 class Mission

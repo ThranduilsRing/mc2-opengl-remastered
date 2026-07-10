@@ -759,6 +759,11 @@ ALLOWLIST=(
     MC2_WATER_S6_COST                 # trace -- water S6 setupTextures QPC cost summary (600-frame idiom)
     MC2_WATER_S6_TRACE                # trace -- water S6 armed-skip ownership transitions
     MC2_WINDOW_RESIZABLE              # feature -- SDL resizable window when windowed (default ON with MC2_WINDOWED; =0 fixed)
+
+    # --- batch 9 (SIM-CLOCK-SPEED-1 port + SIM-SPEED-BUTTON-1, 2026-07-09) ---
+    MC2_HUD_SIM_SPEED                 # feature -- HUD sim-speed tab 1x/2x/4x (requires MC2_HUD_IMGUI_TABS; default OFF)
+    MC2_SIM_CLOCK_TRACE               # trace -- once-per-second sim/wall clock ratio stderr line
+    MC2_SIM_SPEED                     # override -- sim-speed multiplier env seed [0.25,4.0], runtime-settable via HUD speed tab
 )
 
 if [[ $VERBOSE -eq 1 ]]; then

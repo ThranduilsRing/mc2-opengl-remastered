@@ -421,6 +421,7 @@ class ControlGui
 		static void hudTabUpdateTacMap( void* user );
 		static void hudTabUpdateInfo( void* user );
 		static void hudTabRenderTest( void* user );   // MC2_HUD_TABS_TEST witness tab
+		static void hudTabRenderSimSpeed( void* user ); // MC2_HUD_SIM_SPEED speed tab (SIM-SPEED-BUTTON-1)
 		void renderHudTabChromeImGui();               // tab-strip chrome for buttonCommand<0 tabs
 
 		void updateVehicleTab( int mouseX, int mouseY, bool bLOS );

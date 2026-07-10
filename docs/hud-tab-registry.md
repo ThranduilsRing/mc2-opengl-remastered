@@ -13,6 +13,12 @@ loops + a hand-written cycle table) with `HudTabs::Registry`
 - `MC2_HUD_TABS_TEST=1` — additionally registers a 4th "test" witness tab
   (needs the main gate to be visible). Left in deliberately as the worked
   example.
+- `MC2_HUD_SIM_SPEED=1` — SIM-SPEED-BUTTON-1: registers a "speed" tab (needs
+  the main gate to be visible) with 1x/2x/4x buttons driving the runtime
+  sim-speed multiplier behind `MC2_SIM_SPEED` (`simSpeedSetMultiplier`,
+  `code/mission.cpp`). Buttons disabled in multiplayer; the multiplier resets
+  to the env seed at every `Mission::init`. First real consumer of the
+  modder recipe below.
 - Pin-to-legacy is shared with slice B (`HudImGui::pinnedToLegacy()`): any
   ImGui failure drops the whole HUD-ImGui family back to legacy for the
   session.

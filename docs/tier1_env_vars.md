@@ -75,6 +75,7 @@ Headless Vulkan probe / backend-skeleton exercise gates. All read via bare `gete
 - `MC2_HUD_IMGUI_PAUSE=1` — slice B, pattern-prover ImGui port of the in-mission PauseWindow (`code/pausewindow.cpp` + the `code/hudimguipanel.cpp` helper). Panel laid out inside `gos_ComputeHudCanvasBox` (same rect legacy HUD chrome is remapped into); clicks dispatch to the existing `PauseWindow::handleClick`. Pin-to-legacy: any ImGui failure permanently falls back to the legacy render for the session. Default **OFF** = byte-identical legacy pause window.
 - `MC2_HUD_IMGUI_TABS=1` — slice C, data-driven command-bar tab registry (`code/hudtabregistry.{h,cpp}` + wiring in `code/controlgui.cpp`). Replaces the hardcoded 3-tab model (enum-consecutive `TACMAP_TAB..VEHICLE_TAB` + hand-written cycle table) with an ordered registry: render/update dispatch, help text, isOverTacMap, click mutual-exclusion, and TAB-hotkey cycle all route through it; the stock 3 tabs keep their legacy ControlButton chrome and PRESSED-bit sync. Presence-gated; pin-to-legacy shared with the slice-B helper. Default **OFF** = every legacy branch runs unchanged (registry registered but never consulted).
 - `MC2_HUD_TABS_TEST=1` — slice C witness tab (requires `MC2_HUD_IMGUI_TABS=1` to be visible). Registers a 4th "test" tab with no legacy button: ImGui-drawn tab-strip chrome (bottom-band shrink + canvas transform via `HudImGui::hudShrinkPoint`/`hudToDisplay`) and a trivial ImGui body (build stamp + frame counter) over the tac-area rect. The modder's worked example — left in deliberately, double-gated. Default **OFF**.
+- `MC2_HUD_SIM_SPEED=1` — SIM-SPEED-BUTTON-1 (requires `MC2_HUD_IMGUI_TABS=1` to be visible). Registers a "speed" tab (no legacy button, ImGui chrome + body like the test tab) with 1x/2x/4x buttons driving the runtime sim-speed multiplier behind `MC2_SIM_SPEED` (`simSpeedSetMultiplier`, `code/mission.cpp` — the SAME mechanism, no second path). Guards: buttons disabled in multiplayer; multiplier resets to the env seed at every `Mission::init`; pause freezes `scenarioTime` regardless. Clicks log `[SIM-SPEED-BUTTON v1]` + `[SIM-SPEED v1]` to stderr; dev-shell `sim_speed [--value V]` drives the same setter. Default **OFF**.
 
 ## Frame-graph executor + backend-iface seam (RENDER-FRAME-GRAPH ARC)
 
@@ -434,13 +435,17 @@ call from inside a draw-bind path.
 
 ## Sim clock speed + trace (SIM-CLOCK-SPEED-1 — 2026-07-06)
 
-- `MC2_SIM_SPEED=<float>` — sim-speed multiplier, default **1.0**, clamped `[0.25, 4.0]`.
+- `MC2_SIM_SPEED=<float>` — sim-speed multiplier SEED, default **1.0**, clamped `[0.25, 4.0]`.
   Applied at both drivers of gameplay time: `scenarioTime` advance (`code/mission.cpp`,
-  wall-clock-driven mission timer) and `frameLength` (`code/mechcmd2.cpp:2217`, drives
+  wall-clock-driven mission timer) and `frameLength` (`code/mechcmd2.cpp`, drives
   mover/object/GOSFX motion+animation). The two are kept in lockstep so mission timers
-  and on-screen motion speed up/slow down together. Opt-in feature seam for a
-  user-facing "2x speed" knob (UI button follow-up); unset env = no-op (`*1.0`).
-  Allowlisted in `scripts/run_smoke.py` (Popen drops non-allowlisted env).
+  and on-screen motion speed up/slow down together; single source
+  `simSpeedGetMultiplier()`/`simSpeedSetMultiplier()` (`code/mission.cpp`, declared in
+  `mission.h`). SIM-SPEED-BUTTON-1 made the value runtime-settable: the HUD "speed" tab
+  (`MC2_HUD_SIM_SPEED`) and dev-shell `sim_speed [--value V]` drive the same setter; the
+  value resets to this env seed at every `Mission::init`. NOT applied on the
+  `MC2_SMOKE_FIXED_TIMESTEP` branch (smoke determinism keeps 1x). Unset env, never set =
+  no-op (`*1.0`). Allowlisted in `scripts/run_smoke.py` (Popen drops non-allowlisted env).
 - `MC2_SIM_CLOCK_TRACE=1` — once-per-second stderr diagnostic line comparing
   wall-elapsed vs scenarioTime-elapsed vs frame count vs live `frameLength`:
   `[SIM-CLOCK-TRACE] wall=Xs sim=Ys ratio(sim/wall)=Z frames=N frameLength=F`.

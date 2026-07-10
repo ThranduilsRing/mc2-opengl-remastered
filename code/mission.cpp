@@ -47,23 +47,76 @@ extern void terrainMaterials_apply(const char*);     // TERRAIN-MATERIAL-LIB-1
 
 // SIM-CLOCK-SPEED-1: gated sim-speed multiplier + once-per-second wall/sim
 // clock trace. Diagnostic for the "sim runs ~2x wall time" field report.
-// simSpeedMultiplier(): MC2_SIM_SPEED=<float>, default 1.0, clamped [0.25,4.0].
 // simClockTraceTick(): MC2_SIM_CLOCK_TRACE=1 arms a once-per-second stderr
 // line comparing wall-elapsed vs scenarioTime-elapsed vs frame count vs the
 // live frameLength value (extern, mechcmd2.cpp).
+//
+// SIM-SPEED-BUTTON-1: the multiplier is now RUNTIME-SETTABLE (HUD speed tab /
+// dev-shell `sim_speed`), env MC2_SIM_SPEED is the SEED. Same clamp
+// [0.25, 4.0], same default 1.0; env-only behavior is unchanged (seeded on
+// first read, never set). Declared in mission.h.
 extern float frameLength;
 
-static float simSpeedMultiplier()
+static float simSpeedClamp(float v)
 {
-	static const float s_mult = []() -> float {
+	if (v < 0.25f) v = 0.25f;
+	if (v > 4.0f) v = 4.0f;
+	return v;
+}
+
+static float s_simSpeedRuntime = -1.0f;   // < 0 = unseeded (read env on first use)
+
+float simSpeedGetMultiplier()
+{
+	if (s_simSpeedRuntime < 0.0f)
+	{
 		const char* env = getenv("MC2_SIM_SPEED");
-		if (!env) return 1.0f;
-		float v = (float)atof(env);
-		if (v < 0.25f) v = 0.25f;
-		if (v > 4.0f) v = 4.0f;
-		return v;
-	}();
-	return s_mult;
+		s_simSpeedRuntime = env ? simSpeedClamp((float)atof(env)) : 1.0f;
+	}
+	return s_simSpeedRuntime;
+}
+
+void simSpeedSetMultiplier(float v)
+{
+	const float prev = simSpeedGetMultiplier();
+	s_simSpeedRuntime = simSpeedClamp(v);
+	fprintf(stderr, "[SIM-SPEED v1] multiplier=%.2f (was %.2f)\n",
+		(double)s_simSpeedRuntime, (double)prev);
+	fflush(stderr);
+}
+
+void simSpeedResetToSeed()
+{
+	s_simSpeedRuntime = -1.0f;   // re-seed from MC2_SIM_SPEED on next read
+}
+
+// SIM-SPEED-BUTTON-1: dev-shell `sim_speed [--value V]` command — get (no
+// value) or set the runtime multiplier through the SAME setter the HUD speed
+// tab uses. Registered from Mission::init; inert unless MC2_DEV_SHELL=1.
+#include "../GameOS/gameos/gos_dev_shell.h"
+static bool devShellSimSpeed(const char* paramsJson,
+                             std::string& dataJsonOut, std::string& errorOut)
+{
+	// flat params object from our own client: {"value":"2"} or {}
+	if (paramsJson)
+	{
+		const char* p = strstr(paramsJson, "\"value\"");
+		if (p)
+		{
+			p = strchr(p + 7, ':');
+			if (p)
+			{
+				++p;
+				while (*p == ' ' || *p == '\t' || *p == '"') ++p;
+				simSpeedSetMultiplier((float)atof(p));
+			}
+		}
+	}
+	char buf[64];
+	sprintf(buf, "{\"multiplier\":%.2f}", (double)simSpeedGetMultiplier());
+	dataJsonOut = buf;
+	(void)errorOut;
+	return true;
 }
 
 static void simClockTraceTick(float scenarioTimeNow)
@@ -801,7 +854,7 @@ long Mission::update (void)
 					// so mission timers and frameLength-driven motion (mechcmd2.cpp)
 					// advance in lockstep under the same multiplier. NOT applied on the
 					// MC2_SMOKE_FIXED_TIMESTEP branch above — smoke determinism keeps 1x.
-					scenarioTime += (milliseconds / 1000.0f) * simSpeedMultiplier();
+					scenarioTime += (milliseconds / 1000.0f) * simSpeedGetMultiplier();
 				}
 				LastTimeGetTime = currentTimeGetTime;
 			}
@@ -2375,6 +2428,13 @@ void Mission::init (const char *missionName, long loadType, long dropZoneID, Stu
 	extern int g_lightProbeSetupPath; g_lightProbeSetupPath = 1; // [GPUPROPS v1]
 	ZoneScopedN("Mission::init");
 	mission_phase_begin();
+
+	// SIM-SPEED-BUTTON-1: HUD-set sim speed is scoped to the mission that set
+	// it — every mission starts back at the MC2_SIM_SPEED env seed (1.0 when
+	// unset). Also (re)register the dev-shell get/set command (inert without
+	// MC2_DEV_SHELL=1; re-registration replaces).
+	simSpeedResetToSeed();
+	gos_dev_shell::registerCommand("sim_speed", devShellSimSpeed);
 	// F3 CPU projection cost-baseline: flush previous-mission samples and
 	// clear ring buffer. No-op when env OFF.
 	::mc2_cpu_proj_cost::hard_reset("Mission::init");

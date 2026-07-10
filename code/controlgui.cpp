@@ -143,6 +143,23 @@ void ControlGui::initHudTabRegistry()
 		t.countsAsTacMap = false;
 		hudTabRegistry.add( t );
 	}
+
+	// SIM-SPEED-BUTTON-1: double-gated sim-speed tab (MC2_HUD_SIM_SPEED;
+	// needs MC2_HUD_IMGUI_TABS like every registry consumer). 1x/2x/4x
+	// buttons drive the runtime multiplier behind MC2_SIM_SPEED
+	// (simSpeedSetMultiplier, mission.cpp) — the same mechanism, no second
+	// sim-speed path. Disabled in multiplayer (would desync the sim).
+	if ( HudImGui::envGateOn( "MC2_HUD_SIM_SPEED" ) )
+	{
+		t.id = "speed";
+		t.buttonCommand = -1;   // no legacy ControlButton; chrome is ImGui-drawn
+		t.render = &ControlGui::hudTabRenderSimSpeed;
+		t.update = 0;
+		t.helpTextHeaderID = 0;
+		t.helpTextID = 0;
+		t.countsAsTacMap = false;
+		hudTabRegistry.add( t );
+	}
 }
 
 void ControlGui::setActiveHudTab( int index, const char* via )
@@ -189,6 +206,65 @@ void ControlGui::hudTabRenderTest( void* user )
 	ImGui::TextUnformatted( "TEST tab (MC2_HUD_TABS_TEST)" );
 	ImGui::Text( "build: %s %s", __DATE__, __TIME__ );
 	ImGui::Text( "frame: %lu", s_frame );
+	HudImGui::endPanel();
+}
+
+// SIM-SPEED-BUTTON-1 tab body: 1x/2x/4x sim-speed buttons over the tac area
+// rect (same panel placement as the test tab: bottom-band shrink + canvas
+// transform via the slice-B helper). Clicks route through
+// simSpeedSetMultiplier (mission.cpp) — the shipped MC2_SIM_SPEED mechanism.
+// Guards: buttons disabled in multiplayer (sim-speed change would desync);
+// the multiplier itself resets to the env seed at every Mission::init, and
+// pause already freezes scenarioTime regardless of the multiplier.
+void ControlGui::hudTabRenderSimSpeed( void* user )
+{
+	ControlGui* self = (ControlGui*)user;
+	if ( !self->rectInfos )
+		return;
+	const GUI_RECT& r = self->rectInfos[0].rect;
+	float l = (float)r.left,  tY = (float)r.top;
+	float rt = (float)r.right, b = (float)r.bottom;
+	const float cy = 0.5f * ( tY + b );
+	HudImGui::hudShrinkPoint( l, tY, cy );
+	HudImGui::hudShrinkPoint( rt, b, cy );
+
+	float fontScale = 1.f;
+	if ( !HudImGui::beginPanel( "##hud_tab_simspeed", l, tY, rt, b, &fontScale ) )
+		return;
+	ImGui::SetWindowFontScale( fontScale );
+
+	const float current = simSpeedGetMultiplier();
+	ImGui::Text( "Sim speed: %.2fx", current );
+
+	if ( MPlayer )
+	{
+		ImGui::TextUnformatted( "(unavailable in multiplayer)" );
+		HudImGui::endPanel();
+		return;
+	}
+
+	static const float kSpeeds[3] = { 1.0f, 2.0f, 4.0f };
+	static const char* kLabels[3] = { "1x##simspeed", "2x##simspeed", "4x##simspeed" };
+	for ( int i = 0; i < 3; ++i )
+	{
+		if ( i )
+			ImGui::SameLine();
+		const bool active = ( current > kSpeeds[i] - 0.01f && current < kSpeeds[i] + 0.01f );
+		if ( active )
+			ImGui::PushStyleColor( ImGuiCol_Button, ImVec4( 0.1f, 0.45f, 0.1f, 1.f ) );
+		if ( ImGui::Button( kLabels[i], ImVec2( 48.f, 0.f ) ) )
+		{
+			fprintf( stderr, "[SIM-SPEED-BUTTON v1] click %.0fx (was %.2fx)\n",
+				(double)kSpeeds[i], (double)current );
+			fflush( stderr );
+			simSpeedSetMultiplier( kSpeeds[i] );
+		}
+		if ( active )
+			ImGui::PopStyleColor();
+	}
+
+	ImGui::TextUnformatted( "Resets at mission start." );
+
 	HudImGui::endPanel();
 }
 
