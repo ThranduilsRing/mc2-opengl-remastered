@@ -11,6 +11,16 @@ from datetime import datetime, timezone
 from pathlib import Path
 
 
+# NAMING NOTE (H5, VK-NOINTEROP-STRICT-REVIEW): several gates below are historically
+# named MC2_VK_*_INTEROP=1 (e.g. MC2_VK_SHADOW_INTEROP, MC2_VK_CSM_ARRAY_INTEROP,
+# MC2_VK_CSM_FULLMAP_INTEROP). Inside THIS no-interop proof they do NOT mean "use a
+# GL<->VK exportable-memory handoff". They arm the VK producer/consumer islands, which
+# are reconciled to the no-interop invariant ONLY by MC2_VK_SHADOW_DIRECT_CHAIN=1: the
+# shadow producer runs VK-native (direct-chain) and the terrain consumer points at its
+# VkImageView directly, so no per-frame GL CSM readback fires (see commit 62707331).
+# The hardened checker enforces this: if any MC2_VK_*_INTEROP=1 is set, it REQUIRES
+# MC2_VK_SHADOW_DIRECT_CHAIN=1 in the exe-confirmed gate_env. Renaming these gates is
+# out of scope for the review; the direct-chain gate is the load-bearing reconciliation.
 STRICT_ENV = {
     "MC2_RENDER_BACKEND": "vulkan",
     "MC2_DEBUG_STATE_DUMP": "1",
@@ -57,6 +67,13 @@ STRICT_ENV = {
     "MC2_VK_POST_HZB": "1",
     "MC2_VK_POST_HZB_DIRECT_CHAIN": "1",
     "MC2_VK_NO_GL_INTEROP_STRICT": "1",
+    # H4: arm the GL draw / screen-shadow canaries so the checker can REQUIRE them
+    # present with draws=0 / any_samples=0 (proves the GL scene-draw and screen-shadow
+    # paths issued nothing under the VK-owned strict stack).
+    "MC2_VK_TERRAIN_OVERLAY_GL_CANARY": "1",
+    "MC2_VK_DECAL_STATIC_GL_CANARY": "1",
+    "MC2_VK_TERRAIN_DECAL_GL_CANARY": "1",
+    "MC2_VK_SCREENSHADOW_GL_CANARY": "1",
 }
 
 
@@ -87,6 +104,11 @@ def main() -> int:
 
     env = os.environ.copy()
     env.update(STRICT_ENV)
+    # Clean shutdown after the bookmark sweep so the VK island destroy lines
+    # (forbidden_* counters) + final [VK_PRESENT] logHealth reach the capture log --
+    # the hardened checker REQUIRES them. Without this the game is killed on timeout
+    # and those shutdown-only lines are absent (the prior proof's exact gap).
+    env["MC2_VISUAL_CAPTURE_EXIT_AFTER"] = "1"
     if args.resource_strict:
         env["MC2_VK_NO_GL_INTEROP_RESOURCE_STRICT"] = "1"
     if args.view_mode:
