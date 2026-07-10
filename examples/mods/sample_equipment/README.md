@@ -34,6 +34,37 @@ is purchasable with no `purchase.fit` edit.
 * **modlint-clean**: `mc2_modlint --equipment modlint/hot_medium_laser.facts.json`
   → exit 0.
 
+## Required env gates (what makes the weapon purchasable live)
+
+Exactly TWO gates make the ADD materialize — both default OFF, so gates-off is
+byte-identical stock:
+
+| gate | value | why |
+|---|---|---|
+| `MC2_UNIT_PROFILE_DATA` | `1` | family gate for all unit/equipment modding |
+| `MC2_EQUIPMENT_ADD` | `1` | arms the EQUIP-ADD-FILL-1 pass that fills the free ordinal |
+
+**You do NOT need `MC2_EQUIPMENT_DEFINITION_SOURCE=generated` for the ADD path.**
+That gate controls the *overlay* (re-stat an EXISTING stock weapon by editing its
+green stats in place). The ADD-fill pass (`applyEquipmentAddFillIfEnabled`,
+`code/equipment_registry_engine.cpp`) reads the `equipmentdef.fit` sidecars
+directly via the mod index and is gated ONLY by the two vars above —
+independent of `MC2_EQUIPMENT_DEFINITION_SOURCE`. (An earlier planning note in
+`.claude/ADD-PATH-RECON-1.md` S2 said "requires SOURCE=generated"; that was the
+pre-ship assumption that the ADD would live inside the SOURCE-gated overlay pass.
+It does not — the shipped code and `tests/unit/` pin the two-gate contract.)
+
+## Activate the mod (pick ONE path)
+
+`MC2_ACTIVE_MOD` and `MC2_MOD_DEPS` are **alternative** activation paths — you
+do not set both:
+
+* **Launcher / `MC2_ACTIVE_MOD=sample_equipment`** — the ordinary path: copy
+  `examples/mods/sample_equipment/` into your install's `mods/` folder and tick
+  it (or name it directly).
+* **`MC2_MOD_DEPS=<abs path to the mod folder>`** — the direct path-list form
+  (highest-priority-first), handy for quick local testing without the launcher.
+
 ## Run it
 
 ```

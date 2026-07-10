@@ -66,7 +66,19 @@ Needs: buildings.csv row (whole-file shadow — high conflict surface), new `<me
 Gate `MC2_EQUIPMENT_ENABLED_WIRE` (register in gate docs). Files: `code/logisticsdata.cpp` (1 hook in updateAvailability), `code/equipment_registry.h` (query helper). Proof: offline doctest on the pure filter; in-mission witness = mechlab shows a stock default-off weapon (registry-enabled) purchasable; gate-OFF diff = none. Hazards: none on save/MP (availability is recomputed, not persisted as ids); watch `available[255]` bound (assert id<255).
 
 ### S2 — EQUIP-ADD-FILL-1 (new equipment on a free ordinal)
-Gate `MC2_EQUIPMENT_ADD` (+ requires SOURCE=generated). Files: `code/equipment_registry_engine.cpp` (fill-undefined-row pass after overlay), `code/equipment_registry.h`, converter/modlint (accept `sample:` defs w/ explicit LegacyMasterId + free-ordinal check), conflict report (dup ordinal = ERROR, never silent). Proof: offline = modlint fixture mod w/ `sample:plasma_rifle@39`; in-mission = S1 wire surfaces it in mechlab, buy it, fire it (fire path reads masterList row like any stock id — E7 executor already keyed off form/stats). Hazards: **UI strings** (`IDS_COMP_ABBR0+masterID` garbage → S3), LogisticsComponent icon columns mandatory (icon atlas coords must be valid or row skipped), save games store masterID 39 = fine while mod active / dangling if removed (conflict report should warn), MP: both peers need same mod (id-by-ordinal already the MP contract), 0xff untouched (ids ≤254).
+Gate `MC2_EQUIPMENT_ADD` (+ requires SOURCE=generated). Files:
+
+> **S2 SHIPPED CORRECTION (2026-07-10):** the "(+ requires SOURCE=generated)"
+> above is STALE — a pre-ship assumption that the ADD would run *inside* the
+> SOURCE-gated overlay pass. The shipped `applyEquipmentAddFillIfEnabled`
+> (`code/equipment_registry_engine.cpp`) reads the `equipmentdef.fit` sidecars
+> DIRECTLY via the mod index (`EnumerateModFitFiles`) and is gated ONLY by
+> `MC2_UNIT_PROFILE_DATA` + `MC2_EQUIPMENT_ADD` (both default OFF) —
+> `MC2_EQUIPMENT_DEFINITION_SOURCE` is NOT consulted on the ADD path. The
+> two-gate contract is what `examples/mods/sample_equipment/README.md`
+> documents and what the engine helpers pin. (SOURCE=generated remains required
+> only for the *overlay* path that re-stats EXISTING stock rows.)
+ `code/equipment_registry_engine.cpp` (fill-undefined-row pass after overlay), `code/equipment_registry.h`, converter/modlint (accept `sample:` defs w/ explicit LegacyMasterId + free-ordinal check), conflict report (dup ordinal = ERROR, never silent). Proof: offline = modlint fixture mod w/ `sample:plasma_rifle@39`; in-mission = S1 wire surfaces it in mechlab, buy it, fire it (fire path reads masterList row like any stock id — E7 executor already keyed off form/stats). Hazards: **UI strings** (`IDS_COMP_ABBR0+masterID` garbage → S3), LogisticsComponent icon columns mandatory (icon atlas coords must be valid or row skipped), save games store masterID 39 = fine while mod active / dangling if removed (conflict report should warn), MP: both peers need same mod (id-by-ordinal already the MP contract), 0xff untouched (ids ≤254).
 
 ### S3 — EQUIP-UI-NAME-REGISTRY-1 (kill ordinal string-block for new ids)
 Gate shared w/ S2. Files: `gui/infowindow.cpp:630/649/795` (+ any IDS_COMP siblings), route name/abbrev via registry-with-legacy-fallback; `cmponent.cpp` name fill from def. Proof: offline unit test of resolver; witness = new weapon shows real name in info window + mechlab. Hazards: this is E4-list site 7 done early — UI-only, zero format risk; keep legacy path byte-identical when id has no registry entry.

@@ -20,6 +20,21 @@ with the mods absent, the game is byte-identical.
 | `sample_bad_mod`   | INTENTIONAL failures the validator catches with modder-first messages (exit 1) |
 | `core_unlocks`     | re-surface TWO dormant stock weapons (Clan Gauss Rifle 113, ER PPC 146) via the CLEAN enabled->purchase wire (EQUIP-ENABLE-WIRE-1: tiny `[Equipment] b Enabled=TRUE` def overrides, gate `MC2_UNIT_PROFILE_DATA=1`; enable-only, purchase.fit stays authoritative) |
 
+## Required env gates per mod (what makes content go live)
+
+All gates default OFF → with them unset the game is byte-identical stock.
+
+| mod | gates to set | notes |
+|---|---|---|
+| `sample_equipment` | `MC2_UNIT_PROFILE_DATA=1` `MC2_EQUIPMENT_ADD=1` | ADD-fill reads the `equipmentdef.fit` sidecar directly; **`MC2_EQUIPMENT_DEFINITION_SOURCE` is NOT needed** (that gate is only for the overlay/re-stat path) |
+| `core_unlocks` | `MC2_UNIT_PROFILE_DATA=1` | enable-only wire; no `MC2_EQUIPMENT_ADD` (rows already populated) |
+| `sample_new_variant` | *(none)* | pure data CSV-shadow ADD — zero engine gate |
+| `sample_variant` | `MC2_UNIT_PROFILE_DATA=1` (`MC2_UNIT_DEFINITION_SOURCE=generated` for the facet overlay) | overlay-only, NOT live-spawned — see the variant-path note below |
+| `sample_bad_mod` | *(offline validator only)* | never loaded live; it is a modlint fixture |
+
+Activate any mod with EITHER the launcher / `MC2_ACTIVE_MOD=<id>` OR
+`MC2_MOD_DEPS=<abs path>` (alternative paths — do not set both).
+
 ## What "modlint-clean" means here (honest scope)
 
 `mc2_modlint` validates a **facts-JSON** (the pure coherence check the engine
