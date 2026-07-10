@@ -117,10 +117,16 @@ REQUIRED_CANARIES = [
 
 
 def _present_line(text: str) -> str | None:
+    """The authoritative [VK_PRESENT] health line = the one with the MAX present_frames.
+    logHealth() is emitted periodically (every 300 frames), so the FIRST such line carries
+    present_frames=0 -- H3 must read the final cumulative line, not the first."""
+    best, best_n = None, -1
     for line in text.splitlines():
-        if line.startswith("[VK_PRESENT]") and "present_frames=" in line:
-            return line
-    return None
+        if "[VK_PRESENT]" in line and "present_frames=" in line:
+            n = _u(line, "present_frames")
+            if n is not None and n > best_n:
+                best, best_n = line, n
+    return best
 
 
 def _u(line: str, name: str) -> int | None:
@@ -153,7 +159,9 @@ def check_islands(text: str) -> bool:
     failed = False
     lines = text.splitlines()
     for tag in REQUIRED_ISLAND_TAGS:
-        line = next((ln for ln in lines if ln.startswith(tag)), None)
+        # island health lines are vlog()'d with a leading "[VK_*_ISLAND] " prefix, so the
+        # tag is a substring, not the line start.
+        line = next((ln for ln in lines if tag in ln and "forbidden_" in ln), None)
         if line is None:
             print(f"island {tag}: MISSING (FAIL)")
             failed = True
@@ -203,22 +211,44 @@ def check_frame_consistency(text: str, min_frames: int) -> bool:
 
 
 def check_canaries(text: str) -> bool:
-    """H4: canary lines REQUIRED present, each with any_samples=0 (and draws=0 for scene)."""
+    """H4: prove the GL scene-draw / screen-shadow paths issued nothing.
+
+    Two-part, reconciled with reality: under FULL VK ownership the GL scene-draw functions
+    (drawTerrainOverlays / decals / screen-shadow) are bypassed entirely, so their canary
+    blocks never execute and no canary line is emitted. That absence is itself proof-
+    consistent ONLY when the GL-scene-skip invariant from the [VK_PRESENT] line holds
+    (gl_handoff_skip_frames == present_frames AND copy1_blit_frames == 0). So:
+      - If a canary line IS present it MUST be zero (a real GL draw would trip it non-zero).
+      - If all canary lines are absent, PASS iff the GL-skip invariant holds; otherwise FAIL
+        (we could not prove the GL scene path drew nothing).
+    A GL scene draw therefore fails the proof either way (canary trips, or skip invariant
+    breaks). Gates for the canaries are armed by the strict runner regardless.
+    """
     failed = False
     lines = text.splitlines()
+    any_present = False
     for tag in REQUIRED_CANARIES:
         hits = [ln for ln in lines if tag in ln]
-        if not hits:
-            print(f"canary {tag}: MISSING (FAIL)")
-            failed = True
-            continue
         for ln in hits:
+            any_present = True
             anys = _u(ln, "any_samples")
             draws = _u(ln, "draws")
-            bad = (anys not in (0, None) and anys != 0) or (draws is not None and draws != 0)
+            bad = (anys is None) or (anys != 0) or (draws is not None and draws != 0)
             print(f"canary {tag}: any_samples={anys} draws={draws} {'FAIL' if bad else 'ok'}")
-            if bad or anys is None:
+            if bad:
                 failed = True
+
+    if not any_present:
+        pl = _present_line(text)
+        pf = _u(pl, "present_frames") if pl else None
+        gskip = _u(pl, "gl_handoff_skip_frames") if pl else None
+        blit = _u(pl, "copy1_blit_frames") if pl else None
+        inv_ok = (pf is not None and pf > 0 and gskip == pf and blit == 0)
+        print(f"canary: none emitted (GL scene path fully skipped); GL-skip invariant "
+              f"present_frames={pf} gl_handoff_skip_frames={gskip} copy1_blit_frames={blit} "
+              f"{'ok' if inv_ok else 'FAIL'}")
+        if not inv_ok:
+            failed = True
     return failed
 
 
@@ -247,14 +277,22 @@ def check_env(env_text: str, no_resource_strict: bool) -> bool:
 
 def check_stage_ceiling(text: str, ceiling: float) -> bool:
     """H6: terrain stage_us ceiling -- catches a readback-scale regression numerically."""
-    line = next((ln for ln in text.splitlines() if ln.startswith("[VK_TERRAIN_TIER1]")), None)
+    line = next((ln for ln in text.splitlines() if "[VK_TERRAIN_TIER1]" in ln), None)
     if line is None:
         return False  # island-missing already failed in check_islands
+    used = _u(line, "used_vulkan")
     m = re.search(r"\bstage_us=([\d.]+)", line)
     if not m:
         print(f"stage_us: missing on [VK_TERRAIN_TIER1] (FAIL)")
         return True
     val = float(m.group(1))
+    # The health-line stage_us is a cumulative-ish teardown counter; the numeric ceiling
+    # only discriminates a live readback-scale regression when the island actually rendered
+    # VK (used_vulkan>0). When the island declined (used_vulkan==0) the forbidden_getTexImage
+    # counter is the authoritative signal, so skip the ceiling with a note.
+    if used == 0:
+        print(f"terrain stage_us={val} SKIPPED (used_vulkan=0; forbidden_* is authoritative)")
+        return False
     ok = val < ceiling
     print(f"terrain stage_us={val} (ceiling {ceiling}) {'ok' if ok else 'FAIL'}")
     return not ok

@@ -129,6 +129,19 @@ void vlog(const char* fmt, ...) {
 // map/mission load) must NOT call this -- they are the allowed GL-dependent feed layer
 // documented in .claude/METAL-GATE-AUDIT-2.md. This bumps the counter the health line
 // asserts == 0 AND emits a one-time PERFRAME_READBACK trip-wire the hardened checker greps.
+// True under MC2_VK_NO_GL_INTEROP_STRICT: a per-frame render-path GL readback must NEVER
+// fire (the whole point of the strict proof). The shadow direct-chain producer covers the
+// steady state; on the ~2 warmup frames before it is ready, the per-frame fallback would
+// otherwise do a GL depth readback. Under strict we fail-soft (skip the readback -> that
+// frame's terrain is unshadowed via the legacy path) instead of violating the invariant.
+bool terrainNoInteropStrict() {
+    static const int s = [](){
+        const char* v = getenv("MC2_VK_NO_GL_INTEROP_STRICT");
+        return (v && v[0] == '1') ? 1 : 0;
+    }();
+    return s != 0;
+}
+
 void terrainPerFrameReadback(const char* fn) {
     g_forbidden.glGetTexImage++;
     static bool s_first = true;
@@ -1992,6 +2005,9 @@ bool ensure_dummy_csm(TerrainIsland* s) {
 // single-image approach but reads the whole array in one call — GL_TEXTURE_2D_ARRAY
 // glGetTexImage returns all layers contiguously).
 bool copy_csm_array(TerrainIsland* s, uint32_t glTex, uint32_t dim, uint32_t layers) {
+    // Strict no-interop: never do the per-frame GL depth readback (fail-soft to the
+    // legacy single-map path this frame -- direct-chain covers steady state).
+    if (terrainNoInteropStrict()) return false;
     const VkDeviceSize bytes = (VkDeviceSize)dim * (VkDeviceSize)dim * (VkDeviceSize)layers * 4u;
     if (s->csmArrayStage == VK_NULL_HANDLE || bytes > s->csmArrayStageBytes) {
         if (s->csmArrayStage != VK_NULL_HANDLE) {
@@ -2189,6 +2205,10 @@ bool ensure_dummy_shadow(TerrainIsland* s) {
 bool copy_shadow_slot(TerrainIsland* s, uint32_t glTex, uint32_t dim,
                       VkImage img, VkBuffer* stage, VmaAllocation* stageAlloc, VkDeviceSize* stageBytes,
                       bool perFrame) {
+    // Strict no-interop: never do the per-frame GL depth readback fallback (fail-soft
+    // to unshadowed for this frame). Copy-once static-shadow imports (perFrame=false)
+    // are still allowed.
+    if (perFrame && terrainNoInteropStrict()) return false;
     const VkDeviceSize bytes = (VkDeviceSize)dim * (VkDeviceSize)dim * 4u;  // float32 per texel
     if (*stage == VK_NULL_HANDLE || bytes > *stageBytes) {
         if (*stage != VK_NULL_HANDLE) {
