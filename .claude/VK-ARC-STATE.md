@@ -1,5 +1,79 @@
 # VK-ARC-STATE — current state block (update every session)
 
+## 2026-07-10 — VK-SWAPCHAIN-RESIZE-HARDEN-1 (LATEST — closes the NATIVE_WINDOW_IN_USE follow-up)
+
+`5207a070` fix(vk): swapchain resize recreate hardening. **Root-caused** the
+intermittent `vkCreateSwapchainKHR → VK_ERROR_NATIVE_WINDOW_IN_USE`
+(VkResult=-1000000001): `rebuildSwapchain`'s fallback retry created a fresh
+swapchain with `oldSwapchain=VK_NULL_HANDLE` **while the old swapchain was still
+alive on the same surface** (it was destroyed only *after* the retry). A surface
+that still owns a live swapchain rejects a second create with
+NATIVE_WINDOW_IN_USE. Fix: attempt 0 keeps proper `oldSwapchain` chaining; on
+failure the old chain is **retired before** any oldSwapchain-free retry. Added
+bounded retry (3 attempts) + `SDL_Delay(4)` backoff + re-quiesce for genuinely-
+transient window states, and `resize_recreate_ok / _retries / _failsoft` receipts
+in the `[VK_PRESENT]` health line. Fail-soft to GL stays the final fallback.
+Only the error/retry path changed → a first-try success is byte-for-byte the old
+happy path → **no gate**.
+
+Verification (deploy `A:/Games/mc2-opengl/mc2-win64-0.4c`):
+- **Resize-driver proof** (7 real OS `SetWindowPos` resizes on our exact PID,
+  non-strict VK present): `resize_count=8 resize_recreate_ok=8
+  resize_recreate_retries=0 resize_recreate_failsoft=0`, **0 NATIVE_WINDOW_IN_USE**,
+  `present_frames=4501`, `fallback_reason=""`. Scene rendered across every resize.
+- **Strict no-interop visible** (`.claude/vk-resize-harden-strict-proof/`): 11/11
+  bookmarks present + deterministic; `check_vk_nointerop_log.py` **PASS** (all
+  forbidden strings 0, `present_frames/copy1_skip/gl_handoff_skip/composite_vk/
+  imgui_vk = 4200`, `copy1_blit=0`, env receipts present); new receipts emit in
+  strict too (`resize_recreate_ok=1 retries=0 failsoft=0`).
+- **Canonical GL tier1 5/5 PASS.**
+- **Not reproduced**: the pathological NATIVE_WINDOW_IN_USE itself (desktop-state-
+  dependent, intermittent; no runtime-resizable gate exists to force it). Fix is
+  verified by root-cause code inspection + heavy exercise of the recreate path
+  (8+ clean recreates) with the new counters showing 0 retries / 0 failsoft.
+
+## 2026-07-10 — VK-TERRAIN-STAGING-PERF-1 + VK-IMGUI-SHUTDOWN-GUARD-1
+
+Two P0 fixes committed on `claude/vk-interop-bridge-1` (build dir `build64_island`,
+deploy `A:/Games/mc2-opengl/mc2-win64-0.4c`, exe sha `1715683481da8911`):
+
+1. **`62707331` perf(vk): VK shadow producer in direct-chain mode.** Under
+   `MC2_VK_SHADOW_DIRECT_CHAIN` the shadow island kept `useInterop=false`, so all
+   `mc2_vk_shadow_island_run*` entry points declined and the strict native stack
+   fell back to the terrain island's per-frame GL CSM `glGetTexImage` readback
+   (8192^2 x layers). Added a `directChain` flag; producers now gate on
+   `(useInterop || directChain)`. **mc2_01 strict native, before→after:
+   stage_us 126815 → 3.0, avg_fps 7.4 → 79.0** (copy stats static/dyn/csm all
+   <1us; csmArrayDirect/csmFullMapDirect=1). forbidden_getTexImage=0. 11/11
+   bookmarks deterministic (proof-C hashes byte-identical to staging-A →
+   VK self-diff 0.000). Hardened `check_vk_nointerop_log.py` PASS on the clean
+   present log (present_frames=15600, composite/imgui_vk=15600, copy1_blit=0, no
+   forbidden strings). Instrumentation: per-step sub-timers behind
+   `MC2_VK_TERRAIN_COPY_STATS`.
+
+2. **`9f43b092` fix(vk): guard ImGui Vulkan shutdown.** Exit-time AV (READ at
+   0x88 in `ImGui_ImplVulkan_DestroyDeviceObjects`) when
+   `shutdownImguiVulkanRenderer()` ran with `imguiVkInited` true but the ImGui
+   context/BackendRendererUserData already gone (double-call from
+   GuiRuntime::Shutdown + EnginePresentVk::destroy; also reachable after a
+   present-init/swapchain-resize failure). Guarded the shutdown call on
+   `GetCurrentContext()` + `BackendRendererUserData` non-null.
+
+Both states green: **canonical GL tier1 5/5, VK strict tier1 5/5**, all clean
+exits (dump_kind=shutdown, no crash report). VK still slower than GL per standing
+"features not perf" ruling — but the 7.4→79 FPS fix removes the staging-path
+pathology, not just a slowdown.
+
+Remaining next dominator (mc2_01 strict): `draw_us` (terrain ~4400us, mech
+~5000us) now dominates the island timers — GPU draw/submit cost, not staging.
+Also seen this session: intermittent swapchain-resize `NATIVE_WINDOW_IN_USE`
+(VkResult=-1000000001) when the window can't resize past 800x600 in some desktop
+states — fail-soft (scene still renders+captures), now exits clean thanks to
+fix #2; worth a follow-up harden of the resize retry path. **[CLOSED 2026-07-10 by
+VK-SWAPCHAIN-RESIZE-HARDEN-1 `5207a070` — see top block.]**
+
+---
+
 HEAD routing note (2026-07-08): current shipped tip is rung 8.7ab
 `VK-SHADOW-DIRECT-CHAIN-1` after the shadow-enabled visible no-interop strict proof
 on branch `claude/vk-interop-bridge-1`, worktree
