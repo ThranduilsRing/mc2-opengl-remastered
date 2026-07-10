@@ -61,9 +61,11 @@ preview FBO (drawOldWay force), 4x supersample, bay/pilot icon bridge (beginGuiB
 ## NIFTY side (worktree .claude/worktrees/nifty-mendeleev)
 - DEV-SHELL complete (docs/dev-shell.md = playbook; ping/reload_shaders/screenshot/ui_reload/texture_refresh/framegraph). GAMEOS-SPLIT plan at docs/splits/gameos-graphics-split-1-plan.md — execute slice 1 (gosFont) when worktree free.
 
-## CHURN-KILLERS (do first, ~1h, pays back immediately)
-a. **Port DEV-SHELL commits from nifty onto ui-phase1** (cherry-pick e687057d ec5662b0 3338801e 7aec1844 68b241d7 + watcher a2158389; gos_dev_shell TU is additive). Biggest win: screenshots/gates/ui_reload/texture_refresh on THIS branch = no more build-run-quit-grep loops for UI work.
-b. **`MC2_BOOT_TO_SCREEN=encyclopedia`** boot target (missionbegin/mainmenu ~20 lines) → encyclopedia harness-capturable, no user clicks.
-c. **tools/dev_shell/shot.py**: TGA→PNG thumbnail + crop + diff-bbox in one CLI (replaces inline PIL one-liners).
-d. **deploy_payload `--preserve run-with-log.bat`** (or skip-if-exists) → kills the manual cp ritual.
+## CHURN-KILLERS — ★ALL PORTED+COMMITTED (status audit 2026-07-10)
+a. ✅ **DONE — DEV-SHELL fully ported onto ui-phase1**: `gos_dev_shell.cpp/.h` added by `2215def9` (slice A, matches nifty), in `GameOS/gameos/CMakeLists.txt:42`, pumped from `gameosmain.cpp`. Registered commands: ping / reload_shaders / screenshot / framegraph / texture_refresh (all in gos_dev_shell.cpp:451-456) + `ui_reload` (extension, registered code/missionbegin.cpp:678). Client `tools/dev_shell/mc2_cmd.py`, watcher `tools/dev_shell/watch.py`. Built into deployed exe (texture_refresh symbol present in build64/RelWithDebInfo/mc2.exe). Socket 127.0.0.1:9877 (MC2_DEV_SHELL_PORT), gate MC2_DEV_SHELL=1.
+b. ✅ **DONE — `MC2_BOOT_TO_SCREEN=encyclopedia[_weapons|_vehicles|_buildings|_pilots]`**: `2029c044` (mainmenu.cpp:458+, missionbegin.cpp:226+, mechlopedia.cpp). Already agent-verified fresh-boot in prior session (queue item #1).
+c. ✅ **DONE — tools/dev_shell/shot.py**: png/crop/diff subcommands, png deletes source tga unless `--keep` (`b145745b`).
+d. ✅ **DONE — deploy_payload `--preserve`**: argparse flag (scripts/deploy_payload.py:844) → deploy(preserve=) keeps existing target copy (line 574-579). ui-phase1 copy ALSO carries UI-DEFS-LOCKSTEP-HARDEN-1 (data/defs ship in lockstep; not on nifty).
 e. Keep probes file-based + env-gated; grep the log, never tail stdout.
+
+> Port audit 2026-07-10: nothing to re-port — all four landed in prior sessions, clean tree @ `9b02b41b`, exe built Jul 9 + deployed to v0.5.0. Live socket re-verify skipped: a pre-existing non-dev-shell mc2.exe (PID 31644, not agent-launched, MC2_DEV_SHELL unset → ping refused) blocked a zero-count launch; feature was already dynamically verified per item #1.
