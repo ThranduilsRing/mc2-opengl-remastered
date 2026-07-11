@@ -147,22 +147,27 @@ bool csmArrayInteropGateRequested() {
     return state == 1;
 }
 
-bool shadowDirectChainRequested() {
-    static int state = -1;
-    if (state == -1) {
-        state = mc2vkgate::directChainGate("MC2_VK_SHADOW_DIRECT_CHAIN") ? 1 : 0;
-    }
-    return state == 1;
-}
+// VK-RUNG8 item-4: MC2_VK_SHADOW_DIRECT_CHAIN is RETIRED. The GL<->VK semaphore-handoff
+// (hybrid) arm was deleted; the VK shadow island now ALWAYS produces VK-native (direct-
+// chain) depth consumed via the VkImageView accessors (the terrain island + native
+// screenfx). The env name is still parsed so old command lines don't hit unknown-var
+// behavior; explicitly setting it prints a one-line deprecation note (item-9 pattern).
+// The exportable-resource + glInteropViewCreate CREATION branches (item-5 substrate for
+// the non-CSM screen-shadow config, item-6) are RETAINED but DORMANT: they are gated on
+// !directChain, and directChain is hardcoded true below, so they are compiled-but-not-
+// taken (NOT deleted -- the audit's must-survive column keeps them for item-6).
+[[maybe_unused]] static const bool s_shadowDirectChainDeprecated = [] {
+    if (mc2vkgate::envTriState("MC2_VK_SHADOW_DIRECT_CHAIN") != -1)
+        std::fprintf(stderr, "[VK_SHADOW_ISLAND] MC2_VK_SHADOW_DIRECT_CHAIN is deprecated "
+                             "and now a no-op: the VK shadow island always renders direct-"
+                             "chain-native (GL/VK semaphore handoff deleted).\n");
+    return true;
+}();
 
-void noteShadowDirectChain() {
-    static bool logged = false;
-    g_health.directChain = shadowDirectChainRequested() ? 1 : 0;
-    if (g_health.directChain && !logged) {
-        vlog("MC2_VK_SHADOW_DIRECT_CHAIN=1 -- VK shadow products stay VK-owned; GL semaphore wait is skipped.");
-        logged = true;
-    }
-}
+// Post item-4 the island is unconditionally direct-chain-native. Kept as a named constant
+// so the retained item-5 exportable-substrate branches (guarded on !directChain) stay
+// readable as dormant code rather than being rewritten away.
+constexpr bool kShadowDirectChain = true;
 
 std::string spv_dir() {
     const char* env = std::getenv("MC2_VULKAN_SPV_DIR");
@@ -299,6 +304,16 @@ struct ShadowIsland {
 
 ShadowIsland* g_island = nullptr;
 
+// VK-RUNG8 item-2 (boot-level native-or-decline), mirrors the mech/terrain islands: a
+// PERMANENT init failure (spv/pipeline/renderpass/buffer creation past the context +
+// gate readiness gates) declines the shadow island for the SESSION with ONE receipt line
+// (GL owns the dynamic shadow pass) instead of re-newing + re-init'ing every frame. A
+// TRANSIENT readiness gate (VK context not born / gate-off / geometry not finalized) keeps
+// the per-frame fail-soft-retry. g_shadowInitReachedBuild flips to 1 once init passes the
+// context + gate readiness gates (i.e. any later failure is a permanent build failure).
+bool g_shadowSessionDeclined  = false;
+int  g_shadowInitReachedBuild = 0;
+
 bool make_buffer(ShadowIsland* s, VkDeviceSize size, VkBufferUsageFlags usage,
                  VkBuffer* buf, VmaAllocation* alloc, bool hostVisible) {
     VkBufferCreateInfo bci{};
@@ -384,6 +399,7 @@ void destroy_island(ShadowIsland* s) {
 bool init_island(ShadowIsland* s, int size) {
     s->size = size;
     ++g_health.attempted;
+    g_shadowInitReachedBuild = 0;   // reset; flips to 1 after readiness gates pass
 
     if (!mc2vk::ensureEngineVulkanContextForInterop()) {
         setFallback("engine_vk_context_birth_failed"); return false;
@@ -409,9 +425,15 @@ bool init_island(ShadowIsland* s, int size) {
 
     if (!shadowInteropGateRequested()) { setFallback("gate_off"); return false; }
 
+    // Readiness gates (context + gate) passed: any failure past this point is a PERMANENT
+    // build failure -> the island declines for the session (item-2 boot-decline).
+    g_shadowInitReachedBuild = 1;
+
     // ---- Exportable shared D32 depth image. SAMPLED (GL samples it via
     // sampler2DShadow) + DEPTH_STENCIL_ATTACHMENT (VK renders into it). ----
-    const bool directChain = shadowDirectChainRequested();
+    // item-4: always direct-chain. The !directChain exportable+glInteropView branches
+    // below are the RETAINED item-5 substrate (dormant; must-survive for item-6).
+    const bool directChain = kShadowDirectChain;
     bool ok = vkImageResourceCreate(&s->depthResource, s->device, s->phys,
                                     (uint32_t)size, (uint32_t)size, kDepthFmt,
                                     VK_IMAGE_USAGE_DEPTH_STENCIL_ATTACHMENT_BIT |
@@ -439,12 +461,12 @@ bool init_island(ShadowIsland* s, int size) {
         glBindTexture(GL_TEXTURE_2D, 0);
     }
 
-    s->useInterop = !directChain;
-    s->directChain = directChain;
-    g_health.interopActive = directChain ? 0 : 1;
-    g_health.vk2glSemActive = s->depthGlView.vkToGlImported ? 1 : 0;
-    vlog("depth interop seam ACTIVE — zero-copy exportable D32 shadow map (vk2gl_sem=%d).",
-         g_health.vk2glSemActive);
+    s->useInterop = !directChain;      // false (item-4: no GL<->VK semaphore machinery)
+    s->directChain = directChain;      // true
+    g_health.directChain = 1;
+    g_health.interopActive = 0;        // item-4: no interop handoff
+    g_health.vk2glSemActive = 0;       // item-4: no vk2gl semaphore
+    vlog("depth producer ACTIVE — VK-native D32 shadow map (direct-chain; GL<->VK handoff deleted).");
 
     // ---- Depth-attachment view of the shared image (the interop view's own
     // .view is the SAMPLED view; the render pass needs a DEPTH-aspect attachment
@@ -671,7 +693,7 @@ bool ensure_csm_fullmap_target(ShadowIsland* s, int size) {
     s->csmFullMapFb = VK_NULL_HANDLE;
     s->csmFullMapSize = 0;
 
-    const bool directChain = shadowDirectChainRequested();
+    const bool directChain = kShadowDirectChain;  // item-4: dormant exportable substrate below
     bool ok = vkImageResourceCreate(&s->csmFullMapResource, s->device, s->phys,
                                     (uint32_t)size, (uint32_t)size, kDepthFmt,
                                     VK_IMAGE_USAGE_DEPTH_STENCIL_ATTACHMENT_BIT |
@@ -898,13 +920,15 @@ extern "C" unsigned int mc2_vk_shadow_island_run(
     g_csmFullMapReadyThisFrame = false;  // CSM full-map direct view must be same-frame fresh too
     g_csmArrayReadyThisFrame = false;    // CSM array direct view must be same-frame fresh too
     if (!shadowInteropGateRequested()) return 0;
-    noteShadowDirectChain();
     if (size <= 0 || !lightSpace16 || !instances || instanceCount == 0) return 0;
 
     using clk = std::chrono::steady_clock;
     auto usSince = [](clk::time_point t0){ return std::chrono::duration<double, std::micro>(clk::now() - t0).count(); };
     const clk::time_point tTotal0 = clk::now();
 
+    // Item-2 boot-level native-or-decline: a prior PERMANENT init failure declined this
+    // island for the whole session -> GL owns the dynamic shadow pass, no per-frame churn.
+    if (g_shadowSessionDeclined) return 0;
     // Lazy init / rebuild on size change.
     if (g_island && g_island->size != size) {
         destroy_island(g_island); delete g_island; g_island = nullptr;
@@ -912,8 +936,23 @@ extern "C" unsigned int mc2_vk_shadow_island_run(
     if (!g_island) {
         g_island = new ShadowIsland();
         if (!init_island(g_island, size)) {
-            vlog("init failed (%s) — GL fallback.", g_health.fallbackReason);
+            const bool permanent = (g_shadowInitReachedBuild != 0);
             destroy_island(g_island); delete g_island; g_island = nullptr;
+            if (permanent) {
+                // Build-phase failure won't recover this session: latch decline + ONE
+                // receipt line (vs. re-init'ing every frame). GL renders the shadow pass.
+                g_shadowSessionDeclined = true;
+                vlog("[VK_SHADOW_ISLAND] boot-level decline: permanent init failure (%s) -- "
+                     "GL owns the dynamic shadow pass for this session (no per-frame retry).",
+                     g_health.fallbackReason);
+            } else {
+                // Transient readiness gate (VK context / gate not ready): fail-soft-retry.
+                static bool s_transientLogged = false;
+                if (!s_transientLogged) {
+                    vlog("init not ready (%s) — GL fallback (will retry).", g_health.fallbackReason);
+                    s_transientLogged = true;
+                }
+            }
             return 0;
         }
     }
@@ -1063,21 +1102,15 @@ extern "C" unsigned int mc2_vk_shadow_island_run(
     vkCmdEndRenderPass(cb);
     if (vkEndCommandBuffer(cb) != VK_SUCCESS) { setFallback("record_failed"); s->disabled = true; return 0; }
 
-    // ---- 6) Submit: NO GL->VK wait (VK produces the depth; GL never wrote it).
-    // Legacy interop signals VK->GL and makes GL wait before sampling; direct-chain
-    // proof mode skips that handoff and exposes the same-frame VkImageView only.
-    const bool directChain = shadowDirectChainRequested();
-    const bool useGpuVk2Gl = !directChain && s->depthGlView.vkToGlImported && (fs.vk2gl != VK_NULL_HANDLE);
+    // ---- 6) Submit (VK-RUNG8 item-4: direct-chain only). The GL<->VK semaphore-handoff
+    // arm (vk2gl signal + glInteropWaitFromVk) was deleted; the submit signals/waits no
+    // GL<->VK semaphores. VK produces the depth (GL never wrote it), the fence below
+    // orders CPU access, and the same-frame VkImageView is exposed to native consumers.
     VkSubmitInfo si{};
     si.sType = VK_STRUCTURE_TYPE_SUBMIT_INFO;
     si.waitSemaphoreCount = 0; si.pWaitSemaphores = nullptr; si.pWaitDstStageMask = nullptr;
     si.commandBufferCount = 1; si.pCommandBuffers = &cb;
-    if (useGpuVk2Gl) { si.signalSemaphoreCount = 1; si.pSignalSemaphores = &fs.vk2gl; }
     if (vkQueueSubmit(s->queue, 1, &si, fs.fence) != VK_SUCCESS) { setFallback("submit_failed"); s->disabled = true; return 0; }
-    if (useGpuVk2Gl) {
-        // GL waits the VK->GL semaphore before it samples the shared depth as shadowMap.
-        glInteropWaitFromVk(s->depthGlView, GL_LAYOUT_DEPTH_STENCIL_READ_ONLY_EXT, fs.parity);
-    }
     // WAW FIX (sync-val): fully retire THIS frame's VK submit before the next frame
     // records/submits, so the two parity command buffers never have overlapping
     // in-flight writes to the shared depth image on the queue (water's pattern).
@@ -1097,26 +1130,20 @@ extern "C" unsigned int mc2_vk_shadow_island_run(
     }
 
     g_health.vkDraws = 1;
-    ++g_health.usedVulkan;
-    if (!directChain) ++g_health.usedInterop;
+    ++g_health.usedVulkan;   // item-4: never usedInterop (direct-chain only)
     g_health.totalUs = usSince(tTotal0);
     if (!s_firstOk) {
-        if (directChain) {
-            vlog("first VK shadow map produced: instCount=%u typeRuns=%lu view=%p (direct VK consumers only).",
-                 instanceCount, g_health.typeRuns, (void*)s->depthResource.view);
-        } else {
-            vlog("first VK shadow map produced: instCount=%u typeRuns=%lu tex=%u (GL now samples the "
-                 "VK-produced D32 via calcShadow).", instanceCount, g_health.typeRuns, s->depthGlView.glTex);
-        }
+        vlog("first VK shadow map produced: instCount=%u typeRuns=%lu view=%p (direct VK consumers only).",
+             instanceCount, g_health.typeRuns, (void*)s->depthResource.view);
         s_firstOk = true;
     }
     // VK-SHADOW-DIRECT-CONSUME-1: fence-waited above, layout already transitioned to
     // DEPTH_STENCIL_READ_ONLY_OPTIMAL by the render pass -- safe for a same-frame-later
     // VK consumer (the terrain island) to sample s->depthResource.view directly.
     g_dynShadowReadyThisFrame = true;
-    // Return the GL texture handle only for the legacy VK->GL consumer path. In
-    // direct-chain mode, native VK consumers use the ready view accessor instead.
-    return directChain ? 0u : s->depthGlView.glTex;
+    // item-4: always direct-chain -> return 0; native VK consumers use the ready view
+    // accessor. (The retained exportable GL view is the dormant item-5 substrate.)
+    return 0u;
 }
 
 extern "C" unsigned int mc2_vk_shadow_island_run_csm_fullmap(
@@ -1125,7 +1152,6 @@ extern "C" unsigned int mc2_vk_shadow_island_run_csm_fullmap(
     float biasFactor, float biasUnits) {
     g_csmFullMapReadyThisFrame = false;
     if (!shadowInteropGateRequested() || !csmFullMapInteropGateRequested()) return 0;
-    noteShadowDirectChain();
     if (size <= 0 || !lightSpace16 || !instances || instanceCount == 0) return 0;
     if (!g_island || g_island->disabled || !g_island->inited
         || !(g_island->useInterop || g_island->directChain)) return 0;
@@ -1214,36 +1240,28 @@ extern "C" unsigned int mc2_vk_shadow_island_run_csm_fullmap(
     vkCmdEndRenderPass(cb);
     if (vkEndCommandBuffer(cb) != VK_SUCCESS) { setFallback("csm_fullmap_record_failed"); s->disabled = true; return 0; }
 
-    const bool directChain = shadowDirectChainRequested();
-    const bool useGpuVk2Gl = !directChain && s->csmFullMapGlView.vkToGlImported && (fs.vk2gl != VK_NULL_HANDLE);
+    // item-4: direct-chain only. The GL<->VK semaphore-handoff arm (vk2gl signal +
+    // glInteropWaitFromVk) was deleted; the submit signals/waits no GL<->VK semaphores.
     VkSubmitInfo si{};
     si.sType = VK_STRUCTURE_TYPE_SUBMIT_INFO;
     si.commandBufferCount = 1;
     si.pCommandBuffers = &cb;
-    if (useGpuVk2Gl) {
-        si.signalSemaphoreCount = 1;
-        si.pSignalSemaphores = &fs.vk2gl;
-    }
     if (vkQueueSubmit(s->queue, 1, &si, fs.fence) != VK_SUCCESS) { setFallback("csm_fullmap_submit_failed"); s->disabled = true; return 0; }
-    if (useGpuVk2Gl) {
-        glInteropWaitFromVk(s->csmFullMapGlView, GL_LAYOUT_DEPTH_STENCIL_READ_ONLY_EXT, fs.parity);
-    }
     if (vkWaitForFences(s->device, 1, &fs.fence, VK_TRUE, 5ull*1000*1000*1000) != VK_SUCCESS) {
         setFallback("csm_fullmap_fence_timeout"); s->disabled = true; return 0;
     }
 
     g_health.instRecords = instanceCount;
     g_health.typeRuns = typeRuns;
-    ++g_health.usedVulkan;
-    if (!directChain) ++g_health.usedInterop;
+    ++g_health.usedVulkan;   // item-4: never usedInterop (direct-chain only)
     static bool s_firstOk = false;
     if (!s_firstOk) {
-        vlog("first VK CSM full-map produced: instCount=%u typeRuns=%lu tex=%u.",
-             instanceCount, typeRuns, s->csmFullMapGlView.glTex);
+        vlog("first VK CSM full-map produced: instCount=%u typeRuns=%lu view=%p (direct VK consumers only).",
+             instanceCount, typeRuns, (void*)s->csmFullMapResource.view);
         s_firstOk = true;
     }
     g_csmFullMapReadyThisFrame = true;
-    return s->csmFullMapGlView.glTex;
+    return 0u;   // native; consumers use mc2_vk_shadow_island_get_csm_fullmap_view()
 }
 
 extern "C" unsigned int mc2_vk_shadow_island_run_csm_array_layer(
@@ -1255,7 +1273,6 @@ extern "C" unsigned int mc2_vk_shadow_island_run_csm_array_layer(
         if (g_island) g_island->csmArrayRenderedMask = 0;
     }
     if (!shadowInteropGateRequested() || !csmArrayInteropGateRequested()) return 0;
-    noteShadowDirectChain();
     if (size <= 0 || layers <= 0 || layerIndex < 0 || layerIndex >= layers) return 0;
     if (!lightSpace16 || !instances || instanceCount == 0) return 0;
     if (!g_island || g_island->disabled || !g_island->inited

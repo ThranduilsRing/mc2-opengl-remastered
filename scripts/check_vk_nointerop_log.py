@@ -25,9 +25,11 @@ Root holes closed here:
       with draws=0 / any_samples=0; a missing canary line = FAIL (pass --require-canaries,
       default on; disable only for a diagnostic partial run with --no-canaries).
   H5  The proof env sets MC2_VK_*_INTEROP=1 names inside a "no-interop" proof; those
-      are reconciled ONLY by direct-chain. The checker now requires
-      MC2_VK_SHADOW_DIRECT_CHAIN=1 in the exe-confirmed gate_env whenever any
-      MC2_VK_*_INTEROP=1 name is set.
+      are reconciled by direct-chain. As of VK-RUNG8 item-4 the shadow island's GL<->VK
+      semaphore-handoff arm was deleted and MC2_VK_SHADOW_DIRECT_CHAIN is a DEPRECATED
+      no-op (the island is unconditionally direct-chain-native), so reconciliation is
+      carried by the MC2_VK_SHARED_GBUFFER umbrella; the explicit MC2_VK_SHADOW_DIRECT_
+      CHAIN=1 is still accepted (harmless) but no longer load-bearing.
   H6  Provenance: FAIL on dirty:true or a build/commit sha != --expect-sha, using both
       the capture manifest git block and every per-bookmark engine build stamp. A
       terrain stage_us ceiling (--stage-us-ceiling, default 2000) catches a
@@ -304,6 +306,9 @@ def check_env(env_text: str, no_resource_strict: bool) -> bool:
     # MC2_VK_SHARED_GBUFFER umbrella, so reconciliation is satisfied by EITHER the
     # explicit MC2_VK_SHADOW_DIRECT_CHAIN=1 OR the umbrella (MC2_VK_SHARED_GBUFFER=1,
     # not explicitly disabled) -- the latter is the minimal-promotion proof.
+    # VK-RUNG8 item-4: MC2_VK_SHADOW_DIRECT_CHAIN is now a DEPRECATED no-op (the shadow
+    # island's handoff arm was deleted; it is always direct-chain-native). The umbrella is
+    # the real reconciler; the explicit-gate branch below stays only for back-compat.
     interop_on = re.findall(r"^(MC2_VK_\w*INTEROP)=1\s*$", env_text, re.MULTILINE)
     if interop_on:
         explicit_dc = "MC2_VK_SHADOW_DIRECT_CHAIN=1" in env_text
