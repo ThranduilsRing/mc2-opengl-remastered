@@ -1,6 +1,65 @@
 # VK-ARC-STATE — current state block (update every session)
 
-## 2026-07-10 — VK-OWNERSHIP-GAP-FIX: prop+water native co-write RESTORED under strict (LATEST)
+## 2026-07-11 — VK-RUNG8-ITEM4-SHADOW-DELETE-1 + STALE-SHADOW item non-repro (LATEST)
+
+Two coupled shadow items closed. Ladder rung 8.7ap.
+
+**PART A — user-sighted intermittent stale/static shadow: NOT REPRODUCED (item CLOSED as
+non-repro, harness left in place).** Built the discriminator harness
+`scripts/vk_shadow_stale_discriminator.py` (gated/opt-in): umbrella early-vs-settled +
+camera-motion bookmark captures. Findings: (1) fixed-timestep captures are internally
+byte-stable + `nondeterministic=False` at the shadow-bearing pose (`ridge_lowangle`,
+covers `shadow_cascade`) across triggers; (2) full-frame early-vs-settled diffs are
+CONFOUNDED by animation phase (water/fog/units advance between trigger frames → uniform
+~30% change on ALL poses incl. no-shadow sky poses), so they are NOT a shadow signal; (3)
+CODE AUDIT rules out a cross-frame stale-view latch: the terrain island resets
+`csmArrayExternalView/csmArrayDirect/csmArrayReady` (`vulkan_terrain_island.cpp:2122-2127`)
+and `dynShadowExternalView/dynShadowDirect/dynShadowReady` (:2312-2314) EVERY frame, and
+the shadow island resets all three ready flags at the top of every
+`mc2_vk_shadow_island_run()` (`vulkan_shadow_island_live.cpp:897-899`). The intermittent
+symptom is therefore a per-launch warmup/ordering transient that the fixed-timestep +
+fixed-seed deterministic capture harness cannot surface BY CONSTRUCTION (it removes the
+timing variance a race needs). Consistent with the prior session's clean settled captures.
+No fix landed (nothing to fix without a repro); harness committed for a future non-
+deterministic repro attempt.
+
+**PART B — item-4 shadow island conversion: DONE.** `vulkan_shadow_island_live.cpp` was the
+LAST dual `useInterop`/`directChain` island. Converted to direct-chain-native-only like
+`a0cba0c4` (mech): deleted the GL<->VK semaphore-handoff arm from the dyn + csm-fullmap run
+functions (the `useGpuVk2Gl` branch = vk2gl signal in submit + `glInteropWaitFromVk`); the
+submits now signal/wait no GL<->VK semaphores (fence orders CPU). The csm-array-layer run
+was already handoff-free. Both run functions return 0 (native; consumers use the
+`_get_*_view()` VkImageView accessors). `MC2_VK_SHADOW_DIRECT_CHAIN` RETIRED → parseable
+no-op with a one-line deprecation note when explicitly set (`shadowDirectChainRequested()`/
+`noteShadowDirectChain()` removed; `constexpr kShadowDirectChain=true`). **Item-5 substrate
+KEPT per audit must-survive:** the exportable `vkImageResourceCreate(exportable=!directChain)`
++ `glInteropViewCreate` branches in `init_island`/`ensure_csm_fullmap_target` are RETAINED
+but DORMANT (guarded on `!directChain`, always false now → compiled-but-not-taken, NOT
+deleted) so the non-CSM screen-shadow config (item-6) still has them. Item-2 boot-decline
+session-latch added (`g_shadowSessionDeclined`/`g_shadowInitReachedBuild`): permanent init
+failure past the context+gate readiness gates latches a session decline with ONE receipt;
+transient keeps fail-soft-retry. Checker H5 note updated (`check_vk_nointerop_log.py`):
+`MC2_VK_SHADOW_DIRECT_CHAIN` is deprecated, reconciliation carried by the umbrella (still
+back-compat accepts the explicit gate). The `MC2_VK_*_INTEROP` ENABLE gates
+(`MC2_VK_SHADOW_INTEROP`/`MC2_VK_CSM_ARRAY_INTEROP`/`MC2_VK_CSM_FULLMAP_INTEROP`) are KEPT
+(they enable the surviving native production, they did NOT only feed the deleted arm).
+
+Under the umbrella the delete is behaviorally INERT (directChain already defaulted true →
+`useGpuVk2Gl` was already false → the deleted branches never executed under strict).
+Functional strict-visible proof (dirty `c2c21682+`, `--minimal-promotion`,
+`.claude/vk-item4-shadow-func-check/`): 11/11 deterministic bookmarks, shadow health
+`used_vulkan=4088 used_interop=0 interop_active=0 vk2gl_sem=0 direct_chain=1
+fallback_reason="" forbidden_*=0`; `check_vk_nointerop_log.py --no-resource-strict`
+**VERDICT PASS** (all islands ok, ownership ok, H3/H4/H5/H6 ok). Clean `--expect-sha` proof
++ tier1 both-state smoke = post-commit rebuild (see commit trailer).
+
+Remaining item-4: the terrain hybrid submit arm (renders natively but the prefix-clear
+gate + prop/water GL half-state interaction is delicate). Then items 5/2/1
+(`gl_interop_view.cpp` family) — item-5's shadow-island exportable substrate now has ONE
+fewer consumer (the deleted shadow handoff) but survives for item-6. Also OPEN from prior
+session: terrain far-band edge-stitch (GL-owned, rung-5 mode-1) — separate class.
+
+## 2026-07-10 — VK-OWNERSHIP-GAP-FIX: prop+water native co-write RESTORED under strict
 
 Closes the ★★ BLOCKER logged below (the `04a15aec` prop/water run-entry guard bug).
 
