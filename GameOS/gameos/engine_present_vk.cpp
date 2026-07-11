@@ -161,8 +161,19 @@ struct EnginePresentVk::Impl {
         VkDeviceMemory memory = VK_NULL_HANDLE;
         VkDeviceSize bytes = 0;
         VkDescriptorSet set = VK_NULL_HANDLE;
+        uint64_t lastFrame = 0;      // VK-HUD-GLYPH-CORRUPTION: eviction watermark
     };
-    std::unordered_map<uint32_t, HudTextureMirror> hudTextureMirrors;
+    // VK-HUD-GLYPH-CORRUPTION FIX: keyed by (textureHandle<<32 | textureSerial), NOT
+    // handle alone. The game re-bakes many distinct runtime strings into ONE reused GL
+    // texture handle within a single HUD frame (e.g. handle 275 cycles serials 2..9),
+    // bumping the content serial each bake. The old handle-only mirror destroyed +
+    // re-uploaded its single buffer in place, so every draw referencing that handle
+    // ended up sampling the LAST bake -> earlier strings rendered the wrong glyphs
+    // (OBJECTIVES/QUICK SAVE/pilot names garbled while pre-baked serial==1 labels stayed
+    // clean). A per-(handle,serial) mirror gives each distinct bake its own persistent
+    // buffer+descriptor for the frame. Entries are evicted a few frames after last use.
+    std::unordered_map<uint64_t, HudTextureMirror> hudTextureMirrors;
+    uint64_t hudMirrorFrameCounter = 0;
 
     bool            compositeVkFailed = false;
     VkRenderPass    compositeRenderPass = VK_NULL_HANDLE;
@@ -1125,6 +1136,11 @@ bool ensureHudTexObjects(EnginePresentVk::Impl& s) {
     if (!s.hudTexPool) {
         VkDescriptorPoolSize size{VK_DESCRIPTOR_TYPE_STORAGE_BUFFER, 512};
         VkDescriptorPoolCreateInfo pci{VK_STRUCTURE_TYPE_DESCRIPTOR_POOL_CREATE_INFO};
+        // FREE_DESCRIPTOR_SET_BIT: the (handle,serial)-keyed HUD mirror evicts stale
+        // entries and frees their descriptor sets back to the pool (VK-HUD-GLYPH-
+        // CORRUPTION FIX) -- without this flag vkFreeDescriptorSets is illegal and the
+        // pool would exhaust as runtime string serials accumulate.
+        pci.flags = VK_DESCRIPTOR_POOL_CREATE_FREE_DESCRIPTOR_SET_BIT;
         pci.maxSets = 512; pci.poolSizeCount = 1; pci.pPoolSizes = &size;
         if (vkCreateDescriptorPool(s.dev, &pci, nullptr, &s.hudTexPool) != VK_SUCCESS) {
             s.hudColorVkFailed = true; return false;
@@ -1205,7 +1221,12 @@ EnginePresentVk::Impl::HudTextureMirror* ensureHudTextureMirror(EnginePresentVk:
                                                                 uint32_t* uploads) {
     if (d.textureHandle == 0 || d.textureWidth == 0 || d.textureHeight == 0 || d.textureSerial == 0)
         return nullptr;
-    auto& m = s.hudTextureMirrors[d.textureHandle];
+    // VK-HUD-GLYPH-CORRUPTION FIX: key by (handle, serial) so a handle re-baked to a
+    // new content serial within the frame gets a DISTINCT mirror instead of clobbering
+    // the shared one that earlier draws already reference.
+    const uint64_t key = ((uint64_t)d.textureHandle << 32) | (uint64_t)d.textureSerial;
+    auto& m = s.hudTextureMirrors[key];
+    m.lastFrame = s.hudMirrorFrameCounter;   // touched this frame -> not evictable yet
     const VkDeviceSize bytes = (VkDeviceSize)d.textureWidth * (VkDeviceSize)d.textureHeight * 4u;
     const bool needsUpload = m.serial != d.textureSerial || m.width != d.textureWidth ||
                              m.height != d.textureHeight || m.bytes != bytes || !m.buffer;
@@ -1361,6 +1382,27 @@ uint32_t recordPendingHudColorProof(EnginePresentVk::Impl& s, VkCommandBuffer cb
     if (!nativeHudColorProofEnabled() || !ensureHudColorObjects(s)) {
         s.pendingHudDraws.clear();
         return draws;
+    }
+
+    // VK-HUD-GLYPH-CORRUPTION FIX: advance the HUD frame counter and evict mirror
+    // entries not referenced for a few frames (freeing their descriptor set + buffer
+    // back to the pool). The window (>= 4 frames) keeps any entry a still-in-flight
+    // present submit might read alive; runtime string serials otherwise accumulate
+    // unbounded and would exhaust the 512-set pool.
+    ++s.hudMirrorFrameCounter;
+    {
+        const uint64_t now = s.hudMirrorFrameCounter;
+        for (auto it = s.hudTextureMirrors.begin(); it != s.hudTextureMirrors.end(); ) {
+            if (it->second.lastFrame + 4 < now) {
+                auto& m = it->second;
+                if (m.set)    vkFreeDescriptorSets(s.dev, s.hudTexPool, 1, &m.set);
+                if (m.buffer) vkDestroyBuffer(s.dev, m.buffer, nullptr);
+                if (m.memory) vkFreeMemory(s.dev, m.memory, nullptr);
+                it = s.hudTextureMirrors.erase(it);
+            } else {
+                ++it;
+            }
+        }
     }
 
     std::vector<HudColorGpuVertex> triVerts;
@@ -2367,6 +2409,36 @@ void EnginePresentVk::verifyReadbackContent() {
     unsigned long long h = 1469598103934665603ull;
     for (VkDeviceSize i = 0; i < needed; i += 257) {
         h ^= px[i]; h *= 1099511628211ull;
+    }
+    // VK-FIELD-ORACLE-1: optional one-shot dump of the FULL composited present image
+    // (s.sharedImg == the RGBA8 backbuffer VK blits to the swapchain) to a PPM P6 file.
+    // A headless, non-disruptive VK backbuffer oracle -- the OS/PrintWindow grabs of a
+    // Vulkan swapchain return only the clear colour, and the GL scene-FBO capture is
+    // empty under shared-GBuffer (VK owns the scene). Gated by MC2_VK_PRESENT_DUMP_PPM
+    // (path); writes once. sharedImg is R8G8B8A8_UNORM; we emit RGB (drop A).
+    {
+        // Overwrite each verify tick so the saved PPM is the LATEST captured frame
+        // (the HUD/force-bar is only fully up a few hundred frames in; a one-shot at
+        // the first verify catches a bare early-boot HUD).
+        static bool s_ppmDone = false; (void)s_ppmDone;
+        const char* ppmPath = std::getenv("MC2_VK_PRESENT_DUMP_PPM");
+        if (ppmPath) {
+            FILE* pf = fopen(ppmPath, "wb");
+            if (pf) {
+                fprintf(pf, "P6\n%u %u\n255\n", rw, rh);
+                std::vector<unsigned char> rgb((size_t)rw * rh * 3u);
+                for (size_t i = 0, o = 0; i < (size_t)rw * rh; ++i) {
+                    rgb[o++] = px[i * 4 + 0];
+                    rgb[o++] = px[i * 4 + 1];
+                    rgb[o++] = px[i * 4 + 2];
+                }
+                fwrite(rgb.data(), 1, rgb.size(), pf);
+                fclose(pf);
+                s_ppmDone = true;
+                fprintf(stderr, "[VK_PRESENT_DUMP_PPM] wrote %s (%ux%u)\n", ppmPath, rw, rh);
+                fflush(stderr);
+            }
+        }
     }
     vkUnmapMemory(s.dev, s.readbackMem);
 

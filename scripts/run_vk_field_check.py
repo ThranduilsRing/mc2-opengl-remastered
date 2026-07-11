@@ -181,12 +181,74 @@ def layer_receipts(install: Path):
     return used, reasons
 
 
+# --- Props-pose hard assert (VK-FIELD-ORACLE-1) --------------------------------
+# The round-3 field bug: static props drew (island used_vulkan>0) but the color
+# pipeline's vertex binding stride was 0 -> all triangles collapsed to a degenerate
+# point -> ZERO rasterized fragments -> props invisible while shadows still cast
+# (shadow island = separate correctly-strided pipeline). The receipt (used_vulkan)
+# is TRUE in that broken state, so this must be a PIXEL assert. We pin the camera to
+# the props-dense airport pose via MC2_HZB_VIEW_FILE and dump the composited VK
+# backbuffer (sharedImg) through the MC2_VK_PRESENT_DUMP_PPM oracle (the OS/
+# PrintWindow grabs of a VK swapchain return only the clear colour; the GL scene-FBO
+# capture is empty under shared-GBuffer). Props add heavy high-frequency detail to
+# the airport region: measured edge-mean ~12.6 with props, ~5.0 without (terrain
+# only). Threshold 8.0 sits in the empty middle -> a HARD assert.
+PROPS_POSE = "X=3200.0 Y=100.0 Z=399.588 ROT=110.0 ANGLE=28.0 ALT=1000.0\n"
+PROPS_EDGE_MIN = 8.0
+
+
+def props_region_edge(ppm: str) -> float:
+    from PIL import Image, ImageFilter
+    import numpy as np
+    im = Image.open(ppm).convert("L").filter(ImageFilter.FIND_EDGES)
+    e = np.asarray(im).astype(float)
+    h, w = e.shape
+    return float(e[:, int(w * 0.45):].mean())
+
+
+def props_pose_assert(install: Path, mission: str, wait: int) -> bool:
+    exe = install / "mc2.exe"
+    viewf = install / "debug_state" / "vk_field_props_view.txt"
+    viewf.parent.mkdir(parents=True, exist_ok=True)
+    viewf.write_text(PROPS_POSE)
+    ppm = install / "debug_state" / "vk_field_props.ppm"
+    if ppm.exists():
+        ppm.unlink()
+    env = os.environ.copy()
+    for k in SCRUB:
+        env.pop(k, None)
+    env.update(FIELD_ENV)
+    env["MC2_HZB_VIEW_FILE"] = str(viewf)
+    env["MC2_VK_PRESENT_VERIFY"] = "1"
+    env["MC2_VK_PRESENT_DUMP_PPM"] = str(ppm)
+    print(f"[vk-field-check] props-pose assert: launching at airport pose")
+    proc = subprocess.Popen([str(exe), "-mission", mission], cwd=str(install), env=env)
+    try:
+        time.sleep(wait)
+    finally:
+        proc.terminate()
+        try:
+            proc.wait(timeout=10)
+        except subprocess.TimeoutExpired:
+            proc.kill()
+    if not ppm.exists():
+        print("[vk-field-check] props-pose FAIL: no PPM produced (VK present never ran).")
+        return False
+    edge = props_region_edge(str(ppm))
+    ok = edge >= PROPS_EDGE_MIN
+    print(f"[vk-field-check] props-pose region edge-detail={edge:.2f} "
+          f"(min {PROPS_EDGE_MIN}) -> {'PASS' if ok else 'FAIL (props invisible!)'}")
+    return ok
+
+
 def main() -> int:
     ap = argparse.ArgumentParser()
     ap.add_argument("--install", default="A:/Games/mc2-opengl/mc2-win64-0.4c")
     ap.add_argument("--mission", default="mc2_01")
     ap.add_argument("--wait", type=int, default=32)
     ap.add_argument("--out-png", default=None)
+    ap.add_argument("--skip-props-pose", action="store_true",
+                    help="Skip the props-pose pixel assert (receipts-only run).")
     args = ap.parse_args()
 
     install = Path(args.install)
@@ -273,7 +335,13 @@ def main() -> int:
     print("[vk-field-check] NOTE: HUD/sky are eyeballed from the saved backbuffer PNG "
           "(no dump counter); HUD must show the pilot panel + command cursor, sky is the "
           "flat VK clear-colour stand-in (no VK HDRI pass -- pre-existing, documented).")
-    ok = layers_ok
+    # VK-FIELD-ORACLE-1: props-pose PIXEL assert (hard). Receipts pass in the
+    # degenerate-stride broken state, so this is load-bearing for the props layer.
+    props_ok = True
+    if not args.skip_props_pose:
+        props_ok = props_pose_assert(install, args.mission, args.wait)
+
+    ok = layers_ok and props_ok
     print(f"[vk-field-check] {'PASS' if ok else 'FAIL'}")
     return 0 if ok else 1
 

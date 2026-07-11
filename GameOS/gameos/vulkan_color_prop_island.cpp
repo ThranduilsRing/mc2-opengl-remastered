@@ -781,6 +781,42 @@ bool init_island(ColorPropIsland* s, int w, int h) {
             setFallback("tier1_shared_gbuffer_not_ready");
             return false;
         }
+        // VK-FIELD-ORACLE-1 / crash-C0000005-at-0x20 FIX: the pointers above can be
+        // non-null while the underlying shared images have NOT been created yet (the
+        // struct exists but view==VK_NULL_HANDLE, format==VK_FORMAT_UNDEFINED). That
+        // happens at frame 1 in the field env (boot/warmup race): the postprocess
+        // seam allocates the shared color/normal/depth images a few frames after the
+        // renderLists prop pass first fires. Building the renderpass with an UNDEFINED
+        // format + a framebuffer with NULL views yields a malformed pipeline that the
+        // AMD ICD dereferences (crash at vkCreateGraphicsPipelines), and the
+        // non-crashing variant (stale/empty target) is exactly why props were
+        // INVISIBLE under the field env. Decline until every shared attachment is
+        // fully realized; run() leaves g_island null so we retry next frame (the
+        // established decline+retry pattern), and once ready we init against VALID
+        // views so props actually co-write into the composited shared color.
+        {
+            VkImageResource* cR = reinterpret_cast<VkImageResource*>(s->t1_colorRes);
+            VkImageResource* nR = reinterpret_cast<VkImageResource*>(s->t1_normalRes);
+            VkImageResource* dR = reinterpret_cast<VkImageResource*>(s->t1_depthRes);
+            const bool ready =
+                cR->view != VK_NULL_HANDLE && cR->format != VK_FORMAT_UNDEFINED &&
+                nR->view != VK_NULL_HANDLE && nR->format != VK_FORMAT_UNDEFINED &&
+                dR->view != VK_NULL_HANDLE && dR->format != VK_FORMAT_UNDEFINED &&
+                cR->w > 0 && cR->h > 0;
+            if (!ready) {
+                setFallback("tier1_shared_gbuffer_images_not_realized");
+                return false;
+            }
+            // The shared images must also match the size the caller is rendering at;
+            // building the framebuffer at a stale extent would render props into the
+            // wrong region (or off the realized image). run() rebuilds on w/h change,
+            // but a resource re-realized at a new size mid-session must also force a
+            // fresh init -- decline here and let the next frame re-init cleanly.
+            if ((int)cR->w != w || (int)cR->h != h) {
+                setFallback("tier1_shared_gbuffer_size_mismatch");
+                return false;
+            }
+        }
         s->useInterop = false;
         g_health.interopActive = 0;
         g_health.vk2glSemActive = 0;
@@ -964,6 +1000,19 @@ bool init_island(ColorPropIsland* s, int w, int h) {
         }
 
         VkVertexInputBindingDescription vib{};
+        vib.binding   = 0;
+        // VK-FIELD-ORACLE-1 PROPS-INVISIBLE ROOT CAUSE: vib.stride was left 0.
+        // With stride 0 every vertex index fetches byte offset 0 (vertex 0), so
+        // ALL triangles collapse to a degenerate point -> the prop draws execute
+        // (used_vulkan>0, 991 instances, 69 typeRuns) but rasterize ZERO fragments
+        // -> props invisible under BOTH the field and strict VK envs, while the
+        // shadow island (its OWN correctly-strided pipeline + light-view transform)
+        // still cast prop shadows -- which is exactly the "shadows visible, geometry
+        // absent" symptom. The shared prop geometry feed is a tightly-packed 40-byte
+        // vertex (pos vec3 @0, normal vec3 @12, uv vec2 @24, colorSeed u32 @32,
+        // typeAux u32 @36 == 40B), matching the hardcoded attribute offsets below
+        // and the feed's stride=40 (asserted post-upload in upload_geometry_once).
+        vib.stride    = 40;
         vib.inputRate = VK_VERTEX_INPUT_RATE_VERTEX;
         VkVertexInputAttributeDescription via[5]{};
         via[0].location = 0; via[0].binding = 0; via[0].format = VK_FORMAT_R32G32B32_SFLOAT; via[0].offset = 0;
@@ -1116,6 +1165,15 @@ bool upload_geometry_once(ColorPropIsland* s) {
         s->typeRuns[t].packetCount = feed.typePacketCount[t];
     }
     g_health.geomVerts = (unsigned long)(feed.vboBytes / (feed.vertexStride ? feed.vertexStride : 1));
+    // VK-FIELD-ORACLE-1: the color pipeline hardcodes a 40-byte vertex binding
+    // stride (init_island via[]/vib.stride). If the shared geometry feed ever
+    // changes its packed stride, the pipeline's fetch would misalign and props
+    // would garble/vanish -- surface it loudly rather than silently.
+    if (feed.vertexStride != 40) {
+        vlog("WARNING: prop geometry stride=%u != pipeline binding stride 40 -- "
+             "props will misrender; update vib.stride/attributes in init_island.",
+             feed.vertexStride);
+    }
     s->geomUploaded = true;
     vlog("prop geometry uploaded once: vbo=%llu B ibo=%llu B stride=%u packets=%u types=%u.",
          (unsigned long long)feed.vboBytes, (unsigned long long)feed.iboBytes,

@@ -8145,6 +8145,21 @@ void gosRenderer::flushHUDBatch()
                 }
             }
             nativeHudCanSkipGl = nativeHudCanSkipGl && drawRepresentable;
+            // VK-HUD-GLYPH-CORRUPTION diagnostic: dump per-draw texture handle+serial
+            // for the first few frames so an intra-frame same-handle/different-serial
+            // collision (mirror keyed by handle -> last-upload-wins -> stale glyphs)
+            // is directly visible. Gated by MC2_VK_HUD_DRAW_DUMP.
+            if (std::getenv("MC2_VK_HUD_DRAW_DUMP")) {
+                static unsigned s_hudDumpLines = 0;
+                if (s_hudDumpLines < 400 && draw.textureHandle != 0 &&
+                    draw.textureHandle != INVALID_TEXTURE_ID) {
+                    ++s_hudDumpLines;
+                    std::fprintf(stderr, "[VK_HUD_DRAW_DUMP] batchseq=%u kind=%u handle=%u "
+                        "serial=%u wh=%ux%u verts=%zu\n", s_hudDumpLines,
+                        draw.kind, draw.textureHandle, draw.textureSerial,
+                        draw.textureWidth, draw.textureHeight, draw.vertices.size());
+                }
+            }
             nativeDraws.push_back(std::move(draw));
         }
         // HUD-CANVAS-EXTENT-FIX: pass the logical canvas the HUD vertices were authored

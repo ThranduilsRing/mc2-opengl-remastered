@@ -1595,6 +1595,39 @@ class Camera
 			newScaleFactor = 1.0f - ((cameraAltitude - AltitudeMinimum) / testMax);
 		}
 		
+		// VK-FIRST-BOOKMARK-POSE-1: neutralize every scripted camera-override
+		// source so a hard-set bookmark pose survives the NEXT Camera::update()
+		// byte-unchanged. The deterministic bookmark sweep freezes the sim, but
+		// eye->update() still runs each frame (code/mission.cpp GameLogic.Mission.
+		// Camera is OUTSIDE the pause guard). Camera::update() re-asserts the
+		// intro-swoop goal (updateGoalPosition/updateGoalRotation) and the
+		// object-tracking snap every frame -- which drags the FIRST bookmark off
+		// its applied pose while the mission-intro swoop goal is still draining
+		// (later bookmarks land after it drains, so only bookmark #1 was stomped).
+		// Called from the capture replay right after setPosition/setRotation.
+		// Virtual so GameCamera can also drop its object-tracking target.
+		virtual void freezeScriptedCameraForCapture (void)
+		{
+			lookTargetObject = -1;
+			goalPosition   = position;
+			goalPosTime    = 0.0f;
+			goalPositionZ  = position.z;
+			goalRotation.x = projectionAngle;
+			goalRotation.y = cameraRotation;
+			goalRotation.z = cameraAltitude;
+			goalRotTime    = 0.0f;
+			goalFOVTime    = 0.0f;
+			velocity.Zero();
+			goalVelocity.Zero();
+			goalVelTime    = 0.0f;
+			// Pin the altitude EASE target too: update() lerps cameraAltitude
+			// toward cameraAltitudeDesired each frame, so leaving Desired stale
+			// would drift altitude off the applied bookmark. (The engine still
+			// legitimately clamps cameraAltitude to the per-projection-angle max,
+			// which is expected and deterministic.)
+			cameraAltitudeDesired = cameraAltitude;
+		}
+
 		void setGoalRotation (Stuff::Vector3D goalRot)
 		{
 			goalRotation = goalRot;
