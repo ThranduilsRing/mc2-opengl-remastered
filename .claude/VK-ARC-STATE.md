@@ -1,6 +1,58 @@
 # VK-ARC-STATE — current state block (update every session)
 
-## 2026-07-11 — VK-RUNG8-ITEM4-SHADOW-DELETE-1 + STALE-SHADOW item non-repro (LATEST)
+## 2026-07-11 — VK-TERRAIN-EDGESTITCH-1: OPEN ITEM WAS ALREADY DONE (finding + de-stale) (LATEST)
+
+The "terrain far-band edge-stitch is GL-owned, port it to VK" open item logged in
+the 2026-07-10 blocks (and repeated in the 2026-07-11 shadow block's "Also OPEN"
+line) was **already closed by commit `0aae0337` ("own terrain edge stitch"), an
+ANCESTOR of the deployed HEAD `43d968c0`.** The open item was a documentation/
+attribution error driven by stale in-code comments; NO re-port was needed.
+
+**Ground-truth code state at HEAD (verified by git diff + read):**
+- `0aae0337` removed the `edgeStitch[i]==0` term from the terrain capture predicate
+  (`gos_terrain_lod_chunk.cpp` ~:1830): the `if (s_vkTerrainActive &&
+  s_vkCaptureThisBand && s_vkOwnsDisplace)` gate no longer excludes stitched
+  patches. `p.edgeStitch` is populated and pushed into the feed.
+- `edgeStitch`/`quadCountX`/`quadCountY` ride the terrain patch UBO tail
+  (`vulkan_terrain_island.cpp` struct off 592/596/600, populated :2666-2668).
+- The coarse corner-pin math + the mode-2 far-band re-stitch math are in
+  `shaders/vulkan/terrain_tier1.vert` (:120-126, :153-162) and `_skirt.vert`.
+- The strict-visible runner already arms `MC2_VK_TERRAIN_ALL_LODS/SKIRTS/
+  VISUALDISPLACE_FAR=1` (run_vk_nointerop_strict_visible.py:42-44), so under the
+  strict stack coarse bands + skirts + mode-2 far displace + edge-stitch are ALL
+  VK-owned.
+
+**Why the open item looked real (the trap, now fixed):** the "edge-stitch remain
+GL-owned this rung" comments at `vulkan_terrain_island.cpp:183` and
+`gos_terrain_lod_chunk.cpp:~1812/1823/1831` PREDATE `0aae0337` and were never
+updated; the 2026-07-10 analysis cited them as evidence. The elevated oblique_fog
+91.4/ch + cliff 55.6/ch MADs cited as corroboration were **explicitly CONFOUNDED**
+(GL-default-stack vs VK-full-strict-stack, per that same 2026-07-10 block) and were
+captured WITH edge-stitch already VK-owned — they are NOT an edge-stitch-ownership
+signal. This session de-staled all three comments so the phantom can't recur.
+
+**Live proof (`64affd28`, deployed 0.4c, strict-visible sweep +
+`MC2_VK_TERRAIN_GL_FALLBACK_AUDIT=1`, `.claude/edgestitch-audit/strict/`):**
+`[VK_TERRAIN_GL_FALLBACK_AUDIT v1] total=15 captured=15 gl_fallback=0 edge_stitch=0
+captured_stitch=3` — zero patches fall to GL for edge-stitch, and 3 CAPTURED
+patches carry a nonzero stitch mask (direct proof stitched geometry is VK-owned).
+Terrain island `used_vulkan=1022 fallback_reason="" forbidden_getTexImage=0
+vk_draws=19`; `[VK_TERRAIN_ALL_LODS] feedValid=1 vkPatches=15 (6 LOD0 + 9 coarse)`;
+11/11 deterministic bookmarks. New `captured_stitch=` counter added this session
+(`gos_terrain_lod_chunk.cpp`, behind the existing default-OFF audit gate) is the
+captured twin of the excluded `edge_stitch=` counter.
+
+**REMAINDER (the genuinely-unported class, NOT the far horizon):** mode-1 LOD0
+4x-finer displaced topology (`lodStep==1` + `visualDisplaceActive`) stays GL-owned
+— `s_vkOwnsDisplace` excludes it. This is NEAR detail, not the far-band horizon,
+and is the "separate L slice later" noted at gos_terrain_lod_chunk.cpp:1830. The
+user-sighted intermittent stepped-horizon was self-labeled "run 1 bad, run 2 fine
+→ warmup/ordering" and settled deterministic captures are clean (see 2026-07-11
+PART A stale-shadow non-repro); no persistent edge-stitch ownership bug exists at
+HEAD. If mode-1 4x is ever wanted, it is a fresh slice on the (already-shipped)
+coarse-stitch foundation.
+
+## 2026-07-11 — VK-RUNG8-ITEM4-SHADOW-DELETE-1 + STALE-SHADOW item non-repro
 
 Two coupled shadow items closed. Ladder rung 8.7ap.
 
