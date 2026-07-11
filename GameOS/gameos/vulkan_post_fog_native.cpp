@@ -174,8 +174,7 @@ struct gosPostProcess::VkPostFogNative {
     // BORROWED shared GBuffer resources/views (owned by vulkan_shared_scene_*.cpp).
     VkImageResource* sColorRes = nullptr;
     VkImageResource* sDepthRes = nullptr;
-    GlInteropView*   sColorView = nullptr;
-    GlInteropView*   sDepthView = nullptr;
+    // VK-RUNG8-ITEM5: shared scene is VK-only (no GL view); direct-chain only.
 
     // OWNED objects.
     VkImageView   depthSampleView = VK_NULL_HANDLE; // depth-aspect view over sDepthRes->image
@@ -265,12 +264,9 @@ bool build_state(gosPostProcess::VkPostFogNative* s, int w, int h) {
 
     // Borrow the shared GBuffer (same accessors the tier1 islands use).
     s->sColorRes  = mc2SharedSceneColorGetResource(MC2_SHARED_SCENE_COLOR0);
-    s->sColorView = mc2SharedSceneColorGetGlView(MC2_SHARED_SCENE_COLOR0);
     s->sDepthRes  = mc2SharedSceneDepthGetResource();
-    s->sDepthView = mc2SharedSceneDepthGetGlView();
-    // VK-RUNG8 item-4: direct-chain only. Only the shared VkImageResources are required;
-    // the GL interop views above remain the item-5 shared-scene GL-import substrate (not
-    // deleted this session) but are no longer consumed by native fog.
+    // VK-RUNG8 item-4/item-5: direct-chain-native only. Only the VK-only shared
+    // VkImageResources are required; there is no GL interop view.
     if (!s->sColorRes || !s->sDepthRes) {
         setFallback("shared_gbuffer_not_ready"); return false;
     }

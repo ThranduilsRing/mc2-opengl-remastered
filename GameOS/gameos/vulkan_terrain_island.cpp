@@ -395,9 +395,8 @@ struct TerrainIsland {
     VkImageResource* colorRes  = nullptr;
     VkImageResource* normalRes = nullptr;
     VkImageResource* depthRes  = nullptr;
-    GlInteropView*   colorView  = nullptr;
-    GlInteropView*   normalView = nullptr;
-    GlInteropView*   depthView  = nullptr;
+    // VK-RUNG8-ITEM5: shared scene is VK-only (no GL interop view). Terrain is the
+    // direct-chain first-owner; the former colorView/normalView/depthView are gone.
 
     // LOAD-preserve co-write renderpass + framebuffer (over the 3 shared views).
     VkRenderPass  rpass = VK_NULL_HANDLE;
@@ -969,12 +968,8 @@ bool init_island(TerrainIsland* s, int w, int h) {
     s->colorRes  = mc2SharedSceneColorGetResource(MC2_SHARED_SCENE_COLOR0);
     s->normalRes = mc2SharedSceneColorGetResource(MC2_SHARED_SCENE_NORMAL);
     s->depthRes  = mc2SharedSceneDepthGetResource();
-    // Item-4: the GL interop views are item-5 substrate — still fetched (other
-    // configs/imports may hold them) but NO LONGER CONSUMED by this island; they are
-    // NOT a readiness requirement (the deleted hybrid arm was their only consumer here).
-    s->colorView  = mc2SharedSceneColorGetGlView(MC2_SHARED_SCENE_COLOR0);
-    s->normalView = mc2SharedSceneColorGetGlView(MC2_SHARED_SCENE_NORMAL);
-    s->depthView  = mc2SharedSceneDepthGetGlView();
+    // VK-RUNG8-ITEM5: the shared scene is VK-only (no GL interop view). Terrain is
+    // the direct-chain first-owner; only the VkImageResources are required.
     if (!s->colorRes || !s->normalRes || !s->depthRes) {
         setFallback("shared_gbuffer_not_ready");
         return false;

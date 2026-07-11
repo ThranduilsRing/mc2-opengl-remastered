@@ -239,9 +239,8 @@ struct MechIsland {
     struct VkImageResource* colorRes  = nullptr;
     struct VkImageResource* normalRes = nullptr;
     struct VkImageResource* depthRes  = nullptr;
-    struct GlInteropView*   colorView  = nullptr;
-    struct GlInteropView*   normalView = nullptr;
-    struct GlInteropView*   depthView  = nullptr;
+    // VK-RUNG8-ITEM5: shared scene is VK-only (no GL interop view). Mech is
+    // direct-chain-native only; the former colorView/normalView/depthView are gone.
 
     // Copy-once mech geometry (VK-owned copies of the shared mech VBO/IBO).
     VkBuffer vbo = VK_NULL_HANDLE; VmaAllocation vboAlloc = VK_NULL_HANDLE;
@@ -581,17 +580,12 @@ bool init_island(MechIsland* s, int w, int h) {
     s->colorRes  = mc2SharedSceneColorGetResource(MC2_SHARED_SCENE_COLOR0);
     s->normalRes = mc2SharedSceneColorGetResource(MC2_SHARED_SCENE_NORMAL);
     s->depthRes  = mc2SharedSceneDepthGetResource();
-    s->colorView  = mc2SharedSceneColorGetGlView(MC2_SHARED_SCENE_COLOR0);
-    s->normalView = mc2SharedSceneColorGetGlView(MC2_SHARED_SCENE_NORMAL);
-    s->depthView  = mc2SharedSceneDepthGetGlView();
     if (!s->colorRes || !s->normalRes || !s->depthRes) {
         setFallback("shared_gbuffer_not_ready"); return false;
     }
-    // VK-RUNG8 item-4: direct-chain only. The shared GBuffer is left Vulkan-owned by the
-    // terrain first-owner, so the mech island issues no GL<->VK semaphore handoff and has
-    // no interop/vk2gl semaphore state. The GL interop views fetched above remain the
-    // item-5 shared-scene GL-import substrate (not deleted this session); they are no
-    // longer consumed by the mech co-write.
+    // VK-RUNG8 item-4/item-5: direct-chain-native only. The shared GBuffer is
+    // VK-only and left Vulkan-owned by the terrain first-owner, so the mech island
+    // issues no GL<->VK semaphore handoff and has no interop/vk2gl semaphore state.
     g_health.interopActive = 0;
     g_health.vk2glSemActive = 0;
     // Readiness gates (context + shared GBuffer) passed: any failure past this point is a

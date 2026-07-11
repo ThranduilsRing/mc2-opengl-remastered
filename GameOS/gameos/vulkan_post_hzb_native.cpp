@@ -138,9 +138,7 @@ struct gosPostProcess::VkPostHzbNative {
     VkImageResource* colorRes = nullptr;
     VkImageResource* normalRes = nullptr;
     VkImageResource* depthRes = nullptr;
-    GlInteropView*   colorView = nullptr;
-    GlInteropView*   normalView = nullptr;
-    GlInteropView*   depthView = nullptr;
+    // VK-RUNG8-ITEM5: shared scene is VK-only (no GL view); direct-chain only.
 
     VkImageView   depthSampleView = VK_NULL_HANDLE;
     VkSampler     depthSampler = VK_NULL_HANDLE;
@@ -240,13 +238,10 @@ bool build_state(gosPostProcess::VkPostHzbNative* s, int w, int h, int mipCount)
     }
 
     s->colorRes = mc2SharedSceneColorGetResource(MC2_SHARED_SCENE_COLOR0);
-    s->colorView = mc2SharedSceneColorGetGlView(MC2_SHARED_SCENE_COLOR0);
     s->normalRes = mc2SharedSceneColorGetResource(MC2_SHARED_SCENE_NORMAL);
-    s->normalView = mc2SharedSceneColorGetGlView(MC2_SHARED_SCENE_NORMAL);
     s->depthRes = mc2SharedSceneDepthGetResource();
-    s->depthView = mc2SharedSceneDepthGetGlView();
-    // VK-RUNG8 item-4: direct-chain only. Only the shared VkImageResources are required;
-    // the GL interop views above remain the item-5 shared-scene GL-import substrate.
+    // VK-RUNG8 item-4/item-5: direct-chain-native only. Only the VK-only shared
+    // VkImageResources are required; there is no GL interop view.
     if (!s->colorRes || !s->normalRes || !s->depthRes) {
         setFallback("shared_scene_depth_not_ready");
         return false;

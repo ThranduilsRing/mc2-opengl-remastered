@@ -1773,33 +1773,29 @@ bool EnginePresentVk::renderNativeCompositeVisual(float exposure,
         return false;
     const bool sceneDirectChain = compositeDirectChainGateEnabled();
     const bool objectIdDirectChainCandidate = objectIdDirectChainGateEnabled();
+    // VK-RUNG8-ITEM5: the shared scene is VK-only (no GL interop view). The native
+    // composite therefore requires the shared scene already be Vulkan-owned by the
+    // upstream islands (direct-chain). If the composite/objectId direct-chain gate
+    // is explicitly disabled there is no GL-view rescue, so decline to GL composite.
+    if (!sceneDirectChain)
+        return false;
     VkImageResource* scene = mc2SharedSceneColorGetResource(MC2_SHARED_SCENE_COLOR0);
-    GlInteropView* sceneView = mc2SharedSceneColorGetGlView(MC2_SHARED_SCENE_COLOR0);
     const bool needsObjectId = (viewMode == 1 || viewMode == 3);
     VkImageResource* objectId = needsObjectId
         ? mc2SharedSceneColorGetResource(MC2_SHARED_SCENE_OBJECT_ID)
         : nullptr;
-    GlInteropView* objectIdView = needsObjectId
-        ? mc2SharedSceneColorGetGlView(MC2_SHARED_SCENE_OBJECT_ID)
-        : nullptr;
     const bool objectIdDirectChain = needsObjectId && objectIdDirectChainCandidate;
-    if (needsObjectId && (!objectId || (!objectIdDirectChain && !objectIdView)))
+    if (needsObjectId && (!objectId || !objectIdDirectChain))
         return false;
-    if (!scene || (!sceneDirectChain && !sceneView))
+    if (!scene)
         return false;
     if (!ensureCompositeObjects(s))
         return false;
 
+    // Direct-chain: scene (+objectId) already Vulkan-owned by upstream islands, so
+    // no per-image frame-begin and no GL<->VK handoff. The fences remain unused.
     VkFrameSync fsScene{};
-    if (!sceneDirectChain)
-        fsScene = vkImageResourceBeginFrame(scene);
     VkFrameSync fsObjectId{};
-    if (needsObjectId && !objectIdDirectChain)
-        fsObjectId = vkImageResourceBeginFrame(objectId);
-    if (!sceneDirectChain)
-        glInteropSignalToVk(*sceneView, GL_LAYOUT_COLOR_ATTACHMENT_EXT, fsScene.parity);
-    if (needsObjectId && !objectIdDirectChain)
-        glInteropSignalToVk(*objectIdView, GL_LAYOUT_COLOR_ATTACHMENT_EXT, fsObjectId.parity);
 
     vkResetCommandBuffer(s.cbuf, 0);
     VkCommandBufferBeginInfo bi{VK_STRUCTURE_TYPE_COMMAND_BUFFER_BEGIN_INFO};
@@ -1880,20 +1876,8 @@ bool EnginePresentVk::renderNativeCompositeVisual(float exposure,
     };
     VkSemaphore signalSems[2];
     uint32_t waitN = 0;
-    if (!sceneDirectChain && fsScene.signal != VK_NULL_HANDLE) {
-        waitSems[waitN] = fsScene.signal;
-        waitStages[waitN] = VK_PIPELINE_STAGE_FRAGMENT_SHADER_BIT;
-        ++waitN;
-    }
-    if (needsObjectId && !objectIdDirectChain && fsObjectId.signal != VK_NULL_HANDLE) {
-        waitSems[waitN] = fsObjectId.signal;
-        waitStages[waitN] = VK_PIPELINE_STAGE_FRAGMENT_SHADER_BIT;
-        ++waitN;
-    }
+    (void)waitSems; (void)waitStages; (void)signalSems; (void)fsScene; (void)fsObjectId;
     uint32_t sigN = 0;
-    if (!sceneDirectChain && sceneView->vkToGlImported && fsScene.vk2gl) signalSems[sigN++] = fsScene.vk2gl;
-    if (needsObjectId && !objectIdDirectChain && objectIdView->vkToGlImported && fsObjectId.vk2gl)
-        signalSems[sigN++] = fsObjectId.vk2gl;
 
     VkSubmitInfo si{VK_STRUCTURE_TYPE_SUBMIT_INFO};
     si.waitSemaphoreCount = waitN;
@@ -1903,28 +1887,12 @@ bool EnginePresentVk::renderNativeCompositeVisual(float exposure,
     si.pCommandBuffers = &s.cbuf;
     si.signalSemaphoreCount = sigN;
     si.pSignalSemaphores = sigN ? signalSems : nullptr;
-    VkFence submitFence = sceneDirectChain ? VK_NULL_HANDLE : fsScene.fence;
-    if (vkQueueSubmit(s.gfxQ, 1, &si, submitFence) != VK_SUCCESS)
+    // Direct-chain: no GL<->VK handoff fence; CPU-order via vkQueueWaitIdle below.
+    if (vkQueueSubmit(s.gfxQ, 1, &si, VK_NULL_HANDLE) != VK_SUCCESS)
         return false;
 
-    if (!sceneDirectChain && sceneView->vkToGlImported && fsScene.vk2gl)
-        glInteropWaitFromVk(*sceneView, GL_LAYOUT_COLOR_ATTACHMENT_EXT, fsScene.parity);
-    if (needsObjectId && !objectIdDirectChain && objectIdView->vkToGlImported && fsObjectId.vk2gl)
-        glInteropWaitFromVk(*objectIdView, GL_LAYOUT_COLOR_ATTACHMENT_EXT, fsObjectId.parity);
-    if (sceneDirectChain) {
-        if (vkQueueWaitIdle(s.gfxQ) != VK_SUCCESS)
-            return false;
-    } else {
-        if (vkWaitForFences(s.dev, 1, &fsScene.fence, VK_TRUE, 5ull * 1000 * 1000 * 1000) != VK_SUCCESS)
-            return false;
-    }
-    if (needsObjectId) {
-        VkSubmitInfo empty{VK_STRUCTURE_TYPE_SUBMIT_INFO};
-        if (vkQueueSubmit(s.gfxQ, 1, &empty, fsObjectId.fence) != VK_SUCCESS)
-            return false;
-        if (vkWaitForFences(s.dev, 1, &fsObjectId.fence, VK_TRUE, 5ull * 1000 * 1000 * 1000) != VK_SUCCESS)
-            return false;
-    }
+    if (vkQueueWaitIdle(s.gfxQ) != VK_SUCCESS)
+        return false;
 
     ++health_.composite_vk_frames;
     presentImageVkOwned_ = true;

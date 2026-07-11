@@ -37,39 +37,31 @@ enum Mc2SharedSceneColorSlot {
     MC2_SHARED_SCENE_COLOR_SLOT_COUNT = 3
 };
 
-// Opaque owner of one exportable RGBA16F VK image + its GL interop view. Body lives
-// in the .cpp so no Vulkan header leaks into GL TUs.
+// Opaque owner of one VK-only image the islands share. Body lives in the .cpp so no
+// Vulkan header leaks into GL TUs.
 struct Mc2SharedSceneColor;
 
-// Build a VK exportable image on the SHARED engine Vulkan context and import it
-// into GL. Color/normal slots use R16G16B16A16_SFLOAT -> GL_RGBA16F; object-id
-// uses R32_UINT -> GL_R32UI. On success *outGlTex is the imported GL texture the
-// caller substitutes at its alloc+attach site, and the returned pointer owns the
-// lifetime. FAIL-SOFT: returns nullptr (and leaves *outGlTex untouched) on ANY
-// failure; *outReason (if non-null) points to a short static string.
+// Build a VK-only (non-exportable) image on the SHARED engine Vulkan context.
+// Color/normal slots use R16G16B16A16_SFLOAT; object-id uses R32_UINT. There is no
+// GL texture — the caller allocates its own plain-GL placeholder attachment. The
+// returned pointer owns the lifetime. FAIL-SOFT: returns nullptr on ANY failure;
+// *outReason (if non-null) points to a short static string. The caller MUST then
+// decline the whole shared scene to pure GL.
 Mc2SharedSceneColor* mc2SharedSceneColorCreate(Mc2SharedSceneColorSlot slot,
-                                               int w, int h, GLuint* outGlTex,
-                                               const char** outReason,
-                                               bool vkOnlyNoGlView = false);
+                                               int w, int h,
+                                               const char** outReason);
 
-// True when the owner created a GL interop view and therefore owns the GL texture
-// returned through outGlTex. Direct VK-only owners return false.
-bool mc2SharedSceneColorHasGlView(const Mc2SharedSceneColor* c);
-
-// Destroy the GL interop view + VK image (safe on nullptr) and clear the island
-// registry entry for its slot. The GL texture name from create() becomes invalid.
+// Destroy the VK image (safe on nullptr) and clear the island registry entry for
+// its slot.
 void mc2SharedSceneColorDestroy(Mc2SharedSceneColor* c);
 
 #ifdef MC2_VULKAN_SHARED_SCENE_COLOR_IMPL_ISLAND
-// Island-facing accessors (only the VK prop island TU, which includes volk, defines
-// the IMPL macro before including this header). Return the exportable VkImageResource
-// + its GlInteropView for a slot, or nullptr if that slot has no active shared image
-// this frame (interop unavailable / gate off / resized-away). The island uses these
-// to build LOAD color attachments over the SAME shared images GL renders terrain to.
+// Island-facing accessor (only VK island TUs that include volk define the IMPL macro
+// before including this header). Returns the VK-only VkImageResource for a slot, or
+// nullptr if that slot has no active shared image (declined / resized away). The
+// islands co-write LOAD color attachments over the SAME shared images.
 struct VkImageResource;
-struct GlInteropView;
 VkImageResource* mc2SharedSceneColorGetResource(Mc2SharedSceneColorSlot slot);
-GlInteropView*   mc2SharedSceneColorGetGlView(Mc2SharedSceneColorSlot slot);
 #endif
 
 #endif // MC2_VULKAN_ISLAND

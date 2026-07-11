@@ -1,11 +1,16 @@
 // vulkan_shared_scene_depth.cpp — VK-TIER1 SHARED SCENE DEPTH substrate impl.
 // =============================================================================
-// Builds a VK exportable D32_SFLOAT_S8_UINT VkImageResource on the SHARED engine
-// Vulkan context and imports it into GL as a GL_DEPTH24_STENCIL8 texture, reusing
-// the proven vk_image_resource / gl_interop_view primitives (the exact import
-// path the main_d32s8_depthtest spike used). GL-produces / VK-imports direction
-// (inverse of the shadow island). This slice ONLY produces the shared backing
-// image; there is NO VK depth consumer yet.
+// Builds a VK-ONLY (non-exportable) D32_SFLOAT_S8_UINT VkImageResource on the
+// SHARED engine Vulkan context. The VK terrain/prop/mech/water islands co-write
+// scene depth into this SAME image in place (direct-chain, no GL<->VK handoff);
+// the GL scene never renders into it. There is NO GL import: the FBO's GL depth
+// attachment is a plain-GL placeholder (see gos_postprocess.cpp) — this owner
+// only holds the VK image the islands share.
+//
+// VK-RUNG8-ITEM5 (GL-import-half deletion): the former exportable/glInteropView
+// half is gone. This substrate is the VK-only allocation only; it arms solely
+// under the full native-present stack (mc2VkSharedSceneDirectResourceEnabled),
+// otherwise gos_postprocess declines the whole shared scene to pure GL.
 //
 // Whole TU is inert unless MC2_VULKAN_ISLAND is defined (island discipline). It
 // also needs the shared engine context, which lives behind MC2_VULKAN — the
@@ -25,7 +30,6 @@
 #include <GL/glew.h>
 
 #include "vk_image_resource.h"
-#include "gl_interop_view.h"
 #include "vulkan_context.h"
 
 #include <cstdio>
@@ -33,18 +37,12 @@
 #include <cstdint>
 #include <new>
 
-#ifndef GL_DEPTH24_STENCIL8
-#define GL_DEPTH24_STENCIL8 0x88F0
-#endif
-
-// Opaque owner: the VK-owned exportable image + its GL import adapter. Substituted
-// for sceneDepthTex_ via view.glTex; both are torn down together on destroy/resize.
+// Opaque owner: the VK-owned (non-exportable) scene-depth image the islands share.
+// No GL import — sceneDepthTex_ is a plain-GL placeholder owned by gos_postprocess.
 struct Mc2SharedSceneDepth {
-    VkImageResource res{};      // exportable D32_SFLOAT_S8_UINT
-    GlInteropView   view{};     // GL_DEPTH24_STENCIL8 import over res
+    VkImageResource res{};      // VK-only D32_SFLOAT_S8_UINT
     VkDevice        device = VK_NULL_HANDLE;  // cached for destroy
     bool            resValid  = false;
-    bool            viewValid = false;
 };
 
 namespace {
@@ -63,18 +61,16 @@ void slog(const char* fmt, ...) {
 }
 } // namespace
 
-Mc2SharedSceneDepth* mc2SharedSceneDepthCreate(int w, int h, GLuint* outGlTex,
-                                               const char** outReason,
-                                               bool vkOnlyNoGlView) {
+Mc2SharedSceneDepth* mc2SharedSceneDepthCreate(int w, int h, const char** outReason) {
     auto bail = [&](const char* reason) -> Mc2SharedSceneDepth* {
         if (outReason) *outReason = reason;
-        slog("fallback reason=%s (using plain GL GL_DEPTH24_STENCIL8)", reason);
+        slog("fallback reason=%s (would decline shared scene to pure GL)", reason);
         return nullptr;
     };
-    if (w <= 0 || h <= 0 || !outGlTex) return bail("bad_args");
+    if (w <= 0 || h <= 0) return bail("bad_args");
 
-    // Shared engine VK context, on-demand + idempotent (works on the GL-present
-    // path too). Fail-soft coercion to GL if the context cannot be born.
+    // Shared engine VK context, on-demand + idempotent. Fail-soft: if it cannot be
+    // born the caller declines the whole shared scene to pure GL.
     if (!mc2vk::ensureEngineVulkanContextForInterop())
         return bail("engine_vk_context_birth_failed");
     mc2vk::VulkanContext& ctx = mc2vk::getOrCreateEngineVulkanContext();
@@ -89,109 +85,42 @@ Mc2SharedSceneDepth* mc2SharedSceneDepthCreate(int w, int h, GLuint* outGlTex,
     if (!d) return bail("alloc_failed");
     d->device = device;
 
-    // FAR-BAND-BLACK-1 FIX: prefer VK_FORMAT_D24_UNORM_S8_UINT -- this is a
-    // bit-exact match for GL_DEPTH24_STENCIL8 (24-bit UNORM depth + 8-bit
-    // stencil packed the same way both APIs define it), so GL's per-frame
-    // glClear(GL_DEPTH_BUFFER_BIT)/glClearDepth(0.0f) and any GL-side depth
-    // write land as the SAME bits VK's terrain-island GEQUAL depth test reads.
-    // The prior D32_SFLOAT_S8_UINT export interpreted those same GL-written
-    // UNORM24 bits as an IEEE-754 float32 depth on the VK side -- correct only
-    // for the exact bit pattern 0x00000000 (GL clear-to-0.0), and GARBAGE for
-    // every other depth GL or a prior VK frame wrote, so the terrain island's
-    // GEQUAL depth test failed almost everywhere on any large camera jump
-    // (bookmark teleport / hard cut), producing an almost-empty co-written
-    // frame (root cause of FAR-BAND-BLACK: overview_center/oblique_horizon
-    // mean~32-34/ch cov~97% GL-vs-VK divergence, isolated via
-    // MC2_VK_TERRAIN_TIER1=0 A/B -- terrain returns instantly with props/mech
-    // Tier-1 co-write left ON). Falls back to the old D32_SFLOAT_S8_UINT
-    // export if the driver won't export D24_UNORM_S8_UINT (fail-soft, keeps
-    // today's behavior on GPUs that don't support it as exportable).
+    // VK-only D32_SFLOAT_S8_UINT. There is no GL import, so the former
+    // D24_UNORM_S8_UINT byte-exact-with-GL preference (FAR-BAND-BLACK-1) is moot:
+    // GL never writes this image (the islands co-write it in VK in place), so the
+    // VK-native float32 depth format is the correct and only choice.
     const VkImageUsageFlags usage =
         VK_IMAGE_USAGE_SAMPLED_BIT |
         VK_IMAGE_USAGE_DEPTH_STENCIL_ATTACHMENT_BIT |
         VK_IMAGE_USAGE_TRANSFER_SRC_BIT |
         VK_IMAGE_USAGE_TRANSFER_DST_BIT;
-    VkFormat chosenFmt = vkOnlyNoGlView
-        ? VK_FORMAT_D32_SFLOAT_S8_UINT
-        : VK_FORMAT_D24_UNORM_S8_UINT;
-    bool created = vkImageResourceCreate(&d->res, device, phys,
-                                         (uint32_t)w, (uint32_t)h,
-                                         chosenFmt, usage, /*exportable*/ !vkOnlyNoGlView);
-    if (!created) {
-        slog("D24_UNORM_S8_UINT not exportable on this device -- falling back "
-             "to D32_SFLOAT_S8_UINT (bit-reinterpretation risk; see "
-             "FAR-BAND-BLACK-1 comment above).");
-        chosenFmt = VK_FORMAT_D32_SFLOAT_S8_UINT;
-        created = vkImageResourceCreate(&d->res, device, phys,
-                                        (uint32_t)w, (uint32_t)h,
-                                        chosenFmt, usage, /*exportable*/ !vkOnlyNoGlView);
-    }
-    if (!created) {
+    if (!vkImageResourceCreate(&d->res, device, phys,
+                               (uint32_t)w, (uint32_t)h,
+                               VK_FORMAT_D32_SFLOAT_S8_UINT, usage,
+                               /*exportable*/ false)) {
         mc2SharedSceneDepthDestroy(d);
         return bail("vk_image_resource_create_failed");
     }
     d->resValid = true;
 
-    if (vkOnlyNoGlView) {
-        *outGlTex = 0;
-        if (outReason) *outReason = "active_vk_only";
-        g_activeSharedDepth = d;
-        slog("active: VK-only %s %dx%d (no GL import)",
-             (chosenFmt == VK_FORMAT_D24_UNORM_S8_UINT) ? "D24S8" : "D32S8",
-             w, h);
-        return d;
-    }
-
-    // Import into GL as GL_DEPTH24_STENCIL8 (LUID match runs inside). When
-    // chosenFmt is D24_UNORM_S8_UINT this is a byte-exact reinterpretation (no
-    // value-conversion risk). When it fell back to D32_SFLOAT_S8_UINT this
-    // keeps the pre-fix behavior (P5-T0 spike proved the DEPTH aspect samples
-    // exactly for that case too, just not depth-test-safe across cross-API
-    // writes -- see the FAR-BAND-BLACK-1 comment above). GL wrap/filter
-    // default to CLAMP/NEAREST inside the view; the engine's own
-    // glTexParameteri calls at the seam re-assert the same state.
-    if (!glInteropViewCreate(&d->view, &d->res, phys, GL_DEPTH24_STENCIL8)) {
-        mc2SharedSceneDepthDestroy(d);
-        return bail("gl_interop_view_create_failed");
-    }
-    d->viewValid = true;
-
-    if (d->view.glTex == 0) {
-        mc2SharedSceneDepthDestroy(d);
-        return bail("imported_gl_tex_zero");
-    }
-
-    *outGlTex = d->view.glTex;
-    if (outReason) *outReason = "active";
+    if (outReason) *outReason = "active_vk_only";
     g_activeSharedDepth = d;
-    slog("active: VK %s %dx%d imported to GL_DEPTH24_STENCIL8 tex=%u",
-         (chosenFmt == VK_FORMAT_D24_UNORM_S8_UINT) ? "D24S8" : "D32S8(fallback)",
-         w, h, (unsigned)d->view.glTex);
+    slog("active: VK-only D32S8 %dx%d (no GL import)", w, h);
     return d;
-}
-
-bool mc2SharedSceneDepthHasGlView(const Mc2SharedSceneDepth* d) {
-    return d && d->viewValid;
 }
 
 void mc2SharedSceneDepthDestroy(Mc2SharedSceneDepth* d) {
     if (!d) return;
     if (g_activeSharedDepth == d) g_activeSharedDepth = nullptr;
-    if (d->viewValid) glInteropViewDestroy(&d->view);
     if (d->resValid && d->device != VK_NULL_HANDLE)
         vkImageResourceDestroy(&d->res, d->device);
     delete d;
 }
 
-// ---- Island-facing accessors ------------------------------------------------
+// ---- Island-facing accessor -------------------------------------------------
 VkImageResource* mc2SharedSceneDepthGetResource() {
     Mc2SharedSceneDepth* d = g_activeSharedDepth;
     return (d && d->resValid) ? &d->res : nullptr;
-}
-
-GlInteropView* mc2SharedSceneDepthGetGlView() {
-    Mc2SharedSceneDepth* d = g_activeSharedDepth;
-    return (d && d->viewValid) ? &d->view : nullptr;
 }
 
 #endif // MC2_VULKAN_ISLAND

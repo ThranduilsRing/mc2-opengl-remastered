@@ -236,10 +236,8 @@ struct gosPostProcess::VkPostScreenFx {
     VkImageResource* sStaticShadowRes = nullptr;
     VkImageView      csmArrayView = VK_NULL_HANDLE;    // borrowed; shadow island owns it
     VkImageView      csmFullMapView = VK_NULL_HANDLE;  // borrowed; shadow island owns it
-    GlInteropView*   sColorView  = nullptr;
-    GlInteropView*   sNormalView = nullptr;
-    GlInteropView*   sDepthView  = nullptr;
-    GlInteropView*   sStaticShadowView = nullptr;
+    // VK-RUNG8-ITEM5: shared scene is VK-only (no GL view); direct-chain only.
+    GlInteropView*   sStaticShadowView = nullptr;  // item-6 static-shadow import (stays)
 
     // OWNED objects.
     VkImageView   depthSampleView = VK_NULL_HANDLE;  // depth-aspect view over sDepthRes->image
@@ -350,11 +348,8 @@ bool build_state(gosPostProcess::VkPostScreenFx* s, int w, int h) {
 
     // Borrow the shared GBuffer (color0 write target, normal + depth sample sources).
     s->sColorRes   = mc2SharedSceneColorGetResource(MC2_SHARED_SCENE_COLOR0);
-    s->sColorView  = mc2SharedSceneColorGetGlView(MC2_SHARED_SCENE_COLOR0);
     s->sNormalRes  = mc2SharedSceneColorGetResource(MC2_SHARED_SCENE_NORMAL);
-    s->sNormalView = mc2SharedSceneColorGetGlView(MC2_SHARED_SCENE_NORMAL);
     s->sDepthRes   = mc2SharedSceneDepthGetResource();
-    s->sDepthView  = mc2SharedSceneDepthGetGlView();
     s->sStaticShadowRes = mc2SharedStaticShadowGetResource();
     s->sStaticShadowView = mc2SharedStaticShadowGetGlView();
     // VK-RUNG8 item-4: direct-chain only. Only the shared VkImageResources are required;

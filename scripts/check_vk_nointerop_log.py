@@ -61,6 +61,13 @@ FORBIDDEN = [
     "glInteropWaitFromVk",
     "glInteropViewCreate",
     "vkImageResourceCreate(exportable)",
+    # VK-RUNG8-ITEM5: the shared-scene GL-import half is deleted. These receipts are
+    # emitted only by the OLD exportable/glInteropView path; their appearance means the
+    # deleted GL-import shared scene resurfaced.
+    "VK-backed GL_RGBA16F",
+    "VK-backed GL_DEPTH24_STENCIL8",
+    "VK-backed GL_R32UI",
+    "imported to GL_",
     "VK_POST_HZB_TRACE",
     "VK_POST_SCREENFX_TRACE",
     "VK_POST_SSAO_TRACE",
@@ -196,6 +203,25 @@ OWNERSHIP_ISLAND_TAGS = [
     "[VK_MECH_TIER1]",
     "[VK_WATER_TIER1]",
 ]
+
+
+def check_shared_scene_vk_only(text: str) -> bool:
+    """VK-RUNG8-ITEM5: when the shared scene is active, assert it is VK-ONLY.
+
+    The GL-import half is deleted, so the shared scene must report the VK-only
+    placeholder receipt for color(MRT0) + depth. The deleted GL-import receipts are
+    covered by FORBIDDEN. Only asserted when the shared scene armed at all (a legit
+    pure-GL run emits no [VK_SHARED_SCENE_*] line and is not gated here)."""
+    if "[VK_SHARED_SCENE" not in text:
+        print("shared-scene: not armed (pure GL) -- not asserted")
+        return False
+    failed = False
+    for needle in ("(VK-only MRT0)", "(VK-only depth)"):
+        present = needle in text
+        print(f"shared-scene VK-only {needle!r}: {'yes' if present else 'NO'}")
+        if not present:
+            failed = True
+    return failed
 
 
 def check_ownership(text: str) -> bool:
@@ -429,6 +455,8 @@ def main() -> int:
     failed |= check_islands(text)
     print("== OWNERSHIP: geometry islands used_vulkan > 0 ==")
     failed |= check_ownership(text)
+    print("== VK-RUNG8-ITEM5: shared scene VK-only substrate ==")
+    failed |= check_shared_scene_vk_only(text)
     print("== H3 frame consistency ==")
     failed |= check_frame_consistency(text, args.min_frames)
     if not args.no_canaries:
