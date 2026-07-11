@@ -1,6 +1,50 @@
 # VK-ARC-STATE — current state block (update every session)
 
-## 2026-07-11 — VK-RUNG8-ITEM7-CSM-COPYMODE-DELETE-1: ITEM 7 COMPLETE (LATEST)
+## 2026-07-11 — VK-RUNG8-ITEM8-PRESENT-TAIL-DELETE-1: ITEM 8 COMPLETE (LATEST)
+
+Ladder rung 8.7at. HEAD `e09eee3e`, deployed `mc2-win64-0.4c` @ `e09eee3e320b dirty=0`.
+**METAL-GATE-AUDIT-2 8.7 inventory row 8 (item 8) is DONE.** The present interop tail
+(copy-1 GL blit + GL->VK semaphore handoff + the exportable present image + its GL view)
+is deleted; the present image is now a VK-ONLY (non-exportable) VkImageResource written
+solely by the native VK composite (+ native HUD/ImGui in the tail hook).
+
+- **Commits:** stage 1 `60b1ac8a` (delete copy-1 branch + GL->VK handoff + fs), stage 2
+  `354f9b6f` (delete exportable image + glView + copyFbo, VK-only alloc), checker
+  `282ea3b6` (VK-only receipt replaces NO_GL_IMPORT env), fail-soft hardening `e09eee3e`
+  (bound not-owned skip then drop to GL), docs (this).
+- **Gates:** `MC2_VK_PRESENT_SKIP_GL_HANDOFF` + `MC2_VK_PRESENT_NO_GL_IMPORT` RETIRED to
+  parseable no-ops with one-shot deprecation notes (item-9). `MC2_VK_PRESENT_TAIL_HOOK`
+  KEPT — verified load-bearing for the native HUD/ImGui tail (NOT vestigial; fails the
+  "only selected a deleted branch" test). `MC2_VK_PRESENT_DIRECT_FBO` / `MC2_VK_POST_COMPOSITE`
+  KEPT (live arming). `MC2_VK_PRESENT_NATIVE_STRICT` KEPT — its copy1_would_blit /
+  gl_handoff_would_signal triggers are now structural impossibilities; `present_image_not_vk_owned`
+  is the sole surviving trigger.
+- **Fail-soft (audit risk #1) redefined:** no GL-scene / VK-present hybrid can exist. Not
+  VK-owned -> bounded warmup skip (240 frames), then `forceGLFallback` to GL. Surfaced +
+  fixed a permanent-skip black-screen for an armed-but-never-composites config during the
+  resize exercise.
+- **MUST-SURVIVE verified untouched:** copy-2 `vkCmdBlitImage`, Win32 surface, the 8.7q
+  resize/direct-FBO interlock, the `5207a070` swapchain-retry hardening.
+- **Checker:** REQUIRE receipt `present image is a VK-only allocation (no GL interop view`;
+  drop deprecated `MC2_VK_PRESENT_NO_GL_IMPORT=1` env requirement. Invariant present==copy1_skip
+  ==gl_handoff_skip && copy1_blit==0 preserved (counters increment structurally).
+- **Verification** (clean deployed `e09eee3e320b`): resource-strict visible proof **VERDICT
+  PASS** (`.claude/vk-item8-proof-final/`): 11/11 deterministic bookmarks, all H1 forbidden 0
+  incl. glInteropSignal/Wait/glInteropViewCreate/vkImageResourceCreate(exportable), VK-only
+  receipt present, islands terrain/prop 1022 / mech 957 / water 1022 forbidden_*=0,
+  present/copy1_skip/gl_handoff_skip/composite/imgui=900, copy1_blit=0, provenance sha match.
+  Resize exercise (`.claude/vk-item8-resize2/`): `resize_count=3 resize_recreate_ok=3
+  retries=0 failsoft=0`, VK present active, 0 NATIVE_WINDOW_IN_USE/DEVICE_LOST/crash,
+  validation_errors=0. GL control gates-off `--verify`: 10/11 STABLE, lone `cross_map_view`
+  DRIFT = documented GL pose nondeterminism. Canonical tier1 5/5 PASS both states +0 destroys
+  (GL `2026-07-11T01-37-57`; VK umbrella `2026-07-11T01-41-26`).
+- **Zero-caller status for items 2/1:** `glInteropSignalToVk/WaitFromVk` live callers now =
+  **NONE** (present tail was the last). `glInteropViewCreate` / exportable `vkImageResourceCreate`
+  callers = static shadow (item 6, STAYS) + shadow-island dormant `!directChain` branch
+  (compiled-not-taken). Items 2 + 1 clear when item-6 retires the static-shadow substrate.
+- **Remaining 8.7 order:** item 6-decision, then 2, 1, 3, 10.
+
+## 2026-07-11 — VK-RUNG8-ITEM7-CSM-COPYMODE-DELETE-1: ITEM 7 COMPLETE
 
 Ladder rung 8.7as, commit `9e80f139`, deployed `mc2-win64-0.4c` @ `9e80f139cc27 dirty=0`.
 **METAL-GATE-AUDIT-2 8.7 inventory row 7 (item 7) is DONE.** The terrain CSM copy-mode

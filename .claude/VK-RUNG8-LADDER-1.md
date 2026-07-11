@@ -1024,3 +1024,61 @@ no tessellation anywhere in the tail.
     notes (gates unset in the proof). Canonical tier1 **5/5 PASS both states +0
     destroys** (GL `2026-07-11T00-51-05`; VK umbrella `2026-07-11T00-54-33`).
   - **Remaining 8.7 order:** items 8, then 6-decision, then 2, 1, 3, 10.
+- 8.7at - PRESENT INTEROP TAIL DELETE
+  (VK-RUNG8-ITEM8-PRESENT-TAIL-DELETE-1). METAL-GATE-AUDIT-2 8.7 inventory **row 8**
+  DONE. HEAD `e09eee3e`, deployed `mc2-win64-0.4c` @ `e09eee3e320b dirty=0`. Two
+  deletion commits + checker + fail-soft hardening:
+  - **stage 1 `60b1ac8a`** (`engine_present_vk.cpp`): deleted the copy-1 FBO-0->
+    shared-texture blit branch and the GL->VK semaphore handoff (`glInteropSignalToVk`
+    + the interop-slot `vkImageResourceBeginFrame`/fence + the fs.signal submit wait +
+    the fs.fence empty submit). copy-2 always does the Y-flip copy-1 used to do.
+    `MC2_VK_PRESENT_SKIP_GL_HANDOFF` RETIRED to a parseable no-op (item-9).
+  - **stage 2 `354f9b6f`** (`engine_present_vk.cpp`): the present image is now a
+    VK-ONLY (non-exportable) VkImageResource. Deleted the exportable branch +
+    `glInteropViewCreate` + copy-1 GL draw FBO from `buildSharedImage`, the
+    `Impl::glView`/`Impl::copyFbo` members + their destroys, the `gl_interop_view.h`
+    include, and collapsed `presentDirectFbo()` to a no-op returning 0 (live arming
+    is `presentDirectVkOnly()`). Emits receipt `present image is a VK-only allocation
+    (no GL interop view, item-8)`. `MC2_VK_PRESENT_NO_GL_IMPORT` RETIRED to a no-op.
+    **This removes the LAST exportable Win32 VkImageResource + glInteropViewCreate in
+    the present tail.**
+  - **checker `282ea3b6`** (`check_vk_nointerop_log.py`): REQUIRE the new VK-only
+    receipt; drop the deprecated `MC2_VK_PRESENT_NO_GL_IMPORT=1` env requirement. The
+    copy1_would_blit / gl_handoff_would_signal strict-abort triggers are structural
+    impossibilities now; `present_image_not_vk_owned` is the sole surviving
+    `MC2_VK_PRESENT_NATIVE_STRICT` trigger. copy1_blit stays a 0 trip-wire; copy1_skip
+    / gl_handoff_skip count every presented frame (invariant present==skip==gl_handoff
+    _skip && copy1_blit==0 preserved).
+  - **fail-soft hardening `e09eee3e`** (`.cpp`+`.h`): audit-risk-#1 redefinition. A
+    GL-scene / VK-present hybrid can no longer exist (mirror of item-5). When the
+    present image is NOT VK-owned: tolerate a bounded warmup streak (240 frames:
+    skip+retry, reset on any owned frame), then fail-soft the whole session to GL
+    (`forceGLFallback`) -- caught by the resize exercise, which first surfaced a
+    permanent-skip black-screen for an armed-but-never-composites config.
+  - **MUST-SURVIVE (verified untouched):** copy-2 `vkCmdBlitImage` swapchain blit,
+    Win32 surface creation, the 8.7q resize/direct-FBO re-arm interlock (lines
+    2047-2066), the `5207a070` swapchain-retry hardening (`rebuildSwapchain`),
+    `MC2_VK_PRESENT_TAIL_HOOK` (still gates native HUD/ImGui tail -- NOT vestigial,
+    fails the "only selected a deleted branch" test).
+  - **Verification** (clean deployed `e09eee3e320b`): resource-strict visible proof
+    `check_vk_nointerop_log.py --resource-strict --expect-sha e09eee3e...` **VERDICT
+    PASS** (`.claude/vk-item8-proof-final/`): 11/11 deterministic bookmarks, all H1
+    forbidden 0 incl. `glInteropSignalToVk/WaitFromVk/glInteropViewCreate/
+    vkImageResourceCreate(exportable)`, VK-only receipt present, islands
+    terrain/prop 1022 / mech 957 / water 1022 `forbidden_*=0`, present/copy1_skip/
+    gl_handoff_skip/composite/imgui = 900, copy1_blit=0, provenance dirty=False sha
+    match. Resize exercise (`.claude/vk-item8-resize2/`, full native env, 6 OS
+    `SetWindowPos` cycles): `resize_count=3 resize_recreate_ok=3 retries=0
+    failsoft=0`, VK present active (present_frames=421 composite_vk_frames=422
+    copy1_blit=0), **0 NATIVE_WINDOW_IN_USE / DEVICE_LOST / crash**,
+    validation_errors=0. GL control gates-off `--verify`: 10/11 byte-STABLE, lone
+    `cross_map_view` DRIFT = documented pre-existing GL pose nondeterminism.
+    Canonical tier1 **5/5 PASS both states +0 destroys** (GL `2026-07-11T01-37-57`;
+    VK umbrella `2026-07-11T01-41-26`).
+  - **Zero-caller status for items 2/1:** with item 8 done, `glInteropSignalToVk/
+    WaitFromVk` live callers = **NONE** (present tail was the last). `glInteropViewCreate`
+    / exportable `vkImageResourceCreate` callers = **static shadow (item 6, STAYS)** +
+    the **shadow-island dormant `!directChain` branch** (compiled-not-taken). So items
+    2 + 1 clear as soon as the item-6 static-shadow decision retires that substrate;
+    they are otherwise at zero *live* callers.
+  - **Remaining 8.7 order:** item 6-decision, then 2, 1, 3, 10.
