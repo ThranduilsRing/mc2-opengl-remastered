@@ -1,5 +1,79 @@
 # VK-ARC-STATE — current state block (update every session)
 
+## 2026-07-11 — ROUND 3 FIXED: bookmark-1 pose, PROPS-INVISIBLE (vib.stride=0), HUD glyph corruption (commit `930386601f6b`, both installs)
+
+Three field-env VK bugs closed this session; strict no-interop proof PASS at
+`930386601f6b` (present_frames=300, composite_vk_frames=300, all islands
+used_vulkan>0, no forbidden interop, provenance dirty=0); tier1 smoke 5/5 both
+states (+0 destroys); extended field check PASS.
+
+**★ VK-FIRST-BOOKMARK-POSE-1 — CLOSED.** Root cause: the deterministic capture
+sweep freezes the sim, but `eye->update()` still runs every frame
+(`code/mission.cpp` GameLogic.Mission.Camera is OUTSIDE the pause guard).
+`Camera::update()` re-asserts the intro-swoop goal (updateGoalPosition/Rotation)
+and the object-tracking snap each frame, dragging the FIRST bookmark off its
+applied pose while the mission-intro swoop goal is still draining (later bookmarks
+land after it drains, so ONLY bookmark 1 was stomped — the "sacrificial first
+bookmark" workaround is retired). Fix: `Camera::freezeScriptedCameraForCapture()`
+(`mclib/camera.h`; `GameCamera` override in `code/gamecam.h` also drops
+`targetObject`) called from `apply_bookmark` (`gos_visual_capture.cpp`) pins every
+scripted override to the applied pose so the next `update()` is a no-op; plus a
+bounded rendered-pose-verify guard and a `cap_pos` field in the capture sidecar.
+Proven: bookmark 1 (overview_center) captures at [0,0] proj30 rot45 (was the
+SW-corner [-800,-800] = edge_fog_corner_southwest), byte-identical across 2 VK
+runs, GL unaffected, guard 0 warnings.
+
+**★ PROPS INVISIBLE under field VK — ROOT CAUSE = `vib.stride == 0`.** The
+`vulkan_color_prop_island.cpp` Tier-1 color pipeline left the vertex binding
+stride unset (0). With stride 0 every vertex index fetches byte offset 0 (vertex
+0) → ALL triangles collapse to a degenerate point → the 991 prop instances DREW
+(used_vulkan>0, 69 typeRuns, draw_us~273) but rasterized ZERO fragments → props
+invisible in BOTH field and strict VK, while the shadow island (its OWN correctly-
+strided pipeline + light-view transform) still cast prop shadows = the "shadows
+visible, geometry absent" symptom. Ruled out first (all NEGATIVE): depth GEQUAL
+(forced ALWAYS = no change), target mismatch (same COLOR0 as terrain), ordering
+(terrain draws before renderLists props), material/discard (teal fallback also
+absent), FixB MVP snapshot (disabling it = no change). Fix: `vib.stride = 40`
+(matches the packed vertex + feed stride=40; asserted post-upload). ALSO: guarded
+`init_island` against not-ready shared-scene images (struct non-null but
+view==VK_NULL_HANDLE / format==UNDEFINED at frame 1) → decline+retry, which fixes
+a user-reproduced `0xC0000005` READ@0x20 crash at `vkCreateGraphicsPipelines`
+(:1044) in the boot warmup race. Airport pose now renders hangar/fence/palms/
+Quonset/vehicles/mechs, matching GL (eyeballed via the new PPM oracle + a GL
+PrintWindow control).
+
+**★ HUD TEXTURED-GLYPH CORRUPTION — CLOSED (mechanism data-confirmed).** The VK
+HUD texture mirror (`engine_present_vk.cpp`) was keyed by GL `textureHandle` ALONE
+and re-uploaded IN PLACE when the content serial changed. The game re-bakes many
+distinct runtime strings into ONE reused handle per HUD frame — dump proved handle
+275 cycles serials 2..9 in a single frame — so every draw referencing that handle
+ended up sampling the LAST bake → earlier strings rendered the wrong glyphs
+(OBJECTIVES/QUICK SAVE/pilot names garbled while pre-baked serial==1 labels stayed
+clean). Fix: key the mirror by `(handle<<32 | serial)` with a frame-stamped
+eviction sweep (pool gains `FREE_DESCRIPTOR_SET_BIT`). NOTE: the specific corrupted
+strings (pause menu, force-bar names) require interactive game state (menu open /
+units selected) that the headless HZB-pinned capture doesn't reach, and the VK HUD
+tail doesn't survive into the sharedImg readback — so the before/after HUD glyph
+screenshot was NOT captured headlessly; the fix is data-proven (handle-275 serial
+collision) and no-regression-verified (74 HUD draws still record, game stable).
+★ Recommend live visual confirmation of the pause-menu/force-bar text.
+
+**Tooling added (gated, off by default):** `MC2_VK_PRESENT_DUMP_PPM` = one-shot
+PPM dump of the composited sharedImg backbuffer — a headless VK oracle (VK
+swapchains ignore PrintWindow → grey; GL scene-FBO is empty under shared-GBuffer).
+`MC2_VK_HUD_DRAW_DUMP` = per-draw HUD handle/serial dump. `run_vk_field_check.py`
+extended with a HARD props-pose pixel assert (airport pose via MC2_HZB_VIEW_FILE,
+props-region edge-detail >= 8.0; props ≈ 12.6, degenerate ≈ 5.0).
+
+**★ DURABLE LESSONS:** (1) shadows prove world-space geometry + LIGHT transform,
+NOT the camera transform or color pass — don't treat "shadows visible" as "geometry
+renders". (2) `used_vulkan>0` means draws EXECUTED, not that fragments RASTERIZED —
+a stride/degenerate-geometry bug passes every receipt. (3) VK swapchain content is
+invisible to OS/PrintWindow grabs and to the GL scene-FBO capture under shared-
+GBuffer; use a sharedImg readback-to-PPM oracle for headless VK pixel truth.
+
+---
+
 ## 2026-07-11 — P0 ROUND 2 FIXED: umbrella now arms the COMPLETE CONTENT STACK (VK-FIELD-ENV-CONTENT-STACK-ARM-1)
 
 **Symptom (user re-tested `tracy-vk-compare.bat on` at `b0b8ae2b`, mc2_01):** after the round-1
