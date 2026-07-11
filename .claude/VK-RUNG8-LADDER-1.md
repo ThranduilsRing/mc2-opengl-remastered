@@ -898,3 +898,74 @@ no tessellation anywhere in the tail.
   the last glInteropSignal/Wait callers outside gl_interop_view/present). Item 6
   (static-shadow import) and the asset-feed readback layer (audit risk #2) stay
   by decision.
+
+- 8.7ar - ITEM 5 DELETED SHARED-SCENE GL-IMPORT HALVES + PROP/WATER HYBRID ARMS
+  (VK-RUNG8-ITEM5-SHARED-SCENE-DELETE-1, commits `7ee0494f` core + `11f9f7fc`
+  prop/water + `12fe7c4b` deprecation-note fixup). METAL-GATE-AUDIT-2 8.7 inventory
+  **row 5**. The shared scene color/normal/objectId + depth resources are now
+  **VK-ONLY (non-exportable)**: deleted the exportable/`glInteropViewCreate`
+  allocation branch, the D24S8-preference block (dead — GL never writes these
+  images now, so VK-native D32S8 is the only/correct format), the `vkOnlyNoGlView`
+  param + `GLuint out` + `HasGlView`/`GetGlView` accessors + the `view`/`viewValid`
+  members, and the gos_postprocess GL-import FBO substitution machinery. The former
+  `vkOnlyNoGlView` path is the ONLY path.
+  - **gos_postprocess**: the shared scene arms ONLY under the full native-present
+    stack (`mc2VkSharedSceneDirectResourceEnabled()`); otherwise it declines the
+    WHOLE VK shared-GBuffer to pure GL (the GL FBO attachments are plain-GL
+    placeholders, never GL-rendered — under item-5 a VK-scene/GL-present hybrid can
+    no longer exist, so a config that can't run present-native renders pure GL).
+    `destroyFBOs` deletes the placeholder + frees the VK image (HasGlView checks
+    removed). MUST-SURVIVE kept: the pure-GL alloc paths + the `glCopyImageSubData`
+    scene-color/depth snapshots.
+  - **Fail-soft decision (audit risk #1)**: `mc2VkSharedSceneStrictFallback`
+    redefined = the boot-decline canary. With no GL-import half, a create() failure
+    means the ENTIRE VK shared-GBuffer session declines to pure GL (GL renders its
+    own targets, the VK islands fail their VkImageResource-readiness and fall to GL,
+    present composites the GL scene). `MC2_VK_SHARED_SCENE_STRICT=1` makes that
+    decline a hard abort so Metal-gate proofs can't pass through a hidden decline.
+  - **present (engine_present_vk.cpp)**: deleted the native composite's
+    `!sceneDirectChain` GL-view hybrid arm (sceneView/objectIdView fetches +
+    glInterop signal/wait); composite REQUIRES the shared scene already Vulkan-owned
+    (direct-chain) or declines to GL. Present-image copy-2/Win32-surface tail
+    (item 8) untouched.
+  - **prop + water hybrid-arm deletion (item-3 trigger)**: removing `GetGlView`
+    removed the last input to their `!directChain` arms, so they were deleted
+    mirroring mech `a0cba0c4` / terrain `741b9e4f` (glInterop signal/wait, fsN/fsD
+    BeginFrame, gpuC/N/D vk2gl plumbing, waitSems/signalSems out; submit
+    waits/signals nothing; run-entry guards → `disabled || !inited`). Gates
+    `MC2_VK_PROP_DIRECT_CHAIN` / `MC2_VK_WATER_DIRECT_CHAIN` RETIRED to parseable
+    no-ops + one-shot deprecation notes fired at island init (item-9 pattern).
+  - **terrain/mech/fog/hzb/screenfx/ssao**: the now-dead shared-scene GL-view
+    fetches (assign-only post item-4) removed; screenfx keeps its item-6
+    static-shadow view.
+  - **checker** (`check_vk_nointerop_log.py`): FORBIDDEN gains the deleted
+    GL-import receipts (`VK-backed GL_*`, `imported to GL_`); new
+    `check_shared_scene_vk_only` asserts `(VK-only MRT0)`/`(VK-only depth)` when the
+    shared scene is armed.
+  - **Verification** at clean deployed `12fe7c4b85b3` (lane `mc2-win64-0.4c`, build
+    `build64_island`): resource-strict visible proof
+    `check_vk_nointerop_log.py --resource-strict --expect-sha 12fe7c4b85b3` **VERDICT
+    PASS** (`.claude/vk-item5-proof-final2/`, 11/11 deterministic bookmarks, all H1
+    forbidden strings 0 incl. the deleted GL-import receipts, all islands
+    `forbidden_*=0`, ownership `used_vulkan` terrain 1022 / prop 1022 / mech 957 /
+    water 1022, VK-only substrate receipts present, present/copy1_skip/gl_handoff_skip/
+    composite/imgui all 900, copy1_blit=0). Explicit-override check
+    (`.claude/vk-item5-override2/`, `MC2_VK_PROP_DIRECT_CHAIN=0
+    MC2_VK_WATER_DIRECT_CHAIN=0`): both deprecation notes printed, zero strict aborts
+    (the `=0` override is inert — the hybrid arm is gone). GL control gates-off
+    `--verify` byte pair: 10/11 STABLE, lone `cross_map_view` DRIFT = the documented
+    pre-existing GL pose nondeterminism (identical to item-4's control). Canonical
+    tier1 both states PASS +0 destroys. First strict-proof attempts hit the known
+    intermittent swapchain `NATIVE_WINDOW_IN_USE` (VkResult=-1000000001) flake
+    (present_frames=0, islands still native); cleared on retry.
+
+  **Zero-caller status for the NEXT items (2 and 1):** with item 5 done, the
+  shared-scene GL-view family is gone. `glInteropViewCreate` /
+  `vkImageResourceCreate(exportable)` callers remaining = **static shadow** (item 6,
+  STAYS), the **shadow island dormant `!directChain` branch** (compiled-not-taken),
+  and the **present image tail** (item 8). `glInteropSignalToVk/WaitFromVk` live
+  callers = **present tail only** (prop/water were the last others — now deleted).
+  Items 2 (`vk_image_resource` exportable half) + 1 (`gl_interop_view.cpp` whole TU)
+  are NOT yet at zero callers because item 6 (static shadow) + item 8 (present) still
+  use them; they clear after items 6/8. **Remaining 8.7 order: items 7, 8, then 6,
+  then 2, 1, 3, 10** (2/1 gated behind 6+8).

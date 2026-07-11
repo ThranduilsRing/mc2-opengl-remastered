@@ -1,6 +1,60 @@
 # VK-ARC-STATE — current state block (update every session)
 
-## 2026-07-11 — VK-RUNG8-ITEM4-TERRAIN-DELETE-1: ITEM 4 COMPLETE — ALL ISLANDS (LATEST)
+## 2026-07-11 — VK-RUNG8-ITEM5-SHARED-SCENE-DELETE-1: ITEM 5 COMPLETE (LATEST)
+
+Ladder rung 8.7ar, commits `7ee0494f` (core) + `11f9f7fc` (prop/water hybrid arms) +
+`12fe7c4b` (deprecation-note fixup), deployed `mc2-win64-0.4c` @ `12fe7c4b85b3 dirty=0`.
+**METAL-GATE-AUDIT-2 8.7 inventory row 5 (item 5) is DONE.** The shared scene
+color/normal/objectId + depth resources are now VK-ONLY (non-exportable); the GL-import
+half is deleted and the former `vkOnlyNoGlView` path is the ONLY path.
+
+- **Deleted**: exportable/`glInteropViewCreate` allocation branch + D24S8-preference
+  block + `vkOnlyNoGlView`/`GLuint out`/`HasGlView`/`GetGlView`/`view` members from
+  `vulkan_shared_scene_color/depth.{cpp,h}`; the GL-import FBO substitution machinery
+  from `gos_postprocess.cpp`; the present native-composite `!sceneDirectChain` GL-view
+  hybrid arm from `engine_present_vk.cpp`; the prop+water `!directChain` hybrid
+  semaphore arms (item-3 trigger — `GetGlView` removal took their last input) mirroring
+  mech `a0cba0c4`; the dead assign-only shared-scene GL-view fetches in
+  terrain/mech/fog/hzb/screenfx/ssao.
+- **Decline semantics (audit risk #1 resolved)**: the shared scene arms ONLY under the
+  full native-present stack (`mc2VkSharedSceneDirectResourceEnabled()`); otherwise the
+  WHOLE VK shared-GBuffer declines to pure GL (there is no more VK-scene/GL-present
+  hybrid — a VK-only scene + GL present would be a disconnected placeholder). The GL FBO
+  attachments are plain-GL placeholders. `mc2VkSharedSceneStrictFallback` redefined =
+  the boot-decline canary (`MC2_VK_SHARED_SCENE_STRICT=1` aborts on the decline).
+  **Behavior change**: `MC2_VK_SHARED_GBUFFER=1` WITHOUT the present-native gates now
+  renders pure GL (was VK-scene-hybrid); WITH the full native stack it is VK-only. Inert
+  under the strict stack (VK-only was already the path there).
+- **Gates**: `MC2_VK_PROP_DIRECT_CHAIN` / `MC2_VK_WATER_DIRECT_CHAIN` RETIRED to
+  parseable no-ops + one-shot deprecation notes fired at island init (item-9 pattern).
+  MUST-SURVIVE kept: pure-GL alloc paths + the `glCopyImageSubData` scene snapshots +
+  screenfx's item-6 static-shadow GL view.
+- **Checker**: FORBIDDEN gains the deleted GL-import receipts (`VK-backed GL_*`,
+  `imported to GL_`); new `check_shared_scene_vk_only` asserts `(VK-only MRT0)` /
+  `(VK-only depth)` when the shared scene is armed.
+- **Verification** (all at clean deployed `12fe7c4b85b3`): resource-strict visible proof
+  `check_vk_nointerop_log.py --resource-strict --expect-sha 12fe7c4b85b3` **VERDICT
+  PASS** (`.claude/vk-item5-proof-final2/`): 11/11 deterministic bookmarks, all H1
+  forbidden 0 (incl. deleted GL-import receipts), all islands `forbidden_*=0`, ownership
+  terrain 1022 / prop 1022 / mech 957 / water 1022, VK-only substrate receipts present,
+  present/copy1_skip/gl_handoff_skip/composite/imgui = 900, copy1_blit=0. Override check
+  (`.claude/vk-item5-override2/`): both deprecation notes printed, **zero** strict aborts
+  (`=0` is inert — hybrid arm gone). GL control gates-off `--verify` byte pair: 10/11
+  STABLE, lone `cross_map_view` DRIFT = documented pre-existing GL pose nondeterminism.
+  Canonical tier1 5/5 PASS both states +0 destroys (GL, and
+  `MC2_RENDER_BACKEND=vulkan MC2_VK_SHARED_GBUFFER=1`). Intermittent swapchain
+  `NATIVE_WINDOW_IN_USE` flake hit the first strict attempts (present_frames=0, islands
+  still native); cleared on retry.
+- **Zero-caller status for items 2/1**: the shared-scene GL-view family is GONE.
+  `glInteropSignalToVk/WaitFromVk` live callers now = **present tail ONLY** (item 8;
+  prop/water were the last others). `glInteropViewCreate` / exportable
+  `vkImageResourceCreate` callers = **static shadow** (item 6, STAYS) + shadow-island
+  dormant `!directChain` branch + present tail (item 8). So items 2
+  (`vk_image_resource` exportable half) + 1 (`gl_interop_view.cpp` whole TU) are NOT yet
+  at zero callers — they clear only after items 6 + 8. **Remaining 8.7 order: 7, 8, 6,
+  then 2, 1, 3, 10.**
+
+## 2026-07-11 — VK-RUNG8-ITEM4-TERRAIN-DELETE-1: ITEM 4 COMPLETE — ALL ISLANDS
 
 Ladder rung 8.7aq, commit `741b9e4f`, deployed `mc2-win64-0.4c` @ `741b9e4faffb dirty=0`.
 The terrain island was the LAST island with a hybrid GL<->VK semaphore-handoff arm; it is
