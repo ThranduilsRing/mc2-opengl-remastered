@@ -120,8 +120,8 @@ bool mechDirectChainRequested() {
     static int state = -1;
     if (state == -1) {
         const bool mechGate = mechGateRequested();
-        const bool propDirect = mc2vkgate::envTriState("MC2_VK_PROP_DIRECT_CHAIN") == 1;
-        const bool mechDirect = mc2vkgate::envTriState("MC2_VK_MECH_DIRECT_CHAIN") == 1;
+        const bool propDirect = mc2vkgate::directChainGate("MC2_VK_PROP_DIRECT_CHAIN");
+        const bool mechDirect = mc2vkgate::directChainGate("MC2_VK_MECH_DIRECT_CHAIN");
         state = (mechGate && propDirect && mechDirect) ? 1 : 0;
     }
     return state == 1;

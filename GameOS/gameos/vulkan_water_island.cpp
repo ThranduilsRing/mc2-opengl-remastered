@@ -148,8 +148,8 @@ bool waterDirectChainRequested() {
     static int state = -1;
     if (state == -1) {
         state = (waterTier1Requested() &&
-                 mc2vkgate::envTriState("MC2_VK_MECH_DIRECT_CHAIN") == 1 &&
-                 mc2vkgate::envTriState("MC2_VK_WATER_DIRECT_CHAIN") == 1) ? 1 : 0;
+                 mc2vkgate::directChainGate("MC2_VK_MECH_DIRECT_CHAIN") &&
+                 mc2vkgate::directChainGate("MC2_VK_WATER_DIRECT_CHAIN")) ? 1 : 0;
     }
     return state == 1;
 }

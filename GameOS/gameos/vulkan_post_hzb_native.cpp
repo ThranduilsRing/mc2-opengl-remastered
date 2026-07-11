@@ -246,7 +246,7 @@ bool build_state(gosPostProcess::VkPostHzbNative* s, int w, int h, int mipCount)
     s->depthRes = mc2SharedSceneDepthGetResource();
     s->depthView = mc2SharedSceneDepthGetGlView();
     const bool directChain =
-        mc2vkgate::envTriState("MC2_VK_POST_HZB_DIRECT_CHAIN") == 1 &&
+        mc2vkgate::directChainGate("MC2_VK_POST_HZB_DIRECT_CHAIN") &&
         mc2vkgate::postDirectChainUpstreamOn();
     if (!s->colorRes || !s->normalRes || !s->depthRes ||
         (!directChain && (!s->colorView || !s->normalView || !s->depthView))) {
@@ -616,7 +616,7 @@ static bool vkPostHzbDirectChainEnabled()
 {
     static int state = -1;
     if (state == -1) {
-        state = (mc2vkgate::envTriState("MC2_VK_POST_HZB_DIRECT_CHAIN") == 1 &&
+        state = (mc2vkgate::directChainGate("MC2_VK_POST_HZB_DIRECT_CHAIN") &&
                  mc2vkgate::postDirectChainUpstreamOn()) ? 1 : 0;
         g_health.directChain = state;
         if (state == 1)

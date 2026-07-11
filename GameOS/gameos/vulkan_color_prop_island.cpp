@@ -124,9 +124,9 @@ bool propDirectChainRequested() {
     if (state == -1) {
         const bool propGate = propColorTier1Requested();
         const bool terrainNativePrefix =
-            mc2vkgate::envTriState("MC2_VK_TERRAIN_NATIVE_PREFIX_CLEAR") == 1;
+            mc2vkgate::directChainGate("MC2_VK_TERRAIN_NATIVE_PREFIX_CLEAR");
         const bool direct =
-            mc2vkgate::envTriState("MC2_VK_PROP_DIRECT_CHAIN") == 1;
+            mc2vkgate::directChainGate("MC2_VK_PROP_DIRECT_CHAIN");
         state = (propGate && terrainNativePrefix && direct) ? 1 : 0;
     }
     return state == 1;

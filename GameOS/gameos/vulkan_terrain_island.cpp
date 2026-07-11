@@ -170,7 +170,7 @@ bool terrainNativePrefixClearRequested() {
     static int state = -1;
     if (state == -1) {
         state = (terrainTier1Requested() &&
-                 mc2vkgate::envTriState("MC2_VK_TERRAIN_NATIVE_PREFIX_CLEAR") == 1) ? 1 : 0;
+                 mc2vkgate::directChainGate("MC2_VK_TERRAIN_NATIVE_PREFIX_CLEAR")) ? 1 : 0;
     }
     return state == 1;
 }
@@ -548,6 +548,17 @@ struct TerrainIsland {
 
 TerrainIsland* g_island = nullptr;
 
+// VK-UMBRELLA-DIRECT-CHAIN-DEFAULT-1 item-2 (boot-level native-or-decline):
+// distinguish a PERMANENT init failure (spv/pipeline/renderpass/resource creation --
+// won't recover this session) from a TRANSIENT one (engine VK context / shared GBuffer
+// not born YET at boot -- recovers a few frames later, keep the item-9 fail-hard-with-
+// retry). g_terrainInitReachedBuild flips to 1 once init passes the context/GBuffer
+// readiness gates and starts creating permanent VK objects; if init then fails, the
+// island is declined for the SESSION (one receipt line, GL owns terrain from frame 0)
+// instead of re-newing + re-init'ing the island every frame.
+static bool g_terrainSessionDeclined  = false;
+static int  g_terrainInitReachedBuild = 0;
+
 // Forward decls (COLORMAP-BASE helpers defined after snapshot_height, used earlier).
 bool ensure_dummy_colormap(TerrainIsland* s);
 void import_colormap(TerrainIsland* s, const Mc2TerrainTier1Feed& feed);
@@ -915,6 +926,7 @@ void destroy_island(TerrainIsland* s) {
 bool init_island(TerrainIsland* s, int w, int h) {
     s->w = w; s->h = h;
     ++g_health.attempted;
+    g_terrainInitReachedBuild = 0;  // reset; flips to 1 after readiness gates pass
 
     if (!mc2vk::ensureEngineVulkanContextForInterop()) { setFallback("engine_vk_context_birth_failed"); return false; }
     mc2vk::VulkanContext& ctx = mc2vk::getOrCreateEngineVulkanContext();
@@ -954,6 +966,9 @@ bool init_island(TerrainIsland* s, int w, int h) {
     }
     g_health.interopActive = nativePrefixClear ? 0 : 1;
     g_health.vk2glSemActive = (!nativePrefixClear && s->colorView && s->colorView->vkToGlImported) ? 1 : 0;
+    // Readiness gates (context + shared GBuffer) passed: any failure past this point is
+    // a PERMANENT build failure -> the island declines for the session (item-2).
+    g_terrainInitReachedBuild = 1;
 
     // ---- Shared-GBuffer renderpass. Default path preserves the GL-cleared color
     // attachments. MC2_VK_TERRAIN_NATIVE_PREFIX_CLEAR makes terrain the native first
@@ -2375,14 +2390,35 @@ extern "C" int mc2_vk_terrain_island_ready() {
 static bool ensure_island_ready(int w, int h) {
     if (!terrainTier1Requested()) return false;
     if (w <= 0 || h <= 0) return false;
+    // Item-2 boot-level native-or-decline: a prior PERMANENT init failure declined this
+    // island for the whole session -> GL owns terrain, no per-frame re-init churn.
+    if (g_terrainSessionDeclined) return false;
     if (g_island && (g_island->w != w || g_island->h != h)) {
         destroy_island(g_island); delete g_island; g_island = nullptr;
     }
     if (!g_island) {
         g_island = new TerrainIsland();
         if (!init_island(g_island, w, h)) {
-            vlog("init failed (%s) — GL fallback.", g_health.fallbackReason);
+            const bool permanent = (g_terrainInitReachedBuild != 0);
             destroy_island(g_island); delete g_island; g_island = nullptr;
+            if (permanent) {
+                // Build-phase failure won't recover this session: latch decline + ONE
+                // receipt line (vs. logging + re-init'ing every frame). GL renders
+                // terrain from frame 0.
+                g_terrainSessionDeclined = true;
+                vlog("[VK_TERRAIN_ISLAND] boot-level decline: permanent init failure "
+                     "(%s) -- GL owns terrain for this session (no per-frame retry).",
+                     g_health.fallbackReason);
+            } else {
+                // Transient readiness gate (VK context / shared GBuffer not born yet):
+                // keep item-9 fail-hard-with-retry -- GL draws this frame, retry next.
+                // Log once (boot warmup spans a few frames) to avoid per-frame spam.
+                static bool s_transientLogged = false;
+                if (!s_transientLogged) {
+                    vlog("init not ready (%s) — GL fallback (will retry).", g_health.fallbackReason);
+                    s_transientLogged = true;
+                }
+            }
             return false;
         }
     }

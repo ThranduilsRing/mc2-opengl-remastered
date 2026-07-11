@@ -49,6 +49,7 @@
 #include "gl_interop_view.h"
 #include "vulkan_context.h"
 #include "vulkan_shadow_island_live.h"
+#include "vk_shared_gbuffer_gate.h"
 
 #include <cstdio>
 #include <cstdlib>
@@ -149,8 +150,7 @@ bool csmArrayInteropGateRequested() {
 bool shadowDirectChainRequested() {
     static int state = -1;
     if (state == -1) {
-        const char* e = std::getenv("MC2_VK_SHADOW_DIRECT_CHAIN");
-        state = (e && e[0] == '1') ? 1 : 0;
+        state = mc2vkgate::directChainGate("MC2_VK_SHADOW_DIRECT_CHAIN") ? 1 : 0;
     }
     return state == 1;
 }

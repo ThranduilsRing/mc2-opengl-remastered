@@ -7,9 +7,14 @@
 // gate model" section in lockstep):
 //
 //   * UMBRELLA  MC2_VK_SHARED_GBUFFER=1  — arms the whole shared-GBuffer scene family
-//     at once. When ON, every member sub-gate below DEFAULTS to ON. The eventual
-//     default flip toggles exactly THIS ONE name. Requires MC2_RENDER_BACKEND=vulkan
-//     (the shared engine VulkanContext); fail-soft to GL when the context is absent.
+//     at once. When ON, every member sub-gate below DEFAULTS to ON, AND (as of
+//     VK-UMBRELLA-DIRECT-CHAIN-DEFAULT-1) the 10 direct-chain gates default ON too —
+//     i.e. umbrella-ON MEANS the strict/direct-chain no-GL-interop path. The old
+//     hybrid interop-semaphore path is reachable only by an explicit per-gate =0
+//     override (item-4's deletion target). The eventual default flip toggles exactly
+//     THIS ONE name. Requires MC2_RENDER_BACKEND=vulkan (the shared engine
+//     VulkanContext); fail-soft to GL when the context is absent. The umbrella itself
+//     stays DEFAULT-OFF — the flip to VK-by-default remains the USER's decision.
 //
 //   * SUB-GATES (member of the umbrella family): scene-region + region-detail gates.
 //     Explicit env ALWAYS wins over the umbrella (override for debugging):
@@ -75,16 +80,43 @@ inline bool subGate(const char* name)
     return umbrellaOn();
 }
 
+// Resolve a DIRECT-CHAIN gate — a member of the strict/direct-chain family that
+// arms the no-GL-interop path (each scene producer + post pass keeps the shared
+// color/depth/normal chain Vulkan-owned and skips its GL<->VK semaphore handoff).
+//
+// VK-RUNG8 item-4 PREREQUISITE (VK-UMBRELLA-DIRECT-CHAIN-DEFAULT-1): the umbrella
+// MC2_VK_SHARED_GBUFFER=1 now arms these by DEFAULT (strict/direct-chain is the
+// umbrella-ON meaning; the old hybrid interop-semaphore path is reachable ONLY by
+// an explicit per-gate =0 override — it is item-4's deletion target). Precedence is
+// identical to subGate: explicit env "1"/"0" wins; else the umbrella value.
+//
+// The 10-member direct-chain family (keep in lockstep with the strict runner + the
+// ladder doc): MC2_VK_TERRAIN_NATIVE_PREFIX_CLEAR, MC2_VK_PROP_DIRECT_CHAIN,
+// MC2_VK_MECH_DIRECT_CHAIN, MC2_VK_WATER_DIRECT_CHAIN,
+// MC2_VK_POST_FOG_DIRECT_CHAIN, MC2_VK_POST_SSAO_DIRECT_CHAIN,
+// MC2_VK_POST_SCREENFX_DIRECT_CHAIN, MC2_VK_POST_HZB_DIRECT_CHAIN,
+// MC2_VK_POST_COMPOSITE_DIRECT_CHAIN, MC2_VK_SHADOW_DIRECT_CHAIN.
+// (MC2_VK_OBJECTID_DIRECT_CHAIN is a view-mode-only canary, NOT a default member.)
+inline bool directChainGate(const char* name)
+{
+    const int t = envTriState(name);
+    if (t == 1) return true;
+    if (t == 0) return false;
+    return umbrellaOn();
+}
+
 // Shared post-pass direct-chain prerequisite: the scene producers have kept the
 // shared color/depth/normal chain Vulkan-owned through water. Individual post
 // passes still require their own direct-chain env gate on top of this.
 inline bool postDirectChainUpstreamOn()
 {
-    return envTriState("MC2_VK_TERRAIN_NATIVE_PREFIX_CLEAR") == 1 &&
-           envTriState("MC2_VK_PROP_DIRECT_CHAIN") == 1 &&
-           envTriState("MC2_VK_MECH_DIRECT_CHAIN") == 1 &&
-           envTriState("MC2_VK_WATER_TIER1") == 1 &&
-           envTriState("MC2_VK_WATER_DIRECT_CHAIN") == 1;
+    // Direct-chain members default ON under the umbrella (directChainGate);
+    // MC2_VK_WATER_TIER1 is a normal umbrella sub-gate (subGate).
+    return directChainGate("MC2_VK_TERRAIN_NATIVE_PREFIX_CLEAR") &&
+           directChainGate("MC2_VK_PROP_DIRECT_CHAIN") &&
+           directChainGate("MC2_VK_MECH_DIRECT_CHAIN") &&
+           subGate("MC2_VK_WATER_TIER1") &&
+           directChainGate("MC2_VK_WATER_DIRECT_CHAIN");
 }
 
 } // namespace mc2vkgate

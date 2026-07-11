@@ -28,6 +28,7 @@
 #include "gl_interop_view.h"
 #define MC2_VULKAN_SHARED_SCENE_COLOR_IMPL_ISLAND
 #include "vulkan_shared_scene_color.h"
+#include "vk_shared_gbuffer_gate.h"
 
 #include "imgui.h"
 #include "imgui_impl_vulkan.h"
@@ -234,18 +235,14 @@ bool nativeCompositeGateEnabled() {
 
 bool compositeDirectChainGateEnabled() {
     static const bool on = []() {
-        const char* v = getenv("MC2_VK_POST_COMPOSITE_DIRECT_CHAIN");
-        const char* terrain = getenv("MC2_VK_TERRAIN_NATIVE_PREFIX_CLEAR");
-        const char* prop = getenv("MC2_VK_PROP_DIRECT_CHAIN");
-        const char* mech = getenv("MC2_VK_MECH_DIRECT_CHAIN");
-        const char* waterTier1 = getenv("MC2_VK_WATER_TIER1");
-        const char* water = getenv("MC2_VK_WATER_DIRECT_CHAIN");
-        return v && v[0] == '1' &&
-               terrain && terrain[0] == '1' &&
-               prop && prop[0] == '1' &&
-               mech && mech[0] == '1' &&
-               waterTier1 && waterTier1[0] == '1' &&
-               water && water[0] == '1';
+        // VK-UMBRELLA-DIRECT-CHAIN-DEFAULT-1: direct-chain members default ON under
+        // the umbrella; MC2_VK_WATER_TIER1 is a normal umbrella sub-gate.
+        return mc2vkgate::directChainGate("MC2_VK_POST_COMPOSITE_DIRECT_CHAIN") &&
+               mc2vkgate::directChainGate("MC2_VK_TERRAIN_NATIVE_PREFIX_CLEAR") &&
+               mc2vkgate::directChainGate("MC2_VK_PROP_DIRECT_CHAIN") &&
+               mc2vkgate::directChainGate("MC2_VK_MECH_DIRECT_CHAIN") &&
+               mc2vkgate::subGate("MC2_VK_WATER_TIER1") &&
+               mc2vkgate::directChainGate("MC2_VK_WATER_DIRECT_CHAIN");
     }();
     return on;
 }

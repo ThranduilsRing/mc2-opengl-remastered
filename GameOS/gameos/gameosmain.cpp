@@ -6,6 +6,7 @@
 #include "draw_packet_emitter.h"       // DrawPacket v0
 #include "gos_static_prop_batcher.h"   // batcher_getSortedPacketCount — explicit, do not rely on transitive
 #include "../../RenderCore/MaterialGpu.h"  // RenderCore::MaterialGpu for g_dpSelProp albedoTex fill
+#include "vk_shared_gbuffer_gate.h"        // mc2vkgate::directChainGate (umbrella-default direct-chain)
 #include <stdio.h>
 #include <stdlib.h>
 #include <vector>
@@ -73,8 +74,7 @@ static bool mc2_vk_terrain_native_prefix_clear_requested()
 #ifdef MC2_VULKAN_ISLAND
     static int state = -1;
     if (state == -1) {
-        const char* v = getenv("MC2_VK_TERRAIN_NATIVE_PREFIX_CLEAR");
-        state = (v && strcmp(v, "1") == 0) ? 1 : 0;
+        state = mc2vkgate::directChainGate("MC2_VK_TERRAIN_NATIVE_PREFIX_CLEAR") ? 1 : 0;
     }
     return state == 1;
 #else

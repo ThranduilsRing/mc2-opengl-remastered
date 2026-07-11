@@ -135,11 +135,12 @@ static bool mc2VkSharedSceneDirectResourceEnabled()
 {
     static const bool s_on =
         mc2vkgate::postDirectChainUpstreamOn() &&
-        mc2vkgate::envTriState("MC2_VK_POST_FOG_DIRECT_CHAIN") == 1 &&
-        mc2vkgate::envTriState("MC2_VK_POST_SSAO_DIRECT_CHAIN") == 1 &&
-        mc2vkgate::envTriState("MC2_VK_POST_SCREENFX_DIRECT_CHAIN") == 1 &&
-        mc2vkgate::envTriState("MC2_VK_POST_HZB_DIRECT_CHAIN") == 1 &&
-        mc2vkgate::envTriState("MC2_VK_POST_COMPOSITE_DIRECT_CHAIN") == 1 &&
+        mc2vkgate::directChainGate("MC2_VK_POST_FOG_DIRECT_CHAIN") &&
+        mc2vkgate::directChainGate("MC2_VK_POST_SSAO_DIRECT_CHAIN") &&
+        mc2vkgate::directChainGate("MC2_VK_POST_SCREENFX_DIRECT_CHAIN") &&
+        mc2vkgate::directChainGate("MC2_VK_POST_HZB_DIRECT_CHAIN") &&
+        mc2vkgate::directChainGate("MC2_VK_POST_COMPOSITE_DIRECT_CHAIN") &&
+        // Present-tail strictness gates (NOT direct-chain-family; stay explicit).
         mc2vkgate::envTriState("MC2_VK_PRESENT_NO_GL_IMPORT") == 1 &&
         mc2vkgate::envTriState("MC2_VK_PRESENT_SKIP_GL_HANDOFF") == 1;
     return s_on;

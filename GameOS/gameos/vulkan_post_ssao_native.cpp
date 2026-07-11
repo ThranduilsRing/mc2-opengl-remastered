@@ -687,7 +687,7 @@ static bool vkPostSsaoDirectChainEnabled()
 {
     static int state = -1;
     if (state == -1) {
-        state = (mc2vkgate::envTriState("MC2_VK_POST_SSAO_DIRECT_CHAIN") == 1 &&
+        state = (mc2vkgate::directChainGate("MC2_VK_POST_SSAO_DIRECT_CHAIN") &&
                  mc2vkgate::postDirectChainUpstreamOn()) ? 1 : 0;
         g_ps.directChain = state;
         if (state == 1)
