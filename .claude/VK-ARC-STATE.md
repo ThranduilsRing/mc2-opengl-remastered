@@ -1,6 +1,102 @@
 # VK-ARC-STATE — current state block (update every session)
 
-## 2026-07-11 — VK-RUNG8-ITEM8-PRESENT-TAIL-DELETE-1: ITEM 8 COMPLETE (LATEST)
+## 2026-07-11 — ITEMS 1+2 PARTIAL + ITEM 10 SWEEP (LATEST) — pre-item-6 autonomous close
+
+Ladder rungs 8.7au (item-1), 8.7av (item-2), 8.7aw (item-10). The final autonomous
+8.7 slice before the **item-6 USER DECISION**. With item 8 done, `glInteropSignalToVk/
+WaitFromVk` had **zero live callers** and item 6 (static shadow) + the shadow-island
+dormant `!directChain` branch were the only remaining exportable/GL-view callers.
+
+- **Commits:** item-1 `326644f1` (delete signal/wait + dead self-test + strip dead
+  semaphore imports from glInteropViewCreate), item-2 `88a15fae` (delete exportable
+  semaphore Win32 export from vk_image_resource), item-10 `37619dd1` (remove dead
+  present-gate resolver + doc sync), docs (this + ladder).
+- **Item 1 (partial):** `gl_interop_view.{cpp,h}` — deleted `glInteropSignalToVk`,
+  `glInteropWaitFromVk`, the entire `vkInteropSelfTest*` block (no callers), the
+  `noGlInteropStrictEnabled` helper (only signal/wait used it), and the now-dead
+  semaphore IMPORTS (`glDoneSem`/`glVkToGlSem` + the `GL_EXT_semaphore[_win32]` gate +
+  the struct members). The adapter is now an IMAGE-ONLY zero-copy importer — all item 6
+  needs. `glInteropViewCreate`/`Destroy` KEPT. ~250 LOC deleted.
+- **Item 2 (partial):** `vk_image_resource.{cpp,h}` — deleted the exportable **semaphore
+  Win32 export** (`VkExportSemaphoreCreateInfo` + `vkGetSemaphoreWin32HandleKHR` +
+  `glToVkSemWin32[2]`/`vkToGlSemWin32[2]` + their `CloseHandle`). The binary semaphores +
+  `VkFrameSync` + `beginFrame` STAY (shared all-island ABI). The exportable **IMAGE**
+  half (memWin32 + `VkExportMemoryAllocateInfo` + format export-sanity) SURVIVES — item 6
+  is a cohesive block that needs it (it is glInteropViewCreate's sole input). This is the
+  **maximal** caller-free deletion; nothing else in the exportable path could go without
+  breaking item 6. ~35 LOC deleted.
+- **Shadow-island dormant `!directChain` branch:** LEFT untouched (compiled-not-taken;
+  item-6-pending). It still compiles — it references `glInteropViewCreate` (kept) and
+  no longer touches the deleted semaphore-Win32 members (it never did directly).
+- **Item 10 (sweep):** found + removed the one piece of **dead resolver code beyond the
+  no-op**: `mc2VkSharedSceneDirectResourceEnabled()` in `gos_postprocess.cpp` still
+  required `MC2_VK_PRESENT_NO_GL_IMPORT==1 && MC2_VK_PRESENT_SKIP_GL_HANDOFF==1` (both
+  retired to no-ops by item 8) — a latent footgun that would decline the whole shared
+  scene to pure GL under the umbrella unless a user set two retired gates. Removed; the
+  shared scene now arms on the post/composite direct-chain stack alone. All other retired
+  gates already carry exactly the item-9 pattern (parseable no-op + one-shot note). The
+  prop/water/mech `*_DIRECT_CHAIN` reads in `postDirectChainUpstreamOn()` are intentional
+  umbrella debug-overrides (default-ON), NOT dead — kept. Docs (`tier1_env_vars.md`
+  gate-model) synced; retired gates stay allowlisted in `run_smoke` (recipe stability).
+
+### RETIRED-GATES table (gate → retired-by → replacement semantics)
+
+| Gate | Retired by | Replacement semantics |
+|---|---|---|
+| `MC2_VK_MECH_FEED_NATIVE` | 8.7am `66f5c3e9` | Native CPU mech feed is unconditional; GL `glGetBufferSubData` readback deleted. No-op + one-shot note. |
+| `MC2_VK_TERRAIN_NATIVE_PREFIX_CLEAR` | 8.7aq/item-4 `741b9e4f` | Structural predicate `mc2vkgate::terrainNativeFirstOwnerOn()` (terrain Tier-1 armed = native first owner, CLEAR loadOp, no handoff). No-op + note. |
+| `MC2_VK_PROP_DIRECT_CHAIN` | item-5 `11f9f7fc` (hybrid-arm delete) | Island unconditionally native. Name survives ONLY as an umbrella debug-override in `postDirectChainUpstreamOn()` (default-ON under umbrella; explicit `=0` forces the post-upstream term OFF). No-op-for-island + one-shot note. |
+| `MC2_VK_WATER_DIRECT_CHAIN` | item-5 `11f9f7fc` | Same as prop. |
+| `MC2_VK_CSM_COPYMODE` | 8.7as/item-7 `9e80f139` | CSM copy-mode deleted; direct VK shadow views only. No-op + note. |
+| `MC2_VK_CSM_BISECT` | 8.7as/item-7 `9e80f139` | CSM copy-mode/bisect recon probes deleted. No-op + note. |
+| `MC2_VK_PRESENT_SKIP_GL_HANDOFF` | 8.7at/item-8 `60b1ac8a` | GL→VK present handoff deleted; skip is unconditional. No-op + note. Item-10 `37619dd1` removed its last (dead) resolver read. |
+| `MC2_VK_PRESENT_NO_GL_IMPORT` | 8.7at/item-8 `354f9b6f` | Present image unconditionally VK-only. No-op + note. Item-10 removed its last (dead) resolver read. |
+| `MC2_VK_*_DIRECT_CHAIN` (mech/shadow/post-fog/ssao/screenfx/hzb) | item-4 `a...`/`741b9e4f` | Umbrella-default-ON members; retired to no-ops when their island hybrid arms were deleted. See `tier1_env_vars.md` for the full family. |
+
+**NOT retired (load-bearing — do NOT retire):** `MC2_VK_PRESENT_TAIL_HOOK` (item-8
+verified: gates native HUD/ImGui tail), `MC2_VK_SHADOW_INTEROP` /
+`MC2_VK_CSM_ARRAY_INTEROP` / `MC2_VK_CSM_FULLMAP_INTEROP` (feed the surviving direct CSM
+producers), `MC2_VK_PRESENT_DIRECT_FBO` / `MC2_VK_POST_COMPOSITE` (live arming),
+`MC2_VK_PRESENT_NATIVE_STRICT` / `MC2_VK_SHARED_SCENE_STRICT` /
+`MC2_VK_NO_GL_INTEROP[_RESOURCE]_STRICT` (Metal-gate canaries).
+
+### ★ ITEM-6 DECISION BRIEF (for the USER)
+
+**What the static-shadow substrate is.** `vulkan_shared_static_shadow.cpp` (gate
+`MC2_VK_STATIC_SHADOW_MAP`, default-OFF): builds an **exportable** VK `D32_SFLOAT` image
+and imports it into GL as `GL_DEPTH_COMPONENT32F`. GL renders the static shadow pass into
+it and GL screen-shadow samples it; rung 8.7n's native **static-only** screen-shadow pass
+(`MC2_VK_POST_SCREENFX_SHADOW`, active only when `MC2_SHADOW_ENABLE` is OFF) samples this
+same image as a VkImageResource. It is the **sole remaining live caller** of
+`glInteropViewCreate` and the **sole remaining live exportable** `vkImageResourceCreate`.
+
+**What DELETING it costs.** The native static-only screen-shadow slice loses its VK
+static-shadow view, so a **non-CSM, static-only-shadow** config would fall back to the GL
+screen-shadow body (Windows) / have no VK-native static screen-shadow (macOS — acceptable,
+since CSM is the path). **The shipping default (`MC2_SHADOW_CSM`, launcher default) costs
+NOTHING** — CSM screen-shadow (8.7o) samples the direct VK CSM array/full-map views, not
+this substrate. The strict/Metal-gate stack already forces `MC2_VK_STATIC_SHADOW_MAP=0`
+(8.7ad) and proves the full native tail works without it.
+
+**What KEEPING it costs.** It holds hostage: the entire `gl_interop_view.{cpp,h}` TU
+(image-import half + LUID match), the exportable-IMAGE half of `vk_image_resource.{cpp,h}`
+(`VkExternalMemoryImageCreateInfo` + `VkExportMemoryAllocateInfo` + `vkGetMemoryWin32HandleKHR`
++ `memWin32`), and the **`VK_KHR_external_memory_win32` extension enablement** in
+`vulkan_context.cpp`. That Win32 external-memory family is the one hard **MoltenVK/Metal-gate
+blocker** left in the geometry/post/present stack (METAL-GATE-AUDIT-2 BLOCKER #1). While it
+lives, items 1 (whole `gl_interop_view.cpp` TU) and 2 (exportable-image half) cannot go to
+zero and the Metal gate stays closed.
+
+**Recommendation: RETIRE it.** Delete `MC2_VK_STATIC_SHADOW_MAP` + the substrate, and
+redefine the non-CSM static-only screen-shadow to run the GL screen-shadow body (fail-soft
+on Windows; on macOS that config simply has no VK-native static screen-shadow, acceptable
+because CSM — which does NOT use this substrate — is the shipping path). This is consistent
+with METAL-GATE-AUDIT-2 audit-risk-#1 ("no GL rescue on macOS → strict canaries become
+product behavior"). Retiring it clears items 2 + 1 to FULL deletion (whole
+`gl_interop_view.cpp` + the exportable-image half of `vk_image_resource`) and closes the
+last Win32 external-memory Metal-gate blocker. **NOT executed — USER DECISION.**
+
+## 2026-07-11 — VK-RUNG8-ITEM8-PRESENT-TAIL-DELETE-1: ITEM 8 COMPLETE
 
 Ladder rung 8.7at. HEAD `e09eee3e`, deployed `mc2-win64-0.4c` @ `e09eee3e320b dirty=0`.
 **METAL-GATE-AUDIT-2 8.7 inventory row 8 (item 8) is DONE.** The present interop tail

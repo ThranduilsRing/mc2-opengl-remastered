@@ -1082,3 +1082,28 @@ no tessellation anywhere in the tail.
     2 + 1 clear as soon as the item-6 static-shadow decision retires that substrate;
     they are otherwise at zero *live* callers.
   - **Remaining 8.7 order:** item 6-decision, then 2, 1, 3, 10.
+- 8.7au/av/aw - ITEMS 1+2 PARTIAL + ITEM 10 SWEEP (pre-item-6 autonomous close).
+  Commits item-1 `326644f1`, item-2 `88a15fae`, item-10 `37619dd1`, docs. With item 8
+  done, `glInteropSignalToVk/WaitFromVk` had ZERO live callers; item 6 (static shadow) +
+  the shadow-island dormant `!directChain` branch were the only remaining exportable/
+  GL-view callers.
+  - **Item 1 (partial, `gl_interop_view.{cpp,h}`):** deleted `glInteropSignalToVk`,
+    `glInteropWaitFromVk`, the entire dead `vkInteropSelfTest*` proof block, the
+    `noGlInteropStrictEnabled` helper (only signal/wait used it), and the now-dead
+    semaphore imports in `glInteropViewCreate` (`glDoneSem`/`glVkToGlSem` + members +
+    the `GL_EXT_semaphore[_win32]` gate). Adapter is now IMAGE-ONLY zero-copy import —
+    all item 6 needs. `glInteropViewCreate`/`Destroy` KEPT. ~250 LOC.
+  - **Item 2 (partial, `vk_image_resource.{cpp,h}`):** deleted the exportable semaphore
+    Win32 export (`VkExportSemaphoreCreateInfo` + `vkGetSemaphoreWin32HandleKHR` +
+    `glToVkSemWin32`/`vkToGlSemWin32` + CloseHandle). Binary semaphores + `VkFrameSync` +
+    `beginFrame` STAY (all-island ABI). Exportable IMAGE half (memWin32 + export-sanity)
+    SURVIVES — item 6 cohesive block needs it. Maximal caller-free deletion. ~35 LOC.
+  - **Shadow-island dormant branch:** LEFT (compiled-not-taken; item-6-pending).
+  - **Item 10 (sweep):** removed the one dead resolver (the two retired present gates
+    consulted in `mc2VkSharedSceneDirectResourceEnabled()` — a latent GL-decline footgun);
+    all retired gates confirmed item-9 pattern; prop/water/mech `*_DIRECT_CHAIN` reads are
+    intentional umbrella debug-overrides (kept). Docs synced; RETIRED-GATES table +
+    ITEM-6 DECISION BRIEF in VK-ARC-STATE.md.
+  - **Verification** (clean deployed HEAD): strict no-interop proof + resource-strict
+    proof, GL control gates-off, canonical tier1 both states — see VK-ARC-STATE.md.
+  - **Remaining 8.7 order:** item 6-decision (BRIEF recorded), then item 1/2 FULL, item 3.
