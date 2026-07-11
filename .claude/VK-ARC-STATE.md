@@ -1,6 +1,94 @@
 # VK-ARC-STATE — current state block (update every session)
 
-## 2026-07-10 — VK-RUNG8-ITEM4-INTEROP-DELETE-1: item-4 SPLIT (mech + 4 post passes done) (LATEST)
+## 2026-07-10 — VK-OWNERSHIP-GAP-FIX: prop+water native co-write RESTORED under strict (LATEST)
+
+Closes the ★★ BLOCKER logged below (the `04a15aec` prop/water run-entry guard bug).
+
+**Root fix (Step 1).** `vulkan_color_prop_island.cpp` and `vulkan_water_island.cpp` had
+`if (s->disabled || !s->inited || !s->useInterop) return 0;` at run entry. Direct-chain
+sets `useInterop=false` (init), so under the umbrella the islands returned 0 and GL silently
+drew props/water into the VK-owned GBuffer (`used_vulkan=0`, no forbidden_* — a GL base-
+geometry flush is not an interop call, so the strict proof passed with a hole). Guard now
+enters when direct-chain OR the hybrid interop arm is armed — mirrors mech/terrain
+(`a0cba0c4`/`1f4a1a5a`), whose guards are `disabled || !inited` with directChain
+unconditional-native:
+`if (s->disabled || !s->inited || (!propDirectChainRequested() && !s->useInterop)) return 0;`
+(and the `waterDirectChainRequested()` twin for water). init already supported direct-chain
+(readiness gate only needs GL views when `!directChain`), so no init change was needed.
+
+**Coupling fix.** `waterDirectChainRequested()` ANDed in `directChainGate("MC2_VK_MECH_DIRECT_CHAIN")`
+— the DEPRECATED mech gate (mech is unconditionally native post-`a0cba0c4`). An explicit
+`MC2_VK_MECH_DIRECT_CHAIN=0` (mech-hybrid debug override) wrongly forced water back onto the
+hybrid arm. Water is now bound to its OWN gate only (`MC2_VK_WATER_DIRECT_CHAIN`).
+(`postDirectChainUpstreamOn()` in `vk_shared_gbuffer_gate.h:117` also references the deprecated
+mech gate but resolves ON under the umbrella — left as-is, mirroring the `a0cba0c4` precedent
+that did not touch it; only an explicit =0 debug override would gate posts.)
+
+**PARITY / OWNERSHIP PROOF (Step 2), `guardfix` @ `1ea7bc8a dirty=1`, mc2_01 strict-visible
+`--resource-strict --minimal-promotion` (`.claude/ownership-fix/guardfix-mc2_01/`).** Island
+receipts — the ownership gap is CLOSED:
+- **prop `used_vulkan` 0 → 1022** `used_interop=0 interop_active=0 forbidden_*=0 fallback_reason=""`
+  inst_records=1008 type_runs=80 geom_verts=23628 vk_draws=1.
+- **water `used_vulkan=1022`** `used_interop=0 forbidden_*=0 depthin_*=0 fallback_reason=""`
+  thin_records=3756 recipe_count=9801 vk_draws=1.
+- terrain 1022 / mech 957 unchanged. All 11 bookmarks present + deterministic (`det=True`,
+  `nondeterministic=False`), prop-heavy (highangle_wide=static_prop_pbr) + water (oblique_fog,
+  pyramid_islands_topdown) among them → native path renders clean, no fallback/crash = no rot.
+- Hardened checker (below) **VERDICT PASS** incl. new per-island ownership assertion.
+
+Full-frame VK-vs-GL MADs were captured but are CONFOUNDED (the GL reference ran the deployed
+default gate stack, the VK run ran the full strict post-native stack — apples-to-oranges;
+historical parity work was single-variable within-backend). The single-variable control
+(prop/water gate OFF under the same strict env) is NOT reachable — it aborts on
+`vkImageResourceCreate(exportable)` (turning the tier gate off re-arms the interop path the
+resource-strict mode forbids), which itself re-confirms the native path is the only valid
+strict config. Recorded MADs for the record (NOT a clean parity signal):
+overview_center 8.7/ch, highangle_wide 11.7/ch (both under the ~14-15/ch far-pose family
+baseline), pyramid_islands_topdown 20.2/ch, runway_overview 32.7/ch, cliff_side_on 55.6/ch,
+oblique_fog 91.4/ch (cov 98.6%). The elevated fog/horizon/cliff poses corroborate a SEPARATE
+pre-existing terrain issue (see OPEN ITEMS) — they are NOT prop/water and NOT caused by this fix
+(the edit is strictly inside the VK-armed `*_island_run()`; the pure-GL path is untouched by
+construction, so gates-off byte-stability holds without a re-capture).
+
+**Checker hardening (Step 4).** `check_vk_nointerop_log.py` gained `check_ownership()`: every
+geometry island (`[VK_TERRAIN_TIER1]`/`[VK_PROP_COLOR_TIER1]`/`[VK_MECH_TIER1]`/`[VK_WATER_TIER1]`)
+must report `used_vulkan > 0` — missing/zero = FAIL. The proof now asserts VK OWNERSHIP, not
+just no-interop, closing the proof-hole CLASS that let the prop/water gap pass green. Dry-run
+on the guardfix log: all four islands `used_vulkan>0 ok`, VERDICT PASS.
+
+**Step 3 (hybrid-arm deletion for prop+water) — DEFERRED, documented.** The prop/water hybrid
+(`!directChain`) arms are now DEAD under the umbrella (proven native above) and safe to delete
+mirroring `a0cba0c4` (glInteropSignal/Wait plumbing + fsN/fsD BeginFrame + gpuC/N/D signal
+plumbing out; `MC2_VK_PROP_DIRECT_CHAIN`/`MC2_VK_WATER_DIRECT_CHAIN` → no-ops; item-2
+boot-decline session-latch wired). Deferred as a separate low-risk cleanup slice — pure dead-code
+removal, no correctness bearing (the arm is unreachable under the umbrella; explicit =0 still
+selects it until deleted).
+
+### ★ OPEN ITEMS surfaced this session (terrain, NOT prop/water — pre-existing, separate class)
+
+User/coordinator observed under the umbrella smoke (screenshot evidence): (1) a large terrain
+face near-black with a **shadow that does not move with the camera** (baked/stale look),
+(2) **stepped/blocky far-band horizon geometry**, (3) overall "way off" from GL. Intermittent
+(run 1 bad, run 2 fine → warmup/ordering, not deterministic breakage). Findings:
+- **Far-band / stepped horizon = terrain edge-stitch ownership, NOT the prop/water guard class.**
+  Edge-stitch geometry is deliberately **GL-owned** this rung (rung-5 mode-1 edge-stitch deferred;
+  `vulkan_terrain_island.cpp:183` "edge-stitch remain GL-owned"). The full strict stack drives
+  `gl_handoff_skip_frames == present_frames` (canary invariant, verified 900==900), i.e. the GL
+  scene path is fully skipped — so GL-owned stitch at LOD-band boundaries is dropped/mismatched
+  under strict, producing far-band cracks. This is a geometry-ownership/target class, NOT a
+  `useInterop` run-entry guard, so it is NOT fixed by this slice. Corroborated numerically by the
+  elevated oblique_fog (91/ch cov 98.6%) + cliff_side_on (55/ch) MADs above. **Fix = port
+  edge-stitch to VK ownership (rung-5 mode-1, explicitly deferred, its own slice).**
+- **Stale/static shadow = suspected CSM warmup/ordering** (the `7a5bf1fa` strict fail-soft on the
+  2-frame warmup CSM readback may leave shadow data stale until the VK shadow producer catches up;
+  shadow island products may not re-produce on camera motion under direct-chain). NOT reproduced
+  with a controlled early-vs-settled capture this session (settled bookmark captures are clean +
+  deterministic); needs an early-frame (first 2-5s) vs settled (20s+) same-pose capture harness to
+  isolate. Logged as an open shadow item with the repro recipe; out of scope for the prop/water fix.
+
+---
+
+## 2026-07-10 — VK-RUNG8-ITEM4-INTEROP-DELETE-1: item-4 SPLIT (mech + 4 post passes done)
 
 Ladder rung 8.7ao. First interop-handoff BRANCH deletion of item-4 (METAL-GATE-AUDIT-2
 8.7 inventory **row 4** — the per-island GL↔VK semaphore-handoff branches). Landed the

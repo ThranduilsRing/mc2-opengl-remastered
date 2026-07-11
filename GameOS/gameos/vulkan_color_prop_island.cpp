@@ -1156,7 +1156,13 @@ extern "C" int mc2_vk_color_prop_island_run(int w, int h) {
         }
     }
     ColorPropIsland* s = g_island;
-    if (s->disabled || !s->inited || !s->useInterop) return 0;
+    // VK-OWNERSHIP-GAP-FIX (item-4 correctness): direct-chain sets useInterop=false
+    // (init:781) but the old guard '|| !s->useInterop' then bailed here, so under the
+    // strict umbrella the island returned 0 and GL silently drew props into the
+    // VK-owned GBuffer (used_vulkan=0). Enter the native render path when direct-chain
+    // OR the hybrid interop arm is armed -- mirrors mech/terrain (a0cba0c4/1f4a1a5a)
+    // whose guard is 'disabled || !inited' with directChain unconditional-native.
+    if (s->disabled || !s->inited || (!propDirectChainRequested() && !s->useInterop)) return 0;
 
     if (!upload_geometry_once(s)) { setFallback("geometry_not_ready"); return 0; }
 

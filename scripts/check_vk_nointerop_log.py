@@ -179,6 +179,41 @@ def check_islands(text: str) -> bool:
     return failed
 
 
+# --- OWNERSHIP: every geometry island must POSITIVELY own its region under strict ----
+# VK-OWNERSHIP-GAP-FIX: the no-interop proof historically asserted only "no forbidden
+# GL readback / interop op". That is necessary but NOT sufficient: a producer island can
+# decline (used_vulkan=0) and GL silently draws its geometry into the VK-owned GBuffer --
+# which trips no forbidden_* counter (a GL base-geometry flush is not an interop call).
+# The strict proof must therefore ALSO assert VK OWNERSHIP: each geometry island rendered
+# a positive used_vulkan. Missing island line OR used_vulkan==0/absent = FAIL. Shadow is
+# a producer for the terrain consumer, not a standalone geometry region, so it is asserted
+# via its own forbidden_* counters (check_islands), not here.
+OWNERSHIP_ISLAND_TAGS = [
+    "[VK_TERRAIN_TIER1]",
+    "[VK_PROP_COLOR_TIER1]",
+    "[VK_MECH_TIER1]",
+    "[VK_WATER_TIER1]",
+]
+
+
+def check_ownership(text: str) -> bool:
+    """Assert every geometry island positively OWNED its region (used_vulkan > 0)."""
+    failed = False
+    lines = text.splitlines()
+    for tag in OWNERSHIP_ISLAND_TAGS:
+        line = next((ln for ln in lines if tag in ln and "used_vulkan=" in ln), None)
+        if line is None:
+            print(f"ownership {tag}: MISSING used_vulkan line (FAIL)")
+            failed = True
+            continue
+        used = _u(line, "used_vulkan")
+        ok = used is not None and used > 0
+        print(f"ownership {tag}: used_vulkan={used} (need > 0) {'ok' if ok else 'FAIL'}")
+        if not ok:
+            failed = True
+    return failed
+
+
 def check_frame_consistency(text: str, min_frames: int) -> bool:
     """H3: read counters from the single authoritative [VK_PRESENT] line; assert
     frame-consistency instead of max()-over-all-lines."""
@@ -387,6 +422,8 @@ def main() -> int:
     failed |= check_required_strings(text)
     print("== H2 island forbidden_* counters ==")
     failed |= check_islands(text)
+    print("== OWNERSHIP: geometry islands used_vulkan > 0 ==")
+    failed |= check_ownership(text)
     print("== H3 frame consistency ==")
     failed |= check_frame_consistency(text, args.min_frames)
     if not args.no_canaries:

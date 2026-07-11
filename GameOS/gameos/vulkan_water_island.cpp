@@ -147,8 +147,12 @@ bool waterPerfGateRequested() {
 bool waterDirectChainRequested() {
     static int state = -1;
     if (state == -1) {
+        // COUPLING-FIX (VK-OWNERSHIP-GAP): water previously ANDed in the mech
+        // direct-chain gate (MC2_VK_MECH_DIRECT_CHAIN). That gate is DEPRECATED (mech
+        // is unconditionally native post-a0cba0c4) and consuming it here meant an
+        // explicit MC2_VK_MECH_DIRECT_CHAIN=0 (a mech-hybrid debug override) wrongly
+        // forced water back onto the hybrid arm. Bind water to its OWN gate only.
         state = (waterTier1Requested() &&
-                 mc2vkgate::directChainGate("MC2_VK_MECH_DIRECT_CHAIN") &&
                  mc2vkgate::directChainGate("MC2_VK_WATER_DIRECT_CHAIN")) ? 1 : 0;
     }
     return state == 1;
@@ -979,7 +983,11 @@ extern "C" int mc2_vk_water_island_run(
         }
     }
     WaterIsland* s = g_island;
-    if (s->disabled || !s->inited || !s->useInterop) return 0;
+    // VK-OWNERSHIP-GAP-FIX (item-4 correctness): direct-chain sets useInterop=false
+    // (init:640) but the old guard '|| !s->useInterop' bailed here, so under the strict
+    // umbrella water returned 0 and GL silently drew water into the VK-owned GBuffer
+    // (used_vulkan=0). Enter the native path when direct-chain OR hybrid interop is armed.
+    if (s->disabled || !s->inited || (!waterDirectChainRequested() && !s->useInterop)) return 0;
 
     // RUNG-6.5: COPY-ONCE HDRI import (or 1x1 dummy) — the FS statically uses
     // binding 2, so it must be valid before the first draw. Re-runs only if the
