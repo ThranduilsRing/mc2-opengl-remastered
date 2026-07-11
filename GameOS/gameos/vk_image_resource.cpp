@@ -1,8 +1,8 @@
 // VK-INTEROP-BRIDGE-1 / T1 -- VkImageResource implementation.
-// Transliterated from tools/vk_gl_interop_spike/main.cpp export sequence (395-440),
-// LUID unused here (that lives in the GL adapter). GL-free. ITEM-2 deleted the semaphore
-// Win32 export (446-467): the semaphores are plain binary now; only the IMAGE memory is
-// exported (item 6's static-shadow GL import).
+// GL-free, VK-only. VK-RUNG8-ITEM2 deleted the exportable IMAGE half (external-memory
+// image create info + export memory alloc + vkGetMemoryWin32HandleKHR + memWin32 +
+// export-sanity queries) after item 6 retired its last caller. The semaphores are plain
+// binary; only the non-exportable dedicated allocation survives.
 
 #include "vk_image_resource.h"
 
@@ -23,22 +23,6 @@ void ilog(const char* fmt, ...) {
     va_end(ap);
     std::printf("[VK_IMAGE_RESOURCE] %s\n", buf);
     std::fflush(stdout);
-}
-
-bool noGlInteropResourceStrictEnabled() {
-    static int cached = -1;
-    if (cached < 0) {
-        const char* v = std::getenv("MC2_VK_NO_GL_INTEROP_RESOURCE_STRICT");
-        cached = (v && v[0] == '1') ? 1 : 0;
-    }
-    return cached != 0;
-}
-
-void noGlInteropStrictAbort(const char* op) {
-    std::fprintf(stderr, "[VK_NO_GL_INTEROP_STRICT] abort op=%s\n",
-                 op ? op : "(unknown)");
-    std::fflush(stderr);
-    std::abort();
 }
 
 // spike main.cpp:162-172
@@ -66,52 +50,14 @@ VkImageAspectFlags aspectFor(VkFormat fmt) {
 
 bool vkImageResourceCreate(VkImageResource* r, VkDevice device, VkPhysicalDevice phys,
                            uint32_t w, uint32_t h, VkFormat format,
-                           VkImageUsageFlags usage, bool exportable) {
+                           VkImageUsageFlags usage) {
     if (!r) return false;
     *r = VkImageResource{};
     r->device = device;
-    r->w = w; r->h = h; r->format = format; r->usage = usage; r->exportable = exportable;
+    r->w = w; r->h = h; r->format = format; r->usage = usage;
 
-    if (exportable && noGlInteropResourceStrictEnabled())
-        noGlInteropStrictAbort("vkImageResourceCreate(exportable)");
-
-    const VkExternalMemoryHandleTypeFlagBits memHandleType =
-        VK_EXTERNAL_MEMORY_HANDLE_TYPE_OPAQUE_WIN32_BIT;
-
-    if (exportable) {
-        // sanity: is this image config exportable with this handle type? (spike 371-393)
-        VkPhysicalDeviceExternalImageFormatInfo eifi{
-            VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_EXTERNAL_IMAGE_FORMAT_INFO};
-        eifi.handleType = memHandleType;
-        VkPhysicalDeviceImageFormatInfo2 ifi{
-            VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_IMAGE_FORMAT_INFO_2};
-        ifi.pNext = &eifi;
-        ifi.format = format; ifi.type = VK_IMAGE_TYPE_2D;
-        ifi.tiling = VK_IMAGE_TILING_OPTIMAL; ifi.usage = usage;
-        VkExternalImageFormatProperties eifp{
-            VK_STRUCTURE_TYPE_EXTERNAL_IMAGE_FORMAT_PROPERTIES};
-        VkImageFormatProperties2 ifp2{VK_STRUCTURE_TYPE_IMAGE_FORMAT_PROPERTIES_2};
-        ifp2.pNext = &eifp;
-        VkResult fr = vkGetPhysicalDeviceImageFormatProperties2(phys, &ifi, &ifp2);
-        if (fr != VK_SUCCESS) {
-            ilog("format 0x%x not exportable (vkGetPhysicalDeviceImageFormatProperties2=%d)",
-                 (unsigned)format, (int)fr);
-            vkImageResourceDestroy(r, device); return false;
-        }
-        if (!(eifp.externalMemoryProperties.externalMemoryFeatures &
-              VK_EXTERNAL_MEMORY_FEATURE_EXPORTABLE_BIT)) {
-            ilog("OPAQUE_WIN32 export unsupported for format 0x%x", (unsigned)format);
-            vkImageResourceDestroy(r, device); return false;
-        }
-    }
-
-    // ---- create image (external handle type declared when exportable) (spike 395-410) ----
-    VkExternalMemoryImageCreateInfo emici{
-        VK_STRUCTURE_TYPE_EXTERNAL_MEMORY_IMAGE_CREATE_INFO};
-    emici.handleTypes = memHandleType;
-
+    // ---- create image (VK-only, non-exportable) ----
     VkImageCreateInfo ci{VK_STRUCTURE_TYPE_IMAGE_CREATE_INFO};
-    if (exportable) ci.pNext = &emici;
     ci.imageType = VK_IMAGE_TYPE_2D;
     ci.format = format;
     ci.extent = {w, h, 1};
@@ -135,15 +81,12 @@ bool vkImageResourceCreate(VkImageResource* r, VkDevice device, VkPhysicalDevice
         ilog("no DEVICE_LOCAL memory type"); vkImageResourceDestroy(r, device); return false;
     }
 
-    // dedicated allocation (spike 421-433); exported chain only when exportable.
+    // dedicated allocation (spike 421-433). VK 1.1 core (VkMemoryDedicatedAllocateInfo).
     VkMemoryDedicatedAllocateInfo ded{VK_STRUCTURE_TYPE_MEMORY_DEDICATED_ALLOCATE_INFO};
     ded.image = r->image;
-    VkExportMemoryAllocateInfo exp{VK_STRUCTURE_TYPE_EXPORT_MEMORY_ALLOCATE_INFO};
-    exp.pNext = &ded;
-    exp.handleTypes = memHandleType;
 
     VkMemoryAllocateInfo mai{VK_STRUCTURE_TYPE_MEMORY_ALLOCATE_INFO};
-    mai.pNext = exportable ? (void*)&exp : (void*)&ded;  // dedicated always; export only if asked
+    mai.pNext = &ded;
     mai.allocationSize = mr.size;
     mai.memoryTypeIndex = memIdx;
     if (vkAllocateMemory(device, &mai, nullptr, &r->memory) != VK_SUCCESS) {
@@ -151,25 +94,6 @@ bool vkImageResourceCreate(VkImageResource* r, VkDevice device, VkPhysicalDevice
     }
     if (vkBindImageMemory(device, r->image, r->memory, 0) != VK_SUCCESS) {
         ilog("vkBindImageMemory failed"); vkImageResourceDestroy(r, device); return false;
-    }
-
-    // ---- export memory handle (spike 435-440) ----
-    if (exportable) {
-        // volk.c is compiled without VK_USE_PLATFORM_WIN32_KHR, so its win32 PFN
-        // globals are absent -> fetch these two entrypoints directly (spike 350-351).
-        auto pGetMemWin32 = (PFN_vkGetMemoryWin32HandleKHR)
-            vkGetDeviceProcAddr(device, "vkGetMemoryWin32HandleKHR");
-        if (!pGetMemWin32) {
-            ilog("vkGetMemoryWin32HandleKHR entry point null");
-            vkImageResourceDestroy(r, device); return false;
-        }
-        VkMemoryGetWin32HandleInfoKHR gh{VK_STRUCTURE_TYPE_MEMORY_GET_WIN32_HANDLE_INFO_KHR};
-        gh.memory = r->memory;
-        gh.handleType = memHandleType;
-        if (pGetMemWin32(device, &gh, &r->memWin32) != VK_SUCCESS) {
-            ilog("vkGetMemoryWin32HandleKHR failed"); vkImageResourceDestroy(r, device);
-            return false;
-        }
     }
 
     // ---- image view ----
@@ -184,8 +108,8 @@ bool vkImageResourceCreate(VkImageResource* r, VkDevice device, VkPhysicalDevice
 
     // ---- double-buffered binary semaphore pairs + per-frame fences (blocker #4) ----
     // ITEM-2: plain (NON-exported) binary semaphores. Their Win32 export half was the
-    // exportable machinery only the deleted GL<->VK signal/wait handoff imported; item 6
-    // needs the exportable IMAGE only. Kept as the shared all-island beginFrame ABI.
+    // exportable machinery only the deleted GL<->VK signal/wait handoff imported; nobody
+    // signals/waits these now. Kept as the shared all-island beginFrame ABI (fence+parity).
     auto makeSem = [&](VkSemaphore* sem, const char* tag, int i) -> bool {
         VkSemaphoreCreateInfo sci{VK_STRUCTURE_TYPE_SEMAPHORE_CREATE_INFO};
         if (vkCreateSemaphore(device, &sci, nullptr, sem) != VK_SUCCESS) {
@@ -223,9 +147,6 @@ void vkImageResourceDestroy(VkImageResource* r, VkDevice device) {
     if (r->view)     vkDestroyImageView(device, r->view, nullptr);
     if (r->image)    vkDestroyImage(device, r->image, nullptr);
     if (r->memory)   vkFreeMemory(device, r->memory, nullptr);
-    // Win32 handle ownership: this resource owns its exported MEMORY handle; the GL
-    // importer duplicated it (spike 482-483). Close ours here. No double-close.
-    if (r->memWin32) CloseHandle(r->memWin32);
     *r = VkImageResource{};
 }
 

@@ -429,8 +429,7 @@ bool init_island(ShadowIsland* s, int size) {
     bool ok = vkImageResourceCreate(&s->depthResource, s->device, s->phys,
                                     (uint32_t)size, (uint32_t)size, kDepthFmt,
                                     VK_IMAGE_USAGE_DEPTH_STENCIL_ATTACHMENT_BIT |
-                                    VK_IMAGE_USAGE_SAMPLED_BIT,
-                                    /*exportable*/ false);
+                                    VK_IMAGE_USAGE_SAMPLED_BIT);
     if (!ok) {
         vkImageResourceDestroy(&s->depthResource, s->device);
         setFallback("depth_resource_setup_failed");
@@ -672,8 +671,7 @@ bool ensure_csm_fullmap_target(ShadowIsland* s, int size) {
     bool ok = vkImageResourceCreate(&s->csmFullMapResource, s->device, s->phys,
                                     (uint32_t)size, (uint32_t)size, kDepthFmt,
                                     VK_IMAGE_USAGE_DEPTH_STENCIL_ATTACHMENT_BIT |
-                                    VK_IMAGE_USAGE_SAMPLED_BIT,
-                                    /*exportable*/ false);
+                                    VK_IMAGE_USAGE_SAMPLED_BIT);
     if (!ok) {
         vkImageResourceDestroy(&s->csmFullMapResource, s->device);
         setFallback("csm_fullmap_resource_setup_failed");

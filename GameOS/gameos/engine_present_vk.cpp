@@ -1557,8 +1557,7 @@ bool buildSharedImage(EnginePresentVk::Impl& s, uint32_t w, uint32_t h, std::str
                                VK_FORMAT_R8G8B8A8_UNORM,
                                VK_IMAGE_USAGE_COLOR_ATTACHMENT_BIT |
                                VK_IMAGE_USAGE_TRANSFER_SRC_BIT |
-                               VK_IMAGE_USAGE_TRANSFER_DST_BIT,
-                               /*exportable*/ false)) {
+                               VK_IMAGE_USAGE_TRANSFER_DST_BIT)) {
         reason = "vkImageResourceCreate(VK-only RGBA8) failed";
         return false;
     }
