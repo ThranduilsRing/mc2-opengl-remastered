@@ -160,8 +160,17 @@ static bool                         s_vkMechFrameReady        = false;
 // of the umbrella; explicit 0 forces OFF). When armed, the feed carries the CPU
 // byte sources (exact uploaded VBO work blob, s_stagingIbo, mcTextureManager
 // lightData_) so the island never reads GL buffer objects back.
-static bool s_vkMechFeedNativeOn = [] {
-    return mc2vkgate::envTriState("MC2_VK_MECH_FEED_NATIVE") == 1;
+// VK-RUNG8 item-9: MC2_VK_MECH_FEED_NATIVE is now DEPRECATED / a no-op. The native
+// CPU feed is unconditional whenever the VK mech island is active (s_vkMechGateOn),
+// because the GL buffer-readback fallback in the island was deleted. The env name is
+// still parsed so old command lines don't hit unknown-var behavior; explicitly setting
+// it just prints a one-line deprecation note.
+[[maybe_unused]] static const bool s_vkMechFeedNativeDeprecated = [] {
+    if (mc2vkgate::envTriState("MC2_VK_MECH_FEED_NATIVE") != -1)
+        std::fprintf(stderr, "[VK_MECH_FEED] MC2_VK_MECH_FEED_NATIVE is deprecated "
+                             "and now a no-op: native CPU feed is always used under "
+                             "the VK mech island (GL readback fallback deleted).\n");
+    return true;
 }();
 // Exact bytes uploaded to s_sharedVbo (the normals-recomputed `work` copy —
 // s_stagingVbo alone is NOT the uploaded bytes when s_mechNormalsMode != 0).
@@ -1648,9 +1657,12 @@ static void uploadMechGeometryVbo() {
                     work.data(), 0);  // immutable, GPU-only
 
 #ifdef MC2_VULKAN_ISLAND
-    // VK-MECH-FEED-NATIVE-1: persist the EXACT uploaded bytes for the native
-    // geometry feed (copy-once per map / normals rebuild; gate-off = no copy).
-    if (s_vkMechFeedNativeOn && s_vkMechGateOn)
+    // VK-RUNG8 item-9 (native feed now MANDATORY): persist the EXACT uploaded bytes
+    // for the native geometry feed whenever the VK mech island is active. The old
+    // GL buffer-readback fallback in the island was deleted, so this copy is the
+    // island's only geometry source. Copy-once per map / normals rebuild; the copy
+    // exists only under the VK backend (s_vkMechGateOn), never in the pure-GL product.
+    if (s_vkMechGateOn)
         s_vkVboNativeCopy = work;
 #endif
 
@@ -2916,16 +2928,16 @@ extern "C" int mc2_mech_island_get_geometry_feed(Mc2MechGeomFeed* out) {
     out->vboBytes     = vboBytes;
     out->iboBytes     = iboBytes;
     out->vertexStride = (uint32_t)sizeof(GpuMechVertex);   // 48
-    // VK-MECH-FEED-NATIVE-1: CPU byte sources (null unless the native gate is on
-    // AND the persisted copy matches the advertised size — size mismatch means a
-    // normals rebuild raced this accessor; fall back to the GL readback path).
+    // VK-RUNG8 item-9: CPU byte sources are now the ONLY mech geometry feed (the GL
+    // buffer-readback fallback was deleted from the island). Populate whenever the VK
+    // mech island is active (we are already past the s_vkMechGateOn guard above). A
+    // size mismatch means a normals rebuild raced this accessor -> leave vboCpu null;
+    // the island declines this frame and retries next frame (no GL readback rescue).
     out->vboCpu = nullptr;
     out->iboCpu = nullptr;
-    if (s_vkMechFeedNativeOn) {
-        if ((uint64_t)s_vkVboNativeCopy.size() == vboBytes)
-            out->vboCpu = s_vkVboNativeCopy.data();
-        out->iboCpu = s_stagingIbo.data();   // uploaded verbatim to s_sharedIbo
-    }
+    if ((uint64_t)s_vkVboNativeCopy.size() == vboBytes)
+        out->vboCpu = s_vkVboNativeCopy.data();
+    out->iboCpu = s_stagingIbo.data();   // uploaded verbatim to s_sharedIbo
     return 1;
 }
 
@@ -2962,11 +2974,13 @@ extern "C" int mc2_mech_island_get_frame_feed(Mc2MechFrameFeed* out) {
       out->lightDataGlSsbo = nm; out->lightDataBytes = by; }
     out->fogColorRGB[0] = out->fogColorRGB[1] = out->fogColorRGB[2] = 0.0f;
     mc2GetSceneFogColorRGB(out->fogColorRGB);
-    // VK-MECH-FEED-NATIVE-1: the game's CPU LightsData array (the byte source of
-    // the GL SSBO upload, txmmgr renderLists). Null unless the native gate is on.
+    // VK-RUNG8 item-9: the game's CPU LightsData array (the byte source of the GL
+    // SSBO upload, txmmgr renderLists) is now the ONLY per-frame lighting feed. The
+    // island's GL SSBO-readback fallback was deleted. lightDataGlSsbo/Bytes above are
+    // still exposed for the verification-only FEED-AUDIT byte-compare.
     out->lightDataCpu = nullptr;
     out->lightDataCpuBytes = 0;
-    if (s_vkMechFeedNativeOn && mcTextureManager) {
+    if (mcTextureManager) {
         out->lightDataCpu      = mcTextureManager->getLightDataPtr();
         out->lightDataCpuBytes = mcTextureManager->getLightDataBytes();
     }

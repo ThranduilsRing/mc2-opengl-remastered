@@ -52,11 +52,12 @@ struct Mc2MechDrawRun {
 };
 
 // Copy-ONCE geometry feed: the shared mech VBO/IBO GL names + 48B stride.
-// VK-MECH-FEED-NATIVE-1 (rung 7): vboCpu/iboCpu are the CPU-side byte sources of
-// the SAME buffers (vboCpu = the exact normals-recomputed `work` blob uploaded to
-// s_sharedVbo; iboCpu = s_stagingIbo, uploaded verbatim). Non-null ONLY when the
-// MC2_VK_MECH_FEED_NATIVE gate is armed; the island then copies from CPU memory
-// and never touches the GL buffer objects (no glGetBufferSubData).
+// VK-RUNG8 item-9: vboCpu/iboCpu are the CPU-side byte sources of the SAME buffers
+// (vboCpu = the exact normals-recomputed `work` blob uploaded to s_sharedVbo; iboCpu =
+// s_stagingIbo, uploaded verbatim). These are now the ONLY geometry feed: populated
+// whenever the VK mech island is active. The GL glGetBufferSubData readback fallback
+// was deleted; vboCpu may still be transiently null if a normals rebuild raced the
+// accessor, in which case the island declines the frame and retries.
 struct Mc2MechGeomFeed {
     uint32_t glVbo;         // s_sharedVbo (GpuMechVertex[])
     uint32_t glIbo;         // s_sharedIbo (uint32[])
@@ -82,10 +83,11 @@ struct Mc2MechFrameFeed {
     uint32_t     lightDataGlSsbo;    // live LightsData GL SSBO name (binding 20) to copy
     uint64_t     lightDataBytes;     // its byte size (ObjectLights[] * 3600B, grow-once)
     float        fogColorRGB[3];     // g_scene.fogColor.rgb (mech.frag fog mix source)
-    // VK-MECH-FEED-NATIVE-1 (rung 7): the game's CPU LightsData array
-    // (mcTextureManager->lightData_, the byte SOURCE of the GL SSBO upload).
-    // Non-null only when MC2_VK_MECH_FEED_NATIVE is armed; the island then
-    // memcpy's from CPU and skips the per-frame glGetBufferSubData readback.
+    // VK-RUNG8 item-9: the game's CPU LightsData array (mcTextureManager->lightData_,
+    // the byte SOURCE of the GL SSBO upload) is now the ONLY per-frame lighting feed:
+    // populated whenever mcTextureManager exists. The per-frame glGetBufferSubData GL
+    // SSBO readback fallback was deleted. lightDataGlSsbo/Bytes above remain only for
+    // the verification-only FEED-AUDIT byte-compare.
     const void*  lightDataCpu;       // TG_HWLightsData[count] (3600B each) or null
     uint64_t     lightDataCpuBytes;  // count * 3600
 };

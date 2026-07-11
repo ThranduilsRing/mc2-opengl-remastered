@@ -147,20 +147,10 @@ bool mechLightingRequested() {
     return state == 1;
 }
 
-// VK-MECH-FEED-NATIVE-1 (rung 7): envTriState OPT-IN, default OFF (same new-rung
-// pattern as MC2_VK_TERRAIN_SKIRTS / MC2_VK_WATER_TIER1 -- unset -> OFF regardless
-// of the umbrella; explicit 0 forces OFF). When armed AND the batcher feed carries
-// CPU byte sources, the island copies mech geometry + LightsData from CPU memory
-// and never issues glGetBufferSubData against the GL buffer objects.
-bool mechFeedNativeRequested() {
-    static int state = -1;
-    if (state == -1) {
-        state = (mc2vkgate::envTriState("MC2_VK_MECH_FEED_NATIVE") == 1) ? 1 : 0;
-        if (state == 1) vlog("feed-native ARMED (MC2_VK_MECH_FEED_NATIVE=1): "
-                             "geometry + LightsData consumed from CPU sources.");
-    }
-    return state == 1;
-}
+// VK-RUNG8 item-9: MC2_VK_MECH_FEED_NATIVE (rung-7 opt-in) is RETIRED. The native
+// CPU geometry + LightsData feed is now unconditional under the VK mech island (the GL
+// glGetBufferSubData readback fallback was deleted). The env name is still parsed +
+// noted as deprecated in gos_mech_batcher.cpp; there is no per-frame gate to query here.
 
 // VK-MECH-FEED-AUDIT-1: verification-only (default-OFF, safety-gate class like
 // MC2_VK_TERRAIN_HEIGHT_AUDIT). With the native feed armed, ALSO read the GL
@@ -818,69 +808,53 @@ bool upload_geometry_once(MechIsland* s) {
     Mc2MechGeomFeed feed{};
     if (!mc2_mech_island_get_geometry_feed(&feed)) return false;
     if (feed.vboBytes == 0 || feed.iboBytes == 0 || feed.glVbo == 0 || feed.glIbo == 0) return false;
+    // VK-RUNG8 item-9: the CPU byte sources are now the ONLY mech geometry feed; the
+    // GL glGetBufferSubData readback fallback was deleted. If the CPU sources aren't
+    // ready yet (a normals rebuild raced the batcher accessor -> vboCpu null), decline
+    // this frame and retry next frame -- do NOT allocate the VK buffers first. This is
+    // the explicit fail-hard-with-retry replacement for the old per-frame GL rescue.
+    if (!feed.vboCpu || !feed.iboCpu) return false;
     s->vertexStride = feed.vertexStride;
 
     if (!make_buffer(s, feed.vboBytes, VK_BUFFER_USAGE_VERTEX_BUFFER_BIT, &s->vbo, &s->vboAlloc, true)) return false;
     if (!make_buffer(s, feed.iboBytes, VK_BUFFER_USAGE_INDEX_BUFFER_BIT,  &s->ibo, &s->iboAlloc, true)) return false;
 
-    // VK-MECH-FEED-NATIVE-1: prefer the CPU byte sources when armed + provided --
-    // no glGetBufferSubData against the GL buffer objects. Fail-soft: missing CPU
-    // pointer (gate off / size-mismatch fallback in the batcher) -> GL readback.
-    const bool nativeGeom = mechFeedNativeRequested() && feed.vboCpu && feed.iboCpu;
-    std::vector<uint8_t> scratch;
     { void* p = nullptr;
       if (vmaMapMemory(s->allocator, s->vboAlloc, &p) == VK_SUCCESS) {
-          if (nativeGeom) {
-              std::memcpy(p, feed.vboCpu, (size_t)feed.vboBytes);
-          } else {
-              scratch.resize((size_t)feed.vboBytes);
-              glBindBuffer(GL_ARRAY_BUFFER, feed.glVbo);
-              glGetBufferSubData(GL_ARRAY_BUFFER, 0, (GLsizeiptr)feed.vboBytes, scratch.data());
-              glBindBuffer(GL_ARRAY_BUFFER, 0);
-              std::memcpy(p, scratch.data(), (size_t)feed.vboBytes);
-          }
+          std::memcpy(p, feed.vboCpu, (size_t)feed.vboBytes);
           vmaUnmapMemory(s->allocator, s->vboAlloc);
       } }
     { void* p = nullptr;
       if (vmaMapMemory(s->allocator, s->iboAlloc, &p) == VK_SUCCESS) {
-          if (nativeGeom) {
-              std::memcpy(p, feed.iboCpu, (size_t)feed.iboBytes);
-          } else {
-              scratch.resize((size_t)feed.iboBytes);
-              glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, feed.glIbo);
-              glGetBufferSubData(GL_ELEMENT_ARRAY_BUFFER, 0, (GLsizeiptr)feed.iboBytes, scratch.data());
-              glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, 0);
-              std::memcpy(p, scratch.data(), (size_t)feed.iboBytes);
-          }
+          std::memcpy(p, feed.iboCpu, (size_t)feed.iboBytes);
           vmaUnmapMemory(s->allocator, s->iboAlloc);
       } }
-    if (nativeGeom) {
-        ++g_feedNative.nativeGeomCopies;
-        // VK-MECH-FEED-AUDIT-1: byte-compare CPU sources vs the GL buffers.
-        if (mechFeedAuditRequested()) {
-            ++g_feedNative.auditRuns;
-            unsigned long mism = 0;
-            scratch.resize((size_t)feed.vboBytes);
-            glBindBuffer(GL_ARRAY_BUFFER, feed.glVbo);
-            glGetBufferSubData(GL_ARRAY_BUFFER, 0, (GLsizeiptr)feed.vboBytes, scratch.data());
-            glBindBuffer(GL_ARRAY_BUFFER, 0);
-            if (std::memcmp(scratch.data(), feed.vboCpu, (size_t)feed.vboBytes) != 0) ++mism;
-            scratch.resize((size_t)feed.iboBytes);
-            glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, feed.glIbo);
-            glGetBufferSubData(GL_ELEMENT_ARRAY_BUFFER, 0, (GLsizeiptr)feed.iboBytes, scratch.data());
-            glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, 0);
-            if (std::memcmp(scratch.data(), feed.iboCpu, (size_t)feed.iboBytes) != 0) ++mism;
-            g_feedNative.auditMismatches += mism;
-            vlog("FEED-AUDIT geometry: vbo=%llu B ibo=%llu B mismatch_buffers=%lu %s",
-                 (unsigned long long)feed.vboBytes, (unsigned long long)feed.iboBytes,
-                 mism, mism ? "*** NATIVE FEED DIVERGES FROM GL ***" : "(byte-identical)");
-        }
+    ++g_feedNative.nativeGeomCopies;
+    // VK-MECH-FEED-AUDIT-1: verification-only byte-compare of the CPU sources vs the
+    // GL buffers (proves the native feed carries the exact bytes GL rendered with).
+    if (mechFeedAuditRequested()) {
+        ++g_feedNative.auditRuns;
+        unsigned long mism = 0;
+        std::vector<uint8_t> scratch;
+        scratch.resize((size_t)feed.vboBytes);
+        glBindBuffer(GL_ARRAY_BUFFER, feed.glVbo);
+        glGetBufferSubData(GL_ARRAY_BUFFER, 0, (GLsizeiptr)feed.vboBytes, scratch.data());
+        glBindBuffer(GL_ARRAY_BUFFER, 0);
+        if (std::memcmp(scratch.data(), feed.vboCpu, (size_t)feed.vboBytes) != 0) ++mism;
+        scratch.resize((size_t)feed.iboBytes);
+        glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, feed.glIbo);
+        glGetBufferSubData(GL_ELEMENT_ARRAY_BUFFER, 0, (GLsizeiptr)feed.iboBytes, scratch.data());
+        glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, 0);
+        if (std::memcmp(scratch.data(), feed.iboCpu, (size_t)feed.iboBytes) != 0) ++mism;
+        g_feedNative.auditMismatches += mism;
+        vlog("FEED-AUDIT geometry: vbo=%llu B ibo=%llu B mismatch_buffers=%lu %s",
+             (unsigned long long)feed.vboBytes, (unsigned long long)feed.iboBytes,
+             mism, mism ? "*** NATIVE FEED DIVERGES FROM GL ***" : "(byte-identical)");
     }
     g_health.geomVerts = (unsigned long)(feed.vboBytes / (feed.vertexStride ? feed.vertexStride : 1));
     s->geomUploaded = true;
-    vlog("mech geometry uploaded once: vbo=%llu B ibo=%llu B stride=%u source=%s.",
-         (unsigned long long)feed.vboBytes, (unsigned long long)feed.iboBytes, feed.vertexStride,
-         nativeGeom ? "cpu-native" : "gl-readback");
+    vlog("mech geometry uploaded once: vbo=%llu B ibo=%llu B stride=%u source=cpu-native.",
+         (unsigned long long)feed.vboBytes, (unsigned long long)feed.iboBytes, feed.vertexStride);
     return true;
 }
 
@@ -973,11 +947,12 @@ extern "C" int mc2_vk_mech_island_run(int w, int h) {
     // buffer readback, NOT a color-surface readback — does NOT touch g_forbidden (mirrors
     // the once/frame geometry+bone copies already on this path).
     s->lightingReady = false;
-    // VK-MECH-FEED-NATIVE-1: when armed + the batcher provided the CPU LightsData
-    // array (the byte source of the GL SSBO upload), memcpy from CPU -- kills the
-    // per-frame glGetBufferSubData GPU readback. Fail-soft to the GL readback.
-    const bool nativeLight = mechFeedNativeRequested()
-        && feed.lightDataCpu && feed.lightDataCpuBytes >= 3600ull;
+    // VK-RUNG8 item-9: the CPU LightsData array (the byte source of the GL SSBO upload)
+    // is now the ONLY per-frame lighting feed; the per-frame glGetBufferSubData GL SSBO
+    // readback fallback was deleted. If the CPU array is not ready this frame, lighting
+    // is simply not marked ready (the shader falls back to flat-lit via u.lightingReady=0)
+    // -- no GL readback rescue.
+    const bool nativeLight = feed.lightDataCpu && feed.lightDataCpuBytes >= 3600ull;
     if (s->wantLighting && nativeLight) {
         const VkDeviceSize lbytes = (VkDeviceSize)feed.lightDataCpuBytes;
         if (ensure_buf_capacity(s, &s->lightBuf, &s->lightAlloc, &s->lightCap, lbytes)) {
@@ -1014,18 +989,6 @@ extern "C" int mc2_vk_mech_island_run(int w, int h) {
                      (unsigned long long)feed.lightDataBytes, cmp,
                      diff ? "*** NATIVE FEED DIVERGES FROM GL ***" : "byte-identical",
                      g_feedNative.auditRuns, g_feedNative.auditMismatches);
-            }
-        }
-    } else if (s->wantLighting && feed.lightDataGlSsbo != 0 && feed.lightDataBytes >= 3600ull) {
-        const VkDeviceSize lbytes = (VkDeviceSize)feed.lightDataBytes;
-        if (ensure_buf_capacity(s, &s->lightBuf, &s->lightAlloc, &s->lightCap, lbytes)) {
-            void* p = nullptr;
-            if (vmaMapMemory(s->allocator, s->lightAlloc, &p) == VK_SUCCESS) {
-                glBindBuffer(GL_SHADER_STORAGE_BUFFER, (GLuint)feed.lightDataGlSsbo);
-                glGetBufferSubData(GL_SHADER_STORAGE_BUFFER, 0, (GLsizeiptr)lbytes, p);
-                glBindBuffer(GL_SHADER_STORAGE_BUFFER, 0);
-                vmaUnmapMemory(s->allocator, s->lightAlloc);
-                s->lightingReady = true;
             }
         }
     }
