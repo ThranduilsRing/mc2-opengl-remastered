@@ -28,7 +28,6 @@
 #include "vk_shared_gbuffer_gate.h"     // VK-P14 GATE-CONSOLIDATION-1 umbrella resolver
 #include "vulkan_shared_scene_depth.h"  // VK-TIER1 SHARED SCENE DEPTH substrate (gated)
 #include "vulkan_shared_scene_color.h"  // VK-P11 TIER-1 SHARED SCENE COLOR/NORMAL (gated)
-#include "vulkan_shared_static_shadow.h" // VK-backed static shadow map substrate (gated)
 #include "vulkan_shadow_island_live.h"  // VK CSM direct shadow debug overlay view
 #endif
 #include "render_backend_select.h"      // VK-P14b: mc2::renderBackend() (GL-safe, no VK dep)
@@ -209,10 +208,21 @@ static GLuint createSceneDepthPlaceholderTex(int w, int h)
     return tex;
 }
 
-static bool mc2VkStaticShadowMapEnabled()
+// VK-RUNG8 item-6: MC2_VK_STATIC_SHADOW_MAP is RETIRED. The VK-backed static-shadow
+// import substrate (exportable D32_SFLOAT image imported into GL) is deleted; the static
+// shadow map is now always the plain-GL GL_DEPTH_COMPONENT24 allocation. Setting the env
+// prints a one-shot deprecation note (item-9 pattern) and changes nothing.
+static void mc2VkStaticShadowMapDeprecationNote()
 {
-    static const bool s_on = mc2vkgate::subGate("MC2_VK_STATIC_SHADOW_MAP");
-    return s_on;
+    static const bool s_once = [] {
+        if (mc2vkgate::envTriState("MC2_VK_STATIC_SHADOW_MAP") != -1)
+            std::fprintf(stderr, "[VK_SHARED_STATIC_SHADOW] MC2_VK_STATIC_SHADOW_MAP is "
+                                 "deprecated and now a no-op (VK-RUNG8-ITEM6): the VK static-"
+                                 "shadow import substrate was deleted; static shadow uses the "
+                                 "plain GL GL_DEPTH_COMPONENT24 path.\n");
+        return true;
+    }();
+    (void)s_once;
 }
 
 int mc2ShadowCsmCount()
@@ -5354,30 +5364,15 @@ void gosPostProcess::initShadows()
     glBindFramebuffer(GL_FRAMEBUFFER, shadowFBO_);
 
     // TEX-CLASS: render-target -- STATIC shadow map depth (FBO attach)
+    // VK-RUNG8 item-6: the VK static-shadow import substrate was RETIRED; the static
+    // shadow map is always the plain-GL GL_DEPTH_COMPONENT24 allocation now.
 #ifdef MC2_VULKAN_ISLAND
-    if (mc2VkStaticShadowMapEnabled()) {
-        GLuint importedShadowTex = 0;
-        const char* reason = nullptr;
-        sharedStaticShadow_ = mc2SharedStaticShadowCreate(
-            shadowMapSize_, shadowMapSize_, &importedShadowTex, &reason);
-        if (sharedStaticShadow_ && importedShadowTex != 0) {
-            shadowDepthTex_ = importedShadowTex;
-            fprintf(stderr, "[VK_SHARED_STATIC_SHADOW] active tex=%u %dx%d fmt=D32F\n",
-                    shadowDepthTex_, shadowMapSize_, shadowMapSize_);
-        } else {
-            sharedStaticShadow_ = nullptr;
-            fprintf(stderr, "[VK_SHARED_STATIC_SHADOW] fallback reason=%s\n",
-                    reason ? reason : "unknown");
-        }
-    }
+    mc2VkStaticShadowMapDeprecationNote();
 #endif
     if (!shadowDepthTex_) {
         glGenTextures(1, &shadowDepthTex_);
     }
     glBindTexture(GL_TEXTURE_2D, shadowDepthTex_);
-#ifdef MC2_VULKAN_ISLAND
-    if (!sharedStaticShadow_)
-#endif
     {
         glTexImage2D(GL_TEXTURE_2D, 0, GL_DEPTH_COMPONENT24,
             shadowMapSize_, shadowMapSize_, 0, GL_DEPTH_COMPONENT, GL_FLOAT, nullptr);
@@ -5503,13 +5498,6 @@ void gosPostProcess::endShadowPass()
 void gosPostProcess::destroyShadows()
 {
     if (shadowFBO_) { glDeleteFramebuffers(1, &shadowFBO_); shadowFBO_ = 0; }
-#ifdef MC2_VULKAN_ISLAND
-    if (sharedStaticShadow_) {
-        mc2SharedStaticShadowDestroy(sharedStaticShadow_);
-        sharedStaticShadow_ = nullptr;
-        shadowDepthTex_ = 0;
-    }
-#endif
     if (shadowDepthTex_) { glDeleteTextures(1, &shadowDepthTex_); shadowDepthTex_ = 0; }
     if (shadowDummyColorTex_) { glDeleteTextures(1, &shadowDummyColorTex_); shadowDummyColorTex_ = 0; }
     if (shadowDepthProg_) {

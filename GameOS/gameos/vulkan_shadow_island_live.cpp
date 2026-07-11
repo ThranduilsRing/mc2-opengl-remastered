@@ -46,7 +46,6 @@
 #include <vk_mem_alloc.h>
 
 #include "vk_image_resource.h"
-#include "gl_interop_view.h"
 #include "vulkan_context.h"
 #include "vulkan_shadow_island_live.h"
 #include "vk_shared_gbuffer_gate.h"
@@ -152,10 +151,10 @@ bool csmArrayInteropGateRequested() {
 // chain) depth consumed via the VkImageView accessors (the terrain island + native
 // screenfx). The env name is still parsed so old command lines don't hit unknown-var
 // behavior; explicitly setting it prints a one-line deprecation note (item-9 pattern).
-// The exportable-resource + glInteropViewCreate CREATION branches (item-5 substrate for
-// the non-CSM screen-shadow config, item-6) are RETAINED but DORMANT: they are gated on
-// !directChain, and directChain is hardcoded true below, so they are compiled-but-not-
-// taken (NOT deleted -- the audit's must-survive column keeps them for item-6).
+// VK-RUNG8-ITEM6: the dormant exportable-resource + glInteropViewCreate CREATION branches
+// (former item-5 substrate for the non-CSM screen-shadow config) were DELETED with the
+// static-shadow substrate retirement. The island now allocates only NON-exportable VK depth
+// images consumed via the VkImageView accessors (no GL interop view, no Win32 export).
 [[maybe_unused]] static const bool s_shadowDirectChainDeprecated = [] {
     if (mc2vkgate::envTriState("MC2_VK_SHADOW_DIRECT_CHAIN") != -1)
         std::fprintf(stderr, "[VK_SHADOW_ISLAND] MC2_VK_SHADOW_DIRECT_CHAIN is deprecated "
@@ -165,8 +164,7 @@ bool csmArrayInteropGateRequested() {
 }();
 
 // Post item-4 the island is unconditionally direct-chain-native. Kept as a named constant
-// so the retained item-5 exportable-substrate branches (guarded on !directChain) stay
-// readable as dormant code rather than being rewritten away.
+// documenting that the depth images are non-exportable and consumed via VkImageView only.
 constexpr bool kShadowDirectChain = true;
 
 std::string spv_dir() {
@@ -252,9 +250,8 @@ struct ShadowIsland {
     VkQueue          queue     = VK_NULL_HANDLE;
     VmaAllocator     allocator = VK_NULL_HANDLE; // borrowed from ctx
 
-    // Shared exportable D32 depth (the shadow map GL samples). VK-PRODUCED.
-    VkImageResource depthResource{};   // exportable D32, depth attachment + sampled
-    GlInteropView   depthGlView{};
+    // VK-PRODUCED D32 depth (the shadow map). Non-exportable; consumed via VkImageView.
+    VkImageResource depthResource{};   // D32, depth attachment + sampled
 
     // Caster geometry (VK-owned copies of the shared static-prop VBO/IBO, P8a (B)).
     VkBuffer      vbo = VK_NULL_HANDLE; VmaAllocation vboAlloc = VK_NULL_HANDLE;
@@ -276,7 +273,6 @@ struct ShadowIsland {
     VkImageView       depthAttView = VK_NULL_HANDLE;  // depth-attachment view of the shared image
     int               csmFullMapSize = 0;
     VkImageResource   csmFullMapResource{};
-    GlInteropView     csmFullMapGlView{};
     VkFramebuffer     csmFullMapFb = VK_NULL_HANDLE;
     VkImageView       csmFullMapDepthAttView = VK_NULL_HANDLE;
     int               csmArraySize = 0;
@@ -361,11 +357,9 @@ void destroy_island(ShadowIsland* s) {
     if (!s) return;
     VkDevice d = s->device;
     if (d != VK_NULL_HANDLE) vkDeviceWaitIdle(d);
-    glInteropViewDestroy(&s->depthGlView);
     if (d != VK_NULL_HANDLE) vkImageResourceDestroy(&s->depthResource, d);
     if (s->depthAttView) vkDestroyImageView(d, s->depthAttView, nullptr);
     if (s->csmFullMapFb) vkDestroyFramebuffer(d, s->csmFullMapFb, nullptr);
-    glInteropViewDestroy(&s->csmFullMapGlView);
     if (s->csmFullMapDepthAttView) vkDestroyImageView(d, s->csmFullMapDepthAttView, nullptr);
     if (d != VK_NULL_HANDLE) vkImageResourceDestroy(&s->csmFullMapResource, d);
     for (VkFramebuffer fbLayer : s->csmArrayFbs) {
@@ -429,36 +423,18 @@ bool init_island(ShadowIsland* s, int size) {
     // build failure -> the island declines for the session (item-2 boot-decline).
     g_shadowInitReachedBuild = 1;
 
-    // ---- Exportable shared D32 depth image. SAMPLED (GL samples it via
-    // sampler2DShadow) + DEPTH_STENCIL_ATTACHMENT (VK renders into it). ----
-    // item-4: always direct-chain. The !directChain exportable+glInteropView branches
-    // below are the RETAINED item-5 substrate (dormant; must-survive for item-6).
+    // ---- VK-native D32 depth image. SAMPLED (native screenfx samples the VkImageView)
+    // + DEPTH_STENCIL_ATTACHMENT (VK renders into it). Non-exportable (VK-RUNG8-ITEM6). ----
     const bool directChain = kShadowDirectChain;
     bool ok = vkImageResourceCreate(&s->depthResource, s->device, s->phys,
                                     (uint32_t)size, (uint32_t)size, kDepthFmt,
                                     VK_IMAGE_USAGE_DEPTH_STENCIL_ATTACHMENT_BIT |
                                     VK_IMAGE_USAGE_SAMPLED_BIT,
-                                    /*exportable*/ !directChain);
-    if (ok && !directChain) ok = glInteropViewCreate(&s->depthGlView, &s->depthResource, s->phys,
-                                                     GL_DEPTH_COMPONENT32F);
+                                    /*exportable*/ false);
     if (!ok) {
-        glInteropViewDestroy(&s->depthGlView);
         vkImageResourceDestroy(&s->depthResource, s->device);
-        setFallback("interop_setup_failed");
-        return false; // P8a is interop-only; no readback fallback path
-    }
-    // Configure the imported GL depth texture for HARDWARE compare sampling — the
-    // EXACT MC2 calcShadow convention (probe-proven over imported D32). GL consumers
-    // then bind this texture as `dynamicShadowMap` and sample with texture(sampler2DShadow,...).
-    if (!directChain) {
-        glBindTexture(GL_TEXTURE_2D, s->depthGlView.glTex);
-        glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR);   // hardware 2x2 PCF (matches GL shadow tex)
-        glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
-        glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_CLAMP_TO_EDGE);
-        glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_CLAMP_TO_EDGE);
-        glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_COMPARE_MODE, GL_COMPARE_REF_TO_TEXTURE);
-        glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_COMPARE_FUNC, GL_LEQUAL);
-        glBindTexture(GL_TEXTURE_2D, 0);
+        setFallback("depth_resource_setup_failed");
+        return false; // P8a is native-only; no readback fallback path
     }
 
     s->useInterop = !directChain;      // false (item-4: no GL<->VK semaphore machinery)
@@ -684,7 +660,6 @@ bool ensure_csm_fullmap_target(ShadowIsland* s, int size) {
 
     vkDeviceWaitIdle(s->device);
     if (s->csmFullMapFb) vkDestroyFramebuffer(s->device, s->csmFullMapFb, nullptr);
-    glInteropViewDestroy(&s->csmFullMapGlView);
     if (s->csmFullMapDepthAttView) vkDestroyImageView(s->device, s->csmFullMapDepthAttView, nullptr);
     if (s->csmFullMapResource.image != VK_NULL_HANDLE)
         vkImageResourceDestroy(&s->csmFullMapResource, s->device);
@@ -693,29 +668,16 @@ bool ensure_csm_fullmap_target(ShadowIsland* s, int size) {
     s->csmFullMapFb = VK_NULL_HANDLE;
     s->csmFullMapSize = 0;
 
-    const bool directChain = kShadowDirectChain;  // item-4: dormant exportable substrate below
+    // VK-RUNG8-ITEM6: non-exportable; consumed via VkImageView (csmFullMapDepthAttView).
     bool ok = vkImageResourceCreate(&s->csmFullMapResource, s->device, s->phys,
                                     (uint32_t)size, (uint32_t)size, kDepthFmt,
                                     VK_IMAGE_USAGE_DEPTH_STENCIL_ATTACHMENT_BIT |
                                     VK_IMAGE_USAGE_SAMPLED_BIT,
-                                    /*exportable*/ !directChain);
-    if (ok && !directChain) ok = glInteropViewCreate(&s->csmFullMapGlView, &s->csmFullMapResource, s->phys,
-                                                     GL_DEPTH_COMPONENT32F);
+                                    /*exportable*/ false);
     if (!ok) {
-        glInteropViewDestroy(&s->csmFullMapGlView);
         vkImageResourceDestroy(&s->csmFullMapResource, s->device);
-        setFallback("csm_fullmap_interop_setup_failed");
+        setFallback("csm_fullmap_resource_setup_failed");
         return false;
-    }
-    if (!directChain) {
-        glBindTexture(GL_TEXTURE_2D, s->csmFullMapGlView.glTex);
-        glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
-        glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
-        glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_CLAMP_TO_EDGE);
-        glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_CLAMP_TO_EDGE);
-        glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_COMPARE_MODE, GL_COMPARE_REF_TO_TEXTURE);
-        glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_COMPARE_FUNC, GL_LEQUAL);
-        glBindTexture(GL_TEXTURE_2D, 0);
     }
 
     VkImageViewCreateInfo vi{};

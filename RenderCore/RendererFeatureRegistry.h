@@ -810,14 +810,15 @@ static constexpr EnvVarDesc kAuxEnvVars[] = {
         "MC2_VK_STATIC_SHADOW_MAP",
         EnvVarKind::Feature,
         false,
-        "VK-STATIC-SHADOW-MAP: presence-gated =1, default OFF. Backs the static sun shadow "
-        "map (ShadowStaticMap / shadowDepthTex_) with a VK-built exportable D32_SFLOAT image "
-        "imported into GL as GL_DEPTH_COMPONENT32F at initShadows. GL still renders the static "
-        "shadow pass and GL screen-shadow still samples the imported texture with the same "
-        "compare sampler state; this only provides a same-image VkImageResource for the later "
-        "native screen-shadow pass. FAIL-SOFT: shared Vulkan context or GL interop failure falls "
-        "back to the plain GL GL_DEPTH_COMPONENT24 allocation. Gate OFF = byte-identical GL "
-        "static shadow path."
+        "DEPRECATED no-op (VK-RUNG8-ITEM6). The VK-backed static-shadow import substrate "
+        "(exportable D32_SFLOAT image imported into GL as GL_DEPTH_COMPONENT32F, plus the "
+        "whole vulkan_shared_static_shadow TU, the gl_interop_view TU, and the exportable-"
+        "image half of vk_image_resource) was DELETED. The static sun shadow map "
+        "(ShadowStaticMap / shadowDepthTex_) is now always the plain GL GL_DEPTH_COMPONENT24 "
+        "allocation; a non-CSM static-only screen-shadow config declines to the GL screen-"
+        "shadow pass (CSM screen-shadow is unaffected -- it samples the direct VK CSM views). "
+        "Retiring this closed the last Win32 external-memory MoltenVK/Metal-gate blocker. "
+        "Setting the env prints a one-shot deprecation note and changes nothing."
     },
     // VK-P11 TIER-1 PROP COLOR: in-place shared-GBuffer co-write (Tier-1, supersedes Tier-0).
     {

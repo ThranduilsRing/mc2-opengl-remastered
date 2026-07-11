@@ -468,7 +468,6 @@ public:
     struct Mc2SharedSceneColor* sharedSceneColor_  = nullptr;   // MRT0 sceneColorTex_
     struct Mc2SharedSceneColor* sharedSceneNormal_ = nullptr;   // MRT1 sceneNormalTex_
     struct Mc2SharedSceneColor* sharedSceneObjectId_ = nullptr; // MRT2 sceneObjectIdTex_
-    struct Mc2SharedStaticShadow* sharedStaticShadow_ = nullptr; // ShadowStaticMap
 
     // RENDER-BACKEND-REGION-IFACE-1 (1C): Vulkan impl of runRegion for the
     // PostprocessFog region. Returns false (fail-soft) if native fog is

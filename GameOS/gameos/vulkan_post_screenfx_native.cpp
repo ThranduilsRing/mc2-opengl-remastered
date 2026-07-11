@@ -63,14 +63,11 @@
 #include <vk_mem_alloc.h>
 
 #include "vk_image_resource.h"
-#include "gl_interop_view.h"
 #include "vulkan_context.h"
 #define MC2_VULKAN_SHARED_SCENE_COLOR_IMPL_ISLAND
 #include "vulkan_shared_scene_color.h"
 #define MC2_VULKAN_SHARED_SCENE_DEPTH_IMPL_ISLAND
 #include "vulkan_shared_scene_depth.h"
-#define MC2_VULKAN_SHARED_STATIC_SHADOW_IMPL_ISLAND
-#include "vulkan_shared_static_shadow.h"
 #include "vulkan_shadow_island_live.h"
 #include "vk_shared_gbuffer_gate.h"
 
@@ -233,11 +230,13 @@ struct gosPostProcess::VkPostScreenFx {
     VkImageResource* sColorRes  = nullptr;
     VkImageResource* sNormalRes = nullptr;
     VkImageResource* sDepthRes  = nullptr;
-    VkImageResource* sStaticShadowRes = nullptr;
     VkImageView      csmArrayView = VK_NULL_HANDLE;    // borrowed; shadow island owns it
     VkImageView      csmFullMapView = VK_NULL_HANDLE;  // borrowed; shadow island owns it
     // VK-RUNG8-ITEM5: shared scene is VK-only (no GL view); direct-chain only.
-    GlInteropView*   sStaticShadowView = nullptr;  // item-6 static-shadow import (stays)
+    // VK-RUNG8-ITEM6: the static-shadow import substrate was RETIRED. A non-CSM
+    // static-only screen-shadow config now DECLINES to the GL screen-shadow pass
+    // (hasStaticShadow is always false below); CSM screen-shadow is unaffected
+    // (it samples the direct VK CSM array/full-map views).
 
     // OWNED objects.
     VkImageView   depthSampleView = VK_NULL_HANDLE;  // depth-aspect view over sDepthRes->image
@@ -350,10 +349,9 @@ bool build_state(gosPostProcess::VkPostScreenFx* s, int w, int h) {
     s->sColorRes   = mc2SharedSceneColorGetResource(MC2_SHARED_SCENE_COLOR0);
     s->sNormalRes  = mc2SharedSceneColorGetResource(MC2_SHARED_SCENE_NORMAL);
     s->sDepthRes   = mc2SharedSceneDepthGetResource();
-    s->sStaticShadowRes = mc2SharedStaticShadowGetResource();
-    s->sStaticShadowView = mc2SharedStaticShadowGetGlView();
-    // VK-RUNG8 item-4: direct-chain only. Only the shared VkImageResources are required;
-    // the GL interop views above remain the item-5 shared-scene GL-import substrate.
+    // VK-RUNG8 item-4/6: direct-chain only. Only the shared VkImageResources are required.
+    // The static-shadow import substrate was retired (item-6): static-only screen-shadow
+    // declines to GL below.
     if (!s->sColorRes || !s->sNormalRes || !s->sDepthRes) {
         setFallback("shared_gbuffer_not_ready"); return false;
     }
@@ -532,10 +530,12 @@ bool build_state(gosPostProcess::VkPostScreenFx* s, int w, int h) {
         normalInfo.imageLayout = VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL;
         VkDescriptorImageInfo staticShadowInfo{};
         staticShadowInfo.sampler = s->shadowCompareSampler;
-        // Binding 2 is statically present in both shadow shaders. When the static
-        // GL-imported shadow substrate is absent but CSM direct-chain is available,
-        // bind a valid depth view and drive the static-shadow branch off via UBO.
-        staticShadowInfo.imageView = s->sStaticShadowRes ? s->sStaticShadowRes->view : s->depthSampleView;
+        // Binding 7 (static-shadow slot) is statically present in both shadow shaders.
+        // VK-RUNG8-ITEM6: the static-shadow import substrate is retired, so this slot
+        // always binds a valid depth view and the static-shadow branch is driven OFF
+        // via the UBO (enableShadows=0). This descriptor set is only built/used when
+        // CSM direct-chain is available; static-only configs decline to GL earlier.
+        staticShadowInfo.imageView = s->depthSampleView;
         staticShadowInfo.imageLayout = VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL;
         VkDescriptorBufferInfo cloudUboInfo{ s->cloudUbo, 0, VK_WHOLE_SIZE };
         VkDescriptorBufferInfo shoreUboInfo{ s->shoreUbo, 0, VK_WHOLE_SIZE };
@@ -777,7 +777,10 @@ bool gosPostProcess::runVkPostScreenShadowStaticNative()
             return false;
         }
     }
-    const bool hasStaticShadow = s->sStaticShadowRes && s->sStaticShadowView;
+    // VK-RUNG8-ITEM6: static-shadow import substrate retired -> never available.
+    // A static-only (non-CSM) config therefore declines here (returns false) and the
+    // GL screen-shadow pass runs; CSM configs proceed with dynamic shadows only.
+    const bool hasStaticShadow = false;
     if ((!hasStaticShadow && !csmDirectReady) || !s->shadowSet ||
         s->shadowPipe == VK_NULL_HANDLE || (csmDirectReady && s->shadowCsmPipe == VK_NULL_HANDLE)) {
         setFallback("static_shadow_substrate_not_ready");
@@ -888,12 +891,6 @@ bool gosPostProcess::runVkPostScreenShadowStaticNative()
             VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL, VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL,
             VK_ACCESS_COLOR_ATTACHMENT_WRITE_BIT, VK_ACCESS_SHADER_READ_BIT,
             VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT, VK_PIPELINE_STAGE_FRAGMENT_SHADER_BIT);
-    if (hasStaticShadow) {
-        barrier(s->sStaticShadowRes->image, VK_IMAGE_ASPECT_DEPTH_BIT,
-                VK_IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT_OPTIMAL, VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL,
-                VK_ACCESS_DEPTH_STENCIL_ATTACHMENT_WRITE_BIT, VK_ACCESS_SHADER_READ_BIT,
-                VK_PIPELINE_STAGE_LATE_FRAGMENT_TESTS_BIT, VK_PIPELINE_STAGE_FRAGMENT_SHADER_BIT);
-    }
     if (csmDirectReady) {
         if (void* csmArray = mc2_vk_shadow_island_get_csm_array_image()) {
             barrier(reinterpret_cast<VkImage>(csmArray), VK_IMAGE_ASPECT_DEPTH_BIT,
@@ -919,12 +916,6 @@ bool gosPostProcess::runVkPostScreenShadowStaticNative()
     vkCmdDraw(cb, 3, 1, 0, 0);
     vkCmdEndRenderPass(cb);
 
-    if (hasStaticShadow) {
-        barrier(s->sStaticShadowRes->image, VK_IMAGE_ASPECT_DEPTH_BIT,
-                VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL, VK_IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT_OPTIMAL,
-                VK_ACCESS_SHADER_READ_BIT, 0,
-                VK_PIPELINE_STAGE_FRAGMENT_SHADER_BIT, VK_PIPELINE_STAGE_BOTTOM_OF_PIPE_BIT);
-    }
     if (csmDirectReady) {
         if (void* csmArray = mc2_vk_shadow_island_get_csm_array_image()) {
             barrier(reinterpret_cast<VkImage>(csmArray), VK_IMAGE_ASPECT_DEPTH_BIT,
