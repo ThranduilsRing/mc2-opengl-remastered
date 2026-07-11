@@ -969,3 +969,58 @@ no tessellation anywhere in the tail.
   are NOT yet at zero callers because item 6 (static shadow) + item 8 (present) still
   use them; they clear after items 6/8. **Remaining 8.7 order: items 7, 8, then 6,
   then 2, 1, 3, 10** (2/1 gated behind 6+8).
+
+- 8.7as - TERRAIN CSM COPY-MODE DELETE
+  (VK-RUNG8-ITEM7-CSM-COPYMODE-DELETE-1). METAL-GATE-AUDIT-2 8.7 inventory **row 7**
+  DONE. Commit `9e80f139`, deployed `mc2-win64-0.4c` @ `9e80f139cc27 dirty=0`.
+  Deleted from `vulkan_terrain_island.cpp` the terrain CSM copy-mode: `copy_csm_array()`
+  (per-frame `glGetTexImage(GL_TEXTURE_2D_ARRAY)` depth pull + `glCopyImageSubData` GL
+  scratch depth array + staging + `vkCmdCopyBufferToImage`), the CSM full-map
+  `copy_shadow_slot(perFrame)` fallback + its FBO save/restore, `csmBisectMode()` +
+  all `MC2_VK_CSM_BISECT` probe branches, the `MC2_VK_CSM_COPYMODE=noread` branch, and
+  the copy-only state (`csmArrayStage*`, `csmScratchTex/Dim/Layers`, `csmFullMapStage*`
+  + destroys). `copy_csm_shadows()` is now DIRECT-VIEW-ONLY: it acquires the VK shadow
+  island's csm-array (binding 8) + csm-fullmap (binding 9) `VkImageView`s and declines
+  otherwise. ~150 LOC net deleted (211 del / 60 ins incl. comments).
+  - **WARMUP DECISION (recorded):** the shadow island does NOT produce from frame 1
+    (`first VK CSM array produced` is logged after a short warmup). Direct-only
+    therefore takes an **explicit warmup decline**: on csm-not-built frames and the
+    ~1-2 frames before the producer's first CSM product, `copy_csm_shadows()` returns
+    false -> caller forces UBO `csmEnabled=0` -> frag on the legacy single-map
+    dynshadow path (never a hole). This is NOT stale: all ready/external/direct flags
+    are reset at the top of `copy_csm_shadows()` every frame and the terrain island
+    resets the csm external views every frame, so a declined frame binds the 1x1
+    dummies and the next ready frame re-points bindings 8/9 at the live views. This is
+    the same mechanism PART A (2026-07-11) audited as ruling out a cross-frame stale
+    latch; the deletion does not introduce one (it removes the copy fallback, keeping
+    the reset-every-frame decline). Consistent with the user-sighted stale shadow being
+    a non-reproduced per-launch warmup/ordering transient, NOT a copy-mode-fed latch.
+  - **Gates:** `MC2_VK_CSM_COPYMODE` + `MC2_VK_CSM_BISECT` RETIRED to parseable no-ops
+    with one-shot deprecation notes (item-9 pattern). `MC2_VK_CSM_ARRAY_INTEROP` /
+    `MC2_VK_CSM_FULLMAP_INTEROP` KEPT — they gate the surviving direct producers
+    (checker H5 unchanged: those names reconcile via the umbrella as before).
+  - **MUST-SURVIVE kept:** `copy_shadow_slot` (static binding 5 = item 6; dynamic
+    binding 7), `ensure_csm_array_image`/`ensure_dummy_csm` 1x1 dummies,
+    `terrainPerFrameReadback` + `forbidden_getTexImage` counter (still load-bearing for
+    the dynamic single-map fallback + checker trip-wire — its CSM call sites are gone,
+    so a CSM readback can no longer increment it, which is correct). The parked
+    `MC2_VK_TERRAIN_CSM_FULLMAP_EXPERIMENTAL` escape hatch is **UNTOUCHED** — it feeds
+    the dynamic single-map slot (binding 7) via `copy_shadow_slot` in
+    `gos_terrain_lod_chunk.cpp`, NOT the CSM near-array/fullmap copy-mode, so it does
+    not ride copy-mode and does not die with it.
+  - **Verification** (all at clean deployed `9e80f139cc27`): resource-strict visible
+    proof `check_vk_nointerop_log.py --expect-sha 9e80f139cc27` **VERDICT PASS**
+    (`.claude/vk-item7-csm-proof/`): 11/11 deterministic bookmarks incl.
+    `ridge_lowangle` (shadow_cascade), all H1 forbidden 0 (incl. `PERFRAME_READBACK` 0),
+    all islands `forbidden_getTexImage=0`, ownership terrain 1022 / prop 1022 / mech 957
+    / water 1022, VK-only substrate, terrain `stage_us=2.3`, present/copy1_skip/
+    gl_handoff_skip/composite/imgui = 900, copy1_blit=0, provenance dirty=False sha
+    match. Shadow-island receipts: `CSM array target initialized 8192x8192 layers=2
+    (direct terrain binding 8)`, `CSM full-map target initialized 4096x4096 (direct
+    terrain binding 9)`, `first VK CSM array/full-map produced`. Explicit CSM direct
+    counters (`.claude/vk-item7-copystats/`, `MC2_VK_TERRAIN_COPY_STATS=1`):
+    `[VK_TERRAIN_COPY_STATS] copies_ms=0.0004 csmArrayReady=1 csmArrayDirect=1
+    csmFullMapReady=1 csmFullMapDirect=1`. Zero CSM_COPYMODE/CSM_BISECT deprecation
+    notes (gates unset in the proof). Canonical tier1 **5/5 PASS both states +0
+    destroys** (GL `2026-07-11T00-51-05`; VK umbrella `2026-07-11T00-54-33`).
+  - **Remaining 8.7 order:** items 8, then 6-decision, then 2, 1, 3, 10.

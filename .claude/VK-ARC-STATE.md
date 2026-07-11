@@ -1,6 +1,51 @@
 # VK-ARC-STATE — current state block (update every session)
 
-## 2026-07-11 — VK-RUNG8-ITEM5-SHARED-SCENE-DELETE-1: ITEM 5 COMPLETE (LATEST)
+## 2026-07-11 — VK-RUNG8-ITEM7-CSM-COPYMODE-DELETE-1: ITEM 7 COMPLETE (LATEST)
+
+Ladder rung 8.7as, commit `9e80f139`, deployed `mc2-win64-0.4c` @ `9e80f139cc27 dirty=0`.
+**METAL-GATE-AUDIT-2 8.7 inventory row 7 (item 7) is DONE.** The terrain CSM copy-mode
+(per-frame `glGetTexImage` depth pull + `glCopyImageSubData` GL scratch depth array +
+staging + `vkCmdCopyBufferToImage`) is deleted; the VK shadow island's direct D32
+near-array (binding 8) + full-map (binding 9) `VkImageView`s are the only CSM producer.
+
+- **Deleted** from `vulkan_terrain_island.cpp`: `copy_csm_array()`, the CSM full-map
+  `copy_shadow_slot(perFrame)` fallback + FBO save/restore, `csmBisectMode()` + all
+  `MC2_VK_CSM_BISECT` branches, the `MC2_VK_CSM_COPYMODE=noread` branch, and copy-only
+  state (`csmArrayStage*`, `csmScratchTex/Dim/Layers`, `csmFullMapStage*` + destroys).
+  `copy_csm_shadows()` is now direct-view-only (~150 LOC net deleted).
+- **WARMUP DECISION (recorded):** shadow island does NOT produce from frame 1, so
+  direct-only takes an **explicit warmup decline** — csm-not-built + the ~1-2 warmup
+  frames return false -> `csmEnabled=0` -> legacy single-map dynshadow path. NOT stale:
+  all ready/external/direct flags reset every frame -> declined frames bind the 1x1
+  dummies, next ready frame re-points bindings 8/9. Removes the copy fallback WITHOUT
+  introducing a cross-frame latch (matches PART A's stale-shadow non-repro finding; the
+  user-sighted stale shadow was a per-launch warmup/ordering transient, not copy-mode-fed).
+- **Gates:** `MC2_VK_CSM_COPYMODE` + `MC2_VK_CSM_BISECT` RETIRED to parseable no-ops +
+  one-shot deprecation notes (item-9). `MC2_VK_CSM_ARRAY_INTEROP` /
+  `MC2_VK_CSM_FULLMAP_INTEROP` KEPT (gate the surviving direct producers; checker H5
+  unchanged). Parked `MC2_VK_TERRAIN_CSM_FULLMAP_EXPERIMENTAL` **UNTOUCHED** — it feeds
+  binding 7 (dynamic single-map) via the surviving `copy_shadow_slot`, NOT the CSM
+  copy-mode, so it does not ride copy-mode and does not die with it.
+- **MUST-SURVIVE kept:** `copy_shadow_slot` (static item-6 + dynamic), 1x1 CSM dummies,
+  `terrainPerFrameReadback` + `forbidden_getTexImage` counter (CSM call sites gone; still
+  serves the dynamic single-map fallback + checker trip-wire).
+- **Verification** (clean deployed `9e80f139cc27`): resource-strict visible proof
+  `check_vk_nointerop_log.py --expect-sha 9e80f139cc27` **VERDICT PASS**
+  (`.claude/vk-item7-csm-proof/`): 11/11 deterministic bookmarks incl. `ridge_lowangle`
+  (shadow_cascade), all H1 forbidden 0 incl. `PERFRAME_READBACK`, all islands
+  `forbidden_getTexImage=0`, ownership terrain 1022 / prop 1022 / mech 957 / water 1022,
+  VK-only substrate, terrain `stage_us=2.3`, present counters 900/900 copy1_blit=0,
+  provenance dirty=False sha match. CSM direct receipts (`.claude/vk-item7-copystats/`,
+  `MC2_VK_TERRAIN_COPY_STATS=1`): `copies_ms=0.0004 csmArrayReady=1 csmArrayDirect=1
+  csmFullMapReady=1 csmFullMapDirect=1`; shadow island `CSM array target 8192x8192
+  layers=2 (direct binding 8)` + `CSM full-map 4096x4096 (direct binding 9)`. Canonical
+  tier1 **5/5 PASS both states +0 destroys** (GL `2026-07-11T00-51-05`; VK umbrella
+  `2026-07-11T00-54-33`). Shadow visual spot-check: `ridge_lowangle` rendered
+  deterministically with CSM direct-produced (full VK-vs-GL A/B is confounded under the
+  strict stack per the arc's standing finding).
+- **Remaining 8.7 order:** items 8, then 6-decision, then 2, 1, 3, 10.
+
+## 2026-07-11 — VK-RUNG8-ITEM5-SHARED-SCENE-DELETE-1: ITEM 5 COMPLETE
 
 Ladder rung 8.7ar, commits `7ee0494f` (core) + `11f9f7fc` (prop/water hybrid arms) +
 `12fe7c4b` (deprecation-note fixup), deployed `mc2-win64-0.4c` @ `12fe7c4b85b3 dirty=0`.
