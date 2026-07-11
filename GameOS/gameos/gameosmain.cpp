@@ -1214,7 +1214,7 @@ int main(int argc, char** argv)
         // Interop-capable device: request the external-memory/-semaphore exts so
         // P6/P8/P14 can import/export shared images against this device.
         mc2vk::VulkanContext& vkctx = mc2vk::getOrCreateEngineVulkanContext();
-        const bool vkok = vkctx.init(/*wantInterop=*/true, /*wantPresent=*/true);
+        const bool vkok = vkctx.init(/*wantPresent=*/true);
         vkctx.logHealth();
         if (!vkok || !vkctx.valid()) {
             // Fail-soft: force the whole session back to GL. renderBackend() stays

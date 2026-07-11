@@ -729,7 +729,7 @@ bool init_island(ColorPropIsland* s, int w, int h) {
     s->w = w; s->h = h;
     ++g_health.attempted;
 
-    if (!mc2vk::ensureEngineVulkanContextForInterop()) {
+    if (!mc2vk::ensureEngineVulkanContext()) {
         setFallback("engine_vk_context_birth_failed"); return false;
     }
     mc2vk::VulkanContext& ctx = mc2vk::getOrCreateEngineVulkanContext();

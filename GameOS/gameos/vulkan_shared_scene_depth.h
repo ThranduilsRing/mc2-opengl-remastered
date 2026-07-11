@@ -26,7 +26,7 @@
 struct Mc2SharedSceneDepth;
 
 // Build a VK-only (non-exportable) D32_SFLOAT_S8_UINT image via the SHARED engine
-// Vulkan context (ensureEngineVulkanContextForInterop). The returned pointer owns
+// Vulkan context (ensureEngineVulkanContext). The returned pointer owns
 // the lifetime (destroy with mc2SharedSceneDepthDestroy). There is no GL texture:
 // the caller allocates its own plain-GL placeholder depth attachment.
 //

@@ -247,7 +247,7 @@ bool build_state(gosPostProcess::VkPostFogNative* s, int w, int h) {
     s->width = w; s->height = h;
 
     // Shared engine device, on-demand (SSAO/water model; fail-soft -> GL fog).
-    if (!mc2vk::ensureEngineVulkanContextForInterop()) {
+    if (!mc2vk::ensureEngineVulkanContext()) {
         setFallback("engine_vk_context_birth_failed"); return false;
     }
     mc2vk::VulkanContext& ctx = mc2vk::getOrCreateEngineVulkanContext();

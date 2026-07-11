@@ -12,11 +12,12 @@
 
 #ifdef MC2_VULKAN
 
-// The KHR external-memory/-semaphore Win32 entrypoints + extension-name macros
-// (VK_KHR_EXTERNAL_MEMORY_WIN32_EXTENSION_NAME etc.) are gated behind
-// VK_USE_PLATFORM_WIN32_KHR in volk/vulkan_core.h. Define it BEFORE the header
-// (which pulls in volk.h) so those identifiers are visible for the interop
-// device extensions.
+// VK-RUNG8-ITEM3: the external-memory/-semaphore Win32 device extension family was
+// removed (Metal-gate blocker). This define now survives ONLY for the Win32 SURFACE
+// extension-name macro (VK_KHR_WIN32_SURFACE_EXTENSION_NAME), gated behind
+// VK_USE_PLATFORM_WIN32_KHR in volk/vulkan_core.h, enabled below when wantPresent.
+// On a macOS/Metal port this whole define + the surface pair become a platform branch
+// (VK_EXT_metal_surface via SDL_Vulkan_GetInstanceExtensions).
 #ifndef VK_USE_PLATFORM_WIN32_KHR
 #define VK_USE_PLATFORM_WIN32_KHR
 #endif
@@ -110,7 +111,7 @@ bool resolveValidationPreset(std::vector<VkValidationFeatureEnableEXT>& feats,
 
 }  // namespace
 
-bool VulkanContext::init(bool wantInterop, bool wantPresent) {
+bool VulkanContext::init(bool wantPresent) {
     health_.attempted = true;
 
     // Idempotent: already up, or already tried and failed.
@@ -154,34 +155,18 @@ bool VulkanContext::init(bool wantInterop, bool wantPresent) {
     std::vector<const char*> layers;
     std::vector<const char*> instExts;
 
-    // Interop-capable instance caps (external memory/semaphore) so the shared
-    // device can back exportable images the GL side imports (P6/P8/P14).
-    if (wantInterop) {
-        instExts.push_back(VK_KHR_EXTERNAL_MEMORY_CAPABILITIES_EXTENSION_NAME);
-        instExts.push_back(VK_KHR_EXTERNAL_SEMAPHORE_CAPABILITIES_EXTENSION_NAME);
-        instExts.push_back(VK_KHR_GET_PHYSICAL_DEVICE_PROPERTIES_2_EXTENSION_NAME);
-    }
+    // VK-RUNG8-ITEM3: the interop instance caps (VK_KHR_external_memory/semaphore_
+    // capabilities + get_physical_device_properties_2) were REMOVED with the interop
+    // family. get_physical_device_properties_2 is VK 1.1 core anyway (apiVersion 1.1).
 
     // VK-P13 T3: surface instance extensions so the shared device can create a
     // VkSurfaceKHR for the hidden present window (SDL_Vulkan_CreateSurface needs
     // the instance to carry these). On Windows the surface pair is well-known
     // (SDL requires exactly these), so we do not need an SDL window before
-    // instance creation. GET_PHYSICAL_DEVICE_PROPERTIES_2 may already be present
-    // via wantInterop; duplicate names in ppEnabledExtensionNames are harmless
-    // but we de-dup to keep the loader quiet.
+    // instance creation.
     if (wantPresent) {
         instExts.push_back(VK_KHR_SURFACE_EXTENSION_NAME);
         instExts.push_back(VK_KHR_WIN32_SURFACE_EXTENSION_NAME);
-    }
-    // De-dup instExts (interop + present can both add PDP2/etc.).
-    {
-        std::vector<const char*> uniq;
-        for (const char* e : instExts) {
-            bool seen = false;
-            for (const char* u : uniq) if (std::strcmp(u, e) == 0) { seen = true; break; }
-            if (!seen) uniq.push_back(e);
-        }
-        instExts.swap(uniq);
     }
 
     if (wantValidation) {
@@ -259,7 +244,7 @@ bool VulkanContext::init(bool wantInterop, bool wantPresent) {
     std::vector<VkPhysicalDevice> devs(devCount);
     vkEnumeratePhysicalDevices(instance_, &devCount, devs.data());
     phys_ = devs[0];
-    if (wantInterop && devCount > 1) {
+    if (devCount > 1) {
         for (auto pd : devs) {
             VkPhysicalDeviceProperties p{};
             vkGetPhysicalDeviceProperties(pd, &p);
@@ -292,16 +277,11 @@ bool VulkanContext::init(bool wantInterop, bool wantPresent) {
     qci.pQueuePriorities = &prio;
 
     std::vector<const char*> devExts;
-    if (wantInterop) {
-        // External-memory/-semaphore Win32 exts so P6/P8/P14 can import/export
-        // shared images/semaphores against THIS device (same set the island uses).
-        devExts.push_back(VK_KHR_EXTERNAL_MEMORY_EXTENSION_NAME);
-        devExts.push_back(VK_KHR_EXTERNAL_MEMORY_WIN32_EXTENSION_NAME);
-        devExts.push_back(VK_KHR_EXTERNAL_SEMAPHORE_EXTENSION_NAME);
-        devExts.push_back(VK_KHR_EXTERNAL_SEMAPHORE_WIN32_EXTENSION_NAME);
-        devExts.push_back(VK_KHR_DEDICATED_ALLOCATION_EXTENSION_NAME);
-        devExts.push_back(VK_KHR_GET_MEMORY_REQUIREMENTS_2_EXTENSION_NAME);
-    }
+    // VK-RUNG8-ITEM3: the external-memory/-semaphore Win32 device extensions (the last
+    // hard MoltenVK/Metal-gate blocker) were REMOVED -- no VK resource is exportable
+    // anymore. VK_KHR_dedicated_allocation + VK_KHR_get_memory_requirements_2 are VK 1.1
+    // core (apiVersion 1.1), so the surviving dedicated allocations need no extension.
+    // vkCreateDevice on MoltenVK no longer fails on an unsupported extension here.
     // VK-P13 T3: swapchain device extension for the hidden present window.
     if (wantPresent) {
         devExts.push_back(VK_KHR_SWAPCHAIN_EXTENSION_NAME);
@@ -340,8 +320,8 @@ bool VulkanContext::init(bool wantInterop, bool wantPresent) {
 
     health_.created = true;
     health_.fallbackReason.clear();
-    ctxlog("engine Vulkan device created: device_name=\"%s\" interop=%d present=%d validation=%s.",
-           health_.deviceName, wantInterop ? 1 : 0, wantPresent ? 1 : 0, valPreset);
+    ctxlog("engine Vulkan device created: device_name=\"%s\" present=%d validation=%s.",
+           health_.deviceName, wantPresent ? 1 : 0, valPreset);
     return true;
 }
 
@@ -387,23 +367,22 @@ bool engineVulkanContextValid() {
     return g_engineContext.valid();
 }
 
-// VK-P9a WATER-INTEROP: on-demand shared-context birth, DECOUPLED from present.
-// The shared engine VulkanContext is the first-class durable device (P13 T2);
-// present is just ONE consumer; native regions can also borrow the shared context.
-// must be able to bring the SAME shared device up on the GL-present path, WITHOUT
+// On-demand shared-context birth, DECOUPLED from present. The shared engine
+// VulkanContext is the first-class durable device (P13 T2); present is just ONE
+// consumer; native regions can also borrow the shared context WITHOUT
 // MC2_RENDER_BACKEND=vulkan and WITHOUT a healthy present/window. Lazy + idempotent:
 //   - If the context is already valid (born by =vulkan in gameosmain, or a prior
 //     call here), return true immediately -- NO second init, NO second volkLoadDevice
 //     (the device is shared; init() is a no-op after success).
-//   - Else init(wantInterop=true, wantPresent=false): brings up instance/device/queue/
-//     VMA + the SINGLE volkLoadDevice, with the external-memory/-semaphore Win32 exts
-//     but NO surface/swapchain (present-independent). Interop islands reuse this device.
+//   - Else init(wantPresent=false): brings up instance/device/queue/VMA + the SINGLE
+//     volkLoadDevice, plain VK 1.1 core (no interop exts, no surface/swapchain). Native
+//     VK regions reuse this device.
 //   - init() is one-shot: after a failed attempt it returns false without retrying, so
 //     a repeated caller never thrashes. Fail-soft: returns false, caller falls back to GL.
-// This is the generalization that unblocks every VK geometry/interop region uniformly.
-bool ensureEngineVulkanContextForInterop() {
+// VK-RUNG8-ITEM3: renamed from ensureEngineVulkanContext (no interop family).
+bool ensureEngineVulkanContext() {
     if (g_engineContext.valid()) return true;               // already born (=vulkan or prior lazy)
-    return g_engineContext.init(/*wantInterop=*/true, /*wantPresent=*/false);
+    return g_engineContext.init(/*wantPresent=*/false);
 }
 
 }  // namespace mc2vk

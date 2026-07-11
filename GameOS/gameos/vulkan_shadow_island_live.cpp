@@ -11,7 +11,7 @@
 //
 // SHAPE (mirrors the P9 water island — the proven geometry-region template):
 //   - Device: BORROWED from the shared engine VulkanContext
-//     (ensureEngineVulkanContextForInterop + getOrCreateEngineVulkanContext). NO
+//     (ensureEngineVulkanContext + getOrCreateEngineVulkanContext). NO
 //     second device, NO volkLoadDevice. Requires the ctx was born wantInterop.
 //   - Feed (STEP 0 decision, .claude/VK-P8a-STEP0-CASTER-FEED-NOTE.md): the CPU
 //     GpuStaticPropInstance vector (dynShadowSet) the GL path already builds each
@@ -395,7 +395,7 @@ bool init_island(ShadowIsland* s, int size) {
     ++g_health.attempted;
     g_shadowInitReachedBuild = 0;   // reset; flips to 1 after readiness gates pass
 
-    if (!mc2vk::ensureEngineVulkanContextForInterop()) {
+    if (!mc2vk::ensureEngineVulkanContext()) {
         setFallback("engine_vk_context_birth_failed"); return false;
     }
     mc2vk::VulkanContext& ctx = mc2vk::getOrCreateEngineVulkanContext();

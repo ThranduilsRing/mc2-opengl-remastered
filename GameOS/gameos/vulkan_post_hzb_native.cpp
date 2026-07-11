@@ -217,7 +217,7 @@ bool build_state(gosPostProcess::VkPostHzbNative* s, int w, int h, int mipCount)
     s->height = h;
     s->mipCount = mipCount;
 
-    if (!mc2vk::ensureEngineVulkanContextForInterop()) {
+    if (!mc2vk::ensureEngineVulkanContext()) {
         setFallback("engine_vk_context_birth_failed");
         return false;
     }

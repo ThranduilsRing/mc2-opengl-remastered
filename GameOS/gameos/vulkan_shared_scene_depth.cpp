@@ -71,7 +71,7 @@ Mc2SharedSceneDepth* mc2SharedSceneDepthCreate(int w, int h, const char** outRea
 
     // Shared engine VK context, on-demand + idempotent. Fail-soft: if it cannot be
     // born the caller declines the whole shared scene to pure GL.
-    if (!mc2vk::ensureEngineVulkanContextForInterop())
+    if (!mc2vk::ensureEngineVulkanContext())
         return bail("engine_vk_context_birth_failed");
     mc2vk::VulkanContext& ctx = mc2vk::getOrCreateEngineVulkanContext();
     if (!ctx.valid()) return bail("engine_vk_context_not_valid");

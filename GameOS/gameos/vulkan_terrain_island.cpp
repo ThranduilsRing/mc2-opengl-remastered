@@ -946,7 +946,7 @@ bool init_island(TerrainIsland* s, int w, int h) {
     ++g_health.attempted;
     g_terrainInitReachedBuild = 0;  // reset; flips to 1 after readiness gates pass
 
-    if (!mc2vk::ensureEngineVulkanContextForInterop()) { setFallback("engine_vk_context_birth_failed"); return false; }
+    if (!mc2vk::ensureEngineVulkanContext()) { setFallback("engine_vk_context_birth_failed"); return false; }
     mc2vk::VulkanContext& ctx = mc2vk::getOrCreateEngineVulkanContext();
     if (!ctx.valid()) { setFallback("engine_vk_context_not_valid"); return false; }
     s->instance  = ctx.instance();

@@ -273,7 +273,7 @@ bool build_state(gosPostProcess::VkPostSsaoNative* s, int w, int h, int halfW, i
     s->halfW = halfW; s->halfH = halfH;
 
     // Shared engine device, on-demand (rung-8.1 model; fail-soft -> GL SSAO).
-    if (!mc2vk::ensureEngineVulkanContextForInterop()) {
+    if (!mc2vk::ensureEngineVulkanContext()) {
         setFallback("engine_vk_context_birth_failed"); return false;
     }
     mc2vk::VulkanContext& ctx = mc2vk::getOrCreateEngineVulkanContext();

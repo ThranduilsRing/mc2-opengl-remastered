@@ -60,15 +60,15 @@ public:
     // Bring up instance/device/queue/VMA. Idempotent: a second call after a
     // successful init is a no-op returning true; after a failed init it returns
     // false without retrying. Reads MC2_VULKAN_VALIDATION for the validation
-    // preset (same convention as the islands). `wantInterop` requests the
-    // external-memory/-semaphore Win32 device extensions so P6/P8/P14 interop
-    // can import/export against this device. `wantPresent` (VK-P13 T3) requests
-    // the surface (VK_KHR_surface + VK_KHR_win32_surface instance) + swapchain
-    // (VK_KHR_swapchain device) extensions so the shared device can drive the
-    // hidden-window VK present path. Both are additive and off unless requested.
-    // Returns false + sets health.fallbackReason on any error (fail-soft: any
-    // partial state is torn down before returning).
-    bool init(bool wantInterop, bool wantPresent = false);
+    // preset (same convention as the islands). VK-RUNG8-ITEM3 removed the
+    // `wantInterop` external-memory/-semaphore Win32 extension family (the last
+    // MoltenVK/Metal-gate blocker): every VK resource is now VK-only. `wantPresent`
+    // (VK-P13 T3) requests the surface (VK_KHR_surface + VK_KHR_win32_surface
+    // instance) + swapchain (VK_KHR_swapchain device) extensions so the shared
+    // device can drive the hidden-window VK present path. Additive and off unless
+    // requested. Returns false + sets health.fallbackReason on any error (fail-soft:
+    // any partial state is torn down before returning).
+    bool init(bool wantPresent = false);
 
     // Tear down in reverse order (safe on partial init / repeated calls).
     void destroy();
@@ -113,14 +113,15 @@ VulkanContext& getOrCreateEngineVulkanContext();
 // Convenience: true if the engine context has been born and holds a live device.
 bool engineVulkanContextValid();
 
-// VK-P9a WATER-INTEROP: on-demand shared-context birth DECOUPLED from present.
-// Lazy + idempotent: returns true if the shared context is already valid; else
-// brings it up once via init(wantInterop=true, wantPresent=false) -- the SAME
-// shared device (one volkLoadDevice), interop exts but no surface/swapchain, so a
-// Native VK regions can run before the present path owns the backend.
-// WITHOUT MC2_RENDER_BACKEND=vulkan and without a healthy present/window. init()
-// is one-shot (no retry after failure). Fail-soft: false -> caller uses GL.
-bool ensureEngineVulkanContextForInterop();
+// On-demand shared-context birth DECOUPLED from present. Lazy + idempotent: returns
+// true if the shared context is already valid; else brings it up once via
+// init(wantPresent=false) -- the SAME shared device (one volkLoadDevice), no surface/
+// swapchain, so native VK regions can run before the present path owns the backend,
+// WITHOUT MC2_RENDER_BACKEND=vulkan and without a healthy present/window. init() is
+// one-shot (no retry after failure). Fail-soft: false -> caller uses GL.
+// VK-RUNG8-ITEM3: renamed from ensureEngineVulkanContext -- there is no
+// interop extension family anymore; the shared device is plain VK 1.1 core.
+bool ensureEngineVulkanContext();
 
 }  // namespace mc2vk
 

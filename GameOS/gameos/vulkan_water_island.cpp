@@ -600,7 +600,7 @@ bool init_island(WaterIsland* s, int w, int h) {
     // inits the SAME shared device (one volkLoadDevice, interop exts, NO swapchain)
     // so the water region runs on the GL-present path (SSAO model, shared device).
     // Fail-soft -> GL water draw.
-    if (!mc2vk::ensureEngineVulkanContextForInterop()) {
+    if (!mc2vk::ensureEngineVulkanContext()) {
         setFallback("engine_vk_context_birth_failed"); return false;
     }
     mc2vk::VulkanContext& ctx = mc2vk::getOrCreateEngineVulkanContext();
