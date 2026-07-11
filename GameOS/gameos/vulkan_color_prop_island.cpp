@@ -754,6 +754,10 @@ bool init_island(ColorPropIsland* s, int w, int h) {
 
     // Tier-1 is the only live Vulkan prop color path.
 
+    // VK-RUNG8-ITEM5: fire the one-shot MC2_VK_PROP_DIRECT_CHAIN deprecation note if
+    // the retired gate was explicitly set (result ignored — always direct-chain-native).
+    (void)propDirectChainRequested();
+
     s->tier1 = propColorTier1Requested();
     // VK-P11 STATIC-PROP MATERIAL requires the Tier-1 shared-GBuffer co-write path.
     s->wantMaterial = s->tier1 && propMaterialRequested();

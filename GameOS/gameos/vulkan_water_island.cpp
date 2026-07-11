@@ -625,6 +625,10 @@ bool init_island(WaterIsland* s, int w, int h) {
 
     // ---- RUNG 6 (tier1): borrow the SHARED scene GBuffer (color0+normal+depth)
     // the GL scene renders into. Fail-soft: not ready => GL water draw.
+    // VK-RUNG8-ITEM5: fire the one-shot MC2_VK_WATER_DIRECT_CHAIN deprecation note if
+    // the retired gate was explicitly set (result ignored — always direct-chain-native).
+    (void)waterDirectChainRequested();
+
     s->tier1 = waterTier1Requested();
     if (!s->tier1) {
         setFallback("gate_off");
