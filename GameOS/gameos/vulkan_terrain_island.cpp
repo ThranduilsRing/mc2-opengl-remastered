@@ -119,8 +119,9 @@ void vlog(const char* fmt, ...) {
 }
 
 // VK-NOINTEROP-STRICT-REVIEW (H2b): record a PER-FRAME render-path GL depth readback.
-// The terrain island's shadow fallback (copy_shadow_slot / copy_csm_array) does a
-// glGetTexImage when the VK direct-chain producer declined -- exactly the fallback that
+// The terrain island's per-frame shadow fallback (copy_shadow_slot for the dynamic
+// single-map slot) does a glGetTexImage when the VK direct producer declined -- exactly
+// the fallback that
 // caused the 126 ms/frame CSM readback (killed by direct-chain in 62707331). Before this
 // fix the g_forbidden.glGetTexImage counter was DECLARED and printed but NEVER
 // incremented, so the run()-scope f0b/f0c snapshot check and the health-line counter were
@@ -151,6 +152,25 @@ void terrainPerFrameReadback(const char* fn) {
              "readback in render path -- direct-chain declined this frame)", fn);
     }
 }
+
+// VK-RUNG8 item-7: the terrain CSM copy-mode (per-frame glGetTexImage depth pull +
+// glCopyImageSubData GL scratch array + staging + vkCmdCopyBufferToImage) was DELETED; the
+// VK shadow island's direct D32 array + full-map views are the only CSM producer now. Its
+// two CSM-BLACKOUT-RECON-1 debug gates are RETIRED to parseable no-ops. They are still
+// parsed so old command lines don't hit unknown-var behavior; explicitly setting either
+// prints a one-line deprecation note (item-9 pattern). NOTE: MC2_VK_CSM_ARRAY_INTEROP /
+// MC2_VK_CSM_FULLMAP_INTEROP are NOT deprecated -- they gate the surviving direct producers.
+[[maybe_unused]] static const bool s_csmCopyModeDeprecated = [] {
+    if (std::getenv("MC2_VK_CSM_COPYMODE"))
+        std::fprintf(stderr, "[VK_TERRAIN_ISLAND] MC2_VK_CSM_COPYMODE is deprecated and now a "
+                             "no-op: the terrain CSM copy-mode was deleted (direct VK shadow "
+                             "views only).\n");
+    if (mc2vkgate::envTriState("MC2_VK_CSM_BISECT") != -1 || std::getenv("MC2_VK_CSM_BISECT"))
+        std::fprintf(stderr, "[VK_TERRAIN_ISLAND] MC2_VK_CSM_BISECT is deprecated and now a "
+                             "no-op: the terrain CSM copy-mode/bisect probes were deleted "
+                             "(direct VK shadow views only).\n");
+    return true;
+}();
 
 // Gate: MC2_VK_TERRAIN_TIER1==1 AND MC2_VK_SHARED_SCENE_DEPTH==1 (the shared depth
 // the Tier-1 pass depth-tests against). Mirrors propColorTier1Requested().
@@ -497,11 +517,13 @@ struct TerrainIsland {
     VkImageView   dynShadowBoundView = VK_NULL_HANDLE;   // what binding 7 was last vkUpdateDescriptorSets'd with
 
     // VK-TERRAIN-CSM-NEAR-1: near-cascade D32 depth-COMPARE ARRAY (binding 8) + the
-    // separate lower-res full-map D32 depth-COMPARE 2D image (binding 9). Copied per
-    // frame via glGetTexImage (GL_TEXTURE_2D_ARRAY has no zero-copy producer yet — the
-    // VK shadow island only produces the single legacy map — so this is the fallback
-    // GL-copy path, same mechanism as static/dynamic single-map). Layers = csmCount-1
-    // (near cascades only; the last cascade lives in the separate full-map image).
+    // separate lower-res full-map D32 depth-COMPARE 2D image (binding 9). Item-7
+    // (VK-RUNG8 CSM copy-mode delete): the per-frame GL depth readback / glCopyImageSubData
+    // scratch / vkCmdCopyBufferToImage import was DELETED. Terrain now binds the VK shadow
+    // island's own VkImageViews directly (csmArrayExternalView / csmFullMapExternalView,
+    // produced under MC2_VK_CSM_ARRAY_INTEROP / MC2_VK_CSM_FULLMAP_INTEROP). The owned
+    // images below are now only the 1x1 dummies (ensure_dummy_csm) that keep bindings 8/9
+    // valid on warmup/decline frames (csmEnabled=0 -> frag on the legacy single-map path).
     VkImage       csmArrayImg  = VK_NULL_HANDLE; VmaAllocation csmArrayAlloc = VK_NULL_HANDLE;
     VkImageView   csmArrayView = VK_NULL_HANDLE;
     uint32_t      csmArrayDim  = 0;
@@ -510,17 +532,6 @@ struct TerrainIsland {
     VkImageView   csmArrayExternalView = VK_NULL_HANDLE;
     bool          csmArrayDirect = false;
     VkImageView   csmArrayBoundView = VK_NULL_HANDLE;
-    VkBuffer      csmArrayStage = VK_NULL_HANDLE; VmaAllocation csmArrayStageAlloc = VK_NULL_HANDLE;
-    VkDeviceSize  csmArrayStageBytes = 0;
-    // CSM-BLACKOUT-RECON-1 FIX: GL scratch depth array. glGetTexImage on the LIVE
-    // cascade array (an active FBO depth attachment re-rendered every frame) poisons
-    // subsequent GL rendering on this AMD driver (whole-frame near-black; proven by
-    // bisect: array-read-only reproduces, no-array-read is clean). We GPU-copy the live
-    // array into this never-attached scratch via glCopyImageSubData and CPU-read the
-    // scratch instead.
-    unsigned int  csmScratchTex = 0;      // GLuint; 0 = not created
-    uint32_t      csmScratchDim = 0;
-    uint32_t      csmScratchLayers = 0;
 
     VkImage       csmFullMapImg  = VK_NULL_HANDLE; VmaAllocation csmFullMapAlloc = VK_NULL_HANDLE;
     VkImageView   csmFullMapView = VK_NULL_HANDLE;
@@ -529,8 +540,6 @@ struct TerrainIsland {
     VkImageView   csmFullMapExternalView = VK_NULL_HANDLE;
     bool          csmFullMapDirect = false;
     VkImageView   csmFullMapBoundView = VK_NULL_HANDLE;
-    VkBuffer      csmFullMapStage = VK_NULL_HANDLE; VmaAllocation csmFullMapStageAlloc = VK_NULL_HANDLE;
-    VkDeviceSize  csmFullMapStageBytes = 0;
 
     // VK-TERRAIN-DETAIL sub-slice: the material detail-normal ARRAY. A VK copy-once
     // import of the GL terrain_normal_array_tex_ (9-layer RGBA8 GL_TEXTURE_2D_ARRAY,
@@ -923,11 +932,8 @@ void destroy_island(TerrainIsland* s) {
     if (s->dynShadowStage) vmaDestroyBuffer(s->allocator, s->dynShadowStage, s->dynShadowStageAlloc);
     if (s->csmArrayView) vkDestroyImageView(d, s->csmArrayView, nullptr);
     if (s->csmArrayImg)  vmaDestroyImage(s->allocator, s->csmArrayImg, s->csmArrayAlloc);
-    if (s->csmArrayStage) vmaDestroyBuffer(s->allocator, s->csmArrayStage, s->csmArrayStageAlloc);
-    if (s->csmScratchTex) { glDeleteTextures(1, &s->csmScratchTex); s->csmScratchTex = 0; }
     if (s->csmFullMapView) vkDestroyImageView(d, s->csmFullMapView, nullptr);
     if (s->csmFullMapImg)  vmaDestroyImage(s->allocator, s->csmFullMapImg, s->csmFullMapAlloc);
-    if (s->csmFullMapStage) vmaDestroyBuffer(s->allocator, s->csmFullMapStage, s->csmFullMapStageAlloc);
     if (s->matNormalSamp) vkDestroySampler(d, s->matNormalSamp, nullptr);
     if (s->matNormalView) vkDestroyImageView(d, s->matNormalView, nullptr);
     if (s->matNormalImg)  vmaDestroyImage(s->allocator, s->matNormalImg, s->matNormalAlloc);
@@ -2028,109 +2034,22 @@ bool ensure_dummy_csm(TerrainIsland* s) {
     return true;
 }
 
-// Per-frame copy of the GL near-cascade array (GL_TEXTURE_2D_ARRAY depth) into the VK
-// D32 depth-COMPARE array, one glGetTexImage covering all layers (matches copy_shadow_slot's
-// single-image approach but reads the whole array in one call — GL_TEXTURE_2D_ARRAY
-// glGetTexImage returns all layers contiguously).
-bool copy_csm_array(TerrainIsland* s, uint32_t glTex, uint32_t dim, uint32_t layers) {
-    // Strict no-interop: never do the per-frame GL depth readback (fail-soft to the
-    // legacy single-map path this frame -- direct-chain covers steady state).
-    if (terrainNoInteropStrict()) return false;
-    const VkDeviceSize bytes = (VkDeviceSize)dim * (VkDeviceSize)dim * (VkDeviceSize)layers * 4u;
-    if (s->csmArrayStage == VK_NULL_HANDLE || bytes > s->csmArrayStageBytes) {
-        if (s->csmArrayStage != VK_NULL_HANDLE) {
-            vkDeviceWaitIdle(s->device);
-            vmaDestroyBuffer(s->allocator, s->csmArrayStage, s->csmArrayStageAlloc);
-            s->csmArrayStage = VK_NULL_HANDLE;
-        }
-        if (!make_buffer(s, bytes, VK_BUFFER_USAGE_TRANSFER_SRC_BIT, &s->csmArrayStage, &s->csmArrayStageAlloc, true))
-            return false;
-        s->csmArrayStageBytes = bytes;
-    }
-    // CSM-BLACKOUT-RECON-1 FIX: NEVER glGetTexImage the live cascade array (an active
-    // FBO depth attachment) — on this AMD driver that poisons subsequent GL rendering
-    // (whole-frame near-black; bisect-proven: array-read-only reproduces, fullmap-only
-    // and no-read are clean). GPU-copy the live array into a never-FBO-attached scratch
-    // texture first (glCopyImageSubData, same DEPTH_COMPONENT24 internal format), then
-    // CPU-read the scratch. Binding save/restore kept for hygiene.
-    if (s->csmScratchTex == 0 || s->csmScratchDim != dim || s->csmScratchLayers != layers) {
-        if (s->csmScratchTex) glDeleteTextures(1, &s->csmScratchTex);
-        glGenTextures(1, &s->csmScratchTex);
-        GLint prevA0 = 0;
-        glGetIntegerv(GL_TEXTURE_BINDING_2D_ARRAY, &prevA0);
-        glBindTexture(GL_TEXTURE_2D_ARRAY, s->csmScratchTex);
-        glTexImage3D(GL_TEXTURE_2D_ARRAY, 0, GL_DEPTH_COMPONENT24,
-                     (GLsizei)dim, (GLsizei)dim, (GLsizei)layers,
-                     0, GL_DEPTH_COMPONENT, GL_FLOAT, nullptr);
-        glTexParameteri(GL_TEXTURE_2D_ARRAY, GL_TEXTURE_MIN_FILTER, GL_NEAREST);
-        glTexParameteri(GL_TEXTURE_2D_ARRAY, GL_TEXTURE_MAG_FILTER, GL_NEAREST);
-        glBindTexture(GL_TEXTURE_2D_ARRAY, (GLuint)prevA0);
-        s->csmScratchDim = dim; s->csmScratchLayers = layers;
-    }
-    glCopyImageSubData((GLuint)glTex, GL_TEXTURE_2D_ARRAY, 0, 0, 0, 0,
-                       s->csmScratchTex, GL_TEXTURE_2D_ARRAY, 0, 0, 0, 0,
-                       (GLsizei)dim, (GLsizei)dim, (GLsizei)layers);
-    void* p = nullptr;
-    if (vmaMapMemory(s->allocator, s->csmArrayStageAlloc, &p) != VK_SUCCESS) return false;
-    // CSM-BLACKOUT-RECON-1 isolation: MC2_VK_CSM_COPYMODE=noread skips the CPU readback
-    // (staging filled with 1.0f = fully lit) to discriminate glCopyImageSubData-from-live
-    // vs glGetTexImage-on-scratch as the poison trigger.
-    static const int s_noRead = [](){
-        const char* v = getenv("MC2_VK_CSM_COPYMODE");
-        return (v && strcmp(v, "noread") == 0) ? 1 : 0;
-    }();
-    if (s_noRead) {
-        float* f = reinterpret_cast<float*>(p);
-        const size_t n = (size_t)dim * dim * layers;
-        for (size_t i = 0; i < n; ++i) f[i] = 1.0f;
-    } else {
-        GLint prevArrayBind = 0;
-        glGetIntegerv(GL_TEXTURE_BINDING_2D_ARRAY, &prevArrayBind);
-        glBindTexture(GL_TEXTURE_2D_ARRAY, s->csmScratchTex);
-        glGetTexImage(GL_TEXTURE_2D_ARRAY, 0, GL_DEPTH_COMPONENT, GL_FLOAT, p);
-        terrainPerFrameReadback("copy_csm_array");  // H2b: per-frame near-cascade fallback
-        glBindTexture(GL_TEXTURE_2D_ARRAY, (GLuint)prevArrayBind);
-    }
-    vmaUnmapMemory(s->allocator, s->csmArrayStageAlloc);
-
-    VkCommandBuffer cb = begin_oneshot(s);
-    if (cb == VK_NULL_HANDLE) return false;
-    VkImageMemoryBarrier bar{};
-    bar.sType = VK_STRUCTURE_TYPE_IMAGE_MEMORY_BARRIER;
-    bar.srcQueueFamilyIndex = bar.dstQueueFamilyIndex = VK_QUEUE_FAMILY_IGNORED; bar.image = s->csmArrayImg;
-    bar.subresourceRange = {VK_IMAGE_ASPECT_DEPTH_BIT, 0, 1, 0, layers};
-    bar.oldLayout = VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL; bar.newLayout = VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL;
-    bar.srcAccessMask = VK_ACCESS_SHADER_READ_BIT; bar.dstAccessMask = VK_ACCESS_TRANSFER_WRITE_BIT;
-    vkCmdPipelineBarrier(cb, VK_PIPELINE_STAGE_FRAGMENT_SHADER_BIT, VK_PIPELINE_STAGE_TRANSFER_BIT,
-                         0, 0, nullptr, 0, nullptr, 1, &bar);
-    VkBufferImageCopy rgn{};
-    rgn.imageSubresource = {VK_IMAGE_ASPECT_DEPTH_BIT, 0, 0, layers};
-    rgn.imageExtent = {dim, dim, 1};
-    vkCmdCopyBufferToImage(cb, s->csmArrayStage, s->csmArrayImg, VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL, 1, &rgn);
-    bar.oldLayout = VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL; bar.newLayout = VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL;
-    bar.srcAccessMask = VK_ACCESS_TRANSFER_WRITE_BIT; bar.dstAccessMask = VK_ACCESS_SHADER_READ_BIT;
-    vkCmdPipelineBarrier(cb, VK_PIPELINE_STAGE_TRANSFER_BIT, VK_PIPELINE_STAGE_FRAGMENT_SHADER_BIT,
-                         0, 0, nullptr, 0, nullptr, 1, &bar);
-    end_oneshot(s, cb);
-    return true;
-}
-
-// VK-TERRAIN-CSM-NEAR-1: import both the near-cascade array + the full-map cascade for
-// this frame. Fail-soft: on any failure, csmArrayReady/csmFullMapReady stay false and the
-// UBO's csmEnabled is forced 0 by the caller -> frag falls back to the legacy single-map
-// path (or unshadowed), never a hole/crash.
-// CSM-BLACKOUT-RECON-1 bisect: MC2_VK_CSM_BISECT=
-//   1 = copies run normally, but the UBO forces csmEnabled=0 (shader on legacy path)
-//   2 = glGetTexImage reads into a heap scratch only (no VMA map, no VK upload), shader off
-//   3 = skip the near-array copy only    4 = skip the full-map copy only
-static int csmBisectMode() {
-    static const int m = [](){
-        const char* v = getenv("MC2_VK_CSM_BISECT");
-        return v ? atoi(v) : 0;
-    }();
-    return m;
-}
-
+// VK-RUNG8 item-7 (CSM copy-mode delete): DIRECT-VIEW-ONLY near-cascade array (binding 8)
+// + full-map cascade (binding 9). The VK shadow island renders both cascades natively into
+// VK-owned D32 depth targets (MC2_VK_CSM_ARRAY_INTEROP / MC2_VK_CSM_FULLMAP_INTEROP, under
+// MC2_VK_SHADOW_INTEROP) and terrain binds their VkImageViews directly. The former per-frame
+// GL depth readback (glGetTexImage) + glCopyImageSubData GL scratch array + staging +
+// vkCmdCopyBufferToImage import (the ~200-350 LOC Metal-blocking copy-mode, and its
+// MC2_VK_CSM_COPYMODE / MC2_VK_CSM_BISECT recon gates) was DELETED here.
+//
+// Fail-soft: on ANY decline (csm not built this frame, or the shadow-island direct producer
+// not yet ready during the ~1-2 warmup frames before its first CSM product) this returns
+// false, the caller forces UBO csmEnabled=0, and the frag falls back to the legacy
+// single-map dynamic-shadow path. This is NEVER a hole and NEVER stale: all
+// ready/external/direct flags are reset every frame at the top, so a declined frame binds
+// the 1x1 dummies (ensure_dummy_csm) and the next ready frame re-points bindings 8/9 at the
+// live external views. The old copy-mode gave CSM immediately during warmup via a GL
+// readback; the direct-only path accepts 1-2 warmup frames on the legacy path instead.
 bool copy_csm_shadows(TerrainIsland* s, const Mc2TerrainTier1Feed& feed) {
     s->csmArrayReady = false;
     s->csmFullMapReady = false;
@@ -2141,72 +2060,21 @@ bool copy_csm_shadows(TerrainIsland* s, const Mc2TerrainTier1Feed& feed) {
     if (!feed.csmEnabled || feed.glCsmArrayTex == 0 || feed.csmArraySize <= 0
         || feed.glCsmFullMapTex == 0 || feed.csmFullMapSize <= 0 || feed.csmCount <= 1)
         return false;
-    if (csmBisectMode() == 5) return false;  // null test: gates armed, NO reads, NO copies
-    if (csmBisectMode() == 2) {
-        // Scratch-read isolation: exercise ONLY the GL side (glGetTexImage), no VMA/VK.
-        static std::vector<float> scratch;
-        const size_t layers2 = (size_t)(feed.csmCount - 1);
-        scratch.resize((size_t)feed.csmArraySize * feed.csmArraySize * layers2
-                       + (size_t)feed.csmFullMapSize * feed.csmFullMapSize);
-        GLint prevA = 0, prev2 = 0;
-        glGetIntegerv(GL_TEXTURE_BINDING_2D_ARRAY, &prevA);
-        glBindTexture(GL_TEXTURE_2D_ARRAY, (GLuint)feed.glCsmArrayTex);
-        glGetTexImage(GL_TEXTURE_2D_ARRAY, 0, GL_DEPTH_COMPONENT, GL_FLOAT, scratch.data());
-        terrainPerFrameReadback("copy_csm_shadows/bisect2");  // H2b: debug-mode per-frame scratch read
-        glBindTexture(GL_TEXTURE_2D_ARRAY, (GLuint)prevA);
-        glGetIntegerv(GL_TEXTURE_BINDING_2D, &prev2);
-        glBindTexture(GL_TEXTURE_2D, (GLuint)feed.glCsmFullMapTex);
-        glGetTexImage(GL_TEXTURE_2D, 0, GL_DEPTH_COMPONENT, GL_FLOAT,
-                      scratch.data() + (size_t)feed.csmArraySize * feed.csmArraySize * layers2);
-        terrainPerFrameReadback("copy_csm_shadows/bisect2");  // H2b: debug-mode per-frame scratch read
-        glBindTexture(GL_TEXTURE_2D, (GLuint)prev2);
-        return false;  // ready flags stay false -> csmEnabled forced 0
-    }
-    const uint32_t layers = (uint32_t)(feed.csmCount - 1);  // near cascades only (last = full-map, separate tex)
-    // CSM-BLACKOUT-RECON-1: save/restore FBO bindings around the copies — any touch of
-    // the live cascade array (glGetTexImage OR glCopyImageSubData) blacked the frame,
-    // consistent with a driver-side FBO/state disturbance during the depth-array access.
-    GLint prevDrawFbo = 0, prevReadFbo = 0;
-    glGetIntegerv(GL_DRAW_FRAMEBUFFER_BINDING, &prevDrawFbo);
-    glGetIntegerv(GL_READ_FRAMEBUFFER_BINDING, &prevReadFbo);
-    struct FboRestore {
-        GLint d, r;
-        ~FboRestore() {
-            glBindFramebuffer(GL_DRAW_FRAMEBUFFER, (GLuint)d);
-            glBindFramebuffer(GL_READ_FRAMEBUFFER, (GLuint)r);
-        }
-    } fboRestore{prevDrawFbo, prevReadFbo};
-    const int bisect = csmBisectMode();
-    if (bisect != 3) {
-        if (mc2_vk_shadow_island_csm_array_ready()) {
-            void* rawView = mc2_vk_shadow_island_get_csm_array_view();
-            if (rawView != nullptr) {
-                s->csmArrayExternalView = reinterpret_cast<VkImageView>(rawView);
-                s->csmArrayDirect = true;
-            }
-        }
-        if (!s->csmArrayDirect) {
-            if (!ensure_csm_array_image(s, (uint32_t)feed.csmArraySize, layers)) return false;
-            if (!copy_csm_array(s, feed.glCsmArrayTex, (uint32_t)feed.csmArraySize, layers)) return false;
-        }
-    }
-    if (bisect != 4) {
-        if (mc2_vk_shadow_island_csm_fullmap_ready()) {
-            void* rawView = mc2_vk_shadow_island_get_csm_fullmap_view();
-            if (rawView != nullptr) {
-                s->csmFullMapExternalView = reinterpret_cast<VkImageView>(rawView);
-                s->csmFullMapDirect = true;
-            }
-        }
-        if (!s->csmFullMapDirect) {
-            if (!ensure_shadow_image_slot(s, (uint32_t)feed.csmFullMapSize, &s->csmFullMapImg,
-                                          &s->csmFullMapAlloc, &s->csmFullMapView, &s->csmFullMapDim)) return false;
-            if (!copy_shadow_slot(s, feed.glCsmFullMapTex, (uint32_t)feed.csmFullMapSize, s->csmFullMapImg,
-                                  &s->csmFullMapStage, &s->csmFullMapStageAlloc, &s->csmFullMapStageBytes,
-                                  /*perFrame=*/true)) return false;  // H2b: per-frame fallback (direct-chain declined)
-        }
-    }
-    if (bisect != 0) return false;  // bisect 1/3/4: shader stays on the legacy path
+
+    // Near-cascade array: direct VK shadow-island view only (warmup-declines to legacy).
+    if (!mc2_vk_shadow_island_csm_array_ready()) return false;
+    void* arrView = mc2_vk_shadow_island_get_csm_array_view();
+    if (arrView == nullptr) return false;
+    s->csmArrayExternalView = reinterpret_cast<VkImageView>(arrView);
+    s->csmArrayDirect = true;
+
+    // Full-map catch-all cascade: direct VK shadow-island view only.
+    if (!mc2_vk_shadow_island_csm_fullmap_ready()) return false;
+    void* fmView = mc2_vk_shadow_island_get_csm_fullmap_view();
+    if (fmView == nullptr) return false;
+    s->csmFullMapExternalView = reinterpret_cast<VkImageView>(fmView);
+    s->csmFullMapDirect = true;
+
     s->csmArrayReady = true;
     s->csmFullMapReady = true;
     return true;
@@ -2250,7 +2118,7 @@ bool copy_shadow_slot(TerrainIsland* s, uint32_t glTex, uint32_t dim,
     }
     void* p = nullptr;
     if (vmaMapMemory(s->allocator, *stageAlloc, &p) != VK_SUCCESS) return false;
-    // CSM-BLACKOUT-RECON-1 FIX (same hazard class as copy_csm_array): save/restore the
+    // CSM-BLACKOUT-RECON-1 FIX (same GL depth-readback hazard class): save/restore the
     // active unit's GL_TEXTURE_2D binding instead of stomping it to 0 mid-frame.
     GLint prev2DBind = 0;
     glGetIntegerv(GL_TEXTURE_BINDING_2D, &prev2DBind);
