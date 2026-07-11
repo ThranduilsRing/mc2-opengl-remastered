@@ -818,10 +818,39 @@ no tessellation anywhere in the tail.
   - **Canonical tier1 both states 5/5 PASS +0 destroys** on
     `mc2-win64-0.4c/mc2.exe`: gates-off (GL) and gates-on
     (`MC2_RENDER_BACKEND=vulkan MC2_VK_SHARED_GBUFFER=1 MC2_VK_MECH_FEED_AUDIT=1`).
+- 8.7an - UMBRELLA DIRECT-CHAIN DEFAULT + TERRAIN BOOT-DECLINE
+  (VK-UMBRELLA-DIRECT-CHAIN-DEFAULT-1). **ITEM-4 PREREQUISITE — DONE.** The
+  `MC2_VK_SHARED_GBUFFER=1` umbrella now arms the 10 `*_DIRECT_CHAIN` gates by
+  DEFAULT (strict/direct-chain is what umbrella-ON MEANS); the old hybrid
+  interop-semaphore path is reachable only by an explicit per-gate `=0` override
+  (item-4's deletion target). New resolver `mc2vkgate::directChainGate()` in
+  `vk_shared_gbuffer_gate.h` (same precedence as `subGate`: explicit `1`/`0` wins,
+  else umbrella). All 10 read sites flipped from `envTriState(...)==1` /
+  `getenv(...)=='1'` to `directChainGate()`: terrain-prefix-clear
+  (`vulkan_terrain_island.cpp`, `gameosmain.cpp`), prop
+  (`vulkan_color_prop_island.cpp`), mech (`vulkan_mech_island.cpp`), water
+  (`vulkan_water_island.cpp`), the 5 post passes (`gos_postprocess.cpp` +
+  fog/ssao/screenfx/hzb native TUs), composite (`engine_present_vk.cpp`), shadow
+  (`vulkan_shadow_island_live.cpp`); `postDirectChainUpstreamOn()` updated too.
+  `MC2_VK_OBJECTID_DIRECT_CHAIN` stays explicit (view-mode canary, NOT a default
+  member). **Item-2 boot-level native-or-decline (partial):** terrain first-owner
+  now latches a SESSION decline on a PERMANENT init failure (past the context/
+  shared-GBuffer readiness gates → spv/pipeline/resource build fail) with ONE
+  receipt line instead of re-`new`+re-init per frame; TRANSIENT readiness gates
+  keep the item-9 fail-hard-with-retry. **Umbrella stays DEFAULT-OFF (flip = user
+  decision).** Runner `run_vk_nointerop_strict_visible.py --minimal-promotion`
+  drops the 10 direct-chain gates to prove the umbrella arms them; checker H5
+  relaxed to reconcile `MC2_VK_*_INTEROP=1` producer names via the umbrella
+  (`MC2_VK_SHARED_GBUFFER=1`, not explicitly `=0`) as well as via explicit
+  `MC2_VK_SHADOW_DIRECT_CHAIN=1`. **Item 4 is now UNBLOCKED** (the semaphore-
+  handoff branches are no longer the default path when umbrella-ON). Remaining
+  item-2 per-island boot-decline (prop/mech/water/post/shadow) is follow-up; item
+  4's stated prerequisite (direct-chain promoted to default) is satisfied.
+
   Remaining 8.7 deletion inventory (ordered, dependency-aware): item 4 per-island
-  GL<->VK semaphore-handoff branches (~600-900 LOC / 9 TUs; still the default
-  umbrella path -- needs the direct-chain gates promoted to default or a boot-level
-  native-or-decline before deletion), item 5 GL-import halves of shared scene
+  GL<->VK semaphore-handoff branches (~600-900 LOC / 9 TUs; UNBLOCKED by 8.7an —
+  the direct-chain gates now default under the umbrella; explicit per-gate `=0`
+  keeps the hybrid path reachable until deletion), item 5 GL-import halves of shared scene
   resources, item 2 exportable half of `vk_image_resource`, item 1 `gl_interop_view.cpp`
   whole TU, item 7 terrain CSM copy-mode, item 8 present interop tail (Win32
   surface/copy-2 SURVIVE), item 3 wantInterop plumbing, ~20 vestigial gates. Item 6

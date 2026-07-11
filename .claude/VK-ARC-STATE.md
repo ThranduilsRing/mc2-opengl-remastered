@@ -1,5 +1,28 @@
 # VK-ARC-STATE — current state block (update every session)
 
+## 2026-07-10 — VK-UMBRELLA-DIRECT-CHAIN-DEFAULT-1: item-4 prerequisite DONE (LATEST)
+
+Ladder rung 8.7an. The `MC2_VK_SHARED_GBUFFER=1` umbrella now arms the 10
+`*_DIRECT_CHAIN` gates BY DEFAULT — umbrella-ON MEANS the strict/direct-chain
+no-GL-interop path. The old hybrid interop-semaphore path is reachable ONLY by an
+explicit per-gate `=0` override (METAL-GATE-AUDIT-2 8.7 item-4's deletion target).
+New resolver `mc2vkgate::directChainGate()` (`vk_shared_gbuffer_gate.h`); all 10
+read sites flipped from `envTriState==1`/`getenv=='1'` to it (terrain-prefix-clear,
+prop, mech, water, 5 post passes, composite, shadow) + `postDirectChainUpstreamOn()`.
+`MC2_VK_OBJECTID_DIRECT_CHAIN` stays explicit (view-mode canary). Umbrella itself
+stays DEFAULT-OFF (flip = user decision).
+
+Item-2 boot-level native-or-decline: terrain first-owner latches a SESSION decline
+on a PERMANENT init failure (past readiness gates) with ONE receipt line instead of
+per-frame re-init churn; TRANSIENT readiness gates keep item-9 fail-hard-with-retry.
+Per-island rollout to prop/mech/water/post/shadow is follow-up (item-4's stated
+prerequisite — direct-chain promoted to default — is already satisfied).
+
+Tooling: `run_vk_nointerop_strict_visible.py --minimal-promotion` drops the 10
+direct-chain gates so the run proves the umbrella arms them; `check_vk_nointerop_log.py`
+H5 relaxed to reconcile `MC2_VK_*_INTEROP=1` producer names via the umbrella as well
+as via explicit `MC2_VK_SHADOW_DIRECT_CHAIN=1`. **Item 4 is now UNBLOCKED.**
+
 ## 2026-07-10 — VK-RUNG8-MECH-FEED-READBACK-DELETE-1: first interop deletion since 8.7h (LATEST)
 
 Deleted the rung-7 GL-readback mech feed fallback (METAL-GATE-AUDIT-2 8.7 inventory
