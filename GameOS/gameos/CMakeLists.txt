@@ -183,13 +183,12 @@ if(MC2_VULKAN)
         # MC2_VK_SHARED_SCENE_DEPTH) -> GL mech color flush byte-identical. extern "C"
         # entry points only (no layout-affecting header members).
         list(APPEND SOURCES vulkan_mech_island.cpp)
-        # VK-INTEROP-BRIDGE-1 / T1+T2: the composable zero-copy GL<->VK interop SEAM.
-        # vk_image_resource = GL-free raw-allocated exportable VkImage + double-buffered
-        # sync (survives the future VK<->VK chain slice); gl_interop_view = the GL-boundary
-        # adapter (imports into GL, LUID match, signal/wait). Both #ifdef MC2_VULKAN_ISLAND.
-        # No new link libs (volk + GLEW already linked into gameos).
+        # VK-INTEROP-BRIDGE-1 / T1: the GL-free VK-owned image core. vk_image_resource =
+        # raw-allocated (dedicated) NON-exportable VkImage + double-buffered sync objects.
+        # VK-RUNG8-ITEM1 deleted gl_interop_view.cpp (the GL-boundary import adapter) and
+        # VK-RUNG8-ITEM2 deleted vk_image_resource's exportable half -- both caller-free
+        # after item 6 retired the static-shadow substrate. #ifdef MC2_VULKAN_ISLAND.
         list(APPEND SOURCES vk_image_resource.cpp)
-        list(APPEND SOURCES gl_interop_view.cpp)
         # VK-TIER1 SHARED SCENE DEPTH (step 2): back sceneDepthTex_ with a VK-built
         # exportable D32S8 image imported into GL as GL_DEPTH24_STENCIL8, at the
         # single gos_postprocess scene-FBO depth alloc+attach site. GL-only slice

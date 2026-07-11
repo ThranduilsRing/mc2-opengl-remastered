@@ -43,7 +43,6 @@
 #include <vk_mem_alloc.h>
 
 #include "vk_image_resource.h"
-#include "gl_interop_view.h"
 #include "vulkan_context.h"
 #include "vulkan_mech_island.h"
 #include "vk_shared_gbuffer_gate.h"      // VK-P14 GATE-CONSOLIDATION-1 umbrella resolver

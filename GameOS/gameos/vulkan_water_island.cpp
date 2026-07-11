@@ -40,7 +40,6 @@
 #include <vk_mem_alloc.h>
 
 #include "vk_image_resource.h"
-#include "gl_interop_view.h"
 #include "vulkan_context.h"
 #include "gos_terrain_water_stream.h"
 

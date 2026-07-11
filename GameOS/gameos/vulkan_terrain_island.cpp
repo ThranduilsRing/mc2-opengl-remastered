@@ -47,7 +47,6 @@
 #include <vk_mem_alloc.h>
 
 #include "vk_image_resource.h"
-#include "gl_interop_view.h"
 #include "vk_gpu_timestamps.h"   // VK-DRAW-PERF-1: MC2_VK_GPU_TIMESTAMPS GPU segment timers
 #include "vulkan_context.h"
 #include "vulkan_terrain_island.h"

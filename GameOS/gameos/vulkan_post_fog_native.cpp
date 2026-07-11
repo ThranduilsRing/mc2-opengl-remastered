@@ -53,9 +53,8 @@
 #include <vk_mem_alloc.h>
 
 #include "vk_image_resource.h"
-#include "gl_interop_view.h"
 #include "vulkan_context.h"
-// Expose the VkImageResource/GlInteropView getters (island-side halves).
+// Expose the VkImageResource getters (island-side halves).
 #define MC2_VULKAN_SHARED_SCENE_COLOR_IMPL_ISLAND
 #include "vulkan_shared_scene_color.h"
 #define MC2_VULKAN_SHARED_SCENE_DEPTH_IMPL_ISLAND

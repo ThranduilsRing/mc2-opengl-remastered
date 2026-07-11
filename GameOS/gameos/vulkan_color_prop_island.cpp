@@ -27,7 +27,6 @@
 #include <vk_mem_alloc.h>
 
 #include "vk_image_resource.h"
-#include "gl_interop_view.h"
 #include "vulkan_context.h"
 #include "vulkan_shadow_island_live.h"   // Mc2ShadowGeomFeed + Mc2ColorPropFeed contracts
 #include "vulkan_color_prop_island.h"
