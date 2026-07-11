@@ -102,7 +102,14 @@ struct TerrainGlFallbackAudit {
     int inactive = 0;
     int band = 0;
     int displace = 0;
-    int edgeStitch = 0;
+    int edgeStitch = 0;   // patches that FELL to GL because of edge-stitch (now 0 by
+                          // construction: VK-TERRAIN-EDGE-STITCH-1 / commit 0aae0337
+                          // removed the edgeStitch[i]==0 capture-predicate exclusion,
+                          // so stitched patches are VK-captured, not GL-fallback).
+    int capturedStitched = 0; // of `captured`, how many carried a nonzero edgeStitch mask
+                              // -- direct proof stitched patches are VK-owned (>0 expected
+                              // on any map with LOD-band boundaries; the edgeStitch counter
+                              // above is the excluded twin and must stay 0).
     int other = 0;
     int skirtEdges = 0;
 };
@@ -1809,10 +1816,11 @@ void gos_TerrainLodChunk_SubmitDrawCommands(
         // VK-P10 TERRAIN TIER-1 (+ rung-3 VK-TERRAIN-ALL-LODS): hand main patches to
         // the VK island and skip their GL main+skirt draws. LOD0 (lodStep==1) is the
         // original probe scope; MC2_VK_TERRAIN_ALL_LODS extends capture to coarse bands
-        // (lodStep>1) too -- BANDS ONLY, still excluding visual-displace and edge-stitch
-        // patches (both stay GL-owned this rung; skirts are a separate follow-up sub-
-        // slice since stitching between VK-owned bands of different lodStep must stay
-        // crack-free and isn't ported yet). Default-OFF (MC2_VK_TERRAIN_ALL_LODS unset)
+        // (lodStep>1) too -- BANDS ONLY, still excluding mode-1 visual-displace (LOD0
+        // 4x-finer topology, a separate L slice). Edge-stitch is NO LONGER excluded
+        // (VK-TERRAIN-EDGE-STITCH-1 / commit 0aae0337 removed the edgeStitch[i]==0
+        // predicate term; stitched patches are VK-captured, corner-pin math ported into
+        // the tier1 verts). Default-OFF (MC2_VK_TERRAIN_ALL_LODS unset)
         // -> capture predicate is IDENTICAL to before (lodStep==1 only).
         const bool s_vkAllLodsActive = s_vkTerrainActive &&
             (mc2_vk_terrain_all_lods_enabled() != 0);
@@ -1820,8 +1828,9 @@ void gos_TerrainLodChunk_SubmitDrawCommands(
         // VK-TERRAIN-VISUALDISPLACE-FAR-1 (rung 5): relax the visualDisplaceActive
         // exclusion for mode-2 patches (lodStep>1, pure Z-swap, same vertex density)
         // when the sub-gate is armed. Mode-1 patches (lodStep==1, 4x-finer topology +
-        // corner-pinned edges) stay GL-owned (separate L slice later); stitched patches
-        // stay excluded below regardless. Gate OFF -> predicate IDENTICAL to rung 4.
+        // corner-pinned edges) stay GL-owned (separate L slice later). Stitched patches
+        // are VK-captured (edge-stitch exclusion removed, see above). Gate OFF ->
+        // predicate IDENTICAL to rung 4.
         const bool s_vkVisDispFarActive = s_vkAllLodsActive &&
             (mc2_vk_terrain_visualdisplace_far_enabled() != 0);
         const bool s_vkOwnsDisplace = !visualDisplaceActive ||
@@ -1856,6 +1865,9 @@ void gos_TerrainLodChunk_SubmitDrawCommands(
             s_vkTerrainFeedValid = true;
             if (s_vkTerrainGlAuditOn) {
                 ++s_vkTerrainGlAudit.captured;
+                if (!s_vkNoEdgeStitch) {
+                    ++s_vkTerrainGlAudit.capturedStitched;
+                }
             }
             continue;   // GL skips this patch's main + skirt draws unconditionally (this
                         // was already true pre-rung-4: VK-owned patches never got a GL
@@ -2018,7 +2030,7 @@ void gos_TerrainLodChunk_SubmitDrawCommands(
             fprintf(stderr,
                     "[VK_TERRAIN_GL_FALLBACK_AUDIT v1] frame=%lu total=%d captured=%d "
                     "gl_fallback=%d inactive=%d band=%d displace=%d edge_stitch=%d "
-                    "other=%d skirt_edges=%d\n",
+                    "captured_stitch=%d other=%d skirt_edges=%d\n",
                     s_auditFrame,
                     s_vkTerrainGlAudit.total,
                     s_vkTerrainGlAudit.captured,
@@ -2027,6 +2039,7 @@ void gos_TerrainLodChunk_SubmitDrawCommands(
                     s_vkTerrainGlAudit.band,
                     s_vkTerrainGlAudit.displace,
                     s_vkTerrainGlAudit.edgeStitch,
+                    s_vkTerrainGlAudit.capturedStitched,
                     s_vkTerrainGlAudit.other,
                     s_vkTerrainGlAudit.skirtEdges);
             fflush(stderr);

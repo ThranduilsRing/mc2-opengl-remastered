@@ -180,7 +180,12 @@ float g_prefixClearColor[4] = {0.0f, 0.0f, 0.0f, 1.0f};
 // VK-TERRAIN-ALL-LODS sub-slice (rung 3): extend VK terrain ownership beyond LOD0
 // (lodStep==1) to all coarse bands (lodStep>1), non-displaced, non-stitched only.
 // Requires TIER1 (no coarse bands without the LOD0 island already live). Skirts and
-// edge-stitch remain GL-owned this rung (documented crack-check below).
+// skirts remain GL-owned until the rung-4 SKIRTS sub-gate. NOTE (VK-TERRAIN-EDGE-
+// STITCH-1, commit 0aae0337): edge-stitch is NO LONGER GL-owned -- the capture-
+// predicate exclusion was removed and the corner-pin (+ mode-2 re-stitch) vertex
+// math is ported into terrain_tier1.vert / _skirt.vert with edgeStitch/quadCountX/Y
+// carried through the patch UBO tail. Stitched patches are VK-captured; the GL-
+// fallback audit's edge_stitch counter is 0 by construction, captured_stitch>0.
 //
 // NOT a member of the MC2_VK_SHARED_GBUFFER umbrella family (unlike TIER1/LIGHTING/
 // DETAIL etc.) -- this is a standalone, explicit-opt-in rung-3 gate that stays OFF
