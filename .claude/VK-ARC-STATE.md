@@ -1,6 +1,49 @@
 # VK-ARC-STATE — current state block (update every session)
 
-## 2026-07-11 — ROUND 3 FIXED: bookmark-1 pose, PROPS-INVISIBLE (vib.stride=0), HUD glyph corruption (commit `930386601f6b`, both installs)
+## 2026-07-11 — ROUND 4 FIXED (REAL ROOT CAUSE): HUD even-length text scrambled — quad-fold heuristic (commit `805a07ba`, both installs)
+
+The round-3 "HUD glyph corruption" fix (`930386601f6b`, the (handle<<32|serial)
+mirror keying) was on the WRONG track and did NOT cure the visual — the coordinator
+re-verified the third force-bar pilot name still scrambled. This round found and
+fixed the ACTUAL bug, with a composed-image before/after proof.
+
+**Disproof of the round-3 premise.** A headless bake probe (record-time serial log)
+showed there is **NO intra-frame texture re-bake**: every HUD texture handle has
+exactly ONE content serial per frame (handle 275 = the pilot PORTRAIT video, re-baked
+once per ~10 frames; the "handle 275 cycles serials 2..9 in a single frame" claim was
+a misread of a 400-line DRAW_DUMP that spans ~5 frames — the draw dump reads serial at
+FLUSH time so it structurally shows one serial per handle per frame regardless). A full
+mirror-content dump (`MC2_VK_HUD_MIRROR_DUMP`) of every HUD texture proved they are all
+byte-clean (font atlas 227, pilot portraits 233/281, icon atlases 254/285, panels) — so
+there was never any texture-content corruption for the (handle,serial) key to fix.
+
+**Real root cause** — `recordPendingHudColorProof()` (`engine_present_vk.cpp` ~1447)
+chose quad-vs-triangle vertex expansion from a vertex-COUNT heuristic
+`((nverts % 4) == 0)`, folding text draws (`kHudTextQuadBatch`, kind==3) into the QUAD
+branch. Text is ALREADY an expanded TRIANGLE LIST — `addCharacter()` emits 6 vertices
+per glyph (tl,tr,bl, tr,br,bl). So any EVEN glyph count (6·N divisible by 4) was
+re-triangulated as 4-vertex quads → glyphs scrambled; ODD-length strings fell through to
+the correct triangle branch → clean. This deterministically predicts all 10 reported
+cases: garbled = LONGSHOT(8)/OBJECTIVES(10)/QUICK SAVE(10)/QUICK LOAD(10)/RETURN TO
+GAME(14); clean = FLASH(5)/HACKSAW(7)/OPTIONS(7)/ABORT MISSION(13)/EXIT GAME(9).
+
+**Fix** — gate the quad expansion on `d.kind == 0` only; kind==2/3 stay triangle-list.
+One-line structural change (kind decides layout, not vertex parity).
+
+**Visual proof (composed image, real data).** The composited VK HUD does NOT survive the
+sharedImg readback (documented round-3 limitation) and the force bar is not reachable in
+the headless HZB-pinned capture, so a live backbuffer screenshot was not obtainable — but
+a captured real 8-glyph (48-vert, even) text draw replayed against the real font-atlas-227
+mirror through the OLD (quad-fold) vs NEW (triangle-list) triangulation renders "LONGSHOT"
+SCRAMBLED under OLD and fully LEGIBLE under NEW; the odd-length control HACKSAW(42v) is
+clean under both, matching the report exactly. Proof PNGs in the session scratchpad
+(`proof_48.png` LONGSHOT, `proof_42.png` HACKSAW control).
+
+**Verify** — deploy-fingerprint OK `805a07ba` == HEAD; strict no-interop proof tier1 5/5
+PASS; field check PASS (all content layers VK-owned, props-pose edge 12.58); canonical
+tier1 smoke 5/5. Deployed to mc2-win64-0.4c and mc2-win64-v0.4c.
+
+## 2026-07-11 — ROUND 3 (SUPERSEDED for HUD): bookmark-1 pose, PROPS-INVISIBLE (vib.stride=0), HUD glyph corruption (commit `930386601f6b`, both installs)
 
 Three field-env VK bugs closed this session; strict no-interop proof PASS at
 `930386601f6b` (present_frames=300, composite_vk_frames=300, all islands
