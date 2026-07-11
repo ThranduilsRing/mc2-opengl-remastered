@@ -1,6 +1,60 @@
 # VK-ARC-STATE — current state block (update every session)
 
-## 2026-07-11 — ITEMS 1+2 PARTIAL + ITEM 10 SWEEP (LATEST) — pre-item-6 autonomous close
+## 2026-07-11 — 8.7 COMPLETE: ITEMS 6/1/2/3 + 10 (LATEST) — USER DECISION EXECUTED, ARC RUNG-8 CLOSED
+
+**USER RULING: "retire it, finish the arc."** The ITEM-6 DECISION BRIEF below was executed:
+the static-shadow import substrate is RETIRED and the entire GL↔VK interop family DELETED.
+The one hard MoltenVK/Metal-gate blocker (Win32 external-memory/-semaphore device extensions)
+is gone — `vkCreateDevice` on MoltenVK would no longer fail on an unsupported extension.
+
+- **Commits:** item-6 `ec92c0ad`, item-1 `5d22456b`, item-2 `e8b2b7dc`, item-3 `c2aaf9b5`,
+  item-10/docs (this). One per item. Build/deploy `mc2-win64-0.4c`; verification below.
+- **Item 6 — static-shadow substrate RETIRED (−206 LOC net):** `vulkan_shared_static_shadow.
+  {cpp,h}` deleted (whole TU) + CMake. `MC2_VK_STATIC_SHADOW_MAP` → one-shot deprecation no-op;
+  static shadow map is always plain-GL `GL_DEPTH_COMPONENT24`. The documented decline is now
+  STRUCTURAL: a non-CSM static-only screen-shadow config declines to the GL screen-shadow pass
+  (`hasStaticShadow==false` in `vulkan_post_screenfx_native.cpp`); **CSM screen-shadow is
+  unaffected** (samples the direct VK CSM array/full-map views — the shipping default costs
+  nothing). Shadow-island dormant `!directChain` exportable+glInteropView branches + the
+  `GlInteropView` members DELETED (island depth images are non-exportable, VkImageView-only).
+- **Item 1 — `gl_interop_view.{cpp,h}` DELETED whole (−218 LOC net):** caller-free after item 6.
+  + CMake entry + 7 stale island `#include`s. Checker FORBIDDEN trip-wires (glInteropViewCreate/
+  Signal/Wait) KEPT — now structurally unreachable, the strongest FORBIDDEN.
+- **Item 2 — exportable IMAGE half of `vk_image_resource.{cpp,h}` DELETED (−94 LOC net):**
+  `VkExternalMemoryImageCreateInfo` / `VkExportMemoryAllocateInfo` / `vkGetMemoryWin32HandleKHR`
+  / `memWin32` / export-sanity queries / the strict-abort canary / `<windows.h>` /
+  `VK_USE_PLATFORM_WIN32_KHR`. The `exportable` param dropped from all 5 callers (present,
+  shadow×2, shared scene color/depth). Non-exportable dedicated core (VkMemoryDedicatedAllocateInfo
+  = VK 1.1 core) + binary sems + `VkFrameSync` SURVIVE (all-island ABI).
+- **Item 3 — `wantInterop` plumbing REMOVED (−20 LOC net) — THE METAL-GATE BLOCKER:**
+  deleted the `VK_KHR_external_memory[_win32]` / `external_semaphore[_win32]` device exts + the
+  external-mem/sem-capabilities + get_physical_device_properties_2 instance caps from
+  `vulkan_context.cpp` (dedicated_allocation + get_memory_requirements_2 are VK 1.1 core, so the
+  surviving dedicated allocs need no extension). Dropped the `wantInterop` init() param; renamed
+  `ensureEngineVulkanContextForInterop`→`ensureEngineVulkanContext` (~13 callers) + gameosmain's
+  `init(/*wantPresent=*/true)`. **VK_USE_PLATFORM_WIN32_KHR in vulkan_context.cpp KEPT** — it now
+  serves only the Win32 SURFACE extension-name macro (comment updated; macOS = platform branch).
+  **Device extensions now enabled at creation = surface + swapchain only** (`VK_KHR_surface` +
+  `VK_KHR_win32_surface` + `VK_KHR_swapchain`).
+- **Item 10 — gate model current:** `MC2_VK_STATIC_SHADOW_MAP` → RETIRED (registry + doc).
+  `MC2_VK_NO_GL_INTEROP_STRICT` survives as the live guard on the terrain per-frame GL
+  depth-readback fallback (the remaining GL-touch class). `MC2_VK_NO_GL_INTEROP_RESOURCE_STRICT`
+  is now **permanently satisfied BY CONSTRUCTION** — no exportable resource can be created, no
+  code reader remains; kept as a checker provenance receipt. RETIRED-GATES table +
+  `docs/tier1_env_vars.md` synced. Strict-runner/run_smoke allowlists keep the retired names
+  for recipe stability.
+- **This-session 8.7 tally: +161 / −699 (net −538 LOC) across 26 file-changes.**
+- **RUNG 8 CLOSED.** VK owns the post-scene tail; the interop scaffolding is deleted; the Metal
+  gate is OPEN. **What macOS still needs** (NOT in 8.7 — cross-ref MACOS-PORT-ROADMAP-1.md +
+  METAL-GATE-AUDIT-2 rows): (1) **surface platform branch** — `VK_KHR_win32_surface` +
+  raw `vkCreateWin32SurfaceKHR` → SDL_Vulkan_GetInstanceExtensions/CreateSurface
+  (`VK_EXT_metal_surface`); (2) **GL-free asset-feed rewrite** — the copy-once
+  `glGetTexImage`/`glGetCompressedTexImage`/`glGetBufferSubData` readbacks that source every VK
+  texture/geometry feed → load KTX2/BC direct from disk into VK (the long pole, larger than 8.7,
+  on no ladder yet); (3) **LP64 ABI-struct audit** (`pch.hpp` bare `#pragma pack(4)` boot
+  blocker, long-field audit). Fail-soft semantics on macOS become product behavior (no GL rescue).
+
+## 2026-07-11 — ITEMS 1+2 PARTIAL + ITEM 10 SWEEP — pre-item-6 autonomous close
 
 Ladder rungs 8.7au (item-1), 8.7av (item-2), 8.7aw (item-10). The final autonomous
 8.7 slice before the **item-6 USER DECISION**. With item 8 done, `glInteropSignalToVk/

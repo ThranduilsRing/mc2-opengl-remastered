@@ -737,24 +737,25 @@ static constexpr EnvVarDesc kAuxEnvVars[] = {
         "MC2_VK_NO_GL_INTEROP_STRICT",
         EnvVarKind::Trace,
         false,
-        "VK final Metal-gate canary. Default-OFF. When =1, any production "
-        "GL/VK interop boundary call through glInteropSignalToVk or "
-        "glInteropWaitFromVk logs [VK_NO_GL_INTEROP_STRICT] and aborts. This is "
-        "expected to fail while the hybrid shared-scene/present substrates are "
-        "still live, and becomes the hard proof that the Win32 external "
-        "memory/semaphore family has been removed."
+        "VK Metal-gate canary. Default-OFF. Historically aborted on any production "
+        "GL/VK interop boundary call (glInteropSignalToVk / glInteropWaitFromVk). Those "
+        "functions were DELETED (VK-RUNG8-ITEM1), so that class is now structurally "
+        "impossible. The name survives as a live guard on the terrain island's per-frame "
+        "GL depth-readback fallback (vulkan_terrain_island.cpp) -- the remaining GL-touch "
+        "class -- and as a checker trip-wire."
     },
     {
         "MC2_TRACE_VK_NO_GL_INTEROP_RESOURCE_STRICT",
         "MC2_VK_NO_GL_INTEROP_RESOURCE_STRICT",
         EnvVarKind::Trace,
         false,
-        "VK final Metal-gate resource canary. Default-OFF. When =1, creation of "
-        "exportable Win32 VkImageResource objects or GL memory-object import via "
-        "glInteropViewCreate logs [VK_NO_GL_INTEROP_STRICT] and aborts. This is "
-        "stricter than MC2_VK_NO_GL_INTEROP_STRICT, which only guards production "
-        "handoff signal/wait calls; use it to prove the hidden Win32 external-memory "
-        "substrate has been deleted."
+        "VK Metal-gate resource canary. Default-OFF. Historically aborted on creation of "
+        "an exportable Win32 VkImageResource or a GL memory-object import (glInteropViewCreate). "
+        "Both the exportable vk_image_resource half (VK-RUNG8-ITEM2) and gl_interop_view "
+        "(VK-RUNG8-ITEM1) were DELETED, and the Win32 external-memory device extension family "
+        "was removed (VK-RUNG8-ITEM3), so no exportable resource can be created -- this canary "
+        "is now permanently satisfied BY CONSTRUCTION (no code reader remains). The strict "
+        "harness still sets it and the checker still requires it as a provenance receipt."
     },
     {
         "MC2_FEATURE_VK_CSM_FULLMAP_INTEROP",

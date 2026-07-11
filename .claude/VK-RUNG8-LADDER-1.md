@@ -1107,3 +1107,37 @@ no tessellation anywhere in the tail.
   - **Verification** (clean deployed HEAD): strict no-interop proof + resource-strict
     proof, GL control gates-off, canonical tier1 both states — see VK-ARC-STATE.md.
   - **Remaining 8.7 order:** item 6-decision (BRIEF recorded), then item 1/2 FULL, item 3.
+
+- **8.7 COMPLETE — ITEMS 6/1/2/3 + 10/docs (USER DECISION: "retire it, finish the arc").**
+  The static-shadow substrate was RETIRED and the entire GL↔VK interop family DELETED; the
+  one hard MoltenVK/Metal-gate blocker (Win32 external-memory/-semaphore extensions) is gone.
+  Commits: item-6 `ec92c0ad`, item-1 `5d22456b`, item-2 `e8b2b7dc`, item-3 `c2aaf9b5`,
+  item-10/docs (this).
+  - **Item 6 (`ec92c0ad`, -206 LOC net):** deleted `vulkan_shared_static_shadow.{cpp,h}`
+    (whole TU) + CMake entry; static shadow map is always plain-GL `GL_DEPTH_COMPONENT24`;
+    `MC2_VK_STATIC_SHADOW_MAP` → one-shot no-op; screenfx static-only path DECLINES to GL
+    (`hasStaticShadow==false`; CSM screenfx unaffected — direct CSM views); shadow-island
+    dormant `!directChain` exportable+glInteropView branches + `GlInteropView` members DELETED.
+  - **Item 1 (`5d22456b`, -218 LOC net):** deleted `gl_interop_view.{cpp,h}` whole TU +
+    CMake + 7 stale island includes. Checker FORBIDDEN trip-wires kept (now unreachable).
+  - **Item 2 (`e8b2b7dc`, -94 LOC net):** deleted the exportable IMAGE half of
+    `vk_image_resource.{cpp,h}` (`VkExternalMemoryImageCreateInfo` / `VkExportMemoryAllocateInfo`
+    / `vkGetMemoryWin32HandleKHR` / `memWin32` / export-sanity + the strict-abort canary +
+    `<windows.h>` + `VK_USE_PLATFORM_WIN32_KHR`); dropped the `exportable` param from all 5
+    callers. Non-exportable dedicated core (VK 1.1 core) + binary sems + `VkFrameSync` survive.
+  - **Item 3 (`c2aaf9b5`, -20 LOC net):** removed the `wantInterop` external-memory/-semaphore
+    Win32 device+instance extension family from `vulkan_context.cpp`, dropped the `wantInterop`
+    param, renamed `ensureEngineVulkanContextForInterop`→`ensureEngineVulkanContext` (~13 callers).
+    **Device extensions now enabled = surface + swapchain only** (`VK_KHR_surface` +
+    `VK_KHR_win32_surface` + `VK_KHR_swapchain`). `vkCreateDevice` on MoltenVK no longer fails.
+  - **Item 10/docs:** RETIRED-GATES table + `MC2_VK_NO_GL_INTEROP[_RESOURCE]_STRICT`
+    descriptions updated (RESOURCE_STRICT now permanently satisfied by construction);
+    `docs/tier1_env_vars.md` gate-model current; VK-ARC-STATE.md updated.
+  - **This-session 8.7 tally: 26 file-changes, +161 / −699 (net −538 LOC).** Plus the prior
+    autonomous partials (8.7au/av/aw ~−285 LOC) and the whole 8.7a–8.7at deletion arc.
+  - **Metal gate: OPEN.** What macOS still needs (NOT in 8.7 — see METAL-GATE-AUDIT-2 +
+    MACOS-PORT-ROADMAP-1.md): (1) surface platform branch (SDL_Vulkan / `VK_EXT_metal_surface`
+    replacing `VK_KHR_win32_surface`); (2) the GL-dependent asset-feed rewrite (copy-once
+    `glGetTexImage`/`glGetBufferSubData` readbacks → GL-free KTX2/BC-from-disk → VK) — the long
+    pole; (3) LP64 ABI-struct audit. Rung 8 (VK owns the post-scene tail; interop scaffolding
+    deleted) is CLOSED.
