@@ -1444,8 +1444,17 @@ uint32_t recordPendingHudColorProof(EnginePresentVk::Impl& s, VkCommandBuffer cb
             auto addTex = [&](const VkHudVertex& v) {
                 texVerts.push_back({v.x, v.y, v.argb, v.u, v.v});
             };
-            if ((d.kind == 0 || d.kind == 3) && d.vertices.size() >= 4 &&
-                (d.vertices.size() % 4) == 0) {
+            // VK-HUD-GLYPH-CORRUPTION ROUND-4 (REAL ROOT CAUSE): the draw KIND, not a
+            // vertex-count heuristic, determines the primitive layout. kHudTextQuadBatch
+            // (kind==3) is ALREADY an expanded TRIANGLE LIST -- addCharacter() emits 6
+            // vertices per glyph (tl,tr,bl, tr,br,bl). Only kHudQuadBatch (kind==0) is a
+            // 4-vertex-per-quad list. The old test folded kind==3 into the quad branch
+            // whenever (6*glyphs) % 4 == 0 -- i.e. for EVEN glyph counts -- so even-length
+            // strings (LONGSHOT, OBJECTIVES, QUICK SAVE, RETURN TO GAME) were re-triangulated
+            // as if 4-vertex quads and rendered scrambled, while odd-length strings (FLASH,
+            // HACKSAW, OPTIONS, EXIT GAME) fell through to the correct triangle path and
+            // stayed clean. Gate the quad expansion on kind==0 ONLY; text is a triangle list.
+            if (d.kind == 0 && d.vertices.size() >= 4 && (d.vertices.size() % 4) == 0) {
                 for (size_t i = 0; i + 3 < d.vertices.size(); i += 4) {
                     addTex(d.vertices[i + 0]); addTex(d.vertices[i + 1]); addTex(d.vertices[i + 2]);
                     addTex(d.vertices[i + 0]); addTex(d.vertices[i + 2]); addTex(d.vertices[i + 3]);
