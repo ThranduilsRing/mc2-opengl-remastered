@@ -81,6 +81,11 @@ FORBIDDEN = [
 
 REQUIRED = [
     "[VK_PRESENT]",
+    # VK-RUNG8-ITEM8: the present image is a VK-only allocation (exportable half +
+    # GL interop view + copy-1 deleted). This structural receipt REPLACES the old
+    # MC2_VK_PRESENT_NO_GL_IMPORT=1 env requirement (now a deprecated no-op) and the
+    # vanished copy1_would_blit / gl_handoff_would_signal strict-abort triggers.
+    "present image is a VK-only allocation (no GL interop view",
 ]
 
 
@@ -113,7 +118,9 @@ REQUIRED_ZERO_COUNTERS = [
 REQUIRED_ENV = [
     "MC2_VK_NO_GL_INTEROP_STRICT=1",
     "MC2_VK_NO_GL_INTEROP_RESOURCE_STRICT=1",
-    "MC2_VK_PRESENT_NO_GL_IMPORT=1",
+    # VK-RUNG8-ITEM8: MC2_VK_PRESENT_NO_GL_IMPORT is retired (deprecated no-op); the
+    # VK-only present image is now structural and proven by the REQUIRED receipt
+    # "present image is a VK-only allocation (no GL interop view" above.
     "MC2_VK_PRESENT_NATIVE_STRICT=1",
 ]
 
