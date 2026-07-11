@@ -76,6 +76,27 @@ STRICT_ENV = {
     "MC2_VK_SCREENSHADOW_GL_CANARY": "1",
 }
 
+# VK-UMBRELLA-DIRECT-CHAIN-DEFAULT-1 (item-4 prerequisite): the 10 direct-chain gates
+# now default ON under the MC2_VK_SHARED_GBUFFER umbrella. With --minimal-promotion the
+# runner DROPS these from the explicit env so the proof shows the umbrella arming them by
+# default (every island still reports direct_chain=1 used_interop=0). MC2_VK_SHADOW_
+# DIRECT_CHAIN is dropped too; the hardened checker's H5 now reconciles the MC2_VK_*_
+# INTEROP producer names via the umbrella (MC2_VK_SHARED_GBUFFER=1) instead of requiring
+# the explicit direct-chain name in gate_env. MC2_VK_OBJECTID_DIRECT_CHAIN is NOT a
+# default member (view-mode-only canary) and is retained.
+DIRECT_CHAIN_GATES = (
+    "MC2_VK_TERRAIN_NATIVE_PREFIX_CLEAR",
+    "MC2_VK_PROP_DIRECT_CHAIN",
+    "MC2_VK_MECH_DIRECT_CHAIN",
+    "MC2_VK_WATER_DIRECT_CHAIN",
+    "MC2_VK_POST_FOG_DIRECT_CHAIN",
+    "MC2_VK_POST_SSAO_DIRECT_CHAIN",
+    "MC2_VK_POST_SCREENFX_DIRECT_CHAIN",
+    "MC2_VK_POST_HZB_DIRECT_CHAIN",
+    "MC2_VK_POST_COMPOSITE_DIRECT_CHAIN",
+    "MC2_VK_SHADOW_DIRECT_CHAIN",
+)
+
 
 def repo_root() -> Path:
     return Path(__file__).resolve().parents[1]
@@ -93,6 +114,9 @@ def main() -> int:
     ap.add_argument("--view-mode", help="Set MC2_VIEWMODE_FRAMEWORK=1 and MC2_VIEW_MODE to this value.")
     ap.add_argument("--resource-strict", action="store_true",
                     help="Also abort on exportable Win32 resource creation / GL memory import.")
+    ap.add_argument("--minimal-promotion", action="store_true",
+                    help="Drop the 10 direct-chain gates from the explicit env so the run "
+                         "proves the MC2_VK_SHARED_GBUFFER umbrella arms them by default.")
     ap.add_argument("--env", action="append", default=[],
                     help="Additional KEY=VALUE environment override. May be passed multiple times.")
     ap.add_argument("--headless", action="store_true")
@@ -102,8 +126,18 @@ def main() -> int:
     stamp = datetime.now(timezone.utc).strftime("%Y-%m-%dT%H-%M-%SZ")
     out_dir = Path(args.out_dir) if args.out_dir else root / ".claude" / f"vk-nointerop-strict-visible-{stamp}"
 
+    strict_env = dict(STRICT_ENV)
+    if args.minimal_promotion:
+        for key in DIRECT_CHAIN_GATES:
+            strict_env.pop(key, None)
+
     env = os.environ.copy()
-    env.update(STRICT_ENV)
+    env.update(strict_env)
+    # Ensure a stale outer-shell direct-chain gate can't leak into a minimal-promotion
+    # proof (would defeat the point). Explicitly remove them from the child env.
+    if args.minimal_promotion:
+        for key in DIRECT_CHAIN_GATES:
+            env.pop(key, None)
     # Clean shutdown after the bookmark sweep so the VK island destroy lines
     # (forbidden_* counters) + final [VK_PRESENT] logHealth reach the capture log --
     # the hardened checker REQUIRES them. Without this the game is killed on timeout
@@ -150,7 +184,7 @@ def main() -> int:
     if args.view_mode:
         extra.extend(["MC2_VIEWMODE_FRAMEWORK", "MC2_VIEW_MODE"])
     extra.extend(item.split("=", 1)[0] for item in args.env)
-    gates = sorted(set(STRICT_ENV) | set(extra))
+    gates = sorted(set(strict_env) | set(extra))
     print("[vk-strict-visible] gates=%s" % ",".join(gates))
     out_dir.mkdir(parents=True, exist_ok=True)
     with (out_dir / "vk_strict_env.txt").open("w", encoding="utf-8") as f:

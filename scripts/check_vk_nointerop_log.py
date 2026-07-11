@@ -264,12 +264,21 @@ def check_env(env_text: str, no_resource_strict: bool) -> bool:
         if not present:
             failed = True
 
-    # H5: any MC2_VK_*_INTEROP=1 must be reconciled by direct-chain.
+    # H5: any MC2_VK_*_INTEROP=1 must be reconciled by direct-chain. As of
+    # VK-UMBRELLA-DIRECT-CHAIN-DEFAULT-1 the direct-chain family defaults ON under the
+    # MC2_VK_SHARED_GBUFFER umbrella, so reconciliation is satisfied by EITHER the
+    # explicit MC2_VK_SHADOW_DIRECT_CHAIN=1 OR the umbrella (MC2_VK_SHARED_GBUFFER=1,
+    # not explicitly disabled) -- the latter is the minimal-promotion proof.
     interop_on = re.findall(r"^(MC2_VK_\w*INTEROP)=1\s*$", env_text, re.MULTILINE)
     if interop_on:
-        dc = "MC2_VK_SHADOW_DIRECT_CHAIN=1" in env_text
+        explicit_dc = "MC2_VK_SHADOW_DIRECT_CHAIN=1" in env_text
+        umbrella_dc = ("MC2_VK_SHARED_GBUFFER=1" in env_text
+                       and "MC2_VK_SHADOW_DIRECT_CHAIN=0" not in env_text)
+        dc = explicit_dc or umbrella_dc
+        how = ("explicit" if explicit_dc else
+               "umbrella-default" if umbrella_dc else "NONE")
         print(f"env H5: interop names set {interop_on}; "
-              f"MC2_VK_SHADOW_DIRECT_CHAIN=1 present: {'yes' if dc else 'NO'}")
+              f"direct-chain reconciliation: {how} ({'ok' if dc else 'FAIL'})")
         if not dc:
             failed = True
     return failed
