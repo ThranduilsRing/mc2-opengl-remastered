@@ -1,6 +1,46 @@
 # VK-ARC-STATE — current state block (update every session)
 
-## 2026-07-11 — 8.7 COMPLETE: ITEMS 6/1/2/3 + 10 (LATEST) — USER DECISION EXECUTED, ARC RUNG-8 CLOSED
+## 2026-07-11 — P0 FIELD-ENV BREAKAGE FIXED: umbrella now arms the present chain (VK-FIELD-ENV-COMPOSITE-ARM-1)
+
+**Symptom (user, real-time interactive `tracy-vk-compare.bat on`, mission mc2_01):** terrain
+INVISIBLE (no terrain colors), grey/cream wash over everything except the HUD, dark
+road-curve/shadow shapes as the only visible scene content, mechs invisible (only health
+bars), FPS N/A. HUD/minimap fine.
+
+**Root cause — the SAME footgun class as `37619dd1`: a load-bearing gate the umbrella did
+NOT arm.** After VK-RUNG8-ITEM8 deleted the GL copy-1 present FBO, the native VK composite
+(`EnginePresentVk::renderNativeCompositeVisual`) is the ONLY producer of the present image
+for a VK-owned scene. But three present-path gates in `engine_present_vk.cpp` still read RAW
+`getenv` and did NOT fall back to the `MC2_VK_SHARED_GBUFFER` umbrella:
+`nativeCompositeGateEnabled()` (`MC2_VK_POST_COMPOSITE`), `directFboGateEnabled()`
+(`MC2_VK_PRESENT_DIRECT_FBO`), `presentTailHookEnabled()` (`MC2_VK_PRESENT_TAIL_HOOK`).
+Every 8.7 strict proof set these =1 explicitly, so the proof env never exercised the gap.
+In the field env (umbrella only) they defaulted OFF → `presentDirectVkOnly()` returned false
+→ the native composite never ran → `presentImageVkOwned_` false → present fail-soft, while the
+VK islands had already stolen the GL scene draws (terrain/prop/mech) → the GL backbuffer that
+present fell back to was missing exactly those draws → the reported broken image.
+
+**Fix (`engine_present_vk.cpp`):** the three helpers now resolve via
+`mc2vkgate::directChainGate(<name>)` — default ON under the umbrella, explicit `1`/`0` still
+wins for debugging. Byte-identical when umbrella off (directChainGate→false → pure GL). Proof
+env unaffected (explicit `1` still wins).
+
+**Evidence — same-build A/B (fixed exe, deployed `mc2-win64-0.4c`):**
+- Field env (umbrella only): textured terrain + mech render on the backbuffer; islands
+  `used_vulkan` terrain 3298 / prop 3298 / mech 3052. Backbuffer scene chroma **43.1**.
+- Same build, composite gates FORCED `=0` (reproduces pre-fix): the exact broken grey wash,
+  terrain invisible, dark road-curve shapes on the right, HUD cursor fine. Backbuffer scene
+  chroma **4.2**. `used_vulkan` counters were positive in BOTH states — the islands ran either
+  way; only the composite-to-backbuffer differed.
+
+**★ Oracle lesson:** the engine's own glReadPixels capture reads the SCENE FBO
+(`gos_visual_capture.cpp:204`), which shows the VK scene whether or not present composited it
+→ a FALSE PASS for this bug. The truth is the presented BACKBUFFER. New fence
+`scripts/run_vk_field_check.py` launches the EXACT field env, OS-screenshots the backbuffer,
+and asserts scene-region chroma ≥ 15 (broken≈4, good≈43) plus island `used_vulkan`>0.
+**Required gate for any future present/composite/umbrella slice.**
+
+## 2026-07-11 — 8.7 COMPLETE: ITEMS 6/1/2/3 + 10 — USER DECISION EXECUTED, ARC RUNG-8 CLOSED
 
 **USER RULING: "retire it, finish the arc."** The ITEM-6 DECISION BRIEF below was executed:
 the static-shadow import substrate is RETIRED and the entire GL↔VK interop family DELETED.

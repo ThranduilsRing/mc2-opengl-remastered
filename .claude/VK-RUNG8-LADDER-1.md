@@ -1,5 +1,16 @@
 # VK-RUNG8-LADDER-1 — postprocess / UI / present ownership sub-ladder
 
+> **★ REQUIRED FIELD-ENV GATE (VK-FIELD-ENV-COMPOSITE-ARM-1, 2026-07-11):** every present /
+> composite / umbrella-arming slice on this ladder MUST pass `scripts/run_vk_field_check.py`
+> (launches the EXACT field env — backend=vulkan + `MC2_VK_SHARED_GBUFFER` + launcher GL gates,
+> NOTHING else — and asserts the BACKBUFFER shows real terrain chroma). The strict runner sets
+> ~40 extra gates =1, so it can PASS while the field env is catastrophically broken (terrain
+> invisible). Root cause of the 2026-07-11 P0: `MC2_VK_POST_COMPOSITE` / `MC2_VK_PRESENT_DIRECT_FBO`
+> / `MC2_VK_PRESENT_TAIL_HOOK` read raw getenv and did not arm from the umbrella; fixed to
+> `mc2vkgate::directChainGate`. The engine glReadPixels capture reads the SCENE FBO, not the
+> backbuffer — it is a FALSE oracle for present-path bugs. Detail: VK-ARC-STATE.md 2026-07-11.
+
+
 Rung 8 of the VK full-ownership ladder (recon: `.claude/VK-FULL-OWNERSHIP-RECON-1.md` §C.8).
 Goal: VK owns the post-scene tail (postprocess passes → composite/tonemap → HUD/ImGui →
 present), interop scaffolding becomes deletable, perf tax inverts, Metal/MoltenVK gate opens.

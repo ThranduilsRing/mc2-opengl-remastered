@@ -187,10 +187,14 @@ namespace {
 // shared present FBO instead of FBO-0, so copy-1 is skipped and the Y-flip moves
 // into copy-2. Default OFF -> gate-OFF is byte-identical to the copy-1 path.
 bool directFboGateEnabled() {
-    static const bool on = []() {
-        const char* v = getenv("MC2_VK_PRESENT_DIRECT_FBO");
-        return v && v[0] == '1';
-    }();
+    // VK-FIELD-ENV-COMPOSITE-ARM-1: after VK-RUNG8-ITEM8 deleted the GL copy-1
+    // present FBO, the native VK composite is the ONLY producer of the present
+    // image for a VK-owned scene. This gate MUST therefore arm from the umbrella
+    // (MC2_VK_SHARED_GBUFFER) exactly like the other direct-chain members — else
+    // umbrella-ON steals the scene draws into the VK islands but never composites
+    // them, giving the catastrophic "terrain invisible / sky over everything"
+    // field image. Explicit env "1"/"0" still wins for debugging.
+    static const bool on = mc2vkgate::directChainGate("MC2_VK_PRESENT_DIRECT_FBO");
     return on;
 }
 
@@ -198,10 +202,11 @@ bool directFboGateEnabled() {
 // behavior-neutral for now; it records a real command-buffer dependency at the
 // exact point future native HUD/ImGui rendering will attach.
 bool presentTailHookEnabled() {
-    static const bool on = []() {
-        const char* v = getenv("MC2_VK_PRESENT_TAIL_HOOK");
-        return v && v[0] == '1';
-    }();
+    // VK-FIELD-ENV-COMPOSITE-ARM-1: the native HUD/ImGui tail seam is part of the
+    // VK-owned present path, so it arms from the umbrella too (keeps the field env
+    // == the proof env: one flip name arms the whole present chain). Behaviour-
+    // neutral when the native HUD/ImGui draws are absent. Explicit "1"/"0" wins.
+    static const bool on = mc2vkgate::directChainGate("MC2_VK_PRESENT_TAIL_HOOK");
     return on;
 }
 
@@ -214,10 +219,10 @@ bool nativeHudColorProofEnabled() {
 }
 
 bool nativeCompositeGateEnabled() {
-    static const bool on = []() {
-        const char* v = getenv("MC2_VK_POST_COMPOSITE");
-        return v && v[0] == '1';
-    }();
+    // VK-FIELD-ENV-COMPOSITE-ARM-1: arm from the umbrella (see directFboGateEnabled).
+    // The native composite is the sole present-image producer post item-8, so the
+    // umbrella flip must arm it by default; explicit "1"/"0" still wins for debug.
+    static const bool on = mc2vkgate::directChainGate("MC2_VK_POST_COMPOSITE");
     return on;
 }
 
