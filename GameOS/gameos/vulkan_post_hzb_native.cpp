@@ -245,11 +245,9 @@ bool build_state(gosPostProcess::VkPostHzbNative* s, int w, int h, int mipCount)
     s->normalView = mc2SharedSceneColorGetGlView(MC2_SHARED_SCENE_NORMAL);
     s->depthRes = mc2SharedSceneDepthGetResource();
     s->depthView = mc2SharedSceneDepthGetGlView();
-    const bool directChain =
-        mc2vkgate::directChainGate("MC2_VK_POST_HZB_DIRECT_CHAIN") &&
-        mc2vkgate::postDirectChainUpstreamOn();
-    if (!s->colorRes || !s->normalRes || !s->depthRes ||
-        (!directChain && (!s->colorView || !s->normalView || !s->depthView))) {
+    // VK-RUNG8 item-4: direct-chain only. Only the shared VkImageResources are required;
+    // the GL interop views above remain the item-5 shared-scene GL-import substrate.
+    if (!s->colorRes || !s->normalRes || !s->depthRes) {
         setFallback("shared_scene_depth_not_ready");
         return false;
     }
@@ -612,16 +610,26 @@ bool gosPostProcess::vkPostHzbNativeEnabled()
     return state == 1;
 }
 
+// VK-RUNG8 item-4: MC2_VK_POST_HZB_DIRECT_CHAIN is RETIRED. The GL<->VK handoff arm was
+// deleted; native HZB now runs ONLY in direct-chain, engaged when upstream left the shared
+// GBuffer Vulkan-owned (postDirectChainUpstreamOn). If upstream is not direct-chain, native
+// HZB declines and the GL HZB pass runs. The env name is still parsed + noted deprecated.
+[[maybe_unused]] static const bool s_postHzbDirectChainDeprecated = [] {
+    if (mc2vkgate::envTriState("MC2_VK_POST_HZB_DIRECT_CHAIN") != -1)
+        std::fprintf(stderr, "[VK_POST_HZB] MC2_VK_POST_HZB_DIRECT_CHAIN is deprecated and "
+                             "now a no-op: native HZB is always direct-chain (GL/VK handoff "
+                             "deleted); it engages only when upstream is direct-chain.\n");
+    return true;
+}();
 static bool vkPostHzbDirectChainEnabled()
 {
     static int state = -1;
     if (state == -1) {
-        state = (mc2vkgate::directChainGate("MC2_VK_POST_HZB_DIRECT_CHAIN") &&
-                 mc2vkgate::postDirectChainUpstreamOn()) ? 1 : 0;
+        state = mc2vkgate::postDirectChainUpstreamOn() ? 1 : 0;
         g_health.directChain = state;
         if (state == 1)
-            vlog("MC2_VK_POST_HZB_DIRECT_CHAIN=1 - skipping HZB GL<->VK handoff "
-                 "(full terrain->prop->mech->water chain armed).");
+            vlog("native HZB direct-chain: upstream left the shared GBuffer VK-owned; "
+                 "no HZB GL<->VK handoff.");
     }
     return state == 1;
 }
@@ -670,16 +678,10 @@ bool gosPostProcess::runVkPostHzbNative()
     using clk = std::chrono::steady_clock;
     const clk::time_point t0 = clk::now();
 
-    const bool directChain = vkPostHzbDirectChainEnabled();
-    VkFrameSync fsC = directChain ? VkFrameSync{} : vkImageResourceBeginFrame(s->colorRes);
-    VkFrameSync fsN = directChain ? VkFrameSync{} : vkImageResourceBeginFrame(s->normalRes);
-    VkFrameSync fsD = directChain ? VkFrameSync{} : vkImageResourceBeginFrame(s->depthRes);
-    VkCommandBuffer cb = s->cbuf[directChain ? 0u : (fsC.parity & 1u)];
-    if (!directChain) {
-        glInteropSignalToVk(*s->colorView, GL_LAYOUT_COLOR_ATTACHMENT_EXT, fsC.parity);
-        glInteropSignalToVk(*s->normalView, GL_LAYOUT_COLOR_ATTACHMENT_EXT, fsN.parity);
-        glInteropSignalToVk(*s->depthView, GL_LAYOUT_DEPTH_STENCIL_ATTACHMENT_EXT, fsD.parity);
-    }
+    // VK-RUNG8 item-4: direct-chain only — engage only when upstream is direct-chain,
+    // else decline to the GL HZB pass. No GL<->VK semaphore handoff.
+    if (!vkPostHzbDirectChainEnabled()) { setFallback("upstream_not_direct_chain"); return false; }
+    VkCommandBuffer cb = s->cbuf[0u];
 
     vkResetCommandBuffer(cb, 0);
     VkCommandBufferBeginInfo bi{};
@@ -744,66 +746,22 @@ bool gosPostProcess::runVkPostHzbNative()
         return false;
     }
 
-    VkSemaphore waitSems[3];
-    VkPipelineStageFlags waitStages[3];
-    VkSemaphore signalSems[3];
-    uint32_t waitN = 0, sigN = 0;
-    auto addWait = [&](VkSemaphore sem, VkPipelineStageFlags stage) {
-        if (sem != VK_NULL_HANDLE) {
-            waitSems[waitN] = sem;
-            waitStages[waitN] = stage;
-            ++waitN;
-        }
-    };
-    if (!directChain) {
-        addWait(fsC.signal, VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT);
-        addWait(fsN.signal, VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT);
-        addWait(fsD.signal, VK_PIPELINE_STAGE_EARLY_FRAGMENT_TESTS_BIT |
-                             VK_PIPELINE_STAGE_LATE_FRAGMENT_TESTS_BIT |
-                             VK_PIPELINE_STAGE_FRAGMENT_SHADER_BIT);
-    }
-    const bool gpuC = !directChain && s->colorView &&
-                      s->colorView->vkToGlImported && fsC.vk2gl != VK_NULL_HANDLE;
-    const bool gpuN = !directChain && s->normalView &&
-                      s->normalView->vkToGlImported && fsN.vk2gl != VK_NULL_HANDLE;
-    const bool gpuDepth = !directChain && s->depthView &&
-                          s->depthView->vkToGlImported && fsD.vk2gl != VK_NULL_HANDLE;
-    if (gpuC)
-        signalSems[sigN++] = fsC.vk2gl;
-    if (gpuN)
-        signalSems[sigN++] = fsN.vk2gl;
-    if (gpuDepth)
-        signalSems[sigN++] = fsD.vk2gl;
-
+    // VK-RUNG8 item-4: direct-chain only — the submit waits/signals no GL<->VK
+    // semaphores; the images stay Vulkan-owned for the following native pass.
     VkSubmitInfo si{};
     si.sType = VK_STRUCTURE_TYPE_SUBMIT_INFO;
-    si.waitSemaphoreCount = waitN;
-    si.pWaitSemaphores = waitSems;
-    si.pWaitDstStageMask = waitStages;
     si.commandBufferCount = 1;
     si.pCommandBuffers = &cb;
-    si.signalSemaphoreCount = sigN;
-    si.pSignalSemaphores = signalSems;
-    if (vkQueueSubmit(s->queue, 1, &si, directChain ? VK_NULL_HANDLE : fsC.fence) != VK_SUCCESS) {
+    if (vkQueueSubmit(s->queue, 1, &si, VK_NULL_HANDLE) != VK_SUCCESS) {
         setFallback("submit_failed");
         s->disabled = true;
         return false;
     }
 
-    if (gpuC)
-        glInteropWaitFromVk(*s->colorView, GL_LAYOUT_COLOR_ATTACHMENT_EXT, fsC.parity);
-    if (gpuN)
-        glInteropWaitFromVk(*s->normalView, GL_LAYOUT_COLOR_ATTACHMENT_EXT, fsN.parity);
-    if (gpuDepth)
-        glInteropWaitFromVk(*s->depthView, GL_LAYOUT_DEPTH_STENCIL_ATTACHMENT_EXT, fsD.parity);
-    if (directChain) {
-        if (vkQueueWaitIdle(s->queue) != VK_SUCCESS) {
-            setFallback("queue_wait_idle_failed");
-            s->disabled = true;
-            return false;
-        }
-    } else if (vkWaitForFences(s->device, 1, &fsC.fence, VK_TRUE, 5ull * 1000 * 1000 * 1000) != VK_SUCCESS) {
-        setFallback("fence_timeout");
+    // Slot-recycle guard (water pattern): CPU-drain the queue so this frame's command
+    // buffer is retired before reuse next frame.
+    if (vkQueueWaitIdle(s->queue) != VK_SUCCESS) {
+        setFallback("queue_wait_idle_failed");
         s->disabled = true;
         return false;
     }
@@ -812,7 +770,6 @@ bool gosPostProcess::runVkPostHzbNative()
     g_health.readbackOps = 0;
     g_health.vkDraws = static_cast<unsigned long>(s->mipCount);
     ++g_health.usedVulkan;
-    if (!directChain) ++g_health.usedInterop;
     g_health.renderUs = std::chrono::duration<double, std::micro>(clk::now() - t0).count();
     return true;
 }

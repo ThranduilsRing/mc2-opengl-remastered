@@ -268,9 +268,10 @@ bool build_state(gosPostProcess::VkPostFogNative* s, int w, int h) {
     s->sColorView = mc2SharedSceneColorGetGlView(MC2_SHARED_SCENE_COLOR0);
     s->sDepthRes  = mc2SharedSceneDepthGetResource();
     s->sDepthView = mc2SharedSceneDepthGetGlView();
-    const bool directChain = vkPostFogDirectChainEnabled();
-    if (!s->sColorRes || !s->sDepthRes ||
-        (!directChain && (!s->sColorView || !s->sDepthView))) {
+    // VK-RUNG8 item-4: direct-chain only. Only the shared VkImageResources are required;
+    // the GL interop views above remain the item-5 shared-scene GL-import substrate (not
+    // deleted this session) but are no longer consumed by native fog.
+    if (!s->sColorRes || !s->sDepthRes) {
         setFallback("shared_gbuffer_not_ready"); return false;
     }
     if ((int)s->sColorRes->w != w || (int)s->sColorRes->h != h ||
@@ -532,16 +533,27 @@ bool gosPostProcess::vkPostFogNativeEnabled()
     return state == 1;
 }
 
+// VK-RUNG8 item-4: MC2_VK_POST_FOG_DIRECT_CHAIN is RETIRED. The GL<->VK handoff arm was
+// deleted; native fog now runs ONLY in direct-chain, engaged when the upstream scene
+// producers left the shared GBuffer Vulkan-owned (postDirectChainUpstreamOn). If upstream
+// is not direct-chain (a degenerate forced-hybrid debug config), native fog declines and
+// the GL fog pass runs. The env name is still parsed + noted deprecated below.
+[[maybe_unused]] static const bool s_postFogDirectChainDeprecated = [] {
+    if (mc2vkgate::envTriState("MC2_VK_POST_FOG_DIRECT_CHAIN") != -1)
+        std::fprintf(stderr, "[VK_POST_FOG] MC2_VK_POST_FOG_DIRECT_CHAIN is deprecated and "
+                             "now a no-op: native fog is always direct-chain (GL/VK handoff "
+                             "deleted); it engages only when upstream is direct-chain.\n");
+    return true;
+}();
 static bool vkPostFogDirectChainEnabled()
 {
     static int state = -1;
     if (state == -1) {
-        state = (mc2vkgate::directChainGate("MC2_VK_POST_FOG_DIRECT_CHAIN") &&
-                 mc2vkgate::postDirectChainUpstreamOn()) ? 1 : 0;
+        state = mc2vkgate::postDirectChainUpstreamOn() ? 1 : 0;
         g_pf.directChain = state;
         if (state == 1)
-            vlog("MC2_VK_POST_FOG_DIRECT_CHAIN=1 - skipping fog GL<->VK handoff "
-                 "(full terrain->prop->mech->water chain armed).");
+            vlog("native fog direct-chain: upstream left the shared GBuffer VK-owned; "
+                 "no fog GL<->VK handoff.");
     }
     return state == 1;
 }
@@ -631,15 +643,11 @@ bool gosPostProcess::runVkPostFogNative()
         }
     }
 
-    // ---- Shared resource ownership (water tier1 pattern, or direct-chain skip). ----
-    const bool directChain = vkPostFogDirectChainEnabled();
-    VkFrameSync fsC = directChain ? VkFrameSync{} : vkImageResourceBeginFrame(s->sColorRes);
-    VkFrameSync fsD = directChain ? VkFrameSync{} : vkImageResourceBeginFrame(s->sDepthRes);
-    VkCommandBuffer cb = s->cbuf[directChain ? 0u : (fsC.parity & 1u)];
-    if (!directChain) {
-        glInteropSignalToVk(*s->sColorView, GL_LAYOUT_COLOR_ATTACHMENT_EXT,         fsC.parity);
-        glInteropSignalToVk(*s->sDepthView, GL_LAYOUT_DEPTH_STENCIL_ATTACHMENT_EXT, fsD.parity);
-    }
+    // ---- Shared resource ownership (VK-RUNG8 item-4: direct-chain only). Native fog
+    // engages only when upstream left the shared GBuffer Vulkan-owned; otherwise decline
+    // to the GL fog pass (native-or-decline). No GL<->VK semaphore handoff. ----
+    if (!vkPostFogDirectChainEnabled()) { setFallback("upstream_not_direct_chain"); return false; }
+    VkCommandBuffer cb = s->cbuf[0u];
 
     vkResetCommandBuffer(cb, 0);
     VkCommandBufferBeginInfo bi{};
@@ -695,53 +703,23 @@ bool gosPostProcess::runVkPostFogNative()
         setFallback("record_failed"); s->disabled = true; return false;
     }
 
-    // ---- Submit: handoff mode waits/signals GL sems; direct-chain mode does not. ----
-    VkSemaphore waitSems[2];   VkPipelineStageFlags waitStages[2];
-    VkSemaphore signalSems[2]; uint32_t waitN = 0, sigN = 0;
-    if (!directChain && fsC.signal != VK_NULL_HANDLE) {
-        waitSems[waitN] = fsC.signal;
-        waitStages[waitN] = VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT; ++waitN;
-    }
-    if (!directChain && fsD.signal != VK_NULL_HANDLE) {
-        // The depth barrier executes at LATE_FRAGMENT_TESTS srcStage; block from
-        // the earliest depth-touching stage so the sem-wait precedes the transition.
-        waitSems[waitN] = fsD.signal;
-        waitStages[waitN] = VK_PIPELINE_STAGE_EARLY_FRAGMENT_TESTS_BIT |
-                            VK_PIPELINE_STAGE_LATE_FRAGMENT_TESTS_BIT |
-                            VK_PIPELINE_STAGE_FRAGMENT_SHADER_BIT; ++waitN;
-    }
-    const bool gpuC = !directChain && s->sColorView->vkToGlImported && fsC.vk2gl != VK_NULL_HANDLE;
-    const bool gpuD = !directChain && s->sDepthView->vkToGlImported && fsD.vk2gl != VK_NULL_HANDLE;
-    if (gpuC) signalSems[sigN++] = fsC.vk2gl;
-    if (gpuD) signalSems[sigN++] = fsD.vk2gl;
-
+    // ---- Submit (VK-RUNG8 item-4: direct-chain only — no GL<->VK semaphores). The
+    // images stay Vulkan-owned for the following native post/composite pass. ----
     VkSubmitInfo si{};
     si.sType = VK_STRUCTURE_TYPE_SUBMIT_INFO;
-    si.waitSemaphoreCount = waitN; si.pWaitSemaphores = waitSems; si.pWaitDstStageMask = waitStages;
     si.commandBufferCount = 1; si.pCommandBuffers = &cb;
-    si.signalSemaphoreCount = sigN; si.pSignalSemaphores = signalSems;
-    if (vkQueueSubmit(s->queue, 1, &si, directChain ? VK_NULL_HANDLE : fsC.fence) != VK_SUCCESS) {
+    if (vkQueueSubmit(s->queue, 1, &si, VK_NULL_HANDLE) != VK_SUCCESS) {
         setFallback("submit_failed"); s->disabled = true; return false;
     }
 
-    // GL re-acquires BOTH images in handoff mode. Direct-chain mode leaves them
-    // Vulkan-owned for the following native post/composite pass.
-    if (gpuC) glInteropWaitFromVk(*s->sColorView, GL_LAYOUT_COLOR_ATTACHMENT_EXT,         fsC.parity);
-    if (gpuD) glInteropWaitFromVk(*s->sDepthView, GL_LAYOUT_DEPTH_STENCIL_ATTACHMENT_EXT, fsD.parity);
-
-    // Slot-recycle guard (water pattern): CPU-wait the color fence so the parity
-    // slot's binary semaphores are retired before reuse two frames later.
-    if (directChain) {
-        if (vkQueueWaitIdle(s->queue) != VK_SUCCESS) {
-            setFallback("queue_wait_idle_failed"); s->disabled = true; return false;
-        }
-    } else if (vkWaitForFences(s->device, 1, &fsC.fence, VK_TRUE, 5ull * 1000 * 1000 * 1000) != VK_SUCCESS) {
-        setFallback("fence_timeout"); s->disabled = true; return false;
+    // Slot-recycle guard (water pattern): CPU-drain the queue so this frame's command
+    // buffer is retired before reuse next frame.
+    if (vkQueueWaitIdle(s->queue) != VK_SUCCESS) {
+        setFallback("queue_wait_idle_failed"); s->disabled = true; return false;
     }
 
     g_pf.renderUs = std::chrono::duration<double, std::micro>(clk::now() - t0).count();
     ++g_pf.usedVulkan;
-    if (!directChain) ++g_pf.usedInterop;
     g_pf.glSkipped += 2;
     return true;
 }

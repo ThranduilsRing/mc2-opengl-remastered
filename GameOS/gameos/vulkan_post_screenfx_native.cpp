@@ -357,9 +357,9 @@ bool build_state(gosPostProcess::VkPostScreenFx* s, int w, int h) {
     s->sDepthView  = mc2SharedSceneDepthGetGlView();
     s->sStaticShadowRes = mc2SharedStaticShadowGetResource();
     s->sStaticShadowView = mc2SharedStaticShadowGetGlView();
-    const bool directChain = vkPostScreenFxDirectChainEnabled();
-    if (!s->sColorRes || !s->sNormalRes || !s->sDepthRes ||
-        (!directChain && (!s->sColorView || !s->sNormalView || !s->sDepthView))) {
+    // VK-RUNG8 item-4: direct-chain only. Only the shared VkImageResources are required;
+    // the GL interop views above remain the item-5 shared-scene GL-import substrate.
+    if (!s->sColorRes || !s->sNormalRes || !s->sDepthRes) {
         setFallback("shared_gbuffer_not_ready"); return false;
     }
     if ((int)s->sColorRes->w  != w || (int)s->sColorRes->h  != h ||
@@ -727,16 +727,28 @@ bool gosPostProcess::vkPostScreenFxNativeEnabled()
     return state == 1;
 }
 
+// VK-RUNG8 item-4: MC2_VK_POST_SCREENFX_DIRECT_CHAIN is RETIRED. The GL<->VK handoff arm
+// was deleted; native screenfx now runs ONLY in direct-chain, engaged when upstream left
+// the shared GBuffer Vulkan-owned (postDirectChainUpstreamOn). If upstream is not direct-
+// chain, native screenfx declines and the GL screenfx passes run. Env name still parsed +
+// noted deprecated.
+[[maybe_unused]] static const bool s_postScreenFxDirectChainDeprecated = [] {
+    if (mc2vkgate::envTriState("MC2_VK_POST_SCREENFX_DIRECT_CHAIN") != -1)
+        std::fprintf(stderr, "[VK_POST_SCREENFX] MC2_VK_POST_SCREENFX_DIRECT_CHAIN is "
+                             "deprecated and now a no-op: native screenfx is always direct-"
+                             "chain (GL/VK handoff deleted); engages only when upstream is "
+                             "direct-chain.\n");
+    return true;
+}();
 static bool vkPostScreenFxDirectChainEnabled()
 {
     static int state = -1;
     if (state == -1) {
-        state = (mc2vkgate::directChainGate("MC2_VK_POST_SCREENFX_DIRECT_CHAIN") &&
-                 mc2vkgate::postDirectChainUpstreamOn()) ? 1 : 0;
+        state = mc2vkgate::postDirectChainUpstreamOn() ? 1 : 0;
         g_fx.directChain = state;
         if (state == 1)
-            vlog("MC2_VK_POST_SCREENFX_DIRECT_CHAIN=1 - skipping screenfx GL<->VK handoff "
-                 "(full terrain->prop->mech->water chain armed).");
+            vlog("native screenfx direct-chain: upstream left the shared GBuffer VK-owned; "
+                 "no screenfx GL<->VK handoff.");
     }
     return state == 1;
 }
@@ -846,21 +858,10 @@ bool gosPostProcess::runVkPostScreenShadowStaticNative()
     using clk = std::chrono::steady_clock;
     const clk::time_point t0 = clk::now();
 
-    const bool directChain = vkPostScreenFxDirectChainEnabled();
-    VkFrameSync fsC = directChain ? VkFrameSync{} : vkImageResourceBeginFrame(s->sColorRes);
-    VkFrameSync fsN = directChain ? VkFrameSync{} : vkImageResourceBeginFrame(s->sNormalRes);
-    VkFrameSync fsD = directChain ? VkFrameSync{} : vkImageResourceBeginFrame(s->sDepthRes);
-    VkFrameSync fsS{};
-    if (hasStaticShadow && !directChain)
-        fsS = vkImageResourceBeginFrame(s->sStaticShadowRes);
-    VkCommandBuffer cb = s->cbuf[directChain ? 0u : (fsC.parity & 1u)];
-    if (!directChain) {
-        glInteropSignalToVk(*s->sColorView,  GL_LAYOUT_COLOR_ATTACHMENT_EXT, fsC.parity);
-        glInteropSignalToVk(*s->sNormalView, GL_LAYOUT_COLOR_ATTACHMENT_EXT, fsN.parity);
-        glInteropSignalToVk(*s->sDepthView,  GL_LAYOUT_DEPTH_STENCIL_ATTACHMENT_EXT, fsD.parity);
-        if (hasStaticShadow)
-            glInteropSignalToVk(*s->sStaticShadowView, GL_LAYOUT_DEPTH_STENCIL_ATTACHMENT_EXT, fsS.parity);
-    }
+    // VK-RUNG8 item-4: direct-chain only — engage only when upstream is direct-chain,
+    // else decline to the GL screenfx passes. No GL<->VK semaphore handoff.
+    if (!vkPostScreenFxDirectChainEnabled()) { setFallback("upstream_not_direct_chain"); return false; }
+    VkCommandBuffer cb = s->cbuf[0u];
 
     vkResetCommandBuffer(cb, 0);
     VkCommandBufferBeginInfo bi{};
@@ -956,46 +957,23 @@ bool gosPostProcess::runVkPostScreenShadowStaticNative()
         setFallback("record_failed"); return false;
     }
 
-    VkSemaphore waitSems[4]; VkPipelineStageFlags waitStages[4];
-    VkSemaphore signalSems[4]; uint32_t waitN = 0, sigN = 0;
-    if (fsC.signal) { waitSems[waitN] = fsC.signal; waitStages[waitN++] = VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT; }
-    if (fsN.signal) { waitSems[waitN] = fsN.signal; waitStages[waitN++] = VK_PIPELINE_STAGE_FRAGMENT_SHADER_BIT; }
-    if (fsD.signal) { waitSems[waitN] = fsD.signal; waitStages[waitN++] = VK_PIPELINE_STAGE_FRAGMENT_SHADER_BIT; }
-    if (hasStaticShadow && fsS.signal) { waitSems[waitN] = fsS.signal; waitStages[waitN++] = VK_PIPELINE_STAGE_FRAGMENT_SHADER_BIT; }
-    if (directChain) waitN = 0;
-    const bool gpuC = !directChain && s->sColorView->vkToGlImported && fsC.vk2gl;
-    const bool gpuN = !directChain && s->sNormalView->vkToGlImported && fsN.vk2gl;
-    const bool gpuD = !directChain && s->sDepthView->vkToGlImported && fsD.vk2gl;
-    const bool gpuS = hasStaticShadow && !directChain && s->sStaticShadowView->vkToGlImported && fsS.vk2gl;
-    if (gpuC) signalSems[sigN++] = fsC.vk2gl;
-    if (gpuN) signalSems[sigN++] = fsN.vk2gl;
-    if (gpuD) signalSems[sigN++] = fsD.vk2gl;
-    if (gpuS) signalSems[sigN++] = fsS.vk2gl;
-
+    // VK-RUNG8 item-4: direct-chain only — the submit waits/signals no GL<->VK
+    // semaphores; the images stay Vulkan-owned for the following native pass.
     VkSubmitInfo si{};
     si.sType = VK_STRUCTURE_TYPE_SUBMIT_INFO;
-    si.waitSemaphoreCount = waitN; si.pWaitSemaphores = waitSems; si.pWaitDstStageMask = waitStages;
     si.commandBufferCount = 1; si.pCommandBuffers = &cb;
-    si.signalSemaphoreCount = sigN; si.pSignalSemaphores = signalSems;
-    if (vkQueueSubmit(s->queue, 1, &si, directChain ? VK_NULL_HANDLE : fsC.fence) != VK_SUCCESS) {
+    if (vkQueueSubmit(s->queue, 1, &si, VK_NULL_HANDLE) != VK_SUCCESS) {
         setFallback("submit_failed"); return false;
     }
 
-    if (gpuC) glInteropWaitFromVk(*s->sColorView, GL_LAYOUT_COLOR_ATTACHMENT_EXT, fsC.parity);
-    if (gpuN) glInteropWaitFromVk(*s->sNormalView, GL_LAYOUT_COLOR_ATTACHMENT_EXT, fsN.parity);
-    if (gpuD) glInteropWaitFromVk(*s->sDepthView, GL_LAYOUT_DEPTH_STENCIL_ATTACHMENT_EXT, fsD.parity);
-    if (gpuS) glInteropWaitFromVk(*s->sStaticShadowView, GL_LAYOUT_DEPTH_STENCIL_ATTACHMENT_EXT, fsS.parity);
-    if (directChain) {
-        if (vkQueueWaitIdle(s->queue) != VK_SUCCESS) {
-            setFallback("queue_wait_idle_failed"); return false;
-        }
-    } else if (vkWaitForFences(s->device, 1, &fsC.fence, VK_TRUE, 5ull * 1000 * 1000 * 1000) != VK_SUCCESS) {
-        setFallback("fence_timeout"); return false;
+    // Slot-recycle guard (water pattern): CPU-drain the queue so this frame's command
+    // buffer is retired before reuse next frame.
+    if (vkQueueWaitIdle(s->queue) != VK_SUCCESS) {
+        setFallback("queue_wait_idle_failed"); return false;
     }
 
     g_fx.renderUs = std::chrono::duration<double, std::micro>(clk::now() - t0).count();
     ++g_fx.usedVulkan;
-    if (!directChain) ++g_fx.usedInterop;
     ++g_fx.shadowFrames;
     ++g_fx.glSkipped;
     setFallback("");
@@ -1075,16 +1053,10 @@ unsigned gosPostProcess::runVkPostScreenFxNative()
     }
 
     // ---- Shared resource ownership (handoff mode, or direct-chain skip). ----
-    const bool directChain = vkPostScreenFxDirectChainEnabled();
-    VkFrameSync fsC = directChain ? VkFrameSync{} : vkImageResourceBeginFrame(s->sColorRes);
-    VkFrameSync fsN = directChain ? VkFrameSync{} : vkImageResourceBeginFrame(s->sNormalRes);
-    VkFrameSync fsD = directChain ? VkFrameSync{} : vkImageResourceBeginFrame(s->sDepthRes);
-    VkCommandBuffer cb = s->cbuf[directChain ? 0u : (fsC.parity & 1u)];
-    if (!directChain) {
-        glInteropSignalToVk(*s->sColorView,  GL_LAYOUT_COLOR_ATTACHMENT_EXT,         fsC.parity);
-        glInteropSignalToVk(*s->sNormalView, GL_LAYOUT_COLOR_ATTACHMENT_EXT,         fsN.parity);
-        glInteropSignalToVk(*s->sDepthView,  GL_LAYOUT_DEPTH_STENCIL_ATTACHMENT_EXT, fsD.parity);
-    }
+    // VK-RUNG8 item-4: direct-chain only — engage only when upstream is direct-chain,
+    // else decline to the GL screenfx passes. No GL<->VK semaphore handoff.
+    if (!vkPostScreenFxDirectChainEnabled()) { setFallback("upstream_not_direct_chain"); return 0; }
+    VkCommandBuffer cb = s->cbuf[0u];
 
     vkResetCommandBuffer(cb, 0);
     VkCommandBufferBeginInfo bi{};
@@ -1165,58 +1137,23 @@ unsigned gosPostProcess::runVkPostScreenFxNative()
         setFallback("record_failed"); s->disabled = true; return 0;
     }
 
-    // ---- Submit: wait ALL GL->VK sems; signal ALL VK->GL sems + color fence. ----
-    VkSemaphore waitSems[3];   VkPipelineStageFlags waitStages[3];
-    VkSemaphore signalSems[3]; uint32_t waitN = 0, sigN = 0;
-    if (!directChain && fsC.signal != VK_NULL_HANDLE) {
-        waitSems[waitN] = fsC.signal;
-        waitStages[waitN] = VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT; ++waitN;
-    }
-    if (!directChain && fsN.signal != VK_NULL_HANDLE) {
-        waitSems[waitN] = fsN.signal;
-        waitStages[waitN] = VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT |
-                            VK_PIPELINE_STAGE_FRAGMENT_SHADER_BIT; ++waitN;
-    }
-    if (!directChain && fsD.signal != VK_NULL_HANDLE) {
-        waitSems[waitN] = fsD.signal;
-        waitStages[waitN] = VK_PIPELINE_STAGE_EARLY_FRAGMENT_TESTS_BIT |
-                            VK_PIPELINE_STAGE_LATE_FRAGMENT_TESTS_BIT |
-                            VK_PIPELINE_STAGE_FRAGMENT_SHADER_BIT; ++waitN;
-    }
-    const bool gpuC = !directChain && s->sColorView->vkToGlImported  && fsC.vk2gl != VK_NULL_HANDLE;
-    const bool gpuN = !directChain && s->sNormalView->vkToGlImported && fsN.vk2gl != VK_NULL_HANDLE;
-    const bool gpuD = !directChain && s->sDepthView->vkToGlImported  && fsD.vk2gl != VK_NULL_HANDLE;
-    if (gpuC) signalSems[sigN++] = fsC.vk2gl;
-    if (gpuN) signalSems[sigN++] = fsN.vk2gl;
-    if (gpuD) signalSems[sigN++] = fsD.vk2gl;
-
+    // ---- Submit (VK-RUNG8 item-4: direct-chain only — no GL<->VK semaphores). The
+    // images stay Vulkan-owned for the following native pass. ----
     VkSubmitInfo si{};
     si.sType = VK_STRUCTURE_TYPE_SUBMIT_INFO;
-    si.waitSemaphoreCount = waitN; si.pWaitSemaphores = waitSems; si.pWaitDstStageMask = waitStages;
     si.commandBufferCount = 1; si.pCommandBuffers = &cb;
-    si.signalSemaphoreCount = sigN; si.pSignalSemaphores = signalSems;
-    if (vkQueueSubmit(s->queue, 1, &si, directChain ? VK_NULL_HANDLE : fsC.fence) != VK_SUCCESS) {
+    if (vkQueueSubmit(s->queue, 1, &si, VK_NULL_HANDLE) != VK_SUCCESS) {
         setFallback("submit_failed"); s->disabled = true; return 0;
     }
 
-    // GL re-acquires ALL images in the layouts VK left them (layout-stable).
-    if (gpuC) glInteropWaitFromVk(*s->sColorView,  GL_LAYOUT_COLOR_ATTACHMENT_EXT,         fsC.parity);
-    if (gpuN) glInteropWaitFromVk(*s->sNormalView, GL_LAYOUT_COLOR_ATTACHMENT_EXT,         fsN.parity);
-    if (gpuD) glInteropWaitFromVk(*s->sDepthView,  GL_LAYOUT_DEPTH_STENCIL_ATTACHMENT_EXT, fsD.parity);
-
-    // Slot-recycle guard (water pattern): CPU-wait the color fence so the parity
-    // slot's binary semaphores are retired before reuse two frames later.
-    if (directChain) {
-        if (vkQueueWaitIdle(s->queue) != VK_SUCCESS) {
-            setFallback("queue_wait_idle_failed"); s->disabled = true; return 0;
-        }
-    } else if (vkWaitForFences(s->device, 1, &fsC.fence, VK_TRUE, 5ull * 1000 * 1000 * 1000) != VK_SUCCESS) {
-        setFallback("fence_timeout"); s->disabled = true; return 0;
+    // Slot-recycle guard (water pattern): CPU-drain the queue so this frame's command
+    // buffer is retired before reuse next frame.
+    if (vkQueueWaitIdle(s->queue) != VK_SUCCESS) {
+        setFallback("queue_wait_idle_failed"); s->disabled = true; return 0;
     }
 
     g_fx.renderUs = std::chrono::duration<double, std::micro>(clk::now() - t0).count();
     ++g_fx.usedVulkan;
-    if (!directChain) ++g_fx.usedInterop;
     unsigned mask = 0;
     if (wantCloud) { mask |= 1u; ++g_fx.cloudFrames; ++g_fx.glSkipped; }
     if (wantShore) { mask |= 2u; ++g_fx.shoreFrames; ++g_fx.glSkipped; }
