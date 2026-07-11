@@ -119,19 +119,20 @@ bool propColorTier1Requested() {
     return state == 1;
 }
 
+// VK-RUNG8-ITEM5: MC2_VK_PROP_DIRECT_CHAIN is RETIRED. Prop co-write is now
+// unconditionally direct-chain-native (the GL<->VK semaphore-handoff arm + the
+// shared-scene GL-import half are deleted). The gate is a parseable no-op: setting
+// it explicitly prints one deprecation note and changes nothing.
 bool propDirectChainRequested() {
-    static int state = -1;
-    if (state == -1) {
-        const bool propGate = propColorTier1Requested();
-        // VK-RUNG8-ITEM4-TERRAIN-DELETE-1: MC2_VK_TERRAIN_NATIVE_PREFIX_CLEAR is
-        // retired; terrain native first-owner is structural when the terrain Tier-1
-        // island is armed (mc2vkgate::terrainNativeFirstOwnerOn()).
-        const bool terrainNativePrefix = mc2vkgate::terrainNativeFirstOwnerOn();
-        const bool direct =
-            mc2vkgate::directChainGate("MC2_VK_PROP_DIRECT_CHAIN");
-        state = (propGate && terrainNativePrefix && direct) ? 1 : 0;
+    static bool s_noted = false;
+    if (!s_noted) {
+        s_noted = true;
+        const char* v = std::getenv("MC2_VK_PROP_DIRECT_CHAIN");
+        if (v && v[0])
+            vlog("[VK_PROP_COLOR_TIER1] MC2_VK_PROP_DIRECT_CHAIN is deprecated "
+                 "(prop is unconditionally direct-chain-native); ignoring explicit value.");
     }
-    return state == 1;
+    return true;
 }
 
 // VK-P11 STATIC-PROP MATERIAL: real lit textured props (albedo 2D_ARRAY sample +
@@ -240,9 +241,8 @@ struct ColorPropIsland {
     struct VkImageResource* t1_colorRes  = nullptr;
     struct VkImageResource* t1_normalRes = nullptr;
     struct VkImageResource* t1_depthRes  = nullptr;
-    struct GlInteropView*   t1_colorView  = nullptr;
-    struct GlInteropView*   t1_normalView = nullptr;
-    struct GlInteropView*   t1_depthView  = nullptr;
+    // VK-RUNG8-ITEM5: shared scene is VK-only (no GL interop view). Prop co-writes
+    // direct-chain-native only; the former t1_*View handoff handles are deleted.
 
     int w = 0, h = 0;
 
@@ -771,23 +771,18 @@ bool init_island(ColorPropIsland* s, int w, int h) {
         s->t1_colorRes  = mc2SharedSceneColorGetResource(MC2_SHARED_SCENE_COLOR0);
         s->t1_normalRes = mc2SharedSceneColorGetResource(MC2_SHARED_SCENE_NORMAL);
         s->t1_depthRes  = mc2SharedSceneDepthGetResource();
-        s->t1_colorView  = mc2SharedSceneColorGetGlView(MC2_SHARED_SCENE_COLOR0);
-        s->t1_normalView = mc2SharedSceneColorGetGlView(MC2_SHARED_SCENE_NORMAL);
-        s->t1_depthView  = mc2SharedSceneDepthGetGlView();
-        const bool directChain = propDirectChainRequested();
-        if (!s->t1_colorRes || !s->t1_normalRes || !s->t1_depthRes ||
-            (!directChain && (!s->t1_colorView || !s->t1_normalView || !s->t1_depthView))) {
+        // VK-RUNG8-ITEM5: direct-chain-native only. The shared GBuffer is VK-only and
+        // left Vulkan-owned by the terrain first-owner; only the VkImageResources are
+        // required (no GL interop view, no GL<->VK semaphore handoff).
+        if (!s->t1_colorRes || !s->t1_normalRes || !s->t1_depthRes) {
             setFallback("tier1_shared_gbuffer_not_ready");
             return false;
         }
-        s->useInterop = !directChain;
-        g_health.interopActive = directChain ? 0 : 1;
-        // vk2gl active if the shared color view imported its VK->GL semaphore.
-        g_health.vk2glSemActive =
-            (!directChain && s->t1_colorView &&
-             reinterpret_cast<GlInteropView*>(s->t1_colorView)->vkToGlImported) ? 1 : 0;
+        s->useInterop = false;
+        g_health.interopActive = 0;
+        g_health.vk2glSemActive = 0;
         vlog("TIER-1 shared-GBuffer co-write ACTIVE — in-place RGBA16F color(MRT0)+normal(MRT1) "
-             "+ shared D32S8 depth (vk2gl_sem=%d).", g_health.vk2glSemActive);
+             "+ shared D32S8 depth (direct-chain native, no interop).");
     }
     // ---- Instance SSBO + UBO (common to both tiers). ----
     if (!ensure_inst_capacity(s, 256 * 1024)) return false;
@@ -1164,7 +1159,7 @@ extern "C" int mc2_vk_color_prop_island_run(int w, int h) {
     // VK-owned GBuffer (used_vulkan=0). Enter the native render path when direct-chain
     // OR the hybrid interop arm is armed -- mirrors mech/terrain (a0cba0c4/1f4a1a5a)
     // whose guard is 'disabled || !inited' with directChain unconditional-native.
-    if (s->disabled || !s->inited || (!propDirectChainRequested() && !s->useInterop)) return 0;
+    if (s->disabled || !s->inited) return 0;  // VK-RUNG8-ITEM5: direct-chain-native only
 
     if (!upload_geometry_once(s)) { setFallback("geometry_not_ready"); return 0; }
 
@@ -1436,29 +1431,14 @@ extern "C" int mc2_vk_color_prop_island_run(int w, int h) {
     // ===================================================================
     if (s->tier1) {
         VkImageResource* colorRes  = reinterpret_cast<VkImageResource*>(s->t1_colorRes);
-        VkImageResource* normalRes = reinterpret_cast<VkImageResource*>(s->t1_normalRes);
-        VkImageResource* depthRes  = reinterpret_cast<VkImageResource*>(s->t1_depthRes);
-        GlInteropView*   colorView  = reinterpret_cast<GlInteropView*>(s->t1_colorView);
-        GlInteropView*   normalView = reinterpret_cast<GlInteropView*>(s->t1_normalView);
-        GlInteropView*   depthView  = reinterpret_cast<GlInteropView*>(s->t1_depthView);
+        (void)colorRes;
 
-        // Begin a frame on EACH shared image (waits+resets its parity fence so its
-        // binary semaphores are safe to re-signal). Drive all three on the color's
-        // parity for a single coherent hand-off.
-        const bool directChain = propDirectChainRequested();
+        // VK-RUNG8-ITEM5: direct-chain-native only. The shared GBuffer was left
+        // Vulkan-owned by the terrain first-owner (same attachment layouts), so no
+        // GL<->VK semaphore handoff is needed. Begin a frame on the color image only
+        // (parity fence for CPU ordering); the render pass covers all three.
         VkFrameSync fsC = vkImageResourceBeginFrame(colorRes);
-        VkFrameSync fsN = directChain ? VkFrameSync{} : vkImageResourceBeginFrame(normalRes);
-        VkFrameSync fsD = directChain ? VkFrameSync{} : vkImageResourceBeginFrame(depthRes);
         VkCommandBuffer cb = s->cbuf[fsC.parity & 1u];
-
-        // Default: GL hands each shared image to VK in its attachment layout. Direct
-        // chain proof: terrain already left the shared GBuffer Vulkan-owned in the
-        // same attachment layouts, so no GL semaphore handoff is needed here.
-        if (!directChain) {
-            glInteropSignalToVk(*colorView,  GL_LAYOUT_COLOR_ATTACHMENT_EXT,          fsC.parity);
-            glInteropSignalToVk(*normalView, GL_LAYOUT_COLOR_ATTACHMENT_EXT,          fsN.parity);
-            glInteropSignalToVk(*depthView,  GL_LAYOUT_DEPTH_STENCIL_ATTACHMENT_EXT,  fsD.parity);
-        }
 
         const clk::time_point tRender0 = clk::now();
         ZoneNamedN(zPropRec, "VK-props-record-submit", true);   // VK-FLIP-FIELD-REPORT-1: CPU record+queue-submit (to tier1-block end)
@@ -1552,44 +1532,15 @@ extern "C" int mc2_vk_color_prop_island_run(int w, int h) {
         vkCmdEndRenderPass(cb);
         if (vkEndCommandBuffer(cb) != VK_SUCCESS) { setFallback("record_failed"); s->disabled = true; return 0; }
 
-        // Submit: default path waits all three GL->VK sems (GL owns all three
-        // targets) and signals all three VK->GL sems. Direct-chain proof keeps the
-        // ownership on Vulkan and relies on the submit fence below for CPU ordering
-        // before the next Vulkan island records against these images.
-        VkSemaphore waitSems[3];   VkPipelineStageFlags waitStages[3];
-        VkSemaphore signalSems[3]; uint32_t waitN = 0, sigN = 0;
-        auto addWait = [&](VkSemaphore sem, VkPipelineStageFlags stage){
-            if (sem != VK_NULL_HANDLE) { waitSems[waitN] = sem; waitStages[waitN] = stage; ++waitN; } };
-        if (!directChain) {
-            addWait(fsC.signal, VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT);
-            addWait(fsN.signal, VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT);
-            addWait(fsD.signal, VK_PIPELINE_STAGE_EARLY_FRAGMENT_TESTS_BIT);
-        }
-        const bool gpuC = !directChain && colorView &&
-                          colorView->vkToGlImported && fsC.vk2gl != VK_NULL_HANDLE;
-        const bool gpuN = !directChain && normalView &&
-                          normalView->vkToGlImported && fsN.vk2gl != VK_NULL_HANDLE;
-        const bool gpuD = !directChain && depthView &&
-                          depthView->vkToGlImported && fsD.vk2gl != VK_NULL_HANDLE;
-        if (!directChain) {
-            if (gpuC) signalSems[sigN++] = fsC.vk2gl;
-            if (gpuN) signalSems[sigN++] = fsN.vk2gl;
-            if (gpuD) signalSems[sigN++] = fsD.vk2gl;
-        }
-
+        // VK-RUNG8-ITEM5: direct-chain-native submit — waits/signals NO GL<->VK
+        // semaphores (the shared GBuffer stays Vulkan-owned); the color fence below
+        // orders CPU before the next Vulkan island records against these images.
         VkSubmitInfo si{};
         si.sType = VK_STRUCTURE_TYPE_SUBMIT_INFO;
-        si.waitSemaphoreCount = waitN; si.pWaitSemaphores = waitSems; si.pWaitDstStageMask = waitStages;
+        si.waitSemaphoreCount = 0; si.pWaitSemaphores = nullptr; si.pWaitDstStageMask = nullptr;
         si.commandBufferCount = 1; si.pCommandBuffers = &cb;
-        si.signalSemaphoreCount = sigN; si.pSignalSemaphores = signalSems;
+        si.signalSemaphoreCount = 0; si.pSignalSemaphores = nullptr;
         if (vkQueueSubmit(s->queue, 1, &si, fsC.fence) != VK_SUCCESS) { setFallback("submit_failed"); s->disabled = true; return 0; }
-
-        // GL waits each shared image back in its attachment layout (GPU hand-off).
-        if (!directChain) {
-            if (gpuC) glInteropWaitFromVk(*colorView,  GL_LAYOUT_COLOR_ATTACHMENT_EXT,         fsC.parity);
-            if (gpuN) glInteropWaitFromVk(*normalView, GL_LAYOUT_COLOR_ATTACHMENT_EXT,         fsN.parity);
-            if (gpuD) glInteropWaitFromVk(*depthView,  GL_LAYOUT_DEPTH_STENCIL_ATTACHMENT_EXT, fsD.parity);
-        }
 
         // Retire this frame's submit before the parity slot is reused (WAW).
         if (vkWaitForFences(s->device, 1, &fsC.fence, VK_TRUE, 5ull*1000*1000*1000) != VK_SUCCESS) {
@@ -1609,7 +1560,7 @@ extern "C" int mc2_vk_color_prop_island_run(int w, int h) {
 
         g_health.vkDraws = 1;
         ++g_health.usedVulkan;
-        if (!directChain) ++g_health.usedInterop;
+        // VK-RUNG8-ITEM5: never interop (direct-chain-native only).
         g_health.totalUs = usSince(tTotal0);
         static bool s_t1FirstOk = false;
         if (!s_t1FirstOk) {

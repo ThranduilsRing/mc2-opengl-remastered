@@ -144,18 +144,20 @@ bool waterPerfGateRequested() {
 // MC2_VK_WATER_DIRECT_CHAIN -- deletion-readiness proof gate. When the prior
 // terrain/prop/mech owners have kept the shared GBuffer Vulkan-owned, water can
 // render in-place without another GL/VK semaphore round trip.
+// VK-RUNG8-ITEM5: MC2_VK_WATER_DIRECT_CHAIN is RETIRED. Water co-write is now
+// unconditionally direct-chain-native (the GL<->VK semaphore-handoff arm + the
+// shared-scene GL-import half are deleted). Parseable no-op: setting it explicitly
+// prints one deprecation note and changes nothing.
 bool waterDirectChainRequested() {
-    static int state = -1;
-    if (state == -1) {
-        // COUPLING-FIX (VK-OWNERSHIP-GAP): water previously ANDed in the mech
-        // direct-chain gate (MC2_VK_MECH_DIRECT_CHAIN). That gate is DEPRECATED (mech
-        // is unconditionally native post-a0cba0c4) and consuming it here meant an
-        // explicit MC2_VK_MECH_DIRECT_CHAIN=0 (a mech-hybrid debug override) wrongly
-        // forced water back onto the hybrid arm. Bind water to its OWN gate only.
-        state = (waterTier1Requested() &&
-                 mc2vkgate::directChainGate("MC2_VK_WATER_DIRECT_CHAIN")) ? 1 : 0;
+    static bool s_noted = false;
+    if (!s_noted) {
+        s_noted = true;
+        const char* v = std::getenv("MC2_VK_WATER_DIRECT_CHAIN");
+        if (v && v[0])
+            vlog("[VK_WATER_TIER1] MC2_VK_WATER_DIRECT_CHAIN is deprecated "
+                 "(water is unconditionally direct-chain-native); ignoring explicit value.");
     }
-    return state == 1;
+    return true;
 }
 
 std::string spv_dir() {
@@ -217,9 +219,8 @@ struct WaterIsland {
     VkImageResource* sColorRes  = nullptr;
     VkImageResource* sNormalRes = nullptr;
     VkImageResource* sDepthRes  = nullptr;
-    GlInteropView*   sColorView  = nullptr;
-    GlInteropView*   sNormalView = nullptr;
-    GlInteropView*   sDepthView  = nullptr;
+    // VK-RUNG8-ITEM5: shared scene is VK-only (no GL interop view). Water co-writes
+    // direct-chain-native only; the former s*View handoff handles are deleted.
 
     int w = 0, h = 0;
 
@@ -632,22 +633,18 @@ bool init_island(WaterIsland* s, int w, int h) {
     s->sColorRes  = mc2SharedSceneColorGetResource(MC2_SHARED_SCENE_COLOR0);
     s->sNormalRes = mc2SharedSceneColorGetResource(MC2_SHARED_SCENE_NORMAL);
     s->sDepthRes  = mc2SharedSceneDepthGetResource();
-    s->sColorView  = mc2SharedSceneColorGetGlView(MC2_SHARED_SCENE_COLOR0);
-    s->sNormalView = mc2SharedSceneColorGetGlView(MC2_SHARED_SCENE_NORMAL);
-    s->sDepthView  = mc2SharedSceneDepthGetGlView();
-    const bool directChain = waterDirectChainRequested();
-    if (!s->sColorRes || !s->sNormalRes || !s->sDepthRes ||
-        (!directChain && (!s->sColorView || !s->sNormalView || !s->sDepthView))) {
+    // VK-RUNG8-ITEM5: direct-chain-native only. The shared GBuffer is VK-only and
+    // left Vulkan-owned by the upstream first-owner; only the VkImageResources are
+    // required (no GL interop view, no GL<->VK semaphore handoff).
+    if (!s->sColorRes || !s->sNormalRes || !s->sDepthRes) {
         setFallback("shared_gbuffer_not_ready");
         return false;
     }
-    s->useInterop = !directChain;
-    g_health.interopActive = directChain ? 0 : 1;
-    g_health.vk2glSemActive =
-        (!directChain && s->sColorView && s->sColorView->vkToGlImported) ? 1 : 0;
+    s->useInterop = false;
+    g_health.interopActive = 0;
+    g_health.vk2glSemActive = 0;
     vlog("TIER-1 shared scene GBuffer seam ACTIVE - in-place water co-write "
-         "(color0+normal+depth, no composite, no depth readback; vk2gl_sem=%d).",
-         g_health.vk2glSemActive);
+         "(color0+normal+depth, no composite, direct-chain native, no interop).");
     // ---- UBOs. ----
     if (!make_buffer(s, sizeof(WaterVsParams), VK_BUFFER_USAGE_UNIFORM_BUFFER_BIT, &s->vsUbo, &s->vsUboAlloc)) return false;
     if (!make_buffer(s, sizeof(WaterFsParams), VK_BUFFER_USAGE_UNIFORM_BUFFER_BIT, &s->fsUbo, &s->fsUboAlloc)) return false;
@@ -987,7 +984,7 @@ extern "C" int mc2_vk_water_island_run(
     // (init:640) but the old guard '|| !s->useInterop' bailed here, so under the strict
     // umbrella water returned 0 and GL silently drew water into the VK-owned GBuffer
     // (used_vulkan=0). Enter the native path when direct-chain OR hybrid interop is armed.
-    if (s->disabled || !s->inited || (!waterDirectChainRequested() && !s->useInterop)) return 0;
+    if (s->disabled || !s->inited) return 0;  // VK-RUNG8-ITEM5: direct-chain-native only
 
     // RUNG-6.5: COPY-ONCE HDRI import (or 1x1 dummy) — the FS statically uses
     // binding 2, so it must be valid before the first draw. Re-runs only if the
@@ -1061,17 +1058,11 @@ extern "C" int mc2_vk_water_island_run(
         g_health.copyColorInUs = 0.0;
         g_health.copyDepthInUs = 0.0;
 
-        const bool directChain = waterDirectChainRequested();
+        // VK-RUNG8-ITEM5: direct-chain-native only. Shared GBuffer stays Vulkan-owned
+        // (no GL<->VK semaphore handoff). Begin a frame on the color image only
+        // (parity fence for CPU ordering); the render pass covers all three.
         VkFrameSync fsC = vkImageResourceBeginFrame(s->sColorRes);
-        VkFrameSync fsN = directChain ? VkFrameSync{} : vkImageResourceBeginFrame(s->sNormalRes);
-        VkFrameSync fsD = directChain ? VkFrameSync{} : vkImageResourceBeginFrame(s->sDepthRes);
         VkCommandBuffer cb = s->cbuf[fsC.parity & 1u];
-
-        if (!directChain) {
-            glInteropSignalToVk(*s->sColorView,  GL_LAYOUT_COLOR_ATTACHMENT_EXT,         fsC.parity);
-            glInteropSignalToVk(*s->sNormalView, GL_LAYOUT_COLOR_ATTACHMENT_EXT,         fsN.parity);
-            glInteropSignalToVk(*s->sDepthView,  GL_LAYOUT_DEPTH_STENCIL_ATTACHMENT_EXT, fsD.parity);
-        }
 
         const clk::time_point tRender0 = clk::now();
         vkResetCommandBuffer(cb, 0);
@@ -1095,44 +1086,18 @@ extern "C" int mc2_vk_water_island_run(
         if (vkEndCommandBuffer(cb) != VK_SUCCESS) { setFallback("record_failed"); s->disabled = true; return 0; }
         us_record = usSince(tRender0);
 
-        // Submit: WAIT all three GL->VK sems; SIGNAL all three VK->GL sems + color fence.
-        VkSemaphore waitSems[3];   VkPipelineStageFlags waitStages[3];
-        VkSemaphore signalSems[3]; uint32_t waitN = 0, sigN = 0;
-        auto addWait = [&](VkSemaphore sem, VkPipelineStageFlags stage){
-            if (sem != VK_NULL_HANDLE) { waitSems[waitN] = sem; waitStages[waitN] = stage; ++waitN; } };
-        if (!directChain) {
-            addWait(fsC.signal, VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT);
-            addWait(fsN.signal, VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT);
-            addWait(fsD.signal, VK_PIPELINE_STAGE_EARLY_FRAGMENT_TESTS_BIT);
-        }
-        const bool gpuC = !directChain && s->sColorView &&
-                          s->sColorView->vkToGlImported && fsC.vk2gl != VK_NULL_HANDLE;
-        const bool gpuN = !directChain && s->sNormalView &&
-                          s->sNormalView->vkToGlImported && fsN.vk2gl != VK_NULL_HANDLE;
-        const bool gpuD = !directChain && s->sDepthView &&
-                          s->sDepthView->vkToGlImported && fsD.vk2gl != VK_NULL_HANDLE;
-        if (!directChain) {
-            if (gpuC) signalSems[sigN++] = fsC.vk2gl;
-            if (gpuN) signalSems[sigN++] = fsN.vk2gl;
-            if (gpuD) signalSems[sigN++] = fsD.vk2gl;
-        }
-
+        // VK-RUNG8-ITEM5: direct-chain-native submit — waits/signals NO GL<->VK
+        // semaphores (shared GBuffer stays Vulkan-owned); color fence orders CPU.
         VkSubmitInfo si{};
         si.sType = VK_STRUCTURE_TYPE_SUBMIT_INFO;
-        si.waitSemaphoreCount = waitN; si.pWaitSemaphores = waitN ? waitSems : nullptr; si.pWaitDstStageMask = waitN ? waitStages : nullptr;
+        si.waitSemaphoreCount = 0; si.pWaitSemaphores = nullptr; si.pWaitDstStageMask = nullptr;
         si.commandBufferCount = 1; si.pCommandBuffers = &cb;
-        si.signalSemaphoreCount = sigN; si.pSignalSemaphores = sigN ? signalSems : nullptr;
+        si.signalSemaphoreCount = 0; si.pSignalSemaphores = nullptr;
         const clk::time_point tSubmit0 = clk::now();
         if (vkQueueSubmit(s->queue, 1, &si, fsC.fence) != VK_SUCCESS) { setFallback("submit_failed"); s->disabled = true; return 0; }
         us_submit = usSince(tSubmit0);
 
-        const clk::time_point tSem0 = clk::now();
-        if (!directChain) {
-            if (gpuC) glInteropWaitFromVk(*s->sColorView,  GL_LAYOUT_COLOR_ATTACHMENT_EXT,         fsC.parity);
-            if (gpuN) glInteropWaitFromVk(*s->sNormalView, GL_LAYOUT_COLOR_ATTACHMENT_EXT,         fsN.parity);
-            if (gpuD) glInteropWaitFromVk(*s->sDepthView,  GL_LAYOUT_DEPTH_STENCIL_ATTACHMENT_EXT, fsD.parity);
-        }
-        us_sem_wait = usSince(tSem0);
+        us_sem_wait = 0.0;
 
         const clk::time_point tFence0 = clk::now();
         if (vkWaitForFences(s->device, 1, &fsC.fence, VK_TRUE, 5ull*1000*1000*1000) != VK_SUCCESS) {
@@ -1155,9 +1120,7 @@ extern "C" int mc2_vk_water_island_run(
 
         g_health.vkDraws = 1;
         ++g_health.usedVulkan;
-        if (!directChain) {
-            ++g_health.usedInterop;
-        }
+        // VK-RUNG8-ITEM5: never interop (direct-chain-native only).
         g_health.totalUs = usSince(tTotal0);
         static bool s_tier1FirstOk = false;
         if (!s_tier1FirstOk) {
