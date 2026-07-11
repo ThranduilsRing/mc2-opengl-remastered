@@ -772,3 +772,58 @@ no tessellation anywhere in the tail.
   `vkImageResourceCreate(exportable)`, present-native aborts, crash reports, or
   device loss; runtime receipts include `[VK_PRESENT]`, `composite_vk_frames=`,
   `gl_handoff_skip_frames=`, and `imgui_vk_frames=`.
+- 8.7am - DELETED RUNG-7 GL-READBACK MECH FEED FALLBACK
+  (VK-RUNG8-MECH-FEED-READBACK-DELETE-1, commit `66f5c3e9`). METAL-GATE-AUDIT-2
+  8.7 deletion inventory **row 9** ("rung-7 GL-readback mech fallbacks, ~120 LOC").
+  First real interop-scaffolding DELETION since 8.7h (8.7i-af were direct-chain
+  proof/canary rungs). The native CPU mech feed (VK-MECH-FEED-NATIVE-1) is now the
+  **only** mech feed path; the GL `glGetBufferSubData` readback fallback is gone.
+  Changes: `gos_mech_batcher.cpp` populates `vboCpu`/`iboCpu`/`lightDataCpu` (and
+  persists `s_vkVboNativeCopy`) whenever the VK mech island is active
+  (`s_vkMechGateOn`) instead of only under the retired `MC2_VK_MECH_FEED_NATIVE`
+  opt-in; `vulkan_mech_island.cpp` `upload_geometry_once` requires the CPU sources
+  (declines+retries the frame if a normals rebuild transiently raced the accessor
+  -- no VK-buffer alloc first), per-frame lighting is CPU-only (flat-lit that frame
+  if unavailable), and both geometry readbacks + the per-frame LightsData SSBO
+  readback else-branch were deleted. The FEED-AUDIT byte-compare stays
+  (verification-only). **Fail-soft decision (audit risk #1):** the old per-frame GL
+  rescue is replaced by explicit fail-hard-with-retry (geometry) / flat-lit-this-
+  frame (lighting), never a silent GL fallback. **Gate deprecation (boundary d):**
+  `MC2_VK_MECH_FEED_NATIVE` stays parseable but is a no-op; explicitly setting it
+  prints a one-line `[VK_MECH_FEED] ... deprecated` note. Pure-GL product path
+  untouched (all edits are `#ifdef MC2_VULKAN_ISLAND` / `s_vkMechGateOn`-gated /
+  in VK-island-only accessors -- GL-neutral by construction). ~55 LOC net removed
+  (both readback branches + the opt-in gate function; the accounting is smaller
+  than the ~120 estimate because the native memcpy paths already existed).
+  Verification at clean deployed commit `66f5c3e92076` (dirty=0, lane
+  `mc2-win64-0.4c`, build `build64_island/RelWithDebInfo`):
+  - **Strict no-interop proof re-run, both modes PASS** (hardened checker
+    `check_vk_nointerop_log.py --expect-sha 66f5c3e92076`): handoff-strict
+    `.claude/vk-nointerop-item9-proof/` VERDICT PASS (present_frames=900,
+    `[VK_MECH_TIER1] used_vulkan=957 forbidden_getTexImage=0 forbidden_readPixels=0
+    fallback_reason=""`, all islands `forbidden_*`=0); resource-strict
+    `.claude/vk-nointerop-item9-proof-rstrict2/` VERDICT PASS (present_frames=900,
+    resize_recreate_ok=1). (First resource-strict attempt hit the intermittent
+    `VK_ERROR_NATIVE_WINDOW_IN_USE` swapchain flake -> present_frames=0 fail-soft;
+    the island health lines were still fully native, and the retry cleared it.)
+  - **Item-9 default-umbrella check** `.claude/vk-item9-umbrella-audit/` (mc2_24,
+    `MC2_VK_SHARED_GBUFFER=1 MC2_VK_MECH_FEED_AUDIT=1`, no direct-chain gates, no
+    FEED_NATIVE -- the config whose default behavior this flips): `mech geometry
+    uploaded once: ... source=cpu-native` (was `gl-readback` pre-deletion),
+    `FEED-AUDIT geometry: mismatch_buffers=0 (byte-identical)`, `FEED-AUDIT lights:
+    byte-identical (mismatches=0)`, `[VK_MECH_TIER1] used_vulkan=216
+    inst_records=122 geom_verts=14814 fallback_reason="" forbidden_*=0`.
+  - **GL control:** GL-neutral by construction; canonical tier1 gates-off (pure GL)
+    5/5 PASS +0 destroys.
+  - **Canonical tier1 both states 5/5 PASS +0 destroys** on
+    `mc2-win64-0.4c/mc2.exe`: gates-off (GL) and gates-on
+    (`MC2_RENDER_BACKEND=vulkan MC2_VK_SHARED_GBUFFER=1 MC2_VK_MECH_FEED_AUDIT=1`).
+  Remaining 8.7 deletion inventory (ordered, dependency-aware): item 4 per-island
+  GL<->VK semaphore-handoff branches (~600-900 LOC / 9 TUs; still the default
+  umbrella path -- needs the direct-chain gates promoted to default or a boot-level
+  native-or-decline before deletion), item 5 GL-import halves of shared scene
+  resources, item 2 exportable half of `vk_image_resource`, item 1 `gl_interop_view.cpp`
+  whole TU, item 7 terrain CSM copy-mode, item 8 present interop tail (Win32
+  surface/copy-2 SURVIVE), item 3 wantInterop plumbing, ~20 vestigial gates. Item 6
+  (static-shadow import) and the asset-feed readback layer (audit risk #2) stay by
+  decision.

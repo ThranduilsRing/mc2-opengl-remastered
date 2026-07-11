@@ -1,6 +1,33 @@
 # VK-ARC-STATE — current state block (update every session)
 
-## 2026-07-10 — VK-NOINTEROP-STRICT-REVIEW: proof regenerated, prior proof invalidated (LATEST)
+## 2026-07-10 — VK-RUNG8-MECH-FEED-READBACK-DELETE-1: first interop deletion since 8.7h (LATEST)
+
+Deleted the rung-7 GL-readback mech feed fallback (METAL-GATE-AUDIT-2 8.7 inventory
+**row 9**), commit `66f5c3e9`, ladder rung 8.7am. The native CPU mech feed
+(geometry from `s_vkVboNativeCopy`+`s_stagingIbo`, per-frame LightsData from
+`mcTextureManager->lightData_`) is now the ONLY mech feed path: it is populated
+whenever the VK mech island is active (`s_vkMechGateOn`), not just under the retired
+`MC2_VK_MECH_FEED_NATIVE` opt-in, and the island's `glGetBufferSubData` geometry +
+per-frame LightsData SSBO readbacks are gone. Fail-soft replaced by explicit
+fail-hard-with-retry (geometry) / flat-lit-this-frame (lighting) -- no silent GL
+rescue. `MC2_VK_MECH_FEED_NATIVE` is now a parseable no-op that prints a deprecation
+note. Pure-GL product path untouched (all edits `#ifdef MC2_VULKAN_ISLAND` /
+`s_vkMechGateOn`-gated / in VK-island-only accessors).
+
+Verification at clean deployed `66f5c3e92076` (dirty=0, lane `mc2-win64-0.4c`):
+strict no-interop proof re-run PASS both modes (handoff-strict
+`.claude/vk-nointerop-item9-proof/` and resource-strict
+`.claude/vk-nointerop-item9-proof-rstrict2/`, hardened checker `--expect-sha`,
+`[VK_MECH_TIER1] used_vulkan>0 forbidden_*=0 fallback_reason=""`); default-umbrella
+FEED-AUDIT `.claude/vk-item9-umbrella-audit/` shows `source=cpu-native` (was
+gl-readback) with geometry + lights `mismatch=0` byte-identical, 122 mechs native;
+canonical tier1 5/5 PASS both states (+0 destroys). First resource-strict attempt
+hit the known intermittent swapchain `NATIVE_WINDOW_IN_USE` flake (present_frames=0
+fail-soft, islands still native), cleared on retry. Next 8.7 deletion candidates:
+item 4 semaphore-handoff branches (blocked on direct-chain-default / boot native-or-
+decline), then items 5/2/1 (`gl_interop_view.cpp` family).
+
+## 2026-07-10 — VK-NOINTEROP-STRICT-REVIEW: proof regenerated, prior proof invalidated
 
 The checked-in no-interop proof (`.claude/vk-nointerop-resource-strict-review-current/`,
 untracked, built dirty at `a7e3e5af`, 7 commits behind) was a **realized false-pass**:
