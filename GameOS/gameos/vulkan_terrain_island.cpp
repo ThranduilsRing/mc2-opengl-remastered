@@ -166,14 +166,23 @@ bool terrainTier1Requested() {
     return state == 1;
 }
 
-bool terrainNativePrefixClearRequested() {
-    static int state = -1;
-    if (state == -1) {
-        state = (terrainTier1Requested() &&
-                 mc2vkgate::directChainGate("MC2_VK_TERRAIN_NATIVE_PREFIX_CLEAR")) ? 1 : 0;
+// VK-RUNG8-ITEM4-TERRAIN-DELETE-1: MC2_VK_TERRAIN_NATIVE_PREFIX_CLEAR is RETIRED to a
+// parseable no-op (item-9 pattern). The terrain island's hybrid GL<->VK semaphore-
+// handoff arm (LOAD-preserve renderpass + glInteropSignalToVk/WaitFromVk + vk2gl
+// signal sems) was DELETED: the armed island is now unconditionally the native first
+// owner of shared scene color0/normal/depth (CLEAR loadOp, no handoff; the fence
+// orders CPU). Explicitly setting the old env prints a one-line deprecation note so
+// old command lines don't silently expect a path that no longer exists. Consumers
+// outside this TU use mc2vkgate::terrainNativeFirstOwnerOn().
+[[maybe_unused]] static const bool s_terrainPrefixClearDeprecated = [] {
+    if (mc2vkgate::envTriState("MC2_VK_TERRAIN_NATIVE_PREFIX_CLEAR") != -1) {
+        std::fprintf(stderr, "[VK_TERRAIN_ISLAND] MC2_VK_TERRAIN_NATIVE_PREFIX_CLEAR is "
+                             "deprecated and now a no-op: the armed terrain Tier-1 island is "
+                             "always the native first owner (prefix clear, no GL<->VK "
+                             "semaphore handoff); the hybrid arm was deleted (item-4).\n");
     }
-    return state == 1;
-}
+    return true;
+}();
 
 float g_prefixClearColor[4] = {0.0f, 0.0f, 0.0f, 1.0f};
 
@@ -960,35 +969,39 @@ bool init_island(TerrainIsland* s, int w, int h) {
     s->colorRes  = mc2SharedSceneColorGetResource(MC2_SHARED_SCENE_COLOR0);
     s->normalRes = mc2SharedSceneColorGetResource(MC2_SHARED_SCENE_NORMAL);
     s->depthRes  = mc2SharedSceneDepthGetResource();
+    // Item-4: the GL interop views are item-5 substrate — still fetched (other
+    // configs/imports may hold them) but NO LONGER CONSUMED by this island; they are
+    // NOT a readiness requirement (the deleted hybrid arm was their only consumer here).
     s->colorView  = mc2SharedSceneColorGetGlView(MC2_SHARED_SCENE_COLOR0);
     s->normalView = mc2SharedSceneColorGetGlView(MC2_SHARED_SCENE_NORMAL);
     s->depthView  = mc2SharedSceneDepthGetGlView();
-    const bool nativePrefixClear = terrainNativePrefixClearRequested();
-    if (!s->colorRes || !s->normalRes || !s->depthRes ||
-        (!nativePrefixClear && (!s->colorView || !s->normalView || !s->depthView))) {
+    if (!s->colorRes || !s->normalRes || !s->depthRes) {
         setFallback("shared_gbuffer_not_ready");
         return false;
     }
-    g_health.interopActive = nativePrefixClear ? 0 : 1;
-    g_health.vk2glSemActive = (!nativePrefixClear && s->colorView && s->colorView->vkToGlImported) ? 1 : 0;
+    g_health.interopActive = 0;   // item-4: no GL<->VK semaphore handoff arm exists
+    g_health.vk2glSemActive = 0;
     // Readiness gates (context + shared GBuffer) passed: any failure past this point is
     // a PERMANENT build failure -> the island declines for the session (item-2).
     g_terrainInitReachedBuild = 1;
 
-    // ---- Shared-GBuffer renderpass. Default path preserves the GL-cleared color
-    // attachments. MC2_VK_TERRAIN_NATIVE_PREFIX_CLEAR makes terrain the native first
-    // owner of color0/normal/depth for the frame so the strict no-interop canary can
-    // advance past this island without a GL->VK semaphore handoff.
+    // ---- Shared-GBuffer renderpass. Item-4: terrain is unconditionally the native
+    // first owner of color0/normal/depth for the frame — CLEAR loadOp on all three
+    // (color0 = gameplay/menu clear color via mc2_vk_terrain_set_native_prefix_clear_color,
+    // normal = clearGBuffer1 sentinel, depth = reverse-Z far). The GL frame-entry clear
+    // + clearGBuffer1 are skipped in gameosmain.cpp when this island is armed
+    // (mc2vkgate::terrainNativeFirstOwnerOn()). The old LOAD-preserve hybrid renderpass
+    // (GL clears + GL->VK semaphore handoff) was deleted.
     {
         VkAttachmentDescription att[3]{};
         att[0].format = s->colorRes->format; att[0].samples = VK_SAMPLE_COUNT_1_BIT;
-        att[0].loadOp = nativePrefixClear ? VK_ATTACHMENT_LOAD_OP_CLEAR : VK_ATTACHMENT_LOAD_OP_LOAD;
+        att[0].loadOp = VK_ATTACHMENT_LOAD_OP_CLEAR;
         att[0].storeOp = VK_ATTACHMENT_STORE_OP_STORE;
         att[0].stencilLoadOp = VK_ATTACHMENT_LOAD_OP_DONT_CARE; att[0].stencilStoreOp = VK_ATTACHMENT_STORE_OP_DONT_CARE;
         att[0].initialLayout = VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL;
         att[0].finalLayout   = VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL;
         att[1].format = s->normalRes->format; att[1].samples = VK_SAMPLE_COUNT_1_BIT;
-        att[1].loadOp = nativePrefixClear ? VK_ATTACHMENT_LOAD_OP_CLEAR : VK_ATTACHMENT_LOAD_OP_LOAD;
+        att[1].loadOp = VK_ATTACHMENT_LOAD_OP_CLEAR;
         att[1].storeOp = VK_ATTACHMENT_STORE_OP_STORE;
         att[1].stencilLoadOp = VK_ATTACHMENT_LOAD_OP_DONT_CARE; att[1].stencilStoreOp = VK_ATTACHMENT_STORE_OP_DONT_CARE;
         att[1].initialLayout = VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL;
@@ -2679,19 +2692,14 @@ extern "C" int mc2_vk_terrain_island_run(int w, int h) {
     g_health.stageUs = usSince(tStage0);
     g_health.patchRecords = patchCount;
 
-    // ---- Begin a frame on each shared image; GL hands them to VK in attachment
-    // layouts. COPIED from vulkan_color_prop_island.cpp tier1 path. ----
+    // ---- Item-4: terrain is the native first owner — no GL->VK semaphore handoff.
+    // BeginFrame on color0 only supplies the cb parity + submit fence (CPU ordering);
+    // normal/depth need no per-frame sync object (this pass CLEARs and writes them,
+    // downstream native islands chain Vulkan-owned). The old hybrid arm
+    // (BeginFrame x3 + glInteropSignalToVk x3 + vk2gl signal sems + glInteropWaitFromVk)
+    // was deleted.
     VkFrameSync fsC = vkImageResourceBeginFrame(s->colorRes);
-    const bool nativePrefixClear = terrainNativePrefixClearRequested();
-    VkFrameSync fsN = nativePrefixClear ? VkFrameSync{} : vkImageResourceBeginFrame(s->normalRes);
-    VkFrameSync fsD = nativePrefixClear ? VkFrameSync{} : vkImageResourceBeginFrame(s->depthRes);
     VkCommandBuffer cb = s->cbuf[fsC.parity & 1u];
-
-    if (!nativePrefixClear) {
-        glInteropSignalToVk(*s->colorView,  GL_LAYOUT_COLOR_ATTACHMENT_EXT,         fsC.parity);
-        glInteropSignalToVk(*s->normalView, GL_LAYOUT_COLOR_ATTACHMENT_EXT,         fsN.parity);
-        glInteropSignalToVk(*s->depthView,  GL_LAYOUT_DEPTH_STENCIL_ATTACHMENT_EXT, fsD.parity);
-    }
 
     const clk::time_point tRender0 = clk::now();
     ZoneNamedN(zTerrRec, "VK-terrain-record-submit", true);   // VK-FLIP-FIELD-REPORT-1: CPU record+queue-submit (to fn return)
@@ -2776,38 +2784,12 @@ extern "C" int mc2_vk_terrain_island_run(int w, int h) {
     s->gpuTimer.write(cb, 2);
     if (vkEndCommandBuffer(cb) != VK_SUCCESS) { setFallback("record_failed"); s->disabled = true; return 0; }
 
-    // Submit: WAIT all three GL->VK sems; SIGNAL all three VK->GL sems + color fence.
-    VkSemaphore waitSems[3];   VkPipelineStageFlags waitStages[3];
-    VkSemaphore signalSems[3]; uint32_t waitN = 0, sigN = 0;
-    auto addWait = [&](VkSemaphore sem, VkPipelineStageFlags stage){
-        if (sem != VK_NULL_HANDLE) { waitSems[waitN] = sem; waitStages[waitN] = stage; ++waitN; } };
-    if (!nativePrefixClear) {
-        addWait(fsC.signal, VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT);
-        addWait(fsN.signal, VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT);
-        addWait(fsD.signal, VK_PIPELINE_STAGE_EARLY_FRAGMENT_TESTS_BIT);
-    }
-    const bool gpuC = !nativePrefixClear && s->colorView &&
-                      s->colorView->vkToGlImported && fsC.vk2gl != VK_NULL_HANDLE;
-    const bool gpuN = !nativePrefixClear && s->normalView &&
-                      s->normalView->vkToGlImported && fsN.vk2gl != VK_NULL_HANDLE;
-    const bool gpuD = !nativePrefixClear && s->depthView &&
-                      s->depthView->vkToGlImported && fsD.vk2gl != VK_NULL_HANDLE;
-    if (gpuC) signalSems[sigN++] = fsC.vk2gl;
-    if (gpuN) signalSems[sigN++] = fsN.vk2gl;
-    if (gpuD) signalSems[sigN++] = fsD.vk2gl;
-
+    // Item-4 submit: wait/signal NO GL<->VK semaphores. The fence orders CPU access;
+    // downstream native islands (prop/mech/water/post) chain Vulkan-owned resources.
     VkSubmitInfo si{};
     si.sType = VK_STRUCTURE_TYPE_SUBMIT_INFO;
-    si.waitSemaphoreCount = waitN; si.pWaitSemaphores = waitSems; si.pWaitDstStageMask = waitStages;
     si.commandBufferCount = 1; si.pCommandBuffers = &cb;
-    si.signalSemaphoreCount = sigN; si.pSignalSemaphores = signalSems;
     if (vkQueueSubmit(s->queue, 1, &si, fsC.fence) != VK_SUCCESS) { setFallback("submit_failed"); s->disabled = true; return 0; }
-
-    if (!nativePrefixClear) {
-        if (gpuC) glInteropWaitFromVk(*s->colorView,  GL_LAYOUT_COLOR_ATTACHMENT_EXT,         fsC.parity);
-        if (gpuN) glInteropWaitFromVk(*s->normalView, GL_LAYOUT_COLOR_ATTACHMENT_EXT,         fsN.parity);
-        if (gpuD) glInteropWaitFromVk(*s->depthView,  GL_LAYOUT_DEPTH_STENCIL_ATTACHMENT_EXT, fsD.parity);
-    }
 
     if (vkWaitForFences(s->device, 1, &fsC.fence, VK_TRUE, 5ull*1000*1000*1000) != VK_SUCCESS) {
         setFallback("fence_timeout"); s->disabled = true; return 0;

@@ -123,8 +123,10 @@ bool propDirectChainRequested() {
     static int state = -1;
     if (state == -1) {
         const bool propGate = propColorTier1Requested();
-        const bool terrainNativePrefix =
-            mc2vkgate::directChainGate("MC2_VK_TERRAIN_NATIVE_PREFIX_CLEAR");
+        // VK-RUNG8-ITEM4-TERRAIN-DELETE-1: MC2_VK_TERRAIN_NATIVE_PREFIX_CLEAR is
+        // retired; terrain native first-owner is structural when the terrain Tier-1
+        // island is armed (mc2vkgate::terrainNativeFirstOwnerOn()).
+        const bool terrainNativePrefix = mc2vkgate::terrainNativeFirstOwnerOn();
         const bool direct =
             mc2vkgate::directChainGate("MC2_VK_PROP_DIRECT_CHAIN");
         state = (propGate && terrainNativePrefix && direct) ? 1 : 0;

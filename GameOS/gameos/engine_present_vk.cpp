@@ -237,8 +237,10 @@ bool compositeDirectChainGateEnabled() {
     static const bool on = []() {
         // VK-UMBRELLA-DIRECT-CHAIN-DEFAULT-1: direct-chain members default ON under
         // the umbrella; MC2_VK_WATER_TIER1 is a normal umbrella sub-gate.
+        // VK-RUNG8-ITEM4-TERRAIN-DELETE-1: MC2_VK_TERRAIN_NATIVE_PREFIX_CLEAR retired;
+        // terrain term is the structural first-owner predicate.
         return mc2vkgate::directChainGate("MC2_VK_POST_COMPOSITE_DIRECT_CHAIN") &&
-               mc2vkgate::directChainGate("MC2_VK_TERRAIN_NATIVE_PREFIX_CLEAR") &&
+               mc2vkgate::terrainNativeFirstOwnerOn() &&
                mc2vkgate::directChainGate("MC2_VK_PROP_DIRECT_CHAIN") &&
                mc2vkgate::directChainGate("MC2_VK_MECH_DIRECT_CHAIN") &&
                mc2vkgate::subGate("MC2_VK_WATER_TIER1") &&
