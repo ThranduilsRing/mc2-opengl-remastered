@@ -1,5 +1,71 @@
 # VK-ARC-STATE — current state block (update every session)
 
+## 2026-07-11 — P0 ROUND 2 FIXED: umbrella now arms the COMPLETE CONTENT STACK (VK-FIELD-ENV-CONTENT-STACK-ARM-1)
+
+**Symptom (user re-tested `tracy-vk-compare.bat on` at `b0b8ae2b`, mc2_01):** after the round-1
+present-chain fix, terrain rendered but ONLY LOD0/1 chunks; MISSING: props, water, OOB fog,
+HUD, dynamic shadows, HDRI skybox.
+
+**Root cause — SAME footgun class as round 1, now for CONTENT gates.** Post-VK-RUNG8-ITEM8 the
+native VK composite is the SOLE present-image producer under the umbrella and it samples ONLY
+the shared scene color0 (no GL backbuffer blit) — so THERE IS NO PER-LAYER GL FALLBACK. Any
+content layer whose VK gate is not armed is GL-drawn into the DISCARDED GL backbuffer and
+therefore VANISHES. Round-1 armed the present chain but left the scene-content producers on
+their conservative `envTriState==1` OPT-IN default, so under the umbrella-only field env they
+stayed OFF and their content disappeared. The prior verdict calling them "opt-in, not the cause"
+was wrong for the product config.
+
+**★ THE ALL-OR-NOTHING INVARIANT (now documented + fenced):** under VK-only present, every scene
+LAYER is either (a) VK-rendered into the shared GBuffer/present tail, or (b) the whole frame
+declines to GL at boot (composite off → present shows the complete GL backbuffer). A layer must
+NEVER be silently absent. Corollary: any layer needed for VISUAL COMPLETENESS in the product
+config must be umbrella-armed; a gate may stay opt-in ONLY if its absence does not remove
+geometry (an effect/shading layer whose "fallback" is the same geometry minus the effect).
+
+**Fix — routed the confirmed VANISHING content producers through the umbrella resolver**
+(`mc2vkgate::subGate` / `directChainGate`: default ON under `MC2_VK_SHARED_GBUFFER`, explicit
+`1`/`0` still wins). Byte-identical when the umbrella is off. Gate table:
+
+| Gate | Consumer (TU) | Old default | New resolution | Why |
+|---|---|---|---|---|
+| `MC2_VK_TERRAIN_ALL_LODS` | vulkan_terrain_island | `envTriState==1` (opt-in) | **subGate** | coarse LOD bands = base terrain; vanished (only LOD0/1) |
+| `MC2_VK_TERRAIN_SKIRTS` | vulkan_terrain_island | `envTriState==1` | **subGate** | LOD-seam skirts; without them coarse bands crack |
+| `MC2_VK_WATER_TIER1` | vulkan_water_island | `envTriState==1` | **subGate** | water surface vanished; also fixes latent inconsistency (postprocess+gate header already read it as subGate) |
+| `MC2_VK_POST_FOG_NATIVE` | vulkan_post_fog_native | `envTriState==1` | **subGate** | GL fog fail-soft draws into discarded backbuffer → OOB fog vanished |
+| `MC2_VK_HUD` | gameos_graphics | raw getenv | **subGate** | queues the game HUD into the VK present tail |
+| `MC2_VK_HUD_SKIP_GL` | gameos_graphics | raw getenv | **subGate** | self-protecting (GL HUD stays live if any element not VK-representable) |
+| `MC2_VK_HUD_COLOR_PROOF` | engine_present_vk | raw getenv | **directChainGate** | the ACTUAL native HUD renderer — recordPendingHudColorProof draws nothing without it; HUD vanished |
+
+**Deliberately LEFT opt-in (documented — absence does not remove geometry, per the invariant):**
+`MC2_VK_TERRAIN_VISUALDISPLACE_FAR` (far-band enhancement; undisplaced-but-present VK fallback;
+0.4c lacks the r32 bakes), `MC2_VK_POST_SSAO` / `MC2_VK_POST_SCREENFX` / `MC2_VK_POST_HZB`
+(effects/perf), the shadow island (`MC2_VK_SHADOW_INTEROP` / `_CSM_ARRAY_INTEROP` /
+`_CSM_FULLMAP_INTEROP`) and terrain-CSM-near — these carry a DOCUMENTED parity hazard
+("camera-dependent garbage shadow wash" / FAR-BAND-BLACK) and terrain renders unshadowed when
+off (geometry present). Arming them by default would regress, not complete, the frame.
+
+**Known VK-path limitation surfaced (NOT a regression this slice introduced):** there is NO VK
+HDRI sky pass — the terrain island clears color0 to a flat sky-ish colour (0.55,0.62,0.72), so
+the "HDRI skybox" is a flat-clear stand-in under VK-only present. Porting HDRI sky to VK is a
+separate feature, out of scope for this P0.
+
+**Evidence (fixed exe, deployed `mc2-win64-0.4c`, field env = umbrella only):** backbuffer
+screenshots show full-screen textured terrain (all LODs), water (top-left), the mech, the pilot-
+portrait HUD panel + command cursor + HUD chrome; A/B vs GL (backend=gl, same mission) matches in
+character (terrain/water/cursor/mech/HUD all present). Debug-state receipts every run:
+terrain/prop/water/fog `used_vulkan`≈5398, mech≈5149, all `fallback_reason` empty,
+`vk_post_fog_native.postfog_used_vulkan`>0; ssao/screenfx/hzb `runtime_gate_enabled=0` (correctly
+opt-in). Field fence `scripts/run_vk_field_check.py` PASS with the new per-layer receipts.
+
+**★ Fence hardening (`run_vk_field_check.py`):** chroma alone false-passed round 2 (terrain LOD0/1
+still gave chroma ~43). The fence now asserts, from the debug-state dump, that EVERY umbrella-armed
+content layer reports `used_vulkan>0` AND empty `fallback_reason` (terrain incl. `lod_chunk`
+coverage, prop, mech, water, fog) — this is the LOAD-BEARING PASS/FAIL and it catches the exact
+round-2 state (water/fog were `used_vulkan==0` there). Chroma is now a SOFT signal: a
+ShowWindow/SetForegroundWindow "hardening" experiment was found to PERTURB the renderer (focus →
+swapchain rebuild → blanked scene frame, HUD tail still drawn), so capture stays a non-perturbing
+bare grab and low-chroma-with-healthy-receipts only WARNs (eyeball the PNG). HUD/sky are eyeballed.
+
 ## 2026-07-11 — P0 FIELD-ENV BREAKAGE FIXED: umbrella now arms the present chain (VK-FIELD-ENV-COMPOSITE-ARM-1)
 
 **Symptom (user, real-time interactive `tracy-vk-compare.bat on`, mission mc2_01):** terrain

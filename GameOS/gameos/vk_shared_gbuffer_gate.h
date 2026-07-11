@@ -25,6 +25,14 @@
 //              MC2_VK_TERRAIN_TIER1, MC2_VK_TERRAIN_LIGHTING, MC2_VK_TERRAIN_DETAIL,
 //              MC2_VK_TERRAIN_DYNSHADOW, MC2_VK_MECH_TIER1, MC2_VK_MECH_MATERIAL,
 //              MC2_VK_MECH_LIGHTING.
+//     VK-FIELD-ENV-CONTENT-STACK-ARM-1 (2026-07-11) added the COMPLETE-CONTENT members —
+//     content that would VANISH under VK-only present if left opt-in (no per-layer GL
+//     fallback post-ITEM8): MC2_VK_TERRAIN_ALL_LODS, MC2_VK_TERRAIN_SKIRTS,
+//              MC2_VK_WATER_TIER1, MC2_VK_POST_FOG_NATIVE, MC2_VK_HUD, MC2_VK_HUD_SKIP_GL
+//              (and MC2_VK_HUD_COLOR_PROOF resolves via directChainGate — the native HUD
+//              renderer in the present tail). STILL OPT-IN (absence leaves geometry intact):
+//              MC2_VK_TERRAIN_VISUALDISPLACE_FAR, MC2_VK_POST_{SSAO,SCREENFX,HZB}, and the
+//              shadow island (MC2_VK_SHADOW_INTEROP/_CSM_*_INTEROP — documented parity hazard).
 //
 //   * SAFETY gates — INDEPENDENT of the umbrella, keep their own defaults:
 //         MC2_VK_TERRAIN_HEIGHT_AUDIT (verification-only, default-OFF) and the

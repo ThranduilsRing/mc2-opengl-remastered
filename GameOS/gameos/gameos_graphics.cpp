@@ -75,6 +75,7 @@ namespace gosFX { void DiagFrameTick(); }
 #ifdef MC2_VULKAN
 #include "engine_present_vk.h"
 #endif
+#include "vk_shared_gbuffer_gate.h"  // VK-FIELD-ENV-CONTENT-STACK-ARM-1: umbrella HUD arming
 
 class gosRenderer;
 class gosFont;
@@ -7930,20 +7931,26 @@ extern "C" void mc2_ui_pass_check_ambient();
 
 static bool vkHudQueueEnabled()
 {
-    static const bool enabled = []() {
-        const char* v = std::getenv("MC2_VK_HUD");
-        return v && v[0] == '1';
-    }();
+    // VK-FIELD-ENV-CONTENT-STACK-ARM-1 (2026-07-11): the game HUD is UI CONTENT, and post-
+    // VK-RUNG8-ITEM8 the native VK composite is the sole present-image producer -- the GL 2D
+    // HUD draws into the DISCARDED GL backbuffer, so under the umbrella an unarmed VK HUD queue
+    // means the HUD VANISHES (the field bug; pre-b0b8ae2b the HUD survived only because present
+    // fell back to the GL backbuffer). So arm from the umbrella (subGate): MC2_VK_SHARED_GBUFFER=1
+    // queues the HUD into the VK present tail; explicit "1"/"0" still wins. The strict proof armed
+    // MC2_VK_HUD=1 and passed. (Representable-draw filtering + the SKIP_GL all-or-nothing guard
+    // below still apply -- a non-representable HUD element keeps GL HUD live for parity.)
+    static const bool enabled = mc2vkgate::subGate("MC2_VK_HUD");
     return enabled;
 }
 
 #ifdef MC2_VULKAN
 static bool vkHudSkipGlEnabled()
 {
-    static const bool enabled = []() {
-        const char* v = std::getenv("MC2_VK_HUD_SKIP_GL");
-        return v && v[0] == '1';
-    }();
+    // VK-FIELD-ENV-CONTENT-STACK-ARM-1: arm from the umbrella too. Skipping the GL HUD is only
+    // an optimization under VK-only present (the GL backbuffer is discarded anyway), and it is
+    // self-protecting: nativeHudCanSkipGl is AND-reduced over drawRepresentable, so GL HUD stays
+    // live whenever any HUD element is not VK-representable. Explicit "1"/"0" still wins.
+    static const bool enabled = mc2vkgate::subGate("MC2_VK_HUD_SKIP_GL");
     return enabled;
 }
 

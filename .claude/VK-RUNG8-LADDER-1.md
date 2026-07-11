@@ -10,6 +10,20 @@
 > `mc2vkgate::directChainGate`. The engine glReadPixels capture reads the SCENE FBO, not the
 > backbuffer — it is a FALSE oracle for present-path bugs. Detail: VK-ARC-STATE.md 2026-07-11.
 
+> **★ ALL-OR-NOTHING CONTENT INVARIANT (VK-FIELD-ENV-CONTENT-STACK-ARM-1, 2026-07-11):** because
+> the native VK composite samples ONLY shared scene color0 (no GL backbuffer blit) and there is NO
+> per-layer GL fallback post-ITEM8, EVERY scene layer under VK-only present must be either (a)
+> VK-rendered into the shared GBuffer/present tail, or (b) wholly GL via a BOOT decline (composite
+> off → the complete GL backbuffer presents). A layer must never be silently absent. So the umbrella
+> arms the COMPLETE content stack: terrain all-LODs+skirts, water, native fog, and the game HUD
+> (`MC2_VK_HUD` + `_HUD_SKIP_GL` + `_HUD_COLOR_PROOF` — the last is the ACTUAL native HUD renderer
+> despite the "PROOF" name). A gate stays opt-in ONLY when its absence leaves geometry intact
+> (visualdisplace-far, ssao/screenfx/hzb, the shadow island — the last has a parity hazard). Fence:
+> `run_vk_field_check.py` now asserts per-layer `used_vulkan>0` + empty `fallback_reason` (LOAD-
+> BEARING); chroma is a soft eyeball signal (a foreground/ShowWindow capture perturbs the swapchain).
+> There is no VK HDRI sky pass — the flat color0 clear is the sky stand-in (separate feature).
+> Detail: VK-ARC-STATE.md 2026-07-11.
+
 
 Rung 8 of the VK full-ownership ladder (recon: `.claude/VK-FULL-OWNERSHIP-RECON-1.md` §C.8).
 Goal: VK owns the post-scene tail (postprocess passes → composite/tonemap → HUD/ImGui →

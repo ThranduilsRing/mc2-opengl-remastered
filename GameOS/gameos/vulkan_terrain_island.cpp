@@ -215,14 +215,18 @@ float g_prefixClearColor[4] = {0.0f, 0.0f, 0.0f, 1.0f};
 // carried through the patch UBO tail. Stitched patches are VK-captured; the GL-
 // fallback audit's edge_stitch counter is 0 by construction, captured_stitch>0.
 //
-// NOT a member of the MC2_VK_SHARED_GBUFFER umbrella family (unlike TIER1/LIGHTING/
-// DETAIL etc.) -- this is a standalone, explicit-opt-in rung-3 gate that stays OFF
-// even when the umbrella is armed, per the task's "new sub-gate, default OFF" ask.
-// envTriState (not subGate) so an unset env is OFF regardless of umbrella state.
+// VK-FIELD-ENV-CONTENT-STACK-ARM-1 (2026-07-11): coarse LOD bands are BASE terrain
+// content, not an enhancement. Post-VK-RUNG8-ITEM8 the native VK composite is the sole
+// present-image producer under the umbrella and there is NO per-layer GL fallback: an
+// unarmed content layer VANISHES (the field bug -- only LOD0/1 terrain rendered, coarse
+// bands GL-drawn into the discarded GL backbuffer). So ALL_LODS is now an umbrella FAMILY
+// member (subGate): MC2_VK_SHARED_GBUFFER=1 arms it; explicit "1"/"0" still wins for the
+// oracle. The strict proof armed ALL_LODS=1 and passed its parity check, so this is the
+// proven-complete scene config. Still gated on TIER1 (no coarse bands without LOD0).
 bool terrainAllLodsRequested() {
     static int state = -1;
     if (state == -1) {
-        state = (terrainTier1Requested() && mc2vkgate::envTriState("MC2_VK_TERRAIN_ALL_LODS") == 1) ? 1 : 0;
+        state = (terrainTier1Requested() && mc2vkgate::subGate("MC2_VK_TERRAIN_ALL_LODS")) ? 1 : 0;
     }
     return state == 1;
 }
@@ -234,12 +238,14 @@ bool terrainAllLodsRequested() {
 // capture site). Independent explicit opt-in (own env var, NOT chained silently onto
 // ALL_LODS) so the oracle can isolate "VK bands, GL skirts" (today's shipped state)
 // from "VK bands, VK skirts" (this rung) -- if skirts crack, flip this OFF alone and
-// keep the rung-3 band win. Same envTriState pattern as ALL_LODS (unset -> OFF
-// regardless of umbrella state).
+// keep the rung-3 band win. VK-FIELD-ENV-CONTENT-STACK-ARM-1: now an umbrella FAMILY
+// member (subGate) like ALL_LODS -- without VK skirts the coarse-band LOD seams crack
+// open (visible gaps), and there is no per-layer GL fallback post-item-8. The strict
+// proof armed SKIRTS=1 and passed. Explicit "1"/"0" still wins; still gated on ALL_LODS.
 bool terrainSkirtsRequested() {
     static int state = -1;
     if (state == -1) {
-        state = (terrainAllLodsRequested() && mc2vkgate::envTriState("MC2_VK_TERRAIN_SKIRTS") == 1) ? 1 : 0;
+        state = (terrainAllLodsRequested() && mc2vkgate::subGate("MC2_VK_TERRAIN_SKIRTS")) ? 1 : 0;
     }
     return state == 1;
 }
@@ -249,6 +255,12 @@ bool terrainSkirtsRequested() {
 // envTriState opt-in pattern as MC2_VK_TERRAIN_SKIRTS (unset -> OFF regardless of
 // umbrella) so the oracle can isolate "VK bands undisplaced (GL owns displaced)" from
 // "VK bands displaced" -- if the Z-swap diverges, flip this OFF alone and keep rung 3/4.
+// VK-FIELD-ENV-CONTENT-STACK-ARM-1 (2026-07-11): DELIBERATELY stays envTriState opt-in
+// (NOT an umbrella family member, unlike ALL_LODS/SKIRTS). It is a far-band visual
+// ENHANCEMENT, not base content -- when OFF the coarse bands still render fully (via
+// ALL_LODS) merely undisplaced, so nothing VANISHES (the layer's "VK fallback" is the
+// undisplaced-but-present VK band). It also depends on visual_height_4x.r32 bakes the
+// 0.4c field lane does not ship, so arming it by default would risk a field regression.
 bool terrainVisualDisplaceFarRequested() {
     static int state = -1;
     if (state == -1) {

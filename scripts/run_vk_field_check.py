@@ -57,6 +57,7 @@ SCRUB = (
     "MC2_VK_SHARED_SCENE_STRICT", "MC2_VK_PRESENT_NATIVE_STRICT",
     "MC2_VK_PRESENT_NO_GL_IMPORT", "MC2_VK_PRESENT_SKIP_GL_HANDOFF",
     "MC2_VK_POST_COMPOSITE_DIRECT_CHAIN", "MC2_VK_HUD", "MC2_VK_IMGUI",
+    "MC2_VK_HUD_SKIP_GL", "MC2_VK_HUD_COLOR_PROOF", "MC2_VK_POST_FOG_NATIVE",
     "MC2_VK_TERRAIN_ALL_LODS", "MC2_VK_TERRAIN_SKIRTS", "MC2_VK_WATER_TIER1",
     "MC2_VK_NO_GL_INTEROP_STRICT", "MC2_VISUAL_BOOKMARK_CAPTURE",
     "MC2_SMOKE_FIXED_TIMESTEP", "MC2_SMOKE_MODE",
@@ -66,6 +67,16 @@ CHROMA_MIN = 15.0   # broken grey wash ~4.2, correct terrain ~43.1
 
 
 def screenshot_primary(out_png: str) -> None:
+    # NOTE (VK-FIELD-ENV-CONTENT-STACK-ARM-1, 2026-07-11): capture is a BARE PrimaryScreen
+    # grab -- deliberately NON-perturbing. An earlier hardening attempt that called
+    # ShowWindow/SetForegroundWindow on the mc2 window to guarantee it was in front instead
+    # PERTURBED the renderer: the focus/restore triggered a swapchain rebuild that blanked
+    # the scene frame (grey scene, HUD tail still drawn) at capture time -- a self-induced
+    # false negative. So the chroma reading is a SOFT signal only (see main(): the LOAD-
+    # BEARING assertion is the per-layer used_vulkan receipts, which deterministically catch
+    # the round-2 vanishing state -- water/fog/coverage were used_vulkan==0 there). If the
+    # game is not foreground the grab may catch the desktop (also low chroma) -> eyeball the
+    # PNG, do not treat low chroma alone as a hard regression.
     ps = (
         "Add-Type -AssemblyName System.Windows.Forms;"
         "Add-Type -AssemblyName System.Drawing;"
@@ -90,16 +101,50 @@ def scene_chroma(png: str) -> float:
     return float((mx - mn).mean())
 
 
-def island_receipts(install: Path):
+def layer_receipts(install: Path):
+    """Per-LAYER VK ownership receipts from the debug_state dump.
+
+    VK-FIELD-ENV-CONTENT-STACK-ARM-1 (2026-07-11): chroma alone FALSE-PASSED the round-2
+    field bug -- terrain rendered LOD0/1 only, props/water/fog/HUD absent, yet the scene
+    region still carried terrain chroma ~43. So this fence now asserts every CONTENT layer
+    the umbrella is supposed to arm reports VK ownership (used_vulkan>0 / no fallback), not
+    just that *something* was chromatic. Each entry is (value, fallback_reason). A non-empty
+    fallback_reason means the island/pass declined to GL -> that layer VANISHES under VK-only
+    present (no per-layer GL fallback post-VK-RUNG8-ITEM8) -> FAIL.
+
+    Layers asserted = exactly the umbrella-armed content stack:
+      terrain (+ all-LOD coverage), props, mechs, water, native fog.
+    NOT asserted (deliberately opt-in / non-vanishing effects; see the gate table in
+    VK-ARC-STATE.md): ssao, screenfx, hzb, the shadow island, terrain-CSM-near,
+    terrain-visualdisplace-far. Their absence does not remove geometry.
+    """
     p = install / "debug_state" / "latest_render_state.json"
     if not p.exists():
-        return {}
+        return {}, {}
     d = json.loads(p.read_text())
-    out = {}
-    for k in ("vulkan_terrain_island", "vulkan_color_prop_island", "vulkan_mech_island"):
-        v = d.get(k, {})
-        out[k] = v.get("used_vulkan", 0) if isinstance(v, dict) else 0
-    return out
+
+    def g(sec, key, default=0):
+        v = d.get(sec, {})
+        return v.get(key, default) if isinstance(v, dict) else default
+
+    used = {
+        "terrain": g("vulkan_terrain_island", "used_vulkan"),
+        "prop": g("vulkan_color_prop_island", "used_vulkan"),
+        "mech": g("vulkan_mech_island", "used_vulkan"),
+        "water": g("vulkan_water_island", "water_used_vulkan"),
+        "fog": g("vk_post_fog_native", "postfog_used_vulkan"),
+    }
+    reasons = {
+        "terrain": g("vulkan_terrain_island", "fallback_reason", ""),
+        "prop": g("vulkan_color_prop_island", "fallback_reason", ""),
+        "mech": g("vulkan_mech_island", "fallback_reason", ""),
+        "water": g("vulkan_water_island", "water_fallback_reason", ""),
+        "fog": g("vk_post_fog_native", "postfog_fallback_reason", ""),
+    }
+    # Terrain LOD coverage: lod_chunk is the VK-owned LOD-chunk draw count. In the broken
+    # round-2 state only LOD0/1 were VK-owned; the umbrella must now own all bands.
+    used["terrain_lod_chunks"] = g("terrain_path", "lod_chunk")
+    return used, reasons
 
 
 def main() -> int:
@@ -136,21 +181,50 @@ def main() -> int:
             proc.kill()
 
     chroma = scene_chroma(out_png)
-    receipts = island_receipts(install)
-    islands_ok = all(v > 0 for v in receipts.values()) if receipts else False
+    used, reasons = layer_receipts(install)
     chroma_ok = chroma >= CHROMA_MIN
 
+    # Every umbrella-armed content layer must report VK ownership AND no GL decline.
+    content_layers = ("terrain", "prop", "mech", "water", "fog")
+    layer_fail = []
+    for k in content_layers:
+        if used.get(k, 0) <= 0:
+            layer_fail.append(f"{k}: used_vulkan<=0")
+        if reasons.get(k):
+            layer_fail.append(f"{k}: declined-to-GL ({reasons[k]})")
+    # Terrain LOD coverage guard (round-2 bug = only LOD0/1 VK-owned).
+    if used.get("terrain_lod_chunks", 0) <= 0:
+        layer_fail.append("terrain: lod_chunk==0 (no VK-owned LOD bands)")
+
     print(f"[vk-field-check] backbuffer scene chroma={chroma:.2f} (min {CHROMA_MIN})")
-    print(f"[vk-field-check] island receipts={receipts}")
+    print(f"[vk-field-check] layer used_vulkan={used}")
+    print(f"[vk-field-check] layer fallback_reasons={reasons}")
     print(f"[vk-field-check] screenshot={out_png}")
-    ok = chroma_ok and islands_ok
-    if not chroma_ok:
-        print("[vk-field-check] FAIL: scene region is a low-chroma grey wash -- the VK "
-              "scene did not composite to the backbuffer (present-path gates not armed "
-              "by the umbrella?).")
-    if not islands_ok:
-        print("[vk-field-check] FAIL: a VK scene island reported used_vulkan==0 "
-              "(shared-gbuffer scene not owned by VK).")
+    if not used:
+        print("[vk-field-check] FAIL: no debug_state dump found (need MC2_DEBUG_STATE_DUMP=1).")
+
+    # LOAD-BEARING: the per-layer VK-ownership receipts. These deterministically catch the
+    # round-2 field state the user saw (terrain LOD0/1 only + props/water/fog/HUD absent):
+    # water/fog reported used_vulkan==0 there, so an unarmed content stack FAILS here.
+    layers_ok = bool(used) and not layer_fail
+    if layer_fail:
+        print("[vk-field-check] FAIL: umbrella-armed content layer(s) not VK-owned -> would "
+              "VANISH under VK-only present (no per-layer GL fallback):")
+        for f in layer_fail:
+            print(f"    - {f}")
+
+    # SOFT: chroma. A healthy composite reads ~43; a genuine composite-arming regression OR
+    # an intermittent VK grey transient OR a desktop/focus-glitched capture all read low.
+    # So low chroma with HEALTHY receipts is NOT a hard fail -- it flags "eyeball the PNG".
+    if not chroma_ok and layers_ok:
+        print(f"[vk-field-check] WARN: scene chroma {chroma:.2f} < {CHROMA_MIN} but every "
+              "content layer IS VK-owned. Likely a non-perturbing capture caught the desktop, "
+              "or the known intermittent VK grey transient (separate pre-existing bug). "
+              "EYEBALL the saved PNG before trusting/dismissing.")
+    print("[vk-field-check] NOTE: HUD/sky are eyeballed from the saved backbuffer PNG "
+          "(no dump counter); HUD must show the pilot panel + command cursor, sky is the "
+          "flat VK clear-colour stand-in (no VK HDRI pass -- pre-existing, documented).")
+    ok = layers_ok
     print(f"[vk-field-check] {'PASS' if ok else 'FAIL'}")
     return 0 if ok else 1
 

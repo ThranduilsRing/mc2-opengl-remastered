@@ -519,11 +519,18 @@ bool gosPostProcess::vkPostFogNativeEnabled()
 {
     static int state = -1;
     if (state == -1) {
-        state = (mc2vkgate::envTriState("MC2_VK_POST_FOG_NATIVE") == 1) ? 1 : 0;
+        // VK-FIELD-ENV-CONTENT-STACK-ARM-1 (2026-07-11): now an umbrella family member
+        // (subGate). Post-VK-RUNG8-ITEM8 the GL fog pass this used to fail-soft to draws
+        // into the DISCARDED GL backbuffer under VK-only present, so an unarmed native fog
+        // means the scene atmospheric fog VANISHES (the user's "OOB fog missing"). Native
+        // fog still engages only when upstream is direct-chain (postDirectChainUpstreamOn),
+        // so umbrella-arming it is safe: a degenerate forced-hybrid config still declines.
+        // The strict proof armed MC2_VK_POST_FOG_NATIVE=1 and passed. Explicit "1"/"0" wins.
+        state = mc2vkgate::subGate("MC2_VK_POST_FOG_NATIVE") ? 1 : 0;
         g_pf.runtimeGate = state;
         if (state == 1)
-            vlog("MC2_VK_POST_FOG_NATIVE=1 — rung-8.1 native fog pair gate ON "
-                 "(lazy init at the fog site; fail-soft to subgraph/island/GL).");
+            vlog("MC2_VK_POST_FOG_NATIVE — rung-8.1 native fog pair gate ON "
+                 "(umbrella-armed; lazy init at the fog site; fail-soft to subgraph/island/GL).");
     }
     return state == 1;
 }

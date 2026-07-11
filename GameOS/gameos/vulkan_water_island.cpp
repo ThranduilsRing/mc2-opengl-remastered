@@ -118,12 +118,19 @@ void vlog(const char* fmt, ...) {
 // MC2_VK_WATER_TIER1 (rung 6, VK full-ownership ladder): render the armed water
 // BASE layer IN-PLACE into the shared scene GBuffer (color0+normal+depth) like
 // the terrain/prop/mech Tier-1 islands — no offscreen target, no GL composite,
-// no depth readback. envTriState OPT-IN (unset -> OFF regardless of
-// MC2_VK_SHARED_GBUFFER; explicit "0" also OFF) — the same conservative
-// new-rung pattern as MC2_VK_TERRAIN_SKIRTS / MC2_VK_TERRAIN_VISUALDISPLACE_FAR
-// (rungs 4/5). The legacy P9a offscreen+composite proof gate is retired.
+// no depth readback.
+//
+// VK-FIELD-ENV-CONTENT-STACK-ARM-1 (2026-07-11): now resolved via mc2vkgate::subGate
+// so MC2_VK_SHARED_GBUFFER=1 arms it (explicit "1"/"0" still wins). Water is BASE scene
+// content, not an enhancement -- post-VK-RUNG8-ITEM8 the native VK composite is the sole
+// present-image producer and there is no per-layer GL fallback, so an unarmed water layer
+// VANISHES (the field bug). This ALSO reconciles a latent inconsistency: gos_postprocess.cpp
+// and vk_shared_gbuffer_gate.h::postDirectChainUpstreamOn() already read MC2_VK_WATER_TIER1
+// via subGate, while this producer read it via envTriState==1 -- so under the umbrella the
+// post chain believed water was armed while the island declined. Now both agree. The strict
+// proof armed WATER_TIER1=1 and passed its parity check.
 bool waterTier1Requested() {
-    static const bool s_on = (mc2vkgate::envTriState("MC2_VK_WATER_TIER1") == 1);
+    static const bool s_on = mc2vkgate::subGate("MC2_VK_WATER_TIER1");
     return s_on;
 }
 

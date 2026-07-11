@@ -211,10 +211,17 @@ bool presentTailHookEnabled() {
 }
 
 bool nativeHudColorProofEnabled() {
-    static const bool on = []() {
-        const char* v = getenv("MC2_VK_HUD_COLOR_PROOF");
-        return v && v[0] == '1';
-    }();
+    // VK-FIELD-ENV-CONTENT-STACK-ARM-1 (2026-07-11): despite the legacy "COLOR_PROOF"
+    // name this is the ACTUAL native VK HUD renderer -- recordPendingHudColorProof()
+    // draws NOTHING unless this is on (it clears the queued HUD undrawn otherwise). So
+    // the game HUD (colored tris/lines + textured/text quads) only reaches the VK-only
+    // present image when this is armed. Post-VK-RUNG8-ITEM8 the GL HUD draws into the
+    // DISCARDED backbuffer, so with this OFF the HUD VANISHES (the field bug: MC2_VK_HUD
+    // queued the draws but nothing rendered them). It is a member of the VK-owned present
+    // tail, so it arms from the umbrella exactly like presentTailHookEnabled /
+    // directFboGateEnabled / nativeCompositeGateEnabled. The strict proof armed
+    // MC2_VK_HUD_COLOR_PROOF=1 and passed. Explicit "1"/"0" still wins for debugging.
+    static const bool on = mc2vkgate::directChainGate("MC2_VK_HUD_COLOR_PROOF");
     return on;
 }
 
