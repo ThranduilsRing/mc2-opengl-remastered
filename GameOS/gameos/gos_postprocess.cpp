@@ -133,16 +133,21 @@ static bool mc2VkSharedSceneColorNeeded()
 
 static bool mc2VkSharedSceneDirectResourceEnabled()
 {
+    // VK-RUNG8-ITEM10: the two present-tail conditions
+    // (MC2_VK_PRESENT_NO_GL_IMPORT==1 && MC2_VK_PRESENT_SKIP_GL_HANDOFF==1) were
+    // REMOVED. Item 8 deleted the present interop tail, so the present image is now
+    // UNCONDITIONALLY a VK-only allocation with no GL->VK handoff (those two gates are
+    // retired no-ops). Requiring them here was dead resolver code that would wrongly
+    // decline the whole shared scene to pure GL under the umbrella unless a user set two
+    // retired gates. The shared scene now arms on the post/composite direct-chain stack
+    // alone (default-ON under MC2_VK_SHARED_GBUFFER).
     static const bool s_on =
         mc2vkgate::postDirectChainUpstreamOn() &&
         mc2vkgate::directChainGate("MC2_VK_POST_FOG_DIRECT_CHAIN") &&
         mc2vkgate::directChainGate("MC2_VK_POST_SSAO_DIRECT_CHAIN") &&
         mc2vkgate::directChainGate("MC2_VK_POST_SCREENFX_DIRECT_CHAIN") &&
         mc2vkgate::directChainGate("MC2_VK_POST_HZB_DIRECT_CHAIN") &&
-        mc2vkgate::directChainGate("MC2_VK_POST_COMPOSITE_DIRECT_CHAIN") &&
-        // Present-tail strictness gates (NOT direct-chain-family; stay explicit).
-        mc2vkgate::envTriState("MC2_VK_PRESENT_NO_GL_IMPORT") == 1 &&
-        mc2vkgate::envTriState("MC2_VK_PRESENT_SKIP_GL_HANDOFF") == 1;
+        mc2vkgate::directChainGate("MC2_VK_POST_COMPOSITE_DIRECT_CHAIN");
     return s_on;
 }
 
