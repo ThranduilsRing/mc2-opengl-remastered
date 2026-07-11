@@ -1,5 +1,59 @@
 # VK-ARC-STATE — current state block (update every session)
 
+## 2026-07-11 — VK-RUNG8-ITEM4-TERRAIN-DELETE-1: ITEM 4 COMPLETE — ALL ISLANDS (LATEST)
+
+Ladder rung 8.7aq, commit `741b9e4f`, deployed `mc2-win64-0.4c` @ `741b9e4faffb dirty=0`.
+The terrain island was the LAST island with a hybrid GL<->VK semaphore-handoff arm; it is
+now native-first-owner-only. **METAL-GATE-AUDIT-2 8.7 inventory row 4 (item 4) is DONE
+across all islands** (mech `a0cba0c4` + posts `bc923366` + shadow `2b4160ae` +
+prop/water guard restore `c2c21682` + terrain `741b9e4f`).
+
+- **Deleted** from `vulkan_terrain_island.cpp` run path: the `!nativePrefixClear` hybrid
+  arm — normal/depth `vkImageResourceBeginFrame`, 3x `glInteropSignalToVk`, the
+  waitSems/signalSems machinery (gpuC/N/D vk2gl signal plumbing), 3x
+  `glInteropWaitFromVk`. Submit waits/signals NO GL<->VK semaphores (fsC fence orders
+  CPU; color0 BeginFrame kept for cb parity + fence only). init: renderpass
+  unconditionally CLEAR loadOp on color0/normal/depth; GL-view readiness requirement
+  dropped (views still fetched = item-5 substrate, no longer consumed by this island).
+  Health: `interop_active=0 vk2gl_sem=0` always.
+- **PREFIX_CLEAR disposition:** `MC2_VK_TERRAIN_NATIVE_PREFIX_CLEAR` RETIRED → parseable
+  no-op + one-line deprecation note when explicitly set (item-9 pattern). It was NOT a
+  pure handoff gate — it also owned "skip the GL frame-entry clears + clearGBuffer1"
+  (gameosmain) and fed prop/composite/post direct-chain predicates. That meaning is now
+  the STRUCTURAL predicate `mc2vkgate::terrainNativeFirstOwnerOn()` (= `MC2_VK_TERRAIN_
+  TIER1 && MC2_VK_SHARED_SCENE_DEPTH`, umbrella-resolved), rebound at all 4 consumer
+  sites (gameosmain, `propDirectChainRequested`, `compositeDirectChainGateEnabled`,
+  `postDirectChainUpstreamOn`). Under the umbrella this resolves IDENTICALLY to the old
+  gate (clear colors/sentinel/reverse-Z far unchanged); explicit `MC2_VK_TERRAIN_TIER1=0`
+  now correctly restores the GL clears too (island off => GL owns terrain AND its clears).
+- **Gates kept:** all `MC2_VK_*_INTEROP` producer names (CSM array/fullmap/shadow) — they
+  enable surviving native production. Checker H5 unchanged. Boot-decline: the existing
+  terrain session-latch (`1f4a1a5a`) covers everything; no deleted branch was a decline
+  target (the dropped GL-view requirement only ever declined the deleted arm).
+- **Verification** (all at clean deployed `741b9e4faffb`): strict proof
+  `check_vk_nointerop_log.py --expect-sha 741b9e4faffb` **VERDICT PASS**
+  (`.claude/vk-item4-terrain-proof/`): 11/11 deterministic bookmarks, all H1 forbidden
+  strings 0, all islands `forbidden_*=0` AND ownership `used_vulkan>0` (terrain 1022 /
+  prop 1022 / mech 957 / water 1022), terrain `interop_active=0 vk2gl_sem=0 stage_us=3.3
+  fallback_reason=""`, present counters 900/900 with `copy1_blit=0`. Override check
+  (`.claude/vk-item4-terrain-override/`, explicit `=0` + `MC2_VK_TERRAIN_GL_FALLBACK_
+  AUDIT=1`): deprecation note printed, island STILL native (`used_vulkan=1022`, zero
+  strict aborts), audit steady `gl_fallback=0 edge_stitch=0 captured_stitch=3` —
+  captured_stitch UNCHANGED vs the pre-deletion `.claude/edgestitch-audit/` receipt.
+  GL control gates-off `--verify` byte pair: 10/11 STABLE; lone `cross_map_view` DRIFT =
+  documented pre-existing GL pose nondeterminism (identical to the a0cba0c4 control).
+  Canonical tier1 5/5 PASS both states +0 destroys (GL, and
+  `MC2_RENDER_BACKEND=vulkan MC2_VK_SHARED_GBUFFER=1`).
+- **Zero-caller status for the next items:** `glInteropSignalToVk/WaitFromVk` live
+  callers remaining = prop + water hybrid arms ONLY (explicit `*_DIRECT_CHAIN=0` debug
+  overrides; deferred pure-dead-code cleanup) + `engine_present_vk.cpp` (item-8 present
+  tail, SURVIVES) + `gl_interop_view.*` itself (item-1). `glInteropViewCreate` /
+  exportable `vkImageResourceCreate` callers = shared scene color/depth (item-5),
+  static shadow (item-6, stays), shadow island dormant `!directChain` branch, present.
+  Terrain + shadow + mech + posts: comments only.
+- **Remaining 8.7 order:** items 5, 2, 1, 7, 8, 3, then item-10 vestigial gates.
+
+
 ## 2026-07-11 — VK-TERRAIN-EDGESTITCH-1: OPEN ITEM WAS ALREADY DONE (finding + de-stale) (LATEST)
 
 The "terrain far-band edge-stitch is GL-owned, port it to VK" open item logged in

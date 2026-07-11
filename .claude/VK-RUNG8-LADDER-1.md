@@ -854,12 +854,47 @@ no tessellation anywhere in the tail.
   item-2 per-island boot-decline (prop/mech/water/post/shadow) is follow-up; item
   4's stated prerequisite (direct-chain promoted to default) is satisfied.
 
-  Remaining 8.7 deletion inventory (ordered, dependency-aware): item 4 per-island
-  GL<->VK semaphore-handoff branches (~600-900 LOC / 9 TUs; UNBLOCKED by 8.7an —
-  the direct-chain gates now default under the umbrella; explicit per-gate `=0`
-  keeps the hybrid path reachable until deletion), item 5 GL-import halves of shared scene
-  resources, item 2 exportable half of `vk_image_resource`, item 1 `gl_interop_view.cpp`
-  whole TU, item 7 terrain CSM copy-mode, item 8 present interop tail (Win32
-  surface/copy-2 SURVIVE), item 3 wantInterop plumbing, ~20 vestigial gates. Item 6
-  (static-shadow import) and the asset-feed readback layer (audit risk #2) stay by
-  decision.
+- 8.7aq - TERRAIN ITEM-4 CONVERSION — **ITEM 4 COMPLETE, ALL ISLANDS**
+  (VK-RUNG8-ITEM4-TERRAIN-DELETE-1, commit `741b9e4f`). Deleted the terrain
+  island's hybrid GL<->VK semaphore-handoff arm — the LAST island with one
+  (mech `a0cba0c4`, 4 post passes `bc923366`, shadow `2b4160ae`, prop/water
+  guard fix `c2c21682` preceded it). The run path lost the `!nativePrefixClear`
+  arm (normal/depth BeginFrame, 3x glInteropSignalToVk, waitSems/signalSems +
+  gpuC/N/D vk2gl plumbing, 3x glInteropWaitFromVk); the submit waits/signals no
+  GL<->VK semaphores (fsC fence orders CPU). init renderpass is unconditionally
+  CLEAR loadOp on color0/normal/depth; the GL-view readiness requirement was
+  dropped (views still fetched = item-5 substrate, no longer consumed here).
+  `MC2_VK_TERRAIN_NATIVE_PREFIX_CLEAR` RETIRED to a parseable no-op +
+  deprecation note (item-9 pattern); its real meaning is the structural
+  predicate `mc2vkgate::terrainNativeFirstOwnerOn()` (= terrain Tier-1 armed),
+  rebound at all 4 consumer sites (gameosmain frame-entry clears + clearGBuffer1
+  skip, propDirectChainRequested, composite direct-chain, postDirectChainUpstreamOn)
+  — PREFIX_CLEAR clear semantics preserved exactly under the umbrella. No
+  `MC2_VK_*_INTEROP` producer retired (CSM array/fullmap/shadow feed surviving
+  native production); checker H5 unchanged. Verification at clean deployed
+  `741b9e4faffb` (dirty=0, lane `mc2-win64-0.4c`, build `build64_island`):
+  strict proof `check_vk_nointerop_log.py --expect-sha 741b9e4faffb` **VERDICT
+  PASS** (`.claude/vk-item4-terrain-proof/`, 11/11 deterministic bookmarks,
+  all islands `used_vulkan>0 forbidden_*=0`, terrain `used_vulkan=1022
+  interop_active=0 vk2gl_sem=0 stage_us=3.3`, present/copy1_skip/gl_handoff_skip/
+  composite/imgui all =900, copy1_blit=0). Explicit-override check
+  (`.claude/vk-item4-terrain-override/`, `MC2_VK_TERRAIN_NATIVE_PREFIX_CLEAR=0`
+  + fallback audit): deprecation note printed, island STILL native
+  (`used_vulkan=1022`, zero strict aborts), audit `gl_fallback=0 edge_stitch=0
+  captured_stitch=3` steady (unchanged vs pre-deletion receipt). GL control
+  gates-off `--verify` pair: 10/11 byte-STABLE, lone `cross_map_view` DRIFT =
+  the documented pre-existing GL pose nondeterminism (same as a0cba0c4's
+  control). Canonical tier1 5/5 PASS both states +0 destroys (GL and
+  `MC2_RENDER_BACKEND=vulkan MC2_VK_SHARED_GBUFFER=1`).
+
+  Remaining 8.7 deletion inventory (ordered, dependency-aware; **item 4 DONE**):
+  item 5 GL-import halves of shared scene resources, item 2 exportable half of
+  `vk_image_resource`, item 1 `gl_interop_view.cpp` whole TU, item 7 terrain CSM
+  copy-mode, item 8 present interop tail (Win32 surface/copy-2 SURVIVE), item 3
+  wantInterop plumbing, item 10 ~20 vestigial gates. NOTE: prop/water hybrid
+  arms still EXIST but are reachable only by explicit `MC2_VK_PROP_DIRECT_CHAIN=0`
+  / `MC2_VK_WATER_DIRECT_CHAIN=0` debug overrides (their pure-dead-code deletion
+  is the deferred low-risk cleanup from the 2026-07-10 guardfix block; they are
+  the last glInteropSignal/Wait callers outside gl_interop_view/present). Item 6
+  (static-shadow import) and the asset-feed readback layer (audit risk #2) stay
+  by decision.
