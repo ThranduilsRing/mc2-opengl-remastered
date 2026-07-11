@@ -25,7 +25,8 @@
 
 #include "vulkan_context.h"
 #include "vk_image_resource.h"
-#include "gl_interop_view.h"
+// VK-RUNG8-ITEM8: the present tail no longer uses gl_interop_view (GL view /
+// copy-1 / GL->VK handoff all deleted).
 #define MC2_VULKAN_SHARED_SCENE_COLOR_IMPL_ISLAND
 #include "vulkan_shared_scene_color.h"
 #include "vk_shared_gbuffer_gate.h"
@@ -100,11 +101,10 @@ struct EnginePresentVk::Impl {
     VkSemaphore     acquireSem = VK_NULL_HANDLE;
     VkFence         inFlight   = VK_NULL_HANDLE;
 
-    // the shared exportable frame image (GL writes it, VK blits it)
+    // the shared VK-only present image (native VK composite writes it, VK blits it
+    // into the swapchain). VK-RUNG8-ITEM8: no GL interop view / copy FBO any more.
     VkImageResource sharedImg{};
-    GlInteropView   glView{};
     uint32_t        imgW = 0, imgH = 0;
-    GLuint          copyFbo = 0;   // GL draw FBO wrapping glView.glTex (copy-1 dst)
 
     // readback (T5 content verification)
     VkBuffer        readbackBuf = VK_NULL_HANDLE;
@@ -194,18 +194,6 @@ bool directFboGateEnabled() {
     return on;
 }
 
-bool presentNoGlImportGateEnabled() {
-    static const bool on = []() {
-        const char* v = getenv("MC2_VK_PRESENT_NO_GL_IMPORT");
-        if (v && v[0] == '1') {
-            plog("MC2_VK_PRESENT_NO_GL_IMPORT=1 -- present image uses a VK-only allocation.");
-            return true;
-        }
-        return false;
-    }();
-    return on;
-}
-
 // VK-TAIL-HOOK-1: opt-in proof seam for native final-tail commands. The hook is
 // behavior-neutral for now; it records a real command-buffer dependency at the
 // exact point future native HUD/ImGui rendering will attach.
@@ -260,10 +248,11 @@ bool objectIdDirectChainGateEnabled() {
 // VK-RUNG8-ITEM8: the present interop tail is deleted. Present gates that only
 // ever SELECTED a now-deleted branch are retired to parseable no-ops (item-9
 // pattern). MC2_VK_PRESENT_SKIP_GL_HANDOFF selected the VK-owned skip of the
-// GL->VK handoff (the handoff itself is gone -> the skip is unconditional).
-// (MC2_VK_PRESENT_NO_GL_IMPORT is retired in the stage-2 exportable-image delete.)
-// MC2_VK_PRESENT_TAIL_HOOK is NOT retired -- it still gates the native HUD/ImGui
-// tail recording. Emitted once from init().
+// GL->VK handoff (the handoff itself is gone -> the skip is unconditional), and
+// MC2_VK_PRESENT_NO_GL_IMPORT selected the VK-only present-image allocation (now
+// the ONLY allocation -- the exportable half is deleted). MC2_VK_PRESENT_TAIL_HOOK
+// is NOT retired -- it still gates the native HUD/ImGui tail recording. Emitted
+// once from init().
 void emitDeprecatedPresentGateNotes() {
     static bool done = false;
     if (done) return;
@@ -272,6 +261,10 @@ void emitDeprecatedPresentGateNotes() {
     if (a && a[0] == '1')
         plog("MC2_VK_PRESENT_SKIP_GL_HANDOFF is deprecated (item-8): the GL->VK "
              "present handoff is deleted; the skip is now unconditional. No-op.");
+    const char* b = getenv("MC2_VK_PRESENT_NO_GL_IMPORT");
+    if (b && b[0] == '1')
+        plog("MC2_VK_PRESENT_NO_GL_IMPORT is deprecated (item-8): the present "
+             "image is always a VK-only allocation. No-op.");
 }
 
 bool presentNativeStrictEnabled() {
@@ -1541,53 +1534,40 @@ uint32_t recordPendingHudColorProof(EnginePresentVk::Impl& s, VkCommandBuffer cb
     return draws;
 }
 
-// Build (or rebuild) the shared exportable interop image + its GlInteropView +
-// the GL copy FBO, sized to (w,h). Destroys any prior instance first.
+// Build (or rebuild) the shared present image, sized to (w,h). Destroys any prior
+// instance first.
+//
+// VK-RUNG8-ITEM8 (stage 2): the present image is VK-ONLY (non-exportable). The GL
+// interop view + the copy-1 GL draw FBO are deleted -- the only producer is the
+// native VK composite, which renders into the image's VK view (sharedImg.view).
+// This removes the last exportable Win32 VkImageResource + glInteropViewCreate in
+// the present tail (Metal-gate: item 2/1 lose their present-tail caller).
 bool buildSharedImage(EnginePresentVk::Impl& s, uint32_t w, uint32_t h, std::string& reason) {
     // Tear down prior.
     destroyImguiFramebuffer(s);
     destroyHudColorFramebuffer(s);
     destroyCompositeFramebuffer(s);
     destroyShadowDebugFramebuffer(s);
-    if (s.copyFbo) { glDeleteFramebuffers(1, &s.copyFbo); s.copyFbo = 0; }
-    if (s.glView.glTex) glInteropViewDestroy(&s.glView);
     if (s.sharedImg.image) vkImageResourceDestroy(&s.sharedImg, s.dev);
 
-    const bool noGlImport = presentNoGlImportGateEnabled();
-
-    // RGBA8. COLOR_ATTACHMENT so native VK composite/HUD/ImGui can render into it
-    // and, unless noGlImport is armed, GL can render/blit into it via an imported FBO.
-    // TRANSFER_SRC so VK can blit it into the swapchain; TRANSFER_DST for the initial
-    // acquire barrier bookkeeping / robustness.
+    // RGBA8. COLOR_ATTACHMENT so the native VK composite/HUD/ImGui render into it;
+    // TRANSFER_SRC so VK can blit it into the swapchain; TRANSFER_DST for the
+    // initial acquire barrier bookkeeping / robustness. Non-exportable: no GL side.
     if (!vkImageResourceCreate(&s.sharedImg, s.dev, s.phys, w, h,
                                VK_FORMAT_R8G8B8A8_UNORM,
                                VK_IMAGE_USAGE_COLOR_ATTACHMENT_BIT |
                                VK_IMAGE_USAGE_TRANSFER_SRC_BIT |
                                VK_IMAGE_USAGE_TRANSFER_DST_BIT,
-                               /*exportable*/ !noGlImport)) {
-        reason = noGlImport ? "vkImageResourceCreate(VK-only RGBA8) failed"
-                            : "vkImageResourceCreate(exportable RGBA8) failed";
-        return false;
-    }
-    if (noGlImport) {
-        s.imgW = w; s.imgH = h;
-        return true;
-    }
-    if (!glInteropViewCreate(&s.glView, &s.sharedImg, s.phys, GL_RGBA8)) {
-        reason = "glInteropViewCreate failed (LUID / ext / GL error)"; return false;
-    }
-    // GL draw FBO wrapping the shared texture (copy-1 destination).
-    glGenFramebuffers(1, &s.copyFbo);
-    glBindFramebuffer(GL_DRAW_FRAMEBUFFER, s.copyFbo);
-    glFramebufferTexture2D(GL_DRAW_FRAMEBUFFER, GL_COLOR_ATTACHMENT0,
-                           GL_TEXTURE_2D, s.glView.glTex, 0);
-    GLenum fbs = glCheckFramebufferStatus(GL_DRAW_FRAMEBUFFER);
-    glBindFramebuffer(GL_DRAW_FRAMEBUFFER, 0);
-    if (fbs != GL_FRAMEBUFFER_COMPLETE) {
-        reason = "copy-1 GL FBO incomplete (status=" + std::to_string((int)fbs) + ")";
+                               /*exportable*/ false)) {
+        reason = "vkImageResourceCreate(VK-only RGBA8) failed";
         return false;
     }
     s.imgW = w; s.imgH = h;
+    static bool loggedOnce = false;
+    if (!loggedOnce) {
+        loggedOnce = true;
+        plog("present image is a VK-only allocation (no GL interop view, item-8).");
+    }
     return true;
 }
 
@@ -1722,30 +1702,28 @@ bool EnginePresentVk::init(VulkanContext& ctx, SDL_Window* glWindow, uint32_t w,
     return true;
 }
 
-// VK-P14b: expose the shared present FBO for endScene's direct-composite bind.
-// Returns 0 (endScene falls back to FBO-0 + copy-1) UNLESS the gate is ON, the
-// present path is up, and the copyFbo exists. Records the decision in directFbo_
-// so the SAME frame's presentGLFrame skips copy-1 iff it handed one out. Called
-// once per frame from gosPostProcess::endScene, before the composite tail.
+// VK-RUNG8-ITEM8: the GL copy FBO is deleted, so this always returns 0 (endScene
+// never GL-renders into the present image). Kept as a stable no-op so endScene's
+// call site and the direct_fbo_requests counter are unchanged; the live arming is
+// presentDirectVkOnly() below.
 unsigned int EnginePresentVk::presentDirectFbo() {
     ++health_.direct_fbo_requests;
-    if (presentNoGlImportGateEnabled() ||
-        !directFboGateEnabled() || !created_ || !impl_ || impl_->copyFbo == 0) {
-        directFbo_ = 0;
-        presentImageVkOwned_ = false;
-        return 0;
-    }
-    directFbo_ = (unsigned int)impl_->copyFbo;
+    // VK-RUNG8-ITEM8 (stage 2): the GL copy FBO wrapping the present image is
+    // deleted. There is no GL FBO to hand endScene any more -- the present image
+    // is written only by the native VK composite (via presentDirectVkOnly). This
+    // always returns 0 so endScene never GL-renders into the present image.
+    directFbo_ = 0;
     presentImageVkOwned_ = false;
-    ++health_.direct_fbo_grants;
-    health_.last_direct_fbo = directFbo_;
-    return directFbo_;
+    return 0;
 }
 
 bool EnginePresentVk::presentDirectVkOnly() {
-    if (!presentNoGlImportGateEnabled() || !directFboGateEnabled() ||
-        !nativeCompositeGateEnabled() || !created_ || !impl_ ||
-        impl_->copyFbo != 0 || impl_->sharedImg.image == VK_NULL_HANDLE) {
+    // Arms the VK-only present image for this frame: endScene skips its own GL
+    // composite bind and the native VK composite (renderNativeCompositeVisual)
+    // renders the present image instead. directFbo_ is a sentinel (1u == "native
+    // present armed"), not a GL FBO name.
+    if (!directFboGateEnabled() || !nativeCompositeGateEnabled() ||
+        !created_ || !impl_ || impl_->sharedImg.image == VK_NULL_HANDLE) {
         directFbo_ = 0;
         presentImageVkOwned_ = false;
         return false;
@@ -2421,8 +2399,6 @@ void EnginePresentVk::destroy() {
         if (s.readbackFence) { vkDestroyFence(s.dev, s.readbackFence, nullptr); s.readbackFence = VK_NULL_HANDLE; }
         if (s.readbackBuf)   { vkDestroyBuffer(s.dev, s.readbackBuf, nullptr); s.readbackBuf = VK_NULL_HANDLE; }
         if (s.readbackMem)   { vkFreeMemory(s.dev, s.readbackMem, nullptr); s.readbackMem = VK_NULL_HANDLE; }
-        if (s.copyFbo)       { glDeleteFramebuffers(1, &s.copyFbo); s.copyFbo = 0; }
-        if (s.glView.glTex)  glInteropViewDestroy(&s.glView);
         if (s.sharedImg.image) vkImageResourceDestroy(&s.sharedImg, s.dev);
         if (s.inFlight)   { vkDestroyFence(s.dev, s.inFlight, nullptr); s.inFlight = VK_NULL_HANDLE; }
         if (s.acquireSem) { vkDestroySemaphore(s.dev, s.acquireSem, nullptr); s.acquireSem = VK_NULL_HANDLE; }
