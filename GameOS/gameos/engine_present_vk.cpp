@@ -121,6 +121,15 @@ struct EnginePresentVk::Impl {
     VkFramebuffer   imguiFramebuffer = VK_NULL_HANDLE;
     ImDrawData*     pendingImguiDrawData = nullptr;
     std::vector<VkHudDraw> pendingHudDraws;
+    // HUD-CANVAS-EXTENT-FIX (2026-07-11): the pixel space the queued HUD vertices
+    // were authored in (gosRenderer width_/height_ == Environment.screenWidth/Height,
+    // the logical game resolution). This is NOT necessarily the present image size
+    // (imgW/imgH == the physical GL drawable): under DPI scaling or a logical-res <
+    // window-drawable configuration they differ, and the VK HUD shader must divide by
+    // the AUTHORING canvas (NDC is resolution-independent) or the HUD renders at the
+    // wrong scale/anchor (the field bug: 1920-authored HUD ÷ 3840 present => half-scale
+    // top-left quadrant). Zero => fall back to imgW/imgH (identity when they match).
+    uint32_t        hudCanvasW = 0, hudCanvasH = 0;
     bool            hudColorVkFailed = false;
     VkRenderPass    hudColorRenderPass = VK_NULL_HANDLE;
     VkFramebuffer   hudColorFramebuffer = VK_NULL_HANDLE;
@@ -1489,7 +1498,11 @@ uint32_t recordPendingHudColorProof(EnginePresentVk::Impl& s, VkCommandBuffer cb
     VkRect2D sc{{0, 0}, {s.imgW, s.imgH}};
     vkCmdSetViewport(cb, 0, 1, &vp);
     vkCmdSetScissor(cb, 0, 1, &sc);
-    const float extent[2] = {(float)s.imgW, (float)s.imgH};
+    // HUD-CANVAS-EXTENT-FIX: divide HUD vertices by the canvas they were authored in
+    // (logical game res), not the present image size (physical drawable). See hudCanvasW.
+    const float hudExW = s.hudCanvasW ? (float)s.hudCanvasW : (float)s.imgW;
+    const float hudExH = s.hudCanvasH ? (float)s.hudCanvasH : (float)s.imgH;
+    const float extent[2] = {hudExW, hudExH};
     vkCmdPushConstants(cb, s.hudColorLayout, VK_SHADER_STAGE_VERTEX_BIT, 0, sizeof(extent), extent);
     VkDeviceSize offset = 0;
     VkPipeline boundPipe = VK_NULL_HANDLE;
@@ -1524,8 +1537,8 @@ uint32_t recordPendingHudColorProof(EnginePresentVk::Impl& s, VkCommandBuffer cb
                 boundBuffer = s.hudTexVertexBuf;
             }
             HudTexPush pc{};
-            pc.extent[0] = (float)s.imgW;
-            pc.extent[1] = (float)s.imgH;
+            pc.extent[0] = hudExW;   // HUD-CANVAS-EXTENT-FIX (see hudColor path above)
+            pc.extent[1] = hudExH;
             pc.texW = td.width;
             pc.texH = td.height;
             pc.textMode = td.textMode;
@@ -1966,11 +1979,14 @@ bool EnginePresentVk::renderImguiVulkanDrawData(ImDrawData* drawData) {
     return true;
 }
 
-bool EnginePresentVk::queueHudVulkanFrame(std::vector<VkHudDraw>&& draws) {
+bool EnginePresentVk::queueHudVulkanFrame(std::vector<VkHudDraw>&& draws,
+                                          uint32_t canvasW, uint32_t canvasH) {
     if (!created_ || !impl_ || !presentTailHookEnabled() || draws.empty())
         return false;
     Impl& s = *impl_;
     s.pendingHudDraws = std::move(draws);
+    s.hudCanvasW = canvasW;   // HUD-CANVAS-EXTENT-FIX: authoring canvas (logical res)
+    s.hudCanvasH = canvasH;
     health_.hud_vk_draws_last = (uint32_t)s.pendingHudDraws.size();
     health_.hud_vk_textured_last = 0;
     health_.hud_vk_serialized_last = 0;

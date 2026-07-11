@@ -101,6 +101,40 @@ def scene_chroma(png: str) -> float:
     return float((mx - mn).mean())
 
 
+def hud_placement_probe(png: str):
+    """HUD-CANVAS-EXTENT-FIX regression probe (2026-07-11).
+
+    The field bug fixed here: the native VK HUD tail divided queued HUD vertices by
+    the PRESENT-IMAGE extent (physical GL drawable) instead of the AUTHORING canvas
+    (logical game res == gosRenderer width_/height_). Under DPI scaling (e.g. a 4K
+    window at 225%: drawable 3840 vs logical ~1707) that renders the whole HUD cluster
+    in the TOP-LEFT quadrant at ~half scale instead of anchored to the bottom edge.
+    Fix (engine_present_vk.cpp recordPendingHudColorProof / gameos_graphics.cpp
+    flushHUDBatch): plumb width_/height_ through queueHudVulkanFrame and push THAT as
+    the shader extent -> NDC mapping is resolution/DPI independent.
+
+    The MC2 HUD chrome is distinctly bright green. This probe counts bright-green HUD
+    pixels in the BOTTOM band vs the TOP-LEFT quadrant. Correct placement => HUD green
+    lives in the bottom band and is ~absent top-left. The old bug => green appears in
+    the top-left quadrant. SOFT signal only (like the chroma check): the bare
+    PrimaryScreen grab can catch the desktop / a non-foreground window, so a null
+    reading is not a hard fail -- eyeball the PNG. Returns (bottom_green, topleft_green).
+    """
+    try:
+        from PIL import Image
+        import numpy as np
+    except Exception:
+        return None, None
+    im = np.asarray(Image.open(png).convert("RGB")).astype(int)
+    h, w, _ = im.shape
+    r, g, b = im[..., 0], im[..., 1], im[..., 2]
+    # Bright HUD green: strong G, weak R/B (the force/status bars + selection brackets).
+    hud_green = (g > 140) & (r < 120) & (b < 120) & (g - r > 60) & (g - b > 60)
+    bottom = hud_green[int(h * 0.80):, :].sum()
+    topleft = hud_green[: int(h * 0.50), : int(w * 0.50)].sum()
+    return int(bottom), int(topleft)
+
+
 def layer_receipts(install: Path):
     """Per-LAYER VK ownership receipts from the debug_state dump.
 
@@ -196,7 +230,22 @@ def main() -> int:
     if used.get("terrain_lod_chunks", 0) <= 0:
         layer_fail.append("terrain: lod_chunk==0 (no VK-owned LOD bands)")
 
+    hud_bottom, hud_topleft = hud_placement_probe(out_png)
     print(f"[vk-field-check] backbuffer scene chroma={chroma:.2f} (min {CHROMA_MIN})")
+    if hud_bottom is not None:
+        # SOFT: HUD chrome should be bottom-anchored, not in the top-left quadrant
+        # (HUD-CANVAS-EXTENT-FIX). Only meaningful when the grab actually caught HUD
+        # green at all; a null reading == desktop/non-foreground capture -> eyeball.
+        if hud_bottom + hud_topleft < 50:
+            print("[vk-field-check] HUD-placement: no HUD green captured "
+                  "(desktop/non-foreground grab?) -> eyeball the PNG.")
+        elif hud_topleft > hud_bottom:
+            print(f"[vk-field-check] WARN HUD-placement: green in TOP-LEFT "
+                  f"({hud_topleft}) > bottom ({hud_bottom}) -- looks like the pre-fix "
+                  "canvas-extent bug. EYEBALL the PNG.")
+        else:
+            print(f"[vk-field-check] HUD-placement OK: bottom green {hud_bottom} "
+                  f">> top-left {hud_topleft} (bottom-anchored).")
     print(f"[vk-field-check] layer used_vulkan={used}")
     print(f"[vk-field-check] layer fallback_reasons={reasons}")
     print(f"[vk-field-check] screenshot={out_png}")

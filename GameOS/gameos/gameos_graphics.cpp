@@ -8147,7 +8147,11 @@ void gosRenderer::flushHUDBatch()
             nativeHudCanSkipGl = nativeHudCanSkipGl && drawRepresentable;
             nativeDraws.push_back(std::move(draw));
         }
-        nativeHudQueued = mc2vk::getOrCreateEnginePresentVk().queueHudVulkanFrame(std::move(nativeDraws));
+        // HUD-CANVAS-EXTENT-FIX: pass the logical canvas the HUD vertices were authored
+        // in (width_/height_ == Environment.screenWidth/Height) so the VK tail maps them
+        // to NDC correctly even when the present image (physical drawable) differs.
+        nativeHudQueued = mc2vk::getOrCreateEnginePresentVk().queueHudVulkanFrame(
+            std::move(nativeDraws), (uint32_t)width_, (uint32_t)height_);
     }
 #endif
 

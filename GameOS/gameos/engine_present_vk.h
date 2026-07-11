@@ -188,7 +188,12 @@ public:
     // present-tail native replay. Until the native renderer is complete, GL HUD
     // replay remains the source of truth; this API proves ownership of the data
     // shape and gives the final consumer an ordering-preserving handoff.
-    bool queueHudVulkanFrame(std::vector<VkHudDraw>&& draws);
+    // canvasW/H: the pixel space the vertices were authored in (logical game res,
+    // gosRenderer width_/height_). The native tail divides by THIS, not the present
+    // image size, so HUD placement is correct at any resolution/DPI (HUD-CANVAS-
+    // EXTENT-FIX). Pass 0 to fall back to the present image extent.
+    bool queueHudVulkanFrame(std::vector<VkHudDraw>&& draws,
+                             uint32_t canvasW = 0, uint32_t canvasH = 0);
 
     // Rung 8.5b first runtime slice: render the Visual-mode postprocess composite
     // from the shared scene color image into the shared present image, then hand
