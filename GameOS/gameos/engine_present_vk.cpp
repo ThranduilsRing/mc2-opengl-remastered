@@ -257,17 +257,21 @@ bool objectIdDirectChainGateEnabled() {
     return on;
 }
 
-bool skipGlPresentHandoffGateEnabled() {
-    static const bool on = []() {
-        const char* v = getenv("MC2_VK_PRESENT_SKIP_GL_HANDOFF");
-        if (v && v[0] == '1') {
-            plog("MC2_VK_PRESENT_SKIP_GL_HANDOFF=1 -- VK-owned present image "
-                 "proof gate ON.");
-            return true;
-        }
-        return false;
-    }();
-    return on;
+// VK-RUNG8-ITEM8: the present interop tail is deleted. Present gates that only
+// ever SELECTED a now-deleted branch are retired to parseable no-ops (item-9
+// pattern). MC2_VK_PRESENT_SKIP_GL_HANDOFF selected the VK-owned skip of the
+// GL->VK handoff (the handoff itself is gone -> the skip is unconditional).
+// (MC2_VK_PRESENT_NO_GL_IMPORT is retired in the stage-2 exportable-image delete.)
+// MC2_VK_PRESENT_TAIL_HOOK is NOT retired -- it still gates the native HUD/ImGui
+// tail recording. Emitted once from init().
+void emitDeprecatedPresentGateNotes() {
+    static bool done = false;
+    if (done) return;
+    done = true;
+    const char* a = getenv("MC2_VK_PRESENT_SKIP_GL_HANDOFF");
+    if (a && a[0] == '1')
+        plog("MC2_VK_PRESENT_SKIP_GL_HANDOFF is deprecated (item-8): the GL->VK "
+             "present handoff is deleted; the skip is now unconditional. No-op.");
 }
 
 bool presentNativeStrictEnabled() {
@@ -1710,6 +1714,7 @@ bool EnginePresentVk::init(VulkanContext& ctx, SDL_Window* glWindow, uint32_t w,
 
     created_ = true;
     health_.created = true;
+    emitDeprecatedPresentGateNotes();
     if (s.ctx) health_.validation_errors = s.ctx->health().validationErrors;
     plog("present path UP: extent=%ux%u images=%zu mode=%s.",
          s.scExtent.width, s.scExtent.height, s.scImages.size(),
@@ -2065,68 +2070,39 @@ bool EnginePresentVk::presentGLFrame(uint32_t glDrawableW, uint32_t glDrawableH,
         }
     }
 
-    // ==== COPY-1 (GL): FBO-0 -> shared exportable GL texture ================
-    // FBO-0 is the window default framebuffer holding the final composited HUD
-    // frame at the swap point. Blit it into the shared texture, flip Y so the VK
-    // blit + present orientation matches the GL backbuffer (GL origin is bottom-
-    // left; we present top-left origin swapchain images).
-    //
-    // VK-P14b (MC2_VK_PRESENT_DIRECT_FBO): when endScene rendered the whole
-    // composite straight INTO the shared image (directFbo_ != 0), the shared
-    // image already IS the finished frame -> SKIP copy-1 entirely. The Y-flip
-    // copy-1 used to do is moved into copy-2 below (dst Y offsets swapped) so the
-    // presented orientation is unchanged. directFbo_ is set/cleared by
-    // presentDirectFbo() earlier this same frame from endScene -> the two sites
-    // always agree on which path ran.
-    const bool copy1Skipped = (directFbo_ != 0);
-    const bool skipGlHandoff =
-        copy1Skipped && presentImageVkOwned_ && skipGlPresentHandoffGateEnabled();
-    if (presentNativeStrictEnabled()) {
-        if (!copy1Skipped) {
-            presentNativeStrictAbort("copy1_would_blit");
+    // ==== VK-RUNG8-ITEM8: present interop tail deleted ======================
+    // The present image is VK-only. Its sole producer is the native VK composite
+    // (renderNativeCompositeVisual, which CPU-waits its submit) plus the native
+    // HUD/ImGui recorded into the tail hook below. There is NO GL copy-1 blit and
+    // NO GL->VK semaphore handoff any more: a GL-scene / VK-present hybrid can no
+    // longer exist (the mirror of item-5's VK-scene / GL-present deletion). If VK
+    // did not produce the present image this frame there is no GL rescue inside
+    // VK present -- copy-1 is gone.
+    if (!presentImageVkOwned_) {
+        // The sole surviving present strict-canary trigger.
+        presentNativeStrictAbort("present_image_not_vk_owned");
+        if (directFboGateEnabled() && nativeCompositeGateEnabled()) {
+            // Native present is armed but the VK composite declined this frame
+            // (warmup, or a view mode the native composite does not cover): skip
+            // present and retry next frame. Do NOT present a stale image and do
+            // NOT permanently drop the session to GL.
+            return true;
         }
-        if (!presentImageVkOwned_) {
-            presentNativeStrictAbort("present_image_not_vk_owned");
-        }
-        if (!skipGlHandoff) {
-            presentNativeStrictAbort("gl_handoff_would_signal");
-        }
+        // Not a native-present config: hand the whole session to GL. On Windows GL
+        // exists; on Metal (no GL) this decline becomes product behaviour per the
+        // METAL-GATE-AUDIT-2 fail-soft redefinition.
+        health_.fallback_reason =
+            "present image not VK-owned (native VK composite required post item-8)";
+        return false;
     }
-    if (!copy1Skipped) {
-        ++health_.copy1_blit_frames;
-        glGetError();
-        glBindFramebuffer(GL_READ_FRAMEBUFFER, 0);
-        glReadBuffer(GL_BACK);
-        glBindFramebuffer(GL_DRAW_FRAMEBUFFER, s.copyFbo);
-        // src (0,0)-(W,H) -> dst (0,H)-(W,0): vertical flip.
-        glBlitFramebuffer(0, 0, (GLint)s.imgW, (GLint)s.imgH,
-                          0, (GLint)s.imgH, (GLint)s.imgW, 0,
-                          GL_COLOR_BUFFER_BIT, GL_NEAREST);
-        glBindFramebuffer(GL_DRAW_FRAMEBUFFER, 0);
-        glBindFramebuffer(GL_READ_FRAMEBUFFER, 0);
-        if (glGetError() != GL_NO_ERROR) {
-            health_.fallback_reason = "copy-1 glBlitFramebuffer error";
-            plog("%s. fail-soft.", health_.fallback_reason.c_str());
-            return false;
-        }
-    } else {
-        ++health_.copy1_skip_frames;
-    }
-
-    // ==== GL -> VK hand-off ================================================
-    // Begin the frame on the interop slot (waits the slot fence so its binary
-    // semaphore is safe to re-signal), then GL signals glToVkSem unless the
-    // explicit proof gate says the present image was produced by VK this frame
-    // and no GL signal is needed for copy-2 to consume it.
-    VkFrameSync fs = vkImageResourceBeginFrame(&s.sharedImg);
-    if (!skipGlHandoff) {
-        glInteropSignalToVk(s.glView, GL_LAYOUT_COLOR_ATTACHMENT_EXT, fs.parity);
-    } else {
-        ++health_.gl_handoff_skip_frames;
-        if (health_.gl_handoff_skip_frames == 1) {
-            plog("VK-owned present image consumed without GL handoff "
-                 "(gl_handoff_skip_frames=1).");
-        }
+    // copy-1 and the GL->VK handoff are structurally gone; the counters remain as
+    // checker trip-wires (copy1_blit stays 0; copy1_skip / gl_handoff_skip count
+    // every presented frame -- the H-check invariant present==skip==gl_handoff_skip
+    // and copy1_blit==0 is preserved without a live GL path).
+    ++health_.copy1_skip_frames;
+    ++health_.gl_handoff_skip_frames;
+    if (health_.gl_handoff_skip_frames == 1) {
+        plog("present image is VK-only; copy-1 + GL->VK handoff deleted (item-8).");
     }
 
     // ==== COPY-2 (VK): blit shared image -> swapchain + present =============
@@ -2214,18 +2190,12 @@ bool EnginePresentVk::presentGLFrame(uint32_t glDrawableW, uint32_t glDrawableH,
     region.srcOffsets[0] = {0, 0, 0};
     region.srcOffsets[1] = {(int32_t)s.imgW, (int32_t)s.imgH, 1};
     region.dstSubresource = {VK_IMAGE_ASPECT_COLOR_BIT, 0, 0, 1};
-    // VK-P14b Y-flip lockstep: when copy-1 ran it already flipped Y (dst had
-    // origin at bottom), so copy-2 blits straight (dst 0->H). When copy-1 was
-    // SKIPPED (endScene rendered into the shared image with GL bottom-left
-    // origin), the flip that copy-1 used to do must happen HERE instead: swap the
-    // dst Y offsets (0,H)->(H,0) so the top-left-origin swapchain image is upright.
-    if (copy1Skipped) {
-        region.dstOffsets[0] = {0, (int32_t)s.scExtent.height, 0};
-        region.dstOffsets[1] = {(int32_t)s.scExtent.width, 0, 1};
-    } else {
-        region.dstOffsets[0] = {0, 0, 0};
-        region.dstOffsets[1] = {(int32_t)s.scExtent.width, (int32_t)s.scExtent.height, 1};
-    }
+    // VK-RUNG8-ITEM8 Y-flip: the present image is always VK-produced with GL
+    // bottom-left origin (the composite renders it un-flipped), so copy-2 always
+    // does the flip that copy-1 used to do: swap the dst Y offsets (0,H)->(H,0)
+    // so the top-left-origin swapchain image is upright.
+    region.dstOffsets[0] = {0, (int32_t)s.scExtent.height, 0};
+    region.dstOffsets[1] = {(int32_t)s.scExtent.width, 0, 1};
     vkCmdBlitImage(s.cbuf,
                    s.sharedImg.image, VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL,
                    scImg,             VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL,
@@ -2247,24 +2217,18 @@ bool EnginePresentVk::presentGLFrame(uint32_t glDrawableW, uint32_t glDrawableH,
             VK_PIPELINE_STAGE_TRANSFER_BIT, VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT);
     vkEndCommandBuffer(s.cbuf);
 
-    // Submit: normally WAIT the GL->VK semaphore (glToVkSem, GL signalled it) at
-    // TRANSFER, AND the acquire semaphore at COLOR_ATTACHMENT_OUTPUT. The
-    // explicit VK-owned proof gate skips the GL wait/signal pair and waits only
-    // on acquire; this is the first measured present path where copy-2 consumes
-    // a VK-written present image without a GL producer handoff.
+    // Submit: wait ONLY on the swapchain acquire semaphore. The present image was
+    // produced by the native VK composite, which already CPU-waited its own submit
+    // (vkQueueWaitIdle) -- so the image data is ready and no GL->VK semaphore is
+    // needed (item-8: the interop handoff is deleted). The tail-hook HUD/ImGui
+    // commands are in THIS command buffer, ordered by the barriers above.
     VkSemaphore imgRenderSem = s.renderSems[imageIndex];
-    VkSemaphore waitSems[2]  = { s.acquireSem, fs.signal };
-    const VkPipelineStageFlags glReadyStages = tailHook
-        ? (VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT | VK_PIPELINE_STAGE_TRANSFER_BIT)
-        : VK_PIPELINE_STAGE_TRANSFER_BIT;
-    VkPipelineStageFlags waitStages[2] = {
-        VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT,
-        glReadyStages,
-    };
+    VkSemaphore waitSem      = s.acquireSem;
+    VkPipelineStageFlags waitStage = VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT;
     VkSubmitInfo si{VK_STRUCTURE_TYPE_SUBMIT_INFO};
-    si.waitSemaphoreCount   = skipGlHandoff ? 1u : 2u;
-    si.pWaitSemaphores      = waitSems;
-    si.pWaitDstStageMask    = waitStages;
+    si.waitSemaphoreCount   = 1;
+    si.pWaitSemaphores      = &waitSem;
+    si.pWaitDstStageMask    = &waitStage;
     si.commandBufferCount   = 1;
     si.pCommandBuffers      = &s.cbuf;
     si.signalSemaphoreCount = 1;
@@ -2274,14 +2238,6 @@ bool EnginePresentVk::presentGLFrame(uint32_t glDrawableW, uint32_t glDrawableH,
         health_.fallback_reason = "vkQueueSubmit failed (" + std::to_string((int)r) + ")";
         plog("%s. fail-soft.", health_.fallback_reason.c_str());
         return false;
-    }
-    // The interop slot fence (fs.fence) guards binary-semaphore reuse two frames
-    // later (vkImageResourceBeginFrame waits it). Our real submit already retired
-    // the slot's work; signal fs.fence with a tiny empty submit chained after it
-    // so the slot is correctly marked retired without a second heavy fence.
-    {
-        VkSubmitInfo empty{VK_STRUCTURE_TYPE_SUBMIT_INFO};
-        vkQueueSubmit(s.gfxQ, 1, &empty, fs.fence);
     }
 
     VkPresentInfoKHR pi{VK_STRUCTURE_TYPE_PRESENT_INFO_KHR};
@@ -2311,7 +2267,7 @@ bool EnginePresentVk::presentGLFrame(uint32_t glDrawableW, uint32_t glDrawableH,
     }
 
     // ==== T5 content verification: read back the shared image ==============
-    // Proves copy-1 populated the shared image with REAL, CHANGING frame content.
+    // Proves the VK composite populated the shared image with REAL, CHANGING content.
     // Cheap + throttled: only when requested (T5 window), fully synchronous.
     if (verifyReadback) {
         verifyReadbackContent();
