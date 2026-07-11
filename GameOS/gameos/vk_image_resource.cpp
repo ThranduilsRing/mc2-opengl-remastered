@@ -1,6 +1,8 @@
 // VK-INTEROP-BRIDGE-1 / T1 -- VkImageResource implementation.
 // Transliterated from tools/vk_gl_interop_spike/main.cpp export sequence (395-440),
-// semaphore export (446-467), LUID unused here (that lives in the GL adapter). GL-free.
+// LUID unused here (that lives in the GL adapter). GL-free. ITEM-2 deleted the semaphore
+// Win32 export (446-467): the semaphores are plain binary now; only the IMAGE memory is
+// exported (item 6's static-shadow GL import).
 
 #include "vk_image_resource.h"
 
@@ -181,46 +183,21 @@ bool vkImageResourceCreate(VkImageResource* r, VkDevice device, VkPhysicalDevice
     }
 
     // ---- double-buffered binary semaphore pairs + per-frame fences (blocker #4) ----
-    const VkExternalSemaphoreHandleTypeFlagBits semHandleType =
-        VK_EXTERNAL_SEMAPHORE_HANDLE_TYPE_OPAQUE_WIN32_BIT;
-    PFN_vkGetSemaphoreWin32HandleKHR pGetSemWin32 = nullptr;
-    if (exportable) {
-        pGetSemWin32 = (PFN_vkGetSemaphoreWin32HandleKHR)
-            vkGetDeviceProcAddr(device, "vkGetSemaphoreWin32HandleKHR");
-        if (!pGetSemWin32) {
-            ilog("vkGetSemaphoreWin32HandleKHR entry point null");
-            vkImageResourceDestroy(r, device); return false;
-        }
-    }
-    // Helper: create one (optionally exportable) binary semaphore + export its Win32
-    // handle. Same sequence for both directions (GL->VK glToVkSem and VK->GL vkToGlSem).
-    auto makeSem = [&](VkSemaphore* sem, HANDLE* win32, const char* tag, int i) -> bool {
-        VkExportSemaphoreCreateInfo esci{VK_STRUCTURE_TYPE_EXPORT_SEMAPHORE_CREATE_INFO};
-        esci.handleTypes = semHandleType;
+    // ITEM-2: plain (NON-exported) binary semaphores. Their Win32 export half was the
+    // exportable machinery only the deleted GL<->VK signal/wait handoff imported; item 6
+    // needs the exportable IMAGE only. Kept as the shared all-island beginFrame ABI.
+    auto makeSem = [&](VkSemaphore* sem, const char* tag, int i) -> bool {
         VkSemaphoreCreateInfo sci{VK_STRUCTURE_TYPE_SEMAPHORE_CREATE_INFO};
-        if (exportable) sci.pNext = &esci;
         if (vkCreateSemaphore(device, &sci, nullptr, sem) != VK_SUCCESS) {
             ilog("vkCreateSemaphore(%s)[%d] failed", tag, i); return false;
-        }
-        if (exportable) {
-            VkSemaphoreGetWin32HandleInfoKHR gi{
-                VK_STRUCTURE_TYPE_SEMAPHORE_GET_WIN32_HANDLE_INFO_KHR};
-            gi.semaphore = *sem;
-            gi.handleType = semHandleType;
-            if (pGetSemWin32(device, &gi, win32) != VK_SUCCESS) {
-                ilog("vkGetSemaphoreWin32HandleKHR(%s)[%d] failed", tag, i); return false;
-            }
         }
         return true;
     };
     for (int i = 0; i < 2; ++i) {
-        // GL->VK direction (glToVkSem).
-        if (!makeSem(&r->glToVkSem[i], &r->glToVkSemWin32[i], "glToVk", i)) {
+        if (!makeSem(&r->glToVkSem[i], "glToVk", i)) {
             vkImageResourceDestroy(r, device); return false;
         }
-        // P1.5: VK->GL direction (vkToGlSem). The VK submit signals it, GL waits it,
-        // replacing the CPU fence wait with a GPU semaphore hand-off.
-        if (!makeSem(&r->vkToGlSem[i], &r->vkToGlSemWin32[i], "vkToGl", i)) {
+        if (!makeSem(&r->vkToGlSem[i], "vkToGl", i)) {
             vkImageResourceDestroy(r, device); return false;
         }
         // Fence starts SIGNALED so the first vkImageResourceBeginFrame wait returns
@@ -242,14 +219,12 @@ void vkImageResourceDestroy(VkImageResource* r, VkDevice device) {
         if (r->frameFence[i])     vkDestroyFence(device, r->frameFence[i], nullptr);
         if (r->glToVkSem[i])      vkDestroySemaphore(device, r->glToVkSem[i], nullptr);
         if (r->vkToGlSem[i])      vkDestroySemaphore(device, r->vkToGlSem[i], nullptr);
-        // Win32 handle ownership: this resource owns its exported handles; the GL
-        // importer duplicated them (spike 482-483). Close ours here. No double-close.
-        if (r->glToVkSemWin32[i]) CloseHandle(r->glToVkSemWin32[i]);
-        if (r->vkToGlSemWin32[i]) CloseHandle(r->vkToGlSemWin32[i]);
     }
     if (r->view)     vkDestroyImageView(device, r->view, nullptr);
     if (r->image)    vkDestroyImage(device, r->image, nullptr);
     if (r->memory)   vkFreeMemory(device, r->memory, nullptr);
+    // Win32 handle ownership: this resource owns its exported MEMORY handle; the GL
+    // importer duplicated it (spike 482-483). Close ours here. No double-close.
     if (r->memWin32) CloseHandle(r->memWin32);
     *r = VkImageResource{};
 }

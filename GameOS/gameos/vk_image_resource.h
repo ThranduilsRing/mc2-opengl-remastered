@@ -40,16 +40,18 @@ struct VkImageResource {
     // [parity] is reused two frames later, frameFence[parity] is waited so the prior
     // submit retired and the binary semaphores are un-signalled + safe to re-signal.
     //
-    // glToVkSem == the GL->VK direction: GL signals it, the VK submit WAITS it.
-    VkSemaphore       glToVkSem[2]    = {VK_NULL_HANDLE, VK_NULL_HANDLE};  // GL->VK (glToVk)
-    // P1.5: the SECOND, VK->GL-direction exportable semaphore slot. The VK submit
-    // SIGNALS it; GL (or a future VK consumer) WAITS it -- a GPU semaphore hand-off,
-    // NOT a CPU fence wait. This is the back-channel the VK<->VK chain reuses verbatim
-    // (a VK consumer waits vkToGlSem instead of GL). Valid/exported only if exportable.
-    VkSemaphore       vkToGlSem[2]      = {VK_NULL_HANDLE, VK_NULL_HANDLE};  // VK->GL
+    // ITEM-2 (VK-RUNG8-ITEM2): these are now plain (NON-exported) binary semaphores.
+    // Their Win32 export half (glToVkSemWin32/vkToGlSemWin32 + vkGetSemaphoreWin32HandleKHR)
+    // was the exportable machinery that only the deleted GL<->VK signal/wait handoff
+    // needed (glInteropView imported them); item 6's static-shadow import needs the
+    // exportable IMAGE only. The binary semaphores + VkFrameSync stay as the shared
+    // all-island resource ABI (returned by beginFrame; the direct-chain islands read only
+    // fence+parity, nobody signals/waits these semaphores anymore).
+    //
+    // glToVkSem == the GL->VK direction slot; vkToGlSem == the VK->GL direction slot.
+    VkSemaphore       glToVkSem[2]    = {VK_NULL_HANDLE, VK_NULL_HANDLE};
+    VkSemaphore       vkToGlSem[2]      = {VK_NULL_HANDLE, VK_NULL_HANDLE};
     VkFence           frameFence[2]   = {VK_NULL_HANDLE, VK_NULL_HANDLE};
-    HANDLE            glToVkSemWin32[2] = {nullptr, nullptr};              // GL->VK sem, if exportable
-    HANDLE            vkToGlSemWin32[2] = {nullptr, nullptr};              // VK->GL sem, if exportable
     uint32_t          frameParity     = 0;        // ^=1 each frame; picks [frameParity]
 
     // Cached device handle so vkImageResourceBeginFrame (which takes only the
@@ -57,24 +59,21 @@ struct VkImageResource {
     VkDevice          device = VK_NULL_HANDLE;
 };
 
-// VK<->VK chaining sync (meta D). Begins a frame on the [parity] slot: waits +
-// resets that slot's fence so its binary semaphore is safe to re-signal, and hands
-// back the fence to attach to the frame's submit + the semaphore the producer
-// signals + the parity the GL side must mirror. Producer signals `signal`; the next
-// VK consumer waits it via submit-wait / barrier -- NO GL, NO CPU stall between VK
-// passes. This is the primitive the VK<->VK-chain slice reuses verbatim.
-// `signal` = the GL->VK semaphore (glToVkSem) the VK submit WAITS (glInteropSignalToVk signalled it).
-// `vk2gl`  = the VK->GL semaphore the VK submit SIGNALS; GL (or a future VK consumer)
-//            waits it -- a GPU hand-off replacing the CPU fence wait (P1.5). VK_NULL_HANDLE
-//            when the resource is non-exportable (fence-only fallback path).
+// Frame sync handed back by beginFrame. Waits + resets the [parity] slot's fence so its
+// binary semaphores are safe to re-signal, and returns the fence + slot semaphores +
+// parity. The direct-chain islands read only `fence` (CPU serialization) and `parity`;
+// `signal`/`vk2gl` are the slot's binary semaphores and are no longer signalled/waited by
+// anyone (item 1 deleted the GL<->VK signal/wait handoff; item 8 deleted the present one).
+// They remain in the struct as the shared all-island ABI.
 struct VkFrameSync { VkFence fence; VkSemaphore signal; VkSemaphore vk2gl; uint32_t parity; };
 
 // Raw-allocated exportable image, transliterated from tools/vk_gl_interop_spike/
 // main.cpp:395-440 (NOT vmaCreateImage). When exportable=true the image gets a
-// VkExternalMemoryImageCreateInfo{OPAQUE_WIN32}, a dedicated + exported allocation,
-// and exported Win32 handles for the memory and both glToVkSem[] semaphores. Returns
-// false fail-soft on any error (nothing to clean up on the caller side; the partial
-// resource is torn down internally before returning false).
+// VkExternalMemoryImageCreateInfo{OPAQUE_WIN32}, a dedicated + exported allocation, and
+// an exported Win32 handle for the MEMORY (item 6's GL image import). The semaphores are
+// always plain binary (item 2 deleted their Win32 export). Returns false fail-soft on any
+// error (nothing to clean up on the caller side; the partial resource is torn down
+// internally before returning false).
 bool vkImageResourceCreate(VkImageResource* r, VkDevice device, VkPhysicalDevice phys,
                            uint32_t w, uint32_t h, VkFormat format,
                            VkImageUsageFlags usage, bool exportable);
