@@ -1,6 +1,68 @@
 # VK-ARC-STATE — current state block (update every session)
 
-## 2026-07-10 — VK-UMBRELLA-DIRECT-CHAIN-DEFAULT-1: item-4 prerequisite DONE (LATEST)
+## 2026-07-10 — VK-RUNG8-ITEM4-INTEROP-DELETE-1: item-4 SPLIT (mech + 4 post passes done) (LATEST)
+
+Ladder rung 8.7ao. First interop-handoff BRANCH deletion of item-4 (METAL-GATE-AUDIT-2
+8.7 inventory **row 4** — the per-island GL↔VK semaphore-handoff branches). Landed the
+FULLY-VERIFIED chunk: the **mech geometry island** + the **4 native post passes**
+(fog / SSAO / screenfx / HZB). Commits `a0cba0c4` (mech) + `bc923366` (post). ~161 LOC
+net removed (351 del / 190 ins incl. comments), deployed `bc923366ef61` lane
+`mc2-win64-0.4c`.
+
+Per TU the hybrid (`!directChain`) arm was deleted: `glInteropSignalToVk`/
+`glInteropWaitFromVk` paths, the `fsN`/`fsD`(/`fsS`) `vkImageResourceBeginFrame`, the
+`gpu*` vk2gl signal plumbing, the `waitSems`/`signalSems` machinery, and the handoff-mode
+fence. Mech submit now waits/signals nothing (fence orders CPU); each post pass submits on
+`cbuf[0]`, waits/signals nothing, CPU-drains via `vkQueueWaitIdle`. init dropped the
+`!directChain` GL-view readiness requirement (shared `VkImageResource`s still required; the
+GL interop views = item-5 substrate still fetched, no longer consumed). **5 gates retired**
+to parseable no-ops with one-line deprecation notes (item-9 pattern):
+`MC2_VK_MECH_DIRECT_CHAIN`, `MC2_VK_POST_{FOG,SSAO,SCREENFX,HZB}_DIRECT_CHAIN`. The 4 post
+resolvers now return `postDirectChainUpstreamOn()` only, and each post pass **declines**
+(→ GL pass) when upstream is not direct-chain (item-2 native-or-decline). Mech got the
+terrain-style **item-2 boot-decline** (session-latch on PERMANENT init failure past
+readiness gates, ONE receipt; transient keeps fail-hard-retry). Pure-GL path untouched.
+
+Verification at `bc923366 dirty=0`: strict no-interop proof **VERDICT PASS**
+(`check_vk_nointerop_log.py --expect-sha bc923366`, minimal umbrella env via
+`--minimal-promotion`, `.claude/vk-item4-proof-minimal-r2/`): all H1 forbidden interop
+strings 0, all island `forbidden_*`/`depthin_*` 0, present_frames=900, terrain stage_us=9.7,
+provenance dirty:false + sha match. Umbrella receipts: mech `used_vulkan=957 fallback=""`,
+fog/ssao/screenfx/hzb `attempted==used_vulkan`, `direct_chain=1 used_interop=0 fallback=""`.
+Override: `MC2_VK_POST_HZB_DIRECT_CHAIN=0` → deprecation note + HZB stays
+`direct_chain=1 used_interop=0`, **zero** strict aborts (`.claude/vk-item4-override-hzb/`).
+GL control (`--verify`, gates-off): 10/11 bookmarks byte-STABLE; the lone `cross_map_view`
+DRIFT is a pre-existing GL pose nondeterminism unreachable by the VK-island edits. Canonical
+tier1 **5/5 PASS both states** (GL `2026-07-10T20-37-43`, VK umbrella `2026-07-10T20-41-27`,
++0 destroys). First strict-proof attempt hit the known intermittent swapchain
+`NATIVE_WINDOW_IN_USE` flake (present_frames=0, islands still native); cleared on retry.
+
+★★ BLOCKER FOUND (report to arc owner) — **prop + water native co-write is DISABLED under
+the umbrella/direct-chain.** The resource-strict commit `04a15aec` changed prop/water
+`useInterop = !directChain` (false in direct-chain) but did NOT update their run-entry
+guards (`vulkan_color_prop_island.cpp:1159` / `vulkan_water_island.cpp:982`
+`if (... || !s->useInterop) return 0;`). So in the strict stack **prop shows
+`used_vulkan=0`** and GL silently renders props into the VK-owned GBuffer (mc2_01 has
+buildings; water=0 may also be no-water-in-view). Mech renders (`used_vulkan=957`) because
+its guard has no `useInterop` check; terrain renders via the prefix-clear flow. The strict
+no-interop proof still passes because GL prop/water draws aren't interop calls. **Item-4
+for prop + water is BLOCKED**: deleting their hybrid arm removes the ONLY path that renders
+them natively; enabling direct-chain there = a guard fix + a VK-vs-GL prop/water pixel
+parity proof (its own slice). Also found: `waterDirectChainRequested()` consumes
+`MC2_VK_MECH_DIRECT_CHAIN`, so an explicit `MC2_VK_MECH_DIRECT_CHAIN=0` cascades the
+still-hybrid water island into its handoff path and trips the strict canary (proof of the
+coupling; disappears once water's hybrid is deleted).
+
+Remaining item-4 order (next sessions): (1) **prop+water guard fix + parity proof** →
+delete their hybrid (unblocks their gates + reconciles `waterDirectChainRequested`);
+(2) **terrain** hybrid submit arm (renders natively but the prefix-clear gate is
+load-bearing + interacts with the prop/water GL half-state — delicate); (3) **shadow**
+(`vulkan_shadow_island_live.cpp`, structurally different — exportable-resource creation
+`!directChain` branch touches item-5, dual `useInterop`/`directChain`). Then items 5/2/1
+(`gl_interop_view.cpp` family). No `MC2_VK_*_INTEROP` producer became a no-op in this chunk
+(they feed the deferred shadow/terrain-CSM path), so the checker H5 rule was left unchanged.
+
+## 2026-07-10 — VK-UMBRELLA-DIRECT-CHAIN-DEFAULT-1: item-4 prerequisite DONE
 
 Ladder rung 8.7an. The `MC2_VK_SHARED_GBUFFER=1` umbrella now arms the 10
 `*_DIRECT_CHAIN` gates BY DEFAULT — umbrella-ON MEANS the strict/direct-chain

@@ -43,6 +43,13 @@ no tessellation anywhere in the tail.
 
 ## Status
 
+- 8.7ao — ITEM-4 SPLIT (mech + 4 post passes): DONE. Deleted the per-island GL↔VK
+  semaphore-handoff (hybrid) branches in the mech island + the 4 native post passes
+  (fog/SSAO/screenfx/HZB); retired their 5 `*_DIRECT_CHAIN` gates to deprecation no-ops;
+  wired mech boot-decline + post native-or-decline. Commits `a0cba0c4`+`bc923366`, strict
+  proof PASS at `bc923366 dirty=0`. See VK-ARC-STATE.md top block. ★BLOCKER: prop+water
+  native co-write is disabled by a latent `!useInterop` run-guard (`04a15aec`); their
+  item-4 + terrain + shadow are DEFERRED with the order recorded in VK-ARC-STATE.md.
 - 8.1 — SHIPPED; see VK-ARC-STATE.md "RUNG 8.1" section.
 - 8.2 — SHIPPED (VK-POST-SSAO-NATIVE-1, commits 658107ae/786f6999, gate
   `MC2_VK_POST_SSAO`); see VK-ARC-STATE.md "RUNG 8.2" section. Old SSAO island
