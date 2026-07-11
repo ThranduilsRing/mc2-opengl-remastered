@@ -2059,20 +2059,25 @@ bool EnginePresentVk::presentGLFrame(uint32_t glDrawableW, uint32_t glDrawableH,
     if (!presentImageVkOwned_) {
         // The sole surviving present strict-canary trigger.
         presentNativeStrictAbort("present_image_not_vk_owned");
-        if (directFboGateEnabled() && nativeCompositeGateEnabled()) {
-            // Native present is armed but the VK composite declined this frame
-            // (warmup, or a view mode the native composite does not cover): skip
-            // present and retry next frame. Do NOT present a stale image and do
-            // NOT permanently drop the session to GL.
-            return true;
+        // Native present is armed but the VK composite did not produce the image
+        // this frame. Tolerate a bounded warmup/hiccup streak (skip + retry, no
+        // stale present, no GL drop); once the streak exceeds the budget this
+        // config plainly cannot produce a VK present image (native composite
+        // permanently declined, or the gates only look armed) -> fail-soft the
+        // whole session to GL. copy-1 no longer rescues a non-VK-owned frame.
+        static const unsigned int kNotOwnedBudget = 240u;   // ~a few seconds @60fps
+        const bool armed = directFboGateEnabled() && nativeCompositeGateEnabled();
+        if (armed && notOwnedStreak_ < kNotOwnedBudget) {
+            ++notOwnedStreak_;
+            return true;   // transient: retry next frame
         }
-        // Not a native-present config: hand the whole session to GL. On Windows GL
-        // exists; on Metal (no GL) this decline becomes product behaviour per the
-        // METAL-GATE-AUDIT-2 fail-soft redefinition.
+        // On Windows GL exists; on Metal (no GL) this decline becomes product
+        // behaviour per the METAL-GATE-AUDIT-2 fail-soft redefinition.
         health_.fallback_reason =
             "present image not VK-owned (native VK composite required post item-8)";
         return false;
     }
+    notOwnedStreak_ = 0;   // VK produced the present image this frame
     // copy-1 and the GL->VK handoff are structurally gone; the counters remain as
     // checker trip-wires (copy1_blit stays 0; copy1_skip / gl_handoff_skip count
     // every presented frame -- the H-check invariant present==skip==gl_handoff_skip

@@ -237,6 +237,12 @@ private:
     // True only when a native VK path wrote the shared present image after the
     // current frame armed directFbo_. Cleared at each presentDirectFbo() grant.
     bool presentImageVkOwned_ = false;
+    // VK-RUNG8-ITEM8: consecutive presented-frame attempts where the present image
+    // was NOT VK-owned (native composite declined). Reset to 0 on any owned frame.
+    // Bounded warmup budget: while armed and under budget we skip+retry (no stale
+    // present, no GL drop); past the budget the config plainly cannot produce a VK
+    // present image -> fail-soft the session to GL (copy-1 no longer rescues it).
+    unsigned int notOwnedStreak_ = 0;
     // P13b: the existing visible GL game window we present onto via its HWND.
     // BORROWED (owned by gos_render / g_sdl_window) -- never destroyed here.
     SDL_Window* glWindow_ = nullptr;
