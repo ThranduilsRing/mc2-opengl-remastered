@@ -116,16 +116,18 @@ bool mechGateRequested() {
     return state == 1;
 }
 
-bool mechDirectChainRequested() {
-    static int state = -1;
-    if (state == -1) {
-        const bool mechGate = mechGateRequested();
-        const bool propDirect = mc2vkgate::directChainGate("MC2_VK_PROP_DIRECT_CHAIN");
-        const bool mechDirect = mc2vkgate::directChainGate("MC2_VK_MECH_DIRECT_CHAIN");
-        state = (mechGate && propDirect && mechDirect) ? 1 : 0;
-    }
-    return state == 1;
-}
+// VK-RUNG8 item-4: MC2_VK_MECH_DIRECT_CHAIN is RETIRED. The GL<->VK semaphore-handoff
+// (hybrid) co-write path was deleted; the mech island now ALWAYS renders direct-chain
+// (terrain left the shared GBuffer Vulkan-owned). The env name is still parsed + noted
+// deprecated below so old command lines don't hit unknown-var behavior; explicitly
+// setting it just prints a one-line deprecation note. This predicate now == the mech gate.
+[[maybe_unused]] static const bool s_mechDirectChainDeprecated = [] {
+    if (mc2vkgate::envTriState("MC2_VK_MECH_DIRECT_CHAIN") != -1)
+        std::fprintf(stderr, "[VK_MECH] MC2_VK_MECH_DIRECT_CHAIN is deprecated and now a "
+                             "no-op: mech Tier-1 co-write is always direct-chain "
+                             "(GL/VK semaphore handoff deleted).\n");
+    return true;
+}();
 
 // MC2_VK_MECH_MATERIAL (follow-on): copy-once single 2D albedo for the covered
 // stock mech type. DEFERRED general case = per-frame slot0 handle -> VK-descriptor
@@ -291,6 +293,16 @@ struct MechIsland {
 };
 
 MechIsland* g_island = nullptr;
+
+// VK-RUNG8 item-2 (boot-level native-or-decline), mirrors the terrain island: a
+// PERMANENT init failure (spv/pipeline/renderpass/buffer creation past the context +
+// shared-GBuffer readiness gates) declines the mech island for the SESSION with ONE
+// receipt line (GL owns mechs from frame 0) instead of re-newing + re-init'ing every
+// frame. A TRANSIENT readiness gate (VK context / shared GBuffer not born yet at boot)
+// keeps the item-9 fail-hard-with-retry (GL draws this frame, retry next). g_mech-
+// InitReachedBuild flips to 1 once init passes the readiness gates.
+static bool g_mechSessionDeclined  = false;
+static int  g_mechInitReachedBuild = 0;
 
 bool make_buffer(MechIsland* s, VkDeviceSize size, VkBufferUsageFlags usage,
                  VkBuffer* buf, VmaAllocation* alloc, bool hostVisible) {
@@ -542,6 +554,7 @@ void destroy_island(MechIsland* s) {
 bool init_island(MechIsland* s, int w, int h) {
     s->w = w; s->h = h;
     ++g_health.attempted;
+    g_mechInitReachedBuild = 0;  // reset; flips to 1 after readiness gates pass
 
     if (!mc2vk::ensureEngineVulkanContextForInterop()) { setFallback("engine_vk_context_birth_failed"); return false; }
     mc2vk::VulkanContext& ctx = mc2vk::getOrCreateEngineVulkanContext();
@@ -571,15 +584,19 @@ bool init_island(MechIsland* s, int w, int h) {
     s->colorView  = mc2SharedSceneColorGetGlView(MC2_SHARED_SCENE_COLOR0);
     s->normalView = mc2SharedSceneColorGetGlView(MC2_SHARED_SCENE_NORMAL);
     s->depthView  = mc2SharedSceneDepthGetGlView();
-    const bool directChain = mechDirectChainRequested();
-    if (!s->colorRes || !s->normalRes || !s->depthRes ||
-        (!directChain && (!s->colorView || !s->normalView || !s->depthView))) {
+    if (!s->colorRes || !s->normalRes || !s->depthRes) {
         setFallback("shared_gbuffer_not_ready"); return false;
     }
-    g_health.interopActive = directChain ? 0 : 1;
-    g_health.vk2glSemActive =
-        (!directChain && s->colorView &&
-         reinterpret_cast<GlInteropView*>(s->colorView)->vkToGlImported) ? 1 : 0;
+    // VK-RUNG8 item-4: direct-chain only. The shared GBuffer is left Vulkan-owned by the
+    // terrain first-owner, so the mech island issues no GL<->VK semaphore handoff and has
+    // no interop/vk2gl semaphore state. The GL interop views fetched above remain the
+    // item-5 shared-scene GL-import substrate (not deleted this session); they are no
+    // longer consumed by the mech co-write.
+    g_health.interopActive = 0;
+    g_health.vk2glSemActive = 0;
+    // Readiness gates (context + shared GBuffer) passed: any failure past this point is a
+    // PERMANENT build failure -> the island declines for the session (item-2).
+    g_mechInitReachedBuild = 1;
 
     // Instance + bone + UBO buffers.
     if (!ensure_buf_capacity(s, &s->instBuf, &s->instAlloc, &s->instCap, 256 * 1024)) return false;
@@ -899,14 +916,33 @@ extern "C" int mc2_vk_mech_island_run(int w, int h) {
         }
     }
 
+    // Item-2 boot-level native-or-decline: a prior PERMANENT init failure declined this
+    // island for the whole session -> GL owns mechs, no per-frame re-init churn.
+    if (g_mechSessionDeclined) return 0;
     if (g_island && (g_island->w != w || g_island->h != h)) {
         destroy_island(g_island); delete g_island; g_island = nullptr;
     }
     if (!g_island) {
         g_island = new MechIsland();
         if (!init_island(g_island, w, h)) {
-            vlog("init failed (%s) — GL fallback.", g_health.fallbackReason);
+            const bool permanent = (g_mechInitReachedBuild != 0);
             destroy_island(g_island); delete g_island; g_island = nullptr;
+            if (permanent) {
+                // Build-phase failure won't recover this session: latch decline + ONE
+                // receipt line (vs. re-init'ing every frame). GL renders mechs from frame 0.
+                g_mechSessionDeclined = true;
+                vlog("[VK_MECH_ISLAND] boot-level decline: permanent init failure (%s) -- "
+                     "GL owns mechs for this session (no per-frame retry).",
+                     g_health.fallbackReason);
+            } else {
+                // Transient readiness gate (VK context / shared GBuffer not born yet):
+                // keep item-9 fail-hard-with-retry -- GL draws this frame, retry next.
+                static bool s_transientLogged = false;
+                if (!s_transientLogged) {
+                    vlog("init not ready (%s) — GL fallback (will retry).", g_health.fallbackReason);
+                    s_transientLogged = true;
+                }
+            }
             return 0;
         }
     }
@@ -1007,25 +1043,14 @@ extern "C" int mc2_vk_mech_island_run(int w, int h) {
       if (vmaMapMemory(s->allocator, s->uboAlloc, &p) == VK_SUCCESS) { std::memcpy(p, &u, sizeof(u)); vmaUnmapMemory(s->allocator, s->uboAlloc); } }
     g_health.stageUs = usSince(tStage0);
 
-    // ---- Shared-GBuffer co-write. ----
-    VkImageResource* colorRes  = reinterpret_cast<VkImageResource*>(s->colorRes);
-    VkImageResource* normalRes = reinterpret_cast<VkImageResource*>(s->normalRes);
-    VkImageResource* depthRes  = reinterpret_cast<VkImageResource*>(s->depthRes);
-    GlInteropView*   colorView  = reinterpret_cast<GlInteropView*>(s->colorView);
-    GlInteropView*   normalView = reinterpret_cast<GlInteropView*>(s->normalView);
-    GlInteropView*   depthView  = reinterpret_cast<GlInteropView*>(s->depthView);
+    // ---- Shared-GBuffer co-write (VK-RUNG8 item-4: direct-chain only). Terrain left
+    // the shared color/normal/depth Vulkan-owned in their attachment layouts, so there
+    // is NO GL<->VK semaphore handoff — begin a frame only on the color parity and rely
+    // on the submit fence below for CPU ordering before the next island. ----
+    VkImageResource* colorRes = reinterpret_cast<VkImageResource*>(s->colorRes);
 
-    const bool directChain = mechDirectChainRequested();
     VkFrameSync fsC = vkImageResourceBeginFrame(colorRes);
-    VkFrameSync fsN = directChain ? VkFrameSync{} : vkImageResourceBeginFrame(normalRes);
-    VkFrameSync fsD = directChain ? VkFrameSync{} : vkImageResourceBeginFrame(depthRes);
     VkCommandBuffer cb = s->cbuf[fsC.parity & 1u];
-
-    if (!directChain) {
-        glInteropSignalToVk(*colorView,  GL_LAYOUT_COLOR_ATTACHMENT_EXT,         fsC.parity);
-        glInteropSignalToVk(*normalView, GL_LAYOUT_COLOR_ATTACHMENT_EXT,         fsN.parity);
-        glInteropSignalToVk(*depthView,  GL_LAYOUT_DEPTH_STENCIL_ATTACHMENT_EXT, fsD.parity);
-    }
 
     const clk::time_point tRender0 = clk::now();
     ZoneNamedN(zMechRec, "VK-mech-record-submit", true);   // VK-FLIP-FIELD-REPORT-1: CPU record+queue-submit (to fn return)
@@ -1086,39 +1111,13 @@ extern "C" int mc2_vk_mech_island_run(int w, int h) {
     s->gpuTimer.write(cb, 2);
     if (vkEndCommandBuffer(cb) != VK_SUCCESS) { setFallback("record_failed"); s->disabled = true; return 0; }
 
-    VkSemaphore waitSems[3]; VkPipelineStageFlags waitStages[3];
-    VkSemaphore signalSems[3]; uint32_t waitN = 0, sigN = 0;
-    auto addWait = [&](VkSemaphore sem, VkPipelineStageFlags stage){
-        if (sem != VK_NULL_HANDLE) { waitSems[waitN] = sem; waitStages[waitN] = stage; ++waitN; } };
-    if (!directChain) {
-        addWait(fsC.signal, VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT);
-        addWait(fsN.signal, VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT);
-        addWait(fsD.signal, VK_PIPELINE_STAGE_EARLY_FRAGMENT_TESTS_BIT);
-    }
-    const bool gpuC = !directChain && colorView &&
-                      colorView->vkToGlImported && fsC.vk2gl != VK_NULL_HANDLE;
-    const bool gpuN = !directChain && normalView &&
-                      normalView->vkToGlImported && fsN.vk2gl != VK_NULL_HANDLE;
-    const bool gpuD = !directChain && depthView &&
-                      depthView->vkToGlImported && fsD.vk2gl != VK_NULL_HANDLE;
-    if (!directChain) {
-        if (gpuC) signalSems[sigN++] = fsC.vk2gl;
-        if (gpuN) signalSems[sigN++] = fsN.vk2gl;
-        if (gpuD) signalSems[sigN++] = fsD.vk2gl;
-    }
-
+    // VK-RUNG8 item-4: direct-chain only — the submit waits/signals no GL<->VK
+    // semaphores; the fence below orders CPU access before the next island records
+    // against these shared images.
     VkSubmitInfo si{};
     si.sType = VK_STRUCTURE_TYPE_SUBMIT_INFO;
-    si.waitSemaphoreCount = waitN; si.pWaitSemaphores = waitSems; si.pWaitDstStageMask = waitStages;
     si.commandBufferCount = 1; si.pCommandBuffers = &cb;
-    si.signalSemaphoreCount = sigN; si.pSignalSemaphores = signalSems;
     if (vkQueueSubmit(s->queue, 1, &si, fsC.fence) != VK_SUCCESS) { setFallback("submit_failed"); s->disabled = true; return 0; }
-
-    if (!directChain) {
-        if (gpuC) glInteropWaitFromVk(*colorView,  GL_LAYOUT_COLOR_ATTACHMENT_EXT,         fsC.parity);
-        if (gpuN) glInteropWaitFromVk(*normalView, GL_LAYOUT_COLOR_ATTACHMENT_EXT,         fsN.parity);
-        if (gpuD) glInteropWaitFromVk(*depthView,  GL_LAYOUT_DEPTH_STENCIL_ATTACHMENT_EXT, fsD.parity);
-    }
 
     if (vkWaitForFences(s->device, 1, &fsC.fence, VK_TRUE, 5ull*1000*1000*1000) != VK_SUCCESS) {
         setFallback("fence_timeout"); s->disabled = true; return 0;
