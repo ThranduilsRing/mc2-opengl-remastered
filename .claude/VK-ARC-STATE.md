@@ -37,10 +37,20 @@ never runs (zero-extent) + auto-exit ≈ frame 300 — never combine with the PP
 OS screenshot can catch the user's foreground window (chroma 0.00 solid-white + soft-PASS
 WARN) — cross-check with the PPM oracle instead of re-running blindly.
 
-**★ REMAINING VFX QUEUE:** ballistic/missile classes still unexercised (mc2_24 lance =
-energy-only — need an AC/LRM lance mission + same-frame pairs); PPM HUD-text mirror quirk
-(watch-only). Mirror rebuild on txmmgr re-realize churn is bounded (new gosTexture per
+**★ REMAINING VFX QUEUE:** ballistic/missile classes still unexercised; PPM HUD-text mirror
+quirk (watch-only). Mirror rebuild on txmmgr re-realize churn is bounded (new gosTexture per
 realize) — watch the `[VK_HUD_MIRROR]` count if VRAM-pressure cache-outs get hot.
+
+**★ BALLISTIC/MISSILE EXERCISE ATTEMPT (same session — recon banked, needs a harness slice):**
+mc2_01's lance (FLASH=Werewolf + HACKSAW/LONGSHOT=Bushwacker ⇒ AC/LRM available) at
+`X=2450 Y=-1990 Z=398` (view file works; `[VK_HUD_MIRROR]` fires there too, zero declines).
+BUT 4 pinned captures (420/900/1800/2600/2800/3400) all missed visible bolts: mc2_01's intro
+holds scenarioTime until ≈frame 2500, then heat throttles the loop-volley to `weapons=1`
+within seconds — sparse short-lived ballistic tracers × 60-frame verify-tick granularity =
+capture roulette (mc2_24's continuous fat energy volleys were easy; this isn't).
+NEXT SLICE NEEDS ONE OF: heat bypass in `MC2_FX_FORCE_SPAWN=loop` (fireWeapon skips heat digest
+under the fixture), a PPM burst mode (write N consecutive frames at/after the pin), or bolt
+transit-time stretch under the fixture. All fixture-gated, trivial scope. Don't pin-hunt again.
 
 ## 2026-07-12 (EVE) — P0 GREY-REGRESSION AT 73d7e4f2: CANNOT REPRODUCE at a clean fingerprint-verified deploy; the "PPM never wrote" clue was a STRUCTURALLY GUARANTEED FALSE NEGATIVE (oracle bug, now fixed `8c56eafb`). Both installs redeployed clean.
 
