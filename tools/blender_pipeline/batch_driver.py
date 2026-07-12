@@ -289,6 +289,9 @@ def carry_textures(src_gltf, dst_gltf):
         name = _base_mat_name(mat.get("name", ""))
         src = src_mats.get(name)
         if src is None:
+            if "baseColorTexture" not in mat.get("pbrMetallicRoughness", {}):
+                print(f"[carry_textures] WARNING: no source material matches "
+                      f"'{name}' (renamed in Blender?) — texture NOT carried")
             continue
         src_pbr = src.get("pbrMetallicRoughness", {})
         src_tex_ref = src_pbr.get("baseColorTexture")

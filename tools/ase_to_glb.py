@@ -21,6 +21,7 @@ import json
 import math
 import os
 import re
+import sys
 import struct
 import sys
 
@@ -171,10 +172,23 @@ def parse_ase(path):
                     mat = AseMaterial()
                     i += 1
                     depth = 1
+                    warned_submat = False
                     while i < n and depth > 0:
                         ml = lines[i].strip()
                         i += 1
                         depth += ml.count('{') - ml.count('}')
+                        if ml.startswith('*SUBMATERIAL') and not warned_submat:
+                            warned_submat = True
+                            # Known limitation: nested *SUBMATERIAL name/bitmap
+                            # lines overwrite the outer material's (last one
+                            # wins) and MESH_MTLID is not remapped through the
+                            # submaterial table — per-face textures on
+                            # Multi/Sub-Object assets are unreliable.
+                            sys.stderr.write(
+                                "[ase_to_glb] WARNING: Multi/Sub-Object material "
+                                "detected (*SUBMATERIAL) — per-face submaterial "
+                                "textures are NOT fully supported; verify output "
+                                "texturing.\n")
                         mm = re.match(r'^\*MATERIAL_NAME\s+"([^"]*)"', ml)
                         if mm:
                             mat.name = mm.group(1)
