@@ -36,7 +36,47 @@
 //#include"font.h"
 //#endif
 
+#include <gameos.hpp>
+#include "vk_shared_gbuffer_gate.h"   // VK-FIELD-SELECT-1: umbrella detection
+
 extern bool useFog;
+
+// VK-FIELD-SELECT-1 ──────────────────────────────────────────────────────────
+// Under the VK shared-GBuffer umbrella the native VK composite is the SOLE
+// present-image producer and samples only the shared scene color0 — GL scene
+// draws into the discarded GL backbuffer VANISH (the all-or-nothing invariant,
+// VK-ARC-STATE.md). The world-space unit SELECTION BRACKETS and over-unit HEALTH
+// BARS are screen-space gos immediate draws (LineElement -> gos_DrawLines,
+// PolygonQuadElement -> gos_DrawTriangles) issued with gos_State_IsHUD OFF, so
+// they land in that discarded backbuffer and disappear (while the force-group
+// HUD-panel bars, which ride the IsHUD queue, survive — the reported asymmetry).
+//
+// Fix: while the umbrella is armed, route these draws through gos_State_IsHUD so
+// they buffer into the HUD tail queue that the VK present tail renders
+// (kHudLineBatch + kHudTriBatch are represented by vkHudDrawRepresentable). The
+// vertices are already SCREEN-SPACE (upperLeft/lowerRight are projected, clamped
+// to getScreenResX/Y), so the HUD tail's screen->NDC map is exact. scaleExempt so
+// the bottom-band HUD-shrink transform in flushHUDBatch does not detach the
+// decoration from its unit. Umbrella OFF -> IsHUD untouched -> byte-identical GL.
+namespace {
+struct VkHudRouteScope {
+    bool active;
+    bool prevExempt;
+    VkHudRouteScope() : active(mc2vkgate::umbrellaOn()), prevExempt(false) {
+        if (active) {
+            prevExempt = gos_GetHudScaleExempt();
+            gos_SetHudScaleExempt(true);
+            gos_SetRenderState(gos_State_IsHUD, 1);
+        }
+    }
+    ~VkHudRouteScope() {
+        if (active) {
+            gos_SetRenderState(gos_State_IsHUD, 0);
+            gos_SetHudScaleExempt(prevExempt);
+        }
+    }
+};
+} // namespace
 
 //---------------------------------------------------------------------------
 // class Appearance
@@ -250,6 +290,7 @@ void Appearance::drawSelectBox (DWORD color)
 //---------------------------------------------------------------------------
 void Appearance::drawSelectBrackets (DWORD color)
 {
+	VkHudRouteScope			_hudRoute;   // VK-FIELD-SELECT-1: survive the VK umbrella
 	float					offsets = 5.0 * eye->getScaleFactor();
 	Stuff::Vector4D			pos1;
 	Stuff::Vector4D			pos2;
@@ -471,6 +512,7 @@ void Appearance::drawIcon( unsigned long bmpHandle, unsigned long bmpWidth,
 //---------------------------------------------------------------------------
 void Appearance::drawBars (void)
 {
+	VkHudRouteScope	_hudRoute;   // VK-FIELD-SELECT-1: survive the VK umbrella
 	//-----------------------------------------
 	// Change to GOS DrawQuad code for HWare!!
 	float			offset = 8.0 * eye->getScaleFactor();		//Remember, EVEN numbers!!!

@@ -550,6 +550,20 @@ void MissionInterfaceManager::update (void)
 	// before any early return below, so it clears the moment the menu closes.
 	input::setGameModalActive(isPaused() && !isPausedWithoutMenu());
 
+	// VK-FIELD-SELECT-1 test hook: MC2_VK_SELECT_TEST=1 auto-selects the visible
+	// home lance every frame so the deterministic headless capture (which ignores
+	// synthetic input under the sim-freeze sweep) exercises the selection
+	// brackets/bars. Gated, default-OFF -> zero effect on normal play. Runs before
+	// the mover render (Camera::render) so isSelected() is set when brackets draw.
+	{
+		static const int s_vkSelectTest = []{
+			const char* v = std::getenv("MC2_VK_SELECT_TEST");
+			return (v && v[0]=='1') ? 1 : 0;
+		}();
+		if (s_vkSelectTest)
+			selectVisible();
+	}
+
 	const std::chrono::steady_clock::time_point _mifT0 =
 		s_mfOn ? std::chrono::steady_clock::now() : std::chrono::steady_clock::time_point{};
 	if ( Environment.screenWidth != resolution )
