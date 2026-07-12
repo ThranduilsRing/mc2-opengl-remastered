@@ -1,5 +1,10 @@
 # Asset Class GLB Support — Phase 0 Finding
 
+> **SUPERSEDED (2026-07-09)** by [docs/asset-pipeline.md](asset-pipeline.md) section 1 —
+> buildings/trees/props now support `[Import]` (as of merge `fdb7c470`, `bdactor.cpp`
+> implements the probe); mech GLB is opt-in via `MC2_ASSIMP_MECH_IMPORT=1`. Kept for
+> history.
+
 ## Summary
 
 GLB probe support exists **only for mechs** today. All other classes use

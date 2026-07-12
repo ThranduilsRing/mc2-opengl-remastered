@@ -128,11 +128,7 @@ Run as a ledger, not a cleanup binge: `docs/render-backend-seams/opengl-correctn
 
 **In flight / next:**
 
-- **P1-G: building MaterialGpu SSBO wiring + `building.frag` PBR** — branch `claude/building-materialgpu-v1`
-  - Status: NOT STARTED — foundation merged, new branch required
-  - Kill switch: `MC2_BUILDING_PBR=0` (default OFF)
-  - Blocked on: nothing — unblocked after v0 merge
-  - First step: wire `CorrugatedSteel006A` BC7 KTX2 into MaterialGpu SSBO per building instance
+- **P1-G: building MaterialGpu SSBO wiring + building PBR** — STARTED (stale "NOT STARTED" corrected 2026-07-09): `MC2_BUILDING_PBR` gate live in `mclib/bdactor.cpp`, `shaders/building_pbr.frag/.vert` in tree, gate allowlisted in `check-env-registry.sh`; PBR GLB payloads landed `5e3626f7` (2026-06-19). Remaining scope unverified — re-recon before continuing.
 
 ---
 
@@ -169,14 +165,14 @@ Tier1 5/5 PASS. Item 8 fires when NVIDIA hardware available.
 
 **LEFT:** S16 modder round-trip (`verify_mod_roundtrip.py`), S17 editor authoring depth, S18 asset-browser thumbnails, S13+ HTML gallery + advisory smoke-gate auto-wire, S15+ cook.json provenance + texture-res validator, #5 Tube/render merge (unblocked). Full: MEMORY.md 2026-06-14 handoff.
 
-## Current state (2026-06-01)
+## State snapshot (2026-06-01 — historical; some inline corrections dated later. For current state, read the newest dated sections above and MEMORY.md handoffs.)
 
 **Nifty HEAD:** see MEMORY.md handoffs for current commit.
 
 **In-flight / recently shipped:**
 - Center-screen flicker + cinematic water (9d55bcbc, 47198695) — SHIPPED. Mech/water flicker (SimpleCamera cull MVP + mech readback conservative-OR); cinematic GPU water (SimpleCamera renderWaterFastPath + GL_CULL_FACE management). See 2026-06-01 handoff.
 - TERRAIN-CLASSIFY-TUNING-1 + Mech ImGui section (3d5457d0) — see handoff
-- PERF-GPU-CULL-READBACK-ID-CACHE-1 (ef03162a) — merge to nifty pending
+- PERF-GPU-CULL-READBACK-ID-CACHE-1 (ef03162a) — MERGED to nifty (ancestor of HEAD as of 2026-07-09)
 - VFX-WEAPON-FX-RESTORE-OPUS-1 (9dfff4a9) — shipped
 - VFX-DISTORTION-1 — BUILT (gate `MC2_VFX_DISTORTION`, default OFF; requires `MC2_VFX_SCENECOLOR_GRAB`). Heat-haze: distortion alpha group refracts the pre-VFX scene-color grab at a procedural (in-house value-noise) screen-UV offset, soft-clipped by scene depth; reuses `VfxBillboardAlpha` (no new pipeline/blend). Fixture `MC2_VFX_DISTORT_FIXTURE` tags alpha groups for observability. gate-OFF byte-identical. See `docs/VFX-DISTORTION-1.md`.
 - Colormap BC7 KTX2 arc (7768d4e5) — shipped; .burnin soak + dead helpers pending
@@ -198,7 +194,7 @@ Tier1 5/5 PASS. Item 8 fires when NVIDIA hardware available.
 - **DrawPacket v8 — live-builder retired** (merged `96c27c2a`, default-ON): snapshot is sole static-prop draw-packet owner; flush() skips per-flush live build + compare. Kill-switch MC2_STATIC_PROP_LIVE_BUILDER=1. Commit-1 (retire); follow-ups: live-builder DELETE after soak (STATIC-PROP-LIVE-BUILDER-DELETE) + the Extract.SP.Fill dirty-list — **shipped as STATICPROP-SNAPSHOT-FILL-DIRTYONLY-1, see below.** Spec/plan in docs/superpowers/{specs,plans}/2026-06-02-static-prop-snapshot-finish*.
 - **Snapshot static-prop Fill dirty-only — SHIPPED + merged `cf654080` (2026-06-04), default-ON** (`STATICPROP-SNAPSHOT-FILL-DIRTYONLY-1`, branch `8a209710..60cb4cf8`): `ExtractRenderSnapshot` skips `Extract.SP.Fill`+`WriteLoop` on clean (regGen+cullVer unchanged) frames and memcpy's cached rows into the snapshot arena → **median 1.68ms→36.7µs (−97%, user Tracy)**. Gate `MC2_STATIC_PROP_SNAPSHOT_FILL_DIRTYONLY` (=0 kill-switch). Review chain complete; a material-cache staleness hole (`staticPropCacheTypePrimaryMaterial` bumped no generation, compare-oracle blind) caught + fixed `60cb4cf8`. **Contract: any registry mutation of a snapshot-captured field MUST bump `s_registryGeneration`.** Companion compare gate `MC2_STATIC_PROP_SNAPSHOT_BRIDGE_COMPARE`. Greybeard meta-fix debt (registry-owned incremental flat-row store = real end-state) logged in `memory/staticprop_per_frame_cpu_retire_campaign.md`.
 - **GOM.readbackSnapshot eliminated** (SHADOW-COPY-1 `99519cbc`/`00bfc28a`): GPU-cull vis bits shadow-copied to system RAM; killed the per-frame BAR-read stall (360ns now). Kill-switch MC2_GPU_CULL_READBACK=0.
-- **TRACKV CPU quick wins** (merged `26974734`): Probe-6 thin-canary readback gated MC2_THIN_CANARY default-OFF; mech MaterialGpu table persistent + dirty-gated upload; ShapeRenderer material-handle cache. renderLists self-time carve ABANDONED (audit rank-2 stale; the 985µs is static-prop registry/light/shadow = other-session lighting-ownership domain, per-instance light slots U=K). Audit: `docs/trackv-whole-frame-cpu-optimization-audit.md`.
+- **TRACKV CPU quick wins** (merged `26974734`): Probe-6 thin-canary readback gated MC2_THIN_CANARY default-OFF; mech MaterialGpu table persistent + dirty-gated upload; ShapeRenderer material-handle cache. renderLists self-time carve ABANDONED (audit rank-2 stale; the 985µs is static-prop registry/light/shadow = other-session lighting-ownership domain, per-instance light slots U=K). Audit: trackv whole-frame CPU optimization audit (never committed — lived on a pruned worktree).
 - **HZB substrate** (merged 5864882c): depth pyramid built, no culling yet. Next: HZB-STATICPROP-CULL-CONSUMER-0 (default-OFF, 1e-4 margin, discontinuity guard).
 - **Water reflection** (merged 68343329): SH-L2 sky, default-OFF. MC2_WATER_REFLECTION=1.
 - **C++17** (CMAKE_CXX_STANDARD 17 in root CMakeLists).

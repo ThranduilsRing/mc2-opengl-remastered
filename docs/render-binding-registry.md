@@ -254,5 +254,5 @@ reviewers don't try to "clean them up":
 - `shaders/include/lighting.hglsl` — shader-side LightsData/calc_light
   with the post-`LIGHTSSBO v1` SSBO layout.
 - `tools/shader_reflect/` — reflection contract that diffs shader binding
-  layouts against committed JSON goldens (`docs/observations/INDEX-SHADERS.md`
-  for context).
+  layouts against committed JSON goldens (shader-domain background lives in
+  the Claude memory INDEX-SHADERS index, outside this repo).

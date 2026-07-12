@@ -14,7 +14,7 @@ machine-only paths, no build cache). The script fails only on a missing
 | shader_reflect | REQUIRED_NOW | yes | `tools/shader_reflect/reflect.py` (active shader-reflection CI gate + goldens) |
 | mc2texcook | REQUIRED_NOW | yes | `tools/mc2texcook/mc2texcook.py` (KTX2 producer) |
 | KTX2 runtime loader | REQUIRED_NOW | yes | `KTX2` sidecar loader in `GameOS/gameos/gos_static_prop_batcher.cpp` |
-| validate_asset_manifest | REQUIRED_NOW | yes | `tools/validate_asset_manifest.py` (ASSET-MANIFEST-SCHEMA-SCAFFOLD-1) |
+| validate_asset_manifest | REQUIRED_NOW | yes | `tools/asset_cook/validate_asset_manifest.py` (ASSET-MANIFEST-SCHEMA-SCAFFOLD-1) |
 | meshoptimizer | FUTURE | vendored | `3rdparty/meshoptimizer/` + `ENABLE_CDAG_COOKER` (OFF; `cdag_cooker` target not built yet) |
 | gltfpack | FUTURE | no | not wired at repo level (source exists only inside vendored meshoptimizer) |
 

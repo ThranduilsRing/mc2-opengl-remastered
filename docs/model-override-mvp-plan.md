@@ -6,7 +6,7 @@
 
 **Architecture:** A new engine-independent `model_override_registry` translation unit parses the manifest into plain structs (unit-testable, no engine deps). The existing `TG_TypeMultiShape::LoadFromFile` probe funnel (`mclib/msl.cpp:438`) gains an override-resolution step keyed by `<class>:<appearanceName>`, and the static-prop/tree appearance loaders in `mclib/bdactor.cpp` are redirected from the direct `LoadTGMultiShapeFromASE(fullPath)` call to `LoadFromFile(basename, class)`. Render bounds (`OBBRadius`, `highZ`) are already recomputed in `BldgAppearance::init` from the loaded shape's box — the override rides that path; the work is verifying the override mesh's box is accurate and proving collision (`cellsCovered`) is untouched.
 
-**Tech Stack:** C++14 (engine TU discipline — no `std::filesystem`/`optional`/`string_view` in production), `nlohmann/json` (vendored single-header, isolated to one TU), existing Assimp importer (`mclib/assimp_importer.cpp`, `ENABLE_ASSIMP_IMPORTER`), CMake 3.10, MSVC `RelWithDebInfo`, Python smoke harness (`tests/smoke/run_smoke.py`).
+**Tech Stack:** C++14 (engine TU discipline — no `std::filesystem`/`optional`/`string_view` in production), `nlohmann/json` (vendored single-header, isolated to one TU), existing Assimp importer (`mclib/assimp_importer.cpp`, `ENABLE_ASSIMP_IMPORTER`), CMake 3.10, MSVC `RelWithDebInfo`, Python smoke harness (`scripts/run_smoke.py`).
 
 **Reads (authoritative recon):**
 - `docs/model-override-system-recon.md` (this branch) — identity, hook, bounds, material findings.
@@ -43,7 +43,7 @@ No broad asset-system rewrite · no collision replacement · no mission/editor w
 - `mclib/bdactor.cpp` — redirect static-prop base + tree base load call sites from `LoadTGMultiShapeFromASE(fullPath)` to `LoadFromFile(aseFileName, class)`.
 - `mclib/CMakeLists.txt` — add `model_override_registry.cpp`; add `3rdparty/include` to include dirs.
 - `CMakeLists.txt` — add `tests/model_override` subdirectory (gated by existing `MC2_BUILD_TESTS`).
-- `tests/smoke/run_smoke.py` — add model-override smoke cases (no-mod identity, override-present, missing-source fallback).
+- `scripts/run_smoke.py` — add model-override smoke cases (no-mod identity, override-present, missing-source fallback).
 - `scripts/check-json-isolation.sh` — extend (or create) to also assert only the two allowed TUs include `nlohmann/json.hpp`.
 
 **Out of scope (documented, not built):** damage-state overrides, LOD overrides, normal/emissive/ORM material wiring, alpha-blend, cook cache (`.tglc`), asset-viewer 3D preview, mech/vehicle overrides, collision re-derivation.
@@ -846,7 +846,7 @@ git commit -m "test(modoverride): opaque static-prop override proof asset + note
 ### Task 10: Automated smoke gates
 
 **Files:**
-- Modify: `tests/smoke/run_smoke.py`
+- Modify: `scripts/run_smoke.py`
 
 - [ ] **Step 1: Add three smoke cases**
 
@@ -854,13 +854,13 @@ Add cases that (1) boot with the empty manifest and assert **byte-identical** ca
 
 - [ ] **Step 2: Run the smoke suite**
 
-Run: `python tests/smoke/run_smoke.py` (per the repo's smoke invocation).
+Run: `python scripts/run_smoke.py` (per the repo's smoke invocation).
 Expected: all three new cases pass alongside the existing suite.
 
 - [ ] **Step 3: Commit**
 
 ```bash
-git add tests/smoke/run_smoke.py
+git add scripts/run_smoke.py
 git commit -m "test(modoverride): smoke gates — no-mod identity, applied, missing-source fallback"
 ```
 
@@ -925,12 +925,12 @@ Confirm and record: `[MODOVERRIDE] applied tree:<tree>`; replacement tree visibl
 
 - [ ] **Step 5: Add tree smoke case + reset default manifest**
 
-Add a `tree:<tree>` applied-case to `tests/smoke/run_smoke.py` (mirror Task 10 case 2). Ensure the shipped `data/model_overrides/models.json` stays `{"overrides":[]}`.
+Add a `tree:<tree>` applied-case to `scripts/run_smoke.py` (mirror Task 10 case 2). Ensure the shipped `data/model_overrides/models.json` stays `{"overrides":[]}`.
 
 - [ ] **Step 6: Commit**
 
 ```bash
-git add data/model_overrides/source/trees/<tree>.glb docs/model-override-mvp-notes.md tests/smoke/run_smoke.py
+git add data/model_overrides/source/trees/<tree>.glb docs/model-override-mvp-notes.md scripts/run_smoke.py
 git commit -m "test(modoverride): tree override proof — alpha-mask leaves + culling-pop + fallback gates"
 ```
 

@@ -39,6 +39,15 @@ mc2.exe                     # normal gameplay
 mc2.exe -mission mc2_01     # skip menus, load directly into a mission
 ```
 
+## Modding
+
+- [docs/modding-guide.md](docs/modding-guide.md) — start here for modding
+- [docs/beta/README_modder_beta.md](docs/beta/README_modder_beta.md) — modder beta notes
+- [docs/modding-effects.md](docs/modding-effects.md) — VFX/effects authoring
+- [docs/modding-animations.md](docs/modding-animations.md) — animation authoring
+- [tools/mc2weapon/README.md](tools/mc2weapon/README.md) — weapon data tool
+- [docs/asset-pipeline.md](docs/asset-pipeline.md) — canonical asset inventory (geometry/texture/GLB import paths)
+
 ## License
 
 - Original game: Shared Source Limited Permission License (see EULA.txt)

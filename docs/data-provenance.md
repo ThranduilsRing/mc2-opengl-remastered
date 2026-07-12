@@ -9,8 +9,14 @@ confirmation. Nothing here is asserted beyond what the repo proves.
 The game data is **not** a copy of retail CD files and is **not** the
 result of running `mc2_patch.exe` against a retail install. It is built
 from source assets in the **`alariq/mc2srcdata`** repository
-(`https://github.com/alariq/mc2srcdata.git`), pinned as a git
-dependency at the repo root (`mc2srcdata/`).
+(`https://github.com/alariq/mc2srcdata.git`). It is **not** a git
+submodule/dependency (no `.gitmodules` entry) — it is acquired by a
+plain `git clone` at the repo root and the resulting `mc2srcdata/`
+directory is gitignored (`.gitignore:104`):
+
+```bash
+git clone https://github.com/alariq/mc2srcdata.git
+```
 
 alariq's own description: *"data files for my Mech Commander 2 linux
 port."* It is a curated, build-scriptable asset tree, not a raw game

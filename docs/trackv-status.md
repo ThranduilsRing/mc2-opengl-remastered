@@ -24,7 +24,7 @@ editing this file.
 | Tactical presentation | [tactical-presentation-visual-state-capture.md](tactical-presentation-visual-state-capture.md) | ViewMode framework + ObjectIdDebug / Thermal-placeholder / LowLight / tactical-arc overlay |
 | GameAdapters visual-state bridge | [renderworld_arc_status.md](renderworld_arc_status.md) | Static-prop + Mech render adapters, ObjectID substrate |
 | Validation scaffold / checks | `scripts/check-contracts.sh`, `scripts/check-smoke-matrices.py`, `scripts/check-toolchain-bom.py` | Cheap static contract + matrix + toolchain gates |
-| Asset-manifest scaffold | `tools/validate_asset_manifest.py`, [asset-manifest-schema.md](asset-manifest-schema.md) | Shape gate + negative-fixture regression guard (`scripts/check-asset-manifest-fixtures.py`) |
+| Asset-manifest scaffold | `tools/asset_cook/validate_asset_manifest.py`, [asset-manifest-schema.md](asset-manifest-schema.md) | Shape gate + negative-fixture regression guard (`scripts/check-asset-manifest-fixtures.py`) |
 | Capture no-kill tooling | `scripts/run_smoke_matrix.py`, `scripts/check-smoke-matrices.py` | Repeated `--mission`, never `--kill-existing`; concurrency-safe lock |
 | HZB depth-convention contract | [hzb-depth-convention.md](hzb-depth-convention.md), `tests/unit/test_depth_hzb.cpp` | Reverse-Z / MIN-reduce contract LOCKED (no runtime yet) |
 

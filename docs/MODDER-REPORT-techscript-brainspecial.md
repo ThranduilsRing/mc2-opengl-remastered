@@ -31,3 +31,17 @@ Internally the engine calls this layer **"BrainSpecial"** — only because the e
 ## Bottom line
 
 Your TechScript/specials approach is now a first-class engine path, not a mod hack — loaded, parsed, and starting to execute natively, on a hardened and deterministic foundation. We'd love to keep using Carver V Enhanced as the proving ground as more verbs come online. If you have notes on the verb vocabulary, the FSM-state model, or how you'd *want* the engine to treat mission vs unit variables, that input would directly shape what we build next.
+
+## How to enable
+
+This runtime is off by default. To turn it on, set this gate chain (each requires the previous one):
+
+1. `MC2_BRAIN_RUNTIME=1` — master gate for the declarative-brain runtime (`code/warrior.cpp`).
+2. `MC2_BRAIN_RUNTIME_APPLY=1` — lets resolved intents actually apply (requires `MC2_BRAIN_RUNTIME=1`).
+3. `MC2_BRAIN_DISPATCH=1` — TechScript special-dispatch master gate (`code/mission.cpp`, `code/brain_special_dispatch.cpp`; requires the two gates above).
+
+File naming: per-mission brain/specials data lives at `data/missions/<mission>_ai.fit` (per-unit brain settings) and `data/missions/<mission>_specials.fit` (your TechScript specials).
+
+Example fixtures: see `tests/fixtures/brain_runtime/`.
+
+See [docs/tier1_env_vars.md](tier1_env_vars.md) (Mech import, TechBrain, and misc arc gates section) for the authoritative gate reference.

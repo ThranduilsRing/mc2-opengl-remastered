@@ -9,7 +9,7 @@ already firewalled, GL-free, and Mission-free (CI-enforced). The work is plumbin
 small host-services contract and extracting two welded-in pieces, **not** a rewrite.
 
 > **Clarification.** RenderWorld is game/Mission-free and largely GL-free by contract,
-> but it still has one backend-direction dependency on `GameOS/gos_postprocess.h`. That
+> but it still has one backend-direction dependency on `GameOS/gameos/gos_postprocess.h`. That
 > is the hard blocker **B1** and the first Ring-2 cleanup.
 
 > **Note (corrected 2026-06-22 RENDER-CONTRACT-INDEX-1).** A modern-vs-legacy

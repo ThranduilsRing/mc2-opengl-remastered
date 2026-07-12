@@ -28,7 +28,7 @@ via `afede628`. The two C++ slices land on `claude/asset-cpp-probes-1`.
 
 ### ASSET-MANIFEST-0-EXTEND (`f5e9e71a`)
 
-Added optional, shape-only manifest sections to `tools/validate_asset_manifest.py`.
+Added optional, shape-only manifest sections to `tools/asset_cook/validate_asset_manifest.py`.
 A manifest without them stays valid (the minimal fixture still round-trips).
 
 - `geometry` — the ASSIMP-IMPORTER-PHASE-0 output contract
@@ -144,7 +144,7 @@ Key facts:
 
 ```sh
 python scripts/check-toolchain-bom.py
-python tools/validate_asset_manifest.py tests/fixtures/assets/minimal_asset_manifest.json
+python tools/asset_cook/validate_asset_manifest.py tests/fixtures/assets/minimal_asset_manifest.json
 python scripts/check-asset-manifests.py
 python scripts/check-ktx2-probe.py
 sh scripts/check-contracts.sh

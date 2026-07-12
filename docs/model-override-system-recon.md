@@ -81,7 +81,7 @@ The registry is built once when mods are mounted (directory scan + manifest pars
 - **Importer** `mclib/assimp_importer.{h,cpp}`: `ImportGeometryFromFile(path, TG_TypeMultiShape*)` (`assimp_importer.h:35`, impl `assimp_importer.cpp:349-413`). Does: `ReadFile` with `aiProcess_Triangulate | aiProcess_GenSmoothNormals`; node-name validation (≤24 chars, unique); per-mesh vertices+normals+triangles+UVs; diffuse material-name extraction with V-flip; coordinate transform (`MC2.x=-src.x, MC2.y=src.z, MC2.z=src.y`); bounding box (`ComputeBoundingBox`, loose, node-center based).
 - **Probe** `LoadFromFile` `.glb→.fbx→.ase` (`msl.cpp:438-479`).
 - **Standalone geometry probe** `tools/cpp_probes/assimp_probe.cpp` emits JSON (`meshCount, vertexCount, indexCount, materialSlotCount, hasNormals, hasTangents, bounds`) — reuse for asset-viewer/validation.
-- **Manifest schema + validator** already drafted: `docs/asset-manifest-schema.md`, `scripts/check-asset-manifests.py`, `tools/validate_asset_manifest.py`.
+- **Manifest schema + validator** already drafted: `docs/asset-manifest-schema.md`, `scripts/check-asset-manifests.py`, `tools/asset_cook/validate_asset_manifest.py`.
 
 ### What is missing / explicitly deferred (MVP scope statement at `assimp_importer.cpp:3-6`)
 Animation, LOD swap, shadow mesh, palette swap, `.tglc` cook cache. None of these block a static-prop/tree render-only MVP (props don't animate; trees are static). The binary cook path (`SaveBinaryCopy/LoadBinaryCopy`, `msl.cpp:482-503`) exists but is legacy-ASE-only and **not** wired to the importer — cook-at-startup is a Phase-2 optimization, not an MVP requirement.
@@ -144,7 +144,7 @@ If a replacement mesh is **smaller** than stock, the frozen `cellsCovered` still
 Foliage uses the single hard 0.5 alpha-test cutout on the albedo alpha channel (`static_prop.frag:215-216`); the shadow pass also alpha-discards. No alpha-blend, no smooth AA falloff, no per-leaf normal mapping. **Leaf rule for MVP:** author leaf cards with `alphaMode="mask"`, hard-edged alpha, cutoff baked to ~0.5. "foliage alpha-discard" remains tracked debt (`docs/active_campaigns.md:88`).
 
 ### Color space
-Authority `tools/validate_asset_manifest.py:79-85`: albedo/emissive = **sRGB** (BC7 vkFormat 146 → `GL_COMPRESSED_SRGB_ALPHA_BPTC_UNORM`), normal/orm = **linear** (vkFormat 145 → `GL_COMPRESSED_RGBA_BPTC_UNORM`). Binding at `mclib/txmmgr.cpp:3486-3488`; HW linearizes sRGB on sample.
+Authority `tools/asset_cook/validate_asset_manifest.py:79-85`: albedo/emissive = **sRGB** (BC7 vkFormat 146 → `GL_COMPRESSED_SRGB_ALPHA_BPTC_UNORM`), normal/orm = **linear** (vkFormat 145 → `GL_COMPRESSED_RGBA_BPTC_UNORM`). Binding at `mclib/txmmgr.cpp:3486-3488`; HW linearizes sRGB on sample.
 
 ### Texture sidecar reuse — yes, cleanly
 - **Loose TGA override:** `File::open` strips the `/{size}/` subdir and retries (`mclib/file.cpp`, commit `5327c4b1`); a loose `data/tgl/<name>.tga` wins over `data/tgl/{size}/<name>.tga` and sets `uvScale=4`. Model-override textures reuse this verbatim.
@@ -208,7 +208,7 @@ Notes vs the prompt's draft shape: added `schemaVersion`, `renderOnly: true` (ex
 - Show resolved cooked-output path (Phase 2) and the stock fallback path.
 - Emit a `reports/<asset>.json` validation report.
 
-These map onto the existing manifest validator (`tools/validate_asset_manifest.py`) — the viewer becomes its interactive front end.
+These map onto the existing manifest validator (`tools/asset_cook/validate_asset_manifest.py`) — the viewer becomes its interactive front end.
 
 ---
 

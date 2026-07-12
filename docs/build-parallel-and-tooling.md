@@ -135,16 +135,17 @@ the allowlist comment block in `run_smoke.py` (~line 1018) whenever adding a
 new `MC2_*` gate, and add the var there. Use `--require-gate` to make the
 smoke fail loudly rather than silently pass.
 
-### MCP `verify_citations` (`mc2-repo-intel` server)
+### MCP `verify_citations` (`mc2-repo-intel` server) — NOT LANDED
 
-Exposed as `verify_citations(doc_path, max_checks=200)` in
-`scripts/mcp/repo_intel_server.py` (backed by
-`tools/repo_intel/citation_verifier.py`). Checks every `file:line` citation in
-a recon or planning doc against the live codebase and flags any that have
-drifted (line number off, symbol moved, function deleted). Use before writing
-any fix slice derived from a recon doc — stale citations led to deleting the
-wrong code range at least twice this arc (MLR range; terrain draw-site). Run it
-after any recon and before `slice-preflight`.
+**Status: planned, never implemented.** No `verify_citations` exists in
+`scripts/mcp/repo_intel_server.py` and there is no citation_verifier module
+under `tools/repo_intel/`. The intent — check every `file:line` citation in
+a recon or planning doc against the live codebase and flag any that have
+drifted (line number off, symbol moved, function deleted) — is still valid;
+stale citations led to deleting the wrong code range at least twice this arc
+(MLR range; terrain draw-site). Until it lands, use `slice-preflight`
+(`tools/repo_intel/repo_query.py`) for symbol-level drift and re-verify cited
+line ranges by hand before any recon-derived deletion.
 
 ### `get_executor_health()` (render-state MCP)
 

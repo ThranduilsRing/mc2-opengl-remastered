@@ -26,27 +26,30 @@ Output: `build64/RelWithDebInfo/mc2.exe`
 
 ### Deploy
 
-The game runs from a separate deployment directory, not the source tree. Deploy individual files with verification:
+The game runs from a separate deployment directory, not the source tree. The exe and shaders must stay in lockstep (a shader-only or exe-only copy silently drifts the two apart), so the canonical way to deploy is `scripts/deploy_payload.py`, which copies the exe together with shaders and the rest of the payload and verifies the result against a manifest:
 
-Set `DEPLOY` to the folder where you extracted the game release (e.g. `C:/mc2-opengl/mc2-win64-v0.4`).
+```bash
+py -3 scripts/deploy_payload.py <deploy-dir> --source-root . --build-dir build64 --exe-name mc2.exe
+```
 
-> These commands require Git Bash or MSYS2. In PowerShell, use `Copy-Item` and `Compare-Object` instead.
+If `<deploy-dir>` isn't one of the script's known canonical targets, add `--allow-new-target` to confirm the new location deliberately.
+
+#### Fallback: manual copy (no Python available)
+
+Only use this if you cannot run the Python deploy script. It requires Git Bash or MSYS2 (in PowerShell, use `Copy-Item` and `Compare-Object` instead), and you must copy the exe and shaders together every time -- a manual deploy that updates one without the other will silently drift.
 
 ```bash
 DEPLOY="<deploy-dir>"
 cp -f build64/RelWithDebInfo/mc2.exe "$DEPLOY/"
 diff -q build64/RelWithDebInfo/mc2.exe "$DEPLOY/mc2.exe"
-```
 
-**Never use `cp -r`** on Windows/MSYS2 -- it silently fails. Always copy files individually and verify with `diff -q`.
-
-Deploy shaders the same way:
-```bash
 for f in shaders/*.frag shaders/*.vert shaders/*.geom shaders/*.tcs shaders/*.tes shaders/include/*; do
     cp -f "$f" "$DEPLOY/$f"
     diff -q "$f" "$DEPLOY/$f"
 done
 ```
+
+**Never use `cp -r`** on Windows/MSYS2 -- it silently fails. Always copy files individually and verify with `diff -q`.
 
 ### Run
 

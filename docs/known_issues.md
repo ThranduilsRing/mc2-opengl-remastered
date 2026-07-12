@@ -89,7 +89,7 @@ them. Add new findings as new bullets; remove fixed ones outright (don't append
   tessellated path. **EDITOR:** now on the chunk path and rendering correctly (fixed
   2026-06-10) — the editor frame loop was building the chunk draw commands
   (`land->render()`) but never submitting them: `Terrain::flushDrawCommands()` lived
-  only in `code/gamecam.cpp:388`, so under the default-on chunk path (which suppresses
+  only in `code/gamecam.cpp` (grep `Terrain::flushDrawCommands` — line drifts), so under the default-on chunk path (which suppresses
   the legacy per-quad draw) terrain rendered BLACK (only overlays drew). Fixed by
   mirroring the game's flush in `EditorCamera::render` (after shadow/compass, before
   `renderLists()`). If terrain misbehaves, `MC2_TERRAIN_LOD_CHUNK=0` still falls back

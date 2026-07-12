@@ -1,7 +1,7 @@
 Building from source on Windows
 ===============================
 
-**Just want to play?** You don't need this file. Grab the five zips from the [latest release](https://github.com/ThranduilsRing/mc2-opengl-remastered/releases/latest), create a new empty folder, extract all five into it, and run `mc2.exe`. This document is for developers building the engine from source.
+**Just want to play?** You don't need this file. See `RELEASE_README.md` ("Install" section) for the current zip list and install steps — create a new empty folder, extract the release zips into it, and run `mc2.exe`. This document is for developers building the engine from source.
 
 ## Quick build (using the vendored `3rdparty.zip`)
 
@@ -16,9 +16,11 @@ This is the fast path — verified end-to-end from a fresh clone.
 3. Configure and build with an **absolute** path to the `3rdparty/` folder:
 
 ```bat
-cmake -G "Visual Studio 17 2022" -DCMAKE_PREFIX_PATH=C:/absolute/path/to/repo/3rdparty -DCMAKE_LIBRARY_ARCHITECTURE=x64 -B build64
+cmake -G "Visual Studio 17 2022" -DCMAKE_PREFIX_PATH=C:/absolute/path/to/repo/3rdparty -DCMAKE_LIBRARY_ARCHITECTURE=x64 -DMC2_IMGUI=ON -B build64
 cmake --build build64 --config RelWithDebInfo --target mc2
 ```
+
+`-DMC2_IMGUI=ON` is optional (enables the in-engine debug UI) but is the standard dev configuration; drop it if you don't need the debug UI.
 
 Output: `build64/RelWithDebInfo/mc2.exe`
 
@@ -28,9 +30,20 @@ Output: `build64/RelWithDebInfo/mc2.exe`
 
 ### Deploy
 
-Copy `build64/RelWithDebInfo/mc2.exe` to your game deploy directory.
+Never copy the exe or shaders by hand — they must stay in lockstep, and a manual copy that misses one silently drifts. Use `scripts/deploy_payload.py`:
 
-If you changed any shaders, copy the updated files from `shaders/` to `<game-deploy-dir>/shaders/`.
+```bat
+py -3 scripts/deploy_payload.py <install-dir> --source-root . --build-dir build64 --exe-name mc2.exe
+```
+
+This deploys the exe (from `build64/RelWithDebInfo/`) together with shaders and the rest of the payload, then verifies the result against a manifest. If `<install-dir>` is not one of the script's known canonical targets, pass `--allow-new-target` to confirm the new location deliberately.
+
+### First-time smoke test
+
+`scripts/run_smoke.py` leases deploy directories from a hardcoded list under `A:/Games/mc2-opengl/` (see `scripts/smoke_lib/deploy_lease.py`) — a fresh machine won't have one of those yet. To smoke-test a from-source build:
+
+1. Get a game install: extract the release zips per `RELEASE_README.md`, or deploy your own build into a folder with `scripts/deploy_payload.py` as shown above.
+2. Point the smoke runner at it directly with `--exe <path-to-mc2.exe>` (this still leases the containing folder; add `--no-lease` too if you want no lease coordination at all for a one-off local run).
 
 ---
 
@@ -84,6 +97,10 @@ Output: `build64/RelWithDebInfo/mc2.exe`
 
 ### Deploy
 
-Copy `build64/RelWithDebInfo/mc2.exe` to your game deploy directory.
+Use `scripts/deploy_payload.py` as described above — never copy the exe/shaders by hand:
+
+```bat
+py -3 scripts/deploy_payload.py <install-dir> --source-root . --build-dir build64 --exe-name mc2.exe
+```
 
 All runtime DLLs (SDL2, GLEW, FFmpeg) are included in `mc2-remastered-engine.zip` from the release. If building entirely from scratch, copy the DLLs from `3rdparty\lib\x64\` to the same folder as `mc2.exe`.

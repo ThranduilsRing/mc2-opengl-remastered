@@ -108,7 +108,7 @@ than reimplementing. Two pre-conditions:
 ## 4. Recommended script shape (not authored this slice)
 
 ```
-tools/terrain/terrain_height_audit.py [mission1 mission2 ...]
+scripts/terrain_height_audit.py [mission1 mission2 ...]
   for each mission:
     open .pak
     walk all packets, locate the one with unpacked_size matching S²·28
@@ -138,7 +138,7 @@ required.
    to `gos_static_prop_batcher.{cpp,h}`, `gameosmain.cpp`,
    `RendererFeatureRegistry.h`, `scripts/run_smoke.py`,
    `docs/tier1_env_vars.md`, plus new `debug_state_dump.{cpp,h}`).
-   Adding `tools/terrain/terrain_height_audit.py` + `tests/terrain/`
+   Adding `scripts/terrain_height_audit.py` + `tests/terrain/`
    output dir does not collide with their files, BUT executing the
    script would write a timestamped artifact while their session may
    be commit-staging tools/ or tests/ — clean-isolation risk.
@@ -159,7 +159,7 @@ When TERRAIN-HEIGHT-AUDIT-0 is upgraded from doc to script:
 4. Cross-validated on ONE mission against an engine-side
    `getTerrainElevation()` dump — `min/max/mean` match within FP
    rounding.
-5. Committed under `tools/terrain/terrain_height_audit.py` (script)
+5. Committed under `scripts/terrain_height_audit.py` (script)
    and `tests/terrain/terrain_height_audit_<timestamp>.md` (sample
    output).
 6. No engine changes required to RUN the script after authorship

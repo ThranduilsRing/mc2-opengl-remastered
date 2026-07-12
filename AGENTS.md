@@ -47,6 +47,8 @@ Documented in `docs/disciplines.md` § "Agent-efficiency tools":
 - No pushes. Local commits only, `Co-Authored-By` trailer per repo convention.
 - Mod file changes in an install need `mods/<id>/.modindex-cache` deleted (or rely on the mtime signature, post `59f16541`).
 
+Unfamiliar term (nifty, lane, slice, gate, chip, etc.)? See [docs/GLOSSARY.md](docs/GLOSSARY.md).
+
 ## Memory / docs map
 
 Session memory lives at `C:/Users/Joe/.claude/projects/A--Games-mc2-opengl-src/memory/MEMORY.md`

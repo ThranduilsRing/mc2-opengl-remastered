@@ -305,7 +305,7 @@ slice.
     `kMechHandleBase`, `kTerrainHandleBase`, `kVfxHandleBase` live as
     `static constexpr` at file scope inside `RenderWorld/RenderWorld.cpp`.
     Promote them to `inline constexpr` in a public header
-    (e.g. `RenderCore/HandleBases.h`) when the next slice needs a
+    (e.g. a new RenderCore handle-bases header) when the next slice needs a
     second TU to reference them. Until then, they're fine where they
     are.
 -   **`std::optional<T>` in offline-tool / schema-parsing code.**

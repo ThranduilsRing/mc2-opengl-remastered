@@ -12,7 +12,7 @@ deploy-asset · deploy-release-tree · objmgr watch-policy · IBL registry (+ext
 manifest +strict) · render-pass-table · icon-atlas (+8-site bug fix) · mech-GLB
 external-pack manifest (+strict) · mech-import tg-dump/bone-parity/roster CLI ·
 smoke gates bucket coverage. Tested smoke_lib modules: gates, logparse, manifest,
-report, runner, selection. `tests/smoke/test_visual_diff.py` exists.
+report, runner, selection. `tests/visual/test_visual_diff.py` exists.
 
 ## New finds (this sweep)
 

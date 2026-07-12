@@ -13,24 +13,24 @@ py -3 tools\repo_intel\repo_query.py preflight --expect-branch <branch> --expect
 - Never share a physical worktree between parallel agents. A separate branch is not sufficient isolation.
 - **Recon-derived fix slice?** Also run `repo_query.py slice-preflight --base <ref> --slice <NAME> --paths <files> --symbols <syms>` first. `verdict=STOP` (symbol changed on base..nifty) → re-recon, do NOT code. Mandatory for shared-recon-queue work. See `docs/disciplines.md`.
 
-Lane → root map: canonical (branch claude/nifty-mendeleev)=`A:/Games/mc2-main` · renderpass-contract-3=`…/worktrees/renderpass-contract-3` · veg-schema-dense=`…/worktrees/veg-schema-dense`
+Lane → root map (illustrative — ground truth is `git worktree list`): canonical (branch claude/nifty-mendeleev)=`A:/Games/mc2-main` · other lanes live under `A:/Games/mc2-opengl-src/.claude/worktrees/<name>`
 
 ## Topic tree
 
-`docs/critical_inline_rules.md` — emoji ban, build/deploy, shaders/GL, discipline · `docs/tier1_env_vars.md` — MC2_* knobs · `docs/known_issues.md` · `docs/active_campaigns.md` — in-flight ledger · `docs/renderworld_arc_status.md` — M1–M6 · `docs/asset-pipeline.md` — canonical asset inventory · `~/.claude/projects/A--Games-mc2-opengl-src/memory/MEMORY.md` → INDEX-{RENDERING,SHADERS,TERRAIN,MECH,BUILD-DEPLOY,MISSION-DATA,SMOKE-TEST,PROCESS}.md
+`docs/README.md` — docs index (start here) · `docs/critical_inline_rules.md` — emoji ban, build/deploy, shaders/GL, discipline · `docs/tier1_env_vars.md` — MC2_* knobs + gate-adding checklist · `docs/known_issues.md` · `docs/active_campaigns.md` — in-flight ledger · `docs/renderworld_arc_status.md` — M1–M6 steady-state ledger (arc closed 2026-05-24; GameAdapters seams remain live) · `docs/disciplines.md` — review/dispatch protocol · `docs/cxx17-coding-rules.md` · `docs/asset-pipeline.md` — canonical asset inventory · `docs/GLOSSARY.md` — jargon (nifty, lane, slice, …) · `~/.claude/projects/A--Games-mc2-opengl-src/memory/MEMORY.md` (maintainer machine only) → INDEX-{RENDERING,SHADERS,TERRAIN,MECH,BUILD-DEPLOY,MISSION-DATA,SMOKE-TEST,PROCESS}.md
 
 ## Orientation
 
 - Project direction: `.planning/PROJECT.md` · Codebase maps: `.planning/codebase/ARCHITECTURE.md`
 - Advisor routing: `.claude/agents/DOMAINS.md` (12 subagents) · Skills: `.claude/skills/`
-- Steering: `A:/Games/mc2-opengl-src/.claude/STEERING.md` (`sh .claude/steer.sh "..."` blocks next action)
+- Steering: `A:/Games/mc2-opengl-src/.claude/STEERING.md` (transient — created on demand by `steer.sh`, deleted on ack; `sh .claude/steer.sh "..."` blocks next action)
 - MCP-first: `get_render_health()` → `get_latest_smoke_report()` → `get_diagnostic_events(tag,50)`. Requires engine running with `MC2_DEBUG_STATE_DUMP=1`.
 
 ## Key paths
 
 - Source: `A:/Games/mc2-main/`
 - Build: `A:/Games/mc2-main/build64/` — root `build64/` is STALE
-- Deploy: `A:/Games/mc2-opengl/mc2-win64-v0.4/`
+- Deploy: `A:/Games/mc2-opengl/mc2-win64-v0.4/` — user's personal install; agents deploy to a leased lane, not here
 - CMake: `C:/Program Files (x86)/Microsoft Visual Studio/2022/BuildTools/Common7/IDE/CommonExtensions/Microsoft/CMake/CMake/bin/cmake.exe`
 
 ## Codex build/deploy rails

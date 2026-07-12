@@ -1,6 +1,14 @@
 # MC2 OpenGL Architecture Reference
 
-Read this file when working on rendering pipeline, coordinate spaces, or render order.
+> **PARTIALLY STALE (banner added 2026-07-09; last full refresh 2026-04-11).**
+> Coordinate-space and map-dimension sections remain valid. The pipeline/render-order
+> sections describe the legacy tessellated path only: bloom was deleted 2026-06-22,
+> shadows are CSM 3x8192 (default-ON since 2026-06-18), and the default terrain
+> renderer is the LOD-chunk path (`MC2_TERRAIN_LOD_CHUNK` default-ON since 2026-06-09,
+> shaders `shaders/terrain_lod_chunk.*` — see `docs/known_issues.md`). For a current
+> map read `.planning/codebase/ARCHITECTURE.md`.
+
+Read this file when working on coordinate spaces; verify pipeline claims against code.
 
 ## Coordinate Spaces
 - **Raw MC2 (WorldPos):** x=east, y=north, z=elevation. Extras VBO, terrainLightDir, lightSpaceMatrix all use this.

@@ -109,4 +109,4 @@ RenderPassId mapping is not testable until a mapping is added to code.
 - **compbas.csv tokenizer overrun** (`logisticscomponent.cpp:182/203`) — real latent bug on malformed CSV.
 - **3 divergent path normalizers** — latent Linux/Vulkan case bug.
 - **`test_gates.py` has no `crash_silent` coverage** — smoke classifier blind spot.
-- **`tools/verify_campaign_assets.py` does not exist** — an earlier assumption it covered campaign metadata is wrong; campaign metadata stays RED (FitIni).
+- **`scripts/verify_campaign_assets.py` does not exist** — an earlier assumption it covered campaign metadata is wrong; campaign metadata stays RED (FitIni).
