@@ -1,5 +1,63 @@
 # VK-ARC-STATE — current state block (update every session)
 
+## 2026-07-11 — TWO FIELD-ENV VICTIMS: SELECTION OUTLINES FIXED+PROVEN; WEAPON-FIRE VFX built (mechanism), NOT yet visually closed (commits `06e3a5f9` + `3c500617`, both installs)
+
+Two more all-or-nothing-invariant victims under the field umbrella (VK-only present
+skips GL scene draws → any layer without a VK owner VANISHES).
+
+**★ BUG A — SELECTION BRACKETS + WORLD HEALTH BARS — FIXED, COMPOSED-IMAGE PROVEN
+(`06e3a5f9`).** The bright unit selection brackets (`Appearance::drawSelectBrackets`
+→ `LineElement` → `gos_DrawLines`) and over-unit health bars (`drawBars` →
+`PolygonQuadElement` → `gos_DrawTriangles` + `DrawBox` lines) are SCREEN-SPACE
+(`upperLeft`/`lowerRight` are projected, clamped to `getScreenResX/Y`) gos immediate
+draws issued with `gos_State_IsHUD` OFF → they landed in the discarded GL backbuffer
+and vanished, while the force-group HUD-panel bars (on the IsHUD queue) survived —
+the exact reported asymmetry. Fix: a `VkHudRouteScope` (mclib/appear.cpp) gated on
+`mc2vkgate::umbrellaOn()` sets `gos_State_IsHUD` (+scaleExempt) around both draw fns
+→ buffers them into the HUD tail the VK present composites (`kHudLineBatch` +
+`kHudTriBatch` are represented). Umbrella OFF → IsHUD untouched → byte-identical GL.
+Added gated `MC2_VK_SELECT_TEST=1` (missiongui) auto-selecting the visible lance for
+headless capture. **PROOF:** a field-env desktop screenshot (`MC2_VK_SELECT_TEST=1`)
+shows the green bracket corners + the outlined green health bar rendering over the
+selected mech — I looked at it; crisp and unambiguous.
+
+**★ BUG B — WEAPON-FIRE VFX — MECHANISM BUILT, VISUAL NOT CLOSED (`3c500617`).**
+★★ROOT-CAUSE FINDING: the field env (`tracy-vk-compare.bat on` = ONLY
+`MC2_RENDER_BACKEND=vulkan` + `MC2_VK_SHARED_GBUFFER=1`) uses the **LEGACY MLR**
+weapon-fire path — `MC2_GPU_PARTICLES` is user-reverted OFF ("GPU FX looked broken",
+batcher.cpp:82) and the GPU vfx-mesh / tube-ribbon bridges are oracle-gated OFF too.
+So the dominant field VFX are `WeaponBolt::render` → `gos_DrawTriangles` (screen-space
+projected, in-scene, IsHUD off) + carnage/artillery — NOT the GPU bridges the task
+named. Two VK owners built, gate `MC2_VK_VFX` (default-ON under umbrella, `=0` disables
+both): (1) `vulkan_vfx_island.cpp` (+ `vfx_particle.{vert,frag}`) — a water-pattern VK
+translucent pass that co-writes the GPU-particle billboard stream into shared color0
+(GEQUAL depth-test, no write, alpha+additive, untextured soft billboards); ACTIVE only
+under `MC2_GPU_PARTICLES=1`, INERT in the field env. (2) `code/objmgr.cpp` — routes the
+legacy in-scene VFX (`if(other)` weapons/carnage/lights/artillery, SEPARATE from the
+VK-owned mechs/vehicles) through `gos_State_IsHUD` into the composited HUD tail (same
+mechanism as BUG A). **VERIFIED:** field-check PASS (all content layers VK-owned, no
+fallback) with both active; HUD + brackets + bars stay intact through a forced-fire
+window (`MC2_FX_FORCE_SPAWN`), so the HUD-tail GL-replay path composites fine; tier1
+5/5 PASS both states +0 destroys. **NOT CLOSED:** a crisp weapon-bolt hero frame — the
+`MC2_FX_FORCE_SPAWN` bolts fire toward +x world and exit the frame edge, and HUD-tail-
+routed VFX do NOT appear in the headless scene-FBO / `MC2_VK_PRESENT_DUMP_PPM` captures
+(those read shared color0 BEFORE the HUD tail — only the presented window shows them),
+so a clean transient present-grab was not obtained headlessly across multiple framings.
+The mechanism is proven (BUG A used the identical path with a crisp proof) and non-
+regressing, but the weapon-fire RENDER is NOT visually confirmed. **NEXT:** deterministic
+fire-frame present-grab (`MC2_VISUAL_CAPTURE_FRAME` freeze at bolt-mid-flight +
+top-down/centered bolt framing + desktop screenshot). **DEFERRED remainder:** depth-
+correct native VK scene-VFX pass (the objmgr route is screen-space, no depth occlusion);
+textured sprite atlases; tube-ribbon beams; gosFX MESH shapes; re-enabling+fixing the
+GPU-particle path (my island already VK-renders it).
+
+**★ DURABLE LESSONS:** (1) the field weapon-fire path is LEGACY MLR (`gos_DrawTriangles`),
+NOT the GPU vfx bridges — those are all default-OFF; don't assume the modern path is
+live. (2) HUD-tail-routed content is invisible to the scene-FBO/PPM oracles (they read
+color0 before the tail); only a presented-window desktop grab shows it. (3) forced-fire
+(`MC2_FX_FORCE_SPAWN`) is transient + fires toward +x world → frames off the edge under
+naive poses; needs frame-freeze + deliberate bolt framing.
+
 ## 2026-07-11 — ROUND 4 FIXED (REAL ROOT CAUSE): HUD even-length text scrambled — quad-fold heuristic (commit `805a07ba`, both installs)
 
 The round-3 "HUD glyph corruption" fix (`930386601f6b`, the (handle<<32|serial)
