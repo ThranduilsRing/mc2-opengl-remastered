@@ -650,6 +650,32 @@ static constexpr EnvVarDesc kAuxEnvVars[] = {
         "(root cause: drawOldWay==false deferred bolts into the discarded GL scene flush)."
     },
     {
+        "MC2_TRACE_VK_PRESENT_DUMP_PPM",
+        "MC2_VK_PRESENT_DUMP_PPM",
+        EnvVarKind::Trace,
+        false,
+        "VK-FIELD-ORACLE-1: headless present-pixel oracle. Default-OFF. Path of a PPM "
+        "(P6) file; EnginePresentVk::verifyReadbackContent dumps the FULL composited "
+        "present image (sharedImg, the RGBA8 backbuffer VK blits to the swapchain) "
+        "there on each verify tick. Requires MC2_VK_PRESENT_VERIFY; verify ticks run "
+        "every 60th frame while frame<600 plus (if MC2_VK_PRESENT_DUMP_FRAME is set) "
+        "a 600-frame window at/after the pin. The OS/PrintWindow grab of a VK "
+        "swapchain returns only the clear colour and the GL scene-FBO capture is "
+        "empty under shared-GBuffer, so this is the only true-backbuffer capture."
+    },
+    {
+        "MC2_TRACE_VK_PRESENT_DUMP_FRAME",
+        "MC2_VK_PRESENT_DUMP_FRAME",
+        EnvVarKind::Trace,
+        false,
+        "VK-FIELD-VFX-3: frame pin for MC2_VK_PRESENT_DUMP_PPM. Default unset "
+        "(overwrite-latest each verify tick). =N captures once at the FIRST verify "
+        "tick with g_mc2FrameCounter >= N. gameosmain extends the verify-tick window "
+        "to [N, N+600) so a pin past the initial 600-frame verify stretch still "
+        "fires (an unpinnable pin silently reports 'PPM never wrote' on a HEALTHY "
+        "present path — the 2026-07-12 grey-regression false clue)."
+    },
+    {
         "MC2_TRACE_VK_PRESENT_NATIVE_STRICT",
         "MC2_VK_PRESENT_NATIVE_STRICT",
         EnvVarKind::Trace,

@@ -1861,10 +1861,24 @@ int main(int argc, char** argv)
                         graphics::get_drawable_size(win, &pdw, &pdh);
                         // T5 content verification: readback on a light cadence for
                         // the first stretch (proves real, changing frame content
-                        // without a per-frame readback stall).
+                        // without a per-frame readback stall). A pinned PPM dump
+                        // (MC2_VK_PRESENT_DUMP_FRAME=N) needs a verify tick AT/after
+                        // frame N — without the extra window below, a pin >= 600
+                        // could never fire (verify ticks stopped first), so the
+                        // oracle silently reported "PPM never wrote" on a healthy
+                        // present path (the 2026-07-12 grey-regression red herring).
+                        static const unsigned long s_ppmPinFrame = [] {
+                            const char* p = getenv("MC2_VK_PRESENT_DUMP_FRAME");
+                            return (p && p[0]) ? strtoul(p, nullptr, 10) : 0ul;
+                        }();
+                        const bool inVerifyWindow =
+                            (g_mc2FrameCounter < 600) ||
+                            (s_ppmPinFrame > 0 &&
+                             g_mc2FrameCounter >= s_ppmPinFrame &&
+                             g_mc2FrameCounter < s_ppmPinFrame + 600);
                         const bool verify =
                             (getenv("MC2_VK_PRESENT_VERIFY") != nullptr) &&
-                            (g_mc2FrameCounter < 600) && (g_mc2FrameCounter % 60 == 0);
+                            inVerifyWindow && (g_mc2FrameCounter % 60 == 0);
                         if (vkpres.presentGLFrame((uint32_t)pdw, (uint32_t)pdh, verify)) {
                             vkPresented = true;
                             static unsigned long s_vkHealthCadence = 0;
