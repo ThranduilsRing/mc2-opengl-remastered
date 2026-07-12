@@ -1,5 +1,49 @@
 # VK-ARC-STATE — current state block (update every session)
 
+## 2026-07-12 (EVE) — P0 GREY-REGRESSION AT 73d7e4f2: CANNOT REPRODUCE at a clean fingerprint-verified deploy; the "PPM never wrote" clue was a STRUCTURALLY GUARANTEED FALSE NEGATIVE (oracle bug, now fixed `8c56eafb`). Both installs redeployed clean.
+
+**★ WHAT THE HANDOFF SAID:** user saw "everything back to grey" after the round-4 VFX deploy;
+coordinator's decisive clue = `MC2_VK_PRESENT_DUMP_PPM` + `MC2_VK_PRESENT_DUMP_FRAME=2500`
+never wrote across ~90s → "present never ran"; lead hypothesis = the new OneInvAlpha
+present-tail pipes failing at init.
+
+**★ FINDING 1 — the clue was invalid.** The PPM writes only inside
+`EnginePresentVk::verifyReadbackContent`, which runs only on verify ticks, and gameosmain
+stopped verify ticks at `g_mc2FrameCounter < 600` (every 60th frame, requires
+`MC2_VK_PRESENT_VERIFY`). A pin of 2500 suppresses writes until frame 2500 — but no verify
+tick ever happens past 600. **The PPM could NEVER write with pin=2500, healthy present or
+not.** (Round-4's own captures used pins 180/400 — inside the window.) The lead hypothesis's
+supporting evidence was an oracle artifact. (The OneInvAlpha pipes themselves: creation IS
+unconditional inside `ensureHudColorObjects` and failure would poison the HUD object family
+via `hudColorVkFailed` — but the blend state is valid, and 6 clean boots show it creating fine.)
+
+**★ FINDING 2 — the deployed exe was a DIRTY-TREE build (deploy ambiguity, the real suspect).**
+Both installs' exes fingerprinted `8eba6abc dirty=1` — round-4 was built BEFORE its commit was
+cut (built dirty at 8eba6abc+changes, then committed as 73d7e4f2). That exe's exact source
+state is unattributable (stale-OBJ mix possible — the known grey-screen failure class).
+**FIX APPLIED: clean `--clean-first` rebuild at committed 73d7e4f2 (fingerprint
+`73d7e4f2 dirty=0`), deployed BOTH installs, fingerprint-verified via deploy_status.**
+
+**★ VERDICT — grey NOT reproducible at the clean deploy.** `run_vk_field_check.py`
+(--skip-props-pose) run 6× (5 at 73d7e4f2 + 1 at 8c56eafb): **6/6 PASS**, backbuffer chroma
+27–65 (grey wash ≈ 4), all layers used_vulkan>0, no fallback; I eyeballed the check PNGs
+(real terrain/water/HUD frames). S2b transient (~1-in-4) not observed in 6 boots — if the
+user's grey recurs it is S2b or something only their exact launch context exercises; the
+73d7e4f2 code itself renders correctly in the field env.
+
+**★ ORACLE FIX (`8c56eafb`, committed clean, deployed both installs):** gameosmain extends the
+verify-tick window to [pin, pin+600) when `MC2_VK_PRESENT_DUMP_FRAME` is set (still requires
+`MC2_VK_PRESENT_VERIFY`; inert otherwise). **Proven live:** field env + pin=2500 now writes
+the PPM (~30s in); I eyeballed it — full composited HUD + water scene at frame 2500 (the
+upside-down HUD text/portraits in the raw PPM = the known dump-orientation quirk, watch-only).
+Also REGISTERED `MC2_VK_PRESENT_DUMP_PPM` + `MC2_VK_PRESENT_DUMP_FRAME` (Trace) in
+RendererFeatureRegistry — both had shipped unregistered in round-4.
+
+**★ PROCESS LESSON (chip filed):** deploy_payload writes manifest src_commit=HEAD even when
+the exe came from a dirty tree — a dirty deploy is invisible in deploy_status until someone
+reads build_fingerprint.h. Never build-then-commit: COMMIT FIRST, then build (the fingerprint
+regenerates per build from git state), then deploy.
+
 ## 2026-07-12 (PM) — WEAPON-FIRE VFX ROUND 3: THE "WEIRD LASER" FIXED. Beams now composite as bright colour-correct ADDITIVE energy beams matching the GL classes (was: round-2 flat 3px line proxy + wrong blend). Umbrella-gated (MC2_VK_VFX), field-check PASS, tier1 5/5 both states +0, both installs deployed.
 
 **★ USER VERDICT going in:** "VFX still LASERS ONLY, and the laser looks WRONG — a weird
