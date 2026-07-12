@@ -1151,6 +1151,9 @@ def main():
                             # them and the fixture never fires.
                             "MC2_FX_FORCE_SPAWN",
                             "MC2_LOG",
+                            # BUG-A pick regression fence: forward so the [VK_PICK_PROBE]
+                            # deterministic mouse->pick proof fires under smoke/probe runs.
+                            "MC2_VK_PICK_PROBE",
                             # ABL-BAD-NATIVE-ARG-REPRO-1 gates — must be allowlisted so
                             # the repro hook and guard fire when set by the caller.
                             "MC2_ABL_ARG_GUARD",

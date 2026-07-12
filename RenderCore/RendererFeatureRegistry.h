@@ -1508,6 +1508,20 @@ static constexpr EnvVarDesc kAuxEnvVars[] = {
         "(crashes / [VISUAL_CAPTURE] stay visible). Set =1 by run_smoke.py + "
         "run_visual_capture.py; NOT set by the game launcher (so play stays fast)."
     },
+    // BUG-A pick-probe fixture (mouse->pick DPI regression fence)
+    {
+        "MC2_VK_PICK_PROBE",
+        "MC2_VK_PICK_PROBE",
+        EnvVarKind::Trace,
+        false,
+        "BUG-A pick regression fence: default-OFF. When set, MissionInterfaceManager::update "
+        "(code/missiongui.cpp) runs ONCE post-settle a deterministic mouse->pick coordinate "
+        "proof: it simulates a 2x HiDPI drawable and asserts getMouseX round-trips an SDL "
+        "window-point (identity), then aims at a visible home mover's screen-bbox centre and "
+        "asserts findObjectByMouse resolves back to that mover. Emits [VK_PICK_PROBE] "
+        "identity/object/VERDICT lines. Backend-independent (gl or vk). Proves the "
+        "gos_GetMouseInfo window-vs-drawable normalize fix. Zero cost unset."
+    },
     // FX-FORCE-SPAWN fixture (mech-fire tube)
     {
         "MC2_FX_FORCE_SPAWN",

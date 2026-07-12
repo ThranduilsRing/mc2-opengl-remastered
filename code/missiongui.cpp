@@ -1063,6 +1063,114 @@ void MissionInterfaceManager::update (void)
 	mouseX = userInput->getMouseX();
 	mouseY = userInput->getMouseY();
 
+	// ---- MC2_VK_PICK_PROBE (BUG-A regression fence) ------------------------
+	// Deterministic proof that the mouse->pick coordinate chain is DPI/resolution
+	// consistent. Runs once, post-settle. Backend-independent (gl or vk both hit
+	// the same gos_GetMouseInfo normalize). See gos_GetMouseInfo BUG-A fix.
+	{
+		static bool s_pickProbeDone = false;
+		if (!s_pickProbeDone && (turn > 20) && std::getenv("MC2_VK_PICK_PROBE"))
+		{
+			s_pickProbeDone = true;
+			const char* be = std::getenv("MC2_RENDER_BACKEND");
+			const float logW = (float)Environment.screenWidth;
+			const float logH = (float)Environment.screenHeight;
+			const int savedDW = Environment.drawableWidth;
+			const int savedDH = Environment.drawableHeight;
+			// preserve the live raw mouse so injecting synthetic points does not
+			// corrupt real input on the next frame's poll.
+			const input::MouseInfo* miSave = input::getMouseInfo();
+			const float rawSaveX = miSave ? miSave->x_ : 0.f;
+			const float rawSaveY = miSave ? miSave->y_ : 0.f;
+
+			auto readPick = [&](float rawX, float rawY, long& px, long& py) {
+				gos_TestSetRawMouse(rawX, rawY);
+				float nx = 0.f, ny = 0.f; int a = 0, b = 0, c = 0; DWORD d = 0;
+				gos_GetMouseInfo(&nx, &ny, &a, &b, &c, &d);
+				userInput->pickProbeSetNormalized(nx, ny);
+				px = userInput->getMouseX();
+				py = userInput->getMouseY();
+			};
+
+			// Find a visible home mover to use as the KNOWN object under the cursor.
+			GameObjectPtr targetMover = NULL; float tcx = 0.f, tcy = 0.f;
+			if (Team::home)
+			{
+				for (long i = 0; i < Team::home->getRosterSize(); ++i)
+				{
+					Mover* m = (Mover*)Team::home->getMover(i);
+					if (!m || !m->getExists()) continue;
+					AppearancePtr ap = m->getAppearance();
+					if (!ap || !ap->canBeSeen()) continue;
+					const float bw = ap->lowerRight.x - ap->upperLeft.x;
+					const float bh = ap->lowerRight.y - ap->upperLeft.y;
+					if (bw < 2.f || bh < 2.f) continue;
+					const float bcx = 0.5f * (ap->upperLeft.x + ap->lowerRight.x);
+					const float bcy = 0.5f * (ap->upperLeft.y + ap->lowerRight.y);
+					if (bcx < 0.f || bcx > logW || bcy < 0.f || bcy > logH) continue;
+					targetMover = m; tcx = bcx; tcy = bcy; break;
+				}
+			}
+
+			// Sweep the exact field DPI ratio (4K @225% -> drawable/window = 2.25) and
+			// the unscaled ratio (1080p @100% -> 1.0, where the bug is invisible so this
+			// is the no-regression check). The fix normalizes the mouse by the real SDL
+			// window (== canvas), so faking Environment.drawableWidth only exercises the
+			// OLD divide-by-drawable divisor -> a clean discriminator on any display.
+			struct Cfg { const char* label; float ratio; };
+			const Cfg cfgs[2] = { {"4K@225%", 2.25f}, {"1080p@100%", 1.0f} };
+			bool allOK = true;
+			for (int ci = 0; ci < 2; ++ci)
+			{
+				Environment.drawableWidth  = (int)(logW * cfgs[ci].ratio + 0.5f);
+				Environment.drawableHeight = (int)(logH * cfgs[ci].ratio + 0.5f);
+
+				// (A) identity: a cursor physically over on-canvas (cx,cy) arrives from
+				// SDL as window-points (cx,cy); getMouseX must return it unchanged.
+				const float cx = 0.75f * logW, cy = 0.5f * logH;
+				long px = 0, py = 0; readPick(cx, cy, px, py);
+				const long dxErr = (px > (long)cx) ? (px - (long)cx) : ((long)cx - px);
+				const long dyErr = (py > (long)cy) ? (py - (long)cy) : ((long)cy - py);
+				const bool idOK = (dxErr <= 2) && (dyErr <= 2);
+				// NEGATIVE CONTROL: what the OLD divide-by-drawable formula would give.
+				const long oldPx = (long)((cx / (logW * cfgs[ci].ratio)) * logW);
+				printf("[VK_PICK_PROBE] backend=%s res=%s canvas=%.0fx%.0f drawable=%dx%d "
+					   "identity raw=(%.0f,%.0f) pick=(%ld,%ld) err=(%ld,%ld) oldBugWouldGive=%ld -> %s\n",
+					   be ? be : "gl", cfgs[ci].label, logW, logH,
+					   Environment.drawableWidth, Environment.drawableHeight,
+					   cx, cy, px, py, dxErr, dyErr, oldPx, idOK ? "PASS" : "FAIL");
+
+				// (B) object: aim at the mover's screen-bbox centre; the full pick
+				// (findObjectByMouse) must resolve back to that same mover.
+				bool objOK = true;
+				if (targetMover)
+				{
+					long ox = 0, oy = 0; readPick(tcx, tcy, ox, oy);
+					GameObjectPtr picked = ObjectManager->findObjectByMouse(ox, oy);
+					objOK = (picked == targetMover);
+					printf("[VK_PICK_PROBE] backend=%s res=%s object aimCenter=(%.0f,%.0f) "
+						   "pick=(%ld,%ld) target=%p picked=%p -> %s\n",
+						   be ? be : "gl", cfgs[ci].label, tcx, tcy, ox, oy,
+						   (void*)targetMover, (void*)picked, objOK ? "PASS" : "FAIL");
+				}
+				else
+				{
+					printf("[VK_PICK_PROBE] backend=%s res=%s object SKIP (no visible home mover w/ bbox)\n",
+						   be ? be : "gl", cfgs[ci].label);
+				}
+				allOK = allOK && idOK && objOK;
+			}
+
+			// restore
+			Environment.drawableWidth  = savedDW;
+			Environment.drawableHeight = savedDH;
+			gos_TestSetRawMouse(rawSaveX, rawSaveY);
+			printf("[VK_PICK_PROBE] VERDICT=%s\n", allOK ? "PASS" : "FAIL");
+			fflush(stdout);
+		}
+	}
+	// ------------------------------------------------------------------------
+
 	bool bGui = false;
 
 	// Raw-space GUI test. ae7e1794 switched the bGui hit-test below to

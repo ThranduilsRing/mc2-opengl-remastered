@@ -1612,6 +1612,10 @@ void __stdcall gos_GetMouseInfo( float* pXPosition, float* pYPosition, int* pXDe
 //
 void __stdcall gos_SetMousePosition( float XPosition, float YPosition );
 
+// MC2_VK_PICK_PROBE test hook: inject a synthetic raw SDL mouse point (window-
+// points space) so the pick probe drives the real production normalize path.
+void gos_TestSetRawMouse( float winPtX, float winPtY );
+
 
 
 
