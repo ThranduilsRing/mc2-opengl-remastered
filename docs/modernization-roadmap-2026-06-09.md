@@ -141,7 +141,7 @@ terrain. BUT: **S2 was just re-scoped — `MultiTransformShape` measured ≤1.2m
 present + the renderLists submit path.** So the *first* dynamic work is attribution, not transform
 surgery.
 
-**Sequencing (revised, from perf-attribution-plan.md + S2_IMPLEMENTATION_PLAN.md superseded note).**
+**Sequencing (revised, from perf-attribution-plan.md + docs/archive/superseded/S2_IMPLEMENTATION_PLAN.md superseded note).**
 - **S2a — frame-time attribution (R0–R3):** instrument present + renderLists + submit; prove where the
   ms actually go now that terrain is <100µs. *This gates everything else dynamic.*
 - **S2b — `MultiTransformShape` elimination, only if S2a justifies it:** activate `TG_RenderShape` for

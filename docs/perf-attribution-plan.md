@@ -8,7 +8,7 @@ Stage 0 measured `TG_Shape::MultiTransformShape` (CPU clip-space bake) at ≤~1.
 typical on the densest object map, ~0 elsewhere. The first instinct ("S2 is dead") was **wrong** for
 a subtle reason:
 
-> The old S2 plan (`docs/S2_IMPLEMENTATION_PLAN.md`) activates the existing GPU-VB `TG_RenderShape`
+> The old S2 plan (`docs/archive/superseded/S2_IMPLEMENTATION_PLAN.md`) activates the existing GPU-VB `TG_RenderShape`
 > color-submit path but **explicitly keeps `MultiTransformShape` running** (it's still needed for
 > backface cull, visible-face lists, shadow verts, CPU fallback, and the highlight/lighting bake).
 > So if the measured 1.2ms lives *inside* `MultiTransformShape`, **old-S2 does not remove it** — it
