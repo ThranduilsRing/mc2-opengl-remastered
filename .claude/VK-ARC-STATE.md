@@ -1,5 +1,58 @@
 # VK-ARC-STATE — current state block (update every session)
 
+## 2026-07-12 (PM) — WEAPON-FIRE VFX ROUND 3: THE "WEIRD LASER" FIXED. Beams now composite as bright colour-correct ADDITIVE energy beams matching the GL classes (was: round-2 flat 3px line proxy + wrong blend). Umbrella-gated (MC2_VK_VFX), field-check PASS, tier1 5/5 both states +0, both installs deployed.
+
+**★ USER VERDICT going in:** "VFX still LASERS ONLY, and the laser looks WRONG — a weird
+version, like it's trying to draw the non-working GPU-side one." **DIAGNOSIS (traced, not
+guessed):**
+- **Hypothesis (a) — vfx island rendering when it shouldn't — DISPROVEN empirically.** The
+  `vulkan_vfx_island` is gated on MC2_VK_VFX but only *fed* from `gos_particle_bridge_flush`,
+  which the batcher calls only when `is_enabled()` (MC2_GPU_PARTICLES, default OFF). Field log
+  confirms `[VK_VFX] vulkan_available=0 vk_draws=0 particles=0` — the island is inert in the
+  field env. Not the culprit.
+- **REAL culprit = the round-2/3 look-changing simplifications on the routed legacy MLR beam**
+  (`code/weaponbolt.cpp`): (1) AlphaMode remap OneInvAlpha(4)→AlphaInvAlpha(3) (wrong, dimmer
+  blend); (2) forced UNTEXTURED; (3) the beam-axis LINE fallback (3 flat opaque horizontal
+  lines) — that flat line WAS the "weird laser". These verification hacks became the shipped look.
+
+**★ FIX (VK-FIELD-VFX-3, all under the MC2_VK_VFX umbrella; GL/umbrella-off byte-identical):**
+1. **Retired all three beam hacks** in `weaponbolt.cpp`: AlphaMode stays native OneInvAlpha(4);
+   line fallback deleted; the real ribbon quads carry the beam.
+2. **Added a real additive tail pipe** matching GL's `glBlendFunc(GL_ONE, GL_ONE_MINUS_SRC_ALPHA)`
+   (OneInvAlpha) in `engine_present_vk.cpp` — both a textured variant (`hudTexOneInvAlphaPipe`)
+   AND an untextured colour-tri variant (`hudColorTriOneInvAlphaPipe`), selected when
+   `alphaMode==4`. Retires round-3's "AlphaMode 4 maps to the dimmer alpha pipe" deferral.
+3. **Beam rendered UNTEXTURED (vertex-coloured) under the VK route** because the beam sprite
+   (tex=606, `gos_Texture_Alpha`, created via `gos_NewEmptyTexture`+lock/unlock in txmmgr) has
+   NO HUD rgba mirror → a *textured* beam is per-draw-declined and VANISHES (verified: the first
+   textured-restore attempt showed the beam declined `kind=2 tex=606 rgba=0 alpha=4`, invisible).
+   The untextured additive ribbon is always representable and, with the additive pipe + real
+   geometry, composites a bright colour-correct beam.
+4. **Frame-pinned present dump** (`MC2_VK_PRESENT_DUMP_FRAME=N`, new) so a capture lands on an
+   early fire-active frame — continuous force-fire overheats/depletes the mechs so the default
+   overwrite-latest PPM caught a post-fire (empty) frame.
+
+**★ ACCEPTANCE — same-frame (180) GL-vs-VK force-fire captures (mc2_24, `MC2_FX_FORCE_SPAWN=loop`),
+I looked at both:** GL shows blue-white PPC beams (tight bright-white core + graduated blue glow)
++ thin orange laser beams, bright additive. VK shows the SAME classes — blue-white PPC beams +
+orange laser beams, bright additive, same direction/length. **All weapon classes present in GL are
+present in VK; colour, brightness, direction, length and additive-glow class all match.** The
+"weird flat laser" is gone. Evidence PNGs in `.claude/vfx-fire/mc2_24/` (gl frame180, vk present,
+beam crops). REMAINING DELTA (documented, honest): VK's untextured ribbons read slightly BROADER /
+more uniformly-white than GL, because GL's beam sprite alpha-tapers the ribbon edges to a tighter
+bright core while the untextured ribbon shows the full geometric width at full brightness. Closing
+it needs the effect-sprite rgba mirror wired for lock/unlock (`gos_NewEmptyTexture`) textures — the
+one remaining item for pixel-parity textured beams. (No ballistic/missile weapons in mc2_24's
+lance, so those classes weren't exercised; the routing carries them.)
+
+**★ VERIFICATION.** `run_vk_field_check.py --skip-props-pose`: PASS (all layers VK-owned
+used_vulkan≈5098, no fallback, chroma 49.92). Canonical tier1 smoke **5/5 both states +0**
+against install `0.4c` (GL `2026-07-12T11-34-12` ~70 FPS; VK umbrella `2026-07-12T11-38-18`
+~40 FPS — VK slower per standing ruling, flip = features not perf). Deployed both
+`mc2-win64-0.4c` and `mc2-win64-v0.4c` (manifest src_commit 8eba6abcb714). PPMs cleaned.
+Files: `code/weaponbolt.cpp`, `GameOS/gameos/engine_present_vk.cpp`,
+`GameOS/gameos/gameos_graphics.cpp` (representable-comment refresh).
+
 ## 2026-07-12 — TWO FIELD BUGS FIXED: (A) MOUSE-PICK DPI OFFSET [P0] proven green gl+vk × 4K/1080p; (B) NON-LASER VFX now composite (all-or-nothing HUD veto -> per-draw self-decline + effect classes routed). Both umbrella-gated, tier1 5/5 both states +0, both installs deployed.
 
 **★ BUG A — MOUSE-PICK DPI OFFSET (P0, gameplay-breaking) — ROOT-CAUSED + FIXED + PROVEN.**

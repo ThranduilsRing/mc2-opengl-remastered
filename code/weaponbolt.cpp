@@ -2239,16 +2239,12 @@ void WeaponBolt::render (void)
 				//Set States for Hardware Renderer
 				else
 				{
-					// VK-FIELD-VFX-2: the VK HUD tail only composites AlphaMode OneZero(1) or
-					// AlphaInvAlpha(3) (vkHudDrawRepresentable, gameos_graphics.cpp) — a beam's
-					// native OneInvAlpha(4) is REJECTED and vanishes. Use AlphaInvAlpha(3): it maps
-					// to the tail's WORKING non-opaque color-line pipeline (hudColorLinePipe, the
-					// same one the proven selection brackets use); the opaque pipe (OneZero->
-					// hudColorLineOpaquePipe) does not rasterize the beam-axis lines. The beam-axis
-					// line (below) carries full 0xFF alpha so AlphaInvAlpha renders it solid. GL
-					// path (drawOldWay / umbrella-off) keeps OneInvAlpha -> byte-identical.
-					gos_SetRenderState( gos_State_AlphaMode,
-						vkVfxImmediateDraw() ? gos_Alpha_AlphaInvAlpha : gos_Alpha_OneInvAlpha);
+					// VK-FIELD-VFX-3 (look-restore): the VK HUD tail now composites the
+					// native effect blend AlphaMode OneInvAlpha(4) as a textured tri-batch
+					// (vkHudDrawRepresentable accepts 4 + effect sprites carry an rgba mirror),
+					// so the beam renders with its real additive-style blend just like GL.
+					// Round-2's AlphaInvAlpha(3) remap is retired — it was the "weird laser".
+					gos_SetRenderState( gos_State_AlphaMode, gos_Alpha_OneInvAlpha);
 					gos_SetRenderState( gos_State_ShadeMode, gos_ShadeGouraud);
 					gos_SetRenderState( gos_State_MonoEnable, 0);
 					gos_SetRenderState( gos_State_Perspective, 1);
@@ -2263,14 +2259,17 @@ void WeaponBolt::render (void)
 					gos_SetRenderState(	gos_State_ZWrite, 0);
 				}
 			
-				// VK-FIELD-VFX-2: the VK HUD tail can only represent a TEXTURED tri-batch when
-				// the sampled texture is in its HUD mirror (needs non-empty textureRgba). An
-				// effect sprite like the beam texture is NOT mirrored (decline log: kind=2
-				// tex=275 rgba=0), so a textured beam is dropped. Render it UNTEXTURED under the
-				// VK route -> plain vertex-colour tri-batch that IS representable and composites.
-				// (Textured effect-sprite mirroring is the deferred remainder.) GL path unchanged.
+				// VK-FIELD-VFX-3 (look-restore): the beam effect sprite (gos_Texture_Alpha,
+				// created via gos_NewEmptyTexture+lock/unlock in txmmgr) has NO HUD rgba
+				// mirror, so a TEXTURED beam tri-batch is declined by the tail and vanishes.
+				// Render the beam UNTEXTURED (vertex-coloured) under the VK route: combined
+				// with the additive OneInvAlpha tail pipe (below) and the real ribbon quads
+				// this composites a bright colour-correct additive beam that matches GL's
+				// shape/colour/length/blend class. (Texture-gradient detail is the remaining
+				// delta — needs the effect-sprite mirror wired for lock/unlock textures.)
+				// GL / umbrella-off path stays textured -> byte-identical.
 				if (vkVfxImmediateDraw())
-					gos_SetRenderState( gos_State_Texture, 0);
+					gos_SetRenderState( gos_State_Texture,0);
 				else if (gosTextureHandle != 0xffffffff)
 					gos_SetRenderState( gos_State_Texture,gosTextureHandle);
 				else
@@ -2280,34 +2279,11 @@ void WeaponBolt::render (void)
 				gos_DrawTriangles(lq2Vertices,3);
 				gos_DrawTriangles(lq3Vertices,3);
 				gos_DrawTriangles(lq4Vertices,3);
-
-				// VK-FIELD-VFX-2: at tactical zoom a beam's ribbon is often sub-pixel
-				// wide, so its filled triangles cover no pixel centres and rasterize
-				// NOTHING in the VK HUD tail (verified: 84x14 bbox, thin diagonal, zero
-				// pixels). Emit the beam AXIS as opaque lines (kHudLineBatch — the proven
-				// selection-bracket path) so thin beams stay visible under the VK umbrella.
-				// lq1Vertices[0]=tip, lq1Vertices[1]=base (opposite ends of the ribbon).
-				if (vkVfxImmediateDraw())
-				{
-					const DWORD beamCol = (lq1Vertices[0].argb & 0x00ffffffu) | 0xff000000u;
-					for (int oy = -1; oy <= 1; ++oy)
-					{
-						gos_VERTEX ln[2];
-						ln[0] = lq1Vertices[0];
-						ln[1] = lq1Vertices[1];
-						ln[0].y += (float)oy; ln[1].y += (float)oy;
-						ln[0].argb = beamCol; ln[1].argb = beamCol;
-						gos_DrawLines(ln, 2);
-					}
-					if (vfxTrace) {
-						static int s_le = 0;
-						if (s_le < 20) { ++s_le;
-							printf("[VK_VFX_TRACE] beam-line EMIT tip=(%.0f,%.0f) base=(%.0f,%.0f) col=%08X\n",
-								lq1Vertices[0].x, lq1Vertices[0].y, lq1Vertices[1].x, lq1Vertices[1].y, (unsigned)beamCol);
-							fflush(stdout);
-						}
-					}
-				}
+				// VK-FIELD-VFX-3 (look-restore): the round-2 beam-axis LINE fallback
+				// (3 opaque horizontal lines) is retired — it was a visibility hack that
+				// produced the flat "weird laser". The textured ribbon quads above are the
+				// real beam and match GL. (If a far-zoom sub-pixel ribbon coverage delta
+				// resurfaces it will be handled by the ribbon geometry, not a line proxy.)
 			}
 			else
 			{

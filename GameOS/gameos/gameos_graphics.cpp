@@ -7957,10 +7957,10 @@ static bool vkHudSkipGlEnabled()
 static bool vkHudDrawRepresentable(const mc2vk::VkHudDraw& draw)
 {
     // AlphaMode 1 (OneZero/opaque), 3 (AlphaInvAlpha) and 4 (OneInvAlpha, the
-    // effect-sprite blend) are all rasterizable by the tail. 4 currently maps to
-    // the alpha-blend pipe (td.opaque=false) rather than a true additive pipe, so
-    // the composite is slightly less bright than GL additive — a look-only delta,
-    // the effect still renders. A dedicated additive pipe is the follow-up.
+    // effect-sprite blend) are all rasterizable by the tail. AlphaMode 4 now binds a
+    // dedicated OneInvAlpha textured pipe (ONE, 1-srcA) in engine_present_vk.cpp that
+    // matches GL's glBlendFunc(GL_ONE, GL_ONE_MINUS_SRC_ALPHA) — the additive-glow
+    // effect blend — so beams/tracers/explosions composite at GL brightness.
     if (draw.alphaMode != 1 && draw.alphaMode != 3 && draw.alphaMode != 4)
         return false;
     const bool textured = draw.textureHandle != 0 && draw.textureHandle != INVALID_TEXTURE_ID;
