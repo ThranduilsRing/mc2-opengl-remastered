@@ -138,6 +138,7 @@ run_check "pass_coverage"          "py -3 scripts/check-pass-coverage.py --quiet
 run_check "render_ctx_parity"      "py -3 scripts/check-editor-game-render-context-parity.py --quiet"
 run_check "editor_pass_parity"     "py -3 scripts/check-editor-pass-contract-parity.py --quiet"
 run_check "gated_layout_macros"    "py -3 scripts/check-gated-layout-macros.py --quiet"
+run_check "doc_links"             "py -3 scripts/check-doc-links.py --quiet"
 
 # ---------------------------------------------------------------------------
 # Summary table

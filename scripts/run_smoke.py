@@ -4,11 +4,15 @@
 
 Examples:
   python scripts/run_smoke.py --tier tier1 --fail-fast
-  python scripts/run_smoke.py --tier tier1 --with-menu-canary
+  python scripts/run_smoke.py --tier tier1 --duration 30 --keep-logs
   python scripts/run_smoke.py --tier tier2
-  python scripts/run_smoke.py --tier tier3 --kill-existing
-  python scripts/run_smoke.py --mission mc2_01 --mission mc2_03
+  python scripts/run_smoke.py --mission mc2_01 --mission mc2_24
   python scripts/run_smoke.py --menu-canary
+
+WARNING: --with-menu-canary and --kill-existing are both DANGEROUS in normal
+use (kill-existing can kill a concurrent mc2.exe and produce a false
+crash_silent; with-menu-canary/long durations are not part of the standard
+smoke gate) -- do not add them to routine invocations.
 """
 from __future__ import annotations
 

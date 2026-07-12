@@ -57,9 +57,16 @@ def parse_flags(path):
     return flags
 
 
+# C++ identifiers / macros that share the MC2_ prefix but are not env vars
+NON_ENV_IDENTIFIERS = {"MC2_VERIFY", "MC2_IS_EDITOR"}
+
+
 def doc_flag_names(path):
     with open(path, "r", encoding="utf-8") as f:
-        return set(re.findall(r"MC2_[A-Z0-9_]+", f.read()))
+        # (?![a-z]) rejects prefixes of camelCase identifiers like
+        # MC2_GL_BufferData -> would otherwise extract phantom "MC2_GL_B"
+        names = set(re.findall(r"MC2_[A-Z0-9_]+(?![a-z])", f.read()))
+    return names - NON_ENV_IDENTIFIERS
 
 
 def main():

@@ -1763,6 +1763,50 @@ static constexpr EnvVarDesc kAuxEnvVars[] = {
         false,
         "IN-MISSION-HUD-IMGUI-SCOPE-1 slice C witness: register a 4th 'test' tab (no legacy button; ImGui chrome via HudImGui::hudShrinkPoint + hudToDisplay, trivial ImGui body over the tac area). Only visible when MC2_HUD_IMGUI_TABS is also set — the modder's worked example, left in deliberately. Default-OFF."
     },
+
+    // ENV sweep 2026-07-09 (checker regex widen: digit names + envFlagDefaultOn helper)
+    {
+        "MC2_FEATURE_GPU_MECH_CULL",
+        "MC2_GPU_MECH_CULL",
+        EnvVarKind::Feature,
+        true,
+        "Slice C1 (gos_mech_batcher.cpp): render-only mech GPU cull -- skip GPU mech submit for actors the GPU lagged-readback says were invisible last frame (CPU fallback/AI/updateGeometry still run). Default-ON kill-switch (envFlagDefaultOn); =0 opts out."
+    },
+    {
+        "MC2_FEATURE_GPU_MECH_FAST_TRANSFORM",
+        "MC2_GPU_MECH_FAST_TRANSFORM",
+        EnvVarKind::Feature,
+        true,
+        "Slice C3-revised (gos_mech_batcher.cpp): body-only fast transform path for GPU-driven mechs. Default-ON kill-switch (envFlagDefaultOn); =0 opts out to the pre-slice transform path."
+    },
+    {
+        "MC2_FEATURE_GPU_MECH_SHADOW_FAST_TRANSFORM",
+        "MC2_GPU_MECH_SHADOW_FAST_TRANSFORM",
+        EnvVarKind::Feature,
+        true,
+        "Slice C3-shadow (gos_mech_batcher.cpp): fast-transform variant for the mech shadow-caster callsite. Default-ON kill-switch (envFlagDefaultOn); =0 opts out."
+    },
+    {
+        "MC2_FEATURE_GPU_MECH_LEAF_SKIP",
+        "MC2_GPU_MECH_LEAF_SKIP",
+        EnvVarKind::Feature,
+        true,
+        "Slice D-leaf-skip-v2 (gos_mech_batcher.cpp): strip per-leaf body of mechShape->TransformMultiShape* work when the leaf is provably unaffected. Default-ON kill-switch (envFlagDefaultOn); =0 opts out."
+    },
+    {
+        "MC2_TRACE_LOAD_RACE_DELAY_ATLAS",
+        "MC2_LOAD_RACE_DELAY_ATLAS",
+        EnvVarKind::Trace,
+        false,
+        "gos_terrain_indirect.cpp negative control for the mission-load residency-race probes: when set (any value), BuildColormapAtlas() defers the real GL atlas upload until scenarioTime >= 30s, making the colormap atlas genuinely absent for ~30s so reviewers can confirm the LOAD_RACE atlas/texel probes actually fire. Diagnostic/test-only; unset -> no effect."
+    },
+    {
+        "MC2_TRACE_LOAD_RACE_PROBE_FRAMES",
+        "MC2_LOAD_RACE_PROBE_FRAMES",
+        EnvVarKind::Trace,
+        false,
+        "gameosmain.cpp: overrides the comma-separated list of frame numbers at which the mission-load residency-race one-shot diagnostics probe fires (see MC2_LOAD_RACE_TRACE). Unset -> falls back to the confirmed transient window default."
+    },
 };
 
 // ---------------------------------------------------------------------------

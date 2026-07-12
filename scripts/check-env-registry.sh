@@ -38,7 +38,7 @@ if [[ "${1:-}" == "--verbose" ]]; then VERBOSE=1; fi
 REGISTERED=()
 while IFS= read -r name; do
     REGISTERED+=("$name")
-done < <(grep -oE '"MC2_[A-Z_]+"' "$HEADER" | tr -d '"' | sort -u)
+done < <(grep -oE '"MC2_[A-Z0-9_]+"' "$HEADER" | tr -d '"' | sort -u)
 
 if [[ $VERBOSE -eq 1 ]]; then
     echo "=== Registered (${#REGISTERED[@]}) ==="
