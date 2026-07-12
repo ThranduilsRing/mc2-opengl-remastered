@@ -1,5 +1,47 @@
 # VK-ARC-STATE — current state block (update every session)
 
+## 2026-07-12 (EVE-2) — VFX ROUND 5 (`9fb302b4`): TEXTURED BEAMS SHIPPED — round-4's "broader/whiter untextured ribbon" delta CLOSED via lazy GPU-readback rgba mirrors. Both installs deployed.
+
+**★ ROOT CAUSE of the round-4 decline (corrects the round-4 note):** the beam effect sprite is
+NOT mirror-less because of lock/unlock (gosTexture::Unlock has set mirrors since `7040d27d`) —
+it realizes through the **BC7 .ktx2 sidecar path** (`gos_NewCompressedTexture2D`, txmmgr
+realize; effect TGAs have sidecars, e.g. `fx_hpgbeam.ktx2`), which never sets the CPU rgba
+mirror the VK tail rasterizes from → textured effect draws self-declined.
+
+**★ FIX (`9fb302b4`, all under `MC2_VK_VFX`; GL/umbrella-off byte-identical):**
+1. `gosTexture::ensureRgbaMirrorFromGpu()` — glGetTexImage RGBA8 readback (legal on BPTC,
+   driver decompresses), once per content serial, GL-error + all-zero guarded (a failed
+   readback leaves behavior unchanged).
+2. `flushHUDBatch` attempts the lazy mirror for ANY textured HUD draw missing one (VK queue
+   path only); an AlphaMode-4 tri-batch STILL mirror-less after that drops to UNTEXTURED
+   vertex-coloured (round-3's proven look) instead of declining — **a beam can never vanish**.
+3. `weaponbolt.cpp` — round-3 force-untexture retired; beam sends its real texture (stock
+   textured state-set restored).
+
+**★ PROOF (I looked at all of it):** `[VK_HUD_MIRROR v1] gpu readback mirror built id=… 32x32`
+(6+ effect sprites) + ZERO `[VK_HUD_SKIP_DECLINE]` under force-fire; present-PPM capture
+(mc2_24, `MC2_HZB_VIEW_FILE` pose at the lance `X=-1216 Y=-6150 Z=54`, pin 420,
+`MC2_FX_FORCE_SPAWN=loop`): blue-white PPC beams now have the tight bright core + graduated
+blue glow taper and lasers are thin graduated orange — matching GL's classes
+(`.claude/vfx-fire/mc2_24/vfx4/` vs round-4's broad flat tubes in `cmp_vk_beams.png`).
+Field env re-verified by true-backbuffer PPM (mc2_01 airport, chroma 31.58, full scene).
+tier1 smoke: see session log (GL-state 5/5 at `8c56eafb` P0 close; VK-umbrella-state run at
+`9fb302b4`).
+
+**★ CAPTURE-RECIPE LESSONS (save future sessions hours):** (1) **MC2_LOG=1 or stdout/stderr
+go to NUL** — every "empty log" this arc was that. (2) PPM dump path must be ABSOLUTE
+(mission load chdirs; relative paths vanish). (3) `MC2_SMOKE_MODE` standalone = VK present
+never runs (zero-extent) + auto-exit ≈ frame 300 — never combine with the PPM oracle.
+(4) mc2_24 intro swoop parks ≈ frame 2200 on empty hills; the lance pose needs
+`MC2_HZB_VIEW_FILE` + coords from the `[FX_FORCE_SPAWN]` pos log. (5) The field check's
+OS screenshot can catch the user's foreground window (chroma 0.00 solid-white + soft-PASS
+WARN) — cross-check with the PPM oracle instead of re-running blindly.
+
+**★ REMAINING VFX QUEUE:** ballistic/missile classes still unexercised (mc2_24 lance =
+energy-only — need an AC/LRM lance mission + same-frame pairs); PPM HUD-text mirror quirk
+(watch-only). Mirror rebuild on txmmgr re-realize churn is bounded (new gosTexture per
+realize) — watch the `[VK_HUD_MIRROR]` count if VRAM-pressure cache-outs get hot.
+
 ## 2026-07-12 (EVE) — P0 GREY-REGRESSION AT 73d7e4f2: CANNOT REPRODUCE at a clean fingerprint-verified deploy; the "PPM never wrote" clue was a STRUCTURALLY GUARANTEED FALSE NEGATIVE (oracle bug, now fixed `8c56eafb`). Both installs redeployed clean.
 
 **★ WHAT THE HANDOFF SAID:** user saw "everything back to grey" after the round-4 VFX deploy;
