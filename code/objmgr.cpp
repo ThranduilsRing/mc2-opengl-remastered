@@ -36,6 +36,7 @@
 #include "../GameOS/gameos/gpu_cull_readback.h"        // C3: per-actor GPU visibility snapshot
 #include "../GameOS/gameos/gos_static_prop_registry.h" // Task 5: mission-load bulk registration
 #include "move_recon.h"  // MC2_MOVE_RECON per-frame pathfinding cost instrumentation
+#include "vk_shared_gbuffer_gate.h"  // VK-FIELD-VFX-1: umbrella detection for the VFX HUD-tail route
 #include "object_walk_trace.h"  // OBJECT-WALK-FACTS-1 (gated, default-OFF)
 #include "frame_jobs.h"  // FRAME-JOBS-1: parallelForRange worker pool
 #include "brain_special_dispatch.h"  // BRAIN-COMMIT-PHASE-1: commitAllBrainIntents
@@ -2162,6 +2163,31 @@ void GameObjectManager::render (bool terrain, bool movers, bool other) {
 	if (other) {
 		//----------------------------------------
 		// All other objects should be rendered...
+		// VK-FIELD-VFX-1: the "other" objects are the scene VFX — weapon bolts
+		// (WeaponBolt::render -> gos_DrawTriangles), carnage/explosions, muzzle
+		// lights, artillery. In the field VK env (MC2_VK_SHARED_GBUFFER, the
+		// launcher's tracy-vk-compare "on" env) the DEFAULT weapon-fire path is
+		// the legacy MLR/gos-immediate draw (MC2_GPU_PARTICLES is user-reverted
+		// OFF), which draws into the DISCARDED GL backbuffer under the VK-only
+		// present -> weapon fire VANISHES. These draws are already SCREEN-SPACE
+		// (projectForScreenXY), so route them through gos_State_IsHUD to buffer
+		// them into the HUD tail the VK present composites (same mechanism the
+		// selection brackets use). scaleExempt so the bottom-band HUD shrink
+		// doesn't move the effects. Screen-space => no depth-occlusion (VFX draw
+		// on top), an accepted look-only tradeoff for the untextured-tail slice;
+		// the depth-correct VK scene-VFX pass is the deferred remainder. Umbrella
+		// OFF -> IsHUD untouched -> byte-identical GL. NOTE: the mechs/vehicles
+		// (VK-owned islands) are in the SEPARATE `if (movers)` block above and are
+		// NOT routed here.
+		// Gated on the MC2_VK_VFX sub-gate (default-ON under MC2_VK_SHARED_GBUFFER;
+		// explicit =0 disables ALL VK VFX handling — this route AND the particle
+		// island — for A/B and safe-off). Umbrella OFF -> false -> byte-identical GL.
+		const bool vkVfxRoute = mc2vkgate::subGate("MC2_VK_VFX");
+		const bool prevVfxExempt = vkVfxRoute ? gos_GetHudScaleExempt() : false;
+		if (vkVfxRoute) {
+			gos_SetHudScaleExempt(true);
+			gos_SetRenderState(gos_State_IsHUD, 1);
+		}
 		if (weapons) {
 			for (long i = 0; i < numWeapons; i++) {
 				if (weapons[i] && weapons[i]->getExists())
@@ -2190,6 +2216,10 @@ void GameObjectManager::render (bool terrain, bool movers, bool other) {
 				if (artillery[i] && artillery[i]->getExists())
 					artillery[i]->render();
 			}
+		}
+		if (vkVfxRoute) {
+			gos_SetRenderState(gos_State_IsHUD, 0);
+			gos_SetHudScaleExempt(prevVfxExempt);
 		}
 	}
 	gos_SetRenderState( gos_State_Fog, 0);

@@ -23,6 +23,9 @@
 #include "../../mclib/camera.h"  // VFX-LIT-PARTICLES-MVP-1: eye->light*/ambient* (same source as terrain)
 #include "particle_stall_probe.h"  // PARTICLE-FLUSH-STALL-MEASURE-1 (gated timing)
 #include "gpu_cull_readback.h"  // READBACK_SSBO_BINDING (slot 14) — single source of truth
+#ifdef MC2_VULKAN_ISLAND
+#include "vulkan_vfx_island.h"  // VK-FIELD-VFX-1: VK translucent particle pass
+#endif
 
 #include <cstdio>
 #include <cstdlib>   // std::getenv, std::atoi (MC2_VFX_DEBUG_MODE)
@@ -991,6 +994,42 @@ extern "C" void gos_particle_bridge_flush(const mc2::particles::GpuParticle* rec
         return;
     }
     if (s_prog == nullptr || s_prog->shp_ == 0) return;
+
+#ifdef MC2_VULKAN_ISLAND
+    // VK-FIELD-VFX-1: under the VK shared-GBuffer umbrella the GL particle draw
+    // renders into the DISCARDED GL backbuffer (the native VK composite samples
+    // only the shared color0), so weapon fire VANISHES. When the VFX island is
+    // armed (MC2_VK_VFX, default-ON under MC2_VK_SHARED_GBUFFER), render the SAME
+    // billboard stream into the shared scene color0 via VK (depth-tested against
+    // the shared depth) and SKIP the GL draw. UNTEXTURED slice — textured sprite
+    // atlases, the tube-ribbon beams, and the gosFX MESH shapes are the documented
+    // deferred remainder. Umbrella OFF -> island gate OFF -> GL draw (byte-identical).
+    if (mc2_vk_vfx_island_enabled() && groups != nullptr && numGroups > 0) {
+        gosPostProcess* ppVk = getGosPostProcess();
+        const int vkW = ppVk ? (int)ppVk->getWidth()  : 0;
+        const int vkH = ppVk ? (int)ppVk->getHeight() : 0;
+        const float* mvp = gos_GetTerrainMVPMat4();
+        if (vkW > 0 && vkH > 0 && mvp) {
+            std::vector<VfxParticleDraw> vkDraws;
+            vkDraws.reserve(numGroups);
+            for (unsigned gi = 0; gi < numGroups; ++gi) {
+                VfxParticleDraw d;
+                d.start    = groups[gi].start;
+                d.count    = groups[gi].count;
+                d.additive = (groups[gi].blendMode == 1) ? 1u : 0u;
+                vkDraws.push_back(d);
+            }
+            if (mc2_vk_vfx_island_run(records, count, vkDraws.data(),
+                                      (uint32_t)vkDraws.size(), mvp,
+                                      g_cam_right, g_cam_up, vkW, vkH)) {
+                return;   // VK handled the frame; do NOT run the GL draw.
+            }
+            // Island declined (boot warmup / shared GBuffer not ready) -> fall
+            // through to the GL draw; under the umbrella it lands in the discarded
+            // backbuffer (invisible, same as pre-slice) until the island warms up.
+        }
+    }
+#endif
 
     // Q2-S0 instrumentation only (no behavior change). Coarse zone + bucket for
     // the billboard particle SSBO upload + per-group draw. Placed after all the

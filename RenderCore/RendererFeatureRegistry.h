@@ -1004,6 +1004,20 @@ static constexpr EnvVarDesc kAuxEnvVars[] = {
         "Gate OFF = byte-identical GL mech path."
     },
     {
+        "MC2_FEATURE_VK_VFX",
+        "MC2_VK_VFX",
+        EnvVarKind::Feature,
+        false,
+        "VK-FIELD-VFX-1: umbrella sub-gate, default-ON under MC2_VK_SHARED_GBUFFER (explicit =0 "
+        "forces off, =1 forces on). Renders the GPU-particle billboard stream (gos_particle_bridge) "
+        "IN-PLACE into the shared scene color0 as translucent, depth-tested (GEQUAL reverse-Z, "
+        "NO depth write) colored soft billboards (vulkan_vfx_island.cpp), so weapon fire (tracers, "
+        "muzzle flashes, impact glows) survives the VK-only present umbrella instead of drawing into "
+        "the discarded GL backbuffer. UNTEXTURED slice (per-particle color + radial soft falloff); "
+        "textured sprite atlases, the tube-ribbon beams, and the gosFX MESH shapes are the deferred "
+        "remainder. Gate resolves OFF when the umbrella is off -> GL particle draw byte-identical."
+    },
+    {
         "MC2_FEATURE_VK_MECH_DIRECT_CHAIN",
         "MC2_VK_MECH_DIRECT_CHAIN",
         EnvVarKind::Feature,

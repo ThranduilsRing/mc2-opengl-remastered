@@ -21,6 +21,7 @@
 // vulkan_water_island.cpp under the same #ifdef). Called at engine shutdown before
 // the shared VkDevice is destroyed so the island's Vk objects don't leak.
 extern "C" void mc2_vk_water_island_destroy();
+extern "C" void mc2_vk_vfx_island_destroy();   // VK-FIELD-VFX-1
 // VK-P11 STATIC-PROP COLOR: color-prop island shutdown teardown (defined in
 // vulkan_color_prop_island.cpp under the same #ifdef). Same ordering rationale as
 // the water island (deletes the interop FBO/imported tex + VK objects while both the
@@ -2028,6 +2029,8 @@ int main(int argc, char** argv)
     mc2_vk_color_prop_island_destroy();
     // VK-P10 TERRAIN TIER-1: tear down the terrain island alongside the others.
     mc2_vk_terrain_island_destroy();
+    // VK-FIELD-VFX-1: tear down the VFX particle island alongside the others.
+    mc2_vk_vfx_island_destroy();
     // VK-P14 MECH TIER-1: tear down the mech island alongside the others.
     mc2_vk_mech_island_destroy();
     // VK-P8 SHADOW INTEROP: tear down the shadow island (was previously never called --

@@ -1601,6 +1601,11 @@ def main():
                             # readback). envTriState OPT-IN, default-OFF (same new-rung
                             # pattern as MC2_VK_TERRAIN_SKIRTS / _VISUALDISPLACE_FAR).
                             "MC2_VK_WATER_TIER1",
+                            # VK-FIELD-VFX-1: default-ON-under-umbrella particle
+                            # island gate (weapon fire into shared color0). Must be
+                            # allowlisted so an explicit MC2_VK_VFX=0 override reaches
+                            # the child (else Popen drops it).
+                            "MC2_VK_VFX",
                             # MC2_VK_WATER_PERF: fine-grained per-sub-step us breakdown
                             # of the VK water interop path ([VK_WATER_PERF] lines).
                             # Additive diagnostic; must be allowlisted or Popen drops it

@@ -183,6 +183,15 @@ if(MC2_VULKAN)
         # MC2_VK_SHARED_SCENE_DEPTH) -> GL mech color flush byte-identical. extern "C"
         # entry points only (no layout-affecting header members).
         list(APPEND SOURCES vulkan_mech_island.cpp)
+        # VK-FIELD-VFX-1: the VFX particle island — co-writes the GPU-particle
+        # billboard stream (gos_particle_bridge) IN-PLACE into the SHARED scene
+        # color0 as translucent, depth-tested (GEQUAL, no-write) colored soft
+        # billboards, so weapon fire survives the VK-only present umbrella. Gate
+        # MC2_VK_VFX default-ON under MC2_VK_SHARED_GBUFFER (vanishing content),
+        # explicit =0 forces off -> GL particle draw. UNTEXTURED slice (textured
+        # sprites + tube ribbons + gosFX mesh shapes are the deferred remainder).
+        # extern "C" entry points only (no layout-affecting header members).
+        list(APPEND SOURCES vulkan_vfx_island.cpp)
         # VK-INTEROP-BRIDGE-1 / T1: the GL-free VK-owned image core. vk_image_resource =
         # raw-allocated (dedicated) NON-exportable VkImage + double-buffered sync objects.
         # VK-RUNG8-ITEM1 deleted gl_interop_view.cpp (the GL-boundary import adapter) and
@@ -321,7 +330,10 @@ if(MC2_VULKAN)
     # applying the u_skirtDepth pull-down + a byte-identical copy of terrain_tier1.frag,
     # since GL uses the same frag program for skirts as the main patch). SPIR-V loaded
     # at runtime by vulkan_terrain_island.cpp via load_spv(spv_dir()+"terrain_tier1_skirt.*.spv").
-    set(MC2_VK_SHADER_BASENAMES fullscreen edge_fog fog_oob ssao ssao_apply hzb_reduce compare_shadow csm_array_shadow shadow_depth shadow_debug_overlay water_mvp water_geom shadow_prop color_prop_tier1 terrain_tier1 terrain_tier1_skirt mech_tier1 cloud_shadow shoreline screen_shadow_static screen_shadow_csm postprocess postprocess_visual hud_color hud_tex)
+    # VK-FIELD-VFX-1: bake vfx_particle.{vert,frag} (procedural billboard VS reading the
+    # GpuParticle SSBO + untextured colored soft-blob FS). SPIR-V loaded at runtime by
+    # vulkan_vfx_island.cpp via load_spv(spv_dir()+"vfx_particle.*.spv").
+    set(MC2_VK_SHADER_BASENAMES fullscreen edge_fog fog_oob ssao ssao_apply hzb_reduce compare_shadow csm_array_shadow shadow_depth shadow_debug_overlay water_mvp water_geom shadow_prop color_prop_tier1 terrain_tier1 terrain_tier1_skirt mech_tier1 cloud_shadow shoreline screen_shadow_static screen_shadow_csm postprocess postprocess_visual hud_color hud_tex vfx_particle)
     set(MC2_VK_SPV_OUTPUTS "")
     if(MC2_GLSLANG_VALIDATOR OR MC2_GLSLC)
         foreach(_base ${MC2_VK_SHADER_BASENAMES})
