@@ -49,6 +49,7 @@ GuiImage {
     key = "game.mcl_loadingscreen_640.image.mcl_loadingscreen_640_mpwait"
     pageKey = "game.mcl_loadingscreen_640"
     legacySection = "WaitImage"
+    visible = false  // LOADSCREEN-DEFS-1: residual MP-wait hourglass banner; retired ProgressTimer no longer draws it by default (code/loadscreen.cpp LOAD-BANNER-RESIDUE-1)
     legacyContext = "for mp wait image"
     role = "image"
     layer = "art"
@@ -112,7 +113,7 @@ GuiAnimation {
     keyframe1Time = 0.4
     keyframe1X = 0
     keyframe1Y = 0
-    animationInitialPos = "0,-288"
+    animationInitialPos = "-1,-1"
     previewFrame = 0
     uvX = 0
     uvY = 0
@@ -148,7 +149,7 @@ GuiAnimation {
     keyframe1Time = 0.4
     keyframe1X = 0
     keyframe1Y = 0
-    animationInitialPos = "0,-288"
+    animationInitialPos = "-1,-1"
     previewFrame = 0
     uvX = 0
     uvY = 0
@@ -184,7 +185,7 @@ GuiAnimation {
     keyframe1Time = 0.4
     keyframe1X = 0
     keyframe1Y = 0
-    animationInitialPos = "0,-288"
+    animationInitialPos = "-1,-1"
     previewFrame = 0
     uvX = 0
     uvY = 0
@@ -220,7 +221,7 @@ GuiAnimation {
     keyframe1Time = 0.4
     keyframe1X = 0
     keyframe1Y = 0
-    animationInitialPos = "0,-288"
+    animationInitialPos = "-1,-1"
     previewFrame = 0
     uvX = 0
     uvY = 205
@@ -256,7 +257,7 @@ GuiAnimation {
     keyframe1Time = 0.4
     keyframe1X = 0
     keyframe1Y = 0
-    animationInitialPos = "0,-288"
+    animationInitialPos = "-1,-1"
     previewFrame = 0
     uvX = 0
     uvY = 205
@@ -292,7 +293,7 @@ GuiAnimation {
     keyframe1Time = 0.4
     keyframe1X = 0
     keyframe1Y = 0
-    animationInitialPos = "0,-288"
+    animationInitialPos = "-1,-1"
     previewFrame = 0
     uvX = 128
     uvY = 205
@@ -328,7 +329,7 @@ GuiAnimation {
     keyframe1Time = 0.4
     keyframe1X = 0
     keyframe1Y = 0
-    animationInitialPos = "0,205"
+    animationInitialPos = "-1,-1"
     previewFrame = 0
     uvX = 0
     uvY = 0
@@ -364,7 +365,7 @@ GuiAnimation {
     keyframe1Time = 0.4
     keyframe1X = 0
     keyframe1Y = 0
-    animationInitialPos = "0,205"
+    animationInitialPos = "-1,-1"
     previewFrame = 0
     uvX = 0
     uvY = 0
@@ -400,7 +401,7 @@ GuiAnimation {
     keyframe1Time = 0.4
     keyframe1X = 0
     keyframe1Y = 0
-    animationInitialPos = "0,205"
+    animationInitialPos = "-1,-1"
     previewFrame = 0
     uvX = 128
     uvY = 0
@@ -439,7 +440,7 @@ GuiAnimation {
     keyframe2Time = 0.7
     keyframe2X = 0
     keyframe2Y = 0
-    animationInitialPos = "-143,0"
+    animationInitialPos = "-1,-1"
     previewFrame = 0
     uvX = 0
     uvY = 0
@@ -478,7 +479,7 @@ GuiAnimation {
     keyframe2Time = 0.7
     keyframe2X = 0
     keyframe2Y = 0
-    animationInitialPos = "-143,0"
+    animationInitialPos = "-1,-1"
     previewFrame = 0
     uvX = 0
     uvY = 0
@@ -517,7 +518,7 @@ GuiAnimation {
     keyframe2Time = 0.7
     keyframe2X = 0
     keyframe2Y = 0
-    animationInitialPos = "143,0"
+    animationInitialPos = "-1,-1"
     previewFrame = 0
     uvX = 45
     uvY = 0
@@ -556,7 +557,7 @@ GuiAnimation {
     keyframe2Time = 0.7
     keyframe2X = 0
     keyframe2Y = 0
-    animationInitialPos = "143,0"
+    animationInitialPos = "-1,-1"
     previewFrame = 0
     uvX = 0
     uvY = 0
@@ -595,7 +596,7 @@ GuiAnimation {
     keyframe2Time = 0.7
     keyframe2X = 0
     keyframe2Y = 0
-    animationInitialPos = "-143,0"
+    animationInitialPos = "-1,-1"
     previewFrame = 0
     uvX = 15
     uvY = 0
@@ -634,7 +635,7 @@ GuiAnimation {
     keyframe2Time = 0.7
     keyframe2X = 0
     keyframe2Y = 0
-    animationInitialPos = "143,0"
+    animationInitialPos = "-1,-1"
     previewFrame = 0
     uvX = 60
     uvY = 0
@@ -673,7 +674,7 @@ GuiAnimation {
     keyframe2Time = 0.7
     keyframe2X = 0
     keyframe2Y = 0
-    animationInitialPos = "-143,0"
+    animationInitialPos = "-1,-1"
     previewFrame = 0
     uvX = 128
     uvY = 0
@@ -712,7 +713,7 @@ GuiAnimation {
     keyframe2Time = 0.7
     keyframe2X = 0
     keyframe2Y = 0
-    animationInitialPos = "-143,0"
+    animationInitialPos = "-1,-1"
     previewFrame = 0
     uvX = 30
     uvY = 0
@@ -751,7 +752,7 @@ GuiAnimation {
     keyframe2Time = 0.7
     keyframe2X = 0
     keyframe2Y = 0
-    animationInitialPos = "143,0"
+    animationInitialPos = "-1,-1"
     previewFrame = 0
     uvX = 75
     uvY = 0
@@ -787,7 +788,7 @@ GuiAnimation {
     keyframe1X = 0
     keyframe1Y = 0
     keyframe1Color = 0xff000000
-    animationInitialPos = "0,-288"
+    animationInitialPos = "-1,-1"
     previewFrame = 0
     textLegacyId = 27780
     textKey = "legacy.mc2res.27780"
@@ -833,7 +834,7 @@ GuiAnimation {
     keyframe2Time = 0.7
     keyframe2X = 0
     keyframe2Y = 0
-    animationInitialPos = "143,0"
+    animationInitialPos = "-1,-1"
     previewFrame = 0
     uvX = 128
     uvY = 0
@@ -872,7 +873,7 @@ GuiAnimation {
     keyframe2Time = 0.7
     keyframe2X = 0
     keyframe2Y = 0
-    animationInitialPos = "-143,0"
+    animationInitialPos = "-1,-1"
     previewFrame = 0
     uvX = 90
     uvY = 45
@@ -911,7 +912,7 @@ GuiAnimation {
     keyframe2Time = 0.7
     keyframe2X = 0
     keyframe2Y = 0
-    animationInitialPos = "143,0"
+    animationInitialPos = "-1,-1"
     previewFrame = 0
     uvX = 90
     uvY = 0
@@ -945,7 +946,7 @@ GuiAnimation {
     keyframe2Time = 2.0
     keyframe2X = 0
     keyframe2Y = -288
-    animationInitialPos = "0,0"
+    animationInitialPos = "-1,-1"
     previewFrame = 0
 }
 
@@ -982,7 +983,7 @@ GuiAnimation {
     keyframe3X = 0
     keyframe3Y = -288
     keyframe3Color = 0xff000000
-    animationInitialPos = "0,0"
+    animationInitialPos = "-1,-1"
     previewFrame = 0
 }
 
@@ -1012,7 +1013,7 @@ GuiAnimation {
     keyframe2Time = 2.0
     keyframe2X = 0
     keyframe2Y = 205
-    animationInitialPos = "0,0"
+    animationInitialPos = "-1,-1"
     previewFrame = 0
 }
 
@@ -1042,7 +1043,7 @@ GuiAnimation {
     keyframe2Time = 1.6
     keyframe2X = -143
     keyframe2Y = 0
-    animationInitialPos = "0,0"
+    animationInitialPos = "-1,-1"
     previewFrame = 0
 }
 
@@ -1072,6 +1073,6 @@ GuiAnimation {
     keyframe2Time = 1.6
     keyframe2X = 143
     keyframe2Y = 0
-    animationInitialPos = "0,0"
+    animationInitialPos = "-1,-1"
     previewFrame = 0
 }
