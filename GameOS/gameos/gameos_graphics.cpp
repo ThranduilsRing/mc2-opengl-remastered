@@ -7956,7 +7956,12 @@ static bool vkHudSkipGlEnabled()
 
 static bool vkHudDrawRepresentable(const mc2vk::VkHudDraw& draw)
 {
-    if (draw.alphaMode != 1 && draw.alphaMode != 3)
+    // AlphaMode 1 (OneZero/opaque), 3 (AlphaInvAlpha) and 4 (OneInvAlpha, the
+    // effect-sprite blend) are all rasterizable by the tail. 4 currently maps to
+    // the alpha-blend pipe (td.opaque=false) rather than a true additive pipe, so
+    // the composite is slightly less bright than GL additive — a look-only delta,
+    // the effect still renders. A dedicated additive pipe is the follow-up.
+    if (draw.alphaMode != 1 && draw.alphaMode != 3 && draw.alphaMode != 4)
         return false;
     const bool textured = draw.textureHandle != 0 && draw.textureHandle != INVALID_TEXTURE_ID;
     if (textured) {
@@ -8132,19 +8137,32 @@ void gosRenderer::flushHUDBatch()
                 out.u = v.u; out.v = v.v;
                 draw.vertices.push_back(out);
             }
+            // VK-FIELD-VFX-3: per-draw self-decline instead of the all-or-nothing veto.
+            // The VK tail renderer (recordPendingHudColorProof) ALREADY skips each draw
+            // it cannot represent (no texture mirror / unsupported kind) individually
+            // (`continue`), so one non-representable draw need NOT force the WHOLE HUD to
+            // the DISCARDED GL backbuffer. Under the VFX umbrella we always composite the
+            // native tail: the representable subset (brackets/bars/beams/HUD/text + mirror-
+            // backed effect sprites) survives, and the rest drops per-draw (it would be
+            // lost to the discarded GL HUD anyway). This removes the poisoning landmine
+            // where any live textured effect killed the entire HUD composite, and lets the
+            // effect classes (carnage/muzzle/artillery) route through IsHUD safely.
+            static const bool s_hudPerDrawDecline = mc2vkgate::subGate("MC2_VK_VFX");
             const bool drawRepresentable = vkHudDrawRepresentable(draw);
-            if (nativeHudCanSkipGl && !drawRepresentable) {
+            if (!drawRepresentable) {
                 static unsigned s_nativeHudDeclineLogs = 0;
-                if (s_nativeHudDeclineLogs < 8) {
+                if (s_nativeHudDeclineLogs < 16) {
                     std::fprintf(stderr,
-                        "[VK_HUD_SKIP_DECLINE v1] kind=%u tex=%u gl=%u wh=%ux%u serial=%u rgba=%zu alpha=%u verts=%zu\n",
+                        "[VK_HUD_SKIP_DECLINE v1] kind=%u tex=%u gl=%u wh=%ux%u serial=%u rgba=%zu alpha=%u verts=%zu perDrawDecline=%d\n",
                         draw.kind, draw.textureHandle, draw.glTextureId,
                         draw.textureWidth, draw.textureHeight, draw.textureSerial,
-                        draw.textureRgba.size(), draw.alphaMode, draw.vertices.size());
+                        draw.textureRgba.size(), draw.alphaMode, draw.vertices.size(),
+                        (int)s_hudPerDrawDecline);
                     ++s_nativeHudDeclineLogs;
                 }
             }
-            nativeHudCanSkipGl = nativeHudCanSkipGl && drawRepresentable;
+            if (!s_hudPerDrawDecline)
+                nativeHudCanSkipGl = nativeHudCanSkipGl && drawRepresentable;
             // VK-HUD-GLYPH-CORRUPTION diagnostic: dump per-draw texture handle+serial
             // for the first few frames so an intra-frame same-handle/different-serial
             // collision (mirror keyed by handle -> last-upload-wins -> stale glyphs)

@@ -2205,6 +2205,16 @@ void GameObjectManager::render (bool terrain, bool movers, bool other) {
 		// scope (they stay on the normal GL path, invisible under VK-only present, same as before
 		// -- the deferred textured-effect remainder), and route only the representable weapon
 		// bolts (WeaponBolt::render: untextured laser tris + beam tris + beam-axis lines).
+		// VK-FIELD-VFX-3: route ALL scene VFX (weapon bolts + carnage/explosions +
+		// muzzle lights + artillery/missile) through the IsHUD tail. This is now SAFE:
+		// the all-or-nothing HUD veto (nativeHudCanSkipGl) was replaced by per-draw
+		// self-decline (gameos_graphics.cpp flushHUDBatch, same MC2_VK_VFX gate), so a
+		// non-representable textured effect sprite drops individually in the tail
+		// (recordPendingHudColorProof `continue`) instead of poisoning the whole HUD.
+		// The dominant combat classes emit textured effect sprites whose TGA-loaded
+		// textures carry an rgba mirror -> the tail mirrors + rasterizes them (alpha
+		// blend). scaleExempt so the bottom-band HUD shrink doesn't move the effects.
+		// Umbrella OFF -> vkVfxRoute false -> IsHUD untouched -> byte-identical GL.
 		if (vkVfxRoute) {
 			gos_SetHudScaleExempt(true);
 			gos_SetRenderState(gos_State_IsHUD, 1);
@@ -2214,10 +2224,6 @@ void GameObjectManager::render (bool terrain, bool movers, bool other) {
 				if (weapons[i] && weapons[i]->getExists())
 					weapons[i]->render();
 			}
-		}
-		if (vkVfxRoute) {
-			gos_SetRenderState(gos_State_IsHUD, 0);
-			gos_SetHudScaleExempt(prevVfxExempt);
 		}
 
 		if (carnage) {
@@ -2241,6 +2247,10 @@ void GameObjectManager::render (bool terrain, bool movers, bool other) {
 				if (artillery[i] && artillery[i]->getExists())
 					artillery[i]->render();
 			}
+		}
+		if (vkVfxRoute) {
+			gos_SetRenderState(gos_State_IsHUD, 0);
+			gos_SetHudScaleExempt(prevVfxExempt);
 		}
 	}
 	gos_SetRenderState( gos_State_Fog, 0);
