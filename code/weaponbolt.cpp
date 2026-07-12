@@ -2259,18 +2259,16 @@ void WeaponBolt::render (void)
 					gos_SetRenderState(	gos_State_ZWrite, 0);
 				}
 			
-				// VK-FIELD-VFX-3 (look-restore): the beam effect sprite (gos_Texture_Alpha,
-				// created via gos_NewEmptyTexture+lock/unlock in txmmgr) has NO HUD rgba
-				// mirror, so a TEXTURED beam tri-batch is declined by the tail and vanishes.
-				// Render the beam UNTEXTURED (vertex-coloured) under the VK route: combined
-				// with the additive OneInvAlpha tail pipe (below) and the real ribbon quads
-				// this composites a bright colour-correct additive beam that matches GL's
-				// shape/colour/length/blend class. (Texture-gradient detail is the remaining
-				// delta — needs the effect-sprite mirror wired for lock/unlock textures.)
-				// GL / umbrella-off path stays textured -> byte-identical.
-				if (vkVfxImmediateDraw())
-					gos_SetRenderState( gos_State_Texture,0);
-				else if (gosTextureHandle != 0xffffffff)
+				// VK-FIELD-VFX-4: the beam renders TEXTURED under the VK route too.
+				// Round-3 forced it untextured because the beam sprite (realized via
+				// the BC7 .ktx2 sidecar path in txmmgr, so no CPU rgba mirror) was
+				// per-draw-declined by the tail. flushHUDBatch now builds the mirror
+				// lazily by GPU readback (gosTexture::ensureRgbaMirrorFromGpu), and
+				// if that ever fails the tail drops an AlphaMode-4 tri-batch to
+				// untextured vertex-coloured (round-3's proven look) instead of
+				// declining — the beam can no longer vanish. GL / umbrella-off
+				// behaviour unchanged (this is the stock textured state-set).
+				if (gosTextureHandle != 0xffffffff)
 					gos_SetRenderState( gos_State_Texture,gosTextureHandle);
 				else
 					gos_SetRenderState( gos_State_Texture,0);

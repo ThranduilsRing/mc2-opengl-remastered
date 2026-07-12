@@ -1213,6 +1213,58 @@ class gosTexture {
             }
         }
 
+        // VK-FIELD-VFX-4: lazily build the HUD rgba mirror by reading the texel
+        // content back from the GPU. Covers textures whose upload path never set
+        // a CPU mirror — above all the BC7 .ktx2 sidecar path
+        // (gos_NewCompressedTexture2D in txmmgr realize), which effect sprites
+        // (weapon-beam gradients etc.) take; the VK present tail then declined
+        // them as textured draws. glGetTexImage with GL_RGBA/GL_UNSIGNED_BYTE is
+        // legal on a BPTC-compressed texture (the driver decompresses); guard the
+        // result (GL error / all-zero alpha+rgb) so a driver that can't decode
+        // just leaves the mirror empty and behavior is unchanged (per-draw
+        // decline, as today). Attempted at most once per content serial.
+        bool ensureRgbaMirrorFromGpu() {
+            if (hasRgbaMirror())
+                return true;
+            if (mirror_gpu_attempt_serial_ == content_serial_)
+                return false; // already tried this content; don't retry per frame
+            mirror_gpu_attempt_serial_ = content_serial_;
+            if (tex_.w <= 0 || tex_.h <= 0 || tex_.id == 0 ||
+                tex_.type_ != TT_2D)
+                return false;
+            const size_t bytes = (size_t)tex_.w * (size_t)tex_.h * 4u;
+            std::vector<uint8_t> px(bytes, 0u);
+            {
+                GlPixelStoreGuard pixelStoreGuard;
+                while (glGetError() != GL_NO_ERROR) {} // clear stale errors
+                glBindTexture(GL_TEXTURE_2D, tex_.id);
+                glGetTexImage(GL_TEXTURE_2D, 0, GL_RGBA, GL_UNSIGNED_BYTE, px.data());
+                const GLenum err = glGetError();
+                glBindTexture(GL_TEXTURE_2D, 0);
+                if (err != GL_NO_ERROR) {
+                    static int s_mirrorReadFails = 0;
+                    if (++s_mirrorReadFails <= 3)
+                        std::fprintf(stderr,
+                            "[VK_HUD_MIRROR v1] gpu readback FAILED id=%u err=0x%x\n",
+                            tex_.id, (unsigned)err);
+                    return false;
+                }
+            }
+            bool anyNonZero = false;
+            for (size_t i = 0; i < bytes; ++i) {
+                if (px[i] != 0u) { anyNonZero = true; break; }
+            }
+            if (!anyNonZero)
+                return false; // silently-unwritten readback: keep declining
+            setRgbaMirror(tex_.w, tex_.h, TF_RGBA8, px.data());
+            static int s_mirrorReadOk = 0;
+            if (++s_mirrorReadOk <= 8)
+                std::fprintf(stderr,
+                    "[VK_HUD_MIRROR v1] gpu readback mirror built id=%u %dx%d\n",
+                    tex_.id, tex_.w, tex_.h);
+            return true;
+        }
+
         BYTE* Lock(int mipl_level, bool is_read_only, int* pitch) {
             gosASSERT(is_locked_ == false);
             is_locked_ = true;
@@ -1314,6 +1366,9 @@ class gosTexture {
         std::vector<uint8_t> rgba_mirror_;
         int mirror_w_;
         int mirror_h_;
+        // VK-FIELD-VFX-4: content serial of the last GPU-readback mirror attempt
+        // (ensureRgbaMirrorFromGpu), so a failed readback is not retried per frame.
+        uint32_t mirror_gpu_attempt_serial_ = 0xffffffffu;
 };
 
 struct gosTextAttribs {
@@ -8121,11 +8176,33 @@ void gosRenderer::flushHUDBatch()
                     draw.textureHeight = (uint32_t)ti.height_;
                     draw.textureFormat = (uint32_t)ti.format_;
                     draw.textureSerial = tex->getContentSerial();
+                    // VK-FIELD-VFX-4: textures whose upload path never set a CPU
+                    // mirror (BC7 .ktx2 sidecar realize — effect sprites) get one
+                    // built lazily by GPU readback, once per content serial, so
+                    // textured beams/effects composite instead of self-declining.
+                    // Gated on the VFX umbrella sub-gate; GL byte-identical when off.
+                    static const bool s_hudGpuMirror = mc2vkgate::subGate("MC2_VK_VFX");
+                    if (s_hudGpuMirror && draw.textureWidth != 0 &&
+                        draw.textureHeight != 0 && !tex->hasRgbaMirror())
+                        tex->ensureRgbaMirrorFromGpu();
                     if (draw.textureWidth != 0 && draw.textureHeight != 0 && tex->hasRgbaMirror())
                         draw.textureRgba = tex->getRgbaMirror();
                 }
             }
             draw.alphaMode = call.stateSnapshot[gos_State_AlphaMode];
+            // VK-FIELD-VFX-4: an effect tri-batch (AlphaMode 4, the OneInvAlpha
+            // additive blend) whose texture STILL has no mirror after the GPU
+            // readback attempt falls back to UNTEXTURED vertex-coloured (the
+            // round-3 proven beam look) instead of self-declining — a weapon
+            // beam must never vanish outright over a missing texture mirror.
+            {
+                static const bool s_hudEffectUntexFallback = mc2vkgate::subGate("MC2_VK_VFX");
+                if (s_hudEffectUntexFallback && draw.kind == (uint32_t)kHudTriBatch &&
+                    draw.alphaMode == 4 &&
+                    draw.textureHandle != 0 && draw.textureHandle != INVALID_TEXTURE_ID &&
+                    draw.textureRgba.empty())
+                    draw.textureHandle = 0;
+            }
             draw.textureAddress = call.stateSnapshot[gos_State_TextureAddress];
             draw.filter = call.stateSnapshot[gos_State_Filter];
             draw.foregroundColor = call.foregroundColor;
