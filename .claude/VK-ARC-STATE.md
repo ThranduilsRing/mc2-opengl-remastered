@@ -1,5 +1,74 @@
 # VK-ARC-STATE — current state block (update every session)
 
+## 2026-07-12 — TWO FIELD BUGS FIXED: (A) MOUSE-PICK DPI OFFSET [P0] proven green gl+vk × 4K/1080p; (B) NON-LASER VFX now composite (all-or-nothing HUD veto -> per-draw self-decline + effect classes routed). Both umbrella-gated, tier1 5/5 both states +0, both installs deployed.
+
+**★ BUG A — MOUSE-PICK DPI OFFSET (P0, gameplay-breaking) — ROOT-CAUSED + FIXED + PROVEN.**
+The mouse->pick chain compressed the cursor into the top-left 44% at 4K/225% (drawable
+3840 vs SDL window 1707), so a click far from a unit resolved onto a centred unit — the
+same disease as the HUD DPI bug (`9b90f76f`). ROOT CAUSE: `gos_GetMouseInfo`
+(`GameOS/gameos/gameos_input.cpp`) normalized the raw mouse `mi->x_` by
+`Environment.drawableWidth` (physical). But SDL delivers mouse-motion (`event->motion.x`)
+in **window-points** (the `SDL_GetWindowSize` space), which under HiDPI diverges from the
+drawable. Meanwhile the object screen bboxes (`objAppearance->upperLeft/lowerRight`,
+`objmgr.cpp` findObjectByMouse) and the camera projection live in the LOGICAL
+`viewMulX`==window canvas. So `getMouseX = (mi->x_/drawable)*viewMulX` = `mi->x_/2.25`
+(compressed), while it must equal `mi->x_`. **FIX:** normalize by the SDL window (points)
+size, not the drawable — `getMouseX` becomes an identity on the SDL window point, so the
+pick is DPI/resolution independent (reduces to the old behaviour exactly when window==drawable,
+scale 1.0). Symmetric fix on the write side (`gos_SetMousePosition`, `SDL_WarpMouseInWindow`
+consumes window-points) + the FORCE-43 pillarbox path. **Backend-independent** (no gl/vk
+branch); GL picking verified unbroken. **PROOF — `MC2_VK_PICK_PROBE` (registered, gated,
+default-OFF):** deterministic mouse->pick fence in `MissionInterfaceManager::update`. Runs
+once post-settle; simulates the exact field DPI ratio (2.25) and the unscaled ratio (1.0),
+asserts `getMouseX` round-trips an SDL window-point (identity) and that `findObjectByMouse`
+resolves back to a visible home mover's screen-bbox centre. Matrix result (mc2_01):
+```
+backend=gl      res=4K@225%   identity raw=(600,300) pick=(600,300) err=(0,0) oldBugWouldGive=266 -> PASS
+backend=gl      res=1080p@100% identity raw=(600,300) pick=(600,300) err=(0,0) oldBugWouldGive=600 -> PASS
+backend=vulkan  res=4K@225%   identity raw=(600,300) pick=(600,300) err=(0,0) oldBugWouldGive=266 -> PASS
+backend=vulkan  res=1080p@100% identity raw=(600,300) pick=(600,300) err=(0,0) oldBugWouldGive=600 -> PASS
+```
+The `oldBugWouldGive=266` (vs correct 600) at 4K@225% is the negative control proving the
+probe has teeth; object pick resolves to the exact mover pointer in all 4 cases. VERDICT=PASS
+both backends. Files: `gameos_input.cpp` (normalize fix + `gos_TestSetRawMouse` hook),
+`gos_input.cpp/.h` (`setMouseInfoRaw`), `gameos.hpp` (decl), `mclib/userinput.h`
+(`pickProbeSetNormalized`), `code/missiongui.cpp` (probe), `RendererFeatureRegistry.h` +
+`scripts/run_smoke.py` allowlist (`MC2_VK_PICK_PROBE`).
+
+**★ BUG B — NON-LASER VFX (ballistic tracers / missile trails / muzzle flashes / explosions)
+— NOW COMPOSITE.** Round-2 kept carnage/lights/artillery OUT of the IsHUD tail because the
+VK HUD tail had an **all-or-nothing veto** (`nativeHudCanSkipGl` AND-reduced over
+representability in `flushHUDBatch`): one non-representable textured effect sprite forced the
+WHOLE HUD to the discarded GL backbuffer → HUD+beams+brackets ALL vanished (the round-4
+poisoning landmine). ★KEY FINDING: the VK tail renderer (`recordPendingHudColorProof`,
+`engine_present_vk.cpp`) ALREADY skips each non-representable draw individually (`continue` on
+missing texture mirror / unsupported kind), so the veto was pure over-conservatism. **FIX
+(gated `MC2_VK_VFX`):** replace the veto with **per-draw self-decline** — always composite the
+native tail under the umbrella; the representable subset survives, the rest drops per-draw (it
+would be lost to the discarded GL HUD anyway). This removes the poisoning, so `objmgr.cpp` now
+routes ALL scene VFX (weapons + carnage + lights + artillery) through IsHUD. Effect-sprite TGA
+textures carry an rgba mirror (`setRgbaMirror` at load), so the tail mirrors + rasterizes them;
+`vkHudDrawRepresentable` now also accepts AlphaMode 4 (OneInvAlpha, the effect blend — currently
+mapped to the alpha pipe, a slight look-only delta vs GL additive; a dedicated additive pipe is
+the follow-up). **PROOF — composed present-image** (`MC2_VK_PRESENT_DUMP_PPM`, the sharedImg
+oracle, 1707x960 field res; `MC2_FX_FORCE_SPAWN=loop`, mc2_24): I looked at it — textured
+weapon-fire VFX (red/orange striped-dashed tracer/beam ribbons + white beams) composite over
+the scene, alongside a fully-composited HUD + green selection brackets + health bars, with
+`VK_HUD_SKIP_DECLINE=0` (all routed effect draws now representable) and 50 carnage / 130
+artillery live. No HUD poisoning under continuous fire. Files: `gameos_graphics.cpp`
+(veto->per-draw-decline + AlphaMode-4 representable), `code/objmgr.cpp` (route all effect
+classes through IsHUD). REMAINING: dedicated additive (OneInvAlpha) tail pipe for exact GL blend
+parity; effect textures WITHOUT an rgba mirror still drop per-draw (no longer poison). NOTE: the
+PPM's HUD command-bar TEXT renders left-right reversed — a pre-existing tail glyph artifact,
+NOT introduced here (portraits/tacmap/icons are correctly oriented; image is not flipped).
+
+**★ VERIFICATION.** `run_vk_field_check.py` (--skip-props-pose, the pre-existing failing
+sub-assert): PASS — all layers VK-owned (used_vulkan 4551-4798, no fallback), HUD bottom-anchored,
+chroma 43.11. Canonical tier1 smoke **5/5 PASS both states** (GL `2026-07-12T09-52-15`; VK umbrella
+`2026-07-12T09-55-47`), +0 destroys each. Deployed both `mc2-win64-0.4c` and `mc2-win64-v0.4c`.
+Capture PPM/logs cleaned. All new behaviour umbrella-gated (`mc2vkgate::subGate("MC2_VK_VFX")`) or
+probe-gated → byte-identical GL when the umbrella is off.
+
 ## 2026-07-11 — WEAPON-FIRE VFX ROUND 2: FULL BOLT PIPELINE TRACED + 4 REAL BREAKS FIXED (routing proven END-TO-END to the VK present tail); clean visible-beam hero frame NOT obtained (honest blocker). Working tree on `claude/vk-interop-bridge-1` (uncommitted), deployed both installs.
 
 **★ THE TRACED BOLT PIPELINE — where round-1 actually broke, stage by stage.** Added
