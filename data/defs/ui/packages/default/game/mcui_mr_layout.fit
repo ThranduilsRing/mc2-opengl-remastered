@@ -1,6 +1,30 @@
 // MC2R ImGui FIT generated from legacy UI FIT.
 // Source: data/defs/ui/legacy/game/MCUI_MR_Layout.fit
 // Legacy files remain source truth only; edit the generated ImGui FIT.
+//
+// AAR-DEFS-BLOCKER-1 (2026-07-12): this page CANNOT reach legacy parity by
+// data edits alone; the pin in UiDefs::replacementPathForLegacyFit must stay
+// until missionresults gets a real port slice. Root cause: this ONE legacy
+// fit backs FIVE LogisticsScreen instances (SalvageMechScreen,
+// SalvageMechArea, PilotReviewScreen, PromoteGadgetLeft/Right areas — see
+// code/salvagemecharea.cpp:136/659, code/pilotreviewarea.cpp:126/1338/1341),
+// each of which loads its OWN full copy of this page keyed only by fit stem
+// (gui/logisticsscreen.cpp:272-284). Consequences no fit field can fix:
+//  1) every instance renders ALL visible elements (UiDefs.cpp render loop has
+//     no variant scoping), so salvage_area chrome draws over the pilot-review
+//     and promotion phases;
+//  2) coverage is kind+index and visibility-blind (UiDefs.cpp
+//     coversLegacyControl), so e.g. the salvage Static0..31 elements suppress
+//     PilotReviewStatic0..31 and SalvageAreaText0..3 suppress
+//     SalvageAreaMechText0..3 across instances;
+//  3) blackClearLegacyLayer erases salvageListBox / SalvageMechArea 3D+meters
+//     drawn earlier in the same GameOS layer (salvagemecharea.cpp:199-207 vs
+//     logisticsscreen.cpp:566);
+//  4) runtime texts (cbills, help, mech stats) need screen-side
+//     setElementText wiring like the ported mechbay screens got.
+// Needed engine work: per-instance variant filter (pass the section prefix
+// from LogisticsScreen::init into the page; filter render+coverage by it),
+// list/3D compositing hooks, and text routing.
 
 GuiPage {
     key = "game.mcui_mr_layout"
@@ -1150,8 +1174,15 @@ GuiRect {
     colorArgb = "0xffffffff"
 }
 
-GuiMetadata {
-    key = "game.mcui_mr_layout.metadata.deco_rect_for_main_header_box"
+// AAR-DEFS-RECT11-1: legacy authors this deco outline with inverted
+// top/bottom (top=42, bottom=20 -> height -22); drawEmptyRect draws the
+// same box either way (mclib/utilities.cpp), so legacy DOES render it.
+// The converter clamped the extent to 0 and demoted the block to
+// GuiMetadata (invisible). Restored as a GuiRect with the normalized
+// rect (566,20)-(573,42), fields matching the sibling Rect10/Rect12
+// header brackets.
+GuiRect {
+    key = "game.mcui_mr_layout.rect.deco_rect_for_main_header_box"
     pageKey = "game.mcui_mr_layout"
     legacySection = "SalvageAreaRect11"
     legacyComment = "deco rect for main header box"
@@ -1160,12 +1191,18 @@ GuiMetadata {
     legacyUiVariant = "salvage_area"
     aliasOverride = "deco rect for main header box"
     sourceControlType = "SalvageAreaRect11"
-    rect = "566,42,7,0"
-    legacyLocalRect = "566,42,7,0"
+    rect = "566,20,7,22"
+    legacyLocalRect = "566,20,7,22"
     legacyRectSource = "ltrb"
+    uiPackage = "default"
+    rectModel = "legacy_imgui.modern_rect_v1"
+    controlRect = "566,20,7,22"
     legacyColor = 0xff43311c
     outline = 1
-    visible = false
+    filled = false
+    fillColorArgb = "0x00000000"
+    borderColorArgb = "0x00000000"
+    colorArgb = "0xffffffff"
 }
 
 GuiRect {
