@@ -637,6 +637,19 @@ static constexpr EnvVarDesc kAuxEnvVars[] = {
         "without the present-specific GL import."
     },
     {
+        "MC2_TRACE_VK_VFX_TRACE",
+        "MC2_VK_VFX_TRACE",
+        EnvVarKind::Trace,
+        false,
+        "VK-FIELD-VFX-2: per-bolt weapon-fire pipeline trace. Default-OFF. When set, "
+        "WeaponBolt::render (code/weaponbolt.cpp) prints [VK_VFX_TRACE] lines per bolt/beam "
+        "with the render path taken (IMMEDIATE gos_DrawTriangles vs deferred addVertices), "
+        "viewport bounds, projected screen coords, and packed argb; GameObjectManager::render "
+        "(code/objmgr.cpp other-block) prints the VK-VFX route state + live weapon/carnage/"
+        "artillery counts. Used to diagnose why field-VK weapon fire produced zero bolt pixels "
+        "(root cause: drawOldWay==false deferred bolts into the discarded GL scene flush)."
+    },
+    {
         "MC2_TRACE_VK_PRESENT_NATIVE_STRICT",
         "MC2_VK_PRESENT_NATIVE_STRICT",
         EnvVarKind::Trace,

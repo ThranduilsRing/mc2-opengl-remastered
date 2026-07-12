@@ -1492,6 +1492,28 @@ uint32_t recordPendingHudColorProof(EnginePresentVk::Impl& s, VkCommandBuffer cb
             dst.reserve(dst.size() + d.vertices.size());
             for (const VkHudVertex& v : d.vertices)
                 dst.push_back({v.x, v.y, v.argb});
+            // VK-FIELD-VFX-2 tail trace: log untextured tri-batch (kind==2) bbox+argb so we
+            // can see the ACTUAL geometry the tail rasterizes (bars vs weapon beams).
+            static const bool s_vfxTailTrace =
+                (std::getenv("MC2_VK_VFX_TRACE") && std::getenv("MC2_VK_VFX_TRACE")[0] &&
+                 std::getenv("MC2_VK_VFX_TRACE")[0] != '0');
+            // VK-FIELD-VFX-2 debug: log the beam LINES specifically (kind==1 alpha==1 — the
+            // beam-axis line fallback; brackets/bars are alpha==3) to confirm they reach the tail.
+            if (s_vfxTailTrace && d.kind == 1 && d.alphaMode == 1 && !d.vertices.empty()) {
+                static unsigned s_n = 0;
+                if (s_n < 5000) {
+                    ++s_n;
+                    float xmn=1e9f,xmx=-1e9f,ymn=1e9f,ymx=-1e9f;
+                    for (const VkHudVertex& v : d.vertices) {
+                        xmn=v.x<xmn?v.x:xmn; xmx=v.x>xmx?v.x:xmx;
+                        ymn=v.y<ymn?v.y:ymn; ymx=v.y>ymx?v.y:ymx;
+                    }
+                    std::fprintf(stderr, "[VK_VFX_TAIL] kind=%u nverts=%zu argb0=%08X canvas=%ux%u "
+                        "bbox=[%.1f,%.1f]-[%.1f,%.1f] w=%.2f h=%.2f alpha=%u\n",
+                        (unsigned)d.kind, d.vertices.size(), (unsigned)d.vertices[0].argb, s.hudCanvasW, s.hudCanvasH,
+                        xmn,ymn,xmx,ymx, xmx-xmn, ymx-ymn, d.alphaMode);
+                }
+            }
         }
         if (dst.size() != before) {
             HudNativeCmd cmd;

@@ -2184,6 +2184,27 @@ void GameObjectManager::render (bool terrain, bool movers, bool other) {
 		// island — for A/B and safe-off). Umbrella OFF -> false -> byte-identical GL.
 		const bool vkVfxRoute = mc2vkgate::subGate("MC2_VK_VFX");
 		const bool prevVfxExempt = vkVfxRoute ? gos_GetHudScaleExempt() : false;
+		// VK-FIELD-VFX-2 trace (MC2_VK_VFX_TRACE): confirm the route + live effect counts.
+		static const bool s_vfxRouteTrace = (getenv("MC2_VK_VFX_TRACE") && getenv("MC2_VK_VFX_TRACE")[0] && getenv("MC2_VK_VFX_TRACE")[0] != '0');
+		if (s_vfxRouteTrace) {
+			long liveW = 0;
+			if (weapons) for (long i = 0; i < numWeapons; i++) if (weapons[i] && weapons[i]->getExists()) liveW++;
+			if (liveW > 0) {
+				printf("[VK_VFX_TRACE] objmgr other-block route=%d IsHUD-wrap=%d numWeapons=%ld liveWeapons=%ld numCarnage=%ld numArtillery=%ld\n",
+					(int)vkVfxRoute, (int)vkVfxRoute, numWeapons, liveW, (long)numCarnage, (long)numArtillery);
+				fflush(stdout);
+			}
+		}
+		// VK-FIELD-VFX-2: route ONLY the weapon bolts through the IsHUD tail. The VK HUD
+		// tail composites via an ALL-OR-NOTHING gate (nativeHudCanSkipGl in
+		// gosRenderer::flushHUDBatch): if ANY queued HUD draw is non-representable the WHOLE
+		// native HUD tail is bypassed and the HUD renders to the discarded GL backbuffer ->
+		// brackets/bars/beams ALL vanish. carnage/lights/artillery are gosFX effects that emit
+		// TEXTURED (effect-sprite) draws with no HUD texture mirror -> non-representable -> they
+		// would poison the whole tail whenever any effect is live. So keep them OUT of the IsHUD
+		// scope (they stay on the normal GL path, invisible under VK-only present, same as before
+		// -- the deferred textured-effect remainder), and route only the representable weapon
+		// bolts (WeaponBolt::render: untextured laser tris + beam tris + beam-axis lines).
 		if (vkVfxRoute) {
 			gos_SetHudScaleExempt(true);
 			gos_SetRenderState(gos_State_IsHUD, 1);
@@ -2193,6 +2214,10 @@ void GameObjectManager::render (bool terrain, bool movers, bool other) {
 				if (weapons[i] && weapons[i]->getExists())
 					weapons[i]->render();
 			}
+		}
+		if (vkVfxRoute) {
+			gos_SetRenderState(gos_State_IsHUD, 0);
+			gos_SetHudScaleExempt(prevVfxExempt);
 		}
 
 		if (carnage) {
@@ -2216,10 +2241,6 @@ void GameObjectManager::render (bool terrain, bool movers, bool other) {
 				if (artillery[i] && artillery[i]->getExists())
 					artillery[i]->render();
 			}
-		}
-		if (vkVfxRoute) {
-			gos_SetRenderState(gos_State_IsHUD, 0);
-			gos_SetHudScaleExempt(prevVfxExempt);
 		}
 	}
 	gos_SetRenderState( gos_State_Fog, 0);

@@ -5395,7 +5395,36 @@ void MechWarrior::updateActions (void) {
 	// (global latch). Output is stdout, so it needs MC2_LOG=1 to be visible.
 	static const bool s_fxForceSpawn =
 		(getenv("MC2_FX_FORCE_SPAWN") != NULL && getenv("MC2_FX_FORCE_SPAWN")[0] != '0');
-	if (s_fxForceSpawn) {
+	// VK-FIELD-VFX-2: continuous re-fire mode for a deterministic on-camera capture
+	// window. MC2_FX_FORCE_SPAWN=loop (or =2) re-fires one mech's whole weapon bank on a
+	// fixed cadence so there is ALWAYS a live bolt on screen during a desktop grab
+	// (the =1 fire-once fixture leaves only a ~0.5s transient that is easy to miss).
+	static const bool s_fxLoop = []{
+		const char* v = getenv("MC2_FX_FORCE_SPAWN");
+		return v && (v[0] == 'l' || v[0] == 'L' || (v[0] >= '2' && v[0] <= '9'));
+	}();
+	if (s_fxLoop) {
+		static float s_nextFire = 0.0f;
+		if (myVehicle && scenarioTime > 5.0f && scenarioTime >= s_nextFire && myVehicle->canFireWeapons()) {
+			Stuff::Vector3D pos = myVehicle->getPosition();
+			Stuff::Vector3D targetPoint = pos;
+			targetPoint.x += 150.0f;
+			int firedCount = 0;
+			for (long cw = 0; cw < myVehicle->numWeapons; cw++) {
+				long wi = myVehicle->numOther + cw;
+				float dmgDone = 0.0f;
+				if (NO_ERR == myVehicle->fireWeapon(NULL, scenarioTime, wi,
+						ATTACK_TO_DESTROY, -1, &targetPoint, dmgDone))
+					firedCount++;
+			}
+			if (firedCount > 0) {
+				s_nextFire = scenarioTime + 0.05f;   // ~20 volleys/sec -> a live bolt every frame
+				printf("[FX_FORCE_SPAWN loop] event=mech_fire wid=%ld weapons=%d pos=%.0f,%.0f,%.0f scenarioTime=%.2f\n",
+					myVehicle->getWatchID(), firedCount, pos.x, pos.y, pos.z, scenarioTime);
+				fflush(stdout);
+			}
+		}
+	} else if (s_fxForceSpawn) {
 		// Fire ALL weapons (not just energy): tube ribbons come from PPC AND
 		// missiles (SRM/LRM/TBolt) -- the energy-only filter both missed the
 		// missile tubes and caught non-tube lasers. Spread across up to 8

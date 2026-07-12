@@ -46,6 +46,7 @@
 
 #include<gameos.hpp>
 #include "../mclib/particles/batcher.h"
+#include "vk_shared_gbuffer_gate.h"  // VK-FIELD-VFX-2: umbrella-route immediate-draw for bolts
 
 //---------------------------------------------------------------------------
 extern bool hasGuardBand;
@@ -54,6 +55,30 @@ extern bool drawOldWay;
 extern float BaseHeadShotElevation;
 extern bool useNonWeaponEffects;
 extern bool MLRVertexLimitReached;
+
+// VK-FIELD-VFX-2 (2026-07-11): under the field VK umbrella the DEFAULT bolt path
+// (drawOldWay==false -> mcTextureManager->addVertices) DEFERS the bolt geometry into
+// the texture-manager render list, which renderLists() flushes into the (discarded)
+// GL scene backbuffer under VK-only present -> weapon fire VANISHES. The round-1
+// objmgr IsHUD wrap is INERT for this path because addVertices only memcpys verts
+// (no IsHUD capture) and the flush runs OUTSIDE the IsHUD scope. Fix: when the VK VFX
+// route is armed, take the IMMEDIATE gos_DrawTriangles path instead (the exact
+// mechanism the selection brackets / health bars use, PROVEN visible) so the bolt
+// verts are issued while objmgr has gos_State_IsHUD=1 -> composited into the VK HUD
+// tail. Umbrella OFF -> subGate false -> drawOldWay path unchanged -> byte-identical GL.
+static bool vkVfxImmediateDraw()
+{
+	static const bool s_on = mc2vkgate::subGate("MC2_VK_VFX");
+	return s_on;
+}
+static bool vkVfxTraceOn()
+{
+	static const bool s_on = []{
+		const char* v = std::getenv("MC2_VK_VFX_TRACE");
+		return v && v[0] && v[0] != '0';
+	}();
+	return s_on;
+}
 
 #define BASE_EFFECT_SCALAR		1.0f
 #define EFFECT_LEFT_TIME		1.0f
@@ -1742,7 +1767,12 @@ void WeaponBolt::render (void)
 
 		drawInfo.m_state = mlrState;
 		drawInfo.m_clippingFlags = 0x0;
-			
+
+		// VK-FIELD-VFX-2: force the immediate gos_DrawTriangles path under the VK VFX
+		// umbrella route so the bolt lands in the composited HUD tail (see file-top note).
+		const bool useImmediate = drawOldWay || vkVfxImmediateDraw();
+		const bool vfxTrace = vkVfxTraceOn();
+
 		if (!gosEffect && !hitTarget && !((WeaponBoltTypePtr)getObjectType())->isBeam)
 		{
 			//---------------------------
@@ -1861,9 +1891,26 @@ void WeaponBolt::render (void)
 			lq4Vertices[1].u		= 0.0f;
 			lq4Vertices[1].v		= 0.0f;
 			lq4Vertices[1].argb		= edgeMode + ((WeaponBoltTypePtr)getObjectType())->midEdgeRGB;
-		
+
+			if (vfxTrace) {
+				const bool culled =
+					(lq1Vertices[0].x > eye->viewMulX) || (lq1Vertices[0].y > eye->viewMulY) ||
+					(lq1Vertices[0].x < eye->viewAddX) || (lq1Vertices[0].y < eye->viewAddY) ||
+					(lq1Vertices[1].x > eye->viewMulX) || (lq1Vertices[1].y > eye->viewMulY) ||
+					(lq1Vertices[1].x < eye->viewAddX) || (lq1Vertices[1].y < eye->viewAddY) ||
+					(lq1Vertices[2].x > eye->viewMulX) || (lq1Vertices[2].y > eye->viewMulY) ||
+					(lq1Vertices[2].x < eye->viewAddX) || (lq1Vertices[2].y < eye->viewAddY);
+				printf("[VK_VFX_TRACE] bolt(laser) path=%s culled=%d view=[%.0f..%.0f,%.0f..%.0f] "
+					"v0=(%.0f,%.0f) v1=(%.0f,%.0f) v2=(%.0f,%.0f) argb0=%08X\n",
+					useImmediate ? "IMMEDIATE" : "addVertices", (int)culled,
+					eye->viewAddX, eye->viewMulX, eye->viewAddY, eye->viewMulY,
+					lq1Vertices[0].x, lq1Vertices[0].y, lq1Vertices[1].x, lq1Vertices[1].y,
+					lq1Vertices[2].x, lq1Vertices[2].y, (unsigned)lq1Vertices[0].argb);
+				fflush(stdout);
+			}
+
 			if (((lq1Vertices[0].x > eye->viewMulX) ||
-				(lq1Vertices[0].y > eye->viewMulY) || 
+				(lq1Vertices[0].y > eye->viewMulY) ||
 				(lq1Vertices[0].x < eye->viewAddX) || 
 				(lq1Vertices[0].y < eye->viewAddY) || 
 				(lq1Vertices[1].x > eye->viewMulX) ||
@@ -1878,7 +1925,7 @@ void WeaponBolt::render (void)
 			}
 			else
 			{
-				if (drawOldWay)
+				if (useImmediate)
 				{
 					//------------------------
 					// Draw em!
@@ -1941,7 +1988,7 @@ void WeaponBolt::render (void)
 			}
 			else
 			{
-				if (drawOldWay)
+				if (useImmediate)
 				{
 					gos_DrawTriangles(lq2Vertices,3);
 				}
@@ -1967,7 +2014,7 @@ void WeaponBolt::render (void)
 			}
 			else
 			{
-				if (drawOldWay)
+				if (useImmediate)
 				{
 					gos_DrawTriangles(lq3Vertices,3);
 				}
@@ -1993,7 +2040,7 @@ void WeaponBolt::render (void)
 			}
 			else
 			{
-				if (drawOldWay)
+				if (useImmediate)
 				{
 					gos_DrawTriangles(lq4Vertices,3);
 				}
@@ -2152,8 +2199,19 @@ void WeaponBolt::render (void)
 			lq4Vertices[2].v		= 0.999999f;
 			lq4Vertices[2].argb		= alphaMode + ((WeaponBoltTypePtr)getObjectType())->middleRGB;
 
-	
-			if (drawOldWay)
+			if (vfxTrace) {
+				printf("[VK_VFX_TRACE] beam path=%s view=[%.0f..%.0f,%.0f..%.0f] "
+					"v0=(%.0f,%.0f,z%.3f) v1=(%.0f,%.0f,z%.3f) v2=(%.0f,%.0f,z%.3f) argb0=%08X tex=%u\n",
+					useImmediate ? "IMMEDIATE" : "addVertices",
+					eye->viewAddX, eye->viewMulX, eye->viewAddY, eye->viewMulY,
+					lq1Vertices[0].x, lq1Vertices[0].y, lq1Vertices[0].z,
+					lq1Vertices[1].x, lq1Vertices[1].y, lq1Vertices[1].z,
+					lq1Vertices[2].x, lq1Vertices[2].y, lq1Vertices[2].z,
+					(unsigned)lq1Vertices[0].argb, (unsigned)gosTextureHandle);
+				fflush(stdout);
+			}
+
+			if (useImmediate)
 			{
  				//------------------------
 				// Draw em!
@@ -2178,10 +2236,19 @@ void WeaponBolt::render (void)
 					gos_SetRenderState(	gos_State_ZWrite, 0);
 				}
 				//--------------------------------
-				//Set States for Hardware Renderer	
+				//Set States for Hardware Renderer
 				else
 				{
-					gos_SetRenderState( gos_State_AlphaMode, gos_Alpha_OneInvAlpha);
+					// VK-FIELD-VFX-2: the VK HUD tail only composites AlphaMode OneZero(1) or
+					// AlphaInvAlpha(3) (vkHudDrawRepresentable, gameos_graphics.cpp) — a beam's
+					// native OneInvAlpha(4) is REJECTED and vanishes. Use AlphaInvAlpha(3): it maps
+					// to the tail's WORKING non-opaque color-line pipeline (hudColorLinePipe, the
+					// same one the proven selection brackets use); the opaque pipe (OneZero->
+					// hudColorLineOpaquePipe) does not rasterize the beam-axis lines. The beam-axis
+					// line (below) carries full 0xFF alpha so AlphaInvAlpha renders it solid. GL
+					// path (drawOldWay / umbrella-off) keeps OneInvAlpha -> byte-identical.
+					gos_SetRenderState( gos_State_AlphaMode,
+						vkVfxImmediateDraw() ? gos_Alpha_AlphaInvAlpha : gos_Alpha_OneInvAlpha);
 					gos_SetRenderState( gos_State_ShadeMode, gos_ShadeGouraud);
 					gos_SetRenderState( gos_State_MonoEnable, 0);
 					gos_SetRenderState( gos_State_Perspective, 1);
@@ -2196,7 +2263,15 @@ void WeaponBolt::render (void)
 					gos_SetRenderState(	gos_State_ZWrite, 0);
 				}
 			
-				if (gosTextureHandle != 0xffffffff)
+				// VK-FIELD-VFX-2: the VK HUD tail can only represent a TEXTURED tri-batch when
+				// the sampled texture is in its HUD mirror (needs non-empty textureRgba). An
+				// effect sprite like the beam texture is NOT mirrored (decline log: kind=2
+				// tex=275 rgba=0), so a textured beam is dropped. Render it UNTEXTURED under the
+				// VK route -> plain vertex-colour tri-batch that IS representable and composites.
+				// (Textured effect-sprite mirroring is the deferred remainder.) GL path unchanged.
+				if (vkVfxImmediateDraw())
+					gos_SetRenderState( gos_State_Texture, 0);
+				else if (gosTextureHandle != 0xffffffff)
 					gos_SetRenderState( gos_State_Texture,gosTextureHandle);
 				else
 					gos_SetRenderState( gos_State_Texture,0);
@@ -2205,6 +2280,34 @@ void WeaponBolt::render (void)
 				gos_DrawTriangles(lq2Vertices,3);
 				gos_DrawTriangles(lq3Vertices,3);
 				gos_DrawTriangles(lq4Vertices,3);
+
+				// VK-FIELD-VFX-2: at tactical zoom a beam's ribbon is often sub-pixel
+				// wide, so its filled triangles cover no pixel centres and rasterize
+				// NOTHING in the VK HUD tail (verified: 84x14 bbox, thin diagonal, zero
+				// pixels). Emit the beam AXIS as opaque lines (kHudLineBatch — the proven
+				// selection-bracket path) so thin beams stay visible under the VK umbrella.
+				// lq1Vertices[0]=tip, lq1Vertices[1]=base (opposite ends of the ribbon).
+				if (vkVfxImmediateDraw())
+				{
+					const DWORD beamCol = (lq1Vertices[0].argb & 0x00ffffffu) | 0xff000000u;
+					for (int oy = -1; oy <= 1; ++oy)
+					{
+						gos_VERTEX ln[2];
+						ln[0] = lq1Vertices[0];
+						ln[1] = lq1Vertices[1];
+						ln[0].y += (float)oy; ln[1].y += (float)oy;
+						ln[0].argb = beamCol; ln[1].argb = beamCol;
+						gos_DrawLines(ln, 2);
+					}
+					if (vfxTrace) {
+						static int s_le = 0;
+						if (s_le < 20) { ++s_le;
+							printf("[VK_VFX_TRACE] beam-line EMIT tip=(%.0f,%.0f) base=(%.0f,%.0f) col=%08X\n",
+								lq1Vertices[0].x, lq1Vertices[0].y, lq1Vertices[1].x, lq1Vertices[1].y, (unsigned)beamCol);
+							fflush(stdout);
+						}
+					}
+				}
 			}
 			else
 			{

@@ -1,5 +1,99 @@
 # VK-ARC-STATE — current state block (update every session)
 
+## 2026-07-11 — WEAPON-FIRE VFX ROUND 2: FULL BOLT PIPELINE TRACED + 4 REAL BREAKS FIXED (routing proven END-TO-END to the VK present tail); clean visible-beam hero frame NOT obtained (honest blocker). Working tree on `claude/vk-interop-bridge-1` (uncommitted), deployed both installs.
+
+**★ THE TRACED BOLT PIPELINE — where round-1 actually broke, stage by stage.** Added
+gated instrumentation (`MC2_VK_VFX_TRACE`, registered) at every stage: `WeaponBolt::render`
+(entry/branch/cull/path/screen-coords/argb), `objmgr` other-block route state, and a VK
+present-tail bbox trace (`engine_present_vk.cpp`). Findings:
+
+1. **BREAK #1 — round-1's IsHUD route was INERT (the real round-1 root cause).** `drawOldWay`
+   is a global `= false` (`mclib/tgl.cpp:134`, never reassigned), so every bolt takes the
+   `else` branch → `mcTextureManager->addVertices(...)` which DEFERS the geometry into the
+   texture-manager render list, flushed later by `renderLists()` (`code/gamecam.cpp:535`) into
+   the DISCARDED GL scene under VK-only present. `addVertices` only memcpys verts — it does NOT
+   capture `gos_State_IsHUD`, and the flush runs OUTSIDE the objmgr IsHUD scope. So round-1's
+   `if(other)` IsHUD wrap did NOTHING for the bolt geometry → zero bolt pixels. **FIX:** under
+   the VK VFX umbrella route, take the IMMEDIATE `gos_DrawTriangles` path (a local
+   `useImmediate = drawOldWay || mc2vkgate::subGate("MC2_VK_VFX")` gating all 5 `drawOldWay`
+   sites) so bolts are issued while `IsHUD=1` → queued to the HUD tail (the exact proven
+   bracket/bar mechanism). Trace confirms `path=IMMEDIATE`, in-viewport, `route=1 IsHUD-wrap=1`.
+
+2. **BREAK #2 — the VK HUD tail REJECTED the beam.** `vkHudDrawRepresentable`
+   (`gameos_graphics.cpp`) only accepts AlphaMode `OneZero(1)`/`AlphaInvAlpha(3)`; the beam's
+   native `OneInvAlpha(4)` is rejected. Also the beam is TEXTURED (effect sprite handle 275)
+   and the tail's texture mirror only holds HUD textures → `rgba=0` → rejected. Proof:
+   `[VK_HUD_SKIP_DECLINE] kind=2 tex=275 gl=244 wh=32x32 rgba=0 alpha=3`. **FIX:** under the VK
+   route render the beam UNTEXTURED with representable AlphaMode → declines=0, and the tail-bbox
+   trace shows the beam reaching the tail: `[VK_VFX_TAIL] argb0=3FFFFFFF w=86 h=14`.
+
+3. **BREAK #3 — force-spawn / thin-beam geometry rasterizes NOTHING.** Even reaching the tail
+   opaque with an 84×14 bbox, the beam quad is a sub-pixel-wide DIAGONAL RIBBON (its triangles
+   are degenerate slivers covering no pixel centres); force-spawn lasers are fully degenerate
+   (`v0==v1==v2`, a point). A GL same-setup control shows the same (not a VK-specific loss).
+   This is the "force-spawned bolts → degenerate geometry (use real combat)" hazard. **FIX
+   (partial):** emit the beam AXIS as opaque lines (`gos_DrawLines` → `kHudLineBatch`, the proven
+   selection-bracket path); lines always rasterize ≥1px. Trace confirms the beam LINE reaches
+   the tail (`kind=1 nverts=2 argb0=FFFFFFFF w=86`). NOTE: opaque lines route to
+   `hudColorLineOpaquePipe`; use `AlphaInvAlpha`+full-alpha so the line uses the WORKING
+   `hudColorLinePipe` (same as brackets).
+
+4. **BREAK #4 (REGRESSION round-1 introduced) — the HUD tail is ALL-OR-NOTHING.**
+   `nativeHudCanSkipGl` (`flushHUDBatch`) requires EVERY queued HUD draw to be representable; if
+   ANY is not, the WHOLE native HUD tail is bypassed → HUD renders to the discarded GL backbuffer
+   → brackets/bars/beams ALL vanish. Round-1 routed carnage/lights/artillery (gosFX TEXTURED
+   effect sprites, non-representable) through IsHUD, so whenever any effect was live the entire
+   HUD composite died (intermittent HUD vanish under fire). **FIX:** route ONLY weapon bolts
+   through IsHUD; keep carnage/lights/artillery OUT (they stay on the normal GL path, invisible
+   under VK-only present as before — the deferred textured-effect remainder). Verified: with
+   this change the HUD composites reliably in EVERY captured frame under continuous fire (was
+   intermittent).
+
+**★ VISUAL VERDICT — NOT CLOSED (honest blocker).** After ~20 headless capture runs I did NOT
+obtain a clean, unconfounded desktop grab of a visible weapon beam in the proper VK field
+composite. The routing is proven END-TO-END (geometry + beam-axis line reach the VK present tail
+with correct on-canvas coords), and the all-or-nothing HUD fix makes the tail composite reliably.
+But a hero frame is blocked by a stack of capture obstacles: (a) force-spawn bolts are
+degenerate/sub-pixel (BREAK #3) so the triangle path shows nothing and only the line fallback can;
+(b) OS desktop-grab foreground is nondeterministic (SetForegroundWindow from a bg process is
+Win32-blocked; pure `SetWindowPos HWND_TOPMOST` mostly works but minimize/restore triggers a
+swapchain-rebuild grey transient); (c) the firing mechs' beams are frequently off-screen (camera
+follows the selected mech; beams fire toward world +x); (d) frames that DID show dramatic weapon
+fire (muzzle flashes/fire trails) were swapchain-rebuild transients / GL-fallback frames (grey
+scene, black bars) showing gosFX carnage — NOT valid VK-composite proof; (e) the beam LINE reaches
+the tail but I never captured a frame with it on-screen + window topmost + clean composite
+simultaneously. **What would close it:** a manual live session — launch `tracy-vk-compare.bat on`
+mc2_01, enter REAL combat (real bolts have real screen width), and eyeball/screenshot the window;
+OR a proper HZB-pinned pose centred on a sustained-fire engagement with the window brought
+genuinely foreground once (no per-grab re-topmost).
+
+**★ VERIFICATION.** Main `run_vk_field_check.py`: PASS on the load-bearing assertion (all content
+layers VK-owned, no fallback: terrain/prop/mech/water/fog `used_vulkan`~3598-5098; scene chroma
+53.67 when foreground held). The script's props-pose PPM sub-assert fails ("VK present never ran"
+= `MC2_VK_PRESENT_DUMP_PPM` produced no PPM) — PRE-EXISTING tooling issue, my diff does NOT touch
+the PPM/present path (my only `engine_present_vk.cpp` change is the +22-line gated
+`MC2_VK_VFX_TRACE` bbox trace, inert without the env). Canonical tier1 smoke **5/5 PASS both
+states** (GL `2026-07-11T22-07-37`; VK umbrella `2026-07-11T22-11-40`), +0 destroys each mission.
+Deployed both `mc2-win64-0.4c` and `mc2-win64-v0.4c`. Field-check TGA/PPM cleaned.
+
+**★ FILES (uncommitted working tree).** `code/weaponbolt.cpp` (immediate-path routing +
+untextured/AlphaInvAlpha beam + beam-axis lines + trace), `code/objmgr.cpp` (weapons-only IsHUD
+routing + trace), `code/warrior.cpp` (`MC2_FX_FORCE_SPAWN=loop` continuous-fire test fixture),
+`GameOS/gameos/engine_present_vk.cpp` (gated tail-bbox trace), `RenderCore/RendererFeatureRegistry.h`
+(`MC2_VK_VFX_TRACE` registration). All new render behaviour is gated on the VK umbrella
+(`mc2vkgate::subGate("MC2_VK_VFX")`) → byte-identical GL when the umbrella is off.
+
+**★ DURABLE LESSONS.** (1) `drawOldWay=false` is the default → in-scene VFX defer through the
+texture-manager render list, NOT `gos_DrawTriangles`; an IsHUD wrap around a `render()` that
+uses `addVertices` is INERT. (2) The VK HUD tail is ALL-OR-NOTHING (`nativeHudCanSkipGl`): one
+non-representable draw (textured effect sprite, `OneInvAlpha`) silently kills the ENTIRE HUD
+composite — route ONLY representable content through IsHUD. (3) The tail can't mirror arbitrary
+effect textures (`rgba=0` decline) — untextured or the textured-effect-mirror remainder. (4)
+Opaque HUD lines use a different (non-working here) pipe than the brackets — match the brackets'
+`AlphaInvAlpha` non-opaque pipe. (5) Force-spawn bolts are degenerate/sub-pixel; visible-proof
+needs real combat, and OS desktop grabs of a VK swapchain need genuine foreground (topmost, not
+activate/restore which rebuilds the swapchain to grey).
+
 ## 2026-07-11 — TWO FIELD-ENV VICTIMS: SELECTION OUTLINES FIXED+PROVEN; WEAPON-FIRE VFX built (mechanism), NOT yet visually closed (commits `06e3a5f9` + `3c500617`, both installs)
 
 Two more all-or-nothing-invariant victims under the field umbrella (VK-only present
