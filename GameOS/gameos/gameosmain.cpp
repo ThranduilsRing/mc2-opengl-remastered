@@ -1883,7 +1883,8 @@ int main(int argc, char** argv)
                     // surface extent (window minimized at boot). Retry once per
                     // frame while the drawable is non-zero; success promotes the
                     // session to the normal VK present path mid-run.
-                    if (!vkpres.valid() && g_vkPresentInitDeferred) {
+                    if (!vkpres.valid() && g_vkPresentInitDeferred &&
+                        (g_mc2FrameCounter % 30 == 0)) {   // retry ~2x/s, not per frame (init logs each attempt)
                         int rdw = 0, rdh = 0;
                         graphics::get_drawable_size(win, &rdw, &rdh);
                         if (rdw > 0 && rdh > 0) {
