@@ -1871,11 +1871,23 @@ int main(int argc, char** argv)
                             const char* p = getenv("MC2_VK_PRESENT_DUMP_FRAME");
                             return (p && p[0]) ? strtoul(p, nullptr, 10) : 0ul;
                         }();
+                        // VK-FIELD-VFX-5: dynamic fire-event pin (armed at runtime
+                        // by the MC2_FX_FORCE_SPAWN fixture when
+                        // MC2_VK_PRESENT_DUMP_ON_FIRE is set) — must be read per
+                        // frame, not memoized.
+                        extern uint32_t g_mc2FxFireCaptureFrame;
+                        static const bool s_dumpOnFire =
+                            (getenv("MC2_VK_PRESENT_DUMP_ON_FIRE") != nullptr);
+                        const unsigned long firePin =
+                            s_dumpOnFire ? (unsigned long)g_mc2FxFireCaptureFrame : 0ul;
                         const bool inVerifyWindow =
                             (g_mc2FrameCounter < 600) ||
                             (s_ppmPinFrame > 0 &&
                              g_mc2FrameCounter >= s_ppmPinFrame &&
-                             g_mc2FrameCounter < s_ppmPinFrame + 600);
+                             g_mc2FrameCounter < s_ppmPinFrame + 600) ||
+                            (firePin > 0 &&
+                             g_mc2FrameCounter >= firePin &&
+                             g_mc2FrameCounter < firePin + 600);
                         const bool verify =
                             (getenv("MC2_VK_PRESENT_VERIFY") != nullptr) &&
                             inVerifyWindow && (g_mc2FrameCounter % 60 == 0);

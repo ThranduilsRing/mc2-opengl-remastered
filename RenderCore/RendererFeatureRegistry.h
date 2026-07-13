@@ -676,6 +676,19 @@ static constexpr EnvVarDesc kAuxEnvVars[] = {
         "present path — the 2026-07-12 grey-regression false clue)."
     },
     {
+        "MC2_TRACE_VK_PRESENT_DUMP_ON_FIRE",
+        "MC2_VK_PRESENT_DUMP_ON_FIRE",
+        EnvVarKind::Trace,
+        false,
+        "VK-FIELD-VFX-5: dynamic fire-event pin for MC2_VK_PRESENT_DUMP_PPM. "
+        "Default unset. When set (with MC2_FX_FORCE_SPAWN=loop), the fixture's "
+        "FIRST volley arms the capture ~0.5s (30 frames) after itself "
+        "(g_mc2FxFireCaptureFrame), so the PPM always lands mid-volley — no "
+        "static pin roulette against a mission's intro/scenario clock. Ignored "
+        "when MC2_VK_PRESENT_DUMP_FRAME is set (static pin wins). Requires "
+        "MC2_VK_PRESENT_VERIFY; suppresses all PPM writes until armed."
+    },
+    {
         "MC2_TRACE_VK_PRESENT_NATIVE_STRICT",
         "MC2_VK_PRESENT_NATIVE_STRICT",
         EnvVarKind::Trace,

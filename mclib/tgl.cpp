@@ -3921,6 +3921,14 @@ static const bool s_tglPoolTrace = (getenv("MC2_TGL_POOL_TRACE") != nullptr);
 // loop; data tools never increment it and see a harmless zero.
 uint32_t g_mc2FrameCounter = 0;
 
+// VK-FIELD-VFX-5: fire-event present-capture arm. 0 = unarmed; the
+// MC2_FX_FORCE_SPAWN=loop fixture (code/warrior.cpp) sets it to the frame
+// ~0.5s after its first volley when MC2_VK_PRESENT_DUMP_ON_FIRE is set, and
+// the VK present dump (engine_present_vk.cpp verifyReadbackContent +
+// gameosmain verify window) treats it as a dynamic MC2_VK_PRESENT_DUMP_FRAME
+// pin. Defined next to the frame counter for the same data-tool-link reason.
+uint32_t g_mc2FxFireCaptureFrame = 0;
+
 namespace {
 	// Emit one [TGL_POOL] line per pool with nulls this frame.
 	template<typename PoolT>

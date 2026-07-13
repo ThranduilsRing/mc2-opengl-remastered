@@ -5422,6 +5422,22 @@ void MechWarrior::updateActions (void) {
 				printf("[FX_FORCE_SPAWN loop] event=mech_fire wid=%ld weapons=%d pos=%.0f,%.0f,%.0f scenarioTime=%.2f\n",
 					myVehicle->getWatchID(), firedCount, pos.x, pos.y, pos.z, scenarioTime);
 				fflush(stdout);
+				// VK-FIELD-VFX-5: fire-event capture arm. With
+				// MC2_VK_PRESENT_DUMP_ON_FIRE set, the FIRST loop volley arms the
+				// present-PPM pin ~0.5s after itself, so the capture lands
+				// mid-volley instead of pin-frame roulette against the mission's
+				// intro/scenario clock. Consumed by verifyReadbackContent
+				// (engine_present_vk.cpp) + the gameosmain verify window.
+				extern uint32_t g_mc2FrameCounter;
+				extern uint32_t g_mc2FxFireCaptureFrame;
+				static const bool s_dumpOnFire =
+					(getenv("MC2_VK_PRESENT_DUMP_ON_FIRE") != NULL);
+				if (s_dumpOnFire && g_mc2FxFireCaptureFrame == 0) {
+					g_mc2FxFireCaptureFrame = g_mc2FrameCounter + 30u;
+					printf("[FX_FORCE_SPAWN loop] event=capture_armed frame=%u pin=%u\n",
+						g_mc2FrameCounter, g_mc2FxFireCaptureFrame);
+					fflush(stdout);
+				}
 			}
 		}
 	} else if (s_fxForceSpawn) {

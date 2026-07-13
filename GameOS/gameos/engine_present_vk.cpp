@@ -2479,11 +2479,22 @@ void EnginePresentVk::verifyReadbackContent() {
         // post-fire frame). Unset -> legacy overwrite-each-verify-tick behaviour.
         {
             extern uint32_t g_mc2FrameCounter;
+            extern uint32_t g_mc2FxFireCaptureFrame;
             const char* pinEnv = std::getenv("MC2_VK_PRESENT_DUMP_FRAME");
             if (pinEnv && pinEnv[0]) {
                 const unsigned long pin = strtoul(pinEnv, nullptr, 10);
                 if (s_ppmDone || (unsigned long)g_mc2FrameCounter < pin)
                     ppmPath = nullptr; // not yet at the pinned frame, or already captured
+            } else if (std::getenv("MC2_VK_PRESENT_DUMP_ON_FIRE")) {
+                // VK-FIELD-VFX-5: dynamic fire-event pin. The force-fire fixture
+                // (code/warrior.cpp) arms g_mc2FxFireCaptureFrame ~0.5s after its
+                // first volley, so the capture always lands mid-volley -- no
+                // pin-frame roulette against the mission's intro/scenario clock.
+                // Unarmed (0) = suppress; once armed, capture at the first verify
+                // tick >= the armed frame.
+                if (s_ppmDone || g_mc2FxFireCaptureFrame == 0 ||
+                    g_mc2FrameCounter < g_mc2FxFireCaptureFrame)
+                    ppmPath = nullptr;
             }
         }
         if (ppmPath) {
