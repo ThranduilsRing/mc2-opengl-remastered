@@ -57,6 +57,14 @@
 #include <cstdlib>
 #include <cstring>
 
+// VK-FAILSOFT-DISARM-1: session-sticky "VK fail-softed to GL" flag, set by
+// mc2::forceGLFallback (render_backend_select.cpp), defined in mclib/tgl.cpp
+// (data-tool-link home). When true the umbrella reads as OFF so the whole
+// content family disarms — post-ITEM8 there is no per-layer GL fallback, so
+// armed islands + a GL present = every VK-owned layer VANISHES (torn grey
+// scene with only residual GL-drawn VFX/decals over the wash).
+extern bool g_mc2VkSessionForcedGL;
+
 namespace mc2vkgate {
 
 // Raw tri-state read of an env var: -1 unset, 0 explicit "0", 1 explicit "1".
@@ -71,11 +79,15 @@ inline int envTriState(const char* name)
     return -1;
 }
 
-// The umbrella. Presence-gated =1, default OFF.
+// The umbrella. Presence-gated =1, default OFF. Reads the fail-soft disarm
+// flag PER CALL (not memoized): once the session force-falls back to GL the
+// whole family must read OFF, or armed islands keep claiming content the GL
+// present can never show (VK-FAILSOFT-DISARM-1). Explicit per-sub-gate "1"
+// overrides still win in subGate()/directChainGate() — those are debug knobs.
 inline bool umbrellaOn()
 {
     static const bool s_on = (envTriState("MC2_VK_SHARED_GBUFFER") == 1);
-    return s_on;
+    return s_on && !g_mc2VkSessionForcedGL;
 }
 
 // Resolve a sub-gate that is a MEMBER of the umbrella family:

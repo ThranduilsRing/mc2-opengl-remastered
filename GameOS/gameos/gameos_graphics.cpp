@@ -7994,7 +7994,7 @@ static bool vkHudQueueEnabled()
     // queues the HUD into the VK present tail; explicit "1"/"0" still wins. The strict proof armed
     // MC2_VK_HUD=1 and passed. (Representable-draw filtering + the SKIP_GL all-or-nothing guard
     // below still apply -- a non-representable HUD element keeps GL HUD live for parity.)
-    static const bool enabled = mc2vkgate::subGate("MC2_VK_HUD");
+    const bool enabled = mc2vkgate::subGate("MC2_VK_HUD");            // per-call: VK-FAILSOFT-DISARM-1
     return enabled;
 }
 
@@ -8005,7 +8005,7 @@ static bool vkHudSkipGlEnabled()
     // an optimization under VK-only present (the GL backbuffer is discarded anyway), and it is
     // self-protecting: nativeHudCanSkipGl is AND-reduced over drawRepresentable, so GL HUD stays
     // live whenever any HUD element is not VK-representable. Explicit "1"/"0" still wins.
-    static const bool enabled = mc2vkgate::subGate("MC2_VK_HUD_SKIP_GL");
+    const bool enabled = mc2vkgate::subGate("MC2_VK_HUD_SKIP_GL");    // per-call: VK-FAILSOFT-DISARM-1 (GL HUD must return after fail-soft)
     return enabled;
 }
 
@@ -8181,7 +8181,7 @@ void gosRenderer::flushHUDBatch()
                     // built lazily by GPU readback, once per content serial, so
                     // textured beams/effects composite instead of self-declining.
                     // Gated on the VFX umbrella sub-gate; GL byte-identical when off.
-                    static const bool s_hudGpuMirror = mc2vkgate::subGate("MC2_VK_VFX");
+                    const bool s_hudGpuMirror = mc2vkgate::subGate("MC2_VK_VFX");   // per-call: VK-FAILSOFT-DISARM-1
                     if (s_hudGpuMirror && draw.textureWidth != 0 &&
                         draw.textureHeight != 0 && !tex->hasRgbaMirror())
                         tex->ensureRgbaMirrorFromGpu();
@@ -8196,7 +8196,7 @@ void gosRenderer::flushHUDBatch()
             // round-3 proven beam look) instead of self-declining — a weapon
             // beam must never vanish outright over a missing texture mirror.
             {
-                static const bool s_hudEffectUntexFallback = mc2vkgate::subGate("MC2_VK_VFX");
+                const bool s_hudEffectUntexFallback = mc2vkgate::subGate("MC2_VK_VFX");   // per-call: VK-FAILSOFT-DISARM-1
                 if (s_hudEffectUntexFallback && draw.kind == (uint32_t)kHudTriBatch &&
                     draw.alphaMode == 4 &&
                     draw.textureHandle != 0 && draw.textureHandle != INVALID_TEXTURE_ID &&
@@ -8224,7 +8224,7 @@ void gosRenderer::flushHUDBatch()
             // lost to the discarded GL HUD anyway). This removes the poisoning landmine
             // where any live textured effect killed the entire HUD composite, and lets the
             // effect classes (carnage/muzzle/artillery) route through IsHUD safely.
-            static const bool s_hudPerDrawDecline = mc2vkgate::subGate("MC2_VK_VFX");
+            const bool s_hudPerDrawDecline = mc2vkgate::subGate("MC2_VK_VFX");   // per-call: VK-FAILSOFT-DISARM-1
             const bool drawRepresentable = vkHudDrawRepresentable(draw);
             if (!drawRepresentable) {
                 static unsigned s_nativeHudDeclineLogs = 0;

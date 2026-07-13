@@ -237,6 +237,13 @@ static LONG WINAPI mc2_unhandled_exception_filter(EXCEPTION_POINTERS* ep)
 // This TU owns the per-frame increment; everyone else is a read-only extern.
 extern uint32_t g_mc2FrameCounter;
 
+// VK-FAILSOFT-DISARM-1: present init hit a zero surface extent (window
+// minimized at boot) and was DEFERRED instead of fail-softing the session to
+// GL. The frame loop retries EnginePresentVk::init once the drawable is
+// non-zero; until then VK present is simply skipped (GL swap runs, the
+// umbrella family stays armed for when present comes up).
+static bool g_vkPresentInitDeferred = false;
+
 // Force discrete GPU selection on hybrid-graphics laptops (NVIDIA Optimus,
 // AMD PowerXpress). Without these exports, an unknown OpenGL executable is
 // routed to the Intel integrated GPU by default, which is catastrophic for
@@ -1239,9 +1246,25 @@ int main(int argc, char** argv)
             const bool presok = vkpres.init(vkctx, g_sdl_window, (uint32_t)dw, (uint32_t)dh);
             vkpres.logHealth();
             if (!presok || !vkpres.valid()) {
-                mc2::forceGLFallback(vkpres.health().fallback_reason.empty()
-                                         ? "VK present path did not come up"
-                                         : vkpres.health().fallback_reason.c_str());
+                // VK-FAILSOFT-DISARM-1: a zero surface extent just means the
+                // window is minimized RIGHT NOW (smoke runner starts missions
+                // SW_SHOWMINNOACTIVE; a user can launch minimized too). That is
+                // a DEFERRAL, not a failure — forcing GL for the whole session
+                // here left the armed umbrella family with a GL present that
+                // can never show it (torn grey scene). Retry present init from
+                // the frame loop once the drawable is non-zero.
+                const std::string& fr = vkpres.health().fallback_reason;
+                if (fr.find("zero surface extent") != std::string::npos) {
+                    g_vkPresentInitDeferred = true;
+                    printf("[VK_PRESENT] init deferred: %s -- will retry when the "
+                           "window has a non-zero drawable (session stays VK).\n",
+                           fr.c_str());
+                    fflush(stdout);
+                } else {
+                    mc2::forceGLFallback(fr.empty()
+                                             ? "VK present path did not come up"
+                                             : fr.c_str());
+                }
             }
         }
 #else
@@ -1856,6 +1879,26 @@ int main(int argc, char** argv)
                 bool vkPresented = false;
                 if (mc2::renderBackend() == mc2::RenderBackend::Vulkan) {
                     mc2vk::EnginePresentVk& vkpres = mc2vk::getOrCreateEnginePresentVk();
+                    // VK-FAILSOFT-DISARM-1: present init was deferred on a zero
+                    // surface extent (window minimized at boot). Retry once per
+                    // frame while the drawable is non-zero; success promotes the
+                    // session to the normal VK present path mid-run.
+                    if (!vkpres.valid() && g_vkPresentInitDeferred) {
+                        int rdw = 0, rdh = 0;
+                        graphics::get_drawable_size(win, &rdw, &rdh);
+                        if (rdw > 0 && rdh > 0) {
+                            mc2vk::VulkanContext& rctx = mc2vk::getOrCreateEngineVulkanContext();
+                            if (rctx.valid() &&
+                                vkpres.init(rctx, g_sdl_window, (uint32_t)rdw, (uint32_t)rdh) &&
+                                vkpres.valid()) {
+                                g_vkPresentInitDeferred = false;
+                                printf("[VK_PRESENT] deferred init recovered: %dx%d — "
+                                       "VK present active.\n", rdw, rdh);
+                                fflush(stdout);
+                                vkpres.logHealth();
+                            }
+                        }
+                    }
                     if (vkpres.valid()) {
                         int pdw = 0, pdh = 0;
                         graphics::get_drawable_size(win, &pdw, &pdh);

@@ -68,7 +68,7 @@ extern bool MLRVertexLimitReached;
 // tail. Umbrella OFF -> subGate false -> drawOldWay path unchanged -> byte-identical GL.
 static bool vkVfxImmediateDraw()
 {
-	static const bool s_on = mc2vkgate::subGate("MC2_VK_VFX");
+	const bool s_on = mc2vkgate::subGate("MC2_VK_VFX");   // per-call: VK-FAILSOFT-DISARM-1
 	return s_on;
 }
 static bool vkVfxTraceOn()

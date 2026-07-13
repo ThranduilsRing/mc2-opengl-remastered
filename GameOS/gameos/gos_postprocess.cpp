@@ -80,7 +80,7 @@ static bool mc2VkSharedSceneDepthEnabled()
 {
     // Umbrella family member: MC2_VK_SHARED_GBUFFER=1 arms it; explicit
     // MC2_VK_SHARED_SCENE_DEPTH=0/1 overrides. Default OFF (pure GL).
-    static const bool s_on = mc2vkgate::subGate("MC2_VK_SHARED_SCENE_DEPTH");
+    const bool s_on = mc2vkgate::subGate("MC2_VK_SHARED_SCENE_DEPTH");   // per-call: VK-FAILSOFT-DISARM-1
     return s_on;
 }
 

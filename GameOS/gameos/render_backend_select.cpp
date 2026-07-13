@@ -11,6 +11,11 @@
 #include <cstdlib>
 #include <cstring>
 
+// VK-FAILSOFT-DISARM-1: defined in mclib/tgl.cpp (data-tool-link home, same as
+// g_mc2FrameCounter); set below by forceGLFallback, read by
+// mc2vkgate::umbrellaOn() (vk_shared_gbuffer_gate.h).
+extern bool g_mc2VkSessionForcedGL;
+
 namespace mc2 {
 
 namespace {
@@ -64,6 +69,13 @@ void forceGLFallback(const char* reason) {
         std::fflush(stdout);
     }
     s_forceGL = true;
+    // VK-FAILSOFT-DISARM-1: disarm the shared-GBuffer umbrella family too.
+    // Post-ITEM8 there is no per-layer GL fallback — if the content islands
+    // stay armed while present runs GL, every VK-owned layer VANISHES (torn
+    // grey scene with only residual GL-drawn VFX/decals; the S2b signature).
+    // mc2vkgate::umbrellaOn() reads this flag per call, so islands that
+    // consult their gate per frame fall back to the pure GL path.
+    ::g_mc2VkSessionForcedGL = true;
 }
 
 }  // namespace mc2
