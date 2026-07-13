@@ -69,6 +69,15 @@ Invalid values: clamped to safe range where applicable.
 | `aoBias` | float | ≥0 | — | SSAO depth bias (same gating) |
 | `mechAmbientStrength` | float | 0–2 | `MC2_MECH_AMBIENT_V1_STRENGTH` | Mech hemisphere ambient fill (gate `MC2_MECH_AMBIENT_V1`, default-ON) |
 | `mechSpecularStrength` | float | 0–4 | `MC2_MECH_SPECULAR_STRENGTH` | Mech Blinn specular strength (gate `MC2_MECH_SPECULAR_V1`, default-ON) |
+| `vfxLitStrength` | float | 0–1 | `MC2_TUNE_VFX_LIT_STRENGTH` | Per-mission lit-smoke strength (gate `MC2_VFX_LIT_PARTICLES` still controls whether lighting is applied at all) |
+| `terrainClassGrassGmRLo` | float | — | — | Terrain grass classifier: green-minus-red lower threshold |
+| `terrainClassGrassGmRHi` | float | — | — | Terrain grass classifier: green-minus-red upper threshold |
+| `terrainClassGrassBrLo` | float | — | — | Terrain grass classifier: brightness lower threshold |
+| `terrainClassGrassBrHi` | float | — | — | Terrain grass classifier: brightness upper threshold |
+| `terrainClassDirtRmGLo` | float | — | — | Terrain dirt classifier: red-minus-green lower threshold |
+| `terrainClassDirtRmGHi` | float | — | — | Terrain dirt classifier: red-minus-green upper threshold |
+| `terrainClassDirtBrLo` | float | — | — | Terrain dirt classifier: brightness lower threshold |
+| `terrainClassDirtBrHi` | float | — | — | Terrain dirt classifier: brightness upper threshold |
 
 Keys not in this list are silently skipped (warn once). The shipped
 `data/visual_tuning.json` `defaults` block intentionally lists only a subset;
@@ -113,6 +122,31 @@ Restart mission or press **Reset to Profile** in Graphics Options.
 2. Call the existing `gos_Set*` function or write directly to the extern float.
 3. Add env var check via `envIsSet()` if a corresponding env var exists.
 4. Add a row to the table above.
+
+## Modding / overlays
+
+`data/visual_tuning.json` is read via a raw `fopen()` against the process's
+current working directory (`GameOS/gameos/visual_tuning_profile.cpp:301-303`,
+`317`) — it does **not** go through the mod VFS / file-resolution ladder
+(`mclib/file.cpp`'s mod-overlay layer) the way `data/objects/*.csv` and other
+mod-visible assets do. A mod's own `data/visual_tuning.json` will **not** be
+picked up automatically just by activating the mod with `MC2_ACTIVE_MOD`.
+
+To point the engine at a mod-shipped tuning file, set
+`MC2_VISUAL_TUNING_FILE=<path-to-your-file>` explicitly (verify at
+`GameOS/gameos/visual_tuning_profile.cpp:313-315`: `pathEnv` from
+`getenv("MC2_VISUAL_TUNING_FILE")` wins over the `data/visual_tuning.json`
+default when set and non-empty; `visualTuning_saveCurrentToMission`'s
+read-modify-write at line 400 uses the same resolved `s_profilePath`, so "Set
+as Mission Defaults" also writes to whichever file `MC2_VISUAL_TUNING_FILE`
+named). Since `mc2.exe` is normally launched with CWD at the deploy root, a
+relative path here is relative to that root, not to the mod folder.
+
+The `docs/modding/examples/imgui-editing/README.md` example mod ships exactly
+this pattern: a `launch-with-tuning.ps1` script that sets both
+`MC2_ACTIVE_MOD` and `MC2_VISUAL_TUNING_FILE` before launching `mc2.exe`. See
+that doc's "Running the launch script" note for the Windows `.ps1`
+double-click gotcha (default file association is Edit, not Run).
 
 ## Showcase graded pass — LIGHTING-STAGE1 SHOWCASE-TUNING-1 (2026-07-01)
 

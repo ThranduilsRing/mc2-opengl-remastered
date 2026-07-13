@@ -1,0 +1,7 @@
+{
+  "id": "building-import",
+  "name": "Building Import Example",
+  "type": "campaign",
+  "description": "Tutorial mod: render-only glTF override of the stock hangar building via data/model_overrides/models.json.",
+  "version": "0.1.0"
+}

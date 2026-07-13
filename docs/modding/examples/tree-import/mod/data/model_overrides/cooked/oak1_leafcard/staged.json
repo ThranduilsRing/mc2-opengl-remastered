@@ -1,0 +1,40 @@
+{
+  "asset": {
+    "id": "oak1_leafcard",
+    "class": "tree",
+    "appearanceName": "oak1",
+    "replaces": "tree:oak1"
+  },
+  "geometry": {
+    "source": "source/oak1_leafcard.glb",
+    "cooked": "oak1_leafcard.glb",
+    "convention": {
+      "axis": 0,
+      "vflip": true,
+      "importer": "assimp_importer.v1"
+    },
+    "scale": 1.0,
+    "bounds": {
+      "min": [-5.0, 0.0, -5.0],
+      "max": [5.0, 14.0, 5.0],
+      "radius": 9.9499
+    },
+    "pivot": [0.0, 0.0, 0.0],
+    "counts": {
+      "verts": 16,
+      "tris": 8,
+      "submeshes": 1
+    },
+    "lods": []
+  },
+  "materials_discovered": [
+    {
+      "slot": 0,
+      "textureName": "a_oak1",
+      "alphaClass": 1
+    }
+  ],
+  "warnings": [
+    "geometry.lods left empty: tree LOD chains are mid-work in this checkout (per-LOD light-slot multiplication bug, see docs/HANDOFF-model-override-lod.md). Do not add a lods[] entry until that is resolved."
+  ]
+}

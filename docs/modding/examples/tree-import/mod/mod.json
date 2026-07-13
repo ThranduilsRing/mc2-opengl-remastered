@@ -1,0 +1,7 @@
+{
+  "id": "tree-import-example",
+  "name": "Tree Import Example",
+  "type": "campaign",
+  "description": "Tutorial mod: overrides the stock oak1 tree with a glTF leaf-card placeholder via the render-only model-override registry.",
+  "dependencies": []
+}

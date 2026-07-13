@@ -1,0 +1,7 @@
+{
+  "id": "weapon-edit-example",
+  "name": "Weapon Edit Example (Double PPC Damage)",
+  "type": "campaign",
+  "description": "Tutorial mod: doubles the PPC's Damage column in compbas.csv (7.00 -> 14.00). Whole-file shadow of data/objects/compbas.csv, otherwise byte-identical to stock.",
+  "dependencies": []
+}

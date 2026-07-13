@@ -1,0 +1,11 @@
+{
+  "defaults": {
+  },
+  "missions": {
+    "mc2_01": {
+      "exposure": 1.15,
+      "shadowSoftness": 1.2,
+      "terrainLightingV2Floor": 0.4
+    }
+  }
+}

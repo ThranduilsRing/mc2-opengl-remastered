@@ -1,0 +1,13 @@
+{
+  "overrides": [
+    {
+      "type": "model",
+      "class": "tree",
+      "replaces": "tree:oak1",
+      "source": "cooked/oak1_leafcard/oak1_leafcard.glb",
+      "renderOnly": true,
+      "scale": 1.0,
+      "fallback": "stock"
+    }
+  ]
+}

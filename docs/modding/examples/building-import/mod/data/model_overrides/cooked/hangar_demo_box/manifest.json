@@ -1,0 +1,90 @@
+{
+  "schema": "mc2-asset-manifest-v1",
+  "cookVersion": 1,
+  "asset": {
+    "id": "hangar_demo_box",
+    "class": "staticprop",
+    "appearanceName": "hangar",
+    "replaces": "staticprop:hangar"
+  },
+  "geometry": {
+    "source": "data/model_overrides/source/hangar_demo_box.glb",
+    "cooked": "hangar_demo_box.glb",
+    "convention": {
+      "axis": 0,
+      "vflip": true,
+      "importer": "assimp_importer.v1"
+    },
+    "scale": 1.0,
+    "bounds": {
+      "min": [
+        -8.0,
+        0.0,
+        -6.0
+      ],
+      "max": [
+        8.0,
+        10.0,
+        6.0
+      ],
+      "radius": 11.1803
+    },
+    "pivot": [
+      0.0,
+      0.0,
+      0.0
+    ],
+    "counts": {
+      "verts": 24,
+      "tris": 12,
+      "submeshes": 1
+    },
+    "lods": []
+  },
+  "materials": [
+    {
+      "slot": 0,
+      "textureName": "a_hangar",
+      "alphaClass": 1,
+      "albedo_ktx2": {
+        "128": "data/tgl/128/a_hangar.ktx2"
+      },
+      "normal_ktx2": null,
+      "metallic_roughness_ktx2": null,
+      "emissive_ktx2": null,
+      "base_color_factor": 1.0,
+      "metallic_factor": 0.0,
+      "roughness_factor": 1.0,
+      "flags": {
+        "alpha_test": true,
+        "double_sided": false,
+        "window": false
+      }
+    }
+  ],
+  "capabilities": {
+    "hasLegacyMesh": true,
+    "hasCookedGlb": true,
+    "hasLodChain": false,
+    "hasMeshlets": false,
+    "hasImpostor": false,
+    "alphaTest": true,
+    "castsShadow": true,
+    "supportsObjectId": true
+  },
+  "deps": {
+    "stockFallback": "hangar",
+    "textures": [
+      "data/tgl/128/a_hangar.ktx2"
+    ],
+    "sourceGlb": "data/model_overrides/source/hangar_demo_box.glb"
+  },
+  "provenance": {
+    "sourceSha256": "c9cf83ae46e9056d5b54dbae0bb57e723c4d966826a26237e751a477cd05bad1",
+    "cookTools": {
+      "ktx": "ktx-software-v4.4.2",
+      "driver": "trackg_cook.v1"
+    },
+    "cookedUtc": ""
+  }
+}

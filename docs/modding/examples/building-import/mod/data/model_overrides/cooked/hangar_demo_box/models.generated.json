@@ -1,0 +1,13 @@
+{
+  "overrides": [
+    {
+      "type": "model",
+      "class": "staticprop",
+      "replaces": "staticprop:hangar",
+      "source": "cooked/hangar_demo_box/hangar_demo_box.glb",
+      "renderOnly": true,
+      "scale": 1.0,
+      "fallback": "stock"
+    }
+  ]
+}

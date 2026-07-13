@@ -1,0 +1,57 @@
+/***************************************************************
+ * FILENAME: weapon_add_strings.fit
+ * DESCRIPTION: Example-mod string override for the "Prototype Needle
+ *              Laser" added in data/objects/compbas.csv (masterID 63).
+ *
+ *              This file is loaded by MC2Strings (GameOS/gameos/MC2Strings.cpp)
+ *              as a mod-overlay text FIT, strictly after the base game's own
+ *              data/defs/text/en_us/*.fit scan (MC2Strings.cpp:865-876).
+ *
+ *              Two blocks are required, not one, because masterID 63's
+ *              legacyIds (32063 / 33063) already have a base-game
+ *              LegacyTextAlias pointing at Mechlopedia's own "undefined"
+ *              placeholder text (data/defs/text/en_us/mechlopedia_text_bridge.fit).
+ *              GetByLegacyId() (MC2Strings.cpp:911-937) checks that alias
+ *              map FIRST, before ever looking at the String{} legacyId
+ *              below -- so a String{} block alone is silently defeated by
+ *              the stock alias no matter what its `source` is.
+ *
+ *              String{}          -- defines this mod's own text/key pair.
+ *              LegacyTextAlias{} -- redirects the legacyId to that key.
+ *                                   StoreLegacyAlias() unconditionally
+ *                                   overwrites the alias map entry
+ *                                   (MC2Strings.cpp:616-627), and this file
+ *                                   always loads after the base scan, so
+ *                                   this redirect always wins. This is the
+ *                                   same last-write-wins alias-correction
+ *                                   pattern the engine's own maintainers
+ *                                   documented as intentional for mods --
+ *                                   see the comment at MC2Strings.cpp:1051.
+ *
+ *              `key` must be unique across the whole string catalog --
+ *              it is namespaced with the mod id below to guarantee that.
+ ***************************************************************/
+
+String {
+    key = "mod.weapon-add.component.63.name"
+    text = "Prototype Needle Laser"
+    legacyId = 32063
+    source = "mod:weapon-add"
+}
+
+LegacyTextAlias {
+    legacyId = 32063
+    textKey = "mod.weapon-add.component.63.name"
+}
+
+String {
+    key = "mod.weapon-add.component.63.abbrev"
+    text = "P.Needle"
+    legacyId = 33063
+    source = "mod:weapon-add"
+}
+
+LegacyTextAlias {
+    legacyId = 33063
+    textKey = "mod.weapon-add.component.63.abbrev"
+}

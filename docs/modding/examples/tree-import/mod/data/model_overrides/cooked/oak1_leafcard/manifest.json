@@ -1,0 +1,78 @@
+{
+  "schema": "mc2-asset-manifest-v1",
+  "cookVersion": 1,
+  "comment": "Cook manifest for the tree-import example's oak1 leaf-card placeholder. Hand-authored (make_placeholder_glb.py), NOT run through tools/asset_cook/trackg_cook.py -- this file exists so the example demonstrates the FULL asset-manifest shape (FORMAT A / mc2-asset-manifest-v1) and validates against the same schema a real cook would produce. geometry.lods is intentionally EMPTY: tree LOD chains are NOT production-ready in this checkout -- see docs/HANDOFF-model-override-lod.md (a per-LOD light-slot multiplication bug blocks it, tracked as TREE-OVERRIDE-LOD-MVP-1). This example ships single-LOD (LOD0 only), the only supported configuration.",
+  "asset": {
+    "id": "oak1_leafcard",
+    "class": "tree",
+    "appearanceName": "oak1",
+    "replaces": "tree:oak1"
+  },
+  "geometry": {
+    "source": "source/oak1_leafcard.glb",
+    "cooked": "oak1_leafcard.glb",
+    "convention": {
+      "axis": 0,
+      "vflip": true,
+      "importer": "assimp_importer.v1"
+    },
+    "scale": 1.0,
+    "bounds": {
+      "min": [-5.0, 0.0, -5.0],
+      "max": [5.0, 14.0, 5.0],
+      "radius": 9.9499
+    },
+    "pivot": [0.0, 0.0, 0.0],
+    "counts": {
+      "verts": 16,
+      "tris": 8,
+      "submeshes": 1
+    },
+    "lods": []
+  },
+  "materials": [
+    {
+      "slot": 0,
+      "textureName": "a_oak1",
+      "alphaClass": 1,
+      "albedo_ktx2": {
+        "128": "data/tgl/128/a_oak1.ktx2"
+      },
+      "normal_ktx2": null,
+      "metallic_roughness_ktx2": null,
+      "emissive_ktx2": null,
+      "base_color_factor": 1.0,
+      "metallic_factor": 0.0,
+      "roughness_factor": 1.0,
+      "flags": {
+        "alpha_test": true,
+        "double_sided": true,
+        "window": false
+      }
+    }
+  ],
+  "capabilities": {
+    "hasLegacyMesh": true,
+    "hasCookedGlb": true,
+    "hasLodChain": false,
+    "hasMeshlets": false,
+    "hasImpostor": false,
+    "alphaTest": true,
+    "castsShadow": true,
+    "supportsObjectId": true
+  },
+  "deps": {
+    "stockFallback": "oak1",
+    "textures": [
+      "data/tgl/128/a_oak1.ktx2"
+    ],
+    "sourceGlb": "source/oak1_leafcard.glb"
+  },
+  "provenance": {
+    "sourceSha256": "76ce45e447e8444ea0b932110512438e0abb292f69d03dbaa5841f13f7065099",
+    "cookTools": {
+      "driver": "make_placeholder_glb.py (hand-authored, not trackg_cook.py)"
+    },
+    "cookedUtc": ""
+  }
+}

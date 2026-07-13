@@ -1,0 +1,50 @@
+{
+  "asset": {
+    "id": "hangar_demo_box",
+    "class": "staticprop",
+    "appearanceName": "hangar",
+    "replaces": "staticprop:hangar"
+  },
+  "geometry": {
+    "source": "data/model_overrides/source/hangar_demo_box.glb",
+    "cooked": "hangar_demo_box.glb",
+    "convention": {
+      "axis": 0,
+      "vflip": true,
+      "importer": "assimp_importer.v1"
+    },
+    "scale": 1.0,
+    "bounds": {
+      "min": [
+        -8.0,
+        0.0,
+        -6.0
+      ],
+      "max": [
+        8.0,
+        10.0,
+        6.0
+      ],
+      "radius": 11.1803
+    },
+    "pivot": [
+      0.0,
+      0.0,
+      0.0
+    ],
+    "counts": {
+      "verts": 24,
+      "tris": 12,
+      "submeshes": 1
+    },
+    "lods": []
+  },
+  "materials_discovered": [
+    {
+      "slot": 0,
+      "textureName": "a_hangar",
+      "alphaClass": 1
+    }
+  ],
+  "warnings": []
+}

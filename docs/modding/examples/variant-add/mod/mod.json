@@ -1,0 +1,8 @@
+{
+  "id": "variant-add-example",
+  "name": "Atlas Variant Add Example",
+  "type": "campaign",
+  "version": "1.0.0",
+  "description": "Tutorial mod: adds a 4th Atlas variant (Widowmaker's Atlas) as a pure-data CSV block.",
+  "dependencies": []
+}

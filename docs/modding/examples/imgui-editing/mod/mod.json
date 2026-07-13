@@ -1,0 +1,7 @@
+{
+  "id": "imgui-tuning-demo",
+  "name": "ImGui Tuning Demo (mc2_01)",
+  "type": "campaign",
+  "description": "Live-tools demo: ships a data/visual_tuning.json produced by the Graphics Options 'Set as Mission Defaults' button. Not new content -- see the tutorial README before packaging anything like this for real.",
+  "dependencies": []
+}

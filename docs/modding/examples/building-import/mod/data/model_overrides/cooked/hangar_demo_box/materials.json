@@ -1,0 +1,21 @@
+{
+  "comment": "Hand-written materials fragment for the building-import example. Instead of cooking a new KTX2 texture (trackg_cook.py textures, which needs ktx.exe), this mod REUSES the stock hangar albedo tile that already ships in the game install: data/tgl/128/a_hangar.ktx2 (+ data/tgl/128/a_hangar.tga). textureName MUST match the texture image name inside the GLB ('a_hangar.png' -> engine derives 'a_hangar.tga'). The 'a_' prefix means alpha-tested and must agree with alphaClass=1 / flags.alpha_test=true (validator rule A6).",
+  "materials": [
+    {
+      "slot": 0,
+      "textureName": "a_hangar",
+      "alphaClass": 1,
+      "albedo_ktx2": {
+        "128": "data/tgl/128/a_hangar.ktx2"
+      },
+      "normal_ktx2": null,
+      "metallic_roughness_ktx2": null,
+      "emissive_ktx2": null,
+      "base_color_factor": 1.0,
+      "metallic_factor": 0.0,
+      "roughness_factor": 1.0,
+      "flags": { "alpha_test": true, "double_sided": false, "window": false }
+    }
+  ],
+  "warnings": []
+}

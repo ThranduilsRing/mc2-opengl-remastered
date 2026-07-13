@@ -1,0 +1,7 @@
+{
+  "id": "hello-texture-sound",
+  "name": "Hello World: Texture + Sound Override",
+  "version": "1.0.0",
+  "type": "campaign",
+  "description": "Tutorial mod: recolors the mouse cursor sprite sheet and demonstrates (and documents the limits of) a sound-file override."
+}

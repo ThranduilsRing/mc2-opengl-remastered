@@ -175,3 +175,6 @@ terrain_gen_test/
 
 # Oversized cooked 16k HDRIs — exceed GitHub 100MB limit; ship as release assets, regenerate via tools/cook_bc6h_hdri.py
 data/hdr/*_16k.ktx2
+
+# Example-mod payloads must stay tracked (global *.tga/*.cfg rules would silently drop them)
+!docs/modding/examples/**

@@ -1,0 +1,8 @@
+{
+    "id": "weapon-add",
+    "name": "Example Mod: Add a Weapon",
+    "type": "campaign",
+    "description": "Tutorial mod that fills an undefined compbas.csv row with a new weapon and renames it via a string-override FIT file.",
+    "version": "1.0.0",
+    "dependencies": []
+}

@@ -1,0 +1,7 @@
+{
+  "id": "mech-import-example",
+  "name": "Mech Import Example (Warhammer GLB demo)",
+  "type": "campaign",
+  "description": "Swaps the stock Warhammer's LOD0 mesh for a placeholder glTF via the [Import] opt-in. Tutorial payload, not a real chassis replacement.",
+  "dependencies": []
+}

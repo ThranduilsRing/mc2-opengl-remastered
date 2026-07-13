@@ -1,0 +1,6 @@
+# Build artifacts (large GLB/TGA/PNG outputs + intermediate conversions)
+_out/
+_fbx/
+*.glb
+*.tga
+*.png

@@ -1,0 +1,21 @@
+{
+  "comment": "Hand-written materials fragment for the tree-import example. Instead of cooking a new KTX2 texture (trackg_cook.py textures, which needs ktx.exe), this mod REUSES the stock oak1 leaf texture that already ships in the game install: data/tgl/128/a_oak1.ktx2 (+ data/tgl/128/a_oak1.tga, confirmed 128x128 RGBA with an alpha channel). textureName MUST match the texture image name inside the GLB ('a_oak1.png' -> engine derives 'a_oak1.tga'). The 'a_' prefix means alpha-tested and must agree with alphaClass=1 / flags.alpha_test=true (validator rule A6).",
+  "materials": [
+    {
+      "slot": 0,
+      "textureName": "a_oak1",
+      "alphaClass": 1,
+      "albedo_ktx2": {
+        "128": "data/tgl/128/a_oak1.ktx2"
+      },
+      "normal_ktx2": null,
+      "metallic_roughness_ktx2": null,
+      "emissive_ktx2": null,
+      "base_color_factor": 1.0,
+      "metallic_factor": 0.0,
+      "roughness_factor": 1.0,
+      "flags": { "alpha_test": true, "double_sided": true, "window": false }
+    }
+  ],
+  "warnings": []
+}
