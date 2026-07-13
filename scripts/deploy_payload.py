@@ -41,6 +41,7 @@ import ctypes
 import datetime
 import hashlib
 import os
+import re
 import shutil
 import subprocess
 import sys
@@ -190,6 +191,40 @@ def git_head(root):
     except Exception:
         pass
     return "unknown"
+
+
+def read_build_fingerprint(build_dir):
+    """Parse generated/build_fingerprint.h next to the build dir.
+
+    Returns {"sha": str, "dirty": bool} or None if the header is missing /
+    unparsable. build_dir is usually <build64*>/RelWithDebInfo; the header
+    lives at <build64*>/generated/build_fingerprint.h (also probed directly
+    under build_dir for non-config layouts).
+
+    WHY: the manifest's src_commit is git HEAD *now*, but the exe being
+    deployed embeds the git state *at build time*. A dirty-tree build deploys
+    an exe whose exact source state is unattributable -- the 2026-07-12 grey-
+    regression P0 burned hours on exactly this (dirty pre-commit build,
+    fingerprint said the prior sha). This reads the same header the exe
+    compiled in, so the manifest can record what actually shipped.
+    """
+    for probe in (
+        os.path.join(build_dir, "..", "generated", "build_fingerprint.h"),
+        os.path.join(build_dir, "generated", "build_fingerprint.h"),
+    ):
+        pth = os.path.abspath(probe)
+        if not os.path.isfile(pth):
+            continue
+        try:
+            with open(pth, encoding="utf-8", errors="replace") as f:
+                text = f.read()
+            m_sha = re.search(r'#define MC2_BUILD_GIT_SHA\s+"([0-9a-fA-F]+)"', text)
+            m_dirty = re.search(r"#define MC2_BUILD_GIT_DIRTY\s+(\d+)", text)
+            if m_sha and m_dirty:
+                return {"sha": m_sha.group(1), "dirty": m_dirty.group(1) != "0"}
+        except OSError:
+            pass
+    return None
 
 
 # ---------------------------------------------------------------------------
@@ -866,6 +901,9 @@ def main():
                     "that --verify-only checks does not go stale.")
     ap.add_argument("--strict", action="store_true",
                     help="with --verify-only: drift = nonzero exit")
+    ap.add_argument("--require-clean", action="store_true",
+                    help="refuse to deploy a build whose build_fingerprint.h says "
+                         "MC2_BUILD_GIT_DIRTY=1 (built from an uncommitted tree)")
     ap.add_argument("--allow-new-target", action="store_true",
                     help="DELIBERATELY deploy to a NON-canonical / new ~5GB install "
                          "(release cut, fresh install). Off by default — deploys are "
@@ -934,7 +972,33 @@ def main():
         f"({sum(1 for *_x, k in items if k == 'shader')} shaders, "
         f"{sum(1 for *_x, k in items if k == 'defs')} defs)")
     hashes = deploy(items, target, args.allow_stale_pdb, preserve=args.preserve)
-    write_manifest(target, hashes, git_head(src_root))
+    # DIRTY-BUILD GUARD: record what the exe was actually BUILT from, not just
+    # git HEAD at deploy time. A dirty-tree build is unattributable to any
+    # exact source state (2026-07-12 grey-regression P0 mis-diagnosis class).
+    src_commit = git_head(src_root)
+    fp = read_build_fingerprint(build_dir)
+    if fp:
+        if fp["sha"] and not src_commit.startswith(fp["sha"]):
+            log(f"WARNING: build fingerprint sha {fp['sha']} != git HEAD "
+                f"{src_commit[:12]} -- the exe was built from a DIFFERENT commit "
+                f"than the tree you are deploying from. Manifest records the "
+                f"BUILD sha.")
+            src_commit = fp["sha"]
+        if fp["dirty"]:
+            msg = (f"build_fingerprint.h says MC2_BUILD_GIT_DIRTY=1 -- this exe "
+                   f"was built from an UNCOMMITTED tree at {fp['sha']}. Its exact "
+                   f"source state cannot be reproduced. COMMIT FIRST, rebuild, "
+                   f"then deploy.")
+            if args.require_clean:
+                fail(msg)
+            log("=" * 72)
+            log(f"WARNING (dirty build): {msg}")
+            log("=" * 72)
+            src_commit = src_commit + "-dirty"
+    else:
+        log("note: no build_fingerprint.h found next to the build dir; "
+            "manifest src_commit falls back to git HEAD (dirty state unknown)")
+    write_manifest(target, hashes, src_commit)
     log("deploy COMPLETE — payload verified, manifest written")
 
     # Post-deploy hygiene scan (Truth-First arc P1 #5/#7): the payload manifest

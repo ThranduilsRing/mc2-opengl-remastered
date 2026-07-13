@@ -188,9 +188,16 @@ def deploy_status(repo_root: Path, lane: str, expected_sha: str = "",
     # 5. Manifest coherence
     stale, coh_notes = cdt.check_manifest_coherence(str(target_p), exp_sha or None)
     src_commit = cdt.read_manifest_src_commit(str(target_p))
+    # DIRTY-BUILD GUARD (2026-07-12): deploy_payload suffixes src_commit with
+    # "-dirty" for uncommitted-tree builds; surface it as its own field so a
+    # caller never has to re-derive it from the raw string (and the [:12]
+    # truncation below would silently drop the suffix).
+    manifest_dirty = bool(src_commit) and src_commit.endswith("-dirty")
+    clean_commit = src_commit[: -len("-dirty")] if manifest_dirty else src_commit
     manifest_csv = target_p / cdt.CSV_MANIFEST_NAME
     result["manifest"] = {
-        "src_commit": (src_commit or "")[:12] or None,
+        "src_commit": (clean_commit or "")[:12] or None,
+        "dirty": manifest_dirty,
         "stale": stale,
         "notes": coh_notes,
         "manifest_mtime_utc": _mtime_iso(manifest_csv),

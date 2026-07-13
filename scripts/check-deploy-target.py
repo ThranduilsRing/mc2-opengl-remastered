@@ -338,11 +338,22 @@ def check_manifest_coherence(target: str, expected_sha: str | None
         return False, notes
     exp = expected_sha.lower()
     s = src.lower()
+    # DIRTY-BUILD GUARD (2026-07-12): deploy_payload suffixes src_commit with
+    # "-dirty" when the exe was built from an uncommitted tree. Strip it for
+    # the sha compare but ALWAYS surface it — a dirty deploy that happens to
+    # match the expected sha is still unattributable to exact source state.
+    dirty = s.endswith("-dirty")
+    if dirty:
+        s = s[: -len("-dirty")]
+        notes.append("DIRTY: manifest records a dirty-tree build "
+                     "(src_commit suffix '-dirty') — the deployed exe's exact "
+                     "source state is NOT reproducible from the sha alone")
     n = min(len(s), len(exp))
     if n >= 7 and s[:n] == exp[:n]:
-        notes.append(f"OK: manifest src_commit={src[:12]} == expected {exp[:12]}")
-        return False, notes
-    notes.append(f"STALE: manifest src_commit={src[:12]} != expected {exp[:12]} "
+        notes.append(f"OK: manifest src_commit={s[:12]} == expected {exp[:12]}"
+                     + (" (but DIRTY)" if dirty else ""))
+        return dirty, notes
+    notes.append(f"STALE: manifest src_commit={s[:12]} != expected {exp[:12]} "
                  "(fix built but this dir was not re-deployed?)")
     return True, notes
 
