@@ -1,5 +1,52 @@
 # VK-ARC-STATE — current state block (update every session)
 
+## 2026-07-12 (NIGHT) — ★VK-FAILSOFT-DISARM-1 SHIPPED (`0c9723be`+`0d7503e4`): the TORN GREY SCENE (user-sighted "fires of all types but grey screen" in smoke captures; the probable S2b-transient mechanism) ROOT-CAUSED + FIXED with an A/B pixel proof. Both installs deployed.
+
+**★ ROOT CAUSE (user report → smoke log → gate code):** the 17:01 VK-state tier1 log showed
+`[RENDER_BACKEND] fail-soft: forcing GL for the session (reason: zero surface extent (window
+minimized?))` — `forceGLFallback` flipped PRESENT to GL but `mc2vkgate::umbrellaOn()` read only
+the env, so the entire armed content family kept claiming scene draws that a GL present can
+never show. Post-ITEM8 there is no per-layer GL fallback → terrain/props/mechs VANISH while
+residual GL-drawn VFX/decals still land in the GL backbuffer = the exact screenshot the user
+posted. ANY fail-soft trigger produces it: zero-extent at boot (smoke runner's minimized
+window), swapchain NATIVE_WINDOW_IN_USE retry exhaustion (hit twice today in the field env —
+**this is the best S2b-transient candidate to date: ~1-in-4 real-time launches racing surface
+acquisition → session fail-soft → permanent torn grey**).
+
+**★ FIX (3 parts):** (1) `forceGLFallback` sets `g_mc2VkSessionForcedGL` (defined mclib/tgl.cpp
+for data-tool links) and `umbrellaOn()` reads it per call → whole family disarms, GL rendering
+returns; explicit per-sub-gate `=1` debug overrides still win. (2) All 13 memoized
+`static const bool …subGate/directChainGate` reads converted to per-call (water island, GL-HUD
+skip, VFX routing, present tails, postprocess) so a MID-SESSION fail-soft propagates.
+(3) Zero-extent at present INIT is now a DEFERRAL, not a fail-soft: session stays VK, the frame
+loop retries init (~2×/s, log-bounded) and promotes to VK present when the drawable appears —
+a minimized boot no longer costs the session.
+
+**★ PROOF (A/B, same env `MC2_VK_FORCE_FAIL=1` + umbrella + smoke-mode GL capture frame 180 —
+I eyeballed both):** pre-fix exe `78666df0` = torn scene, grey voids carved where armed islands
+claimed props/content (`.claude/failsoft-disarm/prefix_torn_78666df0.png`); post-fix
+`0c9723be` = COMPLETE GL scene — buildings, wrecks, fence, mechs with shadows + brackets
+(`postfix_clean_0c9723be.png`). Deferral proof: single-mission VK smoke log shows
+`[VK_PRESENT] init deferred … session stays VK` and ZERO `[RENDER_BACKEND] fail-soft`; PASS +0.
+Normal VK field path unaffected: PPM chroma 31.68 at final `0d7503e4`. Retry log spam bounded
+(`0d7503e4`; was 3512 lines/30s).
+
+**★ STANDALONE SMOKE-MODE RECIPE GOTCHA:** `MC2_SMOKE_MODE=1` requires DOUBLE-DASH
+`--mission mc2_01` (else instant `argv_error` exit — this, not an auto-exit, killed every
+earlier standalone smoke-mode attempt). Visual capture (`MC2_VISUAL_CAPTURE_FRAME/_DIR`) only
+fires under smoke mode.
+
+**★ EXPECTATION RESET for smoke screenshots under the VK umbrella:** with the window minimized
+the whole run, VK present stays deferred and the engine visual capture reads the GL scene FBO —
+those PNGs remain content-less BY DESIGN (documented oracle limitation; use
+run_vk_field_check / the PPM oracle for pixels). The FIX means: no more torn SESSION — restore
+the window and the scene is correct; genuine fail-softs now render the full GL scene.
+
+**★ OPEN:** S2b needs a confirmation soak (repeated real-time field launches at `0d7503e4` —
+if the transient recurs it should now be full-GL-rendered, not grey; receipts distinguish).
+Mid-session GL→VK re-arm after a recovered deferral is deliberately NOT attempted (arming is
+boot-time; deferral only delays present, islands were armed from boot).
+
 ## 2026-07-12 (EVE-2) — VFX ROUND 5 (`9fb302b4`): TEXTURED BEAMS SHIPPED — round-4's "broader/whiter untextured ribbon" delta CLOSED via lazy GPU-readback rgba mirrors. Both installs deployed.
 
 **★ ROOT CAUSE of the round-4 decline (corrects the round-4 note):** the beam effect sprite is
