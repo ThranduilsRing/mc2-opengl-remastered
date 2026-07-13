@@ -41,7 +41,29 @@ WARN) — cross-check with the PPM oracle instead of re-running blindly.
 quirk (watch-only). Mirror rebuild on txmmgr re-realize churn is bounded (new gosTexture per
 realize) — watch the `[VK_HUD_MIRROR]` count if VRAM-pressure cache-outs get hot.
 
-**★ BALLISTIC/MISSILE EXERCISE ATTEMPT (same session — recon banked, needs a harness slice):**
+**★ VFX-5 FIRE-EVENT CAPTURE TOOL SHIPPED (`78666df0`, deployed both installs) — supersedes
+the pin-hunting below.** Per user ruling there is NO heat throttle: whatever weapons fire is
+what's active. New `MC2_VK_PRESENT_DUMP_ON_FIRE` (registered, Trace): the force-fire fixture's
+FIRST volley arms the PPM capture 30 frames (~0.5s) after itself (`g_mc2FxFireCaptureFrame`,
+defined in tgl.cpp next to the frame counter; verify window opens [pin,pin+600)). PROVEN on
+mc2_01: `event=capture_armed frame=551 pin=581` → PPM wrote → **live textured laser captured
+mid-volley** (white-core/red-edge taper, evidence `vfx4/vfx5_onfire_mc2_01_laser.png`). Fire
+actually starts ≈frame 551 on mc2_01 (scenarioTime runs from mission start — the "intro holds
+the clock" theory below was WRONG; the earlier pins missed because single 60-frame-granular
+snapshots rarely intersect a live bolt, which is exactly what the fire-armed pin fixes).
+REMAINING for the ballistic/missile item: identify which of the lance's AC/LRM weapons
+actually fire per volley (wid=1 weapons=5 etc. — add weapon-name to the fixture log line) +
+same-frame GL pairs per class. NOTE: swapchain NATIVE_WINDOW_IN_USE flake hit 2× this session
+under rapid relaunches — one retry has always cleared it.
+
+**★ DIRTY-DEPLOY GUARD SHIPPED (chip closed):** deploy_payload reads
+`build64*/generated/build_fingerprint.h` — loud WARN on `MC2_BUILD_GIT_DIRTY=1`
+(`--require-clean` to refuse), manifest `src_commit` gets a `-dirty` suffix, records the
+BUILD sha when it differs from deploy-time HEAD (`028716c6` here, `e3a0ad57` on mc2-main
+nifty which also surfaces `manifest.dirty` in check-deploy-target coherence + repo-intel
+deploy_status). A dirty deploy can no longer masquerade as a clean sha.
+
+**★ BALLISTIC/MISSILE EXERCISE ATTEMPT (superseded recon — kept for the lesson):**
 mc2_01's lance (FLASH=Werewolf + HACKSAW/LONGSHOT=Bushwacker ⇒ AC/LRM available) at
 `X=2450 Y=-1990 Z=398` (view file works; `[VK_HUD_MIRROR]` fires there too, zero declines).
 BUT 4 pinned captures (420/900/1800/2600/2800/3400) all missed visible bolts: mc2_01's intro
