@@ -136,6 +136,7 @@ struct EnginePresentVk::Impl {
     VkPipelineLayout hudColorLayout = VK_NULL_HANDLE;
     VkPipeline      hudColorTriPipe = VK_NULL_HANDLE;
     VkPipeline      hudColorTriOneInvAlphaPipe = VK_NULL_HANDLE; // VK-FIELD-VFX-3: additive untextured effect ribbons
+    VkPipeline      hudColorTriOneOnePipe = VK_NULL_HANDLE;      // VK-FIELD-VFX-7: pure-additive (ONE,ONE) effect ribbons
     VkPipeline      hudColorLinePipe = VK_NULL_HANDLE;
     VkPipeline      hudColorTriOpaquePipe = VK_NULL_HANDLE;
     VkPipeline      hudColorLineOpaquePipe = VK_NULL_HANDLE;
@@ -150,6 +151,7 @@ struct EnginePresentVk::Impl {
     VkPipeline      hudTexPipe = VK_NULL_HANDLE;
     VkPipeline      hudTexOpaquePipe = VK_NULL_HANDLE;
     VkPipeline      hudTexOneInvAlphaPipe = VK_NULL_HANDLE; // VK-FIELD-VFX-3: GL OneInvAlpha (ONE,1-srcA) effect glow
+    VkPipeline      hudTexOneOnePipe = VK_NULL_HANDLE;      // VK-FIELD-VFX-7: GL OneOne (ONE,ONE) muzzle-flash/tracer sprites
     VkShaderModule  hudTexVert = VK_NULL_HANDLE;
     VkShaderModule  hudTexFrag = VK_NULL_HANDLE;
     VkBuffer        hudTexVertexBuf = VK_NULL_HANDLE;
@@ -1007,7 +1009,7 @@ bool ensureHudTexVertexBuffer(EnginePresentVk::Impl& s, VkDeviceSize bytes) {
 bool ensureHudColorObjects(EnginePresentVk::Impl& s) {
     if (s.hudColorTriPipe && s.hudColorLinePipe &&
         s.hudColorTriOpaquePipe && s.hudColorLineOpaquePipe &&
-        s.hudColorTriOneInvAlphaPipe &&
+        s.hudColorTriOneInvAlphaPipe && s.hudColorTriOneOnePipe &&
         s.hudColorFramebuffer)
         return true;
     if (s.hudColorVkFailed || !s.dev || !s.sharedImg.view || s.imgW == 0 || s.imgH == 0)
@@ -1061,7 +1063,8 @@ bool ensureHudColorObjects(EnginePresentVk::Impl& s) {
         if (!s.hudColorVert || !s.hudColorFrag) { s.hudColorVkFailed = true; return false; }
     }
 
-    auto makePipe = [&](VkPrimitiveTopology topology, bool blend, VkBlendFactor srcColor, VkPipeline* out) -> bool {
+    auto makePipe = [&](VkPrimitiveTopology topology, bool blend, VkBlendFactor srcColor, VkPipeline* out,
+                        VkBlendFactor dstColor = VK_BLEND_FACTOR_ONE_MINUS_SRC_ALPHA) -> bool {
         if (*out) return true;
         VkPipelineShaderStageCreateInfo st[2]{};
         st[0].sType = VK_STRUCTURE_TYPE_PIPELINE_SHADER_STAGE_CREATE_INFO;
@@ -1088,10 +1091,13 @@ bool ensureHudColorObjects(EnginePresentVk::Impl& s) {
         VkPipelineColorBlendAttachmentState cba{};
         cba.blendEnable = blend ? VK_TRUE : VK_FALSE;
         cba.srcColorBlendFactor = srcColor;
-        cba.dstColorBlendFactor = VK_BLEND_FACTOR_ONE_MINUS_SRC_ALPHA;
+        cba.dstColorBlendFactor = dstColor;
+        // VFX-7: pure-additive (ONE,ONE) alpha channel adds too
+        if (dstColor == VK_BLEND_FACTOR_ONE) { /* srcAlpha ONE below, dstAlpha follows color */ }
         cba.colorBlendOp = VK_BLEND_OP_ADD;
         cba.srcAlphaBlendFactor = VK_BLEND_FACTOR_ONE;
-        cba.dstAlphaBlendFactor = VK_BLEND_FACTOR_ONE_MINUS_SRC_ALPHA;
+        cba.dstAlphaBlendFactor = (dstColor == VK_BLEND_FACTOR_ONE)
+            ? VK_BLEND_FACTOR_ONE : VK_BLEND_FACTOR_ONE_MINUS_SRC_ALPHA;
         cba.alphaBlendOp = VK_BLEND_OP_ADD;
         cba.colorWriteMask = VK_COLOR_COMPONENT_R_BIT | VK_COLOR_COMPONENT_G_BIT |
                              VK_COLOR_COMPONENT_B_BIT | VK_COLOR_COMPONENT_A_BIT;
@@ -1116,7 +1122,10 @@ bool ensureHudColorObjects(EnginePresentVk::Impl& s) {
         !makePipe(VK_PRIMITIVE_TOPOLOGY_LINE_LIST, false, VK_BLEND_FACTOR_SRC_ALPHA, &s.hudColorLineOpaquePipe) ||
         // VK-FIELD-VFX-3: additive (ONE,1-srcA) color-tri pipe for AlphaMode 4 untextured
         // effect ribbons (weapon beams whose sprite has no HUD mirror) -> GL OneInvAlpha parity.
-        !makePipe(VK_PRIMITIVE_TOPOLOGY_TRIANGLE_LIST, true, VK_BLEND_FACTOR_ONE, &s.hudColorTriOneInvAlphaPipe)) {
+        !makePipe(VK_PRIMITIVE_TOPOLOGY_TRIANGLE_LIST, true, VK_BLEND_FACTOR_ONE, &s.hudColorTriOneInvAlphaPipe) ||
+        // VK-FIELD-VFX-7: pure-additive (ONE,ONE) color-tri pipe for AlphaMode 2 untextured
+        !makePipe(VK_PRIMITIVE_TOPOLOGY_TRIANGLE_LIST, true, VK_BLEND_FACTOR_ONE, &s.hudColorTriOneOnePipe,
+                  VK_BLEND_FACTOR_ONE)) {
         s.hudColorVkFailed = true; return false;
     }
     return true;
@@ -1125,7 +1134,7 @@ bool ensureHudColorObjects(EnginePresentVk::Impl& s) {
 bool ensureHudTexObjects(EnginePresentVk::Impl& s) {
     if (!ensureHudColorObjects(s))
         return false;
-    if (s.hudTexPipe && s.hudTexOpaquePipe && s.hudTexOneInvAlphaPipe)
+    if (s.hudTexPipe && s.hudTexOpaquePipe && s.hudTexOneInvAlphaPipe && s.hudTexOneOnePipe)
         return true;
     if (!s.hudTexDsl) {
         VkDescriptorSetLayoutBinding b{};
@@ -1190,15 +1199,17 @@ bool ensureHudTexObjects(EnginePresentVk::Impl& s) {
     rs.frontFace = VK_FRONT_FACE_COUNTER_CLOCKWISE; rs.lineWidth = 1.0f;
     VkPipelineMultisampleStateCreateInfo ms{VK_STRUCTURE_TYPE_PIPELINE_MULTISAMPLE_STATE_CREATE_INFO};
     ms.rasterizationSamples = VK_SAMPLE_COUNT_1_BIT;
-    auto makeTexPipe = [&](bool blend, VkBlendFactor srcColor, VkPipeline* out) -> bool {
+    auto makeTexPipe = [&](bool blend, VkBlendFactor srcColor, VkPipeline* out,
+                           VkBlendFactor dstColor = VK_BLEND_FACTOR_ONE_MINUS_SRC_ALPHA) -> bool {
         if (*out) return true;
         VkPipelineColorBlendAttachmentState cba{};
         cba.blendEnable = blend ? VK_TRUE : VK_FALSE;
         cba.srcColorBlendFactor = srcColor;
-        cba.dstColorBlendFactor = VK_BLEND_FACTOR_ONE_MINUS_SRC_ALPHA;
+        cba.dstColorBlendFactor = dstColor;
         cba.colorBlendOp = VK_BLEND_OP_ADD;
         cba.srcAlphaBlendFactor = VK_BLEND_FACTOR_ONE;
-        cba.dstAlphaBlendFactor = VK_BLEND_FACTOR_ONE_MINUS_SRC_ALPHA;
+        cba.dstAlphaBlendFactor = (dstColor == VK_BLEND_FACTOR_ONE)
+            ? VK_BLEND_FACTOR_ONE : VK_BLEND_FACTOR_ONE_MINUS_SRC_ALPHA;
         cba.alphaBlendOp = VK_BLEND_OP_ADD;
         cba.colorWriteMask = VK_COLOR_COMPONENT_R_BIT | VK_COLOR_COMPONENT_G_BIT |
                              VK_COLOR_COMPONENT_B_BIT | VK_COLOR_COMPONENT_A_BIT;
@@ -1222,7 +1233,11 @@ bool ensureHudTexObjects(EnginePresentVk::Impl& s) {
     //   the effect-sprite additive-glow blend used by weapon beams/tracers/explosions.
     if (!makeTexPipe(true, VK_BLEND_FACTOR_SRC_ALPHA, &s.hudTexPipe) ||
         !makeTexPipe(false, VK_BLEND_FACTOR_SRC_ALPHA, &s.hudTexOpaquePipe) ||
-        !makeTexPipe(true, VK_BLEND_FACTOR_ONE, &s.hudTexOneInvAlphaPipe)) {
+        !makeTexPipe(true, VK_BLEND_FACTOR_ONE, &s.hudTexOneInvAlphaPipe) ||
+        // VK-FIELD-VFX-7: pure-additive (ONE,ONE) textured pipe for AlphaMode 2 —
+        // GL gos_Alpha_OneOne, the muzzle-flash / tracer sprite blend (black
+        // sprite background adds nothing instead of rendering an opaque box).
+        !makeTexPipe(true, VK_BLEND_FACTOR_ONE, &s.hudTexOneOnePipe, VK_BLEND_FACTOR_ONE)) {
         s.hudColorVkFailed = true; return false;
     }
     return true;
@@ -1431,6 +1446,7 @@ uint32_t recordPendingHudColorProof(EnginePresentVk::Impl& s, VkCommandBuffer cb
         uint32_t foreground = 0;
         bool opaque = false;
         bool oneInvAlpha = false; // VK-FIELD-VFX-3: AlphaMode 4 -> additive-glow tex pipe
+        bool oneOne = false;      // VK-FIELD-VFX-7: AlphaMode 2 -> pure-additive (ONE,ONE) pipe
     };
     std::vector<HudNativeCmd> commands;
     uint32_t triDraws = 0;
@@ -1455,6 +1471,7 @@ uint32_t recordPendingHudColorProof(EnginePresentVk::Impl& s, VkCommandBuffer cb
             td.foreground = d.foregroundColor;
             td.opaque = (d.alphaMode == 1);
             td.oneInvAlpha = (d.alphaMode == 4); // VK-FIELD-VFX-3: additive-glow effect blend
+            td.oneOne = (d.alphaMode == 2);      // VK-FIELD-VFX-7: pure-additive sprite blend
             auto addTex = [&](const VkHudVertex& v) {
                 texVerts.push_back({v.x, v.y, v.argb, v.u, v.v});
             };
@@ -1538,6 +1555,7 @@ uint32_t recordPendingHudColorProof(EnginePresentVk::Impl& s, VkCommandBuffer cb
             // VK-FIELD-VFX-3: untextured tri effect ribbon (AlphaMode 4) -> additive pipe.
             // Only the tri stream has an additive variant; lines keep standard alpha.
             cmd.oneInvAlpha = (d.kind != 1) && (d.alphaMode == 4);
+            cmd.oneOne = (d.kind != 1) && (d.alphaMode == 2);
             commands.push_back(cmd);
             (d.kind == 1) ? ++lineDraws : ++triDraws;
         }
@@ -1601,7 +1619,8 @@ uint32_t recordPendingHudColorProof(EnginePresentVk::Impl& s, VkCommandBuffer cb
         if (td.stream == 0 || td.stream == 1) {
             const VkPipeline pipe = (td.stream == 0)
                 ? (td.opaque ? s.hudColorTriOpaquePipe
-                             : (td.oneInvAlpha ? s.hudColorTriOneInvAlphaPipe : s.hudColorTriPipe))
+                             : (td.oneOne ? s.hudColorTriOneOnePipe
+                                          : (td.oneInvAlpha ? s.hudColorTriOneInvAlphaPipe : s.hudColorTriPipe)))
                 : (td.opaque ? s.hudColorLineOpaquePipe : s.hudColorLinePipe);
             if (boundPipe != pipe) {
                 vkCmdBindPipeline(cb, VK_PIPELINE_BIND_POINT_GRAPHICS, pipe);
@@ -1618,7 +1637,8 @@ uint32_t recordPendingHudColorProof(EnginePresentVk::Impl& s, VkCommandBuffer cb
             vkCmdDraw(cb, td.count, 1, first, 0);
         } else {
             const VkPipeline pipe = td.opaque ? s.hudTexOpaquePipe
-                                  : (td.oneInvAlpha ? s.hudTexOneInvAlphaPipe : s.hudTexPipe);
+                                  : (td.oneOne ? s.hudTexOneOnePipe
+                                               : (td.oneInvAlpha ? s.hudTexOneInvAlphaPipe : s.hudTexPipe));
             if (boundPipe != pipe) {
                 vkCmdBindPipeline(cb, VK_PIPELINE_BIND_POINT_GRAPHICS, pipe);
                 boundPipe = pipe;
@@ -2535,6 +2555,7 @@ void EnginePresentVk::destroy() {
         destroyHudColorFramebuffer(s);
         if (s.hudColorTriPipe) { vkDestroyPipeline(s.dev, s.hudColorTriPipe, nullptr); s.hudColorTriPipe = VK_NULL_HANDLE; }
         if (s.hudColorTriOneInvAlphaPipe) { vkDestroyPipeline(s.dev, s.hudColorTriOneInvAlphaPipe, nullptr); s.hudColorTriOneInvAlphaPipe = VK_NULL_HANDLE; }
+        if (s.hudColorTriOneOnePipe) { vkDestroyPipeline(s.dev, s.hudColorTriOneOnePipe, nullptr); s.hudColorTriOneOnePipe = VK_NULL_HANDLE; }
         if (s.hudColorLinePipe) { vkDestroyPipeline(s.dev, s.hudColorLinePipe, nullptr); s.hudColorLinePipe = VK_NULL_HANDLE; }
         if (s.hudColorTriOpaquePipe) { vkDestroyPipeline(s.dev, s.hudColorTriOpaquePipe, nullptr); s.hudColorTriOpaquePipe = VK_NULL_HANDLE; }
         if (s.hudColorLineOpaquePipe) { vkDestroyPipeline(s.dev, s.hudColorLineOpaquePipe, nullptr); s.hudColorLineOpaquePipe = VK_NULL_HANDLE; }
@@ -2546,6 +2567,7 @@ void EnginePresentVk::destroy() {
         if (s.hudTexPipe) { vkDestroyPipeline(s.dev, s.hudTexPipe, nullptr); s.hudTexPipe = VK_NULL_HANDLE; }
         if (s.hudTexOpaquePipe) { vkDestroyPipeline(s.dev, s.hudTexOpaquePipe, nullptr); s.hudTexOpaquePipe = VK_NULL_HANDLE; }
         if (s.hudTexOneInvAlphaPipe) { vkDestroyPipeline(s.dev, s.hudTexOneInvAlphaPipe, nullptr); s.hudTexOneInvAlphaPipe = VK_NULL_HANDLE; }
+        if (s.hudTexOneOnePipe) { vkDestroyPipeline(s.dev, s.hudTexOneOnePipe, nullptr); s.hudTexOneOnePipe = VK_NULL_HANDLE; }
         if (s.hudTexLayout) { vkDestroyPipelineLayout(s.dev, s.hudTexLayout, nullptr); s.hudTexLayout = VK_NULL_HANDLE; }
         if (s.hudTexVert) { vkDestroyShaderModule(s.dev, s.hudTexVert, nullptr); s.hudTexVert = VK_NULL_HANDLE; }
         if (s.hudTexFrag) { vkDestroyShaderModule(s.dev, s.hudTexFrag, nullptr); s.hudTexFrag = VK_NULL_HANDLE; }

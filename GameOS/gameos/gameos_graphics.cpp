@@ -8016,7 +8016,9 @@ static bool vkHudDrawRepresentable(const mc2vk::VkHudDraw& draw)
     // dedicated OneInvAlpha textured pipe (ONE, 1-srcA) in engine_present_vk.cpp that
     // matches GL's glBlendFunc(GL_ONE, GL_ONE_MINUS_SRC_ALPHA) — the additive-glow
     // effect blend — so beams/tracers/explosions composite at GL brightness.
-    if (draw.alphaMode != 1 && draw.alphaMode != 3 && draw.alphaMode != 4)
+    // VK-FIELD-VFX-7: AlphaMode 2 (OneOne, pure additive — muzzle flashes / tracer
+    // sprites) now binds a dedicated (ONE,ONE) pipe in engine_present_vk.cpp.
+    if (draw.alphaMode != 1 && draw.alphaMode != 2 && draw.alphaMode != 3 && draw.alphaMode != 4)
         return false;
     const bool textured = draw.textureHandle != 0 && draw.textureHandle != INVALID_TEXTURE_ID;
     if (textured) {
@@ -8198,7 +8200,7 @@ void gosRenderer::flushHUDBatch()
             {
                 const bool s_hudEffectUntexFallback = mc2vkgate::subGate("MC2_VK_VFX");   // per-call: VK-FAILSOFT-DISARM-1
                 if (s_hudEffectUntexFallback && draw.kind == (uint32_t)kHudTriBatch &&
-                    draw.alphaMode == 4 &&
+                    (draw.alphaMode == 4 || draw.alphaMode == 2) &&
                     draw.textureHandle != 0 && draw.textureHandle != INVALID_TEXTURE_ID &&
                     draw.textureRgba.empty())
                     draw.textureHandle = 0;
