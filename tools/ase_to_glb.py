@@ -121,6 +121,10 @@ class AseMaterial:
     def __init__(self):
         self.name = ''
         self.bitmap = ''      # basename of diffuse texture
+        # For 3ds-Max Multi/Sub-Object materials: ordered list of AseMaterial,
+        # one per *SUBMATERIAL block, in submaterial-index order. Empty for
+        # plain (non-Multi/Sub-Object) materials.
+        self.submaterials = []
 
 
 def parse_ase(path):
@@ -172,29 +176,37 @@ def parse_ase(path):
                     mat = AseMaterial()
                     i += 1
                     depth = 1
-                    warned_submat = False
+                    # target_stack tracks which AseMaterial NAME/BITMAP lines
+                    # currently apply to: the outer material by default, or
+                    # the innermost open *SUBMATERIAL block. Each entry is
+                    # (depth_at_which_this_target_becomes_inactive, material).
+                    # A *SUBMATERIAL n { line nests its own NAME/BITMAP (and
+                    # everything else, e.g. *MAP_DIFFUSE { *BITMAP ... }) so
+                    # brace depth alone can't distinguish outer vs. sub -- we
+                    # need to know which block we're nested under.
+                    target_stack = [(depth, mat)]
                     while i < n and depth > 0:
                         ml = lines[i].strip()
                         i += 1
                         depth += ml.count('{') - ml.count('}')
-                        if ml.startswith('*SUBMATERIAL') and not warned_submat:
-                            warned_submat = True
-                            # Known limitation: nested *SUBMATERIAL name/bitmap
-                            # lines overwrite the outer material's (last one
-                            # wins) and MESH_MTLID is not remapped through the
-                            # submaterial table — per-face textures on
-                            # Multi/Sub-Object assets are unreliable.
-                            sys.stderr.write(
-                                "[ase_to_glb] WARNING: Multi/Sub-Object material "
-                                "detected (*SUBMATERIAL) — per-face submaterial "
-                                "textures are NOT fully supported; verify output "
-                                "texturing.\n")
+
+                        while len(target_stack) > 1 and depth < target_stack[-1][0]:
+                            target_stack.pop()
+                        current_target = target_stack[-1][1]
+
+                        sm = re.match(r'^\*SUBMATERIAL\s+\d+\s+\{', ml)
+                        if sm:
+                            submat = AseMaterial()
+                            mat.submaterials.append(submat)
+                            target_stack.append((depth, submat))
+                            continue
+
                         mm = re.match(r'^\*MATERIAL_NAME\s+"([^"]*)"', ml)
                         if mm:
-                            mat.name = mm.group(1)
+                            current_target.name = mm.group(1)
                         mm = re.match(r'^\*BITMAP\s+"([^"]*)"', ml)
                         if mm:
-                            mat.bitmap = os.path.basename(mm.group(1).replace('\\', '/'))
+                            current_target.bitmap = os.path.basename(mm.group(1).replace('\\', '/'))
                     materials.append(mat)
                     continue
                 i += 1
@@ -548,24 +560,44 @@ def build_glb_data(all_geom, materials, helper_objects=None):
     gltf_images = []
     tex_name_to_idx = {}
 
-    for mat_idx, mat in enumerate(materials):
-        if mat.bitmap and mat.bitmap not in tex_name_to_idx:
-            tex_name_to_idx[mat.bitmap] = len(gltf_images)
-            gltf_images.append({'uri': mat.bitmap})
+    def add_gltf_material(m, name):
+        if m.bitmap and m.bitmap not in tex_name_to_idx:
+            tex_name_to_idx[m.bitmap] = len(gltf_images)
+            gltf_images.append({'uri': m.bitmap})
             gltf_textures.append({'source': len(gltf_images) - 1})
 
         gltf_mat = {
-            'name': mat.name if mat.name else f'mat_{mat_idx}',
+            'name': name,
             'pbrMetallicRoughness': {
                 'metallicFactor': 0.0,
                 'roughnessFactor': 0.8,
             }
         }
-        if mat.bitmap and mat.bitmap in tex_name_to_idx:
+        if m.bitmap and m.bitmap in tex_name_to_idx:
             gltf_mat['pbrMetallicRoughness']['baseColorTexture'] = {
-                'index': tex_name_to_idx[mat.bitmap]
+                'index': tex_name_to_idx[m.bitmap]
             }
         gltf_materials.append(gltf_mat)
+        return len(gltf_materials) - 1
+
+    # Maps top-level material index -> resolved glTF material index(es).
+    # Non-Multi/Sub-Object materials: mat_gltf_single_idx[mat_idx] = gltf idx.
+    # Multi/Sub-Object materials (have *SUBMATERIAL children):
+    #   mat_gltf_sub_idx[mat_idx] = [gltf idx per submaterial, in order].
+    mat_gltf_single_idx = {}
+    mat_gltf_sub_idx = {}
+
+    for mat_idx, mat in enumerate(materials):
+        if mat.submaterials:
+            sub_indices = []
+            base_name = mat.name if mat.name else f'mat_{mat_idx}'
+            for sub_idx, sub in enumerate(mat.submaterials):
+                sub_name = sub.name if sub.name else f'{base_name}_sub{sub_idx}'
+                sub_indices.append(add_gltf_material(sub, sub_name))
+            mat_gltf_sub_idx[mat_idx] = sub_indices
+        else:
+            name = mat.name if mat.name else f'mat_{mat_idx}'
+            mat_gltf_single_idx[mat_idx] = add_gltf_material(mat, name)
 
     def add_bufferview(byte_offset, byte_length, target=None):
         bv = {'buffer': 0, 'byteOffset': byte_offset, 'byteLength': byte_length}
@@ -686,12 +718,34 @@ def build_glb_data(all_geom, materials, helper_objects=None):
                 'indices': idx_acc,
                 'mode': 4,  # TRIANGLES
             }
-            # Assign material
-            global_mtl_idx = obj.mat_ref  # single-material objects
-            if len(materials) > 1 and mtlid < len(materials):
-                global_mtl_idx = mtlid
-            if global_mtl_idx < len(gltf_materials):
-                prim['material'] = global_mtl_idx
+            # Assign material.
+            ref_mat = materials[obj.mat_ref] if 0 <= obj.mat_ref < len(materials) else None
+            prim_material = None
+            if ref_mat is not None and ref_mat.submaterials:
+                # Multi/Sub-Object material: MESH_MTLID indexes the
+                # object's *SUBMATERIAL table (standard ASE semantics),
+                # not the top-level *MATERIAL_LIST.
+                sub_list = mat_gltf_sub_idx.get(obj.mat_ref, [])
+                if sub_list:
+                    sidx = mtlid
+                    if sidx < 0 or sidx >= len(sub_list):
+                        sys.stderr.write(
+                            f"[ase_to_glb] WARNING: MESH_MTLID {mtlid} out of "
+                            f"range for material '{ref_mat.name}' "
+                            f"({len(sub_list)} submaterials); clamping.\n")
+                        sidx = max(0, min(sidx, len(sub_list) - 1))
+                    prim_material = sub_list[sidx]
+            else:
+                # Plain (non-Multi/Sub-Object) material list: MESH_MTLID
+                # indexes the flat top-level *MATERIAL_LIST directly when
+                # there's more than one material; otherwise fall back to
+                # the object's single *MATERIAL_REF.
+                top_idx = obj.mat_ref
+                if len(materials) > 1 and mtlid < len(materials):
+                    top_idx = mtlid
+                prim_material = mat_gltf_single_idx.get(top_idx)
+            if prim_material is not None:
+                prim['material'] = prim_material
 
             primitives.append(prim)
 
