@@ -598,6 +598,17 @@ static_assert(
 
 static constexpr EnvVarDesc kAuxEnvVars[] = {
     {
+        "MC2_TRACE_UI_IMGUI_PAUSE",
+        "MC2_UI_IMGUI_PAUSE",
+        EnvVarKind::Trace,
+        false,
+        "PAUSE-IMGUI-SLICE-1: =1 renders the in-mission pause menu as an ImGui "
+        "window (GAME PAUSED + objectives/save/load/options/abort/exit/return) "
+        "laid out inside gos_ComputeHudCanvasBox; buttons reuse "
+        "PauseWindow::handleClick side-effects. Default unset -> legacy sprite "
+        "panel, byte-identical. First slice of the in-mission HUD ImGui port."
+    },
+    {
         "MC2_TRACE_BOOT_PAUSED",
         "MC2_BOOT_PAUSED",
         EnvVarKind::Trace,

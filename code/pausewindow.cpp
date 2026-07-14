@@ -16,6 +16,8 @@ PauseWindow.cpp			: Implementation of the PauseWindow component.
 #include"mission.h"
 #include"logisticsdata.h"
 #include"multplyr.h"
+#include"gameos.hpp"        // PAUSE-IMGUI-SLICE-1: gos_ComputeHudCanvasBox + Environment
+#include"imgui.h"           // PAUSE-IMGUI-SLICE-1: ImGui pause page
 
 extern float frameLength;
 
@@ -166,7 +168,11 @@ void PauseWindow::update()
 
 
 
-	for ( int i = 0; i < buttonCount; i++ )
+	// PAUSE-IMGUI-SLICE-1: when the ImGui pause page owns rendering, ImGui
+	// handles button clicks — skip the legacy rect hit-test so a click is not
+	// double-handled (once by ImGui, once here). Dialog/save/objectives-hotkey
+	// logic below still runs.
+	for ( int i = 0; !imguiPauseEnabled() && i < buttonCount; i++ )
 	{
 		if ( buttons[i].location[0].x <= mouseX && mouseX <= buttons[i].location[2].x
 				&& mouseY >= buttons[i].location[0].y && mouseY <= buttons[i].location[1].y  )
@@ -258,8 +264,88 @@ void PauseWindow::update()
 	
 }
 
+// PAUSE-IMGUI-SLICE-1: gate + ImGui pause page. Default OFF -> legacy sprite
+// panel, byte-identical. When on, render() delegates to renderImGui(); the
+// button side-effects reuse handleClick() so save/load/options/abort/exit/
+// return/objectives behave exactly as the legacy panel.
+bool PauseWindow::imguiPauseEnabled()
+{
+	static const bool s_on = []{
+		const char* v = getenv("MC2_UI_IMGUI_PAUSE");
+		return v && v[0] && v[0] != '0';
+	}();
+	return s_on;
+}
+
+bool PauseWindow::renderImGui()
+{
+	if ( !currentTime )
+		return true;   // paused but pre-init: legacy also draws nothing yet
+
+	// Lay the menu out inside the 16:9 HUD canvas box so it tracks the same
+	// aspect anchor as the rest of the HUD chrome (port guide: authored*bw/800
+	// + bx). Authored pause-panel column ~ x[636..798] y[150..528] in the
+	// 800x600 design space (matches the legacy right-column placement).
+	int bx = 0, by = 0, bw = 0, bh = 0;
+	if ( !gos_ComputeHudCanvasBox( Environment.drawableWidth, Environment.drawableHeight,
+			&bx, &by, &bw, &bh ) )
+	{ bx = 0; by = 0; bw = Environment.drawableWidth; bh = Environment.drawableHeight; }
+	const float sx = (float)bw / 800.0f;
+	const float sy = (float)bh / 600.0f;
+	const float px = bx + 636.0f * sx;
+	const float py = by + 150.0f * sy;
+	const float pw = 162.0f * sx;
+	const float ph = 378.0f * sy;
+
+	ImGui::SetNextWindowPos( ImVec2( px, py ) );
+	ImGui::SetNextWindowSize( ImVec2( pw, ph ) );
+	ImGui::PushStyleColor( ImGuiCol_WindowBg, ImVec4( 0.02f, 0.06f, 0.10f, 0.92f ) );
+	ImGui::PushStyleColor( ImGuiCol_Button,        ImVec4( 0.10f, 0.20f, 0.32f, 1.0f ) );
+	ImGui::PushStyleColor( ImGuiCol_ButtonHovered, ImVec4( 0.18f, 0.34f, 0.52f, 1.0f ) );
+	ImGui::PushStyleColor( ImGuiCol_ButtonActive,  ImVec4( 0.24f, 0.44f, 0.66f, 1.0f ) );
+	ImGui::PushStyleColor( ImGuiCol_Text,          ImVec4( 0.55f, 0.78f, 0.90f, 1.0f ) );
+	ImGui::Begin( "##mc2_pause", nullptr,
+		ImGuiWindowFlags_NoTitleBar | ImGuiWindowFlags_NoResize | ImGuiWindowFlags_NoMove |
+		ImGuiWindowFlags_NoCollapse | ImGuiWindowFlags_NoScrollbar | ImGuiWindowFlags_NoSavedSettings );
+
+	char header[256];
+	cLoadString( IDS_GAMEPAUSED, header, 256 );
+	ImGui::TextUnformatted( header );
+	ImGui::Separator();
+
+	struct PB { int id; const char* label; };
+	static const PB kButtons[] = {
+		{ OBJECTIVES, "OBJECTIVES" }, { SAVE, "QUICK SAVE" }, { LOAD, "QUICK LOAD" },
+		{ OPTIONS, "OPTIONS" }, { RESTART, "ABORT MISSION" }, { EXIT, "EXIT GAME" },
+		{ RETURN, "RETURN TO GAME" },
+	};
+	const float bwid = ImGui::GetContentRegionAvail().x;
+	for ( const PB& b : kButtons )
+	{
+		const bool enabled = ( b.id < buttonCount ) ? buttons[b.id].isEnabled() : true;
+		if ( !enabled ) ImGui::BeginDisabled();
+		if ( ImGui::Button( b.label, ImVec2( bwid, 34.0f * sy ) ) )
+			handleClick( b.id );
+		if ( !enabled ) ImGui::EndDisabled();
+	}
+
+	ImGui::End();
+	ImGui::PopStyleColor( 6 );
+
+	// Confirm dialogs stay on the legacy path this slice.
+	if ( bPromptToQuit || bPromptToAbort )
+		LogisticsOKDialog::instance()->render();
+	return true;
+}
+
 void PauseWindow::render()
 {
+	// PAUSE-IMGUI-SLICE-1: ImGui page when gated on (buttons reuse handleClick).
+	if ( imguiPauseEnabled() )
+	{
+		renderImGui();
+		return;
+	}
 	if ( !currentTime )
 		return;
 	drawRect( backgrounds[0], 0xff000000 );

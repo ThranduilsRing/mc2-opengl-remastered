@@ -526,6 +526,7 @@ void MissionInterfaceManager::setTutorialText(const char *text)
 #include <cmath>     // GPU-GROUND-PICK-PARITY-1: sqrt/fabs for delta magnitude
 #include <cstring>   // GPU-GROUND-PICK-PARITY-1: strcmp for lookupFailReason classify
 #include "../GameOS/gameos/diagnostic_trace.h"  // CURSOR_TARGET trace (offscreen-pick recon)
+#include "pausewindow.h"   // PAUSE-IMGUI-SLICE-1: PauseWindow::imguiPauseEnabled()
 // CGui sub-phase per-frame ns accumulators -- DEFINED in controlgui.cpp.
 // Index order MUST match the MF_CG_* tail of MifPhase below (fold loop in
 // mfFrameEnd is the single mapping point).
@@ -822,7 +823,12 @@ void MissionInterfaceManager::update (void)
 	// IMGUI-PAUSE-INPUT-FIX-1: tell the input layer when the pause menu is up so its
 	// clicks win over any open ImGui window (Graphics Options etc.). Set every frame,
 	// before any early return below, so it clears the moment the menu closes.
-	input::setGameModalActive(isPaused() && !isPausedWithoutMenu());
+	// PAUSE-IMGUI-SLICE-1: game-modal keeps clicks for the LEGACY sprite pause
+	// menu (its own hit-test). When the pause menu is the ImGui page instead,
+	// let ImGui capture normally (gameModal off) so its buttons win AND the
+	// world behind doesn't take stray clicks.
+	input::setGameModalActive(isPaused() && !isPausedWithoutMenu() &&
+	                          !PauseWindow::imguiPauseEnabled());
 
 	// PAUSE-IMGUI-SLICE-0: MC2_BOOT_PAUSED=N fixture (default unset). Auto-toggles
 	// the pause menu ONCE at frame >= N, so agents can capture / iterate on the

@@ -44,6 +44,13 @@ class PauseWindow
 
 		void handleClick( int ID );
 
+		// PAUSE-IMGUI-SLICE-1: MC2_UI_IMGUI_PAUSE=1 draws the pause menu as an
+		// ImGui window instead of the legacy sprite panel; buttons call the
+		// same handleClick() side-effects. Returns true when it handled the
+		// render (so render() early-returns). Default (gate off) -> legacy.
+		bool renderImGui();
+		static bool imguiPauseEnabled();
+
 		bool inRect( int mouseX, int mouseY );
 
 		void begin(){ currentTime = 0.f; }
