@@ -330,7 +330,7 @@ bool PauseWindow::renderImGui()
 	}
 
 	ImGui::End();
-	ImGui::PopStyleColor( 6 );
+	ImGui::PopStyleColor( 5 );   // WindowBg + Button/Hovered/Active + Text
 
 	// Confirm dialogs stay on the legacy path this slice.
 	if ( bPromptToQuit || bPromptToAbort )
