@@ -824,6 +824,25 @@ void MissionInterfaceManager::update (void)
 	// before any early return below, so it clears the moment the menu closes.
 	input::setGameModalActive(isPaused() && !isPausedWithoutMenu());
 
+	// PAUSE-IMGUI-SLICE-0: MC2_BOOT_PAUSED=N fixture (default unset). Auto-toggles
+	// the pause menu ONCE at frame >= N, so agents can capture / iterate on the
+	// pause window headlessly (no keypress path headless). Same fixture pattern
+	// as MC2_FX_FORCE_SPAWN / the fire-event capture pin. Registered (Trace).
+	{
+		static const long s_bootPaused = [] {
+			const char* v = getenv("MC2_BOOT_PAUSED");
+			return (v && v[0]) ? atol(v) : 0L;
+		}();
+		if (s_bootPaused > 0) {
+			extern uint32_t g_mc2FrameCounter;
+			static bool s_done = false;
+			if (!s_done && (long)g_mc2FrameCounter >= s_bootPaused && !isPaused()) {
+				s_done = true;
+				togglePause();
+			}
+		}
+	}
+
 	const std::chrono::steady_clock::time_point _mifT0 =
 		s_mfOn ? std::chrono::steady_clock::now() : std::chrono::steady_clock::time_point{};
 	if ( Environment.screenWidth != resolution )

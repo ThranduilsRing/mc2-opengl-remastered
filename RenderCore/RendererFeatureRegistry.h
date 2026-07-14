@@ -597,6 +597,17 @@ static_assert(
 // The enforcement script greps BOTH tables for "MC2_" string literals.
 
 static constexpr EnvVarDesc kAuxEnvVars[] = {
+    {
+        "MC2_TRACE_BOOT_PAUSED",
+        "MC2_BOOT_PAUSED",
+        EnvVarKind::Trace,
+        false,
+        "PAUSE-IMGUI-SLICE-0: =N auto-toggles the in-mission pause menu ONCE at "
+        "frame >= N (MissionInterfaceManager::update). Headless agents cannot "
+        "press ESC/P, so this is the boot-to-pause fixture for capturing and "
+        "iterating on the pause window (same fixture pattern as "
+        "MC2_FX_FORCE_SPAWN). Default unset -> byte-identical."
+    },
     // TERRAIN-DECAL-SLICE-0B: live placement knobs for the CLIFF_WALL mesh-decal
     // (mclib/bdactor.cpp registerStatic). Read once at process start; all default
     // to Slice-0A behavior -> byte-identical when unset. Only consulted when
