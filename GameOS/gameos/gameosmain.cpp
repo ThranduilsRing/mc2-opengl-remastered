@@ -1986,7 +1986,26 @@ int main(int argc, char** argv)
                         }
                     }
                 }
-                if (!vkPresented) { graphics::swap_window(win); }
+                if (!vkPresented) {
+                    // VK-FAILSOFT-DISARM-2b: NEVER GL-swap while VK present init
+                    // is deferred. A GL SwapBuffers on the shared HWND claims the
+                    // window's WSI binding, and every VK swapchain re-creation
+                    // then fails NATIVE_WINDOW_IN_USE — observed 120/120 re-init
+                    // failures over 60s with GL swapping between attempts (the
+                    // deferral deadlock: GL swaps because VK isn't up; VK can't
+                    // come up because GL swaps). Skipping the swap frees the HWND
+                    // so the next retry succeeds; the window just holds its last
+                    // frame for the sub-second gap (or stays blank while
+                    // minimized, where nothing is visible anyway). After the
+                    // retry-budget forceGL, renderBackend() returns GL and the
+                    // swap resumes.
+                    if (mc2::renderBackend() == mc2::RenderBackend::Vulkan &&
+                        g_vkPresentInitDeferred) {
+                        // hold the frame: no GL present while VK retries the HWND
+                    } else {
+                        graphics::swap_window(win);
+                    }
+                }
 #else
                 graphics::swap_window(win);
 #endif
