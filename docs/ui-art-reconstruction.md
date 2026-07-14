@@ -54,11 +54,12 @@ py -3 tools/ui_art_reconstruct.py \
 
 ## Next steps
 
-1. **Wire the baked pause frame into the ImGui pause page** (`code/pausewindow.cpp`
-   `renderImGui`): draw `pause_frame.png` via `GuiRuntime::DrawUiImage` inside the
-   `gos_ComputeHudCanvasBox` rect (authored 162×239 at origin 638,86 → scaled), then
-   the 7 buttons + labels on top — replacing the flat ImGui window styling with the
-   real MC2 chrome. This is the visual-parity upgrade the port was gated for.
+1. ~~**Wire the baked pause frame into the ImGui pause page**~~ **DONE** (`f3ed79c2`,
+   PAUSE-IMGUI-SLICE-2): `code/pausewindow.cpp` `renderImGui` loads the baked frame
+   (`loadTexture` → `get_gosTextureHandle` → `gos_GetGLTextureName`) and draws it to
+   the WINDOW draw list (NOT the foreground list) under transparent buttons, inside
+   the canvas-mapped rect (authored bbox origin 638,86 size 162×239). Agent-verified
+   matching the legacy panel; tier1 smoke 5/5 +0 gate-off. User click-through pending.
 2. ~~Extract FST-packed atlases~~ — NOT NEEDED (stock atlases are loose; the
    "missing" was the inline-extension resolver bug, now fixed).
 3. **Info window** — procedural port (rects + scrollbar), no baked art.
