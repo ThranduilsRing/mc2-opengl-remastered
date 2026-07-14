@@ -243,6 +243,9 @@ extern uint32_t g_mc2FrameCounter;
 // non-zero; until then VK present is simply skipped (GL swap runs, the
 // umbrella family stays armed for when present comes up).
 static bool g_vkPresentInitDeferred = false;
+// Failed deferred-retry attempts while the drawable was visible (non-zero).
+// Minimized frames never count — a minimized boot defers indefinitely by design.
+static unsigned g_vkPresentRetryFails = 0;
 
 // Force discrete GPU selection on hybrid-graphics laptops (NVIDIA Optimus,
 // AMD PowerXpress). Without these exports, an unknown OpenGL executable is
@@ -1246,25 +1249,25 @@ int main(int argc, char** argv)
             const bool presok = vkpres.init(vkctx, g_sdl_window, (uint32_t)dw, (uint32_t)dh);
             vkpres.logHealth();
             if (!presok || !vkpres.valid()) {
-                // VK-FAILSOFT-DISARM-1: a zero surface extent just means the
-                // window is minimized RIGHT NOW (smoke runner starts missions
-                // SW_SHOWMINNOACTIVE; a user can launch minimized too). That is
-                // a DEFERRAL, not a failure — forcing GL for the whole session
-                // here left the armed umbrella family with a GL present that
-                // can never show it (torn grey scene). Retry present init from
-                // the frame loop once the drawable is non-zero.
+                // VK-FAILSOFT-DISARM-2: present-level init failures are
+                // TRANSIENT (zero surface extent = window minimized right now;
+                // vkCreateSwapchainKHR NATIVE_WINDOW_IN_USE = another consumer
+                // briefly holds the HWND surface — both observed environmental,
+                // both clear on retry). Forcing GL for the session here is the
+                // torn-scene trap: the umbrella family arms/latches across ~80
+                // call sites (fog `static int state` latches, admission modes,
+                // mech routing) and a mid-flight disarm can never reach them
+                // all — the user-sighted half-grey/streaking + pause-bobbing
+                // frame was exactly that half-disarmed state. So: NEVER force
+                // GL for a present-level failure — DEFER and retry init from
+                // the frame loop; the session stays VK. forceGLFallback remains
+                // for context/device-level failures only (handled above).
                 const std::string& fr = vkpres.health().fallback_reason;
-                if (fr.find("zero surface extent") != std::string::npos) {
-                    g_vkPresentInitDeferred = true;
-                    printf("[VK_PRESENT] init deferred: %s -- will retry when the "
-                           "window has a non-zero drawable (session stays VK).\n",
-                           fr.c_str());
-                    fflush(stdout);
-                } else {
-                    mc2::forceGLFallback(fr.empty()
-                                             ? "VK present path did not come up"
-                                             : fr.c_str());
-                }
+                g_vkPresentInitDeferred = true;
+                printf("[VK_PRESENT] init deferred: %s -- will retry from the "
+                       "frame loop (session stays VK; present-level failures "
+                       "never force GL).\n", fr.c_str());
+                fflush(stdout);
             }
         }
 #else
@@ -1893,10 +1896,20 @@ int main(int argc, char** argv)
                                 vkpres.init(rctx, g_sdl_window, (uint32_t)rdw, (uint32_t)rdh) &&
                                 vkpres.valid()) {
                                 g_vkPresentInitDeferred = false;
+                                g_vkPresentRetryFails = 0;
                                 printf("[VK_PRESENT] deferred init recovered: %dx%d — "
                                        "VK present active.\n", rdw, rdh);
                                 fflush(stdout);
                                 vkpres.logHealth();
+                            } else if (++g_vkPresentRetryFails >= 120) {
+                                // ~60s of failed retries WITH a visible drawable
+                                // (zero-drawable/minimized frames never count):
+                                // the surface is not coming back — take the
+                                // best-effort GL fail-soft rather than showing
+                                // torn frames forever.
+                                mc2::forceGLFallback(
+                                    "VK present init failed for ~60s with a "
+                                    "visible drawable (deferred-retry budget)");
                             }
                         }
                     }
@@ -1940,11 +1953,31 @@ int main(int argc, char** argv)
                             static unsigned long s_vkHealthCadence = 0;
                             if ((s_vkHealthCadence++ % 300) == 0) vkpres.logHealth();
                         } else {
-                            // Present failed: force GL for the rest of the session.
-                            mc2::forceGLFallback(vkpres.health().fallback_reason.empty()
-                                                     ? "VK present frame failed"
-                                                     : vkpres.health().fallback_reason.c_str());
+                            // VK-FAILSOFT-DISARM-2: a mid-run present failure is
+                            // almost always the transient swapchain flake
+                            // (NATIVE_WINDOW_IN_USE at resize; observed
+                            // environmental, clears in <1s). Forcing GL for the
+                            // session here produced the torn half-disarmed scene
+                            // (streaking grey + pause-bobbing mechs). Instead:
+                            // tear the present stack down and re-enter the
+                            // DEFERRED-INIT retry path — the session stays VK
+                            // and recovers when the surface frees up. The ONLY
+                            // remaining forceGL is the structural not-VK-owned
+                            // decline (config plainly cannot composite; retry
+                            // cannot help).
+                            const std::string fr = vkpres.health().fallback_reason;
                             vkpres.logHealth();
+                            if (fr.find("not VK-owned") != std::string::npos) {
+                                mc2::forceGLFallback(fr.c_str());
+                            } else {
+                                printf("[VK_PRESENT] present failure treated as "
+                                       "transient: %s -- tearing down and retrying "
+                                       "init (session stays VK).\n",
+                                       fr.empty() ? "(unspecified)" : fr.c_str());
+                                fflush(stdout);
+                                vkpres.destroy();
+                                g_vkPresentInitDeferred = true;
+                            }
                         }
                     }
                 }
