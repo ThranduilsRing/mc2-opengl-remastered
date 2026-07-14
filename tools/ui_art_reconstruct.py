@@ -72,9 +72,14 @@ def parse_block(text: str, block: str) -> dict | None:
 def load_atlas(art_dir: str, name: str, cache: dict) -> Image.Image:
     if name in cache:
         return cache[name]
-    # FileName in the fit has no extension; stock ships .png (magenta-keyed).
+    # FileName in the fit is usually bare ("MCUI_Universal1"), but some blocks
+    # carry the extension inline ("mcl_mb_4.tga"). Strip any trailing image
+    # extension so we don't try "mcl_mb_4.tga.png". Stock ships the atlas as a
+    # magenta-keyed .png; loose files may be upper/lower case (Windows is
+    # case-insensitive on isfile, so the extension is the only real variable).
+    base = re.sub(r"\.(tga|png|bmp)$", "", name, flags=re.IGNORECASE)
     for ext in (".png", ".tga", ".PNG", ".TGA"):
-        p = os.path.join(art_dir, name + ext)
+        p = os.path.join(art_dir, base + ext)
         if os.path.isfile(p):
             im = Image.open(p).convert("RGBA")
             # PNG magenta key -> transparent (engine PNG-MAGENTA-KEY-1 parity).

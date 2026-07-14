@@ -43,8 +43,14 @@ py -3 tools/ui_art_reconstruct.py \
 - **Pause: DONE** — 17 tiles (10 frame statics + 7 button-normal) → one 162×239 PNG
   at authored origin (638,86). Baked reference: `data/ui_reconstructed/pause_frame.png`.
   Matches the legacy in-game panel (hazard-stripe frame + 7 blue button slots).
-- **MechBay: partial** — 68 tiles composed; 3 atlases (`mcl_mb_4/5/6.tga`) are
-  FST-packed and need extraction before a full bake.
+- **MechBay: DONE** — all 75 tiles (68 statics + 7 buttons) → one coherent 800x600
+  logistics-screen panel (metal frames + yellow trim + mech-cell grid + loadout
+  icon column; dynamic-content areas transparent). The earlier "3 FST-packed
+  atlases missing" was a RESOLVER BUG, not an FST issue: some `FileName` fields
+  carry the extension inline (`"mcl_mb_4.tga"`) so the tool tried `mcl_mb_4.tga.png`;
+  the loose atlas is `MCL_MB_4.png`. Fixed by stripping any inline image extension
+  before the ext search. The atlases are all LOOSE in `data/art/gui` — no FST
+  extraction is required for the stock panels.
 
 ## Next steps
 
@@ -53,7 +59,8 @@ py -3 tools/ui_art_reconstruct.py \
    `gos_ComputeHudCanvasBox` rect (authored 162×239 at origin 638,86 → scaled), then
    the 7 buttons + labels on top — replacing the flat ImGui window styling with the
    real MC2 chrome. This is the visual-parity upgrade the port was gated for.
-2. **Extract FST-packed atlases** (`mcl_mb_*` etc.) so the logistics panels bake fully.
+2. ~~Extract FST-packed atlases~~ — NOT NEEDED (stock atlases are loose; the
+   "missing" was the inline-extension resolver bug, now fixed).
 3. **Info window** — procedural port (rects + scrollbar), no baked art.
 4. Consider a batch driver (`--all`) that bakes every tile-stitched panel + emits a
    manifest of frame PNGs + their authored origins for the ImGui layer to consume.
