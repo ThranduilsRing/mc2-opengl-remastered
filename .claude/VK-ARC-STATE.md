@@ -28,7 +28,11 @@ up, VK can't come up because GL swaps. FIX: never GL-swap while present init is 
 the swap resumes). This makes the deferred-retry path actually able to recover — before
 this, NO deferral recovery had ever succeeded.
 
-**★ OPEN:** same-frame GL-vs-VK pairs per weapon class (visual parity polish); a live
+**★ VFX-8 (`e142da28`):** `MC2_VISUAL_CAPTURE_ON_FIRE` — GL twin of the fire-event PPM pin
+(registered, Trace); GL captures now trigger at the fixture-armed fire frame. GL reference
+banked (`vfx8_gl_onfire_mc2_01.png`, missile smoke trail + scorch). Note: smoke-mode fixed
+timestep ≠ field sim, so pairs are same-fire-instant references, not pixel-diff pairs.
+**★ OPEN:** per-class pixel-level GL-vs-VK polish (optional); a live
 mid-run flake recovery has not yet been OBSERVED end-to-end (next natural occurrence should
 log `treated as transient` → `deferred init recovered` with a sub-second frame hold).
 
