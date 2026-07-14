@@ -37,51 +37,11 @@ from pathlib import Path
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 import batch_driver as bd  # noqa: E402
 from blender_runner import find_blender_exe  # noqa: E402
+from srcdata import find_srcdata, enumerate_assets  # noqa: E402
 
 TOOL_DIR = Path(__file__).resolve().parent
 
-# Stock asset root probe order (README: mc2srcdata/tgl holds all 2947 .ase).
-_SRCDATA_PROBES = [
-    TOOL_DIR.parents[1] / "mc2srcdata" / "tgl",       # repo-local checkout
-    Path("A:/Games/mc2-srcdata/tgl"),                 # canonical machine layout
-    Path("A:/Games/mc2-opengl-src/mc2srcdata/tgl"),   # legacy sibling checkout
-]
-
 _PRINT_LOCK = threading.Lock()
-
-
-# ---------------------------------------------------------------------------
-# Enumeration + filtering (pure — pytest-covered)
-# ---------------------------------------------------------------------------
-
-def find_srcdata(explicit=None):
-    """Return the stock tgl dir or raise RuntimeError with actionable text."""
-    if explicit:
-        p = Path(explicit)
-        if p.is_dir():
-            return p
-        raise RuntimeError(f"--srcdata {explicit!r} is not a directory.")
-    for cand in _SRCDATA_PROBES:
-        if cand.is_dir():
-            return cand
-    raise RuntimeError(
-        "Could not locate the stock mc2srcdata/tgl directory. Pass --srcdata. "
-        "Probed:\n  " + "\n  ".join(str(p) for p in _SRCDATA_PROBES))
-
-
-def enumerate_assets(tgl_dir):
-    """Return sorted [(stem, ase_path, ini_path)] for every .ase with a
-    matching .ini (case-insensitive stem match — Windows filesystem reality).
-    """
-    tgl_dir = Path(tgl_dir)
-    inis = {p.stem.lower(): p for p in tgl_dir.glob("*.ini")}
-    out = []
-    for ase in tgl_dir.glob("*.ase"):
-        ini = inis.get(ase.stem.lower())
-        if ini is not None:
-            out.append((ase.stem, ase, ini))
-    out.sort(key=lambda t: t[0].lower())
-    return out
 
 
 def apply_filters(assets, filters, excludes, limit):

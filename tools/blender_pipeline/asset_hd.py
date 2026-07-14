@@ -19,7 +19,6 @@ Exit codes mirror batch_driver: 0 ok, 2 resolution/validation error,
 1 stage failure.
 """
 import argparse
-import difflib
 import json
 import os
 import sys
@@ -27,89 +26,14 @@ from pathlib import Path
 
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 import batch_driver as bd  # noqa: E402
+from srcdata import (  # noqa: E402
+    AssetResolutionError, find_tgl_dir, list_assets, resolve_asset,
+)
 
 TOOL_DIR = Path(__file__).resolve().parent
 REPO_ROOT = TOOL_DIR.parents[1]
 DEFAULT_OUT_BASE = TOOL_DIR / "out"
 DEFAULT_LOD_RATIOS = (0.5, 0.2)
-
-# Stock srcdata layout drifted across checkouts (mc2srcdata inside the repo
-# vs the mc2-srcdata sibling next to it) — probe both, first hit wins.
-SRCDATA_PROBES = (
-    REPO_ROOT / "mc2srcdata",
-    REPO_ROOT / "mc2-srcdata",
-    REPO_ROOT.parent / "mc2-srcdata",
-    REPO_ROOT.parent / "mc2srcdata",
-)
-
-
-class AssetResolutionError(Exception):
-    pass
-
-
-# ---------------------------------------------------------------------------
-# Asset resolution (pure — pytest-covered)
-# ---------------------------------------------------------------------------
-
-def find_tgl_dir(explicit=None):
-    """Return the stock tgl/ dir holding *.ase + *.ini, or raise RuntimeError.
-
-    `explicit` may point at the srcdata root (containing tgl/) or at the tgl
-    dir itself.
-    """
-    if explicit:
-        p = Path(explicit)
-        if (p / "tgl").is_dir():
-            return p / "tgl"
-        if p.is_dir():
-            return p
-        raise RuntimeError(f"--srcdata-root {explicit!r} is not a directory")
-
-    for cand in SRCDATA_PROBES:
-        if (cand / "tgl").is_dir():
-            return cand / "tgl"
-    raise RuntimeError(
-        "Could not locate the stock srcdata tgl dir. Pass --srcdata-root. Probed:\n  "
-        + "\n  ".join(str(c) for c in SRCDATA_PROBES))
-
-
-def list_assets(tgl_dir, substring=""):
-    """Sorted asset stems whose name contains `substring` (case-insensitive)."""
-    want = substring.lower()
-    return sorted((p.stem for p in Path(tgl_dir).glob("*.ase")
-                   if want in p.stem.lower()), key=str.lower)
-
-
-def resolve_asset(name, tgl_dir):
-    """Return (stem, ase_path, ini_path) for a case-insensitive asset name.
-
-    Raises AssetResolutionError with closest-match suggestions when the asset
-    (or its mandatory stock .ini) is missing.
-    """
-    tgl_dir = Path(tgl_dir)
-    want = name.lower()
-    if want.endswith(".ase"):
-        want = want[:-4]
-
-    by_lower = {}
-    for p in sorted(tgl_dir.glob("*.ase")):
-        by_lower.setdefault(p.stem.lower(), p)
-    ase = by_lower.get(want)
-    if ase is None:
-        stems = sorted(by_lower)
-        close = difflib.get_close_matches(want, stems, n=6, cutoff=0.6)
-        contains = [s for s in stems if want in s][:6]
-        sugg = list(dict.fromkeys(close + contains))[:8]
-        hint = f"; closest: {', '.join(sugg)}" if sugg else ""
-        raise AssetResolutionError(
-            f"asset {name!r} not found in {tgl_dir}{hint}")
-
-    ini = {p.stem.lower(): p for p in tgl_dir.glob("*.ini")}.get(want)
-    if ini is None:
-        raise AssetResolutionError(
-            f"asset {name!r}: no matching .ini for {ase.name} in {tgl_dir} "
-            "(the ase->glb extractor needs the stock ini)")
-    return ase.stem, ase, ini
 
 
 # ---------------------------------------------------------------------------

@@ -176,13 +176,40 @@ carry-over, runner discovery order, recipe arg parsing — plus the four
 front-end CLIs (name resolution, manifest synthesis, sharding, report
 flagging, GLB post-export validation, texture-ref extraction).
 
-## Known limitation — Multi/Sub-Object ASE materials
+## Unified CLI (mc2asset.py)
 
-~421 of 2947 stock `.ase` files use nested `*SUBMATERIAL` blocks;
-`tools/ase_to_glb.py` does not remap `*MESH_MTLID` through the submaterial
-table, so per-face textures on those assets are unreliable (a warning is
-printed when one is detected). Full fix = nesting-aware material parse +
-MTLID remap (follow-up slice).
+The four front-ends share one stock srcdata resolver, `srcdata.py`
+(probe order: explicit CLI flag > `MC2_SRCDATA` env var > repo-relative
+`mc2srcdata`/`mc2-srcdata` checkouts > canonical `A:/Games/mc2-srcdata`
+> legacy sibling checkouts). `mc2asset.py` is a thin dispatcher — same
+flags, one entry point:
+
+```powershell
+py -3 tools/blender_pipeline/mc2asset.py hd quonset
+py -3 tools/blender_pipeline/mc2asset.py sweep --filter "tree*" --limit 5
+py -3 tools/blender_pipeline/mc2asset.py edit status quonset
+py -3 tools/blender_pipeline/mc2asset.py tex quonset --dry-run
+py -3 tools/blender_pipeline/mc2asset.py list quon
+```
+
+## Multi/Sub-Object ASE materials — supported
+
+~421 of 2947 stock `.ase` files use nested `*SUBMATERIAL` blocks.
+`tools/ase_to_glb.py` parses them nesting-aware and remaps `*MESH_MTLID`
+through the submaterial table (standard ASE semantics), so each submaterial
+becomes a distinct GLB material with its own texture. Out-of-range MTLIDs
+are clamped with a warning. Single-material assets are byte-identical to
+the pre-remap converter.
+
+## Visual contact sheet (Blender-render, not engine-faithful)
+
+`contact_sheet.py` + `render_glb_blender.py` (branch
+`claude/asset-visual-gate-1`, worktree `A:/Games/mc2-blender-gate`) render
+STOCK vs HD GLBs headlessly from 3 orbit angles into a labeled side-by-side
+PNG. EEVEE neutral rig — silhouette/topology comparison only, NOT MC2
+shaders. The engine-faithful path is a follow-up: an asset_viewer
+`--render-glb-to-png` mode reusing the existing `--smoke-backend-a-render`
+offscreen pathway.
 
 ## Follow-ons (from .claude/BLENDER-CAPABILITY-SURVEY-1.md)
 

@@ -40,6 +40,7 @@ from pathlib import Path
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 import batch_driver as bd  # noqa: E402  (reuse GLB/ini/inject helpers)
 from blender_runner import find_blender_exe, run_blender_script  # noqa: E402
+from srcdata import SRCDATA_ROOT_PROBES  # noqa: E402
 
 TOOL_DIR = Path(__file__).resolve().parent
 ASE_TO_GLB = TOOL_DIR.parent / "ase_to_glb.py"
@@ -51,10 +52,11 @@ OUT_KINDS = ("tgl_ini", "models_json", "glb_only")
 SESSION_VERSION = 1
 
 # Stock srcdata discovery: CLI --srcdata > MC2_SRCDATA env > known checkouts.
-_SRCDATA_PROBES = [
-    r"A:\Games\mc2-srcdata",
-    str(TOOL_DIR.parent.parent / "mc2srcdata"),  # repo-local checkout (if any)
-]
+# find_stock_asset works in terms of srcdata ROOT (not the tgl dir) and
+# resolves one named asset at a time, a different shape than srcdata.py's
+# find_tgl_dir/find_srcdata — kept local, but sourced from the same shared
+# probe list (srcdata.SRCDATA_ROOT_PROBES) so the checkout roots stay in sync.
+_SRCDATA_PROBES = [str(p) for p in SRCDATA_ROOT_PROBES]
 
 
 # ---------------------------------------------------------------------------
