@@ -1,5 +1,37 @@
 # VK-ARC-STATE — current state block (update every session)
 
+## 2026-07-14 (PM) — ★VFX-6+7 SHIPPED (`f6e1b3d1`/`9963130479`): ALL weapon-VFX classes now composite under VK (user report "only lasers show up" fixed) + ★DISARM-2b (`ad982de2`): the deferral GL-swap deadlock found in the wild and fixed. Both installs deployed at `ad982de2`.
+
+**★ VFX-6 ROOT CAUSE ("only lasers"):** objmgr's IsHUD wrap (VFX-3) covered the effect
+`render()` calls, but gosFX effects only DEPOSIT into the MLR clipper/sorter there — the
+actual `gos_DrawTriangles` for ALL gosFX geometry (AC tracers, missile trails, muzzle
+flashes, explosions, carnage) fire later in `GameCamera::render` at
+`theClipper->RenderNow()`, outside that scope, into the GL scene VK discards. Weapon-bolt
+beams survived because they draw immediately inside the objmgr scope. FIX: wrap RenderNow
+in the same `MC2_VK_VFX`-gated IsHUD + scaleExempt route (gamecam.cpp).
+
+**★ VFX-7 (the black boxes):** with the flush routed, muzzle-flash/tracer sprites arrived as
+`gos_Alpha_OneOne` (alphaMode=2) — unsupported → declined (invisible) or mis-blended as
+opaque BLACK BOXES (additive textures have black backgrounds that only vanish under
+(ONE,ONE)). Added `hudColorTriOneOnePipe` + `hudTexOneOnePipe` (src ONE, dst ONE), accepted
+mode 2 in `vkHudDrawRepresentable`, extended the untextured never-vanish fallback to mode 2.
+**PROOF (eyeballed, `.claude/vfx-fire/mc2_24/vfx4/vfx7_all_classes_mc2_01.png`):** clean
+additive muzzle glows on all three mechs + laser + bright impact flash + debris; zero
+`VK_HUD_SKIP_DECLINE`.
+
+**★ DISARM-2b — deferral GL-swap deadlock (found in the wild during the vfx7 run):** the
+mid-run swapchain flake fired, teardown+retry engaged, but ALL 120 re-init attempts failed
+`NATIVE_WINDOW_IN_USE` over 60s → budget forceGL. Cause: while deferred, the fallback GL
+SwapBuffers on the SAME HWND claims the window's WSI binding — GL swaps because VK isn't
+up, VK can't come up because GL swaps. FIX: never GL-swap while present init is deferred
+(the window holds its last frame for the sub-second recovery gap; after the budget forceGL
+the swap resumes). This makes the deferred-retry path actually able to recover — before
+this, NO deferral recovery had ever succeeded.
+
+**★ OPEN:** same-frame GL-vs-VK pairs per weapon class (visual parity polish); a live
+mid-run flake recovery has not yet been OBSERVED end-to-end (next natural occurrence should
+log `treated as transient` → `deferred init recovered` with a sub-second frame hold).
+
 ## 2026-07-14 — ★VK-FAILSOFT-DISARM-2 (`51942bd2`+`1c57d6f6`): USER-SIGHTED half-grey/streaking + pause-bobbing at 0d7503e4 = the DISARM-1 design was wrong; present-level failures now NEVER force GL (defer/teardown + retry, session stays VK). Both installs deployed.
 
 **★ WHAT THE USER SAW (0d7503e4 field session, dump frame 2794):** upper terrain/props GL-fine,
