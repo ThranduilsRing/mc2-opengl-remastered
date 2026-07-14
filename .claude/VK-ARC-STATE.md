@@ -1,5 +1,34 @@
 # VK-ARC-STATE — current state block (update every session)
 
+## 2026-07-14 — ★VK-FAILSOFT-DISARM-2 (`51942bd2`+`1c57d6f6`): USER-SIGHTED half-grey/streaking + pause-bobbing at 0d7503e4 = the DISARM-1 design was wrong; present-level failures now NEVER force GL (defer/teardown + retry, session stays VK). Both installs deployed.
+
+**★ WHAT THE USER SAW (0d7503e4 field session, dump frame 2794):** upper terrain/props GL-fine,
+cement/runway dark-grey with streaking, mechs invisible (brackets only), mechs BOBBING on the
+pause screen. Receipts: islands `used_vulkan=0 attempted=0` (per-call disarm reached them) but
+`postfog_attempted=2793` every frame (fog's `static int state` latch stayed armed, declining
+`upstream_not_direct_chain`). **A mid-flight disarm is architecturally unwinnable:** ~83
+umbrella call sites across ~20 TUs with multiple latch idioms (`static const bool`,
+`static int state=-1`, admission mode-selects at process start, mech routing) → any fail-soft
+after arm produces a HALF-GL torn state. Pause-bobbing = mechs on the GL path (stock wall-clock
+gait advance during pause) — a symptom, gone when the session stays VK.
+
+**★ DISARM-2 SEMANTICS (supersedes DISARM-1's disarm-on-failure):** present-level failures are
+TRANSIENT (zero extent = minimized; swapchain `NATIVE_WINDOW_IN_USE` = surface briefly held) —
+- ANY present INIT failure → defer + frame-loop retry (~2×/s); session stays VK.
+- Mid-run present failure (resize/swapchain) → `vkpres.destroy()` + same deferred-retry path;
+  recovery re-creates surface+swapchain on the same HWND.
+- ONLY the structural `not VK-owned` composite decline still forceGLs.
+- Budget: 120 failed NON-minimized retries (~60s) → best-effort forceGL. Zero-extent failures
+  never count (minimized windows report a non-zero GL drawable while VK caps say 0 — the first
+  budget draft forceGL'd at ~28s in the minimized smoke because of exactly this; fixed
+  `1c57d6f6`). The DISARM-1 flag stays as best-effort for the rare residual forceGL paths.
+
+**★ VERIFICATION at `1c57d6f6` (I looked at all of it):** 6/6 field boots chroma ≈31.6, zero
+deferrals needed, zero fail-softs; tier1 VK-state 5/5 PASS +0; minimized single-mission smoke =
+`init deferred … session stays VK`, **failsoft: 0**, PASS +0. The flake didn't strike during
+the soak — next natural occurrence should log `treated as transient … tearing down and
+retrying` + `deferred init recovered` instead of any grey.
+
 ## 2026-07-12 (NIGHT) — ★VK-FAILSOFT-DISARM-1 SHIPPED (`0c9723be`+`0d7503e4`): the TORN GREY SCENE (user-sighted "fires of all types but grey screen" in smoke captures; the probable S2b-transient mechanism) ROOT-CAUSED + FIXED with an A/B pixel proof. Both installs deployed.
 
 **★ ROOT CAUSE (user report → smoke log → gate code):** the 17:01 VK-state tier1 log showed
