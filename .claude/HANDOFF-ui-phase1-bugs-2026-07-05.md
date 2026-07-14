@@ -123,3 +123,24 @@ defs-page replacement path doesn't apply. Port shape:
    the game-modal priority doesn't eat ImGui interaction — check input.cpp precedence.
 6. Verify: fixture loop screenshot at 16:9 + one narrow/wide res (canvas box honored);
    click-throughs need user eyes (headless can't click ImGui).
+
+## PAUSE-IMGUI-SLICE-1 SHIPPED (2026-07-14)
+
+MC2_UI_IMGUI_PAUSE=1 renders the pause menu as an ImGui window (pausewindow.cpp
+renderImGui, gate imguiPauseEnabled). GAME PAUSED + 7 buttons reusing handleClick
+side-effects; laid out in gos_ComputeHudCanvasBox at the legacy right-column rect
+(authored 636..798 x 150..528 / 800x600). Input: setGameModalActive off under the
+gate (missiongui.cpp) so ImGui captures; update() legacy hit-test skipped (no
+double-handle); confirm dialogs stay legacy. Registered (Trace). Default OFF =
+legacy sprite panel byte-identical.
+
+**Verified (agent, MC2_SCREENSHOT_SOURCE=backbuffer):** clean render, all 7 buttons
++ header, correct column position, no ImGui warning (PopStyleColor 5 not 6 —
+fixed one iteration in). Evidence `.claude/pause_window_imgui_slice1.png` vs
+legacy `.claude/pause_window_legacy_ref.png`. ⚠USER EYES NEEDED: click-through
+(headless can't click ImGui) — verify each button fires (RETURN unpauses, OPTIONS
+opens Graphics Options, SAVE/LOAD, ABORT/EXIT prompt legacy dialog) + look at 16:9
+vs wide aspect. ⚠Cosmetic follow-ups (slice 2, optional): match the legacy diagonal
+hazard-stripe frame + button sprite art (this slice = functional flat ImGui style);
+confirm dialogs (ABORT/EXIT) still legacy — port later. NEXT PANEL per scope doc:
+info window (self-contained, next-simplest) or command bar.
