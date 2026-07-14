@@ -93,3 +93,33 @@ e. Keep probes file-based + env-gated; grep the log, never tail stdout.
   pause window as the port reference; (3) design the ImGui pause page per the scope doc
   (per-frame bind, gos_ComputeHudCanvasBox layout, hit-test via getMouseHudX/Y);
   (4) implement behind MC2_UI_IMGUI_PAUSE=1 (default legacy).
+
+## PAUSE-IMGUI-SLICE-1 DESIGN (ready to implement — 2026-07-14)
+
+Reference: `.claude/pause_window_legacy_ref.png`. Verify loop: MC2_BOOT_PAUSED=600 +
+MC2_SCREENSHOT_AT_FRAME=4200 + MC2_SCREENSHOT_SOURCE=backbuffer (proven this session).
+
+**Model (option b — GuiRuntime ImGui page, NOT a defs .fit page):** PauseWindow is fit-driven
+runtime chrome (pausewindow.cpp init: "PauseWindow" block + ControlButton::initButtons
+"PauseButton", buttons moved by -ControlGui::hiResOffsetY), not a LogisticsScreen — the
+defs-page replacement path doesn't apply. Port shape:
+1. Gate `MC2_UI_IMGUI_PAUSE=1` (default legacy; register + doc).
+2. New `code/ui_imgui_pause.cpp` (or GuiRuntime page): drawn from GuiRuntime::Render when
+   `MissionInterfaceManager::isPaused() && !isPausedWithoutMenu()` and gate on. Layout inside
+   `gos_ComputeHudCanvasBox` (authored*bw/800+bx per port guide) at the legacy panel rect
+   (backgrounds[1], right-side column — read exact rect from the mission gui fit at runtime
+   or mirror the authored constants).
+3. Buttons + side effects (from pausewindow.cpp update/handleClick):
+   OBJECTIVES -> buttons[OBJECTIVES].toggle() equivalent (objectives overlay flag),
+   QUICK SAVE -> saveInMissionSave=true path, QUICK LOAD -> loadInMissionSave=true,
+   OPTIONS -> bInvokeOptionsScreenFlag=true (disabled in MPlayer),
+   ABORT MISSION -> bPromptToAbort=1 (LogisticsOKDialog stays LEGACY this slice),
+   EXIT GAME -> bPromptToQuit=1, RETURN TO GAME -> MissionInterfaceManager::togglePause().
+   Read the exact flag wiring from PauseWindow::update's button-press switch before coding.
+4. When gate on: PauseWindow::render() early-returns (keep update() for hotkey/dialog logic
+   OR move modal handling too — decide at implementation; smallest diff = render-only swap,
+   ImGui buttons set the same flags PauseWindow::update reads).
+5. Input: ImGui gets clicks already (input::setGameModalActive is set when paused); ensure
+   the game-modal priority doesn't eat ImGui interaction — check input.cpp precedence.
+6. Verify: fixture loop screenshot at 16:9 + one narrow/wide res (canvas box honored);
+   click-throughs need user eyes (headless can't click ImGui).
