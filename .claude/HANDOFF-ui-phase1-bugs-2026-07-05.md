@@ -69,3 +69,26 @@ d. ✅ **DONE — deploy_payload `--preserve`**: argparse flag (scripts/deploy_p
 e. Keep probes file-based + env-gated; grep the log, never tail stdout.
 
 > Port audit 2026-07-10: nothing to re-port — all four landed in prior sessions, clean tree @ `9b02b41b`, exe built Jul 9 + deployed to v0.5.0. Live socket re-verify skipped: a pre-existing non-dev-shell mc2.exe (PID 31644, not agent-launched, MC2_DEV_SHELL unset → ping refused) blocked a zero-count launch; feature was already dynamically verified per item #1.
+
+## 2026-07-14 PAUSE-IMGUI-SLICE-0 (lane opened per user autonomous-queue directive)
+
+- Target: IN-MISSION-HUD-IMGUI-SCOPE-1 (mc2-main/.claude/), first slice = pause window
+  (structurally simplest panel). This session shipped the **MC2_BOOT_PAUSED=N fixture**
+  (missiongui.cpp update-top; registered Trace): auto-toggles pause ONCE at the first
+  frame >= N that is NOT eye->inMovieMode — pausing mid-swoop freezes the swoop itself
+  and the HUD never arrives (burned one round). Commits on this branch:
+  fixture + movie-mode guard (HEAD after this entry).
+- Capture state: engine MC2_SCREENSHOT_AT_FRAME at frame 4200 shows the camera parked on
+  the lance (swoop over, fixture ran) but NO HUD chrome — matches this handoff's standing
+  "headless -mission never draws the HUD" caveat. OPEN QUESTION for next cycle: is the HUD
+  truly not drawn headless, or does the engine screenshot capture pre-HUD? Discriminate
+  with the documented desktop CopyFromScreen recipe (needs idle desktop / user eyes) OR
+  check whether gos_screenshot reads scene FBO vs backbuffer on this branch.
+- run-with-log.bat NOTE: /tmp/uimerge backup is GONE; deploys write the repo-default bat
+  (current copy preserved at .claude/run-with-log.bat.deploy-backup). If the user had a
+  custom bat it was already lost before this session — ask user if they want it recreated.
+- Deploy lane: releases/mc2-win64-v0.5.0 at this branch HEAD, healthy.
+- NEXT STEPS (in order): (1) resolve the HUD-headless question; (2) capture the legacy
+  pause window as the port reference; (3) design the ImGui pause page per the scope doc
+  (per-frame bind, gos_ComputeHudCanvasBox layout, hit-test via getMouseHudX/Y);
+  (4) implement behind MC2_UI_IMGUI_PAUSE=1 (default legacy).
