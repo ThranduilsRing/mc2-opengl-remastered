@@ -136,7 +136,9 @@ legacy sprite panel byte-identical.
 
 **Verified (agent, MC2_SCREENSHOT_SOURCE=backbuffer):** clean render, all 7 buttons
 + header, correct column position, no ImGui warning (PopStyleColor 5 not 6 —
-fixed one iteration in). Evidence `.claude/pause_window_imgui_slice1.png` vs
+fixed one iteration in). ★tier1 smoke on the 0.5.0 exe (gate OFF, default) = 5/5
+PASS +0 destroys ~140fps — the missiongui.cpp/pausewindow.cpp changes are
+mission-stable. Evidence `.claude/pause_window_imgui_slice1.png` vs
 legacy `.claude/pause_window_legacy_ref.png`. ⚠USER EYES NEEDED: click-through
 (headless can't click ImGui) — verify each button fires (RETURN unpauses, OPTIONS
 opens Graphics Options, SAVE/LOAD, ABORT/EXIT prompt legacy dialog) + look at 16:9
