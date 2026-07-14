@@ -1901,10 +1901,15 @@ int main(int argc, char** argv)
                                        "VK present active.\n", rdw, rdh);
                                 fflush(stdout);
                                 vkpres.logHealth();
+                            } else if (vkpres.health().fallback_reason.find(
+                                           "zero surface extent") != std::string::npos) {
+                                // Still minimized: the GL drawable reports a
+                                // size even for SW_SHOWMINNOACTIVE windows, but
+                                // the VK surface caps say zero. This is the
+                                // defer-forever-by-design case — never budget it.
                             } else if (++g_vkPresentRetryFails >= 120) {
-                                // ~60s of failed retries WITH a visible drawable
-                                // (zero-drawable/minimized frames never count):
-                                // the surface is not coming back — take the
+                                // ~60s of NON-minimized failed retries: the
+                                // surface is not coming back — take the
                                 // best-effort GL fail-soft rather than showing
                                 // torn frames forever.
                                 mc2::forceGLFallback(
