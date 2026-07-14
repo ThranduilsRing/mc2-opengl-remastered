@@ -836,7 +836,12 @@ void MissionInterfaceManager::update (void)
 		if (s_bootPaused > 0) {
 			extern uint32_t g_mc2FrameCounter;
 			static bool s_done = false;
-			if (!s_done && (long)g_mc2FrameCounter >= s_bootPaused && !isPaused()) {
+			// Wait out the intro swoop: pausing while eye->inMovieMode freezes
+			// the swoop itself and the HUD (drawGUIOn) never arrives — the pause
+			// WINDOW only draws on the live HUD. Trigger at the first frame >= N
+			// that is NOT movie mode.
+			if (!s_done && (long)g_mc2FrameCounter >= s_bootPaused && !isPaused() &&
+				eye && !eye->inMovieMode) {
 				s_done = true;
 				togglePause();
 			}
