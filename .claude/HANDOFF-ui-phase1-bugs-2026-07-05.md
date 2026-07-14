@@ -78,12 +78,13 @@ e. Keep probes file-based + env-gated; grep the log, never tail stdout.
   frame >= N that is NOT eye->inMovieMode — pausing mid-swoop freezes the swoop itself
   and the HUD never arrives (burned one round). Commits on this branch:
   fixture + movie-mode guard (HEAD after this entry).
-- Capture state: engine MC2_SCREENSHOT_AT_FRAME at frame 4200 shows the camera parked on
-  the lance (swoop over, fixture ran) but NO HUD chrome — matches this handoff's standing
-  "headless -mission never draws the HUD" caveat. OPEN QUESTION for next cycle: is the HUD
-  truly not drawn headless, or does the engine screenshot capture pre-HUD? Discriminate
-  with the documented desktop CopyFromScreen recipe (needs idle desktop / user eyes) OR
-  check whether gos_screenshot reads scene FBO vs backbuffer on this branch.
+- ★RESOLVED (same day): the "headless never draws the HUD" caveat was an ORACLE ARTIFACT —
+  the default MC2_SCREENSHOT_AT_FRAME reads the pre-HUD scene FBO. `MC2_SCREENSHOT_SOURCE=
+  backbuffer` (already on this branch, gameosmain.cpp) captures FBO 0 with the full HUD +
+  ImGui compositing. HUD draws fine headless. CANONICAL pause capture recipe:
+  MC2_BOOT_PAUSED=600 + MC2_SCREENSHOT_AT_FRAME=4200 + MC2_SCREENSHOT_SOURCE=backbuffer.
+  Legacy reference banked: `.claude/pause_window_legacy_ref.png` (GAME PAUSED + 7 buttons +
+  full HUD chrome, 1707x960). Update the old caveat lines above accordingly — don't re-derive.
 - run-with-log.bat NOTE: /tmp/uimerge backup is GONE; deploys write the repo-default bat
   (current copy preserved at .claude/run-with-log.bat.deploy-backup). If the user had a
   custom bat it was already lost before this session — ask user if they want it recreated.
