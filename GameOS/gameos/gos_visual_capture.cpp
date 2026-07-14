@@ -67,6 +67,10 @@
 // helper struct, and a bare "camera.h" would be ambiguous on the include path.
 #include "../../mclib/camera.h"
 
+// VK-FIELD-VFX-8: fixture-armed fire-event capture frame (defined mclib/tgl.cpp;
+// armed by the MC2_FX_FORCE_SPAWN fixture in code/warrior.cpp).
+extern uint32_t g_mc2FxFireCaptureFrame;
+
 // Mission sim-freeze hooks for deterministic capture. We do NOT include the
 // game's missiongui.h here -- it pulls in mclib.h / mover.h / controlgui.h via
 // quote-includes that are not on the GameOS translation unit's include path.
@@ -645,7 +649,22 @@ void onPostRenderFrame(unsigned int frame, int sceneW, int sceneH) {
     // capActive is already false whenever a bookmark file is configured (see
     // the guard above), so this path runs ONLY when no bookmark sweep exists.
     // It is the nondeterministic eyeball spot-check mode.
-    if (capActive && (long)frame >= g_cap.frame) {
+    // VK-FIELD-VFX-8: MC2_VISUAL_CAPTURE_ON_FIRE — GL twin of the present-PPM
+    // fire-event pin. When set (with MC2_FX_FORCE_SPAWN), the trigger frame is
+    // the fixture-armed g_mc2FxFireCaptureFrame (~0.5s after the first volley)
+    // instead of the static MC2_VISUAL_CAPTURE_FRAME, so GL-vs-VK weapon-class
+    // pairs capture the SAME fire-relative instant on both backends (a static
+    // frame pin is volley roulette). Unarmed (0) = wait.
+    long trigger = g_cap.frame;
+    {
+        static const bool s_onFire =
+            (getenv("MC2_VISUAL_CAPTURE_ON_FIRE") != nullptr);
+        if (s_onFire) {
+            trigger = (::g_mc2FxFireCaptureFrame == 0)
+                ? 0x7fffffffL : (long)::g_mc2FxFireCaptureFrame;
+        }
+    }
+    if (capActive && (long)frame >= trigger) {
         char base[256];
         snprintf(base, sizeof(base), "%s_frame%u", mission.c_str(), frame);
         capture_to(g_cap.dir, base, mission, "frame", frame, sceneW, sceneH,

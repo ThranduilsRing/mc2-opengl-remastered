@@ -689,6 +689,18 @@ static constexpr EnvVarDesc kAuxEnvVars[] = {
         "MC2_VK_PRESENT_VERIFY; suppresses all PPM writes until armed."
     },
     {
+        "MC2_TRACE_VISUAL_CAPTURE_ON_FIRE",
+        "MC2_VISUAL_CAPTURE_ON_FIRE",
+        EnvVarKind::Trace,
+        false,
+        "VK-FIELD-VFX-8: GL twin of MC2_VK_PRESENT_DUMP_ON_FIRE. With "
+        "MC2_FX_FORCE_SPAWN + MC2_VISUAL_CAPTURE_FRAME/_DIR (smoke mode), the "
+        "engine visual capture triggers at the fixture-armed fire frame "
+        "(g_mc2FxFireCaptureFrame, ~0.5s after the first volley) instead of the "
+        "static frame pin, so GL-vs-VK weapon-class pairs capture the same "
+        "fire-relative instant on both backends."
+    },
+    {
         "MC2_TRACE_VK_PRESENT_NATIVE_STRICT",
         "MC2_VK_PRESENT_NATIVE_STRICT",
         EnvVarKind::Trace,
