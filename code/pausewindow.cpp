@@ -16,8 +16,10 @@ PauseWindow.cpp			: Implementation of the PauseWindow component.
 #include"mission.h"
 #include"logisticsdata.h"
 #include"multplyr.h"
-#include"gameos.hpp"        // PAUSE-IMGUI-SLICE-1: gos_ComputeHudCanvasBox + Environment
+#include"gameos.hpp"        // PAUSE-IMGUI-SLICE-1: gos_ComputeHudCanvasBox + Environment; gos_GetGLTextureName
 #include"imgui.h"           // PAUSE-IMGUI-SLICE-1: ImGui pause page
+#include"txmmgr.h"          // PAUSE-IMGUI-SLICE-2: mcTextureManager (baked frame load)
+#include<cstdint>           // PAUSE-IMGUI-SLICE-2: intptr_t (ImTextureID cast)
 
 extern float frameLength;
 
@@ -282,55 +284,124 @@ bool PauseWindow::renderImGui()
 	if ( !currentTime )
 		return true;   // paused but pre-init: legacy also draws nothing yet
 
-	// Lay the menu out inside the 16:9 HUD canvas box so it tracks the same
-	// aspect anchor as the rest of the HUD chrome (port guide: authored*bw/800
-	// + bx). Authored pause-panel column ~ x[636..798] y[150..528] in the
-	// 800x600 design space (matches the legacy right-column placement).
+	// PAUSE-IMGUI-SLICE-2: one-time load of the offline-reconstructed legacy
+	// pause frame (baked by tools/ui_art_reconstruct.py --panel Pause into
+	// data/art/gui/mc2_pause_frame.png; FULL 800x600 authored canvas). This fn
+	// only runs under MC2_UI_IMGUI_PAUSE, so the gate-OFF legacy path never
+	// touches the texture manager here.
+	static unsigned s_frameGlTex = 0;
+	static bool s_frameTried = false;
+	if ( !s_frameTried )
+	{
+		s_frameTried = true;
+		DWORD mcH = mcTextureManager->loadTexture(
+			"data\\art\\gui\\mc2_pause_frame.png", gos_Texture_Alpha, 0, 0, 0 );
+		if ( mcH )
+		{
+			DWORD gosID = mcTextureManager->get_gosTextureHandle( mcH );
+			if ( gosID && gosID != 0xffffffff )
+				s_frameGlTex = gos_GetGLTextureName( gosID );
+		}
+	}
+
+	// Panel authored rect from buttonLayout800.fit Pause statics bbox:
+	// origin (638,86) size 162x239 in the 800x600 design space. Map into the
+	// 16:9 HUD canvas box so it tracks the same aspect anchor as the HUD chrome.
 	int bx = 0, by = 0, bw = 0, bh = 0;
 	if ( !gos_ComputeHudCanvasBox( Environment.drawableWidth, Environment.drawableHeight,
 			&bx, &by, &bw, &bh ) )
 	{ bx = 0; by = 0; bw = Environment.drawableWidth; bh = Environment.drawableHeight; }
 	const float sx = (float)bw / 800.0f;
 	const float sy = (float)bh / 600.0f;
-	const float px = bx + 636.0f * sx;
-	const float py = by + 150.0f * sy;
+	const float px = bx + 638.0f * sx;
+	const float py = by +  86.0f * sy;
 	const float pw = 162.0f * sx;
-	const float ph = 378.0f * sy;
+	const float ph = 239.0f * sy;
+
+	// authored (800x600) -> display-pixel mapping (same anchor as px/py above)
+	auto AX = [&]( float ax ){ return bx + ax * sx; };
+	auto AY = [&]( float ay ){ return by + ay * sy; };
 
 	ImGui::SetNextWindowPos( ImVec2( px, py ) );
 	ImGui::SetNextWindowSize( ImVec2( pw, ph ) );
-	ImGui::PushStyleColor( ImGuiCol_WindowBg, ImVec4( 0.02f, 0.06f, 0.10f, 0.92f ) );
-	ImGui::PushStyleColor( ImGuiCol_Button,        ImVec4( 0.10f, 0.20f, 0.32f, 1.0f ) );
-	ImGui::PushStyleColor( ImGuiCol_ButtonHovered, ImVec4( 0.18f, 0.34f, 0.52f, 1.0f ) );
-	ImGui::PushStyleColor( ImGuiCol_ButtonActive,  ImVec4( 0.24f, 0.44f, 0.66f, 1.0f ) );
-	ImGui::PushStyleColor( ImGuiCol_Text,          ImVec4( 0.55f, 0.78f, 0.90f, 1.0f ) );
+	ImGui::PushStyleVar( ImGuiStyleVar_WindowPadding, ImVec2( 0.0f, 0.0f ) );
 	ImGui::Begin( "##mc2_pause", nullptr,
 		ImGuiWindowFlags_NoTitleBar | ImGuiWindowFlags_NoResize | ImGuiWindowFlags_NoMove |
-		ImGuiWindowFlags_NoCollapse | ImGuiWindowFlags_NoScrollbar | ImGuiWindowFlags_NoSavedSettings );
+		ImGuiWindowFlags_NoCollapse | ImGuiWindowFlags_NoScrollbar | ImGuiWindowFlags_NoSavedSettings |
+		ImGuiWindowFlags_NoBackground );   // baked frame supplies the chrome
 
+	ImDrawList* dl = ImGui::GetWindowDrawList();
+
+	// Black backing behind the frame — the legacy PauseBackRect (661,91..795,304)
+	// is drawn 0xff000000. Fills the header gap + slot interiors so any
+	// transparent parts of the baked PNG read black like the legacy panel.
+	dl->AddRectFilled( ImVec2( AX(661.0f), AY(91.0f) ), ImVec2( AX(795.0f), AY(304.0f) ),
+		IM_COL32( 0, 0, 0, 255 ) );
+
+	// Baked legacy frame: hazard-stripe border + blue metal + 7 blue button
+	// slots. FULL 800x600 PNG -> sample the authored panel sub-rect
+	// (638,86)..(800,325).
+	if ( s_frameGlTex )
+	{
+		ImVec2 uv0( 638.0f / 800.0f, 86.0f / 600.0f );
+		ImVec2 uv1( 800.0f / 800.0f, 325.0f / 600.0f );
+		dl->AddImage( (ImTextureID)(intptr_t)s_frameGlTex,
+			ImVec2( px, py ), ImVec2( px + pw, py + ph ), uv0, uv1 );
+	}
+
+	// Header "GAME PAUSED" centered in the authored header rect (661,91..795,115),
+	// legacy header font color 0xff5c96c2.
 	char header[256];
 	cLoadString( IDS_GAMEPAUSED, header, 256 );
-	ImGui::TextUnformatted( header );
-	ImGui::Separator();
+	{
+		const ImVec2 ts = ImGui::CalcTextSize( header );
+		const float hcx = ( AX(661.0f) + AX(795.0f) ) * 0.5f;
+		const float hcy = ( AY(91.0f)  + AY(115.0f) ) * 0.5f;
+		dl->AddText( ImVec2( hcx - ts.x * 0.5f, hcy - ts.y * 0.5f ),
+			IM_COL32( 0x5C, 0x96, 0xC2, 255 ), header );
+	}
 
+	// Buttons over the baked slots. Authored slot0 (664,116,128,22), 27px Y step
+	// (PauseButton0..6). Invisible hit-rects reuse handleClick(); labels centered.
 	struct PB { int id; const char* label; };
 	static const PB kButtons[] = {
 		{ OBJECTIVES, "OBJECTIVES" }, { SAVE, "QUICK SAVE" }, { LOAD, "QUICK LOAD" },
 		{ OPTIONS, "OPTIONS" }, { RESTART, "ABORT MISSION" }, { EXIT, "EXIT GAME" },
 		{ RETURN, "RETURN TO GAME" },
 	};
-	const float bwid = ImGui::GetContentRegionAvail().x;
-	for ( const PB& b : kButtons )
+	for ( int i = 0; i < 7; i++ )
 	{
+		const PB& b = kButtons[i];
+		const float s0x = AX( 664.0f );
+		const float s0y = AY( 116.0f + i * 27.0f );
+		const float sw  = 128.0f * sx;
+		const float sh  =  22.0f * sy;
 		const bool enabled = ( b.id < buttonCount ) ? buttons[b.id].isEnabled() : true;
-		if ( !enabled ) ImGui::BeginDisabled();
-		if ( ImGui::Button( b.label, ImVec2( bwid, 34.0f * sy ) ) )
+
+		ImGui::SetCursorScreenPos( ImVec2( s0x, s0y ) );
+		const bool clicked = ImGui::InvisibleButton( b.label, ImVec2( sw, sh ) );
+		const bool hovered = enabled && ImGui::IsItemHovered();
+		if ( enabled && clicked )
 			handleClick( b.id );
-		if ( !enabled ) ImGui::EndDisabled();
+
+		// hover tint over the slot (legacy highlights the pressed/hover slot)
+		if ( hovered )
+			dl->AddRectFilled( ImVec2( s0x, s0y ), ImVec2( s0x + sw, s0y + sh ),
+				IM_COL32( 0x5C, 0x96, 0xC2, 48 ) );
+
+		// label color: legacy TextNormal 0x005392 / TextHighlight 0x5C96C2 /
+		// TextDisabled 0x7B7B7B. Use the brighter highlight tone as the resting
+		// color (matches the legacy screenshot's readable blue).
+		const ImU32 col = enabled
+			? ( hovered ? IM_COL32( 0xC8, 0xE6, 0xFF, 255 ) : IM_COL32( 0x5C, 0x96, 0xC2, 255 ) )
+			: IM_COL32( 0x7B, 0x7B, 0x7B, 255 );
+		const ImVec2 ts = ImGui::CalcTextSize( b.label );
+		dl->AddText( ImVec2( s0x + ( sw - ts.x ) * 0.5f, s0y + ( sh - ts.y ) * 0.5f ),
+			col, b.label );
 	}
 
 	ImGui::End();
-	ImGui::PopStyleColor( 5 );   // WindowBg + Button/Hovered/Active + Text
+	ImGui::PopStyleVar( 1 );   // WindowPadding
 
 	// Confirm dialogs stay on the legacy path this slice.
 	if ( bPromptToQuit || bPromptToAbort )
