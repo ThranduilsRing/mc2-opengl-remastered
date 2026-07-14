@@ -63,5 +63,35 @@ py -3 tools/ui_art_reconstruct.py \
 2. ~~Extract FST-packed atlases~~ — NOT NEEDED (stock atlases are loose; the
    "missing" was the inline-extension resolver bug, now fixed).
 3. **Info window** — procedural port (rects + scrollbar), no baked art.
-4. Consider a batch driver (`--all`) that bakes every tile-stitched panel + emits a
-   manifest of frame PNGs + their authored origins for the ImGui layer to consume.
+4. ~~batch driver~~ **DONE** — see "Batch mode" below.
+
+## Batch mode (`--all`)
+
+Bakes EVERY tile-stitched panel across a legacy `game/` dir into one PNG each +
+a `manifest.json` the ImGui layer consumes. In-mission panels appear in every
+`buttonLayout<res>.fit`; they are baked ONCE from the canonical 800 fit.
+
+```
+py -3 tools/ui_art_reconstruct.py --all    --legacy-dir <install>/data/defs/ui/legacy/game    --art-dir <install>/data/art/gui    --out-dir <out>/ui_frames
+```
+
+Bakes all 14 stock tile-stitched panels with ZERO missing atlases:
+Pause, MechBay(75), PilotReady(79), PilotReview, Promote{Left,Right}, SalvageArea,
+CM, OptionsArea, PlayerParams, Obj, Video, Timer, Results. Parsing tolerates
+malformed hand-authored fit values (e.g. a stray `129|`). Manifest per panel:
+`{panel, fit, png, origin:[x,y], size:[w,h], authored_space:[800,600], tiles,
+statics, buttons, missing_atlases:[]}`.
+
+Data quirk: `PromoteGadgetLeft` reports size 400x1286 — its bbox includes the
+authoring tool's offscreen slide-in element (same artifact as the AAR
+`localHeight=1326`); the ImGui layer clips to the real 600 (use origin + the
+600-clamped height, not the raw bbox height, for that panel).
+
+## Wiring a baked panel into an ImGui page (the pattern)
+
+`code/pausewindow.cpp` `renderImGui()` is the reference (PAUSE-IMGUI-SLICE-2):
+load the baked PNG once via `mcTextureManager->loadTexture` →
+`get_gosTextureHandle` → `gos_GetGLTextureName`, then
+`ImGui::GetWindowDrawList()->AddImage(texID, pmin, pmax, uv0, uv1)` UNDER the
+buttons (window draw list, transparent WindowBg), positioned at the manifest's
+origin/size mapped through `gos_ComputeHudCanvasBox`.

@@ -60,12 +60,15 @@ def parse_block(text: str, block: str) -> dict | None:
         if raw.startswith('"') and raw.endswith('"'):
             out[key] = raw[1:-1]
         elif raw.lower().startswith("0x"):
-            out[key] = int(raw, 16)
-        else:
             try:
-                out[key] = int(raw)
+                out[key] = int(raw, 16)
             except ValueError:
                 out[key] = raw
+        else:
+            # Tolerate trailing junk in hand-authored fits (e.g. "129|"): take the
+            # leading signed integer if present, else keep the raw string.
+            im = re.match(r"[-+]?\d+", raw)
+            out[key] = int(im.group(0)) if im else raw
     return out
 
 
@@ -157,17 +160,95 @@ def reconstruct(fit_path: str, art_dir: str, panel: str, default_atlas: str):
     return canvas, bbox, tiles, n_static, n_button, sorted(missing)
 
 
+def discover_panels(text: str) -> list[str]:
+    """Panel prefixes in a fit = every `<Prefix>Static0` (frame-bearing panels).
+    Case-normalized to the fit's own spelling (first occurrence)."""
+    seen: dict = {}
+    for m in re.finditer(r"^\[([A-Za-z0-9]+)Static0\]", text, re.MULTILINE):
+        p = m.group(1)
+        seen.setdefault(p.lower(), p)
+    return list(seen.values())
+
+
+def batch_all(legacy_dir: str, art_dir: str, out_dir: str, default_atlas: str):
+    """Bake every tile-stitched panel across a legacy game/ dir into one PNG each
+    + a manifest. In-mission panels appear in every buttonLayout<res>.fit; we bake
+    them ONCE from the canonical 800 fit (the ImGui port's 800x600 authored space).
+    Other fits (MCL_*/Options_*/mcl_mp_*) are processed as-is."""
+    import glob
+    import json
+    os.makedirs(out_dir, exist_ok=True)
+    fits = sorted(glob.glob(os.path.join(legacy_dir, "*.fit")))
+    manifest = {"panels": []}
+    done: set = set()
+    for fit in fits:
+        base = os.path.basename(fit).lower()
+        # Resolution-variant in-mission fits: keep only the canonical 800.
+        if base.startswith("buttonlayout") and base != "buttonlayout800.fit":
+            continue
+        text = read_fit(fit)
+        for panel in discover_panels(text):
+            key = panel.lower()
+            if key in done:
+                continue
+            done.add(key)
+            canvas, bbox, tiles, ns, nb, missing = reconstruct(
+                fit, art_dir, panel, default_atlas)
+            if tiles == 0:
+                continue
+            crop = canvas.crop(bbox)
+            out_png = os.path.join(out_dir, f"{panel}_frame.png")
+            crop.save(out_png)
+            rec = {
+                "panel": panel,
+                "fit": os.path.basename(fit),
+                "png": os.path.basename(out_png),
+                "origin": [bbox[0], bbox[1]],
+                "size": [bbox[2] - bbox[0], bbox[3] - bbox[1]],
+                "authored_space": [800, 600],
+                "tiles": tiles, "statics": ns, "buttons": nb,
+                "missing_atlases": missing,
+            }
+            manifest["panels"].append(rec)
+            flag = f"  MISSING {missing}" if missing else ""
+            print(f"[ui-art] {panel:18s} {tiles:3d} tiles  "
+                  f"origin=({bbox[0]},{bbox[1]}) size=({rec['size'][0]}x{rec['size'][1]})"
+                  f"  -> {out_png}{flag}")
+    mpath = os.path.join(out_dir, "manifest.json")
+    with open(mpath, "w", encoding="utf-8") as f:
+        json.dump(manifest, f, indent=2)
+    nmiss = sum(1 for p in manifest["panels"] if p["missing_atlases"])
+    print(f"[ui-art] batch: {len(manifest['panels'])} panels baked "
+          f"({nmiss} with missing atlases) -> {mpath}")
+    return manifest
+
+
 def main() -> int:
     ap = argparse.ArgumentParser()
-    ap.add_argument("--fit", required=True)
     ap.add_argument("--art-dir", required=True)
-    ap.add_argument("--panel", required=True, help="block prefix, e.g. Pause / Info")
     ap.add_argument("--default-atlas", default="MCUI_Universal1")
-    ap.add_argument("--out", required=True)
+    # Single-panel mode:
+    ap.add_argument("--fit")
+    ap.add_argument("--panel", help="block prefix, e.g. Pause / MechBay")
+    ap.add_argument("--out")
     ap.add_argument("--crop", action="store_true",
                     help="crop the output PNG to the used bbox (prints origin)")
+    # Batch mode:
+    ap.add_argument("--all", action="store_true",
+                    help="bake every tile-stitched panel in --legacy-dir + a manifest")
+    ap.add_argument("--legacy-dir",
+                    help="dir of legacy *.fit files (with --all)")
+    ap.add_argument("--out-dir", help="output dir for baked PNGs + manifest (with --all)")
     args = ap.parse_args()
 
+    if args.all:
+        if not args.legacy_dir or not args.out_dir:
+            ap.error("--all requires --legacy-dir and --out-dir")
+        batch_all(args.legacy_dir, args.art_dir, args.out_dir, args.default_atlas)
+        return 0
+
+    if not args.fit or not args.panel or not args.out:
+        ap.error("single-panel mode requires --fit, --panel, and --out")
     canvas, bbox, tiles, ns, nb, missing = reconstruct(
         args.fit, args.art_dir, args.panel, args.default_atlas)
     os.makedirs(os.path.dirname(os.path.abspath(args.out)), exist_ok=True)
