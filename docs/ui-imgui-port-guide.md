@@ -69,6 +69,25 @@ aligned. Cursor / modal dialogs / world-anchored overlays are full-surface by
 design (canvas-exempt); HUD hit-tests go through `userInput->getMouseHudX/Y`.
 Full note at the declaration in `GameOS/include/gameos.hpp`.
 
+**Worked reference — the pause menu (PAUSE-IMGUI-SLICE-1, first HUD panel ported).**
+`MC2_UI_IMGUI_PAUSE=1` (registered Trace, default legacy) makes `PauseWindow::render()`
+delegate to `renderImGui()` (`code/pausewindow.cpp`): a borderless ImGui window laid
+out inside `gos_ComputeHudCanvasBox`, its 7 buttons reusing the exact legacy
+`handleClick()` side-effects, disabled states mirrored from the legacy `ControlButton`s.
+Two contract points every HUD-panel port must handle: (1) `update()`'s legacy rect
+hit-test must be SKIPPED under the gate or a click is double-handled (once by ImGui,
+once by the legacy loop); (2) `input::setGameModalActive` should be OFF for an ImGui
+panel (it was added to make the LEGACY sprite menu win over floating ImGui windows —
+for an ImGui panel it would instead let the world behind take stray clicks). Confirm
+dialogs (abort/exit) can stay legacy for a first slice.
+
+**Headless verify recipe (no click-throughs):** `MC2_BOOT_PAUSED=N` (registered Trace)
+auto-toggles the pause menu once at the first non-movie-mode frame ≥ N — combine with
+`MC2_SCREENSHOT_AT_FRAME=M MC2_SCREENSHOT_SOURCE=backbuffer` (backbuffer reads FBO 0
+with the full HUD + ImGui; the default scene-FBO source is pre-HUD). The `_SOURCE=
+backbuffer` point resolves the old "headless never draws the HUD" caveat — it was a
+scene-FBO oracle artifact, the HUD does render headless.
+
 ## Free window resize
 
 Windowed mode is user-resizable (`MC2_WINDOW_RESIZABLE=0` opts out). Every
