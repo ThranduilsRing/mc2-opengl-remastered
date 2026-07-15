@@ -751,7 +751,9 @@ int InfoWindow::gatherWeaponRows( unsigned char names[60], char disabledCount[60
 
 	// sebi: ORIG BUG FIX memory owerwrite fix fow win64 build: sizeof(long) < sizeof(char*)!
 	//memset( names, 0, sizeof( char* ) * 60 );
-	MemSet(names, 0);
+	// NOTE: names is a decayed pointer parameter here (not a fixed array), so the
+	// MemSet(array&) template can't deduce N; explicit memset zeroes all 60 bytes.
+	memset( names, 0, sizeof( unsigned char ) * 60 );
 
 	memset( ranges, 0, sizeof( char ) * 60 );
 	memset( ammo, 0, sizeof( long ) * 60 );
