@@ -394,26 +394,29 @@ bool PauseWindow::renderImGui()
 			dl->AddRectFilled( ImVec2( s0x, s0y ), ImVec2( s0x + sw, s0y + sh ),
 				IM_COL32( 0x5C, 0x96, 0xC2, 48 ) );
 
-		// label color: legacy TextNormal 0x005392 / TextHighlight 0x5C96C2 /
-		// TextDisabled 0x7B7B7B. Use the brighter highlight tone as the resting
-		// color (matches the legacy screenshot's readable blue).
-		const ImU32 col = enabled
-			? ( hovered ? IM_COL32( 0xC8, 0xE6, 0xFF, 255 ) : IM_COL32( 0x5C, 0x96, 0xC2, 255 ) )
-			: IM_COL32( 0x7B, 0x7B, 0x7B, 255 );
-
-		// FONT-IMGUI-SLICE-1: label text + font from the SAME ButtonData the
-		// legacy ControlButton::render uses (localized textID string, bitmap
-		// textFont); centering mirrors the legacy math — X by advance-sum
-		// width (WrapType 2), Y by visual ink bounds — in authored pixels.
+		// FONT-IMGUI-SLICE-1: label text + font + state colors from the SAME
+		// ButtonData the legacy ControlButton::render uses (localized textID
+		// string, bitmap textFont, fit-loaded textColors[state]); centering
+		// mirrors the legacy math — X by advance-sum width (WrapType 2), Y by
+		// visual ink bounds — in authored pixels.
 		char label[256];
 		label[0] = 0;
 		HGOSFONT3D bf = 0;
+		ImU32 col = enabled
+			? ( hovered ? IM_COL32( 0xC8, 0xE6, 0xFF, 255 ) : IM_COL32( 0x5C, 0x96, 0xC2, 255 ) )
+			: IM_COL32( 0x7B, 0x7B, 0x7B, 255 );
 		if ( b.id < buttonCount && buttons[b.id].data )
 		{
 			ButtonData* bd = buttons[b.id].data;
 			if ( bd->textID )
 				cLoadString( bd->textID, label, 256 );
 			bf = bd->textFont.getTempHandle();
+			const int state = !enabled ? ControlButton::DISABLED
+				: ( hovered ? ControlButton::AMBIGUOUS : buttons[b.id].state );
+			const unsigned long argb = (unsigned long)bd->textColors[
+				( state >= 0 && state < 4 ) ? state : 0 ];
+			col = IM_COL32( (argb >> 16) & 0xff, (argb >> 8) & 0xff,
+				argb & 0xff, 255 );
 		}
 		if ( !label[0] )
 			strcpy( label, b.label );

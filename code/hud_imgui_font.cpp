@@ -202,4 +202,57 @@ float MeasureWrappedHeight( HGOSFONT3D font, const char* text,
 	return lines * ad.lineSkip * sy;
 }
 
+void DrawWrappedCentered( ImDrawList* dl, HGOSFONT3D font,
+	float x0, float y0, float x1, float y1,
+	ImU32 col, const char* text, float sx, float sy )
+{
+	if ( !dl || !text )
+		return;
+	gos_FontAtlasDesc ad;
+	if ( !gos_FontGetAtlasDesc( font, &ad ) )
+	{
+		const ImVec2 ts = ImGui::CalcTextSize( text );
+		dl->AddText( ImVec2( ( x0 + x1 - ts.x ) * 0.5f,
+			( y0 + y1 - ts.y ) * 0.5f ), col, text );
+		return;
+	}
+
+	const float wrapWidth = x1 - x0;
+	const int regionPx = sx > 0.0f ? (int)( wrapWidth / sx ) : 0x7fffffff;
+	const int count = (int)strlen( text );
+
+	// first pass: line count (legacy calcTextHeight)
+	int lines = 0;
+	{
+		int pos = 0;
+		while ( pos < count )
+		{
+			const int n = findBreak( font, ad, text + pos, regionPx );
+			if ( n <= 0 ) break;
+			pos += n;
+			lines++;
+		}
+	}
+	if ( lines <= 0 )
+		return;
+
+	// legacy WrapType-3: y += (region_height - num_lines*font_height)/2,
+	// each line x += (region_width - str_width)/2
+	float curY = y0 + ( ( y1 - y0 ) - lines * ad.lineSkip * sy ) * 0.5f;
+	int pos = 0;
+	while ( pos < count )
+	{
+		const int n = findBreak( font, ad, text + pos, regionPx );
+		if ( n <= 0 ) break;
+		// width of this line (stop at '\n' inside the segment)
+		int lw = 0;
+		for ( int i = 0; i < n && text[pos + i] && text[pos + i] != '\n'; ++i )
+			lw += glyphAdvance( font, ad, text[pos + i] );
+		const float lx = x0 + ( wrapWidth - lw * sx ) * 0.5f;
+		drawLine( dl, font, ad, lx, curY, col, text + pos, n, sx, sy );
+		pos += n;
+		curY += ad.lineSkip * sy;
+	}
+}
+
 } // namespace HudFont

@@ -411,10 +411,12 @@ void InfoWindow::renderImGui()
 	// full-panel black backing
 	dl->AddRectFilled( ImVec2( px, py ), ImVec2( px + pw, py + ph ), IM_COL32( 0, 0, 0, 255 ) );
 
-	// header box (dark blue). ~21px tall header band at the top of the panel.
-	const float hdrTop = AY( 436.0f );
-	const float hdrBot = AY( 456.0f );
-	dl->AddRectFilled( ImVec2( AX( 4.0f ), hdrTop ), ImVec2( AX( 164.0f ), hdrBot ),
+	// header box (dark blue). FONT-IMGUI-SLICE-1: use the fit-loaded legacy
+	// InfoHeaderBox rect (NameRect, authored (8,439)..(159,471)) so the box
+	// fits the two-line WrapType-3 name exactly like the legacy panel.
+	dl->AddRectFilled(
+		ImVec2( AX( (float)NameRect.left ),  AY( (float)NameRect.top ) ),
+		ImVec2( AX( (float)NameRect.right ), AY( (float)NameRect.bottom ) ),
 		IM_COL32( 0x00, 0x2F, 0x55, 255 ) );
 
 	// FONT-IMGUI-SLICE-1: text draws with the SAME legacy bitmap fonts
@@ -439,22 +441,21 @@ void InfoWindow::renderImGui()
 	}
 	if ( name )
 	{
-		const ImVec2 tsA = HudFont::Measure( hdrFont, name, 1.0f, 1.0f );
-		const float nxA = (float)NAMELEFT +
-			( (float)( NAMERIGHT - NAMELEFT ) - tsA.x ) * 0.5f;
-		const float nyA = (float)NAMETOP +
-			( (float)( NAMEBOTTOM - NAMETOP ) - tsA.y ) * 0.5f;
-		HudFont::Draw( dl, hdrFont, AX( nxA ), AY( nyA ),
+		HudFont::DrawWrappedCentered( dl, hdrFont,
+			AX( (float)NAMELEFT ), AY( (float)NAMETOP ),
+			AX( (float)NAMERIGHT ), AY( (float)NAMEBOTTOM ),
 			IM_COL32( 0x5C, 0x96, 0xC2, 255 ), name, sx, sy );
 	}
 
-	// health bar (legacy HEALTH rect, just under the header). Color by barStatus:
+	// health bar. FONT-IMGUI-SLICE-1: use the fit-loaded legacy HEALTH rect
+	// (authored (14,461)..(153,465)) — sits inside the InfoHeaderBox under
+	// the two-line name, like the legacy panel. Color by barStatus:
 	// >=0.5 green, >0.2 yellow, else red. Dim bg (argb & 0xff7f7f7f) full width,
 	// then filled fg to width*barStatus.
-	const float hbL = AX( 8.0f );
-	const float hbR = AX( 160.0f );
-	const float hbT = AY( 458.0f );
-	const float hbB = AY( 463.0f );
+	const float hbL = AX( (float)HEALTHLEFT );
+	const float hbR = AX( (float)HEALTHRIGHT );
+	const float hbT = AY( (float)HEALTHTOP );
+	const float hbB = AY( (float)HEALTHBOTTOM );
 	if ( pUnit )
 	{
 		float barStatus = pUnit->getAppearance()->barStatus;

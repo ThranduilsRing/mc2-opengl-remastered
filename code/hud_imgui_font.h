@@ -41,6 +41,14 @@ namespace HudFont
 	// Height DrawWrapped would use, without drawing.
 	float MeasureWrappedHeight( HGOSFONT3D font, const char* text,
 		float wrapWidth, float sx, float sy );
+
+	// Legacy WrapType-3 (gos_TextSetAttributes WrapType 3): word-wrap into
+	// the given display rect, centering the line block vertically and each
+	// line horizontally — the math gosRenderer::drawText applies for
+	// alignment-3 aFont::render calls (e.g. the info-window unit name).
+	void DrawWrappedCentered( ImDrawList* dl, HGOSFONT3D font,
+		float x0, float y0, float x1, float y1,
+		ImU32 col, const char* text, float sx, float sy );
 }
 
 #endif // HUD_IMGUI_FONT_H
