@@ -1592,6 +1592,37 @@ void ControlGui::update( bool bPaused, bool bLOS )
 	if ( bPaused )
 	{ ZoneScopedN("CGui.PauseWnd"); CgScope _c(CG_PAUSE); pauseWnd->update(); }
 
+	// INFO-CAPTURE fixture: MC2_BOOT_INFO=N force-selects the first home mover into
+	// the Info window + switches the command bar to the INFO tab ONCE at frame >= N,
+	// so the in-mission info panel can be captured / iterated headless (no click
+	// path). Same fixture pattern as MC2_BOOT_PAUSED (missiongui.cpp). Registered
+	// Trace, default unset -> byte-identical.
+	{
+		static const long s_bootInfo = [] {
+			const char* v = getenv("MC2_BOOT_INFO");
+			return (v && v[0]) ? atol(v) : 0L;
+		}();
+		if ( s_bootInfo > 0 && infoWnd && ObjectManager && Team::home )
+		{
+			extern uint32_t g_mc2FrameCounter;
+			static bool s_infoDone = false;
+			if ( !s_infoDone && (long)g_mc2FrameCounter >= s_bootInfo )
+			{
+				for ( int i = 0; i < ObjectManager->numMovers; i++ )
+				{
+					MoverPtr m = ObjectManager->getMover( i );
+					if ( m && m->getTeamId() == Team::home->id && m->getExists() )
+					{
+						s_infoDone = true;
+						infoWnd->setUnit( m );
+						getButton( INFO_TAB )->press( true );
+						break;
+					}
+				}
+			}
+		}
+	}
+
 	if (moviePlaying && bMovie)
 	{
 		ZoneScopedN("CGui.Movie");

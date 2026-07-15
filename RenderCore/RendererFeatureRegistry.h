@@ -609,6 +609,18 @@ static constexpr EnvVarDesc kAuxEnvVars[] = {
         "panel, byte-identical. First slice of the in-mission HUD ImGui port."
     },
     {
+        "MC2_TRACE_BOOT_INFO",
+        "MC2_BOOT_INFO",
+        EnvVarKind::Trace,
+        false,
+        "INFO-CAPTURE fixture: =N force-selects the first home mover into the "
+        "in-mission Info window and switches the command bar to the INFO tab "
+        "ONCE at frame >= N (ControlGui::update). Headless agents cannot click "
+        "the tab / select a unit, so this makes the info panel capturable for "
+        "the ImGui port (same pattern as MC2_BOOT_PAUSED). Default unset -> "
+        "byte-identical."
+    },
+    {
         "MC2_TRACE_BOOT_PAUSED",
         "MC2_BOOT_PAUSED",
         EnvVarKind::Trace,
