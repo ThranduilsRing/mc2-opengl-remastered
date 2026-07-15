@@ -1977,6 +1977,34 @@ void ControlGui::update( bool bPaused, bool bLOS )
 		}
 	}
 
+	// TIMER-CAPTURE fixture: MC2_BOOT_TIMER=N force-arms the mission timer ONCE
+	// at frame >= N by giving the mission a time limit (tier1 missions ship with
+	// TimeLimit unset -> m_timeLimit == -1 -> the timer panel never draws), so
+	// the in-mission mission-timer display can be captured / iterated headless.
+	// Same fixture pattern as MC2_BOOT_INFO / MC2_BOOT_OBJ above. Registered
+	// Trace, default unset -> byte-identical.
+	{
+		static const long s_bootTimer = [] {
+			const char* v = getenv("MC2_BOOT_TIMER");
+			return (v && v[0]) ? atol(v) : 0L;
+		}();
+		if ( s_bootTimer > 0 && mission )
+		{
+			extern uint32_t g_mc2FrameCounter;
+			static bool s_timerDone = false;
+			if ( !s_timerDone && (long)g_mc2FrameCounter >= s_bootTimer )
+			{
+				s_timerDone = true;
+				// 754 s -> "012 : 34"-ish readout; far above the 5-minute red /
+				// 2-minute blink bands and never expires inside a 30 s capture run.
+				mission->m_timeLimit = scenarioTime + 754.0f;
+				printf("[BOOT_TIMER] m_timeLimit=%f (frame %u)\n",
+					mission->m_timeLimit, (unsigned)g_mc2FrameCounter);
+				fflush(stdout);
+			}
+		}
+	}
+
 	if (moviePlaying && bMovie)
 	{
 		ZoneScopedN("CGui.Movie");

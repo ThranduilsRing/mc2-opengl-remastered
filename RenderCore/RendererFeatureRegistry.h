@@ -679,6 +679,17 @@ static constexpr EnvVarDesc kAuxEnvVars[] = {
         "takes. Headless agents cannot click the pause buttons, so this is the "
         "capture fixture for the confirm dialogs. Default unset -> byte-identical."
     },
+    {
+        "MC2_TRACE_BOOT_TIMER",
+        "MC2_BOOT_TIMER",
+        EnvVarKind::Trace,
+        false,
+        "TIMER-CAPTURE fixture: =N force-arms the in-mission mission timer ONCE "
+        "at frame >= N by setting mission->m_timeLimit = scenarioTime + 754 s "
+        "(ControlGui::update). Tier1 missions ship with no TimeLimit, so the "
+        "timer panel is otherwise unreachable headless. Same pattern as "
+        "MC2_BOOT_INFO / MC2_BOOT_OBJ. Default unset -> byte-identical."
+    },
     // TERRAIN-DECAL-SLICE-0B: live placement knobs for the CLIFF_WALL mesh-decal
     // (mclib/bdactor.cpp registerStatic). Read once at process start; all default
     // to Slice-0A behavior -> byte-identical when unset. Only consulted when
