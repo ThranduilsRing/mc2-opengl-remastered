@@ -342,6 +342,12 @@ bool PauseWindow::renderImGui()
 		}
 	}
 
+	// POLISH-IMGUI-SLICE-1 note: a PRESSED-state bake was evaluated (fit
+	// UPressed/VPressed — PauseButton0 (0,22) vs normal (0,0)) but the two
+	// crops are PIXEL-IDENTICAL in the shipped MCUI_Universal1 atlas, so the
+	// legacy pressed feedback is entirely the label color (fit TextPressed
+	// 0xffffffff via textColors[PRESSED]) — handled in the button loop below.
+
 	// Panel authored rect from buttonLayout800.fit Pause statics bbox:
 	// origin (638,86) size 162x239 in the 800x600 design space. Map into the
 	// 16:9 HUD canvas box so it tracks the same aspect anchor as the HUD chrome.
@@ -423,11 +429,18 @@ bool PauseWindow::renderImGui()
 		ImGui::SetCursorScreenPos( ImVec2( s0x, s0y ) );
 		const bool clicked = ImGui::InvisibleButton( b.label, ImVec2( sw, sh ) );
 		const bool hovered = enabled && ImGui::IsItemHovered();
+		// POLISH-IMGUI-SLICE-1: while the mouse is down the legacy panel is in
+		// state PRESSED. The pressed BITMAP is pixel-identical to normal in the
+		// shipped atlas (see note above), so the visible legacy feedback is the
+		// label color (fit TextPressed via textColors[PRESSED]) — mapped in the
+		// state logic below.
+		const bool heldNow = enabled && ImGui::IsItemActive();
 		if ( enabled && clicked )
 			handleClick( b.id );
 
-		// hover tint over the slot (legacy highlights the pressed/hover slot)
-		if ( hovered )
+		// hover tint over the slot (legacy highlights the pressed/hover slot);
+		// skip while held (legacy pressed state shows no hover highlight).
+		if ( hovered && !heldNow )
 			dl->AddRectFilled( ImVec2( s0x, s0y ), ImVec2( s0x + sw, s0y + sh ),
 				IM_COL32( 0x5C, 0x96, 0xC2, 48 ) );
 
@@ -448,8 +461,11 @@ bool PauseWindow::renderImGui()
 			if ( bd->textID )
 				cLoadString( bd->textID, label, 256 );
 			bf = bd->textFont.getTempHandle();
+			// POLISH-IMGUI-SLICE-1: held -> PRESSED (fit TextPressed, white),
+			// matching legacy ControlButton::render's textColors[state].
 			const int state = !enabled ? ControlButton::DISABLED
-				: ( hovered ? ControlButton::AMBIGUOUS : buttons[b.id].state );
+				: ( heldNow ? ControlButton::PRESSED
+				: ( hovered ? ControlButton::AMBIGUOUS : buttons[b.id].state ) );
 			const unsigned long argb = (unsigned long)bd->textColors[
 				( state >= 0 && state < 4 ) ? state : 0 ];
 			col = IM_COL32( (argb >> 16) & 0xff, (argb >> 8) & 0xff,
@@ -517,6 +533,12 @@ void PauseWindow::renderImGuiConfirm()
 		if ( gosID && gosID != 0xffffffff )
 			dlgTex = gos_GetGLTextureName( gosID );
 	}
+
+	// POLISH-IMGUI-SLICE-1 note: a PRESSED-state bake was evaluated (fit
+	// UPressed/VPressed (50,177) vs UNormal (50,118), mcl_dialog.fit) but the
+	// two crops are PIXEL-IDENTICAL in the shipped mcl_dialog_3 atlas — the
+	// legacy pressed feedback is entirely the TEXT color animation
+	// (AnimateText=1 / AnimateBmp=0), replayed in the button loop below.
 
 	// Dialog fonts (mcl_dialog.fit: buttons Font=27655 IDS_DIALOG_FONT,
 	// Text0 Font=27656 IDS_DIALOG_TEXT_FONT).
@@ -615,15 +637,42 @@ void PauseWindow::renderImGuiConfirm()
 	const bool enterDone = enterAnim.isDone();
 	const bool running = ( dlg->getStatus() == LogisticsScreen::RUNNING );
 
-	// YES/NO buttons (fit Button1/Button0). Bitmaps are baked (NORMAL state);
-	// live parts = InvisibleButton hit-rect (full 128x59 bitmap rect), centered
-	// label + TextOutline rect at the fit textRect, legacy text colors
-	// (NormalColor 0xff005392; highlight anim's white on hover).
+	// YES/NO buttons (fit Button1/Button0). Bitmaps are baked (pressed crop is
+	// pixel-identical — see note above); live parts = InvisibleButton hit-rect
+	// (full 128x59 bitmap rect), centered label + TextOutline rect at the fit
+	// textRect, legacy text-color ANIMS (POLISH-IMGUI-SLICE-1) below.
 	struct DB { float x; const char* imId; int strID; long status; };
 	static const DB kDlgButtons[2] = {
 		{ 237.f, "##dlgNO",  IDS_DIALOG_NO,  (long)LogisticsScreen::NO  },
 		{ 435.f, "##dlgYES", IDS_DIALOG_YES, (long)LogisticsScreen::YES },
 	};
+	// POLISH-IMGUI-SLICE-1: legacy hover/pressed label-color animation.
+	// mcl_dialog.fit buttons carry AnimateText=1 / AnimateBmp=0 plus per-state
+	// color animations (install data/defs/ui/legacy/game/mcl_dialog.fit):
+	//   Highlight (loops): 0.0 -> 0xffffffff, 0.4 -> 0xff5C96C2, 0.75 -> 0xffffffff
+	//   Pressed (one-shot): 0.0 -> 0xffffffff, 0.5 -> 0xff5C96C2
+	// aAnimButton drives data.textColors[state] from aAnimation::getColor
+	// (gui/aanim.cpp: wrap time by the last keyframe when looping, then linear
+	// interpolateColor per segment — mclib/utilities.cpp); the anim restarts
+	// when the hover begins (gui/abutton.cpp: highlightData.begin() on entry).
+	// The outline rect uses the same textColors[state], so it pulses too.
+	static float s_hoverT[2] = { -1.f, -1.f };
+	static float s_pressT[2] = { -1.f, -1.f };
+	auto animColor = []( float t, float tMid, float tEnd, unsigned long cEnds,
+			unsigned long cMid, bool loops ) -> unsigned long {
+		if ( t > tEnd )
+		{
+			if ( !loops || tEnd <= 0.f )
+				return cMid;   // one-shot: hold the last keyframe color
+			t -= (float)(long)( t / tEnd ) * tEnd;   // aAnimation::getColor wrap
+		}
+		if ( t <= tMid )
+			return (unsigned long)interpolateColor( (long)cEnds, (long)cMid,
+				tMid > 0.f ? t / tMid : 1.f );
+		return (unsigned long)interpolateColor( (long)cMid, (long)cEnds,
+			( t - tMid ) / ( tEnd - tMid ) );
+	};
+
 	HGOSFONT3D bf = s_dlgBtnFont.getTempHandle();
 	for ( int i = 0; i < 2; i++ )
 	{
@@ -631,13 +680,25 @@ void PauseWindow::renderImGuiConfirm()
 		ImGui::SetCursorScreenPos( ImVec2( AX(b.x), AY(367.f) ) );
 		const bool clicked = ImGui::InvisibleButton( b.imId, ImVec2( 128.f * sx, 59.f * sy ) );
 		const bool hovered = ImGui::IsItemHovered();
+		const bool held = ImGui::IsItemActive();   // mouse down on the button
 		if ( enterDone && running && clicked )
 			dlg->handleMessage( aMSG_LEFTMOUSEDOWN, (unsigned long)b.status );
+
+		// advance/restart the state anims (mirrors aAnimButton::update():
+		// begin on entry, update by frameLength while active)
+		s_hoverT[i] = hovered ? ( s_hoverT[i] < 0.f ? 0.f : s_hoverT[i] + frameLength ) : -1.f;
+		s_pressT[i] = held    ? ( s_pressT[i] < 0.f ? 0.f : s_pressT[i] + frameLength ) : -1.f;
 
 		char label[64];
 		label[0] = 0;
 		cLoadString( b.strID, label, 64 );
-		const unsigned long argb = hovered ? 0xffffffff : 0xff005392;
+		// legacy state precedence (aAnimButton::render): pressed > highlight >
+		// normal (NormalColor is constant 0xff005392)
+		unsigned long argb = 0xff005392;
+		if ( held )
+			argb = animColor( s_pressT[i], 0.5f, 0.5f, 0xffffffff, 0xff5C96C2, false );
+		else if ( hovered )
+			argb = animColor( s_hoverT[i], 0.4f, 0.75f, 0xffffffff, 0xff5C96C2, true );
 
 		// textRect: (x+14, 381) 100x30 — label centered like the legacy aButton
 		// (align 2 horizontally, visual-ink bounds vertically); TextOutline=TRUE

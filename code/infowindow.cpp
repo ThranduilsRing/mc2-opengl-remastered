@@ -516,9 +516,10 @@ void InfoWindow::renderImGui()
 	// child's right edge lands on the legacy thumb right (SCROLLBUTTONX +
 	// SCROLLBUTTONWIDTH, authored 156) and ImGui's scrollbar width is set to
 	// the legacy thumb width, so the ImGui scrollbar occupies exactly the
-	// legacy track. Thumb styled the legacy blue 0xff5c96c2; the up/down
-	// arrow-cap sprites (fit InfoButton0/1, MCUI_Med1 atlas) are DEFERRED —
-	// wheel + thumb drag cover the interaction.
+	// legacy track. Thumb styled the legacy blue 0xff5c96c2. POLISH-IMGUI-
+	// SLICE-1: the up/down arrow-cap sprites (fit InfoButton0/1, MCUI_Med1
+	// atlas) are drawn at the track ends below (static art — wheel + thumb
+	// drag cover the interaction; click-to-scroll not wired this slice).
 	const float childL = AX( (float)SCROLLBOXLEFT + 1.0f );
 	const float childT = AY( (float)SCROLLTOP );
 	const float childR = AX( (float)( SCROLLBUTTONX + SCROLLBUTTONWIDTH ) );
@@ -534,10 +535,12 @@ void InfoWindow::renderImGui()
 	// push everything below the doll progressively lower than legacy.
 	ImGui::PushStyleVar( ImGuiStyleVar_ItemSpacing, ImVec2( 0.0f, 0.0f ) );
 	ImGui::SetCursorScreenPos( ImVec2( childL, childT ) );
+	float loadoutScrollMax = 0.0f;   // POLISH-IMGUI-SLICE-1: arrow-cap gate
 	if ( ImGui::BeginChild( "##mc2_info_loadout",
 			ImVec2( childR - childL, childB - childT ),
 			false, ImGuiWindowFlags_NoBackground ) )
 	{
+		loadoutScrollMax = ImGui::GetScrollMaxY();
 		if ( pUnit )
 		{
 			// FONT-IMGUI-SLICE-1: rows draw with the legacy componentFont via
@@ -705,6 +708,38 @@ void InfoWindow::renderImGui()
 	ImGui::EndChild();
 	ImGui::PopStyleVar( 3 );     // ScrollbarSize + ScrollbarRounding + ItemSpacing
 	ImGui::PopStyleColor( 4 );   // ScrollbarBg + Grab/Hovered/Active
+
+	// POLISH-IMGUI-SLICE-1 (INFO-SLICE-3 deferral): the legacy scroll arrow-cap
+	// sprites at the track ends. Legacy render() draws buttons[0/1] (fit
+	// InfoButton0 up-arrow authored (144,477,12,6) UV (201,0), InfoButton1
+	// down-arrow (144,583,12,6) UV (201,16), MCUI_Med1 atlas — all four state
+	// UVs identical, so this is static art) only when the list actually
+	// scrolls (infowindow.cpp legacy: disabled when infoLength <
+	// scrollBarLength || !pUnit, and disabled buttons are not rendered). The
+	// ImGui equivalent of "content exceeds the view" is scrollMaxY > 0. The
+	// quads carry the fit-loaded rect + makeUVs-resolved UVs (incl. the legacy
+	// .1/fileWidth nudge) in buttons[i].location — reuse them verbatim. The
+	// atlas GL name is re-resolved per frame (OBJ-IMGUI-SLICE-1 lesson).
+	if ( pUnit && loadoutScrollMax > 0.0f )
+	{
+		for ( int i = 0; i < 2; i++ )
+		{
+			if ( !buttonData[i].textureHandle )
+				continue;
+			DWORD gosID = mcTextureManager->get_gosTextureHandle( buttonData[i].textureHandle );
+			if ( !gosID || gosID == 0xffffffff )
+				continue;
+			unsigned glTex = gos_GetGLTextureName( gosID );
+			if ( !glTex )
+				continue;
+			const gos_VERTEX* loc = buttons[i].location;
+			dl->AddImage( (ImTextureID)(intptr_t)glTex,
+				ImVec2( AX( loc[0].x ), AY( loc[0].y ) ),
+				ImVec2( AX( loc[2].x ), AY( loc[2].y ) ),
+				ImVec2( loc[0].u, loc[0].v ),
+				ImVec2( loc[2].u, loc[2].v ) );
+		}
+	}
 
 	ImGui::End();
 	ImGui::PopStyleVar( 1 );   // WindowPadding
