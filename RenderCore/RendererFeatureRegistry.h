@@ -690,6 +690,16 @@ static constexpr EnvVarDesc kAuxEnvVars[] = {
         "timer panel is otherwise unreachable headless. Same pattern as "
         "MC2_BOOT_INFO / MC2_BOOT_OBJ. Default unset -> byte-identical."
     },
+    {
+        "MC2_TRACE_BOOT_VIDEO",
+        "MC2_BOOT_VIDEO",
+        EnvVarKind::Trace,
+        false,
+        "VIDEO-CAPTURE fixture: =1 overrides the smoke-mode movie skip in "
+        "MC2Movie::init so in-mission comm videos (mc2_01 V1A.bik ~frame 1600) "
+        "play under MC2_SMOKE_MODE and the video panel is capturable headless. "
+        "Default unset -> smoke-mode skip preserved, byte-identical."
+    },
     // TERRAIN-DECAL-SLICE-0B: live placement knobs for the CLIFF_WALL mesh-decal
     // (mclib/bdactor.cpp registerStatic). Read once at process start; all default
     // to Slice-0A behavior -> byte-identical when unset. Only consulted when
