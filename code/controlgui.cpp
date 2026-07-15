@@ -1632,6 +1632,7 @@ void ControlGui::renderTimerImGui( const char* buffer, unsigned long color )
 	ImGui::SetNextWindowPos( ImVec2( (float)bx, (float)by ) );
 	ImGui::SetNextWindowSize( ImVec2( (float)bw, (float)bh ) );
 	ImGui::PushStyleVar( ImGuiStyleVar_WindowPadding, ImVec2( 0.0f, 0.0f ) );
+	ImGui::PushStyleVar( ImGuiStyleVar_WindowBorderSize, 0.0f );   // see video panel note
 	ImGui::Begin( "##mc2_timer", nullptr,
 		ImGuiWindowFlags_NoTitleBar | ImGuiWindowFlags_NoResize | ImGuiWindowFlags_NoMove |
 		ImGuiWindowFlags_NoCollapse | ImGuiWindowFlags_NoScrollbar | ImGuiWindowFlags_NoSavedSettings |
@@ -1673,7 +1674,7 @@ void ControlGui::renderTimerImGui( const char* buffer, unsigned long color )
 	}
 
 	ImGui::End();
-	ImGui::PopStyleVar( 1 );	// WindowPadding
+	ImGui::PopStyleVar( 2 );	// WindowPadding + WindowBorderSize
 }
 
 // SMALLPANELS-IMGUI-SLICE-1: ImGui comm-video panel (MC2_UI_IMGUI_VIDEO=1).
@@ -1701,6 +1702,11 @@ void ControlGui::renderVideoImGui()
 	ImGui::SetNextWindowPos( ImVec2( (float)bx, (float)by ) );
 	ImGui::SetNextWindowSize( ImVec2( (float)bw, (float)bh ) );
 	ImGui::PushStyleVar( ImGuiStyleVar_WindowPadding, ImVec2( 0.0f, 0.0f ) );
+	// WindowBorderSize=0: the default 1px border insets the window inner clip
+	// rect, clipping chrome texels that touch the canvas boundary (the top
+	// strip's first row and the right strip's last column rasterized 1 device
+	// px short vs legacy until this).
+	ImGui::PushStyleVar( ImGuiStyleVar_WindowBorderSize, 0.0f );
 	ImGui::Begin( "##mc2_video", nullptr,
 		ImGuiWindowFlags_NoTitleBar | ImGuiWindowFlags_NoResize | ImGuiWindowFlags_NoMove |
 		ImGuiWindowFlags_NoCollapse | ImGuiWindowFlags_NoScrollbar | ImGuiWindowFlags_NoSavedSettings |
@@ -1753,7 +1759,7 @@ void ControlGui::renderVideoImGui()
 	}
 
 	ImGui::End();
-	ImGui::PopStyleVar( 1 );	// WindowPadding
+	ImGui::PopStyleVar( 2 );	// WindowPadding + WindowBorderSize
 }
 
 void ControlGui::RenderObjectives()
