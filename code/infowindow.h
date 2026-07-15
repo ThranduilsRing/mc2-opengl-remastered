@@ -28,6 +28,22 @@ struct InfoLoadoutRow
 	uint32_t     argb;
 };
 
+// INFO-IMGUI-SLICE-2: pilot section content shared by the legacy procedural
+// draw and the ImGui panel (same never-duplicate-enumeration rule as
+// InfoLoadoutRow / gatherWeaponRows). Strings arrive fully resolved (dead-pilot
+// fallback, rank string incl. the non-contiguous ACE id) so neither path
+// re-derives them.
+struct InfoPilotRows
+{
+	bool        active;        // pWarrior->active(): draw the pilot photo
+	std::string name;          // pilot name, or IDS_NOPILOT text when !active
+	std::string rankText;      // IDS_GREEN+rank, or IDS_ACE when rank==4
+	int         rank;          // raw rank (indexes the medallion textures)
+	int         gunnery;       // MWS_GUNNERY skill value
+	int         piloting;      // MWS_PILOTING skill value
+	std::vector<std::string> specialties;   // IDS_SPECIALTY+i for set skills
+};
+
 #ifndef AFONT_H
 #include"afont.h"
 #endif
@@ -71,6 +87,13 @@ class InfoWindow
 		// for the ImGui panel. Built on top of gatherWeaponRows so it can never
 		// drift from the legacy enumeration.
 		void gatherLoadoutRows( std::vector<InfoLoadoutRow>& out ) const;
+
+		// INFO-IMGUI-SLICE-2: pilot section content (name / rank / skills /
+		// specialties) used by BOTH drawScrollingStuff and the ImGui panel.
+		// Returns false when the section is hidden (enemy / non-mech /
+		// disabled / destroyed / no pilot) — legacy then skips it exactly as
+		// the old inline condition did.
+		bool gatherPilotRows( InfoPilotRows& out ) const;
 
 		float		scrollPos;
 		float		scrollLength;

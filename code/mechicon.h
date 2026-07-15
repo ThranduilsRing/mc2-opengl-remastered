@@ -45,6 +45,11 @@ public:
 	void setTextureIndex(  int newIndex ) { pilotTextureIndex = newIndex; }
 	void render( float left, float top, float right, float bottom );
 
+	// INFO-IMGUI-SLICE-2: GL texture name + UV sub-rect of this pilot photo so
+	// the ImGui info panel can AddImage/Image it (same math as render()). Returns
+	// false when the pilot atlas isn't resident. Read-only.
+	bool getTexUV( unsigned int& glTex, float& u0, float& v0, float& u1, float& v1 ) const;
+
 
 private:
 
@@ -75,6 +80,16 @@ public:
 		void renderUnitIcon( float left, float top, float right, float bottom );
 		virtual void renderUnitIconBack( float left, float top, float right, float bottom );
 		void renderPilotIcon( float left, float top, float right, float bottom );
+
+		// INFO-IMGUI-SLICE-2: read-only GL texture + UV accessors mirroring the
+		// renderUnitIcon / renderUnitIconBack UV math, so the ImGui info panel can
+		// draw the paperdoll via ImDrawList::AddImage instead of gos quads (gos
+		// quads issued during ImGui building would composite UNDER the panel).
+		// Return false when the icon atlas isn't resident. No render-state
+		// side effects.
+		bool getUnitIconTexUV( unsigned int& glTex, float& u0, float& v0, float& u1, float& v1 ) const;
+		virtual bool getUnitIconBackTexUV( unsigned int& glTex, float& u0, float& v0, float& u1, float& v1 ) const;
+		bool getPilotIconTexUV( unsigned int& glTex, float& u0, float& v0, float& u1, float& v1 ) const;
 		virtual bool			init( Mover* pMover ){ return false; }
 		void init();
 
@@ -203,6 +218,9 @@ public:
 	~VehicleIcon(){}
 
 	virtual void renderUnitIconBack( float left, float top, float right, float bottom ){}
+	// INFO-IMGUI-SLICE-2: vehicles have no back paperdoll (renderUnitIconBack is
+	// a no-op above), so the ImGui accessor reports none too.
+	virtual bool getUnitIconBackTexUV( unsigned int&, float&, float&, float&, float& ) const { return false; }
 	virtual void	update();
 	virtual bool			init( Mover* pMover );
 

@@ -1207,6 +1207,93 @@ void ForceGroupIcon::renderPilotIcon( float left, float top, float right, float 
 	pilotIcon.render( left, top, right, bottom );
 }
 
+// INFO-IMGUI-SLICE-2: read-only GL texture + UV accessors for the ImGui info
+// panel. The UV math below is a verbatim mirror of renderUnitIcon /
+// renderUnitIconBack (including the .1/256 texel nudge and the texIndex paging
+// on the front icon) — keep them in lockstep if either changes.
+bool ForceGroupIcon::getUnitIconTexUV( unsigned int& glTex, float& u0, float& v0, float& u1, float& v1 ) const
+{
+	if ( !s_textureMemory )
+		return false;
+
+	int texIndex = 0;
+	int iconsPerLine = ((int)s_textureMemory->width/(int)unitIconX);
+	int iconsPerPage = ((int)s_textureMemory->height/(int)unitIconY);
+	if ( iconsPerLine <= 0 || iconsPerPage <= 0 )
+		return false;
+	int yIndex = damageIconIndex / iconsPerLine;
+	if ( yIndex >= iconsPerPage )
+	{
+		texIndex = yIndex / iconsPerPage;
+		yIndex = yIndex % iconsPerPage;
+	}
+	int xIndex = damageIconIndex % iconsPerLine;
+
+	if ( texIndex < 0 || texIndex >= 5 || s_textureHandle[texIndex] == 0xffffffff )
+		return false;
+
+	u0 = xIndex * unitIconX/s_textureMemory->width + (.1f / 256.f);
+	v0 = yIndex * unitIconY/s_textureMemory->height+ (.1f / 256.f);
+	u1 = u0 + unitIconX/s_textureMemory->width + (.1f / 256.f );
+	v1 = v0 + unitIconY/s_textureMemory->height + (.1f / 256.f);
+
+	glTex = gos_GetGLTextureName( s_textureHandle[texIndex] );
+	return glTex != 0;
+}
+
+bool ForceGroupIcon::getUnitIconBackTexUV( unsigned int& glTex, float& u0, float& v0, float& u1, float& v1 ) const
+{
+	if ( !s_textureMemory || s_textureHandle[0] == 0xffffffff )
+		return false;
+
+	int iconsPerLine = ((int)s_textureMemory->width/(int)unitIconX);
+	if ( iconsPerLine <= 0 )
+		return false;
+	int yIndex = backDamageIndex / iconsPerLine;
+	int xIndex = backDamageIndex % iconsPerLine;
+
+	u0 = xIndex * unitIconX/s_textureMemory->width+ (.1f / 256.f);
+	v0 = yIndex * unitIconY/s_textureMemory->height+ (.1f / 256.f);
+	u1 = u0 + unitIconX/s_textureMemory->width + (.1f / 256.f );
+	v1 = v0 + unitIconY/s_textureMemory->height + (.1f / 256.f);
+
+	glTex = gos_GetGLTextureName( s_textureHandle[0] );
+	return glTex != 0;
+}
+
+bool ForceGroupIcon::getPilotIconTexUV( unsigned int& glTex, float& u0, float& v0, float& u1, float& v1 ) const
+{
+	return pilotIcon.getTexUV( glTex, u0, v0, u1, v1 );
+}
+
+// INFO-IMGUI-SLICE-2: mirrors PilotIcon::render's UV math (note: the legacy
+// code divides BOTH u and v by s_pilotTextureWidth — the pilot atlas is square;
+// mirrored verbatim for pixel parity).
+bool PilotIcon::getTexUV( unsigned int& glTex, float& u0, float& v0, float& u1, float& v1 ) const
+{
+	if ( !s_pilotTextureHandle || !s_pilotTextureWidth || pilotIconX <= 0.f )
+		return false;
+
+	int iconsPerRow = s_pilotTextureWidth / pilotIconX;
+	if ( iconsPerRow <= 0 )
+		return false;
+	int xIndex = pilotTextureIndex % iconsPerRow;
+	int yIndex = pilotTextureIndex / iconsPerRow;
+
+	float xLocation = xIndex * pilotIconX;
+	float yLocation = yIndex * pilotIconY;
+	u0 = xLocation/s_pilotTextureWidth + (.1f/s_pilotTextureWidth);
+	u1 = (xLocation + pilotIconX)/s_pilotTextureWidth+ (.1f/s_pilotTextureWidth);
+	v0 = yLocation/s_pilotTextureWidth+ (.1f/s_pilotTextureWidth);
+	v1 = (yLocation + pilotIconY)/s_pilotTextureWidth+ (.1f/s_pilotTextureWidth);
+
+	long gosID = mcTextureManager->get_gosTextureHandle( s_pilotTextureHandle );
+	if ( gosID <= 0 )   // 0 = none, -1 (0xffffffff) = invalid
+		return false;
+	glTex = gos_GetGLTextureName( (DWORD)gosID );
+	return glTex != 0;
+}
+
 
 bool VehicleIcon::init( Mover* pMover )
 {

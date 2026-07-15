@@ -17,6 +17,8 @@ InfoWindow.cpp			: Implementation of the InfoWindow component.
 #include"gameos.hpp"        // INFO-IMGUI-SLICE-1: gos_ComputeHudCanvasBox + Environment
 #include"imgui.h"           // INFO-IMGUI-SLICE-1: ImGui info panel
 #include<cstdlib>           // INFO-IMGUI-SLICE-1: getenv
+#include<cctype>            // INFO-IMGUI-SLICE-2: toupper (bitmap-font-style caps)
+#include<cstdint>           // INFO-IMGUI-SLICE-2: intptr_t (ImTextureID cast)
 
 long InfoWindow::SCROLLLEFT = 0;
 long InfoWindow::SCROLLRIGHT = 0;
@@ -415,6 +417,18 @@ void InfoWindow::renderImGui()
 	dl->AddRectFilled( ImVec2( AX( 4.0f ), hdrTop ), ImVec2( AX( 164.0f ), hdrBot ),
 		IM_COL32( 0x00, 0x2F, 0x55, 255 ) );
 
+	// INFO-IMGUI-SLICE-2: legacy panel text is a bitmap font whose glyphs are
+	// ALL-CAPS; ImGui's default font is mixed-case. Uppercase every string the
+	// panel displays so the text reads like the legacy panel. (Loading the
+	// legacy bitmap font into the ImGui atlas is deferred — no existing ImGui
+	// font-loading helper in the repo, and building an importer is out of
+	// slice scope.)
+	auto ToUpper = []( std::string s ){
+		for ( char& c : s )
+			c = (char)toupper( (unsigned char)c );
+		return s;
+	};
+
 	// unit name (legacy drawName blue 0xff5c96c2), centered vertically in header.
 	char nameBuf[256];
 	const char* name;
@@ -427,9 +441,10 @@ void InfoWindow::renderImGui()
 	}
 	if ( name )
 	{
-		const ImVec2 ts = ImGui::CalcTextSize( name );
+		const std::string upName = ToUpper( name );
+		const ImVec2 ts = ImGui::CalcTextSize( upName.c_str() );
 		const float ncy = ( hdrTop + hdrBot ) * 0.5f - ts.y * 0.5f;
-		dl->AddText( ImVec2( AX( 8.0f ), ncy ), IM_COL32( 0x5C, 0x96, 0xC2, 255 ), name );
+		dl->AddText( ImVec2( AX( 8.0f ), ncy ), IM_COL32( 0x5C, 0x96, 0xC2, 255 ), upName.c_str() );
 	}
 
 	// health bar (legacy HEALTH rect, just under the header). Color by barStatus:
@@ -463,8 +478,31 @@ void InfoWindow::renderImGui()
 			ImVec2( hbL + ( hbR - hbL ) * barStatus, hbB ), argb2im( full ) );
 	}
 
-	// mech paperdoll icon area — DEFERRED to slice-2 (icon->renderUnitIcon is a
-	// 3D/sprite render). Left blank: (4,465)..(164,505) authored.
+	// INFO-IMGUI-SLICE-2: mech paperdoll (front + back schematic). Same atlas
+	// sub-rects the legacy renderUnitIcon/-Back draw (damage-state UVs exposed
+	// by ForceGroupIcon::getUnitIcon*TexUV), composited via the ImGui draw list
+	// so it layers correctly over the panel backing. Authored rects mirror the
+	// buttonLayout800 MechIcon block (front 14..45, back 51..82, 38 tall),
+	// placed in the area slice-1 reserved: (4,465)..(164,505).
+	if ( pUnit && icon )
+	{
+		unsigned int iconTex = 0;
+		float u0, v0, u1, v1;
+		const float dollTop = AY( 466.0f );
+		const float dollBot = AY( 504.0f );
+		if ( icon->getUnitIconTexUV( iconTex, u0, v0, u1, v1 ) )
+		{
+			dl->AddImage( (ImTextureID)(intptr_t)iconTex,
+				ImVec2( AX( 14.0f ), dollTop ), ImVec2( AX( 45.0f ), dollBot ),
+				ImVec2( u0, v0 ), ImVec2( u1, v1 ) );
+		}
+		if ( icon->getUnitIconBackTexUV( iconTex, u0, v0, u1, v1 ) )
+		{
+			dl->AddImage( (ImTextureID)(intptr_t)iconTex,
+				ImVec2( AX( 51.0f ), dollTop ), ImVec2( AX( 82.0f ), dollBot ),
+				ImVec2( u0, v0 ), ImVec2( u1, v1 ) );
+		}
+	}
 
 	// loadout list in a scrolling child region. ImGui's scrollbar replaces the
 	// legacy hand-rolled thumb/scroll-buttons. Rows from the shared helper.
@@ -484,10 +522,48 @@ void InfoWindow::renderImGui()
 				const uint32_t a = r.argb;
 				ImGui::PushStyleColor( ImGuiCol_Text,
 					IM_COL32( (a >> 16) & 0xff, (a >> 8) & 0xff, a & 0xff, (a >> 24) & 0xff ) );
-				ImGui::TextUnformatted( r.text.c_str() );
+				// INFO-IMGUI-SLICE-2: ALL-CAPS like the legacy bitmap font.
+				ImGui::TextUnformatted( ToUpper( r.text ).c_str() );
 				ImGui::PopStyleColor();
 			}
 			ImGui::PopTextWrapPos();
+
+			// INFO-IMGUI-SLICE-2: pilot section (photo + name + rank + skills +
+			// specialty skills). Content from the shared gatherPilotRows helper
+			// (the legacy drawScrollingStuff consumes the SAME gather). Legacy
+			// pilot-section blue is 0xff005392; skill meters are simplified to
+			// "GUNNERY/PILOTING <value>" text rows this slice (the legacy
+			// medallion/bar textures stay legacy-only).
+			InfoPilotRows pilot;
+			if ( gatherPilotRows( pilot ) )
+			{
+				ImGui::Dummy( ImVec2( 1.0f, 4.0f * sy ) );
+
+				const ImU32 pilotBlue = IM_COL32( 0x00, 0x53, 0x92, 255 );
+
+				// pilot photo (authored 24x36, PilotLeft block) + name beside it
+				unsigned int pTex = 0;
+				float pu0, pv0, pu1, pv1;
+				if ( pilot.active && icon && icon->getPilotIconTexUV( pTex, pu0, pv0, pu1, pv1 ) )
+				{
+					ImGui::Image( (ImTextureID)(intptr_t)pTex,
+						ImVec2( 24.0f * sx, 36.0f * sy ),
+						ImVec2( pu0, pv0 ), ImVec2( pu1, pv1 ) );
+					ImGui::SameLine();
+				}
+				ImGui::PushStyleColor( ImGuiCol_Text, pilotBlue );
+				ImGui::TextUnformatted( ToUpper( pilot.name ).c_str() );
+
+				// rank + skill rows
+				ImGui::TextUnformatted( ToUpper( pilot.rankText ).c_str() );
+				ImGui::Text( "GUNNERY  %d", pilot.gunnery );
+				ImGui::Text( "PILOTING %d", pilot.piloting );
+
+				// specialty skills
+				for ( const std::string& s : pilot.specialties )
+					ImGui::TextUnformatted( ToUpper( s ).c_str() );
+				ImGui::PopStyleColor();
+			}
 		}
 	}
 	ImGui::EndChild();
@@ -877,6 +953,61 @@ void InfoWindow::gatherLoadoutRows( std::vector<InfoLoadoutRow>& out ) const
 	}
 }
 
+// INFO-IMGUI-SLICE-2: pilot section content shared by BOTH the legacy draw and
+// the ImGui panel. Verbatim lift of the former inline reads in
+// drawScrollingStuff (same visibility condition, same dead-pilot fallback, same
+// ACE rank special-case, same specialty enumeration) so the two paths cannot
+// drift on WHAT the pilot section says.
+bool InfoWindow::gatherPilotRows( InfoPilotRows& out ) const
+{
+	out = InfoPilotRows();
+
+	if ( !pUnit )
+		return false;
+
+	// DON'T DO PILOT INFO if ENEMY OR mech is destroyed or disabled.
+	if ( !( pUnit->getTeam() && !Team::home->isEnemy(pUnit->getTeam()) && pUnit->isMech()
+			&& !pUnit->isDisabled() && !pUnit->isDestroyed() ) )
+		return false;
+
+	MechWarrior* pWarrior = pUnit->getPilot();
+	if ( !pWarrior )
+		return false;
+
+	out.active = pWarrior->active();
+
+	char buffer[256];
+	if ( out.active )
+		out.name = pWarrior->getName();
+	else
+	{
+		cLoadString( IDS_NOPILOT, buffer, 255 );
+		out.name = buffer;
+	}
+
+	out.rank = pWarrior->getRank();
+	//ACE not continguous with other ranks.  Added too late!
+	if ( out.rank != 4 )
+		cLoadString( IDS_GREEN + out.rank, buffer, 256 );
+	else
+		cLoadString( IDS_ACE, buffer, 256 );
+	out.rankText = buffer;
+
+	out.gunnery  = pWarrior->getSkill( MWS_GUNNERY );
+	out.piloting = pWarrior->getSkill( MWS_PILOTING );
+
+	for ( int i = 0; i < NUM_SPECIALTY_SKILLS; i++ )
+	{
+		if ( pWarrior->specialtySkills[i] )
+		{
+			cLoadString( IDS_SPECIALTY + i, buffer, 256 );
+			out.specialties.push_back( buffer );
+		}
+	}
+
+	return true;
+}
+
 void InfoWindow::drawScrollingStuff()
 {
 	if ( !pUnit )
@@ -1044,52 +1175,43 @@ void InfoWindow::drawScrollingStuff()
 	curY += SECTIONSKIP;
 
 	// DON'T DO PILOT INFO if ENEMY OR mech is destroyed or disabled.
-	if ( pUnit->getTeam() && !Team::home->isEnemy(pUnit->getTeam()) && pUnit->isMech() && !pUnit->isDisabled() && !pUnit->isDestroyed())
+	// INFO-IMGUI-SLICE-2: visibility condition + name/rank/skills/specialty
+	// content factored into the shared gatherPilotRows helper (ImGui panel uses
+	// the same one). Draw calls below are byte-identical to the former inline
+	// reads — same strings, same values, same order.
+	InfoPilotRows pilotRows;
+	if ( gatherPilotRows( pilotRows ) )
 	{
-		MechWarrior* pWarrior = pUnit->getPilot();
-
 		if ( icon )
 		{
 			if ( curY > NAMETOP )
 			{
-				if ( pWarrior->active() )
+				if ( pilotRows.active )
 					icon->renderPilotIcon( PILOTLEFT, curY, PILOTRIGHT, curY + PILOTHEIGHT );
-				GUI_RECT tmpRect = { (long)PILOTLEFT, (long)curY, (long)(PILOTRIGHT + 1), (long)(curY + PILOTHEIGHT + 1) }; 
+				GUI_RECT tmpRect = { (long)PILOTLEFT, (long)curY, (long)(PILOTRIGHT + 1), (long)(curY + PILOTHEIGHT + 1) };
 				drawEmptyRect( tmpRect, SCROLLCOLOR, SCROLLCOLOR  );
-			
+
 				float right = SCROLLLEFT;
 				float top = curY + PILOTHEIGHT/2 - height/2;
 				float bottom = top + height;
 				// draw the name of the pilot
-				char deadPilotName[256];
-				cLoadString( IDS_NOPILOT, deadPilotName, 255 );
-				capHeader = pWarrior->active() ? pWarrior->getName() : deadPilotName;
+				capHeader = pilotRows.name.c_str();
 				componentFont.render( capHeader, PILOTNAMELEFT, top, right - PILOTNAMELEFT, bottom - top, 0xff005392, 0, 0 );
-				
+
 			}
-			
+
 			curY += PILOTHEIGHT;
 			curY += SECTIONSKIP;
 		}
 
 		curY += SECTIONSKIP;
 
-		int rank = pWarrior->getRank();
-		int skills[2] = { MWS_GUNNERY, MWS_PILOTING };
-
-		char buffer[256];
-		//ACE not continguous with other ranks.  Added too late!
-		if (rank != 4)
-			cLoadString( IDS_GREEN + rank, buffer, 256 );
-		else
-			cLoadString( IDS_ACE, buffer, 256 );
-
 		if ( curY > NAMETOP )
 		{
-			componentFont.render( buffer, SKILLLEFT, curY, SCROLLLEFT - SKILLLEFT, height, 0xff005392, 0, 0 );
+			componentFont.render( pilotRows.rankText.c_str(), SKILLLEFT, curY, SCROLLLEFT - SKILLLEFT, height, 0xff005392, 0, 0 );
 		}
 
-		int currentSkill = rank;
+		int currentSkill = pilotRows.rank;
 		for (int j = 0; j < 3; j ++ )
 		{
 			gos_VERTEX v[4];
@@ -1098,12 +1220,12 @@ void InfoWindow::drawScrollingStuff()
 			for ( i = 0; i < 4; i++ )
 			{
 				v[i] = skillInfos[currentSkill].location[i];
-				v[i].y = curY;	
+				v[i].y = curY;
 				v[i].rhw = .5;
 			}
 
-			v[1].y = v[2].y = curY + height;		
-			
+			v[1].y = v[2].y = curY + height;
+
 			if ( curY > NAMETOP )
 			{
 				GUI_RECT tmpRect = { (long)(v[0].x - .5), (long)(v[0].y - .5), (long)(v[2].x + 1.5), (long)(v[2].y + 1.5) };
@@ -1116,7 +1238,7 @@ void InfoWindow::drawScrollingStuff()
 
 				if ( j != 0 )
 				{
-					int skill = pWarrior->getSkill( skills[j-1] );
+					int skill = ( j == 1 ) ? pilotRows.gunnery : pilotRows.piloting;
 					drawSkillBar( skill, curY, height );
 				}
 			}
@@ -1127,19 +1249,15 @@ void InfoWindow::drawScrollingStuff()
 
 		}
 
-			
-		
-		for ( i = 0; i < NUM_SPECIALTY_SKILLS; i++ )
+
+
+		for ( size_t s = 0; s < pilotRows.specialties.size(); s++ )
 		{
-			if ( pWarrior->specialtySkills[i] )
+			if ( curY > NAMETOP )
 			{
-				if ( curY > NAMETOP )
-				{
-					cLoadString( IDS_SPECIALTY + i, buffer, 256 );
-					componentFont.render( buffer, NAMELEFT, curY, NAMERIGHT - NAMELEFT, height, 0xff005392, 0, 0 );
-				}
-				curY += height;
+				componentFont.render( pilotRows.specialties[s].c_str(), NAMELEFT, curY, NAMERIGHT - NAMELEFT, height, 0xff005392, 0, 0 );
 			}
+			curY += height;
 		}
 	}
 	else
