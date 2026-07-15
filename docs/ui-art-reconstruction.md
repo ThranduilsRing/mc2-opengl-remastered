@@ -38,6 +38,22 @@ py -3 tools/ui_art_reconstruct.py \
   scrollbar in code, not atlas tiles. Its ImGui port reproduces the procedural
   draw (rects + scrollbar), no baked frame.
 
+### Prefix-less dialog fits + button tinting (PAUSE-IMGUI-SLICE-3)
+
+Dialog fits (`mcl_dialog.fit`, `mcl_dialog_onebutton.fit`, …) enumerate bare
+`[Static N]`/`[Button N]` blocks — pass `--panel ""`. The legacy `aButton` quad
+draw MODULATES the bitmap by the fit button `color` (e.g. `mcl_dialog`'s yellow
+slot art × `0xff005392` → the in-game green camo); bake that with
+`--tint-buttons 005392` so the flattened PNG carries the exact on-screen pixels:
+
+```
+py -3 tools/ui_art_reconstruct.py \
+   --fit <install>/data/defs/ui/legacy/game/mcl_dialog.fit \
+   --art-dir <install>/data/art/gui \
+   --panel "" --tint-buttons 005392 \
+   --out <install>/data/art/gui/mc2_dialog_frame.png
+```
+
 ## Status (2026-07-14)
 
 - **Pause: DONE** — 17 tiles (10 frame statics + 7 button-normal) → one 162×239 PNG

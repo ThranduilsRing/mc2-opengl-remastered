@@ -94,7 +94,8 @@ def load_atlas(art_dir: str, name: str, cache: dict) -> Image.Image:
     raise FileNotFoundError(f"atlas '{name}' not found in {art_dir}")
 
 
-def reconstruct(fit_path: str, art_dir: str, panel: str, default_atlas: str):
+def reconstruct(fit_path: str, art_dir: str, panel: str, default_atlas: str,
+                button_tint=None):
     text = read_fit(fit_path)
     hdr = parse_block(text, panel + "Window") or {}
     n_static = int(hdr.get("StaticCount", 0))
@@ -122,7 +123,7 @@ def reconstruct(fit_path: str, art_dir: str, panel: str, default_atlas: str):
     minx, miny, maxx, maxy = 800, 600, 0, 0
     missing: set = set()
 
-    def blit(kind: str, count: int):
+    def blit(kind: str, count: int, tint=None):
         nonlocal tiles, minx, miny, maxx, maxy
         for i in range(count):
             b = parse_block(text, f"{panel}{kind}{i}")
@@ -145,6 +146,13 @@ def reconstruct(fit_path: str, art_dir: str, panel: str, default_atlas: str):
             crop = im.crop((u, v, u + uw, v + vh))
             if (uw, vh) != (w, h):  # honor scale if a panel differs (stock: 1:1)
                 crop = crop.resize((w, h), Image.NEAREST)
+            if tint is not None:
+                # PAUSE-IMGUI-SLICE-3: pre-modulate by the fit button 'color'
+                # (legacy aButton quads draw modulated; e.g. mcl_dialog buttons
+                # tint the yellow slot art 0xff005392 -> green camo).
+                tr, tg, tb = tint
+                crop.putdata([(r * tr // 255, g * tg // 255, b_ * tb // 255, a)
+                              for (r, g, b_, a) in crop.getdata()])
             canvas.alpha_composite(crop, (x, y))
             tiles += 1
             minx, miny = min(minx, x), min(miny, y)
@@ -154,7 +162,7 @@ def reconstruct(fit_path: str, art_dir: str, panel: str, default_atlas: str):
     # (up) state, so the baked frame shows the resting panel; the ImGui port
     # renders live button states on top.
     blit("Static", n_static)
-    blit("Button", n_button)
+    blit("Button", n_button, tint=button_tint)
 
     bbox = (minx, miny, maxx, maxy) if tiles else (0, 0, 800, 600)
     return canvas, bbox, tiles, n_static, n_button, sorted(missing)
@@ -233,6 +241,10 @@ def main() -> int:
     ap.add_argument("--out")
     ap.add_argument("--crop", action="store_true",
                     help="crop the output PNG to the used bbox (prints origin)")
+    ap.add_argument("--tint-buttons", metavar="RRGGBB",
+                    help="pre-modulate the baked button tiles by this color "
+                         "(the fit button 'color' the legacy quad draw applies, "
+                         "e.g. 005392 for mcl_dialog)")
     # Batch mode:
     ap.add_argument("--all", action="store_true",
                     help="bake every tile-stitched panel in --legacy-dir + a manifest")
@@ -247,10 +259,16 @@ def main() -> int:
         batch_all(args.legacy_dir, args.art_dir, args.out_dir, args.default_atlas)
         return 0
 
-    if not args.fit or not args.panel or not args.out:
+    # NOTE: --panel "" is legal — mcl_dialog.fit-style dialog fits enumerate
+    # bare [Static N]/[Button N] blocks with no panel prefix.
+    if not args.fit or args.panel is None or not args.out:
         ap.error("single-panel mode requires --fit, --panel, and --out")
+    tint = None
+    if args.tint_buttons:
+        tv = int(args.tint_buttons, 16)
+        tint = ((tv >> 16) & 0xff, (tv >> 8) & 0xff, tv & 0xff)
     canvas, bbox, tiles, ns, nb, missing = reconstruct(
-        args.fit, args.art_dir, args.panel, args.default_atlas)
+        args.fit, args.art_dir, args.panel, args.default_atlas, button_tint=tint)
     os.makedirs(os.path.dirname(os.path.abspath(args.out)), exist_ok=True)
     out = canvas
     if args.crop:
