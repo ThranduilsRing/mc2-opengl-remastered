@@ -148,3 +148,24 @@ confirm dialogs (ABORT/EXIT) still legacy — port later. NEXT PANEL per scope d
 info window (self-contained, next-simplest) or command bar.
 
 - **2026-07-14 PAUSE-IMGUI-SLICE-2 SHIPPED (`f3ed79c2`)** — MC2_UI_IMGUI_PAUSE now renders the offline-reconstructed legacy chrome (hazard-stripe frame + blue metal + 7 blue button slots + centered "GAME PAUSED" header + centered labels) instead of the flat ImGui window; eyeballed capture matches `.claude/pause_window_legacy_ref.png` (scratchpad/pause_chrome.png). Frame baked by `tools/ui_art_reconstruct.py --panel Pause` into install `data/art/gui/mc2_pause_frame.png` (gitignored, regenerable), loaded once via mcTextureManager, sampled UV sub-rect (638,86)..(800,325) of the FULL 800x600 PNG, drawn under InvisibleButton hit-rects (slot0 664,116,128,22 step 27) reusing handleClick(). Corrected panel origin from spec's stale 636,150 → authored bbox 638,86 size 162x239 (per fit statics). Tier1 smoke gate-OFF 5/5 PASS (+0 destroys). Confirm dialogs still legacy-path.
+
+## INFO-WINDOW PORT SETUP (2026-07-14) — fixture + legacy reference ready
+
+- **MC2_BOOT_INFO=N fixture** (`ControlGui::update`, registered Trace): force-selects the
+  first home mover into the Info window + switches the command bar to the INFO tab once at
+  frame >= N (un-presses TACMAP/VEHICLE siblings — the render if/else picks TACMAP first
+  otherwise). Headless info-panel capture, mirror of MC2_BOOT_PAUSED.
+- **Legacy reference captured:** `.claude/info_window_legacy_ref.png` (RAZORBACK 30T: name +
+  green health bar + mech paperdoll schematic + blue scrollbar + loadout list "2/2 ST SRM /
+  BACK MG ARRAY / 1/1 LARGE LASER / UNDEFINED"). Recipe: `MC2_BOOT_INFO=700 +
+  MC2_SCREENSHOT_AT_FRAME=4200 + MC2_SCREENSHOT_SOURCE=backbuffer`.
+- **This panel is PROCEDURAL, NOT tile-stitched** (docs/ui-art-reconstruction.md taxonomy):
+  `InfoWindow::render` (code/infowindow.cpp) draws colored boxes (InfoHeaderBox/ScrollContentBox
+  from the fit) + a hand-rolled scrollbar + `drawName`/health-bar/loadout-list quads, bound to
+  a live `pUnit` (Mover*). So the ImGui port REPRODUCES the procedural draw (no baked frame):
+  header box + name + health bar, the scrolling loadout list (the hand scrollbar → ImGui child
+  + scrollbar), all reading pUnit each frame. Layout inside gos_ComputeHudCanvasBox at the
+  authored InfoWindow rect (X=3 Y=434 W=162 H=163 per buttonLayout800.fit).
+- NEXT: gate `MC2_UI_IMGUI_INFO=1` (default legacy); reproduce the panel in ImGui bound to
+  the same pUnit; verify with the fixture recipe vs the legacy reference. Good subagent-handoff
+  shape (like PAUSE-IMGUI-SLICE-2) once the render fields are mapped from InfoWindow::render.
