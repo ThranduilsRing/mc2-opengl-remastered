@@ -564,6 +564,26 @@ void InfoWindow::renderImGui()
 					ImGui::TextUnformatted( ToUpper( s ).c_str() );
 				ImGui::PopStyleColor();
 			}
+
+			// INFO-IMGUI-SLICE-2 capture-fixture assist: when the MC2_BOOT_INFO
+			// capture fixture is driving (headless recipe only — env already
+			// registered by slice-1), pin the list scrolled to bottom from
+			// bootFrame+3000 on so a late screenshot (recipe: boot 700 / shot
+			// 4200) can pixel-verify the pilot rows. Capture the top-of-panel
+			// state with a screenshot frame below bootFrame+3000. No effect
+			// when MC2_BOOT_INFO is unset (normal play).
+			{
+				static const long s_bootInfoScroll = []{
+					const char* v = getenv("MC2_BOOT_INFO");
+					return (v && v[0]) ? atol(v) : 0L;
+				}();
+				if ( s_bootInfoScroll > 0 )
+				{
+					extern uint32_t g_mc2FrameCounter;
+					if ( (long)g_mc2FrameCounter >= s_bootInfoScroll + 3000 )
+						ImGui::SetScrollY( ImGui::GetScrollMaxY() );
+				}
+			}
 		}
 	}
 	ImGui::EndChild();
