@@ -529,6 +529,10 @@ void InfoWindow::renderImGui()
 	ImGui::PushStyleColor( ImGuiCol_ScrollbarGrabActive,  IM_COL32( 0x9C, 0xC8, 0xE8, 255 ) );
 	ImGui::PushStyleVar( ImGuiStyleVar_ScrollbarSize, (float)SCROLLBUTTONWIDTH * sx );
 	ImGui::PushStyleVar( ImGuiStyleVar_ScrollbarRounding, 0.0f );
+	// legacy drawScrollingStuff advances curY by exact row heights/SECTIONSKIPs;
+	// ImGui's default ItemSpacing between the Dummies would add ~4px per row and
+	// push everything below the doll progressively lower than legacy.
+	ImGui::PushStyleVar( ImGuiStyleVar_ItemSpacing, ImVec2( 0.0f, 0.0f ) );
 	ImGui::SetCursorScreenPos( ImVec2( childL, childT ) );
 	if ( ImGui::BeginChild( "##mc2_info_loadout",
 			ImVec2( childR - childL, childB - childT ),
@@ -647,6 +651,9 @@ void InfoWindow::renderImGui()
 					cdl->AddRect( ImGui::GetItemRectMin(), ImGui::GetItemRectMax(),
 						chromeBlue );
 					ImGui::SameLine();
+					// legacy pilot-name x: fit PilotNameLeft (authored 42)
+					ImGui::SetCursorScreenPos( ImVec2( AX( (float)PILOTNAMELEFT ),
+						ImGui::GetCursorScreenPos().y ) );
 				}
 				else
 					RowX();
@@ -696,7 +703,7 @@ void InfoWindow::renderImGui()
 		}
 	}
 	ImGui::EndChild();
-	ImGui::PopStyleVar( 2 );     // ScrollbarSize + ScrollbarRounding
+	ImGui::PopStyleVar( 3 );     // ScrollbarSize + ScrollbarRounding + ItemSpacing
 	ImGui::PopStyleColor( 4 );   // ScrollbarBg + Grab/Hovered/Active
 
 	ImGui::End();
