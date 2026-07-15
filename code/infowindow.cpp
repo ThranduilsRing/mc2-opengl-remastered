@@ -377,18 +377,33 @@ bool InfoWindow::imguiInfoEnabled()
 // helper so it cannot drift from the legacy enumeration.
 void InfoWindow::renderImGui()
 {
-	// Map the authored InfoWindow rect (buttonLayout800: X=3 Y=434 W=162 H=163,
-	// 800x600 design space) into the 16:9 HUD canvas box so the panel tracks the
-	// same aspect anchor as the rest of the HUD chrome (same pattern as
-	// PauseWindow::renderImGui).
+	// INFO-IMGUI-SLICE-3: legacy placement transform. Legacy HUD verts go through
+	// TWO vertex transforms in gosRenderer::flushHUDBatch (gameos_graphics.cpp,
+	// "HUD scale" + "UI-ASPECT-ANCHOR-1" blocks):
+	//   (1) the in-mission bottom-band shrink — every draw call whose centroid
+	//       sits below 60% of the logical height scales by s_hud_scale (default
+	//       0.85) toward the bottom-center anchor (lw/2, lh) in logical
+	//       Environment.screenWidth/Height space;
+	//   (2) the 16:9 HUD canvas remap (gos_ComputeHudCanvasBox).
+	// The info panel (authored y 434..597) sits entirely inside the bottom band,
+	// so the WHOLE panel shrinks. Slices 1-2 applied only (2) — the raw canvas
+	// box — which left the panel hugging the screen left edge ~13% oversized.
+	// (PauseWindow can keep the raw box: its rect is in the TOP band, unshrunk.)
 	int bx = 0, by = 0, bw = 0, bh = 0;
 	if ( !gos_ComputeHudCanvasBox( Environment.drawableWidth, Environment.drawableHeight,
 			&bx, &by, &bw, &bh ) )
 	{ bx = 0; by = 0; bw = Environment.drawableWidth; bh = Environment.drawableHeight; }
-	const float sx = (float)bw / 800.0f;
-	const float sy = (float)bh / 600.0f;
-	const float px = bx +   3.0f * sx;
-	const float py = by + 434.0f * sy;
+	const float lw = ( Environment.screenWidth  > 0 ) ? (float)Environment.screenWidth  : 800.0f;
+	const float lh = ( Environment.screenHeight > 0 ) ? (float)Environment.screenHeight : 600.0f;
+	// same activation condition as flushHUDBatch (scale < 0.999 gate included)
+	const float hud = ( gos_GetHudScaleActive() && gos_GetHudScale() < 0.999f )
+		? gos_GetHudScale() : 1.0f;
+	const float cx = (float)bw / lw;   // canvas remap scale (transform 2)
+	const float cy = (float)bh / lh;
+	const float sx = cx * hud;         // effective authored-px -> device-px scale
+	const float sy = cy * hud;
+	const float px = bx + ( lw * 0.5f + (   3.0f - lw * 0.5f ) * hud ) * cx;
+	const float py = by + ( lh        + ( 434.0f - lh        ) * hud ) * cy;
 	const float pw = 162.0f * sx;
 	const float ph = 163.0f * sy;
 
@@ -402,19 +417,23 @@ void InfoWindow::renderImGui()
 
 	ImDrawList* dl = ImGui::GetWindowDrawList();
 
-	// Panel backing: legacy fills the info area black. Header sub-box is dark blue
-	// (legacy InfoHeaderBox 0xff002f55). Authored (800x600) sub-rects derived from
-	// the InfoWindow layout: header (3,434)..(165,455); content box below it.
-	auto AX = [&]( float ax ){ return bx + ax * sx; };
-	auto AY = [&]( float ay ){ return by + ay * sy; };
+	// authored (800x600 logical) -> device-pixel mapping: shrink (1) then canvas
+	// remap (2), the same order flushHUDBatch applies them.
+	auto AX = [&]( float ax ){ return bx + ( lw * 0.5f + ( ax - lw * 0.5f ) * hud ) * cx; };
+	auto AY = [&]( float ay ){ return by + ( lh        + ( ay - lh        ) * hud ) * cy; };
+	auto ARGB = []( unsigned long a ){
+		return IM_COL32( (a >> 16) & 0xff, (a >> 8) & 0xff, a & 0xff, (a >> 24) & 0xff );
+	};
+	const ImU32 chromeBlue = ARGB( (unsigned long)SCROLLCOLOR );   // fit ScrollBarColor 0xff002f55
 
-	// full-panel black backing
+	// full-panel black backing (legacy fills the info area black)
 	dl->AddRectFilled( ImVec2( px, py ), ImVec2( px + pw, py + ph ), IM_COL32( 0, 0, 0, 255 ) );
 
-	// header box (dark blue). FONT-IMGUI-SLICE-1: use the fit-loaded legacy
-	// InfoHeaderBox rect (NameRect, authored (8,439)..(159,471)) so the box
-	// fits the two-line WrapType-3 name exactly like the legacy panel.
-	dl->AddRectFilled(
+	// header box. INFO-IMGUI-SLICE-3: legacy drawName draws the fit-loaded
+	// InfoHeaderBox rect (NameRect, authored (8,439)..(159,471)) as an EMPTY
+	// rect (drawEmptyRect = 1px outline, interior stays the black backing) —
+	// slices 1-2 filled it, which is not what legacy shows.
+	dl->AddRect(
 		ImVec2( AX( (float)NameRect.left ),  AY( (float)NameRect.top ) ),
 		ImVec2( AX( (float)NameRect.right ), AY( (float)NameRect.bottom ) ),
 		IM_COL32( 0x00, 0x2F, 0x55, 255 ) );
@@ -480,38 +499,39 @@ void InfoWindow::renderImGui()
 			ImVec2( hbL + ( hbR - hbL ) * barStatus, hbB ), argb2im( full ) );
 	}
 
-	// INFO-IMGUI-SLICE-2: mech paperdoll (front + back schematic). Same atlas
-	// sub-rects the legacy renderUnitIcon/-Back draw (damage-state UVs exposed
-	// by ForceGroupIcon::getUnitIcon*TexUV), composited via the ImGui draw list
-	// so it layers correctly over the panel backing. Authored rects mirror the
-	// buttonLayout800 MechIcon block (front 14..45, back 51..82, 38 tall),
-	// placed in the area slice-1 reserved: (4,465)..(164,505).
-	if ( pUnit && icon )
-	{
-		unsigned int iconTex = 0;
-		float u0, v0, u1, v1;
-		const float dollTop = AY( 466.0f );
-		const float dollBot = AY( 504.0f );
-		if ( icon->getUnitIconTexUV( iconTex, u0, v0, u1, v1 ) )
-		{
-			dl->AddImage( (ImTextureID)(intptr_t)iconTex,
-				ImVec2( AX( 14.0f ), dollTop ), ImVec2( AX( 45.0f ), dollBot ),
-				ImVec2( u0, v0 ), ImVec2( u1, v1 ) );
-		}
-		if ( icon->getUnitIconBackTexUV( iconTex, u0, v0, u1, v1 ) )
-		{
-			dl->AddImage( (ImTextureID)(intptr_t)iconTex,
-				ImVec2( AX( 51.0f ), dollTop ), ImVec2( AX( 82.0f ), dollBot ),
-				ImVec2( u0, v0 ), ImVec2( u1, v1 ) );
-		}
-	}
+	// INFO-IMGUI-SLICE-3: legacy chrome. Legacy render() outlines the scroll
+	// content box (fit ScrollContentBox, authored (8,473)..(159,592)) and the
+	// scrollbar track (fit ScrollBar, authored (142,475)..(157,590)), both in
+	// SCROLLCOLOR (0xff002f55), interiors staying the black backing.
+	dl->AddRect(
+		ImVec2( AX( (float)SCROLLBOXLEFT ),  AY( (float)SCROLLBOXTOP ) ),
+		ImVec2( AX( (float)SCROLLBOXRIGHT ), AY( (float)SCROLLBOXBOTTOM ) ),
+		chromeBlue );
+	dl->AddRect(
+		ImVec2( AX( (float)SCROLLLEFT ),  AY( (float)SCROLLTOP ) ),
+		ImVec2( AX( (float)SCROLLRIGHT ), AY( (float)SCROLLBOTTOM ) ),
+		chromeBlue );
 
-	// loadout list in a scrolling child region. ImGui's scrollbar replaces the
-	// legacy hand-rolled thumb/scroll-buttons. Rows from the shared helper.
-	const float listTop = AY( 507.0f );
-	ImGui::SetCursorScreenPos( ImVec2( AX( 6.0f ), listTop ) );
+	// Scrolling content child covering the legacy content-box interior. The
+	// child's right edge lands on the legacy thumb right (SCROLLBUTTONX +
+	// SCROLLBUTTONWIDTH, authored 156) and ImGui's scrollbar width is set to
+	// the legacy thumb width, so the ImGui scrollbar occupies exactly the
+	// legacy track. Thumb styled the legacy blue 0xff5c96c2; the up/down
+	// arrow-cap sprites (fit InfoButton0/1, MCUI_Med1 atlas) are DEFERRED —
+	// wheel + thumb drag cover the interaction.
+	const float childL = AX( (float)SCROLLBOXLEFT + 1.0f );
+	const float childT = AY( (float)SCROLLTOP );
+	const float childR = AX( (float)( SCROLLBUTTONX + SCROLLBUTTONWIDTH ) );
+	const float childB = AY( (float)SCROLLBOTTOM );
+	ImGui::PushStyleColor( ImGuiCol_ScrollbarBg, IM_COL32( 0, 0, 0, 0 ) );
+	ImGui::PushStyleColor( ImGuiCol_ScrollbarGrab,        IM_COL32( 0x5C, 0x96, 0xC2, 255 ) );
+	ImGui::PushStyleColor( ImGuiCol_ScrollbarGrabHovered, IM_COL32( 0x7C, 0xB2, 0xDA, 255 ) );
+	ImGui::PushStyleColor( ImGuiCol_ScrollbarGrabActive,  IM_COL32( 0x9C, 0xC8, 0xE8, 255 ) );
+	ImGui::PushStyleVar( ImGuiStyleVar_ScrollbarSize, (float)SCROLLBUTTONWIDTH * sx );
+	ImGui::PushStyleVar( ImGuiStyleVar_ScrollbarRounding, 0.0f );
+	ImGui::SetCursorScreenPos( ImVec2( childL, childT ) );
 	if ( ImGui::BeginChild( "##mc2_info_loadout",
-			ImVec2( AX( 164.0f ) - AX( 6.0f ), ( py + ph ) - listTop - 2.0f ),
+			ImVec2( childR - childL, childB - childT ),
 			false, ImGuiWindowFlags_NoBackground ) )
 	{
 		if ( pUnit )
@@ -521,21 +541,82 @@ void InfoWindow::renderImGui()
 			// ImGui::Dummy per row keeps the child's cursor/scroll extent in
 			// sync with what was drawn.
 			ImDrawList* cdl = ImGui::GetWindowDrawList();
-			const float wrapW = ImGui::GetContentRegionAvail().x;
+			// legacy row wrap width: COMPONENTLEFT .. SCROLLLEFT
+			const float wrapW = (float)( SCROLLLEFT - COMPONENTLEFT ) * sx;
 			auto BitmapRow = [&]( const char* text, ImU32 col ){
 				const ImVec2 cur = ImGui::GetCursorScreenPos();
 				const float h = HudFont::DrawWrapped( cdl, rowFont,
 					cur.x, cur.y, wrapW, col, text, sx, sy );
 				ImGui::Dummy( ImVec2( wrapW, h ) );
 			};
+			// legacy drawScrollingStuff row x position (COMPONENTLEFT, authored 15)
+			auto RowX = [&](){
+				ImGui::SetCursorScreenPos(
+					ImVec2( AX( (float)COMPONENTLEFT ), ImGui::GetCursorScreenPos().y ) );
+			};
+			// legacy drawDivider: 1px line DIVIDERLEFT..DIVIDERRIGHT in
+			// DIVIDERCOLOR, bracketed by SECTIONSKIP gaps (drawScrollingStuff
+			// inserts curY += SECTIONSKIP around each divider).
+			auto Divider = [&](){
+				ImGui::Dummy( ImVec2( 1.0f, (float)SECTIONSKIP * sy ) );
+				const float dy = ImGui::GetCursorScreenPos().y;
+				cdl->AddLine( ImVec2( AX( (float)DIVIDERLEFT ),  dy ),
+				              ImVec2( AX( (float)DIVIDERRIGHT ), dy ),
+				              ARGB( (unsigned long)DIVIDERCOLOR ) );
+				ImGui::Dummy( ImVec2( 1.0f, (float)SECTIONSKIP * sy ) );
+			};
+
+			// top pad: legacy content starts at SCROLLBOXTOP + SECTIONSKIP
+			// (authored 478); the child top sits at SCROLLTOP (475).
+			ImGui::Dummy( ImVec2( 1.0f,
+				AY( (float)( SCROLLBOXTOP + SECTIONSKIP ) ) - childT ) );
+
+			// INFO-IMGUI-SLICE-2 paperdoll (front + back schematic), SLICE-3:
+			// moved INSIDE the scrolling child at the fit-loaded MechIcon rects
+			// (authored front 14..45, back 51..82, 38 tall) — legacy draws it as
+			// the first scrolling section, not pinned chrome.
+			if ( icon )
+			{
+				unsigned int iconTex = 0;
+				float u0, v0, u1, v1;
+				const float dollTop = ImGui::GetCursorScreenPos().y;
+				const float dollBot = dollTop + (float)MECHHEIGHT * sy;
+				if ( icon->getUnitIconTexUV( iconTex, u0, v0, u1, v1 ) )
+				{
+					cdl->AddImage( (ImTextureID)(intptr_t)iconTex,
+						ImVec2( AX( (float)MECHLEFT ),  dollTop ),
+						ImVec2( AX( (float)MECHRIGHT ), dollBot ),
+						ImVec2( u0, v0 ), ImVec2( u1, v1 ) );
+				}
+				if ( icon->getUnitIconBackTexUV( iconTex, u0, v0, u1, v1 ) )
+				{
+					cdl->AddImage( (ImTextureID)(intptr_t)iconTex,
+						ImVec2( AX( (float)MECHBACKLEFT ),  dollTop ),
+						ImVec2( AX( (float)MECHBACKRIGHT ), dollBot ),
+						ImVec2( u0, v0 ), ImVec2( u1, v1 ) );
+				}
+				ImGui::Dummy( ImVec2( 1.0f, (float)MECHHEIGHT * sy ) );
+				Divider();
+			}
 
 			std::vector<InfoLoadoutRow> rows;
 			gatherLoadoutRows( rows );
+			// legacy inserts SECTIONSKIP + divider + SECTIONSKIP after each
+			// weapon-range group; groups are color-coded in the shared gather,
+			// so a color change marks a group boundary. Equipment rows (gold
+			// 0xffc29b00) get a SECTIONSKIP after each row like legacy.
+			uint32_t prevArgb = 0;
+			bool firstRow = true;
 			for ( const InfoLoadoutRow& r : rows )
 			{
-				const uint32_t a = r.argb;
-				BitmapRow( r.text.c_str(),
-					IM_COL32( (a >> 16) & 0xff, (a >> 8) & 0xff, a & 0xff, (a >> 24) & 0xff ) );
+				if ( !firstRow && r.argb != prevArgb )
+					Divider();
+				RowX();
+				BitmapRow( r.text.c_str(), ARGB( r.argb ) );
+				if ( r.argb == 0xffc29b00u )
+					ImGui::Dummy( ImVec2( 1.0f, (float)SECTIONSKIP * sy ) );
+				prevArgb = r.argb;
+				firstRow = false;
 			}
 
 			// INFO-IMGUI-SLICE-2: pilot section (photo + name + rank + skills +
@@ -547,20 +628,28 @@ void InfoWindow::renderImGui()
 			InfoPilotRows pilot;
 			if ( gatherPilotRows( pilot ) )
 			{
-				ImGui::Dummy( ImVec2( 1.0f, 4.0f * sy ) );
+				Divider();
 
 				const ImU32 pilotBlue = IM_COL32( 0x00, 0x53, 0x92, 255 );
 
-				// pilot photo (authored 24x36, PilotLeft block) + name beside it
+				// pilot photo at the fit-loaded Pilot rect (authored PilotLeft
+				// 15, 24x36) with the legacy SCROLLCOLOR outline, name beside it
 				unsigned int pTex = 0;
 				float pu0, pv0, pu1, pv1;
 				if ( pilot.active && icon && icon->getPilotIconTexUV( pTex, pu0, pv0, pu1, pv1 ) )
 				{
+					ImGui::SetCursorScreenPos( ImVec2( AX( (float)PILOTLEFT ),
+						ImGui::GetCursorScreenPos().y ) );
 					ImGui::Image( (ImTextureID)(intptr_t)pTex,
-						ImVec2( 24.0f * sx, 36.0f * sy ),
+						ImVec2( (float)( PILOTRIGHT - PILOTLEFT ) * sx,
+						        (float)PILOTHEIGHT * sy ),
 						ImVec2( pu0, pv0 ), ImVec2( pu1, pv1 ) );
+					cdl->AddRect( ImGui::GetItemRectMin(), ImGui::GetItemRectMax(),
+						chromeBlue );
 					ImGui::SameLine();
 				}
+				else
+					RowX();
 				// FONT-IMGUI-SLICE-1: pilot rows in the legacy componentFont
 				// (legacy drawScrollingStuff colors these 0xff005392);
 				// strings pass through unmodified.
@@ -568,15 +657,21 @@ void InfoWindow::renderImGui()
 
 				// rank + skill rows
 				char skillBuf[64];
+				RowX();
 				BitmapRow( pilot.rankText.c_str(), pilotBlue );
 				snprintf( skillBuf, sizeof( skillBuf ), "Gunnery  %d", pilot.gunnery );
+				RowX();
 				BitmapRow( skillBuf, pilotBlue );
 				snprintf( skillBuf, sizeof( skillBuf ), "Piloting %d", pilot.piloting );
+				RowX();
 				BitmapRow( skillBuf, pilotBlue );
 
 				// specialty skills
 				for ( const std::string& s : pilot.specialties )
+				{
+					RowX();
 					BitmapRow( s.c_str(), pilotBlue );
+				}
 			}
 
 			// INFO-IMGUI-SLICE-2 capture-fixture assist: when the MC2_BOOT_INFO
@@ -601,6 +696,8 @@ void InfoWindow::renderImGui()
 		}
 	}
 	ImGui::EndChild();
+	ImGui::PopStyleVar( 2 );     // ScrollbarSize + ScrollbarRounding
+	ImGui::PopStyleColor( 4 );   // ScrollbarBg + Grab/Hovered/Active
 
 	ImGui::End();
 	ImGui::PopStyleVar( 1 );   // WindowPadding
