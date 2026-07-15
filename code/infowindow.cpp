@@ -14,6 +14,9 @@ InfoWindow.cpp			: Implementation of the InfoWindow component.
 #include"team.h"
 #include"txmmgr.h"
 #include"estring.h"
+#include"gameos.hpp"        // INFO-IMGUI-SLICE-1: gos_ComputeHudCanvasBox + Environment
+#include"imgui.h"           // INFO-IMGUI-SLICE-1: ImGui info panel
+#include<cstdlib>           // INFO-IMGUI-SLICE-1: getenv
 
 long InfoWindow::SCROLLLEFT = 0;
 long InfoWindow::SCROLLRIGHT = 0;
@@ -355,10 +358,155 @@ void InfoWindow::drawName( const char* name )
 	nameFont.render( name, NAMELEFT, NAMETOP, NAMERIGHT - NAMELEFT, NAMEBOTTOM - NAMETOP, 0xff5c96c2, 0, 3 );
 }
 
+// INFO-IMGUI-SLICE-1: gate. Default OFF -> legacy procedural panel, byte-identical.
+bool InfoWindow::imguiInfoEnabled()
+{
+	static const bool s_on = []{
+		const char* v = getenv("MC2_UI_IMGUI_INFO");
+		return v && v[0] && v[0] != '0';
+	}();
+	return s_on;
+}
+
+// INFO-IMGUI-SLICE-1: ImGui unit-info panel. Reproduces the procedural legacy
+// draw (header box + unit name + health bar + loadout list) bound to the live
+// pUnit read this frame. The mech paperdoll icon is DEFERRED to slice-2 (its
+// area is left blank). Loadout content comes from the shared gatherLoadoutRows
+// helper so it cannot drift from the legacy enumeration.
+void InfoWindow::renderImGui()
+{
+	// Map the authored InfoWindow rect (buttonLayout800: X=3 Y=434 W=162 H=163,
+	// 800x600 design space) into the 16:9 HUD canvas box so the panel tracks the
+	// same aspect anchor as the rest of the HUD chrome (same pattern as
+	// PauseWindow::renderImGui).
+	int bx = 0, by = 0, bw = 0, bh = 0;
+	if ( !gos_ComputeHudCanvasBox( Environment.drawableWidth, Environment.drawableHeight,
+			&bx, &by, &bw, &bh ) )
+	{ bx = 0; by = 0; bw = Environment.drawableWidth; bh = Environment.drawableHeight; }
+	const float sx = (float)bw / 800.0f;
+	const float sy = (float)bh / 600.0f;
+	const float px = bx +   3.0f * sx;
+	const float py = by + 434.0f * sy;
+	const float pw = 162.0f * sx;
+	const float ph = 163.0f * sy;
+
+	ImGui::SetNextWindowPos( ImVec2( px, py ) );
+	ImGui::SetNextWindowSize( ImVec2( pw, ph ) );
+	ImGui::PushStyleVar( ImGuiStyleVar_WindowPadding, ImVec2( 0.0f, 0.0f ) );
+	ImGui::Begin( "##mc2_info", nullptr,
+		ImGuiWindowFlags_NoTitleBar | ImGuiWindowFlags_NoResize | ImGuiWindowFlags_NoMove |
+		ImGuiWindowFlags_NoCollapse | ImGuiWindowFlags_NoScrollbar | ImGuiWindowFlags_NoSavedSettings |
+		ImGuiWindowFlags_NoBackground );
+
+	ImDrawList* dl = ImGui::GetWindowDrawList();
+
+	// Panel backing: legacy fills the info area black. Header sub-box is dark blue
+	// (legacy InfoHeaderBox 0xff002f55). Authored (800x600) sub-rects derived from
+	// the InfoWindow layout: header (3,434)..(165,455); content box below it.
+	auto AX = [&]( float ax ){ return bx + ax * sx; };
+	auto AY = [&]( float ay ){ return by + ay * sy; };
+
+	// full-panel black backing
+	dl->AddRectFilled( ImVec2( px, py ), ImVec2( px + pw, py + ph ), IM_COL32( 0, 0, 0, 255 ) );
+
+	// header box (dark blue). ~21px tall header band at the top of the panel.
+	const float hdrTop = AY( 436.0f );
+	const float hdrBot = AY( 456.0f );
+	dl->AddRectFilled( ImVec2( AX( 4.0f ), hdrTop ), ImVec2( AX( 164.0f ), hdrBot ),
+		IM_COL32( 0x00, 0x2F, 0x55, 255 ) );
+
+	// unit name (legacy drawName blue 0xff5c96c2), centered vertically in header.
+	char nameBuf[256];
+	const char* name;
+	if ( pUnit )
+		name = pUnit->getIfaceName();
+	else
+	{
+		cLoadString( IDS_NOUNIT, nameBuf, 255 );
+		name = nameBuf;
+	}
+	if ( name )
+	{
+		const ImVec2 ts = ImGui::CalcTextSize( name );
+		const float ncy = ( hdrTop + hdrBot ) * 0.5f - ts.y * 0.5f;
+		dl->AddText( ImVec2( AX( 8.0f ), ncy ), IM_COL32( 0x5C, 0x96, 0xC2, 255 ), name );
+	}
+
+	// health bar (legacy HEALTH rect, just under the header). Color by barStatus:
+	// >=0.5 green, >0.2 yellow, else red. Dim bg (argb & 0xff7f7f7f) full width,
+	// then filled fg to width*barStatus.
+	const float hbL = AX( 8.0f );
+	const float hbR = AX( 160.0f );
+	const float hbT = AY( 458.0f );
+	const float hbB = AY( 463.0f );
+	if ( pUnit )
+	{
+		float barStatus = pUnit->getAppearance()->barStatus;
+		if ( barStatus > 1.0f ) barStatus = 1.0f;
+		if ( barStatus < 0.0f ) barStatus = 0.0f;
+
+		DWORD color;
+		if ( barStatus >= 0.5 )      color = SB_GREEN;
+		else if ( barStatus > 0.2 )  color = SB_YELLOW;
+		else                         color = SB_RED;
+
+		// SB_* pack as ARGB; force full alpha for display (legacy blends 0x6f but
+		// over the black backing the fill reads solid like the reference).
+		auto argb2im = []( uint32_t argb ){
+			return IM_COL32( (argb >> 16) & 0xff, (argb >> 8) & 0xff, argb & 0xff, (argb >> 24) & 0xff );
+		};
+		const uint32_t dim  = ( (uint32_t)color & 0xff7f7f7f ) | 0xff000000u;
+		const uint32_t full = ( (uint32_t)color )              | 0xff000000u;
+
+		dl->AddRectFilled( ImVec2( hbL, hbT ), ImVec2( hbR, hbB ), argb2im( dim ) );
+		dl->AddRectFilled( ImVec2( hbL, hbT ),
+			ImVec2( hbL + ( hbR - hbL ) * barStatus, hbB ), argb2im( full ) );
+	}
+
+	// mech paperdoll icon area — DEFERRED to slice-2 (icon->renderUnitIcon is a
+	// 3D/sprite render). Left blank: (4,465)..(164,505) authored.
+
+	// loadout list in a scrolling child region. ImGui's scrollbar replaces the
+	// legacy hand-rolled thumb/scroll-buttons. Rows from the shared helper.
+	const float listTop = AY( 507.0f );
+	ImGui::SetCursorScreenPos( ImVec2( AX( 6.0f ), listTop ) );
+	if ( ImGui::BeginChild( "##mc2_info_loadout",
+			ImVec2( AX( 164.0f ) - AX( 6.0f ), ( py + ph ) - listTop - 2.0f ),
+			false, ImGuiWindowFlags_NoBackground ) )
+	{
+		if ( pUnit )
+		{
+			std::vector<InfoLoadoutRow> rows;
+			gatherLoadoutRows( rows );
+			ImGui::PushTextWrapPos( 0.0f );  // wrap at child width
+			for ( const InfoLoadoutRow& r : rows )
+			{
+				const uint32_t a = r.argb;
+				ImGui::PushStyleColor( ImGuiCol_Text,
+					IM_COL32( (a >> 16) & 0xff, (a >> 8) & 0xff, a & 0xff, (a >> 24) & 0xff ) );
+				ImGui::TextUnformatted( r.text.c_str() );
+				ImGui::PopStyleColor();
+			}
+			ImGui::PopTextWrapPos();
+		}
+	}
+	ImGui::EndChild();
+
+	ImGui::End();
+	ImGui::PopStyleVar( 1 );   // WindowPadding
+}
+
 void InfoWindow::render()
 {
+	// INFO-IMGUI-SLICE-1: ImGui panel when gated on. Gate OFF -> legacy below,
+	// byte-identical.
+	if ( imguiInfoEnabled() )
+	{
+		renderImGui();
+		return;
+	}
 
-	
+
 	drawScrollingStuff();
 
 	GUI_RECT tmpRect = { SCROLLBOXLEFT, SCROLLBOXBOTTOM, SCROLLBOXRIGHT, INFOTOP + INFOHEIGHT };
@@ -592,6 +740,141 @@ void InfoWindow::update()
 }
 	
 
+// INFO-IMGUI-SLICE-1: shared weapon dedup/enumeration. Verbatim port of the
+// former inline loop in drawScrollingStuff (same zero-inits, same walk over
+// pUnit->inventory[numOther .. numOther+numWeapons]). Returns the distinct entry
+// count. Used by BOTH the legacy draw and gatherLoadoutRows so they cannot drift.
+int InfoWindow::gatherWeaponRows( unsigned char names[60], char disabledCount[60][2],
+	long ammo[60], char ranges[60], bool bDraw[4] ) const
+{
+	memset( disabledCount, 0, sizeof( char ) * 60 * 2);
+
+	// sebi: ORIG BUG FIX memory owerwrite fix fow win64 build: sizeof(long) < sizeof(char*)!
+	//memset( names, 0, sizeof( char* ) * 60 );
+	MemSet(names, 0);
+
+	memset( ranges, 0, sizeof( char ) * 60 );
+	memset( ammo, 0, sizeof( long ) * 60 );
+
+	memset( bDraw, 0, sizeof( bool ) * 4 );
+
+	int i = 0;
+
+	for (long curWeapon = pUnit->numOther; curWeapon < (pUnit->numOther + pUnit->numWeapons); curWeapon++)
+	{
+			unsigned char nName = pUnit->inventory[curWeapon].masterID;
+			bool bFound = 0;
+			for ( int j = 0; j < i; j++ )
+			{
+				if ( nName == names[j] )
+				{
+					disabledCount[j][1] ++;
+					if (!pUnit->inventory[curWeapon].disabled && (pUnit->getWeaponShots(curWeapon) > 0)
+						&& pUnit->inventory[curWeapon].health > 0 )
+					{
+						disabledCount[j][0]++;
+					}
+
+					bFound = true;
+				}
+			}
+			if ( bFound )
+				continue;
+
+			names[i] = nName;
+
+			//ONly need to add in the AMMO once!!
+			// Glenn has taken the liberty of combining all shots of this type
+			// into one master ammo list!!
+			if ( MasterComponent::masterList[pUnit->inventory[curWeapon].masterID].getWeaponAmmoType() == WEAPON_AMMO_NONE
+				|| useUnlimitedAmmo )
+				ammo[i] = -1;
+			else
+				ammo[i] += pUnit->getWeaponShots( curWeapon );
+
+			int  range = MasterComponent::masterList[pUnit->inventory[curWeapon].masterID].getWeaponRange();
+			ranges[i] = range;
+			bDraw[range] = true;
+
+			if (!pUnit->inventory[curWeapon].disabled && (pUnit->getWeaponShots(curWeapon) > 0)
+				&& pUnit->inventory[curWeapon].health > 0 )
+			{
+				disabledCount[i][0]++;
+			}
+			disabledCount[i][1]++;
+			i++;
+	}
+
+	return i;
+}
+
+// INFO-IMGUI-SLICE-1: build the formatted loadout list for the ImGui panel.
+// Mirrors drawScrollingStuff's text: weapon rows "N/M  NAME" grouped by range
+// (textColors[]), each optional "shots left" ammo row, then the ecm/probe/jump/
+// sensor equipment rows (0xffc29b00). Weapon enumeration is the shared helper.
+void InfoWindow::gatherLoadoutRows( std::vector<InfoLoadoutRow>& out ) const
+{
+	out.clear();
+	if ( !pUnit )
+		return;
+
+	uint32_t textColors[4] = { 0xff6E7C00, 0xff005392, 0xffA21600 };
+
+	char disabledCount[60][2];
+	long ammo[60];
+	char ranges[60];
+	unsigned char names[60];
+	bool bDraw[4];
+
+	int count = gatherWeaponRows( names, disabledCount, ammo, ranges, bDraw );
+
+	EString rowText;
+	for ( int j = 0; j < 3; j++ )
+	{
+		if ( !bDraw[j] )
+			continue;
+
+		for ( int k = 0; k < count; k++ )
+		{
+			if ( !names[k] )
+				break;
+			if ( ranges[k] != j )
+				continue;
+
+			char tmpName[256];
+			cLoadString( IDS_COMP_ABBR0 + names[k], tmpName, 255 );
+			rowText.Format( "%ld/%ld  %s", disabledCount[k][0], disabledCount[k][1], tmpName );
+			out.push_back( { std::string( rowText.Data() ), textColors[j] } );
+
+			if ( ammo[k] != -1 )
+			{
+				char tmpNumber[64];
+				char tmpNumber2[64];
+				cLoadString( IDS_MISSION_SHOTSLEFT, tmpNumber, 63 );
+				sprintf( tmpNumber2, tmpNumber, ammo[k] );
+				out.push_back( { std::string( tmpNumber2 ), textColors[j] } );
+			}
+		}
+	}
+
+	// equipment: ecm / probe / jumpJets / sensor (same enumeration as legacy).
+	char eq[4];
+	eq[0] = pUnit->ecm;
+	eq[1] = pUnit->probe;
+	eq[2] = pUnit->jumpJets;
+	eq[3] = pUnit->isMech() ? pUnit->sensor : 255;
+
+	for ( int e = 0; e < 4; e++ )
+	{
+		if ( eq[e] != 255 )
+		{
+			char tmpName[256];
+			cLoadString( IDS_COMP_ABBR0 + pUnit->inventory[eq[e]].masterID, tmpName, 255 );
+			out.push_back( { std::string( tmpName ), 0xffc29b00u } );
+		}
+	}
+}
+
 void InfoWindow::drawScrollingStuff()
 {
 	if ( !pUnit )
@@ -628,66 +911,14 @@ void InfoWindow::drawScrollingStuff()
 	long ammo[60];
 	char ranges[60];
 	unsigned char names[60];// sebi: changed long to char; MUST be unsigned — masterID (CompBas#) can be >=128 for Clan components, signed char would underflow IDS_COMP_ABBR0+names[i]
-	memset( disabledCount, 0, sizeof( char ) * 60 * 2);
-
-	// sebi: ORIG BUG FIX memory owerwrite fix fow win64 build: sizeof(long) < sizeof(char*)!
-	//memset( names, 0, sizeof( char* ) * 60 );
-	MemSet(names, 0);
-
-	memset( ranges, 0, sizeof( char ) * 60 );
-	memset( ammo, 0, sizeof( long ) * 60 );
-
 	bool bDraw[4];
-	memset( bDraw, 0, sizeof( bool ) * 4 );
-	
+
 	int curComponentCount = 60;
 
-	int i = 0;
-
-	for (long curWeapon = pUnit->numOther; curWeapon < (pUnit->numOther + pUnit->numWeapons); curWeapon++) 
-	{
-			unsigned char nName = pUnit->inventory[curWeapon].masterID;
-			bool bFound = 0;
-			for ( int j = 0; j < i; j++ )
-			{
-				if ( nName == names[j] )
-				{
-					disabledCount[j][1] ++;
-					if (!pUnit->inventory[curWeapon].disabled && (pUnit->getWeaponShots(curWeapon) > 0)
-						&& pUnit->inventory[curWeapon].health > 0 ) 
-					{
-						disabledCount[j][0]++;
-					}
-		
-					bFound = true;
-				}
-			}
-			if ( bFound )
-				continue;
-			
-			names[i] = nName;
-			
-			//ONly need to add in the AMMO once!!
-			// Glenn has taken the liberty of combining all shots of this type
-			// into one master ammo list!!
-			if ( MasterComponent::masterList[pUnit->inventory[curWeapon].masterID].getWeaponAmmoType() == WEAPON_AMMO_NONE 
-				|| useUnlimitedAmmo )
-				ammo[i] = -1;
-			else
-				ammo[i] += pUnit->getWeaponShots( curWeapon );
-
-			int  range = MasterComponent::masterList[pUnit->inventory[curWeapon].masterID].getWeaponRange();
-			ranges[i] = range;
-			bDraw[range] = true;
-
-			if (!pUnit->inventory[curWeapon].disabled && (pUnit->getWeaponShots(curWeapon) > 0)
-				&& pUnit->inventory[curWeapon].health > 0 ) 
-			{
-				disabledCount[i][0]++;
-			}
-			disabledCount[i][1]++;
-			i++;
-	}
+	// INFO-IMGUI-SLICE-1: dedup/enumeration factored into the shared helper so the
+	// ImGui panel (gatherLoadoutRows) lists identical hardware. Behaviour is
+	// byte-identical to the former inline loop (same zero-inits + same walk).
+	int i = gatherWeaponRows( names, disabledCount, ammo, ranges, bDraw );
 
 	curY += SECTIONSKIP;
 

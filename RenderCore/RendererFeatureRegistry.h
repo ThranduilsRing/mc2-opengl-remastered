@@ -609,6 +609,18 @@ static constexpr EnvVarDesc kAuxEnvVars[] = {
         "panel, byte-identical. First slice of the in-mission HUD ImGui port."
     },
     {
+        "MC2_TRACE_UI_IMGUI_INFO",
+        "MC2_UI_IMGUI_INFO",
+        EnvVarKind::Trace,
+        false,
+        "INFO-IMGUI-SLICE-1: =1 renders the in-mission unit-Info panel as an ImGui "
+        "window (unit name + health bar + loadout list with scrollbar) laid out "
+        "inside gos_ComputeHudCanvasBox; loadout rows come from the shared "
+        "InfoWindow::gatherLoadoutRows helper so the legacy and ImGui paths cannot "
+        "drift. Default unset -> legacy procedural panel, byte-identical. Mech "
+        "paperdoll icon deferred to slice-2."
+    },
+    {
         "MC2_TRACE_BOOT_INFO",
         "MC2_BOOT_INFO",
         EnvVarKind::Trace,
