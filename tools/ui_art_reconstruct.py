@@ -95,7 +95,7 @@ def load_atlas(art_dir: str, name: str, cache: dict) -> Image.Image:
 
 
 def reconstruct(fit_path: str, art_dir: str, panel: str, default_atlas: str,
-                button_tint=None):
+                button_tint=None, button_state: str = "normal"):
     text = read_fit(fit_path)
     hdr = parse_block(text, panel + "Window") or {}
     n_static = int(hdr.get("StaticCount", 0))
@@ -133,6 +133,13 @@ def reconstruct(fit_path: str, art_dir: str, panel: str, default_atlas: str,
             x, y = int(b["XLocation"]), int(b["YLocation"])
             w, h = int(b["Width"]), int(b["Height"])
             u, v = int(b.get("UNormal", 0)), int(b.get("VNormal", 0))
+            # POLISH-IMGUI-SLICE-1: optionally bake an alternate button state
+            # (legacy makeUVs stateCoords — UPressed/VPressed etc.). Statics have
+            # no state UVs, so `kind` gates it; missing keys fall back to normal.
+            if kind == "Button" and button_state != "normal":
+                skey = button_state.capitalize()   # pressed -> UPressed/VPressed
+                u = int(b.get(f"U{skey}", u))
+                v = int(b.get(f"V{skey}", v))
             uw, vh = int(b.get("UWidth", w)), int(b.get("VHeight", h))
             try:
                 im = load_atlas(art_dir, atlas, cache)
@@ -245,6 +252,10 @@ def main() -> int:
                     help="pre-modulate the baked button tiles by this color "
                          "(the fit button 'color' the legacy quad draw applies, "
                          "e.g. 005392 for mcl_dialog)")
+    ap.add_argument("--button-state", default="normal",
+                    choices=("normal", "pressed", "disabled", "highlight"),
+                    help="which legacy button-state UVs to bake "
+                         "(U<State>/V<State>; falls back to normal if absent)")
     # Batch mode:
     ap.add_argument("--all", action="store_true",
                     help="bake every tile-stitched panel in --legacy-dir + a manifest")
@@ -268,7 +279,8 @@ def main() -> int:
         tv = int(args.tint_buttons, 16)
         tint = ((tv >> 16) & 0xff, (tv >> 8) & 0xff, tv & 0xff)
     canvas, bbox, tiles, ns, nb, missing = reconstruct(
-        args.fit, args.art_dir, args.panel, args.default_atlas, button_tint=tint)
+        args.fit, args.art_dir, args.panel, args.default_atlas, button_tint=tint,
+        button_state=args.button_state)
     os.makedirs(os.path.dirname(os.path.abspath(args.out)), exist_ok=True)
     out = canvas
     if args.crop:
