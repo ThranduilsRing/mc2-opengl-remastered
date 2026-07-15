@@ -666,7 +666,7 @@ void PauseWindow::renderImGuiConfirm()
 				return cMid;   // one-shot: hold the last keyframe color
 			t -= (float)(long)( t / tEnd ) * tEnd;   // aAnimation::getColor wrap
 		}
-		if ( t <= tMid )
+		if ( t <= tMid || tEnd - tMid <= 0.f )
 			return (unsigned long)interpolateColor( (long)cEnds, (long)cMid,
 				tMid > 0.f ? t / tMid : 1.f );
 		return (unsigned long)interpolateColor( (long)cMid, (long)cEnds,
