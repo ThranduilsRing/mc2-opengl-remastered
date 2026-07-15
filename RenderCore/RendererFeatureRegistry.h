@@ -633,6 +633,18 @@ static constexpr EnvVarDesc kAuxEnvVars[] = {
         "byte-identical."
     },
     {
+        "MC2_TRACE_BOOT_OBJ",
+        "MC2_BOOT_OBJ",
+        EnvVarKind::Trace,
+        false,
+        "OBJ-CAPTURE fixture: =N calls ControlGui::startObjectives(1) ONCE at "
+        "frame >= N (ControlGui::update), showing the in-mission objectives "
+        "overlay. Headless agents cannot reach the pause-menu OBJECTIVES "
+        "button, so this makes the overlay capturable for the ImGui port "
+        "(same pattern as MC2_BOOT_INFO / MC2_BOOT_PAUSED). Default unset -> "
+        "byte-identical."
+    },
+    {
         "MC2_TRACE_BOOT_PAUSED",
         "MC2_BOOT_PAUSED",
         EnvVarKind::Trace,

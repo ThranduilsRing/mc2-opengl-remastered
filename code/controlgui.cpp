@@ -1631,6 +1631,31 @@ void ControlGui::update( bool bPaused, bool bLOS )
 		}
 	}
 
+	// OBJ-CAPTURE fixture: MC2_BOOT_OBJ=N calls startObjectives(1) ONCE at frame
+	// >= N, so the in-mission objectives overlay can be captured / iterated
+	// headless (no click path to the pause-menu OBJECTIVES button). Same fixture
+	// pattern as MC2_BOOT_INFO above / MC2_BOOT_PAUSED (missiongui.cpp).
+	// Registered Trace, default unset -> byte-identical.
+	{
+		static const long s_bootObj = [] {
+			const char* v = getenv("MC2_BOOT_OBJ");
+			return (v && v[0]) ? atol(v) : 0L;
+		}();
+		if ( s_bootObj > 0 && Team::home )
+		{
+			extern uint32_t g_mc2FrameCounter;
+			static bool s_objDone = false;
+			if ( !s_objDone && (long)g_mc2FrameCounter >= s_bootObj )
+			{
+				s_objDone = true;
+				startObjectives( 1 );
+				printf("[BOOT_OBJ] startObjectives(1) (frame %u)\n",
+					(unsigned)g_mc2FrameCounter);
+				fflush(stdout);
+			}
+		}
+	}
+
 	if (moviePlaying && bMovie)
 	{
 		ZoneScopedN("CGui.Movie");
