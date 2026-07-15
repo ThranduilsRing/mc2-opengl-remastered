@@ -633,6 +633,19 @@ static constexpr EnvVarDesc kAuxEnvVars[] = {
         "byte-identical."
     },
     {
+        "MC2_TRACE_UI_IMGUI_OBJ",
+        "MC2_UI_IMGUI_OBJ",
+        EnvVarKind::Trace,
+        false,
+        "OBJ-IMGUI-SLICE-1: =1 renders the in-mission OBJECTIVES overlay as "
+        "ImGui (baked left-edge frame from tools/ui_art_reconstruct.py + "
+        "procedural header/objective rows/totals) laid out inside "
+        "gos_ComputeHudCanvasBox; rows come from the shared "
+        "ControlGui::gatherObjectiveRows so the legacy and ImGui paths cannot "
+        "drift. MPlayer player-status variant stays legacy. Default unset -> "
+        "legacy tile/font overlay, byte-identical."
+    },
+    {
         "MC2_TRACE_BOOT_OBJ",
         "MC2_BOOT_OBJ",
         EnvVarKind::Trace,

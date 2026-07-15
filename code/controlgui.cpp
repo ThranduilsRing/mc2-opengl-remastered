@@ -48,6 +48,10 @@ extern float worldUnitsPerMeter;   // sensor range is in world units; /this = me
 
 #include"chatwindow.h"
 #include"../GameOS/gameos/gos_profiler.h"
+#include"gameos.hpp"        // OBJ-IMGUI-SLICE-1: gos_ComputeHudCanvasBox + gos_GetGLTextureName
+#include"imgui.h"           // OBJ-IMGUI-SLICE-1: ImGui objectives overlay
+#include<cctype>            // OBJ-IMGUI-SLICE-1: toupper (bitmap-font-style caps)
+#include<cstdint>           // OBJ-IMGUI-SLICE-1: intptr_t (ImTextureID cast)
 
 // ---- MISSION-INTERFACE-PERF-1 (MC2_IFACE_COST_SPLIT / MC2_MIF_SPLIT) ----
 // ControlGui::update sub-phase per-frame ns accumulators. DEFINED here;
@@ -1252,8 +1256,318 @@ void ControlGui::renderResults()
 }
 
 bool playedObjectiveClick[100];
+
+// OBJ-IMGUI-SLICE-1: gate. Default OFF -> legacy tile/font overlay, byte-identical.
+bool ControlGui::imguiObjEnabled()
+{
+	static const bool s_on = []{
+		const char* v = getenv("MC2_UI_IMGUI_OBJ");
+		return v && v[0] && v[0] != '0';
+	}();
+	return s_on;
+}
+
+// OBJ-IMGUI-SLICE-1: shared objective-row gather. The SINGLE place that owns
+// the enumeration predicate (IsActive && !IsHiddenTrigger, primary = Priority()==1,
+// primaries first in team-list order then secondaries) and the status->color
+// mapping incl. the activation flash. Both the legacy RenderObjectives loops
+// and renderObjectivesImGui consume this, so the two paths cannot drift.
+int ControlGui::gatherObjectiveRows( ObjectiveUiRow* rows, int maxRows )
+{
+	int n = 0;
+	if ( !Team::home )
+		return 0;
+
+	for ( int pass = 0; pass < 2; pass++ )
+	{
+		const bool wantPrimary = ( pass == 0 );
+		for ( EList< CObjective*, CObjective* >::EIterator iter = Team::home->objectives.Begin();
+			!iter.IsDone(); iter++ )
+		{
+			CObjective* pObjective = (*iter);
+			if ( !pObjective->IsActive() || pObjective->IsHiddenTrigger() )
+				continue;
+			const bool primary = ( 1 == pObjective->Priority() );
+			if ( primary != wantPrimary )
+				continue;
+			if ( n >= maxRows )
+				return n;
+
+			const int status = pObjective->Status( Team::home->objectives );
+			long color = status == OS_FAILED ? 0xffc61c00 :
+				( status == OS_SUCCESSFUL ? 0xff41c700 : 0xffffc600 );
+
+			// flash newly-activated objectives (same math as the legacy draw)
+			if ( pObjective->ActivateOnFlag() &&
+				(20.0/*seconds*//*arbitrary*/ > (mission->actualTime - pObjective->ActivationTime())) )
+			{
+				int tempI = (int)(2.0/*Hz*//*flash frequency*/ * (mission->actualTime - pObjective->ActivationTime()));
+				if ( 0 == (tempI % 2) )
+					color = 0xffffffff;
+			}
+
+			rows[n].obj = pObjective;
+			rows[n].primary = primary;
+			rows[n].color = color;
+			rows[n].succeeded = ( status == OS_SUCCESSFUL );
+			rows[n].failed = ( status == OS_FAILED );
+			rows[n].points = pObjective->ResourcePoints();
+			n++;
+		}
+	}
+	return n;
+}
+
+// OBJ-IMGUI-SLICE-1: ImGui objectives overlay (MC2_UI_IMGUI_OBJ=1). Hybrid
+// port: the tile-stitched left edge bars come from the offline-baked frame
+// (tools/ui_art_reconstruct.py --panel Obj -> data/art/gui/mc2_obj_frame.png,
+// authored bbox origin (0,76) size 14x236 in the 800x600 design space); the
+// header / objective rows / totals are drawn procedurally from the SAME
+// fit-loaded authored constants (OBJECTIVESTOP/LEFT/SKIP/TOTALRIGHT) and the
+// SAME shared gatherObjectiveRows walk as the legacy path, mapped through
+// gos_ComputeHudCanvasBox. Display-only (legacy overlay takes no input; it is
+// dismissed via startObjectives / the pause-menu OBJECTIVES toggle).
+void ControlGui::renderObjectivesImGui()
+{
+	// guards mirrored from the legacy path
+	if ( !( renderObjectives || renderStatusInfo ) )
+		return;
+	if ( renderStatusInfo && resultsTime < .24f ) // don't start objectives until mission results is done
+	{
+		memset( playedObjectiveClick, 0, sizeof( bool ) * 100 );
+		return;
+	}
+
+	objectiveTime += frameLength;	// renderResults' end-of-mission fade reads this
+
+	// Map the authored layout space into the 16:9 HUD canvas box (same pattern
+	// as PauseWindow/InfoWindow::renderImGui). The OBJECTIVES* constants are
+	// raw logical-resolution pixels from the res-matched buttonLayout fit, so
+	// the denominators are the logical screen dims (800x600 in the shipped
+	// config), NOT hardcoded.
+	int bx = 0, by = 0, bw = 0, bh = 0;
+	if ( !gos_ComputeHudCanvasBox( Environment.drawableWidth, Environment.drawableHeight,
+			&bx, &by, &bw, &bh ) )
+	{ bx = 0; by = 0; bw = Environment.drawableWidth; bh = Environment.drawableHeight; }
+	const float lw = Environment.screenWidth  > 0 ? (float)Environment.screenWidth  : 800.0f;
+	const float lh = Environment.screenHeight > 0 ? (float)Environment.screenHeight : 600.0f;
+	const float sx = (float)bw / lw;
+	const float sy = (float)bh / lh;
+	auto AX = [&]( float ax ){ return bx + ax * sx; };
+	auto AY = [&]( float ay ){ return by + ay * sy; };
+
+	// Legacy slides the panel until objectiveInfos[0] rests at
+	// objectiveMoveInfo[last].position (instant with the stock 2-key table).
+	// The ImGui path never mutates the statics, so the resting shift is just
+	// target - authored. Applies to the frame + header/description X only —
+	// the box/check tiles and totalRight are never delta-shifted by legacy.
+	const float shiftX = objectiveMoveInfo[OBJECTVE_MOVE_COUNT - 1].position
+		- ( objectiveInfos ? objectiveInfos[0].location[0].x : 0.0f );
+
+	// one-time load of the baked frame (gate-on path only)
+	static unsigned s_frameGlTex = 0;
+	static bool s_frameTried = false;
+	if ( !s_frameTried )
+	{
+		s_frameTried = true;
+		DWORD mcH = mcTextureManager->loadTexture(
+			"data\\art\\gui\\mc2_obj_frame.png", gos_Texture_Alpha, 0, 0, 0 );
+		if ( mcH )
+		{
+			DWORD gosID = mcTextureManager->get_gosTextureHandle( mcH );
+			if ( gosID && gosID != 0xffffffff )
+				s_frameGlTex = gos_GetGLTextureName( gosID );
+		}
+	}
+
+	ImGui::SetNextWindowPos( ImVec2( (float)bx, (float)by ) );
+	ImGui::SetNextWindowSize( ImVec2( (float)bw, (float)bh ) );
+	ImGui::PushStyleVar( ImGuiStyleVar_WindowPadding, ImVec2( 0.0f, 0.0f ) );
+	ImGui::Begin( "##mc2_obj", nullptr,
+		ImGuiWindowFlags_NoTitleBar | ImGuiWindowFlags_NoResize | ImGuiWindowFlags_NoMove |
+		ImGuiWindowFlags_NoCollapse | ImGuiWindowFlags_NoScrollbar | ImGuiWindowFlags_NoSavedSettings |
+		ImGuiWindowFlags_NoBackground | ImGuiWindowFlags_NoInputs );	// display-only overlay
+
+	ImDrawList* dl = ImGui::GetWindowDrawList();
+
+	auto argb2im = []( unsigned long argb ){
+		return IM_COL32( (argb >> 16) & 0xff, (argb >> 8) & 0xff, argb & 0xff, (argb >> 24) & 0xff );
+	};
+	// legacy panel text is an ALL-CAPS bitmap font; uppercase what we display
+	auto ToUpper = []( char* s ){
+		for ( ; *s; s++ )
+			*s = (char)toupper( (unsigned char)*s );
+	};
+	// drawShadowText equivalent: 1px black drop shadow under the colored text
+	auto ShadowText = [&]( float x, float y, unsigned long argb, const char* text ){
+		dl->AddText( ImVec2( x + 1.0f, y + 1.0f ), IM_COL32( 0, 0, 0, 255 ), text );
+		dl->AddText( ImVec2( x, y ), argb2im( argb ), text );
+	};
+	// legacy status tiles (PrimaryObjBox/Check/X StaticInfos): AddImage from
+	// their atlas with the UVs StaticInfo::init resolved into the vertices.
+	auto StaticTile = [&]( StaticInfo& st, float axPos, float ayPos ){
+		DWORD gosID = mcTextureManager->get_gosTextureHandle( st.textureHandle );
+		if ( !gosID || gosID == 0xffffffff )
+			return;
+		unsigned glTex = gos_GetGLTextureName( gosID );
+		if ( !glTex )
+			return;
+		dl->AddImage( (ImTextureID)(intptr_t)glTex,
+			ImVec2( AX( axPos ), AY( ayPos ) ),
+			ImVec2( AX( axPos + st.width() ), AY( ayPos + st.height() ) ),
+			ImVec2( st.location[0].u, st.location[0].v ),
+			ImVec2( st.location[2].u, st.location[2].v ) );
+	};
+
+	// baked frame (the two left-edge hazard bars), authored bbox (0,76) 14x236
+	if ( s_frameGlTex )
+		dl->AddImage( (ImTextureID)(intptr_t)s_frameGlTex,
+			ImVec2( AX( 0.0f + shiftX ), AY( 76.0f ) ),
+			ImVec2( AX( 14.0f + shiftX ), AY( 76.0f + 236.0f ) ) );
+
+	char buffer[256];
+
+	// "Primary Objectives" header
+	cLoadString( IDS_PRIMARY, buffer, 245 );
+	ToUpper( buffer );
+	ShadowText( AX( OBJECTIVEHEADERLEFT + shiftX ), AY( OBJECTIVESTOP ), 0xffffffff, buffer );
+
+	ObjectiveUiRow rows[100];
+	const int nRows = gatherObjectiveRows( rows, 100 );
+
+	StaticInfo* boxTile   = objectiveInfos ? &objectiveInfos[objectiveInfoCount - 3] : NULL;
+	StaticInfo* checkTile = objectiveInfos ? &objectiveInfos[objectiveInfoCount - 2] : NULL;
+	StaticInfo* xTile     = objectiveInfos ? &objectiveInfos[objectiveInfoCount - 1] : NULL;
+
+	long pos = OBJECTIVESTOP;
+	pos += OBJECTIVESSKIP;
+
+	float objectiveCount = -objectiveMoveInfo[OBJECTVE_MOVE_COUNT - 1].time;
+	int sum = 0;
+	int objectiveNum = 0;
+
+	// one row: status box/check/X tiles + description + (results) dots/total.
+	// Same accumulation, totals reveal timing and kill-marker click as legacy.
+	auto DrawRow = [&]( const ObjectiveUiRow& row, long yPos, bool bTotal ){
+		char desc[256];
+		strncpy( desc, row.obj->LocalizedDescription(), 255 );
+		desc[255] = 0;
+		ToUpper( desc );
+
+		ShadowText( AX( OBJECTIVESLEFT + shiftX ), AY( (float)yPos ), (unsigned long)row.color, desc );
+
+		if ( bTotal )
+		{
+			char total[64];
+			int amount = row.succeeded ? row.points : 0;
+			sprintf( total, "%d", amount );
+			const float totalW = ImGui::CalcTextSize( total ).x;
+			ShadowText( AX( (float)OBJECTIVESTOTALRIGHT ) - totalW, AY( (float)yPos ), 0xffffffff, total );
+
+			// leader dots between the description and the right-aligned total
+			const float descW = ImGui::CalcTextSize( desc ).x;
+			const float dotW = ImGui::CalcTextSize( "...................." ).x / 20.f;
+			const float totalLength = ( AX( (float)OBJECTIVESTOTALRIGHT ) - totalW )
+				- ( AX( OBJECTIVESLEFT + shiftX ) + descW );
+			long numberOfDots = (long)( totalLength / dotW );
+			if ( 3 > numberOfDots )
+				numberOfDots = 3;
+			char dots[256];
+			long nd = numberOfDots - 2;
+			if ( nd > 255 ) nd = 255;
+			{ int i = 0; for ( ; i < nd; i++ ) dots[i] = '.'; dots[i] = 0; }
+			const float dotFinalLength = dotW * (float)nd;
+			ShadowText( AX( (float)OBJECTIVESTOTALRIGHT ) - totalW - dotFinalLength,
+				AY( (float)yPos ), (unsigned long)row.color, dots );
+		}
+
+		// little box + check/X marks (authored x from the fit statics; y
+		// follows the row like the legacy setLocation calls)
+		if ( boxTile )
+			StaticTile( *boxTile, boxTile->location[0].x, (float)( yPos + OBJECTIVEBOXSKIP ) );
+		if ( row.failed && xTile )
+			StaticTile( *xTile, xTile->location[0].x, (float)( yPos + OBJECTIVECHECKSKIP ) );
+		else if ( row.succeeded && checkTile )
+			StaticTile( *checkTile, checkTile->location[0].x, (float)( yPos + OBJECTIVECHECKSKIP ) );
+	};
+
+	// primary objectives
+	for ( int r = 0; r < nRows; r++ )
+	{
+		if ( !rows[r].primary )
+			continue;
+		bool bTotal = renderStatusInfo && objectiveCount < objectiveTime;	// drawing one per second
+		DrawRow( rows[r], pos, bTotal );
+		if ( rows[r].succeeded && bTotal )
+		{
+			sum += rows[r].points;
+			if ( !playedObjectiveClick[objectiveNum] )
+			{
+				playedObjectiveClick[objectiveNum] = true;
+				soundSystem->playDigitalSample( LOG_KILLMARKER );
+			}
+		}
+		pos += OBJECTIVESSKIP;
+		objectiveCount += 1.f;
+		objectiveNum++;
+	}
+
+	pos -= OBJECTIVESSKIP;
+
+	// "Secondary Objectives" header
+	cLoadString( IDS_SECONDARY, buffer, 245 );
+	ToUpper( buffer );
+	pos += OBJEECTIVESHEADERSKIP;
+	ShadowText( AX( OBJECTIVEHEADERLEFT + shiftX ), AY( (float)pos ), 0xffffffff, buffer );
+
+	// secondary objectives
+	for ( int r = 0; r < nRows; r++ )
+	{
+		if ( rows[r].primary )
+			continue;
+		pos += OBJECTIVESSKIP;
+		bool bTotal = renderStatusInfo && objectiveCount < objectiveTime;	// drawing one per second
+		DrawRow( rows[r], pos, bTotal );
+		if ( rows[r].succeeded && bTotal )
+		{
+			sum += rows[r].points;
+			if ( !playedObjectiveClick[objectiveNum] )
+			{
+				playedObjectiveClick[objectiveNum] = true;
+				soundSystem->playDigitalSample( LOG_KILLMARKER );
+			}
+		}
+		objectiveCount += 1.f;
+		objectiveNum++;
+	}
+
+	if ( renderStatusInfo )	// draw the total
+	{
+		pos += OBJECTIVESSKIP;
+		char total[256];
+		char total2[256];
+		cLoadString( IDS_TOTAL, total2, 255 );
+		sprintf( total, total2, sum );
+		ToUpper( total );
+		const float width = ImGui::CalcTextSize( total ).x;
+		ShadowText( AX( (float)OBJECTIVESTOTALRIGHT ) - width, AY( (float)pos ), 0xffffffff, total );
+	}
+
+	ImGui::End();
+	ImGui::PopStyleVar( 1 );	// WindowPadding
+}
+
 void ControlGui::RenderObjectives()
 {
+	// OBJ-IMGUI-SLICE-1: ImGui overlay when gated on. The MPlayer player-status
+	// variant stays on the legacy path (out of slice scope).
+	if ( imguiObjEnabled() &&
+		!( MPlayer && MPlayer->missionSettings.missionType != MISSION_TYPE_OTHER ) )
+	{
+		renderObjectivesImGui();
+		return;
+	}
+
 	// make sure we need to do it.
 	if ( renderObjectives || renderStatusInfo )
 	{
@@ -1329,19 +1643,24 @@ void ControlGui::RenderObjectives()
 		unsigned long pos = OBJECTIVESTOP;
 		pos+= OBJECTIVESSKIP;
 
+		// OBJ-IMGUI-SLICE-1: enumeration/status/color factored into the shared
+		// gatherObjectiveRows (used verbatim by the ImGui path) — same rows,
+		// same order, same colors; the draw + timing side-effects stay here.
+		ObjectiveUiRow objRows[100];
+		const int nObjRows = gatherObjectiveRows( objRows, 100 );
+
 		float objectiveCount = -objectiveMoveInfo[OBJECTVE_MOVE_COUNT-1].time;
 		int sum = 0;
 		int objectiveNum = 0;
-		for ( EList< CObjective*, CObjective* >::EIterator iter =  Team::home->objectives.Begin();
-			!iter.IsDone(); iter++ )
+		for ( int r = 0; r < nObjRows; r++ )
 		{
-			if ( ((*iter)->IsActive()) && (!(*iter)->IsHiddenTrigger()) && (1 == (*iter)->Priority()) )
+			if ( objRows[r].primary )
 			{
 				bool bTotal =  renderStatusInfo && objectiveCount < objectiveTime;  // drawing one per second
-				renderObjective( (*iter), OBJECTIVESLEFT, pos, bTotal );
-				if ( (*iter)->Status(Team::home->objectives) == OS_SUCCESSFUL && bTotal )
+				renderObjective( objRows[r], OBJECTIVESLEFT, pos, bTotal );
+				if ( objRows[r].succeeded && bTotal )
 				{
-					sum += (*iter)->ResourcePoints();
+					sum += objRows[r].points;
 					if (!playedObjectiveClick[objectiveNum])
 					{
 						playedObjectiveClick[objectiveNum] = true;
@@ -1364,17 +1683,16 @@ void ControlGui::RenderObjectives()
 			guiFont.getSize() );
 
 		// draw secondary objectives
-		for (EList< CObjective*, CObjective* >::EIterator iter =  Team::home->objectives.Begin();
-			!iter.IsDone(); iter++ )
+		for ( int r = 0; r < nObjRows; r++ )
 		{
-			if ( ((*iter)->IsActive()) && (!(*iter)->IsHiddenTrigger()) && (!(1 == (*iter)->Priority())) )
+			if ( !objRows[r].primary )
 			{
 				pos += OBJECTIVESSKIP;
 				bool bTotal =  renderStatusInfo && objectiveCount < objectiveTime;  // drawing one per second
-				renderObjective( (*iter), OBJECTIVESLEFT, pos, bTotal );
-				if ( (*iter)->Status(Team::home->objectives) == OS_SUCCESSFUL  && bTotal )
+				renderObjective( objRows[r], OBJECTIVESLEFT, pos, bTotal );
+				if ( objRows[r].succeeded && bTotal )
 				{
-					sum += (*iter)->ResourcePoints();
+					sum += objRows[r].points;
 					if (!playedObjectiveClick[objectiveNum])
 					{
 						playedObjectiveClick[objectiveNum] = true;
@@ -1475,23 +1793,14 @@ void ControlGui::renderPlayerStatus(float xDelta)
 
 }
 
-void ControlGui::renderObjective( CObjective* pObjective, long xPos, long yPos, bool bDrawTotal )
+// OBJ-IMGUI-SLICE-1: takes the shared gather row (enumeration + status color
+// live in gatherObjectiveRows now, consumed by BOTH this legacy draw and the
+// ImGui overlay). Pixel output unchanged.
+void ControlGui::renderObjective( const ObjectiveUiRow& row, long xPos, long yPos, bool bDrawTotal )
 {
-	// draw description
-	long color = pObjective->Status(Team::home->objectives) == OS_FAILED ?  0xffc61c00 : 
-	( pObjective->Status(Team::home->objectives) == OS_SUCCESSFUL ? 0xff41c700 : 0xffffc600 );
-
+	CObjective* pObjective = row.obj;
+	const long color = row.color;
 	gosASSERT(pObjective->IsActive());
-	if (pObjective->ActivateOnFlag() && (20.0/*seconds*//*arbitrary*/ > (mission->actualTime - pObjective->ActivationTime())))
-	{
-		/* flash the objective text */
-		int tempI = (int)(2.0/*Hz*//*flash frequency*/ * (mission->actualTime - pObjective->ActivationTime()));
-		int parity = (tempI % 2);
-		if (0 == parity)
-		{
-			color = 0xffffffff;
-		}
-	}
 
 	drawShadowText( color, 0xff000000, guiFont.getTempHandle(), xPos, yPos, 1, pObjective->LocalizedDescription(), 0,
 		guiFont.getSize() );
@@ -1502,10 +1811,10 @@ void ControlGui::renderObjective( CObjective* pObjective, long xPos, long yPos, 
 		long width, height;
 		long descWidth;
 		long dotWidth;
-		
+
 		char total[64];
-		int amount = pObjective->Status(Team::home->objectives) == OS_SUCCESSFUL ? pObjective->ResourcePoints() : 0;
-		sprintf( total, "%ld", amount );
+		int amount = row.succeeded ? row.points : 0;
+		sprintf( total, "%d", amount );
 		width = guiFont.width( total );
 		
 		// draw total
@@ -1555,7 +1864,7 @@ void ControlGui::renderObjective( CObjective* pObjective, long xPos, long yPos, 
 	objectiveInfos[objectiveInfoCount-3].setLocation( x, yPos + OBJECTIVEBOXSKIP );
 	objectiveInfos[objectiveInfoCount-3].render();
 
-	if ( pObjective->Status(Team::home->objectives) == OS_FAILED )
+	if ( row.failed )
 	{
 		float height = objectiveInfos[objectiveInfoCount-1].location[2].y - objectiveInfos[objectiveInfoCount-1].location[0].y;
 		objectiveInfos[objectiveInfoCount-1].location[0].y =yPos + OBJECTIVECHECKSKIP;
@@ -1568,7 +1877,7 @@ void ControlGui::renderObjective( CObjective* pObjective, long xPos, long yPos, 
 		objectiveInfos[objectiveInfoCount-1].render();
 
 	}
-	else if ( pObjective->Status(Team::home->objectives) == OS_SUCCESSFUL )
+	else if ( row.succeeded )
 	{
 		float height = objectiveInfos[objectiveInfoCount-2].location[2].y - objectiveInfos[objectiveInfoCount-2].location[0].y;
 		objectiveInfos[objectiveInfoCount-2].location[0].y =yPos + OBJECTIVECHECKSKIP;

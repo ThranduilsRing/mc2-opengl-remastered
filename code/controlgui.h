@@ -46,6 +46,19 @@ ControlGui.h			: Interface for the ControlGui component.  This thing holds the t
 class CObjective;
 class InfoWindow;
 class PauseWindow;
+
+// OBJ-IMGUI-SLICE-1: one display row of the objectives overlay, fully resolved
+// by the shared ControlGui::gatherObjectiveRows so the legacy and ImGui draw
+// paths enumerate/color objectives through the SAME logic and can never drift.
+struct ObjectiveUiRow
+{
+	CObjective*	obj;		// live objective (description read at draw time)
+	bool		primary;	// 1 == Priority()
+	long		color;		// ARGB status color (incl. activation flash)
+	bool		succeeded;	// Status == OS_SUCCESSFUL
+	bool		failed;		// Status == OS_FAILED
+	long		points;		// ResourcePoints()
+};
 //*************************************************************************************************
 
 
@@ -240,7 +253,11 @@ class ControlGui
 		bool	getRepair();
 		bool	getGuardTower();
 		void	switchTabs( int direction );
-		void	renderObjective( CObjective* pObjective, long xPos, long yPos, bool bDrawTotal );
+		void	renderObjective( const ObjectiveUiRow& row, long xPos, long yPos, bool bDrawTotal );
+		// OBJ-IMGUI-SLICE-1: shared objective-row gather (legacy + ImGui paths).
+		int		gatherObjectiveRows( ObjectiveUiRow* rows, int maxRows );
+		static bool	imguiObjEnabled();
+		void	renderObjectivesImGui();
 		void	renderMissionStatus( bool bRender){ renderStatusInfo = bRender; }		
 		
 		int		getCurrentRange();
