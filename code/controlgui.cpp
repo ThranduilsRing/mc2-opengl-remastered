@@ -1615,7 +1615,15 @@ void ControlGui::update( bool bPaused, bool bLOS )
 					{
 						s_infoDone = true;
 						infoWnd->setUnit( m );
+						// Tabs are mutually exclusive; the render if/else picks
+						// TACMAP first, so un-press the siblings before pressing
+						// INFO or the minimap keeps winning the left-column slot.
+						getButton( TACMAP_TAB )->press( false );
+						getButton( VEHICLE_TAB )->press( false );
 						getButton( INFO_TAB )->press( true );
+						printf("[BOOT_INFO] selected mover teamId=%ld -> INFO tab (frame %u)\n",
+							(long)m->getTeamId(), (unsigned)g_mc2FrameCounter);
+						fflush(stdout);
 						break;
 					}
 				}
