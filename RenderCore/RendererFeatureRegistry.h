@@ -668,6 +668,17 @@ static constexpr EnvVarDesc kAuxEnvVars[] = {
         "iterating on the pause window (same fixture pattern as "
         "MC2_FX_FORCE_SPAWN). Default unset -> byte-identical."
     },
+    {
+        "MC2_TRACE_BOOT_PAUSED_CONFIRM",
+        "MC2_BOOT_PAUSED_CONFIRM",
+        EnvVarKind::Trace,
+        false,
+        "PAUSE-IMGUI-SLICE-3: =abort|exit invokes the ABORT MISSION / EXIT GAME "
+        "confirm dialog ONCE after the MC2_BOOT_PAUSED pause menu has settled "
+        "(PauseWindow::update), through the same handleClick path a user click "
+        "takes. Headless agents cannot click the pause buttons, so this is the "
+        "capture fixture for the confirm dialogs. Default unset -> byte-identical."
+    },
     // TERRAIN-DECAL-SLICE-0B: live placement knobs for the CLIFF_WALL mesh-decal
     // (mclib/bdactor.cpp registerStatic). Read once at process start; all default
     // to Slice-0A behavior -> byte-identical when unset. Only consulted when

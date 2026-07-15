@@ -76,6 +76,24 @@ PauseWindow::~PauseWindow()
 
 void PauseWindow::update()
 {
+	// PAUSE-IMGUI-SLICE-3: MC2_BOOT_PAUSED_CONFIRM=abort|exit fixture (default
+	// unset -> byte-identical). ONCE, after the pause menu slide-in has settled,
+	// invoke the ABORT MISSION / EXIT GAME confirm dialog through the SAME
+	// handleClick() path a user click takes (sets bPromptToAbort/bPromptToQuit +
+	// LogisticsOKDialog setText/begin). Headless agents cannot click the pause
+	// buttons, so this is the capture fixture for the confirm dialogs (same
+	// pattern as MC2_BOOT_PAUSED). Registered (Trace).
+	{
+		static const char* s_confirm = getenv("MC2_BOOT_PAUSED_CONFIRM");
+		static bool s_confirmDone = false;
+		if ( s_confirm && s_confirm[0] && !s_confirmDone && currentTime > 0.7f
+			&& !bPromptToQuit && !bPromptToAbort )
+		{
+			s_confirmDone = true;
+			handleClick( _stricmp( s_confirm, "exit" ) == 0 ? EXIT : RESTART );
+		}
+	}
+
 	if ( bPromptToQuit || bPromptToAbort )
 	{
 		LogisticsOKDialog::instance()->update();
