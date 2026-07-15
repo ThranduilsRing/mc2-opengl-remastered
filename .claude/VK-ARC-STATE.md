@@ -1,5 +1,31 @@
 # VK-ARC-STATE — current state block (update every session)
 
+## 2026-07-15 — ★S2b-CONFIRMED (confirmation soak at deploy `e142da28`, HEAD `7a58bce7`): 7/7 real-time field launches with ZERO grey-transient, zero fail-soft, zero deferrals — the DISARM-1/2/2b stack holds; S2b OPEN item CLOSED.
+
+**★ SOAK SETUP:** install `mc2-win64-0.4c` (manifest src_commit `e142da28`, clean, docs-only
+delta to HEAD), mission mc2_01, MC2_LOG=1. Runs 1–5 = rapid back-to-back
+`run_vk_field_check.py --skip-props-pose` launches (~30s each, the launch cadence that
+historically provoked the NATIVE_WINDOW_IN_USE flake); runs 6–7 = PPM-oracle launches
+(field env + `MC2_VK_PRESENT_VERIFY=1` + `MC2_VK_PRESENT_DUMP_PPM` + pin 1500, ~38s).
+
+**★ RESULT — 7/7 CLEAN FULL-VK SESSIONS:** zero occurrences of `[RENDER_BACKEND] fail-soft`,
+`[VK_PRESENT] init deferred`, `treated as transient`, `deferred init recovered`, or
+`NATIVE_WINDOW_IN_USE` across all 7 logs. Every run: single swapchain create, one benign
+boot resize (`resize_recreate_ok=1 resize_recreate_retries=0 resize_recreate_failsoft=0`),
+2700–4500 VK-presented frames, `validation_errors=0 fallback_reason=""`, all content layers
+VK-owned (e.g. run 1 `used_vulkan={'terrain':3598,'prop':3598,'mech':3339,'water':3598,
+'fog':3598}`, no fallback reasons), field-check PASS 5/5. **Pixel truth (the OS-grab chroma
+was blind — solid-white foreground window, the documented capture limitation):** both PPM
+runs read chroma 45.65 (grey wash ≈4); I eyeballed run 6's PPM — full textured terrain,
+3 mechs w/ brackets + health bars, shoreline water, comm-video panel. No grey, no tearing.
+
+**★ VERDICT:** grey-transient GONE at the shipped stack — 7 launches (vs the historical
+~1-in-4 strike rate) produced zero grey windows of any kind. CAVEAT (unchanged from
+DISARM-2b's OPEN note): the flake itself did not strike, so a live end-to-end
+`treated as transient → deferred init recovered` sequence remains UNOBSERVED in the wild —
+watch-only; next natural occurrence should log exactly that pair with a sub-second frame
+hold. No new bugs found; no code changed (docs-only session).
+
 ## 2026-07-14 (PM) — ★VFX-6+7 SHIPPED (`f6e1b3d1`/`9963130479`): ALL weapon-VFX classes now composite under VK (user report "only lasers show up" fixed) + ★DISARM-2b (`ad982de2`): the deferral GL-swap deadlock found in the wild and fixed. Both installs deployed at `ad982de2`.
 
 **★ VFX-6 ROOT CAUSE ("only lasers"):** objmgr's IsHUD wrap (VFX-3) covered the effect
