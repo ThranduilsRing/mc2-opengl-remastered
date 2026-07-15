@@ -217,3 +217,14 @@ unsigned int MC2Movie::getTextureHandle (void)
 {
     return m_session ? video_get_texture(m_session) : 0;
 }
+
+bool MC2Movie::getLayout (float& qx0, float& qy0, float& qx1, float& qy1,
+                          long& rx, long& ry, long& rw, long& rh)
+{
+    int irx = 0, iry = 0, irw = 0, irh = 0;
+    if (!video_get_layout(m_session, &qx0, &qy0, &qx1, &qy1,
+                          &irx, &iry, &irw, &irh))
+        return false;
+    rx = irx; ry = iry; rw = irw; rh = irh;
+    return true;
+}

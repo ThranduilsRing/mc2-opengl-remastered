@@ -258,6 +258,11 @@ class ControlGui
 		int		gatherObjectiveRows( ObjectiveUiRow* rows, int maxRows );
 		static bool	imguiObjEnabled();
 		void	renderObjectivesImGui();
+		// SMALLPANELS-IMGUI-SLICE-1: mission-timer + comm-video panels.
+		static bool	imguiTimerEnabled();
+		static bool	imguiVideoEnabled();
+		void	renderTimerImGui( const char* buffer, unsigned long color );
+		void	renderVideoImGui();
 		void	renderMissionStatus( bool bRender){ renderStatusInfo = bRender; }		
 		
 		int		getCurrentRange();

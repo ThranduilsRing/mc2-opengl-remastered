@@ -680,6 +680,28 @@ static constexpr EnvVarDesc kAuxEnvVars[] = {
         "capture fixture for the confirm dialogs. Default unset -> byte-identical."
     },
     {
+        "MC2_TRACE_UI_IMGUI_TIMER",
+        "MC2_UI_IMGUI_TIMER",
+        EnvVarKind::Trace,
+        false,
+        "SMALLPANELS-IMGUI-SLICE-1: =1 renders the in-mission mission-timer "
+        "display as ImGui (right-aligned MM:SS via HudFont + the TimerStatic "
+        "atlas tile) laid out through the HUD-shrink + canvas-box transform "
+        "chain. Time/warning/blink logic stays shared with the legacy path. "
+        "Default unset -> legacy drawShadowText/StaticInfo draw, byte-identical."
+    },
+    {
+        "MC2_TRACE_UI_IMGUI_VIDEO",
+        "MC2_UI_IMGUI_VIDEO",
+        EnvVarKind::Trace,
+        false,
+        "SMALLPANELS-IMGUI-SLICE-1: =1 renders the in-mission comm-video panel "
+        "as ImGui — VideoStatic chrome tiles + the decoder's frame texture at "
+        "the same aspect-fit quad/letterbox video_render computes "
+        "(MC2Movie::getLayout), inside gos_ComputeHudCanvasBox. Default unset "
+        "-> legacy StaticInfo + gos quad draw, byte-identical."
+    },
+    {
         "MC2_TRACE_BOOT_TIMER",
         "MC2_BOOT_TIMER",
         EnvVarKind::Trace,

@@ -1021,9 +1021,16 @@ void ControlGui::render( bool bPaused )
 
 	if ( moviePlaying && bMovie)
 	{
-		for ( int i = 0; i < videoInfoCount; i++ )
-			videoInfos[i].render();
-		bMovie->render();
+		// SMALLPANELS-IMGUI-SLICE-1: ImGui comm-video panel when gated on.
+		// Gate OFF -> legacy below, byte-identical.
+		if ( imguiVideoEnabled() )
+			renderVideoImGui();
+		else
+		{
+			for ( int i = 0; i < videoInfoCount; i++ )
+				videoInfos[i].render();
+			bMovie->render();
+		}
 	}
 
 	if (drawGUIOn)
@@ -1069,13 +1076,21 @@ void ControlGui::render( bool bPaused )
 			}
 	
 			
-			long width = timerFont.width( buffer );
-			drawShadowText( color, 0x00000000, timerFont.getTempHandle(), 
-				timerRect.rect.left - width, timerRect.rect.top, true,
-				buffer, 0, guiFont.getSize() );
+			// SMALLPANELS-IMGUI-SLICE-1: ImGui timer panel when gated on. The
+			// time/warning/blink computation above is shared -- only the draw
+			// forks. Gate OFF -> legacy below, byte-identical.
+			if ( imguiTimerEnabled() )
+				renderTimerImGui( buffer, color );
+			else
+			{
+				long width = timerFont.width( buffer );
+				drawShadowText( color, 0x00000000, timerFont.getTempHandle(),
+					timerRect.rect.left - width, timerRect.rect.top, true,
+					buffer, 0, guiFont.getSize() );
 	
-			for (long i = 0; i < timerInfoCount; i++ )
-				timerInfos[i].render();
+				for (long i = 0; i < timerInfoCount; i++ )
+					timerInfos[i].render();
+			}
 		}
 	
 		if ( bPaused )
@@ -1563,6 +1578,178 @@ void ControlGui::renderObjectivesImGui()
 		sprintf( total, total2, sum );
 		const float width = TextWidth( total );
 		ShadowText( AX( (float)OBJECTIVESTOTALRIGHT ) - width, AY( (float)pos ), 0xffffffff, total );
+	}
+
+	ImGui::End();
+	ImGui::PopStyleVar( 1 );	// WindowPadding
+}
+
+// SMALLPANELS-IMGUI-SLICE-1: gates. Default OFF -> legacy draws, byte-identical.
+bool ControlGui::imguiTimerEnabled()
+{
+	static const bool s_on = []{
+		const char* v = getenv("MC2_UI_IMGUI_TIMER");
+		return v && v[0] && v[0] != '0';
+	}();
+	return s_on;
+}
+
+bool ControlGui::imguiVideoEnabled()
+{
+	static const bool s_on = []{
+		const char* v = getenv("MC2_UI_IMGUI_VIDEO");
+		return v && v[0] && v[0] != '0';
+	}();
+	return s_on;
+}
+
+// SMALLPANELS-IMGUI-SLICE-1: ImGui mission-timer panel (MC2_UI_IMGUI_TIMER=1).
+// Display-only. The caller (render()) keeps the legacy time/warning/blink
+// computation — this fn receives the SAME formatted buffer + ARGB color the
+// legacy drawShadowText call gets, so content/state logic cannot drift. Layout:
+// the timer sits in the BOTTOM band (authored y=410 of 600 > 60%), so the
+// legacy verts get the in-mission HUD shrink (s_hud_scale toward bottom-center)
+// BEFORE the 16:9 canvas remap — mirror both, the same order flushHUDBatch
+// applies them (INFO-IMGUI-SLICE-3 lesson).
+void ControlGui::renderTimerImGui( const char* buffer, unsigned long color )
+{
+	int bx = 0, by = 0, bw = 0, bh = 0;
+	if ( !gos_ComputeHudCanvasBox( Environment.drawableWidth, Environment.drawableHeight,
+			&bx, &by, &bw, &bh ) )
+	{ bx = 0; by = 0; bw = Environment.drawableWidth; bh = Environment.drawableHeight; }
+	const float lw = Environment.screenWidth  > 0 ? (float)Environment.screenWidth  : 800.0f;
+	const float lh = Environment.screenHeight > 0 ? (float)Environment.screenHeight : 600.0f;
+	// same activation condition as flushHUDBatch (scale < 0.999 gate included)
+	const float hud = ( gos_GetHudScaleActive() && gos_GetHudScale() < 0.999f )
+		? gos_GetHudScale() : 1.0f;
+	const float cx = (float)bw / lw;
+	const float cy = (float)bh / lh;
+	const float sx = cx * hud;
+	const float sy = cy * hud;
+	auto AX = [&]( float ax ){ return bx + ( lw * 0.5f + ( ax - lw * 0.5f ) * hud ) * cx; };
+	auto AY = [&]( float ay ){ return by + ( lh        + ( ay - lh        ) * hud ) * cy; };
+
+	ImGui::SetNextWindowPos( ImVec2( (float)bx, (float)by ) );
+	ImGui::SetNextWindowSize( ImVec2( (float)bw, (float)bh ) );
+	ImGui::PushStyleVar( ImGuiStyleVar_WindowPadding, ImVec2( 0.0f, 0.0f ) );
+	ImGui::Begin( "##mc2_timer", nullptr,
+		ImGuiWindowFlags_NoTitleBar | ImGuiWindowFlags_NoResize | ImGuiWindowFlags_NoMove |
+		ImGuiWindowFlags_NoCollapse | ImGuiWindowFlags_NoScrollbar | ImGuiWindowFlags_NoSavedSettings |
+		ImGuiWindowFlags_NoBackground | ImGuiWindowFlags_NoInputs );	// display-only overlay
+
+	ImDrawList* dl = ImGui::GetWindowDrawList();
+
+	// FONT-IMGUI-SLICE-1: same legacy bitmap timerFont through HudFont. Legacy
+	// right-aligns: x = timerRect.rect.left - width. drawShadowText draws the
+	// shadow pass at (-1,+1) authored px first; gos text forces alpha 255
+	// (gameos_graphics.cpp fg.w = 255), so both passes draw opaque — the blink
+	// state (color==0) renders opaque black exactly like the legacy path.
+	HGOSFONT3D tf = timerFont.getTempHandle();
+	const float wA = HudFont::Measure( tf, buffer, 1.0f, 1.0f ).x;
+	const float xA = (float)timerRect.rect.left - wA;
+	const float yA = (float)timerRect.rect.top;
+	HudFont::Draw( dl, tf, AX( xA - 1.0f ), AY( yA + 1.0f ),
+		IM_COL32( 0, 0, 0, 255 ), buffer, sx, sy );
+	HudFont::Draw( dl, tf, AX( xA ), AY( yA ),
+		IM_COL32( (color >> 16) & 0xff, (color >> 8) & 0xff, color & 0xff, 255 ),
+		buffer, sx, sy );
+
+	// timer graphic tile(s) (TimerStatic N): AddImage from the SAME runtime
+	// StaticInfo state (screen rect + atlas UVs) the legacy render uses.
+	for ( long i = 0; i < timerInfoCount; i++ )
+	{
+		StaticInfo& st = timerInfos[i];
+		DWORD gosID = mcTextureManager->get_gosTextureHandle( st.textureHandle );
+		if ( !gosID || gosID == 0xffffffff )
+			continue;
+		unsigned glTex = gos_GetGLTextureName( gosID );
+		if ( !glTex )
+			continue;
+		dl->AddImage( (ImTextureID)(intptr_t)glTex,
+			ImVec2( AX( st.location[0].x ), AY( st.location[0].y ) ),
+			ImVec2( AX( st.location[2].x ), AY( st.location[2].y ) ),
+			ImVec2( st.location[0].u, st.location[0].v ),
+			ImVec2( st.location[2].u, st.location[2].v ) );
+	}
+
+	ImGui::End();
+	ImGui::PopStyleVar( 1 );	// WindowPadding
+}
+
+// SMALLPANELS-IMGUI-SLICE-1: ImGui comm-video panel (MC2_UI_IMGUI_VIDEO=1).
+// Display-only. Frame chrome = the SAME runtime VideoStatic StaticInfos the
+// legacy loop draws; movie content = the decoder's current frame texture
+// composited at the SAME aspect-fit quad + letterbox rect video_render uses
+// (MC2Movie::getLayout). The panel sits in the TOP band (authored y 0..111),
+// so the raw canvas box applies — no HUD shrink (PauseWindow pattern).
+void ControlGui::renderVideoImGui()
+{
+	if ( !( moviePlaying && bMovie ) )
+		return;
+
+	int bx = 0, by = 0, bw = 0, bh = 0;
+	if ( !gos_ComputeHudCanvasBox( Environment.drawableWidth, Environment.drawableHeight,
+			&bx, &by, &bw, &bh ) )
+	{ bx = 0; by = 0; bw = Environment.drawableWidth; bh = Environment.drawableHeight; }
+	const float lw = Environment.screenWidth  > 0 ? (float)Environment.screenWidth  : 800.0f;
+	const float lh = Environment.screenHeight > 0 ? (float)Environment.screenHeight : 600.0f;
+	const float sx = (float)bw / lw;
+	const float sy = (float)bh / lh;
+	auto AX = [&]( float ax ){ return bx + ax * sx; };
+	auto AY = [&]( float ay ){ return by + ay * sy; };
+
+	ImGui::SetNextWindowPos( ImVec2( (float)bx, (float)by ) );
+	ImGui::SetNextWindowSize( ImVec2( (float)bw, (float)bh ) );
+	ImGui::PushStyleVar( ImGuiStyleVar_WindowPadding, ImVec2( 0.0f, 0.0f ) );
+	ImGui::Begin( "##mc2_video", nullptr,
+		ImGuiWindowFlags_NoTitleBar | ImGuiWindowFlags_NoResize | ImGuiWindowFlags_NoMove |
+		ImGuiWindowFlags_NoCollapse | ImGuiWindowFlags_NoScrollbar | ImGuiWindowFlags_NoSavedSettings |
+		ImGuiWindowFlags_NoBackground | ImGuiWindowFlags_NoInputs );	// display-only overlay
+
+	ImDrawList* dl = ImGui::GetWindowDrawList();
+
+	// frame chrome (VideoStatic N tiles: top/bottom strips, hazard left block,
+	// right strip) — same runtime screen rects + atlas UVs as the legacy loop.
+	for ( int i = 0; i < videoInfoCount; i++ )
+	{
+		StaticInfo& st = videoInfos[i];
+		DWORD gosID = mcTextureManager->get_gosTextureHandle( st.textureHandle );
+		if ( !gosID || gosID == 0xffffffff )
+			continue;
+		unsigned glTex = gos_GetGLTextureName( gosID );
+		if ( !glTex )
+			continue;
+		dl->AddImage( (ImTextureID)(intptr_t)glTex,
+			ImVec2( AX( st.location[0].x ), AY( st.location[0].y ) ),
+			ImVec2( AX( st.location[2].x ), AY( st.location[2].y ) ),
+			ImVec2( st.location[0].u, st.location[0].v ),
+			ImVec2( st.location[2].u, st.location[2].v ) );
+	}
+
+	// movie content. video_render early-outs entirely when no decoded frame is
+	// ready — mirror that (chrome still draws, like the legacy loop above).
+	unsigned gosTex = bMovie->getTextureHandle();
+	if ( gosTex )
+	{
+		float qx0, qy0, qx1, qy1;
+		long rx, ry, rw, rh;
+		if ( bMovie->getLayout( qx0, qy0, qx1, qy1, rx, ry, rw, rh ) )
+		{
+			// letterbox fill (opaque black) when the aspect-fit quad does not
+			// cover the dest rect — same condition as video_render.
+			if ( qx0 > (float)rx || qy0 > (float)ry ||
+				 qx1 < (float)( rx + rw ) || qy1 < (float)( ry + rh ) )
+				dl->AddRectFilled(
+					ImVec2( AX( (float)rx ), AY( (float)ry ) ),
+					ImVec2( AX( (float)( rx + rw ) ), AY( (float)( ry + rh ) ) ),
+					IM_COL32( 0, 0, 0, 255 ) );
+			unsigned glTex = gos_GetGLTextureName( gosTex );
+			if ( glTex )
+				dl->AddImage( (ImTextureID)(intptr_t)glTex,
+					ImVec2( AX( qx0 ), AY( qy0 ) ),
+					ImVec2( AX( qx1 ), AY( qy1 ) ),
+					ImVec2( 0.0f, 0.0f ), ImVec2( 1.0f, 1.0f ) );
+		}
 	}
 
 	ImGui::End();

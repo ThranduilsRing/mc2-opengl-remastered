@@ -697,6 +697,23 @@ unsigned int video_get_texture(VideoSession* s)
     return (unsigned int)s->texHandle;
 }
 
+bool video_get_layout(VideoSession* s,
+                      float* qx0, float* qy0, float* qx1, float* qy1,
+                      int* rx, int* ry, int* rw, int* rh)
+{
+    if (!s)
+        return false;
+    if (qx0) *qx0 = s->quadX0;
+    if (qy0) *qy0 = s->quadY0;
+    if (qx1) *qx1 = s->quadX1;
+    if (qy1) *qy1 = s->quadY1;
+    if (rx)  *rx  = s->rectX;
+    if (ry)  *ry  = s->rectY;
+    if (rw)  *rw  = s->rectW;
+    if (rh)  *rh  = s->rectH;
+    return true;
+}
+
 void video_render(VideoSession* s)
 {
     if (!s || !s->frameReady || s->texHandle == 0) {
