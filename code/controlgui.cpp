@@ -1364,20 +1364,25 @@ void ControlGui::renderObjectivesImGui()
 	const float shiftX = objectiveMoveInfo[OBJECTVE_MOVE_COUNT - 1].position
 		- ( objectiveInfos ? objectiveInfos[0].location[0].x : 0.0f );
 
-	// one-time load of the baked frame (gate-on path only)
-	static unsigned s_frameGlTex = 0;
+	// one-time load of the baked frame (gate-on path only). nFlush=0x1 pins the
+	// node — the overlay never draws through the legacy quad path, so an
+	// unpinned texture gets cached out mid-mission and its GL name recycled
+	// (first capture showed unit-icon atlas garbage in the frame rect). The GL
+	// name is re-resolved per frame for the same reason.
+	static DWORD s_frameMcH = 0;
 	static bool s_frameTried = false;
 	if ( !s_frameTried )
 	{
 		s_frameTried = true;
-		DWORD mcH = mcTextureManager->loadTexture(
-			"data\\art\\gui\\mc2_obj_frame.png", gos_Texture_Alpha, 0, 0, 0 );
-		if ( mcH )
-		{
-			DWORD gosID = mcTextureManager->get_gosTextureHandle( mcH );
-			if ( gosID && gosID != 0xffffffff )
-				s_frameGlTex = gos_GetGLTextureName( gosID );
-		}
+		s_frameMcH = mcTextureManager->loadTexture(
+			"data\\art\\gui\\mc2_obj_frame.png", gos_Texture_Alpha, 0, 0, 0x1 );
+	}
+	unsigned s_frameGlTex = 0;
+	if ( s_frameMcH )
+	{
+		DWORD gosID = mcTextureManager->get_gosTextureHandle( s_frameMcH );
+		if ( gosID && gosID != 0xffffffff )
+			s_frameGlTex = gos_GetGLTextureName( gosID );
 	}
 
 	ImGui::SetNextWindowPos( ImVec2( (float)bx, (float)by ) );
