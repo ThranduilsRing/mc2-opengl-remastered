@@ -7731,6 +7731,73 @@ void __stdcall gos_DeleteFont( HGOSFONT3D FontHandle )
     getGosRenderer()->deleteFont(font);
 }
 
+// FONT-IMGUI-SLICE-1: read-only atlas/glyph queries for the ImGui HUD bitmap
+// text helper (code/hud_imgui_font.cpp). Contract documented in gameos.hpp.
+bool __stdcall gos_FontGetAtlasDesc( HGOSFONT3D FontHandle, gos_FontAtlasDesc* Out )
+{
+    if(!FontHandle || !Out || !g_gos_renderer)
+        return false;
+
+    const gosFont* font = FontHandle;
+    const DWORD tex_id = font->getTextureId();
+    if(tex_id == INVALID_TEXTURE_ID)
+        return false;
+
+    gosTexture* tex = g_gos_renderer->getTexture(tex_id);
+    if(!tex)
+        return false;
+
+    gosTextureInfo ti;
+    tex->getTextureInfo(&ti);
+
+    Out->glTexId    = tex->getTextureId();
+    Out->texWidth   = ti.width_;
+    Out->texHeight  = ti.height_;
+    Out->lineSkip   = font->getMaxCharHeight();
+    Out->ascent     = font->getFontAscent();
+    Out->maxAdvance = font->getMaxCharWidth();
+
+    if(Out->glTexId == 0 || Out->texWidth <= 0 || Out->texHeight <= 0)
+        return false;
+
+    // Pin the atlas sampling params to what every legacy text draw sets
+    // (gos_FilterNone -> NEAREST, gos_TextureClamp -> CLAMP_TO_EDGE). The
+    // legacy path re-applies these per draw via applyRenderStates; the
+    // ImGui path binds the texture directly, so make them sticky here.
+    GLint prev_bound = 0;
+    glGetIntegerv(GL_TEXTURE_BINDING_2D, &prev_bound);
+    glBindTexture(GL_TEXTURE_2D, Out->glTexId);
+    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_NEAREST);
+    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_NEAREST);
+    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_CLAMP_TO_EDGE);
+    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_CLAMP_TO_EDGE);
+    glBindTexture(GL_TEXTURE_2D, (GLuint)prev_bound);
+
+    return true;
+}
+
+bool __stdcall gos_FontGetGlyphDesc( HGOSFONT3D FontHandle, int Char, gos_FontGlyphDesc* Out )
+{
+    if(!FontHandle || !Out)
+        return false;
+
+    const gosFont* font = FontHandle;
+    const gosGlyphInfo& gi = font->getGlyphInfo();
+    const int pos = Char - (int)gi.start_glyph_;
+    if(pos < 0 || pos >= (int)gi.num_glyphs_)
+        return false;
+
+    const gosGlyphMetrics& gm = gi.glyphs_[pos];
+    Out->offX    = gm.minx;
+    Out->offY    = (int)gi.font_ascent_ - gm.maxy;
+    Out->width   = gm.maxx - gm.minx;
+    Out->height  = gm.maxy - gm.miny;
+    Out->u       = gm.u;
+    Out->v       = gm.v;
+    Out->advance = gm.advance;
+    return true;
+}
+
 DWORD __stdcall gos_NewEmptyTexture( gos_TextureFormat Format, const char* Name, DWORD HeightWidth, DWORD Hints/*=0*/, gos_RebuildFunction pFunc/*=0*/, void *pInstance/*=0*/)
 {
     int w = HeightWidth;

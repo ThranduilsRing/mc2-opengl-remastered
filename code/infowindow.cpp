@@ -16,8 +16,8 @@ InfoWindow.cpp			: Implementation of the InfoWindow component.
 #include"estring.h"
 #include"gameos.hpp"        // INFO-IMGUI-SLICE-1: gos_ComputeHudCanvasBox + Environment
 #include"imgui.h"           // INFO-IMGUI-SLICE-1: ImGui info panel
+#include"hud_imgui_font.h"  // FONT-IMGUI-SLICE-1: legacy bitmap-font text
 #include<cstdlib>           // INFO-IMGUI-SLICE-1: getenv
-#include<cctype>            // INFO-IMGUI-SLICE-2: toupper (bitmap-font-style caps)
 #include<cstdint>           // INFO-IMGUI-SLICE-2: intptr_t (ImTextureID cast)
 
 long InfoWindow::SCROLLLEFT = 0;
@@ -417,19 +417,17 @@ void InfoWindow::renderImGui()
 	dl->AddRectFilled( ImVec2( AX( 4.0f ), hdrTop ), ImVec2( AX( 164.0f ), hdrBot ),
 		IM_COL32( 0x00, 0x2F, 0x55, 255 ) );
 
-	// INFO-IMGUI-SLICE-2: legacy panel text is a bitmap font whose glyphs are
-	// ALL-CAPS; ImGui's default font is mixed-case. Uppercase every string the
-	// panel displays so the text reads like the legacy panel. (Loading the
-	// legacy bitmap font into the ImGui atlas is deferred — no existing ImGui
-	// font-loading helper in the repo, and building an importer is out of
-	// slice scope.)
-	auto ToUpper = []( std::string s ){
-		for ( char& c : s )
-			c = (char)toupper( (unsigned char)c );
-		return s;
-	};
+	// FONT-IMGUI-SLICE-1: text draws with the SAME legacy bitmap fonts
+	// (nameFont for the header, componentFont for the rows) through HudFont —
+	// glyph quads from the gos font atlas. Strings pass through unmodified,
+	// exactly like the legacy path (the slice-2 ToUpper approximation for the
+	// ImGui default font is retired).
+	HGOSFONT3D hdrFont = nameFont.getTempHandle();
+	HGOSFONT3D rowFont = componentFont.getTempHandle();
 
-	// unit name (legacy drawName blue 0xff5c96c2), centered vertically in header.
+	// unit name (legacy drawName: nameFont.render(..., 0xff5c96c2, 0, 3) —
+	// WrapType 3 centers X and Y in the NAME rect). Mirror that centering in
+	// the fit-loaded authored NAME rect, mapped through the canvas anchor.
 	char nameBuf[256];
 	const char* name;
 	if ( pUnit )
@@ -441,10 +439,13 @@ void InfoWindow::renderImGui()
 	}
 	if ( name )
 	{
-		const std::string upName = ToUpper( name );
-		const ImVec2 ts = ImGui::CalcTextSize( upName.c_str() );
-		const float ncy = ( hdrTop + hdrBot ) * 0.5f - ts.y * 0.5f;
-		dl->AddText( ImVec2( AX( 8.0f ), ncy ), IM_COL32( 0x5C, 0x96, 0xC2, 255 ), upName.c_str() );
+		const ImVec2 tsA = HudFont::Measure( hdrFont, name, 1.0f, 1.0f );
+		const float nxA = (float)NAMELEFT +
+			( (float)( NAMERIGHT - NAMELEFT ) - tsA.x ) * 0.5f;
+		const float nyA = (float)NAMETOP +
+			( (float)( NAMEBOTTOM - NAMETOP ) - tsA.y ) * 0.5f;
+		HudFont::Draw( dl, hdrFont, AX( nxA ), AY( nyA ),
+			IM_COL32( 0x5C, 0x96, 0xC2, 255 ), name, sx, sy );
 	}
 
 	// health bar (legacy HEALTH rect, just under the header). Color by barStatus:
@@ -514,19 +515,27 @@ void InfoWindow::renderImGui()
 	{
 		if ( pUnit )
 		{
+			// FONT-IMGUI-SLICE-1: rows draw with the legacy componentFont via
+			// HudFont::DrawWrapped (legacy findTextBreak word-wrap); an
+			// ImGui::Dummy per row keeps the child's cursor/scroll extent in
+			// sync with what was drawn.
+			ImDrawList* cdl = ImGui::GetWindowDrawList();
+			const float wrapW = ImGui::GetContentRegionAvail().x;
+			auto BitmapRow = [&]( const char* text, ImU32 col ){
+				const ImVec2 cur = ImGui::GetCursorScreenPos();
+				const float h = HudFont::DrawWrapped( cdl, rowFont,
+					cur.x, cur.y, wrapW, col, text, sx, sy );
+				ImGui::Dummy( ImVec2( wrapW, h ) );
+			};
+
 			std::vector<InfoLoadoutRow> rows;
 			gatherLoadoutRows( rows );
-			ImGui::PushTextWrapPos( 0.0f );  // wrap at child width
 			for ( const InfoLoadoutRow& r : rows )
 			{
 				const uint32_t a = r.argb;
-				ImGui::PushStyleColor( ImGuiCol_Text,
+				BitmapRow( r.text.c_str(),
 					IM_COL32( (a >> 16) & 0xff, (a >> 8) & 0xff, a & 0xff, (a >> 24) & 0xff ) );
-				// INFO-IMGUI-SLICE-2: ALL-CAPS like the legacy bitmap font.
-				ImGui::TextUnformatted( ToUpper( r.text ).c_str() );
-				ImGui::PopStyleColor();
 			}
-			ImGui::PopTextWrapPos();
 
 			// INFO-IMGUI-SLICE-2: pilot section (photo + name + rank + skills +
 			// specialty skills). Content from the shared gatherPilotRows helper
@@ -551,18 +560,22 @@ void InfoWindow::renderImGui()
 						ImVec2( pu0, pv0 ), ImVec2( pu1, pv1 ) );
 					ImGui::SameLine();
 				}
-				ImGui::PushStyleColor( ImGuiCol_Text, pilotBlue );
-				ImGui::TextUnformatted( ToUpper( pilot.name ).c_str() );
+				// FONT-IMGUI-SLICE-1: pilot rows in the legacy componentFont
+				// (legacy drawScrollingStuff colors these 0xff005392);
+				// strings pass through unmodified.
+				BitmapRow( pilot.name.c_str(), pilotBlue );
 
 				// rank + skill rows
-				ImGui::TextUnformatted( ToUpper( pilot.rankText ).c_str() );
-				ImGui::Text( "GUNNERY  %d", pilot.gunnery );
-				ImGui::Text( "PILOTING %d", pilot.piloting );
+				char skillBuf[64];
+				BitmapRow( pilot.rankText.c_str(), pilotBlue );
+				snprintf( skillBuf, sizeof( skillBuf ), "Gunnery  %d", pilot.gunnery );
+				BitmapRow( skillBuf, pilotBlue );
+				snprintf( skillBuf, sizeof( skillBuf ), "Piloting %d", pilot.piloting );
+				BitmapRow( skillBuf, pilotBlue );
 
 				// specialty skills
 				for ( const std::string& s : pilot.specialties )
-					ImGui::TextUnformatted( ToUpper( s ).c_str() );
-				ImGui::PopStyleColor();
+					BitmapRow( s.c_str(), pilotBlue );
 			}
 
 			// INFO-IMGUI-SLICE-2 capture-fixture assist: when the MC2_BOOT_INFO

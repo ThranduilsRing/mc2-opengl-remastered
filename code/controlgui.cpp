@@ -50,7 +50,7 @@ extern float worldUnitsPerMeter;   // sensor range is in world units; /this = me
 #include"../GameOS/gameos/gos_profiler.h"
 #include"gameos.hpp"        // OBJ-IMGUI-SLICE-1: gos_ComputeHudCanvasBox + gos_GetGLTextureName
 #include"imgui.h"           // OBJ-IMGUI-SLICE-1: ImGui objectives overlay
-#include<cctype>            // OBJ-IMGUI-SLICE-1: toupper (bitmap-font-style caps)
+#include"hud_imgui_font.h"  // FONT-IMGUI-SLICE-1: legacy bitmap-font text
 #include<cstdint>           // OBJ-IMGUI-SLICE-1: intptr_t (ImTextureID cast)
 
 // ---- MISSION-INTERFACE-PERF-1 (MC2_IFACE_COST_SPLIT / MC2_MIF_SPLIT) ----
@@ -1398,15 +1398,21 @@ void ControlGui::renderObjectivesImGui()
 	auto argb2im = []( unsigned long argb ){
 		return IM_COL32( (argb >> 16) & 0xff, (argb >> 8) & 0xff, argb & 0xff, (argb >> 24) & 0xff );
 	};
-	// legacy panel text is an ALL-CAPS bitmap font; uppercase what we display
-	auto ToUpper = []( char* s ){
-		for ( ; *s; s++ )
-			*s = (char)toupper( (unsigned char)*s );
-	};
-	// drawShadowText equivalent: 1px black drop shadow under the colored text
+	// FONT-IMGUI-SLICE-1: text now draws with the SAME legacy bitmap guiFont
+	// through HudFont (glyph quads from the gos font atlas), so strings pass
+	// through unmodified exactly like the legacy path (the font's glyphs are
+	// caps-styled; no manual uppercasing — that was the ImGui-default-font
+	// approximation this slice retires).
+	HGOSFONT3D objFont = guiFont.getTempHandle();
+	// drawShadowText equivalent: legacy offsets the shadow pass by
+	// (xOffset=-1, yOffset=+1) authored pixels (mclib/utilities.cpp:414).
 	auto ShadowText = [&]( float x, float y, unsigned long argb, const char* text ){
-		dl->AddText( ImVec2( x + 1.0f, y + 1.0f ), IM_COL32( 0, 0, 0, 255 ), text );
-		dl->AddText( ImVec2( x, y ), argb2im( argb ), text );
+		HudFont::Draw( dl, objFont, x - 1.0f * sx, y + 1.0f * sy,
+			IM_COL32( 0, 0, 0, 255 ), text, sx, sy );
+		HudFont::Draw( dl, objFont, x, y, argb2im( argb ), text, sx, sy );
+	};
+	auto TextWidth = [&]( const char* text ){
+		return HudFont::Measure( objFont, text, sx, sy ).x;
 	};
 	// legacy status tiles (PrimaryObjBox/Check/X StaticInfos): AddImage from
 	// their atlas with the UVs StaticInfo::init resolved into the vertices.
@@ -1439,7 +1445,6 @@ void ControlGui::renderObjectivesImGui()
 
 	// "Primary Objectives" header
 	cLoadString( IDS_PRIMARY, buffer, 245 );
-	ToUpper( buffer );
 	ShadowText( AX( OBJECTIVEHEADERLEFT + shiftX ), AY( OBJECTIVESTOP ), 0xffffffff, buffer );
 
 	ObjectiveUiRow rows[100];
@@ -1462,7 +1467,6 @@ void ControlGui::renderObjectivesImGui()
 		char desc[256];
 		strncpy( desc, row.obj->LocalizedDescription(), 255 );
 		desc[255] = 0;
-		ToUpper( desc );
 
 		ShadowText( AX( OBJECTIVESLEFT + shiftX ), AY( (float)yPos ), (unsigned long)row.color, desc );
 
@@ -1471,12 +1475,12 @@ void ControlGui::renderObjectivesImGui()
 			char total[64];
 			int amount = row.succeeded ? row.points : 0;
 			sprintf( total, "%d", amount );
-			const float totalW = ImGui::CalcTextSize( total ).x;
+			const float totalW = TextWidth( total );
 			ShadowText( AX( (float)OBJECTIVESTOTALRIGHT ) - totalW, AY( (float)yPos ), 0xffffffff, total );
 
 			// leader dots between the description and the right-aligned total
-			const float descW = ImGui::CalcTextSize( desc ).x;
-			const float dotW = ImGui::CalcTextSize( "...................." ).x / 20.f;
+			const float descW = TextWidth( desc );
+			const float dotW = TextWidth( "...................." ) / 20.f;
 			const float totalLength = ( AX( (float)OBJECTIVESTOTALRIGHT ) - totalW )
 				- ( AX( OBJECTIVESLEFT + shiftX ) + descW );
 			long numberOfDots = (long)( totalLength / dotW );
@@ -1526,7 +1530,6 @@ void ControlGui::renderObjectivesImGui()
 
 	// "Secondary Objectives" header
 	cLoadString( IDS_SECONDARY, buffer, 245 );
-	ToUpper( buffer );
 	pos += OBJEECTIVESHEADERSKIP;
 	ShadowText( AX( OBJECTIVEHEADERLEFT + shiftX ), AY( (float)pos ), 0xffffffff, buffer );
 
@@ -1558,8 +1561,7 @@ void ControlGui::renderObjectivesImGui()
 		char total2[256];
 		cLoadString( IDS_TOTAL, total2, 255 );
 		sprintf( total, total2, sum );
-		ToUpper( total );
-		const float width = ImGui::CalcTextSize( total ).x;
+		const float width = TextWidth( total );
 		ShadowText( AX( (float)OBJECTIVESTOTALRIGHT ) - width, AY( (float)pos ), 0xffffffff, total );
 	}
 

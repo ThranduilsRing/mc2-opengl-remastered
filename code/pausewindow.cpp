@@ -18,6 +18,7 @@ PauseWindow.cpp			: Implementation of the PauseWindow component.
 #include"multplyr.h"
 #include"gameos.hpp"        // PAUSE-IMGUI-SLICE-1: gos_ComputeHudCanvasBox + Environment; gos_GetGLTextureName
 #include"imgui.h"           // PAUSE-IMGUI-SLICE-1: ImGui pause page
+#include"hud_imgui_font.h"  // FONT-IMGUI-SLICE-1: legacy bitmap-font text
 #include"txmmgr.h"          // PAUSE-IMGUI-SLICE-2: mcTextureManager (baked frame load)
 #include<cstdint>           // PAUSE-IMGUI-SLICE-2: intptr_t (ImTextureID cast)
 
@@ -350,15 +351,19 @@ bool PauseWindow::renderImGui()
 	}
 
 	// Header "GAME PAUSED" centered in the authored header rect (661,91..795,115),
-	// legacy header font color 0xff5c96c2.
+	// legacy header font color 0xff5c96c2. FONT-IMGUI-SLICE-1: drawn with the
+	// legacy bitmap headerFont (IDS_PAUSEDFONT_800) via HudFont; centering
+	// mirrors the legacy WrapType-3 math (advance-sum width, lineSkip height)
+	// in authored pixels, then maps through the canvas anchor.
 	char header[256];
 	cLoadString( IDS_GAMEPAUSED, header, 256 );
 	{
-		const ImVec2 ts = ImGui::CalcTextSize( header );
-		const float hcx = ( AX(661.0f) + AX(795.0f) ) * 0.5f;
-		const float hcy = ( AY(91.0f)  + AY(115.0f) ) * 0.5f;
-		dl->AddText( ImVec2( hcx - ts.x * 0.5f, hcy - ts.y * 0.5f ),
-			IM_COL32( 0x5C, 0x96, 0xC2, 255 ), header );
+		HGOSFONT3D hf = headerFont.getTempHandle();
+		const ImVec2 tsA = HudFont::Measure( hf, header, 1.0f, 1.0f );
+		const float hxA = 661.0f + ( ( 795.0f - 661.0f ) - tsA.x ) * 0.5f;
+		const float hyA =  91.0f + ( ( 115.0f -  91.0f ) - tsA.y ) * 0.5f;
+		HudFont::Draw( dl, hf, AX( hxA ), AY( hyA ),
+			IM_COL32( 0x5C, 0x96, 0xC2, 255 ), header, sx, sy );
 	}
 
 	// Buttons over the baked slots. Authored slot0 (664,116,128,22), 27px Y step
@@ -395,9 +400,38 @@ bool PauseWindow::renderImGui()
 		const ImU32 col = enabled
 			? ( hovered ? IM_COL32( 0xC8, 0xE6, 0xFF, 255 ) : IM_COL32( 0x5C, 0x96, 0xC2, 255 ) )
 			: IM_COL32( 0x7B, 0x7B, 0x7B, 255 );
-		const ImVec2 ts = ImGui::CalcTextSize( b.label );
-		dl->AddText( ImVec2( s0x + ( sw - ts.x ) * 0.5f, s0y + ( sh - ts.y ) * 0.5f ),
-			col, b.label );
+
+		// FONT-IMGUI-SLICE-1: label text + font from the SAME ButtonData the
+		// legacy ControlButton::render uses (localized textID string, bitmap
+		// textFont); centering mirrors the legacy math — X by advance-sum
+		// width (WrapType 2), Y by visual ink bounds — in authored pixels.
+		char label[256];
+		label[0] = 0;
+		HGOSFONT3D bf = 0;
+		if ( b.id < buttonCount && buttons[b.id].data )
+		{
+			ButtonData* bd = buttons[b.id].data;
+			if ( bd->textID )
+				cLoadString( bd->textID, label, 256 );
+			bf = bd->textFont.getTempHandle();
+		}
+		if ( !label[0] )
+			strcpy( label, b.label );
+
+		const float slotXA = 664.0f;
+		const float slotYA = 116.0f + i * 27.0f;
+		const ImVec2 tsA = HudFont::Measure( bf, label, 1.0f, 1.0f );
+		float lyA = slotYA + ( 22.0f - tsA.y ) * 0.5f;
+		if ( bf )
+		{
+			DWORD visW; int visTop, visBot;
+			gos_TextSetAttributes( bf, 0, 1.0f, true, true, false, false, 2 );
+			gos_TextVisualBounds( &visW, &visTop, &visBot, "%s", label );
+			lyA = slotYA + 11.0f - (float)( ( visTop + visBot + 1 ) / 2 );
+		}
+		HudFont::Draw( dl, bf,
+			AX( slotXA + ( 128.0f - tsA.x ) * 0.5f ), AY( lyA ),
+			col, label, sx, sy );
 	}
 
 	ImGui::End();
