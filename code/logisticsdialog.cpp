@@ -153,6 +153,19 @@ void		LogisticsDialog::render()
 
 //-------------------------------------------------------------------------------------------------
 
+// PAUSE-IMGUI-SLICE-3: anim/latch half of update() only — the ImGui confirm
+// dialog replaces the legacy input half (rect hit-test, click-outside, keys).
+void		LogisticsDialog::updateAnimsOnly()
+{
+	enterAnim.update();
+	exitAnim.update();
+
+	if ( exitAnim.isDone() )
+		bDone = true;
+}
+
+//-------------------------------------------------------------------------------------------------
+
 void		LogisticsDialog::update()
 {
 	enterAnim.update();

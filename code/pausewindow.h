@@ -51,6 +51,11 @@ class PauseWindow
 		bool renderImGui();
 		static bool imguiPauseEnabled();
 
+		// PAUSE-IMGUI-SLICE-3: ABORT/EXIT confirm dialog as ImGui (legacy
+		// mcl_dialog look: baked frame + bitmap fonts). Only called from
+		// renderImGui() while bPromptToQuit/bPromptToAbort is up.
+		void renderImGuiConfirm();
+
 		bool inRect( int mouseX, int mouseY );
 
 		void begin(){ currentTime = 0.f; }

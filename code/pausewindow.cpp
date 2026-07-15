@@ -96,7 +96,26 @@ void PauseWindow::update()
 
 	if ( bPromptToQuit || bPromptToAbort )
 	{
-		LogisticsOKDialog::instance()->update();
+		if ( imguiPauseEnabled() )
+		{
+			// PAUSE-IMGUI-SLICE-3: the ImGui page owns dialog rendering/input —
+			// advance only the enter/exit anims + bDone latch (the legacy rect
+			// hit-test runs at unremapped screen coords and would double-handle
+			// or cross-fire clicks). YES/NO come from the ImGui buttons in
+			// renderImGuiConfirm(), which call the SAME handleMessage() the
+			// legacy buttons send; the status handling below is shared verbatim.
+			LogisticsOKDialog::instance()->updateAnimsOnly();
+
+			// Keyboard mirror of LogisticsDialog::update(): RETURN=YES (gated
+			// on the enter anim, like legacy), ESCAPE=NO (ungated, like legacy).
+			if ( LogisticsOKDialog::instance()->getEnterAnim().isDone()
+				&& gos_GetKeyStatus( KEY_RETURN ) == KEY_RELEASED )
+				LogisticsOKDialog::instance()->handleMessage( aMSG_LEFTMOUSEDOWN, LogisticsScreen::YES );
+			if ( gos_GetKeyStatus( KEY_ESCAPE ) == KEY_RELEASED )
+				LogisticsOKDialog::instance()->handleMessage( aMSG_LEFTMOUSEDOWN, LogisticsScreen::NO );
+		}
+		else
+			LogisticsOKDialog::instance()->update();
 		if ( LogisticsOKDialog::instance()->getStatus() == LogisticsScreen::YES )
 		{
 			if ( bPromptToQuit )
@@ -458,10 +477,211 @@ bool PauseWindow::renderImGui()
 	ImGui::End();
 	ImGui::PopStyleVar( 1 );   // WindowPadding
 
-	// Confirm dialogs stay on the legacy path this slice.
+	// PAUSE-IMGUI-SLICE-3: ABORT/EXIT confirm dialogs as ImGui with the legacy
+	// look (baked mcl_dialog frame + legacy bitmap fonts). Drawn AFTER the
+	// pause window so it sits on top.
 	if ( bPromptToQuit || bPromptToAbort )
-		LogisticsOKDialog::instance()->render();
+		renderImGuiConfirm();
 	return true;
+}
+
+// PAUSE-IMGUI-SLICE-3: the LogisticsOKDialog (mcl_dialog.fit) recreated as an
+// ImGui window. Chrome = offline-reconstructed frame (tools/ui_art_reconstruct.py
+// on mcl_dialog.fit statics+buttons -> data/art/gui/mc2_dialog_frame.png, FULL
+// 800x600 authored canvas; repo copy data/ui_reconstructed/dialog_frame.png).
+// Layout constants below are the authored mcl_dialog.fit values; the enter/exit
+// slide + screen dim replay the live legacy anims (getEnterAnim/getExitAnim).
+// YES/NO InvisibleButtons send the SAME handleMessage(status) the legacy aButtons
+// send — update() reads getStatus() and runs the unchanged abort/quit code.
+void PauseWindow::renderImGuiConfirm()
+{
+	LogisticsOKDialog* dlg = LogisticsOKDialog::instance();
+	if ( !dlg )
+		return;
+
+	// Baked legacy dialog frame. OBJ-IMGUI-SLICE-1 lesson: pin (nFlush=0x1) —
+	// an unpinned texture that never draws through the legacy quad path gets
+	// cached out mid-mission — and re-resolve the GL name every frame.
+	static DWORD s_dlgFrameMcH = 0;
+	static bool s_dlgTried = false;
+	if ( !s_dlgTried )
+	{
+		s_dlgTried = true;
+		s_dlgFrameMcH = mcTextureManager->loadTexture(
+			"data\\art\\gui\\mc2_dialog_frame.png", gos_Texture_Alpha, 0, 0, 0x1 );
+	}
+	unsigned dlgTex = 0;
+	if ( s_dlgFrameMcH )
+	{
+		DWORD gosID = mcTextureManager->get_gosTextureHandle( s_dlgFrameMcH );
+		if ( gosID && gosID != 0xffffffff )
+			dlgTex = gos_GetGLTextureName( gosID );
+	}
+
+	// Dialog fonts (mcl_dialog.fit: buttons Font=27655 IDS_DIALOG_FONT,
+	// Text0 Font=27656 IDS_DIALOG_TEXT_FONT).
+	static aFont s_dlgBtnFont;
+	static aFont s_dlgTextFont;
+	static bool s_fontsInit = false;
+	if ( !s_fontsInit )
+	{
+		s_fontsInit = true;
+		s_dlgBtnFont.init( IDS_DIALOG_FONT );
+		s_dlgTextFont.init( IDS_DIALOG_TEXT_FONT );
+	}
+
+	// Same authored->display anchor as the pause page (the legacy dialog draw
+	// is HUD-scale-EXEMPT, so only the canvas remap applies).
+	int bx = 0, by = 0, bw = 0, bh = 0;
+	if ( !gos_ComputeHudCanvasBox( Environment.drawableWidth, Environment.drawableHeight,
+			&bx, &by, &bw, &bh ) )
+	{ bx = 0; by = 0; bw = Environment.drawableWidth; bh = Environment.drawableHeight; }
+	const float sx = (float)bw / 800.0f;
+	const float sy = (float)bh / 600.0f;
+
+	// Live legacy anims: slide offset + screen-dim fade (LogisticsDialog::render).
+	aAnimation& enterAnim = dlg->getEnterAnim();
+	aAnimation& exitAnim  = dlg->getExitAnim();
+	float xOffA = 0.f, yOffA = 0.f;
+	unsigned long dim = 0x7f000000;
+	if ( enterAnim.isAnimating() && !enterAnim.isDone() )
+	{
+		float endTime = enterAnim.getMaxTime();
+		if ( endTime )
+			dim = interpolateColor( 0x00000000, 0x7f000000, enterAnim.getCurrentTime() / endTime );
+	}
+	else if ( exitAnim.isAnimating() && !exitAnim.isDone() )
+	{
+		float endTime = exitAnim.getMaxTime();
+		if ( endTime )
+			dim = interpolateColor( 0x7f000000, 0x00000000, exitAnim.getCurrentTime() / endTime );
+	}
+	if ( enterAnim.isAnimating() )
+	{
+		xOffA = enterAnim.getXDelta();
+		yOffA = enterAnim.getYDelta();
+	}
+	else if ( exitAnim.isAnimating() )
+	{
+		xOffA = exitAnim.getXDelta();
+		yOffA = exitAnim.getYDelta();
+	}
+
+	auto AX = [&]( float ax ){ return bx + ( ax + xOffA ) * sx; };
+	auto AY = [&]( float ay ){ return by + ( ay + yOffA ) * sy; };
+	auto ARGB = []( unsigned long c ){
+		return IM_COL32( (c >> 16) & 0xff, (c >> 8) & 0xff, c & 0xff, (c >> 24) & 0xff ); };
+
+	const float dispW = (float)Environment.drawableWidth;
+	const float dispH = (float)Environment.drawableHeight;
+
+	// Fullscreen modal window: hosts the dim, the dialog, and the buttons; being
+	// fullscreen it also keeps clicks from reaching the pause-menu buttons under
+	// the dim (the legacy quirk let those through — intentional modal fix).
+	ImGui::SetNextWindowPos( ImVec2( 0.f, 0.f ) );
+	ImGui::SetNextWindowSize( ImVec2( dispW, dispH ) );
+	ImGui::PushStyleVar( ImGuiStyleVar_WindowPadding, ImVec2( 0.0f, 0.0f ) );
+	ImGui::Begin( "##mc2_pause_confirm", nullptr,
+		ImGuiWindowFlags_NoTitleBar | ImGuiWindowFlags_NoResize | ImGuiWindowFlags_NoMove |
+		ImGuiWindowFlags_NoCollapse | ImGuiWindowFlags_NoScrollbar | ImGuiWindowFlags_NoSavedSettings |
+		ImGuiWindowFlags_NoBackground | ImGuiWindowFlags_NoNav );
+
+	ImDrawList* dl = ImGui::GetWindowDrawList();
+
+	// Screen dim (legacy: full-screen 0x7f000000, anim-faded).
+	dl->AddRectFilled( ImVec2( 0.f, 0.f ), ImVec2( dispW, dispH ), ARGB( dim ) );
+
+	// Legacy draw order (LogisticsScreen::render(x,y)): opaque rects -> statics
+	// -> outline rects -> buttons -> texts.
+	// Rect0: black backing behind the text area (237,256, 326x93).
+	dl->AddRectFilled( ImVec2( AX(237.f), AY(256.f) ), ImVec2( AX(563.f), AY(349.f) ),
+		IM_COL32( 0, 0, 0, 255 ) );
+
+	// Baked frame (statics + NORMAL-state button bitmaps): authored bbox
+	// (187,0)..(613,467) sampled from the FULL 800x600 canvas PNG.
+	if ( dlgTex )
+	{
+		ImVec2 uv0( 187.0f / 800.0f,   0.0f / 600.0f );
+		ImVec2 uv1( 613.0f / 800.0f, 467.0f / 600.0f );
+		dl->AddImage( (ImTextureID)(intptr_t)dlgTex,
+			ImVec2( AX(187.f), AY(0.f) ), ImVec2( AX(613.f), AY(467.f) ), uv0, uv1 );
+	}
+
+	// Rect1: outline around the text area (247,266, 305x72, color 0xff43311c).
+	const float lineTh = ( sx + sy ) * 0.5f;
+	dl->AddRect( ImVec2( AX(247.f), AY(266.f) ), ImVec2( AX(552.f), AY(338.f) ),
+		ARGB( 0xff43311c ), 0.f, 0, lineTh );
+
+	const bool enterDone = enterAnim.isDone();
+	const bool running = ( dlg->getStatus() == LogisticsScreen::RUNNING );
+
+	// YES/NO buttons (fit Button1/Button0). Bitmaps are baked (NORMAL state);
+	// live parts = InvisibleButton hit-rect (full 128x59 bitmap rect), centered
+	// label + TextOutline rect at the fit textRect, legacy text colors
+	// (NormalColor 0xff005392; highlight anim's white on hover).
+	struct DB { float x; const char* imId; int strID; long status; };
+	static const DB kDlgButtons[2] = {
+		{ 237.f, "##dlgNO",  IDS_DIALOG_NO,  (long)LogisticsScreen::NO  },
+		{ 435.f, "##dlgYES", IDS_DIALOG_YES, (long)LogisticsScreen::YES },
+	};
+	HGOSFONT3D bf = s_dlgBtnFont.getTempHandle();
+	for ( int i = 0; i < 2; i++ )
+	{
+		const DB& b = kDlgButtons[i];
+		ImGui::SetCursorScreenPos( ImVec2( AX(b.x), AY(367.f) ) );
+		const bool clicked = ImGui::InvisibleButton( b.imId, ImVec2( 128.f * sx, 59.f * sy ) );
+		const bool hovered = ImGui::IsItemHovered();
+		if ( enterDone && running && clicked )
+			dlg->handleMessage( aMSG_LEFTMOUSEDOWN, (unsigned long)b.status );
+
+		char label[64];
+		label[0] = 0;
+		cLoadString( b.strID, label, 64 );
+		const unsigned long argb = hovered ? 0xffffffff : 0xff005392;
+
+		// textRect: (x+14, 381) 100x30 — label centered like the legacy aButton
+		// (align 2 horizontally, visual-ink bounds vertically); TextOutline=TRUE
+		// draws an empty rect around the textRect in the text color.
+		const float trL = b.x + 14.f, trT = 381.f, trR = trL + 100.f, trB = trT + 30.f;
+		float lyA = trT + 15.f;
+		if ( bf )
+		{
+			DWORD visW; int visTop, visBot;
+			gos_TextSetAttributes( bf, 0, 1.0f, true, true, false, false, 2 );
+			gos_TextVisualBounds( &visW, &visTop, &visBot, "%s", label );
+			lyA = ( trT + trB ) * 0.5f - (float)( ( visTop + visBot + 1 ) / 2 );
+		}
+		const ImVec2 tsA = HudFont::Measure( bf, label, 1.0f, 1.0f );
+		HudFont::Draw( dl, bf, AX( trL + ( 100.f - tsA.x ) * 0.5f ), AY( lyA ),
+			ARGB( argb ), label, sx, sy );
+		dl->AddRect( ImVec2( AX(trL), AY(trT) ), ImVec2( AX(trR), AY(trB) ),
+			ARGB( argb ), 0.f, 0, lineTh );
+	}
+
+	// Prompt text (fit Text0: rect 247,266 306x73, font 27656, color 0xffc66600,
+	// Alignment=3 -> block centered in the rect). String IDs are the ones
+	// handleClick() passed to setText().
+	{
+		char prompt[256];
+		prompt[0] = 0;
+		cLoadString( bPromptToQuit ? IDS_DIALOG_QUIT_PROMPT : IDS_DIALOG_ABORT_PROMPT,
+			prompt, 256 );
+		HudFont::DrawWrappedCentered( dl, s_dlgTextFont.getTempHandle(),
+			AX(247.f), AY(266.f), AX(553.f), AY(339.f),
+			ARGB( 0xffc66600 ), prompt, sx, sy );
+	}
+
+	// Legacy click-outside-cancels (LogisticsDialog::update): a left-release
+	// outside the dialog panel = NO, only once the enter anim is done.
+	if ( enterDone && running && ImGui::IsMouseReleased( 0 ) )
+	{
+		const ImVec2 mp = ImGui::GetMousePos();
+		if ( mp.x < AX(187.f) || mp.x > AX(613.f) || mp.y < AY(0.f) || mp.y > AY(467.f) )
+			dlg->handleMessage( aMSG_LEFTMOUSEDOWN, LogisticsScreen::NO );
+	}
+
+	ImGui::End();
+	ImGui::PopStyleVar( 1 );   // WindowPadding
 }
 
 void PauseWindow::render()
