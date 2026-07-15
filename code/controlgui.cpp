@@ -1424,11 +1424,16 @@ void ControlGui::renderObjectivesImGui()
 			ImVec2( st.location[2].u, st.location[2].v ) );
 	};
 
-	// baked frame (the two left-edge hazard bars), authored bbox (0,76) 14x236
+	// baked frame (the two left-edge hazard bars), authored bbox (0,76) 14x236.
+	// FULL 800x600-canvas PNG sampled at the authored sub-rect (same pattern as
+	// the pause frame) — a cropped 14x236 PNG gets pow2-padded by the texture
+	// manager, so UV 0..1 sampled the padding and squished the bar.
 	if ( s_frameGlTex )
 		dl->AddImage( (ImTextureID)(intptr_t)s_frameGlTex,
 			ImVec2( AX( 0.0f + shiftX ), AY( 76.0f ) ),
-			ImVec2( AX( 14.0f + shiftX ), AY( 76.0f + 236.0f ) ) );
+			ImVec2( AX( 14.0f + shiftX ), AY( 76.0f + 236.0f ) ),
+			ImVec2( 0.0f / 800.0f, 76.0f / 600.0f ),
+			ImVec2( 14.0f / 800.0f, ( 76.0f + 236.0f ) / 600.0f ) );
 
 	char buffer[256];
 
