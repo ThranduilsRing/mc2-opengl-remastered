@@ -182,7 +182,10 @@ Deploy rule for any ASan target install: copy the FFmpeg DLLs alongside
 
 ## 3. `getCodeToken` deref of corrupted `codeSegmentPtr` on Exodus
 
-**Status:** bug confirmed, fix deferred.
+**Status:** FIXED — fail-loud malformed-bytecode rejection in
+`A:/Games/mc2-deferred-2` commits `4b4fdc5d` and `55d17aa6` (2026-07-16).
+Negative and escape-path proofs, doctests, and Tier-1 5/5 are recorded in that
+lane's `.claude/DEFERRED-2-STATUS.md`.
 **First caught:** 2026-04-24, `mc2-asan.exe --mission mc2_01` on a fresh
 `A:/Games/MC2-Exodus/` install (base `mc2-win64-v0.1.1` clone +
 `mc2_patch` + `exodus_campaign_11`).
@@ -232,7 +235,15 @@ often happens to land in valid VA space and doesn't AV immediately;
 under ASan's shadow-mapped VA the garbage lands in unmapped space and
 crashes on first deref.
 
-### Proposed fix (deferred)
+### Resolution (2026-07-16)
+
+Deferred-2 commits `4b4fdc5d` and `55d17aa6` now reject malformed compiled
+bytecode before execution. This closes the garbage-`codeSegmentPtr` crash
+class. Unsupported Exodus/Magic vocabulary remains a separate compatibility
+problem: those scripts may still fail compilation, but failure is explicit and
+cannot execute a partial/corrupt segment.
+
+The text below is the historical proposal retained for context.
 
 Preferred: `ABLModule::compile` return value must be checked by mission
 init; any compile error aborts mission load (hard fail). Matches the
