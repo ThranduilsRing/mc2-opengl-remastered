@@ -751,7 +751,7 @@ static constexpr EnvVarDesc kAuxEnvVars[] = {
         "MC2_BRAIN_FREEZE_TRACE",
         EnvVarKind::Trace,
         false,
-        "SAVE/LOAD-AIFREEZE-TRACE-1: one-line stderr trace at end of MechWarrior::runBrain (brainState, curTacOrder.code, movePath.numSteps, moveState, hasBrain) to classify the save/load AI-freeze. Default-OFF -> byte-identical."
+        "SAVE/LOAD-AIFREEZE-TRACE-1 (+ ISSUE-10 extension): one-line stderr trace at end of MechWarrior::runBrain (brainState, curTacOrder.code, movePath.numSteps, moveState, hasBrain, orderState, mainGoal/goalWID, tacOrder[GENERAL].code, position, LastMoveCalcErr) to classify the save/load AI-freeze AND scripted-unit permanent stalls (alarm-loop vs goal-divert vs no-path vs path-but-not-moving). Default-OFF -> byte-identical."
     },
     // TERRAIN-OVERLAY-V2-DECAL-SUPPRESS-1.
     {

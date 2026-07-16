@@ -2686,6 +2686,20 @@ long MechWarrior::runBrain (void) {
 	//     PathManager / reservation state.
 	// NOTE: the recon's "initCalled" field does not exist on MechWarrior;
 	// brainState + moveState are the real available signals and substituted.
+	//
+	// ISSUE-10 extension (scripted units never engaging / permanent stalls):
+	// added fields classify every stuck warrior without a debugger —
+	//   orderState        ORDERSTATE_GENERAL(0)/PLAYER(1)/ALARM(2): pinned in
+	//                     ALARM = escape-tile alarm loop (general orders never
+	//                     consumed while the alarm slot is held).
+	//   mainGoal/goalWID  goal-plan divert target (turret/gate/wall capture-
+	//                     divert that never completes).
+	//   genOrder          tacOrder[ORDERSTATE_GENERAL].code: brain/FSM emitted
+	//                     an order vs no-order-from-brain (ABL stall).
+	//   pos               position delta over ticks = machine-checkable
+	//                     "path-but-not-moving" (reservation/collision) class.
+	//   lastMoveErr       LastMoveCalcErr: no-path (LR path fail / MOVE-data
+	//                     area-graph misread) class.
 	{
 		static const bool s_aiFreezeTrace = []() {
 			const char* v = std::getenv("MC2_BRAIN_FREEZE_TRACE");
@@ -2693,12 +2707,24 @@ long MechWarrior::runBrain (void) {
 		}();
 		if (s_aiFreezeTrace) {
 			MovePathPtr mp = getMovePath();
+			MoverPtr traceVehicle = getVehicle();
+			Stuff::Vector3D tracePos;
+			tracePos.Zero();
+			if (traceVehicle)
+				tracePos = traceVehicle->getPosition();
 			std::fprintf(stderr,
 				"[BRAIN_FREEZE_TRACE] wid=%d brainState=%d curTacOrder.code=%d "
-				"movePath.numSteps=%d moveState=%ld hasBrain=%d\n",
+				"movePath.numSteps=%d moveState=%ld hasBrain=%d "
+				"orderState=%d mainGoal=%d goalWID=%lu genOrder=%d "
+				"pos=(%.0f,%.0f) lastMoveErr=%ld\n",
 				(int)vehicleWID, (int)brainState, (int)curTacOrder.code,
 				mp ? (int)mp->numSteps : -1, (long)moveOrders.moveState,
-				brain ? 1 : 0);
+				brain ? 1 : 0,
+				(int)orderState, (int)mainGoalAction,
+				(unsigned long)mainGoalObjectWID,
+				(int)tacOrder[ORDERSTATE_GENERAL].code,
+				(double)tracePos.x, (double)tracePos.y,
+				(long)LastMoveCalcErr);
 			std::fflush(stderr);
 		}
 	}

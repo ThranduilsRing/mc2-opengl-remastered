@@ -1232,6 +1232,9 @@ def main():
                             # ISSUE-17 fire-refusal instrumentation (default OFF;
                             # nofire/firegate events on the COMBAT diag tag).
                             "MC2_FIRE_DECISION_TRACE",
+                            # ISSUE-10 / SAVE-LOAD-AIFREEZE: per-tick runBrain
+                            # decision-state stderr trace (default OFF).
+                            "MC2_BRAIN_FREEZE_TRACE",
                             # R2B-STATIC-NATURAL-TOUCH-PRESERVE-1: default-ON
                             # killswitch + diagnostics for the static-natural
                             # (tree/pine-building) registry stale-drop fix. Without
