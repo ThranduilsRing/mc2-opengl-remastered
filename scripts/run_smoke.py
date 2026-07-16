@@ -1614,6 +1614,10 @@ def main():
                             # Additive diagnostic; must be allowlisted or Popen drops it
                             # and the breakdown never emits.
                             "MC2_VK_WATER_PERF",
+                            # VK-WATER-FENCE-DEFER-1 killswitch (=0 restores the inline
+                            # post-submit fence wait; default = deferred retire at the
+                            # parity slot's next beginFrame).
+                            "MC2_VK_WATER_FENCE_DEFER",
                             "MC2_NO_LAUNCHER",
                             # VK-P8a SHADOW-INTEROP: VK produces the dynamic shadow
                             # depth map, GL samples it. Requires the shared engine

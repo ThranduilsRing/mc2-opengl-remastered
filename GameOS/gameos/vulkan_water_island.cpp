@@ -147,6 +147,18 @@ bool waterPerfGateRequested() {
     return state == 1;
 }
 
+// VK-WATER-FENCE-DEFER-1 (cluster-A pilot, ONE island): defer the island's retire
+// wait to the parity slot's next vkImageResourceBeginFrame instead of waiting the
+// submit fence inline. Default-ON (the per-parity staging pairs make it correct by
+// construction); MC2_VK_WATER_FENCE_DEFER=0 is the killswitch restoring the inline
+// wait — the staging stays per-parity either way (superset-safe).
+bool waterFenceDeferEnabled() {
+    static int state = -1;
+    if (state == -1)
+        state = (mc2vkgate::envTriState("MC2_VK_WATER_FENCE_DEFER") == 0) ? 0 : 1;
+    return state == 1;
+}
+
 // MC2_VK_WATER_DIRECT_CHAIN -- deletion-readiness proof gate. When the prior
 // terrain/prop/mech owners have kept the shared GBuffer Vulkan-owned, water can
 // render in-place without another GL/VK semaphore round trip.
@@ -239,13 +251,24 @@ struct WaterIsland {
     VmaAllocator     allocator = VK_NULL_HANDLE; // borrowed from ctx
 
     // Feed buffers (VK-side copies of the GL water feed).
+    // VK-WATER-FENCE-DEFER-1 (cluster-A pilot): the per-frame-WRITTEN staging
+    // (thin SSBO, vsUbo, fsUbo) and the descriptor set that binds them are
+    // PER-PARITY-SLOT pairs. The inline post-submit fence wait is retired; the
+    // retire guarantee moves to vkImageResourceBeginFrame's slot-fence wait,
+    // which now runs BEFORE staging — slot p's previous submit is retired before
+    // buffers[p] are rewritten and before cbuf[p]/set[p] are reused. Recipe
+    // (mission-static after upload) and HDRI (copy-once) stay single-instance:
+    // their rare (re)writes are vkDeviceWaitIdle-guarded.
     VkBuffer      recipeBuf = VK_NULL_HANDLE; VmaAllocation recipeAlloc = VK_NULL_HANDLE;
     VkDeviceSize  recipeBytes = 0;
     bool          recipeUploaded = false;
-    VkBuffer      thinBuf   = VK_NULL_HANDLE; VmaAllocation thinAlloc = VK_NULL_HANDLE;
-    VkDeviceSize  thinCapBytes = 0;          // grows to high-water-mark
-    VkBuffer      vsUbo     = VK_NULL_HANDLE; VmaAllocation vsUboAlloc = VK_NULL_HANDLE;
-    VkBuffer      fsUbo     = VK_NULL_HANDLE; VmaAllocation fsUboAlloc = VK_NULL_HANDLE;
+    VkBuffer      thinBuf[2]   = {VK_NULL_HANDLE, VK_NULL_HANDLE};
+    VmaAllocation thinAlloc[2] = {VK_NULL_HANDLE, VK_NULL_HANDLE};
+    VkDeviceSize  thinCapBytes[2] = {0, 0};   // grows to high-water-mark
+    VkBuffer      vsUbo[2]     = {VK_NULL_HANDLE, VK_NULL_HANDLE};
+    VmaAllocation vsUboAlloc[2] = {VK_NULL_HANDLE, VK_NULL_HANDLE};
+    VkBuffer      fsUbo[2]     = {VK_NULL_HANDLE, VK_NULL_HANDLE};
+    VmaAllocation fsUboAlloc[2] = {VK_NULL_HANDLE, VK_NULL_HANDLE};
 
     // RUNG-6.5 WATER-REFLECTION: copy-once HDRI equirect import (binding 2).
     // Copied ONCE from the GL HDRI texture (BC6H mip0 sidecar in the field
@@ -264,7 +287,7 @@ struct WaterIsland {
     VkFramebuffer     fb     = VK_NULL_HANDLE;
     VkDescriptorSetLayout dsl = VK_NULL_HANDLE;
     VkDescriptorPool  pool   = VK_NULL_HANDLE;
-    VkDescriptorSet   set    = VK_NULL_HANDLE;
+    VkDescriptorSet   set[2] = {VK_NULL_HANDLE, VK_NULL_HANDLE};   // per parity slot (VK-WATER-FENCE-DEFER-1)
     VkPipelineLayout  playout = VK_NULL_HANDLE;
     VkPipeline        pipe   = VK_NULL_HANDLE;
     VkShaderModule    vert   = VK_NULL_HANDLE;
@@ -293,9 +316,11 @@ void destroy_island(WaterIsland* s) {
     if (s->hdriView)   vkDestroyImageView(d, s->hdriView, nullptr);
     if (s->hdriImage)  vmaDestroyImage(s->allocator, s->hdriImage, s->hdriAlloc);
     if (s->recipeBuf) vmaDestroyBuffer(s->allocator, s->recipeBuf, s->recipeAlloc);
-    if (s->thinBuf)   vmaDestroyBuffer(s->allocator, s->thinBuf, s->thinAlloc);
-    if (s->vsUbo)     vmaDestroyBuffer(s->allocator, s->vsUbo, s->vsUboAlloc);
-    if (s->fsUbo)     vmaDestroyBuffer(s->allocator, s->fsUbo, s->fsUboAlloc);
+    for (int i = 0; i < 2; ++i) {   // VK-WATER-FENCE-DEFER-1: per-parity pairs
+        if (s->thinBuf[i]) vmaDestroyBuffer(s->allocator, s->thinBuf[i], s->thinAlloc[i]);
+        if (s->vsUbo[i])   vmaDestroyBuffer(s->allocator, s->vsUbo[i], s->vsUboAlloc[i]);
+        if (s->fsUbo[i])   vmaDestroyBuffer(s->allocator, s->fsUbo[i], s->fsUboAlloc[i]);
+    }
     if (s->cpool)     vkDestroyCommandPool(d, s->cpool, nullptr);
     if (s->fence)     vkDestroyFence(d, s->fence, nullptr);
     // NOTE: instance/phys/device/queue/allocator are BORROWED — never destroyed here.
@@ -324,51 +349,55 @@ bool make_buffer(WaterIsland* s, VkDeviceSize size, VkBufferUsageFlags usage,
 // validation error + crash (dstSet == VK_NULL_HANDLE). The post-alloc write_descriptors
 // in init_island covers the initial bind; later reallocs re-write with a valid set.
 void write_descriptors(WaterIsland* s) {
-    if (s->set == VK_NULL_HANDLE) return;   // set not allocated yet (early init path)
-    VkDescriptorBufferInfo vsInfo{ s->vsUbo, 0, VK_WHOLE_SIZE };
-    VkDescriptorBufferInfo fsInfo{ s->fsUbo, 0, VK_WHOLE_SIZE };
-    VkDescriptorBufferInfo recInfo{ s->recipeBuf, 0, VK_WHOLE_SIZE };
-    VkDescriptorBufferInfo thinInfo{ s->thinBuf, 0, VK_WHOLE_SIZE };
-    VkWriteDescriptorSet w[4]{};
-    w[0].sType = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET; w[0].dstSet = s->set;
-    w[0].dstBinding = 0; w[0].descriptorCount = 1;
-    w[0].descriptorType = VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER; w[0].pBufferInfo = &vsInfo;
-    w[1].sType = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET; w[1].dstSet = s->set;
-    w[1].dstBinding = 1; w[1].descriptorCount = 1;
-    w[1].descriptorType = VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER; w[1].pBufferInfo = &fsInfo;
-    w[2].sType = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET; w[2].dstSet = s->set;
-    w[2].dstBinding = 5; w[2].descriptorCount = 1;
-    w[2].descriptorType = VK_DESCRIPTOR_TYPE_STORAGE_BUFFER; w[2].pBufferInfo = &recInfo;
-    w[3].sType = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET; w[3].dstSet = s->set;
-    w[3].dstBinding = 6; w[3].descriptorCount = 1;
-    w[3].descriptorType = VK_DESCRIPTOR_TYPE_STORAGE_BUFFER; w[3].pBufferInfo = &thinInfo;
-    // Binding 2 (HDRI equirect) is written separately by ensure_hdri() once the
-    // image exists — it may not yet at init time (write of a NULL view is invalid).
-    uint32_t n = 4;
-    VkDescriptorImageInfo hdriInfo{};
-    VkWriteDescriptorSet w4{};
-    if (s->hdriView != VK_NULL_HANDLE && s->hdriSampler != VK_NULL_HANDLE) {
-        hdriInfo = { s->hdriSampler, s->hdriView, VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL };
-        w4.sType = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET; w4.dstSet = s->set;
-        w4.dstBinding = 2; w4.descriptorCount = 1;
-        w4.descriptorType = VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER; w4.pImageInfo = &hdriInfo;
-        vkUpdateDescriptorSets(s->device, 1, &w4, 0, nullptr);
+    // VK-WATER-FENCE-DEFER-1: write BOTH parity sets (set[i] binds buffers[i]).
+    // Callers (re)allocating any bound buffer are vkDeviceWaitIdle-guarded, so no
+    // in-flight command buffer can be using either set during the update.
+    for (int i = 0; i < 2; ++i) {
+        if (s->set[i] == VK_NULL_HANDLE) continue;   // set not allocated yet (early init path)
+        VkDescriptorBufferInfo vsInfo{ s->vsUbo[i], 0, VK_WHOLE_SIZE };
+        VkDescriptorBufferInfo fsInfo{ s->fsUbo[i], 0, VK_WHOLE_SIZE };
+        VkDescriptorBufferInfo recInfo{ s->recipeBuf, 0, VK_WHOLE_SIZE };
+        VkDescriptorBufferInfo thinInfo{ s->thinBuf[i], 0, VK_WHOLE_SIZE };
+        VkWriteDescriptorSet w[4]{};
+        w[0].sType = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET; w[0].dstSet = s->set[i];
+        w[0].dstBinding = 0; w[0].descriptorCount = 1;
+        w[0].descriptorType = VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER; w[0].pBufferInfo = &vsInfo;
+        w[1].sType = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET; w[1].dstSet = s->set[i];
+        w[1].dstBinding = 1; w[1].descriptorCount = 1;
+        w[1].descriptorType = VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER; w[1].pBufferInfo = &fsInfo;
+        w[2].sType = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET; w[2].dstSet = s->set[i];
+        w[2].dstBinding = 5; w[2].descriptorCount = 1;
+        w[2].descriptorType = VK_DESCRIPTOR_TYPE_STORAGE_BUFFER; w[2].pBufferInfo = &recInfo;
+        w[3].sType = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET; w[3].dstSet = s->set[i];
+        w[3].dstBinding = 6; w[3].descriptorCount = 1;
+        w[3].descriptorType = VK_DESCRIPTOR_TYPE_STORAGE_BUFFER; w[3].pBufferInfo = &thinInfo;
+        // Binding 2 (HDRI equirect) is written separately by ensure_hdri() once the
+        // image exists — it may not yet at init time (write of a NULL view is invalid).
+        VkDescriptorImageInfo hdriInfo{};
+        VkWriteDescriptorSet w4{};
+        if (s->hdriView != VK_NULL_HANDLE && s->hdriSampler != VK_NULL_HANDLE) {
+            hdriInfo = { s->hdriSampler, s->hdriView, VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL };
+            w4.sType = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET; w4.dstSet = s->set[i];
+            w4.dstBinding = 2; w4.descriptorCount = 1;
+            w4.descriptorType = VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER; w4.pImageInfo = &hdriInfo;
+            vkUpdateDescriptorSets(s->device, 1, &w4, 0, nullptr);
+        }
+        vkUpdateDescriptorSets(s->device, 4, w, 0, nullptr);
     }
-    vkUpdateDescriptorSets(s->device, n, w, 0, nullptr);
 }
 
-// Grow the thin SSBO to at least `bytes`; rewrite descriptor binding 6 on realloc.
-bool ensure_thin_capacity(WaterIsland* s, VkDeviceSize bytes) {
-    if (s->thinBuf != VK_NULL_HANDLE && bytes <= s->thinCapBytes) return true;
-    if (s->thinBuf != VK_NULL_HANDLE) {
+// Grow slot `par`'s thin SSBO to at least `bytes`; rewrite descriptors on realloc.
+bool ensure_thin_capacity(WaterIsland* s, uint32_t par, VkDeviceSize bytes) {
+    if (s->thinBuf[par] != VK_NULL_HANDLE && bytes <= s->thinCapBytes[par]) return true;
+    if (s->thinBuf[par] != VK_NULL_HANDLE) {
         vkDeviceWaitIdle(s->device); // simple + safe for a realloc (rare, grows once)
-        vmaDestroyBuffer(s->allocator, s->thinBuf, s->thinAlloc);
-        s->thinBuf = VK_NULL_HANDLE;
+        vmaDestroyBuffer(s->allocator, s->thinBuf[par], s->thinAlloc[par]);
+        s->thinBuf[par] = VK_NULL_HANDLE;
     }
     VkDeviceSize cap = bytes + bytes / 2 + 4096; // headroom
-    if (!make_buffer(s, cap, VK_BUFFER_USAGE_STORAGE_BUFFER_BIT, &s->thinBuf, &s->thinAlloc))
+    if (!make_buffer(s, cap, VK_BUFFER_USAGE_STORAGE_BUFFER_BIT, &s->thinBuf[par], &s->thinAlloc[par]))
         return false;
-    s->thinCapBytes = cap;
+    s->thinCapBytes[par] = cap;
     write_descriptors(s);
     return true;
 }
@@ -590,6 +619,11 @@ bool ensure_hdri(WaterIsland* s, unsigned int hdriGlTex) {
     if (!ok) { vlog("hdri: upload submit failed."); return false; }
 
     s->hdriRealImported = haveReal;
+    // VK-WATER-FENCE-DEFER-1: the descriptor update below used to be safe because
+    // the previous frame's fence was waited INLINE (no cbuf using the set could be
+    // pending). With the deferred retire, a prior water submit may still be in
+    // flight — device-idle first (rare: at most twice per island, dummy -> real).
+    vkDeviceWaitIdle(s->device);
     write_descriptors(s);   // binding 2 now valid
     vlog("hdri %s import: %dx%d fmt=%d mips=%u glTex=%u (copy-once, zero per-frame cost).",
          haveReal ? "REAL" : "DUMMY", w, h, (int)fmt, mips, hdriGlTex);
@@ -655,9 +689,11 @@ bool init_island(WaterIsland* s, int w, int h) {
     g_health.vk2glSemActive = 0;
     vlog("TIER-1 shared scene GBuffer seam ACTIVE - in-place water co-write "
          "(color0+normal+depth, no composite, direct-chain native, no interop).");
-    // ---- UBOs. ----
-    if (!make_buffer(s, sizeof(WaterVsParams), VK_BUFFER_USAGE_UNIFORM_BUFFER_BIT, &s->vsUbo, &s->vsUboAlloc)) return false;
-    if (!make_buffer(s, sizeof(WaterFsParams), VK_BUFFER_USAGE_UNIFORM_BUFFER_BIT, &s->fsUbo, &s->fsUboAlloc)) return false;
+    // ---- UBOs (per parity slot, VK-WATER-FENCE-DEFER-1). ----
+    for (int i = 0; i < 2; ++i) {
+        if (!make_buffer(s, sizeof(WaterVsParams), VK_BUFFER_USAGE_UNIFORM_BUFFER_BIT, &s->vsUbo[i], &s->vsUboAlloc[i])) return false;
+        if (!make_buffer(s, sizeof(WaterFsParams), VK_BUFFER_USAGE_UNIFORM_BUFFER_BIT, &s->fsUbo[i], &s->fsUboAlloc[i])) return false;
+    }
 
     // ---- Recipe SSBO (mission-static, copied once at first run). Sized to the
     // current recipe count; if empty now, deferred to run() first frame. ----
@@ -667,8 +703,9 @@ bool init_island(WaterIsland* s, int w, int h) {
         s->recipeBytes = (VkDeviceSize)(rc ? rc : 1) * 64;
         if (!make_buffer(s, s->recipeBytes, VK_BUFFER_USAGE_STORAGE_BUFFER_BIT, &s->recipeBuf, &s->recipeAlloc)) return false;
     }
-    // Thin SSBO — start with a small ring; grows in run().
-    if (!ensure_thin_capacity(s, 64 * 1024)) return false; // ~1365 records to start
+    // Thin SSBOs (per parity slot) — start with a small ring; grows in run().
+    if (!ensure_thin_capacity(s, 0, 64 * 1024)) return false; // ~1365 records to start
+    if (!ensure_thin_capacity(s, 1, 64 * 1024)) return false;
 
     // ---- Render pass: color0 (shared, LOAD scene color, alpha-blend, STORE) +
     // color1 (gbuffer1, CLEAR, STORE local) + depth (LOAD imported, GEQUAL, write). ----
@@ -767,20 +804,22 @@ bool init_island(WaterIsland* s, int w, int h) {
         if (vkCreateDescriptorSetLayout(s->device, &lci, nullptr, &s->dsl) != VK_SUCCESS) {
             vlog("vkCreateDescriptorSetLayout failed."); return false;
         }
+        // VK-WATER-FENCE-DEFER-1: TWO sets (one per parity slot), so pool sizes double.
         VkDescriptorPoolSize sizes[3]{};
-        sizes[0].type = VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER; sizes[0].descriptorCount = 2;
-        sizes[1].type = VK_DESCRIPTOR_TYPE_STORAGE_BUFFER; sizes[1].descriptorCount = 2;
-        sizes[2].type = VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER; sizes[2].descriptorCount = 1;
+        sizes[0].type = VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER; sizes[0].descriptorCount = 4;
+        sizes[1].type = VK_DESCRIPTOR_TYPE_STORAGE_BUFFER; sizes[1].descriptorCount = 4;
+        sizes[2].type = VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER; sizes[2].descriptorCount = 2;
         VkDescriptorPoolCreateInfo pci{};
         pci.sType = VK_STRUCTURE_TYPE_DESCRIPTOR_POOL_CREATE_INFO;
-        pci.maxSets = 1; pci.poolSizeCount = 3; pci.pPoolSizes = sizes;
+        pci.maxSets = 2; pci.poolSizeCount = 3; pci.pPoolSizes = sizes;
         if (vkCreateDescriptorPool(s->device, &pci, nullptr, &s->pool) != VK_SUCCESS) {
             vlog("vkCreateDescriptorPool failed."); return false;
         }
+        VkDescriptorSetLayout layouts[2] = { s->dsl, s->dsl };
         VkDescriptorSetAllocateInfo dsai{};
         dsai.sType = VK_STRUCTURE_TYPE_DESCRIPTOR_SET_ALLOCATE_INFO;
-        dsai.descriptorPool = s->pool; dsai.descriptorSetCount = 1; dsai.pSetLayouts = &s->dsl;
-        if (vkAllocateDescriptorSets(s->device, &dsai, &s->set) != VK_SUCCESS) {
+        dsai.descriptorPool = s->pool; dsai.descriptorSetCount = 2; dsai.pSetLayouts = layouts;
+        if (vkAllocateDescriptorSets(s->device, &dsai, s->set) != VK_SUCCESS) {
             vlog("vkAllocateDescriptorSets failed."); return false;
         }
         write_descriptors(s);
@@ -1000,8 +1039,9 @@ extern "C" int mc2_vk_water_island_run(
     // binding 2, so it must be valid before the first draw. Re-runs only if the
     // GL HDRI texture id changes (e.g. late HDRI load: first frames import the
     // dummy at glTex=0, then the real texture once ready). Safe to update the
-    // descriptor here: the previous frame's fence was waited inline, so no
-    // command buffer using the set is pending.
+    // descriptor here: ensure_hdri device-idles before its descriptor update
+    // (VK-WATER-FENCE-DEFER-1 — the old "previous frame's fence was waited
+    // inline" guarantee is gone under the deferred retire).
     if (!ensure_hdri(s, hdriGlTex)) {
         setFallback("hdri_binding_setup_failed"); s->disabled = true; return 0;
     }
@@ -1011,6 +1051,20 @@ extern "C" int mc2_vk_water_island_run(
     const unsigned long f0b = g_forbidden.vkCmdCopyImageToBuffer;
     const unsigned long f0c = g_forbidden.glGetTexImage;
     const unsigned long f0d = g_forbidden.glTexSubImage2D;
+
+    // VK-RUNG8-ITEM5: direct-chain-native only (the trailing non-tier1 path is dead).
+    if (!s->tier1) return 0;
+
+    // VK-WATER-FENCE-DEFER-1 (cluster-A pilot): begin the shared-slot frame BEFORE
+    // staging. The slot-fence wait inside beginFrame IS the deferred retire of the
+    // submit that last used this parity slot (normally an earlier island / last
+    // frame — near-free by now), and it protects everything indexed [par] below:
+    // staging buffers, descriptor set, command buffer. The inline post-submit wait
+    // this replaces is kept only under the MC2_VK_WATER_FENCE_DEFER=0 killswitch.
+    const clk::time_point tFence0 = clk::now();
+    VkFrameSync fsC = vkImageResourceBeginFrame(s->sColorRes);
+    us_fence_wait = usSince(tFence0);
+    const uint32_t par = fsC.parity & 1u;
 
     const clk::time_point tStage0 = clk::now();
     // ---- 1) Upload recipe SSBO once (mission-static). ----
@@ -1032,47 +1086,44 @@ extern "C" int mc2_vk_water_island_run(
         g_health.recipeCount = recipeCount;
     }
 
-    // ---- 2) Upload the per-frame thin records (CPU-staged; no GL buffer crosses). ----
+    // ---- 2) Upload the per-frame thin records into slot `par` (CPU-staged). ----
     const VkDeviceSize thinBytes = (VkDeviceSize)thinCount * 48;
-    if (!ensure_thin_capacity(s, thinBytes)) { s->disabled = true; return 0; }
+    if (!ensure_thin_capacity(s, par, thinBytes)) { s->disabled = true; return 0; }
     {
         void* p = nullptr;
-        if (vmaMapMemory(s->allocator, s->thinAlloc, &p) == VK_SUCCESS) {
+        if (vmaMapMemory(s->allocator, s->thinAlloc[par], &p) == VK_SUCCESS) {
             std::memcpy(p, thinRecords, (size_t)thinBytes);
-            vmaUnmapMemory(s->allocator, s->thinAlloc);
+            vmaUnmapMemory(s->allocator, s->thinAlloc[par]);
         }
     }
     g_health.thinRecords = thinCount;
 
-    // ---- 3) Upload UBOs. ----
+    // ---- 3) Upload slot `par`'s UBOs. ----
     {
         void* p = nullptr;
-        if (vmaMapMemory(s->allocator, s->vsUboAlloc, &p) == VK_SUCCESS) {
-            std::memcpy(p, vsParams, sizeof(WaterVsParams)); vmaUnmapMemory(s->allocator, s->vsUboAlloc);
+        if (vmaMapMemory(s->allocator, s->vsUboAlloc[par], &p) == VK_SUCCESS) {
+            std::memcpy(p, vsParams, sizeof(WaterVsParams)); vmaUnmapMemory(s->allocator, s->vsUboAlloc[par]);
         }
-        if (vmaMapMemory(s->allocator, s->fsUboAlloc, &p) == VK_SUCCESS) {
+        if (vmaMapMemory(s->allocator, s->fsUboAlloc[par], &p) == VK_SUCCESS) {
             std::memcpy(p, fsParams, sizeof(WaterFsParams));
             // RUNG-6.5 fail-soft: if the real HDRI bytes aren't imported (dummy
             // bound), force u_waterHdriLod (f2.w, offset 60) to -1 so the FS
             // takes the SH-L2 fallback — same semantics as GL !isHdriReady().
             if (!s->hdriRealImported) ((float*)p)[15] = -1.0f;
-            vmaUnmapMemory(s->allocator, s->fsUboAlloc);
+            vmaUnmapMemory(s->allocator, s->fsUboAlloc[par]);
         }
     }
 
     // ============================ RUNG 6 TIER-1 PATH ============================
     // In-place co-write into the SHARED scene GBuffer. No color/depth import, no
-    // composite. Frame-sync protocol COPIED from vulkan_terrain_island.cpp:2495-2603.
-    if (s->tier1) {
+    // composite. Frame-sync protocol COPIED from vulkan_terrain_island.cpp:2495-2603,
+    // with the beginFrame hoisted above staging (VK-WATER-FENCE-DEFER-1).
+    {
         us_stage = usSince(tStage0);
         g_health.copyColorInUs = 0.0;
         g_health.copyDepthInUs = 0.0;
 
-        // VK-RUNG8-ITEM5: direct-chain-native only. Shared GBuffer stays Vulkan-owned
-        // (no GL<->VK semaphore handoff). Begin a frame on the color image only
-        // (parity fence for CPU ordering); the render pass covers all three.
-        VkFrameSync fsC = vkImageResourceBeginFrame(s->sColorRes);
-        VkCommandBuffer cb = s->cbuf[fsC.parity & 1u];
+        VkCommandBuffer cb = s->cbuf[par];
 
         const clk::time_point tRender0 = clk::now();
         vkResetCommandBuffer(cb, 0);
@@ -1090,7 +1141,7 @@ extern "C" int mc2_vk_water_island_run(
         rbi.clearValueCount = 3; rbi.pClearValues = clears;
         vkCmdBeginRenderPass(cb, &rbi, VK_SUBPASS_CONTENTS_INLINE);
         vkCmdBindPipeline(cb, VK_PIPELINE_BIND_POINT_GRAPHICS, s->pipe);
-        vkCmdBindDescriptorSets(cb, VK_PIPELINE_BIND_POINT_GRAPHICS, s->playout, 0, 1, &s->set, 0, nullptr);
+        vkCmdBindDescriptorSets(cb, VK_PIPELINE_BIND_POINT_GRAPHICS, s->playout, 0, 1, &s->set[par], 0, nullptr);
         vkCmdDraw(cb, thinCount * 6u, 1, 0, 0);
         vkCmdEndRenderPass(cb);
         if (vkEndCommandBuffer(cb) != VK_SUCCESS) { setFallback("record_failed"); s->disabled = true; return 0; }
@@ -1109,11 +1160,22 @@ extern "C" int mc2_vk_water_island_run(
 
         us_sem_wait = 0.0;
 
-        const clk::time_point tFence0 = clk::now();
-        if (vkWaitForFences(s->device, 1, &fsC.fence, VK_TRUE, 5ull*1000*1000*1000) != VK_SUCCESS) {
-            setFallback("fence_timeout"); s->disabled = true; return 0;
+        // VK-WATER-FENCE-DEFER-1: the inline retire wait is GONE — the submit's
+        // fence (the shared parity-slot fence) is waited at the slot's next
+        // vkImageResourceBeginFrame, i.e. the deferred retire that beginFrame at
+        // the top of this function already timed into us_fence_wait. Everything
+        // this frame's submit uses is per-parity ([par]) or static, so nothing is
+        // rewritten before that wait. GPU-side ordering against the downstream
+        // post/composite passes never depended on this CPU wait (their command
+        // buffers' entry barriers cover earlier submission-order work).
+        // Killswitch MC2_VK_WATER_FENCE_DEFER=0 restores the inline wait.
+        if (!waterFenceDeferEnabled()) {
+            const clk::time_point tInline0 = clk::now();
+            if (vkWaitForFences(s->device, 1, &fsC.fence, VK_TRUE, 5ull*1000*1000*1000) != VK_SUCCESS) {
+                setFallback("fence_timeout"); s->disabled = true; return 0;
+            }
+            us_fence_wait = usSince(tInline0);
         }
-        us_fence_wait = usSince(tFence0);
         g_health.drawUs = usSince(tRender0);
         g_health.colorOutUs = 0.0;   // no composite in tier1
 
