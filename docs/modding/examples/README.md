@@ -73,7 +73,22 @@ Adds a brand-new weapon ("Prototype Needle Laser") by filling an unused
 small string-override FIT file. Builds directly on `weapon-edit` — read that
 one first for the `compbas.csv` column reference.
 
-### 4. [`variant-add`](variant-add/) — difficulty: **Friction**
+### 4. [`mission-edit`](mission-edit/) — difficulty: **Easy**, several traps
+
+Remix the first campaign mission (`mc2_01`) by shadowing its entire
+`data/missions/mc2_01.fit`: add a 15-minute time limit, raise the resource
+budget, rename the first objective, and repaint the enemy lance red. Teaches
+the full mission file anatomy (which of a mission's six file types you can
+shadow — all of them), plus two verified traps: objective/mission names ignore
+your literal-string edits unless you also flip their `...UseResourceString`
+booleans, and your *own* units always ignore the `.fit` paint colors (player
+prefs win — recolor enemies instead). **Honest status:** mechanism claims are
+source-verified with anchors and the payload passed the full offline pipeline
+(pack/verify/install/uninstall + resolution replica), but no live in-game
+capture was taken — the four edits' visible results are code-derived, user
+verification pending. Mission *creation* is out of scope (see below).
+
+### 5. [`variant-add`](variant-add/) — difficulty: **Friction**
 
 Adds a new loadout variant of the stock Atlas chassis (pure stats/loadout —
 the mesh is untouched; see the variant-vs-mesh table above). **Honest
@@ -83,7 +98,7 @@ citation (a `readInt(11,5,...)` call that doesn't exist in `code/mech.cpp`)
 that was flagged and needs a fix before you trust that particular line —
 everything else in the doc checks out.
 
-### 5. [`building-import`](building-import/) — difficulty: **Easy**, with a caveat
+### 6. [`building-import`](building-import/) — difficulty: **Easy**, with a caveat
 
 Swaps the stock hangar building's visual mesh for a glTF model via the static-
 prop model-override registry. **Honest status:** the registry itself works
@@ -98,7 +113,7 @@ clearly — read it before you package anything.
 if you're looking to replace any non-mech, non-tree static geometry, this is
 the doc to read, not `mech-import`.
 
-### 6. [`tree-import`](tree-import/) — difficulty: **Easy**, with a caveat
+### 7. [`tree-import`](tree-import/) — difficulty: **Easy**, with a caveat
 
 Same model-override registry as `building-import`, applied to the stock
 `oak1` tree via its own resolve seam. **Honest status:** same overlay
@@ -108,7 +123,7 @@ is an additional open limitation: **LOD chains for tree overrides are
 mid-work and not usable yet** — this example intentionally ships single-LOD
 only, the one configuration that's actually safe today.
 
-### 7. [`mech-import`](mech-import/) — difficulty: **Medium** (imports go last for a reason)
+### 8. [`mech-import`](mech-import/) — difficulty: **Medium** (imports go last for a reason)
 
 Swaps a mech's LOD0 mesh for a placeholder glTF box-model via the same
 `[Import]` opt-in the stock Atlas already uses. This is the most involved
@@ -143,14 +158,20 @@ error — neither workaround is currently documented. If you hit this, use
 `powershell -ExecutionPolicy Bypass -File .\launch-with-tuning.ps1` until the
 doc is updated.
 
-## Missions and campaigns: deferred
+## Missions and campaigns: editing shipped, creation still out of scope
 
-Missions/campaigns were historically the single most common type of MC2 mod,
-and yes, there is a path for it — a new mission lives at
-`mods/<id>/data/missions/`, authored with the in-repo mission editor — but
-there is no example or tutorial for it in this collection yet. A dedicated
-walkthrough is planned; until then, treat mission modding as out of scope
-here.
+Missions/campaigns were historically the single most common type of MC2 mod.
+**Editing an existing mission is now covered** — see
+[`mission-edit`](mission-edit/) above (entry 4): objectives, time limit,
+resource budget, and roster-field edits via a whole-file `.fit` shadow, with
+every mission file type's overlay coverage verified in code. What remains out
+of scope, honestly: **creating a new mission** (the terrain `.pak` must be
+authored with the in-repo mission editor — no walkthrough exists yet) and
+**shipping a new mission under a new stem via a mod campaign** (every engine
+seam for it is verified and cited in `mission-edit` §9 — mod campaigns are
+even auto-injected into the load-campaign list — but no payload-backed,
+live-tested example exists yet). Treat those two as planned follow-ups, not
+as things this collection can walk you through today.
 
 ## Known gaps
 
@@ -167,6 +188,9 @@ surfaced, summarized:
   timestamps; regression-tested in `tests/mc2mod/test_mc2mod.py`.)
 - **`weapon-add`** — no open issues; verification is source-level (no live
   in-game capture was taken, disclosed honestly in the doc).
+- **`mission-edit`** — no open issues; verification is source-level plus the
+  full offline packaging pipeline (no live in-game capture was taken,
+  disclosed honestly in the doc — same status `weapon-add` shipped with).
 - **`variant-add`** — one fabricated source citation in the doc's prose (a
   `readInt(11,5,...)` call that doesn't exist) needs correcting; the
   underlying mechanism itself is fine.

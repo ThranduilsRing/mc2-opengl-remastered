@@ -1,0 +1,8 @@
+{
+  "id": "mission-edit-example",
+  "name": "Mission Edit Example (mc2_01 Remixed)",
+  "type": "campaign",
+  "version": "1.0.0",
+  "description": "Tutorial mod: whole-file shadow of data/missions/mc2_01.fit — 15-minute time limit, +20k resource points, renamed first objective, enemy lance repainted red. Everything else byte-identical to stock.",
+  "dependencies": []
+}

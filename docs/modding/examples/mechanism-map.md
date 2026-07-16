@@ -59,6 +59,21 @@ Start with [`getting-started.md`](getting-started.md) if you haven't set up a mo
 | Override trace | `mclib/bdactor.cpp:198,208,354,1444,3094,3139,4103,5395,5419` | `MC2_MODOVERRIDE_TRACE` | — | Shipped, logs live appearance-name matches to stderr |
 | Asset cook pipeline (Track G) | `tools/asset_cook/trackg_cook.py` | — | produces manifest entries + `manifest.json`/`materials.json` per cooked asset | Shipped tooling. Validate output with `py -3 tools/asset_cook/validate_asset_manifest.py` |
 
+## Missions
+
+| Mechanism | Entry point | Gate / env | Drop path | Status |
+|---|---|---|---|---|
+| Mission definition load | `Mission::init`, `code/mission.cpp:2078-2091` — `FitIniFile::open` → mod-aware `File::open` (`mclib/inifile.cpp:769`, `mclib/file.cpp:950`) | `MC2_ACTIVE_MOD` | `data/missions/<stem>.fit` | Shipped. Whole-file shadow — see [`mission-edit`](mission-edit/) |
+| Terrain/object pak | `code/mission.cpp:2344` — `PacketFile::open` → `File::open` (`mclib/packet.cpp:206-208`) | — | `data/missions/<stem>.pak` | Shipped. **Stem-derived from the mission name** — no `.fit` key selects the map |
+| Mission script | `[Script]` `ScenarioScript` → ABL preprocess, `code/mission.cpp:2480-2496`; ABL opens route through `File::open` (`ablFileOpenCB`, `code/ablmc2.cpp:7508-7519`) | — | `data/missions/<script>.abl` + fixed `orders`/`miscfunc`/`corebrain.abx` (`:2460-2474`) | Shipped, overlay-covered |
+| Pilot profiles + AI brains | `code/mission.cpp:2542-2586` (`warriorPath`, `mclib/paths.cpp:38`) | — | `data/missions/profiles/<name>.fit` / `<brain>.abl` | Shipped, overlay-covered |
+| Time limit | read `code/mission.cpp:3057-3073`; HUD countdown `code/controlgui.cpp:373-395`; timeout loss `code/mission.cpp:790-798` | — | `[MissionSettings]` `TimeLimit` (seconds; `-1` = none) | Shipped. MP session settings override the `.fit` (`:3071-3072`) |
+| Resource points | `code/mission.cpp:2303-2315` | `-rp <N>` cmdline overrides (`code/mechcmd2.cpp:180,2778`) | `[MissionSettings]` `ResourcePoints` | Shipped. MP overrides too (`:2307-2314`) |
+| Objectives | `Team::loadObjectives` → `CObjectives::Read` (block `Team<N>Objectives`, `code/objective.cpp:2119`) → `CObjective::Read` (`:1674-`) | — | `[Team<N>Objective<M>]` (+`Condition`/`Action` blocks) | Shipped. **TRAP**: literal `Title`/`Description` edits are ignored while `...UseResourceString = TRUE` (`code/objective.cpp:2036-2046`) — flip the boolean |
+| Unit roster (parts/warriors) | `code/mission.cpp:2726-2897` / `:2520-2600` | — | `[PartN]`/`[WarriorN]` blocks | Shipped for field edits. **TRAP**: home-commander units ignore `.fit` paint colors — player prefs win (`code/mission.cpp:1218-1219`) |
+| Mission quick-start | `-mission <stem>` (single dash), `code/mechcmd2.cpp:2617-2654` → `:1798-1806` (`MISSION_LOAD_SP_QUICKSTART`, skips logistics) | — | — | Shipped. `--mission` (double dash) is the smoke harness and is refused without `MC2_SMOKE_MODE` (`GameOS/gameos/gos_smoke.cpp:98-105`) |
+| Mod campaign injection | `EnumerateModCampaignFiles`, `mclib/file.cpp:594-611` → load-campaign list UI (`code/logisticsdialog.cpp:571-606`); campaign parse `code/logisticsmissioninfo.cpp:77-260` | `MC2_ACTIVE_MOD` | `mods/<id>/data/campaign/<name>.fit` | Shipped mechanism, **no worked example yet** — see `mission-edit` §9 |
+
 ## In-game debug UI (not a data mod, but relevant while iterating)
 
 | Mechanism | Entry point | Gate / env | Status |
