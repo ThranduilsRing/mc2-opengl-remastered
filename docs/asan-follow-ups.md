@@ -182,7 +182,8 @@ Deploy rule for any ASan target install: copy the FFmpeg DLLs alongside
 
 ## 3. `getCodeToken` deref of corrupted `codeSegmentPtr` on Exodus
 
-**Status:** FIXED — fail-loud malformed-bytecode rejection in
+**Status:** DEFAULT-PATH GUARD IMPLEMENTED; synthetic proof complete, original
+Exodus/Magic ASan reproducer still pending — fail-loud malformed-bytecode rejection in
 `A:/Games/mc2-deferred-2` commits `4b4fdc5d` and `55d17aa6` (2026-07-16).
 Negative and escape-path proofs, doctests, and Tier-1 5/5 are recorded in that
 lane's `.claude/DEFERRED-2-STATUS.md`.
@@ -239,7 +240,11 @@ crashes on first deref.
 
 Deferred-2 commits `4b4fdc5d` and `55d17aa6` now reject malformed compiled
 bytecode before execution. This closes the garbage-`codeSegmentPtr` crash
-class. Unsupported Exodus/Magic vocabulary remains a separate compatibility
+class on the default path in the synthetic negative proof. The exact original
+Exodus/Magic ASan reproducer has not been rerun and remains the acceptance gate.
+`MC2_ABL_COMPILE_FATAL=0` is an explicit legacy escape hatch that knowingly
+reopens partial-bytecode execution; do not describe that override as contained.
+Unsupported Exodus/Magic vocabulary remains a separate compatibility
 problem: those scripts may still fail compilation, but failure is explicit and
 cannot execute a partial/corrupt segment.
 

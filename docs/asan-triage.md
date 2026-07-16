@@ -18,7 +18,7 @@ Source of truth for "what was run where and when":
 |---|------------|-----------|
 | 4 | `933d716 fix(gameplay): guard neutral turret enable lookup` | **code correct, untested against a neutral-turret scenario in base game.** The tier1 mc2_03 failure that originally caught it was running Magic-vocabulary ABL scripts (see below); on truly-clean base game mc2_03 does not currently reach a path where `teamId == -1` is observed. Leave the fix in place as defense-in-depth. |
 | 5,6 | `e7d68c0 fix(abl): add code-segment sentinel byte` | **VERIFIED as a real P0 fix.** The 1-byte heap-buffer-overflow at `ablexec.cpp:361` is gone on all five tier1 missions under ASan. Stock base game now passes clean end-to-end. |
-| 3 | `4b4fdc5d`, `55d17aa6` (deferred-2) | **FIXED as a crash class (2026-07-16).** Malformed compiled bytecode now fails loud before VM execution; negative + escape proofs, doctests, and Tier-1 5/5 passed. Unsupported Magic/Exodus vocabulary remains a separate mod-compatibility task. |
+| 3 | `4b4fdc5d`, `55d17aa6` (deferred-2) | **DEFAULT-PATH GUARD IMPLEMENTED; exact original ASan repro pending.** Synthetic malformed-bytecode negative + escape proofs, doctests, and Tier-1 5/5 passed. `MC2_ABL_COMPILE_FATAL=0` knowingly restores legacy partial execution. Unsupported Magic/Exodus vocabulary remains separate. |
 | 2 | `89c99cf fix(pathfinding): zero-init GlobalMap pathExistsTable in no-arg ctor path` | **VERIFIED** — Carver5-feasibility mc2_01 under ASan: `result=pass`, 2118 frames, 47 FPS, zero ASan reports. One-line addition (`pathExistsTable = NULL` in the inline no-arg `init()`) fully resolves the finding. No deeper bug surfaced behind it. |
 
 ### The pre-contamination discovery
@@ -43,7 +43,9 @@ Zero ASan reports. The contaminated scripts are preserved at
 
 Deferred-2 commits `4b4fdc5d` and `55d17aa6` added fail-loud malformed-bytecode
 rejection and proved both rejection and valid escape paths. The VM no longer
-executes the partial/corrupt segment that produced the garbage `codeSegmentPtr`.
+executes the synthetic partial/corrupt segment on the default path. The original
+Exodus/Magic trigger still needs an ASan rerun before this exact finding is
+called closed; `MC2_ABL_COMPILE_FATAL=0` knowingly reopens legacy execution.
 Supporting Magic/Exodus vocabulary remains separate profile/parser work; no-op
 stock stubs are not the general crash fix and may change mod behavior.
 
@@ -72,10 +74,11 @@ Re-run artifacts: `tests/smoke/artifacts/2026-04-24T14-24-*/` (failing runs befo
 
 ## Triage table
 
-> **2026-07-16 correction for finding #3:** crash class FIXED by deferred-2
+> **2026-07-16 correction for finding #3:** default-path guard implemented by deferred-2
 > `4b4fdc5d` / `55d17aa6` (fail-loud malformed-bytecode rejection; negative and
 > escape proofs, doctests, Tier-1 5/5). The older row below is historical and
-> must not be dispatched. Unsupported Magic/Exodus vocabulary remains separate.
+> must not be dispatched as a new implementation. Exact original ASan repro
+> remains pending; unsupported Magic/Exodus vocabulary remains separate.
 
 | # | Severity | Site | Missions | Class | Fix cost | Fix strategy |
 |---|----------|------|----------|-------|----------|--------------|
@@ -108,8 +111,9 @@ something benign. This has been latent since the original MC2 1.0.
 
 ## Recommended fix order
 
-> **2026-07-16 correction:** finding #3 is complete at `4b4fdc5d` / `55d17aa6`.
-> Its older deferred-order entry below is retained only as session history.
+> **2026-07-16 correction:** implementation is complete at `4b4fdc5d` /
+> `55d17aa6`; exact original Exodus/Magic ASan verification remains pending.
+> The older deferred-order entry below is retained only as session history.
 
 1. **Finding #4 (Turret teamId)** — one-line guard, trivially safe.
    Re-run tier1: mc2_03 should now pass under ASan.
