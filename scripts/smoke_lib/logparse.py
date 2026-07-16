@@ -43,6 +43,33 @@ MISSION_LOAD_FAIL_PATTERNS = (
 )
 
 
+# ---------------------------------------------------------------------------
+# META-FIX INFRA-3: table-driven marker buckets.
+#
+# Generalizes the VEG-SMOKE-FLOOR / asset_oob clone-per-feature pattern ONCE:
+# each recurrence-proofing design registers ONE ROW here instead of re-cloning
+# a bespoke counter + gate + manifest key. A row is scanned per stdout line;
+# counts land in LogSummary.marker_counts[bucket]; gates.py turns red-severity
+# counts into verdict buckets (per-mission downgrade via the manifest override
+# key, mirroring allow_asset_oob); advisory-severity counts become details only.
+#
+# Later batches append one row each (design A: [MOVER_COHERENCE] VIOLATION;
+# design B: asset_load_fail; design F: ORDER_LIVENESS via the summary-parser
+# path) — see .claude/META-FIX-PLAN-2026-07-16.md INFRA-3.
+# ---------------------------------------------------------------------------
+
+@dataclass(frozen=True)
+class MarkerBucket:
+    pattern: "re.Pattern[str]"          # searched against each stdout line
+    bucket: str                          # bucket name (red) / detail tag (advisory)
+    severity: str                        # "red" | "advisory"
+    manifest_override_key: Optional[str] = None  # manifest key that downgrades
+                                                 # red -> advisory per mission
+
+MARKER_BUCKETS: tuple = (
+)
+
+
 @dataclass
 class PerfRow:
     avg_fps: float = 0.0
@@ -87,6 +114,9 @@ class LogSummary:
     # SMOKE-MODMISSION-ENV-GUARDS-1: set True if the engine printed an
     # "Unable to open Mission File" / STOP line before play phase started.
     mission_load_fail_seen: bool = False
+    # META-FIX INFRA-3: per-bucket marker counts (bucket -> hit count) for
+    # every registered MARKER_BUCKETS row. Empty dict when no marker fired.
+    marker_counts: dict = field(default_factory=dict)
 
 
 def parse_log(text: str,
@@ -140,6 +170,11 @@ def parse_log(text: str,
         if "[TGL_POOL v1]" in line and "nulls=" in line: s.pool_nulls += 1
         if "[ASSET_SCALE v1] event=oob_blit" in line: s.asset_oob += 1
         if "[DESTROY v1]" in line and "event=destroy" in line: s.destroys += 1
+
+        # META-FIX INFRA-3: registered marker-bucket scan.
+        for mb in MARKER_BUCKETS:
+            if mb.pattern.search(line):
+                s.marker_counts[mb.bucket] = s.marker_counts.get(mb.bucket, 0) + 1
 
         for p in CRASH_PATTERNS:
             if p.search(line): s.crash_handler_hit = True; break

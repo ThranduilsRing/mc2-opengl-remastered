@@ -15,9 +15,19 @@ from dataclasses import dataclass, field
 from pathlib import Path
 from typing import Optional
 
+from .logparse import MARKER_BUCKETS
+
 VALID_TIERS = {"tier1", "tier2", "tier3", "skip"}
 VALID_KEYS = {"duration", "heartbeat_timeout_load", "heartbeat_timeout_play",
               "profile", "active", "reason", "allow_asset_oob", "mod", "deps"}
+
+# META-FIX INFRA-3: manifest override keys registered by marker-bucket rows
+# (allow_asset_oob analog — downgrades that bucket to advisory per mission).
+MARKER_OVERRIDE_KEY_TO_BUCKET = {
+    mb.manifest_override_key: mb.bucket
+    for mb in MARKER_BUCKETS if mb.manifest_override_key
+}
+VALID_KEYS |= set(MARKER_OVERRIDE_KEY_TO_BUCKET)
 
 
 @dataclass
@@ -36,6 +46,8 @@ class Entry:
     # deps: comma-separated compat layer dir names (e.g. "mc2x-compat,mco-compat").
     mod: str = ""
     deps: str = ""
+    # META-FIX INFRA-3: per-mission marker-bucket downgrades (bucket -> True).
+    marker_overrides: dict = field(default_factory=dict)
     source_line: int = 0
 
 
@@ -84,5 +96,8 @@ def parse_manifest(path: Path) -> list[Entry]:
                 e.mod = v
             elif k == "deps":
                 e.deps = v
+            elif k in MARKER_OVERRIDE_KEY_TO_BUCKET:
+                if v.lower() in ("1", "true", "yes"):
+                    e.marker_overrides[MARKER_OVERRIDE_KEY_TO_BUCKET[k]] = True
         out.append(e)
     return out

@@ -1146,6 +1146,9 @@ def main():
             heartbeat_timeout_play_s=e.heartbeat_timeout_play or 3,
             grace_s=60,
             allow_asset_oob=e.allow_asset_oob,
+            # META-FIX INFRA-3: per-mission marker-bucket downgrades from the
+            # manifest (allow_asset_oob analog for registered marker rows).
+            marker_overrides=e.marker_overrides,
             env_extra={
                 "MC2_SMOKE_SEED": "0xC0FFEE",
                 # SMOKE-MODMISSION-ENV-GUARDS-1: inject MC2_ACTIVE_MOD/MC2_MOD_DEPS

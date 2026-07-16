@@ -5,7 +5,7 @@ from __future__ import annotations
 from dataclasses import dataclass, field
 from typing import List, Optional
 
-from .logparse import LogSummary
+from .logparse import MARKER_BUCKETS, LogSummary
 
 
 @dataclass
@@ -14,6 +14,10 @@ class GateConfig:
     heartbeat_timeout_play_s: int = 3
     duration_s: int = 120
     allow_asset_oob: bool = False
+    # META-FIX INFRA-3: per-mission downgrades for registered marker buckets
+    # (bucket name -> True), sourced from the manifest override key
+    # (allow_asset_oob analog). Red buckets present here become advisory.
+    marker_overrides: dict = field(default_factory=dict)
 
 
 @dataclass
@@ -70,6 +74,20 @@ def evaluate(s: LogSummary, cfg: GateConfig, *,
         buckets.append("shader_error"); details.append(f"{s.shader_errors}")
     if s.missing_files > 0:
         buckets.append("missing_file"); details.append(f"{s.missing_files}")
+
+    # META-FIX INFRA-3: registered marker buckets. Red severity -> verdict
+    # bucket (fails the mission) unless downgraded per mission via the
+    # manifest override key; advisory severity -> detail line only.
+    for mb in MARKER_BUCKETS:
+        n = s.marker_counts.get(mb.bucket, 0)
+        if n <= 0:
+            continue
+        overridden = bool(cfg.marker_overrides.get(mb.bucket, False))
+        if mb.severity == "red" and not overridden:
+            buckets.append(mb.bucket)
+            details.append(f"{n} {mb.bucket} marker line(s)")
+        else:
+            details.append(f"[advisory] {n} {mb.bucket} marker line(s)")
 
     # Heartbeat freeze gates -- wallclock-based (runner-side). Engine-side
     # [HEARTBEAT] elapsed_ms is mission-relative and cannot be compared to
