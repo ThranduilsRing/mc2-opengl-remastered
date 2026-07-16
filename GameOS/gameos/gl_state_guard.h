@@ -91,6 +91,15 @@ public:
         prev_ = glIsEnabled(cap_);
         if (enable) glEnable(cap_); else glDisable(cap_);
     }
+    // Slice 4 (VOCAB-1): capture-only overload — snapshot the current
+    // enable state and restore it at scope exit WITHOUT setting anything in
+    // the ctor. Used by the epilogue conversions where the pass body keeps
+    // its own glEnable/glDisable calls exactly where they were (minimal-diff
+    // rule; also the fix for the Site-4 billboard cull double-assert trap:
+    // the body's re-assert stays, only the save/restore lines collapse).
+    explicit GlScopedCapability(GLenum cap) : cap_(cap) {
+        prev_ = glIsEnabled(cap_);
+    }
     ~GlScopedCapability() {
         if (prev_) glEnable(cap_); else glDisable(cap_);
     }
@@ -114,6 +123,14 @@ public:
         prevFunc_ = static_cast<GLenum>(f);
         glDepthMask(mask);
         glDepthFunc(func);
+    }
+    // Slice 4 (VOCAB-1): capture-only — snapshot mask+func, restore at scope
+    // exit; the pass body keeps its own glDepthMask/glDepthFunc calls.
+    GlScopedDepthState() {
+        glGetBooleanv(GL_DEPTH_WRITEMASK, &prevMask_);
+        GLint f = GL_LESS;
+        glGetIntegerv(GL_DEPTH_FUNC, &f);
+        prevFunc_ = static_cast<GLenum>(f);
     }
     ~GlScopedDepthState() {
         glDepthMask(prevMask_);
@@ -177,18 +194,22 @@ private:
 // raw GL state and must see the restored binding, not the mutated one.
 class GlScopedTextureUnit {
 public:
-    explicit GlScopedTextureUnit(GLuint unit = 0) : unit_(unit) {
+    // Slice 4 (VOCAB-1): optional `target` selects the texture target whose
+    // binding is captured/restored on `unit` (GL_TEXTURE_2D default; the
+    // mine-static bridge needs GL_TEXTURE_2D_ARRAY on unit 5).
+    explicit GlScopedTextureUnit(GLuint unit = 0, GLenum target = GL_TEXTURE_2D)
+        : unit_(unit), target_(target) {
         GLint active = static_cast<GLint>(GL_TEXTURE0);
         glGetIntegerv(GL_ACTIVE_TEXTURE, &active);
         prevActiveTex_ = static_cast<GLenum>(active);
         glActiveTexture(GL_TEXTURE0 + unit_);
         GLint binding = 0;
-        glGetIntegerv(GL_TEXTURE_BINDING_2D, &binding);
+        glGetIntegerv(bindingQueryFor(target_), &binding);
         prevBinding_ = static_cast<GLuint>(binding);
     }
     ~GlScopedTextureUnit() {
         glActiveTexture(GL_TEXTURE0 + unit_);
-        glBindTexture(GL_TEXTURE_2D, prevBinding_);
+        glBindTexture(target_, prevBinding_);
         glActiveTexture(prevActiveTex_);
     }
     GlScopedTextureUnit(const GlScopedTextureUnit&) = delete;
@@ -196,9 +217,212 @@ public:
     GlScopedTextureUnit(GlScopedTextureUnit&&) = delete;
     GlScopedTextureUnit& operator=(GlScopedTextureUnit&&) = delete;
 private:
+    static GLenum bindingQueryFor(GLenum target) {
+        switch (target) {
+            case GL_TEXTURE_2D_ARRAY:   return GL_TEXTURE_BINDING_2D_ARRAY;
+            case GL_TEXTURE_3D:         return GL_TEXTURE_BINDING_3D;
+            case GL_TEXTURE_CUBE_MAP:   return GL_TEXTURE_BINDING_CUBE_MAP;
+            case GL_TEXTURE_2D:
+            default:                    return GL_TEXTURE_BINDING_2D;
+        }
+    }
     GLuint unit_;
+    GLenum target_        = GL_TEXTURE_2D;
     GLenum prevActiveTex_ = GL_TEXTURE0;
     GLuint prevBinding_   = 0;
+};
+
+// --- Slice 4: GLSTATE-GUARD-VOCAB-1 -----------------------------------------
+//
+// The epilogue recon (docs/testing/glstate-guard-epilogue-recon-1.md) found the
+// GPU-direct pass epilogues are DOMINATED by state no slice-1..3 guard covers:
+// program, VAO, array/element buffer, blend-func, sampler, cull mode, MRT
+// draw-buffer list. This slice completes the vocabulary so those epilogues can
+// convert. ALL slice-4 guards are CAPTURE-ONLY (snapshot in ctor, restore in
+// dtor, never set) — the conversion rule is: guard declarations replace the
+// hand-rolled SAVE lines in place, the trailing RESTORE lines are deleted, and
+// every SET call in the pass body stays exactly where it was. Declaration
+// order = reverse of the original hand-rolled restore order (C++ destroys in
+// reverse), so the restore sequence is preserved instruction-for-instruction.
+
+// GL_CURRENT_PROGRAM — restore via glUseProgram.
+class GlScopedProgram {
+public:
+    GlScopedProgram() { glGetIntegerv(GL_CURRENT_PROGRAM, &prev_); }
+    ~GlScopedProgram() { glUseProgram(static_cast<GLuint>(prev_)); }
+    GlScopedProgram(const GlScopedProgram&) = delete;
+    GlScopedProgram& operator=(const GlScopedProgram&) = delete;
+    GlScopedProgram(GlScopedProgram&&) = delete;
+    GlScopedProgram& operator=(GlScopedProgram&&) = delete;
+private:
+    GLint prev_ = 0;
+};
+
+// GL_VERTEX_ARRAY_BINDING — restore via glBindVertexArray. NOTE: restoring a
+// VAO also swaps in that VAO's element-array binding; where a pass ALSO
+// save/restores GL_ELEMENT_ARRAY_BUFFER_BINDING, declare the VAO guard FIRST
+// (destroyed LAST is wrong — the element rebind must land INSIDE the restored
+// VAO, i.e. the element-buffer guard must be declared BEFORE the VAO guard so
+// it destructs AFTER it — matching every existing hand-rolled epilogue).
+class GlScopedVertexArray {
+public:
+    GlScopedVertexArray() { glGetIntegerv(GL_VERTEX_ARRAY_BINDING, &prev_); }
+    ~GlScopedVertexArray() { glBindVertexArray(static_cast<GLuint>(prev_)); }
+    GlScopedVertexArray(const GlScopedVertexArray&) = delete;
+    GlScopedVertexArray& operator=(const GlScopedVertexArray&) = delete;
+    GlScopedVertexArray(GlScopedVertexArray&&) = delete;
+    GlScopedVertexArray& operator=(GlScopedVertexArray&&) = delete;
+private:
+    GLint prev_ = 0;
+};
+
+// GL_ARRAY_BUFFER / GL_ELEMENT_ARRAY_BUFFER binding — restore via glBindBuffer
+// on the same target. (GL_ELEMENT_ARRAY_BUFFER binding is VAO-resident state:
+// see the ordering note on GlScopedVertexArray.)
+class GlScopedBufferBinding {
+public:
+    explicit GlScopedBufferBinding(GLenum target) : target_(target) {
+        glGetIntegerv(bindingQueryFor(target), &prev_);
+    }
+    ~GlScopedBufferBinding() { glBindBuffer(target_, static_cast<GLuint>(prev_)); }
+    GlScopedBufferBinding(const GlScopedBufferBinding&) = delete;
+    GlScopedBufferBinding& operator=(const GlScopedBufferBinding&) = delete;
+    GlScopedBufferBinding(GlScopedBufferBinding&&) = delete;
+    GlScopedBufferBinding& operator=(GlScopedBufferBinding&&) = delete;
+private:
+    static GLenum bindingQueryFor(GLenum target) {
+        switch (target) {
+            case GL_ELEMENT_ARRAY_BUFFER: return GL_ELEMENT_ARRAY_BUFFER_BINDING;
+            case GL_SHADER_STORAGE_BUFFER: return GL_SHADER_STORAGE_BUFFER_BINDING;
+            case GL_UNIFORM_BUFFER:       return GL_UNIFORM_BUFFER_BINDING;
+            case GL_ARRAY_BUFFER:
+            default:                      return GL_ARRAY_BUFFER_BINDING;
+        }
+    }
+    GLenum target_;
+    GLint  prev_ = 0;
+};
+
+// Blend function (separate RGB/alpha) — restore via glBlendFuncSeparate.
+// STRICTLY-MORE-CORRECT NOTE: the hand-rolled epilogues saved only
+// SRC_RGB/DST_RGB and restored with glBlendFunc(), which CLOBBERS a prior
+// separate-alpha factor with the RGB one. This guard restores the true
+// previous separate state. Both variants converge after the pass's
+// gos_InvalidateRenderStateCache() (full blend re-apply on next legacy draw).
+class GlScopedBlendFunc {
+public:
+    GlScopedBlendFunc() {
+        glGetIntegerv(GL_BLEND_SRC_RGB,   &srcRgb_);
+        glGetIntegerv(GL_BLEND_DST_RGB,   &dstRgb_);
+        glGetIntegerv(GL_BLEND_SRC_ALPHA, &srcA_);
+        glGetIntegerv(GL_BLEND_DST_ALPHA, &dstA_);
+    }
+    ~GlScopedBlendFunc() {
+        glBlendFuncSeparate(static_cast<GLenum>(srcRgb_), static_cast<GLenum>(dstRgb_),
+                            static_cast<GLenum>(srcA_),   static_cast<GLenum>(dstA_));
+    }
+    GlScopedBlendFunc(const GlScopedBlendFunc&) = delete;
+    GlScopedBlendFunc& operator=(const GlScopedBlendFunc&) = delete;
+    GlScopedBlendFunc(GlScopedBlendFunc&&) = delete;
+    GlScopedBlendFunc& operator=(GlScopedBlendFunc&&) = delete;
+private:
+    GLint srcRgb_ = GL_ONE, dstRgb_ = GL_ZERO, srcA_ = GL_ONE, dstA_ = GL_ZERO;
+};
+
+// glBindSampler(unit) binding — indexed query (production-proven pattern:
+// gos_mech_batcher.cpp saves sampler slots 0-7 with glGetIntegeri_v).
+class GlScopedSampler {
+public:
+    explicit GlScopedSampler(GLuint unit) : unit_(unit) {
+        glGetIntegeri_v(GL_SAMPLER_BINDING, unit_, &prev_);
+    }
+    ~GlScopedSampler() { glBindSampler(unit_, static_cast<GLuint>(prev_)); }
+    GlScopedSampler(const GlScopedSampler&) = delete;
+    GlScopedSampler& operator=(const GlScopedSampler&) = delete;
+    GlScopedSampler(GlScopedSampler&&) = delete;
+    GlScopedSampler& operator=(GlScopedSampler&&) = delete;
+private:
+    GLuint unit_;
+    GLint  prev_ = 0;
+};
+
+// glCullFace mode (GL_CULL_FACE_MODE latched state — independent of the
+// GL_CULL_FACE enable, which is GlScopedCapability's job).
+class GlScopedCullFaceMode {
+public:
+    GlScopedCullFaceMode() { glGetIntegerv(GL_CULL_FACE_MODE, &prev_); }
+    ~GlScopedCullFaceMode() { glCullFace(static_cast<GLenum>(prev_)); }
+    GlScopedCullFaceMode(const GlScopedCullFaceMode&) = delete;
+    GlScopedCullFaceMode& operator=(const GlScopedCullFaceMode&) = delete;
+    GlScopedCullFaceMode(GlScopedCullFaceMode&&) = delete;
+    GlScopedCullFaceMode& operator=(GlScopedCullFaceMode&&) = delete;
+private:
+    GLint prev_ = GL_BACK;
+};
+
+// Non-indexed glColorMask — restore all four channels.
+class GlScopedColorMask {
+public:
+    GlScopedColorMask() { glGetBooleanv(GL_COLOR_WRITEMASK, prev_); }
+    ~GlScopedColorMask() { glColorMask(prev_[0], prev_[1], prev_[2], prev_[3]); }
+    GlScopedColorMask(const GlScopedColorMask&) = delete;
+    GlScopedColorMask& operator=(const GlScopedColorMask&) = delete;
+    GlScopedColorMask(GlScopedColorMask&&) = delete;
+    GlScopedColorMask& operator=(GlScopedColorMask&&) = delete;
+private:
+    GLboolean prev_[4] = { GL_TRUE, GL_TRUE, GL_TRUE, GL_TRUE };
+};
+
+// MRT draw-buffer list — captures GL_DRAW_BUFFER0..7 of the CURRENTLY BOUND
+// draw framebuffer and restores via glDrawBuffers. The guarded region must
+// not switch draw FBOs (the restore would then target the wrong FBO) — true
+// for the one consumer (particle deferred tube flush forces single
+// COLOR_ATTACHMENT0 for its draws on the scene FBO).
+class GlScopedDrawBuffers {
+public:
+    GlScopedDrawBuffers() {
+        for (int i = 0; i < 8; ++i) {
+            GLint d = GL_NONE;
+            glGetIntegerv(GL_DRAW_BUFFER0 + i, &d);
+            prev_[i] = static_cast<GLenum>(d);
+            if (d != GL_NONE) count_ = i + 1;
+        }
+    }
+    ~GlScopedDrawBuffers() {
+        if (count_ > 0) glDrawBuffers(count_, prev_);
+    }
+    GlScopedDrawBuffers(const GlScopedDrawBuffers&) = delete;
+    GlScopedDrawBuffers& operator=(const GlScopedDrawBuffers&) = delete;
+    GlScopedDrawBuffers(GlScopedDrawBuffers&&) = delete;
+    GlScopedDrawBuffers& operator=(GlScopedDrawBuffers&&) = delete;
+    int savedCount() const { return count_; }
+private:
+    GLenum prev_[8] = { GL_NONE, GL_NONE, GL_NONE, GL_NONE,
+                        GL_NONE, GL_NONE, GL_NONE, GL_NONE };
+    int    count_ = 0;
+};
+
+// The RENDER_STATES v1 invalidation contract as a guard: dtor calls
+// gos_InvalidateRenderStateCache() so the "call the hook AT THE END of the
+// path" rule (gameos_graphics.cpp invalidateRenderStateCache() comment) holds
+// BY CONSTRUCTION. Declare FIRST in a converted pass — it then destructs LAST,
+// i.e. the invalidate fires after every state guard has restored, exactly
+// matching the hand-rolled epilogue order (restore block, then invalidate).
+// The hook only flips stateCacheValid_ (no GL reads), so guard-after-invalidate
+// ordering bugs are impossible either way — this just keeps the sequence
+// identical to the code it replaces. Collapses the known_issues.md "~14-entry
+// manual invalidation list" bug class: a converted pass cannot forget the call.
+class GlScopedRenderStateInvalidate {
+public:
+    GlScopedRenderStateInvalidate() = default;
+    ~GlScopedRenderStateInvalidate() {
+        extern void __stdcall gos_InvalidateRenderStateCache();
+        gos_InvalidateRenderStateCache();
+    }
+    GlScopedRenderStateInvalidate(const GlScopedRenderStateInvalidate&) = delete;
+    GlScopedRenderStateInvalidate& operator=(const GlScopedRenderStateInvalidate&) = delete;
+    GlScopedRenderStateInvalidate(GlScopedRenderStateInvalidate&&) = delete;
+    GlScopedRenderStateInvalidate& operator=(GlScopedRenderStateInvalidate&&) = delete;
 };
 
 }  // namespace mc2gl

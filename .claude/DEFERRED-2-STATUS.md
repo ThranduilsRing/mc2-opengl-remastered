@@ -89,3 +89,80 @@ deterministic repro hook.
       2097 frames, +0 destroys (`2026-07-16T12-09-21`).
 - [x] Commit `4b4fdc5d`; clean rebuild/deploy fingerprint matched; canonical
       tier1 PASS 5/5, +0 destroys (`2026-07-16T12-12-10`). Item complete.
+
+## Item 4 — GlStateGuard RAII meta-fix (RESUMED after limit-kill; DONE)
+
+Board: DEFERRED-BOARD-2026-07-16.md §A backlog "GlStateGuard RAII meta-fix
+(~14 GPU-direct sites)". Prior agent left `GameOS/gameos/gl_state_guard.h`
+dirty with the full Slice-4/VOCAB-1 guard vocabulary (9 new capture-only
+guard classes, bringing the header to exactly 14 `GlScoped*` classes total —
+this IS the board's "~14 sites" figure) plus one converted call site
+(`gos_tube_ribbon_flush`), then died mid-conversion ("Now the mech flush
+restore block and billboard restore tail").
+
+Resume findings + work, per `docs/testing/glstate-guard-epilogue-recon-1.md`
+(the authoritative site classification — Sites 1-5, STOP list, ADOPTION-3/
+VOCAB-1/ADOPTION-4+ ordering):
+
+- [x] **Critical bug found and fixed**: `gos_tube_ribbon_flush_deferred` had
+      a leftover hand-rolled restore tail (lines ~866-883) referencing
+      variables (`savedProgram`, `savedVAO`, `savedCullFace`, `savedTex2D0`,
+      `savedSampler`, `savedActiveTex`, `savedDepthMask`, `savedDepthFunc`,
+      `savedDepthTest`, `savedSrcRGB`, `savedDstRGB`, `savedBlend`,
+      `nSavedDrawBufs`, `savedDrawBufs`) that had already been deleted from
+      the top of the function when the RAII guards were introduced — the
+      dirty tree did NOT compile. Removed the dead tail; the RAII guards
+      (declared at function top, invalidate-guard-first-so-it-destructs-last)
+      now own the full restore.
+- [x] `gos_particle_bridge.cpp` was missing `#include "gl_state_guard.h"`
+      entirely (build error: `mc2gl` not a namespace) — added.
+- [x] Site 4 (particle billboard flush, `gos_particle_bridge_flush`) —
+      "the billboard restore tail": converted the VOCAB-1-guardable subset
+      (program, VAO, blend enable+func, depth-test enable, depth mask+func,
+      sampler 0, tex unit 0, + `GlScopedRenderStateInvalidate` replacing the
+      trailing explicit invalidate call). Cull stays **fully manual by
+      design** — VFX-CARD-CULL-1 re-asserts `glDisable(GL_CULL_FACE)` a
+      second time after `copySceneDepthForParticles()` re-enables it as a
+      side effect (double-assert trap documented in the recon as Site 4's
+      reason to STOP; a capture-only guard would not re-assert and
+      reintroduces the spinning-explosion-card flicker bug). SSBO slot 14 and
+      the soft-particle/distortion unit-1/unit-2 binds also stay manual
+      (bind-then-zero hygiene / conditional mid-function resource binds, not
+      the top-block/bottom-block epilogue shape VOCAB-1 targets).
+- [x] Site 1 (`GpuMechBatcher::flush()`) — the recon's "one genuinely clean,
+      behavior-preserving win": converted SSBO 0/1/2 to
+      `GlScopedSsboBinding`, preserving the exact original capture points
+      (slot 2 before Step 6 rebinds it; slots 0/1 after — unchanged
+      semantics, not "fixed"). The recon requires the guard to close BEFORE
+      the function's trailing `gos_InvalidateRenderStateCache()`, which sits
+      well before the function's natural end (~430 lines of unrelated
+      render-state save/restore between); rather than re-scope that whole
+      block, the guards are held in `std::optional<mc2gl::GlScopedSsboBinding>`
+      and `.reset()` explicitly at the original manual-restore point. Render
+      state (program/VAO/buffers/samplers/depth/blend/cull) stays fully
+      manual, per the recon's explicit recommendation ("leave all
+      render-state manual" — half-converting is churn with no risk
+      reduction until a dedicated slice revisits it).
+- [x] Site 5 (`gos_static_prop_batcher.cpp`, ~8900 lines, 10 SSBO + 21
+      state-save sites) — **deliberately NOT touched**, per the recon's
+      explicit "LAST, own slice... do NOT touch in ADOPTION-3" ruling
+      (largest blast radius; SSBO restore-previous-vs-bind-then-zero
+      semantics per path unconfirmed). Left as a follow-up slice.
+- [x] New self-test: `tools/glstate_guard_harness/` (registered in
+      `tools/run_contract_tests.py` REGISTERED_HARNESSES). Unlike the other
+      contract harnesses this one needs a REAL GL context — the header makes
+      real `glGetIntegerv`/`glEnable`/`glBindTexture` calls — so it creates a
+      hidden SDL2 window + GL 4.3 core context (mirrors
+      `GameOS/gameos/gos_render.cpp`'s attributes) and `glewInit()`s it, no
+      game window / mission data / other GameOS TU linked.  18 tests, one (or
+      more) per guard class, including the cull-double-assert-safe pattern,
+      the separate-alpha-blend "strictly more correct" precision claim, the
+      MRT gap-preservation case (`GL_NONE` at index 1 between two active
+      attachments), and a declared-first-destructs-last ordering proof for
+      `GlScopedRenderStateInvalidate`. Standalone build:
+      `cmake -S tools/glstate_guard_harness -B build64-glstateguard -A x64`
+      then `--target glstate_guard_harness`. Result: **18/18 PASS**.
+- [x] Build: `cmake --build build64 --config RelWithDebInfo --target mc2`
+      exit 0, zero warnings/errors on the three touched TUs
+      (`gl_state_guard.h`, `gos_particle_bridge.cpp`, `gos_mech_batcher.cpp`).
+- [ ] Deploy + tier1: pending (next step after this commit).
