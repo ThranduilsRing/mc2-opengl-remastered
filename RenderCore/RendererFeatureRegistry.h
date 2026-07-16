@@ -727,6 +727,18 @@ static constexpr EnvVarDesc kAuxEnvVars[] = {
         "MC2_BOOT_INFO / MC2_BOOT_OBJ. Default unset -> byte-identical."
     },
     {
+        "MC2_TRACE_BOOT_TIMER_SECS",
+        "MC2_BOOT_TIMER_SECS",
+        EnvVarKind::Trace,
+        false,
+        "TIMER-CAPTURE fixture parameter: =S overrides the remaining seconds "
+        "the MC2_BOOT_TIMER fixture arms (default 754). Lets the <5-minute red "
+        "warning (S=283) and <2-minute blink (S=110) states of the shared "
+        "legacy timer computation be captured headless — the warning logic "
+        "itself is unchanged and shared by the legacy and ImGui draws. Only "
+        "read when MC2_BOOT_TIMER is set. Default unset -> byte-identical."
+    },
+    {
         "MC2_TRACE_BOOT_VIDEO",
         "MC2_BOOT_VIDEO",
         EnvVarKind::Trace,
