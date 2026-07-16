@@ -672,6 +672,21 @@ static constexpr EnvVarDesc kAuxEnvVars[] = {
         "byte-identical."
     },
     {
+        "MC2_TRACE_BOOT_OBJ_COMPLETE",
+        "MC2_BOOT_OBJ_COMPLETE",
+        EnvVarKind::Trace,
+        false,
+        "OBJ-COMPLETE-CAPTURE fixture: =N force-resolves the first active "
+        "non-hidden objective to OS_SUCCESSFUL ONCE at frame >= N "
+        "(ControlGui::update) via the public CObjective::Status(newStatus) "
+        "setter (no action-list side effects; the mission does not end while "
+        "other primaries stay undetermined). Makes the completed-status "
+        "render states (green row + check tile) capturable headless — no "
+        "mc2_01 objective is completable in a 30 s scripted run. Combine "
+        "with MC2_BOOT_OBJ to show the overlay. Default unset -> "
+        "byte-identical."
+    },
+    {
         "MC2_TRACE_BOOT_PAUSED",
         "MC2_BOOT_PAUSED",
         EnvVarKind::Trace,

@@ -2170,6 +2170,47 @@ void ControlGui::update( bool bPaused, bool bLOS )
 		}
 	}
 
+	// OBJ-COMPLETE-CAPTURE fixture: MC2_BOOT_OBJ_COMPLETE=N force-resolves the
+	// FIRST active, non-hidden objective to OS_SUCCESSFUL ONCE at frame >= N
+	// through the same public CObjective::Status(newStatus) setter the engine
+	// uses to restore resolved objectives (code/objective.cpp:2003 — sets
+	// m_resolved/m_resolvedStatus, no action-list side effects), so the
+	// completed-status render states (green row + check tile, shared
+	// gatherObjectiveRows status->color map) are capturable headless: no
+	// objective in mc2_01 is completable inside a 30 s scripted run
+	// (objective 1 = MoveAnyUnitToArea needs a player move order). The mission
+	// does NOT end — the remaining primaries stay undetermined. Same fixture
+	// pattern as MC2_BOOT_OBJ above. Registered Trace, default unset ->
+	// byte-identical.
+	{
+		static const long s_bootObjComplete = [] {
+			const char* v = getenv("MC2_BOOT_OBJ_COMPLETE");
+			return (v && v[0]) ? atol(v) : 0L;
+		}();
+		if ( s_bootObjComplete > 0 && Team::home )
+		{
+			extern uint32_t g_mc2FrameCounter;
+			static bool s_objCompleteDone = false;
+			if ( !s_objCompleteDone && (long)g_mc2FrameCounter >= s_bootObjComplete )
+			{
+				s_objCompleteDone = true;
+				for ( EList< CObjective*, CObjective* >::EIterator iter = Team::home->objectives.Begin();
+					!iter.IsDone(); iter++ )
+				{
+					CObjective* pObjective = (*iter);
+					if ( !pObjective->IsActive() || pObjective->IsHiddenTrigger() )
+						continue;
+					pObjective->Status( OS_SUCCESSFUL );
+					printf("[BOOT_OBJ_COMPLETE] objective '%s' -> OS_SUCCESSFUL (frame %u)\n",
+						(const char*)pObjective->LocalizedDescription().Data(),
+						(unsigned)g_mc2FrameCounter);
+					fflush(stdout);
+					break;
+				}
+			}
+		}
+	}
+
 	// TIMER-CAPTURE fixture: MC2_BOOT_TIMER=N force-arms the mission timer ONCE
 	// at frame >= N by giving the mission a time limit (tier1 missions ship with
 	// TimeLimit unset -> m_timeLimit == -1 -> the timer panel never draws), so
