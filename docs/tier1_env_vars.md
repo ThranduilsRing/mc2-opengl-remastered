@@ -20,6 +20,12 @@
 - `MC2_SOAK_AUTOWIN=1` — with a campaign booted via `MC2_BOOT_TO_BAY`, auto-launches each mission from logistics (no clicks), auto-wins it, lets the campaign auto-advance, and repeats until `campaign-complete`. Emits `[SOAK]` stdout markers (autowin/advance/launch/campaign-complete). Default OFF = byte-identical.
 - `MC2_SOAK_WIN_AFTER_SEC=5.0` — scenario-time seconds before auto-win fires (default 5.0). Only consulted when `MC2_SOAK_AUTOWIN` is set.
 
+## ABL compile safety
+
+- `MC2_ABL_COMPILE_FATAL` — **default ON** fail-loud guard. If ABL preprocessing reports syntax errors, logs `[ABL_COMPILE_FATAL]` with file/error count and exits before partial bytecode can execute and corrupt `codeSegmentPtr`. Set exactly `=0` only to reproduce legacy execute-anyway behavior.
+- `MC2_ABL_COMPILE_FATAL_REPRO=<absolute-path>` — negative-test hook. During ABL initialization, preprocesses the supplied malformed fixture; expected result with default settings is an attributable `[ABL_COMPILE_FATAL]` refusal before mission load.
+- `MC2_ABL_SKIP_ERRORED_MODULES=1` — playability escape hatch: permits mission load but skips execution of every module with compile errors. Takes precedence over compile-fatal so bad third-party brains remain contained rather than crashing the VM.
+
 ## Feature gates (RendererFeatureRegistry.h kFeatureTable)
 
 - `MC2_COLORMAP_KTX2` — BC7 KTX2 atlas. Default **ON**. Kill=`=0`. Bake: `py -3 scripts/bake_colormap_ktx2.py`.

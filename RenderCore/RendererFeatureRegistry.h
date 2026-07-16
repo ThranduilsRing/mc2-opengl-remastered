@@ -597,6 +597,20 @@ static_assert(
 // The enforcement script greps BOTH tables for "MC2_" string literals.
 
 static constexpr EnvVarDesc kAuxEnvVars[] = {
+    {
+        "MC2_ABL_COMPILE_FATAL",
+        "MC2_ABL_COMPILE_FATAL",
+        EnvVarKind::Feature,
+        true,
+        "ASAN-3-ABL-COMPILE-FATAL-1: fail at preprocess when ABL syntax errors leave partial bytecode; set =0 only for legacy execute-anyway diagnostics."
+    },
+    {
+        "MC2_ABL_COMPILE_FATAL_REPRO",
+        "MC2_ABL_COMPILE_FATAL_REPRO",
+        EnvVarKind::Trace,
+        false,
+        "ASAN-3-ABL-COMPILE-FATAL-1: preprocess the supplied malformed-fixture path during ABL init to prove fail-loud behavior."
+    },
     // TERRAIN-DECAL-SLICE-0B: live placement knobs for the CLIFF_WALL mesh-decal
     // (mclib/bdactor.cpp registerStatic). Read once at process start; all default
     // to Slice-0A behavior -> byte-identical when unset. Only consulted when

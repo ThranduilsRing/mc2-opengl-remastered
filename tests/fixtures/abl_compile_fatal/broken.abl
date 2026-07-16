@@ -1,0 +1,5 @@
+fsm abl_compile_fatal_repro;
+
+code
+    this_token_is_deliberately_not_valid_abl;
+endfsm.

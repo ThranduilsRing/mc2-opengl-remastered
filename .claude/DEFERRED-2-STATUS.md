@@ -71,3 +71,20 @@ auditable from the dump (this IS the existing VRAM counter surface: renderResour
 Plan per A:/Games/mc2-issue-fixes/docs/asan-follow-ups.md §3: mission init hard-fail on ABL compile
 error (mclib/ablexec.cpp + mission-init call site). Probe: deliberately broken .abl overlay → clean
 refusal w/ error line, no corrupt codeSegmentPtr deref. tier1 = zero behavior change (stock compiles).
+
+DONE implementation checkpoint (pending final tier1/commit): recovered foreign
+WIP at 093169d4 already added a default-ON fatal in `ABLi_preProcess` after
+recording `errorCount`; `MC2_ABL_SKIP_ERRORED_MODULES` remains the safe
+playability escape hatch. Codex completed registry/docs/smoke passthrough and a
+deterministic repro hook.
+
+- [x] Build PASS (3 warnings after final repro hook).
+- [x] Env registry PASS: 827 reads accounted, 325 registered.
+- [x] Offline doctests PASS: 325/325, 114828 assertions.
+- [x] Negative fixture `tests/fixtures/abl_compile_fatal/broken.abl` via
+      `MC2_ABL_COMPILE_FATAL_REPRO=<absolute path>`: expected smoke FAIL at zero
+      frames; `tests/smoke/artifacts/2026-07-16T12-08-57/mc2_01.log` reports
+      7 syntax errors then `[ABL_COMPILE_FATAL]`, clean early exit before VM.
+- [x] Escape proof: same fixture + `MC2_ABL_SKIP_ERRORED_MODULES=1` PASS,
+      2097 frames, +0 destroys (`2026-07-16T12-09-21`).
+- [ ] Commit, clean rebuild/deploy, canonical tier1 5/5.
