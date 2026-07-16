@@ -1815,6 +1815,13 @@ static constexpr EnvVarDesc kAuxEnvVars[] = {
         false,
         "ISSUE-42a repro fixture (code/mission.cpp soak harness): with MC2_SOAK_AUTOWIN + MC2_SOAK_KILL_ENEMY, exercises the REAL mid-mission salvage-craft flow (recover/setStatus(SHUTDOWN)/tradeMover/orderPowerUp) on one disabled enemy mech before autowin, so the Phase-3 load-bay check verifies LogisticsData::setMissionCompleted's recovered-mech carry-over branch. Default OFF = byte-identical."
     },
+    {
+        "MC2_TRACE_LINKUP",
+        "MC2_LINKUP_TRACE",
+        EnvVarKind::Trace,
+        false,
+        "ISSUE-50 diagnostics (code/mech.cpp BattleMech::update): for every off-GUI mech, periodically (~1/s) logs [LINKUP] part/name/status/los, plus [LINKUP] linkup-complete when the link-up fires — makes the link-up latch (hidden reinforcement mech never appearing) observable in the field. Default OFF = no output, no behavior change."
+    },
 };
 
 // ---------------------------------------------------------------------------

@@ -171,6 +171,7 @@ Headless Vulkan probe / backend-skeleton exercise gates. All read via bare `gete
 
 - `MC2_SMART_LOAD` — **default ON** (SMART-LOAD-DEFAULT-ON-1). Defers mech-bay data (components/pilots/variants CSV + `Object2.pak` parse + first availability pass) until the first mech-bay accessor touches `LogisticsData`, instead of eagerly loading it as part of campaign init. Kill-switch: `MC2_SMART_LOAD=0` restores legacy eager `LogisticsData::init()` (byte-identical to pre-flip behavior). Only affects the interactive splash->logistics->mech-bay flow (`Logistics::initializeLogData()`, `code/logistics.cpp`); smoke/tier1's `justStartMission` direct-mission-start path never touches `LogisticsData`, so this gate has no effect on smoke `mission_ready_ms`.
 - `MC2_SMART_LOAD_TRACE=1` — `[SMART_LOAD]` phase-A/phase-B trace prints (`code/logisticsdata.cpp`).
+- `MC2_LINKUP_TRACE=1` — ISSUE-50 link-up diagnostics (`code/mech.cpp BattleMech::update`): for every off-GUI mech, periodically (~1/s) prints `[LINKUP] part=… name=… status=… onGUI=0 los=… pos=…`, and `[LINKUP] linkup-complete part=… name=…` when the link-up fires. Default OFF = no output, no behavior change.
 
 ## RenderWorld arc
 

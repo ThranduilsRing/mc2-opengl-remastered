@@ -1220,6 +1220,8 @@ def main():
                             # ISSUE-42a real-salvage-path soak fixture (default
                             # OFF; pairs with MC2_SOAK_AUTOWIN/KILL_ENEMY).
                             "MC2_SOAK_SALVAGE_TRADEMOVER",
+                            # ISSUE-50 link-up latch diagnostics (default OFF).
+                            "MC2_LINKUP_TRACE",
                             # R2B-STATIC-NATURAL-TOUCH-PRESERVE-1: default-ON
                             # killswitch + diagnostics for the static-natural
                             # (tree/pine-building) registry stale-drop fix. Without

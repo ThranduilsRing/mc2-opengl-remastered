@@ -4396,7 +4396,15 @@ bool GameObjectManager::moverInRect(long index, Stuff::Vector3D &dStart, Stuff::
 		return(false);
 		
 	MoverPtr checkMover = getMover(index);
-	if (checkMover && checkMover->getExists() && (checkMover->getTeam() == Team::home))
+	// ISSUE-50: require isOnGUI(). A link-up reinforcement mech spawns
+	// SHUTDOWN + off-GUI (mission.cpp) and must stay untouchable until the
+	// link-up check in BattleMech::update adds it to the interface. Without
+	// this filter, "select all visible" / drag-select (both route through
+	// here) could select the hidden mech; any order then auto-powered it,
+	// which permanently killed the old status==SHUTDOWN link-up gate — the
+	// mech stayed invisible, off the pilots tab and off the tacmap forever.
+	if (checkMover && checkMover->getExists() && checkMover->isOnGUI() &&
+		(checkMover->getTeam() == Team::home))
 	{
 		AppearancePtr objAppearance = checkMover->getAppearance();
 		if (objAppearance /*&& objAppearance->canBeSeen() */) 

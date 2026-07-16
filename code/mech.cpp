@@ -5964,14 +5964,45 @@ long BattleMech::update (void)
 		// If we are both, we probably are waiting to be linked up with.
 		// See if anything on our side is close enough to link up with us.
 		// If it is close enough, powerup and ourselves to the GUI!
-		if ((status == OBJECT_STATUS_SHUTDOWN) && !isOnGUI())
+		// ISSUE-50: gate on !isOnGUI() alone (was status==SHUTDOWN &&
+		// !isOnGUI()). If a hidden link-up mech ever got powered before the
+		// team walked into LOS (pre-fix selection hole in moverInRect let
+		// select-all grab it; any order auto-powers a SHUTDOWN mech), status
+		// left SHUTDOWN and this branch could never fire again — the mech
+		// was latched invisible for the rest of the mission. Keying on
+		// !isOnGUI() lets an already-powered link-up mech still self-heal
+		// (corePower(true) is idempotent). Scope unchanged in practice:
+		// enemies and normal deploys spawn onGUI (mission.cpp), only
+		// link-up reinforcements are ever off-GUI here.
+		if (!isOnGUI())
 		{
+			// ISSUE-50 diagnostics: MC2_LINKUP_TRACE=1 logs each off-GUI
+			// home mover's link-up state ~once/sec so the latch is
+			// observable in the field. Default OFF = no output.
+			static const bool s_linkupTrace =
+				(getenv("MC2_LINKUP_TRACE") != nullptr);
+			const bool linkupLos =
+				Team::home->teamLineOfSight(position, getAppearRadius());
+			if (s_linkupTrace && ((turn & 31) == 0))
+			{
+				printf("[LINKUP] part=%d name=%s status=%d onGUI=0 los=%d pos=(%.0f,%.0f)\n",
+					(int)getPartId(), getName() ? getName() : "(null)",
+					(int)status, linkupLos ? 1 : 0,
+					position.x, position.y);
+				fflush(stdout);
+			}
 			//Check if anyone on our side is within range.
 			// Until otherwise noted, if I have LOS to them, thats enough.
 			// Powerup, add ourselves to the GUI and select ourselves
 			// Maybe we should send a Radio Message saying "hi"?
-			if (Team::home->teamLineOfSight(position,getAppearRadius()))
+			if (linkupLos)
 			{
+				if (s_linkupTrace)
+				{
+					printf("[LINKUP] linkup-complete part=%d name=%s\n",
+						(int)getPartId(), getName() ? getName() : "(null)");
+					fflush(stdout);
+				}
 				mission->missionInterface->addMover(this);
 				setSelected(1);
 				pilot->corePower(true);
