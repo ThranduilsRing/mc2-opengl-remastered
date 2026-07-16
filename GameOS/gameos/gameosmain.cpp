@@ -1334,7 +1334,12 @@ int main(int argc, char** argv)
     int w = Environment.screenWidth;
     int h = Environment.screenHeight;
 
-    graphics::RenderWindowHandle win = graphics::create_window("mc2", w, h);
+    // ISSUE-49: pass the windowed boot state (options.cfg FullScreen=FALSE or
+    // MC2_WINDOWED already folded into Environment.fullScreen above) so the
+    // SDL window gets a resizable border for ANY windowed boot, not only when
+    // the MC2_WINDOWED env var is set.
+    graphics::RenderWindowHandle win = graphics::create_window("mc2", w, h,
+        Environment.fullScreen == 0);
     if(!win)
         return 1;
 

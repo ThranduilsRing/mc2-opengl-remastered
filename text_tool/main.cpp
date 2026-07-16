@@ -89,7 +89,7 @@ int main(int argc, char** argv)
 
     graphics::set_verbose(false);
 
-    graphics::RenderWindowHandle win = graphics::create_window("text_tool", 512, 512);
+    graphics::RenderWindowHandle win = graphics::create_window("text_tool", 512, 512, false);
     if(!win)
         return 1;
 

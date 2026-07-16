@@ -332,8 +332,11 @@ void set_verbose(bool is_verbose)
 }
 
 //==============================================================================
-RenderWindow* create_window(const char* pwinname, int width, int height)
+RenderWindow* create_window(const char* pwinname, int width, int height, bool windowed_hint)
 {
+    // ISSUE-49: windowed_hint is a game-side SDL resizable-border hint; the
+    // editor renders into a Win32 child HWND, so it does not apply here.
+    (void)windowed_hint;
 	int i, j, m, n;
 	SDL_DisplayMode fullscreen_mode;
     SDL_Window* window = NULL; 

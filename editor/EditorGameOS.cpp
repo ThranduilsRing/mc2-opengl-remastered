@@ -298,7 +298,8 @@ void __stdcall InitGameOS(HINSTANCE /*hInstance*/, HWND hWindow, char* commandLi
         }
 
         graphics::set_editor_parent_window((void*)hWindow);
-        g_editorRenderWindow = graphics::create_window("MC2 Editor (Remastered)", w, h);
+        // ISSUE-49: windowed_hint=false — editor child HWND, hint not applicable.
+        g_editorRenderWindow = graphics::create_window("MC2 Editor (Remastered)", w, h, false);
 
         EditorGameOSTrace("InitGameOS: after graphics::create_window renderWindow=%p", g_editorRenderWindow);
 

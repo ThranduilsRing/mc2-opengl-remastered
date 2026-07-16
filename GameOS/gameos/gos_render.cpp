@@ -127,7 +127,7 @@ void set_verbose(bool is_verbose)
 }
 
 //==============================================================================
-RenderWindow* create_window(const char* pwinname, int width, int height)
+RenderWindow* create_window(const char* pwinname, int width, int height, bool windowed_hint)
 {
 	int i, j, m, n;
 	SDL_DisplayMode fullscreen_mode;
@@ -313,13 +313,31 @@ RenderWindow* create_window(const char* pwinname, int width, int height)
         {
             const char* wenv = getenv("MC2_WINDOWED");
             const char* renv = getenv("MC2_WINDOW_RESIZABLE");
-            const bool windowed = (wenv && wenv[0] && wenv[0] != '0');
+            // ISSUE-49 residual: also honor the engine's windowed boot state
+            // (windowed_hint = Environment.fullScreen == 0, set from
+            // options.cfg FullScreen=FALSE) — a user booting windowed via
+            // options.cfg without the launcher checkbox previously got a
+            // fixed, non-draggable border. No change for fullscreen boots
+            // (SDL ignores the resizable flag under FULLSCREEN_DESKTOP);
+            // MC2_WINDOW_RESIZABLE=0 still opts out.
+            const bool windowed = (wenv && wenv[0] && wenv[0] != '0') || windowed_hint;
             const bool resizable = !(renv && renv[0] == '0');
             if (windowed && resizable)
                 winFlags |= SDL_WINDOW_RESIZABLE;
         }
-        window = SDL_CreateWindow(pwinname ? pwinname : "--", 
+        window = SDL_CreateWindow(pwinname ? pwinname : "--",
                 SDL_WINDOWPOS_CENTERED, SDL_WINDOWPOS_CENTERED, width, height, winFlags);
+
+        // ISSUE-49 verification diag (existing MC2_RES_DIAG gate): one boot
+        // line proving whether the OS window carries the resizable flag.
+        if (window && getenv("MC2_RES_DIAG")) {
+            printf("[RES_DIAG] window flags: resizable=%d windowed_env=%d windowed_hint=%d\n",
+                (SDL_GetWindowFlags(window) & SDL_WINDOW_RESIZABLE) ? 1 : 0,
+                (getenv("MC2_WINDOWED") && getenv("MC2_WINDOWED")[0] &&
+                 getenv("MC2_WINDOWED")[0] != '0') ? 1 : 0,
+                windowed_hint ? 1 : 0);
+            fflush(stdout);
+        }
 
         if (!window) {
             fprintf(stderr, "Couldn't create window: %s\n", SDL_GetError());
