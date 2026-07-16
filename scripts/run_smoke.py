@@ -1475,6 +1475,11 @@ def main():
                             # e.g. mco-compat / mc2x-compat. Required to replicate a launcher
                             # campaign launch in smoke (loads corebrain.abx + object2.pak).
                             "MC2_MOD_DEPS",
+                            # META-FIX design C: [SPLIT_PATH_PARITY] runtime
+                            # parity trace (gosRenderer::init). Must be
+                            # allowlisted or Popen drops it and the nightly
+                            # TESS=0/1 A/B leg silently runs gate-OFF.
+                            "MC2_SPLIT_PATH_PARITY_TRACE",
                             "MC2_LIGHT_COST_SPLIT",
                             "MC2_TOBJ_COST_SPLIT",
                             "MC2_STATIC_PROP_FLUSH_COST_SPLIT",

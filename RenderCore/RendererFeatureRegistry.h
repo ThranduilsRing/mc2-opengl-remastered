@@ -1844,6 +1844,14 @@ static constexpr EnvVarDesc kAuxEnvVars[] = {
         false,
         "ISSUE-17 fire-refusal instrumentation (default OFF = byte-identical; needs MC2_DIAG_TAGS=...,COMBAT). (1) code/warrior.cpp combatDecisionTree: when a combat order is active and NO weapon fired this combat update, emits one 'nofire' JSONL event with per-gate tallies (rd/am/rn/lk/ch/hot from calcWeaponsStatus), a direct lineOfSight probe (splits LOS from fire-arc within NOT_LOCKED), order code, weaponsStatusResult and distance. (2) code/mech.cpp fireWeapon: emits a 'firegate' event (wid/widx/site) at each silent non-zero early return (status/body/ready/terrain/dead_target/no_target/range/shots/node_recycle) — catches 'decision said fire but weapon silently skipped'. NO behavior change."
     },
+    // META-FIX-BATCH-1 (recurrence-proofing, designs C + E — 2026-07-16)
+    {
+        "MC2_TRACE_SPLIT_PATH_PARITY",
+        "MC2_SPLIT_PATH_PARITY_TRACE",
+        EnvVarKind::Trace,
+        false,
+        "META-FIX design C runtime tier (GameOS/gameos/gameos_graphics.cpp gosRenderer::init): =1 emits machine-parseable [SPLIT_PATH_PARITY] marker lines at split-path parity checkpoints. First checkpoint: terrain material load — tess=<0|1> shadow=<0|1> match=<0|1>, where match asserts the ISSUE-34 decouple invariant (modern shadow path stays active whether tess is on, killswitched, or compile-failed). run_smoke's marker-bucket row `split_path_parity` (scripts/smoke_lib/logparse.py MARKER_BUCKETS) turns any match=0 into a red run; the nightly MC2_TERRAIN_TESS=0/1 A/B leg pairs with this gate. Default OFF = static-getenv latch, byte-identical."
+    },
 };
 
 // ---------------------------------------------------------------------------

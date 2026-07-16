@@ -139,6 +139,12 @@ run_check "render_ctx_parity"      "py -3 scripts/check-editor-game-render-conte
 run_check "editor_pass_parity"     "py -3 scripts/check-editor-pass-contract-parity.py --quiet"
 run_check "gated_layout_macros"    "py -3 scripts/check-gated-layout-macros.py --quiet"
 run_check "doc_links"             "py -3 scripts/check-doc-links.py --quiet"
+# META-FIX-BATCH-1 (design C): split rendering-path contracts — color
+# convention table (#24 class), depth-fudge single-source/form, tess predicate
+# chokepoint (#34 class), GL/VK pair stamps. Self-test proves each rule still
+# fails on a synthetic violation (vulkan_bindings_selftest precedent).
+run_check "split_path_contracts"   "py -3 scripts/check-split-path-contracts.py --quiet"
+run_check "split_path_selftest"    "py -3 scripts/check-split-path-contracts.py --self-test 2>/dev/null"
 
 # ---------------------------------------------------------------------------
 # Summary table

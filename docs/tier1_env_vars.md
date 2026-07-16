@@ -183,6 +183,10 @@ Headless Vulkan probe / backend-skeleton exercise gates. All read via bare `gete
   - `firegate` (`code/mech.cpp fireWeapon`): emitted at each silent non-zero early return — `site` ∈ `status`/`body`/`ready`/`terrain`/`dead_target`/`no_target`/`range`/`shots`/`node_recycle` — i.e. the decision tree said FIRE but the weapon silently skipped.
 - `MC2_BRAIN_FREEZE_TRACE=1` — per-tick decision-state stderr trace at the end of `MechWarrior::runBrain` (`code/warrior.cpp`), default **OFF** = byte-identical. One `[BRAIN_FREEZE_TRACE]` line per warrior per brain tick: `wid`, `brainState`, `curTacOrder.code`, `movePath.numSteps`, `moveState`, `hasBrain`, plus the ISSUE-10 stall-classification fields: `orderState` (0=GENERAL/1=PLAYER/2=ALARM — pinned at 2 = escape-tile alarm loop), `mainGoal`/`goalWID` (goal-plan divert target: turret/gate/wall capture that never completes), `genOrder` (`tacOrder[ORDERSTATE_GENERAL].code` — brain/FSM emitted an order vs ABL stall), `pos=(x,y)` (position delta over ticks = path-but-not-moving class) and `lastMoveErr` (`LastMoveCalcErr` — no-path class). High volume: one line per warrior per tick; use short runs.
 
+## META-FIX recurrence-proofing gates (batch 1, 2026-07-16)
+
+- `MC2_SPLIT_PATH_PARITY_TRACE=1` — design C runtime tier (`GameOS/gameos/gameos_graphics.cpp` `gosRenderer::init`), default **OFF** = static-getenv latch, byte-identical. Emits machine-parseable `[SPLIT_PATH_PARITY] site=terrain_material_load pair=tess_vs_modern_shadow tess=<0|1> shadow=<0|1> match=<0|1>` at terrain-material load; `match` asserts the ISSUE-34 decouple invariant (modern shadow path stays active whether tess is on, kill-switched via `MC2_TERRAIN_TESS=0`, or TCS/TES compile-failed). Any `match=0` line is a RED smoke verdict via the `split_path_parity` marker-bucket row (`scripts/smoke_lib/logparse.py`). Nightly pairing: `run_smoke --mission mc2_01 --mission mc2_24` with `MC2_TERRAIN_TESS=0` + this gate. Static sibling: `scripts/check-split-path-contracts.py` (see `docs/render-backend-seams/split-path-pairs.md`).
+
 ## RenderWorld arc
 
 - `MC2_OBJECT_ID_BUFFER=1` — R32_UINT MRT attachment-2 (M1.5)

@@ -50,6 +50,7 @@
 #include "../../mclib/cpu_proj_cost_split.h"  // F3 CPU projection cost-baseline
 #include "../../mclib/camera_frustum_math.h"  // CAMERA-FRUSTUM-HARNESS-1 pure rect/frustum math
 #include "../../mclib/render_contract.h"      // [RENDER_PASS v1] noteRenderPass
+#include "../../mclib/mc2_audit.h"            // META-FIX INFRA-1 gated audit emitter
 #include "RenderCore/top_level_pass_executor.h" // APPLY-STATE-TERRAINDECAL-1: findTopLevelStateDesc
 #include "RenderCore/top_level_apply_axes.h"   // FRAMEGRAPH-APPLY-STATE-EXTEND-1: applyTopLevelGenericAxes
 #include "../../RenderCore/frame_executor.h"     // PER-PASS-APPLY-COUNTERS-1: ApplyPassId
@@ -4820,6 +4821,27 @@ void gosRenderer::init() {
         }
     }
 
+    // META-FIX design C runtime tier: MC2_SPLIT_PATH_PARITY_TRACE=1 emits one
+    // machine-parseable [SPLIT_PATH_PARITY] event at material-load time. The
+    // #34 decouple invariant is that the modern shadow path stays ACTIVE
+    // regardless of the tess material (kill-switch OR TCS/TES compile
+    // failure) — match=0 here means the paths re-coupled/diverged, and the
+    // smoke marker-bucket row `split_path_parity` turns it into a red run
+    // (scripts/smoke_lib/logparse.py MARKER_BUCKETS). Default OFF, static
+    // getenv latch — gate-off is one bool test, byte-identical unset.
+    {
+        static bool splitPathParityTrace =
+            mc2AuditLatch("MC2_SPLIT_PATH_PARITY_TRACE");
+        if (splitPathParityTrace) {
+            const int tessOn   = (terrain_material_ != nullptr) ? 1 : 0;
+            const int shadowOn = (shadow_terrain_material_ != nullptr) ? 1 : 0;
+            mc2AuditLinef(
+                "[SPLIT_PATH_PARITY] site=terrain_material_load pair=tess_vs_modern_shadow "
+                "tess=%d shadow=%d match=%d",
+                tessOn, shadowOn, shadowOn /* invariant: shadow path always on */);
+        }
+    }
+
     // Load shadow object material (VS+FS only, no tessellation)
     {
         ZoneScopedN("gosRenderer::init shadowObjectMaterial");
@@ -7663,6 +7685,30 @@ void gosRenderer::flush()
 {
 }
 
+// META-FIX INFRA-1: diagnostic mirror sink for mc2AuditLine. mclib's audit
+// emitter must not link mc2_diag directly (tools that skip
+// diagnostic_trace.cpp still link mclib), so GameOS registers this sink once
+// the JSONL trace is up. Mirrored events land under tag "AUDIT" (add AUDIT to
+// MC2_DIAG_TAGS to capture them).
+static void mc2AuditDiagSink(const char* line) {
+    if (!mc2_diag::enabled()) return;
+    char esc[1024];
+    size_t o = 0;
+    for (const char* p = line; *p && o + 8 < sizeof(esc); ++p) {
+        unsigned char c = (unsigned char)*p;
+        if (c == '"' || c == '\\') { esc[o++] = '\\'; esc[o++] = (char)c; }
+        else if (c < 0x20) {
+            o += (size_t)snprintf(esc + o, sizeof(esc) - o, "\\u%04x", (unsigned)c);
+        } else {
+            esc[o++] = (char)c;
+        }
+    }
+    esc[o] = '\0';
+    char buf[1200];
+    snprintf(buf, sizeof(buf), "{\"line\":\"%s\"}", esc);
+    mc2_diag::writeEvent("AUDIT", 1, 0, buf);
+}
+
 void gos_CreateRenderer(graphics::RenderContextHandle ctx_h, graphics::RenderWindowHandle win_h, int w, int h) {
     ZoneScopedN("gos_CreateRenderer");
 
@@ -7675,6 +7721,9 @@ void gos_CreateRenderer(graphics::RenderContextHandle ctx_h, graphics::RenderWin
     // Initialize diagnostic JSONL trace. Session id shared with debug_state_dump
     // so MCP can correlate JSONL events with render-state snapshots by session_id.
     mc2_diag::init(mc2_debug_state::getSessionId(), _getpid());
+
+    // META-FIX INFRA-1: route gated audit marker lines into the JSONL trace.
+    mc2AuditSetSink(&mc2AuditDiagSink);
 
     // BUILD — one-shot build metadata; fires immediately after init().
     {

@@ -13,7 +13,7 @@ uniform mat4  u_worldToClipGL;
 // distant terrain by a distance-growing world band and let objects poke through.
 // Lockstep with shaders/include/terrain_depth_bias.hglsl (TERRAIN_DEPTH_FUDGE=0).
 // Kept as a local const (this VS does not include the header).
-const float TERRAIN_DEPTH_FUDGE = 0.0;
+const float TERRAIN_DEPTH_FUDGE = 0.0;  // LOCKSTEP-MIRROR: terrain_depth_bias.hglsl
 
 // Phase 10.4 edge stitching: this block's quad extent + per-edge COARSER-neighbor
 // stride. u_edgeStitch packs 4 bytes: N=bits0-7, S=8-15, W=16-23, E=24-31; each

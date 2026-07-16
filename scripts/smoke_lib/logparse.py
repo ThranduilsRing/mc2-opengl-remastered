@@ -67,6 +67,11 @@ class MarkerBucket:
                                                  # red -> advisory per mission
 
 MARKER_BUCKETS: tuple = (
+    # Design C runtime tier (META-FIX-BATCH-1): any [SPLIT_PATH_PARITY] event
+    # with match=0 is a silent split-path divergence -> red. Emitter:
+    # gameos_graphics.cpp gosRenderer::init under MC2_SPLIT_PATH_PARITY_TRACE.
+    MarkerBucket(re.compile(r"\[SPLIT_PATH_PARITY\].*\bmatch=0\b"),
+                 "split_path_parity", "red", None),
 )
 
 

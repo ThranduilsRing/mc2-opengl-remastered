@@ -130,7 +130,14 @@ void main()
     WorldPos = worldPos;
 
     // --- Projection of DISPLACED position (F1 Stage A: direct GL clip emit) ---
-    gl_Position = u_worldToClipGL * vec4(worldPos, 1.0);
+    vec4 clip = u_worldToClipGL * vec4(worldPos, 1.0);
+    // SPLIT-PATH-CONTRACT (check-split-path-contracts.py RULE 2d): identical
+    // normalized pre-divide bias line as gos_terrain_surface.vert /
+    // gos_terrain_thin.vert, so a future non-zero TERRAIN_DEPTH_FUDGE moves
+    // the tess and non-tess terrain paths TOGETHER instead of silently
+    // re-splitting them. Constant is 0.0 today -> exact identity (no-op).
+    clip.z   += TERRAIN_DEPTH_FUDGE * clip.w;
+    gl_Position = clip;
 
     // Seam expansion removed. All worldPos.xy variants changed the surface gradient
     // at edge triangles (shifting shadow coords, fwidth derivatives, fwConcrete AA),
