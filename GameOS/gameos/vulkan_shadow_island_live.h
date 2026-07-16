@@ -146,13 +146,11 @@ int mc2_color_prop_island_get_material_feed(Mc2ColorPropMaterialFeed* out);
 // constant the island approximates locally) -- only the ObjectLights AMBIENT-type
 // sum and the SH-L2 fill are real data now.
 struct Mc2ColorPropLightFeed {
-    uint32_t     lightDataGlSsbo;   // live LightsData GL SSBO name (binding 20) — audit-only
-    uint64_t     lightDataBytes;    // its byte size (ObjectLights[] * 3600B, grow-once)
     // VK-PROP-LIGHTFEED-NATIVE-1 (mech item-9 pattern): the CPU LightsData array
     // (mcTextureManager lightData_, the byte source of the GL SSBO upload at
-    // renderLists) is the per-frame lighting feed. The GL SSBO name/size above
-    // stay exposed ONLY for the MC2_VK_PROP_FEED_AUDIT byte-compare (temporary
-    // audit gate for this slice; delete with the readback next slice).
+    // renderLists) is the per-frame lighting feed. VK-PERF-2 cleanup deleted the
+    // GL SSBO name/size fields with the audit-gated readback they existed for
+    // (MC2_VK_PROP_FEED_AUDIT banked a clean run: 3000 frames, mismatches=0).
     const void*  lightDataCpu;      // TG_HWLightsData[count] (3600B each) or null
     uint64_t     lightDataCpuBytes; // count * 3600
     float        iblSh[9][3];       // RenderCore::kIblShCoeffs (or current mission's set)

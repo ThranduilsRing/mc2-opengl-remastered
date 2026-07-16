@@ -1702,10 +1702,6 @@ def main():
                             # like MC2_VK_TERRAIN_HEIGHT_AUDIT) -- byte-compares the CPU
                             # sources vs the GL buffers on every native copy.
                             "MC2_VK_MECH_FEED_AUDIT",
-                            # VK-PROP-LIGHTFEED-NATIVE-1: verification-only, TEMPORARY --
-                            # byte-compares the prop island's native CPU light feed vs the
-                            # retired GL SSBO readback (delete with the readback).
-                            "MC2_VK_PROP_FEED_AUDIT",
                             # VK terrain in-place shared-GBuffer region + lighting + detail.
                             "MC2_VK_TERRAIN_TIER1",
                             # VK-TERRAIN-NATIVE-PREFIX-CLEAR: diagnostic proof gate that

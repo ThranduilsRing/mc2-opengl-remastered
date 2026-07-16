@@ -8533,19 +8533,14 @@ extern "C" int mc2_color_prop_island_get_material_feed(Mc2ColorPropMaterialFeed*
 }
 
 // VK-PROP-AMBIENT-IBL-1: real ObjectLights ambient + IBL-SH feed. GL-owner accessors
-// (this runs in GL context, mirrors mc2_mech_island_get_frame_feed's LightsData copy
-// setup at gos_mech_batcher.cpp:2910-2915).
-extern "C" void gos_LightDataSsbo_GetInterop(unsigned int* glName, unsigned long long* bytes);
-
+// (this runs in GL context, mirrors mc2_mech_island_get_frame_feed's setup at
+// gos_mech_batcher.cpp:2910-2915).
 extern "C" int mc2_color_prop_island_get_light_feed(Mc2ColorPropLightFeed* out) {
     if (!out) return 0;
-    out->lightDataGlSsbo = 0; out->lightDataBytes = 0;
-    { unsigned int nm = 0; unsigned long long by = 0;
-      gos_LightDataSsbo_GetInterop(&nm, &by);
-      out->lightDataGlSsbo = nm; out->lightDataBytes = by; }
     // VK-PROP-LIGHTFEED-NATIVE-1: native CPU feed (mech item-9 pattern, mirrors
     // mc2_mech_island_get_frame_feed's lightDataCpu export) — the byte source of
-    // the GL SSBO upload, so the island memcpys instead of glGetBufferSubData.
+    // the GL SSBO upload. VK-PERF-2 cleanup deleted the GL SSBO name/size export
+    // with the audit-gated readback it existed for (clean audit banked).
     out->lightDataCpu = nullptr;
     out->lightDataCpuBytes = 0;
     if (mcTextureManager) {

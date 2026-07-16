@@ -145,19 +145,6 @@ bool propMaterialRequested() {
     return state == 1;
 }
 
-// VK-PROP-LIGHTFEED-NATIVE-1 audit gate: verification-only (default-OFF, safety-gate
-// class like MC2_VK_MECH_FEED_AUDIT). With the native CPU light feed armed, ALSO read
-// the GL LightsData SSBO back and byte-compare against the CPU source — proves the
-// native feed carries the exact bytes the retired readback used to fetch. TEMPORARY:
-// both the gate and the readback it guards are deleted once the audit has banked a
-// clean run (mech item-9 followed the same shape).
-bool propFeedAuditRequested() {
-    static int state = -1;
-    if (state == -1)
-        state = (mc2vkgate::envTriState("MC2_VK_PROP_FEED_AUDIT") == 1) ? 1 : 0;
-    return state == 1;
-}
-
 std::string spv_dir() {
     const char* env = std::getenv("MC2_VULKAN_SPV_DIR");
     std::string d = (env && *env) ? env : "shaders/vulkan";
@@ -1327,12 +1314,13 @@ extern "C" int mc2_vk_color_prop_island_run(int w, int h) {
     // upload at renderLists) into the island's own SSBO (binding 4) so the vert shader's
     // ambientTerm sum reads the same ObjectLights[] the GL prop VS does. This is the mech
     // item-9 native-feed pattern: the former per-frame glGetBufferSubData GL SSBO readback
-    // (a full GL client sync, ~1.3-1.5 ms/frame in the props receipts) is retired — it
-    // survives ONLY under the temporary MC2_VK_PROP_FEED_AUDIT byte-compare below. If the
-    // CPU array is not ready this frame, lighting is simply not marked ready (shader falls
-    // back flat-lit via u.lightingReady=0) — no GL readback rescue. IBL-SH coeffs are a
-    // static per-mission table (no GL round-trip) fetched fresh each frame in case the
-    // mission's SH set changed.
+    // (a full GL client sync, ~1.3-1.5 ms/frame in the props receipts) was retired, then
+    // (VK-PERF-2 cleanup) DELETED outright after the MC2_VK_PROP_FEED_AUDIT byte-compare
+    // banked a clean run (3000 audited frames, 3.54 MB/frame, mismatches=0 — see
+    // VK-ARC-STATE 2026-07-16). If the CPU array is not ready this frame, lighting is
+    // simply not marked ready (shader falls back flat-lit via u.lightingReady=0) — no GL
+    // readback rescue. IBL-SH coeffs are a static per-mission table (no GL round-trip)
+    // fetched fresh each frame in case the mission's SH set changed.
     Mc2ColorPropLightFeed lightFeed{};
     const bool haveLightFeed = mc2_color_prop_island_get_light_feed(&lightFeed);
     s->lightingReady = false;
@@ -1421,37 +1409,6 @@ extern "C" int mc2_vk_color_prop_island_run(int w, int h) {
                 s->lightingReady = true;
             }
         }
-        // VK-PROP-FEED-AUDIT (verification-only, TEMPORARY — delete with the gate once
-        // a clean run is banked): byte-compare the native CPU feed vs the GL SSBO
-        // readback it replaced. Sizes may differ (the GL SSBO is capacity-sized /
-        // uploaded at renderLists, the CPU count is live) — compare min(), exactly
-        // like VK-MECH-FEED-AUDIT-1 (vulkan_mech_island.cpp).
-        if (s->lightingReady && propFeedAuditRequested() &&
-            lightFeed.lightDataGlSsbo != 0 && lightFeed.lightDataBytes >= 3600ull) {
-            static unsigned long s_auditRuns = 0;
-            static unsigned long s_auditMismatches = 0;
-            ++s_auditRuns;
-            const unsigned long long cmp64 =
-                lightFeed.lightDataCpuBytes < lightFeed.lightDataBytes
-                    ? lightFeed.lightDataCpuBytes : lightFeed.lightDataBytes;
-            const size_t cmp = (size_t)cmp64;
-            std::vector<uint8_t> glCopy(cmp);
-            glBindBuffer(GL_SHADER_STORAGE_BUFFER, (GLuint)lightFeed.lightDataGlSsbo);
-            glGetBufferSubData(GL_SHADER_STORAGE_BUFFER, 0, (GLsizeiptr)cmp, glCopy.data());
-            glBindBuffer(GL_SHADER_STORAGE_BUFFER, 0);
-            const bool diff = std::memcmp(glCopy.data(), lightFeed.lightDataCpu, cmp) != 0;
-            if (diff) ++s_auditMismatches;
-            static unsigned long s_auditLogged = 0;
-            if (diff || s_auditLogged < 3 || (s_auditRuns % 600) == 0) {
-                ++s_auditLogged;
-                vlog("PROP-FEED-AUDIT lights: cpu=%llu B gl=%llu B cmp=%zu B %s "
-                     "(runs=%lu mismatches=%lu)",
-                     (unsigned long long)lightFeed.lightDataCpuBytes,
-                     (unsigned long long)lightFeed.lightDataBytes, cmp,
-                     diff ? "*** NATIVE FEED DIVERGES FROM GL ***" : "byte-identical",
-                     s_auditRuns, s_auditMismatches);
-            }
-        }
     }
 
     const unsigned long f0a = g_forbidden.vkCmdCopyImageToBuffer;
@@ -1517,12 +1474,11 @@ extern "C" int mc2_vk_color_prop_island_run(int w, int h) {
                     "[PROP_LIGHT_PROBE v1] lightingReady=%d haveLightFeed=%d tier1=%d "
                     "wantLighting=%d wantMaterial=%d materialReady=%d "
                     "iblShStrength=%.4f iblSh0=(%.4f,%.4f,%.4f) "
-                    "lightDataGlSsbo=%u lightDataBytes=%llu terrainSun=(%.3f,%.3f,%.3f)\n",
+                    "lightDataCpuBytes=%llu terrainSun=(%.3f,%.3f,%.3f)\n",
                     u.lightingReady, haveLightFeed ? 1 : 0, s->tier1 ? 1 : 0,
                     s->wantLighting ? 1 : 0, s->wantMaterial ? 1 : 0, u.materialReady,
                     u.iblShStrength, u.iblSh[0][0], u.iblSh[0][1], u.iblSh[0][2],
-                    (unsigned)lightFeed.lightDataGlSsbo,
-                    (unsigned long long)lightFeed.lightDataBytes,
+                    (unsigned long long)lightFeed.lightDataCpuBytes,
                     u.terrainSunMC2[0], u.terrainSunMC2[1], u.terrainSunMC2[2]);
                 std::fflush(stderr);
             }
