@@ -633,6 +633,20 @@ static constexpr EnvVarDesc kAuxEnvVars[] = {
         "byte-identical."
     },
     {
+        "MC2_TRACE_BOOT_INFO_SCROLL",
+        "MC2_BOOT_INFO_SCROLL",
+        EnvVarKind::Trace,
+        false,
+        "INFO-IMGUI-SLICE-4 capture assist: =1 (with MC2_BOOT_INFO=N driving) "
+        "pins the info-panel loadout list scrolled to bottom from frame N+3000 "
+        "on BOTH paths — the ImGui child (SetScrollY max) and the legacy panel "
+        "(setScrollPos clamp) — so the pilot/skill section is pixel-capturable "
+        "headless gate-on AND as a legacy reference. Slices 2-3 pinned the "
+        "ImGui side on MC2_BOOT_INFO alone; the pin is now opt-in so the "
+        "standard fixture recipe captures the top-of-panel state matching the "
+        "banked baselines. Default unset -> byte-identical."
+    },
+    {
         "MC2_TRACE_UI_IMGUI_OBJ",
         "MC2_UI_IMGUI_OBJ",
         EnvVarKind::Trace,

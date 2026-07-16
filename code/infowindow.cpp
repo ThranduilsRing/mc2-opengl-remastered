@@ -629,9 +629,15 @@ void InfoWindow::renderImGui()
 			// INFO-IMGUI-SLICE-2: pilot section (photo + name + rank + skills +
 			// specialty skills). Content from the shared gatherPilotRows helper
 			// (the legacy drawScrollingStuff consumes the SAME gather). Legacy
-			// pilot-section blue is 0xff005392; skill meters are simplified to
-			// "GUNNERY/PILOTING <value>" text rows this slice (the legacy
-			// medallion/bar textures stay legacy-only).
+			// pilot-section blue is 0xff005392.
+			// INFO-IMGUI-SLICE-4: the slice-2 "GUNNERY/PILOTING <value>" text
+			// simplification is retired — the rank medallion + GUNNERY/PILOTING
+			// label arts (fit Skill0..6 StaticInfos, MCUI_Med2 atlas) and the
+			// segmented skill meter now draw exactly like the legacy
+			// drawScrollingStuff/drawSkillBar path (infowindow.cpp legacy refs
+			// below), reusing the fit-loaded StaticInfo rect + UVs read-only —
+			// the same pattern as the OBJ status tiles / info arrow caps. Atlas
+			// GL names are re-resolved per frame (OBJ-IMGUI-SLICE-1 lesson).
 			InfoPilotRows pilot;
 			if ( gatherPilotRows( pilot ) )
 			{
@@ -639,64 +645,158 @@ void InfoWindow::renderImGui()
 
 				const ImU32 pilotBlue = IM_COL32( 0x00, 0x53, 0x92, 255 );
 
-				// pilot photo at the fit-loaded Pilot rect (authored PilotLeft
-				// 15, 24x36) with the legacy SCROLLCOLOR outline, name beside it
-				unsigned int pTex = 0;
-				float pu0, pv0, pu1, pv1;
-				if ( pilot.active && icon && icon->getPilotIconTexUV( pTex, pu0, pv0, pu1, pv1 ) )
+				// --- photo row (legacy drawScrollingStuff): the SCROLLCOLOR
+				// outline rect {PILOTLEFT, y, PILOTRIGHT+1, y+PILOTHEIGHT+1}
+				// draws whenever the icon exists; the photo itself only when
+				// the pilot is active; the name is vertically centered on the
+				// photo row (legacy top = curY + PILOTHEIGHT/2 - fontHeight/2)
+				// at the fit PilotNameLeft x.
+				if ( icon )
 				{
-					ImGui::SetCursorScreenPos( ImVec2( AX( (float)PILOTLEFT ),
-						ImGui::GetCursorScreenPos().y ) );
-					ImGui::Image( (ImTextureID)(intptr_t)pTex,
-						ImVec2( (float)( PILOTRIGHT - PILOTLEFT ) * sx,
-						        (float)PILOTHEIGHT * sy ),
-						ImVec2( pu0, pv0 ), ImVec2( pu1, pv1 ) );
-					cdl->AddRect( ImGui::GetItemRectMin(), ImGui::GetItemRectMax(),
+					const float rowTop = ImGui::GetCursorScreenPos().y;
+					unsigned int pTex = 0;
+					float pu0, pv0, pu1, pv1;
+					if ( pilot.active && icon->getPilotIconTexUV( pTex, pu0, pv0, pu1, pv1 ) )
+					{
+						cdl->AddImage( (ImTextureID)(intptr_t)pTex,
+							ImVec2( AX( (float)PILOTLEFT ), rowTop ),
+							ImVec2( AX( (float)PILOTRIGHT ), rowTop + (float)PILOTHEIGHT * sy ),
+							ImVec2( pu0, pv0 ), ImVec2( pu1, pv1 ) );
+					}
+					cdl->AddRect(
+						ImVec2( AX( (float)PILOTLEFT ), rowTop ),
+						ImVec2( AX( (float)( PILOTRIGHT + 1 ) ), rowTop + (float)( PILOTHEIGHT + 1 ) * sy ),
 						chromeBlue );
-					ImGui::SameLine();
-					// legacy pilot-name x: fit PilotNameLeft (authored 42)
-					ImGui::SetCursorScreenPos( ImVec2( AX( (float)PILOTNAMELEFT ),
-						ImGui::GetCursorScreenPos().y ) );
+					// FONT-IMGUI-SLICE-1: legacy componentFont via HudFont
+					const float nameH = HudFont::Measure( rowFont, pilot.name.c_str(), sx, sy ).y;
+					HudFont::Draw( cdl, rowFont, AX( (float)PILOTNAMELEFT ),
+						rowTop + (float)PILOTHEIGHT * sy * 0.5f - nameH * 0.5f,
+						pilotBlue, pilot.name.c_str(), sx, sy );
+					ImGui::Dummy( ImVec2( 1.0f, (float)PILOTHEIGHT * sy ) );
+					ImGui::Dummy( ImVec2( 1.0f, (float)SECTIONSKIP * sy ) );
 				}
 				else
-					RowX();
-				// FONT-IMGUI-SLICE-1: pilot rows in the legacy componentFont
-				// (legacy drawScrollingStuff colors these 0xff005392);
-				// strings pass through unmodified.
-				BitmapRow( pilot.name.c_str(), pilotBlue );
-
-				// rank + skill rows
-				char skillBuf[64];
-				RowX();
-				BitmapRow( pilot.rankText.c_str(), pilotBlue );
-				snprintf( skillBuf, sizeof( skillBuf ), "Gunnery  %d", pilot.gunnery );
-				RowX();
-				BitmapRow( skillBuf, pilotBlue );
-				snprintf( skillBuf, sizeof( skillBuf ), "Piloting %d", pilot.piloting );
-				RowX();
-				BitmapRow( skillBuf, pilotBlue );
-
-				// specialty skills
-				for ( const std::string& s : pilot.specialties )
 				{
 					RowX();
+					BitmapRow( pilot.name.c_str(), pilotBlue );
+				}
+				// legacy adds a second SECTIONSKIP before the rank row
+				ImGui::Dummy( ImVec2( 1.0f, (float)SECTIONSKIP * sy ) );
+
+				// --- rank + skill rows (legacy drawScrollingStuff j=0..2 loop):
+				// j=0 rank medallion (skillInfos[rank]) + rank text at SKILLLEFT;
+				// j=1 GUNNERY label art (skillInfos[5]) + meter + value;
+				// j=2 PILOTING label art (skillInfos[6]) + meter + value.
+				// Each art quad carries the fit-loaded x extent + atlas UVs in
+				// skillInfos[i].location; y follows the row like the legacy
+				// v[i].y = curY override. Outline = legacy drawEmptyRect
+				// {v0.x-.5, y-.5, v2.x+1.5, y+h+1.5} in 0xff002f55.
+				int currentSkill = pilot.rank;
+				for ( int j = 0; j < 3; j++ )
+				{
+					const float rowTop = ImGui::GetCursorScreenPos().y;
+					const gos_VERTEX* loc = skillInfos[currentSkill].location;
+					const float rowH = loc[1].y - loc[0].y;   // authored 15
+					{
+						DWORD gosID = mcTextureManager->get_gosTextureHandle(
+							skillInfos[currentSkill].textureHandle );
+						unsigned glTex = ( gosID && gosID != 0xffffffff )
+							? gos_GetGLTextureName( gosID ) : 0;
+						if ( glTex )
+							cdl->AddImage( (ImTextureID)(intptr_t)glTex,
+								ImVec2( AX( loc[0].x ), rowTop ),
+								ImVec2( AX( loc[2].x ), rowTop + rowH * sy ),
+								ImVec2( loc[0].u, loc[0].v ),
+								ImVec2( loc[2].u, loc[2].v ) );
+						cdl->AddRect(
+							ImVec2( AX( loc[0].x - 0.5f ), rowTop - 0.5f * sy ),
+							ImVec2( AX( loc[2].x + 1.5f ), rowTop + ( rowH + 1.5f ) * sy ),
+							IM_COL32( 0x00, 0x2F, 0x55, 255 ) );
+					}
+					if ( j == 0 )
+					{
+						// rank text beside the medallion (legacy x = SKILLLEFT)
+						HudFont::Draw( cdl, rowFont, AX( (float)SKILLLEFT ), rowTop,
+							pilotBlue, pilot.rankText.c_str(), sx, sy );
+					}
+					else
+					{
+						// segmented meter — exact legacy drawSkillBar math:
+						// black backing + 0xff002f55 outline on
+						// {SKILLLEFT-SKILLSKIP+.5, y-.5, SKILLRIGHT+SKILLSKIP+.5,
+						// y+h+1.5}; barCount = skill/NUMBERSKILLBARS units of
+						// SKILLUNITWIDTH (+1 gap), color starting 0xff005392
+						// stepped by the legacy packed-channel increments;
+						// numeric value at SKILLRIGHT+2.
+						const int skill = ( j == 1 ) ? pilot.gunnery : pilot.piloting;
+						const int barCount = skill / (int)NUMBERSKILLBARS;
+						unsigned long color = 0xff005392;
+						unsigned long redInc = 0, greenInc = 0, blueInc = 0;
+						if ( barCount )
+						{
+							redInc   = (unsigned long)( 205 / barCount ) << 16;
+							greenInc = (unsigned long)( ( 234 - 83 ) / barCount ) << 8;
+							blueInc  = (unsigned long)( ( 255 - 146 ) / barCount );
+						}
+						const ImVec2 osMin( AX( (float)( SKILLLEFT - SKILLSKIP ) + 0.5f ),
+							rowTop - 0.5f * sy );
+						const ImVec2 osMax( AX( (float)( SKILLRIGHT + SKILLSKIP ) + 0.5f ),
+							rowTop + ( rowH + 1.5f ) * sy );
+						cdl->AddRectFilled( osMin, osMax, IM_COL32( 0, 0, 0, 255 ) );
+						cdl->AddRect( osMin, osMax, IM_COL32( 0x00, 0x2F, 0x55, 255 ) );
+						float uLeft = (float)( SKILLLEFT + SKILLSKIP );
+						const float uTop = rowTop + ( (float)SKILLSKIP + 0.5f ) * sy;
+						const float uBot = rowTop + ( rowH - (float)SKILLSKIP + 0.5f ) * sy;
+						for ( int b = 0; b < barCount; b++ )
+						{
+							cdl->AddRectFilled(
+								ImVec2( AX( uLeft ), uTop ),
+								ImVec2( AX( uLeft + (float)SKILLUNITWIDTH ), uBot ),
+								ARGB( color ) );
+							color += redInc;
+							color += greenInc;
+							color += blueInc;
+							uLeft += (float)( SKILLUNITWIDTH + 1 );
+						}
+						char numBuf[16];
+						snprintf( numBuf, sizeof( numBuf ), "%d", skill );
+						HudFont::Draw( cdl, rowFont, AX( (float)SKILLRIGHT + 2.0f ), rowTop,
+							pilotBlue, numBuf, sx, sy );
+					}
+					ImGui::Dummy( ImVec2( 1.0f, rowH * sy ) );
+					ImGui::Dummy( ImVec2( 1.0f, (float)SECTIONSKIP * sy ) );
+					currentSkill = j + 5;
+				}
+
+				// specialty skills (legacy x = NAMELEFT, font-height advance)
+				for ( const std::string& s : pilot.specialties )
+				{
+					ImGui::SetCursorScreenPos( ImVec2( AX( (float)NAMELEFT ),
+						ImGui::GetCursorScreenPos().y ) );
 					BitmapRow( s.c_str(), pilotBlue );
 				}
 			}
 
 			// INFO-IMGUI-SLICE-2 capture-fixture assist: when the MC2_BOOT_INFO
-			// capture fixture is driving (headless recipe only — env already
-			// registered by slice-1), pin the list scrolled to bottom from
+			// capture fixture is driving AND MC2_BOOT_INFO_SCROLL=1 (both
+			// registered Trace), pin the list scrolled to bottom from
 			// bootFrame+3000 on so a late screenshot (recipe: boot 700 / shot
-			// 4200) can pixel-verify the pilot rows. Capture the top-of-panel
-			// state with a screenshot frame below bootFrame+3000. No effect
-			// when MC2_BOOT_INFO is unset (normal play).
+			// 4200) can pixel-verify the pilot rows. INFO-IMGUI-SLICE-4: the
+			// pin is now opt-in via MC2_BOOT_INFO_SCROLL so the standard
+			// fixture recipe keeps capturing the top-of-panel state (matching
+			// the banked slice-3 baselines); the legacy path mirrors the same
+			// pin (render()) so a legacy scrolled reference exists too. No
+			// effect when either env is unset (normal play).
 			{
 				static const long s_bootInfoScroll = []{
 					const char* v = getenv("MC2_BOOT_INFO");
 					return (v && v[0]) ? atol(v) : 0L;
 				}();
-				if ( s_bootInfoScroll > 0 )
+				static const bool s_scrollPin = []{
+					const char* v = getenv("MC2_BOOT_INFO_SCROLL");
+					return v && v[0] && v[0] != '0';
+				}();
+				if ( s_bootInfoScroll > 0 && s_scrollPin )
 				{
 					extern uint32_t g_mc2FrameCounter;
 					if ( (long)g_mc2FrameCounter >= s_bootInfoScroll + 3000 )
@@ -755,6 +855,29 @@ void InfoWindow::render()
 		return;
 	}
 
+	// INFO-IMGUI-SLICE-4 capture-fixture assist (legacy mirror of the ImGui
+	// pin above): with the MC2_BOOT_INFO fixture driving AND
+	// MC2_BOOT_INFO_SCROLL=1, pin the legacy list scrolled to bottom from
+	// bootFrame+3000 on so a legacy scrolled reference of the pilot/skill
+	// section can be captured headless (setScrollPos clamps to the live
+	// SCROLLMAX-SCROLLMIN exactly like a user scroll). No effect when either
+	// env is unset (normal play).
+	{
+		static const long s_bootInfoScroll = []{
+			const char* v = getenv("MC2_BOOT_INFO");
+			return (v && v[0]) ? atol(v) : 0L;
+		}();
+		static const bool s_scrollPin = []{
+			const char* v = getenv("MC2_BOOT_INFO_SCROLL");
+			return v && v[0] && v[0] != '0';
+		}();
+		if ( s_bootInfoScroll > 0 && s_scrollPin )
+		{
+			extern uint32_t g_mc2FrameCounter;
+			if ( (long)g_mc2FrameCounter >= s_bootInfoScroll + 3000 )
+				setScrollPos( 1000000 );
+		}
+	}
 
 	drawScrollingStuff();
 
