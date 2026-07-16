@@ -48,6 +48,8 @@ enum class RenderResourceId : uint16_t {
     PostprocessSubgraphColor = 37, // POSTPROCESS-VK-IMAGE-OWNERSHIP-1: Layer-4 subgraph OWNED intermediate COLOR image (R16G16B16A16_SFLOAT). Copied-in from GL sceneColor, blended by BOTH fog passes (edge then oob) in ONE render pass, copied-out to GL. Layout chain UNDEFINED->TRANSFER_DST->COLOR_ATTACHMENT->TRANSFER_SRC. Runtime VkImage handle lives in the future subgraph .cpp, NOT here. Proof-only enum id.
     PostprocessSubgraphDepth = 38, // POSTPROCESS-VK-IMAGE-OWNERSHIP-1: Layer-4 subgraph OWNED intermediate DEPTH image (D32_SFLOAT). Copied-in from GL sceneDepth, SAMPLED (read-only) by both fog passes. Layout chain UNDEFINED->TRANSFER_DST->SHADER_READ_ONLY. Runtime VkImage handle lives in the future subgraph .cpp, NOT here. Proof-only enum id.
     TerrainVisualDampSsbo = 39, // TERRAIN-REAUTH-UNPIN-1 Half B: coarse object-proximity displacement damp SSBO (s_visualDampSsbo, GL binding 27, gos_terrain_lod_chunk.cpp); Mission lifetime. CREATE gated upstream (MC2_TERRAIN_VISUAL_DISPLACE + objfade gate + visual_damp.r32 sidecar); static half uploaded at mission load, per-frame mover stamps via BufferSubData. GL binding 27 unrelated to id numbering.
+    ShadowCsmNearArray   = 40,  // SHADOW-VRAM-ACCOUNT-1: CSM NEAR-cascade depth 2D_ARRAY (dynShadowArrayTex_, gos_postprocess.cpp initDynamicShadows; layers = csmCount-1 at MC2_SHADOW_MAP_SIZE^2 default 8192, Depth24). Registered observe-only so the shadow VRAM split (per-cascade resolution, 13365011) is auditable from the dump.
+    ShadowCsmFullMap     = 41,  // SHADOW-VRAM-ACCOUNT-1: CSM FAR/full-map cascade depth 2D (dynamicFullMapTex_, gos_postprocess.cpp; MC2_SHADOW_FULLMAP_SIZE default 4096 when MC2_SHADOW_FULLMAP_SEPARATE=1 (default), == MC2_SHADOW_MAP_SIZE when =0). Observe-only VRAM accounting row.
     Count
 };
 
@@ -68,16 +70,20 @@ static_assert(static_cast<int>(RenderResourceId::DynamicPropShadowSsbo)         
 static_assert(static_cast<int>(RenderResourceId::PostprocessSubgraphColor)      < static_cast<int>(RenderResourceId::Count), "id >= Count would index out of bounds");
 static_assert(static_cast<int>(RenderResourceId::PostprocessSubgraphDepth)      < static_cast<int>(RenderResourceId::Count), "id >= Count would index out of bounds");
 static_assert(static_cast<int>(RenderResourceId::TerrainVisualDampSsbo)         < static_cast<int>(RenderResourceId::Count), "id >= Count would index out of bounds");
+static_assert(static_cast<int>(RenderResourceId::ShadowCsmNearArray)            < static_cast<int>(RenderResourceId::Count), "id >= Count would index out of bounds");
+static_assert(static_cast<int>(RenderResourceId::ShadowCsmFullMap)              < static_cast<int>(RenderResourceId::Count), "id >= Count would index out of bounds");
 
-// (b) The run is DENSE: Count == number-of-real-slots. TerrainVisualDampSsbo is the
-//     last real id (value 39) and Count follows it, so Count must be 40. If a new id
+// (b) The run is DENSE: Count == number-of-real-slots. ShadowCsmFullMap is the
+//     last real id (value 41) and Count follows it, so Count must be 42. If a new id
 //     is inserted, or an existing one renumbered leaving a hole, this breaks — forcing
-//     a review of the dense-index consumers.
-static_assert(static_cast<int>(RenderResourceId::TerrainVisualDampSsbo) + 1
+//     a review of the dense-index consumers. (SHADOW-VRAM-ACCOUNT-1 reviewed the two
+//     dense-index consumers: both size arrays by Count and index by int(id), so
+//     appended ids only grow the arrays — no table rows needed for observe-only ids.)
+static_assert(static_cast<int>(RenderResourceId::ShadowCsmFullMap) + 1
                   == static_cast<int>(RenderResourceId::Count),
               "RenderResourceId is not a dense 0..Count-1 run (Count must immediately "
               "follow the last real id); dense-index consumers assume no holes above Count");
-static_assert(static_cast<int>(RenderResourceId::Count) == 40,
+static_assert(static_cast<int>(RenderResourceId::Count) == 42,
               "RenderResourceId::Count changed; update dense-index consumers "
               "(frame_graph_validate.h, postprocess_subgraph.h) and this guard");
 

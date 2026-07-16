@@ -82,6 +82,8 @@ const char* toString(RenderResourceId id) {
         case RenderResourceId::DynamicPropShadowSsbo: return "DynamicPropShadowSsbo";
         case RenderResourceId::PostprocessSubgraphColor: return "PostprocessSubgraphColor";
         case RenderResourceId::PostprocessSubgraphDepth: return "PostprocessSubgraphDepth";
+        case RenderResourceId::ShadowCsmNearArray:   return "ShadowCsmNearArray";
+        case RenderResourceId::ShadowCsmFullMap:     return "ShadowCsmFullMap";
         case RenderResourceId::Count:                return "Count";
     }
     return "unknown";
