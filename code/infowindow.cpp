@@ -536,11 +536,20 @@ void InfoWindow::renderImGui()
 	ImGui::PushStyleVar( ImGuiStyleVar_ItemSpacing, ImVec2( 0.0f, 0.0f ) );
 	ImGui::SetCursorScreenPos( ImVec2( childL, childT ) );
 	float loadoutScrollMax = 0.0f;   // POLISH-IMGUI-SLICE-1: arrow-cap gate
+	// POLISH-IMGUI-SLICE-2: scroll delta accumulated by the arrow caps AFTER
+	// EndChild each frame, applied here at the next BeginChild (one-frame
+	// latency, matching the legacy per-frame held-button repeat).
+	static float s_capScrollDelta = 0.0f;
 	if ( ImGui::BeginChild( "##mc2_info_loadout",
 			ImVec2( childR - childL, childB - childT ),
 			false, ImGuiWindowFlags_NoBackground ) )
 	{
 		loadoutScrollMax = ImGui::GetScrollMaxY();
+		if ( s_capScrollDelta != 0.0f )
+		{
+			ImGui::SetScrollY( ImGui::GetScrollY() + s_capScrollDelta );
+			s_capScrollDelta = 0.0f;
+		}
 		if ( pUnit )
 		{
 			// FONT-IMGUI-SLICE-1: rows draw with the legacy componentFont via
@@ -822,6 +831,32 @@ void InfoWindow::renderImGui()
 	// atlas GL name is re-resolved per frame (OBJ-IMGUI-SLICE-1 lesson).
 	if ( pUnit && loadoutScrollMax > 0.0f )
 	{
+		// POLISH-IMGUI-SLICE-2 (POLISH-SLICE-1 deferral): cap CLICK-to-scroll.
+		// Legacy scrolls while the cursor sits inside a cap rect with LMB held
+		// (InfoWindow::update: getMouseLeftButtonState()==MC2_MOUSE_DOWN fires
+		// handleClick every frame — code/infowindow.cpp:901-914; MC2_MOUSE_DOWN
+		// is the held state, mclib/userinput.h:32), each frame stepping
+		// scrollPos by SCROLLAMOUNT = 3.f*Environment.screenWidth/640.f thumb
+		// px (code/infowindow.cpp:82, handleClick :1444-1457, setScrollPos
+		// clamp :1529-1537). Thumb px convert to content px via increment =
+		// infoLength/(SCROLLMAX-SCROLLMIN) (drawScrollingStuff :1192) where
+		// SCROLLMAX = buttons[1].location[0].y - buttonHeight - 2 and
+		// buttonHeight = physRange^2/(physRange+infoLength) clamped to
+		// SCROLLBUTTONHEIGHT (render() :796-806). ImGui equivalent with the
+		// same constants: step_dev = SCROLLAMOUNT * scrollMaxY_dev /
+		// (SCROLLMAX_dyn - SCROLLMIN).
+		const float physRange = buttons[1].location[0].y - buttons[0].location[2].y;
+		const float infoLen = ( sy > 0.0f ) ? loadoutScrollMax / sy : 0.0f;
+		float thumbH = physRange * physRange / ( physRange + infoLen );
+		if ( thumbH < (float)SCROLLBUTTONHEIGHT )
+			thumbH = (float)SCROLLBUTTONHEIGHT;
+		const float scrollMaxDyn = buttons[1].location[0].y - thumbH - 2.0f;
+		const float trackRange = scrollMaxDyn - (float)SCROLLMIN;
+		const float stepDev = ( trackRange > 0.0f )
+			? SCROLLAMOUNT * loadoutScrollMax / trackRange : 0.0f;
+
+		ImGui::PushStyleVar( ImGuiStyleVar_WindowMinSize, ImVec2( 1.0f, 1.0f ) );
+		ImGui::PushStyleVar( ImGuiStyleVar_WindowBorderSize, 0.0f );
 		for ( int i = 0; i < 2; i++ )
 		{
 			if ( !buttonData[i].textureHandle )
@@ -833,12 +868,32 @@ void InfoWindow::renderImGui()
 			if ( !glTex )
 				continue;
 			const gos_VERTEX* loc = buttons[i].location;
+			const ImVec2 capMin( AX( loc[0].x ), AY( loc[0].y ) );
+			const ImVec2 capMax( AX( loc[2].x ), AY( loc[2].y ) );
 			dl->AddImage( (ImTextureID)(intptr_t)glTex,
-				ImVec2( AX( loc[0].x ), AY( loc[0].y ) ),
-				ImVec2( AX( loc[2].x ), AY( loc[2].y ) ),
+				capMin, capMax,
 				ImVec2( loc[0].u, loc[0].v ),
 				ImVec2( loc[2].u, loc[2].v ) );
+
+			// A tiny top-level window over the cap rect owns the hit-test —
+			// submitted after the loadout child it sits ABOVE it in ImGui's
+			// hover order, so a cap press cannot fall through to the child
+			// scrollbar's track-seek underneath. IsItemActive+IsItemHovered =
+			// pressed on the cap and still over it, the closest ImGui match to
+			// the legacy inside-rect+held check.
+			ImGui::SetNextWindowPos( capMin );
+			ImGui::SetNextWindowSize( ImVec2( capMax.x - capMin.x, capMax.y - capMin.y ) );
+			ImGui::Begin( i == 0 ? "##mc2_info_cap0" : "##mc2_info_cap1", nullptr,
+				ImGuiWindowFlags_NoTitleBar | ImGuiWindowFlags_NoResize | ImGuiWindowFlags_NoMove |
+				ImGuiWindowFlags_NoCollapse | ImGuiWindowFlags_NoScrollbar | ImGuiWindowFlags_NoSavedSettings |
+				ImGuiWindowFlags_NoBackground | ImGuiWindowFlags_NoFocusOnAppearing | ImGuiWindowFlags_NoNav );
+			ImGui::InvisibleButton( "##cap",
+				ImVec2( capMax.x - capMin.x, capMax.y - capMin.y ) );
+			if ( ImGui::IsItemActive() && ImGui::IsItemHovered() )
+				s_capScrollDelta += ( i == 0 ) ? -stepDev : stepDev;
+			ImGui::End();
 		}
+		ImGui::PopStyleVar( 2 );   // WindowMinSize + WindowBorderSize
 	}
 
 	ImGui::End();
