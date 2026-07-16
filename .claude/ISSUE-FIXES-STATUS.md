@@ -8,6 +8,40 @@ Lane registered (mc2-repo-intel): META-FIX-BATCH-2. slice_preflight PASS for
 both D and F symbol sets vs base 994c3776 (same MCP-tool deviation as
 Batch 1 — worktree has no repo_query.py). Base HEAD: `c3fbc72b`.
 
+**Build/deploy/verify progress:**
+- [x] mc2 + EditRel + mc2_launcher builds GREEN (incremental; only
+      pre-existing C4267 warnings). No class-layout changes this batch
+      (gosRenderer gained a non-virtual method only).
+- [x] Deployed lane `releases/mc2-win64-issuefix-test` — the lane held a
+      FOREIGN thin-canary payload (manifest src_commit `64ea89c5`) exactly
+      as the dispatch warned; redeployed from THIS worktree, manifest
+      src_commit `2421157ce0ba` == HEAD, CLEAN (`--allow-new-target
+      --build-dir build64/RelWithDebInfo`).
+- [x] Full check-contracts table at `e528971a`: **all 4 new rows PASS**
+      (res_aspect_contract, res_aspect_selftest, order_gate_coverage,
+      order_gate_selftest); 50 passed / 9 failed — the identical 9
+      pre-existing reds Batch 1 verified at pre-batch `85979c1e`
+      (include_firewall, no_raw_gl_from_game, render_contract_gbuf1,
+      light_abi_lockstep, pipeline_desc, shader_injectors, texture_owners,
+      spirv_artifacts, doc_links). No new reds.
+- [x] RES-ASSERT clean at 2 aspects, fatal mode, MC2_WIDTH/MC2_HEIGHT via
+      the new passthrough (worktree runner, `[DEPLOY_FINGERPRINT] OK`):
+      16:9 1920x1080 windowed (artifact 2026-07-16T14-59-29, `[RESOLUTION]
+      Pre-window: 1920x1080 (from MC2_WIDTH/MC2_HEIGHT env)`, drawable
+      1920x1080, HUD canvas 800x600, ZERO [RES_ASSERT] lines, PASS 141fps)
+      + 4:3 1024x768 (2026-07-16T15-00-35, same shape, PASS). #49 oracle
+      exercised implicitly: windowed drawable == requested at both sizes.
+- [x] ORDER-LIVENESS floor proven BOTH ways live (worktree runner):
+      STOCK PASS — mc2_24, fixture+autowin(31s)>duration(30s):
+      `issued_move=11 moved=11 refused=0 stalled=0 verdict=PASS`, exit 0
+      (2026-07-16T15-05-58, fingerprint OK at `2421157c`);
+      SABOTAGE RED — fixture armed in runner env, NO autowin → engine
+      fixture inert → `ORDER_LIVENESS_SUMMARY line absent` → [ORDER-LIVENESS]
+      HARD FAIL, exit 1 while the mission itself passed (absence-is-failure
+      proven live, 2026-07-16T15-06-55).
+- [ ] check-order-liveness.py 3-leg oracle (running)
+- [ ] tier1 5/5 canonical
+
 **Commit ledger (per-unit):**
 | Unit | Commit | State |
 |---|---|---|
