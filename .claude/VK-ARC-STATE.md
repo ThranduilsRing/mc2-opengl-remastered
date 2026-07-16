@@ -1,5 +1,67 @@
 # VK-ARC-STATE — current state block (update every session)
 
+## 2026-07-16 — ★VFX-9 BALLISTIC+MISSILE GL/VK PAIRS (docs-only): the VFX-8 OPEN "per-class polish" item is CLOSED — both classes COMPOSITE under VK with the GL additive look; fire-event pairs banked.
+
+**★ RECIPE (proven, reusable — driver in session scratchpad, trivially re-creatable):**
+GL transit twin = `MC2_SMOKE_MODE=1` + args `--mission mc2_01 --duration 40` +
+`MC2_FX_FORCE_SPAWN=loop` + `MC2_VISUAL_CAPTURE_ON_FIRE=1` +
+`MC2_VISUAL_CAPTURE_FRAME=999999` + `MC2_VISUAL_CAPTURE_DIR=<abs>` + `MC2_LOG=1`
+→ engine PNG at exactly pin = first-volley frame + 30. VK twin = the field env
+(`MC2_RENDER_BACKEND=vulkan MC2_VK_SHARED_GBUFFER=1` + launcher GL gates, args
+`-mission mc2_01`) + `MC2_FX_FORCE_SPAWN=loop MC2_VK_PRESENT_VERIFY=1
+MC2_VK_PRESENT_DUMP_ON_FIRE=1 MC2_VK_PRESENT_DUMP_PPM=<abs>` → PPM at the first
+60-frame verify tick ≥ pin, i.e. a 30–89-frame fire-offset LOTTERY — rerun until a
+transit-phase frame lands (took 3 runs; ~40 s each). The PPM is vertically FLIPPED
+(known dump quirk) — flip before eyeballing. GL impact-phase twin: static
+`MC2_VISUAL_CAPTURE_FRAME=810`, no ON_FIRE.
+
+**★ CLASS DATA (mc2_01 lance, mission VariantNumber=0, from objects/*.csv + effects.csv):**
+FLASH=Werewolf "Razorback Prime" = 2×Streak SRM2 (MISSILE, fx8 srm_trail/Missile_flare)
++ Large Laser; HACKSAW/LONGSHOT=Bushwacker Prime = AC10 (BALLISTIC, fx18
+ac_10_Trail/ac_10_flare/AC_10_Hit) + PPC (fx4 ppc_trail) + 3×LRM5 (MISSILE, fx9
+lrm_trail/Missile_flare/missile_hit). The fixture volley `wid=1 weapons=5` = the full
+Bushwacker bank (AC10+PPC+3×LRM), all five NO_ERR-fired — both captures pin 0.23 s (GL)
+/ 0.32 s (VK) after this exact volley, so every transit class is in-frame by construction.
+
+**★ VERDICT — BALLISTIC (AC10): PASS (composite present, additive look matches GL, no
+grey/missing quads).** Transit: both backends show the bright volley trail ribbon from
+each Bushwacker (ac_10_Trail superposed with ppc_trail/lrm_trail along the shared sight
+line — the fixture aims every weapon at ONE point, so per-weapon trails superimpose; a
+non-compositing class would visibly thin/dim the VK ribbon vs GL — it doesn't) + white
+ac_10_flare muzzle glows at the AC arm. Impact: AC_10_Hit/miss-class ground fire +
+debris present both sides. Evidence (`.claude/vfx-fire/mc2_01/`):
+`ab_ribbon_gl_top_vk_bottom.png` (the money A/B), `mc2_01_frame690.png` (GL full),
+`vk_onfire_pair3_flipped.png` (VK full), `ab_impact_gl_top_vk_bottom.png`.
+
+**★ VERDICT — MISSILE (LRM5 + Streak SRM2): PASS.** Transit: 3×lrm_trail ride the same
+superposed ribbons; the Werewolf's Streak SRM is visually ISOLATED from the ribbons —
+GL shows the orange flame bolt + orange Missile_flare shoulder glow, VK shows the same
+orange Missile_flare + the short-trailed white SRM bolt (pair2 + pair3 frames). Impact:
+missile_hit fireball + smoke puffs + scorch composite under VK (pair1's fireball is
+caught mid-animation and reads brighter than GL-810's later-phase small ground fire —
+animation phase, not a blend defect; pre-VFX-7 this fireball was exactly the BLACK-BOX
+failure class). GL impact twin `mc2_01_frame810.png` + the banked VFX-8 reference
+(`vfx8_gl_onfire_mc2_01.png`, missile smoke trail + scorch).
+
+**★ RECEIPTS:** zero `[VK_HUD_SKIP_DECLINE]` across all 3 VK runs (no effect draw
+declined per-draw); every log has `[FX_FORCE_SPAWN loop] event=mech_fire wid=1
+weapons=5 pos=2496,-1941,398 scenarioTime=5.0x` + `event=capture_armed frame=N
+pin=N+30` (VK pair3: frame=621 pin=651, PPM at tick 660; GL: frame=660 pin=690, PNG at
+690; run logs banked untracked beside the PNGs). Laser/energy classes unchanged (red
+Large-Laser beam present with identical look in the same frames). Installs: BOTH 0.4c
+lanes manifest-verified at `e142da28` (docs-only delta to HEAD) — no rebuild, NO CODE
+CHANGED (docs-only session). One mc2.exe at a time, exact-PID kill, zero-count
+bracketed every launch.
+
+**★ HONEST CAVEATS:** (1) per-weapon transit attribution is data-backed (weapons=5
+volley composition + effects.csv), not visually isolated per weapon — the shared-target
+superposition stacks AC/PPC/LRM trails on one screen segment; only the SRM is visually
+isolated. (2) GL/VK fire-relative instants differ (0.23 vs 0.32 s — verify-tick
+granularity), so VK trails run longer with heads farther along; these are
+same-fire-instant-class references, NOT pixel-diff pairs (standing VFX-8 note). (3) The
+compbas Recycle column does NOT predict fixture refire cadence (observed wid=1 refires
+at 5.34/7.51/8.33/10.03 s) — do not plan class-isolation captures off recycle math.
+
 ## 2026-07-15 — ★S2b-CONFIRMED (confirmation soak at deploy `e142da28`, HEAD `7a58bce7`): 7/7 real-time field launches with ZERO grey-transient, zero fail-soft, zero deferrals — the DISARM-1/2/2b stack holds; S2b OPEN item CLOSED.
 
 **★ SOAK SETUP:** install `mc2-win64-0.4c` (manifest src_commit `e142da28`, clean, docs-only
