@@ -34,6 +34,8 @@
 
 #include<gameos.hpp>
 
+#include "mc2_audit.h"   // META-FIX design B PART 2: appr_type_fail backstop
+
 #include<cstdlib>
 #include<cstdio>
 
@@ -443,7 +445,24 @@ AppearanceTypePtr AppearanceTypeList::getAppearance (unsigned long apprNum, cons
 				return(NULL);
 		}
 	}
-	
+
+	// META-FIX design B PART 2 — chokepoint backstop: this is the sole
+	// appearance-type factory, so ANY loader (current or future subclass)
+	// whose REQUIRED base shape ended up empty funnels through here.
+	// numUsers==1 exactly on the fresh-init path (cache hits increment past
+	// 1), making this inherently once-per-type; mc2AuditOnce adds a belt
+	// against numUsers round-trips through removeAppearance.
+	if (appearanceType && appearanceType->numUsers == 1 &&
+		appearanceType->baseShapeLoadFailed)
+	{
+		unsigned long long key = 5381;
+		for (const char* p = appearFile; p && *p; ++p)
+			key = key * 33 + (unsigned char)*p;
+		if (mc2AuditOnce("APPR_TYPE_FAIL", key))
+			mc2AuditLinef("[ASSET_LOAD v1] event=appr_type_fail name=%s apprNum=0x%08lx",
+				appearFile, apprNum);
+	}
+
 	return appearanceType;
 }
 		

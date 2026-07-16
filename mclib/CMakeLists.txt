@@ -33,6 +33,7 @@ set(SOURCES ${SOURCES}
     fastfile.cpp
     fst_hash.cpp
     mc2_audit.cpp
+    tgl_load_guard.cpp
 
     ffile.cpp
     file.cpp

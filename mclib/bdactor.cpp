@@ -93,6 +93,7 @@ static unsigned long s_spotDiagBldgCalls      = 0;   // update() call counter
 
 #include "gos_static_prop_killswitch.h"
 #include "gos_static_prop_batcher.h"
+#include "tgl_load_guard.h"  // META-FIX design B PART 1: required base-shape load guard
 
 // Slim-deploy texture gate (LOAD_TGA_THEN_GPU_KTX). The static-prop / building /
 // tree appearance loaders below gate loadTexture() behind fileExists(<name>.tga).
@@ -305,7 +306,12 @@ static bool extractBuildingPbrYaw(const char* sidecarPath, float& yawDegrees)
 	return extractJsonNumber(text, "yaw_degrees", 0.0f, yawDegrees);
 }
 
-static void loadBuildingImportSourceWithSidecarAxis(TG_TypeMultiShape* shape, const char* importSourceBase)
+// META-FIX design B PART 1: failFlag threads AppearanceType::
+// baseShapeLoadFailed through to the required-slot verify at the tail
+// (the reviewed design's grep-verified import site the draft enumeration
+// missed). NULL failFlag = verify-and-placeholder only.
+static void loadBuildingImportSourceWithSidecarAxis(TG_TypeMultiShape* shape, const char* importSourceBase,
+                                                    bool* failFlag)
 {
 	if (!shape || !importSourceBase || !importSourceBase[0]) {
 		return;
@@ -333,7 +339,10 @@ static void loadBuildingImportSourceWithSidecarAxis(TG_TypeMultiShape* shape, co
 		_putenv_s("MC2_GLTF_YAW_DEG", yawValue);
 	}
 
-	shape->LoadFromFile(importSourceBase);
+	// META-FIX design B PART 1: REQUIRED slot — checked import load.
+	long rc = shape->LoadFromFile(importSourceBase);
+	tglVerifyShapeLoaded(shape, rc, "bdactor.bldg_import",
+		importSourceBase, failFlag);
 
 	if (hasYaw) {
 		if (!oldYawValue.empty())
@@ -861,11 +870,13 @@ void BldgAppearanceType::init (const char * fileName)
 				gosASSERT(bldgShape[i] != NULL);
 
 				if (i == 0 && importSourceBase[0]) {
-					loadBuildingImportSourceWithSidecarAxis(bldgShape[i], importSourceBase); // ASSIMP-BLDG-IMPORT-1: opt-in GLB probe
+					loadBuildingImportSourceWithSidecarAxis(bldgShape[i], importSourceBase, &baseShapeLoadFailed); // ASSIMP-BLDG-IMPORT-1: opt-in GLB probe
 				} else {
 					FullPathFileName bldgName;
 					bldgName.init(tglPath,aseFileName,".ase");
-					bldgShape[i]->LoadTGMultiShapeFromASE(bldgName);
+					// META-FIX design B PART 1: REQUIRED slot — checked load.
+					tglLoadShapeChecked(bldgShape[i], bldgName,
+						"bdactor.bldg_base", &baseShapeLoadFailed);
 				}
 
 				if (!i)
@@ -885,11 +896,13 @@ void BldgAppearanceType::init (const char * fileName)
 		gosASSERT(bldgShape[0] != NULL);
 
 		if (importSourceBase[0]) {
-			loadBuildingImportSourceWithSidecarAxis(bldgShape[0], importSourceBase); // ASSIMP-BLDG-IMPORT-1: opt-in GLB probe
+			loadBuildingImportSourceWithSidecarAxis(bldgShape[0], importSourceBase, &baseShapeLoadFailed); // ASSIMP-BLDG-IMPORT-1: opt-in GLB probe
 		} else {
 			FullPathFileName bldgName;
 			bldgName.init(tglPath,aseFileName,".ase");
-			bldgShape[0]->LoadTGMultiShapeFromASE(bldgName);
+			// META-FIX design B PART 1: REQUIRED slot — checked load.
+			tglLoadShapeChecked(bldgShape[0], bldgName,
+				"bdactor.bldg_base", &baseShapeLoadFailed);
 		}
 
 		strncpy(bldgBaseName, aseFileName, sizeof(bldgBaseName) - 1);
@@ -1019,7 +1032,7 @@ void BldgAppearanceType::init (const char * fileName)
 	
 		bldgDmgShape = new TG_TypeMultiShape;
 		gosASSERT(bldgDmgShape != NULL);
-		bldgDmgShape->LoadTGMultiShapeFromASE(dmgName);
+		bldgDmgShape->LoadTGMultiShapeFromASE(dmgName); // TGL-LOAD-EXEMPT(optional damage shape; GetNumShapes-checked delete-on-fail)
 
 		if (!bldgDmgShape->GetNumShapes())
 		{
@@ -5346,11 +5359,16 @@ void TreeAppearanceType::init (const char * fileName)
 				gosASSERT(treeShape[i] != NULL);
 
 				if (i == 0 && importSourceBase[0]) {
-					treeShape[i]->LoadFromFile(importSourceBase); // ASSIMP-TREE-IMPORT-1: opt-in GLB probe
+					// META-FIX design B PART 1: REQUIRED slot — checked import.
+					long rc = treeShape[i]->LoadFromFile(importSourceBase); // ASSIMP-TREE-IMPORT-1: opt-in GLB probe
+					tglVerifyShapeLoaded(treeShape[i], rc, "bdactor.tree_import",
+						importSourceBase, &baseShapeLoadFailed);
 				} else {
 					FullPathFileName treeName;
 					treeName.init(tglPath,aseFileName,".ase");
-					treeShape[i]->LoadTGMultiShapeFromASE(treeName);
+					// META-FIX design B PART 1: REQUIRED slot — checked load.
+					tglLoadShapeChecked(treeShape[i], treeName,
+						"bdactor.tree_base", &baseShapeLoadFailed);
 				}
 
 				//---------------------------------------------------------
@@ -5375,11 +5393,16 @@ void TreeAppearanceType::init (const char * fileName)
 		gosASSERT(treeShape[0] != NULL);
 
 		if (importSourceBase[0]) {
-			treeShape[0]->LoadFromFile(importSourceBase); // ASSIMP-TREE-IMPORT-1: opt-in GLB probe
+			// META-FIX design B PART 1: REQUIRED slot — checked import.
+			long rc = treeShape[0]->LoadFromFile(importSourceBase); // ASSIMP-TREE-IMPORT-1: opt-in GLB probe
+			tglVerifyShapeLoaded(treeShape[0], rc, "bdactor.tree_import",
+				importSourceBase, &baseShapeLoadFailed);
 		} else {
 			FullPathFileName treeName;
 			treeName.init(tglPath,aseFileName,".ase");
-			treeShape[0]->LoadTGMultiShapeFromASE(treeName);
+			// META-FIX design B PART 1: REQUIRED slot — checked load.
+			tglLoadShapeChecked(treeShape[0], treeName,
+				"bdactor.tree_base", &baseShapeLoadFailed);
 		}
 
 		//---------------------------------------------------------
@@ -5528,7 +5551,7 @@ void TreeAppearanceType::init (const char * fileName)
 	
 		treeDmgShape = new TG_TypeMultiShape;
 		gosASSERT(treeDmgShape != NULL);
-		treeDmgShape->LoadTGMultiShapeFromASE(dmgName);
+		treeDmgShape->LoadTGMultiShapeFromASE(dmgName); // TGL-LOAD-EXEMPT(optional damage shape; GetNumShapes-checked delete-on-fail)
 
 		if (!treeDmgShape->GetNumShapes())
 		{

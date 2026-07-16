@@ -1896,6 +1896,13 @@ static constexpr EnvVarDesc kAuxEnvVars[] = {
         false,
         "META-FIX design B PART 0 companion (mclib/msl.cpp loader chokepoint): =1 additionally logs '[ASSET_LOAD v1] event=file_missing ...' for MISSING files at the three shape-load entry points (LoadTGMultiShapeFromASE / LoadBinaryCopy / LoadFromFile). Default OFF because missing OPTIONAL files (arms/shadows/damage shapes/anims) are NORMAL stock degradation — an always-on file_missing line would red-bucket healthy tier1 runs. parse_fail (file present, content bad) and required_missing (tgl_load_guard required-slot check) log ALWAYS regardless of this gate; only those feed the asset_load_fail red bucket. Rate-limited per unique (event,path), cap 64 (mc2AuditOnce)."
     },
+    {
+        "MC2_FEATURE_ASSET_FAILLOUD",
+        "MC2_ASSET_FAILLOUD",
+        EnvVarKind::Feature,
+        true,
+        "META-FIX design B PART 1 (mclib/tgl_load_guard.cpp): default-ON killswitch (MC2_TERRAIN_TESS shape — unset=ON, =0 exact legacy fail-soft). When a REQUIRED base-shape load fails (rc!=0 or GetNumShapes()==0 at the ~17 required slots in mech3d/bdactor/gvactor/genactor), populates a VISIBLE magenta placeholder box with a REAL 4x4 texture registered through mcTextureManager (valid handles, NOT numTextures=0 — the GPU static-prop/mech batchers cull layerForPacket=-1 packets, so a textureless placeholder would itself be invisible). The '[ASSET_LOAD v1] event=required_missing' line + MC2_VERIFY fire + AppearanceType::baseShapeLoadFailed flag happen regardless of this gate. Stock byte-identical: no stock base shape fails, so the branch is cold. =0 restores 'leave the mech without an appearance' (msl.cpp fail-soft) exactly."
+    },
 };
 
 // ---------------------------------------------------------------------------

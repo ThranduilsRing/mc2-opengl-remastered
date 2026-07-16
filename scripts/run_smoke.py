@@ -1572,6 +1572,11 @@ def main():
                             # need no gate). Without this row the gate-ON
                             # diagnostic leg silently traces nothing.
                             "MC2_ASSET_TRACE",
+                            # META-FIX design B PART 1: default-ON fail-loud
+                            # killswitch (=0 restores exact legacy fail-soft).
+                            # Allowlisted so the sabotage/probe legs can flip
+                            # it through the runner.
+                            "MC2_ASSET_FAILLOUD",
                             # META-FIX design E tier 3: file-resolve ladder
                             # diagnostics + JSONL MISS trace (mclib/file.cpp).
                             # check-file-resolve-miss.py sets both through
