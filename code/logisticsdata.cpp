@@ -2230,6 +2230,16 @@ void LogisticsData::appendAvailability(const char* pFileName, bool* availableArr
 	FitIniFile file;
 	if ( NO_ERR != file.open( pFileName ) )
 	{
+		// ISSUE-8: this silent return is how a purchase-file miss (e.g. the
+		// pre-fb4d2e52 backslash-vs-elfHash FST lookup failure) ate pilots /
+		// weapons unlocks with zero evidence. Env-gated trace so future
+		// purchase-file misses are visible in the field.
+		if ( getenv("MC2_LOG_LOGISTICS") )
+		{
+			printf( "[LOGISTICS] appendAvailability: open FAILED '%s' -- purchase file skipped\n",
+			        pFileName ? pFileName : "(null)" );
+			fflush( stdout );
+		}
 		return;
 	}
 	long result = file.seekBlock( "Components" );
