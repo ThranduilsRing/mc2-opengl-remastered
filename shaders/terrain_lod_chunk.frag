@@ -252,6 +252,12 @@ uniform float snowBrightnessDampen; // <1 darkens detected snow (snowWeight-gate
 // OFF -> driver uploads u_useMaterialLib=0 -> branch never taken -> byte-identical.
 uniform vec4  matRoughness;
 uniform vec4  matAO;
+// POM-PERLAYER-HEIGHT-1: per-layer POM displacement-height multipliers
+// (rock,grass,dirt,concrete). Neutral (1,1,1,1) default. Consumed by
+// chunkSampleDisplacement ONLY when u_useMaterialLib != 0 AND the real-view
+// POM gate is on (u_pomView.x > 0.5) -- gate OFF on EITHER reproduces the
+// legacy 3-layer sum verbatim (byte-identical).
+uniform vec4  matHeight;
 uniform int   u_useMaterialLib;
 // TERRAIN-MATERIAL-TEXTURES-1: per-layer PBR albedo array (BC7 sRGB KTX2s from
 // data/terrain_layers/<channel>_albedo.ktx2; layer order = MAT_LAYER_* 0..4 +
@@ -386,6 +392,21 @@ float chunkSampleDisplacement(vec2 uv, vec4 w) {
     // with per-fragment weight branches → implicit LOD is undefined here. Use
     // textureLod(...,0.0): the displacement heightfield is read at base level
     // (standard for POM), valid in any control flow.
+    //
+    // POM-PERLAYER-HEIGHT-1 (gate-ON-BOTH only): per-layer height multipliers
+    // from the material lib (matHeight, JSON rock/grass/dirt/concrete_height)
+    // + the DIRT layer newly wired into the sum (was never summed -> dirt/sand
+    // dominant missions got ZERO displacement contribution). Uniform-flow
+    // branch: both operands are uniforms, so this stays UB2-01-safe. Gate OFF
+    // on EITHER (material lib or real-view POM) takes the legacy 3-layer sum
+    // VERBATIM -- byte-identical by construction.
+    if (u_useMaterialLib != 0 && u_pomView.x > 0.5) {
+        if (w.x > 0.01) d += w.x * matHeight.x * textureLod(matNormalArray, vec3(uv, float(MAT_LAYER_ROCK)),     0.0).a;
+        if (w.y > 0.01) d += w.y * matHeight.y * textureLod(matNormalArray, vec3(uv, float(MAT_LAYER_GRASS)),    0.0).a;
+        if (w.z > 0.01) d += w.z * matHeight.z * textureLod(matNormalArray, vec3(uv, float(MAT_LAYER_DIRT)),     0.0).a;
+        if (w.w > 0.01) d += w.w * matHeight.w * textureLod(matNormalArray, vec3(uv, float(MAT_LAYER_CONCRETE)), 0.0).a;
+        return 1.0 - d;
+    }
     if (w.x > 0.01) d += w.x * textureLod(matNormalArray, vec3(uv, float(MAT_LAYER_ROCK)),     0.0).a;
     if (w.y > 0.01) d += w.y * textureLod(matNormalArray, vec3(uv, float(MAT_LAYER_GRASS)),    0.0).a;
     if (w.w > 0.01) d += w.w * textureLod(matNormalArray, vec3(uv, float(MAT_LAYER_CONCRETE)), 0.0).a;

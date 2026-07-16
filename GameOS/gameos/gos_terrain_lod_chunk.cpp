@@ -697,11 +697,13 @@ extern void  gos_GetTerrainTintConcrete(float*, float*, float*);
 extern void  gos_GetTerrainTintSnow(float*, float*, float*);
 extern void  gos_GetTerrainMatRoughness(float*, float*, float*, float*);
 extern void  gos_GetTerrainMatAO(float*, float*, float*, float*);
+extern void  gos_GetTerrainMatHeight(float*, float*, float*, float*);  // POM-PERLAYER-HEIGHT-1
 extern bool  gos_TerrainMaterialLibEnabled();
 static GLint    s_locTintConcrete   = -1;
 static GLint    s_locTintSnow       = -1;
 static GLint    s_locMatRoughness   = -1;
 static GLint    s_locMatAO          = -1;
+static GLint    s_locMatHeight      = -1;  // POM-PERLAYER-HEIGHT-1
 static GLint    s_locUseMaterialLib = -1;
 // Remaining legacy tunables (env gates replicated in the upload so default==legacy).
 extern float gos_GetTerrainLightingV1Strength();
@@ -1156,6 +1158,7 @@ void gos_TerrainLodChunk_Init()
             s_locTintSnow       = glGetUniformLocation(s_terrainProgram, "tintSnow");
             s_locMatRoughness   = glGetUniformLocation(s_terrainProgram, "matRoughness");
             s_locMatAO          = glGetUniformLocation(s_terrainProgram, "matAO");
+            s_locMatHeight      = glGetUniformLocation(s_terrainProgram, "matHeight");  // POM-PERLAYER-HEIGHT-1
             s_locUseMaterialLib = glGetUniformLocation(s_terrainProgram, "u_useMaterialLib");
             s_locLightingV1  = glGetUniformLocation(s_terrainProgram, "terrainLightingV1Strength");
             s_locLightingV2  = glGetUniformLocation(s_terrainProgram, "terrainLightingV2ShadowFillFloor");
@@ -2152,10 +2155,12 @@ void gos_TerrainLodChunk_SubmitDrawCommands(
             float tsn[3]={0.75f,0.78f,0.84f}; gos_GetTerrainTintSnow(&tsn[0],&tsn[1],&tsn[2]);
             float mr[4]={1,1,1,1}; gos_GetTerrainMatRoughness(&mr[0],&mr[1],&mr[2],&mr[3]);
             float ma[4]={1,1,1,1}; gos_GetTerrainMatAO(&ma[0],&ma[1],&ma[2],&ma[3]);
+            float mh[4]={1,1,1,1}; gos_GetTerrainMatHeight(&mh[0],&mh[1],&mh[2],&mh[3]);  // POM-PERLAYER-HEIGHT-1
             if (s_locTintConcrete >= 0) glUniform3f(s_locTintConcrete, tc[0], tc[1], tc[2]);
             if (s_locTintSnow     >= 0) glUniform3f(s_locTintSnow,     tsn[0], tsn[1], tsn[2]);
             if (s_locMatRoughness >= 0) glUniform4f(s_locMatRoughness, mr[0], mr[1], mr[2], mr[3]);
             if (s_locMatAO        >= 0) glUniform4f(s_locMatAO,        ma[0], ma[1], ma[2], ma[3]);
+            if (s_locMatHeight    >= 0) glUniform4f(s_locMatHeight,    mh[0], mh[1], mh[2], mh[3]);  // POM-PERLAYER-HEIGHT-1
             const bool matLibOn = gos_TerrainMaterialLibEnabled();
             if (s_locUseMaterialLib >= 0) glUniform1i(s_locUseMaterialLib, matLibOn ? 1 : 0);
             static const bool s_matLibTrace = (getenv("MC2_MATERIALLIB_TRACE") != nullptr);

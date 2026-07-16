@@ -20,6 +20,7 @@ extern void  gos_SetTerrainTintConcrete(float r, float g, float b);
 extern void  gos_SetTerrainTintSnow(float r, float g, float b);
 extern void  gos_SetTerrainMatRoughness(float rock, float grass, float dirt, float concrete);
 extern void  gos_SetTerrainMatAO(float rock, float grass, float dirt, float concrete);
+extern void  gos_SetTerrainMatHeight(float rock, float grass, float dirt, float concrete);
 extern void  gos_SetTerrainTintStrengthScale(float s);
 extern void  gos_SetTerrainControlAlbedoStrength(float s);  // TERRAIN-CONTROLMAP-ALBEDO-1
 // TERRAIN-MATERIAL-TEXTURES-1 (definitions in gos_terrain_lod_chunk.cpp -- the
@@ -305,6 +306,19 @@ void terrainMaterials_apply(const char* /*missionName*/) {
         getf(v, "grass_ao",    1.0f),
         getf(v, "dirt_ao",     1.0f),
         getf(v, "concrete_ao", 1.0f));
+
+    // POM-PERLAYER-HEIGHT-1: per-layer POM displacement-height multipliers
+    // (NEW; neutral 1.0 defaults). Only consumed by the LOD-chunk frag when
+    // BOTH MC2_TERRAIN_MATERIAL_LIB and MC2_TERRAIN_POM are on; neutral
+    // (1,1,1,1) preserves the pre-slice march depth per layer. NOTE: the
+    // legacy pomScaleMat literal vec4(1,1,2.5,1) in terrain_lod_chunk.frag
+    // is deliberately NOT ported to these keys -- it stays verbatim as the
+    // blended march-depth scale, so these multipliers compose on top.
+    gos_SetTerrainMatHeight(
+        getf(v, "rock_height",     1.0f),
+        getf(v, "grass_height",    1.0f),
+        getf(v, "dirt_height",     1.0f),
+        getf(v, "concrete_height", 1.0f));
 
     // Detail tiling/strength (global, not per-layer).
     gos_SetTerrainDetailParams(

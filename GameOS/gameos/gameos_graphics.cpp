@@ -1622,6 +1622,18 @@ class gosRenderer {
             *rock=terrain_mat_roughness_[0]; *grass=terrain_mat_roughness_[1];
             *dirt=terrain_mat_roughness_[2]; *concrete=terrain_mat_roughness_[3];
         }
+        // POM-PERLAYER-HEIGHT-1: per-layer POM displacement-height multipliers
+        // (rock/grass/dirt/concrete). Neutral 1.0 defaults; consumed by the
+        // LOD-chunk frag only when BOTH MC2_TERRAIN_MATERIAL_LIB and
+        // MC2_TERRAIN_POM are on (chunkSampleDisplacement branch).
+        void setTerrainMatHeight(float rock, float grass, float dirt, float concrete) {
+            terrain_mat_height_[0]=rock; terrain_mat_height_[1]=grass;
+            terrain_mat_height_[2]=dirt; terrain_mat_height_[3]=concrete;
+        }
+        void getTerrainMatHeight(float* rock, float* grass, float* dirt, float* concrete) const {
+            *rock=terrain_mat_height_[0]; *grass=terrain_mat_height_[1];
+            *dirt=terrain_mat_height_[2]; *concrete=terrain_mat_height_[3];
+        }
         void setTerrainMatAO(float rock, float grass, float dirt, float concrete) {
             terrain_mat_ao_[0]=rock; terrain_mat_ao_[1]=grass;
             terrain_mat_ao_[2]=dirt; terrain_mat_ao_[3]=concrete;
@@ -2141,6 +2153,8 @@ class gosRenderer {
         // lighting exactly (dot(weights, 1.0) == 1.0).
         float terrain_mat_roughness_[4] = { 1.0f, 1.0f, 1.0f, 1.0f };
         float terrain_mat_ao_[4]        = { 1.0f, 1.0f, 1.0f, 1.0f };
+        // POM-PERLAYER-HEIGHT-1 (rock/grass/dirt/concrete; neutral = 1.0).
+        float terrain_mat_height_[4]    = { 1.0f, 1.0f, 1.0f, 1.0f };
         // TERRAIN-TUNING-UI-1: per-frame multiplier on the additive height-
         // derived normal term in gos_terrain.frag. 1.0 = full slope tilt
         // (current behavior; byte-equivalent to pre-slice). 0.0 = no slope
@@ -9511,6 +9525,14 @@ void gos_SetTerrainMatAO(float rock, float grass, float dirt, float concrete) {
 }
 void gos_GetTerrainMatAO(float* rock, float* grass, float* dirt, float* concrete) {
     if (g_gos_renderer) g_gos_renderer->getTerrainMatAO(rock, grass, dirt, concrete);
+    else { *rock = 1.0f; *grass = 1.0f; *dirt = 1.0f; *concrete = 1.0f; }
+}
+// POM-PERLAYER-HEIGHT-1: per-layer POM displacement-height multipliers.
+void gos_SetTerrainMatHeight(float rock, float grass, float dirt, float concrete) {
+    if (g_gos_renderer) g_gos_renderer->setTerrainMatHeight(rock, grass, dirt, concrete);
+}
+void gos_GetTerrainMatHeight(float* rock, float* grass, float* dirt, float* concrete) {
+    if (g_gos_renderer) g_gos_renderer->getTerrainMatHeight(rock, grass, dirt, concrete);
     else { *rock = 1.0f; *grass = 1.0f; *dirt = 1.0f; *concrete = 1.0f; }
 }
 // TERRAIN-MATERIAL-LIB-1: public wrapper -- terrainMaterialLibEnabled() above is
