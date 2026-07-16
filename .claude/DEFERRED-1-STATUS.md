@@ -32,7 +32,22 @@ mc2-main / mc2-opengl-src trees. Lane registered in lane_registry as DEFERRED-SW
 - Note: v0.4 / rc1 installs still carry the albedo-content file — fixed mechanically by their next deploy_payload run
   (file now in GAME_DATA_PAYLOAD). This lane already carries the fix.
 
-## Item 5 — POM slice 1 (per-layer heights via material lib) — IN PROGRESS
+## Item 5 — POM slice 1 (per-layer heights via material lib) — DONE (commit `76f095cd`)
+
+- **Verification (all on lane exe @76f095cd, clean fingerprint, `[TerrainLOD v1] shader program compiled OK`,
+  `[TerrainMaterialLib] applied 49 keys` — was 45, +4 \*_height keys):**
+  - Gate-OFF identity: mc2_24_pom_closeup default env → hashes `1936948e/3a6677de/c22ea0d4` BYTE-IDENTICAL to the
+    pre-change exe baseline (`item5_gateoff_exe1_mc2_24/` vs `item5_gateoff_exe2_mc2_24/`). Default path untouched.
+  - Gate-ON A/B (same exe): A = POM=1 (`item5_pomon_matliboff/`) vs B = POM=1+MATLIB=1 (`item5_pomon_matlibon/`)
+    — hashes differ on all poses (matlib also moves tint/roughness; confounded for color, so:)
+  - Heat-viz oracle (arc doc's own witness, u_diag 4096 = |pomOff|, tint-immune early-return):
+    `item5_heat_A_matliboff/` vs `item5_heat_B_matlibon/` — large offset-DEAD (blue) ground regions in A turn
+    live textured parallax (red) in B on mc2_24 desert. Exactly the "dirt fragments previously blank now light up"
+    prediction. Heat HF-energy shifts (A 2.56→B 1.96 rot45) = displacement field structurally changed.
+  - Deferred: snow height term (4-wide matWeights; snow separate scalar — needs march signature change, follow-up).
+  - Note for arc doc: the pomScaleMat "2.5 concrete" literal is actually on the .z=DIRT slot; preserved VERBATIM.
+
+## Item 5 log (superseded planning notes)
 
 - Preflight: `slice-preflight POM-PERLAYER-HEIGHT-1` vs base 994c3776 → clean (exit 0, findings []).
 - Premise verified: POM-1 + texremap ARE merged on base (terrain_lod_chunk.frag, terrain_material_lib.*,
