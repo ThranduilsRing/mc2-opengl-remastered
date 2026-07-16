@@ -1618,6 +1618,11 @@ def main():
                             # post-submit fence wait; default = deferred retire at the
                             # parity slot's next beginFrame).
                             "MC2_VK_WATER_FENCE_DEFER",
+                            # VK-TERRAIN-FENCE-DEFER-1: same template on the terrain
+                            # island (killswitch =0 restores the inline wait) + the
+                            # water-style [VK_TERRAIN_PERF] us-breakdown diagnostic.
+                            "MC2_VK_TERRAIN_FENCE_DEFER",
+                            "MC2_VK_TERRAIN_PERF",
                             "MC2_NO_LAUNCHER",
                             # VK-P8a SHADOW-INTEROP: VK produces the dynamic shadow
                             # depth map, GL samples it. Requires the shared engine

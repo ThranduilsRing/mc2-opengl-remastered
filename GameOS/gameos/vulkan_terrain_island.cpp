@@ -171,6 +171,31 @@ void terrainPerFrameReadback(const char* fn) {
     return true;
 }();
 
+// VK-TERRAIN-FENCE-DEFER-1 (cluster-A, water-pilot template 61031785): defer the
+// island's retire wait to the parity slot's next vkImageResourceBeginFrame instead
+// of waiting the submit fence inline. Default-ON (the per-parity UBO staging +
+// per-parity descriptor sets make it correct by construction);
+// MC2_VK_TERRAIN_FENCE_DEFER=0 is the killswitch restoring the inline wait — the
+// per-parity staging holds either way (superset-safe).
+bool terrainFenceDeferEnabled() {
+    static int state = -1;
+    if (state == -1)
+        state = (mc2vkgate::envTriState("MC2_VK_TERRAIN_FENCE_DEFER") == 0) ? 0 : 1;
+    return state == 1;
+}
+
+// MC2_VK_TERRAIN_PERF — per-frame microsecond breakdown receipt of the VK terrain
+// island ([VK_TERRAIN_PERF] line: stage/record-submit/fence-wait/total). Same
+// diagnostic class + shape as MC2_VK_WATER_PERF (additive stderr trace, default OFF).
+bool terrainPerfGateRequested() {
+    static int state = -1;
+    if (state == -1) {
+        const char* e = std::getenv("MC2_VK_TERRAIN_PERF");
+        state = (e && e[0] == '1') ? 1 : 0;
+    }
+    return state == 1;
+}
+
 // Gate: MC2_VK_TERRAIN_TIER1==1 AND MC2_VK_SHARED_SCENE_DEPTH==1 (the shared depth
 // the Tier-1 pass depth-tests against). Mirrors propColorTier1Requested().
 bool terrainTier1Requested() {
@@ -436,7 +461,7 @@ struct TerrainIsland {
     // Pipeline (2 GBuffer outputs, reverse-Z GEQUAL depth-write, cull NONE, no blend).
     VkDescriptorSetLayout dsl = VK_NULL_HANDLE;
     VkDescriptorPool  pool   = VK_NULL_HANDLE;
-    VkDescriptorSet   set    = VK_NULL_HANDLE;
+    VkDescriptorSet   set[2] = {VK_NULL_HANDLE, VK_NULL_HANDLE};   // per parity slot (VK-TERRAIN-FENCE-DEFER-1); set[i] binds ubo[i]
     VkPipelineLayout  playout = VK_NULL_HANDLE;
     VkPipeline        pipe   = VK_NULL_HANDLE;
     VkShaderModule    vert   = VK_NULL_HANDLE;
@@ -565,8 +590,15 @@ struct TerrainIsland {
 
     // Per-patch dynamic UBO (one 512B slot per LOD0 patch this frame; 512 is a multiple
     // of the 256B minUniformBufferOffsetAlignment — grew from 256 for the dynshadow mat4).
-    VkBuffer      ubo = VK_NULL_HANDLE; VmaAllocation uboAlloc = VK_NULL_HANDLE;
-    VkDeviceSize  uboCapBytes = 0;
+    // VK-TERRAIN-FENCE-DEFER-1: the ONLY per-frame CPU-written buffer this island's
+    // submit consumes (per-parity staging audit) — now a PER-PARITY-SLOT pair, staged
+    // [par] AFTER the hoisted beginFrame so the slot-fence wait protects the rewrite.
+    // Everything else the submit reads is either write-once (patch/skirt cache VBO/IBOs,
+    // copy-once image imports), rare-write device-idle-guarded (height/cement/visual-
+    // height snapshots), or synced by its own one-shot inline fence (shadow copies).
+    VkBuffer      ubo[2] = {VK_NULL_HANDLE, VK_NULL_HANDLE};
+    VmaAllocation uboAlloc[2] = {VK_NULL_HANDLE, VK_NULL_HANDLE};
+    VkDeviceSize  uboCapBytes[2] = {0, 0};
 
     std::unordered_map<uint32_t, PatchMesh> patchCache;
     std::unordered_map<uint32_t, SkirtMesh> skirtCache;  // VK-TERRAIN-SKIRT (rung 4)
@@ -756,25 +788,32 @@ const SkirtMesh* getOrBuildSkirtMesh(TerrainIsland* s, int qcX, int qcY, int lod
 }
 
 void write_descriptors(TerrainIsland* s) {
-    if (s->set == VK_NULL_HANDLE) return;
+    // VK-TERRAIN-FENCE-DEFER-1: write BOTH parity sets (set[i] binds ubo[i]; every
+    // other binding is identical single-instance state). Callers must guarantee no
+    // in-flight command buffer can be using either set during the update: buffer-grow
+    // callers vkDeviceWaitIdle first, copy-once importers run right after an inline
+    // one-shot fence wait (which retires ALL earlier submission-order work on the
+    // queue), and the per-frame bound-view switch in run() device-idles (rare).
+    for (int i = 0; i < 2; ++i) {
+    if (s->set[i] == VK_NULL_HANDLE) continue;
     // binding 0 = dynamic UBO (per-patch frame block); binding 1 = height SSBO;
     // binding 2 = colormap combined-image-sampler (COLORMAP-BASE, only when live).
     // binding 3 = cement combined-image-sampler (dummy/real); binding 4 = cement-word SSBO.
-    VkDescriptorBufferInfo uboInfo{ s->ubo, 0, sizeof(TerrainFrameUBO) }; // range = one slot
+    VkDescriptorBufferInfo uboInfo{ s->ubo[i], 0, sizeof(TerrainFrameUBO) }; // range = one slot
     VkDescriptorBufferInfo hInfo{ s->heightBuf, 0, VK_WHOLE_SIZE };
     VkWriteDescriptorSet w[11]{};
     uint32_t n = 0;
-    w[n].sType = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET; w[n].dstSet = s->set;
+    w[n].sType = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET; w[n].dstSet = s->set[i];
     w[n].dstBinding = 0; w[n].descriptorCount = 1;
     w[n].descriptorType = VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER_DYNAMIC; w[n].pBufferInfo = &uboInfo; ++n;
-    w[n].sType = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET; w[n].dstSet = s->set;
+    w[n].sType = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET; w[n].dstSet = s->set[i];
     w[n].dstBinding = 1; w[n].descriptorCount = 1;
     w[n].descriptorType = VK_DESCRIPTOR_TYPE_STORAGE_BUFFER; w[n].pBufferInfo = &hInfo; ++n;
     VkDescriptorImageInfo cmInfo{};
     if (s->colormapReady && s->colormapView != VK_NULL_HANDLE && s->colormapSamp != VK_NULL_HANDLE) {
         cmInfo.sampler = s->colormapSamp; cmInfo.imageView = s->colormapView;
         cmInfo.imageLayout = VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL;
-        w[n].sType = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET; w[n].dstSet = s->set;
+        w[n].sType = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET; w[n].dstSet = s->set[i];
         w[n].dstBinding = 2; w[n].descriptorCount = 1;
         w[n].descriptorType = VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER; w[n].pImageInfo = &cmInfo; ++n;
     }
@@ -783,7 +822,7 @@ void write_descriptors(TerrainIsland* s) {
     if (s->cementView != VK_NULL_HANDLE && s->cementSamp != VK_NULL_HANDLE) {
         ceInfo.sampler = s->cementSamp; ceInfo.imageView = s->cementView;
         ceInfo.imageLayout = VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL;
-        w[n].sType = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET; w[n].dstSet = s->set;
+        w[n].sType = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET; w[n].dstSet = s->set[i];
         w[n].dstBinding = 3; w[n].descriptorCount = 1;
         w[n].descriptorType = VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER; w[n].pImageInfo = &ceInfo; ++n;
     }
@@ -791,7 +830,7 @@ void write_descriptors(TerrainIsland* s) {
     VkDescriptorBufferInfo ceBuf{};
     if (s->cementBuf != VK_NULL_HANDLE) {
         ceBuf.buffer = s->cementBuf; ceBuf.offset = 0; ceBuf.range = VK_WHOLE_SIZE;
-        w[n].sType = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET; w[n].dstSet = s->set;
+        w[n].sType = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET; w[n].dstSet = s->set[i];
         w[n].dstBinding = 4; w[n].descriptorCount = 1;
         w[n].descriptorType = VK_DESCRIPTOR_TYPE_STORAGE_BUFFER; w[n].pBufferInfo = &ceBuf; ++n;
     }
@@ -801,7 +840,7 @@ void write_descriptors(TerrainIsland* s) {
     if (s->shadowView != VK_NULL_HANDLE && s->shadowSamp != VK_NULL_HANDLE) {
         shInfo.sampler = s->shadowSamp; shInfo.imageView = s->shadowView;
         shInfo.imageLayout = VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL;
-        w[n].sType = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET; w[n].dstSet = s->set;
+        w[n].sType = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET; w[n].dstSet = s->set[i];
         w[n].dstBinding = 5; w[n].descriptorCount = 1;
         w[n].descriptorType = VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER; w[n].pImageInfo = &shInfo; ++n;
     }
@@ -811,7 +850,7 @@ void write_descriptors(TerrainIsland* s) {
     if (s->matNormalView != VK_NULL_HANDLE && s->matNormalSamp != VK_NULL_HANDLE) {
         mnInfo.sampler = s->matNormalSamp; mnInfo.imageView = s->matNormalView;
         mnInfo.imageLayout = VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL;
-        w[n].sType = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET; w[n].dstSet = s->set;
+        w[n].sType = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET; w[n].dstSet = s->set[i];
         w[n].dstBinding = 6; w[n].descriptorCount = 1;
         w[n].descriptorType = VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER; w[n].pImageInfo = &mnInfo; ++n;
     }
@@ -828,7 +867,7 @@ void write_descriptors(TerrainIsland* s) {
     if (dshView != VK_NULL_HANDLE && s->shadowSamp != VK_NULL_HANDLE) {
         dshInfo.sampler = s->shadowSamp; dshInfo.imageView = dshView;
         dshInfo.imageLayout = VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL;
-        w[n].sType = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET; w[n].dstSet = s->set;
+        w[n].sType = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET; w[n].dstSet = s->set[i];
         w[n].dstBinding = 7; w[n].descriptorCount = 1;
         w[n].descriptorType = VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER; w[n].pImageInfo = &dshInfo; ++n;
     }
@@ -840,7 +879,7 @@ void write_descriptors(TerrainIsland* s) {
     if (csmArrView != VK_NULL_HANDLE && s->shadowSamp != VK_NULL_HANDLE) {
         csmArrInfo.sampler = s->shadowSamp; csmArrInfo.imageView = csmArrView;
         csmArrInfo.imageLayout = VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL;
-        w[n].sType = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET; w[n].dstSet = s->set;
+        w[n].sType = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET; w[n].dstSet = s->set[i];
         w[n].dstBinding = 8; w[n].descriptorCount = 1;
         w[n].descriptorType = VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER; w[n].pImageInfo = &csmArrInfo; ++n;
     }
@@ -850,7 +889,7 @@ void write_descriptors(TerrainIsland* s) {
     if (csmFmView != VK_NULL_HANDLE && s->shadowSamp != VK_NULL_HANDLE) {
         csmFmInfo.sampler = s->shadowSamp; csmFmInfo.imageView = csmFmView;
         csmFmInfo.imageLayout = VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL;
-        w[n].sType = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET; w[n].dstSet = s->set;
+        w[n].sType = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET; w[n].dstSet = s->set[i];
         w[n].dstBinding = 9; w[n].descriptorCount = 1;
         w[n].descriptorType = VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER; w[n].pImageInfo = &csmFmInfo; ++n;
     }
@@ -859,11 +898,12 @@ void write_descriptors(TerrainIsland* s) {
     VkDescriptorBufferInfo vhBuf{};
     if (s->visualHeightBuf != VK_NULL_HANDLE) {
         vhBuf.buffer = s->visualHeightBuf; vhBuf.offset = 0; vhBuf.range = VK_WHOLE_SIZE;
-        w[n].sType = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET; w[n].dstSet = s->set;
+        w[n].sType = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET; w[n].dstSet = s->set[i];
         w[n].dstBinding = 10; w[n].descriptorCount = 1;
         w[n].descriptorType = VK_DESCRIPTOR_TYPE_STORAGE_BUFFER; w[n].pBufferInfo = &vhBuf; ++n;
     }
     vkUpdateDescriptorSets(s->device, n, w, 0, nullptr);
+    }   // per-parity set loop
 }
 
 bool ensure_height_capacity(TerrainIsland* s, VkDeviceSize bytes) {
@@ -883,17 +923,18 @@ bool ensure_height_capacity(TerrainIsland* s, VkDeviceSize bytes) {
     return true;
 }
 
-bool ensure_ubo_capacity(TerrainIsland* s, VkDeviceSize bytes) {
-    if (s->ubo != VK_NULL_HANDLE && bytes <= s->uboCapBytes) return true;
-    if (s->ubo != VK_NULL_HANDLE) {
+// Grow slot `par`'s per-patch dynamic UBO (VK-TERRAIN-FENCE-DEFER-1: per parity slot).
+bool ensure_ubo_capacity(TerrainIsland* s, uint32_t par, VkDeviceSize bytes) {
+    if (s->ubo[par] != VK_NULL_HANDLE && bytes <= s->uboCapBytes[par]) return true;
+    if (s->ubo[par] != VK_NULL_HANDLE) {
         vkDeviceWaitIdle(s->device);
-        vmaDestroyBuffer(s->allocator, s->ubo, s->uboAlloc);
-        s->ubo = VK_NULL_HANDLE;
+        vmaDestroyBuffer(s->allocator, s->ubo[par], s->uboAlloc[par]);
+        s->ubo[par] = VK_NULL_HANDLE;
     }
     VkDeviceSize cap = bytes + bytes / 2 + sizeof(TerrainFrameUBO);
-    if (!make_buffer(s, cap, VK_BUFFER_USAGE_UNIFORM_BUFFER_BIT, &s->ubo, &s->uboAlloc, true))
+    if (!make_buffer(s, cap, VK_BUFFER_USAGE_UNIFORM_BUFFER_BIT, &s->ubo[par], &s->uboAlloc[par], true))
         return false;
-    s->uboCapBytes = cap;
+    s->uboCapBytes[par] = cap;
     write_descriptors(s);
     return true;
 }
@@ -926,7 +967,8 @@ void destroy_island(TerrainIsland* s) {
     if (s->rpass)   vkDestroyRenderPass(d, s->rpass, nullptr);
     if (s->heightBuf) vmaDestroyBuffer(s->allocator, s->heightBuf, s->heightAlloc);
     if (s->visualHeightBuf) vmaDestroyBuffer(s->allocator, s->visualHeightBuf, s->visualHeightAlloc);
-    if (s->ubo)     vmaDestroyBuffer(s->allocator, s->ubo, s->uboAlloc);
+    for (int i = 0; i < 2; ++i)   // VK-TERRAIN-FENCE-DEFER-1: per-parity UBO pair
+        if (s->ubo[i]) vmaDestroyBuffer(s->allocator, s->ubo[i], s->uboAlloc[i]);
     if (s->colormapSamp) vkDestroySampler(d, s->colormapSamp, nullptr);
     if (s->colormapView) vkDestroyImageView(d, s->colormapView, nullptr);
     if (s->colormapImg)  vmaDestroyImage(s->allocator, s->colormapImg, s->colormapAlloc);
@@ -1088,9 +1130,10 @@ bool init_island(TerrainIsland* s, int w, int h) {
         }
     }
 
-    // ---- Buffers (height snapshot SSBO + per-patch dynamic UBO). ----
+    // ---- Buffers (height snapshot SSBO + per-parity per-patch dynamic UBOs). ----
     if (!ensure_height_capacity(s, 256 * 1024)) return false;
-    if (!ensure_ubo_capacity(s, 64 * sizeof(TerrainFrameUBO))) return false;
+    if (!ensure_ubo_capacity(s, 0, 64 * sizeof(TerrainFrameUBO))) return false;
+    if (!ensure_ubo_capacity(s, 1, 64 * sizeof(TerrainFrameUBO))) return false;
 
     // ---- COLORMAP-BASE: command pool must exist before the copy-once import can
     // run its one-shot cmd buffer; create it here (also allocs the 2 draw cbufs). ----
@@ -1198,20 +1241,22 @@ bool init_island(TerrainIsland* s, int w, int h) {
         if (vkCreateDescriptorSetLayout(s->device, &lci, nullptr, &s->dsl) != VK_SUCCESS) {
             vlog("vkCreateDescriptorSetLayout failed."); return false;
         }
+        // VK-TERRAIN-FENCE-DEFER-1: TWO sets (one per parity slot), so pool sizes double.
         VkDescriptorPoolSize sizes[4]{};
-        sizes[0].type = VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER_DYNAMIC;  sizes[0].descriptorCount = 1;
-        sizes[1].type = VK_DESCRIPTOR_TYPE_STORAGE_BUFFER;          sizes[1].descriptorCount = 3; // height + cement + visual-height
-        sizes[2].type = VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER;  sizes[2].descriptorCount = 7; // colormap + cement + static shadow + matNormalArray + dyn shadow + csm array + csm fullmap
+        sizes[0].type = VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER_DYNAMIC;  sizes[0].descriptorCount = 2;
+        sizes[1].type = VK_DESCRIPTOR_TYPE_STORAGE_BUFFER;          sizes[1].descriptorCount = 6;  // (height + cement + visual-height) x2
+        sizes[2].type = VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER;  sizes[2].descriptorCount = 14; // (colormap + cement + static shadow + matNormalArray + dyn shadow + csm array + csm fullmap) x2
         VkDescriptorPoolCreateInfo pci{};
         pci.sType = VK_STRUCTURE_TYPE_DESCRIPTOR_POOL_CREATE_INFO;
-        pci.maxSets = 1; pci.poolSizeCount = 3; pci.pPoolSizes = sizes;
+        pci.maxSets = 2; pci.poolSizeCount = 3; pci.pPoolSizes = sizes;
         if (vkCreateDescriptorPool(s->device, &pci, nullptr, &s->pool) != VK_SUCCESS) {
             vlog("vkCreateDescriptorPool failed."); return false;
         }
+        VkDescriptorSetLayout layouts[2] = { s->dsl, s->dsl };
         VkDescriptorSetAllocateInfo dsai{};
         dsai.sType = VK_STRUCTURE_TYPE_DESCRIPTOR_SET_ALLOCATE_INFO;
-        dsai.descriptorPool = s->pool; dsai.descriptorSetCount = 1; dsai.pSetLayouts = &s->dsl;
-        if (vkAllocateDescriptorSets(s->device, &dsai, &s->set) != VK_SUCCESS) {
+        dsai.descriptorPool = s->pool; dsai.descriptorSetCount = 2; dsai.pSetLayouts = layouts;
+        if (vkAllocateDescriptorSets(s->device, &dsai, s->set) != VK_SUCCESS) {
             vlog("vkAllocateDescriptorSets failed."); return false;
         }
         write_descriptors(s);
@@ -1359,6 +1404,11 @@ bool snapshot_height(TerrainIsland* s, const Mc2TerrainTier1Feed& feed) {
     if (feed.heightVersion == s->heightVersionCopied) return true; // unchanged
     if (feed.glHeightSsbo == 0 || feed.heightBytes == 0) return false;
     if (!ensure_height_capacity(s, (VkDeviceSize)feed.heightBytes)) return false;
+    // VK-TERRAIN-FENCE-DEFER-1: the height SSBO stays single-instance (version-gated
+    // rare rewrite: mission load / crater deform). Under the deferred retire a prior
+    // terrain submit may still be reading it — device-idle before rewriting in place.
+    // (The old inline post-submit fence wait used to provide this guarantee for free.)
+    vkDeviceWaitIdle(s->device);
     std::vector<uint8_t> scratch((size_t)feed.heightBytes);
     glBindBuffer(GL_SHADER_STORAGE_BUFFER, (GLuint)feed.glHeightSsbo);
     glGetBufferSubData(GL_SHADER_STORAGE_BUFFER, 0, (GLsizeiptr)feed.heightBytes, scratch.data());
@@ -1856,6 +1906,9 @@ bool snapshot_cement(TerrainIsland* s, const Mc2TerrainTier1Feed& feed) {
         s->cementVersionCopied = UINT64_MAX; // force re-snapshot into the new buffer
         write_descriptors(s);
     }
+    // VK-TERRAIN-FENCE-DEFER-1: single-instance rare rewrite (map-load version bump)
+    // — device-idle before writing in place (see snapshot_height).
+    vkDeviceWaitIdle(s->device);
     std::vector<uint8_t> scratch((size_t)feed.cementBytes);
     glBindBuffer(GL_SHADER_STORAGE_BUFFER, (GLuint)feed.glCementSsbo);
     glGetBufferSubData(GL_SHADER_STORAGE_BUFFER, 0, (GLsizeiptr)feed.cementBytes, scratch.data());
@@ -1892,6 +1945,9 @@ bool snapshot_visual_height(TerrainIsland* s, const Mc2TerrainTier1Feed& feed) {
         s->visualHeightVersionCopied = UINT64_MAX; // force re-snapshot into the new buffer
         write_descriptors(s);
     }
+    // VK-TERRAIN-FENCE-DEFER-1: single-instance rare rewrite (once-per-mission bake)
+    // — device-idle before writing in place (see snapshot_height).
+    vkDeviceWaitIdle(s->device);
     std::vector<uint8_t> scratch((size_t)feed.visualHeightBytes);
     glBindBuffer(GL_SHADER_STORAGE_BUFFER, (GLuint)feed.glVisualHeightSsbo);
     glGetBufferSubData(GL_SHADER_STORAGE_BUFFER, 0, (GLsizeiptr)feed.visualHeightBytes, scratch.data());
@@ -2342,6 +2398,8 @@ extern "C" int mc2_vk_terrain_island_run(int w, int h) {
     using clk = std::chrono::steady_clock;
     auto usSince = [](clk::time_point t0){ return std::chrono::duration<double, std::micro>(clk::now() - t0).count(); };
     const clk::time_point tTotal0 = clk::now();
+    const bool perf = terrainPerfGateRequested();
+    double us_fence_wait = 0.0;   // deferred retire (beginFrame wait) OR inline wait under the killswitch
 
     // Pull this frame's LOD0 patch list + shared params from the GL terrain path.
     Mc2TerrainTier1Feed feed{};
@@ -2438,6 +2496,11 @@ extern "C" int mc2_vk_terrain_island_run(int w, int h) {
         const VkImageView wantCsmFullMapView = s->csmFullMapDirect ? s->csmFullMapExternalView : s->csmFullMapView;
         if (wantView != s->dynShadowBoundView || wantCsmArrayView != s->csmArrayBoundView
             || wantCsmFullMapView != s->csmFullMapBoundView) {
+            // VK-TERRAIN-FENCE-DEFER-1: a prior terrain submit may still be in flight
+            // using these sets under the deferred retire (the old inline wait made
+            // this rewrite safe for free). Bound-view switches are RARE (first frame
+            // of a direct-consume switch / warmup transitions) — device-idle first.
+            vkDeviceWaitIdle(s->device);
             write_descriptors(s);
             s->dynShadowBoundView = wantView;
             s->csmArrayBoundView = wantCsmArrayView;
@@ -2469,14 +2532,30 @@ extern "C" int mc2_vk_terrain_island_run(int w, int h) {
         }
     }
 
+    // CPU staging cost so far (copies + snapshots); the per-parity UBO fill below is
+    // added after the beginFrame wait so stageUs never absorbs the deferred retire.
+    const double usStagePre = usSince(tStage0);
+
+    // VK-TERRAIN-FENCE-DEFER-1 (water-pilot template): begin the shared-slot frame
+    // BEFORE the per-frame UBO staging. The slot-fence wait inside beginFrame IS the
+    // deferred retire of the submit that last used this parity slot, and it protects
+    // everything indexed [par] below: the dynamic UBO, the descriptor set, and the
+    // command buffer. The inline post-submit wait this replaces is kept only under
+    // the MC2_VK_TERRAIN_FENCE_DEFER=0 killswitch.
+    const clk::time_point tFence0 = clk::now();
+    VkFrameSync fsC = vkImageResourceBeginFrame(s->colorRes);
+    us_fence_wait = usSince(tFence0);
+    const uint32_t par = fsC.parity & 1u;
+    const clk::time_point tUboFill0 = clk::now();
+
     // Fill one dynamic-UBO slot per LOD0 patch (shared MVP/mapSide/halfMap + per-patch
     // blockOrigin). quadCount comes from the patch record (drives grid rebuild).
     const uint32_t patchCount = feed.patchCount;
     const VkDeviceSize needUbo = (VkDeviceSize)patchCount * sizeof(TerrainFrameUBO);
-    if (!ensure_ubo_capacity(s, needUbo)) { s->disabled = true; return 0; }
+    if (!ensure_ubo_capacity(s, par, needUbo)) { s->disabled = true; return 0; }
     {
         void* p = nullptr;
-        if (vmaMapMemory(s->allocator, s->uboAlloc, &p) == VK_SUCCESS) {
+        if (vmaMapMemory(s->allocator, s->uboAlloc[par], &p) == VK_SUCCESS) {
             TerrainFrameUBO* slots = reinterpret_cast<TerrainFrameUBO*>(p);
             for (uint32_t i = 0; i < patchCount; ++i) {
                 TerrainFrameUBO u{};
@@ -2570,10 +2649,10 @@ extern "C" int mc2_vk_terrain_island_run(int w, int h) {
                 u.quadCountY        = feed.patches[i].quadCountY;
                 slots[i] = u;
             }
-            vmaUnmapMemory(s->allocator, s->uboAlloc);
+            vmaUnmapMemory(s->allocator, s->uboAlloc[par]);
         }
     }
-    g_health.stageUs = usSince(tStage0);
+    g_health.stageUs = usStagePre + usSince(tUboFill0);
     g_health.patchRecords = patchCount;
 
     // ---- Item-4: terrain is the native first owner — no GL->VK semaphore handoff.
@@ -2581,9 +2660,8 @@ extern "C" int mc2_vk_terrain_island_run(int w, int h) {
     // normal/depth need no per-frame sync object (this pass CLEARs and writes them,
     // downstream native islands chain Vulkan-owned). The old hybrid arm
     // (BeginFrame x3 + glInteropSignalToVk x3 + vk2gl signal sems + glInteropWaitFromVk)
-    // was deleted.
-    VkFrameSync fsC = vkImageResourceBeginFrame(s->colorRes);
-    VkCommandBuffer cb = s->cbuf[fsC.parity & 1u];
+    // was deleted. VK-TERRAIN-FENCE-DEFER-1: beginFrame is HOISTED above the UBO fill.
+    VkCommandBuffer cb = s->cbuf[par];
 
     const clk::time_point tRender0 = clk::now();
     ZoneNamedN(zTerrRec, "VK-terrain-record-submit", true);   // VK-FLIP-FIELD-REPORT-1: CPU record+queue-submit (to fn return)
@@ -2634,7 +2712,7 @@ extern "C" int mc2_vk_terrain_island_run(int w, int h) {
         const PatchMesh* pm = getOrBuildPatch(s, pr.quadCountX, pr.quadCountY, pr.lodStep);
         if (!pm || pm->indexCount == 0) continue;
         const uint32_t dynOff = i * (uint32_t)sizeof(TerrainFrameUBO);
-        vkCmdBindDescriptorSets(cb, VK_PIPELINE_BIND_POINT_GRAPHICS, s->playout, 0, 1, &s->set, 1, &dynOff);
+        vkCmdBindDescriptorSets(cb, VK_PIPELINE_BIND_POINT_GRAPHICS, s->playout, 0, 1, &s->set[par], 1, &dynOff);
         vkCmdBindPipeline(cb, VK_PIPELINE_BIND_POINT_GRAPHICS, s->pipe);
         VkDeviceSize vboOff = 0;
         vkCmdBindVertexBuffers(cb, 0, 1, &pm->vbo, &vboOff);
@@ -2675,11 +2753,28 @@ extern "C" int mc2_vk_terrain_island_run(int w, int h) {
     si.commandBufferCount = 1; si.pCommandBuffers = &cb;
     if (vkQueueSubmit(s->queue, 1, &si, fsC.fence) != VK_SUCCESS) { setFallback("submit_failed"); s->disabled = true; return 0; }
 
-    if (vkWaitForFences(s->device, 1, &fsC.fence, VK_TRUE, 5ull*1000*1000*1000) != VK_SUCCESS) {
-        setFallback("fence_timeout"); s->disabled = true; return 0;
+    // VK-TERRAIN-FENCE-DEFER-1: the inline retire wait is GONE — the submit's fence
+    // (the shared parity-slot fence) is waited at the slot's next
+    // vkImageResourceBeginFrame, i.e. the deferred retire that beginFrame above the
+    // UBO fill already timed into us_fence_wait. Everything this frame's submit uses
+    // is per-parity ([par]), write-once, or rare-write device-idle-guarded, so
+    // nothing is rewritten before that wait. GPU-side ordering against downstream
+    // islands/post/composite never depended on this CPU wait (same-queue submission
+    // order + their command buffers' entry barriers).
+    // Killswitch MC2_VK_TERRAIN_FENCE_DEFER=0 restores the inline wait.
+    if (!terrainFenceDeferEnabled()) {
+        const clk::time_point tInline0 = clk::now();
+        if (vkWaitForFences(s->device, 1, &fsC.fence, VK_TRUE, 5ull*1000*1000*1000) != VK_SUCCESS) {
+            setFallback("fence_timeout"); s->disabled = true; return 0;
+        }
+        us_fence_wait = usSince(tInline0);
     }
     g_health.drawUs = usSince(tRender0);
-    s->gpuTimer.resolve();   // VK-DRAW-PERF-1: fence signalled -> fold GPU segment times
+    // VK-DRAW-PERF-1 note under the deferred retire: resolve() uses
+    // VK_QUERY_RESULT_WAIT_BIT, so with MC2_VK_GPU_TIMESTAMPS armed it blocks until
+    // this frame's pass completes (diagnostic-only stall; gate is default-OFF and
+    // resolve() is a no-op without it).
+    s->gpuTimer.resolve();
 
     // HARD assert: no COLOR-side readback fired on the co-write path (the height
     // snapshot uses glGetBufferSubData on an SSBO — that is NOT a color/tex readback
@@ -2700,6 +2795,16 @@ extern "C" int mc2_vk_terrain_island_run(int w, int h) {
              "(color(MRT0)+normal(MRT1 a=1.0)+depth co-written; no composite).",
              patchCount, drawn, skirtDrawn);
         s_firstOk = true;
+    }
+    if (perf) {
+        // [VK_TERRAIN_PERF] — water-style per-frame us breakdown (MC2_VK_TERRAIN_PERF).
+        // record_submit_us = record + submit (+ inline fence wait under the killswitch);
+        // fence_wait_us = the deferred retire (beginFrame wait) or the inline wait.
+        std::fprintf(stderr,
+            "[VK_TERRAIN_PERF] tier1=1 patches=%u stage_us=%.1f record_submit_us=%.1f "
+            "fence_wait_us=%.1f island_total_us=%.1f\n",
+            patchCount, g_health.stageUs, g_health.drawUs, us_fence_wait, g_health.totalUs);
+        std::fflush(stderr);
     }
     return 1;
 }
