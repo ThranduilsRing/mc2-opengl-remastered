@@ -1,5 +1,72 @@
 # VK-ARC-STATE — current state block (update every session)
 
+## 2026-07-16 (PM-2) — ★VK-PERF-2: cleanup + VK-PRESENT-SINGLESUBMIT-1 (slice 5) + VK-WATER-FENCE-DEFER-1 (cluster-A pilot) SHIPPED. The present-path CPU drain is GONE (composite wait 76.9 -> 0.7 us/frame) and the water island dropped ~120 us/frame. Both 0.4c lanes at `61031785`.
+
+**★ COMMITS:**
+- `97ca133f` cleanup(vk) — MC2_VK_PROP_FEED_AUDIT + the audit-gated GL light readback +
+  the dead GL SSBO fields in Mc2ColorPropLightFeed DELETED (clean audit was banked in
+  VK-PERF-1: 3000 frames, mismatches=0). Mech keeps its own audit by design.
+- `e01ac03f` VK-PRESENT-SINGLESUBMIT-1 — composite records into its OWN cbuf
+  (Impl::compositeCbuf) at composite time, NO submit/drain; presentGLFrame submits
+  {compositeCbuf, tail cbuf} in ONE vkQueueSubmit (acquire-sem wait only). The only
+  CPU wait on the present path is the inFlight wait for the PREVIOUS frame's single
+  submit, taken at composite-record time. Fence discipline re-audited for DISARM-2b:
+  reset ONLY immediately before the signaling submit; every decline path leaves it
+  SIGNALED (no hang); pending composite dropped on resize (+ a new defensive fence
+  wait before buildSharedImage — protection the old drain provided incidentally),
+  re-recorded next frame otherwise. CSM shadow-debug overlay STASHED + recorded in
+  the tail (its old own-submit would have executed BEFORE the un-drained composite
+  and been overwritten; it also left inFlight unsignaled — latent hang, fixed).
+  Slice-4's compositeFence deleted (superseded). Single-frame-in-flight dependency
+  of the HUD tail documented in-code. Present-path submits per frame: 2 -> 1.
+- `61031785` VK-WATER-FENCE-DEFER-1 — cluster-A deferred-retire pilot on ONE island:
+  water's inline post-submit fence wait retired; the retire moves to the parity
+  slot's next vkImageResourceBeginFrame (the mechanism vk_image_resource.h already
+  provides — the islands' inline waits were defeating it). Made correct by
+  construction: thinBuf/vsUbo/fsUbo/descriptor-set all become per-parity pairs,
+  beginFrame HOISTED above staging so the slot-fence wait protects the [par]
+  buffers it used to trail; recipe/HDRI stay single (rare writes device-idle-
+  guarded; ensure_hdri's descriptor update now device-idles — its safety comment
+  relied on the inline wait). Killswitch MC2_VK_WATER_FENCE_DEFER=0 restores the
+  inline wait (allowlisted); per-parity staging holds either way.
+
+**★ MEASURED (field env mc2_01, 1707x960, IMMEDIATE present, quiet machine, us
+timers per the plan's no-smoke-FPS rule):**
+- Present path: composite wait avg **76.9 us/frame (slice-4 fence) -> 0.7 us/frame**
+  (single submit; the wait is now the previous-frame retire, banked by the SAME
+  [QWI-WAIT] receipt tag). Health invariants intact across 4200-4800-frame runs:
+  present_frames == composite_vk_frames == tail_hook_frames == copy1_skip ==
+  gl_handoff_skip, hud_vk_textured/serialized=74/74, uploads rate unchanged,
+  readback_changed=1 (live checksums), resize_recreate_ok=1, zero declines, zero
+  fail-soft. Pixel oracle PPM: full scene + brackets/health bars (tail composited).
+  Fire-event capture (armed frame=599 pin=629): all weapon-VFX classes composite
+  with the additive look — tail-HUD path proven under the single submit.
+- Water pilot ([VK_WATER_PERF], thin=6179, same pose):
+  **fence_wait 118-127 us -> 1.5-1.7 us; island_total 152-161 -> 33-34 us/frame**
+  (killswitch=0 vs default A/B in one binary). Water pixels at the field pose
+  identical (shoreline bands intact).
+- Sync-validation (MC2_VULKAN_VALIDATION=sync): **0 hazards** on both slices;
+  validation_errors=21 == the pre-existing baseline (count-identical, VK-PERF-1
+  control). Strict canary (MC2_VK_PRESENT_NATIVE_STRICT): 0 aborts, live checksums.
+
+**★ SMOKE:** VK-umbrella tier1 5/5 PASS +0 after slice 5 AND after the water pilot
+(local runner, --exe 0.4c); GL-state canonical at final HEAD — see session log.
+
+**★ OPEN / NEXT:**
+1. The single submit + water pilot together UNBLOCK the cluster-A collapse: next
+   candidates are the remaining islands' inline waits (terrain/prop/mech/shadow),
+   one at a time, each needing its own per-parity staging audit (mech instAlloc/
+   uboAlloc + scheme cache, terrain patch UBOs, prop inst/light SSBOs are
+   single-instance today — the same shape as the water pilot).
+2. 2-frames-in-flight remains blocked on per-frame HUD vertex buffers + mirror
+   double-buffering (documented in-code at Impl::pendingHudDraws).
+3. Copy-2 blit-elimination (composite straight to swapchain) deliberately NOT
+   bundled (plan sequencing note #3): format-variant costs + loses the sharedImg
+   verify tap; only worth inside a future restructure.
+4. present_mode=IMMEDIATE in this env — under FIFO the acquire-sem wait now gates
+   the whole single submit's COLOR_ATTACHMENT_OUTPUT stage (GPU-side scheduling
+   only, no CPU wait); re-check pacing behavior when a FIFO field config appears.
+
 ## 2026-07-16 (PM) — ★VK-PERF-1: top-4 perf slices of VK-PERF-SLICE-PLAN-2026-07-16 SHIPPED (slices 1-4, one commit each + a measure-only prep commit); slice 5 (VK-PRESENT-SINGLESUBMIT-1) read and DEFERRED per plan scope. All parity gates green; both 0.4c lanes deployed at `42dd81e1`.
 
 **★ COMMITS (in order):**
