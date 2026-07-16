@@ -218,6 +218,17 @@ extern "C" void mc2_hzb_dump_camera_view(void)
     // No-op: HZB camera-view capture is a game-only debug tool; absent in EditRel.
 }
 
+// Same pre-existing-gap pattern as mc2_hzb_dump_camera_view above: commit
+// 560dfc1d (BOOKMARK-SAVE-BUTTON-1) defined mc2_save_camera_bookmark in
+// code/gamecam.cpp (game TU, not linked into EditRel) and calls it from
+// GuiRuntime/EditorInspector.cpp (shared by the editor) — EditRel link broke.
+// Provide the no-op shim; report an empty path so the inspector shows nothing.
+extern "C" void mc2_save_camera_bookmark(char* outPath, int outPathLen)
+{
+    if (outPath && outPathLen > 0)
+        outPath[0] = '\0';
+}
+
 // ---------------------------------------------------------------------------
 // InitGameOS
 // ---------------------------------------------------------------------------
