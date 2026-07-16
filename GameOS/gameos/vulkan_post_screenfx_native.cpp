@@ -271,6 +271,7 @@ struct gosPostProcess::VkPostScreenFx {
     VkShaderModule   shadowVert = VK_NULL_HANDLE, shadowFrag = VK_NULL_HANDLE, shadowCsmFrag = VK_NULL_HANDLE;
     VkCommandPool    cpool = VK_NULL_HANDLE;
     VkCommandBuffer  cbuf[2] = {VK_NULL_HANDLE, VK_NULL_HANDLE}; // per parity slot
+    VkFence          submitFence = VK_NULL_HANDLE; // VK-QWI-TO-FENCE-1: per-submit retire fence (shared by both submits; wait+reset after each)
 };
 
 static bool vkPostScreenFxDirectChainEnabled();
@@ -319,6 +320,7 @@ void destroy_state(gosPostProcess::VkPostScreenFx* s) {
         if (s->gbufSampler) vkDestroySampler(d, s->gbufSampler, nullptr);
         if (s->shadowCompareSampler) vkDestroySampler(d, s->shadowCompareSampler, nullptr);
         if (s->depthSampleView) vkDestroyImageView(d, s->depthSampleView, nullptr);
+        if (s->submitFence) vkDestroyFence(d, s->submitFence, nullptr);   // VK-QWI-TO-FENCE-1
         if (s->cpool)    vkDestroyCommandPool(d, s->cpool, nullptr);
         if (s->allocator != VK_NULL_HANDLE) {
             if (s->cloudUbo) vmaDestroyBuffer(s->allocator, s->cloudUbo, s->cloudUboAlloc);
@@ -950,18 +952,33 @@ bool gosPostProcess::runVkPostScreenShadowStaticNative()
 
     // VK-RUNG8 item-4: direct-chain only — the submit waits/signals no GL<->VK
     // semaphores; the images stay Vulkan-owned for the following native pass.
+    // VK-QWI-TO-FENCE-1: dedicated per-submit fence instead of the queue-wide drain
+    // (see vulkan_post_fog_native.cpp for the full rationale). Fail-soft to QWI if
+    // fence creation ever fails.
+    if (s->submitFence == VK_NULL_HANDLE) {
+        VkFenceCreateInfo fci{};
+        fci.sType = VK_STRUCTURE_TYPE_FENCE_CREATE_INFO;
+        if (vkCreateFence(s->device, &fci, nullptr, &s->submitFence) != VK_SUCCESS)
+            s->submitFence = VK_NULL_HANDLE;
+    }
     VkSubmitInfo si{};
     si.sType = VK_STRUCTURE_TYPE_SUBMIT_INFO;
     si.commandBufferCount = 1; si.pCommandBuffers = &cb;
-    if (vkQueueSubmit(s->queue, 1, &si, VK_NULL_HANDLE) != VK_SUCCESS) {
+    if (vkQueueSubmit(s->queue, 1, &si, s->submitFence) != VK_SUCCESS) {
         setFallback("submit_failed"); return false;
     }
 
-    // Slot-recycle guard (water pattern): CPU-drain the queue so this frame's command
-    // buffer is retired before reuse next frame.
+    // Slot-recycle guard: this frame's command buffer must be retired before reuse
+    // next frame (per-submit fence; QWI only as the fence-creation fail-soft).
     {
         const clk::time_point tWait0 = clk::now();
-        if (vkQueueWaitIdle(s->queue) != VK_SUCCESS) {
+        if (s->submitFence != VK_NULL_HANDLE) {
+            if (vkWaitForFences(s->device, 1, &s->submitFence, VK_TRUE,
+                                5ull * 1000 * 1000 * 1000) != VK_SUCCESS) {
+                setFallback("fence_timeout"); return false;
+            }
+            vkResetFences(s->device, 1, &s->submitFence);
+        } else if (vkQueueWaitIdle(s->queue) != VK_SUCCESS) {
             setFallback("queue_wait_idle_failed"); return false;
         }
         g_fx.waitUsLast = std::chrono::duration<double, std::micro>(clk::now() - tWait0).count();
@@ -1140,18 +1157,33 @@ unsigned gosPostProcess::runVkPostScreenFxNative()
 
     // ---- Submit (VK-RUNG8 item-4: direct-chain only — no GL<->VK semaphores). The
     // images stay Vulkan-owned for the following native pass. ----
+    // VK-QWI-TO-FENCE-1: dedicated per-submit fence instead of the queue-wide drain
+    // (see vulkan_post_fog_native.cpp for the full rationale). Fail-soft to QWI if
+    // fence creation ever fails.
+    if (s->submitFence == VK_NULL_HANDLE) {
+        VkFenceCreateInfo fci{};
+        fci.sType = VK_STRUCTURE_TYPE_FENCE_CREATE_INFO;
+        if (vkCreateFence(s->device, &fci, nullptr, &s->submitFence) != VK_SUCCESS)
+            s->submitFence = VK_NULL_HANDLE;
+    }
     VkSubmitInfo si{};
     si.sType = VK_STRUCTURE_TYPE_SUBMIT_INFO;
     si.commandBufferCount = 1; si.pCommandBuffers = &cb;
-    if (vkQueueSubmit(s->queue, 1, &si, VK_NULL_HANDLE) != VK_SUCCESS) {
+    if (vkQueueSubmit(s->queue, 1, &si, s->submitFence) != VK_SUCCESS) {
         setFallback("submit_failed"); s->disabled = true; return 0;
     }
 
-    // Slot-recycle guard (water pattern): CPU-drain the queue so this frame's command
-    // buffer is retired before reuse next frame.
+    // Slot-recycle guard: this frame's command buffer must be retired before reuse
+    // next frame (per-submit fence; QWI only as the fence-creation fail-soft).
     {
         const clk::time_point tWait0 = clk::now();
-        if (vkQueueWaitIdle(s->queue) != VK_SUCCESS) {
+        if (s->submitFence != VK_NULL_HANDLE) {
+            if (vkWaitForFences(s->device, 1, &s->submitFence, VK_TRUE,
+                                5ull * 1000 * 1000 * 1000) != VK_SUCCESS) {
+                setFallback("fence_timeout"); s->disabled = true; return 0;
+            }
+            vkResetFences(s->device, 1, &s->submitFence);
+        } else if (vkQueueWaitIdle(s->queue) != VK_SUCCESS) {
             setFallback("queue_wait_idle_failed"); s->disabled = true; return 0;
         }
         g_fx.waitUsLast = std::chrono::duration<double, std::micro>(clk::now() - tWait0).count();

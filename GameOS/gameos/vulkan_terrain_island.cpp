@@ -1483,8 +1483,18 @@ void end_oneshot(TerrainIsland* s, VkCommandBuffer cb) {
     vkEndCommandBuffer(cb);
     VkSubmitInfo si{}; si.sType = VK_STRUCTURE_TYPE_SUBMIT_INFO;
     si.commandBufferCount = 1; si.pCommandBuffers = &cb;
-    vkQueueSubmit(s->queue, 1, &si, VK_NULL_HANDLE);
-    vkQueueWaitIdle(s->queue);
+    // VK-QWI-TO-FENCE-1: transient per-submit fence instead of a queue-wide drain
+    // (copy-once helper, not per-frame; fail-soft to QWI if fence creation fails).
+    VkFence f = VK_NULL_HANDLE;
+    VkFenceCreateInfo fci{}; fci.sType = VK_STRUCTURE_TYPE_FENCE_CREATE_INFO;
+    if (vkCreateFence(s->device, &fci, nullptr, &f) != VK_SUCCESS) f = VK_NULL_HANDLE;
+    vkQueueSubmit(s->queue, 1, &si, f);
+    if (f != VK_NULL_HANDLE) {
+        vkWaitForFences(s->device, 1, &f, VK_TRUE, 5ull * 1000 * 1000 * 1000);
+        vkDestroyFence(s->device, f, nullptr);
+    } else {
+        vkQueueWaitIdle(s->queue);
+    }
     vkFreeCommandBuffers(s->device, s->cpool, 1, &cb);
 }
 

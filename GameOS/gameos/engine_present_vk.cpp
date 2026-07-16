@@ -101,6 +101,9 @@ struct EnginePresentVk::Impl {
     VkCommandBuffer cbuf      = VK_NULL_HANDLE;
     VkSemaphore     acquireSem = VK_NULL_HANDLE;
     VkFence         inFlight   = VK_NULL_HANDLE;
+    // VK-QWI-TO-FENCE-1: dedicated fence for the native-composite submit (replaces
+    // the composite's queue-wide vkQueueWaitIdle drain; waited+reset inline).
+    VkFence         compositeFence = VK_NULL_HANDLE;
 
     // the shared VK-only present image (native VK composite writes it, VK blits it
     // into the swapchain). VK-RUNG8-ITEM8: no GL interop view / copy FBO any more.
@@ -1825,6 +1828,11 @@ bool EnginePresentVk::init(VulkanContext& ctx, SDL_Window* glWindow, uint32_t w,
         fci.flags = VK_FENCE_CREATE_SIGNALED_BIT;
         if (vkCreateFence(s.dev, &fci, nullptr, &s.inFlight) != VK_SUCCESS)
             return fail("vkCreateFence(inFlight) failed");
+        // VK-QWI-TO-FENCE-1: dedicated composite-submit fence (created unsignaled;
+        // waited+reset inline right after the composite submit each frame).
+        VkFenceCreateInfo cfci{VK_STRUCTURE_TYPE_FENCE_CREATE_INFO};
+        if (vkCreateFence(s.dev, &cfci, nullptr, &s.compositeFence) != VK_SUCCESS)
+            return fail("vkCreateFence(composite) failed");
     }
 
     // ---- shared exportable interop image + GL view + copy-1 FBO -----------
@@ -2011,17 +2019,30 @@ bool EnginePresentVk::renderNativeCompositeVisual(float exposure,
     si.pCommandBuffers = &s.cbuf;
     si.signalSemaphoreCount = sigN;
     si.pSignalSemaphores = sigN ? signalSems : nullptr;
-    // Direct-chain: no GL<->VK handoff fence; CPU-order via vkQueueWaitIdle below.
-    if (vkQueueSubmit(s.gfxQ, 1, &si, VK_NULL_HANDLE) != VK_SUCCESS)
+    // VK-QWI-TO-FENCE-1: retire the composite submit via its own dedicated fence
+    // instead of a queue-wide vkQueueWaitIdle drain. CPU-side, the fence still
+    // guarantees s.cbuf is fully retired before the tail submit reuses it (:2261),
+    // and a vkQueueSubmit fence signal is ordered after all earlier submission-order
+    // work on the queue, so the wait is never WEAKER than the drain it replaces.
+    // GPU-side ordering composite-before-blit never depended on this CPU wait
+    // (same-queue submission order + the tail cbuf's entry barriers provide it).
+    // Fail-soft: a missing fence (init variant that never created it) keeps the drain.
+    if (vkQueueSubmit(s.gfxQ, 1, &si,
+                      s.compositeFence ? s.compositeFence : VK_NULL_HANDLE) != VK_SUCCESS)
         return false;
 
     {
-        // VK-QWI-TO-FENCE-1: water-style us_fence_wait telemetry around the
-        // composite drain (the per-frame CPU-blocking wait this slice converts).
+        // Water-style us_fence_wait telemetry around the converted wait.
         using clk = std::chrono::steady_clock;
         const clk::time_point tWait0 = clk::now();
-        if (vkQueueWaitIdle(s.gfxQ) != VK_SUCCESS)
+        if (s.compositeFence) {
+            if (vkWaitForFences(s.dev, 1, &s.compositeFence, VK_TRUE,
+                                5ull * 1000 * 1000 * 1000) != VK_SUCCESS)
+                return false;
+            vkResetFences(s.dev, 1, &s.compositeFence);
+        } else if (vkQueueWaitIdle(s.gfxQ) != VK_SUCCESS) {
             return false;
+        }
         health_.composite_wait_us_last =
             std::chrono::duration<double, std::micro>(clk::now() - tWait0).count();
         health_.composite_wait_us_accum += health_.composite_wait_us_last;
@@ -2361,9 +2382,10 @@ bool EnginePresentVk::presentGLFrame(uint32_t glDrawableW, uint32_t glDrawableH,
 
     // Submit: wait ONLY on the swapchain acquire semaphore. The present image was
     // produced by the native VK composite, which already CPU-waited its own submit
-    // (vkQueueWaitIdle) -- so the image data is ready and no GL->VK semaphore is
-    // needed (item-8: the interop handoff is deleted). The tail-hook HUD/ImGui
-    // commands are in THIS command buffer, ordered by the barriers above.
+    // (per-submit compositeFence, VK-QWI-TO-FENCE-1) -- so the image data is ready
+    // and no GL->VK semaphore is needed (item-8: the interop handoff is deleted).
+    // The tail-hook HUD/ImGui commands are in THIS command buffer, ordered by the
+    // barriers above.
     VkSemaphore imgRenderSem = s.renderSems[imageIndex];
     VkSemaphore waitSem      = s.acquireSem;
     VkPipelineStageFlags waitStage = VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT;
@@ -2624,6 +2646,7 @@ void EnginePresentVk::destroy() {
         if (s.readbackMem)   { vkFreeMemory(s.dev, s.readbackMem, nullptr); s.readbackMem = VK_NULL_HANDLE; }
         if (s.sharedImg.image) vkImageResourceDestroy(&s.sharedImg, s.dev);
         if (s.inFlight)   { vkDestroyFence(s.dev, s.inFlight, nullptr); s.inFlight = VK_NULL_HANDLE; }
+        if (s.compositeFence) { vkDestroyFence(s.dev, s.compositeFence, nullptr); s.compositeFence = VK_NULL_HANDLE; }   // VK-QWI-TO-FENCE-1
         if (s.acquireSem) { vkDestroySemaphore(s.dev, s.acquireSem, nullptr); s.acquireSem = VK_NULL_HANDLE; }
         if (s.cpool)      { vkDestroyCommandPool(s.dev, s.cpool, nullptr); s.cpool = VK_NULL_HANDLE; s.cbuf = VK_NULL_HANDLE; s.readbackCbuf = VK_NULL_HANDLE; }
         destroySwapchainOnly(s);
