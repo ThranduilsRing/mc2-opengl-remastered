@@ -1238,6 +1238,22 @@ def main():
                             # ISSUE-10 / SAVE-LOAD-AIFREEZE: per-tick runBrain
                             # decision-state stderr trace (default OFF).
                             "MC2_BRAIN_FREEZE_TRACE",
+                            # META-FIX-BATCH-2 design D: resolution/aspect
+                            # contract audit (off/log/fatal) + the window-shape
+                            # overrides the resolution matrix drives. Without
+                            # these in the allowlist Popen drops them and every
+                            # matrix entry silently runs at the default
+                            # resolution with the audit disarmed (ENV-DROP).
+                            "MC2_RES_ASSERT",
+                            "MC2_WIDTH",
+                            "MC2_HEIGHT",
+                            "MC2_WINDOWED",
+                            "MC2_FORCE_43",
+                            "MC2_CAMERA_ASPECT_NATIVE",
+                            # META-FIX-BATCH-2 design F: order-liveness fixture
+                            # (move+attack orders + ORDER_LIVENESS_SUMMARY).
+                            # Also the runner-floor activation flag.
+                            "MC2_FIXTURE_ORDER_LIVENESS",
                             # R2B-STATIC-NATURAL-TOUCH-PRESERVE-1: default-ON
                             # killswitch + diagnostics for the static-natural
                             # (tree/pine-building) registry stale-drop fix. Without

@@ -56,6 +56,7 @@
 #include <vector>   // T1.15 [SPOT_DIAG v1] camera-overwrite probe state
 #include "spotlight_diag.h"  // T1.16 — (E)-owned per-slot probe registry
 #include "xform_conventions.h"  // XFORM-CONVENTION-HARNESS-1: lifted clip-space convention matrices
+#include "RenderCore/ResolutionContract.h"  // META-FIX design D: MC2_RES_ASSERT audit
 
 extern void AG_ellipse_draw(PANE *pane, LONG xc, LONG yc, LONG width, LONG height, LONG color);
 extern void AG_ellipse_fill(PANE *pane, LONG xc, LONG yc, LONG width, LONG height, LONG color);
@@ -2727,6 +2728,36 @@ void Camera::setOrthogonal(void)
 			if (s_nativeAspect && g_mechPreviewRenderDepth == 0
 				&& Environment.drawableWidth > 0 && Environment.drawableHeight > 0)
 				height2width = (float)Environment.drawableHeight / (float)Environment.drawableWidth;
+		}
+
+		// META-FIX design D (MC2_RES_ASSERT) chokepoint (i): the perspective
+		// frustum aspect must equal the drawable aspect whenever the native-
+		// aspect override is active (issue #45 class — regression here bakes a
+		// 4:3 frustum that the full-window stretch distorts). Skip conditions
+		// re-derived INDEPENDENTLY of the override block above, so a regression
+		// there cannot simultaneously disarm this audit. Default OFF = one
+		// static bool test (tier1 byte-identical).
+		if (mc2res::armed())
+		{
+			static const bool s_resAuditNativeAspect =
+				[]{ const char* e = getenv("MC2_CAMERA_ASPECT_NATIVE"); return !(e && e[0] == '0'); }();
+			extern int g_mechPreviewRenderDepth;
+			if (s_resAuditNativeAspect && g_mechPreviewRenderDepth == 0
+				&& Environment.drawableWidth > 0 && Environment.drawableHeight > 0)
+			{
+				const float expectedH2W =
+					(float)Environment.drawableHeight / (float)Environment.drawableWidth;
+				if (fabsf(height2width - expectedH2W) >= 1e-3f)
+				{
+					char resDetail[192];
+					snprintf(resDetail, sizeof(resDetail),
+						"h2w=%.5f expected=%.5f drawable=%dx%d screen=%dx%d",
+						(double)height2width, (double)expectedH2W,
+						Environment.drawableWidth, Environment.drawableHeight,
+						Environment.screenWidth, Environment.screenHeight);
+					mc2res::violation("camera_aspect", resDetail);
+				}
+			}
 		}
 
 		//

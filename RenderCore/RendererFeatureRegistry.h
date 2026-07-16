@@ -1866,6 +1866,21 @@ static constexpr EnvVarDesc kAuxEnvVars[] = {
         false,
         "META-FIX design E tier 3 (mclib/file.cpp): output path for the MC2_LOG_FILE_RESOLVE=2 JSONL resolve trace, opened for append at InitModSearchPaths (relative paths resolve against the game CWD = exe dir). Only consulted at level >= 2. Consumed by the nightly scripts/check-file-resolve-miss.py MISS audit. Promoted from the check-env-registry allowlist in META-FIX-BATCH-1."
     },
+    // META-FIX-BATCH-2 (recurrence-proofing, designs D + F — 2026-07-16)
+    {
+        "MC2_TRACE_RES_ASSERT",
+        "MC2_RES_ASSERT",
+        EnvVarKind::Trace,
+        false,
+        "META-FIX design D runtime tier (RenderCore/ResolutionContract.h): resolution/aspect contract audit. unset/0 = off (default; one static bool test, tier1 byte-identical); 1/log = one [RES_ASSERT v1] stdout marker line per violation site; fatal = abort() on violation (nonzero exit = red smoke matrix). Chokepoints: (i) Camera::setOrthogonal projection-aspect==drawable-aspect unless MC2_CAMERA_ASPECT_NATIVE=0 or mech-preview FBO (issue #45 class); (ii) per-frame HUD-clamp 800x600 invariant + drawable freshness (3-frame grace) + #49 windowed-size oracle (gameosmain.cpp draw_screen); (iii) flushHUDBatch HUD-canvas-box-in-drawable + forward-remap∘gos_HudInverseMousePoint identity within 0.5px. Static sibling: scripts/check-res-aspect-contract.py; smoke sibling: tests/smoke/matrices/resolution.json."
+    },
+    {
+        "MC2_TRACE_FIXTURE_ORDER_LIVENESS",
+        "MC2_FIXTURE_ORDER_LIVENESS",
+        EnvVarKind::Trace,
+        false,
+        "META-FIX design F behavioral fixture (code/mission.cpp soak namespace; requires MC2_SOAK_AUTOWIN): at 20% of the autowin timer every home mech is issued a COMMANDER-origin move order (300 m toward map center; PLAYER origin never installs the tac order — the trap that burned the first aimed-fire fixture run); at 30% every home mech with weapons gets a COMMANDER-origin unaimed ATTACK_TO_DESTROY on the nearest live enemy; at 90% one self-asserting 'ORDER_LIVENESS_SUMMARY issued_move=N moved=N refused=N stalled=N verdict=PASS|FAIL' line (moved = net displacement >= 25 m; refused = classified LastMoveCalcErr; dead units exempt). [ORDER_FIXTURE] lines mark each issued order. run_smoke.py treats a missing summary or verdict=FAIL as a hard fail ONLY when this var is set in the runner env (VEG-SMOKE-FLOOR activation pattern). Consumed by scripts/check-order-liveness.py. Default OFF = byte-identical."
+    },
 };
 
 // ---------------------------------------------------------------------------

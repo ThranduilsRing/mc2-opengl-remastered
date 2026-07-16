@@ -2961,6 +2961,18 @@ void __stdcall gos_SetScreenMode( DWORD Width, DWORD Height, DWORD bitDepth=16, 
 // because gameos_graphics.cpp compiles into the gameos_editor lib without it.
 void __stdcall gos_SetHudResClampEnabled( bool enabled );
 
+// META-FIX design D (MC2_RES_ASSERT runtime audit — RenderCore/
+// ResolutionContract.h): trivial getter for the clamp gate above (only the
+// setter existed before; the per-frame audit in gameosmain.cpp draw_screen
+// needs to READ it to assert "clamp enabled => logical canvas is 800x600").
+bool __stdcall gos_GetHudResClampEnabled();
+
+// META-FIX design D: fresh SDL drawable probe (graphics::get_drawable_size on
+// the live window) for the per-frame audit's staleness check — the cached
+// Environment.drawableWidth/Height only refreshes in handleEvents. Returns
+// false when no renderer/window exists yet. Read-only.
+bool __stdcall gos_ProbeDrawableSize( int* w, int* h );
+
 // PREVIEW-FBO-FIXED-800x600-1: offscreen mech-preview render target, fixed at
 // 800x600 (the legacy 2D UI's native virtual canvas -- Environment.screenWidth
 // stays 800x600 by design, see gos_SetHudResClampEnabled above). Bind/unbind

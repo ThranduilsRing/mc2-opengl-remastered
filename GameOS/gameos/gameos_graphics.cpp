@@ -53,6 +53,7 @@
 #include "../../mclib/mc2_audit.h"            // META-FIX INFRA-1 gated audit emitter
 #include "RenderCore/top_level_pass_executor.h" // APPLY-STATE-TERRAINDECAL-1: findTopLevelStateDesc
 #include "RenderCore/top_level_apply_axes.h"   // FRAMEGRAPH-APPLY-STATE-EXTEND-1: applyTopLevelGenericAxes
+#include "RenderCore/ResolutionContract.h"     // META-FIX design D: MC2_RES_ASSERT audit
 #include "../../RenderCore/frame_executor.h"     // PER-PASS-APPLY-COUNTERS-1: ApplyPassId
 #include "Stuff/Stuff.hpp"                     // Stuff::Matrix4D for gos_SetWorldToClipGL (full chain required; matrix.hpp alone creates circular include ordering)
 
@@ -1890,6 +1891,17 @@ class gosRenderer {
         bool drawDecalStaticBatch(unsigned int vboGL,
                                   const struct GosDecalStaticDraw* draws,
                                   int drawCount);
+
+        // META-FIX design D (MC2_RES_ASSERT): fresh SDL drawable probe for the
+        // per-frame audit (gameosmain.cpp mc2resFrameAudit) — the cached
+        // Environment.drawableWidth/Height only refreshes in handleEvents.
+        // Read-only; false when the window does not exist yet.
+        bool probeDrawableSize(int* w, int* h) {
+            if (!win_h_)
+                return false;
+            graphics::get_drawable_size(win_h_, w, h);
+            return true;
+        }
 
         // RENDER_STATES v1: external invalidation hook (public).
         //
@@ -7606,6 +7618,76 @@ void gosRenderer::flushHUDBatch()
         }
     }
 
+    // META-FIX design D (MC2_RES_ASSERT) chokepoint (iii): HUD canvas
+    // consistency. (a) the canvas box lies inside the drawable; (b) the
+    // forward HUD remap — hud-scale bottom-band shrink THEN canvas, composed
+    // exactly as the two vertex blocks above apply it — followed by
+    // gos_HudInverseMousePoint is the identity within 0.5 px. Catches the
+    // two-file comment-synced drift class between this function and
+    // gos_HudInverseMousePoint (gameos_graphics_params.cpp). hudCanvas mode
+    // only: the menu canvas path uses the canvas-relative mouse normalize,
+    // not gos_HudInverseMousePoint. Default OFF = one static bool test.
+    if (mc2res::armed()) {
+        int rbx = 0, rby = 0, rbw = 0, rbh = 0;
+        const bool resHudCanvas = gos_ComputeHudCanvasBox(
+            Environment.drawableWidth, Environment.drawableHeight,
+            &rbx, &rby, &rbw, &rbh);
+        if (resHudCanvas) {
+            char resDetail[192];
+            if (rbw <= 0 || rbh <= 0 || rbx < 0 || rby < 0 ||
+                rbx + rbw > Environment.drawableWidth ||
+                rby + rbh > Environment.drawableHeight) {
+                snprintf(resDetail, sizeof(resDetail),
+                         "box=%d,%d %dx%d drawable=%dx%d",
+                         rbx, rby, rbw, rbh,
+                         Environment.drawableWidth, Environment.drawableHeight);
+                mc2res::violation("hud_canvas_bounds", resDetail);
+            } else {
+                const float rdw = (float)Environment.drawableWidth;
+                const float rdh = (float)Environment.drawableHeight;
+                const float rfx = (float)rbw / rdw;
+                const float rfy = (float)rbh / rdh;
+                const float rlx = (float)width_  * ((float)rbx / rdw);
+                const float rly = (float)height_ * ((float)rby / rdh);
+                // Probe pair: one above the hud-scale bottom band, one inside
+                // it (exercises the shrink∘canvas composition when the HUD
+                // shrink is active — a canvas-only probe false-passes there).
+                const float probePts[2][2] = {
+                    { (float)width_ * 0.5f, (float)height_ * 0.25f },
+                    { (float)width_ * 0.5f, (float)height_ * 0.95f },
+                };
+                for (int rp = 0; rp < 2; ++rp) {
+                    float px = probePts[rp][0];
+                    float py = probePts[rp][1];
+                    const float hudScale = gos_GetHudScale();
+                    if (gos_GetHudScaleActive() && hudScale <= 0.999f) {
+                        const float sw = (float)width_;
+                        const float sh = (float)height_;
+                        if (py >= sh * 0.60f) {   // bottom band, as above
+                            const float ax = sw * 0.5f;
+                            const float ay = sh;
+                            px = ax + (px - ax) * hudScale;
+                            py = ay + (py - ay) * hudScale;
+                        }
+                    }
+                    px = px * rfx + rlx;
+                    py = py * rfy + rly;
+                    gos_HudInverseMousePoint(px, py);
+                    if (fabsf(px - probePts[rp][0]) > 0.5f ||
+                        fabsf(py - probePts[rp][1]) > 0.5f) {
+                        snprintf(resDetail, sizeof(resDetail),
+                                 "probe=(%.1f,%.1f) roundtrip=(%.2f,%.2f) "
+                                 "box=%d,%d %dx%d scale=%.3f",
+                                 (double)probePts[rp][0], (double)probePts[rp][1],
+                                 (double)px, (double)py,
+                                 rbx, rby, rbw, rbh, (double)gos_GetHudScale());
+                        mc2res::violation("hud_roundtrip", resDetail);
+                    }
+                }
+            }
+        }
+    }
+
     // pp->endScene() binds FB 0 and sets the full-screen viewport for us,
     // but leaves VAO 0 bound — rebind our VAO so glVertexAttribPointer works.
     glBindVertexArray(gVAO);
@@ -8122,6 +8204,22 @@ static bool g_hudResClampEnabled = true;
 void __stdcall gos_SetHudResClampEnabled( bool enabled )
 {
     g_hudResClampEnabled = enabled;
+}
+
+// META-FIX design D (MC2_RES_ASSERT): read side of the clamp gate — the
+// per-frame audit asserts "clamp enabled => Environment.screenWidth/Height
+// == 800x600" (the HUD-RES-CLAMP merge-drop class).
+bool __stdcall gos_GetHudResClampEnabled()
+{
+    return g_hudResClampEnabled;
+}
+
+// META-FIX design D: fresh drawable probe for the audit's staleness check.
+bool __stdcall gos_ProbeDrawableSize( int* w, int* h )
+{
+    if (!g_gos_renderer)
+        return false;
+    return g_gos_renderer->probeDrawableSize(w, h);
 }
 
 void __stdcall gos_SetScreenMode( DWORD Width, DWORD Height, DWORD bitDepth/*=16*/, DWORD Device/*=0*/, bool disableZBuffer/*=0*/, bool AntiAlias/*=0*/, bool RenderToVram/*=0*/, bool GotoFullScreen/*=0*/, int DirtyRectangle/*=0*/, bool GotoWindowMode/*=0*/, bool EnableStencil/*=0*/, DWORD Renderer/*=0*/)

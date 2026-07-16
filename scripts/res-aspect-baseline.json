@@ -1,10 +1,10 @@
 {
   "GameOS/gameos/gameos_graphics.cpp": 8,
   "GameOS/gameos/gameos_input.cpp": 2,
-  "GameOS/gameos/gameosmain.cpp": 20,
+  "GameOS/gameos/gameosmain.cpp": 24,
   "GameOS/gameos/gos_postprocess.cpp": 2,
   "Viewer/View.cpp": 2,
-  "mclib/camera.cpp": 13,
+  "mclib/camera.cpp": 15,
   "mclib/debugging.cpp": 2,
   "mclib/mlr/mlrsorter.cpp": 4,
   "mclib/mouse.cpp": 4,
