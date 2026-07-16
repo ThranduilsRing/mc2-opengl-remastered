@@ -1,5 +1,98 @@
 # VK-ARC-STATE — current state block (update every session)
 
+## 2026-07-16 (PM) — ★VK-PERF-1: top-4 perf slices of VK-PERF-SLICE-PLAN-2026-07-16 SHIPPED (slices 1-4, one commit each + a measure-only prep commit); slice 5 (VK-PRESENT-SINGLESUBMIT-1) read and DEFERRED per plan scope. All parity gates green; both 0.4c lanes deployed at `42dd81e1`.
+
+**★ COMMITS (in order):**
+- `2309e88c` VK-HUD-GATE-HOIST-1 — 3x `subGate("MC2_VK_VFX")` + raw DRAW_DUMP getenv hoisted
+  out of the flushHUDBatch per-draw loop (~380-450 CRT env scans/frame at 74+ textured
+  HUD draws, thousands under fire). DISARM semantics preserved: the hoisted local is
+  per-FLUSH (reads g_mc2VkSessionForcedGL through umbrellaOn() each flush, deliberately
+  NOT static); only the env token is process-memoized. Guard comments in-code.
+- `eb40282e` VK-HUD-MIRRORCOPY-1 — gosTexture rgba mirror is now
+  `shared_ptr<const vector<uint8_t>>`; VkHudDraw stores the shared_ptr (refcount bump)
+  instead of deep-copying the full atlas per textured draw (74 textured draws/frame x
+  atlas-sized buffers = several MB memcpy + ~80 alloc/free pairs/frame, while
+  ensureHudTextureMirror reads bytes only on a (handle,serial) change — 407 uploads per
+  5139 queued frames at baseline). setRgbaMirror always publishes a FRESH vector
+  (immutable-after-publication), STRONGER lifetime story across mid-frame re-bakes /
+  gos_DestroyTexture / txmmgr cache-outs. (handle,serial) keying + 4-frame eviction
+  window untouched.
+- `90b36018` VK-PROP-LIGHTFEED-NATIVE-1 — mech item-9 pattern ported to the prop island:
+  CPU LightsData array (mcTextureManager lightData_) is the per-frame light feed; the
+  per-frame glGetBufferSubData GL-SSBO readback (full GL client sync) survives ONLY
+  under the TEMPORARY `MC2_VK_PROP_FEED_AUDIT=1` byte-compare gate (smoke-allowlisted;
+  delete gate+readback next slice after this session's clean audit).
+- `99d9e199` VK-QWI-TO-FENCE-1 prep — water-style us_wait timers around every per-frame
+  vkQueueWaitIdle (composite/fog/ssao/screenfx x2/hzb): [QWI-WAIT] periodic in-run
+  receipt + [HEALTH]/[VK_PRESENT] last/avg/samples fields. Measure-only.
+- `42dd81e1` VK-QWI-TO-FENCE-1 — dedicated per-submit fences replace every
+  vkQueueWaitIdle: composite (new Impl::compositeFence), fog/ssao/screenfx/hzb
+  (per-island lazily-created submitFence, destroyed in destroy_state), and the three
+  copy-once upload helpers (transient fence). Every fence-creation failure fail-softs
+  to the old QWI. Timers kept (same [QWI-WAIT] tag for A/B greps).
+
+**★ MEASURED NUMBERS (all counter/us-timer based per the plan's "smoke FPS is NOT a
+valid FPS A/B" rule; field runs = mc2_01, 1707x960, present_mode=IMMEDIATE ~120fps):**
+- Slice 1+2 parity: `[VK_HUD_AUDIT]` frames 1-10 BIT-IDENTICAL across baseline/s1/s2
+  runs; health `hud_vk_draws_last=100 textured_last=74 serialized_last=74` identical;
+  uploads rate unchanged (407/5132 → 415/5139 → 410/5131 queued frames — the
+  portrait/comm-video serial-bump re-bake path exercised); `VK_HUD_SKIP_DECLINE=0`
+  everywhere. Slice-2 fire-event capture (MC2_VK_PRESENT_DUMP_ON_FIRE, armed
+  frame=622 pin=652): all weapon-VFX classes composite with the additive look,
+  matches banked ref `.claude/vfx-fire/mc2_01/vk_onfire_pair3_flipped.png` — PASS.
+- Slice 3: props receipts (airport pose, v0.4c lane) total_us **1462.3 → 894.6 / 483.8**
+  (two after-samples; receipts are last-frame snapshots, draw_us varies with inline
+  fence-wait luck). Cleanest read = the non-draw region that CONTAINS the retired
+  readback block: **~1274 µs → ~170-177 µs (≈ -1.1 ms/frame)**. FEED-AUDIT
+  (`MC2_VK_PROP_FEED_AUDIT=1`, 3000 audited frames, 3.54 MB compare/frame):
+  **byte-identical, mismatches=0**.
+- Slice 4 A/B (quiet machine, 60s runs, matched 7201 samples): fog wait avg
+  **80.6 µs (QWI) → 81.0 µs (fence)**; composite wait avg **73.6 → 76.9 µs**.
+  **HONEST VERDICT: no measurable wait-time win in THIS env** — IMMEDIATE present at
+  the 120fps cap leaves the queue nearly empty at wait time, and a per-submit fence's
+  signal scope still covers all earlier submission-order work (spec), so the blocking
+  set is unchanged. The plan's projected 0.3-1 ms presumed FIFO present-latency
+  scaling / posts armed. Value as shipped = structural: per-submit fences are the
+  hard prerequisite for slice 5 / the cluster-A submit collapse, and the queue-wide
+  drains (which DID balloon 115-180+ µs under GPU contention from a second mc2.exe —
+  see caveat) are gone as a semantic dependency. ssao/screenfx/hzb are opt-in
+  (unarmed in field env) — timers inert there, conversion identical in shape.
+- Sync-validation (`MC2_VULKAN_VALIDATION=sync`, 40s field runs): **0 sync hazards**
+  before AND after; validation_errors=21 on BOTH the pre-fence control (99d9e199) and
+  the fence build (42dd81e1) — the 21 are PRE-EXISTING core-validation debt
+  (image-layout-at-submit expectations on sampled GBuffer images, independentBlend,
+  linear-sampler VUIDs), byte-for-byte count-identical, NOT introduced by VK-PERF-1.
+  Nothing in the arc had ever run the sync preset in the field env before — new
+  known-issue baseline: field-env sync-preset = 21 core findings, 0 hazards.
+- Strict canary (`MC2_VK_PRESENT_NATIVE_STRICT=1` + verify): 0 aborts, 4500 clean
+  present frames, live checksums.
+
+**★ SMOKE:** canonical tier1 (--exe 0.4c lane), VK-umbrella state: **5/5 PASS +0
+destroys after slice 1, slice 2, slice 3, and slice 4** (four separate full runs;
+local runner — the mc2-main runner drops the VK env, not in its allowlist). GL-state
+via the mc2-main canonical runner at final HEAD: **5/5 PASS +0** (first run
+mission-PASS but exit 1 on the CROSS-WORKTREE fingerprint policy — exe=42dd81e1 vs
+mc2-main HEAD, the runner's documented external-exe case; re-run with
+MC2_SMOKE_REQUIRE_FINGERPRINT=0 per its own instruction). Slices 1-3 are
+GL-byte-identical by construction (all edits inside vkHudQueueEnabled()/
+MC2_VULKAN_ISLAND scopes); slice 4 touches only VK-island/present TUs.
+
+**★ CAVEATS / OPEN:**
+1. The USER was actively playing mc2 during parts of this session (second mc2.exe on
+   the same GPU) — early wait-timer runs were contention-inflated (fog 180 µs,
+   composite 178 µs avgs); the quoted A/B above is from quiet-machine reruns. All
+   perf proof is counter/us-timer based per the plan.
+2. `MC2_VK_PROP_FEED_AUDIT` + the audit-gated GL readback in
+   vulkan_color_prop_island.cpp are TEMPORARY — delete next slice (mech item-9 shape).
+3. Slice 5 (VK-PRESENT-SINGLESUBMIT-1, composite+tail single submit, cbuf split) read
+   but DEFERRED per task scope — it is now unblocked by the compositeFence split and
+   remains the lever that can actually remove the composite wait (plus 2-frames-in-
+   flight prep). Sequencing note from the plan stands: HUD-tail correctness currently
+   depends on single-frame-in-flight; any frames-in-flight change ships together with
+   per-frame HUD vertex buffers + mirror double-buffering.
+4. Field-env sync-preset validation baseline (21 pre-existing core findings) is new
+   info — candidate cleanup ladder item, NOT a VK-PERF-1 regression.
+
 ## 2026-07-16 — ★VFX-9 BALLISTIC+MISSILE GL/VK PAIRS (docs-only): the VFX-8 OPEN "per-class polish" item is CLOSED — both classes COMPOSITE under VK with the GL additive look; fire-event pairs banked.
 
 **★ RECIPE (proven, reusable — driver in session scratchpad, trivially re-creatable):**
