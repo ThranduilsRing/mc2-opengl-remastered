@@ -359,6 +359,9 @@ def main() -> int:
         print("\norder_liveness: %d leg(s), %d passed, %d failed"
               % (len(results), len(results) - n_fail, n_fail))
     if args.json:
+        _jdir = os.path.dirname(os.path.abspath(args.json))
+        if _jdir:
+            os.makedirs(_jdir, exist_ok=True)
         with open(args.json, "w", encoding="utf-8") as jf:
             json.dump({"result": "FAIL" if n_fail else "PASS",
                        "legs": results}, jf, indent=2)
