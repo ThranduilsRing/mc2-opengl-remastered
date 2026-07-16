@@ -8134,6 +8134,25 @@ long BattleMech::handleWeaponHit (WeaponShotInfoPtr shotInfo, bool addMultiplayC
 
 //---------------------------------------------------------------------------
 
+// ISSUE-17 (MC2_FIRE_DECISION_TRACE, default OFF = byte-identical): fireWeapon
+// has silent non-zero early returns — the combat decision tree said FIRE
+// (weaponsStatus > 0) but the weapon quietly skipped (body state, ready,
+// terrain, range re-check, shots, per-hotspot ripple-recycle). Emits one COMBAT
+// JSONL event per refusal so 'decision said fire but nothing came out' is
+// classifiable headlessly. Pairs with the 'nofire' event in combatDecisionTree.
+static void fireGateTrace (unsigned long wid, long weaponIndex, const char* site)
+{
+	static const bool s_fireDecisionTrace =
+		(getenv("MC2_FIRE_DECISION_TRACE") != NULL && getenv("MC2_FIRE_DECISION_TRACE")[0] != '0');
+	if (!s_fireDecisionTrace || !mc2_diag::tagEnabled("COMBAT"))
+		return;
+	char _fg[128];
+	snprintf(_fg, sizeof(_fg),
+		"{\"ev\":\"firegate\",\"wid\":%lu,\"widx\":%ld,\"site\":\"%s\"}",
+		wid, weaponIndex, site);
+	mc2_diag::writeEvent("COMBAT", 1, 0, _fg);
+}
+
 long BattleMech::fireWeapon (GameObjectPtr target, float targetTime, long weaponIndex, long attackType, long aimLocation, Stuff::Vector3D* targetPoint, float &dmgDone) {
 
 //	if (getTeam() != Team::home)
@@ -8143,24 +8162,39 @@ long BattleMech::fireWeapon (GameObjectPtr target, float targetTime, long weapon
 		(status == OBJECT_STATUS_SHUTTING_DOWN) ||
 		(status == OBJECT_STATUS_DISABLED) ||
 		(status == OBJECT_STATUS_DESTROYED))
+	{
+		fireGateTrace(getWatchID(false), weaponIndex, "status");	// ISSUE-17
 		return(1);
+	}
 
 	if ((getBodyState() == MECH_STATUSCHUNK_BODYSTATE_PARKED) ||
 		(getBodyState() == MECH_STATUSCHUNK_BODYSTATE_FALLEN_FORWARD) ||
 		(getBodyState() == MECH_STATUSCHUNK_BODYSTATE_FALLEN_BACKWARD))
+	{
+		fireGateTrace(getWatchID(false), weaponIndex, "body");	// ISSUE-17
 		return(1);
+	}
 
 	if (!isWeaponReady(weaponIndex))
+	{
+		fireGateTrace(getWatchID(false), weaponIndex, "ready");	// ISSUE-17
 		return(3);
+	}
 
 	if (!Terrain::IsGameSelectTerrainPosition(getPosition()))
+	{
+		fireGateTrace(getWatchID(false), weaponIndex, "terrain");	// ISSUE-17
 		return (1);
-		
+	}
+
 	float distanceToTarget = 0.0;
-	if (target) 
+	if (target)
 	{
 		if (target->isDestroyed())
+		{
+			fireGateTrace(getWatchID(false), weaponIndex, "dead_target");	// ISSUE-17
 			return(4);
+		}
 			
 		//We did this in calcWeaponsStatus.  Do we really need to do it again??!
 		// I have decided NO as of now!
@@ -8199,23 +8233,32 @@ long BattleMech::fireWeapon (GameObjectPtr target, float targetTime, long weapon
  		distanceToTarget = distanceFrom(*targetPoint);
 	}
 	else
+	{
+		fireGateTrace(getWatchID(false), weaponIndex, "no_target");	// ISSUE-17
 		return(4);
-		
+	}
+
 	bool inRange = weaponInRange(weaponIndex, distanceToTarget, MapCellDiagonal);
 
 	//-----------------------------------------
 	// Let's make sure the target's in range...
-	if (MPlayer) 
+	if (MPlayer)
 	{
 		if (MPlayer->isServer() && !inRange)
 			return(4);
 	}
 	else if (!inRange)
+	{
+		fireGateTrace(getWatchID(false), weaponIndex, "range");	// ISSUE-17
 		return(4);
+	}
 
 	long numShots = getWeaponShots(weaponIndex);
 	if (numShots == 0)
+	{
+		fireGateTrace(getWatchID(false), weaponIndex, "shots");	// ISSUE-17
 		return(4);
+	}
 
 	//------------------------------------------
 	// As of 4/9/97, missiles cannot be aimed...
@@ -8244,7 +8287,10 @@ long BattleMech::fireWeapon (GameObjectPtr target, float targetTime, long weapon
 
 	float recycleTime = appearance->getWeaponNodeRecycle(sourceHotSpot);
 	if (recycleTime > 0.0f)
+	{
+		fireGateTrace(getWatchID(false), weaponIndex, "node_recycle");	// ISSUE-17
 		return (3);
+	}
 		
 	//Set the hotspot for the target
 	long targetHotSpot = 0;

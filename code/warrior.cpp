@@ -115,6 +115,7 @@
 #include "brain_tactic_select.h"  // TACTIC-WEIGHTS-A: Wang-hash deterministic tactic selection
 #include"terrain_runtime.h"  // TERRAIN-RUNTIME-CONSUMER-GROUNDING-1
 #include "abl_trace.h"  // ABL-VM-FACTS-1: per-frame ABL VM statement/depth/us telemetry
+#include "../GameOS/gameos/diagnostic_trace.h"  // ISSUE-17: MC2_FIRE_DECISION_TRACE nofire JSONL events
 
 // ABL-VM-FACTS-1: TU-local definitions for the abl_trace externs.
 namespace mc2_abl_trace {
@@ -4246,6 +4247,54 @@ long MechWarrior::combatDecisionTree (void) {
 				}
 			}
 			result = NO_ERR;
+		}
+	}
+
+	// ISSUE-17 (MC2_FIRE_DECISION_TRACE, default OFF = byte-identical): refusal-
+	// side instrumentation. The fire decision has six SILENT per-weapon gates in
+	// calcWeaponsStatus (recycle / ammo / range / LOS+fire-arc conflated into
+	// NOT_LOCKED / odds<1) and none of them is observable — the reason-tally
+	// debug block above is dead (WARRIOR_DEBUG_FLAG_COMBAT never set). When a
+	// combat order is active and NO weapon fired this combat update, emit one
+	// COMBAT JSONL event with the per-gate tallies, plus one direct lineOfSight
+	// probe to split LOS from fire-arc within NOT_LOCKED. Naturally throttled to
+	// the combat-update cadence (this function re-arms combatUpdate above).
+	{
+		static const bool s_fireDecisionTrace =
+			(getenv("MC2_FIRE_DECISION_TRACE") != NULL && getenv("MC2_FIRE_DECISION_TRACE")[0] != '0');
+		if (s_fireDecisionTrace && !firedWeapon && curTacOrder.isCombatOrder() &&
+			mc2_diag::tagEnabled("COMBAT")) {
+			long tally[6] = {0, 0, 0, 0, 0, 0};	// [0]=rd [1]=am [2]=rn [3]=lk [4]=ch [5]=hot
+			for (long tw = 0; tw < myVehicle->numWeapons; tw++) {
+				switch (weaponsStatus[tw]) {
+					case WEAPON_STATUS_NOT_READY:	tally[0]++; break;
+					case WEAPON_STATUS_OUT_OF_AMMO:	tally[1]++; break;
+					case WEAPON_STATUS_OUT_OF_RANGE:tally[2]++; break;
+					case WEAPON_STATUS_NOT_LOCKED:	tally[3]++; break;
+					case WEAPON_STATUS_NO_CHANCE:	tally[4]++; break;
+					case WEAPON_STATUS_TOO_HOT:		tally[5]++; break;
+				}
+			}
+			long losFlag = -1;
+			float dist = -1.0f;
+			if (target) {
+				losFlag = myVehicle->lineOfSight(target) ? 1 : 0;
+				dist = myVehicle->distanceFrom(target->getPosition());
+			}
+			else if (targetPoint) {
+				losFlag = myVehicle->lineOfSight(*targetPoint) ? 1 : 0;
+				dist = myVehicle->distanceFrom(*targetPoint);
+			}
+			char _nf[256];
+			snprintf(_nf, sizeof(_nf),
+				"{\"ev\":\"nofire\",\"wid\":%ld,\"tgt_wid\":%ld,\"ord\":%d,\"result\":%ld,"
+				"\"rd\":%ld,\"am\":%ld,\"rn\":%ld,\"lk\":%ld,\"ch\":%ld,\"hot\":%ld,"
+				"\"los\":%ld,\"dist\":%.0f}",
+				(long)vehicleWID, target ? (long)target->getWatchID() : 0L,
+				(int)curTacOrder.code, (long)weaponsStatusResult,
+				tally[0], tally[1], tally[2], tally[3], tally[4], tally[5],
+				losFlag, (double)dist);
+			mc2_diag::writeEvent("COMBAT", 1, 0, _nf);
 		}
 	}
 

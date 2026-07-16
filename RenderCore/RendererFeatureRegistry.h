@@ -1837,6 +1837,13 @@ static constexpr EnvVarDesc kAuxEnvVars[] = {
         false,
         "ISSUE-9 headless probe (code/warrior.cpp MechWarrior::updateActions): every home-team mech without a combat order is issued an aimed-HEAD attack (same order the UI's aimHead() builds) at the nearest live enemy mech, re-issued as targets die (2 s global throttle). Pair with MC2_DIAG_TAGS=COMBAT to capture the hit-location distribution (\"loc\" field) for MC2_CALLED_SHOT_FIX A/B. Default OFF = byte-identical."
     },
+    {
+        "MC2_TRACE_FIRE_DECISION",
+        "MC2_FIRE_DECISION_TRACE",
+        EnvVarKind::Trace,
+        false,
+        "ISSUE-17 fire-refusal instrumentation (default OFF = byte-identical; needs MC2_DIAG_TAGS=...,COMBAT). (1) code/warrior.cpp combatDecisionTree: when a combat order is active and NO weapon fired this combat update, emits one 'nofire' JSONL event with per-gate tallies (rd/am/rn/lk/ch/hot from calcWeaponsStatus), a direct lineOfSight probe (splits LOS from fire-arc within NOT_LOCKED), order code, weaponsStatusResult and distance. (2) code/mech.cpp fireWeapon: emits a 'firegate' event (wid/widx/site) at each silent non-zero early return (status/body/ready/terrain/dead_target/no_target/range/shots/node_recycle) — catches 'decision said fire but weapon silently skipped'. NO behavior change."
+    },
 };
 
 // ---------------------------------------------------------------------------

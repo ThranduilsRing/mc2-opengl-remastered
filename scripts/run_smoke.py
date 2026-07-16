@@ -1229,6 +1229,9 @@ def main():
                             # (both default OFF).
                             "MC2_CALLED_SHOT_FIX",
                             "MC2_AIMED_FIRE_FIXTURE",
+                            # ISSUE-17 fire-refusal instrumentation (default OFF;
+                            # nofire/firegate events on the COMBAT diag tag).
+                            "MC2_FIRE_DECISION_TRACE",
                             # R2B-STATIC-NATURAL-TOUCH-PRESERVE-1: default-ON
                             # killswitch + diagnostics for the static-natural
                             # (tree/pine-building) registry stale-drop fix. Without
