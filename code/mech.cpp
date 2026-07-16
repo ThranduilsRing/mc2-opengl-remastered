@@ -8245,7 +8245,10 @@ long BattleMech::fireWeapon (GameObjectPtr target, float targetTime, long weapon
 	if (MPlayer)
 	{
 		if (MPlayer->isServer() && !inRange)
+		{
+			fireGateTrace(getWatchID(false), weaponIndex, "range_mp");	// ISSUE-17 / META-FIX F: was the 10th, untraced silent gate
 			return(4);
+		}
 	}
 	else if (!inRange)
 	{
@@ -8291,7 +8294,13 @@ long BattleMech::fireWeapon (GameObjectPtr target, float targetTime, long weapon
 		fireGateTrace(getWatchID(false), weaponIndex, "node_recycle");	// ISSUE-17
 		return (3);
 	}
-		
+
+	// FIREGATE-REGION-END (checked by check-order-gate-coverage.py) — every
+	// silent early-return ABOVE this sentinel must have a fireGateTrace()
+	// within the 4 preceding lines OR a KNOWN_UNCOVERED entry in the checker.
+	// Shot delivery begins below; do not move this line without updating the
+	// checker (META-FIX design F static chokepoint).
+
 	//Set the hotspot for the target
 	long targetHotSpot = 0;
 	if (target && target->getAppearance())

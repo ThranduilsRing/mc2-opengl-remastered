@@ -155,6 +155,12 @@ run_check "path_norm_selftest"     "sh scripts/check-path-normalization.sh --sel
 # fix sites survive (RULE C anchors). Runtime sibling: MC2_RES_ASSERT.
 run_check "res_aspect_contract"    "py -3 scripts/check-res-aspect-contract.py --quiet"
 run_check "res_aspect_selftest"    "py -3 scripts/check-res-aspect-contract.py --self-test 2>/dev/null"
+# META-FIX-BATCH-2 (design F): silent-order chokepoint — every fireWeapon
+# pre-delivery early-return is traced (fireGateTrace) or declared
+# (KNOWN_UNCOVERED); comment-stripped scan (four commented return(4)s in
+# mech.cpp are the trap); nofire emitter presence; both-ways-live ledger.
+run_check "order_gate_coverage"    "py -3 scripts/check-order-gate-coverage.py --quiet"
+run_check "order_gate_selftest"    "py -3 scripts/check-order-gate-coverage.py --self-test 2>/dev/null"
 
 # ---------------------------------------------------------------------------
 # Summary table
