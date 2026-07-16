@@ -87,4 +87,5 @@ deterministic repro hook.
       7 syntax errors then `[ABL_COMPILE_FATAL]`, clean early exit before VM.
 - [x] Escape proof: same fixture + `MC2_ABL_SKIP_ERRORED_MODULES=1` PASS,
       2097 frames, +0 destroys (`2026-07-16T12-09-21`).
-- [ ] Commit, clean rebuild/deploy, canonical tier1 5/5.
+- [x] Commit `4b4fdc5d`; clean rebuild/deploy fingerprint matched; canonical
+      tier1 PASS 5/5, +0 destroys (`2026-07-16T12-12-10`). Item complete.
