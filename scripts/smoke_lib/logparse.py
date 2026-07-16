@@ -82,6 +82,28 @@ MARKER_BUCKETS: tuple = (
                  "mover_coherence", "red", "allow_mover_coherence"),
     MarkerBucket(re.compile(r"\[MOVER_COHERENCE\] ADVISORY\b"),
                  "mover_coherence_advisory", "advisory", None),
+    # Design B (META-FIX-BATCH-3): fail-loud asset-load policy.
+    # asset_load_fail counts parse_fail + required_missing + appr_type_fail
+    # ONLY — deliberately NOT bare file_missing (missing optional slots are
+    # normal stock degradation; see MC2_ASSET_TRACE). These lines are
+    # always-on and load-time-only, so every tier1 run goes red the moment
+    # a stock base shape stops loading.
+    MarkerBucket(re.compile(
+        r"\[ASSET_LOAD v1\] event=(parse_fail|required_missing|appr_type_fail)\b"),
+        "asset_load_fail", "red", "allow_asset_load_fail"),
+    # icon_oob ARMED RED 2026-07-16: precondition met — the
+    # cellForIndexChecked/iconTileChecked row bound was validated against
+    # all three shipped atlas geometries (retail 256x256, MC2X 512,
+    # MCO 1024/40) by tools/icon_atlas_harness (16/16 PASS, batch-3).
+    MarkerBucket(re.compile(r"\[ASSET_LOAD v1\] event=icon_oob\b"),
+                 "icon_oob", "red", "allow_icon_oob"),
+    # appear_audit REGISTERED BUT DISARMED (advisory): whether any object
+    # class legitimately reports NULL appearance at mission_ready is
+    # unverified. Promote to red ONLY after a full 24-map MC2_APPEAR_AUDIT=1
+    # failed=0 baseline (tier1-missions baseline shipped with batch 3; the
+    # 24-map run is the documented follow-up).
+    MarkerBucket(re.compile(r"\[APPEAR_AUDIT v1\] event=missing\b"),
+                 "appear_audit", "advisory", None),
 )
 
 

@@ -169,6 +169,12 @@ run_check "order_gate_selftest"    "py -3 scripts/check-order-gate-coverage.py -
 # MC2_MOVER_COHERENCE_AUDIT (force-set by run_smoke for --tier runs).
 run_check "mover_registry_coherence" "sh scripts/check-mover-registry-coherence.sh"
 run_check "mover_registry_selftest"  "sh scripts/check-mover-registry-coherence.sh --self-test"
+# META-FIX-BATCH-3 (design B): fail-loud asset-load policy — raw loader-call
+# confinement (P1, TGL-LOAD-EXEMPT/VERIFIED tags), PART 0-4 presence pins
+# (P2), and the APPEAR-AUDIT off-map-staging carve-out (P3: scan region
+# stays position/visibility-free — INVIS-VEHICLES-FIX-1).
+run_check "tgl_load_callers"   "sh scripts/check-tgl-load-callers.sh"
+run_check "tgl_load_selftest"  "sh scripts/check-tgl-load-callers.sh --self-test"
 
 # ---------------------------------------------------------------------------
 # Summary table
