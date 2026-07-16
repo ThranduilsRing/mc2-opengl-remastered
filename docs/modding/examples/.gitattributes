@@ -1,0 +1,7 @@
+# Example-mod payloads must stay byte-exact across clones: each tutorial's
+# documented reproducible pack sha256 was computed from the working-tree
+# bytes, and several payload formats (CSV/FIT consumed by the engine) are
+# CRLF in their native/stock form. Disable git eol normalization for the
+# whole collection so a fresh checkout materializes exactly the bytes the
+# transcripts were produced against.
+* -text

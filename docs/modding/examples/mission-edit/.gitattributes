@@ -1,5 +1,0 @@
-# Mission .fit payload files must stay byte-exact (CRLF included): the doc's
-# 32-line diff claim and the reproducible pack sha256 both depend on the
-# working-tree bytes matching what was verified. Disable eol normalization.
-mod/data/missions/*.fit -text
-mod/source/*.fit -text

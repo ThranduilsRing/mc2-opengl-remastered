@@ -46,7 +46,7 @@ This repo does not ship loose stock mission files — in a real install they're 
 The copy in this mod came from the project's pristine source-data checkout (`mc2srcdata-fresh`, the git-clean tree the project's FastFiles are built from). Cross-check performed while writing this doc: the entry table of the deployed `mission.fst` declares `data/missions/mc2_01.fit` at exactly **50,027 bytes**, `mc2_01.pak` at 171,423, `mc2_01.abl` at 25,369 — all three byte-counts match the pristine tree's files exactly. (That's a size match, not a decompressed-content match — stated plainly so you know precisely how far the verification goes.) The unmodified copy ships in this folder as `mod/source/mc2_01_stock.fit` so you can diff the payload against it:
 
 ```powershell
-# run from this folder (docs/modding/examples/mission-edit/)
+cd <this-repo>\docs\modding\examples\mission-edit
 git diff --no-index mod/source/mc2_01_stock.fit mod/data/missions/mc2_01.fit
 ```
 
@@ -62,7 +62,7 @@ f TimeLimit = -1.000000        ->  f TimeLimit = 900.000000
 Read at `code/mission.cpp:3057-3073`: `-1.0` means the mission never times out; any positive value is a limit in **seconds**. Consumers, all verified:
 
 - The in-mission GUI draws a countdown whenever `m_timeLimit > 0` (`code/controlgui.cpp:373-395`), and plays the "two minutes remaining" / "thirty seconds" Betty voice samples at those thresholds (`:379-387`).
-- When the clock runs out, the mission terminates as a loss — `mis_PLAYER_LOST_BIG`, with a 5-second grace period (`code/mission.cpp:790-798`); objectives still open at that point fail (`code/objective.cpp:857`).
+- When the clock runs out, the mission terminates as a loss — `mis_PLAYER_LOST_BIG`, with a 5-second grace period (`code/mission.cpp:790-798`). One nuance: guard-a-structure objectives treat surviving to the time limit as *success* (`CGuardSpecificStructure::Status`, `code/objective.cpp:846-864` — returns `OS_SUCCESSFUL` at `:857-859` when the limit expires with the building alive and uncaptured); mc2_01's objectives aren't guard-type, so here the timeout is simply a loss.
 - Multiplayer ignores the `.fit` value entirely (`m_timeLimit = MPlayer->missionSettings.timeLimit`, `code/mission.cpp:3071-3072`) — this edit is single-player only.
 
 **Expected result:** a `15:00` countdown on the mission HUD from the moment the mission starts. *(User verification pending — described from code, not from a live capture.)*
@@ -76,7 +76,7 @@ l ResourcePoints = 22000       ->  l ResourcePoints = 42000
 
 Read at `code/mission.cpp:2303-2315` and handed to `LogisticsData::instance->setResourcePoints(numRPoints)` — this is the in-mission support budget (air strikes, sensor probes, salvage, etc.). Two overrides to know about, both verified:
 
-- A `-rp <N>` command-line value overrides the `.fit` (`MaxResourcePoints`, default `-1` = no override, `code/mechcmd2.cpp:180,2778`; applied at `code/mission.cpp:2305-2306`). If you're testing with a custom launch script, make sure it isn't passing `-rp`.
+- A `-rps <N>` command-line value overrides the `.fit` (`MaxResourcePoints`, default `-1` = no override, set by the `-rps` handler at `code/mechcmd2.cpp:180,2775-2779`; applied at `code/mission.cpp:2305-2306`). If you're testing with a custom launch script, make sure it isn't passing `-rps`.
 - Multiplayer replaces the value with the host's session setting (`code/mission.cpp:2307-2314`).
 
 **Expected result:** the resource-point counter in the in-mission support palette starts at 42,000 instead of 22,000. *(User verification pending.)*
@@ -103,12 +103,13 @@ The mission's own *name* has the identical dual mechanism — `MissionName` / `M
 
 ```
 [Part4] .. [Part29] (every block whose TeamID = 1, 26 total)
-ul BaseColor = -1944008   ->  ul BaseColor = -65536
+ul BaseColor = -1944008   ->  ul BaseColor = -65536     (20 parts)
+ul BaseColor = -5232600   ->  ul BaseColor = -65536     (6 parts — stock enemies ship two different base colors)
 ```
 
 `-65536` is `0xFFFF0000` — opaque red in the ARGB packing these fields use (the stock player-mech green is `-16711936` = `0xFF00FF00`).
 
-The unit roster is the `[Parts]`/`[PartN]` + `[Warriors]`/`[WarriorN]` block family. Per-part colors are read at `code/mission.cpp:2861-2871` (`BaseColor`, `HighlightColor1`, `HighlightColor2`, each falling back to player prefs if absent) and applied to the spawned unit's appearance via `resetPaintScheme(...)` at `code/mission.cpp:1221-1223` (mechs) / `:1238-1240` (vehicles).
+The unit roster is the `[Parts]`/`[PartN]` + `[Warriors]`/`[WarriorN]` block family. Per-part colors are read at `code/mission.cpp:2861-2871` (`BaseColor`, `HighlightColor1`, `HighlightColor2`, each falling back to player prefs if absent — or unconditionally in multiplayer) and applied to the spawned unit's appearance via `resetPaintScheme(...)` at `code/mission.cpp:1221-1223` (mechs) / `:1238-1240` (vehicles).
 
 **The trap:** look one branch up, at `code/mission.cpp:1218-1219` — units belonging to *your own* commander are **always** painted with your player-preference colors (`prefs.baseColor` etc.), and the `.fit` part colors are ignored. The `.fit` colors only apply to units that are *not* on the home commander: enemies and allies. That's why this payload paints the **enemy** lance red instead of trying to recolor your own mechs — the player-mech version of this edit would silently do nothing, and you'd waste an evening suspecting your mod setup. (Recoloring your own units is an options-screen feature, not a mission-mod mechanism.)
 
@@ -186,6 +187,8 @@ $env:MC2_ACTIVE_MOD = "mission-edit-example"
 
 The overlay is process-wide (initialized before any mission loads), so quick-start picks up your mod exactly like the campaign flow does.
 
+What quick-start does to your campaign progress: it never enters the logistics/save flow at all — the mission is initialized directly (`mission->init(...)` at `code/mechcmd2.cpp:1802`) instead of via the campaign screens where saves are managed. No code path was found that writes campaign-save state from a quick-started mission, but this wasn't exhaustively verified — if you have an irreplaceable in-progress campaign, back up your save files before experimenting, on general principle.
+
 **Spelling matters:** it's `-mission` (one dash, game quick-start). `--mission` (two dashes) belongs to the smoke-test harness and is *refused* unless `MC2_SMOKE_MODE` is set (`GameOS/gameos/gos_smoke.cpp:98-105`) — if you typo it, you'll get a `[SMOKE v1] ... argv_error` line and an instant exit, not a mission.
 
 ### What you should see (all four at once)
@@ -201,7 +204,7 @@ Mission loads onto the stock mc2_01 map with your stock starting lance — then:
 | Not sure your file is even being read | — | `$env:MC2_LOG_FILE_RESOLVE = "1"` then relaunch; watch stdout for `[mod-hit] [mission-edit-example] data/missions/mc2_01.fit -> ...` during mission load |
 | Renamed the objective but it still shows the stock text | Forgot to flip the boolean | `TitleUseResourceString`/`DescriptionUseResourceString` must be `FALSE` for the literal strings to win — see [§5](#5-edit-3--objective-rename-the-resource-string-trap) |
 | Recolored a unit but it stayed player-colored | It's one of *your* units | Home-commander units always use your prefs colors, never the `.fit` colors (`code/mission.cpp:1218-1219`) — see [§6](#6-edit-4--enemy-roster-recolor-and-the-player-color-trap) |
-| Resource points ignore your value | `-rp` on the command line, or multiplayer | Both override the `.fit` (`code/mission.cpp:2305-2314`) |
+| Resource points ignore your value | `-rps` on the command line, or multiplayer | Both override the `.fit` (`code/mission.cpp:2305-2314`) |
 | No countdown in multiplayer | Expected | MP takes the session's time limit, not the `.fit`'s (`code/mission.cpp:3071-3072`) |
 | Game asserts/crashes at mission load after your own further edits | Structural damage: removed/renamed a block or key inside the strict loops | Diff against `mod/source/mc2_01_stock.fit`; the Parts/Warriors loops `gosASSERT` on missing fields ([§6](#6-edit-4--enemy-roster-recolor-and-the-player-color-trap) safe/risky note) |
 | `--mission` prints `[SMOKE v1] ... argv_error` and exits | Two dashes = smoke-harness flag | Use single-dash `-mission` ([§7](#test-it-without-replaying-the-campaign-the--mission-quick-start-flag)) |
