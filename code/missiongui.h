@@ -223,8 +223,14 @@ public:
 
 		const char* getSupportVehicleNameFromID (long ID) { return controlGui.getVehicleNameFromID(ID); }
 
-		void	addMover (MoverPtr mover){ controlGui.addMover(mover); }	
-		void	removeMover (MoverPtr mover){ controlGui.removeMover(mover); }	
+		void	addMover (MoverPtr mover){ controlGui.addMover(mover); }
+		void	removeMover (MoverPtr mover){ controlGui.removeMover(mover); }
+
+		// META-FIX design A (MC2_MOVER_COHERENCE_AUDIT): read-only roster
+		// queries for the mover-registry coherence audit. Passthroughs.
+		bool	rosterHasMover (const Mover* mover) const { return controlGui.rosterHasMover(mover); }
+		int 	rosterIconCount (void) const { return controlGui.rosterIconCount(); }
+		Mover*	rosterIconMover (int index) const { return controlGui.rosterIconMover(index); }
 
 		int update( bool bLeftClick, bool bRightClick, int mouseX, int mouseY, GameObject* pTarget, bool bLOS ); // check for each key in the list
 		

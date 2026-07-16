@@ -523,6 +523,23 @@ void ForceGroupBar::removeMover (Mover* mover) {
 		}
 }
 
+// META-FIX design A (MC2_MOVER_COHERENCE_AUDIT): read-only roster queries.
+// See forcegroupbar.h. O(iconCount<=MAX_ICONS) pointer walks — no mutation.
+bool ForceGroupBar::hasMover (const Mover* pMover) const {
+
+	for (long i = 0; i < iconCount; i++)
+		if (icons[i] && icons[i]->unit == pMover)
+			return true;
+	return false;
+}
+
+Mover* ForceGroupBar::getIconMover (int index) const {
+
+	if (index < 0 || index >= iconCount || !icons[index])
+		return NULL;
+	return icons[index]->unit;
+}
+
 void ForceGroupBar::update( )
 {
 	bool bSelect = userInput->isLeftClick();

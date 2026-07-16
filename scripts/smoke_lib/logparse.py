@@ -72,6 +72,16 @@ MARKER_BUCKETS: tuple = (
     # gameos_graphics.cpp gosRenderer::init under MC2_SPLIT_PATH_PARITY_TRACE.
     MarkerBucket(re.compile(r"\[SPLIT_PATH_PARITY\].*\bmatch=0\b"),
                  "split_path_parity", "red", None),
+    # Design A runtime tier (META-FIX-BATCH-3): mover-registry coherence.
+    # Emitter: code/mission.cpp auditMoverCoherence under
+    # MC2_MOVER_COHERENCE_AUDIT (force-set by run_smoke for --tier runs).
+    # VIOLATION = registry divergence (#50 class) -> red; ADVISORY (I1b
+    # bar-full, I2b self/commander-origin order) surfaces in details only —
+    # this is what makes those carve-outs safe.
+    MarkerBucket(re.compile(r"\[MOVER_COHERENCE\] VIOLATION\b"),
+                 "mover_coherence", "red", "allow_mover_coherence"),
+    MarkerBucket(re.compile(r"\[MOVER_COHERENCE\] ADVISORY\b"),
+                 "mover_coherence_advisory", "advisory", None),
 )
 
 

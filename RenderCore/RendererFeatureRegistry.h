@@ -1881,6 +1881,14 @@ static constexpr EnvVarDesc kAuxEnvVars[] = {
         false,
         "META-FIX design F behavioral fixture (code/mission.cpp soak namespace; requires MC2_SOAK_AUTOWIN): at 20% of the autowin timer every armed home mech gets a COMMANDER-origin unaimed ATTACK_TO_DESTROY on the nearest live enemy (PLAYER origin never installs the tac order — the trap that burned the first aimed-fire fixture run); at 50% every home mech is issued a COMMANDER-origin move order (300 m toward map center — replaces the attack order, giving a clean 0.4*win displacement window; attack-first ordering is deliberate: the reverse self-sabotages the move bound when targets spawn in range); at 90% one self-asserting 'ORDER_LIVENESS_SUMMARY issued_move=N moved=N refused=N stalled=N verdict=PASS|FAIL' line (moved = net displacement >= 25 m from move-issue; refused = classified LastMoveCalcErr; dead units exempt). [ORDER_FIXTURE] lines mark each issued order. run_smoke.py treats a missing summary or verdict=FAIL as a hard fail ONLY when this var is set in the runner env (VEG-SMOKE-FLOOR activation pattern). Consumed by scripts/check-order-liveness.py. Default OFF = byte-identical."
     },
+    // META-FIX-BATCH-3 (recurrence-proofing, designs A + B — 2026-07-16)
+    {
+        "MC2_TRACE_MOVER_COHERENCE_AUDIT",
+        "MC2_MOVER_COHERENCE_AUDIT",
+        EnvVarKind::Trace,
+        false,
+        "META-FIX design A runtime tier (code/mission.cpp auditMoverCoherence, ~1 Hz): read-only audit that the five per-mover registries (isOnGUI render gate, force-bar roster, selection, tacmap blip, commandability) agree for home-commander SP movers. Rules: I1 live onGUI mover holds a force-bar icon (I1b bar-full carve-out = ADVISORY — addMech silently drops the 17th in release); I2 off-GUI mover has no icon and no PLAYER-origin tac order (SELF/COMMANDER origin = ADVISORY I2b: auto-powerup + brain orders are legitimate); I3 disabled-not-destroyed keeps getAppearance()!=NULL (#42b-ADJACENT); I4 every icon unit is ObjectManager-registered (identity scan, read-only); I5 selected => onGUI (#50 class). Emits deduped '[MOVER_COHERENCE] VIOLATION|ADVISORY rule=...' stdout lines (mirrored to the diag sink) + a process-exit summary. POSITION-FREE by contract: off-map staged movers (onGUI=1, authored staging — mc2_10 convoy, INVIS-VEHICLES-FIX-1) are a legitimate state; static rule S6 pins the audit region free of positional terms. run_smoke.py force-sets =1 for --tier runs (read-only; shipping default stays OFF); any VIOLATION line is a red run via the mover_coherence marker bucket. Static sibling: scripts/check-mover-registry-coherence.sh."
+    },
 };
 
 // ---------------------------------------------------------------------------

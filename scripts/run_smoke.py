@@ -21,6 +21,7 @@ import atexit
 import datetime as dt
 import json
 import os
+import re
 import subprocess
 import sys
 import time
@@ -1208,6 +1209,12 @@ def main():
             marker_overrides=e.marker_overrides,
             env_extra={
                 "MC2_SMOKE_SEED": "0xC0FFEE",
+                # META-FIX design A: force the read-only mover-registry
+                # coherence audit ON for tier runs (same spirit as
+                # MC2_DEBUG_STATE_DUMP in the canonical command — shipping
+                # default stays OFF). Any [MOVER_COHERENCE] VIOLATION line
+                # red-flags the mission via the mover_coherence marker bucket.
+                **({"MC2_MOVER_COHERENCE_AUDIT": "1"} if args.tier else {}),
                 # SMOKE-MODMISSION-ENV-GUARDS-1: inject MC2_ACTIVE_MOD/MC2_MOD_DEPS
                 # from manifest (already validated by _modmission_env_guard above).
                 **_mod_env,
@@ -1553,6 +1560,12 @@ def main():
                             # allowlisted or Popen drops it and the nightly
                             # TESS=0/1 A/B leg silently runs gate-OFF.
                             "MC2_SPLIT_PATH_PARITY_TRACE",
+                            # META-FIX design A: mover-registry coherence
+                            # audit (code/mission.cpp). Force-set for --tier
+                            # runs via env_extra above; allowlisted here so
+                            # operator-set gate-ON single-mission runs also
+                            # reach the child (Popen drops unlisted vars).
+                            "MC2_MOVER_COHERENCE_AUDIT",
                             # META-FIX design E tier 3: file-resolve ladder
                             # diagnostics + JSONL MISS trace (mclib/file.cpp).
                             # check-file-resolve-miss.py sets both through
@@ -2213,6 +2226,30 @@ def main():
             else:
                 print(f"[runner] [ORDER-LIVENESS] {e.stem}: "
                       f"ORDER_LIVENESS_SUMMARY absent", file=sys.stderr)
+
+        # META-FIX design A: advisory liveness scan — when the coherence audit
+        # was armed for this mission (tier force-set or operator env), the
+        # process-exit summary line must appear; its absence means the audit
+        # never ran (mission died pre-first-tick, or the gate was dropped).
+        # WARN only — never touches the verdict (the VIOLATION marker bucket
+        # is the red path).
+        _coh_armed = bool(args.tier) or (
+            os.environ.get("MC2_MOVER_COHERENCE_AUDIT") not in (None, "", "0"))
+        if _coh_armed:
+            if "[MOVER_COHERENCE] summary" in result.stdout_text:
+                _coh_m = re.search(
+                    r"\[MOVER_COHERENCE\] summary checked=(\d+) violations=(\d+) "
+                    r"advisories=(\d+) audits=(\d+)", result.stdout_text)
+                if _coh_m:
+                    print(f"[runner] [MOVER-COHERENCE] {e.stem}: "
+                          f"checked={_coh_m.group(1)} "
+                          f"violations={_coh_m.group(2)} "
+                          f"advisories={_coh_m.group(3)} "
+                          f"audits={_coh_m.group(4)}", file=sys.stderr)
+            else:
+                print(f"[runner] [MOVER-COHERENCE] WARN {e.stem}: audit armed "
+                      f"but no [MOVER_COHERENCE] summary line — audit never "
+                      f"ran (advisory)", file=sys.stderr)
 
         if args.fail_fast and not result.verdict.passed:
             print(f"[runner] --fail-fast: stopping at {e.stem}", file=sys.stderr)

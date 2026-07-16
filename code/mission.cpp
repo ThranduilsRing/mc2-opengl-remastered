@@ -248,6 +248,7 @@ static void simClockTraceTick(float scenarioTimeNow)
 
 #include<gameos.hpp>
 #include "mc2_verify.h"  // MC2-VERIFY-LIVE-1: live data-contract guards
+#include "mc2_audit.h"   // META-FIX INFRA-1: gated audit emitter (design A/B markers)
 #include "../GameOS/gameos/gpu_cull_substrate.h"  // C0-3: GPU cull substrate init/shutdown
 #include "../GameOS/gameos/gpu_cull_compute.h"   // C1a: GPU visibility compute dispatch
 #include "../GameOS/gameos/gpu_cull_readback.h"  // C2: async readback ring buffer
@@ -717,6 +718,172 @@ namespace {
 	static bool s_olMoveIssued   = false;
 	static bool s_olAttackIssued = false;
 	static bool s_olSummaryDone  = false;
+
+	// --- MC2_MOVER_COHERENCE_AUDIT (META-FIX design A) ------------------------
+	// ~1 Hz read-only audit that the five per-mover registries (render gate
+	// isOnGUI, force-bar roster, selection, tacmap blip, commandability) agree
+	// as a pure function of mover state, for HOME-COMMANDER movers in SP.
+	// Rules (contract: .claude/META-FIX-DESIGNS-2026-07-16.json CLASS A):
+	//   I1  onGUI && exists && !destroyed && !disabled => roster icon present
+	//   I1b ...unless the force bar is full (MAX_ICONS=16; addMech silently
+	//       drops the 17th in release) — ADVISORY, not a violation.
+	//   I2  !onGUI => no roster icon AND no PLAYER-origin tac order. A
+	//       SELF/COMMANDER-origin order on an off-GUI mover is ADVISORY (I2b):
+	//       auto-powerup (warrior.cpp handlePlayerOrder) and brain orders are
+	//       legitimate non-player writers. The #50 signature (invisible mover
+	//       drag-selected + player-ordered) violates this row.
+	//   I3  isDisabled && !isDestroyed && exists => getAppearance()!=NULL
+	//       (#42b-ADJACENT teardown-while-salvageable; the HISTORICAL #42b
+	//       guard-shape bug is static rule S4's job, invisible to runtime).
+	//   I4  every force-bar icon's unit is ObjectManager-registered (identity
+	//       scan; read-only — getWatchID(true) would ASSIGN an id, so the
+	//       registration round-trip is checked by pointer membership instead).
+	//   I5  getSelected() => onGUI (selection-gate drift; lets static rule S3
+	//       stay trimmed to three hard pins).
+	// Violations emit one deduped stdout line (mirrored to the diag sink by
+	// mc2AuditLine): "[MOVER_COHERENCE] VIOLATION rule=..." / "ADVISORY".
+	// Dedup is per (mover,rule) for the process lifetime (mc2AuditOnce, cap 64
+	// keys — one mission per process in smoke practice). A process-exit
+	// summary line reports {checked,violations,advisories,audits}.
+	//
+	// OFF-MAP STAGING CARVE-OUT (INVIS-VEHICLES-FIX-1, 2026-07-16): a mover
+	// AUTHORED at an off-map staging position with onGUI=1, brains alive,
+	// waiting for a mission flag (mc2_10's convoy, census-verified: 12 movers
+	// at x~-7500 exists=1 awake=1 onGUI=1 alpha=255, later driven on-map by
+	// the ABL trigger) is a LEGITIMATE mover state. Position outside map
+	// bounds is NOT a registry violation, so this audit deliberately keys on
+	// NO positional term — static rule S6 (check-mover-registry-coherence.sh)
+	// pins the audit region below position-free. The #50 LINKUP-PENDING row
+	// is keyed on isOnGUI==0, which staging does NOT use (staging spawns
+	// onGUI=1 like every non-destroyed part, mission.cpp part-spawn writes).
+	// mc2_10's convoy is additionally commander 2 (allied), outside this
+	// audit's home-commander scope — but the position-free contract holds
+	// even for a hypothetical home-commander staged mover.
+	static const bool s_moverCoherenceAudit =
+		mc2AuditLatch("MC2_MOVER_COHERENCE_AUDIT");
+	static float s_cohNextAuditTime = 0.0f;
+	static long  s_cohChecked    = 0;   // mover-rule evaluations (cumulative)
+	static long  s_cohViolations = 0;
+	static long  s_cohAdvisories = 0;
+	static long  s_cohAudits     = 0;   // audit ticks
+	static bool  s_cohAtexit     = false;
+
+	static void cohEmitSummary() {
+		mc2AuditLinef("[MOVER_COHERENCE] summary checked=%ld violations=%ld "
+			"advisories=%ld audits=%ld",
+			s_cohChecked, s_cohViolations, s_cohAdvisories, s_cohAudits);
+	}
+
+	// rule ids for the dedup key (per mover partId).
+	enum CohRule { COH_I1 = 1, COH_I1B, COH_I2_ICON, COH_I2_ORDER,
+	               COH_I2B_ORDER, COH_I3, COH_I4, COH_I5 };
+
+	static void cohEmit(bool violation, const char* rule, long partId,
+	                    const char* name, CohRule ruleId, const char* detail) {
+		unsigned long long key =
+			(((unsigned long long)(unsigned long)partId) << 8) |
+			(unsigned long long)ruleId;
+		if (violation) s_cohViolations++; else s_cohAdvisories++;
+		if (!mc2AuditOnce("MOVER_COHERENCE", key))
+			return;
+		mc2AuditLinef("[MOVER_COHERENCE] %s rule=%s part=%ld name=%s %s",
+			violation ? "VIOLATION" : "ADVISORY", rule, partId,
+			(name && name[0]) ? name : "?", detail ? detail : "");
+	}
+
+	// MOVER-COHERENCE-AUDIT-BEGIN (S6 scan region: position-free by contract —
+	// scripts/check-mover-registry-coherence.sh forbids positional terms here;
+	// off-map staging is a legitimate mover state, see carve-out note above.)
+	static void auditMoverCoherence(float scenarioTimeNow,
+	                                MissionInterfaceManagerPtr mi) {
+		if (!ObjectManager || !mi || MPlayer || !Commander::home)
+			return;   // SP home-commander scope only (MPlayer rosters unaudited)
+		if (scenarioTimeNow < s_cohNextAuditTime)
+			return;
+		s_cohNextAuditTime = scenarioTimeNow + 1.0f;   // ~1 Hz
+		s_cohAudits++;
+		if (!s_cohAtexit) { s_cohAtexit = true; std::atexit(cohEmitSummary); }
+
+		const long homeCmdr = Commander::home->getId();
+		const long numMovers = ObjectManager->getNumMovers();
+
+		for (long i = 0; i < numMovers; i++) {
+			MoverPtr mover = ObjectManager->getMover(i);
+			if (!mover || !mover->getExists())
+				continue;
+			if (mover->getCommanderId() != homeCmdr)
+				continue;
+			s_cohChecked++;
+
+			const long  partId    = mover->getPartId();
+			const char* name      = mover->getName();
+			const bool  onGui     = mover->isOnGUI();
+			const bool  destroyed = mover->isDestroyed();
+			const bool  disabled  = mover->isDisabled();
+			const bool  hasIcon   = mi->rosterHasMover(mover);
+
+			// I1 / I1b — live onGUI mover must hold a force-bar icon.
+			if (onGui && !destroyed && !disabled && !hasIcon) {
+				if (mi->rosterIconCount() >= MAX_ICONS)
+					cohEmit(false, "I1b", partId, name, COH_I1B,
+						"detail=bar_full");
+				else
+					cohEmit(true, "I1", partId, name, COH_I1,
+						"detail=icon_missing");
+			}
+
+			// I2 — off-GUI mover must be roster-absent and free of
+			// PLAYER-origin orders (LINKUP-PENDING row, #50 class).
+			if (!onGui) {
+				if (hasIcon)
+					cohEmit(true, "I2", partId, name, COH_I2_ICON,
+						"detail=icon_present");
+				MechWarriorPtr pilot = mover->getPilot();
+				if (pilot) {
+					TacticalOrderPtr order = pilot->getCurTacOrder();
+					if (order && order->code != TACTICAL_ORDER_NONE) {
+						char det[96];
+						sprintf(det, "detail=tac_order code=%d origin=%d",
+							(int)order->code, (int)order->origin);
+						if (order->origin == ORDER_ORIGIN_PLAYER)
+							cohEmit(true, "I2", partId, name,
+								COH_I2_ORDER, det);
+						else
+							cohEmit(false, "I2b", partId, name,
+								COH_I2B_ORDER, det);
+					}
+				}
+			}
+
+			// I3 — salvageable (disabled-not-destroyed) mover must keep its
+			// appearance (#42b-adjacent teardown class).
+			if (disabled && !destroyed && !mover->getAppearance())
+				cohEmit(true, "I3", partId, name, COH_I3,
+					"detail=appearance_null");
+
+			// I5 — selected implies onGUI (selection-gate drift, #50 class).
+			if (mover->getSelected() && !onGui)
+				cohEmit(true, "I5", partId, name, COH_I5,
+					"detail=selected_offgui");
+		}
+
+		// I4 — every force-bar icon's unit round-trips through ObjectManager
+		// registration (identity membership; destroyed movers legitimately
+		// keep icons through the death animation — registration only).
+		const int iconCount = mi->rosterIconCount();
+		for (int k = 0; k < iconCount; k++) {
+			Mover* unit = mi->rosterIconMover(k);
+			if (!unit) continue;
+			bool registered = false;
+			for (long i = 0; i < numMovers; i++) {
+				if (ObjectManager->getMover(i) == unit) { registered = true; break; }
+			}
+			if (!registered)
+				cohEmit(true, "I4", unit->getPartId(), unit->getName(),
+					COH_I4, "detail=icon_unit_unregistered");
+		}
+	}
+	// MOVER-COHERENCE-AUDIT-END
 } // namespace
 
 //----------------------------------------------------------------------------------
@@ -1117,6 +1284,12 @@ long Mission::update (void)
 		// MC2_BRIDGE_MOVER_STATE=1.
 		if (s_bridgeMoverState)
 			bridgeEmitMoverState(scenarioTime);
+
+		// META-FIX design A: mover-registry coherence audit (~1 Hz walk over
+		// home-commander movers + force-bar icons; read-only). No-op unless
+		// MC2_MOVER_COHERENCE_AUDIT=1 (static latch; gate-off = one bool).
+		if (s_moverCoherenceAudit)
+			auditMoverCoherence(scenarioTime, missionInterface);
 
 		//----------------------------------------------------
 		// Check is all player forces dead/disabled.

@@ -141,6 +141,15 @@ class ControlGui
 		void disableAllVehicleButtons();
 		void addMover (MoverPtr mover);
 		void removeMover (MoverPtr mover);
+
+		// META-FIX design A (MC2_MOVER_COHERENCE_AUDIT): read-only roster
+		// queries surfaced for the mover-registry coherence audit
+		// (code/mission.cpp auditMoverCoherence). Pure passthroughs to
+		// ForceGroupBar — no state change.
+		bool   rosterHasMover (const Mover* mover) const { return forceGroupBar.hasMover(mover); }
+		int    rosterIconCount (void) const { return const_cast<ForceGroupBar&>(forceGroupBar).getIconCount(); }
+		Mover* rosterIconMover (int index) const { return forceGroupBar.getIconMover(index); }
+
 		int  updateChat();
 
 		void beginPause();
