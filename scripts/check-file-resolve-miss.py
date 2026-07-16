@@ -22,7 +22,7 @@ missing; 2 = harness error.
 
 Usage:
   py -3 scripts/check-file-resolve-miss.py --exe <deployed mc2.exe>
-        [--mission mc2_01] [--duration 60] [--update-baseline] [--quiet]
+        [--mission mc2_01] [--duration 30] [--update-baseline] [--quiet]
         [--json out.json]
 """
 
@@ -78,8 +78,8 @@ def main():
                     help="Worktree root (default: parent of scripts/)")
     ap.add_argument("--mission", default="mc2_01",
                     help="Smoke mission to trace (default mc2_01)")
-    ap.add_argument("--duration", type=int, default=60,
-                    help="Seconds (default 60)")
+    ap.add_argument("--duration", type=int, default=30,
+                    help="Seconds (default 30 — run_smoke hard-caps at 30)")
     ap.add_argument("--update-baseline", action="store_true",
                     help="Write the observed MISS keys as the new baseline "
                          "(deliberate refresh only — eyeball the keys first)")
