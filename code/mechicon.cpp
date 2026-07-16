@@ -357,7 +357,9 @@ void MechIcon::setDrawBack( bool bSet)
 	{
 		const uint32_t actualW = (uint32_t)s_MechTextures->width;
 		const uint32_t actualH = (uint32_t)s_MechTextures->height;
-		const AssetScale::Vec2 f = AssetScale::factorFor(
+		// ISSUE-43: blitFactorFor — column-extended atlases (MCO/MC2X added
+		// icon columns) direct-index instead of mis-sampling as an upscale.
+		const AssetScale::Vec2 f = AssetScale::blitFactorFor(
 			MechIcon::s_MechTexturesKey, actualW, actualH, "mechicon.blit");
 		// Direct-index path: match original pSrcRow += width / pSrcData++
 		// semantics so out-of-bounds indices wrap exactly like before.
@@ -580,7 +582,8 @@ bool MechIcon::init( long whichIndex )
 			fflush(stdout);
 		}
 
-		const AssetScale::Vec2 f = AssetScale::factorFor(
+		// ISSUE-43: blitFactorFor (see note in blit 1 above).
+		const AssetScale::Vec2 f = AssetScale::blitFactorFor(
 			MechIcon::s_MechTexturesKey, actualW, actualH, "mechicon.blit");
 		// Direct-index path (see note in blit 1 above). No OOB clamp.
 		(void)AssetScale::nominalToActualRect(
@@ -1292,7 +1295,10 @@ bool VehicleIcon::init( Mover* pMover )
 	{
 		const uint32_t actualW = (uint32_t)s_VehicleTextures->width;
 		const uint32_t actualH = (uint32_t)s_VehicleTextures->height;
-		const AssetScale::Vec2 f = AssetScale::factorFor(
+		// ISSUE-43: blitFactorFor — the vehicle kill-icon strip is the surface
+		// the issue reports (destroyed vehicles palette-remap to the gray
+		// damage row; any mis-sampled cell turns into a literal gray block).
+		const AssetScale::Vec2 f = AssetScale::blitFactorFor(
 			VehicleIcon::s_VehicleTexturesKey, actualW, actualH, "mechicon.blit");
 		// Direct-index path (see note in mechicon.blit above). No OOB clamp.
 		(void)AssetScale::nominalToActualRect(

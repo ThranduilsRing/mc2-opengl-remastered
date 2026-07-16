@@ -273,6 +273,29 @@ void runSelfTests() {
             ++failed;
         }
     }
+    // ISSUE-43: blitFactorFor extension-vs-upscale semantics.
+    // Column-extended atlas (MCO adds icon columns; height unchanged) must
+    // direct-index; genuine upscale must scale; stock is identity.
+    {
+        State& st = state();
+        st.manifest["test/blit_ext.tga"] = NominalDims{ 1000, 48, false };
+        AssetKey k = key("test/blit_ext.tga");
+        const Vec2 fExt = blitFactorFor(k, 1080, 48, "selftest");  // MCO high8-style extension
+        const Vec2 fUp  = blitFactorFor(k, 2000, 96, "selftest");  // genuine 2x upscale
+        const Vec2 fId  = blitFactorFor(k, 1000, 48, "selftest");  // stock identity
+        const bool ok = fExt.x == 1.f && fExt.y == 1.f &&
+                        fUp.x  == 2.f && fUp.y  == 2.f &&
+                        fId.x  == 1.f && fId.y  == 1.f;
+        if (ok) {
+            log("[ASSET_SCALE v1] event=selftest_pass case=blit_factor_extension");
+            ++passed;
+        } else {
+            log("[ASSET_SCALE v1] event=selftest_fail case=blit_factor_extension "
+                "detail=\"ext=(%.3f,%.3f) up=(%.3f,%.3f) id=(%.3f,%.3f)\"",
+                fExt.x, fExt.y, fUp.x, fUp.y, fId.x, fId.y);
+            ++failed;
+        }
+    }
     log("[ASSET_SCALE v1] event=selftest_summary passed=%d failed=%d",
         passed, failed);
 }
@@ -318,6 +341,24 @@ Vec2 factorFor(const AssetKey& k, uint32_t actualW, uint32_t actualH,
     const NominalDims* nd = lookupNominal(st, k);
     if (!nd || nd->w == 0 || nd->h == 0) return {1.f, 1.f};
     return { (float)actualW / (float)nd->w, (float)actualH / (float)nd->h };
+}
+
+Vec2 blitFactorFor(const AssetKey& k, uint32_t actualW, uint32_t actualH,
+                   const char* callerTag) {
+    // ISSUE-43: pure column extension (same height, width >= nominal) means
+    // ADDED atlas cells, not an upscale — direct-index. Scaling by
+    // actualW/nominalW would shift cell i's source by (f.x-1)*offsetX pixels
+    // (MCO mcui_high8.tga 1080x48 vs nominal 1000x48 -> f.x=1.08 -> every
+    // vehicle icon mis-sampled/cross-contaminated). Stock atlases are a
+    // no-op (factor already 1.0 there).
+    State& st = state();
+    const NominalDims* nd = lookupNominal(st, k);
+    if (nd && nd->w != 0 && nd->h != 0 &&
+        actualH == nd->h && actualW >= nd->w) {
+        ++st.cFactorLookups;
+        return {1.f, 1.f};
+    }
+    return factorFor(k, actualW, actualH, callerTag);
 }
 
 int nominalToActualAxis(const AssetKey& k, int n, Axis axis,
