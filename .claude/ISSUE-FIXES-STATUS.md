@@ -30,10 +30,35 @@ outside the audit's home-commander scope.
 | B4 PART 4 MC2_APPEAR_AUDIT observational mission_ready scan (Mission::start; appearance_null|base_shape_failed; bounded 32 + summary; POSITION+VISIBILITY-FREE sentinel region per staging carve-out) | `73da4f58` | DONE — bucket ships disarmed |
 | B5 PART 5 check-tgl-load-callers.sh (P1 confinement w/ TGL-LOAD-EXEMPT tags + checked-wrap; P2 presence pins; P3 appear-audit staging carve-out position+visibility legs) + check-contracts rows + MARKER_BUCKETS (asset_load_fail red excl. file_missing; icon_oob ARMED red on harness evidence; appear_audit advisory-DISARMED until 24-map baseline) | `630c560a` | DONE — GREEN on HEAD; --self-test RED all legs; pytest tests/smoke 97/97 |
 
+| C-fix reword raw tess token in tgl_load_guard comments (design C RULE 3 scans comments; full contracts table caught it) | `758449fa` | DONE — split_path_contracts + selftest back GREEN; table = 52 passed / 9 pre-existing reds (same 9 as batches 1/2) + gated-layout ledger regen side-effect committed |
+| LIVE-EVIDENCE reclassification: required = LOD0/single base slots ONLY; LOD>0 raw+TGL-LOAD-EXEMPT (stock ships declared-but-absent higher LODs — 2storycivlivingl2 on 4/5 tier1 maps); mc2_24 manifest allow_asset_load_fail=1 for the GENUINE jaegermech gap (true positive kept firing, downgraded to advisory) | `c3f09785` | DONE — see STOCK-DATA FINDINGS below |
+
 **Env vars registered this batch (all 4 steps each, check-env-registry PASS 354):**
 MC2_MOVER_COHERENCE_AUDIT (Trace, off; tier force-set), MC2_ASSET_TRACE
 (Trace, off), MC2_ASSET_FAILLOUD (Feature, default-ON killswitch),
 MC2_ICON_FAILLOUD (Feature, off), MC2_APPEAR_AUDIT (Trace, off).
+
+**STOCK-DATA FINDINGS (first armed tier1, 2026-07-16T16-29-09 — the new
+instrumentation surfaced two REAL pre-existing silent asset failures):**
+1. `jaegermech.tgl` ABSENT from tgl.fst (jaegermech.ini is an orphan;
+   jaegermech3.tgl exists) while **mc2_24 spawns a jaegermech** (part=896,
+   appear-audit handle=7 class=2). Pre-batch: rendered INVISIBLE (the
+   msl.cpp 'leave the mech without an appearance' fail-soft — this is the
+   class's undocumented origin-bug made concrete). Post-batch: magenta
+   placeholder under default-ON MC2_ASSET_FAILLOUD + always-on
+   required_missing/appr_type_fail lines (downgraded to advisory on mc2_24
+   via manifest override until the data gap is fixed). FOLLOW-UP: fix data
+   (restore jaegermech.tgl or repoint the mc2_24 part to jaegermech3),
+   then REMOVE the override.
+2. Declared-but-absent higher LODs (`2storycivliving.ini` declares
+   FileName2, `2storycivlivingl2.tgl` doesn't exist) ship in stock data on
+   mc2_03/10/17/24 — classified as normal degradation (LOD0 renders);
+   required-slot scope narrowed to LOD0/single accordingly.
+3. APPEAR-AUDIT tier1 baseline: ZERO `appearance_null` objects across all
+   5 missions (scanned 1029-2747 objects/mission) — every hit was
+   base_shape_failed from findings 1/2. The 'does any class legitimately
+   report NULL appearance at mission_ready' unknown resolves to NO for
+   tier1; 24-map baseline remains the arming precondition (follow-up).
 
 ## META-FIX-BATCH-2 (recurrence-proofing: design D + design F) — COMPLETE 2026-07-16
 

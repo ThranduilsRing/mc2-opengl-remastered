@@ -2158,11 +2158,31 @@ void Mech3DAppearance::resetPaintScheme (DWORD red, DWORD green, DWORD blue)
 	// META-FIX design B PART 1: the fail-loud placeholder registers a REAL
 	// in-memory magenta texture at the TYPE level ("mc2_load_placeholder" is
 	// never on disk). This name-based rebind would clobber the instance's
-	// handle back to 0xffffffff (its file-missing else branch) and make the
-	// placeholder invisible — skip the repaint entirely for failed types.
-	// Cold on stock: no stock mech ever sets baseShapeLoadFailed.
+	// handle back to 0xffffffff (its file-missing else branch) and leave the
+	// placeholder a black box — instead bind the type-level magenta handle
+	// to THIS instance (the mech render path samples the instance's slot-0
+	// handle) and skip the repaint. Cold on stock: no stock mech ever sets
+	// baseShapeLoadFailed. (First live probe rendered visible-but-BLACK
+	// boxes — the early-return alone left the instance handle unset.)
 	if (mechType && mechType->baseShapeLoadFailed)
+	{
+		DWORD ph = mechType->mechShape[currentLOD]
+			? mechType->mechShape[currentLOD]->GetTextureHandle(0)
+			: 0xffffffff;
+		if (ph != 0xffffffff)
+		{
+			// The GPU mech batcher binds SLOT 0 per-actor from
+			// localTextureHandle (submitActor desc.slot0TexHandle, an
+			// mcTextureManager node index — same space as GetTextureHandle).
+			localTextureHandle = ph;
+			if (mechShape->GetNumTextures() > 0)
+			{
+				mechShape->SetTextureHandle(0, ph);
+				mechShape->SetTextureAlpha(0, false);
+			}
+		}
 		return;
+	}
 
 	// AO-1: load the imported-mech AO map once (independent of paint scheme; AO is
 	// linear grayscale, not recolored). Loaded here (before resetPaintScheme's early
