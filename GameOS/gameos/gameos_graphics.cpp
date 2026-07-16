@@ -4898,6 +4898,34 @@ void gosRenderer::init() {
                    (unsigned)p->shp_);
         fflush(stdout);
     }
+    {
+        // SHADOW-PROP-ALPHA-ATLAS-1: coalesce/BC7-atlas variant of the
+        // alpha-tested prop shadow program. Same vert+frag sources; the
+        // MC2_SHADOW_PROP_ATLAS define (makeProgram prefix -- GLSL #ifdefs do
+        // NOT inherit C++ build flags) switches the frag to sampler2DArray
+        // u_texArr + per-packet u_texLayer/u_uvScale so the shadow pass
+        // alpha-tests against the SAME array the coalesce color pass samples.
+        // Used by flushShadow/drawDynamicPropShadows when coalesce is armed and
+        // MC2_SHADOW_PROP_ALPHA_ATLAS != 0 (default ON); link failure falls
+        // back to the legacy-texture alpha program above.
+        ZoneScopedN("gosRenderer::init shadowStaticPropAlphaAtlasProg");
+        static const char* kShadowPropAlphaAtlasPrefix =
+            "#version 430\n#define MC2_SHADOW_PROP_ATLAS 1\n";
+        glsl_program* p = glsl_program::makeProgram(
+            "shadow_static_prop_alpha_atlas",
+            "shaders/shadow_static_prop.vert",
+            "shaders/shadow_static_prop.frag",
+            kShadowPropAlphaAtlasPrefix);
+        if (!p || !p->shp_)
+            fprintf(stderr, "[SHADOW_STATIC_PROP] WARNING: failed to compile "
+                            "shadow_static_prop_alpha_atlas shader -- coalesce/atlas "
+                            "foliage shadow casters fall back to the legacy-texture "
+                            "alpha program\n");
+        else
+            printf("[SHADOW_STATIC_PROP] Shadow static-prop ALPHA-ATLAS shader loaded: prog=%u\n",
+                   (unsigned)p->shp_);
+        fflush(stdout);
+    }
 
     // Load thin-record terrain program (gos_terrain_thin.vert + gos_terrain.frag, no tess).
     // Used by PatchStream M1g to draw thin records via GL_TRIANGLES, avoiding tessellation overhead.

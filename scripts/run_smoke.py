@@ -1255,6 +1255,12 @@ def main():
                             # Shadow-lane gated features (smoke coverage for the
                             # dynamic sun-shadow caster path + static building map).
                             "MC2_SHADOW_ENABLE",
+                            # SHADOW-PROP-ALPHA-1 / SHADOW-PROP-ALPHA-ATLAS-1:
+                            # prop-shadow alpha-test gates (default ON). Must be
+                            # allowlisted or Popen drops them and a gate-OFF A/B
+                            # smoke silently runs gate-ON.
+                            "MC2_SHADOW_PROP_ALPHA",
+                            "MC2_SHADOW_PROP_ALPHA_ATLAS",
                             # SHADOW-STABILITY-1: per-pass GL-state trace gate.
                             "MC2_SHADOW_STATE_TRACE",
                             # GLSTATE-SHADOW-CLIP-RESTORE-1: post-shadow GL state restore trace.

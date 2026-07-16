@@ -142,7 +142,8 @@ Headless Vulkan probe / backend-skeleton exercise gates. All read via bare `gete
 - `MC2_SHADOW_OBJ_NORMAL_BIAS` — object self-shadow normal-offset bias (kills residual acne). Default **2.0**.
 - `MC2_SHADOW_MECH_SOFT` — mech self-shadow softness (wider PCF penumbra + terminator smoothstep so flat low-poly facets fade instead of flip + raised floor). Default **1.0**, clamp [0,4]. Object self-shadow is now per-type via GBuffer1.a mask: terrain skip / static-prop NO self-shadow / mech soft (`3253d582`).
 - `MC2_PROP_SHADOW_RECEIVE` — PROP-SHADOW-RECEIVE-1: static props RECEIVE the dynamic CSM cascade (building self-shadow + prop-on-prop) in `shadow_screen.frag`. Default **OFF**; `=1` enables. OFF = legacy static-map-only reception for the a=0.25 prop class (pixel-identical). Shares the CSM PCF ledger + `MC2_SHADOW_MECH_SOFT` terminator; floor 0.4 min-combined with the static map (no double-darken).
-- `MC2_SHADOW_PROP_ALPHA` — tree-foliage shadow alpha-test (`shadow_static_prop.frag`, legacy texture path only). Default **ON**.
+- `MC2_SHADOW_PROP_ALPHA` — tree-foliage shadow alpha-test (`shadow_static_prop.frag`). Default **ON**. Covers BOTH the legacy per-texture path and (since SHADOW-PROP-ALPHA-ATLAS-1) the coalesce/BC7-atlas path.
+- `MC2_SHADOW_PROP_ALPHA_ATLAS` — SHADOW-PROP-ALPHA-ATLAS-1 kill switch: routes the prop-shadow alpha-test through the SAME coalesce group/bucket `GL_TEXTURE_2D_ARRAY` the color pass samples (program `shadow_static_prop_alpha_atlas`, per-packet `u_texLayer`/`u_uvScale`) whenever coalesce is armed. Default **ON**; `=0` reverts to legacy per-texture binds (pre-slice behavior: atlas trees whose legacy gos texture is dead cast solid square shadows). Inert when `MC2_SHADOW_PROP_ALPHA=0` or coalesce is disarmed.
 - `MC2_CLOUD_SHADOW` — cloud-shadow pass. Default **ON**.
 - **DEBUG-only:** `MC2_SHADER_PATH_TINT` (shader-path tint); `MC2_TERRAIN_DEBUG_MODE` / `MC2_TERRAIN_LOD_CHUNK_DIAG` = **30/31** = dynamic-shadow viz.
 

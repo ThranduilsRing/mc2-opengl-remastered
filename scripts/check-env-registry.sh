@@ -596,6 +596,7 @@ ALLOWLIST=(
     MC2_SHADOW_MECH_SOFT              # feature -- mech soft-shadow gate
     MC2_SHADOW_OBJ_NORMAL_BIAS        # override -- shadow object normal-bias tuning
     MC2_SHADOW_PROP_ALPHA             # override -- shadow prop alpha tuning
+    MC2_SHADOW_PROP_ALPHA_ATLAS       # override -- SHADOW-PROP-ALPHA-ATLAS-1 coalesce/BC7-atlas shadow alpha kill switch (default ON)
     MC2_SHADOW_ROBUST_BASIS           # feature -- shadow robust-basis gate
     MC2_SHADOW_STATE_TRACE            # trace
     MC2_SHADOW_TIER_STATS             # trace
