@@ -1,4 +1,5 @@
 #include <vector>
+#include <memory>   // VK-HUD-MIRRORCOPY-1: shared_ptr rgba mirror
 #include <map>
 #include <algorithm>
 #include <cstdint>
@@ -1182,35 +1183,45 @@ class gosTexture {
         const Texture& getTexture() const { return tex_; }
         uint32_t getContentSerial() const { return content_serial_; }
         void markContentMutated() { ++content_serial_; }
-        const std::vector<uint8_t>& getRgbaMirror() const { return rgba_mirror_; }
-        bool hasRgbaMirror() const { return !rgba_mirror_.empty() && mirror_w_ == tex_.w && mirror_h_ == tex_.h; }
+        // VK-HUD-MIRRORCOPY-1: the mirror is held as a shared immutable vector so
+        // VkHudDraw can reference it by refcount bump instead of deep-copying the
+        // full atlas per textured HUD draw. INVARIANT: the pointee is NEVER
+        // mutated after publication — setRgbaMirror always builds a FRESH vector
+        // and swaps the pointer, so queued draws holding an older serial's bytes
+        // stay valid across mid-frame re-bakes and texture destruction.
+        std::shared_ptr<const std::vector<uint8_t>> getRgbaMirror() const { return rgba_mirror_; }
+        bool hasRgbaMirror() const { return rgba_mirror_ && !rgba_mirror_->empty() && mirror_w_ == tex_.w && mirror_h_ == tex_.h; }
 
         void setRgbaMirror(int w, int h, TexFormat format, const void* pixels) {
             if(w <= 0 || h <= 0 || pixels == nullptr) {
-                rgba_mirror_.clear();
+                rgba_mirror_.reset();
                 mirror_w_ = 0;
                 mirror_h_ = 0;
                 return;
             }
             const size_t pixelCount = (size_t)w * (size_t)h;
-            rgba_mirror_.resize(pixelCount * 4u);
+            auto fresh = std::make_shared<std::vector<uint8_t>>();
+            fresh->resize(pixelCount * 4u);
+            std::vector<uint8_t>& dst = *fresh;
             mirror_w_ = w;
             mirror_h_ = h;
             if(format == TF_RGBA8) {
-                std::memcpy(rgba_mirror_.data(), pixels, rgba_mirror_.size());
+                std::memcpy(dst.data(), pixels, dst.size());
             } else if(format == TF_RGB8) {
                 const uint8_t* src = (const uint8_t*)pixels;
                 for(size_t i = 0; i < pixelCount; ++i) {
-                    rgba_mirror_[i * 4u + 0u] = src[i * 3u + 0u];
-                    rgba_mirror_[i * 4u + 1u] = src[i * 3u + 1u];
-                    rgba_mirror_[i * 4u + 2u] = src[i * 3u + 2u];
-                    rgba_mirror_[i * 4u + 3u] = 0xffu;
+                    dst[i * 4u + 0u] = src[i * 3u + 0u];
+                    dst[i * 4u + 1u] = src[i * 3u + 1u];
+                    dst[i * 4u + 2u] = src[i * 3u + 2u];
+                    dst[i * 4u + 3u] = 0xffu;
                 }
             } else {
-                rgba_mirror_.clear();
+                rgba_mirror_.reset();
                 mirror_w_ = 0;
                 mirror_h_ = 0;
+                return;
             }
+            rgba_mirror_ = std::move(fresh);
         }
 
         // VK-FIELD-VFX-4: lazily build the HUD rgba mirror by reading the texel
@@ -1363,7 +1374,7 @@ class gosTexture {
         bool lock_type_read_only_;
         bool is_from_memory_; // not loaded from file
         uint32_t content_serial_;
-        std::vector<uint8_t> rgba_mirror_;
+        std::shared_ptr<const std::vector<uint8_t>> rgba_mirror_;   // VK-HUD-MIRRORCOPY-1: immutable-after-publication
         int mirror_w_;
         int mirror_h_;
         // VK-FIELD-VFX-4: content serial of the last GPU-readback mirror attempt
@@ -8023,7 +8034,7 @@ static bool vkHudDrawRepresentable(const mc2vk::VkHudDraw& draw)
     const bool textured = draw.textureHandle != 0 && draw.textureHandle != INVALID_TEXTURE_ID;
     if (textured) {
         if (draw.glTextureId == 0 || draw.textureWidth == 0 || draw.textureHeight == 0 ||
-            draw.textureSerial == 0 || draw.textureRgba.empty())
+            draw.textureSerial == 0 || !draw.textureRgba || draw.textureRgba->empty())
             return false;
         if (draw.kind == kHudQuadBatch)
             return draw.vertices.size() >= 4 && (draw.vertices.size() % 4) == 0;
@@ -8215,7 +8226,7 @@ void gosRenderer::flushHUDBatch()
                 if (hudVfxGate && draw.kind == (uint32_t)kHudTriBatch &&
                     (draw.alphaMode == 4 || draw.alphaMode == 2) &&
                     draw.textureHandle != 0 && draw.textureHandle != INVALID_TEXTURE_ID &&
-                    draw.textureRgba.empty())
+                    (!draw.textureRgba || draw.textureRgba->empty()))
                     draw.textureHandle = 0;
             }
             draw.textureAddress = call.stateSnapshot[gos_State_TextureAddress];
@@ -8248,7 +8259,8 @@ void gosRenderer::flushHUDBatch()
                         "[VK_HUD_SKIP_DECLINE v1] kind=%u tex=%u gl=%u wh=%ux%u serial=%u rgba=%zu alpha=%u verts=%zu perDrawDecline=%d\n",
                         draw.kind, draw.textureHandle, draw.glTextureId,
                         draw.textureWidth, draw.textureHeight, draw.textureSerial,
-                        draw.textureRgba.size(), draw.alphaMode, draw.vertices.size(),
+                        draw.textureRgba ? draw.textureRgba->size() : (size_t)0,
+                        draw.alphaMode, draw.vertices.size(),
                         (int)s_hudPerDrawDecline);
                     ++s_nativeHudDeclineLogs;
                 }

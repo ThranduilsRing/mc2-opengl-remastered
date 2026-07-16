@@ -34,6 +34,7 @@
 #ifdef MC2_VULKAN
 
 #include <cstdint>
+#include <memory>
 #include <string>
 #include <vector>
 
@@ -114,7 +115,15 @@ struct VkHudDraw {
     uint32_t textureAddress = 0;
     uint32_t filter = 0;
     uint32_t foregroundColor = 0;
-    std::vector<uint8_t> textureRgba;
+    // VK-HUD-MIRRORCOPY-1: shared, immutable view of the gosTexture CPU rgba
+    // mirror (refcount bump instead of the former per-draw full-atlas deep copy —
+    // several MB memcpy + ~80 heap alloc/free pairs per frame, >99.9% never read;
+    // the consumer only touches bytes on a (handle,serial) change). The pointee
+    // is never mutated after publication: gosTexture::setRgbaMirror() swaps in a
+    // FRESH vector on every content change, so draws queued against an older
+    // serial keep their exact bytes even across a mid-frame re-bake or
+    // gos_DestroyTexture/txmmgr cache-out. null == no mirror (was: empty()).
+    std::shared_ptr<const std::vector<uint8_t>> textureRgba;
     std::vector<VkHudVertex> vertices;
 };
 

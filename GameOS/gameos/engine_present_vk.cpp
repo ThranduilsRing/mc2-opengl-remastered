@@ -1259,19 +1259,23 @@ EnginePresentVk::Impl::HudTextureMirror* ensureHudTextureMirror(EnginePresentVk:
                              m.height != d.textureHeight || m.bytes != bytes || !m.buffer;
     if (!needsUpload)
         return &m;
-    if (d.textureRgba.size() < (size_t)bytes)
+    // VK-HUD-MIRRORCOPY-1: the draw carries a shared immutable mirror (refcount
+    // bump at queue time); bytes are only dereferenced HERE, on a (handle,serial)
+    // change — the >99.9% no-upload case never touches them.
+    if (!d.textureRgba || d.textureRgba->size() < (size_t)bytes)
         return nullptr;
     if (m.buffer) { vkDestroyBuffer(s.dev, m.buffer, nullptr); m.buffer = VK_NULL_HANDLE; }
     if (m.memory) { vkFreeMemory(s.dev, m.memory, nullptr); m.memory = VK_NULL_HANDLE; }
     if (!createHostBuffer(s, bytes, VK_BUFFER_USAGE_STORAGE_BUFFER_BIT, &m.buffer, &m.memory))
         return nullptr;
+    const std::vector<uint8_t>& rgba = *d.textureRgba;
     std::vector<uint32_t> packed((size_t)d.textureWidth * (size_t)d.textureHeight);
     for (size_t i = 0; i < packed.size(); ++i) {
         const size_t b = i * 4u;
-        packed[i] = (uint32_t)d.textureRgba[b] |
-                    ((uint32_t)d.textureRgba[b + 1] << 8) |
-                    ((uint32_t)d.textureRgba[b + 2] << 16) |
-                    ((uint32_t)d.textureRgba[b + 3] << 24);
+        packed[i] = (uint32_t)rgba[b] |
+                    ((uint32_t)rgba[b + 1] << 8) |
+                    ((uint32_t)rgba[b + 2] << 16) |
+                    ((uint32_t)rgba[b + 3] << 24);
     }
     void* mapped = nullptr;
     if (vkMapMemory(s.dev, m.memory, 0, bytes, 0, &mapped) != VK_SUCCESS)
