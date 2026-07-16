@@ -8161,6 +8161,19 @@ void gosRenderer::flushHUDBatch()
     bool nativeHudQueued = false;
     bool nativeHudCanSkipGl = vkHudSkipGlEnabled();
     if (vkHudQueueEnabled()) {
+        // VK-HUD-GATE-HOIST-1: resolve the VFX umbrella sub-gate ONCE PER FLUSH,
+        // not per draw (3x subGate() + a raw getenv per draw was ~380-450 CRT env
+        // scans/frame at field HUD density, thousands during weapon fire).
+        // DISARM-1/2 semantics preserved: subGate() reads g_mc2VkSessionForcedGL
+        // through umbrellaOn() on THIS call, so a mid-session fail-soft still
+        // propagates at the next flush (frame-boundary granularity is the disarm
+        // intent). Do NOT make this local `static`, and do NOT re-fuse the
+        // per-draw reads below back into the loop.
+        const bool hudVfxGate = mc2vkgate::subGate("MC2_VK_VFX");
+        // Env-token-only memo (no disarm interaction): the env block is
+        // process-static, so one getenv per process is exact.
+        static const bool s_hudDrawDumpEnv =
+            (std::getenv("MC2_VK_HUD_DRAW_DUMP") != nullptr);
         std::vector<mc2vk::VkHudDraw> nativeDraws;
         nativeDraws.reserve(hudBatch_.size());
         for (const HudDrawCall& call : hudBatch_) {
@@ -8183,8 +8196,8 @@ void gosRenderer::flushHUDBatch()
                     // built lazily by GPU readback, once per content serial, so
                     // textured beams/effects composite instead of self-declining.
                     // Gated on the VFX umbrella sub-gate; GL byte-identical when off.
-                    const bool s_hudGpuMirror = mc2vkgate::subGate("MC2_VK_VFX");   // per-call: VK-FAILSOFT-DISARM-1
-                    if (s_hudGpuMirror && draw.textureWidth != 0 &&
+                    // (hudVfxGate hoisted per-flush: VK-HUD-GATE-HOIST-1.)
+                    if (hudVfxGate && draw.textureWidth != 0 &&
                         draw.textureHeight != 0 && !tex->hasRgbaMirror())
                         tex->ensureRgbaMirrorFromGpu();
                     if (draw.textureWidth != 0 && draw.textureHeight != 0 && tex->hasRgbaMirror())
@@ -8198,8 +8211,8 @@ void gosRenderer::flushHUDBatch()
             // round-3 proven beam look) instead of self-declining — a weapon
             // beam must never vanish outright over a missing texture mirror.
             {
-                const bool s_hudEffectUntexFallback = mc2vkgate::subGate("MC2_VK_VFX");   // per-call: VK-FAILSOFT-DISARM-1
-                if (s_hudEffectUntexFallback && draw.kind == (uint32_t)kHudTriBatch &&
+                // hudVfxGate hoisted per-flush: VK-HUD-GATE-HOIST-1.
+                if (hudVfxGate && draw.kind == (uint32_t)kHudTriBatch &&
                     (draw.alphaMode == 4 || draw.alphaMode == 2) &&
                     draw.textureHandle != 0 && draw.textureHandle != INVALID_TEXTURE_ID &&
                     draw.textureRgba.empty())
@@ -8226,7 +8239,7 @@ void gosRenderer::flushHUDBatch()
             // lost to the discarded GL HUD anyway). This removes the poisoning landmine
             // where any live textured effect killed the entire HUD composite, and lets the
             // effect classes (carnage/muzzle/artillery) route through IsHUD safely.
-            const bool s_hudPerDrawDecline = mc2vkgate::subGate("MC2_VK_VFX");   // per-call: VK-FAILSOFT-DISARM-1
+            const bool s_hudPerDrawDecline = hudVfxGate;   // hoisted per-flush: VK-HUD-GATE-HOIST-1
             const bool drawRepresentable = vkHudDrawRepresentable(draw);
             if (!drawRepresentable) {
                 static unsigned s_nativeHudDeclineLogs = 0;
@@ -8245,8 +8258,9 @@ void gosRenderer::flushHUDBatch()
             // VK-HUD-GLYPH-CORRUPTION diagnostic: dump per-draw texture handle+serial
             // for the first few frames so an intra-frame same-handle/different-serial
             // collision (mirror keyed by handle -> last-upload-wins -> stale glyphs)
-            // is directly visible. Gated by MC2_VK_HUD_DRAW_DUMP.
-            if (std::getenv("MC2_VK_HUD_DRAW_DUMP")) {
+            // is directly visible. Gated by MC2_VK_HUD_DRAW_DUMP (env token
+            // memoized once per process: VK-HUD-GATE-HOIST-1).
+            if (s_hudDrawDumpEnv) {
                 static unsigned s_hudDumpLines = 0;
                 if (s_hudDumpLines < 400 && draw.textureHandle != 0 &&
                     draw.textureHandle != INVALID_TEXTURE_ID) {
