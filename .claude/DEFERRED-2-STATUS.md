@@ -33,7 +33,7 @@ State:
 - [x] Offline doctests 325/325 passed (114822 assertions).
 - [x] Commit sha: 99847ed7
 
-## Item 2 — Shadow VRAM: far cascade → separate 4096 texture (IN PROGRESS)
+## Item 2 — Shadow VRAM: far cascade → separate 4096 texture (DONE — sha eebccc60; board ask was already shipped at 13365011, this slice adds the audit surface + evidence)
 
 ★ BOARD ITEM IS STALE — THE EXACT ASK ALREADY SHIPPED: commit `13365011` (2026-06-16,
 "feat(shadow): per-cascade resolution — full-map cascade in separate 4096 texture", ancestor of
@@ -56,10 +56,16 @@ RenderResourceRegistry (observe-only, byte-identical rendering) so the shadow VR
 auditable from the dump (this IS the existing VRAM counter surface: renderResources[].sizeBytes).
 - [x] RenderResourceId::ShadowCsmNearArray(40)/ShadowCsmFullMap(41) + toString + init register +
       destroy invalidate.
-- [ ] Build/deploy/tier1; A/B evidence (default vs MC2_SHADOW_FULLMAP_SEPARATE=0): registry
-      sizeBytes delta (67,108,864 vs 268,435,456 = 201.3 MB depth saved by shipped default) +
-      [CSM] init log lines + far-shadow captures both ways (long-view mission) eyeballed.
-- [ ] Commit sha: (pending)
+- [x] Build 0, deploy (src_commit eebccc600deb), tier1 PASS 5/5 +0 destroys (2026-07-16T10-47-57).
+- [x] VRAM counter evidence (renderResources[].sizeBytes, the registry dump = the existing counter):
+      DEFAULT run: ShadowCsmNearArray 8192²×2 = 536,870,912 B; ShadowCsmFullMap 4096² = 67,108,864 B.
+      MC2_SHADOW_FULLMAP_SEPARATE=0 run: ShadowCsmFullMap 8192² = 268,435,456 B.
+      → shipped default saves 201,326,592 B (192 MiB) depth (+50.3 MB R8 dummy, unregistered) vs
+      all-8192. Log lines: '[CSM] init nearLayers=2 arraySize=8192 fullMapSize=4096 separate=1'
+      (default) vs 'fullMapSize=8192 separate=0' (A/B). Captures .claude/shadow-ab/{default,sep0}
+      mc2_24 ×3 poses: hashes differ (far cascade res), long-view highangle_wide EYEBALLED —
+      visually indistinguishable; far-cascade 4096 quality acceptable.
+- [x] Commit sha: eebccc60 (includes dense-enum guard update to Count=42)
 
 ## Item 3 — ASan #3 ABLModule::compile return check (NOT STARTED)
 Plan per A:/Games/mc2-issue-fixes/docs/asan-follow-ups.md §3: mission init hard-fail on ABL compile
