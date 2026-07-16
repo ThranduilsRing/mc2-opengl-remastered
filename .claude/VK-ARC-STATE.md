@@ -1,5 +1,135 @@
 # VK-ARC-STATE — current state block (update every session)
 
+## 2026-07-16 (EVE) — two backlog items worked, docs-only (no code shipped). #10 terrain-handle-LUT stability RECON closed VERIFIED-SAFE (corrects both the board's old "dead-path" claim and the same-day residual audit's OPEN status). VK-VFX-COALESCE-1 measured live: peak 251 / steady 95-114 HUD-tail draws under forced multi-mech fire vs a 14-draw quiet floor -> ACT, slice plan written (not implemented). HEAD `e2237117`, 0.4c lane unchanged (still `72f9c410`, code-identical to this HEAD).
+
+**★ #10 TERRAIN HANDLE LUT / `tex_resolve(nodeId)` HANDLE-STABILITY — CLOSED, VERIFIED SAFE.**
+Scope: `UploadTerrainHandleLUT()` (`GameOS/gameos/gos_terrain_indirect.cpp:2353`) + the
+memoization layer it calls, `tex_resolve()` (`mclib/tex_resolve_table.h/.cpp`). Per the
+2026-07-16 thin-canary residual audit (`VK-SMALL-RESIDUAL-AUDIT-2026-07-16.md`, read-only
+this session): "OPEN, needs recon first ... prove tex_resolve(nodeId) handle stability and
+define invalidation for texture eviction/reload and mission swaps."
+
+- **Ownership (who owns the handle):** `gosTextureHandle` is a raw DWORD index into
+  `gosRenderer::textureList_` (`gameos_graphics.cpp`, Layer B per
+  `docs/render-backend-seams/gpu-texture-resource-manager-seam-recon-1.md`, already fully
+  recon'd in an earlier session). `addTexture()` hands out a **monotonically-growing index,
+  never reused**; `deleteTexture()` nulls the slot in place (no compaction). This is the
+  load-bearing invariant: a `gosTextureHandle` can never be silently reassigned to a
+  DIFFERENT live texture — once freed it stays null until a resurrection gets a NEW, larger
+  index. `mclib/txmmgr.cpp` (Layer A, game-facing) evicts idle nodes to `CACHED_OUT_HANDLE`
+  (0xFFFFFACE) only under real cache pressure (`flushCache()` short-circuits unless
+  `currentUsedTextures >= MAX_MC2_GOS_TEXTURES`; idle threshold is a hardcoded 150 turns,
+  not env-tunable) and `get_gosTextureHandle()` lazily resurrects via a brand-new index.
+- **Keyed how:** the base handle is a plain index, NOT a `(handle,serial)` tuple like the
+  VK-PERF-1 HUD/mech/prop mirrors. That's correct-by-construction here, not a gap: HUD
+  textures get REBAKED IN PLACE (same handle, new bytes) so a serial is needed to detect
+  "same handle, new content"; terrain node textures are destroyed+recreated on cache-out
+  (new index), so the index itself already carries the generation info a serial would add.
+  On top sits `tex_resolve(nodeId)` — a **per-frame** lazy memo keyed by nodeId.
+  `beginFrameTexResolve()` resets the whole table to sentinel and bumps `buildGeneration` on
+  EVERY frame (`Terrain::geometry`, before `ComputeDispatch()`), so the memo's lifetime is
+  exactly one frame — it cannot carry a stale handle across a frame boundary, which trivially
+  subsumes mission-swap invalidation (a mission swap is just "many frames"; nothing
+  mission-swap-specific exists or is needed).
+- **The one real within-frame hazard (documented in-code, not new):** if node X is memoized
+  early in a frame and something outside the memo (one of the ~24 direct
+  `get_gosTextureHandle()` call sites in `txmmgr.cpp`) triggers a cache-out+resurrect for X
+  later in the SAME frame, LUT-only consumers keep the stale (now-freed) handle for the rest
+  of that frame while legacy call sites see the fresh one. Worst case: a freed/null handle
+  resolves to GL id 0 (never a wrong LIVE texture — see ownership invariant above), so the
+  symptom is a transient blank quad for one frame, self-healing on the next reset.
+  `MC2_MODERN_TEX_RESOLVE_VALIDATE=1` runs both paths every call and self-heals + logs
+  `[TEX_RESOLVE v1] event=mismatch`; `MC2_MODERN_TEX_RESOLVE=0` is a full killswitch to
+  bit-exact legacy. Both pre-existed this session.
+- **VK-bridge-mirror: NONE EXISTS for this data.** `vulkan_terrain_island.cpp` has ZERO
+  references to `terrainHandle`/`thSlot`/`ThinRecord`/`g_terrainHandleLutSSBO` (grepped). VK's
+  terrain island renders independently and does its own GL->VK interop copies for
+  height/atlas/shadow (`glInteropSignalToVk`/`WaitFromVk`) — it never reads the GL
+  indirect-compute pipeline's thin-record SSBO or handle LUT. The `(handle,serial)` mirror
+  precedent from VK-PERF-1 (built for data that DOES cross into VK — HUD/mech/prop CPU feeds)
+  simply does not apply to backlog #10.
+- **Practical relevance is also narrower than the board framing:** the SOLID indirect draw
+  that used to consume `thSlot` for real per-quad texture binding is RETIRED
+  (`txmmgr.cpp` ~3127, "INDIRECT-BRIDGE-RETIRE-1 ... LOD-chunk owns terrain" — confirmed live
+  default via the 0.4c launcher env `MC2_TERRAIN_LOD_CHUNK=1`). The live atlas-colormap frag
+  path samples ONE merged atlas by WorldPos, not per-node textures; `terrainHandle`/`thSlot`
+  in the thin record is now only a compute-side validity gate + a debug-viz channel
+  (`tessDebug.x==9`). The still-live consumer of `ComputeDispatch()`/`UploadTerrainHandleLUT()`
+  is `RenderWaterReflectionPass()`, itself off by default (`MC2_WATER_REFLECTION_RT` unset).
+- **Live probe this session** (0.4c lane exe `72f9c410` == HEAD code, no rebuild needed):
+  `MC2_MODERN_TEX_RESOLVE_VALIDATE=1 MC2_LOG=1`, full mc2_01 playthrough (GL — this data never
+  reaches VK, see above), 17,027 frames / 1,106,757 validated resolves:
+  **`[TEX_RESOLVE v1] event=shutdown mismatches=0 oob=0`.** Honest caveat: `[TXM v1]
+  peak_textures=235/3000` — the cache never neared `MAX_MC2_GOS_TEXTURES`, so `flushCache()`'s
+  eviction branch never fired; this run proves the ROUTINE (non-eviction) path bit-exact, not
+  that the eviction race in the paragraph above is unreachable. `MAX_MC2_GOS_TEXTURES`/
+  `cache_Threshold` are hardcoded, not env-tunable — forcing real churn needs a code change,
+  out of scope for a recon-only slice.
+- **Verdict: no fix. Close #10 as VERIFIED-SAFE-BY-DESIGN** (corrects the board's original
+  "MOOT/dead-path" row AND the residual audit's "OPEN"). `VK-OPT-BACKLOG.md` row 10 updated.
+  Side-finding (perf, not stability, NOT sized/fixed here): `ComputeDispatch()` still runs
+  unconditionally every `Terrain::geometry` frame though its SOLID-draw consumer is retired
+  and its only other consumer (water reflection) is off by default — whether trimming that is
+  safe needs its own recon into whether the still-armed overlay/mine/decal static draws depend
+  on any of `ComputeDispatch()`'s other side effects (thin records, cement words) first.
+
+**★ VK-VFX-COALESCE-1 — MEASURED, ACT (slice plan written, not implemented).**
+Per-frame VFX draw-count bank during forced multi-mech fire, per the arc's recipe
+(`VK-PERF-SLICE-PLAN-2026-07-16.md` follow-on item: "bank a fire-event draw-count capture ...
+to size triangle counts").
+- **Recipe used:** field env (`MC2_RENDER_BACKEND=vulkan MC2_VK_SHARED_GBUFFER=1` + launcher GL
+  gates) + `MC2_FX_FORCE_SPAWN=loop` + `MC2_LOG=1`, mc2_01, 0.4c lane exe, direct launch (no
+  smoke wrapper — `MC2_MODERN_TEX_RESOLVE_VALIDATE` and other adhoc probe vars are NOT in
+  `scripts/run_smoke.py`'s env allowlist; confirmed via `[ENV-DROP] WARNING` on a first
+  attempt). Read `[VK_PRESENT]` `logHealth()` lines (cadence: every 300 present frames) for
+  `hud_vk_draws_last` across a ~90 s run with continuous force-fire across ~15 mechs.
+- **Numbers (35 health snapshots over the run):** pre-fire quiet floor (`[VK_HUD_SKIP v1]
+  frame=2..10`, before scenarioTime reaches the first force-fire trigger) = **14 draws**
+  (chrome only: brackets + health bars). Once force-fire is continuously active: sustained
+  plateau **95-114 draws**, with a **peak of 251** (225 textured) during a dense
+  multi-mech volley cluster. That is a 6.8-18x multiplier over the quiet floor, with virtually
+  all of the delta attributable to weapon VFX (nothing else changes between the two states).
+  Well past the plan's own ">50 draws/volley-frame -> write the slice plan" threshold.
+- **Root confirmed in code:** the enqueue-side source is `MLRSortByOrder`'s alpha-sorted
+  triangle loop, `mclib/mlr/mlrsortbyorder.cpp:589-609` — one `gos_DrawTriangles(&tri, 3)`
+  call PER TRIANGLE (gosFX particles/tracers/flashes are typically 1-2 tris each). Under
+  `gos_State_IsHUD` this becomes one `HudDrawCall`/`hudBatch_` entry per triangle
+  (`gameos_graphics.cpp:6443-6464`, `drawTris()`), so `hudBatch_.size()` (and thus the
+  per-draw work in `flushHUDBatch`/`recordPendingHudColorProof`) scales directly with
+  triangle count during fire, not with actual "effect" count.
+- **VERDICT: ACT.** Slice plan below; NOT implemented this session (measure-first only, per
+  task scope).
+
+**VK-VFX-COALESCE-1 slice plan (written, not implemented):**
+1. **Where:** `gosRenderer::drawTris()` IsHUD branch, `gameos_graphics.cpp:6449-6464`.
+2. **Shape:** before pushing a NEW `HudDrawCall`, check whether `hudBatch_.back()` (if
+   non-empty) has `kind==kHudTriBatch` AND its `stateSnapshot`/`projection`/`scaleExempt`
+   match the incoming call's exactly (the same fields `HudDrawCall` already snapshots) — if
+   so, `append` the incoming 3 vertices onto that entry's `.vertices` instead of pushing a new
+   record. Paint order is preserved exactly: `MLRSortByOrder` already emits triangles in
+   depth-sorted order, one at a time; merging only glues ADJACENT same-state records together,
+   it never reorders.
+3. **Why safe-shaped:** purely a data-structure merge (vector append vs push_back), zero
+   change to vertex data, zero change to draw order, zero change to state transitions
+   (`SetDifferences` still gates a state change exactly where it did before — a state change
+   still forces a new entry). `flushHUDBatch`/`recordPendingHudColorProof` already handle
+   variable-length triangle-list `VkHudDraw.vertices` — no downstream shape change expected.
+4. **Expected win:** plan's own estimate "1-5 ms during fire" for enqueue-side coalescing;
+   this session's numbers (251 -> potentially a handful of merged records if consecutive
+   fire-triangles share state, which they typically do — same effect texture/blend across a
+   burst) make that estimate credible, not just directionally right.
+5. **Required before shipping (per task's own gate):** killswitch (new sub-flag under
+   `MC2_VK_VFX` or its own `MC2_VK_VFX_COALESCE`, default per arc convention for a new path)
+   + parity counters (`hudBatch_.size()` before/after coalescing, `[VK_HUD_AUDIT]`-style
+   bit-exact pixel proof) + fire-capture compare vs `.claude/vfx-fire/` refs (already the
+   established recipe) + VK-umbrella tier1 5/5 via the local runner.
+6. **Risk not yet retired (flag for the implementer):** need to confirm there is no existing
+   cap/flush-on-size analog to the non-HUD `tris_` capacity check
+   (`gameos_graphics.cpp:6469`) that the coalesced path must respect — i.e. an unbounded
+   `.vertices` append on one `HudDrawCall` needs either no cap (likely fine, CPU-side
+   `std::vector`) or an explicit size-triggered flush mirroring the non-HUD path. Not
+   evaluated this session (measure-first scope only).
+
 ## 2026-07-16 (PM-2) — ★VK-PERF-2: cleanup + VK-PRESENT-SINGLESUBMIT-1 (slice 5) + VK-WATER-FENCE-DEFER-1 (cluster-A pilot) SHIPPED. The present-path CPU drain is GONE (composite wait 76.9 -> 0.7 us/frame) and the water island dropped ~120 us/frame. Both 0.4c lanes at `61031785`.
 
 **★ COMMITS:**

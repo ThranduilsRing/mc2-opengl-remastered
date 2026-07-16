@@ -54,6 +54,24 @@ Verified no-win / do-not-re-mine: present verify oracles (already env-gated + th
 
 - **VK-ISLAND-PIPELINE-ARC (cluster A full collapse)** — defer each island's fence wait to next reuse of its parity slot / batch islands into 1-2 submits. Expected 3-8 ms/frame (the dominant share of the gap). **Blocked on:** slice 5 (cbuf split), per-parity staging rings (water vsUbo/fsUbo, shadow instAlloc/uboAlloc, terrain patch UBOs are single-instance and rewritten under the inline-wait guarantee), and the incidental GL↔VK seam ordering the drains currently provide. **Profile first:** roll water's `us_fence_wait` telemetry to all islands + `MC2_VK_GPU_TIMESTAMPS` to bank per-island CPU-wait vs GPU-pass numbers; do one island at a time under tier1 + sync-val + field-check gates. Coordinate with the frame-graph / GPU-BUFFER-OWNER-RECON-1 lane owner — same fence-wait family.
 - **VK-VFX-COALESCE-1 (gosFX per-triangle draws)** — enqueue-side append-coalescing in the drawTris IsHUD branch (`mlrsortbyorder.cpp:589-609` → `gameos_graphics.cpp:6438-6452`). Est. 1-5 ms during fire. **Measure first:** bank a fire-event draw-count capture (`MC2_VK_HUD_DRAW_DUMP` + `.claude/vfx-fire/` pairs) to size triangle counts; paint order preserved by append-only-to-previous-call, so risk is low once sized. Slices 1+2 shrink this cost proportionally — re-measure after they land.
+  **MEASURED 2026-07-16 (EVE), verdict ACT — see VK-ARC-STATE.md for the full write-up.**
+  `hud_vk_draws_last` health snapshots over a 90s forced-fire run (mc2_01, ~15 mechs,
+  `MC2_FX_FORCE_SPAWN=loop`): quiet pre-fire floor **14 draws**, sustained-fire plateau
+  **95-114**, peak **251** (225 textured) during a dense multi-mech volley cluster — a
+  6.8-18x multiplier over baseline, comfortably past the ">50 draws/volley-frame" action
+  threshold. Slice plan (written, NOT implemented — this was a measure-first session):
+  in `gosRenderer::drawTris()`'s IsHUD branch (`gameos_graphics.cpp:6449-6464`), before
+  pushing a new `HudDrawCall`, append the incoming 3 vertices onto `hudBatch_.back()` when
+  it exists, has `kind==kHudTriBatch`, and its `stateSnapshot`/`projection`/`scaleExempt`
+  match exactly — otherwise push a new record as today. `MLRSortByOrder` already emits
+  triangles in depth-sorted order one at a time, so this only glues adjacent same-state
+  records together; it never reorders and a state change (`SetDifferences`) still forces a
+  new record exactly as it does today. Unretired risk to check before implementing: whether
+  the coalesced `.vertices` needs a size-triggered flush analogous to the non-HUD `tris_`
+  capacity check at `gameos_graphics.cpp:6469` (likely fine as an unbounded CPU-side
+  `std::vector`, but not evaluated). Ship-gate per standing convention: killswitch (new
+  sub-flag under `MC2_VK_VFX`) + `hudBatch_.size()` before/after parity counters + bit-exact
+  fire-capture compare vs `.claude/vfx-fire/` refs + VK-umbrella tier1 5/5.
 
 ## Measure-before-coding (do not write code until the counter says so)
 
