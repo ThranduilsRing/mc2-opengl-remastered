@@ -93,6 +93,11 @@ struct EnginePresentHealth {
     uint32_t    hud_vk_texture_uploads = 0;
     bool        imgui_vk_ready      = false;
     unsigned int last_direct_fbo    = 0;   // last shared FBO id granted
+    // VK-QWI-TO-FENCE-1: water-style us_fence_wait telemetry around the composite
+    // submit's CPU-blocking wait (QWI before the conversion, per-submit fence after).
+    double      composite_wait_us_last = 0.0;
+    double      composite_wait_us_accum = 0.0;
+    uint32_t    composite_wait_samples = 0;
     std::string fallback_reason;           // empty == clean
 };
 

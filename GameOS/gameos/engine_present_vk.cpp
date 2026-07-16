@@ -44,6 +44,7 @@
 #include <cstdio>
 #include <cstdlib>
 #include <cstring>
+#include <chrono>   // VK-QWI-TO-FENCE-1: composite wait telemetry
 #include <unordered_map>
 #include <vector>
 
@@ -2014,8 +2015,23 @@ bool EnginePresentVk::renderNativeCompositeVisual(float exposure,
     if (vkQueueSubmit(s.gfxQ, 1, &si, VK_NULL_HANDLE) != VK_SUCCESS)
         return false;
 
-    if (vkQueueWaitIdle(s.gfxQ) != VK_SUCCESS)
-        return false;
+    {
+        // VK-QWI-TO-FENCE-1: water-style us_fence_wait telemetry around the
+        // composite drain (the per-frame CPU-blocking wait this slice converts).
+        using clk = std::chrono::steady_clock;
+        const clk::time_point tWait0 = clk::now();
+        if (vkQueueWaitIdle(s.gfxQ) != VK_SUCCESS)
+            return false;
+        health_.composite_wait_us_last =
+            std::chrono::duration<double, std::micro>(clk::now() - tWait0).count();
+        health_.composite_wait_us_accum += health_.composite_wait_us_last;
+        ++health_.composite_wait_samples;
+        if ((health_.composite_wait_samples % 600) == 1)
+            plog("[QWI-WAIT] composite wait_us_last=%.1f wait_us_avg=%.1f samples=%u",
+                 health_.composite_wait_us_last,
+                 health_.composite_wait_us_accum / (double)health_.composite_wait_samples,
+                 health_.composite_wait_samples);
+    }
 
     ++health_.composite_vk_frames;
     presentImageVkOwned_ = true;
@@ -2637,6 +2653,7 @@ void EnginePresentVk::logHealth() const {
         "hud_vk_textured_frames=%u hud_vk_textured_draws_last=%u hud_vk_texture_uploads=%u "
         "imgui_vk_ready=%d imgui_vk_frames=%u "
         "last_direct_fbo=%u "
+        "composite_wait_us_last=%.1f composite_wait_us_avg=%.1f composite_wait_samples=%u "
         "fallback_reason=\"%s\"\n",
         health_.created ? 1 : 0, health_.attempted ? 1 : 0,
         health_.present_frames, health_.resize_count,
@@ -2659,6 +2676,10 @@ void EnginePresentVk::logHealth() const {
         health_.hud_vk_texture_uploads,
         health_.imgui_vk_ready ? 1 : 0, health_.imgui_vk_frames,
         health_.last_direct_fbo,
+        health_.composite_wait_us_last,
+        health_.composite_wait_samples
+            ? health_.composite_wait_us_accum / (double)health_.composite_wait_samples : 0.0,
+        health_.composite_wait_samples,
         health_.fallback_reason.empty() ? "" : health_.fallback_reason.c_str());
     std::fflush(stderr);
 }

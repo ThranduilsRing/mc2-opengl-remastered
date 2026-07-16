@@ -65,6 +65,11 @@ struct HzbNativeHealth {
     unsigned long readbackOps = 0;
     char fallbackReason[64] = {0};
     double renderUs = 0.0;
+    // VK-QWI-TO-FENCE-1: water-style us_fence_wait telemetry around the per-frame
+    // CPU-blocking queue wait (QWI before the conversion, per-submit fence after).
+    double waitUsLast = 0.0;
+    double waitUsAccum = 0.0;
+    unsigned long waitSamples = 0;
 };
 HzbNativeHealth g_health;
 
@@ -754,10 +759,20 @@ bool gosPostProcess::runVkPostHzbNative()
 
     // Slot-recycle guard (water pattern): CPU-drain the queue so this frame's command
     // buffer is retired before reuse next frame.
-    if (vkQueueWaitIdle(s->queue) != VK_SUCCESS) {
-        setFallback("queue_wait_idle_failed");
-        s->disabled = true;
-        return false;
+    {
+        const clk::time_point tWait0 = clk::now();
+        if (vkQueueWaitIdle(s->queue) != VK_SUCCESS) {
+            setFallback("queue_wait_idle_failed");
+            s->disabled = true;
+            return false;
+        }
+        g_health.waitUsLast = std::chrono::duration<double, std::micro>(clk::now() - tWait0).count();
+        g_health.waitUsAccum += g_health.waitUsLast;
+        ++g_health.waitSamples;
+        if ((g_health.waitSamples % 600) == 1)
+            vlog("[QWI-WAIT] wait_us_last=%.1f wait_us_avg=%.1f samples=%lu",
+                 g_health.waitUsLast,
+                 g_health.waitUsAccum / (double)g_health.waitSamples, g_health.waitSamples);
     }
 
     g_health.copyDepthOps = 0;
@@ -773,12 +788,14 @@ void gosPostProcess::destroyVkPostHzbNative()
     if (g_health.runtimeGate) {
         vlog("[HEALTH] runtime_gate=%d substrate_live=%d attempted=%lu used_vulkan=%lu "
              "direct_chain=%d used_interop=%lu levels=%lu vk_draws=%lu copy_depth_ops=%lu readback_ops=%lu "
-             "fallback_reason=\"%s\" render_us_last=%.1f",
+             "fallback_reason=\"%s\" render_us_last=%.1f wait_us_last=%.1f wait_us_avg=%.1f wait_samples=%lu",
              g_health.runtimeGate, g_health.substrateLive, g_health.attempted,
              g_health.usedVulkan, g_health.directChain, g_health.usedInterop,
              g_health.levels, g_health.vkDraws,
              g_health.copyDepthOps, g_health.readbackOps, g_health.fallbackReason,
-             g_health.renderUs);
+             g_health.renderUs, g_health.waitUsLast,
+             g_health.waitSamples ? g_health.waitUsAccum / (double)g_health.waitSamples : 0.0,
+             g_health.waitSamples);
     }
     if (!vkPostHzbNative_) return;
     destroy_state(vkPostHzbNative_);

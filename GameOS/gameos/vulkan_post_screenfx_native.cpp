@@ -114,6 +114,11 @@ struct PostScreenFxHealth {
     unsigned long glSkipped   = 0;  // GL pass bodies skipped (1 per pass per frame)
     char fallbackReason[64]   = {0};
     double renderUs = 0.0;          // record+submit+sem/fence wait, last frame
+    // VK-QWI-TO-FENCE-1: water-style us_fence_wait telemetry around the per-frame
+    // CPU-blocking queue waits (QWI before the conversion, per-submit fence after).
+    double waitUsLast = 0.0;
+    double waitUsAccum = 0.0;
+    unsigned long waitSamples = 0;
 };
 PostScreenFxHealth g_fx;
 
@@ -954,8 +959,18 @@ bool gosPostProcess::runVkPostScreenShadowStaticNative()
 
     // Slot-recycle guard (water pattern): CPU-drain the queue so this frame's command
     // buffer is retired before reuse next frame.
-    if (vkQueueWaitIdle(s->queue) != VK_SUCCESS) {
-        setFallback("queue_wait_idle_failed"); return false;
+    {
+        const clk::time_point tWait0 = clk::now();
+        if (vkQueueWaitIdle(s->queue) != VK_SUCCESS) {
+            setFallback("queue_wait_idle_failed"); return false;
+        }
+        g_fx.waitUsLast = std::chrono::duration<double, std::micro>(clk::now() - tWait0).count();
+        g_fx.waitUsAccum += g_fx.waitUsLast;
+        ++g_fx.waitSamples;
+        if ((g_fx.waitSamples % 600) == 1)
+            vlog("[QWI-WAIT] wait_us_last=%.1f wait_us_avg=%.1f samples=%lu",
+                 g_fx.waitUsLast,
+                 g_fx.waitUsAccum / (double)g_fx.waitSamples, g_fx.waitSamples);
     }
 
     g_fx.renderUs = std::chrono::duration<double, std::micro>(clk::now() - t0).count();
@@ -1134,8 +1149,18 @@ unsigned gosPostProcess::runVkPostScreenFxNative()
 
     // Slot-recycle guard (water pattern): CPU-drain the queue so this frame's command
     // buffer is retired before reuse next frame.
-    if (vkQueueWaitIdle(s->queue) != VK_SUCCESS) {
-        setFallback("queue_wait_idle_failed"); s->disabled = true; return 0;
+    {
+        const clk::time_point tWait0 = clk::now();
+        if (vkQueueWaitIdle(s->queue) != VK_SUCCESS) {
+            setFallback("queue_wait_idle_failed"); s->disabled = true; return 0;
+        }
+        g_fx.waitUsLast = std::chrono::duration<double, std::micro>(clk::now() - tWait0).count();
+        g_fx.waitUsAccum += g_fx.waitUsLast;
+        ++g_fx.waitSamples;
+        if ((g_fx.waitSamples % 600) == 1)
+            vlog("[QWI-WAIT] wait_us_last=%.1f wait_us_avg=%.1f samples=%lu",
+                 g_fx.waitUsLast,
+                 g_fx.waitUsAccum / (double)g_fx.waitSamples, g_fx.waitSamples);
     }
 
     g_fx.renderUs = std::chrono::duration<double, std::micro>(clk::now() - t0).count();
@@ -1151,10 +1176,14 @@ void gosPostProcess::destroyVkPostScreenFxNative()
     if (g_fx.runtimeGate) {
         vlog("[HEALTH] runtime_gate=%d shadow_gate=%d cloud_gate=%d shore_gate=%d substrate_live=%d "
              "attempted=%lu used_vulkan=%lu shadow_frames=%lu cloud_frames=%lu shore_frames=%lu "
-             "direct_chain=%d used_interop=%lu gl_skipped=%lu fallback_reason=\"%s\" render_us_last=%.1f",
+             "direct_chain=%d used_interop=%lu gl_skipped=%lu fallback_reason=\"%s\" render_us_last=%.1f "
+             "wait_us_last=%.1f wait_us_avg=%.1f wait_samples=%lu",
              g_fx.runtimeGate, g_fx.shadowGate, g_fx.cloudGate, g_fx.shoreGate, g_fx.substrateLive,
              g_fx.attempted, g_fx.usedVulkan, g_fx.shadowFrames, g_fx.cloudFrames, g_fx.shoreFrames,
-             g_fx.directChain, g_fx.usedInterop, g_fx.glSkipped, g_fx.fallbackReason, g_fx.renderUs);
+             g_fx.directChain, g_fx.usedInterop, g_fx.glSkipped, g_fx.fallbackReason, g_fx.renderUs,
+             g_fx.waitUsLast,
+             g_fx.waitSamples ? g_fx.waitUsAccum / (double)g_fx.waitSamples : 0.0,
+             g_fx.waitSamples);
     }
     if (!vkPostScreenFx_) return;
     destroy_state(vkPostScreenFx_);

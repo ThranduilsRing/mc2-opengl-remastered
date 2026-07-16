@@ -96,6 +96,11 @@ struct PostFogNativeHealth {
     unsigned long glSkipped  = 0;  // GL fog sites skipped (2 per used frame)
     char fallbackReason[64]  = {0};
     double renderUs = 0.0;         // record+submit+sem/fence wait, last frame
+    // VK-QWI-TO-FENCE-1: water-style us_fence_wait telemetry around the per-frame
+    // CPU-blocking queue wait (QWI before the conversion, the per-submit fence after).
+    double waitUsLast = 0.0;
+    double waitUsAccum = 0.0;
+    unsigned long waitSamples = 0;
 };
 PostFogNativeHealth g_pf;
 
@@ -716,8 +721,18 @@ bool gosPostProcess::runVkPostFogNative()
 
     // Slot-recycle guard (water pattern): CPU-drain the queue so this frame's command
     // buffer is retired before reuse next frame.
-    if (vkQueueWaitIdle(s->queue) != VK_SUCCESS) {
-        setFallback("queue_wait_idle_failed"); s->disabled = true; return false;
+    {
+        const clk::time_point tWait0 = clk::now();
+        if (vkQueueWaitIdle(s->queue) != VK_SUCCESS) {
+            setFallback("queue_wait_idle_failed"); s->disabled = true; return false;
+        }
+        g_pf.waitUsLast = std::chrono::duration<double, std::micro>(clk::now() - tWait0).count();
+        g_pf.waitUsAccum += g_pf.waitUsLast;
+        ++g_pf.waitSamples;
+        if ((g_pf.waitSamples % 600) == 1)
+            vlog("[QWI-WAIT] wait_us_last=%.1f wait_us_avg=%.1f samples=%lu",
+                 g_pf.waitUsLast,
+                 g_pf.waitUsAccum / (double)g_pf.waitSamples, g_pf.waitSamples);
     }
 
     g_pf.renderUs = std::chrono::duration<double, std::micro>(clk::now() - t0).count();
@@ -731,10 +746,12 @@ void gosPostProcess::destroyVkPostFogNative()
     if (g_pf.runtimeGate) {
         vlog("[HEALTH] runtime_gate=%d substrate_live=%d attempted=%lu used_vulkan=%lu "
              "direct_chain=%d used_interop=%lu gl_skipped=%lu fallback_reason=\"%s\" "
-             "render_us_last=%.1f",
+             "render_us_last=%.1f wait_us_last=%.1f wait_us_avg=%.1f wait_samples=%lu",
              g_pf.runtimeGate, g_pf.substrateLive, g_pf.attempted, g_pf.usedVulkan,
              g_pf.directChain, g_pf.usedInterop, g_pf.glSkipped, g_pf.fallbackReason,
-             g_pf.renderUs);
+             g_pf.renderUs, g_pf.waitUsLast,
+             g_pf.waitSamples ? g_pf.waitUsAccum / (double)g_pf.waitSamples : 0.0,
+             g_pf.waitSamples);
     }
     if (!vkPostFogNative_) return;
     destroy_state(vkPostFogNative_);
