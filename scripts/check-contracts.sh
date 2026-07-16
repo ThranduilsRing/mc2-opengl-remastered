@@ -161,6 +161,14 @@ run_check "res_aspect_selftest"    "py -3 scripts/check-res-aspect-contract.py -
 # mech.cpp are the trap); nofire emitter presence; both-ways-live ledger.
 run_check "order_gate_coverage"    "py -3 scripts/check-order-gate-coverage.py --quiet"
 run_check "order_gate_selftest"    "py -3 scripts/check-order-gate-coverage.py --self-test 2>/dev/null"
+# META-FIX-BATCH-3 (design A): mover-registry coherence — setOnGUI/isOnGui
+# write allowlists (S1), write-pairing windows (S2), trimmed read-gate pins
+# (S3, hard=3), #42b hover-guard shape (S4 — SOLE defense, never demote),
+# link-up gate shape (S5), off-map-staging carve-out: runtime audit region
+# stays position-free (S6, INVIS-VEHICLES-FIX-1). Runtime sibling:
+# MC2_MOVER_COHERENCE_AUDIT (force-set by run_smoke for --tier runs).
+run_check "mover_registry_coherence" "sh scripts/check-mover-registry-coherence.sh"
+run_check "mover_registry_selftest"  "sh scripts/check-mover-registry-coherence.sh --self-test"
 
 # ---------------------------------------------------------------------------
 # Summary table

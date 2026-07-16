@@ -759,6 +759,10 @@ namespace {
 	// mc2_10's convoy is additionally commander 2 (allied), outside this
 	// audit's home-commander scope — but the position-free contract holds
 	// even for a hypothetical home-commander staged mover.
+	//
+	// MOVER-COHERENCE-AUDIT-BEGIN (S6 scan region: position-free by contract —
+	// scripts/check-mover-registry-coherence.sh forbids positional terms in
+	// this whole block; off-map staging is a legitimate mover state.)
 	static const bool s_moverCoherenceAudit =
 		mc2AuditLatch("MC2_MOVER_COHERENCE_AUDIT");
 	static float s_cohNextAuditTime = 0.0f;
@@ -791,9 +795,6 @@ namespace {
 			(name && name[0]) ? name : "?", detail ? detail : "");
 	}
 
-	// MOVER-COHERENCE-AUDIT-BEGIN (S6 scan region: position-free by contract —
-	// scripts/check-mover-registry-coherence.sh forbids positional terms here;
-	// off-map staging is a legitimate mover state, see carve-out note above.)
 	static void auditMoverCoherence(float scenarioTimeNow,
 	                                MissionInterfaceManagerPtr mi) {
 		if (!ObjectManager || !mi || MPlayer || !Commander::home)
