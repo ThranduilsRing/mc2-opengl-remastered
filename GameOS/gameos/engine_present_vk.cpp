@@ -98,12 +98,28 @@ struct EnginePresentVk::Impl {
 
     // per-frame sync (1 frame in flight for the acquire/submit)
     VkCommandPool   cpool     = VK_NULL_HANDLE;
-    VkCommandBuffer cbuf      = VK_NULL_HANDLE;
+    VkCommandBuffer cbuf      = VK_NULL_HANDLE;   // present tail: overlay + HUD/ImGui + blit
     VkSemaphore     acquireSem = VK_NULL_HANDLE;
     VkFence         inFlight   = VK_NULL_HANDLE;
-    // VK-QWI-TO-FENCE-1: dedicated fence for the native-composite submit (replaces
-    // the composite's queue-wide vkQueueWaitIdle drain; waited+reset inline).
-    VkFence         compositeFence = VK_NULL_HANDLE;
+    // VK-PRESENT-SINGLESUBMIT-1: the native composite records into its OWN command
+    // buffer at composite time (no submit, no drain) and presentGLFrame submits
+    // {compositeCbuf, cbuf} in ONE vkQueueSubmit. compositePending marks a recorded-
+    // but-not-yet-submitted composite; it is consumed by the single submit, dropped
+    // on resize (the recording references the old shared image), and simply
+    // re-recorded next frame when present declines mid-frame (DISARM-2b: a decline
+    // never leaves the fence unsignaled — inFlight is reset ONLY immediately before
+    // a submit that will signal it). This supersedes VK-QWI-TO-FENCE-1's dedicated
+    // compositeFence (deleted): the ONLY CPU wait on the present path is now the
+    // inFlight wait for the PREVIOUS frame's single submit, taken at composite-record
+    // time before either cbuf is reset.
+    VkCommandBuffer compositeCbuf   = VK_NULL_HANDLE;
+    bool            compositePending = false;
+    // VK-PRESENT-SINGLESUBMIT-1: the CSM shadow-debug overlay (opt-in debug) used to
+    // be its own submit between composite and present; it is now STASHED here and
+    // recorded into the tail cbuf so it stays ordered after the composite (which no
+    // longer executes before present records) and joins the single submit.
+    VkImageView     pendingShadowDebugView = VK_NULL_HANDLE;
+    int             pendingShadowDebugLayer = 0;
 
     // the shared VK-only present image (native VK composite writes it, VK blits it
     // into the swapchain). VK-RUNG8-ITEM8: no GL interop view / copy FBO any more.
@@ -124,6 +140,14 @@ struct EnginePresentVk::Impl {
     VkRenderPass    imguiRenderPass = VK_NULL_HANDLE;
     VkFramebuffer   imguiFramebuffer = VK_NULL_HANDLE;
     ImDrawData*     pendingImguiDrawData = nullptr;
+    // SINGLE-FRAME-IN-FLIGHT DEPENDENCY (VK-PRESENT-SINGLESUBMIT-1 audit note): the
+    // HUD tail is race-free ONLY because exactly one present submission is in flight
+    // (the inFlight wait at composite-record time retires frame N-1 before frame N
+    // records): hudColorVertexBuf/hudTexVertexBuf are single instances rewritten per
+    // frame, texture mirrors are updated in place on serial change, and the 4-frame
+    // mirror eviction window assumes retired reuse. Any future 2-frames-in-flight
+    // change MUST ship together with per-frame HUD vertex buffers, mirror
+    // double-buffering, and a re-derived eviction window.
     std::vector<VkHudDraw> pendingHudDraws;
     // HUD-CANVAS-EXTENT-FIX (2026-07-11): the pixel space the queued HUD vertices
     // were authored in (gosRenderer width_/height_ == Environment.screenWidth/Height,
@@ -1828,11 +1852,14 @@ bool EnginePresentVk::init(VulkanContext& ctx, SDL_Window* glWindow, uint32_t w,
         fci.flags = VK_FENCE_CREATE_SIGNALED_BIT;
         if (vkCreateFence(s.dev, &fci, nullptr, &s.inFlight) != VK_SUCCESS)
             return fail("vkCreateFence(inFlight) failed");
-        // VK-QWI-TO-FENCE-1: dedicated composite-submit fence (created unsignaled;
-        // waited+reset inline right after the composite submit each frame).
-        VkFenceCreateInfo cfci{VK_STRUCTURE_TYPE_FENCE_CREATE_INFO};
-        if (vkCreateFence(s.dev, &cfci, nullptr, &s.compositeFence) != VK_SUCCESS)
-            return fail("vkCreateFence(composite) failed");
+        // VK-PRESENT-SINGLESUBMIT-1: the composite's own command buffer (recorded at
+        // composite time, submitted together with the tail cbuf in ONE submit).
+        VkCommandBufferAllocateInfo cai2{VK_STRUCTURE_TYPE_COMMAND_BUFFER_ALLOCATE_INFO};
+        cai2.commandPool = s.cpool;
+        cai2.level = VK_COMMAND_BUFFER_LEVEL_PRIMARY;
+        cai2.commandBufferCount = 1;
+        if (vkAllocateCommandBuffers(s.dev, &cai2, &s.compositeCbuf) != VK_SUCCESS)
+            return fail("vkAllocateCommandBuffers(composite) failed");
     }
 
     // ---- shared exportable interop image + GL view + copy-1 FBO -----------
@@ -1929,18 +1956,46 @@ bool EnginePresentVk::renderNativeCompositeVisual(float exposure,
     VkFrameSync fsScene{};
     VkFrameSync fsObjectId{};
 
-    vkResetCommandBuffer(s.cbuf, 0);
+    // VK-PRESENT-SINGLESUBMIT-1: the ONLY CPU wait on the present path. Retire the
+    // PREVIOUS frame's single submit (composite+tail+blit) before either of its two
+    // command buffers is reset for re-recording. The fence is NOT reset here — it is
+    // reset immediately before the submit that will signal it (presentGLFrame), so a
+    // mid-frame present decline (DISARM-2b) can never leave it unsignaled and hang
+    // this wait. Timer kept from VK-QWI-TO-FENCE-1 (same [QWI-WAIT] receipt tag):
+    // it now measures the previous-frame retire wait instead of an inline drain.
+    {
+        using clk = std::chrono::steady_clock;
+        const clk::time_point tWait0 = clk::now();
+        if (vkWaitForFences(s.dev, 1, &s.inFlight, VK_TRUE,
+                            5ull * 1000 * 1000 * 1000) != VK_SUCCESS)
+            return false;
+        health_.composite_wait_us_last =
+            std::chrono::duration<double, std::micro>(clk::now() - tWait0).count();
+        health_.composite_wait_us_accum += health_.composite_wait_us_last;
+        ++health_.composite_wait_samples;
+        if ((health_.composite_wait_samples % 600) == 1)
+            plog("[QWI-WAIT] composite wait_us_last=%.1f wait_us_avg=%.1f samples=%u",
+                 health_.composite_wait_us_last,
+                 health_.composite_wait_us_accum / (double)health_.composite_wait_samples,
+                 health_.composite_wait_samples);
+    }
+
+    // Record into the composite's OWN cbuf; the submit happens in presentGLFrame as
+    // half of the single {compositeCbuf, cbuf} submission.
+    VkCommandBuffer cc = s.compositeCbuf;
+    s.compositePending = false;
+    vkResetCommandBuffer(cc, 0);
     VkCommandBufferBeginInfo bi{VK_STRUCTURE_TYPE_COMMAND_BUFFER_BEGIN_INFO};
     bi.flags = VK_COMMAND_BUFFER_USAGE_ONE_TIME_SUBMIT_BIT;
-    if (vkBeginCommandBuffer(s.cbuf, &bi) != VK_SUCCESS)
+    if (vkBeginCommandBuffer(cc, &bi) != VK_SUCCESS)
         return false;
 
-    barrier(s.cbuf, scene->image,
+    barrier(cc, scene->image,
             VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL, VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL,
             VK_ACCESS_COLOR_ATTACHMENT_WRITE_BIT, VK_ACCESS_SHADER_READ_BIT,
             VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT, VK_PIPELINE_STAGE_FRAGMENT_SHADER_BIT);
     if (needsObjectId) {
-        barrier(s.cbuf, objectId->image,
+        barrier(cc, objectId->image,
                 VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL, VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL,
                 VK_ACCESS_COLOR_ATTACHMENT_WRITE_BIT, VK_ACCESS_SHADER_READ_BIT,
                 VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT, VK_PIPELINE_STAGE_FRAGMENT_SHADER_BIT);
@@ -1955,14 +2010,14 @@ bool EnginePresentVk::renderNativeCompositeVisual(float exposure,
     clear.color = {{0.0f, 0.0f, 0.0f, 1.0f}};
     rp.clearValueCount = 1;
     rp.pClearValues = &clear;
-    vkCmdBeginRenderPass(s.cbuf, &rp, VK_SUBPASS_CONTENTS_INLINE);
+    vkCmdBeginRenderPass(cc, &rp, VK_SUBPASS_CONTENTS_INLINE);
     VkViewport vp{(float)viewportX, (float)viewportY,
                   (float)viewportW, (float)viewportH, 0.0f, 1.0f};
     VkRect2D sc{{viewportX, viewportY}, {(uint32_t)viewportW, (uint32_t)viewportH}};
-    vkCmdSetViewport(s.cbuf, 0, 1, &vp);
-    vkCmdSetScissor(s.cbuf, 0, 1, &sc);
-    vkCmdBindPipeline(s.cbuf, VK_PIPELINE_BIND_POINT_GRAPHICS, s.compositePipe);
-    vkCmdBindDescriptorSets(s.cbuf, VK_PIPELINE_BIND_POINT_GRAPHICS, s.compositeLayout,
+    vkCmdSetViewport(cc, 0, 1, &vp);
+    vkCmdSetScissor(cc, 0, 1, &sc);
+    vkCmdBindPipeline(cc, VK_PIPELINE_BIND_POINT_GRAPHICS, s.compositePipe);
+    vkCmdBindDescriptorSets(cc, VK_PIPELINE_BIND_POINT_GRAPHICS, s.compositeLayout,
                             0, 1, &s.compositeSet, 0, nullptr);
     float pc[16] = {
         exposure,
@@ -1982,78 +2037,31 @@ bool EnginePresentVk::renderNativeCompositeVisual(float exposure,
         0.0f,
         0.0f
     };
-    vkCmdPushConstants(s.cbuf, s.compositeLayout, VK_SHADER_STAGE_FRAGMENT_BIT,
+    vkCmdPushConstants(cc, s.compositeLayout, VK_SHADER_STAGE_FRAGMENT_BIT,
                        0, sizeof(pc), pc);
-    vkCmdDraw(s.cbuf, 3, 1, 0, 0);
-    vkCmdEndRenderPass(s.cbuf);
+    vkCmdDraw(cc, 3, 1, 0, 0);
+    vkCmdEndRenderPass(cc);
 
-    barrier(s.cbuf, scene->image,
+    barrier(cc, scene->image,
             VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL, VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL,
             VK_ACCESS_SHADER_READ_BIT, VK_ACCESS_COLOR_ATTACHMENT_WRITE_BIT,
             VK_PIPELINE_STAGE_FRAGMENT_SHADER_BIT, VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT);
     if (needsObjectId) {
-        barrier(s.cbuf, objectId->image,
+        barrier(cc, objectId->image,
                 VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL, VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL,
                 VK_ACCESS_SHADER_READ_BIT, VK_ACCESS_COLOR_ATTACHMENT_WRITE_BIT,
                 VK_PIPELINE_STAGE_FRAGMENT_SHADER_BIT, VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT);
     }
 
-    if (vkEndCommandBuffer(s.cbuf) != VK_SUCCESS)
+    if (vkEndCommandBuffer(cc) != VK_SUCCESS)
         return false;
+    (void)fsScene; (void)fsObjectId;
 
-    VkSemaphore waitSems[2];
-    VkPipelineStageFlags waitStages[2] = {
-        VK_PIPELINE_STAGE_FRAGMENT_SHADER_BIT,
-        VK_PIPELINE_STAGE_FRAGMENT_SHADER_BIT
-    };
-    VkSemaphore signalSems[2];
-    uint32_t waitN = 0;
-    (void)waitSems; (void)waitStages; (void)signalSems; (void)fsScene; (void)fsObjectId;
-    uint32_t sigN = 0;
-
-    VkSubmitInfo si{VK_STRUCTURE_TYPE_SUBMIT_INFO};
-    si.waitSemaphoreCount = waitN;
-    si.pWaitSemaphores = waitN ? waitSems : nullptr;
-    si.pWaitDstStageMask = waitN ? waitStages : nullptr;
-    si.commandBufferCount = 1;
-    si.pCommandBuffers = &s.cbuf;
-    si.signalSemaphoreCount = sigN;
-    si.pSignalSemaphores = sigN ? signalSems : nullptr;
-    // VK-QWI-TO-FENCE-1: retire the composite submit via its own dedicated fence
-    // instead of a queue-wide vkQueueWaitIdle drain. CPU-side, the fence still
-    // guarantees s.cbuf is fully retired before the tail submit reuses it (:2261),
-    // and a vkQueueSubmit fence signal is ordered after all earlier submission-order
-    // work on the queue, so the wait is never WEAKER than the drain it replaces.
-    // GPU-side ordering composite-before-blit never depended on this CPU wait
-    // (same-queue submission order + the tail cbuf's entry barriers provide it).
-    // Fail-soft: a missing fence (init variant that never created it) keeps the drain.
-    if (vkQueueSubmit(s.gfxQ, 1, &si,
-                      s.compositeFence ? s.compositeFence : VK_NULL_HANDLE) != VK_SUCCESS)
-        return false;
-
-    {
-        // Water-style us_fence_wait telemetry around the converted wait.
-        using clk = std::chrono::steady_clock;
-        const clk::time_point tWait0 = clk::now();
-        if (s.compositeFence) {
-            if (vkWaitForFences(s.dev, 1, &s.compositeFence, VK_TRUE,
-                                5ull * 1000 * 1000 * 1000) != VK_SUCCESS)
-                return false;
-            vkResetFences(s.dev, 1, &s.compositeFence);
-        } else if (vkQueueWaitIdle(s.gfxQ) != VK_SUCCESS) {
-            return false;
-        }
-        health_.composite_wait_us_last =
-            std::chrono::duration<double, std::micro>(clk::now() - tWait0).count();
-        health_.composite_wait_us_accum += health_.composite_wait_us_last;
-        ++health_.composite_wait_samples;
-        if ((health_.composite_wait_samples % 600) == 1)
-            plog("[QWI-WAIT] composite wait_us_last=%.1f wait_us_avg=%.1f samples=%u",
-                 health_.composite_wait_us_last,
-                 health_.composite_wait_us_accum / (double)health_.composite_wait_samples,
-                 health_.composite_wait_samples);
-    }
-
+    // VK-PRESENT-SINGLESUBMIT-1: NO submit and NO drain here. The recorded cbuf is
+    // submitted by presentGLFrame together with the tail (HUD/ImGui + swapchain
+    // blit) in ONE vkQueueSubmit; GPU-side composite-before-tail ordering comes from
+    // command-buffer order within the submit + the tail's entry barriers.
+    s.compositePending = true;
     ++health_.composite_vk_frames;
     presentImageVkOwned_ = true;
     return true;
@@ -2067,46 +2075,15 @@ bool EnginePresentVk::renderNativeCsmShadowDebugOverlay(void* csmArrayView, int 
     if (!ensureShadowDebugOverlayObjects(s, arrayView))
         return false;
 
-    vkResetCommandBuffer(s.cbuf, 0);
-    VkCommandBufferBeginInfo bi{VK_STRUCTURE_TYPE_COMMAND_BUFFER_BEGIN_INFO};
-    bi.flags = VK_COMMAND_BUFFER_USAGE_ONE_TIME_SUBMIT_BIT;
-    if (vkBeginCommandBuffer(s.cbuf, &bi) != VK_SUCCESS)
-        return false;
-
-    VkRenderPassBeginInfo rp{VK_STRUCTURE_TYPE_RENDER_PASS_BEGIN_INFO};
-    rp.renderPass = s.shadowDebugRenderPass;
-    rp.framebuffer = s.shadowDebugFramebuffer;
-    rp.renderArea.offset = {0, 0};
-    rp.renderArea.extent = {s.imgW, s.imgH};
-    vkCmdBeginRenderPass(s.cbuf, &rp, VK_SUBPASS_CONTENTS_INLINE);
-
-    const float quadSize = 256.0f;
-    const float margin = 16.0f;
-    VkViewport vp{margin, (float)s.imgH - quadSize - margin, quadSize, quadSize, 0.0f, 1.0f};
-    VkRect2D sc{{(int32_t)margin, (int32_t)((float)s.imgH - quadSize - margin)},
-                {(uint32_t)quadSize, (uint32_t)quadSize}};
-    vkCmdSetViewport(s.cbuf, 0, 1, &vp);
-    vkCmdSetScissor(s.cbuf, 0, 1, &sc);
-    vkCmdBindPipeline(s.cbuf, VK_PIPELINE_BIND_POINT_GRAPHICS, s.shadowDebugPipe);
-    vkCmdBindDescriptorSets(s.cbuf, VK_PIPELINE_BIND_POINT_GRAPHICS, s.shadowDebugLayout,
-                            0, 1, &s.shadowDebugSet, 0, nullptr);
-    int pc[4] = { layer < 0 ? 0 : layer, 0, 0, 0 };
-    vkCmdPushConstants(s.cbuf, s.shadowDebugLayout, VK_SHADER_STAGE_FRAGMENT_BIT,
-                       0, sizeof(pc), pc);
-    vkCmdDraw(s.cbuf, 3, 1, 0, 0);
-    vkCmdEndRenderPass(s.cbuf);
-
-    if (vkEndCommandBuffer(s.cbuf) != VK_SUCCESS)
-        return false;
-    VkSubmitInfo si{VK_STRUCTURE_TYPE_SUBMIT_INFO};
-    si.commandBufferCount = 1;
-    si.pCommandBuffers = &s.cbuf;
-    if (vkQueueSubmit(s.gfxQ, 1, &si, s.inFlight) != VK_SUCCESS)
-        return false;
-    if (vkWaitForFences(s.dev, 1, &s.inFlight, VK_TRUE, 5ull * 1000 * 1000 * 1000) != VK_SUCCESS)
-        return false;
-    vkResetFences(s.dev, 1, &s.inFlight);
-    ++health_.shadow_debug_vk_frames;
+    // VK-PRESENT-SINGLESUBMIT-1: the overlay used to be its OWN submit here (and it
+    // reset s.cbuf mid-frame and left s.inFlight unsignaled after its wait — a latent
+    // hang against the present tail's fence wait). It is now only STASHED; the
+    // present tail records it into the single {compositeCbuf, cbuf} submission,
+    // after the composite (correct paint order — with the composite no longer
+    // executed at composite time, an own-submit overlay would run BEFORE the
+    // composite on the GPU and be overwritten by it).
+    s.pendingShadowDebugView = arrayView;
+    s.pendingShadowDebugLayer = layer < 0 ? 0 : layer;
     return true;
 }
 
@@ -2211,6 +2188,14 @@ bool EnginePresentVk::presentGLFrame(uint32_t glDrawableW, uint32_t glDrawableH,
     // match the game window's new size (OS-driven resize / DPI change).
     if (glDrawableW != s.imgW || glDrawableH != s.imgH) {
         const bool hadDirectFbo = (directFbo_ != 0);
+        // VK-PRESENT-SINGLESUBMIT-1: (a) retire any in-flight prior submit before
+        // buildSharedImage destroys the image it may still reference (the old
+        // composite-time queue drain used to provide this incidentally; the wait is
+        // free when nothing is pending — fence stays SIGNALED, no reset). (b) DROP
+        // the pending composite recording: it references the about-to-be-destroyed
+        // shared image / framebuffers and must never be submitted.
+        vkWaitForFences(s.dev, 1, &s.inFlight, VK_TRUE, 5ull * 1000 * 1000 * 1000);
+        s.compositePending = false;
         std::string r;
         if (!buildSharedImage(s, glDrawableW, glDrawableH, r)) {
             health_.fallback_reason = "resize: " + r; return false;
@@ -2230,13 +2215,14 @@ bool EnginePresentVk::presentGLFrame(uint32_t glDrawableW, uint32_t glDrawableH,
 
     // ==== VK-RUNG8-ITEM8: present interop tail deleted ======================
     // The present image is VK-only. Its sole producer is the native VK composite
-    // (renderNativeCompositeVisual, which CPU-waits its submit) plus the native
-    // HUD/ImGui recorded into the tail hook below. There is NO GL copy-1 blit and
-    // NO GL->VK semaphore handoff any more: a GL-scene / VK-present hybrid can no
-    // longer exist (the mirror of item-5's VK-scene / GL-present deletion). If VK
-    // did not produce the present image this frame there is no GL rescue inside
-    // VK present -- copy-1 is gone.
-    if (!presentImageVkOwned_) {
+    // (renderNativeCompositeVisual, which RECORDS this frame's composite into
+    // s.compositeCbuf — VK-PRESENT-SINGLESUBMIT-1: submitted below together with
+    // the tail) plus the native HUD/ImGui recorded into the tail hook below. There
+    // is NO GL copy-1 blit and NO GL->VK semaphore handoff any more: a GL-scene /
+    // VK-present hybrid can no longer exist (the mirror of item-5's VK-scene /
+    // GL-present deletion). If VK did not produce the present image this frame
+    // there is no GL rescue inside VK present -- copy-1 is gone.
+    if (!presentImageVkOwned_ || !s.compositePending) {
         // The sole surviving present strict-canary trigger.
         presentNativeStrictAbort("present_image_not_vk_owned");
         // Native present is armed but the VK composite did not produce the image
@@ -2269,19 +2255,20 @@ bool EnginePresentVk::presentGLFrame(uint32_t glDrawableW, uint32_t glDrawableH,
     }
 
     // ==== COPY-2 (VK): blit shared image -> swapchain + present =============
-    VkResult r = vkWaitForFences(s.dev, 1, &s.inFlight, VK_TRUE, UINT64_MAX);
-    if (r == VK_ERROR_DEVICE_LOST) { health_.fallback_reason = "DEVICE_LOST at fence wait"; return false; }
-    vkResetFences(s.dev, 1, &s.inFlight);
-
+    // VK-PRESENT-SINGLESUBMIT-1: the previous frame's single submit was already
+    // fence-waited at composite-record time (before either cbuf was reset), so
+    // there is NO CPU wait here. s.inFlight stays SIGNALED until immediately
+    // before the submit below — any early return on this path (acquire
+    // OUT_OF_DATE, decline) leaves it signaled, so the next composite's wait can
+    // never hang and the pending composite is simply re-recorded next frame.
     uint32_t imageIndex = 0;
-    r = vkAcquireNextImageKHR(s.dev, s.swapchain, UINT64_MAX, s.acquireSem, VK_NULL_HANDLE, &imageIndex);
+    VkResult r = vkAcquireNextImageKHR(s.dev, s.swapchain, UINT64_MAX, s.acquireSem, VK_NULL_HANDLE, &imageIndex);
     if (r == VK_ERROR_OUT_OF_DATE_KHR) {
         // OS-driven resize/alt-tab invalidated the swapchain. Rebuild to the GL
         // game window's current drawable. If it's zero (minimized), skip the
-        // rebuild and just re-signal the fence -- retry next frame, no crash.
+        // rebuild -- retry next frame, no crash. (No fence re-signal needed any
+        // more: the fence was not reset on this path.)
         int dw = 0, dh = 0; SDL_GL_GetDrawableSize(glWindow_, &dw, &dh);
-        VkSubmitInfo empty{VK_STRUCTURE_TYPE_SUBMIT_INFO};
-        vkQueueSubmit(s.gfxQ, 1, &empty, s.inFlight);   // re-signal fence
         if (dw > 0 && dh > 0) {
             std::string rr;
             if (!rebuildSwapchain(s, (uint32_t)dw, (uint32_t)dh, health_, rr)) {
@@ -2304,17 +2291,55 @@ bool EnginePresentVk::presentGLFrame(uint32_t glDrawableW, uint32_t glDrawableH,
     bi.flags = VK_COMMAND_BUFFER_USAGE_ONE_TIME_SUBMIT_BIT;
     vkBeginCommandBuffer(s.cbuf, &bi);
 
-    // VK-TAIL-HOOK-1: final native-tail seam. GL has signalled the shared image
-    // back to VK in COLOR_ATTACHMENT layout; future native HUD/ImGui commands
-    // attach here before the present blit consumes the final image.
-    if (tailHook) {
-        ++health_.tail_hook_frames;
+    // VK-PRESENT-SINGLESUBMIT-1: order the composite's color writes (executed as
+    // the FIRST command buffer of this same submit) before any tail attachment
+    // write. Needed by the overlay/HUD/ImGui render passes; the blit path is
+    // covered by its own COLOR_ATTACHMENT->TRANSFER_SRC barrier below.
+    const bool tailWrites = tailHook || (s.pendingShadowDebugView != VK_NULL_HANDLE);
+    if (tailWrites) {
         barrier(s.cbuf, s.sharedImg.image,
                 VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL, VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL,
                 VK_ACCESS_COLOR_ATTACHMENT_WRITE_BIT,
                 VK_ACCESS_COLOR_ATTACHMENT_READ_BIT | VK_ACCESS_COLOR_ATTACHMENT_WRITE_BIT,
                 VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT,
                 VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT);
+    }
+
+    // VK-PRESENT-SINGLESUBMIT-1: stashed CSM shadow-debug overlay (opt-in debug) —
+    // recorded here so it lands AFTER the composite and BEFORE HUD/ImGui, matching
+    // its pre-single-submit paint order.
+    if (s.pendingShadowDebugView != VK_NULL_HANDLE && s.shadowDebugRenderPass &&
+        s.shadowDebugFramebuffer && s.shadowDebugPipe) {
+        VkRenderPassBeginInfo srp{VK_STRUCTURE_TYPE_RENDER_PASS_BEGIN_INFO};
+        srp.renderPass = s.shadowDebugRenderPass;
+        srp.framebuffer = s.shadowDebugFramebuffer;
+        srp.renderArea.offset = {0, 0};
+        srp.renderArea.extent = {s.imgW, s.imgH};
+        vkCmdBeginRenderPass(s.cbuf, &srp, VK_SUBPASS_CONTENTS_INLINE);
+        const float quadSize = 256.0f;
+        const float margin = 16.0f;
+        VkViewport svp{margin, (float)s.imgH - quadSize - margin, quadSize, quadSize, 0.0f, 1.0f};
+        VkRect2D ssc{{(int32_t)margin, (int32_t)((float)s.imgH - quadSize - margin)},
+                     {(uint32_t)quadSize, (uint32_t)quadSize}};
+        vkCmdSetViewport(s.cbuf, 0, 1, &svp);
+        vkCmdSetScissor(s.cbuf, 0, 1, &ssc);
+        vkCmdBindPipeline(s.cbuf, VK_PIPELINE_BIND_POINT_GRAPHICS, s.shadowDebugPipe);
+        vkCmdBindDescriptorSets(s.cbuf, VK_PIPELINE_BIND_POINT_GRAPHICS, s.shadowDebugLayout,
+                                0, 1, &s.shadowDebugSet, 0, nullptr);
+        int spc[4] = { s.pendingShadowDebugLayer, 0, 0, 0 };
+        vkCmdPushConstants(s.cbuf, s.shadowDebugLayout, VK_SHADER_STAGE_FRAGMENT_BIT,
+                           0, sizeof(spc), spc);
+        vkCmdDraw(s.cbuf, 3, 1, 0, 0);
+        vkCmdEndRenderPass(s.cbuf);
+        ++health_.shadow_debug_vk_frames;
+    }
+    s.pendingShadowDebugView = VK_NULL_HANDLE;
+
+    // VK-TAIL-HOOK-1: final native-tail seam. The composite left the shared image
+    // in COLOR_ATTACHMENT layout; native HUD/ImGui commands attach here before the
+    // present blit consumes the final image.
+    if (tailHook) {
+        ++health_.tail_hook_frames;
         uint32_t hudColorDraws = 0;
         uint32_t hudTexturedDraws = 0;
         uint32_t hudTextureUploads = 0;
@@ -2380,25 +2405,35 @@ bool EnginePresentVk::presentGLFrame(uint32_t glDrawableW, uint32_t glDrawableH,
             VK_PIPELINE_STAGE_TRANSFER_BIT, VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT);
     vkEndCommandBuffer(s.cbuf);
 
-    // Submit: wait ONLY on the swapchain acquire semaphore. The present image was
-    // produced by the native VK composite, which already CPU-waited its own submit
-    // (per-submit compositeFence, VK-QWI-TO-FENCE-1) -- so the image data is ready
-    // and no GL->VK semaphore is needed (item-8: the interop handoff is deleted).
-    // The tail-hook HUD/ImGui commands are in THIS command buffer, ordered by the
-    // barriers above.
+    // VK-PRESENT-SINGLESUBMIT-1: THE single present-path submit — composite cbuf
+    // first, tail cbuf (overlay + HUD/ImGui + swapchain blit) second, executed in
+    // command-buffer order; the tail's entry barriers order the composite's writes
+    // for the tail passes and the blit. Waits ONLY the swapchain acquire semaphore
+    // (dst stage COLOR_ATTACHMENT_OUTPUT — GPU-side this also gates the composite's
+    // color writes, which is correct and merely schedules them after the acquire;
+    // no CPU wait is involved). Signals the per-image render semaphore for present
+    // and the inFlight fence, which the NEXT frame's composite-record waits. The
+    // fence is reset HERE, immediately before the submit that will signal it —
+    // never on a decline path (DISARM-2b hang guard).
     VkSemaphore imgRenderSem = s.renderSems[imageIndex];
     VkSemaphore waitSem      = s.acquireSem;
     VkPipelineStageFlags waitStage = VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT;
+    VkCommandBuffer submitCbufs[2] = { s.compositeCbuf, s.cbuf };
     VkSubmitInfo si{VK_STRUCTURE_TYPE_SUBMIT_INFO};
     si.waitSemaphoreCount   = 1;
     si.pWaitSemaphores      = &waitSem;
     si.pWaitDstStageMask    = &waitStage;
-    si.commandBufferCount   = 1;
-    si.pCommandBuffers      = &s.cbuf;
+    si.commandBufferCount   = 2;
+    si.pCommandBuffers      = submitCbufs;
     si.signalSemaphoreCount = 1;
     si.pSignalSemaphores    = &imgRenderSem;
+    vkResetFences(s.dev, 1, &s.inFlight);
+    s.compositePending = false;   // consumed by this submit (success or fail-soft)
     r = vkQueueSubmit(s.gfxQ, 1, &si, s.inFlight);  // drives acquire/present cadence
     if (r != VK_SUCCESS) {
+        // The fence is now unsignaled with no submit to signal it; returning false
+        // triggers the DISARM-2 present-failure path (vkpres.destroy() + deferred
+        // retry), which destroys and re-creates the fence SIGNALED — no hang.
         health_.fallback_reason = "vkQueueSubmit failed (" + std::to_string((int)r) + ")";
         plog("%s. fail-soft.", health_.fallback_reason.c_str());
         return false;
@@ -2646,7 +2681,11 @@ void EnginePresentVk::destroy() {
         if (s.readbackMem)   { vkFreeMemory(s.dev, s.readbackMem, nullptr); s.readbackMem = VK_NULL_HANDLE; }
         if (s.sharedImg.image) vkImageResourceDestroy(&s.sharedImg, s.dev);
         if (s.inFlight)   { vkDestroyFence(s.dev, s.inFlight, nullptr); s.inFlight = VK_NULL_HANDLE; }
-        if (s.compositeFence) { vkDestroyFence(s.dev, s.compositeFence, nullptr); s.compositeFence = VK_NULL_HANDLE; }   // VK-QWI-TO-FENCE-1
+        // VK-PRESENT-SINGLESUBMIT-1: compositeCbuf is pool-allocated (freed with the
+        // pool below); just drop the pending state.
+        s.compositeCbuf = VK_NULL_HANDLE;
+        s.compositePending = false;
+        s.pendingShadowDebugView = VK_NULL_HANDLE;
         if (s.acquireSem) { vkDestroySemaphore(s.dev, s.acquireSem, nullptr); s.acquireSem = VK_NULL_HANDLE; }
         if (s.cpool)      { vkDestroyCommandPool(s.dev, s.cpool, nullptr); s.cpool = VK_NULL_HANDLE; s.cbuf = VK_NULL_HANDLE; s.readbackCbuf = VK_NULL_HANDLE; }
         destroySwapchainOnly(s);

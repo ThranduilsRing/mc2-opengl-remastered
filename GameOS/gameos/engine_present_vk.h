@@ -93,8 +93,12 @@ struct EnginePresentHealth {
     uint32_t    hud_vk_texture_uploads = 0;
     bool        imgui_vk_ready      = false;
     unsigned int last_direct_fbo    = 0;   // last shared FBO id granted
-    // VK-QWI-TO-FENCE-1: water-style us_fence_wait telemetry around the composite
-    // submit's CPU-blocking wait (QWI before the conversion, per-submit fence after).
+    // VK-QWI-TO-FENCE-1 / VK-PRESENT-SINGLESUBMIT-1: water-style us_fence_wait
+    // telemetry around the present path's ONLY CPU wait. History: QWI drain after
+    // the composite submit -> per-submit compositeFence wait -> (single-submit) the
+    // inFlight wait for the PREVIOUS frame's {composite, tail+blit} submission,
+    // taken at composite-record time. Same [QWI-WAIT] receipt tag throughout so
+    // before/after greps line up.
     double      composite_wait_us_last = 0.0;
     double      composite_wait_us_accum = 0.0;
     uint32_t    composite_wait_samples = 0;
