@@ -227,6 +227,8 @@ Headless Vulkan probe / backend-skeleton exercise gates. All read via bare `gete
 
 ## Pre-commit invariant scripts
 
+- Order liveness (nightly, needs a deployed exe): `py -3 scripts/check-order-liveness.py --exe <lane>/mc2.exe` — joins `check-combat-soak.py` in the nightly tier; triage playbook `docs/ai-order-triage.md`.
+- Resolution matrix (nightly): `py -3 scripts/run_smoke_matrix.py resolution` — 5 aspect/windowed entries, `MC2_RES_ASSERT=fatal` machine oracle.
 - Object lifecycle: `sh scripts/check-destroy-invariant.sh`
 - UI icon atlas: `sh scripts/check-asset-scale-callers.sh`
 - Shader ABI: `cmake --build build64 --target shader_schema`
