@@ -1910,6 +1910,13 @@ static constexpr EnvVarDesc kAuxEnvVars[] = {
         false,
         "META-FIX design B PART 3 (code/mechicon.cpp iconTileChecked at the three CPU icon-tile blits): default OFF. =1 substitutes a solid MAGENTA tile when an icon index resolves outside the source atlas (last-pixel arithmetic identical to the per-pixel bounds guards — never flags an in-bounds tile). Default keeps the LEGACY wrap/blank semantics, which are load-bearing for MC2X high-index mod content (mechicon.cpp wrap comment) — that is why the substitution is opt-in while the '[ASSET_LOAD v1] event=icon_oob' line is always-on (rate-limited). UV-path sibling: icon_atlas_cell.h cellForIndexChecked (logisticsmechicon/mechlistbox) returns the legacy-computed cell UNCHANGED on OOB. Row bound harness-validated against retail 256x256 / MC2X 512 / MCO 1024-40 in tools/icon_atlas_harness before the icon_oob smoke bucket is armed red."
     },
+    {
+        "MC2_TRACE_APPEAR_AUDIT",
+        "MC2_APPEAR_AUDIT",
+        EnvVarKind::Trace,
+        false,
+        "META-FIX design B PART 4 (code/mission.cpp Mission::start beside mission_phase_mark('mission_ready')): default OFF, OBSERVATIONAL-FIRST. One O(N) pass over registered existing objects at mission_ready: emits '[APPEAR_AUDIT v1] event=missing reason=appearance_null|base_shape_failed ...' (bounded 32 lines) + a 'summary scanned= missing=' line. POSITION-FREE by the off-map-staging carve-out (INVIS-VEHICLES-FIX-1): staged movers have valid appearances; the scan keys on no positional/visibility term. The appear_audit smoke bucket is registered ADVISORY-DISARMED and may only arm red (and the gate join the tier1 force-set) after a full 24-map failed=0 baseline — whether any class legitimately reports NULL appearance at mission_ready is unverified; the tier1-missions baseline ships with META-FIX-BATCH-3, the 24-map run is the documented follow-up."
+    },
 };
 
 // ---------------------------------------------------------------------------

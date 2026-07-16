@@ -5146,6 +5146,56 @@ void Mission::start (void)
 	active = true;
 	mission_phase_mark("mission_ready");
 	mission_phase_report(); // LOAD-PHASE-FACTS-1: emit consolidated [LOAD_PHASES v1] line
+
+	// APPEAR-AUDIT-BEGIN (META-FIX design B PART 4 — MC2_APPEAR_AUDIT,
+	// default OFF, OBSERVATIONAL-FIRST: the appear_audit smoke bucket stays
+	// disarmed until a 24-map failed=0 baseline passes, because whether any
+	// object class legitimately reports NULL appearance at mission_ready is
+	// unverified. One O(N) pass at mission_ready: every existing registered
+	// object either has a non-NULL appearance whose base shape loaded, or
+	// emits one classified [APPEAR_AUDIT v1] event=missing line.
+	// POSITION-FREE by the same off-map-staging carve-out as design A
+	// (INVIS-VEHICLES-FIX-1): staged movers have valid appearances and sit
+	// off-map by authored design — this scan keys on NO positional or
+	// visibility term (no getPosition, no canBeSeen, no in-view test);
+	// check-tgl-load-callers.sh pins this region position-free.)
+	{
+		static const bool s_appearAudit = mc2AuditLatch("MC2_APPEAR_AUDIT");
+		if (s_appearAudit && ObjectManager)
+		{
+			long scanned = 0, missing = 0;
+			const long maxObjs = ObjectManager->getMaxObjects();
+			for (long h = 1; h <= maxObjs; h++)
+			{
+				GameObjectPtr obj = ObjectManager->get(h);
+				if (!obj || !obj->getExists())
+					continue;
+				scanned++;
+				AppearancePtr appear = obj->getAppearance();
+				const char* why = NULL;
+				if (!appear)
+					why = "appearance_null";
+				else
+				{
+					AppearanceTypePtr at = appear->getAppearanceType();
+					if (at && at->baseShapeLoadFailed)
+						why = "base_shape_failed";
+				}
+				if (why)
+				{
+					missing++;
+					if (missing <= 32)   // bounded output; summary carries totals
+						mc2AuditLinef("[APPEAR_AUDIT v1] event=missing reason=%s "
+							"handle=%ld class=%d part=%ld",
+							why, h, (int)obj->getObjectClass(),
+							(long)obj->getPartId());
+				}
+			}
+			mc2AuditLinef("[APPEAR_AUDIT v1] summary scanned=%ld missing=%ld",
+				scanned, missing);
+		}
+	}
+	// APPEAR-AUDIT-END
 	// MISSION-START-HOVER-TARGET-LIFETIME-1: mission world is now fully live (objects loaded,
 	// active set). Re-enable hover picking that was suppressed since invalidateHoverTarget().
 	if (missionInterface)

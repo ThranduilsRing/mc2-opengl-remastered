@@ -1581,6 +1581,12 @@ def main():
                             # substitution at the icon blits (icon_oob line
                             # itself is always-on). Allowlisted for probes.
                             "MC2_ICON_FAILLOUD",
+                            # META-FIX design B PART 4: observational
+                            # mission_ready appearance scan (default OFF;
+                            # NOT force-set for tier runs until the 24-map
+                            # failed=0 baseline passes). Allowlisted so the
+                            # baseline legs reach the child.
+                            "MC2_APPEAR_AUDIT",
                             # META-FIX design E tier 3: file-resolve ladder
                             # diagnostics + JSONL MISS trace (mclib/file.cpp).
                             # check-file-resolve-miss.py sets both through
