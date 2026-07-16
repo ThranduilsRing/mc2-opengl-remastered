@@ -1,6 +1,18 @@
 # GitHub issue-fix batch — status
 
-## META-FIX-BATCH-3 (recurrence-proofing: design A + design B) — IN PROGRESS 2026-07-16
+## META-FIX-BATCH-3 (recurrence-proofing: design A + design B) — COMPLETE 2026-07-16
+
+**Tier1 verdict (gates-off, canonical): PASS 5/5** (mc2_01/03/10/17/24,
+30 s each, exit 0, `[diag-state] PASS`), run 2026-07-16T17-2x via
+`A:/Games/mc2-main/scripts/run_smoke.py --exe <lane>\mc2.exe` with
+`MC2_SMOKE_REQUIRE_FINGERPRINT=0` (documented cross-worktree waiver; the
+`MISMATCH exe=60450449 expected=994c3776` lines are the expected artifact —
+the same binary was fingerprint-VERIFIED `OK` by the worktree runner in the
+restore-check leg, and `c3f09785` was OK x5 in the armed tier1). Lane
+exe/manifest = `60450449`, CLEAN (sabotage scratch deploy carried the
+dirty-warning provenance and was reverted+redeployed clean). mc2 clean
+build (--clean-first for the apprtype.h/forcegroupbar.h/controlgui.h
+layout changes) + EditRel + mc2_launcher all GREEN.
 
 Plan: `.claude/META-FIX-PLAN-2026-07-16.md` Batch 3; designs in
 `.claude/META-FIX-DESIGNS-2026-07-16.json` (cls "CLASS A", "CLASS B").
@@ -29,7 +41,6 @@ outside the audit's home-commander scope.
 | B3 PART 3 icon chokepoints: icon_atlas_cell.h cellForIndexChecked (legacy cell UNCHANGED on OOB) + rowsForAtlas; logisticsmechicon/mechlistbox icon_oob emit; mechicon iconTileChecked x3 blits (last-pixel arithmetic; magenta tile only under MC2_ICON_FAILLOUD default-OFF) + 5 harness row-bound cases | `d83f19fc` | DONE — icon_atlas_harness 16/16 PASS (256x256 retail / 512 MC2X APC=142 legit / 1024-40 MCO / unknown-geometry-never-flags / negative+exact) |
 | B4 PART 4 MC2_APPEAR_AUDIT observational mission_ready scan (Mission::start; appearance_null|base_shape_failed; bounded 32 + summary; POSITION+VISIBILITY-FREE sentinel region per staging carve-out) | `73da4f58` | DONE — bucket ships disarmed |
 | B5 PART 5 check-tgl-load-callers.sh (P1 confinement w/ TGL-LOAD-EXEMPT tags + checked-wrap; P2 presence pins; P3 appear-audit staging carve-out position+visibility legs) + check-contracts rows + MARKER_BUCKETS (asset_load_fail red excl. file_missing; icon_oob ARMED red on harness evidence; appear_audit advisory-DISARMED until 24-map baseline) | `630c560a` | DONE — GREEN on HEAD; --self-test RED all legs; pytest tests/smoke 97/97 |
-
 | C-fix reword raw tess token in tgl_load_guard comments (design C RULE 3 scans comments; full contracts table caught it) | `758449fa` | DONE — split_path_contracts + selftest back GREEN; table = 52 passed / 9 pre-existing reds (same 9 as batches 1/2) + gated-layout ledger regen side-effect committed |
 | LIVE-EVIDENCE reclassification: required = LOD0/single base slots ONLY; LOD>0 raw+TGL-LOAD-EXEMPT (stock ships declared-but-absent higher LODs — 2storycivlivingl2 on 4/5 tier1 maps); mc2_24 manifest allow_asset_load_fail=1 for the GENUINE jaegermech gap (true positive kept firing, downgraded to advisory) | `c3f09785` | DONE — see STOCK-DATA FINDINGS below |
 
@@ -59,6 +70,91 @@ instrumentation surfaced two REAL pre-existing silent asset failures):**
    base_shape_failed from findings 1/2. The 'does any class legitimately
    report NULL appearance at mission_ready' unknown resolves to NO for
    tier1; 24-map baseline remains the arming precondition (follow-up).
+
+**Proof-leg evidence (all on lane exe, worktree runner fingerprint OK):**
+- [x] ARMED tier1 PASS 5/5 at `c3f09785` (2026-07-16T16-43-24, exit 0,
+      `[DEPLOY_FINGERPRINT] OK` x5, `[diag-state] PASS`):
+      MC2_MOVER_COHERENCE_AUDIT force-set (tier) + MC2_APPEAR_AUDIT=1.
+      Design A STOCK-CLEAN: 5/5 `[MOVER_COHERENCE] summary ... violations=0
+      advisories=0 audits=30` + runner liveness lines. Design B: zero
+      [ASSET_LOAD v1] lines on mc2_01/03/10/17; mc2_24 = exactly the 2
+      jaegermech true-positive lines, advisory-downgraded by the manifest
+      override. APPEAR_AUDIT missing=0 x4 + missing=2 on mc2_24 (both
+      jaegermech instances).
+- [x] A SABOTAGE leg (scratch build at `60450449`-dirty, MC2_COH_SABOTAGE
+      env-gated snippet forcing the #50 pre-fix signature, both scratch
+      edits reverted after): mc2_08 + MC2_MOVER_COHERENCE_AUDIT=1 →
+      `[MOVER_COHERENCE] VIOLATION rule=I5 part=513 name=Atlas
+      detail=selected_offgui` (the exact #50 Atlas from Fixer-1 Probe A),
+      dedup held (violations=30 counted, 1 line), mover_coherence red
+      bucket → mc2_08 FAIL → exit 1 (2026-07-16T17-11-19).
+- [x] B RED-CAPABILITY live x2: (a) the FIRST armed tier1
+      (2026-07-16T16-29-09) went red on the REAL stock jaegermech gap —
+      4 missions FAIL asset_load_fail before the classification refinement;
+      (b) SYNTHETIC leg: crafted corrupt loose bushwacker.tgl (valid
+      version + unknown nodeType 99) shadowing the FST copy → full chain
+      parse_fail(unknown_node_type) → required_missing(mech3d.base_lod) →
+      appr_type_fail → asset_load_fail red → mc2_01 FAIL exit 1
+      (2026-07-16T16-58-07). Lane restored; mc2_01 re-verified green.
+- [x] B PLACEHOLDER VISIBLE on the GPU batcher path (closes the design's
+      biggest unverified): direct-launch screenshot (own-PID, sceneFBO
+      oracle frame 900) with 3 broken bushwackers → 3 MAGENTA boxes with
+      health bars at the mech positions. First probe rendered
+      visible-but-BLACK boxes → fixed by binding the type-level magenta
+      node to Mech3DAppearance::localTextureHandle in the resetPaintScheme
+      guard (`60450449`); re-probe confirmed magenta
+      (scratchpad synthetic_magenta2*.png).
+- [x] icon_atlas_harness 16/16 (row bound on all three shipped geometries)
+      → icon_oob bucket armed RED.
+- [x] check-contracts FULL table: 52 passed / 9 failed — the identical 9
+      pre-existing reds from batches 1/2 (after the `758449fa` RULE-3
+      comment-token fix); all 4 new rows PASS.
+- [x] check-env-registry PASS (354 registered).
+- [x] Final canonical tier1 gates-off: PASS 5/5 exit 0 (verdict block above).
+- [x] EditRel + mc2_launcher rebuilt GREEN post-refinement.
+
+**Deviations from plan (with justification):**
+(1) I4 registration round-trip uses pointer-identity scan over the mover
+list, not getByWatchID — getWatchID(true) ASSIGNS an id inside a read-only
+audit (design's own read-only contract wins; O(16x60) per tick immaterial).
+(2) mc2AuditOnce dedup cap is 64 (INFRA-1 helper), reviewed PART-0 cap was
+32 — kept the shared helper.
+(3) Required-slot scope narrowed to LOD0/single base slots after LIVE
+evidence (declared-but-absent higher LODs ship in stock data on 4/5 tier1
+maps); LOD>0 = TGL-LOAD-EXEMPT optional, still loader-traced under
+MC2_ASSET_TRACE.
+(4) mc2_24 carries allow_asset_load_fail=1 — GENUINE stock-data gap
+(jaegermech.tgl absent, mech spawned invisible pre-batch); true positive
+kept firing, downgraded per-mission via the designed manifest override
+until the data fix (follow-up).
+(5) Coherence summary emitted via atexit (process-exit) instead of a
+mission-end hook — smoke = one mission per process; runner treats absence
+as advisory WARN only.
+(6) The A-summary liveness scan lives in run_smoke's per-mission loop
+scanning the STDOUT marker (MC2_DIAG_TAGS-independent per the design's own
+smoke_integration note), not the diag-state JSONL section.
+(7) mech resetPaintScheme placeholder guard iterated live: early-return
+alone rendered visible-but-BLACK boxes; final shape binds the type-level
+magenta node to localTextureHandle (the mech batcher's per-actor slot-0
+source) before returning.
+(8) icon_oob bucket armed RED in-slice — the plan's precondition (harness
+row-bound validation on the three shipped geometries) was met in-slice
+(16/16).
+(9) slice_preflight via mc2-repo-intel MCP (worktree has no repo_query.py)
+— same deviation as Batches 1/2.
+(10) Design C RULE-3 comment-token collision (raw MC2_TERRAIN_TESS token in
+tgl_load_guard comments) caught by the full contracts table — reworded, not
+allowlisted.
+
+**Follow-ups (documented, not in this batch):**
+- Fix the jaegermech stock-data gap (restore jaegermech.tgl to tgl.fst or
+  repoint the mc2_24 part/type), then REMOVE the mc2_24
+  allow_asset_load_fail override.
+- 24-map MC2_APPEAR_AUDIT=1 failed=0 baseline → then arm the appear_audit
+  bucket red + add the gate to the tier1 force-set (tier1-missions baseline
+  shipped this batch: missing=0 except the known jaegermech instances).
+- Nightly add-ons per the plan: mc2_08 (LINKUP-PENDING row) +
+  MC2_SOAK_SALVAGE_TRADEMOVER (trade row) beside check-combat-soak.py.
 
 ## META-FIX-BATCH-2 (recurrence-proofing: design D + design F) — COMPLETE 2026-07-16
 
