@@ -76,12 +76,15 @@ the deferral removes).
   building a private 2-deep ring — restructuring beyond the template. Runs only
   on weapon-fire frames. => DEFER with note (per task instruction).
 
-## 5. DOCS remainder — pending
+## 5. DOCS remainder — DONE
 - De-stale BUG 5 (2x sim speed): run one field leg with MC2_SIM_CLOCK_TRACE=1,
   read ratio(sim/wall). BUG 6 (prop scramble): classify vs subsequent clean prop
   verifications. Commit untracked .claude/METAL-GATE-AUDIT-2.md +
   .claude/VK-PERF-SLICE-PLAN-2026-07-16.md w/ supersession note (slices 1-5 +
   water pilot DONE). Append VK-PERF-3 results block to VK-ARC-STATE.md.
+- BUG 5 current field trace is exactly 1.000 sim/wall for 24 samples; closed as
+  not reproduced. BUG 6 closed as load-transient after repeated settled native
+  prop runs. VK-ARC-STATE.md updated with both rulings.
 
 ## Measurement harness
 - .claude/fence-defer/measure.py (A/B: killswitch arm vs defer arm, parses

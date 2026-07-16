@@ -2491,7 +2491,7 @@ composited pixels remain a valid VK oracle.
   layer shift.
 
 ### OPEN (documented, NOT fixed this session — for next session)
-- **BUG 5 (2x sim speed, field env)** — NOT a fixed-step misfire:
+- **BUG 5 (2x sim speed, field env) — CLOSED, not reproduced at current HEAD:**
   `MC2_SMOKE_FIXED_TIMESTEP` is the ONLY armer (gos_smoke.cpp:54); the field bat
   does NOT set it, and `MC2_DEBUG_STATE_DUMP` touches no timestep path. Sim dt =
   `frameLength = 1.0/frameRate` (mechcmd2.cpp:2217); frameRate = live wall-clock
@@ -2499,7 +2499,12 @@ composited pixels remain a valid VK oracle.
   (field vs minimal env) to root-cause the 2x. SIM-SPEED FEATURE SEAM (user
   request, do NOT implement yet): the clean knob is `frameLength`
   (mclib/timing.cpp:20, set mechcmd2.cpp:2217) — a future MC2_SIM_SPEED/UI
-  button scales it.
+  button scales it. Instrumented VK-umbrella field-profile run on mc2_24 at
+  `72f9c410` (`tests/smoke/artifacts/2026-07-16T12-48-53/`) emitted 24
+  once-per-second samples: every `ratio(sim/wall)=1.000` from wall=1.001s through
+  wall=24.065s (frameLength 0.006-0.007 at ~140 fps). Current simulation clock is
+  real-time; the original 2x observation was transient/stale evidence, not a live
+  engine defect. Future explicit MC2_SIM_SPEED feature remains a separate request.
 - **FAR-BAND BLACK — PARTIAL FIX this session (`gos_terrain_lod_chunk.cpp` gate
   bug fixed; deeper CSM-near shading defect still OPEN).** Root-caused via
   bisection (MC2_VK_TERRAIN_LIGHTING/DETAIL/DYNSHADOW/CSM toggled one at a time
@@ -2619,11 +2624,14 @@ composited pixels remain a valid VK oracle.
   single-bookmark VK evidence at "overview_center" from sweep captures is
   suspect until this is fixed; use later-in-sweep bookmarks or
   single-bookmark runs for VK evidence.
-- **BUG 6? prop texture scramble** — coordinator saw live (pink slabs, floating
+- **BUG 6? prop texture scramble — CLOSED as load-transient:** coordinator saw live (pink slabs, floating
   textures, trunkless trees) DURING mc2_24 load on the Bug1+Bug4 exe. NOT
   reproduced at settled capture (props clean: walls/trees/buildings textured).
   Classified LOAD-TRANSIENT, not a static-reproducible regression; neither
-  committed fix touches prop layers. USER cold-load re-check to confirm.
+  committed fix touches prop layers. Subsequent clean native-prop verifications,
+  including fence-deferral A/B and final VK tier1 5/5 at `72f9c410`, rendered the
+  prop island for thousands of frames with `fallback_reason=""` and no settled
+  scramble. No code change warranted unless a new settled reproduction appears.
 
 ## ADJUDICATION-1 (2026-07-06) — contamination-proof fence + washout verdict
 
@@ -3340,3 +3348,18 @@ Verification:
   tail_hook_frames=1 ... hud_vk_queued_frames=1 hud_vk_consumed_frames=1
   hud_vk_draws_last=85 imgui_vk_ready=1 imgui_vk_frames=1 ... fallback_reason=""`.
   Steady HUD audit remained `calls=95 ... textured=69 text=7`.
+## 2026-07-16 — VK-PERF-3 fence-deferral rollout complete
+
+Water (`61031785`), terrain (`f9f75448`), prop (`338fd468`), and mech
+(`72f9c410`) now use the same default-ON parity-slot fence-retirement template.
+Every per-frame CPU-written submit input is double-buffered by shared-resource
+parity; the retire wait moved from immediately after submit to the next reuse of
+that slot. Each island retains an explicit `MC2_VK_*_FENCE_DEFER=0` killswitch
+and gated microsecond receipt. VFX remains intentionally deferred: it has a
+private single-buffer protocol and only runs on weapon-fire frames.
+
+Mech final proof: mc2_24 inline vs deferred reduced average fence wait
+171.1→14.2 µs and island total 664.0→448.9 µs; both PASS +0. Sync validation
+PASS with 0 hazards/errors. Final full VK-umbrella tier1 PASS 5/5 +0 at
+`tests/smoke/artifacts/2026-07-16T12-44-48/`. See
+`.claude/VK-PERF-3-PROGRESS.md` for all receipts and earlier island results.
