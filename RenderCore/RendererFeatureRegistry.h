@@ -1903,6 +1903,13 @@ static constexpr EnvVarDesc kAuxEnvVars[] = {
         true,
         "META-FIX design B PART 1 (mclib/tgl_load_guard.cpp): default-ON killswitch (MC2_TERRAIN_TESS shape — unset=ON, =0 exact legacy fail-soft). When a REQUIRED base-shape load fails (rc!=0 or GetNumShapes()==0 at the ~17 required slots in mech3d/bdactor/gvactor/genactor), populates a VISIBLE magenta placeholder box with a REAL 4x4 texture registered through mcTextureManager (valid handles, NOT numTextures=0 — the GPU static-prop/mech batchers cull layerForPacket=-1 packets, so a textureless placeholder would itself be invisible). The '[ASSET_LOAD v1] event=required_missing' line + MC2_VERIFY fire + AppearanceType::baseShapeLoadFailed flag happen regardless of this gate. Stock byte-identical: no stock base shape fails, so the branch is cold. =0 restores 'leave the mech without an appearance' (msl.cpp fail-soft) exactly."
     },
+    {
+        "MC2_FEATURE_ICON_FAILLOUD",
+        "MC2_ICON_FAILLOUD",
+        EnvVarKind::Feature,
+        false,
+        "META-FIX design B PART 3 (code/mechicon.cpp iconTileChecked at the three CPU icon-tile blits): default OFF. =1 substitutes a solid MAGENTA tile when an icon index resolves outside the source atlas (last-pixel arithmetic identical to the per-pixel bounds guards — never flags an in-bounds tile). Default keeps the LEGACY wrap/blank semantics, which are load-bearing for MC2X high-index mod content (mechicon.cpp wrap comment) — that is why the substitution is opt-in while the '[ASSET_LOAD v1] event=icon_oob' line is always-on (rate-limited). UV-path sibling: icon_atlas_cell.h cellForIndexChecked (logisticsmechicon/mechlistbox) returns the legacy-computed cell UNCHANGED on OOB. Row bound harness-validated against retail 256x256 / MC2X 512 / MCO 1024-40 in tools/icon_atlas_harness before the icon_oob smoke bucket is armed red."
+    },
 };
 
 // ---------------------------------------------------------------------------

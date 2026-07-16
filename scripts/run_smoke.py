@@ -1577,6 +1577,10 @@ def main():
                             # Allowlisted so the sabotage/probe legs can flip
                             # it through the runner.
                             "MC2_ASSET_FAILLOUD",
+                            # META-FIX design B PART 3: opt-in magenta tile
+                            # substitution at the icon blits (icon_oob line
+                            # itself is always-on). Allowlisted for probes.
+                            "MC2_ICON_FAILLOUD",
                             # META-FIX design E tier 3: file-resolve ladder
                             # diagnostics + JSONL MISS trace (mclib/file.cpp).
                             # check-file-resolve-miss.py sets both through

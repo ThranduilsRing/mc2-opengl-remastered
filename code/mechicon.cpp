@@ -7,6 +7,7 @@ MechIcon.cpp			: Implementation of the MechIcon component.
 \*************************************************************************************************/
 
 #include"mechicon.h"
+#include "mc2_audit.h"   // META-FIX design B PART 3b: icon_oob CPU-blit chokepoint
 #include"mover.h"
 #include"utilities.h"
 #include"mech.h"
@@ -26,6 +27,56 @@ MechIcon.cpp			: Implementation of the MechIcon component.
 
 TGAFileHeader *MechIcon::s_MechTextures = NULL;
 AssetScale::AssetKey MechIcon::s_MechTexturesKey;
+
+//---------------------------------------------------------------------------
+// META-FIX design B PART 3b — shared entry guard for the three CPU icon-tile
+// blits (damage-color blit, MechIcon::init strip blit, VehicleIcon strip
+// blit). Answers "does this icon index resolve to a tile fully inside the
+// source atlas?" using the SAME last-pixel arithmetic the per-pixel bounds
+// guards use (blitFactor direct-index domain), so it can never flag a tile
+// the blit would have sampled in-bounds. On OOB: one rate-limited
+// "[ASSET_LOAD v1] event=icon_oob" line (always). Behavior is UNCHANGED by
+// default — the legacy wrap/blank semantics are load-bearing for MC2X
+// high-index content (see the blit-1 comment below); only under
+// MC2_ICON_FAILLOUD=1 (default OFF) does the blit substitute a magenta tile.
+static bool iconFailLoudEnabled()
+{
+	static const bool s_on = []() {
+		const char* v = getenv("MC2_ICON_FAILLOUD");
+		return v && v[0] && v[0] != '0';
+	}();
+	return s_on;
+}
+
+static bool iconTileChecked(const char* site, long index,
+                            long nominalOffX, long nominalOffY,
+                            long tileW, long tileH,
+                            float fx, float fy,
+                            uint32_t actualW, uint32_t actualH)
+{
+	if (actualW == 0 || actualH == 0 || tileW <= 0 || tileH <= 0)
+		return false;   // atlas geometry unknown — bound unknowable
+	// Last source pixel the blit would touch (same expression as the loops).
+	const int srcXlast = (int)(nominalOffX * fx) + (int)((tileW - 1) * fx);
+	const int srcYlast = (int)(nominalOffY * fy) + (int)((tileH - 1) * fy);
+	const int srcX0    = (int)(nominalOffX * fx);
+	const int srcY0    = (int)(nominalOffY * fy);
+	const bool oob = (srcX0 < 0) || (srcY0 < 0) ||
+	                 ((uint32_t)srcXlast >= actualW) ||
+	                 ((uint32_t)srcYlast >= actualH);
+	if (oob)
+	{
+		unsigned long long key = 5381;
+		for (const char* p = site; p && *p; ++p) key = key * 33 + (unsigned char)*p;
+		key = key * 33 + (unsigned long long)(unsigned long)index;
+		if (mc2AuditOnce("ICON_OOB", key))
+			mc2AuditLinef("[ASSET_LOAD v1] event=icon_oob site=%s index=%ld "
+				"off=(%ld,%ld) tile=(%ld,%ld) atlas=(%u,%u)",
+				site, index, nominalOffX, nominalOffY, tileW, tileH,
+				actualW, actualH);
+	}
+	return oob;
+}
 TGAFileHeader *VehicleIcon::s_VehicleTextures = NULL;
 AssetScale::AssetKey VehicleIcon::s_VehicleTexturesKey;
 TGAFileHeader* ForceGroupIcon::s_textureMemory = 0;
@@ -371,10 +422,24 @@ void MechIcon::setDrawBack( bool bSet)
 			(float)unitIconX, (float)unitIconY,
 			"mechicon.blit");
 
+		// META-FIX design B PART 3b: tile-level OOB check (log always;
+		// magenta substitution only under MC2_ICON_FAILLOUD).
+		const bool iconOobFill =
+			iconTileChecked("mechicon.damage_blit", whichMech,
+				offsetX, offsetY, (long)unitIconX, (long)unitIconY,
+				f.x, f.y, actualW, actualH) && iconFailLoudEnabled();
+
 		for( int j = 0; j < unitIconY; ++j )
 		{
 			int srcY = (int)(offsetY * f.y) + (int)(j * f.y);
 			pDestData = pDestRow;
+			if ( iconOobFill )
+			{
+				for ( int i = 0; i < unitIconX; ++i )
+					*pDestData++ = 0xffff00ff; // magenta tile (MC2_ICON_FAILLOUD)
+				pDestRow += textureData.Width;
+				continue;
+			}
 			// CRASH-HARDEN-OBJECTIVE-ICON-1: this damage-color blit lacked the
 			// per-pixel bounds check the other two blits (:574/:1286) have, so an
 			// out-of-atlas whichMech (bad/MC2X-mod mech beyond stock slots) caused
@@ -592,10 +657,24 @@ bool MechIcon::init( long whichIndex )
 			(float)unitIconX, (float)unitIconY,
 			"mechicon.blit");
 
+		// META-FIX design B PART 3b: tile-level OOB check (log always;
+		// magenta substitution only under MC2_ICON_FAILLOUD).
+		const bool iconOobFill =
+			iconTileChecked("mechicon.init_blit", whichIndex,
+				offsetX, offsetY, (long)unitIconX, (long)unitIconY,
+				f.x, f.y, actualW, actualH) && iconFailLoudEnabled();
+
 		for( int j = 0; j < unitIconY; ++j )
 		{
 			int srcY = (int)(offsetY * f.y) + (int)(j * f.y);
 			pDestData = pDestRow;
+			if ( iconOobFill )
+			{
+				for ( int i = 0; i < unitIconX; ++i )
+					*pDestData++ = 0xffff00ff; // magenta tile (MC2_ICON_FAILLOUD)
+				pDestRow += textureData.Width;
+				continue;
+			}
 			if ( srcY < 0 || (uint32_t)srcY >= actualH )
 			{
 				// srcY out of source texture bounds (atlas/dimension mismatch) -- leave dest row blank
@@ -1307,10 +1386,24 @@ bool VehicleIcon::init( Mover* pMover )
 			(float)unitIconX, (float)unitIconY,
 			"mechicon.blit");
 
+		// META-FIX design B PART 3b: tile-level OOB check (log always;
+		// magenta substitution only under MC2_ICON_FAILLOUD).
+		const bool iconOobFill =
+			iconTileChecked("mechicon.vehicle_blit", whichMech,
+				offsetX, offsetY, (long)unitIconX, (long)unitIconY,
+				f.x, f.y, actualW, actualH) && iconFailLoudEnabled();
+
 		for( int j = 0; j < unitIconY; ++j )
 		{
 			int srcY = (int)(offsetY * f.y) + (int)(j * f.y);
 			pDestData = pDestRow;
+			if ( iconOobFill )
+			{
+				for ( int i = 0; i < unitIconX; ++i )
+					*pDestData++ = 0xffff00ff; // magenta tile (MC2_ICON_FAILLOUD)
+				pDestRow += textureData.Width;
+				continue;
+			}
 			if ( srcY < 0 || (uint32_t)srcY >= actualH )
 			{
 				// srcY out of source texture bounds (atlas/dimension mismatch) -- leave dest row blank

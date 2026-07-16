@@ -10,6 +10,7 @@ MechListBox.cpp			: Implementation of the MechListBox component.
 #include <cstdlib>
 #include"mechlistbox.h"
 #include"icon_atlas_cell.h"
+#include "mc2_audit.h"   // META-FIX design B PART 3a: icon_oob marker
 #include"logisticsmech.h"
 #include"paths.h"
 #include"inifile.h"
@@ -527,7 +528,13 @@ void MechListBox::initIcon( LogisticsMech* pMech, aObject& mechIcon )
 	// Cell/UV math shared with logisticsmechicon.cpp via code/icon_atlas_cell.h
 	// (ICON-ATLAS-CELL-EXTRACT-1). FLOOR column count + epsilon + 10-col fallback;
 	// see that header for the MCO 1024/40 phantom-column rationale.
-	const icon_atlas::Cell cell = icon_atlas::cellForIndex( index, width, height, fileW );
+	// META-FIX design B PART 3a: checked variant — legacy cell returned
+	// UNCHANGED on OOB (wrap is load-bearing), one icon_oob line emitted.
+	bool iconOob = false;
+	const icon_atlas::Cell cell = icon_atlas::cellForIndexChecked( index, width, height, fileW, fileH, &iconOob );
+	if ( iconOob && mc2AuditOnce( "ICON_OOB", 0x2000000ull + (unsigned long long)(unsigned long)index ) )
+		mc2AuditLinef( "[ASSET_LOAD v1] event=icon_oob site=mechlistbox index=%ld cell=%.0fx%.0f atlas=%.0fx%.0f",
+			index, width, height, fileW, fileH );
 	const long cols = cell.cols;
 	const long xIndex = cell.col;
 	const long yIndex = cell.row;

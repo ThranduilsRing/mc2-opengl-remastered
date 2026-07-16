@@ -102,6 +102,73 @@ static bool test_cell_odd_dimensions(TestCtx& t) {
     return t.failures == 0;
 }
 
+// ---- cellForIndexChecked row-bound tests (META-FIX design B PART 3a) -------
+// Validates the OOB row bound against the THREE shipped atlas geometries
+// (retail 256x256, MC2X 512x512, MCO 1024-wide/40px cells) — the smoke
+// icon_oob bucket may only be armed red after these pass (cellW/cellH come
+// from WIDGET size at the call sites, so the bound must be proven here).
+
+// Retail 256x256, 25x30 cells: 10 cols x 8 rows = idx 0..79 in-bounds.
+static bool test_checked_retail_256_bounds(TestCtx& t) {
+    bool oob = true;
+    ia::Cell c = ia::cellForIndexChecked(79, 25.f, 30.f, 256.f, 256.f, &oob);
+    CH_CHECK(t, !oob && c.row == 7);                 // last legit retail slot
+    ia::Cell c2 = ia::cellForIndexChecked(80, 25.f, 30.f, 256.f, 256.f, &oob);
+    CH_CHECK(t, oob && c2.row == 8);                 // first OOB row...
+    ia::Cell legacy = ia::cellForIndex(80, 25.f, 30.f, 256.f);
+    CH_CHECK(t, c2.col == legacy.col && c2.row == legacy.row &&
+                c2.u == legacy.u && c2.v == legacy.v);   // ...cell UNCHANGED
+    return t.failures == 0;
+}
+
+// MC2X 512x512, 25x30 widget cells: 20 cols x 17 rows (512/30=17.07->17).
+// High-index mod icons (Ambulance=118, APC=142) must stay in-bounds.
+static bool test_checked_mc2x_512_bounds(TestCtx& t) {
+    bool oob = true;
+    ia::Cell c = ia::cellForIndexChecked(142, 25.f, 30.f, 512.f, 512.f, &oob);
+    CH_CHECK(t, !oob && c.row == 7);                 // APC=142 legit
+    (void)ia::cellForIndexChecked(118, 25.f, 30.f, 512.f, 512.f, &oob);
+    CH_CHECK(t, !oob);                               // Ambulance=118 legit
+    (void)ia::cellForIndexChecked(339, 25.f, 30.f, 512.f, 512.f, &oob);
+    CH_CHECK(t, !oob);                               // row 16 = last in-bounds
+    (void)ia::cellForIndexChecked(340, 25.f, 30.f, 512.f, 512.f, &oob);
+    CH_CHECK(t, oob);                                // row 17 = OOB
+    return t.failures == 0;
+}
+
+// MCO 1024-wide / 40px cells, 1024 tall: 25 cols x 25 rows (both floor).
+static bool test_checked_mco_1024_bounds(TestCtx& t) {
+    bool oob = true;
+    (void)ia::cellForIndexChecked(624, 40.f, 40.f, 1024.f, 1024.f, &oob);
+    CH_CHECK(t, !oob);                               // col 24 row 24 = last
+    (void)ia::cellForIndexChecked(625, 40.f, 40.f, 1024.f, 1024.f, &oob);
+    CH_CHECK(t, oob);                                // row 25 = OOB
+    return t.failures == 0;
+}
+
+// Unknown geometry (atlasH/cellH <= 0) must NEVER flag — bound unknowable.
+static bool test_checked_unknown_geometry_never_flags(TestCtx& t) {
+    bool oob = true;
+    (void)ia::cellForIndexChecked(9999, 25.f, 30.f, 256.f, 0.f, &oob);
+    CH_CHECK(t, !oob);
+    (void)ia::cellForIndexChecked(9999, 25.f, 0.f, 256.f, 256.f, &oob);
+    CH_CHECK(t, !oob);
+    return t.failures == 0;
+}
+
+// Negative index flags; exact-division epsilon holds on the row bound.
+static bool test_checked_negative_and_exact_rows(TestCtx& t) {
+    bool oob = false;
+    (void)ia::cellForIndexChecked(-1, 25.f, 30.f, 256.f, 256.f, &oob);
+    CH_CHECK(t, oob);
+    // 256/32 = exactly 8 rows: idx 63 (row 7, 8 cols) in, idx 64 (row 8) out.
+    (void)ia::cellForIndexChecked(63, 32.f, 32.f, 256.f, 256.f, &oob);
+    CH_CHECK(t, !oob);
+    (void)ia::cellForIndexChecked(64, 32.f, 32.f, 256.f, 256.f, &oob);
+    CH_CHECK(t, oob);
+    return t.failures == 0;
+}
+
 // Demo failure (in_default=false): proves the failure path via --test only.
 static bool test_demo_intentional_fail(TestCtx& t) {
     CH_CHECK(t, ia::columnsForAtlas(1024.f, 40.f) == 26);  // intentionally wrong (real is 25)
@@ -121,6 +188,11 @@ int main(int argc, char** argv) {
     h.add("cell_row_boundary",                  test_cell_row_boundary);
     h.add("cell_uv_monotonic",                  test_cell_uv_monotonic);
     h.add("cell_odd_dimensions",                test_cell_odd_dimensions);
+    h.add("checked_retail_256_bounds",          test_checked_retail_256_bounds);
+    h.add("checked_mc2x_512_bounds",            test_checked_mc2x_512_bounds);
+    h.add("checked_mco_1024_bounds",            test_checked_mco_1024_bounds);
+    h.add("checked_unknown_geometry_never_flags", test_checked_unknown_geometry_never_flags);
+    h.add("checked_negative_and_exact_rows",    test_checked_negative_and_exact_rows);
     h.add("demo_intentional_fail",              test_demo_intentional_fail, /*inDefault=*/false);
     return h.run(argc, argv);
 }
