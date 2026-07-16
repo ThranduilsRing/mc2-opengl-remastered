@@ -8543,6 +8543,15 @@ extern "C" int mc2_color_prop_island_get_light_feed(Mc2ColorPropLightFeed* out) 
     { unsigned int nm = 0; unsigned long long by = 0;
       gos_LightDataSsbo_GetInterop(&nm, &by);
       out->lightDataGlSsbo = nm; out->lightDataBytes = by; }
+    // VK-PROP-LIGHTFEED-NATIVE-1: native CPU feed (mech item-9 pattern, mirrors
+    // mc2_mech_island_get_frame_feed's lightDataCpu export) — the byte source of
+    // the GL SSBO upload, so the island memcpys instead of glGetBufferSubData.
+    out->lightDataCpu = nullptr;
+    out->lightDataCpuBytes = 0;
+    if (mcTextureManager) {
+        out->lightDataCpu      = mcTextureManager->getLightDataPtr();
+        out->lightDataCpuBytes = mcTextureManager->getLightDataBytes();
+    }
     // s_currentShSet: the live per-mission SH-L2 set (RenderCore::IblShRegistry),
     // same table the GL static-prop VS uniform upload uses (u_iblSh[9]).
     std::memcpy(out->iblSh, s_currentShSet ? &s_currentShSet->coeffs[0][0]
