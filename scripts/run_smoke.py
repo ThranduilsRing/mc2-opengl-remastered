@@ -1225,6 +1225,10 @@ def main():
                             # ISSUE-34 terrain tessellation kill-switch (default
                             # ON; =0 exercises the no-tess config headlessly).
                             "MC2_TERRAIN_TESS",
+                            # ISSUE-9 called-shot gate + headless aimed-fire probe
+                            # (both default OFF).
+                            "MC2_CALLED_SHOT_FIX",
+                            "MC2_AIMED_FIRE_FIXTURE",
                             # R2B-STATIC-NATURAL-TOUCH-PRESERVE-1: default-ON
                             # killswitch + diagnostics for the static-natural
                             # (tree/pine-building) registry stale-drop fix. Without

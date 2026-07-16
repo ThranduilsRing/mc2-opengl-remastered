@@ -190,6 +190,16 @@ class WeaponBolt : public GameObject
 		
 			GameObjectWatchID	targetWID;
 			int32_t				targetHotSpot;
+
+			// ISSUE-9 S2 (MC2_CALLED_SHOT_FIX): set ONLY by fireWeapon (mech.cpp /
+			// gvehicl.cpp) under the gate when this bolt is a successful AIMED shot
+			// from an area-effect weapon. Stock connect() converts such bolts to
+			// position bolts (targetWID = 0), so the called location is lost and
+			// damage arrives as a randomly-located explosion. This WID lets the
+			// arrival path deliver weaponShot (hitLocation == called location)
+			// directly to the aimed target instead. Transient: NOT saved
+			// (WeaponBoltData unchanged); a loaded in-flight bolt reverts to stock.
+			GameObjectWatchID	aimedTargetWID;
 			Stuff::Vector3D		*targetPosition;
 			float				distanceToTarget;
 			float				halfDistanceToTarget;
@@ -258,8 +268,9 @@ class WeaponBolt : public GameObject
 			targetPosition = NULL;
 			
 			distanceToTarget = 0.0;
-			
+
 			ownerWID = targetWID = 0;
+			aimedTargetWID = 0;
 
 			pointLight = NULL;
 			lightId = 0xffffffff;
@@ -332,6 +343,7 @@ class WeaponBolt : public GameObject
 		{
 			ownerWID = source->getWatchID();
 			targetWID = dest->getWatchID();
+			aimedTargetWID = 0;		// ISSUE-9 S2: bolts are pool-reused; never carry a stale aimed flag
 			
 			hotSpotNumber = sourceHS;
 			targetHotSpot = targetHS;
@@ -373,6 +385,7 @@ class WeaponBolt : public GameObject
 		{
 			ownerWID = source->getWatchID();
 			targetWID = 0;
+			aimedTargetWID = 0;		// ISSUE-9 S2: bolts are pool-reused; never carry a stale aimed flag
 			hotSpotNumber = sourceHS;
 			
 			setTargetPosition(targetLoc);
@@ -387,6 +400,19 @@ class WeaponBolt : public GameObject
 			else
 				myOwner->appearance->setWeaponNodeRecycle(sourceHS,BASE_NODE_RECYCLE_TIME);
 		}
+
+		// ISSUE-9 S2 (MC2_CALLED_SHOT_FIX): flag this bolt as a successful aimed
+		// hit on tgtWID. Called by fireWeapon AFTER connect() (which resets the
+		// flag), only when the gate is on, aimLocation != -1 and the roll hit.
+		void setAimedTarget (GameObjectWatchID tgtWID)
+		{
+			aimedTargetWID = tgtWID;
+		}
+
+		// Delivers weaponShot to the aimed target on arrival (single-player only).
+		// Returns true if located damage was delivered — caller makes the
+		// area-effect explosion cosmetic (0 damage). Defined in weaponbolt.cpp.
+		bool deliverAimedAreaHit (void);
 
 		virtual void Save (PacketFilePtr file, long packetNum);
 

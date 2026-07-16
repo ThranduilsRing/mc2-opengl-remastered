@@ -174,6 +174,11 @@ Headless Vulkan probe / backend-skeleton exercise gates. All read via bare `gete
 - `MC2_LOG_LOGISTICS=1` — `[LOGISTICS]` inventory/availability diagnostics (`code/logisticsdata.cpp`), incl. the ISSUE-8 silent-failure trace when `appendAvailability` cannot open a purchase file (`appendAvailability: open FAILED '<path>' -- purchase file skipped`). Default OFF.
 - `MC2_LINKUP_TRACE=1` — ISSUE-50 link-up diagnostics (`code/mech.cpp BattleMech::update`): for every off-GUI mech, periodically (~1/s) prints `[LINKUP] part=… name=… status=… onGUI=0 los=… pos=…`, and `[LINKUP] linkup-complete part=… name=…` when the link-up fires. Default OFF = no output, no behavior change.
 
+## Combat / AI gameplay gates + probes (GitHub-issue batch 2026-07-16)
+
+- `MC2_CALLED_SHOT_FIX=1` — ISSUE-9 called-shot effectiveness (gameplay gate, default **OFF** = stock). S1 (`code/mover.cpp Mover::calcAttackChance`): floors the aimed-shot chance modifiers at Head 0.30 / Arm 0.45 / Leg 0.50 (stock gamesys.fit values 0.08/0.15/0.20 leave a head call at the 5% clamp for most engagements; data value wins if a mod sets it higher). Sharpshooter +20 and the 5–95 clamp are unchanged. S2 (`code/weaponbolt.cpp deliverAimedAreaHit`, single-player only): a successful AIMED area-effect (LRM) hit delivers its located damage to the called location; the splash explosion still plays but is cosmetic (0 damage). Stock behavior replaces located damage with a randomly-located explosion ("Hit or MISS, its the same!").
+- `MC2_AIMED_FIRE_FIXTURE=1` — ISSUE-9 headless called-shot probe (`code/warrior.cpp MechWarrior::updateActions`, default OFF = byte-identical). Every home-team mech without an active combat order is issued an aimed-HEAD attack (the same order the UI's `aimHead()` builds) at the nearest live enemy mech; re-issues as targets die (2 s global throttle). Emits `[AIMED_FIRE v1] event=order wid=… tgt_wid=… dist=… res=…`. Pair with `MC2_DIAG_TAGS=…,COMBAT`: the COMBAT `hit` events now carry `"loc"` (mech body index, 0 = head) so the hit-location distribution can be A/B'd with `MC2_CALLED_SHOT_FIX` on/off.
+
 ## RenderWorld arc
 
 - `MC2_OBJECT_ID_BUFFER=1` — R32_UINT MRT attachment-2 (M1.5)

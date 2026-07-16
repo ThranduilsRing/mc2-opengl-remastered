@@ -7652,10 +7652,13 @@ long BattleMech::handleWeaponHit (WeaponShotInfoPtr shotInfo, bool addMultiplayC
 	if (mc2_diag::tagEnabled("COMBAT")) {
 		GameObjectPtr _cbAtk = ObjectManager->getByWatchID(shotInfo->attackerWID);
 		char _cbf[192];
+		// ISSUE-9 S3: "loc" = resolved hit location (mech body index; 0 = head)
+		// so called-shot location distribution is measurable headlessly.
 		snprintf(_cbf, sizeof(_cbf),
-			"{\"ev\":\"hit\",\"a_wid\":%u,\"a_team\":%ld,\"t_wid\":%lu,\"t_team\":%ld,\"dmg\":%.1f}",
+			"{\"ev\":\"hit\",\"a_wid\":%u,\"a_team\":%ld,\"t_wid\":%lu,\"t_team\":%ld,\"dmg\":%.1f,\"loc\":%d}",
 			(unsigned)shotInfo->attackerWID, _cbAtk ? _cbAtk->getTeamId() : -1L,
-			getWatchID(false), getTeamId(), (double)shotInfo->damage);
+			getWatchID(false), getTeamId(), (double)shotInfo->damage,
+			(int)shotInfo->hitLocation);
 		mc2_diag::writeEvent("COMBAT", 1, 0, _cbf);
 	}
 
@@ -8416,8 +8419,18 @@ long BattleMech::fireWeapon (GameObjectPtr target, float targetTime, long weapon
 				}
 				}
 			else {
-				if (target) 
+				if (target)
+				{
 					weaponFX->connect(this, target, &curShotInfo, sourceHotSpot, targetHotSpot);
+					// ISSUE-9 S2 (MC2_CALLED_SHOT_FIX, default OFF): successful AIMED
+					// missile shot — flag the bolt so an area-effect (LRM) arrival
+					// honors the called location (curShotInfo.hitLocation ==
+					// aimLocation here) instead of a randomly-located explosion.
+					static const bool s_calledShotFix =
+						(getenv("MC2_CALLED_SHOT_FIX") != NULL && getenv("MC2_CALLED_SHOT_FIX")[0] != '0');
+					if (s_calledShotFix && (aimLocation != -1))
+						weaponFX->setAimedTarget(target->getWatchID());
+				}
 				else {
 					weaponFX->connect(this, *targetPoint, &curShotInfo, sourceHotSpot);
 					//pilot->clearCurTacOrder();

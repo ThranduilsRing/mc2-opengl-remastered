@@ -5485,6 +5485,50 @@ void MechWarrior::updateActions (void) {
 		}
 	}
 
+	// MC2_AIMED_FIRE_FIXTURE (ISSUE-9 probe, default-OFF = byte-identical):
+	// headless called-shot driver. Every home-team mech without an active combat
+	// order is issued the same aimed-HEAD attack the UI's aimHead() would build
+	// (orderAttackObject, ORDER_ORIGIN_PLAYER, ATTACK_TO_DESTROY / RANGED /
+	// OPTIMAL, aim = MECH_BODY_LOCATION_HEAD, pursue) at the nearest live enemy
+	// mech. Re-issues when the order clears (target died), so a 30-60 s run with
+	// MC2_DIAG_TAGS=COMBAT yields a hit-location distribution ("loc" field) to
+	// A/B MC2_CALLED_SHOT_FIX. Global 2 s throttle keeps order spam bounded.
+	static const bool s_aimedFireFixture =
+		(getenv("MC2_AIMED_FIRE_FIXTURE") != NULL && getenv("MC2_AIMED_FIRE_FIXTURE")[0] != '0');
+	if (s_aimedFireFixture && myVehicle && myVehicle->isMech() &&
+		Team::home && (myVehicle->getTeam() == Team::home) &&
+		(scenarioTime > 5.0f) && !curTacOrder.isCombatOrder() &&
+		myVehicle->canFireWeapons()) {
+		static float s_nextAimedOrderTime = 0.0f;
+		if (scenarioTime >= s_nextAimedOrderTime) {
+			s_nextAimedOrderTime = scenarioTime + 2.0f;
+			MoverPtr enemy = NULL;
+			float bestDist = 1e30f;
+			// Mover iteration (not getMech): warrior.cpp only sees the BattleMech
+			// forward declaration (mech.h is USE_MECHS-gated here).
+			for (long mi = 0; mi < ObjectManager->getNumMovers(); mi++) {
+				MoverPtr pM = ObjectManager->getMover(mi);
+				if (!pM || !pM->isMech() || pM->isDisabled() || pM->isDestroyed())
+					continue;
+				if (pM->getTeamId() == Team::home->getId())
+					continue;
+				float d = myVehicle->distanceFrom(pM->getPosition());
+				if (d < bestDist) {
+					bestDist = d;
+					enemy = pM;
+				}
+			}
+			if (enemy) {
+				long res = orderAttackObject(false, ORDER_ORIGIN_PLAYER, enemy,
+					ATTACK_TO_DESTROY, ATTACKMETHOD_RANGED, FIRERANGE_OPTIMAL,
+					MECH_BODY_LOCATION_HEAD, -1, TACORDER_PARAM_PURSUE);
+				printf("[AIMED_FIRE v1] event=order wid=%ld tgt_wid=%ld dist=%.0f res=%ld\n",
+					(long)vehicleWID, (long)enemy->getWatchID(), (double)bestDist, res);
+				fflush(stdout);
+			}
+		}
+	}
+
 	if (combatUpdate <= scenarioTime)
 		combatDecisionTree();
 

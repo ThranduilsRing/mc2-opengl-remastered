@@ -1822,6 +1822,21 @@ static constexpr EnvVarDesc kAuxEnvVars[] = {
         false,
         "ISSUE-50 diagnostics (code/mech.cpp BattleMech::update): for every off-GUI mech, periodically (~1/s) logs [LINKUP] part/name/status/los, plus [LINKUP] linkup-complete when the link-up fires — makes the link-up latch (hidden reinforcement mech never appearing) observable in the field. Default OFF = no output, no behavior change."
     },
+    // GitHub-issue fix batch 2026-07-16, part 2 (issues #9, #17)
+    {
+        "MC2_FEATURE_CALLED_SHOT_FIX",
+        "MC2_CALLED_SHOT_FIX",
+        EnvVarKind::Feature,
+        false,
+        "ISSUE-9 called-shot effectiveness (gameplay gate, default OFF = stock): (S1) Mover::calcAttackChance floors the aimed-shot modifiers at Head 0.30 / Arm 0.45 / Leg 0.50 (stock gamesys.fit 0.08/0.15/0.20 leaves head calls at the 5% clamp); (S2) a successful AIMED area-effect (LRM) hit delivers its located damage to the called location (weaponbolt.cpp deliverAimedAreaHit, single-player only) with the splash explosion kept cosmetic, instead of stock's randomly-located explosion damage."
+    },
+    {
+        "MC2_TRACE_AIMED_FIRE_FIXTURE",
+        "MC2_AIMED_FIRE_FIXTURE",
+        EnvVarKind::Trace,
+        false,
+        "ISSUE-9 headless probe (code/warrior.cpp MechWarrior::updateActions): every home-team mech without a combat order is issued an aimed-HEAD attack (same order the UI's aimHead() builds) at the nearest live enemy mech, re-issued as targets die (2 s global throttle). Pair with MC2_DIAG_TAGS=COMBAT to capture the hit-location distribution (\"loc\" field) for MC2_CALLED_SHOT_FIX A/B. Default OFF = byte-identical."
+    },
 };
 
 // ---------------------------------------------------------------------------
