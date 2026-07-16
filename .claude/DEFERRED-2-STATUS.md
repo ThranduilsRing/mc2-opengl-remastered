@@ -165,4 +165,17 @@ VOCAB-1/ADOPTION-4+ ordering):
 - [x] Build: `cmake --build build64 --config RelWithDebInfo --target mc2`
       exit 0, zero warnings/errors on the three touched TUs
       (`gl_state_guard.h`, `gos_particle_bridge.cpp`, `gos_mech_batcher.cpp`).
-- [ ] Deploy + tier1: pending (next step after this commit).
+- [x] Commit sha: `5c47029e`.
+- [x] Deploy: `scripts/deploy_payload.py A:/Games/mc2-opengl/releases/mc2-win64-deferred2-test
+      --source-root . --build-dir build64/RelWithDebInfo --exe-name mc2.exe --allow-new-target`
+      (note: `--build-dir build64` alone resolves relative to cwd and misses
+      the RelWithDebInfo config subdir — use the full path). manifest
+      src_commit `5c47029eb20f`, 736 files, deploy COMPLETE. Pre-existing
+      unrelated hygiene WARN (3 offline-cook diagnostic PNGs/JSON under
+      `gaea_peaks_01.beauty/`) — not from this change.
+- [x] tier1 smoke PASS 5/5 (`--exe A:/Games/mc2-opengl/releases/mc2-win64-deferred2-test/mc2.exe`,
+      `MC2_SMOKE_REQUIRE_FINGERPRINT=0`): mc2_01/03/10/17/24 all PASS, +0
+      destroys each (4229/4196/4222/4205/4217 frames). `DEPLOY_FINGERPRINT`
+      MISMATCH lines are the expected advisory (lane's baseline compare is
+      against nifty 994c3776, not this branch — hence the override flag).
+      Item complete.
