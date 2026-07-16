@@ -91,7 +91,7 @@ enum class RendererFeature : int {
     StaticPropIndirect  = 1,   // MC2_GPU_OBJECTS
     // Feature gates
     ObjectIdBuffer      = 2,   // MC2_OBJECT_ID_BUFFER
-    TerrainTessellation = 3,   // (no env var -- always-on TCS/TES)
+    TerrainTessellation = 3,   // MC2_TERRAIN_TESS (default-ON kill-switch, ISSUE-34)
     ReverseZ            = 4,   // (no env var -- glClipControl unconditional)
     ShadowMaps          = 5,   // MC2_SHADOW_ENABLE
     ImGui               = 6,   // MC2_IMGUI
@@ -243,10 +243,10 @@ static constexpr EnvVarDesc kFeatureTable[] = {
     // TerrainTessellation
     {
         "MC2_FEATURE_TERRAIN_TESSELLATION",
-        nullptr,
+        "MC2_TERRAIN_TESS",
         EnvVarKind::Feature,
         true,
-        "TCS/TES terrain tessellation (gameos_graphics.cpp). Always-on; no kill-switch yet."
+        "TCS/TES terrain tessellation (gameos_graphics.cpp). Default-ON kill-switch (ISSUE-34): MC2_TERRAIN_TESS=0 skips the gos_terrain material load (same engine state as a TCS/TES compile failure) for headless A/B of the no-tess config. Shadow builds + blob-shadow suppression key on gos_IsModernShadowPathActive(), not tess."
     },
     // ReverseZ
     {

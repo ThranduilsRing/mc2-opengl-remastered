@@ -2146,7 +2146,9 @@ Stuff::Vector3D GVAppearance::getNodeIdPosition (long nodeId)
 long GVAppearance::renderShadows (void)
 {
 	// Skip legacy blob shadows when shadow maps are active
-	if (gos_IsTerrainTessellationActive())
+	// ISSUE-34: keyed on the modern shadow path, not tessellation (see
+	// mech3d.cpp renderShadows).
+	if (gos_IsModernShadowPathActive())
 		return NO_ERR;
 
 	gvShape->SetTextureHandle(0,localTextureHandle);
@@ -2571,7 +2573,9 @@ void GVAppearance::updateGeometry (void)
 			// downstream gvShadowShape->RenderShadows(true) (gvactor.cpp:2082) is
 			// unreachable so the transform's outputs go unused. See block comment
 			// at top of file for full consumer enumeration.
-			const bool skipShadowXform = g_useGpuGVShadowSkip && gos_IsTerrainTessellationActive();
+			// ISSUE-34: modern-shadow-path predicate (was tess-keyed), matching
+			// the renderShadows early-return above.
+			const bool skipShadowXform = g_useGpuGVShadowSkip && gos_IsModernShadowPathActive();
 			if (!skipShadowXform)
 				gvShadowShape->TransformMultiShape (&xlatPosition,&rot);
 		}

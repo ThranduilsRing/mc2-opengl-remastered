@@ -2297,6 +2297,10 @@ void __stdcall gos_SetTerrainBatchExtras(const gos_TERRAIN_EXTRA* extras, int co
 void __stdcall gos_SetTerrainDebugMode(float mode);
 float __stdcall gos_GetTerrainDebugMode();
 bool __stdcall gos_IsTerrainTessellationActive();
+// ISSUE-34: modern shadow/render path (shadow_terrain material loaded).
+// Shadow builds + blob-shadow suppression + GPU transform skips key on this,
+// NOT on tessellation — near-plane behavior stays uniform when tess is off.
+bool __stdcall gos_IsModernShadowPathActive();
 
 // Shadow coordinate API (raw MC2 coordinates for shadow matrix)
 void gos_GetTerrainLightDir(float* x, float* y, float* z);

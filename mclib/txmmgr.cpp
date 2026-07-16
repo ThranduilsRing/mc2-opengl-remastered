@@ -2689,7 +2689,9 @@ void MC_TextureManager::renderLists (void)
 	// against fresh blocks[]. The MapData full-map feed is stock-safe
 	// (no-ops if blocks[] unallocated -> shadow simply absent, never a
 	// crash, never worse than a missing shadow).
-	if (gos_IsTerrainTessellationActive() && !gos_StaticLightMatrixBuilt() &&
+	// ISSUE-34: keyed on the modern shadow path (shadow_terrain material),
+	// not tessellation — static shadow map still builds when tess is off.
+	if (gos_IsModernShadowPathActive() && !gos_StaticLightMatrixBuilt() &&
 	    Terrain::mapData) {
 		ZoneScopedN("Shadow.StaticFullMapBuild");
 		TracyGpuZone("Shadow.StaticFullMapBuild");
@@ -2793,7 +2795,9 @@ void MC_TextureManager::renderLists (void)
 		gos_render_pass_timer::Begin(gos_render_pass_timer::Pass_ShadowDyn);
 		extern bool g_useGpuObjects;
 		extern bool g_useGpuMechs;
-		if (gos_IsTerrainTessellationActive() && (g_useGpuObjects || g_useGpuMechs)) {
+		// ISSUE-34: modern-shadow-path predicate (was tess-keyed) — dynamic
+		// shadow pass stays on when tessellation is off.
+		if (gos_IsModernShadowPathActive() && (g_useGpuObjects || g_useGpuMechs)) {
 			// Unproject 8 GL-NDC corners through the inverse of worldToClipGL().
 			// SHADOW-DYNAMIC-PROJECTION-FIX-1: worldToClipGL() maps MC2 world (Z-up)
 			//   = kAxisSwapMC2toGL * worldToCam * cameraToClipGL

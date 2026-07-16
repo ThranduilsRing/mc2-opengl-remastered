@@ -430,6 +430,14 @@ call from inside a draw-bind path.
   128 terrainType, 256 raw-colormap, 512 bypass-tint. (bit 2 dead — depth now in vert.)
 - `MC2_TERRAIN_NORMAL_ARRAY` — material normal sampler2DArray path. Now **default ON**
   (opt-out `=0`); the chunk path needs it built (mip-completeness fixed 2026-06-09).
+- `MC2_TERRAIN_TESS` — TCS/TES terrain tessellation material. **DEFAULT ON**; `=0` skips
+  the `gos_terrain` material load (ISSUE-34 kill-switch — same engine state as a TCS/TES
+  compile failure, for headless A/B of the no-tess config; console prints
+  `[TESS] MC2_TERRAIN_TESS=0 …`). Shadow builds (`txmmgr.cpp`) and blob-shadow
+  suppression / GPU transform skips (`mech3d.cpp`, `gvactor.cpp`) are keyed on
+  `gos_IsModernShadowPathActive()` (shadow_terrain material loaded), NOT on tess, so
+  CSM/static shadows stay on and legacy pz-gated blob shadows stay off when tess is
+  disabled — near-plane clipping stays uniform.
 - Hemisphere ambient on the chunk path is env-gated like legacy: `MC2_TERRAIN_LIGHTING_V1`
   / `MC2_TERRAIN_LIGHTING_V2` (default OFF).
 

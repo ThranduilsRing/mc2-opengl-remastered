@@ -1222,6 +1222,9 @@ def main():
                             "MC2_SOAK_SALVAGE_TRADEMOVER",
                             # ISSUE-50 link-up latch diagnostics (default OFF).
                             "MC2_LINKUP_TRACE",
+                            # ISSUE-34 terrain tessellation kill-switch (default
+                            # ON; =0 exercises the no-tess config headlessly).
+                            "MC2_TERRAIN_TESS",
                             # R2B-STATIC-NATURAL-TOUCH-PRESERVE-1: default-ON
                             # killswitch + diagnostics for the static-natural
                             # (tree/pine-building) registry stale-drop fix. Without

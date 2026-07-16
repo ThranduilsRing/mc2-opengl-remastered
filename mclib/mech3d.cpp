@@ -3570,7 +3570,10 @@ long Mech3DAppearance::render (long depthFixup)
 long Mech3DAppearance::renderShadows (void)
 {
 	// Skip legacy blob shadows when shadow maps are active
-	if (gos_IsTerrainTessellationActive())
+	// ISSUE-34: keyed on the modern shadow path, not tessellation — legacy
+	// pz-gated CPU blob shadows stay off when tess is disabled (their whole-
+	// triangle near-"clip" drops are the uneven-clipping symptom).
+	if (gos_IsModernShadowPathActive())
 		return NO_ERR;
 
 	// DEGRADE-DON'T-CRASH: partial import with no base shape -> no shadow.
@@ -3777,9 +3780,11 @@ void Mech3DAppearance::updateGeometry (void)
 	// any consumer reads it.
 	// MECH-KILLSWITCH-SHADOW-PAIR-RETIRE-1: former MC2_GPU_MECH_SHADOW_STATE_STRIP
 	// (default-ON, strict no-op on tessellated GPU-mech path) retired to constant.
+	// ISSUE-34: modern-shadow-path predicate (was tess-keyed), matching the
+	// renderShadows early-return so the stripped state has no consumer.
 	const bool stripShadowState =
 		g_useGpuMechs &&
-		gos_IsTerrainTessellationActive();
+		gos_IsModernShadowPathActive();
 
 	if ((status == OBJECT_STATUS_DESTROYED) ||
 		(status == OBJECT_STATUS_DISABLED) || 
@@ -4102,7 +4107,9 @@ void Mech3DAppearance::updateGeometry (void)
 			// listOfShadowTVertices populated by MultiTransformShadows
 			// (which still dispatches at msl.cpp:1765 in that branch).
 			// MECH-KILLSWITCH-SHADOW-PAIR-RETIRE-1: former MC2_GPU_MECH_SHADOW_SKIP retired.
-			if (g_useGpuMechs && gos_IsTerrainTessellationActive()) {
+			// ISSUE-34: modern-shadow-path predicate (was tess-keyed), matching
+			// the renderShadows early-return that makes the consumer unreachable.
+			if (g_useGpuMechs && gos_IsModernShadowPathActive()) {
 				// Skip — modern engine has no consumer.
 			} else if (g_useGpuMechs && g_useGpuMechShadowFastTransform) {
 				mechShadowShape->TransformMultiShape_PositionsOnly(&xlatPosition, &qRotation);
@@ -4141,7 +4148,10 @@ void Mech3DAppearance::updateGeometry (void)
 		// flight. World/tactical mechs (depth == 0) keep the GPU fast paths.
 		if (g_mechPreviewRenderDepth > 0) {
 			mechShape->TransformMultiShape(&xlatPosition, &qRotation);
-		} else if (g_useGpuMechs && g_useGpuMechLeafSkip && gos_IsTerrainTessellationActive()) {
+		// ISSUE-34: leaf-skip keyed on the modern shadow path (was tess) —
+		// its unreachability proof (RenderShadows early-return, Slice A
+		// Render(true) bypass, rect-only selection) holds on that predicate.
+		} else if (g_useGpuMechs && g_useGpuMechLeafSkip && gos_IsModernShadowPathActive()) {
 			mechShape->TransformMultiShape_HierarchyOnly(&xlatPosition, &qRotation);
 		} else if (g_useGpuMechs && g_useGpuMechFastTransform) {
 			mechShape->TransformMultiShape_PositionsOnly(&xlatPosition, &qRotation);
