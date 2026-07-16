@@ -263,13 +263,13 @@ Checks 1 and 2 are independent of any specific mission or mech and don't require
 ```
 $ py -3 tools/mc2mod/mc2mod.py pack docs/modding/examples/weapon-add/mod --out <tmp>
 pack: <tmp>/weapon-add-1.0.0.mc2mod
-  id=weapon-add  version=1.0.0  files=3  sha256=eb5d931a2263d13d5bdaab4cc9db38141a5035a3a8547cf5078469f0d07817e1
+  id=weapon-add  version=1.0.0  files=3  sha256=a89c1d5266fb511366b7a1a907ccb6383f92e650c3638d2178be75e07e60a518
 
 $ py -3 tools/mc2mod/mc2mod.py verify-lite <tmp>/weapon-add-1.0.0.mc2mod
-verify-lite PASS: id=weapon-add  version=1.0.0  files=3  pkg_sha256=eb5d931a2263d13d5bdaab4cc9db38141a5035a3a8547cf5078469f0d07817e1
+verify-lite PASS: id=weapon-add  version=1.0.0  files=3  pkg_sha256=a89c1d5266fb511366b7a1a907ccb6383f92e650c3638d2178be75e07e60a518
 ```
 
-Note: the top-level package `sha256` embeds each file entry's own per-file hash inside the zip's `package.json`, but the zip container itself carries per-file OS timestamps, so the outer `sha256`/`pkg_sha256` will differ run-to-run even with byte-identical payload content — treat it as evidence the validator ran and passed, not as a fixed value to diff against.
+Note: on this checkout the outer package `sha256` is reproducible — `pack` pins zip member timestamps and permissions (`_write_zip_member` / `_REPRO_ZIP_DATE` in `tools/mc2mod/mc2mod.py`), so packing this exact payload always yields the value above. (Older `mc2mod.py` versions carried wall-clock/mtime timestamps in the zip container, which made the outer hash differ run-to-run; that was fixed upstream.) `verify-lite PASS` remains the integrity verdict either way.
 
 Also confirmed with `tools/mod_install/resolver.py` (the offline replica of `mclib/file.cpp`'s resolution ladder) against a synthetic deploy tree with this mod installed and `active_mod="weapon-add"`:
 

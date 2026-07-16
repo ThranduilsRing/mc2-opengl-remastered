@@ -129,15 +129,15 @@ Start (or load) any mission where you or an enemy fields a mech carrying a stock
 
 ## Validator output (run against this folder's payload)
 
-> **Note on the `sha256` value below:** `pack` embeds a freshly generated `package.json` in the zip via Python's `zipfile.writestr(...)`, which stamps that entry with the wall-clock time of the run (`tools/mc2mod/mc2mod.py` — the `zf.writestr("package.json", package_json_bytes)` call has no explicit `ZipInfo`/`date_time`, so `zipfile` defaults to "now"). That timestamp is part of the bytes that get sha256'd as the outer package hash, so **`sha256` is different on every `pack` run — even with byte-identical payload input.** Confirmed by running `pack` twice back-to-back against this exact folder: `sha256=2bb1b64c...` then `sha256=ec9a75d5...`, no source changes between runs. **If your own `pack`/`verify-lite` output shows a different hash than the transcript below, that is expected and does not mean your payload is wrong** — check `id=`, `version=`, and `files=` instead; those are the reproducible fields.
+> **Note on the `sha256` value below:** `pack` is reproducible on this checkout — every zip member's timestamp and permissions are pinned (`_write_zip_member` / `_REPRO_ZIP_DATE` in `tools/mc2mod/mc2mod.py`), so packing this exact, unmodified payload always produces the same package bytes and therefore the same `sha256`. The hash in the transcript below should match yours **exactly**; if it doesn't, your `mod/` folder's bytes differ from this one's — diff the payload, don't suspect the tool. (Earlier versions of this doc described per-run hash drift caused by wall-clock zip timestamps; that was real on older checkouts and was fixed by pinning the timestamps. If you're on a checkout whose `mc2mod.py` has no `_REPRO_ZIP_DATE`, you'll still see a different hash on every run — in that case fall back to checking `id=`, `version=`, `files=`, and the `verify-lite PASS` verdict.)
 
 ```
 $ py -3 tools/mc2mod/mc2mod.py pack docs/modding/examples/weapon-edit/mod --out <tmp>
 pack: <tmp>/weapon-edit-example-0.0.0.mc2mod
-  id=weapon-edit-example  version=0.0.0  files=2  sha256=<varies per run — see note above>
+  id=weapon-edit-example  version=0.0.0  files=2  sha256=8a7c56aa151917b438cf6d56c6285b4972c759acc5169c6859a7ade4fc59c4c3
 
 $ py -3 tools/mc2mod/mc2mod.py verify-lite <tmp>/weapon-edit-example-0.0.0.mc2mod
-verify-lite PASS: id=weapon-edit-example  version=0.0.0  files=2  pkg_sha256=<matches the pack sha256 from the same run>
+verify-lite PASS: id=weapon-edit-example  version=0.0.0  files=2  pkg_sha256=8a7c56aa151917b438cf6d56c6285b4972c759acc5169c6859a7ade4fc59c4c3
 ```
 
 Also confirmed with `tools/mod_install/resolver.py` (the offline replica of `mclib/file.cpp`'s resolution ladder) against a synthetic deploy tree: requesting `data/objects/compbas.csv` with `active_mod="weapon-edit-example"` resolves to layer `mod:weapon-edit-example` with `base-loose` recorded as shadowed — i.e. this mod's file wins over a stock `data/objects/compbas.csv`, exactly as the whole-file-shadow mechanism promises.

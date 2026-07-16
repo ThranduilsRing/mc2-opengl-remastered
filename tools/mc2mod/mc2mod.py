@@ -58,6 +58,13 @@ _CANONICAL_DEPLOY_ROOTS: List[str] = [
     "a:/games/mc2-opengl/mc2-win64-0.4c",
 ]
 
+# Pinned zip-member timestamp for reproducible packs.  Without this, two pack
+# runs over byte-identical payload produce different package sha256s: the
+# generated package.json member gets stamped with wall-clock "now", and payload
+# members inherit their source-file mtimes.  1980-01-01 is the zip format's
+# minimum representable date_time.
+_REPRO_ZIP_DATE: Tuple[int, int, int, int, int, int] = (1980, 1, 1, 0, 0, 0)
+
 # ---------------------------------------------------------------------------
 # Hashing helpers
 # ---------------------------------------------------------------------------
@@ -198,9 +205,23 @@ def _collect_mod_files(mod_dir: str) -> List[Tuple[str, str]]:
     return results
 
 
+def _write_zip_member(zf: zipfile.ZipFile, arcname: str, data: bytes) -> None:
+    """
+    Write one archive member with pinned metadata (timestamp + permissions),
+    so the archive bytes depend only on member names + member contents --
+    never on wall-clock time or source-file mtimes.  This is what makes
+    `pack` reproducible: same payload in, same package sha256 out.
+    """
+    zinfo = zipfile.ZipInfo(arcname, date_time=_REPRO_ZIP_DATE)
+    zinfo.compress_type = zipfile.ZIP_DEFLATED
+    zinfo.external_attr = 0o644 << 16  # rw-r--r--, regular file
+    zf.writestr(zinfo, data)
+
+
 def pack_mod(mod_dir: str, out_dir: Path) -> Path:
     """Pack a mod directory into <out_dir>/<id>-<version>.mc2mod and return the
-    package path. Shared by cmd_pack and cmd_publish."""
+    package path. Shared by cmd_pack and cmd_publish. Reproducible: all members
+    written via _write_zip_member (pinned timestamps/permissions)."""
     mod_id, name, version = _read_mod_json(mod_dir)
     out_dir.mkdir(parents=True, exist_ok=True)
     package_path = out_dir / f"{mod_id}-{version}{PACKAGE_EXT}"
@@ -225,12 +246,20 @@ def pack_mod(mod_dir: str, out_dir: Path) -> Path:
         "dependencies": [],
     }, indent=2).encode("utf-8")
 
+    # Write zip.  All members go through _write_zip_member so timestamps and
+    # permissions are pinned (reproducible pack: identical payload bytes =>
+    # identical package sha256, regardless of when or where you run pack).
+    # Members are read fully into memory; mod payloads are data files, small
+    # enough that this is fine for v1.
     with zipfile.ZipFile(str(package_path), "w", compression=zipfile.ZIP_DEFLATED) as zf:
-        zf.writestr("package.json", package_json_bytes)
+        # Write generated package.json first
+        _write_zip_member(zf, "package.json", package_json_bytes)
+        # Write all other mod files
         for abs_path, rel_fwd in collected:
             if rel_fwd == "package.json":
-                continue
-            zf.write(abs_path, rel_fwd)
+                continue  # replaced above
+            with open(abs_path, "rb") as fh:
+                _write_zip_member(zf, rel_fwd, fh.read())
     return package_path
 
 

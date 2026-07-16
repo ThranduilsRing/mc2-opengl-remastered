@@ -185,10 +185,10 @@ PASS manifest.json format=cook id=oak1_leafcard replaces=tree:oak1 materials=1
 ```
 $ py -3 tools/mc2mod/mc2mod.py pack docs/modding/examples/tree-import/mod --out <scratch-dir>
 pack: <scratch-dir>\tree-import-example-0.0.0.mc2mod
-  id=tree-import-example  version=0.0.0  files=9  sha256=34432f7108a5d1fee2a3726f155659daf09aa025714c13c0d00770be2bea6bd7
+  id=tree-import-example  version=0.0.0  files=9  sha256=04189e773e615d9375aa879a2bc65b4a99a5b32910f2b438e4bb15f6c2c547ce
 
 $ py -3 tools/mc2mod/mc2mod.py verify-lite <scratch-dir>\tree-import-example-0.0.0.mc2mod
-verify-lite PASS: id=tree-import-example  version=0.0.0  files=9  pkg_sha256=34432f7108a5d1fee2a3726f155659daf09aa025714c13c0d00770be2bea6bd7
+verify-lite PASS: id=tree-import-example  version=0.0.0  files=9  pkg_sha256=04189e773e615d9375aa879a2bc65b4a99a5b32910f2b438e4bb15f6c2c547ce
 (exit 0)
 
 $ py -3 tools/mc2mod/mc2mod.py install <scratch-dir>\tree-import-example-0.0.0.mc2mod --deploy <scratch-deploy-dir>

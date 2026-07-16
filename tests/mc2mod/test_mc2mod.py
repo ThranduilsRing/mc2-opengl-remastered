@@ -162,6 +162,70 @@ class TestPack(unittest.TestCase):
 
 
 # ---------------------------------------------------------------------------
+# Test: pack reproducibility (pinned zip timestamps)
+# ---------------------------------------------------------------------------
+
+class TestPackReproducible(unittest.TestCase):
+    """
+    pack must be reproducible: byte-identical payload input => byte-identical
+    .mc2mod output (same sha256), regardless of wall-clock time or source-file
+    mtimes.  Guards the pinned-ZipInfo behavior in mc2mod._write_zip_member.
+    """
+
+    def setUp(self):
+        self.tmpdir = tempfile.mkdtemp()
+        self.mod_dir = _make_fixture_mod(self.tmpdir)
+
+    def tearDown(self):
+        shutil.rmtree(self.tmpdir, ignore_errors=True)
+
+    def _pack_into(self, subdir: str) -> str:
+        out_dir = os.path.join(self.tmpdir, subdir)
+        os.makedirs(out_dir)
+        rc = mc2mod.main(["pack", self.mod_dir, "--out", out_dir])
+        self.assertEqual(rc, 0)
+        pkgs = [f for f in os.listdir(out_dir) if f.endswith(".mc2mod")]
+        self.assertEqual(len(pkgs), 1)
+        return os.path.join(out_dir, pkgs[0])
+
+    def _touch_all_sources(self, epoch: float) -> None:
+        """Set every payload file's atime/mtime to a fixed epoch."""
+        for dirpath, _dirs, files in os.walk(self.mod_dir):
+            for fname in files:
+                os.utime(os.path.join(dirpath, fname), (epoch, epoch))
+
+    def test_pack_twice_identical_sha256(self):
+        # Perturb source mtimes between the two runs: a non-reproducible pack
+        # (zipfile default: member timestamps from mtime / wall clock) would
+        # produce different archive bytes here.
+        self._touch_all_sources(1_000_000_000.0)   # 2001-09-09
+        pkg_a = self._pack_into("out_a")
+        self._touch_all_sources(1_500_000_000.0)   # 2017-07-14
+        pkg_b = self._pack_into("out_b")
+
+        self.assertEqual(
+            _sha256_file(pkg_a), _sha256_file(pkg_b),
+            "pack is not reproducible: same payload, different package sha256"
+        )
+
+    def test_pack_zip_timestamps_pinned(self):
+        pkg = self._pack_into("out_pinned")
+        with zipfile.ZipFile(pkg, "r") as zf:
+            for zinfo in zf.infolist():
+                self.assertEqual(
+                    zinfo.date_time, mc2mod._REPRO_ZIP_DATE,
+                    f"member {zinfo.filename} has unpinned timestamp "
+                    f"{zinfo.date_time}"
+                )
+
+    def test_pack_reproducible_roundtrip_still_verifies(self):
+        # The reproducible writer must not break archive integrity.
+        pkg = self._pack_into("out_verify")
+        rc = mc2mod.main(["verify-lite", pkg])
+        self.assertEqual(rc, 0)
+
+
+# ---------------------------------------------------------------------------
 # Test: verify-lite
 # ---------------------------------------------------------------------------
 

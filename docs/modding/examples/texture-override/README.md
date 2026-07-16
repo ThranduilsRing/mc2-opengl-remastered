@@ -162,7 +162,7 @@ This is a direct edit of your own install, not a shareable, uninstallable mod �
 
 ## Level 2: packaging with `mc2mod.py`
 
-Once your `mod/` folder looks right, package it the same way any other data mod is shared. All commands below were actually run against this exact payload; the transcripts are real, not illustrative — except the sha256 values, see the callout below.
+Once your `mod/` folder looks right, package it the same way any other data mod is shared. All commands below were actually run against this exact payload; the transcripts are real, not illustrative — including the sha256 values, which are reproducible (see the callout below).
 
 ### Pack
 
@@ -172,12 +172,12 @@ py -3 tools/mc2mod/mc2mod.py pack docs/modding/examples/texture-override/mod --o
 
 ```
 pack: A:\Games\mc2-modding-docs\docs\modding\examples\texture-override\dist\hello-texture-sound-1.0.0.mc2mod
-  id=hello-texture-sound  version=1.0.0  files=6  sha256=361ac9262056b0a83b3f9cb84950e4a6775d4881a12e013ac390be184f38ecc1
+  id=hello-texture-sound  version=1.0.0  files=6  sha256=10a366362bfd9e2c34e9fd448a949e9b6b5ca3130c5598112c3adfcd225caccd
 ```
 
 (6 files = `mod.json` + the 2 shadowed data files + the 3 files under `source/` — `pack` only excludes top-level `src/`/`out/` and dot-prefixed entries, not `source/`, so the authoring scripts ship inside the package too. That's harmless and matches the existing `building-import` example in this same folder.)
 
-> **Your sha256 will not match the one above — this is expected, not a bug in your setup.** `cmd_pack()` in `tools/mc2mod/mc2mod.py` (`zf.writestr("package.json", ...)`) lets `zipfile` stamp the generated `package.json` entry with the current wall-clock time, while every other file in the archive keeps its own source mtime. That makes the *whole-package* sha256 change on every single `pack` invocation, even against a byte-identical, untouched `mod/` folder — confirmed here by running `pack` twice back-to-back against this exact payload and getting two different hashes (`361ac926...` then `7c12d5b2...`). **What actually proves your package is correct is `verify-lite` reporting `PASS`, not the sha256 matching anything printed in this doc.** If you need reproducible package hashes for your own release process, that's a real gap in `mc2mod.py` worth fixing upstream (a fixed `ZipInfo` timestamp for the generated `package.json` entry would do it) — not something a data-only mod can work around.
+> **Your sha256 should match the one above exactly.** `pack` is reproducible on this checkout: every zip member's timestamp and permissions are pinned (`_write_zip_member` / `_REPRO_ZIP_DATE` in `tools/mc2mod/mc2mod.py`), so a byte-identical `mod/` folder always packs to byte-identical package bytes. If your hash differs, your payload differs from this folder's — diff `mod/` before suspecting the tool. (An earlier version of this doc — and of `mc2mod.py` — had genuinely non-reproducible hashes: the generated `package.json` zip entry was stamped with wall-clock time and payload entries inherited source mtimes, so every `pack` run produced a new hash. That gap was fixed upstream by pinning the `ZipInfo` metadata; the shipped `dist/hello-texture-sound-1.0.0.mc2mod` was re-packed with the fixed writer so it matches a fresh pack of this payload.) On any checkout, `verify-lite` reporting `PASS` remains the integrity verdict that matters.
 
 ### Verify-lite
 
@@ -186,10 +186,10 @@ py -3 tools/mc2mod/mc2mod.py verify-lite docs/modding/examples/texture-override/
 ```
 
 ```
-verify-lite PASS: id=hello-texture-sound  version=1.0.0  files=6  pkg_sha256=361ac9262056b0a83b3f9cb84950e4a6775d4881a12e013ac390be184f38ecc1
+verify-lite PASS: id=hello-texture-sound  version=1.0.0  files=6  pkg_sha256=10a366362bfd9e2c34e9fd448a949e9b6b5ca3130c5598112c3adfcd225caccd
 ```
 
-`pkg_sha256` here is just the sha256 of *your* freshly built `.mc2mod` file, reported back to you — it will equal whatever `pack` printed for that same file a moment ago, but (per the callout above) not what's printed in this doc. `PASS` is the signal that matters.
+`pkg_sha256` here is just the sha256 of *your* freshly built `.mc2mod` file, reported back to you — it will equal whatever `pack` printed for that same file a moment ago, and (packing this exact payload on this checkout) the value printed in this doc too. `PASS` is the signal that matters.
 
 ### Install (into your own game folder — never a canonical dev deploy root)
 

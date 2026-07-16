@@ -125,11 +125,11 @@ Real output from running these against this example's payload:
 
 ```
 pack: mech-import-example-0.0.0.mc2mod
-  id=mech-import-example  version=0.0.0  files=3  sha256=<varies per run — see note below>
-verify-lite PASS: id=mech-import-example  version=0.0.0  files=3  pkg_sha256=<same value pack just printed>
+  id=mech-import-example  version=0.0.0  files=3  sha256=506cbe7bf17705834362e971aac33623a844459b6b45c22869ce911ad7491075
+verify-lite PASS: id=mech-import-example  version=0.0.0  files=3  pkg_sha256=506cbe7bf17705834362e971aac33623a844459b6b45c22869ce911ad7491075
 ```
 
-**Note on the `sha256` value:** `mc2mod.py pack` writes the generated `package.json` into the zip without a fixed timestamp, so the *outer* `.mc2mod` file's bytes — and therefore its `sha256` — differ on every run, even against this exact unmodified payload (verified: three consecutive runs here produced three different hashes). This is expected and **not a sign anything is broken**: the per-file hashes declared *inside* `package.json` are what `verify-lite` actually checks, and those are stable. The signal to trust is the `verify-lite PASS` line and matching `files=3` count, not whether your printed `sha256` matches the one above — it won't, and that's fine. Always copy the `pkg_sha256` from your own `pack` output into your own `verify-lite` check; don't compare it against this doc.
+**Note on the `sha256` value:** `pack` is reproducible on this checkout — zip member timestamps and permissions are pinned (`_write_zip_member` / `_REPRO_ZIP_DATE` in `tools/mc2mod/mc2mod.py`), so packing this exact unmodified payload always yields the hash above. If yours differs, your payload bytes differ — diff `mod/` against this folder. (Older checkouts of `mc2mod.py` stamped the generated `package.json` with wall-clock time, making the hash differ on every run; that was fixed by pinning the timestamps. On any checkout, `verify-lite PASS` with `files=3` remains the integrity verdict that matters.)
 
 If you `install` this package the normal way (`mc2mod.py install ... --deploy <your-deploy-dir>`), it lands at `<deploy>/mods/mech-import-example/data/tgl/...` — which, per the caveat above, **will not actually change the mesh in-game** (the `.ini`'s `[Import]` opt-in will overlay fine, but its `.glb` won't be found by Assimp, so it silently falls back to stock). Treat `install` here as "get the files onto disk in a known place you can then manually copy from into `data/tgl/`", not as a working end-to-end install path for this specific mechanism.
 

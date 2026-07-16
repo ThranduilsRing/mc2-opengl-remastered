@@ -212,10 +212,10 @@ Verified against the tooling in this repo:
 ```powershell
 py -3 tools/mc2mod/mc2mod.py pack docs/modding/examples/imgui-editing/mod --out <scratch-dir>
 # -> pack: <scratch-dir>\imgui-tuning-demo-0.0.0.mc2mod
-#      id=imgui-tuning-demo  version=0.0.0  files=3  sha256=c3bdc8e468fc4a8e4530e04a2e8250b0b901fb1cb6dd7e0420c545ff1b5e5f8d
+#      id=imgui-tuning-demo  version=0.0.0  files=3  sha256=83936b6397dea2f394d869369d03f8fd7863ff9d4dd5fbaefcf5dc67fb4a81c2
 
 py -3 tools/mc2mod/mc2mod.py verify-lite <scratch-dir>\imgui-tuning-demo-0.0.0.mc2mod
-# -> verify-lite PASS: id=imgui-tuning-demo  version=0.0.0  files=3  pkg_sha256=c3bdc8e468fc4a8e4530e04a2e8250b0b901fb1cb6dd7e0420c545ff1b5e5f8d
+# -> verify-lite PASS: id=imgui-tuning-demo  version=0.0.0  files=3  pkg_sha256=83936b6397dea2f394d869369d03f8fd7863ff9d4dd5fbaefcf5dc67fb4a81c2
 ```
 
 (`tools/mod_install/resolver.py` is a library consumed by other tooling, not a standalone CLI — there's no `--help` output and nothing to run it against for a single-mod, no-dependency case like this one; `verify-lite` above already proves the package's structural integrity.)

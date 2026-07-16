@@ -199,13 +199,13 @@ This doc's technique — append a fixed 97-row block to a chassis CSV, one weapo
 ```
 $ py -3 tools/mc2mod/mc2mod.py pack docs/modding/examples/variant-add/mod --out <tmp>
 pack: <tmp>/variant-add-example-1.0.0.mc2mod
-  id=variant-add-example  version=1.0.0  files=2  sha256=<64-hex-digest>
+  id=variant-add-example  version=1.0.0  files=2  sha256=80714fefde5cc0ef4aee6348dc9b486037c3ba6cf6665b35b41c66a7b47e9f1b
 
 $ py -3 tools/mc2mod/mc2mod.py verify-lite <tmp>/variant-add-example-1.0.0.mc2mod
-verify-lite PASS: id=variant-add-example  version=1.0.0  files=2  pkg_sha256=<same 64-hex-digest as above>
+verify-lite PASS: id=variant-add-example  version=1.0.0  files=2  pkg_sha256=80714fefde5cc0ef4aee6348dc9b486037c3ba6cf6665b35b41c66a7b47e9f1b
 ```
 
-**Note on the sha256 value:** `mc2mod.py pack` doesn't strip per-file zip timestamps, so the digest is **not** reproducible across runs even against this exact, unchanged payload — two consecutive `pack` invocations in this checkout produced `e61b4251b65cfb73287da9754193b1993278bc8d6c1fb63678674ad3017c57d2` and `99571f2073b25b582715dabcb1035ffcdbd30bdfd02488846e3b1a4afcd977be`. Both runs still reported `id=variant-add-example version=1.0.0 files=2` and `verify-lite PASS` with the digest matching between `pack`'s own output and `verify-lite`'s re-read of the same file — that agreement (not the literal hex value) is the thing to check. Don't diff your own `pack` output's hash against any hash printed in this doc; diff the `pack` line against the matching `verify-lite` line from the *same* run instead.
+**Note on the sha256 value:** `pack` is reproducible on this checkout — zip member timestamps and permissions are pinned (`_write_zip_member` / `_REPRO_ZIP_DATE` in `tools/mc2mod/mc2mod.py`), so packing this exact, unchanged payload always yields the digest above; if yours differs, your payload bytes differ from this folder's. (An earlier `mc2mod.py` did **not** pin zip timestamps, so two consecutive `pack` runs produced two different digests — `e61b4251...` then `99571f20...` in this checkout's own testing. That gap was fixed upstream. On any checkout, the agreement between `pack`'s printed hash and `verify-lite`'s re-read of the *same* file — plus the `PASS` verdict — is the integrity signal that matters.)
 
 Also confirmed with `tools/mod_install/resolver.py` (the offline replica of `mclib/file.cpp`'s resolution ladder) against a synthetic deploy tree: requesting `data/objects/atlas.csv` with `active_mod="variant-add-example"` resolves to layer `mod:variant-add-example` with `base-loose` recorded as shadowed — i.e. this mod's file wins over a stock `data/objects/atlas.csv`, exactly as the whole-file-shadow mechanism promises.
 

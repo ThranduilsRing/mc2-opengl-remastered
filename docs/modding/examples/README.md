@@ -61,10 +61,10 @@ prominently instead of pretending it works.
 
 Double the PPC's damage by shipping a modified whole-file copy of
 `data/objects/compbas.csv`, the master weapon/component table. Straightforward
-whole-file CSV shadow, no gotchas in the mechanism itself. (One minor doc-only
-caveat: the packaged `.mc2mod`'s sha256 isn't perfectly reproducible across
-pack runs because of a zip timestamp quirk — cosmetic, doesn't affect whether
-the mod works.)
+whole-file CSV shadow, no gotchas in the mechanism itself. (A former doc-only
+caveat about the packaged `.mc2mod`'s sha256 not being reproducible across
+pack runs is fixed: `mc2mod.py pack` now pins zip timestamps, so identical
+payload bytes always produce an identical package hash.)
 
 ### 3. [`weapon-add`](weapon-add/) — difficulty: **Easy**
 
@@ -161,9 +161,10 @@ surfaced, summarized:
 - **`texture-override`** — sound override (`data/sound/music27.wav`) does not
   audibly change in-game music; documented engine limitation, not a bug in
   the mod. No open action items.
-- **`weapon-edit`** — cosmetic-only: the packaged `.mc2mod`'s sha256 isn't
-  reliably reproducible across pack runs (zip timestamp resolution), and the
-  doc's note about this slightly overstates how often it actually differs.
+- **`weapon-edit`** — no open issues. (A former cosmetic gap — the packaged
+  `.mc2mod`'s sha256 wasn't reproducible across pack runs because of zip
+  timestamps — was fixed in `tools/mc2mod/mc2mod.py` by pinning member
+  timestamps; regression-tested in `tests/mc2mod/test_mc2mod.py`.)
 - **`weapon-add`** — no open issues; verification is source-level (no live
   in-game capture was taken, disclosed honestly in the doc).
 - **`variant-add`** — one fabricated source citation in the doc's prose (a
