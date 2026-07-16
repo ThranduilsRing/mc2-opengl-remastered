@@ -30,6 +30,7 @@ extern "C" void fst_normalize_key(char* dst, const char* src)
     // memory/fst_forward_slash_invariant.md: backslash inputs must collapse
     // to forward slash before hashing. file.cpp does this in-place around
     // the elfHash() call; this leaf version writes to a separate buffer.
+    // dst == src is safe (strict forward pass, byte read before write).
     while (*src)
     {
         char c = *src++;
@@ -39,6 +40,17 @@ extern "C" void fst_normalize_key(char* dst, const char* src)
 }
 
 #include <cctype>
+
+extern "C" void fst_normalize_loose_key_inplace(char* s)
+{
+    // META-FIX design E: canonical-key chokepoint, char* form. Byte-for-byte
+    // the fst_normalize_loose_key() fold below (lowercase + slash), operating
+    // in place so the File::open / fileExists / FastFileFind hot paths stay
+    // allocation-free.
+    if (!s) return;
+    for (; *s; ++s)
+        *s = (*s == '\\') ? '/' : (char)std::tolower((unsigned char)*s);
+}
 
 // Byte-for-byte the loop previously inlined in mclib/file.cpp::NormalizeKey:
 // backslash -> '/', every other byte -> tolower. Folds case AND slashes so a

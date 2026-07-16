@@ -482,7 +482,6 @@ ALLOWLIST=(
     MC2_LOAD_RACE_TRACE               # trace -- mission-load residency-race one-shot diagnostics
     MC2_LOAD_RACE_VERDICT_FRAME       # trace -- frame to emit LOADRACE verdict (defaults to MC2_SCREENSHOT_AT_FRAME)
     MC2_LOG_CURSOR                    # trace
-    MC2_LOG_FILE_RESOLVE              # trace
     MC2_LOG_LOGISTICS                 # trace
     MC2_LOG_LOGISTICS_FLOW            # trace
     MC2_LOG_MECHICON                  # trace
@@ -575,7 +574,6 @@ ALLOWLIST=(
     MC2_RENDER_PASS_TIME              # trace
     MC2_RENDER_PASS_TIME_EVERY        # trace
     MC2_RENDER_PATH                   # trace
-    MC2_RESOLVE_TRACE_FILE            # infra -- file-resolve trace output path
     MC2_RES_DIAG                      # trace
     MC2_RNG_SEED                      # override -- RNG seed override (soak/test)
     MC2_SCENE_LIGHTING_ASSERT         # infra -- fatal-assert opt-in for scene lighting

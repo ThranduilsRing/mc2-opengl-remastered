@@ -145,6 +145,10 @@ run_check "doc_links"             "py -3 scripts/check-doc-links.py --quiet"
 # fails on a synthetic violation (vulkan_bindings_selftest precedent).
 run_check "split_path_contracts"   "py -3 scripts/check-split-path-contracts.py --quiet"
 run_check "split_path_selftest"    "py -3 scripts/check-split-path-contracts.py --self-test 2>/dev/null"
+# META-FIX-BATCH-1 (design E): canonical-key chokepoint confinement
+# (FastFileFind/elfHash callers) + raw read-open count ratchet.
+run_check "path_normalization"     "sh scripts/check-path-normalization.sh"
+run_check "path_norm_selftest"     "sh scripts/check-path-normalization.sh --self-test"
 
 # ---------------------------------------------------------------------------
 # Summary table

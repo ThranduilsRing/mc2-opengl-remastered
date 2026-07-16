@@ -1480,6 +1480,13 @@ def main():
                             # allowlisted or Popen drops it and the nightly
                             # TESS=0/1 A/B leg silently runs gate-OFF.
                             "MC2_SPLIT_PATH_PARITY_TRACE",
+                            # META-FIX design E tier 3: file-resolve ladder
+                            # diagnostics + JSONL MISS trace (mclib/file.cpp).
+                            # check-file-resolve-miss.py sets both through
+                            # this runner — without the allowlist rows the
+                            # nightly MISS audit silently traces nothing.
+                            "MC2_LOG_FILE_RESOLVE",
+                            "MC2_RESOLVE_TRACE_FILE",
                             "MC2_LIGHT_COST_SPLIT",
                             "MC2_TOBJ_COST_SPLIT",
                             "MC2_STATIC_PROP_FLUSH_COST_SPLIT",

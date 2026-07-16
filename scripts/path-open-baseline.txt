@@ -1,0 +1,20 @@
+# scripts/path-open-baseline.txt — META-FIX design E Rule-2 count ratchet.
+# Per-file raw read-mode open counts (fopen "r*" / _open O_RDONLY /
+# CreateFileA GENERIC_READ / ifstream) in code/ gui/ mclib/, excluding
+# '// path-audit: loose-only' tagged lines. Regenerate ONLY deliberately:
+#   sh scripts/check-path-normalization.sh --update-baseline
+# Generated at 469a569b.
+2	code/brain_special_dispatch.cpp
+1	code/gamecam.cpp
+3	gui/UiDefs.cpp
+2	mclib/anim_override_registry.cpp
+1	mclib/assimp_importer.cpp
+1	mclib/bdactor.cpp
+4	mclib/ffile.cpp
+7	mclib/file.cpp
+1	mclib/fx_def_registry.cpp
+2	mclib/mlr/mlrloadobj.cpp
+2	mclib/model_override_registry.cpp
+8	mclib/terrain.cpp
+2	mclib/terrtxm2.cpp
+1	mclib/txmmgr.cpp

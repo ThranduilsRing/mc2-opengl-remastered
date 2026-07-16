@@ -87,6 +87,13 @@ static std::string g_activeModId;
 // logFileResolve: 0=off, 1=level-1 stdout tags, 2=level-1+JSONL trace
 static int logFileResolve = 0;
 
+// META-FIX design E: resolve counters for the level>=1 shutdown summary
+// ("[file-resolve] opens=N misses=M"). Unconditional integer bumps (no
+// output unless the gate is on); opens = successful File::open resolutions,
+// misses = full-ladder misses from File::open AND fileExists probes.
+static unsigned long g_resolveOpens = 0;
+static unsigned long g_resolveMisses = 0;
+
 // Level-2 JSONL trace state (all guarded by logFileResolve >= 2).
 static FILE* g_traceFile = nullptr;
 static LARGE_INTEGER g_startQPC;   // QueryPerformanceCounter at init
@@ -666,6 +673,21 @@ void InitModSearchPaths(const char* modsRoot) {
         // If MC2_RESOLVE_TRACE_FILE unset at level 2: skip JSONL (per spec).
     }
 
+    // META-FIX design E tier 3 (ii): level>=1 shutdown summary. Registered
+    // once; prints the process-lifetime resolve totals so a nightly log scan
+    // can spot silent-loss growth without the level-2 JSONL trace.
+    if (logFileResolve >= 1) {
+        static bool s_summaryRegistered = false;
+        if (!s_summaryRegistered) {
+            s_summaryRegistered = true;
+            atexit([]() {
+                printf("[file-resolve] opens=%lu misses=%lu\n",
+                       g_resolveOpens, g_resolveMisses);
+                fflush(stdout);
+            });
+        }
+    }
+
     const char* envMod = getenv("MC2_ACTIVE_MOD");
     const bool stockMode = (!envMod || !envMod[0]);
     if (stockMode) {
@@ -836,24 +858,43 @@ void createTrafficLog (void)
 // Global Functions
 long fileExists (const char* fName, long destination_mask)
 {
+	// META-FIX design E (confirmed issue-#8-class bug): this probe passed the
+	// RAW caller string to FastFileFind while File::open normalized first, so
+	// "data\\missions\\x.fit" opened fine via FST but fileExists said 0 (the
+	// loose _stat masked it only when a loose override existed). Normalize a
+	// stack copy at entry so the probe and the opener agree on the canonical
+	// key (lowercase, forward slash — mclib/fst_hash.cpp chokepoint).
+	char normName[2048];
+	if (!fName) return 0;
+	strncpy(normName, fName, sizeof(normName) - 1);
+	normName[sizeof(normName) - 1] = '\0';
+	fst_normalize_loose_key_inplace(normName);
+
 	// Active mod wins; falls back to base data, then FastFile.
 	int modHandle = -1;
-	if (TryModOpen(fName, &modHandle)) {
+	if (TryModOpen(normName, &modHandle)) {
 		_close(modHandle);
 		return 1 & destination_mask;
 	}
 
 	struct _stat st;
-	if (_stat(fName,&st) != -1)
+	if (_stat(normName,&st) != -1)
 	{
 		return 1 & destination_mask;
 	}
 
 	long fastFileHandle = -1;
-	FastFilePtr	fastFile = FastFileFind(fName,fastFileHandle);
+	FastFilePtr	fastFile = FastFileFind(normName,fastFileHandle);
 	if (fastFile)
 		return 2 & destination_mask;
 
+	// Full-ladder miss. fileExists is a probe API (the CD-presence check
+	// calls it internally), so misses here are often benign — the nightly
+	// check-file-resolve-miss.py baseline absorbs the known probes.
+	++g_resolveMisses;
+	if (logFileResolve >= 2) {
+		EmitResolveRecord(normName, fName, "MISS", "", nullptr);
+	}
 	return 0;
 }
 
@@ -978,16 +1019,16 @@ long File::open (const char* fName, FileMode _mode, long numChild, bool doNotLow
 	fileMode = _mode;
 	//_fmode = _O_BINARY;
 
-    if(!doNotLower)
-	    S_strlwr(fileName);
-
-	// FST keys use forward slashes (see fastfile.cpp:86); some stock .fit data
-	// embeds backslashed paths. Normalize so elfHash() matches the FST key.
-	for (long i = 0; i < fNameLength; ++i)
-	{
-		if (fileName[i] == '\\')
-			fileName[i] = '/';
-	}
+	// META-FIX design E: canonical-key chokepoint (mclib/fst_hash.cpp).
+	// Game path (doNotLower=false): case+slash fold — behaviorally identical
+	// to the historical S_strlwr + backslash loop, now funneled through the
+	// unit-tested normalizer. doNotLower callers (sole caller
+	// data_tools/pak.cpp, which opens the .fst archive itself) keep on-disk
+	// case and get the slash-only fold (fst_normalize_key, in-place safe).
+	if (!doNotLower)
+		fst_normalize_loose_key_inplace(fileName);
+	else
+		fst_normalize_key(fileName, fileName);
 
 	if (fileMode == CREATE)
 	{
@@ -1011,12 +1052,15 @@ long File::open (const char* fName, FileMode _mode, long numChild, bool doNotLow
 			if (TryModOpen(fileName, &modHandle, fName))
 			{
 				handle = modHandle;
+				++g_resolveOpens;
 				if (getenv("MC2_LOG_MECH_ICON") && strstr(fileName, "mechicon"))
 					printf("[MECHICON] File::open MOD-HIT: %s\n", fileName);
 			}
 			else
 			{
 				handle = _open(fileName, _O_RDONLY | _O_BINARY);
+				if (handle != INVALID_HANDLE_VALUE)
+					++g_resolveOpens;
 				if (getenv("MC2_LOG_MECH_ICON") && strstr(fileName, "mechicon") && handle != INVALID_HANDLE_VALUE)
 					printf("[MECHICON] File::open LOOSE: %s\n", fileName);
 				if (handle != INVALID_HANDLE_VALUE && logFileResolve >= 2) {
@@ -1042,6 +1086,8 @@ long File::open (const char* fName, FileMode _mode, long numChild, bool doNotLow
 						memcpy(stripped, fileName, prefixLen);
 						strcpy(stripped + prefixLen, suffix);
 						handle = _open(stripped, _O_RDONLY | _O_BINARY);
+						if (handle != INVALID_HANDLE_VALUE)
+							++g_resolveOpens;
 						if (handle != INVALID_HANDLE_VALUE && logFileResolve >= 2) {
 							std::string key = NormalizeKey(fileName);
 							EmitResolveRecord(key.c_str(), fName, "base-strip", stripped, nullptr);
@@ -1059,6 +1105,8 @@ long File::open (const char* fName, FileMode _mode, long numChild, bool doNotLow
 			lastError = errno;
 
 			fastFile = FastFileFind(fileName,fastFileHandle);
+			if (fastFile)
+				++g_resolveOpens;
 			if (getenv("MC2_LOG_MECH_ICON") && fastFile && strstr(fileName, "mechicon"))
 				printf("[MECHICON] File::open FST-HIT: %s\n", fileName);
 			if (fastFile && logFileResolve >= 2) {
@@ -1068,6 +1116,7 @@ long File::open (const char* fName, FileMode _mode, long numChild, bool doNotLow
 			if (!fastFile)
 			{
                 if(!Environment.checkCDForFiles) {
+                    ++g_resolveMisses;
                     if (logFileResolve >= 2) {
                         std::string key = NormalizeKey(fileName);
                         EmitResolveRecord(key.c_str(), fName, "MISS", "", nullptr);
@@ -1101,6 +1150,7 @@ long File::open (const char* fName, FileMode _mode, long numChild, bool doNotLow
 						DWORD findCD = fileExists(testCDPath);
 						if (findCD == 1)	//File exists. CD is in drive.  Return 2 to indicate file not found.
 						{
+							++g_resolveMisses;
 							if (logFileResolve >= 2) {
 								std::string key = NormalizeKey(fileName);
 								EmitResolveRecord(key.c_str(), fName, "MISS", "", nullptr);
@@ -1127,6 +1177,7 @@ long File::open (const char* fName, FileMode _mode, long numChild, bool doNotLow
 				}
 				else
 				{
+					++g_resolveOpens;
 					if (logFileResolve >= 2 && handle != INVALID_HANDLE_VALUE) {
 						std::string key = NormalizeKey(fileName);
 						EmitResolveRecord(key.c_str(), fName, "cd", actualPath, nullptr);

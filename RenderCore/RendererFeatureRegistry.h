@@ -1852,6 +1852,20 @@ static constexpr EnvVarDesc kAuxEnvVars[] = {
         false,
         "META-FIX design C runtime tier (GameOS/gameos/gameos_graphics.cpp gosRenderer::init): =1 emits machine-parseable [SPLIT_PATH_PARITY] marker lines at split-path parity checkpoints. First checkpoint: terrain material load — tess=<0|1> shadow=<0|1> match=<0|1>, where match asserts the ISSUE-34 decouple invariant (modern shadow path stays active whether tess is on, killswitched, or compile-failed). run_smoke's marker-bucket row `split_path_parity` (scripts/smoke_lib/logparse.py MARKER_BUCKETS) turns any match=0 into a red run; the nightly MC2_TERRAIN_TESS=0/1 A/B leg pairs with this gate. Default OFF = static-getenv latch, byte-identical."
     },
+    {
+        "MC2_TRACE_LOG_FILE_RESOLVE",
+        "MC2_LOG_FILE_RESOLVE",
+        EnvVarKind::Trace,
+        false,
+        "META-FIX design E tier 3 (mclib/file.cpp, parsed at InitModSearchPaths): file-resolution ladder diagnostics. =1: level-1 stdout tags ([mod]/[mod-miss]) plus a shutdown summary line '[file-resolve] opens=N misses=M'. =2: level 1 plus a JSONL resolve trace (one record per resolved open: layer in {mod:<id>, base-loose, base-strip, fastfile, cd, MISS}) written to MC2_RESOLVE_TRACE_FILE; fileExists() full-ladder misses also emit MISS records (probe API — the benign-probe baseline of scripts/check-file-resolve-miss.py absorbs them). Promoted from the check-env-registry allowlist in META-FIX-BATCH-1. Default OFF/0 = byte-identical."
+    },
+    {
+        "MC2_TRACE_RESOLVE_TRACE_FILE",
+        "MC2_RESOLVE_TRACE_FILE",
+        EnvVarKind::Trace,
+        false,
+        "META-FIX design E tier 3 (mclib/file.cpp): output path for the MC2_LOG_FILE_RESOLVE=2 JSONL resolve trace, opened for append at InitModSearchPaths (relative paths resolve against the game CWD = exe dir). Only consulted at level >= 2. Consumed by the nightly scripts/check-file-resolve-miss.py MISS audit. Promoted from the check-env-registry allowlist in META-FIX-BATCH-1."
+    },
 };
 
 // ---------------------------------------------------------------------------
