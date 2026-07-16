@@ -871,12 +871,20 @@ void BldgAppearanceType::init (const char * fileName)
 
 				if (i == 0 && importSourceBase[0]) {
 					loadBuildingImportSourceWithSidecarAxis(bldgShape[i], importSourceBase, &baseShapeLoadFailed); // ASSIMP-BLDG-IMPORT-1: opt-in GLB probe
+				} else if (i == 0) {
+					FullPathFileName bldgName;
+					bldgName.init(tglPath,aseFileName,".ase");
+					// META-FIX design B PART 1: REQUIRED slot (LOD0) — checked load.
+					tglLoadShapeChecked(bldgShape[i], bldgName,
+						"bdactor.bldg_base", &baseShapeLoadFailed);
 				} else {
 					FullPathFileName bldgName;
 					bldgName.init(tglPath,aseFileName,".ase");
-					// META-FIX design B PART 1: REQUIRED slot — checked load.
-					tglLoadShapeChecked(bldgShape[i], bldgName,
-						"bdactor.bldg_base", &baseShapeLoadFailed);
+					// Declared-but-absent higher LODs are NORMAL stock-data
+					// degradation (live tier1 evidence: 2storycivlivingl2.tgl
+					// absent while the ini declares FileName2 — 4/5 tier1
+					// missions ship this) — only LOD0 is the required slot.
+					bldgShape[i]->LoadTGMultiShapeFromASE(bldgName); // TGL-LOAD-EXEMPT(declared LOD>0 absent = stock degradation; LOD0 is required)
 				}
 
 				if (!i)
@@ -5363,12 +5371,17 @@ void TreeAppearanceType::init (const char * fileName)
 					long rc = treeShape[i]->LoadFromFile(importSourceBase); // ASSIMP-TREE-IMPORT-1: opt-in GLB probe
 					tglVerifyShapeLoaded(treeShape[i], rc, "bdactor.tree_import",
 						importSourceBase, &baseShapeLoadFailed);
+				} else if (i == 0) {
+					FullPathFileName treeName;
+					treeName.init(tglPath,aseFileName,".ase");
+					// META-FIX design B PART 1: REQUIRED slot (LOD0) — checked load.
+					tglLoadShapeChecked(treeShape[i], treeName,
+						"bdactor.tree_base", &baseShapeLoadFailed);
 				} else {
 					FullPathFileName treeName;
 					treeName.init(tglPath,aseFileName,".ase");
-					// META-FIX design B PART 1: REQUIRED slot — checked load.
-					tglLoadShapeChecked(treeShape[i], treeName,
-						"bdactor.tree_base", &baseShapeLoadFailed);
+					// Declared-but-absent higher LODs = stock degradation.
+					treeShape[i]->LoadTGMultiShapeFromASE(treeName); // TGL-LOAD-EXEMPT(declared LOD>0 absent = stock degradation; LOD0 is required)
 				}
 
 				//---------------------------------------------------------

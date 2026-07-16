@@ -231,12 +231,17 @@ void GVAppearanceType::init (const char * fileName)
 					long rc = gvShape[i]->LoadFromFile(importSourceBase); // ASSIMP-GV-IMPORT-1: opt-in GLB probe
 					tglVerifyShapeLoaded(gvShape[i], rc, "gvactor.base_import",
 						importSourceBase, &baseShapeLoadFailed);
+				} else if (i == 0) {
+					FullPathFileName gvName;
+					gvName.init(tglPath,aseFileName,".ase");
+					// META-FIX design B PART 1: REQUIRED slot (LOD0) — checked load.
+					tglLoadShapeChecked(gvShape[i], gvName,
+						"gvactor.base", &baseShapeLoadFailed);
 				} else {
 					FullPathFileName gvName;
 					gvName.init(tglPath,aseFileName,".ase");
-					// META-FIX design B PART 1: REQUIRED slot — checked load.
-					tglLoadShapeChecked(gvShape[i], gvName,
-						"gvactor.base", &baseShapeLoadFailed);
+					// Declared-but-absent higher LODs = stock degradation.
+					gvShape[i]->LoadTGMultiShapeFromASE(gvName); // TGL-LOAD-EXEMPT(declared LOD>0 absent = stock degradation; LOD0 is required)
 				}
 			}
 			else if (!i)

@@ -438,12 +438,20 @@ void Mech3DAppearanceType::init (const char * fileName)
 					long rc = mechShape[i]->LoadFromFile(importSourceBase);   // opt-in: modern import
 					tglVerifyShapeLoaded(mechShape[i], rc, "mech3d.base_lod_import",
 						importSourceBase, &baseShapeLoadFailed);
-				} else {
+				} else if (i == 0) {
 					FullPathFileName mechName;
 					mechName.init(tglPath,aseFileName,".ase");
 
 					tglLoadShapeChecked(mechShape[i], mechName,               // stock ASE call, wrapped
 						"mech3d.base_lod", &baseShapeLoadFailed);
+				} else {
+					FullPathFileName mechName;
+					mechName.init(tglPath,aseFileName,".ase");
+
+					// Declared-but-absent higher LODs are NORMAL stock-data
+					// degradation (live tier1 evidence: 2storycivlivingl2) —
+					// only LOD0 is the required slot.
+					mechShape[i]->LoadTGMultiShapeFromASE(mechName); // TGL-LOAD-EXEMPT(declared LOD>0 absent = stock degradation; LOD0 is required)
 				}
 			}
 			else if (!i)
