@@ -1623,6 +1623,11 @@ def main():
                             # water-style [VK_TERRAIN_PERF] us-breakdown diagnostic.
                             "MC2_VK_TERRAIN_FENCE_DEFER",
                             "MC2_VK_TERRAIN_PERF",
+                            # VK-PROP-FENCE-DEFER-1: same template on the prop island
+                            # (killswitch =0 restores the inline wait) + the
+                            # [VK_PROPS_PERF] us-breakdown diagnostic.
+                            "MC2_VK_PROP_FENCE_DEFER",
+                            "MC2_VK_PROP_PERF",
                             "MC2_NO_LAUNCHER",
                             # VK-P8a SHADOW-INTEROP: VK produces the dynamic shadow
                             # depth map, GL samples it. Requires the shared engine
