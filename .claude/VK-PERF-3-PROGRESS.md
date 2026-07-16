@@ -37,7 +37,7 @@ the deferral removes).
   class), mc2_24 alone PASSes at 131-144 fps defer-ON, terrain receipts healthy in
   every failed leg, killswitch-arm tier1 5/5. Final defer-ON tier1: **5/5 PASS +0**.
 
-## 2. PROP — audit DONE (from session recon; see below), conversion IN PROGRESS
+## 2. PROP — DONE (commit 338fd468)
 - Audit: per-frame writes = instBuf + ubo + lightBuf (all single today) -> [2];
   set -> set[2] (pool doubling at vulkan_color_prop_island.cpp:951-967);
   layer tables + albedo imports = map-load, safe by construction after
@@ -45,9 +45,10 @@ the deferral removes).
   Hoist beginFrame ABOVE the light-feed copy (lightBuf is per-frame) — i.e. before
   the Mc2ColorPropLightFeed block at :1324, after the material import block.
   Killswitch MC2_VK_PROP_FENCE_DEFER=0; receipt MC2_VK_PROP_PERF ([VK_PROPS_PERF]).
-- NOT yet coded at the time of this checkpoint.
+- Converted/deployed using the water template; per-parity inst/UBO/light buffers
+  and descriptor sets, default-ON killswitch, perf receipt. Commit `338fd468`.
 
-## 3. MECH — audit DONE, untouched
+## 3. MECH — DONE (commit 72f9c410)
 - Per-frame writes: instBuf/boneBuf/lightBuf/ubo -> [2]; scheme-cache descriptor
   sets -> set[2] per SchemeEntry (pool maxSets 32->64, sizes x2, alloc both in
   alloc_scheme_set); write_buffer_bindings gains parity param; ensure_buf_capacity
@@ -56,6 +57,16 @@ the deferral removes).
   gpuTimer same note as terrain. Killswitch MC2_VK_MECH_FENCE_DEFER=0; receipt
   MC2_VK_MECH_PERF. Hoist beginFrame above inst/bone staging (scheme pre-import
   loop stays above the hoist).
+- Implemented per-parity inst/bone/light/UBO buffers and two descriptor sets per
+  paint scheme; pool doubled. Reviewer caught a potential unsignalled-fence exit,
+  fixed by pre-growing BOTH slots before beginFrame. Clean island build + deploy.
+- mc2_24 A/B (same clean exe, first quarter dropped): inline avg
+  fence_wait=171.1 us / island_total=664.0 us (`2026-07-16T12-41-59`); default
+  deferred avg fence_wait=14.2 us / island_total=448.9 us
+  (`2026-07-16T12-42-53`). Both PASS +0.
+- Sync validation mc2_24 PASS, 0 SYNC-HAZARD, validation_errors=0, mech native
+  for 3541 frames (`2026-07-16T12-43-55`). Final VK-umbrella tier1 PASS 5/5,
+  +0 destroys (`2026-07-16T12-44-48`).
 
 ## 4. VFX — audit DONE -> DEFER RECOMMENDATION
 - vulkan_vfx_island.cpp is single-buffered end-to-end: ONE cbuf, ONE private
