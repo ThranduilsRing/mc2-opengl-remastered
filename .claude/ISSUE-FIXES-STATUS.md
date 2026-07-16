@@ -1,5 +1,18 @@
 # GitHub issue-fix batch — status
 
+## META-FIX-BATCH-2 (recurrence-proofing: design D + design F) — IN PROGRESS 2026-07-16
+
+Plan: `.claude/META-FIX-PLAN-2026-07-16.md` Batch 2; designs in
+`.claude/META-FIX-DESIGNS-2026-07-16.json` (cls "CLASS D", "F").
+Lane registered (mc2-repo-intel): META-FIX-BATCH-2. slice_preflight PASS for
+both D and F symbol sets vs base 994c3776 (same MCP-tool deviation as
+Batch 1 — worktree has no repo_query.py). Base HEAD: `c3fbc72b`.
+
+**Commit ledger (per-unit):**
+| Unit | Commit | State |
+|---|---|---|
+| D1 check-res-aspect-contract.py (RULE A modern-dir zero-tolerance, RULE B generated count-ratchet `scripts/res-aspect-baseline.json` (11 files / 84 tokens), RULE C 4 anti-revert pins) + check-contracts.sh rows `res_aspect_contract`/`res_aspect_selftest` | (this commit) | DONE — GREEN on HEAD (A: all 7 modern dirs zero; B: ratchet matches baseline; C: all 4 pins found); --self-test RED on all 5 synthetic violations (modern read / ratchet grow / clamp drop / #49 guard / #45 revert) |
+
 ## META-FIX-BATCH-1 (recurrence-proofing: INFRA + design C + design E) — COMPLETE 2026-07-16
 
 **Tier1 verdict: PASS 5/5** (mc2_01/03/10/17/24, 30 s each, exit 0,

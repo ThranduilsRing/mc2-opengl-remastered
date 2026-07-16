@@ -149,6 +149,12 @@ run_check "split_path_selftest"    "py -3 scripts/check-split-path-contracts.py 
 # (FastFileFind/elfHash callers) + raw read-open count ratchet.
 run_check "path_normalization"     "sh scripts/check-path-normalization.sh"
 run_check "path_norm_selftest"     "sh scripts/check-path-normalization.sh --self-test"
+# META-FIX-BATCH-2 (design D): resolution/aspect two-space contract — modern
+# dirs never read Environment.screenWidth/Height (RULE A), legacy-layer reads
+# only shrink (RULE B generated ratchet), and the four #45/#49/HUD-RES-CLAMP
+# fix sites survive (RULE C anchors). Runtime sibling: MC2_RES_ASSERT.
+run_check "res_aspect_contract"    "py -3 scripts/check-res-aspect-contract.py --quiet"
+run_check "res_aspect_selftest"    "py -3 scripts/check-res-aspect-contract.py --self-test 2>/dev/null"
 
 # ---------------------------------------------------------------------------
 # Summary table
