@@ -8318,6 +8318,21 @@ void GpuStaticPropBatcher::drawDynamicPropShadows(
     const GLuint shadowProg = resolvePropShadowProgram(usingAlphaProg, usingAtlasProg);
     if (shadowProg == 0) return;
 
+    // flushShadow can run before coalesce reaches READY, while this full-registry
+    // replay runs after the color dispatch has armed it. Keep a proof hook here
+    // too so the default atlas path is observable even when the earlier pass
+    // correctly used the legacy-texture fallback.
+    {
+        static bool s_atlasTraceOnce = false;
+        if (usingAtlasProg && !s_atlasTraceOnce) {
+            s_atlasTraceOnce = true;
+            std::fprintf(stderr, "[SHADOW_PROP_ATLAS v1] event=engaged pass=dynamicProp "
+                                 "packets=%zu buckets=%zu bc7=%d\n",
+                         s_packets.size(), s_bucketArrays.size(),
+                         s_staticPropBc7Enabled ? 1 : 0);
+        }
+    }
+
     gosPostProcess* pp = getGosPostProcess();
     if (!pp) return;
 
@@ -9556,4 +9571,3 @@ void batcher_prepareBaseInstanceTable() {
     s_onGroupBytesThisFrame   = (totalCount - offGroupCount) * sizeof(GpuStaticPropInstance);
     s_totalUsedBytesThisFrame = totalCount * sizeof(GpuStaticPropInstance);
 }
-
