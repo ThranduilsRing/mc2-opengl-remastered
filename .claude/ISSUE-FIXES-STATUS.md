@@ -1,6 +1,16 @@
 # GitHub issue-fix batch — status
 
-## META-FIX-BATCH-2 (recurrence-proofing: design D + design F) — IN PROGRESS 2026-07-16
+## META-FIX-BATCH-2 (recurrence-proofing: design D + design F) — COMPLETE 2026-07-16
+
+**Tier1 verdict: PASS 5/5** (mc2_01/03/10/17/24, 30 s each, exit 0,
+`[diag-state] PASS`), run 2026-07-16T15-18-01 via
+`A:\Games\mc2-main\scripts\run_smoke.py --exe <lane>\mc2.exe` with
+`MC2_SMOKE_REQUIRE_FINGERPRINT=0` (documented cross-worktree waiver; the
+`MISMATCH exe=2421157c expected=994c3776` lines are the expected artifact —
+the same binary was fingerprint-VERIFIED `OK` by the worktree runner in the
+res-assert and order-liveness legs). All new gates unset during tier1 =
+gate-off byte-identical path exercised. Lane exe/manifest = `2421157c`,
+DIRTY=0, deployed via deploy_payload (`--allow-new-target`).
 
 Plan: `.claude/META-FIX-PLAN-2026-07-16.md` Batch 2; designs in
 `.claude/META-FIX-DESIGNS-2026-07-16.json` (cls "CLASS D", "F").
@@ -39,19 +49,61 @@ Batch 1 — worktree has no repo_query.py). Base HEAD: `c3fbc72b`.
       fixture inert → `ORDER_LIVENESS_SUMMARY line absent` → [ORDER-LIVENESS]
       HARD FAIL, exit 1 while the mission itself passed (absence-is-failure
       proven live, 2026-07-16T15-06-55).
-- [ ] check-order-liveness.py 3-leg oracle (running)
-- [ ] tier1 5/5 canonical
+- [x] check-order-liveness.py 3-leg oracle vs the lane exe, 90 s legs,
+      direct launches, own-PID: **3/3 PASS** —
+      attack (mc2_24): ordered=11 hits=12 nofire_wids=20 deaths=10
+      dead_end_wids=[] (every ordered wid produced hit/nofire/death signal);
+      move_stall (mc2_16): summary issued=5 moved=5 refused=0 stalled=0
+      verdict=PASS, 1918 BRAIN_FREEZE lines (nonempty-stream precondition
+      held), zero frozen signatures (a)/(b), zero (c) WARNs;
+      effectiveness (mc2_24): fixture-attacker head_share=0.591 (13/22 —
+      far above the 0.15 floor; corroborates #9 wiring), n=22<30 → WARN per
+      design, passed. First run crashed writing --json (missing worktree
+      debug_state/ dir) AFTER all legs passed — fixed in `eafc5f54`
+      (makedirs), leg verdicts from stdout unaffected.
+- [x] tier1 5/5 canonical (see verdict block below)
 
 **Commit ledger (per-unit):**
 | Unit | Commit | State |
 |---|---|---|
 | D1 check-res-aspect-contract.py (RULE A modern-dir zero-tolerance, RULE B generated count-ratchet `scripts/res-aspect-baseline.json` (11 files / 84 tokens), RULE C 4 anti-revert pins) + check-contracts.sh rows `res_aspect_contract`/`res_aspect_selftest` | `5b2e8dbc` | DONE — GREEN on HEAD (A: all 7 modern dirs zero; B: ratchet matches baseline; C: all 4 pins found); --self-test RED on all 5 synthetic violations (modern read / ratchet grow / clamp drop / #49 guard / #45 revert) |
-| D3 tests/smoke/matrices/resolution.json — 5 entries (res_4x3 / res_16x9 / res_21x9 / res_windowed #49-oracle 1600x900 / res_force43 = FORCE_43 + CAMERA_ASPECT_NATIVE=0, never the red-by-design native pairing) × mc2_01+mc2_24, all MC2_RES_ASSERT=fatal + MC2_RES_DIAG + screenshots. Aspect entries boot MC2_WINDOWED so the drawable genuinely takes the requested shape (impl deviation from design, documented in the matrix description — fullscreen-desktop pins the drawable to the desktop) | (this commit) | DONE — check-smoke-matrices.py PASS (9/9 matrices; env keys validated against registry union; no --kill-existing). Nightly-only recipe; live legs run post-deploy. Layer-3 harness (computeUiCanvas16x9 lift) CUT per plan's explicit cut line — deviation logged |
-| F1 check-order-gate-coverage.py (sentinel-delimited comment-stripped return-scan of BattleMech::fireWeapon; nofire-emitter presence; KNOWN_UNCOVERED both-ways-live ledger carrying GroundVehicle::fireWeapon) + code/mech.cpp 2 one-liners: `fireGateTrace(range_mp)` at the formerly-untraced MPlayer-server range gate (refutation (a): the 10th gate) + FIREGATE-REGION-END sentinel after the node_recycle gate. check-contracts.sh rows `order_gate_coverage`/`order_gate_selftest` | (this commit) | DONE — GREEN on HEAD day one (range_mp gap closed in-slice per design); --self-test RED on all 4 synthetic violations (untraced new gate / sentinel deleted / nofire gone / stale KNOWN_UNCOVERED). The four commented return(4)s at mech.cpp ~8205-8229 confirmed NOT flagged (comment-strip proven) |
-| F2 MC2_FIXTURE_ORDER_LIVENESS behavioral fixture — code/mission.cpp soak namespace (~110 lines, trademover-block shape, requires MC2_SOAK_AUTOWIN): 0.2·win COMMANDER-origin move (300 m to map center, per-wid start pos recorded), 0.3·win COMMANDER-origin unaimed attack (nearest live enemy), 0.9·win self-asserting ORDER_LIVENESS_SUMMARY (moved=≥25 m; refused=LastMoveCalcErr classified; dead exempt; verdict=FAIL when stalled>0 or issued_move==0). run_smoke.py: _parse_order_liveness_summary + _check_order_liveness_floor + activation flag + per-mission report + HARD-FAIL promotion (VEG clone; absence-is-failure). tests/smoke/test_order_liveness_floor.py 6 red-capability cases. tier1_env_vars.md row (registry entry + passthrough landed in D2) | (this commit) | CODE DONE — pytest tests/smoke 92/92 (86 base + 6 new: parse pass/last/absent, floor pass/fail/absence-red); engine legs pending batch build |
-| F3 scripts/check-order-liveness.py — 3-leg runtime oracle (attack mc2_24: per-ordered-wid hit∨nofire∨death + hits≥5 floor; move_stall mc2_16: summary PASS + frozen-signature classifier (a)/(b) FAIL, (c) WARN, EMPTY brain-freeze stream = exit 2 never silent pass; effectiveness mc2_24: aimed-HEAD share ≥15% @ n≥30, n<30 WARN, order-liveness fixture explicitly DISABLED on this leg so unaimed orders cannot dilute the aimed stream). DIRECT exe launches (--profile/--mission/--duration smoke CLI) — deviation from the check-combat-soak run_smoke route because run_smoke hard-caps --duration at 30 s (Batch-1 lesson 87a44585); own-PID discipline (spawn/communicate/kill own child only). Timestampless BRAIN_FREEZE stream ⇒ (a)/(b) approximated whole-capture with ≥30-samples basis (documented in module doc) | (this commit) | CODE DONE — syntax OK; exe-missing → exit 2 verified; live legs pending batch build+deploy |
-| F4 docs/ai-order-triage.md playbook — nofire field key (rd/am/rn/lk/ch/hot + los split, verified against warrior.cpp:4293-4322), firegate site table incl. the new range_mp MP row, BRAIN_FREEZE classification key, COMMANDER-vs-PLAYER origin trap, machine-oracle escalation table; every row ends escalate=check-order-liveness.py. Nightly pointer lines (order-liveness joins combat-soak; resolution matrix) added to tier1_env_vars.md invariant-scripts section (deviation: docs/disciplines.md has no nightly section — pointer landed in the checker index instead) | (this commit) | DONE |
-| D2 MC2_RES_ASSERT runtime audit — RenderCore/ResolutionContract.h (off/log/fatal, once-per-site dedup) + 3 chokepoints: camera_aspect (camera.cpp setOrthogonal, skip conditions re-derived independently of the #45 override), hud_clamp/drawable_stale/windowed_size #49 oracle (gameosmain.cpp mc2resFrameAudit @ draw_screen, 3-frame grace, desktop-smaller→note), hud_canvas_bounds/hud_roundtrip (flushHUDBatch shrink∘canvas ∘ gos_HudInverseMousePoint identity ≤0.5px). New gos_GetHudResClampEnabled + gos_ProbeDrawableSize (gameos.hpp/gameos_graphics.cpp). Registry: MC2_RES_ASSERT + MC2_FIXTURE_ORDER_LIVENESS kAuxEnvVars entries; run_smoke passthrough +7 (RES_ASSERT, WIDTH, HEIGHT, WINDOWED, FORCE_43, CAMERA_ASPECT_NATIVE, FIXTURE_ORDER_LIVENESS); tier1_env_vars.md batch-2 section; critical_inline_rules.md two-space contract paragraph. Ratchet baseline consciously regenerated 84→90 tokens (the audit's own contract-enforcing reads: camera detail line + gameosmain clamp check/oracle) | (this commit) | CODE DONE — check-env-registry PASS (344 registered); res-aspect checker PASS on regenerated baseline; build+runtime proof pending batch build |
+| D3 tests/smoke/matrices/resolution.json — 5 entries (res_4x3 / res_16x9 / res_21x9 / res_windowed #49-oracle 1600x900 / res_force43 = FORCE_43 + CAMERA_ASPECT_NATIVE=0, never the red-by-design native pairing) × mc2_01+mc2_24, all MC2_RES_ASSERT=fatal + MC2_RES_DIAG + screenshots. Aspect entries boot MC2_WINDOWED so the drawable genuinely takes the requested shape (impl deviation from design, documented in the matrix description — fullscreen-desktop pins the drawable to the desktop) | `63aa4f5b` | DONE — check-smoke-matrices.py PASS (9/9 matrices; env keys validated against registry union; no --kill-existing). Nightly-only recipe; 2-aspect fatal legs proven live post-deploy (progress block). Layer-3 harness (computeUiCanvas16x9 lift) CUT per plan's explicit cut line — deviation logged |
+| F1 check-order-gate-coverage.py (sentinel-delimited comment-stripped return-scan of BattleMech::fireWeapon; nofire-emitter presence; KNOWN_UNCOVERED both-ways-live ledger carrying GroundVehicle::fireWeapon) + code/mech.cpp 2 one-liners: `fireGateTrace(range_mp)` at the formerly-untraced MPlayer-server range gate (refutation (a): the 10th gate) + FIREGATE-REGION-END sentinel after the node_recycle gate. check-contracts.sh rows `order_gate_coverage`/`order_gate_selftest` | `53b566d1` | DONE — GREEN on HEAD day one (range_mp gap closed in-slice per design); --self-test RED on all 4 synthetic violations (untraced new gate / sentinel deleted / nofire gone / stale KNOWN_UNCOVERED). The four commented return(4)s at mech.cpp ~8205-8229 confirmed NOT flagged (comment-strip proven) |
+| F2 MC2_FIXTURE_ORDER_LIVENESS behavioral fixture — code/mission.cpp soak namespace (~110 lines, trademover-block shape, requires MC2_SOAK_AUTOWIN): phased COMMANDER-origin attack+move orders + 0.9·win self-asserting ORDER_LIVENESS_SUMMARY (moved=≥25 m; refused=LastMoveCalcErr classified; dead exempt; verdict=FAIL when stalled>0 or issued_move==0). run_smoke.py: _parse_order_liveness_summary + _check_order_liveness_floor + activation flag + per-mission report + HARD-FAIL promotion (VEG clone; absence-is-failure). tests/smoke/test_order_liveness_floor.py 6 red-capability cases. tier1_env_vars.md row (registry entry + passthrough landed in D2). Phase order corrected in `2421157c` (see F2-fix row) | `aca44a1f` | DONE — pytest tests/smoke 92/92; live both-ways proven (see progress block) |
+| F3 scripts/check-order-liveness.py — 3-leg runtime oracle (attack mc2_24: per-ordered-wid hit∨nofire∨death + hits≥5 floor; move_stall mc2_16: summary PASS + frozen-signature classifier (a)/(b) FAIL, (c) WARN, EMPTY brain-freeze stream = exit 2 never silent pass; effectiveness mc2_24: aimed-HEAD share ≥15% @ n≥30, n<30 WARN, order-liveness fixture explicitly DISABLED on this leg so unaimed orders cannot dilute the aimed stream). DIRECT exe launches (--profile/--mission/--duration smoke CLI) — deviation from the check-combat-soak run_smoke route because run_smoke hard-caps --duration at 30 s (Batch-1 lesson 87a44585); own-PID discipline (spawn/communicate/kill own child only). Timestampless BRAIN_FREEZE stream ⇒ (a)/(b) approximated whole-capture with ≥30-samples basis (documented in module doc) | `6f6befd0` | DONE — live 3/3 PASS (see progress block) |
+| F4 docs/ai-order-triage.md playbook — nofire field key (rd/am/rn/lk/ch/hot + los split, verified against warrior.cpp:4293-4322), firegate site table incl. the new range_mp MP row, BRAIN_FREEZE classification key, COMMANDER-vs-PLAYER origin trap, machine-oracle escalation table; every row ends escalate=check-order-liveness.py. Nightly pointer lines (order-liveness joins combat-soak; resolution matrix) added to tier1_env_vars.md invariant-scripts section (deviation: docs/disciplines.md has no nightly section — pointer landed in the checker index instead) | `e528971a` | DONE |
+| F2-fix fixture phase order — attack 0.2·win FIRST, move 0.5·win second (reviewed order self-sabotaged the move bound: in-range mechs stand-and-fire without covering 25 m — measured stalled=1/11 on stock mc2_24); + smoke-tier note MC2_SOAK_WIN_AFTER_SEC must exceed --duration (autowin ending the mission early = engine `reason=early_exit` fail). Registry + tier1_env_vars descriptions updated | `2421157c` | DONE — both live failure modes found by the first stock leg; post-fix stock leg 11/11 moved PASS |
+| F3-fix check-order-liveness --json makedirs parent | `eafc5f54` | DONE |
+| D2 MC2_RES_ASSERT runtime audit — RenderCore/ResolutionContract.h (off/log/fatal, once-per-site dedup) + 3 chokepoints: camera_aspect (camera.cpp setOrthogonal, skip conditions re-derived independently of the #45 override), hud_clamp/drawable_stale/windowed_size #49 oracle (gameosmain.cpp mc2resFrameAudit @ draw_screen, 3-frame grace, desktop-smaller→note), hud_canvas_bounds/hud_roundtrip (flushHUDBatch shrink∘canvas ∘ gos_HudInverseMousePoint identity ≤0.5px). New gos_GetHudResClampEnabled + gos_ProbeDrawableSize (gameos.hpp/gameos_graphics.cpp). Registry: MC2_RES_ASSERT + MC2_FIXTURE_ORDER_LIVENESS kAuxEnvVars entries; run_smoke passthrough +7 (RES_ASSERT, WIDTH, HEIGHT, WINDOWED, FORCE_43, CAMERA_ASPECT_NATIVE, FIXTURE_ORDER_LIVENESS); tier1_env_vars.md batch-2 section; critical_inline_rules.md two-space contract paragraph. Ratchet baseline consciously regenerated 84→90 tokens (the audit's own contract-enforcing reads: camera detail line + gameosmain clamp check/oracle) | `8088a5fd` | DONE — check-env-registry PASS (344 registered); res-aspect checker PASS on regenerated baseline; runtime proof: fatal-mode clean at 16:9 + 4:3 (progress block) |
+
+**Deviations from plan (with justification):**
+(1) D layer-3 game-free canvas-math harness (computeUiCanvas16x9 lift into
+camera_frustum_math.h + harness cases) CUT — the plan marks it explicitly
+cuttable ("layer 3 explicitly cuttable"); chokepoint (iii) covers the same
+math live and the static pins cover reverts.
+(2) resolution.json aspect entries boot MC2_WINDOWED=1 (design implied
+fullscreen requests) — fullscreen-desktop pins the drawable to the desktop
+resolution, so windowed is the only way the entries genuinely exercise
+their aspect; documented in the matrix description.
+(3) F fixture phase order swapped (attack 0.2·win first, move 0.5·win) vs
+the reviewed 0.2-move/0.3-attack — the reviewed order self-sabotages the
+move bound when targets spawn in range (measured stalled=1/11 stock
+mc2_24); grammar and thresholds unchanged.
+(4) check-order-liveness.py uses DIRECT exe launches, not the
+check-combat-soak run_smoke route — run_smoke hard-caps --duration at 30 s
+(Batch-1 lesson `87a44585`) and the legs need 90 s.
+(5) F4 nightly pointer line landed in tier1_env_vars.md invariant-scripts
+section, not docs/disciplines.md (no nightly section exists there).
+(6) slice_preflight via mc2-repo-intel MCP (worktree has no repo_query.py)
+— same deviation as Batch 1.
+(7) D2 consciously regenerated the Rule-B ratchet baseline (84→90) for the
+audit's own contract-enforcing Environment.screenWidth/Height reads.
+(8) tier1 run with MC2_SMOKE_REQUIRE_FINGERPRINT=0 — the documented
+cross-worktree waiver (mc2-main runner pins fingerprint to mc2-main HEAD);
+the same exe was fingerprint-VERIFIED `OK` by the worktree runner in the
+res-assert and floor legs at `2421157c`.
+(9) Final HEAD is docs-only past the deployed exe `2421157c` (status-ledger
+commits); manifest is authoritative and carries the last code commit.
 
 ## META-FIX-BATCH-1 (recurrence-proofing: INFRA + design C + design E) — COMPLETE 2026-07-16
 
