@@ -683,6 +683,36 @@ namespace {
 	static const bool s_soakPilotPromote =
 		(getenv("MC2_SOAK_PILOT_PROMOTE") != nullptr);
 	static bool s_soakPromoteFired = false;  // armed once per mission
+
+	// --- MC2_FIXTURE_ORDER_LIVENESS (META-FIX design F) -----------------------
+	// Behavioral order-liveness fixture: proves issued orders DO something
+	// (issues #17 reluctant fire / #10 scripted stalls class). Requires
+	// MC2_SOAK_AUTOWIN. Phases (fractions of the autowin timer, trademover
+	// block shape): 0.2 = COMMANDER-origin move order per home mech (300 m
+	// toward map center; PLAYER origin never installs the tac order —
+	// warrior.cpp orderAttackObject/setGeneralTacOrder trap); 0.3 =
+	// COMMANDER-origin unaimed ATTACK_TO_DESTROY per armed home mech at the
+	// nearest live enemy; 0.9 = one self-asserting summary line
+	//   ORDER_LIVENESS_SUMMARY issued_move=N moved=N refused=N stalled=N verdict=PASS|FAIL
+	// (moved = net displacement >= 25 m; refused = classified refusal via
+	// LastMoveCalcErr; dead/disabled units exempt). [ORDER_FIXTURE] lines mark
+	// each issued order. run_smoke.py hard-fails a missing summary or
+	// verdict=FAIL ONLY when MC2_FIXTURE_ORDER_LIVENESS is set in the runner
+	// env (VEG-SMOKE-FLOOR activation pattern); consumed by
+	// scripts/check-order-liveness.py. Default OFF = byte-identical.
+	static const bool s_fixtureOrderLiveness =
+		(getenv("MC2_FIXTURE_ORDER_LIVENESS") != nullptr &&
+		 getenv("MC2_FIXTURE_ORDER_LIVENESS")[0] != '0');
+	struct OrderLivenessEntry {
+		unsigned long   wid;
+		Stuff::Vector3D startPos;
+	};
+	static const int kOrderLivenessCap = 32;   // bounded, s_firedWIDs precedent
+	static OrderLivenessEntry s_olEntries[kOrderLivenessCap];
+	static int  s_olIssuedMove   = 0;
+	static bool s_olMoveIssued   = false;
+	static bool s_olAttackIssued = false;
+	static bool s_olSummaryDone  = false;
 } // namespace
 
 //----------------------------------------------------------------------------------
@@ -1446,6 +1476,129 @@ long Mission::update (void)
 					salvCount, s_soakKilledVariant[0] ? s_soakKilledVariant : "(none)");
 				fflush(stdout);
 				s_soakSalvageDone = true;
+			}
+		}
+
+		// --- MC2_FIXTURE_ORDER_LIVENESS (META-FIX design F) -------------------
+		// See the namespace block above for the contract. Grammar of the
+		// summary/order lines is reviewed contract — do not normalize.
+		if (s_fixtureOrderLiveness && s_soakAutoWin && ObjectManager)
+		{
+			extern long LastMoveCalcErr;   // code/warrior.cpp:436 — same signal
+			                               // MC2_BRAIN_FREEZE_TRACE reads
+			const float olWin = soakWinAfterSec();
+
+			// Re-arm each new mission (scenarioTime resets to 0 on start()).
+			if (scenarioTime < olWin * 0.1f)
+			{
+				s_olMoveIssued = s_olAttackIssued = s_olSummaryDone = false;
+				s_olIssuedMove = 0;
+			}
+
+			// PHASE M (t = 20% win): COMMANDER-origin move order per home mech,
+			// 300 m toward map center; record start position per watch-ID.
+			if (!s_olMoveIssued && scenarioTime > olWin * 0.2f && !scenarioResult)
+			{
+				extern float metersPerWorldUnit;
+				const float stepWU = (metersPerWorldUnit > 0.0f)
+					? (300.0f / metersPerWorldUnit) : 300.0f;
+				for (int mi = 0; mi < ObjectManager->numMechs &&
+					 s_olIssuedMove < kOrderLivenessCap; ++mi)
+				{
+					BattleMech* pM = ObjectManager->getMech(mi);
+					if (!pM || pM->isDisabled() || pM->isDestroyed()) continue;
+					if (!Team::home || pM->getTeamId() != Team::home->id) continue;
+					MechWarriorPtr olPilot = pM->getPilot();
+					if (!olPilot) continue;
+					Stuff::Vector3D olPos = pM->getPosition();
+					Stuff::Vector3D olGoal = olPos;
+					const float olLen = sqrtf(olPos.x * olPos.x + olPos.y * olPos.y);
+					if (olLen > 1.0f)
+					{
+						olGoal.x = olPos.x - (olPos.x / olLen) * stepWU;
+						olGoal.y = olPos.y - (olPos.y / olLen) * stepWU;
+					}
+					else
+						olGoal.x = olPos.x + stepWU;
+					olPilot->orderMoveToPoint(false, true, ORDER_ORIGIN_COMMANDER,
+						olGoal, -1, TACORDER_PARAM_RUN);
+					s_olEntries[s_olIssuedMove].wid = pM->getWatchID();
+					s_olEntries[s_olIssuedMove].startPos = olPos;
+					++s_olIssuedMove;
+					printf("[ORDER_FIXTURE] kind=move wid=%lu tgt=0 t=%.1f\n",
+						(unsigned long)pM->getWatchID(), (float)scenarioTime);
+				}
+				fflush(stdout);
+				s_olMoveIssued = true;
+			}
+
+			// PHASE A (t = 30% win): COMMANDER-origin unaimed attack per armed
+			// home mech at the nearest live enemy mover. Unaimed (-1) — the #9
+			// aimed leg is MC2_AIMED_FIRE_FIXTURE's job.
+			if (!s_olAttackIssued && s_olMoveIssued &&
+				scenarioTime > olWin * 0.3f && !scenarioResult)
+			{
+				for (int mi = 0; mi < ObjectManager->numMechs; ++mi)
+				{
+					BattleMech* pM = ObjectManager->getMech(mi);
+					if (!pM || pM->isDisabled() || pM->isDestroyed()) continue;
+					if (!Team::home || pM->getTeamId() != Team::home->id) continue;
+					MechWarriorPtr olPilot = pM->getPilot();
+					if (!olPilot || pM->numWeapons <= 0 || !pM->canFireWeapons())
+						continue;
+					MoverPtr olEnemy = nullptr;
+					float olBest = 1e30f;
+					for (long ei = 0; ei < ObjectManager->getNumMovers(); ++ei)
+					{
+						MoverPtr pE = ObjectManager->getMover(ei);
+						if (!pE || pE->isDisabled() || pE->isDestroyed()) continue;
+						if (pE->getTeamId() == Team::home->id) continue;
+						const float d = pM->distanceFrom(pE->getPosition());
+						if (d < olBest) { olBest = d; olEnemy = pE; }
+					}
+					if (!olEnemy) continue;
+					olPilot->orderAttackObject(false, ORDER_ORIGIN_COMMANDER,
+						olEnemy, ATTACK_TO_DESTROY, ATTACKMETHOD_RANGED,
+						FIRERANGE_OPTIMAL, -1, -1, TACORDER_PARAM_PURSUE);
+					printf("[ORDER_FIXTURE] kind=attack wid=%lu tgt=%lu t=%.1f\n",
+						(unsigned long)pM->getWatchID(),
+						(unsigned long)olEnemy->getWatchID(),
+						(float)scenarioTime);
+				}
+				fflush(stdout);
+				s_olAttackIssued = true;
+			}
+
+			// PHASE S (t = 90% win): self-asserting summary. moved = net
+			// displacement >= 25 m since the move order; dead/disabled units
+			// are exempt (destroyed-before-compliance is not a dead-end);
+			// non-movers with a classified path refusal count as refused
+			// (classified counts as signal, not silence).
+			if (!s_olSummaryDone && s_olMoveIssued && scenarioTime > olWin * 0.9f)
+			{
+				int olMoved = 0, olRefused = 0, olStalled = 0;
+				for (int i = 0; i < s_olIssuedMove; ++i)
+				{
+					GameObjectPtr obj =
+						ObjectManager->getByWatchID(s_olEntries[i].wid);
+					if (!obj || obj->isDestroyed() || obj->isDisabled())
+						continue;   // dead-unit exemption
+					const float distM =
+						obj->distanceFrom(s_olEntries[i].startPos);   // meters
+					if (distM >= 25.0f)
+						++olMoved;
+					else if (LastMoveCalcErr != 0)
+						++olRefused;
+					else
+						++olStalled;
+				}
+				const bool olPass = (s_olIssuedMove > 0) && (olStalled == 0);
+				printf("ORDER_LIVENESS_SUMMARY issued_move=%d moved=%d "
+					"refused=%d stalled=%d verdict=%s\n",
+					s_olIssuedMove, olMoved, olRefused, olStalled,
+					olPass ? "PASS" : "FAIL");
+				fflush(stdout);
+				s_olSummaryDone = true;
 			}
 		}
 

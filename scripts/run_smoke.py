@@ -127,6 +127,56 @@ def _check_veg_floor(stem: str, veg: dict | None) -> list[str]:
     return fails
 
 
+def _parse_order_liveness_summary(stdout_text: str) -> dict | None:
+    """Parse the ORDER_LIVENESS_SUMMARY line (META-FIX design F fixture,
+    code/mission.cpp under MC2_FIXTURE_ORDER_LIVENESS + MC2_SOAK_AUTOWIN).
+
+    Format (reviewed grammar — contract, do not normalize):
+      ORDER_LIVENESS_SUMMARY issued_move=N moved=N refused=N stalled=N verdict=PASS|FAIL
+
+    Returns dict(issued_move, moved, refused, stalled, verdict) or None.
+    """
+    import re as _re
+    _OL_RE = _re.compile(
+        r"ORDER_LIVENESS_SUMMARY\s+"
+        r"issued_move=(?P<im>\d+)\s+"
+        r"moved=(?P<mv>\d+)\s+"
+        r"refused=(?P<rf>\d+)\s+"
+        r"stalled=(?P<st>\d+)\s+"
+        r"verdict=(?P<v>\w+)"
+    )
+    for line in reversed(stdout_text.splitlines()):
+        m = _OL_RE.search(line)
+        if m:
+            return {
+                "issued_move": int(m.group("im")),
+                "moved":       int(m.group("mv")),
+                "refused":     int(m.group("rf")),
+                "stalled":     int(m.group("st")),
+                "verdict":     m.group("v"),
+            }
+    return None
+
+
+def _check_order_liveness_floor(stem: str, ol: dict | None) -> list[str]:
+    """META-FIX design F runner floor (VEG-SMOKE-FLOOR clone): only called
+    when MC2_FIXTURE_ORDER_LIVENESS is set in the runner env. Absence of the
+    summary IS a failure — it catches the fixture itself dying silently."""
+    if ol is None:
+        return [f"ORDER-LIVENESS FAIL {stem}: ORDER_LIVENESS_SUMMARY line "
+                f"absent from log (fixture never reached its summary phase — "
+                f"needs MC2_SOAK_AUTOWIN and a >=10s autowin window)"]
+    fails = []
+    if ol["verdict"] != "PASS":
+        fails.append(
+            f"ORDER-LIVENESS FAIL {stem}: verdict={ol['verdict']} "
+            f"issued_move={ol['issued_move']} moved={ol['moved']} "
+            f"refused={ol['refused']} stalled={ol['stalled']} "
+            f"(stalled>0 = an ordered unit neither moved >=25m nor produced "
+            f"a classified refusal — the CLASS-F silent dead-end)")
+    return fails
+
+
 def _norm_path(p: str) -> str:
     """Normalize an exe path for comparison: resolve, forward-slash, casefold.
     Windows paths are case-insensitive and may mix slashes; an unresolvable
@@ -1094,6 +1144,13 @@ def main():
     # VEG-SMOKE-FLOOR-1: only active when MC2_VEGETATION_CARDS=1.
     _veg_floor_active = os.environ.get("MC2_VEGETATION_CARDS") == "1"
     _veg_floor_failures: list[str] = []  # accumulated across all missions
+
+    # META-FIX design F (ORDER-LIVENESS floor): only active when the fixture
+    # gate is set in the runner env (VEG activation-flag pattern) — non-fixture
+    # runs are untouched. Absence of ORDER_LIVENESS_SUMMARY is a failure.
+    _order_liveness_active = (
+        os.environ.get("MC2_FIXTURE_ORDER_LIVENESS") not in (None, "", "0"))
+    _order_liveness_failures: list[str] = []
 
     rows: list[report.Row] = []
     # MC2_DIAGNOSTIC_TRACE_FILE: normalise to absolute once, outside the
@@ -2138,6 +2195,25 @@ def main():
                 print(f"[runner] [VEG-SMOKE-FLOOR] {e.stem}: VEG_SUMMARY absent",
                       file=sys.stderr)
 
+        # META-FIX design F: order-liveness floor (fixture-armed runs only).
+        if _order_liveness_active:
+            _ol = _parse_order_liveness_summary(result.stdout_text)
+            _ol_fails = _check_order_liveness_floor(e.stem, _ol)
+            for _of in _ol_fails:
+                print(f"[runner] {_of}", file=sys.stderr)
+                _order_liveness_failures.append(_of)
+            if _ol:
+                print(
+                    f"[runner] [ORDER-LIVENESS] {e.stem}: "
+                    f"issued_move={_ol['issued_move']} moved={_ol['moved']} "
+                    f"refused={_ol['refused']} stalled={_ol['stalled']} "
+                    f"verdict={_ol['verdict']} "
+                    f"{'PASS' if not _ol_fails else 'FAIL'}",
+                    file=sys.stderr)
+            else:
+                print(f"[runner] [ORDER-LIVENESS] {e.stem}: "
+                      f"ORDER_LIVENESS_SUMMARY absent", file=sys.stderr)
+
         if args.fail_fast and not result.verdict.passed:
             print(f"[runner] --fail-fast: stopping at {e.stem}", file=sys.stderr)
             break
@@ -2168,6 +2244,16 @@ def main():
               f"vegetation floor check(s) failed", file=sys.stderr)
         for _vf in _veg_floor_failures:
             print(f"[runner]   {_vf}", file=sys.stderr)
+        passed = False
+
+    # META-FIX design F: promote order-liveness failures to hard fail when the
+    # fixture gate is set. Non-fixture runs are never affected.
+    if _order_liveness_active and _order_liveness_failures:
+        print(f"[runner] [ORDER-LIVENESS] HARD FAIL: "
+              f"{len(_order_liveness_failures)} order-liveness check(s) failed",
+              file=sys.stderr)
+        for _of in _order_liveness_failures:
+            print(f"[runner]   {_of}", file=sys.stderr)
         passed = False
 
     # MC2_SMOKE_REQUIRE_FINGERPRINT=1: promote fingerprint mismatch/absence to
