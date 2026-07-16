@@ -1,5 +1,30 @@
 # GitHub issue-fix batch — status
 
+## META-FIX-BATCH-3 (recurrence-proofing: design A + design B) — IN PROGRESS 2026-07-16
+
+Plan: `.claude/META-FIX-PLAN-2026-07-16.md` Batch 3; designs in
+`.claude/META-FIX-DESIGNS-2026-07-16.json` (cls "CLASS A", "CLASS B").
+Base HEAD: `777df744`. Lane registered (mc2-repo-intel): META-FIX-BATCH-3.
+slice_preflight PASS for both A and B symbol sets vs base 994c3776 (MCP-tool
+deviation as Batches 1/2 — worktree has no repo_query.py).
+
+**CRITICAL DESIGN AMENDMENT applied (INVIS-VEHICLES-FIX-1 live finding):**
+off-map staging is a LEGITIMATE mover state (mc2_10 convoy: authored off-map
+x~-7500, onGUI=1, brains alive, waiting on mission flag; census-verified).
+Design A's audit is POSITION-FREE by contract (no positional term in the
+sentinel-delimited audit region), enforced by NEW static rule S6 + an S6
+self-test leg that injects `getPosition()` into the region and asserts red.
+The #50 LINKUP-PENDING row keys on isOnGUI==0, which staging does NOT use
+(all non-destroyed parts spawn onGUI=1 — verified at the mission.cpp
+part-spawn writes). mc2_10's convoy is additionally commander 2 (allied),
+outside the audit's home-commander scope.
+
+**Commit ledger (per-unit):**
+| Unit | Commit | State |
+|---|---|---|
+| A1 MC2_MOVER_COHERENCE_AUDIT runtime audit (mission.cpp auditMoverCoherence ~1 Hz: I1+I1b bar-full carve-out / I2 player-origin-only + I2b advisory / I3 #42b-adjacent / I4 identity-scan (getWatchID would ASSIGN — kept read-only, deviation) / I5) + ForceGroupBar::hasMover/getIconMover + ControlGui/MissionInterfaceManager passthroughs + MARKER_BUCKETS rows (mover_coherence red w/ allow_mover_coherence override; mover_coherence_advisory advisory) + run_smoke tier force-set + passthrough + summary-liveness WARN + registry/docs | `61bd5da0` | DONE — check-env-registry PASS (346); pytest tests/smoke 92/92 |
+| A2 scripts/check-mover-registry-coherence.sh S1a/S1b/S2/S3(hard=3+advisory)/S4(sole defense)/S5/S6(staging carve-out) + check-contracts rows | `82193286` | DONE — GREEN on HEAD; --self-test RED on all 6 synthetic legs incl. S4/S5 revert-simulations + S6 position-injection |
+
 ## META-FIX-BATCH-2 (recurrence-proofing: design D + design F) — COMPLETE 2026-07-16
 
 **Tier1 verdict: PASS 5/5** (mc2_01/03/10/17/24, 30 s each, exit 0,
