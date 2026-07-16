@@ -1628,6 +1628,9 @@ def main():
                             # [VK_PROPS_PERF] us-breakdown diagnostic.
                             "MC2_VK_PROP_FENCE_DEFER",
                             "MC2_VK_PROP_PERF",
+                            # VK-MECH-FENCE-DEFER-1: same template on the mech island.
+                            "MC2_VK_MECH_FENCE_DEFER",
+                            "MC2_VK_MECH_PERF",
                             "MC2_NO_LAUNCHER",
                             # VK-P8a SHADOW-INTEROP: VK produces the dynamic shadow
                             # depth map, GL samples it. Requires the shared engine
