@@ -688,11 +688,15 @@ namespace {
 	// Behavioral order-liveness fixture: proves issued orders DO something
 	// (issues #17 reluctant fire / #10 scripted stalls class). Requires
 	// MC2_SOAK_AUTOWIN. Phases (fractions of the autowin timer, trademover
-	// block shape): 0.2 = COMMANDER-origin move order per home mech (300 m
-	// toward map center; PLAYER origin never installs the tac order —
-	// warrior.cpp orderAttackObject/setGeneralTacOrder trap); 0.3 =
-	// COMMANDER-origin unaimed ATTACK_TO_DESTROY per armed home mech at the
-	// nearest live enemy; 0.9 = one self-asserting summary line
+	// block shape): 0.2 = COMMANDER-origin unaimed ATTACK_TO_DESTROY per armed
+	// home mech at the nearest live enemy (PLAYER origin never installs the
+	// tac order — warrior.cpp orderAttackObject/setGeneralTacOrder trap);
+	// 0.5 = COMMANDER-origin move order per home mech (300 m toward map
+	// center — the move order replaces the attack order, giving the move leg
+	// a clean 0.4*win displacement window; the REVIEWED order (move 0.2,
+	// attack 0.3) self-sabotaged the move bound: a mech whose target spawns
+	// in range stands and fires without ever covering 25 m — measured 1/11
+	// stalled on stock mc2_24); 0.9 = one self-asserting summary line
 	//   ORDER_LIVENESS_SUMMARY issued_move=N moved=N refused=N stalled=N verdict=PASS|FAIL
 	// (moved = net displacement >= 25 m; refused = classified refusal via
 	// LastMoveCalcErr; dead/disabled units exempt). [ORDER_FIXTURE] lines mark
@@ -1495,9 +1499,51 @@ long Mission::update (void)
 				s_olIssuedMove = 0;
 			}
 
-			// PHASE M (t = 20% win): COMMANDER-origin move order per home mech,
+			// PHASE A (t = 20% win): COMMANDER-origin unaimed attack per armed
+			// home mech at the nearest live enemy mover. Unaimed (-1) — the #9
+			// aimed leg is MC2_AIMED_FIRE_FIXTURE's job. Runs FIRST so the
+			// attack leg (hits/nofire evidence) accrues while the move phase
+			// below later replaces the combat order for a clean displacement
+			// window.
+			if (!s_olAttackIssued && scenarioTime > olWin * 0.2f && !scenarioResult)
+			{
+				for (int mi = 0; mi < ObjectManager->numMechs; ++mi)
+				{
+					BattleMech* pM = ObjectManager->getMech(mi);
+					if (!pM || pM->isDisabled() || pM->isDestroyed()) continue;
+					if (!Team::home || pM->getTeamId() != Team::home->id) continue;
+					MechWarriorPtr olPilot = pM->getPilot();
+					if (!olPilot || pM->numWeapons <= 0 || !pM->canFireWeapons())
+						continue;
+					MoverPtr olEnemy = nullptr;
+					float olBest = 1e30f;
+					for (long ei = 0; ei < ObjectManager->getNumMovers(); ++ei)
+					{
+						MoverPtr pE = ObjectManager->getMover(ei);
+						if (!pE || pE->isDisabled() || pE->isDestroyed()) continue;
+						if (pE->getTeamId() == Team::home->id) continue;
+						const float d = pM->distanceFrom(pE->getPosition());
+						if (d < olBest) { olBest = d; olEnemy = pE; }
+					}
+					if (!olEnemy) continue;
+					olPilot->orderAttackObject(false, ORDER_ORIGIN_COMMANDER,
+						olEnemy, ATTACK_TO_DESTROY, ATTACKMETHOD_RANGED,
+						FIRERANGE_OPTIMAL, -1, -1, TACORDER_PARAM_PURSUE);
+					printf("[ORDER_FIXTURE] kind=attack wid=%lu tgt=%lu t=%.1f\n",
+						(unsigned long)pM->getWatchID(),
+						(unsigned long)olEnemy->getWatchID(),
+						(float)scenarioTime);
+				}
+				fflush(stdout);
+				s_olAttackIssued = true;
+			}
+
+			// PHASE M (t = 50% win): COMMANDER-origin move order per home mech,
 			// 300 m toward map center; record start position per watch-ID.
-			if (!s_olMoveIssued && scenarioTime > olWin * 0.2f && !scenarioResult)
+			// Replaces the attack order — displacement is measured from HERE
+			// to the 0.9*win summary (a clean 0.4*win window).
+			if (!s_olMoveIssued && s_olAttackIssued &&
+				scenarioTime > olWin * 0.5f && !scenarioResult)
 			{
 				extern float metersPerWorldUnit;
 				const float stepWU = (metersPerWorldUnit > 0.0f)
@@ -1530,43 +1576,6 @@ long Mission::update (void)
 				}
 				fflush(stdout);
 				s_olMoveIssued = true;
-			}
-
-			// PHASE A (t = 30% win): COMMANDER-origin unaimed attack per armed
-			// home mech at the nearest live enemy mover. Unaimed (-1) — the #9
-			// aimed leg is MC2_AIMED_FIRE_FIXTURE's job.
-			if (!s_olAttackIssued && s_olMoveIssued &&
-				scenarioTime > olWin * 0.3f && !scenarioResult)
-			{
-				for (int mi = 0; mi < ObjectManager->numMechs; ++mi)
-				{
-					BattleMech* pM = ObjectManager->getMech(mi);
-					if (!pM || pM->isDisabled() || pM->isDestroyed()) continue;
-					if (!Team::home || pM->getTeamId() != Team::home->id) continue;
-					MechWarriorPtr olPilot = pM->getPilot();
-					if (!olPilot || pM->numWeapons <= 0 || !pM->canFireWeapons())
-						continue;
-					MoverPtr olEnemy = nullptr;
-					float olBest = 1e30f;
-					for (long ei = 0; ei < ObjectManager->getNumMovers(); ++ei)
-					{
-						MoverPtr pE = ObjectManager->getMover(ei);
-						if (!pE || pE->isDisabled() || pE->isDestroyed()) continue;
-						if (pE->getTeamId() == Team::home->id) continue;
-						const float d = pM->distanceFrom(pE->getPosition());
-						if (d < olBest) { olBest = d; olEnemy = pE; }
-					}
-					if (!olEnemy) continue;
-					olPilot->orderAttackObject(false, ORDER_ORIGIN_COMMANDER,
-						olEnemy, ATTACK_TO_DESTROY, ATTACKMETHOD_RANGED,
-						FIRERANGE_OPTIMAL, -1, -1, TACORDER_PARAM_PURSUE);
-					printf("[ORDER_FIXTURE] kind=attack wid=%lu tgt=%lu t=%.1f\n",
-						(unsigned long)pM->getWatchID(),
-						(unsigned long)olEnemy->getWatchID(),
-						(float)scenarioTime);
-				}
-				fflush(stdout);
-				s_olAttackIssued = true;
 			}
 
 			// PHASE S (t = 90% win): self-asserting summary. moved = net
