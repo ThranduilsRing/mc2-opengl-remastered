@@ -2106,7 +2106,14 @@ void MissionInterfaceManager::updateTarget( bool bGui)
 		// then jump through a freed slot and crash (EXEC at 0x0). This surfaces under
 		// cheat-mode soak mass-disable but is a latent hazard whenever a hovered mech
 		// dies the same frame. Don't compute hover info for a disabled target.
-		if ( target && target->isDisabled() )
+		// ISSUE-42 (v0.5.0 salvage regression): the original guard dropped EVERY
+		// disabled target, but disabled-not-destroyed is exactly the salvageable
+		// downed-mech state — it made the info cursor, info window, and salvage
+		// craft/order unreachable for downed mechs. Narrow it to targets that are
+		// genuinely torn down (appearance already gone). Freed/stale targets were
+		// already dropped by the watch-ID round-trip above; a LIVE disabled mech
+		// with an appearance is safe to hover (stock v0.4c behavior restored).
+		if ( target && target->isDisabled() && !target->getAppearance() )
 			target = 0;
 
 		if ( target )
@@ -2117,7 +2124,9 @@ void MissionInterfaceManager::updateTarget( bool bGui)
 			if ( !target )
 				return;
 			int descID = target->getDescription();
-			if ( descID != -1 )
+			// ISSUE-42 deref hardening: getAppearance() may be NULL for a
+			// partially-initialized/mid-teardown object; guard the deref.
+			if ( descID != -1 && target->getAppearance() )
 			{
 				int nameID = target->getAppearance()->getObjectNameId();
 

@@ -19,6 +19,7 @@
 
 - `MC2_SOAK_AUTOWIN=1` — with a campaign booted via `MC2_BOOT_TO_BAY`, auto-launches each mission from logistics (no clicks), auto-wins it, lets the campaign auto-advance, and repeats until `campaign-complete`. Emits `[SOAK]` stdout markers (autowin/advance/launch/campaign-complete). Default OFF = byte-identical.
 - `MC2_SOAK_WIN_AFTER_SEC=5.0` — scenario-time seconds before auto-win fires (default 5.0). Only consulted when `MC2_SOAK_AUTOWIN` is set.
+- `MC2_SOAK_SALVAGE_TRADEMOVER=1` — ISSUE-42a repro fixture. With `MC2_SOAK_AUTOWIN` + `MC2_SOAK_KILL_ENEMY`, runs the REAL mid-mission salvage-craft flow (recover / setStatus(SHUTDOWN,force) / tradeMover / orderPowerUp — the exact missiongui.cpp VTOL sequence) on ONE disabled enemy mech at 80% of the win timer, so the Phase-3 `[SOAK] salvage-in-loadbay` check verifies `LogisticsData::setMissionCompleted`'s recovered-mech carry-over branch instead of the Phase-2 `addMechToInventory` shortcut. Emits `[SOAK] salvage-trademover name=… variant=… pilot=…`. Pair with `MC2_LOG_LOGISTICS_FLOW=1` + `MC2_DIAG_TAGS=LOGISTICS` for the per-unit cull/resolve/mech_lost JSONL trail. Default OFF = byte-identical.
 
 ## Feature gates (RendererFeatureRegistry.h kFeatureTable)
 

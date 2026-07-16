@@ -664,6 +664,17 @@ namespace {
 	static bool s_soakSalvageDone = false;   // salvage commit fired once per mission
 	static bool s_soakInventoryChecked = false; // load-bay check fired once per mission
 
+	// --- MC2_SOAK_SALVAGE_TRADEMOVER (ISSUE-42a repro fixture) ----------------
+	// Requires MC2_SOAK_KILL_ENEMY + MC2_SOAK_AUTOWIN. Instead of the Phase-2
+	// addMechToInventory shortcut, exercise the REAL mid-mission salvage-craft
+	// flow (missiongui.cpp doMove salvage: recover -> setStatus(SHUTDOWN,force)
+	// -> tradeMover -> orderPowerUp) on ONE disabled enemy mech before autowin,
+	// so LogisticsData::setMissionCompleted's recovered-mech carry-over branch
+	// is what the Phase-3 load-bay check verifies. Default OFF = byte-identical.
+	static const bool s_soakSalvageTrademover =
+		(getenv("MC2_SOAK_SALVAGE_TRADEMOVER") != nullptr);
+	static bool s_soakTradeDone = false;     // armed once per mission
+
 	// --- MC2_SOAK_PILOT_PROMOTE ----------------------------------------------
 	// Grants a deployed pilot enough skill delta to cross the next rank
 	// threshold, then runs the same promotePilot() call the UI uses.
@@ -1300,6 +1311,7 @@ long Mission::update (void)
 			{
 				s_soakKillDone = false;
 				s_soakSalvageDone = false;
+				s_soakTradeDone = false;
 				if (s_soakInventoryChecked)
 				{
 					s_soakInventoryChecked = false;
@@ -1338,6 +1350,74 @@ long Mission::update (void)
 					killed, s_soakKilledVariant[0] ? s_soakKilledVariant : "(none)");
 				fflush(stdout);
 				s_soakKillDone = true;
+			}
+
+			// PHASE 1.5 (ISSUE-42a, MC2_SOAK_SALVAGE_TRADEMOVER): before autowin
+			// fires, run the REAL mid-mission salvage-craft flow on ONE disabled
+			// enemy mech — the exact sequence the salvage VTOL executes in
+			// missiongui.cpp (recover / setStatus(SHUTDOWN,force) / tradeMover /
+			// orderPowerUp). The mech becomes a home-commander mover, so mission
+			// completion routes it through LogisticsData::setMissionCompleted's
+			// recovered-mech carry-over branch (the path issue #42a suspects)
+			// instead of the Phase-2 addMechToInventory shortcut (Phase 2 skips
+			// it once it is home-team). Phase 3 then asserts the SAME variant
+			// reached the load bay. Pair with MC2_LOG_LOGISTICS_FLOW +
+			// MC2_DIAG_TAGS=LOGISTICS for per-unit cull/resolve/mech_lost JSONL.
+			const float tradeAt = soakWinAfterSec() * 0.8f;
+			if (s_soakSalvageTrademover && !s_soakTradeDone && s_soakKillDone &&
+				scenarioTime > tradeAt && !scenarioResult)
+			{
+				BattleMech* pTrade = nullptr;
+				for (int mi = 0; mi < ObjectManager->numMechs; ++mi)
+				{
+					BattleMech* pM = ObjectManager->getMech(mi);
+					if (!pM) continue;
+					if (!pM->isDisabled() || pM->isDestroyed()) continue;
+					if (Team::home && pM->getTeamId() == Team::home->id) continue;
+					// Prefer the mech Phase 1 recorded so Phase 3's load-bay
+					// assert tracks the traded mech; else first candidate.
+					if (s_soakKilledVariant[0] &&
+						strcmp(pM->variantName, s_soakKilledVariant) == 0)
+					{
+						pTrade = pM;
+						break;
+					}
+					if (!pTrade)
+						pTrade = pM;
+				}
+				char* newPilotName = (pTrade && LogisticsData::instance)
+					? (char*)LogisticsData::instance->getBestPilot(pTrade->tonnage)
+					: nullptr;
+				if (pTrade && newPilotName && Team::home && Commander::home)
+				{
+					// Mirror missiongui.cpp salvage-craft recovery verbatim.
+					while (((MoverPtr)pTrade)->recover() == false)
+						;
+					if (pTrade->isDisabled())
+					{
+						pTrade->setStatus(OBJECT_STATUS_SHUTDOWN, true);
+						if (pTrade->getSensorSystem())
+							pTrade->getSensorSystem()->broken = false;
+						((MoverPtr)pTrade)->timeLeft = 1.0f;
+						((MoverPtr)pTrade)->exploding = false;
+					}
+					tradeMover(pTrade, Team::home->getId(),
+						Commander::home->getId(), newPilotName, "pbrain");
+					pTrade->getPilot()->orderPowerUp(true, ORDER_ORIGIN_SELF);
+					strncpy(s_soakKilledVariant, pTrade->variantName,
+						sizeof(s_soakKilledVariant) - 1);
+					s_soakKilledVariant[sizeof(s_soakKilledVariant) - 1] = '\0';
+					printf("[SOAK] salvage-trademover name=%s variant=%s pilot=%s\n",
+						pTrade->getName() ? pTrade->getName() : "(null)",
+						s_soakKilledVariant, newPilotName);
+					fflush(stdout);
+				}
+				else
+				{
+					printf("[SOAK] salvage-trademover no-candidate\n");
+					fflush(stdout);
+				}
+				s_soakTradeDone = true;
 			}
 
 			// PHASE 2: After autowin, salvage ALL disabled enemy mechs into the

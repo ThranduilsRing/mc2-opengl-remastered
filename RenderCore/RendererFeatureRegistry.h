@@ -1807,6 +1807,14 @@ static constexpr EnvVarDesc kAuxEnvVars[] = {
         false,
         "gameosmain.cpp: overrides the comma-separated list of frame numbers at which the mission-load residency-race one-shot diagnostics probe fires (see MC2_LOAD_RACE_TRACE). Unset -> falls back to the confirmed transient window default."
     },
+    // GitHub-issue fix batch 2026-07-16 (issues #42a, #50, #34)
+    {
+        "MC2_TRACE_SOAK_SALVAGE_TRADEMOVER",
+        "MC2_SOAK_SALVAGE_TRADEMOVER",
+        EnvVarKind::Trace,
+        false,
+        "ISSUE-42a repro fixture (code/mission.cpp soak harness): with MC2_SOAK_AUTOWIN + MC2_SOAK_KILL_ENEMY, exercises the REAL mid-mission salvage-craft flow (recover/setStatus(SHUTDOWN)/tradeMover/orderPowerUp) on one disabled enemy mech before autowin, so the Phase-3 load-bay check verifies LogisticsData::setMissionCompleted's recovered-mech carry-over branch. Default OFF = byte-identical."
+    },
 };
 
 // ---------------------------------------------------------------------------
