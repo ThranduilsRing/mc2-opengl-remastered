@@ -16,7 +16,7 @@
 //---------------------------------------------------------------------------
 bool tglAssetFailLoudEnabled()
 {
-	// Default-ON killswitch (MC2_TERRAIN_TESS shape / envFlagDefaultOn
+	// Default-ON killswitch (terrain-tess-style shape / envFlagDefaultOn
 	// convention): unset => ON; "0" => OFF; anything else => ON.
 	static const bool s_on = []() {
 		const char* v = getenv("MC2_ASSET_FAILLOUD");

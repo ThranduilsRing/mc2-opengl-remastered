@@ -27,7 +27,7 @@
 
 class TG_TypeMultiShape;
 
-// MC2_ASSET_FAILLOUD default-ON killswitch (MC2_TERRAIN_TESS shape):
+// MC2_ASSET_FAILLOUD default-ON killswitch (terrain-tess-style shape):
 // unset => ON; "0" => OFF (exact legacy fail-soft, no placeholder); any
 // other value => ON. Resolved once (static latch).
 bool tglAssetFailLoudEnabled();
