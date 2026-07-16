@@ -110,6 +110,19 @@ BUILDING_PBR_PAYLOAD = [
 GAME_DATA_PAYLOAD = [
     "data/terrain_materials.json",
     "data/visual_tuning.json",
+    # Cement-pad proper asset fix (deferred item 3, supersedes the ead760df
+    # "asset cook" TODO): the painted-concrete NORMAL map loaded into
+    # matNormalArray layer 6 / MAT_LAYER_PAINTED_CONC by terrtxm2.cpp's
+    # materialArrays block and sampled AS A NORMAL for cement-pad relief
+    # (terrain_lod_chunk.frag ~1031, gos_terrain.frag ~720). Installs deployed
+    # between 2026-06-14 and this fix carry an ALBEDO image in this slot
+    # (the CEMENT-DETAIL-COLOR era literal swap; backup kept on installs as
+    # mat6_normal.tga.orig_normal), which corrupts pad relief lighting.
+    # Tracked in-repo + shipped here so every deploy mechanically restores the
+    # true normal map. Cement pad ALBEDO does NOT come from this file -- it is
+    # sampled from the cement diffuse atlas (tex3 / u_cementAtlas) since
+    # ead760df, which is the permanent path, not a stopgap.
+    "data/textures/mat6_normal.tga",
 ]
 
 # TERRAIN-MATERIAL-TEXTURES-1: per-layer BC7 sRGB albedo KTX2s read off

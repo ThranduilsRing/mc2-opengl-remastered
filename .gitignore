@@ -32,6 +32,13 @@ data/*
 !data/terrain_materials.json
 !data/vegetation/
 !data/vegetation/**
+# Cement-pad proper asset fix (deferred item 3): mat6_normal.tga is the
+# painted-concrete NORMAL map for matNormalArray layer 6 (MAT_LAYER_PAINTED_CONC).
+# Tracked + shipped via deploy_payload.py GAME_DATA_PAYLOAD so installs can never
+# drift back to the 2026-06-14 albedo-in-normal-slot swap. Other loose textures
+# under data/textures/ stay ignored (*.tga rule above still applies).
+!data/textures/
+!data/textures/mat6_normal.tga
 unpacked_data
 unpacked_data--
 data-orig
