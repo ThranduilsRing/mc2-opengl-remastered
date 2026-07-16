@@ -1889,6 +1889,13 @@ static constexpr EnvVarDesc kAuxEnvVars[] = {
         false,
         "META-FIX design A runtime tier (code/mission.cpp auditMoverCoherence, ~1 Hz): read-only audit that the five per-mover registries (isOnGUI render gate, force-bar roster, selection, tacmap blip, commandability) agree for home-commander SP movers. Rules: I1 live onGUI mover holds a force-bar icon (I1b bar-full carve-out = ADVISORY — addMech silently drops the 17th in release); I2 off-GUI mover has no icon and no PLAYER-origin tac order (SELF/COMMANDER origin = ADVISORY I2b: auto-powerup + brain orders are legitimate); I3 disabled-not-destroyed keeps getAppearance()!=NULL (#42b-ADJACENT); I4 every icon unit is ObjectManager-registered (identity scan, read-only); I5 selected => onGUI (#50 class). Emits deduped '[MOVER_COHERENCE] VIOLATION|ADVISORY rule=...' stdout lines (mirrored to the diag sink) + a process-exit summary. POSITION-FREE by contract: off-map staged movers (onGUI=1, authored staging — mc2_10 convoy, INVIS-VEHICLES-FIX-1) are a legitimate state; static rule S6 pins the audit region free of positional terms. run_smoke.py force-sets =1 for --tier runs (read-only; shipping default stays OFF); any VIOLATION line is a red run via the mover_coherence marker bucket. Static sibling: scripts/check-mover-registry-coherence.sh."
     },
+    {
+        "MC2_TRACE_ASSET_TRACE",
+        "MC2_ASSET_TRACE",
+        EnvVarKind::Trace,
+        false,
+        "META-FIX design B PART 0 companion (mclib/msl.cpp loader chokepoint): =1 additionally logs '[ASSET_LOAD v1] event=file_missing ...' for MISSING files at the three shape-load entry points (LoadTGMultiShapeFromASE / LoadBinaryCopy / LoadFromFile). Default OFF because missing OPTIONAL files (arms/shadows/damage shapes/anims) are NORMAL stock degradation — an always-on file_missing line would red-bucket healthy tier1 runs. parse_fail (file present, content bad) and required_missing (tgl_load_guard required-slot check) log ALWAYS regardless of this gate; only those feed the asset_load_fail red bucket. Rate-limited per unique (event,path), cap 64 (mc2AuditOnce)."
+    },
 };
 
 // ---------------------------------------------------------------------------

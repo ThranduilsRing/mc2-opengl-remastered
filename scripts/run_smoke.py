@@ -1566,6 +1566,12 @@ def main():
                             # operator-set gate-ON single-mission runs also
                             # reach the child (Popen drops unlisted vars).
                             "MC2_MOVER_COHERENCE_AUDIT",
+                            # META-FIX design B PART 0: opt-in file_missing
+                            # trace at the msl.cpp loader chokepoint
+                            # (parse_fail/required_missing are always-on and
+                            # need no gate). Without this row the gate-ON
+                            # diagnostic leg silently traces nothing.
+                            "MC2_ASSET_TRACE",
                             # META-FIX design E tier 3: file-resolve ladder
                             # diagnostics + JSONL MISS trace (mclib/file.cpp).
                             # check-file-resolve-miss.py sets both through

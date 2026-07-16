@@ -52,6 +52,9 @@ add_library(mc2_tglloader STATIC
     "${CMAKE_SOURCE_DIR}/mclib/cpu_proj_cost_split.cpp"
     "${CMAKE_SOURCE_DIR}/mclib/projectz_trace.cpp"
     "${CMAKE_SOURCE_DIR}/mclib/object_admission_predicate.cpp"
+    # META-FIX design B PART 0: msl.cpp now emits [ASSET_LOAD v1] loader
+    # classification via the INFRA-1 audit emitter (leaf TU, no GameOS dep).
+    "${CMAKE_SOURCE_DIR}/mclib/mc2_audit.cpp"
     # LINK-CONFIG-FIX: tgl.cpp references render_contract::noteRenderPass and
     # msl.cpp references g_isFrameJobsWorker (frame_jobs.h). Both defining TUs
     # are otherwise compiled only into mc2.exe's source list, so this isolated
