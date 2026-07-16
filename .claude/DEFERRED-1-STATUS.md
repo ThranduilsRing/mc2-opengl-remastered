@@ -65,7 +65,7 @@ mc2-main / mc2-opengl-src trees. Lane registered in lane_registry as DEFERRED-SW
 - NEXT: code edits → commit → build → deploy → captures (gate-off identity + POM-on matlib-off vs POM-on matlib-on
   dirt-displacement A/B on mc2_24) → then item 6.
 
-## Item 6 — tree-foliage shadow alpha on coalesce/BC7-atlas path — RECON DONE, code pending
+## Item 6 — tree-foliage shadow alpha on coalesce/BC7-atlas path — DONE (commits `fddba31c`, `259eda79`)
 
 - Repro findings: default config (coalesce ARMED, group RGBA8 arrays) tree shadows are ALREADY leaf-shaped on mc2_03
   (legacy per-texture binds still valid). `MC2_STATICPROP_BC7=1` probe: trees render SOLID BLACK in the color pass
@@ -79,11 +79,21 @@ mc2-main / mc2-opengl-src trees. Lane registered in lane_registry as DEFERRED-SW
   legacy-handle bind fallback (today's behavior). New killswitch `MC2_SHADOW_PROP_ALPHA_ATLAS` default ON
   (+ registry/tier1 docs/run_smoke passthrough/check-env-registry).
 - Witness: mc2_03 overview bookmark (trees + shadows visible). A/B = new gate on/off on the same exe.
+- **Implementation:** atlas shader variant + per-packet array/layer/UV-scale binding landed in `fddba31c`.
+  Audit found the original proof trace only covered `flushShadow`, which can execute before coalesce reaches READY;
+  `259eda79` adds the same one-shot trace to the later full-registry dynamic-prop caster where atlas use actually occurs.
+- **Runtime A/B (same clean exe @259eda79):** gate ON PASS 2749 frames and emitted
+  `[SHADOW_PROP_ATLAS v1] event=engaged pass=dynamicProp packets=557 buckets=0 bc7=0`
+  (`tests/smoke/artifacts/2026-07-16T12-20-37/`); gate OFF PASS 2754 frames with no engagement marker
+  (`2026-07-16T12-21-23/`). Prior deterministic default capture is PASS with all three bookmarks present at
+  `.claude/captures/item6_after_default/` (commit fddba31c, exact exe fingerprint).
+- **Final soak:** tier1 PASS 5/5, +0 destroys on every mission, 30 seconds each
+  (`tests/smoke/artifacts/2026-07-16T12-24-31/`).
 
 ## Remaining
 
 - [x] Item 3 complete (commit 2c3a9109, captures banked, verdict PASS)
-- [ ] Item 5: code → commit → build → deploy → captures (gate-off identity vs `1936948e/3a6677de/c22ea0d4` + dirt A/B)
-- [ ] Item 6: code → commit → build → deploy → captures (shadow A/B gate on/off)
-- [ ] tier1 smoke at end: canonical command + `--exe` at lane + `MC2_SMOKE_REQUIRE_FINGERPRINT=0`
-- [ ] release lane registry entry at session end
+- [x] Item 5 complete (commit 76f095cd, gate-off identity + dirt A/B banked)
+- [x] Item 6 complete (commits fddba31c + 259eda79, runtime A/B + deterministic capture banked)
+- [x] tier1 smoke PASS 5/5 (`2026-07-16T12-24-31`)
+- [x] release lane registry entry already present for DEFERRED-SWEEP-1
