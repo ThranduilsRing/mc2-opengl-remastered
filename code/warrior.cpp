@@ -5562,12 +5562,15 @@ void MechWarrior::updateActions (void) {
 
 	// MC2_AIMED_FIRE_FIXTURE (ISSUE-9 probe, default-OFF = byte-identical):
 	// headless called-shot driver. Every home-team mech without an active combat
-	// order is issued the same aimed-HEAD attack the UI's aimHead() would build
-	// (orderAttackObject, ORDER_ORIGIN_PLAYER, ATTACK_TO_DESTROY / RANGED /
+	// order is issued an aimed-HEAD attack (ATTACK_TO_DESTROY / RANGED /
 	// OPTIMAL, aim = MECH_BODY_LOCATION_HEAD, pursue) at the nearest live enemy
-	// mech. Re-issues when the order clears (target died), so a 30-60 s run with
-	// MC2_DIAG_TAGS=COMBAT yields a hit-location distribution ("loc" field) to
-	// A/B MC2_CALLED_SHOT_FIX. Global 2 s throttle keeps order spam bounded.
+	// mech. Origin MUST be ORDER_ORIGIN_COMMANDER: orderAttackObject only
+	// installs the tac order (setGeneralTacOrder -> curTacOrder) for COMMANDER
+	// origin — with PLAYER origin only lastTarget is set and fire is UNAIMED
+	// (aimLocation flows solely from curTacOrder.attackParams in
+	// combatDecisionTree). Re-issues when the order clears (target died), so a
+	// run with MC2_DIAG_TAGS=COMBAT yields a hit-location distribution ("loc"
+	// field) to A/B MC2_CALLED_SHOT_FIX. Global 2 s throttle bounds order spam.
 	static const bool s_aimedFireFixture =
 		(getenv("MC2_AIMED_FIRE_FIXTURE") != NULL && getenv("MC2_AIMED_FIRE_FIXTURE")[0] != '0');
 	if (s_aimedFireFixture && myVehicle && myVehicle->isMech() &&
@@ -5594,7 +5597,7 @@ void MechWarrior::updateActions (void) {
 				}
 			}
 			if (enemy) {
-				long res = orderAttackObject(false, ORDER_ORIGIN_PLAYER, enemy,
+				long res = orderAttackObject(false, ORDER_ORIGIN_COMMANDER, enemy,
 					ATTACK_TO_DESTROY, ATTACKMETHOD_RANGED, FIRERANGE_OPTIMAL,
 					MECH_BODY_LOCATION_HEAD, -1, TACORDER_PARAM_PURSUE);
 				printf("[AIMED_FIRE v1] event=order wid=%ld tgt_wid=%ld dist=%.0f res=%ld\n",

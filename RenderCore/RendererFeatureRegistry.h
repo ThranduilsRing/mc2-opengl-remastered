@@ -1835,7 +1835,7 @@ static constexpr EnvVarDesc kAuxEnvVars[] = {
         "MC2_AIMED_FIRE_FIXTURE",
         EnvVarKind::Trace,
         false,
-        "ISSUE-9 headless probe (code/warrior.cpp MechWarrior::updateActions): every home-team mech without a combat order is issued an aimed-HEAD attack (same order the UI's aimHead() builds) at the nearest live enemy mech, re-issued as targets die (2 s global throttle). Pair with MC2_DIAG_TAGS=COMBAT to capture the hit-location distribution (\"loc\" field) for MC2_CALLED_SHOT_FIX A/B. Default OFF = byte-identical."
+        "ISSUE-9 headless probe (code/warrior.cpp MechWarrior::updateActions): every home-team mech without a combat order is issued an aimed-HEAD attack (orderAttackObject, COMMANDER origin — the only origin that installs the tac order and thus the aim) at the nearest live enemy mech, re-issued as targets die (2 s global throttle). Pair with MC2_DIAG_TAGS=COMBAT to capture the hit-location distribution (\"loc\" field) for MC2_CALLED_SHOT_FIX A/B. Default OFF = byte-identical."
     },
     {
         "MC2_TRACE_FIRE_DECISION",
