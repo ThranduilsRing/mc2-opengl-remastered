@@ -264,4 +264,9 @@ touched the static-prop registry.
       `scripts/check-env-registry.sh` clean (829 vars accounted).
 - [x] Build: `cmake --build build64 --config RelWithDebInfo --target mc2`
       exit 0, zero warnings on `mclib/bdactor.cpp` / `code/objmgr.cpp`.
-- [ ] Commit + official redeploy + canonical tier1: pending (next steps).
+- [x] Commit sha: `9955d28b`.
+- [x] Official deploy (clean, no dirty-tree warning): manifest src_commit
+      `9955d28b4099`, 736 files.
+- [x] Canonical tier1 smoke PASS 5/5 (`--exe .../mc2-win64-deferred2-test/mc2.exe`,
+      `MC2_SMOKE_REQUIRE_FINGERPRINT=0`): mc2_01/03/10/17/24 all PASS, +0
+      destroys each (4214/4209/4211/4114/4181 frames). Item complete.
