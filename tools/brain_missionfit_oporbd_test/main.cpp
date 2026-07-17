@@ -150,6 +150,98 @@ int main() {
     check(parseMissionFitBrains("", brains, 8) == 0, "brain empty text -> 0");
     check(parseMissionFitBrains("[Warrior1]\nst Brain = \"\"\n", brains, 8) == 0, "brain no block -> 0");
 
+    // -----------------------------------------------------------------------------------------
+    // TECHBRAIN-PATROL-VIEWER-1: matchBrainForPos position-match + Primary-OPORD-Patrol-waypoint
+    // proof. This IS the logic Unit::importPatrolFromBrainIfNeeded() (editor/EditorObjects.cpp)
+    // runs to seed a unit's editable/drawable waypoint list, and the SAME logic the "Declarative
+    // Brain" panel section (editor/UnitBrainPanel.cpp, via editor/MissionFitBrainSource.cpp) uses
+    // to pick which brain to show for the selected unit -- so asserting on matchBrainForPos here,
+    // headless, proves "parse OPORD -> expected waypoints == what the viewer would draw" without
+    // needing Unit/EditorObjectMgr/ImGui (which this standalone target does not link).
+    static const char* kPosFit =
+    "[Part4]\n"
+    "PositionX = 3008.000\n"
+    "PositionY = 1472.000\n"
+    "[Warrior4]\n"
+    "Brain {\n"
+    "    PrimaryOPORD {\n"
+    "        type = Patrol\n"
+    "        loop = true\n"
+    "        Waypoint { index=0; x=2368.000; y=2752.000 }\n"
+    "        Waypoint { index=1; x=1728.000; y=2240.000 }\n"
+    "    }\n"
+    "}\n"
+    "[Part5]\n"
+    "PositionX = 5000.000\n"
+    "PositionY = 5000.000\n"
+    "[Warrior5]\n"
+    "Brain {\n"
+    "    PrimaryOPORD { type = Sentry }\n"
+    "}\n"
+    "[Warrior6]\n"                 // Brain{} with NO matching [PartN] -> posX stays absent (-1e9)
+    "Brain {\n"
+    "    PrimaryOPORD { type = Patrol; loop = false; Waypoint { index=0; x=9999.0; y=9999.0 } }\n"
+    "}\n";
+
+    MissionFitBrain posBrains[8];
+    int pn = parseMissionFitBrains(kPosFit, posBrains, 8);
+    check(pn == 3, "pos-fit record count == 3 (W4, W5, W6)");
+
+    const MissionFitBrain* pb4 = nullptr; const MissionFitBrain* pb5 = nullptr; const MissionFitBrain* pb6 = nullptr;
+    for (int i = 0; i < pn; ++i) {
+        if (posBrains[i].warriorIndex == 4) pb4 = &posBrains[i];
+        if (posBrains[i].warriorIndex == 5) pb5 = &posBrains[i];
+        if (posBrains[i].warriorIndex == 6) pb6 = &posBrains[i];
+    }
+    check(pb4 && feq(pb4->posX, 3008.0f) && feq(pb4->posY, 1472.0f), "W4 posX/posY from [Part4]");
+    check(pb5 && feq(pb5->posX, 5000.0f) && feq(pb5->posY, 5000.0f), "W5 posX/posY from [Part5]");
+    check(pb6 && pb6->posX <= -1e8f, "W6 posX absent (no matching [Part6])");
+
+    // Exact position -> matches W4; its Primary Patrol waypoints are exactly what a viewer
+    // seeding a unit's waypoint list from this match would draw.
+    const MissionFitBrain* m = matchBrainForPos(posBrains, pn, 3008.0f, 1472.0f);
+    check(m == pb4, "exact pos (3008,1472) matches W4");
+    check(m && std::strcmp(m->primary.type, "Patrol") == 0, "matched W4 primary type Patrol");
+    check(m && m->primary.loop == true, "matched W4 primary loop true");
+    check(m && m->primary.waypointCount == 2, "matched W4 primary 2 waypoints");
+    check(m && feq(m->primary.waypoints[0].x, 2368.0f) && feq(m->primary.waypoints[0].y, 2752.0f),
+        "matched W4 wp0 == parsed OPORD wp0 (2368,2752)");
+    check(m && feq(m->primary.waypoints[1].x, 1728.0f) && feq(m->primary.waypoints[1].y, 2240.0f),
+        "matched W4 wp1 == parsed OPORD wp1 (1728,2240)");
+
+    // Within default tolerance (50wu): dx=30,dy=0 -> dist=30 < 50 -> still W4.
+    m = matchBrainForPos(posBrains, pn, 3038.0f, 1472.0f);
+    check(m == pb4, "pos within tolerance (dist=30) still matches W4");
+
+    // Outside default tolerance: dist=100 > 50 -> no match at all (W5 is far away too).
+    m = matchBrainForPos(posBrains, pn, 3108.0f, 1472.0f);
+    check(m == nullptr, "pos outside tolerance (dist=100) matches nothing");
+
+    // Explicit tol override: same 100wu-away point WITH tol=150 now matches W4 (proves the
+    // parameter is live, not just the 50wu default).
+    m = matchBrainForPos(posBrains, pn, 3108.0f, 1472.0f, 150.0f);
+    check(m == pb4, "pos outside default tol but within explicit tol=150 matches W4");
+
+    // Nearest-wins: a point strictly closer to W5 than W4 picks W5, and W5's Primary OPORD is
+    // Sentry (not Patrol) -- exactly the gate EditorImportDeclarativePatrol (editor/
+    // EditorObjects.cpp) uses to decide "no declarative patrol waypoints here, fall back to the
+    // legacy .abl scan": a matched-but-wrong-type brain must yield zero waypoints, not the wrong
+    // brain's waypoints.
+    m = matchBrainForPos(posBrains, pn, 4980.0f, 4980.0f);
+    check(m == pb5, "pos near W5 matches W5, not W4");
+    check(m && std::strcmp(m->primary.type, "Patrol") != 0, "W5 primary is NOT Patrol (Sentry)");
+    check(m && m->primary.waypointCount == 0, "W5 primary has zero waypoints (Sentry has none)");
+
+    // A brain with no [PartN] spawn position (W6) never matches, even sitting exactly on its own
+    // (unparsed) waypoint coordinate -- the position-match invariant only trusts [PartN], never
+    // falls back to guessing from OPORD waypoint content.
+    m = matchBrainForPos(posBrains, pn, 9999.0f, 9999.0f);
+    check(m != pb6, "W6 (no spawn pos) never matches, even at its own waypoint coords");
+
+    // Empty / degenerate inputs.
+    check(matchBrainForPos(posBrains, 0, 3008.0f, 1472.0f) == nullptr, "zero brainCount -> nullptr");
+    check(matchBrainForPos(nullptr, 0, 0.0f, 0.0f) == nullptr, "null brains array + 0 count -> nullptr");
+
     std::printf("brain_missionfit_oporbd_test: %d pass, %d fail\n", g_pass, g_fail);
     return g_fail ? 1 : 0;
 }

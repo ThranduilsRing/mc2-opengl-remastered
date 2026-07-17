@@ -36,6 +36,8 @@
 #include "EditorData.h"
 #endif
 
+#include "MissionFitBrainSource.h"   // TECHBRAIN-PATROL-VIEWER-1: declarative Brain{} patrol import
+
 #include "resource.h"
 
 #include "PilotProfilePreserve.h"
@@ -783,20 +785,68 @@ static bool EditorAnalyzeBrain( const char* brainName, std::vector<Stuff::Vector
 	return true;
 }
 
+// TECHBRAIN-PATROL-VIEWER-1: declarative mission.fit Brain{} Primary-OPORD Patrol import.
+// Matches this unit's spawn (ux,uy) to a parsed Brain record via MissionFitBrainSource --
+// the SAME shared cache + position-match tolerance the "Declarative Brain" panel section
+// uses (editor/UnitBrainPanel.cpp), so what the panel shows for a unit and what this seeds
+// onto its waypoint list (and therefore what editor/EditorDebugOverlay.cpp's drawOnePatrol
+// draws on the map) can never disagree. Returns true (and fills wpOut/loopOut) only when the
+// matched brain's Primary OPORD is a waypointed Patrol; false leaves the caller to fall back
+// to the legacy .abl PatrolPath[] literal scan (EditorAnalyzeBrain above), which remains the
+// only source for missions with no declarative Brain{} block.
+static bool EditorImportDeclarativePatrol( float ux, float uy,
+	std::vector<Stuff::Vector3D>& wpOut, bool& loopOut )
+{
+	wpOut.clear();
+	loopOut = false;
+	MissionFitBrainSource::Refresh();
+	const MissionFitBrain* b = MissionFitBrainSource::MatchForPos( ux, uy );
+	if ( !b || 0 != strcmp( b->primary.type, "Patrol" ) || b->primary.waypointCount <= 0 )
+		return false;
+	for ( int i = 0; i < b->primary.waypointCount; ++i )
+	{
+		Stuff::Vector3D wp;
+		wp.x = b->primary.waypoints[i].x;
+		wp.y = b->primary.waypoints[i].y;
+		wp.z = 0.0f;   // overlay re-samples terrain elevation when drawing, same as the .abl path
+		wpOut.push_back( wp );
+	}
+	loopOut = b->primary.loop;
+	return true;
+}
+
 void Unit::importPatrolFromBrainIfNeeded()
 {
 	if ( importChecked )
 		return;
 	importChecked = true;
 
+	// .abl analysis always runs: it supplies brainFsm + a coarse brainBehavior tag for the
+	// "AI Brain" panel section regardless of which source ends up supplying the patrol path.
 	std::vector<Stuff::Vector3D> wps;
 	EditorAnalyzeBrain( brain.getBrainName(), wps, brainFsm, sizeof( brainFsm ), brainBehavior );
+	bool loop = true;   // legacy .abl patrols: always closed-loop (unchanged prior behavior)
+
+	// Declarative mission.fit Brain{} Primary-OPORD Patrol is AUTHORITATIVE when this unit's
+	// spawn position matches one (carver_v_enhanced content) -- overrides the .abl scan above.
+	if ( appearance() )
+	{
+		std::vector<Stuff::Vector3D> declWps;
+		bool declLoop = false;
+		if ( EditorImportDeclarativePatrol( (float)appearance()->position.x,
+			(float)appearance()->position.y, declWps, declLoop ) )
+		{
+			wps = declWps;
+			loop = declLoop;
+			brainBehavior = BRAIN_PATROL;
+		}
+	}
 
 	// Import the patrol for display only when there is no editor-authored / existing order.
 	if ( !( orderAuthored || !waypoints.empty() || orderType != ORDER_NONE ) && !wps.empty() )
 	{
 		waypoints = wps;
-		orderType = ORDER_PATROL;
+		orderType = loop ? ORDER_PATROL : ORDER_MOVE;
 		// orderAuthored stays false -> display only; not rewritten on save.
 	}
 
@@ -804,9 +854,9 @@ void Unit::importPatrolFromBrainIfNeeded()
 	// remaining coordinate-frame mismatch can be read off directly.
 	if ( ( getenv( "MC2_PATROL_TRACE" ) || getenv( "MC2_EDITOR_TRACE" ) ) && !wps.empty() && appearance() )
 	{
-		fprintf( stderr, "[PATROL] brain=%s unitPos=(%.0f,%.0f) wp0=(%.0f,%.0f) wpN=%u\n",
+		fprintf( stderr, "[PATROL] brain=%s unitPos=(%.0f,%.0f) wp0=(%.0f,%.0f) wpN=%u loop=%d\n",
 			brain.getBrainName(), appearance()->position.x, appearance()->position.y,
-			wps[0].x, wps[0].y, (unsigned)wps.size() );
+			wps[0].x, wps[0].y, (unsigned)wps.size(), loop ? 1 : 0 );
 		fflush( stderr );
 	}
 }

@@ -469,3 +469,121 @@ needed (per house rule: doc/content-only item).
 - No build/deploy/tier1: doc + Python test + data-file-only change, zero
   C++/shader/gate touched. `py -3 -m pytest tools/terrain_beautify/` is the
   full proof (ran clean above).
+
+## Item 9 — Techbrain: wire Patrol-OPORD waypoints into the editor viewer (DONE)
+
+Board: `DEFERRED-BOARD-2026-07-16.md` §A backlog "Techbrain: wire Patrol-OPORD
+waypoints into editor viewer | Editor waypoint code exists; position-match
+test autonomous". Source handoff:
+`C:/Users/Joe/.claude/projects/A--Games-mc2-opengl-src/memory/HANDOFF_2026_06_29_techbrain_editor.md`
+NEXT item 1. Editor-only TU changes (per the EditRel rule, no CPU fallback
+added); the one shared-TU touch (`code/brain_missionfit_oporbd.{h,cpp}`) is a
+pure ADDED function with zero new game-side call sites — inert for mc2.exe
+runtime behavior, so tier1 is not required (house rule carve-out).
+
+**Design**: `editor/EditorDebugOverlay.cpp`'s `drawOnePatrol()` already draws
+whatever is in `unit->getWaypoints()` (team-colored dashed line + dots +
+direction arrows + closing-loop segment when `orderType==ORDER_PATROL`) after
+calling `unit->importPatrolFromBrainIfNeeded()` — this IS "the editor's
+existing waypoint viewer" the board refers to. So wiring the declarative
+Primary-OPORD Patrol waypoints into it required no new rendering code: only
+extending `importPatrolFromBrainIfNeeded()`'s IMPORT SOURCE to also try the
+declarative mission.fit `Brain{}` block (previously it only scanned the
+legacy `.abl` `PatrolPath[i,j]` literals).
+
+- [x] `code/brain_missionfit_oporbd.{h,cpp}` (pure, engine-free, already the
+      home of `parseMissionFitBrains`): added `matchBrainForPos(brains, count,
+      ux, uy, tol=50)` — nearest-brain-by-spawn-position lookup, factored out
+      of what was a private duplicate inside `editor/UnitBrainPanel.cpp` so
+      the display panel and the waypoint importer share one position-match
+      implementation (can't silently drift apart) and so the match itself is
+      unit-testable without any editor/ImGui/Unit dependency.
+- [x] NEW `editor/MissionFitBrainSource.{h,cpp}`: the mission.fit file-I/O +
+      parse + path-change cache, moved out of `UnitBrainPanel.cpp`'s
+      anonymous-namespace statics verbatim (same tolerance, same cache-by-path
+      semantics — zero behavior change to the existing "Declarative Brain"
+      panel display). Exposes `Refresh()/BrainCount()/BrainAt()/LastFitPath()/
+      MatchForPos()`. Both `UnitBrainPanel.cpp` (display) and
+      `EditorObjects.cpp` (waypoint import) now consume this ONE cache.
+- [x] `editor/UnitBrainPanel.cpp`: refactored to call
+      `MissionFitBrainSource::*` instead of its own duplicated
+      parse/cache/match — display behavior unchanged (verified by inspection:
+      same tol, same debug-tree diagnostics, same match call).
+- [x] `editor/EditorObjects.cpp` `Unit::importPatrolFromBrainIfNeeded()`: NEW
+      static `EditorImportDeclarativePatrol(ux, uy, wpOut, loopOut)` tries the
+      declarative match first (`MissionFitBrainSource::MatchForPos` + the
+      matched brain's `primary.type=="Patrol"` && `waypointCount>0` gate);
+      when it hits, `waypoints` is seeded from `primary.waypoints[]` (x,y,
+      z=0 — same convention as the .abl path, terrain elevation resampled at
+      draw time) and `orderType` = `ORDER_PATROL` if `primary.loop` else
+      `ORDER_MOVE` (a genuine accuracy improvement over the legacy path, which
+      always hardcoded `ORDER_PATROL`). The legacy `.abl` `PatrolPath[]` scan
+      (`EditorAnalyzeBrain`) still runs UNCONDITIONALLY first to populate
+      `brainFsm`/`brainBehavior` for the separate "AI Brain" panel section
+      (unchanged), and its waypoints remain the FALLBACK when no declarative
+      Patrol match exists — stock/legacy missions with no `Brain{}` block are
+      unaffected. `orderAuthored` stays false either way (display-only import,
+      not rewritten on save — unchanged contract).
+- [x] **Position-match test** (`tools/brain_missionfit_oporbd_test/main.cpp`,
+      the existing pure-parser harness — no interactive editor run, no
+      Unit/EditorObjectMgr/ImGui dependency): new `kPosFit` fixture with two
+      `[PartN]` spawn positions (`[Part4]`→Patrol brain w/ 2 waypoints,
+      `[Part5]`→Sentry brain, `[Warrior6]` Brain{} with NO matching `[PartN]`)
+      exercises `matchBrainForPos` directly — exact-position match, within/
+      outside the 50wu default tolerance, explicit tol override, nearest-wins
+      between two brains, the Primary-type gate (matched-but-Sentry brain
+      yields zero waypoints, proving `EditorImportDeclarativePatrol`'s
+      fallback path is exercised correctly), a brain with no spawn position
+      never matching (even sitting on its own waypoint coords), and
+      null/empty-array robustness. Asserts the matched brain's
+      `primary.waypoints[]` are byte-for-byte the parsed OPORD waypoints —
+      this is exactly "parse OPORD -> expected waypoints == what the viewer
+      would draw" since `drawOnePatrol()` draws `unit->getWaypoints()`
+      unmodified from whatever `importPatrolFromBrainIfNeeded()` seeded.
+      **26 new checks, all pass**: harness total 64 pass / 0 fail (was 38).
+      Build+run: `cmake -G "Visual Studio 17 2022" -S
+      tools/brain_missionfit_oporbd_test -B
+      build64-h-brain_missionfit_oporbd_test` then `--build ... --config
+      RelWithDebInfo`, exit 0, zero warnings;
+      `brain_missionfit_oporbd_test.exe` → `64 pass, 0 fail`.
+- [x] **Pre-existing EditRel build break found + fixed (unrelated to this
+      item, blocking the required EditRel build)**: `cmake --build build64
+      --config RelWithDebInfo --target EditRel` first failed with
+      `LNK2019 unresolved external symbol mc2_save_camera_bookmark` —
+      commit `560dfc1d` (BOOKMARK-SAVE-BUTTON-1, pre-dates this session) added
+      a call to `mc2_save_camera_bookmark` in `GuiRuntime/EditorInspector.cpp`
+      (shared editor+game UI) whose only definition lives in
+      `code/gamecam.cpp` (game-only TU, not linked into EditRel; reads the
+      game's global `eye`/`mission`, not editor-safe to pull in wholesale).
+      Exact same gap class as the ALREADY-FIXED `mc2_hzb_dump_camera_view`
+      stub in `editor/EditorGameOS.cpp` (that fix's own comment: "Surfaced
+      now because this arc made EditRel link/build for the first time in
+      this worktree" — EditRel had not been successfully built in this
+      worktree even once before this item). Fixed the same way, same file,
+      immediately following that precedent: added a clean no-op
+      `mc2_save_camera_bookmark` stub in `editor/EditorGameOS.cpp` (camera
+      bookmark save is a game-only debug tool, absent in EditRel). Confirmed
+      this is the correct minimal fix, not scope creep: it completes an
+      already-established pattern for a second symbol from the same commit,
+      not a new design decision.
+- [x] Build: `cmake --build build64 --config RelWithDebInfo --target EditRel`
+      — first attempt failed on the pre-existing gap above (compile phase was
+      already clean: all 3 touched/new TUs — `MissionFitBrainSource.cpp`,
+      `EditorObjects.cpp`, `UnitBrainPanel.cpp` — compiled with ZERO
+      warnings/errors; only the unrelated link symbol failed). After the
+      `EditorGameOS.cpp` stub, rebuilt clean: exit 0,
+      `build64/out/editor/RelWithDebInfo/Mission Editor.exe` produced
+      (10,224,640 bytes, timestamp confirms fresh link).
+- [x] mc2.exe / tier1: NOT run. `code/brain_missionfit_oporbd.cpp` is shared
+      between `mc2` and `EditRel` (`EDITOR_BRIDGE_SOURCES` +
+      `CMakeLists.txt`), but the only change to it is one pure ADDED function
+      with no new call sites anywhere in game-side code — behaviorally inert
+      for `mc2.exe`. Compiles cleanly (proven: this exact file compiled
+      warning-free as part of the successful EditRel build above, same
+      compiler/standard). No mc2.exe runtime behavior changed; per the house
+      rule carve-out ("tier1 NOT needed unless mc2.exe code changed") this is
+      not required, but flagged here for transparency rather than silently
+      assumed.
+- No deploy: EditRel is not part of the mc2 deploy payload (`deploy_payload.py
+  --exe-name mc2.exe`); nothing to deploy for an editor-only change. Item
+  complete.

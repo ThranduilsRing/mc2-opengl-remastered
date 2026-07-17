@@ -85,3 +85,18 @@ struct MissionFitBrain {
 // Brain{} block, into out[0..maxOut). Absent fields take the sentinels above (so the consumer can
 // tell "set to false" from "not present"). Returns the number of records written (>=0).
 int parseMissionFitBrains(const char* text, MissionFitBrain* out, int maxOut);
+
+// ---------------------------------------------------------------------------------------------
+// BRAIN-PATROL-VIEWER-BRIDGE-1: pure position-match, shared by the editor's declarative-brain
+// display (editor/MissionFitBrainSource.cpp, editor/UnitBrainPanel.cpp) and the patrol-waypoint
+// importer that seeds a Unit's editable/drawable waypoint list (Unit::importPatrolFromBrainIfNeeded,
+// editor/EditorObjects.cpp) -- both consult the SAME match so the panel never shows a brain that a
+// different tolerance/tie-break would have imported. Kept here (not in editor/) so it is engine-free
+// and directly unit-testable (tools/brain_missionfit_oporbd_test), same as parseMissionFitBrains.
+//
+// Nearest brain (by its [PartN] spawn position) to (ux,uy), within `tol` world units. Ties/multiple
+// candidates within tolerance: nearest wins (strict <=, first-seen wins on an exact tie, matching
+// the position-match semantics this bridges). A brain with no spawn position (posX <= -1e8, i.e.
+// no matching [PartN] block) never matches. Returns nullptr if none qualify.
+const MissionFitBrain* matchBrainForPos(const MissionFitBrain* brains, int brainCount,
+                                         float ux, float uy, float tol = 50.0f);

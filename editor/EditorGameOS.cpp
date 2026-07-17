@@ -219,6 +219,25 @@ extern "C" void mc2_hzb_dump_camera_view(void)
 }
 
 // ---------------------------------------------------------------------------
+// mc2_save_camera_bookmark  (in-game camera-pose bookmark save stub)
+// ---------------------------------------------------------------------------
+// Same PRE-EXISTING editor-link gap class as mc2_hzb_dump_camera_view above, one
+// symbol later in the same commit (560dfc1d, BOOKMARK-SAVE-BUTTON-1): definition
+// lives in code/gamecam.cpp (reads the game's global `eye`/`mission`, not linked
+// into EditRel), called unconditionally from GuiRuntime/EditorInspector.cpp's
+// "Save Camera Bookmark" button. Surfaced by TECHBRAIN-PATROL-VIEWER-1 building
+// EditRel for the first time since that commit landed. A real editor-side
+// implementation would need the editor's OWN camera/mission model (EditorData),
+// not the game's — out of scope here; clean no-op shim so EditRel links, same
+// as the HZB stub above.
+extern "C" void mc2_save_camera_bookmark(char* outPath, int outPathLen)
+{
+    // No-op: camera-bookmark save is a game-only debug tool; absent in EditRel.
+    if (outPath && outPathLen > 0)
+        outPath[0] = 0;
+}
+
+// ---------------------------------------------------------------------------
 // InitGameOS
 // ---------------------------------------------------------------------------
 // In the original windows.lib this initialised DirectX, registered the
