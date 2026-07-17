@@ -945,7 +945,21 @@ static constexpr EnvVarDesc kAuxEnvVars[] = {
         "MC2_STATIC_PROP_BUILDING_SHADOW",
         EnvVarKind::Feature,
         false,
-        "SHADOW-STATIC-BUILDINGS-2: replay ALL registered rigid-building recipes (full registry, visibility-independent) into the world-fixed static shadow map, once per mission at the static-map build. Trees excluded (population filter). Default-OFF; =1 enables, =2 enables+trace. Independent of MC2_SHADOW_ENABLE. Requires C-pre min-combine. Debt: destroyed buildings keep stale static shadow until mission reload."
+        "SHADOW-STATIC-BUILDINGS-2: replay ALL registered rigid-building recipes (full registry, visibility-independent) into the world-fixed static shadow map, once per mission at the static-map build. Trees excluded (population filter). Default-OFF; =1 enables, =2 enables+trace. Independent of MC2_SHADOW_ENABLE. Requires C-pre min-combine. Rebake-on-destroy: see MC2_STATIC_PROP_BUILDING_SHADOW_REBAKE."
+    },
+    {
+        "MC2_FEATURE_SHADOW_STATIC_BUILDINGS_REBAKE",
+        "MC2_STATIC_PROP_BUILDING_SHADOW_REBAKE",
+        EnvVarKind::Feature,
+        true,
+        "STATIC-BLDG-SHADOW-REBAKE-1: re-arm the one-shot world-fixed static-shadow latch (gos_ResetStaticLightMatrix) when a registered building is destroyed -- primarily BldgAppearance::setObjStatus transitioning to OBJECT_STATUS_DESTROYED (the real in-game combat-destroy event), with BldgAppearance::destroy (mission-end/pool-recycle) as cheap insurance -- so txmmgr's static-shadow build block (terrain + buildings) replays next frame WITHOUT the destroyed building instead of keeping its stale baked shadow until mission reload (docs/known_issues.md). Only fires when (a) the destroyed building actually held a static-prop registration and (b) MC2_STATIC_PROP_BUILDING_SHADOW is active -- inert (and costs nothing) on missions that never opted into the parent feature, since the unconditional terrain-only static build must not be forced to redundantly replay. Default ON (independent kill-switch for the parent feature); =0 disables the rebake trigger only; =2 adds a one-line [SHADOW_STATIC_BLDG_REBAKE v1] trace per destroy."
+    },
+    {
+        "MC2_STATIC_PROP_BUILDING_SHADOW_REBAKE_TEST_DESTROY_AT_FRAME",
+        "MC2_STATIC_PROP_BUILDING_SHADOW_REBAKE_TEST_DESTROY_AT_FRAME",
+        EnvVarKind::Trace,
+        false,
+        "STATIC-BLDG-SHADOW-REBAKE-1: deterministic repro hook (test-only, no production callers). At the given frame, inflict lethal damage on the first live building via the real Building::setDamage gameplay API (same effect as a weapon hit reaching the damage threshold), driving it through setObjStatus(OBJECT_STATUS_DESTROYED) and the shadow-rebake trigger above, for before/after capture proofs. Unset = no-op."
     },
     {
         "MC2_FEATURE_SHADOW_DYNAMIC_PROP_CASTERS",

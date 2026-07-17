@@ -2377,6 +2377,34 @@ void GameObjectManager::update (bool terrain, bool movers, bool other)
 {
 	ZoneScopedN("GameObjectManager::update");
 	gomcost::TotalSpan _gomTotalSpan;  // [GOM_UPDATE_COST v1] first-constructed => dtor last
+
+	// STATIC-BLDG-SHADOW-REBAKE-1: deterministic repro hook (test-only, no
+	// production callers) proving the destroy -> rebake fix. At the given
+	// frame, inflict lethal damage on the first live building via the REAL
+	// gameplay damage API (Building::setDamage -- exactly what a weapon hit
+	// does; does not free/delete anything, so this is safe to call outside
+	// combat), driving it through setObjStatus(OBJECT_STATUS_DESTROYED) ->
+	// the shadow-rebake trigger in mclib/bdactor.cpp. Off (default): a single
+	// getenv + integer compare, no behavior change.
+	{
+		static const long s_destroyTestFrame = []() -> long {
+			const char* v = getenv("MC2_STATIC_PROP_BUILDING_SHADOW_REBAKE_TEST_DESTROY_AT_FRAME");
+			return (v && v[0] != '\0') ? atol(v) : -1L;
+		}();
+		if (s_destroyTestFrame >= 0 && (long)g_mc2FrameCounter == s_destroyTestFrame) {
+			for (long bi = 0; bi < numBuildings; ++bi) {
+				BuildingPtr b = buildings[bi];
+				if (!b || b->isDestroyed() || !b->getExists()) continue;
+				fprintf(stderr,
+					"[SHADOW_STATIC_BLDG_REBAKE_TEST v1] event=test_destroy frame=%u buildingIndex=%ld\n",
+					g_mc2FrameCounter, bi);
+				fflush(stderr);
+				b->setDamage(b->getDamageLevel());
+				break;
+			}
+		}
+	}
+
 	//----------------------------
 	// Now, update game objects...
 

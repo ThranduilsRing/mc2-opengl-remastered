@@ -1262,6 +1262,9 @@ def main():
                             # GLSTATE slice 1: SSBO slot save/restore trace.
                             "MC2_GLSTATEGUARD_LOG",
                             "MC2_STATIC_PROP_BUILDING_SHADOW",
+                            # STATIC-BLDG-SHADOW-REBAKE-1: rebake-on-destroy kill-switch/trace.
+                            "MC2_STATIC_PROP_BUILDING_SHADOW_REBAKE",
+                            "MC2_STATIC_PROP_BUILDING_SHADOW_REBAKE_TEST_DESTROY_AT_FRAME",
                             "MC2_SHADOW_DYNAMIC_PROP_CASTERS",
                             "MC2_SHADOW_BOUNDED_NEAR_FIT",
                             "MC2_SHADOW_BOUNDED_NEAR_RADIUS",

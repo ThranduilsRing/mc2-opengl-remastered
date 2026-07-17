@@ -179,3 +179,89 @@ VOCAB-1/ADOPTION-4+ ordering):
       MISMATCH lines are the expected advisory (lane's baseline compare is
       against nifty 994c3776, not this branch — hence the override flag).
       Item complete.
+
+## Item 5 — Static building shadow rebake on destroy (DONE)
+
+Board: DEFERRED-BOARD-2026-07-16.md §A #10 "Static building shadow rebake on
+destroy" + `docs/known_issues.md` "destroyed buildings keep their shadow
+until reload". Scope: `MC2_STATIC_PROP_BUILDING_SHADOW` bakes the world-fixed
+building shadow map ONCE per mission behind a one-shot latch
+(`gos_StaticLightMatrixBuilt()`, `mclib/txmmgr.cpp`); nothing re-armed it on
+a mid-mission building destroy.
+
+**Recon correction (important):** the initial hypothesis (hook
+`BldgAppearance::destroy()`) was WRONG — traced that `destroy()` (which frees
+`bldgShape`/`appearance`) is only called at mission-end/pool-recycle
+(`~BldgAppearance() { destroy(); }`), never at the moment a building is
+combat-destroyed. The REAL in-game "building destroyed" event is
+`BldgAppearance::setObjStatus(OBJECT_STATUS_DESTROYED)` (called from
+`Building::setDamage` when accumulated damage crosses the threshold), which
+swaps `bldgShape` to `appearType->bldgDmgShape` (the rubble mesh) but never
+touched the static-prop registry.
+
+- [x] `BldgAppearance::setObjStatus()`: on the `OBJECT_STATUS_DESTROYED`
+      transition (not `OBJECT_STATUS_DISABLED` — reversible, keeps its
+      shadow), re-arm `gos_StaticLightMatrixBuilt()` via
+      `gos_ResetStaticLightMatrix()`.
+- [x] **Bug found by measurement, then fixed**: re-arming the latch alone
+      was insufficient — the rebake it triggers fires on the VERY NEXT
+      FRAME, before the engine's ordinary lazy "shape swap detected on next
+      touch()" re-registration had run, so the first replay still baked the
+      STALE pre-destruction shadow (measured: instances 299→299, no
+      change). Fix: call `invalidateStaticRegistration()` SYNCHRONOUSLY in
+      `setObjStatus` (tombstoning the recipe immediately) before triggering
+      the rebake. Re-measured: 299→298, exactly the one destroyed building.
+      Gated so this synchronous path (and its slight timing change vs the
+      lazy path) only executes when the rebake would actually fire — a
+      mission that never sets `MC2_STATIC_PROP_BUILDING_SHADOW` gets the
+      exact original lazy-detection timing, unchanged.
+- [x] `BldgAppearance::destroy()`: kept as cheap insurance for the
+      mission-end/pool-recycle path (a building that somehow reaches
+      `destroy()` while still `staticReg.registered`, e.g. never went
+      through `setObjStatus` first).
+- [x] New gate `MC2_STATIC_PROP_BUILDING_SHADOW_REBAKE` (default **ON**,
+      independent kill-switch; `=0` disables, `=2` traces) — only fires when
+      (a) the building held a static registration and (b) the parent
+      `MC2_STATIC_PROP_BUILDING_SHADOW` gate is active; inert/zero-cost
+      otherwise, so the unconditional terrain-only static build is never
+      forced to redundantly replay on missions that never opted in.
+- [x] Deterministic repro hook (test-only):
+      `MC2_STATIC_PROP_BUILDING_SHADOW_REBAKE_TEST_DESTROY_AT_FRAME=<N>`
+      (`code/objmgr.cpp`, top of `GameObjectManager::update`) — at frame N,
+      calls `Building::setDamage(getDamageLevel())` (the real gameplay
+      damage API, same effect as a lethal weapon hit) on the first live
+      building. Off by default (single getenv + int compare).
+- [x] **Proof (mc2_24, MC2_STATIC_PROP_BUILDING_SHADOW=2 +
+      MC2_STATIC_PROP_BUILDING_SHADOW_REBAKE=2 +
+      ..._TEST_DESTROY_AT_FRAME=100)**:
+      - Initial bake: `[SHADOW_STATIC_BLDG_TXM] prepass=1 instances=299`
+      - Frame 100: `[SHADOW_STATIC_BLDG_REBAKE_TEST v1] event=test_destroy
+        frame=100 buildingIndex=0`
+      - `[SHADOW_STATIC_BLDG_REBAKE v1] event=setObjStatus_destroyed
+        recipeIndex=2000`
+      - Rebake: `[SHADOW_STATIC_BLDG_TXM] prepass=1 instances=298` —
+        exactly one fewer, matching the single destroyed building.
+      - Exactly 2 total rebakes across the ~2800-frame run (no thrashing).
+      - **Gate-off control**: same repro with `MC2_STATIC_PROP_BUILDING_SHADOW`
+        UNSET — `test_destroy` still fires (damage applied) but NO
+        `setObjStatus_destroyed` / `SHADOW_STATIC_BLDG_TXM` rebake lines
+        appear at all — confirms zero cost when the parent feature is off.
+      - Visual capture attempt: `run_visual_capture.py` on mc2_24's 3 stock
+        bookmarks (generic terrain-oriented, not authored around this
+        specific building), baseline vs destroyed — all 3 image hashes
+        differ (some render change occurred), but EYEBALLED (Read) the
+        `highangle_wide` and `ridge_lowangle` pairs and the destroyed
+        building/its shadow are not legibly framed in these wide/generic
+        views. Captures saved at `.claude/shadow-destroy-ab/{baseline,destroyed}/`
+        (uncommitted, evidence-only, mirrors the `.claude/shadow-ab/`
+        precedent). The instance-count trace above is the definitive proof;
+        a pixel-legible before/after would need a custom bookmark authored
+        at the specific destroyed building's world coordinates — not done
+        (out of time budget for this slice).
+- [x] Docs: `docs/known_issues.md` entry marked addressed;
+      `docs/tier1_env_vars.md` + `RenderCore/RendererFeatureRegistry.h` +
+      `scripts/run_smoke.py` allowlist updated for all 3 new vars;
+      `scripts/check-env-registry.sh` clean (829 vars accounted).
+- [x] Build: `cmake --build build64 --config RelWithDebInfo --target mc2`
+      exit 0, zero warnings on `mclib/bdactor.cpp` / `code/objmgr.cpp`.
+- [ ] Commit + official redeploy + canonical tier1: pending (next steps).
