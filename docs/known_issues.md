@@ -42,7 +42,7 @@ Full verdict: `docs/testing/smoke-first-launch-crash-silent-recon-1.md`.
 Known bugs that affect anyone running the game. Full detail in the beta doc:
 [docs/beta/known_issues.md](beta/known_issues.md)
 
-- **Shadow stutter** when the camera jumps more than ~500 units in one move. Panning is smooth; only large instant jumps trigger it.
+- ~~**Shadow stutter** when the camera jumps more than ~500 units in one move.~~ **FIXED, stale entry** (fix predates this line — see Shadows section below).
 - **Shadow banding** shifts slightly with camera rotation due to view-dependent tessellation. *Status:* STATIC-SHADOW-BANDING-1 (`9c31e2bf`, PCF undersampling fix, shipped) and STATIC-SHADOW-BANDING-2 (`5b0e488e`, slope-normal bias + normal-offset receiver, gate `MC2_SHADOW_STATIC_BANDFIX_V2` default-OFF, awaiting user field check) address this.
 - **Water shoreline z-fight** visible when zooming in or changing elevation (not on pan).
 - **First-launch black terrain** (intermittent) — relaunch the mission; second load is normal.
@@ -64,7 +64,7 @@ them. Add new findings as new bullets; remove fixed ones outright (don't append
 
 ## Shadows
 
-- **Shadow re-render stutter when camera moves >500 units.** Fix: static world-fixed shadow map (design ready).
+- **Shadow re-render stutter when camera moves >500 units — FIXED, stale entry (`e9b9aea7`, 2026-05-16; not previously reconciled here).** The "design ready" static world-fixed shadow map this entry pointed at shipped as `e9b9aea7` ("static full-map shadow feed + Phase-1 camera-accum retire"), which predates this known_issues.md line (added 2026-05-24/25) but was never cross-referenced back to it. The retired code was the exact mechanism this entry describes: a camera-move-gated (~100u, later documented as ~500u in `docs/architecture.md`) re-bake of the static shadow FBO. Post-fix, the static terrain shadow builds exactly ONCE per mission (`gos_StaticLightMatrixBuilt()` latch, `mclib/txmmgr.cpp` ~2692) and never touches camera position again — a >500-unit jump structurally cannot trigger a re-render. Re-verified empirically 2026-07-17 (`DEFERRED-SWEEP-1`, no code change needed): a hard ~990-unit teleport onto a `shadow_cascade` mc2_24 view (`tests/visual/bookmarks/mc2_24_shadow_jump500.json`) captures byte-identical at `MC2_VISUAL_SETTLE=1` vs `2/30/60` (`.claude/DEFERRED-1-STATUS.md`). Dynamic CSM cascades rebuild fully every frame regardless of camera motion, so they carry no jump-triggered cost either.
 - **Shadow banding shifts with camera rotation** (view-dependent terrain geometry). *Status:* addressed by STATIC-SHADOW-BANDING-1 (`9c31e2bf`, shipped) + STATIC-SHADOW-BANDING-2 (`5b0e488e`, gate `MC2_SHADOW_STATIC_BANDFIX_V2` default-OFF, awaiting user field check).
 - **Dynamic prop shadows: no light-box cull yet** — with MC2_SHADOW_DYNAMIC_PROP_CASTERS=1 the dynamic pass draws ALL registered non-building props every frame (visibility-independent, depth-only) regardless of the light box. Cheap now; **HZB is the planned long-term fix**. Interim: CPU light-box AABB cull (must cull vs the LIGHT box, not the camera frustum). See `memory/shadow_dynamic_projection_and_caster_feed_fixed.md`.
 - **Static building shadow goes stale on destroy** — MC2_STATIC_PROP_BUILDING_SHADOW bakes the world-fixed building shadow map once per mission; destroyed buildings keep their shadow until reload.

@@ -90,10 +90,32 @@ mc2-main / mc2-opengl-src trees. Lane registered in lane_registry as DEFERRED-SW
 - **Final soak:** tier1 PASS 5/5, +0 destroys on every mission, 30 seconds each
   (`tests/smoke/artifacts/2026-07-16T12-24-31/`).
 
+## Item 7 — Shadow stutter on >500-unit camera jumps — ALREADY FIXED, docs de-staled (no code change; commit `<pending>`)
+
+Board entry: "Shadow stutter on >500-unit jumps (static world-fixed map, design ready)" (`.claude/DEFERRED-BOARD-2026-07-16.md` §A backlog, [MAIN]).
+
+**Design source found:** `docs/architecture.md` Shadow Pipeline section (pre-edit) — "`shouldRenderShadows()` skips pre-pass when camera moves <500 units... **Planned:** Static world-fixed shadow map (render once at load)." Same phrase ("static world-fixed shadow map (design ready)") echoed in `docs/known_issues.md:45,67` and `docs/observations/2026-05-14-render-pipeline-matrix.md:143`.
+
+**Finding: the "planned" fix already SHIPPED, 2 months before the still-open known_issues.md lines were even written.** Commit `e9b9aea7` (2026-05-16, "feat(shadow): static full-map shadow feed + Phase-1 camera-accum retire") retired the camera-windowed-accumulate prime block wholesale — `git log -S"shouldRenderShadows"` / `-S"cachedLightSpaceMatrix_"` both return zero hits in current code; the only remaining static-shadow trigger is the `gos_StaticLightMatrixBuilt()` mission-lifetime latch (`mclib/txmmgr.cpp` ~2692), reset ONLY by `Terrain::destroy` (new mission) or the RAlt+F3 re-enable path — never by camera position. `docs/known_issues.md:45,67` were added 2026-05-24/25 (`git blame`: `884b169e0`, `b0cf24edd`) — AFTER `e9b9aea7` — and were simply never reconciled back to the shipped fix. Classic stale-ledger case, same pattern as DEFERRED-BOARD item A#2.
+
+**Empirical re-verification (no code touched; 2026-07-17, exe @`259eda79` deployed to `mc2-win64-deferred-test`):**
+- New permanent regression-guard fixture `tests/visual/bookmarks/mc2_24_shadow_jump500.json`: two proven-good mc2_24 poses from `mc2_24.json` (`highangle_wide` (300,300) → `ridge_lowangle` (-400,-400), `shadow_cascade` coverage tag), placed back-to-back — one hard teleport of `sqrt(700²+700²) ≈ 989.9` world units, comfortably over the ~500u threshold, landing on a big terrain-ridge self-shadow.
+- Ran `scripts/run_visual_capture.py` at `MC2_VISUAL_SETTLE ∈ {1,2,5,5(rerun),30,60}` (deterministic fixed-timestep clock). `jump_target` capture sha256 at settle `1,2,30,60` = **identical** (`1b16f6cc...`) — byte-for-byte, 0 changed pixels, `maxdelta=0` (numpy diff, `.claude/captures/shadowstutter_settle{1,2,30,60}/`). settle=5 (both runs) differed only in a ~246×18px strip in the extreme top-left corner (0.003–0.005% of pixels, maxdelta 8–11, not reproducible run-to-run) — consistent with a debug/HUD text overlay timing jitter, NOT scene/shadow content (confirmed: the jump_target frame itself, e.g. the ridge self-shadow visible in `.claude/captures/shadowstutter_settle60/mc2_24_jump_target.png`, is unaffected).
+- Conclusion: the rendered shadow is **fully converged one frame after the hard cut** — no multi-frame pop, no settle-dependent shadow drift, at any settle value tested. This directly refutes the bug class as currently reproducible.
+
+**Why no new gate:** the task's default posture (new env var, default OFF) assumes an in-progress behavior change. Here the "fix" is not a change I'm introducing — it is 2-months-shipped, unconditional, mission-lifetime-latched default behavior with no alternative code path left to gate against (the old camera-move-gated re-bake was deleted, not toggled, by `e9b9aea7`). Adding a synthetic env var would gate nothing real. The honest slice is: verify, add a permanent regression-guard fixture, de-stale the ledger.
+
+**Docs de-staled this session:** `docs/known_issues.md` (both stutter lines, §Player-visible + §Shadows), `docs/architecture.md` (Shadow Pipeline "Caching"/"Planned" paragraphs), `docs/observations/2026-05-14-render-pipeline-matrix.md:143` (Cascade structure bullet). All cite `e9b9aea7` + this session's fixture.
+
+**Deferred / out of scope:** the DEFERRED-BOARD-2026-07-16.md §A entry itself lives in `A:/Games/mc2-opengl-src/.claude/` — outside this worktree's write scope per the task's tree restriction. It needs the same one-line de-stale; flagging for the board owner rather than editing it directly.
+
+**Not investigated further (no evidence found, out of scope for this slice):** whether some *other*, differently-shaped camera-jump artifact exists (e.g. terrain chunk-LOD pop-in, unrelated to shadows — `docs/superpowers/strategy/visual-regression-lab-architecture.md` §2.3 documents a known 1-frame chunk-LOD MVP latency, comfortably inside the default 30-frame settle window and not shadow-specific). If a *visual* (non-shadow) jump artifact is ever reported, it is a separate investigation.
+
 ## Remaining
 
 - [x] Item 3 complete (commit 2c3a9109, captures banked, verdict PASS)
 - [x] Item 5 complete (commit 76f095cd, gate-off identity + dirt A/B banked)
 - [x] Item 6 complete (commits fddba31c + 259eda79, runtime A/B + deterministic capture banked)
+- [x] Item 7 complete — shadow stutter already fixed pre-session (`e9b9aea7`); docs de-staled + regression fixture added this session, no code change, tier1 re-verified below
 - [x] tier1 smoke PASS 5/5 (`2026-07-16T12-24-31`)
 - [x] release lane registry entry already present for DEFERRED-SWEEP-1
