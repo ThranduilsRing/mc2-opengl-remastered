@@ -32,6 +32,7 @@
 #include "gameos.hpp"
 #include "utils/shader_builder.h"
 #include "tgl.h"  // TG_Shape::s_worldToClip
+#include "gl_state_guard.h"  // GLSTATE-GUARD-SITE5: mc2gl::GlScoped* epilogue guards
 #include <GL/glew.h>
 #include <algorithm>
 #include <array>
@@ -39,6 +40,7 @@
 #include <cstdio>
 #include <cstdlib>
 #include <cstring>
+#include <optional>
 #include <string>
 #include <unordered_map>
 #include <unordered_set>
@@ -5396,8 +5398,11 @@ static bool flushDepthPrepassV6(
     }
 
     // Save the color write mask so the color pass writes normally afterward.
-    GLboolean prevColorMask[4];
-    glGetBooleanv(GL_COLOR_WRITEMASK, prevColorMask);
+    // GLSTATE-GUARD-SITE5: capture-only guard replaces the hand-rolled
+    // prevColorMask[4] save + glColorMask() restore below. Single exit path,
+    // no gos_InvalidateRenderStateCache() in this function, so function scope
+    // is correct (matches gl_state_guard.h's scoping note).
+    mc2gl::GlScopedColorMask guardColorMask;
 
     // Depth-only: bind the depth program + GEQUAL/write via the StaticPropDepth
     // desc, then mask color. applyPipeline also (re)sets blend-off + cull-back,
@@ -5472,10 +5477,9 @@ static bool flushDepthPrepassV6(
     if (enteredOnGroup)
         glBindTexture(GL_TEXTURE_2D_ARRAY, s_texArrayOff);
 
-    // Restore the color write mask. Depth state + program are reset by the color
-    // applyPipeline the caller issues immediately after this returns.
-    glColorMask(prevColorMask[0], prevColorMask[1],
-                prevColorMask[2], prevColorMask[3]);
+    // Color write mask restored by guardColorMask's destructor (scope exit,
+    // right here). Depth state + program are reset by the color applyPipeline
+    // the caller issues immediately after this returns.
     return true;
 }
 
@@ -5671,27 +5675,39 @@ void GpuStaticPropBatcher::flush(const RenderSnapshot* snap) {
     // Save binding state (program/VAO/SSBO/texture) for restore at exit.
     // Pipeline state (depth/blend/cull) is set by applyPipeline() below and
     // NOT restored: gos_InvalidateRenderStateCache() at exit ensures the next
-    // applyRenderStates() re-applies from scratch. Removed 6 glGet* roundtrips
-    // (render-hygiene-s1).
-    GLint prevProgram=0, prevVao=0, prevArrayBuf=0, prevElemBuf=0;
-    GLint prevActiveTex=0, prevTexUnit0=0;
-    // Slice 2 (object-offload) — Stage 2.C.2: also save/restore SSBO slot 2
-    // (per-type hot-color SSBO; bound once for the whole flush, not per-type).
-    // Stage 2.D.1: also save/restore SSBO slot 3 (parity readback harness;
-    // bound only when MC2_OBJECT_PARITY_CHECK=1).
-    GLint prevSsbo0=0, prevSsbo1=0, prevSsbo2=0, prevSsbo3=0, prevSsbo5=0;
-    glGetIntegerv(GL_CURRENT_PROGRAM, &prevProgram);
-    glGetIntegerv(GL_VERTEX_ARRAY_BINDING, &prevVao);
-    glGetIntegerv(GL_ARRAY_BUFFER_BINDING, &prevArrayBuf);
-    glGetIntegerv(GL_ELEMENT_ARRAY_BUFFER_BINDING, &prevElemBuf);
-    glGetIntegerv(GL_ACTIVE_TEXTURE, &prevActiveTex);
-    glActiveTexture(GL_TEXTURE0);
-    glGetIntegerv(GL_TEXTURE_BINDING_2D, &prevTexUnit0);
-    glGetIntegeri_v(GL_SHADER_STORAGE_BUFFER_BINDING, 0, &prevSsbo0);
-    glGetIntegeri_v(GL_SHADER_STORAGE_BUFFER_BINDING, 1, &prevSsbo1);
-    glGetIntegeri_v(GL_SHADER_STORAGE_BUFFER_BINDING, 2, &prevSsbo2);
-    glGetIntegeri_v(GL_SHADER_STORAGE_BUFFER_BINDING, 3, &prevSsbo3);
-    glGetIntegeri_v(GL_SHADER_STORAGE_BUFFER_BINDING, 5, &prevSsbo5);
+    // applyRenderStates() re-applies from scratch.
+    // GLSTATE-GUARD-SITE5: capture-only guards replace the hand-rolled
+    // prevProgram/prevVao/prevArrayBuf/prevElemBuf/prevActiveTex/prevTexUnit0/
+    // prevSsbo{0,1,2,3,5} save + restore. gos_InvalidateRenderStateCache() is
+    // called later in this function — ~30 lines of unrelated bookkeeping
+    // (parity tick, sample pick, bucket-map clear) run between the original
+    // manual-restore point and that call — so, mirroring the
+    // GpuMechBatcher::flush() SSBO 0/1/2 precedent (gos_mech_batcher.cpp
+    // ~2167/2212, GLSTATE-GUARD-ADOPTION-3), every guard here is wrapped in
+    // std::optional and .reset() explicitly at the ORIGINAL manual-restore
+    // point below, instead of at this scope's natural end. Slice 2
+    // (object-offload) Stage 2.C.2/2.D.1: SSBO slots 2/3 covered too
+    // (per-type hot-color / parity readback).
+    std::optional<mc2gl::GlScopedProgram>       guardProgram;
+    std::optional<mc2gl::GlScopedVertexArray>   guardVao;
+    std::optional<mc2gl::GlScopedBufferBinding> guardArrayBuf;
+    std::optional<mc2gl::GlScopedBufferBinding> guardElemBuf;
+    std::optional<mc2gl::GlScopedTextureUnit>   guardTexUnit0;
+    std::optional<mc2gl::GlScopedSsboBinding>   guardSsbo0;
+    std::optional<mc2gl::GlScopedSsboBinding>   guardSsbo1;
+    std::optional<mc2gl::GlScopedSsboBinding>   guardSsbo2;
+    std::optional<mc2gl::GlScopedSsboBinding>   guardSsbo3;
+    std::optional<mc2gl::GlScopedSsboBinding>   guardSsbo5;
+    guardProgram.emplace();
+    guardVao.emplace();
+    guardArrayBuf.emplace(GL_ARRAY_BUFFER);
+    guardElemBuf.emplace(GL_ELEMENT_ARRAY_BUFFER);
+    guardTexUnit0.emplace(0);   // ctor also leaves GL_TEXTURE0 active (matches the old explicit glActiveTexture(GL_TEXTURE0) here)
+    guardSsbo0.emplace(0);
+    guardSsbo1.emplace(1);
+    guardSsbo2.emplace(2);
+    guardSsbo3.emplace(3);
+    guardSsbo5.emplace(5);
     // Bind program + depth/blend/cull via PipelineDesc.
     // Uses StaticPropOpaque — both alpha and opaque packets share the same
     // program and fixed-function state; the alpha distinction is texture-array
@@ -6087,13 +6103,22 @@ void GpuStaticPropBatcher::flush(const RenderSnapshot* snap) {
 
         // 11.7.a — save SSBO slot 4 + unit-0 GL_TEXTURE_BINDING_2D_ARRAY.
         // Active texture is already GL_TEXTURE0 (set by prologue at line
-        // ~2192). Slot 15 is NOT saved here: the draw branch never binds
-        // it; Step 10.3 envelope in compute_dispatch() honors the spec
-        // §3.X / §9 binding-hygiene contract for slot 15.
-        GLint prevSsbo4       = 0;
-        GLint prevTex2DArray  = 0;
-        glGetIntegeri_v(GL_SHADER_STORAGE_BUFFER_BINDING, 4, &prevSsbo4);
-        glGetIntegerv  (GL_TEXTURE_BINDING_2D_ARRAY,         &prevTex2DArray);
+        // ~2192) and every mid-block excursion below (kColormapTexUnit,
+        // kOrmTexUnit) returns to GL_TEXTURE0 before falling through here —
+        // verified by inspection, so GlScopedTextureUnit's default unit=0
+        // capture/restore is behavior-identical to the old manual pair.
+        // Slot 15 is NOT saved here: the draw branch never binds it; Step
+        // 10.3 envelope in compute_dispatch() honors the spec §3.X / §9
+        // binding-hygiene contract for slot 15.
+        // GLSTATE-GUARD-SITE5: both restore-previous, so both are
+        // guard-able; wrapped in std::optional and .reset() explicitly at
+        // the original 11.7.j restore point (this nested block's nearest
+        // enclosing gos_InvalidateRenderStateCache() is the outer flush()
+        // epilogue's, well past this block's own natural close).
+        std::optional<mc2gl::GlScopedSsboBinding> guardSsbo4;
+        std::optional<mc2gl::GlScopedTextureUnit> guardTex2DArray;
+        guardSsbo4.emplace(4);
+        guardTex2DArray.emplace(0, GL_TEXTURE_2D_ARRAY);
 
         // 11.7.b — legacy prologue at lines ~2192-2247 ran unconditionally
         // (slot 2 perTypeSsbo bind inherited). Verified by inspection.
@@ -6252,7 +6277,7 @@ void GpuStaticPropBatcher::flush(const RenderSnapshot* snap) {
         // MaterialGpu-2/v3: v3+ static_prop.frag declares MaterialTable at binding 5.
         // The terrain pass uses slot 5 for WaterRecipeBuf in a different GL program —
         // that is not a conflict (terrain re-binds WaterRecipeBuf before its own draw).
-        // prevSsbo5 is saved at flush() entry and restored at flush() exit.
+        // guardSsbo5 captures at flush() entry and restores at flush() exit.
         if (s_materialGpuEnabled && s_materialGpuSsbo.glName != 0) {
             while (glGetError() != GL_NO_ERROR) {}  // drain stale before bind check
             glBindBufferBase(GL_SHADER_STORAGE_BUFFER, 5, static_cast<GLuint>(s_materialGpuSsbo.glName));
@@ -7267,11 +7292,13 @@ void GpuStaticPropBatcher::flush(const RenderSnapshot* snap) {
             glActiveTexture(GL_TEXTURE0);
         }
 
-        // 11.7.j — restore slot 4 + unit-0 GL_TEXTURE_BINDING_2D_ARRAY.
-        // Active texture stays GL_TEXTURE0 (epilogue restores). Slot 15
-        // restore lives at the Step 10.3 envelope in compute_dispatch().
-        glBindBufferBase(GL_SHADER_STORAGE_BUFFER, 4, (GLuint)prevSsbo4);
-        glBindTexture(GL_TEXTURE_2D_ARRAY, (GLuint)prevTex2DArray);
+        // 11.7.j — restore slot 4 + unit-0 GL_TEXTURE_BINDING_2D_ARRAY via the
+        // guards' explicit .reset() (SSBO first, then texture, matching the
+        // old bind-order). Active texture stays GL_TEXTURE0 (guard restores
+        // it). Slot 15 restore lives at the Step 10.3 envelope in
+        // compute_dispatch().
+        guardSsbo4.reset();
+        guardTex2DArray.reset();
 
         // 11.7.k — first-flush latch (per-mission). event=ready is logged
         // here, not at finalize, because finalize emits event=armed and
@@ -7670,25 +7697,25 @@ void GpuStaticPropBatcher::flush(const RenderSnapshot* snap) {
     }
 
     // Restore GL state to EXACTLY what it was at flush start.
-    // SSBOs
-    glBindBufferBase(GL_SHADER_STORAGE_BUFFER, 0, (GLuint)prevSsbo0);
-    glBindBufferBase(GL_SHADER_STORAGE_BUFFER, 1, (GLuint)prevSsbo1);
-    glBindBufferBase(GL_SHADER_STORAGE_BUFFER, 2, (GLuint)prevSsbo2);
-    glBindBufferBase(GL_SHADER_STORAGE_BUFFER, 3, (GLuint)prevSsbo3);
-    glBindBufferBase(GL_SHADER_STORAGE_BUFFER, 5, (GLuint)prevSsbo5);
-    // Texture binding on unit 0
-    glActiveTexture(GL_TEXTURE0);
-    glBindTexture(GL_TEXTURE_2D, (GLuint)prevTexUnit0);
-    glActiveTexture((GLenum)prevActiveTex);
-    // Program / VAO / buffer bindings
-    glBindVertexArray((GLuint)prevVao);
-    glBindBuffer(GL_ARRAY_BUFFER, (GLuint)prevArrayBuf);
-    glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, (GLuint)prevElemBuf);
-    glUseProgram((GLuint)prevProgram);
+    // GLSTATE-GUARD-SITE5: explicit .reset() in the same order the hand-
+    // rolled epilogue used to restore (SSBOs, then texture unit 0, then
+    // program/VAO/buffer bindings) — must close here, BEFORE
+    // gos_InvalidateRenderStateCache() below, not at this optional's natural
+    // (function-end) scope exit. See the capture-site comment above.
+    guardSsbo0.reset();
+    guardSsbo1.reset();
+    guardSsbo2.reset();
+    guardSsbo3.reset();
+    guardSsbo5.reset();
+    guardTexUnit0.reset();
+    guardVao.reset();
+    guardArrayBuf.reset();
+    guardElemBuf.reset();
+    guardProgram.reset();
     // Pipeline state: no explicit restore needed — applyPipeline() set state
     // above, and gos_InvalidateRenderStateCache() below ensures the next
     // applyRenderStates() call re-applies from scratch regardless of what
-    // applyPipeline left. Six glGet* roundtrips removed (render-hygiene-s1).
+    // applyPipeline left.
     accumulateMonotonicAndMaybeEmit(/*forceEmit=*/false);
 
     // Slice 2 (object-offload) — Stage 2.D.1: tick parity counters and emit
@@ -7883,11 +7910,18 @@ void GpuStaticPropBatcher::flushShadow(bool skipStaticBuildingTypes) {
     // is suppressed (the invisible-casters regression). All early returns
     // above are before any GL mutation, so a single capture here + restore
     // at the one exit is correct.
-    GLint prevProgram = 0, prevVao = 0, prevElemBuf = 0, prevSsbo0 = 0;
-    glGetIntegerv(GL_CURRENT_PROGRAM, &prevProgram);
-    glGetIntegerv(GL_VERTEX_ARRAY_BINDING, &prevVao);
-    glGetIntegerv(GL_ELEMENT_ARRAY_BUFFER_BINDING, &prevElemBuf);
-    glGetIntegeri_v(GL_SHADER_STORAGE_BUFFER_BINDING, 0, &prevSsbo0);
+    // GLSTATE-GUARD-SITE5: capture-only guards replace the hand-rolled
+    // prevProgram/prevVao/prevElemBuf/prevSsbo0 save + restore below. No
+    // gos_InvalidateRenderStateCache() in this function and the single exit
+    // is at the function's natural end, so function scope is correct (mirrors
+    // GpuMechBatcher::flushShadow(), gos_mech_batcher.cpp:1012-1029). Declared
+    // in reverse of the restore order the manual epilogue used (ssbo0, VAO,
+    // elem-buffer, program — VAO before elem-buffer per the header's ordering
+    // note) so scope-exit destruction restores identically.
+    mc2gl::GlScopedProgram       guardProgram;
+    mc2gl::GlScopedBufferBinding guardElemBuf(GL_ELEMENT_ARRAY_BUFFER);
+    mc2gl::GlScopedVertexArray   guardVao;
+    mc2gl::GlScopedSsboBinding   guardSsbo0(0);
 
     glUseProgram(shadowProg);
 
@@ -8002,18 +8036,13 @@ void GpuStaticPropBatcher::flushShadow(bool skipStaticBuildingTypes) {
     s_shadowTypesDrawn = typesDrawn;
     s_shadowInstDrawn  = instDrawn;
 
-    // Restore exactly what we changed so compute_dispatch()/flush() see
-    // the GL state they expect. ORDER MATTERS: restore VAO before element-
-    // buffer so that glBindBuffer(ELEMENT_ARRAY_BUFFER, prevElemBuf) writes
-    // into prevVao's state, not into s_sharedVao's. Reversing this order
-    // (element first, then VAO) leaves s_sharedVao.elemBuf=0 — flush() then
-    // binds s_sharedVao expecting s_sharedIbo to be resident and faults
-    // (firstIndex*4 as client ptr, e.g. 0x2A18). flush()'s own restore uses
-    // this same correct order (glBindVertexArray before glBindBuffer(ELEM)).
-    glBindBufferBase(GL_SHADER_STORAGE_BUFFER, 0, (GLuint)prevSsbo0);
-    glBindVertexArray((GLuint)prevVao);                          // VAO first
-    glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, (GLuint)prevElemBuf); // then elem
-    glUseProgram((GLuint)prevProgram);
+    // GL state restored by the guards' destructors at scope exit (below), in
+    // ssbo0 -> VAO -> elem-buffer -> program order — VAO before element-
+    // buffer so glBindBuffer(ELEMENT_ARRAY_BUFFER, ...) writes into the
+    // restored VAO's state, not into s_sharedVao's. compute_dispatch()/
+    // flush() rely on this exact order (see GlScopedVertexArray's header
+    // comment); reversing it leaves s_sharedVao.elemBuf=0 and flush() faults
+    // (firstIndex*4 read as a client pointer, e.g. 0x2A18).
 }
 
 // ---------------------------------------------------------------------------
@@ -8062,11 +8091,12 @@ void GpuStaticPropBatcher::drawStaticBuildingShadows(
 
     // Save the GL state this pass perturbs (mirror flushShadow's bracket) so the
     // subsequent dynamic shadow pass + main flush see the state they expect.
-    GLint prevProgram = 0, prevVao = 0, prevElemBuf = 0, prevSsbo0 = 0;
-    glGetIntegerv(GL_CURRENT_PROGRAM, &prevProgram);
-    glGetIntegerv(GL_VERTEX_ARRAY_BINDING, &prevVao);
-    glGetIntegerv(GL_ELEMENT_ARRAY_BUFFER_BINDING, &prevElemBuf);
-    glGetIntegeri_v(GL_SHADER_STORAGE_BUFFER_BINDING, 0, &prevSsbo0);
+    // GLSTATE-GUARD-SITE5: capture-only guards, same shape/ordering rationale
+    // as flushShadow() above.
+    mc2gl::GlScopedProgram       guardProgram;
+    mc2gl::GlScopedBufferBinding guardElemBuf(GL_ELEMENT_ARRAY_BUFFER);
+    mc2gl::GlScopedVertexArray   guardVao;
+    mc2gl::GlScopedSsboBinding   guardSsbo0(0);
 
     // TIER2-EXCLUDED: substrate-gated
     if (s_staticBldgShadowSsbo == 0) glGenBuffers(1, &s_staticBldgShadowSsbo);
@@ -8134,11 +8164,8 @@ void GpuStaticPropBatcher::drawStaticBuildingShadows(
     glPolygonOffset(0.0f, 0.0f);
     glDisable(GL_POLYGON_OFFSET_FILL);
 
-    // Restore (ssbo0, VAO, elem, program — same order as flushShadow).
-    glBindBufferBase(GL_SHADER_STORAGE_BUFFER, 0, (GLuint)prevSsbo0);
-    glBindVertexArray((GLuint)prevVao);
-    glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, (GLuint)prevElemBuf);
-    glUseProgram((GLuint)prevProgram);
+    // GL state restored by the guards' destructors at scope exit below
+    // (ssbo0, VAO, elem, program — same order as flushShadow).
 
     s_staticBldgShadowTypes = typesDrawn;
     s_staticBldgShadowInst  = instDrawn;
@@ -8214,11 +8241,12 @@ void GpuStaticPropBatcher::drawDynamicPropShadows(
     for (uint32_t idx : order) sorted.push_back(instances[idx]);
 
     // Save the GL state this pass perturbs (mirror flushShadow's bracket).
-    GLint prevProgram = 0, prevVao = 0, prevElemBuf = 0, prevSsbo0 = 0;
-    glGetIntegerv(GL_CURRENT_PROGRAM, &prevProgram);
-    glGetIntegerv(GL_VERTEX_ARRAY_BINDING, &prevVao);
-    glGetIntegerv(GL_ELEMENT_ARRAY_BUFFER_BINDING, &prevElemBuf);
-    glGetIntegeri_v(GL_SHADER_STORAGE_BUFFER_BINDING, 0, &prevSsbo0);
+    // GLSTATE-GUARD-SITE5: capture-only guards, same shape/ordering rationale
+    // as flushShadow() above.
+    mc2gl::GlScopedProgram       guardProgram;
+    mc2gl::GlScopedBufferBinding guardElemBuf(GL_ELEMENT_ARRAY_BUFFER);
+    mc2gl::GlScopedVertexArray   guardVao;
+    mc2gl::GlScopedSsboBinding   guardSsbo0(0);
 
     if (s_dynamicPropShadowSsbo == 0) {
         GLuint dynShadowGen = 0;
@@ -8320,11 +8348,8 @@ void GpuStaticPropBatcher::drawDynamicPropShadows(
     glPolygonOffset(0.0f, 0.0f);
     glDisable(GL_POLYGON_OFFSET_FILL);
 
-    // Restore (ssbo0, VAO, elem, program — same order as flushShadow).
-    glBindBufferBase(GL_SHADER_STORAGE_BUFFER, 0, (GLuint)prevSsbo0);
-    glBindVertexArray((GLuint)prevVao);
-    glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, (GLuint)prevElemBuf);
-    glUseProgram((GLuint)prevProgram);
+    // GL state restored by the guards' destructors at scope exit below
+    // (ssbo0, VAO, elem, program — same order as flushShadow).
 
     s_dynPropShadowTypes = typesDrawn;
     s_dynPropShadowInst  = instDrawn;
