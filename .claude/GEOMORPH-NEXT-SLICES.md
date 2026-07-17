@@ -76,6 +76,19 @@ verify/fix:
 
 ## Clipmap-arc bridge notes
 
+**STATUS (2026-07-16): formalized as its own doc + test.** The full slice-3
+spec (`Slice 3 — CLIPMAP-BRIDGE`) lives in the successor ladder
+`A:/Games/mc2-opengl-src/.claude/GEOMORPH-NEXT-SLICES.md` (this file's
+"direct ancestor" per that doc's own note — read-only source tree, not
+touched by this slice). Executed here per that spec, doc+test scope only (no
+clipmap renderer code):
+- `docs/terrain-clipmap-bridge.md` — the interface doc below, formalized with
+  file:line citations against this worktree's shipped geomorph code.
+- `tools/terrain_beautify/test_visual_heightfield_clipmap_bridge.py` — the
+  integer bake-grid coincidence invariant, made testable (56 pass / 3 skip).
+- Bake-status side-quest: all 24 campaign maps now have `visual_height_4x.r32`
+  in `tests/terrain/beautify/` (was 3/24) — see the new doc §7.
+
 If/when terrain moves to a GPU clipmap (candidate in the modernization
 portfolio), this slice's pieces map as follows — do not rebuild them:
 

@@ -399,3 +399,73 @@ revisits Site 5 now that the vocabulary exists.
   state type this file touches already had a VOCAB-1 guard, and every SSBO
   here is restore-previous (confirmed by reading each capture/restore pair),
   not bind-then-zero. Item complete.
+
+## Item 8 — Geomorph slice 3: CLIPMAP-BRIDGE doc + integer-coincidence test + bake-status audit (DOCS/TESTS ONLY, DONE)
+
+Board: `DEFERRED-BOARD-2026-07-16.md` §A backlog "Geomorph slice 3:
+CLIPMAP-BRIDGE doc + integer-coincidence test; + bake visual_height_4x for
+remaining maps" (source doc `A:/Games/mc2-opengl-src/.claude/GEOMORPH-NEXT-SLICES.md`
+Slice 3, read-only — not touched). No engine code; no mc2.exe build/tier1
+needed (per house rule: doc/content-only item).
+
+- [x] `docs/terrain-clipmap-bridge.md` — bake-mip-level -> clipmap ring-level
+      1:1 mapping table, the integer-coincidence invariant (INDEX not VALUE —
+      verified `--reauth` bakes intentionally unpin corner VALUES while the
+      INDEX mapping stays exact), morph-factor -> transition-region mapping,
+      oracle reuse note, explicit out-of-scope list. Every claim verified
+      against this worktree's actually-shipped geomorph code (contrary to
+      the source recon doc's "lane-local, 0 hits on nifty" note — the arc has
+      merged here): `mclib/terrain.cpp` `chooseLodLevel`/`computeMorphFactor`/
+      the mips staleness-guard loader, `shaders/terrain_lod_chunk.vert`
+      `mipH`/`parentBandH`/`onPerim`, `GameOS/gameos/gos_terrain_lod_chunk.cpp`
+      `gos_TerrainLodChunk_UploadVisualHeightFull` (fine+mips single-SSBO
+      layout), `tools/terrain_beautify/visual_heightfield.py` `build_max_mips`.
+- [x] `tools/terrain_beautify/test_visual_heightfield_clipmap_bridge.py` — 59
+      cases (56 pass / 3 skip — mc2_01/17/24 predate the mips sidecar
+      feature, no `visual_height_mips.r32` on disk for those three): grid
+      sizing law, engine corner-index formula (mirrors terrain.cpp's
+      `mipFactor = (V-1)/(mapSide-1)` staleness-guard derivation) exact for
+      synthetic data, mip levels full-resolution (not decimated — any coarse
+      index valid at any level, matching the shader's un-quantized `mipH()`
+      clamp), shader flat-offset formula in-bounds for every (cx,cy) at every
+      level, SSBO blob layout (fine+mips concatenation byte count) matches
+      the engine upload function, and real-bake byte-size self-consistency
+      across all 24 committed `tests/terrain/beautify/*.beauty/` sidecars.
+      Full `tools/terrain_beautify/` suite re-run clean: 283 passed, 3
+      skipped (same 3, pre-existing).
+- [x] **Bake-status audit** (board's other ask): before this slice, only
+      `mc2_01`/`mc2_17`/`mc2_24` (+ dev maps `gaea_peaks_01`/`terrain004`)
+      had `visual_height_4x.r32` anywhere — confirmed by listing
+      `data/missions/*.beauty/` in the `mc2-win64-v0.4` and `0.5 testing/
+      mc2-win64-v0.5.0` install lanes (read-only inspection; those trees are
+      outside this worktree, not edited); the other 21 campaign maps'
+      `.beauty/` dirs held only an unrelated `control_map.png`.
+- [x] **Bake tool run** (pure content, existing tool, no engine code — per
+      task scope): `py -3 tools/terrain_beautify/visual_heightfield.py
+      <mission> --missions-dir A:/Games/Carver5-feasibility/data/missions
+      --out tests/terrain/beautify` (default flags = the tool's own
+      "deliberately BORING + SAFE" bilinear corner-pinned recipe, no
+      `--reauth`/`--mountainify`/`--cliff-drift`) for all 21 previously-unbaked
+      campaign maps (`mc2_02`-`mc2_16`, `mc2_18`-`mc2_23`). All 21 report
+      `corner_err=0 PASS`. Mips shipped by default alongside
+      (`visual_height_mips.r32`, self-check `violations: 0` each). All 24
+      campaign maps now baked in `tests/terrain/beautify/` (+27 MB, no LFS
+      needed — matches the existing untracked-free convention for this dir).
+      **Deliberately not done**: per-biome `--reauth` tuning (separate
+      board-B4-gated ruling — "agent runs the ladder, user picks"; doing it
+      unsupervised here would ship 21 unreviewed terrain reshapes) and
+      deploy to any install lane (`MC2_TERRAIN_VISUAL_DISPLACE` consumer gate
+      stays default-OFF regardless; these bakes land in the same dev-fixture
+      location `mc2_01`/`17`/`24` originally used before their own lane
+      deploy). Full accounting in the new doc §7.
+- [x] `docs/active_campaigns.md` — new 2026-07-16 dated entry (existence-flag
+      per the slice's step-4 ask; placed here rather than
+      `docs/renderworld_arc_status.md` since terrain is explicitly outside
+      that arc's scope per its own M3 decision).
+- [x] `.claude/GEOMORPH-NEXT-SLICES.md` (this worktree's own copy — the
+      "direct ancestor" doc the source recon doc names) — status stamp added
+      to its existing "Clipmap-arc bridge notes" section pointing at the new
+      doc+test, so a future reader of either copy finds the other.
+- No build/deploy/tier1: doc + Python test + data-file-only change, zero
+  C++/shader/gate touched. `py -3 -m pytest tools/terrain_beautify/` is the
+  full proof (ran clean above).
